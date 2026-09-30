@@ -1,77 +1,137 @@
 {
   "page": {
-    "loading": "Ladataan kaaviota...",
-    "load-failed": "Kaavion tietojen lataaminen epäonnistui",
+    "loading": "Ladataan graafia…",
+    "load-failed": "Graafin tietojen lataaminen epäonnistui",
+    "render-failed": "Graafi ei ole käytettävissä tällä laitteella",
+    "render-failed-description": "Tämä laite ei pystynyt käynnistämään grafiikkamoottoria. Muistiinpanosi ovat turvassa.",
     "try-again": "Yritä uudelleen",
-    "aria-label": "Tietokaavio, jossa on {nodeCount, plural, one {#-solmu} other {# solmut}} ja {edgeCount, plural, one {#-liitäntä} other {# liitännät}}{summary, select, none {.} other {: {summary}.}}",
+    "aria-label": "Tietograafi, jossa on {nodeCount, plural, one {# solmu} other {# solmua}} ja {edgeCount, plural, one {# yhteys} other {# yhteyttä}}{summary, select, none {.} other {: {summary}.}}",
     "nodes-list-label": "Graafin solmut",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "Tietokaaviosi",
-    "description": "Muistiinpanojesi, tehtäviesi ja projektiesi väliset yhteydet näkyvät tässä interaktiivisena kaaviona.",
+    "title": "Tietograafisi",
+    "description": "Muistiinpanojesi, tehtäviesi ja projektiesi väliset yhteydet näkyvät tässä interaktiivisena graafina.",
     "link-title": "Linkitä muistiinpanosi",
     "link-description": "Käytä [[wikilinkkejä]] yhdistääksesi ideat muistiinpanojen välillä",
-    "discover-title": "Tutustu kuvioihin",
+    "discover-title": "Löydä kuvioita",
     "discover-description": "Yhteyksien kasvaessa klustereita ja teemoja syntyy luonnollisesti"
   },
   "entity": {
-    "note": "huomautus",
-    "notes": "muistiinpanoja",
-    "journal": "päiväkirja",
-    "journals": "lehtiä",
+    "note": "muistiinpano",
+    "notes": "muistiinpanoa",
+    "journal": "päiväkirjamerkintä",
+    "journals": "päiväkirjamerkintää",
     "task": "tehtävä",
-    "tasks": "tehtäviä",
-    "project": "hanke",
-    "projects": "hankkeita",
-    "tag": "-tunniste",
-    "tags": "tunnisteet",
-    "orphan": "orpo",
-    "orphans": "orvot",
-    "unresolved": "ratkaisematta"
+    "tasks": "tehtävää",
+    "project": "projekti",
+    "projects": "projektia",
+    "tag": "tunniste",
+    "tags": "tunnistetta",
+    "orphan": "irrallinen",
+    "orphans": "irrallista",
+    "unresolved": "ei vielä luotu",
+    "category": "luokka"
   },
   "summary": {
     "node-type-count": "{count} {label}"
   },
   "control": {
-    "show-settings": "Kaavion asetukset",
+    "show-settings": "Graafin asetukset",
     "hide-settings": "Piilota asetukset",
     "reset-filters": "Nollaa suodattimet",
     "filters": "Suodattimet",
-    "display": "Näyttö",
-    "show-labels": "Näytä tunnisteet",
+    "display": "Näkymä",
+    "show-labels": "Näytä nimet",
+    "live-motion": "Jatkuva liike",
     "focus-depth": "syvyys {depth}",
-    "clear-focus": "Selkeä fokusoitu solmu"
+    "clear-focus": "Poista solmun kohdistus",
+    "relayout": "Järjestä uudelleen",
+    "categories": "Tunnisteluokat",
+    "color-by-category": "Väritä luokan mukaan",
+    "no-categories": "Ryhmittele tunnisteet luokkiin tunnistesivulla, niin voit värittää ja kutistaa graafin luokittain.",
+    "collapse-category": "Kutista ”{name}”",
+    "expand-category": "Laajenna ”{name}”",
+    "uncategorized": "Luokittelemattomat"
   },
   "filter": {
-    "notes": "Huomautuksia",
-    "journals": "Lehdet",
+    "notes": "Muistiinpanot",
+    "journals": "Päiväkirjamerkinnät",
     "tasks": "Tehtävät",
     "projects": "Projektit",
     "tags": "Tunnisteet",
-    "orphans": "Orvot",
-    "toggle-entity": "Vaihda {label}",
-    "toggle-orphans": "Vaihda orvot solmut"
+    "orphans": "Irralliset",
+    "canvas-edges": "Tauluyhteydet",
+    "toggle-entity": "Näytä/piilota: {label}",
+    "toggle-orphans": "Näytä/piilota irralliset solmut"
   },
   "search": {
-    "placeholder": "Hae solmut...",
-    "clear": "Tyhjennä kaaviohaku"
+    "placeholder": "Hae solmuja…",
+    "clear": "Tyhjennä graafihaku"
   },
   "context-menu": {
     "untitled": "Nimetön",
-    "focus-node": "Keskity tähän solmuun",
+    "focus-node": "Kohdista tähän solmuun",
     "open-new-tab": "Avaa uudessa välilehdessä",
     "create-note": "Luo muistiinpano",
-    "copy-title": "Kopioi otsikko"
+    "copy-title": "Kopioi otsikko",
+    "link-to": "Linkitä…",
+    "add-tag": "Lisää tunniste…",
+    "back": "Takaisin",
+    "link-search": "Hae muistiinpanoista…",
+    "tag-search": "Hae tai luo tunniste…",
+    "no-matches": "Ei osumia",
+    "create-tag": "Luo #{tag}",
+    "remove-link": "Poista linkki muistiinpanoon ”{title}”",
+    "unpin": "Irrota",
+    "collapse-category": "Kutista ”{name}”",
+    "expand-category": "Laajenna ”{name}”"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {#-liitäntä} other {# liitännät}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# yhteys} other {# yhteyttä}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# kohde} other {# kohdetta}}",
+    "click-to-expand": "Laajenna napsauttamalla"
   },
   "local-panel": {
-    "loading": "Ladataan kaaviota...",
+    "loading": "Ladataan graafia…",
     "empty": "Yhteyksiä ei löytynyt",
-    "open-full": "Avaa koko kaavio",
-    "close": "Sulje kaavio"
+    "open-full": "Avaa koko graafi",
+    "close": "Sulje graafi",
+    "pin": "Kiinnitä tähän muistiinpanoon",
+    "unpin": "Irrota ja seuraa avointa muistiinpanoa",
+    "pinned-to": "Kiinnitetty: {title}"
+  },
+  "edit": {
+    "linked": "Linkitetty ”{source}” → ”{target}” (ominaisuus ”{property}”)",
+    "unlinked": "Linkki ”{source}” → ”{target}” poistettu",
+    "already-linked": "”{source}” linkittää jo muistiinpanoon ”{target}”",
+    "property-conflict": "Tämän muistiinpanon ominaisuus ”{property}” ei ole relaatio-ominaisuus, joten linkkiä ei lisätty",
+    "link-unsupported": "Linkkejä voi luoda vain muistiinpanojen välille",
+    "link-failed": "Linkin lisääminen epäonnistui",
+    "unlink-failed": "Linkin poistaminen epäonnistui",
+    "tag-added": "Tunniste #{tag} lisätty muistiinpanoon ”{note}”",
+    "tag-exists": "Tällä muistiinpanolla on jo tunniste #{tag}",
+    "tag-failed": "Tunnisteen lisääminen epäonnistui",
+    "undo-failed": "Muutoksen kumoaminen epäonnistui"
+  },
+  "relayout-confirm": {
+    "title": "Järjestetäänkö graafi uudelleen?",
+    "description": "Kaikki kiinnitetyt solmut vapautetaan ja graafi asettuu uuteen järjestykseen. Tallennettu asettelusi hylätään.",
+    "cancel": "Peruuta",
+    "confirm": "Järjestä uudelleen"
+  },
+  "views": {
+    "title": "Tallennetut näkymät",
+    "unsaved": "Tallentamaton näkymä",
+    "edited": "Muokattu",
+    "empty": "Ei vielä tallennettuja näkymiä",
+    "save-as": "Tallenna uutena näkymänä…",
+    "update": "Päivitä ”{name}”",
+    "delete": "Poista näkymä ”{name}”",
+    "save-dialog-title": "Tallenna graafinäkymä",
+    "save-dialog-placeholder": "Näkymän nimi",
+    "cancel": "Peruuta",
+    "save": "Tallenna"
   }
 }

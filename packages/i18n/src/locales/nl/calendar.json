@@ -3,88 +3,148 @@
     "day": "Dag",
     "week": "Week",
     "month": "Maand",
-    "year": "Jaar"
+    "monthGridLabel": "Maandraster",
+    "year": "Jaar",
+    "timeline": "Tijdlijn"
+  },
+  "undo": {
+    "moveEvent": "Afspraak verplaatsen",
+    "moveTask": "Taak opnieuw plannen"
   },
   "toolbar": {
-    "create-event": "Evenement aanmaken",
+    "create-event": "Afspraak maken",
     "previous-period": "Vorige periode",
     "next-period": "Volgende periode",
     "previous-month": "Vorige maand",
     "next-month": "Volgende maand",
     "today": "Vandaag"
   },
+  "search": {
+    "open": "Agenda doorzoeken",
+    "close": "Zoeken sluiten",
+    "placeholder": "Afspraken, taken, herinneringen zoeken…",
+    "no-results": "Geen resultaten"
+  },
   "filter": {
-    "filter-calendars": "Kalenders filteren",
+    "filter-calendars": "Agenda’s filteren",
     "sources": "Bronnen",
-    "memry-items": "memrynote-artikelen",
-    "imported-calendars": "Geïmporteerde kalenders",
-    "event-types": "Soorten evenementen",
-    "google-calendars": "Google-agenda's",
-    "refresh-google-calendars": "Vernieuw Google-agenda's"
+    "memry-items": "memrynote-items",
+    "imported-calendars": "Geïmporteerde agenda’s",
+    "event-types": "Itemtypen",
+    "google-calendars": "Google-agenda’s",
+    "refresh-google-calendars": "Google-agenda’s vernieuwen",
+    "not-syncing": "Niet gesynchroniseerd · vink aan om in te schakelen",
+    "enable-source-failed": "Kan die agenda niet inschakelen.",
+    "provider-calendars": {
+      "ics": "Geabonneerde agenda’s",
+      "caldav": "CalDAV-agenda’s",
+      "apple-eventkit": "Deze Mac",
+      "other": "Andere agenda’s"
+    }
   },
   "visual-type": {
-    "event": "Evenement",
-    "imported-event": "Geïmporteerd evenement",
+    "event": "Afspraak",
+    "imported-event": "Geïmporteerde afspraak",
+    "note": "Notitie",
+    "note-date": "Datumherinnering",
     "task": "Taak",
     "reminder": "Herinnering",
-    "snooze": "Snoozen",
-    "note": "Notitie",
-    "note-date": "Datumherinnering"
+    "snooze": "Uitgesteld"
   },
   "state": {
-    "loading-calendar": "Kalender laden…",
-    "loading-calendars": "Agenda's laden…",
+    "loading-calendar": "Agenda laden…",
+    "loading-calendars": "Agenda’s laden…",
     "preparing": "Voorbereiden…"
   },
   "empty": {
-    "no-imported-calendars-yet": "Nog geen geïmporteerde kalenders.",
-    "no-events": "Geen evenementen"
+    "no-imported-calendars-yet": "Nog geen geïmporteerde agenda’s.",
+    "no-events": "Geen afspraken"
   },
   "time": {
-    "all-day": "De hele dag",
-    "all-day-lower": "de hele dag",
-    "pick-a-date": "Kies een datum",
-    "new-event": "Nieuw evenement",
-    "more-events": "{count, plural, one {# meer evenement} other {# meer evenementen}}"
+    "all-day": "Hele dag",
+    "all-day-lower": "hele dag",
+    "pick-a-date": "Datum kiezen",
+    "new-event": "Nieuwe afspraak",
+    "more-events": "{count, plural, one {nog # afspraak} other {nog # afspraken}}"
   },
   "form": {
-    "create-calendar-event": "Agendagebeurtenis maken",
+    "create-calendar-event": "Agenda-afspraak maken",
     "edit-calendar-event": "Agenda-afspraak bewerken",
-    "quick-create-description": "Voer een titel in en sla deze op om een evenement in het geselecteerde tijdsbereik te maken.",
-    "event-editor-description": "Update de titel, locatie, datum, tijd en opmerkingen voor dit evenement.",
-    "new-event-placeholder": "Nieuw evenement",
-    "notes-url-placeholder": "Voeg notities of URL toe",
+    "quick-create-description": "Voer een titel in en sla op om een afspraak te maken in het geselecteerde tijdsbereik.",
+    "event-editor-description": "Wijzig de titel, locatie, datum, tijd en notities van deze afspraak.",
+    "new-event-placeholder": "Nieuwe afspraak",
+    "notes-url-placeholder": "Notities of URL toevoegen",
     "start": "Begin",
     "end": "Einde",
     "google-calendar": "Google-agenda",
-    "target-calendar": "Doelkalender",
-    "use-default-calendar": "Gebruik standaardkalender",
+    "target-calendar": "Doelagenda",
+    "use-default-calendar": "Standaardagenda gebruiken",
     "use-default-calendar-with-name": "Standaard gebruiken ({calendar})",
-    "use-memry-calendar-default": "Gebruik memrynote-agenda (standaard)",
-    "primary-suffix": "primair"
+    "use-memry-calendar-default": "memrynote-agenda gebruiken (standaard)",
+    "primary-suffix": "primair",
+    "project": "Project",
+    "no-project": "Geen project",
+    "remove-from-project": "Verwijderen uit {project}",
+    "project-update-failed": "Kan het project van de afspraak niet bijwerken",
+    "color": "Kleur",
+    "default-color": "Standaardkleur"
   },
   "delete-dialog": {
-    "title": "Evenement verwijderen?",
-    "local-description": "\"{title}\" wordt permanent verwijderd. Deze actie kan niet ongedaan worden gemaakt.",
-    "google-bound-description": "\"{title}\" wordt verwijderd uit memrynote en Google Agenda. Deze actie kan niet ongedaan worden gemaakt.",
-    "context-menu-delete-label": "Evenement verwijderen",
+    "title": "Afspraak verwijderen?",
+    "local-description": "“{title}” wordt definitief verwijderd. Deze actie kan niet ongedaan worden gemaakt.",
+    "google-bound-description": "“{title}” wordt verwijderd uit memrynote en Google Calendar. Deze actie kan niet ongedaan worden gemaakt.",
+    "context-menu-delete-label": "Afspraak verwijderen",
     "context-menu-add-to-project": "Toevoegen aan project"
   },
+  "agent-access-dialog": {
+    "aria": "Kies of AI je afspraken uit Google Calendar mag lezen",
+    "title": "Mag AI je afspraken uit Google Calendar lezen?",
+    "body": "Je blijft je Google-afspraken hoe dan ook in memrynote zien. Dit bepaalt alleen of de AI-agent ze kan lezen wanneer je de agent iets over je planning vraagt.",
+    "footnote": "Je kunt dit altijd wijzigen in Instellingen → Integraties → Google Calendar.",
+    "allow": "Toestaan",
+    "deny": "Niet toestaan",
+    "save-error": "Kan je keuze niet opslaan",
+    "provider": {
+      "aria": "Kies of AI afspraken uit je {provider} mag lezen",
+      "title": "Mag AI afspraken uit je {provider} lezen?",
+      "body": "Je blijft deze afspraken hoe dan ook in memrynote zien. Dit bepaalt alleen of de AI-agent ze kan lezen wanneer je de agent iets over je planning vraagt. Je stelt dit per agendadienst apart in.",
+      "footnote": "Je kunt dit altijd wijzigen in Instellingen → Agenda."
+    },
+    "provider-names": {
+      "ics": "geabonneerde agenda",
+      "caldav": "CalDAV-agenda",
+      "apple-eventkit": "macOS-agenda"
+    }
+  },
   "promote-dialog": {
-    "aria": "Externe agendagebeurtenis bewerken",
-    "title": "Deze gebeurtenis bewerken in memrynote?",
-    "body": "Als u deze gebeurtenis bewerkt, wordt er een gekoppelde kopie gemaakt in memrynote, zodat wijzigingen in beide richtingen worden gesynchroniseerd. Doorgaan?",
-    "do-not-ask-again": "Vraag het niet opnieuw",
+    "aria": "Externe afspraak bewerken",
+    "title": "Deze afspraak bewerken in memrynote?",
+    "body": "Als je deze afspraak bewerkt, wordt er een gekoppelde kopie gemaakt in memrynote, zodat wijzigingen in beide richtingen worden gesynchroniseerd. Doorgaan?",
+    "do-not-ask-again": "Niet meer vragen",
     "confirm-label": "Bewerken in memrynote",
-    "agent-notice": "De AI-agent kan deze kopie lezen, ook al staat AI-toegang tot Google Calendar uit. Je oorspronkelijke Google-gebeurtenis blijft voor hem verborgen."
+    "agent-notice": "De AI-agent kan deze kopie lezen, ook al staat AI-toegang tot Google Calendar uit. Je oorspronkelijke Google-afspraak blijft verborgen voor de agent."
   },
   "onboarding-dialog": {
-    "aria": "Kies uw standaard Google-agenda",
-    "title": "Naar welke kalender moeten nieuwe memrynote-evenementen gaan?",
-    "body": "Kies de Google-agenda die memrynote standaard moet gebruiken. Je kunt het nog steeds per gebeurtenis overschrijven.",
-    "default-calendar-label": "Gebruik de door memrynote beheerde agenda",
+    "aria": "Kies je standaard Google-agenda",
+    "title": "Naar welke agenda moeten nieuwe memrynote-afspraken gaan?",
+    "body": "Kies de Google-agenda die memrynote standaard moet gebruiken. Je kunt dit per afspraak nog aanpassen.",
+    "default-calendar-label": "De door memrynote beheerde agenda gebruiken",
     "skip": "Overslaan",
-    "use-this-calendar": "Gebruik deze kalender"
+    "use-this-calendar": "Deze agenda gebruiken"
+  },
+  "connect-prompt": {
+    "pill": "Google verbinden",
+    "aria": "Google Calendar verbinden",
+    "title": "Verbinding met Google Calendar voltooien",
+    "body": "Verbind je Google-account om meer met je agenda te doen:",
+    "bullets": {
+      "events": "Zie je Google-afspraken naast notities en taken",
+      "sync": "Maak en bewerk afspraken, in beide richtingen gesynchroniseerd",
+      "schedule": "Plan taken en notities in je agenda"
+    },
+    "continue": "Doorgaan met Google",
+    "dismiss": "Sluiten",
+    "error": "Kan Google Calendar niet verbinden. Probeer het opnieuw."
   },
   "metadata": {
     "attendees": "Deelnemers",
@@ -93,12 +153,13 @@
     "default-reminders": "Standaardherinneringen",
     "visibility": "Zichtbaarheid:",
     "optional": "Optioneel",
-    "join-meeting": "Neem deel aan de vergadering",
+    "join-meeting": "Deelnemen aan vergadering",
+    "video-call": "Videogesprek",
     "response": {
       "accepted": "Geaccepteerd",
       "declined": "Geweigerd",
       "tentative": "Voorlopig",
-      "needs-action": "In behandeling"
+      "needs-action": "In afwachting"
     },
     "visibility-value": {
       "private": "Privé",
@@ -113,38 +174,57 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "Kan evenement niet opslaan. Probeer het opnieuw.",
-      "couldNotCreateEventTryAgain": "Kan evenement niet aanmaken. Probeer het opnieuw.",
+      "couldNotSaveEventTryAgain": "Kan afspraak niet opslaan. Probeer het opnieuw.",
+      "couldNotCreateEventTryAgain": "Kan afspraak niet maken. Probeer het opnieuw.",
       "couldNotSaveDefaultCalendarTryAgain": "Kan de standaardagenda niet opslaan. Probeer het opnieuw.",
       "failedToLoadCalendarPreferences": "Kan agendavoorkeuren niet laden",
       "failedToUpdateCalendarPreferences": "Kan agendavoorkeuren niet bijwerken",
-      "couldNotEditThisEventTryAgain": "Kan deze gebeurtenis niet bewerken. Probeer het opnieuw.",
-      "failedToDeleteEvent": "Kan gebeurtenis niet verwijderen",
-      "couldNotUnsnoozeInboxItem": "Kon de snooze niet ongedaan maken.",
+      "couldNotEditThisEventTryAgain": "Kan deze afspraak niet bewerken. Probeer het opnieuw.",
+      "failedToDeleteEvent": "Kan afspraak niet verwijderen",
+      "couldNotUnsnoozeInboxItem": "Kan uitstel niet opheffen.",
       "couldNotRescheduleInboxItem": "Kan niet opnieuw plannen."
     },
     "inboxSnoozePopover": {
-      "title": "Gesnoozed postvak IN-item",
-      "openInInbox": "Openen in postvak IN",
-      "unsnoozeNow": "Nu uitsnoozen",
+      "title": "Uitgesteld inboxitem",
+      "openInInbox": "Openen in inbox",
+      "unsnoozeNow": "Nu terugzetten",
       "reschedule": "Opnieuw plannen"
     }
   },
+  "chip": {
+    "complete-task": "“{title}” afvinken",
+    "task-completed": "Taak voltooid",
+    "could-not-complete": "Kan taak niet voltooien",
+    "duration-minutes": "{minutes} min",
+    "duration-hours": "{hours} u",
+    "duration-hours-minutes": "{hours} u {minutes} min"
+  },
+  "event-card": {
+    "kind": "Afspraak",
+    "close": "Sluiten"
+  },
   "task-popover": {
     "title-fallback": "Taakdetails",
-    "open-task": "Open taak",
-    "source-note": "Bron opmerking",
+    "kind": "Taak",
+    "open": "Openen",
+    "complete": "Voltooien",
+    "more-actions": "Meer acties",
+    "move": "Verplaatsen",
+    "later": "Later",
+    "next-week": "Volgende week",
+    "open-task": "Taak openen",
+    "source-note": "Bronnotitie",
     "reschedule": "Opnieuw plannen",
-    "mark-done": "Markeer klaar",
-    "mark-not-done": "Markeer niet gedaan",
+    "mark-done": "Als voltooid markeren",
+    "mark-not-done": "Als niet voltooid markeren",
     "later-today": "Later vandaag",
     "tomorrow": "Morgen",
-    "next-week-mon": "Volgende week · Ma",
+    "next-week-mon": "Volgende week · ma",
     "pick-date-time": "Datum en tijd kiezen…",
-    "remove-due-date": "Verwijder de vervaldatum",
+    "remove-due-date": "Vervaldatum verwijderen",
     "subtasks-prefix": "Subtaken",
-    "subtasks-counter": "{done} of {total} voltooid",
-    "repeats": "Herhalingen",
+    "subtasks-counter": "{done} van {total} voltooid",
+    "repeats": "Herhaling",
     "repeats-daily": "Wordt dagelijks herhaald",
     "repeats-weekly": "Wordt wekelijks herhaald",
     "repeats-monthly": "Wordt maandelijks herhaald",
@@ -156,43 +236,151 @@
       "could-not-open-note": "Kan notitie niet openen"
     }
   },
-  "connect-prompt": {
-    "aria": "Google Calendar verbinden",
-    "body": "Verbind je Google-account om meer met je agenda te doen:",
-    "bullets": {
-      "events": "Bekijk je Google-gebeurtenissen naast notities en taken",
-      "schedule": "Plan taken en notities in je agenda",
-      "sync": "Maak en bewerk gebeurtenissen, in beide richtingen gesynchroniseerd"
-    },
-    "continue": "Doorgaan met Google",
-    "dismiss": "Sluiten",
-    "error": "Kan Google Calendar niet verbinden. Probeer opnieuw.",
-    "pill": "Google verbinden",
-    "title": "Verbinding met Google Calendar voltooien"
-  },
   "notePopover": {
-    "couldNotOpen": "Kan notitie niet openen",
     "kind": "Notitie",
     "kindDateReminder": "Datumherinnering",
-    "open": "Notitie openen"
+    "open": "Notitie openen",
+    "couldNotOpen": "Kan notitie niet openen"
   },
-  "search": {
-    "close": "Zoeken sluiten",
-    "no-results": "Geen resultaten",
-    "open": "Agenda doorzoeken",
-    "placeholder": "Gebeurtenissen, taken, herinneringen zoeken…"
+  "timeline": {
+    "label": "Gepland werk op een tijdlijn",
+    "tasks-column": "Taken",
+    "span": "{start} – {end}",
+    "due": "Vervalt {date}",
+    "starts": "Begint {date}",
+    "starts-short": "{date} →",
+    "no-date": "Geen datum",
+    "today": "Vandaag",
+    "overdue": "te laat",
+    "untitled": "Zonder titel",
+    "days": "{count, plural, one {# dag} other {# dagen}}",
+    "events": "Afspraken",
+    "schedule-hint": "Klik om een datum in te stellen, sleep om een periode in te stellen",
+    "empty-title": "Hier staat niets op de tijdlijn",
+    "empty-body": "Taken met een start- of vervaldatum en afspraken van een hele dag of meerdere dagen verschijnen hier. Schakel taken zonder datum in via Weergave om ze door te slepen in te plannen.",
+    "status": {
+      "todo": "Te doen",
+      "in_progress": "Bezig",
+      "done": "Klaar"
+    },
+    "priority": {
+      "urgent": "Urgent",
+      "high": "Hoog",
+      "medium": "Gemiddeld",
+      "low": "Laag",
+      "none": "Geen prioriteit"
+    },
+    "zoom": {
+      "label": "Zoomniveau",
+      "weeks": "Weken",
+      "months": "Maanden",
+      "quarters": "Kwartalen"
+    },
+    "group-by": {
+      "project": "Project",
+      "status": "Status",
+      "priority": "Prioriteit",
+      "none": "Geen groepering"
+    },
+    "group-by-label": "Groeperen: {group}",
+    "order-by": {
+      "start": "Startdatum",
+      "due": "Vervaldatum",
+      "title": "Titel"
+    },
+    "display": {
+      "button": "Weergave",
+      "group-by": "Groeperen op",
+      "order-by": "Sorteren op",
+      "show": "Tonen",
+      "show-events": "Afspraken",
+      "show-undated": "Taken zonder datum",
+      "show-completed": "Voltooide taken",
+      "show-subtasks": "Subtaken"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# taak} other {# taken}} · {events, plural, one {# afspraak} other {# afspraken}}",
+      "open": "Openen",
+      "move": "Verplaatsen",
+      "resize": "Formaat wijzigen",
+      "actions": "Acties",
+      "select": "Selecteren",
+      "today": "Vandaag"
+    },
+    "actions": {
+      "search": "Acties zoeken…",
+      "search-projects": "Projecten zoeken…",
+      "empty": "Geen overeenkomende actie",
+      "no-projects": "Geen overeenkomend project",
+      "open": "Taak openen",
+      "open-in-tasks": "Openen in Taken",
+      "schedule": "Planning",
+      "set-start": "Startdatum instellen",
+      "set-due": "Vervaldatum instellen",
+      "move-later": "Een week later plannen",
+      "move-earlier": "Een week eerder plannen",
+      "clear-dates": "Datums wissen",
+      "clear-start": "Startdatum wissen",
+      "clear-due": "Vervaldatum wissen",
+      "task": "Taak",
+      "complete": "Als voltooid markeren",
+      "uncomplete": "Als niet voltooid markeren",
+      "change-project": "Project wijzigen",
+      "page": {
+        "root": "Acties",
+        "start": "Startdatum",
+        "due": "Vervaldatum",
+        "project": "Project"
+      }
+    },
+    "undo": {
+      "reschedule": "“{title}” opnieuw plannen"
+    }
   },
-  "undo": {
-    "moveEvent": "Gebeurtenis verplaatsen",
-    "moveTask": "Taak opnieuw plannen"
+  "calendar-color": {
+    "tomato": "Tomaat",
+    "flamingo": "Flamingo",
+    "tangerine": "Mandarijn",
+    "banana": "Banaan",
+    "sage": "Salie",
+    "basil": "Basilicum",
+    "peacock": "Pauw",
+    "blueberry": "Bosbes",
+    "lavender": "Lavendel",
+    "grape": "Druif",
+    "graphite": "Grafiet"
   },
-  "agent-access-dialog": {
-    "allow": "Sta toe",
-    "aria": "Kies of AI je Google Calendar-gebeurtenissen mag lezen",
-    "body": "Je blijft je Google-gebeurtenissen hoe dan ook in memrynote zien. Dit bepaalt alleen of de AI-agent ze kan lezen wanneer je hem iets over je planning vraagt.",
-    "deny": "Sta niet toe",
-    "footnote": "Je kunt dit altijd wijzigen in Instellingen → Integraties → Google Calendar.",
-    "save-error": "Kan je keuze niet opslaan",
-    "title": "Mag AI je Google Calendar-gebeurtenissen lezen?"
+  "subscribedEvent": {
+    "kind": "Geabonneerde agenda",
+    "kindAppleEventKit": "Deze Mac",
+    "close": "Sluiten",
+    "detailsFailed": "Kan de deelnemers en links van deze afspraak niet laden. De afspraak zelf is niet gewijzigd.",
+    "showMore": "Meer tonen",
+    "showLess": "Minder tonen",
+    "organizer": "organisator",
+    "you": "jij",
+    "phone": "Inbellen via telefoon",
+    "alert": "{minutes, plural, =0 {Melding bij aanvang} one {Melding # minuut van tevoren} other {Melding # minuten van tevoren}}",
+    "alertHours": "{hours, plural, one {Melding # uur van tevoren} other {Melding # uur van tevoren}}",
+    "alertDays": "{days, plural, one {Melding # dag van tevoren} other {Melding # dagen van tevoren}}",
+    "recurrence": {
+      "daily": "{count, plural, one {Wordt elke dag herhaald} other {Wordt om de # dagen herhaald}}",
+      "weekly": "{count, plural, one {Wordt elke week herhaald} other {Wordt om de # weken herhaald}}",
+      "weeklyOn": "{count, plural, one {Wordt elke week herhaald op {days}} other {Wordt om de # weken herhaald op {days}}}",
+      "monthly": "{count, plural, one {Wordt elke maand herhaald} other {Wordt om de # maanden herhaald}}",
+      "yearly": "{count, plural, one {Wordt elk jaar herhaald} other {Wordt om de # jaar herhaald}}",
+      "other": "Wordt herhaald"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Geabonneerde agenda’s"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

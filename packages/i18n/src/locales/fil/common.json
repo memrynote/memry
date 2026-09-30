@@ -1,451 +1,184 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "I-focus ang field ng pagtatala",
+    "detailHint": "detalye",
+    "submit": "Itala"
+  },
   "button": {
     "save": "I-save",
     "cancel": "Kanselahin",
     "close": "Isara",
     "delete": "Tanggalin",
     "done": "Tapos na",
-    "dontSave": "Huwag I-save",
+    "dontSave": "Huwag i-save",
     "add": "Idagdag",
     "remove": "Alisin",
-    "retry": "Subukan muli",
+    "retry": "Subukan ulit",
     "back": "Bumalik",
     "continue": "Magpatuloy",
     "copy": "Kopyahin",
-    "create": "Lumikha"
+    "create": "Gumawa"
+  },
+  "media": {
+    "video": "Video"
   },
   "state": {
     "loading": "Naglo-load…",
-    "saving": "Sine-save...",
+    "saving": "Sine-save…",
     "deleting": "Tinatanggal…",
     "searching": "Naghahanap…"
   },
   "action": {
     "search": "Maghanap",
-    "expand": "Palawakin",
+    "expand": "I-expand",
     "collapse": "I-collapse",
     "showMore": "+{count, plural, one {# pa} other {# pa}}",
     "showLess": "Magpakita ng mas kaunti",
     "undo": "I-undo"
   },
   "fileActions": {
-    "revealInFinder": "Ibunyag sa Finder",
+    "revealInFinder": "Ipakita sa Finder",
     "showInExplorer": "Ipakita sa Explorer",
     "showInFileManager": "Ipakita sa file manager",
     "openInDefaultApp": "Buksan sa default na app",
-    "revealFailed": "Nabigong ipakita sa folder"
+    "revealFailed": "Hindi maipakita sa folder"
   },
   "tabs": {
-    "pin": "I-pin ang Tab",
-    "unpin": "I-unpin ang Tab",
+    "pin": "I-pin ang tab",
+    "unpin": "I-unpin ang tab",
+    "persistence": {
+      "saveFailed": "Hindi na sine-save ang mga nakabukas mong tab",
+      "saveFailedQuota": "Masyadong malaki ang session na ito para maimbak. Magsara ng ilang tab, o baka hindi ito maibalik sa susunod mong pagbukas ng Memry.",
+      "saveFailedGeneric": "Hindi naimbak ng Memry ang session na ito, kaya baka hindi ito maibalik sa susunod mong pagbukas ng app.",
+      "lastSessionNotSaved": "Hindi na-save ang huli mong session nang magsara ang Memry",
+      "lastSessionNotSavedQuota": "Puno ang storage noong panahong iyon, kaya galing sa naunang pag-save ang mga tab na ito. Magsara ng ilang tab para magkaroon ng espasyo.",
+      "lastSessionNotSavedGeneric": "Hindi naimbak ng Memry ang mga tab mo nang magsara ito, kaya galing sa naunang pag-save ang mga tab na ito."
+    },
     "contextMenu": {
       "close": "Isara",
-      "closeOthers": "Isara ang Iba",
-      "closeToRight": "Malapit sa Kanan",
-      "closeAll": "Isara Lahat",
-      "duplicate": "Duplicate na Tab",
-      "splitRight": "Hatiin sa Kanan",
-      "splitDown": "Hatiin",
-      "copyPath": "Kopyahin ang Landas",
-      "revealInSidebar": "Ibunyag sa Sidebar"
+      "closeOthers": "Isara ang iba",
+      "closeToRight": "Isara ang nasa kanan",
+      "closeAll": "Isara lahat",
+      "duplicate": "I-duplicate ang tab",
+      "splitRight": "Hatiin pakanan",
+      "splitDown": "Hatiin pababa",
+      "copyPath": "Kopyahin ang path",
+      "revealInSidebar": "Ipakita sa sidebar"
     }
   },
   "count": {
-    "note": "{count, plural, one {# tala} other {# na tala}}",
-    "task": "{count, plural, one {# gawain} other {# na mga gawain}}",
-    "itemDelete": "{count, plural, one {Tanggalin ang # item} other {Tanggalin ang # item}}",
+    "note": "{count, plural, one {# tala} other {# tala}}",
+    "journal": "{count, plural, one {# entry sa talaarawan} other {# entry sa talaarawan}}",
+    "task": "{count, plural, one {# gawain} other {# gawain}}",
     "event": "{count, plural, one {# kaganapan} other {# kaganapan}}",
-    "journal": "{count, plural, one {# journal} other {# journal}}",
-    "reminder": "{count, plural, one {# paalala} other {# paalala}}"
+    "reminder": "{count, plural, one {# paalala} other {# paalala}}",
+    "itemDelete": "{count, plural, one {Tanggalin ang # item} other {Tanggalin ang # item}}"
   },
   "toast": {
-    "actionFailed": "Nabigo ang pagkilos",
-    "nothingToUndo": "Walang dapat i-undo",
+    "actionFailed": "Hindi nagawa ang aksyon",
+    "nothingToUndo": "Walang maa-undo",
     "undone": "Na-undo: {description}",
-    "undoFailed": "Nabigong i-undo ang pagkilos"
+    "undoFailed": "Hindi ma-undo ang aksyon",
+    "filesImported": "{count, plural, one {Na-import ang # file} other {Na-import ang # file}}",
+    "filesImportFailed": "{count, plural, one {Hindi ma-import ang # file} other {Hindi ma-import ang # file}}",
+    "filesHiddenInSidebar": "Nakatago ang mga file sa sidebar. I-on ang “Ipakita ang mga file” sa menu ng pagkakasunod ng Mga koleksyon para makita ang mga ito.",
+    "moreRemindersDue": "{count, plural, one {Takda na rin ang # iba pang paalala} other {Takda na rin ang # iba pang paalala}}",
+    "moreRemindersDueHint": "Tingnan ang panel ng mga paalala para sa mga detalye",
+    "searchIndexRepaired": "Naayos ang index ng paghahanap",
+    "searchIndexRepairedHint": "Nasira ang bahagi ng index ng paghahanap, kaya binuo ito ulit ng Memry. Hindi ginalaw ang mga tala mo."
   },
   "dateRelative": {
     "today": "Ngayong araw",
     "yesterday": "Kahapon",
     "daysAgo": "{count, plural, one {# araw ang nakalipas} other {# araw ang nakalipas}}",
-    "daysLate": "{count, plural, one {# araw huli} other {# araw huli}}",
-    "daysOverdue": "{count, plural, one {# araw nang lampas} other {# araw nang lampas}}",
-    "tomorrow": "Bukas"
+    "tomorrow": "Bukas",
+    "daysOverdue": "{count, plural, one {Lampas nang # araw} other {Lampas nang # araw}}",
+    "daysLate": "{count, plural, one {Huli nang # araw} other {Huli nang # araw}}",
+    "inDays": "{count, plural, one {sa loob ng # araw} other {sa loob ng # araw}}",
+    "inWeeks": "{count, plural, one {sa loob ng # linggo} other {sa loob ng # linggo}}"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Araw-araw} other {Tuwing # araw}}",
-    "everyNWeeks": "{count, plural, one {Linggo-linggo} other {Tuwing # na linggo}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {Tuwing weekday} other {Tuwing # na linggo tuwing karaniwang araw}}",
-    "everyNWeeksOnWeekends": "{count, plural, one {Tuwing katapusan ng linggo} other {Tuwing # na linggo tuwing weekend}}",
-    "everyNWeeksOnDays": "{count, plural, one {Linggo-linggo sa {days}} other {Tuwing # na linggo sa {days}}}",
-    "everyNMonths": "{count, plural, one {Bawat buwan} other {Tuwing # na buwan}}",
-    "everyNMonthsOnDay": "{count, plural, one {Bawat buwan sa {day}{suffix}} other {Tuwing # na buwan sa {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {Bawat buwan sa {week} {day}} other {Tuwing # na buwan sa {week} {day}}}",
-    "everyNYears": "{count, plural, one {Bawat taon} other {Bawat # taon}}",
-    "repeats": "Inuulit",
+    "everyNWeeks": "{count, plural, one {Linggu-linggo} other {Tuwing # linggo}}",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Tuwing karaniwang araw} other {Tuwing # linggo, sa mga karaniwang araw}}",
+    "everyNWeeksOnWeekends": "{count, plural, one {Tuwing katapusan ng linggo} other {Tuwing # linggo, sa katapusan ng linggo}}",
+    "everyNWeeksOnDays": "{count, plural, one {Linggu-linggo tuwing {days}} other {Tuwing # linggo, sa {days}}}",
+    "everyNMonths": "{count, plural, one {Buwan-buwan} other {Tuwing # buwan}}",
+    "everyNMonthsOnDay": "{count, plural, one {Buwan-buwan tuwing ika-{day}{suffix}} other {Tuwing # buwan, sa ika-{day}{suffix}}}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Buwan-buwan tuwing {week} {day}} other {Tuwing # buwan, sa {week} {day}}}",
+    "everyNYears": "{count, plural, one {Taun-taon} other {Tuwing # taon}}",
+    "repeats": "Umuulit",
     "ordinal": {
-      "first": "una",
-      "fourth": "ikaapat",
-      "last": "huli",
-      "second": "ikalawa",
-      "third": "ikatlo"
+      "first": "unang",
+      "second": "ikalawang",
+      "third": "ikatlong",
+      "fourth": "ikaapat na",
+      "last": "huling"
     },
     "preset": {
-      "everyWeekday": "Tuwing weekday (Lun-Biy)",
-      "everyYearOnDate": "Bawat taon sa {date}"
-    }
-  },
-  "phaseF": {
-    "componentsAppSidebar": {
-      "collections": "Mga koleksyon",
-      "newNote": "Bagong tala",
-      "newNote2": "Bagong tala",
-      "newFolder": "Bagong folder",
-      "newFolder2": "Bagong folder",
-      "bookmarks": "Mga bookmark",
-      "tags": "Mga tag",
-      "dropFilesToImport": "I-drop ang mga file upang i-import",
-      "newNoteN": "Bagong tala (⌘N)",
-      "new": "Bago",
-      "syncDisabled": "Hindi pinagana ang pag-sync",
-      "syncDisabled2": "Hindi pinagana ang pag-sync",
-      "feedbackButton": "Magpadala ng feedback",
-      "feedbackDescription": "Sabihin sa amin kung ano ang gumagana, ano ang sira, o ano ang gusto mong gawin ng Memry. Binabasa namin ang bawat mensahe.",
-      "feedbackEmailHint": "Idagdag ang iyong email kung gusto mo ng sagot.",
-      "feedbackError": "Hindi naipadala ang feedback. Pakisubukan muli.",
-      "feedbackPlaceholder": "Ang iyong feedback…",
-      "feedbackSend": "Ipadala",
-      "feedbackSending": "Ipinapadala…",
-      "feedbackSuccess": "Salamat sa feedback!",
-      "feedbackTitle": "Magpadala ng feedback",
-      "newItemMenu": "Lumikha ng bago…",
-      "feedbackPrivacyEmailOptional": "Ang iyong email — kung idadagdag mo ito, at para lang makasagot kami",
-      "feedbackPrivacyEmailSignedIn": "Ang email ng iyong account ({email}), para makasagot kami",
-      "feedbackPrivacyMessage": "Ang iyong mensahe, tulad mismo ng pagkakasulat mo",
-      "feedbackPrivacyNote": "Wala nang iba. Nananatili sa iyong device ang mga tala mo.",
-      "feedbackPrivacyPlan": "Ang iyong plano (free, Plus, Pro o Believer)",
-      "feedbackPrivacyTitle": "Ano ang ipinapadala",
-      "feedbackPrivacyVersion": "Bersyon ng app at operating system",
-      "projects": "Mga proyekto"
-    },
-    "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "Baguhin ang laki ng Day Panel",
-      "dragToResizeDoubleClickToReset": "I-drag upang baguhin ang laki · I-double click upang i-reset"
-    },
-    "componentsFindBarFindBar": {
-      "findReplaceAsk": "Hanapin, palitan, tanungin..."
-    },
-    "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Laktawan ang onboarding",
-      "welcomeToMemry": "Maligayang pagdating sa memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ang iyong personal na base ng kaalaman. Maglaan tayo ng 2 minuto para makapagsimula ka.",
-      "getStarted": "Magsimula ",
-      "createYourFirstNote": "Lumikha ng iyong unang tala",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-based, lokal na nakaimbak bilang plain file.",
-      "eGMeetingNotesIdeasAnything": "hal. Mga tala sa pagpupulong, ideya, anuman...",
-      "skip": "Laktawan",
-      "createNote": "Lumikha ng tala ",
-      "addYourFirstTask": "Idagdag ang iyong unang gawain",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Ang mga gawain ay naka-link sa iyong mga tala, na may mga priyoridad at takdang petsa.",
-      "eGReviewProjectProposal": "hal. Suriin ang panukala sa proyekto...",
-      "skip2": "Laktawan",
-      "createTask": "Lumikha ng gawain ",
-      "syncAcrossDevices": "Mag-sync sa mga device",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Panatilihing naka-sync ang iyong mga tala at gawain sa lahat ng iyong device. Maaari mong i-set up ito anumang oras sa ibang pagkakataon.",
-      "skipForNow": "Laktawan sa ngayon",
-      "doneLetSGo": "Tapos na — tara na! "
-    },
-    "componentsFolderIconButton": {
-      "setFolderIcon": "Itakda ang icon ng folder"
-    },
-    "componentsHintOverlayHintIndicator": {
-      "hint": "PAHIWATIG"
-    },
-    "componentsIconPicker": {
-      "iconPicker": "Tagapili ng icon",
-      "selectIcon": "Piliin ang Icon",
-      "closeIconPicker": "Isara ang tagapili ng icon",
-      "searchIcons": "Mga icon ng paghahanap...",
-      "all": "Lahat",
-      "clearIcon": "I-clear ang Icon",
-      "noIconsFoundFor": "Walang nakitang icon para sa \""
-    },
-    "componentsKeyboardShortcutsModal": {
-      "keyboardShortcuts": "Mga Keyboard Shortcut",
-      "closeShortcutsHelp": "Nakakatulong ang mga close shortcut",
-      "press": "Pindutin",
-      "toClose": "para isara"
-    },
-    "componentsKiboUiTreeIndex": {
-      "setIcon": "Itakda ang Icon",
-      "clearIcon": "I-clear ang Icon"
-    },
-    "componentsNavMain": {
-      "platform": "Plataporma"
-    },
-    "componentsNavProjects": {
-      "projects": "Mga proyekto",
-      "more": "Higit pa",
-      "viewProject": "Tingnan ang Proyekto",
-      "shareProject": "Ibahagi ang Proyekto",
-      "deleteProject": "Tanggalin ang Proyekto",
-      "more2": "Higit pa"
-    },
-    "componentsNavUser": {
-      "cn": "CN",
-      "cn2": "CN",
-      "upgradeToPro": "Mag-upgrade sa Pro",
-      "account": "Account",
-      "billing": "Pagsingil",
-      "notifications": "Mga abiso",
-      "logOut": "Mag-log out"
-    },
-    "componentsSearchCommandPalette": {
-      "search": "Maghanap",
-      "searchNotesTasksJournalInbox": "Maghanap ng mga tala, gawain, journal, inbox...",
-      "noResultsFor": "Walang mga resulta para sa \"",
-      "result": "resulta",
-      "noResultsForQuery": "Walang resulta para sa “{query}”",
-      "resultCount": "{count, plural, one {# resulta} other {# resulta}}",
-      "indexBuilding": "Binubuo ang index ng paghahanap {done}/{total} — maaaring hindi kumpleto ang mga resulta",
-      "indexBuildingUnknown": "Binubuo ang index ng paghahanap — maaaring hindi kumpleto ang mga resulta"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Maghanap at mag-click ng mga item para buuin ang iyong trail",
-      "reasons": "Mga dahilan",
-      "clear": "Maaliwalas"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Maaliwalas",
-      "tags": "Mga tag",
-      "filterByTag": "I-filter ayon sa tag...",
-      "dateRange": "Saklaw ng Petsa"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Tingnan lahat ",
-      "results": "resulta"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "malabo"
-    },
-    "componentsSplitViewEmptyPaneState": {
-      "noTabsOpen": "Walang bukas na tab",
-      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Magbukas ng page mula sa sidebar o gumawa ng bagong tab para makapagsimula",
-      "openInbox": "Buksan ang Inbox",
-      "closePane": "Isara ang Pane"
-    },
-    "componentsSplitViewLayoutPicker": {
-      "layoutPresets": "Mga preset ng layout",
-      "layoutPresets2": "Mga Preset ng Layout"
-    },
-    "componentsSplitViewResizeHandle": {
-      "resizePanes": "Baguhin ang laki ng mga pane"
-    },
-    "componentsSplitViewTabContent": {
-      "taskscontextNotAvailable": "Hindi available ang TasksContext",
-      "searchResults": "Mga Resulta ng Paghahanap",
-      "unknownTabType": "Hindi kilalang uri ng tab: "
-    },
-    "componentsTabsAccessibleTab": {
-      "unsavedChanges": "hindi na-save na mga pagbabago",
-      "preview": "silipin"
-    },
-    "componentsTabsNewTabMenu": {
-      "newTab": "Bagong Tab",
-      "newTab2": "Bagong Tab",
-      "newNote": "Bagong Tala",
-      "journal": "Journal",
-      "calendar": "Kalendaryo",
-      "inboxCapture": "Pagkuha ng Inbox",
-      "tasks": "Mga gawain",
-      "tags": "Mga tag"
-    },
-    "componentsTabsPinnedTab": {
-      "unsavedChanges": "Mga hindi na-save na pagbabago",
-      "unsaved": "hindi na-save)"
-    },
-    "componentsTabsRegularTab": {
-      "unsavedChanges": "Mga hindi na-save na pagbabago"
-    },
-    "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "Isara ang Lahat ng Tab"
-    },
-    "componentsTabsTabBarWithDrag": {
-      "openTabs": "Buksan ang mga tab",
-      "scrollTabsLeft": "Mag-scroll pakaliwa ng mga tab",
-      "scrollTabsRight": "I-scroll pakanan ang mga tab",
-      "dayPanel": "Panel ng Araw"
-    },
-    "componentsTabsTabErrorBoundary": {
-      "somethingWentWrong": "Nagkaproblema",
-      "anErrorOccurredWhileRenderingThisTabContent": "Nagkaroon ng error habang nire-render ang content ng tab na ito.",
-      "tryAgain": "Subukan Muli",
-      "sendReport": "Magpadala ng diagnostic report"
-    },
-    "componentsTabsTabPreviewCard": {
-      "noteIcon": "Icon ng tala"
-    },
-    "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Mga Hindi Na-save na Pagbabago",
-      "unsavedChangesBody": "May mga hindi na-save na pagbabago ang \"{title}\". Ano ang gusto mong gawin?"
-    },
-    "componentsTeamSwitcher": {
-      "newWorkspace": "Bagong workspace",
-      "darkMode": "Madilim na mode",
-      "settings": "Mga setting",
-      "integrations": "Mga pagsasama",
-      "signOut": "Mag-sign Out",
-      "downloadOnIos": "I-download sa iOS"
-    },
-    "componentsTrafficLights": {
-      "closeWindow": "Isara ang bintana",
-      "minimizeWindow": "I-minimize ang window",
-      "maximizeWindow": "I-maximize ang window"
-    },
-    "componentsUiAutocompleteDropdown": {
-      "suggestions": "Mga mungkahi",
-      "or": "o",
-      "enter": "Pumasok",
-      "toInsert": "upang ipasok"
-    },
-    "componentsUiBreadcrumb": {
-      "breadcrumb": "mumo ng tinapay",
-      "more": "Higit pa"
-    },
-    "componentsUiDialog": {
-      "close": "Isara"
-    },
-    "componentsUiSheet": {
-      "close": "Isara"
-    },
-    "componentsUiSidebar": {
-      "sidebar": "Sidebar",
-      "displaysTheMobileSidebar": "Ipinapakita ang mobile sidebar.",
-      "toggleSidebar": "I-toggle ang Sidebar",
-      "toggleSidebar2": "I-toggle ang Sidebar",
-      "dragToResizeDoubleClickToReset": "I-drag upang baguhin ang laki · I-double click upang i-reset"
-    },
-    "componentsVaultOnboarding": {
-      "welcomeToMemry": "Maligayang pagdating sa memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Ang iyong sistema ng pamamahala ng personal na kaalaman.",
-      "selectAFolderToStoreYourNotesAndTasks": "Pumili ng folder upang iimbak ang iyong mga tala at gawain.",
-      "opening": "Binubuksan...",
-      "selectVaultFolder": "Piliin ang Vault Folder",
-      "plainMarkdown": "Payak na Markdown",
-      "yourNotesStayPortable": "Ang iyong mga tala ay mananatiling portable",
-      "syncAnywhere": "I-sync Kahit Saan",
-      "useDropboxIcloudGit": "Gumamit ng Dropbox, iCloud, Git",
-      "recentVaults": "Mga Kamakailang Vault",
-      "notesLastOpened": "mga tala · Huling binuksan",
-      "brandName": "Memrynote",
-      "preRelease": "Beta",
-      "createNewVault": "Gumawa ng bagong vault",
-      "createNewVaultDesc": "Magsimula ng sariwang vault sa folder na pipiliin mo.",
-      "openExistingVault": "Buksan ang kasalukuyang vault",
-      "openExistingVaultDesc": "Pumili ng folder ng mga Markdown file na mayroon ka na.",
-      "signInToSync": "Mag-sign in para mag-sync",
-      "signInToSyncDesc": "End-to-end encrypted na mga vault sa lahat ng iyong device.",
-      "create": "Gumawa",
-      "open": "Buksan",
-      "signIn": "Mag-sign in",
-      "helpAndDocs": "Tulong at docs",
-      "signInRequiresVault": "Magbukas o gumawa muna ng vault para i-set up ang sync.",
-      "addVault": "Magdagdag ng vault"
-    },
-    "componentsVaultSwitcher": {
-      "noVaultsYet": "Wala pang vault",
-      "openVault": "Buksan ang vault",
-      "settings": "Mga setting",
-      "logOut": "Mag-log out",
-      "signInToSync": "Mag-sign in para mag-sync",
-      "remove": "Tanggalin \"",
-      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Aalisin ang vault na ito sa app, ngunit mananatili ang iyong mga file sa disk. Maaari mo itong muling idagdag sa ibang pagkakataon.",
-      "cancel": "Kanselahin",
-      "remove2": "Alisin",
-      "inYourAccount": "Sa iyong account",
-      "itemsCount": "{count} na item",
-      "untitledVault": "Vault",
-      "downloadVaultTitle": "I-download ang “{name}”",
-      "downloadLocation": "Lokasyon",
-      "changeLocation": "Baguhin…",
-      "download": "I-download",
-      "downloadFailed": "Hindi ma-download ang vault",
-      "deleteFromAccount": "Tanggalin sa account",
-      "deleteVaultBody": "Permanenteng inaalis nito ang lahat ng naka-sync na data ng vault na ito mula sa mga server ng Memry at hindi na ito maibabalik. Hindi tinatanggal ang iyong mga file sa disk.",
-      "deleteVaultConfirm": "Tanggalin sa account",
-      "deleteVaultFailed": "Hindi matanggal ang vault",
-      "deleteVaultTitle": "Tanggalin ang “{name}” sa iyong account?",
-      "removeVaultTitle": "Alisin ang “{name}” sa listahan?",
-      "missing": "Hindi makita ang folder"
-    },
-    "componentsWindowControls": {
-      "searchK": "Maghanap (⌘K)",
-      "browserBack": "Bumalik ang browser",
-      "back": "Bumalik",
-      "browserForward": "Pasulong ang browser",
-      "forward": "Pasulong"
-    }
-  },
-  "phaseI": {
-    "errors": {
-      "failedToImportFiles": "Nabigong mag-import ng mga file",
-      "failedToCreateNote": "Nabigong gumawa ng tala",
-      "failedToAccessMicrophone": "Nabigong ma-access ang mikropono"
-    },
-    "toasts": {
-      "undone": "Inalis na"
+      "everyWeekday": "Tuwing karaniwang araw (Lun-Biy)",
+      "everyYearOnDate": "Taun-taon tuwing {date}"
     }
   },
   "agentChat": {
-    "title": "Chat ng agent",
-    "loading": "Nilo-load ang chat ng ahente...",
-    "conversationLoading": "Naglo-load ang pag-uusap...",
-    "newConversation": "Bagong pag-uusap",
-    "history": "History ng pag-uusap",
-    "openInTab": "Buksan ang pag-uusap sa tab",
-    "stop": "Tumigil ka",
-    "thinking": "Agent ay nag-iisip",
+    "title": "Agent Chat",
+    "loading": "Nilo-load ang Agent Chat…",
+    "conversationLoading": "Nilo-load ang usapan…",
+    "historyNotSaved": "Hindi ma-unlock ng device na ito ang vault, kaya hindi mase-save ang usapang ito kapag isinara mo ang app.",
+    "newConversation": "Bagong usapan",
+    "history": "Kasaysayan ng usapan",
+    "openInTab": "Buksan ang usapan sa tab",
+    "stop": "Ihinto",
+    "thinking": "Nag-iisip ang agent",
     "enable": {
-      "title": "Paganahin ang memrynote Agent",
-      "description": "Ginagamit ng memrynote Agent ang iyong napiling lokal na ahente na CLI upang makipag-chat tungkol sa iyong vault. Ang Claude ay nagpapadala ng mga turn sa Anthropic; Ang Codex ay nagpapadala ng mga turn sa OpenAI.",
-      "remote": "Ine-encrypt ng memrynote ang iyong lokal at naka-sync na kasaysayan ng chat, ngunit nangyayari ang hinuha ng modelo sa napiling provider.",
+      "title": "I-on ang memrynote Agent",
+      "description": "Ginagamit ng memrynote Agent ang napili mong lokal na agent CLI para makipag-chat tungkol sa vault mo. Ipinapadala ng Claude ang mga mensahe sa Anthropic; ipinapadala ng Codex ang mga mensahe sa OpenAI.",
+      "remote": "Ine-encrypt ng memrynote ang lokal at naka-sync mong kasaysayan ng chat, pero sa napiling provider tumatakbo ang modelo.",
       "readTools": "Awtomatikong tumatakbo ang mga tool sa pagbabasa.",
-      "writeTools": "Ang paggawa at pag-update ng mga tool ay nangangailangan ng pag-apruba.",
-      "diff": "Ang mga tool sa pag-update ay nagpapakita ng pagkakaiba o preview.",
-      "button": "Paganahin ang Agent chat"
+      "writeTools": "Kailangan ng pag-apruba ang mga tool na gumagawa at nag-a-update.",
+      "diff": "Nagpapakita ng diff o preview ang mga tool na nag-a-update.",
+      "button": "I-on ang Agent Chat"
     },
     "approval": {
-      "description": "Gustong tawagan ng ahente ang {name} kasama ang mga argumentong ito.",
-      "applyOnce": "Mag-apply nang isang beses",
+      "description": "Gustong patakbuhin ng agent ang {name} gamit ang mga argumentong ito.",
+      "applyOnce": "Ilapat nang isang beses",
       "allowOnce": "Payagan nang isang beses",
       "editAndApply": "I-edit at ilapat",
       "editAndAllow": "I-edit at payagan",
       "allowAlways": "Payagan palagi",
       "applyEdits": "Ilapat ang mga pag-edit",
       "deny": "Tanggihan",
-      "invalidJson": "Ipasok ang wastong JSON bago ilapat ang mga pag-edit."
+      "invalidJson": "Maglagay ng wastong JSON bago ilapat ang mga pag-edit.",
+      "thisTool": "tool na ito",
+      "alwaysAllowHint": "Saklaw ng “Payagan palagi” ang {tool}. Magtatanong pa rin ang lahat ng ibang tool, at palaging nagtatanong bago magtanggal.",
+      "alwaysInChat": "Payagan palagi sa chat na ito",
+      "alwaysInChatHint": "Matatapos kapag natapos ang usapan",
+      "alwaysInVault": "Payagan palagi sa vault na ito",
+      "alwaysInVaultHint": "Mababawi sa Mga setting › Agent",
+      "deletesAlwaysAsk": "Palaging nagtatanong bago magtanggal"
     },
     "diff": {
-      "previewError": "Hindi ma-preview ang diff ng tala",
-      "description": "Nais i-update ng ahente ang {title}. Suriin ang kasalukuyan at nilalaman ng kandidato bago ito ilapat.",
-      "fallbackTitle": "ang talang ito",
+      "previewError": "Hindi ma-preview ang pagbabagong ito",
+      "description": "Gustong i-update ng agent ang {title}. Suriin ang pagbabago bago ito ilapat.",
+      "fallbackTitle": "item na ito",
       "current": "Kasalukuyan",
-      "candidate": "Kandidato",
-      "loading": "Naglo-load...",
-      "apply": "Mag-apply",
-      "applyEdited": "Ilapat ang na-edit"
+      "candidate": "Iminungkahing bersyon",
+      "loading": "Naglo-load…",
+      "apply": "Ilapat",
+      "applyEdited": "Ilapat ang na-edit",
+      "editBody": "I-edit bago ilapat"
     },
     "inPageReview": {
       "regionLabel": "Mungkahi ng agent",
       "barLabel": "Suriin ang mungkahi ng agent",
-      "loading": "Nilo-load ang mungkahi...",
+      "loading": "Nilo-load ang mungkahi…",
       "loadingTitle": "Mungkahi ng agent",
       "title": "{count, plural, =0 {Mungkahi ng agent} one {Nagmungkahi ang agent ng # pagbabago} other {Nagmungkahi ang agent ng # pagbabago}}",
       "editingTitle": "Ine-edit ang mungkahi",
       "pendingHint": "Hindi pa naka-save. Tanggapin para ilapat ito.",
       "editingHint": "Mananatili rito ang mga edit mo hanggang tanggapin mo.",
-      "baseChanged": "Nagbago ang note na ito habang ine-edit mo ang mungkahi.",
+      "baseChanged": "Nagbago ang talang ito habang ine-edit mo ang mungkahi.",
       "keepDraft": "Panatilihin ang mga edit ko",
       "restart": "Magsimulang muli mula sa pinakabago",
       "reject": "Tanggihan",
@@ -456,37 +189,143 @@
       "waiting": "Naghihintay ng iyong pagsusuri sa {title}.",
       "notOpen": "Buksan ang {title} para makita ang mga pagbabago, o tanggapin ang mga ito nang hindi sinusuri.",
       "show": "Ipakita",
-      "openNote": "Buksan ang note",
-      "openJournal": "Buksan ang journal",
-      "fallbackTitle": "ang note na ito"
+      "openNote": "Buksan ang tala",
+      "openJournal": "Buksan ang talaarawan",
+      "fallbackTitle": "talang ito"
+    },
+    "preview": {
+      "unset": "hindi nakatakda",
+      "yes": "oo",
+      "no": "hindi",
+      "noChange": "Walang pagbabagong maipapakita ang preview na ito.",
+      "willBeLost": "Mawawala",
+      "unchangedLines": "{count, plural, one {# linyang walang pagbabago} other {# linyang walang pagbabago}}",
+      "item": {
+        "note": "Tala",
+        "folder": "Folder",
+        "task": "Gawain",
+        "journal": "Talaarawan",
+        "inbox": "Inbox",
+        "project": "Proyekto",
+        "status": "Katayuan",
+        "canvas": "Canvas"
+      },
+      "intent": {
+        "create": "bago",
+        "update": "ia-update",
+        "delete": "tatanggalin",
+        "move": "ililipat",
+        "reorder": "aayusin ang pagkakasunod"
+      },
+      "field": {
+        "archived": "Naka-archive",
+        "arguments": "Mga argumento",
+        "color": "Kulay",
+        "completed": "Tapos na",
+        "description": "Paglalarawan",
+        "due": "Takda",
+        "dueTime": "Oras ng takda",
+        "duplicateOf": "Kopya ng",
+        "edits": "Mga pag-edit",
+        "elements": "Mga elemento",
+        "folder": "Folder",
+        "icon": "Icon",
+        "isDefault": "Default",
+        "isDone": "Itinuturing na tapos",
+        "items": "Mga item",
+        "name": "Pangalan",
+        "operation": "Operasyon",
+        "order": "Pagkakasunod",
+        "parent": "Kinalalagyan",
+        "path": "Path",
+        "position": "Posisyon",
+        "priority": "Priyoridad",
+        "project": "Proyekto",
+        "removed": "Inalis",
+        "repeatFrom": "Ulitin mula sa",
+        "snoozeReason": "Dahilan ng pag-snooze",
+        "snoozedUntil": "Naka-snooze hanggang",
+        "start": "Simula",
+        "status": "Katayuan",
+        "tags": "Mga tag",
+        "title": "Pamagat"
+      },
+      "loss": {
+        "words": "{count, plural, one {# salita} other {# salita}}",
+        "tags": "{count, plural, one {# tag} other {# tag}}",
+        "notes": "{count, plural, one {# tala} other {# tala}}",
+        "folders": "{count, plural, one {# folder} other {# folder}}",
+        "files": "{count, plural, one {# file} other {# file}}",
+        "events": "{count, plural, one {# kaganapan} other {# kaganapan}}",
+        "tasks": "{count, plural, one {# gawain} other {# gawain}}",
+        "due": "takda: {value}"
+      }
     },
     "composer": {
       "currentNote": "Kasalukuyang tala",
       "removeAttachment": "Alisin ang {label}",
-      "placeholder": "Tanungin ang memrynote ng kahit ano. @ para banggitin ang file",
+      "placeholder": "Gawin ang kahit ano gamit ang memrynote… @ para banggitin ang mga tala, gawain, at kaganapan",
       "send": "Ipadala",
-      "providerLabel": "Tagapagbigay ng Agent: {provider}",
+      "providerLabel": "Provider ng agent: {provider}",
       "settingsSummary": "{reasoning}",
+      "connectedTools": "Mga nakakonektang tool",
+      "connectTool": "Ikonekta ang {tool}",
+      "addContext": "Magdagdag ng konteksto",
+      "addContextWithPermissions": "Magdagdag ng konteksto ({permissions})",
+      "mentionContext": "Banggitin ang isang tala, gawain, o kaganapan",
+      "voice": {
+        "start": "Simulan ang pagdidikta gamit ang boses",
+        "stop": "Ihinto ang pagdidikta gamit ang boses",
+        "transcribing": "Tina-transcribe ang boses mo",
+        "errors": {
+          "permissionDenied": "Tinanggihan ang access sa mikropono",
+          "noMicrophone": "Walang nakitang mikropono",
+          "accessFailed": "Hindi ma-access ang mikropono",
+          "recordingFailed": "Hindi ma-record ang boses mo",
+          "transcriptionFailed": "Hindi ma-transcribe ang boses mo"
+        }
+      },
+      "modelLabel": "Modelo ng agent: {provider} {model}",
+      "reasoningLabel": "Pangangatwiran ng agent: {reasoning}",
       "providers": {
+        "label": "Provider",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
         "local": "Lokal"
       },
+      "access": {
+        "vaultOnly": "Vault lang",
+        "computerAccess": "Access sa computer"
+      },
+      "webSearch": {
+        "on": "Naka-on",
+        "off": "Naka-off",
+        "label": "Paghahanap sa web"
+      },
       "models": {
-        "default": "Paunang setting",
-        "label": "Modelo"
+        "default": "Default",
+        "label": "Modelo",
+        "search": "Maghanap ng mga modelo…",
+        "useCustom": "Gamitin ang “{query}”",
+        "localEmpty": "Walang nakitang modelo — tingnan ang Mga setting",
+        "localSetup": "I-set up sa Mga setting…",
+        "cliSetup": "Hindi nakita — i-set up sa Mga setting…",
+        "runtimeUnavailable": "Hindi available ang agent — buksan ang Mga setting…"
       },
       "settings": {
-        "reasoning": "Pangangatwiran"
+        "reasoning": "Pangangatwiran",
+        "effort": "Lalim ng pag-iisip"
       },
+      "includeCurrentNote": "Isama ang kasalukuyang tala",
+      "chooseModel": "Pumili ng modelo",
       "claudeSettings": {
         "reasoning": {
           "low": "Mababa",
           "medium": "Katamtaman",
           "high": "Mataas",
           "extraHigh": "Napakataas",
-          "extraHighDefault": "Napakataas (paunang setting)",
+          "extraHighDefault": "Napakataas (default)",
           "max": "Pinakamataas"
         }
       },
@@ -494,25 +333,16 @@
         "reasoning": {
           "low": "Mababa",
           "medium": "Katamtaman",
-          "mediumDefault": "Katamtaman (paunang setting)",
+          "mediumDefault": "Katamtaman (default)",
           "high": "Mataas",
           "extraHigh": "Napakataas"
         }
       },
-      "access": {
-        "vaultOnly": "Vault lang",
-        "computerAccess": "Access sa computer"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Naka-off",
-        "label": "Paghahanap sa web"
-      },
       "permissionsLabel": "Mga pahintulot ng agent: {access}, paghahanap sa web {webSearch}",
       "permissions": {
-        "label": "Mga Pahintulot",
+        "label": "Mga pahintulot",
         "access": "Pag-access",
-        "tools": "Mga Tool"
+        "tools": "Mga tool"
       },
       "modelSettingsLabel": "Mga setting ng modelo ng agent: {model}, {settings}"
     },
@@ -524,188 +354,137 @@
     },
     "toolCall": {
       "editedArgs": "Mga na-edit na argumento",
-      "parameters": "Mga Parameter"
+      "parameters": "Mga parameter"
+    },
+    "toolActivity": {
+      "steps": "{count, plural, one {# hakbang} other {# hakbang}}",
+      "running": "Tumatakbo",
+      "awaitingApproval": "Naghihintay ng pag-apruba",
+      "done": "Tapos na"
+    },
+    "reasoning": {
+      "thinking": "Nag-iisip…",
+      "thought": "Nag-isip",
+      "thoughtFor": "Nag-isip nang {seconds}s",
+      "toggle": "Ipakita o itago ang pangangatwiran"
     },
     "sidebar": {
       "label": "Kanang sidebar",
       "day": "Araw",
-      "agent": "Ahente",
+      "agent": "Agent",
       "pendingApproval": "{count, plural, one {# nakabinbing pag-apruba} other {# nakabinbing pag-apruba}}",
-      "inProgress": "Agent turn sa progreso",
+      "inProgress": "Gumagana pa ang agent",
       "close": "Isara ang agent"
     },
     "errors": {
-      "loadConversations": "Hindi ma-load ang mga pag-uusap ng ahente",
-      "loadConversation": "Hindi ma-load ang pag-uusap ng ahente",
-      "createConversation": "Hindi makalikha ng pag-uusap ng ahente",
-      "busy": "Ang isa pang window ay mid-turn para sa pag-uusap na ito. Hintayin itong matapos o itigil ito mula doon.",
-      "sendTurn": "Hindi maipadala ang turn ng ahente",
-      "cancelTurn": "Hindi makansela ang pagliko ng ahente",
+      "loadConversations": "Hindi ma-load ang mga usapan ng agent",
+      "loadConversation": "Hindi ma-load ang usapan ng agent",
+      "createConversation": "Hindi makagawa ng usapan ng agent",
+      "busy": "May ibang window na sumasagot pa sa usapang ito. Hintayin itong matapos o ihinto ito mula roon.",
+      "sendTurn": "Hindi maipadala ang mensahe sa agent",
+      "cancelTurn": "Hindi makansela ang sagot ng agent",
       "submitApproval": "Hindi maisumite ang pag-apruba ng tool",
       "updateTrust": "Hindi ma-update ang mga pinagkakatiwalaang tool",
-      "saveDisclosure": "Hindi ma-save ang estado ng pagsisiwalat",
-      "resolveWindow": "Hindi malutas ang window ng pinagmulan ng ahente",
-      "detectCli": "Hindi matukoy ang mga backend ng ahente",
-      "loadDisclosure": "Hindi ma-load ang estado ng pagsisiwalat"
+      "saveDisclosure": "Hindi ma-save ang pagtanggap mo sa paunawa",
+      "resolveWindow": "Hindi matukoy ang window na pinagmulan ng agent",
+      "detectCli": "Hindi matukoy ang mga backend ng agent",
+      "loadDisclosure": "Hindi ma-load ang katayuan ng paunawa"
+    },
+    "actions": {
+      "copy": "Kopyahin",
+      "copied": "Nakopya"
     },
     "sources": {
-      "used": "{count, plural, one {Gumamit ng # source} other {Gumamit ng # sources}}"
+      "count": "{count, plural, one {# sanggunian} other {# sanggunian}}"
     }
-  },
-  "home": {
-    "addWidget": "Magdagdag ng widget",
-    "board": {
-      "defaultName": "Home",
-      "deleteAria": "Tanggalin ang layout",
-      "label": "Layout ng Home",
-      "newAria": "Bagong board",
-      "newName": "Bagong board"
-    },
-    "disabled": {
-      "createNote": "Lumikha ng tala",
-      "hint": "Walang bukas. Magsimula ng tala."
-    },
-    "done": "Tapos na",
-    "edit": "I-edit",
-    "empty": {
-      "body": "Pinagsasama ng mga widget ang iyong mga tala, gawain, at bookmark sa isang panatag na lugar.",
-      "cta": "Idagdag ang iyong unang widget",
-      "title": "Walang laman ang iyong board"
-    },
-    "greeting": {
-      "afternoon": "Magandang hapon",
-      "evening": "Magandang gabi",
-      "morning": "Magandang umaga"
-    },
-    "header": {
-      "events": "{count, plural, one {# kaganapan} other {# kaganapan}}",
-      "tasksDue": "{count, plural, one {# gawaing takda ngayon} other {# gawaing takda ngayon}}"
-    },
-    "noBookmarksYet": "Wala pang bookmark.",
-    "noEventsYet": "Walang kaganapan ngayon.",
-    "noJournalEntriesYet": "Wala pang journal entry.",
-    "noNotesYet": "Wala pang tala.",
-    "noTasksYet": "Wala pang gawain.",
-    "widget": {
-      "bookmarks": "Mga Bookmark",
-      "calendar": "Kalendaryo",
-      "calendarToday": "Ngayon",
-      "configAria": "I-configure ang widget",
-      "configure": "I-configure",
-      "dragAria": "I-drag ang widget",
-      "duration": "{count} min",
-      "filter": {
-        "today": "Takda Ngayon",
-        "tomorrow": "Bukas",
-        "week": "Ngayong Linggo"
-      },
-      "folder": "Folder",
-      "folderEmpty": "Wala pang folder",
-      "folderNoSelection": "Walang napiling folder",
-      "folderPickPrompt": "Pumili ng folder",
-      "folderViewSelect": "Tingnan",
-      "folderView_gallery": "Galerya",
-      "folderView_list": "Listahan",
-      "inbox": "Inbox",
-      "inboxAllTypes": "Lahat ng uri",
-      "inboxOlder": "{count, plural, one {# mas luma} other {# mas luma}}",
-      "inboxOldest": "pinakaluma {count, plural, one {# araw} other {# araw}}",
-      "journal": "Journal",
-      "journalStreak": "{count, plural, one {#-araw na streak} other {#-araw na streak}}",
-      "journalToday": "Ngayon",
-      "journalYesterday": "Kahapon",
-      "loadError": "Hindi ma-load",
-      "menuAria": "Mga opsyon ng widget",
-      "next": "Susunod: {title}",
-      "openCalendar": "Buksan ang Kalendaryo",
-      "openInbox": "Buksan ang inbox",
-      "recentMeta": "na-edit {time}",
-      "recentMetaWithFolder": "{folder} · na-edit {time}",
-      "recentlyEdited": "Kamakailang na-edit",
-      "remove": "Alisin",
-      "removeAria": "Alisin ang widget",
-      "resize": "Laki",
-      "resizeAria": "I-resize sa {size}",
-      "savedFilterDefault": "Ngayon",
-      "savedFilterHint": "I-star ang mga filter sa pahina ng Mga Gawain para magamit dito",
-      "savedFilterLabel": "Naka-save na filter",
-      "startsIn": "Magsisimula sa {count, plural, one {# min} other {# min}}",
-      "tasks": "Mga Gawain",
-      "unknown": "Hindi kilalang widget",
-      "untitled": "Walang pamagat"
-    }
-  },
-  "media": {
-    "video": "Video"
-  },
-  "onboarding": {
-    "agentChat": {
-      "body": "Lumipat sa Agent tab para magtanong sa assistant ng MemryNote tungkol sa iyong vault.",
-      "title": "Makipag-chat sa AI agent"
-    },
-    "collections": {
-      "body": "Ayusin ang mga tala sa mga folder, i-pin ang mga bookmark, at mag-browse ayon sa tag — lahat dito.",
-      "title": "Mga koleksyon, bookmark at tag"
-    },
-    "dayPanel": {
-      "body": "Pinapanatili ng side panel ang kalendaryo at ang iyong day view katabi ng kahit anong binabasa mo.",
-      "title": "Ang iyong araw, katabi ng iyong trabaho"
-    },
-    "feedback": {
-      "body": "Magpadala ng feedback diretso sa team mula dito.",
-      "title": "Sabihin sa amin ang iyong palagay"
-    },
-    "nav": {
-      "body": "Inbox para makakuha, Journal para sa pang-araw-araw na tala, Kalendaryo para sa iyong timeline, Tasks para sa mga to-do, at Graph para makita kung paano nag-uugnay ang lahat.",
-      "title": "Ang iyong mga workspace"
-    },
-    "newNote": {
-      "body": "Magsimula dito. Ang lahat ng isinusulat mo ay iniimbak muna nang lokal.",
-      "title": "Lumikha ng iyong unang tala"
-    },
-    "settings": {
-      "body": "I-import ang iyong mga tala mula sa 12+ na app — Obsidian, Notion, Apple Notes, Evernote at iba pa — at i-tune ang lahat ng iba pa sa Mga Setting.",
-      "title": "Mga setting at pag-import"
-    },
-    "sync": {
-      "body": "I-on ang end-to-end na naka-encrypt na sync para manatiling magkatugma ang bawat device.",
-      "title": "Pribado, naka-encrypt na sync"
-    },
-    "welcome": {
-      "body": "Ang iyong pribado, offline-first na tahanan. Ang mga tala ay end-to-end na naka-encrypt — hindi kailanman aalis sa iyong device nang hindi naka-encrypt.",
-      "title": "Maligayang pagdating sa MemryNote"
-    },
-    "tour": {
-      "next": "Susunod",
-      "previous": "Nakaraan",
-      "progress": "{current} sa {total}"
-    }
-  },
-  "capture": {
-    "focusShortcut": "I-focus ang capture input",
-    "detailHint": "detalye",
-    "focusHint": "Q",
-    "submit": "Kunin"
   },
   "canvas": {
+    "sectionLabel": "Mga canvas",
+    "newCanvas": "Bagong canvas",
+    "newCanvasFolder": "Bagong folder ng canvas",
+    "untitled": "Canvas na walang pamagat",
+    "empty": "Wala pang canvas",
+    "loading": "Nilo-load ang mga canvas…",
+    "loadFailed": "Hindi ma-load ang mga canvas",
+    "createFailed": "Hindi makagawa ng canvas",
+    "openFailed": "Hindi mabuksan ang canvas",
+    "notFound": "Hindi mahanap ang canvas na ito",
+    "corruptScene": "Hindi mabasa ang canvas na ito. Naka-disable ang pag-edit para hindi mawala ang data.",
+    "unreadableTitle": "Hindi mabubuksan dito ang canvas na ito",
+    "unreadableBody": "Nawawala sa vault ang dokumento nito, o iginuhit ito bago naging file ang mga canvas at wala na sa device na ito ang key na nag-a-unlock dito. Walang natanggal — buksan ang vault sa device na gumawa nito, o ibalik ang folder ng mga canvas.",
+    "tooLargeToSync": "Masyadong malaki ang canvas na ito para i-sync. Naka-save ito sa device na ito, pero hindi ito makakarating sa iba mong device hanggang hindi pa ito lumiliit.",
+    "savedToVault": "Awtomatikong nase-save sa iyong vault ang lahat ng pagbabago",
+    "libraryStoreFailed": "Hindi ma-save ang iyong shape library. Maaaring mawala ang mga kamakailang pagbabago dito.",
+    "link": {
+      "itemMissing": "Wala na ang naka-link na item na iyon.",
+      "elementMissing": "Tumuturo ang link na iyon sa bagay na wala na sa canvas na ito.",
+      "title": "I-link sa isang item",
+      "placeholder": "Maghanap ng mga tala, gawain, kaganapan, inbox, proyekto…",
+      "hint": "Magsimulang mag-type para makahanap ng item na ili-link.",
+      "empty": "Walang tumugma.",
+      "selectOneShape": "Pumili ng isang shape para i-link ito sa isang item.",
+      "cardsCannotLink": "May sariling item nang binubuksan ang card, kaya hindi na ito puwedeng magkaroon ng pangalawang link.",
+      "linked": "Na-link.",
+      "groupNotes": "Mga tala",
+      "groupFiles": "Mga file",
+      "groupTasks": "Mga gawain",
+      "groupEvents": "Mga kaganapan",
+      "groupInbox": "Inbox",
+      "groupJournals": "Talaarawan",
+      "groupProjects": "Mga proyekto",
+      "groupFolders": "Mga folder",
+      "useUrl": "I-link sa {url}",
+      "openTarget": "Buksan ang {name}",
+      "shapeTarget": "Isang shape sa canvas na ito",
+      "missingTarget": "Wala na sa canvas na ito"
+    },
+    "disabledTitle": "Hindi naka-on ang Canvas",
+    "disabledBody": "Bahagi ang tab na ito ng isang feature na hindi naka-on sa device na ito.",
+    "unreadable": "Nawawala o hindi mabasa ang dokumento ng canvas na ito. Ipakita ito sa file manager mo, o tanggalin ang entry.",
+    "actionFailed": "Hindi natapos ang aksyong iyon sa canvas",
+    "renameLabel": "Pangalan ng canvas",
+    "folderNameLabel": "Pangalan ng folder",
+    "deleteConfirmTitle": "Tanggalin ang canvas na ito?",
+    "deleteConfirmBody": "Aalisin ang “{title}” sa memrynote sa lahat ng device mo. Mapupunta ang file nito sa basurahan ng computer na ito, pero hindi maibabalik ang canvas kahit ibalik mo ang file.",
+    "dropToRoot": "I-drop dito para ilabas sa folder",
+    "filterPlaceholder": "I-filter ang mga canvas",
+    "filterNoMatches": "Walang canvas na tumutugma sa filter na iyon",
+    "folderCanvasCount": "{count} canvas ang nasa loob",
+    "folderEmptyHint": "Wala pang laman dito",
+    "deleteFolderConfirmTitle": "Tanggalin ang folder ng canvas na ito?",
+    "deleteFolderConfirmBody": "Aalisin sa memrynote sa lahat ng device mo ang “{name}” at lahat ng laman nito. Mga apektadong canvas: {count}. Mapupunta ang folder sa basurahan ng computer na ito, pero hindi maibabalik ang mga ito kahit ibalik mo ang folder.",
+    "actions": {
+      "rename": "Palitan ang pangalan",
+      "duplicate": "I-duplicate",
+      "copyLink": "Kopyahin ang link",
+      "setIcon": "Magtakda ng icon",
+      "removeIcon": "Alisin ang icon",
+      "moveToFolder": "Ilipat sa folder",
+      "moveToRoot": "Root",
+      "openExternal": "Buksan sa external na editor",
+      "newCanvasHere": "Bagong canvas dito",
+      "newFolder": "Bagong folder",
+      "canvasMenu": "Mga aksyon sa canvas",
+      "folderMenu": "Mga aksyon sa folder ng canvas"
+    },
     "card": {
-      "addCard": "Magdagdag ng card",
-      "addCreateNote": "Lumikha ng tala \"{query}\"",
-      "addCreateNoteEmpty": "Lumikha ng bagong tala",
-      "addCreatedAt": "Nilikha noong {date}",
-      "addEmpty": "Walang nahanap",
-      "addGroupEvents": "Mga kaganapan",
-      "addGroupNotes": "Mga tala",
-      "addGroupTasks": "Mga gawain",
-      "addOnCanvas": "Nasa canvas",
-      "addPlaceholder": "Maghanap ng mga tala, gawain at kaganapan…",
-      "allDay": "Buong araw",
-      "createNoteFailed": "Hindi makalikha ng tala",
-      "deleted": "Tinanggal ang item",
-      "loading": "Naglo-load…",
       "open": "Buksan sa tab",
       "openToEdit": "Buksan sa tab para i-edit",
+      "deleted": "Tinanggal ang item",
+      "loading": "Naglo-load…",
       "untitled": "Walang pamagat",
+      "allDay": "Buong araw",
+      "createNoteFailed": "Hindi makagawa ng tala",
+      "addCard": "Magdagdag ng card",
+      "addPlaceholder": "Maghanap ng mga tala, file, gawain, kaganapan, at proyekto…",
+      "addCreateNote": "Gumawa ng tala na “{query}”",
+      "addCreateNoteEmpty": "Gumawa ng bagong tala",
+      "addEmpty": "Walang nahanap",
+      "addGroupNotes": "Mga tala",
+      "addGroupTasks": "Mga gawain",
+      "addGroupEvents": "Mga kaganapan",
+      "addOnCanvas": "Nasa canvas",
+      "addCreatedAt": "Ginawa noong {date}",
       "bulkGroup": "Idagdag lahat mula sa",
       "bulkFromTag": "Isang tag…",
       "bulkFromFolder": "Isang folder…",
@@ -713,150 +492,765 @@
       "bulkSearchFolders": "Maghanap ng folder…",
       "bulkTagsHeading": "Mga tag",
       "bulkFoldersHeading": "Mga folder",
-      "bulkItemCount": "{count, plural, one {# item} other {# na item}}",
+      "bulkItemCount": "{count, plural, one {# item} other {# item}}",
       "bulkViewsHeading": "Idagdag mula sa {name}",
       "bulkAllItems": "Lahat ng item",
-      "bulkConfirmTitle": "{count, plural, one {Magdagdag ng # card mula sa {name}?} other {Magdagdag ng # na card mula sa {name}?}}",
+      "bulkConfirmTitle": "{count, plural, one {Magdagdag ng # card mula sa {name}?} other {Magdagdag ng # card mula sa {name}?}}",
       "bulkConfirmBody": "Bumabagal ang malalaking board at maaaring lumampas sa limitasyon ng laki ng sync.",
-      "bulkConfirmSkipped": "{count, plural, one {Nasa canvas na ito ang # item at lalaktawan ito.} other {Nasa canvas na ito ang # na item at lalaktawan ang mga ito.}}",
-      "bulkConfirmAdd": "{count, plural, one {Magdagdag ng # card} other {Magdagdag ng # na card}}",
+      "bulkConfirmSkipped": "{count, plural, one {Nasa canvas na ito na ang # item at lalaktawan ito.} other {Nasa canvas na ito na ang # item at lalaktawan ang mga ito.}}",
+      "bulkConfirmAdd": "{count, plural, one {Magdagdag ng # card} other {Magdagdag ng # card}}",
       "bulkBack": "Bumalik",
       "bulkEmpty": "Walang tala, file, o gawain na maidadagdag",
       "bulkLoadFailed": "Hindi ma-load ang mga item",
-      "bulkAdded": "{count, plural, one {Naidagdag ang # card} other {Naidagdag ang # na card}}",
-      "bulkAddedSkipped": "{count, plural, one {Naidagdag ang # card} other {Naidagdag ang # na card}} · {skipped} ay nasa canvas na",
+      "bulkAdded": "{count, plural, one {Naidagdag ang # card} other {Naidagdag ang # card}}",
+      "bulkAddedSkipped": "{count, plural, one {Naidagdag ang # card} other {Naidagdag ang # card}} · {skipped} ang nasa canvas na",
       "bulkAllOnCanvas": "{count, plural, one {Nasa canvas na ito} other {Nasa canvas na ito ang lahat ng #}}"
     },
-    "corruptScene": "Hindi mabasa ang canvas na ito. Naka-disable ang pag-edit para hindi mawala ang data.",
-    "createFailed": "Hindi makalikha ng canvas",
-    "disabledBody": "Kabilang ang tab na ito sa isang feature na hindi pinagana sa device na ito.",
-    "disabledTitle": "Hindi pinagana ang Canvas",
-    "empty": "Wala pang canvas",
-    "libraryStoreFailed": "Hindi ma-save ang iyong shape library. Maaaring mawala ang mga kamakailang pagbabago dito.",
-    "loadFailed": "Hindi ma-load ang mga canvas",
-    "loading": "Nilo-load ang mga canvas…",
-    "newCanvas": "Bagong canvas",
-    "notFound": "Hindi mahanap ang canvas na ito",
-    "openFailed": "Hindi mabuksan ang canvas",
-    "savedToVault": "Awtomatikong nase-save sa iyong vault ang lahat ng pagbabago",
-    "sectionLabel": "Mga canvas",
-    "tooLargeToSync": "Masyadong malaki ang canvas na ito para mag-sync. Naka-save ito sa device na ito, ngunit hindi ito makakarating sa iyong ibang mga device hanggang sa lumiit ito.",
-    "untitled": "Walang pamagat na canvas"
+    "cluster": {
+      "button": "Magmungkahi ng mga grupo",
+      "buttonHint": "I-grupo ang mga card ng tala sa board na ito (o ang mga napili) ayon sa pagkakahawig. Tumatakbo sa device na ito.",
+      "loading": "Iginugrupo…",
+      "needMoreNotes": "Magdagdag ng hindi bababa sa {count} card ng tala para makapagmungkahi ng mga grupo.",
+      "tooMany": "Mahigit {count} card ng tala ang nasa board na ito. Pumili ng hanggang {count} at subukan ulit.",
+      "disabled": "I-on ang mga lokal na embedding sa Mga setting > AI para makapagmungkahi ng mga grupo.",
+      "noGroups": "Walang nakitang malinaw na grupo sa mga talang ito.",
+      "missing": "{count, plural, one {Wala pang embedding ang # tala kaya hindi ito isinama.} other {Wala pang embedding ang # tala kaya hindi isinama ang mga ito.}}",
+      "failed": "Hindi makapagmungkahi ng mga grupo",
+      "title": "Mga iminungkahing grupo",
+      "description": "Iginrupo ayon sa pagkakahawig sa device na ito. Walang magbabago sa board hanggang hindi ka gumagawa ng mga frame.",
+      "defaultName": "Grupo {number}",
+      "untitledGroup": "Grupo",
+      "groupName": "Pangalan ng grupo",
+      "acceptGroup": "Isama ang {name}",
+      "noteCount": "{count, plural, one {# tala} other {# tala}}",
+      "discard": "Itapon",
+      "create": "{count, plural, one {Gumawa ng # frame} other {Gumawa ng # frame}}",
+      "created": "{count, plural, one {Nagawa ang # frame} other {Nagawa ang # frame}}",
+      "cardsGone": "Wala na sa board ang mga card na iyon."
+    },
+    "frame": {
+      "categorize": "Ikategorya",
+      "editBinding": "Palitan ang kategorya ng seksyong ito",
+      "cardCount": "{count, plural, one {# card} other {# card}}",
+      "bindTitle": "Ikategorya ang seksyong ito",
+      "bindHint": "Matatanggap ng mga card na ilalagay sa seksyon ang tag o halaga ng property na ito.",
+      "bindPlaceholder": "Maghanap ng mga tag at halaga ng property, o mag-type ng bagong tag…",
+      "bindEmpty": "Walang tumutugmang tag o halaga ng property.",
+      "groupTags": "Mga tag",
+      "useTag": "Gamitin ang bagong tag na #{tag}",
+      "unbind": "Ihinto ang pagkakategorya bilang {label}",
+      "current": "Kasalukuyan",
+      "applied": "{count, plural, one {Idinagdag ang {label} sa # card} other {Idinagdag ang {label} sa # card}}",
+      "applyFailed": "Hindi maidagdag ang {label}",
+      "revertFailed": "Hindi ma-undo ang {label}",
+      "leftFrame": "{count, plural, one {Inilabas ang # card sa {label}. Nananatili ang kategorya nito.} other {Inilabas ang # card sa {label}. Nananatili ang kategorya ng mga ito.}}",
+      "removeCategory": "Alisin ang {label}",
+      "removed": "{count, plural, one {Inalis ang {label} sa # card} other {Inalis ang {label} sa # card}}",
+      "removeFailed": "Hindi maalis ang {label}",
+      "skippedFile": "{count, plural, one {Hindi ginalaw ang isang file card: walang tag o property ang mga file.} other {Hindi ginalaw ang # file card: walang tag o property ang mga file.}}",
+      "skippedTaskProperty": "{count, plural, one {Hindi ginalaw ang isang card ng gawain: puwedeng lagyan ng tag ang mga gawain, pero hindi ng property ng tala.} other {Hindi ginalaw ang # card ng gawain: puwedeng lagyan ng tag ang mga gawain, pero hindi ng property ng tala.}}",
+      "skippedUnsupported": "{count, plural, one {Hindi ginalaw ang isang card: hindi puwedeng ikategorya ang mga kaganapan at proyekto.} other {Hindi ginalaw ang # card: hindi puwedeng ikategorya ang mga kaganapan at proyekto.}}",
+      "layoutAction": "Ayusin ayon sa property",
+      "layoutTitle": "Ayusin ayon sa property",
+      "layoutHint": "Gumagawa ng seksyon para sa bawat halaga at ipinapamahagi sa mga iyon ang mga tala sa board na ito.",
+      "layoutPlaceholder": "Maghanap ng mga property na isang pagpipilian, maramihang pagpipilian, at katayuan…",
+      "layoutEmpty": "Wala pang property na isang pagpipilian, maramihang pagpipilian, o katayuan na may halaga.",
+      "layoutValueCount": "{count, plural, one {# halaga} other {# halaga}}",
+      "layoutDone": "{count, plural, one {Nagawa ang # seksyon para sa {property}} other {Nagawa ang # seksyon para sa {property}}}",
+      "layoutFailed": "Hindi maisaayos ang board"
+    }
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Mga koleksyon",
+      "projects": "Mga proyekto",
+      "newNote": "Bagong tala",
+      "newNote2": "Bagong tala",
+      "newFolder": "Bagong folder",
+      "newFolder2": "Bagong folder",
+      "newProject": "Bagong proyekto",
+      "bookmarks": "Mga bookmark",
+      "tags": "Mga tag",
+      "reorderSection": "Baguhin ang pagkakasunod ng {section}",
+      "dropFilesToImport": "I-drop ang mga file para i-import",
+      "dropFilesIntoVaultRoot": "Root ng vault",
+      "newNoteN": "Bagong tala (⌘N)",
+      "new": "Bago",
+      "newItemMenu": "Gumawa ng bago…",
+      "feedbackButton": "Magpadala ng feedback",
+      "feedbackTitle": "Magpadala ng feedback",
+      "feedbackDescription": "Sabihin sa amin kung ano ang gumagana, ano ang sira, o ano ang gusto mong gawin ng MemryNote. Binabasa namin ang bawat mensahe.",
+      "feedbackPlaceholder": "Ang iyong feedback…",
+      "feedbackEmailHint": "Idagdag ang iyong email kung gusto mo ng sagot.",
+      "feedbackPrivacyTitle": "Ano ang ipinapadala",
+      "feedbackPrivacyMessage": "Ang iyong mensahe, tulad mismo ng pagkakasulat mo",
+      "feedbackPrivacyEmailOptional": "Ang iyong email — kung idadagdag mo lang ito, at para lang makasagot kami",
+      "feedbackPrivacyEmailSignedIn": "Ang email ng iyong account ({email}), para makasagot kami",
+      "feedbackPrivacyVersion": "Bersyon ng app at operating system",
+      "feedbackPrivacyPlan": "Ang iyong plano (free, Plus, Pro o Believer)",
+      "feedbackPrivacyNote": "Wala nang iba. Nananatili sa iyong device ang mga tala mo.",
+      "feedbackSend": "Ipadala",
+      "feedbackSending": "Ipinapadala…",
+      "feedbackSuccess": "Salamat sa feedback!",
+      "feedbackError": "Hindi naipadala ang feedback. Subukan ulit.",
+      "syncDisabled": "Naka-off ang pag-sync",
+      "syncDisabled2": "Naka-off ang pag-sync",
+      "sortLabel": "Pagkakasunod ng {section}: {mode}",
+      "sortModeManual": "Manwal",
+      "sortModeNameAsc": "Pangalan A → Z",
+      "sortModeNameDesc": "Pangalan Z → A",
+      "sortModeModifiedDesc": "Binago: pinakabago muna",
+      "sortModeModifiedAsc": "Binago: pinakaluma muna",
+      "sortModeCreatedDesc": "Ginawa: pinakabago muna",
+      "sortModeCreatedAsc": "Ginawa: pinakaluma muna",
+      "sortModeCountDesc": "Pinakamadalas gamitin",
+      "sortModeCountAsc": "Pinakabihirang gamitin",
+      "sortSaveFailed": "Hindi ma-save ang pagkakasunod",
+      "sectionOrderSaveFailed": "Hindi ma-save ang pagkakasunod ng sidebar"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Baguhin ang laki ng panel ng araw",
+      "dragToResizeDoubleClickToReset": "I-drag para baguhin ang laki · I-double-click para i-reset"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Hanapin, palitan, magtanong…"
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Laktawan ang panimula",
+      "welcomeToMemry": "Maligayang pagdating sa memrynote",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ang personal mong imbakan ng kaalaman. Maglaan tayo ng 2 minuto para makapagsimula ka.",
+      "getStarted": "Magsimula ",
+      "createYourFirstNote": "Gawin ang una mong tala",
+      "markdownBasedStoredLocallyAsPlainFiles": "Batay sa Markdown, nakaimbak nang lokal bilang mga simpleng file.",
+      "eGMeetingNotesIdeasAnything": "hal. Mga tala sa pulong, ideya, kahit ano…",
+      "skip": "Laktawan",
+      "createNote": "Gumawa ng tala ",
+      "addYourFirstTask": "Idagdag ang iyong unang gawain",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Naka-link sa mga tala mo ang mga gawain, may priyoridad at takdang petsa.",
+      "eGReviewProjectProposal": "hal. Suriin ang panukala sa proyekto…",
+      "skip2": "Laktawan",
+      "createTask": "Gumawa ng gawain ",
+      "syncAcrossDevices": "Mag-sync sa mga device",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Panatilihing naka-sync ang iyong mga tala at gawain sa lahat ng iyong device. Puwede mo pa rin itong i-set up mamaya.",
+      "skipForNow": "Laktawan sa ngayon",
+      "doneLetSGo": "Tapos na — tara na! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Itakda ang icon ng folder",
+      "expandFolder": "I-expand ang folder",
+      "collapseFolder": "I-collapse ang folder"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "PAHIWATIG"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Tagapili ng icon",
+      "selectIcon": "Pumili ng icon",
+      "closeIconPicker": "Isara ang tagapili ng icon",
+      "searchIcons": "Maghanap ng mga icon…",
+      "all": "Lahat",
+      "clearIcon": "I-clear ang icon",
+      "noIconsFoundFor": "Walang nakitang icon para sa \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Mga keyboard shortcut",
+      "closeShortcutsHelp": "Isara ang tulong sa mga shortcut",
+      "press": "Pindutin",
+      "toClose": "para isara"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Magtakda ng icon",
+      "clearIcon": "I-clear ang icon"
+    },
+    "componentsNavMain": {
+      "platform": "Plataporma"
+    },
+    "componentsNavProjects": {
+      "projects": "Mga proyekto",
+      "more": "Higit pa",
+      "viewProject": "Tingnan ang proyekto",
+      "shareProject": "Ibahagi ang proyekto",
+      "deleteProject": "Tanggalin ang proyekto",
+      "more2": "Higit pa"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Mag-upgrade sa Pro",
+      "account": "Account",
+      "billing": "Pagsingil",
+      "notifications": "Mga notification",
+      "logOut": "Mag-log out"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Maghanap",
+      "searchNotesTasksJournalInbox": "Maghanap ng mga tala, gawain, talaarawan, inbox…",
+      "noResultsFor": "Walang resulta para sa “",
+      "result": "resulta",
+      "noResultsForQuery": "Walang resulta para sa “{query}”",
+      "resultCount": "{count, plural, one {# resulta} other {# resulta}}",
+      "indexBuilding": "Binubuo ang index ng paghahanap {done}/{total} — maaaring hindi kumpleto ang mga resulta",
+      "indexBuildingUnknown": "Binubuo ang index ng paghahanap — maaaring hindi kumpleto ang mga resulta"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Maghanap at mag-click ng mga item para mabuo ang kasaysayan mo",
+      "reasons": "Mga dahilan",
+      "clear": "I-clear"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "I-clear",
+      "tags": "Mga tag",
+      "filterByTag": "I-filter ayon sa tag…",
+      "dateRange": "Saklaw ng petsa"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Tingnan ang lahat ng ",
+      "results": "resulta"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "halos tugma"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Walang nakabukas na tab",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Magbukas ng pahina mula sa sidebar o gumawa ng bagong tab para makapagsimula",
+      "openInbox": "Buksan ang Inbox",
+      "closePane": "Isara ang pane"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Mga preset ng layout",
+      "layoutPresets2": "Mga preset ng layout"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Baguhin ang laki ng mga pane"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "Hindi available ang TasksContext",
+      "searchResults": "Mga resulta ng paghahanap",
+      "unknownTabType": "Hindi kilalang uri ng tab: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "hindi na-save na mga pagbabago",
+      "preview": "preview"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Bagong tab",
+      "newTab2": "Bagong tab",
+      "newNote": "Bagong tala",
+      "journal": "Talaarawan",
+      "calendar": "Kalendaryo",
+      "inboxCapture": "Itala sa inbox",
+      "tasks": "Mga gawain",
+      "tags": "Mga tag"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Mga hindi na-save na pagbabago",
+      "unsaved": "hindi na-save)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Mga hindi na-save na pagbabago"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Isara ang lahat ng tab"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Mga nakabukas na tab",
+      "scrollTabsLeft": "I-scroll pakaliwa ang mga tab",
+      "scrollTabsRight": "I-scroll pakanan ang mga tab",
+      "dayPanel": "Panel ng araw"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Nagkaproblema",
+      "anErrorOccurredWhileRenderingThisTabContent": "Nagkaroon ng error habang nire-render ang content ng tab na ito.",
+      "tryAgain": "Subukan ulit",
+      "sendReport": "Magpadala ng diagnostic report"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Icon ng tala"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Mga hindi na-save na pagbabago",
+      "unsavedChangesBody": "May mga hindi na-save na pagbabago ang “{title}”. Ano ang gusto mong gawin?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Bagong workspace",
+      "darkMode": "Madilim na mode",
+      "settings": "Mga setting",
+      "integrations": "Mga integration",
+      "signOut": "Mag-sign out",
+      "downloadOnIos": "I-download sa iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Isara ang window",
+      "minimizeWindow": "I-minimize ang window",
+      "maximizeWindow": "I-maximize ang window"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Mga mungkahi",
+      "or": "o",
+      "enter": "Enter",
+      "toInsert": "para ipasok"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "Breadcrumb",
+      "more": "Higit pa"
+    },
+    "componentsUiDialog": {
+      "close": "Isara"
+    },
+    "componentsUiSheet": {
+      "close": "Isara"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Sidebar",
+      "displaysTheMobileSidebar": "Ipinapakita ang mobile sidebar.",
+      "toggleSidebar": "Ipakita o itago ang sidebar",
+      "toggleSidebar2": "Ipakita o itago ang sidebar",
+      "dragToResizeDoubleClickToReset": "I-drag para baguhin ang laki · I-double-click para i-reset"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Maligayang pagdating sa memrynote",
+      "yourPersonalKnowledgeManagementSystem": "Ang iyong sistema ng pamamahala ng personal na kaalaman.",
+      "selectAFolderToStoreYourNotesAndTasks": "Pumili ng folder kung saan iimbak ang mga tala at gawain mo.",
+      "opening": "Binubuksan…",
+      "selectVaultFolder": "Pumili ng folder ng vault",
+      "plainMarkdown": "Payak na Markdown",
+      "yourNotesStayPortable": "Nananatiling portable ang mga tala mo",
+      "syncAnywhere": "I-sync kahit saan",
+      "useDropboxIcloudGit": "Gumamit ng Dropbox, iCloud, Git",
+      "recentVaults": "Mga kamakailang vault",
+      "notesLastOpened": "tala · Huling binuksan",
+      "preRelease": "Beta",
+      "createNewVault": "Gumawa ng bagong vault",
+      "createNewVaultDesc": "Magsimula ng bagong vault sa folder na pipiliin mo.",
+      "openExistingVault": "Magbukas ng dati nang vault",
+      "openExistingVaultDesc": "Pumili ng folder ng mga Markdown file na mayroon ka na.",
+      "signInToSync": "Mag-sign in para mag-sync",
+      "signInToSyncDesc": "Mga vault na end-to-end na naka-encrypt sa lahat ng device mo.",
+      "create": "Gumawa",
+      "open": "Buksan",
+      "signIn": "Mag-sign in",
+      "helpAndDocs": "Tulong at docs",
+      "signInRequiresVault": "Magbukas o gumawa muna ng vault para ma-set up ang pag-sync.",
+      "addVault": "Magdagdag ng vault",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "Nasa isang vault ang mga tala mo, isang folder sa computer na ito.",
+        "createDesc": "Pangalanan ito at piliin kung saan ito ilalagay.",
+        "openFolder": "Buksan ang folder bilang vault",
+        "openFolderDesc": "Gumamit ng folder ng mga Markdown file na mayroon ka na.",
+        "openFromSync": "Buksan mula sa Memrynote Sync",
+        "openFromSyncDesc": "Mag-sign in at mag-download ng vault mula sa account mo.",
+        "back": "Bumalik",
+        "createTitle": "Gumawa ng bagong vault",
+        "createSubtitle": "Folder ng mga Markdown file ang vault. Puwede mo itong ilipat mamaya.",
+        "nameLabel": "Pangalan",
+        "namePlaceholder": "Mga tala ko",
+        "locationLabel": "Lokasyon",
+        "change": "Baguhin…",
+        "willBeCreatedAt": "Gagawin sa",
+        "errorExists": "May folder na rito na may ganitong pangalan.",
+        "openInstead": "Buksan na lang ito bilang vault",
+        "errorInvalidName": "Hindi puwedeng magsimula sa tuldok ang pangalan o maglaman ng / \\ : * ? \" < > |",
+        "createFailed": "Hindi makagawa ng vault.",
+        "createVault": "Gumawa ng vault",
+        "creating": "Ginagawa…",
+        "cancel": "Kanselahin",
+        "chooseTitle": "Pumili ng vault",
+        "chooseSubtitle": "Naka-sign in bilang {email}. Pumili ng isang bubuksan sa computer na ito.",
+        "untitledVault": "Vault na walang pamagat",
+        "items": "{count, plural, one {# item} other {# item}}",
+        "onThisComputer": "Sa computer na ito",
+        "downloadTo": "I-download sa",
+        "otherVaultsHint": "Mananatili sa account mo ang ibang vault. I-download ang mga ito anumang oras mula sa vault switcher.",
+        "openVault": "Buksan ang vault",
+        "opening": "Binubuksan…",
+        "loadingVaults": "Nilo-load ang mga vault mo…",
+        "loadFailed": "Hindi ma-load ang mga vault mo.",
+        "retry": "Subukan ulit",
+        "noVaultsTitle": "Wala pang vault sa account mo",
+        "noVaultsDesc": "Gumawa ng isa sa computer na ito. Masi-sync ito sa account mo.",
+        "createCta": "Gumawa ng vault",
+        "openFailed": "Hindi mabuksan ang vault."
+      }
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Wala pang vault",
+      "openVault": "Buksan ang vault",
+      "settings": "Mga setting",
+      "logOut": "Mag-log out",
+      "signInToSync": "Mag-sign in para mag-sync",
+      "remove": "Alisin ang “",
+      "removeVaultTitle": "Alisin ang “{name}” sa listahan?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Aalisin ang vault na ito sa app, pero mananatili ang mga file mo sa disk. Puwede mo itong idagdag ulit anumang oras.",
+      "cancel": "Kanselahin",
+      "remove2": "Alisin",
+      "inYourAccount": "Sa iyong account",
+      "itemsCount": "{count} item",
+      "untitledVault": "Vault",
+      "downloadVaultTitle": "I-download ang “{name}”",
+      "downloadLocation": "Lokasyon",
+      "changeLocation": "Baguhin…",
+      "download": "I-download",
+      "downloadFailed": "Hindi ma-download ang vault",
+      "deleteFromAccount": "Tanggalin sa account",
+      "deleteVaultTitle": "Tanggalin ang “{name}” sa iyong account?",
+      "deleteVaultBody": "Permanenteng inaalis nito ang lahat ng naka-sync na data ng vault na ito mula sa mga server ng Memry at hindi na ito maibabalik. Hindi tinatanggal ang iyong mga file sa disk.",
+      "deleteVaultConfirm": "Tanggalin sa account",
+      "deleteVaultFailed": "Hindi matanggal ang vault",
+      "missing": "Hindi makita ang folder"
+    },
+    "componentsWindowControls": {
+      "searchK": "Maghanap (⌘K)",
+      "browserBack": "Bumalik sa nakaraang pahina",
+      "back": "Bumalik",
+      "browserForward": "Pumunta sa susunod na pahina",
+      "forward": "Pasulong"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Hindi ma-import ang mga file",
+      "failedToCreateNote": "Hindi makagawa ng tala",
+      "failedToAccessMicrophone": "Hindi ma-access ang mikropono"
+    },
+    "toasts": {
+      "undone": "Na-undo"
+    }
+  },
+  "home": {
+    "widget": {
+      "removeAria": "Alisin ang widget",
+      "dragAria": "I-drag ang widget",
+      "configAria": "I-configure ang widget",
+      "resizeAria": "I-resize sa {size}",
+      "menuAria": "Mga opsyon ng widget",
+      "resize": "Laki",
+      "remove": "Alisin",
+      "filter": {
+        "all": "Lahat",
+        "today": "Takda ngayong araw",
+        "tomorrow": "Bukas",
+        "next7": "Susunod na 7 araw",
+        "noDueDate": "Walang takdang petsa"
+      },
+      "recentlyEdited": "Kamakailang na-edit",
+      "recentlyOpened": "Kamakailang binuksan",
+      "recentMeta": "na-edit {time}",
+      "recentMetaWithFolder": "{folder} · na-edit {time}",
+      "openedMeta": "binuksan {time}",
+      "openedMetaWithFolder": "{folder} · binuksan {time}",
+      "noRecentlyOpened": "Lalabas dito ang mga talang binubuksan mo",
+      "bookmarks": "Mga bookmark",
+      "tasks": "Mga gawain",
+      "calendar": "Kalendaryo",
+      "calendarToday": "Ngayong araw",
+      "openCalendar": "Buksan ang Kalendaryo",
+      "next": "Susunod: {title}",
+      "startsIn": "Magsisimula sa loob ng {count, plural, one {# min} other {# min}}",
+      "duration": "{count} min",
+      "inbox": "Inbox",
+      "inboxAllTypes": "Lahat ng uri",
+      "inboxOlder": "{count, plural, one {# mas luma} other {# mas luma}}",
+      "inboxOldest": "pinakaluma: {count, plural, one {# araw} other {# araw}}",
+      "openInbox": "Buksan ang inbox",
+      "folder": "Folder",
+      "untitled": "Walang pamagat",
+      "folderPickPrompt": "Pumili ng folder",
+      "folderEmpty": "Wala pang folder",
+      "folderNoSelection": "Walang napiling folder",
+      "folderView_list": "Listahan",
+      "folderView_gallery": "Galerya",
+      "folderViewSelect": "View",
+      "project": "Proyekto",
+      "projectNoSelection": "Walang napiling proyekto",
+      "projectMissing": "Hindi na available ang proyektong ito",
+      "projectNoTasks": "Walang gawain",
+      "journal": "Talaarawan",
+      "journalStreak": "{count, plural, one {# araw na sunod-sunod} other {# araw na sunod-sunod}}",
+      "journalToday": "Ngayong araw",
+      "journalYesterday": "Kahapon",
+      "journalTomorrow": "Bukas",
+      "journalUpcoming": "Paparating",
+      "journalNoEntryYet": "Wala pang entry",
+      "loadError": "Hindi ma-load",
+      "unknown": "Hindi kilalang widget"
+    },
+    "board": {
+      "label": "Layout ng Home",
+      "deleteAria": "Tanggalin ang layout",
+      "newAria": "Bagong board",
+      "newName": "Bagong board",
+      "defaultName": "Home",
+      "manage": "Pamahalaan ang mga board",
+      "manageTitle": "Pamahalaan ang mga board",
+      "manageDescription": "Palitan ang pangalan, ayusin ang pagkakasunod, o tanggalin ang mga board mo sa Home.",
+      "renameAria": "Palitan ang pangalan ng board",
+      "reorderAria": "Baguhin ang pagkakasunod ng board",
+      "nameLabel": "Pangalan ng board"
+    },
+    "greeting": {
+      "morning": "Magandang umaga",
+      "afternoon": "Magandang hapon",
+      "evening": "Magandang gabi"
+    },
+    "header": {
+      "tasksDue": "{count, plural, one {# gawaing takda ngayong araw} other {# gawaing takda ngayong araw}}",
+      "events": "{count, plural, one {# kaganapan} other {# kaganapan}}"
+    },
+    "edit": "I-edit",
+    "done": "Tapos na",
+    "addWidget": "Magdagdag ng widget",
+    "empty": {
+      "title": "Walang laman ang iyong board",
+      "body": "Pinagsasama ng mga widget ang iyong mga tala, gawain, at bookmark sa isang panatag na lugar.",
+      "cta": "Idagdag ang iyong unang widget"
+    },
+    "noBookmarksYet": "Wala pang bookmark.",
+    "noNotesYet": "Wala pang tala.",
+    "noTasksYet": "Wala pang gawain.",
+    "noEventsYet": "Walang kaganapan ngayong araw.",
+    "noJournalEntriesYet": "Wala pang entry sa talaarawan.",
+    "disabled": {
+      "createNote": "Gumawa ng tala",
+      "hint": "Walang nakabukas. Magsimula ng tala."
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Maligayang pagdating sa MemryNote",
+      "body": "Ang pribado mong tahanan na gumagana kahit offline. End-to-end na naka-encrypt ang mga tala — hindi kailanman lalabas ang mga ito sa device mo nang hindi naka-encrypt."
+    },
+    "newNote": {
+      "title": "Gawin ang una mong tala",
+      "body": "Magsimula rito. Unang iniimbak sa device mo ang lahat ng isinusulat mo."
+    },
+    "nav": {
+      "title": "Ang iyong mga workspace",
+      "body": "Inbox para magtala, Talaarawan para sa mga pang-araw-araw na tala, Kalendaryo para sa timeline mo, Mga gawain para sa mga gagawin, at Graph para makita kung paano nagkakaugnay ang lahat."
+    },
+    "collections": {
+      "title": "Mga koleksyon, bookmark at tag",
+      "body": "Ayusin ang mga tala sa mga folder, i-pin ang mga bookmark, at mag-browse ayon sa tag — lahat dito."
+    },
+    "dayPanel": {
+      "title": "Ang iyong araw, katabi ng iyong trabaho",
+      "body": "Pinapanatili ng side panel ang kalendaryo at ang view ng araw mo sa tabi ng kahit anong binabasa mo."
+    },
+    "agentChat": {
+      "title": "Makipag-chat sa AI agent",
+      "body": "Lumipat sa tab na Agent para magtanong sa AI assistant ng MemryNote tungkol sa vault mo."
+    },
+    "sync": {
+      "title": "Pribado at naka-encrypt na pag-sync",
+      "body": "I-on ang end-to-end na naka-encrypt na pag-sync para laging magkatugma ang bawat device."
+    },
+    "feedback": {
+      "title": "Sabihin sa amin ang iyong palagay",
+      "body": "Magpadala ng feedback diretso sa team mula rito."
+    },
+    "settings": {
+      "title": "Mga setting at pag-import",
+      "body": "I-import ang mga tala mo mula sa mahigit 12 app — Obsidian, Notion, Apple Notes, Evernote at iba pa — at ayusin ang lahat ng iba pa sa Mga setting."
+    },
+    "tour": {
+      "next": "Susunod",
+      "previous": "Nakaraan",
+      "progress": "{current} sa {total}"
+    },
+    "starPrompt": {
+      "title": "Tapos na ang panimula",
+      "body": "Paki-star kami sa GitHub — nakakatulong ito para mahanap ng ibang tao ang MemryNote.",
+      "action": "I-star sa GitHub"
+    }
   },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Mag-click sa row",
-      "reset": "I-reset",
-      "shortcutsTab": "Tab ng Mga Shortcut"
-    },
-    "description": "Mga mabilisang paraan para maglibot sa memrynote, kumuha ng mga ideya, at magproseso ng trabaho.",
+    "description": "Mga mabilisang paraan para maglibot sa memrynote, magtala ng mga ideya, at magproseso ng trabaho.",
+    "or": "o",
+    "then": "tapos",
     "groups": {
       "general": {
-        "description": "Nabigasyon at tulong sa buong app.",
-        "title": "Pangkalahatan"
-      },
-      "inbox": {
-        "description": "Mabilis na iproseso ang mga nakuhang item.",
-        "title": "Inbox"
-      },
-      "journal": {
-        "description": "Maglibot sa mga view ng journal at tumutok sa lugar ng pagsulat.",
-        "title": "Journal"
-      },
-      "notes": {
-        "description": "Magsulat, mag-format, at maghanap ng mga tala.",
-        "title": "Mga Tala / Editor"
-      },
-      "settings": {
-        "description": "Buksan ang mga setting at i-customize ang mga shortcut.",
-        "title": "Mga Setting"
+        "title": "Pangkalahatan",
+        "description": "Nabigasyon at tulong sa buong app."
       },
       "tabs": {
-        "description": "Lumipat sa pagitan ng mga tab at pane.",
-        "title": "Mga Tab at Split"
+        "title": "Mga tab at split",
+        "description": "Lumipat sa pagitan ng mga tab at pane."
+      },
+      "inbox": {
+        "title": "Inbox",
+        "description": "Mabilis na iproseso ang mga naitalang item."
+      },
+      "journal": {
+        "title": "Talaarawan",
+        "description": "Maglibot sa mga view ng talaarawan at i-focus ang lugar ng pagsulat."
+      },
+      "notes": {
+        "title": "Mga tala / Editor",
+        "description": "Magsulat, mag-format, at maghanap ng mga tala."
       },
       "tasks": {
-        "description": "Salain, piliin, at kumpletuhin ang mga gawain.",
-        "title": "Mga Gawain"
+        "title": "Mga gawain",
+        "description": "I-filter, piliin, at tapusin ang mga gawain."
+      },
+      "settings": {
+        "title": "Mga setting",
+        "description": "Buksan ang mga setting at i-customize ang mga shortcut."
       }
     },
     "items": {
       "general": {
-        "createNote": "Lumikha ng tala",
-        "keyboardShortcuts": "Buksan ang mga keyboard shortcut",
-        "openSettings": "Buksan ang mga setting",
         "quickSearch": "Buksan ang mabilisang paghahanap",
-        "sidebarSection": "Pumunta sa seksyon ng sidebar",
-        "toggleSidebar": "I-toggle ang sidebar",
-        "undoTaskAction": "I-undo ang huling aksyon sa gawain"
+        "createNote": "Gumawa ng tala",
+        "openSettings": "Buksan ang mga setting",
+        "switchVault": "Lumipat ng vault",
+        "adjacentVault": "Nakaraan o susunod na vault",
+        "keyboardShortcuts": "Buksan ang mga keyboard shortcut",
+        "undoTaskAction": "I-undo ang huling aksyon sa gawain",
+        "toggleSidebar": "Ipakita o itago ang sidebar",
+        "sidebarSection": "Pumunta sa seksyon ng sidebar"
+      },
+      "tabs": {
+        "newTabMenu": "Buksan ang menu ng bagong tab",
+        "closeTab": "Isara ang tab",
+        "closeAllInPane": "Isara ang lahat ng tab sa pane",
+        "reopenClosedTab": "Buksang muli ang saradong tab",
+        "nextTab": "Susunod na tab",
+        "previousTab": "Nakaraang tab",
+        "pinTab": "I-pin o i-unpin ang tab",
+        "duplicateTab": "I-duplicate ang tab",
+        "splitRight": "Hatiin pakanan",
+        "splitDown": "Hatiin pababa",
+        "closeSplitPane": "Isara ang split pane",
+        "focusPane": "I-focus ang ibang pane",
+        "moveTabToPane": "Ilipat ang tab sa pane",
+        "maximizePane": "I-maximize ang kasalukuyang pane"
       },
       "inbox": {
-        "archiveItem": "I-archive ang napiling item",
-        "chooseQuickFileResult": "Pumili ng resulta ng quick file",
-        "clearSelection": "I-clear ang pinili o isara ang quick file",
-        "confirmFiling": "Kumpirmahin ang filing panel",
-        "firstOrLastItem": "Una o huling item",
-        "jumpByPage": "Lumundag ayon sa pahina",
         "nextItem": "Susunod na item",
-        "openOriginal": "Buksan ang orihinal na link",
-        "openQuickFile": "Buksan ang quick file",
         "previousItem": "Nakaraang item",
-        "refresh": "I-refresh ang inbox",
-        "selectAllVisible": "Piliin ang lahat ng nakikitang item",
+        "firstOrLastItem": "Una o huling item",
+        "jumpByPage": "Lumipat nang isang pahina",
+        "togglePreview": "Ipakita o itago ang panel ng preview",
         "selectItem": "Piliin ang item",
-        "togglePreview": "I-toggle ang preview panel"
+        "selectAllVisible": "Piliin ang lahat ng nakikitang item",
+        "clearSelection": "I-clear ang pinili o isara ang mabilisang paglalagay",
+        "openQuickFile": "Buksan ang mabilisang paglalagay",
+        "chooseQuickFileResult": "Pumili ng resulta sa mabilisang paglalagay",
+        "archiveItem": "I-archive ang napiling item",
+        "openOriginal": "Buksan ang orihinal na link",
+        "refresh": "I-refresh ang inbox",
+        "confirmFiling": "Kumpirmahin ang panel ng paglalagay"
       },
       "journal": {
-        "bold": "Gawing makapal ang napiling teksto",
-        "find": "Maghanap sa journal",
-        "italic": "Gawing italiko ang napiling teksto",
-        "returnFromOverview": "Bumalik mula sa buwan o taon na view",
+        "returnFromOverview": "Bumalik mula sa view ng buwan o taon",
+        "find": "Hanapin sa talaarawan",
+        "bold": "I-bold ang napiling teksto",
+        "italic": "I-italic ang napiling teksto",
         "underline": "Salungguhitan ang napiling teksto"
       },
       "notes": {
-        "bold": "Makapal",
-        "closeOverlays": "Isara ang mga overlay ng editor",
+        "createNote": "Gumawa ng tala",
+        "find": "Hanapin sa tala",
+        "bold": "Bold",
+        "italic": "Italic",
+        "underline": "Salungguhit",
         "commandMenu": "Buksan ang command menu ng editor",
-        "createNote": "Lumikha ng tala",
-        "find": "Maghanap sa tala",
-        "italic": "Italiko",
-        "underline": "Salungguhit"
-      },
-      "settings": {
-        "cancelRecording": "Kanselahin ang pagre-record ng shortcut",
-        "customizeShortcuts": "I-customize ang mga keyboard shortcut",
-        "openSettings": "Buksan ang mga setting",
-        "recordShortcut": "Mag-record ng bagong shortcut",
-        "resetShortcut": "Ibalik ang default ng shortcut"
-      },
-      "tabs": {
-        "closeAllInPane": "Isara ang lahat ng tab sa pane",
-        "closeSplitPane": "Isara ang split pane",
-        "closeTab": "Isara ang tab",
-        "duplicateTab": "I-duplicate ang tab",
-        "focusPane": "Tumutok sa ibang pane",
-        "maximizePane": "I-maximize ang kasalukuyang pane",
-        "moveTabToPane": "Ilipat ang tab sa pane",
-        "newTabMenu": "Buksan ang menu ng bagong tab",
-        "nextTab": "Susunod na tab",
-        "pinTab": "I-pin o i-unpin ang tab",
-        "previousTab": "Nakaraang tab",
-        "reopenClosedTab": "Buksang muli ang saradong tab",
-        "splitDown": "Hatiin pababa",
-        "splitRight": "Hatiin pakanan"
+        "closeOverlays": "Isara ang mga overlay ng editor"
       },
       "tasks": {
         "clearFilters": "I-clear ang mga nakikitang filter",
-        "clearSelection": "I-clear ang pinili sa mga gawain",
-        "completeSelected": "Kumpletuhin ang mga napiling gawain",
-        "configureRepeat": "I-configure ang pag-ulit sa naka-focus na gawain",
-        "deleteSelected": "Tanggalin ang mga napiling gawain",
         "selectAllVisible": "Piliin ang lahat ng nakikitang gawain",
+        "clearSelection": "I-clear ang pinili sa mga gawain",
+        "completeSelected": "Tapusin ang mga napiling gawain",
+        "deleteSelected": "Tanggalin ang mga napiling gawain",
+        "configureRepeat": "I-configure ang pag-ulit sa naka-focus na gawain",
         "skipOccurrence": "Laktawan ang pag-ulit na ito",
         "stopRepeating": "Ihinto ang pag-ulit ng gawain"
+      },
+      "settings": {
+        "openSettings": "Buksan ang mga setting",
+        "customizeShortcuts": "I-customize ang mga keyboard shortcut",
+        "recordShortcut": "Mag-record ng bagong shortcut",
+        "cancelRecording": "Kanselahin ang pagre-record ng shortcut",
+        "resetShortcut": "Ibalik ang default ng shortcut"
       }
     },
-    "or": "o",
-    "then": "tapos"
+    "combos": {
+      "shortcutsTab": "Tab ng mga shortcut",
+      "clickRow": "Mag-click sa row",
+      "reset": "I-reset"
+    }
+  },
+  "update": {
+    "available": "May available na update",
+    "downloading": "Dina-download ang {version}",
+    "ready": "Handa na ang update",
+    "failed": "Nabigo ang pag-update",
+    "downloadAction": "I-download",
+    "restartAction": "I-restart",
+    "detailsAction": "Mga detalye",
+    "popover": {
+      "readyTitle": "Handa na ang MemryNote {version}",
+      "availableTitle": "Available na ang MemryNote {version}",
+      "readySubtitle": "Gamit mo ngayon ang {current}",
+      "availableSubtitle": "Gamit mo ngayon ang {current} · wala pang na-download",
+      "allChanges": "Lahat ng pagbabago",
+      "restartNow": "I-restart ngayon",
+      "onNextQuit": "Sa susunod na pagsara ng app",
+      "download": "I-download",
+      "notNow": "Hindi muna",
+      "moreOptions": "Iba pang opsyon sa pag-update",
+      "skipVersion": "Laktawan ang {version}",
+      "turnOffAuto": "I-off ang mga awtomatikong update",
+      "copyVersionInfo": "Kopyahin ang impormasyon ng bersyon",
+      "openSettings": "Buksan ang mga setting"
+    },
+    "installing": {
+      "title": "Ini-install ang {version}",
+      "titleUnknownVersion": "Ini-install ang update",
+      "subtitle": "Magbubukas ulit ang MemryNote sa ilang sandali. Nasa disk na ang lahat ng isinulat mo."
+    },
+    "installFailed": {
+      "title": "Hindi natapos ng MemryNote ang pag-install ng {version}",
+      "titleUnknownVersion": "Hindi natapos ng MemryNote ang pag-install ng update",
+      "body": "Hindi ginalaw ang vault mo — sa app inilalapat ang update, hindi sa mga tala mo. Gamit mo pa rin ang {current} at gumagana ang lahat gaya ng dati.",
+      "errorLabel": "Ano ang naging problema",
+      "downloadManually": "I-download nang mano-mano ang {version}",
+      "downloadManuallyUnknownVersion": "I-download nang mano-mano ang MemryNote",
+      "tryAgain": "Subukan ulit",
+      "copyDetails": "Kopyahin ang mga detalye"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Mga vault",
+    "position": "{name}, vault {index} sa {count}",
+    "openList": "{position}. Buksan ang listahan ng vault",
+    "switchTo": "Lumipat sa {name}",
+    "switchingTo": "Lumilipat sa {name}",
+    "changeIcon": "Palitan ang icon…",
+    "resetIcon": "I-reset ang icon",
+    "iconButton": "Palitan ang icon ng {name}",
+    "iconFailed": "Hindi mapalitan ang icon ng vault"
+  },
+  "sidebarHelp": {
+    "label": "Tulong at feedback",
+    "reportBug": "Mag-ulat ng bug",
+    "requestFeature": "Humiling ng feature",
+    "starOnGithub": "I-star sa GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "Ano ang bago"
+  },
+  "sidebarStar": {
+    "title": "Open source ang MemryNote",
+    "body": "Ginawa nang hayagan. Nakakatulong ang isang star para mahanap ito ng iba.",
+    "star": "I-star",
+    "later": "Hindi muna",
+    "thanks": "Salamat. Malaking bagay iyon sa amin."
+  },
+  "sidebar": {
+    "railLabel": "Mga seksyon",
+    "search": "Maghanap o pumunta sa…",
+    "vaultMenu": "{name}. Buksan ang listahan ng vault"
   }
 }

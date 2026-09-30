@@ -1,21 +1,21 @@
 {
   "app": {
     "quit": "Encerrar",
-    "preferences": "Definições…",
-    "checkForUpdates": "Procurar atualizações…",
-    "exit": "Sair",
+    "preferences": "Configurações…",
+    "checkForUpdates": "Verificar atualizações…",
+    "services": "Serviços",
     "hide": "Ocultar MemryNote",
     "hideOthers": "Ocultar outros",
-    "services": "Serviços",
-    "unhide": "Mostrar tudo"
+    "unhide": "Mostrar tudo",
+    "exit": "Sair"
   },
   "file": {
-    "label": "Ficheiro",
+    "label": "Arquivo",
     "newNote": "Nova nota",
-    "close": "Fechar janela",
-    "closeTab": "Fechar separador",
+    "openQuickly": "Abrir rapidamente…",
     "exportPdf": "Exportar para PDF…",
-    "openQuickly": "Abrir rapidamente…"
+    "closeTab": "Fechar aba",
+    "close": "Fechar janela"
   },
   "navigation": {
     "back": "Voltar",
@@ -25,69 +25,74 @@
     "label": "Editar",
     "undo": "Desfazer",
     "redo": "Refazer",
-    "cut": "Cortar",
+    "cut": "Recortar",
     "copy": "Copiar",
     "paste": "Colar",
     "selectAll": "Selecionar tudo",
     "find": "Localizar",
-    "speech": "Voz",
+    "speech": "Fala",
+    "pasteAndMatchStyle": "Colar e manter estilo",
     "delete": "Apagar",
-    "pasteAndMatchStyle": "Colar e adaptar estilo",
-    "startSpeaking": "Iniciar locução",
-    "stopSpeaking": "Parar locução"
+    "startSpeaking": "Começar a falar",
+    "stopSpeaking": "Parar de falar",
+    "addToDictionary": "Adicionar ao dicionário",
+    "noSuggestions": "Nenhuma sugestão"
   },
-  "view": {
-    "label": "Ver",
-    "reload": "Recarregar",
-    "toggleDevTools": "Alternar ferramentas do programador",
-    "toggleFullscreen": "Alternar ecrã completo",
-    "theme": "Tema",
-    "themeDark": "Escuro",
-    "themeLight": "Claro",
-    "themeSystem": "Sistema",
-    "themeWhite": "Papel",
-    "toggleDayPanel": "Alternar painel do dia",
-    "toggleSidebar": "Alternar barra lateral",
-    "actualSize": "Tamanho real",
-    "zoomIn": "Ampliar",
-    "zoomOut": "Reduzir"
+  "insert": {
+    "label": "Inserir",
+    "codeBlock": "Bloco de código",
+    "table": "Tabela",
+    "bulletList": "Lista com marcadores",
+    "numberedList": "Lista numerada",
+    "taskList": "Lista de tarefas",
+    "attachment": "Inserir anexo…"
   },
   "format": {
-    "body": "Corpo",
-    "bold": "Negrito",
-    "code": "Código",
+    "label": "Formatar",
     "heading1": "Título 1",
     "heading2": "Título 2",
     "heading3": "Título 3",
     "heading4": "Título 4",
     "heading5": "Título 5",
     "heading6": "Título 6",
-    "highlight": "Destaque",
+    "body": "Corpo",
+    "bold": "Negrito",
     "italic": "Itálico",
-    "label": "Formatar",
-    "strikethrough": "Rasurado"
+    "code": "Código",
+    "highlight": "Destacar",
+    "strikethrough": "Tachado"
   },
-  "help": {
-    "about": "Acerca do MemryNote",
-    "documentation": "Documentação",
-    "label": "Ajuda",
-    "shortcuts": "Atalhos de teclado",
-    "aboutVersion": "Versão {version}"
-  },
-  "insert": {
-    "attachment": "Inserir anexo…",
-    "bulletList": "Lista com marcadores",
-    "codeBlock": "Bloco de código",
-    "label": "Inserir",
-    "numberedList": "Lista numerada",
-    "table": "Tabela",
-    "taskList": "Lista de tarefas"
+  "view": {
+    "label": "Visualizar",
+    "reload": "Recarregar",
+    "toggleDevTools": "Mostrar/ocultar ferramentas de desenvolvedor",
+    "toggleFullscreen": "Ativar/desativar tela cheia",
+    "toggleSidebar": "Mostrar/ocultar barra lateral",
+    "toggleDayPanel": "Mostrar/ocultar painel do dia",
+    "theme": "Tema",
+    "themeLight": "Claro",
+    "themeDark": "Escuro",
+    "themeWhite": "Papel",
+    "themeSystem": "Sistema",
+    "actualSize": "Tamanho real",
+    "zoomIn": "Ampliar",
+    "zoomOut": "Reduzir"
   },
   "window": {
     "label": "Janela",
-    "close": "Fechar",
-    "front": "Trazer tudo para a frente",
     "minimize": "Minimizar",
-    "zoom": "Zoom"
+    "zoom": "Zoom",
+    "front": "Trazer todas para a frente",
+    "close": "Fechar"
+  },
+  "help": {
+    "label": "Ajuda",
+    "documentation": "Documentação",
+    "shortcuts": "Atalhos de teclado",
+    "about": "Sobre o MemryNote",
+    "aboutVersion": "Versão {version}"
+  },
+  "tray": {
+    "show": "Mostrar MemryNote"
   }
 }

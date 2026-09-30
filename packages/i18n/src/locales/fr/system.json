@@ -1,8 +1,8 @@
 {
   "dialog": {
     "vault": {
-      "title": "Sélectionner un dossier de coffre-fort",
-      "button": "Sélectionnez le coffre-fort"
+      "title": "Sélectionner le dossier du coffre",
+      "button": "Sélectionner le coffre"
     },
     "exportPdf": {
       "title": "Exporter au format PDF",
@@ -26,46 +26,47 @@
       "readyTitle": "Mise à jour prête",
       "readyMessage": "memrynote {version} a été téléchargé.",
       "readyDetailFallback": "Redémarrez memrynote pour terminer l'installation de la mise à jour.",
-      "buttonRestartNow": "Redémarrez maintenant",
+      "buttonRestartNow": "Redémarrer maintenant",
       "releaseNotesLabel": "Notes de version :"
     },
     "pair": {
+      "title": "Jumeler l'extension de navigateur",
+      "message": "Autoriser l'extension de navigateur Memry à envoyer des captures à cette application ?",
       "buttonAllow": "Autoriser",
       "buttonDeny": "Refuser",
-      "buttonPair": "Jumeler",
-      "message": "Autoriser l'extension de navigateur Memry à envoyer des captures à cette application ?",
-      "title": "Jumeler l'extension de navigateur"
+      "buttonPair": "Jumeler"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "Rappel de notes",
-      "journal": "Rappel du journal",
-      "highlight": "Rappel des surbrillance",
-      "fallback": "Rappel dû",
-      "default": "Rappel",
-      "task": "Rappel de tâche"
-    },
     "inboxReview": {
+      "title": "Il est temps de passer en revue votre boîte de réception",
       "body": "Vous avez {count, plural, one {# élément} many {# éléments} other {# éléments}} à passer en revue.",
-      "testBody": "Ceci est un test — vos rappels de revue quotidienne ressembleront à ceci.",
-      "title": "Il est temps de passer en revue votre boîte de réception"
+      "testBody": "Ceci est un test : vos rappels de revue quotidienne ressembleront à ceci."
+    },
+    "reminder": {
+      "note": "Rappel de note",
+      "journal": "Rappel du journal",
+      "highlight": "Rappel de surlignage",
+      "task": "Rappel de tâche",
+      "fallback": "Rappel arrivé à échéance",
+      "default": "Rappel"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "L'heure de rappel doit être dans le futur",
     "definitionNotFound": "Définition introuvable",
-    "noteNotFound": "Remarque introuvable",
-    "updateFailed": "La mise à jour a échoué"
+    "noteNotFound": "Note introuvable",
+    "updateFailed": "Échec de la mise à jour",
+    "updateReadOnlyVolume": "Impossible d'installer les mises à jour lorsque memrynote est exécuté depuis cet emplacement. Déplacez memrynote dans votre dossier Applications, puis rouvrez-le."
   },
   "startup": {
-    "failed": {
-      "body": "Cela peut arriver lorsqu'il reste très peu d'espace disque, ou avec d'anciens pilotes graphiques. Essayez de libérer de l'espace disque, puis rouvrez MemryNote. Si le problème persiste, une réinstallation suffit généralement à le résoudre.",
-      "title": "MemryNote n'a pas pu terminer son démarrage"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote se rouvrira automatiquement.",
-      "title": "Installation de la mise à jour…"
+      "title": "Installation de la mise à jour…",
+      "subtitle": "MemryNote se rouvrira automatiquement."
+    },
+    "failed": {
+      "title": "MemryNote n'a pas pu terminer son démarrage",
+      "body": "Cela peut arriver lorsqu'il reste très peu d'espace disque, ou avec d'anciens pilotes graphiques. Essayez de libérer de l'espace disque, puis rouvrez MemryNote. Si le problème persiste, une réinstallation suffit généralement à le résoudre."
     }
   }
 }

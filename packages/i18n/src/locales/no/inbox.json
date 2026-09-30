@@ -6,40 +6,38 @@
       "insights": "Innsikt",
       "ariaLabel": "Innboksvisningsvalg"
     },
-    "triageButton": "Triage",
-    "processInboxTitle": "Behandle innboks (Cmd+P)",
-    "itemCaptured": "Gjenstand fanget",
+    "itemCaptured": "Elementet er fanget opp",
     "searchArchivedTitle": "Søk i arkiverte elementer",
-    "searchPlaceholder": "Søk...",
-    "archivedItemsAria": "Arkiverte gjenstander",
+    "searchPlaceholder": "Søk …",
+    "archivedItemsAria": "Arkiverte elementer",
     "snoozed": {
-      "show": "Vis utsatte elementer",
-      "showWithCount": "Vis utsatte elementer ({count})",
-      "hide": "Skjul utsatte elementer"
+      "show": "Vis slumrede elementer",
+      "showWithCount": "Vis slumrede elementer ({count})",
+      "hide": "Skjul slumrede elementer"
+    },
+    "density": {
+      "toComfortable": "Romslig visning",
+      "toCompact": "Kompakt visning"
     },
     "filter": {
-      "button": "Filter",
+      "button": "Filtrer",
       "byType": "Filtrer etter type",
-      "active": "{count, plural, one {Filtrering etter # type} other {Filtrering etter #-typer}}",
+      "active": "{count, plural, one {Filtrerer etter # type} other {Filtrerer etter # typer}}",
       "clearAll": "Fjern alle"
     },
     "jobs": {
       "running": "{count, plural, one {# bakgrunnsjobb kjører} other {# bakgrunnsjobber kjører}}",
       "failed": "{count} mislyktes"
-    },
-    "density": {
-      "toComfortable": "Romslig visning",
-      "toCompact": "Kompakt visning"
     }
   },
   "type": {
     "link": "Lenke",
     "links": "Lenker",
-    "note": "Merk",
+    "note": "Notat",
     "notes": "Notater",
     "image": "Bilde",
     "images": "Bilder",
-    "voice": "Stemme",
+    "voice": "Tale",
     "video": "Video",
     "clip": "Klipp",
     "clips": "Klipp",
@@ -50,20 +48,20 @@
     "reminders": "Påminnelser"
   },
   "empty": {
-    "successAria": "Vellykket, innboksen er tom",
-    "title": "Innboks null",
-    "body": "Alt er behandlet. Fang noe nytt med innspillet ovenfor, eller lim inn en lenke for å komme i gang.",
-    "filedThisWeek": "{count, plural, one {# arkivert denne uken} other {# arkivert denne uken}}",
-    "dayStreak": "{count, plural, one {# dagsrekke} other {# dagsrekke}}",
+    "successAria": "Ferdig, innboksen er tom",
+    "title": "Tom innboks",
+    "body": "Alt er behandlet. Fang opp noe nytt i feltet ovenfor, eller lim inn en lenke for å komme i gang.",
+    "filedThisWeek": "{count, plural, one {# plassert denne uken} other {# plassert denne uken}}",
+    "dayStreak": "{count, plural, one {# dag på rad} other {# dager på rad}}",
     "tipPrefix": "Tips: bruk",
-    "tipSuffix": "for å raskt fange fra utklippstavlen",
+    "tipSuffix": "for å fange opp raskt fra utklippstavlen",
     "archivedNone": "Ingen arkiverte elementer",
     "archivedNoMatches": "Ingen samsvarende arkiverte elementer",
-    "noItemsYet": "Ingen varer ennå",
-    "noItemsFiled": "Ingen elementer arkivert ennå",
+    "noItemsYet": "Ingen elementer ennå",
+    "noItemsFiled": "Ingen elementer plassert ennå",
     "noFolders": "Ingen mapper funnet",
     "noNotes": "Ingen notater funnet",
-    "allMatchesLinked": "Alle kampene er allerede koblet"
+    "allMatchesLinked": "Alle treffene er allerede lenket"
   },
   "list": {
     "ariaLabel": "Innbokselementer",
@@ -76,295 +74,305 @@
     "itemAria": "{type}: {title}",
     "untitled": "Uten tittel",
     "untitledItem": "Uten tittel",
-    "transcribing": "Transkriberer...",
+    "transcribing": "Transkriberer …",
     "transcriptionFailed": "Transkripsjon mislyktes",
     "retryTranscription": "Prøv på nytt",
     "pageCount": "{count, plural, one {# side} other {# sider}}",
-    "snoozedUntilShort": "slumret til {date}"
+    "snoozedUntilShort": "slumret til {date}",
+    "rename": "Gi nytt navn",
+    "renameLabel": "Gi elementet nytt navn"
   },
   "loading": {
-    "inbox": "Laster inn innboksen ...",
+    "inbox": "Laster inn innboksen …",
     "failed": "Kunne ikke laste inn innboksen",
     "tryAgain": "Prøv igjen",
-    "capturingImage": "Tar bilde ...",
-    "dropImageTitle": "Slipp bilde for å ta",
+    "capturingImage": "Fanger opp bilde …",
+    "dropImageTitle": "Slipp bildet for å fange det opp",
     "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
     "unsupportedImageType": "Ustøttet bildetype: {type}",
     "imageTooLarge": "Bildet er for stort (maks 50 MB)"
   },
   "toast": {
     "failedArchiveItem": "Kunne ikke arkivere elementet",
-    "failedArchiveItems": "Kunne ikke arkivere elementer",
-    "failedFile": "Kunne ikke arkivere",
-    "failedFileItem": "Kunne ikke arkivere elementet",
-    "failedFileItems": "Kunne ikke arkivere elementer",
+    "failedArchiveItems": "Kunne ikke arkivere elementene",
+    "failedFile": "Kunne ikke plassere",
+    "failedFileItem": "Kunne ikke plassere elementet",
+    "failedFileItems": "Kunne ikke plassere elementene",
     "failedSnooze": "Kunne ikke slumre",
     "failedSnoozeItem": "Kunne ikke slumre elementet",
-    "failedApplyTags": "Kunne ikke bruke tagger",
-    "failedCaptureImage": "Kunne ikke ta bilde",
-    "linkedToNote": "Knyttet til notat",
-    "linkedToNotes": "Koblet til {count}-notater",
-    "filedTo": "Arkivert til {folder}",
-    "filedItemsTo": "Filerte {count}-elementer til {folder}",
-    "filedPartial": "Arkivert {processed} av {total} elementer",
-    "appliedTags": "{tagCount, plural, one {Påført #-tag} other {Påførte #-tagger}} til {itemCount, plural, one {# vare} other {# varer}}",
-    "archivedItems": "{count, plural, one {Arkivert #-element} other {Arkiverte #-elementer}}",
-    "snoozedUntil": "Utsatt til {time}",
-    "snoozedItemsUntil": "{count, plural, one {Utsatt #-element til {time}} other {Utsatt #-elementer til {time}}}"
-  },
-  "triage": {
-    "modeTitle": "Triage-modus",
-    "exitHint": "Esc for å avslutte",
-    "exitAria": "Avslutt triage-modus",
-    "position": "{current} av {total}",
-    "action": {
-      "discard": "Kast",
-      "archive": "Arkiv",
-      "open": "Åpne",
-      "toTask": "Til oppgave",
-      "toNote": "Å merke seg",
-      "file": "Fil",
-      "snooze": "Slumre",
-      "cancel": "Avbryt"
-    },
-    "snoozeUntil": "Slumre til ...",
-    "complete": {
-      "title": "Innboks null",
-      "processed": "{count, plural, one {# element behandlet} other {# varer behandlet}}",
-      "streak": "strek",
-      "streakCount": "{count} strek",
-      "dayProcessingStreak": "{count, plural, one {# dag behandlingsrekke} other {# dag behandlingsrekke}}",
-      "back": "Tilbake til innboksen",
-      "motivation0": "Ditt fremtidige jeg takker deg.",
-      "motivation1": "Alt på sin plass.",
-      "motivation2": "Tøm innboksen, rydde tankene.",
-      "motivation3": "Vedtaksgjeld: innbetalt i sin helhet.",
-      "motivation4": "Det føltes bra, gjorde det ikke?"
-    }
+    "failedApplyTags": "Kunne ikke legge til taggene",
+    "failedCaptureImage": "Kunne ikke fange opp bildet",
+    "linkedToNote": "Lenket til notatet",
+    "linkedToNotes": "Lenket til {count} notater",
+    "embedFellBackToLink": "Bildet var for stort til å bygges inn – plassert som en lenket fil i stedet",
+    "filedTo": "Plassert i {folder}",
+    "filedItemsTo": "Plasserte {count} elementer i {folder}",
+    "filedPartial": "Plasserte {processed} av {total} elementer",
+    "appliedTags": "{tagCount, plural, one {La til # tagg} other {La til # tagger}} på {itemCount, plural, one {# element} other {# elementer}}",
+    "archivedItems": "{count, plural, one {Arkiverte # element} other {Arkiverte # elementer}}",
+    "snoozedUntil": "Slumret til {time}",
+    "snoozedItemsUntil": "{count, plural, one {Slumret # element til {time}} other {Slumret # elementer til {time}}}",
+    "restored": "«{title}» er gjenopprettet"
   },
   "bulk": {
     "selected": "{count} er valgt",
     "deselectAll": "Fjern markeringen av alle",
     "ariaLabel": "Massehandlinger for {count} valgte elementer",
-    "file": "Fil",
+    "file": "Plasser",
     "tag": "Tagg",
     "snooze": "Slumre",
-    "archive": "Arkiv",
+    "archive": "Arkiver",
     "add": "Legg til",
     "dismissSuggestion": "Avvis forslaget",
     "hint": {
-      "file": "fil",
+      "file": "plasser",
       "tag": "tagg",
       "snooze": "slumre",
-      "archive": "arkiv",
-      "deselect": "fjern merket"
+      "archive": "arkiver",
+      "deselect": "fjern markering"
     },
     "archiveDialog": {
-      "title": "{count, plural, one {Vil du arkivere #-elementet?} other {Vil du arkivere #-elementer?}}",
+      "title": "{count, plural, one {Vil du arkivere # element?} other {Vil du arkivere # elementer?}}",
       "description": "Disse elementene vil bli arkivert. Du kan se arkiverte elementer senere.",
-      "confirm": "{count, plural, one {Arkiver #-element} other {Arkiver #-elementer}}"
+      "confirm": "{count, plural, one {Arkiver # element} other {Arkiver # elementer}}"
     },
     "filePanel": {
-      "title": "{count, plural, one {Fil #-element} other {Fil #-elementer}}",
-      "itemsToFile": "Elementer som skal arkiveres",
-      "multipleNoteLinksUnavailable": "Merk: Lenker til andre notater kan ikke legges til ved arkivering av flere elementer.",
-      "filing": "Arkiver...",
-      "submit": "{count, plural, one {Fil # element} other {Fil # elementer}}",
-      "macHint": "⌘⏎ til fil · Esc for å lukke",
-      "ctrlHint": "Ctrl+Enter til fil · Esc for å lukke"
+      "title": "{count, plural, one {Plasser # element} other {Plasser # elementer}}",
+      "itemsToFile": "Elementer som skal plasseres",
+      "multipleNoteLinksUnavailable": "Merk: Lenker til andre notater kan ikke legges til når du plasserer flere elementer.",
+      "filing": "Plasserer …",
+      "submit": "{count, plural, one {Plasser # element} other {Plasser # elementer}}",
+      "macHint": "⌘⏎ for å plassere · Esc for å lukke",
+      "ctrlHint": "Ctrl+Enter for å plassere · Esc for å lukke"
     },
     "tagPopover": {
-      "title": "{count, plural, one {Tag # Vare} other {Merk #-varer}}",
-      "placeholder": "Skriv for å søke etter koder...",
-      "applying": "Søker...",
-      "apply": "{count, plural, one {Påfør #-vare} other {Bruk på #-varer}}"
+      "title": "{count, plural, one {Tagg # element} other {Tagg # elementer}}",
+      "placeholder": "Skriv for å søke i tagger …",
+      "applying": "Legger til …",
+      "apply": "{count, plural, one {Bruk på # element} other {Bruk på # elementer}}"
     }
   },
   "quickActions": {
-    "groupAria": "Raske handlinger",
-    "archiveItem": "Arkivelement",
-    "archive": "Arkiv"
+    "groupAria": "Hurtighandlinger",
+    "archiveItem": "Arkiver element",
+    "archive": "Arkiver"
   },
   "detail": {
-    "ariaLabel": "Varedetaljer",
+    "ariaLabel": "Elementdetaljer",
+    "resize": "Endre størrelse på panel",
     "closePanel": "Lukk panelet",
-    "resizeFiling": "Endre størrelsen på arkivdelen",
+    "resizeFiling": "Endre størrelse på plasseringsdelen",
     "restore": "Gjenopprett",
-    "restoreToInbox": "Gjenopprett til innboks",
+    "restoreToInbox": "Gjenopprett til innboksen",
     "delete": "Slett",
     "deletePermanently": "Slett permanent",
-    "archive": "Arkiv",
-    "file": "Fil",
-    "fileToFolder": "Arkiver i {folder}",
-    "keyboardHint": "{modifier}⏎ fil · 1-5 mappe · Esc close",
-    "voiceTitlePlaceholder": "Gi dette talememoet et navn...",
-    "fileTo": "Fil til",
-    "ai": "AI",
-    "selectFolder": "Velg mappe",
-    "searchOrCreateFolder": "Søk eller opprett med /...",
-    "suggested": "Foreslått",
-    "notesRoot": "Notater",
-    "notesRootLabel": "Notater (root)",
-    "createFolder": "Opprett \"{name}\"",
-    "addTags": "Legg til tagger...",
-    "linkToNote": "Link til notat",
-    "linkNotesPlaceholder": "Linknotater...",
-    "searchNotesAria": "Søk i notater for å koble til",
-    "linkedNotesAria": "Koblede notater",
-    "removeLinkTo": "Fjern lenken til {title}",
-    "notePlaceholder": "Skriv notatet ditt...",
-    "textPlaceholder": "Rediger teksten du har tatt...",
-    "linkANote": "Koble til et notat",
+    "archive": "Arkiver",
+    "file": "Plasser",
+    "fileToFolder": "Plasser i {folder}",
+    "keyboardHint": "{modifier}⏎ plasser · 1–5 mappe · Esc lukk",
+    "voiceTitlePlaceholder": "Gi dette talememoet et navn …",
+    "titlePlaceholder": "Gi dette elementet et navn …",
+    "fileTo": "Plasser i",
+    "ai": "KI",
     "match": {
-      "likely": "Sannsynlig treff",
       "strong": "Sterkt treff",
+      "likely": "Sannsynlig treff",
       "weak": "Svakt treff"
     },
-    "resize": "Endre størrelse på panel",
-    "suggestedCount": "{count} foreslått"
+    "selectFolder": "Velg mappe",
+    "searchOrCreateFolder": "Søk eller opprett med / …",
+    "suggested": "Foreslått",
+    "notesRoot": "Notater",
+    "notesRootLabel": "Notater (rot)",
+    "createFolder": "Opprett «{name}»",
+    "addTags": "Legg til tagger …",
+    "linkToNote": "Lenk til notat",
+    "linkANote": "Lenk til et notat",
+    "suggestedCount": "{count} foreslått",
+    "linkNotesPlaceholder": "Lenk til notater …",
+    "linkOrCreateNotePlaceholder": "Finn eller opprett et notat …",
+    "createNote": "Opprett «{title}»",
+    "pendingNote": "Nytt notat",
+    "searchNotesAria": "Søk etter notater å lenke til eller opprette",
+    "imageFilingModeLabel": "Bildet lagres som",
+    "imageFilingModeEmbed": "Innebygd i notatet",
+    "imageFilingModeLink": "Fil i sidefeltet",
+    "imageFilingModeRemember": "Ikke spør igjen",
+    "linkedNotesAria": "Lenkede notater",
+    "removeLinkTo": "Fjern lenken til {title}",
+    "notePlaceholder": "Skriv notatet ditt …",
+    "textPlaceholder": "Rediger teksten du fanget opp …"
+  },
+  "convert": {
+    "title": "Konverter",
+    "chooseType": "Konverter til",
+    "note": "Notat",
+    "task": "Oppgave",
+    "event": "Hendelse",
+    "reminder": "Påminnelse",
+    "create": "Opprett",
+    "addTask": "Legg til oppgave",
+    "addEvent": "Legg til hendelse",
+    "setReminder": "Angi påminnelse",
+    "project": "Prosjekt",
+    "inboxProject": "Innboks",
+    "dueDate": "Forfallsdato",
+    "dueTime": "Forfallstid",
+    "priority": "Prioritet",
+    "priorityNone": "Ingen",
+    "priorityLow": "Lav",
+    "priorityMedium": "Middels",
+    "priorityHigh": "Høy",
+    "priorityUrgent": "Haster",
+    "date": "Dato",
+    "start": "Start",
+    "end": "Slutt",
+    "allDay": "Hele dagen",
+    "location": "Sted",
+    "remindAt": "Påminnelse kl.",
+    "time": "Tid",
+    "success": "Konvertert til {target}",
+    "failed": "Kunne ikke konvertere: {error}"
   },
   "content": {
-    "capturedAt": "Fanget {date}",
-    "todayAt": "i dag på {time}",
-    "yesterdayAt": "i går på {time}",
-    "dateAt": "{date} på {time}",
+    "capturedAt": "Fanget opp {date}",
+    "todayAt": "i dag kl. {time}",
+    "yesterdayAt": "i går kl. {time}",
+    "dateAt": "{date} kl. {time}",
     "words": "{count, plural, one {# ord} other {# ord}}",
     "duration": "Varighet: {duration}",
     "dimensions": "Dimensjoner",
     "format": "Format",
     "size": "Størrelse",
     "voiceMemo": "Talememo",
-    "play": "Spill",
+    "play": "Spill av",
     "pause": "Pause",
     "audioPosition": "Lydposisjon",
     "transcription": "Transkripsjon",
-    "processing": "behandling",
+    "processing": "behandles",
     "pending": "venter",
     "failed": "mislyktes",
     "copyTranscription": "Kopier transkripsjon",
-    "transcribingAudio": "Transkriberer lyd...",
-    "awaitingTranscription": "Venter på transkripsjon...",
+    "transcribingAudio": "Transkriberer lyd …",
+    "awaitingTranscription": "Venter på transkripsjon …",
     "noTranscription": "Ingen transkripsjon tilgjengelig",
     "failedPlayAudio": "Kunne ikke spille av lyd",
     "failedLoadAudio": "Kunne ikke laste inn lyd",
     "video": "Video",
-    "unsupportedVideo": "Nettleseren din støtter ikke videokoden."
+    "unsupportedVideo": "Nettleseren din støtter ikke video-elementet."
   },
   "reminder": {
     "dataUnavailable": "Påminnelsesdata er utilgjengelige.",
     "triggered": "Påminnelse utløst",
-    "noteLabel": "Påminnelse",
+    "noteLabel": "Påminnelsesnotat",
     "source": "Kilde",
-    "journalTitle": "Journal — {date}",
-    "noteFallback": "Merk",
-    "journalFallback": "Journal",
-    "highlighted": "Uthevet: \"{text}\"",
+    "journalTitle": "Dagbok – {date}",
+    "noteFallback": "Notat",
+    "journalFallback": "Dagbok",
+    "taskFallback": "Oppgave",
+    "highlighted": "Uthevet: «{text}»",
     "viewed": "Sett",
-    "markViewed": "Merk som vist",
+    "archive": "Arkiver",
     "notYetViewed": "Ikke sett ennå",
     "snooze": "Slumre",
     "presetInOneHour": "1 time",
     "presetTomorrow": "I morgen",
     "presetNextWeek": "Neste uke",
-    "custom": "Egendefinert...",
-    "archive": "Arkiver",
-    "panelEmpty": "Ingen kommende påminnelser.",
-    "panelPast": "Tidligere",
+    "custom": "Egendefinert …",
     "panelUpcoming": "Kommende",
-    "taskFallback": "Oppgave",
-    "dateTime": {
-      "dateAt": "{date} kl. {time}",
-      "dateCompact": "{date}, {time}",
-      "todayAt": "I dag kl. {time}",
-      "todayCompact": "I dag, {time}",
-      "tomorrowAt": "I morgen kl. {time}",
-      "tomorrowCompact": "I morgen, {time}"
-    },
+    "panelPast": "Tidligere",
+    "panelEmpty": "Ingen kommende påminnelser.",
     "presets": {
-      "anniversaryReminder": "Årsdagspåminnelse",
-      "inHours": {
-        "label": "Om {count, plural, one {# time} other {# timer}}"
+      "laterToday": {
+        "label": "Senere i dag",
+        "description": "Om {count, plural, one {# time} other {# timer}}"
+      },
+      "tomorrow": {
+        "label": "I morgen",
+        "description": "I morgen kl. 09.00"
+      },
+      "nextWeek": {
+        "label": "Neste uke",
+        "description": "Mandag kl. 09.00"
       },
       "inMinutes": {
         "label": "Om {count, plural, one {# minutt} other {# minutter}}"
       },
-      "inMonths": {
-        "label": "Om {count, plural, one {# måned} other {# måneder}}"
+      "inHours": {
+        "label": "Om {count, plural, one {# time} other {# timer}}"
       },
       "inWeeks": {
         "label": "Om {count, plural, one {# uke} other {# uker}}"
       },
+      "inMonths": {
+        "label": "Om {count, plural, one {# måned} other {# måneder}}"
+      },
       "inYears": {
         "label": "Om {count, plural, one {# år} other {# år}}"
       },
-      "laterToday": {
-        "description": "Om {count, plural, one {# time} other {# timer}}",
-        "label": "Senere i dag"
-      },
-      "monthlyReflection": "Månedlig refleksjon",
-      "nextWeek": {
-        "description": "Mandag kl. 09.00",
-        "label": "Neste uke"
-      },
-      "quarterlyReflection": "Kvartalsvis refleksjon",
-      "reviewInAWeek": "Gå gjennom om en uke",
+      "tomorrowMorning": "I morgen tidlig",
       "sameDayNextMonth": "Samme dag neste måned",
-      "tomorrow": {
-        "description": "I morgen kl. 09.00",
-        "label": "I morgen"
-      },
-      "tomorrowMorning": "I morgen tidlig"
+      "reviewInAWeek": "Gå gjennom om en uke",
+      "monthlyReflection": "Månedlig refleksjon",
+      "quarterlyReflection": "Kvartalsvis refleksjon",
+      "anniversaryReminder": "Årsdagspåminnelse"
+    },
+    "dateTime": {
+      "todayAt": "I dag kl. {time}",
+      "todayCompact": "I dag, {time}",
+      "tomorrowAt": "I morgen kl. {time}",
+      "tomorrowCompact": "I morgen, {time}",
+      "dateAt": "{date} kl. {time}",
+      "dateCompact": "{date}, {time}"
     }
   },
   "insights": {
-    "captureActivity": "Ta opp aktivitet",
+    "captureActivity": "Oppfangingsaktivitet",
     "byType": "Etter type",
-    "recentFilings": "Nylige innleveringer",
-    "captured": "Fanget",
+    "recentFilings": "Nylig plassert",
+    "captured": "Fanget opp",
     "capturedThisWeek": "+{count} denne uken",
     "processed": "Behandlet",
-    "processRate": "{rate} % rate",
-    "stale": "Foreldet",
+    "processRate": "{rate} % andel",
+    "stale": "Gamle",
     "needsAttention": "trenger oppmerksomhet",
     "allClear": "alt klart",
-    "avgTimeToFile": "Gj.sn. tid til fil",
-    "noCapturesYet": "Ingen fangst ennå",
-    "captures": "{count, plural, one {#-opptak} other {# fanger opp}}",
+    "avgTimeToFile": "Gj.sn. tid til plassering",
+    "noCapturesYet": "Ingenting fanget opp ennå",
+    "captures": "{count, plural, one {# element fanget opp} other {# elementer fanget opp}}",
     "peak": "Topp: {day} {start}–{end}",
     "convertedToTask": "Konvertert til oppgave",
     "now": "nå",
-    "timeAgoMinutes": "{count}m siden",
-    "timeAgoHours": "{count}h siden",
-    "timeAgoDays": "{count}d siden"
+    "timeAgoMinutes": "for {count} min siden",
+    "timeAgoHours": "for {count} t siden",
+    "timeAgoDays": "for {count} d siden"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
-      "aiDetected": "AI oppdaget: \"",
+      "aiDetected": "KI oppdaget: \"",
       "addToSelection": "Legg til i utvalget",
       "dismiss": "Avvis"
     },
     "componentsBulkDeleteConfirmationDialog": {
       "delete": "Slett ",
       "item": "element",
-      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Disse elementene vil bli fjernet fra innboksen din. Du kan angre denne handlingen umiddelbart etter."
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Disse elementene fjernes fra innboksen. Du kan angre handlingen rett etterpå."
     },
     "componentsCaptureInput": {
-      "captureInput": "Fang inn input",
+      "captureInput": "Oppfangingsfelt",
       "attachFile": "Legg ved fil",
       "attachFileImagesAudioVideoPdf": "Legg ved fil (bilder, lyd, video, PDF)",
       "recordVoiceMemo": "Ta opp talememo",
       "recordVoiceMemo2": "Ta opp talememo",
-      "captureAnyway": "Fang uansett",
-      "focusShortcut": "Fokuser fangstfelt",
-      "q": "Q",
-      "captureLink": "Fang inn lenke",
-      "captureNote": "Fang inn notat",
-      "placeholder": "Rask fangst — lim inn en lenke, noter en tanke…",
-      "duplicateNotice": "Allerede fanget inn: «{title}»"
+      "captureAnyway": "Fang opp likevel",
+      "placeholder": "Fang opp raskt – lim inn en lenke, noter en tanke …",
+      "captureLink": "Fang opp lenke",
+      "captureNote": "Fang opp notat",
+      "duplicateNotice": "Allerede fanget opp: «{title}»"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Velg mappe",
-      "searchFolders": "Søk i mapper...",
+      "searchFolders": "Søk i mapper …",
       "searchFolders2": "Søk i mapper",
       "searchResults": "Søkeresultater",
       "create": "Opprett \"",
@@ -374,61 +382,55 @@
       "allFolders2": "Alle mapper"
     },
     "componentsFilingLinkSearch": {
-      "linkTo": "Link til",
+      "linkTo": "Lenk til",
       "optional": "valgfritt)",
-      "searchNotesToLink": "Søk i notater for å koble til...",
-      "searchNotesToLink2": "Søk i notater for å koble til",
-      "searching": "Søker...",
+      "searchNotesToLink": "Søk etter notater å lenke til …",
+      "searchNotesToLink2": "Søk etter notater å lenke til",
+      "searching": "Søker …",
       "noNotesFound": "Ingen notater funnet",
-      "linkedNotes": "Koblede notater",
+      "linkedNotes": "Lenkede notater",
       "noLinksAdded": "Ingen lenker lagt til"
     },
     "componentsFilingTagAutocomplete": {
       "suggested": "Foreslått",
-      "ai": "AI",
+      "ai": "KI",
       "create": "Opprett",
       "tags": "Tagger",
       "selectedTags": "Valgte tagger",
       "addTags": "Legg til tagger",
-      "tagSuggestions": "Tag-forslag",
+      "tagSuggestions": "Taggforslag",
       "removeTag": "Fjern {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Tagger",
       "optional": "valgfritt)",
-      "addTags": "Legg til tagger...",
+      "addTags": "Legg til tagger …",
       "addTags2": "Legg til tagger",
       "selectedTags": "Valgte tagger",
       "suggested": "Foreslått"
     },
     "componentsInboxInboxCaptureHeatmap": {
-      "captureActivity": "Ta opp aktivitet"
+      "captureActivity": "Oppfangingsaktivitet"
     },
     "componentsInboxInboxFilingHistory": {
-      "noItemsFiledYet": "Ingen elementer arkivert ennå",
-      "recentlyFiled": "Nylig arkivert",
+      "noItemsFiledYet": "Ingen elementer plassert ennå",
+      "recentlyFiled": "Nylig plassert",
       "latestActionsOnYourInbox": "Siste handlinger i innboksen din",
-      "linked": "Koblet"
+      "linked": "Lenket"
     },
     "componentsInboxInboxInsightsView": {
-      "loadingInsights": "Laster inn innsikt ..."
+      "loadingInsights": "Laster inn innsikt …"
     },
     "componentsInboxInboxTypeDistribution": {
-      "noItemTypesToDisplay": "Ingen varetyper å vise",
-      "itemTypes": "Varetyper",
-      "distributionOfContentFormats": "Distribusjon av innholdsformater"
-    },
-    "componentsInboxTriageItemCard": {
-      "captured": "Fanget "
+      "noItemTypesToDisplay": "Ingen elementtyper å vise",
+      "itemTypes": "Elementtyper",
+      "distributionOfContentFormats": "Fordeling av innholdsformater"
     },
     "componentsInboxDetailContentSection": {
       "x": "x "
     },
     "componentsInboxDetailInboxContentEditor": {
-      "contentEditor": "Innholdsredaktør"
-    },
-    "componentsInboxDetailReminderDetail": {
-      "middot": "middot; "
+      "contentEditor": "Innholdsredigering"
     },
     "componentsInboxDetailTweetCard": {
       "tweetUnavailable": "Tweet utilgjengelig",
@@ -439,18 +441,18 @@
       "viewOnX": "Se på X"
     },
     "componentsInlineQuickFile": {
-      "typeFolderName": "Skriv inn mappenavn...",
-      "quickFileFolderSearch": "Rask filmappesøk"
+      "typeFolderName": "Skriv inn mappenavn …",
+      "quickFileFolderSearch": "Mappesøk for hurtigplassering"
     },
     "componentsQuickCaptureFooter": {
-      "close": "lukke",
-      "capture": "fange"
+      "close": "lukk",
+      "capture": "fang opp"
     },
     "componentsQuickCaptureImagePreview": {
       "removeAttachment": "Fjern vedlegg"
     },
     "componentsQuickCaptureInput": {
-      "quickCaptureInput": "Rask fangstinngang",
+      "quickCaptureInput": "Felt for rask oppfanging",
       "recordVoiceMemo": "Ta opp talememo",
       "attachFile": "Legg ved fil"
     },
@@ -458,34 +460,36 @@
       "link": "LENKE"
     },
     "componentsQuickCaptureStates": {
-      "captured": "Fanget",
-      "dismissError": "Avvis feil",
-      "alreadyCaptured": "Allerede tatt",
-      "captureAnyway": "Fang uansett",
+      "captured": "Fanget opp",
+      "dismissError": "Lukk feilmeldingen",
+      "alreadyCaptured": "Allerede fanget opp",
+      "captureAnyway": "Fang opp likevel",
       "close": "Lukk",
       "duplicateMeta": "«{title}» · {date}"
     },
     "componentsQuickCapture": {
-      "dropToCapture": "Slipp for å fange",
-      "capturing": "Tar opp ..."
+      "dropToCapture": "Slipp for å fange opp",
+      "capturing": "Fanger opp …"
     },
     "componentsQuickFileDropdown": {
       "folderSuggestions": "Mappeforslag",
-      "noFoldersMatch": "Ingen mapper samsvarer \""
+      "noFoldersMatch": "Ingen mapper samsvarer med \""
     },
     "componentsReminderReminderPicker": {
-      "remind": "Påminn",
-      "remindMe": "Minn meg på det",
-      "pickDateTime": "Velg dato og tid",
+      "remind": "Minn meg på",
+      "remindMe": "Minn meg på",
+      "pickDateTime": "Velg dato og klokkeslett",
       "addANoteOptional": "Legg til et notat (valgfritt)",
       "backToPresets": "Tilbake til forhåndsinnstillinger",
       "time": "Tid",
       "noteOptional": "Merknad (valgfritt)",
       "whyAreYouSettingThisReminder": "Hvorfor angir du denne påminnelsen?",
-      "deleteReminder": "Slett påminnelse",
+      "set": "Angi",
       "editReminder": "Rediger påminnelse",
+      "deleteReminder": "Slett påminnelse",
       "save": "Lagre",
-      "set": "Angi"
+      "setReminder": "Angi påminnelse",
+      "setting": "Angir …"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Slumre",
@@ -498,39 +502,39 @@
       "snooze5": "Slumre"
     },
     "componentsSocialCard": {
-      "loadingPost": "Laster innlegg...",
+      "loadingPost": "Laster inn innlegget …",
       "failedToLoad": "Kunne ikke laste inn",
-      "loadingPostContent": "Laster innleggsinnhold ...",
-      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Kunne ikke laste innleggsinnhold. Innlegget kan være privat eller slettet.",
+      "loadingPostContent": "Laster inn innholdet i innlegget …",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Kunne ikke laste inn innholdet i innlegget. Innlegget kan være privat eller slettet.",
       "viewOn": "Se på "
     },
     "componentsVoiceRecorder": {
       "startVoiceRecording": "Start taleopptak",
-      "requestingMicrophoneAccess": "Ber om mikrofontilgang ...",
+      "requestingMicrophoneAccess": "Ber om tilgang til mikrofonen …",
       "settings": "Innstillinger",
-      "processing": "Behandler...",
+      "processing": "Behandler …",
       "cancelRecording": "Avbryt opptaket",
       "cancel": "Avbryt",
       "stopRecording": "Stopp opptaket",
       "stop": "Stopp",
-      "enableMicInSettings": "Gi tilgang til mikrofonen i systeminnstillingene, og prøv på nytt.",
-      "failedToStart": "Kunne ikke starte opptaket",
+      "recordingError": "Det oppsto en feil under opptaket",
       "microphoneAccessDenied": "Ingen tilgang til mikrofonen",
       "noMicrophoneFound": "Fant ingen mikrofon",
-      "recordingError": "Det oppsto en feil under opptaket"
+      "failedToStart": "Kunne ikke starte opptaket",
+      "enableMicInSettings": "Gi tilgang til mikrofonen i systeminnstillingene, og prøv på nytt."
     }
   },
   "phaseI": {
     "errors": {
-      "failedToCaptureLink": "Kunne ikke fange linken",
-      "failedToCaptureNote": "Kunne ikke fange notatet",
-      "captureFailed": "Opptaket mislyktes",
-      "failedToCaptureVoiceMemo": "Kunne ikke fange talememo",
-      "voiceCaptureFailed": "Stemmeopptak mislyktes",
-      "failedToCaptureFile": "Kunne ikke fange filen",
-      "fileCaptureFailed": "Filfangst mislyktes",
+      "failedToCaptureLink": "Kunne ikke fange opp lenken",
+      "failedToCaptureNote": "Kunne ikke fange opp notatet",
+      "captureFailed": "Oppfanging mislyktes",
+      "failedToCaptureVoiceMemo": "Kunne ikke fange opp talememoet",
+      "voiceCaptureFailed": "Oppfanging av talememo mislyktes",
+      "failedToCaptureFile": "Kunne ikke fange opp filen",
+      "fileCaptureFailed": "Oppfanging av fil mislyktes",
       "failedToCaptureAudio": "Kunne ikke fange opp lyd",
-      "failedToCaptureVoice": "Kunne ikke fange stemmen",
+      "failedToCaptureVoice": "Kunne ikke fange opp talen",
       "failedToLoadInboxPreferences": "Kunne ikke laste inn innboksinnstillingene",
       "failedToUpdateInboxPreferences": "Kunne ikke oppdatere innboksinnstillingene"
     },
@@ -538,40 +542,14 @@
       "inboxRefreshed": "Innboksen er oppdatert"
     }
   },
-  "convert": {
-    "addEvent": "Legg til hendelse",
-    "addTask": "Legg til oppgave",
-    "allDay": "Hele dagen",
-    "chooseType": "Konverter til",
-    "create": "Opprett",
-    "date": "Dato",
-    "dueDate": "Forfallsdato",
-    "dueTime": "Forfallstid",
-    "end": "Slutt",
-    "event": "Hendelse",
-    "failed": "Kunne ikke konvertere: {error}",
-    "inboxProject": "Innboks",
-    "location": "Sted",
-    "note": "Notat",
-    "priority": "Prioritet",
-    "priorityHigh": "Høy",
-    "priorityLow": "Lav",
-    "priorityMedium": "Middels",
-    "priorityNone": "Ingen",
-    "priorityUrgent": "Haster",
-    "project": "Prosjekt",
-    "remindAt": "Minn meg kl.",
-    "reminder": "Påminnelse",
-    "setReminder": "Angi påminnelse",
-    "start": "Start",
-    "success": "Konvertert til {target}",
-    "task": "Oppgave",
-    "time": "Tid",
-    "title": "Konverter"
-  },
   "reviewNudge": {
-    "action": "Åpne innboks",
-    "description": "Ta unna det du har fanget inn i dag, i én rolig runde.",
-    "title": "{count, plural, one {På tide å gå gjennom # element} other {På tide å gå gjennom # elementer}}"
+    "title": "{count, plural, one {På tide å gå gjennom # element} other {På tide å gå gjennom # elementer}}",
+    "description": "Behandle det du har fanget opp i dag, i én rolig runde.",
+    "action": "Åpne innboks"
+  },
+  "snoozeDue": {
+    "notificationTitle": "{count, plural, one {# slumret element} other {# slumrede elementer}}",
+    "notificationBody": "{count, plural, one {Det slumrede elementet ditt er klart til gjennomgang} other {De slumrede elementene dine er klare}}",
+    "toast": "{count, plural, =1 {«{itemTitle}» er tilbake fra slumring} one {# slumret element er tilbake} other {# slumrede elementer er tilbake}}"
   }
 }

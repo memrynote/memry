@@ -147,8 +147,8 @@
     "error": "Tidak dapat menyambungkan Google Calendar. Cuba lagi."
   },
   "metadata": {
-    "attendees": "Hadirin",
-    "attendees-count": "Hadirin ({count})",
+    "attendees": "Peserta",
+    "attendees-count": "Peserta ({count})",
     "reminders": "Peringatan",
     "default-reminders": "Peringatan lalai",
     "visibility": "Keterlihatan:",
@@ -185,7 +185,7 @@
       "couldNotRescheduleInboxItem": "Tidak dapat menjadualkan semula."
     },
     "inboxSnoozePopover": {
-      "title": "Item peti masuk ditunda",
+      "title": "Item peti masuk yang ditunda",
       "openInInbox": "Buka dalam peti masuk",
       "unsnoozeNow": "Nyahtunda sekarang",
       "reschedule": "Jadualkan semula"
@@ -354,15 +354,15 @@
     "kind": "Kalendar yang dilanggan",
     "kindAppleEventKit": "Mac ini",
     "close": "Tutup",
-    "detailsFailed": "Tidak dapat memuatkan hadirin dan pautan untuk acara ini. Acara itu sendiri tidak berubah.",
+    "detailsFailed": "Tidak dapat memuatkan peserta dan pautan untuk acara ini. Acara itu sendiri tidak berubah.",
     "showMore": "Tunjukkan lagi",
-    "showLess": "Tunjukkan kurang",
+    "showLess": "Tunjukkan lebih sedikit",
     "organizer": "penganjur",
     "you": "anda",
     "phone": "Sertai melalui telefon",
-    "alert": "{minutes, plural, =0 {Makluman pada masa mula} other {Makluman # minit sebelum}}",
-    "alertHours": "{hours, plural, other {Makluman # jam sebelum}}",
-    "alertDays": "{days, plural, other {Makluman # hari sebelum}}",
+    "alert": "{minutes, plural, =0 {Makluman pada masa mula} other {Makluman # minit sebelumnya}}",
+    "alertHours": "{hours, plural, other {Makluman # jam sebelumnya}}",
+    "alertDays": "{days, plural, other {Makluman # hari sebelumnya}}",
     "recurrence": {
       "daily": "{count, plural, =1 {Berulang setiap hari} other {Berulang setiap # hari}}",
       "weekly": "{count, plural, =1 {Berulang setiap minggu} other {Berulang setiap # minggu}}",

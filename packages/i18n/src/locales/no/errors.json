@@ -1,15 +1,15 @@
 {
   "generic": {
-    "somethingWentWrong": "Noe gikk galt. Vennligst prøv igjen.",
+    "somethingWentWrong": "Noe gikk galt. Prøv igjen.",
     "operationFailed": "Operasjonen mislyktes",
     "unknown": "Det oppstod en ukjent feil"
   },
   "ipc": {
-    "noVaultOpen": "Ingen hvelv er åpen. Vennligst åpne et hvelv først."
+    "noVaultOpen": "Ingen hvelv er åpent. Åpne et hvelv først."
   },
   "vault": {
-    "notFound": "Finner ikke hvelv. Det kan ha blitt flyttet eller slettet.",
-    "notInitialized": "Ingen hvelv er åpen. Åpne eller opprett et hvelv for å fortsette.",
+    "notFound": "Finner ikke hvelvet. Det kan ha blitt flyttet eller slettet.",
+    "notInitialized": "Ingen hvelv er åpent. Åpne eller opprett et hvelv for å fortsette.",
     "invalidPath": "Den valgte banen er ikke en gyldig hvelvplassering.",
     "permissionDenied": "Tillatelse nektet. Sjekk at du har tilgang til denne mappen.",
     "alreadyExists": "Det finnes allerede et hvelv på dette stedet.",
@@ -23,18 +23,19 @@
     "readFailed": "Kunne ikke lese dette notatet. Filen kan være låst eller ødelagt.",
     "deleteFailed": "Kunne ikke slette dette notatet. Sjekk filtillatelser.",
     "invalidPath": "Notatbanen er ugyldig.",
-    "applyTemplateFailed": "Kunne ikke bruke malen",
     "createFailed": "Kunne ikke opprette notatet",
-    "deleteVersionFailed": "Kunne ikke slette versjonen",
-    "exportHtmlFailed": "Kunne ikke eksportere HTML",
-    "exportPdfFailed": "Kunne ikke eksportere PDF",
-    "importFilesFailed": "Kunne ikke importere filene",
-    "moveFailed": "Kunne ikke flytte notatet",
+    "updateFailed": "Kunne ikke oppdatere notatet",
     "renameFailed": "Kunne ikke gi notatet nytt navn",
-    "reorderFailed": "Kunne ikke endre rekkefølgen på notatene",
+    "moveFailed": "Kunne ikke flytte notatet",
+    "applyTemplateFailed": "Kunne ikke bruke malen",
+    "appendBlocksFailed": "Kunne ikke flytte blokken til det notatet",
+    "exportPdfFailed": "Kunne ikke eksportere PDF",
+    "exportHtmlFailed": "Kunne ikke eksportere HTML",
     "restoreVersionFailed": "Kunne ikke gjenopprette versjonen",
-    "setLocalOnlyFailed": "Kunne ikke angi kun lokal",
-    "updateFailed": "Kunne ikke oppdatere notatet"
+    "deleteVersionFailed": "Kunne ikke slette versjonen",
+    "reorderFailed": "Kunne ikke endre rekkefølgen på notatene",
+    "importFilesFailed": "Kunne ikke importere filene",
+    "setLocalOnlyFailed": "Kunne ikke angi at notatet bare skal lagres lokalt"
   },
   "database": {
     "connectionFailed": "Kunne ikke koble til den lokale databasen. Prøv å starte appen på nytt.",
@@ -47,25 +48,30 @@
   "watcher": {
     "startFailed": "Kunne ikke begynne å se etter filendringer.",
     "stopFailed": "Kunne ikke stoppe filovervåkingen.",
-    "eventError": "Det oppsto en feil mens du så etter filendringer."
+    "eventError": "Det oppsto en feil under overvåkingen av filendringer."
   },
   "attachment": {
     "fileTooLarge": "Denne filen er for stor til å legge ved.",
     "unsupportedType": "Denne filtypen støttes ikke.",
     "writeFailed": "Kunne ikke lagre vedlegget. Sjekk diskplass.",
+    "diskFull": "Det er ikke nok diskplass til å lagre dette vedlegget. Frigjør plass, så fullføres nedlastingen.",
     "deleteFailed": "Kunne ikke slette vedlegget.",
-    "downloadFailed": "Nedlasting av vedlegget mislyktes",
-    "downloadProgressFailed": "Kunne ikke hente nedlastingsstatus",
     "uploadFailed": "Opplasting av vedlegget mislyktes",
     "uploadProgressFailed": "Kunne ikke hente opplastingsstatus",
-    "emptyFile": "Kan ikke laste opp en tom fil",
+    "downloadFailed": "Nedlasting av vedlegget mislyktes",
+    "downloadProgressFailed": "Kunne ikke hente nedlastingsstatus",
     "exceedsMaxSize": "Filen er for stor: {size} overskrider grensen på {limit}",
-    "exceedsPlanLimit": "Filen er større enn abonnementet ditt tillater: {size} overskrider {limit}"
+    "exceedsPlanLimit": "Filen er større enn abonnementet ditt tillater: {size} overskrider {limit}",
+    "emptyFile": "Kan ikke laste opp en tom fil"
+  },
+  "crdt": {
+    "persistenceDegradedTitle": "Redigeringsloggen lagres ikke på denne enheten",
+    "persistenceDegradedBody": "Notatene dine er trygge – de ligger i hvelvet ditt som vanlige filer, og de åpnes og lagres fortsatt som normalt. Bare den lokale redigeringsloggen og flettetilstanden på denne enheten ligger i minnet, så de starter på nytt hver gang memrynote åpnes."
   },
   "encryption": {
     "failed": "Kunne ikke kryptere data. Det kan hende at nøklene dine må regenereres.",
     "decryptionFailed": "Kunne ikke dekryptere data. Krypteringsnøklene dine kan være utdaterte.",
-    "invalidKeyLength": "Ugyldig krypteringsnøkkel. Prøv å logge av og på igjen.",
+    "invalidKeyLength": "Ugyldig krypteringsnøkkel. Prøv å logge ut og på igjen.",
     "invalidNonceLength": "Krypteringsfeil. Prøv operasjonen på nytt."
   },
   "inboxAttachment": {
@@ -73,17 +79,25 @@
     "deleteFailed": "Kunne ikke slette innboksvedlegget."
   },
   "sync": {
-    "networkOffline": "Du er frakoblet. Endringer synkroniseres når du kobler til igjen.",
-    "networkTimeout": "Synkroniseringsserveren tok for lang tid å svare. Vil prøve igjen snart.",
-    "serverError": "Synkroniseringsserveren oppdaget en feil. Vil prøve på nytt automatisk.",
+    "networkOffline": "Du er uten nett. Endringene synkroniseres når du er på nett igjen.",
+    "networkTimeout": "Synkroniseringsserveren brukte for lang tid på å svare. Prøver igjen snart.",
+    "serverError": "Det oppsto en feil på synkroniseringsserveren. Prøver igjen automatisk.",
     "authExpired": "Økten din er utløpt. Logg på igjen for å fortsette synkroniseringen.",
     "deviceRevoked": "Denne enheten er fjernet fra kontoen din.",
     "rateLimited": "For mange forespørsler. Synkroniseringen gjenopptas snart.",
-    "cryptoFailure": "Kunne ikke kryptere eller dekryptere synkroniseringsdata. Prøv å logge av og på igjen.",
-    "versionIncompatible": "Denne versjonen av memrynote støttes ikke lenger. Vennligst oppdater.",
-    "storageQuotaExceeded": "Synkroniseringslagringen din er full. Frigjør plass eller oppgrader planen din.",
+    "cryptoFailure": "Kunne ikke kryptere eller dekryptere synkroniseringsdata. Prøv å logge ut og på igjen.",
+    "versionIncompatible": "Denne versjonen av memrynote støttes ikke lenger. Oppdater appen.",
+    "storageQuotaExceeded": "Synkroniseringslagringen din er full. Frigjør plass eller oppgrader abonnementet ditt.",
+    "fileTooLarge": "Denne filen er større enn abonnementet ditt tillater. Oppgrader abonnementet for å synkronisere større filer.",
+    "noteTooLarge": "Et notat er for stort til å synkroniseres. Del det opp i mindre notater for å løse dette.",
+    "noteTooLargeNamed": "«{title}» er for stort til å synkroniseres. Del det opp i mindre notater for å løse dette.",
+    "attachmentUploadFailed": "Kunne ikke synkronisere vedlegget «{filename}». Det blir værende på denne enheten.",
+    "paymentRequired": "Et betalt Sync-abonnement kreves for å bruke vertsbasert kryptert synkronisering.",
+    "vaultLimitExceeded": "Abonnementet ditt synkroniserer færre hvelv enn denne kontoen har, så dette hvelvet blir liggende på denne enheten. Fjern et hvelv fra kontoen din i Innstillinger → Konto, eller oppgrader abonnementet.",
     "certificatePinFailed": "Sikker tilkobling mislyktes. Sjekk nettverkstilkoblingen.",
-    "unknown": "Det oppstod en uventet synkroniseringsfeil. Vil prøve på nytt automatisk.",
+    "deviceKeyMismatch": "Sikkerhetsnøkkelen til denne enheten samsvarer ikke lenger med den som er registrert for kontoen din, så serveren avviser endringene fra den. Logg på igjen på denne enheten for å registrere den på nytt.",
+    "keychainUnavailable": "Synkroniseringen er satt på pause fordi Memry ikke får lest synkroniseringsnøklene fra nøkkelringen i systemet akkurat nå. Lås opp nøkkelringen, så fortsetter synkroniseringen av seg selv. Hvis ikke, start Memry på nytt. Ingenting ble slettet.",
+    "unknown": "Det oppstod en uventet synkroniseringsfeil. Prøver igjen automatisk.",
     "statusFetchFailed": "Kunne ikke hente synkroniseringsstatus",
     "engineNotInitialized": "Synkroniseringsmotoren er ikke initialisert. Åpne et hvelv for å starte synkronisering.",
     "triggerFailed": "Synkronisering mislyktes",
@@ -91,129 +105,144 @@
     "resumeFailed": "Kunne ikke gjenoppta synkroniseringen",
     "settingsNotInitialized": "Innstillingssynkronisering er ikke initialisert",
     "securityQuarantinePermanent": "Et synkroniseringselement kunne ikke bekreftes og har blitt satt i karantene for sikkerhets skyld.",
-    "securityQuarantineRetry": "Et synkroniseringselement mislyktes med signaturverifisering og vil bli forsøkt på nytt.",
+    "securityQuarantineRetry": "Et synkroniseringselement besto ikke signaturkontrollen og blir forsøkt på nytt.",
     "certificatePinPaused": "Sikker tilkobling til synkroniseringsserver kunne ikke bekreftes. Synkroniseringen er satt på pause for å beskytte deg.",
-    "paymentRequired": "Et betalt Sync-abonnement kreves for å bruke vertsbasert kryptert synkronisering.",
-    "attachmentUploadFailed": "Kunne ikke synkronisere vedlegget «{filename}». Det blir værende på denne enheten.",
-    "fileTooLarge": "Denne filen er større enn abonnementet ditt tillater. Oppgrader abonnementet for å synkronisere større filer.",
     "vaultRecovered": "Hvelvnøkkelen er gjenopprettet. Synkroniseringen fortsetter.",
-    "historyFetchFailed": "Kunne ikke hente synkroniseringshistorikken",
-    "keyPersistenceFailed": "Kunne ikke lagre krypteringsnøkkelen sikkert. Enhetsregistreringen er rullet tilbake. Vennligst prøv igjen.",
     "serverUnreachable": "Kan ikke koble til synkroniseringsserveren. Sjekk internettforbindelsen din.",
+    "keyPersistenceFailed": "Kunne ikke lagre krypteringsnøkkelen sikkert. Enhetsregistreringen er rullet tilbake. Prøv igjen.",
+    "historyFetchFailed": "Kunne ikke hente synkroniseringshistorikken",
     "updateSyncedSettingFailed": "Kunne ikke oppdatere den synkroniserte innstillingen",
     "requestTimedOut": "Synkroniseringsforespørselen ble tidsavbrutt. Sjekk internettforbindelsen din."
   },
+  "googleCalendar": {
+    "connectFailed": "Kunne ikke koble til Google Calendar. Prøv igjen om litt.",
+    "reconnectNeeded": "Tilkoblingen til Google Calendar er utløpt. Koble fra og koble til igjen.",
+    "misconfigured": "Google Calendar er ikke satt opp riktig. Kontakt kundestøtte hvis dette fortsetter.",
+    "scopeMissing": "Vi fikk ikke tilgang til Google Calendar fordi kalendertillatelsen ikke ble gitt. Prøv igjen, og pass på at avkrysningsboksen for Kalender forblir markert i Googles samtykkeskjerm.",
+    "accessDenied": "Tilgangen til Google Calendar ble avslått. Du kan koble til igjen når du er klar.",
+    "temporarilyUnavailable": "Google Calendar er midlertidig utilgjengelig. Prøv igjen om kort tid."
+  },
   "agent": {
-    "conversationBusy": "Samtalen er opptatt",
-    "runtimeStarting": "Agentkjøretiden starter. Prøv igjen."
+    "runtimeStarting": "Agentkjøretiden starter. Prøv igjen.",
+    "conversationBusy": "Samtalen er opptatt"
   },
   "ai": {
-    "inlineDisabled": "AI-redigering i teksten er slått av",
+    "inlineDisabled": "KI-redigering i teksten er slått av",
     "listOllamaModelsFailed": "Kunne ikke liste Ollama-modeller"
   },
   "auth": {
-    "approveLinkingFailed": "Kunne ikke godkjenne sammenkoblingen",
-    "cannotRemoveCurrentDevice": "Kan ikke fjerne enheten du bruker nå",
-    "completeLinkingFailed": "Kunne ikke fullføre sammenkoblingen",
-    "confirmRecoveryPhraseFailed": "Kunne ikke bekrefte gjenopprettingsfrasen",
-    "fetchSasCodeFailed": "Kunne ikke hente SAS-koden",
-    "finalizeVaultChoiceFailed": "Kunne ikke fullføre valget av hvelv",
-    "initiateOAuthFailed": "Kunne ikke starte OAuth",
-    "invalidRecoveryPhraseFormat": "Ugyldig format på gjenopprettingsfrasen",
-    "linkDeviceQrFailed": "Kunne ikke koble til enheten med QR",
-    "linkRecoveryPhraseFailed": "Kunne ikke koble til med gjenopprettingsfrase",
     "notAuthenticated": "Ikke pålogget",
+    "sessionExpired": "Økten er utløpt. Logg på igjen.",
+    "setupSessionExpired": "Påloggingen din ble tidsavbrutt før dette ble fullført. Logg på igjen, og skriv deretter inn gjenopprettingsfrasen.",
+    "setupSessionExpiredLinking": "Påloggingen din ble tidsavbrutt før denne enheten var ferdig tilkoblet. Logg på igjen, og skann koden en gang til.",
+    "invalidRecoveryPhraseFormat": "Ugyldig format på gjenopprettingsfrasen",
+    "recoveryPhraseMismatch": "Gjenopprettingsfrasen stemmer ikke. Prøv igjen.",
+    "cannotRemoveCurrentDevice": "Kan ikke fjerne enheten du bruker nå",
+    "requestOtpFailed": "Kunne ikke be om engangskode",
+    "verifyOtpFailed": "Kunne ikke bekrefte engangskoden",
+    "resendOtpFailed": "Kunne ikke sende engangskoden på nytt",
+    "linkDeviceQrFailed": "Kunne ikke koble til enheten med QR-kode",
+    "completeLinkingFailed": "Kunne ikke fullføre tilkoblingen",
+    "finalizeVaultChoiceFailed": "Kunne ikke fullføre valget av hvelv",
     "pickFolderFailed": "Kunne ikke velge mappe",
-    "recoveryPhraseMismatch": "Gjenopprettingsfrasen stemmer ikke. Vennligst prøv igjen.",
+    "linkRecoveryPhraseFailed": "Kunne ikke koble til med gjenopprettingsfrase",
+    "approveLinkingFailed": "Kunne ikke godkjenne tilkoblingen",
+    "fetchSasCodeFailed": "Kunne ikke hente SAS-koden",
     "removeDeviceFailed": "Kunne ikke fjerne enheten",
     "renameDeviceFailed": "Kunne ikke gi enheten nytt navn",
-    "requestOtpFailed": "Kunne ikke be om engangskode",
-    "resendOtpFailed": "Kunne ikke sende engangskoden på nytt",
-    "sessionExpired": "Økten er utløpt. Logg på igjen.",
+    "initiateOAuthFailed": "Kunne ikke starte OAuth",
     "setupFirstDeviceOAuthFailed": "Kunne ikke sette opp den første enheten med OAuth",
-    "verifyOtpFailed": "Kunne ikke bekrefte engangskoden"
+    "confirmRecoveryPhraseFailed": "Kunne ikke bekrefte gjenopprettingsfrasen"
   },
   "bookmark": {
-    "alreadyBookmarked": "Elementet er allerede bokmerket",
+    "alreadyBookmarked": "Elementet har allerede et bokmerke",
     "notFound": "Finner ikke bokmerket"
   },
   "calendar": {
-    "connectProviderFailed": "Kunne ikke koble til kalenderleverandøren",
-    "createEventFailed": "Kunne ikke opprette kalenderhendelsen",
-    "deleteEventFailed": "Kunne ikke slette kalenderhendelsen",
-    "disconnectProviderFailed": "Kunne ikke koble fra kalenderleverandøren",
     "eventNotFound": "Finner ikke kalenderhendelsen",
-    "googleNotConnected": "Google Calendar er ikke koblet til på denne enheten",
-    "listGoogleCalendarsFailed": "Kunne ikke liste Google-kalendere",
-    "onlyGoogleSourcesRetryable": "Bare Google-kalenderkilder kan forsøkes på nytt",
-    "onlySourcesSelectable": "Bare kalenderkilder kan velges",
-    "promoteExternalEventFailed": "Kunne ikke forfremme den eksterne kalenderhendelsen",
-    "refreshProviderFailed": "Kunne ikke oppdatere kalenderleverandøren",
-    "retryGoogleSourceSyncFailed": "Kunne ikke forsøke synkroniseringen av Google Calendar-kilden på nytt",
-    "setDefaultGoogleCalendarFailed": "Kunne ikke angi standard Google-kalender",
-    "signInBeforeRefresh": "Logg på memrynote før du oppdaterer Google Calendar",
     "sourceNotFound": "Finner ikke kalenderkilden",
+    "onlySourcesSelectable": "Bare kalenderkilder kan velges",
+    "onlyGoogleSourcesRetryable": "Bare Google-kalenderkilder kan forsøkes på nytt",
+    "signInBeforeRefresh": "Logg på memrynote før du oppdaterer Google Calendar",
+    "googleNotConnected": "Google Calendar er ikke koblet til på denne enheten",
     "syncFailed": "Synkronisering mislyktes",
+    "createEventFailed": "Kunne ikke opprette kalenderhendelsen",
     "updateEventFailed": "Kunne ikke oppdatere kalenderhendelsen",
-    "updateSourceSelectionFailed": "Kunne ikke oppdatere valget av kalenderkilder"
+    "deleteEventFailed": "Kunne ikke slette kalenderhendelsen",
+    "updateSourceSelectionFailed": "Kunne ikke oppdatere valget av kalenderkilder",
+    "updateSubscriptionFailed": "Kunne ikke oppdatere den abonnerte kalenderen",
+    "connectProviderFailed": "Kunne ikke koble til kalenderleverandøren",
+    "disconnectProviderFailed": "Kunne ikke koble fra kalenderleverandøren",
+    "refreshProviderFailed": "Kunne ikke oppdatere kalenderleverandøren",
+    "listGoogleCalendarsFailed": "Kunne ikke liste Google-kalendere",
+    "setDefaultGoogleCalendarFailed": "Kunne ikke angi standard Google-kalender",
+    "retryGoogleSourceSyncFailed": "Kunne ikke forsøke synkroniseringen av Google Calendar-kilden på nytt",
+    "promoteExternalEventFailed": "Kunne ikke gjøre den eksterne kalenderhendelsen redigerbar",
+    "onlyCalendarSourcesRetryable": "Bare kalenderkilder kan forsøkes på nytt",
+    "invalidProviderSettings": "Ugyldige innstillinger for kalenderleverandøren",
+    "getExternalEventFailed": "Kunne ikke laste inn denne hendelsen. Den ligger fortsatt i kalenderen din – prøv å åpne den igjen."
+  },
+  "canvasFolder": {
+    "exists": "Det finnes allerede en lerretsmappe med det navnet her.",
+    "descendant": "En lerretsmappe kan ikke flyttes inn i en av sine egne undermapper.",
+    "moveFailed": "Lerretsmappen kunne ikke flyttes. Den kan være åpen i en annen app.",
+    "depth": "Lerretsmapper kan ikke nestes dypere.",
+    "invalidName": "Skriv inn et navn på lerretsmappen."
   },
   "folder": {
     "createFailed": "Kunne ikke opprette mappen",
-    "deleteFailed": "Kunne ikke slette mappen",
     "renameFailed": "Kunne ikke gi mappen nytt navn",
+    "deleteFailed": "Kunne ikke slette mappen",
     "setConfigFailed": "Kunne ikke lagre mappeoppsettet"
   },
   "folderView": {
-    "deleteViewFailed": "Kunne ikke slette visningen",
     "setConfigFailed": "Kunne ikke lagre oppsettet",
-    "setViewFailed": "Kunne ikke lagre visningen"
-  },
-  "googleCalendar": {
-    "accessDenied": "Tilgangen til Google Calendar ble avslått. Du kan koble til igjen når du er klar.",
-    "connectFailed": "Kunne ikke koble til Google Calendar. Prøv igjen om litt.",
-    "misconfigured": "Google Calendar er ikke satt opp riktig. Kontakt kundestøtte hvis dette fortsetter.",
-    "reconnectNeeded": "Tilkoblingen til Google Calendar er utløpt. Koble fra og koble til igjen.",
-    "scopeMissing": "Vi fikk ikke tilgang til Google Calendar fordi kalendertillatelsen ikke ble gitt. Prøv igjen, og pass på at avkrysningsboksen for Kalender forblir markert i Googles samtykkeskjerm.",
-    "temporarilyUnavailable": "Google Calendar er midlertidig utilgjengelig. Prøv igjen om kort tid."
+    "setViewFailed": "Kunne ikke lagre visningen",
+    "deleteViewFailed": "Kunne ikke slette visningen"
   },
   "importer": {
-    "cancelFailed": "Avbrytingen mislyktes",
     "fileSelectionFailed": "Filvalget mislyktes",
     "importFailed": "Import mislyktes",
-    "listFailed": "Kunne ikke liste importører",
-    "previewFailed": "Forhåndsvisning mislyktes"
+    "cancelFailed": "Avbrytingen mislyktes",
+    "previewFailed": "Forhåndsvisning mislyktes",
+    "listFailed": "Kunne ikke hente listen over importverktøy",
+    "appleNotesFoldersFailed": "Kunne ikke lese Apple Notes-mappene dine",
+    "onenoteStatusFailed": "Kunne ikke lese tilkoblingsstatusen for OneNote",
+    "onenoteConnectFailed": "Microsoft-pålogging mislyktes",
+    "onenoteDisconnectFailed": "Kunne ikke koble fra Microsoft-kontoen",
+    "onenoteNotebooksFailed": "Kunne ikke laste inn OneNote-notatbøker"
   },
   "project": {
-    "archiveFailed": "Kunne ikke arkivere prosjektet",
-    "captureLinkFailed": "Kunne ikke fange inn lenken",
     "createFailed": "Kunne ikke opprette prosjektet",
-    "deleteFailed": "Kunne ikke slette prosjektet",
-    "importFilesFailed": "Kunne ikke importere filene",
-    "linkItemFailed": "Kunne ikke koble elementet",
-    "listForItemFailed": "Kunne ikke liste prosjekter for elementet",
-    "reorderFailed": "Kunne ikke endre rekkefølgen på prosjektene",
-    "setHomeNoteFailed": "Kunne ikke angi hjemmenotat",
-    "unlinkItemFailed": "Kunne ikke koble fra elementet",
     "updateFailed": "Kunne ikke oppdatere prosjektet",
-    "updatePinnedFailed": "Kunne ikke oppdatere festet tilstand"
+    "deleteFailed": "Kunne ikke slette prosjektet",
+    "archiveFailed": "Kunne ikke arkivere prosjektet",
+    "reorderFailed": "Kunne ikke endre rekkefølgen på prosjektene",
+    "linkItemFailed": "Kunne ikke knytte elementet til prosjektet",
+    "unlinkItemFailed": "Kunne ikke fjerne elementet fra prosjektet",
+    "captureLinkFailed": "Kunne ikke fange opp lenken",
+    "importFilesFailed": "Kunne ikke importere filene",
+    "updatePinnedFailed": "Kunne ikke feste eller løsne prosjektet",
+    "setHomeNoteFailed": "Kunne ikke angi notatet for prosjektsiden",
+    "listForItemFailed": "Kunne ikke liste prosjekter for elementet"
   },
   "property": {
-    "alreadyExists": "Egenskapen «{name}» finnes allerede",
-    "createDefinitionFailed": "Kunne ikke opprette egenskapsdefinisjonen",
-    "entityNotFound": "Finner ikke enheten",
+    "entityNotFound": "Finner ikke objektet",
     "notFound": "Finner ikke egenskapen «{name}»",
-    "renameFailed": "Kunne ikke gi egenskapen nytt navn",
-    "setCalendarVisibilityFailed": "Kunne ikke angi synlighet for kalenderegenskapen",
+    "alreadyExists": "Egenskapen «{name}» finnes allerede",
     "setFailed": "Kunne ikke lagre egenskapene",
-    "updateDefinitionFailed": "Kunne ikke oppdatere egenskapsdefinisjonen"
+    "renameFailed": "Kunne ikke gi egenskapen nytt navn",
+    "createDefinitionFailed": "Kunne ikke opprette egenskapsdefinisjonen",
+    "updateDefinitionFailed": "Kunne ikke oppdatere egenskapsdefinisjonen",
+    "setCalendarVisibilityFailed": "Kunne ikke angi synlighet for kalenderegenskapen"
   },
   "reminder": {
-    "createFailed": "Kunne ikke opprette påminnelsen",
-    "dismissAllFailed": "Kunne ikke lukke påminnelsene",
-    "dismissFailed": "Kunne ikke lukke påminnelsen",
     "notFound": "Finner ikke påminnelsen",
+    "createFailed": "Kunne ikke opprette påminnelsen",
+    "updateFailed": "Kunne ikke oppdatere påminnelsen",
+    "dismissFailed": "Kunne ikke lukke påminnelsen",
     "snoozeFailed": "Kunne ikke slumre påminnelsen",
-    "updateFailed": "Kunne ikke oppdatere påminnelsen"
+    "dismissAllFailed": "Kunne ikke lukke påminnelsene"
   },
   "savedFilter": {
     "notFound": "Finner ikke det lagrede filteret"
@@ -222,59 +251,67 @@
     "rebuildFailed": "Gjenoppbyggingen mislyktes"
   },
   "settings": {
+    "unknownVault": "Ukjent hvelv",
     "modelAlreadyLoading": "Modellen lastes allerede inn",
     "modelLoadFailed": "Kunne ikke laste inn modellen",
-    "shortcutInUse": "Hurtigtasten {shortcut} er allerede i bruk",
+    "voiceModelDownloadFailed": "Kunne ikke laste ned talemodellen",
     "terminalCommandInstallFailed": "Kunne ikke installere terminalkommandoen",
     "terminalCommandUninstallFailed": "Kunne ikke avinstallere terminalkommandoen",
-    "unknownVault": "Ukjent hvelv",
-    "voiceModelDownloadFailed": "Kunne ikke laste ned talemodellen"
+    "shortcutInUse": "Hurtigtasten {shortcut} er allerede i bruk"
   },
   "tag": {
+    "mergeSameTag": "Kilde- og måltaggen er den samme",
     "categoryNameRequired": "Kategorinavn er påkrevd",
-    "createCategoryFailed": "Kunne ikke opprette etikettkategorien",
-    "deleteCategoryFailed": "Kunne ikke slette etikettkategorien",
-    "deleteFailed": "Kunne ikke slette etiketten",
-    "listCategoriesFailed": "Kunne ikke liste etikettkategoriene",
-    "mergeFailed": "Kunne ikke slå sammen etikettene",
-    "mergeSameTag": "Kilde- og måletiketten er den samme",
     "pinNoteFailed": "Kunne ikke feste notatet",
-    "removeFromNoteFailed": "Kunne ikke fjerne etiketten fra notatet",
-    "renameCategoryFailed": "Kunne ikke gi etikettkategorien nytt navn",
-    "renameFailed": "Kunne ikke gi etiketten nytt navn",
-    "reorderFailed": "Kunne ikke endre rekkefølgen på etikettene",
     "unpinNoteFailed": "Kunne ikke løsne notatet",
-    "updateColorFailed": "Kunne ikke oppdatere etikettfargen",
-    "updateIconFailed": "Kunne ikke oppdatere etikettikonet"
+    "renameFailed": "Kunne ikke gi taggen nytt navn",
+    "updateColorFailed": "Kunne ikke oppdatere taggfargen",
+    "updateIconFailed": "Kunne ikke oppdatere taggikonet",
+    "deleteFailed": "Kunne ikke slette taggen",
+    "removeFromNoteFailed": "Kunne ikke fjerne taggen fra notatet",
+    "mergeFailed": "Kunne ikke slå sammen taggene",
+    "reorderFailed": "Kunne ikke endre rekkefølgen på taggene",
+    "listCategoriesFailed": "Kunne ikke liste taggkategoriene",
+    "createCategoryFailed": "Kunne ikke opprette taggkategorien",
+    "renameCategoryFailed": "Kunne ikke gi taggkategorien nytt navn",
+    "deleteCategoryFailed": "Kunne ikke slette taggkategorien"
   },
   "task": {
-    "archiveFailed": "Kunne ikke arkivere oppgaven",
-    "archiveManyFailed": "Kunne ikke arkivere oppgavene",
+    "createFailed": "Kunne ikke opprette oppgaven",
+    "updateFailed": "Kunne ikke oppdatere oppgaven",
+    "deleteFailed": "Kunne ikke slette oppgaven",
     "completeFailed": "Kunne ikke fullføre oppgaven",
-    "completeManyFailed": "Kunne ikke fullføre oppgavene",
+    "uncompleteFailed": "Kunne ikke merke oppgaven som ikke fullført",
+    "archiveFailed": "Kunne ikke arkivere oppgaven",
+    "unarchiveFailed": "Kunne ikke hente oppgaven ut av arkivet",
+    "moveFailed": "Kunne ikke flytte oppgaven",
+    "reorderFailed": "Kunne ikke endre rekkefølgen på oppgavene",
+    "duplicateFailed": "Kunne ikke duplisere oppgaven",
     "convertToSubtaskFailed": "Kunne ikke gjøre om til deloppgave",
     "convertToTaskFailed": "Kunne ikke gjøre om til oppgave",
-    "createFailed": "Kunne ikke opprette oppgaven",
-    "deleteFailed": "Kunne ikke slette oppgaven",
+    "completeManyFailed": "Kunne ikke fullføre oppgavene",
     "deleteManyFailed": "Kunne ikke slette oppgavene",
-    "duplicateFailed": "Kunne ikke duplisere oppgaven",
-    "moveFailed": "Kunne ikke flytte oppgaven",
     "moveManyFailed": "Kunne ikke flytte oppgavene",
-    "reorderFailed": "Kunne ikke endre rekkefølgen på oppgavene",
-    "unarchiveFailed": "Kunne ikke hente oppgaven ut av arkivet",
-    "uncompleteFailed": "Kunne ikke merke oppgaven som ikke fullført",
-    "updateFailed": "Kunne ikke oppdatere oppgaven"
+    "archiveManyFailed": "Kunne ikke arkivere oppgavene",
+    "projectMissing": "Det prosjektet finnes ikke lenger"
   },
   "taskStatus": {
     "createFailed": "Kunne ikke opprette statusen",
+    "updateFailed": "Kunne ikke oppdatere statusen",
     "deleteFailed": "Kunne ikke slette statusen",
-    "reorderFailed": "Kunne ikke endre rekkefølgen på statusene",
-    "updateFailed": "Kunne ikke oppdatere statusen"
+    "reorderFailed": "Kunne ikke endre rekkefølgen på statusene"
   },
   "template": {
     "createFailed": "Kunne ikke opprette malen",
+    "updateFailed": "Kunne ikke oppdatere malen",
     "deleteFailed": "Kunne ikke slette malen",
-    "duplicateFailed": "Kunne ikke duplisere malen",
-    "updateFailed": "Kunne ikke oppdatere malen"
+    "duplicateFailed": "Kunne ikke duplisere malen"
+  },
+  "customIcon": {
+    "unreadableImage": "Bildet kunne ikke leses. Prøv en PNG-, JPG-, GIF-, WEBP- eller SVG-fil.",
+    "tooLarge": "Bildet er for stort. Velg en fil under 2 MB.",
+    "invalidUrl": "Det er ikke en nettlenke. Lim inn en bildeadresse som begynner med http eller https.",
+    "downloadFailed": "Bildet kunne ikke lastes ned. Sjekk lenken og prøv igjen.",
+    "unsupportedUrl": "Lenken peker ikke til et PNG-, JPG-, GIF-, WEBP- eller SVG-bilde."
   }
 }

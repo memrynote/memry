@@ -212,7 +212,7 @@
     "unsavedRetry": "Kandungan anda masih dalam ingatan. Klik untuk cuba menyimpan semula.",
     "noteNotFound": "Nota “{target}” tidak ditemui",
     "createLinkedFailed": "Gagal membuat nota terpaut",
-    "fileNotFound": "Fail tidak dijumpai: {target}",
+    "fileNotFound": "Fail tidak ditemui: {target}",
     "openLinkedItemFailed": "Gagal membuka item terpaut",
     "errorPrefix": "Ralat:",
     "deleteFailed": "Gagal memadam entri jurnal",
@@ -229,7 +229,7 @@
     "title": "Ralat jurnal",
     "description": "Jurnal mengalami ralat untuk {date}. Perubahan terbaru anda mungkin tidak disimpan.",
     "descriptionNoDate": "Jurnal mengalami ralat. Perubahan terbaru anda mungkin tidak disimpan.",
-    "unsavedContent": "Kandungan tidak disimpan dikesan ({length} aksara)"
+    "unsavedContent": "Kandungan yang belum disimpan dikesan ({length} aksara)"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {

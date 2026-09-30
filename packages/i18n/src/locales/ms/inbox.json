@@ -57,8 +57,8 @@
     "tipSuffix": "untuk catat pantas daripada papan keratan",
     "archivedNone": "Tiada item yang diarkibkan",
     "archivedNoMatches": "Tiada item arkib yang sepadan",
-    "noItemsYet": "Tiada item lagi",
-    "noItemsFiled": "Tiada item difailkan lagi",
+    "noItemsYet": "Belum ada item",
+    "noItemsFiled": "Belum ada item yang difailkan",
     "noFolders": "Tiada folder ditemui",
     "noNotes": "Tiada nota ditemui",
     "allMatchesLinked": "Semua padanan sudah dipautkan"
@@ -176,7 +176,7 @@
     "ai": "AI",
     "match": {
       "strong": "Padanan kuat",
-      "likely": "Padanan berkemungkinan",
+      "likely": "Mungkin sepadan",
       "weak": "Padanan lemah"
     },
     "selectFolder": "Pilih folder",
@@ -289,11 +289,11 @@
       },
       "tomorrow": {
         "label": "Esok",
-        "description": "Esok pada 9 pagi"
+        "description": "Esok pukul 9 pagi"
       },
       "nextWeek": {
         "label": "Minggu depan",
-        "description": "Isnin pada 9 pagi"
+        "description": "Isnin pukul 9 pagi"
       },
       "inMinutes": {
         "label": "Dalam {count, plural, other {# minit}}"
@@ -413,7 +413,7 @@
       "captureActivity": "Aktiviti catatan"
     },
     "componentsInboxInboxFilingHistory": {
-      "noItemsFiledYet": "Tiada item difailkan lagi",
+      "noItemsFiledYet": "Belum ada item yang difailkan",
       "recentlyFiled": "Difailkan baru-baru ini",
       "latestActionsOnYourInbox": "Tindakan terkini pada peti masuk anda",
       "linked": "Dipautkan"
@@ -550,6 +550,6 @@
   "snoozeDue": {
     "notificationTitle": "{count, plural, other {# item ditunda}}",
     "notificationBody": "{count, plural, =1 {Item anda yang ditunda sedia untuk disemak} other {Item anda yang ditunda sudah sedia}}",
-    "toast": "{count, plural, =1 {“{itemTitle}” kembali daripada tunda} other {# item yang ditunda sudah kembali}}"
+    "toast": "{count, plural, =1 {“{itemTitle}” kembali selepas ditunda} other {# item yang ditunda sudah kembali}}"
   }
 }

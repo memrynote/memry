@@ -173,13 +173,13 @@
     },
     "language": {
       "label": "Bahasa",
-      "helper": "Kebanyakan apl dikemas kini dengan serta-merta. Beberapa teks peringkat sistem — pemberitahuan yang sudah ditunjukkan, label dok, bar tajuk tetingkap — dimuat semula selepas pelancaran seterusnya.",
+      "helper": "Kebanyakan bahagian apl dikemas kini serta-merta. Sesetengah teks peringkat sistem — pemberitahuan yang sudah ditunjukkan, label Dock, bar tajuk tetingkap — dimuat semula selepas pelancaran seterusnya.",
       "changed": "Bahasa ditukar kepada {nativeName}",
       "failed": "Gagal menukar bahasa. Sila cuba lagi."
     },
     "clockFormat": {
       "label": "Format masa",
-      "description": "Jam 12 jam atau 24 jam",
+      "description": "Sistem 12 jam atau 24 jam",
       "options": {
         "12h": "12 jam",
         "24h": "24 jam"
@@ -193,11 +193,7 @@
         "MM/DD/YYYY": "MM/DD/YYYY (AS)",
         "DD/MM/YYYY": "DD/MM/YYYY",
         "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
-        "DD": {
-          "MM": {
-            "YYYY": "DD.MM.YYYY"
-          }
-        }
+        "DD.MM.YYYY": "DD.MM.YYYY"
       },
       "error": "Gagal mengemas kini format tarikh"
     },
@@ -214,8 +210,8 @@
         "label": "Butang tutup tab",
         "description": "Bila hendak menunjukkan butang tutup",
         "options": {
-          "always": "Sentiasa kelihatan",
-          "hover": "Tunjukkan pada tuding",
+          "always": "Sentiasa",
+          "hover": "Semasa dituding",
           "active": "Hanya pada tab aktif"
         }
       },
@@ -248,7 +244,7 @@
       },
       "autoSendDiagnostics": {
         "label": "Hantar laporan ralat secara automatik",
-        "description": "Log yang ditapis apabila skrin ralat muncul. Jika dimatikan, anda akan ditanya setiap kali.",
+        "description": "Menghantar log yang ditapis apabila skrin ralat muncul. Jika dimatikan, anda akan ditanya setiap kali.",
         "error": "Gagal mengemas kini tetapan laporan ralat"
       },
       "diagnostics": {
@@ -261,7 +257,7 @@
         "sending": "Menghantar…",
         "notNow": "Bukan sekarang",
         "sent": "Laporan dihantar — rujukan {incidentId}",
-        "previewError": "Laporan diagnostik tidak dapat disediakan",
+        "previewError": "Tidak dapat menyediakan laporan diagnostik",
         "error": "Gagal menghantar laporan diagnostik",
         "sendReport": {
           "label": "Laporan diagnostik",
@@ -438,7 +434,7 @@
       "error": "Gagal mengemas kini lebar editor"
     },
     "toolbarMode": {
-      "label": "Bar alat pemformatan melekit",
+      "label": "Bar alat pemformatan tetap",
       "description": "Sentiasa tunjukkan bar alat di atas editor",
       "error": "Gagal mengemas kini mod bar alat"
     },
@@ -449,7 +445,7 @@
     },
     "v2": {
       "width": "Lebar editor",
-      "toolbarMode": "Bar alat pemformatan melekit",
+      "toolbarMode": "Bar alat pemformatan tetap",
       "spellCheck": "Semak ejaan"
     }
   },
@@ -482,7 +478,7 @@
       "deleted": "Templat dipadam",
       "deleteFailed": "Gagal memadam templat",
       "duplicated": "Templat disalin",
-      "duplicateFailed": "Gagal menduplikasi templat"
+      "duplicateFailed": "Gagal membuat pendua templat"
     },
     "dialogs": {
       "delete": {
@@ -567,7 +563,7 @@
       "inherit": "Guna lalai",
       "inheritWith": "Lalai · {name}",
       "inheritNone": "Lalai · tiada",
-      "missing": "Templat dipadam",
+      "missing": "Templat yang dipadam",
       "clear": "Kosongkan",
       "updated": "Templat dikemas kini untuk {day}",
       "cleared": "Templat dikosongkan untuk {day}",
@@ -584,7 +580,7 @@
   "tasks": {
     "header": {
       "title": "Tugas",
-      "subtitle": "Konfigurasikan lalai dan tingkah laku tugas",
+      "subtitle": "Konfigurasikan lalai dan gelagat tugas",
       "loading": "Memuatkan tetapan…"
     },
     "groups": {
@@ -593,7 +589,7 @@
     },
     "defaultProject": {
       "label": "Projek lalai",
-      "description": "Ditugaskan apabila tiada projek dipilih",
+      "description": "Digunakan apabila tiada projek dipilih",
       "placeholder": "Tiada projek lalai",
       "none": "Tiada lalai (gunakan Peribadi)",
       "error": "Gagal mengemas kini projek lalai"
@@ -668,7 +664,7 @@
         "sentHint": "Jika tiada apa-apa muncul, benarkan pemberitahuan untuk MemryNote dalam tetapan sistem anda.",
         "unsupported": "Peranti ini tidak boleh memaparkan pemberitahuan desktop."
       },
-      "error": "Peringatan tidak dapat dikemas kini."
+      "error": "Tidak dapat mengemas kini peringatan."
     }
   },
   "calendar": {
@@ -692,14 +688,14 @@
       "error": "Gagal mengemas kini permulaan minggu"
     },
     "defaultBehavior": {
-      "label": "Tingkah laku lalai",
+      "label": "Gelagat lalai",
       "description": "Apabila mengklik hari dalam kalendar panel hari daripada mana-mana tab bukan kalendar",
       "error": "Gagal mengemas kini gelagat klik hari"
     },
     "pageOverride": {
-      "label": "Penggantian halaman kalendar",
+      "label": "Tetapan khusus halaman kalendar",
       "description": "Gelagat apabila tab Kalendar aktif (lalai: Buka kalendar)",
-      "error": "Gagal mengemas kini penggantian halaman kalendar"
+      "error": "Gagal mengemas kini tetapan khusus halaman kalendar"
     },
     "showNotesOnCalendar": {
       "label": "Tunjukkan nota pada kalendar",
@@ -738,7 +734,7 @@
       },
       "agentAccess": {
         "label": "Benarkan AI membaca acara Google Calendar",
-        "description": "Dimatikan secara lalai. Hidupkan dan ejen AI boleh membaca acara Google anda; matikan dan ia tidak mendapat apa-apa apabila ditanya tentangnya. Anda tetap melihatnya dalam memrynote, walau apa pun pilihan anda.",
+        "description": "Dimatikan secara lalai. Jika dihidupkan, ejen AI boleh membaca acara Google anda; jika dimatikan, ejen tidak menerima apa-apa apabila ditanya tentangnya. Anda tetap melihat acara tersebut dalam memrynote, walau apa pun pilihan anda.",
         "error": "Gagal mengemas kini akses AI"
       },
       "connect": "Sambungkan",
@@ -843,7 +839,7 @@
       "accounts": "Akaun",
       "calendars": "Kalendar",
       "retry": "Cuba semula sekarang",
-      "reconnectRequired": "Peranti ini tiada kata laluan untuk akaun ini. Sambungkannya semula untuk menyegerakkan dari sini.",
+      "reconnectRequired": "Peranti ini tidak mempunyai kata laluan untuk akaun ini. Sambungkannya semula untuk menyegerakkan dari sini.",
       "push": {
         "label": "Tulis acara memrynote ke kalendar ini",
         "description": "Matikan untuk penyegerakan sehala: anda tetap melihat acara ini dalam memrynote, tetapi acara dan tugas memrynote tidak ditulis di sini."
@@ -863,7 +859,7 @@
         "outdated": "Peranti berikut pada akaun anda menjalankan versi memrynote yang lebih lama daripada {version}:",
         "unverified": "memrynote tidak dapat menyemak versi yang dijalankan oleh peranti anda yang lain.",
         "unknownVersion": "versi tidak diketahui",
-        "consequence": "Versi lama boleh menyalin tugas dan acara daripada kalendar ini ke Google Calendar sebagai pendua, atau gagal menyegerakkannya. Kemas kini peranti tersebut dahulu, atau teruskan jika anda menerimanya.",
+        "consequence": "Versi lama mungkin menyalin tugas dan acara daripada kalendar ini ke Google Calendar sebagai pendua, atau gagal menyegerakkannya. Kemas kini peranti tersebut dahulu, atau teruskan jika anda menerimanya.",
         "acknowledge": "Saya faham, sambungkan juga"
       },
       "reconnect": "Sambung semula",
@@ -921,9 +917,9 @@
         "unauthorized": "Pelayan tidak menerima nama pengguna dan kata laluan ini. Semak kedua-duanya, dan gunakan kata laluan apl jika perkhidmatan anda menyediakannya.",
         "unreachable": "Tidak dapat mencapai pelayan. Semak alamat dan sambungan internet anda, kemudian cuba lagi.",
         "notCaldav": "Tiada kalendar CalDAV ditemui pada alamat ini. Semak alamat pelayan; sesetengah perkhidmatan memerlukan laluan seperti /remote.php/dav.",
-        "noCalendars": "Akaun ini tiada kalendar yang menyimpan acara.",
+        "noCalendars": "Akaun ini tidak mempunyai kalendar yang menyimpan acara.",
         "invalidUrl": "Itu bukan alamat pelayan. Masukkan alamat seperti https://dav.example.com.",
-        "outdatedDevices": "Sesetengah peranti anda menjalankan memrynote versi lama. Kemas kininya, atau sahkan di bawah bahawa anda tetap mahu menyambung.",
+        "outdatedDevices": "Sesetengah peranti anda menjalankan memrynote versi lama. Kemas kini peranti tersebut, atau sahkan di bawah bahawa anda tetap mahu menyambung.",
         "unknown": "Tidak dapat menyambung ({code}). Tiada apa-apa disimpan; cuba lagi kemudian."
       },
       "reconnect": {
@@ -989,7 +985,7 @@
         "description": "Hidupkan penyegerakan dan setiap nota mengikut anda ke peranti anda yang lain — disulitkan hujung ke hujung, jadi hanya anda yang boleh membacanya.",
         "benefits": {
           "devices": "Setiap peranti menyambung dari tempat anda berhenti",
-          "encrypted": "Disulitkan hujung ke hujung — kunci tidak pernah meninggalkan anda",
+          "encrypted": "Disulitkan hujung ke hujung — kunci sentiasa kekal bersama anda",
           "backup": "Sandaran yang disulitkan, sekiranya peranti ini tiada"
         },
         "guarantee": "Jaminan wang dikembalikan dalam 14 hari. Batalkan bila-bila masa."
@@ -1028,7 +1024,7 @@
       },
       "labels": {
         "storage": "Storan",
-        "maxFile": "Fail maks",
+        "maxFile": "Saiz fail maks",
         "vaults": "Bilik kebal",
         "history": "Sejarah"
       },
@@ -1220,15 +1216,15 @@
     "linked": "Dipautkan {time} yang lalu",
     "renameAria": "Namakan semula {name}",
     "rename": "Namakan semula",
-    "revoke": "Batalkan",
+    "revoke": "Batalkan akses",
     "showLess": "Tunjukkan lebih sedikit",
     "showMore": "{count, plural, other {# peranti lagi}}",
     "showMoreAria": "Tunjukkan {count, plural, other {# peranti lagi}}",
     "dialogs": {
-      "revokeTitle": "Batalkan “{name}”?",
+      "revokeTitle": "Batalkan akses “{name}”?",
       "revokeDescription": "Peranti ini akan kehilangan akses kepada data anda yang disegerakkan. Ia perlu dipautkan semula untuk memulihkan penyegerakan. Data setempat pada peranti itu akan kekal.",
-      "revokeDevice": "Batalkan peranti",
-      "revoking": "Membatalkan…",
+      "revokeDevice": "Batalkan akses peranti",
+      "revoking": "Membatalkan akses…",
       "renameTitle": "Namakan semula peranti",
       "renameDescription": "Pilih nama untuk mengenal pasti peranti ini.",
       "namePlaceholder": "Nama peranti",
@@ -1252,7 +1248,7 @@
     "generateFailed": "Gagal menjana kod pemautan",
     "tryAgain": "Cuba lagi",
     "expired": "Kod pemautan tamat tempoh",
-    "generateNew": "Hasilkan kod baharu",
+    "generateNew": "Jana kod baharu",
     "qrAria": "Kod QR untuk pemautan peranti",
     "qrImageAria": "Kod QR pemautan peranti",
     "expiresIn": "Tamat tempoh dalam {time}",
@@ -1320,7 +1316,7 @@
         "downloaded": "Dimuat turun",
         "notDownloaded": "Tidak dimuat turun"
       },
-      "cacheHint": "Tidak digabungkan dengan apl · Dimuat turun daripada Tetapan · Dicache pada peranti ini",
+      "cacheHint": "Tidak disertakan bersama apl · Dimuat turun daripada Tetapan · Dicache pada peranti ini",
       "preparing": "Menyediakan Whisper Small…",
       "download": "Muat turun Whisper Small",
       "apiKey": "Kunci API OpenAI",
@@ -1469,7 +1465,7 @@
       "onenote": {
         "connect": "Log masuk dengan Microsoft",
         "connecting": "Menunggu log masuk dalam pelayar…",
-        "connectedAs": "Log masuk sebagai {name} ({email})",
+        "connectedAs": "Telah log masuk sebagai {name} ({email})",
         "switchAccount": "Tukar akaun",
         "loadingNotebooks": "Memuatkan buku nota…",
         "notebooksEmpty": "Tiada buku nota ditemui dalam akaun ini.",
@@ -1495,10 +1491,10 @@
       "chooseDirectory": "Pilih folder…",
       "folderKeepsAssets": "Pilih folder apabila imej berada di luar folder nota itu sendiri — eksport selalunya menyimpan media dalam satu folder yang dikongsi.",
       "chooseHint": "Pilih {label} anda",
-      "folderHint": "Klik di bawah dan pilih folder “group.com.apple.notes” apabila pemilih dibuka (ia bermula di situ). Ini membolehkan Memry membaca nota dan lampiran anda — tiada Akses Cakera Penuh diperlukan.",
+      "folderHint": "Klik di bawah dan pilih folder “group.com.apple.notes” apabila pemilih dibuka (ia bermula di situ). Ini membolehkan Memry membaca nota dan lampiran anda — Akses Cakera Penuh tidak diperlukan.",
       "noteplanFolderHint": "Pilih folder NotePlan anda — sama ada folder data apl atau salah satu salinan Backups. Memry membaca folder Calendar, Notes dan @Archive di dalamnya.",
       "selected": "{count, plural, other {# fail dipilih}}",
-      "start": "Mula import",
+      "start": "Mulakan import",
       "cancel": "Batal",
       "close": "Tutup",
       "done": "Selesai",
@@ -1521,7 +1517,7 @@
         "lockedNote": "{count, plural, other {# nota berkunci}} tidak diimport; Memry tidak dapat membacanya tanpa kata laluan Notes anda."
       },
       "csv": {
-        "noHeaders": "Fail CSV tiada baris pengepala",
+        "noHeaders": "Fail CSV tidak mempunyai baris pengepala",
         "emptyTitle": "Baris dengan tajuk kosong dilangkau (lajur “{column}”)",
         "columns": "Lajur: {columns}",
         "titleColumn": "Tajuk daripada “{column}”; lajur lain disimpan sebagai sifat"
@@ -1533,7 +1529,7 @@
       },
       "ticktick": {
         "headerNotFound": "Baris pengepala CSV TickTick (“Folder Name”) tidak ditemui",
-        "foldersDropped": "Folder TickTick tiada padanan dalam Memry dan telah digugurkan",
+        "foldersDropped": "Folder TickTick tidak mempunyai padanan dalam Memry dan telah digugurkan",
         "subtaskParentMissing": "Induk bagi subtugas “{title}” tidak ditemui; diimport pada aras atas",
         "unknownPriority": "Keutamaan TickTick {priority} tidak diketahui → tiada",
         "unsupportedRepeat": "Peraturan ulangan “{rule}” tidak disokong dan dilangkau",
@@ -1546,7 +1542,7 @@
         "emptyTitle": "Tugas dengan kandungan kosong diimport sebagai (tanpa tajuk)",
         "unknownPriority": "Keutamaan {priority} tidak diketahui → tiada",
         "unparsedDate": "Tidak dapat menghuraikan tarikh “{date}”",
-        "subtaskNoParent": "Subtugas “{title}” tiada induk pada inden {indent}; diimport pada aras atas"
+        "subtaskNoParent": "Subtugas “{title}” tidak mempunyai induk pada inden {indent}; diimport pada aras atas"
       }
     },
     "status": {
@@ -1626,7 +1622,7 @@
       "deleteTitle": "Padam “{name}” daripada akaun anda?",
       "deleteBody": "Semua data yang disegerakkan untuk bilik kebal ini akan dialih keluar secara kekal daripada pelayan Memry dan tindakan ini tidak boleh dibuat asal. Fail anda pada cakera tidak dipadamkan.",
       "deleteConfirm": "Padam daripada akaun",
-      "deleteFailed": "Bilik kebal tidak dapat dipadamkan",
+      "deleteFailed": "Tidak dapat memadam bilik kebal",
       "activeHint": "Tukar ke bilik kebal lain untuk memadamkan yang ini.",
       "unsyncedTitle": "Bilik kebal ini tidak disegerakkan",
       "unsyncedBodyOne": "Bilik kebal yang dibuka pada peranti ini tiada dalam akaun anda, jadi penyegerakan menolaknya. Bilik kebal akaun anda ialah “{name}” — bukanya di sini untuk mula menyegerakkan semula.",
@@ -1696,7 +1692,7 @@
         "importFailed": "Import {importer} gagal",
         "failedGeneric": "Berlaku masalah dengan {path}",
         "failedGenericUnnamed": "Berlaku masalah",
-        "scan": "Perubahan yang dibuat semasa Memry ditutup ditemui",
+        "scan": "Menemui perubahan yang dibuat semasa Memry ditutup",
         "indexRebuilt": "Indeks carian dibina",
         "import": "Import {importer}",
         "importCanceled": "Import {importer}, dibatalkan",
@@ -1721,8 +1717,8 @@
     "binding": {
       "dialog": {
         "title": "Segerakkan bilik kebal ini ke akaun anda?",
-        "description": "Bilik kebal ini mempunyai nota yang belum ada dalam akaun anda. Anda boleh menambahkannya ke akaun anda atau menyimpannya pada peranti ini. Tiada apa-apa meninggalkan peranti ini sehingga anda membuat keputusan.",
-        "descriptionWithVaults": "Bilik kebal ini mempunyai nota yang belum ada dalam akaun anda, dan akaun anda sudah mempunyai bilik kebal. Anda boleh menambah bilik kebal ini di sebelahnya, menggabungkan kedua-duanya, atau menyimpannya pada peranti ini. Tiada apa-apa meninggalkan peranti ini sehingga anda membuat keputusan.",
+        "description": "Bilik kebal ini mempunyai nota yang belum ada dalam akaun anda. Anda boleh menambahkannya ke akaun anda atau menyimpannya pada peranti ini. Tiada apa-apa yang meninggalkan peranti ini sehingga anda membuat keputusan.",
+        "descriptionWithVaults": "Bilik kebal ini mempunyai nota yang belum ada dalam akaun anda, dan akaun anda sudah mempunyai bilik kebal. Anda boleh menambah bilik kebal ini bersama bilik kebal sedia ada, menggabungkan kedua-duanya, atau menyimpannya pada peranti ini. Tiada apa-apa yang meninggalkan peranti ini sehingga anda membuat keputusan.",
         "addAsNew": "Tambah sebagai bilik kebal berasingan",
         "merge": "Gabungkan ke dalam “{name}”",
         "mergeUnnamed": "Gabungkan ke dalam bilik kebal akaun anda",
@@ -1840,7 +1836,7 @@
       "placeholder": "Pilih bilik kebal",
       "none": "Tiada bilik kebal dipilih",
       "description": "Pilih bilik kebal yang digunakan apabila anda menjalankan memrynote tanpa --vault.",
-      "descriptionSelected": "Arahan menggunakan {path} apabila --vault ditinggalkan."
+      "descriptionSelected": "Arahan menggunakan {path} apabila --vault tidak dinyatakan."
     },
     "command": {
       "label": "Arahan memrynote",
@@ -1964,7 +1960,7 @@
         },
         "navForward": {
           "label": "Navigasi ke hadapan",
-          "description": "Buat semula navigasi belakang"
+          "description": "Buat semula navigasi ke belakang"
         },
         "newTab": {
           "label": "Tab baharu",
@@ -2049,7 +2045,7 @@
       "categoryFilter": "Tapis mengikut kategori",
       "systemWide": "Seluruh sistem",
       "globalCapture": "Catat pantas global",
-      "recordingHint": "Tekan kekunci… esc untuk batal",
+      "recordingHint": "Tekan kekunci… esc untuk membatalkan",
       "reset": "Tetapkan semula",
       "resetAll": "Tetapkan semula semua kepada lalai"
     }
@@ -2156,7 +2152,7 @@
       },
       "bearer": {
         "label": "Token bearer",
-        "description": "Kelayakan dalam memori untuk pelancaran apl ini."
+        "description": "Bukti kelayakan dalam memori untuk pelancaran apl ini."
       }
     },
     "actions": {
@@ -2219,7 +2215,7 @@
         "label": "Sahkan tindakan",
         "description": "Pilih sama ada panggilan alat berjalan secara automatik atau menunggu kelulusan dalam sembang.",
         "alwaysAllow": "Sentiasa benarkan",
-        "askBeforeChanges": "Tanya sebelum perubahan"
+        "askBeforeChanges": "Tanya sebelum membuat perubahan"
       }
     },
     "presets": {
@@ -2246,7 +2242,7 @@
       },
       "apiKey": {
         "label": "Kunci API",
-        "description": "Kelayakan pilihan yang disimpan dalam rantai kunci OS.",
+        "description": "Bukti kelayakan pilihan yang disimpan dalam rantai kunci OS.",
         "configured": "Kunci API sudah disimpan dalam rantai kunci OS."
       }
     },

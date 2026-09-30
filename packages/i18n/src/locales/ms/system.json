@@ -65,7 +65,7 @@
       "subtitle": "MemryNote akan dibuka semula secara automatik."
     },
     "failed": {
-      "title": "MemryNote tidak dapat menyelesaikan permulaan",
+      "title": "MemryNote tidak dapat dimulakan sepenuhnya",
       "body": "Ini boleh berlaku apabila cakera hampir kehabisan ruang kosong, atau dengan pemacu grafik yang lama. Cuba kosongkan sedikit ruang cakera, kemudian buka semula MemryNote. Jika ia berterusan, pemasangan semula biasanya menyelesaikannya."
     }
   }

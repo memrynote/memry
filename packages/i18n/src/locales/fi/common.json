@@ -1,11 +1,17 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Siirry pikakirjauskenttään",
+    "detailHint": "tiedot",
+    "submit": "Kirjaa"
+  },
   "button": {
     "save": "Tallenna",
     "cancel": "Peruuta",
     "close": "Sulje",
     "delete": "Poista",
     "done": "Valmis",
-    "dontSave": "Älä Tallenna",
+    "dontSave": "Älä tallenna",
     "add": "Lisää",
     "remove": "Poista",
     "retry": "Yritä uudelleen",
@@ -14,6 +20,9 @@
     "copy": "Kopioi",
     "create": "Luo"
   },
+  "media": {
+    "video": "Video"
+  },
   "state": {
     "loading": "Ladataan…",
     "saving": "Tallennetaan…",
@@ -21,10 +30,10 @@
     "searching": "Haetaan…"
   },
   "action": {
-    "search": "Etsi",
+    "search": "Hae",
     "expand": "Laajenna",
     "collapse": "Kutista",
-    "showMore": "+{count, plural, one {# enemmän} other {# enemmän}}",
+    "showMore": "+{count, plural, one {# muu} other {# muuta}}",
     "showLess": "Näytä vähemmän",
     "undo": "Kumoa"
   },
@@ -38,12 +47,20 @@
   "tabs": {
     "pin": "Kiinnitä välilehti",
     "unpin": "Irrota välilehti",
+    "persistence": {
+      "saveFailed": "Avoimia välilehtiäsi ei enää tallenneta",
+      "saveFailedQuota": "Tämä istunto on liian suuri tallennettavaksi. Sulje joitakin välilehtiä, muuten sitä ei ehkä palauteta, kun avaat Memryn seuraavan kerran.",
+      "saveFailedGeneric": "Istunnon tallentaminen epäonnistui, joten sitä ei ehkä palauteta, kun avaat sovelluksen seuraavan kerran.",
+      "lastSessionNotSaved": "Edellistä istuntoasi ei tallennettu, kun Memry suljettiin",
+      "lastSessionNotSavedQuota": "Tallennustila oli tuolloin täynnä, joten nämä välilehdet ovat aiemmasta tallennuksesta. Vapauta tilaa sulkemalla joitakin välilehtiä.",
+      "lastSessionNotSavedGeneric": "Välilehtiesi tallentaminen sovellusta suljettaessa epäonnistui, joten nämä välilehdet ovat aiemmasta tallennuksesta."
+    },
     "contextMenu": {
       "close": "Sulje",
-      "closeOthers": "Sulje Muut",
-      "closeToRight": "Lähellä oikeaa",
+      "closeOthers": "Sulje muut",
+      "closeToRight": "Sulje oikealla olevat",
       "closeAll": "Sulje kaikki",
-      "duplicate": "Kopioi välilehti",
+      "duplicate": "Monista välilehti",
       "splitRight": "Jaa oikealle",
       "splitDown": "Jaa alas",
       "copyPath": "Kopioi polku",
@@ -51,134 +68,599 @@
     }
   },
   "count": {
-    "note": "{count, plural, one {# huomautus} other {# toteaa}}",
-    "task": "{count, plural, one {# tehtävä} other {# tehtäviä}}",
-    "itemDelete": "{count, plural, one {Poista # kohde} other {Poista # kohteet}}",
-    "event": "{count, plural, one {# tapahtuma} other {# tapahtumaa}}",
+    "note": "{count, plural, one {# muistiinpano} other {# muistiinpanoa}}",
     "journal": "{count, plural, one {# päiväkirja} other {# päiväkirjaa}}",
-    "reminder": "{count, plural, one {# muistutus} other {# muistutusta}}"
+    "task": "{count, plural, one {# tehtävä} other {# tehtävää}}",
+    "event": "{count, plural, one {# tapahtuma} other {# tapahtumaa}}",
+    "reminder": "{count, plural, one {# muistutus} other {# muistutusta}}",
+    "itemDelete": "{count, plural, one {Poista # kohde} other {Poista # kohdetta}}"
   },
   "toast": {
     "actionFailed": "Toiminto epäonnistui",
-    "nothingToUndo": "Ei mitään peruttavaa",
+    "nothingToUndo": "Ei kumottavaa",
     "undone": "Kumottu: {description}",
-    "undoFailed": "Toiminnon kumoaminen epäonnistui"
+    "undoFailed": "Toiminnon kumoaminen epäonnistui",
+    "filesImported": "{count, plural, one {# tiedosto tuotu} other {# tiedostoa tuotu}}",
+    "filesImportFailed": "{count, plural, one {# tiedoston tuominen epäonnistui} other {# tiedoston tuominen epäonnistui}}",
+    "filesHiddenInSidebar": "Tiedostot on piilotettu sivupalkista. Näet ne ottamalla käyttöön valinnan ”Näytä tiedostot” Kokoelmat-osion lajitteluvalikosta.",
+    "moreRemindersDue": "{count, plural, one {Vielä # erääntyvä muistutus} other {Vielä # erääntyvää muistutusta}}",
+    "moreRemindersDueHint": "Katso lisätiedot muistutuspaneelista",
+    "searchIndexRepaired": "Hakuindeksi korjattu",
+    "searchIndexRepairedHint": "Osa hakuindeksistä oli vioittunut, joten Memry rakensi sen uudelleen. Muistiinpanoihisi ei koskettu."
   },
   "dateRelative": {
     "today": "Tänään",
-    "yesterday": "eilen",
+    "yesterday": "Eilen",
     "daysAgo": "{count, plural, one {# päivä sitten} other {# päivää sitten}}",
-    "daysLate": "{count, plural, one {# pv myöhässä} other {# pv myöhässä}}",
+    "tomorrow": "Huomenna",
     "daysOverdue": "{count, plural, one {# päivä myöhässä} other {# päivää myöhässä}}",
-    "tomorrow": "Huomenna"
+    "daysLate": "{count, plural, one {# pv myöhässä} other {# pv myöhässä}}",
+    "inDays": "{count, plural, one {# päivän päästä} other {# päivän päästä}}",
+    "inWeeks": "{count, plural, one {# viikon päästä} other {# viikon päästä}}"
   },
   "recurrence": {
-    "everyNDays": "{count, plural, one {Joka päivä} other {Joka # päivä}}",
-    "everyNWeeks": "{count, plural, one {Joka viikko} other {Joka # viikko}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {Joka arkipäivä} other {Joka # viikko arkisin}}",
-    "everyNWeeksOnWeekends": "{count, plural, one {Joka viikonloppu} other {Joka # viikko viikonloppuisin}}",
-    "everyNWeeksOnDays": "{count, plural, one {Joka viikko {days}:llä} other {Joka # viikko {days}}}",
-    "everyNMonths": "{count, plural, one {Joka kuukausi} other {Joka # kuukausi}}",
-    "everyNMonthsOnDay": "{count, plural, one {Joka kuukausi {day}{suffix}} other {Joka # kuukausi {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {Joka kuukausi {week} {day}} other {Joka # kuukausi {week} {day}}}",
-    "everyNYears": "{count, plural, one {Joka vuosi} other {Joka # vuosi}}",
-    "repeats": "Toistaa",
+    "everyNDays": "{count, plural, one {Joka päivä} other {Joka #. päivä}}",
+    "everyNWeeks": "{count, plural, one {Joka viikko} other {Joka #. viikko}}",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Joka arkipäivä} other {Joka #. viikko arkipäivisin}}",
+    "everyNWeeksOnWeekends": "{count, plural, one {Joka viikonloppu} other {Joka #. viikko viikonloppuisin}}",
+    "everyNWeeksOnDays": "{count, plural, one {Joka viikko: {days}} other {Joka #. viikko: {days}}}",
+    "everyNMonths": "{count, plural, one {Joka kuukausi} other {Joka #. kuukausi}}",
+    "everyNMonthsOnDay": "{count, plural, one {Joka kuukauden {day}{suffix}. päivä} other {Joka #. kuukauden {day}{suffix}. päivä}}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Joka kuukauden {week} {day}} other {Joka #. kuukauden {week} {day}}}",
+    "everyNYears": "{count, plural, one {Joka vuosi} other {Joka #. vuosi}}",
+    "repeats": "Toistuu",
     "ordinal": {
       "first": "ensimmäinen",
-      "fourth": "neljäs",
-      "last": "viimeinen",
       "second": "toinen",
-      "third": "kolmas"
+      "third": "kolmas",
+      "fourth": "neljäs",
+      "last": "viimeinen"
     },
     "preset": {
       "everyWeekday": "Joka arkipäivä (ma–pe)",
       "everyYearOnDate": "Joka vuosi {date}"
     }
   },
+  "agentChat": {
+    "title": "Agenttikeskustelu",
+    "loading": "Ladataan agenttikeskustelua…",
+    "conversationLoading": "Ladataan keskustelua…",
+    "historyNotSaved": "Tämä laite ei voi avata holvin lukitusta, joten tätä keskustelua ei tallenneta, kun suljet sovelluksen.",
+    "newConversation": "Uusi keskustelu",
+    "history": "Keskusteluhistoria",
+    "openInTab": "Avaa keskustelu välilehdessä",
+    "stop": "Pysäytä",
+    "thinking": "Agentti miettii",
+    "enable": {
+      "title": "Ota memrynote-agentti käyttöön",
+      "description": "memrynote-agentti keskustelee holvistasi valitsemasi paikallisen agentti-CLI:n avulla. Claude lähettää vuorot Anthropicille; Codex lähettää vuorot OpenAI:lle.",
+      "remote": "memrynote salaa paikallisen ja synkronoidun keskusteluhistoriasi, mutta mallin päättely tapahtuu valitun palveluntarjoajan palvelussa.",
+      "readTools": "Lukutyökalut suoritetaan automaattisesti.",
+      "writeTools": "Luonti- ja päivitystyökalut vaativat hyväksynnän.",
+      "diff": "Päivitystyökalut näyttävät muutokset tai esikatselun.",
+      "button": "Ota agenttikeskustelu käyttöön"
+    },
+    "approval": {
+      "description": "Agentti haluaa kutsua työkalua {name} näillä argumenteilla.",
+      "applyOnce": "Käytä kerran",
+      "allowOnce": "Salli kerran",
+      "editAndApply": "Muokkaa ja käytä",
+      "editAndAllow": "Muokkaa ja salli",
+      "allowAlways": "Salli aina",
+      "applyEdits": "Ota muokkaukset käyttöön",
+      "deny": "Hylkää",
+      "invalidJson": "Syötä kelvollinen JSON ennen muokkausten käyttämistä.",
+      "thisTool": "tämä työkalu",
+      "alwaysAllowHint": "”Salli aina” koskee vain seuraavaa: {tool}. Muut työkalut kysyvät edelleen luvan, ja poistoista kysytään aina.",
+      "alwaysInChat": "Salli aina tässä keskustelussa",
+      "alwaysInChatHint": "Päättyy, kun keskustelu päättyy",
+      "alwaysInVault": "Salli aina tässä holvissa",
+      "alwaysInVaultHint": "Voit perua kohdassa Asetukset › Agentti",
+      "deletesAlwaysAsk": "Poistoista kysytään aina"
+    },
+    "diff": {
+      "previewError": "Muutoksen esikatseleminen epäonnistui",
+      "description": "Agentti haluaa päivittää: {title}. Tarkista muutos ennen kuin otat sen käyttöön.",
+      "fallbackTitle": "tämä kohde",
+      "current": "Nykyinen",
+      "candidate": "Ehdokas",
+      "loading": "Ladataan…",
+      "apply": "Käytä",
+      "applyEdited": "Käytä muokattua",
+      "editBody": "Muokkaa ennen käyttöä"
+    },
+    "inPageReview": {
+      "regionLabel": "Agentin ehdotus",
+      "barLabel": "Tarkista agentin ehdotus",
+      "loading": "Ladataan ehdotusta…",
+      "loadingTitle": "Agentin ehdotus",
+      "title": "{count, plural, =0 {Agentin ehdotus} one {Agentti ehdotti # muutoksen} other {Agentti ehdotti # muutosta}}",
+      "editingTitle": "Muokataan ehdotusta",
+      "pendingHint": "Ei vielä tallennettu. Hyväksy ottaaksesi sen käyttöön.",
+      "editingHint": "Muokkauksesi pysyvät tässä, kunnes hyväksyt.",
+      "baseChanged": "Tämä muistiinpano muuttui, kun muokkasit ehdotusta.",
+      "keepDraft": "Säilytä muokkaukseni",
+      "restart": "Aloita alusta uusimmasta versiosta",
+      "reject": "Hylkää",
+      "edit": "Muokkaa",
+      "showDiff": "Näytä muutokset",
+      "accept": "Hyväksy",
+      "acceptEdits": "Hyväksy muokkaukset",
+      "waiting": "Odottaa tarkistustasi: {title}.",
+      "notOpen": "Avaa {title} nähdäksesi muutokset tai hyväksy ne tarkistamatta.",
+      "show": "Näytä",
+      "openNote": "Avaa muistiinpano",
+      "openJournal": "Avaa päiväkirja",
+      "fallbackTitle": "tämä muistiinpano"
+    },
+    "preview": {
+      "unset": "ei asetettu",
+      "yes": "kyllä",
+      "no": "ei",
+      "noChange": "Mikään tässä esikatselussa näkyvä ei muuttuisi.",
+      "willBeLost": "Menetetään",
+      "unchangedLines": "{count, plural, one {# muuttumaton rivi} other {# muuttumatonta riviä}}",
+      "item": {
+        "note": "Muistiinpano",
+        "folder": "Kansio",
+        "task": "Tehtävä",
+        "journal": "Päiväkirja",
+        "inbox": "Saapuneet",
+        "project": "Projekti",
+        "status": "Tila",
+        "canvas": "Taulu"
+      },
+      "intent": {
+        "create": "uusi",
+        "update": "päivitys",
+        "delete": "poisto",
+        "move": "siirto",
+        "reorder": "järjestyksen muutos"
+      },
+      "field": {
+        "archived": "Arkistoitu",
+        "arguments": "Argumentit",
+        "color": "Väri",
+        "completed": "Valmis",
+        "description": "Kuvaus",
+        "due": "Eräpäivä",
+        "dueTime": "Erääntymisaika",
+        "duplicateOf": "Kopio kohteesta",
+        "edits": "Muokkaukset",
+        "elements": "Elementit",
+        "folder": "Kansio",
+        "icon": "Kuvake",
+        "isDefault": "Oletus",
+        "isDone": "Valmis-tila",
+        "items": "Kohteet",
+        "name": "Nimi",
+        "operation": "Toimenpide",
+        "order": "Järjestys",
+        "parent": "Ylätaso",
+        "path": "Polku",
+        "position": "Sijainti",
+        "priority": "Prioriteetti",
+        "project": "Projekti",
+        "removed": "Poistettu",
+        "repeatFrom": "Toiston peruste",
+        "snoozeReason": "Torkutuksen syy",
+        "snoozedUntil": "Torkutus päättyy",
+        "start": "Aloituspäivä",
+        "status": "Tila",
+        "tags": "Tunnisteet",
+        "title": "Otsikko"
+      },
+      "loss": {
+        "words": "{count, plural, one {# sana} other {# sanaa}}",
+        "tags": "{count, plural, one {# tunniste} other {# tunnistetta}}",
+        "notes": "{count, plural, one {# muistiinpano} other {# muistiinpanoa}}",
+        "folders": "{count, plural, one {# kansio} other {# kansiota}}",
+        "files": "{count, plural, one {# tiedosto} other {# tiedostoa}}",
+        "events": "{count, plural, one {# tapahtuma} other {# tapahtumaa}}",
+        "tasks": "{count, plural, one {# tehtävä} other {# tehtävää}}",
+        "due": "eräpäivä {value}"
+      }
+    },
+    "composer": {
+      "currentNote": "Nykyinen muistiinpano",
+      "removeAttachment": "Poista {label}",
+      "placeholder": "Tee mitä tahansa memrynotessa… Mainitse muistiinpanoja, tehtäviä ja tapahtumia @-merkillä",
+      "send": "Lähetä",
+      "providerLabel": "Agenttipalvelu: {provider}",
+      "settingsSummary": "{reasoning}",
+      "connectedTools": "Yhdistetyt työkalut",
+      "connectTool": "Yhdistä {tool}",
+      "addContext": "Lisää kontekstia",
+      "addContextWithPermissions": "Lisää kontekstia ({permissions})",
+      "mentionContext": "Mainitse muistiinpano, tehtävä tai tapahtuma",
+      "voice": {
+        "start": "Aloita sanelu",
+        "stop": "Lopeta sanelu",
+        "transcribing": "Litteroidaan sanelua",
+        "errors": {
+          "permissionDenied": "Mikrofonin käyttö estetty",
+          "noMicrophone": "Mikrofonia ei löytynyt",
+          "accessFailed": "Mikrofonin käyttäminen epäonnistui",
+          "recordingFailed": "Sanelun nauhoittaminen epäonnistui",
+          "transcriptionFailed": "Sanelun litteroiminen epäonnistui"
+        }
+      },
+      "modelLabel": "Agentin malli: {provider} {model}",
+      "reasoningLabel": "Agentin päättely: {reasoning}",
+      "providers": {
+        "label": "Palveluntarjoaja",
+        "claude": "Claude",
+        "codex": "Codex",
+        "antigravity": "Antigravity",
+        "local": "Paikallinen"
+      },
+      "access": {
+        "vaultOnly": "Vain holvi",
+        "computerAccess": "Tietokoneen käyttö"
+      },
+      "webSearch": {
+        "on": "Päällä",
+        "off": "Pois",
+        "label": "Verkkohaku"
+      },
+      "models": {
+        "default": "Oletus",
+        "label": "Malli",
+        "search": "Hae malleja…",
+        "useCustom": "Käytä mallia ”{query}”",
+        "localEmpty": "Malleja ei löytynyt – tarkista asetukset",
+        "localSetup": "Määritä asetuksissa…",
+        "cliSetup": "Ei havaittu – määritä asetuksissa…",
+        "runtimeUnavailable": "Agentti ei ole käytettävissä – avaa asetukset…"
+      },
+      "settings": {
+        "reasoning": "Päättely",
+        "effort": "Panostus"
+      },
+      "includeCurrentNote": "Sisällytä nykyinen muistiinpano",
+      "chooseModel": "Valitse malli",
+      "claudeSettings": {
+        "reasoning": {
+          "low": "Matala",
+          "medium": "Keskitaso",
+          "high": "Korkea",
+          "extraHigh": "Erittäin korkea",
+          "extraHighDefault": "Erittäin korkea (oletus)",
+          "max": "Maksimi"
+        }
+      },
+      "codexSettings": {
+        "reasoning": {
+          "low": "Matala",
+          "medium": "Keskitaso",
+          "mediumDefault": "Keskitaso (oletus)",
+          "high": "Korkea",
+          "extraHigh": "Erittäin korkea"
+        }
+      },
+      "permissionsLabel": "Agentin käyttöoikeudet: {access}, verkkohaku {webSearch}",
+      "permissions": {
+        "label": "Käyttöoikeudet",
+        "access": "Käyttöoikeus",
+        "tools": "Työkalut"
+      },
+      "modelSettingsLabel": "Agentin malliasetukset: {model}, {settings}"
+    },
+    "refPicker": {
+      "noMatches": "Ei osumia"
+    },
+    "toolResult": {
+      "label": "Työkalun tulos"
+    },
+    "toolCall": {
+      "editedArgs": "Muokatut argumentit",
+      "parameters": "Parametrit"
+    },
+    "toolActivity": {
+      "steps": "{count, plural, one {# vaihe} other {# vaihetta}}",
+      "running": "Käynnissä",
+      "awaitingApproval": "Odottaa hyväksyntää",
+      "done": "Valmis"
+    },
+    "reasoning": {
+      "thinking": "Miettii…",
+      "thought": "Mietti",
+      "thoughtFor": "Mietti {seconds} s",
+      "toggle": "Näytä tai piilota päättely"
+    },
+    "sidebar": {
+      "label": "Oikea sivupalkki",
+      "day": "Päivä",
+      "agent": "Agentti",
+      "pendingApproval": "{count, plural, one {# odottaa hyväksyntää} other {# odottavaa hyväksyntää}}",
+      "inProgress": "Agentin vuoro käynnissä",
+      "close": "Sulje agentti"
+    },
+    "errors": {
+      "loadConversations": "Agenttikeskustelujen lataaminen epäonnistui",
+      "loadConversation": "Agenttikeskustelun lataaminen epäonnistui",
+      "createConversation": "Agenttikeskustelun luominen epäonnistui",
+      "busy": "Toinen ikkuna käsittelee parhaillaan tätä keskustelua. Odota, että se valmistuu, tai pysäytä se siitä ikkunasta.",
+      "sendTurn": "Agentin vuoron lähettäminen epäonnistui",
+      "cancelTurn": "Agentin vuoron peruuttaminen epäonnistui",
+      "submitApproval": "Työkalun hyväksynnän lähettäminen epäonnistui",
+      "updateTrust": "Luotettujen työkalujen päivittäminen epäonnistui",
+      "saveDisclosure": "Ilmoituksen hyväksynnän tallentaminen epäonnistui",
+      "resolveWindow": "Agentin lähdeikkunan selvittäminen epäonnistui",
+      "detectCli": "Agenttien taustapalveluiden havaitseminen epäonnistui",
+      "loadDisclosure": "Ilmoituksen tilan lataaminen epäonnistui"
+    },
+    "actions": {
+      "copy": "Kopioi",
+      "copied": "Kopioitu"
+    },
+    "sources": {
+      "count": "{count, plural, one {# lähde} other {# lähdettä}}"
+    }
+  },
+  "canvas": {
+    "sectionLabel": "Taulut",
+    "newCanvas": "Uusi taulu",
+    "newCanvasFolder": "Uusi taulukansio",
+    "untitled": "Nimetön taulu",
+    "empty": "Ei vielä tauluja",
+    "loading": "Ladataan tauluja…",
+    "loadFailed": "Taulujen lataaminen epäonnistui",
+    "createFailed": "Taulun luominen epäonnistui",
+    "openFailed": "Taulun avaaminen epäonnistui",
+    "notFound": "Tätä taulua ei löytynyt",
+    "corruptScene": "Tämän taulun lukeminen epäonnistui. Muokkaus on poistettu käytöstä, jotta tietoja ei menetetä.",
+    "unreadableTitle": "Tätä taulua ei voi avata täällä",
+    "unreadableBody": "Sen asiakirja puuttuu holvista, tai se on piirretty ennen kuin tauluista tuli tiedostoja, eikä tällä laitteella ole enää avainta, joka avaa sen lukituksen. Mitään ei poistettu – avaa holvi laitteella, jolla taulu luotiin, tai palauta taulujen kansio.",
+    "tooLargeToSync": "Tämä taulu on liian suuri synkronoitavaksi. Se on tallennettu tälle laitteelle, mutta se ei siirry muille laitteillesi ennen kuin se pienenee.",
+    "savedToVault": "Kaikki muutokset tallentuvat holviisi automaattisesti",
+    "libraryStoreFailed": "Muotokirjastosi tallentaminen epäonnistui. Sen viimeisimmät muutokset voivat kadota.",
+    "link": {
+      "itemMissing": "Linkitettyä kohdetta ei ole enää olemassa.",
+      "elementMissing": "Linkki osoittaa johonkin, jota ei ole enää tällä taululla.",
+      "title": "Linkitä kohteeseen",
+      "placeholder": "Hae muistiinpanoista, tehtävistä, tapahtumista, Saapuneista, projekteista…",
+      "hint": "Aloita kirjoittaminen löytääksesi linkitettävän kohteen.",
+      "empty": "Ei osumia.",
+      "selectOneShape": "Valitse yksi muoto linkittääksesi sen kohteeseen.",
+      "cardsCannotLink": "Kortti avaa jo oman kohteensa, joten siihen ei voi lisätä toista linkkiä.",
+      "linked": "Linkitetty.",
+      "groupNotes": "Muistiinpanot",
+      "groupFiles": "Tiedostot",
+      "groupTasks": "Tehtävät",
+      "groupEvents": "Tapahtumat",
+      "groupInbox": "Saapuneet",
+      "groupJournals": "Päiväkirja",
+      "groupProjects": "Projektit",
+      "groupFolders": "Kansiot",
+      "useUrl": "Linkitä osoitteeseen {url}",
+      "openTarget": "Avaa {name}",
+      "shapeTarget": "Muoto tällä taululla",
+      "missingTarget": "Ei enää tällä taululla"
+    },
+    "disabledTitle": "Taulut eivät ole käytössä",
+    "disabledBody": "Tämä välilehti kuuluu toimintoon, joka ei ole käytössä tällä laitteella.",
+    "unreadable": "Tämän taulun asiakirja puuttuu tai sitä ei voi lukea. Näytä se tiedostonhallinnassa tai poista merkintä.",
+    "actionFailed": "Taulutoiminnon suorittaminen epäonnistui",
+    "renameLabel": "Taulun nimi",
+    "folderNameLabel": "Kansion nimi",
+    "deleteConfirmTitle": "Poistetaanko tämä taulu?",
+    "deleteConfirmBody": "”{title}” poistetaan memrynotesta kaikilla laitteillasi. Sen tiedosto siirretään tämän tietokoneen roskakoriin, mutta tiedoston palauttaminen sieltä ei palauta taulua.",
+    "dropToRoot": "Pudota tähän siirtääksesi pois kansiosta",
+    "filterPlaceholder": "Suodata tauluja",
+    "filterNoMatches": "Suodatinta vastaavia tauluja ei ole",
+    "folderCanvasCount": "Tauluja: {count}",
+    "folderEmptyHint": "Täällä ei ole vielä mitään",
+    "deleteFolderConfirmTitle": "Poistetaanko tämä taulukansio?",
+    "deleteFolderConfirmBody": "”{name}” ja kaikki sen sisältö poistetaan memrynotesta kaikilla laitteillasi. Poistettavia tauluja: {count}. Kansio siirretään tämän tietokoneen roskakoriin, mutta kansion palauttaminen sieltä ei palauta tauluja.",
+    "actions": {
+      "rename": "Nimeä uudelleen",
+      "duplicate": "Monista",
+      "copyLink": "Kopioi linkki",
+      "setIcon": "Aseta kuvake",
+      "removeIcon": "Poista kuvake",
+      "moveToFolder": "Siirrä kansioon",
+      "moveToRoot": "Juuritaso",
+      "openExternal": "Avaa ulkoisessa editorissa",
+      "newCanvasHere": "Uusi taulu tähän",
+      "newFolder": "Uusi kansio",
+      "canvasMenu": "Taulun toiminnot",
+      "folderMenu": "Taulukansion toiminnot"
+    },
+    "card": {
+      "open": "Avaa välilehdessä",
+      "openToEdit": "Muokkaa avaamalla välilehdessä",
+      "deleted": "Kohde poistettu",
+      "loading": "Ladataan…",
+      "untitled": "Nimetön",
+      "allDay": "Koko päivän",
+      "createNoteFailed": "Muistiinpanon luominen epäonnistui",
+      "addCard": "Lisää kortti",
+      "addPlaceholder": "Hae muistiinpanoista, tiedostoista, tehtävistä, tapahtumista ja projekteista…",
+      "addCreateNote": "Luo muistiinpano ”{query}”",
+      "addCreateNoteEmpty": "Luo uusi muistiinpano",
+      "addEmpty": "Ei tuloksia",
+      "addGroupNotes": "Muistiinpanot",
+      "addGroupTasks": "Tehtävät",
+      "addGroupEvents": "Tapahtumat",
+      "addOnCanvas": "Taululla",
+      "addCreatedAt": "Luotu {date}",
+      "bulkGroup": "Lisää kaikki",
+      "bulkFromTag": "Tunnisteesta…",
+      "bulkFromFolder": "Kansiosta…",
+      "bulkSearchTags": "Hae tunnisteita…",
+      "bulkSearchFolders": "Hae kansioita…",
+      "bulkTagsHeading": "Tunnisteet",
+      "bulkFoldersHeading": "Kansiot",
+      "bulkItemCount": "{count, plural, one {# kohde} other {# kohdetta}}",
+      "bulkViewsHeading": "Lisää: {name}",
+      "bulkAllItems": "Kaikki kohteet",
+      "bulkConfirmTitle": "{count, plural, one {Lisätäänkö # kortti ({name})?} other {Lisätäänkö # korttia ({name})?}}",
+      "bulkConfirmBody": "Suuret taulut hidastuvat ja voivat ylittää synkronoinnin kokorajan.",
+      "bulkConfirmSkipped": "{count, plural, one {# kohde on jo tällä taululla, joten se ohitetaan.} other {# kohdetta on jo tällä taululla, joten ne ohitetaan.}}",
+      "bulkConfirmAdd": "{count, plural, one {Lisää # kortti} other {Lisää # korttia}}",
+      "bulkBack": "Takaisin",
+      "bulkEmpty": "Ei lisättäviä muistiinpanoja, tiedostoja tai tehtäviä",
+      "bulkLoadFailed": "Kohteiden lataaminen epäonnistui",
+      "bulkAdded": "{count, plural, one {# kortti lisätty} other {# korttia lisätty}}",
+      "bulkAddedSkipped": "{count, plural, one {# kortti lisätty} other {# korttia lisätty}} · {skipped} jo taululla",
+      "bulkAllOnCanvas": "{count, plural, one {On jo tällä taululla} other {Kaikki # ovat jo tällä taululla}}"
+    },
+    "cluster": {
+      "button": "Ehdota ryhmiä",
+      "buttonHint": "Ryhmittelee tämän taulun muistiinpanokortit (tai valitut kortit) samankaltaisuuden mukaan. Toimii tällä laitteella.",
+      "loading": "Ryhmitellään…",
+      "needMoreNotes": "Lisää vähintään {count} muistiinpanokorttia, jotta ryhmiä voidaan ehdottaa.",
+      "tooMany": "Tällä taululla on yli {count} muistiinpanokorttia. Valitse enintään {count} ja yritä uudelleen.",
+      "disabled": "Ota paikalliset upotukset käyttöön kohdassa Asetukset > Tekoäly, jotta ryhmiä voidaan ehdottaa.",
+      "noGroups": "Näistä muistiinpanoista ei löytynyt selkeitä ryhmiä.",
+      "missing": "{count, plural, one {# muistiinpanolla ei ole vielä upotusta, joten se jätettiin pois.} other {# muistiinpanolla ei ole vielä upotusta, joten ne jätettiin pois.}}",
+      "failed": "Ryhmien ehdottaminen epäonnistui",
+      "title": "Ehdotetut ryhmät",
+      "description": "Ryhmitelty samankaltaisuuden mukaan tällä laitteella. Taululla ei muutu mikään, ennen kuin luot kehykset.",
+      "defaultName": "Ryhmä {number}",
+      "untitledGroup": "Ryhmä",
+      "groupName": "Ryhmän nimi",
+      "acceptGroup": "Sisällytä ryhmä {name}",
+      "noteCount": "{count, plural, one {# muistiinpano} other {# muistiinpanoa}}",
+      "discard": "Hylkää",
+      "create": "{count, plural, one {Luo # kehys} other {Luo # kehystä}}",
+      "created": "{count, plural, one {# kehys luotu} other {# kehystä luotu}}",
+      "cardsGone": "Nuo kortit eivät ole enää taululla."
+    },
+    "frame": {
+      "categorize": "Luokittele",
+      "editBinding": "Muuta tämän osion luokkaa",
+      "cardCount": "{count, plural, one {# kortti} other {# korttia}}",
+      "bindTitle": "Luokittele tämä osio",
+      "bindHint": "Osioon pudotetut kortit saavat tämän tunnisteen tai ominaisuuden arvon.",
+      "bindPlaceholder": "Hae tunnisteita ja ominaisuuksien arvoja tai kirjoita uusi tunniste…",
+      "bindEmpty": "Ei vastaavia tunnisteita tai ominaisuuksien arvoja.",
+      "groupTags": "Tunnisteet",
+      "useTag": "Käytä uutta tunnistetta #{tag}",
+      "unbind": "Lopeta luokittelu: {label}",
+      "current": "Nykyinen",
+      "applied": "{count, plural, one {{label} lisätty # korttiin} other {{label} lisätty # korttiin}}",
+      "applyFailed": "Lisääminen epäonnistui: {label}",
+      "revertFailed": "Kumoaminen epäonnistui: {label}",
+      "leftFrame": "{count, plural, one {# kortti siirretty pois osiosta {label}. Se säilyttää luokkansa.} other {# korttia siirretty pois osiosta {label}. Ne säilyttävät luokkansa.}}",
+      "removeCategory": "Poista {label}",
+      "removed": "{count, plural, one {{label} poistettu # kortista} other {{label} poistettu # kortista}}",
+      "removeFailed": "Poistaminen epäonnistui: {label}",
+      "skippedFile": "{count, plural, one {Yksi tiedostokortti jätettiin ennalleen: tiedostoilla ei ole tunnisteita eikä ominaisuuksia.} other {# tiedostokorttia jätettiin ennalleen: tiedostoilla ei ole tunnisteita eikä ominaisuuksia.}}",
+      "skippedTaskProperty": "{count, plural, one {Yksi tehtäväkortti jätettiin ennalleen: tehtäviin voi lisätä tunnisteita mutta ei muistiinpanojen ominaisuuksia.} other {# tehtäväkorttia jätettiin ennalleen: tehtäviin voi lisätä tunnisteita mutta ei muistiinpanojen ominaisuuksia.}}",
+      "skippedUnsupported": "{count, plural, one {Yksi kortti jätettiin ennalleen: tapahtumia ja projekteja ei voi luokitella.} other {# korttia jätettiin ennalleen: tapahtumia ja projekteja ei voi luokitella.}}",
+      "layoutAction": "Asettele ominaisuuden mukaan",
+      "layoutTitle": "Asettele ominaisuuden mukaan",
+      "layoutHint": "Luo osion kullekin arvolle ja lajittelee tämän taulun muistiinpanot niihin.",
+      "layoutPlaceholder": "Hae valinta-, monivalinta- ja tilaominaisuuksia…",
+      "layoutEmpty": "Arvoja sisältäviä valinta-, monivalinta- tai tilaominaisuuksia ei vielä ole.",
+      "layoutValueCount": "{count, plural, one {# arvo} other {# arvoa}}",
+      "layoutDone": "{count, plural, one {# osio luotu ominaisuudelle {property}} other {# osiota luotu ominaisuudelle {property}}}",
+      "layoutFailed": "Taulun asetteleminen epäonnistui"
+    }
+  },
   "phaseF": {
     "componentsAppSidebar": {
       "collections": "Kokoelmat",
+      "projects": "Projektit",
       "newNote": "Uusi muistiinpano",
       "newNote2": "Uusi muistiinpano",
       "newFolder": "Uusi kansio",
       "newFolder2": "Uusi kansio",
+      "newProject": "Uusi projekti",
       "bookmarks": "Kirjanmerkit",
       "tags": "Tunnisteet",
+      "reorderSection": "Järjestä uudelleen: {section}",
       "dropFilesToImport": "Pudota tuotavat tiedostot",
+      "dropFilesIntoVaultRoot": "Holvin juurikansio",
       "newNoteN": "Uusi muistiinpano (⌘N)",
       "new": "Uusi",
-      "syncDisabled": "Synkronointi pois käytöstä",
-      "syncDisabled2": "Synkronointi pois käytöstä",
+      "newItemMenu": "Luo uusi…",
       "feedbackButton": "Lähetä palautetta",
+      "feedbackTitle": "Lähetä palautetta",
       "feedbackDescription": "Kerro meille, mikä toimii, mikä on rikki tai mitä toivoisit Memryn tekevän. Luemme jokaisen viestin.",
-      "feedbackEmailHint": "Lisää sähköpostisi, jos haluat vastauksen.",
-      "feedbackError": "Palautteen lähetys epäonnistui. Yritä uudelleen.",
       "feedbackPlaceholder": "Palautteesi…",
+      "feedbackEmailHint": "Lisää sähköpostisi, jos haluat vastauksen.",
+      "feedbackPrivacyTitle": "Mitä lähetetään",
+      "feedbackPrivacyMessage": "Viestisi juuri sellaisena kuin sen kirjoitit",
+      "feedbackPrivacyEmailOptional": "Sähköpostisi – vain jos lisäät sen, ja vain jotta voimme vastata",
+      "feedbackPrivacyEmailSignedIn": "Tilisi sähköposti ({email}), jotta voimme vastata",
+      "feedbackPrivacyVersion": "Sovelluksen versio ja käyttöjärjestelmä",
+      "feedbackPrivacyPlan": "Tilauksesi (ilmainen, Plus, Pro tai Believer)",
+      "feedbackPrivacyNote": "Ei mitään muuta. Muistiinpanosi pysyvät laitteellasi.",
       "feedbackSend": "Lähetä",
       "feedbackSending": "Lähetetään…",
       "feedbackSuccess": "Kiitos palautteesta!",
-      "feedbackTitle": "Lähetä palautetta",
-      "newItemMenu": "Luo uusi…",
-      "feedbackPrivacyEmailOptional": "Sähköpostisi — vain jos lisäät sen, ja vain jotta voimme vastata",
-      "feedbackPrivacyEmailSignedIn": "Tilisi sähköposti ({email}), jotta voimme vastata",
-      "feedbackPrivacyMessage": "Viestisi juuri sellaisena kuin sen kirjoitit",
-      "feedbackPrivacyNote": "Ei mitään muuta. Muistiinpanosi pysyvät laitteellasi.",
-      "feedbackPrivacyPlan": "Tilauksesi (free, Plus, Pro tai Believer)",
-      "feedbackPrivacyTitle": "Mitä lähetetään",
-      "feedbackPrivacyVersion": "Sovelluksen versio ja käyttöjärjestelmä",
-      "projects": "Projektit"
+      "feedbackError": "Palautteen lähettäminen epäonnistui. Yritä uudelleen.",
+      "syncDisabled": "Synkronointi pois käytöstä",
+      "syncDisabled2": "Synkronointi pois käytöstä",
+      "sortLabel": "Lajittele {section}: {mode}",
+      "sortModeManual": "Manuaalinen",
+      "sortModeNameAsc": "Nimi A → Ö",
+      "sortModeNameDesc": "Nimi Ö → A",
+      "sortModeModifiedDesc": "Muokattu: uusin ensin",
+      "sortModeModifiedAsc": "Muokattu: vanhin ensin",
+      "sortModeCreatedDesc": "Luotu: uusin ensin",
+      "sortModeCreatedAsc": "Luotu: vanhin ensin",
+      "sortModeCountDesc": "Eniten käytetyt",
+      "sortModeCountAsc": "Vähiten käytetyt",
+      "sortSaveFailed": "Lajittelujärjestyksen tallentaminen epäonnistui",
+      "sectionOrderSaveFailed": "Sivupalkin järjestyksen tallentaminen epäonnistui"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Muuta päiväpaneelin kokoa",
       "dragToResizeDoubleClickToReset": "Muuta kokoa vetämällä · Nollaa kaksoisnapsauttamalla"
     },
     "componentsFindBarFindBar": {
-      "findReplaceAsk": "Etsi, vaihda, kysy..."
+      "findReplaceAsk": "Etsi, korvaa, kysy…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Ohita perehdytys",
-      "welcomeToMemry": "Tervetuloa memrynote:ään",
+      "skipOnboarding": "Ohita esittely",
+      "welcomeToMemry": "Tervetuloa memrynoteen",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Henkilökohtainen tietopohjasi. Käytetään 2 minuuttia, jotta pääset alkuun.",
       "getStarted": "Aloita ",
       "createYourFirstNote": "Luo ensimmäinen muistiinpanosi",
       "markdownBasedStoredLocallyAsPlainFiles": "Markdown-pohjainen, tallennettu paikallisesti tavallisina tiedostoina.",
-      "eGMeetingNotesIdeasAnything": "esim. Kokousmuistiinpanoja, ideoita, mitä tahansa...",
+      "eGMeetingNotesIdeasAnything": "esim. kokousmuistiinpanot, ideat, mitä tahansa…",
       "skip": "Ohita",
       "createNote": "Luo muistiinpano ",
       "addYourFirstTask": "Lisää ensimmäinen tehtäväsi",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Tehtävät linkittävät muistiinpanoihisi, joissa on prioriteetit ja eräpäivät.",
-      "eGReviewProjectProposal": "esim. Tarkista projektiehdotus...",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Tehtävät linkittyvät muistiinpanoihisi, ja niillä on prioriteetit ja eräpäivät.",
+      "eGReviewProjectProposal": "esim. tarkista projektiehdotus…",
       "skip2": "Ohita",
       "createTask": "Luo tehtävä ",
       "syncAcrossDevices": "Synkronoi laitteiden välillä",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Pidä muistiinpanosi ja tehtäväsi synkronoituna kaikilla laitteillasi. Voit aina määrittää tämän myöhemmin.",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Pidä muistiinpanosi ja tehtäväsi synkronoituina kaikilla laitteillasi. Voit määrittää tämän myös myöhemmin.",
       "skipForNow": "Ohita toistaiseksi",
-      "doneLetSGo": "Valmis - mennään! "
+      "doneLetSGo": "Valmis – mennään! "
     },
     "componentsFolderIconButton": {
-      "setFolderIcon": "Aseta kansiokuvake"
+      "setFolderIcon": "Aseta kansiokuvake",
+      "expandFolder": "Laajenna kansio",
+      "collapseFolder": "Kutista kansio"
     },
     "componentsHintOverlayHintIndicator": {
       "hint": "VINKKI"
     },
     "componentsIconPicker": {
-      "iconPicker": "Kuvakkeen valitsin",
+      "iconPicker": "Kuvakevalitsin",
       "selectIcon": "Valitse kuvake",
       "closeIconPicker": "Sulje kuvakevalitsin",
-      "searchIcons": "Hae kuvakkeita...",
+      "searchIcons": "Hae kuvakkeita…",
       "all": "Kaikki",
-      "clearIcon": "Tyhjennä kuvake",
+      "clearIcon": "Poista kuvake",
       "noIconsFoundFor": "Ei kuvakkeita haulle \""
     },
     "componentsKeyboardShortcutsModal": {
       "keyboardShortcuts": "Pikanäppäimet",
-      "closeShortcutsHelp": "Sulje pikanäppäimet auttavat",
+      "closeShortcutsHelp": "Sulje pikanäppäinohje",
       "press": "Paina",
-      "toClose": "sulkea"
+      "toClose": "sulkeaksesi"
     },
     "componentsKiboUiTreeIndex": {
       "setIcon": "Aseta kuvake",
-      "clearIcon": "Tyhjennä kuvake"
+      "clearIcon": "Poista kuvake"
     },
     "componentsNavMain": {
       "platform": "Alusta"
@@ -201,33 +683,33 @@
       "logOut": "Kirjaudu ulos"
     },
     "componentsSearchCommandPalette": {
-      "search": "Etsi",
-      "searchNotesTasksJournalInbox": "Hae muistiinpanoja, tehtäviä, päiväkirjaa, postilaatikkoa...",
-      "noResultsFor": "Ei tuloksia haulle \"",
+      "search": "Hae",
+      "searchNotesTasksJournalInbox": "Hae muistiinpanoista, tehtävistä, päiväkirjasta, Saapuneista…",
+      "noResultsFor": "Ei tuloksia haulle ”",
       "result": "tulos",
       "noResultsForQuery": "Ei tuloksia haulle ”{query}”",
       "resultCount": "{count, plural, one {# tulos} other {# tulosta}}",
-      "indexBuilding": "Luodaan hakuhakemistoa {done}/{total} — tulokset voivat olla puutteellisia",
-      "indexBuildingUnknown": "Luodaan hakuhakemistoa — tulokset voivat olla puutteellisia"
+      "indexBuilding": "Rakennetaan hakuindeksiä {done}/{total} – tulokset voivat olla puutteellisia",
+      "indexBuildingUnknown": "Rakennetaan hakuindeksiä – tulokset voivat olla puutteellisia"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Hae ja napsauta kohteita rakentaaksesi polkusi",
-      "reasons": "Syitä",
-      "clear": "Selkeä"
+      "reasons": "Syyt",
+      "clear": "Tyhjennä"
     },
     "componentsSearchSearchFilters": {
-      "clear": "Selkeä",
+      "clear": "Tyhjennä",
       "tags": "Tunnisteet",
-      "filterByTag": "Suodata tunnisteen mukaan...",
+      "filterByTag": "Suodata tunnisteen mukaan…",
       "dateRange": "Ajanjakso"
     },
     "componentsSearchSearchResultGroup": {
       "viewAll": "Näytä kaikki ",
-      "results": "tuloksia"
+      "results": "tulosta"
     },
     "componentsSearchSearchResultItem": {
       "p": "P",
-      "fuzzy": "sumeaa"
+      "fuzzy": "likimääräinen"
     },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Ei välilehtiä auki",
@@ -236,8 +718,8 @@
       "closePane": "Sulje ruutu"
     },
     "componentsSplitViewLayoutPicker": {
-      "layoutPresets": "Asettelun esiasetukset",
-      "layoutPresets2": "Asettelun esiasetukset"
+      "layoutPresets": "Asettelupohjat",
+      "layoutPresets2": "Asettelupohjat"
     },
     "componentsSplitViewResizeHandle": {
       "resizePanes": "Muuta ruutujen kokoa"
@@ -254,10 +736,10 @@
     "componentsTabsNewTabMenu": {
       "newTab": "Uusi välilehti",
       "newTab2": "Uusi välilehti",
-      "newNote": "Uusi huomautus",
+      "newNote": "Uusi muistiinpano",
       "journal": "Päiväkirja",
       "calendar": "Kalenteri",
-      "inboxCapture": "Saapuneet-kansion sieppaus",
+      "inboxCapture": "Pikakirjaus Saapuneisiin",
       "tasks": "Tehtävät",
       "tags": "Tunnisteet"
     },
@@ -272,10 +754,10 @@
       "closeAllTabs": "Sulje kaikki välilehdet"
     },
     "componentsTabsTabBarWithDrag": {
-      "openTabs": "Avaa välilehdet",
+      "openTabs": "Avoimet välilehdet",
       "scrollTabsLeft": "Vieritä välilehtiä vasemmalle",
       "scrollTabsRight": "Vieritä välilehtiä oikealle",
-      "dayPanel": "Päivän paneeli"
+      "dayPanel": "Päiväpaneeli"
     },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Jotain meni pieleen",
@@ -284,11 +766,11 @@
       "sendReport": "Lähetä diagnostiikkaraportti"
     },
     "componentsTabsTabPreviewCard": {
-      "noteIcon": "Huomautus-kuvake"
+      "noteIcon": "Muistiinpanon kuvake"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Tallentamattomat muutokset",
-      "unsavedChangesBody": "Kohteessa ”{title}” on tallentamattomia muutoksia. Mitä haluat tehdä?"
+      "unsavedChangesBody": "”{title}” sisältää tallentamattomia muutoksia. Mitä haluat tehdä?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Uusi työtila",
@@ -304,13 +786,13 @@
       "maximizeWindow": "Suurenna ikkuna"
     },
     "componentsUiAutocompleteDropdown": {
-      "suggestions": "ehdotuksia",
+      "suggestions": "Ehdotukset",
       "or": "tai",
       "enter": "Enter",
       "toInsert": "lisätäksesi"
     },
     "componentsUiBreadcrumb": {
-      "breadcrumb": "korppujauho",
+      "breadcrumb": "Murupolku",
       "more": "Lisää"
     },
     "componentsUiDialog": {
@@ -322,28 +804,27 @@
     "componentsUiSidebar": {
       "sidebar": "Sivupalkki",
       "displaysTheMobileSidebar": "Näyttää mobiilisivupalkin.",
-      "toggleSidebar": "Vaihda sivupalkki",
-      "toggleSidebar2": "Vaihda sivupalkki",
+      "toggleSidebar": "Näytä/piilota sivupalkki",
+      "toggleSidebar2": "Näytä/piilota sivupalkki",
       "dragToResizeDoubleClickToReset": "Muuta kokoa vetämällä · Nollaa kaksoisnapsauttamalla"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Tervetuloa memrynote:ään",
+      "welcomeToMemry": "Tervetuloa memrynoteen",
       "yourPersonalKnowledgeManagementSystem": "Henkilökohtainen tiedonhallintajärjestelmäsi.",
       "selectAFolderToStoreYourNotesAndTasks": "Valitse kansio muistiinpanojen ja tehtävien tallentamiseen.",
-      "opening": "Avataan...",
-      "selectVaultFolder": "Valitse Holvikansio",
+      "opening": "Avataan…",
+      "selectVaultFolder": "Valitse holvikansio",
       "plainMarkdown": "Pelkkä Markdown",
-      "yourNotesStayPortable": "Muistiinpanosi pysyvät kannettavana",
+      "yourNotesStayPortable": "Muistiinpanosi pysyvät siirrettävinä",
       "syncAnywhere": "Synkronoi missä tahansa",
       "useDropboxIcloudGit": "Käytä Dropboxia, iCloudia, Gitiä",
       "recentVaults": "Viimeaikaiset holvit",
-      "notesLastOpened": "huomautukset · Viimeksi avattu",
-      "brandName": "Memrynote",
+      "notesLastOpened": "muistiinpanoa · Viimeksi avattu",
       "preRelease": "Beta",
       "createNewVault": "Luo uusi holvi",
       "createNewVaultDesc": "Aloita uusi holvi valitsemaasi kansioon.",
       "openExistingVault": "Avaa olemassa oleva holvi",
-      "openExistingVaultDesc": "Valitse kansio Markdown-tiedostoille, joita jo käytät.",
+      "openExistingVaultDesc": "Valitse kansio, jossa sinulla on jo Markdown-tiedostoja.",
       "signInToSync": "Kirjaudu sisään synkronointia varten",
       "signInToSyncDesc": "Päästä päähän salatut holvit laitteidesi välillä.",
       "create": "Luo",
@@ -351,7 +832,47 @@
       "signIn": "Kirjaudu sisään",
       "helpAndDocs": "Ohjeet ja dokumentaatio",
       "signInRequiresVault": "Avaa tai luo ensin holvi, jotta voit määrittää synkronoinnin.",
-      "addVault": "Lisää holvi"
+      "addVault": "Lisää holvi",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "Muistiinpanosi ovat holvissa, joka on kansio tällä tietokoneella.",
+        "createDesc": "Anna sille nimi ja valitse sen sijainti.",
+        "openFolder": "Avaa kansio holvina",
+        "openFolderDesc": "Käytä kansiota, jossa sinulla on jo Markdown-tiedostoja.",
+        "openFromSync": "Avaa Memrynote Syncistä",
+        "openFromSyncDesc": "Kirjaudu sisään ja lataa holvi tililtäsi.",
+        "back": "Takaisin",
+        "createTitle": "Luo uusi holvi",
+        "createSubtitle": "Holvi on Markdown-tiedostoja sisältävä kansio. Voit siirtää sen myöhemmin.",
+        "nameLabel": "Nimi",
+        "namePlaceholder": "Omat muistiinpanot",
+        "locationLabel": "Sijainti",
+        "change": "Muuta…",
+        "willBeCreatedAt": "Luodaan sijaintiin",
+        "errorExists": "Tässä sijainnissa on jo samanniminen kansio.",
+        "openInstead": "Avaa se holvina",
+        "errorInvalidName": "Nimi ei voi alkaa pisteellä eikä sisältää merkkejä / \\ : * ? \" < > |",
+        "createFailed": "Holvin luominen epäonnistui.",
+        "createVault": "Luo holvi",
+        "creating": "Luodaan…",
+        "cancel": "Peruuta",
+        "chooseTitle": "Valitse holvi",
+        "chooseSubtitle": "Kirjautuneena: {email}. Valitse holvi, jonka haluat avata tällä tietokoneella.",
+        "untitledVault": "Nimetön holvi",
+        "items": "{count, plural, one {# kohde} other {# kohdetta}}",
+        "onThisComputer": "Tällä tietokoneella",
+        "downloadTo": "Lataa sijaintiin",
+        "otherVaultsHint": "Muut holvit pysyvät tililläsi. Voit ladata ne milloin tahansa holvivalitsimesta.",
+        "openVault": "Avaa holvi",
+        "opening": "Avataan…",
+        "loadingVaults": "Ladataan holvejasi…",
+        "loadFailed": "Holvien lataaminen epäonnistui.",
+        "retry": "Yritä uudelleen",
+        "noVaultsTitle": "Tililläsi ei ole vielä holveja",
+        "noVaultsDesc": "Luo holvi tällä tietokoneella. Se synkronoituu tilillesi.",
+        "createCta": "Luo holvi",
+        "openFailed": "Holvin avaaminen epäonnistui."
+      }
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Ei vielä holveja",
@@ -359,12 +880,13 @@
       "settings": "Asetukset",
       "logOut": "Kirjaudu ulos",
       "signInToSync": "Kirjaudu sisään synkronoidaksesi",
-      "remove": "Poista \"",
+      "remove": "Poista ”",
+      "removeVaultTitle": "Poistetaanko ”{name}” listalta?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Tämä holvi poistetaan sovelluksesta, mutta tiedostosi säilyvät levyllä. Voit aina lisätä sen myöhemmin uudelleen.",
       "cancel": "Peruuta",
       "remove2": "Poista",
       "inYourAccount": "Tililläsi",
-      "itemsCount": "{count} kohdetta",
+      "itemsCount": "Kohteita: {count}",
       "untitledVault": "Holvi",
       "downloadVaultTitle": "Lataa ”{name}”",
       "downloadLocation": "Sijainti",
@@ -372,491 +894,363 @@
       "download": "Lataa",
       "downloadFailed": "Holvin lataaminen epäonnistui",
       "deleteFromAccount": "Poista tililtä",
+      "deleteVaultTitle": "Poistetaanko ”{name}” tililtäsi?",
       "deleteVaultBody": "Tämä poistaa pysyvästi kaikki tämän holvin synkronoidut tiedot Memryn palvelimilta, eikä sitä voi kumota. Levyllä olevia tiedostojasi ei poisteta.",
       "deleteVaultConfirm": "Poista tililtä",
       "deleteVaultFailed": "Holvin poistaminen epäonnistui",
-      "deleteVaultTitle": "Poistetaanko ”{name}” tililtäsi?",
-      "removeVaultTitle": "Poistetaanko ”{name}” listalta?",
       "missing": "Kansiota ei löydy"
     },
     "componentsWindowControls": {
       "searchK": "Haku (⌘K)",
-      "browserBack": "Selain takaisin",
+      "browserBack": "Siirry takaisin",
       "back": "Takaisin",
-      "browserForward": "Selain eteenpäin",
+      "browserForward": "Siirry eteenpäin",
       "forward": "Eteenpäin"
     }
   },
   "phaseI": {
     "errors": {
-      "failedToImportFiles": "Tiedostojen tuonti epäonnistui",
+      "failedToImportFiles": "Tiedostojen tuominen epäonnistui",
       "failedToCreateNote": "Muistiinpanon luominen epäonnistui",
-      "failedToAccessMicrophone": "Mikrofonin käyttö epäonnistui"
+      "failedToAccessMicrophone": "Mikrofonin käyttäminen epäonnistui"
     },
     "toasts": {
       "undone": "Kumottu"
     }
   },
-  "agentChat": {
-    "title": "Agent-chat",
-    "loading": "Ladataan agentin keskustelua...",
-    "conversationLoading": "Keskustelua ladataan...",
-    "newConversation": "Uusi keskustelu",
-    "history": "Keskusteluhistoria",
-    "openInTab": "Avaa keskustelu välilehdessä",
-    "stop": "Pysähdy",
-    "thinking": "Agent ajattelee",
-    "enable": {
-      "title": "Ota memrynote Agent käyttöön",
-      "description": "memrynote Agent käyttää valitsemaasi paikallista agenttia CLI keskustellakseen holvistasi. Claude lähettää vuoroja Anthropic; Codex lähettää vuoroja OpenAI:lle.",
-      "remote": "memrynote salaa paikallisen ja synkronoidun chat-historiasi, mutta mallin päättely tapahtuu valitun palveluntarjoajan kanssa.",
-      "readTools": "Lukutyökalut toimivat automaattisesti.",
-      "writeTools": "Työkalujen luonti ja päivitys vaatii hyväksynnän.",
-      "diff": "Päivitystyökalut näyttävät eron tai esikatselun.",
-      "button": "Ota Agent-chat käyttöön"
-    },
-    "approval": {
-      "description": "Agentti haluaa kutsua {name} näillä argumenteilla.",
-      "applyOnce": "Hae kerran",
-      "allowOnce": "Salli kerran",
-      "editAndApply": "Muokkaa ja käytä",
-      "editAndAllow": "Muokkaa ja salli",
-      "allowAlways": "Salli aina",
-      "applyEdits": "Ota muokkaukset käyttöön",
-      "deny": "Estä",
-      "invalidJson": "Syötä kelvollinen JSON ennen muokkausten käyttämistä."
-    },
-    "diff": {
-      "previewError": "Huomautuseron esikatselu epäonnistui",
-      "description": "Agentti haluaa päivittää {title}. Tarkista nykyinen ja ehdokassisältö ennen sen käyttämistä.",
-      "fallbackTitle": "tämä muistiinpano",
-      "current": "Nykyinen",
-      "candidate": "Ehdokas",
-      "loading": "Ladataan...",
-      "apply": "Hae",
-      "applyEdited": "Käytä muokattu"
-    },
-    "inPageReview": {
-      "regionLabel": "Agentin ehdotus",
-      "barLabel": "Tarkista agentin ehdotus",
-      "loading": "Ladataan ehdotusta...",
-      "loadingTitle": "Agentin ehdotus",
-      "title": "{count, plural, =0 {Agentin ehdotus} one {Agentti ehdotti # muutosta} other {Agentti ehdotti # muutosta}}",
-      "editingTitle": "Muokataan ehdotusta",
-      "pendingHint": "Ei vielä tallennettu. Hyväksy ottaaksesi sen käyttöön.",
-      "editingHint": "Muokkauksesi pysyvät tässä, kunnes hyväksyt.",
-      "baseChanged": "Tämä muistiinpano muuttui, kun muokkasit ehdotusta.",
-      "keepDraft": "Säilytä muokkaukseni",
-      "restart": "Aloita alusta uusimmasta versiosta",
-      "reject": "Hylkää",
-      "edit": "Muokkaa",
-      "showDiff": "Näytä muutokset",
-      "accept": "Hyväksy",
-      "acceptEdits": "Hyväksy muokkaukset",
-      "waiting": "Odottaa tarkistustasi kohteessa {title}.",
-      "notOpen": "Avaa {title} nähdäksesi muutokset tai hyväksy ne tarkistamatta.",
-      "show": "Näytä",
-      "openNote": "Avaa muistiinpano",
-      "openJournal": "Avaa päiväkirja",
-      "fallbackTitle": "tämä muistiinpano"
-    },
-    "composer": {
-      "currentNote": "Nykyinen huomautus",
-      "removeAttachment": "Poista {label}",
-      "placeholder": "Kysy Memryltä mitä tahansa. @ tiedoston mainitsemiseen",
-      "send": "Lähetä",
-      "providerLabel": "Agent -toimittaja: {provider}",
-      "settingsSummary": "{reasoning}",
-      "providers": {
-        "claude": "Claude",
-        "codex": "Codex",
-        "antigravity": "Antigravity",
-        "local": "Paikallinen"
-      },
-      "models": {
-        "default": "Oletus",
-        "label": "Malli"
-      },
-      "settings": {
-        "reasoning": "Päättely"
-      },
-      "claudeSettings": {
-        "reasoning": {
-          "low": "Matala",
-          "medium": "Keskikokoinen",
-          "high": "Korkea",
-          "extraHigh": "Erittäin korkea",
-          "extraHighDefault": "Erittäin korkea (oletus)",
-          "max": "Maksimi"
-        }
-      },
-      "codexSettings": {
-        "reasoning": {
-          "low": "Matala",
-          "medium": "Keskitaso",
-          "mediumDefault": "Keskitaso (oletus)",
-          "high": "Korkea",
-          "extraHigh": "Erittäin korkea"
-        }
-      },
-      "access": {
-        "vaultOnly": "Vain holvi",
-        "computerAccess": "Tietokoneen käyttö"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Pois",
-        "label": "Verkkohaku"
-      },
-      "permissionsLabel": "Agentin käyttöoikeudet: {access}, verkkohaku {webSearch}",
-      "permissions": {
-        "label": "Käyttöoikeudet",
-        "access": "Käyttöoikeus",
-        "tools": "Työkalut"
-      },
-      "modelSettingsLabel": "Agentin malliasetukset: {model}, {settings}"
-    },
-    "refPicker": {
-      "noMatches": "Ei osumia"
-    },
-    "toolResult": {
-      "label": "Työkalun tulos"
-    },
-    "toolCall": {
-      "editedArgs": "Muokatut argumentit",
-      "parameters": "Parametrit"
-    },
-    "sidebar": {
-      "label": "Oikea sivupalkki",
-      "day": "Päivä",
-      "agent": "Agentti",
-      "pendingApproval": "{count, plural, one {# odottaa hyväksyntää} other {# odottavaa hyväksyntää}}",
-      "inProgress": "Agent käännös käynnissä",
-      "close": "Sulje agentti"
-    },
-    "errors": {
-      "loadConversations": "Edustajakeskusteluja ei voitu ladata",
-      "loadConversation": "Edustajakeskustelun lataaminen epäonnistui",
-      "createConversation": "Edustajakeskustelun luominen epäonnistui",
-      "busy": "Toinen ikkuna on tämän keskustelun puolivälissä. Odota sen päättymistä tai lopeta se sieltä.",
-      "sendTurn": "Agentin vuoroa ei voitu lähettää",
-      "cancelTurn": "Edustajan vuoroa ei voitu peruuttaa",
-      "submitApproval": "Työkalun hyväksyntää ei voitu lähettää",
-      "updateTrust": "Luotettuja työkaluja ei voitu päivittää",
-      "saveDisclosure": "Ilmoitustilaa ei voitu tallentaa",
-      "resolveWindow": "Agentin lähdeikkunaa ei voitu ratkaista",
-      "detectCli": "Agentin taustaohjelmia ei voitu havaita",
-      "loadDisclosure": "Ilmoitustilaa ei voitu ladata"
-    },
-    "sources": {
-      "used": "{count, plural, one {Käytetty # lähde} other {Käytetty # lähdettä}}"
-    }
-  },
   "home": {
-    "addWidget": "Lisää widget",
-    "board": {
-      "defaultName": "Aloitus",
-      "deleteAria": "Poista asettelu",
-      "label": "Aloitusnäkymän asettelu",
-      "newAria": "Uusi taulu",
-      "newName": "Uusi taulu"
-    },
-    "disabled": {
-      "createNote": "Luo muistiinpano",
-      "hint": "Mitään ei ole avoinna. Aloita muistiinpano."
-    },
-    "done": "Valmis",
-    "edit": "Muokkaa",
-    "empty": {
-      "body": "Widgetit tuovat muistiinpanosi, tehtäväsi ja kirjanmerkkisi yhteen rauhalliseen paikkaan.",
-      "cta": "Lisää ensimmäinen widgetisi",
-      "title": "Taulusi on tyhjä"
-    },
-    "greeting": {
-      "afternoon": "Hyvää iltapäivää",
-      "evening": "Hyvää iltaa",
-      "morning": "Hyvää huomenta"
-    },
-    "header": {
-      "events": "{count, plural, one {# tapahtuma} other {# tapahtumaa}}",
-      "tasksDue": "{count, plural, one {# tehtävä erääntyy tänään} other {# tehtävää erääntyy tänään}}"
-    },
-    "noBookmarksYet": "Ei vielä kirjanmerkkejä.",
-    "noEventsYet": "Ei tapahtumia tänään.",
-    "noJournalEntriesYet": "Ei vielä päiväkirjamerkintöjä.",
-    "noNotesYet": "Ei vielä muistiinpanoja.",
-    "noTasksYet": "Ei vielä tehtäviä.",
     "widget": {
-      "bookmarks": "Kirjanmerkit",
-      "calendar": "Kalenteri",
-      "calendarToday": "Tänään",
-      "configAria": "Määritä widget",
-      "configure": "Määritä",
+      "removeAria": "Poista widget",
       "dragAria": "Vedä widgetiä",
-      "duration": "{count} min",
+      "configAria": "Määritä widget",
+      "resizeAria": "Muuta kooksi {size}",
+      "menuAria": "Widgetin asetukset",
+      "resize": "Koko",
+      "remove": "Poista",
       "filter": {
+        "all": "Kaikki",
         "today": "Erääntyy tänään",
         "tomorrow": "Huomenna",
-        "week": "Tällä viikolla"
+        "next7": "Seuraavat 7 päivää",
+        "noDueDate": "Ei eräpäivää"
       },
-      "folder": "Kansio",
-      "folderEmpty": "Ei vielä kansioita",
-      "folderNoSelection": "Ei valittua kansiota",
-      "folderPickPrompt": "Valitse kansio",
-      "folderViewSelect": "Näkymä",
-      "folderView_gallery": "Galleria",
-      "folderView_list": "Luettelo",
+      "recentlyEdited": "Viimeksi muokatut",
+      "recentlyOpened": "Viimeksi avatut",
+      "recentMeta": "muokattu {time}",
+      "recentMetaWithFolder": "{folder} · muokattu {time}",
+      "openedMeta": "avattu {time}",
+      "openedMetaWithFolder": "{folder} · avattu {time}",
+      "noRecentlyOpened": "Avaamasi muistiinpanot näkyvät tässä",
+      "bookmarks": "Kirjanmerkit",
+      "tasks": "Tehtävät",
+      "calendar": "Kalenteri",
+      "calendarToday": "Tänään",
+      "openCalendar": "Avaa kalenteri",
+      "next": "Seuraava: {title}",
+      "startsIn": "Alkaa {count, plural, one {# min kuluttua} other {# min kuluttua}}",
+      "duration": "{count} min",
       "inbox": "Saapuneet",
       "inboxAllTypes": "Kaikki tyypit",
       "inboxOlder": "{count, plural, one {# vanhempi} other {# vanhempaa}}",
       "inboxOldest": "vanhin {count, plural, one {# päivä} other {# päivää}}",
+      "openInbox": "Avaa Saapuneet",
+      "folder": "Kansio",
+      "untitled": "Nimetön",
+      "folderPickPrompt": "Valitse kansio",
+      "folderEmpty": "Ei vielä kansioita",
+      "folderNoSelection": "Ei valittua kansiota",
+      "folderView_list": "Luettelo",
+      "folderView_gallery": "Galleria",
+      "folderViewSelect": "Näkymä",
+      "project": "Projekti",
+      "projectNoSelection": "Ei valittua projektia",
+      "projectMissing": "Tämä projekti ei ole enää käytettävissä",
+      "projectNoTasks": "Ei tehtäviä",
       "journal": "Päiväkirja",
-      "journalStreak": "{count, plural, one {#-päivän putki} other {#-päivän putki}}",
+      "journalStreak": "{count, plural, one {# päivän putki} other {# päivän putki}}",
       "journalToday": "Tänään",
       "journalYesterday": "Eilen",
-      "loadError": "Lataus epäonnistui",
-      "menuAria": "Widgetin asetukset",
-      "next": "Seuraava: {title}",
-      "openCalendar": "Avaa kalenteri",
-      "openInbox": "Avaa saapuneet",
-      "recentMeta": "muokattu {time}",
-      "recentMetaWithFolder": "{folder} · muokattu {time}",
-      "recentlyEdited": "Viimeksi muokattu",
-      "remove": "Poista",
-      "removeAria": "Poista widget",
-      "resize": "Koko",
-      "resizeAria": "Muuta kooksi {size}",
-      "savedFilterDefault": "Tänään",
-      "savedFilterHint": "Merkitse suodattimia tähdellä Tehtävät-sivulla käyttääksesi niitä täällä",
-      "savedFilterLabel": "Tallennettu suodatin",
-      "startsIn": "Alkaa {count, plural, one {# min kuluttua} other {# min kuluttua}}",
-      "tasks": "Tehtävät",
-      "unknown": "Tuntematon widget",
-      "untitled": "Nimetön"
+      "journalTomorrow": "Huomenna",
+      "journalUpcoming": "Tulossa",
+      "journalNoEntryYet": "Ei vielä merkintää",
+      "loadError": "Lataaminen epäonnistui",
+      "unknown": "Tuntematon widget"
+    },
+    "board": {
+      "label": "Etusivun asettelu",
+      "deleteAria": "Poista asettelu",
+      "newAria": "Uusi taulu",
+      "newName": "Uusi taulu",
+      "defaultName": "Etusivu",
+      "manage": "Hallitse tauluja",
+      "manageTitle": "Hallitse tauluja",
+      "manageDescription": "Nimeä uudelleen, järjestä tai poista Etusivun taulujasi.",
+      "renameAria": "Nimeä taulu uudelleen",
+      "reorderAria": "Muuta taulun järjestystä",
+      "nameLabel": "Taulun nimi"
+    },
+    "greeting": {
+      "morning": "Hyvää huomenta",
+      "afternoon": "Hyvää iltapäivää",
+      "evening": "Hyvää iltaa"
+    },
+    "header": {
+      "tasksDue": "{count, plural, one {# tehtävä erääntyy tänään} other {# tehtävää erääntyy tänään}}",
+      "events": "{count, plural, one {# tapahtuma} other {# tapahtumaa}}"
+    },
+    "edit": "Muokkaa",
+    "done": "Valmis",
+    "addWidget": "Lisää widget",
+    "empty": {
+      "title": "Taulusi on tyhjä",
+      "body": "Widgetit tuovat muistiinpanosi, tehtäväsi ja kirjanmerkkisi yhteen rauhalliseen paikkaan.",
+      "cta": "Lisää ensimmäinen widgetisi"
+    },
+    "noBookmarksYet": "Ei vielä kirjanmerkkejä.",
+    "noNotesYet": "Ei vielä muistiinpanoja.",
+    "noTasksYet": "Ei vielä tehtäviä.",
+    "noEventsYet": "Ei tapahtumia tänään.",
+    "noJournalEntriesYet": "Ei vielä päiväkirjamerkintöjä.",
+    "disabled": {
+      "createNote": "Luo muistiinpano",
+      "hint": "Mitään ei ole avoinna. Aloita muistiinpano."
     }
   },
-  "media": {
-    "video": "Video"
-  },
   "onboarding": {
-    "agentChat": {
-      "body": "Vaihda Agentti-välilehdelle kysyäksesi MemryNoten avustajalta holvistasi.",
-      "title": "Keskustele AI-agentin kanssa"
-    },
-    "collections": {
-      "body": "Järjestä muistiinpanot kansioihin, kiinnitä kirjanmerkkejä ja selaa tunnisteittain — kaikki täällä.",
-      "title": "Kokoelmat, kirjanmerkit ja tunnisteet"
-    },
-    "dayPanel": {
-      "body": "Sivupaneeli pitää kalenterin ja päivänäkymäsi sen vieressä, mitä ikinä luetkin.",
-      "title": "Päiväsi työsi rinnalla"
-    },
-    "feedback": {
-      "body": "Lähetä palautetta suoraan tiimille täältä.",
-      "title": "Kerro mielipiteesi"
-    },
-    "nav": {
-      "body": "Saapuneet tallentamiseen, Päiväkirja päivittäisiin muistiinpanoihin, Kalenteri aikajanaasi varten, Tehtävät tehtävälistoihin ja Graafi näyttämään, miten kaikki yhdistyy.",
-      "title": "Työtilasi"
+    "welcome": {
+      "title": "Tervetuloa MemryNoteen",
+      "body": "Yksityinen kotisi, joka toimii ilman verkkoyhteyttä. Muistiinpanot ovat päästä päähän salattuja – ne eivät koskaan poistu laitteeltasi salaamattomina."
     },
     "newNote": {
-      "body": "Aloita tästä. Kaikki kirjoittamasi tallennetaan ensin paikallisesti.",
-      "title": "Luo ensimmäinen muistiinpanosi"
+      "title": "Luo ensimmäinen muistiinpanosi",
+      "body": "Aloita tästä. Kaikki kirjoittamasi tallennetaan ensin paikallisesti."
     },
-    "settings": {
-      "body": "Tuo muistiinpanosi yli 12 sovelluksesta — Obsidian, Notion, Apple Notes, Evernote ja lisää — ja säädä kaikkea muuta Asetuksissa.",
-      "title": "Asetukset ja tuonnit"
+    "nav": {
+      "title": "Työtilasi",
+      "body": "Saapuneet kirjaamiseen, Päiväkirja päivittäisiin muistiinpanoihin, Kalenteri aikajanallesi, Tehtävät tehtävälistoille ja Graafi sen näkemiseen, miten kaikki liittyy yhteen."
+    },
+    "collections": {
+      "title": "Kokoelmat, kirjanmerkit ja tunnisteet",
+      "body": "Järjestä muistiinpanot kansioihin, kiinnitä kirjanmerkkejä ja selaa tunnisteittain – kaikki täällä."
+    },
+    "dayPanel": {
+      "title": "Päiväsi työsi rinnalla",
+      "body": "Sivupaneeli pitää kalenterin ja päivänäkymäsi sen vieressä, mitä ikinä luetkin."
+    },
+    "agentChat": {
+      "title": "Keskustele tekoälyagentin kanssa",
+      "body": "Vaihda Agentti-välilehdelle kysyäksesi MemryNoten avustajalta holvistasi."
     },
     "sync": {
-      "body": "Ota käyttöön päästä päähän salattu synkronointi pitääksesi jokaisen laitteen ajan tasalla.",
-      "title": "Yksityinen, salattu synkronointi"
+      "title": "Yksityinen, salattu synkronointi",
+      "body": "Ota käyttöön päästä päähän salattu synkronointi pitääksesi jokaisen laitteen ajan tasalla."
     },
-    "welcome": {
-      "body": "Yksityinen, ensisijaisesti offline-tilassa toimiva kotisi. Muistiinpanot ovat päästä päähän salattuja — ne eivät koskaan poistu laitteeltasi salaamattomina.",
-      "title": "Tervetuloa MemryNoteen"
+    "feedback": {
+      "title": "Kerro mielipiteesi",
+      "body": "Lähetä palautetta suoraan tiimille täältä."
+    },
+    "settings": {
+      "title": "Asetukset ja tuonnit",
+      "body": "Tuo muistiinpanosi yli 12 sovelluksesta – Obsidianista, Notionista, Apple Notesista, Evernotesta ja muista – ja säädä kaikkea muuta asetuksissa."
     },
     "tour": {
       "next": "Seuraava",
       "previous": "Edellinen",
       "progress": "{current} / {total}"
+    },
+    "starPrompt": {
+      "title": "Esittely valmis",
+      "body": "Anna meille tähti GitHubissa – se auttaa muita löytämään MemryNoten.",
+      "action": "Anna tähti GitHubissa"
     }
   },
-  "capture": {
-    "focusShortcut": "Kohdista tallennussyöttöön",
-    "detailHint": "tiedot",
-    "focusHint": "Q",
-    "submit": "Tallenna"
-  },
-  "canvas": {
-    "card": {
-      "addCard": "Lisää kortti",
-      "addCreateNote": "Luo muistiinpano \"{query}\"",
-      "addCreateNoteEmpty": "Luo uusi muistiinpano",
-      "addCreatedAt": "Luotu {date}",
-      "addEmpty": "Ei tuloksia",
-      "addGroupEvents": "Tapahtumat",
-      "addGroupNotes": "Muistiinpanot",
-      "addGroupTasks": "Tehtävät",
-      "addOnCanvas": "Taululla",
-      "addPlaceholder": "Hae muistiinpanoja, tehtäviä ja tapahtumia…",
-      "allDay": "Koko päivä",
-      "createNoteFailed": "Muistiinpanon luominen epäonnistui",
-      "deleted": "Kohde poistettu",
-      "loading": "Ladataan…",
-      "open": "Avaa välilehdessä",
-      "openToEdit": "Muokkaa avaamalla välilehdessä",
-      "untitled": "Nimetön",
-      "bulkGroup": "Lisää kaikki kohteesta",
-      "bulkFromTag": "Tunniste…",
-      "bulkFromFolder": "Kansio…",
-      "bulkSearchTags": "Hae tunnisteita…",
-      "bulkSearchFolders": "Hae kansioita…",
-      "bulkTagsHeading": "Tunnisteet",
-      "bulkFoldersHeading": "Kansiot",
-      "bulkItemCount": "{count, plural, one {# kohde} other {# kohdetta}}",
-      "bulkViewsHeading": "Lisää kohteesta {name}",
-      "bulkAllItems": "Kaikki kohteet",
-      "bulkConfirmTitle": "{count, plural, one {Lisätäänkö # kortti kohteesta {name}?} other {Lisätäänkö # korttia kohteesta {name}?}}",
-      "bulkConfirmBody": "Suuret taulut hidastuvat ja voivat ylittää synkronoinnin kokorajan.",
-      "bulkConfirmSkipped": "{count, plural, one {# kohde on jo tällä kankaalla, ja se ohitetaan.} other {# kohdetta on jo tällä kankaalla, ja ne ohitetaan.}}",
-      "bulkConfirmAdd": "{count, plural, one {Lisää # kortti} other {Lisää # korttia}}",
-      "bulkBack": "Takaisin",
-      "bulkEmpty": "Ei lisättäviä muistiinpanoja, tiedostoja tai tehtäviä",
-      "bulkLoadFailed": "Kohteiden lataus epäonnistui",
-      "bulkAdded": "{count, plural, one {# kortti lisätty} other {# korttia lisätty}}",
-      "bulkAddedSkipped": "{count, plural, one {# kortti lisätty} other {# korttia lisätty}} · {skipped} jo kankaalla",
-      "bulkAllOnCanvas": "{count, plural, one {On jo tällä kankaalla} other {Kaikki # ovat jo tällä kankaalla}}"
-    },
-    "corruptScene": "Tätä taulua ei voitu lukea. Muokkaus on poistettu käytöstä, jotta tietoja ei menetetä.",
-    "createFailed": "Taulun luominen epäonnistui",
-    "disabledBody": "Tämä välilehti kuuluu ominaisuuteen, joka ei ole käytössä tällä laitteella.",
-    "disabledTitle": "Taulu ei ole käytössä",
-    "empty": "Ei vielä tauluja",
-    "libraryStoreFailed": "Muotokirjastosi tallentaminen epäonnistui. Sen viimeisimmät muutokset voivat kadota.",
-    "loadFailed": "Taulujen lataaminen epäonnistui",
-    "loading": "Ladataan tauluja…",
-    "newCanvas": "Uusi taulu",
-    "notFound": "Tätä taulua ei löytynyt",
-    "openFailed": "Taulun avaaminen epäonnistui",
-    "savedToVault": "Kaikki muutokset tallentuvat holviisi automaattisesti",
-    "sectionLabel": "Taulut",
-    "tooLargeToSync": "Tämä taulu on liian suuri synkronoitavaksi. Se on tallennettu tälle laitteelle, mutta se ei siirry muille laitteillesi ennen kuin se pienenee.",
-    "untitled": "Nimetön taulu"
-  },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Napsauta riviä",
-      "reset": "Nollaa",
-      "shortcutsTab": "Pikanäppäimet-välilehti"
-    },
-    "description": "Nopeat reitit memrynote-sovelluksessa liikkumiseen, ajatusten tallentamiseen ja työn käsittelyyn.",
+    "description": "Nopeat reitit memrynotessa liikkumiseen, ajatusten kirjaamiseen ja työn käsittelyyn.",
+    "or": "tai",
+    "then": "sitten",
     "groups": {
       "general": {
-        "description": "Koko sovelluksen navigointi ja ohje.",
-        "title": "Yleiset"
-      },
-      "inbox": {
-        "description": "Käsittele tallennetut kohteet nopeasti.",
-        "title": "Saapuneet"
-      },
-      "journal": {
-        "description": "Liiku päiväkirjanäkymissä ja kohdista kirjoitusalueeseen.",
-        "title": "Päiväkirja"
-      },
-      "notes": {
-        "description": "Kirjoita, muotoile ja hae muistiinpanoja.",
-        "title": "Muistiinpanot / Editori"
-      },
-      "settings": {
-        "description": "Avaa asetukset ja mukauta pikanäppäimiä.",
-        "title": "Asetukset"
+        "title": "Yleiset",
+        "description": "Koko sovelluksen navigointi ja ohje."
       },
       "tabs": {
-        "description": "Siirry välilehtien ja ruutujen välillä.",
-        "title": "Välilehdet ja jaot"
+        "title": "Välilehdet ja jaot",
+        "description": "Siirry välilehtien ja ruutujen välillä."
+      },
+      "inbox": {
+        "title": "Saapuneet",
+        "description": "Käsittele kirjatut kohteet nopeasti."
+      },
+      "journal": {
+        "title": "Päiväkirja",
+        "description": "Liiku päiväkirjanäkymissä ja kohdista kirjoitusalueeseen."
+      },
+      "notes": {
+        "title": "Muistiinpanot / Editori",
+        "description": "Kirjoita, muotoile ja hae muistiinpanoja."
       },
       "tasks": {
-        "description": "Suodata, valitse ja merkitse tehtäviä valmiiksi.",
-        "title": "Tehtävät"
+        "title": "Tehtävät",
+        "description": "Suodata, valitse ja merkitse tehtäviä valmiiksi."
+      },
+      "settings": {
+        "title": "Asetukset",
+        "description": "Avaa asetukset ja mukauta pikanäppäimiä."
       }
     },
     "items": {
       "general": {
-        "createNote": "Luo muistiinpano",
-        "keyboardShortcuts": "Avaa pikanäppäimet",
-        "openSettings": "Avaa asetukset",
         "quickSearch": "Avaa pikahaku",
-        "sidebarSection": "Siirry sivupalkin osioon",
+        "createNote": "Luo muistiinpano",
+        "openSettings": "Avaa asetukset",
+        "switchVault": "Vaihda holvia",
+        "adjacentVault": "Edellinen tai seuraava holvi",
+        "keyboardShortcuts": "Avaa pikanäppäimet",
+        "undoTaskAction": "Kumoa viimeisin tehtävätoiminto",
         "toggleSidebar": "Näytä tai piilota sivupalkki",
-        "undoTaskAction": "Kumoa viimeisin tehtävätoiminto"
+        "sidebarSection": "Siirry sivupalkin osioon"
+      },
+      "tabs": {
+        "newTabMenu": "Avaa uuden välilehden valikko",
+        "closeTab": "Sulje välilehti",
+        "closeAllInPane": "Sulje ruudun kaikki välilehdet",
+        "reopenClosedTab": "Avaa suljettu välilehti uudelleen",
+        "nextTab": "Seuraava välilehti",
+        "previousTab": "Edellinen välilehti",
+        "pinTab": "Kiinnitä tai irrota välilehti",
+        "duplicateTab": "Monista välilehti",
+        "splitRight": "Jaa oikealle",
+        "splitDown": "Jaa alas",
+        "closeSplitPane": "Sulje jaettu ruutu",
+        "focusPane": "Kohdista toiseen ruutuun",
+        "moveTabToPane": "Siirrä välilehti ruutuun",
+        "maximizePane": "Suurenna nykyinen ruutu"
       },
       "inbox": {
-        "archiveItem": "Arkistoi valittu kohde",
-        "chooseQuickFileResult": "Valitse pika-arkistoinnin tulos",
-        "clearSelection": "Tyhjennä valinta tai sulje pika-arkistointi",
-        "confirmFiling": "Vahvista arkistointipaneeli",
+        "nextItem": "Seuraava kohde",
+        "previousItem": "Edellinen kohde",
         "firstOrLastItem": "Ensimmäinen tai viimeinen kohde",
         "jumpByPage": "Siirry sivu kerrallaan",
-        "nextItem": "Seuraava kohde",
-        "openOriginal": "Avaa alkuperäinen linkki",
-        "openQuickFile": "Avaa pika-arkistointi",
-        "previousItem": "Edellinen kohde",
-        "refresh": "Päivitä Saapuneet",
-        "selectAllVisible": "Valitse kaikki näkyvät kohteet",
+        "togglePreview": "Näytä tai piilota esikatselupaneeli",
         "selectItem": "Valitse kohde",
-        "togglePreview": "Näytä tai piilota esikatselupaneeli"
+        "selectAllVisible": "Valitse kaikki näkyvät kohteet",
+        "clearSelection": "Tyhjennä valinta tai sulje pikasiirto",
+        "openQuickFile": "Avaa pikasiirto",
+        "chooseQuickFileResult": "Valitse pikasiirron tulos",
+        "archiveItem": "Arkistoi valittu kohde",
+        "openOriginal": "Avaa alkuperäinen linkki",
+        "refresh": "Päivitä Saapuneet",
+        "confirmFiling": "Vahvista siirtopaneeli"
       },
       "journal": {
-        "bold": "Lihavoi valittu teksti",
-        "find": "Etsi päiväkirjasta",
-        "italic": "Kursivoi valittu teksti",
         "returnFromOverview": "Palaa kuukausi- tai vuosinäkymästä",
+        "find": "Etsi päiväkirjasta",
+        "bold": "Lihavoi valittu teksti",
+        "italic": "Kursivoi valittu teksti",
         "underline": "Alleviivaa valittu teksti"
       },
       "notes": {
-        "bold": "Lihavointi",
-        "closeOverlays": "Sulje editorin peittonäkymät",
-        "commandMenu": "Avaa editorin komentovalikko",
         "createNote": "Luo muistiinpano",
         "find": "Etsi muistiinpanosta",
+        "bold": "Lihavointi",
         "italic": "Kursivointi",
-        "underline": "Alleviivaus"
-      },
-      "settings": {
-        "cancelRecording": "Peruuta pikanäppäimen tallennus",
-        "customizeShortcuts": "Mukauta pikanäppäimiä",
-        "openSettings": "Avaa asetukset",
-        "recordShortcut": "Tallenna uusi pikanäppäin",
-        "resetShortcut": "Palauta pikanäppäimen oletus"
-      },
-      "tabs": {
-        "closeAllInPane": "Sulje ruudun kaikki välilehdet",
-        "closeSplitPane": "Sulje jaettu ruutu",
-        "closeTab": "Sulje välilehti",
-        "duplicateTab": "Monista välilehti",
-        "focusPane": "Kohdista toiseen ruutuun",
-        "maximizePane": "Suurenna nykyinen ruutu",
-        "moveTabToPane": "Siirrä välilehti ruutuun",
-        "newTabMenu": "Avaa uuden välilehden valikko",
-        "nextTab": "Seuraava välilehti",
-        "pinTab": "Kiinnitä tai irrota välilehti",
-        "previousTab": "Edellinen välilehti",
-        "reopenClosedTab": "Avaa suljettu välilehti uudelleen",
-        "splitDown": "Jaa alaspäin",
-        "splitRight": "Jaa oikealle"
+        "underline": "Alleviivaus",
+        "commandMenu": "Avaa editorin komentovalikko",
+        "closeOverlays": "Sulje editorin peittonäkymät"
       },
       "tasks": {
         "clearFilters": "Tyhjennä näkyvät suodattimet",
+        "selectAllVisible": "Valitse kaikki näkyvät tehtävät",
         "clearSelection": "Tyhjennä tehtävävalinta",
         "completeSelected": "Merkitse valitut tehtävät valmiiksi",
-        "configureRepeat": "Määritä toisto kohdistetulle tehtävälle",
         "deleteSelected": "Poista valitut tehtävät",
-        "selectAllVisible": "Valitse kaikki näkyvät tehtävät",
+        "configureRepeat": "Määritä toisto kohdistetulle tehtävälle",
         "skipOccurrence": "Ohita toistokerta",
         "stopRepeating": "Lopeta tehtävän toistaminen"
+      },
+      "settings": {
+        "openSettings": "Avaa asetukset",
+        "customizeShortcuts": "Mukauta pikanäppäimiä",
+        "recordShortcut": "Tallenna uusi pikanäppäin",
+        "cancelRecording": "Peruuta pikanäppäimen tallennus",
+        "resetShortcut": "Palauta pikanäppäimen oletus"
       }
     },
-    "or": "tai",
-    "then": "sitten"
+    "combos": {
+      "shortcutsTab": "Pikanäppäimet-välilehti",
+      "clickRow": "Napsauta riviä",
+      "reset": "Nollaa"
+    }
+  },
+  "update": {
+    "available": "Päivitys saatavilla",
+    "downloading": "Ladataan versiota {version}",
+    "ready": "Päivitys valmis",
+    "failed": "Päivitys epäonnistui",
+    "downloadAction": "Lataa",
+    "restartAction": "Käynnistä uudelleen",
+    "detailsAction": "Lisätiedot",
+    "popover": {
+      "readyTitle": "MemryNote {version} on valmis",
+      "availableTitle": "MemryNote {version} on saatavilla",
+      "readySubtitle": "Nykyinen versio: {current}",
+      "availableSubtitle": "Nykyinen versio: {current} · mitään ei ole vielä ladattu",
+      "allChanges": "Kaikki muutokset",
+      "restartNow": "Käynnistä uudelleen nyt",
+      "onNextQuit": "Seuraavan sulkemisen yhteydessä",
+      "download": "Lataa",
+      "notNow": "Ei nyt",
+      "moreOptions": "Lisää päivitysvaihtoehtoja",
+      "skipVersion": "Ohita versio {version}",
+      "turnOffAuto": "Poista automaattiset päivitykset käytöstä",
+      "copyVersionInfo": "Kopioi versiotiedot",
+      "openSettings": "Avaa asetukset"
+    },
+    "installing": {
+      "title": "Asennetaan versiota {version}",
+      "titleUnknownVersion": "Asennetaan päivitystä",
+      "subtitle": "MemryNote avautuu uudelleen hetken kuluttua. Kaikki kirjoittamasi on jo tallessa levyllä."
+    },
+    "installFailed": {
+      "title": "Version {version} asentaminen epäonnistui",
+      "titleUnknownVersion": "Päivityksen asentaminen epäonnistui",
+      "body": "Holviisi ei koskettu – päivitys koskee sovellusta, ei muistiinpanojasi. Käytössäsi on edelleen versio {current}, ja kaikki toimii kuten ennenkin.",
+      "errorLabel": "Mikä meni vikaan",
+      "downloadManually": "Lataa versio {version} manuaalisesti",
+      "downloadManuallyUnknownVersion": "Lataa MemryNote manuaalisesti",
+      "tryAgain": "Yritä uudelleen",
+      "copyDetails": "Kopioi tiedot"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Holvit",
+    "position": "{name}, holvi {index}/{count}",
+    "openList": "{position}. Avaa holviluettelo",
+    "switchTo": "Vaihda holviin {name}",
+    "switchingTo": "Vaihdetaan holviin {name}",
+    "changeIcon": "Vaihda kuvake…",
+    "resetIcon": "Palauta oletuskuvake",
+    "iconButton": "Vaihda holvin {name} kuvake",
+    "iconFailed": "Holvin kuvakkeen vaihtaminen epäonnistui"
+  },
+  "sidebarHelp": {
+    "label": "Ohje ja palaute",
+    "reportBug": "Ilmoita virheestä",
+    "requestFeature": "Ehdota toimintoa",
+    "starOnGithub": "Anna tähti GitHubissa",
+    "version": "MemryNote {version}",
+    "whatsNew": "Uutta"
+  },
+  "sidebarStar": {
+    "title": "MemryNote on avointa lähdekoodia",
+    "body": "Kehitetty avoimesti. Tähti auttaa muita löytämään sen.",
+    "star": "Anna tähti",
+    "later": "Ei nyt",
+    "thanks": "Kiitos. Se merkitsee paljon."
+  },
+  "sidebar": {
+    "railLabel": "Osiot",
+    "search": "Hae tai siirry…",
+    "vaultMenu": "{name}. Avaa holviluettelo"
   }
 }

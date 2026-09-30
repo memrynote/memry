@@ -8,10 +8,10 @@
     "noVaultOpen": "Žádný trezor není otevřený. Nejprve prosím otevřete trezor."
   },
   "vault": {
-    "notFound": "Trezor nenalezen. Může být přesunut nebo smazán.",
+    "notFound": "Trezor nebyl nalezen. Mohl být přesunut nebo smazán.",
     "notInitialized": "Žádný trezor není otevřený. Chcete-li pokračovat, otevřete nebo vytvořte trezor.",
-    "invalidPath": "Vybraná cesta není platným umístěním úložiště.",
-    "permissionDenied": "Povolení odepřeno. Zkontrolujte, zda máte přístup k této složce.",
+    "invalidPath": "Vybraná cesta není platným umístěním trezoru.",
+    "permissionDenied": "Přístup byl odepřen. Zkontrolujte, zda máte přístup k této složce.",
     "alreadyExists": "Na tomto místě již existuje trezor.",
     "corrupted": "Tento trezor se zdá být poškozen. Zkuste obnovit ze zálohy."
   },
@@ -23,44 +23,50 @@
     "readFailed": "Tuto poznámku se nepodařilo přečíst. Soubor může být uzamčen nebo poškozen.",
     "deleteFailed": "Tuto poznámku se nepodařilo smazat. Zkontrolujte oprávnění souboru.",
     "invalidPath": "Cesta poznámky je neplatná.",
-    "applyTemplateFailed": "Nepodařilo se použít šablonu",
     "createFailed": "Nepodařilo se vytvořit poznámku",
-    "deleteVersionFailed": "Nepodařilo se smazat verzi",
-    "exportHtmlFailed": "Nepodařilo se exportovat HTML",
-    "exportPdfFailed": "Nepodařilo se exportovat PDF",
-    "importFilesFailed": "Nepodařilo se importovat soubory",
-    "moveFailed": "Nepodařilo se přesunout poznámku",
+    "updateFailed": "Nepodařilo se aktualizovat poznámku",
     "renameFailed": "Nepodařilo se přejmenovat poznámku",
-    "reorderFailed": "Nepodařilo se změnit pořadí poznámek",
+    "moveFailed": "Nepodařilo se přesunout poznámku",
+    "applyTemplateFailed": "Nepodařilo se použít šablonu",
+    "appendBlocksFailed": "Blok se nepodařilo přesunout do této poznámky",
+    "exportPdfFailed": "Nepodařilo se exportovat PDF",
+    "exportHtmlFailed": "Nepodařilo se exportovat HTML",
     "restoreVersionFailed": "Nepodařilo se obnovit verzi",
-    "setLocalOnlyFailed": "Nepodařilo se nastavit režim pouze místně",
-    "updateFailed": "Nepodařilo se aktualizovat poznámku"
+    "deleteVersionFailed": "Nepodařilo se smazat verzi",
+    "reorderFailed": "Nepodařilo se změnit pořadí poznámek",
+    "importFilesFailed": "Nepodařilo se importovat soubory",
+    "setLocalOnlyFailed": "Nepodařilo se nastavit režim pouze místně"
   },
   "database": {
-    "connectionFailed": "Nelze se připojit k místní databázi. Zkuste aplikaci restartovat.",
+    "connectionFailed": "K místní databázi se nepodařilo připojit. Zkuste aplikaci restartovat.",
     "migrationFailed": "Upgrade databáze se nezdařil. Zkuste aplikaci restartovat.",
     "queryFailed": "Operace databáze se nezdařila. Zkuste to znovu.",
     "notInitialized": "Databáze není připravena. Zkuste aplikaci restartovat.",
     "constraintViolation": "Došlo ke konfliktu dat. Zkuste to znovu.",
-    "corrupted": "Místní databáze je poškozená. Možná jej budete muset resetovat."
+    "corrupted": "Místní databáze je poškozená. Možná ji budete muset resetovat."
   },
   "watcher": {
-    "startFailed": "Nelze spustit sledování změn souboru.",
+    "startFailed": "Sledování změn souborů se nepodařilo spustit.",
     "stopFailed": "Sledování souborů se nepodařilo zastavit.",
-    "eventError": "Při sledování změn souboru došlo k chybě."
+    "eventError": "Při sledování změn souborů došlo k chybě."
   },
   "attachment": {
-    "fileTooLarge": "Tento soubor je pro připojení příliš velký.",
+    "fileTooLarge": "Tento soubor je příliš velký, nelze ho přiložit.",
     "unsupportedType": "Tento typ souboru není podporován.",
     "writeFailed": "Přílohu se nepodařilo uložit. Zkontrolujte místo na disku.",
+    "diskFull": "Na disku není dost místa pro uložení této přílohy. Uvolněte místo a stahování se dokončí.",
     "deleteFailed": "Smazání přílohy se nezdařilo.",
-    "downloadFailed": "Stažení přílohy se nezdařilo",
-    "downloadProgressFailed": "Nepodařilo se načíst průběh stahování",
     "uploadFailed": "Nahrání přílohy se nezdařilo",
     "uploadProgressFailed": "Nepodařilo se načíst průběh nahrávání",
-    "emptyFile": "Prázdný soubor nelze nahrát",
+    "downloadFailed": "Stažení přílohy se nezdařilo",
+    "downloadProgressFailed": "Nepodařilo se načíst průběh stahování",
     "exceedsMaxSize": "Soubor je příliš velký: {size} překračuje limit {limit}",
-    "exceedsPlanLimit": "Soubor je větší, než váš plán dovoluje: {size} překračuje {limit}"
+    "exceedsPlanLimit": "Soubor je větší, než váš plán dovoluje: {size} překračuje {limit}",
+    "emptyFile": "Prázdný soubor nelze nahrát"
+  },
+  "crdt": {
+    "persistenceDegradedTitle": "V tomto zařízení se neukládá historie úprav",
+    "persistenceDegradedBody": "Vaše poznámky jsou v bezpečí – jsou uložené v trezoru jako obyčejné soubory a normálně se otevírají i ukládají. Jen místní historie úprav a stav slučování v tomto zařízení běží v paměti, takže při každém spuštění aplikace memrynote začínají od nuly."
   },
   "encryption": {
     "failed": "Data se nepodařilo zašifrovat. Vaše klíče může být nutné regenerovat.",
@@ -69,21 +75,29 @@
     "invalidNonceLength": "Chyba šifrování. Zkuste operaci znovu."
   },
   "inboxAttachment": {
-    "writeFailed": "Přílohu doručené pošty se nepodařilo uložit.",
-    "deleteFailed": "Smazání přílohy doručené pošty se nezdařilo."
+    "writeFailed": "Přílohu v Doručených se nepodařilo uložit.",
+    "deleteFailed": "Přílohu v Doručených se nepodařilo smazat."
   },
   "sync": {
     "networkOffline": "Jste offline. Změny se synchronizují, až se znovu připojíte.",
-    "networkTimeout": "Synchronizačnímu serveru trvalo příliš dlouho, než odpověděl. Brzy se pokusí znovu.",
-    "serverError": "Na synchronizačním serveru došlo k chybě. Automaticky se pokusí znovu.",
+    "networkTimeout": "Synchronizační server neodpověděl včas. Pokus se brzy zopakuje.",
+    "serverError": "Na synchronizačním serveru došlo k chybě. Pokus se automaticky zopakuje.",
     "authExpired": "Vaše relace vypršela. Chcete-li pokračovat v synchronizaci, znovu se přihlaste.",
     "deviceRevoked": "Toto zařízení bylo odebráno z vašeho účtu.",
     "rateLimited": "Příliš mnoho požadavků. Synchronizace bude brzy obnovena.",
     "cryptoFailure": "Nepodařilo se zašifrovat nebo dešifrovat synchronizovaná data. Zkuste se odhlásit a znovu přihlásit.",
-    "versionIncompatible": "Tato verze memrynote již není podporována. Aktualizujte prosím.",
+    "versionIncompatible": "Tato verze aplikace memrynote už není podporována. Aktualizujte ji prosím.",
     "storageQuotaExceeded": "Vaše úložiště synchronizace je plné. Uvolněte místo nebo upgradujte svůj plán.",
+    "fileTooLarge": "Tento soubor je větší, než váš plán dovoluje. Chcete-li synchronizovat větší soubory, upgradujte svůj plán.",
+    "noteTooLarge": "Poznámka je příliš velká na synchronizaci. Pomůže ji rozdělit na menší poznámky.",
+    "noteTooLargeNamed": "Poznámka „{title}“ je příliš velká na synchronizaci. Pomůže ji rozdělit na menší poznámky.",
+    "attachmentUploadFailed": "Přílohu „{filename}“ se nepodařilo synchronizovat. Zůstává v tomto zařízení.",
+    "paymentRequired": "Pro použití hostované šifrované synchronizace je vyžadován placený plán Sync.",
+    "vaultLimitExceeded": "Váš plán umožňuje synchronizovat méně trezorů, než má tento účet, takže tento trezor zůstane jen v tomto zařízení. Odeberte trezor ze svého účtu v Nastavení → Účet, nebo přejděte na vyšší plán.",
     "certificatePinFailed": "Zabezpečené připojení se nezdařilo. Zkontrolujte připojení k síti.",
-    "unknown": "Došlo k neočekávané chybě synchronizace. Automaticky se pokusí znovu.",
+    "deviceKeyMismatch": "Bezpečnostní klíč tohoto zařízení už neodpovídá klíči registrovanému pro váš účet, proto server jeho změny odmítá. Přihlaste se v tomto zařízení znovu, aby se znovu zaregistrovalo.",
+    "keychainUnavailable": "Synchronizace je pozastavena, protože aplikace Memry teď nemůže načíst své synchronizační klíče z úložiště klíčů systému. Odemkněte úložiště klíčů a synchronizace se obnoví sama; pokud ne, restartujte aplikaci Memry. Nic nebylo smazáno.",
+    "unknown": "Došlo k neočekávané chybě synchronizace. Pokus se automaticky zopakuje.",
     "statusFetchFailed": "Nepodařilo se načíst stav synchronizace",
     "engineNotInitialized": "Synchronizační modul není inicializován. Chcete-li zahájit synchronizaci, otevřete trezor.",
     "triggerFailed": "Synchronizace se nezdařila",
@@ -93,127 +107,142 @@
     "securityQuarantinePermanent": "Položku synchronizace nebylo možné ověřit a byla kvůli bezpečnosti umístěna do karantény.",
     "securityQuarantineRetry": "U položky synchronizace se nezdařilo ověření podpisu a pokus bude zopakován.",
     "certificatePinPaused": "Zabezpečené připojení k synchronizačnímu serveru se nepodařilo ověřit. Synchronizace byla z důvodu vaší ochrany pozastavena.",
-    "paymentRequired": "Pro použití hostované šifrované synchronizace je vyžadován placený plán Sync.",
-    "attachmentUploadFailed": "Přílohu „{filename}“ se nepodařilo synchronizovat. Zůstává na tomto zařízení.",
-    "fileTooLarge": "Tento soubor je větší, než váš plán dovoluje. Chcete-li synchronizovat větší soubory, upgradujte svůj plán.",
     "vaultRecovered": "Klíč trezoru byl obnoven. Synchronizace bude pokračovat.",
-    "historyFetchFailed": "Nepodařilo se načíst historii synchronizace",
+    "serverUnreachable": "K synchronizačnímu serveru se nepodařilo připojit. Zkontrolujte prosím připojení k internetu.",
     "keyPersistenceFailed": "Šifrovací klíč se nepodařilo bezpečně uložit. Registrace zařízení byla vrácena zpět. Zkuste to prosím znovu.",
-    "serverUnreachable": "Nelze se připojit k synchronizačnímu serveru. Zkontrolujte prosím připojení k internetu.",
+    "historyFetchFailed": "Nepodařilo se načíst historii synchronizace",
     "updateSyncedSettingFailed": "Nepodařilo se aktualizovat synchronizované nastavení",
     "requestTimedOut": "Časový limit požadavku na synchronizaci vypršel. Zkontrolujte prosím připojení k internetu."
   },
+  "googleCalendar": {
+    "connectFailed": "Ke Google Calendar se nepodařilo připojit. Zkuste to prosím za chvíli znovu.",
+    "reconnectNeeded": "Vaše připojení ke Google Calendar vypršelo. Odpojte se prosím a připojte znovu.",
+    "misconfigured": "Google Calendar není správně nastaven. Pokud se to bude opakovat, kontaktujte prosím podporu.",
+    "scopeMissing": "K vašemu Google Calendar jsme se nedostali, protože nebylo uděleno oprávnění ke Kalendáři. Zkuste to prosím znovu a na obrazovce souhlasu Google nechte políčko Kalendář zaškrtnuté.",
+    "accessDenied": "Přístup ke Google Calendar byl odmítnut. Připojit se můžete znovu, kdykoli budete chtít.",
+    "temporarilyUnavailable": "Google Calendar je dočasně nedostupný. Zkuste to prosím za okamžik znovu."
+  },
   "agent": {
-    "conversationBusy": "Konverzace je zaneprázdněná",
-    "runtimeStarting": "Běhové prostředí agenta se spouští. Zkuste to znovu."
+    "runtimeStarting": "Běhové prostředí agenta se spouští. Zkuste to znovu.",
+    "conversationBusy": "Konverzace je zaneprázdněná"
   },
   "ai": {
-    "inlineDisabled": "Vkládané úpravy pomocí AI jsou vypnuté",
+    "inlineDisabled": "Úpravy pomocí AI přímo v textu jsou vypnuté",
     "listOllamaModelsFailed": "Nepodařilo se načíst seznam modelů Ollama"
   },
   "auth": {
-    "approveLinkingFailed": "Nepodařilo se schválit propojení",
-    "cannotRemoveCurrentDevice": "Aktuální zařízení nelze odebrat",
-    "completeLinkingFailed": "Nepodařilo se dokončit propojení",
-    "confirmRecoveryPhraseFailed": "Nepodařilo se potvrdit obnovovací frázi",
-    "fetchSasCodeFailed": "Nepodařilo se načíst kód SAS",
-    "finalizeVaultChoiceFailed": "Nepodařilo se dokončit výběr trezoru",
-    "initiateOAuthFailed": "Nepodařilo se zahájit OAuth",
-    "invalidRecoveryPhraseFormat": "Neplatný formát obnovovací fráze",
-    "linkDeviceQrFailed": "Nepodařilo se propojit zařízení přes QR",
-    "linkRecoveryPhraseFailed": "Nepodařilo se propojit pomocí obnovovací fráze",
     "notAuthenticated": "Nejste přihlášeni",
+    "sessionExpired": "Vaše relace vypršela. Přihlaste se prosím znovu.",
+    "setupSessionExpired": "Přihlášení vypršelo dříve, než se tento krok dokončil. Přihlaste se znovu a pak zadejte frázi pro obnovení.",
+    "setupSessionExpiredLinking": "Přihlášení vypršelo dříve, než se toto zařízení stihlo propojit. Přihlaste se znovu a pak kód naskenujte ještě jednou.",
+    "invalidRecoveryPhraseFormat": "Neplatný formát fráze pro obnovení",
+    "recoveryPhraseMismatch": "Fráze pro obnovení nesouhlasí. Zkuste to prosím znovu.",
+    "cannotRemoveCurrentDevice": "Aktuální zařízení nelze odebrat",
+    "requestOtpFailed": "Nepodařilo se vyžádat jednorázový kód",
+    "verifyOtpFailed": "Nepodařilo se ověřit jednorázový kód",
+    "resendOtpFailed": "Nepodařilo se znovu odeslat jednorázový kód",
+    "linkDeviceQrFailed": "Zařízení se nepodařilo propojit pomocí QR kódu",
+    "completeLinkingFailed": "Nepodařilo se dokončit propojení",
+    "finalizeVaultChoiceFailed": "Nepodařilo se dokončit výběr trezoru",
     "pickFolderFailed": "Nepodařilo se vybrat složku",
-    "recoveryPhraseMismatch": "Obnovovací fráze nesouhlasí. Zkuste to prosím znovu.",
+    "linkRecoveryPhraseFailed": "Nepodařilo se propojit pomocí fráze pro obnovení",
+    "approveLinkingFailed": "Nepodařilo se schválit propojení",
+    "fetchSasCodeFailed": "Nepodařilo se načíst kód SAS",
     "removeDeviceFailed": "Nepodařilo se odebrat zařízení",
     "renameDeviceFailed": "Nepodařilo se přejmenovat zařízení",
-    "requestOtpFailed": "Nepodařilo se vyžádat jednorázový kód",
-    "resendOtpFailed": "Nepodařilo se znovu odeslat jednorázový kód",
-    "sessionExpired": "Vaše relace vypršela. Přihlaste se prosím znovu.",
+    "initiateOAuthFailed": "Nepodařilo se zahájit OAuth",
     "setupFirstDeviceOAuthFailed": "Nepodařilo se nastavit první zařízení přes OAuth",
-    "verifyOtpFailed": "Nepodařilo se ověřit jednorázový kód"
+    "confirmRecoveryPhraseFailed": "Nepodařilo se potvrdit frázi pro obnovení"
   },
   "bookmark": {
     "alreadyBookmarked": "Položka už je v záložkách",
     "notFound": "Záložka nenalezena"
   },
   "calendar": {
-    "connectProviderFailed": "Nepodařilo se připojit poskytovatele kalendáře",
-    "createEventFailed": "Nepodařilo se vytvořit událost v kalendáři",
-    "deleteEventFailed": "Nepodařilo se smazat událost v kalendáři",
-    "disconnectProviderFailed": "Nepodařilo se odpojit poskytovatele kalendáře",
     "eventNotFound": "Událost kalendáře nenalezena",
-    "googleNotConnected": "Google Calendar není na tomto zařízení připojen",
-    "listGoogleCalendarsFailed": "Nepodařilo se načíst seznam kalendářů Google",
-    "onlyGoogleSourcesRetryable": "Zopakovat lze pouze zdroje z Google Calendar",
-    "onlySourcesSelectable": "Vybrat lze pouze zdroje kalendáře",
-    "promoteExternalEventFailed": "Nepodařilo se povýšit externí událost kalendáře",
-    "refreshProviderFailed": "Nepodařilo se obnovit poskytovatele kalendáře",
-    "retryGoogleSourceSyncFailed": "Nepodařilo se zopakovat synchronizaci zdroje Google Calendar",
-    "setDefaultGoogleCalendarFailed": "Nepodařilo se nastavit výchozí kalendář Google",
-    "signInBeforeRefresh": "Před obnovením Google Calendar se přihlaste do memrynote",
     "sourceNotFound": "Zdroj kalendáře nenalezen",
+    "onlySourcesSelectable": "Vybrat lze pouze zdroje kalendáře",
+    "onlyGoogleSourcesRetryable": "Zopakovat lze pouze zdroje kalendářů Google",
+    "signInBeforeRefresh": "Před obnovením Google Calendar se přihlaste do aplikace memrynote",
+    "googleNotConnected": "Google Calendar není v tomto zařízení připojen",
     "syncFailed": "Synchronizace se nezdařila",
+    "createEventFailed": "Nepodařilo se vytvořit událost v kalendáři",
     "updateEventFailed": "Nepodařilo se aktualizovat událost v kalendáři",
-    "updateSourceSelectionFailed": "Nepodařilo se aktualizovat výběr zdrojů kalendáře"
+    "deleteEventFailed": "Nepodařilo se smazat událost v kalendáři",
+    "updateSourceSelectionFailed": "Nepodařilo se aktualizovat výběr zdrojů kalendáře",
+    "updateSubscriptionFailed": "Odebíraný kalendář se nepodařilo aktualizovat",
+    "connectProviderFailed": "Nepodařilo se připojit poskytovatele kalendáře",
+    "disconnectProviderFailed": "Nepodařilo se odpojit poskytovatele kalendáře",
+    "refreshProviderFailed": "Nepodařilo se obnovit poskytovatele kalendáře",
+    "listGoogleCalendarsFailed": "Nepodařilo se načíst seznam kalendářů Google",
+    "setDefaultGoogleCalendarFailed": "Nepodařilo se nastavit výchozí kalendář Google",
+    "retryGoogleSourceSyncFailed": "Nepodařilo se zopakovat synchronizaci zdroje Google Calendar",
+    "promoteExternalEventFailed": "Nepodařilo se povýšit externí událost kalendáře",
+    "onlyCalendarSourcesRetryable": "Zopakovat lze pouze zdroje kalendáře",
+    "invalidProviderSettings": "Neplatné nastavení poskytovatele kalendáře",
+    "getExternalEventFailed": "Tuto událost se nepodařilo načíst. V kalendáři stále je – zkuste ji otevřít znovu."
+  },
+  "canvasFolder": {
+    "exists": "Složka pláten s tímto názvem tu už existuje.",
+    "descendant": "Složku pláten nelze přesunout do některé z jejích podsložek.",
+    "moveFailed": "Složku pláten se nepodařilo přesunout. Může být otevřená v jiné aplikaci.",
+    "depth": "Složky pláten už nelze vnořit hlouběji.",
+    "invalidName": "Zadejte název složky pláten."
   },
   "folder": {
     "createFailed": "Nepodařilo se vytvořit složku",
-    "deleteFailed": "Nepodařilo se smazat složku",
     "renameFailed": "Nepodařilo se přejmenovat složku",
+    "deleteFailed": "Nepodařilo se smazat složku",
     "setConfigFailed": "Nepodařilo se nastavit konfiguraci složky"
   },
   "folderView": {
-    "deleteViewFailed": "Nepodařilo se smazat zobrazení",
     "setConfigFailed": "Nepodařilo se nastavit konfiguraci",
-    "setViewFailed": "Nepodařilo se nastavit zobrazení"
-  },
-  "googleCalendar": {
-    "accessDenied": "Přístup ke Google Calendar byl odmítnut. Připojit se můžete znovu, kdykoli budete chtít.",
-    "connectFailed": "Ke Google Calendar se nepodařilo připojit. Zkuste to prosím za chvíli znovu.",
-    "misconfigured": "Google Calendar není správně nastaven. Pokud se to bude opakovat, kontaktujte prosím podporu.",
-    "reconnectNeeded": "Vaše připojení ke Google Calendar vypršelo. Odpojte se prosím a připojte znovu.",
-    "scopeMissing": "K vašemu Google Calendar jsme se nedostali, protože nebylo uděleno oprávnění ke Kalendáři. Zkuste to prosím znovu a na obrazovce souhlasu Google nechte políčko Kalendář zaškrtnuté.",
-    "temporarilyUnavailable": "Google Calendar je dočasně nedostupný. Zkuste to prosím za okamžik znovu."
+    "setViewFailed": "Nepodařilo se nastavit zobrazení",
+    "deleteViewFailed": "Nepodařilo se smazat zobrazení"
   },
   "importer": {
-    "cancelFailed": "Zrušení se nezdařilo",
     "fileSelectionFailed": "Výběr souboru se nezdařil",
     "importFailed": "Import se nezdařil",
+    "cancelFailed": "Zrušení se nezdařilo",
+    "previewFailed": "Náhled se nezdařil",
     "listFailed": "Nepodařilo se načíst seznam importérů",
-    "previewFailed": "Náhled se nezdařil"
+    "appleNotesFoldersFailed": "Složky Apple Notes se nepodařilo načíst",
+    "onenoteStatusFailed": "Stav připojení k OneNote se nepodařilo načíst",
+    "onenoteConnectFailed": "Přihlášení k účtu Microsoft se nezdařilo",
+    "onenoteDisconnectFailed": "Účet Microsoft se nepodařilo odpojit",
+    "onenoteNotebooksFailed": "Poznámkové bloky OneNote se nepodařilo načíst"
   },
   "project": {
-    "archiveFailed": "Nepodařilo se archivovat projekt",
-    "captureLinkFailed": "Nepodařilo se zachytit odkaz",
     "createFailed": "Nepodařilo se vytvořit projekt",
-    "deleteFailed": "Nepodařilo se smazat projekt",
-    "importFilesFailed": "Nepodařilo se importovat soubory",
-    "linkItemFailed": "Nepodařilo se propojit položku",
-    "listForItemFailed": "Nepodařilo se načíst projekty pro položku",
-    "reorderFailed": "Nepodařilo se změnit pořadí projektů",
-    "setHomeNoteFailed": "Nepodařilo se nastavit domovskou poznámku",
-    "unlinkItemFailed": "Nepodařilo se zrušit propojení položky",
     "updateFailed": "Nepodařilo se aktualizovat projekt",
-    "updatePinnedFailed": "Nepodařilo se aktualizovat stav připnutí"
+    "deleteFailed": "Nepodařilo se smazat projekt",
+    "archiveFailed": "Nepodařilo se archivovat projekt",
+    "reorderFailed": "Nepodařilo se změnit pořadí projektů",
+    "linkItemFailed": "Nepodařilo se propojit položku",
+    "unlinkItemFailed": "Nepodařilo se zrušit propojení položky",
+    "captureLinkFailed": "Nepodařilo se zachytit odkaz",
+    "importFilesFailed": "Nepodařilo se importovat soubory",
+    "updatePinnedFailed": "Nepodařilo se aktualizovat stav připnutí",
+    "setHomeNoteFailed": "Nepodařilo se nastavit domovskou poznámku",
+    "listForItemFailed": "Nepodařilo se načíst projekty pro položku"
   },
   "property": {
-    "alreadyExists": "Vlastnost „{name}“ již existuje",
-    "createDefinitionFailed": "Nepodařilo se vytvořit definici vlastnosti",
     "entityNotFound": "Entita nenalezena",
     "notFound": "Vlastnost „{name}“ nenalezena",
-    "renameFailed": "Nepodařilo se přejmenovat vlastnost",
-    "setCalendarVisibilityFailed": "Nepodařilo se nastavit viditelnost vlastnosti v kalendáři",
+    "alreadyExists": "Vlastnost „{name}“ již existuje",
     "setFailed": "Nepodařilo se nastavit vlastnosti",
-    "updateDefinitionFailed": "Nepodařilo se aktualizovat definici vlastnosti"
+    "renameFailed": "Nepodařilo se přejmenovat vlastnost",
+    "createDefinitionFailed": "Nepodařilo se vytvořit definici vlastnosti",
+    "updateDefinitionFailed": "Nepodařilo se aktualizovat definici vlastnosti",
+    "setCalendarVisibilityFailed": "Nepodařilo se nastavit viditelnost vlastnosti v kalendáři"
   },
   "reminder": {
-    "createFailed": "Nepodařilo se vytvořit připomenutí",
-    "dismissAllFailed": "Nepodařilo se zavřít všechna připomenutí",
-    "dismissFailed": "Nepodařilo se zavřít připomenutí",
     "notFound": "Připomenutí nenalezeno",
+    "createFailed": "Nepodařilo se vytvořit připomenutí",
+    "updateFailed": "Nepodařilo se aktualizovat připomenutí",
+    "dismissFailed": "Nepodařilo se zavřít připomenutí",
     "snoozeFailed": "Nepodařilo se odložit připomenutí",
-    "updateFailed": "Nepodařilo se aktualizovat připomenutí"
+    "dismissAllFailed": "Nepodařilo se zavřít všechna připomenutí"
   },
   "savedFilter": {
     "notFound": "Uložený filtr nenalezen"
@@ -222,59 +251,67 @@
     "rebuildFailed": "Obnova indexu se nezdařila"
   },
   "settings": {
+    "unknownVault": "Neznámý trezor",
     "modelAlreadyLoading": "Model se už načítá",
     "modelLoadFailed": "Nepodařilo se načíst model",
-    "shortcutInUse": "Zkratka {shortcut} se už používá",
+    "voiceModelDownloadFailed": "Nepodařilo se stáhnout hlasový model",
     "terminalCommandInstallFailed": "Nepodařilo se nainstalovat příkaz terminálu",
     "terminalCommandUninstallFailed": "Nepodařilo se odinstalovat příkaz terminálu",
-    "unknownVault": "Neznámý trezor",
-    "voiceModelDownloadFailed": "Nepodařilo se stáhnout hlasový model"
+    "shortcutInUse": "Zkratka {shortcut} se už používá"
   },
   "tag": {
+    "mergeSameTag": "Zdrojový a cílový štítek jsou stejné",
     "categoryNameRequired": "Název kategorie je povinný",
-    "createCategoryFailed": "Nepodařilo se vytvořit kategorii tagů",
-    "deleteCategoryFailed": "Nepodařilo se smazat kategorii tagů",
-    "deleteFailed": "Nepodařilo se smazat tag",
-    "listCategoriesFailed": "Nepodařilo se načíst kategorie tagů",
-    "mergeFailed": "Nepodařilo se sloučit tagy",
-    "mergeSameTag": "Zdrojový a cílový tag jsou stejné",
     "pinNoteFailed": "Nepodařilo se připnout poznámku",
-    "removeFromNoteFailed": "Nepodařilo se odebrat tag z poznámky",
-    "renameCategoryFailed": "Nepodařilo se přejmenovat kategorii tagů",
-    "renameFailed": "Nepodařilo se přejmenovat tag",
-    "reorderFailed": "Nepodařilo se změnit pořadí tagů",
     "unpinNoteFailed": "Nepodařilo se odepnout poznámku",
-    "updateColorFailed": "Nepodařilo se aktualizovat barvu tagu",
-    "updateIconFailed": "Nepodařilo se aktualizovat ikonu tagu"
+    "renameFailed": "Nepodařilo se přejmenovat štítek",
+    "updateColorFailed": "Nepodařilo se aktualizovat barvu štítku",
+    "updateIconFailed": "Nepodařilo se aktualizovat ikonu štítku",
+    "deleteFailed": "Nepodařilo se smazat štítek",
+    "removeFromNoteFailed": "Nepodařilo se odebrat štítek z poznámky",
+    "mergeFailed": "Nepodařilo se sloučit štítky",
+    "reorderFailed": "Nepodařilo se změnit pořadí štítků",
+    "listCategoriesFailed": "Nepodařilo se načíst kategorie štítků",
+    "createCategoryFailed": "Nepodařilo se vytvořit kategorii štítků",
+    "renameCategoryFailed": "Nepodařilo se přejmenovat kategorii štítků",
+    "deleteCategoryFailed": "Nepodařilo se smazat kategorii štítků"
   },
   "task": {
-    "archiveFailed": "Nepodařilo se archivovat úkol",
-    "archiveManyFailed": "Nepodařilo se archivovat úkoly",
+    "createFailed": "Nepodařilo se vytvořit úkol",
+    "updateFailed": "Nepodařilo se aktualizovat úkol",
+    "deleteFailed": "Nepodařilo se smazat úkol",
     "completeFailed": "Nepodařilo se dokončit úkol",
-    "completeManyFailed": "Nepodařilo se dokončit úkoly",
+    "uncompleteFailed": "Nepodařilo se zrušit dokončení úkolu",
+    "archiveFailed": "Nepodařilo se archivovat úkol",
+    "unarchiveFailed": "Nepodařilo se obnovit úkol z archivu",
+    "moveFailed": "Nepodařilo se přesunout úkol",
+    "reorderFailed": "Nepodařilo se změnit pořadí úkolů",
+    "duplicateFailed": "Nepodařilo se duplikovat úkol",
     "convertToSubtaskFailed": "Nepodařilo se převést na dílčí úkol",
     "convertToTaskFailed": "Nepodařilo se převést na úkol",
-    "createFailed": "Nepodařilo se vytvořit úkol",
-    "deleteFailed": "Nepodařilo se smazat úkol",
+    "completeManyFailed": "Nepodařilo se dokončit úkoly",
     "deleteManyFailed": "Nepodařilo se smazat úkoly",
-    "duplicateFailed": "Nepodařilo se duplikovat úkol",
-    "moveFailed": "Nepodařilo se přesunout úkol",
     "moveManyFailed": "Nepodařilo se přesunout úkoly",
-    "reorderFailed": "Nepodařilo se změnit pořadí úkolů",
-    "unarchiveFailed": "Nepodařilo se obnovit úkol z archivu",
-    "uncompleteFailed": "Nepodařilo se zrušit dokončení úkolu",
-    "updateFailed": "Nepodařilo se aktualizovat úkol"
+    "archiveManyFailed": "Nepodařilo se archivovat úkoly",
+    "projectMissing": "Tento projekt už neexistuje"
   },
   "taskStatus": {
     "createFailed": "Nepodařilo se vytvořit stav",
+    "updateFailed": "Nepodařilo se aktualizovat stav",
     "deleteFailed": "Nepodařilo se smazat stav",
-    "reorderFailed": "Nepodařilo se změnit pořadí stavů",
-    "updateFailed": "Nepodařilo se aktualizovat stav"
+    "reorderFailed": "Nepodařilo se změnit pořadí stavů"
   },
   "template": {
     "createFailed": "Nepodařilo se vytvořit šablonu",
+    "updateFailed": "Nepodařilo se aktualizovat šablonu",
     "deleteFailed": "Nepodařilo se smazat šablonu",
-    "duplicateFailed": "Nepodařilo se duplikovat šablonu",
-    "updateFailed": "Nepodařilo se aktualizovat šablonu"
+    "duplicateFailed": "Nepodařilo se duplikovat šablonu"
+  },
+  "customIcon": {
+    "unreadableImage": "Tento obrázek se nepodařilo načíst. Zkuste soubor PNG, JPG, GIF, WEBP nebo SVG.",
+    "tooLarge": "Tento obrázek je příliš velký. Vyberte soubor menší než 2 MB.",
+    "invalidUrl": "Toto není webový odkaz. Vložte adresu obrázku začínající na http nebo https.",
+    "downloadFailed": "Tento obrázek se nepodařilo stáhnout. Zkontrolujte odkaz a zkuste to znovu.",
+    "unsupportedUrl": "Tento odkaz nevede na obrázek PNG, JPG, GIF, WEBP ani SVG."
   }
 }

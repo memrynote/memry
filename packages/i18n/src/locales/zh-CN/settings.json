@@ -12,7 +12,9 @@
         "editing": "编辑",
         "modules": "模块",
         "services": "服务",
-        "data": "数据"
+        "data": "数据",
+        "workspace": "工作区",
+        "features": "功能"
       },
       "items": {
         "account": "账户",
@@ -21,97 +23,191 @@
         "editor": "编辑器",
         "journal": "日记",
         "tasks": "任务",
+        "inbox": "收件箱",
         "calendar": "日历",
         "appearance": "外观",
         "shortcuts": "快捷键",
+        "commandLine": "命令行",
         "ai": "AI 助手",
-        "vault": "保险库",
+        "vault": "仓库",
         "tags": "标签",
         "properties": "属性",
-        "commandLine": "命令行",
-        "features": "功能",
         "import": "导入",
-        "inbox": "收件箱"
+        "features": "功能",
+        "modules": "模块",
+        "aiAgents": "AI 与智能体",
+        "tagsProperties": "标签与属性",
+        "vaultData": "仓库与数据"
+      }
+    },
+    "drillIn": {
+      "back": "返回{section}"
+    },
+    "modules": {
+      "configure": "配置{module}"
+    },
+    "vaultImport": {
+      "label": "从其他应用导入",
+      "description": "Notion、Evernote、Bear、Apple Notes、Todoist 等",
+      "action": "导入…"
+    },
+    "search": {
+      "placeholder": "搜索设置",
+      "count": "{count, plural, other {# 项设置}}",
+      "empty": "没有匹配的设置",
+      "move": "选择",
+      "open": "打开"
+    }
+  },
+  "features": {
+    "header": {
+      "title": "功能",
+      "subtitle": "开启或关闭应用的各个部分。关闭 = 在侧边栏中变灰，并在各处禁用。"
+    },
+    "items": {
+      "home": {
+        "label": "首页",
+        "description": "起始仪表盘"
+      },
+      "inbox": {
+        "label": "收件箱",
+        "description": "快速收集与处理"
+      },
+      "journal": {
+        "label": "日记",
+        "description": "每日笔记"
+      },
+      "tasks": {
+        "label": "任务",
+        "description": "待办事项和截止日期"
+      },
+      "calendar": {
+        "label": "日历",
+        "description": "日程和时间安排"
+      },
+      "graph": {
+        "label": "图谱",
+        "description": "笔记之间的关联"
+      },
+      "spatialCanvas": {
+        "label": "画布",
+        "description": "用于排布和连接笔记的空间画布"
       }
     }
   },
   "general": {
     "header": {
       "title": "通用",
-      "subtitle": "应用启动和标签行为",
-      "loading": "正在加载设置..."
+      "subtitle": "语言、启动、标签页和隐私。",
+      "loading": "正在加载设置…"
     },
     "groups": {
       "startup": "启动",
       "updates": "更新",
       "languageRegion": "语言和地区",
-      "tabBehavior": "标签行为",
+      "tabBehavior": "标签页行为",
+      "window": "窗口行为",
       "fileCreation": "文件创建",
-      "privacy": "隐私"
+      "privacy": "隐私",
+      "startupWindows": "启动与窗口",
+      "newNotes": "新建笔记"
     },
     "startup": {
       "launchAtLogin": {
         "label": "开机启动",
         "description": "登录时启动 memrynote",
-        "error": "启动时更新失败"
+        "error": "无法更新开机启动设置"
       }
     },
     "updates": {
+      "autoCheck": {
+        "label": "自动检查更新",
+        "description": "在启动时以及应用打开期间定期检查新版本。",
+        "error": "无法更新自动检查设置"
+      },
+      "autoDownload": {
+        "label": "自动下载更新",
+        "description": "在后台下载并安装新版本，无需提示。",
+        "error": "无法更新自动下载设置"
+      },
       "appUpdates": "应用更新",
       "installedVersion": "已安装版本 {version}",
       "availableVersion": "可用版本 {version}",
       "unsupported": "打包构建可从 GitHub Releases 检查、下载并安装更新",
       "available": "memrynote {version} 可供下载",
       "downloadingLatest": "正在下载最新版本",
-      "downloadingLatestPercent": "正在下载最新版本 ({percent}%)",
+      "downloadingLatestPercent": "正在下载最新版本（{percent}%）",
       "downloaded": "memrynote {version} 已准备好安装",
-      "upToDate": "此安装已是最新发布版本",
+      "upToDate": "当前已是最新发布的版本",
       "checking": "正在 GitHub Releases 检查新版本",
       "idle": "检查新版本并在不离开应用的情况下安装",
       "unsupportedToast": "自动更新仅在打包版本中提供",
       "upToDateToast": "memrynote {version} 已是最新",
       "actionFailed": "更新操作失败",
       "actions": {
-        "checking": "正在检查...",
+        "checking": "正在检查…",
         "available": "下载更新",
-        "downloading": "正在下载...",
+        "downloading": "正在下载…",
         "downloadingPercent": "正在下载 {percent}%",
         "downloaded": "重新启动以安装",
         "idle": "检查更新"
       },
-      "autoCheck": {
-        "description": "在启动时以及应用打开期间定期检查新版本。",
-        "error": "更新自动检查设置失败",
-        "label": "自动检查更新"
+      "label": "更新",
+      "checkedAgo": "{status} · 上次检查：{time}",
+      "status": {
+        "unsupported": "仅在打包版本中可用",
+        "idle": "尚未检查",
+        "checking": "正在检查…",
+        "upToDate": "已是最新版本",
+        "available": "版本 {version} 可用",
+        "downloading": "正在下载…",
+        "downloadingPercent": "正在下载 {percent}%",
+        "downloaded": "版本 {version} 已可安装"
       },
-      "autoDownload": {
-        "description": "在后台下载并安装新版本，无需提示。",
-        "error": "更新自动下载设置失败",
-        "label": "自动下载更新"
+      "mode": {
+        "label": "更新方式",
+        "off": "不检查",
+        "notify": "仅通知",
+        "auto": "自动下载"
       }
     },
     "language": {
       "label": "语言",
-      "helper": "大多数应用会立即更新。一些系统级文本——已显示的通知、Dock 标签、窗口标题栏——将在下次启动后刷新。",
+      "helper": "应用的大部分内容会立即更新。部分系统级文本——已显示的通知、Dock 标签、窗口标题栏——会在下次启动后刷新。",
       "changed": "语言已更改为 {nativeName}",
-      "failed": "更改语言失败。请重试。"
+      "failed": "无法更改语言，请重试。"
     },
     "clockFormat": {
       "label": "时间格式",
-      "description": "12小时制或24小时制",
+      "description": "12 小时制或 24 小时制",
       "options": {
-        "12h": "12小时制",
-        "24h": "24小时制"
+        "12h": "12 小时制",
+        "24h": "24 小时制"
       },
-      "error": "更新时间格式失败"
+      "error": "无法更新时间格式"
+    },
+    "dateFormat": {
+      "label": "日期格式",
+      "description": "日历日期的显示方式",
+      "options": {
+        "MM/DD/YYYY": "MM/DD/YYYY（美国）",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
+        "DD.MM.YYYY": "DD.MM.YYYY"
+      },
+      "error": "无法更新日期格式"
     },
     "tabs": {
+      "openPagesInNewTab": {
+        "label": "在新标签页中打开页面",
+        "description": "点击或创建页面（笔记、文件夹、项目、画布、标签、书签）时，会在新标签页中打开。关闭后，将复用当前标签页，包括在笔记中点击链接时；固定的标签页不会被替换。“在新标签页中打开”“在侧边打开”和鼠标中键点击始终会打开新标签页。"
+      },
       "restoreSession": {
-        "label": "启动时恢复会话",
-        "description": "重新打开上次会话中的标签页"
+        "label": "启动时恢复标签页",
+        "description": "重新打开上次的标签页和分屏。"
       },
       "closeButton": {
-        "label": "标签关闭按钮",
+        "label": "标签页关闭按钮",
         "description": "何时显示关闭按钮",
         "options": {
           "always": "始终可见",
@@ -119,66 +215,69 @@
           "active": "仅在活动标签页上"
         }
       },
-      "error": "更新设置失败"
+      "error": "无法更新设置"
+    },
+    "window": {
+      "minimizeToTray": {
+        "label": "关闭窗口后在菜单栏中保持运行",
+        "description": "关闭窗口时，memrynote 会隐藏到系统托盘而不是退出。点击托盘图标即可恢复窗口。在 macOS 上，应用还会保留在 Dock 中；在没有系统托盘的 Linux 桌面上，窗口会照常关闭。",
+        "error": "无法更新最小化到托盘设置"
+      }
     },
     "fileCreation": {
       "createInSelectedFolder": {
         "label": "在选定文件夹中创建",
-        "description": "新笔记和文件夹将在当前选定的文件夹内创建。关闭时，项目总是在根目录创建。"
+        "description": "新笔记和文件夹将在当前所选的文件夹内创建。关闭后，始终在根目录创建。"
       },
       "defaultNoteFolder": {
-        "description": "留空 = 保险库根目录",
         "label": "新笔记的默认位置",
-        "placeholder": "notes"
+        "description": "侧边栏中未选择文件夹时使用。",
+        "placeholder": "notes",
+        "root": "/"
       }
     },
     "privacy": {
       "telemetry": {
         "label": "共享匿名使用数据",
-        "description": "仅共享匿名数据——不会发送笔记内容、搜索查询、文件路径、电子邮件或原始ID。",
-        "error": "更新遥测设置失败"
+        "description": "绝不包含笔记内容、标题或名称。包含已脱敏的诊断日志。",
+        "error": "无法更新遥测设置"
+      },
+      "autoSendDiagnostics": {
+        "label": "自动发送错误报告",
+        "description": "出现错误页面时发送已脱敏的日志。关闭后每次都会询问。",
+        "error": "无法更新错误报告设置"
       },
       "diagnostics": {
-        "building": "正在准备报告…",
+        "title": "发送诊断报告？",
         "consent": "发送一次性诊断报告？其中仅包含已脱敏的技术日志——不含任何笔记内容。",
-        "error": "发送诊断报告失败",
-        "notNow": "暂不发送",
-        "previewError": "无法准备诊断报告",
+        "building": "正在准备报告…",
         "previewLabel": "预览报告内容",
-        "send": "发送",
-        "sendReport": {
-          "button": "发送诊断报告",
-          "description": "一次性发送一份脱敏的技术日志报告，帮助我们排查你遇到的问题。",
-          "label": "诊断报告"
-        },
-        "sending": "发送中…",
-        "sent": "报告已发送——编号 {incidentId}",
         "snapshotLabel": "设备快照",
-        "title": "发送诊断报告？"
-      }
-    },
-    "dateFormat": {
-      "description": "日历日期的显示方式",
-      "error": "更新日期格式失败",
-      "label": "日期格式",
-      "options": {
-        "DD.MM.YYYY": "DD.MM.YYYY",
-        "DD/MM/YYYY": "DD/MM/YYYY",
-        "MM/DD/YYYY": "MM/DD/YYYY (美国)",
-        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
+        "send": "发送",
+        "sending": "正在发送…",
+        "notNow": "暂不发送",
+        "sent": "报告已发送——编号 {incidentId}",
+        "previewError": "无法准备诊断报告",
+        "error": "无法发送诊断报告",
+        "sendReport": {
+          "label": "诊断报告",
+          "description": "一次性发送一份脱敏的技术日志报告，帮助我们排查你遇到的问题。",
+          "button": "发送报告…"
+        }
       }
     }
   },
   "appearance": {
     "header": {
       "title": "外观",
-      "subtitle": "自定义外观和感觉",
-      "loading": "正在加载设置..."
+      "subtitle": "自定义应用外观",
+      "loading": "正在加载设置…"
     },
     "groups": {
       "theme": "主题",
       "accentColor": "强调色",
-      "typography": "字体排版"
+      "typography": "字体排版",
+      "zoom": "缩放"
     },
     "theme": {
       "colorMode": {
@@ -187,12 +286,23 @@
         "aria": "颜色模式"
       },
       "options": {
-        "light": "暖色",
+        "light": "浅色",
         "white": "白色",
         "dark": "深色",
         "system": "系统"
       },
-      "error": "更新主题失败"
+      "error": "无法更新主题"
+    },
+    "colorTheme": {
+      "default": "Memrynote",
+      "themes": "Memrynote 主题",
+      "warm": "暖色",
+      "error": "无法更新颜色主题",
+      "copy": "复制主题",
+      "copied": "已将主题复制到剪贴板",
+      "copyError": "无法复制主题",
+      "import": "从剪贴板导入主题",
+      "importInvalid": "剪贴板中没有 memrynote 主题"
     },
     "accent": {
       "pick": "选择强调色",
@@ -211,13 +321,59 @@
         "pink": "粉色",
         "orange": "橙色"
       },
-      "error": "更新强调色失败"
+      "error": "无法更新强调色",
+      "aria": "强调色预设",
+      "options": {
+        "theme": "跟随主题",
+        "custom": "自定义"
+      }
+    },
+    "colors": {
+      "background": "背景",
+      "foreground": "前景",
+      "forLight": "用于浅色模式",
+      "forDark": "用于深色模式",
+      "reset": "使用主题颜色",
+      "pick": "选择颜色"
+    },
+    "advanced": {
+      "title": "高级",
+      "reset": "恢复默认",
+      "error": "无法更新设置",
+      "fontSizeDescription": "界面文字的基础大小",
+      "zoomDescription": "整个窗口的缩放比例",
+      "reduceMotion": {
+        "label": "减弱动态效果",
+        "description": "减少动画，或跟随系统设置",
+        "options": {
+          "system": "跟随系统",
+          "on": "开启"
+        }
+      },
+      "pointerCursors": {
+        "label": "使用手形指针",
+        "description": "悬停在可交互元素上时显示手形指针"
+      },
+      "fontSmoothing": {
+        "label": "字体平滑",
+        "description": "在 macOS 上使用更细的灰度抗锯齿文字"
+      }
+    },
+    "zoom": {
+      "label": "缩放级别",
+      "description": "缩放整个界面",
+      "decrease": "缩小",
+      "increase": "放大",
+      "reset": "将缩放恢复为默认值",
+      "error": "无法更新缩放级别"
     },
     "typography": {
       "fontSize": {
         "label": "字体大小",
-        "description": "调整基础文字大小",
-        "aria": "字体大小"
+        "description": "界面基础文字大小（像素）",
+        "decrease": "减小字号",
+        "increase": "增大字号",
+        "reset": "将字号恢复为默认值"
       },
       "fontFamily": {
         "label": "字体系列",
@@ -225,22 +381,43 @@
         "options": {
           "system": "系统默认",
           "sansSerif": "无衬线",
-          "serif": "有衬线 (Crimson Pro)",
+          "serif": "衬线（Crimson Pro）",
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
           "monospace": "等宽字体"
-        }
+        },
+        "sections": {
+          "builtin": "内置",
+          "system": "此电脑上已安装"
+        },
+        "searchPlaceholder": "搜索字体…",
+        "empty": "没有匹配的字体",
+        "loading": "正在读取已安装的字体…",
+        "unavailable": "无法获取此系统上已安装的字体。",
+        "notInstalled": "此电脑上未安装——正在使用后备字体。"
       },
-      "fontSizeError": "更新字体大小失败",
-      "fontFamilyError": "更新字体系列失败"
+      "fontSizeError": "无法更新字体大小",
+      "fontFamilyError": "无法更新字体系列"
+    },
+    "v2": {
+      "groups": {
+        "text": "文字与缩放"
+      },
+      "colorMode": "颜色模式",
+      "colorTheme": "主题",
+      "accent": "强调色",
+      "customColor": "自定义颜色",
+      "fontFamily": "字体系列",
+      "fontSize": "字体大小",
+      "zoom": "缩放"
     }
   },
   "editor": {
     "header": {
       "title": "编辑器",
       "subtitle": "笔记编辑器设置和偏好",
-      "loading": "正在加载设置..."
+      "loading": "正在加载设置…"
     },
     "groups": {
       "layout": "布局",
@@ -249,25 +426,27 @@
     },
     "width": {
       "label": "编辑器宽度",
-      "description": "写作区域的最大宽度",
+      "description": "应用于所有笔记和日记页面",
       "options": {
-        "narrow": "窄",
-        "medium": "中",
-        "wide": "宽",
-        "full": "全宽",
-        "normal": "标准"
+        "normal": "标准",
+        "full": "全宽"
       },
-      "error": "更新编辑器宽度失败"
+      "error": "无法更新编辑器宽度"
     },
     "toolbarMode": {
       "label": "固定格式工具栏",
       "description": "始终在编辑器上方显示工具栏",
-      "error": "更新工具栏模式失败"
+      "error": "无法更新工具栏模式"
     },
     "spellCheck": {
+      "label": "拼写检查",
       "description": "为笔记和日记中拼写错误的单词加下划线",
-      "error": "更新拼写检查失败",
-      "label": "拼写检查"
+      "error": "无法更新拼写检查设置"
+    },
+    "v2": {
+      "width": "编辑器宽度",
+      "toolbarMode": "固定格式工具栏",
+      "spellCheck": "拼写检查"
     }
   },
   "templates": {
@@ -285,12 +464,15 @@
       "builtIn": "内置",
       "myTemplates": "我的模板"
     },
-    "loading": "正在加载模板...",
+    "loading": "正在加载模板…",
     "newTemplateTitle": "新建模板",
-    "copySuffix": "{name}（复制）",
+    "copySuffix": "{name}（副本）",
     "empty": {
       "title": "尚无自定义模板",
       "description": "创建模板以开始使用"
+    },
+    "preview": {
+      "notFound": "无法加载此模板。"
     },
     "toasts": {
       "deleted": "模板已删除",
@@ -301,7 +483,7 @@
     "dialogs": {
       "delete": {
         "title": "删除模板",
-        "description": "您确定要删除此模板吗？此操作无法撤销。由此模板创建的笔记不会受到影响。"
+        "description": "确定要删除此模板吗？此操作无法撤销。由此模板创建的笔记不会受到影响。"
       },
       "duplicate": {
         "title": "复制模板",
@@ -309,86 +491,108 @@
         "placeholder": "模板名称"
       }
     },
-    "preview": {
-      "notFound": "无法加载此模板。"
+    "v2": {
+      "new": "新建模板",
+      "groups": {
+        "mine": "我的模板"
+      }
     }
   },
   "journal": {
     "header": {
       "title": "日记",
-      "subtitle": "日志设置和偏好",
-      "loading": "正在加载设置..."
+      "subtitle": "日记设置和偏好",
+      "loading": "正在加载设置…"
     },
     "groups": {
       "defaultTemplate": "默认模板",
+      "location": "位置和格式",
       "sidebarVisibility": "侧边栏可见性",
       "footer": "页脚",
-      "location": "位置和格式"
+      "weekdayTemplates": "按星期设置模板"
     },
     "template": {
       "label": "模板",
-      "description": "新条目使用此模板开始",
+      "description": "新日记将使用此模板",
       "placeholder": "选择一个模板",
       "unknown": "未知模板",
       "none": "无",
       "noneAsk": "无（每次询问）",
       "updated": "默认模板已更新",
       "cleared": "默认模板已清除",
-      "error": "更新默认模板失败"
+      "error": "无法更新默认模板"
     },
     "showSchedule": {
       "label": "显示日程",
-      "description": "显示今天的事件和日历"
+      "description": "显示今天的日程和日历"
     },
     "showTasks": {
       "label": "显示任务",
       "description": "显示所选日期到期的任务"
     },
     "showAIConnections": {
-      "label": "显示AI连接",
-      "description": "显示与相关条目相关的AI驱动连接"
+      "label": "显示 AI 关联",
+      "description": "显示由 AI 发现的相关日记"
     },
     "showStatsFooter": {
       "label": "显示统计页脚",
       "description": "字数、阅读时间、时间戳"
     },
-    "updateError": "更新设置失败",
+    "folder": {
+      "label": "日记文件夹",
+      "description": "存储每日笔记的文件夹",
+      "placeholder": "journal"
+    },
     "dateFormat": {
-      "description": "每日笔记的文件名格式（例如 YYYY-MM-DD dddd）",
       "label": "日期格式",
+      "description": "每日笔记的文件名格式（例如 YYYY-MM-DD dddd）",
       "placeholder": "YYYY-MM-DD",
       "renameNote": "更改格式会重命名现有的日记文件。新名称已被占用的文件保持不变。",
       "tokensHelp": "日期格式帮助",
       "tokensNote": "其他字符保持不变。星期名称始终为英文。",
       "tokensTitle": "格式标记"
     },
-    "folder": {
-      "description": "存储每日笔记的文件夹",
-      "label": "日志文件夹",
-      "placeholder": "journal"
-    },
     "preview": {
-      "description": "今天的日志文件路径",
-      "label": "预览"
+      "label": "预览",
+      "description": "今天的日记文件路径"
+    },
+    "updateError": "无法更新设置",
+    "weekday": {
+      "toggle": "按星期使用不同的模板",
+      "toggleDescription": "为一周中的每一天选择模板",
+      "inherit": "使用默认",
+      "inheritWith": "默认 · {name}",
+      "inheritNone": "默认 · 无",
+      "missing": "已删除的模板",
+      "clear": "清除",
+      "updated": "已更新{day}的模板",
+      "cleared": "已清除{day}的模板",
+      "error": "无法更新{day}的模板",
+      "summary": "已设置 {count}/7"
+    },
+    "v2": {
+      "groups": {
+        "defaultTemplate": "默认模板",
+        "location": "位置和格式"
+      }
     }
   },
   "tasks": {
     "header": {
       "title": "任务",
       "subtitle": "配置任务默认值和行为",
-      "loading": "正在加载设置..."
+      "loading": "正在加载设置…"
     },
     "groups": {
       "defaults": "默认值",
-      "calendar": "日历",
       "inbox": "收件箱"
     },
     "defaultProject": {
       "label": "默认项目",
       "description": "未选择项目时分配",
       "placeholder": "无默认项目",
-      "none": "无默认值（使用个人）",
-      "error": "更新默认项目失败"
+      "none": "无默认项目（使用“个人”）",
+      "error": "无法更新默认项目"
     },
     "sortOrder": {
       "label": "默认排序顺序",
@@ -399,101 +603,139 @@
         "priority": "优先级",
         "createdAt": "创建日期"
       },
-      "error": "更新排序失败"
-    },
-    "weekStart": {
-      "label": "周开始于",
-      "description": "日历视图中的一周第一天",
-      "options": {
-        "sunday": "星期天",
-        "monday": "星期一"
-      },
-      "error": "更新周开始失败"
+      "error": "无法更新排序方式"
     },
     "defaultView": {
       "label": "默认视图",
-      "description": "任务页面打开时显示的标签页",
+      "description": "打开任务页面时默认显示的范围",
       "options": {
         "all": "全部",
-        "today": "今天"
+        "today": "今天",
+        "tomorrow": "明天",
+        "next7": "未来 7 天"
       },
-      "error": "更新默认视图失败"
+      "error": "无法更新默认视图"
     },
     "staleInbox": {
-      "label": "陈旧收件箱阈值",
-      "description": "比此更早的任务将被标记为陈旧",
-      "unit": "天数",
-      "error": "更新陈旧收件箱阈值失败"
+      "label": "收件箱积压阈值",
+      "description": "超过此天数的任务将被标记为积压",
+      "unit": "天",
+      "error": "无法更新收件箱积压阈值"
+    }
+  },
+  "inbox": {
+    "header": {
+      "title": "收件箱",
+      "subtitle": "每日回顾提醒和收件箱偏好设置。",
+      "loading": "正在加载…"
+    },
+    "imageFiling": {
+      "group": "图片",
+      "error": "无法更新图片归入偏好",
+      "mode": {
+        "label": "将图片归入笔记时",
+        "description": "嵌入会将图片保留在笔记中，不显示在侧边栏。归入侧边栏会将图片移到你选择的文件夹，并在笔记中链接到它。",
+        "embed": "嵌入笔记",
+        "link": "归入侧边栏"
+      },
+      "ask": {
+        "label": "每次询问",
+        "description": "关闭后，新图片将直接使用上面的选项，不再询问。"
+      }
+    },
+    "reviewReminder": {
+      "group": "每日回顾提醒",
+      "enabled": {
+        "label": "提醒我回顾收件箱",
+        "description": "当收件箱里有内容时，每天温和地提醒你一次。"
+      },
+      "time": {
+        "label": "提醒时间",
+        "description": "每台设备上的本地时间。",
+        "hourLabel": "小时",
+        "minuteLabel": "分钟",
+        "periodLabel": "上午或下午"
+      },
+      "test": {
+        "label": "测试通知",
+        "description": "立即触发提醒，检查你的系统通知。",
+        "button": "发送测试",
+        "sent": "测试通知已发送。",
+        "sentHint": "如果没有出现，请在系统设置中允许 MemryNote 发送通知。",
+        "unsupported": "此设备无法显示桌面通知。"
+      },
+      "error": "无法更新提醒。"
     }
   },
   "calendar": {
     "header": {
       "title": "日历",
-      "subtitle": "配置日面板中的日期单元行为",
-      "loading": "正在加载设置..."
+      "subtitle": "配置日程面板中日期格的点击行为",
+      "loading": "正在加载设置…"
     },
     "groups": {
-      "dayCellClick": "日期单元点击",
-      "notes": "笔记",
-      "weekStart": "周"
+      "weekStart": "周",
+      "dayCellClick": "点击日期格",
+      "notes": "笔记"
+    },
+    "weekStart": {
+      "label": "每周开始于",
+      "description": "所有日历中一周的第一天",
+      "options": {
+        "sunday": "周日",
+        "monday": "周一"
+      },
+      "error": "无法更新每周起始日"
     },
     "defaultBehavior": {
       "label": "默认行为",
-      "description": "在非日历标签中点击日面板日历中的某天时",
-      "error": "更新日期点击行为失败"
+      "description": "在任意非日历标签页中点击日程面板日历中的某一天时",
+      "error": "无法更新日期点击行为"
     },
     "pageOverride": {
-      "label": "覆盖日历页面",
-      "description": "当日历标签处于激活状态时的行为（默认为打开日历）",
-      "error": "更新日历页面覆盖失败"
+      "label": "日历页面单独设置",
+      "description": "日历标签页处于活动状态时的行为（默认为“打开日历”）",
+      "error": "无法更新日历页面单独设置"
+    },
+    "showNotesOnCalendar": {
+      "label": "在日历上显示笔记",
+      "description": "在日历上将每篇笔记显示为其创建当天的全天条目",
+      "error": "无法更新“在日历上显示笔记”设置"
     },
     "options": {
-      "openJournal": "打开日志",
+      "openJournal": "打开日记",
       "openCalendar": "打开日历",
       "useGlobal": "使用全局设置"
     },
-    "showNotesOnCalendar": {
-      "description": "在日历上将每篇笔记显示为其创建当天的全天项目",
-      "error": "更新在日历上显示笔记失败",
-      "label": "在日历上显示笔记"
-    },
-    "weekStart": {
-      "description": "所有日历中一周的第一天",
-      "error": "更新每周开始日失败",
-      "label": "每周开始于",
-      "options": {
-        "monday": "周一",
-        "sunday": "周日"
-      }
-    },
     "google": {
       "name": "Google 日历",
-      "description": "memrynote 活动和导入的 Google 日历的双向同步。",
+      "description": "在 memrynote 日程与导入的 Google 日历之间双向同步。",
       "statuses": {
         "connected": "已连接",
         "notConnected": "未连接",
         "reconnectRequired": "需要重新连接"
       },
       "accountReconnect": "重新连接 Google",
+      "addAccount": "添加账户",
       "importedCalendars": "已导入的日历",
-      "selected": "已选择 {count} ",
+      "selected": "已选择 {count} 个",
       "syncNow": "立即同步",
       "disconnect": "断开连接",
       "reconnect": "重新连接 Google",
       "syncFailed": "发生错误",
-      "connectFailed": "连接 Google 日历失败",
-      "refreshFailed": "刷新 Google 日历失败",
-      "disconnectFailed": "断开 Google 日历失败",
-      "retryFailed": "重试日历同步失败",
+      "connectFailed": "无法连接 Google 日历",
+      "refreshFailed": "无法刷新 Google 日历",
+      "disconnectFailed": "无法断开 Google 日历",
+      "retryFailed": "无法重试日历同步",
       "pushToGoogle": {
-        "description": "关闭以进行单向同步——你仍会在 memrynote 中看到你的 Google 事件，但 memrynote 事件不会出现在 Google 中。",
-        "error": "更新同步方向失败",
-        "label": "在 Google Calendar 中显示 memrynote 事件"
+        "label": "在 Google 日历中显示 memrynote 日程",
+        "description": "关闭即为单向同步——你仍会在 memrynote 中看到 Google 日程，但 memrynote 日程不会出现在 Google 中。",
+        "error": "无法更新同步方向"
       },
       "agentAccess": {
-        "description": "默认关闭。开启后，AI 助手可以读取你的 Google 事件；关闭时，即使向它询问这些事件，它也得不到任何内容。无论哪种设置，你都会继续在 memrynote 中看到它们。",
-        "error": "更新 AI 访问权限失败",
-        "label": "允许 AI 读取 Google Calendar 事件"
+        "label": "允许 AI 读取 Google 日历日程",
+        "description": "默认关闭。开启后，AI 智能体可以读取你的 Google 日程；关闭后，即使询问这些日程，它也不会得到任何内容。无论哪种设置，你都会继续在 memrynote 中看到它们。",
+        "error": "无法更新 AI 访问权限"
       },
       "connect": "连接",
       "sourcePicker": {
@@ -501,51 +743,313 @@
         "statuses": {
           "synced": "已同步",
           "error": "错误",
-          "pending": "待定",
+          "pending": "等待中",
           "idle": "空闲"
         },
         "retrying": "正在重试…",
         "retryNow": "立即重试"
       }
+    },
+    "subscriptions": {
+      "name": "已订阅的日历",
+      "description": "通过共享链接（ICS 或 webcal）添加只读日历，例如 Proton、iCloud、Outlook 或 Fastmail 日历。大约每小时检查一次更新。",
+      "urlLabel": "日历链接",
+      "urlPlaceholder": "webcal:// 或 https:// 日历链接",
+      "subscribe": "订阅",
+      "subscribing": "正在订阅…",
+      "refresh": "刷新",
+      "refreshing": "正在刷新…",
+      "remove": "移除",
+      "readOnly": "只读",
+      "updatedAt": "更新于 {time}",
+      "notCheckedYet": "尚未检查",
+      "keptEvents": "日历中已有的日程会保留，直到下次成功更新。",
+      "notEncrypted": "未加密",
+      "httpWarning": "此链接以 http:// 开头，因此链接和日程会以未加密方式传输，同一网络中的任何人都能读取。如果日历提供 https:// 或 webcal:// 链接，请改用它。",
+      "added": "已添加“{title}”。",
+      "addedSummary": "已添加“{title}”：{count, plural, other {# 个日程}}，{start} 至 {end}。",
+      "addedEmpty": "已添加“{title}”。它在过去 90 天和未来一年内暂无日程。",
+      "rename": "重命名",
+      "renameLabel": "日历名称",
+      "save": "保存",
+      "cancel": "取消",
+      "color": "日历颜色",
+      "colorOption": "颜色：{color}",
+      "help": {
+        "toggle": "在哪里找到链接？",
+        "intro": "查找名为“公开链接”“私密地址”“发布”或“iCal”的共享选项。链接以 .ics 结尾，或以 webcal:// 开头。",
+        "proton": {
+          "name": "Proton Calendar",
+          "steps": "设置 → 日历，选择该日历，然后在“与任何人共享”下创建链接。选择“完整视图”以查看日程详情。",
+          "readOnly": "按照设计，Proton 日历在 memrynote 中始终为只读。Proton 对日历进行端到端加密且不提供 CalDAV，因此无法写回。请在 Proton 中进行更改。"
+        },
+        "icloud": {
+          "name": "iCloud",
+          "steps": "在 Mac 上的“日历”App 或 iCloud.com 中共享该日历，开启“公开日历”，然后复制链接。如果也想在这里编辑 iCloud 日程，请改为通过 CalDAV 连接 iCloud。"
+        },
+        "outlook": {
+          "name": "Outlook 和 Microsoft 365",
+          "steps": "网页版 Outlook → 设置 → 日历 → 共享日历 → 发布日历。选择“可以查看所有详细信息”，发布后复制 ICS 链接。"
+        },
+        "fastmail": {
+          "name": "Fastmail",
+          "steps": "设置 → 日历，打开该日历，开启发布，然后复制 iCalendar 链接。"
+        },
+        "notion": {
+          "name": "Notion Calendar",
+          "steps": "它的日程保存在你为其连接的 Google 或 iCloud 账户中。请从该账户共享链接。"
+        },
+        "public": {
+          "name": "节假日、学校和体育赛事",
+          "steps": "在主办方网站上查找“订阅”“添加到日历”或“iCal”，然后复制该链接。"
+        }
+      },
+      "errors": {
+        "invalid_url": "这不是日历链接。请粘贴以 webcal://、https:// 或 http:// 开头的地址。",
+        "unreachable": "无法访问此日历。请检查链接和网络连接。",
+        "timeout": "日历响应时间过长。请稍后重试。",
+        "not_found": "此链接下未找到日历。它可能已被删除，或共享链接已更改。",
+        "unauthorized": "日历拒绝了访问。请从日历 App 中复制新的共享链接。",
+        "http_error": "日历服务器返回了错误。请稍后重试。",
+        "too_large": "此日历过大，无法添加。请改为共享较小的日历。",
+        "not_a_calendar": "此链接返回的不是日历。请从日历 App 的共享设置中复制 ICS 或 webcal 链接。",
+        "too_many_redirects": "此链接不断重定向，始终无法到达日历。请从日历 App 中重新复制链接。",
+        "unsupported_redirect": "此链接重定向到的地址不是网页链接，因此 memrynote 不会跟随。请从日历 App 中复制 ICS 或 webcal 链接。",
+        "unknown": "无法更新此日历（{code}）。请稍后重试。"
+      }
+    },
+    "providers": {
+      "caldav": {
+        "name": "CalDAV"
+      },
+      "statuses": {
+        "connected": "已连接",
+        "notConnected": "未连接"
+      },
+      "readOnly": "只读",
+      "pollInterval": "每 {minutes} 分钟检查一次更改。在其他地方所做的更改不会立即显示。",
+      "connect": "连接",
+      "connecting": "正在连接…",
+      "connectFailed": "无法连接。请检查填写的信息后重试。",
+      "disconnect": "断开连接",
+      "disconnectFailed": "无法断开连接，请重试。",
+      "syncNow": "立即同步",
+      "refreshFailed": "同步失败。日历保持原样，请稍后重试。",
+      "addAccount": "添加账户",
+      "accounts": "账户",
+      "calendars": "日历",
+      "retry": "立即重试",
+      "reconnectRequired": "此设备没有该账户的密码。请重新连接以在此设备上同步。",
+      "push": {
+        "label": "将 memrynote 日程写入此日历",
+        "description": "关闭即为单向同步：你仍会在 memrynote 中看到这些日程，但 memrynote 日程和任务不会写入此处。"
+      },
+      "agentAccess": {
+        "label": "允许 AI 读取这些日程",
+        "description": "在你开启之前保持关闭。每个日历服务单独设置；允许 Google 并不会同时允许此服务。",
+        "error": "无法更新 AI 访问权限"
+      },
+      "basic": {
+        "serverLabel": "服务器地址",
+        "serverPlaceholder": "https://dav.example.com",
+        "usernameLabel": "用户名",
+        "passwordLabel": "应用密码"
+      },
+      "compat": {
+        "outdated": "你账户中的以下设备运行的 memrynote 版本低于 {version}：",
+        "unverified": "memrynote 无法检查你的其他设备运行的版本。",
+        "unknownVersion": "版本未知",
+        "consequence": "旧版本可能会将此日历中的任务和日程作为重复项复制到 Google 日历中，或无法同步它们。请先更新这些设备；如果你接受此风险，也可以继续。",
+        "acknowledge": "我了解，仍然连接"
+      },
+      "reconnect": "重新连接",
+      "defaultTarget": {
+        "label": "默认日历",
+        "description": "未选择日历时，新日程、任务、提醒和延后的条目将存放在这里。只能有一个日历服务作为默认。",
+        "none": "非默认",
+        "error": "无法更改默认日历"
+      },
+      "appleEventKit": {
+        "name": "此 Mac",
+        "description": "显示“日历”App 在此 Mac 上已有的所有日历：iCloud、Google、Exchange 和“我的 Mac 上”。无需登录，只读，且日程绝不会离开此 Mac，也不会同步到你的其他设备。",
+        "connect": "允许访问日历",
+        "connectHint": "macOS 只会询问一次。你之后可以在“系统设置”中更改。",
+        "otherCalendars": "其他日历",
+        "alreadyConnected": "已通过 {provider} 连接，因此默认关闭，以免日程重复显示。",
+        "openSystemSettings": "打开系统设置",
+        "checkAgain": "重新检查",
+        "errors": {
+          "permission_denied": "memrynote 的日历访问权限已关闭。请在“系统设置 → 隐私与安全性 → 日历”中开启，然后重新检查。",
+          "permission_restricted": "此 Mac 已禁止访问日历，通常是由于管理描述文件。memrynote 中没有任何更改；此 Mac 的管理员可以允许访问。",
+          "permission_write_only": "memrynote 只能添加日程，不足以显示日程。请在“系统设置 → 隐私与安全性 → 日历”中将其切换为“完全访问”。",
+          "permission_not_determined": "memrynote 尚未获得日历访问权限。请允许访问以显示 Mac 上的日历。",
+          "unavailable": "无法启动 macOS 日历读取程序。日历未发生更改；请重新启动 memrynote 后重试。",
+          "sync_failed": "暂时无法读取“日历”App。日历保持原样，memrynote 会在“日历”App 发生变化时重试。"
+        }
+      }
+    },
+    "caldav": {
+      "presetLabel": "服务",
+      "presets": {
+        "icloud": "Apple iCloud",
+        "fastmail": "Fastmail",
+        "nextcloud": "Nextcloud",
+        "selfHosted": "Radicale 或 Baïkal（自托管）",
+        "zoho": "Zoho",
+        "yahoo": "Yahoo",
+        "mailboxOrg": "mailbox.org",
+        "posteo": "Posteo",
+        "synology": "Synology",
+        "other": "其他 CalDAV 服务器"
+      },
+      "hostLabel": "服务器名称",
+      "hostPlaceholder": "cloud.example.com",
+      "appleIdLabel": "Apple ID（电子邮件）",
+      "icloudHelp": "请使用 App 专用密码，而不是 Apple ID 密码。可在“登录与安全性 → App 专用密码”下创建。",
+      "appPasswordHelp": "如果你的服务提供应用密码，请为 memrynote 创建一个并在此使用。",
+      "createAppPassword": "创建应用密码",
+      "testConnection": "测试连接",
+      "testing": "正在测试…",
+      "chooseCalendars": "要显示的日历",
+      "reconnectFor": "输入 {username} 的应用密码。",
+      "errors": {
+        "unauthorizedIcloud": "iCloud 未接受此密码。此处需要使用 App 专用密码，而不是 Apple ID 密码。请在 account.apple.com 的“登录与安全性”下创建一个，然后重试。",
+        "unauthorized": "服务器未接受此用户名和密码。请检查两者；如果你的服务支持应用密码，请使用应用密码。",
+        "unreachable": "无法连接到服务器。请检查地址和网络连接，然后重试。",
+        "notCaldav": "此地址下未找到 CalDAV 日历。请检查服务器地址；某些服务需要包含路径，例如 /remote.php/dav。",
+        "noCalendars": "此账户没有可存放日程的日历。",
+        "invalidUrl": "这不是服务器地址。请输入类似 https://dav.example.com 的地址。",
+        "outdatedDevices": "你的部分设备运行的是旧版 memrynote。请更新这些设备，或在下方确认仍要连接。",
+        "unknown": "无法连接（{code}）。未保存任何内容；请稍后重试。"
+      },
+      "reconnect": {
+        "missing": "此设备还没有该账户的应用密码。其日程仍会通过你的其他设备同步过来；在此输入应用密码即可让此设备也进行同步。",
+        "icloudRevoked": "iCloud 已不再接受此 App 专用密码。重置 Apple ID 密码会撤销所有 App 专用密码。请在 account.apple.com 创建新密码并重新连接。",
+        "rejected": "服务器已不再接受此密码。如果你更改了密码或撤销了应用密码，请创建新密码并重新连接。"
+      }
+    },
+    "v2": {
+      "groups": {
+        "layout": "布局",
+        "connected": "已连接的日历"
+      },
+      "addCalendar": "添加日历",
+      "calendarCount": "{selected}/{count, plural, other {# 个日历}}",
+      "defaultPill": "默认",
+      "subscription": "订阅",
+      "subscriptionCount": "{count, plural, =0 {无订阅} other {# 个订阅}}"
     }
   },
   "account": {
     "header": {
       "title": "账户",
-      "subtitle": "您的账户、同步和安全",
-      "loading": "加载中..."
+      "subtitle": "账户、同步与安全",
+      "loading": "正在加载…"
     },
     "groups": {
       "identity": "身份",
       "sync": "同步",
+      "billing": "账单",
       "storage": "存储",
-      "devices": "设备",
-      "billing": "账单"
+      "devices": "设备"
     },
     "identity": {
       "unknown": "未知",
       "encrypted": "端到端加密"
     },
     "sync": {
-      "lastSynced": "最后同步 {time}",
-      "pending": "{count, plural, one {# 待处理} other {# 待处理}}",
+      "lastSynced": "上次同步：{time}",
+      "pending": "{count, plural, other {# 项待同步}}",
+      "attachmentAutoDownload": {
+        "label": "自动下载附件",
+        "description": "在后台获取已同步笔记中的附件。关闭后，仅在打开文件时才会下载。",
+        "saveFailed": "无法保存附件下载偏好"
+      },
       "statuses": {
         "synced": "已同步",
-        "syncing": "正在同步...",
+        "syncing": "正在同步…",
         "paused": "已暂停",
         "syncError": "同步错误",
         "offline": "离线",
-        "connecting": "连接中...",
-        "pushed": "{count, plural, one {# 已推送} other {# 已推送}}",
-        "pulled": "{count, plural, one {# 已拉取} other {# 已拉取}}",
+        "connecting": "正在连接…",
+        "localOnly": "仅本地",
+        "pushed": "{count, plural, other {已推送 # 项}}",
+        "pulled": "{count, plural, other {已拉取 # 项}}",
         "pushedPulled": "{parts}",
-        "changesPending": "{count, plural, one {# 更改待处理} other {# 更改待处理}}",
-        "offlinePending": "离线 ({count, plural, one {# 更改待处理} other {# 更改待处理}})",
+        "changesPending": "{count, plural, other {# 项更改待同步}}",
+        "offlinePending": "离线（{count, plural, other {# 项更改待同步}}）",
         "never": "从不"
+      },
+      "upsell": {
+        "title": "笔记只保存在此设备上",
+        "description": "开启同步后，每篇笔记都会跟随你到其他设备——端到端加密，只有你能读取。",
+        "benefits": {
+          "devices": "在任何设备上都能从上次离开的地方继续",
+          "encrypted": "端到端加密——密钥始终由你掌握",
+          "backup": "加密备份，以防此设备不在身边"
+        },
+        "guarantee": "14 天退款保证。可随时取消。"
+      },
+      "activating": {
+        "title": "正在完成激活",
+        "description": "你的套餐已生效。我们确认后同步即会开始——通常刷新一下即可。"
+      }
+    },
+    "billing": {
+      "planStatus": "套餐状态",
+      "checking": "正在检查账单状态",
+      "annualSwitch": {
+        "title": "切换为按年计费",
+        "description": "节省 20%。本月剩余部分按比例折算，不会重复收费。",
+        "action": "切换为按年",
+        "pricing": "正在计算价格…",
+        "preview": "今天应付 {amount}，之后每年 {recurring}",
+        "confirm": "确认切换",
+        "switching": "正在切换…",
+        "success": "已切换为按年计费。",
+        "failed": "无法切换套餐"
+      },
+      "plans": {
+        "free": "免费套餐",
+        "plus": "Plus 套餐",
+        "pro": "Pro 套餐",
+        "believer": "Believer 套餐"
+      },
+      "statuses": {
+        "inactive": "未激活",
+        "active": "已激活",
+        "past_due": "已逾期",
+        "paused": "已暂停",
+        "canceled": "已取消"
+      },
+      "labels": {
+        "storage": "存储",
+        "maxFile": "最大文件",
+        "vaults": "仓库",
+        "history": "历史"
+      },
+      "unlimited": "无限制",
+      "historyDays": "{days} 天",
+      "activationPendingPrefix": "正在等待激活。Paddle 确认付款可能需要一点时间。请刷新状态，或发送邮件至",
+      "actions": {
+        "upgrade": "升级",
+        "unlockSync": "解锁同步",
+        "opening": "正在打开…",
+        "refresh": "刷新状态",
+        "manage": "管理账单"
+      },
+      "toasts": {
+        "loadFailed": "无法加载账单状态",
+        "checkoutFailed": "无法开始结账",
+        "checkoutOpened": "结账已在浏览器中打开",
+        "refreshFailed": "无法刷新账单状态",
+        "billingActive": "账单已激活",
+        "activationPending": "正在等待激活",
+        "portalFailed": "无法打开账单门户"
       }
     },
     "storage": {
-      "used": "已使用 {limit} 中的 {used}",
+      "used": "已用 {used} / {limit}",
       "categories": {
         "notes": "笔记",
         "attachments": "附件",
@@ -555,258 +1059,232 @@
     },
     "security": {
       "signOut": {
-        "label": "登出",
+        "label": "退出登录",
         "description": "将此设备从同步中断开",
-        "action": "登出"
+        "action": "退出登录"
       }
     },
+    "community": {
+      "prompt": "喜欢 memrynote？",
+      "star": "在 GitHub 上为我们加星标",
+      "and": "以及",
+      "feedback": "分享反馈"
+    },
     "signOutDialog": {
-      "title": "要退出同步吗？",
-      "description": "同步将停止，且此设备上的加密密钥将被移除。你的笔记将保留在此设备上。你将需要恢复短语来重新设置同步。",
-      "confirm": "退出",
-      "signingOut": "正在退出..."
+      "title": "要退出登录并停止同步吗？",
+      "description": "同步将停止，此设备上的加密密钥将被移除。笔记会保留在此设备上。重新设置同步时需要使用恢复短语。",
+      "confirm": "退出登录",
+      "signingOut": "正在退出登录…"
     },
     "toasts": {
-      "signedOut": "退出成功",
-      "signOutFailed": "退出失败",
+      "signedOut": "已退出登录",
+      "signOutFailed": "无法退出登录",
       "deviceLinked": "设备已成功关联"
     },
-    "billing": {
-      "actions": {
-        "manage": "管理账单",
-        "opening": "打开中...",
-        "refresh": "刷新状态",
-        "upgrade": "升级"
-      },
-      "activationPendingPrefix": "激活待处理。Paddle 确认结账可能需要一点时间。请刷新状态或发送邮件至",
-      "checking": "正在检查账单状态",
-      "historyDays": "{days} 天",
-      "labels": {
-        "history": "历史",
-        "maxFile": "最大文件",
-        "storage": "存储",
-        "vaults": "保险库"
-      },
-      "planStatus": "套餐状态",
-      "plans": {
-        "believer": "Believer 套餐",
-        "free": "免费套餐",
-        "plus": "Plus 套餐",
-        "pro": "Pro 套餐"
-      },
-      "statuses": {
-        "active": "已激活",
-        "canceled": "已取消",
-        "inactive": "未激活",
-        "past_due": "已逾期",
-        "paused": "已暂停"
-      },
-      "toasts": {
-        "activationPending": "激活待处理",
-        "billingActive": "账单已激活",
-        "checkoutFailed": "无法开始结账",
-        "checkoutOpened": "结账已在浏览器中打开",
-        "loadFailed": "无法加载账单状态",
-        "portalFailed": "无法打开账单门户",
-        "refreshFailed": "无法刷新账单状态"
-      },
-      "unlimited": "无限制"
-    },
-    "community": {
-      "and": "以及",
-      "feedback": "分享反馈",
-      "prompt": "喜欢 memrynote？",
-      "star": "在 GitHub 上给我们加星"
+    "v2": {
+      "stats": {
+        "plan": "套餐"
+      }
     }
   },
   "setup": {
     "steps": {
       "signIn": "登录",
       "verify": "验证",
-      "link": "链接"
+      "link": "关联"
     },
-    "progress": "步骤 {current} 共 {total} 步：{label}",
+    "progress": "第 {current} 步，共 {total} 步：{label}",
     "signIn": {
       "title": "设置同步",
-      "description": "创建一个帐户，在设备间同步你的数据，并提供端到端加密。",
+      "description": "创建账户，通过端到端加密在设备间同步数据。",
       "or": "或者",
+      "paidPlan": "同步功能需要付费套餐。",
+      "seePlans": "查看套餐",
       "errors": {
-        "sendCode": "发送验证码失败",
-        "googleStart": "启动 Google 登录失败"
-      },
-      "paidPlan": "同步是付费套餐。",
-      "seePlans": "查看套餐"
+        "sendCode": "无法发送验证码",
+        "googleStart": "无法启动 Google 登录"
+      }
     },
     "email": {
       "label": "电子邮件地址",
-      "placeholder": "输入你的电子邮件地址...",
+      "placeholder": "输入你的电子邮件地址…",
       "invalid": "请输入有效的电子邮件地址",
-      "sending": "正在发送验证码..."
+      "sending": "正在发送验证码…"
     },
     "oauth": {
-      "google": "继续使用 Google"
+      "google": "使用 Google 继续"
     },
     "otp": {
       "title": "输入验证码",
-      "sentTo": "我们已发送 6 位数验证码到",
+      "sentTo": "我们已将 6 位验证码发送至 ",
       "aria": "6 位数验证码",
-      "verifying": "正在验证...",
-      "resending": "正在重新发送...",
+      "verifying": "正在验证…",
+      "resending": "正在重新发送…",
       "resend": "重新发送验证码",
       "resendIn": "{time} 后重新发送",
       "differentEmail": "使用其他邮箱",
       "error": "验证失败",
-      "resendError": "重新发送失败"
+      "resendError": "无法重新发送"
     },
     "recovery": {
-      "displayTitle": "保存您的恢复短语",
-      "displayDescription": "如果您丢失了对所有设备的访问权限，这是恢复加密数据的唯一方法。",
-      "warning": "将其写下并存放在安全的地方。您将无法再次看到它。",
+      "displayTitle": "保存恢复短语",
+      "displayDescription": "如果你无法再访问任何设备，这是恢复加密数据的唯一方法。",
+      "warning": "请将其写下并存放在安全的地方。它不会再次显示。",
       "wordsAria": "恢复短语单词",
       "wordAria": "单词 {index}：{word}",
       "copyAria": "将恢复短语复制到剪贴板",
       "copiedAria": "恢复短语已复制",
       "copied": "已复制",
-      "saved": "我已保存我的恢复短语",
-      "confirmTitle": "确认您的恢复短语",
-      "confirmDescription": "输入请求的单词以验证您是否已正确保存。 ",
-      "wordPlaceholder": "输入单词 #{index}",
+      "saved": "我已保存恢复短语",
+      "confirmTitle": "确认恢复短语",
+      "confirmDescription": "输入指定的单词，以验证你已正确保存。",
+      "wordPlaceholder": "输入第 {index} 个单词",
       "verify": "验证",
       "mustMatch": "所有 3 个单词必须匹配才能继续",
       "inputTitle": "输入恢复短语",
-      "inputDescription": "输入您的 24 个单词恢复短语以恢复对加密数据的访问。",
+      "inputDescription": "输入由 24 个单词组成的恢复短语，以恢复对加密数据的访问。",
       "inputLabel": "恢复短语",
-      "count": "{count} / {total} 单词",
-      "inputPlaceholder": "输入您的 24 个单词恢复短语，用空格分隔...",
+      "count": "{count} / {total} 个单词",
+      "inputPlaceholder": "输入由 24 个单词组成的恢复短语，以空格分隔…",
       "lengthHint": "输入所有 24 个单词以启用恢复按钮",
       "restore": "恢复访问",
       "progress": {
-        "deriving": "正在派生加密密钥...",
-        "validating": "正在验证恢复短语...",
-        "registering": "正在注册设备..."
+        "deriving": "正在派生加密密钥…",
+        "validating": "正在验证恢复短语…",
+        "registering": "正在注册设备…"
       },
       "failed": "恢复失败",
       "confirmationFailed": "确认失败",
       "unavailable": {
-        "description": "你的恢复短语仅在设置时显示一次，之后无法找回。重新开始以生成新的恢复短语。",
         "loading": "正在加载你的恢复短语…",
-        "startOver": "重新开始",
-        "title": "无法加载你的恢复短语"
+        "title": "无法加载你的恢复短语",
+        "description": "你的恢复短语仅在设置时显示一次，之后无法找回。重新开始以生成新的恢复短语。",
+        "startOver": "重新开始"
       }
+    },
+    "startFresh": {
+      "trigger": "我无法找回恢复短语",
+      "title": "在此设备上重新开始",
+      "description": "仅在恢复短语永久丢失时才执行此操作。此操作无法撤销。",
+      "consequenceSignOut": "此设备将退出登录并停止同步。",
+      "consequenceKey": "此设备上保存的加密密钥将被删除。账户中已存储的所有内容仍使用旧密钥加密——没有恢复短语，任何人都无法再读取它们。",
+      "consequenceLocal": "此电脑上已保存的笔记会保留在仓库文件夹中，并可继续使用。",
+      "confirm": "退出登录并重新开始",
+      "cancel": "返回"
     },
     "linking": {
       "choiceTitle": "关联此设备",
       "choiceDescription": "从其他设备传输加密密钥或从恢复短语恢复。",
       "qrChoice": "通过二维码关联",
-      "qrChoiceDescription": "扫描您其他设备上显示的二维码",
+      "qrChoiceDescription": "扫描其他设备上显示的二维码",
       "recoveryChoice": "恢复短语",
-      "recoveryChoiceDescription": "输入您的24个单词恢复短语",
+      "recoveryChoiceDescription": "输入由 24 个单词组成的恢复短语",
       "codeTitle": "输入关联码",
-      "codeDescription": "从您的其他设备粘贴关联码以安全传输您的加密密钥。",
+      "codeDescription": "粘贴其他设备上的关联码，以安全传输加密密钥。",
       "codeLabel": "关联码",
       "valid": "有效",
       "invalid": "格式无效",
-      "codePlaceholder": "从您的其他设备粘贴代码...",
-      "formatHint": "从您的其他设备粘贴JSON关联码",
-      "linking": "正在关联...",
+      "codePlaceholder": "粘贴其他设备上的关联码…",
+      "formatHint": "粘贴其他设备上的 JSON 关联码",
+      "linking": "正在关联…",
       "linkDevice": "关联设备",
       "failed": "关联失败",
-      "deviceFailed": "设备关联失败",
+      "deviceFailed": "无法关联设备",
       "pendingSuccess": "设备已成功关联",
       "goBack": "返回",
-      "waitingTitle": "等待批准",
-      "waitingDescription": "在您的其他设备上打开memrynote并批准关联请求。",
+      "waitingTitle": "正在等待批准",
+      "waitingDescription": "在其他设备上打开 memrynote 并批准关联请求。",
       "verificationCode": "验证码",
-      "confirmCode": "确认此码与您其他设备上的代码匹配",
-      "vaultPickerChooseFolder": "选择文件夹",
-      "vaultPickerConfirm": "拉取所选",
-      "vaultPickerDescription": "此账户有多个保险库。选择一个文件夹以及要添加到此设备的保险库。",
-      "vaultPickerDormantHint": "已添加，切换到它时打开",
-      "vaultPickerFolderLabel": "将保险库存储在文件夹",
-      "vaultPickerPrimaryHint": "立即打开",
+      "confirmCode": "确认此验证码与其他设备上的验证码一致",
       "vaultPickerTitle": "选择要拉取的内容",
-      "vaultRow": "保险库 — {count} 项 · {date}"
+      "vaultPickerDescription": "此账户有多个仓库。请选择一个文件夹，以及要添加到此设备的仓库。",
+      "vaultPickerFolderLabel": "仓库存储位置",
+      "vaultPickerChooseFolder": "选择文件夹",
+      "vaultRow": "仓库——{count} 项 · {date}",
+      "vaultPickerPrimaryHint": "立即打开",
+      "vaultPickerDormantHint": "已添加，切换到该仓库时打开",
+      "vaultPickerConfirm": "拉取所选"
     }
   },
   "devices": {
-    "loading": "正在加载设备...",
+    "loading": "正在加载设备…",
     "loadingAria": "正在加载设备",
     "none": "尚未关联设备",
-    "linkNew": "连接新设备",
+    "linkNew": "关联新设备",
     "thisDevice": "此设备",
-    "lastSeen": "上次在线 {time} 以前",
-    "linked": "已关联 {time} 以前",
+    "lastSeen": "{time}前在线",
+    "linked": "{time}前关联",
     "renameAria": "重命名 {name}",
     "rename": "重命名",
     "revoke": "撤销",
-    "showLess": "显示较少",
-    "showMore": "{count, plural, one {# 更多设备} other {# 更多设备}}",
-    "showMoreAria": "显示 {count, plural, one {# 更多设备} other {# 更多设备}}",
+    "showLess": "收起",
+    "showMore": "{count, plural, other {另外 # 台设备}}",
+    "showMoreAria": "显示另外 {count, plural, other {# 台设备}}",
     "dialogs": {
-      "revokeTitle": "撤销 \"{name}\"？",
+      "revokeTitle": "要撤销“{name}”吗？",
       "revokeDescription": "此设备将失去访问同步数据的权限。需要重新关联以恢复同步。该设备上的本地数据将保留。",
       "revokeDevice": "撤销设备",
-      "revoking": "正在撤销...",
+      "revoking": "正在撤销…",
       "renameTitle": "重命名设备",
-      "renameDescription": "选择一个名称以识别此设备。",
+      "renameDescription": "为此设备设置一个便于识别的名称。",
       "namePlaceholder": "设备名称",
-      "renaming": "正在重命名..."
+      "renaming": "正在重命名…"
     },
     "toasts": {
-      "loadFailed": "加载设备失败",
-      "removed": "已移除 \"{name}\"",
-      "removeFailed": "移除设备失败",
-      "renamed": "已重命名为 \"{name}\"",
-      "renameFailed": "重命名设备失败"
+      "loadFailed": "无法加载设备",
+      "removed": "已移除“{name}”",
+      "removeFailed": "无法移除设备",
+      "renamed": "已重命名为“{name}”",
+      "renameFailed": "无法重命名设备"
     },
     "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
-    "title": "连接新设备",
-    "description": "从您想要链接的设备扫描此二维码，以安全传输您的加密密钥。",
+    "title": "关联新设备",
+    "description": "在要关联的设备上扫描此二维码，以安全传输加密密钥。",
     "encrypted": "端到端加密",
-    "generating": "正在生成链接代码...",
-    "generatingAria": "正在生成链接代码",
-    "generateFailed": "生成链接代码失败",
-    "tryAgain": "请重试",
-    "expired": "链接代码已过期",
-    "generateNew": "生成新代码",
-    "qrAria": "设备链接二维码",
-    "qrImageAria": "设备链接二维码",
+    "generating": "正在生成关联码…",
+    "generatingAria": "正在生成关联码",
+    "generateFailed": "无法生成关联码",
+    "tryAgain": "重试",
+    "expired": "关联码已过期",
+    "generateNew": "生成新关联码",
+    "qrAria": "设备关联二维码",
+    "qrImageAria": "设备关联二维码",
     "expiresIn": "将在 {time} 后过期",
     "or": "或者",
     "codeLabel": "关联码",
-    "copyAria": "复制链接代码",
+    "copyAria": "复制关联码",
     "copiedAria": "已复制",
     "copied": "已复制！"
   },
   "linkingApproval": {
-    "title": "新设备想要链接",
-    "description": "有设备请求访问您的加密数据。仅在您发起此请求时批准。",
+    "title": "新设备请求关联",
+    "description": "有设备请求访问你的加密数据。仅在请求由你发起时才批准。",
     "unknownDevice": "未知设备",
     "unknownPlatform": "未知平台",
     "verificationCode": "验证码",
-    "computing": "计算中...",
+    "computing": "正在计算…",
     "unavailable": "不可用",
-    "confirmCode": "确认此代码与新设备显示的代码匹配",
+    "confirmCode": "确认此验证码与新设备上显示的一致",
     "reject": "拒绝",
     "approve": "批准",
-    "approving": "正在批准...",
+    "approving": "正在批准…",
     "approvalFailed": "批准失败",
-    "failedToApprove": "设备批准失败"
+    "failedToApprove": "无法批准设备"
   },
   "ai": {
     "header": {
       "title": "AI 助手",
-      "subtitle": "嵌入在本地运行。语音备忘可以使用 Whisper Small 或你的 OpenAI 密钥。",
-      "loading": "正在加载设置..."
+      "subtitle": "向量嵌入在本地运行。语音备忘可以使用 Whisper Small 或你的 OpenAI 密钥。",
+      "loading": "正在加载设置…"
     },
     "enable": {
       "label": "启用 AI 功能",
-      "description": "智能归档建议和笔记连接",
+      "description": "智能归入建议和笔记关联",
       "enabled": "AI 功能已启用",
       "disabled": "AI 功能已禁用",
-      "error": "更新设置失败"
+      "error": "无法更新设置"
     },
     "unknownError": "未知错误",
     "groups": {
@@ -816,14 +1294,22 @@
       "inline": "内联 AI 编辑"
     },
     "voice": {
-      "provider": "提供者",
-      "providerDescription": "语音备忘的语音转文本提供者",
+      "provider": "提供商",
+      "providerDescription": "语音备忘的语音转文字提供商",
       "providers": {
         "local": "本地（默认）",
         "openai": "OpenAI（自带密钥）"
       },
+      "memoNameMode": "备忘命名",
+      "memoNameModeDescription": "转录后语音备忘的命名方式",
+      "naming": {
+        "transcript": "转录标题",
+        "timestamp": "时间戳",
+        "none": "不重命名"
+      },
+      "namingError": "无法更新语音备忘命名",
       "localModel": "本地模型",
-      "localModelDescription": "Whisper Small 按需小型下载并保存在本地缓存中",
+      "localModelDescription": "Whisper Small 会按需下载，并缓存在本地",
       "status": {
         "ready": "已准备好",
         "downloading": "正在下载",
@@ -831,56 +1317,48 @@
         "notDownloaded": "未下载"
       },
       "cacheHint": "未随应用捆绑 · 可在设置中下载 · 已缓存在此设备上",
-      "preparing": "正在准备 Whisper Small...",
+      "preparing": "正在准备 Whisper Small…",
       "download": "下载 Whisper Small",
       "apiKey": "OpenAI API 密钥",
-      "apiKeyDescription": "存储在您的操作系统钥匙串中，仅用于语音转录",
+      "apiKeyDescription": "存储在系统钥匙串中，仅用于语音转录",
       "replaceKey": "替换已保存的 OpenAI 密钥",
       "enterKey": "输入 OpenAI API 密钥",
       "saveKey": "保存密钥",
       "keySaved": "API 密钥已保存在钥匙串中",
-      "providerError": "更新语音提供程序失败",
+      "providerError": "无法更新语音提供商",
       "downloadedToast": "Whisper Small 已下载",
-      "downloadError": "下载 Whisper Small 失败",
+      "downloadError": "无法下载 Whisper Small",
       "keySavedToast": "OpenAI 密钥已保存",
-      "keySaveError": "保存 OpenAI 密钥失败",
-      "memoNameMode": "备忘命名",
-      "memoNameModeDescription": "转录后语音备忘的命名方式",
-      "naming": {
-        "none": "不重命名",
-        "timestamp": "时间戳",
-        "transcript": "转录标题"
-      },
-      "namingError": "更新语音备忘命名失败"
+      "keySaveError": "无法保存 OpenAI 密钥"
     },
     "embedding": {
       "loaded": "已加载",
       "loading": "正在加载",
-      "cacheHint": "~23MB · 本地缓存 · 全部在设备上",
-      "dimensions": "尺寸",
-      "embeddings": "嵌入",
+      "cacheHint": "约 23 MB · 缓存在本地 · 完全在设备上运行",
+      "dimensions": "维度",
+      "embeddings": "向量嵌入",
       "downloadLoad": "下载并加载模型",
-      "downloadingModel": "正在下载模型...",
-      "loadingModel": "正在加载模型...",
+      "downloadingModel": "正在下载模型…",
+      "loadingModel": "正在加载模型…",
       "loadSuccess": "模型加载成功",
-      "loadFailed": "模型加载失败",
+      "loadFailed": "无法加载模型",
       "rebuildIndex": "重建索引",
-      "rebuildDescription": "为所有笔记重新生成嵌入",
+      "rebuildDescription": "为所有笔记重新生成向量嵌入",
       "rebuild": "重建",
-      "scanning": "扫描笔记...",
-      "generating": "生成嵌入...",
-      "complete": "完成！",
-      "reindexed": "嵌入重新索引：{computed} 已计算，{skipped} 被跳过",
-      "reindexFailed": "重新索引嵌入失败"
+      "scanning": "正在扫描笔记…",
+      "generating": "正在生成向量嵌入…",
+      "complete": "已完成！",
+      "reindexed": "已重建向量嵌入索引：计算 {computed} 项，跳过 {skipped} 项",
+      "reindexFailed": "无法重建向量嵌入索引"
     },
     "inline": {
-      "loading": "加载中...",
+      "loading": "正在加载…",
       "title": "内联 AI 编辑",
       "enable": "启用内联 AI",
       "enableDescription": "编辑笔记时显示 AI 菜单",
       "enabled": "内联 AI 编辑已启用",
       "disabled": "内联 AI 编辑已禁用",
-      "provider": "提供者",
+      "provider": "提供商",
       "providerDescription": "文本操作的 AI 服务",
       "providers": {
         "ollama": "Ollama（本地）",
@@ -892,38 +1370,270 @@
       "modelDescription": "用于重写和总结的语言模型",
       "selectModel": "选择一个模型",
       "apiKey": "API 密钥",
-      "apiKeyDescription": "本地存储，仅发送给提供者",
+      "apiKeyDescription": "存储在本地，仅发送给提供商",
       "apiKeyPlaceholder": "输入 {provider} API 密钥",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "本地服务器地址",
       "connection": "连接",
-      "activePort": "在端口 {port} 上活动",
+      "activePort": "正在端口 {port} 上运行",
       "notConnected": "未连接",
       "test": "测试",
       "stopFailed": "无法停止现有服务器",
       "connected": "已连接！服务器正在端口 {port} 上运行",
-      "connectFailed": "连接失败",
+      "connectFailed": "无法连接",
       "testFailed": "连接测试失败",
-      "updateFailed": "更新设置失败"
+      "updateFailed": "无法更新设置"
+    },
+    "tabs": {
+      "models": "模型",
+      "agents": "智能体",
+      "connect": "连接"
+    },
+    "v2": {
+      "onDevice": {
+        "label": "本地模型",
+        "hint": "下载一次，即可离线运行"
+      },
+      "embedding": {
+        "label": "搜索向量嵌入",
+        "hint": "{dimension} 维 · 已嵌入 {count, plural, other {# 篇笔记}}"
+      },
+      "voiceModel": {
+        "label": "语音转录"
+      },
+      "download": "下载",
+      "connected": "已连接",
+      "inline": {
+        "group": "内联编辑",
+        "enabled": "已启用"
+      },
+      "voice": {
+        "group": "语音备忘",
+        "transcribeWith": "转录方式",
+        "local": "本地",
+        "openai": "OpenAI",
+        "nameBy": "备忘命名方式",
+        "keySaved": "已保存",
+        "keyNotSet": "未设置"
+      }
+    }
+  },
+  "import": {
+    "header": {
+      "title": "导入",
+      "subtitle": "从其他应用导入你的笔记和任务"
+    },
+    "intro": "一次性导入会在仓库中创建新笔记。原始导出文件不会被改动。",
+    "sources": {
+      "notion": "导入 HTML 导出文件（.zip）",
+      "todoist": "导入项目 CSV 导出文件（.csv）",
+      "ticktick": "将 TickTick 备份（.csv）导入为项目、任务和提醒",
+      "markdown": "导入 .md 文件或文件夹（frontmatter、标签、附件）",
+      "noteplan": "导入 NotePlan 文件夹——每日笔记将转为日记，任务仍为任务",
+      "html": "导入 .html 文件，含关联图片和跨页面链接",
+      "google-keep": "导入 Google Takeout Keep 导出文件（.json 或 .zip）",
+      "bear": "导入 Bear .bear2bk 归档文件（笔记、标签、附件）",
+      "evernote": "导入一个或多个 Evernote .enex 导出文件",
+      "roam": "导入 Roam Research 图谱（.json），含嵌套大纲",
+      "apple-journal": "将 Apple Journal HTML 导出导入为带日期的笔记",
+      "csv": "导入 .csv 文件——每行一篇笔记，各列成为属性",
+      "raindrop": "导入 Raindrop.io 书签导出文件（.csv）——书签进入收件箱",
+      "apple-notes": "从 Apple Notes 数据库导入（NoteStore.sqlite，macOS）",
+      "onenote": "导入 OneNote 笔记本（需要 Microsoft 账户）"
+    },
+    "action": "导入",
+    "select": "选择要从中导入的应用…",
+    "stats": {
+      "notes": "{count, plural, other {# 篇笔记}}",
+      "projects": "{count, plural, other {# 个项目}}",
+      "tasks": "{count, plural, other {# 个任务}}",
+      "subtasks": "{count, plural, other {# 个子任务}}",
+      "reminders": "{count, plural, other {# 个提醒}}",
+      "bookmarks": "{count, plural, other {# 个书签}}",
+      "withTags": "{count} 个带标签",
+      "withDueDate": "{count} 个带日期",
+      "comments": "{count, plural, other {# 条评论}}",
+      "skipped": "{count} 个已跳过"
+    },
+    "preview": {
+      "warnings": "警告",
+      "confirm": "导入"
+    },
+    "dialog": {
+      "title": "从 {name} 导入",
+      "choose": "选择文件…",
+      "onenote": {
+        "connect": "使用 Microsoft 登录",
+        "connecting": "正在等待浏览器中的登录…",
+        "connectedAs": "已登录为 {name}（{email}）",
+        "switchAccount": "切换账户",
+        "loadingNotebooks": "正在加载笔记本…",
+        "notebooksEmpty": "此账户中未找到笔记本。",
+        "selectAll": "全选",
+        "deselectAll": "清除选择",
+        "sectionsSelected": "{count, plural, other {已选择 # 个分区}}",
+        "includeIncompatible": "导入不兼容的附件",
+        "includeIncompatibleHint": "同时保存 Memry 无法预览的文件类型（演示文稿、媒体、压缩包——绝不包括可执行文件）。它们会显示为文件块。",
+        "skipPrevious": "跳过以前导入的页面",
+        "skipPreviousHint": "跳过之前 OneNote 导入过的页面，因此再次运行时只会导入新内容。"
+      },
+      "appleNotes": {
+        "loadingFolders": "正在读取文件夹…",
+        "foldersError": "无法读取文件夹——将导入整个资料库。",
+        "unfiled": "没有文件夹的笔记",
+        "selectAll": "全选",
+        "deselectAll": "清除选择",
+        "foldersSelected": "{count, plural, other {已选择 # 个文件夹}}",
+        "noteCount": "{count}",
+        "noteCountWithSubfolders": "{count} ({total})"
+      },
+      "chooseFolder": "选择 Apple Notes 文件夹…",
+      "chooseDirectory": "选择文件夹…",
+      "folderKeepsAssets": "当图片不在笔记所在的文件夹里时，请选择文件夹——导出内容常把媒体文件放在一个共享文件夹中。",
+      "chooseHint": "选择你的 {label}",
+      "folderHint": "点击下方，并在选择器打开时选择“group.com.apple.notes”文件夹（默认就位于该位置）。这样 Memry 就能读取你的笔记和附件——无需“完全磁盘访问权限”。",
+      "noteplanFolderHint": "选择 NotePlan 文件夹——可以是应用的数据文件夹，也可以是其 Backups 中的某个副本。Memry 会读取其中的 Calendar、Notes 和 @Archive 文件夹。",
+      "selected": "{count, plural, other {已选择 # 个文件}}",
+      "start": "开始导入",
+      "cancel": "取消",
+      "close": "关闭",
+      "done": "完成",
+      "running": "正在导入…",
+      "progress": "{completed} / {total}",
+      "summary": {
+        "title": "导入完成",
+        "imported": "{count, plural, other {已导入 # 项}}",
+        "attachments": "{count, plural, other {已复制 # 个附件}}",
+        "skipped": "{count} 个已跳过",
+        "skippedReason": "{count, plural, other {# 项}}：{reason}",
+        "failed": "{count} 个失败"
+      },
+      "error": "导入失败",
+      "previewError": "预览失败"
+    },
+    "messages": {
+      "readFileFailed": "无法读取文件",
+      "appleNotes": {
+        "lockedNote": "{count, plural, other {# 篇已锁定的笔记}}未导入；没有备忘录密码，Memry 无法读取它们。"
+      },
+      "csv": {
+        "noHeaders": "CSV 文件没有表头",
+        "emptyTitle": "已跳过标题为空的行（列“{column}”）",
+        "columns": "列：{columns}",
+        "titleColumn": "标题取自“{column}”；其余列保存为属性"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop CSV 为空",
+        "headerNotFound": "未找到 Raindrop CSV 的表头行（“url”列）",
+        "rowNoUrl": "第 {row} 行已跳过：没有 URL"
+      },
+      "ticktick": {
+        "headerNotFound": "未找到 TickTick CSV 的表头行（“Folder Name”）",
+        "foldersDropped": "TickTick 文件夹在 Memry 中没有对应项，已被舍弃",
+        "subtaskParentMissing": "未找到子任务“{title}”的父任务；已作为顶级任务导入",
+        "unknownPriority": "未知的 TickTick 优先级 {priority} → 无",
+        "unsupportedRepeat": "已跳过不支持的重复规则“{rule}”",
+        "reminderNoAnchor": "已跳过提醒“{reminder}”（没有日期锚点）"
+      },
+      "todoist": {
+        "headerNotFound": "这不是 Todoist CSV：缺少 TYPE 表头行",
+        "sectionFlattened": "分区“{section}”已展平",
+        "orphanComment": "已跳过前面没有任务的评论",
+        "emptyTitle": "内容为空的任务已导入为（无标题）",
+        "unknownPriority": "未知优先级 {priority} → 无",
+        "unparsedDate": "无法解析日期“{date}”",
+        "subtaskNoParent": "子任务“{title}”在缩进 {indent} 处没有父任务；已作为顶级任务导入"
+      }
+    },
+    "status": {
+      "scanningFiles": "正在扫描文件…",
+      "scanningExport": "正在扫描导出文件…",
+      "importingItem": "正在导入 {title}",
+      "appleNotes": {
+        "copyingDatabase": "正在复制 Apple Notes 数据库…"
+      },
+      "bear": {
+        "scanning": "正在扫描 Bear 导出文件…"
+      },
+      "csv": {
+        "importing": "正在导入 CSV 笔记…"
+      },
+      "evernote": {
+        "scanning": "正在扫描 .enex 文件…"
+      },
+      "html": {
+        "scanning": "正在扫描 HTML 文件…"
+      },
+      "noteplan": {
+        "scanning": "正在扫描 NotePlan 文件夹…"
+      },
+      "onenote": {
+        "loadingNotebooks": "正在加载 OneNote 笔记本…",
+        "rateLimited": "OneNote 请求频率受限；正在等待重试…",
+        "downloadingAttachment": "正在下载附件 {name}"
+      },
+      "raindrop": {
+        "importing": "正在导入 Raindrop 书签…"
+      },
+      "roam": {
+        "reading": "正在读取 Roam 导出文件…"
+      },
+      "ticktick": {
+        "importing": "正在导入 TickTick 任务…"
+      },
+      "todoist": {
+        "importing": "正在导入 Todoist 任务…"
+      }
+    },
+    "v2": {
+      "searchPlaceholder": "查找应用或文件类型…",
+      "noMatch": "没有与“{query}”匹配的来源",
+      "formatAccount": "账户",
+      "showMore": "{count, plural, other {显示另外 # 个}}",
+      "showLess": "收起",
+      "groups": {
+        "noteApps": "笔记应用",
+        "tasks": "任务、日记和书签",
+        "files": "文件"
+      }
     }
   },
   "vault": {
     "header": {
-      "title": "保险库",
-      "subtitle": "保险库配置和存储"
+      "title": "仓库",
+      "subtitle": "仓库配置和存储"
     },
     "groups": {
       "storageUsage": "存储使用情况",
       "location": "位置",
-      "accountVaults": "你账户中的保险库"
+      "accountVaults": "账户中的仓库",
+      "largeNotes": "接近同步上限的笔记",
+      "activity": "活动记录"
     },
-    "loadingStorage": "正在加载存储信息...",
+    "loadingStorage": "正在加载存储信息…",
     "signInStorage": "登录以查看存储使用情况",
-    "vaultPath": "保险库路径",
+    "vaultPath": "仓库路径",
     "reveal": "显示",
+    "accountVaults": {
+      "empty": "还没有仓库同步到你的账户。",
+      "cloudOnly": "不在此设备上",
+      "itemsCount": "{count} 项",
+      "delete": "删除",
+      "deleteTitle": "要从账户中删除“{name}”吗？",
+      "deleteBody": "这会从 Memry 的服务器上永久删除此仓库的所有已同步数据，且无法撤销。磁盘上的文件不会被删除。",
+      "deleteConfirm": "从账户中删除",
+      "deleteFailed": "无法删除仓库",
+      "activeHint": "切换到其他仓库后才能删除此仓库。",
+      "unsyncedTitle": "此仓库未同步",
+      "unsyncedBodyOne": "此设备上打开的仓库不在你的账户中，因此无法同步。你账户中的仓库是“{name}”——在此打开它即可恢复同步。",
+      "unsyncedBodyMany": "此设备上打开的仓库不在你的账户中，因此无法同步。打开下方列出的任一仓库即可恢复同步。",
+      "unsyncedOpen": "打开账户仓库",
+      "unsyncedDownload": "下载账户仓库",
+      "unsyncedSwitchFailed": "无法打开该仓库"
+    },
     "storage": {
       "title": "存储",
-      "used": "已使用 {limit} 中的 {used}",
+      "used": "已用 {used} / {limit}",
       "ratio": "{used} / {limit}",
       "refreshAria": "刷新存储使用情况",
       "usageAria": "存储使用情况：{used} / {limit}",
@@ -935,18 +1645,93 @@
         "other": "其他"
       },
       "warningTitle": "存储空间几乎已满",
-      "warningDescription": "释放空间或升级您的计划以避免同步问题。"
+      "warningDescription": "请释放空间或升级套餐，以免出现同步问题。"
     },
-    "accountVaults": {
-      "activeHint": "切换到其他保险库后才能删除这个保险库。",
-      "cloudOnly": "不在此设备上",
-      "delete": "删除",
-      "deleteBody": "这会从 Memry 的服务器上永久删除此保险库的所有已同步数据，且无法撤销。你磁盘上的文件不会被删除。",
-      "deleteConfirm": "从账户中删除",
-      "deleteFailed": "无法删除保险库",
-      "deleteTitle": "从你的账户中删除“{name}”？",
-      "empty": "还没有保险库同步到你的账户。",
-      "itemsCount": "{count} 个项目"
+    "largeNotes": {
+      "description": "超过 {limit} 的笔记将停止同步。请将这些笔记拆分为较小的笔记，以保持同步。",
+      "over": "未同步",
+      "approaching": "接近上限"
+    },
+    "activity": {
+      "description": "在 Memry 之外添加到仓库或从仓库移除的文件、导入，以及所有被跳过或失败的条目。仅保存在此设备上。",
+      "retention": {
+        "label": "仓库活动记录",
+        "days": "{count, plural, other {保留 # 天}}"
+      },
+      "filter": {
+        "all": "全部",
+        "problems": "已跳过和失败"
+      },
+      "reveal": "显示日志文件",
+      "clear": "清除",
+      "clearTitle": "要清除仓库活动记录吗？",
+      "clearBody": "这会移除此设备活动日志中的所有条目。你的文件不会受到影响。",
+      "clearConfirm": "清除活动记录",
+      "empty": "尚无记录。添加到仓库文件夹的文件、导入内容以及 Memry 跳过的任何内容都会显示在这里。",
+      "emptyProblems": "没有跳过或失败的内容。",
+      "unavailable": "打开仓库以查看其活动记录。",
+      "loadFailed": "无法加载仓库活动记录",
+      "actionFailed": "无法更新仓库活动记录",
+      "showItems": "{count, plural, other {显示 # 项}}",
+      "toastAction": "详情",
+      "entry": {
+        "added": "已添加 {path}",
+        "removed": "已移除 {path}",
+        "renamed": "已将 {oldPath} 重命名为 {path}",
+        "skipped": "已跳过 {path}",
+        "skippedUnsupported": "Memry 无法打开 {ext} 文件，因此该文件保持原样。",
+        "readFailed": "无法读取 {path}",
+        "indexFailed": "无法添加 {path}",
+        "copyFailed": "无法将 {path} 复制到仓库",
+        "uploadFailed": "无法上传 {path}",
+        "uploadFailedHint": "在上传成功之前，它会保留在此设备上。",
+        "downloadFailed": "无法下载 {path}",
+        "fileTooLarge": "{path} 过大，无法同步",
+        "noteTooLarge": "“{title}”过大，无法同步",
+        "noteTooLargeUnnamed": "有一篇笔记过大，无法同步",
+        "importFailed": "{importer} 导入失败",
+        "failedGeneric": "{path} 出现问题",
+        "failedGenericUnnamed": "出现问题",
+        "scan": "发现 Memry 关闭期间所做的更改",
+        "indexRebuilt": "已建立搜索索引",
+        "import": "{importer} 导入",
+        "importCanceled": "{importer} 导入，已取消",
+        "unknown": "无法识别的活动"
+      },
+      "counts": {
+        "added": "{count, plural, other {# 个新文件}}",
+        "indexed": "{count, plural, other {已索引 # 个文件}}",
+        "imported": "{count, plural, other {已导入 # 项}}",
+        "attachments": "{count, plural, other {# 个附件}}",
+        "skipped": "{count, plural, other {已跳过 # 项}}",
+        "unsupported": "{count, plural, other {已跳过 # 个不支持的文件}}",
+        "failed": "{count, plural, other {# 项失败}}"
+      }
+    },
+    "v2": {
+      "groups": {
+        "thisVault": "此仓库"
+      },
+      "largeNotesCount": "{count, plural, other {# 篇笔记}}"
+    },
+    "binding": {
+      "dialog": {
+        "title": "要将此仓库同步到你的账户吗？",
+        "description": "此仓库中有尚未加入账户的笔记。你可以将其添加到账户，或保留在此设备上。在你做出决定之前，任何内容都不会离开此设备。",
+        "descriptionWithVaults": "此仓库中有尚未加入账户的笔记，而你的账户中已有一个仓库。你可以将此仓库与其并列添加、合并两者，或保留在此设备上。在你做出决定之前，任何内容都不会离开此设备。",
+        "addAsNew": "添加为独立仓库",
+        "merge": "合并到“{name}”",
+        "mergeUnnamed": "合并到账户中的仓库",
+        "keepLocal": "保留在此设备上",
+        "failed": "无法更新此仓库的同步方式"
+      },
+      "status": {
+        "localOnly": "此仓库保留在此设备上，不会同步。",
+        "foreign": "此仓库由其他账户同步，因此不会与你的账户同步。它会保留在此设备上。",
+        "needsDecision": "此仓库尚未同步。",
+        "startSync": "同步此仓库",
+        "choose": "选择…"
+      }
     }
   },
   "tags": {
@@ -954,37 +1739,40 @@
       "title": "标签",
       "subtitle": "管理笔记、日记和任务中的标签"
     },
-    "loading": "正在加载标签...",
+    "loading": "正在加载标签…",
     "empty": "尚无标签。添加到笔记和任务的标签将显示在这里。",
-    "filterPlaceholder": "筛选标签...",
-    "noMatch": "没有匹配 \"{query}\" 的标签",
-    "summary": "{count, plural, one {# 标签} other {# 标签}} 在笔记和任务中",
+    "filterPlaceholder": "筛选标签…",
+    "noMatch": "没有匹配“{query}”的标签",
+    "summary": "笔记和任务中共有 {count, plural, other {# 个标签}}",
     "actions": {
       "rename": "重命名",
       "changeColor": "更改颜色",
-      "mergeInto": "合并到...",
+      "changeIcon": "更改图标",
+      "mergeInto": "合并到…",
       "merge": "合并",
-      "delete": "删除",
-      "changeIcon": "更改图标"
+      "delete": "删除"
     },
     "dialogs": {
       "deleteTitle": "删除标签",
-      "deleteDescription": "是否从 {count, plural, one {# 项} other {# 项目}} 中移除 \"{name}\"？此操作无法撤销。",
+      "deleteDescription": "要从 {count, plural, other {# 项}}中移除“{name}”吗？此操作无法撤销。",
       "mergeTitle": "合并标签",
-      "mergeDescription": "所有带有 \"{source}\" 的项目将被重新标记为目标标签。源标签将被删除。",
-      "targetPlaceholder": "选择目标标签...",
-      "colorTitle": "更改 \"{name}\" 的颜色"
+      "mergeDescription": "所有带有“{source}”标签的条目将改为使用目标标签。源标签将被删除。",
+      "targetPlaceholder": "选择目标标签…",
+      "colorTitle": "更改“{name}”的颜色"
     },
     "toasts": {
-      "renamed": "已将 \"{oldName}\" 重命名为 \"{newName}\"",
-      "renameFailed": "重命名标签失败",
-      "deleteFailed": "删除标签失败",
-      "deleted": "已从 {count, plural, one {# 项} other {# 项目}} 删除 \"{name}\"",
-      "mergeFailed": "合并标签失败",
-      "merged": "已将 \"{source}\" 合并到 \"{target}\"（{count, plural, one {# 项} other {# 项目}}）",
-      "colorUpdated": "已更新 \"{name}\" 的颜色",
-      "colorFailed": "更新颜色失败",
-      "iconFailed": "更新图标失败"
+      "renamed": "已将“{oldName}”重命名为“{newName}”",
+      "renameFailed": "无法重命名标签",
+      "deleteFailed": "无法删除标签",
+      "deleted": "已从 {count, plural, other {# 项}}中删除“{name}”",
+      "mergeFailed": "无法合并标签",
+      "merged": "已将“{source}”合并到“{target}”（{count, plural, other {# 项}}）",
+      "colorUpdated": "已更新“{name}”的颜色",
+      "colorFailed": "无法更新颜色",
+      "iconFailed": "无法更新图标"
+    },
+    "v2": {
+      "actionsAria": "{name} 的操作"
     }
   },
   "properties": {
@@ -992,12 +1780,12 @@
       "title": "属性",
       "subtitle": "管理所有笔记的属性定义"
     },
-    "loading": "正在加载属性...",
-    "empty": "尚未有属性定义。向任意笔记添加状态、选择或多重选择属性即可开始。",
-    "filterPlaceholder": "筛选属性...",
-    "noMatch": "没有匹配 \"{query}\" 的属性",
-    "summary": "{count, plural, one {# 属性定义} other {# 属性定义}}",
-    "optionCount": "{count, plural, one {# 选项} other {# 选项}}",
+    "loading": "正在加载属性…",
+    "empty": "还没有属性定义。向任意笔记添加“状态”“单选”或“多选”属性即可开始。",
+    "filterPlaceholder": "筛选属性…",
+    "noMatch": "没有匹配“{query}”的属性",
+    "summary": "{count, plural, other {# 个属性定义}}",
+    "optionCount": "{count, plural, other {# 个选项}}",
     "optionNamePlaceholder": "选项名称",
     "addOption": "添加选项",
     "changeColorTitle": "更改颜色",
@@ -1008,73 +1796,112 @@
     },
     "types": {
       "status": "状态",
-      "select": "选择",
+      "select": "单选",
       "multiselect": "多选",
       "text": "文本",
       "number": "数字",
       "date": "日期",
       "checkbox": "复选框",
-      "url": "网址"
+      "url": "URL"
     },
     "dialogs": {
       "deleteTitle": "删除属性",
-      "deleteDescription": "是否删除 \"{name}\" 属性定义？使用此属性的笔记将保留其值为纯文本。",
-      "colorTitle": "更改 \"{name}\" 的颜色"
+      "deleteDescription": "要删除“{name}”属性定义吗？使用此属性的笔记会将其值保留为纯文本。",
+      "colorTitle": "更改“{name}”的颜色"
     },
     "toasts": {
-      "renamed": "已将 \"{oldValue}\" 重命名为 \"{newValue}\"",
-      "renameFailed": "重命名选项失败",
-      "removed": "已移除 \"{value}\"",
-      "removeFailed": "删除选项失败",
-      "colorFailed": "更新颜色失败",
-      "deleteFailed": "删除属性失败",
-      "deleted": "已删除属性 \"{name}\"",
-      "addFailed": "添加选项失败"
+      "renamed": "已将“{oldValue}”重命名为“{newValue}”",
+      "renameFailed": "无法重命名选项",
+      "removed": "已移除“{value}”",
+      "removeFailed": "无法移除选项",
+      "colorFailed": "无法更新颜色",
+      "deleteFailed": "无法删除属性",
+      "deleted": "已删除属性“{name}”",
+      "addFailed": "无法添加选项"
+    },
+    "v2": {
+      "actionsAria": "{name} 的操作"
+    }
+  },
+  "commandLine": {
+    "header": {
+      "title": "命令行",
+      "subtitle": "为你的终端设置 memrynote 命令"
+    },
+    "groups": {
+      "terminal": "终端"
+    },
+    "defaultVault": {
+      "label": "默认仓库",
+      "placeholder": "选择仓库",
+      "none": "未选择仓库",
+      "description": "选择运行 memrynote 且未指定 --vault 时使用的仓库。",
+      "descriptionSelected": "省略 --vault 时命令使用 {path}。"
+    },
+    "command": {
+      "label": "memrynote 命令",
+      "toggleLabel": "安装 memrynote 命令",
+      "descriptionInstalled": "已安装于 {path}",
+      "descriptionNotInstalled": "安装 memrynote 命令，即可在任意终端中使用你的仓库。"
+    },
+    "status": {
+      "loading": "正在检查命令状态…",
+      "loadFailed": "无法加载命令状态",
+      "installedToast": "memrynote 命令已安装",
+      "uninstalledToast": "memrynote 命令已移除",
+      "defaultVaultUpdatedToast": "已更新默认 CLI 仓库"
+    },
+    "actions": {
+      "refresh": "刷新"
     }
   },
   "shortcuts": {
     "header": {
       "title": "键盘快捷键",
       "subtitle": "点击任意快捷键以重新绑定",
-      "loading": "正在加载设置..."
+      "loading": "正在加载设置…"
     },
-    "searchPlaceholder": "搜索快捷键...",
-    "resetAll": "重置所有",
+    "searchPlaceholder": "搜索快捷键…",
+    "resetAll": "全部重置",
     "custom": "自定义",
     "pressShortcut": "按下快捷键…",
     "cancelTitle": "取消",
     "rebindTitle": "点击以重新绑定",
+    "editorManagedTitle": "由笔记编辑器处理——无法重新分配",
     "resetTitle": "恢复默认",
     "clearTitle": "清除快捷键",
     "clickToSet": "点击以设置",
-    "noMatch": "没有快捷键匹配您的搜索",
+    "noMatch": "没有与搜索匹配的快捷键",
     "conflict": "与 {labels} 冲突",
     "globalCapture": {
-      "title": "全球捕获",
-      "description": "随时随地捕捉笔记",
-      "active": "活跃"
+      "title": "全局快速收集",
+      "description": "在任何位置快速收集笔记",
+      "active": "已生效",
+      "inUse": "{shortcut} 已被其他应用占用。请选择其他组合键。",
+      "unsupported": "{shortcut} 无法用作全局快捷键。请选择其他组合键。",
+      "fallbackInUse": "默认快捷键 {shortcut} 已被其他应用占用。请设置其他组合键以使用全局快速收集。"
     },
     "toasts": {
-      "saveGlobalFailed": "无法保存全局捕获快捷键",
-      "saveFailed": "未能保存快捷方式",
-      "resetFailed": "未能重置快捷方式",
+      "saveGlobalFailed": "无法保存全局快速收集快捷键",
+      "saveFailed": "无法保存快捷键",
+      "resetFailed": "无法重置快捷键",
       "resetAllSuccess": "所有快捷键已重置为默认设置",
-      "resetAllFailed": "未能重置快捷键"
+      "resetAllFailed": "无法重置快捷键"
     },
     "categories": {
       "navigation": "导航",
-      "tabs": "标签",
+      "tabs": "标签页",
       "editor": "编辑器",
       "view": "视图"
     },
     "entries": {
       "nav": {
         "newNote": {
-          "label": "新笔记",
+          "label": "新建笔记",
           "description": "创建新笔记"
         },
         "newTask": {
-          "label": "新任务",
+          "label": "新建任务",
           "description": "创建新任务"
         },
         "inbox": {
@@ -1096,6 +1923,18 @@
         "settings": {
           "label": "打开设置",
           "description": "打开设置面板"
+        },
+        "switchVault": {
+          "label": "切换仓库",
+          "description": "打开仓库切换器"
+        },
+        "nextVault": {
+          "label": "下一个仓库",
+          "description": "切换到侧边栏中的下一个仓库"
+        },
+        "prevVault": {
+          "label": "上一个仓库",
+          "description": "切换到侧边栏中的上一个仓库"
         }
       },
       "tabs": {
@@ -1116,40 +1955,40 @@
           "description": "重新打开最近关闭的标签页"
         },
         "navBack": {
-          "label": "向后导航",
+          "label": "后退",
           "description": "重新激活之前活动的标签页"
         },
         "navForward": {
-          "label": "向前导航",
-          "description": "重做向后导航"
+          "label": "前进",
+          "description": "撤销上一次后退"
         },
         "newTab": {
-          "label": "新标签",
+          "label": "新建标签页",
           "description": "打开新建标签页菜单"
         },
         "closeAll": {
-          "label": "关闭面板中的所有标签页",
-          "description": "关闭面板中的所有标签页"
+          "label": "关闭所有标签页",
+          "description": "关闭当前窗格中的所有标签页"
         },
         "pin": {
-          "label": "固定或取消固定标签页",
-          "description": "固定或取消固定标签页"
+          "label": "固定标签页",
+          "description": "固定或取消固定当前标签页"
         },
         "duplicate": {
           "label": "复制标签页",
-          "description": "复制标签页"
+          "description": "打开当前标签页的副本"
         },
         "splitRight": {
-          "label": "向右拆分",
-          "description": "向右拆分"
+          "label": "向右分屏",
+          "description": "将当前窗格左右分屏"
         },
         "splitDown": {
-          "label": "向下拆分",
-          "description": "向下拆分"
+          "label": "向下分屏",
+          "description": "将当前窗格上下分屏"
         },
         "closeSplit": {
-          "label": "关闭分屏面板",
-          "description": "关闭分屏面板"
+          "label": "关闭分屏窗格",
+          "description": "关闭当前分屏窗格"
         }
       },
       "editor": {
@@ -1159,28 +1998,28 @@
         },
         "bold": {
           "label": "加粗",
-          "description": "切换加粗格式"
+          "description": "加粗或取消加粗"
         },
         "italic": {
           "label": "斜体",
-          "description": "切换斜体格式"
+          "description": "设为斜体或取消斜体"
         },
         "underline": {
           "label": "下划线",
-          "description": "切换下划线格式"
+          "description": "添加或取消下划线"
         },
         "strikethrough": {
           "label": "删除线",
-          "description": "删除线"
+          "description": "添加或取消删除线"
         },
         "code": {
-          "label": "代码",
-          "description": "代码"
+          "label": "行内代码",
+          "description": "设为行内代码或取消"
         }
       },
       "view": {
         "toggleSidebar": {
-          "label": "切换侧边栏",
+          "label": "显示/隐藏侧边栏",
           "description": "显示或隐藏侧边栏"
         },
         "shortcuts": {
@@ -1200,51 +2039,61 @@
           "description": "将缩放重置为 100%"
         }
       }
+    },
+    "v2": {
+      "all": "全部",
+      "categoryFilter": "按类别筛选",
+      "systemWide": "系统全局",
+      "globalCapture": "全局快速收集",
+      "recordingHint": "按下组合键…按 esc 取消",
+      "reset": "重置",
+      "resetAll": "全部恢复默认"
     }
   },
   "phaseF": {
     "componentsKeyboardChordIndicator": {
-      "pressedWaitingForSecondKey": "已按下 — 等待第二个键..."
+      "pressedWaitingForSecondKey": "已按下——等待第二个键…"
     },
     "componentsKeyboardKeyboardShortcutsDialog": {
       "keyboardShortcuts": "键盘快捷键",
       "press": "按",
-      "toToggleThisDialog": "切换此对话框"
+      "toToggleThisDialog": "显示或隐藏此对话框"
     },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "此设备已被移除",
-      "exporting": "正在导出...",
-      "signOut": "登出"
+      "exporting": "正在导出…",
+      "signOut": "退出登录"
     },
     "componentsSyncSyncHistory": {
       "activity": "活动",
       "filterBySyncType": "按同步类型筛选",
       "allTypes": "所有类型",
-      "pushed": "推送",
-      "pulled": "拉取",
+      "pushed": "已推送",
+      "pulled": "已拉取",
       "errors": "错误",
       "filterByTimePeriod": "按时间段筛选",
       "allTime": "所有时间",
       "today": "今天",
-      "last7Days": "最近7天",
-      "last30Days": "最近30天",
+      "last7Days": "最近 7 天",
+      "last30Days": "最近 30 天",
       "loadingSyncHistory": "正在加载同步历史",
       "noSyncActivityYet": "尚无同步活动",
       "loadMore": "加载更多",
       "duration": "· {duration}",
-      "showErrorDetailsAria": "{summary}，显示错误详情",
       "summaryFailed": "同步失败",
-      "summaryPulled": "{count, plural, other {已拉取 # 个项目}}",
-      "summaryPushed": "{count, plural, other {已推送 # 个项目}}"
+      "summaryPushed": "{count, plural, other {已推送 # 项}}",
+      "summaryPulled": "{count, plural, other {已拉取 # 项}}",
+      "showErrorDetailsAria": "{summary}，显示错误详情"
     },
     "componentsSyncSyncStatus": {
-      "lastSynced": "上次同步",
+      "lastSynced": "上次同步：",
       "pending": "待处理",
       "localOnly": "仅本地",
       "detected": "已检测到",
+      "dismissConflicts": "忽略",
       "clockSkewDetected": "检测到时钟偏移",
       "items": "条目",
-      "willSyncWhenBackOnline": "重新上线后将同步",
+      "willSyncWhenBackOnline": "恢复联网后将同步",
       "openSyncSettings": "打开同步设置"
     },
     "pagesSettingsAiInlineSection": {
@@ -1253,43 +2102,43 @@
   },
   "phaseI": {
     "errors": {
-      "failedToUpdateTagColor": "更新标签颜色失败",
-      "googleSignInFailed": "谷歌登录失败",
-      "failedToSendVerificationCode": "发送验证码失败",
+      "failedToUpdateTagColor": "无法更新标签颜色",
+      "googleSignInFailed": "Google 登录失败",
+      "failedToSendVerificationCode": "无法发送验证码",
       "invalidVerificationCode": "验证码无效",
-      "accountSetupFailed": "帐户设置失败",
-      "failedToResendCode": "重新发送验证码失败",
-      "failedToSetUpDevice": "设备设置失败",
-      "failedToConfirmRecoveryPhrase": "确认恢复短语失败",
-      "failedToAnalyzeContent": "内容分析失败",
-      "failedToLoadUpdaterState": "加载更新状态失败",
-      "failedToCheckForUpdates": "检查更新失败",
-      "failedToDownloadUpdate": "下载更新失败",
-      "failedToInstallUpdate": "安装更新失败",
-      "failedToLoadEditorSettings": "加载编辑器设置失败",
-      "failedToUpdateEditorSettings": "更新编辑器设置失败",
-      "failedToLoadGeneralSettings": "加载常规设置失败",
-      "failedToUpdateGeneralSettings": "更新常规设置失败",
-      "failedToLoadKeyboardSettings": "加载键盘设置失败",
-      "failedToUpdateKeyboardSettings": "更新键盘设置失败",
-      "failedToResetKeyboardSettings": "重置键盘设置失败",
-      "failedToLoadNoteEditorSettings": "加载笔记编辑器设置失败",
-      "failedToUpdateSettings": "更新设置失败",
-      "failedToLoadTabSettings": "加载标签设置失败",
-      "failedToLoadNotes": "加载笔记失败",
-      "failedToLoadTags": "加载标签失败",
-      "failedToLoadVaultStatus": "加载保险库状态失败",
-      "failedToSelectVault": "选择保险库失败",
-      "failedToCloseVault": "无法关闭保险库",
-      "failedToSwitchVault": "无法切换保险库",
+      "accountSetupFailed": "账户设置失败",
+      "failedToResendCode": "无法重新发送验证码",
+      "failedToSetUpDevice": "无法设置设备",
+      "failedToConfirmRecoveryPhrase": "无法确认恢复短语",
+      "failedToAnalyzeContent": "无法分析内容",
+      "failedToLoadUpdaterState": "无法加载更新状态",
+      "failedToCheckForUpdates": "无法检查更新",
+      "failedToDownloadUpdate": "无法下载更新",
+      "failedToInstallUpdate": "无法安装更新",
+      "failedToLoadEditorSettings": "无法加载编辑器设置",
+      "failedToUpdateEditorSettings": "无法更新编辑器设置",
+      "failedToLoadGeneralSettings": "无法加载通用设置",
+      "failedToUpdateGeneralSettings": "无法更新通用设置",
+      "failedToLoadKeyboardSettings": "无法加载键盘设置",
+      "failedToUpdateKeyboardSettings": "无法更新键盘设置",
+      "failedToResetKeyboardSettings": "无法重置键盘设置",
+      "failedToLoadNoteEditorSettings": "无法加载笔记编辑器设置",
+      "failedToUpdateSettings": "无法更新设置",
+      "failedToLoadTabSettings": "无法加载标签页设置",
+      "failedToLoadNotes": "无法加载笔记",
+      "failedToLoadTags": "无法加载标签",
+      "failedToLoadTasks": "无法加载任务",
+      "failedToLoadVaultStatus": "无法加载仓库状态",
+      "failedToSelectVault": "无法选择仓库",
+      "failedToCloseVault": "无法关闭仓库",
+      "failedToSwitchVault": "无法切换仓库",
       "failedToUpdateConfig": "无法更新配置",
-      "failedToReindex": "无法重新索引",
-      "failedToLoadTasks": "加载任务失败"
+      "failedToReindex": "无法重新索引"
     }
   },
   "agentMcp": {
     "header": {
-      "title": "Agent MCP",
+      "title": "智能体 MCP",
       "subtitle": "供外部 MCP 客户端访问的本地服务器。"
     },
     "groups": {
@@ -1314,16 +2163,60 @@
     },
     "copyLabel": "复制 {label}",
     "notRunning": "未运行",
-    "toolsBadge": "{count, plural, one {# 个工具} other {# 个工具}}"
+    "toolsBadge": "{count, plural, other {# 个工具}}",
+    "v2": {
+      "hint": "供 Cursor、Claude Desktop、Zed 使用的本地服务器",
+      "running": "正在运行",
+      "tokenHint": "仅限本次启动",
+      "copy": "复制",
+      "rotate": "轮换"
+    }
   },
   "agentProviders": {
     "header": {
-      "title": "Agent 权限",
-      "subtitle": "为 Agent 聊天选择默认访问权限、确认方式和本地提供商。"
+      "title": "智能体权限",
+      "subtitle": "为智能体对话选择默认访问权限、确认方式和本地提供商。"
     },
     "groups": {
+      "cliAgents": "CLI 智能体",
       "local": "本地 OpenAI 兼容提供商",
       "actions": "连接检查"
+    },
+    "cliAgents": {
+      "claude": {
+        "label": "Claude Code CLI",
+        "description": "从 claude.ai/code 安装 Claude Code，然后运行 `claude login`。MemryNote 会自动识别。"
+      },
+      "codex": {
+        "label": "Codex CLI",
+        "description": "使用 `npm install -g @openai/codex` 安装，然后运行 `codex login` 登录 OpenAI 账户。MemryNote 会自动识别。"
+      },
+      "antigravity": {
+        "label": "Antigravity CLI",
+        "description": "从 antigravity.google/docs/cli 安装 Antigravity CLI，然后运行一次 `agy` 登录 Google 账户。MemryNote 会自动识别。"
+      },
+      "status": {
+        "detected": "已检测到 · v{version}",
+        "detectedNoVersion": "已检测到",
+        "belowMinimum": "已安装 v{version}——需要 {minimum} 或更高版本",
+        "notDetected": "未检测到",
+        "runtimeUnavailable": "不可用——智能体运行时未能启动"
+      }
+    },
+    "permissions": {
+      "group": "智能体权限",
+      "access": {
+        "label": "默认访问权限",
+        "description": "设置智能体新一轮对话的初始访问模式。",
+        "vaultOnly": "仅限仓库",
+        "computerAccess": "计算机访问"
+      },
+      "confirm": {
+        "label": "确认操作",
+        "description": "选择工具调用是自动运行，还是在对话中等待批准。",
+        "alwaysAllow": "始终允许",
+        "askBeforeChanges": "更改前询问"
+      }
     },
     "presets": {
       "ollama": "Ollama",
@@ -1360,253 +2253,41 @@
       "probe": "探测工具"
     },
     "status": {
+      "label": "连接",
+      "checking": "正在检查…",
+      "connected": "已连接",
       "disconnected": "未连接",
       "toolsDisabled": "工具已禁用",
-      "fullTools": "已启用全部工具",
-      "checking": "检查中…",
-      "connected": "已连接",
-      "label": "连接"
+      "fullTools": "已启用全部工具"
     },
-    "permissions": {
-      "group": "Agent 权限",
-      "access": {
-        "label": "默认访问权限",
-        "description": "设置新 Agent 对话轮次的初始访问模式。",
-        "vaultOnly": "仅保险库",
-        "computerAccess": "计算机访问"
-      },
-      "confirm": {
-        "label": "确认操作",
-        "description": "选择工具调用是自动运行，还是在聊天中等待批准。",
-        "alwaysAllow": "始终允许",
-        "askBeforeChanges": "更改前询问"
-      }
-    }
-  },
-  "commandLine": {
-    "actions": {
-      "refresh": "刷新"
+    "alwaysAllowed": {
+      "group": "始终允许",
+      "description": "你在此仓库中已授予长期批准的工具。删除操作永远无法获得长期批准。",
+      "empty": "没有始终允许的工具。每次更改仍会询问。",
+      "revoke": "撤销",
+      "revokeLabel": "撤销 {tool} 的长期批准",
+      "ignoredInPageReview": "已忽略：编辑笔记和日记时始终会询问。"
     },
-    "command": {
-      "descriptionInstalled": "已安装于 {path}",
-      "descriptionNotInstalled": "安装 memrynote 命令，即可从任意终端使用你的保险库。",
-      "label": "memrynote 命令",
-      "toggleLabel": "安装 memrynote 命令"
-    },
-    "defaultVault": {
-      "description": "选择运行 memrynote 而未使用 --vault 时所用的保险库。",
-      "descriptionSelected": "省略 --vault 时命令使用 {path}。",
-      "label": "默认保险库",
-      "none": "未选择保险库",
-      "placeholder": "选择保险库"
-    },
-    "groups": {
-      "terminal": "终端"
-    },
-    "header": {
-      "subtitle": "为你的终端设置 memrynote 命令",
-      "title": "命令行"
-    },
-    "status": {
-      "defaultVaultUpdatedToast": "默认 CLI 保险库已更新",
-      "installedToast": "memrynote 命令已安装",
-      "loadFailed": "加载命令状态失败",
-      "loading": "正在检查命令状态...",
-      "uninstalledToast": "memrynote 命令已移除"
-    }
-  },
-  "features": {
-    "header": {
-      "subtitle": "开启或关闭应用的各个部分。关闭 = 在侧边栏中变灰，并在各处禁用。",
-      "title": "功能"
-    },
-    "items": {
-      "calendar": {
-        "description": "事件和日程",
-        "label": "日历"
+    "v2": {
+      "permissions": {
+        "group": "权限",
+        "hint": "适用于所有智能体对话",
+        "access": "访问权限",
+        "changes": "更改"
       },
-      "graph": {
-        "description": "笔记连接",
-        "label": "图谱"
+      "runtimes": {
+        "group": "智能体运行时",
+        "hint": "从 PATH 中检测"
       },
-      "home": {
-        "description": "登陆仪表盘",
-        "label": "首页"
+      "localModel": {
+        "label": "本地模型",
+        "hint": "此电脑上的 OpenAI 兼容服务器",
+        "notChecked": "未检查",
+        "optional": "可选",
+        "fetchModels": "获取模型"
       },
-      "inbox": {
-        "description": "快速捕获和分类",
-        "label": "收件箱"
-      },
-      "journal": {
-        "description": "每日笔记",
-        "label": "日志"
-      },
-      "tasks": {
-        "description": "待办事项和截止日期",
-        "label": "任务"
-      },
-      "spatialCanvas": {
-        "description": "用于排布和连接笔记的空间画布",
-        "label": "画布"
-      }
-    }
-  },
-  "import": {
-    "action": "导入",
-    "dialog": {
-      "cancel": "取消",
-      "choose": "选择文件…",
-      "chooseFolder": "选择 Apple Notes 文件夹…",
-      "chooseHint": "选择你的 {label}",
-      "close": "关闭",
-      "done": "完成",
-      "error": "导入失败",
-      "folderHint": "点击下方，并在选择器打开时选择 “group.com.apple.notes” 文件夹（它默认从那里开始）。这让 Memry 能够读取你的笔记和附件——无需完全磁盘访问权限。",
-      "progress": "{completed} / {total}",
-      "running": "导入中…",
-      "selected": "{count, plural, other {已选择 # 个文件}}",
-      "start": "开始导入",
-      "summary": {
-        "attachments": "{count, plural, other {已复制 # 个附件}}",
-        "failed": "{count} 个失败",
-        "imported": "{count, plural, other {已导入 # 个项目}}",
-        "skipped": "{count} 个已跳过",
-        "title": "导入完成"
-      },
-      "title": "从 {name} 导入",
-      "chooseDirectory": "选择文件夹…",
-      "folderKeepsAssets": "当图片不在笔记所在的文件夹里时，请选择文件夹——导出内容常把媒体文件放在一个共享文件夹中。",
-      "previewError": "预览失败"
-    },
-    "header": {
-      "subtitle": "从其他应用导入你的笔记和任务",
-      "title": "导入"
-    },
-    "intro": "一次性导入会在你的保险库中创建新笔记。你的原始导出文件不会被改动。",
-    "preview": {
-      "confirm": "导入",
-      "warnings": "警告"
-    },
-    "select": "选择要从中导入的应用…",
-    "sources": {
-      "apple-journal": "将 Apple Journal HTML 导出导入为带日期的笔记",
-      "apple-notes": "从 Apple Notes 数据库导入（NoteStore.sqlite，macOS）",
-      "bear": "导入 Bear .bear2bk 归档（笔记、标签、附件）",
-      "csv": "导入 .csv 文件——每行一篇笔记，各列成为属性",
-      "evernote": "导入一个或多个 Evernote .enex 导出文件",
-      "google-keep": "导入 Google Takeout Keep 导出文件（.json 或 .zip）",
-      "html": "导入 .html 文件，含关联图片和跨页面链接",
-      "markdown": "导入 .md 文件或文件夹（frontmatter、标签、附件）",
-      "notion": "导入 HTML 导出文件（.zip）",
-      "onenote": "导入 OneNote 笔记本（需要 Microsoft 账户）",
-      "raindrop": "导入 Raindrop.io 书签导出文件（.csv）——书签进入收件箱",
-      "roam": "导入 Roam Research 图谱（.json），含嵌套大纲",
-      "ticktick": "将 TickTick 备份（.csv）导入为项目、任务和提醒",
-      "todoist": "导入项目 CSV 导出文件（.csv）"
-    },
-    "stats": {
-      "bookmarks": "{count, plural, other {# 个书签}}",
-      "comments": "{count, plural, other {# 条评论}}",
-      "notes": "{count, plural, other {# 篇笔记}}",
-      "projects": "{count, plural, other {# 个项目}}",
-      "reminders": "{count, plural, other {# 个提醒}}",
-      "skipped": "{count} 个已跳过",
-      "subtasks": "{count, plural, other {# 个子任务}}",
-      "tasks": "{count, plural, other {# 个任务}}",
-      "withDueDate": "{count} 个带日期",
-      "withTags": "{count} 个带标签"
-    },
-    "messages": {
-      "csv": {
-        "columns": "列：{columns}",
-        "emptyTitle": "已跳过标题为空的行（列“{column}”）",
-        "noHeaders": "CSV 文件没有表头",
-        "titleColumn": "标题取自“{column}”；其余列保存为属性"
-      },
-      "raindrop": {
-        "csvEmpty": "Raindrop CSV 为空",
-        "headerNotFound": "未找到 Raindrop CSV 的表头行（“url”列）",
-        "rowNoUrl": "第 {row} 行已跳过：没有 URL"
-      },
-      "readFileFailed": "读取文件失败",
-      "ticktick": {
-        "foldersDropped": "TickTick 文件夹在 Memry 中没有对应项，已被舍弃",
-        "headerNotFound": "未找到 TickTick CSV 的表头行（“Folder Name”）",
-        "reminderNoAnchor": "已跳过提醒“{reminder}”（没有日期锚点）",
-        "subtaskParentMissing": "未找到子任务“{title}”的父任务；已作为顶级任务导入",
-        "unknownPriority": "未知的 TickTick 优先级 {priority} → 无",
-        "unsupportedRepeat": "已跳过不支持的重复规则“{rule}”"
-      },
-      "todoist": {
-        "emptyTitle": "内容为空的任务已导入为（无标题）",
-        "headerNotFound": "这不是 Todoist CSV：缺少 TYPE 表头行",
-        "orphanComment": "已跳过前面没有任务的评论",
-        "sectionFlattened": "分区“{section}”已展平",
-        "subtaskNoParent": "子任务“{title}”在缩进 {indent} 处没有父任务；已作为顶级任务导入",
-        "unknownPriority": "未知优先级 {priority} → 无",
-        "unparsedDate": "无法解析日期“{date}”"
-      }
-    },
-    "status": {
-      "appleNotes": {
-        "copyingDatabase": "正在复制 Apple Notes 数据库…"
-      },
-      "bear": {
-        "scanning": "正在扫描 Bear 导出文件…"
-      },
-      "csv": {
-        "importing": "正在导入 CSV 笔记…"
-      },
-      "evernote": {
-        "scanning": "正在扫描 .enex 文件…"
-      },
-      "html": {
-        "scanning": "正在扫描 HTML 文件…"
-      },
-      "importingItem": "正在导入 {title}",
-      "raindrop": {
-        "importing": "正在导入 Raindrop 书签…"
-      },
-      "roam": {
-        "reading": "正在读取 Roam 导出文件…"
-      },
-      "scanningExport": "正在扫描导出文件…",
-      "scanningFiles": "正在扫描文件…",
-      "ticktick": {
-        "importing": "正在导入 TickTick 任务…"
-      },
-      "todoist": {
-        "importing": "正在导入 Todoist 任务…"
-      }
-    }
-  },
-  "inbox": {
-    "header": {
-      "loading": "加载中…",
-      "subtitle": "每日回顾提醒和收件箱偏好设置。",
-      "title": "收件箱"
-    },
-    "reviewReminder": {
-      "enabled": {
-        "description": "当收件箱里有内容时，每天温和地提醒你一次。",
-        "label": "提醒我回顾收件箱"
-      },
-      "error": "无法更新提醒。",
-      "group": "每日回顾提醒",
-      "test": {
-        "button": "发送测试",
-        "description": "立即触发提醒，检查你的系统通知。",
-        "label": "测试通知",
-        "sent": "测试通知已发送。",
-        "sentHint": "如果没有出现，请在系统设置中允许 MemryNote 发送通知。",
-        "unsupported": "此设备无法显示桌面通知。"
-      },
-      "time": {
-        "description": "每台设备上的本地时间。",
-        "hourLabel": "小时",
-        "label": "提醒时间",
-        "minuteLabel": "分钟",
-        "periodLabel": "AM 或 PM"
+      "alwaysAllowed": {
+        "group": "始终允许的工具"
       }
     }
   }

@@ -82,7 +82,7 @@
     "undoFailed": "Gagal membuat asal tindakan",
     "filesImported": "{count, plural, other {# fail diimport}}",
     "filesImportFailed": "{count, plural, other {Gagal mengimport # fail}}",
-    "filesHiddenInSidebar": "Fail disembunyikan dalam bar sisi. Hidupkan Tunjukkan fail dalam menu isihan Koleksi untuk melihatnya.",
+    "filesHiddenInSidebar": "Fail disembunyikan dalam bar sisi. Hidupkan “Tunjukkan fail” dalam menu isihan Koleksi untuk melihatnya.",
     "moreRemindersDue": "{count, plural, other {# lagi peringatan telah tiba masanya}}",
     "moreRemindersDueHint": "Semak panel peringatan untuk butiran",
     "searchIndexRepaired": "Indeks carian dibaiki",
@@ -242,7 +242,7 @@
         "priority": "Keutamaan",
         "project": "Projek",
         "removed": "Dialih keluar",
-        "repeatFrom": "Ulang berdasarkan",
+        "repeatFrom": "Ulang daripada",
         "snoozeReason": "Sebab ditunda",
         "snoozedUntil": "Ditunda hingga",
         "start": "Mula",
@@ -694,7 +694,7 @@
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Cari dan klik item untuk membina jejak anda",
-      "reasons": "Sebab-sebab",
+      "reasons": "Sebab",
       "clear": "Kosongkan"
     },
     "componentsSearchSearchFilters": {
@@ -744,11 +744,11 @@
       "tags": "Teg"
     },
     "componentsTabsPinnedTab": {
-      "unsavedChanges": "Perubahan yang tidak disimpan",
+      "unsavedChanges": "Perubahan yang belum disimpan",
       "unsaved": "belum disimpan)"
     },
     "componentsTabsRegularTab": {
-      "unsavedChanges": "Perubahan yang tidak disimpan"
+      "unsavedChanges": "Perubahan yang belum disimpan"
     },
     "componentsTabsTabBarContextMenu": {
       "closeAllTabs": "Tutup semua tab"
@@ -984,7 +984,7 @@
       "defaultName": "Laman utama",
       "manage": "Urus papan",
       "manageTitle": "Urus papan",
-      "manageDescription": "Namakan semula, susun semula atau padam papan Laman utama anda.",
+      "manageDescription": "Namakan semula, susun semula atau padam papan laman utama anda.",
       "renameAria": "Namakan semula papan",
       "reorderAria": "Susun semula papan",
       "nameLabel": "Nama papan"
@@ -1035,7 +1035,7 @@
     },
     "dayPanel": {
       "title": "Hari anda, di sisi kerja anda",
-      "body": "Panel sisi mengekalkan kalendar dan paparan hari anda di sebelah apa sahaja yang anda baca."
+      "body": "Panel sisi memaparkan kalendar dan paparan hari anda di sebelah apa sahaja yang anda baca."
     },
     "agentChat": {
       "title": "Bersembang dengan ejen AI",
@@ -1147,7 +1147,7 @@
         "find": "Cari dalam jurnal",
         "bold": "Tebalkan teks yang dipilih",
         "italic": "Condongkan teks yang dipilih",
-        "underline": "Gariskan bawah teks yang dipilih"
+        "underline": "Garis bawahi teks yang dipilih"
       },
       "notes": {
         "createNote": "Buat nota",
@@ -1179,7 +1179,7 @@
     "combos": {
       "shortcutsTab": "Tab pintasan",
       "clickRow": "Klik baris",
-      "reset": "Set semula"
+      "reset": "Tetapkan semula"
     }
   },
   "update": {

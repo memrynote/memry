@@ -1,15 +1,17 @@
 {
   "page": {
-    "loading": "Carregando gráfico...",
-    "load-failed": "Falha ao carregar dados do gráfico",
+    "loading": "Carregando grafo…",
+    "load-failed": "Não foi possível carregar os dados do grafo",
+    "render-failed": "O grafo não está disponível neste dispositivo",
+    "render-failed-description": "Este dispositivo não conseguiu iniciar o renderizador gráfico. Suas notas estão seguras.",
     "try-again": "Tente novamente",
-    "aria-label": "Gráfico de conhecimento com {nodeCount, plural, one {Nó #} other {Nós #}} e {edgeCount, plural, one {Conexão #} other {Conexões #}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "Nós gráficos",
+    "aria-label": "Grafo de conhecimento com {nodeCount, plural, one {# nó} other {# nós}} e {edgeCount, plural, one {# conexão} other {# conexões}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Nós do grafo",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "Seu gráfico de conhecimento",
-    "description": "As conexões entre suas notas, tarefas e projetos aparecerão aqui como um gráfico interativo.",
+    "title": "Seu grafo de conhecimento",
+    "description": "As conexões entre suas notas, tarefas e projetos aparecerão aqui como um grafo interativo.",
     "link-title": "Vincule suas notas",
     "link-description": "Use [[wikilinks]] para conectar ideias entre notas",
     "discover-title": "Descubra padrões",
@@ -24,54 +26,112 @@
     "tasks": "tarefas",
     "project": "projeto",
     "projects": "projetos",
-    "tag": "etiqueta",
-    "tags": "etiquetas",
+    "tag": "tag",
+    "tags": "tags",
     "orphan": "órfão",
     "orphans": "órfãos",
-    "unresolved": "não resolvido"
+    "unresolved": "não resolvido",
+    "category": "categoria"
   },
   "summary": {
     "node-type-count": "{count} {label}"
   },
   "control": {
-    "show-settings": "Configurações de gráfico",
+    "show-settings": "Configurações do grafo",
     "hide-settings": "Ocultar configurações",
     "reset-filters": "Redefinir filtros",
     "filters": "Filtros",
     "display": "Exibição",
     "show-labels": "Mostrar rótulos",
+    "live-motion": "Movimento em tempo real",
     "focus-depth": "profundidade {depth}",
-    "clear-focus": "Limpar nó em foco"
+    "clear-focus": "Limpar nó em foco",
+    "relayout": "Reorganizar layout",
+    "categories": "Categorias de tags",
+    "color-by-category": "Colorir por categoria",
+    "no-categories": "Agrupe as tags em categorias na página de tags para colorir e recolher o grafo por categoria.",
+    "collapse-category": "Recolher {name}",
+    "expand-category": "Expandir {name}",
+    "uncategorized": "Sem categoria"
   },
   "filter": {
     "notes": "Notas",
     "journals": "Diários",
     "tasks": "Tarefas",
     "projects": "Projetos",
-    "tags": "Etiquetas",
+    "tags": "Tags",
     "orphans": "Órfãos",
-    "toggle-entity": "Alternar {label}",
-    "toggle-orphans": "Alternar nós órfãos"
+    "canvas-edges": "Conexões de canvas",
+    "toggle-entity": "Mostrar/ocultar {label}",
+    "toggle-orphans": "Mostrar/ocultar nós órfãos"
   },
   "search": {
-    "placeholder": "Pesquisar nós...",
-    "clear": "Limpar pesquisa de gráfico"
+    "placeholder": "Pesquisar nós…",
+    "clear": "Limpar pesquisa do grafo"
   },
   "context-menu": {
     "untitled": "Sem título",
-    "focus-node": "Concentre-se neste nó",
+    "focus-node": "Focar neste nó",
     "open-new-tab": "Abrir em nova aba",
     "create-note": "Criar nota",
-    "copy-title": "Copiar título"
+    "copy-title": "Copiar título",
+    "link-to": "Criar link para…",
+    "add-tag": "Adicionar tag…",
+    "back": "Voltar",
+    "link-search": "Pesquisar notas…",
+    "tag-search": "Pesquisar ou criar uma tag…",
+    "no-matches": "Nenhum resultado",
+    "create-tag": "Criar #{tag}",
+    "remove-link": "Remover link para {title}",
+    "unpin": "Desafixar",
+    "collapse-category": "Recolher {name}",
+    "expand-category": "Expandir {name}"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {Conexão #} other {Conexões #}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# conexão} other {# conexões}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# item} other {# itens}}",
+    "click-to-expand": "Clique para expandir"
   },
   "local-panel": {
-    "loading": "Carregando gráfico...",
+    "loading": "Carregando grafo…",
     "empty": "Nenhuma conexão encontrada",
-    "open-full": "Abrir gráfico completo",
-    "close": "Fechar gráfico"
+    "open-full": "Abrir grafo completo",
+    "close": "Fechar grafo",
+    "pin": "Fixar nesta nota",
+    "unpin": "Desafixar e acompanhar a nota aberta",
+    "pinned-to": "Fixado: {title}"
+  },
+  "edit": {
+    "linked": "Link de {source} para {target} adicionado em “{property}”",
+    "unlinked": "Link de {source} para {target} removido",
+    "already-linked": "{source} já tem um link para {target}",
+    "property-conflict": "“{property}” nesta nota não é uma propriedade de relação, então o link não foi adicionado",
+    "link-unsupported": "Só é possível criar links entre notas",
+    "link-failed": "Não foi possível adicionar o link",
+    "unlink-failed": "Não foi possível remover o link",
+    "tag-added": "Tag #{tag} adicionada a {note}",
+    "tag-exists": "Esta nota já tem a tag #{tag}",
+    "tag-failed": "Não foi possível adicionar a tag",
+    "undo-failed": "Não foi possível desfazer a alteração"
+  },
+  "relayout-confirm": {
+    "title": "Reorganizar o layout do grafo?",
+    "description": "Todos os nós fixados são liberados e o grafo se acomoda em um novo arranjo. O layout salvo é descartado.",
+    "cancel": "Cancelar",
+    "confirm": "Reorganizar"
+  },
+  "views": {
+    "title": "Visualizações salvas",
+    "unsaved": "Visualização não salva",
+    "edited": "Editada",
+    "empty": "Nenhuma visualização salva ainda",
+    "save-as": "Salvar como nova visualização…",
+    "update": "Atualizar “{name}”",
+    "delete": "Excluir visualização {name}",
+    "save-dialog-title": "Salvar visualização do grafo",
+    "save-dialog-placeholder": "Nome da visualização",
+    "cancel": "Cancelar",
+    "save": "Salvar"
   }
 }

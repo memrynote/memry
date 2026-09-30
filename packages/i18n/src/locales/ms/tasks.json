@@ -141,7 +141,7 @@
     "remindMe": "Ingatkan saya",
     "linkItem": "Pautkan nota atau kanvas",
     "relatedAria": "Item berkaitan: {count}",
-    "shorthandPreview": "Ditetapkan melalui trengkas"
+    "shorthandPreview": "Ditetapkan melalui singkatan"
   },
   "drawer": {
     "close": "Tutup butiran tugas",
@@ -365,7 +365,7 @@
       "the": "Pada",
       "ofTheMonth2": "setiap bulan",
       "ends": "Tamat",
-      "never": "Tidak sekali-kali",
+      "never": "Tidak pernah",
       "onDate": "Pada tarikh",
       "after": "Selepas",
       "occurrences": "kali",
@@ -485,7 +485,7 @@
       "duplicateTaskOnly": "Pendua tugas"
     },
     "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Jadikan subtugas kepada…",
+      "makeSubtaskOf": "Jadikan subtugas bagi…",
       "selectATaskToMake": "Pilih tugas untuk menjadikan \"",
       "aSubtaskOf": "subtugasnya.",
       "searchTasks": "Cari tugas…",
@@ -556,7 +556,7 @@
       "viewCalendar": "Lihat kalendar"
     },
     "componentsTasksFiltersActiveFiltersBar": {
-      "priorityIs": "Keutamaan adalah",
+      "priorityIs": "Keutamaan ialah",
       "priority": "keutamaan",
       "tagsIs": "Teg ialah",
       "tags": "teg",
@@ -712,7 +712,7 @@
       "archiveProject": "Arkibkan projek",
       "deleteProject": "Padam projek",
       "selectProject": "Pilih projek",
-      "noProjectsYet": "Tiada projek lagi",
+      "noProjectsYet": "Belum ada projek",
       "createProject": "Buat projek"
     },
     "componentsTasksProjectsProjectsTabContent": {
@@ -861,7 +861,7 @@
   "addToProject": {
     "menuLabel": "Tambah ke projek",
     "dialogTitle": "Tambah ke projek",
-    "noProjects": "Tiada projek lagi",
+    "noProjects": "Belum ada projek",
     "loading": "Memuatkan projek…",
     "toastSuccess": "Ditambah ke {name}",
     "toastError": "Gagal menambah ke projek"
@@ -914,9 +914,9 @@
       "viewAll": "Lihat semua",
       "add": "Tambah ke {title}",
       "emptyTasks": "Belum ada tugas.",
-      "emptyNotes": "Tiada nota dipautkan lagi.",
-      "emptyFiles": "Tiada fail dipautkan lagi.",
-      "emptyEvents": "Tiada acara dipautkan lagi.",
+      "emptyNotes": "Belum ada nota yang dipautkan.",
+      "emptyFiles": "Belum ada fail yang dipautkan.",
+      "emptyEvents": "Belum ada acara yang dipautkan.",
       "newNoteTitle": "Nota tanpa tajuk",
       "newNoteError": "Tidak dapat menambah nota"
     },

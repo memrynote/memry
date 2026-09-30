@@ -1,51 +1,71 @@
 {
   "view": {
-    "day": "nap",
-    "week": "hét",
-    "month": "hónap",
-    "year": "év"
+    "day": "Nap",
+    "week": "Hét",
+    "month": "Hónap",
+    "monthGridLabel": "Havi rácsnézet",
+    "year": "Év",
+    "timeline": "Idővonal"
+  },
+  "undo": {
+    "moveEvent": "Esemény áthelyezése",
+    "moveTask": "Feladat átütemezése"
   },
   "toolbar": {
     "create-event": "Esemény létrehozása",
     "previous-period": "Előző időszak",
     "next-period": "Következő időszak",
     "previous-month": "Előző hónap",
-    "next-month": "Következő hónapban",
+    "next-month": "Következő hónap",
     "today": "Ma"
+  },
+  "search": {
+    "open": "Naptár keresése",
+    "close": "Keresés bezárása",
+    "placeholder": "Események, feladatok, emlékeztetők keresése…",
+    "no-results": "Nincs találat"
   },
   "filter": {
     "filter-calendars": "Naptárak szűrése",
     "sources": "Források",
-    "memry-items": "memrynote tételek",
+    "memry-items": "memrynote-elemek",
     "imported-calendars": "Importált naptárak",
     "event-types": "Eseménytípusok",
-    "google-calendars": "Google naptárak",
-    "refresh-google-calendars": "Frissítse a Google naptárakat"
+    "google-calendars": "Google-naptárak",
+    "refresh-google-calendars": "Google-naptárak frissítése",
+    "not-syncing": "Nincs szinkronizálva · jelölje be a bekapcsoláshoz",
+    "enable-source-failed": "Nem sikerült bekapcsolni a naptárat.",
+    "provider-calendars": {
+      "ics": "Feliratkozott naptárak",
+      "caldav": "CalDAV-naptárak",
+      "apple-eventkit": "Ez a Mac",
+      "other": "Egyéb naptárak"
+    }
   },
   "visual-type": {
     "event": "Esemény",
     "imported-event": "Importált esemény",
+    "note": "Jegyzet",
+    "note-date": "Dátumemlékeztető",
     "task": "Feladat",
     "reminder": "Emlékeztető",
-    "snooze": "Szundi",
-    "note": "Jegyzet",
-    "note-date": "Dátum-emlékeztető"
+    "snooze": "Elhalasztás"
   },
   "state": {
     "loading-calendar": "Naptár betöltése…",
     "loading-calendars": "Naptárak betöltése…",
-    "preparing": "Felkészülés…"
+    "preparing": "Előkészítés…"
   },
   "empty": {
     "no-imported-calendars-yet": "Még nincsenek importált naptárak.",
     "no-events": "Nincsenek események"
   },
   "time": {
-    "all-day": "Egész nap",
-    "all-day-lower": "egész nap",
-    "pick-a-date": "Válassz egy dátumot",
+    "all-day": "Egész napos",
+    "all-day-lower": "egész napos",
+    "pick-a-date": "Dátum kiválasztása",
     "new-event": "Új esemény",
-    "more-events": "{count, plural, one {# további esemény} other {# további események}}"
+    "more-events": "{count, plural, one {# további esemény} other {# további esemény}}"
   },
   "form": {
     "create-calendar-event": "Naptáresemény létrehozása",
@@ -54,37 +74,77 @@
     "event-editor-description": "Frissítse az esemény címét, helyét, dátumát, időpontját és megjegyzéseit.",
     "new-event-placeholder": "Új esemény",
     "notes-url-placeholder": "Jegyzetek vagy URL hozzáadása",
-    "start": "Indítsa el",
+    "start": "Kezdés",
     "end": "Vége",
-    "google-calendar": "Google naptár",
+    "google-calendar": "Google-naptár",
     "target-calendar": "Célnaptár",
     "use-default-calendar": "Az alapértelmezett naptár használata",
     "use-default-calendar-with-name": "Alapértelmezés használata ({calendar})",
-    "use-memry-calendar-default": "memrynote naptár használata (alapértelmezett)",
-    "primary-suffix": "elsődleges"
+    "use-memry-calendar-default": "memrynote-naptár használata (alapértelmezett)",
+    "primary-suffix": "elsődleges",
+    "project": "Projekt",
+    "no-project": "Nincs projekt",
+    "remove-from-project": "Eltávolítás innen: {project}",
+    "project-update-failed": "Nem sikerült frissíteni az esemény projektjét",
+    "color": "Szín",
+    "default-color": "Alapértelmezett szín"
   },
   "delete-dialog": {
     "title": "Törli az eseményt?",
-    "local-description": "Az \"{title}\" véglegesen törlődik. Ez a művelet nem vonható vissza.",
-    "google-bound-description": "Az „{title}” el lesz távolítva az memrynote-ből és a Google Naptárból. Ez a művelet nem vonható vissza.",
+    "local-description": "A(z) „{title}” esemény véglegesen törlődik. Ez a művelet nem vonható vissza.",
+    "google-bound-description": "A(z) „{title}” esemény törlődik a memrynote-ból és a Google Calendarból. Ez a művelet nem vonható vissza.",
     "context-menu-delete-label": "Esemény törlése",
     "context-menu-add-to-project": "Hozzáadás projekthez"
   },
+  "agent-access-dialog": {
+    "aria": "Döntse el, hogy az MI olvashatja-e a Google Calendar-eseményeit",
+    "title": "Olvashatja az MI a Google Calendar-eseményeit?",
+    "body": "A Google-eseményeit így is, úgy is látni fogja a memrynote-ban. Ez csak azt dönti el, hogy az MI-ügynök elolvashatja-e őket, amikor az időbeosztásáról kérdezi.",
+    "footnote": "Ezt bármikor módosíthatja a Beállítások → Integrációk → Google Calendar menüpontban.",
+    "allow": "Engedélyezés",
+    "deny": "Elutasítás",
+    "save-error": "Nem sikerült menteni a választását",
+    "provider": {
+      "aria": "Döntse el, hogy az MI olvashatja-e a(z) {provider} eseményeit",
+      "title": "Olvashatja az MI a(z) {provider} eseményeit?",
+      "body": "Ezeket az eseményeket így is, úgy is látni fogja a memrynote-ban. Ez csak azt dönti el, hogy az MI-ügynök elolvashatja-e őket, amikor az időbeosztásáról kérdezi. Minden naptárszolgáltatásnál külön dönthet.",
+      "footnote": "Ezt bármikor módosíthatja a Beállítások → Naptár menüpontban."
+    },
+    "provider-names": {
+      "ics": "feliratkozott naptár",
+      "caldav": "CalDAV-naptár",
+      "apple-eventkit": "macOS Naptár"
+    }
+  },
   "promote-dialog": {
     "aria": "Külső naptáresemény szerkesztése",
-    "title": "Szerkeszti ezt az eseményt az memrynote fájlban?",
-    "body": "Az esemény szerkesztésével egy csatolt másolat jön létre az memrynote fájlban, így a változások mindkét irányban szinkronizálódnak. Folytatja?",
-    "do-not-ask-again": "Ne kérdezd újra",
-    "confirm-label": "Szerkesztés az memrynote-ben",
-    "agent-notice": "Ezt a másolatot az AI-ügynök elolvashatja, még akkor is, ha az AI Google Calendar-hozzáférése ki van kapcsolva. Az eredeti Google-eseményed rejtve marad előle."
+    "title": "Szerkeszti ezt az eseményt a memrynote-ban?",
+    "body": "Az esemény szerkesztésekor egy kapcsolt másolat jön létre a memrynote-ban, így a módosítások mindkét irányban szinkronizálódnak. Folytatja?",
+    "do-not-ask-again": "Ne kérdezze többé",
+    "confirm-label": "Szerkesztés a memrynote-ban",
+    "agent-notice": "Ezt a másolatot az MI-ügynök elolvashatja, akkor is, ha az MI Google Calendar-hozzáférése ki van kapcsolva. Az eredeti Google-esemény rejtve marad előle."
   },
   "onboarding-dialog": {
-    "aria": "Válassza ki alapértelmezett Google-naptárát",
-    "title": "Melyik naptárba kerüljenek az új memrynote események?",
-    "body": "Válassza ki azt a Google naptárt, amelyet az memrynote alapértelmezés szerint használnia kell. Eseményenként továbbra is felülbírálhatja.",
-    "default-calendar-label": "Használja az memrynote által kezelt naptárat",
+    "aria": "Alapértelmezett Google-naptár kiválasztása",
+    "title": "Melyik naptárba kerüljenek az új memrynote-események?",
+    "body": "Válassza ki azt a Google-naptárt, amelyet a memrynote alapértelmezés szerint használ. Eseményenként továbbra is felülbírálhatja.",
+    "default-calendar-label": "A memrynote által kezelt naptár használata",
     "skip": "Kihagyás",
-    "use-this-calendar": "Használja ezt a naptárat"
+    "use-this-calendar": "Naptár használata"
+  },
+  "connect-prompt": {
+    "pill": "Google csatlakoztatása",
+    "aria": "Google Calendar csatlakoztatása",
+    "title": "A Google Calendar csatlakoztatásának befejezése",
+    "body": "Csatlakoztassa Google-fiókját, hogy többet hozzon ki a naptárából:",
+    "bullets": {
+      "events": "Lássa Google-eseményeit a jegyzetei és feladatai mellett",
+      "sync": "Hozzon létre és szerkesszen eseményeket kétirányú szinkronizálással",
+      "schedule": "Ütemezzen feladatokat és jegyzeteket a naptárában"
+    },
+    "continue": "Folytatás a Google-lal",
+    "dismiss": "Elvetés",
+    "error": "Nem sikerült csatlakoztatni a Google Calendart. Próbálja újra."
   },
   "metadata": {
     "attendees": "Résztvevők",
@@ -92,12 +152,13 @@
     "reminders": "Emlékeztetők",
     "default-reminders": "Alapértelmezett emlékeztetők",
     "visibility": "Láthatóság:",
-    "optional": "Választható",
-    "join-meeting": "Csatlakozz a találkozóhoz",
+    "optional": "Nem kötelező",
+    "join-meeting": "Csatlakozás a megbeszéléshez",
+    "video-call": "Videohívás",
     "response": {
       "accepted": "Elfogadva",
       "declined": "Elutasítva",
-      "tentative": "Kísérleti",
+      "tentative": "Talán",
       "needs-action": "Függőben"
     },
     "visibility-value": {
@@ -113,35 +174,54 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "Nem sikerült menteni az eseményt. Próbáld újra.",
-      "couldNotCreateEventTryAgain": "Nem sikerült létrehozni az eseményt. Próbáld újra.",
-      "couldNotSaveDefaultCalendarTryAgain": "Az alapértelmezett naptár mentése nem sikerült. Próbáld újra.",
+      "couldNotSaveEventTryAgain": "Nem sikerült menteni az eseményt. Próbálja újra.",
+      "couldNotCreateEventTryAgain": "Nem sikerült létrehozni az eseményt. Próbálja újra.",
+      "couldNotSaveDefaultCalendarTryAgain": "Nem sikerült menteni az alapértelmezett naptárat. Próbálja újra.",
       "failedToLoadCalendarPreferences": "Nem sikerült betölteni a naptárbeállításokat",
       "failedToUpdateCalendarPreferences": "Nem sikerült frissíteni a naptárbeállításokat",
-      "couldNotEditThisEventTryAgain": "Nem sikerült szerkeszteni ezt az eseményt. Próbáld újra.",
+      "couldNotEditThisEventTryAgain": "Nem sikerült szerkeszteni ezt az eseményt. Próbálja újra.",
       "failedToDeleteEvent": "Nem sikerült törölni az eseményt",
-      "couldNotUnsnoozeInboxItem": "Nem sikerült feloldani a halasztást.",
+      "couldNotUnsnoozeInboxItem": "Nem sikerült megszüntetni az elhalasztást.",
       "couldNotRescheduleInboxItem": "Nem sikerült átütemezni."
     },
     "inboxSnoozePopover": {
-      "title": "Elhalasztott beérkező levelek",
-      "openInInbox": "Megnyitás a beérkező levelek között",
-      "unsnoozeNow": "Halasztás feloldása most",
+      "title": "Elhalasztott elem a Beérkezőkből",
+      "openInInbox": "Megnyitás a Beérkezőkben",
+      "unsnoozeNow": "Elhalasztás megszüntetése most",
       "reschedule": "Átütemezés"
     }
   },
+  "chip": {
+    "complete-task": "Befejezés: {title}",
+    "task-completed": "Feladat befejezve",
+    "could-not-complete": "Nem sikerült befejezni a feladatot",
+    "duration-minutes": "{minutes} p",
+    "duration-hours": "{hours} ó",
+    "duration-hours-minutes": "{hours} ó {minutes} p"
+  },
+  "event-card": {
+    "kind": "Esemény",
+    "close": "Bezárás"
+  },
   "task-popover": {
     "title-fallback": "A feladat részletei",
-    "open-task": "Nyitott feladat",
-    "source-note": "Forrás megjegyzés",
+    "kind": "Feladat",
+    "open": "Megnyitás",
+    "complete": "Befejezés",
+    "more-actions": "További műveletek",
+    "move": "Áthelyezés",
+    "later": "Később",
+    "next-week": "Jövő héten",
+    "open-task": "Feladat megnyitása",
+    "source-note": "Forrásjegyzet",
     "reschedule": "Átütemezés",
-    "mark-done": "Jelölje késznek",
-    "mark-not-done": "Jelölje meg nem késznek",
+    "mark-done": "Megjelölés befejezettként",
+    "mark-not-done": "Megjelölés befejezetlenként",
     "later-today": "Ma később",
     "tomorrow": "Holnap",
-    "next-week-mon": "Jövő hét · Hétfő",
+    "next-week-mon": "Jövő hét · hétfő",
     "pick-date-time": "Dátum és idő kiválasztása…",
-    "remove-due-date": "Törölje a határidőt",
+    "remove-due-date": "Határidő eltávolítása",
     "subtasks-prefix": "Részfeladatok",
     "subtasks-counter": "{done}/{total} kész",
     "repeats": "Ismétlődik",
@@ -156,43 +236,151 @@
       "could-not-open-note": "Nem sikerült megnyitni a jegyzetet"
     }
   },
-  "connect-prompt": {
-    "aria": "Google Naptár csatlakoztatása",
-    "body": "Csatlakoztasd a Google-fiókod, hogy többet hozz ki a naptáradból:",
-    "bullets": {
-      "events": "Lásd a Google-eseményeidet a jegyzetek és feladatok mellett",
-      "schedule": "Ütemezz feladatokat és jegyzeteket a naptáradban",
-      "sync": "Hozz létre és szerkessz eseményeket, mindkét irányban szinkronizálva"
-    },
-    "continue": "Folytatás a Google-lal",
-    "dismiss": "Elvetés",
-    "error": "Nem sikerült csatlakozni a Google Naptárhoz. Próbáld újra.",
-    "pill": "Google csatlakoztatása",
-    "title": "Fejezd be a Google Naptárhoz való csatlakozást"
-  },
   "notePopover": {
-    "couldNotOpen": "Nem sikerült megnyitni a jegyzetet",
     "kind": "Jegyzet",
-    "kindDateReminder": "Dátum-emlékeztető",
-    "open": "Jegyzet megnyitása"
+    "kindDateReminder": "Dátumemlékeztető",
+    "open": "Jegyzet megnyitása",
+    "couldNotOpen": "Nem sikerült megnyitni a jegyzetet"
   },
-  "search": {
-    "close": "Keresés bezárása",
-    "no-results": "Nincs találat",
-    "open": "Naptár keresése",
-    "placeholder": "Események, feladatok, emlékeztetők keresése…"
+  "timeline": {
+    "label": "Ütemezett munka idővonalon",
+    "tasks-column": "Feladatok",
+    "span": "{start} – {end}",
+    "due": "Határidő: {date}",
+    "starts": "Kezdés: {date}",
+    "starts-short": "{date} →",
+    "no-date": "Nincs dátum",
+    "today": "Ma",
+    "overdue": "lejárt",
+    "untitled": "Névtelen",
+    "days": "{count, plural, one {# nap} other {# nap}}",
+    "events": "Események",
+    "schedule-hint": "Kattintson a dátum beállításához, húzza a tartomány megadásához",
+    "empty-title": "Itt nincs semmi az idővonalon",
+    "empty-body": "Itt jelennek meg a kezdő dátummal vagy határidővel rendelkező feladatok, valamint az egész napos és többnapos események. A dátum nélküli feladatokat a Megjelenítés menüben kapcsolhatja be, és húzással ütemezheti őket.",
+    "status": {
+      "todo": "Teendő",
+      "in_progress": "Folyamatban",
+      "done": "Kész"
+    },
+    "priority": {
+      "urgent": "Sürgős",
+      "high": "Magas",
+      "medium": "Közepes",
+      "low": "Alacsony",
+      "none": "Nincs prioritás"
+    },
+    "zoom": {
+      "label": "Nagyítás",
+      "weeks": "Hetek",
+      "months": "Hónapok",
+      "quarters": "Negyedévek"
+    },
+    "group-by": {
+      "project": "Projekt",
+      "status": "Állapot",
+      "priority": "Prioritás",
+      "none": "Nincs"
+    },
+    "group-by-label": "Csoportosítás: {group}",
+    "order-by": {
+      "start": "Kezdő dátum",
+      "due": "Határidő",
+      "title": "Cím"
+    },
+    "display": {
+      "button": "Megjelenítés",
+      "group-by": "Csoportosítás",
+      "order-by": "Rendezés",
+      "show": "Látható",
+      "show-events": "Események",
+      "show-undated": "Dátum nélküli feladatok",
+      "show-completed": "Befejezett feladatok",
+      "show-subtasks": "Részfeladatok"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# feladat} other {# feladat}} · {events, plural, one {# esemény} other {# esemény}}",
+      "open": "Megnyitás",
+      "move": "Áthelyezés",
+      "resize": "Átméretezés",
+      "actions": "Műveletek",
+      "select": "Kijelölés",
+      "today": "Ma"
+    },
+    "actions": {
+      "search": "Műveletek keresése…",
+      "search-projects": "Projektek keresése…",
+      "empty": "Nincs egyező művelet",
+      "no-projects": "Nincs egyező projekt",
+      "open": "Feladat megnyitása",
+      "open-in-tasks": "Megnyitás a Feladatokban",
+      "schedule": "Ütemezés",
+      "set-start": "Kezdő dátum beállítása",
+      "set-due": "Határidő beállítása",
+      "move-later": "Áthelyezés egy héttel későbbre",
+      "move-earlier": "Áthelyezés egy héttel korábbra",
+      "clear-dates": "Dátumok törlése",
+      "clear-start": "Kezdő dátum törlése",
+      "clear-due": "Határidő törlése",
+      "task": "Feladat",
+      "complete": "Megjelölés befejezettként",
+      "uncomplete": "Megjelölés befejezetlenként",
+      "change-project": "Projekt módosítása",
+      "page": {
+        "root": "Műveletek",
+        "start": "Kezdő dátum",
+        "due": "Határidő",
+        "project": "Projekt"
+      }
+    },
+    "undo": {
+      "reschedule": "„{title}” átütemezése"
+    }
   },
-  "undo": {
-    "moveEvent": "Esemény áthelyezése",
-    "moveTask": "Feladat átütemezése"
+  "calendar-color": {
+    "tomato": "Paradicsom",
+    "flamingo": "Flamingó",
+    "tangerine": "Mandarin",
+    "banana": "Banán",
+    "sage": "Zsálya",
+    "basil": "Bazsalikom",
+    "peacock": "Páva",
+    "blueberry": "Áfonya",
+    "lavender": "Levendula",
+    "grape": "Szőlő",
+    "graphite": "Grafit"
   },
-  "agent-access-dialog": {
-    "allow": "Engedélyezés",
-    "aria": "Döntsd el, hogy az AI olvashatja-e a Google Calendar eseményeidet",
-    "body": "A Google-eseményeidet így is, úgy is látni fogod a memrynote-ban. Ez csak azt dönti el, hogy az AI-ügynök elolvashatja-e őket, amikor az időbeosztásodról kérdezed.",
-    "deny": "Ne engedélyezze",
-    "footnote": "Ezt bármikor megváltoztathatod a Beállítások → Integrációk → Google Calendar menüpontban.",
-    "save-error": "Nem sikerült menteni a választásodat",
-    "title": "Olvashatja az AI a Google Calendar eseményeidet?"
+  "subscribedEvent": {
+    "kind": "Feliratkozott naptár",
+    "kindAppleEventKit": "Ez a Mac",
+    "close": "Bezárás",
+    "detailsFailed": "Nem sikerült betölteni az esemény résztvevőit és hivatkozásait. Maga az esemény nem változott.",
+    "showMore": "Több megjelenítése",
+    "showLess": "Kevesebb megjelenítése",
+    "organizer": "szervező",
+    "you": "Ön",
+    "phone": "Csatlakozás telefonon",
+    "alert": "{minutes, plural, =0 {Figyelmeztetés az esemény kezdetekor} one {Figyelmeztetés # perccel előtte} other {Figyelmeztetés # perccel előtte}}",
+    "alertHours": "{hours, plural, one {Figyelmeztetés # órával előtte} other {Figyelmeztetés # órával előtte}}",
+    "alertDays": "{days, plural, one {Figyelmeztetés # nappal előtte} other {Figyelmeztetés # nappal előtte}}",
+    "recurrence": {
+      "daily": "{count, plural, one {Naponta ismétlődik} other {# naponta ismétlődik}}",
+      "weekly": "{count, plural, one {Hetente ismétlődik} other {# hetente ismétlődik}}",
+      "weeklyOn": "{count, plural, one {Hetente ismétlődik ezeken a napokon: {days}} other {# hetente ismétlődik ezeken a napokon: {days}}}",
+      "monthly": "{count, plural, one {Havonta ismétlődik} other {# havonta ismétlődik}}",
+      "yearly": "{count, plural, one {Évente ismétlődik} other {# évente ismétlődik}}",
+      "other": "Ismétlődik"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Feliratkozott naptárak"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

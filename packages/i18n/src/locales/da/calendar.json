@@ -1,40 +1,60 @@
 {
   "view": {
-    "day": "dag",
-    "week": "uge",
+    "day": "Dag",
+    "week": "Uge",
     "month": "Måned",
-    "year": "år"
+    "monthGridLabel": "Månedsgitter",
+    "year": "År",
+    "timeline": "Tidslinje"
+  },
+  "undo": {
+    "moveEvent": "Flyt begivenhed",
+    "moveTask": "Omplanlæg opgave"
   },
   "toolbar": {
     "create-event": "Opret begivenhed",
-    "previous-period": "Tidligere periode",
+    "previous-period": "Forrige periode",
     "next-period": "Næste periode",
     "previous-month": "Forrige måned",
     "next-month": "Næste måned",
     "today": "I dag"
   },
+  "search": {
+    "open": "Søg i kalender",
+    "close": "Luk søgning",
+    "placeholder": "Søg i begivenheder, opgaver, påmindelser…",
+    "no-results": "Ingen match"
+  },
   "filter": {
-    "filter-calendars": "Filtrer kalendere",
+    "filter-calendars": "Filtrér kalendere",
     "sources": "Kilder",
-    "memry-items": "memrynote varer",
+    "memry-items": "memrynote-elementer",
     "imported-calendars": "Importerede kalendere",
     "event-types": "Begivenhedstyper",
-    "google-calendars": "Google kalendere",
-    "refresh-google-calendars": "Opdater Google-kalendere"
+    "google-calendars": "Google-kalendere",
+    "refresh-google-calendars": "Opdatér Google-kalendere",
+    "not-syncing": "Synkroniseres ikke · markér for at slå til",
+    "enable-source-failed": "Kunne ikke slå kalenderen til.",
+    "provider-calendars": {
+      "ics": "Abonnerede kalendere",
+      "caldav": "CalDAV-kalendere",
+      "apple-eventkit": "Denne Mac",
+      "other": "Andre kalendere"
+    }
   },
   "visual-type": {
     "event": "Begivenhed",
     "imported-event": "Importeret begivenhed",
+    "note": "Note",
+    "note-date": "Datopåmindelse",
     "task": "Opgave",
     "reminder": "Påmindelse",
-    "snooze": "Udsættelse",
-    "note": "Note",
-    "note-date": "Datopåmindelse"
+    "snooze": "Udsættelse"
   },
   "state": {
-    "loading-calendar": "Indlæser kalender...",
-    "loading-calendars": "Indlæser kalendere...",
-    "preparing": "Forbereder..."
+    "loading-calendar": "Indlæser kalender…",
+    "loading-calendars": "Indlæser kalendere…",
+    "preparing": "Forbereder…"
   },
   "empty": {
     "no-imported-calendars-yet": "Ingen importerede kalendere endnu.",
@@ -45,55 +65,96 @@
     "all-day-lower": "hele dagen",
     "pick-a-date": "Vælg en dato",
     "new-event": "Ny begivenhed",
-    "more-events": "{count, plural, one {# mere begivenhed} other {# flere begivenheder}}"
+    "more-events": "{count, plural, one {# begivenhed mere} other {# begivenheder mere}}"
   },
   "form": {
     "create-calendar-event": "Opret kalenderbegivenhed",
-    "edit-calendar-event": "Rediger kalenderbegivenhed",
+    "edit-calendar-event": "Redigér kalenderbegivenhed",
     "quick-create-description": "Indtast en titel og gem for at oprette en begivenhed i det valgte tidsinterval.",
-    "event-editor-description": "Opdater titel, placering, dato, klokkeslæt og noter for denne begivenhed.",
+    "event-editor-description": "Opdatér titel, sted, dato, klokkeslæt og noter for denne begivenhed.",
     "new-event-placeholder": "Ny begivenhed",
     "notes-url-placeholder": "Tilføj noter eller URL",
     "start": "Start",
     "end": "Slut",
-    "google-calendar": "Google kalender",
+    "google-calendar": "Google-kalender",
     "target-calendar": "Målkalender",
     "use-default-calendar": "Brug standardkalender",
     "use-default-calendar-with-name": "Brug standard ({calendar})",
     "use-memry-calendar-default": "Brug memrynote-kalender (standard)",
-    "primary-suffix": "primære"
+    "primary-suffix": "primær",
+    "project": "Projekt",
+    "no-project": "Intet projekt",
+    "remove-from-project": "Fjern fra {project}",
+    "project-update-failed": "Kunne ikke opdatere begivenhedens projekt",
+    "color": "Farve",
+    "default-color": "Standardfarve"
   },
   "delete-dialog": {
     "title": "Vil du slette begivenheden?",
-    "local-description": "\"{title}\" slettes permanent. Denne handling kan ikke fortrydes.",
-    "google-bound-description": "\"{title}\" vil blive fjernet fra memrynote og Google Kalender. Denne handling kan ikke fortrydes.",
+    "local-description": "»{title}« slettes permanent. Denne handling kan ikke fortrydes.",
+    "google-bound-description": "»{title}« fjernes fra memrynote og Google Calendar. Denne handling kan ikke fortrydes.",
     "context-menu-delete-label": "Slet begivenhed",
     "context-menu-add-to-project": "Føj til projekt"
   },
+  "agent-access-dialog": {
+    "aria": "Vælg, om AI må læse dine begivenheder i Google Calendar",
+    "title": "Vil du lade AI læse dine begivenheder i Google Calendar?",
+    "body": "Du ser stadig dine Google-begivenheder i memrynote uanset hvad. Det her afgør kun, om AI-agenten må læse dem, når du spørger den om din kalender.",
+    "footnote": "Du kan altid ændre det under Indstillinger → Integrationer → Google Calendar.",
+    "allow": "Tillad",
+    "deny": "Tillad ikke",
+    "save-error": "Kunne ikke gemme dit valg",
+    "provider": {
+      "aria": "Vælg, om AI må læse dine begivenheder i {provider}",
+      "title": "Vil du lade AI læse dine begivenheder i {provider}?",
+      "body": "Du ser stadig disse begivenheder i memrynote uanset hvad. Det her afgør kun, om AI-agenten må læse dem, når du spørger den om din kalender. Du vælger særskilt for hver kalendertjeneste.",
+      "footnote": "Du kan altid ændre det under Indstillinger → Kalender."
+    },
+    "provider-names": {
+      "ics": "abonnerede kalendere",
+      "caldav": "CalDAV-kalenderen",
+      "apple-eventkit": "Kalender på macOS"
+    }
+  },
   "promote-dialog": {
-    "aria": "Rediger ekstern kalenderbegivenhed",
+    "aria": "Redigér ekstern kalenderbegivenhed",
     "title": "Vil du redigere denne begivenhed i memrynote?",
-    "body": "Redigering af denne begivenhed vil oprette en linket kopi i memrynote, så ændringer synkroniseres begge veje. Vil du fortsætte?",
+    "body": "Hvis du redigerer denne begivenhed, oprettes en linket kopi i memrynote, så ændringer synkroniseres begge veje. Vil du fortsætte?",
     "do-not-ask-again": "Spørg ikke igen",
-    "confirm-label": "Rediger i memrynote",
+    "confirm-label": "Redigér i memrynote",
     "agent-notice": "AI-agenten kan læse denne kopi, selvom AI-adgang til Google Calendar er slået fra. Din oprindelige Google-begivenhed forbliver skjult for den."
   },
   "onboarding-dialog": {
-    "aria": "Vælg din standard Google-kalender",
-    "title": "Hvilken kalender skal nye memrynote-begivenheder gå til?",
-    "body": "Vælg den Google-kalender memrynote skal bruge som standard. Du kan stadig tilsidesætte det pr. begivenhed.",
+    "aria": "Vælg din Google-standardkalender",
+    "title": "Hvilken kalender skal nye memrynote-begivenheder lægges i?",
+    "body": "Vælg den Google-kalender, memrynote skal bruge som standard. Du kan stadig vælge en anden for hver begivenhed.",
     "default-calendar-label": "Brug den memrynote-administrerede kalender",
     "skip": "Spring over",
     "use-this-calendar": "Brug denne kalender"
+  },
+  "connect-prompt": {
+    "pill": "Forbind Google",
+    "aria": "Forbind Google Calendar",
+    "title": "Færdiggør forbindelsen til Google Calendar",
+    "body": "Forbind din Google-konto for at gøre mere med din kalender:",
+    "bullets": {
+      "events": "Se dine Google-begivenheder ved siden af noter og opgaver",
+      "sync": "Opret og redigér begivenheder, synkroniseret begge veje",
+      "schedule": "Planlæg opgaver og noter i din kalender"
+    },
+    "continue": "Fortsæt med Google",
+    "dismiss": "Afvis",
+    "error": "Kunne ikke forbinde Google Calendar. Prøv igen."
   },
   "metadata": {
     "attendees": "Deltagere",
     "attendees-count": "Deltagere ({count})",
     "reminders": "Påmindelser",
-    "default-reminders": "Standard påmindelser",
+    "default-reminders": "Standardpåmindelser",
     "visibility": "Synlighed:",
     "optional": "Valgfrit",
     "join-meeting": "Deltag i mødet",
+    "video-call": "Videoopkald",
     "response": {
       "accepted": "Accepteret",
       "declined": "Afvist",
@@ -103,7 +164,7 @@
     "visibility-value": {
       "private": "Privat",
       "public": "Offentlig",
-      "confidential": "Fortroligt"
+      "confidential": "Fortrolig"
     }
   },
   "phaseF": {
@@ -113,86 +174,213 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "Begivenheden kunne ikke gemmes. Prøv igen.",
-      "couldNotCreateEventTryAgain": "Begivenheden kunne ikke oprettes. Prøv igen.",
+      "couldNotSaveEventTryAgain": "Kunne ikke gemme begivenheden. Prøv igen.",
+      "couldNotCreateEventTryAgain": "Kunne ikke oprette begivenheden. Prøv igen.",
       "couldNotSaveDefaultCalendarTryAgain": "Kunne ikke gemme standardkalenderen. Prøv igen.",
-      "failedToLoadCalendarPreferences": "Kunne ikke indlæse kalenderpræferencer",
-      "failedToUpdateCalendarPreferences": "Kunne ikke opdatere kalenderpræferencer",
-      "couldNotEditThisEventTryAgain": "Denne begivenhed kunne ikke redigeres. Prøv igen.",
-      "failedToDeleteEvent": "Begivenheden kunne ikke slettes",
+      "failedToLoadCalendarPreferences": "Kunne ikke indlæse kalenderindstillingerne",
+      "failedToUpdateCalendarPreferences": "Kunne ikke opdatere kalenderindstillingerne",
+      "couldNotEditThisEventTryAgain": "Kunne ikke redigere begivenheden. Prøv igen.",
+      "failedToDeleteEvent": "Kunne ikke slette begivenheden",
       "couldNotUnsnoozeInboxItem": "Kunne ikke annullere udsættelsen.",
       "couldNotRescheduleInboxItem": "Kunne ikke omplanlægge."
     },
     "inboxSnoozePopover": {
       "title": "Udsat indbakkeelement",
       "openInInbox": "Åbn i indbakken",
-      "unsnoozeNow": "Sluk nu",
-      "reschedule": "Flyt tidsplanen"
+      "unsnoozeNow": "Annullér udsættelse",
+      "reschedule": "Omplanlæg"
     }
+  },
+  "chip": {
+    "complete-task": "Fuldfør {title}",
+    "task-completed": "Opgave fuldført",
+    "could-not-complete": "Kunne ikke fuldføre opgaven",
+    "duration-minutes": "{minutes} min",
+    "duration-hours": "{hours} t",
+    "duration-hours-minutes": "{hours} t {minutes} min"
+  },
+  "event-card": {
+    "kind": "Begivenhed",
+    "close": "Luk"
   },
   "task-popover": {
     "title-fallback": "Opgavedetaljer",
-    "open-task": "Åben opgave",
-    "source-note": "Kildebemærkning",
-    "reschedule": "Flyt tidsplanen",
-    "mark-done": "Marker færdig",
-    "mark-not-done": "Marker ikke færdig",
+    "kind": "Opgave",
+    "open": "Åbn",
+    "complete": "Fuldfør",
+    "more-actions": "Flere handlinger",
+    "move": "Flyt",
+    "later": "Senere",
+    "next-week": "Næste uge",
+    "open-task": "Åbn opgave",
+    "source-note": "Kildenote",
+    "reschedule": "Omplanlæg",
+    "mark-done": "Markér som færdig",
+    "mark-not-done": "Markér som ikke færdig",
     "later-today": "Senere i dag",
     "tomorrow": "I morgen",
-    "next-week-mon": "Næste uge · Man",
-    "pick-date-time": "Vælg dato og klokkeslæt...",
+    "next-week-mon": "Næste uge · man.",
+    "pick-date-time": "Vælg dato og klokkeslæt…",
     "remove-due-date": "Fjern forfaldsdato",
-    "subtasks-prefix": "Underopgaver",
-    "subtasks-counter": "{done} af {total} færdig",
-    "repeats": "Gentager",
+    "subtasks-prefix": "Delopgaver",
+    "subtasks-counter": "{done} af {total} færdige",
+    "repeats": "Gentages",
     "repeats-daily": "Gentages dagligt",
     "repeats-weekly": "Gentages ugentligt",
     "repeats-monthly": "Gentages månedligt",
     "repeats-yearly": "Gentages årligt",
     "errors": {
-      "could-not-save": "Opgaven kunne ikke gemmes",
-      "could-not-reschedule": "Opgaven kunne ikke omplanlægges",
-      "could-not-remove-due-date": "Forfaldsdatoen kunne ikke fjernes",
-      "could-not-open-note": "Noten kunne ikke åbnes"
+      "could-not-save": "Kunne ikke gemme opgaven",
+      "could-not-reschedule": "Kunne ikke omplanlægge opgaven",
+      "could-not-remove-due-date": "Kunne ikke fjerne forfaldsdatoen",
+      "could-not-open-note": "Kunne ikke åbne noten"
     }
   },
-  "connect-prompt": {
-    "aria": "Forbind Google Calendar",
-    "body": "Forbind din Google-konto for at gøre mere med din kalender:",
-    "bullets": {
-      "events": "Se dine Google-begivenheder ved siden af noter og opgaver",
-      "schedule": "Planlæg opgaver og noter i din kalender",
-      "sync": "Opret og redigér begivenheder, synkroniseret begge veje"
-    },
-    "continue": "Fortsæt med Google",
-    "dismiss": "Afvis",
-    "error": "Kunne ikke forbinde Google Calendar. Prøv igen.",
-    "pill": "Forbind Google",
-    "title": "Færdiggør forbindelsen til Google Calendar"
-  },
   "notePopover": {
-    "couldNotOpen": "Kunne ikke åbne note",
     "kind": "Note",
     "kindDateReminder": "Datopåmindelse",
-    "open": "Åbn note"
+    "open": "Åbn note",
+    "couldNotOpen": "Kunne ikke åbne noten"
   },
-  "search": {
-    "close": "Luk søgning",
-    "no-results": "Ingen match",
-    "open": "Søg i kalender",
-    "placeholder": "Søg i begivenheder, opgaver, påmindelser…"
+  "timeline": {
+    "label": "Planlagt arbejde på en tidslinje",
+    "tasks-column": "Opgaver",
+    "span": "{start} – {end}",
+    "due": "Forfalder {date}",
+    "starts": "Starter {date}",
+    "starts-short": "{date} →",
+    "no-date": "Ingen dato",
+    "today": "I dag",
+    "overdue": "forfalden",
+    "untitled": "Uden titel",
+    "days": "{count, plural, one {# dag} other {# dage}}",
+    "events": "Begivenheder",
+    "schedule-hint": "Klik for at angive en dato, træk for at angive et interval",
+    "empty-title": "Intet på tidslinjen her",
+    "empty-body": "Opgaver med en start- eller forfaldsdato samt heldags- og flerdagsbegivenheder vises her. Slå opgaver uden datoer til under Visning for at planlægge dem ved at trække.",
+    "status": {
+      "todo": "At gøre",
+      "in_progress": "I gang",
+      "done": "Færdig"
+    },
+    "priority": {
+      "urgent": "Haster",
+      "high": "Høj",
+      "medium": "Mellem",
+      "low": "Lav",
+      "none": "Ingen prioritet"
+    },
+    "zoom": {
+      "label": "Zoom",
+      "weeks": "Uger",
+      "months": "Måneder",
+      "quarters": "Kvartaler"
+    },
+    "group-by": {
+      "project": "Projekt",
+      "status": "Status",
+      "priority": "Prioritet",
+      "none": "Ingen gruppering"
+    },
+    "group-by-label": "Efter {group}",
+    "order-by": {
+      "start": "Startdato",
+      "due": "Forfaldsdato",
+      "title": "Titel"
+    },
+    "display": {
+      "button": "Visning",
+      "group-by": "Gruppér efter",
+      "order-by": "Sortér efter",
+      "show": "Vis",
+      "show-events": "Begivenheder",
+      "show-undated": "Opgaver uden datoer",
+      "show-completed": "Fuldførte opgaver",
+      "show-subtasks": "Delopgaver"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# opgave} other {# opgaver}} · {events, plural, one {# begivenhed} other {# begivenheder}}",
+      "open": "Åbn",
+      "move": "Flyt",
+      "resize": "Tilpas størrelse",
+      "actions": "Handlinger",
+      "select": "Vælg",
+      "today": "I dag"
+    },
+    "actions": {
+      "search": "Søg i handlinger…",
+      "search-projects": "Søg i projekter…",
+      "empty": "Ingen matchende handling",
+      "no-projects": "Intet matchende projekt",
+      "open": "Åbn opgave",
+      "open-in-tasks": "Åbn i Opgaver",
+      "schedule": "Planlæg",
+      "set-start": "Angiv startdato",
+      "set-due": "Angiv forfaldsdato",
+      "move-later": "Flyt en uge senere",
+      "move-earlier": "Flyt en uge tidligere",
+      "clear-dates": "Ryd datoer",
+      "clear-start": "Ryd startdato",
+      "clear-due": "Ryd forfaldsdato",
+      "task": "Opgave",
+      "complete": "Markér som fuldført",
+      "uncomplete": "Markér som ikke fuldført",
+      "change-project": "Skift projekt",
+      "page": {
+        "root": "Handlinger",
+        "start": "Startdato",
+        "due": "Forfaldsdato",
+        "project": "Projekt"
+      }
+    },
+    "undo": {
+      "reschedule": "Omplanlæg »{title}«"
+    }
   },
-  "undo": {
-    "moveEvent": "Flyt begivenhed",
-    "moveTask": "Omplanlæg opgave"
+  "calendar-color": {
+    "tomato": "Tomat",
+    "flamingo": "Flamingo",
+    "tangerine": "Mandarin",
+    "banana": "Banan",
+    "sage": "Salvie",
+    "basil": "Basilikum",
+    "peacock": "Påfugl",
+    "blueberry": "Blåbær",
+    "lavender": "Lavendel",
+    "grape": "Drue",
+    "graphite": "Grafit"
   },
-  "agent-access-dialog": {
-    "allow": "Tillad",
-    "aria": "Vælg, om AI må læse dine begivenheder i Google Calendar",
-    "body": "Du ser stadig dine Google-begivenheder i memrynote uanset hvad. Det her afgør kun, om AI-agenten må læse dem, når du spørger den om din kalender.",
-    "deny": "Tillad ikke",
-    "footnote": "Du kan altid ændre det under Indstillinger → Integrationer → Google Calendar.",
-    "save-error": "Dit valg kunne ikke gemmes",
-    "title": "Vil du lade AI læse dine begivenheder i Google Calendar?"
+  "subscribedEvent": {
+    "kind": "Abonneret kalender",
+    "kindAppleEventKit": "Denne Mac",
+    "close": "Luk",
+    "detailsFailed": "Kunne ikke indlæse deltagerne og linkene til denne begivenhed. Selve begivenheden er uændret.",
+    "showMore": "Vis mere",
+    "showLess": "Vis mindre",
+    "organizer": "arrangør",
+    "you": "dig",
+    "phone": "Deltag via telefon",
+    "alert": "{minutes, plural, =0 {Påmindelse ved starttidspunktet} one {Påmindelse # minut før} other {Påmindelse # minutter før}}",
+    "alertHours": "{hours, plural, one {Påmindelse # time før} other {Påmindelse # timer før}}",
+    "alertDays": "{days, plural, one {Påmindelse # dag før} other {Påmindelse # dage før}}",
+    "recurrence": {
+      "daily": "{count, plural, one {Gentages hver dag} other {Gentages hver #. dag}}",
+      "weekly": "{count, plural, one {Gentages hver uge} other {Gentages hver #. uge}}",
+      "weeklyOn": "{count, plural, one {Gentages hver uge ({days})} other {Gentages hver #. uge ({days})}}",
+      "monthly": "{count, plural, one {Gentages hver måned} other {Gentages hver #. måned}}",
+      "yearly": "{count, plural, one {Gentages hvert år} other {Gentages hvert #. år}}",
+      "other": "Gentages"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Abonnerede kalendere"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

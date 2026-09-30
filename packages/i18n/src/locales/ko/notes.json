@@ -1,41 +1,79 @@
 {
+  "wikiLinkCreateDialog": {
+    "title": "노트를 만드시겠습니까?",
+    "body": "“{title}” 제목의 노트가 없습니다. 만드시겠습니까?",
+    "create": "만들기"
+  },
+  "wikiLinkPreview": {
+    "notFound": "찾을 수 없음 — 클릭하여 “{title}” 만들기"
+  },
   "page": {
     "empty": {
-      "title": "선택한 메모 없음",
-      "body": "사이드바에서 메모를 선택하여 확인하세요."
+      "title": "선택한 노트 없음",
+      "body": "사이드바에서 볼 노트를 선택하세요"
     },
     "error": {
-      "title": "메모를 로드하지 못했습니다."
+      "title": "노트를 불러오지 못했습니다"
     },
     "toast": {
-      "cannotSaveDeleted": "저장할 수 없습니다. 메모가 삭제되었습니다.",
-      "cannotRenameDeleted": "이름을 바꿀 수 없습니다. 메모가 삭제되었습니다.",
-      "createLinkedFailed": "연결된 메모를 생성하지 못했습니다.",
-      "openLinkedFailed": "연결된 항목을 열지 못했습니다.",
-      "localOnly": "메모가 로컬로만 설정됨",
-      "willSync": "메모가 클라우드에 동기화됩니다.",
-      "renameFailed": "메모 이름을 바꾸지 못했습니다.",
-      "toggleLocalOnlyFailed": "로컬로만 전환하지 못했습니다.",
-      "toggleFullWidthFailed": "전체 너비를 전환하지 못했습니다.",
-      "copyPathFailed": "경로를 복사하지 못했습니다",
-      "deleteFailed": "메모를 삭제하지 못했습니다",
-      "moveFailed": "메모를 이동하지 못했습니다",
-      "moved": "메모를 이동했습니다",
-      "openExternalFailed": "메모를 열지 못했습니다",
+      "cannotSaveDeleted": "노트가 삭제되어 저장할 수 없습니다",
+      "cannotRenameDeleted": "노트가 삭제되어 이름을 바꿀 수 없습니다",
+      "createLinkedFailed": "링크된 노트를 만들지 못했습니다",
+      "openLinkedFailed": "링크된 항목을 열지 못했습니다",
+      "fileNotFound": "파일을 찾을 수 없음: {target}",
+      "localOnly": "노트를 로컬 전용으로 설정했습니다",
+      "willSync": "노트가 클라우드에 동기화됩니다",
+      "renameFailed": "노트 이름을 바꾸지 못했습니다",
+      "titleRequired": "노트에는 제목이 필요합니다",
+      "toggleLocalOnlyFailed": "로컬 전용 설정을 변경하지 못했습니다",
+      "toggleFullWidthFailed": "전체 너비 설정을 변경하지 못했습니다",
       "pathCopied": "경로를 복사했습니다",
-      "revealFailed": "메모 위치를 표시하지 못했습니다"
+      "copyPathFailed": "경로를 복사하지 못했습니다",
+      "revealFailed": "노트 위치를 표시하지 못했습니다",
+      "openExternalFailed": "노트를 열지 못했습니다",
+      "moved": "노트를 이동했습니다",
+      "moveFailed": "노트를 이동하지 못했습니다",
+      "deleteFailed": "노트를 삭제하지 못했습니다"
     },
-    "deleteDialogTitle": "{count, plural, one {메모 삭제} other {# 삭제 노트}}",
-    "deleteConfirm": {
-      "cancel": "취소",
-      "confirm": "삭제",
-      "deleting": "삭제 중...",
-      "description": "\"{title}\" 메모를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
-      "title": "메모 삭제"
-    },
+    "deleteDialogTitle": "{count, plural, other {노트 #개 삭제}}",
     "itemsCount": "{count, plural, other {항목 #개}}",
     "itemsCountFiltered": "{total, plural, other {항목 #개}} 중 {shown}개",
-    "tagFilterLabel": "태그 = {tag}"
+    "tagFilterLabel": "태그 = {tag}",
+    "deleteConfirm": {
+      "title": "노트 삭제",
+      "description": "“{title}” 노트를 삭제하시겠습니까? 되돌릴 수 없습니다.",
+      "cancel": "취소",
+      "confirm": "삭제",
+      "deleting": "삭제 중…"
+    },
+    "largeFile": {
+      "title": "이 파일은 너무 커서 노트로 열 수 없습니다",
+      "badge": "읽기 전용 · 동기화 안 됨",
+      "reason": {
+        "fileBytes": "파일 크기가 {size}입니다. 노트는 {limit}까지 편집할 수 있습니다.",
+        "blockBytes": "빈 줄 없이 이어지는 {size} 분량의 구간이 있습니다. 노트는 블록당 {limit}까지 편집할 수 있습니다."
+      },
+      "explanation": "편집하려면 파일 전체를 한 번에 파싱해야 해서 앱이 멈춥니다. 디스크의 파일은 변경되지 않았습니다.",
+      "viewer": {
+        "preparing": "{size} 파일을 읽을 준비 중…",
+        "preparingHint": "한 번에 모두 불러오지 않고 스크롤할 수 있도록 줄을 인덱싱하고 있습니다.",
+        "lines": "{count}줄",
+        "empty": "이 파일은 비어 있습니다.",
+        "failed": "이 파일을 읽을 준비를 하지 못했습니다.",
+        "missing": "이 파일이 더 이상 디스크에 없습니다.",
+        "lineTruncated": "긴 줄이 여기서 잘림",
+        "showRestOfLine": "이 줄의 나머지 보기"
+      },
+      "tooLarge": {
+        "title": "이 파일은 너무 커서 열 수 없습니다",
+        "reason": "파일 크기가 {size}입니다. Memry는 {limit}까지의 파일을 표시할 수 있습니다.",
+        "explanation": "디스크의 파일은 변경되지 않았습니다. 이 크기의 파일을 다룰 수 있는 앱에서 여세요."
+      },
+      "find": {
+        "searching": "지금까지 {count}개…",
+        "limited": "{index}/{shown}(전체 {total})"
+      }
+    }
   },
   "tree": {
     "aria": {
@@ -43,87 +81,162 @@
       "openFolderView": "폴더 보기 열기"
     },
     "empty": {
-      "title": "아직 메모가 없습니다.",
-      "body": "시작하려면 메모를 작성하세요",
-      "newNote": "새 메모"
+      "title": "아직 노트가 없습니다",
+      "body": "노트를 만들어 시작하세요",
+      "newNote": "새 노트"
     },
-    "loadingError": "메모를 로드하지 못했습니다.",
+    "syncing": {
+      "body": "노트를 동기화하는 중 — 도착하는 대로 여기에 표시됩니다"
+    },
+    "loadingError": "노트를 불러오지 못했습니다",
+    "truncated": {
+      "hidden": "{count, plural, other {표시되지 않은 이전 노트 #개}}",
+      "loadMore": "더 불러오기"
+    },
     "actions": {
-      "newNote": "새 메모",
+      "openInNewTab": "새 탭에서 열기",
+      "openToTheSide": "옆에서 열기",
+      "newNote": "새 노트",
       "newFolder": "새 폴더",
+      "expandSubfolders": "모든 하위 폴더 펼치기",
+      "collapseSubfolders": "모든 하위 폴더 접기",
       "rename": "이름 바꾸기",
+      "applyTemplate": "템플릿 적용",
+      "saveAsTemplate": "템플릿으로 저장",
       "openExternal": "외부 편집기에서 열기",
       "setDefaultTemplate": "기본 템플릿 설정",
       "clearDefaultTemplate": "기본 템플릿 지우기",
       "setIcon": "아이콘 설정",
       "removeIcon": "아이콘 제거",
-      "deleteSelectedNotes": "{count} 삭제 노트",
-      "deleteSelectedItems": "{count} 항목 삭제",
-      "bookmark": "북마크",
+      "deleteSelectedNotes": "노트 {count}개 삭제",
+      "deleteSelectedItems": "항목 {count}개 삭제",
+      "bookmark": "북마크에 추가",
       "removeFromBookmarks": "북마크에서 제거",
-      "applyTemplate": "템플릿 적용",
-      "saveAsTemplate": "템플릿으로 저장"
+      "journalSettings": "저널 설정…"
+    },
+    "nav": {
+      "label": "탐색",
+      "ariaExpanded": "탐색 섹션, 펼쳐짐",
+      "ariaCollapsed": "탐색 섹션, 접힘",
+      "saveFailed": "탐색 섹션 상태를 저장하지 못했습니다"
+    },
+    "viewOptions": {
+      "label": "보기 옵션",
+      "notesFirst": "노트를 폴더보다 먼저 표시",
+      "showFiles": "파일 표시",
+      "saveFailed": "사이드바 보기 옵션을 저장하지 못했습니다"
     },
     "deleteDialog": {
-      "noteTitle": "메모 삭제",
+      "noteTitle": "노트 삭제",
       "folderTitle": "폴더 삭제",
-      "itemsTitle": "{count} 항목 삭제",
-      "noteBody": "정말로 \"{name}\"을 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
-      "folderBody": "\"{name}\" 및 그 안의 모든 메모를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
-      "itemsBody": "{count} 항목을 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
+      "itemsTitle": "항목 {count}개 삭제",
+      "noteBody": "“{name}”을(를) 삭제하시겠습니까? 되돌릴 수 없습니다.",
+      "folderBody": "“{name}” 폴더와 그 안의 모든 노트를 삭제하시겠습니까? 되돌릴 수 없습니다.",
+      "itemsBody": "항목 {count}개를 삭제하시겠습니까? 되돌릴 수 없습니다.",
       "folderSuffix": "폴더",
-      "moreItems": "...그리고 {count} 더보기",
-      "deleting": "삭제 중...",
-      "deleteCount": "{count} 삭제"
+      "moreItems": "…외 {count}개",
+      "deleting": "삭제 중…",
+      "deleteCount": "{count}개 삭제"
     }
   },
   "editor": {
+    "bodySyncPending": "동기화 중 — 이 노트의 내용이 아직 도착하지 않았을 수 있습니다",
+    "taskRemoval": {
+      "title": "{count, plural, other {이 노트에서 작업 #개가 제거됨}}",
+      "description": "{count, plural, other {작업 페이지에 남겨 두시겠습니까, 아니면 모든 곳에서 삭제하시겠습니까?}}",
+      "keep": "작업에 남기기",
+      "delete": "{count, plural, other {작업 삭제}}",
+      "deleteFailed": "작업을 삭제하지 못했습니다. 작업 페이지에 그대로 남아 있습니다."
+    },
     "title": {
       "untitled": "제목 없음",
-      "aria": "메모 제목"
+      "aria": "노트 제목"
     },
     "content": {
-      "placeholder": "쓰기를 시작하거나 '/'를 눌러 명령을 실행하세요...",
-      "regionAria": "노트 편집자",
+      "placeholder": "내용을 입력하거나 '/'를 눌러 명령 사용…",
+      "regionAria": "노트 편집기",
       "richTextAria": "리치 텍스트 편집기",
       "headingPlaceholder": "제목",
       "listPlaceholder": "목록 항목",
       "todoPlaceholder": "할 일 항목"
     },
+    "table": {
+      "keyboardMenuAria": "{row}행 {column}열 표 메뉴",
+      "keyboardMenuTitle": "{row}행 · {column}열"
+    },
+    "list": {
+      "bulleted": "글머리 기호 목록",
+      "numbered": "번호 매기기 목록",
+      "checklist": "체크리스트"
+    },
+    "bulletFold": {
+      "collapse": "하위 항목 접기",
+      "expand": "하위 항목 펼치기"
+    },
     "toolbar": {
-      "reminderSet": "알림 설정",
-      "setReminder": "알림 설정",
-      "removeBookmark": "북마크 삭제",
+      "linkToNote": "노트에 링크",
+      "more": "더 보기",
+      "pinToTop": "도구 모음을 상단에 고정",
+      "reminderSet": "리마인더 설정됨",
+      "setReminder": "리마인더 설정",
+      "removeBookmark": "북마크 제거",
       "addBookmark": "북마크 추가",
-      "hideLocalGraph": "지역 그래프 숨기기",
-      "showLocalGraph": "지역 그래프 표시",
-      "versionHistory": "버전 기록",
-      "export": "수출",
-      "fullWidth": "전폭",
-      "disableLocalOnly": "로컬만 비활성화",
-      "setLocalOnly": "로컬만 설정",
-      "saveAsTemplate": "템플릿으로 저장",
-      "copyPath": "경로 복사",
-      "delete": "메모 삭제",
-      "find": "찾기…",
+      "showMindMap": "마인드맵 표시",
+      "hideMindMap": "마인드맵 숨기기",
+      "hideLocalGraph": "로컬 그래프 숨기기",
+      "showLocalGraph": "로컬 그래프 표시",
       "moreActions": "더 보기",
-      "moveToFolder": "폴더로 이동…",
+      "find": "찾기…",
+      "versionHistory": "버전 기록",
+      "export": "내보내기",
+      "saveAsTemplate": "템플릿으로 저장",
+      "fullWidth": "전체 너비",
       "rename": "이름 바꾸기…",
-      "revealInSidebar": "사이드바에서 보기"
+      "moveToFolder": "폴더로 이동…",
+      "copyPath": "경로 복사",
+      "revealInSidebar": "사이드바에서 보기",
+      "attachments": "첨부 파일…",
+      "disableLocalOnly": "로컬 전용 해제",
+      "setLocalOnly": "로컬 전용으로 설정",
+      "delete": "노트 삭제"
+    },
+    "attachmentMenu": {
+      "menuLabel": "파일 메뉴",
+      "storedAs": "저장된 이름: {name}",
+      "notSynced": "아직 이 기기에 동기화되지 않음",
+      "revealFailed": "파일 위치를 표시하지 못했습니다",
+      "openFailed": "파일을 열지 못했습니다",
+      "missingTitle": "첨부 파일을 찾을 수 없음",
+      "missingExpected": "필요한 파일: {name}"
+    },
+    "attachmentRename": {
+      "menuItem": "이름 바꾸기…",
+      "title": "첨부 파일 이름 바꾸기",
+      "description": "디스크와 다른 기기에서 파일 이름이 바뀝니다. 확장자는 그대로 유지됩니다.",
+      "fieldLabel": "첨부 파일 이름",
+      "confirm": "이름 바꾸기",
+      "renamed": "이름을 {name}(으)로 바꿨습니다",
+      "failed": "첨부 파일 이름을 바꾸지 못했습니다"
+    },
+    "attachmentsDialog": {
+      "title": "첨부 파일",
+      "description": "이 노트와 함께 저장된 파일",
+      "empty": "이 노트에는 첨부 파일이 없습니다.",
+      "loadFailed": "첨부 파일을 불러오지 못했습니다"
     },
     "breadcrumb": {
-      "locationAria": "위치 참고",
+      "locationAria": "노트 위치",
       "parentFolderAria": "상위 폴더로 이동"
     },
     "errorBoundary": {
-      "title": "편집자 오류",
-      "body": "편집자에게 오류가 발생했습니다. 귀하의 메모 내용은 안전합니다.",
-      "technicalDetails": "기술적인 세부사항",
+      "title": "편집기 오류",
+      "body": "편집기에 오류가 발생했습니다. 노트 내용은 안전합니다.",
+      "technicalDetails": "기술 세부 정보",
       "reloadAria": "편집기 새로고침",
       "reload": "편집기 새로고침"
     },
     "callout": {
-      "title": "설명선",
+      "title": "콜아웃",
       "group": "기본 블록",
       "subtext": "중요한 정보를 강조하세요",
       "changeType": "콜아웃 유형 변경",
@@ -132,30 +245,261 @@
       "warning": "경고",
       "error": "오류",
       "success": "성공"
+    },
+    "diagram": {
+      "title": "다이어그램",
+      "subtext": "Mermaid 소스로 만드는 순서도, 시퀀스 또는 간트 차트"
+    },
+    "math": {
+      "title": "수식",
+      "group": "기본 블록",
+      "subtext": "LaTeX로 수식 작성",
+      "empty": "수식 추가",
+      "edit": "수식 편집",
+      "placeholder": "E = mc^2",
+      "sourceLabel": "LaTeX 소스",
+      "hint": "LaTeX 형식입니다. 작성을 마치면 Escape 키를 누르세요."
+    },
+    "whiteboard": {
+      "title": "화이트보드",
+      "group": "미디어",
+      "subtext": "이 노트 안의 캔버스에 그리기",
+      "defaultName": "화이트보드",
+      "noteName": "{note} 화이트보드",
+      "untitled": "제목 없는 화이트보드",
+      "loading": "화이트보드 불러오는 중…",
+      "openInTab": "탭에서 열기",
+      "edit": "편집",
+      "done": "완료",
+      "surfaceLabel": "그림: {title}",
+      "createFailed": "화이트보드를 만들지 못했습니다. 노트에는 아무것도 추가되지 않았습니다.",
+      "loadFailed": "이 화이트보드를 불러오지 못했습니다. 그림 자체는 변경되지 않았습니다.",
+      "noCanvas": "이 화이트보드에는 캔버스가 없습니다. 블록을 제거하거나 /whiteboard로 새 블록을 추가하세요.",
+      "nested": "그림을 보려면 이 화이트보드를 별도 탭에서 여세요.",
+      "missingTitle": "이 화이트보드를 사용할 수 없습니다",
+      "missingBody": "캔버스가 삭제되었거나 아직 이 기기에 도착하지 않았습니다. 동기화 중이라면 완료되는 대로 여기에 표시됩니다.",
+      "unreadableTitle": "이 화이트보드를 여기서 열 수 없습니다",
+      "unreadableBody": "캔버스 파일이 볼트에 없거나 이 기기에서 읽을 수 없습니다. 삭제된 것은 없습니다.",
+      "disabledTitle": "캔버스가 꺼져 있습니다",
+      "disabledBody": "이 화이트보드를 보고 편집하려면 설정 › 기능에서 캔버스를 켜세요. 그림은 어느 경우에도 유지됩니다."
+    },
+    "viewBlock": {
+      "title": "보기",
+      "group": "삽입",
+      "subtext": "폴더, 태그 또는 볼트 전체의 노트를 실시간으로 보여 주는 목록",
+      "sourceMenu": "이 보기에 표시할 항목",
+      "chooseSource": "표시할 항목 선택",
+      "sourceVault": "모든 노트",
+      "sourceFolder": "폴더",
+      "sourceTag": "태그",
+      "noFolders": "아직 폴더가 없습니다",
+      "noTags": "아직 태그가 없습니다",
+      "savedView": "저장된 보기",
+      "savedViewMissing": "저장된 보기 “{name}”이(가) 없어 기본 보기를 표시합니다.",
+      "openAsTab": "탭으로 열기",
+      "empty": "아직 이 보기와 일치하는 항목이 없습니다.",
+      "loadFailed": "이 보기를 불러오지 못했습니다. 노트 자체는 변경되지 않았습니다.",
+      "folderMissing": "이 폴더가 더 이상 볼트에 없습니다. 다른 소스를 선택하세요.",
+      "invalidJson": "이 보기의 정의가 올바른 JSON이 아닙니다. 아래에서 수정하거나 블록을 제거하세요.",
+      "invalidShape": "이 보기의 정의에 소스가 없습니다. 위에서 선택하거나 아래에서 수정하세요.",
+      "definition": "정의"
+    },
+    "slashMenu": {
+      "aria": "블록 및 명령",
+      "groups": {
+        "recent": "최근",
+        "bestMatch": "가장 일치하는 항목",
+        "blocks": "블록",
+        "headings": "기타 제목",
+        "insert": "삽입",
+        "media": "미디어",
+        "ai": "AI"
+      },
+      "secondary": {
+        "asToggleHeading": "토글로",
+        "asLinkedTask": "링크된 작업으로",
+        "asReminder": "리마인더로"
+      },
+      "actions": {
+        "insert": "삽입",
+        "open": "열기"
+      },
+      "matchesAlias": "일치:",
+      "noMatch": "“{query}”와(과) 일치하는 블록이 없습니다",
+      "fallback": {
+        "linkTo": "링크:",
+        "askAI": "AI에게 묻기"
+      },
+      "pdf": {
+        "title": "PDF",
+        "subtext": "PDF를 첨부하고 노트 안에서 읽기"
+      },
+      "html": {
+        "title": "HTML 파일",
+        "subtext": ".html 파일을 임베드하고 노트 안에서 사용"
+      },
+      "linkToNote": {
+        "title": "노트에 링크",
+        "subtext": "노트 검색 — 또는 어디서나 [[ 입력"
+      },
+      "media": {
+        "title": "미디어",
+        "subtext": "이미지, 동영상 또는 오디오 파일 첨부"
+      },
+      "insertTemplate": {
+        "title": "템플릿 내용 삽입…",
+        "subtext": "커서 위치에 템플릿 본문만 추가",
+        "group": "템플릿",
+        "empty": "이 템플릿에는 삽입할 내용이 없습니다",
+        "failed": "템플릿을 삽입하지 못했습니다"
+      }
+    },
+    "filePanel": {
+      "choose": "파일 선택…"
+    },
+    "upload": {
+      "failed": "파일을 첨부하지 못했습니다"
+    },
+    "checkboxTask": {
+      "converted": "체크박스를 작업으로 바꿨습니다",
+      "hint": "새 체크박스는 작업이 됩니다. 체크박스로 유지하려면 {undo} 키를 누르세요.",
+      "keepAsCheckbox": "체크박스로 유지"
+    },
+    "obsidianTask": {
+      "refused": "이 줄에는 Obsidian이 줄 끝에 두어야 하는 ID, 종속성 또는 블록 링크가 있습니다. Obsidian에서 먼저 제거한 다음 변환하세요.",
+      "createFailed": "이 줄의 작업을 만들지 못했습니다.",
+      "completeFailed": "작업을 만들었지만 완료 날짜를 적용하지 못했습니다."
+    },
+    "blockMenu": {
+      "turnInto": "변환",
+      "turnIntoTypes": {
+        "paragraph": "텍스트",
+        "heading1": "제목 1",
+        "heading2": "제목 2",
+        "heading3": "제목 3",
+        "bulletList": "글머리 기호 목록",
+        "numberedList": "번호 매기기 목록",
+        "checkbox": "체크박스",
+        "task": "작업",
+        "toggleList": "토글 목록",
+        "quote": "인용",
+        "codeBlock": "코드",
+        "callout": "콜아웃"
+      },
+      "turnIntoCheckbox": "체크박스로 변환",
+      "colors": "색상",
+      "duplicate": "복제",
+      "insertTemplate": "템플릿 삽입…",
+      "moveTo": "이동…",
+      "delete": "삭제",
+      "comment": "댓글",
+      "moveDialog": {
+        "title": "블록을 노트로 이동",
+        "searchPlaceholder": "노트 검색…",
+        "noResults": "일치하는 노트 없음",
+        "moved": "블록을 “{title}”(으)로 이동했습니다",
+        "failed": "블록을 이동하지 못했습니다"
+      }
+    },
+    "attachmentPicker": {
+      "title": {
+        "image": "이미지 추가",
+        "media": "미디어 추가",
+        "pdf": "PDF 추가",
+        "html": "HTML 파일 임베드",
+        "file": "파일 추가"
+      },
+      "placeholder": {
+        "image": "이미지 검색 또는 새로 업로드…",
+        "media": "미디어 검색 또는 새로 업로드…",
+        "pdf": "PDF 검색 또는 새로 업로드…",
+        "html": "HTML 파일 검색 또는 새로 업로드…",
+        "file": "첨부 파일 검색 또는 새로 업로드…"
+      },
+      "upload": {
+        "image": "이미지 업로드…",
+        "media": "미디어 업로드…",
+        "pdf": "PDF 업로드…",
+        "html": "HTML 파일 업로드…",
+        "file": "파일 업로드…"
+      },
+      "empty": {
+        "image": "아직 이 볼트에 이미지가 없습니다.",
+        "media": "아직 이 볼트에 미디어가 없습니다.",
+        "pdf": "아직 이 볼트에 PDF가 없습니다.",
+        "html": "아직 이 볼트에 HTML 파일이 없습니다.",
+        "file": "아직 이 볼트에 첨부 파일이 없습니다."
+      },
+      "addHeading": "추가",
+      "vaultHeading": "이 볼트",
+      "uploading": "업로드 중…",
+      "noMatches": "일치하는 항목이 없습니다.",
+      "loadFailed": "볼트의 첨부 파일을 불러오지 못했습니다",
+      "insertFailed": "첨부 파일을 삽입하지 못했습니다",
+      "uploadFailed": "파일을 업로드하지 못했습니다",
+      "unsupportedVideo": "이 동영상 형식은 Memry에서 재생할 수 없습니다. 지원 형식: {formats}.",
+      "tooLarge": "파일 크기({size})가 첨부 파일 한도({limit})를 초과합니다.",
+      "hint": {
+        "navigate": "이동",
+        "insert": "삽입",
+        "close": "닫기"
+      }
+    },
+    "codeBlock": {
+      "copy": "코드 복사",
+      "copied": "복사됨",
+      "language": "언어"
     }
+  },
+  "dateMention": {
+    "dateInput": "날짜",
+    "time": "시간",
+    "includeTime": "시간 포함",
+    "timeFormat": "시간 형식",
+    "dateFormat": "날짜 형식",
+    "remind": "리마인더",
+    "clear": "지우기"
   },
   "menus": {
     "wiki": {
-      "aria": "메모 제안",
-      "loading": "메모 로드 중...",
-      "empty": "메모를 찾을 수 없습니다.",
-      "create": "새 메모 만들기",
+      "aria": "노트 제안",
+      "loading": "노트 불러오는 중…",
+      "empty": "노트를 찾을 수 없습니다",
+      "create": "새 노트 만들기",
       "embed": "임베드",
-      "embedAria": "{title} 임베드",
       "wikiLink": "위키 링크",
-      "wikiLinkAria": "위키 링크 {title}"
+      "embedAria": "{title} 임베드",
+      "wikiLinkAria": "위키 링크 {title}",
+      "noHeadings": "{title}에 제목이 없습니다",
+      "noMatchingHeadings": "{title}에 일치하는 제목이 없습니다",
+      "displayAs": "표시 텍스트",
+      "aliasHint": "|를 입력해 링크 이름 지정"
+    },
+    "mention": {
+      "aria": "날짜 및 노트 제안",
+      "loading": "노트 불러오는 중…",
+      "empty": "노트를 찾을 수 없습니다",
+      "date": "날짜",
+      "now": "지금",
+      "remindMe": "리마인더 설정",
+      "dateHint": "날짜를 계속 입력하세요…",
+      "showMore": "더 보기",
+      "canvases": "캔버스",
+      "choiceTitle": "캔버스 삽입 방식",
+      "choiceMention": "멘션",
+      "choiceEmbed": "임베드"
     },
     "tags": {
       "aria": "태그 제안",
-      "loading": "태그 로드 중...",
-      "empty": "새 태그를 만들려면 입력하세요.",
+      "loading": "태그 불러오는 중…",
+      "empty": "새 태그를 만들려면 입력하세요",
       "create": "#{tag} 생성"
     },
     "pasteLink": {
       "title": "다음으로 붙여넣기",
       "url": "URL",
-      "mention": "언급",
-      "embedVideo": "비디오 삽입",
+      "mention": "멘션",
+      "embedVideo": "동영상 임베드",
       "bookmark": "북마크"
     },
     "emoji": {
@@ -164,34 +508,47 @@
       "iconsTab": "아이콘",
       "searchPlaceholder": "검색",
       "noIcons": "아이콘을 찾을 수 없습니다",
-      "clearSearch": "검색 지우기"
-    },
-    "mention": {
-      "aria": "날짜 및 노트 제안",
-      "date": "날짜",
-      "dateHint": "날짜를 계속 입력하세요…",
-      "empty": "노트를 찾을 수 없습니다",
-      "loading": "노트 불러오는 중...",
-      "remindMe": "나에게 알림",
-      "showMore": "더 보기"
+      "clearSearch": "검색 지우기",
+      "customTab": "사용자 지정",
+      "custom": {
+        "searchPlaceholder": "내 아이콘 검색",
+        "dropHint": "이미지를 끌어다 놓거나 클릭하여 업로드",
+        "urlPlaceholder": "또는 이미지 링크 붙여넣기",
+        "urlLabel": "이미지 링크",
+        "urlSubmit": "이 이미지 다운로드",
+        "downloading": "다운로드 중…",
+        "adding": "추가 중…",
+        "empty": "아직 사용자 지정 아이콘이 없습니다. 이미지를 끌어다 놓거나 링크를 붙여넣어 추가하세요.",
+        "noMatches": "검색과 일치하는 사용자 지정 아이콘이 없습니다",
+        "unsupportedFile": "{name}은(는) 지원되지 않는 이미지입니다",
+        "addFailed": "아이콘을 추가하지 못했습니다",
+        "deleteFailed": "아이콘을 삭제하지 못했습니다",
+        "renameFailed": "아이콘 이름을 바꾸지 못했습니다",
+        "rename": "{name} 이름 바꾸기",
+        "delete": "{name} 삭제",
+        "renameLabel": "아이콘 이름",
+        "saveName": "이름 저장",
+        "cancelRename": "이름 바꾸기 취소",
+        "addUrlFailed": "이미지를 다운로드하지 못했습니다"
+      }
     }
   },
   "outline": {
-    "title": "개요",
-    "aria": "문서개요",
-    "empty": "제목 없음",
-    "emptyYet": "아직 제목이 없습니다.",
-    "readTime": "{count}분 읽기",
-    "words": "{count} 단어",
+    "title": "목차",
+    "aria": "문서 목차",
+    "empty": "표시할 제목 없음",
+    "emptyYet": "아직 제목이 없습니다",
+    "readTime": "읽는 시간 {count}분",
+    "words": "단어 {count}개",
     "created": "생성됨",
     "modified": "수정됨"
   },
   "backlinks": {
     "sortRecent": "최근",
-    "sortAlpha": "AZ",
+    "sortAlpha": "A-Z",
     "sortMentions": "가장 많이 언급됨",
-    "sortBy": "{sort}를 기준으로 백링크 정렬",
-    "summary": "{notes} 노트 · {references} 참조",
+    "sortBy": "백링크 정렬 기준: {sort}",
+    "summary": "노트 {notes}개 · 참조 {references}개",
     "sectionAria": "백링크",
     "listAria": "백링크 목록",
     "fromAria": "{title}의 백링크",
@@ -199,32 +556,101 @@
     "expand": "펼치기",
     "collapseSection": "백링크 섹션 접기",
     "expandSection": "백링크 섹션 펼치기",
-    "showMore": "{count} 더 많은 백링크 표시",
-    "more": "{count} 더 보기"
+    "showMore": "백링크 {count}개 더 보기",
+    "more": "{count}개 더 보기",
+    "viaProperty": "{property} → {title}"
+  },
+  "outgoingLinks": {
+    "summary": "{count, plural, other {나가는 링크 #개}}",
+    "sectionAria": "나가는 링크",
+    "unresolved": "아직 만들지 않음",
+    "showMore": "나가는 링크 {count}개 더 보기",
+    "more": "{count}개 더 보기"
+  },
+  "canvasLinks": {
+    "connectedOn": "{canvas}에서 연결됨",
+    "untitledCanvas": "제목 없는 캔버스"
+  },
+  "similarNotes": {
+    "summary": "{count, plural, other {유사한 노트 #개}}",
+    "sectionAria": "유사한 노트",
+    "hint": "이 노트와 내용이 비슷하지만 아직 링크되지 않은 노트입니다. 이 기기의 로컬 임베딩으로 찾았습니다.",
+    "addLink": "이 노트에서 링크",
+    "addLinkAria": "이 노트에 {title} 링크 추가",
+    "linked": "{title}을(를) 링크했습니다",
+    "addToCanvas": "캔버스에 추가",
+    "addToCanvasAria": "{title}을(를) 캔버스에 추가",
+    "searchCanvases": "캔버스 검색…",
+    "canvasLoading": "캔버스 불러오는 중…",
+    "noCanvases": "아직 캔버스가 없습니다",
+    "noMatch": "일치하는 캔버스 없음",
+    "addedToCanvas": "{title}을(를) {canvas}에 추가했습니다",
+    "alreadyOnCanvas": "{title}은(는) 이미 {canvas}에 있습니다",
+    "openCanvas": "열기",
+    "addToCanvasFailed": "노트를 캔버스에 추가하지 못했습니다"
+  },
+  "suggestedTags": {
+    "label": "추천 태그:",
+    "hint": "이 노트와 가장 비슷한 노트에서 함께 쓰인 태그입니다. 선택하기 전에는 아무것도 추가되지 않습니다.",
+    "acceptAria": "{tag} 태그 추가",
+    "support": "{count, plural, other {유사한 노트 #개에서 사용}}",
+    "dismiss": "추천 태그 숨기기",
+    "failed": "태그를 추가하지 못했습니다"
+  },
+  "comments": {
+    "railAria": "댓글",
+    "badgeAria": "{count, plural, other {댓글 #개}}",
+    "toolbarComment": "댓글",
+    "commentPlaceholder": "댓글 추가…",
+    "createdTooltip": "{date} {time}에 생성됨",
+    "cancel": "취소",
+    "resolve": "해결",
+    "edit": "댓글 편집",
+    "delete": "댓글 삭제",
+    "replyPlaceholder": "답글 입력…",
+    "attachAria": "파일 첨부",
+    "mentionAria": "사람, 페이지 또는 날짜 멘션",
+    "sendAria": "댓글 보내기",
+    "formatToolbarAria": "텍스트 서식",
+    "format": {
+      "bold": "굵게",
+      "italic": "기울임꼴",
+      "underline": "밑줄",
+      "strike": "취소선",
+      "code": "코드"
+    },
+    "openImageAria": "이미지 {name} 열기",
+    "openAttachmentAria": "첨부 파일 {name} 열기",
+    "kind": {
+      "comment": "댓글",
+      "addition": "추가",
+      "deletion": "삭제",
+      "substitution": "대체"
+    }
   },
   "tagsRow": {
     "aria": "태그",
     "empty": "태그 추가",
     "add": "태그 추가",
     "removeAria": "태그 제거: {tag}",
-    "inputPlaceholder": "태그 이름 입력...",
+    "inputPlaceholder": "태그 이름 입력…",
     "recent": "최근",
-    "matching": "매칭",
+    "matching": "일치 항목",
     "all": "모든 태그",
-    "none": "태그를 찾을 수 없습니다.",
-    "createTag": "태그 생성: \"{tag}\"",
+    "none": "태그를 찾을 수 없습니다",
+    "createTag": "태그 만들기: “{tag}”",
     "chooseColor": "색상 선택:",
     "preview": "미리보기:",
-    "colorAria": "{color} 색상을 선택하세요",
+    "colorAria": "{color} 색상 선택",
     "customColor": "사용자 지정 색상"
   },
   "properties": {
     "title": "속성",
     "noteAria": "노트 속성",
-    "workspaceAria": "작업공간 속성",
+    "workspaceAria": "워크스페이스 속성",
     "listAria": "속성 목록",
     "add": "속성 추가",
-    "addDescription": "이 메모에 새 속성을 추가하세요.",
+    "addDescription": "이 노트에 새 속성 추가",
     "namePlaceholder": "속성 이름",
     "nameAria": "속성 이름",
     "typeSection": "유형",
@@ -232,51 +658,85 @@
     "dragAria": "드래그하여 속성 재정렬",
     "editName": "속성 이름 수정",
     "delete": "속성 삭제",
-    "searchOptions": "검색 옵션...",
+    "searchOptions": "옵션 검색…",
     "noOptions": "아직 옵션이 없습니다",
     "optionName": "옵션 이름",
     "newOption": "새로운 옵션",
-    "ratingAria": "등급",
+    "ratingAria": "평점",
     "openUrlAria": "URL 열기",
+    "showOnCalendar": "캘린더에 표시",
+    "showingOnCalendar": "캘린더에 표시 중",
+    "relation": {
+      "deleted": "삭제됨",
+      "removeAria": "{title} 제거",
+      "addAria": "관계 추가",
+      "searchPlaceholder": "노트, 작업, 일정, 캔버스, 저널 검색…",
+      "groupNotes": "노트 및 파일",
+      "groupTasks": "작업",
+      "groupEvents": "일정",
+      "groupCanvases": "캔버스",
+      "groupJournals": "저널",
+      "empty": "결과 없음"
+    },
     "types": {
       "text": "텍스트",
-      "number": "번호",
+      "number": "숫자",
       "date": "날짜",
       "checkbox": "체크박스",
       "url": "URL",
       "status": "상태",
       "select": "선택",
-      "multiselect": "다중 선택"
+      "multiselect": "다중 선택",
+      "relation": "관계",
+      "project": "프로젝트"
     },
-    "showOnCalendar": "캘린더에 표시",
-    "showingOnCalendar": "캘린더에 표시 중",
     "statusCategories": {
-      "done": "완료",
+      "todo": "할 일",
       "inProgress": "진행 중",
-      "todo": "할 일"
-    }
+      "done": "완료"
+    },
+    "projectAlreadySet": "이 노트에는 이미 프로젝트 속성이 있습니다",
+    "projectPlaceholder": "프로젝트 없음",
+    "projectSearch": "프로젝트 검색",
+    "projectEmpty": "프로젝트 없음",
+    "projectRemove": "{name}에서 제거"
+  },
+  "moveNoteTasks": {
+    "title": "이 노트의 작업을 이동하시겠습니까?",
+    "description": "{count, plural, other {이 노트의 작업 #개가 다른 프로젝트에 속해 있습니다}}. {project}(으)로 이동하시겠습니까?",
+    "subtaskNote": "하위 작업은 상위 작업과 함께 이동합니다.",
+    "cancel": "그대로 두기",
+    "confirm": "{count, plural, other {작업 이동}}",
+    "success": "{count, plural, other {작업 #개를 {project}(으)로 이동했습니다}}",
+    "failed": "노트의 작업을 이동하지 못했습니다"
+  },
+  "deleteNoteTasks": {
+    "label": "{count, plural, other {안에 있는 작업 #개도 삭제}}",
+    "description": "{count, plural, other {선택하지 않으면 작업 페이지에 그대로 남습니다.}}",
+    "failed": "작업을 삭제하지 못했습니다. 작업 페이지에 그대로 남아 있습니다."
   },
   "cover": {
     "add": "커버 추가",
     "change": "커버 변경",
     "remove": "커버 제거",
     "alt": "커버 이미지",
-    "setFailed": "커버 이미지를 설정할 수 없습니다",
-    "removeFailed": "커버 이미지를 제거할 수 없습니다",
+    "setFailed": "커버 이미지를 설정하지 못했습니다",
+    "removeFailed": "커버 이미지를 제거하지 못했습니다",
     "reposition": "위치 조정",
     "repositionHint": "드래그하여 위치 조정",
     "repositionSave": "저장",
     "repositionCancel": "취소",
     "credit": "{name}님의 사진 (Unsplash)",
-    "focusFailed": "커버 이미지 위치를 저장할 수 없습니다",
+    "focusFailed": "커버 이미지 위치를 저장하지 못했습니다",
     "picker": {
-      "title": "메모 커버",
+      "title": "노트 커버",
       "placeholder": "커버 검색",
       "tab": {
         "washes": "색상",
         "photos": "Unsplash",
-        "fromNote": "메모에서",
-        "upload": "업로드"
+        "fromNote": "노트에서",
+        "upload": "업로드",
+        "link": "링크"
       },
       "photos": {
         "searching": "Unsplash에서 검색 중…",
@@ -288,16 +748,16 @@
           "offline": "Unsplash에 연결할 수 없습니다",
           "rateLimited": "Unsplash 요청이 제한되었습니다. 잠시 후 다시 시도하세요",
           "failed": "Unsplash에 연결할 수 없습니다",
-          "writeFailed": "해당 사진을 금고에 저장할 수 없습니다"
+          "writeFailed": "사진을 볼트에 저장하지 못했습니다"
         }
       },
       "upload": "업로드",
       "uploading": "업로드 중…",
-      "uploadFailed": "커버 이미지를 업로드할 수 없습니다",
-      "loadFailed": "금고의 이미지를 불러올 수 없습니다",
-      "insertFailed": "해당 이미지를 커버로 사용할 수 없습니다",
+      "uploadFailed": "커버 이미지를 업로드하지 못했습니다",
+      "loadFailed": "볼트의 이미지를 불러오지 못했습니다",
+      "insertFailed": "이 이미지를 커버로 사용하지 못했습니다",
       "noMatches": "일치하는 항목 없음",
-      "empty": "이 금고에는 아직 이미지가 없습니다",
+      "empty": "이 볼트에는 아직 이미지가 없습니다",
       "hint": {
         "apply": "적용",
         "applyReposition": "적용 후 위치 조정",
@@ -308,35 +768,48 @@
         "sand": "모래",
         "lilac": "라일락",
         "clay": "점토",
-        "ash": "재",
+        "ash": "잿빛",
         "fog": "안개",
-        "wheat": "밀",
+        "wheat": "밀빛",
         "moss": "이끼",
         "slate": "슬레이트",
         "bark": "나무껍질",
         "mist": "물안개",
         "plum": "자두"
+      },
+      "link": {
+        "prompt": "이미지 링크 붙여넣기",
+        "invalid": "Memry에서 열 수 있는 링크가 아닙니다",
+        "use": "이 이미지 사용",
+        "saving": "이미지 저장 중…",
+        "error": {
+          "notAnImage": "이 링크는 이미지를 가리키지 않습니다",
+          "tooLarge": "이미지가 너무 커서 저장할 수 없습니다",
+          "offline": "링크에 연결할 수 없습니다",
+          "failed": "이미지를 다운로드하지 못했습니다",
+          "writeFailed": "이미지를 볼트에 저장하지 못했습니다"
+        }
       }
     }
   },
   "templateSelector": {
-    "title": "캔버스를 선택하세요",
-    "description": "메모를 시작하려면 템플릿을 선택하세요.",
-    "searchPlaceholder": "템플릿 검색...",
-    "loading": "템플릿 로드 중...",
-    "empty": "템플릿을 찾을 수 없습니다.",
+    "title": "시작할 템플릿 선택",
+    "description": "노트를 시작할 템플릿을 선택하세요",
+    "searchPlaceholder": "템플릿 검색…",
+    "loading": "템플릿 불러오는 중…",
+    "empty": "템플릿을 찾을 수 없습니다",
     "myTemplates": "내 템플릿",
-    "essentials": "필수사항",
+    "essentials": "기본 제공",
     "setFolderDefault": "폴더 기본값으로 설정",
     "useTemplate": "템플릿 사용",
-    "createNote": "메모 작성",
-    "applyDescription": "이 메모의 내용을 템플릿으로 바꿉니다",
+    "createNote": "노트 만들기",
+    "applyToNote": "템플릿 적용",
     "applyTitle": "템플릿 적용",
-    "applyToNote": "템플릿 적용"
+    "applyDescription": "이 노트의 내용을 템플릿으로 바꿉니다"
   },
   "exportDialog": {
     "title": "노트 내보내기",
-    "description": "\"{title}\"를 파일로 내보내기",
+    "description": "“{title}”을(를) 파일로 내보내기",
     "format": "형식",
     "pdfDescription": "인쇄 가능한 문서",
     "htmlDescription": "웹용 파일",
@@ -344,39 +817,39 @@
     "selectPageSize": "페이지 크기 선택",
     "options": "옵션",
     "includeMetadata": "메타데이터(태그, 날짜) 포함",
-    "exporting": "내보내는 중...",
+    "exporting": "내보내는 중…",
     "exported": "내보냈습니다!",
-    "export": "수출",
+    "export": "내보내기",
     "toast": {
       "failed": "내보내기 실패"
     }
   },
   "versionHistory": {
     "title": "버전 기록",
-    "description": "\"{title}\"의 이전 버전 보기 및 복원",
+    "description": "“{title}”의 이전 버전 보기 및 복원",
     "hidePreview": "미리보기 숨기기",
     "showPreview": "미리보기 표시",
-    "empty": "아직 저장된 버전이 없습니다.",
-    "emptyDescription": "중요한 변경사항이 있으면 버전이 자동으로 저장됩니다.",
+    "empty": "아직 저장된 버전이 없습니다",
+    "emptyDescription": "크게 변경하면 버전이 자동으로 저장됩니다",
     "latest": "최신",
     "autoSaved": "자동 저장됨",
-    "words": "{count} 단어",
-    "selectPrompt": "미리 볼 버전을 선택하세요.",
+    "words": "단어 {count}개",
+    "selectPrompt": "미리 볼 버전을 선택하세요",
     "restore": "복원",
     "deleteTitle": "이 버전을 삭제하시겠습니까?",
-    "deleteDescription": "이 작업은 취소할 수 없습니다. 이 버전은 영구적으로 삭제됩니다.",
+    "deleteDescription": "되돌릴 수 없습니다. 이 버전은 영구적으로 삭제됩니다.",
     "restoreTitle": "이 버전을 복원하시겠습니까?",
-    "restoreDescription": "현재 메모 내용이 이 버전으로 대체됩니다. 현재 상태의 스냅샷이 먼저 저장되므로 이 작업을 실행취소할 수 있습니다.",
-    "restoring": "복원 중...",
+    "restoreDescription": "현재 노트 내용이 이 버전으로 바뀝니다. 현재 상태의 스냅샷을 먼저 저장하므로 복원을 실행 취소할 수 있습니다.",
+    "restoring": "복원 중…",
     "toast": {
-      "loadPreviewFailed": "버전 미리보기를 로드하지 못했습니다.",
-      "restored": "이전 버전으로 복원된 메모",
-      "deleted": "버전이 삭제되었습니다."
+      "loadPreviewFailed": "버전 미리보기를 불러오지 못했습니다",
+      "restored": "노트를 이전 버전으로 복원했습니다",
+      "deleted": "버전을 삭제했습니다"
     }
   },
   "templateEditor": {
     "loading": "템플릿 불러오는 중…",
-    "copySuffix": "{name} (복사)",
+    "copySuffix": "{name} 사본",
     "title": {
       "new": "새 템플릿",
       "placeholder": "템플릿 이름"
@@ -385,7 +858,7 @@
       "label": "템플릿 아이콘"
     },
     "content": {
-      "placeholder": "이 템플릿으로 만든 노트의 기본 내용입니다. '{{'title'}}' 을 사용하면 노트 제목이 삽입됩니다."
+      "placeholder": "이 템플릿으로 만든 노트의 기본 내용입니다. 노트 제목을 넣으려면 '{{'title'}}'을 사용하세요."
     },
     "actions": {
       "create": "템플릿 만들기",
@@ -393,42 +866,47 @@
       "duplicateAndEdit": "복제 후 편집",
       "duplicate": "복제",
       "delete": "템플릿 삭제",
-      "more": "추가 작업"
+      "more": "더 보기"
     },
     "toast": {
-      "createFailed": "템플릿을 생성하지 못했습니다.",
-      "saveFailed": "템플릿을 저장하지 못했습니다."
+      "createFailed": "템플릿을 만들지 못했습니다",
+      "saveFailed": "템플릿을 저장하지 못했습니다"
     }
   },
   "reminders": {
-    "summary": "알림: {date}",
-    "summaryWithMore": "알림: {date}(+{count} 이상)",
-    "hasReminders": "알림 있음",
-    "setReminder": "알림 설정",
+    "summary": "리마인더: {date}",
+    "summaryWithMore": "리마인더: {date} 외 {count}개",
+    "hasReminders": "리마인더 있음",
+    "setReminder": "리마인더 설정",
     "toast": {
-      "set": "알림 설정",
-      "setFailed": "알림을 설정하지 못했습니다.",
-      "deleted": "알림이 삭제되었습니다.",
-      "deleteFailed": "알림을 삭제하지 못했습니다.",
-      "dismissed": "알림이 해제되었습니다.",
-      "dismissFailed": "알림을 닫지 못했습니다."
+      "set": "리마인더를 설정했습니다",
+      "setFailed": "리마인더를 설정하지 못했습니다",
+      "deleted": "리마인더를 삭제했습니다",
+      "deleteFailed": "리마인더를 삭제하지 못했습니다",
+      "dismissed": "리마인더를 닫았습니다",
+      "dismissFailed": "리마인더를 닫지 못했습니다",
+      "updated": "리마인더를 업데이트했습니다",
+      "updateFailed": "리마인더를 업데이트하지 못했습니다"
     }
   },
   "linkedTasks": {
-    "title": "연결된 작업",
-    "loading": "연결된 작업 로드 중..."
+    "title": "링크된 작업",
+    "loading": "링크된 작업 불러오는 중…"
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "열을 재정렬하려면 드래그하세요.",
+      "dragToReorderColumn": "드래그하여 열 순서 변경",
       "editColumnName": "열 이름 편집"
     },
     "componentsFolderViewColumnSelector": {
       "properties": "속성",
-      "searchColumns": "열 검색...",
-      "noMatchingColumns": "일치하는 열이 없습니다.",
-      "formulas": "공식",
-      "noFormulasDefined": "정의된 수식이 없습니다.",
+      "display": "표시",
+      "showSummaries": "요약 표시",
+      "columnBorders": "열 테두리",
+      "searchColumns": "열 검색…",
+      "noMatchingColumns": "일치하는 열이 없습니다",
+      "formulas": "수식",
+      "noFormulasDefined": "정의된 수식이 없습니다",
       "addFormula": "수식 추가",
       "deleteFormula": "수식 삭제",
       "cancel": "취소",
@@ -436,24 +914,21 @@
       "none": "없음",
       "edit": "편집",
       "delete2": "삭제",
-      "columnBorders": "열 테두리",
-      "display": "표시",
-      "showSummaries": "요약 표시",
-      "deleteFormulaBody": "수식 “{name}”을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+      "deleteFormulaBody": "수식 “{name}”을(를) 삭제하시겠습니까? 되돌릴 수 없습니다."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "필터",
       "filters": "필터",
       "clearAll": "모두 지우기",
-      "noFiltersApplied": "필터가 적용되지 않았습니다.",
-      "addFiltersToNarrowDownYourNotes": "필터를 추가하여 메모 범위를 좁히세요",
-      "match": "경기",
+      "noFiltersApplied": "적용된 필터 없음",
+      "addFiltersToNarrowDownYourNotes": "필터를 추가하여 노트 범위를 좁히세요",
+      "match": "일치 조건",
       "allAnd": "모두(AND)",
-      "anyOr": "모두(OR)",
+      "anyOr": "하나라도(OR)",
       "ofTheFollowing": "다음 중:",
-      "match2": "경기",
+      "match2": "일치 조건",
       "all": "모두",
-      "any": "모두",
+      "any": "하나라도",
       "of": ":",
       "addCondition": "조건 추가",
       "addFilter": "필터 추가",
@@ -464,94 +939,96 @@
     "componentsFolderViewFilterRow": {
       "builtIn": "내장",
       "properties": "속성",
-      "placeholderProperty": "재산",
-      "placeholderOperator": "운영자",
-      "placeholderValue": "가치",
-      "removeFilter": "필터 제거"
+      "placeholderProperty": "속성",
+      "placeholderOperator": "연산자",
+      "placeholderValue": "값",
+      "removeFilter": "필터 제거",
+      "tagSuggestions": "태그 제안"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "메모 테이블",
+      "notesTable": "노트 표",
       "selectAll": "모든 노트 선택",
       "selectRow": "노트 선택",
       "kind": {
-        "Inbox": "받은함",
-        "Note": "메모",
-        "Task": "작업"
+        "Note": "노트",
+        "Task": "작업",
+        "Inbox": "수신함"
       }
     },
     "componentsFolderViewFolderViewToolbar": {
-      "searchNotes": "메모 검색...",
+      "searchNotes": "노트 검색…",
       "clearSearch": "검색 지우기"
     },
     "componentsFolderViewFormulaEditorModal": {
       "defineAComputedColumnUsingAnExpression": "표현식을 사용하여 계산 열을 정의합니다.",
       "name": "이름",
-      "expression": "표현",
+      "expression": "표현식",
       "available": "사용 가능: ",
       "preview": "미리보기",
-      "fixExpressionErrorsToSeePreview": "미리보기를 보려면 표현식 오류를 수정하세요.",
-      "usingNote": "메모 사용: \"",
+      "fixExpressionErrorsToSeePreview": "미리보기를 보려면 표현식 오류를 수정하세요",
+      "usingNote": "사용 중인 노트: “",
       "cancel": "취소",
       "namePlaceholder": "days_until_due",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"일\")",
-      "usingNoteTitle": "사용 중인 메모: “{title}”"
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "사용 중인 노트: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
-      "clearGrouping": "그룹화 지우기",
-      "searchProperties": "속성 검색...",
+      "clearGrouping": "그룹화 해제",
+      "searchProperties": "속성 검색…",
       "builtIn": "내장",
       "properties": "속성",
-      "noGroupablePropertiesFound": "그룹화 가능한 속성을 찾을 수 없습니다.",
+      "noGroupablePropertiesFound": "그룹화할 수 있는 속성이 없습니다",
       "sortDirection": "정렬 방향",
       "collapseGroupsByDefault": "기본적으로 그룹 축소",
       "showGroupSummaries": "그룹 요약 표시",
-      "clearGrouping2": "그룹화 지우기"
+      "clearGrouping2": "그룹화 해제"
     },
     "componentsFolderViewGroupedTable": {
-      "groupedNotesTable": "그룹화된 노트 테이블",
+      "groupedNotesTable": "그룹화된 노트 표",
       "more": "더",
       "selectAll": "모든 노트 선택",
       "selectRow": "노트 선택"
     },
     "componentsFolderViewMoveToFolderDialog": {
-      "searchFolders": "폴더 검색...",
-      "loadingFolders": "폴더 로드 중...",
+      "searchFolders": "폴더 검색…",
+      "loadingFolders": "폴더 불러오는 중…",
       "suggested": "제안",
-      "bestMatch": "최고의 일치",
+      "bestMatch": "가장 일치하는 항목",
       "current": "현재)",
       "allFolders": "모든 폴더",
-      "noFoldersMatch": "\"와(과) 일치하는 폴더가 없습니다.",
-      "create": "\" 만들기",
+      "noFoldersMatch": "일치하는 폴더 없음: \"",
+      "create": "만들기: \"",
       "cancel": "취소",
-      "createFolderNamed": "“{name}” 만들기",
       "currentFolderBadge": "(현재)",
-      "noFoldersMatchQuery": "“{query}”와 일치하는 폴더가 없습니다"
+      "noFoldersMatchQuery": "“{query}”와(과) 일치하는 폴더가 없습니다",
+      "createFolderNamed": "“{name}” 만들기"
     },
     "componentsFolderViewRowContextMenu": {
-      "delete": "삭제 ",
-      "notes": "메모",
+      "delete": "노트 삭제: ",
+      "notes": "개",
       "open": "열기",
       "openInExternalEditor": "외부 편집기에서 열기",
-      "revealInSidebar": "사이드바에 공개",
+      "revealInSidebar": "사이드바에서 보기",
       "copyLink": "링크 복사",
       "delete2": "삭제"
     },
     "componentsFolderViewSortableColumnHeader": {
-      "dragToReorderColumn": "열을 재정렬하려면 드래그하세요.",
+      "dragToReorderColumn": "드래그하여 열 순서 변경",
       "resizeColumn": "열 크기 조정",
       "editColumnName": "열 이름 편집"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "기본값",
+      "viewActions": "보기 메뉴",
       "rename": "이름 바꾸기",
-      "duplicate": "중복",
+      "duplicate": "복제",
       "setAsDefault": "기본값으로 설정",
       "delete": "삭제",
       "createNewView": "새 보기 만들기",
       "createNewView2": "새 보기 만들기",
       "createANewViewWithCustomColumnsFiltersAndSorting": "맞춤 열, 필터, 정렬을 사용하여 새 보기를 만듭니다.",
       "viewName": "보기 이름",
-      "myCustomView": "내 사용자 정의 보기",
+      "myCustomView": "내 사용자 지정 보기",
       "baseConfiguration": "기본 구성",
       "copyFromCurrentView": "현재 보기에서 복사",
       "startFreshDefaultColumns": "새로 시작(기본 열)",
@@ -559,39 +1036,39 @@
       "renameView": "보기 이름 바꾸기",
       "enterANewNameForThisView": "이 보기의 새 이름을 입력하세요.",
       "viewName2": "보기 이름",
-      "viewName3": "이름 보기",
+      "viewName3": "보기 이름",
       "cancel2": "취소",
       "deleteView": "보기 삭제",
-      "areYouSureYouWantToDelete": "정말 삭제하시겠습니까?",
-      "thisActionCannotBeUndone": "이 작업은 취소할 수 없습니다.",
+      "areYouSureYouWantToDelete": "다음 보기를 삭제하시겠습니까: \"",
+      "thisActionCannotBeUndone": "되돌릴 수 없습니다.",
       "cancel3": "취소",
-      "createView": "보기 만들기",
-      "gallery": "갤러리",
-      "layout": "레이아웃",
-      "list": "목록",
-      "name": "이름",
       "newView": "새 보기",
-      "save": "저장",
+      "name": "이름",
+      "layout": "레이아웃",
       "table": "표",
-      "viewActions": "보기 작업"
+      "list": "목록",
+      "gallery": "갤러리",
+      "createView": "보기 만들기",
+      "save": "저장"
     },
     "componentsNoteContentAreaFileBlock": {
-      "failedToLoadPdf": "PDF를 로드하지 못했습니다: ",
+      "failedToLoadPdf": "PDF를 불러오지 못했습니다: ",
       "download": "다운로드",
       "download2": "다운로드",
       "noFileAttached": "첨부된 파일 없음",
-      "alignCenter": "가운데 정렬",
+      "resizePdf": "PDF 크기 조정",
+      "resizeHtml": "HTML 임베드 크기 조정",
       "alignLeft": "왼쪽 정렬",
+      "alignCenter": "가운데 정렬",
       "alignRight": "오른쪽 정렬",
-      "nextPage": "다음 페이지",
       "previousPage": "이전 페이지",
-      "resizePdf": "PDF 크기 조정"
+      "nextPage": "다음 페이지"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "작업 패널에서 열기",
-      "taskName": "작업 이름...",
-      "taskDeleted": "작업이 삭제되었습니다.",
-      "loading": "로드 중..."
+      "taskName": "작업 이름…",
+      "taskDeleted": "작업이 삭제됨",
+      "loading": "불러오는 중…"
     },
     "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
       "project": "프로젝트",
@@ -617,326 +1094,341 @@
     },
     "componentsSharedDocumentInfoTab": {
       "words": "단어",
-      "characters": "캐릭터",
-      "readingTime": "독서시간",
+      "characters": "문자",
+      "readingTime": "읽는 시간",
       "created": "생성됨",
       "modified": "수정됨"
     },
     "componentsSidebarProjectsEmptyState": {
-      "noProjectsYet": "아직 프로젝트가 없습니다.",
+      "noProjectsYet": "아직 프로젝트가 없습니다",
       "createYourFirstProject": "첫 번째 프로젝트 만들기",
       "createYourFirstProject2": "첫 번째 프로젝트 만들기"
     },
     "componentsSidebarSidebarBookmarkList": {
-      "loadingBookmarks": "북마크 로드 중...",
-      "failedToLoadBookmarks": "북마크를 로드하지 못했습니다.",
-      "noBookmarksYet": "아직 북마크가 없습니다.",
+      "loadingBookmarks": "북마크 불러오는 중…",
+      "failedToLoadBookmarks": "북마크를 불러오지 못했습니다",
+      "noBookmarksYet": "아직 북마크가 없습니다",
       "moreOptions": "추가 옵션",
       "remove": "제거"
     },
     "componentsSidebarSidebarItemContextMenu": {
       "open": "열기",
-      "openToTheSide": "측면으로 열기",
+      "openToTheSide": "옆에서 열기",
       "pinToTabs": "탭에 고정",
       "edit": "편집",
       "delete": "삭제",
       "copyLink": "링크 복사"
     },
     "componentsSidebarSidebarTagList": {
-      "loadingTags": "태그 로드 중...",
-      "failedToLoadTags": "태그를 로드하지 못했습니다.",
-      "noTagsYet": "아직 태그가 없습니다.",
-      "filterTags": "태그 필터링...",
-      "noMatchingTags": "일치하는 태그가 없습니다.",
+      "loadingTags": "태그 불러오는 중…",
+      "failedToLoadTags": "태그를 불러오지 못했습니다",
+      "noTagsYet": "아직 태그가 없습니다",
+      "filterTags": "태그 필터링…",
+      "noMatchingTags": "일치하는 태그가 없습니다",
       "Uncategorized": "미분류"
     },
     "componentsSidebarSortableProjectItem": {
-      "dropHere": "여기에 드롭",
+      "dropHere": "여기에 놓기",
       "editProject": "프로젝트 편집",
       "settings": "설정"
     },
     "componentsSidebarTagDeleteDialog": {
-      "deleteTag": "# 태그 삭제",
-      "notesWithThisTagWonTBeDeletedJustUntagged": "이 태그가 있는 메모는 삭제되지 않고 태그만 해제됩니다.",
+      "deleteTag": "태그 삭제 #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "이 태그가 있는 노트는 삭제되지 않고 태그만 제거됩니다.",
       "cancel": "취소"
     },
     "componentsSidebarTagDetailView": {
       "goBack": "돌아가기",
-      "notes": "메모",
-      "loadingNotes": "메모 로드 중...",
-      "noNotesWithThisTag": "이 태그가 포함된 메모가 없습니다.",
-      "addThisTagToANoteToSeeItHere": "여기에서 보려면 이 태그를 메모에 추가하세요.",
+      "notes": "노트",
+      "loadingNotes": "노트 불러오는 중…",
+      "noNotesWithThisTag": "이 태그가 있는 노트가 없습니다",
+      "addThisTagToANoteToSeeItHere": "이 태그를 노트에 추가하면 여기에 표시됩니다",
       "pinned": "고정됨",
-      "allNotes": "모든 메모",
-      "allNotesArePinned": "모든 메모가 고정되었습니다.",
+      "allNotes": "모든 노트",
+      "allNotesArePinned": "모든 노트가 고정되어 있습니다",
+      "tasks": "작업",
       "unpinFromTag": "태그에서 고정 해제",
       "unpin": "고정 해제",
       "pinToTag": "태그에 고정",
-      "pin": "핀",
-      "tagActions": "태그 작업",
+      "pin": "고정",
+      "tagActions": "태그 메뉴",
       "editTagName": "태그 이름 수정",
       "changeColor": "색상 변경",
       "deleteTag": "태그 삭제",
       "recent": "최근",
       "created": "생성됨",
-      "alphabetical": "알파벳순",
-      "tasks": "작업"
+      "alphabetical": "알파벳순"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "태그 이름 바꾸기",
-      "rename": "이름 바꾸기 ",
-      "acrossEveryNoteThatUsesIt": "그것을 사용하는 모든 노트에 걸쳐.",
+      "rename": "모든 노트에서 ",
+      "acrossEveryNoteThatUsesIt": "태그의 이름을 바꿉니다.",
       "newName": "새 이름",
       "cancel": "취소"
     },
     "componentsViewersAudioPlayer": {
-      "failedToLoadAudio": "오디오를 로드하지 못했습니다.",
-      "theAudioFileCouldNotBePlayed": "오디오 파일을 재생할 수 없습니다.",
+      "failedToLoadAudio": "오디오를 불러오지 못했습니다",
+      "theAudioFileCouldNotBePlayed": "오디오 파일을 재생하지 못했습니다.",
       "skipBack10s": "10초 뒤로 건너뛰기",
       "skipForward10s": "10초 앞으로 건너뛰기"
     },
     "componentsViewersImageViewer": {
-      "failedToLoadImage": "이미지를 로드하지 못했습니다.",
-      "theImageCouldNotBeDisplayed": "이미지를 표시할 수 없습니다.",
+      "failedToLoadImage": "이미지를 불러오지 못했습니다",
+      "theImageCouldNotBeDisplayed": "이미지를 표시하지 못했습니다.",
       "resetZoom": "확대/축소 재설정",
       "rotate": "회전",
       "dragToPan": "드래그하여 이동"
     },
     "componentsViewersPdfViewer": {
-      "failedToLoadPdf": "PDF를 로드하지 못했습니다.",
+      "failedToLoadPdf": "PDF를 불러오지 못했습니다",
       "previousPage": "이전 페이지",
       "nextPage": "다음 페이지",
       "zoomOut": "축소",
       "zoomIn": "확대",
       "fitToWidth": "너비에 맞춤",
       "rotate": "회전",
-      "fitToHeight": "Fit to height",
-      "viewOptions": "View options",
-      "fit": "Fit",
-      "pageLayout": "Page layout",
-      "singlePage": "Single page",
-      "twoPageOdd": "Two-page (odd)",
-      "twoPageEven": "Two-page (even)",
-      "adaptToTheme": "Adapt to theme",
-      "goToPage": "Go to page",
-      "showThumbnails": "Show thumbnails",
-      "hideThumbnails": "Hide thumbnails"
+      "fitToHeight": "높이에 맞춤",
+      "viewOptions": "보기 옵션",
+      "fit": "맞춤",
+      "pageLayout": "페이지 레이아웃",
+      "singlePage": "한 페이지",
+      "twoPageOdd": "두 페이지(홀수)",
+      "twoPageEven": "두 페이지(짝수)",
+      "adaptToTheme": "테마에 맞추기",
+      "goToPage": "페이지로 이동",
+      "showThumbnails": "썸네일 표시",
+      "hideThumbnails": "썸네일 숨기기"
     },
     "componentsViewersVideoPlayer": {
-      "failedToLoadVideo": "동영상을 로드하지 못했습니다.",
-      "theVideoFileCouldNotBePlayed": "비디오 파일을 재생할 수 없습니다."
+      "failedToLoadVideo": "동영상을 불러오지 못했습니다",
+      "theVideoFileCouldNotBePlayed": "동영상 파일을 재생하지 못했습니다."
     },
     "pagesFile": {
-      "failedToLoadFile": "파일을 로드하지 못했습니다.",
-      "tryAgain": "다시 시도하세요",
-      "noFileSelected": "선택한 파일이 없습니다.",
-      "selectAFileFromTheSidebarToViewIt": "사이드바에서 파일을 선택하여 확인하세요.",
-      "loadingFile": "파일 로드 중...",
+      "failedToLoadFile": "파일을 불러오지 못했습니다",
+      "tryAgain": "다시 시도",
+      "noFileSelected": "선택한 파일 없음",
+      "selectAFileFromTheSidebarToViewIt": "사이드바에서 볼 파일을 선택하세요",
+      "loadingFile": "파일 불러오는 중…",
       "open": "열기",
-      "reveal": "공개",
+      "reveal": "위치 보기",
       "unsupportedFileType": "지원되지 않는 파일 형식",
-      "fileActions": "File actions"
+      "fileActions": "파일 메뉴"
     },
     "pagesFolderView": {
-      "createNewNote": "새 메모 만들기",
-      "viewSettings": "설정 보기",
-      "displayDensity": "디스플레이 밀도",
-      "comfortable": "편안함",
-      "compact": "콤팩트",
+      "createNewNote": "새 노트 만들기",
+      "viewSettings": "보기 설정",
+      "displayDensity": "표시 밀도",
+      "comfortable": "넓게",
+      "compact": "좁게",
       "showSummaries": "요약 표시",
       "cancel": "취소"
     },
     "componentsFolderViewSortSelector": {
-      "builtIn": "기본 제공",
       "clearSort": "정렬 지우기",
-      "noSortablePropertiesFound": "정렬 가능한 속성을 찾을 수 없습니다",
-      "properties": "속성",
-      "searchProperties": "속성 검색...",
       "sort": "정렬",
+      "searchProperties": "속성 검색…",
+      "builtIn": "기본 제공",
+      "properties": "속성",
+      "noSortablePropertiesFound": "정렬 가능한 속성을 찾을 수 없습니다",
       "sortDirection": "정렬 방향"
     }
   },
   "phaseI": {
     "errors": {
-      "failedToSaveFormula": "수식을 저장하지 못했습니다.",
-      "failedToOpenInExternalEditor": "외부 편집기에서 열지 못했습니다.",
-      "failedToCopyLink": "링크를 복사하지 못했습니다.",
-      "failedToCreateView": "뷰를 생성하지 못했습니다.",
-      "failedToRenameFolder": "폴더 이름을 바꾸지 못했습니다.",
-      "failedToCreateTask": "작업을 생성하지 못했습니다.",
-      "failedToLoadVersionHistory": "버전 기록을 로드하지 못했습니다.",
-      "failedToRestoreVersion": "버전을 복원하지 못했습니다.",
-      "failedToDeleteVersion": "버전을 삭제하지 못했습니다.",
-      "failedToCreateNote": "메모를 작성하지 못했습니다.",
-      "failedToLoadMoreBookmarks": "추가 북마크를 로드하지 못했습니다.",
-      "failedToToggleBookmark": "북마크를 전환하지 못했습니다.",
-      "failedToRemoveBookmark": "북마크를 삭제하지 못했습니다.",
-      "failedToReorderBookmarks": "북마크를 재정렬하지 못했습니다.",
-      "failedToSave": "저장하지 못했습니다.",
-      "failedToRename": "이름을 바꾸지 못했습니다.",
-      "failedToUpdateEmoji": "이모티콘을 업데이트하지 못했습니다.",
-      "failedToUpdateTags": "태그를 업데이트하지 못했습니다.",
-      "failedToSnoozeReminder": "알림을 일시중지하지 못했습니다.",
-      "failedToCreateFolder": "폴더를 생성하지 못했습니다.",
-      "failedToLoadProperties": "속성을 로드하지 못했습니다.",
-      "failedToLoadPropertyDefinitions": "속성 정의를 로드하지 못했습니다.",
-      "failedToLoadTemplates": "템플릿을 로드하지 못했습니다."
+      "failedToSaveFormula": "수식을 저장하지 못했습니다",
+      "failedToOpenInExternalEditor": "외부 편집기에서 열지 못했습니다",
+      "failedToCopyLink": "링크를 복사하지 못했습니다",
+      "failedToCreateView": "보기를 만들지 못했습니다",
+      "failedToRenameFolder": "폴더 이름을 바꾸지 못했습니다",
+      "failedToCreateTask": "작업을 만들지 못했습니다",
+      "failedToLoadVersionHistory": "버전 기록을 불러오지 못했습니다",
+      "failedToRestoreVersion": "버전을 복원하지 못했습니다",
+      "failedToDeleteVersion": "버전을 삭제하지 못했습니다",
+      "failedToCreateNote": "노트를 만들지 못했습니다",
+      "failedToLoadMoreBookmarks": "북마크를 더 불러오지 못했습니다",
+      "failedToToggleBookmark": "북마크를 변경하지 못했습니다",
+      "failedToRemoveBookmark": "북마크를 제거하지 못했습니다",
+      "failedToReorderBookmarks": "북마크 순서를 바꾸지 못했습니다",
+      "failedToSave": "저장하지 못했습니다",
+      "failedToRename": "이름을 바꾸지 못했습니다",
+      "failedToUpdateEmoji": "이모티콘을 업데이트하지 못했습니다",
+      "failedToUpdateTags": "태그를 업데이트하지 못했습니다",
+      "failedToSnoozeReminder": "리마인더를 다시 알림으로 설정하지 못했습니다",
+      "failedToCreateFolder": "폴더를 만들지 못했습니다",
+      "failedToLoadProperties": "속성을 불러오지 못했습니다",
+      "failedToLoadPropertyDefinitions": "속성 정의를 불러오지 못했습니다",
+      "failedToLoadTemplates": "템플릿을 불러오지 못했습니다"
     },
     "toasts": {
-      "noteExportedSuccessfully": "메모를 성공적으로 내보냈습니다.",
-      "failedToUpdateProperty": "속성을 업데이트하지 못했습니다.",
-      "failedToUpdateTags": "태그를 업데이트하지 못했습니다.",
+      "noteExportedSuccessfully": "노트를 내보냈습니다",
+      "failedToUpdateProperty": "속성을 업데이트하지 못했습니다",
+      "failedToUpdateTags": "태그를 업데이트하지 못했습니다",
       "failedToUpdateIcon": "아이콘을 업데이트하지 못했습니다",
-      "reminderSnoozed": "알림이 일시중지되었습니다.",
-      "failedToSnoozeReminder": "알림을 일시중지하지 못했습니다.",
-      "defaultTemplateSet": "기본 템플릿 세트",
-      "failedToSetDefaultTemplate": "기본 템플릿을 설정하지 못했습니다.",
-      "defaultTemplateCleared": "기본 템플릿이 지워졌습니다.",
-      "failedToClearDefaultTemplate": "기본 템플릿을 지우지 못했습니다.",
-      "failedToAddProperty": "속성을 추가하지 못했습니다.",
-      "failedToDeleteProperty": "속성을 삭제하지 못했습니다.",
-      "failedToRenameProperty": "속성 이름을 바꾸지 못했습니다.",
-      "failedToReorderProperties": "속성을 재정렬하지 못했습니다.",
-      "cannotAddTagThisNoteWasDeleted": "태그를 추가할 수 없습니다. 이 메모는 삭제되었습니다.",
-      "cannotRemoveTagThisNoteWasDeleted": "태그를 제거할 수 없습니다. 이 메모는 삭제되었습니다.",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "로컬 전용으로 변경할 수 없습니다. 이 메모는 삭제되었습니다."
+      "reminderSnoozed": "리마인더를 다시 알림으로 설정했습니다",
+      "failedToSnoozeReminder": "리마인더를 다시 알림으로 설정하지 못했습니다",
+      "defaultTemplateSet": "기본 템플릿을 설정했습니다",
+      "failedToSetDefaultTemplate": "기본 템플릿을 설정하지 못했습니다",
+      "defaultTemplateCleared": "기본 템플릿을 지웠습니다",
+      "failedToClearDefaultTemplate": "기본 템플릿을 지우지 못했습니다",
+      "failedToAddProperty": "속성을 추가하지 못했습니다",
+      "failedToDeleteProperty": "속성을 삭제하지 못했습니다",
+      "failedToRenameProperty": "속성 이름을 바꾸지 못했습니다",
+      "failedToReorderProperties": "속성 순서를 바꾸지 못했습니다",
+      "cannotAddTagThisNoteWasDeleted": "노트가 삭제되어 태그를 추가할 수 없습니다",
+      "cannotRemoveTagThisNoteWasDeleted": "노트가 삭제되어 태그를 제거할 수 없습니다",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "노트가 삭제되어 로컬 전용 설정을 변경할 수 없습니다"
     }
   },
   "bulkActions": {
+    "toolbarAria": "일괄 처리",
+    "selected": "선택됨",
+    "move": "이동",
+    "copyLinks": "링크 복사",
     "addTag": "태그 추가",
+    "tagNamePlaceholder": "태그 이름",
+    "export": "내보내기",
+    "delete": "삭제",
     "clearAria": "선택 해제",
     "copiedLinks": "{count, plural, other {링크 #개}} 복사됨",
-    "copyLinks": "링크 복사",
-    "delete": "삭제",
-    "export": "내보내기",
-    "iconUpdated": "{count, plural, other {노트 #개의 아이콘을 업데이트함}}",
-    "move": "이동",
-    "selected": "선택됨",
     "setIcon": "아이콘 설정",
-    "tagNamePlaceholder": "태그 이름",
-    "toolbarAria": "일괄 작업"
-  },
-  "comments": {
-    "attachAria": "파일 첨부",
-    "badgeAria": "{count, plural, other {댓글 #개}}",
-    "cancel": "취소",
-    "commentPlaceholder": "댓글 추가...",
-    "createdTooltip": "{date} {time}에 생성됨",
-    "delete": "댓글 삭제",
-    "edit": "댓글 편집",
-    "kind": {
-      "addition": "추가",
-      "comment": "댓글",
-      "deletion": "삭제",
-      "substitution": "대체"
-    },
-    "mentionAria": "사람, 페이지 또는 날짜 멘션",
-    "railAria": "댓글",
-    "replyPlaceholder": "답글...",
-    "resolve": "해결",
-    "sendAria": "댓글 보내기",
-    "toolbarComment": "댓글",
-    "openAttachmentAria": "첨부파일 {name} 열기",
-    "openImageAria": "이미지 {name} 열기"
-  },
-  "dateMention": {
-    "clear": "지우기",
-    "dateFormat": "날짜 형식",
-    "dateInput": "날짜",
-    "includeTime": "시간 포함",
-    "remind": "알림",
-    "time": "시간",
-    "timeFormat": "시간 형식"
+    "iconUpdated": "{count, plural, other {노트 #개의 아이콘을 업데이트했습니다}}"
   },
   "applyTemplateConfirm": {
+    "title": "노트 내용을 바꾸시겠습니까?",
+    "description": "“{name}” 템플릿을 적용하면 이 노트의 현재 내용이 바뀝니다. 되돌릴 수 없습니다.",
+    "full": "내용 바꾸기 및 템플릿 세부 정보 추가",
     "body": "내용만 바꾸기",
     "cancel": "취소",
-    "description": "\"{name}\" 템플릿을 적용하면 이 메모의 현재 내용이 바뀝니다. 되돌릴 수 없습니다.",
-    "failed": "템플릿을 적용하지 못했습니다",
-    "full": "내용 바꾸고 템플릿 세부정보 추가",
     "success": "템플릿을 적용했습니다",
-    "title": "메모 내용을 바꾸시겠습니까?"
+    "failed": "템플릿을 적용하지 못했습니다"
   },
   "saveNoteAsTemplate": {
-    "title": "메모를 템플릿으로 저장",
-    "description": "이 메모로 다시 사용할 수 있는 템플릿을 만듭니다. 메모 자체는 그대로 유지됩니다.",
+    "title": "노트를 템플릿으로 저장",
+    "description": "이 노트로 다시 사용할 수 있는 템플릿을 만듭니다. 노트 자체는 그대로 유지됩니다.",
     "nameLabel": "템플릿 이름",
-    "loading": "메모를 읽는 중…",
-    "summary": "메모 본문과 태그 {tagCount, plural, other {#개}}, 속성 {propertyCount, plural, other {#개}}를 저장합니다.",
+    "loading": "노트를 읽는 중…",
+    "summary": "노트 본문과 태그 {tagCount, plural, other {#개}}, 속성 {propertyCount, plural, other {#개}}를 저장합니다.",
     "save": "템플릿 저장",
     "cancel": "취소",
     "success": "템플릿을 저장했습니다",
     "edit": "템플릿 편집",
     "failed": "템플릿을 저장하지 못했습니다",
-    "loadFailed": "메모를 읽지 못했습니다"
+    "loadFailed": "노트를 읽지 못했습니다"
   },
   "newNoteFromNote": {
-    "action": "이 메모로 새 메모 만들기",
+    "action": "이 노트로 새 노트 만들기",
     "created": "{source}에서 만들었습니다 · 태그 {tagCount, plural, =0 {없음} other {#개}}, 속성 {propertyCount, plural, =0 {없음} other {#개}}"
-  },
-  "tagView": {
-    "moreActions": "더 보기",
-    "pin": {
-      "action": "{count, plural, other {메모 #개}}를 태그에 고정",
-      "failed": "메모를 태그에 고정하지 못했습니다",
-      "success": "{count, plural, other {메모 #개}}를 태그에 고정했습니다"
-    }
   },
   "tags": {
     "hubTitle": "태그",
     "openHub": "태그 허브 열기"
   },
+  "tagView": {
+    "moreActions": "더 보기",
+    "pin": {
+      "action": "{count, plural, other {노트 #개를 태그에 고정}}",
+      "success": "{count, plural, other {노트 #개를 태그에 고정했습니다}}",
+      "failed": "노트를 태그에 고정하지 못했습니다"
+    }
+  },
   "tagsHub": {
-    "cancelCreate": "취소",
-    "category": {
-      "delete": "카테고리 삭제",
-      "deleteBody": "태그는 미분류로 이동합니다. 삭제되지는 않습니다.",
-      "deleteCancel": "취소",
-      "deleteConfirm": "삭제",
-      "deleteTitle": "{name} 카테고리를 삭제하시겠습니까?",
-      "dragHandle": "드래그해 카테고리 순서 바꾸기",
-      "emptyHint": "여기로 태그를 드래그하세요",
-      "more": "카테고리 옵션",
-      "rename": "카테고리 이름 바꾸기"
-    },
-    "categoryNamePlaceholder": "카테고리 이름",
-    "errors": {
-      "createCategoryFailed": "카테고리를 만들지 못했습니다",
-      "createTagCategorizeFailed": "태그는 만들었지만 카테고리에 추가하지 못했습니다",
-      "createTagFailed": "태그를 만들지 못했습니다",
-      "deleteCategoryFailed": "카테고리를 삭제하지 못했습니다",
-      "loadFailed": "태그 카테고리를 로드하지 못했습니다",
-      "renameCategoryFailed": "카테고리 이름을 바꾸지 못했습니다",
-      "reorderFailed": "태그 순서를 바꾸지 못했습니다"
-    },
-    "loading": "태그 로드 중...",
+    "loading": "태그 불러오는 중…",
     "newCategory": "새 카테고리",
     "newTag": "새 태그",
-    "search": {
-      "empty": "검색과 일치하는 카테고리나 태그가 없습니다",
-      "placeholder": "카테고리와 태그 검색"
-    },
+    "cancelCreate": "취소",
+    "categoryNamePlaceholder": "카테고리 이름",
     "tagNamePlaceholder": "태그 이름",
-    "uncategorized": "미분류"
+    "uncategorized": "미분류",
+    "search": {
+      "placeholder": "카테고리와 태그 검색",
+      "empty": "검색과 일치하는 카테고리나 태그가 없습니다"
+    },
+    "category": {
+      "more": "카테고리 옵션",
+      "rename": "카테고리 이름 바꾸기",
+      "delete": "카테고리 삭제",
+      "dragHandle": "드래그해 카테고리 순서 바꾸기",
+      "emptyHint": "여기로 태그를 드래그하세요",
+      "deleteTitle": "{name} 카테고리를 삭제하시겠습니까?",
+      "deleteBody": "태그는 미분류로 이동합니다. 삭제되지는 않습니다.",
+      "deleteConfirm": "삭제",
+      "deleteCancel": "취소"
+    },
+    "errors": {
+      "loadFailed": "태그 카테고리를 불러오지 못했습니다",
+      "createCategoryFailed": "카테고리를 만들지 못했습니다",
+      "renameCategoryFailed": "카테고리 이름을 바꾸지 못했습니다",
+      "deleteCategoryFailed": "카테고리를 삭제하지 못했습니다",
+      "createTagFailed": "태그를 만들지 못했습니다",
+      "createTagCategorizeFailed": "태그는 만들었지만 카테고리에 추가하지 못했습니다",
+      "reorderFailed": "태그 순서를 바꾸지 못했습니다"
+    }
   },
   "folderView": {
-    "columnHeader": {
-      "doubleClickToEdit": "{name} (더블 클릭하여 편집)",
-      "dragToReorder": "열 순서를 바꾸려면 드래그하세요: {name}"
-    },
     "columns": {
-      "created": "만든 날짜",
-      "folder": "폴더",
-      "kind": "종류",
-      "modified": "수정한 날짜",
-      "tags": "태그",
       "title": "제목",
-      "wordCount": "단어 수"
+      "folder": "폴더",
+      "tags": "태그",
+      "created": "만든 날짜",
+      "modified": "수정한 날짜",
+      "wordCount": "단어 수",
+      "kind": "종류"
     },
-    "defaultViewName": "기본값",
+    "defaultViewName": "기본",
+    "selectView": "보기 선택",
+    "columnHeader": {
+      "doubleClickToEdit": "{name}(더블클릭하여 편집)",
+      "dragToReorder": "드래그하여 열 순서 변경: {name}"
+    },
     "groupHeader": {
-      "noteCount": "{count, plural, other {메모 #개}}"
+      "noteCount": "{count, plural, other {노트 #개}}"
+    }
+  },
+  "mindMap": {
+    "regionLabel": "{title} 마인드맵, {count, plural, other {노드 #개}}",
+    "treeLabel": "{title} 마인드맵 목차",
+    "emptyHint": "이 노트에 제목을 추가하면 맵에 가지가 생깁니다.",
+    "linkHint": "다른 페이지 링크",
+    "chain": {
+      "separator": "→"
     },
-    "selectView": "보기 선택"
+    "more": "{count, plural, other {+#개 더}}",
+    "nodeCapNotice": "이 맵은 노드 한도인 {count, plural, other {#개}}에 도달했습니다. 나머지는 가장 가까운 상위 노드에 접혀 있습니다.",
+    "badge": {
+      "table": "{count, plural, other {표 #개}}",
+      "code": "{count, plural, other {코드 블록 #개}}",
+      "image": "{count, plural, other {이미지 #개}}",
+      "quote": "{count, plural, other {인용 #개}}",
+      "embed": "{count, plural, other {임베드 #개}}",
+      "bookmark": "{count, plural, other {북마크 #개}}",
+      "file": "{count, plural, other {파일 #개}}"
+    },
+    "toolbar": {
+      "label": "마인드맵 도구 모음",
+      "fit": "화면에 맞추기",
+      "copyImage": "이미지로 복사",
+      "copyVector": "벡터로 복사",
+      "imageCopied": "맵을 이미지로 복사했습니다",
+      "vectorCopied": "맵을 벡터 이미지로 복사했습니다",
+      "copyFailed": "맵을 복사하지 못했습니다",
+      "saveCanvas": "캔버스로 저장",
+      "saved": "“{title}” 캔버스로 저장했습니다",
+      "saveFailed": "맵을 캔버스로 저장하지 못했습니다",
+      "snapshotOn": "스냅샷 · {date}"
+    }
+  },
+  "tagAndFilter": {
+    "regionLabel": "활성 태그 필터",
+    "matchingAll": "모두 포함:",
+    "removeTag": "필터에서 {tag} 제거",
+    "clearAll": "모두 지우기",
+    "saveSearch": "검색 저장",
+    "savedSearches": "저장된 검색",
+    "deleteSearch": "저장된 검색 {name} 삭제",
+    "saveDialogTitle": "검색 이름 지정",
+    "saveDialogPlaceholder": "예: 업무 회의",
+    "cancel": "취소",
+    "save": "저장",
+    "addToFilterHint": "Ctrl/Cmd를 누른 채 태그를 클릭하면 필터에 추가됩니다"
   }
 }

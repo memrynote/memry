@@ -1,8 +1,8 @@
 {
   "dialog": {
     "vault": {
-      "title": "Chọn Thư mục Kho dữ liệu",
-      "button": "Chọn Kho"
+      "title": "Chọn thư mục kho",
+      "button": "Chọn kho"
     },
     "exportPdf": {
       "title": "Xuất dưới dạng PDF",
@@ -16,56 +16,57 @@
       "filterSupported": "Tệp được hỗ trợ",
       "filterAll": "Tất cả tệp"
     },
-    "exportCancelled": "Việc xuất bị hủy",
+    "exportCancelled": "Đã hủy xuất",
     "update": {
       "availableTitle": "Có bản cập nhật mới",
-      "availableMessage": "memrynote {version} có sẵn.",
+      "availableMessage": "Đã có memrynote {version}.",
       "availableDetailFallback": "Tải bản cập nhật ngay bây giờ?",
-      "buttonDownload": "  \nTải xuống  ",
-      "buttonLater": "Sau",
-      "readyTitle": "Cập nhật sẵn sàng",
+      "buttonDownload": "Tải xuống",
+      "buttonLater": "Để sau",
+      "readyTitle": "Bản cập nhật đã sẵn sàng",
       "readyMessage": "memrynote {version} đã được tải xuống.",
       "readyDetailFallback": "Khởi động lại memrynote để hoàn tất cài đặt cập nhật.",
       "buttonRestartNow": "Khởi động lại ngay bây giờ",
       "releaseNotesLabel": "Ghi chú phát hành:"
     },
     "pair": {
+      "title": "Ghép nối tiện ích mở rộng trình duyệt",
+      "message": "Cho phép tiện ích mở rộng trình duyệt Memry gửi mục ghi nhanh tới ứng dụng này?",
       "buttonAllow": "Cho phép",
       "buttonDeny": "Từ chối",
-      "buttonPair": "Ghép nối",
-      "message": "Cho phép tiện ích trình duyệt Memry gửi nội dung thu thập tới ứng dụng này?",
-      "title": "Ghép nối tiện ích trình duyệt"
+      "buttonPair": "Ghép nối"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "Nhắc nhở ghi chú",
-      "journal": "Nhắc nhở nhật ký",
-      "highlight": "Nhắc nhở nổi bật",
-      "fallback": "Đến hạn nhắc nhở",
-      "default": "Nhắc nhở",
-      "task": "Nhắc công việc"
-    },
     "inboxReview": {
+      "title": "Đã đến lúc xem lại hộp thư đến",
       "body": "Bạn có {count, plural, other {# mục}} cần xem lại.",
-      "testBody": "Đây là bản thử — lời nhắc xem lại hằng ngày của bạn sẽ trông như thế này.",
-      "title": "Đã đến lúc xem lại hộp thư đến"
+      "testBody": "Đây là bản thử — lời nhắc xem lại hằng ngày của bạn sẽ trông như thế này."
+    },
+    "reminder": {
+      "note": "Lời nhắc ghi chú",
+      "journal": "Lời nhắc nhật ký",
+      "highlight": "Lời nhắc đoạn tô sáng",
+      "task": "Lời nhắc công việc",
+      "fallback": "Đến giờ nhắc",
+      "default": "Lời nhắc"
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "Thời gian nhắc nhở phải trong tương lai",
+    "reminderTimeMustBeFuture": "Thời gian nhắc phải ở trong tương lai",
     "definitionNotFound": "Không tìm thấy định nghĩa",
     "noteNotFound": "Không tìm thấy ghi chú",
-    "updateFailed": "Cập nhật thất bại"
+    "updateFailed": "Không thể cập nhật",
+    "updateReadOnlyVolume": "Không thể cài đặt bản cập nhật khi memrynote chạy từ vị trí này. Di chuyển memrynote vào thư mục Ứng dụng rồi mở lại."
   },
   "startup": {
-    "failed": {
-      "body": "Điều này có thể xảy ra khi ổ đĩa còn rất ít dung lượng trống, hoặc với trình điều khiển đồ họa cũ. Hãy thử giải phóng dung lượng ổ đĩa rồi mở lại MemryNote. Nếu vẫn tiếp diễn, cài đặt lại thường sẽ khắc phục được.",
-      "title": "MemryNote không thể khởi động xong"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote sẽ tự mở lại.",
-      "title": "Đang cài đặt bản cập nhật…"
+      "title": "Đang cài đặt bản cập nhật…",
+      "subtitle": "MemryNote sẽ tự mở lại."
+    },
+    "failed": {
+      "title": "MemryNote không thể khởi động xong",
+      "body": "Điều này có thể xảy ra khi ổ đĩa còn rất ít dung lượng trống, hoặc với trình điều khiển đồ họa cũ. Hãy thử giải phóng dung lượng ổ đĩa rồi mở lại MemryNote. Nếu vẫn tiếp diễn, cài đặt lại thường sẽ khắc phục được."
     }
   }
 }

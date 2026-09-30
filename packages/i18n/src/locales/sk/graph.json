@@ -1,15 +1,17 @@
 {
   "page": {
-    "loading": "Načítavam graf...",
+    "loading": "Načítava sa graf…",
     "load-failed": "Nepodarilo sa načítať údaje grafu",
-    "try-again": "Skúste znova",
-    "aria-label": "Graf vedomostí s {nodeCount, plural, one {# uzol} other {# uzly}} a {edgeCount, plural, one {# spojenie} other {# spojenia}}{summary, select, none {.} other {: {summary}.}}",
+    "render-failed": "Graf nie je na tomto zariadení k dispozícii",
+    "render-failed-description": "Toto zariadenie nedokázalo spustiť grafický renderer. Poznámky sú v bezpečí.",
+    "try-again": "Skúsiť znova",
+    "aria-label": "Graf znalostí s {nodeCount, plural, one {# uzlom} few {# uzlami} other {# uzlami}} a {edgeCount, plural, one {# prepojením} few {# prepojeniami} other {# prepojeniami}}{summary, select, none {.} other {: {summary}.}}",
     "nodes-list-label": "Uzly grafu",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "Váš graf vedomostí",
-    "description": "Prepojenia medzi vašimi poznámkami, úlohami a projektmi sa tu zobrazia ako interaktívny graf.",
+    "title": "Graf znalostí",
+    "description": "Prepojenia medzi poznámkami, úlohami a projektmi sa tu zobrazia ako interaktívny graf.",
     "link-title": "Prepojte svoje poznámky",
     "link-description": "Použite [[wikilinks]] na prepojenie nápadov medzi poznámkami",
     "discover-title": "Objavujte vzory",
@@ -24,11 +26,12 @@
     "tasks": "úlohy",
     "project": "projekt",
     "projects": "projekty",
-    "tag": "štítok",
-    "tags": "štítky",
-    "orphan": "siroty",
-    "orphans": "siroty",
-    "unresolved": "neriešené"
+    "tag": "značka",
+    "tags": "značky",
+    "orphan": "osirotený uzol",
+    "orphans": "osirotené uzly",
+    "unresolved": "nevytvorené",
+    "category": "kategória"
   },
   "summary": {
     "node-type-count": "{count} {label}"
@@ -39,39 +42,96 @@
     "reset-filters": "Obnoviť filtre",
     "filters": "Filtre",
     "display": "Zobrazenie",
-    "show-labels": "Zobraziť štítky",
+    "show-labels": "Zobraziť popisy",
+    "live-motion": "Živý pohyb",
     "focus-depth": "hĺbka {depth}",
-    "clear-focus": "Vyčisti zameraný uzol"
+    "clear-focus": "Zrušiť zameranie uzla",
+    "relayout": "Znova rozložiť",
+    "categories": "Kategórie značiek",
+    "color-by-category": "Farbiť podľa kategórie",
+    "no-categories": "Ak chcete graf farbiť a zbaľovať podľa kategórií, zoskupte značky do kategórií v centre značiek.",
+    "collapse-category": "Zbaliť kategóriu {name}",
+    "expand-category": "Rozbaliť kategóriu {name}",
+    "uncategorized": "Nezaradené"
   },
   "filter": {
     "notes": "Poznámky",
     "journals": "Denníky",
     "tasks": "Úlohy",
     "projects": "Projekty",
-    "tags": "Tagy",
-    "orphans": "Siroty",
-    "toggle-entity": "Prepnúť {label}",
-    "toggle-orphans": "Prepnúť sirotčie uzly"
+    "tags": "Značky",
+    "orphans": "Osirotené",
+    "canvas-edges": "Prepojenia na plátnach",
+    "toggle-entity": "Zobraziť/skryť {label}",
+    "toggle-orphans": "Zobraziť/skryť osirotené uzly"
   },
   "search": {
-    "placeholder": "Hľadať uzly...",
-    "clear": "Vyčisti hľadanie v grafe"
+    "placeholder": "Hľadať uzly…",
+    "clear": "Vymazať hľadanie v grafe"
   },
   "context-menu": {
-    "untitled": "Nepomenované",
+    "untitled": "Bez názvu",
     "focus-node": "Zamerať sa na tento uzol",
-    "open-new-tab": "Otvoriť v novej karte",
+    "open-new-tab": "Otvoriť na novej karte",
     "create-note": "Vytvoriť poznámku",
-    "copy-title": "Kopírovať názov"
+    "copy-title": "Kopírovať názov",
+    "link-to": "Prepojiť s…",
+    "add-tag": "Pridať značku…",
+    "back": "Späť",
+    "link-search": "Hľadať poznámky…",
+    "tag-search": "Hľadať alebo vytvoriť značku…",
+    "no-matches": "Žiadne zhody",
+    "create-tag": "Vytvoriť #{tag}",
+    "remove-link": "Odstrániť odkaz na „{title}“",
+    "unpin": "Odopnúť",
+    "collapse-category": "Zbaliť kategóriu {name}",
+    "expand-category": "Rozbaliť kategóriu {name}"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {# spojenie} other {# spojenia}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# prepojenie} few {# prepojenia} other {# prepojení}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# položka} few {# položky} other {# položiek}}",
+    "click-to-expand": "Kliknutím rozbalíte"
   },
   "local-panel": {
-    "loading": "Načítavam graf...",
-    "empty": "Nenašli sa žiadne spojenia",
+    "loading": "Načítava sa graf…",
+    "empty": "Nenašli sa žiadne prepojenia",
     "open-full": "Otvoriť celý graf",
-    "close": "Zatvoriť graf"
+    "close": "Zavrieť graf",
+    "pin": "Pripnúť k tejto poznámke",
+    "unpin": "Odopnúť a sledovať otvorenú poznámku",
+    "pinned-to": "Pripnuté: {title}"
+  },
+  "edit": {
+    "linked": "„{source}“ prepojené s „{target}“ vo vlastnosti „{property}“",
+    "unlinked": "Odkaz z „{source}“ na „{target}“ bol odstránený",
+    "already-linked": "„{source}“ už odkazuje na „{target}“",
+    "property-conflict": "„{property}“ v tejto poznámke nie je vlastnosť typu Vzťah, preto sa odkaz nepridal",
+    "link-unsupported": "Prepojiť možno iba poznámky",
+    "link-failed": "Odkaz sa nepodarilo pridať",
+    "unlink-failed": "Odkaz sa nepodarilo odstrániť",
+    "tag-added": "Značka #{tag} pridaná do poznámky „{note}“",
+    "tag-exists": "Táto poznámka už má značku #{tag}",
+    "tag-failed": "Značku sa nepodarilo pridať",
+    "undo-failed": "Zmenu sa nepodarilo vrátiť späť"
+  },
+  "relayout-confirm": {
+    "title": "Znova rozložiť graf?",
+    "description": "Všetky pripnuté uzly sa uvoľnia a graf sa usporiada nanovo. Uložené rozloženie sa zahodí.",
+    "cancel": "Zrušiť",
+    "confirm": "Znova rozložiť"
+  },
+  "views": {
+    "title": "Uložené zobrazenia",
+    "unsaved": "Neuložené zobrazenie",
+    "edited": "Upravené",
+    "empty": "Zatiaľ žiadne uložené zobrazenia",
+    "save-as": "Uložiť ako nové zobrazenie…",
+    "update": "Aktualizovať „{name}“",
+    "delete": "Odstrániť zobrazenie {name}",
+    "save-dialog-title": "Uložiť zobrazenie grafu",
+    "save-dialog-placeholder": "Názov zobrazenia",
+    "cancel": "Zrušiť",
+    "save": "Uložiť"
   }
 }

@@ -3,97 +3,178 @@
     "exportNotImplemented": "A helyi adatexportálás még nincs megvalósítva"
   },
   "page": {
-    "title": "Beállítások elemre",
+    "title": "Beállítások",
     "backToApp": "Vissza az alkalmazásba",
     "nav": {
       "groups": {
-        "account": "fiók",
+        "account": "Fiók",
         "application": "Alkalmazás",
         "editing": "Szerkesztés",
         "modules": "Modulok",
         "services": "Szolgáltatások",
-        "data": "Adatok"
+        "data": "Adatok",
+        "workspace": "Munkaterület",
+        "features": "Funkciók"
       },
       "items": {
-        "account": "fiók",
-        "general": "tábornok",
+        "account": "Fiók",
+        "general": "Általános",
         "templates": "Sablonok",
         "editor": "Szerkesztő",
         "journal": "Napló",
         "tasks": "Feladatok",
+        "inbox": "Beérkezők",
         "calendar": "Naptár",
         "appearance": "Megjelenés",
-        "shortcuts": "Parancsikonok",
-        "ai": "AI-asszisztens",
+        "shortcuts": "Billentyűparancsok",
+        "commandLine": "Parancssor",
+        "ai": "MI-asszisztens",
         "vault": "Széf",
         "tags": "Címkék",
         "properties": "Tulajdonságok",
-        "commandLine": "Parancssor",
-        "features": "Funkciók",
         "import": "Importálás",
-        "inbox": "Beérkezők"
+        "features": "Funkciók",
+        "modules": "Modulok",
+        "aiAgents": "MI és ügynökök",
+        "tagsProperties": "Címkék és tulajdonságok",
+        "vaultData": "Széf és adatok"
+      }
+    },
+    "drillIn": {
+      "back": "Vissza ide: {section}"
+    },
+    "modules": {
+      "configure": "{module} beállítása"
+    },
+    "vaultImport": {
+      "label": "Importálás másik alkalmazásból",
+      "description": "Notion, Evernote, Bear, Apple Notes, Todoist és továbbiak",
+      "action": "Importálás…"
+    },
+    "search": {
+      "placeholder": "Beállítások keresése",
+      "count": "{count, plural, one {# beállítás} other {# beállítás}}",
+      "empty": "Nincs egyező beállítás",
+      "move": "navigálás",
+      "open": "megnyitás"
+    }
+  },
+  "features": {
+    "header": {
+      "title": "Funkciók",
+      "subtitle": "Kapcsolja be vagy ki az alkalmazás egyes részeit. Kikapcsolt állapotban elhalványul az oldalsávon, és mindenhol le van tiltva."
+    },
+    "items": {
+      "home": {
+        "label": "Kezdőlap",
+        "description": "Kezdő irányítópult"
+      },
+      "inbox": {
+        "label": "Beérkezők",
+        "description": "Gyors rögzítés és feldolgozás"
+      },
+      "journal": {
+        "label": "Napló",
+        "description": "Napi jegyzetek"
+      },
+      "tasks": {
+        "label": "Feladatok",
+        "description": "Teendők és határidők"
+      },
+      "calendar": {
+        "label": "Naptár",
+        "description": "Események és ütemterv"
+      },
+      "graph": {
+        "label": "Gráf",
+        "description": "Jegyzetkapcsolatok"
+      },
+      "spatialCanvas": {
+        "label": "Vászon",
+        "description": "Térbeli táblák a jegyzetek elrendezéséhez és összekapcsolásához"
       }
     }
   },
   "general": {
     "header": {
-      "title": "tábornok",
-      "subtitle": "Az alkalmazás indítása és a lap viselkedése",
-      "loading": "Beállítások betöltése..."
+      "title": "Általános",
+      "subtitle": "Nyelv, indítás, lapok és adatvédelem.",
+      "loading": "Beállítások betöltése…"
     },
     "groups": {
       "startup": "Indítás",
       "updates": "Frissítések",
       "languageRegion": "Nyelv és régió",
       "tabBehavior": "Lap viselkedése",
+      "window": "Ablak viselkedése",
       "fileCreation": "Fájl létrehozása",
-      "privacy": "Adatvédelem"
+      "privacy": "Adatvédelem",
+      "startupWindows": "Indítás és ablakok",
+      "newNotes": "Új jegyzetek"
     },
     "startup": {
       "launchAtLogin": {
-        "label": "Indítsa el a Bejelentkezésnél",
-        "description": "Indítsa el az memrynote programot, amikor bejelentkezik",
-        "error": "Nem sikerült frissíteni a rendszerindításkor"
+        "label": "Indítás bejelentkezéskor",
+        "description": "A memrynote elindul, amikor bejelentkezik",
+        "error": "Nem sikerült módosítani a bejelentkezéskori indítást"
       }
     },
     "updates": {
+      "autoCheck": {
+        "label": "Frissítések automatikus keresése",
+        "description": "Új kiadások keresése indításkor, majd rendszeresen, amíg az alkalmazás nyitva van.",
+        "error": "Nem sikerült frissíteni az automatikus keresés beállítását"
+      },
+      "autoDownload": {
+        "label": "Frissítések automatikus letöltése",
+        "description": "Az új kiadások letöltése és telepítése a háttérben, rákérdezés nélkül.",
+        "error": "Nem sikerült frissíteni az automatikus letöltés beállítását"
+      },
       "appUpdates": "Alkalmazásfrissítések",
       "installedVersion": "Telepített verzió: {version}",
       "availableVersion": "Elérhető verzió: {version}",
       "unsupported": "A csomagolt buildek ellenőrizhetik, letölthetik és telepíthetik a GitHub-kiadásokból származó frissítéseket",
-      "available": "memrynote Az {version} letölthető",
+      "available": "A memrynote {version} letölthető",
       "downloadingLatest": "A legújabb kiadás letöltése",
       "downloadingLatestPercent": "A legújabb kiadás letöltése ({percent}%)",
-      "downloaded": "memrynote Az {version} telepítésre kész",
-      "upToDate": "Ez a telepítés a legújabb közzétett kiadáson található",
-      "checking": "A GitHub-kiadások újabb verziójának ellenőrzése",
+      "downloaded": "A memrynote {version} telepítésre kész",
+      "upToDate": "A legújabb közzétett kiadás van telepítve",
+      "checking": "Újabb verzió keresése a GitHub-kiadások között",
       "idle": "Keressen új kiadásokat, és telepítse azokat az alkalmazás elhagyása nélkül",
       "unsupportedToast": "Az automatikus frissítések csak csomagolt kiadásokban érhetők el",
-      "upToDateToast": "memrynote Az {version} naprakész",
-      "actionFailed": "A frissítési művelet nem sikerült",
+      "upToDateToast": "A memrynote {version} naprakész",
+      "actionFailed": "Nem sikerült végrehajtani a frissítési műveletet",
       "actions": {
-        "checking": "Ellenőrzés...",
+        "checking": "Ellenőrzés…",
         "available": "Frissítés letöltése",
-        "downloading": "Letöltés...",
-        "downloadingPercent": "{percent}% letöltése",
-        "downloaded": "Indítsa újra a telepítéshez",
-        "idle": "Ellenőrizze a frissítéseket"
+        "downloading": "Letöltés…",
+        "downloadingPercent": "Letöltés: {percent}%",
+        "downloaded": "Újraindítás és telepítés",
+        "idle": "Ellenőrzés most"
       },
-      "autoCheck": {
-        "description": "Új kiadások keresése indításkor, majd rendszeresen, amíg az alkalmazás nyitva van.",
-        "error": "Nem sikerült frissíteni az automatikus keresés beállítását",
-        "label": "Frissítések automatikus keresése"
+      "label": "Frissítések",
+      "checkedAgo": "{status} · ellenőrizve: {time}",
+      "status": {
+        "unsupported": "Csomagolt kiadásokban érhető el",
+        "idle": "Még nincs ellenőrizve",
+        "checking": "Ellenőrzés…",
+        "upToDate": "Naprakész",
+        "available": "Elérhető verzió: {version}",
+        "downloading": "Letöltés…",
+        "downloadingPercent": "Letöltés: {percent}%",
+        "downloaded": "Telepítésre kész verzió: {version}"
       },
-      "autoDownload": {
-        "description": "Az új kiadások letöltése és telepítése a háttérben, rákérdezés nélkül.",
-        "error": "Nem sikerült frissíteni az automatikus letöltés beállítását",
-        "label": "Frissítések automatikus letöltése"
+      "mode": {
+        "label": "Frissítési mód",
+        "off": "Nincs ellenőrzés",
+        "notify": "Csak értesítés",
+        "auto": "Automatikus letöltés"
       }
     },
     "language": {
       "label": "Nyelv",
-      "helper": "A legtöbb alkalmazás azonnal frissül. Egyes rendszerszintű szövegek – a már megjelenített értesítések, dokkcímke, ablak címsora – a következő indítás után frissülnek.",
-      "changed": "A nyelv {nativeName}-re módosult",
+      "helper": "Az alkalmazás nagy része azonnal frissül. Egyes rendszerszintű szövegek – a már megjelenített értesítések, a Dock címkéje, az ablak címsora – csak a következő indítás után frissülnek.",
+      "changed": "Nyelv módosítva: {nativeName}",
       "failed": "Nem sikerült megváltoztatni a nyelvet. Kérjük, próbálja újra."
     },
     "clockFormat": {
@@ -105,97 +186,126 @@
       },
       "error": "Nem sikerült frissíteni az időformátumot"
     },
+    "dateFormat": {
+      "label": "Dátumformátum",
+      "description": "Hogyan jelenjenek meg a naptárdátumok",
+      "options": {
+        "MM/DD/YYYY": "MM/DD/YYYY (USA)",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
+        "DD.MM.YYYY": "DD.MM.YYYY"
+      },
+      "error": "Nem sikerült frissíteni a dátumformátumot"
+    },
     "tabs": {
+      "openPagesInNewTab": {
+        "label": "Oldalak megnyitása új lapon",
+        "description": "Egy oldalra – jegyzetre, mappára, projektre, vászonra, címkére, könyvjelzőre – kattintva vagy egy új oldal létrehozásakor az új lapon nyílik meg. Kikapcsolva az aktuális lap újrahasznosul, a jegyzeten belüli hivatkozások követésekor is; a kitűzött lapok sosem cserélődnek le. A „Megnyitás új lapon”, a „Megnyitás oldalt” és a középső kattintás mindig új lapot nyit."
+      },
       "restoreSession": {
-        "label": "Munkamenet visszaállítása a kezdéskor",
-        "description": "Nyissa meg újra a legutóbbi munkamenet lapjait"
+        "label": "Lapok visszaállítása indításkor",
+        "description": "Újranyitja a legutóbb megnyitott lapokat és felosztásokat."
       },
       "closeButton": {
-        "label": "Lap bezárása gomb",
+        "label": "Lapbezáró gomb",
         "description": "Mikor jelenjen meg a bezárás gomb",
         "options": {
           "always": "Mindig látható",
-          "hover": "Megjelenítés az egérrel",
+          "hover": "Rámutatáskor",
           "active": "Csak az aktív lapon"
         }
       },
       "error": "Nem sikerült frissíteni a beállítást"
     },
+    "window": {
+      "minimizeToTray": {
+        "label": "Futás a menüsorban bezárás után",
+        "description": "Az ablak bezárásakor a memrynote a rendszertálcára kerül ahelyett, hogy kilépne. A tálcaikonra kattintva visszahozhatja. macOS-en az alkalmazás a Dockban is megmarad; rendszertálca nélküli Linux-asztalokon az ablak a szokásos módon bezárul.",
+        "error": "Nem sikerült módosítani a tálcára helyezés beállítását"
+      }
+    },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Hozzon létre a kiválasztott mappában",
+        "label": "Létrehozás a kiválasztott mappában",
         "description": "Az új jegyzetek és mappák az aktuálisan kiválasztott mappán belül jönnek létre. Ha ki van kapcsolva, az elemek mindig a gyökérben jönnek létre."
       },
       "defaultNoteFolder": {
-        "description": "Üres = a széf gyökere",
-        "label": "Új jegyzetek alapértelmezett helye",
-        "placeholder": "jegyzetek"
+        "label": "Alapértelmezett hely",
+        "description": "Akkor használatos, ha nincs mappa kiválasztva az oldalsávon.",
+        "placeholder": "jegyzetek",
+        "root": "/"
       }
     },
     "privacy": {
       "telemetry": {
-        "label": "Oszd meg a névtelen használati mutatókat",
-        "description": "Csak névtelen mérőszámokról van szó – soha nem küldenek jegyzettartalmat, keresési lekérdezéseket, fájlútvonalakat, e-maileket vagy nyers azonosítókat.",
+        "label": "Anonim használati mérőszámok megosztása",
+        "description": "Soha nem küld jegyzettartalmat, címeket vagy neveket. A kitakart diagnosztikai naplófájlokat is megosztja.",
         "error": "Nem sikerült frissíteni a telemetria beállítását"
       },
+      "autoSendDiagnostics": {
+        "label": "Hibajelentések automatikus küldése",
+        "description": "Kitakart naplófájlok, amikor hibaképernyő jelenik meg. Kikapcsolva minden alkalommal rákérdez.",
+        "error": "Nem sikerült módosítani a hibajelentések beállítását"
+      },
       "diagnostics": {
+        "title": "Elküldi a diagnosztikai jelentést?",
+        "consent": "Elküld egy egyszeri diagnosztikai jelentést? Csak kitakart technikai naplófájlokat tartalmaz – jegyzettartalmat nem.",
         "building": "Jelentés előkészítése…",
-        "consent": "Elküldesz egy egyszeri diagnosztikai jelentést? Csak kitakart technikai naplókat tartalmaz — jegyzettartalmat nem.",
-        "error": "Nem sikerült elküldeni a diagnosztikai jelentést",
-        "notNow": "Most nem",
-        "previewError": "Nem sikerült előkészíteni a diagnosztikai jelentést",
         "previewLabel": "A jelentés tartalmának előnézete",
+        "snapshotLabel": "Eszközadatok pillanatképe",
         "send": "Küldés",
-        "sendReport": {
-          "button": "Diagnosztikai jelentés küldése",
-          "description": "Küldj egy egyszeri jelentést kitakart technikai naplókkal, hogy segíts nekünk kideríteni a hiba okát.",
-          "label": "Diagnosztikai jelentés"
-        },
         "sending": "Küldés…",
-        "sent": "Jelentés elküldve — azonosító: {incidentId}",
-        "snapshotLabel": "Eszköz pillanatképe",
-        "title": "Elküldöd a diagnosztikai jelentést?"
-      }
-    },
-    "dateFormat": {
-      "description": "Hogyan jelenjenek meg a naptárdátumok",
-      "error": "Nem sikerült frissíteni a dátumformátumot",
-      "label": "Dátumformátum",
-      "options": {
-        "DD.MM.YYYY": "DD.MM.YYYY",
-        "DD/MM/YYYY": "DD/MM/YYYY",
-        "MM/DD/YYYY": "MM/DD/YYYY (USA)",
-        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
+        "notNow": "Most nem",
+        "sent": "Jelentés elküldve – azonosító: {incidentId}",
+        "previewError": "Nem sikerült előkészíteni a diagnosztikai jelentést",
+        "error": "Nem sikerült elküldeni a diagnosztikai jelentést",
+        "sendReport": {
+          "label": "Diagnosztikai jelentés",
+          "description": "Küldjön egy egyszeri jelentést kitakart technikai naplófájlokkal, hogy segítsen nekünk kideríteni a tapasztalt hiba okát.",
+          "button": "Jelentés küldése…"
+        }
       }
     }
   },
   "appearance": {
     "header": {
       "title": "Megjelenés",
-      "subtitle": "Szabja testre a megjelenést és az érzést",
-      "loading": "Beállítások betöltése..."
+      "subtitle": "A megjelenés testreszabása",
+      "loading": "Beállítások betöltése…"
     },
     "groups": {
-      "theme": "téma",
-      "accentColor": "Kiemelt szín",
-      "typography": "Tipográfia"
+      "theme": "Téma",
+      "accentColor": "Kiemelőszín",
+      "typography": "Tipográfia",
+      "zoom": "Nagyítás"
     },
     "theme": {
       "colorMode": {
-        "label": "Szín mód",
+        "label": "Színmód",
         "description": "Válassza ki a kívánt témát",
-        "aria": "Színes mód"
+        "aria": "Színmód"
       },
       "options": {
-        "light": "Meleg",
+        "light": "Világos",
         "white": "Fehér",
         "dark": "Sötét",
         "system": "Rendszer"
       },
       "error": "Nem sikerült frissíteni a témát"
     },
+    "colorTheme": {
+      "default": "Memrynote",
+      "themes": "Memrynote-témák",
+      "warm": "Meleg",
+      "error": "Nem sikerült módosítani a színtémát",
+      "copy": "Téma másolása",
+      "copied": "Téma a vágólapra másolva",
+      "copyError": "Nem sikerült másolni a témát",
+      "import": "Téma importálása a vágólapról",
+      "importInvalid": "A vágólap nem tartalmaz memrynote-témát"
+    },
     "accent": {
-      "pick": "Válasszon egy hangsúlyos színt",
+      "pick": "Válasszon kiemelőszínt",
       "custom": {
         "label": "Egyedi szín",
         "description": "Adjon meg egy hexadecimális értéket",
@@ -209,38 +319,105 @@
         "violet": "Ibolyakék",
         "cyan": "Cián",
         "pink": "Rózsaszín",
-        "orange": "narancssárga"
+        "orange": "Narancssárga"
       },
-      "error": "Nem sikerült frissíteni a kiemelő színt"
+      "error": "Nem sikerült módosítani a kiemelőszínt",
+      "aria": "Kiemelőszín-készlet",
+      "options": {
+        "theme": "Téma",
+        "custom": "Egyéni"
+      }
+    },
+    "colors": {
+      "background": "Háttér",
+      "foreground": "Előtér",
+      "forLight": "Világos módhoz",
+      "forDark": "Sötét módhoz",
+      "reset": "A téma színének használata",
+      "pick": "Szín kiválasztása"
+    },
+    "advanced": {
+      "title": "Speciális",
+      "reset": "Visszaállítás alapértelmezettre",
+      "error": "Nem sikerült módosítani a beállítást",
+      "fontSizeDescription": "A felület szövegének alapmérete",
+      "zoomDescription": "A teljes ablak méretaránya",
+      "reduceMotion": {
+        "label": "Mozgás csökkentése",
+        "description": "Kevesebb animáció, vagy a rendszerbeállítás követése",
+        "options": {
+          "system": "Rendszer",
+          "on": "Be"
+        }
+      },
+      "pointerCursors": {
+        "label": "Mutató kurzor használata",
+        "description": "Mutató kurzor megjelenítése az interaktív elemek fölött"
+      },
+      "fontSmoothing": {
+        "label": "Betűsimítás",
+        "description": "Vékonyabb, szürkeárnyalatos élsimítású szöveg macOS-en"
+      }
+    },
+    "zoom": {
+      "label": "Nagyítási szint",
+      "description": "A teljes felület méretezése",
+      "decrease": "Kicsinyítés",
+      "increase": "Nagyítás",
+      "reset": "Nagyítás visszaállítása alapértelmezettre",
+      "error": "Nem sikerült módosítani a nagyítási szintet"
     },
     "typography": {
       "fontSize": {
         "label": "Betűméret",
-        "description": "Állítsa be az alapszöveg méretét",
-        "aria": "Betűméret"
+        "description": "A felület alapszövegének mérete képpontban",
+        "decrease": "Betűméret csökkentése",
+        "increase": "Betűméret növelése",
+        "reset": "Betűméret visszaállítása alapértelmezettre"
       },
       "fontFamily": {
         "label": "Betűcsalád",
         "description": "Az interfész elsődleges betűtípusa",
         "options": {
-          "system": "Rendszer alapértelmezett",
+          "system": "Rendszer alapértelmezése",
           "sansSerif": "Sans-serif",
           "serif": "Serif (Crimson Pro)",
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
           "monospace": "Monospace"
-        }
+        },
+        "sections": {
+          "builtin": "Beépített",
+          "system": "Telepítve ezen a számítógépen"
+        },
+        "searchPlaceholder": "Betűtípusok keresése…",
+        "empty": "Nincs egyező betűtípus",
+        "loading": "Telepített betűtípusok beolvasása…",
+        "unavailable": "A telepített betűtípusok nem érhetők el ezen a rendszeren.",
+        "notInstalled": "Nincs telepítve ezen a számítógépen – a tartalék betűtípus van használatban."
       },
       "fontSizeError": "Nem sikerült frissíteni a betűméretet",
       "fontFamilyError": "Nem sikerült frissíteni a betűtípuscsaládot"
+    },
+    "v2": {
+      "groups": {
+        "text": "Szöveg és nagyítás"
+      },
+      "colorMode": "Színmód",
+      "colorTheme": "Téma",
+      "accent": "Kiemelőszín",
+      "customColor": "Egyéni szín",
+      "fontFamily": "Betűcsalád",
+      "fontSize": "Betűméret",
+      "zoom": "Nagyítás"
     }
   },
   "editor": {
     "header": {
       "title": "Szerkesztő",
       "subtitle": "Jegyzetszerkesztő beállításai és preferenciái",
-      "loading": "Beállítások betöltése..."
+      "loading": "Beállítások betöltése…"
     },
     "groups": {
       "layout": "Elrendezés",
@@ -249,25 +426,27 @@
     },
     "width": {
       "label": "Szerkesztő szélessége",
-      "description": "Az írási terület maximális szélessége",
+      "description": "Minden jegyzetre és naplóoldalra vonatkozik",
       "options": {
-        "narrow": "Keskeny",
-        "medium": "Közepes",
-        "wide": "Széles",
-        "full": "Teljes szélesség",
-        "normal": "Normál"
+        "normal": "Normál",
+        "full": "Teljes szélesség"
       },
       "error": "Nem sikerült frissíteni a szerkesztő szélességét"
     },
     "toolbarMode": {
-      "label": "Ragadós formázási eszköztár",
+      "label": "Állandó formázási eszköztár",
       "description": "Mindig jelenítse meg az eszköztárat a szerkesztő felett",
       "error": "Nem sikerült frissíteni az eszköztár módot"
     },
     "spellCheck": {
+      "label": "Helyesírás-ellenőrzés",
       "description": "A hibásan írt szavak aláhúzása a jegyzetekben és a naplókban",
-      "error": "Nem sikerült frissíteni a helyesírás-ellenőrzést",
-      "label": "Helyesírás-ellenőrzés"
+      "error": "Nem sikerült frissíteni a helyesírás-ellenőrzést"
+    },
+    "v2": {
+      "width": "Szerkesztő szélessége",
+      "toolbarMode": "Állandó formázási eszköztár",
+      "spellCheck": "Helyesírás-ellenőrzés"
     }
   },
   "templates": {
@@ -279,24 +458,27 @@
       "new": "Új sablon",
       "edit": "Szerkesztés",
       "duplicate": "Megkettőzés",
-      "delete": "Törölje"
+      "delete": "Törlés"
     },
     "groups": {
       "builtIn": "Beépített",
       "myTemplates": "Saját sablonok"
     },
-    "loading": "Sablonok betöltése...",
+    "loading": "Sablonok betöltése…",
     "newTemplateTitle": "Új sablon",
     "copySuffix": "{name} (másolat)",
     "empty": {
       "title": "Még nincsenek egyéni sablonok",
       "description": "A kezdéshez hozzon létre egy sablont"
     },
+    "preview": {
+      "notFound": "Nem sikerült betölteni ezt a sablont."
+    },
     "toasts": {
       "deleted": "Sablon törölve",
       "deleteFailed": "Nem sikerült törölni a sablont",
-      "duplicated": "Sablon duplikálva",
-      "duplicateFailed": "Nem sikerült a sablon másolása"
+      "duplicated": "Sablon megkettőzve",
+      "duplicateFailed": "Nem sikerült megkettőzni a sablont"
     },
     "dialogs": {
       "delete": {
@@ -304,40 +486,44 @@
         "description": "Biztosan törli ezt a sablont? Ez a művelet nem vonható vissza. Az ebből a sablonból létrehozott jegyzeteket ez nem érinti."
       },
       "duplicate": {
-        "title": "Sablon másodpéldánya",
+        "title": "Sablon megkettőzése",
         "description": "Adja meg az új sablonmásolat nevét.",
         "placeholder": "Sablon neve"
       }
     },
-    "preview": {
-      "notFound": "Nem sikerült betölteni ezt a sablont."
+    "v2": {
+      "new": "Új sablon",
+      "groups": {
+        "mine": "Saját sablonok"
+      }
     }
   },
   "journal": {
     "header": {
       "title": "Napló",
       "subtitle": "Naplóbeállítások és preferenciák",
-      "loading": "Beállítások betöltése..."
+      "loading": "Beállítások betöltése…"
     },
     "groups": {
       "defaultTemplate": "Alapértelmezett sablon",
+      "location": "Hely és formátum",
       "sidebarVisibility": "Oldalsáv láthatósága",
       "footer": "Lábléc",
-      "location": "Hely és formátum"
+      "weekdayTemplates": "Naponkénti sablonok"
     },
     "template": {
       "label": "Sablon",
       "description": "Az új bejegyzések ezzel a sablonnal kezdődnek",
-      "placeholder": "Válasszon ki egy sablont",
+      "placeholder": "Sablon kiválasztása",
       "unknown": "Ismeretlen sablon",
-      "none": "Egyik sem",
-      "noneAsk": "Nincs (minden alkalommal kérdezze meg)",
-      "updated": "Az alapértelmezett sablon frissítve",
-      "cleared": "Az alapértelmezett sablon törölve",
+      "none": "Nincs",
+      "noneAsk": "Nincs (rákérdezés minden alkalommal)",
+      "updated": "Alapértelmezett sablon frissítve",
+      "cleared": "Alapértelmezett sablon eltávolítva",
       "error": "Nem sikerült frissíteni az alapértelmezett sablont"
     },
     "showSchedule": {
-      "label": "Ütemezés megjelenítése",
+      "label": "Napirend megjelenítése",
       "description": "A mai események és naptár megjelenítése"
     },
     "showTasks": {
@@ -345,157 +531,213 @@
       "description": "A kiválasztott napon esedékes feladatok megjelenítése"
     },
     "showAIConnections": {
-      "label": "AI kapcsolatok megjelenítése",
-      "description": "A mesterséges intelligencia által működtetett kapcsolatok megjelenítése a kapcsolódó bejegyzésekhez"
+      "label": "MI-kapcsolatok megjelenítése",
+      "description": "Az MI által talált kapcsolatok megjelenítése a kapcsolódó bejegyzésekhez"
     },
     "showStatsFooter": {
-      "label": "Statisztika lábléc megjelenítése",
+      "label": "Statisztikai lábléc megjelenítése",
       "description": "Szószám, olvasási idő, időbélyegek"
     },
-    "updateError": "Nem sikerült frissíteni a beállítást",
+    "folder": {
+      "label": "Naplómappa",
+      "description": "A mappa, ahol a napi jegyzetek tárolódnak",
+      "placeholder": "napló"
+    },
     "dateFormat": {
-      "description": "A napi jegyzetek fájlnévformátuma (pl. YYYY-MM-DD dddd)",
       "label": "Dátumformátum",
+      "description": "A napi jegyzetek fájlnévformátuma (pl. YYYY-MM-DD dddd)",
       "placeholder": "YYYY-MM-DD",
       "renameNote": "A formátum módosítása átnevezi a meglévő naplófájlokat. Az a fájl, amelynek új neve már foglalt, változatlan marad.",
       "tokensHelp": "Súgó a dátumformátumhoz",
       "tokensNote": "A többi karakter változatlan marad. A hét napjainak neve mindig angol.",
       "tokensTitle": "Formátumjelölők"
     },
-    "folder": {
-      "description": "A mappa, ahol a napi jegyzetek tárolódnak",
-      "label": "Naplómappa",
-      "placeholder": "napló"
-    },
     "preview": {
-      "description": "A mai naplófájl elérési útja",
-      "label": "Előnézet"
+      "label": "Előnézet",
+      "description": "A mai naplófájl elérési útja"
+    },
+    "updateError": "Nem sikerült frissíteni a beállítást",
+    "weekday": {
+      "toggle": "Eltérő sablon használata naponként",
+      "toggleDescription": "Válasszon sablont a hét minden napjához",
+      "inherit": "Alapértelmezett használata",
+      "inheritWith": "Alapértelmezett · {name}",
+      "inheritNone": "Alapértelmezett · nincs",
+      "missing": "Törölt sablon",
+      "clear": "Törlés",
+      "updated": "Sablon frissítve: {day}",
+      "cleared": "Sablon eltávolítva: {day}",
+      "error": "Nem sikerült frissíteni a sablont: {day}",
+      "summary": "{count}/7 beállítva"
+    },
+    "v2": {
+      "groups": {
+        "defaultTemplate": "Alapértelmezett sablon",
+        "location": "Hely és formátum"
+      }
     }
   },
   "tasks": {
     "header": {
       "title": "Feladatok",
       "subtitle": "Konfigurálja a feladatok alapértelmezett beállításait és viselkedését",
-      "loading": "Beállítások betöltése..."
+      "loading": "Beállítások betöltése…"
     },
     "groups": {
       "defaults": "Alapértelmezések",
-      "calendar": "Naptár",
-      "inbox": "Beérkezett üzenetek"
+      "inbox": "Beérkezők"
     },
     "defaultProject": {
       "label": "Alapértelmezett projekt",
       "description": "Akkor van hozzárendelve, ha nincs kiválasztva projekt",
       "placeholder": "Nincs alapértelmezett projekt",
-      "none": "Nincs alapértelmezett (személyes használat)",
+      "none": "Nincs alapértelmezett (a Személyes projekt)",
       "error": "Nem sikerült frissíteni az alapértelmezett projektet"
     },
     "sortOrder": {
       "label": "Alapértelmezett rendezési sorrend",
-      "description": "A feladatok sorrendje a lista nézetben",
+      "description": "A feladatok sorrendje listanézetben",
       "options": {
         "manual": "Kézi (fogd és vidd)",
-        "dueDate": "Esedékesség dátuma",
+        "dueDate": "Határidő",
         "priority": "Prioritás",
         "createdAt": "Létrehozás dátuma"
       },
       "error": "Nem sikerült frissíteni a rendezési sorrendet"
     },
-    "weekStart": {
-      "label": "A hét kezdődik",
-      "description": "A hét első napja a naptárnézetekben",
-      "options": {
-        "sunday": "vasárnap",
-        "monday": "hétfő"
-      },
-      "error": "Nem sikerült frissíteni a hét elejét"
-    },
     "defaultView": {
       "label": "Alapértelmezett nézet",
-      "description": "A lap, amelyen a Feladatok oldal megnyílik",
+      "description": "Melyik nézetben nyíljon meg a Feladatok oldal",
       "options": {
         "all": "Mind",
-        "today": "Ma"
+        "today": "Ma",
+        "tomorrow": "Holnap",
+        "next7": "Következő 7 nap"
       },
       "error": "Az alapértelmezett nézet frissítése sikertelen"
     },
     "staleInbox": {
-      "label": "Elavult beérkező levelek küszöbértéke",
+      "label": "Elavult elemek küszöbe a Beérkezőkben",
       "description": "Az ennél régebbi feladatok elavultként vannak kiemelve",
-      "unit": "napokon",
-      "error": "Nem sikerült frissíteni az elavult beérkező levelek küszöbértékét"
+      "unit": "nap",
+      "error": "Nem sikerült módosítani a Beérkezők elavultsági küszöbét"
+    }
+  },
+  "inbox": {
+    "header": {
+      "title": "Beérkezők",
+      "subtitle": "Napi átnézési emlékeztető és a Beérkezők beállításai.",
+      "loading": "Betöltés…"
+    },
+    "imageFiling": {
+      "group": "Képek",
+      "error": "Nem sikerült módosítani a képek elhelyezésének beállítását",
+      "mode": {
+        "label": "Kép elhelyezése jegyzetbe",
+        "description": "Beágyazáskor a kép a jegyzetben marad, és nem jelenik meg az oldalsávon. Az oldalsávon való elhelyezéskor a kép a kiválasztott mappába kerül, a jegyzet pedig hivatkozik rá.",
+        "embed": "Beágyazás a jegyzetbe",
+        "link": "Elhelyezés az oldalsávon"
+      },
+      "ask": {
+        "label": "Rákérdezés minden alkalommal",
+        "description": "Kikapcsolva az új képek kérdés nélkül a fenti beállítást használják."
+      }
+    },
+    "reviewReminder": {
+      "group": "Napi átnézési emlékeztető",
+      "enabled": {
+        "label": "Emlékeztessen a Beérkezők átnézésére",
+        "description": "Finom napi emlékeztető, ha van elem a Beérkezőkben."
+      },
+      "time": {
+        "label": "Emlékeztető időpontja",
+        "description": "Helyi idő szerint, minden eszközön.",
+        "hourLabel": "Óra",
+        "minuteLabel": "Perc",
+        "periodLabel": "AM vagy PM"
+      },
+      "test": {
+        "label": "Tesztértesítés",
+        "description": "Az emlékeztető azonnali elküldése a rendszerértesítések ellenőrzéséhez.",
+        "button": "Teszt küldése",
+        "sent": "Tesztértesítés elküldve.",
+        "sentHint": "Ha nem jelenik meg semmi, engedélyezze a MemryNote értesítéseit a rendszerbeállításokban.",
+        "unsupported": "Ez az eszköz nem tud asztali értesítéseket megjeleníteni."
+      },
+      "error": "Nem sikerült frissíteni az emlékeztetőt."
     }
   },
   "calendar": {
     "header": {
       "title": "Naptár",
-      "subtitle": "Konfigurálja a napcella viselkedését a Nap panelen",
-      "loading": "Beállítások betöltése..."
+      "subtitle": "A napcellák viselkedése a Napi panelen",
+      "loading": "Beállítások betöltése…"
     },
     "groups": {
+      "weekStart": "Hét",
       "dayCellClick": "Napcellára kattintás",
-      "notes": "Jegyzetek",
-      "weekStart": "Hét"
+      "notes": "Jegyzetek"
+    },
+    "weekStart": {
+      "label": "A hét kezdőnapja",
+      "description": "A hét első napja minden naptárban",
+      "options": {
+        "sunday": "Vasárnap",
+        "monday": "Hétfő"
+      },
+      "error": "Nem sikerült frissíteni a hét kezdőnapját"
     },
     "defaultBehavior": {
       "label": "Alapértelmezett viselkedés",
-      "description": "Ha rákattint egy napra a Nap panel naptárában bármely nem naptári lapon",
-      "error": "Nem sikerült frissíteni a napi kattintási viselkedést"
+      "description": "Ha bármely nem naptári lapról rákattint egy napra a Napi panel naptárában",
+      "error": "Nem sikerült módosítani a napra kattintás viselkedését"
     },
     "pageOverride": {
       "label": "Naptároldal felülírása",
       "description": "Viselkedés, amikor a Naptár lap aktív (alapértelmezett a Naptár megnyitása)",
       "error": "Nem sikerült frissíteni a naptároldal felülbírálását"
     },
+    "showNotesOnCalendar": {
+      "label": "Jegyzetek megjelenítése a naptárban",
+      "description": "Minden jegyzet megjelenítése a naptárban egész napos elemként a létrehozása napján",
+      "error": "Nem sikerült frissíteni a jegyzetek naptárban való megjelenítését"
+    },
     "options": {
-      "openJournal": "Nyissa meg a Naplót",
-      "openCalendar": "Nyissa meg a Naptárt",
+      "openJournal": "Napló megnyitása",
+      "openCalendar": "Naptár megnyitása",
       "useGlobal": "Globális beállítás használata"
     },
-    "showNotesOnCalendar": {
-      "description": "Minden jegyzet megjelenítése a naptárban egész napos elemként a létrehozása napján",
-      "error": "Nem sikerült frissíteni a jegyzetek naptárban való megjelenítését",
-      "label": "Jegyzetek megjelenítése a naptárban"
-    },
-    "weekStart": {
-      "description": "A hét első napja minden naptárban",
-      "error": "Nem sikerült frissíteni a hét kezdőnapját",
-      "label": "A hét kezdőnapja",
-      "options": {
-        "monday": "Hétfő",
-        "sunday": "Vasárnap"
-      }
-    },
     "google": {
-      "name": "Google Naptár",
-      "description": "Kétirányú szinkronizálás az memrynote eseményekhez és az importált Google naptárokhoz.",
+      "name": "Google Calendar",
+      "description": "Kétirányú szinkronizálás a memrynote-eseményekhez és az importált Google-naptárakhoz.",
       "statuses": {
         "connected": "Csatlakozva",
         "notConnected": "Nincs csatlakoztatva",
         "reconnectRequired": "Újracsatlakozás szükséges"
       },
-      "accountReconnect": "Csatlakoztassa újra a Google-t",
+      "accountReconnect": "Google újracsatlakoztatása",
+      "addAccount": "Fiók hozzáadása",
       "importedCalendars": "Importált naptárak",
       "selected": "{count} kiválasztva",
       "syncNow": "Szinkronizálás most",
       "disconnect": "Leválasztás",
-      "reconnect": "Csatlakoztassa újra a Google-t",
-      "syncFailed": "Valami elromlott",
-      "connectFailed": "Nem sikerült csatlakozni a Google Naptárhoz",
-      "refreshFailed": "Nem sikerült frissíteni a Google Naptárat",
-      "disconnectFailed": "Nem sikerült leválasztani a Google Naptárt",
+      "reconnect": "Google újracsatlakoztatása",
+      "syncFailed": "Hiba történt",
+      "connectFailed": "Nem sikerült csatlakoztatni a Google Calendart",
+      "refreshFailed": "Nem sikerült frissíteni a Google Calendart",
+      "disconnectFailed": "Nem sikerült leválasztani a Google Calendart",
       "retryFailed": "Nem sikerült újrapróbálni a naptár szinkronizálását",
       "pushToGoogle": {
-        "description": "Kapcsold ki az egyirányú szinkronizáláshoz — a Google-eseményeidet továbbra is látod a memrynote-ban, de a memrynote eseményei nem jelennek meg a Google-ban.",
-        "error": "Nem sikerült frissíteni a szinkronizálás irányát",
-        "label": "memrynote események megjelenítése a Google Calendarban"
+        "label": "memrynote-események megjelenítése a Google Calendarban",
+        "description": "Kapcsolja ki az egyirányú szinkronizáláshoz – a Google-eseményeit továbbra is látja a memrynote-ban, de a memrynote eseményei nem jelennek meg a Google-ban.",
+        "error": "Nem sikerült frissíteni a szinkronizálás irányát"
       },
       "agentAccess": {
-        "description": "Alapértelmezés szerint ki van kapcsolva. Bekapcsolva az AI-ügynök elolvashatja a Google-eseményeidet; kikapcsolva semmit nem kap vissza, ha rájuk kérdezel. A memrynote-ban így is, úgy is látod őket.",
-        "error": "Nem sikerült frissíteni az AI-hozzáférést",
-        "label": "Az AI olvashatja a Google Calendar eseményeket"
+        "label": "Az MI olvashatja a Google Calendar-eseményeket",
+        "description": "Alapértelmezés szerint ki van kapcsolva. Bekapcsolva az MI-ügynök olvashatja a Google-eseményeit; kikapcsolva semmit sem kap vissza, ha rájuk kérdez. A memrynote-ban mindkét esetben látja őket.",
+        "error": "Nem sikerült módosítani az MI-hozzáférést"
       },
-      "connect": "Csatlakozás",
+      "connect": "Csatlakoztatás",
       "sourcePicker": {
         "empty": "Ezen az eszközön még nem érhetők el importált Google-naptárak.",
         "statuses": {
@@ -505,49 +747,311 @@
           "idle": "Tétlen"
         },
         "retrying": "Újrapróbálkozás…",
-        "retryNow": "Próbálja újra most"
+        "retryNow": "Újrapróbálkozás most"
       }
+    },
+    "subscriptions": {
+      "name": "Feliratkozott naptárak",
+      "description": "Adjon hozzá egy csak olvasható naptárat a megosztási hivatkozásával (ICS vagy webcal), például egy Proton-, iCloud-, Outlook- vagy Fastmail-naptárat. A memrynote nagyjából óránként ellenőrzi a változásokat.",
+      "urlLabel": "Naptárhivatkozás",
+      "urlPlaceholder": "webcal:// vagy https:// naptárhivatkozás",
+      "subscribe": "Feliratkozás",
+      "subscribing": "Feliratkozás…",
+      "refresh": "Frissítés",
+      "refreshing": "Frissítés…",
+      "remove": "Eltávolítás",
+      "readOnly": "Csak olvasható",
+      "updatedAt": "Frissítve: {time}",
+      "notCheckedYet": "Még nincs ellenőrizve",
+      "keptEvents": "A naptárában már szereplő események a következő sikeres frissítésig megmaradnak.",
+      "notEncrypted": "Nem titkosított",
+      "httpWarning": "Ez a hivatkozás a http:// előtaggal kezdődik, ezért a hivatkozás és az események titkosítatlanul utaznak. Ugyanazon a hálózaton bárki elolvashatja őket. Ha a naptár kínál https:// vagy webcal:// hivatkozást, azt használja.",
+      "added": "Hozzáadva: {title}.",
+      "addedSummary": "Hozzáadva: {title} ({count, plural, one {# esemény} other {# esemény}}, {start} – {end}).",
+      "addedEmpty": "Hozzáadva: {title}. Az elmúlt 90 napban és a következő egy évben még nincs benne esemény.",
+      "rename": "Átnevezés",
+      "renameLabel": "Naptár neve",
+      "save": "Mentés",
+      "cancel": "Mégse",
+      "color": "Naptár színe",
+      "colorOption": "Szín: {color}",
+      "help": {
+        "toggle": "Hol találom a hivatkozást?",
+        "intro": "Keressen egy megosztási lehetőséget, amelynek neve például nyilvános hivatkozás, titkos cím, közzététel vagy iCal. A hivatkozás vége .ics, vagy az eleje webcal://.",
+        "proton": {
+          "name": "Proton Calendar",
+          "steps": "Beállítások → Naptárak: válassza ki a naptárat, majd hozzon létre egy hivatkozást a Megosztás bárkivel részben. Az események részleteihez válassza a teljes nézetet.",
+          "readOnly": "A Proton-naptárak a memrynote-ban szándékosan csak olvashatók. A Proton végpontok között titkosítja a naptárakat, és nem kínál CalDAV-ot, így nincs mód a visszaírásra. A módosításokat a Protonban végezze el."
+        },
+        "icloud": {
+          "name": "iCloud",
+          "steps": "Macen a Naptár alkalmazásban vagy az iCloud.com oldalon ossza meg a naptárat, kapcsolja be a Nyilvános naptár lehetőséget, és másolja ki a hivatkozást. Ha az iCloud-eseményeket itt is szerkeszteni szeretné, inkább a CalDAV résznél csatlakoztassa az iCloudot."
+        },
+        "outlook": {
+          "name": "Outlook és Microsoft 365",
+          "steps": "Webes Outlook → Beállítások → Naptár → Megosztott naptárak → Naptár közzététele. Válassza a minden részlet megtekintését engedélyező lehetőséget, tegye közzé a naptárat, és másolja ki az ICS-hivatkozást."
+        },
+        "fastmail": {
+          "name": "Fastmail",
+          "steps": "Beállítások → Naptárak: nyissa meg a naptárat, kapcsolja be a közzétételt, és másolja ki az iCalendar-hivatkozást."
+        },
+        "notion": {
+          "name": "Notion Calendar",
+          "steps": "Az eseményei abban a Google- vagy iCloud-fiókban vannak, amelyet csatlakoztatott hozzá. A hivatkozást abból a fiókból ossza meg."
+        },
+        "public": {
+          "name": "Ünnepnapok, iskolák és sportesemények",
+          "steps": "Keressen feliratkozási, naptárhoz adási vagy iCal-lehetőséget a szervező webhelyén, és másolja ki azt a hivatkozást."
+        }
+      },
+      "errors": {
+        "invalid_url": "Ez nem naptárhivatkozás. Illesszen be egy webcal://, https:// vagy http:// kezdetű címet.",
+        "unreachable": "Nem sikerült elérni ezt a naptárat. Ellenőrizze a hivatkozást és az internetkapcsolatot.",
+        "timeout": "A naptár túl lassan válaszolt. Próbálja újra egy kicsit később.",
+        "not_found": "Ezen a hivatkozáson nem található naptár. Lehet, hogy törölték, vagy megváltozott a megosztási hivatkozása.",
+        "unauthorized": "A naptár megtagadta a hozzáférést. Másoljon ki egy új megosztási hivatkozást a naptáralkalmazásából.",
+        "http_error": "A naptárszerver hibát adott vissza. Próbálja újra később.",
+        "too_large": "Ez a naptár túl nagy a hozzáadáshoz. Osszon meg inkább egy kisebb naptárat.",
+        "not_a_calendar": "Ez a hivatkozás nem naptárat ad vissza. Másolja ki az ICS- vagy webcal-hivatkozást a naptáralkalmazás megosztási beállításaiból.",
+        "too_many_redirects": "Ez a hivatkozás folyamatosan átirányít, és sosem ér el naptárat. Másolja ki újra a hivatkozást a naptáralkalmazásából.",
+        "unsupported_redirect": "Ez a hivatkozás olyan címre irányít át, amely nem webes hivatkozás, ezért a memrynote nem követi. Másolja ki az ICS- vagy webcal-hivatkozást a naptáralkalmazásából.",
+        "unknown": "Nem sikerült frissíteni ezt a naptárat ({code}). Próbálja újra később."
+      }
+    },
+    "providers": {
+      "caldav": {
+        "name": "CalDAV"
+      },
+      "statuses": {
+        "connected": "Csatlakoztatva",
+        "notConnected": "Nincs csatlakoztatva"
+      },
+      "readOnly": "Csak olvasható",
+      "pollInterval": "Ellenőrzési gyakoriság: {minutes} perc. A máshol végzett módosítások nem jelennek meg azonnal.",
+      "connect": "Csatlakoztatás",
+      "connecting": "Csatlakoztatás…",
+      "connectFailed": "Nem sikerült csatlakozni. Ellenőrizze az adatokat, és próbálja újra.",
+      "disconnect": "Leválasztás",
+      "disconnectFailed": "Nem sikerült leválasztani. Próbálja újra.",
+      "syncNow": "Szinkronizálás most",
+      "refreshFailed": "A szinkronizálás sikertelen. A naptárai változatlanok maradnak; próbálja újra később.",
+      "addAccount": "Fiók hozzáadása",
+      "accounts": "Fiókok",
+      "calendars": "Naptárak",
+      "retry": "Újrapróbálkozás most",
+      "reconnectRequired": "Ezen az eszközön nincs jelszó ehhez a fiókhoz. Csatlakoztassa újra, hogy innen is szinkronizálhasson.",
+      "push": {
+        "label": "memrynote-események írása ebbe a naptárba",
+        "description": "Kapcsolja ki az egyirányú szinkronizáláshoz: ezeket az eseményeket továbbra is látja a memrynote-ban, de a memrynote eseményei és feladatai nem kerülnek ide."
+      },
+      "agentAccess": {
+        "label": "Az MI olvashatja ezeket az eseményeket",
+        "description": "Kikapcsolva marad, amíg be nem kapcsolja. Minden naptárszolgáltatásnál külön kell dönteni; a Google engedélyezése erre nem vonatkozik.",
+        "error": "Nem sikerült módosítani az MI-hozzáférést"
+      },
+      "basic": {
+        "serverLabel": "Szerver címe",
+        "serverPlaceholder": "https://dav.example.com",
+        "usernameLabel": "Felhasználónév",
+        "passwordLabel": "Alkalmazásjelszó"
+      },
+      "compat": {
+        "outdated": "A fiókjához tartozó alábbi eszközökön {version} verziónál régebbi memrynote fut:",
+        "unverified": "A memrynote nem tudta ellenőrizni, milyen verzió fut a többi eszközén.",
+        "unknownVersion": "ismeretlen verzió",
+        "consequence": "Egy régebbi verzió duplikátumként másolhatja át a feladatokat és eseményeket ebből a naptárból a Google Calendarba, vagy nem tudja szinkronizálni őket. Először frissítse azokat az eszközöket, vagy folytassa, ha ezt vállalja.",
+        "acknowledge": "Értem, csatlakoztatás így is"
+      },
+      "reconnect": "Újracsatlakoztatás",
+      "defaultTarget": {
+        "label": "Alapértelmezett naptár",
+        "description": "Ide kerülnek az új események, feladatok, emlékeztetők és elhalasztások, ha nem választ naptárat. Csak egy naptárszolgáltatás lehet az alapértelmezett.",
+        "none": "Nem alapértelmezett",
+        "error": "Nem sikerült módosítani az alapértelmezett naptárat"
+      },
+      "appleEventKit": {
+        "name": "Ez a Mac",
+        "description": "Megjeleníti az összes naptárat, amely a Naptár alkalmazásban már megvan ezen a Macen: iCloud, Google, Exchange és Saját Macen. Nincs bejelentkezés, csak olvasható, és az események sosem hagyják el ezt a Macet, és nem szinkronizálódnak a többi eszközére.",
+        "connect": "Naptár-hozzáférés engedélyezése",
+        "connectHint": "A macOS egyszer kérdez rá. Később módosíthatja a Rendszerbeállításokban.",
+        "otherCalendars": "Egyéb naptárak",
+        "alreadyConnected": "Már csatlakoztatva ezen keresztül: {provider}, ezért kikapcsolva indul, hogy az események ne jelenjenek meg kétszer.",
+        "openSystemSettings": "Rendszerbeállítások megnyitása",
+        "checkAgain": "Újraellenőrzés",
+        "errors": {
+          "permission_denied": "A memrynote naptár-hozzáférése ki van kapcsolva. Kapcsolja be a Rendszerbeállítások → Adatvédelem és biztonság → Naptárak menüpontban, majd ellenőrizze újra.",
+          "permission_restricted": "A naptár-hozzáférés le van tiltva ezen a Macen, általában egy felügyeleti profil miatt. A memrynote-ban semmi sem változott; a Mac rendszergazdája engedélyezheti.",
+          "permission_write_only": "A memrynote csak eseményeket adhat hozzá, ami nem elég a megjelenítésükhöz. Állítsa Teljes hozzáférésre a Rendszerbeállítások → Adatvédelem és biztonság → Naptárak menüpontban.",
+          "permission_not_determined": "A memrynote még nem kapott naptár-hozzáférést. Engedélyezze a Mac naptárainak megjelenítéséhez.",
+          "unavailable": "A macOS-naptárolvasó nem tudott elindulni. A naptárai változatlanok; indítsa újra a memrynote-ot, és próbálja újra.",
+          "sync_failed": "A Naptár alkalmazás most nem olvasható. A naptárai változatlanok maradnak, és a memrynote újrapróbálkozik, amikor a Naptár alkalmazás tartalma megváltozik."
+        }
+      }
+    },
+    "caldav": {
+      "presetLabel": "Szolgáltatás",
+      "presets": {
+        "icloud": "Apple iCloud",
+        "fastmail": "Fastmail",
+        "nextcloud": "Nextcloud",
+        "selfHosted": "Radicale vagy Baïkal (saját üzemeltetésű)",
+        "zoho": "Zoho",
+        "yahoo": "Yahoo",
+        "mailboxOrg": "mailbox.org",
+        "posteo": "Posteo",
+        "synology": "Synology",
+        "other": "Egyéb CalDAV-szerver"
+      },
+      "hostLabel": "Szerver neve",
+      "hostPlaceholder": "cloud.example.com",
+      "appleIdLabel": "Apple ID (e-mail-cím)",
+      "icloudHelp": "Alkalmazásspecifikus jelszót használjon, ne az Apple ID jelszavát. Egyet a Bejelentkezés és biztonság → Alkalmazásspecifikus jelszavak részben hozhat létre.",
+      "appPasswordHelp": "Ha a szolgáltatása kínál alkalmazásjelszavakat, hozzon létre egyet a memrynote számára, és azt használja itt.",
+      "createAppPassword": "Alkalmazásjelszó létrehozása",
+      "testConnection": "Kapcsolat tesztelése",
+      "testing": "Tesztelés…",
+      "chooseCalendars": "Megjelenítendő naptárak",
+      "reconnectFor": "Adja meg a(z) {username} fiók alkalmazásjelszavát.",
+      "errors": {
+        "unauthorizedIcloud": "Az iCloud nem fogadta el ezt a jelszót. Az iCloudhoz itt alkalmazásspecifikus jelszó kell, nem az Apple ID jelszava. Hozzon létre egyet az account.apple.com oldalon a Bejelentkezés és biztonság részben, majd próbálja újra.",
+        "unauthorized": "A szerver nem fogadta el ezt a felhasználónevet és jelszót. Ellenőrizze mindkettőt, és használjon alkalmazásjelszót, ha a szolgáltatása támogatja.",
+        "unreachable": "Nem sikerült elérni a szervert. Ellenőrizze a címet és az internetkapcsolatot, majd próbálja újra.",
+        "notCaldav": "Ezen a címen nem található CalDAV-naptár. Ellenőrizze a szerver címét; egyes szolgáltatásokhoz útvonal is kell, például /remote.php/dav.",
+        "noCalendars": "Ebben a fiókban nincs eseményeket tartalmazó naptár.",
+        "invalidUrl": "Ez nem szervercím. Adjon meg egy ilyen formájú címet: https://dav.example.com.",
+        "outdatedDevices": "Egyes eszközein régebbi memrynote fut. Frissítse őket, vagy erősítse meg alább, hogy mégis csatlakoztatni szeretné.",
+        "unknown": "Nem sikerült csatlakozni ({code}). Semmi sem lett mentve; próbálja újra később."
+      },
+      "reconnect": {
+        "missing": "Ezen az eszközön még nincs meg a fiók alkalmazásjelszava. Az események továbbra is megérkeznek a többi eszközéről; adja meg itt az alkalmazásjelszót, hogy erről az eszközről is szinkronizálhasson.",
+        "icloudRevoked": "Az iCloud már nem fogadja el ezt az alkalmazásspecifikus jelszót. Az Apple ID jelszavának visszaállítása minden alkalmazásspecifikus jelszót visszavon. Hozzon létre egy újat az account.apple.com oldalon, és csatlakoztassa újra.",
+        "rejected": "A szerver már nem fogadja el ezt a jelszót. Ha módosította, vagy visszavonta az alkalmazásjelszót, hozzon létre egy újat, és csatlakoztassa újra."
+      }
+    },
+    "v2": {
+      "groups": {
+        "layout": "Elrendezés",
+        "connected": "Csatlakoztatott naptárak"
+      },
+      "addCalendar": "Naptár hozzáadása",
+      "calendarCount": "{selected}/{count, plural, one {# naptár} other {# naptár}}",
+      "defaultPill": "Alapértelmezett",
+      "subscription": "Feliratkozás",
+      "subscriptionCount": "{count, plural, =0 {Nincs feliratkozás} one {# feliratkozás} other {# feliratkozás}}"
     }
   },
   "account": {
     "header": {
-      "title": "fiók",
-      "subtitle": "Fiókja, szinkronizálása és biztonsága",
-      "loading": "Betöltés..."
+      "title": "Fiók",
+      "subtitle": "Fiók, szinkronizálás és biztonság",
+      "loading": "Betöltés…"
     },
     "groups": {
       "identity": "Identitás",
       "sync": "Szinkronizálás",
+      "billing": "Számlázás",
       "storage": "Tárolás",
-      "devices": "Eszközök",
-      "billing": "Számlázás"
+      "devices": "Eszközök"
     },
     "identity": {
       "unknown": "Ismeretlen",
-      "encrypted": "Végponttól végpontig titkosítva"
+      "encrypted": "Végpontok között titkosítva"
     },
     "sync": {
-      "lastSynced": "Utoljára szinkronizált {time}",
+      "lastSynced": "Utolsó szinkronizálás: {time}",
       "pending": "{count, plural, one {# függőben} other {# függőben}}",
+      "attachmentAutoDownload": {
+        "label": "Mellékletek automatikus letöltése",
+        "description": "A szinkronizált jegyzetek mellékleteinek letöltése a háttérben. Kikapcsolva a fájlok csak megnyitáskor töltődnek le.",
+        "saveFailed": "Nem sikerült menteni a mellékletek letöltési beállítását"
+      },
       "statuses": {
         "synced": "Szinkronizálva",
-        "syncing": "Szinkronizálás...",
+        "syncing": "Szinkronizálás…",
         "paused": "Szüneteltetve",
         "syncError": "Szinkronizálási hiba",
         "offline": "Offline",
-        "connecting": "Csatlakozás...",
-        "pushed": "{count, plural, one {# tolva} other {# tolva}}",
-        "pulled": "{count, plural, one {# húzva} other {# húzva}}",
+        "connecting": "Csatlakozás…",
+        "localOnly": "Csak helyi",
+        "pushed": "{count, plural, one {# feltöltve} other {# feltöltve}}",
+        "pulled": "{count, plural, one {# letöltve} other {# letöltve}}",
         "pushedPulled": "{parts}",
-        "changesPending": "{count, plural, one {# módosítás függőben} other {Az # módosításai függőben vannak}}",
-        "offlinePending": "Offline ({count, plural, one {# módosítás függőben} other {Az # módosításai függőben vannak}})",
+        "changesPending": "{count, plural, one {# módosítás függőben} other {# módosítás függőben}}",
+        "offlinePending": "Offline ({count, plural, one {# módosítás függőben} other {# módosítás függőben}})",
         "never": "Soha"
+      },
+      "upsell": {
+        "title": "A jegyzetei csak ezen az eszközön vannak",
+        "description": "Kapcsolja be a szinkronizálást, és minden jegyzete elérhető lesz a többi eszközén is – végpontok között titkosítva, így csak Ön olvashatja őket.",
+        "benefits": {
+          "devices": "Minden eszközön ott folytathatja, ahol abbahagyta",
+          "encrypted": "Végpontok közötti titkosítás – a kulcsok mindig Önnél maradnak",
+          "backup": "Titkosított biztonsági mentés arra az esetre, ha ez az eszköz elveszne"
+        },
+        "guarantee": "14 napos pénzvisszafizetési garancia. Bármikor lemondható."
+      },
+      "activating": {
+        "title": "Aktiválás befejezése",
+        "description": "A csomagja aktív. A szinkronizálás elindul, amint megerősítjük – általában egy frissítés megoldja."
+      }
+    },
+    "billing": {
+      "planStatus": "Csomag állapota",
+      "checking": "Számlázási állapot ellenőrzése",
+      "annualSwitch": {
+        "title": "Váltás éves számlázásra",
+        "description": "Takarítson meg 20%-ot. A hónap hátralévő részét időarányosan elszámoljuk, nincs második terhelés.",
+        "action": "Váltás évesre",
+        "pricing": "Ár kiszámítása…",
+        "preview": "Ma fizetendő: {amount}, utána évente {recurring}",
+        "confirm": "Váltás megerősítése",
+        "switching": "Váltás…",
+        "success": "Mostantól éves számlázással fizet.",
+        "failed": "Nem sikerült csomagot váltani"
+      },
+      "plans": {
+        "free": "Ingyenes csomag",
+        "plus": "Plus csomag",
+        "pro": "Pro csomag",
+        "believer": "Believer csomag"
+      },
+      "statuses": {
+        "inactive": "Inaktív",
+        "active": "Aktív",
+        "past_due": "Fizetés elmaradt",
+        "paused": "Szüneteltetve",
+        "canceled": "Lemondva"
+      },
+      "labels": {
+        "storage": "Tárhely",
+        "maxFile": "Max. fájl",
+        "vaults": "Széfek",
+        "history": "Előzmények"
+      },
+      "unlimited": "Korlátlan",
+      "historyDays": "{days} nap",
+      "activationPendingPrefix": "Aktiválás függőben. A Paddle-nek eltarthat egy ideig a fizetés megerősítése. Frissítse az állapotot, vagy írjon ide:",
+      "actions": {
+        "upgrade": "Váltás",
+        "unlockSync": "Szinkronizálás feloldása",
+        "opening": "Megnyitás…",
+        "refresh": "Állapot frissítése",
+        "manage": "Számlázás kezelése"
+      },
+      "toasts": {
+        "loadFailed": "Nem sikerült betölteni a számlázási állapotot",
+        "checkoutFailed": "Nem sikerült elindítani a fizetést",
+        "checkoutOpened": "A fizetési oldal megnyílt a böngészőben",
+        "refreshFailed": "Nem sikerült frissíteni a számlázási állapotot",
+        "billingActive": "A számlázás aktív",
+        "activationPending": "Aktiválás függőben",
+        "portalFailed": "Nem sikerült megnyitni a számlázási portált"
       }
     },
     "storage": {
       "used": "{used}/{limit} használt",
       "categories": {
-        "notes": "Megjegyzések",
+        "notes": "Jegyzetek",
         "attachments": "Mellékletek",
         "crdt": "CRDT",
         "other": "Egyéb"
@@ -555,398 +1059,679 @@
     },
     "security": {
       "signOut": {
-        "label": "Jelentkezzen ki",
-        "description": "Válassza le az eszközt a szinkronizálásról",
-        "action": "Jelentkezzen ki"
+        "label": "Kijelentkezés",
+        "description": "Az eszköz leválasztása a szinkronizálásról",
+        "action": "Kijelentkezés"
       }
     },
+    "community": {
+      "prompt": "Tetszik a memrynote?",
+      "star": "Adjon nekünk csillagot a GitHubon",
+      "and": "és",
+      "feedback": "ossza meg visszajelzését"
+    },
     "signOutDialog": {
-      "title": "Kijelentkezik a szinkronból?",
+      "title": "Kijelentkezik a szinkronizálásból?",
       "description": "A szinkronizálás leáll, és a titkosítási kulcsok eltávolításra kerülnek erről az eszközről. Jegyzetei ezen az eszközön maradnak. A szinkronizálás újbóli beállításához szüksége lesz a helyreállítási kifejezésre.",
-      "confirm": "Jelentkezzen ki",
-      "signingOut": "Kijelentkezés..."
+      "confirm": "Kijelentkezés",
+      "signingOut": "Kijelentkezés…"
     },
     "toasts": {
       "signedOut": "Sikeresen kijelentkezett",
       "signOutFailed": "Nem sikerült kijelentkezni",
-      "deviceLinked": "Az eszköz sikeresen összekapcsolva"
+      "deviceLinked": "Eszköz társítva"
     },
-    "billing": {
-      "actions": {
-        "manage": "Számlázás kezelése",
-        "opening": "Megnyitás...",
-        "refresh": "Állapot frissítése",
-        "upgrade": "Váltás"
-      },
-      "activationPendingPrefix": "Aktiválás függőben. A Paddle-nek eltarthat egy pillanatig a fizetés megerősítése. Frissítsd az állapotot, vagy írj ide:",
-      "checking": "Számlázási állapot ellenőrzése",
-      "historyDays": "{days} nap",
-      "labels": {
-        "history": "Előzmények",
-        "maxFile": "Max. fájl",
-        "storage": "Tárhely",
-        "vaults": "Széfek"
-      },
-      "planStatus": "Csomag állapota",
-      "plans": {
-        "believer": "Believer csomag",
-        "free": "Ingyenes csomag",
-        "plus": "Plus csomag",
-        "pro": "Pro csomag"
-      },
-      "statuses": {
-        "active": "Aktív",
-        "canceled": "Lemondva",
-        "inactive": "Inaktív",
-        "past_due": "Lejárt",
-        "paused": "Szüneteltetve"
-      },
-      "toasts": {
-        "activationPending": "Aktiválás függőben",
-        "billingActive": "A számlázás aktív",
-        "checkoutFailed": "Nem sikerült elindítani a fizetést",
-        "checkoutOpened": "A fizetés megnyílt a böngésződben",
-        "loadFailed": "Nem sikerült betölteni a számlázási állapotot",
-        "portalFailed": "Nem sikerült megnyitni a számlázási portált",
-        "refreshFailed": "Nem sikerült frissíteni a számlázási állapotot"
-      },
-      "unlimited": "Korlátlan"
-    },
-    "community": {
-      "and": "és",
-      "feedback": "ossz meg visszajelzést",
-      "prompt": "Szereted a memrynote-ot?",
-      "star": "Csillagozz minket a GitHubon"
+    "v2": {
+      "stats": {
+        "plan": "Csomag"
+      }
     }
   },
   "setup": {
     "steps": {
-      "signIn": "Jelentkezzen be",
-      "verify": "Ellenőrizze",
-      "link": "Kapcsolja össze"
+      "signIn": "Bejelentkezés",
+      "verify": "Ellenőrzés",
+      "link": "Társítás"
     },
-    "progress": "{total}/{current} lépés: {label}",
+    "progress": "Lépés: {current}/{total} – {label}",
     "signIn": {
-      "title": "Állítsa be a szinkronizálást",
+      "title": "Szinkronizálás beállítása",
       "description": "Hozzon létre egy fiókot az adatok szinkronizálásához az eszközök között végpontok közötti titkosítással.",
       "or": "vagy",
+      "paidPlan": "A szinkronizálás fizetős csomag.",
+      "seePlans": "Csomagok megtekintése",
       "errors": {
         "sendCode": "Nem sikerült elküldeni a kódot",
-        "googleStart": "Nem sikerült elindítani a Google bejelentkezést"
-      },
-      "paidPlan": "A szinkronizálás fizetős csomag.",
-      "seePlans": "Csomagok megtekintése"
+        "googleStart": "Nem sikerült elindítani a Google-bejelentkezést"
+      }
     },
     "email": {
-      "label": "E-mail cím",
-      "placeholder": "Adja meg e-mail címét...",
-      "invalid": "Kérjük, adjon meg egy érvényes e-mail címet",
-      "sending": "Kód küldése..."
+      "label": "E-mail-cím",
+      "placeholder": "Adja meg az e-mail-címét…",
+      "invalid": "Adjon meg egy érvényes e-mail-címet",
+      "sending": "Kód küldése…"
     },
     "oauth": {
-      "google": "Folytassa a Google-lal"
+      "google": "Folytatás a Google-lal"
     },
     "otp": {
       "title": "Írja be az ellenőrző kódot",
-      "sentTo": "6 számjegyű kódot küldtünk a címre ",
+      "sentTo": "Egy 6 jegyű kódot küldtünk ide: ",
       "aria": "6 számjegyű ellenőrző kód",
-      "verifying": "Ellenőrzés...",
-      "resending": "Újraküldés...",
+      "verifying": "Ellenőrzés…",
+      "resending": "Újraküldés…",
       "resend": "Kód újraküldése",
-      "resendIn": "Újraküldés {time}-ben",
-      "differentEmail": "Használjon másik e-mailt",
-      "error": "Az ellenőrzés nem sikerült",
+      "resendIn": "Újraküldés {time} múlva",
+      "differentEmail": "Másik e-mail-cím használata",
+      "error": "Az ellenőrzés sikertelen",
       "resendError": "Nem sikerült újraküldeni"
     },
     "recovery": {
       "displayTitle": "Mentse el a helyreállítási kifejezést",
       "displayDescription": "Ez az egyetlen módja a titkosított adatok helyreállításának, ha elveszíti hozzáférését az összes eszközéhez.",
-      "warning": "Írja le és tárolja biztonságos helyen. Nem fogod többé látni.",
-      "wordsAria": "Kifejezésszavak helyreállítása",
-      "wordAria": "Szó {index}: {word}",
+      "warning": "Írja le, és tárolja biztonságos helyen. Többé nem fogja látni.",
+      "wordsAria": "A helyreállítási kifejezés szavai",
+      "wordAria": "{index}. szó: {word}",
       "copyAria": "Helyreállítási kifejezés másolása a vágólapra",
       "copiedAria": "Helyreállítási kifejezés másolva",
       "copied": "Másolva",
-      "saved": "Elmentettem a helyreállítási mondatomat",
+      "saved": "Elmentettem a helyreállítási kifejezésemet",
       "confirmTitle": "Erősítse meg a helyreállítási kifejezést",
       "confirmDescription": "Írja be a kért szavakat, hogy ellenőrizze, helyesen mentette-e el.",
-      "wordPlaceholder": "Írja be a #{index} szót",
-      "verify": "Ellenőrizze",
+      "wordPlaceholder": "{index}. szó",
+      "verify": "Ellenőrzés",
       "mustMatch": "A folytatáshoz mind a 3 szónak egyeznie kell",
       "inputTitle": "Írja be a helyreállítási kifejezést",
       "inputDescription": "Adja meg a 24 szavas helyreállítási kifejezést a titkosított adatokhoz való hozzáférés visszaállításához.",
       "inputLabel": "Helyreállítási kifejezés",
-      "count": "{count} / {total} szavak",
-      "inputPlaceholder": "Írja be a 24 szavas helyreállítási kifejezést szóközzel elválasztva...",
+      "count": "{count} / {total} szó",
+      "inputPlaceholder": "Írja be a 24 szavas helyreállítási kifejezést szóközökkel elválasztva…",
       "lengthHint": "Írja be mind a 24 szót a visszaállítás gomb engedélyezéséhez",
       "restore": "Hozzáférés visszaállítása",
       "progress": {
-        "deriving": "Titkosító kulcsok származtatása...",
-        "validating": "Helyreállítási kifejezés érvényesítése...",
-        "registering": "Eszköz regisztrálása..."
+        "deriving": "Titkosítási kulcsok származtatása…",
+        "validating": "Helyreállítási kifejezés érvényesítése…",
+        "registering": "Eszköz regisztrálása…"
       },
-      "failed": "A helyreállítás nem sikerült",
+      "failed": "A helyreállítás sikertelen",
       "confirmationFailed": "A megerősítés sikertelen",
       "unavailable": {
-        "description": "A helyreállítási kifejezésed csak egyszer, a beállítás során jelenik meg, és később nem szerezhető vissza. Kezdd elölről egy új generálásához.",
-        "loading": "A helyreállítási kifejezésed betöltése…",
-        "startOver": "Kezdés elölről",
-        "title": "Nem sikerült betölteni a helyreállítási kifejezésed"
+        "loading": "Helyreállítási kifejezés betöltése…",
+        "title": "Nem sikerült betölteni a helyreállítási kifejezését",
+        "description": "A helyreállítási kifejezés csak egyszer, a beállítás során jelenik meg, és később nem kérhető le újra. Új kifejezés létrehozásához kezdje elölről.",
+        "startOver": "Kezdés elölről"
       }
     },
+    "startFresh": {
+      "trigger": "Nem tudom visszaszerezni a helyreállítási kifejezésemet",
+      "title": "Újrakezdés ezen az eszközön",
+      "description": "Csak akkor tegye ezt, ha a helyreállítási kifejezése végleg elveszett. Ez a művelet nem vonható vissza.",
+      "consequenceSignOut": "Ez az eszköz kijelentkezik, és leállítja a szinkronizálást.",
+      "consequenceKey": "Az eszközön tárolt titkosítási kulcs törlődik. A fiókjában már tárolt adatok a régi kulccsal titkosítva maradnak – a helyreállítási kifejezés nélkül soha többé semmi nem tudja elolvasni őket.",
+      "consequenceLocal": "A számítógépen már mentett jegyzetek a széf mappájában maradnak, és továbbra is működnek.",
+      "confirm": "Kijelentkezés és újrakezdés",
+      "cancel": "Vissza"
+    },
     "linking": {
-      "choiceTitle": "Kapcsolja össze ezt az eszközt",
+      "choiceTitle": "Az eszköz társítása",
       "choiceDescription": "Vigye át a titkosítási kulcsokat egy másik eszközről, vagy állítsa vissza a helyreállítási kifejezésből.",
-      "qrChoice": "Link QR kóddal",
+      "qrChoice": "Társítás QR-kóddal",
       "qrChoiceDescription": "Olvassa be a másik eszközén megjelenő kódot",
       "recoveryChoice": "Helyreállítási kifejezés",
       "recoveryChoiceDescription": "Írja be a 24 szavas helyreállítási kifejezést",
-      "codeTitle": "Adja meg az összekapcsoló kódot",
-      "codeDescription": "Illessze be az összekapcsolási kódot másik eszközéről a titkosítási kulcsok biztonságos átviteléhez.",
-      "codeLabel": "Linkelési kód",
+      "codeTitle": "Társítási kód megadása",
+      "codeDescription": "Illessze be a másik eszközén kapott társítási kódot a titkosítási kulcsok biztonságos átviteléhez.",
+      "codeLabel": "Társítási kód",
       "valid": "Érvényes",
       "invalid": "Érvénytelen formátum",
-      "codePlaceholder": "Illessze be a kódot a másik eszközéről...",
-      "formatHint": "Illessze be a JSON-összekapcsolási kódot a másik eszközéről",
-      "linking": "Összekapcsolás...",
-      "linkDevice": "Eszköz összekapcsolása",
-      "failed": "Az összekapcsolás sikertelen",
-      "deviceFailed": "Nem sikerült összekapcsolni az eszközt",
-      "pendingSuccess": "Az eszköz sikeresen összekapcsolva",
-      "goBack": "Menj vissza",
+      "codePlaceholder": "Illessze be a kódot a másik eszközéről…",
+      "formatHint": "Illessze be a JSON-formátumú társítási kódot a másik eszközéről",
+      "linking": "Társítás…",
+      "linkDevice": "Eszköz társítása",
+      "failed": "A társítás sikertelen",
+      "deviceFailed": "Nem sikerült társítani az eszközt",
+      "pendingSuccess": "Eszköz társítva",
+      "goBack": "Vissza",
       "waitingTitle": "Jóváhagyásra vár",
-      "waitingDescription": "Nyissa meg az memrynote alkalmazást másik eszközén, és hagyja jóvá az összekapcsolási kérelmet.",
+      "waitingDescription": "Nyissa meg a memrynote-ot a másik eszközén, és hagyja jóvá a társítási kérelmet.",
       "verificationCode": "Ellenőrző kód",
       "confirmCode": "Győződjön meg arról, hogy ez megegyezik a másik eszközén lévő kóddal",
-      "vaultPickerChooseFolder": "Mappa kiválasztása",
-      "vaultPickerConfirm": "Kiválasztottak letöltése",
-      "vaultPickerDescription": "Ehhez a fiókhoz több széf tartozik. Válassz egy mappát és a széf(ek)et, amelyeket hozzáadsz ehhez az eszközhöz.",
-      "vaultPickerDormantHint": "Hozzáadva, akkor nyílik meg, amikor átváltasz rá",
+      "vaultPickerTitle": "Válassza ki, mit szeretne letölteni",
+      "vaultPickerDescription": "Ehhez a fiókhoz több széf tartozik. Válasszon egy mappát és az eszközhöz hozzáadandó széf(ek)et.",
       "vaultPickerFolderLabel": "Széfek tárolása ebben a mappában",
+      "vaultPickerChooseFolder": "Mappa kiválasztása",
+      "vaultRow": "Széf – {count} elem · {date}",
       "vaultPickerPrimaryHint": "Most nyílik meg",
-      "vaultPickerTitle": "Válaszd ki, mit szeretnél letölteni",
-      "vaultRow": "Széf — {count} elem · {date}"
+      "vaultPickerDormantHint": "Hozzáadva; akkor nyílik meg, amikor átvált rá",
+      "vaultPickerConfirm": "Kiválasztottak letöltése"
     }
   },
   "devices": {
-    "loading": "Eszközök betöltése...",
+    "loading": "Eszközök betöltése…",
     "loadingAria": "Eszközök betöltése",
-    "none": "Még nincsenek összekapcsolt eszközök",
-    "linkNew": "Új eszköz összekapcsolása",
-    "thisDevice": "Ez a készülék",
-    "lastSeen": "Utoljára {time} ezelőtt láttam",
-    "linked": "{time} linkelve ezelőtt",
-    "renameAria": "Nevezze át az {name}-et",
+    "none": "Még nincsenek társított eszközök",
+    "linkNew": "Új eszköz társítása",
+    "thisDevice": "Ez az eszköz",
+    "lastSeen": "Utoljára aktív: {time} ezelőtt",
+    "linked": "Társítva: {time} ezelőtt",
+    "renameAria": "„{name}” átnevezése",
     "rename": "Átnevezés",
-    "revoke": "Visszavonás",
-    "showLess": "Mutass kevesebbet",
-    "showMore": "{count, plural, one {# több eszköz} other {# több eszköz}}",
-    "showMoreAria": "Mutasd az {count, plural, one {# több eszköz} other {# több eszköz}}",
+    "revoke": "Hozzáférés visszavonása",
+    "showLess": "Kevesebb megjelenítése",
+    "showMore": "{count, plural, one {# további eszköz} other {# további eszköz}}",
+    "showMoreAria": "{count, plural, one {# további eszköz} other {# további eszköz}} megjelenítése",
     "dialogs": {
-      "revokeTitle": "Visszavonja az \"{name}\" fájlt?",
-      "revokeDescription": "Ez az eszköz elveszíti hozzáférését a szinkronizált adatokhoz. A szinkronizálás visszaállításához újra össze kell kapcsolni. Az eszközön lévő helyi adatok megmaradnak.",
-      "revokeDevice": "Eszköz visszavonása",
-      "revoking": "Visszavonás...",
+      "revokeTitle": "Visszavonja a(z) „{name}” eszköz hozzáférését?",
+      "revokeDescription": "Ez az eszköz elveszíti a hozzáférést a szinkronizált adataihoz. A szinkronizálás visszaállításához újra társítani kell. Az eszközön lévő helyi adatok megmaradnak.",
+      "revokeDevice": "Hozzáférés visszavonása",
+      "revoking": "Visszavonás…",
       "renameTitle": "Eszköz átnevezése",
       "renameDescription": "Válasszon nevet az eszköz azonosításához.",
       "namePlaceholder": "Eszköz neve",
-      "renaming": "Átnevezés..."
+      "renaming": "Átnevezés…"
     },
     "toasts": {
       "loadFailed": "Nem sikerült betölteni az eszközöket",
-      "removed": "\"{name}\" eltávolítva",
+      "removed": "„{name}” eltávolítva",
       "removeFailed": "Nem sikerült eltávolítani az eszközt",
-      "renamed": "Átnevezve \"{name}\"-re",
+      "renamed": "Átnevezve: „{name}”",
       "renameFailed": "Nem sikerült átnevezni az eszközt"
     },
     "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
-    "title": "Új eszköz összekapcsolása",
-    "description": "Olvassa be ezt a QR-kódot az összekapcsolni kívánt eszközről a titkosítási kulcsok biztonságos átviteléhez.",
-    "encrypted": "Végponttól végpontig titkosítva",
-    "generating": "Összekapcsolási kód generálása...",
-    "generatingAria": "Összekapcsolási kód generálása",
-    "generateFailed": "Nem sikerült létrehozni az összekapcsoló kódot",
-    "tryAgain": "Próbáld újra",
-    "expired": "A linkelési kód lejárt",
+    "title": "Új eszköz társítása",
+    "description": "Olvassa be ezt a QR-kódot a társítani kívánt eszközzel a titkosítási kulcsok biztonságos átviteléhez.",
+    "encrypted": "Végpontok között titkosítva",
+    "generating": "Társítási kód létrehozása…",
+    "generatingAria": "Társítási kód létrehozása",
+    "generateFailed": "Nem sikerült létrehozni a társítási kódot",
+    "tryAgain": "Újrapróbálkozás",
+    "expired": "A társítási kód lejárt",
     "generateNew": "Új kód generálása",
-    "qrAria": "QR-kód az eszköz összekapcsolásához",
-    "qrImageAria": "QR-kódot összekapcsoló eszköz",
-    "expiresIn": "Lejár: {time}",
+    "qrAria": "QR-kód az eszköz társításához",
+    "qrImageAria": "Eszköztársítási QR-kód",
+    "expiresIn": "Lejár {time} múlva",
     "or": "vagy",
-    "codeLabel": "Linkelési kód",
-    "copyAria": "Másolja a link kódot",
+    "codeLabel": "Társítási kód",
+    "copyAria": "Társítási kód másolása",
     "copiedAria": "Másolva",
     "copied": "Másolva!"
   },
   "linkingApproval": {
-    "title": "Új eszköz szeretne összekapcsolni",
+    "title": "Egy új eszköz társítást kér",
     "description": "Egy eszköz hozzáférést kér az Ön titkosított adataihoz. Csak akkor hagyja jóvá, ha Ön kezdeményezte ezt a kérést.",
     "unknownDevice": "Ismeretlen eszköz",
     "unknownPlatform": "Ismeretlen platform",
     "verificationCode": "Ellenőrző kód",
-    "computing": "Számítás...",
+    "computing": "Számítás…",
     "unavailable": "Nem elérhető",
     "confirmCode": "Győződjön meg arról, hogy ez a kód megegyezik az új eszközön megjelenő kóddal",
     "reject": "Elutasítás",
-    "approve": "Jóváhagyni",
-    "approving": "Jóváhagyás...",
+    "approve": "Jóváhagyás",
+    "approving": "Jóváhagyás…",
     "approvalFailed": "A jóváhagyás sikertelen",
     "failedToApprove": "Nem sikerült jóváhagyni az eszközt"
   },
   "ai": {
     "header": {
-      "title": "AI-asszisztens",
-      "subtitle": "A beágyazás helyben fut. A hangjegyzetek használhatják a Whisper Small-t vagy az OpenAI-kulcsot.",
-      "loading": "Beállítások betöltése..."
+      "title": "MI-asszisztens",
+      "subtitle": "A vektoros beágyazások helyben készülnek. A hangjegyzetekhez a Whisper Small vagy az OpenAI-kulcsa használható.",
+      "loading": "Beállítások betöltése…"
     },
     "enable": {
-      "label": "AI funkciók engedélyezése",
-      "description": "Intelligens bejelentési javaslatok és jegyzetkapcsolatok",
-      "enabled": "Az AI funkciók engedélyezve",
-      "disabled": "Az AI funkciók letiltva",
+      "label": "MI-funkciók engedélyezése",
+      "description": "Intelligens elhelyezési javaslatok és jegyzetkapcsolatok",
+      "enabled": "MI-funkciók engedélyezve",
+      "disabled": "MI-funkciók letiltva",
       "error": "Nem sikerült frissíteni a beállítást"
     },
     "unknownError": "Ismeretlen hiba",
     "groups": {
       "voice": "Hangátírás",
       "embeddingModel": "Helyi beágyazási modell",
-      "embeddingIndex": "Index beágyazása",
-      "inline": "Inline AI szerkesztés"
+      "embeddingIndex": "Beágyazási index",
+      "inline": "MI-szerkesztés a szövegben"
     },
     "voice": {
       "provider": "Szolgáltató",
-      "providerDescription": "Beszéd-szöveg szolgáltató hangjegyzetekhez",
+      "providerDescription": "Beszédfelismerő szolgáltató a hangjegyzetekhez",
       "providers": {
         "local": "Helyi (alapértelmezett)",
         "openai": "OpenAI (BYOK)"
       },
+      "memoNameMode": "Hangjegyzetek neve",
+      "memoNameModeDescription": "Hogyan legyenek elnevezve a hangjegyzetek átírás után",
+      "naming": {
+        "transcript": "Átirat címe",
+        "timestamp": "Időbélyeg",
+        "none": "Nincs átnevezés"
+      },
+      "namingError": "Nem sikerült frissíteni a hangjegyzet elnevezését",
       "localModel": "Helyi modell",
-      "localModelDescription": "Whisper Small letölthető igény szerint, és helyben gyorsítótárban marad",
+      "localModelDescription": "A Whisper Small igény szerint töltődik le, és helyben, gyorsítótárban marad",
       "status": {
         "ready": "Kész",
         "downloading": "Letöltés",
         "downloaded": "Letöltve",
         "notDownloaded": "Nincs letöltve"
       },
-      "cacheHint": "Nincs mellékelve az alkalmazáshoz · Letöltve a Beállításokból · Gyorsítótárazott ezen az eszközön",
-      "preparing": "Whisper Small előkészítése...",
-      "download": "Töltse le a Whisper Small",
-      "apiKey": "OpenAI API kulcs",
+      "cacheHint": "Nem része az alkalmazásnak · Letöltés a Beállításokból · Gyorsítótárazva ezen az eszközön",
+      "preparing": "Whisper Small előkészítése…",
+      "download": "Whisper Small letöltése",
+      "apiKey": "OpenAI API-kulcs",
       "apiKeyDescription": "Az operációs rendszer kulcstartójában tárolva, és csak hangátírásra használják",
-      "replaceKey": "Cserélje ki a mentett OpenAI kulcsot",
-      "enterKey": "Írja be az OpenAI API kulcsot",
+      "replaceKey": "Mentett OpenAI-kulcs cseréje",
+      "enterKey": "OpenAI API-kulcs megadása",
       "saveKey": "Kulcs mentése",
       "keySaved": "API-kulcs mentve a kulcstartóban",
-      "providerError": "Nem sikerült frissíteni a hangszolgáltatót",
+      "providerError": "Nem sikerült módosítani a beszédfelismerő szolgáltatót",
       "downloadedToast": "Whisper Small letöltve",
-      "downloadError": "A Whisper Small letöltése sikertelen",
-      "keySavedToast": "OpenAI kulcs mentve",
-      "keySaveError": "Nem sikerült menteni az OpenAI kulcsot",
-      "memoNameMode": "Jegyzetnevek",
-      "memoNameModeDescription": "Hogyan legyenek elnevezve a hangjegyzetek átírás után",
-      "naming": {
-        "none": "Ne nevezze át",
-        "timestamp": "Időbélyeg",
-        "transcript": "Átirat címe"
-      },
-      "namingError": "Nem sikerült frissíteni a hangjegyzet elnevezését"
+      "downloadError": "Nem sikerült letölteni a Whisper Small modellt",
+      "keySavedToast": "OpenAI-kulcs mentve",
+      "keySaveError": "Nem sikerült menteni az OpenAI-kulcsot"
     },
     "embedding": {
       "loaded": "Betöltve",
       "loading": "Betöltés",
       "cacheHint": "~23 MB · Helyi gyorsítótár · Minden az eszközön",
-      "dimensions": "Méretek",
+      "dimensions": "Dimenziók",
       "embeddings": "Beágyazások",
       "downloadLoad": "Modell letöltése és betöltése",
-      "downloadingModel": "Modell letöltése...",
-      "loadingModel": "Modell betöltése...",
-      "loadSuccess": "A modell sikeresen betöltve",
+      "downloadingModel": "Modell letöltése…",
+      "loadingModel": "Modell betöltése…",
+      "loadSuccess": "Modell sikeresen betöltve",
       "loadFailed": "Nem sikerült betölteni a modellt",
       "rebuildIndex": "Index újraépítése",
       "rebuildDescription": "Újragenerálja a beágyazásokat az összes jegyzethez",
-      "rebuild": "Újjáépíteni",
-      "scanning": "Jegyzetek beolvasása...",
-      "generating": "Beágyazások generálása...",
+      "rebuild": "Újraépítés",
+      "scanning": "Jegyzetek beolvasása…",
+      "generating": "Beágyazások generálása…",
       "complete": "Kész!",
       "reindexed": "Újraindexelt beágyazások: {computed} számítva, {skipped} kihagyva",
       "reindexFailed": "Nem sikerült újraindexelni a beágyazásokat"
     },
     "inline": {
-      "loading": "Betöltés...",
-      "title": "Inline AI szerkesztés",
-      "enable": "Inline AI engedélyezése",
-      "enableDescription": "Az AI menü megjelenítése jegyzetek szerkesztésekor",
-      "enabled": "Inline AI szerkesztés engedélyezve",
-      "disabled": "Inline AI szerkesztés letiltva",
+      "loading": "Betöltés…",
+      "title": "MI-szerkesztés a szövegben",
+      "enable": "MI-szerkesztés engedélyezése a szövegben",
+      "enableDescription": "MI-menü megjelenítése jegyzetek szerkesztésekor",
+      "enabled": "MI-szerkesztés a szövegben engedélyezve",
+      "disabled": "MI-szerkesztés a szövegben letiltva",
       "provider": "Szolgáltató",
-      "providerDescription": "AI szolgáltatás szöveges műveletekhez",
+      "providerDescription": "MI-szolgáltatás szöveges műveletekhez",
       "providers": {
         "ollama": "Ollama (helyi)",
         "openai": "OpenAI",
-        "anthropic": "Antropikus",
+        "anthropic": "Anthropic",
         "google": "Google Gemini"
       },
       "model": "Modell",
       "modelDescription": "Nyelvi modell az újraíráshoz és összefoglaláshoz",
-      "selectModel": "Válasszon ki egy modellt",
-      "apiKey": "API kulcs",
+      "selectModel": "Modell kiválasztása",
+      "apiKey": "API-kulcs",
       "apiKeyDescription": "Helyben tárolva, csak a szolgáltatónak küldjük",
-      "apiKeyPlaceholder": "Írja be az {provider} API kulcsot",
+      "apiKeyPlaceholder": "{provider} API-kulcs megadása",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Helyi szerver címe",
-      "connection": "Csatlakozás",
-      "activePort": "Aktív az {port} porton",
+      "connection": "Kapcsolat",
+      "activePort": "Aktív, port: {port}",
       "notConnected": "Nincs csatlakoztatva",
-      "test": "Teszt",
+      "test": "Tesztelés",
       "stopFailed": "Nem sikerült leállítani a meglévő szervert",
-      "connected": "Csatlakozva! Az {port} porton futó szerver",
+      "connected": "Csatlakozva! A szerver fut, port: {port}",
       "connectFailed": "Nem sikerült csatlakozni",
-      "testFailed": "A csatlakozási teszt sikertelen",
+      "testFailed": "A kapcsolatteszt sikertelen",
       "updateFailed": "Nem sikerült frissíteni a beállítást"
+    },
+    "tabs": {
+      "models": "Modellek",
+      "agents": "Ügynökök",
+      "connect": "Csatlakoztatás"
+    },
+    "v2": {
+      "onDevice": {
+        "label": "Eszközön futó modellek",
+        "hint": "Egyszer kell letölteni, offline is futnak"
+      },
+      "embedding": {
+        "label": "Keresési beágyazások",
+        "hint": "{dimension} dimenzió · {count, plural, one {# jegyzet} other {# jegyzet}} beágyazva"
+      },
+      "voiceModel": {
+        "label": "Hangátírás"
+      },
+      "download": "Letöltés",
+      "connected": "Csatlakoztatva",
+      "inline": {
+        "group": "Szerkesztés a szövegben",
+        "enabled": "Engedélyezve"
+      },
+      "voice": {
+        "group": "Hangjegyzetek",
+        "transcribeWith": "Átíró szolgáltatás",
+        "local": "Helyi",
+        "openai": "OpenAI",
+        "nameBy": "Hangjegyzetek elnevezése",
+        "keySaved": "Mentve",
+        "keyNotSet": "Nincs beállítva"
+      }
+    }
+  },
+  "import": {
+    "header": {
+      "title": "Importálás",
+      "subtitle": "Hozza át jegyzeteit és feladatait más alkalmazásokból"
+    },
+    "intro": "Az egyszeri importálások új jegyzeteket hoznak létre a széfjében. Az eredeti exportfájlokat érintetlenül hagyjuk.",
+    "sources": {
+      "notion": "HTML-export importálása (.zip)",
+      "todoist": "Projekt CSV-export importálása (.csv)",
+      "ticktick": "TickTick biztonsági mentés (.csv) importálása projektként, feladatként és emlékeztetőként",
+      "markdown": ".md fájlok vagy mappa importálása (frontmatter, címkék, mellékletek)",
+      "noteplan": "NotePlan-mappa importálása – a napi jegyzetekből naplóbejegyzések, a feladatokból feladatok lesznek",
+      "html": ".html fájlok importálása csatolt képekkel és oldalak közti hivatkozásokkal",
+      "google-keep": "Google Takeout Keep-export importálása (.json vagy .zip)",
+      "bear": "Bear .bear2bk archívum importálása (jegyzetek, címkék, mellékletek)",
+      "evernote": "Egy vagy több Evernote .enex exportfájl importálása",
+      "roam": "Roam Research gráf (.json) importálása beágyazott vázlatokkal",
+      "apple-journal": "Apple Journal HTML-export importálása dátumozott jegyzetként",
+      "csv": ".csv fájl importálása – soronként egy jegyzet, az oszlopokból tulajdonságok lesznek",
+      "raindrop": "Raindrop.io könyvjelző-export (.csv) importálása – a könyvjelzők a Beérkezőkbe kerülnek",
+      "apple-notes": "Importálás az Apple Notes adatbázisából (NoteStore.sqlite, macOS)",
+      "onenote": "OneNote jegyzetfüzetek importálása (Microsoft-fiók szükséges)"
+    },
+    "action": "Importálás",
+    "select": "Alkalmazás kiválasztása az importáláshoz…",
+    "stats": {
+      "notes": "{count, plural, one {# jegyzet} other {# jegyzet}}",
+      "projects": "{count, plural, one {# projekt} other {# projekt}}",
+      "tasks": "{count, plural, one {# feladat} other {# feladat}}",
+      "subtasks": "{count, plural, one {# részfeladat} other {# részfeladat}}",
+      "reminders": "{count, plural, one {# emlékeztető} other {# emlékeztető}}",
+      "bookmarks": "{count, plural, one {# könyvjelző} other {# könyvjelző}}",
+      "withTags": "{count} címkézve",
+      "withDueDate": "{count} dátumozva",
+      "comments": "{count, plural, one {# megjegyzés} other {# megjegyzés}}",
+      "skipped": "{count} kihagyva"
+    },
+    "preview": {
+      "warnings": "Figyelmeztetések",
+      "confirm": "Importálás"
+    },
+    "dialog": {
+      "title": "Importálás innen: {name}",
+      "choose": "Fájl kiválasztása…",
+      "onenote": {
+        "connect": "Bejelentkezés Microsoft-fiókkal",
+        "connecting": "Várakozás a böngészős bejelentkezésre…",
+        "connectedAs": "Bejelentkezve: {name} ({email})",
+        "switchAccount": "Fiókváltás",
+        "loadingNotebooks": "Jegyzetfüzetek betöltése…",
+        "notebooksEmpty": "Ebben a fiókban nem található jegyzetfüzet.",
+        "selectAll": "Összes kijelölése",
+        "deselectAll": "Kijelölés törlése",
+        "sectionsSelected": "{count, plural, one {# szakasz kijelölve} other {# szakasz kijelölve}}",
+        "includeIncompatible": "Nem kompatibilis mellékletek importálása",
+        "includeIncompatibleHint": "Azokat a fájltípusokat is menti, amelyekről a Memry nem tud előnézetet mutatni (bemutatók, médiafájlok, archívumok – futtatható fájlokat soha). Ezek fájlblokként jelennek meg.",
+        "skipPrevious": "Korábban importált oldalak kihagyása",
+        "skipPreviousHint": "A korábbi OneNote-importálások során már importált oldalak kimaradnak, így az újrafuttatás csak az újdonságokat hozza át."
+      },
+      "appleNotes": {
+        "loadingFolders": "Mappák beolvasása…",
+        "foldersError": "Nem sikerült beolvasni a mappákat – a teljes könyvtár importálva lesz.",
+        "unfiled": "Mappa nélküli jegyzetek",
+        "selectAll": "Összes kijelölése",
+        "deselectAll": "Kijelölés törlése",
+        "foldersSelected": "{count, plural, one {# mappa kijelölve} other {# mappa kijelölve}}",
+        "noteCount": "{count}",
+        "noteCountWithSubfolders": "{count} ({total})"
+      },
+      "chooseFolder": "Apple Notes-mappa kiválasztása…",
+      "chooseDirectory": "Mappa kiválasztása…",
+      "folderKeepsAssets": "Válassza a mappát, ha a képek a jegyzetek saját mappáján kívül vannak – az exportok gyakran közös mappában tárolják a médiafájlokat.",
+      "chooseHint": "Válassza ki: {label}",
+      "folderHint": "Kattintson alább, és válassza ki a „group.com.apple.notes” mappát, amikor megnyílik a választó (ott indul). Így a Memry beolvashatja a jegyzeteit és mellékleteit – teljes lemezhozzáférésre nincs szükség.",
+      "noteplanFolderHint": "Válassza ki a NotePlan-mappát – az alkalmazás adatmappáját vagy valamelyik biztonsági másolatát (Backups). A Memry a benne lévő Calendar, Notes és @Archive mappákat olvassa be.",
+      "selected": "{count, plural, one {# fájl kiválasztva} other {# fájl kiválasztva}}",
+      "start": "Importálás indítása",
+      "cancel": "Mégse",
+      "close": "Bezárás",
+      "done": "Kész",
+      "running": "Importálás…",
+      "progress": "{completed} / {total}",
+      "summary": {
+        "title": "Importálás kész",
+        "imported": "{count, plural, one {# elem importálva} other {# elem importálva}}",
+        "attachments": "{count, plural, one {# melléklet másolva} other {# melléklet másolva}}",
+        "skipped": "{count} kihagyva",
+        "skippedReason": "{count, plural, one {# elem} other {# elem}}: {reason}",
+        "failed": "{count} sikertelen"
+      },
+      "error": "Az importálás sikertelen",
+      "previewError": "Az előnézet sikertelen"
+    },
+    "messages": {
+      "readFileFailed": "Nem sikerült beolvasni a fájlt",
+      "appleNotes": {
+        "lockedNote": "{count, plural, one {# zárolt jegyzet} other {# zárolt jegyzet}} nem lett importálva; a Memry ezeket nem tudja elolvasni a Jegyzetek alkalmazás jelszava nélkül."
+      },
+      "csv": {
+        "noHeaders": "A CSV-fájlnak nincs fejlécsora",
+        "emptyTitle": "Üres címet tartalmazó sor kihagyva („{column}” oszlop)",
+        "columns": "Oszlopok: {columns}",
+        "titleColumn": "A cím a(z) „{column}” oszlopból; a többi oszlop tulajdonságként mentve"
+      },
+      "raindrop": {
+        "csvEmpty": "A Raindrop CSV üres",
+        "headerNotFound": "A Raindrop CSV fejlécsora („url” oszlop) nem található",
+        "rowNoUrl": "{row}. sor kihagyva: nincs URL"
+      },
+      "ticktick": {
+        "headerNotFound": "A TickTick CSV fejlécsora („Folder Name”) nem található",
+        "foldersDropped": "A TickTick mappáinak nincs Memry-megfelelője, ezért kimaradtak",
+        "subtaskParentMissing": "A(z) „{title}” részfeladat szülője nem található; legfelső szintre importálva",
+        "unknownPriority": "Ismeretlen TickTick prioritás: {priority} → nincs",
+        "unsupportedRepeat": "A nem támogatott „{rule}” ismétlési szabály kihagyva",
+        "reminderNoAnchor": "A(z) „{reminder}” emlékeztető kihagyva (nincs dátumhorgony)"
+      },
+      "todoist": {
+        "headerNotFound": "Nem Todoist CSV: hiányzik a TYPE fejlécsor",
+        "sectionFlattened": "A(z) „{section}” szakasz kilapítva",
+        "orphanComment": "A megjegyzés kihagyva, mert nem előzi meg feladat",
+        "emptyTitle": "Az üres tartalmú feladat (névtelen) néven lett importálva",
+        "unknownPriority": "Ismeretlen prioritás: {priority} → nincs",
+        "unparsedDate": "Nem sikerült értelmezni a(z) „{date}” dátumot",
+        "subtaskNoParent": "A(z) „{title}” részfeladatnak nincs szülője a(z) {indent} behúzási szinten; legfelső szintre importálva"
+      }
+    },
+    "status": {
+      "scanningFiles": "Fájlok átvizsgálása…",
+      "scanningExport": "Az export átvizsgálása…",
+      "importingItem": "{title} importálása",
+      "appleNotes": {
+        "copyingDatabase": "Az Apple Notes adatbázisának másolása…"
+      },
+      "bear": {
+        "scanning": "A Bear-export átvizsgálása…"
+      },
+      "csv": {
+        "importing": "CSV-jegyzetek importálása…"
+      },
+      "evernote": {
+        "scanning": ".enex fájlok átvizsgálása…"
+      },
+      "html": {
+        "scanning": "HTML-fájlok átvizsgálása…"
+      },
+      "noteplan": {
+        "scanning": "NotePlan-mappa átvizsgálása…"
+      },
+      "onenote": {
+        "loadingNotebooks": "OneNote-jegyzetfüzetek betöltése…",
+        "rateLimited": "A OneNote korlátozza a kérések számát; várakozás az újrapróbálkozás előtt…",
+        "downloadingAttachment": "Melléklet letöltése: {name}"
+      },
+      "raindrop": {
+        "importing": "Raindrop-könyvjelzők importálása…"
+      },
+      "roam": {
+        "reading": "A Roam-export beolvasása…"
+      },
+      "ticktick": {
+        "importing": "TickTick-feladatok importálása…"
+      },
+      "todoist": {
+        "importing": "Todoist-feladatok importálása…"
+      }
+    },
+    "v2": {
+      "searchPlaceholder": "Alkalmazás vagy fájltípus keresése…",
+      "noMatch": "Nincs a(z) „{query}” keresésnek megfelelő forrás",
+      "formatAccount": "Fiók",
+      "showMore": "{count, plural, one {# további megjelenítése} other {# további megjelenítése}}",
+      "showLess": "Kevesebb megjelenítése",
+      "groups": {
+        "noteApps": "Jegyzetalkalmazások",
+        "tasks": "Feladatok, napló és könyvjelzők",
+        "files": "Fájlok"
+      }
     }
   },
   "vault": {
     "header": {
       "title": "Széf",
-      "subtitle": "Vault konfiguráció és tárolás"
+      "subtitle": "A széf beállításai és tárhelye"
     },
     "groups": {
-      "storageUsage": "Tárolási használat",
-      "location": "Helyszín",
-      "accountVaults": "A fiókodban lévő tárak"
+      "storageUsage": "Tárhelyhasználat",
+      "location": "Hely",
+      "accountVaults": "A fiókjában lévő széfek",
+      "largeNotes": "Szinkronizálási korláthoz közeli jegyzetek",
+      "activity": "Tevékenység"
     },
-    "loadingStorage": "Tárhelyadatok betöltése...",
+    "loadingStorage": "Tárhelyadatok betöltése…",
     "signInStorage": "Jelentkezzen be a tárhelyhasználat megtekintéséhez",
-    "vaultPath": "Tár elérési útja",
-    "reveal": "Felfedni",
+    "vaultPath": "Széf elérési útja",
+    "reveal": "Megjelenítés",
+    "accountVaults": {
+      "empty": "Még nincs a fiókjával szinkronizált széf.",
+      "cloudOnly": "Nincs ezen az eszközön",
+      "itemsCount": "{count} elem",
+      "delete": "Törlés",
+      "deleteTitle": "Törli a(z) „{name}” széfet a fiókjából?",
+      "deleteBody": "Ez véglegesen eltávolítja a széf összes szinkronizált adatát a Memry szervereiről, és nem vonható vissza. A lemezen lévő fájljai nem törlődnek.",
+      "deleteConfirm": "Törlés a fiókból",
+      "deleteFailed": "Nem sikerült törölni a széfet",
+      "activeHint": "A széf törléséhez váltson át egy másik széfre.",
+      "unsyncedTitle": "Ez a széf nincs szinkronizálva",
+      "unsyncedBodyOne": "Az ezen az eszközön megnyitott széf nem tartozik a fiókjához, ezért a szinkronizálás elutasítja. A fiókjához tartozó széf: „{name}” – nyissa meg itt a szinkronizálás folytatásához.",
+      "unsyncedBodyMany": "Az ezen az eszközön megnyitott széf nem tartozik a fiókjához, ezért a szinkronizálás elutasítja. A szinkronizálás folytatásához nyissa meg az alább felsorolt széfek egyikét.",
+      "unsyncedOpen": "Fiókhoz tartozó széf megnyitása",
+      "unsyncedDownload": "Fiókhoz tartozó széf letöltése",
+      "unsyncedSwitchFailed": "Nem sikerült megnyitni a széfet"
+    },
     "storage": {
-      "title": "Tárolás",
+      "title": "Tárhely",
       "used": "{used}/{limit} használt",
       "ratio": "{used} / {limit}",
       "refreshAria": "Tárhelyhasználat frissítése",
       "usageAria": "Tárhelyhasználat: {used}/{limit}",
-      "available": "Elérhető {available}",
+      "available": "Elérhető: {available}",
       "categories": {
-        "notes": "Megjegyzések",
+        "notes": "Jegyzetek",
         "attachments": "Mellékletek",
         "crdt": "CRDT",
         "other": "Egyéb"
       },
       "warningTitle": "A tárhely majdnem megtelt",
-      "warningDescription": "Szabadítson fel helyet, vagy frissítse tervét a szinkronizálási problémák elkerülése érdekében."
+      "warningDescription": "Szabadítson fel helyet, vagy váltson nagyobb csomagra a szinkronizálási problémák elkerülése érdekében."
     },
-    "accountVaults": {
-      "activeHint": "Válts át egy másik tárra, hogy ezt törölni tudd.",
-      "cloudOnly": "Nincs ezen az eszközön",
-      "delete": "Törlés",
-      "deleteBody": "Ez véglegesen eltávolítja a tár összes szinkronizált adatát a Memry szervereiről, és nem vonható vissza. A lemezen lévő fájljaid megmaradnak.",
-      "deleteConfirm": "Törlés a fiókból",
-      "deleteFailed": "Nem sikerült törölni a tárat",
-      "deleteTitle": "Törlöd a(z) „{name}” tárat a fiókodból?",
-      "empty": "Még nincs a fiókoddal szinkronizált tár.",
-      "itemsCount": "{count} elem"
+    "largeNotes": {
+      "description": "Szinkronizálási korlát: {limit}. Az ennél nagyobb jegyzetek szinkronizálása leáll. Ossza fel őket kisebb jegyzetekre, hogy szinkronban maradjanak.",
+      "over": "Nincs szinkronizálva",
+      "approaching": "Közel a korláthoz"
+    },
+    "activity": {
+      "description": "A széfhez a Memryn kívül hozzáadott vagy onnan eltávolított fájlok, az importálások, valamint minden kihagyott vagy sikertelen elem. Csak ezen az eszközön tárolódik.",
+      "retention": {
+        "label": "Széftevékenység",
+        "days": "{count, plural, one {Megőrzés: # nap} other {Megőrzés: # nap}}"
+      },
+      "filter": {
+        "all": "Összes",
+        "problems": "Kihagyott és sikertelen"
+      },
+      "reveal": "Naplófájl megjelenítése",
+      "clear": "Törlés",
+      "clearTitle": "Törli a széftevékenységet?",
+      "clearBody": "Ez az eszköz tevékenységnaplójából minden bejegyzést eltávolít. A fájljait nem érinti.",
+      "clearConfirm": "Tevékenység törlése",
+      "empty": "Még nincs naplózott tevékenység. Itt jelennek meg a széf mappájához hozzáadott fájlok, az importálások és minden, amit a Memry kihagy.",
+      "emptyProblems": "Semmi sem maradt ki, és semmi sem volt sikertelen.",
+      "unavailable": "Nyisson meg egy széfet a tevékenységei megtekintéséhez.",
+      "loadFailed": "Nem sikerült betölteni a széftevékenységet",
+      "actionFailed": "Nem sikerült frissíteni a széftevékenységet",
+      "showItems": "{count, plural, one {# elem megjelenítése} other {# elem megjelenítése}}",
+      "toastAction": "Részletek",
+      "entry": {
+        "added": "Hozzáadva: {path}",
+        "removed": "Eltávolítva: {path}",
+        "renamed": "Átnevezve: {oldPath} → {path}",
+        "skipped": "Kihagyva: {path}",
+        "skippedUnsupported": "A Memry nem nyitja meg ezt a fájltípust ({ext}), ezért a fájl változatlan maradt.",
+        "readFailed": "Nem sikerült beolvasni: {path}",
+        "indexFailed": "Nem sikerült hozzáadni: {path}",
+        "copyFailed": "Nem sikerült a széfbe másolni: {path}",
+        "uploadFailed": "Nem sikerült feltölteni: {path}",
+        "uploadFailedHint": "Ezen az eszközön marad, amíg a feltöltés sikerrel nem jár.",
+        "downloadFailed": "Nem sikerült letölteni: {path}",
+        "fileTooLarge": "Túl nagy a szinkronizáláshoz: {path}",
+        "noteTooLarge": "A(z) „{title}” jegyzet túl nagy a szinkronizáláshoz",
+        "noteTooLargeUnnamed": "Egy jegyzet túl nagy a szinkronizáláshoz",
+        "importFailed": "Sikertelen importálás: {importer}",
+        "failedGeneric": "Hiba történt: {path}",
+        "failedGenericUnnamed": "Hiba történt",
+        "scan": "A Memry bezárt állapotában végzett módosítások észlelve",
+        "indexRebuilt": "Keresési index felépítve",
+        "import": "Importálás: {importer}",
+        "importCanceled": "Importálás: {importer}, megszakítva",
+        "unknown": "Ismeretlen tevékenység"
+      },
+      "counts": {
+        "added": "{count, plural, one {# új fájl} other {# új fájl}}",
+        "indexed": "{count, plural, one {# fájl indexelve} other {# fájl indexelve}}",
+        "imported": "{count, plural, one {# importálva} other {# importálva}}",
+        "attachments": "{count, plural, one {# melléklet} other {# melléklet}}",
+        "skipped": "{count, plural, one {# kihagyva} other {# kihagyva}}",
+        "unsupported": "{count, plural, one {# nem támogatott fájl kihagyva} other {# nem támogatott fájl kihagyva}}",
+        "failed": "{count, plural, one {# sikertelen} other {# sikertelen}}"
+      }
+    },
+    "v2": {
+      "groups": {
+        "thisVault": "Ez a széf"
+      },
+      "largeNotesCount": "{count, plural, one {# jegyzet} other {# jegyzet}}"
+    },
+    "binding": {
+      "dialog": {
+        "title": "Szinkronizálja ezt a széfet a fiókjával?",
+        "description": "Ebben a széfben olyan jegyzetek vannak, amelyek még nincsenek a fiókjában. Hozzáadhatja a fiókjához, vagy megtarthatja ezen az eszközön. Amíg nem dönt, semmi sem hagyja el ezt az eszközt.",
+        "descriptionWithVaults": "Ebben a széfben olyan jegyzetek vannak, amelyek még nincsenek a fiókjában, és a fiókjában már van egy széf. Ezt hozzáadhatja mellé, egyesítheti a kettőt, vagy megtarthatja ezen az eszközön. Amíg nem dönt, semmi sem hagyja el ezt az eszközt.",
+        "addAsNew": "Hozzáadás külön széfként",
+        "merge": "Egyesítés ezzel: „{name}”",
+        "mergeUnnamed": "Egyesítés a fiókja széfjével",
+        "keepLocal": "Megtartás ezen az eszközön",
+        "failed": "Nem sikerült módosítani a széf szinkronizálási módját"
+      },
+      "status": {
+        "localOnly": "Ez a széf ezen az eszközön marad, és nincs szinkronizálva.",
+        "foreign": "Ezt a széfet egy másik fiók szinkronizálta, ezért nincs szinkronizálva az Önével. Ezen az eszközön marad.",
+        "needsDecision": "Ez a széf még nincs szinkronizálva.",
+        "startSync": "Széf szinkronizálása",
+        "choose": "Kiválasztás…"
+      }
     }
   },
   "tags": {
@@ -954,37 +1739,40 @@
       "title": "Címkék",
       "subtitle": "A jegyzetek, naplók és feladatok címkéinek kezelése"
     },
-    "loading": "Címkék betöltése...",
+    "loading": "Címkék betöltése…",
     "empty": "Még nincsenek címkék. A címkék itt jelennek meg, amikor hozzáadja őket a jegyzetekhez és feladatokhoz.",
-    "filterPlaceholder": "Címkék szűrése...",
-    "noMatch": "Nincs az \"{query}\" kifejezésnek megfelelő címkék",
-    "summary": "{count, plural, one {# címke} other {# címkék}} jegyzeteken és feladatokon keresztül",
+    "filterPlaceholder": "Címkék szűrése…",
+    "noMatch": "Nincs a(z) „{query}” keresésnek megfelelő címke",
+    "summary": "{count, plural, one {# címke} other {# címke}} a jegyzetekben és feladatokban",
     "actions": {
       "rename": "Átnevezés",
       "changeColor": "Szín módosítása",
-      "mergeInto": "Egyesüljön...",
+      "changeIcon": "Ikon módosítása",
+      "mergeInto": "Egyesítés ezzel…",
       "merge": "Egyesítés",
-      "delete": "Törölje",
-      "changeIcon": "Ikon módosítása"
+      "delete": "Törlés"
     },
     "dialogs": {
       "deleteTitle": "Címke törlése",
-      "deleteDescription": "Eltávolítja az „{name}” elemet az {count, plural, one {# tétel} other {# tételek}} mappából? Ezt nem lehet visszavonni.",
+      "deleteDescription": "Eltávolítja a(z) „{name}” címkét {count, plural, one {# elemről} other {# elemről}}? Ez a művelet nem vonható vissza.",
       "mergeTitle": "Címke egyesítése",
       "mergeDescription": "Minden „{source}” címkével ellátott elem újra meg lesz címkézve a célcímkével. A forráscímke törlődik.",
-      "targetPlaceholder": "Célcímke kiválasztása...",
-      "colorTitle": "{name} színének módosítása"
+      "targetPlaceholder": "Célcímke kiválasztása…",
+      "colorTitle": "Szín módosítása: „{name}”"
     },
     "toasts": {
-      "renamed": "„{oldName}” átnevezése „{newName}” névre",
-      "renameFailed": "A címke átnevezése nem sikerült",
+      "renamed": "„{oldName}” átnevezve erre: „{newName}”",
+      "renameFailed": "Nem sikerült átnevezni a címkét",
       "deleteFailed": "Nem sikerült törölni a címkét",
-      "deleted": "\"{name}\" törölve az {count, plural, one {# tétel} other {# tételek}} közül",
+      "deleted": "„{name}” törölve {count, plural, one {# elemről} other {# elemről}}",
       "mergeFailed": "Nem sikerült egyesíteni a címkéket",
-      "merged": "„{source}” egyesítve a következővel: „{target}” ({count, plural, one {# tétel} other {# tételek}})",
-      "colorUpdated": "Frissített szín az \"{name}\" számára",
+      "merged": "„{source}” egyesítve ezzel: „{target}” ({count, plural, one {# elem} other {# elem}})",
+      "colorUpdated": "Szín frissítve: „{name}”",
       "colorFailed": "Nem sikerült frissíteni a színt",
       "iconFailed": "Nem sikerült frissíteni az ikont"
+    },
+    "v2": {
+      "actionsAria": "Műveletek: {name}"
     }
   },
   "properties": {
@@ -992,24 +1780,24 @@
       "title": "Tulajdonságok",
       "subtitle": "Tulajdonságdefiníciók kezelése az összes jegyzetben"
     },
-    "loading": "Tulajdonságok betöltése...",
-    "empty": "Még nincsenek tulajdonságdefiníciók. A kezdéshez adjon hozzá egy Status, Select vagy Multiselect tulajdonságot bármelyik jegyzethez.",
-    "filterPlaceholder": "Szűrő tulajdonságai...",
-    "noMatch": "Nincs tulajdonság a \"{query}\" kifejezésnek",
-    "summary": "{count, plural, one {# tulajdonságdefiníció} other {# tulajdonságdefiníciók}}",
-    "optionCount": "{count, plural, one {# opció} other {# opciók}}",
+    "loading": "Tulajdonságok betöltése…",
+    "empty": "Még nincsenek tulajdonságdefiníciók. A kezdéshez adjon hozzá egy Állapot, Választás vagy Többszörös választás típusú tulajdonságot bármelyik jegyzethez.",
+    "filterPlaceholder": "Tulajdonságok szűrése…",
+    "noMatch": "Nincs a(z) „{query}” keresésnek megfelelő tulajdonság",
+    "summary": "{count, plural, one {# tulajdonságdefiníció} other {# tulajdonságdefiníció}}",
+    "optionCount": "{count, plural, one {# opció} other {# opció}}",
     "optionNamePlaceholder": "Opció neve",
     "addOption": "Opció hozzáadása",
     "changeColorTitle": "Szín módosítása",
     "renameTitle": "Átnevezés",
-    "removeTitle": "Távolítsa el",
+    "removeTitle": "Eltávolítás",
     "actions": {
       "deleteProperty": "Tulajdonság törlése"
     },
     "types": {
       "status": "Állapot",
-      "select": "Válassza ki",
-      "multiselect": "Többszörös kijelölés",
+      "select": "Választás",
+      "multiselect": "Többszörös választás",
       "text": "Szöveg",
       "number": "Szám",
       "date": "Dátum",
@@ -1018,144 +1806,195 @@
     },
     "dialogs": {
       "deleteTitle": "Tulajdonság törlése",
-      "deleteDescription": "Eltávolítja az „{name}” tulajdonságdefiníciót? Az ezt a tulajdonságot használó megjegyzések értékeit egyszerű szövegként tartják meg.",
-      "colorTitle": "{name} színének módosítása"
+      "deleteDescription": "Eltávolítja a(z) „{name}” tulajdonságdefiníciót? Az ezt a tulajdonságot használó jegyzetek egyszerű szövegként megtartják az értékeiket.",
+      "colorTitle": "Szín módosítása: „{name}”"
     },
     "toasts": {
-      "renamed": "„{oldValue}” átnevezése „{newValue}” névre",
+      "renamed": "„{oldValue}” átnevezve erre: „{newValue}”",
       "renameFailed": "Nem sikerült átnevezni a lehetőséget",
-      "removed": "\"{value}\" eltávolítva",
+      "removed": "„{value}” eltávolítva",
       "removeFailed": "Nem sikerült eltávolítani az opciót",
       "colorFailed": "Nem sikerült frissíteni a színt",
-      "deleteFailed": "Nem sikerült törölni a tulajdont",
-      "deleted": "\"{name}\" tulajdonság törölve",
+      "deleteFailed": "Nem sikerült törölni a tulajdonságot",
+      "deleted": "„{name}” tulajdonság törölve",
       "addFailed": "Nem sikerült hozzáadni a lehetőséget"
+    },
+    "v2": {
+      "actionsAria": "Műveletek: {name}"
+    }
+  },
+  "commandLine": {
+    "header": {
+      "title": "Parancssor",
+      "subtitle": "A memrynote-parancs beállítása a terminálhoz"
+    },
+    "groups": {
+      "terminal": "Terminál"
+    },
+    "defaultVault": {
+      "label": "Alapértelmezett széf",
+      "placeholder": "Széf kiválasztása",
+      "none": "Nincs kiválasztott széf",
+      "description": "Válassza ki a széfet, amelyet a memrynote --vault nélküli futtatásakor használ.",
+      "descriptionSelected": "A parancsok a(z) {path} útvonalat használják, ha a --vault elmarad."
+    },
+    "command": {
+      "label": "memrynote-parancs",
+      "toggleLabel": "memrynote-parancs telepítése",
+      "descriptionInstalled": "Telepítve ide: {path}",
+      "descriptionNotInstalled": "Telepítse a memrynote-parancsot, hogy bármely terminálból használhassa a széfjét."
+    },
+    "status": {
+      "loading": "Parancsállapot ellenőrzése…",
+      "loadFailed": "Nem sikerült betölteni a parancsállapotot",
+      "installedToast": "memrynote-parancs telepítve",
+      "uninstalledToast": "memrynote-parancs eltávolítva",
+      "defaultVaultUpdatedToast": "Alapértelmezett CLI-széf frissítve"
+    },
+    "actions": {
+      "refresh": "Frissítés"
     }
   },
   "shortcuts": {
     "header": {
       "title": "Billentyűparancsok",
-      "subtitle": "Kattintson bármelyik parancsikonra az újrakötéshez",
-      "loading": "Beállítások betöltése..."
+      "subtitle": "Az újrakiosztáshoz kattintson bármelyik billentyűparancsra",
+      "loading": "Beállítások betöltése…"
     },
-    "searchPlaceholder": "Parancsikonok keresése...",
+    "searchPlaceholder": "Billentyűparancsok keresése…",
     "resetAll": "Összes visszaállítása",
-    "custom": "Egyedi",
-    "pressShortcut": "Nyomja meg a parancsikont…",
-    "cancelTitle": "Mégsem",
-    "rebindTitle": "Kattintson az újrakötéshez",
+    "custom": "Egyéni",
+    "pressShortcut": "Nyomja le a billentyűparancsot…",
+    "cancelTitle": "Mégse",
+    "rebindTitle": "Kattintson az újrakiosztáshoz",
+    "editorManagedTitle": "A jegyzetszerkesztő kezeli – nem módosítható",
     "resetTitle": "Visszaállítás alapértelmezettre",
-    "clearTitle": "Parancsikon törlése",
+    "clearTitle": "Billentyűparancs törlése",
     "clickToSet": "Kattintson a beállításhoz",
-    "noMatch": "Egyetlen parancsikon sem felel meg a keresésnek",
+    "noMatch": "Egyetlen billentyűparancs sem felel meg a keresésnek",
     "conflict": "Ütközés a következővel: {labels}",
     "globalCapture": {
-      "title": "Globális rögzítés",
+      "title": "Globális gyors rögzítés",
       "description": "Jegyzet rögzítése bárhonnan",
-      "active": "Aktív"
+      "active": "Aktív",
+      "inUse": "A(z) {shortcut} billentyűparancsot egy másik alkalmazás használja. Válasszon másik kombinációt.",
+      "unsupported": "A(z) {shortcut} nem használható globális billentyűparancsként. Válasszon másik kombinációt.",
+      "fallbackInUse": "Az alapértelmezett billentyűparancsot ({shortcut}) egy másik alkalmazás használja. A globális gyors rögzítés használatához állítson be másik kombinációt."
     },
     "toasts": {
-      "saveGlobalFailed": "Nem sikerült menteni a globális rögzítési parancsikont",
-      "saveFailed": "Nem sikerült menteni a parancsikont",
-      "resetFailed": "Nem sikerült visszaállítani a parancsikont",
-      "resetAllSuccess": "Minden parancsikon visszaáll az alapértelmezett értékre",
-      "resetAllFailed": "Nem sikerült visszaállítani a parancsikonokat"
+      "saveGlobalFailed": "Nem sikerült menteni a globális gyors rögzítés billentyűparancsát",
+      "saveFailed": "Nem sikerült menteni a billentyűparancsot",
+      "resetFailed": "Nem sikerült visszaállítani a billentyűparancsot",
+      "resetAllSuccess": "Minden billentyűparancs visszaállítva az alapértelmezettre",
+      "resetAllFailed": "Nem sikerült visszaállítani a billentyűparancsokat"
     },
     "categories": {
       "navigation": "Navigáció",
       "tabs": "Lapok",
       "editor": "Szerkesztő",
-      "view": "Megtekintés"
+      "view": "Nézet"
     },
     "entries": {
       "nav": {
         "newNote": {
-          "label": "Új megjegyzés",
-          "description": "Hozzon létre egy új jegyzetet"
+          "label": "Új jegyzet",
+          "description": "Új jegyzet létrehozása"
         },
         "newTask": {
           "label": "Új feladat",
-          "description": "Hozzon létre egy új feladatot"
+          "description": "Új feladat létrehozása"
         },
         "inbox": {
-          "label": "Nyissa meg a Beérkezett üzeneteket",
-          "description": "Navigáljon a beérkező levelek mappához"
+          "label": "Ugrás a Beérkezőkhöz",
+          "description": "A Beérkezők megnyitása"
         },
         "notes": {
-          "label": "Nyissa meg a Jegyzeteket",
-          "description": "Navigáljon a jegyzetekhez"
+          "label": "Ugrás a Jegyzetekhez",
+          "description": "A jegyzetek megnyitása"
         },
         "tasks": {
-          "label": "Lépjen a Feladatok oldalra",
-          "description": "Navigáljon a feladatokhoz"
+          "label": "Ugrás a Feladatokhoz",
+          "description": "A feladatok megnyitása"
         },
         "search": {
           "label": "Keresés",
-          "description": "Nyissa meg a globális keresést"
+          "description": "Globális keresés megnyitása"
         },
         "settings": {
-          "label": "Nyissa meg a Beállítások lehetőséget",
-          "description": "Nyissa meg a beállítások panelt"
+          "label": "Beállítások megnyitása",
+          "description": "A beállítások panel megnyitása"
+        },
+        "switchVault": {
+          "label": "Széfváltás",
+          "description": "Széfváltó megnyitása"
+        },
+        "nextVault": {
+          "label": "Következő széf",
+          "description": "Ugrás az oldalsáv következő széfére"
+        },
+        "prevVault": {
+          "label": "Előző széf",
+          "description": "Ugrás az oldalsáv előző széfére"
         }
       },
       "tabs": {
         "close": {
           "label": "Lap bezárása",
-          "description": "Zárja be az aktuális lapot"
+          "description": "Az aktuális lap bezárása"
         },
         "next": {
           "label": "Következő lap",
-          "description": "Váltson a következő lapra"
+          "description": "Váltás a következő lapra"
         },
         "previous": {
           "label": "Előző lap",
           "description": "Váltás az előző lapra"
         },
         "reopen": {
-          "label": "Nyissa meg újra az utolsó lapot",
-          "description": "Nyissa meg újra a legutóbb bezárt lapot"
+          "label": "Utolsó lap újranyitása",
+          "description": "A legutóbb bezárt lap újranyitása"
         },
         "navBack": {
-          "label": "Navigáljon vissza",
-          "description": "Aktiválja újra a korábban aktív lapot"
+          "label": "Ugrás vissza",
+          "description": "Az előzőleg aktív lap újraaktiválása"
         },
         "navForward": {
-          "label": "Navigáljon előre",
-          "description": "Hajtson újra egy visszafelé navigációt"
+          "label": "Ugrás előre",
+          "description": "A visszalépés visszavonása"
         },
         "newTab": {
           "label": "Új lap",
           "description": "Az új lap menü megnyitása"
         },
         "closeAll": {
-          "label": "A panel összes lapjának bezárása",
-          "description": "A panel összes lapjának bezárása"
+          "label": "Összes lap bezárása",
+          "description": "Az aktuális ablaktábla összes lapjának bezárása"
         },
         "pin": {
-          "label": "Lap rögzítése vagy feloldása",
-          "description": "Lap rögzítése vagy feloldása"
+          "label": "Lap kitűzése",
+          "description": "Az aktuális lap kitűzése vagy a kitűzés megszüntetése"
         },
         "duplicate": {
           "label": "Lap megkettőzése",
-          "description": "Lap megkettőzése"
+          "description": "Az aktuális lap másolatának megnyitása"
         },
         "splitRight": {
           "label": "Felosztás jobbra",
-          "description": "Felosztás jobbra"
+          "description": "Az aktuális ablaktábla felosztása egymás mellé"
         },
         "splitDown": {
           "label": "Felosztás lefelé",
-          "description": "Felosztás lefelé"
+          "description": "Az aktuális ablaktábla felosztása egymás alá"
         },
         "closeSplit": {
-          "label": "Az osztott panel bezárása",
-          "description": "Az osztott panel bezárása"
+          "label": "Osztott ablaktábla bezárása",
+          "description": "Az aktuális osztott ablaktábla bezárása"
         }
       },
       "editor": {
         "save": {
           "label": "Mentés",
-          "description": "Mentse el az aktuális jegyzetet"
+          "description": "Az aktuális jegyzet mentése"
         },
         "bold": {
           "label": "Félkövér",
@@ -1170,82 +2009,92 @@
           "description": "Az aláhúzott formázás be- és kikapcsolása"
         },
         "strikethrough": {
-          "label": "Áthúzott",
-          "description": "Áthúzott"
+          "label": "Áthúzás",
+          "description": "Áthúzott formázás be- és kikapcsolása"
         },
         "code": {
-          "label": "Kód",
-          "description": "Kód"
+          "label": "Szövegközi kód",
+          "description": "Szövegközi kódformázás be- és kikapcsolása"
         }
       },
       "view": {
         "toggleSidebar": {
-          "label": "Kapcsolja be az oldalsávot",
+          "label": "Oldalsáv megjelenítése/elrejtése",
           "description": "Az oldalsáv megjelenítése vagy elrejtése"
         },
         "shortcuts": {
           "label": "Billentyűparancsok súgója",
-          "description": "A billentyűparancsok hivatkozásának megjelenítése"
+          "description": "A billentyűparancsok listájának megjelenítése"
         },
         "zoomIn": {
           "label": "Nagyítás",
-          "description": "Minden nagyítása"
+          "description": "A felület nagyítása"
         },
         "zoomOut": {
           "label": "Kicsinyítés",
-          "description": "Minden kicsinyítése"
+          "description": "A felület kicsinyítése"
         },
         "actualSize": {
           "label": "Eredeti méret",
           "description": "Nagyítás visszaállítása 100%-ra"
         }
       }
+    },
+    "v2": {
+      "all": "Összes",
+      "categoryFilter": "Szűrés kategória szerint",
+      "systemWide": "Rendszerszintű",
+      "globalCapture": "Globális gyors rögzítés",
+      "recordingHint": "Nyomja le a billentyűket… Esc: megszakítás",
+      "reset": "Visszaállítás",
+      "resetAll": "Összes visszaállítása alapértelmezettre"
     }
   },
   "phaseF": {
     "componentsKeyboardChordIndicator": {
-      "pressedWaitingForSecondKey": "lenyomva – vár a második billentyűre..."
+      "pressedWaitingForSecondKey": "lenyomva – várakozás a második billentyűre…"
     },
     "componentsKeyboardKeyboardShortcutsDialog": {
       "keyboardShortcuts": "Billentyűparancsok",
       "press": "Nyomja meg ",
-      "toToggleThisDialog": "a párbeszédpanel váltásához"
+      "toToggleThisDialog": "a párbeszédpanel megjelenítéséhez vagy elrejtéséhez"
     },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Ezt az eszközt eltávolították",
-      "exporting": "Exportálás...",
-      "signOut": "Jelentkezzen ki"
+      "exporting": "Exportálás…",
+      "signOut": "Kijelentkezés"
     },
     "componentsSyncSyncHistory": {
       "activity": "Tevékenység",
       "filterBySyncType": "Szűrés szinkronizálási típus szerint",
       "allTypes": "Minden típus",
-      "pushed": "Lökve",
-      "pulled": "Húzták",
+      "pushed": "Feltöltve",
+      "pulled": "Letöltve",
       "errors": "Hibák",
       "filterByTimePeriod": "Szűrés időszak szerint",
-      "allTime": "Minden alkalommal",
+      "allTime": "Teljes időszak",
       "today": "Ma",
       "last7Days": "Az elmúlt 7 nap",
       "last30Days": "Az elmúlt 30 nap",
       "loadingSyncHistory": "Szinkronizálási előzmények betöltése",
       "noSyncActivityYet": "Még nincs szinkronizálási tevékenység",
-      "loadMore": "Töltsön be többet",
+      "loadMore": "Továbbiak betöltése",
       "duration": "· {duration}",
-      "showErrorDetailsAria": "{summary}, hibarészletek megjelenítése",
       "summaryFailed": "A szinkronizálás sikertelen",
+      "summaryPushed": "{count, plural, one {# elem feltöltve} other {# elem feltöltve}}",
       "summaryPulled": "{count, plural, one {# elem letöltve} other {# elem letöltve}}",
-      "summaryPushed": "{count, plural, one {# elem feltöltve} other {# elem feltöltve}}"
+      "showErrorDetailsAria": "{summary}, hibarészletek megjelenítése"
     },
     "componentsSyncSyncStatus": {
-      "lastSynced": "Utolsó szinkronizálás ",
+      "lastSynced": "Utolsó szinkronizálás: ",
       "pending": "függőben",
       "localOnly": "csak helyi",
-      "detected": "észlelt",
-      "clockSkewDetected": "Óratorzulás észlelve",
-      "items": "tételeket",
-      "willSyncWhenBackOnline": "Szinkronizálódik, amikor újra online",
-      "openSyncSettings": "Nyissa meg a szinkronizálási beállításokat"
+      "detected": "észlelve",
+      "dismissConflicts": "Elvetés",
+      "clockSkewDetected": "Óraeltérés észlelve",
+      "items": "elem",
+      "willSyncWhenBackOnline": "Szinkronizálódik, amikor újra online lesz",
+      "openSyncSettings": "Szinkronizálási beállítások megnyitása"
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -1254,10 +2103,10 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Nem sikerült frissíteni a címke színét",
-      "googleSignInFailed": "A Google bejelentkezés sikertelen",
+      "googleSignInFailed": "A Google-bejelentkezés sikertelen",
       "failedToSendVerificationCode": "Nem sikerült elküldeni az ellenőrző kódot",
       "invalidVerificationCode": "Érvénytelen ellenőrző kód",
-      "accountSetupFailed": "A fiók beállítása nem sikerült",
+      "accountSetupFailed": "A fiók beállítása sikertelen",
       "failedToResendCode": "Nem sikerült újraküldeni a kódot",
       "failedToSetUpDevice": "Nem sikerült beállítani az eszközt",
       "failedToConfirmRecoveryPhrase": "Nem sikerült megerősíteni a helyreállítási kifejezést",
@@ -1278,18 +2127,18 @@
       "failedToLoadTabSettings": "Nem sikerült betölteni a lapbeállításokat",
       "failedToLoadNotes": "Nem sikerült betölteni a jegyzeteket",
       "failedToLoadTags": "Nem sikerült betölteni a címkéket",
-      "failedToLoadVaultStatus": "Nem sikerült betölteni a trezor állapotát",
-      "failedToSelectVault": "Nem sikerült kiválasztani a trezort",
-      "failedToCloseVault": "Nem sikerült bezárni a trezort",
-      "failedToSwitchVault": "Nem sikerült váltani a trezorra",
+      "failedToLoadTasks": "Nem sikerült betölteni a feladatokat",
+      "failedToLoadVaultStatus": "Nem sikerült betölteni a széf állapotát",
+      "failedToSelectVault": "Nem sikerült kiválasztani a széfet",
+      "failedToCloseVault": "Nem sikerült bezárni a széfet",
+      "failedToSwitchVault": "Nem sikerült széfet váltani",
       "failedToUpdateConfig": "Nem sikerült frissíteni a konfigurációt",
-      "failedToReindex": "Nem sikerült újraindexelni",
-      "failedToLoadTasks": "Nem sikerült betölteni a feladatokat"
+      "failedToReindex": "Nem sikerült újraindexelni"
     }
   },
   "agentMcp": {
     "header": {
-      "title": "Agent MCP",
+      "title": "Ügynök-MCP",
       "subtitle": "Helyi szerverhozzáférés külső MCP-kliensek számára."
     },
     "groups": {
@@ -1314,16 +2163,60 @@
     },
     "copyLabel": "{label} másolása",
     "notRunning": "Nem fut",
-    "toolsBadge": "{count, plural, one {# eszköz} other {# eszköz}}"
+    "toolsBadge": "{count, plural, one {# eszköz} other {# eszköz}}",
+    "v2": {
+      "hint": "Helyi szerver a Cursorhoz, a Claude Desktophoz és a Zedhez",
+      "running": "Fut",
+      "tokenHint": "Csak ehhez az indításhoz",
+      "copy": "Másolás",
+      "rotate": "Csere"
+    }
   },
   "agentProviders": {
     "header": {
-      "title": "Agent jogosultságok",
-      "subtitle": "Válassza ki az alapértelmezett hozzáférést, a megerősítéseket és a helyi szolgáltatókat az Agent csevegéshez."
+      "title": "Ügynökjogosultságok",
+      "subtitle": "Válassza ki az Ügynökcsevegés alapértelmezett hozzáférését, megerősítéseit és helyi szolgáltatóit."
     },
     "groups": {
+      "cliAgents": "CLI-ügynökök",
       "local": "Helyi, OpenAI-kompatibilis szolgáltató",
       "actions": "Kapcsolatellenőrzés"
+    },
+    "cliAgents": {
+      "claude": {
+        "label": "Claude Code CLI",
+        "description": "Telepítse a Claude Code-ot a claude.ai/code oldalról, majd futtassa a `claude login` parancsot. A MemryNote automatikusan felismeri."
+      },
+      "codex": {
+        "label": "Codex CLI",
+        "description": "Telepítse az `npm install -g @openai/codex` paranccsal, majd futtassa a `codex login` parancsot az OpenAI-fiókjába való bejelentkezéshez. A MemryNote automatikusan felismeri."
+      },
+      "antigravity": {
+        "label": "Antigravity CLI",
+        "description": "Telepítse az Antigravity CLI-t az antigravity.google/docs/cli oldalról, majd futtassa egyszer az `agy` parancsot a Google-fiókjába való bejelentkezéshez. A MemryNote automatikusan felismeri."
+      },
+      "status": {
+        "detected": "Észlelve · v{version}",
+        "detectedNoVersion": "Észlelve",
+        "belowMinimum": "v{version} telepítve – {minimum} vagy újabb szükséges",
+        "notDetected": "Nincs észlelve",
+        "runtimeUnavailable": "Nem érhető el – az ügynök futtatókörnyezete nem indult el"
+      }
+    },
+    "permissions": {
+      "group": "Ügynökjogosultságok",
+      "access": {
+        "label": "Alapértelmezett hozzáférés",
+        "description": "Beállítja az új ügynökfordulók kezdeti hozzáférési módját.",
+        "vaultOnly": "Csak a széf",
+        "computerAccess": "Számítógép-hozzáférés"
+      },
+      "confirm": {
+        "label": "Műveletek megerősítése",
+        "description": "Válassza ki, hogy az eszközhívások automatikusan lefussanak, vagy jóváhagyásra várjanak a csevegésben.",
+        "alwaysAllow": "Mindig engedélyezve",
+        "askBeforeChanges": "Rákérdezés módosítás előtt"
+      }
     },
     "presets": {
       "ollama": "Ollama",
@@ -1336,7 +2229,7 @@
         "label": "Előbeállítás"
       },
       "baseUrl": {
-        "label": "Alap URL",
+        "label": "Alap-URL",
         "description": "OpenAI-kompatibilis /v1 végpont."
       },
       "allowNonLoopback": {
@@ -1348,9 +2241,9 @@
         "description": "Válasszon a visszaadott modellek közül, vagy adjon meg egyet kézzel."
       },
       "apiKey": {
-        "label": "API kulcs",
+        "label": "API-kulcs",
         "description": "Opcionális hitelesítő adat, amelyet az operációs rendszer kulcstartója tárol.",
-        "configured": "Már van API kulcs tárolva az operációs rendszer kulcstartójában."
+        "configured": "Már van API-kulcs tárolva az operációs rendszer kulcstartójában."
       }
     },
     "actions": {
@@ -1360,253 +2253,41 @@
       "probe": "Eszközök vizsgálata"
     },
     "status": {
-      "disconnected": "Nincs csatlakozva",
-      "toolsDisabled": "Eszközök letiltva",
-      "fullTools": "Teljes eszközkészlet engedélyezve",
+      "label": "Kapcsolat",
       "checking": "Ellenőrzés…",
       "connected": "Csatlakoztatva",
-      "label": "Kapcsolat"
+      "disconnected": "Nincs csatlakozva",
+      "toolsDisabled": "Eszközök letiltva",
+      "fullTools": "Teljes eszközkészlet engedélyezve"
     },
-    "permissions": {
-      "group": "Agent jogosultságok",
-      "access": {
-        "label": "Alapértelmezett hozzáférés",
-        "description": "Beállítja az új Agent fordulók kezdeti hozzáférési módját.",
-        "vaultOnly": "Csak a tár",
-        "computerAccess": "Számítógép-hozzáférés"
-      },
-      "confirm": {
-        "label": "Műveletek megerősítése",
-        "description": "Válassza ki, hogy az eszközhívások automatikusan lefussanak, vagy jóváhagyásra várjanak a csevegésben.",
-        "alwaysAllow": "Mindig engedélyezve",
-        "askBeforeChanges": "Kérdezzen módosítás előtt"
-      }
-    }
-  },
-  "commandLine": {
-    "actions": {
-      "refresh": "Frissítés"
+    "alwaysAllowed": {
+      "group": "Mindig engedélyezett",
+      "description": "Azok az eszközök, amelyekre ebben a széfben állandó jóváhagyást adott. Törlésre soha nem adható állandó jóváhagyás.",
+      "empty": "Semmi sincs mindig engedélyezve. Minden módosításnál rákérdez.",
+      "revoke": "Visszavonás",
+      "revokeLabel": "A(z) {tool} eszköz állandó jóváhagyásának visszavonása",
+      "ignoredInPageReview": "Figyelmen kívül hagyva: a jegyzetek és naplók szerkesztése mindig rákérdez."
     },
-    "command": {
-      "descriptionInstalled": "Telepítve ide: {path}",
-      "descriptionNotInstalled": "Telepítsd a memrynote parancsot, hogy bármely terminálból használhasd a széfedet.",
-      "label": "memrynote parancs",
-      "toggleLabel": "memrynote parancs telepítése"
-    },
-    "defaultVault": {
-      "description": "Válaszd ki a széfet, amelyet a memrynote --vault nélküli futtatásakor használ.",
-      "descriptionSelected": "A parancsok a(z) {path} útvonalat használják, ha a --vault elmarad.",
-      "label": "Alapértelmezett széf",
-      "none": "Nincs kiválasztott széf",
-      "placeholder": "Válassz széfet"
-    },
-    "groups": {
-      "terminal": "Terminál"
-    },
-    "header": {
-      "subtitle": "A memrynote parancs beállítása a termináladhoz",
-      "title": "Parancssor"
-    },
-    "status": {
-      "defaultVaultUpdatedToast": "Alapértelmezett CLI-széf frissítve",
-      "installedToast": "memrynote parancs telepítve",
-      "loadFailed": "Nem sikerült betölteni a parancsállapotot",
-      "loading": "Parancsállapot ellenőrzése...",
-      "uninstalledToast": "memrynote parancs eltávolítva"
-    }
-  },
-  "features": {
-    "header": {
-      "subtitle": "Kapcsold be vagy ki az alkalmazás egyes részeit. Kikapcsolva = elhalványítva az oldalsávban és mindenhol letiltva.",
-      "title": "Funkciók"
-    },
-    "items": {
-      "calendar": {
-        "description": "Események és ütemterv",
-        "label": "Naptár"
+    "v2": {
+      "permissions": {
+        "group": "Jogosultságok",
+        "hint": "Minden ügynökcsevegésre vonatkozik",
+        "access": "Hozzáférés",
+        "changes": "Módosítások"
       },
-      "graph": {
-        "description": "Jegyzetkapcsolatok",
-        "label": "Gráf"
+      "runtimes": {
+        "group": "Ügynökök futtatókörnyezetei",
+        "hint": "PATH alapján észlelve"
       },
-      "home": {
-        "description": "Kezdő irányítópult",
-        "label": "Kezdőlap"
+      "localModel": {
+        "label": "Helyi modell",
+        "hint": "OpenAI-kompatibilis szerver ezen a gépen",
+        "notChecked": "Nincs ellenőrizve",
+        "optional": "Nem kötelező",
+        "fetchModels": "Modellek lekérése"
       },
-      "inbox": {
-        "description": "Gyors rögzítés és rendezés",
-        "label": "Beérkezők"
-      },
-      "journal": {
-        "description": "Napi jegyzetek",
-        "label": "Napló"
-      },
-      "tasks": {
-        "description": "Teendők és határidők",
-        "label": "Feladatok"
-      },
-      "spatialCanvas": {
-        "description": "Térbeli táblák a jegyzetek elrendezéséhez és összekapcsolásához",
-        "label": "Vászon"
-      }
-    }
-  },
-  "import": {
-    "action": "Importálás",
-    "dialog": {
-      "cancel": "Mégse",
-      "choose": "Fájl kiválasztása…",
-      "chooseFolder": "Apple Notes mappa kiválasztása…",
-      "chooseHint": "Válaszd ki a(z) {label} elemet",
-      "close": "Bezárás",
-      "done": "Kész",
-      "error": "Az importálás sikertelen",
-      "folderHint": "Kattints alább, és válaszd ki a „group.com.apple.notes” mappát, amikor a választó megnyílik (ott indul). Ez lehetővé teszi, hogy a Memry beolvassa a jegyzeteidet és mellékleteidet — nincs szükség teljes lemezhozzáférésre.",
-      "progress": "{completed} / {total}",
-      "running": "Importálás…",
-      "selected": "{count, plural, one {# fájl kiválasztva} other {# fájl kiválasztva}}",
-      "start": "Importálás indítása",
-      "summary": {
-        "attachments": "{count, plural, one {# melléklet másolva} other {# melléklet másolva}}",
-        "failed": "{count} sikertelen",
-        "imported": "{count, plural, one {# elem importálva} other {# elem importálva}}",
-        "skipped": "{count} kihagyva",
-        "title": "Importálás kész"
-      },
-      "title": "Importálás innen: {name}",
-      "chooseDirectory": "Mappa kiválasztása…",
-      "folderKeepsAssets": "Válaszd a mappát, ha a képek a jegyzetek saját mappáján kívül vannak — az exportok gyakran közös mappában tartják a médiát.",
-      "previewError": "Az előnézet nem sikerült"
-    },
-    "header": {
-      "subtitle": "Hozd be a jegyzeteidet és feladataidat más alkalmazásokból",
-      "title": "Importálás"
-    },
-    "intro": "Az egyszeri importálások új jegyzeteket hoznak létre a széfedben. Az eredeti exportfájljaidat érintetlenül hagyjuk.",
-    "preview": {
-      "confirm": "Importálás",
-      "warnings": "Figyelmeztetések"
-    },
-    "select": "Válassz alkalmazást, amelyből importálsz…",
-    "sources": {
-      "apple-journal": "Apple Journal HTML-export importálása dátumozott jegyzetként",
-      "apple-notes": "Importálás az Apple Notes adatbázisából (NoteStore.sqlite, macOS)",
-      "bear": "Bear .bear2bk archívum importálása (jegyzetek, címkék, mellékletek)",
-      "csv": ".csv fájl importálása — soronként egy jegyzet, az oszlopokból tulajdonságok lesznek",
-      "evernote": "Egy vagy több Evernote .enex exportfájl importálása",
-      "google-keep": "Google Takeout Keep-export importálása (.json vagy .zip)",
-      "html": ".html fájlok importálása csatolt képekkel és oldalak közti hivatkozásokkal",
-      "markdown": ".md fájlok vagy mappa importálása (frontmatter, címkék, mellékletek)",
-      "notion": "HTML-export importálása (.zip)",
-      "onenote": "OneNote jegyzetfüzetek importálása (Microsoft-fiók szükséges)",
-      "raindrop": "Raindrop.io könyvjelző-export (.csv) importálása — a könyvjelzők a beérkezőkbe kerülnek",
-      "roam": "Roam Research gráf (.json) importálása beágyazott vázlatokkal",
-      "ticktick": "TickTick biztonsági mentés (.csv) importálása projektként, feladatként és emlékeztetőként",
-      "todoist": "Projekt CSV-export importálása (.csv)"
-    },
-    "stats": {
-      "bookmarks": "{count, plural, one {# könyvjelző} other {# könyvjelző}}",
-      "comments": "{count, plural, one {# megjegyzés} other {# megjegyzés}}",
-      "notes": "{count, plural, one {# jegyzet} other {# jegyzet}}",
-      "projects": "{count, plural, one {# projekt} other {# projekt}}",
-      "reminders": "{count, plural, one {# emlékeztető} other {# emlékeztető}}",
-      "skipped": "{count} kihagyva",
-      "subtasks": "{count, plural, one {# részfeladat} other {# részfeladat}}",
-      "tasks": "{count, plural, one {# feladat} other {# feladat}}",
-      "withDueDate": "{count} dátumozva",
-      "withTags": "{count} címkézve"
-    },
-    "messages": {
-      "csv": {
-        "columns": "Oszlopok: {columns}",
-        "emptyTitle": "Üres címet tartalmazó sor kihagyva („{column}” oszlop)",
-        "noHeaders": "A CSV-fájlnak nincs fejlécsora",
-        "titleColumn": "A cím a(z) „{column}” oszlopból; a többi oszlop tulajdonságként mentve"
-      },
-      "raindrop": {
-        "csvEmpty": "A Raindrop CSV üres",
-        "headerNotFound": "A Raindrop CSV fejlécsora („url” oszlop) nem található",
-        "rowNoUrl": "{row}. sor kihagyva: nincs URL"
-      },
-      "readFileFailed": "Nem sikerült beolvasni a fájlt",
-      "ticktick": {
-        "foldersDropped": "A TickTick mappáinak nincs Memry-megfelelője, ezért kimaradtak",
-        "headerNotFound": "A TickTick CSV fejlécsora („Folder Name”) nem található",
-        "reminderNoAnchor": "A(z) „{reminder}” emlékeztető kihagyva (nincs dátumhorgony)",
-        "subtaskParentMissing": "A(z) „{title}” részfeladat szülője nem található; legfelső szintre importálva",
-        "unknownPriority": "Ismeretlen TickTick prioritás: {priority} → nincs",
-        "unsupportedRepeat": "A nem támogatott „{rule}” ismétlési szabály kihagyva"
-      },
-      "todoist": {
-        "emptyTitle": "Az üres tartalmú feladat (névtelen) néven lett importálva",
-        "headerNotFound": "Nem Todoist CSV: hiányzik a TYPE fejlécsor",
-        "orphanComment": "A megjegyzés kihagyva, mert nem előzi meg feladat",
-        "sectionFlattened": "A(z) „{section}” szakasz kilapítva",
-        "subtaskNoParent": "A(z) „{title}” részfeladatnak nincs szülője a(z) {indent} behúzási szinten; legfelső szintre importálva",
-        "unknownPriority": "Ismeretlen prioritás: {priority} → nincs",
-        "unparsedDate": "Nem sikerült értelmezni a(z) „{date}” dátumot"
-      }
-    },
-    "status": {
-      "appleNotes": {
-        "copyingDatabase": "Az Apple Notes adatbázisának másolása…"
-      },
-      "bear": {
-        "scanning": "A Bear-export átvizsgálása…"
-      },
-      "csv": {
-        "importing": "CSV-jegyzetek importálása…"
-      },
-      "evernote": {
-        "scanning": ".enex fájlok átvizsgálása…"
-      },
-      "html": {
-        "scanning": "HTML-fájlok átvizsgálása…"
-      },
-      "importingItem": "{title} importálása",
-      "raindrop": {
-        "importing": "Raindrop-könyvjelzők importálása…"
-      },
-      "roam": {
-        "reading": "A Roam-export beolvasása…"
-      },
-      "scanningExport": "Az export átvizsgálása…",
-      "scanningFiles": "Fájlok átvizsgálása…",
-      "ticktick": {
-        "importing": "TickTick-feladatok importálása…"
-      },
-      "todoist": {
-        "importing": "Todoist-feladatok importálása…"
-      }
-    }
-  },
-  "inbox": {
-    "header": {
-      "loading": "Betöltés…",
-      "subtitle": "Napi átnézési emlékeztető és a Beérkezők beállításai.",
-      "title": "Beérkezők"
-    },
-    "reviewReminder": {
-      "enabled": {
-        "description": "Finom napi emlékeztető, ha van elem a Beérkezőkben.",
-        "label": "Emlékeztess a Beérkezők átnézésére"
-      },
-      "error": "Nem sikerült frissíteni az emlékeztetőt.",
-      "group": "Napi átnézési emlékeztető",
-      "test": {
-        "button": "Teszt küldése",
-        "description": "Küldd el most az emlékeztetőt, hogy ellenőrizd a rendszerértesítéseket.",
-        "label": "Tesztértesítés",
-        "sent": "Tesztértesítés elküldve.",
-        "sentHint": "Ha nem jelenik meg semmi, engedélyezd az értesítéseket a MemryNote számára a rendszerbeállításokban.",
-        "unsupported": "Ez az eszköz nem tud asztali értesítéseket megjeleníteni."
-      },
-      "time": {
-        "description": "Helyi idő szerint, minden eszközön.",
-        "hourLabel": "Óra",
-        "label": "Emlékeztető időpontja",
-        "minuteLabel": "Perc",
-        "periodLabel": "AM vagy PM"
+      "alwaysAllowed": {
+        "group": "Mindig engedélyezett eszközök"
       }
     }
   }

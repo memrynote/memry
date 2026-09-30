@@ -1,46 +1,44 @@
 {
   "view": {
     "tabs": {
-      "inbox": "受信箱",
+      "inbox": "インボックス",
       "archived": "アーカイブ済み",
-      "insights": "洞察",
-      "ariaLabel": "受信トレイビューの選択"
+      "insights": "インサイト",
+      "ariaLabel": "インボックスのビューを選択"
     },
-    "triageButton": "トリアージ",
-    "processInboxTitle": "受信トレイの処理 (Cmd+P)",
-    "itemCaptured": "アイテムを捕獲",
-    "searchArchivedTitle": "アーカイブされたアイテムを検索する",
-    "searchPlaceholder": "検索...",
-    "archivedItemsAria": "アーカイブされたアイテム",
+    "itemCaptured": "キャプチャしました",
+    "searchArchivedTitle": "アーカイブ済みの項目を検索",
+    "searchPlaceholder": "検索…",
+    "archivedItemsAria": "アーカイブ済みの項目",
     "snoozed": {
-      "show": "スヌーズしたアイテムを表示する",
-      "showWithCount": "スヌーズされたアイテムを表示する ({count})",
-      "hide": "スヌーズしたアイテムを非表示にする"
-    },
-    "filter": {
-      "button": "フィルター",
-      "byType": "タイプでフィルタリングする",
-      "active": "{count, plural, one {#タイプによるフィルタリング} other {# タイプによるフィルタリング}}",
-      "clearAll": "すべてクリア"
-    },
-    "jobs": {
-      "running": "{count, plural, one {# バックグラウンド ジョブの実行中} other {# バックグラウンド ジョブの実行中}}",
-      "failed": "{count} が失敗しました"
+      "show": "スヌーズ中の項目を表示",
+      "showWithCount": "スヌーズ中の項目を表示（{count}）",
+      "hide": "スヌーズ中の項目を非表示"
     },
     "density": {
       "toComfortable": "広めの表示",
       "toCompact": "コンパクトな表示"
+    },
+    "filter": {
+      "button": "フィルター",
+      "byType": "種類で絞り込み",
+      "active": "{count, plural, other {# 種類で絞り込み中}}",
+      "clearAll": "すべてクリア"
+    },
+    "jobs": {
+      "running": "{count, plural, other {# 件のバックグラウンドジョブを実行中}}",
+      "failed": "{count} 件失敗"
     }
   },
   "type": {
     "link": "リンク",
     "links": "リンク",
-    "note": "注記",
-    "notes": "注意事項",
+    "note": "ノート",
+    "notes": "ノート",
     "image": "画像",
     "images": "画像",
-    "voice": "声",
-    "video": "ビデオ",
+    "voice": "音声",
+    "video": "動画",
     "clip": "クリップ",
     "clips": "クリップ",
     "pdf": "PDF",
@@ -50,376 +48,383 @@
     "reminders": "リマインダー"
   },
   "empty": {
-    "successAria": "成功しました。受信箱は空です",
-    "title": "受信箱ゼロ",
-    "body": "すべてが処理されています。上記の入力で新しいものをキャプチャするか、リンクを貼り付けて開始してください。",
-    "filedThisWeek": "{count, plural, one {今週提出された #} other {今週提出された #}}",
+    "successAria": "完了。インボックスは空です",
+    "title": "インボックスゼロ",
+    "body": "すべて処理済みです。上の入力欄で新しいものをキャプチャするか、リンクを貼り付けて始めましょう。",
+    "filedThisWeek": "{count, plural, other {今週 # 件を振り分け}}",
     "dayStreak": "{count, plural, one {# 日連続記録} other {# 日連続記録}}",
-    "tipPrefix": "ヒント: を使用する",
-    "tipSuffix": "クリップボードからクイックキャプチャするには",
-    "archivedNone": "アーカイブされたアイテムはありません",
-    "archivedNoMatches": "一致するアーカイブ済みアイテムはありません",
-    "noItemsYet": "まだアイテムがありません",
-    "noItemsFiled": "まだ項目は登録されていません",
-    "noFolders": "フォルダが見つかりません",
-    "noNotes": "メモが見つかりませんでした",
-    "allMatchesLinked": "すべての一致はすでにリンクされています"
+    "tipPrefix": "ヒント：",
+    "tipSuffix": "でクリップボードからクイックキャプチャできます",
+    "archivedNone": "アーカイブ済みの項目はありません",
+    "archivedNoMatches": "一致するアーカイブ済みの項目はありません",
+    "noItemsYet": "項目はまだありません",
+    "noItemsFiled": "振り分けた項目はまだありません",
+    "noFolders": "フォルダーが見つかりません",
+    "noNotes": "ノートが見つかりません",
+    "allMatchesLinked": "一致する項目はすべてリンク済みです"
   },
   "list": {
-    "ariaLabel": "受信箱のアイテム",
+    "ariaLabel": "インボックスの項目",
     "section": {
       "today": "今日",
       "yesterday": "昨日",
-      "older": "古い"
+      "older": "それ以前"
     },
-    "selectItem": "{title}を選択します",
-    "itemAria": "{type}: {title}",
+    "selectItem": "{title} を選択",
+    "itemAria": "{type}：{title}",
     "untitled": "無題",
-    "untitledItem": "無題のアイテム",
-    "transcribing": "転記中...",
-    "transcriptionFailed": "転写に失敗しました",
+    "untitledItem": "無題の項目",
+    "transcribing": "文字起こし中…",
+    "transcriptionFailed": "文字起こしできませんでした",
     "retryTranscription": "再試行",
-    "pageCount": "{count, plural, one {# ページ} other {# ページ}}",
-    "snoozedUntilShort": "{date}までスヌーズ"
+    "pageCount": "{count, plural, other {# ページ}}",
+    "snoozedUntilShort": "{date} までスヌーズ中",
+    "rename": "名前を変更",
+    "renameLabel": "項目の名前を変更"
   },
   "loading": {
-    "inbox": "受信箱を読み込んでいます...",
-    "failed": "受信トレイの読み込みに失敗しました",
-    "tryAgain": "もう一度試してください",
-    "capturingImage": "画像をキャプチャしています...",
-    "dropImageTitle": "画像をドロップしてキャプチャします",
+    "inbox": "インボックスを読み込み中…",
+    "failed": "インボックスを読み込めませんでした",
+    "tryAgain": "再試行",
+    "capturingImage": "画像をキャプチャ中…",
+    "dropImageTitle": "ドロップして画像をキャプチャ",
     "dropImageTypes": "PNG、JPEG、GIF、WebP、SVG",
-    "unsupportedImageType": "サポートされていない画像タイプ: {type}",
-    "imageTooLarge": "画像が大きすぎます（最大50MB）"
+    "unsupportedImageType": "サポートされていない画像形式です：{type}",
+    "imageTooLarge": "画像が大きすぎます（最大 50MB）"
   },
   "toast": {
-    "failedArchiveItem": "アイテムのアーカイブに失敗しました",
-    "failedArchiveItems": "アイテムのアーカイブに失敗しました",
-    "failedFile": "ファイルに失敗しました",
-    "failedFileItem": "アイテムのファイルに失敗しました",
-    "failedFileItems": "アイテムのファイルに失敗しました",
-    "failedSnooze": "スヌーズに失敗しました",
-    "failedSnoozeItem": "アイテムのスヌーズに失敗しました",
-    "failedApplyTags": "タグの適用に失敗しました",
-    "failedCaptureImage": "画像のキャプチャに失敗しました",
-    "linkedToNote": "ノートにリンクされています",
-    "linkedToNotes": "{count} ノートにリンクされています",
-    "filedTo": "{folder} に提出",
-    "filedItemsTo": "{count} アイテムを {folder} にファイルしました",
-    "filedPartial": "{total} アイテムの {processed} をファイルしました",
-    "appliedTags": "{tagCount, plural, one {#タグを適用しました} other {適用された # タグ}} ～ {itemCount, plural, one {# アイテム} other {# アイテム}}",
-    "archivedItems": "{count, plural, one {アーカイブされた # アイテム} other {アーカイブされた # アイテム}}",
-    "snoozedUntil": "{time}までスヌーズ",
-    "snoozedItemsUntil": "{count, plural, one {{time} まで # アイテムをスヌーズ} other {{time} まで # アイテムをスヌーズしました}}"
-  },
-  "triage": {
-    "modeTitle": "トリアージモード",
-    "exitHint": "Esc で終了",
-    "exitAria": "トリアージモードを終了する",
-    "position": "{current}/{total}",
-    "action": {
-      "discard": "廃棄する",
-      "archive": "アーカイブ",
-      "open": "開く",
-      "toTask": "タスクへ",
-      "toNote": "メモする",
-      "file": "ファイル",
-      "snooze": "スヌーズ",
-      "cancel": "キャンセル"
-    },
-    "snoozeUntil": "まで居眠りしてください...",
-    "complete": {
-      "title": "受信箱ゼロ",
-      "processed": "{count, plural, one {# アイテムが処理されました} other {# アイテムが処理されました}}",
-      "streak": "縞模様",
-      "streakCount": "{count} ストリーク",
-      "dayProcessingStreak": "{count, plural, one {# 日の処理連続数} other {# 日の処理連続数}}",
-      "back": "受信箱に戻る",
-      "motivation0": "未来のあなたはあなたに感謝します。",
-      "motivation1": "すべてが所定の位置にあります。",
-      "motivation2": "受信箱をクリアすれば、心もクリアになります。",
-      "motivation3": "決定負債: 全額支払われました。",
-      "motivation4": "いい感じでしたね。"
-    }
+    "failedArchiveItem": "項目をアーカイブできませんでした",
+    "failedArchiveItems": "項目をアーカイブできませんでした",
+    "failedFile": "振り分けられませんでした",
+    "failedFileItem": "項目を振り分けられませんでした",
+    "failedFileItems": "項目を振り分けられませんでした",
+    "failedSnooze": "スヌーズできませんでした",
+    "failedSnoozeItem": "項目をスヌーズできませんでした",
+    "failedApplyTags": "タグを適用できませんでした",
+    "failedCaptureImage": "画像をキャプチャできませんでした",
+    "linkedToNote": "ノートにリンクしました",
+    "linkedToNotes": "{count} 件のノートにリンクしました",
+    "embedFellBackToLink": "画像が大きすぎて埋め込めないため、リンクされたファイルとして振り分けました",
+    "filedTo": "{folder} に振り分けました",
+    "filedItemsTo": "{count} 件の項目を {folder} に振り分けました",
+    "filedPartial": "{total} 件中 {processed} 件を振り分けました",
+    "appliedTags": "{itemCount, plural, other {# 件の項目}}に {tagCount, plural, other {# 件のタグ}}を適用しました",
+    "archivedItems": "{count, plural, other {# 件の項目をアーカイブしました}}",
+    "snoozedUntil": "{time} までスヌーズしました",
+    "snoozedItemsUntil": "{count, plural, other {# 件の項目を {time} までスヌーズしました}}",
+    "restored": "「{title}」を復元しました"
   },
   "bulk": {
-    "selected": "{count} が選択されました",
-    "deselectAll": "すべての選択を解除します",
-    "ariaLabel": "{count} で選択したアイテムの一括アクション",
-    "file": "ファイル",
+    "selected": "{count} 件を選択中",
+    "deselectAll": "すべての選択を解除",
+    "ariaLabel": "選択した {count} 件の項目の一括操作",
+    "file": "振り分け",
     "tag": "タグ",
     "snooze": "スヌーズ",
     "archive": "アーカイブ",
     "add": "追加",
-    "dismissSuggestion": "提案を却下する",
+    "dismissSuggestion": "提案を閉じる",
     "hint": {
-      "file": "ファイル",
+      "file": "振り分け",
       "tag": "タグ",
-      "snooze": "居眠りする",
+      "snooze": "スヌーズ",
       "archive": "アーカイブ",
-      "deselect": "選択を解除します"
+      "deselect": "選択解除"
     },
     "archiveDialog": {
-      "title": "{count, plural, one {# アイテムをアーカイブしますか?} other {# アイテムをアーカイブしますか?}}",
-      "description": "これらのアイテムはアーカイブされます。アーカイブされたアイテムは後で表示できます。",
-      "confirm": "{count, plural, one {# アイテムのアーカイブ} other {# アイテムをアーカイブする}}"
+      "title": "{count, plural, other {# 件の項目をアーカイブしますか？}}",
+      "description": "これらの項目をアーカイブします。アーカイブ済みの項目は後で確認できます。",
+      "confirm": "{count, plural, other {# 件の項目をアーカイブ}}"
     },
     "filePanel": {
-      "title": "{count, plural, one {ファイル # アイテム} other {ファイル # アイテム}}",
-      "itemsToFile": "提出する項目",
-      "multipleNoteLinksUnavailable": "注: 複数のアイテムを登録する場合、他のメモへのリンクを追加することはできません。",
-      "filing": "ファイル中...",
-      "submit": "{count, plural, one {ファイル # アイテム} other {# アイテムをファイルする}}",
-      "macHint": "⌘⏎ ファイルへ · Esc で閉じます",
-      "ctrlHint": "Ctrl+Enter でファイルを移動します · Esc で閉じます"
+      "title": "{count, plural, other {# 件の項目を振り分け}}",
+      "itemsToFile": "振り分ける項目",
+      "multipleNoteLinksUnavailable": "注：複数の項目を振り分ける場合、他のノートへのリンクは追加できません。",
+      "filing": "振り分け中…",
+      "submit": "{count, plural, other {# 件の項目を振り分け}}",
+      "macHint": "⌘⏎ で振り分け · Esc で閉じる",
+      "ctrlHint": "Ctrl+Enter で振り分け · Esc で閉じる"
     },
     "tagPopover": {
-      "title": "{count, plural, one {タグ # アイテム} other {# アイテムにタグを付ける}}",
-      "placeholder": "タグを検索するには入力してください...",
-      "applying": "申請中...",
-      "apply": "{count, plural, one {# アイテムに適用} other {#アイテムに適用}}"
+      "title": "{count, plural, other {# 件の項目にタグを付ける}}",
+      "placeholder": "入力してタグを検索…",
+      "applying": "適用中…",
+      "apply": "{count, plural, other {# 件の項目に適用}}"
     }
   },
   "quickActions": {
     "groupAria": "クイックアクション",
-    "archiveItem": "アーカイブアイテム",
+    "archiveItem": "項目をアーカイブ",
     "archive": "アーカイブ"
   },
   "detail": {
-    "ariaLabel": "商品詳細",
+    "ariaLabel": "項目の詳細",
+    "resize": "パネルのサイズを変更",
     "closePanel": "パネルを閉じる",
-    "resizeFiling": "ファイリングセクションのサイズを変更する",
+    "resizeFiling": "振り分けセクションのサイズを変更",
     "restore": "復元",
-    "restoreToInbox": "受信トレイに復元",
+    "restoreToInbox": "インボックスに復元",
     "delete": "削除",
     "deletePermanently": "完全に削除",
     "archive": "アーカイブ",
-    "file": "ファイル",
-    "fileToFolder": "{folder} に保存",
-    "keyboardHint": "{modifier}⏎ ファイル · 1-5 フォルダ · Esc 閉じる",
-    "voiceTitlePlaceholder": "このボイスメモに名前を付けます...",
-    "fileTo": "ファイルに保存する",
+    "file": "振り分け",
+    "fileToFolder": "{folder} に振り分け",
+    "keyboardHint": "{modifier}⏎ 振り分け · 1-5 フォルダー · Esc 閉じる",
+    "voiceTitlePlaceholder": "このボイスメモに名前を付ける…",
+    "titlePlaceholder": "この項目に名前を付ける…",
+    "fileTo": "振り分け先",
     "ai": "AI",
-    "selectFolder": "フォルダを選択",
-    "searchOrCreateFolder": "/...を使用して検索または作成します",
-    "suggested": "提案された",
-    "notesRoot": "注意事項",
-    "notesRootLabel": "注意事項（ルート）",
-    "createFolder": "「{name}」を作成します",
-    "addTags": "タグを追加...",
-    "linkToNote": "メモへのリンク",
-    "linkNotesPlaceholder": "リンクメモ...",
-    "searchNotesAria": "ノートを検索してリンクする",
-    "linkedNotesAria": "リンクされたメモ",
-    "removeLinkTo": "{title} へのリンクを削除",
-    "notePlaceholder": "メモを書いてください...",
-    "textPlaceholder": "キャプチャしたテキストを編集...",
-    "linkANote": "ノートをリンク",
     "match": {
-      "likely": "一致の可能性あり",
-      "strong": "高い一致",
-      "weak": "弱い一致"
+      "strong": "一致度：高",
+      "likely": "一致度：中",
+      "weak": "一致度：低"
     },
-    "resize": "パネルのサイズを変更",
-    "suggestedCount": "{count} 件のおすすめ"
+    "selectFolder": "フォルダーを選択",
+    "searchOrCreateFolder": "検索、または / で作成…",
+    "suggested": "おすすめ",
+    "notesRoot": "ノート",
+    "notesRootLabel": "ノート（ルート）",
+    "createFolder": "「{name}」を作成",
+    "addTags": "タグを追加…",
+    "linkToNote": "ノートにリンク",
+    "linkANote": "ノートをリンク",
+    "suggestedCount": "{count} 件のおすすめ",
+    "linkNotesPlaceholder": "ノートをリンク…",
+    "linkOrCreateNotePlaceholder": "ノートを検索または作成…",
+    "createNote": "「{title}」を作成",
+    "pendingNote": "新規ノート",
+    "searchNotesAria": "リンクまたは作成するノートを検索",
+    "imageFilingModeLabel": "画像の追加方法",
+    "imageFilingModeEmbed": "ノートに埋め込み",
+    "imageFilingModeLink": "サイドバーのファイル",
+    "imageFilingModeRemember": "今後は確認しない",
+    "linkedNotesAria": "リンクされたノート",
+    "removeLinkTo": "{title} へのリンクを削除",
+    "notePlaceholder": "ノートを書く…",
+    "textPlaceholder": "キャプチャしたテキストを編集…"
+  },
+  "convert": {
+    "title": "変換",
+    "chooseType": "変換先",
+    "note": "ノート",
+    "task": "タスク",
+    "event": "予定",
+    "reminder": "リマインダー",
+    "create": "作成",
+    "addTask": "タスクを追加",
+    "addEvent": "予定を追加",
+    "setReminder": "リマインダーを設定",
+    "project": "プロジェクト",
+    "inboxProject": "インボックス",
+    "dueDate": "期限",
+    "dueTime": "期限の時刻",
+    "priority": "優先度",
+    "priorityNone": "なし",
+    "priorityLow": "低",
+    "priorityMedium": "中",
+    "priorityHigh": "高",
+    "priorityUrgent": "緊急",
+    "date": "日付",
+    "start": "開始",
+    "end": "終了",
+    "allDay": "終日",
+    "location": "場所",
+    "remindAt": "リマインド日時",
+    "time": "時刻",
+    "success": "{target} に変換しました",
+    "failed": "変換できませんでした：{error}"
   },
   "content": {
-    "capturedAt": "キャプチャされた {date}",
-    "todayAt": "今日は{time}で",
-    "yesterdayAt": "昨日、{time}で",
-    "dateAt": "{date} で {time}",
-    "words": "{count, plural, one {# ワード} other {# ワード}}",
-    "duration": "期間: {duration}",
-    "dimensions": "寸法",
+    "capturedAt": "{date} にキャプチャ",
+    "todayAt": "今日 {time}",
+    "yesterdayAt": "昨日 {time}",
+    "dateAt": "{date} {time}",
+    "words": "{count, plural, other {# 語}}",
+    "duration": "長さ：{duration}",
+    "dimensions": "大きさ",
     "format": "フォーマット",
     "size": "サイズ",
     "voiceMemo": "ボイスメモ",
-    "play": "遊ぶ",
+    "play": "再生",
     "pause": "一時停止",
-    "audioPosition": "オーディオの位置",
-    "transcription": "転写",
-    "processing": "処理",
+    "audioPosition": "再生位置",
+    "transcription": "文字起こし",
+    "processing": "処理中",
     "pending": "保留中",
-    "failed": "失敗しました",
-    "copyTranscription": "転写のコピー",
-    "transcribingAudio": "音声を文字に起こしています...",
-    "awaitingTranscription": "転写を待っています...",
-    "noTranscription": "転写は利用できません",
-    "failedPlayAudio": "オーディオの再生に失敗しました",
-    "failedLoadAudio": "音声のロードに失敗しました",
-    "video": "ビデオ",
-    "unsupportedVideo": "お使いのブラウザはvideoタグをサポートしていません。"
+    "failed": "失敗",
+    "copyTranscription": "文字起こしをコピー",
+    "transcribingAudio": "音声を文字起こし中…",
+    "awaitingTranscription": "文字起こしを待機中…",
+    "noTranscription": "文字起こしはありません",
+    "failedPlayAudio": "音声を再生できませんでした",
+    "failedLoadAudio": "音声を読み込めませんでした",
+    "video": "動画",
+    "unsupportedVideo": "お使いのブラウザは video タグに対応していません。"
   },
   "reminder": {
-    "dataUnavailable": "リマインダーデータは利用できません。",
-    "triggered": "リマインダーがトリガーされました",
+    "dataUnavailable": "リマインダーのデータを利用できません。",
+    "triggered": "リマインダーを通知しました",
     "noteLabel": "リマインダーメモ",
     "source": "ソース",
     "journalTitle": "ジャーナル — {date}",
-    "noteFallback": "注記",
-    "journalFallback": "日記",
-    "highlighted": "ハイライト表示:「{text}」",
+    "noteFallback": "ノート",
+    "journalFallback": "ジャーナル",
+    "taskFallback": "タスク",
+    "highlighted": "ハイライト：「{text}」",
     "viewed": "閲覧済み",
-    "markViewed": "閲覧済みとしてマークする",
-    "notYetViewed": "まだ見ていません",
+    "archive": "アーカイブ",
+    "notYetViewed": "未閲覧",
     "snooze": "スヌーズ",
-    "presetInOneHour": "1時間",
+    "presetInOneHour": "1 時間後",
     "presetTomorrow": "明日",
     "presetNextWeek": "来週",
-    "custom": "カスタム...",
-    "archive": "アーカイブ",
-    "panelEmpty": "今後のリマインダーはありません。",
+    "custom": "カスタム…",
+    "panelUpcoming": "今後",
     "panelPast": "過去",
-    "panelUpcoming": "今後の予定",
-    "taskFallback": "タスク",
-    "dateTime": {
-      "dateAt": "{date} {time}",
-      "dateCompact": "{date}、{time}",
-      "todayAt": "今日 {time}",
-      "todayCompact": "今日、{time}",
-      "tomorrowAt": "明日 {time}",
-      "tomorrowCompact": "明日、{time}"
-    },
+    "panelEmpty": "今後のリマインダーはありません。",
     "presets": {
-      "anniversaryReminder": "記念日のリマインダー",
-      "inHours": {
-        "label": "{count, plural, other {# 時間後}}"
+      "laterToday": {
+        "label": "今日の後ほど",
+        "description": "{count, plural, other {# 時間後}}"
+      },
+      "tomorrow": {
+        "label": "明日",
+        "description": "明日の午前 9 時"
+      },
+      "nextWeek": {
+        "label": "来週",
+        "description": "月曜日の午前 9 時"
       },
       "inMinutes": {
         "label": "{count, plural, other {# 分後}}"
       },
-      "inMonths": {
-        "label": "{count, plural, other {# か月後}}"
+      "inHours": {
+        "label": "{count, plural, other {# 時間後}}"
       },
       "inWeeks": {
         "label": "{count, plural, other {# 週間後}}"
       },
+      "inMonths": {
+        "label": "{count, plural, other {# か月後}}"
+      },
       "inYears": {
         "label": "{count, plural, other {# 年後}}"
       },
-      "laterToday": {
-        "description": "{count, plural, other {# 時間後}}",
-        "label": "今日のあとで"
-      },
-      "monthlyReflection": "月次の振り返り",
-      "nextWeek": {
-        "description": "月曜日の午前 9 時",
-        "label": "来週"
-      },
-      "quarterlyReflection": "四半期の振り返り",
-      "reviewInAWeek": "1 週間後に見直す",
+      "tomorrowMorning": "明日の朝",
       "sameDayNextMonth": "翌月の同じ日",
-      "tomorrow": {
-        "description": "明日の午前 9 時",
-        "label": "明日"
-      },
-      "tomorrowMorning": "明日の朝"
+      "reviewInAWeek": "1 週間後に見直す",
+      "monthlyReflection": "月次の振り返り",
+      "quarterlyReflection": "四半期の振り返り",
+      "anniversaryReminder": "記念日のリマインダー"
+    },
+    "dateTime": {
+      "todayAt": "今日 {time}",
+      "todayCompact": "今日、{time}",
+      "tomorrowAt": "明日 {time}",
+      "tomorrowCompact": "明日、{time}",
+      "dateAt": "{date} {time}",
+      "dateCompact": "{date}、{time}"
     }
   },
   "insights": {
     "captureActivity": "キャプチャアクティビティ",
     "byType": "タイプ別",
-    "recentFilings": "最近の出願",
-    "captured": "捕らえられた",
-    "capturedThisWeek": "今週の +{count}",
-    "processed": "加工済み",
-    "processRate": "{rate}% レート",
-    "stale": "古い",
-    "needsAttention": "注意が必要です",
-    "allClear": "すべてクリア",
-    "avgTimeToFile": "ファイルまでの平均時間",
+    "recentFilings": "最近の振り分け",
+    "captured": "キャプチャ数",
+    "capturedThisWeek": "今週 +{count}",
+    "processed": "処理済み",
+    "processRate": "処理率 {rate}%",
+    "stale": "滞留中",
+    "needsAttention": "要対応",
+    "allClear": "問題なし",
+    "avgTimeToFile": "振り分けまでの平均時間",
     "noCapturesYet": "まだキャプチャはありません",
-    "captures": "{count, plural, one {# キャプチャ} other {# キャプチャ}}",
-    "peak": "ピーク: {day} {start}–{end}",
-    "convertedToTask": "タスクに変換されました",
-    "now": "今",
+    "captures": "{count, plural, other {# 件のキャプチャ}}",
+    "peak": "ピーク：{day} {start}–{end}",
+    "convertedToTask": "タスクに変換済み",
+    "now": "たった今",
     "timeAgoMinutes": "{count} 分前",
     "timeAgoHours": "{count} 時間前",
     "timeAgoDays": "{count} 日前"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
-      "aiDetected": "AI が検出しました: \"",
+      "aiDetected": "AI が検出しました：\"",
       "addToSelection": "選択に追加",
-      "dismiss": "却下"
+      "dismiss": "閉じる"
     },
     "componentsBulkDeleteConfirmationDialog": {
-      "delete": "削除 ",
-      "item": "アイテム",
-      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "これらのアイテムは受信箱から削除されます。この操作は直後に元に戻すことができます。"
+      "delete": "項目 ",
+      "item": "件を削除しますか",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "これらの項目はインボックスから削除されます。削除の直後であれば元に戻せます。"
     },
     "componentsCaptureInput": {
       "captureInput": "キャプチャ入力",
-      "attachFile": "ファイルを添付する",
-      "attachFileImagesAudioVideoPdf": "ファイルを添付（画像、音声、ビデオ、PDF）",
-      "recordVoiceMemo": "ボイスメモを録音する",
-      "recordVoiceMemo2": "ボイスメモを録音する",
-      "captureAnyway": "とにかくキャプチャする",
-      "focusShortcut": "キャプチャ入力にフォーカス",
-      "q": "Q",
-      "captureLink": "リンクをキャプチャ",
-      "captureNote": "メモをキャプチャ",
+      "attachFile": "ファイルを添付",
+      "attachFileImagesAudioVideoPdf": "ファイルを添付（画像、音声、動画、PDF）",
+      "recordVoiceMemo": "ボイスメモを録音",
+      "recordVoiceMemo2": "ボイスメモを録音",
+      "captureAnyway": "このままキャプチャ",
       "placeholder": "クイックキャプチャ — リンクを貼る、思いつきを書き留める…",
-      "duplicateNotice": "すでにキャプチャ済み:「{title}」"
+      "captureLink": "リンクをキャプチャ",
+      "captureNote": "ノートをキャプチャ",
+      "duplicateNotice": "すでにキャプチャ済み：「{title}」"
     },
     "componentsFilingFolderSelector": {
-      "chooseFolder": "フォルダーを選択してください",
-      "searchFolders": "フォルダーを検索...",
-      "searchFolders2": "フォルダーを検索する",
+      "chooseFolder": "フォルダーを選択",
+      "searchFolders": "フォルダーを検索…",
+      "searchFolders2": "フォルダーを検索",
       "searchResults": "検索結果",
-      "create": "「」を作成します。",
-      "suggested": "提案された",
-      "recent": "最近の",
+      "create": "作成：\"",
+      "suggested": "おすすめ",
+      "recent": "最近",
       "allFolders": "すべてのフォルダー",
       "allFolders2": "すべてのフォルダー"
     },
     "componentsFilingLinkSearch": {
-      "linkTo": "へのリンク",
-      "optional": "オプション)",
-      "searchNotesToLink": "リンクするノートを検索...",
-      "searchNotesToLink2": "ノートを検索してリンクする",
-      "searching": "検索中...",
-      "noNotesFound": "メモが見つかりませんでした",
-      "linkedNotes": "リンクされたメモ",
+      "linkTo": "リンク先",
+      "optional": "任意)",
+      "searchNotesToLink": "リンクするノートを検索…",
+      "searchNotesToLink2": "リンクするノートを検索",
+      "searching": "検索中…",
+      "noNotesFound": "ノートが見つかりません",
+      "linkedNotes": "リンクされたノート",
       "noLinksAdded": "リンクは追加されていません"
     },
     "componentsFilingTagAutocomplete": {
-      "suggested": "提案された",
+      "suggested": "おすすめ",
       "ai": "AI",
       "create": "作成",
       "tags": "タグ",
       "selectedTags": "選択したタグ",
-      "addTags": "タグを追加する",
-      "tagSuggestions": "タグの提案",
+      "addTags": "タグを追加",
+      "tagSuggestions": "おすすめのタグ",
       "removeTag": "{tag} を削除"
     },
     "componentsFilingTagInput": {
       "tags": "タグ",
-      "optional": "オプション)",
-      "addTags": "タグを追加...",
-      "addTags2": "タグを追加する",
+      "optional": "任意)",
+      "addTags": "タグを追加…",
+      "addTags2": "タグを追加",
       "selectedTags": "選択したタグ",
-      "suggested": "提案された"
+      "suggested": "おすすめ"
     },
     "componentsInboxInboxCaptureHeatmap": {
       "captureActivity": "キャプチャアクティビティ"
     },
     "componentsInboxInboxFilingHistory": {
-      "noItemsFiledYet": "まだ項目は登録されていません",
-      "recentlyFiled": "最近提出された",
-      "latestActionsOnYourInbox": "受信トレイの最新のアクション",
+      "noItemsFiledYet": "振り分けた項目はまだありません",
+      "recentlyFiled": "最近の振り分け",
+      "latestActionsOnYourInbox": "インボックスでの最近の操作",
       "linked": "リンク済み"
     },
     "componentsInboxInboxInsightsView": {
-      "loadingInsights": "分析情報を読み込んでいます..."
+      "loadingInsights": "インサイトを読み込み中…"
     },
     "componentsInboxInboxTypeDistribution": {
       "noItemTypesToDisplay": "表示する項目タイプがありません",
-      "itemTypes": "アイテムの種類",
-      "distributionOfContentFormats": "コンテンツフォーマットの配布"
-    },
-    "componentsInboxTriageItemCard": {
-      "captured": "捕らえられた "
+      "itemTypes": "項目の種類",
+      "distributionOfContentFormats": "コンテンツ形式の内訳"
     },
     "componentsInboxDetailContentSection": {
       "x": "× "
@@ -427,151 +432,124 @@
     "componentsInboxDetailInboxContentEditor": {
       "contentEditor": "コンテンツエディター"
     },
-    "componentsInboxDetailReminderDetail": {
-      "middot": "ミッドドット; "
-    },
     "componentsInboxDetailTweetCard": {
-      "tweetUnavailable": "ツイートは利用できません",
+      "tweetUnavailable": "ツイートを表示できません",
       "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "このツイートは削除されたか、非公開アカウントによるものである可能性があります。",
-      "openOnXCom": "x.comで開く",
-      "views": "ビュー",
+      "openOnXCom": "x.com で開く",
+      "views": "回表示",
       "xCom": "x.com",
-      "viewOnX": "Xで見る"
+      "viewOnX": "X で表示"
     },
     "componentsInlineQuickFile": {
-      "typeFolderName": "フォルダー名を入力...",
-      "quickFileFolderSearch": "ファイルフォルダーのクイック検索"
+      "typeFolderName": "フォルダー名を入力…",
+      "quickFileFolderSearch": "クイック振り分けのフォルダー検索"
     },
     "componentsQuickCaptureFooter": {
       "close": "閉じる",
       "capture": "キャプチャ"
     },
     "componentsQuickCaptureImagePreview": {
-      "removeAttachment": "添付ファイルを削除する"
+      "removeAttachment": "添付ファイルを削除"
     },
     "componentsQuickCaptureInput": {
       "quickCaptureInput": "クイックキャプチャ入力",
-      "recordVoiceMemo": "ボイスメモを録音する",
-      "attachFile": "ファイルを添付する"
+      "recordVoiceMemo": "ボイスメモを録音",
+      "attachFile": "ファイルを添付"
     },
     "componentsQuickCaptureLinkPreview": {
       "link": "リンク"
     },
     "componentsQuickCaptureStates": {
-      "captured": "捕らえられた",
-      "dismissError": "エラーを無視",
-      "alreadyCaptured": "すでに捕獲されています",
-      "captureAnyway": "とにかくキャプチャする",
+      "captured": "キャプチャしました",
+      "dismissError": "エラーを閉じる",
+      "alreadyCaptured": "すでにキャプチャ済みです",
+      "captureAnyway": "このままキャプチャ",
       "close": "閉じる",
       "duplicateMeta": "「{title}」· {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "ドロップしてキャプチャ",
-      "capturing": "キャプチャ中..."
+      "capturing": "キャプチャ中…"
     },
     "componentsQuickFileDropdown": {
-      "folderSuggestions": "フォルダーの提案",
-      "noFoldersMatch": "一致するフォルダーはありません。」"
+      "folderSuggestions": "おすすめのフォルダー",
+      "noFoldersMatch": "一致するフォルダーがありません：\""
     },
     "componentsReminderReminderPicker": {
       "remind": "リマインド",
-      "remindMe": "思い出させて",
-      "pickDateTime": "日付と時刻を選択してください",
-      "addANoteOptional": "メモを追加します (オプション)",
+      "remindMe": "リマインド",
+      "pickDateTime": "日時を選択",
+      "addANoteOptional": "メモを追加（任意）",
       "backToPresets": "プリセットに戻る",
-      "time": "時間",
-      "noteOptional": "注記 (オプション)",
-      "whyAreYouSettingThisReminder": "なぜこのリマインダーを設定しているのですか?",
-      "deleteReminder": "リマインダーを削除",
+      "time": "時刻",
+      "noteOptional": "メモ（任意）",
+      "whyAreYouSettingThisReminder": "このリマインダーを設定する理由は？",
+      "set": "設定",
       "editReminder": "リマインダーを編集",
+      "deleteReminder": "リマインダーを削除",
       "save": "保存",
-      "set": "設定"
+      "setReminder": "リマインダーを設定",
+      "setting": "設定中…"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "スヌーズ",
       "snooze2": "スヌーズ",
-      "pickDateTime": "日付と時刻を選択してください",
-      "pickDateTime2": "日付と時刻を選択してください",
-      "selectWhenToBeRemindedAboutThisItem": "このアイテムについて通知するタイミングを選択してください",
+      "pickDateTime": "日時を選択",
+      "pickDateTime2": "日時を選択",
+      "selectWhenToBeRemindedAboutThisItem": "この項目を再表示するタイミングを選択してください",
       "snooze3": "スヌーズ",
       "snooze4": "スヌーズ",
       "snooze5": "スヌーズ"
     },
     "componentsSocialCard": {
-      "loadingPost": "投稿を読み込み中...",
-      "failedToLoad": "ロードに失敗しました",
-      "loadingPostContent": "投稿コンテンツを読み込んでいます...",
-      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "投稿コンテンツの読み込みに失敗しました。投稿は非公開または削除された可能性があります。",
-      "viewOn": "で見る "
+      "loadingPost": "投稿を読み込み中…",
+      "failedToLoad": "読み込めませんでした",
+      "loadingPostContent": "投稿の内容を読み込み中…",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "投稿の内容を読み込めませんでした。投稿が非公開か、削除された可能性があります。",
+      "viewOn": "表示："
     },
     "componentsVoiceRecorder": {
-      "startVoiceRecording": "音声録音を開始する",
-      "requestingMicrophoneAccess": "マイクへのアクセスをリクエストしています...",
+      "startVoiceRecording": "録音を開始",
+      "requestingMicrophoneAccess": "マイクへのアクセスをリクエスト中…",
       "settings": "設定",
-      "processing": "処理中...",
-      "cancelRecording": "録音をキャンセルする",
+      "processing": "処理中…",
+      "cancelRecording": "録音をキャンセル",
       "cancel": "キャンセル",
-      "stopRecording": "録音を停止する",
+      "stopRecording": "録音を停止",
       "stop": "停止",
-      "enableMicInSettings": "システム設定でマイクへのアクセスを許可してから、もう一度お試しください。",
-      "failedToStart": "録音を開始できませんでした",
+      "recordingError": "録音中にエラーが発生しました",
       "microphoneAccessDenied": "マイクへのアクセスが拒否されました",
       "noMicrophoneFound": "マイクが見つかりません",
-      "recordingError": "録音中にエラーが発生しました"
+      "failedToStart": "録音を開始できませんでした",
+      "enableMicInSettings": "システム設定でマイクへのアクセスを許可してから、もう一度お試しください。"
     }
   },
   "phaseI": {
     "errors": {
-      "failedToCaptureLink": "リンクのキャプチャに失敗しました",
-      "failedToCaptureNote": "メモのキャプチャに失敗しました",
-      "captureFailed": "キャプチャに失敗しました",
-      "failedToCaptureVoiceMemo": "ボイスメモのキャプチャに失敗しました",
-      "voiceCaptureFailed": "音声キャプチャに失敗しました",
-      "failedToCaptureFile": "ファイルのキャプチャに失敗しました",
-      "fileCaptureFailed": "ファイルのキャプチャに失敗しました",
-      "failedToCaptureAudio": "音声のキャプチャに失敗しました",
-      "failedToCaptureVoice": "音声のキャプチャに失敗しました",
-      "failedToLoadInboxPreferences": "受信箱の設定を読み込めませんでした",
-      "failedToUpdateInboxPreferences": "受信箱の設定を更新できませんでした"
+      "failedToCaptureLink": "リンクをキャプチャできませんでした",
+      "failedToCaptureNote": "ノートをキャプチャできませんでした",
+      "captureFailed": "キャプチャできませんでした",
+      "failedToCaptureVoiceMemo": "ボイスメモをキャプチャできませんでした",
+      "voiceCaptureFailed": "音声をキャプチャできませんでした",
+      "failedToCaptureFile": "ファイルをキャプチャできませんでした",
+      "fileCaptureFailed": "ファイルをキャプチャできませんでした",
+      "failedToCaptureAudio": "音声をキャプチャできませんでした",
+      "failedToCaptureVoice": "音声をキャプチャできませんでした",
+      "failedToLoadInboxPreferences": "インボックスの設定を読み込めませんでした",
+      "failedToUpdateInboxPreferences": "インボックスの設定を更新できませんでした"
     },
     "toasts": {
-      "inboxRefreshed": "受信トレイが更新されました"
+      "inboxRefreshed": "インボックスを更新しました"
     }
   },
-  "convert": {
-    "addEvent": "予定を追加",
-    "addTask": "タスクを追加",
-    "allDay": "終日",
-    "chooseType": "変換先",
-    "create": "作成",
-    "date": "日付",
-    "dueDate": "期日",
-    "dueTime": "期限時刻",
-    "end": "終了",
-    "event": "予定",
-    "failed": "変換できませんでした: {error}",
-    "inboxProject": "受信箱",
-    "location": "場所",
-    "note": "ノート",
-    "priority": "優先度",
-    "priorityHigh": "高",
-    "priorityLow": "低",
-    "priorityMedium": "中",
-    "priorityNone": "なし",
-    "priorityUrgent": "緊急",
-    "project": "プロジェクト",
-    "remindAt": "通知する時刻",
-    "reminder": "リマインダー",
-    "setReminder": "リマインダーを設定",
-    "start": "開始",
-    "success": "{target} に変換しました",
-    "task": "タスク",
-    "time": "時刻",
-    "title": "変換"
-  },
   "reviewNudge": {
-    "action": "受信箱を開く",
+    "title": "{count, plural, other {確認する項目が # 件あります}}",
     "description": "今日のキャプチャを、落ち着いて一度に片づけましょう。",
-    "title": "{count, plural, other {#件のアイテムを見直しましょう}}"
+    "action": "インボックスを開く"
+  },
+  "snoozeDue": {
+    "notificationTitle": "{count, plural, other {スヌーズ中の項目 # 件}}",
+    "notificationBody": "{count, plural, other {スヌーズした項目を確認できます}}",
+    "toast": "{count, plural, =1 {「{itemTitle}」のスヌーズが終了しました} other {# 件の項目のスヌーズが終了しました}}"
   }
 }

@@ -1,41 +1,79 @@
 {
+  "wikiLinkCreateDialog": {
+    "title": "Luodaanko muistiinpano?",
+    "body": "Muistiinpanoa nimeltä ”{title}” ei ole. Luodaanko se?",
+    "create": "Luo"
+  },
+  "wikiLinkPreview": {
+    "notFound": "Ei löytynyt – luo ”{title}” napsauttamalla"
+  },
   "page": {
     "empty": {
-      "title": "Ei muistiinpanoa valittu",
+      "title": "Muistiinpanoa ei ole valittu",
       "body": "Valitse muistiinpano sivupalkista nähdäksesi sen"
     },
     "error": {
       "title": "Muistiinpanon lataaminen epäonnistui"
     },
     "toast": {
-      "cannotSaveDeleted": "Ei voi tallentaa - muistiinpano poistettiin",
-      "cannotRenameDeleted": "Ei voi nimetä uudelleen - muistiinpano poistettiin",
+      "cannotSaveDeleted": "Ei voi tallentaa – muistiinpano on poistettu",
+      "cannotRenameDeleted": "Ei voi nimetä uudelleen – muistiinpano on poistettu",
       "createLinkedFailed": "Linkitetyn muistiinpanon luominen epäonnistui",
       "openLinkedFailed": "Linkitetyn kohteen avaaminen epäonnistui",
-      "localOnly": "Huomautus asetettu vain paikalliselle",
-      "willSync": "Huomautus synkronoidaan pilveen",
+      "fileNotFound": "Tiedostoa ei löytynyt: {target}",
+      "localOnly": "Muistiinpano on nyt vain paikallinen",
+      "willSync": "Muistiinpano synkronoidaan pilveen",
       "renameFailed": "Muistiinpanon uudelleennimeäminen epäonnistui",
-      "toggleLocalOnlyFailed": "Vain paikallisen vaihtaminen epäonnistui",
-      "toggleFullWidthFailed": "Täysleveyden vaihtaminen epäonnistui",
-      "copyPathFailed": "Polun kopiointi epäonnistui",
-      "deleteFailed": "Muistiinpanon poistaminen epäonnistui",
-      "moveFailed": "Muistiinpanon siirtäminen epäonnistui",
-      "moved": "Muistiinpano siirretty",
-      "openExternalFailed": "Muistiinpanon avaaminen epäonnistui",
+      "titleRequired": "Muistiinpanolla on oltava otsikko",
+      "toggleLocalOnlyFailed": "Vain paikallinen -asetuksen muuttaminen epäonnistui",
+      "toggleFullWidthFailed": "Täyden leveyden muuttaminen epäonnistui",
       "pathCopied": "Polku kopioitu",
-      "revealFailed": "Muistiinpanon näyttäminen epäonnistui"
+      "copyPathFailed": "Polun kopioiminen epäonnistui",
+      "revealFailed": "Muistiinpanon näyttäminen epäonnistui",
+      "openExternalFailed": "Muistiinpanon avaaminen epäonnistui",
+      "moved": "Muistiinpano siirretty",
+      "moveFailed": "Muistiinpanon siirtäminen epäonnistui",
+      "deleteFailed": "Muistiinpanon poistaminen epäonnistui"
     },
-    "deleteDialogTitle": "{count, plural, one {Poista huomautus} other {Poista #-muistiinpanot}}",
+    "deleteDialogTitle": "{count, plural, one {Poista muistiinpano} other {Poista # muistiinpanoa}}",
+    "itemsCount": "{count, plural, one {# kohde} other {# kohdetta}}",
+    "itemsCountFiltered": "{shown}/{total, plural, one {# kohde} other {# kohdetta}}",
+    "tagFilterLabel": "tunniste = {tag}",
     "deleteConfirm": {
+      "title": "Poista muistiinpano",
+      "description": "Haluatko varmasti poistaa muistiinpanon ”{title}”? Tätä ei voi kumota.",
       "cancel": "Peruuta",
       "confirm": "Poista",
-      "deleting": "Poistetaan...",
-      "description": "Haluatko varmasti poistaa kohteen \"{title}\"? Tätä toimintoa ei voi kumota.",
-      "title": "Poista muistiinpano"
+      "deleting": "Poistetaan…"
     },
-    "itemsCount": "{count, plural, one {# kohde} other {# kohdetta}}",
-    "itemsCountFiltered": "{shown} / {total, plural, one {# kohteesta} other {# kohteesta}}",
-    "tagFilterLabel": "tunniste = {tag}"
+    "largeFile": {
+      "title": "Tiedosto on liian suuri avattavaksi muistiinpanona",
+      "badge": "Vain luku · ei synkronoitu",
+      "reason": {
+        "fileBytes": "Tiedoston koko on {size}. Muistiinpanoja voi muokata, kun koko on enintään {limit}.",
+        "blockBytes": "Siinä on yhtenäinen jakso ilman tyhjiä rivejä (koko {size}). Muistiinpanoja voi muokata, kun lohkon koko on enintään {limit}."
+      },
+      "explanation": "Muokkaaminen vaatisi koko tiedoston jäsentämistä kerralla, mikä jumittaisi sovelluksen. Levyllä olevaan tiedostoon ei ole koskettu.",
+      "viewer": {
+        "preparing": "Valmistellaan luettavaksi ({size})…",
+        "preparingHint": "Indeksoidaan rivejä, jotta tiedostoa voi vierittää lataamatta sitä kokonaan kerralla.",
+        "lines": "{count, plural, one {# rivi} other {# riviä}}",
+        "empty": "Tiedosto on tyhjä.",
+        "failed": "Tiedoston valmisteleminen luettavaksi epäonnistui.",
+        "missing": "Tiedostoa ei ole enää levyllä.",
+        "lineTruncated": "pitkä rivi katkaistu tästä",
+        "showRestOfLine": "Näytä rivin loppuosa"
+      },
+      "tooLarge": {
+        "title": "Tiedosto on liian suuri avattavaksi",
+        "reason": "Tiedoston koko on {size}. Memry voi näyttää tiedostoja, joiden koko on enintään {limit}.",
+        "explanation": "Levyllä olevaan tiedostoon ei ole koskettu. Avaa se sovelluksessa, joka on tehty näin suurille tiedostoille."
+      },
+      "find": {
+        "searching": "{count} tähän mennessä…",
+        "limited": "{index}/{shown} (yhteensä {total})"
+      }
+    }
   },
   "tree": {
     "aria": {
@@ -43,81 +81,156 @@
       "openFolderView": "Avaa kansionäkymä"
     },
     "empty": {
-      "title": "Ei muistiinpanoja vielä",
+      "title": "Ei vielä muistiinpanoja",
       "body": "Aloita luomalla muistiinpano",
-      "newNote": "Uusi huomautus"
+      "newNote": "Uusi muistiinpano"
+    },
+    "syncing": {
+      "body": "Synkronoidaan muistiinpanojasi – ne tulevat näkyviin tänne sitä mukaa kuin ne saapuvat"
     },
     "loadingError": "Muistiinpanojen lataaminen epäonnistui",
+    "truncated": {
+      "hidden": "{count, plural, one {# vanhempi muistiinpano ei näy} other {# vanhempaa muistiinpanoa ei näy}}",
+      "loadMore": "Lataa lisää"
+    },
     "actions": {
-      "newNote": "Uusi huomautus",
+      "openInNewTab": "Avaa uudessa välilehdessä",
+      "openToTheSide": "Avaa sivuun",
+      "newNote": "Uusi muistiinpano",
       "newFolder": "Uusi kansio",
+      "expandSubfolders": "Laajenna kaikki alikansiot",
+      "collapseSubfolders": "Kutista kaikki alikansiot",
       "rename": "Nimeä uudelleen",
+      "applyTemplate": "Käytä pohjaa",
+      "saveAsTemplate": "Tallenna pohjaksi",
       "openExternal": "Avaa ulkoisessa editorissa",
-      "setDefaultTemplate": "Aseta oletusmalli",
-      "clearDefaultTemplate": "Tyhjennä oletusmalli",
+      "setDefaultTemplate": "Aseta oletuspohja",
+      "clearDefaultTemplate": "Poista oletuspohja",
       "setIcon": "Aseta kuvake",
       "removeIcon": "Poista kuvake",
-      "deleteSelectedNotes": "Poista {count}-muistiinpanot",
-      "deleteSelectedItems": "Poista {count} kohteet",
-      "bookmark": "Kirjanmerkki",
+      "deleteSelectedNotes": "Poista {count} muistiinpanoa",
+      "deleteSelectedItems": "Poista {count} kohdetta",
+      "bookmark": "Lisää kirjanmerkki",
       "removeFromBookmarks": "Poista kirjanmerkeistä",
-      "applyTemplate": "Käytä mallia",
-      "saveAsTemplate": "Tallenna mallina"
+      "journalSettings": "Päiväkirjan asetukset…"
+    },
+    "nav": {
+      "label": "Navigointi",
+      "ariaExpanded": "Navigointiosio, laajennettu",
+      "ariaCollapsed": "Navigointiosio, kutistettu",
+      "saveFailed": "Navigointiosion tilan tallentaminen epäonnistui"
+    },
+    "viewOptions": {
+      "label": "Näkymän asetukset",
+      "notesFirst": "Muistiinpanot ennen kansioita",
+      "showFiles": "Näytä tiedostot",
+      "saveFailed": "Sivupalkin näkymäasetusten tallentaminen epäonnistui"
     },
     "deleteDialog": {
-      "noteTitle": "Poista huomautus",
+      "noteTitle": "Poista muistiinpano",
       "folderTitle": "Poista kansio",
-      "itemsTitle": "Poista {count}-kohteet",
-      "noteBody": "Haluatko varmasti poistaa \"{name}\"? Tätä toimintoa ei voi kumota.",
-      "folderBody": "Haluatko varmasti poistaa \"{name}\" ja kaikki sen sisältämät muistiinpanot? Tätä toimintoa ei voi kumota.",
-      "itemsBody": "Haluatko varmasti poistaa {count}-kohteita? Tätä toimintoa ei voi kumota.",
+      "itemsTitle": "Poista {count} kohdetta",
+      "noteBody": "Haluatko varmasti poistaa muistiinpanon ”{name}”? Tätä ei voi kumota.",
+      "folderBody": "Haluatko varmasti poistaa kansion ”{name}” ja kaikki sen muistiinpanot? Tätä ei voi kumota.",
+      "itemsBody": "Haluatko varmasti poistaa {count} kohdetta? Tätä ei voi kumota.",
       "folderSuffix": "kansio",
-      "moreItems": "...ja {count} enemmän",
-      "deleting": "Poistetaan...",
+      "moreItems": "{count, plural, one {…ja # muu} other {…ja # muuta}}",
+      "deleting": "Poistetaan…",
       "deleteCount": "Poista {count}"
     }
   },
   "editor": {
+    "bodySyncPending": "Synkronoidaan – muistiinpanon sisältö voi olla vielä tulossa",
+    "taskRemoval": {
+      "title": "{count, plural, one {Tehtävä poistettu tästä muistiinpanosta} other {# tehtävää poistettu tästä muistiinpanosta}}",
+      "description": "{count, plural, one {Säilytetäänkö se Tehtävissä vai poistetaanko se kaikkialta?} other {Säilytetäänkö ne Tehtävissä vai poistetaanko ne kaikkialta?}}",
+      "keep": "Säilytä Tehtävissä",
+      "delete": "{count, plural, one {Poista tehtävä} other {Poista tehtävät}}",
+      "deleteFailed": "Tehtävien poistaminen epäonnistui. Ne ovat yhä Tehtävissä."
+    },
     "title": {
       "untitled": "Nimetön",
-      "aria": "Huomaa otsikko"
+      "aria": "Muistiinpanon otsikko"
     },
     "content": {
-      "placeholder": "Aloita kirjoittaminen tai paina '/' komentoja varten...",
+      "placeholder": "Aloita kirjoittaminen tai avaa komennot painamalla ”/”…",
       "regionAria": "Muistiinpanoeditori",
       "richTextAria": "Rikastekstieditori",
       "headingPlaceholder": "Otsikko",
       "listPlaceholder": "Luettelokohde",
-      "todoPlaceholder": "Tehtävä kohde"
+      "todoPlaceholder": "Tehtävä"
+    },
+    "table": {
+      "keyboardMenuAria": "Taulukon toiminnot: rivi {row}, sarake {column}",
+      "keyboardMenuTitle": "Rivi {row} · Sarake {column}"
+    },
+    "list": {
+      "bulleted": "Luettelomerkeillä varustettu luettelo",
+      "numbered": "Numeroitu luettelo",
+      "checklist": "Tarkistuslista"
+    },
+    "bulletFold": {
+      "collapse": "Kutista sisäkkäiset kohteet",
+      "expand": "Laajenna sisäkkäiset kohteet"
     },
     "toolbar": {
+      "linkToNote": "Linkitä muistiinpanoon",
+      "more": "Lisää",
+      "pinToTop": "Kiinnitä työkalupalkki ylös",
       "reminderSet": "Muistutus asetettu",
       "setReminder": "Aseta muistutus",
       "removeBookmark": "Poista kirjanmerkki",
       "addBookmark": "Lisää kirjanmerkki",
-      "hideLocalGraph": "Piilota paikallinen kaavio",
-      "showLocalGraph": "Näytä paikallinen kaavio",
+      "showMindMap": "Näytä miellekartta",
+      "hideMindMap": "Piilota miellekartta",
+      "hideLocalGraph": "Piilota paikallinen graafi",
+      "showLocalGraph": "Näytä paikallinen graafi",
+      "moreActions": "Lisää toimintoja",
+      "find": "Etsi…",
       "versionHistory": "Versiohistoria",
       "export": "Vie",
+      "saveAsTemplate": "Tallenna pohjaksi",
       "fullWidth": "Täysleveä",
-      "disableLocalOnly": "Poista vain paikallinen käytöstä",
-      "setLocalOnly": "Aseta vain paikallinen",
-      "saveAsTemplate": "Tallenna mallina",
-      "copyPath": "Kopioi polku",
-      "delete": "Poista muistiinpano",
-      "find": "Etsi…",
-      "moreActions": "Lisää toimintoja",
-      "moveToFolder": "Siirrä kansioon…",
       "rename": "Nimeä uudelleen…",
-      "revealInSidebar": "Näytä sivupalkissa"
+      "moveToFolder": "Siirrä kansioon…",
+      "copyPath": "Kopioi polku",
+      "revealInSidebar": "Näytä sivupalkissa",
+      "attachments": "Liitteet…",
+      "disableLocalOnly": "Poista vain paikallinen -tila",
+      "setLocalOnly": "Aseta vain paikalliseksi",
+      "delete": "Poista muistiinpano"
+    },
+    "attachmentMenu": {
+      "menuLabel": "Tiedoston toiminnot",
+      "storedAs": "Tallennettu nimellä {name}",
+      "notSynced": "Ei vielä synkronoitu tälle laitteelle",
+      "revealFailed": "Tiedoston näyttäminen epäonnistui",
+      "openFailed": "Tiedoston avaaminen epäonnistui",
+      "missingTitle": "Liitetiedosto puuttuu",
+      "missingExpected": "Odotettu tiedosto: {name}"
+    },
+    "attachmentRename": {
+      "menuItem": "Nimeä uudelleen…",
+      "title": "Nimeä liite uudelleen",
+      "description": "Tiedosto nimetään uudelleen levyllä ja muilla laitteillasi. Sen tiedostopääte pysyy samana.",
+      "fieldLabel": "Liitteen nimi",
+      "confirm": "Nimeä uudelleen",
+      "renamed": "Nimetty uudelleen: {name}",
+      "failed": "Liitteen uudelleennimeäminen epäonnistui"
+    },
+    "attachmentsDialog": {
+      "title": "Liitteet",
+      "description": "Tämän muistiinpanon mukana tallennetut tiedostot",
+      "empty": "Tässä muistiinpanossa ei ole liitteitä.",
+      "loadFailed": "Liitteiden lataaminen epäonnistui"
     },
     "breadcrumb": {
-      "locationAria": "Huomaa sijainti",
+      "locationAria": "Muistiinpanon sijainti",
       "parentFolderAria": "Siirry yläkansioon"
     },
     "errorBoundary": {
       "title": "Editorin virhe",
-      "body": "Toimittaja havaitsi virheen. Muistiinpanosi sisältö on turvassa.",
+      "body": "Editorissa tapahtui virhe. Muistiinpanosi sisältö on turvassa.",
       "technicalDetails": "Tekniset tiedot",
       "reloadAria": "Lataa editori uudelleen",
       "reload": "Lataa editori uudelleen"
@@ -128,147 +241,493 @@
       "subtext": "Korosta tärkeitä tietoja",
       "changeType": "Muuta huomiotekstin tyyppiä",
       "menuLabel": "Huomiotekstin tyyppi",
-      "info": "Tietoja",
+      "info": "Tieto",
       "warning": "Varoitus",
       "error": "Virhe",
-      "success": "Menestystä"
+      "success": "Onnistuminen"
+    },
+    "diagram": {
+      "title": "Kaavio",
+      "subtext": "Vuokaavio, sekvenssikaavio tai Gantt-kaavio Mermaid-lähdekoodista"
+    },
+    "math": {
+      "title": "Yhtälö",
+      "group": "Peruslohkot",
+      "subtext": "Kirjoita kaava LaTeXilla",
+      "empty": "Lisää yhtälö",
+      "edit": "Muokkaa yhtälöä",
+      "placeholder": "E = mc^2",
+      "sourceLabel": "LaTeX-lähdekoodi",
+      "hint": "LaTeX. Paina Escape, kun olet valmis."
+    },
+    "whiteboard": {
+      "title": "Valkotaulu",
+      "group": "Media",
+      "subtext": "Piirrä tauluun, joka on tämän muistiinpanon sisällä",
+      "defaultName": "Valkotaulu",
+      "noteName": "{note} – valkotaulu",
+      "untitled": "Nimetön valkotaulu",
+      "loading": "Ladataan valkotaulua…",
+      "openInTab": "Avaa välilehdessä",
+      "edit": "Muokkaa",
+      "done": "Valmis",
+      "surfaceLabel": "Piirros: {title}",
+      "createFailed": "Valkotaulun luominen epäonnistui. Muistiinpanoon ei lisätty mitään.",
+      "loadFailed": "Valkotaulun lataaminen epäonnistui. Itse piirrokseen ei ole koskettu.",
+      "noCanvas": "Tällä valkotaululla ei ole taulua. Poista lohko tai lisää uusi komennolla /whiteboard.",
+      "nested": "Avaa valkotaulu omassa välilehdessään nähdäksesi piirroksen.",
+      "missingTitle": "Valkotaulu ei ole käytettävissä",
+      "missingBody": "Sen taulu on poistettu tai se ei ole vielä saapunut tälle laitteelle. Jos synkronointi on kesken, se tulee näkyviin tähän itsestään.",
+      "unreadableTitle": "Tätä valkotaulua ei voi avata tässä",
+      "unreadableBody": "Sen taulutiedosto puuttuu holvista tai sitä ei voi lukea tällä laitteella. Mitään ei poistettu.",
+      "disabledTitle": "Taulu-toiminto on poissa käytöstä",
+      "disabledBody": "Ota Taulu käyttöön kohdassa Asetukset › Toiminnot, niin voit tarkastella ja muokata tätä valkotaulua. Piirros säilyy joka tapauksessa."
+    },
+    "viewBlock": {
+      "title": "Näkymä",
+      "group": "Lisää",
+      "subtext": "Ajantasainen luettelo kansion, tunnisteen tai koko holvin muistiinpanoista",
+      "sourceMenu": "Mitä tämä näkymä näyttää",
+      "chooseSource": "Valitse, mitä näytetään",
+      "sourceVault": "Kaikki muistiinpanot",
+      "sourceFolder": "Kansio",
+      "sourceTag": "Tunniste",
+      "noFolders": "Ei vielä kansioita",
+      "noTags": "Ei vielä tunnisteita",
+      "savedView": "Tallennettu näkymä",
+      "savedViewMissing": "Tallennettua näkymää ”{name}” ei enää ole, joten tässä näytetään oletusnäkymä.",
+      "openAsTab": "Avaa välilehtenä",
+      "empty": "Mikään ei vielä vastaa tätä näkymää.",
+      "loadFailed": "Näkymän lataaminen epäonnistui. Itse muistiinpanoihin ei ole koskettu.",
+      "folderMissing": "Kansio ei ole enää holvissa. Valitse toinen lähde.",
+      "invalidJson": "Näkymän määritys ei ole kelvollista JSONia. Korjaa se alla tai poista lohko.",
+      "invalidShape": "Näkymän määrityksessä ei ole lähdettä. Valitse lähde yllä tai korjaa määritys alla.",
+      "definition": "Määritys"
+    },
+    "slashMenu": {
+      "aria": "Lohkot ja toiminnot",
+      "groups": {
+        "recent": "Viimeisimmät",
+        "bestMatch": "Paras osuma",
+        "blocks": "Lohkot",
+        "headings": "Lisää otsikoita",
+        "insert": "Lisää",
+        "media": "Media",
+        "ai": "Tekoäly"
+      },
+      "secondary": {
+        "asToggleHeading": "Kutistettavana",
+        "asLinkedTask": "Linkitettynä tehtävänä",
+        "asReminder": "Muistutuksena"
+      },
+      "actions": {
+        "insert": "Lisää",
+        "open": "Avaa"
+      },
+      "matchesAlias": "vastaa",
+      "noMatch": "Ei lohkoja haulle ”{query}”",
+      "fallback": {
+        "linkTo": "Linkitä muistiinpanoon",
+        "askAI": "Kysy tekoälyltä"
+      },
+      "pdf": {
+        "title": "PDF",
+        "subtext": "Liitä PDF-tiedosto ja lue se muistiinpanossa"
+      },
+      "html": {
+        "title": "HTML-tiedosto",
+        "subtext": "Upota .html-tiedosto ja käytä sitä muistiinpanossa"
+      },
+      "linkToNote": {
+        "title": "Linkitä muistiinpanoon",
+        "subtext": "Hae muistiinpanoista – tai kirjoita [[ missä tahansa"
+      },
+      "media": {
+        "title": "Media",
+        "subtext": "Liitä kuva-, video- tai äänitiedosto"
+      },
+      "insertTemplate": {
+        "title": "Lisää pohjan sisältö…",
+        "subtext": "Lisää vain pohjan sisältö kohdistimen kohdalle",
+        "group": "Pohjat",
+        "empty": "Pohjassa ei ole lisättävää sisältöä",
+        "failed": "Pohjan lisääminen epäonnistui"
+      }
+    },
+    "filePanel": {
+      "choose": "Valitse tiedosto…"
+    },
+    "upload": {
+      "failed": "Tiedoston liittäminen epäonnistui"
+    },
+    "checkboxTask": {
+      "converted": "Valintaruutu muutettu tehtäväksi",
+      "hint": "Uusi valintaruutu muuttuu tehtäväksi. Paina {undo}, jos haluat pitää sen valintaruutuna.",
+      "keepAsCheckbox": "Pidä valintaruutuna"
+    },
+    "obsidianTask": {
+      "refused": "Tällä rivillä on tunnus, riippuvuus tai lohkolinkki, jonka Obsidian tarvitsee rivin lopussa. Poista se ensin Obsidianissa ja muunna sitten.",
+      "createFailed": "Tehtävän luominen tälle riville epäonnistui.",
+      "completeFailed": "Tehtävä luotiin, mutta sen valmistumispäivän asettaminen epäonnistui."
+    },
+    "blockMenu": {
+      "turnInto": "Muuta",
+      "turnIntoTypes": {
+        "paragraph": "Teksti",
+        "heading1": "Otsikko 1",
+        "heading2": "Otsikko 2",
+        "heading3": "Otsikko 3",
+        "bulletList": "Luettelomerkeillä varustettu luettelo",
+        "numberedList": "Numeroitu luettelo",
+        "checkbox": "Valintaruutu",
+        "task": "Tehtävä",
+        "toggleList": "Kutistettava luettelo",
+        "quote": "Lainaus",
+        "codeBlock": "Koodi",
+        "callout": "Huomioteksti"
+      },
+      "turnIntoCheckbox": "Muuta valintaruuduksi",
+      "colors": "Värit",
+      "duplicate": "Monista",
+      "insertTemplate": "Lisää pohja…",
+      "moveTo": "Siirrä…",
+      "delete": "Poista",
+      "comment": "Kommentoi",
+      "moveDialog": {
+        "title": "Siirrä lohko muistiinpanoon",
+        "searchPlaceholder": "Hae muistiinpanoista…",
+        "noResults": "Ei vastaavia muistiinpanoja",
+        "moved": "Lohko siirretty muistiinpanoon ”{title}”",
+        "failed": "Lohkon siirtäminen epäonnistui"
+      }
+    },
+    "attachmentPicker": {
+      "title": {
+        "image": "Lisää kuva",
+        "media": "Lisää mediaa",
+        "pdf": "Lisää PDF-tiedosto",
+        "html": "Upota HTML-tiedosto",
+        "file": "Lisää tiedosto"
+      },
+      "placeholder": {
+        "image": "Hae kuvista tai lisää uusi…",
+        "media": "Hae mediasta tai lisää uusi…",
+        "pdf": "Hae PDF-tiedostoista tai lisää uusi…",
+        "html": "Hae HTML-tiedostoista tai lisää uusi…",
+        "file": "Hae liitteistä tai lisää uusi…"
+      },
+      "upload": {
+        "image": "Valitse kuva…",
+        "media": "Valitse mediatiedosto…",
+        "pdf": "Valitse PDF-tiedosto…",
+        "html": "Valitse HTML-tiedosto…",
+        "file": "Valitse tiedosto…"
+      },
+      "empty": {
+        "image": "Tässä holvissa ei ole vielä kuvia.",
+        "media": "Tässä holvissa ei ole vielä mediaa.",
+        "pdf": "Tässä holvissa ei ole vielä PDF-tiedostoja.",
+        "html": "Tässä holvissa ei ole vielä HTML-tiedostoja.",
+        "file": "Tässä holvissa ei ole vielä liitteitä."
+      },
+      "addHeading": "Lisää",
+      "vaultHeading": "Tässä holvissa",
+      "uploading": "Lisätään…",
+      "noMatches": "Ei osumia.",
+      "loadFailed": "Holvin liitteiden lataaminen epäonnistui",
+      "insertFailed": "Liitteen lisääminen epäonnistui",
+      "uploadFailed": "Tiedoston lisääminen epäonnistui",
+      "unsupportedVideo": "Memry ei voi toistaa tätä videomuotoa. Tuetut muodot: {formats}.",
+      "tooLarge": "Tiedoston koko on {size}, mikä ylittää liitteiden kokorajan ({limit}).",
+      "hint": {
+        "navigate": "Selaa",
+        "insert": "Lisää",
+        "close": "Sulje"
+      }
+    },
+    "codeBlock": {
+      "copy": "Kopioi koodi",
+      "copied": "Kopioitu",
+      "language": "Kieli"
     }
+  },
+  "dateMention": {
+    "dateInput": "Päivämäärä",
+    "time": "Aika",
+    "includeTime": "Sisällytä aika",
+    "timeFormat": "Aikamuoto",
+    "dateFormat": "Päivämäärämuoto",
+    "remind": "Muistuta",
+    "clear": "Tyhjennä"
   },
   "menus": {
     "wiki": {
-      "aria": "Huomaa ehdotukset",
-      "loading": "Ladataan muistiinpanoja...",
+      "aria": "Muistiinpanoehdotukset",
+      "loading": "Ladataan muistiinpanoja…",
       "empty": "Muistiinpanoja ei löytynyt",
       "create": "Luo uusi muistiinpano",
       "embed": "Upota",
+      "wikiLink": "Wikilinkki",
       "embedAria": "Upota {title}",
-      "wikiLink": "Wiki-linkki",
-      "wikiLinkAria": "Wiki-linkki {title}"
+      "wikiLinkAria": "Wikilinkki: {title}",
+      "noHeadings": "Muistiinpanossa ”{title}” ei ole otsikoita",
+      "noMatchingHeadings": "Muistiinpanossa ”{title}” ei ole vastaavia otsikoita",
+      "displayAs": "Näytä nimellä",
+      "aliasHint": "Nimeä linkki kirjoittamalla |"
+    },
+    "mention": {
+      "aria": "Päivämäärä- ja muistiinpanoehdotukset",
+      "loading": "Ladataan muistiinpanoja…",
+      "empty": "Muistiinpanoja ei löytynyt",
+      "date": "Päivämäärä",
+      "now": "Nyt",
+      "remindMe": "Muistuta minua",
+      "dateHint": "Jatka päivämäärän kirjoittamista…",
+      "showMore": "Näytä lisää",
+      "canvases": "Taulut",
+      "choiceTitle": "Lisää taulu muodossa",
+      "choiceMention": "Maininta",
+      "choiceEmbed": "Upotus"
     },
     "tags": {
       "aria": "Tunnisteehdotukset",
-      "loading": "Ladataan tunnisteita...",
+      "loading": "Ladataan tunnisteita…",
       "empty": "Luo uusi tunniste kirjoittamalla",
       "create": "Luo #{tag}"
     },
     "pasteLink": {
       "title": "Liitä muodossa",
       "url": "URL-osoite",
-      "mention": "Mainitse",
+      "mention": "Maininta",
       "embedVideo": "Upota video",
       "bookmark": "Kirjanmerkki"
     },
     "emoji": {
-      "aria": "Emoji ja kuvakevalitsin",
+      "aria": "Emoji- ja kuvakevalitsin",
       "emojiTab": "Emoji",
       "iconsTab": "Kuvakkeet",
-      "searchPlaceholder": "Etsi",
+      "searchPlaceholder": "Hae",
       "noIcons": "Kuvakkeita ei löytynyt",
-      "clearSearch": "Tyhjennä haku"
-    },
-    "mention": {
-      "aria": "Päivämäärä- ja muistiinpanoehdotukset",
-      "date": "Päivämäärä",
-      "dateHint": "Jatka päivämäärän kirjoittamista…",
-      "empty": "Muistiinpanoja ei löytynyt",
-      "loading": "Ladataan muistiinpanoja...",
-      "remindMe": "Muistuta minua",
-      "showMore": "Näytä lisää"
+      "clearSearch": "Tyhjennä haku",
+      "customTab": "Omat",
+      "custom": {
+        "searchPlaceholder": "Hae omista kuvakkeista",
+        "dropHint": "Pudota kuva tähän tai valitse se napsauttamalla",
+        "urlPlaceholder": "Tai liitä kuvan linkki",
+        "urlLabel": "Kuvan linkki",
+        "urlSubmit": "Lataa kuva",
+        "downloading": "Ladataan…",
+        "adding": "Lisätään…",
+        "empty": "Ei vielä omia kuvakkeita. Lisää kuvake pudottamalla kuva tähän tai liittämällä linkki.",
+        "noMatches": "Haulla ei löytynyt omia kuvakkeita",
+        "unsupportedFile": "Tiedosto {name} ei ole tuettu kuva",
+        "addFailed": "Kuvakkeen lisääminen epäonnistui",
+        "deleteFailed": "Kuvakkeen poistaminen epäonnistui",
+        "renameFailed": "Kuvakkeen uudelleennimeäminen epäonnistui",
+        "rename": "Nimeä kuvake {name} uudelleen",
+        "delete": "Poista kuvake {name}",
+        "renameLabel": "Kuvakkeen nimi",
+        "saveName": "Tallenna nimi",
+        "cancelRename": "Peruuta uudelleennimeäminen",
+        "addUrlFailed": "Kuvan lataaminen epäonnistui"
+      }
     }
   },
   "outline": {
-    "title": "Sisällys",
-    "aria": "Asiakirjan ääriviivat",
+    "title": "Jäsennys",
+    "aria": "Asiakirjan jäsennys",
     "empty": "Ei otsikoita",
     "emptyYet": "Ei vielä otsikoita",
-    "readTime": "{count} min luettu",
-    "words": "{count} sanat",
+    "readTime": "Lukuaika {count} min",
+    "words": "{count, plural, one {# sana} other {# sanaa}}",
     "created": "Luotu",
     "modified": "Muokattu"
   },
   "backlinks": {
     "sortRecent": "Viimeaikaiset",
-    "sortAlpha": "A-Z",
+    "sortAlpha": "A–Ö",
     "sortMentions": "Useimmat maininnat",
-    "sortBy": "Lajittele käänteiset linkit {sort}:n mukaan",
-    "summary": "{notes} muistiinpanot · {references} viitteet",
-    "sectionAria": "Käänteisiä linkkejä",
-    "listAria": "Käänteisten linkkien luettelo",
-    "fromAria": "Käänteisiä linkkejä {title}:stä",
+    "sortBy": "Lajittele takaisinlinkit: {sort}",
+    "summary": "{notes, plural, one {# muistiinpano} other {# muistiinpanoa}} · {references, plural, one {# viittaus} other {# viittausta}}",
+    "sectionAria": "Takaisinlinkit",
+    "listAria": "Takaisinlinkkien luettelo",
+    "fromAria": "Takaisinlinkit muistiinpanosta ”{title}”",
     "collapse": "Kutista",
     "expand": "Laajenna",
-    "collapseSection": "Kutista käänteiset linkit -osio",
-    "expandSection": "Laajenna käänteiset linkit -osio",
-    "showMore": "Näytä {count} lisää käänteisiä linkkejä",
-    "more": "{count} enemmän"
+    "collapseSection": "Kutista takaisinlinkkiosio",
+    "expandSection": "Laajenna takaisinlinkkiosio",
+    "showMore": "{count, plural, one {Näytä vielä # takaisinlinkki} other {Näytä vielä # takaisinlinkkiä}}",
+    "more": "vielä {count}",
+    "viaProperty": "{property} → {title}"
+  },
+  "outgoingLinks": {
+    "summary": "{count, plural, one {# lähtevä linkki} other {# lähtevää linkkiä}}",
+    "sectionAria": "Lähtevät linkit",
+    "unresolved": "Ei vielä luotu",
+    "showMore": "{count, plural, one {Näytä vielä # lähtevä linkki} other {Näytä vielä # lähtevää linkkiä}}",
+    "more": "vielä {count}"
+  },
+  "canvasLinks": {
+    "connectedOn": "Yhdistetty taulussa {canvas}",
+    "untitledCanvas": "Nimetön taulu"
+  },
+  "similarNotes": {
+    "summary": "{count, plural, one {# samankaltainen muistiinpano} other {# samankaltaista muistiinpanoa}}",
+    "sectionAria": "Samankaltaiset muistiinpanot",
+    "hint": "Muistiinpanot, jotka muistuttavat tätä ja joita ei ole vielä linkitetty siihen. Löydetty tällä laitteella paikallisten upotusten avulla.",
+    "addLink": "Linkitä tästä muistiinpanosta",
+    "addLinkAria": "Linkitä ”{title}” tästä muistiinpanosta",
+    "linked": "Linkitetty: {title}",
+    "addToCanvas": "Lisää tauluun",
+    "addToCanvasAria": "Lisää ”{title}” tauluun",
+    "searchCanvases": "Hae tauluja…",
+    "canvasLoading": "Ladataan tauluja…",
+    "noCanvases": "Ei vielä tauluja",
+    "noMatch": "Ei vastaavia tauluja",
+    "addedToCanvas": "”{title}” lisätty tauluun ”{canvas}”",
+    "alreadyOnCanvas": "”{title}” on jo taulussa ”{canvas}”",
+    "openCanvas": "Avaa",
+    "addToCanvasFailed": "Muistiinpanon lisääminen tauluun epäonnistui"
+  },
+  "suggestedTags": {
+    "label": "Ehdotetut tunnisteet:",
+    "hint": "Tunnisteet, joita tätä eniten muistuttavat muistiinpanot käyttävät. Mitään ei lisätä ennen kuin valitset tunnisteen.",
+    "acceptAria": "Lisää tunniste {tag}",
+    "support": "{count, plural, one {Käytössä # samankaltaisessa muistiinpanossa} other {Käytössä # samankaltaisessa muistiinpanossa}}",
+    "dismiss": "Piilota ehdotetut tunnisteet",
+    "failed": "Tunnisteen lisääminen epäonnistui"
+  },
+  "comments": {
+    "railAria": "Kommentit",
+    "badgeAria": "{count, plural, one {# kommentti} other {# kommenttia}}",
+    "toolbarComment": "Kommentoi",
+    "commentPlaceholder": "Lisää kommentti…",
+    "createdTooltip": "Luotu {date} klo {time}",
+    "cancel": "Peruuta",
+    "resolve": "Ratkaise",
+    "edit": "Muokkaa kommenttia",
+    "delete": "Poista kommentti",
+    "replyPlaceholder": "Vastaa…",
+    "attachAria": "Liitä tiedosto",
+    "mentionAria": "Mainitse henkilö, sivu tai päivämäärä",
+    "sendAria": "Lähetä kommentti",
+    "formatToolbarAria": "Tekstin muotoilu",
+    "format": {
+      "bold": "Lihavointi",
+      "italic": "Kursivointi",
+      "underline": "Alleviivaus",
+      "strike": "Yliviivaus",
+      "code": "Koodi"
+    },
+    "openImageAria": "Avaa kuva {name}",
+    "openAttachmentAria": "Avaa liite {name}",
+    "kind": {
+      "comment": "Kommentti",
+      "addition": "Lisäys",
+      "deletion": "Poisto",
+      "substitution": "Korvaus"
+    }
   },
   "tagsRow": {
     "aria": "Tunnisteet",
     "empty": "Lisää tunnisteita",
     "add": "Lisää tunniste",
     "removeAria": "Poista tunniste: {tag}",
-    "inputPlaceholder": "Kirjoita tunnisteen nimi...",
+    "inputPlaceholder": "Kirjoita tunnisteen nimi…",
     "recent": "Viimeaikaiset",
-    "matching": "Vastaava",
+    "matching": "Vastaavat",
     "all": "Kaikki tunnisteet",
     "none": "Tunnisteita ei löytynyt",
-    "createTag": "Luo tunniste: \"{tag}\"",
+    "createTag": "Luo tunniste: ”{tag}”",
     "chooseColor": "Valitse väri:",
     "preview": "Esikatselu:",
-    "colorAria": "Valitse {color} väri",
+    "colorAria": "Valitse väri: {color}",
     "customColor": "Mukautettu väri"
   },
   "properties": {
     "title": "Ominaisuudet",
-    "noteAria": "Huomaa ominaisuudet",
+    "noteAria": "Muistiinpanon ominaisuudet",
     "workspaceAria": "Työtilan ominaisuudet",
-    "listAria": "Ominaisuudet lista",
-    "add": "Lisää omaisuutta",
+    "listAria": "Ominaisuusluettelo",
+    "add": "Lisää ominaisuus",
     "addDescription": "Lisää uusi ominaisuus tähän muistiinpanoon",
-    "namePlaceholder": "Kiinteistön nimi",
-    "nameAria": "Kiinteistön nimi",
-    "typeSection": "Kirjoita",
+    "namePlaceholder": "Ominaisuuden nimi",
+    "nameAria": "Ominaisuuden nimi",
+    "typeSection": "Tyyppi",
     "empty": "Tyhjä",
-    "dragAria": "Järjestä omaisuus uudelleen vetämällä",
+    "dragAria": "Järjestä ominaisuus uudelleen vetämällä",
     "editName": "Muokkaa ominaisuuden nimeä",
-    "delete": "Poista omaisuus",
-    "searchOptions": "Hakuvaihtoehdot...",
+    "delete": "Poista ominaisuus",
+    "searchOptions": "Hae vaihtoehdoista…",
     "noOptions": "Ei vielä vaihtoehtoja",
     "optionName": "Vaihtoehdon nimi",
     "newOption": "Uusi vaihtoehto",
-    "ratingAria": "Luokitus",
+    "ratingAria": "Arvio",
     "openUrlAria": "Avaa URL-osoite",
-    "types": {
-      "text": "Teksti",
-      "number": "Numero",
-      "date": "Päivämäärä",
-      "checkbox": "Valintaruutu",
-      "url": "URL-osoite",
-      "status": "Tila",
-      "select": "Valitse",
-      "multiselect": "Monivalinta"
-    },
     "showOnCalendar": "Näytä kalenterissa",
     "showingOnCalendar": "Näytetään kalenterissa",
+    "relation": {
+      "deleted": "Poistettu",
+      "removeAria": "Poista ”{title}”",
+      "addAria": "Lisää relaatio",
+      "searchPlaceholder": "Hae muistiinpanoista, tehtävistä, tapahtumista, tauluista ja päiväkirjasta…",
+      "groupNotes": "Muistiinpanot ja tiedostot",
+      "groupTasks": "Tehtävät",
+      "groupEvents": "Tapahtumat",
+      "groupCanvases": "Taulut",
+      "groupJournals": "Päiväkirja",
+      "empty": "Ei tuloksia"
+    },
+    "types": {
+      "text": "Teksti",
+      "number": "Luku",
+      "date": "Päivämäärä",
+      "checkbox": "Valintaruutu",
+      "url": "URL",
+      "status": "Tila",
+      "select": "Valinta",
+      "multiselect": "Monivalinta",
+      "relation": "Relaatio",
+      "project": "Projekti"
+    },
     "statusCategories": {
-      "done": "Valmis",
-      "inProgress": "Kesken",
-      "todo": "Tekemättä"
-    }
+      "todo": "Tekemättä",
+      "inProgress": "Työn alla",
+      "done": "Valmis"
+    },
+    "projectAlreadySet": "Tällä muistiinpanolla on jo projektiominaisuus",
+    "projectPlaceholder": "Ei projektia",
+    "projectSearch": "Hae projekteja",
+    "projectEmpty": "Ei projekteja",
+    "projectRemove": "Poista projektista {name}"
+  },
+  "moveNoteTasks": {
+    "title": "Siirretäänkö muistiinpanon tehtävät?",
+    "description": "{count, plural, one {# tämän muistiinpanon tehtävä kuuluu toiseen projektiin} other {# tämän muistiinpanon tehtävää kuuluu muihin projekteihin}}. Siirretäänkö {count, plural, one {se} other {ne}} projektiin {project}?",
+    "subtaskNote": "Alitehtävät siirtyvät ylätehtävänsä mukana.",
+    "cancel": "Pidä ennallaan",
+    "confirm": "{count, plural, one {Siirrä tehtävä} other {Siirrä tehtävät}}",
+    "success": "{count, plural, one {# tehtävä siirretty projektiin {project}} other {# tehtävää siirretty projektiin {project}}}",
+    "failed": "Muistiinpanon tehtävien siirtäminen epäonnistui"
+  },
+  "deleteNoteTasks": {
+    "label": "{count, plural, one {Poista myös muistiinpanon tehtävä} other {Poista myös muistiinpanon # tehtävää}}",
+    "description": "{count, plural, one {Jos ruutua ei valita, tehtävä säilyy Tehtävissä.} other {Jos ruutua ei valita, tehtävät säilyvät Tehtävissä.}}",
+    "failed": "Tehtävien poistaminen epäonnistui. Ne ovat yhä Tehtävissä."
   },
   "cover": {
     "add": "Lisää kansikuva",
     "change": "Vaihda kansikuva",
     "remove": "Poista kansikuva",
     "alt": "Kansikuva",
-    "setFailed": "Kansikuvaa ei voitu asettaa",
-    "removeFailed": "Kansikuvaa ei voitu poistaa",
+    "setFailed": "Kansikuvan asettaminen epäonnistui",
+    "removeFailed": "Kansikuvan poistaminen epäonnistui",
     "reposition": "Siirrä",
     "repositionHint": "Siirrä vetämällä",
     "repositionSave": "tallenna",
     "repositionCancel": "peruuta",
     "credit": "Kuva: {name} (Unsplash)",
-    "focusFailed": "Kansikuvan sijaintia ei voitu tallentaa",
+    "focusFailed": "Kansikuvan sijainnin tallentaminen epäonnistui",
     "picker": {
       "title": "Muistiinpanon kansikuva",
       "placeholder": "Hae kansikuvia",
@@ -276,7 +735,8 @@
         "washes": "Sävyt",
         "photos": "Unsplash",
         "fromNote": "Muistiinpanosta",
-        "upload": "Lataa"
+        "upload": "Lataa",
+        "link": "Linkki"
       },
       "photos": {
         "searching": "Haetaan Unsplashista…",
@@ -288,14 +748,14 @@
           "offline": "Ei yhteyttä Unsplashiin",
           "rateLimited": "Unsplashin käyttöä on rajoitettu, yritä uudelleen hetken kuluttua",
           "failed": "Unsplashiin ei saatu yhteyttä",
-          "writeFailed": "Tätä kuvaa ei voitu tallentaa holviin"
+          "writeFailed": "Kuvan tallentaminen holviin epäonnistui"
         }
       },
       "upload": "Lataa",
       "uploading": "Ladataan…",
-      "uploadFailed": "Kansikuvaa ei voitu ladata",
-      "loadFailed": "Holvin kuvia ei voitu ladata",
-      "insertFailed": "Kuvaa ei voitu käyttää kansikuvana",
+      "uploadFailed": "Kansikuvan lataaminen epäonnistui",
+      "loadFailed": "Holvin kuvien lataaminen epäonnistui",
+      "insertFailed": "Kuvan käyttäminen kansikuvana epäonnistui",
       "noMatches": "Ei osumia",
       "empty": "Tässä holvissa ei ole vielä kuvia",
       "hint": {
@@ -316,27 +776,40 @@
         "bark": "Kaarna",
         "mist": "Utu",
         "plum": "Luumu"
+      },
+      "link": {
+        "prompt": "Liitä kuvan linkki",
+        "invalid": "Memry ei voi avata tätä linkkiä",
+        "use": "Käytä tätä kuvaa",
+        "saving": "Tallennetaan kuvaa…",
+        "error": {
+          "notAnImage": "Linkki ei osoita kuvaan",
+          "tooLarge": "Kuva on liian suuri tallennettavaksi",
+          "offline": "Linkin kohteeseen ei saatu yhteyttä",
+          "failed": "Kuvan lataaminen epäonnistui",
+          "writeFailed": "Kuvan tallentaminen holviin epäonnistui"
+        }
       }
     }
   },
   "templateSelector": {
-    "title": "Valitse oma kangas",
-    "description": "Aloita muistiinpano valitsemalla malli",
-    "searchPlaceholder": "Hakumalleja...",
-    "loading": "Ladataan malleja...",
-    "empty": "Malleja ei löytynyt",
-    "myTemplates": "Omat mallit",
-    "essentials": "Perusmallit",
-    "setFolderDefault": "Aseta kansion oletusarvoksi",
-    "useTemplate": "Käytä mallia",
+    "title": "Valitse pohja",
+    "description": "Aloita muistiinpano valitsemalla pohja",
+    "searchPlaceholder": "Hae pohjista…",
+    "loading": "Ladataan pohjia…",
+    "empty": "Pohjia ei löytynyt",
+    "myTemplates": "Omat pohjat",
+    "essentials": "Peruspohjat",
+    "setFolderDefault": "Aseta kansion oletuspohjaksi",
+    "useTemplate": "Käytä pohjaa",
     "createNote": "Luo muistiinpano",
-    "applyDescription": "Korvaa tämän muistiinpanon sisältö mallilla",
-    "applyTitle": "Käytä mallia",
-    "applyToNote": "Käytä mallia"
+    "applyToNote": "Käytä pohjaa",
+    "applyTitle": "Käytä pohjaa",
+    "applyDescription": "Korvaa tämän muistiinpanon sisältö pohjalla"
   },
   "exportDialog": {
-    "title": "Vie huomautus",
-    "description": "Vie \"{title}\" tiedostoon",
+    "title": "Vie muistiinpano",
+    "description": "Vie ”{title}” tiedostoon",
     "format": "Muoto",
     "pdfDescription": "Tulostusvalmis asiakirja",
     "htmlDescription": "Web-valmis tiedosto",
@@ -344,8 +817,8 @@
     "selectPageSize": "Valitse sivun koko",
     "options": "Vaihtoehdot",
     "includeMetadata": "Sisällytä metatiedot (tunnisteet, päivämäärät)",
-    "exporting": "Viedään...",
-    "exported": "Vietiin!",
+    "exporting": "Viedään…",
+    "exported": "Viety!",
     "export": "Vie",
     "toast": {
       "failed": "Vienti epäonnistui"
@@ -353,51 +826,51 @@
   },
   "versionHistory": {
     "title": "Versiohistoria",
-    "description": "Tarkastele ja palauta \"{title}\" aiempia versioita",
+    "description": "Tarkastele ja palauta muistiinpanon ”{title}” aiempia versioita",
     "hidePreview": "Piilota esikatselu",
     "showPreview": "Näytä esikatselu",
     "empty": "Ei vielä tallennettuja versioita",
     "emptyDescription": "Versiot tallennetaan automaattisesti, kun teet merkittäviä muutoksia",
     "latest": "Viimeisin",
     "autoSaved": "Automaattinen tallennus",
-    "words": "{count} sanat",
-    "selectPrompt": "Valitse esikatseluversio",
+    "words": "{count, plural, one {# sana} other {# sanaa}}",
+    "selectPrompt": "Valitse esikatseltava versio",
     "restore": "Palauta",
     "deleteTitle": "Poistetaanko tämä versio?",
-    "deleteDescription": "Tätä toimintoa ei voi kumota. Tämä versio poistetaan pysyvästi.",
+    "deleteDescription": "Tätä ei voi kumota. Versio poistetaan pysyvästi.",
     "restoreTitle": "Palautetaanko tämä versio?",
     "restoreDescription": "Tämä korvaa muistiinpanon nykyisen sisällön tällä versiolla. Ensin tallennetaan tilannekuva nykyisestä tilasta, joten voit kumota tämän toiminnon.",
-    "restoring": "Palautetaan...",
+    "restoring": "Palautetaan…",
     "toast": {
       "loadPreviewFailed": "Version esikatselun lataaminen epäonnistui",
-      "restored": "Huomautus palautettu edelliseen versioon",
+      "restored": "Muistiinpano palautettu edelliseen versioon",
       "deleted": "Versio poistettu"
     }
   },
   "templateEditor": {
-    "loading": "Ladataan mallia…",
+    "loading": "Ladataan pohjaa…",
     "copySuffix": "{name} (kopio)",
     "title": {
-      "new": "Uusi malli",
-      "placeholder": "Mallin nimi"
+      "new": "Uusi pohja",
+      "placeholder": "Pohjan nimi"
     },
     "icon": {
-      "label": "Mallin kuvake"
+      "label": "Pohjan kuvake"
     },
     "content": {
-      "placeholder": "Oletussisältö tästä mallista luoduille muistiinpanoille. Lisää muistiinpanon otsikko merkinnällä '{{'title'}}'."
+      "placeholder": "Oletussisältö tästä pohjasta luoduille muistiinpanoille. Lisää muistiinpanon otsikko merkinnällä '{{'title'}}'."
     },
     "actions": {
-      "create": "Luo malli",
+      "create": "Luo pohja",
       "update": "Päivitä",
-      "duplicateAndEdit": "Kopioi ja muokkaa",
-      "duplicate": "Kopioi",
-      "delete": "Poista malli",
+      "duplicateAndEdit": "Monista ja muokkaa",
+      "duplicate": "Monista",
+      "delete": "Poista pohja",
       "more": "Lisää toimintoja"
     },
     "toast": {
-      "createFailed": "Mallin luominen epäonnistui",
-      "saveFailed": "Mallin tallennus epäonnistui"
+      "createFailed": "Pohjan luominen epäonnistui",
+      "saveFailed": "Pohjan tallentaminen epäonnistui"
     }
   },
   "reminders": {
@@ -411,12 +884,14 @@
       "deleted": "Muistutus poistettu",
       "deleteFailed": "Muistutuksen poistaminen epäonnistui",
       "dismissed": "Muistutus hylätty",
-      "dismissFailed": "Muistutuksen hylkääminen epäonnistui"
+      "dismissFailed": "Muistutuksen hylkääminen epäonnistui",
+      "updated": "Muistutus päivitetty",
+      "updateFailed": "Muistutuksen päivittäminen epäonnistui"
     }
   },
   "linkedTasks": {
     "title": "Linkitetyt tehtävät",
-    "loading": "Ladataan linkitettyjä tehtäviä..."
+    "loading": "Ladataan linkitettyjä tehtäviä…"
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
@@ -425,7 +900,10 @@
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Ominaisuudet",
-      "searchColumns": "Haku sarakkeista...",
+      "display": "Näkymä",
+      "showSummaries": "Näytä yhteenvedot",
+      "columnBorders": "Sarakkeiden reunat",
+      "searchColumns": "Hae sarakkeista…",
       "noMatchingColumns": "Ei vastaavia sarakkeita",
       "formulas": "KAAVOT",
       "noFormulasDefined": "Ei määriteltyjä kaavoja",
@@ -436,25 +914,22 @@
       "none": "Ei mitään",
       "edit": "Muokkaa",
       "delete2": "Poista",
-      "columnBorders": "Sarakkeiden reunat",
-      "display": "Näyttö",
-      "showSummaries": "Näytä yhteenvedot",
-      "deleteFormulaBody": "Haluatko varmasti poistaa kaavan ”{name}”? Tätä toimintoa ei voi kumota."
+      "deleteFormulaBody": "Haluatko varmasti poistaa kaavan ”{name}”? Tätä ei voi kumota."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Suodata",
       "filters": "Suodattimet",
       "clearAll": "Tyhjennä kaikki",
-      "noFiltersApplied": "Ei käytössä suodattimia",
-      "addFiltersToNarrowDownYourNotes": "Lisää suodattimia tarkentaaksesi muistiinpanojasi",
-      "match": "Ottelu",
+      "noFiltersApplied": "Suodattimia ei ole käytössä",
+      "addFiltersToNarrowDownYourNotes": "Rajaa muistiinpanoja lisäämällä suodattimia",
+      "match": "Ehdot",
       "allAnd": "Kaikki (JA)",
       "anyOr": "Mikä tahansa (TAI)",
       "ofTheFollowing": "seuraavista:",
-      "match2": "Ottelu",
+      "match2": "Ehdot",
       "all": "Kaikki",
       "any": "Mikä tahansa",
-      "of": "/:",
+      "of": "seuraavista:",
       "addCondition": "Lisää ehto",
       "addFilter": "Lisää suodatin",
       "addGroup": "Lisää ryhmä",
@@ -464,48 +939,49 @@
     "componentsFolderViewFilterRow": {
       "builtIn": "Sisäänrakennettu",
       "properties": "Ominaisuudet",
-      "placeholderProperty": "Omaisuus",
+      "placeholderProperty": "Ominaisuus",
       "placeholderOperator": "Operaattori",
       "placeholderValue": "Arvo",
-      "removeFilter": "Poista suodatin"
+      "removeFilter": "Poista suodatin",
+      "tagSuggestions": "Tunnisteehdotukset"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Muistiinpanot taulukko",
+      "notesTable": "Muistiinpanotaulukko",
       "selectAll": "Valitse kaikki muistiinpanot",
       "selectRow": "Valitse muistiinpano",
       "kind": {
-        "Inbox": "Saapuneet",
         "Note": "Muistiinpano",
-        "Task": "Tehtävä"
+        "Task": "Tehtävä",
+        "Inbox": "Saapuneet"
       }
     },
     "componentsFolderViewFolderViewToolbar": {
-      "searchNotes": "Hae muistiinpanoja...",
+      "searchNotes": "Hae muistiinpanoista…",
       "clearSearch": "Tyhjennä haku"
     },
     "componentsFolderViewFormulaEditorModal": {
       "defineAComputedColumnUsingAnExpression": "Määritä laskettu sarake lausekkeen avulla.",
       "name": "Nimi",
-      "expression": "Ilmaisu",
+      "expression": "Lauseke",
       "available": "Saatavilla: ",
       "preview": "Esikatselu",
       "fixExpressionErrorsToSeePreview": "Korjaa lausekevirheet nähdäksesi esikatselun",
-      "usingNote": "Käytä huomautusta: \"",
+      "usingNote": "Käytetään muistiinpanoa: ”",
       "cancel": "Peruuta",
-      "namePlaceholder": "päivää_erään_päivään",
-      "expressionPlaceholder": "dateDiff(eräpäivä, tänään(), \"päivät\")",
+      "namePlaceholder": "days_until_due",
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
       "usingNoteTitle": "Käytetään muistiinpanoa: ”{title}”"
     },
     "componentsFolderViewGroupBySelector": {
-      "clearGrouping": "Selkeä ryhmittely",
-      "searchProperties": "Hae ominaisuuksia...",
+      "clearGrouping": "Poista ryhmittely",
+      "searchProperties": "Hae ominaisuuksia…",
       "builtIn": "Sisäänrakennettu",
       "properties": "Ominaisuudet",
       "noGroupablePropertiesFound": "Ryhmiteltäviä ominaisuuksia ei löytynyt",
-      "sortDirection": "Lajittele suunta",
+      "sortDirection": "Lajittelusuunta",
       "collapseGroupsByDefault": "Kutista ryhmät oletuksena",
       "showGroupSummaries": "Näytä ryhmien yhteenvedot",
-      "clearGrouping2": "Selkeä ryhmittely"
+      "clearGrouping2": "Poista ryhmittely"
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Ryhmitetty muistiinpanotaulukko",
@@ -514,22 +990,22 @@
       "selectRow": "Valitse muistiinpano"
     },
     "componentsFolderViewMoveToFolderDialog": {
-      "searchFolders": "Hae kansioita...",
-      "loadingFolders": "Ladataan kansioita...",
-      "suggested": "EHDOTETTU",
-      "bestMatch": "Paras ottelu",
+      "searchFolders": "Hae kansioita…",
+      "loadingFolders": "Ladataan kansioita…",
+      "suggested": "EHDOTETUT",
+      "bestMatch": "Paras osuma",
       "current": "nykyinen)",
       "allFolders": "KAIKKI KANSIOT",
       "noFoldersMatch": "Yksikään kansio ei vastaa \"",
       "create": "Luo \"",
       "cancel": "Peruuta",
-      "createFolderNamed": "Luo ”{name}”",
       "currentFolderBadge": "(nykyinen)",
-      "noFoldersMatchQuery": "Yksikään kansio ei vastaa hakua ”{query}”"
+      "noFoldersMatchQuery": "Yksikään kansio ei vastaa hakua ”{query}”",
+      "createFolderNamed": "Luo ”{name}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Poista ",
-      "notes": "Huomautuksia",
+      "notes": "muistiinpanoa",
       "open": "Avaa",
       "openInExternalEditor": "Avaa ulkoisessa editorissa",
       "revealInSidebar": "Näytä sivupalkissa",
@@ -542,15 +1018,16 @@
       "editColumnName": "Muokkaa sarakkeen nimeä"
     },
     "componentsFolderViewViewSwitcher": {
-      "default": "oletuksena",
+      "default": "oletus",
+      "viewActions": "Näkymän toiminnot",
       "rename": "Nimeä uudelleen",
-      "duplicate": "Kopioi",
+      "duplicate": "Monista",
       "setAsDefault": "Aseta oletukseksi",
       "delete": "Poista",
       "createNewView": "Luo uusi näkymä",
       "createNewView2": "Luo uusi näkymä",
       "createANewViewWithCustomColumnsFiltersAndSorting": "Luo uusi näkymä mukautetuilla sarakkeilla, suodattimilla ja lajittelulla.",
-      "viewName": "Näytä nimi",
+      "viewName": "Näkymän nimi",
       "myCustomView": "Oma mukautettu näkymä",
       "baseConfiguration": "Peruskokoonpano",
       "copyFromCurrentView": "Kopioi nykyisestä näkymästä",
@@ -558,40 +1035,40 @@
       "cancel": "Peruuta",
       "renameView": "Nimeä näkymä uudelleen",
       "enterANewNameForThisView": "Anna tälle näkymälle uusi nimi.",
-      "viewName2": "Näytä nimi",
-      "viewName3": "Näytä nimi",
+      "viewName2": "Näkymän nimi",
+      "viewName3": "Näkymän nimi",
       "cancel2": "Peruuta",
       "deleteView": "Poista näkymä",
       "areYouSureYouWantToDelete": "Oletko varma, että haluat poistaa \"",
-      "thisActionCannotBeUndone": "Tätä toimintoa ei voi kumota.",
+      "thisActionCannotBeUndone": "Tätä ei voi kumota.",
       "cancel3": "Peruuta",
-      "createView": "Luo näkymä",
-      "gallery": "Galleria",
-      "layout": "Asettelu",
-      "list": "Luettelo",
-      "name": "Nimi",
       "newView": "Uusi näkymä",
-      "save": "Tallenna",
+      "name": "Nimi",
+      "layout": "Asettelu",
       "table": "Taulukko",
-      "viewActions": "Näkymän toiminnot"
+      "list": "Luettelo",
+      "gallery": "Galleria",
+      "createView": "Luo näkymä",
+      "save": "Tallenna"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "PDF:n lataaminen epäonnistui: ",
       "download": "Lataa",
       "download2": "Lataa",
       "noFileAttached": "Ei liitetiedostoa",
-      "alignCenter": "Keskitä",
+      "resizePdf": "Muuta PDF:n kokoa",
+      "resizeHtml": "Muuta HTML-upotuksen kokoa",
       "alignLeft": "Tasaa vasemmalle",
+      "alignCenter": "Keskitä",
       "alignRight": "Tasaa oikealle",
-      "nextPage": "Seuraava sivu",
       "previousPage": "Edellinen sivu",
-      "resizePdf": "Muuta PDF:n kokoa"
+      "nextPage": "Seuraava sivu"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Avaa tehtäväpaneelissa",
-      "taskName": "Tehtävän nimi...",
+      "taskName": "Tehtävän nimi…",
       "taskDeleted": "Tehtävä poistettu",
-      "loading": "Ladataan..."
+      "loading": "Ladataan…"
     },
     "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
       "project": "Projekti",
@@ -617,7 +1094,7 @@
     },
     "componentsSharedDocumentInfoTab": {
       "words": "Sanat",
-      "characters": "Hahmot",
+      "characters": "Merkit",
       "readingTime": "Lukuaika",
       "created": "Luotu",
       "modified": "Muokattu"
@@ -628,7 +1105,7 @@
       "createYourFirstProject2": "Luo ensimmäinen projektisi"
     },
     "componentsSidebarSidebarBookmarkList": {
-      "loadingBookmarks": "Ladataan kirjanmerkkejä...",
+      "loadingBookmarks": "Ladataan kirjanmerkkejä…",
       "failedToLoadBookmarks": "Kirjanmerkkien lataaminen epäonnistui",
       "noBookmarksYet": "Ei vielä kirjanmerkkejä",
       "moreOptions": "Lisää vaihtoehtoja",
@@ -643,10 +1120,10 @@
       "copyLink": "Kopioi linkki"
     },
     "componentsSidebarSidebarTagList": {
-      "loadingTags": "Ladataan tunnisteita...",
+      "loadingTags": "Ladataan tunnisteita…",
       "failedToLoadTags": "Tunnisteiden lataaminen epäonnistui",
-      "noTagsYet": "Ei tunnisteita vielä",
-      "filterTags": "Suodata tunnisteet...",
+      "noTagsYet": "Ei vielä tunnisteita",
+      "filterTags": "Suodata tunnisteita…",
       "noMatchingTags": "Ei vastaavia tunnisteita",
       "Uncategorized": "Luokittelemattomat"
     },
@@ -656,21 +1133,22 @@
       "settings": "Asetukset"
     },
     "componentsSidebarTagDeleteDialog": {
-      "deleteTag": "Poista tunniste #",
-      "notesWithThisTagWonTBeDeletedJustUntagged": "Tällä tunnisteella varustettuja muistiinpanoja ei poisteta, ne vain poistetaan.",
+      "deleteTag": "Poistetaanko tunniste #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Tunnisteella merkittyjä muistiinpanoja ei poisteta, niistä vain poistetaan tunniste.",
       "cancel": "Peruuta"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Mene takaisin",
+      "goBack": "Takaisin",
       "notes": "muistiinpanoja",
-      "loadingNotes": "Ladataan muistiinpanoja...",
+      "loadingNotes": "Ladataan muistiinpanoja…",
       "noNotesWithThisTag": "Ei muistiinpanoja tällä tunnisteella",
       "addThisTagToANoteToSeeItHere": "Lisää tämä tunniste muistiinpanoon nähdäksesi sen täällä",
-      "pinned": "KIINNI",
-      "allNotes": "KAIKKI HUOMAUTUKSET",
+      "pinned": "KIINNITETYT",
+      "allNotes": "KAIKKI MUISTIINPANOT",
       "allNotesArePinned": "Kaikki muistiinpanot on kiinnitetty",
-      "unpinFromTag": "Irrota tagista",
-      "unpin": "Irrota kiinnitys",
+      "tasks": "TEHTÄVÄT",
+      "unpinFromTag": "Irrota tunnisteesta",
+      "unpin": "Irrota",
       "pinToTag": "Kiinnitä tunnisteeseen",
       "pin": "Kiinnitä",
       "tagActions": "Tunnistetoiminnot",
@@ -679,25 +1157,24 @@
       "deleteTag": "Poista tunniste",
       "recent": "Viimeaikaiset",
       "created": "Luotu",
-      "alphabetical": "Aakkosellinen",
-      "tasks": "TEHTÄVÄT"
+      "alphabetical": "Aakkosellinen"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Nimeä tunniste uudelleen",
       "rename": "Nimeä uudelleen ",
-      "acrossEveryNoteThatUsesIt": "jokaisessa sitä käyttävässä nuotissa.",
+      "acrossEveryNoteThatUsesIt": "kaikissa sitä käyttävissä muistiinpanoissa.",
       "newName": "Uusi nimi",
       "cancel": "Peruuta"
     },
     "componentsViewersAudioPlayer": {
       "failedToLoadAudio": "Äänen lataaminen epäonnistui",
-      "theAudioFileCouldNotBePlayed": "Äänitiedostoa ei voitu toistaa.",
-      "skipBack10s": "Hyppää 10s taaksepäin",
-      "skipForward10s": "Hyppää 10s eteenpäin"
+      "theAudioFileCouldNotBePlayed": "Äänitiedoston toistaminen epäonnistui.",
+      "skipBack10s": "Hyppää 10 s taaksepäin",
+      "skipForward10s": "Hyppää 10 s eteenpäin"
     },
     "componentsViewersImageViewer": {
       "failedToLoadImage": "Kuvan lataaminen epäonnistui",
-      "theImageCouldNotBeDisplayed": "Kuvaa ei voitu näyttää.",
+      "theImageCouldNotBeDisplayed": "Kuvan näyttäminen epäonnistui.",
       "resetZoom": "Palauta zoomaus",
       "rotate": "Kierrä",
       "dragToPan": "Panoroi vetämällä"
@@ -708,51 +1185,51 @@
       "nextPage": "Seuraava sivu",
       "zoomOut": "Loitonna",
       "zoomIn": "Lähennä",
-      "fitToWidth": "Soveltuu leveyteen",
+      "fitToWidth": "Sovita leveyteen",
       "rotate": "Kierrä",
-      "fitToHeight": "Fit to height",
-      "viewOptions": "View options",
-      "fit": "Fit",
-      "pageLayout": "Page layout",
-      "singlePage": "Single page",
-      "twoPageOdd": "Two-page (odd)",
-      "twoPageEven": "Two-page (even)",
-      "adaptToTheme": "Adapt to theme",
-      "goToPage": "Go to page",
-      "showThumbnails": "Show thumbnails",
-      "hideThumbnails": "Hide thumbnails"
+      "fitToHeight": "Sovita korkeuteen",
+      "viewOptions": "Näkymän asetukset",
+      "fit": "Sovitus",
+      "pageLayout": "Sivun asettelu",
+      "singlePage": "Yksi sivu",
+      "twoPageOdd": "Kaksi sivua (pariton)",
+      "twoPageEven": "Kaksi sivua (parillinen)",
+      "adaptToTheme": "Mukauta teemaan",
+      "goToPage": "Siirry sivulle",
+      "showThumbnails": "Näytä pienoiskuvat",
+      "hideThumbnails": "Piilota pienoiskuvat"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Videon lataaminen epäonnistui",
-      "theVideoFileCouldNotBePlayed": "Videotiedostoa ei voitu toistaa."
+      "theVideoFileCouldNotBePlayed": "Videotiedoston toistaminen epäonnistui."
     },
     "pagesFile": {
       "failedToLoadFile": "Tiedoston lataaminen epäonnistui",
       "tryAgain": "Yritä uudelleen",
       "noFileSelected": "Tiedostoa ei ole valittu",
       "selectAFileFromTheSidebarToViewIt": "Valitse tiedosto sivupalkista nähdäksesi sen",
-      "loadingFile": "Ladataan tiedostoa...",
+      "loadingFile": "Ladataan tiedostoa…",
       "open": "Avaa",
-      "reveal": "Paljasta",
+      "reveal": "Näytä kansiossa",
       "unsupportedFileType": "Tiedostotyyppiä ei tueta",
-      "fileActions": "File actions"
+      "fileActions": "Tiedoston toiminnot"
     },
     "pagesFolderView": {
       "createNewNote": "Luo uusi muistiinpano",
-      "viewSettings": "Näytä asetukset",
+      "viewSettings": "Näkymän asetukset",
       "displayDensity": "Näytön tiheys",
-      "comfortable": "Mukava",
+      "comfortable": "Väljä",
       "compact": "Kompakti",
       "showSummaries": "Näytä yhteenvedot",
       "cancel": "Peruuta"
     },
     "componentsFolderViewSortSelector": {
-      "builtIn": "Sisäänrakennettu",
       "clearSort": "Tyhjennä lajittelu",
-      "noSortablePropertiesFound": "Lajiteltavia ominaisuuksia ei löytynyt",
-      "properties": "Ominaisuudet",
-      "searchProperties": "Hae ominaisuuksia...",
       "sort": "Lajittele",
+      "searchProperties": "Hae ominaisuuksia…",
+      "builtIn": "Sisäänrakennettu",
+      "properties": "Ominaisuudet",
+      "noSortablePropertiesFound": "Lajiteltavia ominaisuuksia ei löytynyt",
       "sortDirection": "Lajittelusuunta"
     }
   },
@@ -768,175 +1245,190 @@
       "failedToRestoreVersion": "Version palauttaminen epäonnistui",
       "failedToDeleteVersion": "Version poistaminen epäonnistui",
       "failedToCreateNote": "Muistiinpanon luominen epäonnistui",
-      "failedToLoadMoreBookmarks": "Lisää kirjanmerkkejä ei voitu ladata",
-      "failedToToggleBookmark": "Kirjanmerkin vaihtaminen epäonnistui",
+      "failedToLoadMoreBookmarks": "Seuraavien kirjanmerkkien lataaminen epäonnistui",
+      "failedToToggleBookmark": "Kirjanmerkin lisääminen tai poistaminen epäonnistui",
       "failedToRemoveBookmark": "Kirjanmerkin poistaminen epäonnistui",
       "failedToReorderBookmarks": "Kirjanmerkkien uudelleenjärjestäminen epäonnistui",
       "failedToSave": "Tallentaminen epäonnistui",
-      "failedToRename": "Nimeäminen uudelleen epäonnistui",
-      "failedToUpdateEmoji": "Emojin päivitys epäonnistui",
+      "failedToRename": "Uudelleennimeäminen epäonnistui",
+      "failedToUpdateEmoji": "Emojin päivittäminen epäonnistui",
       "failedToUpdateTags": "Tunnisteiden päivittäminen epäonnistui",
-      "failedToSnoozeReminder": "Muistutuksen torkkuminen epäonnistui",
+      "failedToSnoozeReminder": "Muistutuksen torkuttaminen epäonnistui",
       "failedToCreateFolder": "Kansion luominen epäonnistui",
       "failedToLoadProperties": "Ominaisuuksien lataaminen epäonnistui",
       "failedToLoadPropertyDefinitions": "Ominaisuusmääritelmien lataaminen epäonnistui",
-      "failedToLoadTemplates": "Mallien lataaminen epäonnistui"
+      "failedToLoadTemplates": "Pohjien lataaminen epäonnistui"
     },
     "toasts": {
       "noteExportedSuccessfully": "Muistiinpanon vienti onnistui",
-      "failedToUpdateProperty": "Omaisuuden päivittäminen epäonnistui",
+      "failedToUpdateProperty": "Ominaisuuden päivittäminen epäonnistui",
       "failedToUpdateTags": "Tunnisteiden päivittäminen epäonnistui",
-      "failedToUpdateIcon": "Kuvakkeen päivitys epäonnistui",
+      "failedToUpdateIcon": "Kuvakkeen päivittäminen epäonnistui",
       "reminderSnoozed": "Muistutus torkutettu",
-      "failedToSnoozeReminder": "Muistutuksen torkkuminen epäonnistui",
-      "defaultTemplateSet": "Oletusmalli asetettu",
-      "failedToSetDefaultTemplate": "Oletusmallin asettaminen epäonnistui",
-      "defaultTemplateCleared": "Oletusmalli tyhjennetty",
-      "failedToClearDefaultTemplate": "Oletusmallin tyhjennys epäonnistui",
-      "failedToAddProperty": "Omaisuuden lisääminen epäonnistui",
-      "failedToDeleteProperty": "Omaisuuden poistaminen epäonnistui",
-      "failedToRenameProperty": "Omaisuuden uudelleennimeäminen epäonnistui",
-      "failedToReorderProperties": "Kiinteistöjen uudelleenjärjestäminen epäonnistui",
-      "cannotAddTagThisNoteWasDeleted": "Tunnistetta ei voi lisätä - tämä muistiinpano poistettiin",
+      "failedToSnoozeReminder": "Muistutuksen torkuttaminen epäonnistui",
+      "defaultTemplateSet": "Oletuspohja asetettu",
+      "failedToSetDefaultTemplate": "Oletuspohjan asettaminen epäonnistui",
+      "defaultTemplateCleared": "Oletuspohja poistettu",
+      "failedToClearDefaultTemplate": "Oletuspohjan poistaminen epäonnistui",
+      "failedToAddProperty": "Ominaisuuden lisääminen epäonnistui",
+      "failedToDeleteProperty": "Ominaisuuden poistaminen epäonnistui",
+      "failedToRenameProperty": "Ominaisuuden uudelleennimeäminen epäonnistui",
+      "failedToReorderProperties": "Ominaisuuksien uudelleenjärjestäminen epäonnistui",
+      "cannotAddTagThisNoteWasDeleted": "Tunnistetta ei voi lisätä – tämä muistiinpano poistettiin",
       "cannotRemoveTagThisNoteWasDeleted": "Tunnistetta ei voi poistaa – tämä muistiinpano poistettiin",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "Ei voi muuttaa vain paikallisesti - tämä muistiinpano poistettiin"
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Vain paikallinen -asetusta ei voi muuttaa – tämä muistiinpano poistettiin"
     }
   },
   "bulkActions": {
+    "toolbarAria": "Joukkotoiminnot",
+    "selected": "valittu",
+    "move": "Siirrä",
+    "copyLinks": "Kopioi linkit",
     "addTag": "Lisää tunniste",
+    "tagNamePlaceholder": "Tunnisteen nimi",
+    "export": "Vie",
+    "delete": "Poista",
     "clearAria": "Tyhjennä valinta",
     "copiedLinks": "Kopioitu {count, plural, one {# linkki} other {# linkkiä}}",
-    "copyLinks": "Kopioi linkit",
-    "delete": "Poista",
-    "export": "Vie",
-    "iconUpdated": "{count, plural, one {Kuvake päivitetty # muistiinpanoon} other {Kuvake päivitetty # muistiinpanoon}}",
-    "move": "Siirrä",
-    "selected": "valittu",
     "setIcon": "Aseta kuvake",
-    "tagNamePlaceholder": "Tunnisteen nimi",
-    "toolbarAria": "Joukkotoiminnot"
-  },
-  "comments": {
-    "attachAria": "Liitä tiedosto",
-    "badgeAria": "{count, plural, one {# kommentti} other {# kommenttia}}",
-    "cancel": "Peruuta",
-    "commentPlaceholder": "Lisää kommentti...",
-    "createdTooltip": "Luotu {date} klo {time}",
-    "delete": "Poista kommentti",
-    "edit": "Muokkaa kommenttia",
-    "kind": {
-      "addition": "Lisäys",
-      "comment": "Kommentti",
-      "deletion": "Poisto",
-      "substitution": "Korvaus"
-    },
-    "mentionAria": "Mainitse henkilö, sivu tai päivämäärä",
-    "railAria": "Kommentit",
-    "replyPlaceholder": "Vastaa...",
-    "resolve": "Ratkaise",
-    "sendAria": "Lähetä kommentti",
-    "toolbarComment": "Kommentoi",
-    "openAttachmentAria": "Avaa liite {name}",
-    "openImageAria": "Avaa kuva {name}"
-  },
-  "dateMention": {
-    "clear": "Tyhjennä",
-    "dateFormat": "Päivämäärämuoto",
-    "dateInput": "Päivämäärä",
-    "includeTime": "Sisällytä aika",
-    "remind": "Muistuta",
-    "time": "Aika",
-    "timeFormat": "Aikamuoto"
+    "iconUpdated": "{count, plural, one {Kuvake päivitetty # muistiinpanossa} other {Kuvake päivitetty # muistiinpanossa}}"
   },
   "applyTemplateConfirm": {
+    "title": "Korvataanko muistiinpanon sisältö?",
+    "description": "Pohjan ”{name}” käyttäminen korvaa tämän muistiinpanon nykyisen sisällön. Tätä ei voi kumota.",
+    "full": "Korvaa sisältö ja lisää pohjan tiedot",
     "body": "Korvaa vain sisältö",
     "cancel": "Peruuta",
-    "description": "Mallin \"{name}\" käyttäminen korvaa tämän muistiinpanon nykyisen sisällön. Tätä ei voi kumota.",
-    "failed": "Mallin käyttäminen epäonnistui",
-    "full": "Korvaa sisältö ja lisää mallin tiedot",
-    "success": "Malli otettu käyttöön",
-    "title": "Korvataanko muistiinpanon sisältö?"
+    "success": "Pohja käytetty",
+    "failed": "Pohjan käyttäminen epäonnistui"
   },
   "saveNoteAsTemplate": {
-    "title": "Tallenna muistiinpano mallina",
-    "description": "Luo tästä muistiinpanosta malli, jota voit käyttää uudelleen. Itse muistiinpano säilyy ennallaan.",
-    "nameLabel": "Mallin nimi",
+    "title": "Tallenna muistiinpano pohjaksi",
+    "description": "Luo tästä muistiinpanosta pohja, jota voit käyttää uudelleen. Itse muistiinpano säilyy ennallaan.",
+    "nameLabel": "Pohjan nimi",
     "loading": "Luetaan muistiinpanoa…",
     "summary": "Tallentaa muistiinpanon sisällön, {tagCount, plural, one {# tunnisteen} other {# tunnistetta}} ja {propertyCount, plural, one {# ominaisuuden} other {# ominaisuutta}}.",
-    "save": "Tallenna malli",
+    "save": "Tallenna pohja",
     "cancel": "Peruuta",
-    "success": "Malli tallennettu",
-    "edit": "Muokkaa mallia",
-    "failed": "Mallin tallentaminen epäonnistui",
-    "loadFailed": "Muistiinpanoa ei voitu lukea"
+    "success": "Pohja tallennettu",
+    "edit": "Muokkaa pohjaa",
+    "failed": "Pohjan tallentaminen epäonnistui",
+    "loadFailed": "Muistiinpanon lukeminen epäonnistui"
   },
   "newNoteFromNote": {
     "action": "Uusi muistiinpano tästä muistiinpanosta",
     "created": "Luotu muistiinpanosta {source}: {tagCount, plural, =0 {ei tunnisteita} one {# tunniste} other {# tunnistetta}}, {propertyCount, plural, =0 {ei ominaisuuksia} one {# ominaisuus} other {# ominaisuutta}}"
   },
+  "tags": {
+    "hubTitle": "Tunnisteet",
+    "openHub": "Avaa tunnistesivu"
+  },
   "tagView": {
     "moreActions": "Lisää toimintoja",
     "pin": {
       "action": "Kiinnitä {count, plural, one {# muistiinpano} other {# muistiinpanoa}} tunnisteeseen",
-      "failed": "Muistiinpanon kiinnittäminen tunnisteeseen epäonnistui",
-      "success": "{count, plural, one {# muistiinpano kiinnitetty} other {# muistiinpanoa kiinnitetty}} tunnisteeseen"
+      "success": "{count, plural, one {# muistiinpano kiinnitetty} other {# muistiinpanoa kiinnitetty}} tunnisteeseen",
+      "failed": "Muistiinpanon kiinnittäminen tunnisteeseen epäonnistui"
     }
   },
-  "tags": {
-    "hubTitle": "Tunnisteet",
-    "openHub": "Avaa tunnistekeskus"
-  },
   "tagsHub": {
-    "cancelCreate": "Peruuta",
-    "category": {
-      "delete": "Poista luokka",
-      "deleteBody": "Tunnisteet siirtyvät kohtaan Luokittelemattomat. Niitä ei poisteta.",
-      "deleteCancel": "Peruuta",
-      "deleteConfirm": "Poista",
-      "deleteTitle": "Poistetaanko {name}?",
-      "dragHandle": "Järjestä luokka uudelleen vetämällä",
-      "emptyHint": "Vedä tunniste tähän",
-      "more": "Luokan toiminnot",
-      "rename": "Nimeä luokka uudelleen"
-    },
-    "categoryNamePlaceholder": "Luokan nimi",
-    "errors": {
-      "createCategoryFailed": "Luokan luominen epäonnistui",
-      "createTagCategorizeFailed": "Tunniste luotiin, mutta sitä ei voitu lisätä luokkaan",
-      "createTagFailed": "Tunnisteen luominen epäonnistui",
-      "deleteCategoryFailed": "Luokan poistaminen epäonnistui",
-      "loadFailed": "Tunnisteluokkien lataaminen epäonnistui",
-      "renameCategoryFailed": "Luokan nimeäminen epäonnistui",
-      "reorderFailed": "Tunnisteiden uudelleenjärjestäminen epäonnistui"
-    },
-    "loading": "Ladataan tunnisteita...",
+    "loading": "Ladataan tunnisteita…",
     "newCategory": "Uusi luokka",
     "newTag": "Uusi tunniste",
-    "search": {
-      "empty": "Mikään luokka tai tunniste ei vastaa hakuasi",
-      "placeholder": "Hae luokkia ja tunnisteita"
-    },
+    "cancelCreate": "Peruuta",
+    "categoryNamePlaceholder": "Luokan nimi",
     "tagNamePlaceholder": "Tunnisteen nimi",
-    "uncategorized": "Luokittelemattomat"
+    "uncategorized": "Luokittelemattomat",
+    "search": {
+      "placeholder": "Hae luokkia ja tunnisteita",
+      "empty": "Mikään luokka tai tunniste ei vastaa hakuasi"
+    },
+    "category": {
+      "more": "Luokan toiminnot",
+      "rename": "Nimeä luokka uudelleen",
+      "delete": "Poista luokka",
+      "dragHandle": "Järjestä luokka uudelleen vetämällä",
+      "emptyHint": "Vedä tunniste tähän",
+      "deleteTitle": "Poistetaanko {name}?",
+      "deleteBody": "Tunnisteet siirtyvät kohtaan Luokittelemattomat. Niitä ei poisteta.",
+      "deleteConfirm": "Poista",
+      "deleteCancel": "Peruuta"
+    },
+    "errors": {
+      "loadFailed": "Tunnisteluokkien lataaminen epäonnistui",
+      "createCategoryFailed": "Luokan luominen epäonnistui",
+      "renameCategoryFailed": "Luokan uudelleennimeäminen epäonnistui",
+      "deleteCategoryFailed": "Luokan poistaminen epäonnistui",
+      "createTagFailed": "Tunnisteen luominen epäonnistui",
+      "createTagCategorizeFailed": "Tunniste luotiin, mutta sen lisääminen luokkaan epäonnistui",
+      "reorderFailed": "Tunnisteiden uudelleenjärjestäminen epäonnistui"
+    }
   },
   "folderView": {
+    "columns": {
+      "title": "Otsikko",
+      "folder": "Kansio",
+      "tags": "Tunnisteet",
+      "created": "Luotu",
+      "modified": "Muokattu",
+      "wordCount": "Sanamäärä",
+      "kind": "Tyyppi"
+    },
+    "defaultViewName": "Oletus",
+    "selectView": "Valitse näkymä",
     "columnHeader": {
       "doubleClickToEdit": "{name} (muokkaa kaksoisnapsauttamalla)",
       "dragToReorder": "Järjestä sarake uudelleen vetämällä: {name}"
     },
-    "columns": {
-      "created": "Luotu",
-      "folder": "Kansio",
-      "kind": "Tyyppi",
-      "modified": "Muokattu",
-      "tags": "Tunnisteet",
-      "title": "Otsikko",
-      "wordCount": "Sanamäärä"
-    },
-    "defaultViewName": "Oletus",
     "groupHeader": {
       "noteCount": "{count, plural, one {# muistiinpano} other {# muistiinpanoa}}"
+    }
+  },
+  "mindMap": {
+    "regionLabel": "Miellekartta: {title}, {count, plural, one {# solmu} other {# solmua}}",
+    "treeLabel": "Miellekartan jäsennys: {title}",
+    "emptyHint": "Lisää muistiinpanoon otsikko, niin kartta alkaa haarautua.",
+    "linkHint": "linkki toiselle sivulle",
+    "chain": {
+      "separator": "→"
     },
-    "selectView": "Valitse näkymä"
+    "more": "{count, plural, one {+# lisää} other {+# lisää}}",
+    "nodeCapNotice": "Kartta on enimmäiskoossaan ({count, plural, one {# solmu} other {# solmua}}); loput on koottu lähimpään yläpuoliseen solmuun.",
+    "badge": {
+      "table": "{count, plural, one {# taulukko} other {# taulukkoa}}",
+      "code": "{count, plural, one {# koodilohko} other {# koodilohkoa}}",
+      "image": "{count, plural, one {# kuva} other {# kuvaa}}",
+      "quote": "{count, plural, one {# lainaus} other {# lainausta}}",
+      "embed": "{count, plural, one {# upotus} other {# upotusta}}",
+      "bookmark": "{count, plural, one {# kirjanmerkki} other {# kirjanmerkkiä}}",
+      "file": "{count, plural, one {# tiedosto} other {# tiedostoa}}"
+    },
+    "toolbar": {
+      "label": "Miellekartan toiminnot",
+      "fit": "Sovita näkymään",
+      "copyImage": "Kopioi kuvana",
+      "copyVector": "Kopioi vektorina",
+      "imageCopied": "Kartta kopioitu kuvana",
+      "vectorCopied": "Kartta kopioitu vektorigrafiikkana",
+      "copyFailed": "Kartan kopioiminen epäonnistui",
+      "saveCanvas": "Tallenna tauluksi",
+      "saved": "Tallennettu tauluksi ”{title}”",
+      "saveFailed": "Kartan tallentaminen tauluksi epäonnistui",
+      "snapshotOn": "Tilannekuva · {date}"
+    }
+  },
+  "tagAndFilter": {
+    "regionLabel": "Aktiivinen tunnistesuodatin",
+    "matchingAll": "Vastaa kaikkia:",
+    "removeTag": "Poista tunniste {tag} suodattimesta",
+    "clearAll": "Tyhjennä kaikki",
+    "saveSearch": "Tallenna haku",
+    "savedSearches": "Tallennetut haut",
+    "deleteSearch": "Poista tallennettu haku ”{name}”",
+    "saveDialogTitle": "Anna haulle nimi",
+    "saveDialogPlaceholder": "esim. Työpalaverit",
+    "cancel": "Peruuta",
+    "save": "Tallenna",
+    "addToFilterHint": "Lisää tunniste suodattimeen Ctrl/Cmd-napsauttamalla sitä"
   }
 }

@@ -1,21 +1,21 @@
 {
   "app": {
-    "quit": "צא",
+    "quit": "יציאה",
     "preferences": "הגדרות…",
     "checkForUpdates": "חיפוש עדכונים…",
-    "exit": "יציאה",
-    "hide": "הסתר את MemryNote",
-    "hideOthers": "הסתר אחרים",
     "services": "שירותים",
-    "unhide": "הצג הכל"
+    "hide": "הסתרת MemryNote",
+    "hideOthers": "הסתרת האחרים",
+    "unhide": "הצגת הכול",
+    "exit": "יציאה"
   },
   "file": {
     "label": "קובץ",
-    "newNote": "הערה חדשה",
-    "close": "סגור חלון",
-    "closeTab": "סגור כרטיסייה",
-    "exportPdf": "ייצא ל-PDF…",
-    "openQuickly": "פתח במהירות…"
+    "newNote": "פתק חדש",
+    "openQuickly": "פתיחה מהירה…",
+    "exportPdf": "ייצוא ל-PDF…",
+    "closeTab": "סגירת הכרטיסייה",
+    "close": "סגירת החלון"
   },
   "navigation": {
     "back": "חזרה",
@@ -23,71 +23,76 @@
   },
   "edit": {
     "label": "עריכה",
-    "undo": "בטל",
-    "redo": "בצע מחדש",
-    "cut": "גזור",
-    "copy": "העתק",
-    "paste": "הדבק",
-    "selectAll": "בחר הכל",
-    "find": "מצא",
+    "undo": "ביטול פעולה",
+    "redo": "ביצוע חוזר",
+    "cut": "גזירה",
+    "copy": "העתקה",
+    "paste": "הדבקה",
+    "selectAll": "בחירת הכול",
+    "find": "חיפוש",
     "speech": "דיבור",
-    "delete": "מחק",
-    "pasteAndMatchStyle": "הדבק והתאם סגנון",
-    "startSpeaking": "התחל לדבר",
-    "stopSpeaking": "הפסק לדבר"
+    "pasteAndMatchStyle": "הדבקה והתאמת סגנון",
+    "delete": "מחיקה",
+    "startSpeaking": "התחלת הקראה",
+    "stopSpeaking": "הפסקת הקראה",
+    "addToDictionary": "הוספה למילון",
+    "noSuggestions": "אין הצעות"
   },
-  "view": {
-    "label": "תצוגה",
-    "reload": "טען מחדש",
-    "toggleDevTools": "הצג/הסתר כלים למפתחים",
-    "toggleFullscreen": "החלף מצב מסך מלא",
-    "theme": "ערכת נושא",
-    "themeDark": "כהה",
-    "themeLight": "בהיר",
-    "themeSystem": "מערכת",
-    "themeWhite": "נייר",
-    "toggleDayPanel": "הצג/הסתר לוח יום",
-    "toggleSidebar": "הצג/הסתר סרגל צד",
-    "actualSize": "גודל ממשי",
-    "zoomIn": "הגדל",
-    "zoomOut": "הקטן"
+  "insert": {
+    "label": "הוספה",
+    "codeBlock": "בלוק קוד",
+    "table": "טבלה",
+    "bulletList": "רשימת תבליטים",
+    "numberedList": "רשימה ממוספרת",
+    "taskList": "רשימת משימות",
+    "attachment": "הוספת קובץ מצורף…"
   },
   "format": {
-    "body": "גוף הטקסט",
-    "bold": "מודגש",
-    "code": "קוד",
+    "label": "עיצוב",
     "heading1": "כותרת 1",
     "heading2": "כותרת 2",
     "heading3": "כותרת 3",
     "heading4": "כותרת 4",
     "heading5": "כותרת 5",
     "heading6": "כותרת 6",
-    "highlight": "הדגשה",
+    "body": "גוף הטקסט",
+    "bold": "מודגש",
     "italic": "נטוי",
-    "label": "עיצוב",
+    "code": "קוד",
+    "highlight": "סימון",
     "strikethrough": "קו חוצה"
   },
-  "help": {
-    "about": "אודות MemryNote",
-    "documentation": "תיעוד",
-    "label": "עזרה",
-    "shortcuts": "קיצורי מקלדת",
-    "aboutVersion": "גרסה {version}"
-  },
-  "insert": {
-    "attachment": "הוסף קובץ מצורף…",
-    "bulletList": "רשימת תבליטים",
-    "codeBlock": "בלוק קוד",
-    "label": "הוספה",
-    "numberedList": "רשימה ממוספרת",
-    "table": "טבלה",
-    "taskList": "רשימת משימות"
+  "view": {
+    "label": "תצוגה",
+    "reload": "טעינה מחדש",
+    "toggleDevTools": "הצגה או הסתרה של כלי המפתחים",
+    "toggleFullscreen": "הפעלה או כיבוי של מסך מלא",
+    "toggleSidebar": "הצגה או הסתרה של סרגל הצד",
+    "toggleDayPanel": "הצגה או הסתרה של חלונית היום",
+    "theme": "ערכת נושא",
+    "themeLight": "בהיר",
+    "themeDark": "כהה",
+    "themeWhite": "נייר",
+    "themeSystem": "מערכת",
+    "actualSize": "גודל ממשי",
+    "zoomIn": "הגדלה",
+    "zoomOut": "הקטנה"
   },
   "window": {
     "label": "חלון",
-    "close": "סגור",
-    "front": "הבא הכל לחזית",
-    "minimize": "מזער",
-    "zoom": "זום"
+    "minimize": "מזעור",
+    "zoom": "זום",
+    "front": "הבאת הכול לחזית",
+    "close": "סגירה"
+  },
+  "help": {
+    "label": "עזרה",
+    "documentation": "תיעוד",
+    "shortcuts": "קיצורי מקלדת",
+    "about": "אודות MemryNote",
+    "aboutVersion": "גרסה {version}"
+  },
+  "tray": {
+    "show": "הצגת MemryNote"
   }
 }

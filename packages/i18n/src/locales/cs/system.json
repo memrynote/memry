@@ -1,8 +1,8 @@
 {
   "dialog": {
     "vault": {
-      "title": "Vyberte složku Vault",
-      "button": "Vyberte Vault"
+      "title": "Vyberte složku trezoru",
+      "button": "Vybrat trezor"
     },
     "exportPdf": {
       "title": "Exportovat jako PDF",
@@ -10,7 +10,7 @@
     },
     "exportHtml": {
       "title": "Exportovat jako HTML",
-      "filterName": "HTML dokument"
+      "filterName": "Dokument HTML"
     },
     "import": {
       "filterSupported": "Podporované soubory",
@@ -19,53 +19,54 @@
     "exportCancelled": "Export zrušen",
     "update": {
       "availableTitle": "Aktualizace k dispozici",
-      "availableMessage": "memrynote {version} je k dispozici.",
+      "availableMessage": "Je k dispozici verze memrynote {version}.",
       "availableDetailFallback": "Stáhnout aktualizaci nyní?",
       "buttonDownload": "Stáhnout",
       "buttonLater": "Později",
       "readyTitle": "Aktualizace připravena",
-      "readyMessage": "memrynote {version} byl stažen.",
-      "readyDetailFallback": "Pro dokončení instalace aktualizace restartujte memrynote.",
-      "buttonRestartNow": "Restartujte nyní",
+      "readyMessage": "Verze memrynote {version} byla stažena.",
+      "readyDetailFallback": "Chcete-li dokončit instalaci aktualizace, restartujte aplikaci memrynote.",
+      "buttonRestartNow": "Restartovat nyní",
       "releaseNotesLabel": "Poznámky k vydání:"
     },
     "pair": {
-      "buttonAllow": "Povolit",
-      "buttonDeny": "Odmítnout",
-      "buttonPair": "Spárovat",
+      "title": "Spárovat rozšíření prohlížeče",
       "message": "Povolit rozšíření prohlížeče Memry odesílat zachycené položky do této aplikace?",
-      "title": "Spárovat rozšíření prohlížeče"
+      "buttonAllow": "Povolit",
+      "buttonDeny": "Zamítnout",
+      "buttonPair": "Spárovat"
     }
   },
   "notification": {
+    "inboxReview": {
+      "title": "Čas projít Doručené",
+      "body": "Máte {count, plural, one {# položku} few {# položky} many {# položky} other {# položek}} ke zpracování.",
+      "testBody": "Toto je test – takto budou vypadat vaše připomenutí denní kontroly."
+    },
     "reminder": {
       "note": "Připomenutí poznámky",
       "journal": "Připomenutí deníku",
-      "highlight": "Zvýraznit připomenutí",
-      "fallback": "Připomenutí je splatné",
-      "default": "Připomenutí",
-      "task": "Připomenutí úkolu"
-    },
-    "inboxReview": {
-      "body": "Máte {count, plural, one {# položku} few {# položky} many {# položky} other {# položek}} ke zpracování.",
-      "testBody": "Toto je test — takto budou vypadat vaše denní připomenutí.",
-      "title": "Čas projít doručenou poštu"
+      "highlight": "Připomenutí zvýraznění",
+      "task": "Připomenutí úkolu",
+      "fallback": "Připomenutí",
+      "default": "Připomenutí"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "Čas připomenutí musí být v budoucnosti",
     "definitionNotFound": "Definice nenalezena",
     "noteNotFound": "Poznámka nenalezena",
-    "updateFailed": "Aktualizace se nezdařila"
+    "updateFailed": "Aktualizace se nezdařila",
+    "updateReadOnlyVolume": "Aktualizace nelze nainstalovat, když je aplikace memrynote spuštěna z tohoto umístění. Přesuňte ji do složky Aplikace a otevřete ji znovu."
   },
   "startup": {
-    "failed": {
-      "body": "K tomu může dojít, když je na disku velmi málo volného místa nebo když máte starší grafické ovladače. Zkuste uvolnit místo na disku a poté MemryNote znovu otevřít. Pokud se to bude opakovat, obvykle pomůže přeinstalace.",
-      "title": "MemryNote se nepodařilo dokončit spuštění"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote se automaticky znovu otevře.",
-      "title": "Instaluje se aktualizace…"
+      "title": "Instaluje se aktualizace…",
+      "subtitle": "MemryNote se automaticky znovu otevře."
+    },
+    "failed": {
+      "title": "Spuštění aplikace MemryNote se nepodařilo dokončit",
+      "body": "K tomu může dojít, když je na disku velmi málo volného místa nebo když máte starší grafické ovladače. Zkuste uvolnit místo na disku a poté MemryNote znovu otevřít. Pokud se to bude opakovat, obvykle pomůže přeinstalace."
     }
   }
 }

@@ -1,77 +1,137 @@
 {
   "page": {
-    "loading": "Grafikon betöltése...",
-    "load-failed": "Nem sikerült betölteni a grafikon adatait",
-    "try-again": "Próbáld újra",
-    "aria-label": "Tudásgráf {nodeCount, plural, one {# csomópont} other {# csomópontok}} és {edgeCount, plural, one {# csatlakozás} other {# csatlakozások}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "Grafikon csomópontok",
+    "loading": "Gráf betöltése…",
+    "load-failed": "Nem sikerült betölteni a gráf adatait",
+    "render-failed": "A gráf nem érhető el ezen az eszközön",
+    "render-failed-description": "Ez az eszköz nem tudta elindítani a grafikus megjelenítőt. A jegyzetei biztonságban vannak.",
+    "try-again": "Újrapróbálkozás",
+    "aria-label": "Tudásgráf {nodeCount, plural, one {# csomóponttal} other {# csomóponttal}} és {edgeCount, plural, one {# kapcsolattal} other {# kapcsolattal}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Gráf csomópontjai",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "A tudás grafikonja",
-    "description": "A jegyzetei, feladatai és projektjei közötti kapcsolatok interaktív grafikonként jelennek meg itt.",
+    "title": "Tudásgráf",
+    "description": "A jegyzetei, feladatai és projektjei közötti kapcsolatok interaktív gráfként jelennek meg itt.",
     "link-title": "Kapcsolja össze a jegyzeteit",
-    "link-description": "Használja a [[wikilinks]]-et az ötletek összekapcsolásához a jegyzetek között",
+    "link-description": "Kösse össze ötleteit a jegyzetek között [[wikihivatkozások]] segítségével",
     "discover-title": "Fedezze fel a mintákat",
-    "discover-description": "Ahogy a kapcsolatok növekednek, a klaszterek és a témák természetesen jelennek meg"
+    "discover-description": "Ahogy gyarapodnak a kapcsolatok, maguktól kirajzolódnak a csoportok és a témák"
   },
   "entity": {
-    "note": "megjegyzés",
-    "notes": "jegyzetek",
-    "journal": "folyóirat",
-    "journals": "folyóiratok",
-    "task": "feladatot",
-    "tasks": "feladatokat",
+    "note": "jegyzet",
+    "notes": "jegyzet",
+    "journal": "naplóbejegyzés",
+    "journals": "naplóbejegyzés",
+    "task": "feladat",
+    "tasks": "feladat",
     "project": "projekt",
-    "projects": "projektek",
+    "projects": "projekt",
     "tag": "címke",
-    "tags": "címkéket",
+    "tags": "címke",
     "orphan": "árva",
-    "orphans": "árvák",
-    "unresolved": "megoldatlan"
+    "orphans": "árva",
+    "unresolved": "nem létező",
+    "category": "kategória"
   },
   "summary": {
     "node-type-count": "{count} {label}"
   },
   "control": {
-    "show-settings": "Grafikon beállításai",
+    "show-settings": "Gráfbeállítások",
     "hide-settings": "Beállítások elrejtése",
     "reset-filters": "Szűrők visszaállítása",
     "filters": "Szűrők",
-    "display": "Kijelző",
-    "show-labels": "Címkék megjelenítése",
-    "focus-depth": "mélység {depth}",
-    "clear-focus": "Tiszta fókuszált csomópont"
+    "display": "Megjelenítés",
+    "show-labels": "Feliratok megjelenítése",
+    "live-motion": "Élő mozgás",
+    "focus-depth": "mélység: {depth}",
+    "clear-focus": "Fókusz megszüntetése",
+    "relayout": "Elrendezés frissítése",
+    "categories": "Címkekategóriák",
+    "color-by-category": "Színezés kategória szerint",
+    "no-categories": "Csoportosítsa a címkéket kategóriákba a Címkeközpontban, hogy a gráfot kategóriánként színezhesse és összecsukhassa.",
+    "collapse-category": "{name} összecsukása",
+    "expand-category": "{name} kibontása",
+    "uncategorized": "Besorolatlan"
   },
   "filter": {
-    "notes": "Megjegyzések",
-    "journals": "Folyóiratok",
+    "notes": "Jegyzetek",
+    "journals": "Naplóbejegyzések",
     "tasks": "Feladatok",
     "projects": "Projektek",
     "tags": "Címkék",
     "orphans": "Árvák",
-    "toggle-entity": "Váltás: {label}",
-    "toggle-orphans": "Árva csomópontok váltása"
+    "canvas-edges": "Vászonkapcsolatok",
+    "toggle-entity": "{label} megjelenítése/elrejtése",
+    "toggle-orphans": "Árva csomópontok megjelenítése/elrejtése"
   },
   "search": {
-    "placeholder": "Csomópontok keresése...",
-    "clear": "Grafikonkeresés törlése"
+    "placeholder": "Csomópontok keresése…",
+    "clear": "Gráfkeresés törlése"
   },
   "context-menu": {
-    "untitled": "Cím nélkül",
-    "focus-node": "Koncentráljon erre a csomópontra",
+    "untitled": "Névtelen",
+    "focus-node": "Fókusz erre a csomópontra",
     "open-new-tab": "Megnyitás új lapon",
     "create-note": "Jegyzet létrehozása",
-    "copy-title": "Cím másolása"
+    "copy-title": "Cím másolása",
+    "link-to": "Hivatkozás hozzáadása…",
+    "add-tag": "Címke hozzáadása…",
+    "back": "Vissza",
+    "link-search": "Jegyzetek keresése…",
+    "tag-search": "Címke keresése vagy létrehozása…",
+    "no-matches": "Nincs találat",
+    "create-tag": "#{tag} létrehozása",
+    "remove-link": "Hivatkozás eltávolítása: {title}",
+    "unpin": "Kitűzés megszüntetése",
+    "collapse-category": "{name} összecsukása",
+    "expand-category": "{name} kibontása"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {# csatlakozás} other {# csatlakozások}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# kapcsolat} other {# kapcsolat}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# elem} other {# elem}}",
+    "click-to-expand": "Kattintson a kibontáshoz"
   },
   "local-panel": {
-    "loading": "Grafikon betöltése...",
+    "loading": "Gráf betöltése…",
     "empty": "Nem találhatók kapcsolatok",
-    "open-full": "Teljes grafikon megnyitása",
-    "close": "Grafikon bezárása"
+    "open-full": "Teljes gráf megnyitása",
+    "close": "Gráf bezárása",
+    "pin": "Kitűzés ehhez a jegyzethez",
+    "unpin": "Kitűzés megszüntetése és a megnyitott jegyzet követése",
+    "pinned-to": "Kitűzve: {title}"
+  },
+  "edit": {
+    "linked": "Összekapcsolva: {source} → {target} („{property}” tulajdonság)",
+    "unlinked": "Hivatkozás eltávolítva: {source} → {target}",
+    "already-linked": "Már létezik hivatkozás: {source} → {target}",
+    "property-conflict": "A jegyzet „{property}” tulajdonsága nem kapcsolat típusú, ezért a hivatkozás nem jött létre",
+    "link-unsupported": "Hivatkozás csak jegyzetek között hozható létre",
+    "link-failed": "Nem sikerült hozzáadni a hivatkozást",
+    "unlink-failed": "Nem sikerült eltávolítani a hivatkozást",
+    "tag-added": "#{tag} címke hozzáadva ehhez a jegyzethez: {note}",
+    "tag-exists": "Ennek a jegyzetnek már van #{tag} címkéje",
+    "tag-failed": "Nem sikerült hozzáadni a címkét",
+    "undo-failed": "Nem sikerült visszavonni a módosítást"
+  },
+  "relayout-confirm": {
+    "title": "Frissíti a gráf elrendezését?",
+    "description": "Minden kitűzött csomópont felszabadul, és a gráf új elrendezésbe rendeződik. A mentett elrendezés elvész.",
+    "cancel": "Mégse",
+    "confirm": "Elrendezés frissítése"
+  },
+  "views": {
+    "title": "Mentett nézetek",
+    "unsaved": "Nem mentett nézet",
+    "edited": "Szerkesztve",
+    "empty": "Még nincsenek mentett nézetek",
+    "save-as": "Mentés új nézetként…",
+    "update": "A(z) „{name}” nézet frissítése",
+    "delete": "Nézet törlése: {name}",
+    "save-dialog-title": "Gráfnézet mentése",
+    "save-dialog-placeholder": "Nézet neve",
+    "cancel": "Mégse",
+    "save": "Mentés"
   }
 }

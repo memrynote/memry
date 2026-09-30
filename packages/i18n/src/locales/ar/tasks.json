@@ -3,7 +3,10 @@
     "tabs": {
       "label": "طرق عرض المهام",
       "today": "اليوم",
-      "all": "الكل"
+      "tomorrow": "غدًا",
+      "next7": "الأيام الـ7 القادمة",
+      "all": "الكل",
+      "archived": "المؤرشفة"
     },
     "viewMode": {
       "label": "وضع العرض",
@@ -12,10 +15,10 @@
     },
     "projectScope": {
       "allProjects": "جميع المشاريع",
-      "searchProjects": "مشاريع البحث...",
+      "searchProjects": "البحث في المشاريع…",
       "editProject": "تحرير {name}",
-      "unstarSavedFilter": "إلغاء النجمة {name}",
-      "openByDefault": "فتح المهام على {name} افتراضيًا",
+      "unstarSavedFilter": "إزالة النجمة من {name}",
+      "openByDefault": "فتح المهام في {name} افتراضيًا",
       "defaultProject": "المشروع الافتراضي",
       "setAsDefault": "تعيين كافتراضي"
     }
@@ -27,64 +30,98 @@
     "titlePlaceholder": "ما الذي يجب القيام به؟",
     "namePlaceholder": "اسم المهمة",
     "description": "الوصف",
-    "descriptionPlaceholder": "إضافة وصف...",
+    "descriptionPlaceholder": "إضافة وصف…",
     "details": "تفاصيل المهمة",
     "status": "الحالة",
     "priority": "الأولوية",
+    "tags": "الوسوم",
+    "startDate": "تاريخ البدء",
+    "changeStartDate": "البدء: {date}. انقر للتغيير.",
     "dueDate": "تاريخ الاستحقاق",
-    "startsOn": "يبدأ {date}",
-    "dueOn": "مستحق {date}",
-    "project": "مشروع",
-    "repeat": "كرر",
-    "createAnother": "إنشاء آخر",
+    "startsOn": "البدء: {date}",
+    "dueOn": "الاستحقاق: {date}",
+    "reminder": "التذكير",
+    "project": "المشروع",
+    "repeat": "التكرار",
+    "createAnother": "إنشاء مهمة أخرى",
     "delete": "حذف المهمة",
-    "created": "تم إنشاء {date}",
-    "reminder": "تذكير",
-    "tags": "العلامات",
+    "created": "تاريخ الإنشاء: {date}",
     "priorityLabels": {
-      "high": "عالية",
+      "none": "بلا أولوية",
       "low": "منخفضة",
       "medium": "متوسطة",
-      "none": "بلا أولوية",
+      "high": "عالية",
       "urgent": "عاجلة"
+    },
+    "unarchive": "إلغاء أرشفة المهمة",
+    "archivedOn": "تاريخ الأرشفة: {date}"
+  },
+  "reminders": {
+    "summary": "تذكير: {date}",
+    "summaryWithMore": "تذكير: {date} (+{count} أخرى)",
+    "hasReminders": "يحتوي على تذكيرات",
+    "setReminder": "ضبط تذكير",
+    "toast": {
+      "set": "تم ضبط التذكير",
+      "setFailed": "تعذّر ضبط التذكير",
+      "updated": "تم تحديث التذكير",
+      "updateFailed": "تعذّر تحديث التذكير",
+      "deleted": "تم حذف التذكير",
+      "deleteFailed": "تعذّر حذف التذكير"
     }
   },
   "filters": {
     "filter": "تصفية",
-    "emptyTitle": "لا توجد مهام تتطابق مع عوامل التصفية الخاصة بك",
-    "emptyHelp": "حاول تعديل المرشحات أو",
+    "emptyTitle": "لا توجد مهام تطابق عوامل التصفية",
+    "emptyHelp": "جرّب تعديل عوامل التصفية أو",
     "groupBy": "تجميع حسب",
-    "groupByOptions": "تجميع حسب الخيارات",
-    "sortAscending": "فرز تصاعدي",
-    "sortDescending": "الترتيب تنازليًا",
+    "groupByOptions": "خيارات التجميع",
+    "sortAscending": "ترتيب تصاعدي",
+    "sortDescending": "ترتيب تنازلي",
+    "sortDirectionAscending": "تصاعدي",
+    "sortDirectionDescending": "تنازلي",
+    "groupByFields": {
+      "dueDate": "تاريخ الاستحقاق",
+      "priority": "الأولوية",
+      "status": "الحالة",
+      "createdAt": "تاريخ الإنشاء",
+      "title": "العنوان",
+      "project": "المشروع",
+      "completedAt": "تاريخ الإكمال",
+      "folder": "المجلد",
+      "note": "الملاحظة"
+    },
+    "groups": {
+      "vaultRoot": "جذر الخزنة",
+      "noNote": "بلا ملاحظة"
+    },
     "dueDate": {
       "any": "أي تاريخ استحقاق",
-      "custom": "نطاق مخصص...",
-      "nextWeek": "الأسبوع القادم",
       "none": "بلا تاريخ استحقاق",
       "overdue": "متأخرة",
-      "thisMonth": "هذا الشهر",
-      "thisWeek": "هذا الأسبوع",
       "today": "اليوم",
-      "tomorrow": "غدًا"
+      "tomorrow": "غدًا",
+      "thisWeek": "هذا الأسبوع",
+      "nextWeek": "الأسبوع القادم",
+      "thisMonth": "هذا الشهر",
+      "custom": "نطاق مخصص…"
     },
     "quickPresets": {
-      "dueThisWeek": "مستحقة هذا الأسبوع",
-      "highPriority": "أولوية عالية",
-      "noDueDate": "بلا تاريخ استحقاق",
       "overdue": "متأخرة",
-      "repeating": "متكررة"
+      "highPriority": "أولوية عالية",
+      "dueThisWeek": "مستحقة هذا الأسبوع",
+      "repeating": "المتكررة",
+      "noDueDate": "بلا تاريخ استحقاق"
     },
-    "repeatTypeOneTime": "لمرة واحدة",
-    "repeatTypeRepeating": "متكررة"
+    "repeatTypeRepeating": "متكررة",
+    "repeatTypeOneTime": "لمرة واحدة"
   },
   "quickAdd": {
-    "label": "مهمة إضافة سريعة",
-    "focusDescription": "التركيز على إضافة مدخلات سريعة",
-    "placeholder": "أضف مهمة…    !today  !!high  #project",
+    "label": "إضافة مهمة سريعة",
+    "placeholder": "إضافة مهمة…    @tomorrow  !high  +مشروع  #وسم  [[ملاحظة]]  every monday",
     "presets": {
       "menu": "خيارات المهمة",
-      "dueDate": "الاستحقاق {date}. تغيير تاريخ الاستحقاق",
+      "dueDate": "الاستحقاق: {date}. تغيير تاريخ الاستحقاق",
       "noDate": "بلا تاريخ",
       "linkNote": "ربط ملاحظة",
       "openDetails": "فتح كل التفاصيل",
@@ -109,181 +146,234 @@
   "drawer": {
     "close": "إغلاق تفاصيل المهمة",
     "openInTasks": "فتح في المهام",
-    "subIssues": "القضايا الفرعية",
-    "addSubIssue": "إضافة قضية فرعية",
-    "subIssuePlaceholder": "إضافة موضوع فرعي...",
-    "noSubIssues": "لا توجد قضايا فرعية حتى الآن",
-    "linkedNotes": "الملاحظات المرتبطة",
-    "linkNote": "ربط ملاحظة",
+    "resize": "تغيير حجم اللوحة الجانبية",
+    "subIssues": "المهام الفرعية",
+    "addSubIssue": "إضافة مهمة فرعية",
+    "subIssuePlaceholder": "إضافة مهمة فرعية…",
+    "noSubIssues": "لا توجد مهام فرعية بعد",
+    "linkedNotes": "ذات صلة",
+    "linkNote": "إضافة عنصر ذي صلة",
     "loading": "جارٍ التحميل…",
-    "searchNotes": "ملاحظات البحث...",
-    "noMatchingNotes": "لا توجد ملاحظات مطابقة",
-    "noNotesAvailable": "لا توجد ملاحظات متاحة",
-    "noLinkedNotes": "لا توجد ملاحظات مرتبطة حتى الآن",
-    "removeLinkTo": "قم بإزالة الرابط إلى {title}",
-    "removeLinkFallback": "ملاحظة",
+    "searchNotes": "البحث عن عناصر ذات صلة…",
+    "noMatchingNotes": "لا توجد عناصر مطابقة",
+    "noNotesAvailable": "لا توجد عناصر متاحة",
+    "noLinkedNotes": "لا توجد عناصر ذات صلة بعد",
+    "removeLinkTo": "إزالة العنصر ذي الصلة {title}",
+    "removeLinkFallback": "عنصر",
+    "related": "ذات صلة",
     "addRelatedItem": "إضافة عنصر ذي صلة",
+    "searchRelated": "البحث عن عناصر ذات صلة…",
     "noMatchingRelated": "لا توجد عناصر مطابقة",
     "noRelatedAvailable": "لا توجد عناصر متاحة",
     "noRelatedItems": "لا توجد عناصر ذات صلة بعد",
-    "related": "ذات صلة",
-    "relatedItemFallback": "عنصر",
     "removeRelatedItem": "إزالة العنصر ذي الصلة {title}",
-    "resize": "تغيير حجم اللوحة",
-    "searchRelated": "البحث عن ذات الصلة…"
+    "relatedItemFallback": "عنصر",
+    "relatedItemMissing": "لم يعد هذا العنصر ذو الصلة موجودًا في هذه الخزنة.",
+    "activity": "النشاط",
+    "activityShowAll": "إظهار الكل ({count})",
+    "activityEmpty": "لا يوجد شيء مسجل بعد. تظهر هنا التعديلات على هذه المهمة.",
+    "activityLoading": "جارٍ تحميل النشاط…",
+    "activityError": "تعذّر تحميل النشاط.",
+    "activityMore": "تحميل المزيد",
+    "activityTitle": "النشاط — {title}",
+    "activityDescription": "كل تغيير على هذه المهمة، من الأحدث إلى الأقدم.",
+    "activityFilter": "تصفية حسب نوع التغيير",
+    "activityFilterAll": "كل التغييرات",
+    "activityRetention": "تتم إزالة النشاط الأقدم من {days} يومًا.",
+    "activityToday": "اليوم",
+    "activityYesterday": "أمس",
+    "activityByYou": "أنت",
+    "activityBySync": "جهاز آخر",
+    "activityByGoogle": "Google Calendar",
+    "activityActionCreated": "تم الإنشاء",
+    "activityActionUpdated": "تم التحديث",
+    "activityActionCompleted": "تم الإكمال",
+    "activityActionUncompleted": "تمّت إعادة الفتح",
+    "activityActionMoved": "تم النقل",
+    "activityActionDeleted": "تم الحذف",
+    "activityActionSuperseded": "تم الاستبدال",
+    "activitySupersededNote": "تم استبدالها من جهاز آخر",
+    "activityCharsAdded": "الأحرف: +{count}",
+    "activityCharsRemoved": "الأحرف: {count}",
+    "activityCharsSame": "تمّت إعادة الصياغة",
+    "activityEmptyValue": "فارغ",
+    "activityFieldTitle": "العنوان",
+    "activityFieldDescription": "الوصف",
+    "activityFieldStatusId": "الحالة",
+    "activityFieldPriority": "الأولوية",
+    "activityFieldDueDate": "تاريخ الاستحقاق",
+    "activityFieldDueTime": "وقت الاستحقاق",
+    "activityFieldStartDate": "تاريخ البدء",
+    "activityFieldProjectId": "المشروع",
+    "activityFieldParentId": "المهمة الأصل",
+    "activityFieldTags": "الوسوم",
+    "activityFieldLinkedNoteIds": "العناصر ذات الصلة",
+    "activityFieldCompletedAt": "الإكمال",
+    "activityFieldArchivedAt": "الأرشفة",
+    "activityFieldRepeatConfig": "التكرار",
+    "activityFieldSourceNoteId": "الملاحظة المصدر",
+    "activityFrom": "من {value}",
+    "activityTo": "إلى {value}",
+    "activityValueChanged": "تم التغيير",
+    "activityUnknownDate": "بلا تاريخ",
+    "activityFieldRepeatFrom": "التكرار من",
+    "activityFieldIsRepeating": "متكررة"
   },
   "kanban": {
     "board": "لوحة كانبان",
     "empty": {
       "default": {
-        "subtitle": "اسحب المهام إلى هنا أو انقر + للإضافة",
-        "title": "لا توجد مهام"
+        "title": "لا توجد مهام",
+        "subtitle": "اسحب المهام إلى هنا أو انقر + للإضافة"
       },
       "done": {
-        "subtitle": "أكمل المهام لتظهر هنا",
-        "title": "لا توجد مهام مكتملة"
+        "title": "لا توجد مهام مكتملة",
+        "subtitle": "أكمل المهام لتظهر هنا"
       },
       "schedule": {
-        "subtitle": "اسحب المهام إلى هنا لإعادة جدولتها",
-        "title": "لا شيء مجدول"
+        "title": "لا شيء مجدول",
+        "subtitle": "اسحب المهام إلى هنا لإعادة جدولتها"
       }
     }
   },
   "toasts": {
     "projectUpdated": "تم تحديث المشروع",
     "projectCreated": "تم إنشاء المشروع",
-    "projectSaveError": "فشل حفظ المشروع",
-    "projectArchived": "تم أرشفة المشروع",
-    "projectArchiveError": "فشل في أرشفة المشروع",
+    "projectSaveError": "تعذّر حفظ المشروع",
+    "projectArchived": "تمّت أرشفة المشروع",
+    "projectArchiveError": "تعذّر أرشفة المشروع",
     "projectDeleted": "تم حذف المشروع",
-    "projectDeleteError": "فشل في حذف المشروع",
+    "projectDeleteError": "تعذّر حذف المشروع",
     "filtersCleared": "تم مسح عوامل التصفية",
-    "filterSaved": "تم حفظ الفلتر",
-    "filterDeleted": "تم حذف الفلتر",
-    "filterApplied": "تم تطبيق \"{name}\"",
+    "filterSaved": "تم حفظ عامل التصفية",
+    "filterDeleted": "تم حذف عامل التصفية",
+    "filterApplied": "تم تطبيق «{name}»",
     "deleted": "تم حذف المهمة",
-    "deletedSeries": "السلسلة كاملة!",
+    "deletedSeries": "اكتملت السلسلة!",
     "completed": "اكتملت المهمة!",
     "archived": "تمت أرشفة المهمة",
-    "undoNotAvailableForDelete": "التراجع غير متاح للحذف",
+    "undoNotAvailableForDelete": "لا يمكن التراجع عن الحذف",
     "alreadyAllComplete": "جميع المهام المحددة مكتملة بالفعل",
     "noCompletedSelected": "لم يتم تحديد أي مهام مكتملة",
-    "completeFailed": "فشل في إكمال المهام",
-    "deleteFailed": "فشل في حذف المهام",
-    "moveFailed": "فشل في نقل المهام",
+    "completeFailed": "تعذّر إكمال المهام",
+    "deleteFailed": "تعذّر حذف المهام",
+    "moveFailed": "تعذّر نقل المهام",
     "bulk": {
-      "archived": "{count, plural, zero {تمت أرشفة # مهمة} one {تمت أرشفة مهمة واحدة} two {تمت أرشفة مهمتين} few {تمت أرشفة # مهام} many {تمت أرشفة # مهمة} other {تمت أرشفة # مهمة}}",
       "completed": "{count, plural, zero {تم إكمال # مهمة} one {تم إكمال مهمة واحدة} two {تم إكمال مهمتين} few {تم إكمال # مهام} many {تم إكمال # مهمة} other {تم إكمال # مهمة}}",
-      "deleted": "{count, plural, zero {تم حذف # مهمة} one {تم حذف مهمة واحدة} two {تم حذف مهمتين} few {تم حذف # مهام} many {تم حذف # مهمة} other {تم حذف # مهمة}}",
-      "deletedDescription": "يمكن التراجع عن هذا الإجراء لفترة قصيرة.",
-      "dueDateRemoved": "{count, plural, zero {تمت إزالة تاريخ الاستحقاق من # مهمة} one {تمت إزالة تاريخ الاستحقاق من مهمة واحدة} two {تمت إزالة تاريخ الاستحقاق من مهمتين} few {تمت إزالة تاريخ الاستحقاق من # مهام} many {تمت إزالة تاريخ الاستحقاق من # مهمة} other {تمت إزالة تاريخ الاستحقاق من # مهمة}}",
-      "dueDateSet": "{count, plural, zero {تم تحديد تاريخ الاستحقاق لـ# مهمة} one {تم تحديد تاريخ الاستحقاق لمهمة واحدة} two {تم تحديد تاريخ الاستحقاق لمهمتين} few {تم تحديد تاريخ الاستحقاق لـ# مهام} many {تم تحديد تاريخ الاستحقاق لـ# مهمة} other {تم تحديد تاريخ الاستحقاق لـ# مهمة}}",
-      "movedToProject": "{count, plural, zero {تم نقل # مهمة إلى {project}} one {تم نقل مهمة واحدة إلى {project}} two {تم نقل مهمتين إلى {project}} few {تم نقل # مهام إلى {project}} many {تم نقل # مهمة إلى {project}} other {تم نقل # مهمة إلى {project}}}",
-      "movedToStatus": "{count, plural, zero {تم نقل # مهمة إلى {status}} one {تم نقل مهمة واحدة إلى {status}} two {تم نقل مهمتين إلى {status}} few {تم نقل # مهام إلى {status}} many {تم نقل # مهمة إلى {status}} other {تم نقل # مهمة إلى {status}}}",
+      "undoComplete": "{count, plural, zero {إكمال # مهمة} one {إكمال مهمة واحدة} two {إكمال مهمتين} few {إكمال # مهام} many {إكمال # مهمة} other {إكمال # مهمة}}",
+      "restored": "{count, plural, zero {تمت استعادة # مهمة} one {تمت استعادة مهمة واحدة} two {تمت استعادة مهمتين} few {تمت استعادة # مهام} many {تمت استعادة # مهمة} other {تمت استعادة # مهمة}}",
+      "undoUncomplete": "{count, plural, zero {إلغاء إكمال # مهمة} one {إلغاء إكمال مهمة واحدة} two {إلغاء إكمال مهمتين} few {إلغاء إكمال # مهام} many {إلغاء إكمال # مهمة} other {إلغاء إكمال # مهمة}}",
       "priorityRemoved": "{count, plural, zero {تمت إزالة الأولوية من # مهمة} one {تمت إزالة الأولوية من مهمة واحدة} two {تمت إزالة الأولوية من مهمتين} few {تمت إزالة الأولوية من # مهام} many {تمت إزالة الأولوية من # مهمة} other {تمت إزالة الأولوية من # مهمة}}",
       "prioritySet": "{count, plural, zero {تم تعيين الأولوية إلى {priority} لـ# مهمة} one {تم تعيين الأولوية إلى {priority} لمهمة واحدة} two {تم تعيين الأولوية إلى {priority} لمهمتين} few {تم تعيين الأولوية إلى {priority} لـ# مهام} many {تم تعيين الأولوية إلى {priority} لـ# مهمة} other {تم تعيين الأولوية إلى {priority} لـ# مهمة}}",
-      "restored": "{count, plural, zero {تمت استعادة # مهمة} one {تمت استعادة مهمة واحدة} two {تمت استعادة مهمتين} few {تمت استعادة # مهام} many {تمت استعادة # مهمة} other {تمت استعادة # مهمة}}",
-      "undoArchive": "{count, plural, zero {أرشفة # مهمة} one {أرشفة مهمة واحدة} two {أرشفة مهمتين} few {أرشفة # مهام} many {أرشفة # مهمة} other {أرشفة # مهمة}}",
-      "undoComplete": "{count, plural, zero {إكمال # مهمة} one {إكمال مهمة واحدة} two {إكمال مهمتين} few {إكمال # مهام} many {إكمال # مهمة} other {إكمال # مهمة}}",
-      "undoDelete": "{count, plural, zero {حذف # مهمة} one {حذف مهمة واحدة} two {حذف مهمتين} few {حذف # مهام} many {حذف # مهمة} other {حذف # مهمة}}",
       "undoDueDate": "{count, plural, zero {تم تغيير تاريخ الاستحقاق لـ# مهمة} one {تم تغيير تاريخ الاستحقاق لمهمة واحدة} two {تم تغيير تاريخ الاستحقاق لمهمتين} few {تم تغيير تاريخ الاستحقاق لـ# مهام} many {تم تغيير تاريخ الاستحقاق لـ# مهمة} other {تم تغيير تاريخ الاستحقاق لـ# مهمة}}",
+      "dueDateSet": "{count, plural, zero {تم تحديد تاريخ الاستحقاق لـ# مهمة} one {تم تحديد تاريخ الاستحقاق لمهمة واحدة} two {تم تحديد تاريخ الاستحقاق لمهمتين} few {تم تحديد تاريخ الاستحقاق لـ# مهام} many {تم تحديد تاريخ الاستحقاق لـ# مهمة} other {تم تحديد تاريخ الاستحقاق لـ# مهمة}}",
+      "dueDateRemoved": "{count, plural, zero {تمت إزالة تاريخ الاستحقاق من # مهمة} one {تمت إزالة تاريخ الاستحقاق من مهمة واحدة} two {تمت إزالة تاريخ الاستحقاق من مهمتين} few {تمت إزالة تاريخ الاستحقاق من # مهام} many {تمت إزالة تاريخ الاستحقاق من # مهمة} other {تمت إزالة تاريخ الاستحقاق من # مهمة}}",
       "undoMove": "{count, plural, zero {نقل # مهمة} one {نقل مهمة واحدة} two {نقل مهمتين} few {نقل # مهام} many {نقل # مهمة} other {نقل # مهمة}}",
+      "movedToProject": "{count, plural, zero {تم نقل # مهمة إلى {project}} one {تم نقل مهمة واحدة إلى {project}} two {تم نقل مهمتين إلى {project}} few {تم نقل # مهام إلى {project}} many {تم نقل # مهمة إلى {project}} other {تم نقل # مهمة إلى {project}}}",
       "undoStatus": "{count, plural, zero {الحالة ← {status} لـ# مهمة} one {الحالة ← {status} لمهمة واحدة} two {الحالة ← {status} لمهمتين} few {الحالة ← {status} لـ# مهام} many {الحالة ← {status} لـ# مهمة} other {الحالة ← {status} لـ# مهمة}}",
-      "undoUncomplete": "{count, plural, zero {إلغاء إكمال # مهمة} one {إلغاء إكمال مهمة واحدة} two {إلغاء إكمال مهمتين} few {إلغاء إكمال # مهام} many {إلغاء إكمال # مهمة} other {إلغاء إكمال # مهمة}}"
+      "movedToStatus": "{count, plural, zero {تم نقل # مهمة إلى {status}} one {تم نقل مهمة واحدة إلى {status}} two {تم نقل مهمتين إلى {status}} few {تم نقل # مهام إلى {status}} many {تم نقل # مهمة إلى {status}} other {تم نقل # مهمة إلى {status}}}",
+      "undoArchive": "{count, plural, zero {أرشفة # مهمة} one {أرشفة مهمة واحدة} two {أرشفة مهمتين} few {أرشفة # مهام} many {أرشفة # مهمة} other {أرشفة # مهمة}}",
+      "archived": "{count, plural, zero {تمت أرشفة # مهمة} one {تمت أرشفة مهمة واحدة} two {تمت أرشفة مهمتين} few {تمت أرشفة # مهام} many {تمت أرشفة # مهمة} other {تمت أرشفة # مهمة}}",
+      "undoDelete": "{count, plural, zero {حذف # مهمة} one {حذف مهمة واحدة} two {حذف مهمتين} few {حذف # مهام} many {حذف # مهمة} other {حذف # مهمة}}",
+      "deleted": "{count, plural, zero {تم حذف # مهمة} one {تم حذف مهمة واحدة} two {تم حذف مهمتين} few {تم حذف # مهام} many {تم حذف # مهمة} other {تم حذف # مهمة}}",
+      "deletedDescription": "يمكن التراجع عن هذا الإجراء لفترة قصيرة.",
+      "unarchived": "تمّت استعادة {count} من المهام المؤرشفة",
+      "undoUnarchive": "إلغاء أرشفة {count} من المهام"
     },
     "drag": {
-      "archived": "{count, plural, zero {تمت أرشفة # مهمة} one {تمت أرشفة المهمة} two {تمت أرشفة مهمتين} few {تمت أرشفة # مهام} many {تمت أرشفة # مهمة} other {تمت أرشفة # مهمة}}",
-      "deleted": "{count, plural, zero {تم حذف # مهمة} one {تم حذف المهمة} two {تم حذف مهمتين} few {تم حذف # مهام} many {تم حذف # مهمة} other {تم حذف # مهمة}}",
-      "moved": "{count, plural, zero {تم نقل # مهمة إلى {target}} one {تم النقل إلى {target}} two {تم نقل مهمتين إلى {target}} few {تم نقل # مهام إلى {target}} many {تم نقل # مهمة إلى {target}} other {تم نقل # مهمة إلى {target}}}",
-      "movedTo": "تم النقل إلى {target}",
-      "prioritySet": "{count, plural, zero {تم تعيين أولوية # مهمة إلى {priority}} one {تم تعيين الأولوية إلى {priority}} two {تم تعيين أولوية مهمتين إلى {priority}} few {تم تعيين أولوية # مهام إلى {priority}} many {تم تعيين أولوية # مهمة إلى {priority}} other {تم تعيين أولوية # مهمة إلى {priority}}}",
-      "prioritySetTo": "تم تعيين الأولوية إلى {priority}",
-      "rescheduled": "{count, plural, zero {تمت إعادة جدولة # مهمة إلى {target}} one {تمت إعادة الجدولة إلى {target}} two {تمت إعادة جدولة مهمتين إلى {target}} few {تمت إعادة جدولة # مهام إلى {target}} many {تمت إعادة جدولة # مهمة إلى {target}} other {تمت إعادة جدولة # مهمة إلى {target}}}",
       "rescheduledTo": "تمت إعادة الجدولة إلى {target}",
+      "rescheduled": "{count, plural, zero {تمت إعادة جدولة # مهمة إلى {target}} one {تمت إعادة الجدولة إلى {target}} two {تمت إعادة جدولة مهمتين إلى {target}} few {تمت إعادة جدولة # مهام إلى {target}} many {تمت إعادة جدولة # مهمة إلى {target}} other {تمت إعادة جدولة # مهمة إلى {target}}}",
+      "movedTo": "تم النقل إلى {target}",
+      "moved": "{count, plural, zero {تم نقل # مهمة إلى {target}} one {تم النقل إلى {target}} two {تم نقل مهمتين إلى {target}} few {تم نقل # مهام إلى {target}} many {تم نقل # مهمة إلى {target}} other {تم نقل # مهمة إلى {target}}}",
+      "prioritySetTo": "تم تعيين الأولوية إلى {priority}",
+      "prioritySet": "{count, plural, zero {تم تعيين أولوية # مهمة إلى {priority}} one {تم تعيين الأولوية إلى {priority}} two {تم تعيين أولوية مهمتين إلى {priority}} few {تم تعيين أولوية # مهام إلى {priority}} many {تم تعيين أولوية # مهمة إلى {priority}} other {تم تعيين أولوية # مهمة إلى {priority}}}",
+      "deleted": "{count, plural, zero {تم حذف # مهمة} one {تم حذف المهمة} two {تم حذف مهمتين} few {تم حذف # مهام} many {تم حذف # مهمة} other {تم حذف # مهمة}}",
+      "archived": "{count, plural, zero {تمت أرشفة # مهمة} one {تمت أرشفة المهمة} two {تمت أرشفة مهمتين} few {تمت أرشفة # مهام} many {تمت أرشفة # مهمة} other {تمت أرشفة # مهمة}}",
       "undoArchive": "{count, plural, zero {تمت أرشفة # مهمة} one {تمت أرشفة مهمة واحدة} two {تمت أرشفة مهمتين} few {تمت أرشفة # مهام} many {تمت أرشفة # مهمة} other {تمت أرشفة # مهمة}}"
     },
     "subtasks": {
       "added": "{count, plural, zero {تمت إضافة # مهمة فرعية} one {تمت إضافة مهمة فرعية واحدة} two {تمت إضافة مهمتين فرعيتين} few {تمت إضافة # مهام فرعية} many {تمت إضافة # مهمة فرعية} other {تمت إضافة # مهمة فرعية}}",
-      "completed": "{count, plural, zero {تم إكمال # مهمة فرعية} one {تم إكمال مهمة فرعية واحدة} two {تم إكمال مهمتين فرعيتين} few {تم إكمال # مهام فرعية} many {تم إكمال # مهمة فرعية} other {تم إكمال # مهمة فرعية}}",
-      "deleted": "{count, plural, zero {تم حذف # مهمة فرعية} one {تم حذف مهمة فرعية واحدة} two {تم حذف مهمتين فرعيتين} few {تم حذف # مهام فرعية} many {تم حذف # مهمة فرعية} other {تم حذف # مهمة فرعية}}",
+      "promoted": "تمت ترقية «{title}» إلى مهمة",
       "deletedDescription": "تمت إزالة المهمة الفرعية",
-      "dueDateCleared": "{count, plural, zero {تم مسح تاريخ الاستحقاق لـ# مهمة فرعية} one {تم مسح تاريخ الاستحقاق لمهمة فرعية واحدة} two {تم مسح تاريخ الاستحقاق لمهمتين فرعيتين} few {تم مسح تاريخ الاستحقاق لـ# مهام فرعية} many {تم مسح تاريخ الاستحقاق لـ# مهمة فرعية} other {تم مسح تاريخ الاستحقاق لـ# مهمة فرعية}}",
-      "dueDateSet": "{count, plural, zero {تم تحديد تاريخ الاستحقاق لـ# مهمة فرعية} one {تم تحديد تاريخ الاستحقاق لمهمة فرعية واحدة} two {تم تحديد تاريخ الاستحقاق لمهمتين فرعيتين} few {تم تحديد تاريخ الاستحقاق لـ# مهام فرعية} many {تم تحديد تاريخ الاستحقاق لـ# مهمة فرعية} other {تم تحديد تاريخ الاستحقاق لـ# مهمة فرعية}}",
-      "markedIncomplete": "{count, plural, zero {تم وضع علامة غير مكتملة على # مهمة فرعية} one {تم وضع علامة غير مكتملة على مهمة فرعية واحدة} two {تم وضع علامة غير مكتملة على مهمتين فرعيتين} few {تم وضع علامة غير مكتملة على # مهام فرعية} many {تم وضع علامة غير مكتملة على # مهمة فرعية} other {تم وضع علامة غير مكتملة على # مهمة فرعية}}",
-      "movedUnder": "تم النقل تحت \"{title}\"",
-      "parentAndSubtasksCompleted": "تم إكمال المهمة ومهامها الفرعية",
       "parentDeletedKeepSubtasks": "تم حذف المهمة، وتحويل مهامها الفرعية إلى مهام",
       "parentDeletedWithSubtasks": "تم حذف المهمة ومهامها الفرعية",
+      "parentAndSubtasksCompleted": "تم إكمال المهمة ومهامها الفرعية",
+      "movedUnder": "تم النقل تحت «{title}»",
+      "completed": "{count, plural, zero {تم إكمال # مهمة فرعية} one {تم إكمال مهمة فرعية واحدة} two {تم إكمال مهمتين فرعيتين} few {تم إكمال # مهام فرعية} many {تم إكمال # مهمة فرعية} other {تم إكمال # مهمة فرعية}}",
+      "markedIncomplete": "{count, plural, zero {تم تحديد # مهمة فرعية كغير مكتملة} one {تم تحديد مهمة فرعية واحدة كغير مكتملة} two {تم تحديد مهمتين فرعيتين كغير مكتملتين} few {تم تحديد # مهام فرعية كغير مكتملة} many {تم تحديد # مهمة فرعية كغير مكتملة} other {تم تحديد # مهمة فرعية كغير مكتملة}}",
+      "dueDateSet": "{count, plural, zero {تم تحديد تاريخ الاستحقاق لـ# مهمة فرعية} one {تم تحديد تاريخ الاستحقاق لمهمة فرعية واحدة} two {تم تحديد تاريخ الاستحقاق لمهمتين فرعيتين} few {تم تحديد تاريخ الاستحقاق لـ# مهام فرعية} many {تم تحديد تاريخ الاستحقاق لـ# مهمة فرعية} other {تم تحديد تاريخ الاستحقاق لـ# مهمة فرعية}}",
+      "dueDateCleared": "{count, plural, zero {تم مسح تاريخ الاستحقاق لـ# مهمة فرعية} one {تم مسح تاريخ الاستحقاق لمهمة فرعية واحدة} two {تم مسح تاريخ الاستحقاق لمهمتين فرعيتين} few {تم مسح تاريخ الاستحقاق لـ# مهام فرعية} many {تم مسح تاريخ الاستحقاق لـ# مهمة فرعية} other {تم مسح تاريخ الاستحقاق لـ# مهمة فرعية}}",
       "prioritySet": "{count, plural, zero {تم تعيين الأولوية لـ# مهمة فرعية} one {تم تعيين الأولوية لمهمة فرعية واحدة} two {تم تعيين الأولوية لمهمتين فرعيتين} few {تم تعيين الأولوية لـ# مهام فرعية} many {تم تعيين الأولوية لـ# مهمة فرعية} other {تم تعيين الأولوية لـ# مهمة فرعية}}",
-      "promoted": "تمت ترقية \"{title}\" إلى مهمة"
+      "deleted": "{count, plural, zero {تم حذف # مهمة فرعية} one {تم حذف مهمة فرعية واحدة} two {تم حذف مهمتين فرعيتين} few {تم حذف # مهام فرعية} many {تم حذف # مهمة فرعية} other {تم حذف # مهمة فرعية}}"
     }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
-      "addSubtask": "إضافة مهمة فرعية...",
+      "addSubtask": "إضافة مهمة فرعية…",
       "addSubtask2": "إضافة مهمة فرعية",
-      "enterToAdd": "أدخل للإضافة"
+      "enterToAdd": "Enter للإضافة"
     },
     "componentsTasksBulkActionsBulkActionDropdown": {
-      "for": "ل ",
+      "for": "لعدد ",
       "task": "مهمة"
     },
     "componentsTasksBulkActionsBulkActionToolbar": {
-      "bulkActions": "الإجراءات السائبة",
-      "selected": "مختارة",
-      "complete": "كامل",
+      "bulkActions": "إجراءات جماعية",
+      "selected": "محددة",
+      "complete": "إكمال",
       "priority": "الأولوية",
       "dueDate": "تاريخ الاستحقاق",
-      "moveTo": "انتقل الى",
+      "moveTo": "نقل إلى",
       "status": "الحالة",
-      "archive": "أرشيف",
+      "archive": "أرشفة",
       "delete": "حذف",
       "cancelSelection": "إلغاء التحديد",
-      "cancel": "إلغاء"
+      "cancel": "إلغاء",
+      "unarchive": "إلغاء الأرشفة"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
       "delete": "حذف ",
       "task": "مهمة",
-      "youReAboutToDelete": "أنت على وشك الحذف ",
+      "youReAboutToDelete": "أنت على وشك حذف ",
       "task2": "مهمة",
       "and": "و ",
-      "moreTask": "المزيد من المهمة",
+      "moreTask": "مهام أخرى",
       "thisActionCanBeUndoneForAShortTimeAfterDeletion": "يمكن التراجع عن هذا الإجراء لفترة قصيرة بعد الحذف.",
       "cancel": "إلغاء",
       "delete2": "حذف ",
       "task3": "مهمة"
     },
     "componentsTasksBulkActionsBulkDueDatePicker": {
-      "setDueDateFor": "تحديد موعد ل ",
+      "setDueDateFor": "تحديد تاريخ الاستحقاق لعدد ",
       "task": "مهمة",
       "selectADateToSetAsTheDueDateForAllSelectedTasks": "حدد تاريخًا لتعيينه كتاريخ استحقاق لجميع المهام المحددة.",
-      "alsoSetTime": "ضبط الوقت أيضا",
+      "alsoSetTime": "ضبط الوقت أيضًا",
       "cancel": "إلغاء",
       "setDueDate": "تحديد تاريخ الاستحقاق"
     },
     "componentsTasksCelebrationProgress": {
-      "complete": "كامل"
+      "complete": "مكتملة"
     },
     "componentsTasksColorPicker": {
-      "selectColor": "اختر اللون"
+      "selectColor": "اختيار اللون"
     },
     "componentsTasksCustomRepeatDialog": {
       "onTheseDays": "في هذه الأيام",
-      "repeatOn": "كرر",
-      "day": "يوم",
+      "repeatOn": "التكرار في",
+      "day": "اليوم",
       "ofTheMonth": "من الشهر",
-      "the": "ال",
+      "the": "في",
       "ofTheMonth2": "من الشهر",
       "ends": "ينتهي",
-      "never": "أبدا",
-      "onDate": "في موعد",
+      "never": "أبدًا",
+      "onDate": "في تاريخ",
       "after": "بعد",
-      "occurrences": "الأحداث",
+      "occurrences": "مرات",
       "preview": "معاينة",
       "of": "من ",
       "andMore": "وأكثر",
-      "frequency": "التردد",
-      "repeatEvery": "كرر كل",
+      "frequency": "معدل التكرار",
+      "repeatEvery": "التكرار كل",
       "day2": "يوم",
       "week": "أسبوع",
       "month": "شهر",
@@ -295,201 +385,201 @@
     "componentsTasksDatePickerCalendar": {
       "previousMonth": "الشهر السابق",
       "nextMonth": "الشهر القادم",
-      "goToToday": "اذهب الى اليوم",
+      "goToToday": "الانتقال إلى اليوم",
       "today": "اليوم",
-      "w": "دبليو",
+      "w": "أ",
       "weekNumber": "الأسبوع {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "إزالة التاريخ",
-      "clearTime": "وقت واضح",
-      "addTime": "أضف الوقت",
+      "clearTime": "مسح الوقت",
+      "addTime": "إضافة وقت",
       "time": "الوقت"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "حذف \"",
-      "thisProjectHas": "هذا المشروع لديه ",
+      "thisProjectHas": "يحتوي هذا المشروع على ",
       "task": "مهمة",
-      "whatWouldYouLikeToDoWithThem": "ماذا تريد أن تفعل معهم؟",
+      "whatWouldYouLikeToDoWithThem": "ماذا تريد أن تفعل بها؟",
       "moveTasksToPersonalProject": "نقل المهام إلى المشروع الشخصي",
       "deleteAllTasksPermanently": "حذف كافة المهام بشكل دائم",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "لا يتضمن هذا المشروع أي مهام وسيتم حذفه نهائيًا.",
+      "notesEventsAndFilesStayNotice": "تُحذف المهام الموجودة في هذا المشروع. أما ملاحظاتك وأحداثك وملفاتك فتبقى في خزنتك.",
       "thisActionCannotBeUndone": "لا يمكن التراجع عن هذا الإجراء.",
       "cancel": "إلغاء",
-      "deleteProject": "حذف المشروع",
-      "notesEventsAndFilesStayNotice": "تُحذف المهام الموجودة في هذا المشروع. أما ملاحظاتك وأحداثك وملفاتك فتبقى في خزنتك."
+      "deleteProject": "حذف المشروع"
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "هل تريد حذف المهمة؟",
       "deleteTask2": "حذف المهمة",
-      "deleteConfirmBody": "سيتم حذف “{title}” نهائيًا. لا يمكن التراجع عن هذا الإجراء."
+      "deleteConfirmBody": "سيتم حذف «{title}» نهائيًا. لا يمكن التراجع عن هذا الإجراء."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
-      "allSubtasksComplete": "جميع المهام الفرعية كاملة!",
-      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "هل ترغب في وضع علامة على المهمة الرئيسية كمكتملة أيضًا؟",
-      "keepTaskOpen": "أبقِ المهمة مفتوحة",
+      "allSubtasksComplete": "اكتملت جميع المهام الفرعية!",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "هل تريد تحديد المهمة الأصل كمكتملة أيضًا؟",
+      "keepTaskOpen": "إبقاء المهمة مفتوحة",
       "completeTask": "إكمال المهمة ✓",
-      "allSubtasksDoneBody": "اكتملت جميع المهام الفرعية في “{title}”، وعددها {count, plural, zero {# مهمة فرعية} one {مهمة فرعية واحدة} two {مهمتان فرعيتان} few {# مهام فرعية} many {# مهمة فرعية} other {# مهمة فرعية}}."
+      "allSubtasksDoneBody": "اكتملت جميع المهام الفرعية في «{title}»، وعددها {count, plural, zero {# مهمة فرعية} one {مهمة فرعية واحدة} two {مهمتان فرعيتان} few {# مهام فرعية} many {# مهمة فرعية} other {# مهمة فرعية}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "تحديد تاريخ الاستحقاق لجميع المهام الفرعية",
-      "setDueDateFor": "تحديد موعد ل ",
-      "alsoApplyToCompletedSubtasks": "ينطبق أيضًا على المهام الفرعية المكتملة (",
-      "clearDate": "تاريخ واضح",
+      "setDueDateFor": "تحديد تاريخ الاستحقاق لعدد ",
+      "alsoApplyToCompletedSubtasks": "التطبيق أيضًا على المهام الفرعية المكتملة (",
+      "clearDate": "مسح التاريخ",
       "cancel": "إلغاء",
       "apply": "تطبيق",
-      "alsoApplyToCompletedSubtasksCount": "طبّق أيضًا على المهام الفرعية المكتملة ({count})",
-      "setDueDateForSubtasksIn": "تحديد تاريخ الاستحقاق {count, plural, zero {لـ# مهمة فرعية} one {لمهمة فرعية واحدة} two {لمهمتين فرعيتين} few {لـ# مهام فرعية} many {لـ# مهمة فرعية} other {لـ# مهمة فرعية}} في “{title}”"
+      "setDueDateForSubtasksIn": "تحديد تاريخ الاستحقاق {count, plural, zero {لـ# مهمة فرعية} one {لمهمة فرعية واحدة} two {لمهمتين فرعيتين} few {لـ# مهام فرعية} many {لـ# مهمة فرعية} other {لـ# مهمة فرعية}} في «{title}»",
+      "alsoApplyToCompletedSubtasksCount": "التطبيق أيضًا على المهام الفرعية المكتملة ({count})"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "تحديد الأولوية لجميع المهام الفرعية",
-      "setPriorityFor": "تحديد الأولوية ل ",
-      "alsoApplyToCompletedSubtasks": "ينطبق أيضًا على المهام الفرعية المكتملة (",
+      "setPriorityFor": "تحديد الأولوية لعدد ",
+      "alsoApplyToCompletedSubtasks": "التطبيق أيضًا على المهام الفرعية المكتملة (",
       "cancel": "إلغاء",
       "apply": "تطبيق",
-      "alsoApplyToCompletedSubtasksCount": "طبّق أيضًا على المهام الفرعية المكتملة ({count})",
-      "setPriorityForSubtasksIn": "تعيين الأولوية {count, plural, zero {لـ# مهمة فرعية} one {لمهمة فرعية واحدة} two {لمهمتين فرعيتين} few {لـ# مهام فرعية} many {لـ# مهمة فرعية} other {لـ# مهمة فرعية}} في “{title}”"
+      "setPriorityForSubtasksIn": "تحديد الأولوية {count, plural, zero {لـ# مهمة فرعية} one {لمهمة فرعية واحدة} two {لمهمتين فرعيتين} few {لـ# مهام فرعية} many {لـ# مهمة فرعية} other {لـ# مهمة فرعية}} في «{title}»",
+      "alsoApplyToCompletedSubtasksCount": "التطبيق أيضًا على المهام الفرعية المكتملة ({count})"
     },
     "componentsTasksDialogsCompleteParentDialog": {
-      "completeTaskWithIncompleteSubtasks": "مهمة كاملة مع المهام الفرعية غير مكتملة؟",
-      "has": "لديه ",
+      "completeTaskWithIncompleteSubtasks": "هل تريد إكمال المهمة رغم وجود مهام فرعية غير مكتملة؟",
+      "has": "تحتوي على ",
       "incompleteSubtask": "مهمة فرعية غير مكتملة",
       "and": "و ",
-      "more": "المزيد",
+      "more": "أخرى",
       "whatWouldYouLikeToDo": "ماذا تريد أن تفعل؟",
-      "completeAllParentSubtasks": "أكمل الكل (المهام الرئيسية + المهام الفرعية)",
-      "markTheParentAndAllSubtasksAsComplete": "قم بوضع علامة على الأصل وجميع المهام الفرعية كمكتملة",
-      "completeParentOnlyKeepSubtasksIncomplete": "أكمل الأصل فقط، واحتفظ بالمهام الفرعية غير مكتملة",
-      "onlyMarkTheParentTaskAsComplete": "ضع علامة على المهمة الأصلية على أنها مكتملة فقط",
+      "completeAllParentSubtasks": "إكمال الكل (المهمة الأصل + المهام الفرعية)",
+      "markTheParentAndAllSubtasksAsComplete": "تحديد المهمة الأصل وجميع المهام الفرعية كمكتملة",
+      "completeParentOnlyKeepSubtasksIncomplete": "إكمال المهمة الأصل فقط، وإبقاء المهام الفرعية غير مكتملة",
+      "onlyMarkTheParentTaskAsComplete": "تحديد المهمة الأصل فقط كمكتملة",
       "cancel": "إلغاء",
-      "complete": "كامل"
+      "complete": "إكمال"
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "هل تريد حذف كافة المهام الفرعية؟",
       "thisActionCannotBeUndone": "لا يمكن التراجع عن هذا الإجراء.",
       "cancel": "إلغاء",
       "deleteAll": "حذف الكل",
-      "deleteSubtasksConfirmation": "سيؤدي هذا إلى حذف {count, plural, zero {# مهمة فرعية} one {مهمة فرعية واحدة} two {مهمتين فرعيتين} few {# مهام فرعية} many {# مهمة فرعية} other {# مهمة فرعية}} من “{title}”."
+      "deleteSubtasksConfirmation": "سيؤدي هذا إلى حذف {count, plural, zero {# مهمة فرعية} one {مهمة فرعية واحدة} two {مهمتين فرعيتين} few {# مهام فرعية} many {# مهمة فرعية} other {# مهمة فرعية}} من «{title}»."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "هل تريد حذف المهمة التي تحتوي على مهام فرعية؟",
-      "has": "لديه ",
+      "has": "تحتوي على ",
       "subtask": "مهمة فرعية",
       "whatWouldYouLikeToDo": "ماذا تريد أن تفعل؟",
       "deleteTaskAndAllSubtasks": "حذف المهمة وجميع المهام الفرعية",
       "permanentlyRemovesEverything": "يزيل كل شيء بشكل دائم",
       "deleteTaskKeepSubtasksAsStandaloneTasks": "حذف المهمة، والاحتفاظ بالمهام الفرعية كمهام مستقلة",
-      "subtasksBecomeTopLevelTasks": "تصبح المهام الفرعية مهام ذات مستوى أعلى",
+      "subtasksBecomeTopLevelTasks": "تصبح المهام الفرعية مهام مستقلة",
       "cancel": "إلغاء",
       "delete": "حذف"
     },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
-      "duplicateTask": "مهمة مكررة",
-      "createACopyOf": "إنشاء نسخة من \"",
-      "alsoDuplicateSubtasks": "مهام فرعية مكررة أيضًا (",
+      "duplicateTask": "إنشاء نسخة من المهمة",
+      "createACopyOf": "إنشاء نسخة من «",
+      "alsoDuplicateSubtasks": "إنشاء نسخ من المهام الفرعية أيضًا (",
       "cancel": "إلغاء",
-      "duplicate": "مكررة ",
-      "alsoDuplicateSubtasksCount": "انسخ أيضًا المهام الفرعية ({count})",
-      "createACopyOfTitle": "إنشاء نسخة من “{title}”",
-      "duplicateTaskOnly": "نسخ المهمة",
-      "duplicateWithItems": "نسخ ({count, plural, zero {# عنصر} one {عنصر واحد} two {عنصرين} few {# عناصر} many {# عنصرًا} other {# عنصر}})"
+      "duplicate": "إنشاء نسخة ",
+      "createACopyOfTitle": "إنشاء نسخة من «{title}»",
+      "alsoDuplicateSubtasksCount": "إنشاء نسخ من المهام الفرعية أيضًا ({count})",
+      "duplicateWithItems": "إنشاء نسخة ({count, plural, zero {# عنصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}})",
+      "duplicateTaskOnly": "إنشاء نسخة من المهمة"
     },
     "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "قم بمهمة فرعية...",
-      "selectATaskToMake": "حدد مهمة للقيام بها \"",
-      "aSubtaskOf": "مهمة فرعية من.",
-      "searchTasks": "مهام البحث...",
+      "makeSubtaskOf": "تحويل إلى مهمة فرعية…",
+      "selectATaskToMake": "اختر مهمة لجعل \"",
+      "aSubtaskOf": "مهمة فرعية منها.",
+      "searchTasks": "البحث في المهام…",
       "sameProject": "نفس المشروع",
       "otherProjects": "مشاريع أخرى"
     },
     "componentsTasksDragDropInsertionIndicator": {
-      "dropToRescheduleTo": "أسقط لإعادة الجدولة إلى "
+      "dropToRescheduleTo": "أفلِت لإعادة الجدولة إلى "
     },
     "componentsTasksDragDropMoveMenu": {
       "moveTask": "نقل المهمة",
-      "move": "تحرك",
+      "move": "نقل",
       "reschedule": "إعادة جدولة",
       "today": "اليوم",
-      "tomorrow": "غدا",
-      "nextWeek": "الاسبوع القادم",
+      "tomorrow": "غدًا",
+      "nextWeek": "الأسبوع القادم",
       "removeDate": "إزالة التاريخ",
-      "moveToProject": "الانتقال إلى المشروع",
+      "moveToProject": "نقل إلى مشروع",
       "current": "الحالي",
       "changeStatus": "تغيير الحالة",
       "current2": "الحالي",
       "reorder": "إعادة الترتيب"
     },
     "componentsTasksDragDropMultiDragOverlay": {
-      "moreTask": "المزيد من المهمة",
+      "moreTask": "أخرى",
       "task": "مهمة"
     },
     "componentsTasksDragDropSidebarDropZones": {
-      "dropHere": "أسقط هنا"
+      "dropHere": "أفلِت هنا"
     },
     "componentsTasksDragDropTaskRow": {
       "priority": "الأولوية: "
     },
     "componentsTasksDueDatePicker": {
-      "selectDueDate": "حدد تاريخ الاستحقاق",
-      "overdue": "تأخرت",
+      "selectDueDate": "تحديد تاريخ الاستحقاق",
+      "overdue": "متأخرة",
       "setDueDate": "تحديد تاريخ الاستحقاق",
       "suggestions": "اقتراحات",
-      "pickADate": "اختر موعدا...",
-      "addTime": "أضف الوقت",
+      "pickADate": "اختيار تاريخ…",
+      "addTime": "إضافة وقت",
       "time": "الوقت",
-      "clearDate": "تاريخ واضح",
+      "clearDate": "مسح التاريخ",
       "backToOptions": "العودة إلى الخيارات",
-      "nextWeek": "الأسبوع القادم",
-      "thisWeekend": "نهاية هذا الأسبوع",
       "today": "اليوم",
-      "tomorrow": "غدًا"
+      "tomorrow": "غدًا",
+      "thisWeekend": "نهاية هذا الأسبوع",
+      "nextWeek": "الأسبوع القادم"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "تحرير المهمة المتكررة",
       "youReEditingARepeatingTaskApplyChangesTo": "أنت تقوم بتحرير مهمة متكررة. تطبيق التغييرات على:",
-      "onlyThisOccurrence": "هذا الحادث فقط",
-      "onlyFutureTasksUnchanged": "فقط - المهام المستقبلية دون تغيير",
-      "thisAndAllFutureOccurrences": "هذا وكل الأحداث المستقبلية",
+      "onlyThisOccurrence": "هذه المرة فقط",
+      "onlyFutureTasksUnchanged": "فقط — تبقى المهام القادمة دون تغيير",
+      "thisAndAllFutureOccurrences": "هذه المرة وكل المرات القادمة",
       "andBeyond": "وما بعدها",
       "cancel": "إلغاء",
       "continue": "متابعة"
     },
     "componentsTasksEmptyStatesCollapsedEmptySection": {
-      "add": "أضف"
+      "add": "إضافة"
     },
     "componentsTasksEmptyStatesSectionEmptyStates": {
       "noTasksScheduled": "لا توجد مهام مجدولة",
-      "addTaskFor": "إضافة مهمة ل ",
-      "nothingScheduled": "لا شيء مقرر",
-      "addTasksWithDueDatesToPlanYourWeek": "أضف المهام ذات التواريخ المحددة للتخطيط لأسبوعك.",
-      "addTask": "أضف مهمة",
+      "addTaskFor": "إضافة مهمة: ",
+      "nothingScheduled": "لا شيء مجدول",
+      "addTasksWithDueDatesToPlanYourWeek": "أضف مهامًا بتواريخ استحقاق لتخطط لأسبوعك.",
+      "addTask": "إضافة مهمة",
       "viewCalendar": "عرض التقويم"
     },
     "componentsTasksFiltersActiveFiltersBar": {
       "priorityIs": "الأولوية هي",
       "priority": "الأولوية",
+      "tagsIs": "الوسوم هي",
+      "tags": "الوسوم",
       "statusIs": "الحالة هي",
       "status": "الحالة",
       "projectIs": "المشروع هو",
-      "project": "مشروع",
-      "due": "مستحق",
+      "project": "المشروع",
+      "due": "الاستحقاق",
       "dueDate": "تاريخ الاستحقاق",
       "search": "بحث",
-      "clearAll": "مسح الكل",
-      "tags": "العلامات",
-      "tagsIs": "العلامات هي"
+      "clearAll": "مسح الكل"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "التصفية حسب تاريخ الاستحقاق",
       "customRange": "نطاق مخصص",
-      "clear": "واضح",
+      "clear": "مسح",
       "apply": "تطبيق"
     },
     "componentsTasksFiltersFilterDropdown": {
-      "filterBy": "تصفية حسب..."
+      "filterBy": "تصفية حسب…"
     },
     "componentsTasksFiltersFilterEmptyState": {
-      "activeFilters": "المرشحات النشطة: ",
+      "activeFilters": "عوامل التصفية النشطة: ",
       "clearAllFilters": "مسح كافة عوامل التصفية"
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
@@ -497,26 +587,32 @@
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "الأولوية",
-      "is": "هو",
-      "search": "بحث...",
-      "selected": "مختارة"
+      "is": "هي",
+      "search": "البحث…",
+      "selected": "محددة"
     },
     "componentsTasksFiltersFilterPanelsProjectPanel": {
-      "project": "مشروع",
-      "noProject": "لا يوجد مشروع"
+      "project": "المشروع",
+      "noProject": "بلا مشروع"
     },
     "componentsTasksFiltersFilterPanelsStatusPanel": {
       "status": "الحالة"
     },
     "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
       "status": "الحالة",
-      "pickAProject": "اختر مشروعًا"
+      "pickAProject": "اختيار مشروع"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "tags": "الوسوم",
+      "is": "هي",
+      "search": "البحث…",
+      "selected": "محددة"
     },
     "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "المزيد من المرشحات",
+      "moreFilters": "المزيد من عوامل التصفية",
       "more": "المزيد",
       "status": "الحالة",
-      "hasTimeSet": "لديه الوقت المحدد",
+      "hasTimeSet": "بوقت محدد",
       "recurringOnly": "المتكررة فقط",
       "status2": "الحالة"
     },
@@ -526,406 +622,384 @@
     },
     "componentsTasksFiltersProjectFilter": {
       "filterByProject": "تصفية حسب المشروع",
-      "project": "مشروع",
+      "project": "المشروع",
       "allProjects": "جميع المشاريع",
-      "clear": "واضح"
+      "clear": "مسح"
     },
     "componentsTasksFiltersQuickFilters": {
-      "quickFilters": "مرشحات سريعة:"
+      "quickFilters": "عوامل تصفية سريعة:"
     },
     "componentsTasksFiltersSaveFilterDialog": {
       "saveFilter": "حفظ عامل التصفية",
-      "saveYourCurrentFilterSettingsForQuickAccessLater": "احفظ إعدادات الفلتر الحالية للوصول إليها بسرعة لاحقًا.",
-      "filterName": "اسم الفلتر",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "احفظ إعدادات التصفية الحالية للوصول إليها بسرعة لاحقًا.",
+      "filterName": "اسم عامل التصفية",
       "eGHighPriorityThisWeek": "على سبيل المثال، أولوية عالية هذا الأسبوع",
-      "currentFilters": "المرشحات الحالية:",
-      "noFiltersApplied": "لم يتم تطبيق أي مرشحات",
+      "currentFilters": "عوامل التصفية الحالية:",
+      "noFiltersApplied": "لم يتم تطبيق أي عوامل تصفية",
       "cancel": "إلغاء",
       "saveFilter2": "حفظ عامل التصفية",
-      "nameRequired": "يرجى إدخال اسم لعامل التصفية هذا",
+      "summarySearch": "البحث: «{query}»",
+      "summaryProjects": "المشروع: {names}",
+      "summaryPriorities": "الأولوية: {names}",
       "summaryDue": "الاستحقاق: {value}",
       "summaryDueRange": "الاستحقاق: {start} - {end}",
-      "summaryPriorities": "الأولوية: {names}",
-      "summaryProjects": "المشروع: {names}",
-      "summaryRepeatOneTime": "التكرار: مرة واحدة فقط",
       "summaryRepeatRepeating": "التكرار: المتكررة فقط",
-      "summarySearch": "البحث: \"{query}\"",
+      "summaryRepeatOneTime": "التكرار: مرة واحدة فقط",
       "summaryTimeWith": "الوقت: بوقت محدد",
-      "summaryTimeWithout": "الوقت: بدون وقت"
+      "summaryTimeWithout": "الوقت: بدون وقت",
+      "nameRequired": "يرجى إدخال اسم لعامل التصفية هذا"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "المرشحات المحفوظة",
+      "savedFilters": "عوامل التصفية المحفوظة",
       "saved": "تم الحفظ",
-      "noSavedFiltersYet": "لا توجد مرشحات محفوظة حتى الآن",
-      "saveCurrentFilters": "حفظ المرشحات الحالية",
-      "saveCurrentFilters2": "حفظ المرشحات الحالية"
+      "noSavedFiltersYet": "لا توجد عوامل تصفية محفوظة بعد",
+      "saveCurrentFilters": "حفظ عوامل التصفية الحالية",
+      "saveCurrentFilters2": "حفظ عوامل التصفية الحالية"
     },
     "componentsTasksFiltersSavedFiltersSection": {
-      "filterName": "اسم الفلتر",
-      "saveFilter": "حفظ الفلتر",
+      "filterName": "اسم عامل التصفية",
+      "saveFilter": "حفظ عامل التصفية",
       "save": "حفظ"
     },
     "componentsTasksFiltersSearchInput": {
-      "searchTasks": "مهام البحث",
+      "searchTasks": "البحث في المهام",
       "clearSearch": "مسح البحث"
     },
     "componentsTasksKanbanKanbanColumn": {
-      "dropHere": "أسقط هنا",
-      "releaseToMoveTaskToThisColumn": "حرر لنقل المهمة إلى هذا العمود",
-      "moreCompleted": "أكثر اكتمالا",
+      "dropHere": "أفلِت هنا",
+      "releaseToMoveTaskToThisColumn": "أفلِت لنقل المهمة إلى هذا العمود",
+      "moreCompleted": "مكتملة أخرى",
       "showFewer": "عرض أقل",
-      "taskTitle": "عنوان المهمة..."
+      "taskTitle": "عنوان المهمة…"
     },
     "componentsTasksNaturalDateInput": {
       "typeADateInNaturalLanguage": "اكتب التاريخ باللغة الطبيعية",
-      "select": "اختر"
+      "select": "اختيار"
     },
     "componentsTasksParentTaskRow": {
       "priority": "الأولوية: "
     },
     "componentsTasksPrioritySelect": {
-      "selectPriority": "حدد الأولوية",
+      "selectPriority": "تحديد الأولوية",
       "navigate": "التنقل",
-      "select": "حدد"
+      "select": "تحديد"
     },
     "componentsTasksProjectModal": {
       "iconName": "الرمز والاسم",
-      "selectIcon": "حدد الرمز",
+      "selectIcon": "اختيار الرمز",
       "projectName": "اسم المشروع",
-      "clickIconToChange": "انقر على أيقونة للتغيير",
+      "clickIconToChange": "انقر على الرمز لتغييره",
       "color": "اللون",
       "descriptionOptional": "الوصف (اختياري)",
-      "briefDescriptionOfThisProject": "وصف مختصر لهذا المشروع...",
+      "briefDescriptionOfThisProject": "وصف مختصر لهذا المشروع…",
       "statuses": "الحالات",
       "configureTheWorkflowStagesForThisProject": "تكوين مراحل سير العمل لهذا المشروع.",
       "deleteProject": "حذف المشروع",
       "cancel": "إلغاء",
       "unsavedChanges": "التغييرات غير المحفوظة",
-      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "لديك تغييرات غير محفوظة. هل أنت متأكد أنك تريد التخلص منها؟",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "لديك تغييرات غير محفوظة. هل تريد بالتأكيد تجاهلها؟",
       "cancel2": "إلغاء",
       "discard": "تجاهل",
       "defaultProject": "المشروع الافتراضي",
-      "openTasksOnThisProject": "تُفتح المهام على هذا المشروع"
+      "openTasksOnThisProject": "تُفتح المهام في هذا المشروع"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "حدد المشروع",
-      "selectProject2": "حدد المشروع"
+      "selectProject": "اختيار مشروع",
+      "selectProject2": "اختيار مشروع"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "تحرير المشروع",
-      "archiveProject": "مشروع الأرشيف",
+      "archiveProject": "أرشفة المشروع",
       "deleteProject": "حذف المشروع",
-      "selectProject": "حدد المشروع",
-      "noProjectsYet": "لا توجد مشاريع حتى الآن",
+      "selectProject": "اختيار مشروع",
+      "noProjectsYet": "لا توجد مشاريع بعد",
       "createProject": "إنشاء مشروع"
     },
     "componentsTasksProjectsProjectsTabContent": {
       "noProjectSelected": "لم يتم تحديد أي مشروع",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "حدد مشروعًا من القائمة المنسدلة أو قم بإنشاء مشروع جديد",
+      "selectAProjectFromTheDropdownOrCreateANewOne": "حدد مشروعًا من القائمة المنسدلة أو أنشئ مشروعًا جديدًا",
       "createYourFirstProject": "أنشئ مشروعك الأول"
     },
     "componentsTasksQuickAddQuickAddHelp": {
-      "quickAddShortcutsHelp": "مساعدة سريعة في إضافة اختصارات",
-      "quickAddShortcuts": "إضافة اختصارات سريعة",
-      "exampleBuyMilkTomorrowHighPersonal": "مثال: \"اشتري حليبًا! غدًا!!عالية #personal\""
+      "quickAddShortcutsHelp": "مساعدة اختصارات الإضافة السريعة",
+      "quickAddShortcuts": "اختصارات الإضافة السريعة",
+      "exampleBuyMilkTomorrowHighPersonal": "مثال: «شراء حليب !tomorrow !!high #personal»"
     },
     "componentsTasksQuickAddQuickOptionsBar": {
       "quickOptions": "خيارات سريعة:"
     },
-    "componentsTasksQuickAddInput": {
-      "q": "س",
-      "q2": "س"
-    },
     "componentsTasksRepeatIndicator": {
       "of": "من ",
-      "completed": "اكتمل"
+      "completed": "مكتملة"
     },
     "componentsTasksRepeatPicker": {
-      "selectRepeatFrequency": "حدد تردد التكرار",
+      "selectRepeatFrequency": "اختيار معدل التكرار",
       "doesNotRepeat": "لا يتكرر",
-      "custom": "مخصص..."
+      "custom": "مخصص…"
     },
     "componentsTasksStatusEditor": {
       "changeStatusColor": "تغيير لون الحالة",
       "dragToReorder": "اسحب لإعادة الترتيب",
       "statusName": "اسم الحالة",
-      "addStatus": "إضافة الحالة"
+      "addStatus": "إضافة حالة"
     },
     "componentsTasksStatusSelect": {
-      "selectStatus": "اختر الحالة",
-      "selectStatus2": "اختر الحالة"
+      "selectStatus": "اختيار الحالة",
+      "selectStatus2": "اختيار الحالة"
     },
     "componentsTasksStopRepeatingDialog": {
-      "stopRepeating": "توقف عن التكرار",
-      "isSetToRepeat": "تم ضبطه على التكرار ",
+      "stopRepeating": "إيقاف التكرار",
+      "isSetToRepeat": "مضبوطة على التكرار ",
       "whatWouldYouLikeToDo": "ماذا تريد أن تفعل؟",
-      "keepThisTaskStopFutureOccurrences": "احتفظ بهذه المهمة، وأوقف التكرارات المستقبلية",
+      "keepThisTaskStopFutureOccurrences": "الاحتفاظ بهذه المهمة وإيقاف التكرارات القادمة",
       "taskWillBecomeAOneTimeTask": "ستصبح المهمة مهمة لمرة واحدة",
-      "deleteThisAndAllFutureOccurrences": "حذف هذا وجميع الأحداث المستقبلية",
+      "deleteThisAndAllFutureOccurrences": "حذف هذه المرة وكل المرات القادمة",
       "taskWillBeRemovedEntirely": "ستتم إزالة المهمة بالكامل",
       "cancel": "إلغاء",
       "confirm": "تأكيد"
     },
     "componentsTasksSubtaskDots": {
       "of": "من ",
-      "subtasksComplete": "اكتملت المهام الفرعية (",
-      "clickTo": "انقر ل ",
+      "subtasksComplete": "مهام فرعية مكتملة (",
+      "clickTo": "انقر من أجل ",
       "of2": "من ",
-      "subtasksComplete2": "اكتملت المهام الفرعية",
-      "clickTo2": "انقر ل "
+      "subtasksComplete2": "مهام فرعية مكتملة",
+      "clickTo2": "انقر من أجل "
     },
     "componentsTasksSubtaskProgressBadge": {
       "of": "من ",
-      "subtasksComplete": "اكتملت المهام الفرعية (",
-      "clickTo": "انقر ل "
+      "subtasksComplete": "مهام فرعية مكتملة (",
+      "clickTo": "انقر من أجل "
     },
     "componentsTasksTaskBadges": {
       "priority": "الأولوية",
-      "repeatingTask": "تكرار المهمة",
-      "d": "د"
+      "repeatingTask": "مهمة متكررة",
+      "d": "ي"
     },
     "componentsTasksTaskEmptyState": {
       "addTask": "إضافة مهمة",
-      "allDescription": "أنشئ مهمتك الأولى للبدء",
       "allTitle": "لا توجد مهام بعد",
-      "completedDescription": "ستظهر المهام المكتملة هنا",
-      "completedTitle": "لا توجد مهام مكتملة",
-      "projectDescription": "أضف مهمة للبدء",
-      "projectTitle": "لا توجد مهام في هذا المشروع",
-      "projectTitleNamed": "لا توجد مهام في {name}",
+      "allDescription": "أنشئ مهمتك الأولى للبدء",
+      "todayTitle": "لا شيء مستحق اليوم",
       "todayDescription": "أنجزت كل شيء!",
-      "todayTitle": "لا شيء مستحق اليوم"
+      "completedTitle": "لا توجد مهام مكتملة",
+      "completedDescription": "ستظهر المهام المكتملة هنا",
+      "projectTitle": "لا توجد مهام في هذا المشروع",
+      "projectDescription": "أضف مهمة للبدء",
+      "projectTitleNamed": "لا توجد مهام في {name}"
     },
     "componentsTasksTaskIcons": {
-      "noPriority": "لا أولوية"
+      "noPriority": "بلا أولوية"
     },
     "componentsTasksTaskRepeatSection": {
-      "repeat": "كرر",
-      "addRepeat": "أضف تكرار",
+      "repeat": "التكرار",
+      "addRepeat": "إضافة تكرار",
       "edit": "تحرير",
       "edit2": "تحرير",
-      "stopRepeating": "توقف عن التكرار",
-      "stopRepeating2": "توقف عن التكرار"
+      "stopRepeating": "إيقاف التكرار",
+      "stopRepeating2": "إيقاف التكرار"
     },
     "componentsTasksTaskSection": {
-      "addTask": "أضف مهمة"
+      "addTask": "إضافة مهمة"
     },
     "componentsTasksTimePicker": {
-      "selectTime": "حدد الوقت",
-      "selectTime2": "حدد الوقت",
-      "clearTime": "وقت واضح"
+      "selectTime": "اختيار الوقت",
+      "selectTime2": "اختيار الوقت",
+      "clearTime": "مسح الوقت"
     },
     "componentsTasksTodayEmptyState": {
-      "nothingScheduledForToday": "لا شيء مقرر لهذا اليوم",
-      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "لديك مهام متأخرة أعلاه. أضف بعض المهام لهذا اليوم أو تحقق من قائمتك القادمة.",
-      "addTaskForToday": "أضف مهمة لهذا اليوم",
-      "allCaughtUpForToday": "جميع المحاصرين لهذا اليوم",
+      "nothingScheduledForToday": "لا شيء مجدول اليوم",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "لديك مهام متأخرة في الأعلى. أضف مهامًا لليوم أو راجع قائمة المهام القادمة.",
+      "addTaskForToday": "إضافة مهمة لليوم",
+      "allCaughtUpForToday": "أنجزت كل مهام اليوم",
       "youHaveNothingScheduledEnjoyTheClarity": "ليس لديك أي شيء مقرر. استمتع بالوضوح.",
-      "addTaskForToday2": "أضف مهمة لهذا اليوم"
+      "addTaskForToday2": "إضافة مهمة لليوم"
     },
     "componentsTasksUpcomingEmptyState": {
-      "nothingScheduledForTheNext7Days": "لا شيء مقرر للأيام السبعة القادمة",
-      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "لديك مهام متأخرة أعلاه. التخطيط للمستقبل عن طريق إضافة المهام للأسبوع القادم.",
-      "addTask": "أضف مهمة",
+      "nothingScheduledForTheNext7Days": "لا شيء مجدول خلال الأيام الـ7 القادمة",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "لديك مهام متأخرة في الأعلى. خطط مسبقًا بإضافة مهام للأسبوع القادم.",
+      "addTask": "إضافة مهمة",
       "noUpcomingTasks": "لا توجد مهام قادمة",
-      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "ستظهر هنا المهام المستحقة خلال الأيام السبعة القادمة. خطط لأسبوعك بإضافة بعض المهام.",
-      "addTask2": "أضف مهمة"
-    },
-    "componentsTasksFiltersFilterPanelsTagPanel": {
-      "is": "هي",
-      "search": "بحث...",
-      "selected": "مختارة",
-      "tags": "العلامات"
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "ستظهر هنا المهام المستحقة خلال الأيام الـ7 القادمة. خطط لأسبوعك بإضافة بعض المهام.",
+      "addTask2": "إضافة مهمة"
     }
   },
   "phaseI": {
     "toasts": {
       "changesUndone": "تم التراجع عن التغييرات",
       "projectNotFound": "لم يتم العثور على المشروع",
-      "failedToArchiveTasks": "فشل في أرشفة المهام",
+      "failedToArchiveTasks": "تعذّر أرشفة المهام",
       "tasksRestoredFromArchive": "تمت استعادة المهام من الأرشيف",
       "subtaskAdded": "تمت إضافة المهمة الفرعية",
       "subtaskDeleted": "تم حذف المهمة الفرعية",
       "taskCompleted": "اكتملت المهمة",
-      "allSubtasksCompleteTaskMarkedAsDone": "🎉 جميع المهام الفرعية كاملة! تم وضع علامة \"تم\" على المهمة.",
-      "taskReopened": "تم إعادة فتح المهمة",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 اكتملت جميع المهام الفرعية! تم تحديد المهمة كمكتملة.",
+      "taskReopened": "تمّت إعادة فتح المهمة",
       "taskKeptOpen": "ظلت المهمة مفتوحة",
-      "taskMarkedAsDone": "🎉 تم وضع علامة \"تم\" على المهمة!"
+      "taskMarkedAsDone": "🎉 تم تحديد المهمة كمكتملة!"
     },
     "errors": {
-      "failedToArchiveTasks": "فشل في أرشفة المهام",
-      "failedToAddSubtask": "فشلت إضافة مهمة فرعية",
-      "failedToAddSubtasks": "فشل في إضافة المهام الفرعية",
-      "failedToReorderSubtasks": "فشل في إعادة ترتيب المهام الفرعية",
-      "failedToPromoteSubtask": "فشل في ترقية المهمة الفرعية",
-      "failedToDeleteSubtask": "فشل في حذف المهمة الفرعية",
-      "failedToDeleteTask": "فشل في حذف المهمة",
-      "failedToCompleteTask": "فشل في إكمال المهمة",
-      "failedToMakeSubtask": "فشل في تنفيذ مهمة فرعية",
-      "failedToCompleteSubtasks": "فشل في إكمال المهام الفرعية",
-      "failedToMarkSubtasksIncomplete": "فشل في وضع علامة على المهام الفرعية غير مكتملة",
-      "failedToSetDueDate": "فشل في تحديد تاريخ الاستحقاق",
-      "failedToSetPriority": "فشل في تعيين الأولوية",
-      "failedToDeleteSubtasks": "فشل في حذف المهام الفرعية",
-      "failedToLoadTaskPreferences": "فشل تحميل تفضيلات المهمة",
-      "failedToUpdateTaskPreferences": "فشل في تحديث تفضيلات المهمة",
-      "failedToLoadLinkedTasks": "فشل تحميل المهام المرتبطة"
-    }
-  },
-  "reminders": {
-    "hasReminders": "يحتوي على تذكيرات",
-    "setReminder": "تعيين تذكير",
-    "summary": "تذكير: {date}",
-    "summaryWithMore": "تذكير: {date} (+{count} أخرى)",
-    "toast": {
-      "deleteFailed": "فشل حذف التذكير",
-      "deleted": "تم حذف التذكير",
-      "set": "تم تعيين التذكير",
-      "setFailed": "فشل تعيين التذكير",
-      "updateFailed": "فشل تحديث التذكير",
-      "updated": "تم تحديث التذكير"
+      "failedToArchiveTasks": "تعذّر أرشفة المهام",
+      "failedToAddSubtask": "تعذّر إضافة مهمة فرعية",
+      "failedToAddSubtasks": "تعذّر إضافة المهام الفرعية",
+      "failedToReorderSubtasks": "تعذّر إعادة ترتيب المهام الفرعية",
+      "failedToPromoteSubtask": "تعذّر ترقية المهمة الفرعية",
+      "failedToDeleteSubtask": "تعذّر حذف المهمة الفرعية",
+      "failedToDeleteTask": "تعذّر حذف المهمة",
+      "failedToCompleteTask": "تعذّر إكمال المهمة",
+      "failedToMakeSubtask": "تعذّر التحويل إلى مهمة فرعية",
+      "failedToCompleteSubtasks": "تعذّر إكمال المهام الفرعية",
+      "failedToMarkSubtasksIncomplete": "تعذّر تحديد المهام الفرعية كغير مكتملة",
+      "failedToSetDueDate": "تعذّر تحديد تاريخ الاستحقاق",
+      "failedToSetPriority": "تعذّر تحديد الأولوية",
+      "failedToDeleteSubtasks": "تعذّر حذف المهام الفرعية",
+      "failedToLoadTaskPreferences": "تعذّر تحميل تفضيلات المهام",
+      "failedToUpdateTaskPreferences": "تعذّر تحديث تفضيلات المهام",
+      "failedToLoadLinkedTasks": "تعذّر تحميل المهام المرتبطة"
     }
   },
   "addToProject": {
-    "dialogTitle": "إضافة إلى مشروع",
-    "loading": "جارٍ تحميل المشاريع…",
     "menuLabel": "إضافة إلى مشروع",
+    "dialogTitle": "إضافة إلى مشروع",
     "noProjects": "لا توجد مشاريع بعد",
-    "toastError": "فشلت الإضافة إلى المشروع",
-    "toastSuccess": "تمت الإضافة إلى {name}"
-  },
-  "itemProjects": {
-    "openProject": "فتح المشروع {name}"
+    "loading": "جارٍ تحميل المشاريع…",
+    "toastSuccess": "تمت الإضافة إلى {name}",
+    "toastError": "تعذّرت الإضافة إلى المشروع"
   },
   "projectHome": {
-    "emptyBody": "اختر مشروعًا من الشريط الجانبي لفتح صفحته الرئيسية.",
     "emptyTitle": "لا يوجد مشروع محدد",
+    "emptyBody": "اختر مشروعًا من الشريط الجانبي لفتح صفحته.",
     "loadError": "تعذّر تحميل تفاصيل المشروع",
     "overview": {
-      "clear": "مسح النظرة العامة",
-      "clearError": "تعذّر مسح ملاحظة النظرة العامة",
+      "sectionTitle": "نظرة عامة",
       "create": "إنشاء ملاحظة نظرة عامة",
-      "createError": "تعذّر إنشاء ملاحظة النظرة العامة",
+      "clear": "مسح النظرة العامة",
       "defaultTitle": "نظرة عامة",
-      "loadError": "تعذّر تحميل ملاحظة النظرة العامة",
       "placeholder": "اكتب نظرة عامة عن هذا المشروع…",
-      "saveError": "تعذّر حفظ ملاحظة النظرة العامة",
-      "sectionTitle": "نظرة عامة"
+      "createError": "تعذّر إنشاء ملاحظة النظرة العامة",
+      "clearError": "تعذّر مسح ملاحظة النظرة العامة",
+      "loadError": "تعذّر تحميل ملاحظة النظرة العامة",
+      "saveError": "تعذّر حفظ ملاحظة النظرة العامة"
     }
+  },
+  "itemProjects": {
+    "openProject": "فتح المشروع {name}",
+    "removeFromProject": "إزالة من {name}",
+    "removeFailed": "تعذّرت إزالة هذا العنصر من المشروع"
   },
   "projectHub": {
-    "capture": {
-      "attach": "إرفاق ملفات",
-      "fileError": "تعذّر ربط {name}",
-      "fileErrorGeneric": "تعذّر استيراد الملفات",
-      "filesAdded": "{count, plural, zero {تمت إضافة # ملف إلى المشروع} one {تمت إضافة ملف واحد إلى المشروع} two {تمت إضافة ملفين إلى المشروع} few {تمت إضافة # ملفات إلى المشروع} many {تمت إضافة # ملفاً إلى المشروع} other {تمت إضافة # ملف إلى المشروع}}",
-      "label": "إضافة إلى {name}",
-      "linkAdded": "تمت إضافة الرابط إلى المشروع",
-      "linkError": "تعذّر حفظ الرابط",
-      "placeholder": "أضف إلى {name} — اكتب مهمة، أو دوّن ملاحظة، أو الصق رابطًا…"
-    },
-    "groups": {
-      "older": "أقدم",
-      "past": "الماضية",
-      "today": "اليوم",
-      "tomorrow": "غدًا",
-      "upcoming": "القادمة",
-      "yesterday": "أمس"
-    },
     "header": {
-      "archiveProject": "أرشفة المشروع",
-      "editProject": "تحرير المشروع",
+      "toggleRail": "إظهار تفاصيل المشروع أو إخفاؤها",
       "menu": "إجراءات المشروع",
-      "toggleRail": "إظهار تفاصيل المشروع أو إخفاؤها"
-    },
-    "rail": {
-      "addNote": "إضافة ملاحظة",
-      "created": "تاريخ الإنشاء",
-      "details": "التفاصيل",
-      "doneOf": "{done} من {total} مكتملة",
-      "linked": "العناصر المرتبطة",
-      "linkedSummary": "{notes, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} · {files, plural, zero {# ملف} one {ملف واحد} two {ملفان} few {# ملفات} many {# ملفاً} other {# ملف}} · {events, plural, zero {# حدث} one {حدث واحد} two {حدثان} few {# أحداث} many {# حدثاً} other {# حدث}}",
-      "overdue": "متأخرة",
-      "overview": "نظرة عامة",
-      "pinError": "تعذّرت إضافة الملاحظة إلى النظرة العامة",
-      "progress": "التقدّم",
-      "unpinError": "تعذّرت إزالة الملاحظة من النظرة العامة",
-      "unpinNote": "إزالة {title} من النظرة العامة",
-      "updated": "تاريخ التحديث"
-    },
-    "rows": {
-      "openEvent": "فتح الحدث {title}",
-      "openFile": "فتح الملف {title}",
-      "openNote": "فتح الملاحظة {title}",
-      "openTask": "فتح المهمة {title}",
-      "setNoteIcon": "تعيين أيقونة لـ {title}"
-    },
-    "sections": {
-      "add": "إضافة إلى {title}",
-      "emptyEvents": "لا توجد أحداث مرتبطة بعد.",
-      "emptyFiles": "لا توجد ملفات مرتبطة بعد.",
-      "emptyNotes": "لا توجد ملاحظات مرتبطة بعد.",
-      "emptyTasks": "لا توجد مهام بعد.",
-      "newNoteError": "تعذّرت إضافة الملاحظة",
-      "newNoteTitle": "ملاحظة بدون عنوان",
-      "viewAll": "عرض الكل"
+      "editProject": "تحرير المشروع",
+      "archiveProject": "أرشفة المشروع"
     },
     "tabs": {
-      "events": "الأحداث",
-      "files": "الملفات",
-      "label": "عروض المشروع",
-      "notes": "الملاحظات",
+      "label": "طرق عرض المشروع",
       "overview": "نظرة عامة",
-      "tasks": "المهام"
+      "tasks": "المهام",
+      "notes": "الملاحظات",
+      "files": "الملفات",
+      "events": "الأحداث"
+    },
+    "groups": {
+      "today": "اليوم",
+      "yesterday": "أمس",
+      "older": "أقدم",
+      "tomorrow": "غدًا",
+      "upcoming": "القادمة",
+      "past": "الماضية"
+    },
+    "sections": {
+      "viewAll": "عرض الكل",
+      "add": "إضافة إلى {title}",
+      "emptyTasks": "لا توجد مهام بعد.",
+      "emptyNotes": "لا توجد ملاحظات مرتبطة بعد.",
+      "emptyFiles": "لا توجد ملفات مرتبطة بعد.",
+      "emptyEvents": "لا توجد أحداث مرتبطة بعد.",
+      "newNoteTitle": "ملاحظة بدون عنوان",
+      "newNoteError": "تعذّرت إضافة الملاحظة"
+    },
+    "rows": {
+      "openTask": "فتح المهمة {title}",
+      "openNote": "فتح الملاحظة {title}",
+      "openFile": "فتح الملف {title}",
+      "openEvent": "فتح الحدث {title}",
+      "setNoteIcon": "تعيين رمز للملاحظة {title}"
+    },
+    "rail": {
+      "overview": "نظرة عامة",
+      "progress": "التقدّم",
+      "details": "التفاصيل",
+      "doneOf": "{done} من {total} مكتملة",
+      "overdue": "متأخرة",
+      "created": "تاريخ الإنشاء",
+      "updated": "تاريخ التحديث",
+      "linked": "العناصر المرتبطة",
+      "linkedSummary": "{notes, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} · {files, plural, zero {# ملف} one {ملف واحد} two {ملفان} few {# ملفات} many {# ملفًا} other {# ملف}} · {events, plural, zero {# حدث} one {حدث واحد} two {حدثان} few {# أحداث} many {# حدثًا} other {# حدث}}",
+      "addNote": "إضافة ملاحظة",
+      "unpinNote": "إزالة {title} من النظرة العامة",
+      "pinError": "تعذّرت إضافة الملاحظة إلى النظرة العامة",
+      "unpinError": "تعذّرت إزالة الملاحظة من النظرة العامة"
+    },
+    "capture": {
+      "placeholder": "أضف إلى {name} — اكتب مهمة، أو دوّن ملاحظة، أو الصق رابطًا…",
+      "attach": "إرفاق ملفات",
+      "linkAdded": "تمت إضافة الرابط إلى المشروع",
+      "linkError": "تعذّر حفظ الرابط",
+      "filesAdded": "{count, plural, zero {تمت إضافة # ملف إلى المشروع} one {تمت إضافة ملف واحد إلى المشروع} two {تمت إضافة ملفين إلى المشروع} few {تمت إضافة # ملفات إلى المشروع} many {تمت إضافة # ملفًا إلى المشروع} other {تمت إضافة # ملف إلى المشروع}}",
+      "fileError": "تعذّر ربط {name}",
+      "fileErrorGeneric": "تعذّر استيراد الملفات",
+      "label": "إضافة إلى {name}"
     }
-  },
-  "priorityInline": {
-    "high": "عالية",
-    "low": "منخفضة",
-    "medium": "متوسطة",
-    "urgent": "عاجلة"
-  },
-  "priorityLabels": {
-    "high": "عالية",
-    "low": "منخفضة",
-    "medium": "متوسطة",
-    "none": "بلا أولوية",
-    "urgent": "عاجلة"
   },
   "project": {
-    "statusTypes": {
-      "done": "منجزة",
-      "inProgress": "قيد التنفيذ",
-      "todo": "قيد الانتظار"
-    },
     "validation": {
-      "minStatuses": "تحتاج المشاريع إلى حالتين على الأقل",
       "nameRequired": "اسم المشروع مطلوب",
       "nameTooLong": "يجب ألا يزيد اسم المشروع عن 50 حرفًا",
-      "needsDoneStatus": "تحتاج المشاريع إلى حالة 'منجزة' واحدة على الأقل",
-      "needsDoneStatusForCompletedTasks": "تحتاج المشاريع إلى حالة 'منجزة' واحدة على الأقل للمهام المكتملة",
-      "needsTodoStatus": "تحتاج المشاريع إلى حالة 'قيد الانتظار' واحدة على الأقل",
-      "needsTodoStatusForNewTasks": "تحتاج المشاريع إلى حالة 'قيد الانتظار' واحدة على الأقل للمهام الجديدة",
+      "minStatuses": "تحتاج المشاريع إلى حالتين على الأقل",
+      "needsTodoStatusForNewTasks": "تحتاج المشاريع إلى حالة «للتنفيذ» واحدة على الأقل للمهام الجديدة",
+      "needsDoneStatusForCompletedTasks": "تحتاج المشاريع إلى حالة «مكتملة» واحدة على الأقل للمهام المكتملة",
       "statusNameRequired": "يجب أن يكون لكل حالة اسم",
       "statusNamesUnique": "يجب أن تكون أسماء الحالات فريدة",
+      "needsTodoStatus": "تحتاج المشاريع إلى حالة «للتنفيذ» واحدة على الأقل",
+      "needsDoneStatus": "تحتاج المشاريع إلى حالة «مكتملة» واحدة على الأقل",
       "statusNotFound": "لم يتم العثور على الحالة"
+    },
+    "statusTypes": {
+      "todo": "للتنفيذ",
+      "inProgress": "قيد التنفيذ",
+      "done": "مكتملة"
     }
   },
+  "priorityLabels": {
+    "none": "بلا أولوية",
+    "low": "منخفضة",
+    "medium": "متوسطة",
+    "high": "عالية",
+    "urgent": "عاجلة"
+  },
+  "priorityInline": {
+    "low": "منخفضة",
+    "medium": "متوسطة",
+    "high": "عالية",
+    "urgent": "عاجلة"
+  },
   "statusLabels": {
-    "done": "منجزة",
+    "todo": "للتنفيذ",
     "inProgress": "قيد التنفيذ",
-    "todo": "قيد الانتظار"
+    "done": "مكتملة"
   },
   "colors": {
-    "blue": "أزرق",
     "gray": "رمادي",
-    "green": "أخضر",
-    "indigo": "نيلي",
-    "orange": "برتقالي",
-    "pink": "وردي",
-    "purple": "بنفسجي",
     "red": "أحمر",
+    "orange": "برتقالي",
+    "yellow": "أصفر",
+    "green": "أخضر",
     "teal": "فيروزي",
-    "yellow": "أصفر"
+    "blue": "أزرق",
+    "indigo": "نيلي",
+    "purple": "بنفسجي",
+    "pink": "وردي"
   }
 }

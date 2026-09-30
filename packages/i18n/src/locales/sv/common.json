@@ -1,10 +1,16 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Fokusera fältet för att fånga",
+    "detailHint": "detaljer",
+    "submit": "Fånga"
+  },
   "button": {
     "save": "Spara",
     "cancel": "Avbryt",
     "close": "Stäng",
-    "delete": "Ta bort",
-    "done": "Klart",
+    "delete": "Radera",
+    "done": "Klar",
     "dontSave": "Spara inte",
     "add": "Lägg till",
     "remove": "Ta bort",
@@ -14,10 +20,13 @@
     "copy": "Kopiera",
     "create": "Skapa"
   },
+  "media": {
+    "video": "Video"
+  },
   "state": {
-    "loading": "Laddar…",
+    "loading": "Läser in…",
     "saving": "Sparar…",
-    "deleting": "Tar bort…",
+    "deleting": "Raderar…",
     "searching": "Söker…"
   },
   "action": {
@@ -37,40 +46,57 @@
   },
   "tabs": {
     "pin": "Fäst flik",
-    "unpin": "Ta bort fäst flik",
+    "unpin": "Lossa flik",
+    "persistence": {
+      "saveFailed": "Dina öppna flikar sparas inte längre",
+      "saveFailedQuota": "Den här sessionen är för stor för att lagras. Stäng några flikar, annars kanske den inte återställs nästa gång du öppnar Memry.",
+      "saveFailedGeneric": "Memry kunde inte lagra den här sessionen, så den kanske inte återställs nästa gång du öppnar appen.",
+      "lastSessionNotSaved": "Din senaste session sparades inte när Memry stängdes",
+      "lastSessionNotSavedQuota": "Lagringsutrymmet var fullt då, så de här flikarna kommer från en tidigare sparning. Stäng några flikar för att frigöra utrymme.",
+      "lastSessionNotSavedGeneric": "Memry kunde inte lagra dina flikar när appen avslutades, så de här flikarna kommer från en tidigare sparning."
+    },
     "contextMenu": {
       "close": "Stäng",
       "closeOthers": "Stäng andra",
       "closeToRight": "Stäng till höger",
       "closeAll": "Stäng alla",
       "duplicate": "Duplicera flik",
-      "splitRight": "Dela till höger",
+      "splitRight": "Dela åt höger",
       "splitDown": "Dela nedåt",
       "copyPath": "Kopiera sökväg",
-      "revealInSidebar": "Visa i sidofält"
+      "revealInSidebar": "Visa i sidofältet"
     }
   },
   "count": {
     "note": "{count, plural, one {# anteckning} other {# anteckningar}}",
+    "journal": "{count, plural, one {# dagboksinlägg} other {# dagboksinlägg}}",
     "task": "{count, plural, one {# uppgift} other {# uppgifter}}",
-    "itemDelete": "{count, plural, one {Ta bort # objekt} other {Ta bort # objekt}}",
     "event": "{count, plural, one {# händelse} other {# händelser}}",
-    "journal": "{count, plural, one {# dagbok} other {# dagböcker}}",
-    "reminder": "{count, plural, one {# påminnelse} other {# påminnelser}}"
+    "reminder": "{count, plural, one {# påminnelse} other {# påminnelser}}",
+    "itemDelete": "{count, plural, one {Radera # objekt} other {Radera # objekt}}"
   },
   "toast": {
     "actionFailed": "Åtgärden misslyckades",
     "nothingToUndo": "Inget att ångra",
-    "undone": "Ångrad: {description}",
-    "undoFailed": "Misslyckades med att ångra åtgärd"
+    "undone": "Ångrat: {description}",
+    "undoFailed": "Det gick inte att ångra åtgärden",
+    "filesImported": "{count, plural, one {# fil importerad} other {# filer importerade}}",
+    "filesImportFailed": "{count, plural, one {Det gick inte att importera # fil} other {Det gick inte att importera # filer}}",
+    "filesHiddenInSidebar": "Filer är dolda i sidofältet. Slå på Visa filer i sorteringsmenyn för Samlingar för att se dem.",
+    "moreRemindersDue": "{count, plural, one {Ytterligare # påminnelse förfaller} other {Ytterligare # påminnelser förfaller}}",
+    "moreRemindersDueHint": "Se påminnelsepanelen för mer information",
+    "searchIndexRepaired": "Sökindexet har reparerats",
+    "searchIndexRepairedHint": "En del av sökindexet var skadat, så Memry byggde om det. Dina anteckningar har inte påverkats."
   },
   "dateRelative": {
     "today": "Idag",
     "yesterday": "Igår",
     "daysAgo": "{count, plural, one {# dag sedan} other {# dagar sedan}}",
-    "daysLate": "{count, plural, one {# d sen} other {# d sen}}",
+    "tomorrow": "Imorgon",
     "daysOverdue": "{count, plural, one {# dag försenad} other {# dagar försenad}}",
-    "tomorrow": "Imorgon"
+    "daysLate": "{count, plural, one {# d försenad} other {# d försenad}}",
+    "inDays": "{count, plural, one {om # dag} other {om # dagar}}",
+    "inWeeks": "{count, plural, one {om # vecka} other {om # veckor}}"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Varje dag} other {Varje # dagar}}",
@@ -79,367 +105,74 @@
     "everyNWeeksOnWeekends": "{count, plural, one {Varje helg} other {Varje # veckor på helger}}",
     "everyNWeeksOnDays": "{count, plural, one {Varje vecka på {days}} other {Varje # veckor på {days}}}",
     "everyNMonths": "{count, plural, one {Varje månad} other {Varje # månader}}",
-    "everyNMonthsOnDay": "{count, plural, one {Varje månad på {day}{suffix}} other {Varje # månader på {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {Varje månad på {week} {day}} other {Varje # månader på {week} {day}}}",
+    "everyNMonthsOnDay": "{count, plural, one {Varje månad den {day}{suffix}} other {Varje # månader den {day}{suffix}}}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Varje månad den {week} {day}} other {Varje # månader den {week} {day}}}",
     "everyNYears": "{count, plural, one {Varje år} other {Varje # år}}",
     "repeats": "Upprepas",
     "ordinal": {
       "first": "första",
-      "fourth": "fjärde",
-      "last": "sista",
       "second": "andra",
-      "third": "tredje"
+      "third": "tredje",
+      "fourth": "fjärde",
+      "last": "sista"
     },
     "preset": {
       "everyWeekday": "Varje vardag (mån-fre)",
       "everyYearOnDate": "Varje år den {date}"
     }
   },
-  "phaseF": {
-    "componentsAppSidebar": {
-      "collections": "Samlingar",
-      "newNote": "Ny anteckning",
-      "newNote2": "Ny anteckning",
-      "newFolder": "Ny mapp",
-      "newFolder2": "Ny mapp",
-      "bookmarks": "Bokmärken",
-      "tags": "Taggar",
-      "dropFilesToImport": "Släpp filer för att importera",
-      "newNoteN": "Ny anteckning (⌘N)",
-      "new": "Ny",
-      "syncDisabled": "Synkronisering avstängd",
-      "syncDisabled2": "Synkronisering avstängd",
-      "feedbackButton": "Skicka feedback",
-      "feedbackDescription": "Berätta vad som fungerar, vad som är trasigt eller vad du önskar att Memry gjorde. Vi läser varje meddelande.",
-      "feedbackEmailHint": "Lägg till din e-post om du vill ha svar.",
-      "feedbackError": "Det gick inte att skicka feedback. Försök igen.",
-      "feedbackPlaceholder": "Din feedback…",
-      "feedbackSend": "Skicka",
-      "feedbackSending": "Skickar…",
-      "feedbackSuccess": "Tack för din feedback!",
-      "feedbackTitle": "Skicka feedback",
-      "newItemMenu": "Skapa ny…",
-      "feedbackPrivacyEmailOptional": "Din e-postadress — bara om du anger den, och bara så att vi kan svara",
-      "feedbackPrivacyEmailSignedIn": "E-postadressen till ditt konto ({email}), så att vi kan svara",
-      "feedbackPrivacyMessage": "Ditt meddelande, precis som du skrev det",
-      "feedbackPrivacyNote": "Inget annat. Dina anteckningar stannar på din enhet.",
-      "feedbackPrivacyPlan": "Din plan (free, Plus, Pro eller Believer)",
-      "feedbackPrivacyTitle": "Det här skickas",
-      "feedbackPrivacyVersion": "Appversion och operativsystem",
-      "projects": "Projekt"
-    },
-    "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "Ändra storlek på dagspanel",
-      "dragToResizeDoubleClickToReset": "Dra för att ändra storlek · Dubbelklicka för att återställa"
-    },
-    "componentsFindBarFindBar": {
-      "findReplaceAsk": "Hitta, ersätt, fråga..."
-    },
-    "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Hoppa över introduktion",
-      "welcomeToMemry": "Välkommen till memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Din personliga kunskapsbas. Låt oss ta 2 minuter för att komma igång.",
-      "getStarted": "Kom igång",
-      "createYourFirstNote": "Skapa din första anteckning",
-      "markdownBasedStoredLocallyAsPlainFiles": "Basera på Markdown, lagras lokalt som vanliga filer.",
-      "eGMeetingNotesIdeasAnything": "t.ex. Mötesanteckningar, idéer, vad som helst...",
-      "skip": "Hoppa över",
-      "createNote": "Skapa anteckning ",
-      "addYourFirstTask": "Lägg till din första uppgift",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Uppgifter länkas till dina anteckningar, med prioriteringar och förfallodatum.",
-      "eGReviewProjectProposal": "t.ex. Granska projektförslag...",
-      "skip2": "Hoppa över",
-      "createTask": "Skapa uppgift ",
-      "syncAcrossDevices": "Synkronisera över enheter",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Håll dina anteckningar och uppgifter synkroniserade över alla dina enheter. Du kan alltid ställa in detta senare.",
-      "skipForNow": "Hoppa över för nu",
-      "doneLetSGo": "Klart — kör igång!"
-    },
-    "componentsFolderIconButton": {
-      "setFolderIcon": "Ställ in mappikon"
-    },
-    "componentsHintOverlayHintIndicator": {
-      "hint": "TIPS"
-    },
-    "componentsIconPicker": {
-      "iconPicker": "Ikonväljare",
-      "selectIcon": "Välj ikon",
-      "closeIconPicker": "Stäng ikonväljare",
-      "searchIcons": "Sök ikoner...",
-      "all": "Alla",
-      "clearIcon": "Rensa ikon",
-      "noIconsFoundFor": "Inga ikoner hittades för \""
-    },
-    "componentsKeyboardShortcutsModal": {
-      "keyboardShortcuts": "Tangentbordsgenvägar",
-      "closeShortcutsHelp": "Stäng genvägshjälp",
-      "press": "Tryck",
-      "toClose": "för att stänga"
-    },
-    "componentsKiboUiTreeIndex": {
-      "setIcon": "Ställ in ikon",
-      "clearIcon": "Rensa ikon"
-    },
-    "componentsNavMain": {
-      "platform": "Plattform"
-    },
-    "componentsNavProjects": {
-      "projects": "Projekt",
-      "more": "Mer",
-      "viewProject": "Visa projekt",
-      "shareProject": "Dela projekt",
-      "deleteProject": "Ta bort projekt",
-      "more2": "Mer"
-    },
-    "componentsNavUser": {
-      "cn": "CN",
-      "cn2": "CN",
-      "upgradeToPro": "Uppgradera till Pro",
-      "account": "Konto",
-      "billing": "Fakturering",
-      "notifications": "Meddelanden",
-      "logOut": "Logga ut"
-    },
-    "componentsSearchCommandPalette": {
-      "search": "Sök",
-      "searchNotesTasksJournalInbox": "Sök anteckningar, uppgifter, dagbok, inkorg...",
-      "noResultsFor": "Inga resultat för “",
-      "result": "resultat",
-      "noResultsForQuery": "Inga resultat för ”{query}”",
-      "resultCount": "{count, plural, one {# resultat} other {# resultat}}",
-      "indexBuilding": "Bygger sökindex {done}/{total} — resultatet kan vara ofullständigt",
-      "indexBuildingUnknown": "Bygger sökindex — resultatet kan vara ofullständigt"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Sök och klicka på objekt för att bygga din spårning",
-      "reasons": "Anledningar",
-      "clear": "Rensa"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Rensa",
-      "tags": "Taggar",
-      "filterByTag": "Filtrera efter tagg...",
-      "dateRange": "Datointervall"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Visa alla ",
-      "results": "resultat"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "suddig"
-    },
-    "componentsSplitViewEmptyPaneState": {
-      "noTabsOpen": "Inga flikar öppna",
-      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Öppna en sida från sidofältet eller skapa en ny flik för att komma igång",
-      "openInbox": "Öppna inkorg",
-      "closePane": "Stäng panel"
-    },
-    "componentsSplitViewLayoutPicker": {
-      "layoutPresets": "Layoutförinställningar",
-      "layoutPresets2": "Layoutförinställningar"
-    },
-    "componentsSplitViewResizeHandle": {
-      "resizePanes": "Ändra storlek på paneler"
-    },
-    "componentsSplitViewTabContent": {
-      "taskscontextNotAvailable": "TasksContext inte tillgängligt",
-      "searchResults": "Sökresultat",
-      "unknownTabType": "Okänd fliktyp:"
-    },
-    "componentsTabsAccessibleTab": {
-      "unsavedChanges": "osparade ändringar",
-      "preview": "förhandsgranska"
-    },
-    "componentsTabsNewTabMenu": {
-      "newTab": "Ny flik",
-      "newTab2": "Ny flik",
-      "newNote": "Ny anteckning",
-      "journal": "Dagbok",
-      "calendar": "Kalender",
-      "inboxCapture": "Inkorgfångst",
-      "tasks": "Uppgifter",
-      "tags": "Taggar"
-    },
-    "componentsTabsPinnedTab": {
-      "unsavedChanges": "Osparade ändringar",
-      "unsaved": "osparad)"
-    },
-    "componentsTabsRegularTab": {
-      "unsavedChanges": "Osparade ändringar"
-    },
-    "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "Stäng alla flikar"
-    },
-    "componentsTabsTabBarWithDrag": {
-      "openTabs": "Öppna flikar",
-      "scrollTabsLeft": "Skrolla flikar åt vänster",
-      "scrollTabsRight": "Skrolla flikar åt höger",
-      "dayPanel": "Dagspanel"
-    },
-    "componentsTabsTabErrorBoundary": {
-      "somethingWentWrong": "Något gick fel",
-      "anErrorOccurredWhileRenderingThisTabContent": "Ett fel uppstod vid rendering av detta flikinnehåll.",
-      "tryAgain": "Försök igen",
-      "sendReport": "Skicka diagnostikrapport"
-    },
-    "componentsTabsTabPreviewCard": {
-      "noteIcon": "Anteckningsikon"
-    },
-    "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Osparade ändringar",
-      "unsavedChangesBody": "”{title}” har osparade ändringar. Vad vill du göra?"
-    },
-    "componentsTeamSwitcher": {
-      "newWorkspace": "Nytt arbetsområde",
-      "darkMode": "Mörkt läge",
-      "settings": "Inställningar",
-      "integrations": "Integrationer",
-      "signOut": "Logga ut",
-      "downloadOnIos": "Ladda ner på iOS"
-    },
-    "componentsTrafficLights": {
-      "closeWindow": "Stäng fönster",
-      "minimizeWindow": "Minimera fönster",
-      "maximizeWindow": "Maximera fönster"
-    },
-    "componentsUiAutocompleteDropdown": {
-      "suggestions": "Förslag",
-      "or": "eller",
-      "enter": "Tryck på Enter",
-      "toInsert": "för att infoga"
-    },
-    "componentsUiBreadcrumb": {
-      "breadcrumb": "brödsmula",
-      "more": "Mer"
-    },
-    "componentsUiDialog": {
-      "close": "Stäng"
-    },
-    "componentsUiSheet": {
-      "close": "Stäng"
-    },
-    "componentsUiSidebar": {
-      "sidebar": "Sidofält",
-      "displaysTheMobileSidebar": "Visar det mobila sidofältet.",
-      "toggleSidebar": "Växla sidofält",
-      "toggleSidebar2": "Växla sidofält",
-      "dragToResizeDoubleClickToReset": "Dra för att ändra storlek · Dubbelklicka för att återställa"
-    },
-    "componentsVaultOnboarding": {
-      "welcomeToMemry": "Välkommen till memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Ditt personliga kunskapshanteringssystem.",
-      "selectAFolderToStoreYourNotesAndTasks": "Välj en mapp för att lagra dina anteckningar och uppgifter.",
-      "opening": "Öppnar...",
-      "selectVaultFolder": "Välj valvmapp",
-      "plainMarkdown": "Enkel Markdown",
-      "yourNotesStayPortable": "Dina anteckningar förblir portabla",
-      "syncAnywhere": "Synkronisera var som helst",
-      "useDropboxIcloudGit": "Använd Dropbox, iCloud, Git",
-      "recentVaults": "Senaste valven",
-      "notesLastOpened": "anteckningar · Senast öppnad",
-      "brandName": "Memrynote",
-      "preRelease": "Beta",
-      "createNewVault": "Skapa nytt valv",
-      "createNewVaultDesc": "Starta ett nytt valv i en valfri mapp.",
-      "openExistingVault": "Öppna befintligt valv",
-      "openExistingVaultDesc": "Välj en mapp med Markdown-filer som du redan har.",
-      "signInToSync": "Logga in för att synkronisera",
-      "signInToSyncDesc": "End-to-end-krypterade valv på dina enheter.",
-      "create": "Skapa",
-      "open": "Öppna",
-      "signIn": "Logga in",
-      "helpAndDocs": "Hjälp och dokumentation",
-      "signInRequiresVault": "Öppna eller skapa ett valv först för att konfigurera synkronisering.",
-      "addVault": "Lägg till valv"
-    },
-    "componentsVaultSwitcher": {
-      "noVaultsYet": "Inga valv ännu",
-      "openVault": "Öppna valv",
-      "settings": "Inställningar",
-      "logOut": "Logga ut",
-      "signInToSync": "Logga in för att synkronisera",
-      "remove": "Ta bort “",
-      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Detta valv kommer att tas bort från appen, men dina filer kommer att finnas kvar på disken. Du kan alltid lägga till det igen senare.",
-      "cancel": "Avbryt",
-      "remove2": "Ta bort",
-      "inYourAccount": "På ditt konto",
-      "itemsCount": "{count} objekt",
-      "untitledVault": "Valv",
-      "downloadVaultTitle": "Ladda ner ”{name}”",
-      "downloadLocation": "Plats",
-      "changeLocation": "Ändra…",
-      "download": "Ladda ner",
-      "downloadFailed": "Valvet kunde inte laddas ner",
-      "deleteFromAccount": "Ta bort från kontot",
-      "deleteVaultBody": "Detta tar permanent bort all synkad data för det här valvet från Memrys servrar och kan inte ångras. Dina filer på disken tas inte bort.",
-      "deleteVaultConfirm": "Ta bort från kontot",
-      "deleteVaultFailed": "Det gick inte att ta bort valvet",
-      "deleteVaultTitle": "Ta bort “{name}” från ditt konto?",
-      "removeVaultTitle": "Ta bort “{name}” från listan?",
-      "missing": "Mappen hittades inte"
-    },
-    "componentsWindowControls": {
-      "searchK": "Sök (⌘K)",
-      "browserBack": "Bläddra tillbaka",
-      "back": "Tillbaka",
-      "browserForward": "Bläddra framåt",
-      "forward": "Framåt"
-    }
-  },
-  "phaseI": {
-    "errors": {
-      "failedToImportFiles": "Misslyckades med att importera filer",
-      "failedToCreateNote": "Misslyckades med att skapa anteckning",
-      "failedToAccessMicrophone": "Misslyckades med att få åtkomst till mikrofonen"
-    },
-    "toasts": {
-      "undone": "Ångrad"
-    }
-  },
   "agentChat": {
-    "title": "Agent chatt",
-    "loading": "Laddar agentchatt...",
-    "conversationLoading": "Konversationen laddas...",
+    "title": "Agentchatt",
+    "loading": "Läser in agentchatt…",
+    "conversationLoading": "Läser in konversationen…",
+    "historyNotSaved": "Den här enheten kan inte låsa upp valvet, så den här konversationen sparas inte när du stänger appen.",
     "newConversation": "Ny konversation",
     "history": "Konversationshistorik",
     "openInTab": "Öppna konversation i flik",
-    "stop": "Stopp",
-    "thinking": "Agent tänker",
+    "stop": "Stoppa",
+    "thinking": "Agenten tänker",
     "enable": {
       "title": "Aktivera memrynote Agent",
-      "description": "memrynote Agent använder din valda lokala agent CLI för att chatta om ditt valv. Claude skickar vändningar till Anthropic; Codex skickar vändningar till OpenAI.",
-      "remote": "memrynote krypterar din lokala och synkroniserade chatthistorik, men modellinferens sker med den valda leverantören.",
+      "description": "memrynote Agent använder den lokala agent-CLI som du har valt för att chatta om ditt valv. Claude skickar konversationen till Anthropic och Codex till OpenAI.",
+      "remote": "memrynote krypterar din lokala och synkroniserade chatthistorik, men modellinferensen sker hos den valda leverantören.",
       "readTools": "Läsverktyg körs automatiskt.",
-      "writeTools": "Skapa och uppdatera verktyg kräver godkännande.",
-      "diff": "Uppdateringsverktyg visar en skillnad eller förhandsgranskning.",
-      "button": "Aktivera Agent-chatt"
+      "writeTools": "Verktyg som skapar och uppdaterar kräver godkännande.",
+      "diff": "Uppdateringsverktyg visar ändringarna eller en förhandsvisning.",
+      "button": "Aktivera Agentchatt"
     },
     "approval": {
-      "description": "Agenten vill ringa {name} med dessa argument.",
-      "applyOnce": "Applicera en gång",
+      "description": "Agenten vill anropa {name} med de här argumenten.",
+      "applyOnce": "Tillämpa en gång",
       "allowOnce": "Tillåt en gång",
       "editAndApply": "Redigera och tillämpa",
       "editAndAllow": "Redigera och tillåt",
       "allowAlways": "Tillåt alltid",
-      "applyEdits": "Tillämpa redigeringar",
-      "deny": "Förneka",
-      "invalidJson": "Ange giltig JSON innan du tillämpar ändringar."
+      "applyEdits": "Tillämpa ändringar",
+      "deny": "Avvisa",
+      "invalidJson": "Ange giltig JSON innan du tillämpar ändringar.",
+      "thisTool": "det här verktyget",
+      "alwaysAllowHint": "”Tillåt alltid” gäller {tool}. Alla andra verktyg frågar fortfarande, och radering kräver alltid godkännande.",
+      "alwaysInChat": "Tillåt alltid i den här chatten",
+      "alwaysInChatHint": "Gäller tills konversationen avslutas",
+      "alwaysInVault": "Tillåt alltid i det här valvet",
+      "alwaysInVaultHint": "Kan återkallas i Inställningar › Agent",
+      "deletesAlwaysAsk": "Radering kräver alltid godkännande"
     },
     "diff": {
-      "previewError": "Det gick inte att förhandsgranska anteckningsdiff",
-      "description": "Agenten vill uppdatera {title}. Granska aktuellt och kandidatinnehåll innan du tillämpar det.",
-      "fallbackTitle": "denna anteckning",
+      "previewError": "Det gick inte att förhandsgranska ändringen",
+      "description": "Agenten vill uppdatera {title}. Granska ändringen innan du tillämpar den.",
+      "fallbackTitle": "det här objektet",
       "current": "Nuvarande",
-      "candidate": "Kandidat",
-      "loading": "Belastning...",
-      "apply": "Tillämpas",
-      "applyEdited": "Använd redigerad"
+      "candidate": "Förslag",
+      "loading": "Läser in…",
+      "apply": "Tillämpa",
+      "applyEdited": "Tillämpa redigerad",
+      "editBody": "Redigera innan du tillämpar"
     },
     "inPageReview": {
       "regionLabel": "Agentens förslag",
       "barLabel": "Granska agentens förslag",
-      "loading": "Läser in förslaget...",
+      "loading": "Läser in förslaget…",
       "loadingTitle": "Agentens förslag",
       "title": "{count, plural, =0 {Agentens förslag} one {Agenten föreslog # ändring} other {Agenten föreslog # ändringar}}",
       "editingTitle": "Redigerar förslaget",
@@ -460,26 +193,132 @@
       "openJournal": "Öppna dagbok",
       "fallbackTitle": "den här anteckningen"
     },
+    "preview": {
+      "unset": "inte angivet",
+      "yes": "ja",
+      "no": "nej",
+      "noChange": "Inget som förhandsvisningen kan visa skulle ändras.",
+      "willBeLost": "Går förlorat",
+      "unchangedLines": "{count, plural, one {# oförändrad rad} other {# oförändrade rader}}",
+      "item": {
+        "note": "Anteckning",
+        "folder": "Mapp",
+        "task": "Uppgift",
+        "journal": "Dagbok",
+        "inbox": "Inkorg",
+        "project": "Projekt",
+        "status": "Status",
+        "canvas": "Canvas"
+      },
+      "intent": {
+        "create": "skapas",
+        "update": "uppdateras",
+        "delete": "raderas",
+        "move": "flyttas",
+        "reorder": "ordnas om"
+      },
+      "field": {
+        "archived": "Arkiverad",
+        "arguments": "Argument",
+        "color": "Färg",
+        "completed": "Slutförd",
+        "description": "Beskrivning",
+        "due": "Förfaller",
+        "dueTime": "Förfallotid",
+        "duplicateOf": "Kopia av",
+        "edits": "Ändringar",
+        "elements": "Element",
+        "folder": "Mapp",
+        "icon": "Ikon",
+        "isDefault": "Standard",
+        "isDone": "Räknas som klar",
+        "items": "Objekt",
+        "name": "Namn",
+        "operation": "Åtgärd",
+        "order": "Ordning",
+        "parent": "Överordnad",
+        "path": "Sökväg",
+        "position": "Position",
+        "priority": "Prioritet",
+        "project": "Projekt",
+        "removed": "Borttagen",
+        "repeatFrom": "Upprepa från",
+        "snoozeReason": "Orsak till uppskjutning",
+        "snoozedUntil": "Uppskjuten till",
+        "start": "Start",
+        "status": "Status",
+        "tags": "Taggar",
+        "title": "Titel"
+      },
+      "loss": {
+        "words": "{count, plural, one {# ord} other {# ord}}",
+        "tags": "{count, plural, one {# tagg} other {# taggar}}",
+        "notes": "{count, plural, one {# anteckning} other {# anteckningar}}",
+        "folders": "{count, plural, one {# mapp} other {# mappar}}",
+        "files": "{count, plural, one {# fil} other {# filer}}",
+        "events": "{count, plural, one {# händelse} other {# händelser}}",
+        "tasks": "{count, plural, one {# uppgift} other {# uppgifter}}",
+        "due": "förfaller {value}"
+      }
+    },
     "composer": {
-      "currentNote": "Aktuell not",
+      "currentNote": "Aktuell anteckning",
       "removeAttachment": "Ta bort {label}",
-      "placeholder": "Fråga memrynote vad som helst. @ för att nämna en fil",
+      "placeholder": "Gör vad du vill med memrynote… @ för att nämna anteckningar, uppgifter och händelser",
       "send": "Skicka",
-      "providerLabel": "Agent-leverantör: {provider}",
+      "providerLabel": "Agentleverantör: {provider}",
       "settingsSummary": "{reasoning}",
+      "connectedTools": "Anslutna verktyg",
+      "connectTool": "Anslut {tool}",
+      "addContext": "Lägg till kontext",
+      "addContextWithPermissions": "Lägg till kontext ({permissions})",
+      "mentionContext": "Nämn en anteckning, uppgift eller händelse",
+      "voice": {
+        "start": "Starta diktering",
+        "stop": "Stoppa diktering",
+        "transcribing": "Transkriberar röstinmatning",
+        "errors": {
+          "permissionDenied": "Åtkomst till mikrofonen nekades",
+          "noMicrophone": "Ingen mikrofon hittades",
+          "accessFailed": "Det gick inte att komma åt mikrofonen",
+          "recordingFailed": "Det gick inte att spela in röstinmatningen",
+          "transcriptionFailed": "Det gick inte att transkribera röstinmatningen"
+        }
+      },
+      "modelLabel": "Agentmodell: {provider} {model}",
+      "reasoningLabel": "Agentens resonemang: {reasoning}",
       "providers": {
+        "label": "Leverantör",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
         "local": "Lokal"
       },
+      "access": {
+        "vaultOnly": "Endast valv",
+        "computerAccess": "Datoråtkomst"
+      },
+      "webSearch": {
+        "on": "På",
+        "off": "Av",
+        "label": "Webbsökning"
+      },
       "models": {
         "default": "Standard",
-        "label": "Modell"
+        "label": "Modell",
+        "search": "Sök modeller…",
+        "useCustom": "Använd ”{query}”",
+        "localEmpty": "Inga modeller hittades – kontrollera Inställningar",
+        "localSetup": "Konfigurera i Inställningar…",
+        "cliSetup": "Hittades inte – konfigurera i Inställningar…",
+        "runtimeUnavailable": "Agenten är inte tillgänglig – öppna Inställningar…"
       },
       "settings": {
-        "reasoning": "Resonemang"
+        "reasoning": "Resonemang",
+        "effort": "Ansträngning"
       },
+      "includeCurrentNote": "Inkludera aktuell anteckning",
+      "chooseModel": "Välj modell",
       "claudeSettings": {
         "reasoning": {
           "low": "Låg",
@@ -494,19 +333,10 @@
         "reasoning": {
           "low": "Låg",
           "medium": "Medel",
-          "mediumDefault": "Medium (standard)",
+          "mediumDefault": "Medel (standard)",
           "high": "Hög",
           "extraHigh": "Extra hög"
         }
-      },
-      "access": {
-        "vaultOnly": "Endast valv",
-        "computerAccess": "Datoråtkomst"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Av",
-        "label": "Webbsökning"
       },
       "permissionsLabel": "Agentbehörigheter: {access}, webbsökning {webSearch}",
       "permissions": {
@@ -526,186 +356,135 @@
       "editedArgs": "Redigerade argument",
       "parameters": "Parametrar"
     },
+    "toolActivity": {
+      "steps": "{count, plural, one {# steg} other {# steg}}",
+      "running": "Körs",
+      "awaitingApproval": "Väntar på godkännande",
+      "done": "Klar"
+    },
+    "reasoning": {
+      "thinking": "Tänker…",
+      "thought": "Tänkte",
+      "thoughtFor": "Tänkte i {seconds} s",
+      "toggle": "Visa eller dölj resonemang"
+    },
     "sidebar": {
-      "label": "Höger sidofält",
+      "label": "Högra sidofältet",
       "day": "Dag",
       "agent": "Agent",
-      "pendingApproval": "{count, plural, one {# väntar på godkännande} other {# väntande godkännanden}}",
-      "inProgress": "Agent tur pågår",
+      "pendingApproval": "{count, plural, one {# väntar på godkännande} other {# väntar på godkännande}}",
+      "inProgress": "Agenten arbetar",
       "close": "Stäng agent"
     },
     "errors": {
       "loadConversations": "Det gick inte att läsa in agentkonversationer",
-      "loadConversation": "Det gick inte att ladda agentkonversationen",
+      "loadConversation": "Det gick inte att läsa in agentkonversationen",
       "createConversation": "Det gick inte att skapa agentkonversation",
-      "busy": "Ett annat fönster är mitt i svängen för den här konversationen. Vänta tills det är klart eller stoppa det därifrån.",
-      "sendTurn": "Kunde inte skicka agentturen",
-      "cancelTurn": "Det gick inte att avbryta agentturen",
+      "busy": "Ett annat fönster är mitt i ett svar i den här konversationen. Vänta tills det är klart eller stoppa det därifrån.",
+      "sendTurn": "Det gick inte att skicka meddelandet till agenten",
+      "cancelTurn": "Det gick inte att avbryta agentens körning",
       "submitApproval": "Det gick inte att skicka verktygsgodkännande",
       "updateTrust": "Det gick inte att uppdatera betrodda verktyg",
-      "saveDisclosure": "Det gick inte att spara upplysningsstatus",
-      "resolveWindow": "Kunde inte lösa agentkällfönstret",
-      "detectCli": "Det gick inte att upptäcka agentens backends",
-      "loadDisclosure": "Det gick inte att ladda upplysningstillståndet"
+      "saveDisclosure": "Det gick inte att spara aktiveringen av agenten",
+      "resolveWindow": "Det gick inte att hitta agentens källfönster",
+      "detectCli": "Det gick inte att identifiera tillgängliga agenter",
+      "loadDisclosure": "Det gick inte att läsa in agentens aktiveringsstatus"
+    },
+    "actions": {
+      "copy": "Kopiera",
+      "copied": "Kopierat"
     },
     "sources": {
-      "used": "{count, plural, one {Använde # källa} other {Använde # källor}}"
+      "count": "{count, plural, one {# källa} other {# källor}}"
     }
-  },
-  "home": {
-    "addWidget": "Lägg till widget",
-    "board": {
-      "defaultName": "Start",
-      "deleteAria": "Radera layout",
-      "label": "Startlayout",
-      "newAria": "Ny tavla",
-      "newName": "Ny tavla"
-    },
-    "disabled": {
-      "createNote": "Skapa anteckning",
-      "hint": "Inget öppet. Börja en anteckning."
-    },
-    "done": "Klar",
-    "edit": "Redigera",
-    "empty": {
-      "body": "Widgetar samlar dina anteckningar, uppgifter och bokmärken på en lugn plats.",
-      "cta": "Lägg till din första widget",
-      "title": "Din tavla är tom"
-    },
-    "greeting": {
-      "afternoon": "God eftermiddag",
-      "evening": "God kväll",
-      "morning": "God morgon"
-    },
-    "header": {
-      "events": "{count, plural, one {# händelse} other {# händelser}}",
-      "tasksDue": "{count, plural, one {# uppgift förfaller idag} other {# uppgifter förfaller idag}}"
-    },
-    "noBookmarksYet": "Inga bokmärken än.",
-    "noEventsYet": "Inga händelser idag.",
-    "noJournalEntriesYet": "Inga dagboksanteckningar än.",
-    "noNotesYet": "Inga anteckningar än.",
-    "noTasksYet": "Inga uppgifter än.",
-    "widget": {
-      "bookmarks": "Bokmärken",
-      "calendar": "Kalender",
-      "calendarToday": "Idag",
-      "configAria": "Konfigurera widget",
-      "configure": "Konfigurera",
-      "dragAria": "Dra widget",
-      "duration": "{count} min",
-      "filter": {
-        "today": "Förfaller idag",
-        "tomorrow": "Imorgon",
-        "week": "Denna vecka"
-      },
-      "folder": "Mapp",
-      "folderEmpty": "Inga mappar än",
-      "folderNoSelection": "Ingen mapp vald",
-      "folderPickPrompt": "Välj en mapp",
-      "folderViewSelect": "Vy",
-      "folderView_gallery": "Galleri",
-      "folderView_list": "Lista",
-      "inbox": "Inkorg",
-      "inboxAllTypes": "Alla typer",
-      "inboxOlder": "{count, plural, one {# äldre} other {# äldre}}",
-      "inboxOldest": "äldst {count, plural, one {# dag} other {# dagar}}",
-      "journal": "Dagbok",
-      "journalStreak": "{count, plural, one {#-dagars svit} other {#-dagars svit}}",
-      "journalToday": "Idag",
-      "journalYesterday": "Igår",
-      "loadError": "Kunde inte läsa in",
-      "menuAria": "Widgetalternativ",
-      "next": "Nästa: {title}",
-      "openCalendar": "Öppna kalender",
-      "openInbox": "Öppna inkorg",
-      "recentMeta": "redigerad {time}",
-      "recentMetaWithFolder": "{folder} · redigerad {time}",
-      "recentlyEdited": "Nyligen redigerade",
-      "remove": "Ta bort",
-      "removeAria": "Ta bort widget",
-      "resize": "Storlek",
-      "resizeAria": "Ändra storlek till {size}",
-      "savedFilterDefault": "Idag",
-      "savedFilterHint": "Stjärnmärk filter på Uppgifter-sidan för att använda dem här",
-      "savedFilterLabel": "Sparat filter",
-      "startsIn": "Börjar om {count, plural, one {# min} other {# min}}",
-      "tasks": "Uppgifter",
-      "unknown": "Okänd widget",
-      "untitled": "Namnlös"
-    }
-  },
-  "media": {
-    "video": "Video"
-  },
-  "onboarding": {
-    "agentChat": {
-      "body": "Byt till fliken Agent för att fråga MemryNotes assistent om ditt valv.",
-      "title": "Chatta med AI-agenten"
-    },
-    "collections": {
-      "body": "Organisera anteckningar i mappar, fäst bokmärken och bläddra efter tagg — allt här.",
-      "title": "Samlingar, bokmärken och taggar"
-    },
-    "dayPanel": {
-      "body": "Sidopanelen håller en kalender och din dagvy bredvid det du läser.",
-      "title": "Din dag, bredvid ditt arbete"
-    },
-    "feedback": {
-      "body": "Skicka feedback direkt till teamet härifrån.",
-      "title": "Berätta vad du tycker"
-    },
-    "nav": {
-      "body": "Inkorg för att fånga, Dagbok för dagliga anteckningar, Kalender för din tidslinje, Uppgifter för att-göra och Graf för att se hur allt hänger ihop.",
-      "title": "Dina arbetsytor"
-    },
-    "newNote": {
-      "body": "Börja här. Allt du skriver lagras lokalt först.",
-      "title": "Skapa din första anteckning"
-    },
-    "settings": {
-      "body": "Importera dina anteckningar från 12+ appar — Obsidian, Notion, Apple Notes, Evernote med flera — och justera allt annat i Inställningar.",
-      "title": "Inställningar och importer"
-    },
-    "sync": {
-      "body": "Aktivera totalsträckskrypterad synk för att hålla varje enhet i takt.",
-      "title": "Privat, krypterad synk"
-    },
-    "welcome": {
-      "body": "Ditt privata, offline-först-hem. Anteckningar är totalsträckskrypterade — de lämnar aldrig din enhet okrypterade.",
-      "title": "Välkommen till MemryNote"
-    },
-    "tour": {
-      "next": "Nästa",
-      "previous": "Föregående",
-      "progress": "{current} av {total}"
-    }
-  },
-  "capture": {
-    "focusShortcut": "Fokusera insamlingsfält",
-    "detailHint": "detaljer",
-    "focusHint": "Q",
-    "submit": "Fånga"
   },
   "canvas": {
+    "sectionLabel": "Canvasar",
+    "newCanvas": "Ny canvas",
+    "newCanvasFolder": "Ny canvasmapp",
+    "untitled": "Namnlös canvas",
+    "empty": "Inga canvasar än",
+    "loading": "Läser in canvasar…",
+    "loadFailed": "Det gick inte att läsa in canvasar",
+    "createFailed": "Det gick inte att skapa canvasen",
+    "openFailed": "Det gick inte att öppna canvasen",
+    "notFound": "Den här canvasen kunde inte hittas",
+    "corruptScene": "Den här canvasen kunde inte läsas. Redigering är avstängd för att inte förlora data.",
+    "unreadableTitle": "Den här canvasen kan inte öppnas här",
+    "unreadableBody": "Dess dokument saknas i valvet, eller så ritades den innan canvasar blev filer och den här enheten har inte längre nyckeln som låser upp den. Inget har raderats – öppna valvet på enheten som skapade den, eller återställ mappen med canvasar.",
+    "tooLargeToSync": "Den här canvasen är för stor för att synkroniseras. Den är sparad på den här enheten men når inte dina andra enheter förrän den blir mindre.",
+    "savedToVault": "Alla ändringar sparas automatiskt i ditt valv",
+    "libraryStoreFailed": "Det gick inte att spara ditt formbibliotek. De senaste ändringarna i det kan gå förlorade.",
+    "link": {
+      "itemMissing": "Det länkade objektet finns inte längre.",
+      "elementMissing": "Länken pekar på något som inte längre finns på den här canvasen.",
+      "title": "Länka till objekt",
+      "placeholder": "Sök anteckningar, uppgifter, händelser, inkorg, projekt…",
+      "hint": "Börja skriva för att hitta ett objekt att länka.",
+      "empty": "Inget matchar.",
+      "selectOneShape": "Markera en enda form för att länka den till ett objekt.",
+      "cardsCannotLink": "Ett kort öppnar redan sitt eget objekt, så det kan inte ha en andra länk.",
+      "linked": "Länkad.",
+      "groupNotes": "Anteckningar",
+      "groupFiles": "Filer",
+      "groupTasks": "Uppgifter",
+      "groupEvents": "Händelser",
+      "groupInbox": "Inkorg",
+      "groupJournals": "Dagbok",
+      "groupProjects": "Projekt",
+      "groupFolders": "Mappar",
+      "useUrl": "Länka till {url}",
+      "openTarget": "Öppna {name}",
+      "shapeTarget": "En form på den här canvasen",
+      "missingTarget": "Finns inte längre på den här canvasen"
+    },
+    "disabledTitle": "Canvas är inte aktiverad",
+    "disabledBody": "Den här fliken hör till en funktion som inte är aktiverad på den här enheten.",
+    "unreadable": "Dokumentet för den här canvasen saknas eller kan inte läsas. Visa det i filhanteraren eller radera canvasen.",
+    "actionFailed": "Det gick inte att slutföra canvasåtgärden",
+    "renameLabel": "Canvasnamn",
+    "folderNameLabel": "Mappnamn",
+    "deleteConfirmTitle": "Radera canvasen?",
+    "deleteConfirmBody": "”{title}” tas bort från memrynote på alla dina enheter. Filen hamnar i papperskorgen på den här datorn, men canvasen återställs inte om du lägger tillbaka filen.",
+    "dropToRoot": "Släpp här för att flytta ut ur mappen",
+    "filterPlaceholder": "Filtrera canvasar",
+    "filterNoMatches": "Inga canvasar matchar filtret",
+    "folderCanvasCount": "{count} canvasar i mappen",
+    "folderEmptyHint": "Inget här än",
+    "deleteFolderConfirmTitle": "Radera canvasmappen?",
+    "deleteFolderConfirmBody": "”{name}” och allt i den tas bort från memrynote på alla dina enheter. Berörda canvasar: {count}. Mappen hamnar i papperskorgen på den här datorn, men canvasarna återställs inte om du lägger tillbaka mappen.",
+    "actions": {
+      "rename": "Byt namn",
+      "duplicate": "Duplicera",
+      "copyLink": "Kopiera länk",
+      "setIcon": "Välj ikon",
+      "removeIcon": "Ta bort ikon",
+      "moveToFolder": "Flytta till mapp",
+      "moveToRoot": "Översta nivån",
+      "openExternal": "Öppna i extern redigerare",
+      "newCanvasHere": "Ny canvas här",
+      "newFolder": "Ny mapp",
+      "canvasMenu": "Canvasåtgärder",
+      "folderMenu": "Åtgärder för canvasmapp"
+    },
     "card": {
-      "addCard": "Lägg till kort",
-      "addCreateNote": "Skapa anteckning \"{query}\"",
-      "addCreateNoteEmpty": "Skapa ny anteckning",
-      "addCreatedAt": "Skapad {date}",
-      "addEmpty": "Inget hittades",
-      "addGroupEvents": "Händelser",
-      "addGroupNotes": "Anteckningar",
-      "addGroupTasks": "Uppgifter",
-      "addOnCanvas": "På canvasen",
-      "addPlaceholder": "Sök anteckningar, uppgifter och händelser…",
-      "allDay": "Hela dagen",
-      "createNoteFailed": "Det gick inte att skapa anteckningen",
-      "deleted": "Objektet borttaget",
-      "loading": "Laddar…",
       "open": "Öppna i flik",
       "openToEdit": "Öppna i flik för att redigera",
+      "deleted": "Objektet har raderats",
+      "loading": "Läser in…",
       "untitled": "Namnlös",
+      "allDay": "Heldag",
+      "createNoteFailed": "Det gick inte att skapa anteckningen",
+      "addCard": "Lägg till kort",
+      "addPlaceholder": "Sök anteckningar, filer, uppgifter, händelser och projekt…",
+      "addCreateNote": "Skapa anteckning ”{query}”",
+      "addCreateNoteEmpty": "Skapa ny anteckning",
+      "addEmpty": "Inget hittades",
+      "addGroupNotes": "Anteckningar",
+      "addGroupTasks": "Uppgifter",
+      "addGroupEvents": "Händelser",
+      "addOnCanvas": "På canvasen",
+      "addCreatedAt": "Skapad {date}",
       "bulkGroup": "Lägg till allt från",
       "bulkFromTag": "En tagg…",
       "bulkFromFolder": "En mapp…",
@@ -722,141 +501,756 @@
       "bulkConfirmAdd": "{count, plural, one {Lägg till # kort} other {Lägg till # kort}}",
       "bulkBack": "Tillbaka",
       "bulkEmpty": "Inga anteckningar, filer eller uppgifter att lägga till",
-      "bulkLoadFailed": "Kunde inte läsa in objekt",
+      "bulkLoadFailed": "Det gick inte att läsa in objekten",
       "bulkAdded": "{count, plural, one {# kort tillagt} other {# kort tillagda}}",
       "bulkAddedSkipped": "{count, plural, one {# kort tillagt} other {# kort tillagda}} · {skipped} redan på canvasen",
       "bulkAllOnCanvas": "{count, plural, one {Finns redan på den här canvasen} other {Alla # finns redan på den här canvasen}}"
     },
-    "corruptScene": "Den här canvasen kunde inte läsas. Redigering är avstängd för att inte förlora data.",
-    "createFailed": "Det gick inte att skapa canvasen",
-    "disabledBody": "Den här fliken hör till en funktion som inte är aktiverad på den här enheten.",
-    "disabledTitle": "Canvas är inte aktiverat",
-    "empty": "Inga canvasar än",
-    "libraryStoreFailed": "Det gick inte att spara ditt formbibliotek. De senaste ändringarna i det kan gå förlorade.",
-    "loadFailed": "Det gick inte att ladda canvasar",
-    "loading": "Laddar canvasar…",
-    "newCanvas": "Ny canvas",
-    "notFound": "Den här canvasen kunde inte hittas",
-    "openFailed": "Det gick inte att öppna canvasen",
-    "savedToVault": "Alla ändringar sparas automatiskt i ditt valv",
-    "sectionLabel": "Canvasar",
-    "tooLargeToSync": "Den här canvasen är för stor för att synkroniseras. Den är sparad på den här enheten men når inte dina andra enheter förrän den blir mindre.",
-    "untitled": "Namnlös canvas"
+    "cluster": {
+      "button": "Föreslå grupper",
+      "buttonHint": "Grupperar anteckningskorten på den här tavlan (eller de markerade) efter likhet. Körs på den här enheten.",
+      "loading": "Grupperar…",
+      "needMoreNotes": "Lägg till minst {count} anteckningskort för att få förslag på grupper.",
+      "tooMany": "Den här tavlan har fler än {count} anteckningskort. Markera högst {count} och försök igen.",
+      "disabled": "Slå på lokala inbäddningar i Inställningar > AI för att få förslag på grupper.",
+      "noGroups": "Inga tydliga grupper hittades bland de här anteckningarna.",
+      "missing": "{count, plural, one {# anteckning har ingen inbäddning än och togs inte med.} other {# anteckningar har ingen inbäddning än och togs inte med.}}",
+      "failed": "Det gick inte att föreslå grupper",
+      "title": "Föreslagna grupper",
+      "description": "Grupperade efter likhet på den här enheten. Inget på tavlan ändras förrän du skapar ramar.",
+      "defaultName": "Grupp {number}",
+      "untitledGroup": "Grupp",
+      "groupName": "Gruppnamn",
+      "acceptGroup": "Inkludera {name}",
+      "noteCount": "{count, plural, one {# anteckning} other {# anteckningar}}",
+      "discard": "Kassera",
+      "create": "{count, plural, one {Skapa # ram} other {Skapa # ramar}}",
+      "created": "{count, plural, one {# ram skapad} other {# ramar skapade}}",
+      "cardsGone": "De korten finns inte längre på tavlan."
+    },
+    "frame": {
+      "categorize": "Kategorisera",
+      "editBinding": "Ändra vad den här sektionen kategoriserar som",
+      "cardCount": "{count, plural, one {# kort} other {# kort}}",
+      "bindTitle": "Kategorisera den här sektionen",
+      "bindHint": "Kort som släpps i sektionen får den här taggen eller det här egenskapsvärdet.",
+      "bindPlaceholder": "Sök taggar och egenskapsvärden, eller skriv en ny tagg…",
+      "bindEmpty": "Inga taggar eller egenskapsvärden matchar.",
+      "groupTags": "Taggar",
+      "useTag": "Använd ny tagg #{tag}",
+      "unbind": "Sluta kategorisera som {label}",
+      "current": "Nuvarande",
+      "applied": "{count, plural, one {{label} har lagts till på # kort} other {{label} har lagts till på # kort}}",
+      "applyFailed": "Det gick inte att lägga till {label}",
+      "revertFailed": "Det gick inte att ångra {label}",
+      "leftFrame": "{count, plural, one {# kort flyttades ut ur {label}. Det behåller kategorin.} other {# kort flyttades ut ur {label}. De behåller kategorin.}}",
+      "removeCategory": "Ta bort {label}",
+      "removed": "{count, plural, one {{label} har tagits bort från # kort} other {{label} har tagits bort från # kort}}",
+      "removeFailed": "Det gick inte att ta bort {label}",
+      "skippedFile": "{count, plural, one {Ett filkort lämnades som det var: filer har inga taggar eller egenskaper.} other {# filkort lämnades som de var: filer har inga taggar eller egenskaper.}}",
+      "skippedTaskProperty": "{count, plural, one {Ett uppgiftskort lämnades som det var: uppgifter kan ha taggar men inte anteckningsegenskaper.} other {# uppgiftskort lämnades som de var: uppgifter kan ha taggar men inte anteckningsegenskaper.}}",
+      "skippedUnsupported": "{count, plural, one {Ett kort lämnades som det var: händelser och projekt kan inte kategoriseras.} other {# kort lämnades som de var: händelser och projekt kan inte kategoriseras.}}",
+      "layoutAction": "Ordna efter egenskap",
+      "layoutTitle": "Ordna efter egenskap",
+      "layoutHint": "Skapar en sektion per värde och fördelar anteckningarna på den här tavlan i dem.",
+      "layoutPlaceholder": "Sök egenskaper av typen enkelval, flerval och status…",
+      "layoutEmpty": "Inga egenskaper av typen enkelval, flerval eller status med värden än.",
+      "layoutValueCount": "{count, plural, one {# värde} other {# värden}}",
+      "layoutDone": "{count, plural, one {# sektion skapad för {property}} other {# sektioner skapade för {property}}}",
+      "layoutFailed": "Det gick inte att ordna tavlan"
+    }
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Samlingar",
+      "projects": "Projekt",
+      "newNote": "Ny anteckning",
+      "newNote2": "Ny anteckning",
+      "newFolder": "Ny mapp",
+      "newFolder2": "Ny mapp",
+      "newProject": "Nytt projekt",
+      "bookmarks": "Bokmärken",
+      "tags": "Taggar",
+      "reorderSection": "Ändra ordning på {section}",
+      "dropFilesToImport": "Släpp filer för att importera",
+      "dropFilesIntoVaultRoot": "Valvets rotmapp",
+      "newNoteN": "Ny anteckning (⌘N)",
+      "new": "Ny",
+      "newItemMenu": "Skapa ny…",
+      "feedbackButton": "Skicka feedback",
+      "feedbackTitle": "Skicka feedback",
+      "feedbackDescription": "Berätta vad som fungerar, vad som är trasigt eller vad du önskar att MemryNote gjorde. Vi läser varje meddelande.",
+      "feedbackPlaceholder": "Din feedback…",
+      "feedbackEmailHint": "Lägg till din e-post om du vill ha svar.",
+      "feedbackPrivacyTitle": "Det här skickas",
+      "feedbackPrivacyMessage": "Ditt meddelande, precis som du skrev det",
+      "feedbackPrivacyEmailOptional": "Din e-postadress – bara om du anger den, och bara så att vi kan svara",
+      "feedbackPrivacyEmailSignedIn": "E-postadressen till ditt konto ({email}), så att vi kan svara",
+      "feedbackPrivacyVersion": "Appversion och operativsystem",
+      "feedbackPrivacyPlan": "Din plan (Gratis, Plus, Pro eller Believer)",
+      "feedbackPrivacyNote": "Inget annat. Dina anteckningar stannar på din enhet.",
+      "feedbackSend": "Skicka",
+      "feedbackSending": "Skickar…",
+      "feedbackSuccess": "Tack för din feedback!",
+      "feedbackError": "Det gick inte att skicka feedback. Försök igen.",
+      "syncDisabled": "Synkronisering avstängd",
+      "syncDisabled2": "Synkronisering avstängd",
+      "sortLabel": "Sortera {section}: {mode}",
+      "sortModeManual": "Manuell",
+      "sortModeNameAsc": "Namn A → Ö",
+      "sortModeNameDesc": "Namn Ö → A",
+      "sortModeModifiedDesc": "Ändrad: nyast först",
+      "sortModeModifiedAsc": "Ändrad: äldst först",
+      "sortModeCreatedDesc": "Skapad: nyast först",
+      "sortModeCreatedAsc": "Skapad: äldst först",
+      "sortModeCountDesc": "Mest använda",
+      "sortModeCountAsc": "Minst använda",
+      "sortSaveFailed": "Det gick inte att spara sorteringsordningen",
+      "sectionOrderSaveFailed": "Det gick inte att spara ordningen i sidofältet"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Ändra storlek på dagpanelen",
+      "dragToResizeDoubleClickToReset": "Dra för att ändra storlek · Dubbelklicka för att återställa"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Sök, ersätt, fråga…"
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Hoppa över introduktion",
+      "welcomeToMemry": "Välkommen till memrynote",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Din personliga kunskapsbas. Det tar bara 2 minuter att komma igång.",
+      "getStarted": "Kom igång ",
+      "createYourFirstNote": "Skapa din första anteckning",
+      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-baserad, lagras lokalt som vanliga filer.",
+      "eGMeetingNotesIdeasAnything": "t.ex. mötesanteckningar, idéer, vad som helst…",
+      "skip": "Hoppa över",
+      "createNote": "Skapa anteckning ",
+      "addYourFirstTask": "Lägg till din första uppgift",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Uppgifter länkas till dina anteckningar, med prioritet och förfallodatum.",
+      "eGReviewProjectProposal": "t.ex. granska projektförslaget…",
+      "skip2": "Hoppa över",
+      "createTask": "Skapa uppgift ",
+      "syncAcrossDevices": "Synkronisera mellan enheter",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Håll dina anteckningar och uppgifter synkroniserade på alla dina enheter. Du kan alltid konfigurera det senare.",
+      "skipForNow": "Hoppa över tills vidare",
+      "doneLetSGo": "Klart – nu kör vi! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Ställ in mappikon",
+      "expandFolder": "Expandera mapp",
+      "collapseFolder": "Komprimera mapp"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "TIPS"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Ikonväljare",
+      "selectIcon": "Välj ikon",
+      "closeIconPicker": "Stäng ikonväljare",
+      "searchIcons": "Sök ikoner…",
+      "all": "Alla",
+      "clearIcon": "Rensa ikon",
+      "noIconsFoundFor": "Inga ikoner hittades för \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Kortkommandon",
+      "closeShortcutsHelp": "Stäng hjälpen för kortkommandon",
+      "press": "Tryck",
+      "toClose": "för att stänga"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Ställ in ikon",
+      "clearIcon": "Rensa ikon"
+    },
+    "componentsNavMain": {
+      "platform": "Plattform"
+    },
+    "componentsNavProjects": {
+      "projects": "Projekt",
+      "more": "Mer",
+      "viewProject": "Visa projekt",
+      "shareProject": "Dela projekt",
+      "deleteProject": "Radera projekt",
+      "more2": "Mer"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Uppgradera till Pro",
+      "account": "Konto",
+      "billing": "Fakturering",
+      "notifications": "Meddelanden",
+      "logOut": "Logga ut"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Sök",
+      "searchNotesTasksJournalInbox": "Sök anteckningar, uppgifter, dagbok, inkorg…",
+      "noResultsFor": "Inga resultat för ”",
+      "result": "resultat",
+      "noResultsForQuery": "Inga resultat för ”{query}”",
+      "resultCount": "{count, plural, one {# resultat} other {# resultat}}",
+      "indexBuilding": "Bygger sökindex {done}/{total} – resultatet kan vara ofullständigt",
+      "indexBuildingUnknown": "Bygger sökindex – resultatet kan vara ofullständigt"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Sök och klicka på objekt för att bygga upp ditt spår",
+      "reasons": "Anledningar",
+      "clear": "Rensa"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Rensa",
+      "tags": "Taggar",
+      "filterByTag": "Filtrera efter tagg…",
+      "dateRange": "Datointervall"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Visa alla ",
+      "results": "resultat"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "ungefärlig"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Inga flikar öppna",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Öppna en sida från sidofältet eller skapa en ny flik för att komma igång",
+      "openInbox": "Öppna inkorg",
+      "closePane": "Stäng panel"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Layoutförinställningar",
+      "layoutPresets2": "Layoutförinställningar"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Ändra storlek på paneler"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext inte tillgängligt",
+      "searchResults": "Sökresultat",
+      "unknownTabType": "Okänd fliktyp: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "osparade ändringar",
+      "preview": "förhandsvisning"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Ny flik",
+      "newTab2": "Ny flik",
+      "newNote": "Ny anteckning",
+      "journal": "Dagbok",
+      "calendar": "Kalender",
+      "inboxCapture": "Fånga i inkorgen",
+      "tasks": "Uppgifter",
+      "tags": "Taggar"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Osparade ändringar",
+      "unsaved": "osparad)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Osparade ändringar"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Stäng alla flikar"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Öppna flikar",
+      "scrollTabsLeft": "Skrolla flikar åt vänster",
+      "scrollTabsRight": "Skrolla flikar åt höger",
+      "dayPanel": "Dagpanel"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Något gick fel",
+      "anErrorOccurredWhileRenderingThisTabContent": "Ett fel uppstod när innehållet i den här fliken skulle visas.",
+      "tryAgain": "Försök igen",
+      "sendReport": "Skicka diagnostikrapport"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Anteckningsikon"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Osparade ändringar",
+      "unsavedChangesBody": "”{title}” har osparade ändringar. Vad vill du göra?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Ny arbetsyta",
+      "darkMode": "Mörkt läge",
+      "settings": "Inställningar",
+      "integrations": "Integrationer",
+      "signOut": "Logga ut",
+      "downloadOnIos": "Ladda ner för iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Stäng fönster",
+      "minimizeWindow": "Minimera fönster",
+      "maximizeWindow": "Maximera fönster"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Förslag",
+      "or": "eller",
+      "enter": "Enter",
+      "toInsert": "för att infoga"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "brödsmula",
+      "more": "Mer"
+    },
+    "componentsUiDialog": {
+      "close": "Stäng"
+    },
+    "componentsUiSheet": {
+      "close": "Stäng"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Sidofält",
+      "displaysTheMobileSidebar": "Visar det mobila sidofältet.",
+      "toggleSidebar": "Visa/dölj sidofält",
+      "toggleSidebar2": "Visa/dölj sidofält",
+      "dragToResizeDoubleClickToReset": "Dra för att ändra storlek · Dubbelklicka för att återställa"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Välkommen till memrynote",
+      "yourPersonalKnowledgeManagementSystem": "Ditt personliga kunskapshanteringssystem.",
+      "selectAFolderToStoreYourNotesAndTasks": "Välj en mapp för att lagra dina anteckningar och uppgifter.",
+      "opening": "Öppnar…",
+      "selectVaultFolder": "Välj valvmapp",
+      "plainMarkdown": "Ren Markdown",
+      "yourNotesStayPortable": "Dina anteckningar förblir portabla",
+      "syncAnywhere": "Synkronisera var som helst",
+      "useDropboxIcloudGit": "Använd Dropbox, iCloud, Git",
+      "recentVaults": "Senaste valven",
+      "notesLastOpened": "anteckningar · Senast öppnad",
+      "preRelease": "Beta",
+      "createNewVault": "Skapa nytt valv",
+      "createNewVaultDesc": "Starta ett nytt valv i en valfri mapp.",
+      "openExistingVault": "Öppna befintligt valv",
+      "openExistingVaultDesc": "Välj en mapp med Markdown-filer som du redan har.",
+      "signInToSync": "Logga in för att synkronisera",
+      "signInToSyncDesc": "End-to-end-krypterade valv på dina enheter.",
+      "create": "Skapa",
+      "open": "Öppna",
+      "signIn": "Logga in",
+      "helpAndDocs": "Hjälp och dokumentation",
+      "signInRequiresVault": "Öppna eller skapa ett valv först för att konfigurera synkronisering.",
+      "addVault": "Lägg till valv",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "Dina anteckningar finns i ett valv, en mapp på den här datorn.",
+        "createDesc": "Ge det ett namn och välj var det ska ligga.",
+        "openFolder": "Öppna mapp som valv",
+        "openFolderDesc": "Använd en mapp med Markdown-filer som du redan har.",
+        "openFromSync": "Öppna från Memrynote Sync",
+        "openFromSyncDesc": "Logga in och ladda ner ett valv från ditt konto.",
+        "back": "Tillbaka",
+        "createTitle": "Skapa ett nytt valv",
+        "createSubtitle": "Ett valv är en mapp med Markdown-filer. Du kan flytta det senare.",
+        "nameLabel": "Namn",
+        "namePlaceholder": "Mina anteckningar",
+        "locationLabel": "Plats",
+        "change": "Ändra…",
+        "willBeCreatedAt": "Skapas i",
+        "errorExists": "Det finns redan en mapp med det här namnet här.",
+        "openInstead": "Öppna den som valv i stället",
+        "errorInvalidName": "Namn får inte börja med en punkt eller innehålla / \\ : * ? \" < > |",
+        "createFailed": "Det gick inte att skapa valvet.",
+        "createVault": "Skapa valv",
+        "creating": "Skapar…",
+        "cancel": "Avbryt",
+        "chooseTitle": "Välj ett valv",
+        "chooseSubtitle": "Inloggad som {email}. Välj ett valv att öppna på den här datorn.",
+        "untitledVault": "Namnlöst valv",
+        "items": "{count, plural, one {# objekt} other {# objekt}}",
+        "onThisComputer": "På den här datorn",
+        "downloadTo": "Ladda ner till",
+        "otherVaultsHint": "Andra valv finns kvar på ditt konto. Ladda ner dem när du vill från valvväljaren.",
+        "openVault": "Öppna valv",
+        "opening": "Öppnar…",
+        "loadingVaults": "Läser in dina valv…",
+        "loadFailed": "Det gick inte att läsa in dina valv.",
+        "retry": "Försök igen",
+        "noVaultsTitle": "Inga valv på ditt konto än",
+        "noVaultsDesc": "Skapa ett på den här datorn. Det synkroniseras till ditt konto.",
+        "createCta": "Skapa ett valv",
+        "openFailed": "Det gick inte att öppna valvet."
+      }
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Inga valv ännu",
+      "openVault": "Öppna valv",
+      "settings": "Inställningar",
+      "logOut": "Logga ut",
+      "signInToSync": "Logga in för att synkronisera",
+      "remove": "Ta bort ”",
+      "removeVaultTitle": "Ta bort ”{name}” från listan?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Valvet tas bort från appen, men dina filer finns kvar på disken. Du kan alltid lägga till det igen senare.",
+      "cancel": "Avbryt",
+      "remove2": "Ta bort",
+      "inYourAccount": "På ditt konto",
+      "itemsCount": "{count} objekt",
+      "untitledVault": "Valv",
+      "downloadVaultTitle": "Ladda ner ”{name}”",
+      "downloadLocation": "Plats",
+      "changeLocation": "Ändra…",
+      "download": "Ladda ner",
+      "downloadFailed": "Valvet kunde inte laddas ner",
+      "deleteFromAccount": "Radera från kontot",
+      "deleteVaultTitle": "Radera ”{name}” från ditt konto?",
+      "deleteVaultBody": "All synkroniserad data för det här valvet raderas permanent från Memrys servrar. Det går inte att ångra. Dina filer på disken raderas inte.",
+      "deleteVaultConfirm": "Radera från kontot",
+      "deleteVaultFailed": "Det gick inte att radera valvet",
+      "missing": "Mappen hittades inte"
+    },
+    "componentsWindowControls": {
+      "searchK": "Sök (⌘K)",
+      "browserBack": "Bläddra tillbaka",
+      "back": "Tillbaka",
+      "browserForward": "Bläddra framåt",
+      "forward": "Framåt"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Det gick inte att importera filer",
+      "failedToCreateNote": "Det gick inte att skapa anteckningen",
+      "failedToAccessMicrophone": "Det gick inte att komma åt mikrofonen"
+    },
+    "toasts": {
+      "undone": "Ångrat"
+    }
+  },
+  "home": {
+    "widget": {
+      "removeAria": "Ta bort widget",
+      "dragAria": "Dra widget",
+      "configAria": "Konfigurera widget",
+      "resizeAria": "Ändra storlek till {size}",
+      "menuAria": "Widgetalternativ",
+      "resize": "Storlek",
+      "remove": "Ta bort",
+      "filter": {
+        "all": "Alla",
+        "today": "Förfaller idag",
+        "tomorrow": "Imorgon",
+        "next7": "Nästa 7 dagar",
+        "noDueDate": "Inget förfallodatum"
+      },
+      "recentlyEdited": "Nyligen redigerade",
+      "recentlyOpened": "Nyligen öppnade",
+      "recentMeta": "redigerad {time}",
+      "recentMetaWithFolder": "{folder} · redigerad {time}",
+      "openedMeta": "öppnad {time}",
+      "openedMetaWithFolder": "{folder} · öppnad {time}",
+      "noRecentlyOpened": "Anteckningar du öppnar visas här",
+      "bookmarks": "Bokmärken",
+      "tasks": "Uppgifter",
+      "calendar": "Kalender",
+      "calendarToday": "Idag",
+      "openCalendar": "Öppna kalender",
+      "next": "Nästa: {title}",
+      "startsIn": "Börjar om {count, plural, one {# min} other {# min}}",
+      "duration": "{count} min",
+      "inbox": "Inkorg",
+      "inboxAllTypes": "Alla typer",
+      "inboxOlder": "{count, plural, one {# äldre} other {# äldre}}",
+      "inboxOldest": "äldst {count, plural, one {# dag} other {# dagar}}",
+      "openInbox": "Öppna inkorg",
+      "folder": "Mapp",
+      "untitled": "Namnlös",
+      "folderPickPrompt": "Välj en mapp",
+      "folderEmpty": "Inga mappar än",
+      "folderNoSelection": "Ingen mapp vald",
+      "folderView_list": "Lista",
+      "folderView_gallery": "Galleri",
+      "folderViewSelect": "Vy",
+      "project": "Projekt",
+      "projectNoSelection": "Inget projekt valt",
+      "projectMissing": "Det här projektet är inte längre tillgängligt",
+      "projectNoTasks": "Inga uppgifter",
+      "journal": "Dagbok",
+      "journalStreak": "{count, plural, one {# dag i rad} other {# dagar i rad}}",
+      "journalToday": "Idag",
+      "journalYesterday": "Igår",
+      "journalTomorrow": "Imorgon",
+      "journalUpcoming": "Kommande",
+      "journalNoEntryYet": "Inget inlägg än",
+      "loadError": "Det gick inte att läsa in",
+      "unknown": "Okänd widget"
+    },
+    "board": {
+      "label": "Startsidans layout",
+      "deleteAria": "Radera layout",
+      "newAria": "Ny tavla",
+      "newName": "Ny tavla",
+      "defaultName": "Start",
+      "manage": "Hantera tavlor",
+      "manageTitle": "Hantera tavlor",
+      "manageDescription": "Byt namn på, ändra ordning på eller radera tavlorna på startsidan.",
+      "renameAria": "Byt namn på tavla",
+      "reorderAria": "Ändra ordning på tavla",
+      "nameLabel": "Tavlans namn"
+    },
+    "greeting": {
+      "morning": "God morgon",
+      "afternoon": "God eftermiddag",
+      "evening": "God kväll"
+    },
+    "header": {
+      "tasksDue": "{count, plural, one {# uppgift förfaller idag} other {# uppgifter förfaller idag}}",
+      "events": "{count, plural, one {# händelse} other {# händelser}}"
+    },
+    "edit": "Redigera",
+    "done": "Klar",
+    "addWidget": "Lägg till widget",
+    "empty": {
+      "title": "Din tavla är tom",
+      "body": "Widgetar samlar dina anteckningar, uppgifter och bokmärken på en lugn plats.",
+      "cta": "Lägg till din första widget"
+    },
+    "noBookmarksYet": "Inga bokmärken än.",
+    "noNotesYet": "Inga anteckningar än.",
+    "noTasksYet": "Inga uppgifter än.",
+    "noEventsYet": "Inga händelser idag.",
+    "noJournalEntriesYet": "Inga dagboksinlägg än.",
+    "disabled": {
+      "createNote": "Skapa anteckning",
+      "hint": "Inget öppet. Börja en anteckning."
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Välkommen till MemryNote",
+      "body": "Din privata plats som fungerar offline. Anteckningar är end-to-end-krypterade – de lämnar aldrig din enhet okrypterade."
+    },
+    "newNote": {
+      "title": "Skapa din första anteckning",
+      "body": "Börja här. Allt du skriver lagras lokalt först."
+    },
+    "nav": {
+      "title": "Dina arbetsytor",
+      "body": "Inkorg för att fånga, Dagbok för dagliga anteckningar, Kalender för din tidslinje, Uppgifter för det du ska göra och Graf för att se hur allt hänger ihop."
+    },
+    "collections": {
+      "title": "Samlingar, bokmärken och taggar",
+      "body": "Organisera anteckningar i mappar, fäst bokmärken och bläddra efter tagg – allt här."
+    },
+    "dayPanel": {
+      "title": "Din dag, bredvid ditt arbete",
+      "body": "Sidopanelen visar en kalender och din dagvy bredvid det du läser."
+    },
+    "agentChat": {
+      "title": "Chatta med AI-agenten",
+      "body": "Byt till fliken Agent för att fråga MemryNotes assistent om ditt valv."
+    },
+    "sync": {
+      "title": "Privat, krypterad synk",
+      "body": "Slå på end-to-end-krypterad synkronisering för att hålla alla enheter i takt."
+    },
+    "feedback": {
+      "title": "Berätta vad du tycker",
+      "body": "Skicka feedback direkt till teamet härifrån."
+    },
+    "settings": {
+      "title": "Inställningar och importer",
+      "body": "Importera dina anteckningar från 12+ appar – Obsidian, Notion, Apple Notes, Evernote med flera – och justera allt annat i Inställningar."
+    },
+    "tour": {
+      "next": "Nästa",
+      "previous": "Föregående",
+      "progress": "{current} av {total}"
+    },
+    "starPrompt": {
+      "title": "Introduktionen är klar",
+      "body": "Stjärnmärk oss gärna på GitHub – det hjälper andra att hitta MemryNote.",
+      "action": "Stjärnmärk på GitHub"
+    }
   },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Klicka på rad",
-      "reset": "Återställ",
-      "shortcutsTab": "Fliken Kortkommandon"
-    },
     "description": "Snabbvägar för att röra dig i memrynote, fånga tankar och beta av arbete.",
+    "or": "eller",
+    "then": "sedan",
     "groups": {
       "general": {
-        "description": "Navigering och hjälp i hela appen.",
-        "title": "Allmänt"
-      },
-      "inbox": {
-        "description": "Behandla insamlade objekt snabbt.",
-        "title": "Inkorg"
-      },
-      "journal": {
-        "description": "Navigera i journalvyer och fokusera skrivytan.",
-        "title": "Dagbok"
-      },
-      "notes": {
-        "description": "Skriv, formatera och sök i anteckningar.",
-        "title": "Anteckningar / Redigerare"
-      },
-      "settings": {
-        "description": "Öppna inställningar och anpassa kortkommandon.",
-        "title": "Inställningar"
+        "title": "Allmänt",
+        "description": "Navigering och hjälp i hela appen."
       },
       "tabs": {
-        "description": "Växla mellan flikar och paneler.",
-        "title": "Flikar och delningar"
+        "title": "Flikar och delade vyer",
+        "description": "Växla mellan flikar och paneler."
+      },
+      "inbox": {
+        "title": "Inkorg",
+        "description": "Gå snabbt igenom fångade objekt."
+      },
+      "journal": {
+        "title": "Dagbok",
+        "description": "Navigera i dagboksvyer och fokusera skrivytan."
+      },
+      "notes": {
+        "title": "Anteckningar / Redigerare",
+        "description": "Skriv, formatera och sök i anteckningar."
       },
       "tasks": {
-        "description": "Filtrera, markera och slutför uppgifter.",
-        "title": "Uppgifter"
+        "title": "Uppgifter",
+        "description": "Filtrera, markera och slutför uppgifter."
+      },
+      "settings": {
+        "title": "Inställningar",
+        "description": "Öppna inställningar och anpassa kortkommandon."
       }
     },
     "items": {
       "general": {
-        "createNote": "Skapa en anteckning",
-        "keyboardShortcuts": "Öppna kortkommandon",
-        "openSettings": "Öppna inställningar",
         "quickSearch": "Öppna snabbsökning",
-        "sidebarSection": "Gå till avsnitt i sidofältet",
-        "toggleSidebar": "Växla sidofältet",
-        "undoTaskAction": "Ångra senaste uppgiftsåtgärden"
+        "createNote": "Skapa en anteckning",
+        "openSettings": "Öppna inställningar",
+        "switchVault": "Byt valv",
+        "adjacentVault": "Föregående eller nästa valv",
+        "keyboardShortcuts": "Öppna kortkommandon",
+        "undoTaskAction": "Ångra senaste uppgiftsåtgärden",
+        "toggleSidebar": "Visa/dölj sidofältet",
+        "sidebarSection": "Gå till avsnitt i sidofältet"
+      },
+      "tabs": {
+        "newTabMenu": "Öppna menyn för ny flik",
+        "closeTab": "Stäng flik",
+        "closeAllInPane": "Stäng alla flikar i panelen",
+        "reopenClosedTab": "Återöppna stängd flik",
+        "nextTab": "Nästa flik",
+        "previousTab": "Föregående flik",
+        "pinTab": "Fäst eller lossa flik",
+        "duplicateTab": "Duplicera flik",
+        "splitRight": "Dela åt höger",
+        "splitDown": "Dela nedåt",
+        "closeSplitPane": "Stäng delad panel",
+        "focusPane": "Fokusera en annan panel",
+        "moveTabToPane": "Flytta flik till panel",
+        "maximizePane": "Maximera aktuell panel"
       },
       "inbox": {
-        "archiveItem": "Arkivera markerat objekt",
-        "chooseQuickFileResult": "Välj ett resultat i snabbarkiveringen",
-        "clearSelection": "Rensa markering eller stäng snabbarkivering",
-        "confirmFiling": "Bekräfta arkiveringspanelen",
+        "nextItem": "Nästa objekt",
+        "previousItem": "Föregående objekt",
         "firstOrLastItem": "Första eller sista objektet",
         "jumpByPage": "Hoppa en sida i taget",
-        "nextItem": "Nästa objekt",
-        "openOriginal": "Öppna ursprunglig länk",
-        "openQuickFile": "Öppna snabbarkivering",
-        "previousItem": "Föregående objekt",
-        "refresh": "Uppdatera inkorgen",
-        "selectAllVisible": "Markera alla synliga objekt",
+        "togglePreview": "Visa/dölj förhandsvisningspanelen",
         "selectItem": "Markera objekt",
-        "togglePreview": "Växla förhandsgranskningspanelen"
+        "selectAllVisible": "Markera alla synliga objekt",
+        "clearSelection": "Rensa markering eller stäng snabbinsortering",
+        "openQuickFile": "Öppna snabbinsortering",
+        "chooseQuickFileResult": "Välj ett resultat i snabbinsorteringen",
+        "archiveItem": "Arkivera markerat objekt",
+        "openOriginal": "Öppna ursprunglig länk",
+        "refresh": "Uppdatera inkorgen",
+        "confirmFiling": "Bekräfta i insorteringspanelen"
       },
       "journal": {
-        "bold": "Fetstila markerad text",
-        "find": "Sök i journalen",
-        "italic": "Kursivera markerad text",
         "returnFromOverview": "Återgå från månads- eller årsvy",
+        "find": "Sök i dagboken",
+        "bold": "Fetstila markerad text",
+        "italic": "Kursivera markerad text",
         "underline": "Understryk markerad text"
       },
       "notes": {
-        "bold": "Fet",
-        "closeOverlays": "Stäng redigerarens överlägg",
-        "commandMenu": "Öppna redigerarens kommandomeny",
         "createNote": "Skapa en anteckning",
         "find": "Sök i anteckningen",
+        "bold": "Fet",
         "italic": "Kursiv",
-        "underline": "Understruken"
-      },
-      "settings": {
-        "cancelRecording": "Avbryt inspelning av kortkommando",
-        "customizeShortcuts": "Anpassa kortkommandon",
-        "openSettings": "Öppna inställningar",
-        "recordShortcut": "Spela in ett nytt kortkommando",
-        "resetShortcut": "Återställ ett kortkommando till standard"
-      },
-      "tabs": {
-        "closeAllInPane": "Stäng alla flikar i panelen",
-        "closeSplitPane": "Stäng delad panel",
-        "closeTab": "Stäng flik",
-        "duplicateTab": "Duplicera flik",
-        "focusPane": "Fokusera en annan panel",
-        "maximizePane": "Maximera aktuell panel",
-        "moveTabToPane": "Flytta flik till panel",
-        "newTabMenu": "Öppna menyn för ny flik",
-        "nextTab": "Nästa flik",
-        "pinTab": "Fäst eller lossa flik",
-        "previousTab": "Föregående flik",
-        "reopenClosedTab": "Återöppna stängd flik",
-        "splitDown": "Dela nedåt",
-        "splitRight": "Dela till höger"
+        "underline": "Understruken",
+        "commandMenu": "Öppna redigerarens kommandomeny",
+        "closeOverlays": "Stäng redigerarens överlägg"
       },
       "tasks": {
         "clearFilters": "Rensa synliga filter",
+        "selectAllVisible": "Markera alla synliga uppgifter",
         "clearSelection": "Rensa uppgiftsmarkering",
         "completeSelected": "Slutför markerade uppgifter",
+        "deleteSelected": "Radera markerade uppgifter",
         "configureRepeat": "Ställ in upprepning för fokuserad uppgift",
-        "deleteSelected": "Ta bort markerade uppgifter",
-        "selectAllVisible": "Markera alla synliga uppgifter",
         "skipOccurrence": "Hoppa över en upprepning",
         "stopRepeating": "Sluta upprepa uppgiften"
+      },
+      "settings": {
+        "openSettings": "Öppna inställningar",
+        "customizeShortcuts": "Anpassa kortkommandon",
+        "recordShortcut": "Spela in ett nytt kortkommando",
+        "cancelRecording": "Avbryt inspelning av kortkommando",
+        "resetShortcut": "Återställ ett kortkommando till standard"
       }
     },
-    "or": "eller",
-    "then": "sedan"
+    "combos": {
+      "shortcutsTab": "Fliken Kortkommandon",
+      "clickRow": "Klicka på rad",
+      "reset": "Återställ"
+    }
+  },
+  "update": {
+    "available": "Uppdatering tillgänglig",
+    "downloading": "Laddar ner {version}",
+    "ready": "Uppdateringen är klar",
+    "failed": "Uppdateringen misslyckades",
+    "downloadAction": "Ladda ner",
+    "restartAction": "Starta om",
+    "detailsAction": "Detaljer",
+    "popover": {
+      "readyTitle": "MemryNote {version} är klar att installera",
+      "availableTitle": "MemryNote {version} är tillgänglig",
+      "readySubtitle": "Du har {current}",
+      "availableSubtitle": "Du har {current} · inget har laddats ner än",
+      "allChanges": "Alla ändringar",
+      "restartNow": "Starta om nu",
+      "onNextQuit": "Nästa gång appen avslutas",
+      "download": "Ladda ner",
+      "notNow": "Inte nu",
+      "moreOptions": "Fler uppdateringsalternativ",
+      "skipVersion": "Hoppa över {version}",
+      "turnOffAuto": "Stäng av automatiska uppdateringar",
+      "copyVersionInfo": "Kopiera versionsinformation",
+      "openSettings": "Öppna inställningar"
+    },
+    "installing": {
+      "title": "Installerar {version}",
+      "titleUnknownVersion": "Installerar uppdatering",
+      "subtitle": "MemryNote öppnas igen om en stund. Allt du har skrivit finns redan på disken."
+    },
+    "installFailed": {
+      "title": "MemryNote kunde inte slutföra installationen av {version}",
+      "titleUnknownVersion": "MemryNote kunde inte slutföra installationen av uppdateringen",
+      "body": "Ditt valv har inte rörts – en uppdatering gäller appen, inte dina anteckningar. Du har fortfarande {current} och allt fungerar som tidigare.",
+      "errorLabel": "Vad som gick fel",
+      "downloadManually": "Ladda ner {version} manuellt",
+      "downloadManuallyUnknownVersion": "Ladda ner MemryNote manuellt",
+      "tryAgain": "Försök igen",
+      "copyDetails": "Kopiera detaljer"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Valv",
+    "position": "{name}, valv {index} av {count}",
+    "openList": "{position}. Öppna listan med valv",
+    "switchTo": "Byt till {name}",
+    "switchingTo": "Byter till {name}",
+    "changeIcon": "Byt ikon…",
+    "resetIcon": "Återställ ikon",
+    "iconButton": "Byt ikon för {name}",
+    "iconFailed": "Det gick inte att byta valvets ikon"
+  },
+  "sidebarHelp": {
+    "label": "Hjälp och feedback",
+    "reportBug": "Rapportera en bugg",
+    "requestFeature": "Föreslå en funktion",
+    "starOnGithub": "Stjärnmärk på GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "Nyheter"
+  },
+  "sidebarStar": {
+    "title": "MemryNote har öppen källkod",
+    "body": "Utvecklas öppet. En stjärna hjälper andra att hitta appen.",
+    "star": "Stjärnmärk",
+    "later": "Inte nu",
+    "thanks": "Tack. Det betyder mycket."
+  },
+  "sidebar": {
+    "railLabel": "Avsnitt",
+    "search": "Sök eller gå till…",
+    "vaultMenu": "{name}. Öppna listan med valv"
   }
 }

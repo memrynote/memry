@@ -87,8 +87,8 @@
     "rateLimited": "Terlalu banyak permintaan. Penyegerakan akan disambung semula sebentar lagi.",
     "cryptoFailure": "Gagal menyulitkan atau menyahsulit data penyegerakan. Cuba log keluar dan masuk semula.",
     "versionIncompatible": "Versi memrynote ini tidak lagi disokong. Sila kemas kini.",
-    "storageQuotaExceeded": "Storan penyegerakan anda penuh. Kosongkan ruang atau tingkatkan pelan anda.",
-    "fileTooLarge": "Fail ini lebih besar daripada yang dibenarkan oleh pelan anda. Tingkatkan pelan anda untuk menyegerakkan fail yang lebih besar.",
+    "storageQuotaExceeded": "Storan penyegerakan anda penuh. Kosongkan ruang atau naik taraf pelan anda.",
+    "fileTooLarge": "Fail ini lebih besar daripada yang dibenarkan oleh pelan anda. Naik taraf pelan anda untuk menyegerakkan fail yang lebih besar.",
     "noteTooLarge": "Nota terlalu besar untuk disegerakkan. Pisahkan nota itu kepada beberapa nota yang lebih kecil untuk menyelesaikannya.",
     "noteTooLargeNamed": "“{title}” terlalu besar untuk disegerakkan. Pisahkan nota itu kepada beberapa nota yang lebih kecil untuk menyelesaikannya.",
     "attachmentUploadFailed": "Lampiran “{filename}” tidak dapat disegerakkan. Ia kekal pada peranti ini.",
@@ -260,7 +260,7 @@
     "shortcutInUse": "Pintasan {shortcut} sudah digunakan"
   },
   "tag": {
-    "mergeSameTag": "Teg sumber dan teg sasaran adalah sama",
+    "mergeSameTag": "Teg sumber dan teg sasaran ialah teg yang sama",
     "categoryNameRequired": "Nama kategori diperlukan",
     "pinNoteFailed": "Gagal menyemat nota",
     "unpinNoteFailed": "Gagal menyahsemat nota",

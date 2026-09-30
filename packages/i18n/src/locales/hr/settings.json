@@ -3,7 +3,7 @@
     "exportNotImplemented": "Izvoz lokalnih podataka još nije implementiran"
   },
   "page": {
-    "title": "postavke",
+    "title": "Postavke",
     "backToApp": "Natrag u aplikaciju",
     "nav": {
       "groups": {
@@ -12,89 +12,170 @@
         "editing": "Uređivanje",
         "modules": "Moduli",
         "services": "Usluge",
-        "data": "Podaci"
+        "data": "Podaci",
+        "workspace": "Radni prostor",
+        "features": "Značajke"
       },
       "items": {
         "account": "Račun",
-        "general": "generalno",
+        "general": "Općenito",
         "templates": "Predlošci",
-        "editor": "urednik",
-        "journal": "časopis",
+        "editor": "Uređivač",
+        "journal": "Dnevnik",
         "tasks": "Zadaci",
+        "inbox": "Ulazni pretinac",
         "calendar": "Kalendar",
         "appearance": "Izgled",
         "shortcuts": "Prečaci",
+        "commandLine": "Naredbeni redak",
         "ai": "AI pomoćnik",
         "vault": "Trezor",
-        "tags": "oznake",
+        "tags": "Oznake",
         "properties": "Svojstva",
-        "commandLine": "Naredbeni redak",
-        "features": "Značajke",
         "import": "Uvoz",
-        "inbox": "Pristigla pošta"
+        "features": "Značajke",
+        "modules": "Moduli",
+        "aiAgents": "AI i agenti",
+        "tagsProperties": "Oznake i svojstva",
+        "vaultData": "Trezor i podaci"
+      }
+    },
+    "drillIn": {
+      "back": "Natrag na odjeljak „{section}”"
+    },
+    "modules": {
+      "configure": "Konfiguriraj modul „{module}”"
+    },
+    "vaultImport": {
+      "label": "Uvezi iz druge aplikacije",
+      "description": "Notion, Evernote, Bear, Apple Notes, Todoist i drugi",
+      "action": "Uvezi…"
+    },
+    "search": {
+      "placeholder": "Pretraži postavke",
+      "count": "{count, plural, one {# postavka} few {# postavke} other {# postavki}}",
+      "empty": "Nema odgovarajućih postavki",
+      "move": "kretanje",
+      "open": "otvaranje"
+    }
+  },
+  "features": {
+    "header": {
+      "title": "Značajke",
+      "subtitle": "Uključite ili isključite dijelove aplikacije. Isključeno = zasivljeno na bočnoj traci i onemogućeno posvuda."
+    },
+    "items": {
+      "home": {
+        "label": "Početna",
+        "description": "Početna nadzorna ploča"
+      },
+      "inbox": {
+        "label": "Ulazni pretinac",
+        "description": "Brzi zapis i razvrstavanje"
+      },
+      "journal": {
+        "label": "Dnevnik",
+        "description": "Dnevne bilješke"
+      },
+      "tasks": {
+        "label": "Zadaci",
+        "description": "Zadaci i rokovi"
+      },
+      "calendar": {
+        "label": "Kalendar",
+        "description": "Događaji i raspored"
+      },
+      "graph": {
+        "label": "Graf",
+        "description": "Veze između bilješki"
+      },
+      "spatialCanvas": {
+        "label": "Platno",
+        "description": "Prostorne ploče za slaganje i povezivanje bilješki"
       }
     }
   },
   "general": {
     "header": {
-      "title": "generalno",
-      "subtitle": "Pokretanje aplikacije i ponašanje kartice",
-      "loading": "Učitavanje postavki..."
+      "title": "Općenito",
+      "subtitle": "Jezik, pokretanje, kartice i privatnost.",
+      "loading": "Učitavanje postavki…"
     },
     "groups": {
       "startup": "Pokretanje",
       "updates": "Ažuriranja",
       "languageRegion": "Jezik i regija",
-      "tabBehavior": "Ponašanje kartice",
+      "tabBehavior": "Ponašanje kartica",
+      "window": "Ponašanje prozora",
       "fileCreation": "Stvaranje datoteke",
-      "privacy": "Privatnost"
+      "privacy": "Privatnost",
+      "startupWindows": "Pokretanje i prozori",
+      "newNotes": "Nove bilješke"
     },
     "startup": {
       "launchAtLogin": {
         "label": "Pokreni prilikom prijave",
         "description": "Pokrenite memrynote kada se prijavite",
-        "error": "Nije uspjelo ažuriranje početka pri pokretanju"
+        "error": "Ažuriranje postavke pokretanja pri prijavi nije uspjelo"
       }
     },
     "updates": {
+      "autoCheck": {
+        "label": "Automatski provjeravaj ima li ažuriranja",
+        "description": "Provjeravaj nova izdanja pri pokretanju i povremeno dok je aplikacija otvorena.",
+        "error": "Ažuriranje postavke automatske provjere nije uspjelo"
+      },
+      "autoDownload": {
+        "label": "Automatski preuzimaj ažuriranja",
+        "description": "Preuzmi i instaliraj nova izdanja u pozadini, bez upita.",
+        "error": "Ažuriranje postavke automatskog preuzimanja nije uspjelo"
+      },
       "appUpdates": "Ažuriranja aplikacije",
       "installedVersion": "Instalirana verzija {version}",
       "availableVersion": "Dostupna verzija {version}",
-      "unsupported": "Zapakirane verzije mogu provjeriti, preuzeti i instalirati ažuriranja s GitHub Releases",
+      "unsupported": "Zapakirana izdanja mogu provjeravati, preuzimati i instalirati ažuriranja s usluge GitHub Releases",
       "available": "memrynote {version} je dostupan za preuzimanje",
       "downloadingLatest": "Preuzimanje najnovijeg izdanja",
-      "downloadingLatestPercent": "Preuzimanje najnovijeg izdanja ({percent}%)",
+      "downloadingLatestPercent": "Preuzimanje najnovijeg izdanja ({percent} %)",
       "downloaded": "memrynote {version} je spreman za instalaciju",
-      "upToDate": "Ova instalacija nalazi se na posljednjem izdanju",
-      "checking": "Provjera GitHub izdanja za noviju verziju",
+      "upToDate": "Instalirano je najnovije objavljeno izdanje",
+      "checking": "Traženje novije verzije na usluzi GitHub Releases",
       "idle": "Provjerite nova izdanja i instalirajte ih bez napuštanja aplikacije",
       "unsupportedToast": "Automatska ažuriranja dostupna su samo u pakiranim izdanjima",
       "upToDateToast": "memrynote {version} je ažuran",
-      "actionFailed": "Akcija ažuriranja nije uspjela",
+      "actionFailed": "Radnja ažuriranja nije uspjela",
       "actions": {
-        "checking": "Provjera...",
-        "available": "Preuzmite ažuriranje",
-        "downloading": "Preuzimanje...",
-        "downloadingPercent": "Preuzimanje {percent}%",
-        "downloaded": "Ponovno pokrenite za instalaciju",
-        "idle": "Provjerite ima li ažuriranja"
+        "checking": "Provjera…",
+        "available": "Preuzmi ažuriranje",
+        "downloading": "Preuzimanje…",
+        "downloadingPercent": "Preuzimanje {percent} %",
+        "downloaded": "Ponovno pokreni i instaliraj",
+        "idle": "Provjeri sada"
       },
-      "autoCheck": {
-        "description": "Provjeravaj nova izdanja pri pokretanju i povremeno dok je aplikacija otvorena.",
-        "error": "Ažuriranje postavke automatske provjere nije uspjelo",
-        "label": "Automatski provjeravaj ima li ažuriranja"
+      "label": "Ažuriranja",
+      "checkedAgo": "{status} · provjereno {time}",
+      "status": {
+        "unsupported": "Dostupno u zapakiranim izdanjima",
+        "idle": "Još nije provjereno",
+        "checking": "Provjera…",
+        "upToDate": "Ažurno",
+        "available": "Dostupna je verzija {version}",
+        "downloading": "Preuzimanje…",
+        "downloadingPercent": "Preuzimanje {percent} %",
+        "downloaded": "Verzija {version} spremna je za instalaciju"
       },
-      "autoDownload": {
-        "description": "Preuzmi i instaliraj nova izdanja u pozadini, bez upita.",
-        "error": "Ažuriranje postavke automatskog preuzimanja nije uspjelo",
-        "label": "Automatski preuzimaj ažuriranja"
+      "mode": {
+        "label": "Način ažuriranja",
+        "off": "Ne provjeravaj",
+        "notify": "Samo obavijesti",
+        "auto": "Preuzimaj automatski"
       }
     },
     "language": {
       "label": "Jezik",
-      "helper": "Većina aplikacija ažurira se odmah. Neki tekst na razini sustava — već prikazane obavijesti, oznaka docka, naslovna traka prozora — osvježava se nakon sljedećeg pokretanja.",
-      "changed": "Jezik je promijenjen u {nativeName}",
-      "failed": "Promjena jezika nije uspjela. Molimo pokušajte ponovo."
+      "helper": "Većina aplikacije ažurira se odmah. Dio teksta na razini sustava – već prikazane obavijesti, oznaka u Docku, naslovna traka prozora – osvježava se nakon sljedećeg pokretanja.",
+      "changed": "Jezik promijenjen: {nativeName}",
+      "failed": "Promjena jezika nije uspjela. Pokušajte ponovno."
     },
     "clockFormat": {
       "label": "Format vremena",
@@ -105,21 +186,43 @@
       },
       "error": "Ažuriranje formata vremena nije uspjelo"
     },
+    "dateFormat": {
+      "label": "Format datuma",
+      "description": "Kako se prikazuju datumi u kalendaru",
+      "options": {
+        "MM/DD/YYYY": "MM/DD/YYYY (US)",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
+        "DD.MM.YYYY": "DD.MM.YYYY"
+      },
+      "error": "Ažuriranje formata datuma nije uspjelo"
+    },
     "tabs": {
+      "openPagesInNewTab": {
+        "label": "Otvaraj stranice u novoj kartici",
+        "description": "Klik na stranicu ili njezino stvaranje – bilješke, mape, projekti, platna, oznake, favoriti – otvara je u novoj kartici. Kada je isključeno, ponovno se koristi trenutačna kartica, i pri otvaranju poveznica unutar bilješke; prikvačene kartice nikad se ne zamjenjuju. „Otvori u novoj kartici”, „Otvori sa strane” i klik srednjom tipkom uvijek otvaraju novu karticu."
+      },
       "restoreSession": {
-        "label": "Vrati sesiju na početak",
-        "description": "Ponovno otvorite kartice iz vaše posljednje sesije"
+        "label": "Vrati kartice pri pokretanju",
+        "description": "Ponovno otvara kartice i podijeljene prikaze iz prošle sesije."
       },
       "closeButton": {
         "label": "Gumb za zatvaranje kartice",
         "description": "Kada prikazati gumb za zatvaranje",
         "options": {
           "always": "Uvijek vidljiv",
-          "hover": "Prikaži dok lebdite",
+          "hover": "Pri prelasku mišem",
           "active": "Samo na aktivnoj kartici"
         }
       },
       "error": "Ažuriranje postavke nije uspjelo"
+    },
+    "window": {
+      "minimizeToTray": {
+        "label": "Ostavi pokrenuto u traci izbornika nakon zatvaranja",
+        "description": "Zatvaranje prozora skriva aplikaciju memrynote u područje obavijesti umjesto da je zatvori. Kliknite ikonu u području obavijesti da biste je vratili. Na macOS-u aplikacija ostaje i u Docku; na Linux radnim površinama bez područja obavijesti prozor se zatvara kao i obično.",
+        "error": "Ažuriranje postavke smanjivanja u područje obavijesti nije uspjelo"
+      }
     },
     "fileCreation": {
       "createInSelectedFolder": {
@@ -127,72 +230,79 @@
         "description": "Nove bilješke i mape stvaraju se unutar trenutno odabrane mape. Kada je isključeno, stavke se uvijek stvaraju u korijenu."
       },
       "defaultNoteFolder": {
-        "description": "Prazno = korijen trezora",
         "label": "Zadana lokacija za nove bilješke",
-        "placeholder": "notes"
+        "description": "Koristi se kada na bočnoj traci nije odabrana nijedna mapa.",
+        "placeholder": "notes",
+        "root": "/"
       }
     },
     "privacy": {
       "telemetry": {
-        "label": "Dijelite anonimne metrike korištenja",
-        "description": "To su samo anonimne metrike — nikad se ne šalju sadržaj bilješke, upiti za pretraživanje, putanje datoteka, e-poruke ili neobrađeni ID-ovi.",
+        "label": "Dijeli anonimne podatke o korištenju",
+        "description": "Nikad se ne šalju sadržaj bilješki, naslovi ni imena. Uključuje dijagnostičke zapisnike s uklonjenim osjetljivim podacima.",
         "error": "Ažuriranje postavke telemetrije nije uspjelo"
       },
+      "autoSendDiagnostics": {
+        "label": "Automatski šalji izvješća o pogreškama",
+        "description": "Zapisnici bez osjetljivih podataka kada se pojavi zaslon s pogreškom. Kada je isključeno, svaki put se traži potvrda.",
+        "error": "Ažuriranje postavke izvješća o pogreškama nije uspjelo"
+      },
       "diagnostics": {
+        "title": "Poslati dijagnostičko izvješće?",
+        "consent": "Poslati jednokratno dijagnostičko izvješće? Sadrži samo tehničke zapisnike s uklonjenim osjetljivim podacima – bez sadržaja bilješki.",
         "building": "Priprema izvješća…",
-        "consent": "Poslati jednokratno dijagnostičko izvješće? Sadrži samo anonimizirane tehničke zapise — bez sadržaja bilješki.",
-        "error": "Slanje dijagnostičkog izvješća nije uspjelo",
-        "notNow": "Ne sada",
-        "previewError": "Nije moguće pripremiti dijagnostičko izvješće",
-        "previewLabel": "Pregledaj sadržaj izvješća",
+        "previewLabel": "Pretpregled sadržaja izvješća",
+        "snapshotLabel": "Snimka stanja uređaja",
         "send": "Pošalji",
-        "sendReport": {
-          "button": "Pošalji dijagnostičko izvješće",
-          "description": "Pošaljite jednokratno izvješće s anonimiziranim tehničkim zapisima kako bismo lakše otklonili problem na koji ste naišli.",
-          "label": "Dijagnostičko izvješće"
-        },
         "sending": "Slanje…",
-        "sent": "Izvješće je poslano — referenca {incidentId}",
-        "snapshotLabel": "Snimka uređaja",
-        "title": "Poslati dijagnostičko izvješće?"
-      }
-    },
-    "dateFormat": {
-      "description": "Kako se prikazuju datumi u kalendaru",
-      "error": "Neuspješno ažuriranje formata datuma",
-      "label": "Format datuma",
-      "options": {
-        "DD.MM.YYYY": "DD.MM.YYYY",
-        "DD/MM/YYYY": "DD/MM/YYYY",
-        "MM/DD/YYYY": "MM/DD/YYYY (US)",
-        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
+        "notNow": "Ne sada",
+        "sent": "Izvješće poslano – referenca {incidentId}",
+        "previewError": "Nije moguće pripremiti dijagnostičko izvješće",
+        "error": "Slanje dijagnostičkog izvješća nije uspjelo",
+        "sendReport": {
+          "label": "Dijagnostičko izvješće",
+          "description": "Pošaljite jednokratno izvješće s tehničkim zapisnicima bez osjetljivih podataka kako bismo lakše otklonili problem na koji ste naišli.",
+          "button": "Pošalji izvješće…"
+        }
       }
     }
   },
   "appearance": {
     "header": {
       "title": "Izgled",
-      "subtitle": "Prilagodite izgled i dojam",
-      "loading": "Učitavanje postavki..."
+      "subtitle": "Prilagodite izgled aplikacije",
+      "loading": "Učitavanje postavki…"
     },
     "groups": {
       "theme": "Tema",
-      "accentColor": "Boja akcenta",
-      "typography": "Tipografija"
+      "accentColor": "Boja naglaska",
+      "typography": "Tipografija",
+      "zoom": "Zumiranje"
     },
     "theme": {
       "colorMode": {
-        "label": "Način boja",
+        "label": "Način boje",
         "description": "Odaberite željenu temu",
-        "aria": "Način rada u boji"
+        "aria": "Način boje"
       },
       "options": {
-        "light": "Topla",
+        "light": "Svijetla",
         "white": "Bijela",
-        "dark": "tamno",
-        "system": "sustav"
+        "dark": "Tamna",
+        "system": "Sustav"
       },
       "error": "Ažuriranje teme nije uspjelo"
+    },
+    "colorTheme": {
+      "default": "Memrynote",
+      "themes": "Teme Memrynote",
+      "warm": "Topla",
+      "error": "Ažuriranje teme boja nije uspjelo",
+      "copy": "Kopiraj temu",
+      "copied": "Tema kopirana u međuspremnik",
+      "copyError": "Nije moguće kopirati temu",
+      "import": "Uvezi temu iz međuspremnika",
+      "importInvalid": "Međuspremnik ne sadrži temu aplikacije memrynote"
     },
     "accent": {
       "pick": "Odaberite boju naglaska",
@@ -205,69 +315,138 @@
         "indigo": "Indigo",
         "amber": "Jantar",
         "emerald": "Smaragdna",
-        "red": "crvena",
-        "violet": "ljubičica",
-        "cyan": "cijan",
+        "red": "Crvena",
+        "violet": "Ljubičasta",
+        "cyan": "Cijan",
         "pink": "Ružičasta",
-        "orange": "Narančasto"
+        "orange": "Narančasta"
       },
-      "error": "Ažuriranje boje naglaska nije uspjelo"
+      "error": "Ažuriranje boje naglaska nije uspjelo",
+      "aria": "Unaprijed zadana boja naglaska",
+      "options": {
+        "theme": "Tema",
+        "custom": "Prilagođena"
+      }
+    },
+    "colors": {
+      "background": "Pozadina",
+      "foreground": "Prednji plan",
+      "forLight": "Za svijetli način",
+      "forDark": "Za tamni način",
+      "reset": "Koristi boju teme",
+      "pick": "Odaberi boju"
+    },
+    "advanced": {
+      "title": "Napredno",
+      "reset": "Vrati na zadano",
+      "error": "Ažuriranje postavke nije uspjelo",
+      "fontSizeDescription": "Osnovna veličina teksta sučelja",
+      "zoomDescription": "Mjerilo cijelog prozora",
+      "reduceMotion": {
+        "label": "Smanji kretanje",
+        "description": "Smanjite animacije ili pratite postavku sustava",
+        "options": {
+          "system": "Sustav",
+          "on": "Uključeno"
+        }
+      },
+      "pointerCursors": {
+        "label": "Koristi pokazivač u obliku ruke",
+        "description": "Prikazuje pokazivač u obliku ruke pri prelasku mišem preko interaktivnih elemenata"
+      },
+      "fontSmoothing": {
+        "label": "Zaglađivanje fontova",
+        "description": "Tanji tekst sa zaglađivanjem u nijansama sive na macOS-u"
+      }
+    },
+    "zoom": {
+      "label": "Razina zumiranja",
+      "description": "Promijenite mjerilo cijelog sučelja",
+      "decrease": "Smanji zum",
+      "increase": "Povećaj zum",
+      "reset": "Vrati zum na zadano",
+      "error": "Ažuriranje razine zumiranja nije uspjelo"
     },
     "typography": {
       "fontSize": {
         "label": "Veličina fonta",
-        "description": "Podesite veličinu osnovnog teksta",
-        "aria": "Veličina slova"
+        "description": "Osnovna veličina teksta sučelja u pikselima",
+        "decrease": "Smanji veličinu fonta",
+        "increase": "Povećaj veličinu fonta",
+        "reset": "Vrati veličinu fonta na zadano"
       },
       "fontFamily": {
         "label": "Obitelj fontova",
         "description": "Primarni tip slova za sučelje",
         "options": {
-          "system": "Zadane postavke sustava",
+          "system": "Zadani font sustava",
           "sansSerif": "Sans-serif",
           "serif": "Serif (Crimson Pro)",
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
           "monospace": "Monospace"
-        }
+        },
+        "sections": {
+          "builtin": "Ugrađeni",
+          "system": "Instalirani na ovom računalu"
+        },
+        "searchPlaceholder": "Pretraži fontove…",
+        "empty": "Nema odgovarajućih fontova",
+        "loading": "Čitanje instaliranih fontova…",
+        "unavailable": "Instalirani fontovi nisu dostupni u ovom sustavu.",
+        "notInstalled": "Nije instaliran na ovom računalu – koristi se zamjenski font."
       },
       "fontSizeError": "Ažuriranje veličine fonta nije uspjelo",
       "fontFamilyError": "Ažuriranje obitelji fontova nije uspjelo"
+    },
+    "v2": {
+      "groups": {
+        "text": "Tekst i zumiranje"
+      },
+      "colorMode": "Način boje",
+      "colorTheme": "Tema",
+      "accent": "Boja naglaska",
+      "customColor": "Prilagođena boja",
+      "fontFamily": "Obitelj fontova",
+      "fontSize": "Veličina fonta",
+      "zoom": "Zumiranje"
     }
   },
   "editor": {
     "header": {
-      "title": "urednik",
-      "subtitle": "Postavke i postavke uređivača bilježaka",
-      "loading": "Učitavanje postavki..."
+      "title": "Uređivač",
+      "subtitle": "Postavke uređivača bilješki",
+      "loading": "Učitavanje postavki…"
     },
     "groups": {
-      "layout": "Izgled",
+      "layout": "Raspored",
       "toolbar": "Alatna traka",
       "spelling": "Pravopis"
     },
     "width": {
       "label": "Širina uređivača",
-      "description": "Maksimalna širina područja za pisanje",
+      "description": "Primjenjuje se na sve bilješke i stranice dnevnika",
       "options": {
-        "narrow": "usko",
-        "medium": "srednje",
-        "wide": "Široko",
-        "full": "Puna širina",
-        "normal": "Normalna"
+        "normal": "Normalna",
+        "full": "Puna širina"
       },
-      "error": "Nije uspjelo ažuriranje širine uređivača"
+      "error": "Ažuriranje širine uređivača nije uspjelo"
     },
     "toolbarMode": {
-      "label": "Alatna traka za ljepljivo oblikovanje",
+      "label": "Fiksna alatna traka za oblikovanje",
       "description": "Uvijek prikaži alatnu traku iznad uređivača",
       "error": "Ažuriranje načina alatne trake nije uspjelo"
     },
     "spellCheck": {
-      "description": "Podcrtaj pogrešno napisane riječi u bilješkama i dnevnicima",
-      "error": "Ažuriranje provjere pravopisa nije uspjelo",
-      "label": "Provjera pravopisa"
+      "label": "Provjera pravopisa",
+      "description": "Podcrtaj pogrešno napisane riječi u bilješkama i dnevniku",
+      "error": "Ažuriranje provjere pravopisa nije uspjelo"
+    },
+    "v2": {
+      "width": "Širina uređivača",
+      "toolbarMode": "Fiksna alatna traka za oblikovanje",
+      "spellCheck": "Provjera pravopisa"
     }
   },
   "templates": {
@@ -278,19 +457,22 @@
     "actions": {
       "new": "Novi predložak",
       "edit": "Uredi",
-      "duplicate": "Duplikat",
+      "duplicate": "Dupliciraj",
       "delete": "Izbriši"
     },
     "groups": {
       "builtIn": "Ugrađeni",
       "myTemplates": "Moji predlošci"
     },
-    "loading": "Učitavanje predložaka...",
+    "loading": "Učitavanje predložaka…",
     "newTemplateTitle": "Novi predložak",
-    "copySuffix": "{name} (Kopiraj)",
+    "copySuffix": "{name} (kopija)",
     "empty": {
       "title": "Još nema prilagođenih predložaka",
-      "description": "Za početak izradite predložak"
+      "description": "Stvorite predložak za početak"
+    },
+    "preview": {
+      "notFound": "Nije moguće učitati ovaj predložak."
     },
     "toasts": {
       "deleted": "Predložak izbrisan",
@@ -304,36 +486,40 @@
         "description": "Jeste li sigurni da želite izbrisati ovaj predložak? Ova se radnja ne može poništiti. To neće utjecati na bilješke stvorene iz ovog predloška."
       },
       "duplicate": {
-        "title": "Dvostruki predložak",
+        "title": "Dupliciraj predložak",
         "description": "Unesite naziv za novu kopiju predloška.",
         "placeholder": "Naziv predloška"
       }
     },
-    "preview": {
-      "notFound": "Nije moguće učitati ovaj predložak."
+    "v2": {
+      "new": "Novi predložak",
+      "groups": {
+        "mine": "Moji predlošci"
+      }
     }
   },
   "journal": {
     "header": {
-      "title": "časopis",
-      "subtitle": "Postavke i postavke dnevnika",
-      "loading": "Učitavanje postavki..."
+      "title": "Dnevnik",
+      "subtitle": "Postavke dnevnika",
+      "loading": "Učitavanje postavki…"
     },
     "groups": {
       "defaultTemplate": "Zadani predložak",
+      "location": "Lokacija i format",
       "sidebarVisibility": "Vidljivost bočne trake",
       "footer": "Podnožje",
-      "location": "Lokacija i format"
+      "weekdayTemplates": "Predlošci po danima"
     },
     "template": {
       "label": "Predložak",
-      "description": "Novi unosi počinju ovim predloškom",
+      "description": "Novi zapisi počinju ovim predloškom",
       "placeholder": "Odaberite predložak",
       "unknown": "Nepoznati predložak",
       "none": "Nijedan",
-      "noneAsk": "Ništa (pitati svaki put)",
+      "noneAsk": "Nijedan (pitaj svaki put)",
       "updated": "Zadani predložak ažuriran",
-      "cleared": "Zadani predložak je izbrisan",
+      "cleared": "Zadani predložak uklonjen",
       "error": "Ažuriranje zadanog predloška nije uspjelo"
     },
     "showSchedule": {
@@ -342,52 +528,70 @@
     },
     "showTasks": {
       "label": "Prikaži zadatke",
-      "description": "Prikaz zadataka dospjelih na odabrani dan"
+      "description": "Prikaz zadataka s rokom na odabrani dan"
     },
     "showAIConnections": {
       "label": "Prikaži AI veze",
-      "description": "Prikažite veze koje pokreće AI s povezanim unosima"
+      "description": "Prikažite AI veze sa srodnim zapisima"
     },
     "showStatsFooter": {
       "label": "Prikaži podnožje statistike",
       "description": "Broj riječi, vrijeme čitanja, vremenske oznake"
     },
-    "updateError": "Ažuriranje postavke nije uspjelo",
+    "folder": {
+      "label": "Mapa dnevnika",
+      "description": "Mapa u koju se spremaju dnevne bilješke",
+      "placeholder": "journal"
+    },
     "dateFormat": {
-      "description": "Format naziva datoteke za dnevne bilješke (npr. YYYY-MM-DD dddd)",
       "label": "Format datuma",
+      "description": "Format naziva datoteke za dnevne bilješke (npr. YYYY-MM-DD dddd)",
       "placeholder": "YYYY-MM-DD",
       "renameNote": "Promjena formata preimenuje postojeće datoteke dnevnika. Datoteka čiji je novi naziv već zauzet ostaje nepromijenjena.",
       "tokensHelp": "Pomoć za format datuma",
       "tokensNote": "Ostali znakovi ostaju nepromijenjeni. Nazivi dana u tjednu uvijek su na engleskom.",
       "tokensTitle": "Oznake formata"
     },
-    "folder": {
-      "description": "Mapa u koju se spremaju dnevne bilješke",
-      "label": "Mapa dnevnika",
-      "placeholder": "journal"
-    },
     "preview": {
-      "description": "Putanja datoteke današnjeg dnevnika",
-      "label": "Pretpregled"
+      "label": "Pretpregled",
+      "description": "Putanja datoteke današnjeg dnevnika"
+    },
+    "updateError": "Ažuriranje postavke nije uspjelo",
+    "weekday": {
+      "toggle": "Koristi drugi predložak za svaki dan",
+      "toggleDescription": "Odaberite predložak za svaki dan u tjednu",
+      "inherit": "Koristi zadano",
+      "inheritWith": "Zadano · {name}",
+      "inheritNone": "Zadano · nijedan",
+      "missing": "Izbrisani predložak",
+      "clear": "Očisti",
+      "updated": "Predložak ažuriran: {day}",
+      "cleared": "Predložak uklonjen: {day}",
+      "error": "Ažuriranje predloška nije uspjelo: {day}",
+      "summary": "Postavljeno: {count} od 7"
+    },
+    "v2": {
+      "groups": {
+        "defaultTemplate": "Zadani predložak",
+        "location": "Lokacija i format"
+      }
     }
   },
   "tasks": {
     "header": {
       "title": "Zadaci",
-      "subtitle": "Konfigurirajte zadane postavke i ponašanje zadatka",
-      "loading": "Učitavanje postavki..."
+      "subtitle": "Konfigurirajte zadane postavke i ponašanje zadataka",
+      "loading": "Učitavanje postavki…"
     },
     "groups": {
       "defaults": "Zadane postavke",
-      "calendar": "Kalendar",
-      "inbox": "Pristigla pošta"
+      "inbox": "Ulazni pretinac"
     },
     "defaultProject": {
       "label": "Zadani projekt",
       "description": "Dodjeljuje se kada nije odabran nijedan projekt",
       "placeholder": "Nema zadanog projekta",
-      "none": "Nema zadane postavke (koristi Osobno)",
+      "none": "Bez zadanog (koristi se osobni projekt)",
       "error": "Ažuriranje zadanog projekta nije uspjelo"
     },
     "sortOrder": {
@@ -395,162 +599,462 @@
       "description": "Kako su zadaci poredani u prikazu popisa",
       "options": {
         "manual": "Ručno (povuci i ispusti)",
-        "dueDate": "Datum dospijeća",
+        "dueDate": "Rok",
         "priority": "Prioritet",
-        "createdAt": "Datum kreiranja"
+        "createdAt": "Datum stvaranja"
       },
       "error": "Ažuriranje redoslijeda sortiranja nije uspjelo"
-    },
-    "weekStart": {
-      "label": "Tjedan počinje",
-      "description": "Prvi dan u tjednu u prikazima kalendara",
-      "options": {
-        "sunday": "nedjelja",
-        "monday": "ponedjeljak"
-      },
-      "error": "Ažuriranje početka tjedna nije uspjelo"
     },
     "defaultView": {
       "label": "Zadani prikaz",
       "description": "Kartica na kojoj se otvara stranica zadataka",
       "options": {
         "all": "Sve",
-        "today": "Danas"
+        "today": "Danas",
+        "tomorrow": "Sutra",
+        "next7": "Sljedećih 7 dana"
       },
       "error": "Ažuriranje zadanog prikaza nije uspjelo"
     },
     "staleInbox": {
-      "label": "Prag stare ulazne pošte",
-      "description": "Zadaci stariji od ovoga označeni su kao zastarjeli",
+      "label": "Prag zapostavljenosti",
+      "description": "Zadaci stariji od ovoga označavaju se kao zapostavljeni",
       "unit": "dana",
-      "error": "Neuspješno ažuriranje praga zastarjele ulazne pošte"
+      "error": "Ažuriranje praga zapostavljenosti nije uspjelo"
+    }
+  },
+  "inbox": {
+    "header": {
+      "title": "Ulazni pretinac",
+      "subtitle": "Podsjetnik na dnevni pregled i postavke ulaznog pretinca.",
+      "loading": "Učitavanje…"
+    },
+    "imageFiling": {
+      "group": "Slike",
+      "error": "Ažuriranje postavke smještanja slika nije uspjelo",
+      "mode": {
+        "label": "Smještanje slike u bilješku",
+        "description": "„Ugradi u bilješku” zadržava sliku unutar bilješke, izvan bočne trake. „Smjesti na bočnu traku” premješta je u mapu koju odaberete i dodaje poveznicu na nju.",
+        "embed": "Ugradi u bilješku",
+        "link": "Smjesti na bočnu traku"
+      },
+      "ask": {
+        "label": "Pitaj svaki put",
+        "description": "Kada je isključeno, nove slike koriste gornji odabir bez pitanja."
+      }
+    },
+    "reviewReminder": {
+      "group": "Podsjetnik na dnevni pregled",
+      "enabled": {
+        "label": "Podsjeti me na pregled ulaznog pretinca",
+        "description": "Blagi dnevni podsjetnik kada u ulaznom pretincu ima stavki."
+      },
+      "time": {
+        "label": "Vrijeme podsjetnika",
+        "description": "Lokalno vrijeme, na svakom uređaju.",
+        "hourLabel": "Sat",
+        "minuteLabel": "Minuta",
+        "periodLabel": "AM ili PM"
+      },
+      "test": {
+        "label": "Testna obavijest",
+        "description": "Odmah pokrenite podsjetnik i provjerite obavijesti sustava.",
+        "button": "Pošalji test",
+        "sent": "Testna obavijest je poslana.",
+        "sentHint": "Ako se ništa ne pojavi, dopustite obavijesti za MemryNote u postavkama sustava.",
+        "unsupported": "Ovaj uređaj ne može prikazivati obavijesti na radnoj površini."
+      },
+      "error": "Nije moguće ažurirati podsjetnik."
     }
   },
   "calendar": {
     "header": {
       "title": "Kalendar",
-      "subtitle": "Konfigurirajte ponašanje dnevne ćelije na dnevnoj ploči",
-      "loading": "Učitavanje postavki..."
+      "subtitle": "Konfigurirajte što se događa klikom na dan u Panelu dana",
+      "loading": "Učitavanje postavki…"
     },
     "groups": {
-      "dayCellClick": "Dnevna stanica Kliknite",
-      "notes": "Bilješke",
-      "weekStart": "Tjedan"
+      "weekStart": "Tjedan",
+      "dayCellClick": "Klik na ćeliju dana",
+      "notes": "Bilješke"
+    },
+    "weekStart": {
+      "label": "Tjedan počinje",
+      "description": "Prvi dan tjedna u svim kalendarima",
+      "options": {
+        "sunday": "nedjelja",
+        "monday": "ponedjeljak"
+      },
+      "error": "Ažuriranje početka tjedna nije uspjelo"
     },
     "defaultBehavior": {
       "label": "Zadano ponašanje",
-      "description": "Kada kliknete dan u kalendaru Ploče dana s bilo koje kartice koja nije kalendar",
-      "error": "Ažuriranje ponašanja klikova po danu nije uspjelo"
+      "description": "Klik na dan u kalendaru Panela dana s bilo koje kartice osim kalendara",
+      "error": "Ažuriranje ponašanja klika na dan nije uspjelo"
     },
     "pageOverride": {
       "label": "Nadjačavanje stranice kalendara",
-      "description": "Ponašanje kada je kartica Kalendar aktivna (zadano je Otvori kalendar)",
+      "description": "Ponašanje kada je aktivna kartica „Kalendar” (zadano: „Otvori kalendar”)",
       "error": "Ažuriranje nadjačavanja stranice kalendara nije uspjelo"
     },
-    "options": {
-      "openJournal": "Otvori Dnevnik",
-      "openCalendar": "Otvorite kalendar",
-      "useGlobal": "Koristite globalnu postavku"
-    },
     "showNotesOnCalendar": {
+      "label": "Prikaži bilješke u kalendaru",
       "description": "Prikaži svaku bilješku u kalendaru kao cjelodnevnu stavku na dan kad je stvorena",
-      "error": "Neuspješno ažuriranje prikaza bilješki u kalendaru",
-      "label": "Prikaži bilješke u kalendaru"
+      "error": "Ažuriranje prikaza bilješki u kalendaru nije uspjelo"
     },
-    "weekStart": {
-      "description": "Prvi dan tjedna u svim kalendarima",
-      "error": "Neuspješno ažuriranje početka tjedna",
-      "label": "Tjedan počinje",
-      "options": {
-        "monday": "Ponedjeljak",
-        "sunday": "Nedjelja"
-      }
+    "options": {
+      "openJournal": "Otvori dnevnik",
+      "openCalendar": "Otvori kalendar",
+      "useGlobal": "Koristi globalnu postavku"
     },
     "google": {
-      "name": "Google kalendar",
-      "description": "Dvosmjerna sinkronizacija za memrynote događaje i uvezene Google kalendare.",
+      "name": "Google Calendar",
+      "description": "Dvosmjerna sinkronizacija događaja iz aplikacije memrynote i uvezenih Google kalendara.",
       "statuses": {
-        "connected": "Povezan",
+        "connected": "Povezano",
         "notConnected": "Nije povezano",
         "reconnectRequired": "Potrebno ponovno povezivanje"
       },
-      "accountReconnect": "Ponovno povežite Google",
+      "accountReconnect": "Ponovno poveži Google",
+      "addAccount": "Dodaj račun",
       "importedCalendars": "Uvezeni kalendari",
-      "selected": "{count} odabran",
+      "selected": "Odabrano: {count}",
       "syncNow": "Sinkroniziraj sada",
       "disconnect": "Prekini vezu",
-      "reconnect": "Ponovno povežite Google",
+      "reconnect": "Ponovno poveži Google",
       "syncFailed": "Nešto nije u redu",
-      "connectFailed": "Povezivanje Google kalendara nije uspjelo",
-      "refreshFailed": "Osvježavanje Google kalendara nije uspjelo",
-      "disconnectFailed": "Odspajanje Google kalendara nije uspjelo",
+      "connectFailed": "Povezivanje s uslugom Google Calendar nije uspjelo",
+      "refreshFailed": "Osvježavanje usluge Google Calendar nije uspjelo",
+      "disconnectFailed": "Prekid veze s uslugom Google Calendar nije uspio",
       "retryFailed": "Ponovni pokušaj sinkronizacije kalendara nije uspio",
       "pushToGoogle": {
-        "description": "Isključite za jednosmjernu sinkronizaciju — i dalje ćete vidjeti Google događaje u memrynote, ali memrynote događaji neće se pojaviti u Googleu.",
-        "error": "Neuspješno ažuriranje smjera sinkronizacije",
-        "label": "Prikaži memrynote događaje u Google Calendar"
+        "label": "Prikaži događaje iz aplikacije memrynote u usluzi Google Calendar",
+        "description": "Isključite za jednosmjernu sinkronizaciju – Google događaje i dalje ćete vidjeti u aplikaciji memrynote, ali događaji iz aplikacije memrynote neće se prikazivati u Googleu.",
+        "error": "Ažuriranje smjera sinkronizacije nije uspjelo"
       },
       "agentAccess": {
-        "description": "Prema zadanim postavkama isključeno. Kada je uključeno, AI agent može čitati vaše Google događaje; kada je isključeno, ne dobiva ništa kada ga se pita o njima. Vi ih u memrynote vidite u oba slučaja.",
-        "error": "Ažuriranje AI pristupa nije uspjelo",
-        "label": "Dopusti da AI čita događaje iz Google Calendara"
+        "label": "Dopusti AI agentu čitanje događaja iz usluge Google Calendar",
+        "description": "Prema zadanim postavkama isključeno. Kada je uključeno, AI agent može čitati vaše Google događaje; kada je isključeno, ne dobiva ništa kada ga pitate o njima. U aplikaciji memrynote vidite ih u oba slučaja.",
+        "error": "Ažuriranje AI pristupa nije uspjelo"
       },
-      "connect": "Poveži se",
+      "connect": "Poveži",
       "sourcePicker": {
         "empty": "Na ovom uređaju još nisu dostupni uvezeni Google kalendari.",
         "statuses": {
           "synced": "Sinkronizirano",
           "error": "Greška",
           "pending": "Na čekanju",
-          "idle": "besposlen"
+          "idle": "Neaktivno"
         },
-        "retrying": "Ponovni pokušaj...",
-        "retryNow": "Pokušajte ponovo"
+        "retrying": "Ponovni pokušaj…",
+        "retryNow": "Pokušaj ponovno"
       }
+    },
+    "subscriptions": {
+      "name": "Pretplaćeni kalendari",
+      "description": "Dodajte kalendar samo za čitanje putem njegove poveznice za dijeljenje (ICS ili webcal), npr. kalendar iz usluge Proton, iCloud, Outlook ili Fastmail. Promjene se provjeravaju otprilike jednom na sat.",
+      "urlLabel": "Poveznica kalendara",
+      "urlPlaceholder": "webcal:// ili https:// poveznica kalendara",
+      "subscribe": "Pretplati se",
+      "subscribing": "Pretplaćivanje…",
+      "refresh": "Osvježi",
+      "refreshing": "Osvježavanje…",
+      "remove": "Ukloni",
+      "readOnly": "Samo za čitanje",
+      "updatedAt": "Ažurirano: {time}",
+      "notCheckedYet": "Još nije provjereno",
+      "keptEvents": "Događaji koji su već u kalendaru ostaju do sljedećeg uspješnog ažuriranja.",
+      "notEncrypted": "Nije šifrirano",
+      "httpWarning": "Ova poveznica počinje s http://, pa poveznica i događaji putuju nešifrirano. Svatko na istoj mreži može ih pročitati. Koristite poveznicu https:// ili webcal:// ako je kalendar nudi.",
+      "added": "Dodan kalendar „{title}”.",
+      "addedSummary": "Dodan kalendar „{title}”: {count, plural, one {# događaj} few {# događaja} other {# događaja}}, od {start} do {end}.",
+      "addedEmpty": "Dodan kalendar „{title}”. Još nema događaja u posljednjih 90 dana ni u sljedećoj godini.",
+      "rename": "Preimenuj",
+      "renameLabel": "Naziv kalendara",
+      "save": "Spremi",
+      "cancel": "Odustani",
+      "color": "Boja kalendara",
+      "colorOption": "Boja: {color}",
+      "help": {
+        "toggle": "Gdje mogu pronaći poveznicu?",
+        "intro": "Potražite opciju dijeljenja koja se zove javna poveznica, tajna adresa, objavi ili iCal. Poveznica završava na .ics ili počinje s webcal://.",
+        "proton": {
+          "name": "Proton Calendar",
+          "steps": "Postavke → Kalendari, odaberite kalendar, a zatim stvorite poveznicu u odjeljku za dijeljenje sa svima. Odaberite puni prikaz da biste vidjeli detalje događaja.",
+          "readOnly": "Proton kalendari u aplikaciji memrynote namjerno ostaju samo za čitanje. Proton sveobuhvatno šifrira kalendare i ne nudi CalDAV, pa promjene nije moguće zapisati natrag. Promjene unesite u Protonu."
+        },
+        "icloud": {
+          "name": "iCloud",
+          "steps": "U aplikaciji Kalendar na Macu ili na iCloud.com podijelite kalendar, uključite „Javni kalendar” i kopirajte poveznicu. Da biste i ovdje uređivali iCloud događaje, radije povežite iCloud putem CalDAV-a."
+        },
+        "outlook": {
+          "name": "Outlook i Microsoft 365",
+          "steps": "Outlook na webu → Postavke → Kalendar → Zajednički kalendari → Objavi kalendar. Odaberite „Može vidjeti sve detalje”, objavite kalendar i kopirajte ICS poveznicu."
+        },
+        "fastmail": {
+          "name": "Fastmail",
+          "steps": "Postavke → Kalendari, otvorite kalendar, uključite objavljivanje i kopirajte iCalendar poveznicu."
+        },
+        "notion": {
+          "name": "Notion Calendar",
+          "steps": "Njegovi se događaji nalaze na Google ili iCloud računu koji ste s njim povezali. Podijelite poveznicu s tog računa."
+        },
+        "public": {
+          "name": "Praznici, škole i sport",
+          "steps": "Na web-mjestu organizatora potražite „Pretplati se”, „Dodaj u kalendar” ili „iCal” i kopirajte tu poveznicu."
+        }
+      },
+      "errors": {
+        "invalid_url": "To nije poveznica kalendara. Zalijepite adresu koja počinje s webcal://, https:// ili http://.",
+        "unreachable": "Nije moguće pristupiti ovom kalendaru. Provjerite poveznicu i internetsku vezu.",
+        "timeout": "Kalendar predugo ne odgovara. Pokušajte ponovno za trenutak.",
+        "not_found": "Na ovoj poveznici nije pronađen kalendar. Možda je izbrisan ili mu se promijenila poveznica za dijeljenje.",
+        "unauthorized": "Kalendar je odbio pristup. Kopirajte novu poveznicu za dijeljenje iz aplikacije kalendara.",
+        "http_error": "Poslužitelj kalendara vratio je pogrešku. Pokušajte ponovno kasnije.",
+        "too_large": "Ovaj je kalendar prevelik za dodavanje. Umjesto njega podijelite manji kalendar.",
+        "not_a_calendar": "Ova poveznica ne vraća kalendar. Kopirajte ICS ili webcal poveznicu iz postavki dijeljenja u aplikaciji kalendara.",
+        "too_many_redirects": "Ova poveznica stalno preusmjerava i nikad ne dolazi do kalendara. Ponovno kopirajte poveznicu iz aplikacije kalendara.",
+        "unsupported_redirect": "Ova poveznica preusmjerava na adresu koja nije web-poveznica, pa je aplikacija memrynote ne slijedi. Kopirajte ICS ili webcal poveznicu iz aplikacije kalendara.",
+        "unknown": "Nije moguće ažurirati ovaj kalendar ({code}). Pokušajte ponovno kasnije."
+      }
+    },
+    "providers": {
+      "caldav": {
+        "name": "CalDAV"
+      },
+      "statuses": {
+        "connected": "Povezano",
+        "notConnected": "Nije povezano"
+      },
+      "readOnly": "Samo za čitanje",
+      "pollInterval": "Promjene se provjeravaju svakih {minutes} min. Promjene napravljene drugdje ne vide se odmah.",
+      "connect": "Poveži",
+      "connecting": "Povezivanje…",
+      "connectFailed": "Nije moguće povezati se. Provjerite podatke i pokušajte ponovno.",
+      "disconnect": "Prekini vezu",
+      "disconnectFailed": "Nije moguće prekinuti vezu. Pokušajte ponovno.",
+      "syncNow": "Sinkroniziraj sada",
+      "refreshFailed": "Sinkronizacija nije uspjela. Kalendari ostaju nepromijenjeni; pokušajte ponovno kasnije.",
+      "addAccount": "Dodaj račun",
+      "accounts": "Računi",
+      "calendars": "Kalendari",
+      "retry": "Pokušaj ponovno",
+      "reconnectRequired": "Ovaj uređaj nema lozinku za ovaj račun. Ponovno ga povežite da biste sinkronizirali s ovog uređaja.",
+      "push": {
+        "label": "Zapisuj događaje iz aplikacije memrynote u ovaj kalendar",
+        "description": "Isključite za jednosmjernu sinkronizaciju: ove događaje i dalje vidite u aplikaciji memrynote, ali se događaji i zadaci iz aplikacije memrynote ne zapisuju ovdje."
+      },
+      "agentAccess": {
+        "label": "Dopusti AI agentu čitanje ovih događaja",
+        "description": "Isključeno dok ga ne uključite. Svaka usluga kalendara ima zasebnu postavku; dopuštenje za Google ne vrijedi i za ovu uslugu.",
+        "error": "Ažuriranje AI pristupa nije uspjelo"
+      },
+      "basic": {
+        "serverLabel": "Adresa poslužitelja",
+        "serverPlaceholder": "https://dav.example.com",
+        "usernameLabel": "Korisničko ime",
+        "passwordLabel": "Lozinka za aplikaciju"
+      },
+      "compat": {
+        "outdated": "Ovi uređaji na vašem računu koriste verziju aplikacije memrynote stariju od {version}:",
+        "unverified": "Aplikacija memrynote nije mogla provjeriti koje verzije koriste vaši ostali uređaji.",
+        "unknownVersion": "verzija nepoznata",
+        "consequence": "Starija verzija može kopirati zadatke i događaje iz ovog kalendara u Google Calendar kao duplikate ili ih neće uspjeti sinkronizirati. Najprije ažurirajte te uređaje ili nastavite ako to prihvaćate.",
+        "acknowledge": "Razumijem, svejedno poveži"
+      },
+      "reconnect": "Ponovno poveži",
+      "defaultTarget": {
+        "label": "Zadani kalendar",
+        "description": "Kamo idu novi događaji, zadaci, podsjetnici i odgode kada ne odaberete kalendar. Zadani kalendar može imati samo jedna usluga kalendara.",
+        "none": "Nije zadani",
+        "error": "Nije moguće promijeniti zadani kalendar"
+      },
+      "appleEventKit": {
+        "name": "Ovaj Mac",
+        "description": "Prikazuje sve kalendare koje aplikacija Kalendar već ima na ovom Macu: iCloud, Google, Exchange i Na mojem Macu. Bez prijave, samo za čitanje, a događaji nikad ne napuštaju ovaj Mac niti se sinkroniziraju s vašim ostalim uređajima.",
+        "connect": "Dopusti pristup kalendaru",
+        "connectHint": "macOS pita samo jednom. To možete kasnije promijeniti u Postavkama sustava.",
+        "otherCalendars": "Ostali kalendari",
+        "alreadyConnected": "Već je povezano putem usluge {provider}, pa je isključeno kako se događaji ne bi prikazivali dvaput.",
+        "openSystemSettings": "Otvori Postavke sustava",
+        "checkAgain": "Provjeri ponovno",
+        "errors": {
+          "permission_denied": "Pristup kalendaru za aplikaciju memrynote je isključen. Uključite ga u Postavke sustava → Privatnost i sigurnost → Kalendari, a zatim ponovno provjerite.",
+          "permission_restricted": "Pristup kalendaru blokiran je na ovom Macu, obično zbog profila upravljanja. U aplikaciji memrynote ništa se nije promijenilo; pristup može dopustiti onaj tko upravlja ovim Macom.",
+          "permission_write_only": "Aplikacija memrynote može samo dodavati događaje, što nije dovoljno za njihov prikaz. Promijenite pristup u „Potpuni pristup” u Postavke sustava → Privatnost i sigurnost → Kalendari.",
+          "permission_not_determined": "Aplikacija memrynote još nema pristup kalendaru. Dopustite ga da bi se prikazali kalendari s vašeg Maca.",
+          "unavailable": "Čitač kalendara za macOS nije se mogao pokrenuti. Kalendari su nepromijenjeni; ponovno pokrenite aplikaciju memrynote i pokušajte ponovno.",
+          "sync_failed": "Trenutačno nije moguće čitati aplikaciju Kalendar. Kalendari ostaju nepromijenjeni, a aplikacija memrynote pokušat će ponovno kada se u aplikaciji Kalendar nešto promijeni."
+        }
+      }
+    },
+    "caldav": {
+      "presetLabel": "Usluga",
+      "presets": {
+        "icloud": "Apple iCloud",
+        "fastmail": "Fastmail",
+        "nextcloud": "Nextcloud",
+        "selfHosted": "Radicale ili Baïkal (vlastiti poslužitelj)",
+        "zoho": "Zoho",
+        "yahoo": "Yahoo",
+        "mailboxOrg": "mailbox.org",
+        "posteo": "Posteo",
+        "synology": "Synology",
+        "other": "Drugi CalDAV poslužitelj"
+      },
+      "hostLabel": "Naziv poslužitelja",
+      "hostPlaceholder": "cloud.example.com",
+      "appleIdLabel": "Apple ID (e-pošta)",
+      "icloudHelp": "Koristite lozinku za aplikaciju, a ne lozinku za Apple ID. Stvorite je u odjeljku Prijava i sigurnost → Lozinke za aplikacije.",
+      "appPasswordHelp": "Ako vaša usluga nudi lozinke za aplikacije, stvorite jednu za memrynote i koristite je ovdje.",
+      "createAppPassword": "Stvori lozinku za aplikaciju",
+      "testConnection": "Testiraj vezu",
+      "testing": "Testiranje…",
+      "chooseCalendars": "Kalendari za prikaz",
+      "reconnectFor": "Unesite lozinku za aplikaciju za korisnika {username}.",
+      "errors": {
+        "unauthorizedIcloud": "iCloud nije prihvatio ovu lozinku. iCloud ovdje zahtijeva lozinku za aplikaciju, a ne lozinku za Apple ID. Stvorite je na account.apple.com u odjeljku Prijava i sigurnost, a zatim pokušajte ponovno.",
+        "unauthorized": "Poslužitelj nije prihvatio ovo korisničko ime i lozinku. Provjerite oboje i koristite lozinku za aplikaciju ako je vaša usluga nudi.",
+        "unreachable": "Nije moguće pristupiti poslužitelju. Provjerite adresu i internetsku vezu, a zatim pokušajte ponovno.",
+        "notCaldav": "Na ovoj adresi nisu pronađeni CalDAV kalendari. Provjerite adresu poslužitelja; neke usluge trebaju putanju poput /remote.php/dav.",
+        "noCalendars": "Ovaj račun nema kalendara koji sadrže događaje.",
+        "invalidUrl": "To nije adresa poslužitelja. Unesite adresu poput https://dav.example.com.",
+        "outdatedDevices": "Neki vaši uređaji koriste stariju verziju aplikacije memrynote. Ažurirajte ih ili u nastavku potvrdite da se svejedno želite povezati.",
+        "unknown": "Nije moguće povezati se ({code}). Ništa nije spremljeno; pokušajte ponovno kasnije."
+      },
+      "reconnect": {
+        "missing": "Ovaj uređaj još nema lozinku za aplikaciju za ovaj račun. Događaji i dalje stižu s vaših ostalih uređaja; unesite lozinku za aplikaciju ovdje da biste sinkronizirali i s ovog uređaja.",
+        "icloudRevoked": "iCloud više ne prihvaća ovu lozinku za aplikaciju. Ponovnim postavljanjem lozinke za Apple ID opozivaju se sve lozinke za aplikacije. Stvorite novu na account.apple.com i ponovno se povežite.",
+        "rejected": "Poslužitelj više ne prihvaća ovu lozinku. Ako ste je promijenili ili opozvali lozinku za aplikaciju, stvorite novu i ponovno se povežite."
+      }
+    },
+    "v2": {
+      "groups": {
+        "layout": "Raspored",
+        "connected": "Povezani kalendari"
+      },
+      "addCalendar": "Dodaj kalendar",
+      "calendarCount": "{selected} od {count, plural, one {# kalendara} few {# kalendara} other {# kalendara}}",
+      "defaultPill": "Zadano",
+      "subscription": "Pretplata",
+      "subscriptionCount": "{count, plural, =0 {Nema pretplata} one {# pretplata} few {# pretplate} other {# pretplata}}"
     }
   },
   "account": {
     "header": {
       "title": "Račun",
       "subtitle": "Vaš račun, sinkronizacija i sigurnost",
-      "loading": "Učitavanje..."
+      "loading": "Učitavanje…"
     },
     "groups": {
       "identity": "Identitet",
       "sync": "Sinkronizacija",
-      "storage": "Skladištenje",
-      "devices": "Uređaji",
-      "billing": "Naplata"
+      "billing": "Naplata",
+      "storage": "Pohrana",
+      "devices": "Uređaji"
     },
     "identity": {
       "unknown": "Nepoznato",
-      "encrypted": "Šifrirano s kraja na kraj"
+      "encrypted": "Sveobuhvatno šifrirano"
     },
     "sync": {
-      "lastSynced": "Zadnja sinkronizacija {time}",
-      "pending": "{count, plural, one {# na čekanju} other {# na čekanju}}",
+      "lastSynced": "Posljednja sinkronizacija: {time}",
+      "pending": "{count, plural, one {# na čekanju} few {# na čekanju} other {# na čekanju}}",
+      "attachmentAutoDownload": {
+        "label": "Automatski preuzimaj privitke",
+        "description": "Privici iz sinkroniziranih bilješki preuzimaju se u pozadini. Kada je isključeno, datoteke se preuzimaju tek kada ih otvorite.",
+        "saveFailed": "Nije moguće spremiti postavku preuzimanja privitaka"
+      },
       "statuses": {
         "synced": "Sinkronizirano",
-        "syncing": "Sinkronizacija...",
+        "syncing": "Sinkronizacija…",
         "paused": "Pauzirano",
-        "syncError": "Sinkronizacija Greška",
+        "syncError": "Pogreška sinkronizacije",
         "offline": "Izvan mreže",
-        "connecting": "Povezivanje...",
-        "pushed": "{count, plural, one {# gurnuo} other {# gurnuo}}",
-        "pulled": "{count, plural, one {# povukao} other {# povukao}}",
+        "connecting": "Povezivanje…",
+        "localOnly": "Samo lokalno",
+        "pushed": "{count, plural, one {# poslana} few {# poslane} other {# poslano}}",
+        "pulled": "{count, plural, one {# preuzeta} few {# preuzete} other {# preuzeto}}",
         "pushedPulled": "{parts}",
-        "changesPending": "{count, plural, one {# promjena na čekanju} other {# promjene na čekanju}}",
-        "offlinePending": "Izvan mreže ({count, plural, one {# promjena na čekanju} other {# promjene na čekanju}})",
+        "changesPending": "{count, plural, one {# promjena na čekanju} few {# promjene na čekanju} other {# promjena na čekanju}}",
+        "offlinePending": "Izvan mreže ({count, plural, one {# promjena na čekanju} few {# promjene na čekanju} other {# promjena na čekanju}})",
         "never": "nikada"
+      },
+      "upsell": {
+        "title": "Bilješke su pohranjene samo na ovom uređaju",
+        "description": "Uključite sinkronizaciju i svaka bilješka prati vas na ostale uređaje – sveobuhvatno šifrirana, tako da ih samo vi možete čitati.",
+        "benefits": {
+          "devices": "Svaki uređaj nastavlja ondje gdje ste stali",
+          "encrypted": "Sveobuhvatno šifrirano – ključevi ostaju samo kod vas",
+          "backup": "Šifrirana sigurnosna kopija, za slučaj da ovaj uređaj nije pri ruci"
+        },
+        "guarantee": "Jamstvo povrata novca 14 dana. Otkažite u bilo kojem trenutku."
+      },
+      "activating": {
+        "title": "Dovršavanje aktivacije",
+        "description": "Vaš je plan aktivan. Sinkronizacija počinje čim ga potvrdimo – osvježavanje obično pomaže."
+      }
+    },
+    "billing": {
+      "planStatus": "Status plana",
+      "checking": "Provjera statusa naplate",
+      "annualSwitch": {
+        "title": "Prijeđi na godišnju naplatu",
+        "description": "Uštedite 20 %. Ostatak ovog mjeseca obračunavamo razmjerno, bez dodatne naplate.",
+        "action": "Prijeđi na godišnju",
+        "pricing": "Izračun cijene…",
+        "preview": "Danas plaćate {amount}, zatim {recurring} godišnje",
+        "confirm": "Potvrdi prelazak",
+        "switching": "Prelazak…",
+        "success": "Sada imate godišnju naplatu.",
+        "failed": "Nije moguće promijeniti plan"
+      },
+      "plans": {
+        "free": "Besplatni plan",
+        "plus": "Plus plan",
+        "pro": "Pro plan",
+        "believer": "Believer plan"
+      },
+      "statuses": {
+        "inactive": "Neaktivno",
+        "active": "Aktivno",
+        "past_due": "Plaćanje kasni",
+        "paused": "Pauzirano",
+        "canceled": "Otkazano"
+      },
+      "labels": {
+        "storage": "Pohrana",
+        "maxFile": "Maks. veličina datoteke",
+        "vaults": "Trezori",
+        "history": "Povijest"
+      },
+      "unlimited": "Neograničeno",
+      "historyDays": "{days} dana",
+      "activationPendingPrefix": "Aktivacija na čekanju. Paddleu može trebati trenutak da potvrdi kupnju. Osvježite status ili pišite na",
+      "actions": {
+        "upgrade": "Nadogradi",
+        "unlockSync": "Otključaj sinkronizaciju",
+        "opening": "Otvaranje…",
+        "refresh": "Osvježi status",
+        "manage": "Upravljaj naplatom"
+      },
+      "toasts": {
+        "loadFailed": "Nije moguće učitati status naplate",
+        "checkoutFailed": "Nije moguće započeti kupnju",
+        "checkoutOpened": "Plaćanje otvoreno u pregledniku",
+        "refreshFailed": "Nije moguće osvježiti status naplate",
+        "billingActive": "Naplata je aktivna",
+        "activationPending": "Aktivacija na čekanju",
+        "portalFailed": "Nije moguće otvoriti portal za naplatu"
       }
     },
     "storage": {
-      "used": "Upotrijebljen {used} od {limit}",
+      "used": "Iskorišteno {used} od {limit}",
       "categories": {
         "notes": "Bilješke",
-        "attachments": "Prilozi",
+        "attachments": "Privici",
         "crdt": "CRDT",
-        "other": "ostalo"
+        "other": "Ostalo"
       }
     },
     "security": {
@@ -560,101 +1064,65 @@
         "action": "Odjavi se"
       }
     },
+    "community": {
+      "prompt": "Sviđa vam se memrynote?",
+      "star": "Dajte nam zvjezdicu na GitHubu",
+      "and": "i",
+      "feedback": "podijelite povratne informacije"
+    },
     "signOutDialog": {
       "title": "Odjaviti se iz sinkronizacije?",
-      "description": "Sinkronizacija će se zaustaviti i ključevi za šifriranje će se ukloniti s ovog uređaja. Vaše bilješke ostat će na ovom uređaju. Za ponovno postavljanje sinkronizacije trebat će vam izraz za oporavak.",
+      "description": "Sinkronizacija će se zaustaviti, a ključevi za šifriranje uklonit će se s ovog uređaja. Bilješke će ostati na ovom uređaju. Za ponovno postavljanje sinkronizacije trebat će vam fraza za oporavak.",
       "confirm": "Odjavi se",
-      "signingOut": "Odjava..."
+      "signingOut": "Odjava…"
     },
     "toasts": {
-      "signedOut": "Uspješno odjavljen",
+      "signedOut": "Odjava uspješna",
       "signOutFailed": "Odjava nije uspjela",
       "deviceLinked": "Uređaj je uspješno povezan"
     },
-    "billing": {
-      "actions": {
-        "manage": "Upravljaj naplatom",
-        "opening": "Otvaranje...",
-        "refresh": "Osvježi status",
-        "upgrade": "Nadogradi"
-      },
-      "activationPendingPrefix": "Aktivacija na čekanju. Paddleu može trebati trenutak da potvrdi kupnju. Osvježite status ili pošaljite e-poštu",
-      "checking": "Provjera statusa naplate",
-      "historyDays": "{days} dana",
-      "labels": {
-        "history": "Povijest",
-        "maxFile": "Maks. datoteka",
-        "storage": "Pohrana",
-        "vaults": "Trezori"
-      },
-      "planStatus": "Status plana",
-      "plans": {
-        "believer": "Believer plan",
-        "free": "Besplatni plan",
-        "plus": "Plus plan",
-        "pro": "Pro plan"
-      },
-      "statuses": {
-        "active": "Aktivno",
-        "canceled": "Otkazano",
-        "inactive": "Neaktivno",
-        "past_due": "Dospjelo",
-        "paused": "Pauzirano"
-      },
-      "toasts": {
-        "activationPending": "Aktivacija na čekanju",
-        "billingActive": "Naplata je aktivna",
-        "checkoutFailed": "Nije moguće započeti kupnju",
-        "checkoutOpened": "Kupnja otvorena u vašem pregledniku",
-        "loadFailed": "Nije moguće učitati status naplate",
-        "portalFailed": "Nije moguće otvoriti portal za naplatu",
-        "refreshFailed": "Nije moguće osvježiti status naplate"
-      },
-      "unlimited": "Neograničeno"
-    },
-    "community": {
-      "and": "i",
-      "feedback": "podijelite povratne informacije",
-      "prompt": "Volite memrynote?",
-      "star": "Dodijelite nam zvjezdicu na GitHubu"
+    "v2": {
+      "stats": {
+        "plan": "Plan"
+      }
     }
   },
   "setup": {
     "steps": {
-      "signIn": "Prijavite se",
+      "signIn": "Prijavi se",
       "verify": "Potvrdi",
       "link": "Poveži"
     },
     "progress": "Korak {current} od {total}: {label}",
     "signIn": {
       "title": "Postavite sinkronizaciju",
-      "description": "Izradite račun za sinkronizaciju podataka na svim uređajima s end-to-end enkripcijom.",
+      "description": "Stvorite račun za sinkronizaciju podataka na svim uređajima uz sveobuhvatno šifriranje.",
       "or": "ili",
+      "paidPlan": "Sinkronizacija je plaćeni plan.",
+      "seePlans": "Pogledaj planove",
       "errors": {
         "sendCode": "Slanje koda nije uspjelo",
-        "googleStart": "Neuspješno pokretanje Google prijave"
-      },
-      "paidPlan": "Sinkronizacija je plaćeni plan.",
-      "seePlans": "Pogledaj planove"
+        "googleStart": "Pokretanje prijave putem Googlea nije uspjelo"
+      }
     },
     "email": {
       "label": "Adresa e-pošte",
-      "placeholder": "Unesite svoju email adresu...",
+      "placeholder": "Unesite adresu e-pošte…",
       "invalid": "Unesite važeću adresu e-pošte",
-      "sending": "Slanje koda..."
+      "sending": "Slanje koda…"
     },
     "oauth": {
-      "google": "Nastavite s Googleom"
+      "google": "Nastavi s Googleom"
     },
     "otp": {
       "title": "Unesite kontrolni kod",
       "sentTo": "Poslali smo 6-znamenkasti kod na ",
       "aria": "6-znamenkasti kontrolni kod",
-      "verifying": "Provjera...",
-      "resending": "Ponovno slanje...",
+      "verifying": "Provjera…",
+      "resending": "Ponovno slanje…",
       "resend": "Ponovno pošalji kod",
-      "resendIn": "Ponovno pošaljite u {time}",
-      "differentEmail": "Koristite drugu e-poštu",
+      "resendIn": "Ponovno slanje za {time}",
+      "differentEmail": "Koristi drugu adresu e-pošte",
       "error": "Provjera nije uspjela",
       "resendError": "Ponovno slanje nije uspjelo"
     },
@@ -662,114 +1130,124 @@
       "displayTitle": "Spremite svoju frazu za oporavak",
       "displayDescription": "Ovo je jedini način za oporavak šifriranih podataka ako izgubite pristup svim svojim uređajima.",
       "warning": "Zapišite ovo i pohranite na sigurno mjesto. Nećete to više vidjeti.",
-      "wordsAria": "Riječi izraza za oporavak",
+      "wordsAria": "Riječi fraze za oporavak",
       "wordAria": "Riječ {index}: {word}",
-      "copyAria": "Kopiraj izraz za oporavak u međuspremnik",
+      "copyAria": "Kopiraj frazu za oporavak u međuspremnik",
       "copiedAria": "Fraza za oporavak je kopirana",
       "copied": "Kopirano",
-      "saved": "Sačuvao sam svoju frazu za oporavak",
+      "saved": "Fraza za oporavak je spremljena",
       "confirmTitle": "Potvrdite svoju frazu za oporavak",
-      "confirmDescription": "Unesite tražene riječi kako biste potvrdili da ste ga ispravno spremili.",
-      "wordPlaceholder": "Unesite riječ #{index}",
+      "confirmDescription": "Unesite tražene riječi kako biste potvrdili da ste je ispravno spremili.",
+      "wordPlaceholder": "Unesite {index}. riječ",
       "verify": "Potvrdi",
       "mustMatch": "Za nastavak se moraju podudarati sve 3 riječi",
-      "inputTitle": "Unesite izraz za oporavak",
+      "inputTitle": "Unesite frazu za oporavak",
       "inputDescription": "Unesite svoju frazu za oporavak od 24 riječi da vratite pristup svojim šifriranim podacima.",
-      "inputLabel": "Fraza oporavka",
+      "inputLabel": "Fraza za oporavak",
       "count": "{count} / {total} riječi",
-      "inputPlaceholder": "Unesite svoju frazu za oporavak od 24 riječi odvojene razmacima...",
+      "inputPlaceholder": "Unesite frazu za oporavak od 24 riječi, odvojenih razmacima…",
       "lengthHint": "Unesite sve 24 riječi kako biste omogućili gumb za vraćanje",
       "restore": "Vrati pristup",
       "progress": {
-        "deriving": "Izvođenje ključeva za šifriranje...",
-        "validating": "Provjera fraze za oporavak...",
-        "registering": "Registriranje uređaja..."
+        "deriving": "Izvođenje ključeva za šifriranje…",
+        "validating": "Provjera fraze za oporavak…",
+        "registering": "Registriranje uređaja…"
       },
       "failed": "Oporavak nije uspio",
       "confirmationFailed": "Potvrda nije uspjela",
       "unavailable": {
-        "description": "Vaša fraza za oporavak prikazuje se samo jednom tijekom postavljanja i ne može se dohvatiti kasnije. Počnite ispočetka za generiranje nove.",
         "loading": "Učitavanje vaše fraze za oporavak…",
-        "startOver": "Počni ispočetka",
-        "title": "Nije moguće učitati vašu frazu za oporavak"
+        "title": "Nije moguće učitati vašu frazu za oporavak",
+        "description": "Vaša fraza za oporavak prikazuje se samo jednom tijekom postavljanja i ne može se dohvatiti kasnije. Počnite ispočetka za generiranje nove.",
+        "startOver": "Počni ispočetka"
       }
+    },
+    "startFresh": {
+      "trigger": "Ne mogu vratiti frazu za oporavak",
+      "title": "Počni ispočetka na ovom uređaju",
+      "description": "Učinite to samo ako je fraza za oporavak nepovratno izgubljena. Ovo se ne može poništiti.",
+      "consequenceSignOut": "Ovaj se uređaj odjavljuje i prestaje sinkronizirati.",
+      "consequenceKey": "Ključ za šifriranje pohranjen na ovom uređaju briše se. Sve što je već pohranjeno na vašem računu ostaje šifrirano starim ključem – bez fraze za oporavak to više nitko nikad neće moći pročitati.",
+      "consequenceLocal": "Bilješke već spremljene na ovom računalu ostaju u mapi trezora i nastavljaju raditi.",
+      "confirm": "Odjavi se i počni ispočetka",
+      "cancel": "Natrag"
     },
     "linking": {
       "choiceTitle": "Povežite ovaj uređaj",
       "choiceDescription": "Prenesite ključeve za šifriranje s drugog uređaja ili ih vratite iz fraze za oporavak.",
-      "qrChoice": "Link putem QR koda",
+      "qrChoice": "Poveži putem QR koda",
       "qrChoiceDescription": "Skenirajte kod prikazan na vašem drugom uređaju",
-      "recoveryChoice": "Fraza oporavka",
-      "recoveryChoiceDescription": "Unesite izraz za oporavak od 24 riječi",
+      "recoveryChoice": "Fraza za oporavak",
+      "recoveryChoiceDescription": "Unesite frazu za oporavak od 24 riječi",
       "codeTitle": "Unesite kod za povezivanje",
       "codeDescription": "Zalijepite kod za povezivanje sa svog drugog uređaja da biste sigurno prenijeli svoje ključeve za šifriranje.",
       "codeLabel": "Kod za povezivanje",
       "valid": "Valjano",
       "invalid": "Nevažeći format",
-      "codePlaceholder": "Zalijepite kod sa svog drugog uređaja...",
+      "codePlaceholder": "Zalijepite kod sa svog drugog uređaja…",
       "formatHint": "Zalijepite JSON kod za povezivanje sa svog drugog uređaja",
-      "linking": "Povezivanje...",
-      "linkDevice": "Povežite uređaj",
+      "linking": "Povezivanje…",
+      "linkDevice": "Poveži uređaj",
       "failed": "Povezivanje nije uspjelo",
       "deviceFailed": "Povezivanje uređaja nije uspjelo",
       "pendingSuccess": "Uređaj je uspješno povezan",
-      "goBack": "Idi natrag",
+      "goBack": "Natrag",
       "waitingTitle": "Čeka se odobrenje",
       "waitingDescription": "Otvorite memrynote na svom drugom uređaju i odobrite zahtjev za povezivanje.",
       "verificationCode": "Kontrolni kod",
-      "confirmCode": "Provjerite odgovara li kod na vašem drugom uređaju",
-      "vaultPickerChooseFolder": "Odaberi mapu",
-      "vaultPickerConfirm": "Preuzmi odabrano",
+      "confirmCode": "Provjerite odgovara li ovaj kod onome na drugom uređaju",
+      "vaultPickerTitle": "Odaberite što želite preuzeti",
       "vaultPickerDescription": "Ovaj račun ima više trezora. Odaberite mapu i trezor(e) za dodavanje na ovaj uređaj.",
-      "vaultPickerDormantHint": "Dodano, otvara se kad prijeđete na njega",
       "vaultPickerFolderLabel": "Pohrani trezore u mapu",
+      "vaultPickerChooseFolder": "Odaberi mapu",
+      "vaultRow": "Trezor – {count, plural, one {# stavka} few {# stavke} other {# stavki}} · {date}",
       "vaultPickerPrimaryHint": "Otvara se sada",
-      "vaultPickerTitle": "Odaberite što preuzeti",
-      "vaultRow": "Trezor — {count} stavki · {date}"
+      "vaultPickerDormantHint": "Dodano, otvara se kad prijeđete na njega",
+      "vaultPickerConfirm": "Preuzmi odabrano"
     }
   },
   "devices": {
-    "loading": "Učitavanje uređaja...",
-    "loadingAria": "Utovarni uređaji",
+    "loading": "Učitavanje uređaja…",
+    "loadingAria": "Učitavanje uređaja",
     "none": "Još nema povezanih uređaja",
-    "linkNew": "Povežite novi uređaj",
+    "linkNew": "Poveži novi uređaj",
     "thisDevice": "Ovaj uređaj",
-    "lastSeen": "Zadnji put viđen {time} prije",
+    "lastSeen": "Posljednja aktivnost prije {time}",
     "linked": "Povezan prije {time}",
-    "renameAria": "Preimenujte {name}",
+    "renameAria": "Preimenuj uređaj „{name}”",
     "rename": "Preimenuj",
-    "revoke": "opozvati",
+    "revoke": "Opozovi",
     "showLess": "Prikaži manje",
-    "showMore": "{count, plural, one {# više uređaja} other {# više uređaja}}",
-    "showMoreAria": "Prikaži {count, plural, one {# više uređaja} other {# više uređaja}}",
+    "showMore": "{count, plural, one {još # uređaj} few {još # uređaja} other {još # uređaja}}",
+    "showMoreAria": "Prikaži još {count, plural, one {# uređaj} few {# uređaja} other {# uređaja}}",
     "dialogs": {
-      "revokeTitle": "Opozvati \"{name}\"?",
+      "revokeTitle": "Opozvati „{name}”?",
       "revokeDescription": "Ovaj će uređaj izgubiti pristup vašim sinkroniziranim podacima. Morat će se ponovno povezati za vraćanje sinkronizacije. Lokalni podaci na tom uređaju ostat će.",
       "revokeDevice": "Opozovi uređaj",
-      "revoking": "Opoziv...",
-      "renameTitle": "Preimenujte uređaj",
+      "revoking": "Opozivanje…",
+      "renameTitle": "Preimenuj uređaj",
       "renameDescription": "Odaberite naziv za identifikaciju ovog uređaja.",
       "namePlaceholder": "Naziv uređaja",
-      "renaming": "Preimenovanje..."
+      "renaming": "Preimenovanje…"
     },
     "toasts": {
       "loadFailed": "Učitavanje uređaja nije uspjelo",
-      "removed": "Uklonjen \"{name}\"",
+      "removed": "Uređaj „{name}” uklonjen",
       "removeFailed": "Uklanjanje uređaja nije uspjelo",
-      "renamed": "Preimenovano u \"{name}\"",
+      "renamed": "Preimenovano u „{name}”",
       "renameFailed": "Promjena naziva uređaja nije uspjela"
     },
     "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
-    "title": "Povežite novi uređaj",
+    "title": "Poveži novi uređaj",
     "description": "Skenirajte ovaj QR kod s uređaja koji želite povezati za siguran prijenos vaših ključeva za šifriranje.",
-    "encrypted": "Šifrirano s kraja na kraj",
-    "generating": "Generiranje koda za povezivanje...",
+    "encrypted": "Sveobuhvatno šifrirano",
+    "generating": "Generiranje koda za povezivanje…",
     "generatingAria": "Generiranje koda za povezivanje",
     "generateFailed": "Generiranje koda za povezivanje nije uspjelo",
-    "tryAgain": "Pokušajte ponovno",
-    "expired": "Kôd povezivanja je istekao",
+    "tryAgain": "Pokušaj ponovno",
+    "expired": "Kod za povezivanje je istekao",
     "generateNew": "Generiraj novi kod",
     "qrAria": "QR kod za povezivanje uređaja",
     "qrImageAria": "QR kod za povezivanje uređaja",
@@ -786,125 +1264,338 @@
     "unknownDevice": "Nepoznati uređaj",
     "unknownPlatform": "Nepoznata platforma",
     "verificationCode": "Kontrolni kod",
-    "computing": "Računalstvo...",
+    "computing": "Izračunavanje…",
     "unavailable": "Nedostupan",
     "confirmCode": "Potvrdite da ovaj kod odgovara onom prikazanom na novom uređaju",
-    "reject": "Odbiti",
-    "approve": "odobriti",
-    "approving": "Odobravanje...",
+    "reject": "Odbij",
+    "approve": "Odobri",
+    "approving": "Odobravanje…",
     "approvalFailed": "Odobrenje nije uspjelo",
     "failedToApprove": "Odobravanje uređaja nije uspjelo"
   },
   "ai": {
     "header": {
       "title": "AI pomoćnik",
-      "subtitle": "Ugradnje se izvode lokalno. Glasovni zapisi mogu koristiti Whisper Small ili vašu tipku OpenAI.",
-      "loading": "Učitavanje postavki..."
+      "subtitle": "Vektorski prikazi izrađuju se lokalno. Glasovni zapisi mogu koristiti Whisper Small ili vaš OpenAI ključ.",
+      "loading": "Učitavanje postavki…"
     },
     "enable": {
-      "label": "Omogući AI značajke",
-      "description": "Pametni prijedlozi za arhiviranje i veze za bilješke",
-      "enabled": "AI značajke omogućene",
-      "disabled": "AI značajke onemogućene",
+      "label": "Uključi AI značajke",
+      "description": "Pametni prijedlozi za smještanje i veze među bilješkama",
+      "enabled": "AI značajke uključene",
+      "disabled": "AI značajke isključene",
       "error": "Ažuriranje postavke nije uspjelo"
     },
     "unknownError": "Nepoznata greška",
     "groups": {
       "voice": "Transkripcija glasa",
-      "embeddingModel": "Lokalni model ugradnje",
-      "embeddingIndex": "Indeks ugradnje",
-      "inline": "Inline AI uređivanje"
+      "embeddingModel": "Lokalni model za vektorske prikaze",
+      "embeddingIndex": "Indeks vektorskih prikaza",
+      "inline": "AI uređivanje u retku"
     },
     "voice": {
-      "provider": "Davatelj",
-      "providerDescription": "Davatelj usluge pretvaranja govora u tekst za glasovne bilješke",
+      "provider": "Pružatelj usluge",
+      "providerDescription": "Usluga pretvaranja govora u tekst za glasovne bilješke",
       "providers": {
         "local": "Lokalno (zadano)",
         "openai": "OpenAI (BYOK)"
       },
+      "memoNameMode": "Nazivi glasovnih bilješki",
+      "memoNameModeDescription": "Kako se glasovne bilješke imenuju nakon transkripcije",
+      "naming": {
+        "transcript": "Naslov transkripta",
+        "timestamp": "Vremenska oznaka",
+        "none": "Ne preimenuj"
+      },
+      "namingError": "Ažuriranje imenovanja glasovnih bilješki nije uspjelo",
       "localModel": "Lokalni model",
-      "localModelDescription": "Whisper Small preuzima na zahtjev i ostaje u lokalnoj predmemoriji",
+      "localModelDescription": "Whisper Small preuzima se na zahtjev i ostaje u lokalnoj predmemoriji",
       "status": {
-        "ready": "spreman",
+        "ready": "Spremno",
         "downloading": "Preuzimanje",
         "downloaded": "Preuzeto",
         "notDownloaded": "Nije preuzeto"
       },
       "cacheHint": "Nije u paketu s aplikacijom · Preuzeto iz postavki · Spremljeno u predmemoriju na ovom uređaju",
-      "preparing": "Priprema Whisper Small...",
-      "download": "Preuzmite Whisper Small",
+      "preparing": "Priprema modela Whisper Small…",
+      "download": "Preuzmi Whisper Small",
       "apiKey": "OpenAI API ključ",
       "apiKeyDescription": "Pohranjuje se u privjesak za ključeve OS-a i koristi se samo za glasovnu transkripciju",
       "replaceKey": "Zamijenite spremljeni OpenAI ključ",
       "enterKey": "Unesite OpenAI API ključ",
       "saveKey": "Spremi ključ",
       "keySaved": "API ključ spremljen u privjesak za ključeve",
-      "providerError": "Ažuriranje davatelja glasovnih usluga nije uspjelo",
+      "providerError": "Ažuriranje pružatelja glasovne usluge nije uspjelo",
       "downloadedToast": "Whisper Small preuzet",
-      "downloadError": "Nije uspjelo preuzimanje Whisper Small",
+      "downloadError": "Preuzimanje modela Whisper Small nije uspjelo",
       "keySavedToast": "OpenAI ključ spremljen",
-      "keySaveError": "Spremanje OpenAI ključa nije uspjelo",
-      "memoNameMode": "Nazivi bilješki",
-      "memoNameModeDescription": "Kako se glasovne bilješke imenuju nakon transkripcije",
-      "naming": {
-        "none": "Ne preimenuj",
-        "timestamp": "Vremenska oznaka",
-        "transcript": "Naslov transkripta"
-      },
-      "namingError": "Neuspješno ažuriranje imenovanja glasovnih bilješki"
+      "keySaveError": "Spremanje OpenAI ključa nije uspjelo"
     },
     "embedding": {
       "loaded": "Učitano",
       "loading": "Učitavanje",
-      "cacheHint": "~23MB · Lokalno predmemorirano · Sve na uređaju",
+      "cacheHint": "~23 MB · Lokalno u predmemoriji · Sve na uređaju",
       "dimensions": "Dimenzije",
-      "embeddings": "Ugradnje",
-      "downloadLoad": "Preuzmite i učitajte model",
-      "downloadingModel": "Preuzimanje modela...",
-      "loadingModel": "Učitavanje modela...",
+      "embeddings": "Vektorski prikazi",
+      "downloadLoad": "Preuzmi i učitaj model",
+      "downloadingModel": "Preuzimanje modela…",
+      "loadingModel": "Učitavanje modela…",
       "loadSuccess": "Model je uspješno učitan",
       "loadFailed": "Učitavanje modela nije uspjelo",
       "rebuildIndex": "Ponovno izgradi indeks",
-      "rebuildDescription": "Ponovno generiraj ugradnje za sve bilješke",
-      "rebuild": "Ponovo izgraditi",
-      "scanning": "Skeniranje bilješki...",
-      "generating": "Generiranje ugrađivanja...",
+      "rebuildDescription": "Ponovno generiraj vektorske prikaze za sve bilješke",
+      "rebuild": "Ponovno izgradi",
+      "scanning": "Skeniranje bilješki…",
+      "generating": "Generiranje vektorskih prikaza…",
       "complete": "Završeno!",
-      "reindexed": "Ugradnje ponovno indeksirane: {computed} izračunat, {skipped} preskočen",
-      "reindexFailed": "Ponovno indeksiranje ugrađivanja nije uspjelo"
+      "reindexed": "Vektorski prikazi ponovno indeksirani: izračunato {computed}, preskočeno {skipped}",
+      "reindexFailed": "Ponovno indeksiranje vektorskih prikaza nije uspjelo"
     },
     "inline": {
-      "loading": "Učitavanje...",
-      "title": "Inline AI uređivanje",
-      "enable": "Omogući Inline AI",
+      "loading": "Učitavanje…",
+      "title": "AI uređivanje u retku",
+      "enable": "Uključi AI uređivanje u retku",
       "enableDescription": "Prikaži AI izbornik prilikom uređivanja bilješki",
-      "enabled": "Umetnuto AI uređivanje omogućeno",
-      "disabled": "Inline AI uređivanje onemogućeno",
-      "provider": "Davatelj",
+      "enabled": "AI uređivanje u retku uključeno",
+      "disabled": "AI uređivanje u retku isključeno",
+      "provider": "Pružatelj usluge",
       "providerDescription": "AI usluga za tekstualne operacije",
       "providers": {
         "ollama": "Ollama (lokalno)",
         "openai": "OpenAI",
-        "anthropic": "antropski",
+        "anthropic": "Anthropic",
         "google": "Google Gemini"
       },
       "model": "Model",
       "modelDescription": "Jezični model za prepisivanje i sažimanje",
       "selectModel": "Odaberite model",
       "apiKey": "API ključ",
-      "apiKeyDescription": "Pohranjuje se lokalno, šalje samo davatelju",
-      "apiKeyPlaceholder": "Unesite {provider} API ključ",
+      "apiKeyDescription": "Pohranjuje se lokalno, šalje se samo pružatelju usluge",
+      "apiKeyPlaceholder": "Unesite API ključ za {provider}",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Adresa lokalnog poslužitelja",
       "connection": "Veza",
       "activePort": "Aktivno na priključku {port}",
       "notConnected": "Nije povezano",
-      "test": "test",
+      "test": "Testiraj",
       "stopFailed": "Zaustavljanje postojećeg poslužitelja nije uspjelo",
       "connected": "Povezano! Poslužitelj radi na priključku {port}",
       "connectFailed": "Povezivanje nije uspjelo",
       "testFailed": "Test veze nije uspio",
       "updateFailed": "Ažuriranje postavke nije uspjelo"
+    },
+    "tabs": {
+      "models": "Modeli",
+      "agents": "Agenti",
+      "connect": "Povezivanje"
+    },
+    "v2": {
+      "onDevice": {
+        "label": "Modeli na uređaju",
+        "hint": "Preuzimaju se jednom, rade izvan mreže"
+      },
+      "embedding": {
+        "label": "Vektorski prikazi za pretraživanje",
+        "hint": "{dimension} dim. · {count, plural, one {# bilješka obrađena} few {# bilješke obrađene} other {# bilješki obrađeno}}"
+      },
+      "voiceModel": {
+        "label": "Transkripcija glasa"
+      },
+      "download": "Preuzmi",
+      "connected": "Povezano",
+      "inline": {
+        "group": "Uređivanje u retku",
+        "enabled": "Uključeno"
+      },
+      "voice": {
+        "group": "Glasovne bilješke",
+        "transcribeWith": "Transkribiraj pomoću",
+        "local": "Lokalno",
+        "openai": "OpenAI",
+        "nameBy": "Imenuj bilješke prema",
+        "keySaved": "Spremljeno",
+        "keyNotSet": "Nije postavljeno"
+      }
+    }
+  },
+  "import": {
+    "header": {
+      "title": "Uvoz",
+      "subtitle": "Uvezite bilješke i zadatke iz drugih aplikacija"
+    },
+    "intro": "Jednokratni uvozi stvaraju nove bilješke u vašem trezoru. Vaše izvorne izvezene datoteke ostaju netaknute.",
+    "sources": {
+      "notion": "Uvezite HTML izvoz (.zip)",
+      "todoist": "Uvezite CSV izvoz projekta (.csv)",
+      "ticktick": "Uvezite TickTick sigurnosnu kopiju (.csv) kao projekte, zadatke i podsjetnike",
+      "markdown": "Uvezite .md datoteke ili mapu (frontmatter, oznake, privici)",
+      "noteplan": "Uvezite mapu NotePlan – dnevne bilješke postaju zapisi u dnevniku, a zadaci ostaju zadaci",
+      "html": "Uvezite .html datoteke s povezanim slikama i poveznicama između stranica",
+      "google-keep": "Uvezite Google Takeout Keep izvoz (.json ili .zip)",
+      "bear": "Uvezite Bear .bear2bk arhivu (bilješke, oznake, privici)",
+      "evernote": "Uvezite jednu ili više Evernote .enex izvoznih datoteka",
+      "roam": "Uvezite Roam Research graf (.json) s ugniježđenim popisima",
+      "apple-journal": "Uvezite Apple Journal HTML izvoz kao datirane bilješke",
+      "csv": "Uvezite .csv datoteku – jedna bilješka po retku, stupci postaju svojstva",
+      "raindrop": "Uvezite izvoz favorita iz Raindrop.io (.csv) – favoriti dolaze u ulazni pretinac",
+      "apple-notes": "Uvezite iz baze podataka Apple Notes (NoteStore.sqlite, macOS)",
+      "onenote": "Uvezite OneNote bilježnice (potreban Microsoft račun)"
+    },
+    "action": "Uvezi",
+    "select": "Odaberite aplikaciju iz koje uvozite…",
+    "stats": {
+      "notes": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}",
+      "projects": "{count, plural, one {# projekt} few {# projekta} other {# projekata}}",
+      "tasks": "{count, plural, one {# zadatak} few {# zadatka} other {# zadataka}}",
+      "subtasks": "{count, plural, one {# podzadatak} few {# podzadatka} other {# podzadataka}}",
+      "reminders": "{count, plural, one {# podsjetnik} few {# podsjetnika} other {# podsjetnika}}",
+      "bookmarks": "{count, plural, one {# favorit} few {# favorita} other {# favorita}}",
+      "withTags": "S oznakama: {count}",
+      "withDueDate": "S datumom: {count}",
+      "comments": "{count, plural, one {# komentar} few {# komentara} other {# komentara}}",
+      "skipped": "Preskočeno: {count}"
+    },
+    "preview": {
+      "warnings": "Upozorenja",
+      "confirm": "Uvezi"
+    },
+    "dialog": {
+      "title": "Uvoz iz aplikacije {name}",
+      "choose": "Odaberi datoteku…",
+      "onenote": {
+        "connect": "Prijavi se Microsoft računom",
+        "connecting": "Čekanje na prijavu u pregledniku…",
+        "connectedAs": "Prijavljeni ste kao {name} ({email})",
+        "switchAccount": "Promijeni račun",
+        "loadingNotebooks": "Učitavanje bilježnica…",
+        "notebooksEmpty": "Na ovom računu nisu pronađene bilježnice.",
+        "selectAll": "Odaberi sve",
+        "deselectAll": "Poništi odabir",
+        "sectionsSelected": "{count, plural, one {# odjeljak odabran} few {# odjeljka odabrana} other {# odjeljaka odabrano}}",
+        "includeIncompatible": "Uvezi nekompatibilne privitke",
+        "includeIncompatibleHint": "Spremaju se i vrste datoteka koje Memry ne može pretpregledati (prezentacije, medijski sadržaj, arhive – nikad izvršne datoteke). Prikazuju se kao blokovi datoteka.",
+        "skipPrevious": "Preskoči prethodno uvezene stranice",
+        "skipPreviousHint": "Stranice uvezene u prethodnom OneNote uvozu preskaču se, pa ponovni uvoz preuzima samo ono što je novo."
+      },
+      "appleNotes": {
+        "loadingFolders": "Čitanje mapa…",
+        "foldersError": "Nije moguće pročitati mape – uvest će se cijela zbirka.",
+        "unfiled": "Bilješke bez mape",
+        "selectAll": "Odaberi sve",
+        "deselectAll": "Poništi odabir",
+        "foldersSelected": "{count, plural, one {# mapa odabrana} few {# mape odabrane} other {# mapa odabrano}}",
+        "noteCount": "{count}",
+        "noteCountWithSubfolders": "{count} ({total})"
+      },
+      "chooseFolder": "Odaberi mapu aplikacije Apple Notes…",
+      "chooseDirectory": "Odaberi mapu…",
+      "folderKeepsAssets": "Odaberite mapu kada se slike nalaze izvan mape sa samim bilješkama – izvozi medijski sadržaj često spremaju u zajedničku mapu.",
+      "chooseHint": "Odaberite: {label}",
+      "folderHint": "Kliknite gumb u nastavku i odaberite mapu „group.com.apple.notes” kada se otvori birač (otvara se upravo u njoj). Tako aplikacija Memry može čitati vaše bilješke i privitke – bez potrebe za potpunim pristupom disku.",
+      "noteplanFolderHint": "Odaberite mapu NotePlan – mapu s podacima aplikacije ili jednu od njezinih kopija u mapi Backups. Memry čita mape Calendar, Notes i @Archive unutar nje.",
+      "selected": "{count, plural, one {# datoteka odabrana} few {# datoteke odabrane} other {# datoteka odabrano}}",
+      "start": "Započni uvoz",
+      "cancel": "Odustani",
+      "close": "Zatvori",
+      "done": "Gotovo",
+      "running": "Uvoz…",
+      "progress": "{completed} od {total}",
+      "summary": {
+        "title": "Uvoz završen",
+        "imported": "{count, plural, one {# stavka uvezena} few {# stavke uvezene} other {# stavki uvezeno}}",
+        "attachments": "{count, plural, one {# privitak kopiran} few {# privitka kopirana} other {# privitaka kopirano}}",
+        "skipped": "Preskočeno: {count}",
+        "skippedReason": "{count, plural, one {# stavka} few {# stavke} other {# stavki}}: {reason}",
+        "failed": "Neuspješno: {count}"
+      },
+      "error": "Uvoz nije uspio",
+      "previewError": "Pretpregled nije uspio"
+    },
+    "messages": {
+      "readFileFailed": "Čitanje datoteke nije uspjelo",
+      "appleNotes": {
+        "lockedNote": "{count, plural, one {# zaključana bilješka nije uvezena} few {# zaključane bilješke nisu uvezene} other {# zaključanih bilješki nije uvezeno}}; Memry ne može čitati zaključane bilješke bez lozinke za Apple Notes."
+      },
+      "csv": {
+        "noHeaders": "CSV datoteka nema zaglavlja",
+        "emptyTitle": "Preskočen redak s praznim naslovom (stupac „{column}”)",
+        "columns": "Stupci: {columns}",
+        "titleColumn": "Naslov iz „{column}”; ostali stupci spremljeni kao svojstva"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop CSV je prazan",
+        "headerNotFound": "Redak zaglavlja Raindrop CSV-a (stupac „url”) nije pronađen",
+        "rowNoUrl": "Redak {row} preskočen: nema URL-a"
+      },
+      "ticktick": {
+        "headerNotFound": "Redak zaglavlja TickTick CSV-a („Folder Name”) nije pronađen",
+        "foldersDropped": "Mape iz TickTicka nemaju ekvivalent u aplikaciji Memry pa su izostavljene",
+        "subtaskParentMissing": "Nadređeni zadatak podzadatka „{title}” nije pronađen; uvezen na najvišu razinu",
+        "unknownPriority": "Nepoznat TickTick prioritet {priority} → bez prioriteta",
+        "unsupportedRepeat": "Nepodržano pravilo ponavljanja „{rule}” preskočeno",
+        "reminderNoAnchor": "Podsjetnik „{reminder}” preskočen (nema datumskog sidra)"
+      },
+      "todoist": {
+        "headerNotFound": "Nije Todoist CSV: nedostaje redak zaglavlja TYPE",
+        "sectionFlattened": "Odjeljak „{section}” izravnan",
+        "orphanComment": "Komentar bez prethodnog zadatka preskočen",
+        "emptyTitle": "Zadatak s praznim sadržajem uvezen kao (bez naslova)",
+        "unknownPriority": "Nepoznat prioritet {priority} → bez prioriteta",
+        "unparsedDate": "Nije moguće raščlaniti datum „{date}”",
+        "subtaskNoParent": "Podzadatak „{title}” nema nadređeni zadatak na uvlaci {indent}; uvezen na najvišu razinu"
+      }
+    },
+    "status": {
+      "scanningFiles": "Skeniranje datoteka…",
+      "scanningExport": "Skeniranje izvoza…",
+      "importingItem": "Uvozi se {title}",
+      "appleNotes": {
+        "copyingDatabase": "Kopiranje baze podataka Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Skeniranje Bear izvoza…"
+      },
+      "csv": {
+        "importing": "Uvoz CSV bilješki…"
+      },
+      "evernote": {
+        "scanning": "Skeniranje .enex datoteka…"
+      },
+      "html": {
+        "scanning": "Skeniranje HTML datoteka…"
+      },
+      "noteplan": {
+        "scanning": "Skeniranje mape NotePlan…"
+      },
+      "onenote": {
+        "loadingNotebooks": "Učitavanje OneNote bilježnica…",
+        "rateLimited": "OneNote ograničava broj zahtjeva; čekanje prije ponovnog pokušaja…",
+        "downloadingAttachment": "Preuzimanje privitka {name}"
+      },
+      "raindrop": {
+        "importing": "Uvoz favorita iz Raindropa…"
+      },
+      "roam": {
+        "reading": "Čitanje Roam izvoza…"
+      },
+      "ticktick": {
+        "importing": "Uvoz TickTick zadataka…"
+      },
+      "todoist": {
+        "importing": "Uvoz Todoist zadataka…"
+      }
+    },
+    "v2": {
+      "searchPlaceholder": "Pronađi aplikaciju ili vrstu datoteke…",
+      "noMatch": "Nijedan izvor ne odgovara upitu „{query}”",
+      "formatAccount": "Račun",
+      "showMore": "{count, plural, one {Prikaži još #} few {Prikaži još #} other {Prikaži još #}}",
+      "showLess": "Prikaži manje",
+      "groups": {
+        "noteApps": "Aplikacije za bilješke",
+        "tasks": "Zadaci, dnevnik i favoriti",
+        "files": "Datoteke"
+      }
     }
   },
   "vault": {
@@ -915,76 +1606,173 @@
     "groups": {
       "storageUsage": "Korištenje pohrane",
       "location": "Lokacija",
-      "accountVaults": "Trezori na vašem računu"
+      "accountVaults": "Trezori na vašem računu",
+      "largeNotes": "Bilješke blizu ograničenja sinkronizacije",
+      "activity": "Aktivnost"
     },
-    "loadingStorage": "Učitavanje informacija o pohrani...",
+    "loadingStorage": "Učitavanje informacija o pohrani…",
     "signInStorage": "Prijavite se da vidite korištenje pohrane",
-    "vaultPath": "Put trezora",
-    "reveal": "otkriti",
+    "vaultPath": "Putanja trezora",
+    "reveal": "Prikaži",
+    "accountVaults": {
+      "empty": "Još nema trezora sinkroniziranih s vašim računom.",
+      "cloudOnly": "Nije na ovom uređaju",
+      "itemsCount": "{count, plural, one {# stavka} few {# stavke} other {# stavki}}",
+      "delete": "Izbriši",
+      "deleteTitle": "Izbrisati „{name}” s vašeg računa?",
+      "deleteBody": "Ovime se svi sinkronizirani podaci ovog trezora trajno uklanjaju s poslužitelja aplikacije Memry i to se ne može poništiti. Datoteke na disku neće biti izbrisane.",
+      "deleteConfirm": "Izbriši s računa",
+      "deleteFailed": "Nije moguće izbrisati trezor",
+      "activeHint": "Prijeđite na drugi trezor da biste izbrisali ovaj.",
+      "unsyncedTitle": "Ovaj trezor nije sinkroniziran",
+      "unsyncedBodyOne": "Trezor otvoren na ovom uređaju nije na vašem računu pa ga sinkronizacija odbija. Trezor na vašem računu je „{name}” – otvorite ga ovdje da biste ponovno pokrenuli sinkronizaciju.",
+      "unsyncedBodyMany": "Trezor otvoren na ovom uređaju nije na vašem računu pa ga sinkronizacija odbija. Otvorite jedan od trezora navedenih u nastavku da biste ponovno pokrenuli sinkronizaciju.",
+      "unsyncedOpen": "Otvori trezor s računa",
+      "unsyncedDownload": "Preuzmi trezor s računa",
+      "unsyncedSwitchFailed": "Nije moguće otvoriti taj trezor"
+    },
     "storage": {
-      "title": "Skladištenje",
-      "used": "Upotrijebljen {used} od {limit}",
+      "title": "Pohrana",
+      "used": "Iskorišteno {used} od {limit}",
       "ratio": "{used} / {limit}",
       "refreshAria": "Osvježi korištenje pohrane",
       "usageAria": "Upotreba pohrane: {used} od {limit}",
-      "available": "Dostupan {available}",
+      "available": "Dostupno: {available}",
       "categories": {
         "notes": "Bilješke",
-        "attachments": "Prilozi",
+        "attachments": "Privici",
         "crdt": "CRDT",
-        "other": "ostalo"
+        "other": "Ostalo"
       },
-      "warningTitle": "Spremište je gotovo puno",
+      "warningTitle": "Pohrana je gotovo puna",
       "warningDescription": "Oslobodite prostor ili nadogradite svoj plan kako biste izbjegli probleme sa sinkronizacijom."
     },
-    "accountVaults": {
-      "activeHint": "Prijeđite na drugi trezor da biste izbrisali ovaj.",
-      "cloudOnly": "Nije na ovom uređaju",
-      "delete": "Izbriši",
-      "deleteBody": "Ovime se svi sinkronizirani podaci ovog trezora trajno uklanjaju s Memryjevih poslužitelja i to se ne može poništiti. Vaše datoteke na disku neće biti izbrisane.",
-      "deleteConfirm": "Izbriši s računa",
-      "deleteFailed": "Nije moguće izbrisati trezor",
-      "deleteTitle": "Izbrisati „{name}” s vašeg računa?",
-      "empty": "Još nema trezora sinkroniziranih s vašim računom.",
-      "itemsCount": "{count, plural, one {# stavka} few {# stavke} other {# stavki}}"
+    "largeNotes": {
+      "description": "Bilješke veće od {limit} prestaju se sinkronizirati. Podijelite ih na manje bilješke kako bi ostale sinkronizirane.",
+      "over": "Ne sinkronizira se",
+      "approaching": "Blizu ograničenja"
+    },
+    "activity": {
+      "description": "Datoteke dodane u trezor ili uklonjene iz njega izvan aplikacije Memry, uvozi te sve što je preskočeno ili nije uspjelo. Čuva se samo na ovom uređaju.",
+      "retention": {
+        "label": "Aktivnost trezora",
+        "days": "{count, plural, one {Čuvaj # dan} few {Čuvaj # dana} other {Čuvaj # dana}}"
+      },
+      "filter": {
+        "all": "Sve",
+        "problems": "Preskočeno i neuspjelo"
+      },
+      "reveal": "Prikaži datoteku zapisnika",
+      "clear": "Očisti",
+      "clearTitle": "Očistiti aktivnost trezora?",
+      "clearBody": "Ovime se uklanjaju svi unosi iz zapisnika aktivnosti ovog uređaja. Datoteke ostaju netaknute.",
+      "clearConfirm": "Očisti aktivnost",
+      "empty": "Još ništa nije zabilježeno. Ovdje će se prikazati datoteke koje dodate u mapu trezora, uvozi i sve što Memry preskoči.",
+      "emptyProblems": "Ništa nije preskočeno i ništa nije neuspjelo.",
+      "unavailable": "Otvorite trezor da biste vidjeli njegovu aktivnost.",
+      "loadFailed": "Nije moguće učitati aktivnost trezora",
+      "actionFailed": "Nije moguće ažurirati aktivnost trezora",
+      "showItems": "{count, plural, one {Prikaži # stavku} few {Prikaži # stavke} other {Prikaži # stavki}}",
+      "toastAction": "Pojedinosti",
+      "entry": {
+        "added": "Dodano: {path}",
+        "removed": "Uklonjeno: {path}",
+        "renamed": "{oldPath} preimenovano u {path}",
+        "skipped": "Preskočeno: {path}",
+        "skippedUnsupported": "Memry ne otvara datoteke vrste {ext}, pa je datoteka ostavljena kakva jest.",
+        "readFailed": "Nije moguće pročitati {path}",
+        "indexFailed": "Nije moguće dodati {path}",
+        "copyFailed": "Nije moguće kopirati {path} u trezor",
+        "uploadFailed": "Nije moguće prenijeti {path}",
+        "uploadFailedHint": "Ostaje na ovom uređaju dok prijenos ne uspije.",
+        "downloadFailed": "Nije moguće preuzeti {path}",
+        "fileTooLarge": "Datoteka {path} prevelika je za sinkronizaciju",
+        "noteTooLarge": "Bilješka „{title}” prevelika je za sinkronizaciju",
+        "noteTooLargeUnnamed": "Bilješka je prevelika za sinkronizaciju",
+        "importFailed": "Uvoz iz aplikacije {importer} nije uspio",
+        "failedGeneric": "Nešto nije u redu s {path}",
+        "failedGenericUnnamed": "Nešto nije u redu",
+        "scan": "Pronađene su promjene napravljene dok je Memry bio zatvoren",
+        "indexRebuilt": "Indeks pretraživanja izgrađen",
+        "import": "Uvoz iz aplikacije {importer}",
+        "importCanceled": "Uvoz iz aplikacije {importer}, otkazan",
+        "unknown": "Neprepoznata aktivnost"
+      },
+      "counts": {
+        "added": "{count, plural, one {# nova datoteka} few {# nove datoteke} other {# novih datoteka}}",
+        "indexed": "{count, plural, one {# datoteka indeksirana} few {# datoteke indeksirane} other {# datoteka indeksirano}}",
+        "imported": "{count, plural, one {# uvezena} few {# uvezene} other {# uvezeno}}",
+        "attachments": "{count, plural, one {# privitak} few {# privitka} other {# privitaka}}",
+        "skipped": "{count, plural, one {# preskočena} few {# preskočene} other {# preskočeno}}",
+        "unsupported": "{count, plural, one {# nepodržana datoteka preskočena} few {# nepodržane datoteke preskočene} other {# nepodržanih datoteka preskočeno}}",
+        "failed": "{count, plural, one {# neuspjela} few {# neuspjele} other {# neuspjelo}}"
+      }
+    },
+    "v2": {
+      "groups": {
+        "thisVault": "Ovaj trezor"
+      },
+      "largeNotesCount": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}"
+    },
+    "binding": {
+      "dialog": {
+        "title": "Sinkronizirati ovaj trezor s računom?",
+        "description": "Ovaj trezor sadrži bilješke koje još nisu na vašem računu. Možete ga dodati na račun ili ga zadržati na ovom uređaju. Ništa ne napušta ovaj uređaj dok ne odlučite.",
+        "descriptionWithVaults": "Ovaj trezor sadrži bilješke koje još nisu na vašem računu, a vaš račun već ima trezor. Ovaj trezor možete dodati uz postojeći, spojiti ih ili ga zadržati na ovom uređaju. Ništa ne napušta ovaj uređaj dok ne odlučite.",
+        "addAsNew": "Dodaj kao zaseban trezor",
+        "merge": "Spoji u „{name}”",
+        "mergeUnnamed": "Spoji u trezor na računu",
+        "keepLocal": "Zadrži na ovom uređaju",
+        "failed": "Nije moguće ažurirati način sinkronizacije ovog trezora"
+      },
+      "status": {
+        "localOnly": "Ovaj trezor ostaje na ovom uređaju i ne sinkronizira se.",
+        "foreign": "Ovaj je trezor sinkronizirao drugi račun, pa se ne sinkronizira s vašim. Ostaje na ovom uređaju.",
+        "needsDecision": "Ovaj trezor još nije sinkroniziran.",
+        "startSync": "Sinkroniziraj ovaj trezor",
+        "choose": "Odaberi…"
+      }
     }
   },
   "tags": {
     "header": {
-      "title": "oznake",
-      "subtitle": "Upravljajte oznakama u bilješkama, dnevnicima i zadacima"
+      "title": "Oznake",
+      "subtitle": "Upravljajte oznakama u bilješkama, dnevniku i zadacima"
     },
-    "loading": "Učitavanje oznaka...",
+    "loading": "Učitavanje oznaka…",
     "empty": "Još nema oznaka. Oznake će se pojaviti ovdje kada ih dodate u bilješke i zadatke.",
-    "filterPlaceholder": "Oznake filtera...",
-    "noMatch": "Nema oznaka koje odgovaraju \"{query}\"",
-    "summary": "{count, plural, one {# oznaka} other {# oznake}} kroz bilješke i zadatke",
+    "filterPlaceholder": "Filtriraj oznake…",
+    "noMatch": "Nema oznaka koje odgovaraju upitu „{query}”",
+    "summary": "{count, plural, one {# oznaka} few {# oznake} other {# oznaka}} u bilješkama i zadacima",
     "actions": {
       "rename": "Preimenuj",
-      "changeColor": "Promjena boje",
-      "mergeInto": "Spoji se u...",
-      "merge": "Spojiti",
-      "delete": "Izbriši",
-      "changeIcon": "Promijeni ikonu"
+      "changeColor": "Promijeni boju",
+      "changeIcon": "Promijeni ikonu",
+      "mergeInto": "Spoji u…",
+      "merge": "Spoji",
+      "delete": "Izbriši"
     },
     "dialogs": {
       "deleteTitle": "Izbriši oznaku",
-      "deleteDescription": "Ukloniti \"{name}\" iz {count, plural, one {# stavka} other {# stavke}}? Ovo se ne može poništiti.",
-      "mergeTitle": "Oznaka spajanja",
-      "mergeDescription": "Sve stavke označene s \"{source}\" bit će ponovno označene ciljnom oznakom. Izvorna oznaka bit će izbrisana.",
-      "targetPlaceholder": "Odaberite ciljnu oznaku...",
-      "colorTitle": "Promjena boje za \"{name}\""
+      "deleteDescription": "Ukloniti oznaku „{name}” iz {count, plural, one {# stavke} few {# stavke} other {# stavki}}? Ovo se ne može poništiti.",
+      "mergeTitle": "Spoji oznaku",
+      "mergeDescription": "Sve stavke označene oznakom „{source}” dobit će ciljnu oznaku. Izvorna oznaka bit će izbrisana.",
+      "targetPlaceholder": "Odaberite ciljnu oznaku…",
+      "colorTitle": "Promijeni boju oznake „{name}”"
     },
     "toasts": {
-      "renamed": "Preimenovano u \"{oldName}\" u \"{newName}\"",
+      "renamed": "Oznaka „{oldName}” preimenovana u „{newName}”",
       "renameFailed": "Promjena naziva oznake nije uspjela",
       "deleteFailed": "Brisanje oznake nije uspjelo",
-      "deleted": "Izbrisan \"{name}\" iz {count, plural, one {# stavka} other {# stavke}}",
+      "deleted": "Oznaka „{name}” izbrisana iz {count, plural, one {# stavke} few {# stavke} other {# stavki}}",
       "mergeFailed": "Spajanje oznaka nije uspjelo",
-      "merged": "Spojeno \"{source}\" u \"{target}\" ({count, plural, one {# stavka} other {# stavke}})",
-      "colorUpdated": "Ažurirana boja za \"{name}\"",
+      "merged": "Oznaka „{source}” spojena u „{target}” ({count, plural, one {# stavka} few {# stavke} other {# stavki}})",
+      "colorUpdated": "Boja oznake „{name}” ažurirana",
       "colorFailed": "Ažuriranje boje nije uspjelo",
-      "iconFailed": "Neuspješno ažuriranje ikone"
+      "iconFailed": "Ažuriranje ikone nije uspjelo"
+    },
+    "v2": {
+      "actionsAria": "Radnje za „{name}”"
     }
   },
   "properties": {
@@ -992,110 +1780,161 @@
       "title": "Svojstva",
       "subtitle": "Upravljajte definicijama svojstava u svim bilješkama"
     },
-    "loading": "Učitavanje svojstava...",
+    "loading": "Učitavanje svojstava…",
     "empty": "Još nema definicija svojstava. Za početak dodajte svojstvo statusa, odabira ili višestrukog odabira bilo kojoj bilješci.",
-    "filterPlaceholder": "Svojstva filtera...",
-    "noMatch": "Nema svojstava koja odgovaraju \"{query}\"",
-    "summary": "{count, plural, one {Definicija svojstva #} other {Definicije svojstava #}}",
-    "optionCount": "{count, plural, one {# opcija} other {# opcije}}",
+    "filterPlaceholder": "Filtriraj svojstva…",
+    "noMatch": "Nema svojstava koja odgovaraju upitu „{query}”",
+    "summary": "{count, plural, one {# definicija svojstva} few {# definicije svojstava} other {# definicija svojstava}}",
+    "optionCount": "{count, plural, one {# opcija} few {# opcije} other {# opcija}}",
     "optionNamePlaceholder": "Naziv opcije",
     "addOption": "Dodaj opciju",
-    "changeColorTitle": "Promjena boje",
+    "changeColorTitle": "Promijeni boju",
     "renameTitle": "Preimenuj",
-    "removeTitle": "Ukloniti",
+    "removeTitle": "Ukloni",
     "actions": {
       "deleteProperty": "Izbriši svojstvo"
     },
     "types": {
       "status": "Status",
-      "select": "Odaberite",
+      "select": "Odabir",
       "multiselect": "Višestruki odabir",
       "text": "Tekst",
-      "number": "broj",
+      "number": "Broj",
       "date": "Datum",
       "checkbox": "Potvrdni okvir",
       "url": "URL"
     },
     "dialogs": {
       "deleteTitle": "Izbriši svojstvo",
-      "deleteDescription": "Ukloniti definiciju svojstva \"{name}\"? Bilješke koje koriste ovo svojstvo zadržat će svoje vrijednosti kao običan tekst.",
-      "colorTitle": "Promjena boje za \"{name}\""
+      "deleteDescription": "Ukloniti definiciju svojstva „{name}”? Bilješke koje koriste ovo svojstvo zadržat će svoje vrijednosti kao običan tekst.",
+      "colorTitle": "Promijeni boju za „{name}”"
     },
     "toasts": {
-      "renamed": "Preimenovano u \"{oldValue}\" u \"{newValue}\"",
-      "renameFailed": "Neuspješno preimenovanje opcije",
-      "removed": "Uklonjen \"{value}\"",
+      "renamed": "Opcija „{oldValue}” preimenovana u „{newValue}”",
+      "renameFailed": "Preimenovanje opcije nije uspjelo",
+      "removed": "Opcija „{value}” uklonjena",
       "removeFailed": "Uklanjanje opcije nije uspjelo",
       "colorFailed": "Ažuriranje boje nije uspjelo",
       "deleteFailed": "Brisanje svojstva nije uspjelo",
-      "deleted": "Izbrisano svojstvo \"{name}\"",
+      "deleted": "Svojstvo „{name}” izbrisano",
       "addFailed": "Dodavanje opcije nije uspjelo"
+    },
+    "v2": {
+      "actionsAria": "Radnje za „{name}”"
+    }
+  },
+  "commandLine": {
+    "header": {
+      "title": "Naredbeni redak",
+      "subtitle": "Postavite naredbu memrynote za svoj terminal"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "defaultVault": {
+      "label": "Zadani trezor",
+      "placeholder": "Odaberi trezor",
+      "none": "Nijedan trezor nije odabran",
+      "description": "Odaberite trezor koji se koristi kad pokrenete memrynote bez --vault.",
+      "descriptionSelected": "Naredbe koriste {path} kad se --vault izostavi."
+    },
+    "command": {
+      "label": "Naredba memrynote",
+      "toggleLabel": "Instaliraj naredbu memrynote",
+      "descriptionInstalled": "Instalirano u {path}",
+      "descriptionNotInstalled": "Instalirajte naredbu memrynote da biste trezor mogli koristiti iz bilo kojeg terminala."
+    },
+    "status": {
+      "loading": "Provjera statusa naredbe…",
+      "loadFailed": "Učitavanje statusa naredbe nije uspjelo",
+      "installedToast": "Naredba memrynote instalirana",
+      "uninstalledToast": "Naredba memrynote uklonjena",
+      "defaultVaultUpdatedToast": "Zadani CLI trezor ažuriran"
+    },
+    "actions": {
+      "refresh": "Osvježi"
     }
   },
   "shortcuts": {
     "header": {
       "title": "Tipkovnički prečaci",
-      "subtitle": "Pritisnite bilo koji prečac da ga ponovno povežete",
-      "loading": "Učitavanje postavki..."
+      "subtitle": "Kliknite prečac da biste ga promijenili",
+      "loading": "Učitavanje postavki…"
     },
-    "searchPlaceholder": "Prečaci za pretraživanje...",
-    "resetAll": "Resetiraj sve",
+    "searchPlaceholder": "Pretraži prečace…",
+    "resetAll": "Vrati sve na zadano",
     "custom": "Prilagođeno",
-    "pressShortcut": "Pritisnite prečicu…",
+    "pressShortcut": "Pritisnite prečac…",
     "cancelTitle": "Odustani",
-    "rebindTitle": "Kliknite za ponovno uvezivanje",
+    "rebindTitle": "Kliknite za promjenu",
+    "editorManagedTitle": "Njime upravlja uređivač bilješki – ne može se promijeniti",
     "resetTitle": "Vrati na zadano",
-    "clearTitle": "Obriši prečac",
+    "clearTitle": "Očisti prečac",
     "clickToSet": "Kliknite za postavljanje",
     "noMatch": "Nijedan prečac ne odgovara vašem pretraživanju",
     "conflict": "U sukobu s: {labels}",
     "globalCapture": {
-      "title": "Globalno snimanje",
-      "description": "Snimite bilješku s bilo kojeg mjesta",
-      "active": "Aktivno"
+      "title": "Brzi zapis s bilo kojeg mjesta",
+      "description": "Zabilježite bilješku s bilo kojeg mjesta",
+      "active": "Aktivno",
+      "inUse": "{shortcut} koristi druga aplikacija. Odaberite drugu kombinaciju.",
+      "unsupported": "{shortcut} ne može se koristiti kao globalni prečac. Odaberite drugu kombinaciju.",
+      "fallbackInUse": "Zadani prečac {shortcut} koristi druga aplikacija. Postavite drugu kombinaciju da biste koristili brzi zapis s bilo kojeg mjesta."
     },
     "toasts": {
-      "saveGlobalFailed": "Spremanje globalnog prečaca za snimanje nije uspjelo",
+      "saveGlobalFailed": "Spremanje prečaca za brzi zapis nije uspjelo",
       "saveFailed": "Spremanje prečaca nije uspjelo",
-      "resetFailed": "Poništavanje prečaca nije uspjelo",
-      "resetAllSuccess": "Sve prečace vraćaju na zadane postavke",
-      "resetAllFailed": "Poništavanje prečaca nije uspjelo"
+      "resetFailed": "Vraćanje prečaca na zadano nije uspjelo",
+      "resetAllSuccess": "Svi prečaci vraćeni na zadano",
+      "resetAllFailed": "Vraćanje prečaca na zadano nije uspjelo"
     },
     "categories": {
       "navigation": "Navigacija",
       "tabs": "Kartice",
-      "editor": "urednik",
-      "view": "pogled"
+      "editor": "Uređivač",
+      "view": "Prikaz"
     },
     "entries": {
       "nav": {
         "newNote": {
           "label": "Nova bilješka",
-          "description": "Napravite novu bilješku"
+          "description": "Stvorite novu bilješku"
         },
         "newTask": {
           "label": "Novi zadatak",
-          "description": "Napravite novi zadatak"
+          "description": "Stvorite novi zadatak"
         },
         "inbox": {
-          "label": "Idite u Inbox",
-          "description": "Dođite do ulazne pošte"
+          "label": "Idi u ulazni pretinac",
+          "description": "Prijeđite u ulazni pretinac"
         },
         "notes": {
-          "label": "Idite na Bilješke",
+          "label": "Idi na bilješke",
           "description": "Idite na bilješke"
         },
         "tasks": {
-          "label": "Idite na Zadatke",
+          "label": "Idi na zadatke",
           "description": "Idite na zadatke"
         },
         "search": {
-          "label": "Traži",
-          "description": "Otvorite globalnu pretragu"
+          "label": "Pretraži",
+          "description": "Otvorite globalno pretraživanje"
         },
         "settings": {
-          "label": "Otvorite postavke",
-          "description": "Otvorite ploču postavki"
+          "label": "Otvori postavke",
+          "description": "Otvorite postavke"
+        },
+        "switchVault": {
+          "label": "Promijeni trezor",
+          "description": "Otvorite izbornik za promjenu trezora"
+        },
+        "nextVault": {
+          "label": "Sljedeći trezor",
+          "description": "Prijeđite na sljedeći trezor na bočnoj traci"
+        },
+        "prevVault": {
+          "label": "Prethodni trezor",
+          "description": "Prijeđite na prethodni trezor na bočnoj traci"
         }
       },
       "tabs": {
@@ -1132,20 +1971,20 @@
           "description": "Zatvori sve kartice u oknu"
         },
         "pin": {
-          "label": "Prikvači ili otkvači karticu",
+          "label": "Prikvači karticu",
           "description": "Prikvači ili otkvači karticu"
         },
         "duplicate": {
           "label": "Dupliciraj karticu",
-          "description": "Dupliciraj karticu"
+          "description": "Otvori kopiju trenutačne kartice"
         },
         "splitRight": {
           "label": "Podijeli udesno",
-          "description": "Podijeli udesno"
+          "description": "Podijeli trenutačno okno na lijevu i desnu stranu"
         },
         "splitDown": {
           "label": "Podijeli prema dolje",
-          "description": "Podijeli prema dolje"
+          "description": "Podijeli trenutačno okno na gornju i donju stranu"
         },
         "closeSplit": {
           "label": "Zatvori podijeljeno okno",
@@ -1154,7 +1993,7 @@
       },
       "editor": {
         "save": {
-          "label": "spremiti",
+          "label": "Spremi",
           "description": "Spremite trenutnu bilješku"
         },
         "bold": {
@@ -1162,7 +2001,7 @@
           "description": "Uključi/isključi podebljano oblikovanje"
         },
         "italic": {
-          "label": "kurziv",
+          "label": "Kurziv",
           "description": "Uključi/isključi oblikovanje kurziva"
         },
         "underline": {
@@ -1171,16 +2010,16 @@
         },
         "strikethrough": {
           "label": "Precrtano",
-          "description": "Precrtano"
+          "description": "Uključi/isključi precrtano oblikovanje"
         },
         "code": {
-          "label": "Kod",
-          "description": "Kod"
+          "label": "Kod u retku",
+          "description": "Uključi/isključi oblikovanje koda u retku"
         }
       },
       "view": {
         "toggleSidebar": {
-          "label": "Uključi/isključi bočnu traku",
+          "label": "Prikaži/sakrij bočnu traku",
           "description": "Prikažite ili sakrijte bočnu traku"
         },
         "shortcuts": {
@@ -1197,34 +2036,43 @@
         },
         "actualSize": {
           "label": "Stvarna veličina",
-          "description": "Vrati zumiranje na 100 %"
+          "description": "Vrati zumiranje na 100 %"
         }
       }
+    },
+    "v2": {
+      "all": "Sve",
+      "categoryFilter": "Filtriraj po kategoriji",
+      "systemWide": "Na razini sustava",
+      "globalCapture": "Brzi zapis s bilo kojeg mjesta",
+      "recordingHint": "Pritisnite tipke… esc za odustajanje",
+      "reset": "Vrati na zadano",
+      "resetAll": "Vrati sve na zadano"
     }
   },
   "phaseF": {
     "componentsKeyboardChordIndicator": {
-      "pressedWaitingForSecondKey": "pritisnuto — čeka se druga tipka..."
+      "pressedWaitingForSecondKey": "pritisnuto – čeka se druga tipka…"
     },
     "componentsKeyboardKeyboardShortcutsDialog": {
       "keyboardShortcuts": "Tipkovnički prečaci",
       "press": "Pritisnite ",
-      "toToggleThisDialog": "za prebacivanje ovog dijaloga"
+      "toToggleThisDialog": "za otvaranje ili zatvaranje ovog dijaloga"
     },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Ovaj uređaj je uklonjen",
-      "exporting": "Izvoz...",
+      "exporting": "Izvoz…",
       "signOut": "Odjavi se"
     },
     "componentsSyncSyncHistory": {
-      "activity": "aktivnost",
-      "filterBySyncType": "Filtrirajte prema vrsti sinkronizacije",
+      "activity": "Aktivnost",
+      "filterBySyncType": "Filtriraj po vrsti sinkronizacije",
       "allTypes": "Sve vrste",
-      "pushed": "Guran",
-      "pulled": "povukao",
+      "pushed": "Poslano",
+      "pulled": "Preuzeto",
       "errors": "Greške",
-      "filterByTimePeriod": "Filtrirajte po vremenskom razdoblju",
-      "allTime": "Sve vrijeme",
+      "filterByTimePeriod": "Filtriraj po vremenskom razdoblju",
+      "allTime": "Cijelo razdoblje",
       "today": "Danas",
       "last7Days": "Zadnjih 7 dana",
       "last30Days": "Zadnjih 30 dana",
@@ -1232,20 +2080,21 @@
       "noSyncActivityYet": "Još nema aktivnosti sinkronizacije",
       "loadMore": "Učitaj više",
       "duration": "· {duration}",
-      "showErrorDetailsAria": "{summary}, prikaži pojedinosti pogreške",
       "summaryFailed": "Sinkronizacija nije uspjela",
+      "summaryPushed": "{count, plural, one {# stavka poslana} few {# stavke poslane} other {# stavki poslano}}",
       "summaryPulled": "{count, plural, one {# stavka preuzeta} few {# stavke preuzete} other {# stavki preuzeto}}",
-      "summaryPushed": "{count, plural, one {# stavka poslana} few {# stavke poslane} other {# stavki poslano}}"
+      "showErrorDetailsAria": "{summary}, prikaži pojedinosti pogreške"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Zadnja sinkronizacija ",
       "pending": "na čekanju",
       "localOnly": "samo lokalno",
       "detected": "otkriveno",
-      "clockSkewDetected": "Otkriveno iskrivljenje sata",
-      "items": "stavke",
-      "willSyncWhenBackOnline": "Sinkronizirat će se kada ponovno bude na mreži",
-      "openSyncSettings": "Otvorite postavke sinkronizacije"
+      "dismissConflicts": "Odbaci",
+      "clockSkewDetected": "Otkriveno odstupanje sata",
+      "items": "stavki",
+      "willSyncWhenBackOnline": "Sinkronizirat će se kada veza ponovno bude dostupna",
+      "openSyncSettings": "Otvori postavke sinkronizacije"
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -1254,37 +2103,37 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Ažuriranje boje oznake nije uspjelo",
-      "googleSignInFailed": "Google prijava nije uspjela",
+      "googleSignInFailed": "Prijava putem Googlea nije uspjela",
       "failedToSendVerificationCode": "Slanje kontrolnog koda nije uspjelo",
       "invalidVerificationCode": "Nevažeći kontrolni kod",
       "accountSetupFailed": "Postavljanje računa nije uspjelo",
       "failedToResendCode": "Ponovno slanje koda nije uspjelo",
       "failedToSetUpDevice": "Postavljanje uređaja nije uspjelo",
-      "failedToConfirmRecoveryPhrase": "Neuspješno potvrđivanje izraza za oporavak",
+      "failedToConfirmRecoveryPhrase": "Potvrda fraze za oporavak nije uspjela",
       "failedToAnalyzeContent": "Analiza sadržaja nije uspjela",
-      "failedToLoadUpdaterState": "Nije uspjelo učitavanje stanja programa za ažuriranje",
+      "failedToLoadUpdaterState": "Učitavanje stanja programa za ažuriranje nije uspjelo",
       "failedToCheckForUpdates": "Provjera ažuriranja nije uspjela",
       "failedToDownloadUpdate": "Preuzimanje ažuriranja nije uspjelo",
       "failedToInstallUpdate": "Instalacija ažuriranja nije uspjela",
       "failedToLoadEditorSettings": "Učitavanje postavki uređivača nije uspjelo",
       "failedToUpdateEditorSettings": "Ažuriranje postavki uređivača nije uspjelo",
-      "failedToLoadGeneralSettings": "Neuspješno učitavanje općih postavki",
+      "failedToLoadGeneralSettings": "Učitavanje općih postavki nije uspjelo",
       "failedToUpdateGeneralSettings": "Ažuriranje općih postavki nije uspjelo",
       "failedToLoadKeyboardSettings": "Učitavanje postavki tipkovnice nije uspjelo",
       "failedToUpdateKeyboardSettings": "Ažuriranje postavki tipkovnice nije uspjelo",
-      "failedToResetKeyboardSettings": "Poništavanje postavki tipkovnice nije uspjelo",
+      "failedToResetKeyboardSettings": "Vraćanje postavki tipkovnice na zadano nije uspjelo",
       "failedToLoadNoteEditorSettings": "Učitavanje postavki uređivača bilješki nije uspjelo",
       "failedToUpdateSettings": "Ažuriranje postavki nije uspjelo",
       "failedToLoadTabSettings": "Učitavanje postavki kartice nije uspjelo",
       "failedToLoadNotes": "Učitavanje bilješki nije uspjelo",
       "failedToLoadTags": "Učitavanje oznaka nije uspjelo",
-      "failedToLoadVaultStatus": "Neuspješno učitavanje statusa trezora",
+      "failedToLoadTasks": "Učitavanje zadataka nije uspjelo",
+      "failedToLoadVaultStatus": "Učitavanje statusa trezora nije uspjelo",
       "failedToSelectVault": "Odabir trezora nije uspio",
       "failedToCloseVault": "Zatvaranje trezora nije uspjelo",
       "failedToSwitchVault": "Promjena trezora nije uspjela",
       "failedToUpdateConfig": "Ažuriranje konfiguracije nije uspjelo",
-      "failedToReindex": "Ponovno indeksiranje nije uspjelo",
-      "failedToLoadTasks": "Učitavanje zadataka nije uspjelo"
+      "failedToReindex": "Ponovno indeksiranje nije uspjelo"
     }
   },
   "agentMcp": {
@@ -1314,7 +2163,14 @@
     },
     "copyLabel": "Kopiraj {label}",
     "notRunning": "Nije pokrenut",
-    "toolsBadge": "{count, plural, one {# alat} few {# alata} other {# alata}}"
+    "toolsBadge": "{count, plural, one {# alat} few {# alata} other {# alata}}",
+    "v2": {
+      "hint": "Lokalni poslužitelj za Cursor, Claude Desktop i Zed",
+      "running": "Pokrenuto",
+      "tokenHint": "Samo za ovo pokretanje",
+      "copy": "Kopiraj",
+      "rotate": "Zamijeni"
+    }
   },
   "agentProviders": {
     "header": {
@@ -1322,8 +2178,45 @@
       "subtitle": "Odaberite zadani pristup, potvrde i lokalne pružatelje za razgovor s agentom."
     },
     "groups": {
+      "cliAgents": "CLI agenti",
       "local": "Lokalni pružatelj kompatibilan s OpenAI-jem",
       "actions": "Provjere veze"
+    },
+    "cliAgents": {
+      "claude": {
+        "label": "Claude Code CLI",
+        "description": "Instalirajte Claude Code s claude.ai/code, a zatim pokrenite `claude login`. Aplikacija MemryNote automatski ga prepoznaje."
+      },
+      "codex": {
+        "label": "Codex CLI",
+        "description": "Instalirajte ga naredbom `npm install -g @openai/codex`, a zatim pokrenite `codex login` za prijavu na OpenAI račun. Aplikacija MemryNote automatski ga prepoznaje."
+      },
+      "antigravity": {
+        "label": "Antigravity CLI",
+        "description": "Instalirajte Antigravity CLI s antigravity.google/docs/cli, a zatim jednom pokrenite `agy` za prijavu na Google račun. Aplikacija MemryNote automatski ga prepoznaje."
+      },
+      "status": {
+        "detected": "Otkriveno · v{version}",
+        "detectedNoVersion": "Otkriveno",
+        "belowMinimum": "Instalirana je v{version} – potrebna je {minimum} ili novija",
+        "notDetected": "Nije otkriveno",
+        "runtimeUnavailable": "Nedostupno – okruženje za izvođenje agenta nije se pokrenulo"
+      }
+    },
+    "permissions": {
+      "group": "Dopuštenja agenta",
+      "access": {
+        "label": "Zadani pristup",
+        "description": "Postavlja početni način pristupa za nove poruke agentu.",
+        "vaultOnly": "Samo trezor",
+        "computerAccess": "Pristup računalu"
+      },
+      "confirm": {
+        "label": "Potvrda radnji",
+        "description": "Odaberite pokreću li se pozivi alata automatski ili čekaju odobrenje u razgovoru.",
+        "alwaysAllow": "Dopusti uvijek",
+        "askBeforeChanges": "Pitaj prije izmjena"
+      }
     },
     "presets": {
       "ollama": "Ollama",
@@ -1333,7 +2226,7 @@
     },
     "fields": {
       "preset": {
-        "label": "Predložak"
+        "label": "Unaprijed zadano"
       },
       "baseUrl": {
         "label": "Osnovni URL",
@@ -1360,253 +2253,41 @@
       "probe": "Ispitaj alate"
     },
     "status": {
-      "disconnected": "Nije povezano",
-      "toolsDisabled": "Alati onemogućeni",
-      "fullTools": "Svi alati omogućeni",
+      "label": "Veza",
       "checking": "Provjera…",
       "connected": "Povezano",
-      "label": "Veza"
+      "disconnected": "Nije povezano",
+      "toolsDisabled": "Alati isključeni",
+      "fullTools": "Svi alati uključeni"
     },
-    "permissions": {
-      "group": "Dopuštenja agenta",
-      "access": {
-        "label": "Zadani pristup",
-        "description": "Postavlja početni način pristupa za nove poteze agenta.",
-        "vaultOnly": "Samo trezor",
-        "computerAccess": "Pristup računalu"
-      },
-      "confirm": {
-        "label": "Potvrda radnji",
-        "description": "Odaberite pokreću li se pozivi alata automatski ili čekaju odobrenje u razgovoru.",
-        "alwaysAllow": "Dopusti uvijek",
-        "askBeforeChanges": "Pitaj prije izmjena"
-      }
-    }
-  },
-  "commandLine": {
-    "actions": {
-      "refresh": "Osvježi"
+    "alwaysAllowed": {
+      "group": "Uvijek dopušteno",
+      "description": "Alati kojima ste u ovom trezoru dali trajno odobrenje. Brisanje nikad ne može dobiti trajno odobrenje.",
+      "empty": "Ništa nije uvijek dopušteno. Svaka promjena i dalje traži potvrdu.",
+      "revoke": "Opozovi",
+      "revokeLabel": "Opozovi trajno odobrenje za alat {tool}",
+      "ignoredInPageReview": "Zanemareno: izmjene bilješki i dnevnika uvijek traže potvrdu."
     },
-    "command": {
-      "descriptionInstalled": "Instalirano na {path}",
-      "descriptionNotInstalled": "Instalirajte memrynote naredbu da biste mogli koristiti svoj trezor iz bilo kojeg terminala.",
-      "label": "memrynote naredba",
-      "toggleLabel": "Instaliraj memrynote naredbu"
-    },
-    "defaultVault": {
-      "description": "Odaberite trezor koji se koristi kad pokrenete memrynote bez --vault.",
-      "descriptionSelected": "Naredbe koriste {path} kad se --vault izostavi.",
-      "label": "Zadani trezor",
-      "none": "Nijedan trezor nije odabran",
-      "placeholder": "Odaberi trezor"
-    },
-    "groups": {
-      "terminal": "Terminal"
-    },
-    "header": {
-      "subtitle": "Postavite memrynote naredbu za svoj terminal",
-      "title": "Naredbeni redak"
-    },
-    "status": {
-      "defaultVaultUpdatedToast": "Zadani CLI trezor ažuriran",
-      "installedToast": "memrynote naredba instalirana",
-      "loadFailed": "Neuspješno učitavanje statusa naredbe",
-      "loading": "Provjera statusa naredbe...",
-      "uninstalledToast": "memrynote naredba uklonjena"
-    }
-  },
-  "features": {
-    "header": {
-      "subtitle": "Uključite ili isključite dijelove aplikacije. Isključeno = zasjenjeno u bočnoj traci i onemogućeno svugdje.",
-      "title": "Značajke"
-    },
-    "items": {
-      "calendar": {
-        "description": "Događaji i raspored",
-        "label": "Kalendar"
+    "v2": {
+      "permissions": {
+        "group": "Dopuštenja",
+        "hint": "Primjenjuje se na sve razgovore s agentom",
+        "access": "Pristup",
+        "changes": "Promjene"
       },
-      "graph": {
-        "description": "Veze između bilješki",
-        "label": "Graf"
+      "runtimes": {
+        "group": "Okruženja za izvođenje agenata",
+        "hint": "Otkriveno iz PATH-a"
       },
-      "home": {
-        "description": "Početna nadzorna ploča",
-        "label": "Početna"
+      "localModel": {
+        "label": "Lokalni model",
+        "hint": "Poslužitelj kompatibilan s OpenAI-jem na ovom računalu",
+        "notChecked": "Nije provjereno",
+        "optional": "Neobavezno",
+        "fetchModels": "Dohvati modele"
       },
-      "inbox": {
-        "description": "Brzo snimanje i razvrstavanje",
-        "label": "Pristigla pošta"
-      },
-      "journal": {
-        "description": "Dnevne bilješke",
-        "label": "Dnevnik"
-      },
-      "tasks": {
-        "description": "Obveze i rokovi",
-        "label": "Zadaci"
-      },
-      "spatialCanvas": {
-        "description": "Prostorne ploče za slaganje i povezivanje bilješki",
-        "label": "Platno"
-      }
-    }
-  },
-  "import": {
-    "action": "Uvezi",
-    "dialog": {
-      "cancel": "Odustani",
-      "choose": "Odaberi datoteku…",
-      "chooseFolder": "Odaberi Apple Notes mapu…",
-      "chooseHint": "Odaberite svoj {label}",
-      "close": "Zatvori",
-      "done": "Gotovo",
-      "error": "Uvoz nije uspio",
-      "folderHint": "Kliknite ispod i odaberite mapu „group.com.apple.notes” kad se otvori birač (ondje počinje). To omogućuje Memryju čitanje vaših bilješki i privitaka — bez potrebe za punim pristupom disku.",
-      "progress": "{completed} od {total}",
-      "running": "Uvoz…",
-      "selected": "{count, plural, one {# datoteka odabrana} few {# datoteke odabrane} other {# datoteka odabrano}}",
-      "start": "Započni uvoz",
-      "summary": {
-        "attachments": "{count, plural, one {# privitak kopiran} few {# privitka kopirana} other {# privitaka kopirano}}",
-        "failed": "{count} neuspješno",
-        "imported": "{count, plural, one {# stavka uvezena} few {# stavke uvezene} other {# stavki uvezeno}}",
-        "skipped": "{count} preskočeno",
-        "title": "Uvoz dovršen"
-      },
-      "title": "Uvezi iz {name}",
-      "chooseDirectory": "Odaberi mapu…",
-      "folderKeepsAssets": "Odaberite mapu kada se slike nalaze izvan mape sa samim bilješkama — pri izvozu se mediji često spremaju u zajedničku mapu.",
-      "previewError": "Pretpregled nije uspio"
-    },
-    "header": {
-      "subtitle": "Uvezite bilješke i zadatke iz drugih aplikacija",
-      "title": "Uvoz"
-    },
-    "intro": "Jednokratni uvozi stvaraju nove bilješke u vašem trezoru. Vaše izvorne izvezene datoteke ostaju netaknute.",
-    "preview": {
-      "confirm": "Uvezi",
-      "warnings": "Upozorenja"
-    },
-    "select": "Odaberite aplikaciju iz koje uvozite…",
-    "sources": {
-      "apple-journal": "Uvezite Apple Journal HTML izvoz kao datirane bilješke",
-      "apple-notes": "Uvezite iz baze podataka Apple Notes (NoteStore.sqlite, macOS)",
-      "bear": "Uvezite Bear .bear2bk arhivu (bilješke, oznake, privici)",
-      "csv": "Uvezite .csv datoteku — jedna bilješka po retku, stupci postaju svojstva",
-      "evernote": "Uvezite jednu ili više Evernote .enex izvoznih datoteka",
-      "google-keep": "Uvezite Google Takeout Keep izvoz (.json ili .zip)",
-      "html": "Uvezite .html datoteke s povezanim slikama i poveznicama između stranica",
-      "markdown": "Uvezite .md datoteke ili mapu (frontmatter, oznake, privici)",
-      "notion": "Uvezite HTML izvoz (.zip)",
-      "onenote": "Uvezite OneNote bilježnice (potreban Microsoft račun)",
-      "raindrop": "Uvezite Raindrop.io izvoz zabilješki (.csv) — zabilješke dolaze u pristiglu poštu",
-      "roam": "Uvezite Roam Research graf (.json) s ugniježđenim strukturama",
-      "ticktick": "Uvezite TickTick sigurnosnu kopiju (.csv) kao projekte, zadatke i podsjetnike",
-      "todoist": "Uvezite CSV izvoz projekta (.csv)"
-    },
-    "stats": {
-      "bookmarks": "{count, plural, one {# zabilješka} few {# zabilješke} other {# zabilješki}}",
-      "comments": "{count, plural, one {# komentar} few {# komentara} other {# komentara}}",
-      "notes": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}",
-      "projects": "{count, plural, one {# projekt} few {# projekta} other {# projekata}}",
-      "reminders": "{count, plural, one {# podsjetnik} few {# podsjetnika} other {# podsjetnika}}",
-      "skipped": "{count} preskočeno",
-      "subtasks": "{count, plural, one {# podzadatak} few {# podzadatka} other {# podzadataka}}",
-      "tasks": "{count, plural, one {# zadatak} few {# zadatka} other {# zadataka}}",
-      "withDueDate": "{count} datirano",
-      "withTags": "{count} označeno"
-    },
-    "messages": {
-      "csv": {
-        "columns": "Stupci: {columns}",
-        "emptyTitle": "Preskočen redak s praznim naslovom (stupac „{column}”)",
-        "noHeaders": "CSV datoteka nema zaglavlja",
-        "titleColumn": "Naslov iz „{column}”; ostali stupci spremljeni kao svojstva"
-      },
-      "raindrop": {
-        "csvEmpty": "Raindrop CSV je prazan",
-        "headerNotFound": "Redak zaglavlja Raindrop CSV-a (stupac „url”) nije pronađen",
-        "rowNoUrl": "Redak {row} preskočen: nema URL-a"
-      },
-      "readFileFailed": "Čitanje datoteke nije uspjelo",
-      "ticktick": {
-        "foldersDropped": "TickTick mape nemaju ekvivalent u Memryju pa su izostavljene",
-        "headerNotFound": "Redak zaglavlja TickTick CSV-a („Folder Name”) nije pronađen",
-        "reminderNoAnchor": "Podsjetnik „{reminder}” preskočen (nema datumskog sidra)",
-        "subtaskParentMissing": "Nadređeni zadatak podzadatka „{title}” nije pronađen; uvezen na najvišu razinu",
-        "unknownPriority": "Nepoznat TickTick prioritet {priority} → nijedan",
-        "unsupportedRepeat": "Nepodržano pravilo ponavljanja „{rule}” preskočeno"
-      },
-      "todoist": {
-        "emptyTitle": "Zadatak s praznim sadržajem uvezen kao (bez naslova)",
-        "headerNotFound": "Nije Todoist CSV: nedostaje redak zaglavlja TYPE",
-        "orphanComment": "Komentar bez prethodnog zadatka preskočen",
-        "sectionFlattened": "Odjeljak „{section}” izravnan",
-        "subtaskNoParent": "Podzadatak „{title}” nema nadređeni zadatak na uvlaci {indent}; uvezen na najvišu razinu",
-        "unknownPriority": "Nepoznat prioritet {priority} → nijedan",
-        "unparsedDate": "Nije moguće raščlaniti datum „{date}”"
-      }
-    },
-    "status": {
-      "appleNotes": {
-        "copyingDatabase": "Kopiranje baze podataka Apple Notes…"
-      },
-      "bear": {
-        "scanning": "Skeniranje Bear izvoza…"
-      },
-      "csv": {
-        "importing": "Uvoz CSV bilješki…"
-      },
-      "evernote": {
-        "scanning": "Skeniranje .enex datoteka…"
-      },
-      "html": {
-        "scanning": "Skeniranje HTML datoteka…"
-      },
-      "importingItem": "Uvozi se {title}",
-      "raindrop": {
-        "importing": "Uvoz Raindrop zabilješki…"
-      },
-      "roam": {
-        "reading": "Čitanje Roam izvoza…"
-      },
-      "scanningExport": "Skeniranje izvoza…",
-      "scanningFiles": "Skeniranje datoteka…",
-      "ticktick": {
-        "importing": "Uvoz TickTick zadataka…"
-      },
-      "todoist": {
-        "importing": "Uvoz Todoist zadataka…"
-      }
-    }
-  },
-  "inbox": {
-    "header": {
-      "loading": "Učitavanje…",
-      "subtitle": "Podsjetnik na dnevni pregled i postavke pristigle pošte.",
-      "title": "Pristigla pošta"
-    },
-    "reviewReminder": {
-      "enabled": {
-        "description": "Blagi dnevni podsjetnik kada u pristigloj pošti ima stavki.",
-        "label": "Podsjeti me da pregledam pristiglu poštu"
-      },
-      "error": "Nije moguće ažurirati podsjetnik.",
-      "group": "Podsjetnik na dnevni pregled",
-      "test": {
-        "button": "Pošalji test",
-        "description": "Odmah pokrenite podsjetnik i provjerite obavijesti sustava.",
-        "label": "Testna obavijest",
-        "sent": "Testna obavijest je poslana.",
-        "sentHint": "Ako se ništa ne pojavi, dopustite obavijesti za MemryNote u postavkama sustava.",
-        "unsupported": "Ovaj uređaj ne može prikazivati obavijesti na radnoj površini."
-      },
-      "time": {
-        "description": "Lokalno vrijeme, na svakom uređaju.",
-        "hourLabel": "Sat",
-        "label": "Vrijeme podsjetnika",
-        "minuteLabel": "Minuta",
-        "periodLabel": "AM ili PM"
+      "alwaysAllowed": {
+        "group": "Uvijek dopušteni alati"
       }
     }
   }

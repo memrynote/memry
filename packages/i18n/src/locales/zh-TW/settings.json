@@ -62,7 +62,7 @@
   "features": {
     "header": {
       "title": "功能",
-      "subtitle": "開啟或關閉應用程式的各個部分。關閉＝在側邊欄中變暗，並在各處停用。"
+      "subtitle": "開啟或關閉應用程式的各個部分。關閉後，該部分會在側邊欄中淡化顯示，並在各處停用。"
     },
     "items": {
       "home": {
@@ -174,7 +174,7 @@
     "language": {
       "label": "語言",
       "helper": "應用程式大部分內容會立即更新。部分系統層級文字——已顯示的通知、Dock 標籤、視窗標題列——會在下次啟動後更新。",
-      "changed": "語言已更改為 {nativeName}",
+      "changed": "語言已變更為 {nativeName}",
       "failed": "無法變更語言。請再試一次。"
     },
     "clockFormat": {
@@ -193,11 +193,7 @@
         "MM/DD/YYYY": "MM/DD/YYYY（美國）",
         "DD/MM/YYYY": "DD/MM/YYYY",
         "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
-        "DD": {
-          "MM": {
-            "YYYY": "DD.MM.YYYY"
-          }
-        }
+        "DD.MM.YYYY": "DD.MM.YYYY"
       },
       "error": "無法更新日期格式"
     },
@@ -326,7 +322,7 @@
         "orange": "橙色"
       },
       "error": "無法更新強調色",
-      "aria": "強調色預設",
+      "aria": "強調色預設組合",
       "options": {
         "theme": "主題",
         "custom": "自訂"
@@ -384,7 +380,7 @@
         "description": "介面的主要字型",
         "options": {
           "system": "系統預設",
-          "sansSerif": "無襯線",
+          "sansSerif": "無襯線字型",
           "serif": "襯線字型（Crimson Pro）",
           "gelasio": "Gelasio",
           "geist": "Geist",
@@ -438,7 +434,7 @@
       "error": "無法更新編輯器寬度"
     },
     "toolbarMode": {
-      "label": "固定格式工具列",
+      "label": "固定顯示格式工具列",
       "description": "總是在編輯器上方顯示工具列",
       "error": "無法更新工具列模式"
     },
@@ -449,7 +445,7 @@
     },
     "v2": {
       "width": "編輯器寬度",
-      "toolbarMode": "固定格式工具列",
+      "toolbarMode": "固定顯示格式工具列",
       "spellCheck": "檢查拼字"
     }
   },
@@ -595,7 +591,7 @@
       "label": "預設專案",
       "description": "未選擇專案時分配",
       "placeholder": "無預設專案",
-      "none": "無預設（使用個人）",
+      "none": "無預設（使用個人專案）",
       "error": "無法更新預設專案"
     },
     "sortOrder": {
@@ -656,8 +652,8 @@
       "time": {
         "label": "提醒時間",
         "description": "依各裝置的當地時間。",
-        "hourLabel": "時",
-        "minuteLabel": "分",
+        "hourLabel": "小時",
+        "minuteLabel": "分鐘",
         "periodLabel": "AM 或 PM"
       },
       "test": {
@@ -1034,7 +1030,7 @@
       },
       "unlimited": "無限制",
       "historyDays": "{days} 天",
-      "activationPendingPrefix": "啟用待處理中。Paddle 可能需要一點時間確認結帳。請重新整理狀態，或寄電子郵件至",
+      "activationPendingPrefix": "正在等待啟用。Paddle 可能需要一點時間確認結帳。請重新整理狀態，或寄電子郵件至",
       "actions": {
         "upgrade": "升級",
         "unlockSync": "解鎖同步",
@@ -1048,7 +1044,7 @@
         "checkoutOpened": "已在瀏覽器中開啟結帳頁面",
         "refreshFailed": "無法重新整理帳單狀態",
         "billingActive": "帳單已啟用",
-        "activationPending": "啟用待處理中",
+        "activationPending": "正在等待啟用",
         "portalFailed": "無法開啟帳單管理頁面"
       }
     },
@@ -1071,7 +1067,7 @@
     "community": {
       "prompt": "喜歡 memrynote 嗎？",
       "star": "在 GitHub 上幫我們加星號",
-      "and": "與",
+      "and": "並",
       "feedback": "分享意見回饋"
     },
     "signOutDialog": {
@@ -1133,7 +1129,7 @@
     "recovery": {
       "displayTitle": "儲存復原片語",
       "displayDescription": "如果你無法再存取任何一部裝置，這是復原加密資料的唯一方式。",
-      "warning": "請寫下並妥善保存。它不會再次顯示。",
+      "warning": "請寫下並妥善保存。之後不會再顯示。",
       "wordsAria": "復原片語字詞",
       "wordAria": "第 {index} 個字：{word}",
       "copyAria": "將復原片語複製到剪貼簿",
@@ -1180,7 +1176,7 @@
       "choiceTitle": "連結這部裝置",
       "choiceDescription": "從其他裝置轉移加密金鑰，或使用復原片語還原。",
       "qrChoice": "透過 QR 碼連結",
-      "qrChoiceDescription": "掃描另一部裝置上顯示的代碼",
+      "qrChoiceDescription": "掃描另一部裝置上顯示的 QR 碼",
       "recoveryChoice": "復原片語",
       "recoveryChoiceDescription": "輸入 24 個字的復原片語",
       "codeTitle": "輸入連結碼",
@@ -1188,7 +1184,7 @@
       "codeLabel": "連結碼",
       "valid": "有效",
       "invalid": "格式無效",
-      "codePlaceholder": "貼上另一部裝置上的代碼…",
+      "codePlaceholder": "貼上另一部裝置上的連結碼…",
       "formatHint": "貼上另一部裝置上的 JSON 連結碼",
       "linking": "連結中…",
       "linkDevice": "連結裝置",
@@ -1230,7 +1226,7 @@
       "revokeDevice": "撤銷裝置",
       "revoking": "撤銷中…",
       "renameTitle": "重新命名裝置",
-      "renameDescription": "選擇一個名稱以識別此裝置。",
+      "renameDescription": "輸入用來識別這部裝置的名稱。",
       "namePlaceholder": "裝置名稱",
       "renaming": "重新命名中…"
     },
@@ -1269,7 +1265,7 @@
     "unknownPlatform": "未知平台",
     "verificationCode": "驗證碼",
     "computing": "計算中…",
-    "unavailable": "無法使用",
+    "unavailable": "無法取得",
     "confirmCode": "確認此代碼與新裝置上顯示的一致",
     "reject": "拒絕",
     "approve": "核准",
@@ -1347,7 +1343,7 @@
       "loadSuccess": "模型載入成功",
       "loadFailed": "無法載入模型",
       "rebuildIndex": "重建索引",
-      "rebuildDescription": "為所有筆記重新生成嵌入向量",
+      "rebuildDescription": "為所有筆記重新產生嵌入向量",
       "rebuild": "重建",
       "scanning": "正在掃描筆記…",
       "generating": "正在產生嵌入向量…",
@@ -1399,7 +1395,7 @@
         "hint": "下載一次即可離線執行"
       },
       "embedding": {
-        "label": "搜尋嵌入向量",
+        "label": "搜尋用嵌入向量",
         "hint": "{dimension} 維 · 已嵌入 {count, plural, other {# 則筆記}}"
       },
       "voiceModel": {
@@ -1454,8 +1450,8 @@
       "subtasks": "{count, plural, other {# 項子任務}}",
       "reminders": "{count, plural, other {# 個提醒}}",
       "bookmarks": "{count, plural, other {# 個書籤}}",
-      "withTags": "{count} 個已加標籤",
-      "withDueDate": "{count} 個已設日期",
+      "withTags": "{count} 個有標籤",
+      "withDueDate": "{count} 個有日期",
       "comments": "{count, plural, other {# 則留言}}",
       "skipped": "{count} 個已略過"
     },
@@ -1496,14 +1492,14 @@
       "folderKeepsAssets": "若圖片不在筆記本身的資料夾裡，請選擇資料夾——匯出的內容常把媒體集中放在共用資料夾。",
       "chooseHint": "選擇你的 {label}",
       "folderHint": "點擊下方，並在選擇器開啟時選取「group.com.apple.notes」資料夾（選擇器會從那裡開始）。這樣 Memry 就能讀取你的筆記與附件——不需要完整磁碟取用權限。",
-      "noteplanFolderHint": "選擇你的 NotePlan 資料夾——可以是應用程式的資料資料夾，或其中一份 Backups 備份。Memry 會讀取其中的 Calendar、Notes 與 @Archive 資料夾。",
+      "noteplanFolderHint": "選擇你的 NotePlan 資料夾——可以是應用程式存放資料的資料夾，或其中一份 Backups 備份。Memry 會讀取其中的 Calendar、Notes 與 @Archive 資料夾。",
       "selected": "{count, plural, other {已選取 # 個檔案}}",
       "start": "開始匯入",
       "cancel": "取消",
       "close": "關閉",
       "done": "完成",
       "running": "匯入中…",
-      "progress": "{completed}／{total}",
+      "progress": "{completed}/{total}",
       "summary": {
         "title": "匯入完成",
         "imported": "{count, plural, other {已匯入 # 個項目}}",
@@ -1529,7 +1525,7 @@
       "raindrop": {
         "csvEmpty": "Raindrop CSV 是空的",
         "headerNotFound": "找不到 Raindrop CSV 的標頭列（「url」欄位）",
-        "rowNoUrl": "已略過第 {row} 列：沒有網址"
+        "rowNoUrl": "已略過第 {row} 列：沒有 URL"
       },
       "ticktick": {
         "headerNotFound": "找不到 TickTick CSV 的標頭列（「Folder Name」）",
@@ -1629,8 +1625,8 @@
       "deleteFailed": "無法刪除儲存庫",
       "activeHint": "切換到其他儲存庫才能刪除這一個。",
       "unsyncedTitle": "此儲存庫未同步",
-      "unsyncedBodyOne": "這部裝置上開啟的儲存庫不在你的帳號中，因此同步會拒絕它。你帳號中的儲存庫是「{name}」——在這裡開啟它即可重新開始同步。",
-      "unsyncedBodyMany": "這部裝置上開啟的儲存庫不在你的帳號中，因此同步會拒絕它。開啟下方列出的任一儲存庫即可重新開始同步。",
+      "unsyncedBodyOne": "這部裝置上開啟的儲存庫不在你的帳號中，因此無法同步。你帳號中的儲存庫是「{name}」——在這裡開啟它即可重新開始同步。",
+      "unsyncedBodyMany": "這部裝置上開啟的儲存庫不在你的帳號中，因此無法同步。開啟下方列出的任一儲存庫即可重新開始同步。",
       "unsyncedOpen": "開啟帳號中的儲存庫",
       "unsyncedDownload": "下載帳號中的儲存庫",
       "unsyncedSwitchFailed": "無法開啟該儲存庫"
@@ -1750,7 +1746,7 @@
     "summary": "筆記與任務中共有 {count, plural, other {# 個標籤}}",
     "actions": {
       "rename": "重新命名",
-      "changeColor": "更改顏色",
+      "changeColor": "變更顏色",
       "changeIcon": "變更圖示",
       "mergeInto": "合併到…",
       "merge": "合併",
@@ -1792,7 +1788,7 @@
     "optionCount": "{count, plural, other {# 個選項}}",
     "optionNamePlaceholder": "選項名稱",
     "addOption": "新增選項",
-    "changeColorTitle": "更改顏色",
+    "changeColorTitle": "變更顏色",
     "renameTitle": "重新命名",
     "removeTitle": "移除",
     "actions": {
@@ -1872,9 +1868,9 @@
     "cancelTitle": "取消",
     "rebindTitle": "點擊以重新指定",
     "editorManagedTitle": "由筆記編輯器處理——無法重新指定",
-    "resetTitle": "重設為預設",
+    "resetTitle": "重設為預設值",
     "clearTitle": "清除快速鍵",
-    "clickToSet": "點擊設定",
+    "clickToSet": "點擊以設定",
     "noMatch": "沒有符合搜尋條件的快速鍵",
     "conflict": "與以下項目衝突：{labels}",
     "globalCapture": {
@@ -1960,11 +1956,11 @@
         },
         "navBack": {
           "label": "返回",
-          "description": "重新啟用先前使用中的分頁"
+          "description": "切換回先前使用的分頁"
         },
         "navForward": {
           "label": "前進",
-          "description": "重做返回操作"
+          "description": "回到上一次返回前的分頁"
         },
         "newTab": {
           "label": "新增分頁",
@@ -1972,7 +1968,7 @@
         },
         "closeAll": {
           "label": "關閉所有分頁",
-          "description": "關閉窗格中的所有分頁"
+          "description": "關閉目前窗格中的所有分頁"
         },
         "pin": {
           "label": "釘選分頁",
@@ -2097,7 +2093,7 @@
       "dismissConflicts": "忽略",
       "clockSkewDetected": "偵測到時鐘偏差",
       "items": "項目",
-      "willSyncWhenBackOnline": "上線時將進行同步",
+      "willSyncWhenBackOnline": "恢復連線後就會同步",
       "openSyncSettings": "開啟同步設定"
     },
     "pagesSettingsAiInlineSection": {
@@ -2218,7 +2214,7 @@
       "confirm": {
         "label": "確認動作",
         "description": "選擇工具呼叫要自動執行，還是在對話中等待核准。",
-        "alwaysAllow": "永遠允許",
+        "alwaysAllow": "一律允許",
         "askBeforeChanges": "變更前先詢問"
       }
     },
@@ -2233,7 +2229,7 @@
         "label": "預設集"
       },
       "baseUrl": {
-        "label": "Base URL",
+        "label": "基底 URL",
         "description": "OpenAI 相容的 /v1 端點。"
       },
       "allowNonLoopback": {

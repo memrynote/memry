@@ -1,16 +1,16 @@
 {
   "title": "Diario",
   "section": {
-    "aiConnections": "Connessioni AI",
-    "todaysNotes": "Gli appunti di oggi",
+    "aiConnections": "Connessioni IA",
+    "todaysNotes": "Note di oggi",
     "todaysSchedule": "Il programma di oggi",
-    "todaysTasks": "I compiti di oggi",
-    "tasks": "Compiti",
+    "todaysTasks": "Attività di oggi",
+    "tasks": "Attività",
     "technicalDetails": "Dettagli tecnici"
   },
   "action": {
     "versionHistory": "Cronologia delle versioni",
-    "export": "Esportazione",
+    "export": "Esporta",
     "fullWidth": "Tutta la larghezza",
     "journalSettings": "Impostazioni del diario",
     "fullMode": "Modalità completa",
@@ -18,24 +18,25 @@
     "createNote": "Crea nota",
     "createNewNote": "Crea nuova nota",
     "showLess": "Mostra meno",
-    "showMoreNotes": "Mostra {count} più nota",
-    "showMoreNotes_plural": "Mostra {count} più note",
+    "showMoreNotes": "Mostra {count} altra nota",
+    "showMoreNotes_plural": "Mostra altre {count} note",
     "showFewerNotes": "Mostra meno note",
-    "startBlank": "Inizia invece in bianco",
+    "startBlank": "Inizia invece da una pagina vuota",
     "changeTemplate": "Cambia modello",
-    "dismissIndicator": "Indicatore di eliminazione",
+    "dismissIndicator": "Nascondi indicatore",
     "refreshConnections": "Aggiorna le connessioni",
     "reloadJournal": "Ricarica il diario",
-    "goToToday": "Vai a Oggi",
+    "goToToday": "Vai a oggi",
     "copyUnsavedContent": "Copia i contenuti non salvati negli appunti",
     "addBookmark": "Aggiungi segnalibro",
-    "removeBookmark": "Rimuovi segnalibro"
+    "removeBookmark": "Rimuovi segnalibro",
+    "deleteEntry": "Elimina pagina del diario"
   },
   "editor": {
     "placeholder": {
-      "future": "Cosa stai progettando...",
-      "today": "Cos'hai in mente oggi...",
-      "past": "Rifletti su questo giorno..."
+      "future": "Cosa hai in programma…",
+      "today": "Cos'hai in mente oggi…",
+      "past": "Rifletti su questa giornata…"
     },
     "upload": {
       "failed": "Impossibile caricare l'immagine"
@@ -58,10 +59,10 @@
       "saturday": "Sabato"
     },
     "weekdayShort": {
-      "sunday": "Sole",
+      "sunday": "Dom",
       "monday": "Lun",
       "tuesday": "Mar",
-      "wednesday": "Mercoledì",
+      "wednesday": "Mer",
       "thursday": "Gio",
       "friday": "Ven",
       "saturday": "Sab"
@@ -70,7 +71,7 @@
       "january": "Gennaio",
       "february": "Febbraio",
       "march": "Marzo",
-      "april": "aprile",
+      "april": "Aprile",
       "may": "Maggio",
       "june": "Giugno",
       "july": "Luglio",
@@ -82,17 +83,17 @@
     },
     "monthShort": {
       "january": "Gen",
-      "february": "Febbraio",
+      "february": "Feb",
       "march": "Mar",
-      "april": "aprile",
-      "may": "Maggio",
-      "june": "giugno",
+      "april": "Apr",
+      "may": "Mag",
+      "june": "Giu",
       "july": "Lug",
-      "august": "Agosto",
-      "september": "Settembre",
-      "october": "ottobre",
-      "november": "novembre",
-      "december": "dicembre"
+      "august": "Ago",
+      "september": "Set",
+      "october": "Ott",
+      "november": "Nov",
+      "december": "Dic"
     },
     "greeting": {
       "morning": "Buongiorno",
@@ -103,49 +104,49 @@
     "allDay": "Tutto il giorno"
   },
   "nav": {
-    "previousDay": "Il giorno precedente",
-    "nextDay": "Il giorno dopo",
+    "previousDay": "Giorno precedente",
+    "nextDay": "Giorno successivo",
     "previousMonth": "Mese precedente",
-    "nextMonth": "Il mese prossimo",
-    "previousYear": "L'anno precedente",
-    "nextYear": "L'anno prossimo",
-    "journalBack": "Diario indietro",
+    "nextMonth": "Mese successivo",
+    "previousYear": "Anno precedente",
+    "nextYear": "Anno successivo",
+    "journalBack": "Giorno precedente",
     "journalNavigation": "Navigazione del diario",
     "dateNavigation": "Navigazione delle date del diario",
-    "goToYearView": "Vai alla visualizzazione dell'anno"
+    "goToYearView": "Vai alla vista annuale"
   },
   "aria": {
-    "moreOptions": "Più opzioni",
+    "moreOptions": "Altre opzioni",
     "documentStatistics": "Statistiche del documento",
-    "dayContext": "Contesto della giornata: compiti e programma",
-    "scheduleEvents": "Pianifica eventi",
-    "tasks": "Compiti",
-    "notesCreatedToday": "Note {count} create oggi"
+    "dayContext": "Contesto della giornata: attività e programma",
+    "scheduleEvents": "Eventi in programma",
+    "tasks": "Attività",
+    "notesCreatedToday": "{count} note create oggi"
   },
   "empty": {
-    "noEntry": "Nessuna voce",
+    "noEntry": "Nessuna pagina di diario",
     "noDaysInMonth": "Nessun giorno in questo mese",
     "noEventsScheduled": "Nessun evento in programma",
     "noEventsScheduledToday": "Nessun evento in programma oggi",
     "noEventsWereScheduled": "Nessun evento era in programma",
-    "noTasksDue": "Nessun compito dovuto",
+    "noTasksDue": "Nessuna attività in scadenza",
     "noTasksDueToday": "Nessuna attività in scadenza oggi",
-    "noTasksWereDue": "Nessun compito era dovuto",
+    "noTasksWereDue": "Non c'erano attività in scadenza",
     "noNotesToday": "Nessuna nota creata oggi",
     "startDocumenting": "Inizia a documentare i tuoi pensieri e le tue idee"
   },
   "ai": {
-    "loading": "Analizzando la tua voce...",
+    "loading": "Analisi della pagina in corso…",
     "empty": {
-      "willAppear": "I tuoi collegamenti appariranno qui",
-      "noneYet": "Nessuna connessione ancora trovata",
-      "moreJournaling": "Man mano che registri di più, l'intelligenza artificiale troverà le voci correlate",
-      "keepWriting": "Continua a scrivere per scoprire le voci correlate"
+      "willAppear": "Le tue connessioni appariranno qui",
+      "noneYet": "Ancora nessuna connessione trovata",
+      "moreJournaling": "Più scrivi nel diario, più l'IA troverà pagine correlate",
+      "keepWriting": "Continua a scrivere per scoprire pagine correlate"
     },
     "error": {
       "loadFailed": "Impossibile caricare le connessioni"
     },
-    "connectionAria": "Connessione a {label}, corrispondenza {scorePercent}%."
+    "connectionAria": "Connessione a {label}, corrispondenza del {scorePercent}%"
   },
   "count": {
     "note": "nota",
@@ -153,18 +154,18 @@
     "days": "giorni",
     "event": "evento",
     "events": "eventi",
-    "task": "compito",
-    "todo": "fare",
-    "moreConnections": "+ {count} più connessione",
-    "moreConnections_plural": "+ {count} più connessioni",
+    "task": "attività",
+    "todo": "da fare",
+    "moreConnections": "+ {count} altra connessione",
+    "moreConnections_plural": "+ {count} altre connessioni",
     "moreNotes": "+ {count} altra nota",
     "moreNotes_plural": "+ {count} altre note",
-    "daysWithEntries": "giorni con iscrizioni",
+    "daysWithEntries": "giorni con pagine di diario",
     "charactersWritten": "caratteri scritti",
-    "words": "Parole {count}",
-    "characters": "Caratteri {count}",
-    "completed": "{count} completato",
-    "overdue": "{count} scaduto"
+    "words": "{count} parole",
+    "characters": "{count} caratteri",
+    "completed": "{count} completate",
+    "overdue": "{count} in ritardo"
   },
   "stats": {
     "wordCount": "Conteggio delle parole",
@@ -173,57 +174,62 @@
     "lastModified": "Ultima modifica",
     "lessThanOneMinute": "< 1 minuto",
     "minutes": "{minutes} min",
-    "read": "{readingTime} letto",
-    "modified": "{date} modificato"
+    "read": "{readingTime} di lettura",
+    "modified": "Ultima modifica: {date}"
   },
   "task": {
     "completed": "Completato",
     "notCompleted": "Non completato",
-    "priority": "Priorità {priority}",
+    "priority": "Priorità: {priority}",
     "overdue": "in ritardo",
-    "markComplete": "Contrassegna \"{title}\" come completato",
-    "markNotComplete": "Contrassegna \"{title}\" come non completato"
+    "markComplete": "Segna “{title}” come completata",
+    "markNotComplete": "Segna “{title}” come da completare"
   },
   "template": {
-    "using": "Utilizzando \"{templateName}\""
+    "using": "Con il modello “{templateName}”"
   },
   "reminder": {
     "hasReminders": "Ha promemoria",
-    "setToRevisit": "Imposta un promemoria per rivisitare",
+    "setToRevisit": "Imposta un promemoria per tornarci",
     "tooltip": "Promemoria: {date}",
-    "tooltipMore": "Promemoria: {date} (+{count} altro)",
+    "tooltipMore": "Promemoria: {date} (+{count} altri)",
     "success": {
-      "set": "Promemoria impostato per questa voce del diario",
+      "set": "Promemoria impostato per questa pagina del diario",
       "deleted": "Promemoria eliminato",
-      "dismissed": "Promemoria respinto",
-      "snoozed": "Promemoria posticipato"
+      "dismissed": "Promemoria ignorato",
+      "snoozed": "Promemoria posticipato",
+      "updated": "Promemoria aggiornato"
     },
     "error": {
       "set": "Impossibile impostare il promemoria",
       "delete": "Impossibile eliminare il promemoria",
       "dismiss": "Impossibile ignorare il promemoria",
-      "snooze": "Impossibile posticipare il promemoria"
+      "snooze": "Impossibile posticipare il promemoria",
+      "update": "Impossibile aggiornare il promemoria"
     }
   },
   "toast": {
-    "unsavedRetry": "Il tuo contenuto è ancora in memoria. Fare clic per riprovare a salvare.",
-    "noteNotFound": "Nota \"{target}\" non trovato",
+    "unsavedRetry": "Il contenuto è ancora in memoria. Fai clic per riprovare a salvarlo.",
+    "noteNotFound": "Nota “{target}” non trovata",
+    "createLinkedFailed": "Impossibile creare la nota collegata",
     "fileNotFound": "File non trovato: {target}",
     "openLinkedItemFailed": "Impossibile aprire l'elemento collegato",
-    "errorPrefix": "Errore:"
+    "errorPrefix": "Errore:",
+    "deleteFailed": "Impossibile eliminare la pagina del diario",
+    "bookmarkFailed": "Impossibile aggiornare il segnalibro"
   },
   "export": {
-    "noteTitle": "Diario - {month} {day}, {year}"
+    "noteTitle": "Diario – {day} {month} {year}"
   },
   "note": {
-    "generatedTitle": "Nota: {date}",
-    "openAria": "Apri {title}, creato in {time}"
+    "generatedTitle": "Nota – {date}",
+    "openAria": "Apri {title}, creata alle {time}"
   },
   "error": {
     "title": "Errore del diario",
-    "description": "Il giornale ha riscontrato un errore per {date}. Le tue modifiche recenti potrebbero non essere state salvate.",
+    "description": "Il diario ha riscontrato un errore per {date}. Le tue modifiche recenti potrebbero non essere state salvate.",
     "descriptionNoDate": "Il diario ha riscontrato un errore. Le tue modifiche recenti potrebbero non essere state salvate.",
-    "unsavedContent": "Rilevato contenuto non salvato (caratteri {length})"
+    "unsavedContent": "Rilevato contenuto non salvato ({length} caratteri)"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "Impossibile salvare la voce del diario",
+      "failedToSaveJournalEntry": "Impossibile salvare la pagina del diario",
       "failedToLoadJournalSettings": "Impossibile caricare le impostazioni del diario",
       "failedToUpdateSettings": "Impossibile aggiornare le impostazioni"
     }
+  },
+  "deleteConfirm": {
+    "title": "Elimina pagina del diario",
+    "description": "Vuoi eliminare “{title}”? Questa azione non può essere annullata."
   }
 }

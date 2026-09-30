@@ -1,34 +1,37 @@
 {
   "page": {
-    "loading": "Nilo-load ang graph...",
-    "load-failed": "Nabigong i-load ang data ng graph",
-    "try-again": "Subukan muli",
-    "aria-label": "Knowledge graph na may {nodeCount, plural, one {# node} other {# node}} at {edgeCount, plural, one {Koneksyon ng #} other {# na mga koneksyon}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "Mga graph node",
+    "loading": "Nilo-load ang graph…",
+    "load-failed": "Hindi ma-load ang data ng graph",
+    "render-failed": "Hindi available ang graph sa device na ito",
+    "render-failed-description": "Hindi masimulan ng device na ito ang graphics renderer. Ligtas ang mga tala mo.",
+    "try-again": "Subukan ulit",
+    "aria-label": "Graph ng kaalaman na may {nodeCount, plural, one {# node} other {# node}} at {edgeCount, plural, one {# koneksyon} other {# koneksyon}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Mga node ng graph",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "Ang iyong graph ng kaalaman",
-    "description": "Ang mga koneksyon sa pagitan ng iyong mga tala, gawain, at proyekto ay lalabas dito bilang isang interactive na graph.",
+    "title": "Ang graph ng kaalaman mo",
+    "description": "Lalabas dito bilang interactive na graph ang mga koneksyon ng mga tala, gawain at proyekto mo.",
     "link-title": "I-link ang iyong mga tala",
-    "link-description": "Gamitin ang [[wikilinks]] upang ikonekta ang mga ideya sa mga tala",
+    "link-description": "Gamitin ang [[wikilinks]] para ikonekta ang mga ideya sa mga tala mo",
     "discover-title": "Tumuklas ng mga pattern",
     "discover-description": "Habang lumalaki ang mga koneksyon, natural na lalabas ang mga kumpol at tema"
   },
   "entity": {
     "note": "tala",
-    "notes": "mga tala",
-    "journal": "journal",
-    "journals": "mga journal",
+    "notes": "tala",
+    "journal": "talaarawan",
+    "journals": "talaarawan",
     "task": "gawain",
-    "tasks": "mga gawain",
+    "tasks": "gawain",
     "project": "proyekto",
-    "projects": "mga proyekto",
+    "projects": "proyekto",
     "tag": "tag",
-    "tags": "mga tag",
-    "orphan": "ulila",
-    "orphans": "mga ulila",
-    "unresolved": "hindi nalutas"
+    "tags": "tag",
+    "orphan": "walang koneksyon",
+    "orphans": "walang koneksyon",
+    "unresolved": "hindi pa nagagawa",
+    "category": "kategorya"
   },
   "summary": {
     "node-type-count": "{count} {label}"
@@ -40,38 +43,95 @@
     "filters": "Mga filter",
     "display": "Pagpapakita",
     "show-labels": "Ipakita ang mga label",
+    "live-motion": "Live na galaw",
     "focus-depth": "lalim {depth}",
-    "clear-focus": "I-clear ang nakatutok na node"
+    "clear-focus": "I-clear ang nakatutok na node",
+    "relayout": "Ayusin ulit ang layout",
+    "categories": "Mga kategorya ng tag",
+    "color-by-category": "Kulayan ayon sa kategorya",
+    "no-categories": "I-grupo ang mga tag sa mga kategorya sa hub ng mga tag para makulayan at ma-collapse ang graph ayon sa kategorya.",
+    "collapse-category": "I-collapse ang {name}",
+    "expand-category": "I-expand ang {name}",
+    "uncategorized": "Walang kategorya"
   },
   "filter": {
-    "notes": "Mga Tala",
-    "journals": "Mga journal",
+    "notes": "Mga tala",
+    "journals": "Talaarawan",
     "tasks": "Mga gawain",
     "projects": "Mga proyekto",
     "tags": "Mga tag",
-    "orphans": "Mga ulila",
+    "orphans": "Walang koneksyon",
+    "canvas-edges": "Mga koneksyon sa canvas",
     "toggle-entity": "I-toggle ang {label}",
-    "toggle-orphans": "I-toggle ang mga orphan node"
+    "toggle-orphans": "Ipakita o itago ang mga node na walang koneksyon"
   },
   "search": {
-    "placeholder": "Maghanap ng mga node...",
+    "placeholder": "Maghanap ng mga node…",
     "clear": "I-clear ang paghahanap sa graph"
   },
   "context-menu": {
     "untitled": "Walang pamagat",
     "focus-node": "Tumutok sa node na ito",
     "open-new-tab": "Buksan sa bagong tab",
-    "create-note": "Lumikha ng tala",
-    "copy-title": "Kopyahin ang pamagat"
+    "create-note": "Gumawa ng tala",
+    "copy-title": "Kopyahin ang pamagat",
+    "link-to": "I-link sa…",
+    "add-tag": "Magdagdag ng tag…",
+    "back": "Bumalik",
+    "link-search": "Maghanap ng mga tala…",
+    "tag-search": "Maghanap o gumawa ng tag…",
+    "no-matches": "Walang tugma",
+    "create-tag": "Gumawa ng #{tag}",
+    "remove-link": "Alisin ang link sa {title}",
+    "unpin": "I-unpin",
+    "collapse-category": "I-collapse ang {name}",
+    "expand-category": "I-expand ang {name}"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {Koneksyon ng #} other {# na mga koneksyon}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# koneksyon} other {# koneksyon}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# item} other {# item}}",
+    "click-to-expand": "I-click para i-expand"
   },
   "local-panel": {
-    "loading": "Nilo-load ang graph...",
+    "loading": "Nilo-load ang graph…",
     "empty": "Walang nakitang koneksyon",
     "open-full": "Buksan ang buong graph",
-    "close": "Isara ang graph"
+    "close": "Isara ang graph",
+    "pin": "I-pin sa talang ito",
+    "unpin": "I-unpin at sundan ang nakabukas na tala",
+    "pinned-to": "Naka-pin: {title}"
+  },
+  "edit": {
+    "linked": "Na-link ang {source} sa {target} sa “{property}”",
+    "unlinked": "Inalis ang link mula sa {source} papunta sa {target}",
+    "already-linked": "Naka-link na ang {source} sa {target}",
+    "property-conflict": "Hindi uring Kaugnayan ang property na “{property}” sa talang ito, kaya hindi naidagdag ang link",
+    "link-unsupported": "Sa pagitan lang ng mga tala puwedeng gumawa ng link",
+    "link-failed": "Hindi maidagdag ang link",
+    "unlink-failed": "Hindi maalis ang link",
+    "tag-added": "Naidagdag ang #{tag} sa {note}",
+    "tag-exists": "May #{tag} na ang talang ito",
+    "tag-failed": "Hindi maidagdag ang tag",
+    "undo-failed": "Hindi ma-undo ang pagbabago"
+  },
+  "relayout-confirm": {
+    "title": "Ayusin ulit ang layout ng graph?",
+    "description": "Maa-unpin ang lahat ng node at magkakaroon ng bagong ayos ang graph. Itatapon ang naka-save mong layout.",
+    "cancel": "Kanselahin",
+    "confirm": "Ayusin ulit ang layout"
+  },
+  "views": {
+    "title": "Mga naka-save na view",
+    "unsaved": "Hindi naka-save na view",
+    "edited": "Binago",
+    "empty": "Wala pang naka-save na view",
+    "save-as": "I-save bilang bagong view…",
+    "update": "I-update ang “{name}”",
+    "delete": "Tanggalin ang view na {name}",
+    "save-dialog-title": "I-save ang view ng graph",
+    "save-dialog-placeholder": "Pangalan ng view",
+    "cancel": "Kanselahin",
+    "save": "I-save"
   }
 }

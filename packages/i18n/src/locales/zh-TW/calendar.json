@@ -1,35 +1,55 @@
 {
   "view": {
-    "day": "天",
+    "day": "日",
     "week": "週",
     "month": "月",
-    "year": "年"
+    "monthGridLabel": "月份格狀檢視",
+    "year": "年",
+    "timeline": "時間軸"
+  },
+  "undo": {
+    "moveEvent": "移動活動",
+    "moveTask": "重新排程任務"
   },
   "toolbar": {
-    "create-event": "建立事件",
-    "previous-period": "上一期間",
-    "next-period": "下一期間",
+    "create-event": "建立活動",
+    "previous-period": "上一段期間",
+    "next-period": "下一段期間",
     "previous-month": "前一個月",
     "next-month": "下一個月",
     "today": "今天"
   },
+  "search": {
+    "open": "搜尋行事曆",
+    "close": "關閉搜尋",
+    "placeholder": "搜尋活動、任務、提醒…",
+    "no-results": "沒有符合的結果"
+  },
   "filter": {
     "filter-calendars": "篩選行事曆",
     "sources": "來源",
-    "memry-items": "memrynote 項目(複數)",
+    "memry-items": "memrynote 項目",
     "imported-calendars": "匯入的行事曆",
-    "event-types": "事件類型",
+    "event-types": "項目類型",
     "google-calendars": "Google 行事曆",
-    "refresh-google-calendars": "重新整理 Google 行事曆"
+    "refresh-google-calendars": "重新整理 Google 行事曆",
+    "not-syncing": "未同步 · 勾選以開啟",
+    "enable-source-failed": "無法開啟該行事曆。",
+    "provider-calendars": {
+      "ics": "已訂閱的行事曆",
+      "caldav": "CalDAV 行事曆",
+      "apple-eventkit": "這部 Mac",
+      "other": "其他行事曆"
+    }
   },
   "visual-type": {
-    "event": "事件",
-    "imported-event": "匯入的事件",
+    "event": "活動",
+    "imported-event": "匯入的活動",
+    "note": "筆記",
+    "note-date": "日期提醒",
     "task": "任務",
     "reminder": "提醒",
-    "snooze": "延遲處理",
-    "note": "筆記",
-    "note-date": "日期提醒"
+    "snooze": "延後"
   },
   "state": {
     "loading-calendar": "正在載入行事曆…",
@@ -38,67 +58,108 @@
   },
   "empty": {
     "no-imported-calendars-yet": "尚無匯入的行事曆。",
-    "no-events": "無事件"
+    "no-events": "沒有活動"
   },
   "time": {
     "all-day": "全天",
     "all-day-lower": "全天",
     "pick-a-date": "選擇日期",
-    "new-event": "新事件",
-    "more-events": "{count, plural, one {# 更多活動} other {# 更多活動}}"
+    "new-event": "新活動",
+    "more-events": "{count, plural, other {還有 # 個活動}}"
   },
   "form": {
-    "create-calendar-event": "建立日曆事件",
-    "edit-calendar-event": "編輯日曆事件",
-    "quick-create-description": "輸入標題並儲存以在所選時間範圍內建立事件。",
-    "event-editor-description": "更新此事件的標題、地點、日期、時間和備註。",
-    "new-event-placeholder": "新事件",
+    "create-calendar-event": "建立行事曆活動",
+    "edit-calendar-event": "編輯行事曆活動",
+    "quick-create-description": "輸入標題並儲存，即可在所選時段建立活動。",
+    "event-editor-description": "更新此活動的標題、地點、日期、時間與備註。",
+    "new-event-placeholder": "新活動",
     "notes-url-placeholder": "新增備註或 URL",
     "start": "開始",
     "end": "結束",
-    "google-calendar": "Google 日曆",
-    "target-calendar": "目標日曆",
-    "use-default-calendar": "使用預設日曆",
-    "use-default-calendar-with-name": "使用預設 ({calendar})",
-    "use-memry-calendar-default": "使用 memrynote 日曆（預設）",
-    "primary-suffix": "主要"
+    "google-calendar": "Google 行事曆",
+    "target-calendar": "目標行事曆",
+    "use-default-calendar": "使用預設行事曆",
+    "use-default-calendar-with-name": "使用預設（{calendar}）",
+    "use-memry-calendar-default": "使用 memrynote 行事曆（預設）",
+    "primary-suffix": "主要",
+    "project": "專案",
+    "no-project": "無專案",
+    "remove-from-project": "從「{project}」移除",
+    "project-update-failed": "無法更新活動的專案",
+    "color": "顏色",
+    "default-color": "預設顏色"
   },
   "delete-dialog": {
     "title": "刪除活動？",
-    "local-description": "\"{title}\" 將被永久刪除。此操作無法復原。",
-    "google-bound-description": "\"{title}\" 將從 memrynote 和 Google 日曆中移除。此操作無法撤銷。  ",
-    "context-menu-delete-label": "  \n刪除事件  ",
+    "local-description": "「{title}」將被永久刪除。此動作無法復原。",
+    "google-bound-description": "「{title}」將從 memrynote 與 Google Calendar 中移除。此動作無法復原。",
+    "context-menu-delete-label": "刪除活動",
     "context-menu-add-to-project": "加入專案"
   },
+  "agent-access-dialog": {
+    "aria": "選擇是否讓 AI 讀取你的 Google Calendar 活動",
+    "title": "要讓 AI 讀取你的 Google Calendar 活動嗎？",
+    "body": "無論如何選擇，你都會繼續在 memrynote 中看到 Google 活動。這只決定當你詢問行程時，AI 代理程式能否讀取這些活動。",
+    "footnote": "你隨時可以在「設定 → 整合 → Google Calendar」中變更。",
+    "allow": "允許",
+    "deny": "不允許",
+    "save-error": "無法儲存你的選擇",
+    "provider": {
+      "aria": "選擇是否讓 AI 讀取你的 {provider} 活動",
+      "title": "要讓 AI 讀取你的 {provider} 活動嗎？",
+      "body": "無論如何選擇，你都會繼續在 memrynote 中看到這些活動。這只決定當你詢問行程時，AI 代理程式能否讀取這些活動。每個行事曆服務都會分別設定。",
+      "footnote": "你隨時可以在「設定 → 行事曆」中變更。"
+    },
+    "provider-names": {
+      "ics": "已訂閱的行事曆",
+      "caldav": "CalDAV 行事曆",
+      "apple-eventkit": "macOS 行事曆"
+    }
+  },
   "promote-dialog": {
-    "aria": "  \n編輯外部日曆事件  ",
-    "title": "  \n要在 memrynote 中編輯此事件嗎？  ",
-    "body": "  \n編輯此事件將在 memrynote 中創建一個連結副本，使更改雙向同步。要繼續嗎？  ",
-    "do-not-ask-again": "  \n不要再詢問  ",
-    "confirm-label": "  \n在 memrynote 中編輯  ",
-    "agent-notice": "即使 AI 對 Google Calendar 的存取已關閉，AI 代理仍可讀取這份副本。您原本的 Google 活動仍對它隱藏。"
+    "aria": "編輯外部行事曆活動",
+    "title": "要在 memrynote 中編輯此活動嗎？",
+    "body": "編輯此活動會在 memrynote 中建立一份連結的副本，讓變更雙向同步。要繼續嗎？",
+    "do-not-ask-again": "不要再詢問",
+    "confirm-label": "在 memrynote 中編輯",
+    "agent-notice": "即使 AI 對 Google Calendar 的存取已關閉，AI 代理程式仍可讀取這份副本。原本的 Google 活動仍不會開放給它讀取。"
   },
   "onboarding-dialog": {
-    "aria": "  \n選擇您的預設 Google 日曆  ",
-    "title": "  \n新建立的 memrynote 事件應該使用哪個日曆？  ",
-    "body": "  \n選擇 memrynote 預設使用的 Google 日曆。您仍然可以在每個事件中覆蓋此設定。  ",
-    "default-calendar-label": "使用由 memrynote 管理的日曆",
-    "skip": "跳過",
-    "use-this-calendar": "  \n使用此日曆  "
+    "aria": "選擇預設的 Google 行事曆",
+    "title": "新的 memrynote 活動要加入哪個行事曆？",
+    "body": "選擇 memrynote 預設使用的 Google 行事曆。你仍可針對個別活動另行指定。",
+    "default-calendar-label": "使用由 memrynote 管理的行事曆",
+    "skip": "略過",
+    "use-this-calendar": "使用此行事曆"
+  },
+  "connect-prompt": {
+    "pill": "連結 Google",
+    "aria": "連結 Google Calendar",
+    "title": "完成連結 Google Calendar",
+    "body": "連結 Google 帳號，讓行事曆發揮更多功能：",
+    "bullets": {
+      "events": "在筆記與任務旁查看 Google 活動",
+      "sync": "建立與編輯活動，雙向同步",
+      "schedule": "在行事曆上安排任務與筆記"
+    },
+    "continue": "使用 Google 繼續",
+    "dismiss": "關閉",
+    "error": "無法連結 Google Calendar。請再試一次。"
   },
   "metadata": {
-    "attendees": "  \n與會者  ",
-    "attendees-count": "  \n與會者 ({count})  ",
-    "reminders": "提醒們",
-    "default-reminders": "  \n預設提醒  ",
-    "visibility": "  \n可見性：  ",
-    "optional": "  \n選填  ",
-    "join-meeting": "  \n加入會議  ",
+    "attendees": "與會者",
+    "attendees-count": "與會者（{count}）",
+    "reminders": "提醒",
+    "default-reminders": "預設提醒",
+    "visibility": "瀏覽權限：",
+    "optional": "選擇性",
+    "join-meeting": "加入會議",
+    "video-call": "視訊通話",
     "response": {
-      "accepted": "  \n已接受  ",
-      "declined": "  \n已拒絕",
+      "accepted": "已接受",
+      "declined": "已拒絕",
       "tentative": "暫定",
-      "needs-action": "待定"
+      "needs-action": "待回覆"
     },
     "visibility-value": {
       "private": "私人",
@@ -113,37 +174,56 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "無法儲存事件。請再試一次。",
-      "couldNotCreateEventTryAgain": "無法建立事件。請再試一次。",
+      "couldNotSaveEventTryAgain": "無法儲存活動。請再試一次。",
+      "couldNotCreateEventTryAgain": "無法建立活動。請再試一次。",
       "couldNotSaveDefaultCalendarTryAgain": "無法儲存預設行事曆。請再試一次。",
-      "failedToLoadCalendarPreferences": "載入行事曆偏好設定失敗",
-      "failedToUpdateCalendarPreferences": "更新行事曆偏好設定失敗",
-      "couldNotEditThisEventTryAgain": "無法編輯此事件。請再試一次。",
-      "failedToDeleteEvent": "刪除事件失敗",
-      "couldNotUnsnoozeInboxItem": "無法取消延後提醒。",
-      "couldNotRescheduleInboxItem": "無法重新安排。"
+      "failedToLoadCalendarPreferences": "無法載入行事曆偏好設定",
+      "failedToUpdateCalendarPreferences": "無法更新行事曆偏好設定",
+      "couldNotEditThisEventTryAgain": "無法編輯此活動。請再試一次。",
+      "failedToDeleteEvent": "無法刪除活動",
+      "couldNotUnsnoozeInboxItem": "無法取消延後。",
+      "couldNotRescheduleInboxItem": "無法重新排程。"
     },
     "inboxSnoozePopover": {
-      "title": "已延後提醒收件匣項目",
-      "openInInbox": "在收件匣中打開",
-      "unsnoozeNow": "立即取消延後提醒",
-      "reschedule": "重新安排"
+      "title": "已延後的收件匣項目",
+      "openInInbox": "在收件匣中開啟",
+      "unsnoozeNow": "立即取消延後",
+      "reschedule": "重新排程"
     }
   },
+  "chip": {
+    "complete-task": "完成「{title}」",
+    "task-completed": "任務已完成",
+    "could-not-complete": "無法完成任務",
+    "duration-minutes": "{minutes} 分鐘",
+    "duration-hours": "{hours} 小時",
+    "duration-hours-minutes": "{hours} 小時 {minutes} 分"
+  },
+  "event-card": {
+    "kind": "活動",
+    "close": "關閉"
+  },
   "task-popover": {
-    "title-fallback": "工作詳細資訊",
-    "open-task": "打開工作",
+    "title-fallback": "任務詳細資訊",
+    "kind": "任務",
+    "open": "開啟",
+    "complete": "完成",
+    "more-actions": "更多動作",
+    "move": "移動",
+    "later": "稍後",
+    "next-week": "下週",
+    "open-task": "開啟任務",
     "source-note": "來源筆記",
-    "reschedule": "重新安排",
+    "reschedule": "重新排程",
     "mark-done": "標記為已完成",
     "mark-not-done": "標記為未完成",
     "later-today": "今天稍晚",
     "tomorrow": "明天",
     "next-week-mon": "下週 · 星期一",
     "pick-date-time": "選擇日期和時間…",
-    "remove-due-date": "移除截止日期",
+    "remove-due-date": "移除到期日",
     "subtasks-prefix": "子任務",
-    "subtasks-counter": "{total} 已完成 {done}",
+    "subtasks-counter": "已完成 {done}/{total}",
     "repeats": "重複",
     "repeats-daily": "每日重複",
     "repeats-weekly": "每週重複",
@@ -151,48 +231,156 @@
     "repeats-yearly": "每年重複",
     "errors": {
       "could-not-save": "無法儲存任務",
-      "could-not-reschedule": "無法重新安排任務",
-      "could-not-remove-due-date": "無法移除截止日期",
-      "could-not-open-note": "無法打開筆記"
+      "could-not-reschedule": "無法重新排程任務",
+      "could-not-remove-due-date": "無法移除到期日",
+      "could-not-open-note": "無法開啟筆記"
     }
   },
-  "connect-prompt": {
-    "aria": "連接 Google Calendar",
-    "body": "連接您的 Google 帳戶，讓行事曆發揮更多功能：",
-    "bullets": {
-      "events": "在筆記與任務旁檢視您的 Google 活動",
-      "schedule": "在行事曆上安排任務與筆記",
-      "sync": "建立與編輯活動，雙向同步"
-    },
-    "continue": "使用 Google 繼續",
-    "dismiss": "關閉",
-    "error": "無法連接 Google Calendar。請再試一次。",
-    "pill": "連接 Google",
-    "title": "完成連接 Google Calendar"
-  },
   "notePopover": {
-    "couldNotOpen": "無法開啟筆記",
     "kind": "筆記",
     "kindDateReminder": "日期提醒",
-    "open": "開啟筆記"
+    "open": "開啟筆記",
+    "couldNotOpen": "無法開啟筆記"
   },
-  "search": {
-    "close": "關閉搜尋",
-    "no-results": "沒有符合的結果",
-    "open": "搜尋行事曆",
-    "placeholder": "搜尋活動、任務、提醒…"
+  "timeline": {
+    "label": "時間軸上已排定的工作",
+    "tasks-column": "任務",
+    "span": "{start} – {end}",
+    "due": "{date} 到期",
+    "starts": "{date} 開始",
+    "starts-short": "{date} →",
+    "no-date": "無日期",
+    "today": "今天",
+    "overdue": "已逾期",
+    "untitled": "未命名",
+    "days": "{count, plural, other {# 天}}",
+    "events": "活動",
+    "schedule-hint": "按一下以設定日期，拖曳以設定範圍",
+    "empty-title": "這段時間軸上沒有任何項目",
+    "empty-body": "有開始日期或到期日的任務，以及全天或多天的活動，會顯示在這裡。在「顯示」中開啟無日期的任務，即可拖曳排程。",
+    "status": {
+      "todo": "待辦",
+      "in_progress": "進行中",
+      "done": "已完成"
+    },
+    "priority": {
+      "urgent": "緊急",
+      "high": "高",
+      "medium": "中",
+      "low": "低",
+      "none": "無優先順序"
+    },
+    "zoom": {
+      "label": "縮放",
+      "weeks": "週",
+      "months": "月",
+      "quarters": "季"
+    },
+    "group-by": {
+      "project": "專案",
+      "status": "狀態",
+      "priority": "優先順序",
+      "none": "不分組"
+    },
+    "group-by-label": "依{group}",
+    "order-by": {
+      "start": "開始日期",
+      "due": "到期日",
+      "title": "標題"
+    },
+    "display": {
+      "button": "顯示",
+      "group-by": "分組依據",
+      "order-by": "排序方式",
+      "show": "顯示",
+      "show-events": "活動",
+      "show-undated": "無日期的任務",
+      "show-completed": "已完成的任務",
+      "show-subtasks": "子任務"
+    },
+    "bar": {
+      "summary": "{tasks, plural, other {# 項任務}} · {events, plural, other {# 個活動}}",
+      "open": "開啟",
+      "move": "移動",
+      "resize": "調整大小",
+      "actions": "動作",
+      "select": "選取",
+      "today": "今天"
+    },
+    "actions": {
+      "search": "搜尋動作…",
+      "search-projects": "搜尋專案…",
+      "empty": "沒有符合的動作",
+      "no-projects": "沒有符合的專案",
+      "open": "開啟任務",
+      "open-in-tasks": "在任務中開啟",
+      "schedule": "排程",
+      "set-start": "設定開始日期",
+      "set-due": "設定到期日",
+      "move-later": "往後移一週",
+      "move-earlier": "往前移一週",
+      "clear-dates": "清除日期",
+      "clear-start": "清除開始日期",
+      "clear-due": "清除到期日",
+      "task": "任務",
+      "complete": "標記為已完成",
+      "uncomplete": "標記為未完成",
+      "change-project": "變更專案",
+      "page": {
+        "root": "動作",
+        "start": "開始日期",
+        "due": "到期日",
+        "project": "專案"
+      }
+    },
+    "undo": {
+      "reschedule": "重新排程「{title}」"
+    }
   },
-  "undo": {
-    "moveEvent": "移動活動",
-    "moveTask": "重新安排任務"
+  "calendar-color": {
+    "tomato": "番茄紅",
+    "flamingo": "火鶴紅",
+    "tangerine": "橘子橘",
+    "banana": "香蕉黃",
+    "sage": "鼠尾草綠",
+    "basil": "羅勒綠",
+    "peacock": "孔雀藍",
+    "blueberry": "藍莓藍",
+    "lavender": "薰衣草紫",
+    "grape": "葡萄紫",
+    "graphite": "石墨灰"
   },
-  "agent-access-dialog": {
-    "allow": "允許",
-    "aria": "選擇是否讓 AI 讀取您的 Google Calendar 活動",
-    "body": "不論您如何選擇，您仍會在 memrynote 中看到您的 Google 活動。這只決定當您詢問行程時，AI 代理能不能讀取這些活動。",
-    "deny": "不允許",
-    "footnote": "您隨時可以在設定 → 整合 → Google Calendar 中變更此選項。",
-    "save-error": "儲存您的選擇失敗",
-    "title": "要讓 AI 讀取您的 Google Calendar 活動嗎？"
+  "subscribedEvent": {
+    "kind": "已訂閱的行事曆",
+    "kindAppleEventKit": "這部 Mac",
+    "close": "關閉",
+    "detailsFailed": "無法載入此活動的與會者與連結。活動本身沒有變更。",
+    "showMore": "顯示更多",
+    "showLess": "顯示較少",
+    "organizer": "主辦人",
+    "you": "你",
+    "phone": "透過電話加入",
+    "alert": "{minutes, plural, =0 {在開始時提醒} other {提前 # 分鐘提醒}}",
+    "alertHours": "{hours, plural, other {提前 # 小時提醒}}",
+    "alertDays": "{days, plural, other {提前 # 天提醒}}",
+    "recurrence": {
+      "daily": "{count, plural, =1 {每天重複} other {每 # 天重複}}",
+      "weekly": "{count, plural, =1 {每週重複} other {每 # 週重複}}",
+      "weeklyOn": "{count, plural, =1 {每週的 {days} 重複} other {每 # 週的 {days} 重複}}",
+      "monthly": "{count, plural, =1 {每月重複} other {每 # 個月重複}}",
+      "yearly": "{count, plural, =1 {每年重複} other {每 # 年重複}}",
+      "other": "重複"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "已訂閱的行事曆"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

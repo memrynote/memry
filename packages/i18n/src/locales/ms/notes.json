@@ -21,7 +21,7 @@
       "createLinkedFailed": "Gagal membuat nota terpaut",
       "openLinkedFailed": "Gagal membuka item terpaut",
       "fileNotFound": "Fail tidak ditemui: {target}",
-      "localOnly": "Nota ditetapkan kepada setempat sahaja",
+      "localOnly": "Nota ditetapkan sebagai setempat sahaja",
       "willSync": "Nota akan disegerakkan ke awan",
       "renameFailed": "Gagal menamakan semula nota",
       "titleRequired": "Nota memerlukan tajuk",
@@ -51,7 +51,7 @@
       "badge": "Baca sahaja · tidak disegerakkan",
       "reason": {
         "fileBytes": "Saiznya {size}. Nota boleh diedit sehingga {limit}.",
-        "blockBytes": "Fail ini mengandungi bahagian {size} tanpa baris kosong. Nota boleh diedit sehingga {limit} bagi setiap blok."
+        "blockBytes": "Fail ini mengandungi bahagian bersaiz {size} tanpa baris kosong. Nota boleh diedit sehingga {limit} bagi setiap blok."
       },
       "explanation": "Untuk mengeditnya, keseluruhan fail perlu dihuraikan sekali gus dan ini akan membekukan apl. Fail pada cakera tidak diubah.",
       "viewer": {
@@ -248,7 +248,7 @@
     },
     "diagram": {
       "title": "Rajah",
-      "subtext": "Carta alir, jujukan atau carta Gantt daripada sumber Mermaid"
+      "subtext": "Carta alir, rajah jujukan atau carta Gantt daripada sumber Mermaid"
     },
     "math": {
       "title": "Persamaan",
@@ -286,7 +286,7 @@
     "viewBlock": {
       "title": "Paparan",
       "group": "Sisip",
-      "subtext": "Senarai nota langsung daripada folder, teg atau seluruh bilik kebal",
+      "subtext": "Senarai nota yang sentiasa terkini daripada folder, teg atau seluruh bilik kebal",
       "sourceMenu": "Kandungan paparan ini",
       "chooseSource": "Pilih kandungan untuk dipaparkan",
       "sourceVault": "Semua nota",
@@ -324,7 +324,7 @@
         "insert": "Sisip",
         "open": "Buka"
       },
-      "matchesAlias": "sepadan",
+      "matchesAlias": "sepadan dengan",
       "noMatch": "Tiada blok sepadan dengan “{query}”",
       "fallback": {
         "linkTo": "Pautkan ke",
@@ -366,9 +366,9 @@
       "keepAsCheckbox": "Kekalkan sebagai kotak semak"
     },
     "obsidianTask": {
-      "refused": "Baris ini mengandungi id, kebergantungan atau pautan blok yang diperlukan oleh Obsidian di hujung baris. Alih keluarnya dalam Obsidian dahulu, kemudian tukar.",
+      "refused": "Baris ini mengandungi id, kebergantungan atau pautan blok yang diperlukan oleh Obsidian di hujung baris. Alih keluar item tersebut dalam Obsidian dahulu, kemudian tukar.",
       "createFailed": "Tidak dapat membuat tugas untuk baris ini.",
-      "completeFailed": "Tugas telah dibuat, tetapi tarikh selesainya tidak dapat digunakan."
+      "completeFailed": "Tugas telah dibuat, tetapi tarikh selesainya tidak dapat ditetapkan."
     },
     "blockMenu": {
       "turnInto": "Tukar menjadi",
@@ -574,7 +574,7 @@
   "similarNotes": {
     "summary": "{count, plural, other {# nota serupa}}",
     "sectionAria": "Nota serupa",
-    "hint": "Nota yang kandungannya mirip nota ini dan belum dipautkan kepadanya. Ditemui pada peranti ini menggunakan embedding setempat.",
+    "hint": "Nota yang kandungannya menyerupai nota ini dan belum dipautkan dengannya. Ditemui pada peranti ini menggunakan embedding setempat.",
     "addLink": "Pautkan daripada nota ini",
     "addLinkAria": "Pautkan {title} daripada nota ini",
     "linked": "{title} dipautkan",
@@ -843,7 +843,7 @@
     "restoring": "Memulihkan…",
     "toast": {
       "loadPreviewFailed": "Gagal memuatkan pratonton versi",
-      "restored": "Nota dipulihkan kepada versi sebelumnya",
+      "restored": "Nota dipulihkan ke versi sebelumnya",
       "deleted": "Versi dipadamkan"
     }
   },

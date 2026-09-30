@@ -13,7 +13,7 @@
       "filterName": "HTML-dokument"
     },
     "import": {
-      "filterSupported": "Stödda filer",
+      "filterSupported": "Filer som stöds",
       "filterAll": "Alla filer"
     },
     "exportCancelled": "Export avbruten",
@@ -23,49 +23,50 @@
       "availableDetailFallback": "Ladda ner uppdateringen nu?",
       "buttonDownload": "Ladda ner",
       "buttonLater": "Senare",
-      "readyTitle": "Uppdatering redo",
+      "readyTitle": "Uppdateringen är klar",
       "readyMessage": "memrynote {version} har laddats ner.",
       "readyDetailFallback": "Starta om memrynote för att slutföra installationen av uppdateringen.",
       "buttonRestartNow": "Starta om nu",
       "releaseNotesLabel": "Versionsinformation:"
     },
     "pair": {
+      "title": "Parkoppla webbläsartillägg",
+      "message": "Vill du tillåta att webbläsartillägget Memry skickar det du fångar till den här appen?",
       "buttonAllow": "Tillåt",
       "buttonDeny": "Neka",
-      "buttonPair": "Parkoppla",
-      "message": "Tillåt att webbläsartillägget Memry skickar insamlingar till den här appen?",
-      "title": "Parkoppla webbläsartillägg"
+      "buttonPair": "Parkoppla"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "Noteringspåminnelse",
-      "journal": "Dagbokspåminnelse",
-      "highlight": "Markering påminnelse",
-      "fallback": "Påminnelse förfaller",
-      "default": "Påminnelse",
-      "task": "Uppgiftspåminnelse"
-    },
     "inboxReview": {
+      "title": "Dags att gå igenom inkorgen",
       "body": "Du har {count, plural, one {# objekt} other {# objekt}} att gå igenom.",
-      "testBody": "Det här är ett test — dina dagliga påminnelser om genomgång kommer att se ut så här.",
-      "title": "Dags att gå igenom inkorgen"
+      "testBody": "Det här är ett test – dina dagliga påminnelser om genomgång kommer att se ut så här."
+    },
+    "reminder": {
+      "note": "Anteckningspåminnelse",
+      "journal": "Dagbokspåminnelse",
+      "highlight": "Påminnelse om överstrykning",
+      "task": "Uppgiftspåminnelse",
+      "fallback": "Dags för påminnelse",
+      "default": "Påminnelse"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "Påminnelsetiden måste vara i framtiden",
-    "definitionNotFound": "Definition hittades inte",
-    "noteNotFound": "Anteckning hittades inte",
-    "updateFailed": "Uppdateringen misslyckades"
+    "definitionNotFound": "Definitionen hittades inte",
+    "noteNotFound": "Anteckningen hittades inte",
+    "updateFailed": "Uppdateringen misslyckades",
+    "updateReadOnlyVolume": "Uppdateringar kan inte installeras när memrynote körs från den här platsen. Flytta memrynote till mappen Program och öppna appen igen."
   },
   "startup": {
-    "failed": {
-      "body": "Det här kan hända när disken har mycket lite ledigt utrymme, eller med äldre grafikdrivrutiner. Försök frigöra diskutrymme och öppna sedan MemryNote igen. Om det fortsätter hända brukar en ominstallation lösa det.",
-      "title": "MemryNote kunde inte starta klart"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote startar om automatiskt.",
-      "title": "Installerar uppdatering…"
+      "title": "Installerar uppdatering…",
+      "subtitle": "MemryNote startar om automatiskt."
+    },
+    "failed": {
+      "title": "MemryNote kunde inte starta klart",
+      "body": "Det här kan hända när disken har mycket lite ledigt utrymme, eller med äldre grafikdrivrutiner. Försök frigöra diskutrymme och öppna sedan MemryNote igen. Om det fortsätter hända brukar en ominstallation lösa det."
     }
   }
 }

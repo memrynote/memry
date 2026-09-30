@@ -1,44 +1,45 @@
 {
-  "title": "Journal",
+  "title": "Talaarawan",
   "section": {
-    "aiConnections": "Mga Koneksyon sa AI",
-    "todaysNotes": "Mga Tala Ngayon",
-    "todaysSchedule": "Iskedyul Ngayon",
-    "todaysTasks": "Mga Gawain Ngayon",
+    "aiConnections": "Mga koneksyon mula sa AI",
+    "todaysNotes": "Mga tala ngayong araw",
+    "todaysSchedule": "Iskedyul ngayong araw",
+    "todaysTasks": "Mga gawain ngayong araw",
     "tasks": "Mga gawain",
     "technicalDetails": "Mga teknikal na detalye"
   },
   "action": {
-    "versionHistory": "Kasaysayan ng Bersyon",
+    "versionHistory": "Kasaysayan ng bersyon",
     "export": "I-export",
     "fullWidth": "Buong lapad",
-    "journalSettings": "Mga Setting ng Journal",
-    "fullMode": "Buong Mode",
-    "compactMode": "Compact na Mode",
-    "createNote": "Lumikha ng Tala",
+    "journalSettings": "Mga setting ng talaarawan",
+    "fullMode": "Buong mode",
+    "compactMode": "Siksik na mode",
+    "createNote": "Gumawa ng tala",
     "createNewNote": "Gumawa ng bagong tala",
     "showLess": "Magpakita ng mas kaunti",
-    "showMoreNotes": "Magpakita pa ng {count} na tala",
-    "showMoreNotes_plural": "Magpakita ng {count} ng higit pang mga tala",
+    "showMoreNotes": "Ipakita ang {count} pang tala",
+    "showMoreNotes_plural": "Ipakita ang {count} pang tala",
     "showFewerNotes": "Magpakita ng mas kaunting mga tala",
-    "startBlank": "Magsimulang blangko sa halip",
+    "startBlank": "Magsimula na lang nang blangko",
     "changeTemplate": "Baguhin ang template",
     "dismissIndicator": "I-dismiss ang indicator",
     "refreshConnections": "I-refresh ang mga koneksyon",
-    "reloadJournal": "I-reload ang Journal",
-    "goToToday": "Pumunta sa Ngayon",
+    "reloadJournal": "I-reload ang talaarawan",
+    "goToToday": "Pumunta sa ngayong araw",
     "copyUnsavedContent": "Kopyahin ang hindi na-save na nilalaman sa clipboard",
     "addBookmark": "Magdagdag ng bookmark",
-    "removeBookmark": "Alisin ang bookmark"
+    "removeBookmark": "Alisin ang bookmark",
+    "deleteEntry": "Tanggalin ang entry"
   },
   "editor": {
     "placeholder": {
-      "future": "Anong balak mo...",
-      "today": "Ano ang nasa isip mo ngayon...",
-      "past": "Magmuni-muni sa araw na ito..."
+      "future": "Ano ang plano mo…",
+      "today": "Ano ang nasa isip mo ngayon…",
+      "past": "Magmuni-muni sa araw na ito…"
     },
     "upload": {
-      "failed": "Nabigong mag-upload ng larawan"
+      "failed": "Hindi ma-upload ang larawan"
     }
   },
   "date": {
@@ -46,7 +47,7 @@
       "today": "Ngayong araw",
       "yesterday": "Kahapon",
       "tomorrow": "Bukas",
-      "future": "Kinabukasan"
+      "future": "Hinaharap"
     },
     "weekday": {
       "sunday": "Linggo",
@@ -58,12 +59,12 @@
       "saturday": "Sabado"
     },
     "weekdayShort": {
-      "sunday": "Araw",
+      "sunday": "Lin",
       "monday": "Lun",
       "tuesday": "Mar",
       "wednesday": "Miy",
-      "thursday": "Huwebes",
-      "friday": "Biyernes",
+      "thursday": "Huw",
+      "friday": "Biy",
       "saturday": "Sab"
     },
     "month": {
@@ -86,7 +87,7 @@
       "march": "Mar",
       "april": "Abr",
       "may": "May",
-      "june": "Si Jun",
+      "june": "Hun",
       "july": "Hul",
       "august": "Ago",
       "september": "Set",
@@ -95,52 +96,52 @@
       "december": "Dis"
     },
     "greeting": {
-      "morning": "Magandang umaga po",
-      "afternoon": "Magandang hapon po",
-      "evening": "Magandang gabi po",
+      "morning": "Magandang umaga",
+      "afternoon": "Magandang hapon",
+      "evening": "Magandang gabi",
       "night": "Magandang gabi"
     },
     "allDay": "Buong araw"
   },
   "nav": {
     "previousDay": "Nakaraang araw",
-    "nextDay": "Sa susunod na araw",
+    "nextDay": "Susunod na araw",
     "previousMonth": "Nakaraang buwan",
-    "nextMonth": "Sa susunod na buwan",
+    "nextMonth": "Susunod na buwan",
     "previousYear": "Nakaraang taon",
-    "nextYear": "Sa susunod na taon",
-    "journalBack": "Bumalik sa journal",
-    "journalNavigation": "Pag-navigate sa journal",
-    "dateNavigation": "Pag-navigate sa petsa ng journal",
+    "nextYear": "Susunod na taon",
+    "journalBack": "Bumalik sa talaarawan",
+    "journalNavigation": "Nabigasyon ng talaarawan",
+    "dateNavigation": "Nabigasyon ng petsa sa talaarawan",
     "goToYearView": "Pumunta sa view ng taon"
   },
   "aria": {
     "moreOptions": "Higit pang mga pagpipilian",
     "documentStatistics": "Mga istatistika ng dokumento",
     "dayContext": "Konteksto ng araw: mga gawain at iskedyul",
-    "scheduleEvents": "Mag-iskedyul ng mga kaganapan",
+    "scheduleEvents": "Mga kaganapan sa iskedyul",
     "tasks": "Mga gawain",
-    "notesCreatedToday": "{count} tala na ginawa ngayon"
+    "notesCreatedToday": "{count} tala ang ginawa ngayong araw"
   },
   "empty": {
-    "noEntry": "Walang pasok",
+    "noEntry": "Walang entry",
     "noDaysInMonth": "Walang araw sa buwang ito",
     "noEventsScheduled": "Walang nakaiskedyul na mga kaganapan",
     "noEventsScheduledToday": "Walang nakaiskedyul na mga kaganapan ngayong araw",
     "noEventsWereScheduled": "Walang nakaiskedyul na mga kaganapan",
-    "noTasksDue": "Walang dapat na gawain",
-    "noTasksDueToday": "Walang mga gawain ngayong araw",
+    "noTasksDue": "Walang gawaing may takda",
+    "noTasksDueToday": "Walang gawaing may takda ngayong araw",
     "noTasksWereDue": "Walang nakatakdang gawain",
-    "noNotesToday": "Walang ginawang tala ngayon",
+    "noNotesToday": "Walang ginawang tala ngayong araw",
     "startDocumenting": "Simulan ang pagdodokumento ng iyong mga saloobin at ideya"
   },
   "ai": {
-    "loading": "Sinusuri ang iyong entry...",
+    "loading": "Sinusuri ang entry mo…",
     "empty": {
       "willAppear": "Lalabas dito ang iyong mga koneksyon",
       "noneYet": "Wala pang nakitang koneksyon",
-      "moreJournaling": "Habang nag-journal ka pa, makakahanap ang AI ng mga nauugnay na entry",
-      "keepWriting": "Patuloy na magsulat upang matuklasan ang mga nauugnay na entry"
+      "moreJournaling": "Habang mas madalas kang magsulat sa talaarawan, makakahanap ang AI ng mga kaugnay na entry",
+      "keepWriting": "Patuloy na magsulat para matuklasan ang mga kaugnay na entry"
     },
     "error": {
       "loadFailed": "Hindi ma-load ang mga koneksyon"
@@ -152,19 +153,19 @@
     "day": "araw",
     "days": "araw",
     "event": "kaganapan",
-    "events": "mga pangyayari",
+    "events": "kaganapan",
     "task": "gawain",
-    "todo": "gawin",
+    "todo": "gagawin",
     "moreConnections": "+ {count} pang koneksyon",
-    "moreConnections_plural": "+ {count} pang mga koneksyon",
+    "moreConnections_plural": "+ {count} pang koneksyon",
     "moreNotes": "+ {count} pang tala",
     "moreNotes_plural": "+ {count} pang tala",
-    "daysWithEntries": "araw na may mga entry",
-    "charactersWritten": "mga karakter na nakasulat",
+    "daysWithEntries": "araw na may entry",
+    "charactersWritten": "karakter na naisulat",
     "words": "{count} salita",
-    "characters": "{count} na mga character",
-    "completed": "Nakumpleto ang {count}",
-    "overdue": "{count} na overdue"
+    "characters": "{count} karakter",
+    "completed": "{count} ang tapos na",
+    "overdue": "{count} ang lampas na"
   },
   "stats": {
     "wordCount": "Bilang ng salita",
@@ -173,57 +174,62 @@
     "lastModified": "Huling binago",
     "lessThanOneMinute": "< 1 min",
     "minutes": "{minutes} min",
-    "read": "{readingTime} basahin",
-    "modified": "Binagong {date}"
+    "read": "{readingTime} na pagbasa",
+    "modified": "Binago noong {date}"
   },
   "task": {
-    "completed": "Nakumpleto",
-    "notCompleted": "Hindi natapos",
-    "priority": "{priority} priyoridad",
-    "overdue": "overdue na",
-    "markComplete": "Markahan ang \"{title}\" bilang nakumpleto",
-    "markNotComplete": "Markahan ang \"{title}\" bilang hindi kumpleto"
+    "completed": "Tapos na",
+    "notCompleted": "Hindi pa tapos",
+    "priority": "Priyoridad: {priority}",
+    "overdue": "lampas na",
+    "markComplete": "Markahang tapos na ang “{title}”",
+    "markNotComplete": "Markahang hindi pa tapos ang “{title}”"
   },
   "template": {
-    "using": "Gamit ang \"{templateName}\""
+    "using": "Gamit ang “{templateName}”"
   },
   "reminder": {
     "hasReminders": "May mga paalala",
-    "setToRevisit": "Magtakda ng paalala na muling bisitahin",
+    "setToRevisit": "Magtakda ng paalala para balikan ito",
     "tooltip": "Paalala: {date}",
     "tooltipMore": "Paalala: {date} (+{count} pa)",
     "success": {
-      "set": "Nakatakda ang paalala para sa entry sa journal na ito",
+      "set": "Naitakda ang paalala para sa entry na ito sa talaarawan",
       "deleted": "Tinanggal ang paalala",
       "dismissed": "Na-dismiss ang paalala",
-      "snoozed": "Naka-snooze ang paalala"
+      "snoozed": "Na-snooze ang paalala",
+      "updated": "Na-update ang paalala"
     },
     "error": {
-      "set": "Nabigong itakda ang paalala",
-      "delete": "Nabigong tanggalin ang paalala",
-      "dismiss": "Nabigong i-dismiss ang paalala",
-      "snooze": "Nabigong i-snooze ang paalala"
+      "set": "Hindi maitakda ang paalala",
+      "delete": "Hindi matanggal ang paalala",
+      "dismiss": "Hindi ma-dismiss ang paalala",
+      "snooze": "Hindi ma-snooze ang paalala",
+      "update": "Hindi ma-update ang paalala"
     }
   },
   "toast": {
-    "unsavedRetry": "Ang iyong nilalaman ay nasa memorya pa rin. I-click upang subukang muli ang pag-save.",
-    "noteNotFound": "Ang tala na \"{target}\" ay hindi nahanap",
+    "unsavedRetry": "Nasa memorya pa rin ang nilalaman mo. I-click para subukan ulit ang pag-save.",
+    "noteNotFound": "Hindi nahanap ang tala na “{target}”",
+    "createLinkedFailed": "Hindi magawa ang naka-link na tala",
     "fileNotFound": "Hindi nahanap ang file: {target}",
-    "openLinkedItemFailed": "Nabigong buksan ang naka-link na item",
-    "errorPrefix": "Error:"
+    "openLinkedItemFailed": "Hindi mabuksan ang naka-link na item",
+    "errorPrefix": "Error:",
+    "deleteFailed": "Hindi matanggal ang entry sa talaarawan",
+    "bookmarkFailed": "Hindi ma-update ang bookmark"
   },
   "export": {
-    "noteTitle": "Journal - {month} {day}, {year}"
+    "noteTitle": "Talaarawan - {month} {day}, {year}"
   },
   "note": {
-    "generatedTitle": "Tandaan - {date}",
-    "openAria": "Buksan ang {title}, ginawa sa {time}"
+    "generatedTitle": "Tala - {date}",
+    "openAria": "Buksan ang {title}, ginawa noong {time}"
   },
   "error": {
-    "title": "Error sa Journal",
-    "description": "Nakatagpo ng error ang journal para sa {date}. Maaaring hindi na-save ang iyong mga kamakailang pagbabago.",
-    "descriptionNoDate": "Nagkaroon ng error ang journal. Maaaring hindi na-save ang iyong mga kamakailang pagbabago.",
-    "unsavedContent": "Nakita ang hindi naka-save na content ({length} character)"
+    "title": "Error sa talaarawan",
+    "description": "Nagkaroon ng error ang talaarawan para sa {date}. Maaaring hindi na-save ang mga huling pagbabago mo.",
+    "descriptionNoDate": "Nagkaroon ng error ang talaarawan. Maaaring hindi na-save ang mga huling pagbabago mo.",
+    "unsavedContent": "May nakitang hindi na-save na nilalaman ({length} karakter)"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "Nabigong i-save ang entry sa journal",
-      "failedToLoadJournalSettings": "Nabigong i-load ang mga setting ng journal",
-      "failedToUpdateSettings": "Nabigong i-update ang mga setting"
+      "failedToSaveJournalEntry": "Hindi ma-save ang entry sa talaarawan",
+      "failedToLoadJournalSettings": "Hindi ma-load ang mga setting ng talaarawan",
+      "failedToUpdateSettings": "Hindi ma-update ang mga setting"
     }
+  },
+  "deleteConfirm": {
+    "title": "Tanggalin ang entry sa talaarawan",
+    "description": "Sigurado ka bang gusto mong tanggalin ang “{title}”? Hindi na ito maibabalik."
   }
 }

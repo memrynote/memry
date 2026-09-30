@@ -1,8 +1,8 @@
 {
   "dialog": {
     "vault": {
-      "title": "Seleziona la cartella del Vault",
-      "button": "Seleziona Cassaforte"
+      "title": "Seleziona la cartella del vault",
+      "button": "Seleziona vault"
     },
     "exportPdf": {
       "title": "Esporta come PDF",
@@ -26,46 +26,47 @@
       "readyTitle": "Aggiornamento pronto",
       "readyMessage": "memrynote {version} è stato scaricato.",
       "readyDetailFallback": "Riavvia memrynote per completare l'installazione dell'aggiornamento.",
-      "buttonRestartNow": "Ricomincia adesso",
+      "buttonRestartNow": "Riavvia ora",
       "releaseNotesLabel": "Note sulla versione:"
     },
     "pair": {
+      "title": "Abbina l'estensione del browser",
+      "message": "Consentire all'estensione browser di Memry di inviare catture a questa app?",
       "buttonAllow": "Consenti",
       "buttonDeny": "Nega",
-      "buttonPair": "Abbina",
-      "message": "Consentire all'estensione browser di Memry di inviare catture a questa app?",
-      "title": "Abbina l'estensione del browser"
+      "buttonPair": "Abbina"
     }
   },
   "notification": {
+    "inboxReview": {
+      "title": "È ora di rivedere la posta in arrivo",
+      "body": "Hai {count, plural, one {# elemento} many {# elementi} other {# elementi}} da rivedere.",
+      "testBody": "Questa è una prova: i tuoi promemoria di revisione giornaliera avranno questo aspetto."
+    },
     "reminder": {
       "note": "Promemoria nota",
       "journal": "Promemoria del diario",
-      "highlight": "Evidenzia promemoria",
-      "fallback": "Promemoria dovuto",
-      "default": "Promemoria",
-      "task": "Promemoria attività"
-    },
-    "inboxReview": {
-      "body": "Hai {count, plural, one {# elemento} many {# elementi} other {# elementi}} da rivedere.",
-      "testBody": "Questa è una prova — i tuoi promemoria di revisione quotidiana avranno questo aspetto.",
-      "title": "È ora di rivedere la posta in arrivo"
+      "highlight": "Promemoria dell'evidenziazione",
+      "task": "Promemoria attività",
+      "fallback": "Promemoria",
+      "default": "Promemoria"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "L'ora del promemoria deve essere nel futuro",
     "definitionNotFound": "Definizione non trovata",
     "noteNotFound": "Nota non trovata",
-    "updateFailed": "Aggiornamento non riuscito"
+    "updateFailed": "Aggiornamento non riuscito",
+    "updateReadOnlyVolume": "Impossibile installare gli aggiornamenti mentre memrynote viene eseguito da questa posizione. Sposta memrynote nella cartella Applicazioni e riaprilo."
   },
   "startup": {
-    "failed": {
-      "body": "Può succedere quando lo spazio libero su disco è molto ridotto o con driver grafici datati. Prova a liberare spazio su disco, poi riapri MemryNote. Se continua a succedere, di solito basta reinstallare.",
-      "title": "MemryNote non ha completato l'avvio"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote si riaprirà automaticamente.",
-      "title": "Installazione dell'aggiornamento…"
+      "title": "Installazione dell'aggiornamento…",
+      "subtitle": "MemryNote si riaprirà automaticamente."
+    },
+    "failed": {
+      "title": "MemryNote non ha completato l'avvio",
+      "body": "Può succedere quando lo spazio libero su disco è molto ridotto o con driver grafici datati. Prova a liberare spazio su disco, poi riapri MemryNote. Se continua a succedere, di solito basta reinstallare."
     }
   }
 }

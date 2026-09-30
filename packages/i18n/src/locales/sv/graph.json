@@ -1,7 +1,9 @@
 {
   "page": {
-    "loading": "Laddar graf...",
-    "load-failed": "Misslyckades med att ladda grafdata",
+    "loading": "Läser in graf…",
+    "load-failed": "Det gick inte att läsa in grafdata",
+    "render-failed": "Grafen är inte tillgänglig på den här enheten",
+    "render-failed-description": "Den här enheten kunde inte starta grafikrenderaren. Dina anteckningar är i säkerhet.",
     "try-again": "Försök igen",
     "aria-label": "Kunskapsgraf med {nodeCount, plural, one {# nod} other {# noder}} och {edgeCount, plural, one {# koppling} other {# kopplingar}}{summary, select, none {.} other {: {summary}.}}",
     "nodes-list-label": "Grafnoder",
@@ -9,11 +11,11 @@
   },
   "empty": {
     "title": "Din kunskapsgraf",
-    "description": "Anslutningar mellan dina anteckningar, uppgifter och projekt kommer att visas här som en interaktiv graf.",
+    "description": "Kopplingar mellan dina anteckningar, uppgifter och projekt visas här som en interaktiv graf.",
     "link-title": "Länka dina anteckningar",
     "link-description": "Använd [[wikilänkar]] för att koppla idéer mellan anteckningar",
     "discover-title": "Upptäck mönster",
-    "discover-description": "När anslutningarna växer kommer kluster och teman att framträda naturligt"
+    "discover-description": "När kopplingarna blir fler framträder kluster och teman naturligt"
   },
   "entity": {
     "note": "anteckning",
@@ -26,9 +28,10 @@
     "projects": "projekt",
     "tag": "tagg",
     "tags": "taggar",
-    "orphan": "föräldralös",
-    "orphans": "föräldralösa",
-    "unresolved": "olöst"
+    "orphan": "fristående",
+    "orphans": "fristående",
+    "unresolved": "inte skapad",
+    "category": "kategori"
   },
   "summary": {
     "node-type-count": "{count} {label}"
@@ -40,38 +43,95 @@
     "filters": "Filter",
     "display": "Visning",
     "show-labels": "Visa etiketter",
+    "live-motion": "Rörelse i realtid",
     "focus-depth": "djup {depth}",
-    "clear-focus": "Rensa fokuserad nod"
+    "clear-focus": "Sluta fokusera",
+    "relayout": "Ordna om",
+    "categories": "Taggkategorier",
+    "color-by-category": "Färglägg efter kategori",
+    "no-categories": "Gruppera taggar i kategorier i taggöversikten för att färglägga och fälla ihop grafen efter kategori.",
+    "collapse-category": "Fäll ihop {name}",
+    "expand-category": "Expandera {name}",
+    "uncategorized": "Okategoriserade"
   },
   "filter": {
     "notes": "Anteckningar",
-    "journals": "Journaler",
+    "journals": "Dagböcker",
     "tasks": "Uppgifter",
     "projects": "Projekt",
     "tags": "Taggar",
-    "orphans": "Föräldralösa",
-    "toggle-entity": "Växla {label}",
-    "toggle-orphans": "Växla föräldralösa noder"
+    "orphans": "Fristående",
+    "canvas-edges": "Canvaskopplingar",
+    "toggle-entity": "Visa/dölj {label}",
+    "toggle-orphans": "Visa/dölj fristående noder"
   },
   "search": {
-    "placeholder": "Sök noder...",
-    "clear": "Rensa graf-sökning"
+    "placeholder": "Sök noder…",
+    "clear": "Rensa grafsökning"
   },
   "context-menu": {
     "untitled": "Namnlös",
-    "focus-node": "Fokusera på denna nod",
+    "focus-node": "Fokusera på den här noden",
     "open-new-tab": "Öppna i ny flik",
     "create-note": "Skapa anteckning",
-    "copy-title": "Kopiera titel"
+    "copy-title": "Kopiera titel",
+    "link-to": "Länka till…",
+    "add-tag": "Lägg till tagg…",
+    "back": "Tillbaka",
+    "link-search": "Sök anteckningar…",
+    "tag-search": "Sök eller skapa en tagg…",
+    "no-matches": "Inga träffar",
+    "create-tag": "Skapa #{tag}",
+    "remove-link": "Ta bort länken till {title}",
+    "unpin": "Lossa",
+    "collapse-category": "Fäll ihop {name}",
+    "expand-category": "Expandera {name}"
   },
   "tooltip": {
     "connection-count": "{count, plural, one {# koppling} other {# kopplingar}}",
-    "more-tags": "+{count}"
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# objekt} other {# objekt}}",
+    "click-to-expand": "Klicka för att expandera"
   },
   "local-panel": {
-    "loading": "Laddar graf...",
-    "empty": "Inga anslutningar hittades",
+    "loading": "Läser in graf…",
+    "empty": "Inga kopplingar hittades",
     "open-full": "Öppna fullständig graf",
-    "close": "Stäng graf"
+    "close": "Stäng graf",
+    "pin": "Fäst vid den här anteckningen",
+    "unpin": "Lossa och följ den öppna anteckningen",
+    "pinned-to": "Fäst: {title}"
+  },
+  "edit": {
+    "linked": "Länkade {source} till {target} i ”{property}”",
+    "unlinked": "Tog bort länken från {source} till {target}",
+    "already-linked": "{source} länkar redan till {target}",
+    "property-conflict": "”{property}” i den här anteckningen är inte en relationsegenskap, så länken lades inte till",
+    "link-unsupported": "Länkar kan bara skapas mellan anteckningar",
+    "link-failed": "Det gick inte att lägga till länken",
+    "unlink-failed": "Det gick inte att ta bort länken",
+    "tag-added": "Lade till #{tag} i {note}",
+    "tag-exists": "Anteckningen har redan #{tag}",
+    "tag-failed": "Det gick inte att lägga till taggen",
+    "undo-failed": "Det gick inte att ångra ändringen"
+  },
+  "relayout-confirm": {
+    "title": "Ordna om grafen?",
+    "description": "Alla fästa noder släpps och grafen ordnar sig på nytt. Din sparade layout kasseras.",
+    "cancel": "Avbryt",
+    "confirm": "Ordna om"
+  },
+  "views": {
+    "title": "Sparade vyer",
+    "unsaved": "Osparad vy",
+    "edited": "Redigerad",
+    "empty": "Inga sparade vyer än",
+    "save-as": "Spara som ny vy…",
+    "update": "Uppdatera ”{name}”",
+    "delete": "Radera vyn {name}",
+    "save-dialog-title": "Spara grafvy",
+    "save-dialog-placeholder": "Namn på vyn",
+    "cancel": "Avbryt",
+    "save": "Spara"
   }
 }

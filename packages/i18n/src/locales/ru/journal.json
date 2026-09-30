@@ -1,7 +1,7 @@
 {
   "title": "Журнал",
   "section": {
-    "aiConnections": "AI-соединения",
+    "aiConnections": "Связи от ИИ",
     "todaysNotes": "Сегодняшние заметки",
     "todaysSchedule": "Расписание на сегодня",
     "todaysTasks": "Сегодняшние задачи",
@@ -18,27 +18,28 @@
     "createNote": "Создать заметку",
     "createNewNote": "Создать новую заметку",
     "showLess": "Показать меньше",
-    "showMoreNotes": "Показать {count} больше примечаний",
-    "showMoreNotes_plural": "Показать {count} больше заметок",
+    "showMoreNotes": "{count, plural, one {Показать ещё # заметку} few {Показать ещё # заметки} many {Показать ещё # заметок} other {Показать ещё # заметки}}",
+    "showMoreNotes_plural": "{count, plural, one {Показать ещё # заметку} few {Показать ещё # заметки} many {Показать ещё # заметок} other {Показать ещё # заметки}}",
     "showFewerNotes": "Показать меньше заметок",
-    "startBlank": "Вместо этого начните с пустого места",
+    "startBlank": "Начать с чистого листа",
     "changeTemplate": "Изменить шаблон",
-    "dismissIndicator": "Индикатор закрытия",
-    "refreshConnections": "Обновить соединения",
+    "dismissIndicator": "Скрыть индикатор",
+    "refreshConnections": "Обновить связи",
     "reloadJournal": "Перезагрузить журнал",
     "goToToday": "Перейти к сегодняшнему дню",
-    "copyUnsavedContent": "Скопировать несохраненный контент в буфер обмена",
-    "addBookmark": "Добавить закладку",
-    "removeBookmark": "Удалить закладку"
+    "copyUnsavedContent": "Скопировать несохранённое содержимое в буфер обмена",
+    "addBookmark": "Добавить в закладки",
+    "removeBookmark": "Убрать из закладок",
+    "deleteEntry": "Удалить запись"
   },
   "editor": {
     "placeholder": {
-      "future": "Что ты планируешь...",
-      "today": "Что у тебя на уме сегодня...",
-      "past": "Вспомните этот день..."
+      "future": "Что вы планируете…",
+      "today": "О чём вы думаете сегодня…",
+      "past": "Вспомните этот день…"
     },
     "upload": {
-      "failed": "Не удалось загрузить изображение"
+      "failed": "Не удалось добавить изображение"
     }
   },
   "date": {
@@ -49,50 +50,50 @@
       "future": "Будущее"
     },
     "weekday": {
-      "sunday": "воскресенье",
-      "monday": "понедельник",
-      "tuesday": "вторник",
-      "wednesday": "среда",
+      "sunday": "Воскресенье",
+      "monday": "Понедельник",
+      "tuesday": "Вторник",
+      "wednesday": "Среда",
       "thursday": "Четверг",
-      "friday": "пятница",
+      "friday": "Пятница",
       "saturday": "Суббота"
     },
     "weekdayShort": {
-      "sunday": "Солнце",
-      "monday": "Пн.",
+      "sunday": "Вс",
+      "monday": "Пн",
       "tuesday": "Вт",
-      "wednesday": "ср.",
+      "wednesday": "Ср",
       "thursday": "Чт",
       "friday": "Пт",
-      "saturday": "Суббота"
+      "saturday": "Сб"
     },
     "month": {
-      "january": "январь",
-      "february": "февраль",
-      "march": "март",
-      "april": "апрель",
-      "may": "май",
-      "june": "июнь",
-      "july": "июль",
-      "august": "август",
-      "september": "сентябрь",
+      "january": "Январь",
+      "february": "Февраль",
+      "march": "Март",
+      "april": "Апрель",
+      "may": "Май",
+      "june": "Июнь",
+      "july": "Июль",
+      "august": "Август",
+      "september": "Сентябрь",
       "october": "Октябрь",
-      "november": "ноябрь",
-      "december": "декабрь"
+      "november": "Ноябрь",
+      "december": "Декабрь"
     },
     "monthShort": {
-      "january": "Ян",
-      "february": "февраль",
+      "january": "Янв",
+      "february": "Фев",
       "march": "Мар",
-      "april": "апрель",
-      "may": "май",
-      "june": "июнь",
-      "july": "июль",
-      "august": "август",
-      "september": "Сентябрь",
-      "october": "октябрь",
-      "november": "ноябрь",
-      "december": "декабрь"
+      "april": "Апр",
+      "may": "Май",
+      "june": "Июн",
+      "july": "Июл",
+      "august": "Авг",
+      "september": "Сен",
+      "october": "Окт",
+      "november": "Ноя",
+      "december": "Дек"
     },
     "greeting": {
       "morning": "Доброе утро",
@@ -104,126 +105,131 @@
   },
   "nav": {
     "previousDay": "Предыдущий день",
-    "nextDay": "На следующий день",
+    "nextDay": "Следующий день",
     "previousMonth": "Предыдущий месяц",
-    "nextMonth": "В следующем месяце",
+    "nextMonth": "Следующий месяц",
     "previousYear": "Предыдущий год",
-    "nextYear": "В следующем году",
-    "journalBack": "Журнал назад",
+    "nextYear": "Следующий год",
+    "journalBack": "Назад",
     "journalNavigation": "Навигация по журналу",
     "dateNavigation": "Навигация по дате журнала",
     "goToYearView": "Перейти к просмотру года"
   },
   "aria": {
-    "moreOptions": "Больше возможностей",
+    "moreOptions": "Другие действия",
     "documentStatistics": "Статистика документа",
-    "dayContext": "Контекст дня: задачи и график",
-    "scheduleEvents": "Планирование событий",
+    "dayContext": "Контекст дня: задачи и расписание",
+    "scheduleEvents": "События в расписании",
     "tasks": "Задачи",
-    "notesCreatedToday": "Заметки {count}, созданные сегодня"
+    "notesCreatedToday": "{count, plural, one {Сегодня создана # заметка} few {Сегодня создано # заметки} many {Сегодня создано # заметок} other {Сегодня создано # заметки}}"
   },
   "empty": {
     "noEntry": "Нет записи",
     "noDaysInMonth": "Нет дней в этом месяце",
-    "noEventsScheduled": "Мероприятий не запланировано",
-    "noEventsScheduledToday": "Сегодня нет запланированных мероприятий",
-    "noEventsWereScheduled": "Никаких мероприятий не было запланировано",
-    "noTasksDue": "Нет задач",
+    "noEventsScheduled": "Нет запланированных событий",
+    "noEventsScheduledToday": "На сегодня нет запланированных событий",
+    "noEventsWereScheduled": "Запланированных событий не было",
+    "noTasksDue": "Нет задач на этот день",
     "noTasksDueToday": "Нет задач на сегодня",
-    "noTasksWereDue": "Никаких задач не было",
+    "noTasksWereDue": "На этот день задач не было",
     "noNotesToday": "Сегодня заметок не создано",
-    "startDocumenting": "Начните документировать свои мысли и идеи"
+    "startDocumenting": "Начните записывать свои мысли и идеи"
   },
   "ai": {
-    "loading": "Анализ вашей записи...",
+    "loading": "Анализ записи…",
     "empty": {
       "willAppear": "Ваши связи появятся здесь",
       "noneYet": "Связей пока не найдено",
-      "moreJournaling": "По мере того, как вы ведете дневник, ИИ будет находить связанные записи.",
+      "moreJournaling": "Чем больше вы пишете в журнал, тем больше связанных записей найдёт ИИ",
       "keepWriting": "Продолжайте писать, чтобы найти похожие записи"
     },
     "error": {
-      "loadFailed": "Не удалось загрузить подключения"
+      "loadFailed": "Не удалось загрузить связи"
     },
-    "connectionAria": "Подключение к {label}, совпадение {scorePercent}%."
+    "connectionAria": "Связь с «{label}», совпадение {scorePercent}%"
   },
   "count": {
-    "note": "Примечание",
+    "note": "заметка",
     "day": "день",
-    "days": "дни",
+    "days": "дн.",
     "event": "событие",
     "events": "события",
     "task": "задача",
-    "todo": "делать",
-    "moreConnections": "+ {count} больше соединений",
-    "moreConnections_plural": "+ {count} больше подключений",
-    "moreNotes": "+ {count} еще примечание",
-    "moreNotes_plural": "+ {count} еще примечания",
+    "todo": "к выполнению",
+    "moreConnections": "{count, plural, one {Ещё # связь} few {Ещё # связи} many {Ещё # связей} other {Ещё # связи}}",
+    "moreConnections_plural": "{count, plural, one {Ещё # связь} few {Ещё # связи} many {Ещё # связей} other {Ещё # связи}}",
+    "moreNotes": "{count, plural, one {Ещё # заметка} few {Ещё # заметки} many {Ещё # заметок} other {Ещё # заметки}}",
+    "moreNotes_plural": "{count, plural, one {Ещё # заметка} few {Ещё # заметки} many {Ещё # заметок} other {Ещё # заметки}}",
     "daysWithEntries": "дни с записями",
-    "charactersWritten": "персонажи написаны",
-    "words": "{count} слов",
-    "characters": "Символы {count}",
-    "completed": "{count} завершено",
-    "overdue": "{count} просрочен"
+    "charactersWritten": "символов написано",
+    "words": "{count, plural, one {# слово} few {# слова} many {# слов} other {# слова}}",
+    "characters": "{count, plural, one {# символ} few {# символа} many {# символов} other {# символа}}",
+    "completed": "Выполнено: {count}",
+    "overdue": "Просрочено: {count}"
   },
   "stats": {
     "wordCount": "Количество слов",
     "characterCount": "Количество символов",
     "readingTime": "Примерное время чтения",
     "lastModified": "Последнее изменение",
-    "lessThanOneMinute": "< 1 мин.",
-    "minutes": "{minutes} мин.",
-    "read": "{readingTime} читать",
-    "modified": "Измененный {date}"
+    "lessThanOneMinute": "< 1 мин",
+    "minutes": "{minutes} мин",
+    "read": "{readingTime} чтения",
+    "modified": "Изменено {date}"
   },
   "task": {
-    "completed": "Завершено",
-    "notCompleted": "Не завершено",
-    "priority": "Приоритет {priority}",
-    "overdue": "просроченный",
-    "markComplete": "Отметить «{title}» как завершенное.",
-    "markNotComplete": "Отметить «{title}» как незавершенное."
+    "completed": "Выполнено",
+    "notCompleted": "Не выполнено",
+    "priority": "Приоритет: {priority}",
+    "overdue": "просрочено",
+    "markComplete": "Отметить «{title}» как выполненную",
+    "markNotComplete": "Отметить «{title}» как невыполненную"
   },
   "template": {
-    "using": "Использование «{templateName}»"
+    "using": "Используется шаблон «{templateName}»"
   },
   "reminder": {
     "hasReminders": "Есть напоминания",
-    "setToRevisit": "Установить напоминание о повторном посещении",
+    "setToRevisit": "Напомнить вернуться к записи",
     "tooltip": "Напоминание: {date}",
-    "tooltipMore": "Напоминание: {date} (+ еще {count})",
+    "tooltipMore": "Напоминание: {date} (и ещё {count})",
     "success": {
       "set": "Напоминание установлено для этой записи журнала",
-      "deleted": "Напоминание удалено.",
+      "deleted": "Напоминание удалено",
       "dismissed": "Напоминание закрыто",
-      "snoozed": "Напоминание отложено"
+      "snoozed": "Напоминание отложено",
+      "updated": "Напоминание обновлено"
     },
     "error": {
-      "set": "Не удалось установить напоминание.",
-      "delete": "Не удалось удалить напоминание.",
-      "dismiss": "Не удалось закрыть напоминание.",
-      "snooze": "Не удалось отложить напоминание."
+      "set": "Не удалось установить напоминание",
+      "delete": "Не удалось удалить напоминание",
+      "dismiss": "Не удалось закрыть напоминание",
+      "snooze": "Не удалось отложить напоминание",
+      "update": "Не удалось обновить напоминание"
     }
   },
   "toast": {
-    "unsavedRetry": "Ваш контент все еще находится в памяти. Нажмите, чтобы повторить попытку сохранения.",
-    "noteNotFound": "Примечание «{target}» не найдено.",
+    "unsavedRetry": "Содержимое всё ещё в памяти. Нажмите, чтобы повторить сохранение.",
+    "noteNotFound": "Заметка «{target}» не найдена",
+    "createLinkedFailed": "Не удалось создать связанную заметку",
     "fileNotFound": "Файл не найден: {target}",
     "openLinkedItemFailed": "Не удалось открыть связанный элемент",
-    "errorPrefix": "Ошибка:"
+    "errorPrefix": "Ошибка:",
+    "deleteFailed": "Не удалось удалить запись журнала",
+    "bookmarkFailed": "Не удалось обновить закладку"
   },
   "export": {
-    "noteTitle": "Журнал - {month} {day}, {year}"
+    "noteTitle": "Журнал — {month} {year}, {day}-е"
   },
   "note": {
-    "generatedTitle": "Примечание — {date}",
-    "openAria": "Откройте {title}, созданный в {time}."
+    "generatedTitle": "Заметка — {date}",
+    "openAria": "Открыть «{title}», создано в {time}"
   },
   "error": {
     "title": "Ошибка журнала",
-    "description": "В журнале обнаружена ошибка {date}. Возможно, ваши недавние изменения не были сохранены.",
+    "description": "В журнале произошла ошибка за {date}. Возможно, недавние изменения не сохранены.",
     "descriptionNoDate": "В журнале произошла ошибка. Возможно, ваши недавние изменения не были сохранены.",
-    "unsavedContent": "Обнаружен несохраненный контент (символы {length})"
+    "unsavedContent": "Обнаружено несохранённое содержимое (символов: {length})"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "Не удалось сохранить запись журнала.",
-      "failedToLoadJournalSettings": "Не удалось загрузить настройки журнала.",
+      "failedToSaveJournalEntry": "Не удалось сохранить запись журнала",
+      "failedToLoadJournalSettings": "Не удалось загрузить настройки журнала",
       "failedToUpdateSettings": "Не удалось обновить настройки"
     }
+  },
+  "deleteConfirm": {
+    "title": "Удалить запись журнала",
+    "description": "Вы уверены, что хотите удалить «{title}»? Это действие нельзя отменить."
   }
 }

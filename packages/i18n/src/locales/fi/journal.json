@@ -1,7 +1,7 @@
 {
   "title": "Päiväkirja",
   "section": {
-    "aiConnections": "AI-yhteydet",
+    "aiConnections": "Tekoälyyhteydet",
     "todaysNotes": "Päivän muistiinpanot",
     "todaysSchedule": "Tämän päivän aikataulu",
     "todaysTasks": "Tämän päivän tehtävät",
@@ -18,24 +18,25 @@
     "createNote": "Luo muistiinpano",
     "createNewNote": "Luo uusi muistiinpano",
     "showLess": "Näytä vähemmän",
-    "showMoreNotes": "Näytä {count} lisää huomautusta",
-    "showMoreNotes_plural": "Näytä {count} lisää muistiinpanoja",
+    "showMoreNotes": "Näytä vielä {count} muistiinpano",
+    "showMoreNotes_plural": "Näytä vielä {count} muistiinpanoa",
     "showFewerNotes": "Näytä vähemmän muistiinpanoja",
     "startBlank": "Aloita sen sijaan tyhjästä",
-    "changeTemplate": "Muuta mallia",
+    "changeTemplate": "Vaihda pohja",
     "dismissIndicator": "Hylkää ilmaisin",
     "refreshConnections": "Päivitä yhteydet",
     "reloadJournal": "Lataa päiväkirja uudelleen",
-    "goToToday": "Siirry kohtaan Tänään",
+    "goToToday": "Siirry tähän päivään",
     "copyUnsavedContent": "Kopioi tallentamaton sisältö leikepöydälle",
     "addBookmark": "Lisää kirjanmerkki",
-    "removeBookmark": "Poista kirjanmerkki"
+    "removeBookmark": "Poista kirjanmerkki",
+    "deleteEntry": "Poista merkintä"
   },
   "editor": {
     "placeholder": {
-      "future": "Mitä suunnittelet...",
-      "today": "Mitä sinulla on tänään mielessä...",
-      "past": "Mieti tätä päivää..."
+      "future": "Mitä suunnittelet…",
+      "today": "Mitä sinulla on tänään mielessä…",
+      "past": "Mieti tätä päivää…"
     },
     "upload": {
       "failed": "Kuvan lataaminen epäonnistui"
@@ -44,7 +45,7 @@
   "date": {
     "relative": {
       "today": "Tänään",
-      "yesterday": "eilen",
+      "yesterday": "Eilen",
       "tomorrow": "Huomenna",
       "future": "Tulevaisuus"
     },
@@ -52,9 +53,9 @@
       "sunday": "sunnuntai",
       "monday": "maanantai",
       "tuesday": "tiistai",
-      "wednesday": "keskiviikkona",
-      "thursday": "Torstai",
-      "friday": "Perjantai",
+      "wednesday": "keskiviikko",
+      "thursday": "torstai",
+      "friday": "perjantai",
       "saturday": "lauantai"
     },
     "weekdayShort": {
@@ -67,32 +68,32 @@
       "saturday": "la"
     },
     "month": {
-      "january": "tammikuuta",
-      "february": "helmikuuta",
-      "march": "maaliskuuta",
-      "april": "huhtikuuta",
-      "may": "toukokuuta",
-      "june": "kesäkuuta",
-      "july": "heinäkuuta",
-      "august": "elokuuta",
-      "september": "syyskuuta",
-      "october": "lokakuuta",
-      "november": "marraskuuta",
-      "december": "joulukuuta"
-    },
-    "monthShort": {
       "january": "tammikuu",
-      "february": "helmikuuta",
+      "february": "helmikuu",
       "march": "maaliskuu",
       "april": "huhtikuu",
-      "may": "toukokuuta",
-      "june": "kesäkuuta",
-      "july": "heinäkuuta",
+      "may": "toukokuu",
+      "june": "kesäkuu",
+      "july": "heinäkuu",
       "august": "elokuu",
       "september": "syyskuu",
       "october": "lokakuu",
-      "november": "marraskuuta",
-      "december": "joulukuuta"
+      "november": "marraskuu",
+      "december": "joulukuu"
+    },
+    "monthShort": {
+      "january": "tammi",
+      "february": "helmi",
+      "march": "maalis",
+      "april": "huhti",
+      "may": "touko",
+      "june": "kesä",
+      "july": "heinä",
+      "august": "elo",
+      "september": "syys",
+      "october": "loka",
+      "november": "marras",
+      "december": "joulu"
     },
     "greeting": {
       "morning": "Hyvää huomenta",
@@ -104,13 +105,13 @@
   },
   "nav": {
     "previousDay": "Edellinen päivä",
-    "nextDay": "Seuraavana päivänä",
+    "nextDay": "Seuraava päivä",
     "previousMonth": "Edellinen kuukausi",
-    "nextMonth": "Ensi kuussa",
+    "nextMonth": "Seuraava kuukausi",
     "previousYear": "Edellinen vuosi",
-    "nextYear": "Ensi vuonna",
-    "journalBack": "Päiväkirja takaisin",
-    "journalNavigation": "Lehden navigointi",
+    "nextYear": "Seuraava vuosi",
+    "journalBack": "Takaisin päiväkirjaan",
+    "journalNavigation": "Päiväkirjan navigointi",
     "dateNavigation": "Päivämäärän navigointi",
     "goToYearView": "Siirry vuosinäkymään"
   },
@@ -118,24 +119,24 @@
     "moreOptions": "Lisää vaihtoehtoja",
     "documentStatistics": "Asiakirjan tilastot",
     "dayContext": "Päiväkonteksti: tehtävät ja aikataulu",
-    "scheduleEvents": "Aikatauluta tapahtumia",
+    "scheduleEvents": "Aikataulun tapahtumat",
     "tasks": "Tehtävät",
-    "notesCreatedToday": "{count} muistiinpanot luotu tänään"
+    "notesCreatedToday": "{count, plural, one {# muistiinpano luotu tänään} other {# muistiinpanoa luotu tänään}}"
   },
   "empty": {
-    "noEntry": "Ei sisäänpääsyä",
+    "noEntry": "Ei merkintää",
     "noDaysInMonth": "Ei päiviä tässä kuussa",
-    "noEventsScheduled": "Ei tapahtumia aikataulussa",
+    "noEventsScheduled": "Ei ajoitettuja tapahtumia",
     "noEventsScheduledToday": "Ei tapahtumia tänään",
     "noEventsWereScheduled": "Tapahtumia ei ollut suunniteltu",
-    "noTasksDue": "Ei suoritettavia tehtäviä",
-    "noTasksDueToday": "Ei tehtäviä tänään",
-    "noTasksWereDue": "Tehtäviä ei kuulunut",
+    "noTasksDue": "Ei erääntyviä tehtäviä",
+    "noTasksDueToday": "Ei tänään erääntyviä tehtäviä",
+    "noTasksWereDue": "Ei erääntyneitä tehtäviä",
     "noNotesToday": "Tänään ei luotu muistiinpanoja",
     "startDocumenting": "Aloita ajatustesi ja ideoiden dokumentointi"
   },
   "ai": {
-    "loading": "Analysoidaan syöttöäsi...",
+    "loading": "Analysoidaan merkintääsi…",
     "empty": {
       "willAppear": "Yhteytesi näkyvät täällä",
       "noneYet": "Yhteyksiä ei vielä löytynyt",
@@ -143,27 +144,27 @@
       "keepWriting": "Jatka kirjoittamista löytääksesi aiheeseen liittyvät merkinnät"
     },
     "error": {
-      "loadFailed": "Yhteyksiä ei voitu ladata"
+      "loadFailed": "Yhteyksien lataaminen epäonnistui"
     },
-    "connectionAria": "Yhteys {label}, {scorePercent} % vastaa"
+    "connectionAria": "Yhteys: {label}, vastaavuus {scorePercent} %"
   },
   "count": {
-    "note": "huomautus",
+    "note": "muistiinpano",
     "day": "päivä",
     "days": "päivää",
     "event": "tapahtuma",
-    "events": "tapahtumia",
+    "events": "tapahtumaa",
     "task": "tehtävä",
-    "todo": "tehdä",
-    "moreConnections": "+ {count} lisää yhteyttä",
-    "moreConnections_plural": "+ {count} lisää yhteyksiä",
-    "moreNotes": "+ {count} lisää huomautusta",
-    "moreNotes_plural": "+ {count} lisää muistiinpanoja",
-    "daysWithEntries": "päivää merkintöjen kera",
-    "charactersWritten": "kirjoitetut merkit",
-    "words": "{count} sanat",
-    "characters": "{count} merkkiä",
-    "completed": "{count} valmis",
+    "todo": "tekemättä",
+    "moreConnections": "+ {count} yhteys lisää",
+    "moreConnections_plural": "+ {count} yhteyttä lisää",
+    "moreNotes": "+ {count} muistiinpano lisää",
+    "moreNotes_plural": "+ {count} muistiinpanoa lisää",
+    "daysWithEntries": "päivää, joilla on merkintöjä",
+    "charactersWritten": "kirjoitettua merkkiä",
+    "words": "{count, plural, one {# sana} other {# sanaa}}",
+    "characters": "{count, plural, one {# merkki} other {# merkkiä}}",
+    "completed": "{count, plural, one {# valmis} other {# valmista}}",
     "overdue": "{count} myöhässä"
   },
   "stats": {
@@ -173,55 +174,60 @@
     "lastModified": "Viimeksi muokattu",
     "lessThanOneMinute": "< 1 min",
     "minutes": "{minutes} min",
-    "read": "{readingTime} luettu",
+    "read": "Lukuaika {readingTime}",
     "modified": "Muokattu {date}"
   },
   "task": {
     "completed": "Valmis",
     "notCompleted": "Ei valmis",
-    "priority": "{priority} prioriteetti",
+    "priority": "Prioriteetti: {priority}",
     "overdue": "myöhässä",
-    "markComplete": "Merkitse \"{title}\" valmiiksi",
-    "markNotComplete": "Merkitse \"{title}\" keskeneräiseksi"
+    "markComplete": "Merkitse ”{title}” valmiiksi",
+    "markNotComplete": "Merkitse ”{title}” keskeneräiseksi"
   },
   "template": {
-    "using": "Käytetään \"{templateName}\""
+    "using": "Käytetään pohjaa ”{templateName}”"
   },
   "reminder": {
     "hasReminders": "Sisältää muistutuksia",
-    "setToRevisit": "Aseta muistutus uudelleenkäynnistä",
+    "setToRevisit": "Aseta muistutus palata tähän",
     "tooltip": "Muistutus: {date}",
     "tooltipMore": "Muistutus: {date} (+{count} lisää)",
     "success": {
-      "set": "Muistutus asetettu tälle päiväkirjakirjaukselle",
+      "set": "Muistutus asetettu tälle päiväkirjamerkinnälle",
       "deleted": "Muistutus poistettu",
       "dismissed": "Muistutus hylätty",
-      "snoozed": "Muistutus torkutettu"
+      "snoozed": "Muistutus torkutettu",
+      "updated": "Muistutus päivitetty"
     },
     "error": {
       "set": "Muistutuksen asettaminen epäonnistui",
       "delete": "Muistutuksen poistaminen epäonnistui",
       "dismiss": "Muistutuksen hylkääminen epäonnistui",
-      "snooze": "Muistutuksen torkkuminen epäonnistui"
+      "snooze": "Muistutuksen torkuttaminen epäonnistui",
+      "update": "Muistutuksen päivittäminen epäonnistui"
     }
   },
   "toast": {
     "unsavedRetry": "Sisältö on edelleen muistissa. Napsauta ja yritä tallentaa uudelleen.",
-    "noteNotFound": "Huomautus \"{target}\" ei löytynyt",
+    "noteNotFound": "Muistiinpanoa ”{target}” ei löytynyt",
+    "createLinkedFailed": "Linkitetyn muistiinpanon luominen epäonnistui",
     "fileNotFound": "Tiedostoa ei löydy: {target}",
     "openLinkedItemFailed": "Linkitetyn kohteen avaaminen epäonnistui",
-    "errorPrefix": "Virhe:"
+    "errorPrefix": "Virhe:",
+    "deleteFailed": "Päiväkirjamerkinnän poistaminen epäonnistui",
+    "bookmarkFailed": "Kirjanmerkin päivittäminen epäonnistui"
   },
   "export": {
-    "noteTitle": "Päiväkirja - {month} {day}, {year}"
+    "noteTitle": "Päiväkirja – {day}. {month} {year}"
   },
   "note": {
-    "generatedTitle": "Huomautus - {date}",
-    "openAria": "Avaa {title}, luotu osoitteessa {time}"
+    "generatedTitle": "Muistiinpano – {date}",
+    "openAria": "Avaa ”{title}”, luotu klo {time}"
   },
   "error": {
     "title": "Päiväkirjan virhe",
-    "description": "Päiväkirja havaitsi virheen {date}. Viimeaikaisia muutoksiasi ei ehkä ole tallennettu.",
+    "description": "Päiväkirjassa tapahtui virhe (päivä {date}). Viimeaikaisia muutoksiasi ei ehkä ole tallennettu.",
     "descriptionNoDate": "Päiväkirjassa tapahtui virhe. Viimeaikaisia muutoksiasi ei ehkä ole tallennettu.",
     "unsavedContent": "Tallentamaton sisältö havaittu ({length} merkkiä)"
   },
@@ -236,5 +242,9 @@
       "failedToLoadJournalSettings": "Päiväkirja-asetusten lataaminen epäonnistui",
       "failedToUpdateSettings": "Asetusten päivittäminen epäonnistui"
     }
+  },
+  "deleteConfirm": {
+    "title": "Poista päiväkirjamerkintä",
+    "description": "Haluatko varmasti poistaa merkinnän ”{title}”? Tätä ei voi kumota."
   }
 }

@@ -1,6 +1,6 @@
 {
   "toast": {
-    "exportNotImplemented": "Xuất dữ liệu cục bộ chưa được thực hiện"
+    "exportNotImplemented": "Chưa hỗ trợ xuất dữ liệu cục bộ"
   },
   "page": {
     "title": "Cài đặt",
@@ -12,51 +12,124 @@
         "editing": "Chỉnh sửa",
         "modules": "Mô-đun",
         "services": "Dịch vụ",
-        "data": "Dữ liệu"
+        "data": "Dữ liệu",
+        "workspace": "Không gian làm việc",
+        "features": "Tính năng"
       },
       "items": {
         "account": "Tài khoản",
         "general": "Chung",
-        "templates": "Các mẫu",
+        "templates": "Mẫu",
         "editor": "Trình soạn thảo",
         "journal": "Nhật ký",
-        "tasks": "Nhiệm vụ",
+        "tasks": "Công việc",
+        "inbox": "Hộp thư đến",
         "calendar": "Lịch",
         "appearance": "Giao diện",
         "shortcuts": "Phím tắt",
+        "commandLine": "Dòng lệnh",
         "ai": "Trợ lý AI",
-        "vault": "Kho lưu trữ",
+        "vault": "Kho",
         "tags": "Thẻ",
         "properties": "Thuộc tính",
-        "commandLine": "Dòng lệnh",
-        "features": "Tính năng",
         "import": "Nhập",
-        "inbox": "Hộp thư đến"
+        "features": "Tính năng",
+        "modules": "Mô-đun",
+        "aiAgents": "AI và tác nhân",
+        "tagsProperties": "Thẻ và thuộc tính",
+        "vaultData": "Kho và dữ liệu"
+      }
+    },
+    "drillIn": {
+      "back": "Quay lại {section}"
+    },
+    "modules": {
+      "configure": "Cấu hình {module}"
+    },
+    "vaultImport": {
+      "label": "Nhập từ ứng dụng khác",
+      "description": "Notion, Evernote, Bear, Apple Notes, Todoist và nhiều ứng dụng khác",
+      "action": "Nhập…"
+    },
+    "search": {
+      "placeholder": "Tìm kiếm cài đặt",
+      "count": "{count, plural, other {# cài đặt}}",
+      "empty": "Không có cài đặt phù hợp",
+      "move": "di chuyển",
+      "open": "mở"
+    }
+  },
+  "features": {
+    "header": {
+      "title": "Tính năng",
+      "subtitle": "Bật hoặc tắt từng phần của ứng dụng. Tắt = hiện mờ trong thanh bên và không dùng được ở mọi nơi."
+    },
+    "items": {
+      "home": {
+        "label": "Trang chủ",
+        "description": "Bảng điều khiển trang chính"
+      },
+      "inbox": {
+        "label": "Hộp thư đến",
+        "description": "Ghi nhanh và phân loại"
+      },
+      "journal": {
+        "label": "Nhật ký",
+        "description": "Ghi chú hằng ngày"
+      },
+      "tasks": {
+        "label": "Công việc",
+        "description": "Việc cần làm và ngày đến hạn"
+      },
+      "calendar": {
+        "label": "Lịch",
+        "description": "Sự kiện và lịch trình"
+      },
+      "graph": {
+        "label": "Đồ thị",
+        "description": "Kết nối giữa các ghi chú"
+      },
+      "spatialCanvas": {
+        "label": "Bảng trắng",
+        "description": "Không gian trực quan để sắp xếp và liên kết ghi chú"
       }
     }
   },
   "general": {
     "header": {
       "title": "Chung",
-      "subtitle": "Khởi động ứng dụng và hành vi tab",
-      "loading": "Đang tải cài đặt..."
+      "subtitle": "Ngôn ngữ, khởi động, tab và quyền riêng tư.",
+      "loading": "Đang tải cài đặt…"
     },
     "groups": {
       "startup": "Khởi động",
       "updates": "Cập nhật",
-      "languageRegion": "Ngôn ngữ & Khu vực",
+      "languageRegion": "Ngôn ngữ và khu vực",
       "tabBehavior": "Hành vi tab",
+      "window": "Hành vi cửa sổ",
       "fileCreation": "Tạo tệp",
-      "privacy": "Quyền riêng tư"
+      "privacy": "Quyền riêng tư",
+      "startupWindows": "Khởi động và cửa sổ",
+      "newNotes": "Ghi chú mới"
     },
     "startup": {
       "launchAtLogin": {
-        "label": "Khởi động cùng đăng nhập",
-        "description": "Bắt đầu memrynote khi bạn đăng nhập",
-        "error": "Không thể cập nhật khởi động cùng hệ thống"
+        "label": "Khởi động khi đăng nhập",
+        "description": "Tự động mở memrynote khi bạn đăng nhập",
+        "error": "Không thể cập nhật cài đặt khởi động khi đăng nhập"
       }
     },
     "updates": {
+      "autoCheck": {
+        "label": "Tự động kiểm tra cập nhật",
+        "description": "Kiểm tra bản phát hành mới khi khởi động và định kỳ trong lúc ứng dụng đang mở.",
+        "error": "Không thể cập nhật cài đặt tự động kiểm tra"
+      },
+      "autoDownload": {
+        "label": "Tự động tải xuống bản cập nhật",
+        "description": "Tải xuống và cài đặt bản phát hành mới ở chế độ nền mà không cần hỏi.",
+        "error": "Không thể cập nhật cài đặt tự động tải xuống"
+      },
       "appUpdates": "Cập nhật ứng dụng",
       "installedVersion": "Phiên bản đã cài đặt {version}",
       "availableVersion": "Phiên bản có sẵn {version}",
@@ -65,139 +138,176 @@
       "downloadingLatest": "Đang tải xuống bản phát hành mới nhất",
       "downloadingLatestPercent": "Đang tải xuống bản phát hành mới nhất ({percent}%)",
       "downloaded": "memrynote {version} đã sẵn sàng để cài đặt",
-      "upToDate": "Cài đặt này đang ở phiên bản phát hành mới nhất",
+      "upToDate": "Bản cài đặt này đang ở phiên bản phát hành mới nhất",
       "checking": "Đang kiểm tra GitHub Releases để tìm phiên bản mới hơn",
       "idle": "Kiểm tra các phiên bản mới và cài đặt chúng mà không cần rời khỏi ứng dụng",
       "unsupportedToast": "Tự động cập nhật chỉ có trong các phiên bản đóng gói",
-      "upToDateToast": "memrynote {version} đã được cập nhật",
-      "actionFailed": "Thao tác cập nhật thất bại",
+      "upToDateToast": "memrynote {version} là phiên bản mới nhất",
+      "actionFailed": "Không thể thực hiện thao tác cập nhật",
       "actions": {
-        "checking": "Đang kiểm tra...",
-        "available": "Tải Cập Nhật",
-        "downloading": "Đang tải...",
-        "downloadingPercent": "Đang tải {percent}%",
-        "downloaded": "Khởi động lại để Cài đặt",
-        "idle": "Kiểm tra Cập Nhật"
+        "checking": "Đang kiểm tra…",
+        "available": "Tải bản cập nhật",
+        "downloading": "Đang tải xuống…",
+        "downloadingPercent": "Đang tải xuống {percent}%",
+        "downloaded": "Khởi động lại để cài đặt",
+        "idle": "Kiểm tra ngay"
       },
-      "autoCheck": {
-        "description": "Kiểm tra bản phát hành mới khi khởi động và định kỳ trong lúc ứng dụng đang mở.",
-        "error": "Không cập nhật được cài đặt tự động kiểm tra",
-        "label": "Tự động kiểm tra cập nhật"
+      "label": "Cập nhật",
+      "checkedAgo": "{status} · đã kiểm tra {time}",
+      "status": {
+        "unsupported": "Có trong các bản phát hành đóng gói",
+        "idle": "Chưa kiểm tra",
+        "checking": "Đang kiểm tra…",
+        "upToDate": "Đã là bản mới nhất",
+        "available": "Có phiên bản {version}",
+        "downloading": "Đang tải xuống…",
+        "downloadingPercent": "Đang tải xuống {percent}%",
+        "downloaded": "Phiên bản {version} đã sẵn sàng để cài đặt"
       },
-      "autoDownload": {
-        "description": "Tải xuống và cài đặt bản phát hành mới ở chế độ nền mà không cần hỏi.",
-        "error": "Không cập nhật được cài đặt tự động tải xuống",
-        "label": "Tự động tải xuống bản cập nhật"
+      "mode": {
+        "label": "Chế độ cập nhật",
+        "off": "Không kiểm tra",
+        "notify": "Chỉ thông báo",
+        "auto": "Tự động tải xuống"
       }
     },
     "language": {
       "label": "Ngôn ngữ",
-      "helper": "Phần lớn các bản cập nhật của ứng dụng xảy ra ngay lập tức. Một số văn bản ở cấp hệ thống — thông báo đã hiển thị, nhãn dock, thanh tiêu đề cửa sổ — sẽ được làm mới sau lần khởi động tiếp theo.",
-      "changed": "Ngôn ngữ đã được thay đổi thành {nativeName}",
-      "failed": "Thay đổi ngôn ngữ thất bại. Vui lòng thử lại."
+      "helper": "Phần lớn ứng dụng cập nhật ngay lập tức. Một số văn bản cấp hệ thống — thông báo đã hiển thị, nhãn trên Dock, thanh tiêu đề cửa sổ — sẽ được làm mới sau lần khởi động tiếp theo.",
+      "changed": "Đã đổi ngôn ngữ sang {nativeName}",
+      "failed": "Không thể đổi ngôn ngữ. Vui lòng thử lại."
     },
     "clockFormat": {
-      "label": "Định dạng Thời gian",
+      "label": "Định dạng thời gian",
       "description": "Đồng hồ 12 giờ hoặc 24 giờ",
       "options": {
         "12h": "12 giờ",
         "24h": "24 giờ"
       },
-      "error": "Cập nhật định dạng thời gian thất bại"
+      "error": "Không thể cập nhật định dạng thời gian"
+    },
+    "dateFormat": {
+      "label": "Định dạng ngày",
+      "description": "Cách hiển thị ngày trên lịch",
+      "options": {
+        "MM/DD/YYYY": "MM/DD/YYYY (Mỹ)",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
+        "DD.MM.YYYY": "DD.MM.YYYY"
+      },
+      "error": "Không thể cập nhật định dạng ngày"
     },
     "tabs": {
+      "openPagesInNewTab": {
+        "label": "Mở trang trong tab mới",
+        "description": "Khi bấm vào hoặc tạo một trang — ghi chú, thư mục, dự án, bảng trắng, thẻ, dấu trang — trang đó sẽ mở trong tab mới. Khi tắt, tab hiện tại sẽ được dùng lại, kể cả khi theo liên kết bên trong ghi chú; tab đã ghim không bao giờ bị thay thế. “Mở trong tab mới”, “Mở bên cạnh” và bấm chuột giữa luôn mở tab mới."
+      },
       "restoreSession": {
-        "label": "Khôi phục Phiên làm việc khi Khởi động",
-        "description": "Mở lại các tab từ phiên làm việc trước của bạn"
+        "label": "Khôi phục tab khi khởi động",
+        "description": "Mở lại các tab và ngăn chia từ lần trước."
       },
       "closeButton": {
-        "label": "Nút Đóng Tab",
+        "label": "Nút đóng tab",
         "description": "Khi nào hiển thị nút đóng",
         "options": {
           "always": "Luôn hiển thị",
-          "hover": "Hiển thị khi rê chuột",
+          "hover": "Khi di chuột qua",
           "active": "Chỉ trên tab đang hoạt động"
         }
       },
-      "error": "Cập nhật cài đặt thất bại"
+      "error": "Không thể cập nhật cài đặt"
+    },
+    "window": {
+      "minimizeToTray": {
+        "label": "Tiếp tục chạy trên thanh menu khi đóng",
+        "description": "Khi đóng cửa sổ, memrynote sẽ ẩn xuống khay hệ thống thay vì thoát. Bấm vào biểu tượng trên khay để mở lại. Trên macOS, ứng dụng vẫn ở trong Dock; trên màn hình nền Linux không có khay hệ thống, cửa sổ sẽ đóng như bình thường.",
+        "error": "Không thể cập nhật cài đặt thu nhỏ xuống khay"
+      }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Tạo trong Thư mục Đã Chọn",
-        "description": "Ghi chú và thư mục mới được tạo bên trong thư mục hiện được chọn. Khi tắt, các mục luôn được tạo tại gốc."
+        "label": "Tạo trong thư mục đang chọn",
+        "description": "Ghi chú và thư mục mới được tạo bên trong thư mục đang chọn. Khi tắt, các mục luôn được tạo ở thư mục gốc."
       },
       "defaultNoteFolder": {
-        "description": "Trống = gốc kho",
-        "label": "Vị trí mặc định cho ghi chú mới",
-        "placeholder": "notes"
+        "label": "Vị trí mặc định",
+        "description": "Dùng khi không có thư mục nào được chọn trong thanh bên.",
+        "placeholder": "notes",
+        "root": "/"
       }
     },
     "privacy": {
       "telemetry": {
-        "label": "Chia sẻ Số liệu Sử dụng Ẩn danh",
-        "description": "Chỉ là số liệu ẩn danh — không bao giờ gửi nội dung ghi chú, truy vấn tìm kiếm, đường dẫn tập tin, email, hoặc ID gốc.",
-        "error": "Cập nhật cài đặt dữ liệu từ xa thất bại"
+        "label": "Chia sẻ số liệu sử dụng ẩn danh",
+        "description": "Không bao giờ gửi nội dung, tiêu đề hay tên ghi chú. Có kèm nhật ký chẩn đoán đã lược bỏ thông tin nhạy cảm.",
+        "error": "Không thể cập nhật cài đặt số liệu sử dụng"
+      },
+      "autoSendDiagnostics": {
+        "label": "Tự động gửi báo cáo lỗi",
+        "description": "Gửi nhật ký đã lược bỏ thông tin nhạy cảm khi màn hình lỗi xuất hiện. Khi tắt, ứng dụng sẽ hỏi mỗi lần.",
+        "error": "Không thể cập nhật cài đặt báo cáo lỗi"
       },
       "diagnostics": {
-        "building": "Đang chuẩn bị báo cáo…",
+        "title": "Gửi báo cáo chẩn đoán?",
         "consent": "Gửi báo cáo chẩn đoán một lần? Báo cáo chỉ gồm nhật ký kỹ thuật đã lược bỏ thông tin nhận dạng — không có nội dung ghi chú.",
-        "error": "Không gửi được báo cáo chẩn đoán",
-        "notNow": "Để sau",
-        "previewError": "Không thể chuẩn bị báo cáo chẩn đoán",
+        "building": "Đang chuẩn bị báo cáo…",
         "previewLabel": "Xem trước nội dung báo cáo",
+        "snapshotLabel": "Bản chụp nhanh trạng thái thiết bị",
         "send": "Gửi",
-        "sendReport": {
-          "button": "Gửi báo cáo chẩn đoán",
-          "description": "Gửi một lần báo cáo gồm nhật ký kỹ thuật đã lược bỏ thông tin nhận dạng, để giúp chúng tôi tìm ra nguyên nhân sự cố bạn gặp phải.",
-          "label": "Báo cáo chẩn đoán"
-        },
         "sending": "Đang gửi…",
+        "notNow": "Để sau",
         "sent": "Đã gửi báo cáo — mã tham chiếu {incidentId}",
-        "snapshotLabel": "Ảnh chụp trạng thái thiết bị",
-        "title": "Gửi báo cáo chẩn đoán?"
-      }
-    },
-    "dateFormat": {
-      "description": "Cách hiển thị ngày trên lịch",
-      "error": "Không cập nhật được định dạng ngày",
-      "label": "Định dạng ngày",
-      "options": {
-        "DD.MM.YYYY": "DD.MM.YYYY",
-        "DD/MM/YYYY": "DD/MM/YYYY",
-        "MM/DD/YYYY": "MM/DD/YYYY (US)",
-        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
+        "previewError": "Không thể chuẩn bị báo cáo chẩn đoán",
+        "error": "Không thể gửi báo cáo chẩn đoán",
+        "sendReport": {
+          "label": "Báo cáo chẩn đoán",
+          "description": "Gửi một lần báo cáo gồm nhật ký kỹ thuật đã lược bỏ thông tin nhận dạng, để giúp chúng tôi tìm ra nguyên nhân sự cố bạn gặp phải.",
+          "button": "Gửi báo cáo…"
+        }
       }
     }
   },
   "appearance": {
     "header": {
       "title": "Giao diện",
-      "subtitle": "Tùy chỉnh giao diện và cảm giác",
-      "loading": "Đang tải cài đặt..."
+      "subtitle": "Tùy chỉnh giao diện ứng dụng",
+      "loading": "Đang tải cài đặt…"
     },
     "groups": {
-      "theme": "Giao diện",
+      "theme": "Chủ đề",
       "accentColor": "Màu nhấn",
-      "typography": "Kiểu chữ"
+      "typography": "Kiểu chữ",
+      "zoom": "Thu phóng"
     },
     "theme": {
       "colorMode": {
-        "label": "Chế Độ Màu",
+        "label": "Chế độ màu",
         "description": "Chọn chủ đề ưa thích của bạn",
         "aria": "Chế độ màu"
       },
       "options": {
-        "light": "Ấm",
+        "light": "Sáng",
         "white": "Trắng",
         "dark": "Tối",
         "system": "Hệ thống"
       },
-      "error": "Cập nhật chủ đề thất bại"
+      "error": "Không thể cập nhật chủ đề"
+    },
+    "colorTheme": {
+      "default": "Memrynote",
+      "themes": "Chủ đề Memrynote",
+      "warm": "Ấm",
+      "error": "Không thể cập nhật chủ đề màu",
+      "copy": "Sao chép chủ đề",
+      "copied": "Đã sao chép chủ đề vào bảng tạm",
+      "copyError": "Không thể sao chép chủ đề",
+      "import": "Nhập chủ đề từ bảng tạm",
+      "importInvalid": "Bảng tạm không chứa chủ đề memrynote"
     },
     "accent": {
       "pick": "Chọn màu nhấn",
       "custom": {
-        "label": "Màu Tùy Chỉnh",
+        "label": "Màu tùy chỉnh",
         "description": "Nhập giá trị hex",
         "placeholder": "#000000"
       },
@@ -207,40 +317,107 @@
         "emerald": "Ngọc lục bảo",
         "red": "Đỏ",
         "violet": "Tím",
-        "cyan": "Xanh lam nhạt",
+        "cyan": "Lục lam",
         "pink": "Hồng",
         "orange": "Cam"
       },
-      "error": "Cập nhật màu nhấn thất bại"
+      "error": "Không thể cập nhật màu nhấn",
+      "aria": "Màu nhấn có sẵn",
+      "options": {
+        "theme": "Theo chủ đề",
+        "custom": "Tùy chỉnh"
+      }
+    },
+    "colors": {
+      "background": "Nền",
+      "foreground": "Tiền cảnh",
+      "forLight": "Cho chế độ sáng",
+      "forDark": "Cho chế độ tối",
+      "reset": "Dùng màu của chủ đề",
+      "pick": "Chọn màu"
+    },
+    "advanced": {
+      "title": "Nâng cao",
+      "reset": "Đặt lại về mặc định",
+      "error": "Không thể cập nhật cài đặt",
+      "fontSizeDescription": "Cỡ chữ cơ bản của giao diện",
+      "zoomDescription": "Tỷ lệ của toàn bộ cửa sổ",
+      "reduceMotion": {
+        "label": "Giảm chuyển động",
+        "description": "Giảm hiệu ứng động hoặc theo cài đặt hệ thống",
+        "options": {
+          "system": "Hệ thống",
+          "on": "Bật"
+        }
+      },
+      "pointerCursors": {
+        "label": "Dùng con trỏ bàn tay",
+        "description": "Hiển thị con trỏ bàn tay khi di chuột qua các thành phần tương tác"
+      },
+      "fontSmoothing": {
+        "label": "Làm mịn phông chữ",
+        "description": "Chữ mảnh hơn, khử răng cưa theo thang độ xám trên macOS"
+      }
+    },
+    "zoom": {
+      "label": "Mức thu phóng",
+      "description": "Thu phóng toàn bộ giao diện",
+      "decrease": "Giảm mức thu phóng",
+      "increase": "Tăng mức thu phóng",
+      "reset": "Đặt lại mức thu phóng về mặc định",
+      "error": "Không thể cập nhật mức thu phóng"
     },
     "typography": {
       "fontSize": {
-        "label": "Kích Thước Phông Chữ",
-        "description": "Điều chỉnh kích thước văn bản cơ bản",
-        "aria": "Kích thước phông chữ"
+        "label": "Cỡ chữ",
+        "description": "Cỡ chữ cơ bản của giao diện, tính bằng pixel",
+        "decrease": "Giảm cỡ chữ",
+        "increase": "Tăng cỡ chữ",
+        "reset": "Đặt lại cỡ chữ về mặc định"
       },
       "fontFamily": {
-        "label": "Họ Phông Chữ",
+        "label": "Phông chữ",
         "description": "Phông chữ chính cho giao diện",
         "options": {
-          "system": "Mặc định Hệ Thống",
+          "system": "Mặc định hệ thống",
           "sansSerif": "Sans-serif",
           "serif": "Serif (Crimson Pro)",
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
           "monospace": "Monospace"
-        }
+        },
+        "sections": {
+          "builtin": "Có sẵn",
+          "system": "Đã cài trên máy tính này"
+        },
+        "searchPlaceholder": "Tìm kiếm phông chữ…",
+        "empty": "Không có phông chữ phù hợp",
+        "loading": "Đang đọc phông chữ đã cài…",
+        "unavailable": "Không thể truy cập phông chữ đã cài trên hệ thống này.",
+        "notInstalled": "Chưa cài trên máy tính này — đang dùng phông chữ dự phòng."
       },
       "fontSizeError": "Không thể cập nhật kích thước phông chữ",
-      "fontFamilyError": "Không thể cập nhật kiểu chữ"
+      "fontFamilyError": "Không thể cập nhật phông chữ"
+    },
+    "v2": {
+      "groups": {
+        "text": "Chữ và thu phóng"
+      },
+      "colorMode": "Chế độ màu",
+      "colorTheme": "Chủ đề",
+      "accent": "Màu nhấn",
+      "customColor": "Màu tùy chỉnh",
+      "fontFamily": "Phông chữ",
+      "fontSize": "Cỡ chữ",
+      "zoom": "Thu phóng"
     }
   },
   "editor": {
     "header": {
       "title": "Trình soạn thảo",
       "subtitle": "Cài đặt và tùy chọn trình soạn thảo ghi chú",
-      "loading": "Đang tải cài đặt..."
+      "loading": "Đang tải cài đặt…"
     },
     "groups": {
       "layout": "Bố cục",
@@ -249,13 +426,10 @@
     },
     "width": {
       "label": "Chiều rộng trình soạn thảo",
-      "description": "Chiều rộng tối đa của khu vực viết",
+      "description": "Áp dụng cho mọi ghi chú và trang nhật ký",
       "options": {
-        "narrow": "Hẹp",
-        "medium": " Trung bình ",
-        "wide": "Rộng",
-        "full": "Toàn bộ chiều rộng",
-        "normal": "Bình thường"
+        "normal": "Bình thường",
+        "full": "Toàn bộ chiều rộng"
       },
       "error": "Không thể cập nhật chiều rộng trình soạn thảo"
     },
@@ -265,65 +439,77 @@
       "error": "Không thể cập nhật chế độ thanh công cụ"
     },
     "spellCheck": {
+      "label": "Kiểm tra chính tả",
       "description": "Gạch chân các từ sai chính tả trong ghi chú và nhật ký",
-      "error": "Không cập nhật được kiểm tra chính tả",
-      "label": "Kiểm tra chính tả"
+      "error": "Không thể cập nhật cài đặt kiểm tra chính tả"
+    },
+    "v2": {
+      "width": "Chiều rộng trình soạn thảo",
+      "toolbarMode": "Thanh công cụ định dạng cố định",
+      "spellCheck": "Kiểm tra chính tả"
     }
   },
   "templates": {
     "header": {
-      "title": "Các mẫu",
+      "title": "Mẫu",
       "subtitle": "Quản lý mẫu ghi chú để tạo nhanh"
     },
     "actions": {
       "new": "Mẫu mới",
       "edit": "Chỉnh sửa",
-      "duplicate": "Sao chép",
+      "duplicate": "Nhân bản",
       "delete": "Xóa"
     },
     "groups": {
       "builtIn": "Có sẵn",
       "myTemplates": "Mẫu của tôi"
     },
-    "loading": "Đang tải các mẫu...",
+    "loading": "Đang tải mẫu…",
     "newTemplateTitle": "Mẫu mới",
-    "copySuffix": "{name} (Sao chép)",
+    "copySuffix": "{name} (bản sao)",
     "empty": {
       "title": "Chưa có mẫu tùy chỉnh nào",
       "description": "Tạo mẫu để bắt đầu"
     },
+    "preview": {
+      "notFound": "Không thể tải mẫu này."
+    },
     "toasts": {
-      "deleted": "Mẫu đã bị xóa",
-      "deleteFailed": "Không xóa được mẫu",
-      "duplicated": "Mẫu đã được nhân đôi",
-      "duplicateFailed": "Không nhân đôi được mẫu"
+      "deleted": "Đã xóa mẫu",
+      "deleteFailed": "Không thể xóa mẫu",
+      "duplicated": "Đã nhân bản mẫu",
+      "duplicateFailed": "Không thể nhân bản mẫu"
     },
     "dialogs": {
       "delete": {
-        "title": "Xóa Mẫu",
-        "description": "Bạn có chắc chắn muốn xóa mẫu này không? Hành động này không thể hoàn tác. Những ghi chú tạo từ mẫu này sẽ không bị ảnh hưởng."
+        "title": "Xóa mẫu",
+        "description": "Bạn có chắc muốn xóa mẫu này không? Không thể hoàn tác thao tác này. Những ghi chú đã tạo từ mẫu này sẽ không bị ảnh hưởng."
       },
       "duplicate": {
-        "title": "Nhân đôi Mẫu",
+        "title": "Nhân bản mẫu",
         "description": "Nhập tên cho bản sao mẫu mới.",
         "placeholder": "Tên mẫu"
       }
     },
-    "preview": {
-      "notFound": "Không tải được mẫu này."
+    "v2": {
+      "new": "Mẫu mới",
+      "groups": {
+        "mine": "Mẫu của tôi"
+      }
     }
   },
   "journal": {
     "header": {
       "title": "Nhật ký",
       "subtitle": "Cài đặt và tùy chọn nhật ký",
-      "loading": "Đang tải cài đặt..."
+      "loading": "Đang tải cài đặt…"
     },
     "groups": {
-      "defaultTemplate": "Mẫu Mặc định",
-      "sidebarVisibility": "Hiển thị Thanh bên",
+      "defaultTemplate": "Mẫu mặc định",
+      "location": "Vị trí và định dạng",
+      "sidebarVisibility": "Hiển thị thanh bên",
       "footer": "Chân trang",
-      "location": "Vị trí & định dạng"
+      "weekdayTemplates": "Mẫu theo từng ngày"
     },
     "template": {
       "label": "Mẫu",
@@ -332,139 +518,194 @@
       "unknown": "Mẫu không xác định",
       "none": "Không có",
       "noneAsk": "Không có (hỏi mỗi lần)",
-      "updated": "Mẫu mặc định đã được cập nhật",
-      "cleared": "Mẫu mặc định đã được xóa",
-      "error": "Cập nhật mẫu mặc định thất bại"
+      "updated": "Đã cập nhật mẫu mặc định",
+      "cleared": "Đã bỏ chọn mẫu mặc định",
+      "error": "Không thể cập nhật mẫu mặc định"
     },
     "showSchedule": {
-      "label": "Hiển thị Lịch trình",
+      "label": "Hiển thị lịch trình",
       "description": "Hiển thị các sự kiện và lịch hôm nay"
     },
     "showTasks": {
-      "label": "Hiển thị Nhiệm vụ",
-      "description": "Hiển thị các nhiệm vụ đến hạn trong ngày được chọn"
+      "label": "Hiển thị công việc",
+      "description": "Hiển thị công việc đến hạn vào ngày được chọn"
     },
     "showAIConnections": {
-      "label": "Hiển thị Kết nối AI",
-      "description": "Hiển thị các kết nối được hỗ trợ bởi AI với các mục liên quan"
+      "label": "Hiển thị kết nối AI",
+      "description": "Hiển thị các kết nối do AI tìm ra tới những mục nhật ký liên quan"
     },
     "showStatsFooter": {
-      "label": "Hiển thị Chân trang Thống kê",
+      "label": "Hiển thị chân trang thống kê",
       "description": "Số lượng từ, thời gian đọc, dấu thời gian"
     },
-    "updateError": "Cập nhật cài đặt thất bại",
+    "folder": {
+      "label": "Thư mục nhật ký",
+      "description": "Thư mục lưu ghi chú hằng ngày",
+      "placeholder": "journal"
+    },
     "dateFormat": {
-      "description": "Định dạng tên tệp cho ghi chú hàng ngày (vd. YYYY-MM-DD dddd)",
       "label": "Định dạng ngày",
+      "description": "Định dạng tên tệp cho ghi chú hằng ngày (vd. YYYY-MM-DD dddd)",
       "placeholder": "YYYY-MM-DD",
-      "renameNote": "Đổi định dạng sẽ đổi tên các tệp nhật ký hiện có. Tệp có tên mới đã bị dùng sẽ được giữ nguyên.",
+      "renameNote": "Đổi định dạng sẽ đổi tên các tệp nhật ký hiện có. Tệp nào có tên mới trùng với tệp đã có sẽ được giữ nguyên.",
       "tokensHelp": "Trợ giúp định dạng ngày",
       "tokensNote": "Các ký tự khác được giữ nguyên. Tên các ngày trong tuần luôn bằng tiếng Anh.",
       "tokensTitle": "Mã định dạng"
     },
-    "folder": {
-      "description": "Thư mục lưu ghi chú hàng ngày",
-      "label": "Thư mục nhật ký",
-      "placeholder": "journal"
-    },
     "preview": {
-      "description": "Đường dẫn tệp nhật ký hôm nay",
-      "label": "Xem trước"
+      "label": "Xem trước",
+      "description": "Đường dẫn tệp nhật ký hôm nay"
+    },
+    "updateError": "Không thể cập nhật cài đặt",
+    "weekday": {
+      "toggle": "Dùng mẫu khác nhau cho từng ngày",
+      "toggleDescription": "Chọn mẫu cho từng ngày trong tuần",
+      "inherit": "Dùng mặc định",
+      "inheritWith": "Mặc định · {name}",
+      "inheritNone": "Mặc định · không có",
+      "missing": "Mẫu đã xóa",
+      "clear": "Xóa",
+      "updated": "Đã cập nhật mẫu cho {day}",
+      "cleared": "Đã bỏ chọn mẫu cho {day}",
+      "error": "Không thể cập nhật mẫu cho {day}",
+      "summary": "Đã đặt {count}/7"
+    },
+    "v2": {
+      "groups": {
+        "defaultTemplate": "Mẫu mặc định",
+        "location": "Vị trí và định dạng"
+      }
     }
   },
   "tasks": {
     "header": {
-      "title": "Nhiệm vụ",
-      "subtitle": "Cấu hình mặc định và hành vi của nhiệm vụ",
-      "loading": "Đang tải cài đặt..."
+      "title": "Công việc",
+      "subtitle": "Cấu hình mặc định và hành vi của công việc",
+      "loading": "Đang tải cài đặt…"
     },
     "groups": {
       "defaults": "Mặc định",
-      "calendar": "Lịch",
-      "inbox": "  \nHộp thư đến  "
+      "inbox": "Hộp thư đến"
     },
     "defaultProject": {
-      "label": "Dự án Mặc định",
+      "label": "Dự án mặc định",
       "description": "Được gán khi không chọn dự án",
       "placeholder": "Không có dự án mặc định",
       "none": "Không có mặc định (sử dụng Cá nhân)",
-      "error": "Cập nhật dự án mặc định thất bại"
+      "error": "Không thể cập nhật dự án mặc định"
     },
     "sortOrder": {
-      "label": "Thứ tự Sắp xếp Mặc định",
-      "description": "Cách các nhiệm vụ được sắp xếp trong chế độ xem danh sách",
+      "label": "Thứ tự sắp xếp mặc định",
+      "description": "Cách sắp xếp công việc trong chế độ xem danh sách",
       "options": {
         "manual": "Thủ công (kéo & thả)",
-        "dueDate": "Hạn chót",
-        "priority": "  \nƯu tiên  ",
-        "createdAt": "Ngày Tạo"
+        "dueDate": "Ngày đến hạn",
+        "priority": "Mức ưu tiên",
+        "createdAt": "Ngày tạo"
       },
       "error": "Không thể cập nhật thứ tự sắp xếp"
     },
-    "weekStart": {
-      "label": "Tuần bắt đầu vào",
-      "description": "Ngày đầu tuần trong chế độ xem lịch",
-      "options": {
-        "sunday": "Chủ nhật",
-        "monday": "Thứ hai"
-      },
-      "error": "Không thể cập nhật ngày bắt đầu tuần"
-    },
     "defaultView": {
       "label": "Chế độ xem mặc định",
-      "description": "Tab mà trang Công việc mở ra",
+      "description": "Phạm vi hiển thị khi mở trang công việc",
       "options": {
         "all": "Tất cả",
-        "today": "Hôm nay"
+        "today": "Hôm nay",
+        "tomorrow": "Ngày mai",
+        "next7": "7 ngày tới"
       },
       "error": "Không thể cập nhật chế độ xem mặc định"
     },
     "staleInbox": {
-      "label": "Ngưỡng hộp thư cũ",
-      "description": "Các tác vụ cũ hơn mức này sẽ được đánh dấu là cũ",
+      "label": "Ngưỡng mục tồn đọng",
+      "description": "Công việc cũ hơn mức này sẽ được làm nổi bật là tồn đọng",
       "unit": "ngày",
-      "error": "Không thể cập nhật ngưỡng hộp thư cũ"
+      "error": "Không thể cập nhật ngưỡng mục tồn đọng"
+    }
+  },
+  "inbox": {
+    "header": {
+      "title": "Hộp thư đến",
+      "subtitle": "Lời nhắc xem lại hằng ngày và tùy chọn hộp thư đến.",
+      "loading": "Đang tải…"
+    },
+    "imageFiling": {
+      "group": "Hình ảnh",
+      "error": "Không thể cập nhật tùy chọn xếp ảnh",
+      "mode": {
+        "label": "Xếp ảnh vào ghi chú",
+        "description": "“Nhúng vào ghi chú” giữ ảnh bên trong ghi chú và không hiện trong thanh bên. “Tệp trong thanh bên” chuyển ảnh vào thư mục bạn chọn và liên kết tới ảnh đó.",
+        "embed": "Nhúng vào ghi chú",
+        "link": "Tệp trong thanh bên"
+      },
+      "ask": {
+        "label": "Luôn hỏi",
+        "description": "Khi tắt, ảnh mới sẽ dùng lựa chọn ở trên mà không hỏi."
+      }
+    },
+    "reviewReminder": {
+      "group": "Lời nhắc xem lại hằng ngày",
+      "enabled": {
+        "label": "Nhắc tôi xem lại hộp thư đến",
+        "description": "Một lời nhắc nhẹ nhàng mỗi ngày khi hộp thư đến của bạn chưa trống."
+      },
+      "time": {
+        "label": "Thời gian nhắc",
+        "description": "Giờ địa phương, trên từng thiết bị.",
+        "hourLabel": "Giờ",
+        "minuteLabel": "Phút",
+        "periodLabel": "AM hoặc PM"
+      },
+      "test": {
+        "label": "Thông báo thử",
+        "description": "Gửi lời nhắc ngay bây giờ để kiểm tra thông báo hệ thống của bạn.",
+        "button": "Gửi thử",
+        "sent": "Đã gửi thông báo thử.",
+        "sentHint": "Nếu không thấy gì, hãy cho phép thông báo cho MemryNote trong cài đặt hệ thống của bạn.",
+        "unsupported": "Thiết bị này không hiển thị được thông báo trên máy tính."
+      },
+      "error": "Không thể cập nhật lời nhắc."
     }
   },
   "calendar": {
     "header": {
       "title": "Lịch",
-      "subtitle": "Cấu hình hành vi ô ngày trong Bảng Ngày",
-      "loading": "Đang tải cài đặt..."
+      "subtitle": "Cấu hình hành vi ô ngày trong Bảng ngày",
+      "loading": "Đang tải cài đặt…"
     },
     "groups": {
+      "weekStart": "Tuần",
       "dayCellClick": "Nhấp vào ô ngày",
-      "notes": "Ghi chú",
-      "weekStart": "Tuần"
+      "notes": "Ghi chú"
+    },
+    "weekStart": {
+      "label": "Tuần bắt đầu vào",
+      "description": "Ngày đầu tuần trên tất cả các lịch",
+      "options": {
+        "sunday": "Chủ Nhật",
+        "monday": "Thứ Hai"
+      },
+      "error": "Không thể cập nhật ngày đầu tuần"
     },
     "defaultBehavior": {
       "label": "Hành vi mặc định",
-      "description": "Khi nhấp vào một ngày trong lịch Bảng Ngày từ bất kỳ tab không phải lịch nào",
+      "description": "Khi nhấp vào một ngày trong lịch của Bảng ngày từ bất kỳ tab nào không phải lịch",
       "error": "Không thể cập nhật hành vi khi nhấp vào ngày"
     },
     "pageOverride": {
       "label": "Ghi đè trang lịch",
-      "description": "Hành vi khi tab Lịch được kích hoạt (mặc định là Mở Lịch)",
+      "description": "Hành vi khi tab Lịch đang mở (mặc định là Mở lịch)",
       "error": "Không thể cập nhật ghi đè trang lịch"
     },
-    "options": {
-      "openJournal": "Mở Nhật ký",
-      "openCalendar": "Mở Lịch",
-      "useGlobal": "Sử dụng cài đặt toàn cục"
-    },
     "showNotesOnCalendar": {
+      "label": "Hiện ghi chú trên lịch",
       "description": "Hiện mọi ghi chú trên lịch như một mục cả ngày vào ngày nó được tạo",
-      "error": "Không cập nhật được hiện ghi chú trên lịch",
-      "label": "Hiện ghi chú trên lịch"
+      "error": "Không thể cập nhật cài đặt hiện ghi chú trên lịch"
     },
-    "weekStart": {
-      "description": "Ngày đầu tuần trên tất cả các lịch",
-      "error": "Không cập nhật được ngày đầu tuần",
-      "label": "Tuần bắt đầu vào",
-      "options": {
-        "monday": "Thứ Hai",
-        "sunday": "Chủ Nhật"
-      }
+    "options": {
+      "openJournal": "Mở nhật ký",
+      "openCalendar": "Mở lịch",
+      "useGlobal": "Sử dụng cài đặt toàn cục"
     },
     "google": {
       "name": "Google Calendar",
@@ -475,79 +716,342 @@
         "reconnectRequired": "Cần kết nối lại"
       },
       "accountReconnect": "Kết nối lại Google",
-      "importedCalendars": "Các lịch đã nhập",
+      "addAccount": "Thêm tài khoản",
+      "importedCalendars": "Lịch đã nhập",
       "selected": "Đã chọn {count}",
       "syncNow": "Đồng bộ ngay",
       "disconnect": "Ngắt kết nối",
       "reconnect": "Kết nối lại Google",
-      "syncFailed": "Đã xảy ra sự cố",
+      "syncFailed": "Đã xảy ra lỗi",
       "connectFailed": "Không thể kết nối Google Calendar",
       "refreshFailed": "Không thể làm mới Google Calendar",
       "disconnectFailed": "Không thể ngắt kết nối Google Calendar",
       "retryFailed": "Không thể thử lại đồng bộ lịch",
       "pushToGoogle": {
+        "label": "Hiện sự kiện memrynote trong Google Calendar",
         "description": "Tắt để đồng bộ một chiều — bạn vẫn thấy sự kiện Google trong memrynote, nhưng sự kiện memrynote sẽ không xuất hiện trong Google.",
-        "error": "Không cập nhật được hướng đồng bộ",
-        "label": "Hiện sự kiện memrynote trong Google Calendar"
+        "error": "Không thể cập nhật hướng đồng bộ"
       },
       "agentAccess": {
-        "description": "Mặc định là tắt. Bật thì trợ lý AI có thể đọc sự kiện Google của bạn; tắt thì nó không nhận được gì khi được hỏi về chúng. Dù thế nào, bạn vẫn thấy chúng trong memrynote.",
-        "error": "Không cập nhật được quyền truy cập của AI",
-        "label": "Cho AI đọc sự kiện Google Calendar"
+        "label": "Cho AI đọc sự kiện Google Calendar",
+        "description": "Mặc định là tắt. Khi bật, tác nhân AI có thể đọc sự kiện Google của bạn; khi tắt, tác nhân sẽ không nhận được gì khi được hỏi về chúng. Dù bật hay tắt, bạn vẫn thấy chúng trong memrynote.",
+        "error": "Không thể cập nhật quyền truy cập của AI"
       },
       "connect": "Kết nối",
       "sourcePicker": {
-        "empty": "Chưa có lịch Google nào được nhập có sẵn trên thiết bị này.",
+        "empty": "Thiết bị này chưa có lịch Google nào đã nhập.",
         "statuses": {
-          "synced": "  \nĐã đồng bộ  ",
+          "synced": "Đã đồng bộ",
           "error": "Lỗi",
           "pending": "Đang chờ",
-          "idle": "Nhàn rỗi"
+          "idle": "Không hoạt động"
         },
         "retrying": "Đang thử lại…",
         "retryNow": "Thử lại ngay"
       }
+    },
+    "subscriptions": {
+      "name": "Lịch đã đăng ký",
+      "description": "Thêm lịch chỉ đọc bằng liên kết chia sẻ (ICS hoặc webcal), chẳng hạn lịch Proton, iCloud, Outlook hoặc Fastmail. Lịch được kiểm tra thay đổi khoảng mỗi giờ một lần.",
+      "urlLabel": "Liên kết lịch",
+      "urlPlaceholder": "Liên kết lịch webcal:// hoặc https://",
+      "subscribe": "Đăng ký",
+      "subscribing": "Đang đăng ký…",
+      "refresh": "Làm mới",
+      "refreshing": "Đang làm mới…",
+      "remove": "Gỡ bỏ",
+      "readOnly": "Chỉ đọc",
+      "updatedAt": "Đã cập nhật {time}",
+      "notCheckedYet": "Chưa kiểm tra",
+      "keptEvents": "Các sự kiện đã có trên lịch sẽ được giữ lại cho đến lần cập nhật thành công tiếp theo.",
+      "notEncrypted": "Không mã hóa",
+      "httpWarning": "Liên kết này bắt đầu bằng http://, nên liên kết và các sự kiện được truyền đi mà không mã hóa. Bất kỳ ai dùng cùng mạng đều có thể đọc được. Hãy dùng liên kết https:// hoặc webcal:// nếu lịch có hỗ trợ.",
+      "added": "Đã thêm {title}.",
+      "addedSummary": "Đã thêm {title}: {count, plural, other {# sự kiện}}, từ {start} đến {end}.",
+      "addedEmpty": "Đã thêm {title}. Lịch này chưa có sự kiện nào trong 90 ngày qua hoặc trong năm tới.",
+      "rename": "Đổi tên",
+      "renameLabel": "Tên lịch",
+      "save": "Lưu",
+      "cancel": "Hủy",
+      "color": "Màu lịch",
+      "colorOption": "Màu: {color}",
+      "help": {
+        "toggle": "Tìm liên kết ở đâu?",
+        "intro": "Hãy tìm tùy chọn chia sẻ có tên như liên kết công khai, địa chỉ bí mật, phát hành hoặc iCal. Liên kết kết thúc bằng .ics hoặc bắt đầu bằng webcal://.",
+        "proton": {
+          "name": "Proton Calendar",
+          "steps": "Cài đặt → Lịch, chọn lịch, rồi tạo liên kết trong mục Chia sẻ với bất kỳ ai. Chọn chế độ xem đầy đủ để thấy chi tiết sự kiện.",
+          "readOnly": "Trong memrynote, lịch Proton luôn chỉ đọc và đây là chủ ý. Proton mã hóa đầu cuối lịch và không hỗ trợ CalDAV, nên không thể ghi ngược lại. Hãy thực hiện thay đổi trong Proton."
+        },
+        "icloud": {
+          "name": "iCloud",
+          "steps": "Trong ứng dụng Lịch trên máy Mac hoặc tại iCloud.com, chia sẻ lịch, bật Lịch công khai và sao chép liên kết. Để chỉnh sửa cả sự kiện iCloud tại đây, hãy kết nối iCloud qua mục CalDAV."
+        },
+        "outlook": {
+          "name": "Outlook và Microsoft 365",
+          "steps": "Outlook trên web → Cài đặt → Lịch → Lịch được chia sẻ → Phát hành lịch. Chọn Có thể xem tất cả chi tiết, phát hành và sao chép liên kết ICS."
+        },
+        "fastmail": {
+          "name": "Fastmail",
+          "steps": "Cài đặt → Lịch, mở lịch, bật phát hành và sao chép liên kết iCalendar."
+        },
+        "notion": {
+          "name": "Notion Calendar",
+          "steps": "Sự kiện của lịch này nằm trong tài khoản Google hoặc iCloud mà bạn đã kết nối với nó. Hãy chia sẻ liên kết từ tài khoản đó."
+        },
+        "public": {
+          "name": "Ngày lễ, trường học và thể thao",
+          "steps": "Tìm tùy chọn Đăng ký, Thêm vào lịch hoặc iCal trên trang web của đơn vị tổ chức và sao chép liên kết đó."
+        }
+      },
+      "errors": {
+        "invalid_url": "Đây không phải liên kết lịch. Dán địa chỉ bắt đầu bằng webcal://, https:// hoặc http://.",
+        "unreachable": "Không thể kết nối tới lịch này. Kiểm tra liên kết và kết nối Internet.",
+        "timeout": "Lịch phản hồi quá lâu. Thử lại sau giây lát.",
+        "not_found": "Không tìm thấy lịch tại liên kết này. Có thể lịch đã bị xóa hoặc liên kết chia sẻ đã thay đổi.",
+        "unauthorized": "Lịch đã từ chối truy cập. Sao chép liên kết chia sẻ mới từ ứng dụng lịch.",
+        "http_error": "Máy chủ lịch trả về lỗi. Thử lại sau.",
+        "too_large": "Lịch này quá lớn để thêm. Chia sẻ một lịch nhỏ hơn.",
+        "not_a_calendar": "Liên kết này không trả về lịch. Sao chép liên kết ICS hoặc webcal trong phần cài đặt chia sẻ của ứng dụng lịch.",
+        "too_many_redirects": "Liên kết này chuyển hướng liên tục và không dẫn tới lịch nào. Sao chép lại liên kết từ ứng dụng lịch.",
+        "unsupported_redirect": "Liên kết này chuyển hướng tới một địa chỉ không phải liên kết web, nên memrynote không đi theo. Sao chép liên kết ICS hoặc webcal từ ứng dụng lịch.",
+        "unknown": "Không thể cập nhật lịch này ({code}). Thử lại sau."
+      }
+    },
+    "providers": {
+      "caldav": {
+        "name": "CalDAV"
+      },
+      "statuses": {
+        "connected": "Đã kết nối",
+        "notConnected": "Chưa kết nối"
+      },
+      "readOnly": "Chỉ đọc",
+      "pollInterval": "Kiểm tra thay đổi mỗi {minutes} phút. Thay đổi thực hiện ở nơi khác sẽ không cập nhật ngay.",
+      "connect": "Kết nối",
+      "connecting": "Đang kết nối…",
+      "connectFailed": "Không thể kết nối. Kiểm tra thông tin và thử lại.",
+      "disconnect": "Ngắt kết nối",
+      "disconnectFailed": "Không thể ngắt kết nối. Vui lòng thử lại.",
+      "syncNow": "Đồng bộ ngay",
+      "refreshFailed": "Không thể đồng bộ. Lịch vẫn được giữ nguyên; thử lại sau.",
+      "addAccount": "Thêm tài khoản",
+      "accounts": "Tài khoản",
+      "calendars": "Lịch",
+      "retry": "Thử lại ngay",
+      "reconnectRequired": "Thiết bị này chưa có mật khẩu cho tài khoản này. Kết nối lại để đồng bộ từ thiết bị này.",
+      "push": {
+        "label": "Ghi sự kiện memrynote vào lịch này",
+        "description": "Tắt để đồng bộ một chiều: bạn vẫn thấy các sự kiện này trong memrynote, nhưng sự kiện và công việc của memrynote sẽ không được ghi vào đây."
+      },
+      "agentAccess": {
+        "label": "Cho AI đọc các sự kiện này",
+        "description": "Tắt cho đến khi bạn bật. Mỗi dịch vụ lịch được cài đặt riêng; cho phép Google không có nghĩa là cho phép dịch vụ này.",
+        "error": "Không thể cập nhật quyền truy cập của AI"
+      },
+      "basic": {
+        "serverLabel": "Địa chỉ máy chủ",
+        "serverPlaceholder": "https://dav.example.com",
+        "usernameLabel": "Tên người dùng",
+        "passwordLabel": "Mật khẩu ứng dụng"
+      },
+      "compat": {
+        "outdated": "Các thiết bị sau trong tài khoản của bạn đang chạy memrynote phiên bản cũ hơn {version}:",
+        "unverified": "memrynote không thể kiểm tra phiên bản đang chạy trên các thiết bị khác của bạn.",
+        "unknownVersion": "không rõ phiên bản",
+        "consequence": "Phiên bản cũ có thể sao chép công việc và sự kiện từ lịch này sang Google Calendar thành bản trùng lặp, hoặc không đồng bộ được chúng. Hãy cập nhật các thiết bị đó trước, hoặc tiếp tục nếu bạn chấp nhận điều này.",
+        "acknowledge": "Tôi hiểu, vẫn kết nối"
+      },
+      "reconnect": "Kết nối lại",
+      "defaultTarget": {
+        "label": "Lịch mặc định",
+        "description": "Nơi lưu sự kiện, công việc, lời nhắc và mục tạm ẩn mới khi bạn không chọn lịch. Chỉ một dịch vụ lịch giữ vai trò mặc định.",
+        "none": "Không phải mặc định",
+        "error": "Không thể đổi lịch mặc định"
+      },
+      "appleEventKit": {
+        "name": "Máy Mac này",
+        "description": "Hiển thị mọi lịch mà ứng dụng Lịch đã có trên máy Mac này: iCloud, Google, Exchange và Trên máy Mac của tôi. Không cần đăng nhập, chỉ đọc, và sự kiện không bao giờ rời khỏi máy Mac này hay đồng bộ sang các thiết bị khác của bạn.",
+        "connect": "Cho phép truy cập lịch",
+        "connectHint": "macOS chỉ hỏi một lần. Bạn có thể thay đổi sau trong Cài đặt hệ thống.",
+        "otherCalendars": "Lịch khác",
+        "alreadyConnected": "Đã được kết nối qua {provider}, nên mặc định tắt để tránh hiển thị sự kiện hai lần.",
+        "openSystemSettings": "Mở Cài đặt hệ thống",
+        "checkAgain": "Kiểm tra lại",
+        "errors": {
+          "permission_denied": "Quyền truy cập lịch của memrynote đang tắt. Bật trong Cài đặt hệ thống → Quyền riêng tư & Bảo mật → Lịch, rồi kiểm tra lại.",
+          "permission_restricted": "Quyền truy cập lịch bị chặn trên máy Mac này, thường do một hồ sơ quản lý. memrynote không thay đổi gì; người quản lý máy Mac này có thể cho phép truy cập.",
+          "permission_write_only": "memrynote chỉ có quyền thêm sự kiện, không đủ để hiển thị chúng. Chuyển sang Truy cập đầy đủ trong Cài đặt hệ thống → Quyền riêng tư & Bảo mật → Lịch.",
+          "permission_not_determined": "memrynote chưa được cấp quyền truy cập lịch. Hãy cho phép để hiển thị lịch trên máy Mac của bạn.",
+          "unavailable": "Không thể khởi động trình đọc Lịch của macOS. Lịch của bạn không thay đổi; khởi động lại memrynote rồi thử lại.",
+          "sync_failed": "Hiện không thể đọc ứng dụng Lịch. Lịch vẫn được giữ nguyên và memrynote sẽ thử lại khi ứng dụng Lịch thay đổi."
+        }
+      }
+    },
+    "caldav": {
+      "presetLabel": "Dịch vụ",
+      "presets": {
+        "icloud": "Apple iCloud",
+        "fastmail": "Fastmail",
+        "nextcloud": "Nextcloud",
+        "selfHosted": "Radicale hoặc Baïkal (tự triển khai)",
+        "zoho": "Zoho",
+        "yahoo": "Yahoo",
+        "mailboxOrg": "mailbox.org",
+        "posteo": "Posteo",
+        "synology": "Synology",
+        "other": "Máy chủ CalDAV khác"
+      },
+      "hostLabel": "Tên máy chủ",
+      "hostPlaceholder": "cloud.example.com",
+      "appleIdLabel": "Apple ID (email)",
+      "icloudHelp": "Dùng mật khẩu dành riêng cho ứng dụng, không phải mật khẩu Apple ID. Tạo mật khẩu trong Đăng nhập và bảo mật → Mật khẩu dành riêng cho ứng dụng.",
+      "appPasswordHelp": "Nếu dịch vụ của bạn hỗ trợ mật khẩu ứng dụng, hãy tạo một mật khẩu cho memrynote và dùng tại đây.",
+      "createAppPassword": "Tạo mật khẩu ứng dụng",
+      "testConnection": "Kiểm tra kết nối",
+      "testing": "Đang kiểm tra…",
+      "chooseCalendars": "Lịch cần hiển thị",
+      "reconnectFor": "Nhập mật khẩu ứng dụng cho {username}.",
+      "errors": {
+        "unauthorizedIcloud": "iCloud không chấp nhận mật khẩu này. Tại đây, iCloud cần mật khẩu dành riêng cho ứng dụng, không phải mật khẩu Apple ID. Tạo mật khẩu tại account.apple.com trong mục Đăng nhập và bảo mật, rồi thử lại.",
+        "unauthorized": "Máy chủ không chấp nhận tên người dùng và mật khẩu này. Kiểm tra cả hai và dùng mật khẩu ứng dụng nếu dịch vụ của bạn có hỗ trợ.",
+        "unreachable": "Không thể kết nối tới máy chủ. Kiểm tra địa chỉ và kết nối Internet, rồi thử lại.",
+        "notCaldav": "Không tìm thấy lịch CalDAV nào tại địa chỉ này. Kiểm tra địa chỉ máy chủ; một số dịch vụ cần đường dẫn như /remote.php/dav.",
+        "noCalendars": "Tài khoản này không có lịch nào chứa sự kiện.",
+        "invalidUrl": "Đây không phải địa chỉ máy chủ. Nhập địa chỉ như https://dav.example.com.",
+        "outdatedDevices": "Một số thiết bị của bạn đang chạy memrynote phiên bản cũ. Cập nhật các thiết bị đó, hoặc xác nhận bên dưới rằng bạn vẫn muốn kết nối.",
+        "unknown": "Không thể kết nối ({code}). Chưa có gì được lưu; thử lại sau."
+      },
+      "reconnect": {
+        "missing": "Thiết bị này chưa có mật khẩu ứng dụng cho tài khoản này. Sự kiện vẫn được chuyển đến từ các thiết bị khác của bạn; nhập mật khẩu ứng dụng tại đây để đồng bộ cả từ thiết bị này.",
+        "icloudRevoked": "iCloud đã ngừng chấp nhận mật khẩu dành riêng cho ứng dụng này. Việc đặt lại mật khẩu Apple ID sẽ thu hồi mọi mật khẩu dành riêng cho ứng dụng. Tạo mật khẩu mới tại account.apple.com và kết nối lại.",
+        "rejected": "Máy chủ đã ngừng chấp nhận mật khẩu này. Nếu bạn đã đổi mật khẩu hoặc thu hồi mật khẩu ứng dụng, hãy tạo mật khẩu mới và kết nối lại."
+      }
+    },
+    "v2": {
+      "groups": {
+        "layout": "Bố cục",
+        "connected": "Lịch đã kết nối"
+      },
+      "addCalendar": "Thêm lịch",
+      "calendarCount": "{selected} trên {count, plural, other {# lịch}}",
+      "defaultPill": "Mặc định",
+      "subscription": "Lịch đăng ký",
+      "subscriptionCount": "{count, plural, =0 {Không có lịch đăng ký} other {# lịch đăng ký}}"
     }
   },
   "account": {
     "header": {
       "title": "Tài khoản",
       "subtitle": "Tài khoản, đồng bộ và bảo mật của bạn",
-      "loading": "  \nĐang tải...  "
+      "loading": "Đang tải…"
     },
     "groups": {
       "identity": "Danh tính",
       "sync": "Đồng bộ",
-      "storage": "Lưu trữ",
-      "devices": "Thiết bị",
-      "billing": "Thanh toán"
+      "billing": "Thanh toán",
+      "storage": "Dung lượng",
+      "devices": "Thiết bị"
     },
     "identity": {
       "unknown": "Không xác định",
-      "encrypted": "Mã hóa đầu-cuối"
+      "encrypted": "Mã hóa đầu cuối"
     },
     "sync": {
       "lastSynced": "Đồng bộ lần cuối {time}",
-      "pending": "{count, plural, one {# đang chờ} other {# đang chờ}}",
+      "pending": "{count, plural, other {# đang chờ}}",
+      "attachmentAutoDownload": {
+        "label": "Tự động tải xuống tệp đính kèm",
+        "description": "Tải tệp đính kèm từ ghi chú đã đồng bộ ở chế độ nền. Khi tắt, tệp chỉ được tải xuống khi bạn mở.",
+        "saveFailed": "Không thể lưu tùy chọn tải xuống tệp đính kèm"
+      },
       "statuses": {
-        "synced": "  \nĐã đồng bộ  ",
-        "syncing": "Đang đồng bộ...",
+        "synced": "Đã đồng bộ",
+        "syncing": "Đang đồng bộ…",
         "paused": "Tạm dừng",
         "syncError": "Lỗi đồng bộ",
         "offline": "Ngoại tuyến",
-        "connecting": "Đang kết nối...",
-        "pushed": "{count, plural, one {# đã đẩy} other {# đã đẩy}}",
-        "pulled": "{count, plural, one {# đã kéo} other {# đã kéo}}",
+        "connecting": "Đang kết nối…",
+        "localOnly": "Chỉ cục bộ",
+        "pushed": "{count, plural, other {# đã tải lên}}",
+        "pulled": "{count, plural, other {# đã tải về}}",
         "pushedPulled": "{parts}",
-        "changesPending": "{count, plural, one {# thay đổi đang chờ} other {Các thay đổi # đang chờ}}",
-        "offlinePending": "Ngoại tuyến ({count, plural, one {# thay đổi đang chờ} other {Các thay đổi # đang chờ}})",
+        "changesPending": "{count, plural, other {# thay đổi đang chờ}}",
+        "offlinePending": "Ngoại tuyến ({count, plural, other {# thay đổi đang chờ}})",
         "never": "Không bao giờ"
+      },
+      "upsell": {
+        "title": "Ghi chú của bạn chỉ nằm trên thiết bị này",
+        "description": "Bật đồng bộ để mọi ghi chú theo bạn tới các thiết bị khác — được mã hóa đầu cuối, nên chỉ bạn mới đọc được.",
+        "benefits": {
+          "devices": "Mọi thiết bị đều tiếp tục từ chỗ bạn dừng lại",
+          "encrypted": "Mã hóa đầu cuối — khóa luôn nằm trong tay bạn",
+          "backup": "Bản sao lưu được mã hóa, phòng khi thiết bị này không còn"
+        },
+        "guarantee": "Đảm bảo hoàn tiền trong 14 ngày. Hủy bất cứ lúc nào."
+      },
+      "activating": {
+        "title": "Đang hoàn tất kích hoạt",
+        "description": "Gói của bạn đã được kích hoạt. Đồng bộ sẽ bắt đầu ngay khi chúng tôi xác nhận — thường chỉ cần làm mới là xong."
+      }
+    },
+    "billing": {
+      "planStatus": "Trạng thái gói",
+      "checking": "Đang kiểm tra trạng thái thanh toán",
+      "annualSwitch": {
+        "title": "Chuyển sang thanh toán hằng năm",
+        "description": "Tiết kiệm 20%. Phần còn lại của tháng này được tính theo tỷ lệ, không bị tính phí hai lần.",
+        "action": "Chuyển sang hằng năm",
+        "pricing": "Đang tính giá…",
+        "preview": "Thanh toán {amount} hôm nay, sau đó {recurring} mỗi năm",
+        "confirm": "Xác nhận chuyển",
+        "switching": "Đang chuyển…",
+        "success": "Bạn đã chuyển sang thanh toán hằng năm.",
+        "failed": "Không thể chuyển gói"
+      },
+      "plans": {
+        "free": "Gói Miễn phí",
+        "plus": "Gói Plus",
+        "pro": "Gói Pro",
+        "believer": "Gói Believer"
+      },
+      "statuses": {
+        "inactive": "Không hoạt động",
+        "active": "Đang hoạt động",
+        "past_due": "Quá hạn thanh toán",
+        "paused": "Đã tạm dừng",
+        "canceled": "Đã hủy"
+      },
+      "labels": {
+        "storage": "Dung lượng",
+        "maxFile": "Cỡ tệp tối đa",
+        "vaults": "Kho",
+        "history": "Lịch sử"
+      },
+      "unlimited": "Không giới hạn",
+      "historyDays": "{days} ngày",
+      "activationPendingPrefix": "Đang chờ kích hoạt. Paddle có thể mất một lúc để xác nhận thanh toán. Làm mới trạng thái hoặc gửi email",
+      "actions": {
+        "upgrade": "Nâng cấp",
+        "unlockSync": "Mở khóa đồng bộ",
+        "opening": "Đang mở…",
+        "refresh": "Làm mới trạng thái",
+        "manage": "Quản lý thanh toán"
+      },
+      "toasts": {
+        "loadFailed": "Không thể tải trạng thái thanh toán",
+        "checkoutFailed": "Không thể bắt đầu thanh toán",
+        "checkoutOpened": "Đã mở trang thanh toán trong trình duyệt",
+        "refreshFailed": "Không thể làm mới trạng thái thanh toán",
+        "billingActive": "Thanh toán đang hoạt động",
+        "activationPending": "Đang chờ kích hoạt",
+        "portalFailed": "Không thể mở cổng thanh toán"
       }
     },
     "storage": {
-      "used": "{used} của {limit} đã sử dụng",
+      "used": "Đã dùng {used}/{limit}",
       "categories": {
-        "notes": "Các ghi chú",
+        "notes": "Ghi chú",
         "attachments": "Tệp đính kèm",
         "crdt": "CRDT",
         "other": "Khác"
@@ -560,63 +1064,27 @@
         "action": "Đăng xuất"
       }
     },
+    "community": {
+      "prompt": "Yêu thích memrynote?",
+      "star": "Gắn sao cho chúng tôi trên GitHub",
+      "and": "và",
+      "feedback": "chia sẻ phản hồi"
+    },
     "signOutDialog": {
       "title": "Đăng xuất khỏi đồng bộ?",
       "description": "Đồng bộ sẽ dừng và các khóa mã hóa sẽ bị xóa khỏi thiết bị này. Ghi chú của bạn sẽ vẫn còn trên thiết bị này. Bạn sẽ cần cụm từ khôi phục để thiết lập đồng bộ lại.",
       "confirm": "Đăng xuất",
-      "signingOut": "Đang đăng xuất..."
+      "signingOut": "Đang đăng xuất…"
     },
     "toasts": {
       "signedOut": "Đã đăng xuất thành công",
-      "signOutFailed": "Đăng xuất thất bại",
-      "deviceLinked": "Thiết bị đã liên kết thành công"
+      "signOutFailed": "Không thể đăng xuất",
+      "deviceLinked": "Đã liên kết thiết bị"
     },
-    "billing": {
-      "actions": {
-        "manage": "Quản lý thanh toán",
-        "opening": "Đang mở...",
-        "refresh": "Làm mới trạng thái",
-        "upgrade": "Nâng cấp"
-      },
-      "activationPendingPrefix": "Đang chờ kích hoạt. Paddle có thể mất một lúc để xác nhận thanh toán. Làm mới trạng thái hoặc gửi email",
-      "checking": "Đang kiểm tra trạng thái thanh toán",
-      "historyDays": "{days} ngày",
-      "labels": {
-        "history": "Lịch sử",
-        "maxFile": "Tệp tối đa",
-        "storage": "Bộ nhớ",
-        "vaults": "Kho"
-      },
-      "planStatus": "Trạng thái gói",
-      "plans": {
-        "believer": "Gói Believer",
-        "free": "Gói Miễn phí",
-        "plus": "Gói Plus",
-        "pro": "Gói Pro"
-      },
-      "statuses": {
-        "active": "Đang hoạt động",
-        "canceled": "Đã hủy",
-        "inactive": "Không hoạt động",
-        "past_due": "Quá hạn",
-        "paused": "Đã tạm dừng"
-      },
-      "toasts": {
-        "activationPending": "Đang chờ kích hoạt",
-        "billingActive": "Thanh toán đang hoạt động",
-        "checkoutFailed": "Không bắt đầu được thanh toán",
-        "checkoutOpened": "Đã mở thanh toán trong trình duyệt của bạn",
-        "loadFailed": "Không tải được trạng thái thanh toán",
-        "portalFailed": "Không mở được cổng thanh toán",
-        "refreshFailed": "Không làm mới được trạng thái thanh toán"
-      },
-      "unlimited": "Không giới hạn"
-    },
-    "community": {
-      "and": "và",
-      "feedback": "chia sẻ phản hồi",
-      "prompt": "Yêu thích memrynote?",
-      "star": "Gắn sao cho chúng tôi trên GitHub"
+    "v2": {
+      "stats": {
+        "plan": "Gói"
+      }
     }
   },
   "setup": {
@@ -625,74 +1093,84 @@
       "verify": "Xác minh",
       "link": "Liên kết"
     },
-    "progress": "Bước {current} của {total}: {label}",
+    "progress": "Bước {current}/{total}: {label}",
     "signIn": {
-      "title": "Thiết lập Đồng bộ",
+      "title": "Thiết lập đồng bộ",
       "description": "Tạo tài khoản để đồng bộ dữ liệu của bạn trên các thiết bị với mã hóa đầu cuối.",
       "or": "hoặc",
-      "errors": {
-        "sendCode": "Gửi mã thất bại",
-        "googleStart": "Bắt đầu đăng nhập bằng Google thất bại"
-      },
       "paidPlan": "Đồng bộ là gói trả phí.",
-      "seePlans": "Xem các gói"
+      "seePlans": "Xem các gói",
+      "errors": {
+        "sendCode": "Không thể gửi mã",
+        "googleStart": "Không thể bắt đầu đăng nhập bằng Google"
+      }
     },
     "email": {
       "label": "Địa chỉ email",
-      "placeholder": "Nhập địa chỉ email của bạn...",
+      "placeholder": "Nhập địa chỉ email…",
       "invalid": "Vui lòng nhập địa chỉ email hợp lệ",
-      "sending": "Đang gửi mã..."
+      "sending": "Đang gửi mã…"
     },
     "oauth": {
       "google": "Tiếp tục với Google"
     },
     "otp": {
       "title": "Nhập mã xác minh",
-      "sentTo": "Chúng tôi đã gửi một mã 6 chữ số đến",
+      "sentTo": "Chúng tôi đã gửi mã gồm 6 chữ số đến ",
       "aria": "Mã xác minh 6 chữ số",
-      "verifying": "Đang xác minh...",
-      "resending": "Đang gửi lại...",
+      "verifying": "Đang xác minh…",
+      "resending": "Đang gửi lại…",
       "resend": "Gửi lại mã",
       "resendIn": "Gửi lại sau {time}",
       "differentEmail": "Sử dụng email khác",
-      "error": "Xác minh thất bại",
-      "resendError": "Gửi lại thất bại"
+      "error": "Không thể xác minh",
+      "resendError": "Không thể gửi lại"
     },
     "recovery": {
-      "displayTitle": "Lưu cụm từ khôi phục của bạn",
+      "displayTitle": "Lưu cụm từ khôi phục",
       "displayDescription": "Đây là cách duy nhất để khôi phục dữ liệu đã mã hóa của bạn nếu bạn mất quyền truy cập vào tất cả các thiết bị.",
       "warning": "Viết ra và cất ở nơi an toàn. Bạn sẽ không nhìn thấy nó nữa.",
       "wordsAria": "Các từ trong cụm từ khôi phục",
       "wordAria": "Từ {index}: {word}",
-      "copyAria": "Sao chép cụm từ khôi phục vào bộ nhớ tạm",
-      "copiedAria": "Cụm từ khôi phục đã được sao chép",
+      "copyAria": "Sao chép cụm từ khôi phục vào bảng tạm",
+      "copiedAria": "Đã sao chép cụm từ khôi phục",
       "copied": "Đã sao chép",
-      "saved": "Tôi đã lưu cụm từ khôi phục của mình",
-      "confirmTitle": "Xác nhận cụm từ khôi phục của bạn",
+      "saved": "Tôi đã lưu cụm từ khôi phục",
+      "confirmTitle": "Xác nhận cụm từ khôi phục",
       "confirmDescription": "Nhập các từ được yêu cầu để xác minh rằng bạn đã lưu chúng chính xác.",
-      "wordPlaceholder": "Nhập từ #{index}",
+      "wordPlaceholder": "Nhập từ thứ {index}",
       "verify": "Xác minh",
       "mustMatch": "Tất cả 3 từ phải khớp để tiếp tục",
       "inputTitle": "Nhập cụm từ khôi phục",
       "inputDescription": "Nhập cụm từ khôi phục gồm 24 từ của bạn để khôi phục quyền truy cập vào dữ liệu được mã hóa.",
       "inputLabel": "Cụm từ khôi phục",
-      "count": "Các từ {count} / {total}",
-      "inputPlaceholder": "Nhập cụm từ khôi phục 24 từ của bạn, cách nhau bằng dấu cách...",
-      "lengthHint": "Nhập đủ 24 từ để kích hoạt nút khôi phục",
+      "count": "{count}/{total} từ",
+      "inputPlaceholder": "Nhập cụm từ khôi phục gồm 24 từ, cách nhau bằng dấu cách…",
+      "lengthHint": "Nhập đủ 24 từ để bật nút khôi phục",
       "restore": "Khôi phục quyền truy cập",
       "progress": {
-        "deriving": "Đang tạo khóa mã hóa...",
-        "validating": "Đang xác minh cụm từ khôi phục...",
-        "registering": "Đang đăng ký thiết bị..."
+        "deriving": "Đang tạo khóa mã hóa…",
+        "validating": "Đang kiểm tra cụm từ khôi phục…",
+        "registering": "Đang đăng ký thiết bị…"
       },
-      "failed": "Khôi phục thất bại",
-      "confirmationFailed": "Xác nhận thất bại",
+      "failed": "Không thể khôi phục",
+      "confirmationFailed": "Không thể xác nhận",
       "unavailable": {
+        "loading": "Đang tải cụm từ khôi phục…",
+        "title": "Không thể tải cụm từ khôi phục",
         "description": "Cụm từ khôi phục chỉ hiển thị một lần trong quá trình thiết lập và không thể lấy lại sau. Bắt đầu lại để tạo cụm mới.",
-        "loading": "Đang tải cụm từ khôi phục của bạn…",
-        "startOver": "Bắt đầu lại",
-        "title": "Không tải được cụm từ khôi phục của bạn"
+        "startOver": "Bắt đầu lại"
       }
+    },
+    "startFresh": {
+      "trigger": "Tôi không thể lấy lại cụm từ khôi phục",
+      "title": "Bắt đầu lại từ đầu trên thiết bị này",
+      "description": "Chỉ làm việc này nếu bạn đã mất hẳn cụm từ khôi phục. Không thể hoàn tác thao tác này.",
+      "consequenceSignOut": "Thiết bị này sẽ đăng xuất và ngừng đồng bộ.",
+      "consequenceKey": "Khóa mã hóa trên thiết bị này sẽ bị xóa. Mọi dữ liệu đã lưu trong tài khoản của bạn vẫn được mã hóa bằng khóa cũ — nếu không có cụm từ khôi phục, sẽ không bao giờ đọc lại được.",
+      "consequenceLocal": "Ghi chú đã lưu trên máy tính này vẫn nằm trong thư mục kho và vẫn hoạt động bình thường.",
+      "confirm": "Đăng xuất và bắt đầu lại",
+      "cancel": "Quay lại"
     },
     "linking": {
       "choiceTitle": "Liên kết thiết bị này",
@@ -706,58 +1184,58 @@
       "codeLabel": "Mã liên kết",
       "valid": "Hợp lệ",
       "invalid": "Định dạng không hợp lệ",
-      "codePlaceholder": "Dán mã từ thiết bị khác của bạn...",
+      "codePlaceholder": "Dán mã từ thiết bị khác…",
       "formatHint": "Dán mã liên kết JSON từ thiết bị khác của bạn",
-      "linking": "Đang liên kết...",
+      "linking": "Đang liên kết…",
       "linkDevice": "Liên kết thiết bị",
-      "failed": "Liên kết thất bại",
+      "failed": "Không thể liên kết",
       "deviceFailed": "Không thể liên kết thiết bị",
-      "pendingSuccess": "Thiết bị đã liên kết thành công",
+      "pendingSuccess": "Đã liên kết thiết bị",
       "goBack": "Quay lại",
       "waitingTitle": "Đang chờ phê duyệt",
       "waitingDescription": "Mở memrynote trên thiết bị khác của bạn và phê duyệt yêu cầu liên kết.",
       "verificationCode": "Mã xác minh",
-      "confirmCode": "Xác nhận điều này khớp với mã trên thiết bị khác của bạn",
-      "vaultPickerChooseFolder": "Chọn thư mục",
-      "vaultPickerConfirm": "Kéo mục đã chọn",
+      "confirmCode": "Xác nhận mã này khớp với mã trên thiết bị khác của bạn",
+      "vaultPickerTitle": "Chọn nội dung cần tải về",
       "vaultPickerDescription": "Tài khoản này có nhiều kho. Chọn một thư mục và kho để thêm vào thiết bị này.",
-      "vaultPickerDormantHint": "Đã thêm, mở khi bạn chuyển sang nó",
       "vaultPickerFolderLabel": "Lưu kho trong thư mục",
+      "vaultPickerChooseFolder": "Chọn thư mục",
+      "vaultRow": "Kho — {count} mục · {date}",
       "vaultPickerPrimaryHint": "Mở ngay bây giờ",
-      "vaultPickerTitle": "Chọn nội dung để kéo về",
-      "vaultRow": "Kho — {count} mục · {date}"
+      "vaultPickerDormantHint": "Đã thêm, sẽ mở khi bạn chuyển sang kho này",
+      "vaultPickerConfirm": "Tải về mục đã chọn"
     }
   },
   "devices": {
-    "loading": "Đang tải thiết bị...",
+    "loading": "Đang tải thiết bị…",
     "loadingAria": "Đang tải thiết bị",
     "none": "Chưa có thiết bị nào được liên kết",
     "linkNew": "Liên kết thiết bị mới",
     "thisDevice": "Thiết bị này",
-    "lastSeen": "Lần cuối thấy {time} trước",
+    "lastSeen": "Hoạt động lần cuối {time} trước",
     "linked": "Đã liên kết {time} trước",
     "renameAria": "Đổi tên {name}",
     "rename": "Đổi tên",
     "revoke": "Thu hồi",
     "showLess": "Hiển thị ít hơn",
-    "showMore": "{count, plural, one {# thiết bị nữa} other {# thiết bị khác}}",
-    "showMoreAria": "Hiển thị {count, plural, one {# thiết bị nữa} other {# thiết bị khác}}",
+    "showMore": "{count, plural, other {# thiết bị khác}}",
+    "showMoreAria": "Hiển thị thêm {count, plural, other {# thiết bị}}",
     "dialogs": {
-      "revokeTitle": "Thu hồi \"{name}\"?",
+      "revokeTitle": "Thu hồi “{name}”?",
       "revokeDescription": "Thiết bị này sẽ mất quyền truy cập vào dữ liệu đồng bộ của bạn. Nó sẽ cần được liên kết lại để khôi phục việc đồng bộ. Dữ liệu cục bộ trên thiết bị đó sẽ vẫn được giữ.",
       "revokeDevice": "Thu hồi thiết bị",
-      "revoking": "Đang thu hồi...",
+      "revoking": "Đang thu hồi…",
       "renameTitle": "Đổi tên thiết bị",
       "renameDescription": "Chọn tên để nhận diện thiết bị này.",
       "namePlaceholder": "Tên thiết bị",
-      "renaming": "Đang đổi tên..."
+      "renaming": "Đang đổi tên…"
     },
     "toasts": {
-      "loadFailed": "Không tải được thiết bị",
-      "removed": "Đã xóa \"{name}\"",
-      "removeFailed": "Không xóa được thiết bị",
-      "renamed": "Đã đổi tên thành \"{name}\"",
-      "renameFailed": "Không đổi tên được thiết bị"
+      "loadFailed": "Không thể tải danh sách thiết bị",
+      "removed": "Đã gỡ “{name}”",
+      "removeFailed": "Không thể gỡ thiết bị",
+      "renamed": "Đã đổi tên thành “{name}”",
+      "renameFailed": "Không thể đổi tên thiết bị"
     },
     "platformMeta": "{platform} · {detail}"
   },
@@ -765,7 +1243,7 @@
     "title": "Liên kết thiết bị mới",
     "description": "Quét mã QR này từ thiết bị bạn muốn liên kết để chuyển khóa mã hóa một cách an toàn.",
     "encrypted": "Mã hóa đầu cuối",
-    "generating": "Đang tạo mã liên kết...",
+    "generating": "Đang tạo mã liên kết…",
     "generatingAria": "Đang tạo mã liên kết",
     "generateFailed": "Không thể tạo mã liên kết",
     "tryAgain": "Thử lại",
@@ -782,117 +1260,117 @@
   },
   "linkingApproval": {
     "title": "Thiết bị mới muốn liên kết",
-    "description": "Một thiết bị đang yêu cầu truy cập dữ liệu mã hóa của bạn. Chỉ chấp thuận nếu bạn đã khởi tạo yêu cầu này.",
+    "description": "Một thiết bị đang yêu cầu truy cập dữ liệu đã mã hóa của bạn. Chỉ phê duyệt nếu chính bạn đã gửi yêu cầu này.",
     "unknownDevice": "Thiết bị không xác định",
     "unknownPlatform": "Nền tảng không xác định",
     "verificationCode": "Mã xác minh",
-    "computing": "Đang tính toán...",
+    "computing": "Đang tính toán…",
     "unavailable": "Không khả dụng",
     "confirmCode": "Xác nhận mã này khớp với mã hiển thị trên thiết bị mới",
     "reject": "Từ chối",
-    "approve": "Chấp thuận",
-    "approving": "Đang phê duyệt...",
-    "approvalFailed": "Phê duyệt thất bại",
+    "approve": "Phê duyệt",
+    "approving": "Đang phê duyệt…",
+    "approvalFailed": "Không thể phê duyệt",
     "failedToApprove": "Không thể phê duyệt thiết bị"
   },
   "ai": {
     "header": {
       "title": "Trợ lý AI",
-      "subtitle": "  \nEmbedding chạy cục bộ. Ghi chú giọng nói có thể sử dụng Whisper Small hoặc khóa OpenAI của bạn.  ",
-      "loading": "Đang tải cài đặt..."
+      "subtitle": "Vector nhúng được tạo cục bộ. Bản ghi âm có thể dùng Whisper Small hoặc khóa OpenAI của bạn.",
+      "loading": "Đang tải cài đặt…"
     },
     "enable": {
-      "label": "  \nBật tính năng AI  ",
-      "description": "  \nGợi ý lưu trữ thông minh và kết nối ghi chú  ",
-      "enabled": "  \nTính năng AI đã bật  ",
-      "disabled": "  \nTính năng AI đã tắt  ",
-      "error": "Cập nhật cài đặt thất bại"
+      "label": "Bật tính năng AI",
+      "description": "Gợi ý xếp mục thông minh và kết nối giữa các ghi chú",
+      "enabled": "Đã bật tính năng AI",
+      "disabled": "Đã tắt tính năng AI",
+      "error": "Không thể cập nhật cài đặt"
     },
-    "unknownError": "  \nLỗi không xác định  ",
+    "unknownError": "Lỗi không xác định",
     "groups": {
-      "voice": "  \nChuyển giọng nói thành văn bản  ",
-      "embeddingModel": "  \nMô hình embedding cục bộ  ",
-      "embeddingIndex": "  \nChỉ mục embedding  ",
-      "inline": "  \nChỉnh sửa AI trực tiếp  "
+      "voice": "Chuyển giọng nói thành văn bản",
+      "embeddingModel": "Mô hình vector nhúng cục bộ",
+      "embeddingIndex": "Chỉ mục vector nhúng",
+      "inline": "Chỉnh sửa trực tiếp bằng AI"
     },
     "voice": {
-      "provider": "  \nNhà cung cấp  ",
-      "providerDescription": "  \nNhà cung cấp chuyển giọng nói thành văn bản cho ghi chú giọng nói  ",
+      "provider": "Nhà cung cấp",
+      "providerDescription": "Nhà cung cấp dịch vụ chuyển giọng nói thành văn bản cho bản ghi âm",
       "providers": {
-        "local": "  \nCục bộ (mặc định)  ",
-        "openai": "  \nOpenAI (BYOK)  "
+        "local": "Cục bộ (mặc định)",
+        "openai": "OpenAI (dùng khóa riêng)"
       },
-      "localModel": "  \nMô hình cục bộ",
-      "localModelDescription": "Whisper Small tải xuống theo yêu cầu và lưu trữ tạm thời trên thiết bị",
+      "memoNameMode": "Tên ghi âm",
+      "memoNameModeDescription": "Cách đặt tên bản ghi âm sau khi chuyển thành văn bản",
+      "naming": {
+        "transcript": "Tiêu đề từ bản chép lời",
+        "timestamp": "Dấu thời gian",
+        "none": "Không đổi tên"
+      },
+      "namingError": "Không thể cập nhật cách đặt tên bản ghi âm",
+      "localModel": "Mô hình cục bộ",
+      "localModelDescription": "Whisper Small được tải xuống khi cần và lưu đệm trên thiết bị",
       "status": {
         "ready": "Sẵn sàng",
         "downloading": "Đang tải xuống",
         "downloaded": "Đã tải xuống",
         "notDownloaded": "Chưa tải xuống"
       },
-      "cacheHint": "Không kèm theo ứng dụng · Đã tải xuống từ Cài đặt · Lưu tạm trên thiết bị này",
-      "preparing": "Đang chuẩn bị Whisper Small...",
+      "cacheHint": "Không kèm theo ứng dụng · Tải xuống từ Cài đặt · Lưu đệm trên thiết bị này",
+      "preparing": "Đang chuẩn bị Whisper Small…",
       "download": "Tải xuống Whisper Small",
       "apiKey": "Khóa API OpenAI",
-      "apiKeyDescription": "Được lưu trong keychain của hệ điều hành và chỉ sử dụng cho chuyển âm giọng nói",
+      "apiKeyDescription": "Được lưu trong chuỗi khóa của hệ điều hành và chỉ dùng để chuyển giọng nói thành văn bản",
       "replaceKey": "Thay thế khóa OpenAI đã lưu",
       "enterKey": "Nhập khóa API OpenAI",
       "saveKey": "Lưu khóa",
-      "keySaved": "Khóa API đã được lưu trong keychain",
-      "providerError": "Cập nhật nhà cung cấp giọng nói thất bại",
-      "downloadedToast": "Whisper Small đã được tải xuống",
-      "downloadError": "Tải xuống Whisper Small thất bại",
-      "keySavedToast": "Khóa OpenAI đã được lưu",
-      "keySaveError": "Lưu khóa OpenAI thất bại",
-      "memoNameMode": "Tên ghi âm",
-      "memoNameModeDescription": "Cách đặt tên ghi âm sau khi chuyển lời",
-      "naming": {
-        "none": "Không đổi tên",
-        "timestamp": "Dấu thời gian",
-        "transcript": "Tiêu đề bản chuyển lời"
-      },
-      "namingError": "Không cập nhật được cách đặt tên ghi âm"
+      "keySaved": "Đã lưu khóa API vào chuỗi khóa",
+      "providerError": "Không thể cập nhật nhà cung cấp giọng nói",
+      "downloadedToast": "Đã tải xuống Whisper Small",
+      "downloadError": "Không thể tải xuống Whisper Small",
+      "keySavedToast": "Đã lưu khóa OpenAI",
+      "keySaveError": "Không thể lưu khóa OpenAI"
     },
     "embedding": {
       "loaded": "Đã tải",
       "loading": "Đang tải",
-      "cacheHint": "~23MB · Đã lưu trong bộ nhớ cục bộ · Tất cả trên thiết bị  ",
-      "dimensions": "Kích thước",
-      "embeddings": "  \nNhúng  ",
-      "downloadLoad": "  \nTải xuống & Nạp mô hình  ",
-      "downloadingModel": "  \nĐang tải mô hình...  ",
-      "loadingModel": "  \nĐang nạp mô hình...  ",
-      "loadSuccess": "  \nMô hình đã nạp thành công  ",
-      "loadFailed": "  \nKhông tải được mô hình  ",
-      "rebuildIndex": "  \nXây dựng lại chỉ mục  ",
-      "rebuildDescription": "  \nTái tạo nhúng cho tất cả ghi chú  ",
-      "rebuild": "  \nXây dựng lại  ",
-      "scanning": "  \nĐang quét các ghi chú...  ",
-      "generating": "  \nĐang tạo nhúng...  ",
-      "complete": "  \nHoàn tất!  ",
-      "reindexed": "  \nNhúng đã được tái chỉ mục: {computed} đã tính toán, {skipped} bỏ qua  ",
-      "reindexFailed": "  \nKhông tái chỉ mục được nhúng  "
+      "cacheHint": "~23MB · Lưu đệm cục bộ · Hoàn toàn trên thiết bị",
+      "dimensions": "Số chiều",
+      "embeddings": "Vector nhúng",
+      "downloadLoad": "Tải xuống và tải mô hình",
+      "downloadingModel": "Đang tải xuống mô hình…",
+      "loadingModel": "Đang tải mô hình…",
+      "loadSuccess": "Đã tải mô hình",
+      "loadFailed": "Không thể tải mô hình",
+      "rebuildIndex": "Xây dựng lại chỉ mục",
+      "rebuildDescription": "Tạo lại vector nhúng cho tất cả ghi chú",
+      "rebuild": "Xây dựng lại",
+      "scanning": "Đang quét ghi chú…",
+      "generating": "Đang tạo vector nhúng…",
+      "complete": "Hoàn tất!",
+      "reindexed": "Đã lập lại chỉ mục vector nhúng: đã tính {computed}, bỏ qua {skipped}",
+      "reindexFailed": "Không thể lập lại chỉ mục vector nhúng"
     },
     "inline": {
-      "loading": "  \nĐang tải...  ",
-      "title": "  \nChỉnh sửa AI trực tiếp  ",
-      "enable": "  \nBật AI nội tuyến  ",
-      "enableDescription": "  \nHiển thị menu AI khi chỉnh sửa ghi chú  ",
-      "enabled": "  \nChỉnh sửa AI nội tuyến đã bật  ",
-      "disabled": "  \nChỉnh sửa AI nội tuyến đã tắt  ",
-      "provider": "  \nNhà cung cấp  ",
-      "providerDescription": "  \nDịch vụ AI cho các thao tác văn bản  ",
+      "loading": "Đang tải…",
+      "title": "Chỉnh sửa trực tiếp bằng AI",
+      "enable": "Bật chỉnh sửa trực tiếp bằng AI",
+      "enableDescription": "Hiển thị menu AI khi chỉnh sửa ghi chú",
+      "enabled": "Đã bật chỉnh sửa trực tiếp bằng AI",
+      "disabled": "Đã tắt chỉnh sửa trực tiếp bằng AI",
+      "provider": "Nhà cung cấp",
+      "providerDescription": "Dịch vụ AI cho các thao tác văn bản",
       "providers": {
-        "ollama": "  \nOllama (Cục bộ)  ",
-        "openai": "  \nOpenAI  ",
-        "anthropic": "  \nAnthropic  ",
+        "ollama": "Ollama (cục bộ)",
+        "openai": "OpenAI",
+        "anthropic": "Anthropic",
         "google": "Google Gemini"
       },
-      "model": "  \nMô hình",
+      "model": "Mô hình",
       "modelDescription": "Mô hình ngôn ngữ để viết lại và tóm tắt",
       "selectModel": "Chọn một mô hình",
       "apiKey": "Khóa API",
-      "apiKeyDescription": "Lưu trữ cục bộ, chỉ gửi đến nhà cung cấp",
+      "apiKeyDescription": "Lưu cục bộ, chỉ gửi đến nhà cung cấp",
       "apiKeyPlaceholder": "Nhập khóa API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Địa chỉ máy chủ cục bộ",
@@ -902,89 +1380,399 @@
       "test": "Kiểm tra",
       "stopFailed": "Không thể dừng máy chủ hiện có",
       "connected": "Đã kết nối! Máy chủ đang chạy trên cổng {port}",
-      "connectFailed": "Kết nối thất bại",
-      "testFailed": "Kiểm tra kết nối thất bại",
-      "updateFailed": "Cập nhật cài đặt thất bại"
+      "connectFailed": "Không thể kết nối",
+      "testFailed": "Kiểm tra kết nối không thành công",
+      "updateFailed": "Không thể cập nhật cài đặt"
+    },
+    "tabs": {
+      "models": "Mô hình",
+      "agents": "Tác nhân",
+      "connect": "Kết nối"
+    },
+    "v2": {
+      "onDevice": {
+        "label": "Mô hình trên thiết bị",
+        "hint": "Tải xuống một lần, chạy ngoại tuyến"
+      },
+      "embedding": {
+        "label": "Vector nhúng cho tìm kiếm",
+        "hint": "{dimension} chiều · đã nhúng {count, plural, other {# ghi chú}}"
+      },
+      "voiceModel": {
+        "label": "Chuyển giọng nói thành văn bản"
+      },
+      "download": "Tải xuống",
+      "connected": "Đã kết nối",
+      "inline": {
+        "group": "Chỉnh sửa trực tiếp",
+        "enabled": "Đã bật"
+      },
+      "voice": {
+        "group": "Bản ghi âm",
+        "transcribeWith": "Chuyển thành văn bản bằng",
+        "local": "Cục bộ",
+        "openai": "OpenAI",
+        "nameBy": "Đặt tên bản ghi âm theo",
+        "keySaved": "Đã lưu",
+        "keyNotSet": "Chưa đặt"
+      }
+    }
+  },
+  "import": {
+    "header": {
+      "title": "Nhập",
+      "subtitle": "Đưa ghi chú và công việc từ ứng dụng khác vào"
+    },
+    "intro": "Nhập một lần tạo ghi chú mới trong kho của bạn. Tệp xuất gốc của bạn được giữ nguyên.",
+    "sources": {
+      "notion": "Nhập bản xuất HTML (.zip)",
+      "todoist": "Nhập bản xuất CSV dự án (.csv)",
+      "ticktick": "Nhập bản sao lưu TickTick (.csv) thành dự án, công việc và lời nhắc",
+      "markdown": "Nhập tệp .md hoặc thư mục (frontmatter, thẻ, tệp đính kèm)",
+      "noteplan": "Nhập thư mục NotePlan — ghi chú hằng ngày trở thành mục nhật ký, công việc vẫn là công việc",
+      "html": "Nhập tệp .html với hình ảnh liên kết và liên kết chéo trang",
+      "google-keep": "Nhập bản xuất Google Takeout Keep (.json hoặc .zip)",
+      "bear": "Nhập tệp lưu trữ Bear .bear2bk (ghi chú, thẻ, tệp đính kèm)",
+      "evernote": "Nhập một hoặc nhiều tệp xuất Evernote .enex",
+      "roam": "Nhập đồ thị Roam Research (.json) với dàn ý lồng nhau",
+      "apple-journal": "Nhập bản xuất HTML của Apple Journal thành ghi chú có ngày",
+      "csv": "Nhập tệp .csv — mỗi hàng một ghi chú, các cột trở thành thuộc tính",
+      "raindrop": "Nhập bản xuất dấu trang Raindrop.io (.csv) — dấu trang được đưa vào hộp thư đến",
+      "apple-notes": "Nhập từ cơ sở dữ liệu Apple Notes (NoteStore.sqlite, macOS)",
+      "onenote": "Nhập sổ tay OneNote (cần tài khoản Microsoft)"
+    },
+    "action": "Nhập",
+    "select": "Chọn ứng dụng cần nhập dữ liệu…",
+    "stats": {
+      "notes": "{count, plural, other {# ghi chú}}",
+      "projects": "{count, plural, other {# dự án}}",
+      "tasks": "{count, plural, other {# công việc}}",
+      "subtasks": "{count, plural, other {# công việc con}}",
+      "reminders": "{count, plural, other {# lời nhắc}}",
+      "bookmarks": "{count, plural, other {# dấu trang}}",
+      "withTags": "{count} đã gắn thẻ",
+      "withDueDate": "{count} có ngày",
+      "comments": "{count, plural, other {# bình luận}}",
+      "skipped": "{count} đã bỏ qua"
+    },
+    "preview": {
+      "warnings": "Cảnh báo",
+      "confirm": "Nhập"
+    },
+    "dialog": {
+      "title": "Nhập từ {name}",
+      "choose": "Chọn tệp…",
+      "onenote": {
+        "connect": "Đăng nhập bằng Microsoft",
+        "connecting": "Đang chờ đăng nhập trên trình duyệt…",
+        "connectedAs": "Đã đăng nhập với tên {name} ({email})",
+        "switchAccount": "Đổi tài khoản",
+        "loadingNotebooks": "Đang tải sổ tay…",
+        "notebooksEmpty": "Không tìm thấy sổ tay nào trong tài khoản này.",
+        "selectAll": "Chọn tất cả",
+        "deselectAll": "Bỏ chọn tất cả",
+        "sectionsSelected": "{count, plural, other {Đã chọn # phần}}",
+        "includeIncompatible": "Nhập tệp đính kèm không tương thích",
+        "includeIncompatibleHint": "Lưu cả các loại tệp Memry không xem trước được (bản trình bày, tệp phương tiện, tệp lưu trữ — không bao giờ lưu tệp thực thi). Chúng sẽ hiển thị dưới dạng khối tệp.",
+        "skipPrevious": "Bỏ qua trang đã nhập trước đó",
+        "skipPreviousHint": "Các trang đã nhập ở lần chạy OneNote trước sẽ được bỏ qua, nên khi chạy lại chỉ lấy nội dung mới."
+      },
+      "appleNotes": {
+        "loadingFolders": "Đang đọc thư mục…",
+        "foldersError": "Không thể đọc thư mục — toàn bộ thư viện sẽ được nhập.",
+        "unfiled": "Ghi chú không thuộc thư mục nào",
+        "selectAll": "Chọn tất cả",
+        "deselectAll": "Bỏ chọn tất cả",
+        "foldersSelected": "{count, plural, other {Đã chọn # thư mục}}",
+        "noteCount": "{count}",
+        "noteCountWithSubfolders": "{count} ({total})"
+      },
+      "chooseFolder": "Chọn thư mục Apple Notes…",
+      "chooseDirectory": "Chọn thư mục…",
+      "folderKeepsAssets": "Hãy chọn thư mục khi ảnh nằm ngoài thư mục chứa ghi chú — các bản xuất thường để tệp phương tiện trong một thư mục dùng chung.",
+      "chooseHint": "Chọn {label} của bạn",
+      "folderHint": "Nhấp bên dưới và chọn thư mục “group.com.apple.notes” khi bộ chọn mở ra (nó bắt đầu ở đó). Điều này cho phép Memry đọc ghi chú và tệp đính kèm của bạn — không cần Toàn quyền truy cập đĩa.",
+      "noteplanFolderHint": "Chọn thư mục NotePlan — thư mục dữ liệu của ứng dụng hoặc một bản sao trong Backups. Memry đọc các thư mục Calendar, Notes và @Archive bên trong.",
+      "selected": "{count, plural, other {# tệp đã chọn}}",
+      "start": "Bắt đầu nhập",
+      "cancel": "Hủy",
+      "close": "Đóng",
+      "done": "Xong",
+      "running": "Đang nhập…",
+      "progress": "{completed}/{total}",
+      "summary": {
+        "title": "Nhập hoàn tất",
+        "imported": "{count, plural, other {# mục đã nhập}}",
+        "attachments": "{count, plural, other {# tệp đính kèm đã sao chép}}",
+        "skipped": "{count} đã bỏ qua",
+        "skippedReason": "{count, plural, other {# mục}}: {reason}",
+        "failed": "{count} lỗi"
+      },
+      "error": "Không thể nhập",
+      "previewError": "Không thể xem trước"
+    },
+    "messages": {
+      "readFileFailed": "Không thể đọc tệp",
+      "appleNotes": {
+        "lockedNote": "{count, plural, other {# ghi chú bị khóa}} chưa được nhập; Memry không thể đọc chúng nếu không có mật khẩu Apple Notes của bạn."
+      },
+      "csv": {
+        "noHeaders": "Tệp CSV không có dòng tiêu đề",
+        "emptyTitle": "Đã bỏ qua hàng có tiêu đề trống (cột “{column}”)",
+        "columns": "Cột: {columns}",
+        "titleColumn": "Tiêu đề lấy từ “{column}”; các cột khác được lưu thành thuộc tính"
+      },
+      "raindrop": {
+        "csvEmpty": "Tệp CSV Raindrop trống",
+        "headerNotFound": "Không tìm thấy dòng tiêu đề của CSV Raindrop (cột “url”)",
+        "rowNoUrl": "Đã bỏ qua hàng {row}: không có URL"
+      },
+      "ticktick": {
+        "headerNotFound": "Không tìm thấy dòng tiêu đề của CSV TickTick (“Folder Name”)",
+        "foldersDropped": "Thư mục TickTick không có tương đương trong Memry nên đã bị bỏ qua",
+        "subtaskParentMissing": "Không tìm thấy công việc cha của “{title}”; đã nhập ở cấp cao nhất",
+        "unknownPriority": "Mức ưu tiên TickTick không xác định {priority} → không có",
+        "unsupportedRepeat": "Đã bỏ qua quy tắc lặp không được hỗ trợ “{rule}”",
+        "reminderNoAnchor": "Đã bỏ qua lời nhắc “{reminder}” (không có mốc ngày)"
+      },
+      "todoist": {
+        "headerNotFound": "Không phải CSV Todoist: thiếu dòng tiêu đề TYPE",
+        "sectionFlattened": "Đã làm phẳng phần “{section}”",
+        "orphanComment": "Đã bỏ qua bình luận không có công việc đứng trước",
+        "emptyTitle": "Công việc có nội dung trống được nhập thành (không có tiêu đề)",
+        "unknownPriority": "Mức ưu tiên không xác định {priority} → không có",
+        "unparsedDate": "Không thể phân tích ngày “{date}”",
+        "subtaskNoParent": "Công việc con “{title}” không có công việc cha ở mức thụt lề {indent}; đã nhập ở cấp cao nhất"
+      }
+    },
+    "status": {
+      "scanningFiles": "Đang quét các tệp…",
+      "scanningExport": "Đang quét bản xuất…",
+      "importingItem": "Đang nhập {title}",
+      "appleNotes": {
+        "copyingDatabase": "Đang sao chép cơ sở dữ liệu Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Đang quét bản xuất Bear…"
+      },
+      "csv": {
+        "importing": "Đang nhập ghi chú CSV…"
+      },
+      "evernote": {
+        "scanning": "Đang quét các tệp .enex…"
+      },
+      "html": {
+        "scanning": "Đang quét các tệp HTML…"
+      },
+      "noteplan": {
+        "scanning": "Đang quét thư mục NotePlan…"
+      },
+      "onenote": {
+        "loadingNotebooks": "Đang tải sổ tay OneNote…",
+        "rateLimited": "OneNote đang giới hạn tần suất yêu cầu; đang chờ trước khi thử lại…",
+        "downloadingAttachment": "Đang tải xuống tệp đính kèm {name}"
+      },
+      "raindrop": {
+        "importing": "Đang nhập dấu trang Raindrop…"
+      },
+      "roam": {
+        "reading": "Đang đọc bản xuất Roam…"
+      },
+      "ticktick": {
+        "importing": "Đang nhập công việc TickTick…"
+      },
+      "todoist": {
+        "importing": "Đang nhập công việc Todoist…"
+      }
+    },
+    "v2": {
+      "searchPlaceholder": "Tìm ứng dụng hoặc loại tệp…",
+      "noMatch": "Không có nguồn nào khớp với “{query}”",
+      "formatAccount": "Tài khoản",
+      "showMore": "{count, plural, other {Hiển thị thêm #}}",
+      "showLess": "Hiển thị ít hơn",
+      "groups": {
+        "noteApps": "Ứng dụng ghi chú",
+        "tasks": "Công việc, nhật ký và dấu trang",
+        "files": "Tệp"
+      }
     }
   },
   "vault": {
     "header": {
-      "title": "Kho lưu trữ",
-      "subtitle": "Cấu hình và lưu trữ két sắt"
+      "title": "Kho",
+      "subtitle": "Cấu hình và dung lượng kho"
     },
     "groups": {
-      "storageUsage": "Sử dụng lưu trữ",
+      "storageUsage": "Dung lượng đã dùng",
       "location": "Vị trí",
-      "accountVaults": "Các kho trong tài khoản của bạn"
+      "accountVaults": "Các kho trong tài khoản của bạn",
+      "largeNotes": "Ghi chú gần đạt giới hạn đồng bộ",
+      "activity": "Hoạt động"
     },
-    "loadingStorage": "Đang tải thông tin lưu trữ...",
-    "signInStorage": "Đăng nhập để xem mức sử dụng lưu trữ",
-    "vaultPath": "Đường dẫn két sắt",
-    "reveal": "Hiện ra",
+    "loadingStorage": "Đang tải thông tin dung lượng…",
+    "signInStorage": "Đăng nhập để xem dung lượng đã dùng",
+    "vaultPath": "Đường dẫn kho",
+    "reveal": "Mở thư mục",
+    "accountVaults": {
+      "empty": "Chưa có kho nào được đồng bộ vào tài khoản của bạn.",
+      "cloudOnly": "Không có trên thiết bị này",
+      "itemsCount": "{count} mục",
+      "delete": "Xóa",
+      "deleteTitle": "Xóa “{name}” khỏi tài khoản của bạn?",
+      "deleteBody": "Thao tác này xóa vĩnh viễn toàn bộ dữ liệu đã đồng bộ của kho này khỏi máy chủ Memry và không thể hoàn tác. Các tệp trên ổ đĩa của bạn không bị xóa.",
+      "deleteConfirm": "Xóa khỏi tài khoản",
+      "deleteFailed": "Không thể xóa kho",
+      "activeHint": "Chuyển sang kho khác để xóa kho này.",
+      "unsyncedTitle": "Kho này chưa được đồng bộ",
+      "unsyncedBodyOne": "Kho đang mở trên thiết bị này không thuộc tài khoản của bạn, nên không thể đồng bộ. Kho trong tài khoản của bạn là “{name}” — hãy mở kho đó tại đây để đồng bộ lại.",
+      "unsyncedBodyMany": "Kho đang mở trên thiết bị này không thuộc tài khoản của bạn, nên không thể đồng bộ. Mở một trong các kho được liệt kê bên dưới để đồng bộ lại.",
+      "unsyncedOpen": "Mở kho trong tài khoản",
+      "unsyncedDownload": "Tải xuống kho trong tài khoản",
+      "unsyncedSwitchFailed": "Không thể mở kho đó"
+    },
     "storage": {
-      "title": "Lưu trữ",
-      "used": "{used} của {limit} đã sử dụng",
+      "title": "Dung lượng",
+      "used": "Đã dùng {used}/{limit}",
       "ratio": "{used} / {limit}",
-      "refreshAria": "Làm mới mức sử dụng lưu trữ",
-      "usageAria": "Sử dụng lưu trữ: {used} của {limit}",
+      "refreshAria": "Làm mới dung lượng đã dùng",
+      "usageAria": "Dung lượng đã dùng: {used}/{limit}",
       "available": "Còn trống {available}",
       "categories": {
-        "notes": "Các ghi chú",
+        "notes": "Ghi chú",
         "attachments": "Tệp đính kèm",
         "crdt": "CRDT",
         "other": "Khác"
       },
-      "warningTitle": "Lưu trữ gần đầy",
-      "warningDescription": "Giải phóng bộ nhớ hoặc nâng cấp gói của bạn để tránh các sự cố đồng bộ."
+      "warningTitle": "Sắp hết dung lượng",
+      "warningDescription": "Giải phóng dung lượng hoặc nâng cấp gói để tránh sự cố đồng bộ."
     },
-    "accountVaults": {
-      "activeHint": "Chuyển sang kho khác để xóa kho này.",
-      "cloudOnly": "Không có trên thiết bị này",
-      "delete": "Xóa",
-      "deleteBody": "Thao tác này xóa vĩnh viễn toàn bộ dữ liệu đã đồng bộ của kho này khỏi máy chủ Memry và không thể hoàn tác. Các tệp trên ổ đĩa của bạn không bị xóa.",
-      "deleteConfirm": "Xóa khỏi tài khoản",
-      "deleteFailed": "Không thể xóa kho",
-      "deleteTitle": "Xóa “{name}” khỏi tài khoản của bạn?",
-      "empty": "Chưa có kho nào được đồng bộ vào tài khoản của bạn.",
-      "itemsCount": "{count} mục"
+    "largeNotes": {
+      "description": "Ghi chú lớn hơn {limit} sẽ ngừng đồng bộ. Hãy tách chúng thành các ghi chú nhỏ hơn để tiếp tục đồng bộ.",
+      "over": "Không đồng bộ",
+      "approaching": "Sắp đạt giới hạn"
+    },
+    "activity": {
+      "description": "Các tệp được thêm vào hoặc gỡ khỏi kho từ bên ngoài Memry, các lần nhập, và mọi thứ bị bỏ qua hoặc lỗi. Chỉ lưu trên thiết bị này.",
+      "retention": {
+        "label": "Hoạt động của kho",
+        "days": "{count, plural, other {Giữ # ngày}}"
+      },
+      "filter": {
+        "all": "Tất cả",
+        "problems": "Đã bỏ qua và lỗi"
+      },
+      "reveal": "Hiển thị tệp nhật ký",
+      "clear": "Xóa",
+      "clearTitle": "Xóa hoạt động của kho?",
+      "clearBody": "Thao tác này xóa mọi mục khỏi nhật ký hoạt động trên thiết bị này. Các tệp của bạn không bị ảnh hưởng.",
+      "clearConfirm": "Xóa hoạt động",
+      "empty": "Chưa có gì được ghi lại. Các tệp bạn thêm vào thư mục kho, các lần nhập và mọi thứ Memry bỏ qua sẽ hiển thị tại đây.",
+      "emptyProblems": "Không có gì bị bỏ qua hay bị lỗi.",
+      "unavailable": "Mở một kho để xem hoạt động của kho đó.",
+      "loadFailed": "Không thể tải hoạt động của kho",
+      "actionFailed": "Không thể cập nhật hoạt động của kho",
+      "showItems": "{count, plural, other {Hiển thị # mục}}",
+      "toastAction": "Chi tiết",
+      "entry": {
+        "added": "Đã thêm {path}",
+        "removed": "Đã gỡ {path}",
+        "renamed": "Đã đổi tên {oldPath} thành {path}",
+        "skipped": "Đã bỏ qua {path}",
+        "skippedUnsupported": "Memry không mở tệp {ext}, nên tệp được giữ nguyên.",
+        "readFailed": "Không thể đọc {path}",
+        "indexFailed": "Không thể thêm {path}",
+        "copyFailed": "Không thể sao chép {path} vào kho",
+        "uploadFailed": "Không thể tải lên {path}",
+        "uploadFailedHint": "Tệp vẫn ở trên thiết bị này cho đến khi tải lên thành công.",
+        "downloadFailed": "Không thể tải xuống {path}",
+        "fileTooLarge": "{path} quá lớn để đồng bộ",
+        "noteTooLarge": "“{title}” quá lớn để đồng bộ",
+        "noteTooLargeUnnamed": "Một ghi chú quá lớn để đồng bộ",
+        "importFailed": "Không thể nhập từ {importer}",
+        "failedGeneric": "Đã xảy ra lỗi với {path}",
+        "failedGenericUnnamed": "Đã xảy ra lỗi",
+        "scan": "Đã phát hiện thay đổi trong lúc Memry đóng",
+        "indexRebuilt": "Đã tạo chỉ mục tìm kiếm",
+        "import": "Nhập từ {importer}",
+        "importCanceled": "Nhập từ {importer}, đã hủy",
+        "unknown": "Hoạt động không xác định"
+      },
+      "counts": {
+        "added": "{count, plural, other {# tệp mới}}",
+        "indexed": "{count, plural, other {Đã lập chỉ mục # tệp}}",
+        "imported": "{count, plural, other {Đã nhập #}}",
+        "attachments": "{count, plural, other {# tệp đính kèm}}",
+        "skipped": "{count, plural, other {Đã bỏ qua #}}",
+        "unsupported": "{count, plural, other {Đã bỏ qua # tệp không được hỗ trợ}}",
+        "failed": "{count, plural, other {# lỗi}}"
+      }
+    },
+    "v2": {
+      "groups": {
+        "thisVault": "Kho này"
+      },
+      "largeNotesCount": "{count, plural, other {# ghi chú}}"
+    },
+    "binding": {
+      "dialog": {
+        "title": "Đồng bộ kho này với tài khoản của bạn?",
+        "description": "Kho này có ghi chú chưa có trong tài khoản của bạn. Bạn có thể thêm kho vào tài khoản hoặc giữ trên thiết bị này. Không có gì rời khỏi thiết bị này cho đến khi bạn quyết định.",
+        "descriptionWithVaults": "Kho này có ghi chú chưa có trong tài khoản của bạn, và tài khoản của bạn đã có một kho. Bạn có thể thêm kho này bên cạnh kho đó, gộp hai kho, hoặc giữ trên thiết bị này. Không có gì rời khỏi thiết bị này cho đến khi bạn quyết định.",
+        "addAsNew": "Thêm thành kho riêng",
+        "merge": "Gộp vào “{name}”",
+        "mergeUnnamed": "Gộp vào kho trong tài khoản",
+        "keepLocal": "Giữ trên thiết bị này",
+        "failed": "Không thể cập nhật cách đồng bộ kho này"
+      },
+      "status": {
+        "localOnly": "Kho này chỉ ở trên thiết bị này và không được đồng bộ.",
+        "foreign": "Kho này đã được đồng bộ bởi một tài khoản khác, nên không đồng bộ với tài khoản của bạn. Kho vẫn ở trên thiết bị này.",
+        "needsDecision": "Kho này chưa được đồng bộ.",
+        "startSync": "Đồng bộ kho này",
+        "choose": "Chọn…"
+      }
     }
   },
   "tags": {
     "header": {
       "title": "Thẻ",
-      "subtitle": "Quản lý nhãn trên ghi chú, nhật ký và nhiệm vụ"
+      "subtitle": "Quản lý thẻ trên ghi chú, nhật ký và công việc"
     },
-    "loading": "Đang tải thẻ...",
-    "empty": "Chưa có nhãn nào. Nhãn sẽ xuất hiện ở đây khi bạn thêm chúng vào ghi chú và nhiệm vụ.",
-    "filterPlaceholder": "Lọc thẻ...",
-    "noMatch": "Không có nhãn nào phù hợp với \"{query}\"",
-    "summary": "{count, plural, one {Nhãn #} other {Các nhãn #}} trên các ghi chú và nhiệm vụ",
+    "loading": "Đang tải thẻ…",
+    "empty": "Chưa có thẻ nào. Thẻ sẽ xuất hiện ở đây khi bạn thêm chúng vào ghi chú và công việc.",
+    "filterPlaceholder": "Lọc thẻ…",
+    "noMatch": "Không có thẻ nào khớp với “{query}”",
+    "summary": "{count, plural, other {# thẻ}} trên ghi chú và công việc",
     "actions": {
       "rename": "Đổi tên",
       "changeColor": "Đổi màu",
-      "mergeInto": "Gộp vào...",
+      "changeIcon": "Đổi biểu tượng",
+      "mergeInto": "Gộp vào…",
       "merge": "Gộp",
-      "delete": "Xóa",
-      "changeIcon": "Đổi biểu tượng"
+      "delete": "Xóa"
     },
     "dialogs": {
       "deleteTitle": "Xóa thẻ",
-      "deleteDescription": "Xóa \"{name}\" khỏi {count, plural, one {# mục} other {# mục}}? Hành động này không thể hoàn tác.",
+      "deleteDescription": "Gỡ “{name}” khỏi {count, plural, other {# mục}}? Không thể hoàn tác thao tác này.",
       "mergeTitle": "Gộp thẻ",
-      "mergeDescription": "Tất cả các mục được gắn thẻ \"{source}\" sẽ được gắn lại với thẻ đích. Thẻ nguồn sẽ bị xóa.",
-      "targetPlaceholder": "Chọn thẻ đích...",
-      "colorTitle": "Đổi màu cho \"{name}\""
+      "mergeDescription": "Tất cả các mục được gắn thẻ “{source}” sẽ được gắn lại bằng thẻ đích. Thẻ nguồn sẽ bị xóa.",
+      "targetPlaceholder": "Chọn thẻ đích…",
+      "colorTitle": "Đổi màu cho “{name}”"
     },
     "toasts": {
-      "renamed": "Đã đổi tên \"{oldName}\" thành \"{newName}\"",
+      "renamed": "Đã đổi tên “{oldName}” thành “{newName}”",
       "renameFailed": "Không thể đổi tên thẻ",
       "deleteFailed": "Không thể xóa thẻ",
-      "deleted": "Đã xóa \"{name}\" khỏi {count, plural, one {# mục} other {# mục}}",
+      "deleted": "Đã xóa “{name}” khỏi {count, plural, other {# mục}}",
       "mergeFailed": "Không thể gộp các thẻ",
-      "merged": "Đã gộp \"{source}\" vào \"{target}\" ({count, plural, one {# mục} other {# mục}})",
-      "colorUpdated": "Đã cập nhật màu cho \"{name}\"",
+      "merged": "Đã gộp “{source}” vào “{target}” ({count, plural, other {# mục}})",
+      "colorUpdated": "Đã cập nhật màu cho “{name}”",
       "colorFailed": "Không thể cập nhật màu",
-      "iconFailed": "Không cập nhật được biểu tượng"
+      "iconFailed": "Không thể cập nhật biểu tượng"
+    },
+    "v2": {
+      "actionsAria": "Thao tác cho {name}"
     }
   },
   "properties": {
@@ -992,12 +1780,12 @@
       "title": "Thuộc tính",
       "subtitle": "Quản lý các định nghĩa thuộc tính trên tất cả các ghi chú"
     },
-    "loading": "Đang tải các thuộc tính...",
+    "loading": "Đang tải thuộc tính…",
     "empty": "Chưa có định nghĩa thuộc tính nào. Thêm một thuộc tính Trạng thái, Chọn hoặc Chọn nhiều vào bất kỳ ghi chú nào để bắt đầu.",
-    "filterPlaceholder": "Lọc thuộc tính...",
-    "noMatch": "Không có thuộc tính nào khớp với \"{query}\"",
-    "summary": "{count, plural, one {Định nghĩa thuộc tính #} other {Các định nghĩa thuộc tính #}}",
-    "optionCount": "{count, plural, one {Tùy chọn #} other {Các tùy chọn #}}",
+    "filterPlaceholder": "Lọc thuộc tính…",
+    "noMatch": "Không có thuộc tính nào khớp với “{query}”",
+    "summary": "{count, plural, other {# định nghĩa thuộc tính}}",
+    "optionCount": "{count, plural, other {# tùy chọn}}",
     "optionNamePlaceholder": "Tên tùy chọn",
     "addOption": "Thêm tùy chọn",
     "changeColorTitle": "Đổi màu",
@@ -1018,89 +1806,140 @@
     },
     "dialogs": {
       "deleteTitle": "Xóa thuộc tính",
-      "deleteDescription": "Xóa định nghĩa thuộc tính \"{name}\"? Các ghi chú sử dụng thuộc tính này sẽ giữ nguyên giá trị dưới dạng văn bản thuần.",
-      "colorTitle": "Đổi màu cho \"{name}\""
+      "deleteDescription": "Xóa định nghĩa thuộc tính “{name}”? Các ghi chú đang dùng thuộc tính này sẽ giữ nguyên giá trị dưới dạng văn bản thuần.",
+      "colorTitle": "Đổi màu cho “{name}”"
     },
     "toasts": {
-      "renamed": "Đã đổi tên \"{oldValue}\" thành \"{newValue}\"",
-      "renameFailed": "Không đổi tên được tùy chọn",
-      "removed": "Đã xóa \"{value}\"",
-      "removeFailed": "Không xóa được tùy chọn",
+      "renamed": "Đã đổi tên “{oldValue}” thành “{newValue}”",
+      "renameFailed": "Không thể đổi tên tùy chọn",
+      "removed": "Đã gỡ “{value}”",
+      "removeFailed": "Không thể gỡ tùy chọn",
       "colorFailed": "Không thể cập nhật màu",
       "deleteFailed": "Không thể xóa thuộc tính",
-      "deleted": "Đã xóa thuộc tính \"{name}\"",
-      "addFailed": "Không thêm được tùy chọn"
+      "deleted": "Đã xóa thuộc tính “{name}”",
+      "addFailed": "Không thể thêm tùy chọn"
+    },
+    "v2": {
+      "actionsAria": "Thao tác cho {name}"
+    }
+  },
+  "commandLine": {
+    "header": {
+      "title": "Dòng lệnh",
+      "subtitle": "Thiết lập lệnh memrynote cho terminal của bạn"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "defaultVault": {
+      "label": "Kho mặc định",
+      "placeholder": "Chọn kho",
+      "none": "Chưa chọn kho",
+      "description": "Chọn kho được dùng khi bạn chạy memrynote không có --vault.",
+      "descriptionSelected": "Lệnh dùng {path} khi bỏ qua --vault."
+    },
+    "command": {
+      "label": "Lệnh memrynote",
+      "toggleLabel": "Cài đặt lệnh memrynote",
+      "descriptionInstalled": "Đã cài tại {path}",
+      "descriptionNotInstalled": "Cài lệnh memrynote để bạn có thể dùng kho từ bất kỳ terminal nào."
+    },
+    "status": {
+      "loading": "Đang kiểm tra trạng thái lệnh…",
+      "loadFailed": "Không thể tải trạng thái lệnh",
+      "installedToast": "Đã cài lệnh memrynote",
+      "uninstalledToast": "Đã gỡ lệnh memrynote",
+      "defaultVaultUpdatedToast": "Đã cập nhật kho CLI mặc định"
+    },
+    "actions": {
+      "refresh": "Làm mới"
     }
   },
   "shortcuts": {
     "header": {
-      "title": "Phím tắt bàn phím",
+      "title": "Phím tắt",
       "subtitle": "Nhấn vào bất kỳ phím tắt nào để gán lại",
-      "loading": "Đang tải cài đặt..."
+      "loading": "Đang tải cài đặt…"
     },
-    "searchPlaceholder": "Tìm kiếm phím tắt...",
+    "searchPlaceholder": "Tìm kiếm phím tắt…",
     "resetAll": "Đặt lại tất cả",
     "custom": "Tùy chỉnh",
     "pressShortcut": "Nhấn phím tắt…",
     "cancelTitle": "Hủy",
     "rebindTitle": "Nhấn để gán lại",
+    "editorManagedTitle": "Do trình soạn thảo ghi chú xử lý — không thể gán lại",
     "resetTitle": "Đặt về mặc định",
     "clearTitle": "Xóa phím tắt",
     "clickToSet": "Nhấn để thiết lập",
     "noMatch": "Không có phím tắt nào khớp với tìm kiếm của bạn",
     "conflict": "Xung đột với: {labels}",
     "globalCapture": {
-      "title": "Chụp toàn cầu",
-      "description": "Chụp một ghi chú từ bất kỳ đâu",
-      "active": "Đang hoạt động"
+      "title": "Ghi nhanh toàn cục",
+      "description": "Ghi nhanh một ghi chú từ bất kỳ đâu",
+      "active": "Đang hoạt động",
+      "inUse": "{shortcut} đang được ứng dụng khác sử dụng. Chọn tổ hợp phím khác.",
+      "unsupported": "Không thể dùng {shortcut} làm phím tắt toàn cục. Chọn tổ hợp phím khác.",
+      "fallbackInUse": "Phím tắt mặc định {shortcut} đang được ứng dụng khác sử dụng. Đặt tổ hợp phím khác để dùng Ghi nhanh toàn cục."
     },
     "toasts": {
-      "saveGlobalFailed": "Không thể lưu phím tắt chụp toàn cầu",
+      "saveGlobalFailed": "Không thể lưu phím tắt ghi nhanh toàn cục",
       "saveFailed": "Không thể lưu phím tắt",
       "resetFailed": "Không thể đặt lại phím tắt",
-      "resetAllSuccess": "Tất cả phím tắt đã được đặt lại về mặc định",
+      "resetAllSuccess": "Đã đặt lại tất cả phím tắt về mặc định",
       "resetAllFailed": "Không thể đặt lại phím tắt"
     },
     "categories": {
       "navigation": "Điều hướng",
-      "tabs": "Các tab",
+      "tabs": "Tab",
       "editor": "Trình soạn thảo",
       "view": "Xem"
     },
     "entries": {
       "nav": {
         "newNote": {
-          "label": "Ghi chú Mới",
+          "label": "Ghi chú mới",
           "description": "Tạo một ghi chú mới"
         },
         "newTask": {
-          "label": "Nhiệm vụ mới",
-          "description": "Tạo một nhiệm vụ mới"
+          "label": "Công việc mới",
+          "description": "Tạo công việc mới"
         },
         "inbox": {
-          "label": "Đi tới Hộp thư đến",
+          "label": "Đi tới hộp thư đến",
           "description": "Đi tới hộp thư đến"
         },
         "notes": {
-          "label": "Đi tới Ghi chú",
+          "label": "Đi tới ghi chú",
           "description": "Đi tới ghi chú"
         },
         "tasks": {
-          "label": "Đi tới Nhiệm vụ",
-          "description": "Đi tới nhiệm vụ"
+          "label": "Đi tới công việc",
+          "description": "Đi tới công việc"
         },
         "search": {
           "label": "Tìm kiếm",
-          "description": "Mở tìm kiếm toàn cầu"
+          "description": "Mở tìm kiếm toàn cục"
         },
         "settings": {
-          "label": "Mở Cài đặt",
+          "label": "Mở cài đặt",
           "description": "Mở bảng cài đặt"
+        },
+        "switchVault": {
+          "label": "Chuyển kho",
+          "description": "Mở trình chuyển kho"
+        },
+        "nextVault": {
+          "label": "Kho tiếp theo",
+          "description": "Chuyển sang kho tiếp theo trong thanh bên"
+        },
+        "prevVault": {
+          "label": "Kho trước",
+          "description": "Chuyển sang kho trước trong thanh bên"
         }
       },
       "tabs": {
         "close": {
-          "label": "Đóng Tab",
+          "label": "Đóng tab",
           "description": "Đóng tab hiện tại"
         },
         "next": {
@@ -1112,44 +1951,44 @@
           "description": "Chuyển sang tab trước"
         },
         "reopen": {
-          "label": "Mở lại Tab gần đây",
-          "description": "Mở lại tab vừa đóng gần đây"
+          "label": "Mở lại tab vừa đóng",
+          "description": "Mở lại tab đã đóng gần nhất"
         },
         "navBack": {
           "label": "Quay lại",
-          "description": "Kích hoạt lại tab đang hoạt động trước đó"
+          "description": "Chuyển lại tab đang mở trước đó"
         },
         "navForward": {
-          "label": "Đi về phía trước",
+          "label": "Tiến tới",
           "description": "Thực hiện lại thao tác quay lại"
         },
         "newTab": {
-          "label": "Tab Mới",
+          "label": "Tab mới",
           "description": "Mở menu tab mới"
         },
         "closeAll": {
-          "label": "Đóng tất cả tab trong ngăn",
-          "description": "Đóng tất cả tab trong ngăn"
+          "label": "Đóng tất cả tab",
+          "description": "Đóng tất cả tab trong ngăn hiện tại"
         },
         "pin": {
-          "label": "Ghim hoặc bỏ ghim tab",
-          "description": "Ghim hoặc bỏ ghim tab"
+          "label": "Ghim tab",
+          "description": "Ghim hoặc bỏ ghim tab hiện tại"
         },
         "duplicate": {
           "label": "Nhân bản tab",
-          "description": "Nhân bản tab"
+          "description": "Mở bản sao của tab hiện tại"
         },
         "splitRight": {
           "label": "Chia sang phải",
-          "description": "Chia sang phải"
+          "description": "Chia ngăn hiện tại thành hai bên trái và phải"
         },
         "splitDown": {
-          "label": "Chia xuống",
-          "description": "Chia xuống"
+          "label": "Chia xuống dưới",
+          "description": "Chia ngăn hiện tại thành trên và dưới"
         },
         "closeSplit": {
           "label": "Đóng ngăn chia",
-          "description": "Đóng ngăn chia"
+          "description": "Đóng ngăn chia hiện tại"
         }
       },
       "editor": {
@@ -1159,33 +1998,33 @@
         },
         "bold": {
           "label": "Đậm",
-          "description": "Chuyển đổi định dạng chữ đậm"
+          "description": "Bật/tắt định dạng chữ đậm"
         },
         "italic": {
           "label": "Nghiêng",
-          "description": "Chuyển đổi định dạng chữ nghiêng"
+          "description": "Bật/tắt định dạng chữ nghiêng"
         },
         "underline": {
           "label": "Gạch chân",
-          "description": "Chuyển đổi định dạng chữ gạch chân"
+          "description": "Bật/tắt định dạng chữ gạch chân"
         },
         "strikethrough": {
           "label": "Gạch ngang",
-          "description": "Gạch ngang"
+          "description": "Bật/tắt định dạng chữ gạch ngang"
         },
         "code": {
-          "label": "Mã",
-          "description": "Mã"
+          "label": "Mã trong dòng",
+          "description": "Bật/tắt định dạng mã trong dòng"
         }
       },
       "view": {
         "toggleSidebar": {
-          "label": "Chuyển đổi Thanh bên",
+          "label": "Hiện/ẩn thanh bên",
           "description": "Hiển thị hoặc ẩn thanh bên"
         },
         "shortcuts": {
-          "label": "Trợ giúp Phím tắt bàn phím",
-          "description": "Hiển thị tham chiếu phím tắt bàn phím"
+          "label": "Trợ giúp phím tắt",
+          "description": "Hiển thị bảng tham chiếu phím tắt"
         },
         "zoomIn": {
           "label": "Phóng to",
@@ -1200,31 +2039,40 @@
           "description": "Đặt lại thu phóng về 100%"
         }
       }
+    },
+    "v2": {
+      "all": "Tất cả",
+      "categoryFilter": "Lọc theo danh mục",
+      "systemWide": "Toàn hệ thống",
+      "globalCapture": "Ghi nhanh toàn cục",
+      "recordingHint": "Nhấn phím… esc để hủy",
+      "reset": "Đặt lại",
+      "resetAll": "Đặt lại tất cả về mặc định"
     }
   },
   "phaseF": {
     "componentsKeyboardChordIndicator": {
-      "pressedWaitingForSecondKey": "đã nhấn — đang chờ phím thứ hai..."
+      "pressedWaitingForSecondKey": "đã nhấn — đang chờ phím thứ hai…"
     },
     "componentsKeyboardKeyboardShortcutsDialog": {
-      "keyboardShortcuts": "Phím tắt bàn phím",
-      "press": "Nhấn",
-      "toToggleThisDialog": "để chuyển đổi hộp thoại này"
+      "keyboardShortcuts": "Phím tắt",
+      "press": "Nhấn ",
+      "toToggleThisDialog": "để hiện/ẩn hộp thoại này"
     },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Thiết bị này đã bị gỡ",
-      "exporting": "Đang xuất...",
+      "exporting": "Đang xuất…",
       "signOut": "Đăng xuất"
     },
     "componentsSyncSyncHistory": {
       "activity": "Hoạt động",
       "filterBySyncType": "Lọc theo loại đồng bộ",
       "allTypes": "Tất cả loại",
-      "pushed": "Đã đẩy",
-      "pulled": "Đã kéo",
+      "pushed": "Đã tải lên",
+      "pulled": "Đã tải về",
       "errors": "Lỗi",
       "filterByTimePeriod": "Lọc theo khoảng thời gian",
-      "allTime": "Tất cả thời gian",
+      "allTime": "Mọi thời gian",
       "today": "Hôm nay",
       "last7Days": "7 ngày qua",
       "last30Days": "30 ngày qua",
@@ -1232,16 +2080,17 @@
       "noSyncActivityYet": "Chưa có hoạt động đồng bộ",
       "loadMore": "Tải thêm",
       "duration": "· {duration}",
-      "showErrorDetailsAria": "{summary}, hiện chi tiết lỗi",
-      "summaryFailed": "Đồng bộ thất bại",
-      "summaryPulled": "{count, plural, other {Đã kéo # mục}}",
-      "summaryPushed": "{count, plural, other {Đã đẩy # mục}}"
+      "summaryFailed": "Không thể đồng bộ",
+      "summaryPushed": "{count, plural, other {Đã tải lên # mục}}",
+      "summaryPulled": "{count, plural, other {Đã tải về # mục}}",
+      "showErrorDetailsAria": "{summary}, hiện chi tiết lỗi"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Đồng bộ lần cuối ",
       "pending": "đang chờ",
       "localOnly": "chỉ cục bộ",
       "detected": "đã phát hiện",
+      "dismissConflicts": "Đóng",
       "clockSkewDetected": "Phát hiện lệch giờ",
       "items": "mục",
       "willSyncWhenBackOnline": "Sẽ đồng bộ khi trực tuyến lại",
@@ -1253,43 +2102,43 @@
   },
   "phaseI": {
     "errors": {
-      "failedToUpdateTagColor": "Cập nhật màu thẻ thất bại",
-      "googleSignInFailed": "Đăng nhập Google thất bại",
-      "failedToSendVerificationCode": "Gửi mã xác minh thất bại",
+      "failedToUpdateTagColor": "Không thể cập nhật màu thẻ",
+      "googleSignInFailed": "Không thể đăng nhập bằng Google",
+      "failedToSendVerificationCode": "Không thể gửi mã xác minh",
       "invalidVerificationCode": "Mã xác minh không hợp lệ",
-      "accountSetupFailed": "Thiết lập tài khoản thất bại",
-      "failedToResendCode": "Gửi lại mã thất bại",
-      "failedToSetUpDevice": "Cài đặt thiết bị thất bại",
-      "failedToConfirmRecoveryPhrase": "Xác nhận cụm từ khôi phục thất bại",
-      "failedToAnalyzeContent": "Phân tích nội dung thất bại",
-      "failedToLoadUpdaterState": "Tải trạng thái cập nhật thất bại",
-      "failedToCheckForUpdates": "Kiểm tra cập nhật thất bại",
-      "failedToDownloadUpdate": "Tải xuống cập nhật thất bại",
-      "failedToInstallUpdate": "Cài đặt cập nhật thất bại",
-      "failedToLoadEditorSettings": "Tải cài đặt trình chỉnh sửa thất bại",
-      "failedToUpdateEditorSettings": "Cập nhật cài đặt trình chỉnh sửa thất bại",
-      "failedToLoadGeneralSettings": "Tải cài đặt chung thất bại",
-      "failedToUpdateGeneralSettings": "Cập nhật cài đặt chung thất bại",
-      "failedToLoadKeyboardSettings": "Tải cài đặt bàn phím thất bại",
-      "failedToUpdateKeyboardSettings": "Cập nhật cài đặt bàn phím thất bại",
-      "failedToResetKeyboardSettings": "Đặt lại cài đặt bàn phím thất bại",
-      "failedToLoadNoteEditorSettings": "Tải cài đặt trình chỉnh sửa ghi chú thất bại",
+      "accountSetupFailed": "Không thể thiết lập tài khoản",
+      "failedToResendCode": "Không thể gửi lại mã",
+      "failedToSetUpDevice": "Không thể thiết lập thiết bị",
+      "failedToConfirmRecoveryPhrase": "Không thể xác nhận cụm từ khôi phục",
+      "failedToAnalyzeContent": "Không thể phân tích nội dung",
+      "failedToLoadUpdaterState": "Không thể tải trạng thái cập nhật",
+      "failedToCheckForUpdates": "Không thể kiểm tra cập nhật",
+      "failedToDownloadUpdate": "Không thể tải xuống bản cập nhật",
+      "failedToInstallUpdate": "Không thể cài đặt bản cập nhật",
+      "failedToLoadEditorSettings": "Không thể tải cài đặt trình soạn thảo",
+      "failedToUpdateEditorSettings": "Không thể cập nhật cài đặt trình soạn thảo",
+      "failedToLoadGeneralSettings": "Không thể tải cài đặt chung",
+      "failedToUpdateGeneralSettings": "Không thể cập nhật cài đặt chung",
+      "failedToLoadKeyboardSettings": "Không thể tải cài đặt bàn phím",
+      "failedToUpdateKeyboardSettings": "Không thể cập nhật cài đặt bàn phím",
+      "failedToResetKeyboardSettings": "Không thể đặt lại cài đặt bàn phím",
+      "failedToLoadNoteEditorSettings": "Không thể tải cài đặt trình soạn thảo ghi chú",
       "failedToUpdateSettings": "Không thể cập nhật cài đặt",
-      "failedToLoadTabSettings": "Tải cài đặt tab thất bại",
+      "failedToLoadTabSettings": "Không thể tải cài đặt tab",
       "failedToLoadNotes": "Không thể tải ghi chú",
-      "failedToLoadTags": "Không tải được thẻ",
-      "failedToLoadVaultStatus": "Tải trạng thái kho lưu trữ thất bại",
-      "failedToSelectVault": "Chọn kho lưu trữ thất bại",
+      "failedToLoadTags": "Không thể tải thẻ",
+      "failedToLoadTasks": "Không thể tải công việc",
+      "failedToLoadVaultStatus": "Không thể tải trạng thái kho",
+      "failedToSelectVault": "Không thể chọn kho",
       "failedToCloseVault": "Không thể đóng kho",
       "failedToSwitchVault": "Không thể chuyển kho",
       "failedToUpdateConfig": "Không thể cập nhật cấu hình",
-      "failedToReindex": "Không thể lập chỉ mục lại",
-      "failedToLoadTasks": "Không tải được công việc"
+      "failedToReindex": "Không thể lập chỉ mục lại"
     }
   },
   "agentMcp": {
     "header": {
-      "title": "Agent MCP",
+      "title": "MCP cho tác nhân",
       "subtitle": "Truy cập máy chủ cục bộ cho các ứng dụng khách MCP bên ngoài."
     },
     "groups": {
@@ -1299,31 +2148,75 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Dùng endpoint localhost này từ Cursor, Claude Desktop hoặc Zed."
+        "description": "Dùng điểm cuối localhost này trong Cursor, Claude Desktop hoặc Zed."
       },
       "bearer": {
-        "label": "Token Bearer",
+        "label": "Mã thông báo Bearer",
         "description": "Thông tin xác thực lưu trong bộ nhớ cho lần khởi chạy ứng dụng này."
       }
     },
     "actions": {
       "rotate": {
-        "label": "Tạo lại token",
+        "label": "Tạo lại mã thông báo",
         "description": "Vô hiệu hóa các phiên hiện có của ứng dụng khách bên ngoài."
       }
     },
     "copyLabel": "Sao chép {label}",
     "notRunning": "Không chạy",
-    "toolsBadge": "{count, plural, other {# công cụ}}"
+    "toolsBadge": "{count, plural, other {# công cụ}}",
+    "v2": {
+      "hint": "Máy chủ cục bộ cho Cursor, Claude Desktop, Zed",
+      "running": "Đang chạy",
+      "tokenHint": "Chỉ lần khởi chạy này",
+      "copy": "Sao chép",
+      "rotate": "Tạo lại"
+    }
   },
   "agentProviders": {
     "header": {
-      "title": "Quyền của Agent",
-      "subtitle": "Chọn quyền truy cập mặc định, xác nhận và nhà cung cấp cục bộ cho Trò chuyện Agent."
+      "title": "Quyền của tác nhân",
+      "subtitle": "Chọn quyền truy cập mặc định, xác nhận và nhà cung cấp cục bộ cho Trò chuyện tác nhân."
     },
     "groups": {
+      "cliAgents": "Tác nhân CLI",
       "local": "Nhà cung cấp cục bộ tương thích OpenAI",
-      "actions": "Các kiểm tra kết nối"
+      "actions": "Kiểm tra kết nối"
+    },
+    "cliAgents": {
+      "claude": {
+        "label": "Claude Code CLI",
+        "description": "Cài đặt Claude Code từ claude.ai/code, rồi chạy `claude login`. MemryNote sẽ tự động nhận diện."
+      },
+      "codex": {
+        "label": "Codex CLI",
+        "description": "Cài đặt bằng `npm install -g @openai/codex`, rồi chạy `codex login` để đăng nhập tài khoản OpenAI. MemryNote sẽ tự động nhận diện."
+      },
+      "antigravity": {
+        "label": "Antigravity CLI",
+        "description": "Cài đặt Antigravity CLI từ antigravity.google/docs/cli, rồi chạy `agy` một lần để đăng nhập tài khoản Google. MemryNote sẽ tự động nhận diện."
+      },
+      "status": {
+        "detected": "Đã phát hiện · v{version}",
+        "detectedNoVersion": "Đã phát hiện",
+        "belowMinimum": "Đã cài v{version} — cần {minimum} trở lên",
+        "notDetected": "Không phát hiện",
+        "runtimeUnavailable": "Không khả dụng — môi trường chạy tác nhân không khởi động"
+      }
+    },
+    "permissions": {
+      "group": "Quyền của tác nhân",
+      "access": {
+        "label": "Quyền truy cập mặc định",
+        "description": "Đặt chế độ truy cập ban đầu cho các lượt tác nhân mới.",
+        "vaultOnly": "Chỉ kho",
+        "computerAccess": "Truy cập máy tính"
+      },
+      "confirm": {
+        "label": "Xác nhận hành động",
+        "description": "Chọn xem lệnh gọi công cụ chạy tự động hay chờ phê duyệt trong cuộc trò chuyện.",
+        "alwaysAllow": "Luôn cho phép",
+        "askBeforeChanges": "Hỏi trước khi thay đổi"
+      }
     },
     "presets": {
       "ollama": "Ollama",
@@ -1337,11 +2230,11 @@
       },
       "baseUrl": {
         "label": "URL cơ sở",
-        "description": "Endpoint /v1 tương thích OpenAI."
+        "description": "Điểm cuối /v1 tương thích OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Cho phép endpoint không phải loopback",
-        "description": "Dữ liệu sẽ được gửi tới endpoint đã cấu hình."
+        "label": "Cho phép điểm cuối không phải loopback",
+        "description": "Dữ liệu sẽ được gửi tới điểm cuối đã cấu hình."
       },
       "model": {
         "label": "Mô hình",
@@ -1349,8 +2242,8 @@
       },
       "apiKey": {
         "label": "Khóa API",
-        "description": "Thông tin xác thực tùy chọn được lưu trong keychain của hệ điều hành.",
-        "configured": "Một khóa API đã được lưu trong keychain của hệ điều hành."
+        "description": "Thông tin xác thực tùy chọn, được lưu trong chuỗi khóa của hệ điều hành.",
+        "configured": "Đã có khóa API được lưu trong chuỗi khóa của hệ điều hành."
       }
     },
     "actions": {
@@ -1360,253 +2253,41 @@
       "probe": "Dò tìm công cụ"
     },
     "status": {
-      "disconnected": "Đã ngắt kết nối",
-      "toolsDisabled": "Công cụ đã tắt",
-      "fullTools": "Đã bật đầy đủ công cụ",
+      "label": "Kết nối",
       "checking": "Đang kiểm tra…",
       "connected": "Đã kết nối",
-      "label": "Kết nối"
+      "disconnected": "Đã ngắt kết nối",
+      "toolsDisabled": "Công cụ đã tắt",
+      "fullTools": "Đã bật đầy đủ công cụ"
     },
-    "permissions": {
-      "group": "Quyền của Agent",
-      "access": {
-        "label": "Quyền truy cập mặc định",
-        "description": "Đặt chế độ truy cập ban đầu cho các lượt Agent mới.",
-        "vaultOnly": "Chỉ kho lưu trữ",
-        "computerAccess": "Truy cập máy tính"
-      },
-      "confirm": {
-        "label": "Xác nhận hành động",
-        "description": "Chọn xem lệnh gọi công cụ chạy tự động hay chờ phê duyệt trong cuộc trò chuyện.",
-        "alwaysAllow": "Luôn cho phép",
-        "askBeforeChanges": "Hỏi trước khi thay đổi"
-      }
-    }
-  },
-  "commandLine": {
-    "actions": {
-      "refresh": "Làm mới"
+    "alwaysAllowed": {
+      "group": "Luôn cho phép",
+      "description": "Các công cụ bạn đã cấp phê duyệt lâu dài trong kho này. Thao tác xóa không bao giờ được cấp phê duyệt lâu dài.",
+      "empty": "Chưa có công cụ nào được luôn cho phép. Mọi thay đổi vẫn cần hỏi trước.",
+      "revoke": "Thu hồi",
+      "revokeLabel": "Thu hồi phê duyệt lâu dài cho {tool}",
+      "ignoredInPageReview": "Không áp dụng: chỉnh sửa ghi chú và nhật ký luôn cần hỏi trước."
     },
-    "command": {
-      "descriptionInstalled": "Đã cài tại {path}",
-      "descriptionNotInstalled": "Cài lệnh memrynote để bạn có thể dùng kho từ bất kỳ terminal nào.",
-      "label": "Lệnh memrynote",
-      "toggleLabel": "Cài đặt lệnh memrynote"
-    },
-    "defaultVault": {
-      "description": "Chọn kho được dùng khi bạn chạy memrynote không có --vault.",
-      "descriptionSelected": "Lệnh dùng {path} khi bỏ qua --vault.",
-      "label": "Kho mặc định",
-      "none": "Chưa chọn kho",
-      "placeholder": "Chọn kho"
-    },
-    "groups": {
-      "terminal": "Terminal"
-    },
-    "header": {
-      "subtitle": "Thiết lập lệnh memrynote cho terminal của bạn",
-      "title": "Dòng lệnh"
-    },
-    "status": {
-      "defaultVaultUpdatedToast": "Đã cập nhật kho CLI mặc định",
-      "installedToast": "Đã cài lệnh memrynote",
-      "loadFailed": "Không tải được trạng thái lệnh",
-      "loading": "Đang kiểm tra trạng thái lệnh...",
-      "uninstalledToast": "Đã gỡ lệnh memrynote"
-    }
-  },
-  "features": {
-    "header": {
-      "subtitle": "Bật hoặc tắt các phần của ứng dụng. Tắt = mờ đi trong thanh bên và vô hiệu hóa ở mọi nơi.",
-      "title": "Tính năng"
-    },
-    "items": {
-      "calendar": {
-        "description": "Sự kiện và lịch trình",
-        "label": "Lịch"
+    "v2": {
+      "permissions": {
+        "group": "Quyền",
+        "hint": "Áp dụng cho mọi cuộc trò chuyện với tác nhân",
+        "access": "Truy cập",
+        "changes": "Thay đổi"
       },
-      "graph": {
-        "description": "Kết nối ghi chú",
-        "label": "Đồ thị"
+      "runtimes": {
+        "group": "Môi trường chạy tác nhân",
+        "hint": "Phát hiện từ PATH"
       },
-      "home": {
-        "description": "Bảng điều khiển trang chính",
-        "label": "Trang chủ"
+      "localModel": {
+        "label": "Mô hình cục bộ",
+        "hint": "Máy chủ tương thích OpenAI trên máy này",
+        "notChecked": "Chưa kiểm tra",
+        "optional": "Không bắt buộc",
+        "fetchModels": "Tải danh sách mô hình"
       },
-      "inbox": {
-        "description": "Ghi nhanh và phân loại",
-        "label": "Hộp thư"
-      },
-      "journal": {
-        "description": "Ghi chú hàng ngày",
-        "label": "Nhật ký"
-      },
-      "tasks": {
-        "description": "Việc cần làm và hạn chót",
-        "label": "Công việc"
-      },
-      "spatialCanvas": {
-        "description": "Bảng không gian để sắp xếp và liên kết ghi chú",
-        "label": "Bảng vẽ"
-      }
-    }
-  },
-  "import": {
-    "action": "Nhập",
-    "dialog": {
-      "cancel": "Hủy",
-      "choose": "Chọn tệp…",
-      "chooseFolder": "Chọn thư mục Apple Notes…",
-      "chooseHint": "Chọn {label} của bạn",
-      "close": "Đóng",
-      "done": "Xong",
-      "error": "Nhập thất bại",
-      "folderHint": "Nhấp bên dưới và chọn thư mục “group.com.apple.notes” khi bộ chọn mở ra (nó bắt đầu ở đó). Điều này cho phép Memry đọc ghi chú và tệp đính kèm của bạn — không cần Toàn quyền truy cập đĩa.",
-      "progress": "{completed}/{total}",
-      "running": "Đang nhập…",
-      "selected": "{count, plural, other {# tệp đã chọn}}",
-      "start": "Bắt đầu nhập",
-      "summary": {
-        "attachments": "{count, plural, other {# tệp đính kèm đã sao chép}}",
-        "failed": "{count} thất bại",
-        "imported": "{count, plural, other {# mục đã nhập}}",
-        "skipped": "{count} đã bỏ qua",
-        "title": "Nhập hoàn tất"
-      },
-      "title": "Nhập từ {name}",
-      "chooseDirectory": "Chọn thư mục…",
-      "folderKeepsAssets": "Hãy chọn thư mục khi ảnh nằm ngoài thư mục chứa ghi chú — các bản xuất thường để tệp phương tiện trong một thư mục dùng chung.",
-      "previewError": "Xem trước thất bại"
-    },
-    "header": {
-      "subtitle": "Đưa ghi chú và công việc từ ứng dụng khác vào",
-      "title": "Nhập"
-    },
-    "intro": "Nhập một lần tạo ghi chú mới trong kho của bạn. Tệp xuất gốc của bạn được giữ nguyên.",
-    "preview": {
-      "confirm": "Nhập",
-      "warnings": "Cảnh báo"
-    },
-    "select": "Chọn một ứng dụng để nhập từ đó…",
-    "sources": {
-      "apple-journal": "Nhập bản xuất HTML của Apple Journal thành ghi chú có ngày",
-      "apple-notes": "Nhập từ cơ sở dữ liệu Apple Notes (NoteStore.sqlite, macOS)",
-      "bear": "Nhập kho lưu trữ Bear .bear2bk (ghi chú, thẻ, tệp đính kèm)",
-      "csv": "Nhập tệp .csv — mỗi hàng một ghi chú, các cột trở thành thuộc tính",
-      "evernote": "Nhập một hoặc nhiều tệp xuất Evernote .enex",
-      "google-keep": "Nhập bản xuất Google Takeout Keep (.json hoặc .zip)",
-      "html": "Nhập tệp .html với hình ảnh liên kết và liên kết chéo trang",
-      "markdown": "Nhập tệp .md hoặc thư mục (frontmatter, thẻ, tệp đính kèm)",
-      "notion": "Nhập bản xuất HTML (.zip)",
-      "onenote": "Nhập sổ tay OneNote (cần tài khoản Microsoft)",
-      "raindrop": "Nhập bản xuất dấu trang Raindrop.io (.csv) — dấu trang vào hộp thư",
-      "roam": "Nhập đồ thị Roam Research (.json) với dàn ý lồng nhau",
-      "ticktick": "Nhập bản sao lưu TickTick (.csv) thành dự án, công việc và nhắc nhở",
-      "todoist": "Nhập bản xuất CSV dự án (.csv)"
-    },
-    "stats": {
-      "bookmarks": "{count, plural, other {# dấu trang}}",
-      "comments": "{count, plural, other {# bình luận}}",
-      "notes": "{count, plural, other {# ghi chú}}",
-      "projects": "{count, plural, other {# dự án}}",
-      "reminders": "{count, plural, other {# nhắc nhở}}",
-      "skipped": "{count} đã bỏ qua",
-      "subtasks": "{count, plural, other {# công việc con}}",
-      "tasks": "{count, plural, other {# công việc}}",
-      "withDueDate": "{count} có ngày",
-      "withTags": "{count} đã gắn thẻ"
-    },
-    "messages": {
-      "csv": {
-        "columns": "Cột: {columns}",
-        "emptyTitle": "Đã bỏ qua hàng có tiêu đề trống (cột “{column}”)",
-        "noHeaders": "Tệp CSV không có dòng tiêu đề",
-        "titleColumn": "Tiêu đề lấy từ “{column}”; các cột khác được lưu thành thuộc tính"
-      },
-      "raindrop": {
-        "csvEmpty": "Tệp CSV Raindrop trống",
-        "headerNotFound": "Không tìm thấy dòng tiêu đề của CSV Raindrop (cột “url”)",
-        "rowNoUrl": "Đã bỏ qua hàng {row}: không có URL"
-      },
-      "readFileFailed": "Không thể đọc tệp",
-      "ticktick": {
-        "foldersDropped": "Thư mục TickTick không có tương đương trong Memry nên đã bị bỏ qua",
-        "headerNotFound": "Không tìm thấy dòng tiêu đề của CSV TickTick (“Folder Name”)",
-        "reminderNoAnchor": "Đã bỏ qua nhắc nhở “{reminder}” (không có mốc ngày)",
-        "subtaskParentMissing": "Không tìm thấy công việc cha của “{title}”; đã nhập ở cấp cao nhất",
-        "unknownPriority": "Mức ưu tiên TickTick không xác định {priority} → không có",
-        "unsupportedRepeat": "Đã bỏ qua quy tắc lặp không được hỗ trợ “{rule}”"
-      },
-      "todoist": {
-        "emptyTitle": "Công việc có nội dung trống được nhập thành (không có tiêu đề)",
-        "headerNotFound": "Không phải CSV Todoist: thiếu dòng tiêu đề TYPE",
-        "orphanComment": "Đã bỏ qua bình luận không có công việc đứng trước",
-        "sectionFlattened": "Đã làm phẳng phần “{section}”",
-        "subtaskNoParent": "Công việc con “{title}” không có công việc cha ở mức thụt lề {indent}; đã nhập ở cấp cao nhất",
-        "unknownPriority": "Mức ưu tiên không xác định {priority} → không có",
-        "unparsedDate": "Không thể phân tích ngày “{date}”"
-      }
-    },
-    "status": {
-      "appleNotes": {
-        "copyingDatabase": "Đang sao chép cơ sở dữ liệu Apple Notes…"
-      },
-      "bear": {
-        "scanning": "Đang quét bản xuất Bear…"
-      },
-      "csv": {
-        "importing": "Đang nhập ghi chú CSV…"
-      },
-      "evernote": {
-        "scanning": "Đang quét các tệp .enex…"
-      },
-      "html": {
-        "scanning": "Đang quét các tệp HTML…"
-      },
-      "importingItem": "Đang nhập {title}",
-      "raindrop": {
-        "importing": "Đang nhập dấu trang Raindrop…"
-      },
-      "roam": {
-        "reading": "Đang đọc bản xuất Roam…"
-      },
-      "scanningExport": "Đang quét bản xuất…",
-      "scanningFiles": "Đang quét các tệp…",
-      "ticktick": {
-        "importing": "Đang nhập công việc TickTick…"
-      },
-      "todoist": {
-        "importing": "Đang nhập công việc Todoist…"
-      }
-    }
-  },
-  "inbox": {
-    "header": {
-      "loading": "Đang tải…",
-      "subtitle": "Nhắc nhở xem lại hằng ngày và tùy chọn hộp thư đến.",
-      "title": "Hộp thư đến"
-    },
-    "reviewReminder": {
-      "enabled": {
-        "description": "Một lời nhắc nhẹ nhàng mỗi ngày khi hộp thư đến của bạn chưa trống.",
-        "label": "Nhắc tôi xem lại hộp thư đến"
-      },
-      "error": "Không thể cập nhật lời nhắc.",
-      "group": "Nhắc nhở xem lại hằng ngày",
-      "test": {
-        "button": "Gửi thử",
-        "description": "Gửi lời nhắc ngay bây giờ để kiểm tra thông báo hệ thống của bạn.",
-        "label": "Thông báo thử",
-        "sent": "Đã gửi thông báo thử.",
-        "sentHint": "Nếu không thấy gì, hãy cho phép thông báo cho MemryNote trong cài đặt hệ thống của bạn.",
-        "unsupported": "Thiết bị này không hiển thị được thông báo trên máy tính."
-      },
-      "time": {
-        "description": "Giờ địa phương, trên từng thiết bị.",
-        "hourLabel": "Giờ",
-        "label": "Thời gian nhắc",
-        "minuteLabel": "Phút",
-        "periodLabel": "AM hoặc PM"
+      "alwaysAllowed": {
+        "group": "Công cụ luôn được cho phép"
       }
     }
   }

@@ -3,23 +3,23 @@
     "quit": "Quitter",
     "preferences": "Paramètres…",
     "checkForUpdates": "Rechercher les mises à jour…",
-    "exit": "Quitter",
+    "services": "Services",
     "hide": "Masquer MemryNote",
     "hideOthers": "Masquer les autres",
-    "services": "Services",
-    "unhide": "Tout afficher"
+    "unhide": "Tout afficher",
+    "exit": "Quitter"
   },
   "file": {
     "label": "Fichier",
     "newNote": "Nouvelle note",
-    "close": "Fermer la fenêtre",
-    "closeTab": "Fermer l'onglet",
+    "openQuickly": "Ouvrir rapidement…",
     "exportPdf": "Exporter en PDF…",
-    "openQuickly": "Ouvrir rapidement…"
+    "closeTab": "Fermer l'onglet",
+    "close": "Fermer la fenêtre"
   },
   "navigation": {
-    "back": "Retour",
-    "forward": "Avancer"
+    "back": "Précédent",
+    "forward": "Suivant"
   },
   "edit": {
     "label": "Édition",
@@ -31,63 +31,68 @@
     "selectAll": "Tout sélectionner",
     "find": "Rechercher",
     "speech": "Parole",
-    "delete": "Supprimer",
     "pasteAndMatchStyle": "Coller et adapter le style",
+    "delete": "Supprimer",
     "startSpeaking": "Commencer la lecture",
-    "stopSpeaking": "Arrêter la lecture"
+    "stopSpeaking": "Arrêter la lecture",
+    "addToDictionary": "Ajouter au dictionnaire",
+    "noSuggestions": "Aucune suggestion"
   },
-  "view": {
-    "label": "Affichage",
-    "reload": "Recharger",
-    "toggleDevTools": "Afficher/Masquer les outils de développement",
-    "toggleFullscreen": "Basculer en plein écran",
-    "theme": "Thème",
-    "themeDark": "Sombre",
-    "themeLight": "Clair",
-    "themeSystem": "Système",
-    "themeWhite": "Papier",
-    "toggleDayPanel": "Basculer le panneau du jour",
-    "toggleSidebar": "Basculer la barre latérale",
-    "actualSize": "Taille réelle",
-    "zoomIn": "Zoom avant",
-    "zoomOut": "Zoom arrière"
+  "insert": {
+    "label": "Insertion",
+    "codeBlock": "Bloc de code",
+    "table": "Tableau",
+    "bulletList": "Liste à puces",
+    "numberedList": "Liste numérotée",
+    "taskList": "Liste de tâches",
+    "attachment": "Insérer une pièce jointe…"
   },
   "format": {
-    "body": "Corps",
-    "bold": "Gras",
-    "code": "Code",
+    "label": "Format",
     "heading1": "Titre 1",
     "heading2": "Titre 2",
     "heading3": "Titre 3",
     "heading4": "Titre 4",
     "heading5": "Titre 5",
     "heading6": "Titre 6",
-    "highlight": "Surligner",
+    "body": "Corps",
+    "bold": "Gras",
     "italic": "Italique",
-    "label": "Format",
+    "code": "Code",
+    "highlight": "Surligner",
     "strikethrough": "Barré"
   },
-  "help": {
-    "about": "À propos de MemryNote",
-    "documentation": "Documentation",
-    "label": "Aide",
-    "shortcuts": "Raccourcis clavier",
-    "aboutVersion": "Version {version}"
-  },
-  "insert": {
-    "attachment": "Insérer une pièce jointe…",
-    "bulletList": "Liste à puces",
-    "codeBlock": "Bloc de code",
-    "label": "Insérer",
-    "numberedList": "Liste numérotée",
-    "table": "Tableau",
-    "taskList": "Liste de tâches"
+  "view": {
+    "label": "Affichage",
+    "reload": "Recharger",
+    "toggleDevTools": "Afficher/Masquer les outils de développement",
+    "toggleFullscreen": "Activer/Désactiver le plein écran",
+    "toggleSidebar": "Afficher/Masquer la barre latérale",
+    "toggleDayPanel": "Afficher/Masquer le panneau du jour",
+    "theme": "Thème",
+    "themeLight": "Clair",
+    "themeDark": "Sombre",
+    "themeWhite": "Papier",
+    "themeSystem": "Système",
+    "actualSize": "Taille réelle",
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière"
   },
   "window": {
     "label": "Fenêtre",
-    "close": "Fermer",
-    "front": "Tout ramener au premier plan",
     "minimize": "Réduire",
-    "zoom": "Zoom"
+    "zoom": "Zoom",
+    "front": "Tout ramener au premier plan",
+    "close": "Fermer"
+  },
+  "help": {
+    "label": "Aide",
+    "documentation": "Documentation",
+    "shortcuts": "Raccourcis clavier",
+    "about": "À propos de MemryNote",
+    "aboutVersion": "Version {version}"
+  },
+  "tray": {
+    "show": "Afficher MemryNote"
   }
 }

@@ -3,19 +3,22 @@
     "tabs": {
       "label": "Oppgavevisninger",
       "today": "I dag",
-      "all": "Alle"
+      "tomorrow": "I morgen",
+      "next7": "Neste 7 dager",
+      "all": "Alle",
+      "archived": "Arkivert"
     },
     "viewMode": {
       "label": "Visningsmodus",
       "list": "Listevisning",
-      "kanban": "Kanban-utsikt"
+      "kanban": "Kanban-visning"
     },
     "projectScope": {
       "allProjects": "Alle prosjekter",
-      "searchProjects": "Søk etter prosjekter...",
+      "searchProjects": "Søk i prosjekter …",
       "editProject": "Rediger {name}",
-      "unstarSavedFilter": "Fjern stjerne {name}",
-      "openByDefault": "Åpne Oppgaver på {name} som standard",
+      "unstarSavedFilter": "Fjern stjernen fra {name}",
+      "openByDefault": "Vis {name} som standard i Oppgaver",
       "defaultProject": "Standardprosjekt",
       "setAsDefault": "Angi som standard"
     }
@@ -27,71 +30,105 @@
     "titlePlaceholder": "Hva må gjøres?",
     "namePlaceholder": "Oppgavenavn",
     "description": "Beskrivelse",
-    "descriptionPlaceholder": "Legg til en beskrivelse...",
+    "descriptionPlaceholder": "Legg til en beskrivelse …",
     "details": "Oppgavedetaljer",
     "status": "Status",
     "priority": "Prioritet",
+    "tags": "Tagger",
+    "startDate": "Startdato",
+    "changeStartDate": "Start: {date}. Klikk for å endre.",
     "dueDate": "Forfallsdato",
     "startsOn": "Starter {date}",
-    "dueOn": "Frist {date}",
+    "dueOn": "Forfaller {date}",
+    "reminder": "Påminnelse",
     "project": "Prosjekt",
     "repeat": "Gjenta",
-    "createAnother": "Lag en annen",
+    "createAnother": "Opprett en til",
     "delete": "Slett oppgave",
     "created": "Opprettet {date}",
-    "reminder": "Påminnelse",
-    "tags": "Tagger",
     "priorityLabels": {
-      "high": "Høy",
+      "none": "Ingen prioritet",
       "low": "Lav",
       "medium": "Middels",
-      "none": "Ingen prioritet",
+      "high": "Høy",
       "urgent": "Haster"
+    },
+    "unarchive": "Hent oppgaven ut av arkivet",
+    "archivedOn": "Arkivert {date}"
+  },
+  "reminders": {
+    "summary": "Påminnelse: {date}",
+    "summaryWithMore": "Påminnelse: {date} (+{count} til)",
+    "hasReminders": "Har påminnelser",
+    "setReminder": "Angi påminnelse",
+    "toast": {
+      "set": "Påminnelse angitt",
+      "setFailed": "Kunne ikke angi påminnelse",
+      "updated": "Påminnelse oppdatert",
+      "updateFailed": "Kunne ikke oppdatere påminnelsen",
+      "deleted": "Påminnelse slettet",
+      "deleteFailed": "Kunne ikke slette påminnelsen"
     }
   },
   "filters": {
-    "filter": "Filter",
+    "filter": "Filtrer",
     "emptyTitle": "Ingen oppgaver samsvarer med filtrene dine",
     "emptyHelp": "Prøv å justere filtrene eller",
     "groupBy": "Grupper etter",
-    "groupByOptions": "Grupper etter alternativer",
+    "groupByOptions": "Grupperingsvalg",
     "sortAscending": "Sorter stigende",
     "sortDescending": "Sorter synkende",
+    "sortDirectionAscending": "Stigende",
+    "sortDirectionDescending": "Synkende",
+    "groupByFields": {
+      "dueDate": "Forfallsdato",
+      "priority": "Prioritet",
+      "status": "Status",
+      "createdAt": "Opprettet",
+      "title": "Tittel",
+      "project": "Prosjekt",
+      "completedAt": "Fullført",
+      "folder": "Mappe",
+      "note": "Notat"
+    },
+    "groups": {
+      "vaultRoot": "Hvelvroten",
+      "noNote": "Uten notat"
+    },
     "dueDate": {
       "any": "Alle forfallsdatoer",
-      "custom": "Egendefinert periode...",
-      "nextWeek": "Neste uke",
       "none": "Ingen forfallsdato",
       "overdue": "Forfalt",
-      "thisMonth": "Denne måneden",
-      "thisWeek": "Denne uken",
       "today": "I dag",
-      "tomorrow": "I morgen"
+      "tomorrow": "I morgen",
+      "thisWeek": "Denne uken",
+      "nextWeek": "Neste uke",
+      "thisMonth": "Denne måneden",
+      "custom": "Egendefinert periode …"
     },
     "quickPresets": {
-      "dueThisWeek": "Forfaller denne uken",
-      "highPriority": "Høy prioritet",
-      "noDueDate": "Ingen forfallsdato",
       "overdue": "Forfalt",
-      "repeating": "Gjentakende"
+      "highPriority": "Høy prioritet",
+      "dueThisWeek": "Forfaller denne uken",
+      "repeating": "Gjentakende",
+      "noDueDate": "Ingen forfallsdato"
     },
-    "repeatTypeOneTime": "Engangs",
-    "repeatTypeRepeating": "Gjentakende"
+    "repeatTypeRepeating": "Gjentakende",
+    "repeatTypeOneTime": "Enkeltstående"
   },
   "quickAdd": {
-    "label": "Rask legge til oppgave",
-    "focusDescription": "Fokuser raskt legge inn input",
-    "placeholder": "Legg til en oppgave…    !today  !!high  #project",
+    "label": "Legg til oppgave raskt",
+    "placeholder": "Legg til en oppgave …    @tomorrow  !high  +prosjekt  #tagg  [[notat]]  every monday",
     "presets": {
       "menu": "Oppgavevalg",
       "dueDate": "Forfaller {date}. Endre forfallsdato",
       "noDate": "Ingen dato",
-      "linkNote": "Koble notat",
+      "linkNote": "Lenk til notat",
       "openDetails": "Åpne alle detaljer",
       "back": "Tilbake",
       "remove": "Fjern {name}",
       "noReminder": "Ingen påminnelse",
-      "addTags": "Legg til tagger…"
+      "addTags": "Legg til tagger …"
     }
   },
   "inlineProperties": {
@@ -99,128 +136,180 @@
     "dates": "Datoer",
     "datesAria": "Datoer: {value}",
     "start": "Start",
-    "due": "Frist",
+    "due": "Forfaller",
     "dueDate": "Forfallsdato",
-    "remindMe": "Påminn meg",
-    "linkItem": "Koble notat eller lerret",
+    "remindMe": "Minn meg på",
+    "linkItem": "Lenk til notat eller lerret",
     "relatedAria": "Relaterte elementer: {count}",
-    "shorthandPreview": "Satt med snarvei"
+    "shorthandPreview": "Angitt med kortkode"
   },
   "drawer": {
     "close": "Lukk oppgavedetaljer",
     "openInTasks": "Åpne i Oppgaver",
-    "subIssues": "Underutgaver",
-    "addSubIssue": "Legg til underutgave",
-    "subIssuePlaceholder": "Legg til underutgave...",
-    "noSubIssues": "Ingen underutgaver ennå",
-    "linkedNotes": "Koblede notater",
-    "linkNote": "Koble til et notat",
+    "resize": "Endre størrelse på panel",
+    "subIssues": "Deloppgaver",
+    "addSubIssue": "Legg til deloppgave",
+    "subIssuePlaceholder": "Legg til deloppgave …",
+    "noSubIssues": "Ingen deloppgaver ennå",
+    "linkedNotes": "Relatert",
+    "linkNote": "Legg til relatert element",
     "loading": "Laster inn …",
-    "searchNotes": "Søk i notater...",
-    "noMatchingNotes": "Ingen samsvarende notater",
-    "noNotesAvailable": "Ingen notater tilgjengelig",
-    "noLinkedNotes": "Ingen tilknyttede notater ennå",
-    "removeLinkTo": "Fjern lenken til {title}",
-    "removeLinkFallback": "merk",
+    "searchNotes": "Søk i relaterte …",
+    "noMatchingNotes": "Ingen samsvarende elementer",
+    "noNotesAvailable": "Ingen elementer tilgjengelig",
+    "noLinkedNotes": "Ingen relaterte elementer ennå",
+    "removeLinkTo": "Fjern relatert element {title}",
+    "removeLinkFallback": "element",
+    "related": "Relatert",
     "addRelatedItem": "Legg til relatert element",
-    "noMatchingRelated": "Ingen matchende elementer",
+    "searchRelated": "Søk i relaterte …",
+    "noMatchingRelated": "Ingen samsvarende elementer",
     "noRelatedAvailable": "Ingen elementer tilgjengelig",
     "noRelatedItems": "Ingen relaterte elementer ennå",
-    "related": "Relatert",
-    "relatedItemFallback": "element",
     "removeRelatedItem": "Fjern relatert element {title}",
-    "resize": "Endre størrelse på panel",
-    "searchRelated": "Søk i relaterte…"
+    "relatedItemFallback": "element",
+    "relatedItemMissing": "Det relaterte elementet finnes ikke lenger i dette hvelvet.",
+    "activity": "Aktivitet",
+    "activityShowAll": "Vis alle {count}",
+    "activityEmpty": "Ingenting registrert ennå. Endringer i denne oppgaven vises her.",
+    "activityLoading": "Laster inn aktivitet …",
+    "activityError": "Kunne ikke laste inn aktiviteten.",
+    "activityMore": "Last inn flere",
+    "activityTitle": "Aktivitet – {title}",
+    "activityDescription": "Alle endringer i denne oppgaven, nyeste først.",
+    "activityFilter": "Filtrer etter endringstype",
+    "activityFilterAll": "Alle endringer",
+    "activityRetention": "Aktivitet eldre enn {days} dager fjernes.",
+    "activityToday": "I dag",
+    "activityYesterday": "I går",
+    "activityByYou": "Du",
+    "activityBySync": "En annen enhet",
+    "activityByGoogle": "Google Calendar",
+    "activityActionCreated": "Opprettet",
+    "activityActionUpdated": "Oppdatert",
+    "activityActionCompleted": "Fullført",
+    "activityActionUncompleted": "Gjenåpnet",
+    "activityActionMoved": "Flyttet",
+    "activityActionDeleted": "Slettet",
+    "activityActionSuperseded": "Erstattet",
+    "activitySupersededNote": "Erstattet av en annen enhet",
+    "activityCharsAdded": "+{count} tegn",
+    "activityCharsRemoved": "{count} tegn",
+    "activityCharsSame": "omformulert",
+    "activityEmptyValue": "tom",
+    "activityFieldTitle": "Tittel",
+    "activityFieldDescription": "Beskrivelse",
+    "activityFieldStatusId": "Status",
+    "activityFieldPriority": "Prioritet",
+    "activityFieldDueDate": "Forfallsdato",
+    "activityFieldDueTime": "Forfallstid",
+    "activityFieldStartDate": "Startdato",
+    "activityFieldProjectId": "Prosjekt",
+    "activityFieldParentId": "Overordnet oppgave",
+    "activityFieldTags": "Tagger",
+    "activityFieldLinkedNoteIds": "Relaterte elementer",
+    "activityFieldCompletedAt": "Fullføring",
+    "activityFieldArchivedAt": "Arkivering",
+    "activityFieldRepeatConfig": "Gjentakelse",
+    "activityFieldSourceNoteId": "Kildenotat",
+    "activityFrom": "fra {value}",
+    "activityTo": "til {value}",
+    "activityValueChanged": "endret",
+    "activityUnknownDate": "Udatert",
+    "activityFieldRepeatFrom": "Gjenta fra",
+    "activityFieldIsRepeating": "Gjentakende"
   },
   "kanban": {
     "board": "Kanban-tavle",
     "empty": {
       "default": {
-        "subtitle": "Dra oppgaver hit, eller klikk + for å legge til",
-        "title": "Ingen oppgaver"
+        "title": "Ingen oppgaver",
+        "subtitle": "Dra oppgaver hit, eller klikk + for å legge til"
       },
       "done": {
-        "subtitle": "Fullfør oppgaver for å se dem her",
-        "title": "Ingen fullførte oppgaver"
+        "title": "Ingen fullførte oppgaver",
+        "subtitle": "Fullfør oppgaver for å se dem her"
       },
       "schedule": {
-        "subtitle": "Dra oppgaver hit for å endre tidspunkt",
-        "title": "Ingenting planlagt"
+        "title": "Ingenting planlagt",
+        "subtitle": "Dra oppgaver hit for å endre tidspunkt"
       }
     }
   },
   "toasts": {
-    "projectUpdated": "Prosjekt oppdatert",
-    "projectCreated": "Prosjekt opprettet",
+    "projectUpdated": "Prosjektet er oppdatert",
+    "projectCreated": "Prosjektet er opprettet",
     "projectSaveError": "Kunne ikke lagre prosjektet",
-    "projectArchived": "Prosjekt arkivert",
+    "projectArchived": "Prosjektet er arkivert",
     "projectArchiveError": "Kunne ikke arkivere prosjektet",
-    "projectDeleted": "Prosjekt slettet",
+    "projectDeleted": "Prosjektet er slettet",
     "projectDeleteError": "Kunne ikke slette prosjektet",
     "filtersCleared": "Filtrene er tømt",
     "filterSaved": "Filteret er lagret",
-    "filterDeleted": "Filter slettet",
-    "filterApplied": "Brukt \"{name}\"",
-    "deleted": "Oppgave slettet",
+    "filterDeleted": "Filteret er slettet",
+    "filterApplied": "Filteret «{name}» er tatt i bruk",
+    "deleted": "Oppgaven er slettet",
     "deletedSeries": "Serien er ferdig!",
-    "completed": "Oppgave fullført!",
+    "completed": "Oppgaven er fullført!",
     "archived": "Oppgaven er arkivert",
-    "undoNotAvailableForDelete": "Angre ikke tilgjengelig for sletting",
+    "undoNotAvailableForDelete": "Angre er ikke tilgjengelig for sletting",
     "alreadyAllComplete": "Alle valgte oppgaver er allerede fullført",
     "noCompletedSelected": "Ingen fullførte oppgaver er valgt",
-    "completeFailed": "Kunne ikke fullføre oppgaver",
-    "deleteFailed": "Kunne ikke slette oppgaver",
-    "moveFailed": "Kunne ikke flytte oppgaver",
+    "completeFailed": "Kunne ikke fullføre oppgavene",
+    "deleteFailed": "Kunne ikke slette oppgavene",
+    "moveFailed": "Kunne ikke flytte oppgavene",
     "bulk": {
-      "archived": "{count, plural, one {# oppgave arkivert} other {# oppgaver arkivert}}",
       "completed": "{count, plural, one {# oppgave fullført} other {# oppgaver fullført}}",
-      "deleted": "{count, plural, one {# oppgave slettet} other {# oppgaver slettet}}",
-      "deletedDescription": "Denne handlingen kan angres en kort stund.",
-      "dueDateRemoved": "{count, plural, one {Forfallsdato fjernet fra # oppgave} other {Forfallsdato fjernet fra # oppgaver}}",
-      "dueDateSet": "{count, plural, one {Forfallsdato satt for # oppgave} other {Forfallsdato satt for # oppgaver}}",
-      "movedToProject": "{count, plural, one {# oppgave flyttet til {project}} other {# oppgaver flyttet til {project}}}",
-      "movedToStatus": "{count, plural, one {# oppgave flyttet til {status}} other {# oppgaver flyttet til {status}}}",
+      "undoComplete": "{count, plural, one {Fullfør # oppgave} other {Fullfør # oppgaver}}",
+      "restored": "{count, plural, one {# oppgave gjenopprettet} other {# oppgaver gjenopprettet}}",
+      "undoUncomplete": "{count, plural, one {Merk # oppgave som ikke fullført} other {Merk # oppgaver som ikke fullført}}",
       "priorityRemoved": "{count, plural, one {Prioritet fjernet for # oppgave} other {Prioritet fjernet for # oppgaver}}",
       "prioritySet": "{count, plural, one {Prioritet satt til {priority} for # oppgave} other {Prioritet satt til {priority} for # oppgaver}}",
-      "restored": "{count, plural, one {# oppgave gjenopprettet} other {# oppgaver gjenopprettet}}",
-      "undoArchive": "{count, plural, one {Arkiver # oppgave} other {Arkiver # oppgaver}}",
-      "undoComplete": "{count, plural, one {Fullfør # oppgave} other {Fullfør # oppgaver}}",
-      "undoDelete": "{count, plural, one {Slett # oppgave} other {Slett # oppgaver}}",
       "undoDueDate": "{count, plural, one {Forfallsdato endret for # oppgave} other {Forfallsdato endret for # oppgaver}}",
+      "dueDateSet": "{count, plural, one {Forfallsdato satt for # oppgave} other {Forfallsdato satt for # oppgaver}}",
+      "dueDateRemoved": "{count, plural, one {Forfallsdato fjernet fra # oppgave} other {Forfallsdato fjernet fra # oppgaver}}",
       "undoMove": "{count, plural, one {Flytt # oppgave} other {Flytt # oppgaver}}",
+      "movedToProject": "{count, plural, one {# oppgave flyttet til {project}} other {# oppgaver flyttet til {project}}}",
       "undoStatus": "{count, plural, one {Status → {status} for # oppgave} other {Status → {status} for # oppgaver}}",
-      "undoUncomplete": "{count, plural, one {Merk # oppgave som ikke fullført} other {Merk # oppgaver som ikke fullført}}"
+      "movedToStatus": "{count, plural, one {# oppgave flyttet til {status}} other {# oppgaver flyttet til {status}}}",
+      "undoArchive": "{count, plural, one {Arkiver # oppgave} other {Arkiver # oppgaver}}",
+      "archived": "{count, plural, one {# oppgave arkivert} other {# oppgaver arkivert}}",
+      "undoDelete": "{count, plural, one {Slett # oppgave} other {Slett # oppgaver}}",
+      "deleted": "{count, plural, one {# oppgave slettet} other {# oppgaver slettet}}",
+      "deletedDescription": "Denne handlingen kan angres en kort stund.",
+      "unarchived": "{count} oppgaver hentet ut av arkivet",
+      "undoUnarchive": "Hent {count} oppgaver ut av arkivet"
     },
     "drag": {
-      "archived": "{count, plural, one {Oppgaven er arkivert} other {# oppgaver arkivert}}",
-      "deleted": "{count, plural, one {Oppgaven er slettet} other {# oppgaver slettet}}",
-      "moved": "{count, plural, one {Flyttet til {target}} other {# oppgaver flyttet til {target}}}",
-      "movedTo": "Flyttet til {target}",
-      "prioritySet": "{count, plural, one {Prioritet satt til {priority}} other {# oppgaver satt til {priority}}}",
-      "prioritySetTo": "Prioritet satt til {priority}",
-      "rescheduled": "{count, plural, one {Omplanlagt til {target}} other {# oppgaver omplanlagt til {target}}}",
       "rescheduledTo": "Omplanlagt til {target}",
+      "rescheduled": "{count, plural, one {Omplanlagt til {target}} other {# oppgaver omplanlagt til {target}}}",
+      "movedTo": "Flyttet til {target}",
+      "moved": "{count, plural, one {Flyttet til {target}} other {# oppgaver flyttet til {target}}}",
+      "prioritySetTo": "Prioritet satt til {priority}",
+      "prioritySet": "{count, plural, one {Prioritet satt til {priority}} other {# oppgaver satt til {priority}}}",
+      "deleted": "{count, plural, one {Oppgaven er slettet} other {# oppgaver slettet}}",
+      "archived": "{count, plural, one {Oppgaven er arkivert} other {# oppgaver arkivert}}",
       "undoArchive": "{count, plural, one {Arkiverte # oppgave} other {Arkiverte # oppgaver}}"
     },
     "subtasks": {
       "added": "{count, plural, one {# deloppgave lagt til} other {# deloppgaver lagt til}}",
-      "completed": "{count, plural, one {# deloppgave fullført} other {# deloppgaver fullført}}",
-      "deleted": "{count, plural, one {# deloppgave slettet} other {# deloppgaver slettet}}",
+      "promoted": "«{title}» er gjort om til en oppgave",
       "deletedDescription": "Deloppgaven er fjernet",
-      "dueDateCleared": "{count, plural, one {Forfallsdato tømt for # deloppgave} other {Forfallsdato tømt for # deloppgaver}}",
-      "dueDateSet": "{count, plural, one {Forfallsdato satt for # deloppgave} other {Forfallsdato satt for # deloppgaver}}",
-      "markedIncomplete": "{count, plural, one {# deloppgave merket som ikke fullført} other {# deloppgaver merket som ikke fullført}}",
-      "movedUnder": "Flyttet under «{title}»",
-      "parentAndSubtasksCompleted": "Oppgaven og deloppgavene er fullført",
       "parentDeletedKeepSubtasks": "Oppgaven er slettet, deloppgavene er gjort om til oppgaver",
       "parentDeletedWithSubtasks": "Oppgaven og deloppgavene er slettet",
+      "parentAndSubtasksCompleted": "Oppgaven og deloppgavene er fullført",
+      "movedUnder": "Flyttet under «{title}»",
+      "completed": "{count, plural, one {# deloppgave fullført} other {# deloppgaver fullført}}",
+      "markedIncomplete": "{count, plural, one {# deloppgave merket som ikke fullført} other {# deloppgaver merket som ikke fullført}}",
+      "dueDateSet": "{count, plural, one {Forfallsdato satt for # deloppgave} other {Forfallsdato satt for # deloppgaver}}",
+      "dueDateCleared": "{count, plural, one {Forfallsdato fjernet for # deloppgave} other {Forfallsdato fjernet for # deloppgaver}}",
       "prioritySet": "{count, plural, one {Prioritet satt for # deloppgave} other {Prioritet satt for # deloppgaver}}",
-      "promoted": "«{title}» er forfremmet til oppgave"
+      "deleted": "{count, plural, one {# deloppgave slettet} other {# deloppgaver slettet}}"
     }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
-      "addSubtask": "Legg til deloppgave...",
+      "addSubtask": "Legg til deloppgave …",
       "addSubtask2": "Legg til deloppgave",
       "enterToAdd": "Enter for å legge til"
     },
@@ -231,15 +320,16 @@
     "componentsTasksBulkActionsBulkActionToolbar": {
       "bulkActions": "Massehandlinger",
       "selected": "valgt",
-      "complete": "Komplett",
+      "complete": "Fullfør",
       "priority": "Prioritet",
       "dueDate": "Forfallsdato",
       "moveTo": "Flytt til",
       "status": "Status",
-      "archive": "Arkiv",
+      "archive": "Arkiver",
       "delete": "Slett",
       "cancelSelection": "Avbryt valg",
-      "cancel": "Avbryt"
+      "cancel": "Avbryt",
+      "unarchive": "Hent ut av arkivet"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
       "delete": "Slett ",
@@ -247,22 +337,22 @@
       "youReAboutToDelete": "Du er i ferd med å slette ",
       "task2": "oppgave",
       "and": "og ",
-      "moreTask": "mer oppgave",
+      "moreTask": "flere oppgave",
       "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Denne handlingen kan angres i en kort stund etter sletting.",
       "cancel": "Avbryt",
       "delete2": "Slett ",
       "task3": "oppgave"
     },
     "componentsTasksBulkActionsBulkDueDatePicker": {
-      "setDueDateFor": "Sett forfallsdato for ",
+      "setDueDateFor": "Angi forfallsdato for ",
       "task": "oppgave",
       "selectADateToSetAsTheDueDateForAllSelectedTasks": "Velg en dato som skal angis som forfallsdato for alle valgte oppgaver.",
-      "alsoSetTime": "Still også inn tid",
+      "alsoSetTime": "Angi også klokkeslett",
       "cancel": "Avbryt",
       "setDueDate": "Angi forfallsdato"
     },
     "componentsTasksCelebrationProgress": {
-      "complete": "Komplett"
+      "complete": "Fullført"
     },
     "componentsTasksColorPicker": {
       "selectColor": "Velg farge"
@@ -270,7 +360,7 @@
     "componentsTasksCustomRepeatDialog": {
       "onTheseDays": "På disse dagene",
       "repeatOn": "Gjenta på",
-      "day": "dag",
+      "day": "Dag",
       "ofTheMonth": "i måneden",
       "the": "Den",
       "ofTheMonth2": "i måneden",
@@ -278,10 +368,10 @@
       "never": "Aldri",
       "onDate": "På dato",
       "after": "Etter",
-      "occurrences": "hendelser",
+      "occurrences": "forekomster",
       "preview": "Forhåndsvisning",
       "of": "av ",
-      "andMore": "og mer",
+      "andMore": "og flere",
       "frequency": "Frekvens",
       "repeatEvery": "Gjenta hver",
       "day2": "dag",
@@ -290,34 +380,34 @@
       "year": "år",
       "cancel": "Avbryt",
       "save": "Lagre",
-      "customRepeat": "Tilpasset repetisjon"
+      "customRepeat": "Egendefinert gjentakelse"
     },
     "componentsTasksDatePickerCalendar": {
       "previousMonth": "Forrige måned",
       "nextMonth": "Neste måned",
       "goToToday": "Gå til i dag",
       "today": "I dag",
-      "w": "W",
+      "w": "U",
       "weekNumber": "Uke {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Fjern dato",
-      "clearTime": "Klar tid",
-      "addTime": "Legg til tid",
+      "clearTime": "Fjern klokkeslett",
+      "addTime": "Legg til klokkeslett",
       "time": "Tid"
     },
     "componentsTasksDeleteProjectDialog": {
-      "delete": "Slett \"",
+      "delete": "Vil du slette \"",
       "thisProjectHas": "Dette prosjektet har ",
       "task": "oppgave",
       "whatWouldYouLikeToDoWithThem": "Hva vil du gjøre med dem?",
       "moveTasksToPersonalProject": "Flytt oppgaver til Personlig prosjekt",
       "deleteAllTasksPermanently": "Slett alle oppgaver permanent",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Dette prosjektet har ingen oppgaver og vil bli permanent slettet.",
+      "notesEventsAndFilesStayNotice": "Oppgavene i dette prosjektet slettes. Notatene, hendelsene og filene dine blir liggende i hvelvet.",
       "thisActionCannotBeUndone": "Denne handlingen kan ikke angres.",
       "cancel": "Avbryt",
-      "deleteProject": "Slett prosjekt",
-      "notesEventsAndFilesStayNotice": "Oppgavene i dette prosjektet slettes. Notatene, hendelsene og filene dine blir liggende i hvelvet."
+      "deleteProject": "Slett prosjekt"
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Vil du slette oppgaven?",
@@ -326,43 +416,43 @@
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Alle deloppgaver fullført!",
-      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Vil du også markere overordnet oppgave som fullført?",
-      "keepTaskOpen": "Hold oppgaven åpen",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Vil du også merke den overordnede oppgaven som fullført?",
+      "keepTaskOpen": "La oppgaven være åpen",
       "completeTask": "Fullfør oppgaven ✓",
       "allSubtasksDoneBody": "{count, plural, one {Deloppgaven i «{title}» er fullført.} other {Alle de # deloppgavene i «{title}» er fullført.}}"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Angi forfallsdato for alle deloppgaver",
-      "setDueDateFor": "Sett forfallsdato for ",
+      "setDueDateFor": "Angi forfallsdato for ",
       "alsoApplyToCompletedSubtasks": "Gjelder også fullførte deloppgaver (",
-      "clearDate": "Klar dato",
+      "clearDate": "Fjern dato",
       "cancel": "Avbryt",
-      "apply": "Søk",
-      "alsoApplyToCompletedSubtasksCount": "Gjelder også fullførte deloppgaver ({count})",
-      "setDueDateForSubtasksIn": "Angi forfallsdato for {count, plural, one {# deloppgave} other {# deloppgaver}} i «{title}»"
+      "apply": "Bruk",
+      "setDueDateForSubtasksIn": "Angi forfallsdato for {count, plural, one {# deloppgave} other {# deloppgaver}} i «{title}»",
+      "alsoApplyToCompletedSubtasksCount": "Gjelder også fullførte deloppgaver ({count})"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Angi prioritet for alle deloppgaver",
-      "setPriorityFor": "Sett prioritet for ",
+      "setPriorityFor": "Angi prioritet for ",
       "alsoApplyToCompletedSubtasks": "Gjelder også fullførte deloppgaver (",
       "cancel": "Avbryt",
-      "apply": "Søk",
-      "alsoApplyToCompletedSubtasksCount": "Gjelder også fullførte deloppgaver ({count})",
-      "setPriorityForSubtasksIn": "Angi prioritet for {count, plural, one {# deloppgave} other {# deloppgaver}} i «{title}»"
+      "apply": "Bruk",
+      "setPriorityForSubtasksIn": "Angi prioritet for {count, plural, one {# deloppgave} other {# deloppgaver}} i «{title}»",
+      "alsoApplyToCompletedSubtasksCount": "Gjelder også fullførte deloppgaver ({count})"
     },
     "componentsTasksDialogsCompleteParentDialog": {
-      "completeTaskWithIncompleteSubtasks": "Fullfør oppgave med ufullstendige deloppgaver?",
+      "completeTaskWithIncompleteSubtasks": "Vil du fullføre oppgaven med ufullførte deloppgaver?",
       "has": "har ",
-      "incompleteSubtask": "ufullstendig deloppgave",
+      "incompleteSubtask": "ufullført deloppgave",
       "and": "og ",
-      "more": "mer",
+      "more": "til",
       "whatWouldYouLikeToDo": "Hva vil du gjøre?",
-      "completeAllParentSubtasks": "Fullfør alle (foreldre + underoppgaver)",
-      "markTheParentAndAllSubtasksAsComplete": "Merk overordnet og alle deloppgavene som fullførte",
-      "completeParentOnlyKeepSubtasksIncomplete": "Fullfør kun overordnet, hold deloppgavene ufullstendige",
-      "onlyMarkTheParentTaskAsComplete": "Merk bare overordnet oppgave som fullført",
+      "completeAllParentSubtasks": "Fullfør alle (overordnet + deloppgaver)",
+      "markTheParentAndAllSubtasksAsComplete": "Merk den overordnede oppgaven og alle deloppgavene som fullført",
+      "completeParentOnlyKeepSubtasksIncomplete": "Fullfør bare den overordnede oppgaven, behold deloppgavene som ikke fullført",
+      "onlyMarkTheParentTaskAsComplete": "Merk bare den overordnede oppgaven som fullført",
       "cancel": "Avbryt",
-      "complete": "Komplett"
+      "complete": "Fullfør"
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Vil du slette alle deloppgavene?",
@@ -372,38 +462,38 @@
       "deleteSubtasksConfirmation": "Dette sletter {count, plural, one {# deloppgave} other {# deloppgaver}} fra «{title}»."
     },
     "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "Vil du slette oppgave med deloppgaver?",
+      "deleteTaskWithSubtasks": "Vil du slette oppgaven med deloppgaver?",
       "has": "har ",
       "subtask": "deloppgave",
       "whatWouldYouLikeToDo": "Hva vil du gjøre?",
       "deleteTaskAndAllSubtasks": "Slett oppgave og alle deloppgaver",
       "permanentlyRemovesEverything": "Fjerner alt permanent",
       "deleteTaskKeepSubtasksAsStandaloneTasks": "Slett oppgave, behold deloppgaver som frittstående oppgaver",
-      "subtasksBecomeTopLevelTasks": "Underoppgaver blir oppgaver på toppnivå",
+      "subtasksBecomeTopLevelTasks": "Deloppgavene blir oppgaver på toppnivå",
       "cancel": "Avbryt",
       "delete": "Slett"
     },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
-      "duplicateTask": "Duplikatoppgave",
-      "createACopyOf": "Lag en kopi av \"",
-      "alsoDuplicateSubtasks": "Dupliser også underoppgaver (",
+      "duplicateTask": "Dupliser oppgaven",
+      "createACopyOf": "Opprett en kopi av «",
+      "alsoDuplicateSubtasks": "Dupliser også deloppgavene (",
       "cancel": "Avbryt",
-      "duplicate": "Duplikat ",
+      "duplicate": "Dupliser ",
+      "createACopyOfTitle": "Opprett en kopi av «{title}»",
       "alsoDuplicateSubtasksCount": "Dupliser også deloppgavene ({count})",
-      "createACopyOfTitle": "Lag en kopi av «{title}»",
-      "duplicateTaskOnly": "Dupliser oppgaven",
-      "duplicateWithItems": "Dupliser ({count, plural, one {# element} other {# elementer}})"
+      "duplicateWithItems": "Dupliser ({count, plural, one {# element} other {# elementer}})",
+      "duplicateTaskOnly": "Dupliser oppgaven"
     },
     "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Lag deloppgave av...",
-      "selectATaskToMake": "Velg en oppgave å lage \"",
-      "aSubtaskOf": "en deloppgave av.",
-      "searchTasks": "Søk i oppgaver...",
+      "makeSubtaskOf": "Gjør til deloppgave av …",
+      "selectATaskToMake": "Velg oppgaven som \"",
+      "aSubtaskOf": "skal bli en deloppgave av.",
+      "searchTasks": "Søk i oppgaver …",
       "sameProject": "Samme prosjekt",
       "otherProjects": "Andre prosjekter"
     },
     "componentsTasksDragDropInsertionIndicator": {
-      "dropToRescheduleTo": "Slipp for å ombestemme til "
+      "dropToRescheduleTo": "Slipp for å flytte til "
     },
     "componentsTasksDragDropMoveMenu": {
       "moveTask": "Flytt oppgave",
@@ -417,10 +507,10 @@
       "current": "Gjeldende",
       "changeStatus": "Endre status",
       "current2": "Gjeldende",
-      "reorder": "Bestill på nytt"
+      "reorder": "Endre rekkefølge"
     },
     "componentsTasksDragDropMultiDragOverlay": {
-      "moreTask": "mer oppgave",
+      "moreTask": "flere oppgave",
       "task": "oppgave"
     },
     "componentsTasksDragDropSidebarDropZones": {
@@ -432,24 +522,24 @@
     "componentsTasksDueDatePicker": {
       "selectDueDate": "Velg forfallsdato",
       "overdue": "Forfalt",
-      "setDueDate": "Sett forfallsdato",
+      "setDueDate": "Angi forfallsdato",
       "suggestions": "Forslag",
-      "pickADate": "Velg en dato...",
-      "addTime": "Legg til tid",
+      "pickADate": "Velg en dato …",
+      "addTime": "Legg til klokkeslett",
       "time": "Tid",
-      "clearDate": "Klar dato",
+      "clearDate": "Fjern dato",
       "backToOptions": "Tilbake til alternativer",
-      "nextWeek": "Neste uke",
-      "thisWeekend": "Denne helgen",
       "today": "I dag",
-      "tomorrow": "I morgen"
+      "tomorrow": "I morgen",
+      "thisWeekend": "Denne helgen",
+      "nextWeek": "Neste uke"
     },
     "componentsTasksEditRepeatingTaskDialog": {
-      "editRepeatingTask": "Rediger gjentatt oppgave",
-      "youReEditingARepeatingTaskApplyChangesTo": "Du redigerer en gjentatt oppgave. Bruk endringer på:",
-      "onlyThisOccurrence": "Bare denne hendelsen",
-      "onlyFutureTasksUnchanged": "bare — fremtidige oppgaver uendret",
-      "thisAndAllFutureOccurrences": "Dette og alle fremtidige hendelser",
+      "editRepeatingTask": "Rediger gjentakende oppgave",
+      "youReEditingARepeatingTaskApplyChangesTo": "Du redigerer en gjentakende oppgave. Bruk endringene på:",
+      "onlyThisOccurrence": "Bare denne forekomsten",
+      "onlyFutureTasksUnchanged": "– fremtidige oppgaver endres ikke",
+      "thisAndAllFutureOccurrences": "Denne og alle fremtidige forekomster",
       "andBeyond": "og utover",
       "cancel": "Avbryt",
       "continue": "Fortsett"
@@ -468,6 +558,8 @@
     "componentsTasksFiltersActiveFiltersBar": {
       "priorityIs": "Prioritet er",
       "priority": "prioritet",
+      "tagsIs": "Tagger er",
+      "tags": "tagger",
       "statusIs": "Status er",
       "status": "status",
       "projectIs": "Prosjekt er",
@@ -475,18 +567,16 @@
       "due": "Forfaller",
       "dueDate": "forfallsdato",
       "search": "søk",
-      "clearAll": "Fjern alle",
-      "tags": "tagger",
-      "tagsIs": "Tagger er"
+      "clearAll": "Fjern alle"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrer etter forfallsdato",
-      "customRange": "Egendefinert område",
-      "clear": "Klart",
-      "apply": "Søk"
+      "customRange": "Egendefinert periode",
+      "clear": "Fjern",
+      "apply": "Bruk"
     },
     "componentsTasksFiltersFilterDropdown": {
-      "filterBy": "Filtrer etter..."
+      "filterBy": "Filtrer etter …"
     },
     "componentsTasksFiltersFilterEmptyState": {
       "activeFilters": "Aktive filtre: ",
@@ -498,7 +588,7 @@
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Prioritet",
       "is": "er",
-      "search": "Søk...",
+      "search": "Søk …",
       "selected": "valgt"
     },
     "componentsTasksFiltersFilterPanelsProjectPanel": {
@@ -512,11 +602,17 @@
       "status": "Status",
       "pickAProject": "Velg et prosjekt"
     },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "tags": "Tagger",
+      "is": "er",
+      "search": "Søk …",
+      "selected": "valgt"
+    },
     "componentsTasksFiltersMoreFiltersDropdown": {
       "moreFilters": "Flere filtre",
       "more": "Mer",
       "status": "Status",
-      "hasTimeSet": "Har satt tid",
+      "hasTimeSet": "Har klokkeslett",
       "recurringOnly": "Bare gjentakende",
       "status2": "Status"
     },
@@ -528,30 +624,30 @@
       "filterByProject": "Filtrer etter prosjekt",
       "project": "Prosjekt",
       "allProjects": "Alle prosjekter",
-      "clear": "Klart"
+      "clear": "Fjern"
     },
     "componentsTasksFiltersQuickFilters": {
-      "quickFilters": "Raske filtre:"
+      "quickFilters": "Hurtigfiltre:"
     },
     "componentsTasksFiltersSaveFilterDialog": {
       "saveFilter": "Lagre filter",
-      "saveYourCurrentFilterSettingsForQuickAccessLater": "Lagre dine nåværende filterinnstillinger for rask tilgang senere.",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "Lagre de gjeldende filterinnstillingene for rask tilgang senere.",
       "filterName": "Filternavn",
       "eGHighPriorityThisWeek": "f.eks. Høy prioritet denne uken",
       "currentFilters": "Gjeldende filtre:",
       "noFiltersApplied": "Ingen filtre er brukt",
       "cancel": "Avbryt",
       "saveFilter2": "Lagre filter",
-      "nameRequired": "Skriv inn et navn for dette filteret",
-      "summaryDue": "Forfaller: {value}",
-      "summaryDueRange": "Forfaller: {start} - {end}",
-      "summaryPriorities": "Prioritet: {names}",
-      "summaryProjects": "Prosjekt: {names}",
-      "summaryRepeatOneTime": "Gjentakelse: Bare engangs",
-      "summaryRepeatRepeating": "Gjentakelse: Bare gjentakende",
       "summarySearch": "Søk: «{query}»",
+      "summaryProjects": "Prosjekt: {names}",
+      "summaryPriorities": "Prioritet: {names}",
+      "summaryDue": "Forfaller: {value}",
+      "summaryDueRange": "Forfaller: {start} – {end}",
+      "summaryRepeatRepeating": "Gjentakelse: Bare gjentakende",
+      "summaryRepeatOneTime": "Gjentakelse: Bare enkeltstående",
       "summaryTimeWith": "Tid: Med klokkeslett",
-      "summaryTimeWithout": "Tid: Uten klokkeslett"
+      "summaryTimeWithout": "Tid: Uten klokkeslett",
+      "nameRequired": "Skriv inn et navn på dette filteret"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Lagrede filtre",
@@ -566,15 +662,15 @@
       "save": "Lagre"
     },
     "componentsTasksFiltersSearchInput": {
-      "searchTasks": "Søkeoppgaver",
+      "searchTasks": "Søk i oppgaver",
       "clearSearch": "Tøm søk"
     },
     "componentsTasksKanbanKanbanColumn": {
       "dropHere": "Slipp her",
       "releaseToMoveTaskToThisColumn": "Slipp for å flytte oppgaven til denne kolonnen",
-      "moreCompleted": "mer fullført",
+      "moreCompleted": "fullførte til",
       "showFewer": "Vis færre",
-      "taskTitle": "Oppgavetittel..."
+      "taskTitle": "Oppgavetittel …"
     },
     "componentsTasksNaturalDateInput": {
       "typeADateInNaturalLanguage": "Skriv inn en dato på naturlig språk",
@@ -585,7 +681,7 @@
     },
     "componentsTasksPrioritySelect": {
       "selectPriority": "Velg prioritet",
-      "navigate": "navigere",
+      "navigate": "naviger",
       "select": "velg"
     },
     "componentsTasksProjectModal": {
@@ -595,7 +691,7 @@
       "clickIconToChange": "Klikk på ikonet for å endre",
       "color": "Farge",
       "descriptionOptional": "Beskrivelse (valgfritt)",
-      "briefDescriptionOfThisProject": "Kort beskrivelse av dette prosjektet...",
+      "briefDescriptionOfThisProject": "Kort beskrivelse av dette prosjektet …",
       "statuses": "Statuser",
       "configureTheWorkflowStagesForThisProject": "Konfigurer arbeidsflytstadiene for dette prosjektet.",
       "deleteProject": "Slett prosjekt",
@@ -603,9 +699,9 @@
       "unsavedChanges": "Ulagrede endringer",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Du har ulagrede endringer. Er du sikker på at du vil forkaste dem?",
       "cancel2": "Avbryt",
-      "discard": "Kast",
+      "discard": "Forkast",
       "defaultProject": "Standardprosjekt",
-      "openTasksOnThisProject": "Oppgaver åpnes på dette prosjektet"
+      "openTasksOnThisProject": "Oppgaver åpnes med dette prosjektet"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "Velg prosjekt",
@@ -613,28 +709,24 @@
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "Rediger prosjekt",
-      "archiveProject": "Arkivprosjekt",
+      "archiveProject": "Arkiver prosjekt",
       "deleteProject": "Slett prosjekt",
       "selectProject": "Velg prosjekt",
       "noProjectsYet": "Ingen prosjekter ennå",
-      "createProject": "Lag prosjekt"
+      "createProject": "Opprett prosjekt"
     },
     "componentsTasksProjectsProjectsTabContent": {
       "noProjectSelected": "Ingen prosjekter er valgt",
       "selectAProjectFromTheDropdownOrCreateANewOne": "Velg et prosjekt fra rullegardinmenyen eller opprett et nytt",
-      "createYourFirstProject": "Lag ditt første prosjekt"
+      "createYourFirstProject": "Opprett ditt første prosjekt"
     },
     "componentsTasksQuickAddQuickAddHelp": {
-      "quickAddShortcutsHelp": "Hurtig legge til snarveier hjelper",
-      "quickAddShortcuts": "Hurtiglegg til snarveier",
-      "exampleBuyMilkTomorrowHighPersonal": "Eksempel: \"Kjøp melk !i morgen !!høy #personal\""
+      "quickAddShortcutsHelp": "Hjelp for kortkoder i hurtigtillegg",
+      "quickAddShortcuts": "Kortkoder for hurtigtillegg",
+      "exampleBuyMilkTomorrowHighPersonal": "Eksempel: «Kjøp melk !tomorrow !!high #personlig»"
     },
     "componentsTasksQuickAddQuickOptionsBar": {
-      "quickOptions": "Raske alternativer:"
-    },
-    "componentsTasksQuickAddInput": {
-      "q": "Q",
-      "q2": "Q"
+      "quickOptions": "Hurtigvalg:"
     },
     "componentsTasksRepeatIndicator": {
       "of": "av ",
@@ -643,11 +735,11 @@
     "componentsTasksRepeatPicker": {
       "selectRepeatFrequency": "Velg gjentakelsesfrekvens",
       "doesNotRepeat": "Gjentas ikke",
-      "custom": "Egendefinert..."
+      "custom": "Egendefinert …"
     },
     "componentsTasksStatusEditor": {
       "changeStatusColor": "Endre statusfarge",
-      "dragToReorder": "Dra for å omorganisere",
+      "dragToReorder": "Dra for å endre rekkefølgen",
       "statusName": "Statusnavn",
       "addStatus": "Legg til status"
     },
@@ -657,11 +749,11 @@
     },
     "componentsTasksStopRepeatingDialog": {
       "stopRepeating": "Slutt å gjenta",
-      "isSetToRepeat": "er satt til å gjenta ",
+      "isSetToRepeat": "gjentas ",
       "whatWouldYouLikeToDo": "Hva vil du gjøre?",
-      "keepThisTaskStopFutureOccurrences": "Behold denne oppgaven, stopp fremtidige hendelser",
+      "keepThisTaskStopFutureOccurrences": "Behold denne oppgaven, stopp fremtidige forekomster",
       "taskWillBecomeAOneTimeTask": "Oppgaven blir en engangsoppgave",
-      "deleteThisAndAllFutureOccurrences": "Slett dette og alle fremtidige hendelser",
+      "deleteThisAndAllFutureOccurrences": "Slett denne og alle fremtidige forekomster",
       "taskWillBeRemovedEntirely": "Oppgaven vil bli fjernet helt",
       "cancel": "Avbryt",
       "confirm": "Bekreft"
@@ -681,20 +773,20 @@
     },
     "componentsTasksTaskBadges": {
       "priority": "prioritet",
-      "repeatingTask": "Gjentatt oppgave",
+      "repeatingTask": "Gjentakende oppgave",
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
       "addTask": "Legg til oppgave",
-      "allDescription": "Opprett din første oppgave for å komme i gang",
       "allTitle": "Ingen oppgaver ennå",
-      "completedDescription": "Fullførte oppgaver dukker opp her",
-      "completedTitle": "Ingen fullførte oppgaver",
-      "projectDescription": "Legg til en oppgave for å komme i gang",
-      "projectTitle": "Ingen oppgaver i dette prosjektet",
-      "projectTitleNamed": "Ingen oppgaver i {name}",
+      "allDescription": "Opprett din første oppgave for å komme i gang",
+      "todayTitle": "Ingenting forfaller i dag",
       "todayDescription": "Du er helt à jour!",
-      "todayTitle": "Ingenting forfaller i dag"
+      "completedTitle": "Ingen fullførte oppgaver",
+      "completedDescription": "Fullførte oppgaver dukker opp her",
+      "projectTitle": "Ingen oppgaver i dette prosjektet",
+      "projectDescription": "Legg til en oppgave for å komme i gang",
+      "projectTitleNamed": "Ingen oppgaver i {name}"
     },
     "componentsTasksTaskIcons": {
       "noPriority": "ingen prioritet"
@@ -713,13 +805,13 @@
     "componentsTasksTimePicker": {
       "selectTime": "Velg tid",
       "selectTime2": "Velg tid",
-      "clearTime": "Klar tid"
+      "clearTime": "Fjern klokkeslett"
     },
     "componentsTasksTodayEmptyState": {
       "nothingScheduledForToday": "Ingenting planlagt i dag",
       "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Du har forfalte oppgaver ovenfor. Legg til noen oppgaver for i dag eller sjekk den kommende listen din.",
       "addTaskForToday": "Legg til oppgave for i dag",
-      "allCaughtUpForToday": "Alt tok igjen for i dag",
+      "allCaughtUpForToday": "Alt er unnagjort for i dag",
       "youHaveNothingScheduledEnjoyTheClarity": "Du har ingenting planlagt. Nyt klarheten.",
       "addTaskForToday2": "Legg til oppgave for i dag"
     },
@@ -730,202 +822,184 @@
       "noUpcomingTasks": "Ingen kommende oppgaver",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Oppgaver som skal forfalle i løpet av de neste 7 dagene vil vises her. Planlegg uken ved å legge til noen oppgaver.",
       "addTask2": "Legg til oppgave"
-    },
-    "componentsTasksFiltersFilterPanelsTagPanel": {
-      "is": "er",
-      "search": "Søk...",
-      "selected": "valgt",
-      "tags": "Tagger"
     }
   },
   "phaseI": {
     "toasts": {
-      "changesUndone": "Endringer angret",
+      "changesUndone": "Endringene er angret",
       "projectNotFound": "Finner ikke prosjektet",
-      "failedToArchiveTasks": "Kunne ikke arkivere oppgaver",
-      "tasksRestoredFromArchive": "Oppgaver gjenopprettet fra arkiv",
-      "subtaskAdded": "Underoppgave lagt til",
-      "subtaskDeleted": "Deloppgave slettet",
-      "taskCompleted": "Oppgave fullført",
-      "allSubtasksCompleteTaskMarkedAsDone": "🎉 Alle deloppgaver fullført! Oppgave merket som utført.",
-      "taskReopened": "Oppgaven gjenåpnet",
-      "taskKeptOpen": "Oppgave holdt åpen",
-      "taskMarkedAsDone": "🎉 Oppgave merket som ferdig!"
+      "failedToArchiveTasks": "Kunne ikke arkivere oppgavene",
+      "tasksRestoredFromArchive": "Oppgavene er hentet ut av arkivet",
+      "subtaskAdded": "Deloppgaven er lagt til",
+      "subtaskDeleted": "Deloppgaven er slettet",
+      "taskCompleted": "Oppgaven er fullført",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 Alle deloppgavene er fullført! Oppgaven er merket som fullført.",
+      "taskReopened": "Oppgaven er gjenåpnet",
+      "taskKeptOpen": "Oppgaven er fortsatt åpen",
+      "taskMarkedAsDone": "🎉 Oppgaven er merket som fullført!"
     },
     "errors": {
-      "failedToArchiveTasks": "Kunne ikke arkivere oppgaver",
+      "failedToArchiveTasks": "Kunne ikke arkivere oppgavene",
       "failedToAddSubtask": "Kunne ikke legge til deloppgave",
-      "failedToAddSubtasks": "Kunne ikke legge til underoppgaver",
-      "failedToReorderSubtasks": "Kunne ikke omorganisere underoppgaver",
-      "failedToPromoteSubtask": "Kunne ikke promotere deloppgaven",
-      "failedToDeleteSubtask": "Kunne ikke slette underoppgaven",
+      "failedToAddSubtasks": "Kunne ikke legge til deloppgaver",
+      "failedToReorderSubtasks": "Kunne ikke endre rekkefølgen på deloppgavene",
+      "failedToPromoteSubtask": "Kunne ikke gjøre om deloppgaven til en oppgave",
+      "failedToDeleteSubtask": "Kunne ikke slette deloppgaven",
       "failedToDeleteTask": "Kunne ikke slette oppgaven",
       "failedToCompleteTask": "Kunne ikke fullføre oppgaven",
-      "failedToMakeSubtask": "Kunne ikke lage deloppgave",
-      "failedToCompleteSubtasks": "Kunne ikke fullføre underoppgaver",
-      "failedToMarkSubtasksIncomplete": "Kunne ikke merke deloppgaver som ufullstendige",
+      "failedToMakeSubtask": "Kunne ikke gjøre om til deloppgave",
+      "failedToCompleteSubtasks": "Kunne ikke fullføre deloppgavene",
+      "failedToMarkSubtasksIncomplete": "Kunne ikke merke deloppgavene som ikke fullført",
       "failedToSetDueDate": "Kunne ikke angi forfallsdato",
       "failedToSetPriority": "Kunne ikke angi prioritet",
-      "failedToDeleteSubtasks": "Kunne ikke slette underoppgaver",
+      "failedToDeleteSubtasks": "Kunne ikke slette deloppgavene",
       "failedToLoadTaskPreferences": "Kunne ikke laste inn oppgaveinnstillingene",
       "failedToUpdateTaskPreferences": "Kunne ikke oppdatere oppgaveinnstillingene",
-      "failedToLoadLinkedTasks": "Kunne ikke laste inn koblede oppgaver"
-    }
-  },
-  "reminders": {
-    "hasReminders": "Har påminnelser",
-    "setReminder": "Angi påminnelse",
-    "summary": "Påminnelse: {date}",
-    "summaryWithMore": "Påminnelse: {date} (+{count} til)",
-    "toast": {
-      "deleteFailed": "Kunne ikke slette påminnelse",
-      "deleted": "Påminnelse slettet",
-      "set": "Påminnelse angitt",
-      "setFailed": "Kunne ikke angi påminnelse",
-      "updateFailed": "Kunne ikke oppdatere påminnelse",
-      "updated": "Påminnelse oppdatert"
+      "failedToLoadLinkedTasks": "Kunne ikke laste inn de lenkede oppgavene"
     }
   },
   "addToProject": {
-    "dialogTitle": "Legg til i prosjekt",
-    "loading": "Laster inn prosjekter…",
     "menuLabel": "Legg til i prosjekt",
+    "dialogTitle": "Legg til i prosjekt",
     "noProjects": "Ingen prosjekter ennå",
-    "toastError": "Kunne ikke legge til i prosjektet",
-    "toastSuccess": "Lagt til i {name}"
-  },
-  "itemProjects": {
-    "openProject": "Åpne prosjektet {name}"
+    "loading": "Laster inn prosjekter …",
+    "toastSuccess": "Lagt til i {name}",
+    "toastError": "Kunne ikke legge til i prosjektet"
   },
   "projectHome": {
-    "emptyBody": "Velg et prosjekt i sidepanelet for å åpne prosjektsiden.",
     "emptyTitle": "Ingen prosjekt er valgt",
+    "emptyBody": "Velg et prosjekt i sidefeltet for å åpne prosjektsiden.",
     "loadError": "Kunne ikke laste inn prosjektdetaljene",
     "overview": {
-      "clear": "Fjern oversikten",
-      "clearError": "Kunne ikke fjerne oversiktsnotatet",
+      "sectionTitle": "Oversikt",
       "create": "Opprett oversiktsnotat",
-      "createError": "Kunne ikke opprette oversiktsnotatet",
+      "clear": "Fjern oversikten",
       "defaultTitle": "Oversikt",
+      "placeholder": "Skriv en oversikt over dette prosjektet …",
+      "createError": "Kunne ikke opprette oversiktsnotatet",
+      "clearError": "Kunne ikke fjerne oversiktsnotatet",
       "loadError": "Kunne ikke laste inn oversiktsnotatet",
-      "placeholder": "Skriv en oversikt for dette prosjektet…",
-      "saveError": "Kunne ikke lagre oversiktsnotatet",
-      "sectionTitle": "Oversikt"
+      "saveError": "Kunne ikke lagre oversiktsnotatet"
     }
+  },
+  "itemProjects": {
+    "openProject": "Åpne prosjektet {name}",
+    "removeFromProject": "Fjern fra {name}",
+    "removeFailed": "Kunne ikke fjerne elementet fra prosjektet"
   },
   "projectHub": {
-    "capture": {
-      "attach": "Legg ved filer",
-      "fileError": "Kunne ikke koble {name} til prosjektet",
-      "fileErrorGeneric": "Kunne ikke importere filene",
-      "filesAdded": "{count, plural, one {# fil lagt til i prosjektet} other {# filer lagt til i prosjektet}}",
-      "label": "Legg til i {name}",
-      "linkAdded": "Lenken er lagt til i prosjektet",
-      "linkError": "Kunne ikke lagre lenken",
-      "placeholder": "Legg til i {name} — skriv en oppgave, noter en tanke eller lim inn en lenke…"
-    },
-    "groups": {
-      "older": "Eldre",
-      "past": "Tidligere",
-      "today": "I dag",
-      "tomorrow": "I morgen",
-      "upcoming": "Kommende",
-      "yesterday": "I går"
-    },
     "header": {
-      "archiveProject": "Arkiver prosjekt",
-      "editProject": "Rediger prosjekt",
+      "toggleRail": "Vis/skjul prosjektdetaljer",
       "menu": "Prosjekthandlinger",
-      "toggleRail": "Vis eller skjul prosjektdetaljer"
-    },
-    "rail": {
-      "addNote": "Legg til notat",
-      "created": "Opprettet",
-      "details": "Detaljer",
-      "doneOf": "{done} av {total} fullført",
-      "linked": "Koblet",
-      "linkedSummary": "{notes, plural, one {# notat} other {# notater}} · {files, plural, one {# fil} other {# filer}} · {events, plural, one {# hendelse} other {# hendelser}}",
-      "overdue": "Forfalt",
-      "overview": "Oversikt",
-      "pinError": "Kunne ikke legge notatet til i oversikten",
-      "progress": "Fremdrift",
-      "unpinError": "Kunne ikke fjerne notatet fra oversikten",
-      "unpinNote": "Fjern {title} fra oversikten",
-      "updated": "Oppdatert"
-    },
-    "rows": {
-      "openEvent": "Åpne hendelsen {title}",
-      "openFile": "Åpne filen {title}",
-      "openNote": "Åpne notatet {title}",
-      "openTask": "Åpne oppgaven {title}",
-      "setNoteIcon": "Angi ikon for {title}"
-    },
-    "sections": {
-      "add": "Legg til i {title}",
-      "emptyEvents": "Ingen hendelser er koblet til ennå.",
-      "emptyFiles": "Ingen filer er koblet til ennå.",
-      "emptyNotes": "Ingen notater er koblet til ennå.",
-      "emptyTasks": "Ingen oppgaver ennå.",
-      "newNoteError": "Kunne ikke legge til notatet",
-      "newNoteTitle": "Notat uten tittel",
-      "viewAll": "Vis alle"
+      "editProject": "Rediger prosjekt",
+      "archiveProject": "Arkiver prosjekt"
     },
     "tabs": {
-      "events": "Hendelser",
-      "files": "Filer",
       "label": "Prosjektvisninger",
-      "notes": "Notater",
       "overview": "Oversikt",
-      "tasks": "Oppgaver"
+      "tasks": "Oppgaver",
+      "notes": "Notater",
+      "files": "Filer",
+      "events": "Hendelser"
+    },
+    "groups": {
+      "today": "I dag",
+      "yesterday": "I går",
+      "older": "Eldre",
+      "tomorrow": "I morgen",
+      "upcoming": "Kommende",
+      "past": "Tidligere"
+    },
+    "sections": {
+      "viewAll": "Vis alle",
+      "add": "Legg til i {title}",
+      "emptyTasks": "Ingen oppgaver ennå.",
+      "emptyNotes": "Ingen notater er lenket ennå.",
+      "emptyFiles": "Ingen filer er lenket ennå.",
+      "emptyEvents": "Ingen hendelser er lenket ennå.",
+      "newNoteTitle": "Notat uten tittel",
+      "newNoteError": "Kunne ikke legge til notatet"
+    },
+    "rows": {
+      "openTask": "Åpne oppgaven {title}",
+      "openNote": "Åpne notatet {title}",
+      "openFile": "Åpne filen {title}",
+      "openEvent": "Åpne hendelsen {title}",
+      "setNoteIcon": "Angi ikon for {title}"
+    },
+    "rail": {
+      "overview": "Oversikt",
+      "progress": "Fremdrift",
+      "details": "Detaljer",
+      "doneOf": "{done} av {total} fullført",
+      "overdue": "Forfalt",
+      "created": "Opprettet",
+      "updated": "Oppdatert",
+      "linked": "Lenket",
+      "linkedSummary": "{notes, plural, one {# notat} other {# notater}} · {files, plural, one {# fil} other {# filer}} · {events, plural, one {# hendelse} other {# hendelser}}",
+      "addNote": "Legg til notat",
+      "unpinNote": "Fjern {title} fra oversikten",
+      "pinError": "Kunne ikke legge notatet til i oversikten",
+      "unpinError": "Kunne ikke fjerne notatet fra oversikten"
+    },
+    "capture": {
+      "placeholder": "Legg til i {name} – skriv en oppgave, noter noe eller lim inn en lenke …",
+      "attach": "Legg ved filer",
+      "linkAdded": "Lenken er lagt til i prosjektet",
+      "linkError": "Kunne ikke lagre lenken",
+      "filesAdded": "{count, plural, one {# fil lagt til i prosjektet} other {# filer lagt til i prosjektet}}",
+      "fileError": "Kunne ikke lenke {name} til prosjektet",
+      "fileErrorGeneric": "Kunne ikke importere filene",
+      "label": "Legg til i {name}"
     }
-  },
-  "priorityInline": {
-    "high": "høy",
-    "low": "lav",
-    "medium": "middels",
-    "urgent": "haster"
-  },
-  "priorityLabels": {
-    "high": "Høy",
-    "low": "Lav",
-    "medium": "Middels",
-    "none": "Ingen prioritet",
-    "urgent": "Haster"
   },
   "project": {
-    "statusTypes": {
-      "done": "Ferdig",
-      "inProgress": "Pågår",
-      "todo": "Å gjøre"
-    },
     "validation": {
-      "minStatuses": "Prosjekter trenger minst 2 statuser",
       "nameRequired": "Prosjektnavn er påkrevd",
       "nameTooLong": "Prosjektnavnet kan ikke være lengre enn 50 tegn",
-      "needsDoneStatus": "Prosjekter trenger minst én «Ferdig»-status",
-      "needsDoneStatusForCompletedTasks": "Prosjekter trenger minst én «Ferdig»-status for fullførte oppgaver",
-      "needsTodoStatus": "Prosjekter trenger minst én «Å gjøre»-status",
+      "minStatuses": "Prosjekter trenger minst 2 statuser",
       "needsTodoStatusForNewTasks": "Prosjekter trenger minst én «Å gjøre»-status for nye oppgaver",
+      "needsDoneStatusForCompletedTasks": "Prosjekter trenger minst én «Ferdig»-status for fullførte oppgaver",
       "statusNameRequired": "Alle statuser må ha et navn",
       "statusNamesUnique": "Statusnavn må være unike",
+      "needsTodoStatus": "Prosjekter trenger minst én «Å gjøre»-status",
+      "needsDoneStatus": "Prosjekter trenger minst én «Ferdig»-status",
       "statusNotFound": "Finner ikke statusen"
+    },
+    "statusTypes": {
+      "todo": "Å gjøre",
+      "inProgress": "Pågår",
+      "done": "Ferdig"
     }
   },
+  "priorityLabels": {
+    "none": "Ingen prioritet",
+    "low": "Lav",
+    "medium": "Middels",
+    "high": "Høy",
+    "urgent": "Haster"
+  },
+  "priorityInline": {
+    "low": "lav",
+    "medium": "middels",
+    "high": "høy",
+    "urgent": "haster"
+  },
   "statusLabels": {
-    "done": "Ferdig",
+    "todo": "Å gjøre",
     "inProgress": "Pågår",
-    "todo": "Å gjøre"
+    "done": "Ferdig"
   },
   "colors": {
-    "blue": "Blå",
     "gray": "Grå",
-    "green": "Grønn",
-    "indigo": "Indigo",
-    "orange": "Oransje",
-    "pink": "Rosa",
-    "purple": "Lilla",
     "red": "Rød",
+    "orange": "Oransje",
+    "yellow": "Gul",
+    "green": "Grønn",
     "teal": "Turkis",
-    "yellow": "Gul"
+    "blue": "Blå",
+    "indigo": "Indigo",
+    "purple": "Lilla",
+    "pink": "Rosa"
   }
 }

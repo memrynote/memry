@@ -12,7 +12,9 @@
         "editing": "Redigering",
         "modules": "Moduler",
         "services": "Tjänster",
-        "data": "Data"
+        "data": "Data",
+        "workspace": "Arbetsyta",
+        "features": "Funktioner"
       },
       "items": {
         "account": "Konto",
@@ -21,105 +23,206 @@
         "editor": "Redigerare",
         "journal": "Dagbok",
         "tasks": "Uppgifter",
+        "inbox": "Inkorg",
         "calendar": "Kalender",
         "appearance": "Utseende",
         "shortcuts": "Kortkommandon",
+        "commandLine": "Kommandorad",
         "ai": "AI-assistent",
         "vault": "Valv",
         "tags": "Taggar",
         "properties": "Egenskaper",
-        "commandLine": "Kommandorad",
-        "features": "Funktioner",
         "import": "Importera",
-        "inbox": "Inkorg"
+        "features": "Funktioner",
+        "modules": "Moduler",
+        "aiAgents": "AI och agenter",
+        "tagsProperties": "Taggar och egenskaper",
+        "vaultData": "Valv och data"
+      }
+    },
+    "drillIn": {
+      "back": "Tillbaka till {section}"
+    },
+    "modules": {
+      "configure": "Konfigurera {module}"
+    },
+    "vaultImport": {
+      "label": "Importera från en annan app",
+      "description": "Notion, Evernote, Bear, Apple Notes, Todoist med flera",
+      "action": "Importera…"
+    },
+    "search": {
+      "placeholder": "Sök inställningar",
+      "count": "{count, plural, one {# inställning} other {# inställningar}}",
+      "empty": "Inga matchande inställningar",
+      "move": "navigera",
+      "open": "öppna"
+    }
+  },
+  "features": {
+    "header": {
+      "title": "Funktioner",
+      "subtitle": "Slå på eller av delar av appen. Av = nedtonad i sidofältet och inaktiverad överallt."
+    },
+    "items": {
+      "home": {
+        "label": "Start",
+        "description": "Startpanel"
+      },
+      "inbox": {
+        "label": "Inkorg",
+        "description": "Fånga snabbt och gå igenom"
+      },
+      "journal": {
+        "label": "Dagbok",
+        "description": "Dagliga anteckningar"
+      },
+      "tasks": {
+        "label": "Uppgifter",
+        "description": "Att göra-punkter och förfallodatum"
+      },
+      "calendar": {
+        "label": "Kalender",
+        "description": "Händelser och schema"
+      },
+      "graph": {
+        "label": "Graf",
+        "description": "Kopplingar mellan anteckningar"
+      },
+      "spatialCanvas": {
+        "label": "Canvas",
+        "description": "Fria ytor för att ordna och länka anteckningar"
       }
     }
   },
   "general": {
     "header": {
       "title": "Allmänt",
-      "subtitle": "Applikationsstart och flikbeteende",
-      "loading": "Läser in inställningar..."
+      "subtitle": "Språk, start, flikar och sekretess.",
+      "loading": "Läser in inställningar…"
     },
     "groups": {
       "startup": "Start",
       "updates": "Uppdateringar",
-      "languageRegion": "Språk & Region",
+      "languageRegion": "Språk och region",
       "tabBehavior": "Flikbeteende",
+      "window": "Fönsterbeteende",
       "fileCreation": "Filskapande",
-      "privacy": "Sekretess"
+      "privacy": "Sekretess",
+      "startupWindows": "Start och fönster",
+      "newNotes": "Nya anteckningar"
     },
     "startup": {
       "launchAtLogin": {
         "label": "Starta vid inloggning",
         "description": "Starta memrynote när du loggar in",
-        "error": "Misslyckades med att uppdatera start vid systemstart"
+        "error": "Det gick inte att uppdatera inställningen för start vid inloggning"
       }
     },
     "updates": {
+      "autoCheck": {
+        "label": "Sök efter uppdateringar automatiskt",
+        "description": "Sök efter nya versioner vid start och regelbundet medan appen är öppen.",
+        "error": "Det gick inte att uppdatera inställningen för automatisk sökning"
+      },
+      "autoDownload": {
+        "label": "Ladda ner uppdateringar automatiskt",
+        "description": "Ladda ner och installera nya versioner i bakgrunden utan att fråga.",
+        "error": "Det gick inte att uppdatera inställningen för automatisk nedladdning"
+      },
       "appUpdates": "Appuppdateringar",
       "installedVersion": "Installerad version {version}",
       "availableVersion": "Tillgänglig version {version}",
-      "unsupported": "Paketbyggda versioner kan kontrollera, ladda ner och installera uppdateringar från GitHub Releases",
+      "unsupported": "Paketerade versioner kan söka efter, ladda ner och installera uppdateringar från GitHub Releases",
       "available": "memrynote {version} finns tillgänglig för nedladdning",
       "downloadingLatest": "Laddar ner den senaste versionen",
-      "downloadingLatestPercent": "Laddar ner den senaste versionen ({percent}%)",
+      "downloadingLatestPercent": "Laddar ner den senaste versionen ({percent} %)",
       "downloaded": "memrynote {version} är redo att installeras",
-      "upToDate": "Denna installation är på den senaste publicerade versionen",
-      "checking": "Kontrollerar GitHub Releases efter en nyare version",
-      "idle": "Kontrollera nya versioner och installera dem utan att lämna appen",
+      "upToDate": "Den här installationen har den senaste publicerade versionen",
+      "checking": "Söker efter en nyare version på GitHub Releases",
+      "idle": "Sök efter nya versioner och installera dem utan att lämna appen",
       "unsupportedToast": "Automatiska uppdateringar är endast tillgängliga i paketerade versioner",
       "upToDateToast": "memrynote {version} är uppdaterad",
       "actionFailed": "Uppdateringsåtgärd misslyckades",
       "actions": {
-        "checking": "Kontrollerar...",
+        "checking": "Söker…",
         "available": "Ladda ner uppdatering",
-        "downloading": "Laddar ner...",
-        "downloadingPercent": "Laddar ner {percent}%",
+        "downloading": "Laddar ner…",
+        "downloadingPercent": "Laddar ner {percent} %",
         "downloaded": "Starta om för att installera",
-        "idle": "Sök efter uppdateringar"
+        "idle": "Kontrollera nu"
       },
-      "autoCheck": {
-        "description": "Sök efter nya versioner vid start och regelbundet medan appen är öppen.",
-        "error": "Misslyckades med att uppdatera inställningen för automatisk kontroll",
-        "label": "Sök efter uppdateringar automatiskt"
+      "label": "Uppdateringar",
+      "checkedAgo": "{status} · kontrollerat {time}",
+      "status": {
+        "unsupported": "Tillgängligt i paketerade versioner",
+        "idle": "Inte kontrollerat än",
+        "checking": "Söker…",
+        "upToDate": "Uppdaterad",
+        "available": "Version {version} tillgänglig",
+        "downloading": "Laddar ner…",
+        "downloadingPercent": "Laddar ner {percent} %",
+        "downloaded": "Version {version} redo att installeras"
       },
-      "autoDownload": {
-        "description": "Ladda ner och installera nya versioner i bakgrunden utan att fråga.",
-        "error": "Misslyckades med att uppdatera inställningen för automatisk nedladdning",
-        "label": "Ladda ner uppdateringar automatiskt"
+      "mode": {
+        "label": "Uppdateringsläge",
+        "off": "Sök inte",
+        "notify": "Meddela endast",
+        "auto": "Ladda ner automatiskt"
       }
     },
     "language": {
       "label": "Språk",
-      "helper": "De flesta appuppdateringar sker omedelbart. Vissa systemnivåtexter — redan visade aviseringar, docketikett, fönstrets titelrad — uppdateras vid nästa start.",
+      "helper": "Det mesta i appen uppdateras direkt. Viss text på systemnivå – redan visade aviseringar, Dock-etiketten, fönstrets namnlist – uppdateras vid nästa start.",
       "changed": "Språk ändrat till {nativeName}",
-      "failed": "Misslyckades med att ändra språk. Försök igen."
+      "failed": "Det gick inte att ändra språk. Försök igen."
     },
     "clockFormat": {
       "label": "Tidsformat",
-      "description": "12-timmars eller 24-timmars klocka",
+      "description": "12- eller 24-timmarsklocka",
       "options": {
         "12h": "12-timmars",
         "24h": "24-timmars"
       },
-      "error": "Misslyckades med att uppdatera tidsformat"
+      "error": "Det gick inte att uppdatera tidsformatet"
+    },
+    "dateFormat": {
+      "label": "Datumformat",
+      "description": "Hur kalenderdatum visas",
+      "options": {
+        "MM/DD/YYYY": "MM/DD/YYYY (USA)",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
+        "DD.MM.YYYY": "DD.MM.YYYY"
+      },
+      "error": "Det gick inte att uppdatera datumformat"
     },
     "tabs": {
+      "openPagesInNewTab": {
+        "label": "Öppna sidor i en ny flik",
+        "description": "När du klickar på eller skapar en sida – anteckningar, mappar, projekt, canvasar, taggar, bokmärken – öppnas den i en ny flik. När det är avstängt återanvänds den aktuella fliken, även när du följer länkar i en anteckning; fästa flikar ersätts aldrig. ”Öppna i ny flik”, ”Öppna vid sidan” och mittenklick öppnar alltid en ny flik."
+      },
       "restoreSession": {
-        "label": "Återställ session vid start",
-        "description": "Öppna flikar från din senaste session"
+        "label": "Återställ flikar vid start",
+        "description": "Öppna flikarna och de delade vyerna från förra gången igen."
       },
       "closeButton": {
         "label": "Flikstängningsknapp",
-        "description": "När ska stängningsknappen visas",
+        "description": "När stängningsknappen ska visas",
         "options": {
           "always": "Alltid synlig",
           "hover": "Visa vid hovring",
           "active": "Endast på aktiv flik"
         }
       },
-      "error": "Misslyckades med att uppdatera inställning"
+      "error": "Det gick inte att uppdatera inställningen"
+    },
+    "window": {
+      "minimizeToTray": {
+        "label": "Fortsätt köras i menyraden när fönstret stängs",
+        "description": "När du stänger fönstret döljs memrynote i systemfältet i stället för att avslutas. Klicka på ikonen i systemfältet för att visa appen igen. På macOS stannar appen även kvar i Dock; på Linux-skrivbord utan systemfält stängs fönstret som vanligt.",
+        "error": "Det gick inte att uppdatera inställningen för att minimera till systemfältet"
+      }
     },
     "fileCreation": {
       "createInSelectedFolder": {
@@ -127,58 +230,54 @@
         "description": "Nya anteckningar och mappar skapas i den för närvarande valda mappen. När det är avstängt skapas objekt alltid i roten."
       },
       "defaultNoteFolder": {
-        "description": "Tom = valvroten",
         "label": "Standardplats för nya anteckningar",
-        "placeholder": "anteckningar"
+        "description": "Används när ingen mapp är markerad i sidofältet.",
+        "placeholder": "anteckningar",
+        "root": "/"
       }
     },
     "privacy": {
       "telemetry": {
         "label": "Dela anonym användningsstatistik",
-        "description": "Det är endast anonym statistik — inga anteckningsinnehåll, sökfrågor, filvägar, e-post eller råa ID:n skickas någonsin.",
-        "error": "Misslyckades med att uppdatera telemetriinställning"
+        "description": "Aldrig anteckningsinnehåll, titlar eller namn. Inkluderar maskerade diagnostikloggar.",
+        "error": "Det gick inte att uppdatera telemetriinställningen"
+      },
+      "autoSendDiagnostics": {
+        "label": "Skicka felrapporter automatiskt",
+        "description": "Maskerade loggar när en felskärm visas. När det är avstängt frågar appen varje gång.",
+        "error": "Det gick inte att uppdatera inställningen för felrapporter"
       },
       "diagnostics": {
+        "title": "Skicka en diagnostikrapport?",
+        "consent": "Skicka en engångsrapport med diagnostik? Den innehåller bara maskerade tekniska loggar – inget anteckningsinnehåll.",
         "building": "Förbereder rapport…",
-        "consent": "Skicka en engångsrapport med diagnostik? Den innehåller bara maskerade tekniska loggar — inget anteckningsinnehåll.",
-        "error": "Misslyckades med att skicka diagnostikrapporten",
-        "notNow": "Inte nu",
-        "previewError": "Det gick inte att förbereda diagnostikrapporten",
         "previewLabel": "Förhandsgranska rapportens innehåll",
-        "send": "Skicka",
-        "sendReport": {
-          "button": "Skicka diagnostikrapport",
-          "description": "Skicka en engångsrapport med maskerade tekniska loggar så att vi kan felsöka problemet du stötte på.",
-          "label": "Diagnostikrapport"
-        },
-        "sending": "Skickar…",
-        "sent": "Rapporten är skickad — referens {incidentId}",
         "snapshotLabel": "Ögonblicksbild av enheten",
-        "title": "Skicka en diagnostikrapport?"
-      }
-    },
-    "dateFormat": {
-      "description": "Hur kalenderdatum visas",
-      "error": "Det gick inte att uppdatera datumformat",
-      "label": "Datumformat",
-      "options": {
-        "DD.MM.YYYY": "DD.MM.YYYY",
-        "DD/MM/YYYY": "DD/MM/YYYY",
-        "MM/DD/YYYY": "MM/DD/YYYY (US)",
-        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
+        "send": "Skicka",
+        "sending": "Skickar…",
+        "notNow": "Inte nu",
+        "sent": "Rapporten är skickad – referens {incidentId}",
+        "previewError": "Det gick inte att förbereda diagnostikrapporten",
+        "error": "Det gick inte att skicka diagnostikrapporten",
+        "sendReport": {
+          "label": "Diagnostikrapport",
+          "description": "Skicka en engångsrapport med maskerade tekniska loggar så att vi kan felsöka problemet du stötte på.",
+          "button": "Skicka rapport…"
+        }
       }
     }
   },
   "appearance": {
     "header": {
       "title": "Utseende",
-      "subtitle": "Anpassa utseende och känsla",
-      "loading": "Läser in inställningar..."
+      "subtitle": "Anpassa appens utseende",
+      "loading": "Läser in inställningar…"
     },
     "groups": {
       "theme": "Tema",
       "accentColor": "Accentfärg",
-      "typography": "Typografi"
+      "typography": "Typografi",
+      "zoom": "Zoom"
     },
     "theme": {
       "colorMode": {
@@ -187,12 +286,23 @@
         "aria": "Färgläge"
       },
       "options": {
-        "light": "Varm",
+        "light": "Ljus",
         "white": "Vit",
         "dark": "Mörk",
         "system": "System"
       },
-      "error": "Misslyckades med att uppdatera tema"
+      "error": "Det gick inte att uppdatera temat"
+    },
+    "colorTheme": {
+      "default": "Memrynote",
+      "themes": "Memrynote-teman",
+      "warm": "Varm",
+      "error": "Det gick inte att uppdatera färgtemat",
+      "copy": "Kopiera tema",
+      "copied": "Temat kopierades till urklipp",
+      "copyError": "Det gick inte att kopiera temat",
+      "import": "Importera tema från urklipp",
+      "importInvalid": "Urklippet innehåller inget memrynote-tema"
     },
     "accent": {
       "pick": "Välj en accentfärg",
@@ -206,18 +316,64 @@
         "amber": "Bärnsten",
         "emerald": "Smaragd",
         "red": "Röd",
-        "violet": "Viol",
+        "violet": "Violett",
         "cyan": "Cyan",
         "pink": "Rosa",
         "orange": "Orange"
       },
-      "error": "Misslyckades med att uppdatera accentfärg"
+      "error": "Det gick inte att uppdatera accentfärgen",
+      "aria": "Förinställd accentfärg",
+      "options": {
+        "theme": "Tema",
+        "custom": "Anpassad"
+      }
+    },
+    "colors": {
+      "background": "Bakgrund",
+      "foreground": "Förgrund",
+      "forLight": "För ljust läge",
+      "forDark": "För mörkt läge",
+      "reset": "Använd temats färg",
+      "pick": "Välj en färg"
+    },
+    "advanced": {
+      "title": "Avancerat",
+      "reset": "Återställ till standard",
+      "error": "Det gick inte att uppdatera inställningen",
+      "fontSizeDescription": "Grundstorlek för gränssnittets text",
+      "zoomDescription": "Skala för hela fönstret",
+      "reduceMotion": {
+        "label": "Minska rörelse",
+        "description": "Minska animeringar eller följ systemet",
+        "options": {
+          "system": "System",
+          "on": "På"
+        }
+      },
+      "pointerCursors": {
+        "label": "Använd pekarmarkörer",
+        "description": "Visa en pekarmarkör när du hovrar över interaktiva element"
+      },
+      "fontSmoothing": {
+        "label": "Kantutjämning av text",
+        "description": "Tunnare text med kantutjämning i gråskala på macOS"
+      }
+    },
+    "zoom": {
+      "label": "Zoomnivå",
+      "description": "Skala hela gränssnittet",
+      "decrease": "Minska zoom",
+      "increase": "Öka zoom",
+      "reset": "Återställ zoom till standard",
+      "error": "Det gick inte att uppdatera zoomnivån"
     },
     "typography": {
       "fontSize": {
         "label": "Textstorlek",
-        "description": "Justera bastextstorleken",
-        "aria": "Textstorlek"
+        "description": "Grundstorlek för gränssnittets text i pixlar",
+        "decrease": "Minska textstorlek",
+        "increase": "Öka textstorlek",
+        "reset": "Återställ textstorlek till standard"
       },
       "fontFamily": {
         "label": "Teckensnittsfamilj",
@@ -230,17 +386,38 @@
           "geist": "Geist",
           "inter": "Inter",
           "monospace": "Monospace"
-        }
+        },
+        "sections": {
+          "builtin": "Inbyggda",
+          "system": "Installerade på den här datorn"
+        },
+        "searchPlaceholder": "Sök teckensnitt…",
+        "empty": "Inga matchande teckensnitt",
+        "loading": "Läser in installerade teckensnitt…",
+        "unavailable": "Installerade teckensnitt är inte tillgängliga på det här systemet.",
+        "notInstalled": "Inte installerat på den här datorn – reservteckensnittet används."
       },
-      "fontSizeError": "Kunde inte uppdatera teckenstorlek",
-      "fontFamilyError": "Kunde inte uppdatera teckensnittsfamilj"
+      "fontSizeError": "Det gick inte att uppdatera textstorleken",
+      "fontFamilyError": "Det gick inte att uppdatera teckensnittsfamiljen"
+    },
+    "v2": {
+      "groups": {
+        "text": "Text och zoom"
+      },
+      "colorMode": "Färgläge",
+      "colorTheme": "Tema",
+      "accent": "Accentfärg",
+      "customColor": "Anpassad färg",
+      "fontFamily": "Teckensnittsfamilj",
+      "fontSize": "Textstorlek",
+      "zoom": "Zoom"
     }
   },
   "editor": {
     "header": {
       "title": "Redigerare",
-      "subtitle": "Inställningar och preferenser för anteckningsredigerare",
-      "loading": "Läser in inställningar..."
+      "subtitle": "Inställningar för anteckningsredigeraren",
+      "loading": "Läser in inställningar…"
     },
     "groups": {
       "layout": "Layout",
@@ -249,59 +426,64 @@
     },
     "width": {
       "label": "Redigerarens bredd",
-      "description": "Maximal bredd på skrivområdet",
+      "description": "Gäller alla anteckningar och dagbokssidor",
       "options": {
-        "narrow": "Smalt",
-        "medium": "Medium",
-        "wide": "Brett",
-        "full": "Full bredd",
-        "normal": "Normal"
+        "normal": "Normal",
+        "full": "Full bredd"
       },
-      "error": "Kunde inte uppdatera redigerarens bredd"
+      "error": "Det gick inte att uppdatera redigerarens bredd"
     },
     "toolbarMode": {
-      "label": "Klistrigt formateringsverktygsfält",
+      "label": "Fast formateringsverktygsfält",
       "description": "Visa alltid verktygsfält ovanför redigeraren",
-      "error": "Kunde inte uppdatera verktygsfältsläge"
+      "error": "Det gick inte att uppdatera verktygsfältsläget"
     },
     "spellCheck": {
+      "label": "Kontrollera stavning",
       "description": "Stryk under felstavade ord i anteckningar och dagböcker",
-      "error": "Misslyckades med att uppdatera stavningskontrollen",
-      "label": "Kontrollera stavning"
+      "error": "Det gick inte att uppdatera stavningskontrollen"
+    },
+    "v2": {
+      "width": "Redigerarens bredd",
+      "toolbarMode": "Fast formateringsverktygsfält",
+      "spellCheck": "Kontrollera stavning"
     }
   },
   "templates": {
     "header": {
       "title": "Mallar",
-      "subtitle": "Hantera anteckningsmallar för snabb skapande"
+      "subtitle": "Hantera anteckningsmallar för att snabbt skapa anteckningar"
     },
     "actions": {
       "new": "Ny mall",
       "edit": "Redigera",
       "duplicate": "Duplicera",
-      "delete": "Ta bort"
+      "delete": "Radera"
     },
     "groups": {
-      "builtIn": "Inbyggd",
+      "builtIn": "Inbyggda",
       "myTemplates": "Mina mallar"
     },
-    "loading": "Laddar mallar...",
+    "loading": "Läser in mallar…",
     "newTemplateTitle": "Ny mall",
-    "copySuffix": "{name} (Kopiera)",
+    "copySuffix": "{name} (kopia)",
     "empty": {
       "title": "Inga egna mallar ännu",
       "description": "Skapa en mall för att komma igång"
     },
+    "preview": {
+      "notFound": "Det gick inte att läsa in den här mallen."
+    },
     "toasts": {
-      "deleted": "Mall borttagen",
-      "deleteFailed": "Misslyckades med att ta bort mall",
+      "deleted": "Mallen raderades",
+      "deleteFailed": "Det gick inte att radera mallen",
       "duplicated": "Mall duplicerad",
-      "duplicateFailed": "Misslyckades med att duplicera mall"
+      "duplicateFailed": "Det gick inte att duplicera mallen"
     },
     "dialogs": {
       "delete": {
         "title": "Radera mall",
-        "description": "Är du säker på att du vill ta bort denna mall? Denna åtgärd kan inte ångras. Anteckningar som skapats från denna mall påverkas inte."
+        "description": "Är du säker på att du vill radera den här mallen? Det går inte att ångra. Anteckningar som skapats från mallen påverkas inte."
       },
       "duplicate": {
         "title": "Duplicera mall",
@@ -309,32 +491,36 @@
         "placeholder": "Mallens namn"
       }
     },
-    "preview": {
-      "notFound": "Det gick inte att läsa in den här mallen."
+    "v2": {
+      "new": "Ny mall",
+      "groups": {
+        "mine": "Mina mallar"
+      }
     }
   },
   "journal": {
     "header": {
       "title": "Dagbok",
-      "subtitle": "Journalinställningar och preferenser",
-      "loading": "Läser in inställningar..."
+      "subtitle": "Inställningar för dagboken",
+      "loading": "Läser in inställningar…"
     },
     "groups": {
       "defaultTemplate": "Standardmall",
+      "location": "Plats och format",
       "sidebarVisibility": "Sidofältets synlighet",
       "footer": "Sidfot",
-      "location": "Plats och format"
+      "weekdayTemplates": "Mallar per veckodag"
     },
     "template": {
       "label": "Mall",
-      "description": "Nya poster börjar med denna mall",
+      "description": "Nya dagboksinlägg börjar med den här mallen",
       "placeholder": "Välj en mall",
       "unknown": "Okänd mall",
-      "none": "Inga",
+      "none": "Ingen",
       "noneAsk": "Ingen (fråga varje gång)",
       "updated": "Standardmall uppdaterad",
       "cleared": "Standardmall rensad",
-      "error": "Misslyckades med att uppdatera standardmall"
+      "error": "Det gick inte att uppdatera standardmallen"
     },
     "showSchedule": {
       "label": "Visa schema",
@@ -342,45 +528,63 @@
     },
     "showTasks": {
       "label": "Visa uppgifter",
-      "description": "Visa uppgifter som ska göras på vald dag"
+      "description": "Visa uppgifter som förfaller den valda dagen"
     },
     "showAIConnections": {
-      "label": "Visa AI-anslutningar",
-      "description": "Visa AI-drivna anslutningar till relaterade poster"
+      "label": "Visa AI-kopplingar",
+      "description": "Visa AI-drivna kopplingar till relaterade dagboksinlägg"
     },
     "showStatsFooter": {
-      "label": "Visa statistikfot",
+      "label": "Visa statistik i sidfoten",
       "description": "Ordantal, lästid, tidsstämplar"
     },
-    "updateError": "Misslyckades med att uppdatera inställning",
+    "folder": {
+      "label": "Dagboksmapp",
+      "description": "Mapp där dagliga anteckningar lagras",
+      "placeholder": "dagbok"
+    },
     "dateFormat": {
-      "description": "Filnamnsformat för dagliga anteckningar (t.ex. YYYY-MM-DD dddd)",
       "label": "Datumformat",
+      "description": "Filnamnsformat för dagliga anteckningar (t.ex. YYYY-MM-DD dddd)",
       "placeholder": "YYYY-MM-DD",
-      "renameNote": "Om du ändrar formatet byter befintliga journalfiler namn. En fil vars nya namn redan är upptaget lämnas som den är.",
+      "renameNote": "Om du ändrar formatet byts namn på befintliga dagboksfiler. En fil vars nya namn redan är upptaget lämnas som den är.",
       "tokensHelp": "Hjälp för datumformat",
       "tokensNote": "Övriga tecken behålls som de är. Veckodagarnas namn är alltid på engelska.",
       "tokensTitle": "Formatkoder"
     },
-    "folder": {
-      "description": "Mapp där dagliga anteckningar lagras",
-      "label": "Dagboksmapp",
-      "placeholder": "dagbok"
-    },
     "preview": {
-      "description": "Sökväg till dagens dagboksfil",
-      "label": "Förhandsvisning"
+      "label": "Förhandsvisning",
+      "description": "Sökväg till dagens dagboksfil"
+    },
+    "updateError": "Det gick inte att uppdatera inställningen",
+    "weekday": {
+      "toggle": "Använd en egen mall för varje dag",
+      "toggleDescription": "Välj en mall för varje veckodag",
+      "inherit": "Använd standard",
+      "inheritWith": "Standard · {name}",
+      "inheritNone": "Standard · ingen",
+      "missing": "Raderad mall",
+      "clear": "Rensa",
+      "updated": "Mall uppdaterad för {day}",
+      "cleared": "Mall rensad för {day}",
+      "error": "Det gick inte att uppdatera mallen för {day}",
+      "summary": "{count} av 7 inställda"
+    },
+    "v2": {
+      "groups": {
+        "defaultTemplate": "Standardmall",
+        "location": "Plats och format"
+      }
     }
   },
   "tasks": {
     "header": {
       "title": "Uppgifter",
       "subtitle": "Konfigurera standardvärden och beteende för uppgifter",
-      "loading": "Läser in inställningar..."
+      "loading": "Läser in inställningar…"
     },
     "groups": {
       "defaults": "Standardvärden",
-      "calendar": "Kalender",
       "inbox": "Inkorg"
     },
     "defaultProject": {
@@ -388,86 +592,123 @@
       "description": "Tilldelas när inget projekt är valt",
       "placeholder": "Inget standardprojekt",
       "none": "Ingen standard (använd Personlig)",
-      "error": "Misslyckades med att uppdatera standardprojekt"
+      "error": "Det gick inte att uppdatera standardprojektet"
     },
     "sortOrder": {
-      "label": "Standard sorteringsordning",
+      "label": "Standardsortering",
       "description": "Hur uppgifter ordnas i listvyn",
       "options": {
-        "manual": "Manuell (dra & släpp)",
+        "manual": "Manuell (dra och släpp)",
         "dueDate": "Förfallodatum",
         "priority": "Prioritet",
-        "createdAt": "Datum skapad"
+        "createdAt": "Skapandedatum"
       },
-      "error": "Misslyckades med att uppdatera sorteringsordning"
-    },
-    "weekStart": {
-      "label": "Vecka börjar på",
-      "description": "Första dagen i veckan i kalender vyer",
-      "options": {
-        "sunday": "Söndag",
-        "monday": "Måndag"
-      },
-      "error": "Misslyckades med att uppdatera veckostart"
+      "error": "Det gick inte att uppdatera sorteringsordningen"
     },
     "defaultView": {
       "label": "Standardvy",
       "description": "Fliken som uppgiftssidan öppnas på",
       "options": {
         "all": "Alla",
-        "today": "Idag"
+        "today": "Idag",
+        "tomorrow": "Imorgon",
+        "next7": "Nästa 7 dagar"
       },
       "error": "Det gick inte att uppdatera standardvyn"
     },
     "staleInbox": {
-      "label": "Tröskel för inaktiva inkorgar",
-      "description": "Uppgifter äldre än detta markeras som inaktuella",
+      "label": "Gräns för inaktuella uppgifter i inkorgen",
+      "description": "Uppgifter som är äldre än så framhävs som inaktuella",
       "unit": "dagar",
-      "error": "Misslyckades med att uppdatera tröskel för inaktiva inkorgar"
+      "error": "Det gick inte att uppdatera gränsen för inaktuella uppgifter"
+    }
+  },
+  "inbox": {
+    "header": {
+      "title": "Inkorg",
+      "subtitle": "Daglig påminnelse om genomgång och inkorgsinställningar.",
+      "loading": "Läser in…"
+    },
+    "imageFiling": {
+      "group": "Bilder",
+      "error": "Det gick inte att uppdatera inställningen för insortering av bilder",
+      "mode": {
+        "label": "När du sorterar in en bild i en anteckning",
+        "description": "”Bädda in i anteckningen” behåller bilden i anteckningen och utanför sidofältet. ”Sortera in i sidofältet” flyttar den till mappen du väljer och länkar till den.",
+        "embed": "Bädda in i anteckningen",
+        "link": "Sortera in i sidofältet"
+      },
+      "ask": {
+        "label": "Fråga varje gång",
+        "description": "När det är avstängt används valet ovan för nya bilder utan att fråga."
+      }
+    },
+    "reviewReminder": {
+      "group": "Daglig påminnelse om genomgång",
+      "enabled": {
+        "label": "Påminn mig om att gå igenom inkorgen",
+        "description": "En vänlig påminnelse varje dag när det ligger något i inkorgen."
+      },
+      "time": {
+        "label": "Påminnelsetid",
+        "description": "Lokal tid, på varje enhet.",
+        "hourLabel": "Timme",
+        "minuteLabel": "Minut",
+        "periodLabel": "AM eller PM"
+      },
+      "test": {
+        "label": "Testavisering",
+        "description": "Skicka påminnelsen nu för att kontrollera systemets aviseringar.",
+        "button": "Skicka test",
+        "sent": "Testaviseringen är skickad.",
+        "sentHint": "Om inget visas, tillåt aviseringar för MemryNote i dina systeminställningar.",
+        "unsupported": "Den här enheten kan inte visa skrivbordsaviseringar."
+      },
+      "error": "Det gick inte att uppdatera påminnelsen."
     }
   },
   "calendar": {
     "header": {
       "title": "Kalender",
-      "subtitle": "Konfigurera beteende för dagcell i dagpanelen",
-      "loading": "Läser in inställningar..."
+      "subtitle": "Ställ in vad som händer när du klickar på en dag i dagpanelen",
+      "loading": "Läser in inställningar…"
     },
     "groups": {
+      "weekStart": "Vecka",
       "dayCellClick": "Klick på dagcell",
-      "notes": "Anteckningar",
-      "weekStart": "Vecka"
+      "notes": "Anteckningar"
+    },
+    "weekStart": {
+      "label": "Veckan börjar på",
+      "description": "Veckans första dag i alla kalendrar",
+      "options": {
+        "sunday": "Söndag",
+        "monday": "Måndag"
+      },
+      "error": "Det gick inte att uppdatera veckostart"
     },
     "defaultBehavior": {
       "label": "Standardbeteende",
-      "description": "När du klickar på en dag i kalendern i dagpanelen från någon icke-kalender flik",
-      "error": "Misslyckades med att uppdatera beteende vid dagklick"
+      "description": "När du klickar på en dag i dagpanelens kalender från en flik som inte är kalendern",
+      "error": "Det gick inte att uppdatera beteendet vid klick på en dag"
     },
     "pageOverride": {
-      "label": "Överskrid kalender sida",
-      "description": "Beteende när kalenderfliken är aktiv (standard är Öppna kalender)",
-      "error": "Misslyckades med att uppdatera överskrid kalender sida"
-    },
-    "options": {
-      "openJournal": "Öppna Journal",
-      "openCalendar": "Öppna Kalender",
-      "useGlobal": "Använd global inställning"
+      "label": "Åsidosättning på kalendersidan",
+      "description": "Beteende när kalenderfliken är aktiv (standard är ”Öppna kalender”)",
+      "error": "Det gick inte att uppdatera åsidosättningen för kalendersidan"
     },
     "showNotesOnCalendar": {
+      "label": "Visa anteckningar i kalendern",
       "description": "Visa varje anteckning i kalendern som ett heldagsobjekt den dag den skapades",
-      "error": "Det gick inte att uppdatera visa anteckningar i kalender",
-      "label": "Visa anteckningar i kalender"
+      "error": "Det gick inte att uppdatera inställningen för att visa anteckningar i kalendern"
     },
-    "weekStart": {
-      "description": "Veckans första dag i alla kalendrar",
-      "error": "Det gick inte att uppdatera veckostart",
-      "label": "Veckan börjar på",
-      "options": {
-        "monday": "Måndag",
-        "sunday": "Söndag"
-      }
+    "options": {
+      "openJournal": "Öppna dagbok",
+      "openCalendar": "Öppna kalender",
+      "useGlobal": "Använd global inställning"
     },
     "google": {
-      "name": "Google Kalender",
+      "name": "Google Calendar",
       "description": "Tvåvägssynkronisering för memrynote-händelser och importerade Google-kalendrar.",
       "statuses": {
         "connected": "Ansluten",
@@ -475,29 +716,30 @@
         "reconnectRequired": "Återanslutning krävs"
       },
       "accountReconnect": "Återanslut Google",
+      "addAccount": "Lägg till konto",
       "importedCalendars": "Importerade kalendrar",
-      "selected": "{count} markerad",
+      "selected": "Valda: {count}",
       "syncNow": "Synkronisera nu",
       "disconnect": "Koppla från",
       "reconnect": "Återanslut Google",
       "syncFailed": "Något gick fel",
-      "connectFailed": "Misslyckades med att ansluta Google Kalender",
-      "refreshFailed": "Misslyckades med att uppdatera Google Kalender",
-      "disconnectFailed": "Misslyckades med att koppla från Google Kalender",
-      "retryFailed": "Misslyckades med att försöka igen med kalendersynk",
+      "connectFailed": "Det gick inte att ansluta Google Calendar",
+      "refreshFailed": "Det gick inte att uppdatera Google Calendar",
+      "disconnectFailed": "Det gick inte att koppla från Google Calendar",
+      "retryFailed": "Det gick inte att försöka synkronisera kalendern igen",
       "pushToGoogle": {
-        "description": "Stäng av för enkelriktad synk — du ser fortfarande dina Google-händelser i memrynote, men memrynote-händelser visas inte i Google.",
-        "error": "Det gick inte att uppdatera synkriktning",
-        "label": "Visa memrynote-händelser i Google Calendar"
+        "label": "Visa memrynote-händelser i Google Calendar",
+        "description": "Stäng av för enkelriktad synkronisering – du ser fortfarande dina Google-händelser i memrynote, men memrynote-händelser visas inte i Google.",
+        "error": "Det gick inte att uppdatera synkriktning"
       },
       "agentAccess": {
+        "label": "Låt AI läsa händelser i Google Calendar",
         "description": "Avstängd som standard. Slå på så kan AI-agenten läsa dina Google-händelser; stäng av så får den inget tillbaka när den tillfrågas om dem. Du ser dem fortfarande i memrynote oavsett vad.",
-        "error": "Det gick inte att uppdatera AI-åtkomst",
-        "label": "Låt AI läsa händelser i Google Calendar"
+        "error": "Det gick inte att uppdatera AI-åtkomst"
       },
       "connect": "Anslut",
       "sourcePicker": {
-        "empty": "Inga importerade Google-kalendrar finns ännu på denna enhet.",
+        "empty": "Det finns inga importerade Google-kalendrar på den här enheten än.",
         "statuses": {
           "synced": "Synkroniserad",
           "error": "Fel",
@@ -505,43 +747,305 @@
           "idle": "Inaktiv"
         },
         "retrying": "Försöker igen…",
-        "retryNow": "Försök nu igen"
+        "retryNow": "Försök igen nu"
       }
+    },
+    "subscriptions": {
+      "name": "Prenumererade kalendrar",
+      "description": "Lägg till en skrivskyddad kalender via dess delade länk (ICS eller webcal), t.ex. en kalender från Proton, iCloud, Outlook eller Fastmail. Ändringar hämtas ungefär en gång i timmen.",
+      "urlLabel": "Kalenderlänk",
+      "urlPlaceholder": "Kalenderlänk (webcal:// eller https://)",
+      "subscribe": "Prenumerera",
+      "subscribing": "Prenumererar…",
+      "refresh": "Uppdatera",
+      "refreshing": "Uppdaterar…",
+      "remove": "Ta bort",
+      "readOnly": "Skrivskyddad",
+      "updatedAt": "Uppdaterad {time}",
+      "notCheckedYet": "Inte kontrollerad än",
+      "keptEvents": "Händelser som redan finns i kalendern ligger kvar till nästa lyckade uppdatering.",
+      "notEncrypted": "Inte krypterad",
+      "httpWarning": "Den här länken börjar med http://, så länken och händelserna skickas okrypterade. Vem som helst i samma nätverk kan läsa dem. Använd en länk med https:// eller webcal:// om kalendern erbjuder det.",
+      "added": "”{title}” har lagts till.",
+      "addedSummary": "”{title}” har lagts till: {count, plural, one {# händelse} other {# händelser}}, från {start} till {end}.",
+      "addedEmpty": "”{title}” har lagts till. Den har inga händelser under de senaste 90 dagarna eller det kommande året än.",
+      "rename": "Byt namn",
+      "renameLabel": "Kalendernamn",
+      "save": "Spara",
+      "cancel": "Avbryt",
+      "color": "Kalenderfärg",
+      "colorOption": "Färg: {color}",
+      "help": {
+        "toggle": "Var hittar jag länken?",
+        "intro": "Leta efter ett delningsalternativ som heter offentlig länk, hemlig adress, publicera eller iCal. Länken slutar med .ics eller börjar med webcal://.",
+        "proton": {
+          "name": "Proton Calendar",
+          "steps": "Inställningar → Kalendrar, välj kalendern och skapa sedan en länk under Dela med vem som helst. Välj fullständig vy för att se händelsedetaljer.",
+          "readOnly": "Proton-kalendrar är avsiktligt skrivskyddade i memrynote. Proton end-to-end-krypterar kalendrar och erbjuder inget CalDAV, så det går inte att skriva tillbaka. Gör ändringar i Proton."
+        },
+        "icloud": {
+          "name": "iCloud",
+          "steps": "I Kalender på en Mac eller på iCloud.com delar du kalendern, slår på Offentlig kalender och kopierar länken. Om du även vill redigera iCloud-händelser här ansluter du i stället iCloud under CalDAV."
+        },
+        "outlook": {
+          "name": "Outlook och Microsoft 365",
+          "steps": "Outlook på webben → Inställningar → Kalender → Delade kalendrar → Publicera en kalender. Välj Kan visa all information, publicera och kopiera ICS-länken."
+        },
+        "fastmail": {
+          "name": "Fastmail",
+          "steps": "Inställningar → Kalendrar, öppna kalendern, slå på publicering och kopiera iCalendar-länken."
+        },
+        "notion": {
+          "name": "Notion Calendar",
+          "steps": "Dess händelser finns i det Google- eller iCloud-konto som du har anslutit till den. Dela länken från det kontot."
+        },
+        "public": {
+          "name": "Helgdagar, skolor och sport",
+          "steps": "Leta efter Prenumerera, Lägg till i kalender eller iCal på arrangörens webbplats och kopiera den länken."
+        }
+      },
+      "errors": {
+        "invalid_url": "Det där är ingen kalenderlänk. Klistra in en adress som börjar med webcal://, https:// eller http://.",
+        "unreachable": "Det gick inte att nå kalendern. Kontrollera länken och internetanslutningen.",
+        "timeout": "Kalendern tog för lång tid på sig att svara. Försök igen om en stund.",
+        "not_found": "Ingen kalender hittades på den här länken. Den kan ha raderats, eller så har delningslänken ändrats.",
+        "unauthorized": "Kalendern nekade åtkomst. Kopiera en ny delningslänk från kalenderappen.",
+        "http_error": "Kalenderservern returnerade ett fel. Försök igen senare.",
+        "too_large": "Kalendern är för stor för att läggas till. Dela en mindre kalender i stället.",
+        "not_a_calendar": "Den här länken returnerar ingen kalender. Kopiera ICS- eller webcal-länken från delningsinställningarna i kalenderappen.",
+        "too_many_redirects": "Den här länken omdirigeras om och om igen och når aldrig någon kalender. Kopiera länken igen från kalenderappen.",
+        "unsupported_redirect": "Den här länken omdirigerar till en adress som inte är en webblänk, så memrynote följer den inte. Kopiera ICS- eller webcal-länken från kalenderappen.",
+        "unknown": "Det gick inte att uppdatera kalendern ({code}). Försök igen senare."
+      }
+    },
+    "providers": {
+      "caldav": {
+        "name": "CalDAV"
+      },
+      "statuses": {
+        "connected": "Ansluten",
+        "notConnected": "Inte ansluten"
+      },
+      "readOnly": "Skrivskyddad",
+      "pollInterval": "Söker efter ändringar med {minutes} minuters mellanrum. Ändringar som görs på annat håll syns inte direkt.",
+      "connect": "Anslut",
+      "connecting": "Ansluter…",
+      "connectFailed": "Det gick inte att ansluta. Kontrollera uppgifterna och försök igen.",
+      "disconnect": "Koppla från",
+      "disconnectFailed": "Det gick inte att koppla från. Försök igen.",
+      "syncNow": "Synkronisera nu",
+      "refreshFailed": "Synkroniseringen misslyckades. Dina kalendrar är oförändrade. Försök igen senare.",
+      "addAccount": "Lägg till konto",
+      "accounts": "Konton",
+      "calendars": "Kalendrar",
+      "retry": "Försök igen nu",
+      "reconnectRequired": "Den här enheten har inget lösenord för kontot. Anslut det igen för att synkronisera härifrån.",
+      "push": {
+        "label": "Skriv memrynote-händelser till den här kalendern",
+        "description": "Stäng av för enkelriktad synkronisering: du ser fortfarande de här händelserna i memrynote, men memrynote-händelser och uppgifter skrivs inte hit."
+      },
+      "agentAccess": {
+        "label": "Låt AI läsa de här händelserna",
+        "description": "Av tills du slår på det. Varje kalendertjänst har en egen inställning; att tillåta Google tillåter inte den här.",
+        "error": "Det gick inte att uppdatera AI-åtkomsten"
+      },
+      "basic": {
+        "serverLabel": "Serveradress",
+        "serverPlaceholder": "https://dav.example.com",
+        "usernameLabel": "Användarnamn",
+        "passwordLabel": "Applösenord"
+      },
+      "compat": {
+        "outdated": "De här enheterna på ditt konto kör en äldre version av memrynote än {version}:",
+        "unverified": "memrynote kunde inte kontrollera vilka versioner dina andra enheter kör.",
+        "unknownVersion": "okänd version",
+        "consequence": "En äldre version kan kopiera uppgifter och händelser från den här kalendern till Google Calendar som dubbletter, eller misslyckas med att synkronisera dem. Uppdatera de enheterna först, eller fortsätt om du accepterar det.",
+        "acknowledge": "Jag förstår, anslut ändå"
+      },
+      "reconnect": "Återanslut",
+      "defaultTarget": {
+        "label": "Standardkalender",
+        "description": "Hit hamnar nya händelser, uppgifter, påminnelser och uppskjutna objekt när du inte väljer en kalender. Bara en kalendertjänst kan vara standard.",
+        "none": "Inte standard",
+        "error": "Det gick inte att ändra standardkalendern"
+      },
+      "appleEventKit": {
+        "name": "Den här Macen",
+        "description": "Visar alla kalendrar som appen Kalender redan har på den här Macen: iCloud, Google, Exchange och På min Mac. Ingen inloggning, skrivskyddat, och händelserna lämnar aldrig den här Macen och synkroniseras inte till dina andra enheter.",
+        "connect": "Tillåt kalenderåtkomst",
+        "connectHint": "macOS frågar en gång. Du kan ändra det senare i Systeminställningar.",
+        "otherCalendars": "Andra kalendrar",
+        "alreadyConnected": "Redan ansluten via {provider}, så den är avstängd från början för att händelser inte ska visas två gånger.",
+        "openSystemSettings": "Öppna Systeminställningar",
+        "checkAgain": "Kontrollera igen",
+        "errors": {
+          "permission_denied": "Kalenderåtkomst är avstängd för memrynote. Slå på den i Systeminställningar → Integritet och säkerhet → Kalendrar och kontrollera sedan igen.",
+          "permission_restricted": "Kalenderåtkomst är blockerad på den här Macen, oftast av en hanteringsprofil. Inget har ändrats i memrynote; den som hanterar Macen kan tillåta det.",
+          "permission_write_only": "memrynote kan bara lägga till händelser, vilket inte räcker för att visa dem. Ändra till Full åtkomst i Systeminställningar → Integritet och säkerhet → Kalendrar.",
+          "permission_not_determined": "memrynote har inte fått kalenderåtkomst än. Tillåt det för att visa kalendrarna på din Mac.",
+          "unavailable": "Kalenderläsaren för macOS kunde inte starta. Dina kalendrar är oförändrade; starta om memrynote och försök igen.",
+          "sync_failed": "Det gick inte att läsa från appen Kalender just nu. Dina kalendrar är oförändrade, och memrynote försöker igen när något ändras i Kalender."
+        }
+      }
+    },
+    "caldav": {
+      "presetLabel": "Tjänst",
+      "presets": {
+        "icloud": "Apple iCloud",
+        "fastmail": "Fastmail",
+        "nextcloud": "Nextcloud",
+        "selfHosted": "Radicale eller Baïkal (egen server)",
+        "zoho": "Zoho",
+        "yahoo": "Yahoo",
+        "mailboxOrg": "mailbox.org",
+        "posteo": "Posteo",
+        "synology": "Synology",
+        "other": "Annan CalDAV-server"
+      },
+      "hostLabel": "Servernamn",
+      "hostPlaceholder": "cloud.example.com",
+      "appleIdLabel": "Apple-ID (e-post)",
+      "icloudHelp": "Använd ett appspecifikt lösenord, inte lösenordet till ditt Apple-ID. Skapa ett under Inloggning och säkerhet → Appspecifika lösenord.",
+      "appPasswordHelp": "Om din tjänst erbjuder applösenord skapar du ett för memrynote och använder det här.",
+      "createAppPassword": "Skapa ett applösenord",
+      "testConnection": "Testa anslutningen",
+      "testing": "Testar…",
+      "chooseCalendars": "Kalendrar att visa",
+      "reconnectFor": "Ange applösenordet för {username}.",
+      "errors": {
+        "unauthorizedIcloud": "iCloud godkände inte lösenordet. iCloud kräver ett appspecifikt lösenord här, inte lösenordet till ditt Apple-ID. Skapa ett på account.apple.com under Inloggning och säkerhet och försök sedan igen.",
+        "unauthorized": "Servern godkände inte användarnamnet och lösenordet. Kontrollera båda, och använd ett applösenord om din tjänst har sådana.",
+        "unreachable": "Det gick inte att nå servern. Kontrollera adressen och internetanslutningen och försök sedan igen.",
+        "notCaldav": "Inga CalDAV-kalendrar hittades på den här adressen. Kontrollera serveradressen; vissa tjänster kräver en sökväg som /remote.php/dav.",
+        "noCalendars": "Det här kontot har inga kalendrar som innehåller händelser.",
+        "invalidUrl": "Det där är ingen serveradress. Ange en adress som https://dav.example.com.",
+        "outdatedDevices": "Vissa av dina enheter kör en äldre version av memrynote. Uppdatera dem, eller bekräfta nedan att du vill ansluta ändå.",
+        "unknown": "Det gick inte att ansluta ({code}). Inget sparades; försök igen senare."
+      },
+      "reconnect": {
+        "missing": "Den här enheten har inte applösenordet för kontot än. Händelserna kommer fortfarande från dina andra enheter; ange applösenordet här för att även synkronisera från den här enheten.",
+        "icloudRevoked": "iCloud godkänner inte längre det här appspecifika lösenordet. När du återställer lösenordet till ditt Apple-ID återkallas alla appspecifika lösenord. Skapa ett nytt på account.apple.com och anslut igen.",
+        "rejected": "Servern godkänner inte längre lösenordet. Om du har ändrat det eller återkallat applösenordet skapar du ett nytt och ansluter igen."
+      }
+    },
+    "v2": {
+      "groups": {
+        "layout": "Layout",
+        "connected": "Anslutna kalendrar"
+      },
+      "addCalendar": "Lägg till kalender",
+      "calendarCount": "{selected} av {count, plural, one {# kalender} other {# kalendrar}}",
+      "defaultPill": "Standard",
+      "subscription": "Prenumeration",
+      "subscriptionCount": "{count, plural, =0 {Inga prenumerationer} one {# prenumeration} other {# prenumerationer}}"
     }
   },
   "account": {
     "header": {
       "title": "Konto",
       "subtitle": "Ditt konto, synkronisering och säkerhet",
-      "loading": "Laddar..."
+      "loading": "Läser in…"
     },
     "groups": {
       "identity": "Identitet",
-      "sync": "Synkronisera",
+      "sync": "Synkronisering",
+      "billing": "Fakturering",
       "storage": "Lagring",
-      "devices": "Enheter",
-      "billing": "Fakturering"
+      "devices": "Enheter"
     },
     "identity": {
       "unknown": "Okänt",
-      "encrypted": "Totalsträckskrypterad"
+      "encrypted": "End-to-end-krypterad"
     },
     "sync": {
       "lastSynced": "Senast synkroniserad {time}",
       "pending": "{count, plural, one {# väntande} other {# väntande}}",
+      "attachmentAutoDownload": {
+        "label": "Ladda ner bilagor automatiskt",
+        "description": "Hämta bilagor från synkroniserade anteckningar i bakgrunden. När det är avstängt laddas filer ner först när du öppnar dem.",
+        "saveFailed": "Det gick inte att spara inställningen för nedladdning av bilagor"
+      },
       "statuses": {
         "synced": "Synkroniserad",
-        "syncing": "Synkroniserar...",
+        "syncing": "Synkroniserar…",
         "paused": "Pausad",
-        "syncError": "Synk fel",
+        "syncError": "Synkfel",
         "offline": "Offline",
-        "connecting": "Ansluter...",
-        "pushed": "{count, plural, one {# skickad} other {# skickad}}",
-        "pulled": "{count, plural, one {# hämtad} other {# hämtad}}",
+        "connecting": "Ansluter…",
+        "localOnly": "Endast lokalt",
+        "pushed": "{count, plural, one {# skickad} other {# skickade}}",
+        "pulled": "{count, plural, one {# hämtad} other {# hämtade}}",
         "pushedPulled": "{parts}",
-        "changesPending": "{count, plural, one {Ändring av # väntar} other {Ändringar av # väntar}}",
-        "offlinePending": "Offline ({count, plural, one {Ändring av # väntar} other {Ändringar av # väntar}})",
+        "changesPending": "{count, plural, one {# ändring väntar} other {# ändringar väntar}}",
+        "offlinePending": "Offline ({count, plural, one {# ändring väntar} other {# ändringar väntar}})",
         "never": "Aldrig"
+      },
+      "upsell": {
+        "title": "Dina anteckningar finns bara på den här enheten",
+        "description": "Slå på synkronisering så följer alla anteckningar med dig till dina andra enheter – end-to-end-krypterade, så att bara du kan läsa dem.",
+        "benefits": {
+          "devices": "Varje enhet fortsätter där du slutade",
+          "encrypted": "End-to-end-krypterat – nycklarna stannar alltid hos dig",
+          "backup": "En krypterad säkerhetskopia, om den här enheten inte finns till hands"
+        },
+        "guarantee": "Pengarna tillbaka inom 14 dagar. Säg upp när du vill."
+      },
+      "activating": {
+        "title": "Slutför aktiveringen",
+        "description": "Din plan är aktiv. Synkroniseringen startar så snart vi har bekräftat den – det brukar räcka att uppdatera."
+      }
+    },
+    "billing": {
+      "planStatus": "Planstatus",
+      "checking": "Kontrollerar faktureringsstatus",
+      "annualSwitch": {
+        "title": "Byt till årsvis fakturering",
+        "description": "Spara 20 %. Resten av den här månaden räknas av, så du debiteras inte två gånger.",
+        "action": "Byt till årsvis",
+        "pricing": "Beräknar pris…",
+        "preview": "{amount} att betala idag, sedan {recurring} per år",
+        "confirm": "Bekräfta bytet",
+        "switching": "Byter…",
+        "success": "Du har nu årsvis fakturering.",
+        "failed": "Det gick inte att byta plan"
+      },
+      "plans": {
+        "free": "Gratisplan",
+        "plus": "Plus-plan",
+        "pro": "Pro-plan",
+        "believer": "Believer-plan"
+      },
+      "statuses": {
+        "inactive": "Inaktiv",
+        "active": "Aktiv",
+        "past_due": "Förfallen",
+        "paused": "Pausad",
+        "canceled": "Avslutad"
+      },
+      "labels": {
+        "storage": "Lagring",
+        "maxFile": "Max filstorlek",
+        "vaults": "Valv",
+        "history": "Historik"
+      },
+      "unlimited": "Obegränsat",
+      "historyDays": "{days} dagar",
+      "activationPendingPrefix": "Aktivering väntar. Paddle kan behöva ett ögonblick för att bekräfta betalningen. Uppdatera status eller mejla",
+      "actions": {
+        "upgrade": "Uppgradera",
+        "unlockSync": "Lås upp synkronisering",
+        "opening": "Öppnar…",
+        "refresh": "Uppdatera status",
+        "manage": "Hantera fakturering"
+      },
+      "toasts": {
+        "loadFailed": "Det gick inte att läsa in faktureringsstatus",
+        "checkoutFailed": "Det gick inte att starta betalning",
+        "checkoutOpened": "Betalning öppnad i din webbläsare",
+        "refreshFailed": "Det gick inte att uppdatera faktureringsstatus",
+        "billingActive": "Fakturering är aktiv",
+        "activationPending": "Aktivering väntar",
+        "portalFailed": "Det gick inte att öppna faktureringsportalen"
       }
     },
     "storage": {
@@ -556,272 +1060,254 @@
     "security": {
       "signOut": {
         "label": "Logga ut",
-        "description": "Koppla bort denna enhet från synkronisering",
+        "description": "Koppla bort den här enheten från synkroniseringen",
         "action": "Logga ut"
       }
     },
+    "community": {
+      "prompt": "Älskar du memrynote?",
+      "star": "Stjärnmärk oss på GitHub",
+      "and": "och",
+      "feedback": "dela feedback"
+    },
     "signOutDialog": {
-      "title": "Logga ut från synkronisering?",
-      "description": "Synkronisering kommer att stoppas och krypteringsnycklar tas bort från denna enhet. Dina anteckningar kommer att finnas kvar på denna enhet. Du kommer behöva din återställningsfras för att ställa in synkronisering igen.",
+      "title": "Logga ut från synkroniseringen?",
+      "description": "Synkroniseringen stoppas och krypteringsnycklarna tas bort från den här enheten. Dina anteckningar finns kvar på den här enheten. Du behöver din återställningsfras för att ställa in synkroniseringen igen.",
       "confirm": "Logga ut",
-      "signingOut": "Loggar ut..."
+      "signingOut": "Loggar ut…"
     },
     "toasts": {
       "signedOut": "Utloggning lyckades",
-      "signOutFailed": "Misslyckades med att logga ut",
-      "deviceLinked": "Enhet kopplad framgångsrikt"
+      "signOutFailed": "Det gick inte att logga ut",
+      "deviceLinked": "Enheten är kopplad"
     },
-    "billing": {
-      "actions": {
-        "manage": "Hantera fakturering",
-        "opening": "Öppnar...",
-        "refresh": "Uppdatera status",
-        "upgrade": "Uppgradera"
-      },
-      "activationPendingPrefix": "Aktivering väntar. Paddle kan behöva ett ögonblick för att bekräfta betalningen. Uppdatera status eller mejla",
-      "checking": "Kontrollerar faktureringsstatus",
-      "historyDays": "{days} dagar",
-      "labels": {
-        "history": "Historik",
-        "maxFile": "Max filstorlek",
-        "storage": "Lagring",
-        "vaults": "Valv"
-      },
-      "planStatus": "Planstatus",
-      "plans": {
-        "believer": "Believer-plan",
-        "free": "Gratisplan",
-        "plus": "Plus-plan",
-        "pro": "Pro-plan"
-      },
-      "statuses": {
-        "active": "Aktiv",
-        "canceled": "Avslutad",
-        "inactive": "Inaktiv",
-        "past_due": "Förfallen",
-        "paused": "Pausad"
-      },
-      "toasts": {
-        "activationPending": "Aktivering väntar",
-        "billingActive": "Fakturering är aktiv",
-        "checkoutFailed": "Det gick inte att starta betalning",
-        "checkoutOpened": "Betalning öppnad i din webbläsare",
-        "loadFailed": "Det gick inte att läsa in faktureringsstatus",
-        "portalFailed": "Det gick inte att öppna faktureringsportalen",
-        "refreshFailed": "Det gick inte att uppdatera faktureringsstatus"
-      },
-      "unlimited": "Obegränsat"
-    },
-    "community": {
-      "and": "och",
-      "feedback": "dela feedback",
-      "prompt": "Älskar du memrynote?",
-      "star": "Stjärnmärk oss på GitHub"
+    "v2": {
+      "stats": {
+        "plan": "Plan"
+      }
     }
   },
   "setup": {
     "steps": {
       "signIn": "Logga in",
       "verify": "Verifiera",
-      "link": "Länk"
+      "link": "Koppla"
     },
     "progress": "Steg {current} av {total}: {label}",
     "signIn": {
       "title": "Konfigurera synkronisering",
       "description": "Skapa ett konto för att synkronisera dina data mellan enheter med end-to-end-kryptering.",
       "or": "eller",
+      "paidPlan": "Synkronisering kräver en betald plan.",
+      "seePlans": "Se planer",
       "errors": {
-        "sendCode": "Misslyckades med att skicka kod",
-        "googleStart": "Misslyckades med att starta Google-inloggning"
-      },
-      "paidPlan": "Synk är en betald plan.",
-      "seePlans": "Se planer"
+        "sendCode": "Det gick inte att skicka koden",
+        "googleStart": "Det gick inte att starta Google-inloggningen"
+      }
     },
     "email": {
       "label": "E-postadress",
-      "placeholder": "Ange din e-postadress...",
+      "placeholder": "Ange din e-postadress…",
       "invalid": "Ange en giltig e-postadress",
-      "sending": "Skickar kod..."
+      "sending": "Skickar kod…"
     },
     "oauth": {
       "google": "Fortsätt med Google"
     },
     "otp": {
       "title": "Ange verifieringskod",
-      "sentTo": "Vi skickade en 6-siffrig kod till",
+      "sentTo": "Vi skickade en 6-siffrig kod till ",
       "aria": "6-siffrig verifieringskod",
-      "verifying": "Verifierar...",
-      "resending": "Skickar igen...",
+      "verifying": "Verifierar…",
+      "resending": "Skickar igen…",
       "resend": "Skicka koden igen",
       "resendIn": "Skicka igen om {time}",
       "differentEmail": "Använd en annan e-post",
       "error": "Verifiering misslyckades",
-      "resendError": "Misslyckades att skicka igen"
+      "resendError": "Det gick inte att skicka igen"
     },
     "recovery": {
       "displayTitle": "Spara din återställningsfras",
-      "displayDescription": "Detta är det enda sättet att återställa dina krypterade data om du förlorar tillgången till alla dina enheter.",
-      "warning": "Skriv ner detta och förvara det på en säker plats. Du kommer inte att se det igen.",
-      "wordsAria": "Återställningsfras ord",
+      "displayDescription": "Det här är det enda sättet att återställa dina krypterade data om du förlorar åtkomsten till alla dina enheter.",
+      "warning": "Skriv ner den och förvara den på en säker plats. Du kommer inte att se den igen.",
+      "wordsAria": "Ord i återställningsfrasen",
       "wordAria": "Ord {index}: {word}",
       "copyAria": "Kopiera återställningsfras till urklipp",
       "copiedAria": "Återställningsfras kopierad",
       "copied": "Kopierad",
       "saved": "Jag har sparat min återställningsfras",
       "confirmTitle": "Bekräfta din återställningsfras",
-      "confirmDescription": "Ange de begärda orden för att verifiera att du har sparat dem korrekt.",
+      "confirmDescription": "Ange de efterfrågade orden för att bekräfta att du har sparat frasen korrekt.",
       "wordPlaceholder": "Ange ord #{index}",
       "verify": "Verifiera",
       "mustMatch": "Alla 3 ord måste matcha för att fortsätta",
       "inputTitle": "Ange återställningsfras",
-      "inputDescription": "Ange din 24-ords återställningsfras för att återfå åtkomst till dina krypterade data.",
+      "inputDescription": "Ange din återställningsfras på 24 ord för att återfå åtkomst till dina krypterade data.",
       "inputLabel": "Återställningsfras",
       "count": "{count} / {total} ord",
-      "inputPlaceholder": "Ange din 24-ords återställningsfras separerad med mellanslag...",
+      "inputPlaceholder": "Ange din återställningsfras på 24 ord, separerade med mellanslag…",
       "lengthHint": "Ange alla 24 ord för att aktivera återställningsknappen",
       "restore": "Återställ åtkomst",
       "progress": {
-        "deriving": "Härleder krypteringsnycklar...",
-        "validating": "Validerar återställningsfras...",
-        "registering": "Registrerar enhet..."
+        "deriving": "Härleder krypteringsnycklar…",
+        "validating": "Validerar återställningsfrasen…",
+        "registering": "Registrerar enheten…"
       },
       "failed": "Återställning misslyckades",
       "confirmationFailed": "Bekräftelse misslyckades",
       "unavailable": {
+        "loading": "Läser in din återställningsfras…",
+        "title": "Det gick inte att läsa in din återställningsfras",
         "description": "Din återställningsfras visas bara en gång under konfigurationen och kan inte hämtas senare. Börja om för att generera en ny.",
-        "loading": "Laddar din återställningsfras…",
-        "startOver": "Börja om",
-        "title": "Det gick inte att läsa in din återställningsfras"
+        "startOver": "Börja om"
       }
     },
+    "startFresh": {
+      "trigger": "Jag kan inte få tillbaka min återställningsfras",
+      "title": "Börja om på den här enheten",
+      "description": "Gör bara det här om din återställningsfras är borta för gott. Det går inte att ångra.",
+      "consequenceSignOut": "Den här enheten loggas ut och slutar synkronisera.",
+      "consequenceKey": "Krypteringsnyckeln på den här enheten raderas. Allt som redan lagras i ditt konto förblir krypterat med den gamla nyckeln – utan återställningsfrasen kan ingenting någonsin läsa det igen.",
+      "consequenceLocal": "Anteckningar som redan är sparade på den här datorn ligger kvar i valvmappen och fungerar som vanligt.",
+      "confirm": "Logga ut och börja om",
+      "cancel": "Gå tillbaka"
+    },
     "linking": {
-      "choiceTitle": "Koppla denna enhet",
+      "choiceTitle": "Koppla den här enheten",
       "choiceDescription": "Överför krypteringsnycklar från en annan enhet eller återställ från din återställningsfras.",
       "qrChoice": "Koppla via QR-kod",
       "qrChoiceDescription": "Skanna koden som visas på din andra enhet",
       "recoveryChoice": "Återställningsfras",
-      "recoveryChoiceDescription": "Ange din 24-ords återställningsfras",
-      "codeTitle": "Ange länkningskod",
-      "codeDescription": "Klistra in länkningskoden från din andra enhet för att säkert överföra dina krypteringsnycklar.",
-      "codeLabel": "Länkningskod",
+      "recoveryChoiceDescription": "Ange din återställningsfras på 24 ord",
+      "codeTitle": "Ange kopplingskod",
+      "codeDescription": "Klistra in kopplingskoden från din andra enhet för att överföra dina krypteringsnycklar på ett säkert sätt.",
+      "codeLabel": "Kopplingskod",
       "valid": "Giltig",
       "invalid": "Ogiltigt format",
-      "codePlaceholder": "Klistra in koden från din andra enhet...",
-      "formatHint": "Klistra in JSON-länkningskoden från din andra enhet",
-      "linking": "Länkar...",
-      "linkDevice": "Länka enhet",
-      "failed": "Länkningen misslyckades",
-      "deviceFailed": "Kunde inte länka enhet",
-      "pendingSuccess": "Enhet kopplad framgångsrikt",
+      "codePlaceholder": "Klistra in koden från din andra enhet…",
+      "formatHint": "Klistra in kopplingskoden (JSON) från din andra enhet",
+      "linking": "Kopplar…",
+      "linkDevice": "Koppla enhet",
+      "failed": "Kopplingen misslyckades",
+      "deviceFailed": "Det gick inte att koppla enheten",
+      "pendingSuccess": "Enheten är kopplad",
       "goBack": "Gå tillbaka",
       "waitingTitle": "Väntar på godkännande",
-      "waitingDescription": "Öppna memrynote på din andra enhet och godkänn länkförfrågan.",
+      "waitingDescription": "Öppna memrynote på din andra enhet och godkänn kopplingsbegäran.",
       "verificationCode": "Verifieringskod",
-      "confirmCode": "Bekräfta att detta matchar koden på din andra enhet",
-      "vaultPickerChooseFolder": "Välj mapp",
-      "vaultPickerConfirm": "Hämta valda",
-      "vaultPickerDescription": "Det här kontot har flera valv. Välj en mapp och valven som ska läggas till på den här enheten.",
-      "vaultPickerDormantHint": "Tillagd, öppnas när du växlar till den",
-      "vaultPickerFolderLabel": "Lagra valv i mapp",
-      "vaultPickerPrimaryHint": "Öppnas nu",
+      "confirmCode": "Bekräfta att den matchar koden på din andra enhet",
       "vaultPickerTitle": "Välj vad som ska hämtas",
-      "vaultRow": "Valv — {count} objekt · {date}"
+      "vaultPickerDescription": "Det här kontot har flera valv. Välj en mapp och valven som ska läggas till på den här enheten.",
+      "vaultPickerFolderLabel": "Lagra valv i mapp",
+      "vaultPickerChooseFolder": "Välj mapp",
+      "vaultRow": "Valv – {count} objekt · {date}",
+      "vaultPickerPrimaryHint": "Öppnas nu",
+      "vaultPickerDormantHint": "Tillagt, öppnas när du byter till det",
+      "vaultPickerConfirm": "Hämta valda"
     }
   },
   "devices": {
-    "loading": "Läser in enheter...",
+    "loading": "Läser in enheter…",
     "loadingAria": "Läser in enheter",
-    "none": "Inga enheter länkade än",
-    "linkNew": "Länka ny enhet",
-    "thisDevice": "Denna enhet",
-    "lastSeen": "Senast sedd {time} sedan",
-    "linked": "Länkad {time} sedan",
+    "none": "Inga enheter kopplade än",
+    "linkNew": "Koppla ny enhet",
+    "thisDevice": "Den här enheten",
+    "lastSeen": "Senast sedd för {time} sedan",
+    "linked": "Kopplad för {time} sedan",
     "renameAria": "Byt namn på {name}",
     "rename": "Byt namn",
     "revoke": "Återkalla",
     "showLess": "Visa mindre",
-    "showMore": "{count, plural, one {# fler enhet} other {# fler enheter}}",
-    "showMoreAria": "Visa {count, plural, one {# fler enhet} other {# fler enheter}}",
+    "showMore": "{count, plural, one {# enhet till} other {# enheter till}}",
+    "showMoreAria": "Visa {count, plural, one {# enhet till} other {# enheter till}}",
     "dialogs": {
-      "revokeTitle": "Återkalla \"{name}\"?",
-      "revokeDescription": "Denna enhet kommer att förlora åtkomst till dina synkade data. Den måste länkas igen för att återställa synkronisering. Lokala data på den enheten kommer att förbli.",
+      "revokeTitle": "Återkalla ”{name}”?",
+      "revokeDescription": "Den här enheten förlorar åtkomsten till dina synkroniserade data. Den måste kopplas igen för att synkroniseringen ska återställas. Lokala data på enheten finns kvar.",
       "revokeDevice": "Återkalla enhet",
-      "revoking": "Återkallas...",
+      "revoking": "Återkallar…",
       "renameTitle": "Byt namn på enhet",
-      "renameDescription": "Välj ett namn för att identifiera denna enhet.",
+      "renameDescription": "Välj ett namn som identifierar den här enheten.",
       "namePlaceholder": "Enhetsnamn",
-      "renaming": "Byter namn..."
+      "renaming": "Byter namn…"
     },
     "toasts": {
-      "loadFailed": "Misslyckades med att ladda enheter",
-      "removed": "Borttaget \"{name}\"",
-      "removeFailed": "Misslyckades med att ta bort enhet",
-      "renamed": "Bytt namn till \"{name}\"",
-      "renameFailed": "Misslyckades med att byta namn på enhet"
+      "loadFailed": "Det gick inte att läsa in enheter",
+      "removed": "”{name}” har tagits bort",
+      "removeFailed": "Det gick inte att ta bort enheten",
+      "renamed": "Bytt namn till ”{name}”",
+      "renameFailed": "Det gick inte att byta namn på enheten"
     },
     "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
-    "title": "Länka ny enhet",
-    "description": "Skanna denna QR-kod från enheten du vill koppla för att överföra dina krypteringsnycklar säkert.",
-    "encrypted": "End-to-end krypterad",
-    "generating": "Genererar kopplingskod...",
+    "title": "Koppla ny enhet",
+    "description": "Skanna den här QR-koden från enheten du vill koppla för att överföra dina krypteringsnycklar på ett säkert sätt.",
+    "encrypted": "End-to-end-krypterad",
+    "generating": "Genererar kopplingskod…",
     "generatingAria": "Genererar kopplingskod",
-    "generateFailed": "Misslyckades med att generera kopplingskod",
+    "generateFailed": "Det gick inte att generera en kopplingskod",
     "tryAgain": "Försök igen",
     "expired": "Kopplingskoden har gått ut",
     "generateNew": "Generera ny kod",
     "qrAria": "QR-kod för enhetskoppling",
     "qrImageAria": "QR-kod för enhetskoppling",
-    "expiresIn": "Upphör om {time}",
+    "expiresIn": "Går ut om {time}",
     "or": "eller",
-    "codeLabel": "Länkningskod",
+    "codeLabel": "Kopplingskod",
     "copyAria": "Kopiera kopplingskod",
     "copiedAria": "Kopierad",
     "copied": "Kopierad!"
   },
   "linkingApproval": {
-    "title": "Ny enhet vill koppla",
-    "description": "En enhet begär åtkomst till dina krypterade data. Godkänn endast om du initierade denna begäran.",
+    "title": "En ny enhet vill kopplas",
+    "description": "En enhet begär åtkomst till dina krypterade data. Godkänn bara om det är du som har skickat begäran.",
     "unknownDevice": "Okänd enhet",
     "unknownPlatform": "Okänd plattform",
     "verificationCode": "Verifieringskod",
-    "computing": "Beräknar...",
+    "computing": "Beräknar…",
     "unavailable": "Otillgänglig",
-    "confirmCode": "Bekräfta att denna kod matchar den som visas på den nya enheten",
+    "confirmCode": "Bekräfta att koden matchar den som visas på den nya enheten",
     "reject": "Avvisa",
     "approve": "Godkänn",
-    "approving": "Godkänner...",
+    "approving": "Godkänner…",
     "approvalFailed": "Godkännande misslyckades",
-    "failedToApprove": "Misslyckades med att godkänna enhet"
+    "failedToApprove": "Det gick inte att godkänna enheten"
   },
   "ai": {
     "header": {
       "title": "AI-assistent",
       "subtitle": "Inbäddningar körs lokalt. Röstanteckningar kan använda Whisper Small eller din OpenAI-nyckel.",
-      "loading": "Läser in inställningar..."
+      "loading": "Läser in inställningar…"
     },
     "enable": {
       "label": "Aktivera AI-funktioner",
-      "description": "Smarta förslag på organisering och noteringskopplingar",
+      "description": "Smarta förslag på var saker ska sorteras in och kopplingar mellan anteckningar",
       "enabled": "AI-funktioner aktiverade",
       "disabled": "AI-funktioner inaktiverade",
-      "error": "Misslyckades med att uppdatera inställning"
+      "error": "Det gick inte att uppdatera inställningen"
     },
     "unknownError": "Okänt fel",
     "groups": {
       "voice": "Rösttranskribering",
-      "embeddingModel": "Lokalt inbäddningsmodell",
+      "embeddingModel": "Lokal inbäddningsmodell",
       "embeddingIndex": "Inbäddningsindex",
-      "inline": "Inline AI-redigering"
+      "inline": "AI-redigering i texten"
     },
     "voice": {
       "provider": "Leverantör",
-      "providerDescription": "Talför-til-tekst-leverantör för röstanteckningar",
+      "providerDescription": "Tal till text-leverantör för röstanteckningar",
       "providers": {
         "local": "Lokal (standard)",
         "openai": "OpenAI (BYOK)"
       },
+      "memoNameMode": "Namn på memon",
+      "memoNameModeDescription": "Hur röstmemon namnges efter transkription",
+      "naming": {
+        "transcript": "Transkriptionstitel",
+        "timestamp": "Tidsstämpel",
+        "none": "Byt inte namn"
+      },
+      "namingError": "Det gick inte att uppdatera namngivning av röstmemo",
       "localModel": "Lokal modell",
       "localModelDescription": "Whisper Small laddas ner vid behov och lagras i cache lokalt",
       "status": {
@@ -830,8 +1316,8 @@
         "downloaded": "Nedladdad",
         "notDownloaded": "Inte nedladdad"
       },
-      "cacheHint": "Ingår inte i appen · Nedladdad från Inställningar · Cachad på denna enhet",
-      "preparing": "Förbereder Whisper Small...",
+      "cacheHint": "Ingår inte i appen · Laddas ner från Inställningar · Cachas på den här enheten",
+      "preparing": "Förbereder Whisper Small…",
       "download": "Ladda ner Whisper Small",
       "apiKey": "OpenAI API-nyckel",
       "apiKeyDescription": "Sparad i ditt operativsystems nyckelring och används endast för rösttranskription",
@@ -839,47 +1325,39 @@
       "enterKey": "Ange OpenAI API-nyckel",
       "saveKey": "Spara nyckel",
       "keySaved": "API-nyckel sparad i nyckelring",
-      "providerError": "Misslyckades med att uppdatera röstleverantör",
+      "providerError": "Det gick inte att uppdatera röstleverantören",
       "downloadedToast": "Whisper Small nedladdad",
-      "downloadError": "Misslyckades med att ladda ner Whisper Small",
+      "downloadError": "Det gick inte att ladda ner Whisper Small",
       "keySavedToast": "OpenAI-nyckel sparad",
-      "keySaveError": "Misslyckades med att spara OpenAI-nyckel",
-      "memoNameMode": "Memonamn",
-      "memoNameModeDescription": "Hur röstmemon namnges efter transkription",
-      "naming": {
-        "none": "Byt inte namn",
-        "timestamp": "Tidsstämpel",
-        "transcript": "Transkriptionstitel"
-      },
-      "namingError": "Det gick inte att uppdatera namngivning av röstmemo"
+      "keySaveError": "Det gick inte att spara OpenAI-nyckeln"
     },
     "embedding": {
-      "loaded": "Laddad",
-      "loading": "Laddar",
+      "loaded": "Inläst",
+      "loading": "Läser in",
       "cacheHint": "~23 MB · Cachad lokalt · Allt på enheten",
       "dimensions": "Dimensioner",
-      "embeddings": "Embeddings",
-      "downloadLoad": "Ladda ner & Ladda modell",
-      "downloadingModel": "Laddar ner modell...",
-      "loadingModel": "Laddar modell...",
-      "loadSuccess": "Modell laddad framgångsrikt",
-      "loadFailed": "Misslyckades med att ladda modell",
+      "embeddings": "Inbäddningar",
+      "downloadLoad": "Ladda ner och läs in modell",
+      "downloadingModel": "Laddar ner modell…",
+      "loadingModel": "Läser in modell…",
+      "loadSuccess": "Modellen har lästs in",
+      "loadFailed": "Det gick inte att läsa in modellen",
       "rebuildIndex": "Bygg om index",
-      "rebuildDescription": "Generera embeds för alla anteckningar",
+      "rebuildDescription": "Generera om inbäddningar för alla anteckningar",
       "rebuild": "Bygg om",
-      "scanning": "Skannar anteckningar...",
-      "generating": "Genererar embeddings...",
+      "scanning": "Skannar anteckningar…",
+      "generating": "Genererar inbäddningar…",
       "complete": "Klart!",
-      "reindexed": "Embeddings indexerade om: {computed} beräknad, {skipped} hoppad över",
-      "reindexFailed": "Misslyckades med att indexera om embeddings"
+      "reindexed": "Inbäddningar omindexerade: {computed} beräknade, {skipped} överhoppade",
+      "reindexFailed": "Det gick inte att indexera om inbäddningarna"
     },
     "inline": {
-      "loading": "Laddar...",
-      "title": "Inline AI-redigering",
-      "enable": "Aktivera Inline AI",
+      "loading": "Läser in…",
+      "title": "AI-redigering i texten",
+      "enable": "Aktivera AI i texten",
       "enableDescription": "Visa AI-menyn när du redigerar anteckningar",
-      "enabled": "Inline AI-redigering aktiverad",
-      "disabled": "Inline AI-redigering inaktiverad",
+      "enabled": "AI-redigering i texten aktiverad",
+      "disabled": "AI-redigering i texten inaktiverad",
       "provider": "Leverantör",
       "providerDescription": "AI-tjänst för textoperationer",
       "providers": {
@@ -892,19 +1370,232 @@
       "modelDescription": "Språkmodell för att skriva om och sammanfatta",
       "selectModel": "Välj en modell",
       "apiKey": "API-nyckel",
-      "apiKeyDescription": "Lagrade lokalt, skickas endast till leverantören",
-      "apiKeyPlaceholder": "Ange {provider} API-nyckel",
-      "ollamaUrl": "Ollama URL",
+      "apiKeyDescription": "Lagras lokalt, skickas bara till leverantören",
+      "apiKeyPlaceholder": "Ange API-nyckel för {provider}",
+      "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradress",
       "connection": "Anslutning",
       "activePort": "Aktiv på port {port}",
       "notConnected": "Inte ansluten",
       "test": "Testa",
-      "stopFailed": "Misslyckades med att stoppa befintlig server",
-      "connected": "Ansluten! Servern kör på port {port}",
-      "connectFailed": "Misslyckades med att ansluta",
+      "stopFailed": "Det gick inte att stoppa den befintliga servern",
+      "connected": "Ansluten! Servern körs på port {port}",
+      "connectFailed": "Det gick inte att ansluta",
       "testFailed": "Anslutningstest misslyckades",
-      "updateFailed": "Misslyckades med att uppdatera inställning"
+      "updateFailed": "Det gick inte att uppdatera inställningen"
+    },
+    "tabs": {
+      "models": "Modeller",
+      "agents": "Agenter",
+      "connect": "Anslut"
+    },
+    "v2": {
+      "onDevice": {
+        "label": "Modeller på enheten",
+        "hint": "Laddas ner en gång, körs offline"
+      },
+      "embedding": {
+        "label": "Inbäddningar för sökning",
+        "hint": "{dimension} dimensioner · {count, plural, one {# anteckning inbäddad} other {# anteckningar inbäddade}}"
+      },
+      "voiceModel": {
+        "label": "Rösttranskribering"
+      },
+      "download": "Ladda ner",
+      "connected": "Ansluten",
+      "inline": {
+        "group": "Redigering i texten",
+        "enabled": "Aktiverad"
+      },
+      "voice": {
+        "group": "Röstmemon",
+        "transcribeWith": "Transkribera med",
+        "local": "Lokalt",
+        "openai": "OpenAI",
+        "nameBy": "Namnge memon efter",
+        "keySaved": "Sparad",
+        "keyNotSet": "Inte angiven"
+      }
+    }
+  },
+  "import": {
+    "header": {
+      "title": "Importera",
+      "subtitle": "Ta in dina anteckningar och uppgifter från andra appar"
+    },
+    "intro": "Engångsimporter skapar nya anteckningar i ditt valv. Dina ursprungliga exportfiler lämnas orörda.",
+    "sources": {
+      "notion": "Importera en HTML-export (.zip)",
+      "todoist": "Importera en CSV-export av ett projekt (.csv)",
+      "ticktick": "Importera en TickTick-säkerhetskopia (.csv) som projekt, uppgifter och påminnelser",
+      "markdown": "Importera .md-filer eller en mapp (frontmatter, taggar, bilagor)",
+      "noteplan": "Importera en NotePlan-mapp – dagliga anteckningar blir dagboksinlägg, uppgifter blir uppgifter",
+      "html": "Importera .html-filer med länkade bilder och länkar mellan sidor",
+      "google-keep": "Importera en Google Takeout Keep-export (.json eller .zip)",
+      "bear": "Importera ett Bear .bear2bk-arkiv (anteckningar, taggar, bilagor)",
+      "evernote": "Importera en eller flera Evernote .enex-exportfiler",
+      "roam": "Importera en Roam Research-graf (.json) med nästlade listor",
+      "apple-journal": "Importera en HTML-export från Apple Journal som daterade anteckningar",
+      "csv": "Importera en .csv-fil – en anteckning per rad, kolumner blir egenskaper",
+      "raindrop": "Importera en bokmärkesexport från Raindrop.io (.csv) – bokmärken hamnar i inkorgen",
+      "apple-notes": "Importera från Apple Notes-databasen (NoteStore.sqlite, macOS)",
+      "onenote": "Importera OneNote-anteckningsböcker (kräver ett Microsoft-konto)"
+    },
+    "action": "Importera",
+    "select": "Välj en app att importera från…",
+    "stats": {
+      "notes": "{count, plural, one {# anteckning} other {# anteckningar}}",
+      "projects": "{count, plural, one {# projekt} other {# projekt}}",
+      "tasks": "{count, plural, one {# uppgift} other {# uppgifter}}",
+      "subtasks": "{count, plural, one {# deluppgift} other {# deluppgifter}}",
+      "reminders": "{count, plural, one {# påminnelse} other {# påminnelser}}",
+      "bookmarks": "{count, plural, one {# bokmärke} other {# bokmärken}}",
+      "withTags": "{count} taggade",
+      "withDueDate": "{count} daterade",
+      "comments": "{count, plural, one {# kommentar} other {# kommentarer}}",
+      "skipped": "{count} överhoppade"
+    },
+    "preview": {
+      "warnings": "Varningar",
+      "confirm": "Importera"
+    },
+    "dialog": {
+      "title": "Importera från {name}",
+      "choose": "Välj fil…",
+      "onenote": {
+        "connect": "Logga in med Microsoft",
+        "connecting": "Väntar på inloggning i webbläsaren…",
+        "connectedAs": "Inloggad som {name} ({email})",
+        "switchAccount": "Byt konto",
+        "loadingNotebooks": "Läser in anteckningsböcker…",
+        "notebooksEmpty": "Inga anteckningsböcker hittades i det här kontot.",
+        "selectAll": "Markera alla",
+        "deselectAll": "Rensa markering",
+        "sectionsSelected": "{count, plural, one {# avsnitt markerat} other {# avsnitt markerade}}",
+        "includeIncompatible": "Importera inkompatibla bilagor",
+        "includeIncompatibleHint": "Spara även filtyper som Memry inte kan förhandsgranska (presentationer, media, arkiv – aldrig körbara filer). De visas som filblock.",
+        "skipPrevious": "Hoppa över sidor som redan har importerats",
+        "skipPreviousHint": "Sidor som importerades vid en tidigare OneNote-import hoppas över, så en ny körning hämtar bara det som är nytt."
+      },
+      "appleNotes": {
+        "loadingFolders": "Läser dina mappar…",
+        "foldersError": "Det gick inte att läsa dina mappar – hela biblioteket importeras.",
+        "unfiled": "Anteckningar utan mapp",
+        "selectAll": "Markera alla",
+        "deselectAll": "Rensa markering",
+        "foldersSelected": "{count, plural, one {# mapp markerad} other {# mappar markerade}}",
+        "noteCount": "{count}",
+        "noteCountWithSubfolders": "{count} ({total})"
+      },
+      "chooseFolder": "Välj Apple Notes-mapp…",
+      "chooseDirectory": "Välj mapp…",
+      "folderKeepsAssets": "Välj mappen när bilderna ligger utanför anteckningarnas egen mapp – exporter lägger ofta media i en gemensam mapp.",
+      "chooseHint": "Välj {label}",
+      "folderHint": "Klicka nedan och välj mappen ”group.com.apple.notes” när väljaren öppnas (den börjar där). Då kan Memry läsa dina anteckningar och bilagor – ingen full skivåtkomst behövs.",
+      "noteplanFolderHint": "Välj din NotePlan-mapp – antingen appens datamapp eller en av dess säkerhetskopior i Backups. Memry läser mapparna Calendar, Notes och @Archive i den.",
+      "selected": "{count, plural, one {# fil vald} other {# filer valda}}",
+      "start": "Starta import",
+      "cancel": "Avbryt",
+      "close": "Stäng",
+      "done": "Klar",
+      "running": "Importerar…",
+      "progress": "{completed} av {total}",
+      "summary": {
+        "title": "Import klar",
+        "imported": "{count, plural, one {# objekt importerat} other {# objekt importerade}}",
+        "attachments": "{count, plural, one {# bilaga kopierad} other {# bilagor kopierade}}",
+        "skipped": "{count} överhoppade",
+        "skippedReason": "{count, plural, one {# objekt} other {# objekt}}: {reason}",
+        "failed": "{count} misslyckades"
+      },
+      "error": "Import misslyckades",
+      "previewError": "Förhandsgranskningen misslyckades"
+    },
+    "messages": {
+      "readFileFailed": "Det gick inte att läsa filen",
+      "appleNotes": {
+        "lockedNote": "{count, plural, one {# låst anteckning importerades inte} other {# låsta anteckningar importerades inte}}; Memry kan inte läsa dem utan ditt lösenord för Anteckningar."
+      },
+      "csv": {
+        "noHeaders": "CSV-filen saknar rubriker",
+        "emptyTitle": "Hoppade över rad med tom titel (kolumnen ”{column}”)",
+        "columns": "Kolumner: {columns}",
+        "titleColumn": "Titel från ”{column}”; övriga kolumner sparas som egenskaper"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop-CSV:n är tom",
+        "headerNotFound": "Raindrop-CSV:ns rubrikrad (kolumnen ”url”) hittades inte",
+        "rowNoUrl": "Rad {row} hoppades över: ingen URL"
+      },
+      "ticktick": {
+        "headerNotFound": "TickTick-CSV:ns rubrikrad (”Folder Name”) hittades inte",
+        "foldersDropped": "TickTick-mappar har ingen motsvarighet i Memry och togs bort",
+        "subtaskParentMissing": "Överordnad uppgift till deluppgiften ”{title}” hittades inte; importerad på översta nivån",
+        "unknownPriority": "Okänd TickTick-prioritet {priority} → ingen",
+        "unsupportedRepeat": "Upprepningsregeln ”{rule}” stöds inte och hoppades över",
+        "reminderNoAnchor": "Påminnelsen ”{reminder}” hoppades över (inget datumankare)"
+      },
+      "todoist": {
+        "headerNotFound": "Inte en Todoist-CSV: rubrikraden TYPE saknas",
+        "sectionFlattened": "Avsnittet ”{section}” plattades ut",
+        "orphanComment": "Kommentar utan föregående uppgift hoppades över",
+        "emptyTitle": "Uppgift med tomt innehåll importerades som (namnlös)",
+        "unknownPriority": "Okänd prioritet {priority} → ingen",
+        "unparsedDate": "Det gick inte att tolka datumet ”{date}”",
+        "subtaskNoParent": "Deluppgiften ”{title}” saknar överordnad uppgift på indrag {indent}; importerad på översta nivån"
+      }
+    },
+    "status": {
+      "scanningFiles": "Skannar filer…",
+      "scanningExport": "Skannar exporten…",
+      "importingItem": "Importerar {title}",
+      "appleNotes": {
+        "copyingDatabase": "Kopierar Apple Notes-databasen…"
+      },
+      "bear": {
+        "scanning": "Skannar Bear-exporten…"
+      },
+      "csv": {
+        "importing": "Importerar CSV-anteckningar…"
+      },
+      "evernote": {
+        "scanning": "Skannar .enex-filer…"
+      },
+      "html": {
+        "scanning": "Skannar HTML-filer…"
+      },
+      "noteplan": {
+        "scanning": "Skannar NotePlan-mappen…"
+      },
+      "onenote": {
+        "loadingNotebooks": "Läser in OneNote-anteckningsböcker…",
+        "rateLimited": "OneNote begränsar antalet anrop; väntar innan nästa försök…",
+        "downloadingAttachment": "Laddar ner bilagan {name}"
+      },
+      "raindrop": {
+        "importing": "Importerar Raindrop-bokmärken…"
+      },
+      "roam": {
+        "reading": "Läser Roam-exporten…"
+      },
+      "ticktick": {
+        "importing": "Importerar TickTick-uppgifter…"
+      },
+      "todoist": {
+        "importing": "Importerar Todoist-uppgifter…"
+      }
+    },
+    "v2": {
+      "searchPlaceholder": "Sök efter en app eller filtyp…",
+      "noMatch": "Inga källor matchar ”{query}”",
+      "formatAccount": "Konto",
+      "showMore": "{count, plural, one {Visa # till} other {Visa # till}}",
+      "showLess": "Visa mindre",
+      "groups": {
+        "noteApps": "Anteckningsappar",
+        "tasks": "Uppgifter, dagbok och bokmärken",
+        "files": "Filer"
+      }
     }
   },
   "vault": {
@@ -915,12 +1606,31 @@
     "groups": {
       "storageUsage": "Lagringsanvändning",
       "location": "Plats",
-      "accountVaults": "Valv på ditt konto"
+      "accountVaults": "Valv på ditt konto",
+      "largeNotes": "Anteckningar nära synkgränsen",
+      "activity": "Aktivitet"
     },
-    "loadingStorage": "Laddar lagringsinformation...",
+    "loadingStorage": "Läser in lagringsinformation…",
     "signInStorage": "Logga in för att visa lagringsanvändning",
-    "vaultPath": "Valvväg",
+    "vaultPath": "Sökväg till valvet",
     "reveal": "Visa",
+    "accountVaults": {
+      "empty": "Inga valv är synkade till ditt konto än.",
+      "cloudOnly": "Inte på den här enheten",
+      "itemsCount": "{count} objekt",
+      "delete": "Radera",
+      "deleteTitle": "Radera ”{name}” från ditt konto?",
+      "deleteBody": "Det här tar permanent bort alla synkroniserade data för valvet från Memrys servrar och kan inte ångras. Dina filer på disken raderas inte.",
+      "deleteConfirm": "Radera från kontot",
+      "deleteFailed": "Det gick inte att radera valvet",
+      "activeHint": "Byt till ett annat valv för att radera det här.",
+      "unsyncedTitle": "Det här valvet synkroniseras inte",
+      "unsyncedBodyOne": "Valvet som är öppet på den här enheten finns inte i ditt konto, så synkroniseringen nekar det. Ditt kontovalv är ”{name}” – öppna det här för att börja synkronisera igen.",
+      "unsyncedBodyMany": "Valvet som är öppet på den här enheten finns inte i ditt konto, så synkroniseringen nekar det. Öppna ett av valven nedan för att börja synkronisera igen.",
+      "unsyncedOpen": "Öppna kontovalvet",
+      "unsyncedDownload": "Ladda ner kontovalvet",
+      "unsyncedSwitchFailed": "Det gick inte att öppna valvet"
+    },
     "storage": {
       "title": "Lagring",
       "used": "{used} av {limit} använd",
@@ -937,65 +1647,143 @@
       "warningTitle": "Lagringen nästan full",
       "warningDescription": "Frigör utrymme eller uppgradera din plan för att undvika synkroniseringsproblem."
     },
-    "accountVaults": {
-      "activeHint": "Byt till ett annat valv för att ta bort det här.",
-      "cloudOnly": "Inte på den här enheten",
-      "delete": "Ta bort",
-      "deleteBody": "Detta tar permanent bort all synkad data för det här valvet från Memrys servrar och kan inte ångras. Dina filer på disken tas inte bort.",
-      "deleteConfirm": "Ta bort från kontot",
-      "deleteFailed": "Det gick inte att ta bort valvet",
-      "deleteTitle": "Ta bort “{name}” från ditt konto?",
-      "empty": "Inga valv är synkade till ditt konto än.",
-      "itemsCount": "{count} objekt"
+    "largeNotes": {
+      "description": "Anteckningar som är större än {limit} slutar synkroniseras. Dela upp dem i mindre anteckningar så att de fortsätter att synkroniseras.",
+      "over": "Synkroniseras inte",
+      "approaching": "Närmar sig gränsen"
+    },
+    "activity": {
+      "description": "Filer som lagts till i eller tagits bort från valvet utanför Memry, importer och allt som hoppats över eller misslyckats. Sparas bara på den här enheten.",
+      "retention": {
+        "label": "Valvaktivitet",
+        "days": "{count, plural, one {Spara # dag} other {Spara # dagar}}"
+      },
+      "filter": {
+        "all": "Alla",
+        "problems": "Överhoppade och misslyckade"
+      },
+      "reveal": "Visa loggfil",
+      "clear": "Rensa",
+      "clearTitle": "Rensa valvaktiviteten?",
+      "clearBody": "Det här rensar hela aktivitetsloggen på den här enheten. Dina filer påverkas inte.",
+      "clearConfirm": "Rensa aktivitet",
+      "empty": "Inget har registrerats än. Filer som du lägger till i valvmappen, importer och allt som Memry hoppar över visas här.",
+      "emptyProblems": "Inget hoppades över och inget misslyckades.",
+      "unavailable": "Öppna ett valv för att se dess aktivitet.",
+      "loadFailed": "Det gick inte att läsa in valvaktiviteten",
+      "actionFailed": "Det gick inte att uppdatera valvaktiviteten",
+      "showItems": "{count, plural, one {Visa # objekt} other {Visa # objekt}}",
+      "toastAction": "Detaljer",
+      "entry": {
+        "added": "Lade till {path}",
+        "removed": "Tog bort {path}",
+        "renamed": "Bytte namn på {oldPath} till {path}",
+        "skipped": "Hoppade över {path}",
+        "skippedUnsupported": "Memry öppnar inte filer av typen {ext}, så filen lämnades som den är.",
+        "readFailed": "Det gick inte att läsa {path}",
+        "indexFailed": "Det gick inte att lägga till {path}",
+        "copyFailed": "Det gick inte att kopiera {path} till valvet",
+        "uploadFailed": "Det gick inte att ladda upp {path}",
+        "uploadFailedHint": "Den ligger kvar på den här enheten tills uppladdningen lyckas.",
+        "downloadFailed": "Det gick inte att ladda ner {path}",
+        "fileTooLarge": "{path} är för stor för att synkroniseras",
+        "noteTooLarge": "”{title}” är för stor för att synkroniseras",
+        "noteTooLargeUnnamed": "En anteckning är för stor för att synkroniseras",
+        "importFailed": "Importen från {importer} misslyckades",
+        "failedGeneric": "Något gick fel med {path}",
+        "failedGenericUnnamed": "Något gick fel",
+        "scan": "Hittade ändringar som gjordes medan Memry var stängt",
+        "indexRebuilt": "Sökindexet byggdes",
+        "import": "Import från {importer}",
+        "importCanceled": "Import från {importer}, avbruten",
+        "unknown": "Okänd aktivitet"
+      },
+      "counts": {
+        "added": "{count, plural, one {# ny fil} other {# nya filer}}",
+        "indexed": "{count, plural, one {# fil indexerad} other {# filer indexerade}}",
+        "imported": "{count, plural, one {# importerad} other {# importerade}}",
+        "attachments": "{count, plural, one {# bilaga} other {# bilagor}}",
+        "skipped": "{count, plural, one {# överhoppad} other {# överhoppade}}",
+        "unsupported": "{count, plural, one {# fil som inte stöds hoppades över} other {# filer som inte stöds hoppades över}}",
+        "failed": "{count, plural, one {# misslyckades} other {# misslyckades}}"
+      }
+    },
+    "v2": {
+      "groups": {
+        "thisVault": "Det här valvet"
+      },
+      "largeNotesCount": "{count, plural, one {# anteckning} other {# anteckningar}}"
+    },
+    "binding": {
+      "dialog": {
+        "title": "Synkronisera det här valvet till ditt konto?",
+        "description": "Det här valvet har anteckningar som inte finns i ditt konto än. Du kan lägga till det i ditt konto eller behålla det på den här enheten. Inget lämnar den här enheten förrän du har bestämt dig.",
+        "descriptionWithVaults": "Det här valvet har anteckningar som inte finns i ditt konto än, och ditt konto har redan ett valv. Du kan lägga till det här bredvid, sammanfoga de två eller behålla det på den här enheten. Inget lämnar den här enheten förrän du har bestämt dig.",
+        "addAsNew": "Lägg till som ett separat valv",
+        "merge": "Sammanfoga med ”{name}”",
+        "mergeUnnamed": "Sammanfoga med ditt kontos valv",
+        "keepLocal": "Behåll på den här enheten",
+        "failed": "Det gick inte att uppdatera hur valvet synkroniseras"
+      },
+      "status": {
+        "localOnly": "Det här valvet stannar på den här enheten och synkroniseras inte.",
+        "foreign": "Det här valvet synkroniserades av ett annat konto, så det synkroniseras inte med ditt. Det stannar på den här enheten.",
+        "needsDecision": "Det här valvet synkroniseras inte än.",
+        "startSync": "Synkronisera det här valvet",
+        "choose": "Välj…"
+      }
     }
   },
   "tags": {
     "header": {
       "title": "Taggar",
-      "subtitle": "Hantera taggar över anteckningar, journaler och uppgifter"
+      "subtitle": "Hantera taggar i anteckningar, dagböcker och uppgifter"
     },
-    "loading": "Laddar taggar...",
+    "loading": "Läser in taggar…",
     "empty": "Inga taggar ännu. Taggar kommer att visas här när du lägger till dem i anteckningar och uppgifter.",
-    "filterPlaceholder": "Filtrera taggar...",
-    "noMatch": "Inga taggar som matchar \"{query}\"",
-    "summary": "{count, plural, one {#-tag} other {#-taggar}} över anteckningar och uppgifter",
+    "filterPlaceholder": "Filtrera taggar…",
+    "noMatch": "Inga taggar matchar ”{query}”",
+    "summary": "{count, plural, one {# tagg} other {# taggar}} i anteckningar och uppgifter",
     "actions": {
       "rename": "Byt namn",
       "changeColor": "Byt färg",
-      "mergeInto": "Sammanfoga till...",
+      "changeIcon": "Ändra ikon",
+      "mergeInto": "Sammanfoga med…",
       "merge": "Sammanfoga",
-      "delete": "Ta bort",
-      "changeIcon": "Ändra ikon"
+      "delete": "Radera"
     },
     "dialogs": {
-      "deleteTitle": "Ta bort tagg",
-      "deleteDescription": "Ta bort \"{name}\" från {count, plural, one {# objekt} other {# objekt}}? Detta kan inte ångras.",
-      "mergeTitle": "Slå samman tagg",
-      "mergeDescription": "Alla objekt taggade med \"{source}\" kommer att omtaggas med måltagg. Källtaggen kommer att tas bort.",
-      "targetPlaceholder": "Välj måltagg...",
-      "colorTitle": "Ändra färg för \"{name}\""
+      "deleteTitle": "Radera tagg",
+      "deleteDescription": "Ta bort ”{name}” från {count, plural, one {# objekt} other {# objekt}}? Det går inte att ångra.",
+      "mergeTitle": "Sammanfoga tagg",
+      "mergeDescription": "Alla objekt som är taggade med ”{source}” får måltaggen i stället. Källtaggen raderas.",
+      "targetPlaceholder": "Välj måltagg…",
+      "colorTitle": "Ändra färg för ”{name}”"
     },
     "toasts": {
-      "renamed": "Bytte namn på \"{oldName}\" till \"{newName}\"",
-      "renameFailed": "Misslyckades med att byta namn på tagg",
-      "deleteFailed": "Misslyckades med att ta bort tagg",
-      "deleted": "Raderade \"{name}\" från {count, plural, one {# objekt} other {# objekt}}",
-      "mergeFailed": "Misslyckades med att slå samman taggar",
-      "merged": "Slådd samman \"{source}\" med \"{target}\" ({count, plural, one {# objekt} other {# objekt}})",
-      "colorUpdated": "Uppdaterad färg för \"{name}\"",
-      "colorFailed": "Misslyckades med att uppdatera färg",
-      "iconFailed": "Det gick inte att uppdatera ikon"
+      "renamed": "Bytte namn på ”{oldName}” till ”{newName}”",
+      "renameFailed": "Det gick inte att byta namn på taggen",
+      "deleteFailed": "Det gick inte att radera taggen",
+      "deleted": "Tog bort ”{name}” från {count, plural, one {# objekt} other {# objekt}}",
+      "mergeFailed": "Det gick inte att sammanfoga taggarna",
+      "merged": "Sammanfogade ”{source}” med ”{target}” ({count, plural, one {# objekt} other {# objekt}})",
+      "colorUpdated": "Färgen för ”{name}” uppdaterades",
+      "colorFailed": "Det gick inte att uppdatera färgen",
+      "iconFailed": "Det gick inte att uppdatera ikonen"
+    },
+    "v2": {
+      "actionsAria": "Åtgärder för {name}"
     }
   },
   "properties": {
     "header": {
       "title": "Egenskaper",
-      "subtitle": "Hantera egendomsdefinitioner för alla anteckningar"
+      "subtitle": "Hantera egenskapsdefinitioner för alla anteckningar"
     },
-    "loading": "Laddar egenskaper...",
-    "empty": "Inga egendomsdefinitioner ännu. Lägg till en Status, Välj eller Flervalsegenskap i någon anteckning för att komma igång.",
-    "filterPlaceholder": "Filtrera egenskaper...",
-    "noMatch": "Inga egenskaper matchar \"{query}\"",
+    "loading": "Läser in egenskaper…",
+    "empty": "Inga egenskapsdefinitioner än. Lägg till en egenskap av typen Status, Enkelval eller Flerval i en anteckning för att komma igång.",
+    "filterPlaceholder": "Filtrera egenskaper…",
+    "noMatch": "Inga egenskaper matchar ”{query}”",
     "summary": "{count, plural, one {# egenskapsdefinition} other {# egenskapsdefinitioner}}",
     "optionCount": "{count, plural, one {# alternativ} other {# alternativ}}",
     "optionNamePlaceholder": "Alternativnamn",
@@ -1004,62 +1792,101 @@
     "renameTitle": "Byt namn",
     "removeTitle": "Ta bort",
     "actions": {
-      "deleteProperty": "Ta bort egenskap"
+      "deleteProperty": "Radera egenskap"
     },
     "types": {
       "status": "Status",
-      "select": "Välj",
+      "select": "Enkelval",
       "multiselect": "Flerval",
       "text": "Text",
       "number": "Nummer",
       "date": "Datum",
-      "checkbox": "Checklista",
+      "checkbox": "Kryssruta",
       "url": "URL"
     },
     "dialogs": {
-      "deleteTitle": "Ta bort egenskap",
-      "deleteDescription": "Ta bort \"{name}\" egenskapsdefinition? Anteckningar som använder denna egenskap kommer att behålla sina värden som vanlig text.",
-      "colorTitle": "Ändra färg för \"{name}\""
+      "deleteTitle": "Radera egenskap",
+      "deleteDescription": "Ta bort egenskapsdefinitionen ”{name}”? Anteckningar som använder egenskapen behåller sina värden som vanlig text.",
+      "colorTitle": "Ändra färg för ”{name}”"
     },
     "toasts": {
-      "renamed": "Bytte namn på \"{oldValue}\" till \"{newValue}\"",
-      "renameFailed": "Misslyckades med att byta namn på alternativ",
-      "removed": "Borttaget \"{value}\"",
-      "removeFailed": "Misslyckades med att ta bort alternativ",
-      "colorFailed": "Misslyckades med att uppdatera färg",
-      "deleteFailed": "Misslyckades med att ta bort egenskap",
-      "deleted": "Raderad egenskap \"{name}\"",
-      "addFailed": "Misslyckades med att lägga till alternativ"
+      "renamed": "Bytte namn på ”{oldValue}” till ”{newValue}”",
+      "renameFailed": "Det gick inte att byta namn på alternativet",
+      "removed": "”{value}” har tagits bort",
+      "removeFailed": "Det gick inte att ta bort alternativet",
+      "colorFailed": "Det gick inte att uppdatera färgen",
+      "deleteFailed": "Det gick inte att radera egenskapen",
+      "deleted": "Egenskapen ”{name}” raderades",
+      "addFailed": "Det gick inte att lägga till alternativet"
+    },
+    "v2": {
+      "actionsAria": "Åtgärder för {name}"
+    }
+  },
+  "commandLine": {
+    "header": {
+      "title": "Kommandorad",
+      "subtitle": "Konfigurera memrynote-kommandot för din terminal"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "defaultVault": {
+      "label": "Standardvalv",
+      "placeholder": "Välj valv",
+      "none": "Inget valv valt",
+      "description": "Välj valvet som används när du kör memrynote utan --vault.",
+      "descriptionSelected": "Kommandon använder {path} när --vault utelämnas."
+    },
+    "command": {
+      "label": "memrynote-kommando",
+      "toggleLabel": "Installera memrynote-kommandot",
+      "descriptionInstalled": "Installerat i {path}",
+      "descriptionNotInstalled": "Installera memrynote-kommandot så att du kan använda ditt valv från valfri terminal."
+    },
+    "status": {
+      "loading": "Kontrollerar kommandostatus…",
+      "loadFailed": "Det gick inte att läsa in kommandostatus",
+      "installedToast": "memrynote-kommandot installerat",
+      "uninstalledToast": "memrynote-kommandot borttaget",
+      "defaultVaultUpdatedToast": "Standardvalv för CLI uppdaterat"
+    },
+    "actions": {
+      "refresh": "Uppdatera"
     }
   },
   "shortcuts": {
     "header": {
-      "title": "Tangentbordsgenvägar",
-      "subtitle": "Klicka på en genväg för att binda om den",
-      "loading": "Läser in inställningar..."
+      "title": "Kortkommandon",
+      "subtitle": "Klicka på ett kortkommando för att ändra det",
+      "loading": "Läser in inställningar…"
     },
-    "searchPlaceholder": "Sök genvägar...",
+    "searchPlaceholder": "Sök kortkommandon…",
     "resetAll": "Återställ allt",
     "custom": "Anpassad",
-    "pressShortcut": "Tryck på genväg…",
+    "pressShortcut": "Tryck på ett kortkommando…",
     "cancelTitle": "Avbryt",
-    "rebindTitle": "Klicka för att binda om",
+    "rebindTitle": "Klicka för att ändra",
+    "editorManagedTitle": "Hanteras av anteckningsredigeraren – kan inte ändras",
     "resetTitle": "Återställ till standard",
-    "clearTitle": "Rensa genväg",
+    "clearTitle": "Rensa kortkommando",
     "clickToSet": "Klicka för att ställa in",
-    "noMatch": "Inga genvägar matchar din sökning",
-    "conflict": "Konflikter med: {labels}",
+    "noMatch": "Inga kortkommandon matchar din sökning",
+    "conflict": "Krockar med: {labels}",
     "globalCapture": {
-      "title": "Global fånga",
+      "title": "Fånga var som helst",
       "description": "Fånga en anteckning från var som helst",
-      "active": "Aktiv"
+      "active": "Aktiv",
+      "inUse": "{shortcut} används av en annan app. Välj en annan kombination.",
+      "unsupported": "{shortcut} kan inte användas som globalt kortkommando. Välj en annan kombination.",
+      "fallbackInUse": "Standardkortkommandot {shortcut} används av en annan app. Ange en annan kombination för att använda Fånga var som helst."
     },
     "toasts": {
-      "saveGlobalFailed": "Misslyckades med att spara global fångstgenväg",
-      "saveFailed": "Misslyckades med att spara genväg",
-      "resetFailed": "Misslyckades med att återställa genväg",
-      "resetAllSuccess": "Alla genvägar återställda till standard",
-      "resetAllFailed": "Misslyckades med att återställa genvägar"
+      "saveGlobalFailed": "Det gick inte att spara kortkommandot för Fånga var som helst",
+      "saveFailed": "Det gick inte att spara kortkommandot",
+      "resetFailed": "Det gick inte att återställa kortkommandot",
+      "resetAllSuccess": "Alla kortkommandon har återställts till standard",
+      "resetAllFailed": "Det gick inte att återställa kortkommandona"
     },
     "categories": {
       "navigation": "Navigering",
@@ -1096,6 +1923,18 @@
         "settings": {
           "label": "Öppna inställningar",
           "description": "Öppna inställningspanelen"
+        },
+        "switchVault": {
+          "label": "Byt valv",
+          "description": "Öppna valvväljaren"
+        },
+        "nextVault": {
+          "label": "Nästa valv",
+          "description": "Gå till nästa valv i sidofältet"
+        },
+        "prevVault": {
+          "label": "Föregående valv",
+          "description": "Gå till föregående valv i sidofältet"
         }
       },
       "tabs": {
@@ -1121,35 +1960,35 @@
         },
         "navForward": {
           "label": "Navigera framåt",
-          "description": "Gör om en tillbaka-navigering"
+          "description": "Gör om en bakåtnavigering"
         },
         "newTab": {
           "label": "Ny flik",
           "description": "Öppna menyn för ny flik"
         },
         "closeAll": {
-          "label": "Stäng alla flikar i panelen",
+          "label": "Stäng alla flikar",
           "description": "Stäng alla flikar i panelen"
         },
         "pin": {
-          "label": "Fäst eller lossa flik",
-          "description": "Fäst eller lossa flik"
+          "label": "Fäst flik",
+          "description": "Fäst eller lossa den aktuella fliken"
         },
         "duplicate": {
           "label": "Duplicera flik",
-          "description": "Duplicera flik"
+          "description": "Öppna en kopia av den aktuella fliken"
         },
         "splitRight": {
-          "label": "Dela till höger",
-          "description": "Dela till höger"
+          "label": "Dela åt höger",
+          "description": "Dela den aktuella panelen sida vid sida"
         },
         "splitDown": {
           "label": "Dela nedåt",
-          "description": "Dela nedåt"
+          "description": "Dela den aktuella panelen i en övre och en nedre del"
         },
         "closeSplit": {
           "label": "Stäng delad panel",
-          "description": "Stäng delad panel"
+          "description": "Stäng den aktuella delade panelen"
         }
       },
       "editor": {
@@ -1159,33 +1998,33 @@
         },
         "bold": {
           "label": "Fetstil",
-          "description": "Växla fetstil formatering"
+          "description": "Fetstil av/på"
         },
         "italic": {
           "label": "Kursiv",
-          "description": "Växla kursiv formatering"
+          "description": "Kursiv stil av/på"
         },
         "underline": {
           "label": "Understruken",
-          "description": "Växla understruken formatering"
+          "description": "Understrykning av/på"
         },
         "strikethrough": {
           "label": "Genomstruken",
-          "description": "Genomstruken"
+          "description": "Genomstrykning av/på"
         },
         "code": {
           "label": "Kod",
-          "description": "Kod"
+          "description": "Kodformatering i texten av/på"
         }
       },
       "view": {
         "toggleSidebar": {
-          "label": "Växla sidofält",
+          "label": "Visa/dölj sidofält",
           "description": "Visa eller dölj sidofältet"
         },
         "shortcuts": {
-          "label": "Tangentbordsgenvägar Hjälp",
-          "description": "Visa referens för tangentbordsgenvägar"
+          "label": "Hjälp för kortkommandon",
+          "description": "Visa en översikt över kortkommandon"
         },
         "zoomIn": {
           "label": "Zooma in",
@@ -1196,55 +2035,65 @@
           "description": "Gör allt mindre"
         },
         "actualSize": {
-          "label": "Verklig storlek",
-          "description": "Återställ zoom till 100 %"
+          "label": "Faktisk storlek",
+          "description": "Återställ zoom till 100 %"
         }
       }
+    },
+    "v2": {
+      "all": "Alla",
+      "categoryFilter": "Filtrera efter kategori",
+      "systemWide": "Systemövergripande",
+      "globalCapture": "Fånga var som helst",
+      "recordingHint": "Tryck på tangenter… esc för att avbryta",
+      "reset": "Återställ",
+      "resetAll": "Återställ alla till standard"
     }
   },
   "phaseF": {
     "componentsKeyboardChordIndicator": {
-      "pressedWaitingForSecondKey": "tryckt — väntar på andra tangenten..."
+      "pressedWaitingForSecondKey": "tryckt – väntar på nästa tangent…"
     },
     "componentsKeyboardKeyboardShortcutsDialog": {
-      "keyboardShortcuts": "Tangentbordsgenvägar",
-      "press": "Tryck",
-      "toToggleThisDialog": "för att växla denna dialog"
+      "keyboardShortcuts": "Kortkommandon",
+      "press": "Tryck på ",
+      "toToggleThisDialog": "för att visa eller dölja den här dialogrutan"
     },
     "componentsSyncDeviceRevokedDialog": {
-      "thisDeviceHasBeenRemoved": "Denna enhet har tagits bort",
-      "exporting": "Exporterar...",
+      "thisDeviceHasBeenRemoved": "Den här enheten har tagits bort",
+      "exporting": "Exporterar…",
       "signOut": "Logga ut"
     },
     "componentsSyncSyncHistory": {
       "activity": "Aktivitet",
       "filterBySyncType": "Filtrera efter synkroniseringstyp",
       "allTypes": "Alla typer",
-      "pushed": "Pushad",
-      "pulled": "Pullad",
+      "pushed": "Skickade",
+      "pulled": "Hämtade",
       "errors": "Fel",
       "filterByTimePeriod": "Filtrera efter tidsperiod",
       "allTime": "Alla tider",
       "today": "Idag",
       "last7Days": "Senaste 7 dagarna",
       "last30Days": "Senaste 30 dagarna",
-      "loadingSyncHistory": "Laddar synkroniseringshistorik",
-      "noSyncActivityYet": "Ingen synkprimeringsaktivitet än",
-      "loadMore": "Ladda mer",
+      "loadingSyncHistory": "Läser in synkhistorik",
+      "noSyncActivityYet": "Ingen synkaktivitet än",
+      "loadMore": "Läs in fler",
       "duration": "· {duration}",
-      "showErrorDetailsAria": "{summary}, visa felinformation",
       "summaryFailed": "Synkroniseringen misslyckades",
+      "summaryPushed": "{count, plural, one {# objekt skickat} other {# objekt skickade}}",
       "summaryPulled": "{count, plural, one {# objekt hämtat} other {# objekt hämtade}}",
-      "summaryPushed": "{count, plural, one {# objekt skickat} other {# objekt skickade}}"
+      "showErrorDetailsAria": "{summary}, visa felinformation"
     },
     "componentsSyncSyncStatus": {
-      "lastSynced": "Senast synkroniserad",
+      "lastSynced": "Senast synkroniserad ",
       "pending": "väntar",
-      "localOnly": "endast lokal",
-      "detected": "upptäckt",
+      "localOnly": "endast lokala",
+      "detected": "upptäckta",
+      "dismissConflicts": "Avfärda",
       "clockSkewDetected": "Klockskillnad upptäckt",
-      "items": "artiklar",
-      "willSyncWhenBackOnline": "Kommer att synkronisera när online igen",
+      "items": "objekt",
+      "willSyncWhenBackOnline": "Synkroniseras när du är online igen",
       "openSyncSettings": "Öppna synkroniseringsinställningar"
     },
     "pagesSettingsAiInlineSection": {
@@ -1253,43 +2102,43 @@
   },
   "phaseI": {
     "errors": {
-      "failedToUpdateTagColor": "Misslyckades med att uppdatera taggfärg",
+      "failedToUpdateTagColor": "Det gick inte att uppdatera taggfärgen",
       "googleSignInFailed": "Google-inloggning misslyckades",
-      "failedToSendVerificationCode": "Misslyckades med att skicka verifieringskod",
+      "failedToSendVerificationCode": "Det gick inte att skicka verifieringskoden",
       "invalidVerificationCode": "Ogiltig verifieringskod",
-      "accountSetupFailed": "Kontoinställning misslyckades",
-      "failedToResendCode": "Misslyckades med att skicka om koden",
-      "failedToSetUpDevice": "Misslyckades med att ställa in enheten",
-      "failedToConfirmRecoveryPhrase": "Misslyckades med att bekräfta återställningsfras",
-      "failedToAnalyzeContent": "Misslyckades med att analysera innehåll",
-      "failedToLoadUpdaterState": "Misslyckades med att ladda uppdaterarens status",
-      "failedToCheckForUpdates": "Misslyckades med att kontrollera efter uppdateringar",
-      "failedToDownloadUpdate": "Misslyckades med att ladda ner uppdatering",
-      "failedToInstallUpdate": "Misslyckades med att installera uppdatering",
-      "failedToLoadEditorSettings": "Misslyckades med att ladda redigeringsinställningar",
-      "failedToUpdateEditorSettings": "Misslyckades med att uppdatera redigeringsinställningar",
-      "failedToLoadGeneralSettings": "Misslyckades med att ladda allmänna inställningar",
-      "failedToUpdateGeneralSettings": "Misslyckades med att uppdatera allmänna inställningar",
-      "failedToLoadKeyboardSettings": "Misslyckades med att ladda tangentbordsinställningar",
-      "failedToUpdateKeyboardSettings": "Misslyckades med att uppdatera tangentbordsinställningar",
-      "failedToResetKeyboardSettings": "Misslyckades med att återställa tangentbordsinställningar",
-      "failedToLoadNoteEditorSettings": "Misslyckades med att ladda anteckningsredigerarens inställningar",
-      "failedToUpdateSettings": "Misslyckades med att uppdatera inställningar",
-      "failedToLoadTabSettings": "Misslyckades med att ladda flikinställningar",
-      "failedToLoadNotes": "Misslyckades med att ladda anteckningar",
-      "failedToLoadTags": "Misslyckades med att ladda taggar",
-      "failedToLoadVaultStatus": "Misslyckades med att ladda valvstatus",
-      "failedToSelectVault": "Misslyckades med att välja valv",
-      "failedToCloseVault": "Misslyckades med att stänga valvet",
-      "failedToSwitchVault": "Misslyckades med att byta valv",
-      "failedToUpdateConfig": "Misslyckades med att uppdatera konfigurationen",
-      "failedToReindex": "Misslyckades med att omindexera",
-      "failedToLoadTasks": "Misslyckades med att ladda uppgifter"
+      "accountSetupFailed": "Det gick inte att konfigurera kontot",
+      "failedToResendCode": "Det gick inte att skicka koden igen",
+      "failedToSetUpDevice": "Det gick inte att konfigurera enheten",
+      "failedToConfirmRecoveryPhrase": "Det gick inte att bekräfta återställningsfrasen",
+      "failedToAnalyzeContent": "Det gick inte att analysera innehållet",
+      "failedToLoadUpdaterState": "Det gick inte att läsa in uppdateringsstatus",
+      "failedToCheckForUpdates": "Det gick inte att söka efter uppdateringar",
+      "failedToDownloadUpdate": "Det gick inte att ladda ner uppdateringen",
+      "failedToInstallUpdate": "Det gick inte att installera uppdateringen",
+      "failedToLoadEditorSettings": "Det gick inte att läsa in redigerarens inställningar",
+      "failedToUpdateEditorSettings": "Det gick inte att uppdatera redigerarens inställningar",
+      "failedToLoadGeneralSettings": "Det gick inte att läsa in allmänna inställningar",
+      "failedToUpdateGeneralSettings": "Det gick inte att uppdatera allmänna inställningar",
+      "failedToLoadKeyboardSettings": "Det gick inte att läsa in tangentbordsinställningar",
+      "failedToUpdateKeyboardSettings": "Det gick inte att uppdatera tangentbordsinställningar",
+      "failedToResetKeyboardSettings": "Det gick inte att återställa tangentbordsinställningar",
+      "failedToLoadNoteEditorSettings": "Det gick inte att läsa in anteckningsredigerarens inställningar",
+      "failedToUpdateSettings": "Det gick inte att uppdatera inställningarna",
+      "failedToLoadTabSettings": "Det gick inte att läsa in flikinställningar",
+      "failedToLoadNotes": "Det gick inte att läsa in anteckningar",
+      "failedToLoadTags": "Det gick inte att läsa in taggar",
+      "failedToLoadTasks": "Det gick inte att läsa in uppgifter",
+      "failedToLoadVaultStatus": "Det gick inte att läsa in valvstatus",
+      "failedToSelectVault": "Det gick inte att välja valv",
+      "failedToCloseVault": "Det gick inte att stänga valvet",
+      "failedToSwitchVault": "Det gick inte att byta valv",
+      "failedToUpdateConfig": "Det gick inte att uppdatera konfigurationen",
+      "failedToReindex": "Det gick inte att indexera om"
     }
   },
   "agentMcp": {
     "header": {
-      "title": "Agent MCP",
+      "title": "MCP för agenter",
       "subtitle": "Lokal serveråtkomst för externa MCP-klienter."
     },
     "groups": {
@@ -1314,16 +2163,60 @@
     },
     "copyLabel": "Kopiera {label}",
     "notRunning": "Körs inte",
-    "toolsBadge": "{count, plural, one {# verktyg} other {# verktyg}}"
+    "toolsBadge": "{count, plural, one {# verktyg} other {# verktyg}}",
+    "v2": {
+      "hint": "Lokal server för Cursor, Claude Desktop, Zed",
+      "running": "Körs",
+      "tokenHint": "Gäller bara den här appstarten",
+      "copy": "Kopiera",
+      "rotate": "Rotera"
+    }
   },
   "agentProviders": {
     "header": {
       "title": "Agentbehörigheter",
-      "subtitle": "Välj standardåtkomst, bekräftelser och lokala leverantörer för Agent-chatt."
+      "subtitle": "Välj standardåtkomst, bekräftelser och lokala leverantörer för Agentchatt."
     },
     "groups": {
+      "cliAgents": "CLI-agenter",
       "local": "Lokal OpenAI-kompatibel leverantör",
       "actions": "Anslutningskontroller"
+    },
+    "cliAgents": {
+      "claude": {
+        "label": "Claude Code CLI",
+        "description": "Installera Claude Code från claude.ai/code och kör sedan `claude login`. MemryNote hittar det automatiskt."
+      },
+      "codex": {
+        "label": "Codex CLI",
+        "description": "Installera med `npm install -g @openai/codex` och kör sedan `codex login` för att logga in på ditt OpenAI-konto. MemryNote hittar det automatiskt."
+      },
+      "antigravity": {
+        "label": "Antigravity CLI",
+        "description": "Installera Antigravity CLI från antigravity.google/docs/cli och kör sedan `agy` en gång för att logga in på ditt Google-konto. MemryNote hittar det automatiskt."
+      },
+      "status": {
+        "detected": "Hittad · v{version}",
+        "detectedNoVersion": "Hittad",
+        "belowMinimum": "v{version} installerad – kräver {minimum} eller senare",
+        "notDetected": "Hittades inte",
+        "runtimeUnavailable": "Inte tillgänglig – agentens körmiljö startade inte"
+      }
+    },
+    "permissions": {
+      "group": "Agentbehörigheter",
+      "access": {
+        "label": "Standardåtkomst",
+        "description": "Anger vilket åtkomstläge nya agentkörningar startar i.",
+        "vaultOnly": "Endast valv",
+        "computerAccess": "Datoråtkomst"
+      },
+      "confirm": {
+        "label": "Bekräfta åtgärder",
+        "description": "Välj om verktygsanrop körs automatiskt eller väntar på godkännande i chatten.",
+        "alwaysAllow": "Tillåt alltid",
+        "askBeforeChanges": "Fråga före ändringar"
+      }
     },
     "presets": {
       "ollama": "Ollama",
@@ -1360,253 +2253,41 @@
       "probe": "Undersök verktyg"
     },
     "status": {
-      "disconnected": "Frånkopplad",
-      "toolsDisabled": "Verktyg inaktiverade",
-      "fullTools": "Alla verktyg aktiverade",
+      "label": "Anslutning",
       "checking": "Kontrollerar…",
       "connected": "Ansluten",
-      "label": "Anslutning"
+      "disconnected": "Frånkopplad",
+      "toolsDisabled": "Verktyg inaktiverade",
+      "fullTools": "Alla verktyg aktiverade"
     },
-    "permissions": {
-      "group": "Agentbehörigheter",
-      "access": {
-        "label": "Standardåtkomst",
-        "description": "Anger vilket åtkomstläge nya agentturer startar i.",
-        "vaultOnly": "Endast valv",
-        "computerAccess": "Datoråtkomst"
-      },
-      "confirm": {
-        "label": "Bekräfta åtgärder",
-        "description": "Välj om verktygsanrop körs automatiskt eller väntar på godkännande i chatten.",
-        "alwaysAllow": "Tillåt alltid",
-        "askBeforeChanges": "Fråga före ändringar"
-      }
-    }
-  },
-  "commandLine": {
-    "actions": {
-      "refresh": "Uppdatera"
+    "alwaysAllowed": {
+      "group": "Alltid tillåtna",
+      "description": "Verktyg som du har gett ett permanent godkännande i det här valvet. Radering kan aldrig få ett sådant.",
+      "empty": "Inget är alltid tillåtet. Du tillfrågas fortfarande om varje ändring.",
+      "revoke": "Återkalla",
+      "revokeLabel": "Återkalla det permanenta godkännandet för {tool}",
+      "ignoredInPageReview": "Ignoreras: ändringar i anteckningar och dagböcker kräver alltid godkännande."
     },
-    "command": {
-      "descriptionInstalled": "Installerat i {path}",
-      "descriptionNotInstalled": "Installera memrynote-kommandot så att du kan använda ditt valv från valfri terminal.",
-      "label": "memrynote-kommando",
-      "toggleLabel": "Installera memrynote-kommandot"
-    },
-    "defaultVault": {
-      "description": "Välj valvet som används när du kör memrynote utan --vault.",
-      "descriptionSelected": "Kommandon använder {path} när --vault utelämnas.",
-      "label": "Standardvalv",
-      "none": "Inget valv valt",
-      "placeholder": "Välj valv"
-    },
-    "groups": {
-      "terminal": "Terminal"
-    },
-    "header": {
-      "subtitle": "Konfigurera memrynote-kommandot för din terminal",
-      "title": "Kommandorad"
-    },
-    "status": {
-      "defaultVaultUpdatedToast": "Standard-CLI-valv uppdaterat",
-      "installedToast": "memrynote-kommandot installerat",
-      "loadFailed": "Det gick inte att läsa in kommandostatus",
-      "loading": "Kontrollerar kommandostatus...",
-      "uninstalledToast": "memrynote-kommandot borttaget"
-    }
-  },
-  "features": {
-    "header": {
-      "subtitle": "Slå på eller av delar av appen. Av = nedtonad i sidofältet och inaktiverad överallt.",
-      "title": "Funktioner"
-    },
-    "items": {
-      "calendar": {
-        "description": "Händelser och schema",
-        "label": "Kalender"
+    "v2": {
+      "permissions": {
+        "group": "Behörigheter",
+        "hint": "Gäller alla agentchattar",
+        "access": "Åtkomst",
+        "changes": "Ändringar"
       },
-      "graph": {
-        "description": "Anteckningskopplingar",
-        "label": "Graf"
+      "runtimes": {
+        "group": "Körmiljöer för agenter",
+        "hint": "Hittade via PATH"
       },
-      "home": {
-        "description": "Startpanel",
-        "label": "Start"
+      "localModel": {
+        "label": "Lokal modell",
+        "hint": "OpenAI-kompatibel server på den här datorn",
+        "notChecked": "Inte kontrollerad",
+        "optional": "Valfritt",
+        "fetchModels": "Hämta modeller"
       },
-      "inbox": {
-        "description": "Snabbinsamling och sortering",
-        "label": "Inkorg"
-      },
-      "journal": {
-        "description": "Dagliga anteckningar",
-        "label": "Dagbok"
-      },
-      "tasks": {
-        "description": "Att-göra och förfallodatum",
-        "label": "Uppgifter"
-      },
-      "spatialCanvas": {
-        "description": "Fria ytor för att ordna och länka anteckningar",
-        "label": "Canvas"
-      }
-    }
-  },
-  "import": {
-    "action": "Importera",
-    "dialog": {
-      "cancel": "Avbryt",
-      "choose": "Välj fil…",
-      "chooseFolder": "Välj Apple Notes-mapp…",
-      "chooseHint": "Välj din {label}",
-      "close": "Stäng",
-      "done": "Klar",
-      "error": "Import misslyckades",
-      "folderHint": "Klicka nedan och välj mappen “group.com.apple.notes” när väljaren öppnas (den börjar där). Detta låter Memry läsa dina anteckningar och bilagor — ingen fullständig diskåtkomst behövs.",
-      "progress": "{completed} av {total}",
-      "running": "Importerar…",
-      "selected": "{count, plural, one {# fil vald} other {# filer valda}}",
-      "start": "Starta import",
-      "summary": {
-        "attachments": "{count, plural, one {# bilaga kopierad} other {# bilagor kopierade}}",
-        "failed": "{count} misslyckades",
-        "imported": "{count, plural, one {# objekt importerat} other {# objekt importerade}}",
-        "skipped": "{count} överhoppade",
-        "title": "Import klar"
-      },
-      "title": "Importera från {name}",
-      "chooseDirectory": "Välj mapp…",
-      "folderKeepsAssets": "Välj mappen när bilderna ligger utanför anteckningarnas egen mapp — exporter lägger ofta media i en gemensam mapp.",
-      "previewError": "Förhandsgranskningen misslyckades"
-    },
-    "header": {
-      "subtitle": "Ta in dina anteckningar och uppgifter från andra appar",
-      "title": "Importera"
-    },
-    "intro": "Engångsimporter skapar nya anteckningar i ditt valv. Dina ursprungliga exportfiler lämnas orörda.",
-    "preview": {
-      "confirm": "Importera",
-      "warnings": "Varningar"
-    },
-    "select": "Välj en app att importera från…",
-    "sources": {
-      "apple-journal": "Importera en Apple Journal HTML-export som daterade anteckningar",
-      "apple-notes": "Importera från Apple Notes-databasen (NoteStore.sqlite, macOS)",
-      "bear": "Importera ett Bear .bear2bk-arkiv (anteckningar, taggar, bilagor)",
-      "csv": "Importera en .csv-fil — en anteckning per rad, kolumner blir egenskaper",
-      "evernote": "Importera en eller flera Evernote .enex-exportfiler",
-      "google-keep": "Importera en Google Takeout Keep-export (.json eller .zip)",
-      "html": "Importera .html-filer med länkade bilder och korssidlänkar",
-      "markdown": "Importera .md-filer eller en mapp (frontmatter, taggar, bilagor)",
-      "notion": "Importera en HTML-export (.zip)",
-      "onenote": "Importera OneNote-anteckningsböcker (kräver ett Microsoft-konto)",
-      "raindrop": "Importera en Raindrop.io-bokmärkesexport (.csv) — bokmärken hamnar i inkorgen",
-      "roam": "Importera en Roam Research-graf (.json) med nästlade dispositioner",
-      "ticktick": "Importera en TickTick-säkerhetskopia (.csv) som projekt, uppgifter och påminnelser",
-      "todoist": "Importera en projekt-CSV-export (.csv)"
-    },
-    "stats": {
-      "bookmarks": "{count, plural, one {# bokmärke} other {# bokmärken}}",
-      "comments": "{count, plural, one {# kommentar} other {# kommentarer}}",
-      "notes": "{count, plural, one {# anteckning} other {# anteckningar}}",
-      "projects": "{count, plural, one {# projekt} other {# projekt}}",
-      "reminders": "{count, plural, one {# påminnelse} other {# påminnelser}}",
-      "skipped": "{count} överhoppade",
-      "subtasks": "{count, plural, one {# deluppgift} other {# deluppgifter}}",
-      "tasks": "{count, plural, one {# uppgift} other {# uppgifter}}",
-      "withDueDate": "{count} daterade",
-      "withTags": "{count} taggade"
-    },
-    "messages": {
-      "csv": {
-        "columns": "Kolumner: {columns}",
-        "emptyTitle": "Hoppade över rad med tom titel (kolumnen ”{column}”)",
-        "noHeaders": "CSV-filen saknar rubriker",
-        "titleColumn": "Titel från ”{column}”; övriga kolumner sparas som egenskaper"
-      },
-      "raindrop": {
-        "csvEmpty": "Raindrop-CSV:n är tom",
-        "headerNotFound": "Raindrop-CSV:ns rubrikrad (kolumnen ”url”) hittades inte",
-        "rowNoUrl": "Rad {row} hoppades över: ingen URL"
-      },
-      "readFileFailed": "Misslyckades med att läsa filen",
-      "ticktick": {
-        "foldersDropped": "TickTick-mappar har ingen motsvarighet i Memry och togs bort",
-        "headerNotFound": "TickTick-CSV:ns rubrikrad (”Folder Name”) hittades inte",
-        "reminderNoAnchor": "Påminnelsen ”{reminder}” hoppades över (inget datumankare)",
-        "subtaskParentMissing": "Överordnad uppgift till deluppgiften ”{title}” hittades inte; importerad på översta nivån",
-        "unknownPriority": "Okänd TickTick-prioritet {priority} → ingen",
-        "unsupportedRepeat": "Upprepningsregeln ”{rule}” stöds inte och hoppades över"
-      },
-      "todoist": {
-        "emptyTitle": "Uppgift med tomt innehåll importerades som (utan titel)",
-        "headerNotFound": "Inte en Todoist-CSV: rubrikraden TYPE saknas",
-        "orphanComment": "Kommentar utan föregående uppgift hoppades över",
-        "sectionFlattened": "Avsnittet ”{section}” plattades ut",
-        "subtaskNoParent": "Deluppgiften ”{title}” saknar överordnad uppgift på indrag {indent}; importerad på översta nivån",
-        "unknownPriority": "Okänd prioritet {priority} → ingen",
-        "unparsedDate": "Kunde inte tolka datumet ”{date}”"
-      }
-    },
-    "status": {
-      "appleNotes": {
-        "copyingDatabase": "Kopierar Apple Notes-databasen…"
-      },
-      "bear": {
-        "scanning": "Skannar Bear-exporten…"
-      },
-      "csv": {
-        "importing": "Importerar CSV-anteckningar…"
-      },
-      "evernote": {
-        "scanning": "Skannar .enex-filer…"
-      },
-      "html": {
-        "scanning": "Skannar HTML-filer…"
-      },
-      "importingItem": "Importerar {title}",
-      "raindrop": {
-        "importing": "Importerar Raindrop-bokmärken…"
-      },
-      "roam": {
-        "reading": "Läser Roam-exporten…"
-      },
-      "scanningExport": "Skannar exporten…",
-      "scanningFiles": "Skannar filer…",
-      "ticktick": {
-        "importing": "Importerar TickTick-uppgifter…"
-      },
-      "todoist": {
-        "importing": "Importerar Todoist-uppgifter…"
-      }
-    }
-  },
-  "inbox": {
-    "header": {
-      "loading": "Laddar…",
-      "subtitle": "Daglig påminnelse om genomgång och inkorgsinställningar.",
-      "title": "Inkorg"
-    },
-    "reviewReminder": {
-      "enabled": {
-        "description": "En vänlig påminnelse varje dag när det ligger något i inkorgen.",
-        "label": "Påminn mig om att gå igenom inkorgen"
-      },
-      "error": "Det gick inte att uppdatera påminnelsen.",
-      "group": "Daglig påminnelse om genomgång",
-      "test": {
-        "button": "Skicka test",
-        "description": "Skicka påminnelsen nu för att kontrollera systemets aviseringar.",
-        "label": "Testavisering",
-        "sent": "Testaviseringen är skickad.",
-        "sentHint": "Om inget visas, tillåt aviseringar för MemryNote i dina systeminställningar.",
-        "unsupported": "Den här enheten kan inte visa skrivbordsaviseringar."
-      },
-      "time": {
-        "description": "Lokal tid, på varje enhet.",
-        "hourLabel": "Timme",
-        "label": "Påminnelsetid",
-        "minuteLabel": "Minut",
-        "periodLabel": "AM eller PM"
+      "alwaysAllowed": {
+        "group": "Alltid tillåtna verktyg"
       }
     }
   }

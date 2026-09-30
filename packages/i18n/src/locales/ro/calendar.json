@@ -1,67 +1,93 @@
 {
   "view": {
-    "day": "Ziua",
-    "week": "Săptămâna",
-    "month": "luna",
-    "year": "Anul"
+    "day": "Zi",
+    "week": "Săptămână",
+    "month": "Lună",
+    "monthGridLabel": "Grila lunii",
+    "year": "An",
+    "timeline": "Cronologie"
+  },
+  "undo": {
+    "moveEvent": "Mută evenimentul",
+    "moveTask": "Reprogramează sarcina"
   },
   "toolbar": {
-    "create-event": "Creați un eveniment",
+    "create-event": "Creează un eveniment",
     "previous-period": "Perioada anterioară",
     "next-period": "Următoarea perioadă",
     "previous-month": "Luna anterioară",
     "next-month": "Luna viitoare",
     "today": "Astăzi"
   },
+  "search": {
+    "open": "Caută în calendar",
+    "close": "Închide căutarea",
+    "placeholder": "Caută evenimente, sarcini, mementouri…",
+    "no-results": "Nicio potrivire"
+  },
   "filter": {
-    "filter-calendars": "Filtrați calendarele",
+    "filter-calendars": "Filtrează calendarele",
     "sources": "Surse",
-    "memry-items": "articole memrynote",
+    "memry-items": "Elemente memrynote",
     "imported-calendars": "Calendare importate",
     "event-types": "Tipuri de evenimente",
     "google-calendars": "Calendare Google",
-    "refresh-google-calendars": "Actualizează calendarele Google"
+    "refresh-google-calendars": "Actualizează calendarele Google",
+    "not-syncing": "Nu se sincronizează · bifați pentru a activa",
+    "enable-source-failed": "Nu s-a putut activa acest calendar.",
+    "provider-calendars": {
+      "ics": "Calendare abonate",
+      "caldav": "Calendare CalDAV",
+      "apple-eventkit": "Acest Mac",
+      "other": "Alte calendare"
+    }
   },
   "visual-type": {
     "event": "Eveniment",
     "imported-event": "Eveniment importat",
+    "note": "Notiță",
+    "note-date": "Memento de dată",
     "task": "Sarcină",
     "reminder": "Memento",
-    "snooze": "Amână",
-    "note": "Notiță",
-    "note-date": "Memento de dată"
+    "snooze": "Amânare"
   },
   "state": {
-    "loading-calendar": "Se încarcă calendarul...",
-    "loading-calendars": "Se încarcă calendarele...",
-    "preparing": "Se pregătesc…"
+    "loading-calendar": "Se încarcă calendarul…",
+    "loading-calendars": "Se încarcă calendarele…",
+    "preparing": "Se pregătește…"
   },
   "empty": {
     "no-imported-calendars-yet": "Niciun calendar importat încă.",
-    "no-events": "Fără evenimente"
+    "no-events": "Niciun eveniment"
   },
   "time": {
     "all-day": "Toată ziua",
     "all-day-lower": "toată ziua",
-    "pick-a-date": "Alegeți o dată",
+    "pick-a-date": "Alege o dată",
     "new-event": "Eveniment nou",
-    "more-events": "{count, plural, one {# mai mult eveniment} other {# mai multe evenimente}}"
+    "more-events": "{count, plural, one {încă # eveniment} few {încă # evenimente} other {încă # de evenimente}}"
   },
   "form": {
-    "create-calendar-event": "Creați un eveniment din calendar",
+    "create-calendar-event": "Creați un eveniment în calendar",
     "edit-calendar-event": "Editați evenimentul din calendar",
     "quick-create-description": "Introduceți un titlu și salvați pentru a crea un eveniment în intervalul de timp selectat.",
-    "event-editor-description": "Actualizați titlul, locația, data, ora și notele pentru acest eveniment.",
+    "event-editor-description": "Actualizați titlul, locația, data, ora și notițele acestui eveniment.",
     "new-event-placeholder": "Eveniment nou",
-    "notes-url-placeholder": "Adăugați note sau adresa URL",
-    "start": "Începeți",
+    "notes-url-placeholder": "Adaugă notițe sau un URL",
+    "start": "Început",
     "end": "Sfârșit",
     "google-calendar": "Calendar Google",
     "target-calendar": "Calendar țintă",
-    "use-default-calendar": "Utilizați calendarul implicit",
-    "use-default-calendar-with-name": "Utilizați implicit ({calendar})",
-    "use-memry-calendar-default": "Utilizați calendarul memrynote (implicit)",
-    "primary-suffix": "primar"
+    "use-default-calendar": "Folosește calendarul implicit",
+    "use-default-calendar-with-name": "Folosește calendarul implicit ({calendar})",
+    "use-memry-calendar-default": "Folosește calendarul memrynote (implicit)",
+    "primary-suffix": "principal",
+    "project": "Proiect",
+    "no-project": "Fără proiect",
+    "remove-from-project": "Elimină din {project}",
+    "project-update-failed": "Nu s-a putut actualiza proiectul evenimentului",
+    "color": "Culoare",
+    "default-color": "Culoare implicită"
   },
   "delete-dialog": {
     "title": "Ștergeți evenimentul?",
@@ -70,34 +96,69 @@
     "context-menu-delete-label": "Șterge evenimentul",
     "context-menu-add-to-project": "Adaugă la proiect"
   },
+  "agent-access-dialog": {
+    "aria": "Alegeți dacă AI-ul poate citi evenimentele din Google Calendar",
+    "title": "Permiteți AI-ului să citească evenimentele din Google Calendar?",
+    "body": "Veți vedea în continuare evenimentele Google în memrynote, indiferent ce alegeți. Aici decideți doar dacă agentul AI le poate citi atunci când îl întrebați despre program.",
+    "footnote": "Puteți schimba oricând această opțiune din Setări → Integrări → Google Calendar.",
+    "allow": "Permite",
+    "deny": "Nu permite",
+    "save-error": "Nu s-a putut salva alegerea",
+    "provider": {
+      "aria": "Alegeți dacă AI-ul poate citi evenimentele din {provider}",
+      "title": "Permiteți AI-ului să citească evenimentele din {provider}?",
+      "body": "Veți vedea în continuare aceste evenimente în memrynote, indiferent ce alegeți. Aici decideți doar dacă agentul AI le poate citi atunci când îl întrebați despre program. Pentru fiecare serviciu de calendar se alege separat.",
+      "footnote": "Puteți schimba oricând această opțiune din Setări → Calendar."
+    },
+    "provider-names": {
+      "ics": "calendarul abonat",
+      "caldav": "calendarul CalDAV",
+      "apple-eventkit": "Calendarul macOS"
+    }
+  },
   "promote-dialog": {
     "aria": "Editați evenimentul din calendar extern",
     "title": "Editați acest eveniment în memrynote?",
     "body": "Editarea acestui eveniment va crea o copie legată în memrynote, astfel încât modificările se sincronizează în ambele sensuri. Continuați?",
     "do-not-ask-again": "Nu mai întreba",
-    "confirm-label": "Editați în memrynote",
+    "confirm-label": "Editează în memrynote",
     "agent-notice": "Agentul AI poate citi această copie, chiar dacă accesul AI la Google Calendar este dezactivat. Evenimentul Google original rămâne ascuns față de el."
   },
   "onboarding-dialog": {
-    "aria": "Alegeți calendarul dvs. implicit Google",
-    "title": "La ce calendar ar trebui să meargă noile evenimente memrynote?",
-    "body": "Alegeți calendarul Google pe care memrynote ar trebui să îl folosească în mod implicit. Îl puteți anula în continuare pentru fiecare eveniment.",
-    "default-calendar-label": "Utilizați calendarul gestionat de memrynote",
-    "skip": "Sari peste",
-    "use-this-calendar": "Utilizați acest calendar"
+    "aria": "Alegeți calendarul Google implicit",
+    "title": "În ce calendar să ajungă evenimentele noi din memrynote?",
+    "body": "Alegeți calendarul Google pe care memrynote îl va folosi implicit. Puteți alege altul pentru fiecare eveniment în parte.",
+    "default-calendar-label": "Folosește calendarul gestionat de memrynote",
+    "skip": "Omite",
+    "use-this-calendar": "Folosește acest calendar"
+  },
+  "connect-prompt": {
+    "pill": "Conectează Google",
+    "aria": "Conectează Google Calendar",
+    "title": "Finalizează conectarea la Google Calendar",
+    "body": "Conectați contul Google pentru a face mai multe cu calendarul:",
+    "bullets": {
+      "events": "Vedeți evenimentele Google alături de notițe și sarcini",
+      "sync": "Creați și editați evenimente, sincronizate în ambele sensuri",
+      "schedule": "Programați sarcini și notițe în calendar"
+    },
+    "continue": "Continuă cu Google",
+    "dismiss": "Închide",
+    "error": "Nu s-a putut conecta Google Calendar. Încercați din nou."
   },
   "metadata": {
-    "attendees": "Participantii",
+    "attendees": "Participanți",
     "attendees-count": "Participanți ({count})",
     "reminders": "Mementouri",
     "default-reminders": "Mementouri implicite",
     "visibility": "Vizibilitate:",
     "optional": "Opțional",
-    "join-meeting": "Alăturați-vă întâlnirii",
+    "join-meeting": "Participă la întâlnire",
+    "video-call": "Apel video",
     "response": {
       "accepted": "Acceptat",
-      "declined": "A refuzat",
-      "tentative": "Tentativ",
+      "declined": "Refuzat",
+      "tentative": "Poate",
       "needs-action": "În așteptare"
     },
     "visibility-value": {
@@ -113,86 +174,213 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "Evenimentul nu a putut fi salvat. Încercați din nou.",
-      "couldNotCreateEventTryAgain": "Evenimentul nu a putut fi creat. Încercați din nou.",
+      "couldNotSaveEventTryAgain": "Nu s-a putut salva evenimentul. Încercați din nou.",
+      "couldNotCreateEventTryAgain": "Nu s-a putut crea evenimentul. Încercați din nou.",
       "couldNotSaveDefaultCalendarTryAgain": "Nu s-a putut salva calendarul implicit. Încercați din nou.",
-      "failedToLoadCalendarPreferences": "Nu s-au încărcat preferințele calendarului",
-      "failedToUpdateCalendarPreferences": "Nu s-au actualizat preferințele calendarului",
+      "failedToLoadCalendarPreferences": "Nu s-au putut încărca preferințele calendarului",
+      "failedToUpdateCalendarPreferences": "Nu s-au putut actualiza preferințele calendarului",
       "couldNotEditThisEventTryAgain": "Nu s-a putut edita acest eveniment. Încercați din nou.",
-      "failedToDeleteEvent": "Evenimentul nu a fost șters",
+      "failedToDeleteEvent": "Nu s-a putut șterge evenimentul",
       "couldNotUnsnoozeInboxItem": "Nu s-a putut anula amânarea.",
       "couldNotRescheduleInboxItem": "Nu s-a putut reprograma."
     },
     "inboxSnoozePopover": {
-      "title": "Articol amânat",
+      "title": "Element amânat din inbox",
       "openInInbox": "Deschide în inbox",
       "unsnoozeNow": "Anulează amânarea acum",
-      "reschedule": "Reprogramați"
+      "reschedule": "Reprogramează"
     }
+  },
+  "chip": {
+    "complete-task": "Finalizează {title}",
+    "task-completed": "Sarcină finalizată",
+    "could-not-complete": "Nu s-a putut finaliza sarcina",
+    "duration-minutes": "{minutes} min",
+    "duration-hours": "{hours} h",
+    "duration-hours-minutes": "{hours} h {minutes} min"
+  },
+  "event-card": {
+    "kind": "Eveniment",
+    "close": "Închide"
   },
   "task-popover": {
     "title-fallback": "Detalii despre sarcină",
-    "open-task": "Deschideți sarcina",
-    "source-note": "Notă sursă",
-    "reschedule": "Reprogramați",
-    "mark-done": "Mark gata",
-    "mark-not-done": "Mark nu a fost terminat",
+    "kind": "Sarcină",
+    "open": "Deschide",
+    "complete": "Finalizează",
+    "more-actions": "Mai multe acțiuni",
+    "move": "Mută",
+    "later": "Mai târziu",
+    "next-week": "Săptămâna viitoare",
+    "open-task": "Deschide sarcina",
+    "source-note": "Notiță sursă",
+    "reschedule": "Reprogramează",
+    "mark-done": "Marchează ca finalizată",
+    "mark-not-done": "Marchează ca nefinalizată",
     "later-today": "Mai târziu astăzi",
     "tomorrow": "Mâine",
-    "next-week-mon": "Săptămâna viitoare · Lun",
-    "pick-date-time": "Alegeți data și ora...",
-    "remove-due-date": "Eliminați data scadentă",
+    "next-week-mon": "Săptămâna viitoare · lun.",
+    "pick-date-time": "Alege data și ora…",
+    "remove-due-date": "Elimină termenul",
     "subtasks-prefix": "Subsarcini",
-    "subtasks-counter": "{done} din {total} finalizat",
+    "subtasks-counter": "{done} din {total} finalizate",
     "repeats": "Se repetă",
     "repeats-daily": "Se repetă zilnic",
     "repeats-weekly": "Se repetă săptămânal",
     "repeats-monthly": "Se repetă lunar",
     "repeats-yearly": "Se repetă anual",
     "errors": {
-      "could-not-save": "Sarcina nu a putut fi salvată",
+      "could-not-save": "Nu s-a putut salva sarcina",
       "could-not-reschedule": "Nu s-a putut reprograma sarcina",
-      "could-not-remove-due-date": "Nu s-a putut elimina data scadentă",
-      "could-not-open-note": "Nota nu a putut fi deschisă"
+      "could-not-remove-due-date": "Nu s-a putut elimina termenul",
+      "could-not-open-note": "Nu s-a putut deschide notița"
     }
   },
-  "connect-prompt": {
-    "aria": "Conectează Google Calendar",
-    "body": "Conectează-ți contul Google pentru a face mai multe cu calendarul tău:",
-    "bullets": {
-      "events": "Vezi evenimentele Google alături de notițe și sarcini",
-      "schedule": "Programează sarcini și notițe în calendarul tău",
-      "sync": "Creează și editează evenimente, sincronizate în ambele sensuri"
-    },
-    "continue": "Continuă cu Google",
-    "dismiss": "Închide",
-    "error": "Nu s-a putut conecta Google Calendar. Încearcă din nou.",
-    "pill": "Conectează Google",
-    "title": "Finalizează conectarea la Google Calendar"
-  },
   "notePopover": {
-    "couldNotOpen": "Nu s-a putut deschide notița",
     "kind": "Notiță",
     "kindDateReminder": "Memento de dată",
-    "open": "Deschide notița"
+    "open": "Deschide notița",
+    "couldNotOpen": "Nu s-a putut deschide notița"
   },
-  "search": {
-    "close": "Închide căutarea",
-    "no-results": "Nicio potrivire",
-    "open": "Caută în calendar",
-    "placeholder": "Caută evenimente, sarcini, mementouri…"
+  "timeline": {
+    "label": "Cronologia lucrărilor programate",
+    "tasks-column": "Sarcini",
+    "span": "{start} – {end}",
+    "due": "Termen: {date}",
+    "starts": "Începe {date}",
+    "starts-short": "{date} →",
+    "no-date": "Fără dată",
+    "today": "Astăzi",
+    "overdue": "restantă",
+    "untitled": "Fără titlu",
+    "days": "{count, plural, one {# zi} few {# zile} other {# de zile}}",
+    "events": "Evenimente",
+    "schedule-hint": "Faceți clic pentru a seta o dată, trageți pentru a seta un interval",
+    "empty-title": "Nimic pe cronologie",
+    "empty-body": "Aici apar sarcinile cu dată de început sau termen, precum și evenimentele pe toată ziua sau de mai multe zile. Activați sarcinile fără date din Afișare pentru a le programa prin tragere.",
+    "status": {
+      "todo": "De făcut",
+      "in_progress": "În curs",
+      "done": "Finalizat"
+    },
+    "priority": {
+      "urgent": "Urgentă",
+      "high": "Ridicată",
+      "medium": "Medie",
+      "low": "Scăzută",
+      "none": "Fără prioritate"
+    },
+    "zoom": {
+      "label": "Scară",
+      "weeks": "Săptămâni",
+      "months": "Luni",
+      "quarters": "Trimestre"
+    },
+    "group-by": {
+      "project": "Proiect",
+      "status": "Stare",
+      "priority": "Prioritate",
+      "none": "Fără grupare"
+    },
+    "group-by-label": "După {group}",
+    "order-by": {
+      "start": "Data de început",
+      "due": "Termen",
+      "title": "Titlu"
+    },
+    "display": {
+      "button": "Afișare",
+      "group-by": "Grupează după",
+      "order-by": "Ordonează după",
+      "show": "Afișează",
+      "show-events": "Evenimente",
+      "show-undated": "Sarcini fără date",
+      "show-completed": "Sarcini finalizate",
+      "show-subtasks": "Subsarcini"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# sarcină} few {# sarcini} other {# de sarcini}} · {events, plural, one {# eveniment} few {# evenimente} other {# de evenimente}}",
+      "open": "Deschide",
+      "move": "Mută",
+      "resize": "Redimensionează",
+      "actions": "Acțiuni",
+      "select": "Selectează",
+      "today": "Astăzi"
+    },
+    "actions": {
+      "search": "Caută acțiuni…",
+      "search-projects": "Caută proiecte…",
+      "empty": "Nicio acțiune corespunzătoare",
+      "no-projects": "Niciun proiect corespunzător",
+      "open": "Deschide sarcina",
+      "open-in-tasks": "Deschide în Sarcini",
+      "schedule": "Programează",
+      "set-start": "Setează data de început",
+      "set-due": "Setează termenul",
+      "move-later": "Mută cu o săptămână mai târziu",
+      "move-earlier": "Mută cu o săptămână mai devreme",
+      "clear-dates": "Șterge datele",
+      "clear-start": "Șterge data de început",
+      "clear-due": "Șterge termenul",
+      "task": "Sarcină",
+      "complete": "Marchează ca finalizată",
+      "uncomplete": "Marchează ca nefinalizată",
+      "change-project": "Schimbă proiectul",
+      "page": {
+        "root": "Acțiuni",
+        "start": "Data de început",
+        "due": "Termen",
+        "project": "Proiect"
+      }
+    },
+    "undo": {
+      "reschedule": "Reprogramează „{title}”"
+    }
   },
-  "undo": {
-    "moveEvent": "Mută eveniment",
-    "moveTask": "Reprogramează sarcina"
+  "calendar-color": {
+    "tomato": "Roșu-tomată",
+    "flamingo": "Flamingo",
+    "tangerine": "Mandarină",
+    "banana": "Banană",
+    "sage": "Salvie",
+    "basil": "Busuioc",
+    "peacock": "Păun",
+    "blueberry": "Afină",
+    "lavender": "Lavandă",
+    "grape": "Strugure",
+    "graphite": "Grafit"
   },
-  "agent-access-dialog": {
-    "allow": "Permite",
-    "aria": "Alege dacă agentul AI poate citi evenimentele tale din Google Calendar",
-    "body": "Vei vedea în continuare evenimentele Google în memrynote, indiferent ce alegi. Aici decizi doar dacă agentul AI le poate citi atunci când îl întrebi despre programul tău.",
-    "deny": "Nu permite",
-    "footnote": "Poți schimba oricând această opțiune din Setări → Integrari → Google Calendar.",
-    "save-error": "Nu s-a putut salva alegerea",
-    "title": "Permiți AI-ului să îți citească evenimentele din Google Calendar?"
+  "subscribedEvent": {
+    "kind": "Calendar abonat",
+    "kindAppleEventKit": "Acest Mac",
+    "close": "Închide",
+    "detailsFailed": "Nu s-au putut încărca participanții și linkurile acestui eveniment. Evenimentul în sine nu s-a modificat.",
+    "showMore": "Afișează mai mult",
+    "showLess": "Afișează mai puțin",
+    "organizer": "organizator",
+    "you": "dvs.",
+    "phone": "Participă prin telefon",
+    "alert": "{minutes, plural, =0 {Alertă la ora de început} one {Alertă cu # minut înainte} few {Alertă cu # minute înainte} other {Alertă cu # de minute înainte}}",
+    "alertHours": "{hours, plural, one {Alertă cu # oră înainte} few {Alertă cu # ore înainte} other {Alertă cu # de ore înainte}}",
+    "alertDays": "{days, plural, one {Alertă cu # zi înainte} few {Alertă cu # zile înainte} other {Alertă cu # de zile înainte}}",
+    "recurrence": {
+      "daily": "{count, plural, one {Se repetă zilnic} few {Se repetă la fiecare # zile} other {Se repetă la fiecare # de zile}}",
+      "weekly": "{count, plural, one {Se repetă săptămânal} few {Se repetă la fiecare # săptămâni} other {Se repetă la fiecare # de săptămâni}}",
+      "weeklyOn": "{count, plural, one {Se repetă săptămânal: {days}} few {Se repetă la fiecare # săptămâni: {days}} other {Se repetă la fiecare # de săptămâni: {days}}}",
+      "monthly": "{count, plural, one {Se repetă lunar} few {Se repetă la fiecare # luni} other {Se repetă la fiecare # de luni}}",
+      "yearly": "{count, plural, one {Se repetă anual} few {Se repetă la fiecare # ani} other {Se repetă la fiecare # de ani}}",
+      "other": "Se repetă"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Calendare abonate"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

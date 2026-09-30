@@ -1,21 +1,21 @@
 {
   "app": {
-    "quit": "I-quit",
-    "preferences": "Mga Setting…",
-    "checkForUpdates": "Maghanap ng Mga Update…",
-    "exit": "Lumabas",
+    "quit": "Umalis sa MemryNote",
+    "preferences": "Mga setting…",
+    "checkForUpdates": "Tingnan kung may update…",
+    "services": "Mga serbisyo",
     "hide": "Itago ang MemryNote",
-    "hideOthers": "Itago ang Iba",
-    "services": "Mga Serbisyo",
-    "unhide": "Ipakita Lahat"
+    "hideOthers": "Itago ang iba",
+    "unhide": "Ipakita lahat",
+    "exit": "Lumabas"
   },
   "file": {
     "label": "File",
-    "newNote": "Bagong Tala",
-    "close": "Isara ang Window",
-    "closeTab": "Isara ang Tab",
+    "newNote": "Bagong tala",
+    "openQuickly": "Mabilisang buksan…",
     "exportPdf": "I-export sa PDF…",
-    "openQuickly": "Mabilis na Buksan…"
+    "closeTab": "Isara ang tab",
+    "close": "Isara ang window"
   },
   "navigation": {
     "back": "Bumalik",
@@ -25,69 +25,74 @@
     "label": "I-edit",
     "undo": "I-undo",
     "redo": "I-redo",
-    "cut": "Gupitin",
+    "cut": "I-cut",
     "copy": "Kopyahin",
     "paste": "I-paste",
     "selectAll": "Piliin lahat",
     "find": "Hanapin",
     "speech": "Pagsasalita",
+    "pasteAndMatchStyle": "I-paste at itugma ang estilo",
     "delete": "Tanggalin",
-    "pasteAndMatchStyle": "I-paste at Itugma ang Estilo",
-    "startSpeaking": "Simulan ang Pagsasalita",
-    "stopSpeaking": "Ihinto ang Pagsasalita"
+    "startSpeaking": "Simulan ang pagsasalita",
+    "stopSpeaking": "Ihinto ang pagsasalita",
+    "addToDictionary": "Idagdag sa diksyunaryo",
+    "noSuggestions": "Walang mungkahi"
+  },
+  "insert": {
+    "label": "Ipasok",
+    "codeBlock": "Block ng code",
+    "table": "Talahanayan",
+    "bulletList": "Listahang may bullet",
+    "numberedList": "Listahang may numero",
+    "taskList": "Listahan ng gawain",
+    "attachment": "Magpasok ng attachment…"
+  },
+  "format": {
+    "label": "Format",
+    "heading1": "Heading 1",
+    "heading2": "Heading 2",
+    "heading3": "Heading 3",
+    "heading4": "Heading 4",
+    "heading5": "Heading 5",
+    "heading6": "Heading 6",
+    "body": "Teksto",
+    "bold": "Bold",
+    "italic": "Italic",
+    "code": "Code",
+    "highlight": "I-highlight",
+    "strikethrough": "Strikethrough"
   },
   "view": {
     "label": "Tingnan",
     "reload": "I-reload",
-    "toggleDevTools": "I-toggle ang Mga Tool ng Developer",
-    "toggleFullscreen": "I-toggle ang Buong Screen",
+    "toggleDevTools": "Ipakita o itago ang mga tool ng developer",
+    "toggleFullscreen": "I-on o i-off ang buong screen",
+    "toggleSidebar": "Ipakita o itago ang sidebar",
+    "toggleDayPanel": "Ipakita o itago ang panel ng araw",
     "theme": "Tema",
-    "themeDark": "Madilim",
     "themeLight": "Maliwanag",
-    "themeSystem": "Sistema",
+    "themeDark": "Madilim",
     "themeWhite": "Papel",
-    "toggleDayPanel": "I-toggle ang Day Panel",
-    "toggleSidebar": "I-toggle ang Sidebar",
-    "actualSize": "Aktwal na Laki",
+    "themeSystem": "System",
+    "actualSize": "Aktwal na laki",
     "zoomIn": "Palakihin",
     "zoomOut": "Paliitin"
   },
-  "format": {
-    "body": "Teksto",
-    "bold": "Makapal",
-    "code": "Code",
-    "heading1": "Pamagat 1",
-    "heading2": "Pamagat 2",
-    "heading3": "Pamagat 3",
-    "heading4": "Pamagat 4",
-    "heading5": "Pamagat 5",
-    "heading6": "Pamagat 6",
-    "highlight": "I-highlight",
-    "italic": "Italiko",
-    "label": "Format",
-    "strikethrough": "Guhit-pantawid"
-  },
-  "help": {
-    "about": "Tungkol sa MemryNote",
-    "documentation": "Dokumentasyon",
-    "label": "Tulong",
-    "shortcuts": "Mga Keyboard Shortcut",
-    "aboutVersion": "Bersyon {version}"
-  },
-  "insert": {
-    "attachment": "Magpasok ng Attachment…",
-    "bulletList": "Listahan ng Bullet",
-    "codeBlock": "Bloke ng Code",
-    "label": "Ipasok",
-    "numberedList": "May-numerong Listahan",
-    "table": "Talahanayan",
-    "taskList": "Listahan ng Gawain"
-  },
   "window": {
     "label": "Window",
-    "close": "Isara",
-    "front": "Iharap Lahat",
     "minimize": "I-minimize",
-    "zoom": "I-zoom"
+    "zoom": "I-zoom",
+    "front": "Dalhin lahat sa harap",
+    "close": "Isara"
+  },
+  "help": {
+    "label": "Tulong",
+    "documentation": "Dokumentasyon",
+    "shortcuts": "Mga keyboard shortcut",
+    "about": "Tungkol sa MemryNote",
+    "aboutVersion": "Bersyon {version}"
+  },
+  "tray": {
+    "show": "Ipakita ang MemryNote"
   }
 }

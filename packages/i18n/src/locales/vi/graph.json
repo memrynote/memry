@@ -1,18 +1,20 @@
 {
   "page": {
-    "loading": "Đang tải đồ thị...",
-    "load-failed": "Tải dữ liệu đồ thị thất bại",
+    "loading": "Đang tải đồ thị…",
+    "load-failed": "Không thể tải dữ liệu đồ thị",
+    "render-failed": "Đồ thị không khả dụng trên thiết bị này",
+    "render-failed-description": "Thiết bị này không khởi động được trình kết xuất đồ họa. Ghi chú của bạn vẫn an toàn.",
     "try-again": "Thử lại",
-    "aria-label": "Đồ thị tri thức với {nodeCount, plural, one {# nút} other {# các nút}} và {edgeCount, plural, one {# kết nối} other {# các kết nối}}{summary, select, none {.} other {: {summary}.}}",
+    "aria-label": "Đồ thị tri thức với {nodeCount, plural, other {# nút}} và {edgeCount, plural, other {# kết nối}}{summary, select, none {.} other {: {summary}.}}",
     "nodes-list-label": "Các nút của đồ thị",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
     "title": "Đồ thị tri thức của bạn",
-    "description": "Các kết nối giữa ghi chú, nhiệm vụ và dự án của bạn sẽ xuất hiện ở đây dưới dạng đồ thị tương tác.",
+    "description": "Các kết nối giữa ghi chú, công việc và dự án sẽ xuất hiện tại đây dưới dạng đồ thị tương tác.",
     "link-title": "Liên kết ghi chú của bạn",
     "link-description": "Sử dụng [[wikilinks]] để kết nối các ý tưởng giữa các ghi chú",
-    "discover-title": "Khám phá các mẫu",
+    "discover-title": "Khám phá các quy luật",
     "discover-description": "Khi các kết nối phát triển, các cụm và chủ đề sẽ tự nhiên xuất hiện"
   },
   "entity": {
@@ -20,15 +22,16 @@
     "notes": "ghi chú",
     "journal": "nhật ký",
     "journals": "nhật ký",
-    "task": "nhiệm vụ",
-    "tasks": "các nhiệm vụ",
+    "task": "công việc",
+    "tasks": "công việc",
     "project": "dự án",
     "projects": "dự án",
-    "tag": "Gắn thẻ",
+    "tag": "thẻ",
     "tags": "thẻ",
-    "orphan": "mồ côi",
-    "orphans": "những mồ côi",
-    "unresolved": "chưa giải quyết"
+    "orphan": "nút mồ côi",
+    "orphans": "nút mồ côi",
+    "unresolved": "chưa được tạo",
+    "category": "danh mục"
   },
   "summary": {
     "node-type-count": "{count} {label}"
@@ -40,38 +43,95 @@
     "filters": "Bộ lọc",
     "display": "Hiển thị",
     "show-labels": "Hiển thị nhãn",
+    "live-motion": "Chuyển động trực tiếp",
     "focus-depth": "độ sâu {depth}",
-    "clear-focus": "Xóa nút đang tập trung"
+    "clear-focus": "Bỏ tập trung vào nút",
+    "relayout": "Sắp xếp lại bố cục",
+    "categories": "Danh mục thẻ",
+    "color-by-category": "Tô màu theo danh mục",
+    "no-categories": "Nhóm thẻ thành các danh mục trong trang thẻ để tô màu và thu gọn đồ thị theo danh mục.",
+    "collapse-category": "Thu gọn {name}",
+    "expand-category": "Mở rộng {name}",
+    "uncategorized": "Chưa phân loại"
   },
   "filter": {
-    "notes": "Các ghi chú",
+    "notes": "Ghi chú",
     "journals": "Nhật ký",
-    "tasks": "Nhiệm vụ",
+    "tasks": "Công việc",
     "projects": "Dự án",
     "tags": "Thẻ",
-    "orphans": "Các nút mồ côi",
-    "toggle-entity": "Chuyển đổi {label}",
-    "toggle-orphans": "Chuyển đổi các nút mồ côi"
+    "orphans": "Nút mồ côi",
+    "canvas-edges": "Kết nối trên bảng trắng",
+    "toggle-entity": "Hiện/ẩn {label}",
+    "toggle-orphans": "Hiện/ẩn nút mồ côi"
   },
   "search": {
-    "placeholder": "Tìm kiếm các nút...",
+    "placeholder": "Tìm kiếm nút…",
     "clear": "Xóa tìm kiếm đồ thị"
   },
   "context-menu": {
-    "untitled": "Chưa đặt tiêu đề",
+    "untitled": "Không có tiêu đề",
     "focus-node": "Tập trung vào nút này",
     "open-new-tab": "Mở trong tab mới",
     "create-note": "Tạo ghi chú",
-    "copy-title": "Sao chép tiêu đề"
+    "copy-title": "Sao chép tiêu đề",
+    "link-to": "Liên kết đến…",
+    "add-tag": "Thêm thẻ…",
+    "back": "Quay lại",
+    "link-search": "Tìm kiếm ghi chú…",
+    "tag-search": "Tìm kiếm hoặc tạo thẻ…",
+    "no-matches": "Không có kết quả phù hợp",
+    "create-tag": "Tạo #{tag}",
+    "remove-link": "Gỡ liên kết đến {title}",
+    "unpin": "Bỏ ghim",
+    "collapse-category": "Thu gọn {name}",
+    "expand-category": "Mở rộng {name}"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {# kết nối} other {# các kết nối}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, other {# kết nối}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, other {# mục}}",
+    "click-to-expand": "Bấm để mở rộng"
   },
   "local-panel": {
-    "loading": "Đang tải đồ thị...",
+    "loading": "Đang tải đồ thị…",
     "empty": "Không tìm thấy kết nối nào",
     "open-full": "Mở đồ thị đầy đủ",
-    "close": "Đóng đồ thị"
+    "close": "Đóng đồ thị",
+    "pin": "Ghim vào ghi chú này",
+    "unpin": "Bỏ ghim và theo ghi chú đang mở",
+    "pinned-to": "Đã ghim: {title}"
+  },
+  "edit": {
+    "linked": "Đã liên kết {source} với {target} trong “{property}”",
+    "unlinked": "Đã gỡ liên kết từ {source} đến {target}",
+    "already-linked": "{source} đã liên kết đến {target}",
+    "property-conflict": "“{property}” trong ghi chú này không phải thuộc tính quan hệ, nên liên kết chưa được thêm",
+    "link-unsupported": "Chỉ có thể tạo liên kết giữa các ghi chú",
+    "link-failed": "Không thể thêm liên kết",
+    "unlink-failed": "Không thể gỡ liên kết",
+    "tag-added": "Đã thêm #{tag} vào {note}",
+    "tag-exists": "Ghi chú này đã có #{tag}",
+    "tag-failed": "Không thể thêm thẻ",
+    "undo-failed": "Không thể hoàn tác thay đổi"
+  },
+  "relayout-confirm": {
+    "title": "Sắp xếp lại bố cục đồ thị?",
+    "description": "Mọi nút đã ghim sẽ được bỏ ghim và đồ thị sẽ tự sắp xếp lại từ đầu. Bố cục đã lưu sẽ bị loại bỏ.",
+    "cancel": "Hủy",
+    "confirm": "Sắp xếp lại"
+  },
+  "views": {
+    "title": "Chế độ xem đã lưu",
+    "unsaved": "Chế độ xem chưa lưu",
+    "edited": "Đã chỉnh sửa",
+    "empty": "Chưa có chế độ xem nào được lưu",
+    "save-as": "Lưu thành chế độ xem mới…",
+    "update": "Cập nhật “{name}”",
+    "delete": "Xóa chế độ xem {name}",
+    "save-dialog-title": "Lưu chế độ xem đồ thị",
+    "save-dialog-placeholder": "Tên chế độ xem",
+    "cancel": "Hủy",
+    "save": "Lưu"
   }
 }

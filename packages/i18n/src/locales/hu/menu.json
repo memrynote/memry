@@ -3,19 +3,19 @@
     "quit": "Kilépés a MemryNote-ból",
     "preferences": "Beállítások…",
     "checkForUpdates": "Frissítések keresése…",
-    "exit": "Kilépés",
-    "hide": "MemryNote elrejtése",
-    "hideOthers": "Egyebek elrejtése",
     "services": "Szolgáltatások",
-    "unhide": "Összes megjelenítése"
+    "hide": "MemryNote elrejtése",
+    "hideOthers": "A többi elrejtése",
+    "unhide": "Az összes megjelenítése",
+    "exit": "Kilépés"
   },
   "file": {
     "label": "Fájl",
     "newNote": "Új jegyzet",
-    "close": "Ablak bezárása",
-    "closeTab": "Lap bezárása",
+    "openQuickly": "Gyors megnyitás…",
     "exportPdf": "Exportálás PDF-be…",
-    "openQuickly": "Gyors megnyitás…"
+    "closeTab": "Lap bezárása",
+    "close": "Ablak bezárása"
   },
   "navigation": {
     "back": "Vissza",
@@ -31,63 +31,68 @@
     "selectAll": "Összes kijelölése",
     "find": "Keresés",
     "speech": "Beszéd",
-    "delete": "Törlés",
     "pasteAndMatchStyle": "Beillesztés és stílus egyeztetése",
+    "delete": "Törlés",
     "startSpeaking": "Beszéd indítása",
-    "stopSpeaking": "Beszéd leállítása"
+    "stopSpeaking": "Beszéd leállítása",
+    "addToDictionary": "Hozzáadás a szótárhoz",
+    "noSuggestions": "Nincs javaslat"
   },
-  "view": {
-    "label": "Nézet",
-    "reload": "Újratöltés",
-    "toggleDevTools": "Fejlesztői eszközök be/ki",
-    "toggleFullscreen": "Teljes képernyő be/ki",
-    "theme": "Téma",
-    "themeDark": "Sötét",
-    "themeLight": "Világos",
-    "themeSystem": "Rendszer",
-    "themeWhite": "Papír",
-    "toggleDayPanel": "Napi panel be/ki",
-    "toggleSidebar": "Oldalsáv be/ki",
-    "actualSize": "Eredeti méret",
-    "zoomIn": "Nagyítás",
-    "zoomOut": "Kicsinyítés"
+  "insert": {
+    "label": "Beszúrás",
+    "codeBlock": "Kódblokk",
+    "table": "Táblázat",
+    "bulletList": "Felsorolás",
+    "numberedList": "Számozott lista",
+    "taskList": "Feladatlista",
+    "attachment": "Melléklet beszúrása…"
   },
   "format": {
-    "body": "Törzsszöveg",
-    "bold": "Félkövér",
-    "code": "Kód",
+    "label": "Formátum",
     "heading1": "1. címsor",
     "heading2": "2. címsor",
     "heading3": "3. címsor",
     "heading4": "4. címsor",
     "heading5": "5. címsor",
     "heading6": "6. címsor",
-    "highlight": "Kiemelés",
+    "body": "Törzsszöveg",
+    "bold": "Félkövér",
     "italic": "Dőlt",
-    "label": "Formátum",
+    "code": "Kód",
+    "highlight": "Kiemelés",
     "strikethrough": "Áthúzott"
   },
-  "help": {
-    "about": "A MemryNote névjegye",
-    "documentation": "Dokumentáció",
-    "label": "Súgó",
-    "shortcuts": "Billentyűparancsok",
-    "aboutVersion": "{version} verzió"
-  },
-  "insert": {
-    "attachment": "Melléklet beszúrása…",
-    "bulletList": "Felsorolás",
-    "codeBlock": "Kódblokk",
-    "label": "Beszúrás",
-    "numberedList": "Számozott lista",
-    "table": "Táblázat",
-    "taskList": "Feladatlista"
+  "view": {
+    "label": "Nézet",
+    "reload": "Újratöltés",
+    "toggleDevTools": "Fejlesztői eszközök be/ki",
+    "toggleFullscreen": "Teljes képernyő be/ki",
+    "toggleSidebar": "Oldalsáv be/ki",
+    "toggleDayPanel": "Napi panel be/ki",
+    "theme": "Téma",
+    "themeLight": "Világos",
+    "themeDark": "Sötét",
+    "themeWhite": "Papír",
+    "themeSystem": "Rendszer",
+    "actualSize": "Eredeti méret",
+    "zoomIn": "Nagyítás",
+    "zoomOut": "Kicsinyítés"
   },
   "window": {
     "label": "Ablak",
-    "close": "Bezárás",
-    "front": "Összes előrehozása",
     "minimize": "Kis méret",
-    "zoom": "Nagyítás"
+    "zoom": "Nagyítás",
+    "front": "Összes előrehozása",
+    "close": "Bezárás"
+  },
+  "help": {
+    "label": "Súgó",
+    "documentation": "Dokumentáció",
+    "shortcuts": "Billentyűparancsok",
+    "about": "A MemryNote névjegye",
+    "aboutVersion": "{version} verzió"
+  },
+  "tray": {
+    "show": "MemryNote megjelenítése"
   }
 }

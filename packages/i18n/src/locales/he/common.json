@@ -1,485 +1,324 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "מיקוד בשדה הלכידה",
+    "detailHint": "פרטים",
+    "submit": "לכידה"
+  },
   "button": {
-    "save": "שמור",
-    "cancel": "בטל",
-    "close": "סגור",
-    "delete": "מחק",
-    "done": "בוצע",
-    "dontSave": "אל תחסוך",
-    "add": "הוסף",
-    "remove": "הסר",
-    "retry": "נסה שוב",
+    "save": "שמירה",
+    "cancel": "ביטול",
+    "close": "סגירה",
+    "delete": "מחיקה",
+    "done": "סיום",
+    "dontSave": "לא לשמור",
+    "add": "הוספה",
+    "remove": "הסרה",
+    "retry": "ניסיון חוזר",
     "back": "חזרה",
     "continue": "המשך",
-    "copy": "העתק",
-    "create": "צור"
+    "copy": "העתקה",
+    "create": "יצירה"
+  },
+  "media": {
+    "video": "וידאו"
   },
   "state": {
-    "loading": "טוען...",
-    "saving": "שומר...",
-    "deleting": "מוחק...",
-    "searching": "מחפש..."
+    "loading": "טוען…",
+    "saving": "שומר…",
+    "deleting": "מוחק…",
+    "searching": "מחפש…"
   },
   "action": {
-    "search": "חפש",
-    "expand": "הרחב",
-    "collapse": "התמוטט",
-    "showMore": "+{count, plural, one {# יותר} other {# יותר}}",
-    "showLess": "הצג פחות",
-    "undo": "בטל"
+    "search": "חיפוש",
+    "expand": "הרחבה",
+    "collapse": "כיווץ",
+    "showMore": "+{count, plural, one {# נוספת} other {# נוספות}}",
+    "showLess": "הצגת פחות",
+    "undo": "ביטול"
   },
   "fileActions": {
-    "revealInFinder": "הצג ב-Finder",
-    "showInExplorer": "הצג בסייר הקבצים",
-    "showInFileManager": "הצג במנהל הקבצים",
-    "openInDefaultApp": "פתח באפליקציית ברירת המחדל",
+    "revealInFinder": "הצגה ב-Finder",
+    "showInExplorer": "הצגה בסייר הקבצים",
+    "showInFileManager": "הצגה במנהל הקבצים",
+    "openInDefaultApp": "פתיחה באפליקציית ברירת המחדל",
     "revealFailed": "לא ניתן להציג בתיקייה"
   },
   "tabs": {
-    "pin": "הצמד כרטיסייה",
-    "unpin": "בטל את הצמדת הכרטיסייה",
+    "pin": "הצמדת הכרטיסייה",
+    "unpin": "ביטול הצמדת הכרטיסייה",
+    "persistence": {
+      "saveFailed": "הכרטיסיות הפתוחות שלך כבר לא נשמרות",
+      "saveFailedQuota": "ההפעלה הזו גדולה מדי לשמירה. כדאי לסגור כמה כרטיסיות, אחרת ייתכן שהיא לא תשוחזר בפתיחה הבאה של Memry.",
+      "saveFailedGeneric": "Memry לא הצליח לשמור את ההפעלה הזו, ולכן ייתכן שהיא לא תשוחזר בפתיחה הבאה של האפליקציה.",
+      "lastSessionNotSaved": "ההפעלה האחרונה שלך לא נשמרה כש-Memry נסגר",
+      "lastSessionNotSavedQuota": "האחסון היה מלא באותו זמן, ולכן הכרטיסיות האלה הן משמירה קודמת. כדאי לסגור כמה כרטיסיות כדי לפנות מקום.",
+      "lastSessionNotSavedGeneric": "Memry לא הצליח לשמור את הכרטיסיות שלך ביציאה, ולכן הכרטיסיות האלה הן משמירה קודמת."
+    },
     "contextMenu": {
-      "close": "סגור",
-      "closeOthers": "סגור אחרים",
-      "closeToRight": "קרוב לימין",
-      "closeAll": "סגור הכל",
-      "duplicate": "לשכפל כרטיסייה",
-      "splitRight": "פיצול ימינה",
+      "close": "סגירה",
+      "closeOthers": "סגירת כרטיסיות אחרות",
+      "closeToRight": "סגירת הכרטיסיות משמאל",
+      "closeAll": "סגירת הכול",
+      "duplicate": "שכפול הכרטיסייה",
+      "splitRight": "פיצול לצד",
       "splitDown": "פיצול למטה",
-      "copyPath": "העתק נתיב",
-      "revealInSidebar": "חשוף בסרגל הצד"
+      "copyPath": "העתקת הנתיב",
+      "revealInSidebar": "הצגה בסרגל הצד"
     }
   },
   "count": {
-    "note": "{count, plural, one {הערה #} other {הערות #}}",
-    "task": "{count, plural, one {משימת #} other {משימות #}}",
-    "itemDelete": "{count, plural, one {מחק פריט #} other {מחק פריטי #}}",
-    "event": "{count, plural, one {# אירוע} other {# אירועים}}",
-    "journal": "{count, plural, one {# יומן} other {# יומנים}}",
-    "reminder": "{count, plural, one {# תזכורת} other {# תזכורות}}"
+    "note": "{count, plural, one {פתק אחד} other {# פתקים}}",
+    "journal": "{count, plural, one {רשומת יומן אחת} other {# רשומות יומן}}",
+    "task": "{count, plural, one {משימה אחת} other {# משימות}}",
+    "event": "{count, plural, one {אירוע אחד} other {# אירועים}}",
+    "reminder": "{count, plural, one {תזכורת אחת} other {# תזכורות}}",
+    "itemDelete": "{count, plural, one {מחיקת פריט אחד} other {מחיקת # פריטים}}"
   },
   "toast": {
     "actionFailed": "הפעולה נכשלה",
     "nothingToUndo": "אין מה לבטל",
-    "undone": "ביטול: {description}",
-    "undoFailed": "ביטול הפעולה נכשל"
+    "undone": "בוטל: {description}",
+    "undoFailed": "ביטול הפעולה נכשל",
+    "filesImported": "{count, plural, one {קובץ אחד יובא} other {# קבצים יובאו}}",
+    "filesImportFailed": "{count, plural, one {הייבוא של קובץ אחד נכשל} other {הייבוא של # קבצים נכשל}}",
+    "filesHiddenInSidebar": "הקבצים מוסתרים בסרגל הצד. כדי לראות אותם, אפשר להפעיל את \"הצגת קבצים\" בתפריט המיון של האוספים.",
+    "moreRemindersDue": "{count, plural, one {עוד תזכורת אחת שהגיע זמנה} other {עוד # תזכורות שהגיע זמנן}}",
+    "moreRemindersDueHint": "הפרטים מופיעים בחלונית התזכורות",
+    "searchIndexRepaired": "אינדקס החיפוש תוקן",
+    "searchIndexRepairedHint": "חלק מאינדקס החיפוש נפגם, ולכן Memry בנה אותו מחדש. הפתקים שלך לא שונו."
   },
   "dateRelative": {
     "today": "היום",
     "yesterday": "אתמול",
-    "daysAgo": "{count, plural, one {# לפני יום} other {# לפני ימים}}",
-    "daysLate": "{count, plural, one {באיחור של # יום} two {באיחור של # ימים} other {באיחור של # ימים}}",
-    "daysOverdue": "{count, plural, one {# יום באיחור} two {# ימים באיחור} other {# ימים באיחור}}",
-    "tomorrow": "מחר"
+    "daysAgo": "{count, plural, one {לפני יום} two {לפני יומיים} other {לפני # ימים}}",
+    "tomorrow": "מחר",
+    "daysOverdue": "{count, plural, one {יום אחד באיחור} two {יומיים באיחור} other {# ימים באיחור}}",
+    "daysLate": "{count, plural, one {יום באיחור} two {יומיים באיחור} other {# ימים באיחור}}",
+    "inDays": "{count, plural, one {בעוד יום} two {בעוד יומיים} other {בעוד # ימים}}",
+    "inWeeks": "{count, plural, one {בעוד שבוע} two {בעוד שבועיים} other {בעוד # שבועות}}"
   },
   "recurrence": {
-    "everyNDays": "{count, plural, one {כל יום} other {כל # ימים}}",
-    "everyNWeeks": "{count, plural, one {כל שבוע} other {כל # שבועות}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {כל יום חול} other {כל # שבועות בימי חול}}",
-    "everyNWeeksOnWeekends": "{count, plural, one {כל סוף שבוע} other {כל # שבועות בסופי שבוע}}",
-    "everyNWeeksOnDays": "{count, plural, one {כל שבוע ב-{days}} other {כל # שבועות ב-{days}}}",
-    "everyNMonths": "{count, plural, one {כל חודש} other {כל # חודשים}}",
-    "everyNMonthsOnDay": "{count, plural, one {כל חודש ב-{day}{suffix}} other {כל # חודשים ב-{day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {כל חודש ב-{week} {day}} other {כל # חודשים ב-{week} {day}}}",
-    "everyNYears": "{count, plural, one {כל שנה} other {כל # שנים}}",
-    "repeats": "חוזר",
+    "everyNDays": "{count, plural, one {כל יום} two {כל יומיים} other {כל # ימים}}",
+    "everyNWeeks": "{count, plural, one {כל שבוע} two {כל שבועיים} other {כל # שבועות}}",
+    "everyNWeeksOnWeekdays": "{count, plural, one {כל יום חול} two {כל שבועיים בימי חול} other {כל # שבועות בימי חול}}",
+    "everyNWeeksOnWeekends": "{count, plural, one {כל סוף שבוע} two {כל שבועיים בסופי שבוע} other {כל # שבועות בסופי שבוע}}",
+    "everyNWeeksOnDays": "{count, plural, one {כל שבוע ב-{days}} two {כל שבועיים ב-{days}} other {כל # שבועות ב-{days}}}",
+    "everyNMonths": "{count, plural, one {כל חודש} two {כל חודשיים} other {כל # חודשים}}",
+    "everyNMonthsOnDay": "{count, plural, one {כל חודש ב-{day}{suffix}} two {כל חודשיים ב-{day}{suffix}} other {כל # חודשים ב-{day}{suffix}}}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {כל חודש, {day} {week} בחודש} two {כל חודשיים, {day} {week} בחודש} other {כל # חודשים, {day} {week} בחודש}}",
+    "everyNYears": "{count, plural, one {כל שנה} two {כל שנתיים} other {כל # שנים}}",
+    "repeats": "חוזרת",
     "ordinal": {
       "first": "ראשון",
-      "fourth": "רביעי",
-      "last": "אחרון",
       "second": "שני",
-      "third": "שלישי"
+      "third": "שלישי",
+      "fourth": "רביעי",
+      "last": "אחרון"
     },
     "preset": {
       "everyWeekday": "בכל יום חול (שני-שישי)",
       "everyYearOnDate": "כל שנה ב-{date}"
     }
   },
-  "phaseF": {
-    "componentsAppSidebar": {
-      "collections": "אוספים",
-      "newNote": "פתק חדש",
-      "newNote2": "פתק חדש",
-      "newFolder": "תיקייה חדשה",
-      "newFolder2": "תיקייה חדשה",
-      "bookmarks": "סימניות",
-      "tags": "תגים",
-      "dropFilesToImport": "שחרר קבצים לייבוא",
-      "newNoteN": "הערה חדשה (⌘N)",
-      "new": "חדש",
-      "syncDisabled": "הסנכרון מושבת",
-      "syncDisabled2": "הסנכרון מושבת",
-      "feedbackButton": "שלח משוב",
-      "feedbackDescription": "ספר לנו מה עובד, מה שבור, או מה היית רוצה ש-Memry יעשה. אנחנו קוראים כל הודעה.",
-      "feedbackEmailHint": "הוסף את האימייל שלך אם תרצה תשובה.",
-      "feedbackError": "לא ניתן היה לשלוח משוב. נסה שוב.",
-      "feedbackPlaceholder": "המשוב שלך…",
-      "feedbackSend": "שלח",
-      "feedbackSending": "שולח…",
-      "feedbackSuccess": "תודה על המשוב!",
-      "feedbackTitle": "שלח משוב",
-      "newItemMenu": "צור חדש…",
-      "feedbackPrivacyEmailOptional": "האימייל שלך — רק אם תוסיף אותו, ורק כדי שנוכל להשיב",
-      "feedbackPrivacyEmailSignedIn": "האימייל של החשבון שלך ({email}), כדי שנוכל להשיב",
-      "feedbackPrivacyMessage": "ההודעה שלך, בדיוק כפי שכתבת אותה",
-      "feedbackPrivacyNote": "שום דבר אחר. ההערות שלך נשארות במכשיר שלך.",
-      "feedbackPrivacyPlan": "התוכנית שלך (free, Plus, Pro או Believer)",
-      "feedbackPrivacyTitle": "מה נשלח",
-      "feedbackPrivacyVersion": "גרסת האפליקציה ומערכת ההפעלה",
-      "projects": "פרויקטים"
-    },
-    "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "שנה את גודל לוח יום",
-      "dragToResizeDoubleClickToReset": "גרור כדי לשנות את הגודל · לחץ פעמיים כדי לאפס"
-    },
-    "componentsFindBarFindBar": {
-      "findReplaceAsk": "מצא, החלף, שאל..."
-    },
-    "componentsFirstRunOnboarding": {
-      "skipOnboarding": "דלג על העלייה למטוס",
-      "welcomeToMemry": "ברוכים הבאים ל-memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "מאגר הידע האישי שלך. בואו ניקח 2 דקות כדי להתחיל.",
-      "getStarted": "התחל ",
-      "createYourFirstNote": "צור את ההערה הראשונה שלך",
-      "markdownBasedStoredLocallyAsPlainFiles": "מבוסס Markdown, מאוחסן באופן מקומי כקבצים רגילים.",
-      "eGMeetingNotesIdeasAnything": "למשל הערות פגישה, רעיונות, כל דבר...",
-      "skip": "דלג",
-      "createNote": "צור הערה ",
-      "addYourFirstTask": "הוסף את המשימה הראשונה שלך",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "משימות מקשרות להערות שלך, עם סדרי עדיפויות ותאריכי יעד.",
-      "eGReviewProjectProposal": "למשל בדוק את הצעת הפרויקט...",
-      "skip2": "דלג",
-      "createTask": "צור משימה ",
-      "syncAcrossDevices": "סנכרון בין מכשירים",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "שמור את ההערות והמשימות שלך מסונכרנות בכל המכשירים שלך. תמיד תוכל להגדיר זאת מאוחר יותר.",
-      "skipForNow": "דלג לעת עתה",
-      "doneLetSGo": "סיים - בוא נלך! "
-    },
-    "componentsFolderIconButton": {
-      "setFolderIcon": "הגדר סמל תיקייה"
-    },
-    "componentsHintOverlayHintIndicator": {
-      "hint": "רמז"
-    },
-    "componentsIconPicker": {
-      "iconPicker": "בוחר אייקונים",
-      "selectIcon": "בחר אייקון",
-      "closeIconPicker": "סגור את בוחר הסמלים",
-      "searchIcons": "חיפוש אייקונים...",
-      "all": "הכל",
-      "clearIcon": "סמל נקה",
-      "noIconsFoundFor": "לא נמצאו אייקונים עבור \""
-    },
-    "componentsKeyboardShortcutsModal": {
-      "keyboardShortcuts": "קיצורי מקלדת",
-      "closeShortcutsHelp": "סגירת קיצורי דרך עזרה",
-      "press": "לחץ",
-      "toClose": "לסגור"
-    },
-    "componentsKiboUiTreeIndex": {
-      "setIcon": "הגדר אייקון",
-      "clearIcon": "סמל נקה"
-    },
-    "componentsNavMain": {
-      "platform": "פלטפורמה"
-    },
-    "componentsNavProjects": {
-      "projects": "פרויקטים",
-      "more": "עוד",
-      "viewProject": "צפה בפרויקט",
-      "shareProject": "שתף את הפרויקט",
-      "deleteProject": "מחק את הפרויקט",
-      "more2": "עוד"
-    },
-    "componentsNavUser": {
-      "cn": "CN",
-      "cn2": "CN",
-      "upgradeToPro": "שדרג ל-Pro",
-      "account": "חשבון",
-      "billing": "חיוב",
-      "notifications": "התראות",
-      "logOut": "התנתק"
-    },
-    "componentsSearchCommandPalette": {
-      "search": "חפש",
-      "searchNotesTasksJournalInbox": "חפש בהערות, משימות, יומן, תיבת דואר נכנס...",
-      "noResultsFor": "אין תוצאות עבור \"",
-      "result": "תוצאה",
-      "noResultsForQuery": "אין תוצאות עבור \"{query}\"",
-      "resultCount": "{count, plural, one {תוצאה אחת} two {# תוצאות} other {# תוצאות}}",
-      "indexBuilding": "יוצר אינדקס חיפוש {done}/{total} — ייתכן שהתוצאות יהיו חלקיות",
-      "indexBuildingUnknown": "יוצר אינדקס חיפוש — ייתכן שהתוצאות יהיו חלקיות"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "חפש ולחץ על פריטים כדי לבנות את המסלול שלך",
-      "reasons": "סיבות",
-      "clear": "ברור"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "ברור",
-      "tags": "תגים",
-      "filterByTag": "סינון לפי תג...",
-      "dateRange": "טווח תאריכים"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "הצג הכל ",
-      "results": "תוצאות"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "פ",
-      "fuzzy": "מטושטשת"
-    },
-    "componentsSplitViewEmptyPaneState": {
-      "noTabsOpen": "אין כרטיסיות פתוחות",
-      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "פתח דף מהסרגל הצדדי או צור כרטיסייה חדשה כדי להתחיל",
-      "openInbox": "פתח את תיבת הדואר הנכנס",
-      "closePane": "סגור חלונית"
-    },
-    "componentsSplitViewLayoutPicker": {
-      "layoutPresets": "פריסה קבועה מראש",
-      "layoutPresets2": "הגדרות פריסה מראש"
-    },
-    "componentsSplitViewResizeHandle": {
-      "resizePanes": "שנה את גודל החלוניות"
-    },
-    "componentsSplitViewTabContent": {
-      "taskscontextNotAvailable": "TasksContext אינו זמין",
-      "searchResults": "תוצאות חיפוש",
-      "unknownTabType": "סוג כרטיסייה לא ידוע: "
-    },
-    "componentsTabsAccessibleTab": {
-      "unsavedChanges": "שינויים שלא נשמרו",
-      "preview": "תצוגה מקדימה"
-    },
-    "componentsTabsNewTabMenu": {
-      "newTab": "כרטיסייה חדשה",
-      "newTab2": "כרטיסייה חדשה",
-      "newNote": "הערה חדשה",
-      "journal": "יומן",
-      "calendar": "לוח שנה",
-      "inboxCapture": "לכידת תיבת דואר נכנס",
-      "tasks": "משימות",
-      "tags": "תגים"
-    },
-    "componentsTabsPinnedTab": {
-      "unsavedChanges": "שינויים שלא נשמרו",
-      "unsaved": "לא נשמר)"
-    },
-    "componentsTabsRegularTab": {
-      "unsavedChanges": "שינויים שלא נשמרו"
-    },
-    "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "סגור את כל הכרטיסיות"
-    },
-    "componentsTabsTabBarWithDrag": {
-      "openTabs": "פתח כרטיסיות",
-      "scrollTabsLeft": "גלול לשוניות שמאלה",
-      "scrollTabsRight": "גלול לשוניות ימינה",
-      "dayPanel": "פאנל יום"
-    },
-    "componentsTabsTabErrorBoundary": {
-      "somethingWentWrong": "משהו השתבש",
-      "anErrorOccurredWhileRenderingThisTabContent": "אירעה שגיאה בעת עיבוד תוכן הכרטיסייה הזו.",
-      "tryAgain": "נסה שוב",
-      "sendReport": "שלח דוח אבחון"
-    },
-    "componentsTabsTabPreviewCard": {
-      "noteIcon": "סמל הערה"
-    },
-    "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "שינויים שלא נשמרו",
-      "unsavedChangesBody": "יש שינויים שלא נשמרו ב\"{title}\". מה ברצונך לעשות?"
-    },
-    "componentsTeamSwitcher": {
-      "newWorkspace": "חלל עבודה חדש",
-      "darkMode": "מצב כהה",
-      "settings": "הגדרות",
-      "integrations": "אינטגרציות",
-      "signOut": "צא",
-      "downloadOnIos": "הורד ב-iOS"
-    },
-    "componentsTrafficLights": {
-      "closeWindow": "סגור חלון",
-      "minimizeWindow": "צמצם את החלון",
-      "maximizeWindow": "הגדל את החלון"
-    },
-    "componentsUiAutocompleteDropdown": {
-      "suggestions": "הצעות",
-      "or": "או",
-      "enter": "הכנס",
-      "toInsert": "להכניס"
-    },
-    "componentsUiBreadcrumb": {
-      "breadcrumb": "פירורי לחם",
-      "more": "עוד"
-    },
-    "componentsUiDialog": {
-      "close": "סגור"
-    },
-    "componentsUiSheet": {
-      "close": "סגור"
-    },
-    "componentsUiSidebar": {
-      "sidebar": "סרגל צד",
-      "displaysTheMobileSidebar": "מציג את סרגל הצד לנייד.",
-      "toggleSidebar": "החלף את הסרגל הצידי",
-      "toggleSidebar2": "החלף את הסרגל הצידי",
-      "dragToResizeDoubleClickToReset": "גרור כדי לשנות את הגודל · לחץ פעמיים כדי לאפס"
-    },
-    "componentsVaultOnboarding": {
-      "welcomeToMemry": "ברוכים הבאים ל-memrynote",
-      "yourPersonalKnowledgeManagementSystem": "מערכת ניהול הידע האישי שלך.",
-      "selectAFolderToStoreYourNotesAndTasks": "בחר תיקיה לאחסון ההערות והמשימות שלך.",
-      "opening": "פותח...",
-      "selectVaultFolder": "בחר תיקיית כספת",
-      "plainMarkdown": "Markdown רגיל",
-      "yourNotesStayPortable": "ההערות שלך נשארות ניידות",
-      "syncAnywhere": "סנכרן בכל מקום",
-      "useDropboxIcloudGit": "השתמש ב-Dropbox, iCloud, Git",
-      "recentVaults": "קמרונות אחרונים",
-      "notesLastOpened": "הערות · נפתח לאחרונה",
-      "brandName": "Memrynote",
-      "preRelease": "Beta",
-      "createNewVault": "יצירת כספת חדשה",
-      "createNewVaultDesc": "התחילו כספת חדשה בתיקייה שתבחרו.",
-      "openExistingVault": "פתיחת כספת קיימת",
-      "openExistingVaultDesc": "בחרו תיקייה של קובצי Markdown שכבר יש לכם.",
-      "signInToSync": "התחברות לסנכרון",
-      "signInToSyncDesc": "כספות מוצפנות מקצה לקצה בכל המכשירים שלכם.",
-      "create": "יצירה",
-      "open": "פתיחה",
-      "signIn": "התחברות",
-      "helpAndDocs": "עזרה ותיעוד",
-      "signInRequiresVault": "פתחו או צרו כספת תחילה כדי להגדיר סנכרון.",
-      "addVault": "הוספת כספת"
-    },
-    "componentsVaultSwitcher": {
-      "noVaultsYet": "עדיין אין כספות",
-      "openVault": "פתח כספת",
-      "settings": "הגדרות",
-      "logOut": "התנתק",
-      "signInToSync": "היכנס כדי לסנכרן",
-      "remove": "הסר \"",
-      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "כספת זו תוסר מהאפליקציה, אך הקבצים שלך יישארו בדיסק. תמיד תוכל להוסיף אותו מחדש מאוחר יותר.",
-      "cancel": "בטל",
-      "remove2": "הסר",
-      "inYourAccount": "בחשבון שלך",
-      "itemsCount": "{count} פריטים",
-      "untitledVault": "כספת",
-      "downloadVaultTitle": "הורדת “{name}”",
-      "downloadLocation": "מיקום",
-      "changeLocation": "שינוי…",
-      "download": "הורדה",
-      "downloadFailed": "לא ניתן היה להוריד את הכספת",
-      "deleteFromAccount": "מחק מהחשבון",
-      "deleteVaultBody": "פעולה זו מסירה לצמיתות את כל הנתונים המסונכרנים של הכספת הזו משרתי Memry, ולא ניתן לבטל אותה. הקבצים שלך בדיסק לא יימחקו.",
-      "deleteVaultConfirm": "מחק מהחשבון",
-      "deleteVaultFailed": "לא ניתן היה למחוק את הכספת",
-      "deleteVaultTitle": "למחוק את “{name}” מהחשבון שלך?",
-      "removeVaultTitle": "להסיר את “{name}” מהרשימה?",
-      "missing": "התיקייה לא נמצאה"
-    },
-    "componentsWindowControls": {
-      "searchK": "חפש (⌘K)",
-      "browserBack": "דפדפן חזרה",
-      "back": "חזרה",
-      "browserForward": "דפדפן קדימה",
-      "forward": "קדימה"
-    }
-  },
-  "phaseI": {
-    "errors": {
-      "failedToImportFiles": "ייבוא הקבצים נכשל",
-      "failedToCreateNote": "יצירת הערה נכשלה",
-      "failedToAccessMicrophone": "הגישה למיקרופון נכשלה"
-    },
-    "toasts": {
-      "undone": "בטל"
-    }
-  },
   "agentChat": {
-    "title": "צ'אט Agent",
-    "loading": "טוען צ'אט סוכן...",
-    "conversationLoading": "טעינת השיחה...",
+    "title": "צ׳אט הסוכן",
+    "loading": "טוען את צ׳אט הסוכן…",
+    "conversationLoading": "טוען את השיחה…",
+    "historyNotSaved": "המכשיר הזה לא יכול לבטל את נעילת הכספת, ולכן השיחה הזו לא תישמר כשהאפליקציה תיסגר.",
     "newConversation": "שיחה חדשה",
     "history": "היסטוריית שיחות",
-    "openInTab": "פתח שיחה בכרטיסייה",
-    "stop": "עצור",
-    "thinking": "Agent חושב",
+    "openInTab": "פתיחת השיחה בכרטיסייה",
+    "stop": "עצירה",
+    "thinking": "הסוכן חושב",
     "enable": {
-      "title": "הפעל את memrynote Agent",
-      "description": "memrynote Agent משתמש בסוכן המקומי שבחרת CLI כדי לשוחח על הכספת שלך. Claude שולח תורות ל-Anthropic; Codex שולח תורות ל-OpenAI.",
-      "remote": "memrynote מצפין את היסטוריית הצ'אט המקומית והמסונכרנת שלך, אך מסקנות מודל מתרחשות עם הספק הנבחר.",
+      "title": "הפעלת הסוכן של memrynote",
+      "description": "הסוכן של memrynote משתמש בכלי ה-CLI של הסוכן המקומי שבחרת כדי לשוחח על הכספת שלך. Claude שולח את ההודעות ל-Anthropic; Codex שולח את ההודעות ל-OpenAI.",
+      "remote": "memrynote מצפין את היסטוריית הצ׳אט המקומית והמסונכרנת שלך, אבל עיבוד המודל מתבצע אצל הספק שנבחר.",
       "readTools": "כלי קריאה פועלים באופן אוטומטי.",
-      "writeTools": "יצירה ועדכון של כלים דורשים אישור.",
-      "diff": "כלי עדכון מציגים הבדל או תצוגה מקדימה.",
-      "button": "אפשר צ'אט Agent"
+      "writeTools": "כלי יצירה ועדכון דורשים אישור.",
+      "diff": "כלי עדכון מציגים השוואת שינויים או תצוגה מקדימה.",
+      "button": "הפעלת צ׳אט הסוכן"
     },
     "approval": {
-      "description": "הסוכן רוצה לקרוא ל-{name} עם הטיעונים האלה.",
-      "applyOnce": "הגש פעם אחת",
-      "allowOnce": "אפשר פעם אחת",
-      "editAndApply": "ערוך והחל",
-      "editAndAllow": "ערוך ואפשר",
-      "allowAlways": "אפשר תמיד",
-      "applyEdits": "החל עריכות",
-      "deny": "הכחיש",
-      "invalidJson": "הזן JSON חוקי לפני החלת עריכות."
+      "description": "הסוכן רוצה לקרוא ל-{name} עם הארגומנטים האלה.",
+      "applyOnce": "החלה פעם אחת",
+      "allowOnce": "לאפשר פעם אחת",
+      "editAndApply": "עריכה והחלה",
+      "editAndAllow": "עריכה ואישור",
+      "allowAlways": "לאפשר תמיד",
+      "applyEdits": "החלת העריכות",
+      "deny": "דחייה",
+      "invalidJson": "יש להזין JSON תקין לפני החלת העריכות.",
+      "thisTool": "הכלי הזה",
+      "alwaysAllowHint": "\"לאפשר תמיד\" חל על {tool}. כל כלי אחר עדיין מבקש אישור, ומחיקות תמיד דורשות אישור.",
+      "alwaysInChat": "לאפשר תמיד בצ׳אט הזה",
+      "alwaysInChatHint": "בתוקף עד סוף השיחה",
+      "alwaysInVault": "לאפשר תמיד בכספת הזו",
+      "alwaysInVaultHint": "אפשר לבטל בהגדרות › סוכן",
+      "deletesAlwaysAsk": "מחיקות תמיד דורשות אישור"
     },
     "diff": {
-      "previewError": "לא ניתן היה להציג תצוגה מקדימה של הבדל הערה",
-      "description": "הסוכן רוצה לעדכן את {title}. סקור את התוכן הנוכחי והמועמד לפני החלתו.",
-      "fallbackTitle": "הערה זו",
+      "previewError": "לא ניתן להציג תצוגה מקדימה של השינוי הזה",
+      "description": "הסוכן רוצה לעדכן את {title}. כדאי לעבור על השינוי לפני החלתו.",
+      "fallbackTitle": "הפריט הזה",
       "current": "נוכחי",
-      "candidate": "מועמד",
-      "loading": "טוען...",
-      "apply": "הגש בקשה",
-      "applyEdited": "החל נערך"
+      "candidate": "מוצע",
+      "loading": "טוען…",
+      "apply": "החלה",
+      "applyEdited": "החלת הגרסה הערוכה",
+      "editBody": "עריכה לפני החלה"
     },
     "inPageReview": {
       "regionLabel": "הצעת הסוכן",
       "barLabel": "סקירת הצעת הסוכן",
-      "loading": "טוען את ההצעה...",
+      "loading": "טוען את ההצעה…",
       "loadingTitle": "הצעת הסוכן",
-      "title": "{count, plural, =0 {הצעת הסוכן} one {הסוכן הציע שינוי #} other {הסוכן הציע # שינויים}}",
+      "title": "{count, plural, =0 {הצעת הסוכן} one {הסוכן הציע שינוי אחד} other {הסוכן הציע # שינויים}}",
       "editingTitle": "עריכת ההצעה",
       "pendingHint": "עדיין לא נשמר. יש לאשר כדי להחיל.",
-      "editingHint": "העריכות שלך נשארות כאן עד שתאשר.",
+      "editingHint": "העריכות שלך נשארות כאן עד לאישור.",
       "baseChanged": "הפתק הזה השתנה בזמן שערכת את ההצעה.",
-      "keepDraft": "שמור את העריכות שלי",
-      "restart": "התחל מחדש מהגרסה העדכנית",
+      "keepDraft": "שמירת העריכות שלי",
+      "restart": "התחלה מחדש מהגרסה העדכנית",
       "reject": "דחייה",
       "edit": "עריכה",
       "showDiff": "הצגת שינויים",
       "accept": "אישור",
       "acceptEdits": "אישור העריכות",
       "waiting": "ממתין לסקירה שלך ב-{title}.",
-      "notOpen": "פתח את {title} כדי לראות את השינויים, או אשר אותם בלי לסקור.",
+      "notOpen": "כדי לראות את השינויים, אפשר לפתוח את {title} או לאשר אותם בלי לעבור עליהם.",
       "show": "הצגה",
-      "openNote": "פתח פתק",
-      "openJournal": "פתח יומן",
+      "openNote": "פתיחת הפתק",
+      "openJournal": "פתיחת היומן",
       "fallbackTitle": "הפתק הזה"
     },
+    "preview": {
+      "unset": "לא הוגדר",
+      "yes": "כן",
+      "no": "לא",
+      "noChange": "לא זוהו שינויים שאפשר להציג בתצוגה המקדימה.",
+      "willBeLost": "יאבדו",
+      "unchangedLines": "{count, plural, one {שורה אחת ללא שינוי} other {# שורות ללא שינוי}}",
+      "item": {
+        "note": "פתק",
+        "folder": "תיקייה",
+        "task": "משימה",
+        "journal": "יומן",
+        "inbox": "תיבת נכנסים",
+        "project": "פרויקט",
+        "status": "סטטוס",
+        "canvas": "קנבס"
+      },
+      "intent": {
+        "create": "יצירה",
+        "update": "עדכון",
+        "delete": "מחיקה",
+        "move": "העברה",
+        "reorder": "שינוי סדר"
+      },
+      "field": {
+        "archived": "בארכיון",
+        "arguments": "ארגומנטים",
+        "color": "צבע",
+        "completed": "הושלם",
+        "description": "תיאור",
+        "due": "תאריך יעד",
+        "dueTime": "שעת יעד",
+        "duplicateOf": "עותק של",
+        "edits": "עריכות",
+        "elements": "רכיבים",
+        "folder": "תיקייה",
+        "icon": "סמל",
+        "isDefault": "ברירת מחדל",
+        "isDone": "נחשב כהושלם",
+        "items": "פריטים",
+        "name": "שם",
+        "operation": "פעולה",
+        "order": "סדר",
+        "parent": "פריט אב",
+        "path": "נתיב",
+        "position": "מיקום",
+        "priority": "עדיפות",
+        "project": "פרויקט",
+        "removed": "הוסרו",
+        "repeatFrom": "חזרה לפי",
+        "snoozeReason": "סיבת ההשהיה",
+        "snoozedUntil": "מושהה עד",
+        "start": "התחלה",
+        "status": "סטטוס",
+        "tags": "תגיות",
+        "title": "כותרת"
+      },
+      "loss": {
+        "words": "{count, plural, one {מילה אחת} other {# מילים}}",
+        "tags": "{count, plural, one {תגית אחת} other {# תגיות}}",
+        "notes": "{count, plural, one {פתק אחד} other {# פתקים}}",
+        "folders": "{count, plural, one {תיקייה אחת} other {# תיקיות}}",
+        "files": "{count, plural, one {קובץ אחד} other {# קבצים}}",
+        "events": "{count, plural, one {אירוע אחד} other {# אירועים}}",
+        "tasks": "{count, plural, one {משימה אחת} other {# משימות}}",
+        "due": "יעד: {value}"
+      }
+    },
     "composer": {
-      "currentNote": "הערה נוכחית",
-      "removeAttachment": "הסר את {label}",
-      "placeholder": "שאלו את memrynote כל דבר. @ כדי להזכיר קובץ",
-      "send": "שלח",
-      "providerLabel": "ספק Agent: {provider}",
+      "currentNote": "הפתק הנוכחי",
+      "removeAttachment": "הסרת {label}",
+      "placeholder": "אפשר לעשות כל דבר עם memrynote… @ לאזכור פתקים, משימות ואירועים",
+      "send": "שליחה",
+      "providerLabel": "ספק הסוכן: {provider}",
       "settingsSummary": "{reasoning}",
+      "connectedTools": "כלים מחוברים",
+      "connectTool": "חיבור {tool}",
+      "addContext": "הוספת הקשר",
+      "addContextWithPermissions": "הוספת הקשר ({permissions})",
+      "mentionContext": "אזכור פתק, משימה או אירוע",
+      "voice": {
+        "start": "התחלת הכתבה קולית",
+        "stop": "הפסקת ההכתבה הקולית",
+        "transcribing": "ממיר את הקלט הקולי לטקסט",
+        "errors": {
+          "permissionDenied": "הגישה למיקרופון נדחתה",
+          "noMicrophone": "לא נמצא מיקרופון",
+          "accessFailed": "לא ניתן לגשת למיקרופון",
+          "recordingFailed": "לא ניתן להקליט את הקלט הקולי",
+          "transcriptionFailed": "לא ניתן להמיר את הקלט הקולי לטקסט"
+        }
+      },
+      "modelLabel": "מודל הסוכן: {provider} {model}",
+      "reasoningLabel": "רמת החשיבה של הסוכן: {reasoning}",
       "providers": {
+        "label": "ספק",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
         "local": "מקומי"
       },
+      "access": {
+        "vaultOnly": "כספת בלבד",
+        "computerAccess": "גישה למחשב"
+      },
+      "webSearch": {
+        "on": "פועל",
+        "off": "כבוי",
+        "label": "חיפוש באינטרנט"
+      },
       "models": {
         "default": "ברירת מחדל",
-        "label": "מודל"
+        "label": "מודל",
+        "search": "חיפוש מודלים…",
+        "useCustom": "שימוש ב-\"{query}\"",
+        "localEmpty": "לא נמצאו מודלים — כדאי לבדוק בהגדרות",
+        "localSetup": "הגדרה במסך ההגדרות…",
+        "cliSetup": "לא זוהה — הגדרה במסך ההגדרות…",
+        "runtimeUnavailable": "הסוכן לא זמין — פתיחת ההגדרות…"
       },
       "settings": {
-        "reasoning": "נימוק"
+        "reasoning": "חשיבה",
+        "effort": "מאמץ"
       },
+      "includeCurrentNote": "צירוף הפתק הנוכחי",
+      "chooseModel": "בחירת מודל",
       "claudeSettings": {
         "reasoning": {
           "low": "נמוך",
@@ -499,22 +338,13 @@
           "extraHigh": "גבוה במיוחד"
         }
       },
-      "access": {
-        "vaultOnly": "כספת בלבד",
-        "computerAccess": "גישה למחשב"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "כבוי",
-        "label": "חיפוש באינטרנט"
-      },
-      "permissionsLabel": "הרשאות Agent: {access}, חיפוש באינטרנט {webSearch}",
+      "permissionsLabel": "הרשאות הסוכן: {access}, חיפוש באינטרנט {webSearch}",
       "permissions": {
         "label": "הרשאות",
         "access": "גישה",
         "tools": "כלים"
       },
-      "modelSettingsLabel": "הגדרות מודל של Agent: {model}, {settings}"
+      "modelSettingsLabel": "הגדרות המודל של הסוכן: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "אין התאמות"
@@ -526,186 +356,135 @@
       "editedArgs": "ארגומנטים ערוכים",
       "parameters": "פרמטרים"
     },
+    "toolActivity": {
+      "steps": "{count, plural, one {שלב אחד} other {# שלבים}}",
+      "running": "פועל",
+      "awaitingApproval": "ממתין לאישור",
+      "done": "הושלם"
+    },
+    "reasoning": {
+      "thinking": "חושב…",
+      "thought": "חשיבה",
+      "thoughtFor": "חשיבה במשך {seconds} שנ׳",
+      "toggle": "הצגה או הסתרה של החשיבה"
+    },
     "sidebar": {
-      "label": "סרגל צד ימין",
+      "label": "סרגל הצד המשני",
       "day": "יום",
       "agent": "סוכן",
-      "pendingApproval": "{count, plural, one {# ממתין לאישור} other {# אישורים ממתינים}}",
-      "inProgress": "תור Agent מתבצע",
-      "close": "סגור סוכן"
+      "pendingApproval": "{count, plural, one {אישור אחד ממתין} other {# אישורים ממתינים}}",
+      "inProgress": "הסוכן באמצע תגובה",
+      "close": "סגירת הסוכן"
     },
     "errors": {
       "loadConversations": "לא ניתן לטעון שיחות סוכן",
       "loadConversation": "לא ניתן לטעון את שיחת הסוכן",
       "createConversation": "לא ניתן ליצור שיחת סוכן",
-      "busy": "חלון נוסף הוא אמצע הפנייה לשיחה זו. המתן עד שזה יסתיים או עצור את זה משם.",
-      "sendTurn": "לא ניתן לשלוח תור לסוכן",
-      "cancelTurn": "לא ניתן לבטל את פניית הסוכן",
+      "busy": "חלון אחר נמצא באמצע תגובה בשיחה הזו. אפשר לחכות עד שהיא תסתיים או לעצור אותה משם.",
+      "sendTurn": "לא ניתן לשלוח את ההודעה לסוכן",
+      "cancelTurn": "לא ניתן לעצור את תגובת הסוכן",
       "submitApproval": "לא ניתן היה לשלוח את אישור הכלי",
       "updateTrust": "לא ניתן היה לעדכן כלים מהימנים",
-      "saveDisclosure": "לא ניתן לשמור את מצב החשיפה",
-      "resolveWindow": "לא ניתן לפתור את חלון מקור הסוכן",
-      "detectCli": "לא ניתן היה לזהות קצה אחורי של סוכן",
-      "loadDisclosure": "לא ניתן לטעון את מצב הגילוי"
+      "saveDisclosure": "לא ניתן לשמור את מצב ההסכמה",
+      "resolveWindow": "לא ניתן לזהות את חלון המקור של הסוכן",
+      "detectCli": "לא ניתן לזהות את מנועי הסוכן הזמינים",
+      "loadDisclosure": "לא ניתן לטעון את מצב ההסכמה"
+    },
+    "actions": {
+      "copy": "העתקה",
+      "copied": "הועתק"
     },
     "sources": {
-      "used": "{count, plural, one {נעשה שימוש במקור אחד} other {נעשה שימוש ב-# מקורות}}"
+      "count": "{count, plural, one {מקור אחד} other {# מקורות}}"
     }
-  },
-  "home": {
-    "addWidget": "הוסף יישומון",
-    "board": {
-      "defaultName": "דף הבית",
-      "deleteAria": "מחק פריסה",
-      "label": "פריסת דף הבית",
-      "newAria": "לוח חדש",
-      "newName": "לוח חדש"
-    },
-    "disabled": {
-      "createNote": "צור פתק",
-      "hint": "אין דבר פתוח. התחל פתק."
-    },
-    "done": "בוצע",
-    "edit": "ערוך",
-    "empty": {
-      "body": "יישומונים מאחדים את הפתקים, המשימות והסימניות שלך במקום רגוע אחד.",
-      "cta": "הוסף את היישומון הראשון שלך",
-      "title": "הלוח שלך ריק"
-    },
-    "greeting": {
-      "afternoon": "צהריים טובים",
-      "evening": "ערב טוב",
-      "morning": "בוקר טוב"
-    },
-    "header": {
-      "events": "{count, plural, one {# אירוע} other {# אירועים}}",
-      "tasksDue": "{count, plural, one {# משימה ליעד היום} other {# משימות ליעד היום}}"
-    },
-    "noBookmarksYet": "אין עדיין סימניות.",
-    "noEventsYet": "אין אירועים היום.",
-    "noJournalEntriesYet": "אין עדיין רשומות ביומן.",
-    "noNotesYet": "אין עדיין פתקים.",
-    "noTasksYet": "אין עדיין משימות.",
-    "widget": {
-      "bookmarks": "סימניות",
-      "calendar": "לוח שנה",
-      "calendarToday": "היום",
-      "configAria": "הגדר יישומון",
-      "configure": "הגדר",
-      "dragAria": "גרור יישומון",
-      "duration": "{count} דק'",
-      "filter": {
-        "today": "יעד היום",
-        "tomorrow": "מחר",
-        "week": "השבוע"
-      },
-      "folder": "תיקייה",
-      "folderEmpty": "אין עדיין תיקיות",
-      "folderNoSelection": "לא נבחרה תיקייה",
-      "folderPickPrompt": "בחר תיקייה",
-      "folderViewSelect": "תצוגה",
-      "folderView_gallery": "גלריה",
-      "folderView_list": "רשימה",
-      "inbox": "תיבה נכנסת",
-      "inboxAllTypes": "כל הסוגים",
-      "inboxOlder": "{count, plural, one {# ישן יותר} other {# ישנים יותר}}",
-      "inboxOldest": "הישן ביותר {count, plural, one {# יום} other {# ימים}}",
-      "journal": "יומן",
-      "journalStreak": "{count, plural, one {רצף של # יום} other {רצף של # ימים}}",
-      "journalToday": "היום",
-      "journalYesterday": "אתמול",
-      "loadError": "לא ניתן היה לטעון",
-      "menuAria": "אפשרויות יישומון",
-      "next": "הבא: {title}",
-      "openCalendar": "פתח לוח שנה",
-      "openInbox": "פתח תיבה נכנסת",
-      "recentMeta": "נערך {time}",
-      "recentMetaWithFolder": "{folder} · נערך {time}",
-      "recentlyEdited": "נערך לאחרונה",
-      "remove": "הסר",
-      "removeAria": "הסר יישומון",
-      "resize": "גודל",
-      "resizeAria": "שנה גודל ל-{size}",
-      "savedFilterDefault": "היום",
-      "savedFilterHint": "סמן מסננים בכוכב בדף המשימות כדי להשתמש בהם כאן",
-      "savedFilterLabel": "מסנן שמור",
-      "startsIn": "מתחיל בעוד {count, plural, one {# דק׳} other {# דק׳}}",
-      "tasks": "משימות",
-      "unknown": "יישומון לא ידוע",
-      "untitled": "ללא כותרת"
-    }
-  },
-  "media": {
-    "video": "וידאו"
-  },
-  "onboarding": {
-    "agentChat": {
-      "body": "עבור לכרטיסיית הסוכן כדי לשאול את העוזר של MemryNote על הכספת שלך.",
-      "title": "שוחח עם סוכן ה-AI"
-    },
-    "collections": {
-      "body": "ארגן פתקים בתיקיות, הצמד סימניות, ועיין לפי תגית — הכול כאן.",
-      "title": "אוספים, סימניות ותגיות"
-    },
-    "dayPanel": {
-      "body": "לוח הצד שומר לוח שנה ותצוגת יום לצד כל מה שאתה קורא.",
-      "title": "היום שלך, לצד העבודה שלך"
-    },
-    "feedback": {
-      "body": "שלח משוב ישירות לצוות מכאן.",
-      "title": "ספר לנו מה דעתך"
-    },
-    "nav": {
-      "body": "תיבה נכנסת ללכידה, יומן לפתקים יומיים, לוח שנה לציר הזמן שלך, משימות למטלות, וגרף כדי לראות איך הכול מתחבר.",
-      "title": "סביבות העבודה שלך"
-    },
-    "newNote": {
-      "body": "התחל כאן. כל מה שאתה כותב מאוחסן מקומית, קודם כול.",
-      "title": "צור את הפתק הראשון שלך"
-    },
-    "settings": {
-      "body": "ייבא את הפתקים שלך מ-12+ אפליקציות — Obsidian, Notion, Apple Notes, Evernote ועוד — וכוונן את כל השאר בהגדרות.",
-      "title": "הגדרות וייבוא"
-    },
-    "sync": {
-      "body": "הפעל סנכרון מוצפן מקצה לקצה כדי לשמור כל מכשיר מעודכן.",
-      "title": "סנכרון פרטי ומוצפן"
-    },
-    "welcome": {
-      "body": "הבית הפרטי שלך, שמתחיל במצב לא מקוון. פתקים מוצפנים מקצה לקצה — הם אף פעם לא עוזבים את המכשיר שלך ללא הצפנה.",
-      "title": "ברוך הבא ל-MemryNote"
-    },
-    "tour": {
-      "next": "הבא",
-      "previous": "הקודם",
-      "progress": "{current} מתוך {total}"
-    }
-  },
-  "capture": {
-    "focusShortcut": "מקד את קלט הלכידה",
-    "detailHint": "פרטים",
-    "focusHint": "Q",
-    "submit": "ללכוד"
   },
   "canvas": {
+    "sectionLabel": "קנבסים",
+    "newCanvas": "קנבס חדש",
+    "newCanvasFolder": "תיקיית קנבסים חדשה",
+    "untitled": "קנבס ללא כותרת",
+    "empty": "עדיין אין קנבסים",
+    "loading": "טוען קנבסים…",
+    "loadFailed": "לא ניתן היה לטעון קנבסים",
+    "createFailed": "לא ניתן היה ליצור קנבס",
+    "openFailed": "לא ניתן היה לפתוח את הקנבס",
+    "notFound": "לא ניתן היה למצוא את הקנבס הזה",
+    "corruptScene": "לא ניתן היה לקרוא את הקנבס הזה. העריכה מושבתת כדי למנוע אובדן נתונים.",
+    "unreadableTitle": "לא ניתן לפתוח את הקנבס הזה כאן",
+    "unreadableBody": "המסמך שלו חסר בכספת, או שהוא צויר לפני שקנבסים הפכו לקבצים והמכשיר הזה כבר לא מחזיק במפתח שפותח אותו. שום דבר לא נמחק — אפשר לפתוח את הכספת במכשיר שיצר אותו, או לשחזר את תיקיית הקנבסים.",
+    "tooLargeToSync": "הקנבס הזה גדול מכדי להסתנכרן. הוא נשמר במכשיר הזה, אך לא יגיע למכשירים האחרים שלך עד שיקטן.",
+    "savedToVault": "כל השינויים נשמרים אוטומטית בכספת שלך",
+    "libraryStoreFailed": "לא ניתן היה לשמור את ספריית הצורות שלך. שינויים אחרונים בה עלולים ללכת לאיבוד.",
+    "link": {
+      "itemMissing": "הפריט המקושר כבר לא קיים.",
+      "elementMissing": "הקישור מפנה למשהו שכבר לא נמצא בקנבס הזה.",
+      "title": "קישור לפריט",
+      "placeholder": "חיפוש פתקים, משימות, אירועים, תיבת הנכנסים, פרויקטים…",
+      "hint": "אפשר להתחיל להקליד כדי למצוא פריט לקישור.",
+      "empty": "אין התאמות.",
+      "selectOneShape": "כדי לקשר צורה לפריט, יש לבחור צורה אחת בלבד.",
+      "cardsCannotLink": "כרטיס כבר פותח את הפריט שלו, ולכן אי אפשר להוסיף לו קישור נוסף.",
+      "linked": "קושר.",
+      "groupNotes": "פתקים",
+      "groupFiles": "קבצים",
+      "groupTasks": "משימות",
+      "groupEvents": "אירועים",
+      "groupInbox": "תיבת נכנסים",
+      "groupJournals": "רשומות יומן",
+      "groupProjects": "פרויקטים",
+      "groupFolders": "תיקיות",
+      "useUrl": "קישור אל {url}",
+      "openTarget": "פתיחת {name}",
+      "shapeTarget": "צורה בקנבס הזה",
+      "missingTarget": "כבר לא בקנבס הזה"
+    },
+    "disabledTitle": "הקנבס אינו מופעל",
+    "disabledBody": "הכרטיסייה הזו שייכת לתכונה שאינה מופעלת במכשיר הזה.",
+    "unreadable": "המסמך של הקנבס הזה חסר או שלא ניתן לקרוא אותו. אפשר להציג אותו במנהל הקבצים או למחוק את הרשומה.",
+    "actionFailed": "לא ניתן היה להשלים את הפעולה בקנבס",
+    "renameLabel": "שם הקנבס",
+    "folderNameLabel": "שם התיקייה",
+    "deleteConfirmTitle": "למחוק את הקנבס הזה?",
+    "deleteConfirmBody": "\"{title}\" יוסר מ-memrynote בכל המכשירים שלך. הקובץ שלו יועבר לפח האשפה של המחשב הזה, אבל החזרתו משם לא תשחזר את הקנבס.",
+    "dropToRoot": "אפשר לשחרר כאן כדי להוציא מהתיקייה",
+    "filterPlaceholder": "סינון קנבסים",
+    "filterNoMatches": "אין קנבסים שתואמים למסנן הזה",
+    "folderCanvasCount": "{count} קנבסים בתיקייה",
+    "folderEmptyHint": "עדיין אין כאן כלום",
+    "deleteFolderConfirmTitle": "למחוק את תיקיית הקנבסים הזו?",
+    "deleteFolderConfirmBody": "\"{name}\" וכל מה שבתוכה יוסרו מ-memrynote בכל המכשירים שלך. קנבסים שיושפעו: {count}. התיקייה תועבר לפח האשפה של המחשב הזה, אבל החזרתה משם לא תשחזר אותם.",
+    "actions": {
+      "rename": "שינוי שם",
+      "duplicate": "שכפול",
+      "copyLink": "העתקת הקישור",
+      "setIcon": "הגדרת סמל",
+      "removeIcon": "הסרת הסמל",
+      "moveToFolder": "העברה לתיקייה",
+      "moveToRoot": "תיקיית השורש",
+      "openExternal": "פתיחה בעורך חיצוני",
+      "newCanvasHere": "קנבס חדש כאן",
+      "newFolder": "תיקייה חדשה",
+      "canvasMenu": "פעולות לקנבס",
+      "folderMenu": "פעולות לתיקיית הקנבסים"
+    },
     "card": {
-      "addCard": "הוסף כרטיס",
-      "addCreateNote": "צור הערה \"{query}\"",
-      "addCreateNoteEmpty": "צור הערה חדשה",
-      "addCreatedAt": "נוצר {date}",
-      "addEmpty": "לא נמצאו תוצאות",
-      "addGroupEvents": "אירועים",
-      "addGroupNotes": "הערות",
-      "addGroupTasks": "משימות",
-      "addOnCanvas": "בקנבס",
-      "addPlaceholder": "חפש הערות, משימות ואירועים…",
-      "allDay": "כל היום",
-      "createNoteFailed": "לא ניתן היה ליצור הערה",
+      "open": "פתיחה בכרטיסייה",
+      "openToEdit": "פתיחה בכרטיסייה לעריכה",
       "deleted": "הפריט נמחק",
       "loading": "טוען…",
-      "open": "פתח בכרטיסייה",
-      "openToEdit": "פתח בכרטיסייה כדי לערוך",
       "untitled": "ללא כותרת",
+      "allDay": "כל היום",
+      "createNoteFailed": "לא ניתן ליצור את הפתק",
+      "addCard": "הוספת כרטיס",
+      "addPlaceholder": "חיפוש פתקים, קבצים, משימות, אירועים ופרויקטים…",
+      "addCreateNote": "יצירת פתק \"{query}\"",
+      "addCreateNoteEmpty": "יצירת פתק חדש",
+      "addEmpty": "לא נמצאו תוצאות",
+      "addGroupNotes": "פתקים",
+      "addGroupTasks": "משימות",
+      "addGroupEvents": "אירועים",
+      "addOnCanvas": "בקנבס",
+      "addCreatedAt": "נוצר {date}",
       "bulkGroup": "הוספת הכול מתוך",
       "bulkFromTag": "תגית…",
       "bulkFromFolder": "תיקייה…",
@@ -727,136 +506,751 @@
       "bulkAddedSkipped": "{count, plural, one {נוסף כרטיס אחד} other {נוספו # כרטיסים}} · {skipped} כבר בקנבס",
       "bulkAllOnCanvas": "{count, plural, one {כבר בקנבס הזה} other {כל ה-# כבר בקנבס הזה}}"
     },
-    "corruptScene": "לא ניתן היה לקרוא את הקנבס הזה. העריכה מושבתת כדי למנוע אובדן נתונים.",
-    "createFailed": "לא ניתן היה ליצור קנבס",
-    "disabledBody": "הכרטיסייה הזו שייכת לתכונה שאינה מופעלת במכשיר הזה.",
-    "disabledTitle": "הקנבס אינו מופעל",
-    "empty": "עדיין אין קנבסים",
-    "libraryStoreFailed": "לא ניתן היה לשמור את ספריית הצורות שלך. שינויים אחרונים בה עלולים ללכת לאיבוד.",
-    "loadFailed": "לא ניתן היה לטעון קנבסים",
-    "loading": "טוען קנבסים…",
-    "newCanvas": "קנבס חדש",
-    "notFound": "לא ניתן היה למצוא את הקנבס הזה",
-    "openFailed": "לא ניתן היה לפתוח את הקנבס",
-    "savedToVault": "כל השינויים נשמרים אוטומטית בכספת שלך",
-    "sectionLabel": "קנבסים",
-    "tooLargeToSync": "הקנבס הזה גדול מכדי להסתנכרן. הוא נשמר במכשיר הזה, אך לא יגיע למכשירים האחרים שלך עד שיקטן.",
-    "untitled": "קנבס ללא כותרת"
+    "cluster": {
+      "button": "הצעת קבוצות",
+      "buttonHint": "קיבוץ כרטיסי הפתקים בלוח הזה (או אלה שנבחרו) לפי דמיון. פועל במכשיר הזה.",
+      "loading": "מקבץ…",
+      "needMoreNotes": "כדי לקבל הצעות לקבוצות, יש להוסיף לפחות {count} כרטיסי פתקים.",
+      "tooMany": "בלוח הזה יש יותר מ-{count} כרטיסי פתקים. אפשר לבחור עד {count} ולנסות שוב.",
+      "disabled": "כדי לקבל הצעות לקבוצות, יש להפעיל וקטורי הטמעה מקומיים בהגדרות > AI.",
+      "noGroups": "לא נמצאו קבוצות ברורות בין הפתקים האלה.",
+      "missing": "{count, plural, one {לפתק אחד עדיין אין וקטור הטמעה, ולכן הוא לא נכלל.} other {ל-# פתקים עדיין אין וקטור הטמעה, ולכן הם לא נכללו.}}",
+      "failed": "לא ניתן להציע קבוצות",
+      "title": "קבוצות מוצעות",
+      "description": "הקיבוץ לפי דמיון נעשה במכשיר הזה. שום דבר בלוח לא משתנה עד ליצירת מסגרות.",
+      "defaultName": "קבוצה {number}",
+      "untitledGroup": "קבוצה",
+      "groupName": "שם הקבוצה",
+      "acceptGroup": "הכללת {name}",
+      "noteCount": "{count, plural, one {פתק אחד} other {# פתקים}}",
+      "discard": "התעלמות",
+      "create": "{count, plural, one {יצירת מסגרת אחת} other {יצירת # מסגרות}}",
+      "created": "{count, plural, one {נוצרה מסגרת אחת} other {נוצרו # מסגרות}}",
+      "cardsGone": "הכרטיסים האלה כבר לא נמצאים בלוח."
+    },
+    "frame": {
+      "categorize": "סיווג",
+      "editBinding": "שינוי הסיווג של המקטע הזה",
+      "cardCount": "{count, plural, one {כרטיס אחד} other {# כרטיסים}}",
+      "bindTitle": "סיווג המקטע הזה",
+      "bindHint": "כרטיסים שמשחררים לתוך המקטע יקבלו את התגית או את ערך המאפיין הזה.",
+      "bindPlaceholder": "חיפוש תגיות וערכי מאפיינים, או הקלדת תגית חדשה…",
+      "bindEmpty": "אין תגיות או ערכי מאפיינים תואמים.",
+      "groupTags": "תגיות",
+      "useTag": "שימוש בתגית החדשה #{tag}",
+      "unbind": "הפסקת הסיווג כ-{label}",
+      "current": "נוכחי",
+      "applied": "{count, plural, one {נוסף {label} לכרטיס אחד} other {נוסף {label} ל-# כרטיסים}}",
+      "applyFailed": "לא ניתן להוסיף את {label}",
+      "revertFailed": "לא ניתן לבטל את {label}",
+      "leftFrame": "{count, plural, one {כרטיס אחד הוצא מ-{label}. הוא שומר על הסיווג.} other {# כרטיסים הוצאו מ-{label}. הם שומרים על הסיווג.}}",
+      "removeCategory": "הסרת {label}",
+      "removed": "{count, plural, one {הוסר {label} מכרטיס אחד} other {הוסר {label} מ-# כרטיסים}}",
+      "removeFailed": "לא ניתן להסיר את {label}",
+      "skippedFile": "{count, plural, one {כרטיס קובץ אחד נשאר ללא שינוי: לקבצים אין תגיות או מאפיינים.} other {# כרטיסי קבצים נשארו ללא שינוי: לקבצים אין תגיות או מאפיינים.}}",
+      "skippedTaskProperty": "{count, plural, one {כרטיס משימה אחד נשאר ללא שינוי: למשימות אפשר להוסיף תגיות, אבל לא מאפייני פתקים.} other {# כרטיסי משימות נשארו ללא שינוי: למשימות אפשר להוסיף תגיות, אבל לא מאפייני פתקים.}}",
+      "skippedUnsupported": "{count, plural, one {כרטיס אחד נשאר ללא שינוי: אי אפשר לסווג אירועים ופרויקטים.} other {# כרטיסים נשארו ללא שינוי: אי אפשר לסווג אירועים ופרויקטים.}}",
+      "layoutAction": "סידור לפי מאפיין",
+      "layoutTitle": "סידור לפי מאפיין",
+      "layoutHint": "יוצר מקטע לכל ערך וממיין לתוכם את הפתקים שבלוח הזה.",
+      "layoutPlaceholder": "חיפוש מאפייני בחירה, בחירה מרובה וסטטוס…",
+      "layoutEmpty": "עדיין אין מאפייני בחירה, בחירה מרובה או סטטוס עם ערכים.",
+      "layoutValueCount": "{count, plural, one {ערך אחד} other {# ערכים}}",
+      "layoutDone": "{count, plural, one {נוצר מקטע אחד עבור {property}} other {נוצרו # מקטעים עבור {property}}}",
+      "layoutFailed": "לא ניתן לסדר את הלוח"
+    }
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "אוספים",
+      "projects": "פרויקטים",
+      "newNote": "פתק חדש",
+      "newNote2": "פתק חדש",
+      "newFolder": "תיקייה חדשה",
+      "newFolder2": "תיקייה חדשה",
+      "newProject": "פרויקט חדש",
+      "bookmarks": "סימניות",
+      "tags": "תגיות",
+      "reorderSection": "שינוי הסדר של {section}",
+      "dropFilesToImport": "שחרור קבצים לייבוא",
+      "dropFilesIntoVaultRoot": "תיקיית השורש של הכספת",
+      "newNoteN": "פתק חדש (⌘N)",
+      "new": "חדש",
+      "newItemMenu": "יצירת פריט חדש…",
+      "feedbackButton": "שליחת משוב",
+      "feedbackTitle": "שליחת משוב",
+      "feedbackDescription": "אפשר לספר לנו מה עובד, מה לא עובד או מה היית רוצה ש-MemryNote יעשה. אנחנו קוראים כל הודעה.",
+      "feedbackPlaceholder": "המשוב שלך…",
+      "feedbackEmailHint": "אפשר להוסיף את כתובת האימייל שלך כדי לקבל תשובה.",
+      "feedbackPrivacyTitle": "מה נשלח",
+      "feedbackPrivacyMessage": "ההודעה שלך, בדיוק כפי שכתבת אותה",
+      "feedbackPrivacyEmailOptional": "האימייל שלך — רק אם הוספת אותו, ורק כדי שנוכל להשיב",
+      "feedbackPrivacyEmailSignedIn": "האימייל של החשבון שלך ({email}), כדי שנוכל להשיב",
+      "feedbackPrivacyVersion": "גרסת האפליקציה ומערכת ההפעלה",
+      "feedbackPrivacyPlan": "התוכנית שלך (חינמית, Plus, Pro או Believer)",
+      "feedbackPrivacyNote": "שום דבר אחר. הפתקים שלך נשארים במכשיר שלך.",
+      "feedbackSend": "שליחה",
+      "feedbackSending": "שולח…",
+      "feedbackSuccess": "תודה על המשוב!",
+      "feedbackError": "לא ניתן היה לשלוח את המשוב. אפשר לנסות שוב.",
+      "syncDisabled": "הסנכרון מושבת",
+      "syncDisabled2": "הסנכרון מושבת",
+      "sortLabel": "מיון {section}: {mode}",
+      "sortModeManual": "ידני",
+      "sortModeNameAsc": "שם א ← ת",
+      "sortModeNameDesc": "שם ת ← א",
+      "sortModeModifiedDesc": "תאריך שינוי: מהחדש לישן",
+      "sortModeModifiedAsc": "תאריך שינוי: מהישן לחדש",
+      "sortModeCreatedDesc": "תאריך יצירה: מהחדש לישן",
+      "sortModeCreatedAsc": "תאריך יצירה: מהישן לחדש",
+      "sortModeCountDesc": "בשימוש הרב ביותר",
+      "sortModeCountAsc": "בשימוש המועט ביותר",
+      "sortSaveFailed": "לא ניתן לשמור את סדר המיון",
+      "sectionOrderSaveFailed": "לא ניתן לשמור את סדר סרגל הצד"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "שינוי גודל חלונית היום",
+      "dragToResizeDoubleClickToReset": "גרירה לשינוי הגודל · לחיצה כפולה לאיפוס"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "חיפוש, החלפה, שאלה…"
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "דילוג על ההדרכה",
+      "welcomeToMemry": "ברוכים הבאים ל-memrynote",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "מאגר הידע האישי שלך. נתחיל? זה לוקח רק 2 דקות.",
+      "getStarted": "התחלה ",
+      "createYourFirstNote": "יצירת הפתק הראשון שלך",
+      "markdownBasedStoredLocallyAsPlainFiles": "מבוסס Markdown, מאוחסן באופן מקומי כקבצים רגילים.",
+      "eGMeetingNotesIdeasAnything": "למשל סיכומי פגישות, רעיונות, כל דבר…",
+      "skip": "דילוג",
+      "createNote": "יצירת פתק ",
+      "addYourFirstTask": "הוספת המשימה הראשונה שלך",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "משימות מקושרות לפתקים שלך, עם עדיפויות ותאריכי יעד.",
+      "eGReviewProjectProposal": "למשל לעבור על הצעת הפרויקט…",
+      "skip2": "דילוג",
+      "createTask": "יצירת משימה ",
+      "syncAcrossDevices": "סנכרון בין מכשירים",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "הפתקים והמשימות שלך מסונכרנים בכל המכשירים שלך. אפשר להגדיר את זה גם מאוחר יותר.",
+      "skipForNow": "דילוג בינתיים",
+      "doneLetSGo": "סיום — יוצאים לדרך! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "הגדרת סמל לתיקייה",
+      "expandFolder": "הרחבת התיקייה",
+      "collapseFolder": "כיווץ התיקייה"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "רמז"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "בוחר הסמלים",
+      "selectIcon": "בחירת סמל",
+      "closeIconPicker": "סגירת בוחר הסמלים",
+      "searchIcons": "חיפוש סמלים…",
+      "all": "הכול",
+      "clearIcon": "ניקוי הסמל",
+      "noIconsFoundFor": "לא נמצאו סמלים עבור \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "קיצורי מקלדת",
+      "closeShortcutsHelp": "סגירת העזרה לקיצורי המקלדת",
+      "press": "יש ללחוץ על",
+      "toClose": "לסגירה"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "הגדרת סמל",
+      "clearIcon": "ניקוי הסמל"
+    },
+    "componentsNavMain": {
+      "platform": "פלטפורמה"
+    },
+    "componentsNavProjects": {
+      "projects": "פרויקטים",
+      "more": "עוד",
+      "viewProject": "הצגת הפרויקט",
+      "shareProject": "שיתוף הפרויקט",
+      "deleteProject": "מחיקת הפרויקט",
+      "more2": "עוד"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "שדרוג ל-Pro",
+      "account": "חשבון",
+      "billing": "חיוב",
+      "notifications": "התראות",
+      "logOut": "התנתקות"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "חיפוש",
+      "searchNotesTasksJournalInbox": "חיפוש פתקים, משימות, יומן, תיבת הנכנסים…",
+      "noResultsFor": "אין תוצאות עבור \"",
+      "result": "תוצאה",
+      "noResultsForQuery": "אין תוצאות עבור \"{query}\"",
+      "resultCount": "{count, plural, one {תוצאה אחת} two {# תוצאות} other {# תוצאות}}",
+      "indexBuilding": "יוצר אינדקס חיפוש {done}/{total} — ייתכן שהתוצאות יהיו חלקיות",
+      "indexBuildingUnknown": "יוצר אינדקס חיפוש — ייתכן שהתוצאות יהיו חלקיות"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "אפשר לחפש וללחוץ על פריטים כדי לבנות את המסלול שלך",
+      "reasons": "סיבות",
+      "clear": "ניקוי"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "ניקוי",
+      "tags": "תגיות",
+      "filterByTag": "סינון לפי תגית…",
+      "dateRange": "טווח תאריכים"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "הצגת כל ",
+      "results": "התוצאות"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "משוער"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "אין כרטיסיות פתוחות",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "כדי להתחיל, אפשר לפתוח דף מסרגל הצד או ליצור כרטיסייה חדשה",
+      "openInbox": "פתיחת תיבת הנכנסים",
+      "closePane": "סגירת החלונית"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "פריסות מוגדרות מראש",
+      "layoutPresets2": "פריסות מוגדרות מראש"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "שינוי גודל החלוניות"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext אינו זמין",
+      "searchResults": "תוצאות חיפוש",
+      "unknownTabType": "סוג כרטיסייה לא ידוע: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "שינויים שלא נשמרו",
+      "preview": "תצוגה מקדימה"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "כרטיסייה חדשה",
+      "newTab2": "כרטיסייה חדשה",
+      "newNote": "פתק חדש",
+      "journal": "יומן",
+      "calendar": "לוח שנה",
+      "inboxCapture": "לכידה לתיבת הנכנסים",
+      "tasks": "משימות",
+      "tags": "תגיות"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "שינויים שלא נשמרו",
+      "unsaved": "לא נשמר)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "שינויים שלא נשמרו"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "סגירת כל הכרטיסיות"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "כרטיסיות פתוחות",
+      "scrollTabsLeft": "גלילת הכרטיסיות ימינה",
+      "scrollTabsRight": "גלילת הכרטיסיות שמאלה",
+      "dayPanel": "חלונית היום"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "משהו השתבש",
+      "anErrorOccurredWhileRenderingThisTabContent": "אירעה שגיאה בעת עיבוד תוכן הכרטיסייה הזו.",
+      "tryAgain": "ניסיון חוזר",
+      "sendReport": "שליחת דוח אבחון"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "סמל הפתק"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "שינויים שלא נשמרו",
+      "unsavedChangesBody": "יש שינויים שלא נשמרו ב-\"{title}\". מה ברצונך לעשות?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "סביבת עבודה חדשה",
+      "darkMode": "מצב כהה",
+      "settings": "הגדרות",
+      "integrations": "אינטגרציות",
+      "signOut": "התנתקות",
+      "downloadOnIos": "הורדה ל-iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "סגירת החלון",
+      "minimizeWindow": "מזעור החלון",
+      "maximizeWindow": "הגדלת החלון"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "הצעות",
+      "or": "או",
+      "enter": "Enter",
+      "toInsert": "להוספה"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "פירורי לחם",
+      "more": "עוד"
+    },
+    "componentsUiDialog": {
+      "close": "סגירה"
+    },
+    "componentsUiSheet": {
+      "close": "סגירה"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "סרגל צד",
+      "displaysTheMobileSidebar": "מציג את סרגל הצד לנייד.",
+      "toggleSidebar": "הצגה או הסתרה של סרגל הצד",
+      "toggleSidebar2": "הצגה או הסתרה של סרגל הצד",
+      "dragToResizeDoubleClickToReset": "גרירה לשינוי הגודל · לחיצה כפולה לאיפוס"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "ברוכים הבאים ל-memrynote",
+      "yourPersonalKnowledgeManagementSystem": "מערכת ניהול הידע האישי שלך.",
+      "selectAFolderToStoreYourNotesAndTasks": "יש לבחור תיקייה לאחסון הפתקים והמשימות שלך.",
+      "opening": "פותח…",
+      "selectVaultFolder": "בחירת תיקיית כספת",
+      "plainMarkdown": "Markdown רגיל",
+      "yourNotesStayPortable": "הפתקים שלך נשארים ניידים",
+      "syncAnywhere": "סנכרון בכל מקום",
+      "useDropboxIcloudGit": "שימוש ב-Dropbox, iCloud, Git",
+      "recentVaults": "כספות אחרונות",
+      "notesLastOpened": "פתקים · נפתח לאחרונה",
+      "preRelease": "בטא",
+      "createNewVault": "יצירת כספת חדשה",
+      "createNewVaultDesc": "יצירת כספת חדשה בתיקייה לבחירתך.",
+      "openExistingVault": "פתיחת כספת קיימת",
+      "openExistingVaultDesc": "בחירת תיקייה של קובצי Markdown שכבר יש לך.",
+      "signInToSync": "התחברות לסנכרון",
+      "signInToSyncDesc": "כספות מוצפנות מקצה לקצה בכל המכשירים שלך.",
+      "create": "יצירה",
+      "open": "פתיחה",
+      "signIn": "התחברות",
+      "helpAndDocs": "עזרה ותיעוד",
+      "signInRequiresVault": "כדי להגדיר סנכרון, יש קודם לפתוח או ליצור כספת.",
+      "addVault": "הוספת כספת",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "הפתקים שלך נשמרים בכספת — תיקייה במחשב הזה.",
+        "createDesc": "אפשר לתת לה שם ולבחור איפה היא תישמר.",
+        "openFolder": "פתיחת תיקייה ככספת",
+        "openFolderDesc": "שימוש בתיקייה של קובצי Markdown שכבר יש לך.",
+        "openFromSync": "פתיחה מ-Memrynote Sync",
+        "openFromSyncDesc": "התחברות והורדה של כספת מהחשבון שלך.",
+        "back": "חזרה",
+        "createTitle": "יצירת כספת חדשה",
+        "createSubtitle": "כספת היא תיקייה של קובצי Markdown. אפשר להעביר אותה מאוחר יותר.",
+        "nameLabel": "שם",
+        "namePlaceholder": "הפתקים שלי",
+        "locationLabel": "מיקום",
+        "change": "שינוי…",
+        "willBeCreatedAt": "תיווצר בנתיב",
+        "errorExists": "כבר קיימת כאן תיקייה בשם הזה.",
+        "openInstead": "לפתוח אותה ככספת במקום",
+        "errorInvalidName": "שם לא יכול להתחיל בנקודה או להכיל / \\ : * ? \" < > |",
+        "createFailed": "לא ניתן ליצור את הכספת.",
+        "createVault": "יצירת כספת",
+        "creating": "יוצר…",
+        "cancel": "ביטול",
+        "chooseTitle": "בחירת כספת",
+        "chooseSubtitle": "החשבון המחובר: {email}. אפשר לבחור כספת לפתיחה במחשב הזה.",
+        "untitledVault": "כספת ללא שם",
+        "items": "{count, plural, one {פריט אחד} other {# פריטים}}",
+        "onThisComputer": "במחשב הזה",
+        "downloadTo": "הורדה אל",
+        "otherVaultsHint": "כספות אחרות נשארות בחשבון שלך. אפשר להוריד אותן בכל עת ממחליף הכספות.",
+        "openVault": "פתיחת הכספת",
+        "opening": "פותח…",
+        "loadingVaults": "טוען את הכספות שלך…",
+        "loadFailed": "לא ניתן לטעון את הכספות שלך.",
+        "retry": "ניסיון חוזר",
+        "noVaultsTitle": "עדיין אין כספות בחשבון שלך",
+        "noVaultsDesc": "אפשר ליצור כספת במחשב הזה. היא תסונכרן לחשבון שלך.",
+        "createCta": "יצירת כספת",
+        "openFailed": "לא ניתן לפתוח את הכספת."
+      }
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "עדיין אין כספות",
+      "openVault": "פתיחת כספת",
+      "settings": "הגדרות",
+      "logOut": "התנתקות",
+      "signInToSync": "התחברות לסנכרון",
+      "remove": "הסרת \"",
+      "removeVaultTitle": "להסיר את \"{name}\" מהרשימה?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "הכספת הזו תוסר מהאפליקציה, אבל הקבצים שלך יישארו בדיסק. אפשר תמיד להוסיף אותה מחדש מאוחר יותר.",
+      "cancel": "ביטול",
+      "remove2": "הסרה",
+      "inYourAccount": "בחשבון שלך",
+      "itemsCount": "{count} פריטים",
+      "untitledVault": "כספת",
+      "downloadVaultTitle": "הורדת \"{name}\"",
+      "downloadLocation": "מיקום",
+      "changeLocation": "שינוי…",
+      "download": "הורדה",
+      "downloadFailed": "לא ניתן היה להוריד את הכספת",
+      "deleteFromAccount": "מחיקה מהחשבון",
+      "deleteVaultTitle": "למחוק את \"{name}\" מהחשבון שלך?",
+      "deleteVaultBody": "פעולה זו מסירה לצמיתות את כל הנתונים המסונכרנים של הכספת הזו משרתי Memry, ולא ניתן לבטל אותה. הקבצים שלך בדיסק לא יימחקו.",
+      "deleteVaultConfirm": "מחיקה מהחשבון",
+      "deleteVaultFailed": "לא ניתן היה למחוק את הכספת",
+      "missing": "התיקייה לא נמצאה"
+    },
+    "componentsWindowControls": {
+      "searchK": "חיפוש (⌘K)",
+      "browserBack": "ניווט אחורה",
+      "back": "חזרה",
+      "browserForward": "ניווט קדימה",
+      "forward": "קדימה"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "ייבוא הקבצים נכשל",
+      "failedToCreateNote": "יצירת הפתק נכשלה",
+      "failedToAccessMicrophone": "הגישה למיקרופון נכשלה"
+    },
+    "toasts": {
+      "undone": "בוטל"
+    }
+  },
+  "home": {
+    "widget": {
+      "removeAria": "הסרת הווידג׳ט",
+      "dragAria": "גרירת הווידג׳ט",
+      "configAria": "הגדרת הווידג׳ט",
+      "resizeAria": "שינוי הגודל ל-{size}",
+      "menuAria": "אפשרויות הווידג׳ט",
+      "resize": "גודל",
+      "remove": "הסרה",
+      "filter": {
+        "all": "הכול",
+        "today": "להיום",
+        "tomorrow": "מחר",
+        "next7": "7 הימים הקרובים",
+        "noDueDate": "ללא תאריך יעד"
+      },
+      "recentlyEdited": "נערך לאחרונה",
+      "recentlyOpened": "נפתח לאחרונה",
+      "recentMeta": "נערך {time}",
+      "recentMetaWithFolder": "{folder} · נערך {time}",
+      "openedMeta": "נפתח {time}",
+      "openedMetaWithFolder": "{folder} · נפתח {time}",
+      "noRecentlyOpened": "פתקים שנפתחו יופיעו כאן",
+      "bookmarks": "סימניות",
+      "tasks": "משימות",
+      "calendar": "לוח שנה",
+      "calendarToday": "היום",
+      "openCalendar": "פתיחת לוח השנה",
+      "next": "הבא: {title}",
+      "startsIn": "מתחיל בעוד {count, plural, one {# דק׳} other {# דק׳}}",
+      "duration": "{count} דק׳",
+      "inbox": "תיבת נכנסים",
+      "inboxAllTypes": "כל הסוגים",
+      "inboxOlder": "{count, plural, one {פריט ישן יותר} other {# ישנים יותר}}",
+      "inboxOldest": "הישן ביותר: {count, plural, one {יום אחד} two {יומיים} other {# ימים}}",
+      "openInbox": "פתיחת תיבת הנכנסים",
+      "folder": "תיקייה",
+      "untitled": "ללא כותרת",
+      "folderPickPrompt": "בחירת תיקייה",
+      "folderEmpty": "אין עדיין תיקיות",
+      "folderNoSelection": "לא נבחרה תיקייה",
+      "folderView_list": "רשימה",
+      "folderView_gallery": "גלריה",
+      "folderViewSelect": "תצוגה",
+      "project": "פרויקט",
+      "projectNoSelection": "לא נבחר פרויקט",
+      "projectMissing": "הפרויקט הזה כבר לא זמין",
+      "projectNoTasks": "אין משימות",
+      "journal": "יומן",
+      "journalStreak": "{count, plural, one {רצף של יום אחד} two {רצף של יומיים} other {רצף של # ימים}}",
+      "journalToday": "היום",
+      "journalYesterday": "אתמול",
+      "journalTomorrow": "מחר",
+      "journalUpcoming": "בקרוב",
+      "journalNoEntryYet": "עדיין אין רשומה",
+      "loadError": "לא ניתן היה לטעון",
+      "unknown": "וידג׳ט לא ידוע"
+    },
+    "board": {
+      "label": "פריסת דף הבית",
+      "deleteAria": "מחיקת הפריסה",
+      "newAria": "לוח חדש",
+      "newName": "לוח חדש",
+      "defaultName": "דף הבית",
+      "manage": "ניהול לוחות",
+      "manageTitle": "ניהול לוחות",
+      "manageDescription": "אפשר לשנות שם, לשנות סדר או למחוק את הלוחות שלך בדף הבית.",
+      "renameAria": "שינוי שם הלוח",
+      "reorderAria": "שינוי מיקום הלוח",
+      "nameLabel": "שם הלוח"
+    },
+    "greeting": {
+      "morning": "בוקר טוב",
+      "afternoon": "צהריים טובים",
+      "evening": "ערב טוב"
+    },
+    "header": {
+      "tasksDue": "{count, plural, one {משימה אחת להיום} other {# משימות להיום}}",
+      "events": "{count, plural, one {אירוע אחד} other {# אירועים}}"
+    },
+    "edit": "עריכה",
+    "done": "סיום",
+    "addWidget": "הוספת וידג׳ט",
+    "empty": {
+      "title": "הלוח שלך ריק",
+      "body": "וידג׳טים מאחדים את הפתקים, המשימות והסימניות שלך במקום רגוע אחד.",
+      "cta": "הוספת הווידג׳ט הראשון שלך"
+    },
+    "noBookmarksYet": "אין עדיין סימניות.",
+    "noNotesYet": "אין עדיין פתקים.",
+    "noTasksYet": "אין עדיין משימות.",
+    "noEventsYet": "אין אירועים היום.",
+    "noJournalEntriesYet": "אין עדיין רשומות ביומן.",
+    "disabled": {
+      "createNote": "יצירת פתק",
+      "hint": "אין שום דבר פתוח. אפשר להתחיל פתק."
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "ברוכים הבאים ל-MemryNote",
+      "body": "הבית הפרטי שלך, שעובד גם בלי חיבור. הפתקים מוצפנים מקצה לקצה — הם אף פעם לא יוצאים מהמכשיר שלך בלי הצפנה."
+    },
+    "newNote": {
+      "title": "יצירת הפתק הראשון שלך",
+      "body": "אפשר להתחיל כאן. כל מה שנכתב נשמר קודם כול במכשיר."
+    },
+    "nav": {
+      "title": "סביבות העבודה שלך",
+      "body": "תיבת נכנסים ללכידה, יומן לפתקים יומיים, לוח שנה לציר הזמן שלך, משימות לכל מה שצריך לעשות, וגרף כדי לראות איך הכול מתחבר."
+    },
+    "collections": {
+      "title": "אוספים, סימניות ותגיות",
+      "body": "אפשר לארגן פתקים בתיקיות, להצמיד סימניות ולעיין לפי תגית — הכול כאן."
+    },
+    "dayPanel": {
+      "title": "היום שלך, לצד העבודה שלך",
+      "body": "חלונית הצד מציגה לוח שנה ואת תצוגת היום שלך לצד כל מה שפתוח לפניך."
+    },
+    "agentChat": {
+      "title": "צ׳אט עם סוכן ה-AI",
+      "body": "בכרטיסיית הסוכן אפשר לשאול את העוזר של MemryNote על הכספת שלך."
+    },
+    "sync": {
+      "title": "סנכרון פרטי ומוצפן",
+      "body": "אפשר להפעיל סנכרון מוצפן מקצה לקצה כדי שכל המכשירים יישארו מעודכנים."
+    },
+    "feedback": {
+      "title": "נשמח לשמוע מה דעתך",
+      "body": "מכאן אפשר לשלוח משוב ישירות לצוות."
+    },
+    "settings": {
+      "title": "הגדרות וייבוא",
+      "body": "אפשר לייבא את הפתקים שלך מיותר מ-12 אפליקציות — Obsidian, Notion, Apple Notes, Evernote ועוד — ולכוונן את כל השאר בהגדרות."
+    },
+    "tour": {
+      "next": "הבא",
+      "previous": "הקודם",
+      "progress": "{current} מתוך {total}"
+    },
+    "starPrompt": {
+      "title": "הדרכת הפתיחה הושלמה",
+      "body": "נשמח לכוכב ב-GitHub — זה עוזר לאנשים אחרים למצוא את MemryNote.",
+      "action": "כוכב ב-GitHub"
+    }
   },
   "shortcuts": {
-    "combos": {
-      "clickRow": "לחיצה על שורה",
-      "reset": "איפוס",
-      "shortcutsTab": "כרטיסיית הקיצורים"
-    },
     "description": "דרכים מהירות לנווט ב-memrynote, ללכוד מחשבות ולעבד עבודה.",
+    "or": "או",
+    "then": "ואז",
     "groups": {
       "general": {
-        "description": "ניווט ועזרה בכל האפליקציה.",
-        "title": "כללי"
-      },
-      "inbox": {
-        "description": "עבד במהירות פריטים שנלכדו.",
-        "title": "תיבת דואר נכנס"
-      },
-      "journal": {
-        "description": "נווט בתצוגות היומן והתמקד באזור הכתיבה.",
-        "title": "יומן"
-      },
-      "notes": {
-        "description": "כתוב, עצב וחפש הערות.",
-        "title": "הערות / עורך"
-      },
-      "settings": {
-        "description": "פתח את ההגדרות והתאם קיצורים אישית.",
-        "title": "הגדרות"
+        "title": "כללי",
+        "description": "ניווט ועזרה בכל האפליקציה."
       },
       "tabs": {
-        "description": "עבור בין כרטיסיות וחלוניות.",
-        "title": "כרטיסיות ופיצולים"
+        "title": "כרטיסיות ופיצולים",
+        "description": "מעבר בין כרטיסיות וחלוניות."
+      },
+      "inbox": {
+        "title": "תיבת נכנסים",
+        "description": "טיפול מהיר בפריטים שנלכדו."
+      },
+      "journal": {
+        "title": "יומן",
+        "description": "ניווט בתצוגות היומן ומיקוד באזור הכתיבה."
+      },
+      "notes": {
+        "title": "פתקים / עורך",
+        "description": "כתיבה, עיצוב וחיפוש בפתקים."
       },
       "tasks": {
-        "description": "סנן, בחר והשלם משימות.",
-        "title": "משימות"
+        "title": "משימות",
+        "description": "סינון, בחירה והשלמה של משימות."
+      },
+      "settings": {
+        "title": "הגדרות",
+        "description": "פתיחת ההגדרות והתאמה אישית של קיצורי המקלדת."
       }
     },
     "items": {
       "general": {
-        "createNote": "צור הערה",
-        "keyboardShortcuts": "פתח את קיצורי המקלדת",
-        "openSettings": "פתח את ההגדרות",
-        "quickSearch": "פתח חיפוש מהיר",
-        "sidebarSection": "עבור לקטע בסרגל הצד",
-        "toggleSidebar": "החלף את סרגל הצד",
-        "undoTaskAction": "בטל את פעולת המשימה האחרונה"
-      },
-      "inbox": {
-        "archiveItem": "העבר לארכיון את הפריט הנבחר",
-        "chooseQuickFileResult": "בחר תוצאת תיוק מהיר",
-        "clearSelection": "נקה בחירה או סגור תיוק מהיר",
-        "confirmFiling": "אשר את חלונית התיוק",
-        "firstOrLastItem": "פריט ראשון או אחרון",
-        "jumpByPage": "דלג עמוד שלם",
-        "nextItem": "הפריט הבא",
-        "openOriginal": "פתח את הקישור המקורי",
-        "openQuickFile": "פתח תיוק מהיר",
-        "previousItem": "הפריט הקודם",
-        "refresh": "רענן את תיבת הדואר הנכנס",
-        "selectAllVisible": "בחר את כל הפריטים הגלויים",
-        "selectItem": "בחר פריט",
-        "togglePreview": "החלף את חלונית התצוגה המקדימה"
-      },
-      "journal": {
-        "bold": "הדגש את הטקסט הנבחר",
-        "find": "חפש ביומן",
-        "italic": "הטה את הטקסט הנבחר",
-        "returnFromOverview": "חזור מתצוגת חודש או שנה",
-        "underline": "הוסף קו תחתון לטקסט הנבחר"
-      },
-      "notes": {
-        "bold": "מודגש",
-        "closeOverlays": "סגור את שכבות העורך",
-        "commandMenu": "פתח את תפריט הפקודות של העורך",
-        "createNote": "צור הערה",
-        "find": "חפש בהערה",
-        "italic": "נטוי",
-        "underline": "קו תחתון"
-      },
-      "settings": {
-        "cancelRecording": "בטל את הקלטת הקיצור",
-        "customizeShortcuts": "התאם אישית קיצורי מקלדת",
-        "openSettings": "פתח את ההגדרות",
-        "recordShortcut": "הקלט קיצור חדש",
-        "resetShortcut": "שחזר קיצור לברירת המחדל"
+        "quickSearch": "פתיחת החיפוש המהיר",
+        "createNote": "יצירת פתק",
+        "openSettings": "פתיחת ההגדרות",
+        "switchVault": "החלפת כספת",
+        "adjacentVault": "הכספת הקודמת או הבאה",
+        "keyboardShortcuts": "פתיחת קיצורי המקלדת",
+        "undoTaskAction": "ביטול פעולת המשימה האחרונה",
+        "toggleSidebar": "הצגה או הסתרה של סרגל הצד",
+        "sidebarSection": "מעבר למקטע בסרגל הצד"
       },
       "tabs": {
-        "closeAllInPane": "סגור את כל הכרטיסיות בחלונית",
-        "closeSplitPane": "סגור את החלונית המפוצלת",
-        "closeTab": "סגור כרטיסייה",
-        "duplicateTab": "שכפל כרטיסייה",
-        "focusPane": "התמקד בחלונית אחרת",
-        "maximizePane": "הגדל את החלונית הנוכחית",
-        "moveTabToPane": "העבר כרטיסייה לחלונית",
-        "newTabMenu": "פתח את תפריט הכרטיסייה החדשה",
+        "newTabMenu": "פתיחת תפריט הכרטיסייה החדשה",
+        "closeTab": "סגירת הכרטיסייה",
+        "closeAllInPane": "סגירת כל הכרטיסיות בחלונית",
+        "reopenClosedTab": "פתיחה מחדש של כרטיסייה שנסגרה",
         "nextTab": "הכרטיסייה הבאה",
-        "pinTab": "הצמד או בטל הצמדה של כרטיסייה",
         "previousTab": "הכרטיסייה הקודמת",
-        "reopenClosedTab": "פתח מחדש כרטיסייה שנסגרה",
-        "splitDown": "פצל למטה",
-        "splitRight": "פצל ימינה"
+        "pinTab": "הצמדה או ביטול הצמדה של כרטיסייה",
+        "duplicateTab": "שכפול הכרטיסייה",
+        "splitRight": "פיצול לצד",
+        "splitDown": "פיצול למטה",
+        "closeSplitPane": "סגירת החלונית המפוצלת",
+        "focusPane": "מעבר לחלונית אחרת",
+        "moveTabToPane": "העברת הכרטיסייה לחלונית",
+        "maximizePane": "הגדלת החלונית הנוכחית"
+      },
+      "inbox": {
+        "nextItem": "הפריט הבא",
+        "previousItem": "הפריט הקודם",
+        "firstOrLastItem": "פריט ראשון או אחרון",
+        "jumpByPage": "דילוג בעמוד שלם",
+        "togglePreview": "הצגה או הסתרה של חלונית התצוגה המקדימה",
+        "selectItem": "בחירת פריט",
+        "selectAllVisible": "בחירת כל הפריטים הגלויים",
+        "clearSelection": "ניקוי הבחירה או סגירת התיוק המהיר",
+        "openQuickFile": "פתיחת התיוק המהיר",
+        "chooseQuickFileResult": "בחירת תוצאה בתיוק המהיר",
+        "archiveItem": "העברת הפריט הנבחר לארכיון",
+        "openOriginal": "פתיחת הקישור המקורי",
+        "refresh": "רענון תיבת הנכנסים",
+        "confirmFiling": "אישור בחלונית התיוק"
+      },
+      "journal": {
+        "returnFromOverview": "חזרה מתצוגת חודש או שנה",
+        "find": "חיפוש ביומן",
+        "bold": "הדגשת הטקסט הנבחר",
+        "italic": "הטיית הטקסט הנבחר",
+        "underline": "הוספת קו תחתון לטקסט הנבחר"
+      },
+      "notes": {
+        "createNote": "יצירת פתק",
+        "find": "חיפוש בפתק",
+        "bold": "מודגש",
+        "italic": "נטוי",
+        "underline": "קו תחתון",
+        "commandMenu": "פתיחת תפריט הפקודות של העורך",
+        "closeOverlays": "סגירת השכבות הצפות בעורך"
       },
       "tasks": {
-        "clearFilters": "נקה את המסננים הגלויים",
-        "clearSelection": "נקה את בחירת המשימות",
-        "completeSelected": "השלם את המשימות הנבחרות",
-        "configureRepeat": "הגדר חזרה למשימה שבמיקוד",
-        "deleteSelected": "מחק את המשימות הנבחרות",
-        "selectAllVisible": "בחר את כל המשימות הגלויות",
-        "skipOccurrence": "דלג על מופע החזרה",
-        "stopRepeating": "הפסק את חזרת המשימה"
+        "clearFilters": "ניקוי המסננים הגלויים",
+        "selectAllVisible": "בחירת כל המשימות הגלויות",
+        "clearSelection": "ניקוי בחירת המשימות",
+        "completeSelected": "סימון המשימות הנבחרות כהושלמו",
+        "deleteSelected": "מחיקת המשימות הנבחרות",
+        "configureRepeat": "הגדרת חזרה למשימה שבמיקוד",
+        "skipOccurrence": "דילוג על מופע החזרה",
+        "stopRepeating": "הפסקת החזרה של המשימה"
+      },
+      "settings": {
+        "openSettings": "פתיחת ההגדרות",
+        "customizeShortcuts": "התאמה אישית של קיצורי המקלדת",
+        "recordShortcut": "הקלטת קיצור חדש",
+        "cancelRecording": "ביטול הקלטת הקיצור",
+        "resetShortcut": "שחזור ברירת המחדל של קיצור"
       }
     },
-    "or": "או",
-    "then": "ואז"
+    "combos": {
+      "shortcutsTab": "כרטיסיית הקיצורים",
+      "clickRow": "לחיצה על שורה",
+      "reset": "איפוס"
+    }
+  },
+  "update": {
+    "available": "עדכון זמין",
+    "downloading": "מוריד את {version}",
+    "ready": "העדכון מוכן",
+    "failed": "העדכון נכשל",
+    "downloadAction": "הורדה",
+    "restartAction": "הפעלה מחדש",
+    "detailsAction": "פרטים",
+    "popover": {
+      "readyTitle": "MemryNote {version} מוכן",
+      "availableTitle": "MemryNote {version} זמין",
+      "readySubtitle": "הגרסה הנוכחית: {current}",
+      "availableSubtitle": "הגרסה הנוכחית: {current} · עדיין לא הורד דבר",
+      "allChanges": "כל השינויים",
+      "restartNow": "הפעלה מחדש עכשיו",
+      "onNextQuit": "ביציאה הבאה",
+      "download": "הורדה",
+      "notNow": "לא עכשיו",
+      "moreOptions": "אפשרויות עדכון נוספות",
+      "skipVersion": "דילוג על {version}",
+      "turnOffAuto": "כיבוי עדכונים אוטומטיים",
+      "copyVersionInfo": "העתקת פרטי הגרסה",
+      "openSettings": "פתיחת ההגדרות"
+    },
+    "installing": {
+      "title": "מתקין את {version}",
+      "titleUnknownVersion": "מתקין את העדכון",
+      "subtitle": "MemryNote ייפתח מחדש בעוד רגע. כל מה שכתבת כבר שמור בדיסק."
+    },
+    "installFailed": {
+      "title": "MemryNote לא הצליח להשלים את התקנת {version}",
+      "titleUnknownVersion": "MemryNote לא הצליח להשלים את התקנת העדכון",
+      "body": "הכספת שלך לא נפגעה — עדכון מוחל על האפליקציה, לא על הפתקים שלך. הגרסה הנוכחית עדיין {current}, והכול עובד כמו קודם.",
+      "errorLabel": "מה השתבש",
+      "downloadManually": "הורדה ידנית של {version}",
+      "downloadManuallyUnknownVersion": "הורדה ידנית של MemryNote",
+      "tryAgain": "ניסיון חוזר",
+      "copyDetails": "העתקת הפרטים"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "כספות",
+    "position": "{name}, כספת {index} מתוך {count}",
+    "openList": "{position}. פתיחת רשימת הכספות",
+    "switchTo": "מעבר אל {name}",
+    "switchingTo": "עובר אל {name}",
+    "changeIcon": "שינוי סמל…",
+    "resetIcon": "איפוס הסמל",
+    "iconButton": "שינוי הסמל של {name}",
+    "iconFailed": "לא ניתן לשנות את סמל הכספת"
+  },
+  "sidebarHelp": {
+    "label": "עזרה ומשוב",
+    "reportBug": "דיווח על באג",
+    "requestFeature": "בקשת תכונה",
+    "starOnGithub": "כוכב ב-GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "מה חדש"
+  },
+  "sidebarStar": {
+    "title": "MemryNote הוא קוד פתוח",
+    "body": "מפותח בקוד פתוח. כוכב עוזר לאחרים למצוא אותו.",
+    "star": "כוכב",
+    "later": "לא עכשיו",
+    "thanks": "תודה. זה משמעותי מאוד בשבילנו."
+  },
+  "sidebar": {
+    "railLabel": "מקטעים",
+    "search": "חיפוש או מעבר אל…",
+    "vaultMenu": "{name}. פתיחת רשימת הכספות"
   }
 }

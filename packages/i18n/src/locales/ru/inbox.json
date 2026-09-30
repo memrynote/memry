@@ -3,532 +3,536 @@
     "tabs": {
       "inbox": "Входящие",
       "archived": "В архиве",
-      "insights": "Информация",
-      "ariaLabel": "Выбор вида входящих сообщений"
+      "insights": "Статистика",
+      "ariaLabel": "Режим просмотра входящих"
     },
-    "triageButton": "сортировка",
-    "processInboxTitle": "Обработать входящие (Cmd+P)",
-    "itemCaptured": "Объект захвачен",
+    "itemCaptured": "Сохранено во входящих",
     "searchArchivedTitle": "Поиск в архиве",
-    "searchPlaceholder": "Искать...",
-    "archivedItemsAria": "Архивированные элементы",
+    "searchPlaceholder": "Поиск…",
+    "archivedItemsAria": "Элементы в архиве",
     "snoozed": {
-      "show": "Показать отложенные элементы",
-      "showWithCount": "Показать отложенные элементы ({count})",
-      "hide": "Скрыть отложенные элементы"
-    },
-    "filter": {
-      "button": "Фильтр",
-      "byType": "Фильтровать по типу",
-      "active": "{count, plural, one {Фильтрация по типу #} other {Фильтрация по типам #}}",
-      "clearAll": "Очистить все"
-    },
-    "jobs": {
-      "running": "{count, plural, one {# выполняется фоновое задание} other {# выполняются фоновые задания}}",
-      "failed": "{count} не удалось"
+      "show": "Показать отложенные",
+      "showWithCount": "Показать отложенные ({count})",
+      "hide": "Скрыть отложенные"
     },
     "density": {
       "toComfortable": "Свободный вид",
       "toCompact": "Компактный вид"
+    },
+    "filter": {
+      "button": "Фильтр",
+      "byType": "Фильтровать по типу",
+      "active": "Фильтр: {count, plural, one {# тип} few {# типа} many {# типов} other {# типа}}",
+      "clearAll": "Очистить все"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# фоновое задание выполняется} few {# фоновых задания выполняются} many {# фоновых заданий выполняется} other {# фонового задания выполняется}}",
+      "failed": "Ошибок: {count}"
     }
   },
   "type": {
     "link": "Ссылка",
     "links": "Ссылки",
-    "note": "Примечание",
-    "notes": "Примечания",
+    "note": "Заметка",
+    "notes": "Заметки",
     "image": "Изображение",
     "images": "Изображения",
-    "voice": "Голос",
+    "voice": "Голосовая заметка",
     "video": "Видео",
-    "clip": "Клип",
-    "clips": "Клипы",
+    "clip": "Фрагмент",
+    "clips": "Фрагменты",
     "pdf": "PDF",
     "pdfs": "PDF-файлы",
-    "social": "Социальные",
+    "social": "Соцсети",
     "reminder": "Напоминание",
     "reminders": "Напоминания"
   },
   "empty": {
-    "successAria": "Успех, почтовый ящик пуст",
-    "title": "Входящие ноль",
-    "body": "Все обработано. Запишите что-то новое, используя введенные выше данные, или вставьте ссылку, чтобы начать.",
-    "filedThisWeek": "{count, plural, one {# зарегистрирован на этой неделе.} other {# зарегистрирован на этой неделе.}}",
-    "dayStreak": "{count, plural, one {Дневная серия #} other {Дневная серия #}}",
-    "tipPrefix": "Совет: используйте",
-    "tipSuffix": "для быстрого захвата из буфера обмена",
+    "successAria": "Готово, во входящих пусто",
+    "title": "Во входящих пусто",
+    "body": "Всё разобрано. Запишите что-нибудь новое в поле выше или вставьте ссылку, чтобы начать.",
+    "filedThisWeek": "{count, plural, one {# элемент размещён на этой неделе} few {# элемента размещено на этой неделе} many {# элементов размещено на этой неделе} other {# элемента размещено на этой неделе}}",
+    "dayStreak": "{count, plural, one {# день подряд} few {# дня подряд} many {# дней подряд} other {# дня подряд}}",
+    "tipPrefix": "Совет: нажмите",
+    "tipSuffix": "для быстрой записи из буфера обмена",
     "archivedNone": "Нет элементов в архиве",
-    "archivedNoMatches": "Нет соответствующих заархивированных элементов.",
-    "noItemsYet": "Товаров пока нет",
-    "noItemsFiled": "Элементы еще не отправлены",
+    "archivedNoMatches": "Нет подходящих элементов в архиве",
+    "noItemsYet": "Элементов пока нет",
+    "noItemsFiled": "Пока ничего не размещено",
     "noFolders": "Папки не найдены",
     "noNotes": "Заметки не найдены",
     "allMatchesLinked": "Все совпадения уже связаны"
   },
   "list": {
-    "ariaLabel": "Входящие элементы",
+    "ariaLabel": "Элементы во входящих",
     "section": {
       "today": "Сегодня",
       "yesterday": "Вчера",
-      "older": "Старше"
+      "older": "Ранее"
     },
-    "selectItem": "Выберите {title}.",
+    "selectItem": "Выбрать «{title}»",
     "itemAria": "{type}: {title}",
     "untitled": "Без названия",
-    "untitledItem": "Безымянный предмет",
-    "transcribing": "Расшифровка...",
-    "transcriptionFailed": "Транскрипция не удалась",
-    "retryTranscription": "Повторить попытку",
-    "pageCount": "{count, plural, one {Страница #} other {Страницы #}}",
-    "snoozedUntilShort": "отложено до {date}"
+    "untitledItem": "Элемент без названия",
+    "transcribing": "Расшифровка…",
+    "transcriptionFailed": "Не удалось расшифровать",
+    "retryTranscription": "Повторить",
+    "pageCount": "{count, plural, one {# страница} few {# страницы} many {# страниц} other {# страницы}}",
+    "snoozedUntilShort": "отложено до {date}",
+    "rename": "Переименовать",
+    "renameLabel": "Переименовать элемент"
   },
   "loading": {
-    "inbox": "Загрузка входящих...",
+    "inbox": "Загрузка входящих…",
     "failed": "Не удалось загрузить входящие",
-    "tryAgain": "Попробуйте еще раз",
-    "capturingImage": "Захват изображения...",
-    "dropImageTitle": "Перетащите изображение для захвата",
+    "tryAgain": "Повторить",
+    "capturingImage": "Сохранение изображения…",
+    "dropImageTitle": "Отпустите изображение, чтобы сохранить его",
     "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
-    "unsupportedImageType": "Неподдерживаемый тип изображения: {type}.",
-    "imageTooLarge": "Изображение слишком большое (максимум 50 МБ)."
+    "unsupportedImageType": "Неподдерживаемый тип изображения: {type}",
+    "imageTooLarge": "Изображение слишком большое (макс. 50 МБ)"
   },
   "toast": {
     "failedArchiveItem": "Не удалось заархивировать элемент",
     "failedArchiveItems": "Не удалось заархивировать элементы",
-    "failedFile": "Не удалось отправить файл",
-    "failedFileItem": "Не удалось сохранить элемент",
-    "failedFileItems": "Не удалось сохранить элементы",
+    "failedFile": "Не удалось разместить",
+    "failedFileItem": "Не удалось разместить элемент",
+    "failedFileItems": "Не удалось разместить элементы",
     "failedSnooze": "Не удалось отложить",
-    "failedSnoozeItem": "Не удалось отложить элемент.",
+    "failedSnoozeItem": "Не удалось отложить элемент",
     "failedApplyTags": "Не удалось применить теги",
-    "failedCaptureImage": "Не удалось захватить изображение",
-    "linkedToNote": "Ссылка на заметку",
-    "linkedToNotes": "Связано с заметками {count}.",
-    "filedTo": "Записано в {folder}",
-    "filedItemsTo": "Элементы {count} сохранены в {folder}.",
-    "filedPartial": "Зарегистрировано {processed} из элементов {total}.",
-    "appliedTags": "{tagCount, plural, one {Применен тег #.} other {Применены теги #}} — {itemCount, plural, one {# элемент} other {# элементов}}",
-    "archivedItems": "{count, plural, one {Архивированный элемент #} other {Архивированные элементы #}}",
+    "failedCaptureImage": "Не удалось сохранить изображение",
+    "linkedToNote": "Связано с заметкой",
+    "linkedToNotes": "{count, plural, one {Связано с # заметкой} few {Связано с # заметками} many {Связано с # заметками} other {Связано с # заметки}}",
+    "embedFellBackToLink": "Изображение слишком большое для встраивания — размещено как связанный файл",
+    "filedTo": "Размещено в «{folder}»",
+    "filedItemsTo": "{count, plural, one {# элемент размещён в «{folder}»} few {# элемента размещено в «{folder}»} many {# элементов размещено в «{folder}»} other {# элемента размещено в «{folder}»}}",
+    "filedPartial": "Размещено элементов: {processed} из {total}",
+    "appliedTags": "{tagCount, plural, one {Применён # тег} few {Применено # тега} many {Применено # тегов} other {Применено # тега}} к {itemCount, plural, one {# элементу} few {# элементам} many {# элементам} other {# элемента}}",
+    "archivedItems": "{count, plural, one {# элемент перемещён в архив} few {# элемента перемещено в архив} many {# элементов перемещено в архив} other {# элемента перемещено в архив}}",
     "snoozedUntil": "Отложено до {time}",
-    "snoozedItemsUntil": "{count, plural, one {Элемент # отложен до {time}.} other {Отложены элементы # до {time}.}}"
-  },
-  "triage": {
-    "modeTitle": "Режим сортировки",
-    "exitHint": "Esc для выхода",
-    "exitAria": "Выйти из режима сортировки",
-    "position": "{current} из {total}",
-    "action": {
-      "discard": "Отбросить",
-      "archive": "Архив",
-      "open": "Открыть",
-      "toTask": "Задача",
-      "toNote": "Примечание",
-      "file": "Файл",
-      "snooze": "Отложить",
-      "cancel": "Отмена"
-    },
-    "snoozeUntil": "Отложить пока...",
-    "complete": {
-      "title": "Входящие ноль",
-      "processed": "{count, plural, one {Элемент # обработан} other {Обработаны элементы #}}",
-      "streak": "полоса",
-      "streakCount": "Серия {count}",
-      "dayProcessingStreak": "{count, plural, one {Дневная полоса обработки #} other {Дневная полоса обработки #}}",
-      "back": "Вернуться во входящие",
-      "motivation0": "Ваше будущее я благодарит вас.",
-      "motivation1": "Все на своем месте.",
-      "motivation2": "Очистите почтовый ящик, очистите разум.",
-      "motivation3": "Решение долг: погашен полностью.",
-      "motivation4": "Это было приятно, не так ли?"
-    }
+    "snoozedItemsUntil": "{count, plural, one {# элемент отложен до {time}} few {# элемента отложено до {time}} many {# элементов отложено до {time}} other {# элемента отложено до {time}}}",
+    "restored": "Элемент «{title}» восстановлен"
   },
   "bulk": {
-    "selected": "{count} выбрано",
-    "deselectAll": "Отменить выбор всех",
-    "ariaLabel": "Массовые действия для выбранных элементов {count}",
-    "file": "Файл",
-    "tag": "Тег",
+    "selected": "Выбрано: {count}",
+    "deselectAll": "Снять выделение",
+    "ariaLabel": "Массовые действия с выбранными элементами ({count})",
+    "file": "Разместить",
+    "tag": "Добавить тег",
     "snooze": "Отложить",
-    "archive": "Архив",
+    "archive": "Архивировать",
     "add": "Добавить",
     "dismissSuggestion": "Отклонить предложение",
     "hint": {
-      "file": "файл",
-      "tag": "тег",
+      "file": "разместить",
+      "tag": "добавить тег",
       "snooze": "отложить",
-      "archive": "архив",
-      "deselect": "отменить выбор"
+      "archive": "архивировать",
+      "deselect": "снять выделение"
     },
     "archiveDialog": {
-      "title": "{count, plural, one {Архивировать элемент #?} other {Архивировать элементы #?}}",
-      "description": "Эти элементы будут заархивированы. Вы можете просмотреть заархивированные элементы позже.",
-      "confirm": "{count, plural, one {Архивировать элемент #} other {Архив элементов #}}"
+      "title": "{count, plural, one {Архивировать # элемент?} few {Архивировать # элемента?} many {Архивировать # элементов?} other {Архивировать # элемента?}}",
+      "description": "Элементы будут перемещены в архив. Их можно будет просмотреть позже.",
+      "confirm": "{count, plural, one {Архивировать # элемент} few {Архивировать # элемента} many {Архивировать # элементов} other {Архивировать # элемента}}"
     },
     "filePanel": {
-      "title": "{count, plural, one {Файл # Элемент} other {Элементы файла #}}",
-      "itemsToFile": "Элементы для хранения",
-      "multipleNoteLinksUnavailable": "Примечание. При подаче нескольких элементов нельзя добавлять ссылки на другие примечания.",
-      "filing": "Подача...",
-      "submit": "{count, plural, one {Файловый элемент #} other {Элементы файла #}}",
-      "macHint": "⌘⏎ для сохранения файла · Esc для закрытия",
-      "ctrlHint": "Ctrl+Enter для открытия файла · Esc для закрытия"
+      "title": "{count, plural, one {Разместить # элемент} few {Разместить # элемента} many {Разместить # элементов} other {Разместить # элемента}}",
+      "itemsToFile": "Элементы для размещения",
+      "multipleNoteLinksUnavailable": "Примечание: при размещении нескольких элементов нельзя добавить ссылки на другие заметки.",
+      "filing": "Размещение…",
+      "submit": "{count, plural, one {Разместить # элемент} few {Разместить # элемента} many {Разместить # элементов} other {Разместить # элемента}}",
+      "macHint": "⌘⏎ — разместить · Esc — закрыть",
+      "ctrlHint": "Ctrl+Enter — разместить · Esc — закрыть"
     },
     "tagPopover": {
-      "title": "{count, plural, one {Тег # Элемент} other {Тег # элементов}}",
-      "placeholder": "Введите для поиска тегов...",
-      "applying": "Применение...",
-      "apply": "{count, plural, one {Применить к элементу #} other {Применить к элементам #}}"
+      "title": "{count, plural, one {Теги для # элемента} few {Теги для # элементов} many {Теги для # элементов} other {Теги для # элемента}}",
+      "placeholder": "Поиск тегов…",
+      "applying": "Применение…",
+      "apply": "{count, plural, one {Применить к # элементу} few {Применить к # элементам} many {Применить к # элементам} other {Применить к # элемента}}"
     }
   },
   "quickActions": {
     "groupAria": "Быстрые действия",
-    "archiveItem": "Архивный элемент",
-    "archive": "Архив"
+    "archiveItem": "Архивировать элемент",
+    "archive": "Архивировать"
   },
   "detail": {
-    "ariaLabel": "Детали товара",
+    "ariaLabel": "Сведения об элементе",
+    "resize": "Изменить размер панели",
     "closePanel": "Закрыть панель",
-    "resizeFiling": "Изменить размер раздела файлов",
+    "resizeFiling": "Изменить размер раздела размещения",
     "restore": "Восстановить",
-    "restoreToInbox": "Восстановить во входящих",
+    "restoreToInbox": "Вернуть во входящие",
     "delete": "Удалить",
     "deletePermanently": "Удалить навсегда",
-    "archive": "Архив",
-    "file": "Файл",
-    "fileToFolder": "Сохранить в {folder}",
-    "keyboardHint": "Файл {modifier}⏎ · Папка 1–5 · Esc закрыть",
-    "voiceTitlePlaceholder": "Назовите эту голосовую заметку...",
-    "fileTo": "Файл в",
+    "archive": "Архивировать",
+    "file": "Разместить",
+    "fileToFolder": "Разместить в «{folder}»",
+    "keyboardHint": "{modifier}⏎ — разместить · 1–5 — папка · Esc — закрыть",
+    "voiceTitlePlaceholder": "Название голосовой заметки…",
+    "titlePlaceholder": "Название элемента…",
+    "fileTo": "Разместить в",
     "ai": "ИИ",
-    "selectFolder": "Выбрать папку",
-    "searchOrCreateFolder": "Найдите или создайте с помощью /...",
-    "suggested": "Предлагается",
-    "notesRoot": "Примечания",
-    "notesRootLabel": "Примечания (корень)",
-    "createFolder": "Создать «{name}»",
-    "addTags": "Добавить теги...",
-    "linkToNote": "Ссылка на заметку",
-    "linkNotesPlaceholder": "Ссылка на примечания...",
-    "searchNotesAria": "Поиск заметок для ссылки",
-    "linkedNotesAria": "Связанные заметки",
-    "removeLinkTo": "Удалить ссылку на {title}",
-    "notePlaceholder": "Напишите свою заметку...",
-    "textPlaceholder": "Отредактируйте захваченный текст...",
-    "linkANote": "Связать заметку",
     "match": {
+      "strong": "Хорошее совпадение",
       "likely": "Вероятное совпадение",
-      "strong": "Точное совпадение",
       "weak": "Слабое совпадение"
     },
-    "resize": "Изменить размер панели",
-    "suggestedCount": "{count} рекомендуемых"
+    "selectFolder": "Выбрать папку",
+    "searchOrCreateFolder": "Поиск или создание через /…",
+    "suggested": "Предложения",
+    "notesRoot": "Заметки",
+    "notesRootLabel": "Заметки (корень)",
+    "createFolder": "Создать «{name}»",
+    "addTags": "Добавить теги…",
+    "linkToNote": "Связать с заметкой",
+    "linkANote": "Связать с заметкой",
+    "suggestedCount": "Предложено: {count}",
+    "linkNotesPlaceholder": "Связать с заметками…",
+    "linkOrCreateNotePlaceholder": "Найти или создать заметку…",
+    "createNote": "Создать «{title}»",
+    "pendingNote": "Новая заметка",
+    "searchNotesAria": "Поиск заметок для связи или создания",
+    "imageFilingModeLabel": "Как добавить изображение",
+    "imageFilingModeEmbed": "Встроить в заметку",
+    "imageFilingModeLink": "Файлом на боковой панели",
+    "imageFilingModeRemember": "Больше не спрашивать",
+    "linkedNotesAria": "Связанные заметки",
+    "removeLinkTo": "Убрать связь с «{title}»",
+    "notePlaceholder": "Напишите заметку…",
+    "textPlaceholder": "Измените сохранённый текст…"
+  },
+  "convert": {
+    "title": "Преобразовать",
+    "chooseType": "Преобразовать в",
+    "note": "Заметка",
+    "task": "Задача",
+    "event": "Событие",
+    "reminder": "Напоминание",
+    "create": "Создать",
+    "addTask": "Добавить задачу",
+    "addEvent": "Добавить событие",
+    "setReminder": "Установить напоминание",
+    "project": "Проект",
+    "inboxProject": "Входящие",
+    "dueDate": "Срок",
+    "dueTime": "Время срока",
+    "priority": "Приоритет",
+    "priorityNone": "Без приоритета",
+    "priorityLow": "Низкий",
+    "priorityMedium": "Средний",
+    "priorityHigh": "Высокий",
+    "priorityUrgent": "Срочный",
+    "date": "Дата",
+    "start": "Начало",
+    "end": "Конец",
+    "allDay": "Весь день",
+    "location": "Место",
+    "remindAt": "Напомнить в",
+    "time": "Время",
+    "success": "Преобразовано: {target}",
+    "failed": "Не удалось преобразовать: {error}"
   },
   "content": {
-    "capturedAt": "Захвачен {date}",
+    "capturedAt": "Сохранено {date}",
     "todayAt": "сегодня в {time}",
-    "yesterdayAt": "вчера на {time}",
-    "dateAt": "{date} и {time}",
-    "words": "{count, plural, one {Слово #} other {# слов}}",
+    "yesterdayAt": "вчера в {time}",
+    "dateAt": "{date} в {time}",
+    "words": "{count, plural, one {# слово} few {# слова} many {# слов} other {# слова}}",
     "duration": "Продолжительность: {duration}",
     "dimensions": "Размеры",
     "format": "Формат",
     "size": "Размер",
     "voiceMemo": "Голосовая заметка",
-    "play": "Играть",
+    "play": "Воспроизвести",
     "pause": "Пауза",
-    "audioPosition": "Аудио позиция",
-    "transcription": "Транскрипция",
-    "processing": "обработка",
+    "audioPosition": "Позиция воспроизведения",
+    "transcription": "Расшифровка",
+    "processing": "обрабатывается",
     "pending": "в ожидании",
-    "failed": "не удалось",
-    "copyTranscription": "Копировать транскрипцию",
-    "transcribingAudio": "Расшифровка аудио...",
-    "awaitingTranscription": "Жду транскрипцию...",
-    "noTranscription": "Транскрипция недоступна",
+    "failed": "ошибка",
+    "copyTranscription": "Скопировать расшифровку",
+    "transcribingAudio": "Расшифровка аудио…",
+    "awaitingTranscription": "Ожидание расшифровки…",
+    "noTranscription": "Расшифровка недоступна",
     "failedPlayAudio": "Не удалось воспроизвести аудио",
     "failedLoadAudio": "Не удалось загрузить аудио",
     "video": "Видео",
-    "unsupportedVideo": "Ваш браузер не поддерживает тег видео."
+    "unsupportedVideo": "Браузер не поддерживает воспроизведение видео."
   },
   "reminder": {
     "dataUnavailable": "Данные напоминания недоступны.",
-    "triggered": "Напоминание активировано",
-    "noteLabel": "Напоминание Примечание",
+    "triggered": "Напоминание сработало",
+    "noteLabel": "Заметка к напоминанию",
     "source": "Источник",
     "journalTitle": "Журнал — {date}",
-    "noteFallback": "Примечание",
+    "noteFallback": "Заметка",
     "journalFallback": "Журнал",
+    "taskFallback": "Задача",
     "highlighted": "Выделено: «{text}»",
     "viewed": "Просмотрено",
-    "markViewed": "Отметить как просмотренное",
-    "notYetViewed": "Еще не просмотрено",
+    "archive": "Архивировать",
+    "notYetViewed": "Ещё не просмотрено",
     "snooze": "Отложить",
     "presetInOneHour": "1 час",
     "presetTomorrow": "Завтра",
     "presetNextWeek": "На следующей неделе",
-    "custom": "Пользовательский...",
-    "archive": "Архивировать",
-    "panelEmpty": "Нет предстоящих напоминаний.",
-    "panelPast": "Прошедшие",
+    "custom": "Настроить…",
     "panelUpcoming": "Предстоящие",
-    "taskFallback": "Задача",
-    "dateTime": {
-      "dateAt": "{date} в {time}",
-      "dateCompact": "{date}, {time}",
-      "todayAt": "Сегодня в {time}",
-      "todayCompact": "Сегодня, {time}",
-      "tomorrowAt": "Завтра в {time}",
-      "tomorrowCompact": "Завтра, {time}"
-    },
+    "panelPast": "Прошедшие",
+    "panelEmpty": "Нет предстоящих напоминаний.",
     "presets": {
-      "anniversaryReminder": "Напоминание о годовщине",
-      "inHours": {
-        "label": "Через {count, plural, one {# час} few {# часа} many {# часов} other {# часа}}"
+      "laterToday": {
+        "label": "Позже сегодня",
+        "description": "Через {count, plural, one {# час} few {# часа} many {# часов} other {# часа}}"
+      },
+      "tomorrow": {
+        "label": "Завтра",
+        "description": "Завтра в 9:00"
+      },
+      "nextWeek": {
+        "label": "Следующая неделя",
+        "description": "В понедельник в 9:00"
       },
       "inMinutes": {
         "label": "Через {count, plural, one {# минуту} few {# минуты} many {# минут} other {# минуты}}"
       },
-      "inMonths": {
-        "label": "Через {count, plural, one {# месяц} few {# месяца} many {# месяцев} other {# месяца}}"
+      "inHours": {
+        "label": "Через {count, plural, one {# час} few {# часа} many {# часов} other {# часа}}"
       },
       "inWeeks": {
         "label": "Через {count, plural, one {# неделю} few {# недели} many {# недель} other {# недели}}"
       },
+      "inMonths": {
+        "label": "Через {count, plural, one {# месяц} few {# месяца} many {# месяцев} other {# месяца}}"
+      },
       "inYears": {
         "label": "Через {count, plural, one {# год} few {# года} many {# лет} other {# года}}"
       },
-      "laterToday": {
-        "description": "Через {count, plural, one {# час} few {# часа} many {# часов} other {# часа}}",
-        "label": "Позже сегодня"
-      },
-      "monthlyReflection": "Ежемесячная рефлексия",
-      "nextWeek": {
-        "description": "В понедельник в 9:00",
-        "label": "Следующая неделя"
-      },
-      "quarterlyReflection": "Ежеквартальная рефлексия",
-      "reviewInAWeek": "Пересмотреть через неделю",
+      "tomorrowMorning": "Завтра утром",
       "sameDayNextMonth": "Тот же день в следующем месяце",
-      "tomorrow": {
-        "description": "Завтра в 9:00",
-        "label": "Завтра"
-      },
-      "tomorrowMorning": "Завтра утром"
+      "reviewInAWeek": "Просмотреть через неделю",
+      "monthlyReflection": "Итоги месяца",
+      "quarterlyReflection": "Итоги квартала",
+      "anniversaryReminder": "Напоминание о годовщине"
+    },
+    "dateTime": {
+      "todayAt": "Сегодня в {time}",
+      "todayCompact": "Сегодня, {time}",
+      "tomorrowAt": "Завтра в {time}",
+      "tomorrowCompact": "Завтра, {time}",
+      "dateAt": "{date} в {time}",
+      "dateCompact": "{date}, {time}"
     }
   },
   "insights": {
-    "captureActivity": "Захват активности",
+    "captureActivity": "Динамика записей",
     "byType": "По типу",
-    "recentFilings": "Недавние заявки",
-    "captured": "Захваченный",
+    "recentFilings": "Недавно размещённые",
+    "captured": "Собрано",
     "capturedThisWeek": "+{count} на этой неделе",
     "processed": "Обработано",
-    "processRate": "ставка {rate}%",
-    "stale": "Несвежий",
+    "processRate": "{rate}% от собранного",
+    "stale": "Залежавшиеся",
     "needsAttention": "требует внимания",
-    "allClear": "все ясно",
-    "avgTimeToFile": "Среднее время подачи файла",
-    "noCapturesYet": "Пока нет захватов",
-    "captures": "{count, plural, one {Захват #} other {# фиксирует}}",
+    "allClear": "всё в порядке",
+    "avgTimeToFile": "Среднее время до размещения",
+    "noCapturesYet": "Пока нет записей",
+    "captures": "{count, plural, one {# запись} few {# записи} many {# записей} other {# записи}}",
     "peak": "Пик: {day} {start}–{end}",
     "convertedToTask": "Преобразовано в задачу",
     "now": "сейчас",
-    "timeAgoMinutes": "{count}м назад",
-    "timeAgoHours": "{count}ч назад",
-    "timeAgoDays": "{count}d назад"
+    "timeAgoMinutes": "{count} мин назад",
+    "timeAgoHours": "{count} ч назад",
+    "timeAgoDays": "{count} дн. назад"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
       "aiDetected": "ИИ обнаружил: \"",
-      "addToSelection": "Добавить в выбор",
-      "dismiss": "Уволить"
+      "addToSelection": "Добавить к выделенным",
+      "dismiss": "Скрыть"
     },
     "componentsBulkDeleteConfirmationDialog": {
       "delete": "Удалить ",
-      "item": "предмет",
-      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Эти элементы будут удалены из вашего почтового ящика. Вы можете отменить это действие сразу после этого."
+      "item": "элемент",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Эти элементы будут удалены из входящих. Это действие можно сразу отменить."
     },
     "componentsCaptureInput": {
-      "captureInput": "Захват входных данных",
+      "captureInput": "Поле быстрой записи",
       "attachFile": "Прикрепить файл",
       "attachFileImagesAudioVideoPdf": "Прикрепить файл (изображения, аудио, видео, PDF)",
-      "recordVoiceMemo": "Запись голосовой заметки",
-      "recordVoiceMemo2": "Запись голосовой заметки",
-      "captureAnyway": "Все равно захватить",
-      "focusShortcut": "Фокус на поле захвата",
-      "q": "Q",
-      "captureLink": "Захватить ссылку",
-      "captureNote": "Захватить заметку",
-      "placeholder": "Быстрый захват — вставьте ссылку, запишите мысль…",
-      "duplicateNotice": "Уже захвачено: «{title}»"
+      "recordVoiceMemo": "Записать голосовую заметку",
+      "recordVoiceMemo2": "Записать голосовую заметку",
+      "captureAnyway": "Всё равно сохранить",
+      "placeholder": "Быстрая запись — вставьте ссылку или запишите мысль…",
+      "captureLink": "Сохранить ссылку",
+      "captureNote": "Записать заметку",
+      "duplicateNotice": "Уже сохранено: «{title}»"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Выбрать папку",
-      "searchFolders": "Поиск папок...",
+      "searchFolders": "Поиск папок…",
       "searchFolders2": "Поиск по папкам",
       "searchResults": "Результаты поиска",
       "create": "Создать \"",
-      "suggested": "Предлагается",
+      "suggested": "Предложения",
       "recent": "Недавние",
       "allFolders": "Все папки",
       "allFolders2": "Все папки"
     },
     "componentsFilingLinkSearch": {
-      "linkTo": "Ссылка на",
+      "linkTo": "Связать с",
       "optional": "необязательно)",
-      "searchNotesToLink": "Поиск заметок для ссылки...",
-      "searchNotesToLink2": "Поиск заметок для ссылки",
-      "searching": "Поиск...",
+      "searchNotesToLink": "Поиск заметок для связи…",
+      "searchNotesToLink2": "Поиск заметок для связи",
+      "searching": "Поиск…",
       "noNotesFound": "Заметки не найдены",
       "linkedNotes": "Связанные заметки",
       "noLinksAdded": "Ссылки не добавлены"
     },
     "componentsFilingTagAutocomplete": {
-      "suggested": "Предлагается",
+      "suggested": "Предложения",
       "ai": "ИИ",
       "create": "Создать",
       "tags": "Теги",
       "selectedTags": "Выбранные теги",
       "addTags": "Добавить теги",
       "tagSuggestions": "Предложения по тегам",
-      "removeTag": "Удалить {tag}"
+      "removeTag": "Убрать тег «{tag}»"
     },
     "componentsFilingTagInput": {
       "tags": "Теги",
       "optional": "необязательно)",
-      "addTags": "Добавить теги...",
+      "addTags": "Добавить теги…",
       "addTags2": "Добавить теги",
       "selectedTags": "Выбранные теги",
-      "suggested": "Предлагается"
+      "suggested": "Предложения"
     },
     "componentsInboxInboxCaptureHeatmap": {
-      "captureActivity": "Захват активности"
+      "captureActivity": "Динамика записей"
     },
     "componentsInboxInboxFilingHistory": {
-      "noItemsFiledYet": "Элементы еще не отправлены",
-      "recentlyFiled": "Недавно подано",
-      "latestActionsOnYourInbox": "Последние действия в вашем почтовом ящике",
+      "noItemsFiledYet": "Пока ничего не размещено",
+      "recentlyFiled": "Недавно размещённые",
+      "latestActionsOnYourInbox": "Последние действия во входящих",
       "linked": "Связано"
     },
     "componentsInboxInboxInsightsView": {
-      "loadingInsights": "Загрузка статистики..."
+      "loadingInsights": "Загрузка статистики…"
     },
     "componentsInboxInboxTypeDistribution": {
       "noItemTypesToDisplay": "Нет типов элементов для отображения",
-      "itemTypes": "Типы предметов",
-      "distributionOfContentFormats": "Распространение форматов контента"
-    },
-    "componentsInboxTriageItemCard": {
-      "captured": "Захваченный "
+      "itemTypes": "Типы элементов",
+      "distributionOfContentFormats": "Распределение по форматам"
     },
     "componentsInboxDetailContentSection": {
-      "x": "х "
+      "x": "× "
     },
     "componentsInboxDetailInboxContentEditor": {
       "contentEditor": "Редактор контента"
     },
-    "componentsInboxDetailReminderDetail": {
-      "middot": "миддот; "
-    },
     "componentsInboxDetailTweetCard": {
       "tweetUnavailable": "Твит недоступен",
-      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Возможно, этот твит был удален или взят из частного аккаунта.",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Возможно, этот твит удалён или опубликован в закрытом аккаунте.",
       "openOnXCom": "Открыть на x.com",
-      "views": "просмотры",
-      "xCom": "х.ком",
+      "views": "просмотров",
+      "xCom": "x.com",
       "viewOnX": "Посмотреть на X"
     },
     "componentsInlineQuickFile": {
-      "typeFolderName": "Введите имя папки...",
-      "quickFileFolderSearch": "Быстрый поиск папки с файлами"
+      "typeFolderName": "Введите название папки…",
+      "quickFileFolderSearch": "Поиск папки для быстрого размещения"
     },
     "componentsQuickCaptureFooter": {
       "close": "закрыть",
-      "capture": "захват"
+      "capture": "записать"
     },
     "componentsQuickCaptureImagePreview": {
-      "removeAttachment": "Удалить вложение"
+      "removeAttachment": "Убрать вложение"
     },
     "componentsQuickCaptureInput": {
-      "quickCaptureInput": "Быстрый захват ввода",
-      "recordVoiceMemo": "Запись голосовой заметки",
+      "quickCaptureInput": "Поле быстрой записи",
+      "recordVoiceMemo": "Записать голосовую заметку",
       "attachFile": "Прикрепить файл"
     },
     "componentsQuickCaptureLinkPreview": {
       "link": "ССЫЛКА"
     },
     "componentsQuickCaptureStates": {
-      "captured": "Захваченный",
-      "dismissError": "Ошибка закрытия",
-      "alreadyCaptured": "Уже захвачено",
-      "captureAnyway": "Все равно захватить",
+      "captured": "Сохранено",
+      "dismissError": "Закрыть сообщение об ошибке",
+      "alreadyCaptured": "Уже сохранено",
+      "captureAnyway": "Всё равно сохранить",
       "close": "Закрыть",
       "duplicateMeta": "«{title}» · {date}"
     },
     "componentsQuickCapture": {
-      "dropToCapture": "Отбросьте, чтобы захватить",
-      "capturing": "Захват..."
+      "dropToCapture": "Отпустите, чтобы сохранить",
+      "capturing": "Сохранение…"
     },
     "componentsQuickFileDropdown": {
-      "folderSuggestions": "Предложения папок",
+      "folderSuggestions": "Предлагаемые папки",
       "noFoldersMatch": "Ни одна папка не соответствует \""
     },
     "componentsReminderReminderPicker": {
       "remind": "Напомнить",
-      "remindMe": "Напомни мне",
-      "pickDateTime": "Выберите дату и время",
+      "remindMe": "Напомнить",
+      "pickDateTime": "Выбрать дату и время",
       "addANoteOptional": "Добавить заметку (необязательно)",
-      "backToPresets": "Вернуться к пресетам",
+      "backToPresets": "Назад к вариантам",
       "time": "Время",
-      "noteOptional": "Примечание (необязательно)",
+      "noteOptional": "Заметка (необязательно)",
       "whyAreYouSettingThisReminder": "Почему вы устанавливаете это напоминание?",
-      "deleteReminder": "Удалить напоминание",
+      "set": "Установить",
       "editReminder": "Изменить напоминание",
+      "deleteReminder": "Удалить напоминание",
       "save": "Сохранить",
-      "set": "Задать"
+      "setReminder": "Установить напоминание",
+      "setting": "Установка…"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Отложить",
       "snooze2": "Отложить",
-      "pickDateTime": "Выберите дату и время",
-      "pickDateTime2": "Выберите дату и время",
-      "selectWhenToBeRemindedAboutThisItem": "Выберите, когда вам будет напоминать об этом элементе",
+      "pickDateTime": "Выбрать дату и время",
+      "pickDateTime2": "Выбрать дату и время",
+      "selectWhenToBeRemindedAboutThisItem": "Выберите, когда напомнить об этом элементе",
       "snooze3": "Отложить",
       "snooze4": "Отложить",
       "snooze5": "Отложить"
     },
     "componentsSocialCard": {
-      "loadingPost": "Загрузка сообщения...",
+      "loadingPost": "Загрузка публикации…",
       "failedToLoad": "Не удалось загрузить",
-      "loadingPostContent": "Загрузка содержимого публикации...",
-      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Не удалось загрузить содержимое публикации. Пост может быть личным или удаленным.",
+      "loadingPostContent": "Загрузка содержимого публикации…",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Не удалось загрузить содержимое публикации. Возможно, она закрыта или удалена.",
       "viewOn": "Посмотреть на "
     },
     "componentsVoiceRecorder": {
       "startVoiceRecording": "Начать запись голоса",
-      "requestingMicrophoneAccess": "Запрос доступа к микрофону...",
+      "requestingMicrophoneAccess": "Запрос доступа к микрофону…",
       "settings": "Настройки",
-      "processing": "Обработка...",
+      "processing": "Обработка…",
       "cancelRecording": "Отменить запись",
       "cancel": "Отмена",
       "stopRecording": "Остановить запись",
       "stop": "Стоп",
-      "enableMicInSettings": "Разрешите доступ к микрофону в системных настройках и попробуйте снова.",
-      "failedToStart": "Не удалось начать запись",
+      "recordingError": "Произошла ошибка записи",
       "microphoneAccessDenied": "Доступ к микрофону запрещён",
       "noMicrophoneFound": "Микрофон не найден",
-      "recordingError": "Произошла ошибка записи"
+      "failedToStart": "Не удалось начать запись",
+      "enableMicInSettings": "Разрешите доступ к микрофону в системных настройках и попробуйте снова."
     }
   },
   "phaseI": {
     "errors": {
-      "failedToCaptureLink": "Не удалось захватить ссылку",
-      "failedToCaptureNote": "Не удалось сохранить заметку.",
-      "captureFailed": "Не удалось захватить",
-      "failedToCaptureVoiceMemo": "Не удалось записать голосовую заметку.",
-      "voiceCaptureFailed": "Запись голоса не удалась",
-      "failedToCaptureFile": "Не удалось захватить файл",
-      "fileCaptureFailed": "Захватить файл не удалось",
+      "failedToCaptureLink": "Не удалось сохранить ссылку",
+      "failedToCaptureNote": "Не удалось сохранить заметку",
+      "captureFailed": "Не удалось сохранить",
+      "failedToCaptureVoiceMemo": "Не удалось записать голосовую заметку",
+      "voiceCaptureFailed": "Не удалось записать голос",
+      "failedToCaptureFile": "Не удалось сохранить файл",
+      "fileCaptureFailed": "Не удалось сохранить файл",
       "failedToCaptureAudio": "Не удалось записать звук",
       "failedToCaptureVoice": "Не удалось записать голос",
       "failedToLoadInboxPreferences": "Не удалось загрузить настройки входящих",
@@ -538,40 +542,14 @@
       "inboxRefreshed": "Входящие обновлены"
     }
   },
-  "convert": {
-    "addEvent": "Добавить событие",
-    "addTask": "Добавить задачу",
-    "allDay": "Весь день",
-    "chooseType": "Преобразовать в",
-    "create": "Создать",
-    "date": "Дата",
-    "dueDate": "Срок",
-    "dueTime": "Время срока",
-    "end": "Конец",
-    "event": "Событие",
-    "failed": "Не удалось преобразовать: {error}",
-    "inboxProject": "Входящие",
-    "location": "Место",
-    "note": "Заметка",
-    "priority": "Приоритет",
-    "priorityHigh": "Высокий",
-    "priorityLow": "Низкий",
-    "priorityMedium": "Средний",
-    "priorityNone": "Нет",
-    "priorityUrgent": "Срочный",
-    "project": "Проект",
-    "remindAt": "Напомнить в",
-    "reminder": "Напоминание",
-    "setReminder": "Задать напоминание",
-    "start": "Начало",
-    "success": "Преобразовано в {target}",
-    "task": "Задача",
-    "time": "Время",
-    "title": "Преобразовать"
-  },
   "reviewNudge": {
-    "action": "Открыть входящие",
-    "description": "Спокойно разберите сегодняшние захваты за один раз.",
-    "title": "Пора разобрать {count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}}"
+    "title": "Пора разобрать {count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}}",
+    "description": "Спокойно разберите сегодняшние записи за один раз.",
+    "action": "Открыть входящие"
+  },
+  "snoozeDue": {
+    "notificationTitle": "{count, plural, one {# отложенный элемент} few {# отложенных элемента} many {# отложенных элементов} other {# отложенного элемента}}",
+    "notificationBody": "{count, plural, =1 {Отложенный элемент готов к разбору} one {Отложенные элементы готовы к разбору} few {Отложенные элементы готовы к разбору} many {Отложенные элементы готовы к разбору} other {Отложенные элементы готовы к разбору}}",
+    "toast": "{count, plural, =1 {«{itemTitle}» снова во входящих} one {# отложенный элемент вернулся} few {# отложенных элемента вернулись} many {# отложенных элементов вернулись} other {# отложенного элемента вернулись}}"
   }
 }

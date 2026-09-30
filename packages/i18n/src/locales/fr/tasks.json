@@ -3,18 +3,21 @@
     "tabs": {
       "label": "Vues des tâches",
       "today": "Aujourd'hui",
-      "all": "Tout"
+      "tomorrow": "Demain",
+      "next7": "7 prochains jours",
+      "all": "Tout",
+      "archived": "Archivées"
     },
     "viewMode": {
       "label": "Mode d'affichage",
-      "list": "Vue en liste",
+      "list": "Vue liste",
       "kanban": "Vue Kanban"
     },
     "projectScope": {
       "allProjects": "Tous les projets",
       "searchProjects": "Rechercher des projets…",
       "editProject": "Modifier {name}",
-      "unstarSavedFilter": "Supprimer {name}",
+      "unstarSavedFilter": "Retirer l'étoile de « {name} »",
       "openByDefault": "Ouvrir les tâches sur {name} par défaut",
       "defaultProject": "Projet par défaut",
       "setAsDefault": "Définir par défaut"
@@ -24,29 +27,47 @@
     "add": "Ajouter une tâche",
     "title": "Titre",
     "titleRequired": "Le titre est requis",
-    "titlePlaceholder": "Que faut-il faire ?",
+    "titlePlaceholder": "Que faut-il faire ?",
     "namePlaceholder": "Nom de la tâche",
-    "description": "Descriptif",
+    "description": "Description",
     "descriptionPlaceholder": "Ajouter une description…",
     "details": "Détails de la tâche",
     "status": "Statut",
     "priority": "Priorité",
+    "tags": "Tags",
+    "startDate": "Date de début",
+    "changeStartDate": "Début : {date}. Cliquez pour modifier.",
     "dueDate": "Date d'échéance",
-    "startsOn": "Début {date}",
-    "dueOn": "Échéance {date}",
-    "project": "Projet",
-    "repeat": "Répéter",
-    "createAnother": "Créer un autre",
-    "delete": "Supprimer la tâche",
-    "created": "Créé {date}",
+    "startsOn": "Début : {date}",
+    "dueOn": "Échéance : {date}",
     "reminder": "Rappel",
-    "tags": "Balises",
+    "project": "Projet",
+    "repeat": "Répétition",
+    "createAnother": "Créer une autre",
+    "delete": "Supprimer la tâche",
+    "created": "Créée le {date}",
     "priorityLabels": {
-      "high": "Élevée",
-      "low": "Faible",
-      "medium": "Moyenne",
       "none": "Aucune priorité",
+      "low": "Basse",
+      "medium": "Moyenne",
+      "high": "Haute",
       "urgent": "Urgente"
+    },
+    "unarchive": "Désarchiver la tâche",
+    "archivedOn": "Archivée le {date}"
+  },
+  "reminders": {
+    "summary": "Rappel : {date}",
+    "summaryWithMore": "Rappel : {date} (+{count} de plus)",
+    "hasReminders": "Comporte des rappels",
+    "setReminder": "Définir un rappel",
+    "toast": {
+      "set": "Rappel défini",
+      "setFailed": "Impossible de définir le rappel",
+      "updated": "Rappel mis à jour",
+      "updateFailed": "Impossible de modifier le rappel",
+      "deleted": "Rappel supprimé",
+      "deleteFailed": "Impossible de supprimer le rappel"
     }
   },
   "filters": {
@@ -54,37 +75,53 @@
     "emptyTitle": "Aucune tâche ne correspond à vos filtres",
     "emptyHelp": "Essayez d'ajuster vos filtres ou",
     "groupBy": "Regrouper par",
-    "groupByOptions": "Regrouper par options",
-    "sortAscending": "Trier par ordre croissant",
-    "sortDescending": "Trier par ordre décroissant",
+    "groupByOptions": "Options de regroupement",
+    "sortAscending": "Tri croissant",
+    "sortDescending": "Tri décroissant",
+    "sortDirectionAscending": "Croissant",
+    "sortDirectionDescending": "Décroissant",
+    "groupByFields": {
+      "dueDate": "Date d'échéance",
+      "priority": "Priorité",
+      "status": "Statut",
+      "createdAt": "Date de création",
+      "title": "Titre",
+      "project": "Projet",
+      "completedAt": "Date d'achèvement",
+      "folder": "Dossier",
+      "note": "Note"
+    },
+    "groups": {
+      "vaultRoot": "Racine du coffre",
+      "noNote": "Sans note"
+    },
     "dueDate": {
-      "any": "Toute date d'échéance",
-      "custom": "Plage personnalisée...",
-      "nextWeek": "La semaine prochaine",
+      "any": "Toutes les échéances",
       "none": "Aucune date d'échéance",
       "overdue": "En retard",
-      "thisMonth": "Ce mois-ci",
-      "thisWeek": "Cette semaine",
       "today": "Aujourd'hui",
-      "tomorrow": "Demain"
+      "tomorrow": "Demain",
+      "thisWeek": "Cette semaine",
+      "nextWeek": "La semaine prochaine",
+      "thisMonth": "Ce mois-ci",
+      "custom": "Plage personnalisée…"
     },
     "quickPresets": {
-      "dueThisWeek": "Échéance cette semaine",
-      "highPriority": "Priorité élevée",
-      "noDueDate": "Sans date d'échéance",
       "overdue": "En retard",
-      "repeating": "Récurrentes"
+      "highPriority": "Priorité haute",
+      "dueThisWeek": "Échéance cette semaine",
+      "repeating": "Récurrentes",
+      "noDueDate": "Sans date d'échéance"
     },
-    "repeatTypeOneTime": "Ponctuelles",
-    "repeatTypeRepeating": "Récurrentes"
+    "repeatTypeRepeating": "Récurrentes",
+    "repeatTypeOneTime": "Ponctuelles"
   },
   "quickAdd": {
-    "label": "Tâche d'ajout rapide",
-    "focusDescription": "Concentrez-vous sur l'ajout rapide d'une entrée",
-    "placeholder": "Ajouter une tâche…    !today  !!high  #project",
+    "label": "Ajout rapide de tâche",
+    "placeholder": "Ajouter une tâche…    @tomorrow  !high  +projet  #tag  [[note]]  every monday",
     "presets": {
       "menu": "Options de la tâche",
-      "dueDate": "Échéance {date}. Modifier l’échéance",
+      "dueDate": "Échéance : {date}. Modifier la date d'échéance",
       "noDate": "Aucune date",
       "linkNote": "Lier une note",
       "openDetails": "Ouvrir tous les détails",
@@ -97,132 +134,184 @@
   "inlineProperties": {
     "addProperty": "Ajouter une propriété",
     "dates": "Dates",
-    "datesAria": "Dates : {value}",
+    "datesAria": "Dates : {value}",
     "start": "Début",
     "due": "Échéance",
     "dueDate": "Date d'échéance",
     "remindMe": "Me rappeler",
     "linkItem": "Lier une note ou un canevas",
-    "relatedAria": "Éléments liés : {count}",
-    "shorthandPreview": "Défini par raccourci"
+    "relatedAria": "Éléments liés : {count}",
+    "shorthandPreview": "Défini via la saisie rapide"
   },
   "drawer": {
     "close": "Fermer les détails de la tâche",
     "openInTasks": "Ouvrir dans Tâches",
-    "subIssues": "Sous-questions",
-    "addSubIssue": "Ajouter un sous-problème",
-    "subIssuePlaceholder": "Ajouter un sous-problème…",
-    "noSubIssues": "Aucun sous-problème pour l'instant",
-    "linkedNotes": "Notes liées",
-    "linkNote": "Lier une note",
+    "resize": "Redimensionner le panneau",
+    "subIssues": "Sous-tâches",
+    "addSubIssue": "Ajouter une sous-tâche",
+    "subIssuePlaceholder": "Ajouter une sous-tâche…",
+    "noSubIssues": "Aucune sous-tâche pour l'instant",
+    "linkedNotes": "Éléments liés",
+    "linkNote": "Ajouter un élément lié",
     "loading": "Chargement…",
-    "searchNotes": "Notes de recherche…",
-    "noMatchingNotes": "Aucune note correspondante",
-    "noNotesAvailable": "Aucune note disponible",
-    "noLinkedNotes": "Aucune note liée pour l'instant",
-    "removeLinkTo": "Supprimer le lien vers {title}",
-    "removeLinkFallback": "remarque",
+    "searchNotes": "Rechercher des éléments liés…",
+    "noMatchingNotes": "Aucun élément correspondant",
+    "noNotesAvailable": "Aucun élément disponible",
+    "noLinkedNotes": "Aucun élément lié pour l'instant",
+    "removeLinkTo": "Retirer l'élément lié « {title} »",
+    "removeLinkFallback": "élément",
+    "related": "Éléments liés",
     "addRelatedItem": "Ajouter un élément lié",
+    "searchRelated": "Rechercher des éléments liés…",
     "noMatchingRelated": "Aucun élément correspondant",
     "noRelatedAvailable": "Aucun élément disponible",
     "noRelatedItems": "Aucun élément lié pour l'instant",
-    "related": "Éléments liés",
+    "removeRelatedItem": "Retirer l'élément lié « {title} »",
     "relatedItemFallback": "élément",
-    "removeRelatedItem": "Supprimer l'élément lié {title}",
-    "resize": "Redimensionner le panneau",
-    "searchRelated": "Rechercher des éléments liés…"
+    "relatedItemMissing": "Cet élément lié ne se trouve plus dans ce coffre.",
+    "activity": "Activité",
+    "activityShowAll": "Tout afficher ({count})",
+    "activityEmpty": "Rien n'a encore été enregistré. Les modifications de cette tâche apparaissent ici.",
+    "activityLoading": "Chargement de l'activité…",
+    "activityError": "Impossible de charger l'activité.",
+    "activityMore": "Charger plus",
+    "activityTitle": "Activité – {title}",
+    "activityDescription": "Toutes les modifications de cette tâche, des plus récentes aux plus anciennes.",
+    "activityFilter": "Filtrer par type de modification",
+    "activityFilterAll": "Toutes les modifications",
+    "activityRetention": "L'activité de plus de {days} jours est supprimée.",
+    "activityToday": "Aujourd'hui",
+    "activityYesterday": "Hier",
+    "activityByYou": "Vous",
+    "activityBySync": "Un autre appareil",
+    "activityByGoogle": "Google Calendar",
+    "activityActionCreated": "Créée",
+    "activityActionUpdated": "Modifiée",
+    "activityActionCompleted": "Terminée",
+    "activityActionUncompleted": "Rouverte",
+    "activityActionMoved": "Déplacée",
+    "activityActionDeleted": "Supprimée",
+    "activityActionSuperseded": "Remplacée",
+    "activitySupersededNote": "Remplacée par un autre appareil",
+    "activityCharsAdded": "+{count} car.",
+    "activityCharsRemoved": "{count} car.",
+    "activityCharsSame": "reformulée",
+    "activityEmptyValue": "vide",
+    "activityFieldTitle": "Titre",
+    "activityFieldDescription": "Description",
+    "activityFieldStatusId": "Statut",
+    "activityFieldPriority": "Priorité",
+    "activityFieldDueDate": "Date d'échéance",
+    "activityFieldDueTime": "Heure d'échéance",
+    "activityFieldStartDate": "Date de début",
+    "activityFieldProjectId": "Projet",
+    "activityFieldParentId": "Tâche parente",
+    "activityFieldTags": "Tags",
+    "activityFieldLinkedNoteIds": "Éléments liés",
+    "activityFieldCompletedAt": "Achèvement",
+    "activityFieldArchivedAt": "Archivage",
+    "activityFieldRepeatConfig": "Répétition",
+    "activityFieldSourceNoteId": "Note source",
+    "activityFrom": "de {value}",
+    "activityTo": "à {value}",
+    "activityValueChanged": "modifié",
+    "activityUnknownDate": "Sans date",
+    "activityFieldRepeatFrom": "Répéter à partir de",
+    "activityFieldIsRepeating": "Récurrente"
   },
   "kanban": {
     "board": "Tableau Kanban",
     "empty": {
       "default": {
-        "subtitle": "Faites glisser des tâches ici ou cliquez sur + pour en ajouter",
-        "title": "Aucune tâche"
+        "title": "Aucune tâche",
+        "subtitle": "Faites glisser des tâches ici ou cliquez sur + pour en ajouter"
       },
       "done": {
-        "subtitle": "Terminez des tâches pour les voir ici",
-        "title": "Aucune tâche terminée"
+        "title": "Aucune tâche terminée",
+        "subtitle": "Terminez des tâches pour les voir ici"
       },
       "schedule": {
-        "subtitle": "Faites glisser des tâches ici pour les replanifier",
-        "title": "Rien de prévu"
+        "title": "Rien de prévu",
+        "subtitle": "Faites glisser des tâches ici pour les replanifier"
       }
     }
   },
   "toasts": {
     "projectUpdated": "Projet mis à jour",
     "projectCreated": "Projet créé",
-    "projectSaveError": "Échec de l'enregistrement du projet",
+    "projectSaveError": "Impossible d'enregistrer le projet",
     "projectArchived": "Projet archivé",
-    "projectArchiveError": "Échec de l'archivage du projet",
+    "projectArchiveError": "Impossible d'archiver le projet",
     "projectDeleted": "Projet supprimé",
-    "projectDeleteError": "Échec de la suppression du projet",
+    "projectDeleteError": "Impossible de supprimer le projet",
     "filtersCleared": "Filtres effacés",
     "filterSaved": "Filtre enregistré",
     "filterDeleted": "Filtre supprimé",
-    "filterApplied": "\"{name}\" appliqué",
+    "filterApplied": "Filtre « {name} » appliqué",
     "deleted": "Tâche supprimée",
-    "deletedSeries": "Série terminée !",
+    "deletedSeries": "Série terminée !",
     "completed": "Tâche terminée !",
     "archived": "Tâche archivée",
-    "undoNotAvailableForDelete": "Annuler non disponible pour la suppression",
+    "undoNotAvailableForDelete": "La suppression ne peut pas être annulée",
     "alreadyAllComplete": "Toutes les tâches sélectionnées sont déjà terminées",
     "noCompletedSelected": "Aucune tâche terminée sélectionnée",
-    "completeFailed": "Échec de la réalisation des tâches",
-    "deleteFailed": "Échec de la suppression des tâches",
-    "moveFailed": "Échec du déplacement des tâches",
+    "completeFailed": "Impossible de terminer les tâches",
+    "deleteFailed": "Impossible de supprimer les tâches",
+    "moveFailed": "Impossible de déplacer les tâches",
     "bulk": {
-      "archived": "{count, plural, one {# tâche archivée} many {# tâches archivées} other {# tâches archivées}}",
       "completed": "{count, plural, one {# tâche terminée} many {# tâches terminées} other {# tâches terminées}}",
-      "deleted": "{count, plural, one {# tâche supprimée} many {# tâches supprimées} other {# tâches supprimées}}",
-      "deletedDescription": "Cette action peut être annulée pendant un court instant.",
-      "dueDateRemoved": "{count, plural, one {Date d'échéance retirée de # tâche} many {Date d'échéance retirée de # tâches} other {Date d'échéance retirée de # tâches}}",
-      "dueDateSet": "{count, plural, one {Date d'échéance définie pour # tâche} many {Date d'échéance définie pour # tâches} other {Date d'échéance définie pour # tâches}}",
-      "movedToProject": "{count, plural, one {# tâche déplacée vers {project}} many {# tâches déplacées vers {project}} other {# tâches déplacées vers {project}}}",
-      "movedToStatus": "{count, plural, one {# tâche déplacée vers {status}} many {# tâches déplacées vers {status}} other {# tâches déplacées vers {status}}}",
+      "undoComplete": "{count, plural, one {Terminer # tâche} many {Terminer # tâches} other {Terminer # tâches}}",
+      "restored": "{count, plural, one {# tâche restaurée} many {# tâches restaurées} other {# tâches restaurées}}",
+      "undoUncomplete": "{count, plural, one {Rouvrir # tâche} many {Rouvrir # tâches} other {Rouvrir # tâches}}",
       "priorityRemoved": "{count, plural, one {Priorité retirée de # tâche} many {Priorité retirée de # tâches} other {Priorité retirée de # tâches}}",
       "prioritySet": "{count, plural, one {Priorité définie sur {priority} pour # tâche} many {Priorité définie sur {priority} pour # tâches} other {Priorité définie sur {priority} pour # tâches}}",
-      "restored": "{count, plural, one {# tâche restaurée} many {# tâches restaurées} other {# tâches restaurées}}",
-      "undoArchive": "{count, plural, one {Archiver # tâche} many {Archiver # tâches} other {Archiver # tâches}}",
-      "undoComplete": "{count, plural, one {Terminer # tâche} many {Terminer # tâches} other {Terminer # tâches}}",
-      "undoDelete": "{count, plural, one {Supprimer # tâche} many {Supprimer # tâches} other {Supprimer # tâches}}",
       "undoDueDate": "{count, plural, one {Date d'échéance modifiée pour # tâche} many {Date d'échéance modifiée pour # tâches} other {Date d'échéance modifiée pour # tâches}}",
+      "dueDateSet": "{count, plural, one {Date d'échéance définie pour # tâche} many {Date d'échéance définie pour # tâches} other {Date d'échéance définie pour # tâches}}",
+      "dueDateRemoved": "{count, plural, one {Date d'échéance retirée de # tâche} many {Date d'échéance retirée de # tâches} other {Date d'échéance retirée de # tâches}}",
       "undoMove": "{count, plural, one {Déplacer # tâche} many {Déplacer # tâches} other {Déplacer # tâches}}",
+      "movedToProject": "{count, plural, one {# tâche déplacée vers {project}} many {# tâches déplacées vers {project}} other {# tâches déplacées vers {project}}}",
       "undoStatus": "{count, plural, one {Statut → {status} pour # tâche} many {Statut → {status} pour # tâches} other {Statut → {status} pour # tâches}}",
-      "undoUncomplete": "{count, plural, one {Rouvrir # tâche} many {Rouvrir # tâches} other {Rouvrir # tâches}}"
+      "movedToStatus": "{count, plural, one {# tâche déplacée vers {status}} many {# tâches déplacées vers {status}} other {# tâches déplacées vers {status}}}",
+      "undoArchive": "{count, plural, one {Archiver # tâche} many {Archiver # tâches} other {Archiver # tâches}}",
+      "archived": "{count, plural, one {# tâche archivée} many {# tâches archivées} other {# tâches archivées}}",
+      "undoDelete": "{count, plural, one {Supprimer # tâche} many {Supprimer # tâches} other {Supprimer # tâches}}",
+      "deleted": "{count, plural, one {# tâche supprimée} many {# tâches supprimées} other {# tâches supprimées}}",
+      "deletedDescription": "Cette action peut être annulée pendant un court instant.",
+      "unarchived": "{count, plural, one {# tâche désarchivée} other {# tâches désarchivées}}",
+      "undoUnarchive": "{count, plural, one {Désarchiver # tâche} other {Désarchiver # tâches}}"
     },
     "drag": {
-      "archived": "{count, plural, one {Tâche archivée} many {# tâches archivées} other {# tâches archivées}}",
-      "deleted": "{count, plural, one {Tâche supprimée} many {# tâches supprimées} other {# tâches supprimées}}",
-      "moved": "{count, plural, one {Déplacée vers {target}} many {# tâches déplacées vers {target}} other {# tâches déplacées vers {target}}}",
-      "movedTo": "Déplacée vers {target}",
-      "prioritySet": "{count, plural, one {Priorité définie sur {priority}} many {# tâches définies sur {priority}} other {# tâches définies sur {priority}}}",
-      "prioritySetTo": "Priorité définie sur {priority}",
-      "rescheduled": "{count, plural, one {Replanifiée pour {target}} many {# tâches replanifiées pour {target}} other {# tâches replanifiées pour {target}}}",
       "rescheduledTo": "Replanifiée pour {target}",
+      "rescheduled": "{count, plural, one {Replanifiée pour {target}} many {# tâches replanifiées pour {target}} other {# tâches replanifiées pour {target}}}",
+      "movedTo": "Déplacée vers {target}",
+      "moved": "{count, plural, one {Déplacée vers {target}} many {# tâches déplacées vers {target}} other {# tâches déplacées vers {target}}}",
+      "prioritySetTo": "Priorité définie sur {priority}",
+      "prioritySet": "{count, plural, one {Priorité définie sur {priority}} other {Priorité définie sur {priority} pour # tâches}}",
+      "deleted": "{count, plural, one {Tâche supprimée} many {# tâches supprimées} other {# tâches supprimées}}",
+      "archived": "{count, plural, one {Tâche archivée} many {# tâches archivées} other {# tâches archivées}}",
       "undoArchive": "{count, plural, one {# tâche archivée} many {# tâches archivées} other {# tâches archivées}}"
     },
     "subtasks": {
       "added": "{count, plural, one {# sous-tâche ajoutée} many {# sous-tâches ajoutées} other {# sous-tâches ajoutées}}",
-      "completed": "{count, plural, one {# sous-tâche terminée} many {# sous-tâches terminées} other {# sous-tâches terminées}}",
-      "deleted": "{count, plural, one {# sous-tâche supprimée} many {# sous-tâches supprimées} other {# sous-tâches supprimées}}",
+      "promoted": "« {title} » promue en tâche",
       "deletedDescription": "La sous-tâche a été supprimée",
-      "dueDateCleared": "{count, plural, one {Date d'échéance effacée pour # sous-tâche} many {Date d'échéance effacée pour # sous-tâches} other {Date d'échéance effacée pour # sous-tâches}}",
-      "dueDateSet": "{count, plural, one {Date d'échéance définie pour # sous-tâche} many {Date d'échéance définie pour # sous-tâches} other {Date d'échéance définie pour # sous-tâches}}",
-      "markedIncomplete": "{count, plural, one {# sous-tâche marquée comme non terminée} many {# sous-tâches marquées comme non terminées} other {# sous-tâches marquées comme non terminées}}",
-      "movedUnder": "Déplacée sous « {title} »",
-      "parentAndSubtasksCompleted": "Tâche et sous-tâches terminées",
       "parentDeletedKeepSubtasks": "Tâche supprimée, sous-tâches converties en tâches",
       "parentDeletedWithSubtasks": "Tâche et sous-tâches supprimées",
+      "parentAndSubtasksCompleted": "Tâche et sous-tâches terminées",
+      "movedUnder": "Déplacée sous « {title} »",
+      "completed": "{count, plural, one {# sous-tâche terminée} many {# sous-tâches terminées} other {# sous-tâches terminées}}",
+      "markedIncomplete": "{count, plural, one {# sous-tâche marquée comme non terminée} many {# sous-tâches marquées comme non terminées} other {# sous-tâches marquées comme non terminées}}",
+      "dueDateSet": "{count, plural, one {Date d'échéance définie pour # sous-tâche} many {Date d'échéance définie pour # sous-tâches} other {Date d'échéance définie pour # sous-tâches}}",
+      "dueDateCleared": "{count, plural, one {Date d'échéance effacée pour # sous-tâche} many {Date d'échéance effacée pour # sous-tâches} other {Date d'échéance effacée pour # sous-tâches}}",
       "prioritySet": "{count, plural, one {Priorité définie pour # sous-tâche} many {Priorité définie pour # sous-tâches} other {Priorité définie pour # sous-tâches}}",
-      "promoted": "« {title} » promue en tâche"
+      "deleted": "{count, plural, one {# sous-tâche supprimée} many {# sous-tâches supprimées} other {# sous-tâches supprimées}}"
     }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
-      "addSubtask": "Ajouter une sous-tâche...",
+      "addSubtask": "Ajouter une sous-tâche…",
       "addSubtask2": "Ajouter une sous-tâche",
-      "enterToAdd": "Entrez pour ajouter"
+      "enterToAdd": "Enter pour ajouter"
     },
     "componentsTasksBulkActionsBulkActionDropdown": {
       "for": "pour ",
@@ -230,8 +319,8 @@
     },
     "componentsTasksBulkActionsBulkActionToolbar": {
       "bulkActions": "Actions groupées",
-      "selected": "sélectionné",
-      "complete": "Terminé",
+      "selected": "sélectionnée(s)",
+      "complete": "Terminer",
       "priority": "Priorité",
       "dueDate": "Date d'échéance",
       "moveTo": "Déplacer vers",
@@ -239,25 +328,26 @@
       "archive": "Archiver",
       "delete": "Supprimer",
       "cancelSelection": "Annuler la sélection",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "unarchive": "Désarchiver"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
       "delete": "Supprimer ",
       "task": "tâche",
       "youReAboutToDelete": "Vous êtes sur le point de supprimer ",
       "task2": "tâche",
-      "and": "et ",
-      "moreTask": "plus de tâche",
+      "and": "et encore ",
+      "moreTask": "tâche",
       "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Cette action peut être annulée pendant une courte période après la suppression.",
       "cancel": "Annuler",
       "delete2": "Supprimer ",
       "task3": "tâche"
     },
     "componentsTasksBulkActionsBulkDueDatePicker": {
-      "setDueDateFor": "Fixer la date d'échéance pour ",
+      "setDueDateFor": "Définir la date d'échéance pour ",
       "task": "tâche",
       "selectADateToSetAsTheDueDateForAllSelectedTasks": "Sélectionnez une date à définir comme date d'échéance pour toutes les tâches sélectionnées.",
-      "alsoSetTime": "Réglez également l'heure",
+      "alsoSetTime": "Définir aussi l'heure",
       "cancel": "Annuler",
       "setDueDate": "Définir la date d'échéance"
     },
@@ -265,25 +355,25 @@
       "complete": "Terminé"
     },
     "componentsTasksColorPicker": {
-      "selectColor": "Sélectionnez la couleur"
+      "selectColor": "Choisir une couleur"
     },
     "componentsTasksCustomRepeatDialog": {
-      "onTheseDays": "Ces jours-là",
-      "repeatOn": "Répétez sur",
-      "day": "Jour",
+      "onTheseDays": "Les jours suivants",
+      "repeatOn": "Répéter le",
+      "day": "Le",
       "ofTheMonth": "du mois",
       "the": "Le",
       "ofTheMonth2": "du mois",
       "ends": "Se termine",
       "never": "Jamais",
-      "onDate": "Au rendez-vous",
+      "onDate": "À la date",
       "after": "Après",
       "occurrences": "occurrences",
       "preview": "Aperçu",
-      "of": "de ",
-      "andMore": "et plus",
+      "of": "sur ",
+      "andMore": "et ainsi de suite",
       "frequency": "Fréquence",
-      "repeatEvery": "Répétez tous les",
+      "repeatEvery": "Répéter tous les",
       "day2": "jour",
       "week": "semaine",
       "month": "mois",
@@ -294,88 +384,88 @@
     },
     "componentsTasksDatePickerCalendar": {
       "previousMonth": "Mois précédent",
-      "nextMonth": "Le mois prochain",
-      "goToToday": "Allez à aujourd'hui",
+      "nextMonth": "Mois suivant",
+      "goToToday": "Aller à aujourd'hui",
       "today": "Aujourd'hui",
-      "w": "W",
+      "w": "S",
       "weekNumber": "Semaine {number}"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "Supprimer la date",
       "clearTime": "Effacer l'heure",
-      "addTime": "Ajouter du temps",
+      "addTime": "Ajouter une heure",
       "time": "Heure"
     },
     "componentsTasksDeleteProjectDialog": {
       "delete": "Supprimer \"",
       "thisProjectHas": "Ce projet a ",
       "task": "tâche",
-      "whatWouldYouLikeToDoWithThem": "Qu’aimeriez-vous faire avec eux ?",
-      "moveTasksToPersonalProject": "Déplacer les tâches vers un projet personnel",
+      "whatWouldYouLikeToDoWithThem": "Que voulez-vous faire de ces tâches ?",
+      "moveTasksToPersonalProject": "Déplacer les tâches vers le projet Personnel",
       "deleteAllTasksPermanently": "Supprimer définitivement toutes les tâches",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Ce projet n'a aucune tâche et sera définitivement supprimé.",
-      "thisActionCannotBeUndone": "Cette action ne peut pas être annulée.",
+      "notesEventsAndFilesStayNotice": "Les tâches de ce projet sont supprimées. Vos notes, événements et fichiers restent dans votre coffre.",
+      "thisActionCannotBeUndone": "Cette action est irréversible.",
       "cancel": "Annuler",
-      "deleteProject": "Supprimer le projet",
-      "notesEventsAndFilesStayNotice": "Les tâches de ce projet sont supprimées. Vos notes, événements et fichiers restent dans votre coffre."
+      "deleteProject": "Supprimer le projet"
     },
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Supprimer la tâche ?",
       "deleteTask2": "Supprimer la tâche",
-      "deleteConfirmBody": "La tâche « {title} » sera définitivement supprimée. Cette action ne peut pas être annulée."
+      "deleteConfirmBody": "La tâche « {title} » sera définitivement supprimée. Cette action est irréversible."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Toutes les sous-tâches sont terminées !",
-      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Souhaitez-vous également marquer la tâche parent comme terminée ?",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Voulez-vous aussi marquer la tâche parente comme terminée ?",
       "keepTaskOpen": "Garder la tâche ouverte",
-      "completeTask": "Tâche terminée ✓",
-      "allSubtasksDoneBody": "{count, plural, one {La sous-tâche de « {title} » est terminée.} many {Les # sous-tâches de « {title} » sont terminées.} other {Les # sous-tâches de « {title} » sont terminées.}}"
+      "completeTask": "Terminer la tâche ✓",
+      "allSubtasksDoneBody": "{count, plural, one {La sous-tâche de « {title} » est terminée.} many {Les # sous-tâches de « {title} » sont terminées.} other {Les # sous-tâches de « {title} » sont terminées.}}"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Définir la date d'échéance pour toutes les sous-tâches",
-      "setDueDateFor": "Fixer la date d'échéance pour ",
+      "setDueDateFor": "Définir la date d'échéance pour ",
       "alsoApplyToCompletedSubtasks": "Appliquer également aux sous-tâches terminées (",
       "clearDate": "Effacer la date",
       "cancel": "Annuler",
-      "apply": "Postuler",
-      "alsoApplyToCompletedSubtasksCount": "Appliquer également aux sous-tâches terminées ({count})",
-      "setDueDateForSubtasksIn": "Définir la date d'échéance pour {count, plural, one {# sous-tâche} many {# sous-tâches} other {# sous-tâches}} de « {title} »"
+      "apply": "Appliquer",
+      "setDueDateForSubtasksIn": "Définir la date d'échéance pour {count, plural, one {# sous-tâche} many {# sous-tâches} other {# sous-tâches}} de « {title} »",
+      "alsoApplyToCompletedSubtasksCount": "Appliquer également aux sous-tâches terminées ({count})"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Définir la priorité pour toutes les sous-tâches",
       "setPriorityFor": "Définir la priorité pour ",
       "alsoApplyToCompletedSubtasks": "Appliquer également aux sous-tâches terminées (",
       "cancel": "Annuler",
-      "apply": "Postuler",
-      "alsoApplyToCompletedSubtasksCount": "Appliquer également aux sous-tâches terminées ({count})",
-      "setPriorityForSubtasksIn": "Définir la priorité pour {count, plural, one {# sous-tâche} many {# sous-tâches} other {# sous-tâches}} de « {title} »"
+      "apply": "Appliquer",
+      "setPriorityForSubtasksIn": "Définir la priorité pour {count, plural, one {# sous-tâche} many {# sous-tâches} other {# sous-tâches}} de « {title} »",
+      "alsoApplyToCompletedSubtasksCount": "Appliquer également aux sous-tâches terminées ({count})"
     },
     "componentsTasksDialogsCompleteParentDialog": {
-      "completeTaskWithIncompleteSubtasks": "Tâche terminée avec des sous-tâches incomplètes ?",
-      "has": "a ",
-      "incompleteSubtask": "sous-tâche incomplète",
+      "completeTaskWithIncompleteSubtasks": "Terminer la tâche malgré des sous-tâches non terminées ?",
+      "has": "a encore ",
+      "incompleteSubtask": "sous-tâche",
       "and": "et ",
-      "more": "plus",
-      "whatWouldYouLikeToDo": "Qu'aimeriez-vous faire ?",
+      "more": "de plus",
+      "whatWouldYouLikeToDo": "Qu'aimeriez-vous faire ?",
       "completeAllParentSubtasks": "Terminer tout (parent + sous-tâches)",
-      "markTheParentAndAllSubtasksAsComplete": "Marquer le parent et toutes les sous-tâches comme terminés",
-      "completeParentOnlyKeepSubtasksIncomplete": "Parent complet uniquement, garder les sous-tâches incomplètes",
-      "onlyMarkTheParentTaskAsComplete": "Marquer uniquement la tâche parent comme terminée",
+      "markTheParentAndAllSubtasksAsComplete": "Marquer la tâche parente et toutes les sous-tâches comme terminées",
+      "completeParentOnlyKeepSubtasksIncomplete": "Terminer seulement la tâche parente, garder les sous-tâches non terminées",
+      "onlyMarkTheParentTaskAsComplete": "Marquer uniquement la tâche parente comme terminée",
       "cancel": "Annuler",
-      "complete": "Terminé"
+      "complete": "Terminer"
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Supprimer toutes les sous-tâches ?",
-      "thisActionCannotBeUndone": "Cette action ne peut pas être annulée.",
+      "thisActionCannotBeUndone": "Cette action est irréversible.",
       "cancel": "Annuler",
       "deleteAll": "Supprimer tout",
-      "deleteSubtasksConfirmation": "Cette action supprimera {count, plural, one {# sous-tâche} many {# sous-tâches} other {# sous-tâches}} de « {title} »."
+      "deleteSubtasksConfirmation": "Cette action supprimera {count, plural, one {# sous-tâche} many {# sous-tâches} other {# sous-tâches}} de « {title} »."
     },
     "componentsTasksDialogsDeleteParentDialog": {
       "deleteTaskWithSubtasks": "Supprimer une tâche avec des sous-tâches ?",
       "has": "a ",
       "subtask": "sous-tâche",
-      "whatWouldYouLikeToDo": "Qu'aimeriez-vous faire ?",
+      "whatWouldYouLikeToDo": "Qu'aimeriez-vous faire ?",
       "deleteTaskAndAllSubtasks": "Supprimer la tâche et toutes les sous-tâches",
       "permanentlyRemovesEverything": "Supprime définitivement tout",
       "deleteTaskKeepSubtasksAsStandaloneTasks": "Supprimer la tâche, conserver les sous-tâches en tant que tâches autonomes",
@@ -384,43 +474,43 @@
       "delete": "Supprimer"
     },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
-      "duplicateTask": "Tâche en double",
-      "createACopyOf": "Créez une copie de «",
+      "duplicateTask": "Dupliquer la tâche",
+      "createACopyOf": "Créer une copie de «",
       "alsoDuplicateSubtasks": "Dupliquer également les sous-tâches (",
       "cancel": "Annuler",
       "duplicate": "Dupliquer ",
+      "createACopyOfTitle": "Créer une copie de « {title} »",
       "alsoDuplicateSubtasksCount": "Dupliquer également les sous-tâches ({count})",
-      "createACopyOfTitle": "Créer une copie de « {title} »",
-      "duplicateTaskOnly": "Dupliquer la tâche",
-      "duplicateWithItems": "Dupliquer ({count, plural, one {# élément} many {# éléments} other {# éléments}})"
+      "duplicateWithItems": "Dupliquer ({count, plural, one {# élément} many {# éléments} other {# éléments}})",
+      "duplicateTaskOnly": "Dupliquer la tâche"
     },
     "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Faire une sous-tâche de...",
-      "selectATaskToMake": "Sélectionnez une tâche à effectuer \"",
-      "aSubtaskOf": "une sous-tâche de.",
-      "searchTasks": "Rechercher des tâches...",
+      "makeSubtaskOf": "Convertir en sous-tâche de…",
+      "selectATaskToMake": "Sélectionnez la tâche dont \"",
+      "aSubtaskOf": "deviendra une sous-tâche.",
+      "searchTasks": "Rechercher des tâches…",
       "sameProject": "Même projet",
       "otherProjects": "Autres projets"
     },
     "componentsTasksDragDropInsertionIndicator": {
-      "dropToRescheduleTo": "Déposez pour reprogrammer à "
+      "dropToRescheduleTo": "Déposez pour replanifier : "
     },
     "componentsTasksDragDropMoveMenu": {
       "moveTask": "Déplacer la tâche",
       "move": "Déplacer",
-      "reschedule": "Reprogrammer",
+      "reschedule": "Replanifier",
       "today": "Aujourd'hui",
       "tomorrow": "Demain",
       "nextWeek": "La semaine prochaine",
       "removeDate": "Supprimer la date",
-      "moveToProject": "Passer au projet",
+      "moveToProject": "Déplacer vers un projet",
       "current": "Actuel",
       "changeStatus": "Changer de statut",
       "current2": "Actuel",
       "reorder": "Réorganiser"
     },
     "componentsTasksDragDropMultiDragOverlay": {
-      "moreTask": "plus de tâche",
+      "moreTask": "tâche",
       "task": "tâche"
     },
     "componentsTasksDragDropSidebarDropZones": {
@@ -430,26 +520,26 @@
       "priority": "priorité : "
     },
     "componentsTasksDueDatePicker": {
-      "selectDueDate": "Sélectionnez la date d'échéance",
+      "selectDueDate": "Choisir la date d'échéance",
       "overdue": "En retard",
-      "setDueDate": "Fixer la date d'échéance",
+      "setDueDate": "Définir la date d'échéance",
       "suggestions": "Suggestions",
-      "pickADate": "Choisissez une date...",
-      "addTime": "Ajouter du temps",
-      "time": "Temps",
+      "pickADate": "Choisir une date…",
+      "addTime": "Ajouter une heure",
+      "time": "Heure",
       "clearDate": "Effacer la date",
       "backToOptions": "Retour aux options",
-      "nextWeek": "La semaine prochaine",
-      "thisWeekend": "Ce week-end",
       "today": "Aujourd'hui",
-      "tomorrow": "Demain"
+      "tomorrow": "Demain",
+      "thisWeekend": "Ce week-end",
+      "nextWeek": "La semaine prochaine"
     },
     "componentsTasksEditRepeatingTaskDialog": {
-      "editRepeatingTask": "Modifier une tâche répétitive",
-      "youReEditingARepeatingTaskApplyChangesTo": "Vous modifiez une tâche répétitive. Appliquer les modifications à :",
-      "onlyThisOccurrence": "Seulement cet événement",
+      "editRepeatingTask": "Modifier la tâche récurrente",
+      "youReEditingARepeatingTaskApplyChangesTo": "Vous modifiez une tâche récurrente. Appliquer les modifications à :",
+      "onlyThisOccurrence": "Cette occurrence uniquement",
       "onlyFutureTasksUnchanged": "uniquement – tâches futures inchangées",
-      "thisAndAllFutureOccurrences": "Ceci et tous les événements futurs",
+      "thisAndAllFutureOccurrences": "Cette occurrence et les suivantes",
       "andBeyond": "et au-delà",
       "cancel": "Annuler",
       "continue": "Continuer"
@@ -466,31 +556,31 @@
       "viewCalendar": "Afficher le calendrier"
     },
     "componentsTasksFiltersActiveFiltersBar": {
-      "priorityIs": "La priorité est",
+      "priorityIs": "Priorité :",
       "priority": "priorité",
-      "statusIs": "Le statut est",
+      "tagsIs": "Tags :",
+      "tags": "tags",
+      "statusIs": "Statut :",
       "status": "statut",
-      "projectIs": "Le projet est",
+      "projectIs": "Projet :",
       "project": "projet",
       "due": "Échéance",
       "dueDate": "date d'échéance",
-      "search": "rechercher",
-      "clearAll": "Tout effacer",
-      "tags": "balises",
-      "tagsIs": "Les balises sont"
+      "search": "recherche",
+      "clearAll": "Tout effacer"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "Filtrer par date d'échéance",
-      "customRange": "Gamme personnalisée",
+      "customRange": "Plage personnalisée",
       "clear": "Effacer",
-      "apply": "Postuler"
+      "apply": "Appliquer"
     },
     "componentsTasksFiltersFilterDropdown": {
-      "filterBy": "Filtrer par..."
+      "filterBy": "Filtrer par…"
     },
     "componentsTasksFiltersFilterEmptyState": {
       "activeFilters": "Filtres actifs : ",
-      "clearAllFilters": "Supprimer tous les filtres"
+      "clearAllFilters": "Effacer tous les filtres"
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Date d'échéance"
@@ -498,8 +588,8 @@
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Priorité",
       "is": "est",
-      "search": "Rechercher...",
-      "selected": "sélectionné"
+      "search": "Rechercher…",
+      "selected": "sélectionnée(s)"
     },
     "componentsTasksFiltersFilterPanelsProjectPanel": {
       "project": "Projet",
@@ -512,12 +602,18 @@
       "status": "Statut",
       "pickAProject": "Choisissez un projet"
     },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "tags": "Tags",
+      "is": "est",
+      "search": "Rechercher…",
+      "selected": "sélectionné(s)"
+    },
     "componentsTasksFiltersMoreFiltersDropdown": {
       "moreFilters": "Plus de filtres",
       "more": "Plus",
       "status": "Statut",
-      "hasTimeSet": "L'heure est-elle fixée",
-      "recurringOnly": "Récurrent uniquement",
+      "hasTimeSet": "Avec une heure",
+      "recurringOnly": "Récurrentes uniquement",
       "status2": "Statut"
     },
     "componentsTasksFiltersPriorityFilter": {
@@ -537,21 +633,21 @@
       "saveFilter": "Enregistrer le filtre",
       "saveYourCurrentFilterSettingsForQuickAccessLater": "Enregistrez vos paramètres de filtre actuels pour un accès rapide plus tard.",
       "filterName": "Nom du filtre",
-      "eGHighPriorityThisWeek": "par exemple, haute priorité cette semaine",
+      "eGHighPriorityThisWeek": "p. ex. Priorité haute cette semaine",
       "currentFilters": "Filtres actuels :",
       "noFiltersApplied": "Aucun filtre appliqué",
       "cancel": "Annuler",
       "saveFilter2": "Enregistrer le filtre",
-      "nameRequired": "Veuillez saisir un nom pour ce filtre",
-      "summaryDue": "Échéance : {value}",
-      "summaryDueRange": "Échéance : {start} - {end}",
-      "summaryPriorities": "Priorité : {names}",
-      "summaryProjects": "Projet : {names}",
-      "summaryRepeatOneTime": "Répétition : ponctuelles uniquement",
-      "summaryRepeatRepeating": "Répétition : récurrentes uniquement",
-      "summarySearch": "Recherche : « {query} »",
-      "summaryTimeWith": "Heure : avec heure",
-      "summaryTimeWithout": "Heure : sans heure"
+      "summarySearch": "Recherche : « {query} »",
+      "summaryProjects": "Projet : {names}",
+      "summaryPriorities": "Priorité : {names}",
+      "summaryDue": "Échéance : {value}",
+      "summaryDueRange": "Échéance : {start} – {end}",
+      "summaryRepeatRepeating": "Répétition : récurrentes uniquement",
+      "summaryRepeatOneTime": "Répétition : ponctuelles uniquement",
+      "summaryTimeWith": "Heure : avec heure",
+      "summaryTimeWithout": "Heure : sans heure",
+      "nameRequired": "Veuillez saisir un nom pour ce filtre"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Filtres enregistrés",
@@ -566,25 +662,25 @@
       "save": "Enregistrer"
     },
     "componentsTasksFiltersSearchInput": {
-      "searchTasks": "Tâches de recherche",
+      "searchTasks": "Rechercher des tâches",
       "clearSearch": "Effacer la recherche"
     },
     "componentsTasksKanbanKanbanColumn": {
       "dropHere": "Déposez ici",
       "releaseToMoveTaskToThisColumn": "Relâchez pour déplacer la tâche vers cette colonne",
-      "moreCompleted": "plus complet",
+      "moreCompleted": "terminée(s) de plus",
       "showFewer": "Afficher moins",
-      "taskTitle": "Titre de la tâche..."
+      "taskTitle": "Titre de la tâche…"
     },
     "componentsTasksNaturalDateInput": {
       "typeADateInNaturalLanguage": "Tapez une date en langage naturel",
-      "select": "Sélectionnez"
+      "select": "Sélectionner"
     },
     "componentsTasksParentTaskRow": {
       "priority": "priorité : "
     },
     "componentsTasksPrioritySelect": {
-      "selectPriority": "Sélectionnez la priorité",
+      "selectPriority": "Choisir la priorité",
       "navigate": "naviguer",
       "select": "sélectionner"
     },
@@ -594,28 +690,28 @@
       "projectName": "Nom du projet",
       "clickIconToChange": "Cliquez sur l'icône pour changer",
       "color": "Couleur",
-      "descriptionOptional": "Description (facultatif)",
-      "briefDescriptionOfThisProject": "Brève description de ce projet...",
+      "descriptionOptional": "Description (facultative)",
+      "briefDescriptionOfThisProject": "Brève description de ce projet…",
       "statuses": "Statuts",
       "configureTheWorkflowStagesForThisProject": "Configurez les étapes du flux de travail pour ce projet.",
       "deleteProject": "Supprimer le projet",
       "cancel": "Annuler",
       "unsavedChanges": "Modifications non enregistrées",
-      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir les supprimer ?",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Vous avez des modifications non enregistrées. Voulez-vous vraiment les abandonner ?",
       "cancel2": "Annuler",
-      "discard": "Jeter",
+      "discard": "Abandonner",
       "defaultProject": "Projet par défaut",
-      "openTasksOnThisProject": "Les tâches s’ouvrent sur ce projet"
+      "openTasksOnThisProject": "La page Tâches s'ouvre sur ce projet"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "Sélectionnez un projet",
-      "selectProject2": "Sélectionnez un projet"
+      "selectProject": "Sélectionner un projet",
+      "selectProject2": "Sélectionner un projet"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "Modifier le projet",
-      "archiveProject": "Projet d'archives",
+      "archiveProject": "Archiver le projet",
       "deleteProject": "Supprimer le projet",
-      "selectProject": "Sélectionnez un projet",
+      "selectProject": "Sélectionner un projet",
       "noProjectsYet": "Aucun projet pour l'instant",
       "createProject": "Créer un projet"
     },
@@ -625,25 +721,21 @@
       "createYourFirstProject": "Créez votre premier projet"
     },
     "componentsTasksQuickAddQuickAddHelp": {
-      "quickAddShortcutsHelp": "Aide pour l'ajout rapide de raccourcis",
-      "quickAddShortcuts": "Ajout rapide de raccourcis",
-      "exampleBuyMilkTomorrowHighPersonal": "Exemple : \"Achetez du lait !demain !!haut #personal\""
+      "quickAddShortcutsHelp": "Aide sur les raccourcis d'ajout rapide",
+      "quickAddShortcuts": "Raccourcis d'ajout rapide",
+      "exampleBuyMilkTomorrowHighPersonal": "Exemple : « Acheter du lait !tomorrow !!high #perso »"
     },
     "componentsTasksQuickAddQuickOptionsBar": {
       "quickOptions": "Options rapides :"
     },
-    "componentsTasksQuickAddInput": {
-      "q": "Q",
-      "q2": "Q"
-    },
     "componentsTasksRepeatIndicator": {
-      "of": "de ",
-      "completed": "terminé"
+      "of": "sur ",
+      "completed": "terminées"
     },
     "componentsTasksRepeatPicker": {
-      "selectRepeatFrequency": "Sélectionnez la fréquence de répétition",
-      "doesNotRepeat": "Ne répète pas",
-      "custom": "Personnalisé..."
+      "selectRepeatFrequency": "Choisir la fréquence de répétition",
+      "doesNotRepeat": "Ne se répète pas",
+      "custom": "Personnalisé…"
     },
     "componentsTasksStatusEditor": {
       "changeStatusColor": "Changer la couleur du statut",
@@ -652,75 +744,75 @@
       "addStatus": "Ajouter un statut"
     },
     "componentsTasksStatusSelect": {
-      "selectStatus": "Sélectionnez le statut",
-      "selectStatus2": "Sélectionnez le statut"
+      "selectStatus": "Choisir le statut",
+      "selectStatus2": "Sélectionner le statut"
     },
     "componentsTasksStopRepeatingDialog": {
-      "stopRepeating": "Arrêtez de répéter",
-      "isSetToRepeat": "est prêt à répéter ",
-      "whatWouldYouLikeToDo": "Qu'aimeriez-vous faire ?",
-      "keepThisTaskStopFutureOccurrences": "Conservez cette tâche, arrêtez les occurrences futures",
+      "stopRepeating": "Arrêter la répétition",
+      "isSetToRepeat": "se répète ",
+      "whatWouldYouLikeToDo": "Qu'aimeriez-vous faire ?",
+      "keepThisTaskStopFutureOccurrences": "Garder cette tâche, arrêter les occurrences suivantes",
       "taskWillBecomeAOneTimeTask": "La tâche deviendra une tâche ponctuelle",
-      "deleteThisAndAllFutureOccurrences": "Supprimez ceci et toutes les occurrences futures",
+      "deleteThisAndAllFutureOccurrences": "Supprimer cette occurrence et les suivantes",
       "taskWillBeRemovedEntirely": "La tâche sera entièrement supprimée",
       "cancel": "Annuler",
       "confirm": "Confirmer"
     },
     "componentsTasksSubtaskDots": {
-      "of": "de ",
+      "of": "sur ",
       "subtasksComplete": "sous-tâches terminées (",
       "clickTo": "Cliquez pour ",
-      "of2": "de ",
+      "of2": "sur ",
       "subtasksComplete2": "sous-tâches terminées",
       "clickTo2": "Cliquez pour "
     },
     "componentsTasksSubtaskProgressBadge": {
-      "of": "de ",
+      "of": "sur ",
       "subtasksComplete": "sous-tâches terminées (",
       "clickTo": "Cliquez pour "
     },
     "componentsTasksTaskBadges": {
       "priority": "priorité",
-      "repeatingTask": "Tâche répétitive",
-      "d": "ré"
+      "repeatingTask": "Tâche récurrente",
+      "d": "j"
     },
     "componentsTasksTaskEmptyState": {
       "addTask": "Ajouter une tâche",
-      "allDescription": "Créez votre première tâche pour commencer",
       "allTitle": "Aucune tâche pour l'instant",
-      "completedDescription": "Les tâches terminées apparaîtront ici",
+      "allDescription": "Créez votre première tâche pour commencer",
+      "todayTitle": "Rien à faire aujourd'hui",
+      "todayDescription": "Vous êtes à jour !",
       "completedTitle": "Aucune tâche terminée",
-      "projectDescription": "Ajoutez une tâche pour commencer",
+      "completedDescription": "Les tâches terminées apparaîtront ici",
       "projectTitle": "Aucune tâche dans ce projet",
-      "projectTitleNamed": "Aucune tâche dans {name}",
-      "todayDescription": "Vous êtes à jour !",
-      "todayTitle": "Rien à faire aujourd'hui"
+      "projectDescription": "Ajoutez une tâche pour commencer",
+      "projectTitleNamed": "Aucune tâche dans {name}"
     },
     "componentsTasksTaskIcons": {
-      "noPriority": "pas de priorité"
+      "noPriority": "aucune priorité"
     },
     "componentsTasksTaskRepeatSection": {
-      "repeat": "Répéter",
+      "repeat": "Répétition",
       "addRepeat": "Ajouter une répétition",
       "edit": "Modifier",
       "edit2": "Modifier",
-      "stopRepeating": "Arrêtez de répéter",
-      "stopRepeating2": "Arrêtez de répéter"
+      "stopRepeating": "Arrêter la répétition",
+      "stopRepeating2": "Arrêter la répétition"
     },
     "componentsTasksTaskSection": {
       "addTask": "Ajouter une tâche"
     },
     "componentsTasksTimePicker": {
-      "selectTime": "Sélectionnez l'heure",
-      "selectTime2": "Sélectionnez l'heure",
+      "selectTime": "Choisir l'heure",
+      "selectTime2": "Choisir l'heure",
       "clearTime": "Effacer l'heure"
     },
     "componentsTasksTodayEmptyState": {
       "nothingScheduledForToday": "Rien de prévu pour aujourd'hui",
       "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Vous avez des tâches en retard ci-dessus. Ajoutez quelques tâches pour aujourd'hui ou consultez votre liste à venir.",
       "addTaskForToday": "Ajouter une tâche pour aujourd'hui",
-      "allCaughtUpForToday": "Tout est rattrapé pour aujourd'hui",
-      "youHaveNothingScheduledEnjoyTheClarity": "Vous n'avez rien de prévu. Profitez de la clarté.",
+      "allCaughtUpForToday": "Vous êtes à jour pour aujourd'hui",
+      "youHaveNothingScheduledEnjoyTheClarity": "Vous n'avez rien de prévu. Profitez de ce calme.",
       "addTaskForToday2": "Ajouter une tâche pour aujourd'hui"
     },
     "componentsTasksUpcomingEmptyState": {
@@ -728,21 +820,15 @@
       "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Vous avez des tâches en retard ci-dessus. Planifiez à l'avance en ajoutant des tâches pour la semaine à venir.",
       "addTask": "Ajouter une tâche",
       "noUpcomingTasks": "Aucune tâche à venir",
-      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Les tâches dues dans les 7 prochains jours apparaîtront ici. Planifiez votre semaine en ajoutant quelques tâches.",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Les tâches prévues dans les 7 prochains jours apparaîtront ici. Planifiez votre semaine en ajoutant quelques tâches.",
       "addTask2": "Ajouter une tâche"
-    },
-    "componentsTasksFiltersFilterPanelsTagPanel": {
-      "is": "est",
-      "search": "Rechercher...",
-      "selected": "sélectionnées",
-      "tags": "Balises"
     }
   },
   "phaseI": {
     "toasts": {
       "changesUndone": "Modifications annulées",
       "projectNotFound": "Projet introuvable",
-      "failedToArchiveTasks": "Échec de l'archivage des tâches",
+      "failedToArchiveTasks": "Impossible d'archiver les tâches",
       "tasksRestoredFromArchive": "Tâches restaurées à partir des archives",
       "subtaskAdded": "Sous-tâche ajoutée",
       "subtaskDeleted": "Sous-tâche supprimée",
@@ -750,182 +836,170 @@
       "allSubtasksCompleteTaskMarkedAsDone": "🎉 Toutes les sous-tâches sont terminées ! Tâche marquée comme terminée.",
       "taskReopened": "Tâche rouverte",
       "taskKeptOpen": "Tâche restée ouverte",
-      "taskMarkedAsDone": "🎉 Tâche marquée comme terminée !"
+      "taskMarkedAsDone": "🎉 Tâche marquée comme terminée !"
     },
     "errors": {
-      "failedToArchiveTasks": "Échec de l'archivage des tâches",
-      "failedToAddSubtask": "Échec de l'ajout d'une sous-tâche",
-      "failedToAddSubtasks": "Échec de l'ajout de sous-tâches",
-      "failedToReorderSubtasks": "Échec de la réorganisation des sous-tâches",
-      "failedToPromoteSubtask": "Échec de la promotion de la sous-tâche",
-      "failedToDeleteSubtask": "Échec de la suppression de la sous-tâche",
-      "failedToDeleteTask": "Échec de la suppression de la tâche",
-      "failedToCompleteTask": "Échec de la réalisation de la tâche",
-      "failedToMakeSubtask": "Échec de la réalisation de la sous-tâche",
-      "failedToCompleteSubtasks": "Échec de la réalisation des sous-tâches",
-      "failedToMarkSubtasksIncomplete": "Échec du marquage des sous-tâches incomplètes",
+      "failedToArchiveTasks": "Impossible d'archiver les tâches",
+      "failedToAddSubtask": "Impossible d'ajouter la sous-tâche",
+      "failedToAddSubtasks": "Impossible d'ajouter les sous-tâches",
+      "failedToReorderSubtasks": "Impossible de réorganiser les sous-tâches",
+      "failedToPromoteSubtask": "Impossible de convertir la sous-tâche en tâche",
+      "failedToDeleteSubtask": "Impossible de supprimer la sous-tâche",
+      "failedToDeleteTask": "Impossible de supprimer la tâche",
+      "failedToCompleteTask": "Impossible de terminer la tâche",
+      "failedToMakeSubtask": "Impossible de convertir en sous-tâche",
+      "failedToCompleteSubtasks": "Impossible de terminer les sous-tâches",
+      "failedToMarkSubtasksIncomplete": "Impossible de marquer les sous-tâches comme non terminées",
       "failedToSetDueDate": "Impossible de définir la date d'échéance",
-      "failedToSetPriority": "Échec de la définition de la priorité",
-      "failedToDeleteSubtasks": "Échec de la suppression des sous-tâches",
-      "failedToLoadTaskPreferences": "Échec du chargement des préférences de tâche",
-      "failedToUpdateTaskPreferences": "Échec de la mise à jour des préférences de tâche",
-      "failedToLoadLinkedTasks": "Échec du chargement des tâches liées"
-    }
-  },
-  "reminders": {
-    "hasReminders": "Comporte des rappels",
-    "setReminder": "Définir un rappel",
-    "summary": "Rappel : {date}",
-    "summaryWithMore": "Rappel : {date} (+{count} de plus)",
-    "toast": {
-      "deleteFailed": "Échec de la suppression du rappel",
-      "deleted": "Rappel supprimé",
-      "set": "Rappel défini",
-      "setFailed": "Échec de la définition du rappel",
-      "updateFailed": "Échec de la mise à jour du rappel",
-      "updated": "Rappel mis à jour"
+      "failedToSetPriority": "Impossible de définir la priorité",
+      "failedToDeleteSubtasks": "Impossible de supprimer les sous-tâches",
+      "failedToLoadTaskPreferences": "Impossible de charger les préférences des tâches",
+      "failedToUpdateTaskPreferences": "Impossible de modifier les préférences des tâches",
+      "failedToLoadLinkedTasks": "Impossible de charger les tâches liées"
     }
   },
   "addToProject": {
-    "dialogTitle": "Ajouter au projet",
-    "loading": "Chargement des projets…",
     "menuLabel": "Ajouter au projet",
+    "dialogTitle": "Ajouter au projet",
     "noProjects": "Aucun projet pour l'instant",
-    "toastError": "Échec de l'ajout au projet",
-    "toastSuccess": "Ajouté à {name}"
-  },
-  "itemProjects": {
-    "openProject": "Ouvrir le projet {name}"
+    "loading": "Chargement des projets…",
+    "toastSuccess": "Ajouté à {name}",
+    "toastError": "Impossible d'ajouter au projet"
   },
   "projectHome": {
-    "emptyBody": "Choisissez un projet dans la barre latérale pour ouvrir sa page d'accueil.",
     "emptyTitle": "Aucun projet sélectionné",
+    "emptyBody": "Choisissez un projet dans la barre latérale pour ouvrir sa page.",
     "loadError": "Impossible de charger les détails du projet",
     "overview": {
-      "clear": "Effacer la vue d'ensemble",
-      "clearError": "Impossible d'effacer la note de vue d'ensemble",
+      "sectionTitle": "Vue d'ensemble",
       "create": "Créer une note de vue d'ensemble",
-      "createError": "Impossible de créer la note de vue d'ensemble",
+      "clear": "Effacer la vue d'ensemble",
       "defaultTitle": "Vue d'ensemble",
-      "loadError": "Impossible de charger la note de vue d'ensemble",
       "placeholder": "Rédigez une vue d'ensemble de ce projet…",
-      "saveError": "Impossible d'enregistrer la note de vue d'ensemble",
-      "sectionTitle": "Vue d'ensemble"
+      "createError": "Impossible de créer la note de vue d'ensemble",
+      "clearError": "Impossible d'effacer la note de vue d'ensemble",
+      "loadError": "Impossible de charger la note de vue d'ensemble",
+      "saveError": "Impossible d'enregistrer la note de vue d'ensemble"
     }
+  },
+  "itemProjects": {
+    "openProject": "Ouvrir le projet {name}",
+    "removeFromProject": "Retirer du projet « {name} »",
+    "removeFailed": "Impossible de retirer cet élément du projet"
   },
   "projectHub": {
-    "capture": {
-      "attach": "Joindre des fichiers",
-      "fileError": "Impossible de lier {name}",
-      "fileErrorGeneric": "Impossible d'importer les fichiers",
-      "filesAdded": "{count, plural, one {# fichier ajouté au projet} many {# fichiers ajoutés au projet} other {# fichiers ajoutés au projet}}",
-      "label": "Ajouter à {name}",
-      "linkAdded": "Lien ajouté au projet",
-      "linkError": "Impossible d'enregistrer le lien",
-      "placeholder": "Ajouter à {name} — saisissez une tâche, notez une idée ou collez un lien…"
-    },
-    "groups": {
-      "older": "Plus anciens",
-      "past": "Passés",
-      "today": "Aujourd'hui",
-      "tomorrow": "Demain",
-      "upcoming": "À venir",
-      "yesterday": "Hier"
-    },
     "header": {
-      "archiveProject": "Archiver le projet",
-      "editProject": "Modifier le projet",
+      "toggleRail": "Afficher/Masquer les détails du projet",
       "menu": "Actions du projet",
-      "toggleRail": "Afficher ou masquer les détails du projet"
-    },
-    "rail": {
-      "addNote": "Ajouter une note",
-      "created": "Créé",
-      "details": "Détails",
-      "doneOf": "{done} sur {total} terminées",
-      "linked": "Éléments liés",
-      "linkedSummary": "{notes, plural, one {# note} many {# notes} other {# notes}} · {files, plural, one {# fichier} many {# fichiers} other {# fichiers}} · {events, plural, one {# événement} many {# événements} other {# événements}}",
-      "overdue": "En retard",
-      "overview": "Vue d'ensemble",
-      "pinError": "Impossible d'ajouter la note à la vue d'ensemble",
-      "progress": "Progression",
-      "unpinError": "Impossible de retirer la note de la vue d'ensemble",
-      "unpinNote": "Retirer {title} de la vue d'ensemble",
-      "updated": "Mis à jour"
-    },
-    "rows": {
-      "openEvent": "Ouvrir l'événement {title}",
-      "openFile": "Ouvrir le fichier {title}",
-      "openNote": "Ouvrir la note {title}",
-      "openTask": "Ouvrir la tâche {title}",
-      "setNoteIcon": "Définir l'icône de {title}"
-    },
-    "sections": {
-      "add": "Ajouter à {title}",
-      "emptyEvents": "Aucun événement lié pour l'instant.",
-      "emptyFiles": "Aucun fichier lié pour l'instant.",
-      "emptyNotes": "Aucune note liée pour l'instant.",
-      "emptyTasks": "Aucune tâche pour l'instant.",
-      "newNoteError": "Impossible d'ajouter la note",
-      "newNoteTitle": "Note sans titre",
-      "viewAll": "Voir tout"
+      "editProject": "Modifier le projet",
+      "archiveProject": "Archiver le projet"
     },
     "tabs": {
-      "events": "Événements",
-      "files": "Fichiers",
       "label": "Vues du projet",
-      "notes": "Notes",
       "overview": "Vue d'ensemble",
-      "tasks": "Tâches"
+      "tasks": "Tâches",
+      "notes": "Notes",
+      "files": "Fichiers",
+      "events": "Événements"
+    },
+    "groups": {
+      "today": "Aujourd'hui",
+      "yesterday": "Hier",
+      "older": "Plus anciens",
+      "tomorrow": "Demain",
+      "upcoming": "À venir",
+      "past": "Passés"
+    },
+    "sections": {
+      "viewAll": "Voir tout",
+      "add": "Ajouter à {title}",
+      "emptyTasks": "Aucune tâche pour l'instant.",
+      "emptyNotes": "Aucune note liée pour l'instant.",
+      "emptyFiles": "Aucun fichier lié pour l'instant.",
+      "emptyEvents": "Aucun événement lié pour l'instant.",
+      "newNoteTitle": "Note sans titre",
+      "newNoteError": "Impossible d'ajouter la note"
+    },
+    "rows": {
+      "openTask": "Ouvrir la tâche {title}",
+      "openNote": "Ouvrir la note {title}",
+      "openFile": "Ouvrir le fichier {title}",
+      "openEvent": "Ouvrir l'événement {title}",
+      "setNoteIcon": "Définir l'icône de {title}"
+    },
+    "rail": {
+      "overview": "Vue d'ensemble",
+      "progress": "Progression",
+      "details": "Détails",
+      "doneOf": "{done} sur {total} terminées",
+      "overdue": "En retard",
+      "created": "Créé",
+      "updated": "Mis à jour",
+      "linked": "Éléments liés",
+      "linkedSummary": "{notes, plural, one {# note} many {# notes} other {# notes}} · {files, plural, one {# fichier} many {# fichiers} other {# fichiers}} · {events, plural, one {# événement} many {# événements} other {# événements}}",
+      "addNote": "Ajouter une note",
+      "unpinNote": "Retirer {title} de la vue d'ensemble",
+      "pinError": "Impossible d'ajouter la note à la vue d'ensemble",
+      "unpinError": "Impossible de retirer la note de la vue d'ensemble"
+    },
+    "capture": {
+      "placeholder": "Ajouter à {name} – saisissez une tâche, notez une idée ou collez un lien…",
+      "attach": "Joindre des fichiers",
+      "linkAdded": "Lien ajouté au projet",
+      "linkError": "Impossible d'enregistrer le lien",
+      "filesAdded": "{count, plural, one {# fichier ajouté au projet} many {# fichiers ajoutés au projet} other {# fichiers ajoutés au projet}}",
+      "fileError": "Impossible de lier {name}",
+      "fileErrorGeneric": "Impossible d'importer les fichiers",
+      "label": "Ajouter à {name}"
     }
-  },
-  "priorityInline": {
-    "high": "élevée",
-    "low": "faible",
-    "medium": "moyenne",
-    "urgent": "urgente"
-  },
-  "priorityLabels": {
-    "high": "Élevée",
-    "low": "Faible",
-    "medium": "Moyenne",
-    "none": "Aucune priorité",
-    "urgent": "Urgente"
   },
   "project": {
-    "statusTypes": {
-      "done": "Terminé",
-      "inProgress": "En cours",
-      "todo": "À faire"
-    },
     "validation": {
-      "minStatuses": "Les projets doivent avoir au moins 2 statuts",
       "nameRequired": "Le nom du projet est obligatoire",
       "nameTooLong": "Le nom du projet ne doit pas dépasser 50 caractères",
-      "needsDoneStatus": "Les projets doivent avoir au moins un statut « Terminé »",
-      "needsDoneStatusForCompletedTasks": "Les projets doivent avoir au moins un statut « Terminé » pour les tâches terminées",
-      "needsTodoStatus": "Les projets doivent avoir au moins un statut « À faire »",
-      "needsTodoStatusForNewTasks": "Les projets doivent avoir au moins un statut « À faire » pour les nouvelles tâches",
+      "minStatuses": "Les projets doivent avoir au moins 2 statuts",
+      "needsTodoStatusForNewTasks": "Les projets doivent avoir au moins un statut « À faire » pour les nouvelles tâches",
+      "needsDoneStatusForCompletedTasks": "Les projets doivent avoir au moins un statut « Terminé » pour les tâches terminées",
       "statusNameRequired": "Tous les statuts doivent avoir un nom",
       "statusNamesUnique": "Les noms de statut doivent être uniques",
+      "needsTodoStatus": "Les projets doivent avoir au moins un statut « À faire »",
+      "needsDoneStatus": "Les projets doivent avoir au moins un statut « Terminé »",
       "statusNotFound": "Statut introuvable"
+    },
+    "statusTypes": {
+      "todo": "À faire",
+      "inProgress": "En cours",
+      "done": "Terminé"
     }
   },
+  "priorityLabels": {
+    "none": "Aucune priorité",
+    "low": "Basse",
+    "medium": "Moyenne",
+    "high": "Haute",
+    "urgent": "Urgente"
+  },
+  "priorityInline": {
+    "low": "basse",
+    "medium": "moyenne",
+    "high": "haute",
+    "urgent": "urgente"
+  },
   "statusLabels": {
-    "done": "Terminé",
+    "todo": "À faire",
     "inProgress": "En cours",
-    "todo": "À faire"
+    "done": "Terminé"
   },
   "colors": {
-    "blue": "Bleu",
     "gray": "Gris",
-    "green": "Vert",
-    "indigo": "Indigo",
-    "orange": "Orange",
-    "pink": "Rose",
-    "purple": "Violet",
     "red": "Rouge",
+    "orange": "Orange",
+    "yellow": "Jaune",
+    "green": "Vert",
     "teal": "Sarcelle",
-    "yellow": "Jaune"
+    "blue": "Bleu",
+    "indigo": "Indigo",
+    "purple": "Violet",
+    "pink": "Rose"
   }
 }
