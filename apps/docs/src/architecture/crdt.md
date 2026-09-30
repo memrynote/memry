@@ -658,6 +658,16 @@ document to its vault `.md` file and re-indexes it for search.
   snooze made elsewhere, applies over it instead of merging as a conflict whose push-back
   would reset that state on other devices. The initial seed skips such rows for the same
   reason while they hold no user intent (`pending` or `triggered`).
+- **A file changed outside the app is ingested before it is written** — the pass compares
+  the file's hash with the index row's `contentHash`. A mismatch means bytes the doc has
+  never seen, so the pass does not write. The watcher ingests an edit made while the app
+  is open. An edit made while the app was closed raises no event, and the launch index
+  pass skips a path it already lists, so the pass that finds the mismatch runs the ingest
+  itself (#2539). It feeds the file into the doc with `feedExternalEditToCrdt`, a full body
+  replace in which the file wins, and moves the index row to the new bytes only once the
+  doc holds them. Later passes then write as usual. If the feed cannot land (a large-file
+  body, or a doc that opens empty with no store) the pass keeps skipping and the file stays
+  as it is.
 
 While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search

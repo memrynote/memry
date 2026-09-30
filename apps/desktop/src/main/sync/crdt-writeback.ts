@@ -3,6 +3,7 @@ import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
+import { feedExternalEditToCrdt } from './crdt-external-feed'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
@@ -660,9 +661,12 @@ async function writebackExisting(
   // not the one on screen, then open that note, and the doc loaded from
   // persistence writes its older body straight over the edit.
   //
-  // Skipping costs a round, not the edit. The ingest already on its way feeds
-  // the file into this doc (`feedExternalEditToCrdt`), and the update that
-  // merge produces writes back from the merged result.
+  // Skipping costs a round, not the edit. The ingest feeds the file into this
+  // doc (`feedExternalEditToCrdt`) and moves the index row to the new bytes, so
+  // the next pass writes from a doc that holds them. The watcher runs that
+  // ingest for an edit made while the app is open. An edit made while it was
+  // closed raises no event, and no launch pass re-reads a file the index
+  // already lists (#2539), so the pass that finds the mismatch runs it here.
   //
   // A note whose hash was never measured used to be the exception: a tier-0
   // sidebar row, listed from `stat` alone, had nothing to compare and wrote as
@@ -689,11 +693,35 @@ async function writebackExisting(
       return
     }
     const onDisk = cached.contentHash ? generateContentHash(existingRaw) : null
-    if (onDisk !== null && onDisk !== cached.contentHash) {
-      log.warn('Write-back skipped: the file changed outside the app', {
-        noteId,
-        path: relativePath
-      })
+    if (onDisk !== null && onDisk !== cached.contentHash && parsed) {
+      const ingested = await feedExternalEditToCrdt(noteId, parsed.content)
+      // The index row moves to the new bytes only once the doc holds them.
+      // Moved first, the next pass would write a doc that never saw them.
+      if (ingested) {
+        syncNoteToCache(
+          indexDb,
+          {
+            id: noteId,
+            path: relativePath,
+            fileContent: existingRaw,
+            frontmatter: parsed.frontmatter,
+            parsedContent: parsed.content,
+            title: cached.title,
+            createdAt: cached.createdAt,
+            modifiedAt: cached.modifiedAt,
+            localOnly: cached.localOnly ?? false,
+            emoji: cached.emoji ?? null
+          },
+          { isNew: false }
+        )
+        void flushProjectionEvents()
+      }
+      log.warn(
+        ingested
+          ? 'Write-back deferred: ingested the file that changed outside the app'
+          : 'Write-back skipped: the file changed outside the app',
+        { noteId, path: relativePath }
+      )
       return
     }
   }
