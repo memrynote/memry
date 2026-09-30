@@ -721,6 +721,11 @@ const inlineImageCases: RoundtripCase[] = [
     canonical: 'Before after\nnext line\n\n![photo.png](attachments/photo.png)'
   },
   {
+    name: 'plain and linked images in one paragraph keep their order',
+    markdown: 'See ![a.png](a.png) and [![b.png](b.png)](https://example.com/b)',
+    canonical: 'See and [b.png](https://example.com/b)\n\n![a.png](a.png)\n\n![b.png](b.png)'
+  },
+  {
     name: 'linked image in a heading',
     markdown: '## [![logo.png](attachments/logo.png)](https://example.com/home)',
     canonical: '## [logo.png](https://example.com/home)\n\n![logo.png](attachments/logo.png)'
