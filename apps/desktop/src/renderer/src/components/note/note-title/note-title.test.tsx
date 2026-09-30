@@ -46,7 +46,7 @@ describe('NoteTitle - title editing', () => {
     renderWithI18n(<NoteTitle {...defaultProps} title="" />, i18nTr)
 
     const textarea = screen.getByRole('textbox', { name: 'Not başlığı' })
-    expect(textarea).toHaveAttribute('placeholder', 'İsimsiz')
+    expect(textarea).toHaveAttribute('placeholder', 'Başlıksız')
   })
 
   it('should use custom placeholder', () => {

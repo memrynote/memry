@@ -331,7 +331,7 @@ describe('T521: NotesTree - folder tree display', () => {
     renderWithProviders(<NotesTree />, i18nTr)
 
     expect(screen.getByText('Henüz not yok')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Yeni Not' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Yeni not' })).toBeInTheDocument()
   })
 
   it('should render notes in tree structure', () => {

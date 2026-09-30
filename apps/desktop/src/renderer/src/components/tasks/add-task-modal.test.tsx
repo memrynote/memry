@@ -284,7 +284,7 @@ describe('AddTaskModal', () => {
         i18nTr
       )
 
-      expect(screen.getAllByText('Görev Ekle').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('Görev ekle').length).toBeGreaterThanOrEqual(1)
     })
   })
 

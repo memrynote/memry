@@ -11,7 +11,7 @@ describe('notes namespace', () => {
   it('translates Turkish notes keys', async () => {
     const i18n = await createMainI18n({ locale: 'tr' })
 
-    expect(i18n.t('notes:page.empty.title')).toBe('Not seçilmedi')
+    expect(i18n.t('notes:page.empty.title')).toBe('Seçili not yok')
   })
 
   it('translates Arabic notes keys', async () => {

@@ -20,7 +20,7 @@ describe('getUserErrorMessage', () => {
     await createRendererI18n({ locale: 'tr' })
 
     expect(getUserErrorMessage(ERROR_CODES.NOTE_WRITE_FAILED)).toBe(
-      'Bu not kaydedilemedi. Disk alanını ve izinlerini kontrol edin.'
+      'Bu not kaydedilemedi. Disk alanını ve izinleri kontrol edin.'
     )
   })
 

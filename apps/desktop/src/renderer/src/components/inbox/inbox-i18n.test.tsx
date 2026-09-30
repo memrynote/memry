@@ -35,7 +35,7 @@ describe('inbox i18n', () => {
     )
 
     expect(screen.getByText('Gelen kutusu')).toBeInTheDocument()
-    expect(screen.getByText('Arşivlendi')).toBeInTheDocument()
+    expect(screen.getByText('Arşivlenenler')).toBeInTheDocument()
   })
 
   it('renders inbox zero copy through i18n', () => {
