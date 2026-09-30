@@ -20,6 +20,8 @@ private final class ScriptedMetadataWriter: NoteMetadataWriting, @unchecked Send
         case cover(String?, Double)
         case property(String, String)
         case clear(String)
+        case renameProperty(String, String)
+        case definition(String, String)
     }
 
     let calls = Mutex<[Call]>([])
@@ -45,6 +47,12 @@ private final class ScriptedMetadataWriter: NoteMetadataWriting, @unchecked Send
         try record(.property(name, valueJson))
     }
     func clearProperty(id: String, name: String) async throws { try record(.clear(name)) }
+    func renameProperty(id: String, from: String, to: String) async throws {
+        try record(.renameProperty(from, to))
+    }
+    func ensurePropertyDefinition(name: String, typeName: String) async throws {
+        try record(.definition(name, typeName))
+    }
 
     var all: [Call] { calls.withLock { $0 } }
 }
@@ -363,5 +371,153 @@ struct NoteMetadataViewModelTests {
         let model = NoteMetadataViewModel(noteId: "note-1", writer: nil)
         await model.setCover(url: "cover.png", offsetY: 0.5)
         #expect(model.status == .idle)
+    }
+}
+
+@Suite("Note properties: rename, add, relations (desktop parity)")
+@MainActor
+struct NotePropertyEditingTests {
+
+    /// Desktop `properties:rename`: this note only, value kept.
+    @Test func renaming_a_property_reaches_the_core() async {
+        let writer = ScriptedMetadataWriter()
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: writer)
+
+        let now = await model.renameProperty("area", to: " Area ", existing: ["area", "effort"])
+
+        #expect(now == "Area")
+        #expect(writer.all == [.renameProperty("area", "Area")])
+    }
+
+    @Test func renaming_onto_a_name_the_note_has_is_refused_without_a_write() async {
+        let writer = ScriptedMetadataWriter()
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: writer)
+
+        let now = await model.renameProperty("area", to: "effort", existing: ["area", "effort"])
+
+        #expect(now == "area")
+        #expect(writer.all.isEmpty)
+        guard case .failed = model.status else {
+            Issue.record("expected a failure, got \(model.status)")
+            return
+        }
+    }
+
+    @Test func an_empty_or_unchanged_name_writes_nothing() async {
+        let writer = ScriptedMetadataWriter()
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: writer)
+
+        await model.renameProperty("area", to: "  ", existing: ["area"])
+        await model.renameProperty("area", to: "area", existing: ["area"])
+
+        #expect(writer.all.isEmpty)
+        #expect(model.status == .idle)
+    }
+
+    /// `getDefaultValueForType`, and a definition first for the choice types.
+    @Test func adding_a_property_writes_desktops_default_for_its_type() async {
+        let writer = ScriptedMetadataWriter()
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: writer)
+
+        #expect(await model.addProperty(named: "Done?", kind: .checkbox, existing: []) == "Done?")
+        #expect(await model.addProperty(named: "", kind: .number, existing: []) == "Number")
+        #expect(await model.addProperty(named: "", kind: .relation, existing: []) == "Relation")
+        #expect(await model.addProperty(named: "Stage", kind: .status, existing: []) == "Stage")
+        #expect(await model.addProperty(named: "", kind: .url, existing: []) == "URL")
+
+        #expect(writer.all == [
+            .property("Done?", "false"),
+            .property("Number", "0"),
+            .property("Relation", "[]"),
+            .definition("Stage", "status"),
+            .property("Stage", "null"),
+            .property("URL", "\"\""),
+        ])
+    }
+
+    @Test func a_new_name_is_made_unique_and_project_is_offered_once() async {
+        let writer = ScriptedMetadataWriter()
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: writer)
+
+        let text = await model.addProperty(named: "", kind: .text, existing: ["Text", "Text 2"])
+        let project = await model.addProperty(named: "anything", kind: .project, existing: ["project"])
+
+        #expect(text == "Text 3")
+        #expect(project == nil)
+        #expect(writer.all == [.property("Text 3", "\"\"")])
+    }
+
+    @Test func a_new_date_starts_as_an_iso_instant() {
+        let json = NotePropertyKind.date.defaultValueJSON(now: Date(timeIntervalSince1970: 0))
+        #expect(json == "\"1970-01-01T00:00:00.000Z\"")
+    }
+
+    @Test func relations_are_written_as_a_deduplicated_uri_list() async {
+        let writer = ScriptedMetadataWriter()
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: writer)
+        let a = NoteRelationValue.uri(noteId: "a1")
+
+        await model.setRelations("Related", [a, a, "memry://note/b2"])
+        await model.setRelations("Related", [])
+
+        #expect(writer.all == [
+            .property("Related", #"["memry://note/a1","memry://note/b2"]"#),
+            .property("Related", "[]"),
+        ])
+    }
+}
+
+@Suite("Note property types and values, as desktop resolves them")
+struct NotePropertyKindTests {
+
+    /// `resolvePropertyType`: project name, relation value, definition,
+    /// then `inferPropertyType`.
+    @Test func the_type_ladder_matches_desktop() {
+        #expect(NotePropertyKind.of(property("project", "[]")) == .project)
+        #expect(NotePropertyKind.of(property("x", #"["memry://note/a"]"#, type: "text")) == .relation)
+        #expect(NotePropertyKind.of(property("x", "\"a\"", type: "select")) == .select)
+        #expect(NotePropertyKind.of(property("x", "true")) == .checkbox)
+        #expect(NotePropertyKind.of(property("x", "0")) == .number)
+        #expect(NotePropertyKind.of(property("x", "\"2026-10-21T00:00:00.000Z\"")) == .date)
+        #expect(NotePropertyKind.of(property("x", "\"2026-10-21\"")) == .date)
+        #expect(NotePropertyKind.of(property("x", "\"https://memry.app\"")) == .url)
+        #expect(NotePropertyKind.of(property("x", "\"hello\"")) == nil)
+        #expect(NotePropertyKind.of(property("x", "[]")) == nil)
+        #expect(NotePropertyKind.of(property("x", "null")) == nil)
+    }
+
+    @Test func a_date_reads_both_stored_shapes_and_writes_desktops() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 3 * 3600) ?? .gmt
+        let day = NotePropertyDate.parse("2026-10-21", calendar: calendar)
+        #expect(day.map { calendar.component(.day, from: $0) } == 21)
+        #expect(day.map { NotePropertyDate.encode(day: $0, calendar: calendar) } == "2026-10-20T21:00:00.000Z")
+        #expect(NotePropertyDate.parse("2026-10-20T21:00:00.000Z") != nil)
+        #expect(NotePropertyDate.parse("2026-10-20T21:00:00Z") != nil)
+        #expect(NotePropertyDate.parse("21 Oct") == nil)
+        #expect(NotePropertyDate.parse("2026-02-30") == nil)
+    }
+}
+
+@Suite("Tag field search, after desktop's TagInputPopup")
+struct NoteTagSuggestionsTests {
+    let all = ["Research", "reading", "Work", "café"]
+
+    @Test func typing_filters_by_substring_and_skips_carried_tags() {
+        #expect(NoteTagSuggestions.matching("rE", all: all, current: ["reading"]) == ["Research"])
+        #expect(NoteTagSuggestions.matching("", all: all, current: ["work"]) == ["Research", "reading", "café"])
+    }
+
+    @Test func create_is_offered_only_for_a_new_spelling() {
+        #expect(NoteTagSuggestions.createCandidate(" ideas ", all: all, current: []) == "ideas")
+        #expect(NoteTagSuggestions.createCandidate("research", all: all, current: []) == nil)
+        #expect(NoteTagSuggestions.createCandidate("mine", all: all, current: ["Mine"]) == nil)
+        #expect(NoteTagSuggestions.createCandidate("  ", all: all, current: []) == nil)
+    }
+
+    @Test func return_adds_the_existing_spelling_or_the_typed_text() {
+        #expect(NoteTagSuggestions.commitTarget("work", all: all) == "Work")
+        #expect(NoteTagSuggestions.commitTarget("new one", all: all) == "new one")
+        #expect(NoteTagSuggestions.commitTarget(" ", all: all) == nil)
     }
 }

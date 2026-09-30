@@ -66,6 +66,7 @@ const SPECS: TypeSpec[] = [
       attachmentId: null,
       attachmentReferences: ['att-1'],
       folderPath: 'Notes',
+      cover: { ref: 'attachments/n1/harbour.jpg', focus: 42 },
       clock: CLOCK,
       createdAt: '2026-04-16T00:00:00.000Z',
       modifiedAt: 1760000000000

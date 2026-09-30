@@ -29,6 +29,9 @@ import SwiftUI
 // into the wrong one.
 
 struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View {
+    /// Home's switch. `nil` when the account holds one vault and there is
+    /// nothing to switch to.
+    let switchVault: (() -> Void)?
     @ViewBuilder let notes: () -> Notes
     /// The Tasks tab (spec 004 TP031), built by the caller that holds the
     /// vault, keychain and sync.
@@ -159,7 +162,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     /// is built in one place at a time.
     @ViewBuilder private func content(_ page: VaultTab) -> some View {
         switch page {
-        case .home: HomeTab { open($0) }
+        case .home: HomeTab(switchVault: switchVault) { open($0) }
         case .notes: notes()
         case .inbox: InboxTab(store: inboxStore)
         case .tasks: tasks()

@@ -186,9 +186,32 @@ struct NotePageMenu: View {
     let rename: () -> Void
     let move: () -> Void
     let delete: () -> Void
+    /// Undo, redo and the two inline inserts, which used to be the page's
+    /// bottom bar. `nil` on a read-only note.
+    var editing: NotePageEditingItems?
 
     var body: some View {
         Menu {
+            if let editing {
+                Section {
+                    Button(action: editing.undo) {
+                        Label("Undo", systemImage: "arrow.uturn.backward")
+                    }
+                    .disabled(!editing.canUndo)
+                    Button(action: editing.redo) {
+                        Label("Redo", systemImage: "arrow.uturn.forward")
+                    }
+                    .disabled(!editing.canRedo)
+                }
+                Section {
+                    Button(action: editing.linkToNote) {
+                        Label("Link to a note", systemImage: "link")
+                    }
+                    Button(action: editing.mentionDate) {
+                        Label("Mention a date", systemImage: "calendar")
+                    }
+                }
+            }
             if canWrite {
                 Button {
                     rename()
@@ -224,6 +247,16 @@ struct NotePageMenu: View {
         }
         .accessibilityLabel("More actions for this note")
     }
+}
+
+/// The editing entries of the page menu.
+struct NotePageEditingItems {
+    let canUndo: Bool
+    let canRedo: Bool
+    let undo: () -> Void
+    let redo: () -> Void
+    let linkToNote: () -> Void
+    let mentionDate: () -> Void
 }
 
 /// The page menu's three write actions (N808).

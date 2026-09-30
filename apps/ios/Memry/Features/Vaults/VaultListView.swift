@@ -69,7 +69,9 @@ struct VaultListView: View {
             VaultCalendarScope(vault: vault, secureStore: model.secureStore, filler: filler, tasks: tasksStore) {
             VaultInboxScope(vault: vault, secureStore: model.secureStore, filler: filler) {
                 VaultSettingsScope(vault: vault, model: model, tasks: tasksStore) { settings, browse in
-                    VaultTabsView(notes: {
+                    VaultTabsView(
+                        switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil,
+                        notes: {
                         NotesListView(
                             vault: vault,
                             executor: .shared,
@@ -77,8 +79,7 @@ struct VaultListView: View {
                             // The writes need this device's identity, and the keychain is
                             // where its signing key lives. A screen built without one
                             // browses and offers no write it cannot make.
-                            store: model.secureStore,
-                            switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil
+                            store: model.secureStore
                         )
                     }, tasks: {
                         TasksTabContent(store: tasksStore, failure: tasksFailure)

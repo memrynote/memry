@@ -1,4 +1,5 @@
 import MemryCore
+import PhotosUI
 import SwiftUI
 
 // JP033 (spec 005-journal). The parts of a note page under its title, shared
@@ -29,12 +30,38 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     @ViewBuilder let emptyBody: (NoteBodyPreview) -> EmptyBody
     @ViewBuilder let afterBacklinks: () -> AfterBacklinks
 
+    /// The keyboard toolbar's paperclip source being shown (N214's upload path).
+    @State private var attaching: EditorAttachmentSource?
+
     /// The editing bridge, or `nil` on a read-only page.
     private var editing: NoteEditingBridge? {
         guard editorModel.canEdit else { return nil }
         // Re-read after a write so the block shows the document rather than
         // only the draft.
-        return NoteEditingBridge(model: editorModel) { await model.reload() }
+        let bridge = NoteEditingBridge(
+            model: editorModel,
+            titles: model.vaultNotes.map(\.title),
+            icons: Dictionary(
+                model.vaultNotes.compactMap { note in ProjectIconValue.emoji(note.emoji).map { (note.title.lowercased(), $0) } },
+                uniquingKeysWith: { first, _ in first }
+            ),
+            titleExists: model.titleExists,
+            pickImage: composer.canUpload ? { attaching = .photos } : nil
+        ) { await model.reload() }
+        let session = bridge.session
+        session.tags = model.vaultTagNames
+        session.tagColors = model.tagColors
+        session.blocks = { model.blocks }
+        let noteId = detail.summary.id
+        session.relinkTask = taskBridge.relink.map { relink in
+            { taskId, target in await relink(taskId, noteId, target) }
+        }
+        // Assigned only when it appears or goes, so drawing does not keep
+        // invalidating the toolbar that observes it.
+        if (session.attach == nil) == composer.canUpload {
+            session.attach = composer.canUpload ? { attaching = $0 } : nil
+        }
+        return bridge
     }
 
     var body: some View {
@@ -50,7 +77,9 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                     reload: { await model.reload() },
                     noteTitle: { id in model.vaultNotes.first { $0.id == id }?.title },
                     noteIcon: { id in model.vaultNotes.first { $0.id == id }?.emoji },
-                    tagColors: model.tagColors
+                    tagColors: model.tagColors,
+                    tagSuggestions: model.vaultTagNames,
+                    relationCandidates: model.vaultNotes
                 )
             } else {
                 NoteMetaView(metadata: metadata)
@@ -94,6 +123,8 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                     ? NoteTableEditing(editor: editorModel) { await model.reload() }
                     : nil
             )
+            .modifier(EditorAttachmentSources(source: $attaching, composer: composer, session: editorModel.session))
+            .modifier(MoveBlockPresenter(session: editorModel.session, notes: model.vaultNotes, currentNoteId: detail.summary.id))
         }
         // Read only (N604): §12.5.1 forbids writing them.
         ReviewCommentsSection(comments: model.comments)

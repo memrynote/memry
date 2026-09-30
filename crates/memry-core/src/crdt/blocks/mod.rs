@@ -277,7 +277,7 @@ fn is_container(name: &str) -> bool {
     CONTAINERS.contains(&name)
 }
 
-fn is_inline_node(name: &str) -> bool {
+pub(crate) fn is_inline_node(name: &str) -> bool {
     INLINE_NODES.contains(&name)
 }
 

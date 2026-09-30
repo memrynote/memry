@@ -33,7 +33,8 @@ enum AttachmentUploadState: Equatable {
 @MainActor
 @Observable
 final class NoteAttachmentComposer {
-    private let noteId: String
+    /// The note the attachments go to; an inserted block's url names it.
+    let noteId: String
     private let filler: (any VaultFilling)?
 
     private(set) var state: AttachmentUploadState = .idle
@@ -128,7 +129,7 @@ final class NoteAttachmentComposer {
 
     /// The platform's own answer, falling back to the one type that promises
     /// nothing rather than guessing from the extension.
-    static func mimeType(for url: URL) -> String {
+    nonisolated static func mimeType(for url: URL) -> String {
         UTType(filenameExtension: url.pathExtension)?.preferredMIMEType
             ?? "application/octet-stream"
     }
@@ -138,7 +139,7 @@ final class NoteAttachmentComposer {
     /// Timestamped rather than random: two pictures taken a minute apart sort
     /// the way the user took them, and the manifest's filename is what binds a
     /// block to an attachment (§Q4), so a readable name is worth keeping.
-    static func capturedName(at date: Date = .now, extension ext: String = "jpg") -> String {
+    nonisolated static func capturedName(at date: Date = .now, extension ext: String = "jpg") -> String {
         let stamp = ISO8601DateFormatter()
         stamp.formatOptions = [.withYear, .withMonth, .withDay, .withTime]
         return "photo-\(stamp.string(from: date).replacingOccurrences(of: ":", with: "-")).\(ext)"

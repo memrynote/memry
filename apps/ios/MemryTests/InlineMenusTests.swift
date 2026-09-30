@@ -66,20 +66,19 @@ struct NoteDateTests {
     }
 }
 
-@Suite("N601 a date mention reaches the core")
+@Suite("N601 a date mention reaches the core in desktop's shape")
 @MainActor
 struct DateMentionWriteTests {
 
-    @Test func a_date_mention_carries_its_date_and_reminder() async {
+    /// Desktop's `dateMention` props (`packages/editor-schema/src/inline/
+    /// date-mention.ts`), and no text inside the atom.
+    @Test func a_date_mention_carries_desktops_props() async {
         let editor = ScriptedInlineEditor()
         let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-        let date = Calendar.current.date(
-            from: DateComponents(year: 2026, month: 9, day: 23)
-        )!
+        var value = DateMentionValue(dateISO: "2026-09-23T06:00:00.000Z", hasTime: false)
+        value.remind = "at"
 
-        await model.insertDateMention(
-            in: "block-1", from: 4, to: 4, date: date, label: "Tomorrow", remindMe: true
-        )
+        await model.insertDateMention(in: "block-1", from: 4, to: 4, value: value)
 
         guard case let .insertInline(blockId, start, end, kind, text, attrs) = editor.all.first
         else {
@@ -89,33 +88,27 @@ struct DateMentionWriteTests {
         #expect(blockId == "block-1")
         #expect(start == 4 && end == 4)
         #expect(kind == "dateMention")
-        #expect(text == "Tomorrow")
-        #expect(attrs["date"] == "2026-09-23")
-        #expect(attrs["remindMe"] == "true")
+        #expect(text.isEmpty)
+        #expect(attrs["dateISO"] == "2026-09-23T06:00:00.000Z")
+        #expect(attrs["hasTime"] == "false")
+        #expect(attrs["dateFormat"] == "relative")
+        #expect(attrs["remind"] == "at")
+        #expect(attrs["timeFormat"] == "system")
+        #expect(attrs["anchorId"]?.hasPrefix("dm_") == true)
+        #expect(attrs["date"] == nil && attrs["remindMe"] == nil)
     }
 
-    /// No reminder means the key is simply absent, rather than `"false"`.
-    @Test func no_reminder_writes_no_reminder_key() async {
-        let editor = ScriptedInlineEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-
-        await model.insertDateMention(
-            in: "b", from: 0, to: 0, date: Date(), label: "Today", remindMe: false
-        )
-
-        guard case let .insertInline(_, _, _, _, _, attrs) = editor.all.first else {
-            Issue.record("expected an insertInline")
-            return
-        }
-        #expect(attrs["remindMe"] == nil)
+    @Test func an_iso_date_is_spelled_as_javascript_spells_it() {
+        let date = Date(timeIntervalSince1970: 1_790_000_000.5)
+        #expect(DateMentionValue.iso(date) == "2026-09-21T14:13:20.500Z")
     }
 }
 
-@Suite("N602 wiki links")
+@Suite("N602 wiki links in desktop's shape")
 @MainActor
 struct WikiLinkWriteTests {
 
-    @Test func a_wiki_link_carries_its_target() async {
+    @Test func a_wiki_link_carries_target_and_empty_alias() async {
         let editor = ScriptedInlineEditor()
         let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
 
@@ -126,48 +119,14 @@ struct WikiLinkWriteTests {
             return
         }
         #expect(kind == "wikiLink")
-        #expect(text == "Cardamom")
-        #expect(attrs["target"] == "Cardamom")
-        // No alias and no embed means neither key is written.
-        #expect(attrs["displayAs"] == nil)
-        #expect(attrs["embed"] == nil)
+        #expect(text.isEmpty, "desktop's wikiLink is an atom")
+        #expect(attrs == ["target": "Cardamom", "alias": ""])
     }
 
-    /// **An alias equal to the title is not an alias.**
-    ///
-    /// Writing one would make "no alias" and "an alias that happens to match"
-    /// indistinguishable to every reader.
-    @Test func an_alias_matching_the_title_is_not_written() async {
-        let editor = ScriptedInlineEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-
-        await model.insertWikiLink(
-            in: "b", from: 0, to: 0, title: "Cardamom", displayAs: "Cardamom"
-        )
-
-        guard case let .insertInline(_, _, _, _, _, attrs) = editor.all.first else {
-            Issue.record("expected an insertInline")
-            return
-        }
-        #expect(attrs["displayAs"] == nil)
-    }
-
-    @Test func an_alias_changes_what_the_link_shows() async {
-        let editor = ScriptedInlineEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-
-        await model.insertWikiLink(
-            in: "b", from: 0, to: 0, title: "Cardamom", displayAs: "the spice", embed: true
-        )
-
-        guard case let .insertInline(_, _, _, _, text, attrs) = editor.all.first else {
-            Issue.record("expected an insertInline")
-            return
-        }
-        #expect(text == "the spice", "the link shows the alias")
-        #expect(attrs["target"] == "Cardamom", "and still points at the note")
-        #expect(attrs["displayAs"] == "the spice")
-        #expect(attrs["embed"] == "true")
+    /// An alias equal to the target is no alias (`wikiLinkToText`).
+    @Test func an_alias_matching_the_title_is_not_written() {
+        #expect(WikiLinkAttrs.attrs(target: "Cardamom", alias: "Cardamom")["alias"] == "")
+        #expect(WikiLinkAttrs.attrs(target: "Cardamom", alias: "the spice")["alias"] == "the spice")
     }
 }
 

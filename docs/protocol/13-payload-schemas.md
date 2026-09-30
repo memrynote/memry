@@ -199,7 +199,33 @@ optional on every type; `fieldClocks` appears only where §13.9 says so.
 | `aliases`                                                        | string[], nullable?                           |                                                                                                                                        |
 | `fileType`                                                       | `markdown \| pdf \| image \| audio \| video`? | **binary types have no CRDT body**                                                                                                     |
 | `mimeType`, `attachmentId`, `attachmentReferences`, `folderPath` | nullable?                                     |                                                                                                                                        |
+| `cover`                                                          | object, nullable?                             | see §13.7.1.1; **absent keeps the receiver's cover, `null` removes it**                                                                |
 | `createdAt`, `modifiedAt`                                        | `SyncTimestampSchema`?                        | §13.5                                                                                                                                  |
+
+#### 13.7.1.1 `cover`
+
+A note's cover image, the frontmatter keys `cover`, `coverFocus`, `coverCredit`
+and `coverCreditUrl` (`packages/shared/src/cover-image.ts`). Those keys are
+reserved from `properties`, so they travel in their own field:
+
+| Field       | Type          | Rule                                                                                                    |
+| ----------- | ------------- | ------------------------------------------------------------------------------------------------------- |
+| `ref`       | string        | the `cover` value: a note-relative or `attachments/<noteId>/<file>` vault path, `wash:<id>`, or http(s) |
+| `focus`     | number 0-100? | vertical framing of an image, 0 top, 100 bottom; absent means centred                                   |
+| `credit`    | string?       | photographer name, written only with `creditUrl`                                                        |
+| `creditUrl` | string?       | http(s) link to the photo's page                                                                        |
+
+A vault image's bytes are not named here. They travel as an attachment the
+owning note lists in `attachmentReferences` (chapter 14), and every client
+materialises an attachment at `attachments/<noteId>/<basename(manifest.filename)>`,
+so the path in `ref` names the same file on each device. A client writes an
+image cover's file as a note attachment before it writes the ref.
+
+A sender that cannot read the note's frontmatter omits the key rather than
+sending `null`. A receiver that cannot read the value treats it as absent
+(`.catch(undefined)`), so an unreadable cover never fails the whole note. The
+earlier iOS-only unknown key `coverImage` (`{url, offsetY}`, offset 0-1) is read
+as a fallback when `cover` is absent and is never written.
 
 ### 13.7.2 `journal` — `:273-288`
 

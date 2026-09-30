@@ -76,6 +76,47 @@ pub(crate) fn author(
     edit: &BlockEdit,
     device_id: &str,
 ) -> Result<Option<Vec<u8>>, CrdtError> {
+    author_with(conn, doc_id, device_id, |document| {
+        body_edit::apply(document, edit)
+    })
+}
+
+/// Appends a block snapshot ([`body_edit::snapshot_block`]) to the end of a
+/// note's body: the target half of moving a block to another note (desktop's
+/// block menu "Move to").
+///
+/// - Returns: `Ok(false)` when this vault holds no live note by that id, as
+///   [`edit_block`] answers. The source block is the caller's to remove, and
+///   only after this answered `true`: a failed append leaves it where it was.
+pub fn append_snapshot(
+    conn: &Connection,
+    note_id: &str,
+    snapshot: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, CrdtError> {
+    if !reads::note_exists(conn, note_id) {
+        return Ok(false);
+    }
+    let Some(update) = author_with(conn, note_id, device_id, |document| {
+        body_edit::append_snapshot(document, snapshot)
+    })?
+    else {
+        return Ok(true);
+    };
+    let tx = conn.unchecked_transaction().map_err(storage_failed)?;
+    append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
+    tx.commit().map_err(storage_failed)?;
+    Ok(true)
+}
+
+/// [`author`] for any write against the replayed document.
+fn author_with(
+    conn: &Connection,
+    doc_id: &str,
+    device_id: &str,
+    write: impl FnOnce(&crate::crdt::Document) -> Result<(), CrdtError>,
+) -> Result<Option<Vec<u8>>, CrdtError> {
     let authored: Arc<Mutex<Vec<Vec<u8>>>> = Arc::new(Mutex::new(Vec::new()));
     let sink: UpdateSink = {
         let authored = Arc::clone(&authored);
@@ -93,7 +134,7 @@ pub(crate) fn author(
         document.apply_durable_update(blob)?;
     }
 
-    body_edit::apply(&document, edit)?;
+    write(&document)?;
 
     let mut updates = authored.lock().unwrap_or_else(PoisonError::into_inner);
     Ok((!updates.is_empty()).then(|| updates.swap_remove(0)))

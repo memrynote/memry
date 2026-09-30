@@ -16,7 +16,8 @@ use rusqlite::{Connection, params};
 use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
-use crate::domain::notes::{self, edit, failed, tombstone_local};
+use crate::domain::notes::{self, edit, failed, iso, object, tombstone_local};
+use crate::domain::recreate::write_over_tombstone;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -308,6 +309,79 @@ pub fn reorder_options(
     })
 }
 
+/// The ten property types desktop offers (`PROPERTY_TYPES`).
+const DEFINITION_TYPES: [&str; 10] = [
+    "text",
+    "number",
+    "date",
+    "checkbox",
+    "url",
+    "status",
+    "select",
+    "multiselect",
+    "relation",
+    "project",
+];
+
+/// `JSON.stringify({ categories: DEFAULT_STATUS_CATEGORIES })`
+/// (`packages/contracts/src/property-types.ts`), spelled out so the category
+/// order survives: a parsed map would sort the keys.
+const DEFAULT_STATUS_OPTIONS: &str = concat!(
+    r#"{"categories":{"#,
+    r#""todo":{"label":"To-do","options":[{"value":"Not started","color":"stone","default":true}]},"#,
+    r#""in_progress":{"label":"In progress","options":[{"value":"In Progress","color":"amber"}]},"#,
+    r#""done":{"label":"Complete","options":[{"value":"Done","color":"emerald"},{"value":"Abandoned","color":"rose"}]}"#,
+    r#"}}"#
+);
+
+/// Creates the definition for `name` when the vault has no live one, as
+/// desktop's add-property flow does through `notes:create-property-definition`
+/// (`PropertyDefinitionsService.upsert`): a status gets the default
+/// categories, a select or multiselect an empty option list.
+///
+/// Idempotent: a live definition is left exactly as it is, options and type
+/// included, and nothing is written. A tombstoned one is created over.
+pub fn ensure_definition(
+    conn: &Connection,
+    name: &str,
+    type_name: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err(refuse("a property needs a name".into()));
+    }
+    if !DEFINITION_TYPES.contains(&type_name) {
+        return Err(refuse(format!("unknown property type `{type_name}`")));
+    }
+    let live = sync_items::load(conn, ITEM_TYPE, name)?.is_some_and(|row| row.deleted_at.is_none());
+    if live {
+        return Ok(());
+    }
+    let options = match type_name {
+        "status" => Value::String(DEFAULT_STATUS_OPTIONS.to_owned()),
+        "select" | "multiselect" => Value::String("[]".to_owned()),
+        _ => Value::Null,
+    };
+    let payload = object(json!({
+        "name": name,
+        "type": type_name,
+        "options": options,
+        "defaultValue": null,
+        "color": null,
+        "createdAt": iso(now_ms)?,
+    }));
+    outbox::commit(
+        conn,
+        &outbox::Change::upsert(ITEM_TYPE, name),
+        now_ms,
+        |tx| write_over_tombstone(tx, ITEM_TYPE, name, payload, device_id, now_ms),
+    )?
+    .acknowledge();
+    Ok(())
+}
+
 /// Tombstones the definition. Note values are left as they are (desktop).
 pub fn delete_definition(
     conn: &Connection,
@@ -465,6 +539,68 @@ mod tests {
             options["categories"]["done"]["options"][0]["value"],
             json!("Shipped")
         );
+    }
+
+    #[test]
+    fn ensuring_a_definition_creates_desktop_defaults_once() {
+        let (db, _d) = vault("props-ensure");
+        db.call_blocking(|c| {
+            ensure_definition(c, "Stage", "status", "p", NOW + 1)?;
+            ensure_definition(c, "Tags2", "multiselect", "p", NOW + 1)?;
+            ensure_definition(c, "Due", "date", "p", NOW + 1)?;
+            assert!(ensure_definition(c, " ", "text", "p", NOW + 1).is_err());
+            assert!(ensure_definition(c, "x", "rating", "p", NOW + 1).is_err());
+            Ok(())
+        })
+        .expect("ensure");
+        let stage = find(&db, "Stage");
+        assert_eq!(stage.type_name, "status");
+        // `list` reads categories through a parsed (key-sorted) map; the
+        // stored text below is what keeps desktop's order.
+        let mut values: Vec<_> = stage.options.iter().map(|o| o.value.as_str()).collect();
+        values.sort_unstable();
+        assert_eq!(
+            values,
+            vec!["Abandoned", "Done", "In Progress", "Not started"]
+        );
+        db.call_blocking(|c| {
+            let stored = notes::require_payload(c, ITEM_TYPE, "Stage")?;
+            assert_eq!(stored.object()["options"], json!(DEFAULT_STATUS_OPTIONS));
+            let multi = notes::require_payload(c, ITEM_TYPE, "Tags2")?;
+            assert_eq!(multi.object()["options"], json!("[]"));
+            let due = notes::require_payload(c, ITEM_TYPE, "Due")?;
+            assert_eq!(due.object()["options"], Value::Null);
+            Ok(())
+        })
+        .expect("payloads");
+    }
+
+    #[test]
+    fn ensuring_an_existing_definition_changes_nothing() {
+        let (db, _d) = vault("props-ensure-existing");
+        let before = raw_options(&db, "area");
+        db.call_blocking(|c| {
+            ensure_definition(c, "area", "multiselect", "p", NOW + 1)?;
+            let queued: i64 = c
+                .query_row("SELECT COUNT(*) FROM outbox", [], |row| row.get(0))
+                .expect("outbox");
+            assert_eq!(queued, 0);
+            Ok(())
+        })
+        .expect("ensure");
+        assert_eq!(raw_options(&db, "area"), before);
+        assert_eq!(find(&db, "area").type_name, "select");
+    }
+
+    #[test]
+    fn ensuring_a_deleted_definition_creates_it_again() {
+        let (db, _d) = vault("props-ensure-revive");
+        db.call_blocking(|c| {
+            delete_definition(c, "area", "p", NOW + 1)?;
+            ensure_definition(c, "area", "select", "p", NOW + 2)
+        })
+        .expect("revive");
+        assert!(find(&db, "area").options.is_empty());
     }
 
     #[test]

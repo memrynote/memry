@@ -5,6 +5,7 @@ import SwiftUI
 // something down without choosing a page first (quick capture), Inbox picked.
 
 struct HomeTab: View {
+    let switchVault: (() -> Void)?
     let open: (CaptureReceipt) -> Void
 
     @Environment(\.quickCapture) private var capture
@@ -21,7 +22,14 @@ struct HomeTab: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Tokens.Canvas.background.color)
             .navigationTitle(VaultTab.home.title)
-            .toolbar { GlobalSearchToolbarItem() }
+            .toolbar {
+                if let switchVault {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Switch vault", systemImage: "lock.square") { switchVault() }
+                    }
+                }
+                GlobalSearchToolbarItem()
+            }
         }
         .overlay(alignment: .bottomTrailing) {
             if capture != nil {

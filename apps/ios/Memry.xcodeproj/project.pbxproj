@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		B1000001 /* MemryCore in Frameworks */ = {isa = PBXBuildFile; productRef = B1000000 /* MemryCore */; };
 		B1000003 /* MemryCore in Frameworks */ = {isa = PBXBuildFile; productRef = B1000002 /* MemryCore */; };
+		B1000011 /* MemryCore in Frameworks */ = {isa = PBXBuildFile; productRef = B1000010 /* MemryCore */; };
 		B1000005 /* test-vectors in Resources */ = {isa = PBXBuildFile; fileRef = A0000040 /* test-vectors */; };
 		B1000007 /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = B1000006 /* Inject */; };
 		B1000009 /* MemryShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A0000014 /* MemryShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -164,6 +165,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B1000011 /* MemryCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -275,6 +277,7 @@
 			);
 			name = MemryTests;
 			packageProductDependencies = (
+				B1000010 /* MemryCore */,
 			);
 			productName = MemryTests;
 			productReference = A0000011 /* MemryTests.xctest */;
@@ -811,6 +814,10 @@
 			productName = MemryCore;
 		};
 		B1000002 /* MemryCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MemryCore;
+		};
+		B1000010 /* MemryCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MemryCore;
 		};

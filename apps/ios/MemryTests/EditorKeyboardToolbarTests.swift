@@ -1,0 +1,376 @@
+//
+//  EditorKeyboardToolbarTests.swift
+//  The keyboard toolbar's decisions: the `#` menu, the hashTag node, the
+//  block an uploaded attachment becomes, the row's order, the format slide,
+//  the focused block's indent and moves, and Move to.
+//
+
+import Foundation
+import MemryCore
+import Synchronization
+import Testing
+import UIKit
+import UniformTypeIdentifiers
+
+@testable import Memry
+
+private final class ScriptedToolbarEditor: BlockEditing, @unchecked Sendable {
+    let edits = Mutex<[BlockEdit]>([])
+    func edit(noteId: String, _ edit: BlockEdit) async throws -> Bool {
+        edits.withLock { $0.append(edit) }
+        return true
+    }
+    var all: [BlockEdit] { edits.withLock { $0 } }
+}
+
+struct HashTagTriggerTests {
+    @Test func aHashAtAWordStartOpensTheMenu() {
+        #expect(HashTagTrigger.active(in: "#", caret: 1) == HashTagTrigger(range: NSRange(location: 0, length: 1), query: ""))
+        #expect(HashTagTrigger.active(in: "note #wor", caret: 9) == HashTagTrigger(range: NSRange(location: 5, length: 4), query: "wor"))
+        #expect(HashTagTrigger.active(in: "a\u{FFFC}#x", caret: 4)?.query == "x")
+    }
+
+    @Test func aHashInsideAWordOrPastASpaceDoesNot() {
+        #expect(HashTagTrigger.active(in: "c#", caret: 2) == nil)
+        #expect(HashTagTrigger.active(in: "# heading", caret: 9) == nil)
+        #expect(HashTagTrigger.active(in: "#a.b", caret: 4) == nil)
+        #expect(HashTagTrigger.active(in: "plain", caret: 5) == nil)
+    }
+
+    @Test func tagCharactersAreDesktops() {
+        #expect(HashTagTrigger.active(in: "#work/q-1_x", caret: 11)?.query == "work/q-1_x")
+    }
+}
+
+struct TagSuggestionsTests {
+    @Test func prefixMatchesComeFirstThenACreateRow() {
+        let rows = TagSuggestions.rank(query: "wo", tags: ["network", "work", "home"])
+        #expect(rows.map(\.tag) == ["work", "network", "wo"])
+        #expect(rows.last?.isNew == true)
+    }
+
+    @Test func anExactTagOffersNoCreateRow() {
+        let rows = TagSuggestions.rank(query: "Work", tags: ["work"])
+        #expect(rows == [TagSuggestion(tag: "work", isNew: false)])
+    }
+
+    @Test func anEmptyQueryListsTheVaultsTagsUpToTheLimit() {
+        let tags = (0..<12).map { "t\($0)" }
+        let rows = TagSuggestions.rank(query: "", tags: tags)
+        #expect(rows.count == TagSuggestions.limit)
+        #expect(rows.allSatisfy { !$0.isNew })
+    }
+
+    @Test func theNodeCarriesTheChosenColourOrTheHashedDefault() {
+        #expect(HashTagAttrs.attrs(tag: "Work", colors: ["work": "blue"]) == ["tag": "Work", "color": "blue", "icon": ""])
+        #expect(HashTagAttrs.attrs(tag: "home", colors: [:])["color"] == Tokens.Palette.defaultName(for: "home"))
+    }
+}
+
+struct AttachmentBlockTests {
+    @Test func aPictureIsAnImageBlockNamingItsFileRootRelative() {
+        let block = AttachmentBlock.make(noteId: "n1", filename: "my photo.png", mimeType: "image/png", size: 10)
+        #expect(block.kind == "image")
+        #expect(block.props == [
+            .init(name: "url", value: "attachments/n1/my%20photo.png"),
+            .init(name: "caption", value: "my photo.png"),
+            .init(name: "previewWidth", value: "600"),
+        ])
+    }
+
+    @Test func anythingElseIsAFileBlock() {
+        let block = AttachmentBlock.make(noteId: "n1", filename: "scan.pdf", mimeType: "application/pdf", size: 42)
+        #expect(block.kind == "file")
+        #expect(block.props == [
+            .init(name: "url", value: "attachments/n1/scan.pdf"),
+            .init(name: "name", value: "scan.pdf"),
+            .init(name: "size", value: "42"),
+            .init(name: "mimeType", value: "application/pdf"),
+        ])
+    }
+
+    @Test func aPictureDesktopDrawsKeepsItsBytes() {
+        let bytes = Data([1, 2, 3])
+        let payload = AttachmentPayload.picture(bytes, type: .png)
+        #expect(payload.bytes == bytes)
+        #expect(payload.mimeType == "image/png")
+        #expect(payload.filename.hasSuffix(".png"))
+    }
+
+    @MainActor
+    @Test func anUploadedAttachmentIsInsertedThenGivenItsProps() async {
+        let editor = ScriptedToolbarEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.insertAttachment(AttachmentBlock.make(noteId: "n1", filename: "a.jpg", mimeType: "image/jpeg", size: 1))
+        }
+        let edits = editor.all
+        #expect(edits.count == 4)
+        guard case let .insertBlock(kind, after, _, newId) = edits.first else {
+            Issue.record("expected an insert first")
+            return
+        }
+        #expect(kind == "image")
+        #expect(after == nil)
+        #expect(edits.dropFirst().first == .setProp(blockId: newId, name: "url", value: "attachments/n1/a.jpg"))
+    }
+
+    @Test func anUploadIsNamedAsDesktopNamesIt() {
+        #expect(AttachmentFilename.unique("my photo (1).png", prefix: "abc123") == "abc123-my-photo-1.png")
+        #expect(AttachmentFilename.unique("{a}.pdf", prefix: "abc123") == "abc123-a.pdf")
+        #expect(AttachmentFilename.unique("().txt", prefix: "abc123") == "abc123-file.txt")
+        #expect(AttachmentFilename.unique("report.tar.gz", prefix: "abc123") == "abc123-report.tar.gz")
+        #expect(AttachmentFilename.unique("a:b#c.jpg", prefix: "abc123") == "abc123-abc.jpg")
+        #expect(AttachmentFilename.unique(".env", prefix: "abc123") == "abc123-env")
+        let first = AttachmentFilename.unique("photo.jpg")
+        let second = AttachmentFilename.unique("photo.jpg")
+        #expect(first.range(of: "^[0-9a-z]{6}-photo\\.jpg$", options: .regularExpression) != nil)
+        #expect(first != second, "two uploads of one name do not collide")
+    }
+
+    @MainActor
+    @Test func removingAMarkIsUndoable() async {
+        let editor = ScriptedToolbarEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let block = Block(id: "a", kind: "paragraph", depth: 0, props: [], inline: [
+            InlineRun(text: "hi", marks: ["bold"], markAttrs: [:], target: nil),
+        ])
+        let field = BlockField(block: block, session: session, style: style, alignment: .natural)
+        field.render()
+        session.focusChanged(to: field)
+        field.textView.selectedRange = NSRange(location: 0, length: 2)
+        session.selectionChanged(in: field)
+        #expect(session.selectionMarks.contains("bold"))
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.toggleMark("bold")
+        }
+        #expect(editor.all.last == .removeMark(blockId: "a", start: 0, end: 2, mark: "bold"))
+        #expect(session.history.popUndo()?.backward == .setMark(blockId: "a", start: 0, end: 2, mark: "bold", value: nil))
+    }
+
+    @MainActor
+    @Test func aValuedMarkIsRestoredWithItsValue() {
+        let runs = [
+            InlineRun(text: "ab", marks: ["textColor"], markAttrs: ["textColor": "red"], target: nil),
+            InlineRun(text: "cd", marks: ["textColor"], markAttrs: ["textColor": "blue"], target: nil),
+        ]
+        #expect(EditorSession.markValue("textColor", in: runs, from: 0, to: 2) == .some("red"))
+        #expect(EditorSession.markValue("textColor", in: runs, from: 1, to: 3) == nil, "two values: not restorable")
+        #expect(EditorSession.markValue("bold", in: runs, from: 0, to: 2) == nil)
+    }
+}
+
+private func block(
+    _ id: String, depth: UInt32 = 0, kind: String = "paragraph", props: [String: String] = [:],
+    inline: [InlineRun] = []
+) -> Block {
+    Block(id: id, kind: kind, depth: depth, props: props.map { BlockProp(name: $0.key, value: $0.value) }, inline: inline)
+}
+
+@MainActor
+private func focused(_ target: Block, in blocks: [Block], session: EditorSession) -> BlockField {
+    session.blocks = { blocks }
+    let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+    let field = BlockField(block: target, session: session, style: style, alignment: .natural)
+    field.render()
+    session.focusChanged(to: field)
+    return field
+}
+
+struct EditorToolbarOrderTests {
+    @Test func aParagraphKeepsTheSpecOrder() {
+        #expect(EditorToolbarItem.order(for: "paragraph") == [
+            .insert, .format, .mention, .tag, .attach, .turnInto, .undo, .redo,
+            .indent, .outdent, .moveDown, .moveUp, .more,
+        ])
+        #expect(EditorToolbarItem.order(for: nil) == EditorToolbarItem.allCases)
+        #expect(EditorToolbarItem.order(for: "heading") == EditorToolbarItem.allCases)
+    }
+
+    @Test func aListItemLeadsWithItsMovesAndKeepsTheRestInOrder() {
+        for kind in ["bulletListItem", "numberedListItem", "checkListItem", "toggleListItem"] {
+            #expect(EditorToolbarItem.order(for: kind) == [
+                .indent, .outdent, .moveDown, .moveUp,
+                .insert, .format, .mention, .tag, .attach, .turnInto, .undo, .redo, .more,
+            ])
+        }
+    }
+
+    @Test func everyItemAppearsOnce() {
+        for kind in ["paragraph", "bulletListItem"] {
+            let order = EditorToolbarItem.order(for: kind)
+            #expect(Set(order).count == EditorToolbarItem.allCases.count)
+            #expect(order.count == EditorToolbarItem.allCases.count)
+        }
+    }
+}
+
+@MainActor
+struct EditorToolbarFocusTests {
+    private func session() -> EditorSession {
+        let model = NoteEditorViewModel(noteId: "n1", editor: ScriptedToolbarEditor())
+        model.session.model = model
+        return model.session
+    }
+
+    @Test func indentNeedsAPreviousSiblingAndOutdentANestedBlock() {
+        let blocks = [block("a"), block("a1", depth: 1), block("a2", depth: 1), block("b", kind: "heading")]
+        let session = session()
+        _ = focused(blocks[0], in: blocks, session: session)
+        #expect(!session.canIndent)
+        #expect(!session.canOutdent)
+        _ = focused(blocks[1], in: blocks, session: session)
+        #expect(!session.canIndent, "the first child has nothing to nest under")
+        #expect(session.canOutdent)
+        _ = focused(blocks[2], in: blocks, session: session)
+        #expect(session.canIndent)
+        _ = focused(blocks[3], in: blocks, session: session)
+        #expect(session.canIndent, "any block nests under its previous sibling, as BlockNote allows")
+        #expect(session.focusedSiblings == BlockSiblings(previous: "a", next: nil))
+    }
+
+    @Test func aSelectionSlidesTheFormatRowInAndCollapsingItSlidesItOut() {
+        let target = block("a", inline: [InlineRun(text: "hello", marks: [], markAttrs: [:], target: nil)])
+        let session = session()
+        let field = focused(target, in: [target], session: session)
+        #expect(!session.formatting)
+        field.textView.selectedRange = NSRange(location: 0, length: 3)
+        session.selectionChanged(in: field)
+        #expect(session.formatting)
+        session.showFormatting(false)
+        #expect(!session.formatting, "back returns to the main row while the selection stays")
+        field.textView.selectedRange = NSRange(location: 2, length: 0)
+        session.selectionChanged(in: field)
+        #expect(!session.formatting)
+        session.showFormatting(true)
+        session.selectionChanged(in: field)
+        #expect(session.formatting, "Aa stays open while the caret sits still")
+    }
+
+    @Test func moveToIsHiddenOnBlocksThatOwnAnAttachment() {
+        let image = InlineRun(text: "", marks: ["inlineImage"], markAttrs: [:], target: nil)
+        let blocks = [
+            block("a"), block("a1", depth: 1, kind: "image"),
+            block("b"),
+            block("c", inline: [image]),
+            block("d", kind: "file"),
+        ]
+        #expect(EditorSession.carriesAttachment(at: 0, in: blocks), "a nested image moves with its parent")
+        #expect(!EditorSession.carriesAttachment(at: 2, in: blocks))
+        #expect(EditorSession.carriesAttachment(at: 3, in: blocks))
+        #expect(EditorSession.carriesAttachment(at: 4, in: blocks))
+    }
+
+    @Test func theTaskLinesThatMoveAreTheBlocksAndItsChildren() {
+        let blocks = [
+            block("a", kind: "taskBlock", props: ["taskId": "t1"]),
+            block("a1", depth: 1, kind: "taskBlock", props: ["taskId": "t2"]),
+            block("a2", depth: 1, kind: "taskBlock", props: ["taskId": ""]),
+            block("b", kind: "taskBlock", props: ["taskId": "t3"]),
+        ]
+        #expect(EditorSession.taskIds(at: 0, in: blocks) == ["t1", "t2"])
+        #expect(EditorSession.taskIds(at: 3, in: blocks) == ["t3"])
+    }
+
+    @Test func aMovedTaskLinksToItsNewNoteOnly() {
+        #expect(NoteTaskLinks.relinked(["n1", "x"], unlink: "n1", link: "n2") == ["x", "n2"])
+        #expect(NoteTaskLinks.relinked(["n2"], unlink: "n1", link: "n2") == ["n2"])
+    }
+}
+
+/// An editor that reads snapshots and appends them, as the core does.
+private final class MovingEditor: BlockEditing, @unchecked Sendable {
+    let log = Mutex<[String]>([])
+    let appends: Bool
+
+    init(appends: Bool) {
+        self.appends = appends
+    }
+
+    func edit(noteId: String, _ edit: BlockEdit) async throws -> Bool {
+        log.withLock { $0.append("edit \(noteId) \(edit)") }
+        return true
+    }
+
+    func snapshot(noteId: String, blockId: String) async throws -> String? {
+        log.withLock { $0.append("snapshot \(noteId) \(blockId)") }
+        return "snap-\(blockId)"
+    }
+
+    var movesBlocksBetweenNotes: Bool { true }
+
+    func appendSnapshot(_ snapshot: String, toNote noteId: String) async throws -> Bool {
+        log.withLock { $0.append("append \(noteId) \(snapshot)") }
+        return appends
+    }
+
+    var all: [String] { log.withLock { $0 } }
+}
+
+@MainActor
+struct MoveBlockToNoteTests {
+    private func move(appends: Bool) async -> (MovingEditor, EditorSession, [String]) {
+        let editor = MovingEditor(appends: appends)
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        let blocks = [block("a", kind: "taskBlock", props: ["taskId": "t1"]), block("b")]
+        _ = focused(blocks[0], in: blocks, session: session)
+        var relinked: [String] = []
+        session.relinkTask = { taskId, target in relinked.append("\(taskId)->\(target)") }
+        #expect(session.canMoveToNote)
+        session.requestMoveToNote()
+        #expect(session.moveRequest == BlockMoveRequest(blockId: "a"))
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.moveToNote("n2")
+        }
+        return (editor, session, relinked)
+    }
+
+    @Test func theBlockIsAppendedToTheTargetThenRemovedHere() async {
+        let (editor, session, relinked) = await move(appends: true)
+        #expect(editor.all == [
+            "snapshot n1 a",
+            "append n2 snap-a",
+            "edit n1 \(BlockEdit.delete(blockId: "a"))",
+        ])
+        #expect(session.moveRequest == nil)
+        #expect(session.moveFailure == nil)
+        #expect(relinked == ["t1->n2"])
+    }
+
+    @Test func aFailedAppendKeepsTheBlockAndSaysWhy() async {
+        let (editor, session, relinked) = await move(appends: false)
+        #expect(editor.all == ["snapshot n1 a", "append n2 snap-a"])
+        #expect(session.moveFailure == ErrorMapping.unknownNote)
+        #expect(relinked.isEmpty)
+    }
+
+    @Test func aSurfaceThatCannotMoveBlocksOffersNoMoveTo() {
+        let model = NoteEditorViewModel(noteId: "n1", editor: ScriptedToolbarEditor())
+        model.session.model = model
+        let target = block("a")
+        _ = focused(target, in: [target], session: model.session)
+        #expect(!model.session.canMoveToNote)
+    }
+
+    @Test func thePickerSearchesTitlesAndFolders() {
+        func note(_ id: String, _ title: String, folder: String? = nil) -> NoteSummary {
+            NoteSummary(
+                id: id, title: title, folderPath: folder, emoji: nil, createdAt: nil, modifiedAt: nil
+            )
+        }
+        let notes = [note("1", "Groceries"), note("2", "Plans", folder: "Work/Q3"), note("3", "Ideas")]
+        #expect(MoveBlockPicker.matches(notes, query: "").map(\.id) == ["1", "2", "3"])
+        #expect(MoveBlockPicker.matches(notes, query: "gro").map(\.id) == ["1"])
+        #expect(MoveBlockPicker.matches(notes, query: "work").map(\.id) == ["2"])
+    }
+}

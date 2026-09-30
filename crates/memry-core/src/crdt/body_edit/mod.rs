@@ -23,8 +23,8 @@ use std::collections::HashMap;
 
 use yrs::types::xml::XmlOut;
 use yrs::{
-    Any, GetString as _, ReadTxn, Text as _, TransactionMut, Xml as _, XmlElementPrelim,
-    XmlElementRef, XmlFragment as _, XmlTextPrelim, XmlTextRef,
+    Any, ReadTxn, Text as _, TransactionMut, Xml as _, XmlElementPrelim, XmlElementRef,
+    XmlFragment as _, XmlTextPrelim, XmlTextRef,
 };
 
 use crate::crdt::errors::CrdtError;
@@ -32,11 +32,13 @@ use crate::crdt::node_shapes;
 use crate::crdt::{BODY_FRAGMENT, Document};
 
 mod inline;
+mod snapshot;
 mod structure;
 mod tables;
 mod text;
 
 use inline::*;
+use snapshot::*;
 use structure::*;
 use tables::*;
 use text::*;
@@ -53,6 +55,34 @@ pub enum BlockEdit {
     SetText {
         block_id: String,
         text: String,
+    },
+    /// Rewrites a block's text **in place, keeping its marks and inline
+    /// nodes**.
+    ///
+    /// `text` is the whole block as the shell shows it, with every inline node
+    /// (a wiki link, a date, a tag, an inline image) spelled as one U+FFFC
+    /// OBJECT REPLACEMENT CHARACTER. The core diffs it against the block's own
+    /// flattened text by common prefix and suffix and applies only the span
+    /// between them, as deletes and inserts on the runs that hold it: a peer's
+    /// concurrent typing elsewhere in the block survives the merge, and bold,
+    /// colour and links outside the span are untouched. Inserted text takes the
+    /// formatting of the character before it, as typing does. A U+FFFC in the
+    /// inserted span is dropped: a node is never made from a placeholder.
+    ///
+    /// Only BlockNote's inline nodes are placeholders. Any other element in
+    /// the block's content (a `hardBreak`) is not part of the shell's text,
+    /// takes no position in the diff, and is never removed by it.
+    ReplaceText {
+        block_id: String,
+        text: String,
+        /// The block's text as the shell last read it, before the user typed.
+        ///
+        /// When given and the block has moved on since (a peer's edit merged
+        /// while the shell held unsaved typing), only the user's change,
+        /// `base` to `text`, is applied on top of the live block, so the
+        /// peer's edit survives. `None` diffs `text` against the live block.
+        #[uniffi(default = None)]
+        base: Option<String>,
     },
     /// Sets one attribute: `checked` on a check item, `level` on a heading,
     /// `language` on a code block, `type` on a callout.
@@ -226,6 +256,21 @@ pub enum BlockEdit {
     Delete {
         block_id: String,
     },
+    /// Puts back a block read with [`snapshot_block`], **with its original
+    /// ids**, so a peer's reference to it and the shell's redo still resolve.
+    ///
+    /// The undo of a delete and of a type change (iOS undo). When the block
+    /// is still in the body, only its own element is replaced, with the type,
+    /// props, marks and inline nodes it had; the blocks nested under it are
+    /// left as they are. When it is gone, the whole container returns after
+    /// the sibling it followed, else first in the block it was nested in, else
+    /// first in the body.
+    ///
+    /// `snapshot` is opaque and belongs to the shell's undo stack only: it is
+    /// never stored or synced.
+    RestoreBlock {
+        snapshot: String,
+    },
 }
 
 /// Applies one edit to `document`.
@@ -235,6 +280,11 @@ pub enum BlockEdit {
 pub fn apply(document: &Document, edit: &BlockEdit) -> Result<(), CrdtError> {
     document.write(|txn| match edit {
         BlockEdit::SetText { block_id, text } => set_text(txn, block_id, text),
+        BlockEdit::ReplaceText {
+            block_id,
+            text,
+            base,
+        } => replace_text(txn, block_id, text, base.as_deref()),
         BlockEdit::SetProp {
             block_id,
             name,
@@ -314,7 +364,28 @@ pub fn apply(document: &Document, edit: &BlockEdit) -> Result<(), CrdtError> {
             mark,
         } => set_mark(txn, block_id, *start, *end, mark, None, false),
         BlockEdit::Delete { block_id } => delete(txn, block_id),
+        BlockEdit::RestoreBlock { snapshot } => restore_block(txn, snapshot),
     })?
+}
+
+/// Reads one block's container and everything under it, for
+/// [`BlockEdit::RestoreBlock`]. Authors no update.
+///
+/// A block the body does not hold is refused, as an edit to it would be.
+pub fn snapshot_block(document: &Document, block_id: &str) -> Result<String, CrdtError> {
+    // A write transaction only because `locate` walks one; nothing changes,
+    // so nothing reaches the sink.
+    document.write(|txn| snapshot::snapshot_block(txn, block_id))?
+}
+
+/// Appends a block read with [`snapshot_block`] (from any note's body), with
+/// everything under it, to the end of this body: desktop's "Move to".
+///
+/// Its marks, props, inline nodes and nested blocks come along. Container ids
+/// are kept, except one this body already holds, which is minted afresh: two
+/// blocks sharing an id are two blocks no edit can tell apart.
+pub fn append_snapshot(document: &Document, snapshot: &str) -> Result<(), CrdtError> {
+    document.write(|txn| snapshot::append_block(txn, snapshot))?
 }
 
 /// The `blockContainer` carrying `id`, and the block element inside it.
@@ -398,6 +469,9 @@ fn delete(txn: &mut TransactionMut, block_id: &str) -> Result<(), CrdtError> {
                 })
                 .ok_or_else(|| missing(block_id))? as u32;
             element.remove_range(txn, index, 1);
+            // The last child of a nested group leaves no empty group behind:
+            // BlockNote's schema requires a group to hold a block.
+            drop_if_empty(txn, &element);
         }
         _ => {
             let fragment = txn

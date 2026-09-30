@@ -74,7 +74,7 @@ pub(super) fn insert_inline(
     let mut names: Vec<&String> = attrs.keys().collect();
     names.sort();
     for name in names {
-        node.insert_attribute(txn, name.as_str(), attrs[name].as_str());
+        node.insert_attribute(txn, name.as_str(), inline_attr(kind, name, &attrs[name]));
     }
     if !text.is_empty() {
         node.insert(txn, 0, XmlTextPrelim::new(text));
@@ -159,16 +159,6 @@ pub(super) fn set_mark(
         });
     }
     let (_, block) = locate(txn, block_id).ok_or_else(|| missing(block_id))?;
-    let text = block
-        .children(txn)
-        .find_map(|child| match child {
-            XmlOut::Text(value) => Some(value),
-            _ => None,
-        })
-        .ok_or_else(|| CrdtError::Undecodable {
-            doc_id: block_id.to_owned(),
-            what: "that block holds no text to mark".to_owned(),
-        })?;
 
     let attribute = if !apply {
         Any::Null
@@ -191,14 +181,73 @@ pub(super) fn set_mark(
         }
     };
 
-    let length = text.len(txn);
-    if start >= length {
+    // Every text run with where it starts, in the same offset walk
+    // `insert_inline` uses: an inline node counts as the text it displays.
+    // Addressing only the first run left everything after a wiki link or a
+    // date unreachable.
+    let mut runs: Vec<(u32, XmlTextRef, u32)> = Vec::new();
+    let mut base = 0u32;
+    for child in block.children(txn) {
+        match child {
+            XmlOut::Text(run) => {
+                let length = run.len(txn);
+                runs.push((base, run, length));
+                base += length;
+            }
+            XmlOut::Element(element) if element.tag().as_ref() != "blockGroup" => {
+                base += element_text_len(txn, &element);
+            }
+            _ => {}
+        }
+    }
+    if runs.is_empty() {
+        return Err(CrdtError::Undecodable {
+            doc_id: block_id.to_owned(),
+            what: "that block holds no text to mark".to_owned(),
+        });
+    }
+    if start >= base {
         return Err(CrdtError::Undecodable {
             doc_id: block_id.to_owned(),
             what: "that range starts past the end of the block".to_owned(),
         });
     }
-    let end = end.min(length);
-    text.format(txn, start, end - start, [(mark.into(), attribute)].into());
+    let end = end.min(base);
+    for (run_start, run, length) in runs {
+        let from = start.max(run_start);
+        let to = end.min(run_start + length);
+        if from < to {
+            run.format(
+                txn,
+                from - run_start,
+                to - from,
+                [(mark.into(), attribute.clone())].into(),
+            );
+        }
+    }
     Ok(())
+}
+
+/// An inline node's attribute **in its declared type**.
+///
+/// The FFI carries every value as text, and BlockNote declares some of these
+/// props as booleans: a date mention's `hasTime`, a wiki link's marks, a
+/// checkbox's `checked`. Stored as the string `"false"` they read as true
+/// anywhere the prop is tested for truth, so a date written without a time
+/// would render with one on desktop.
+pub(super) fn inline_attr(kind: &str, name: &str, value: &str) -> Any {
+    let boolean = matches!(
+        (kind, name),
+        ("dateMention", "hasTime")
+            | ("inlineCheckbox", "checked")
+            | (
+                "wikiLink",
+                "bold" | "italic" | "underline" | "strike" | "code"
+            )
+    );
+    match (boolean, value) {
+        (true, "true") => Any::Bool(true),
+        (true, "false") => Any::Bool(false),
+        _ => Any::String(value.into()),
+    }
 }

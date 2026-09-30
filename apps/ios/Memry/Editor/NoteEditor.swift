@@ -31,6 +31,9 @@ final class NoteEditorViewModel {
 
     private(set) var status: Status = .idle
 
+    /// The keyboard toolbar's state and actions for this body.
+    let session = EditorSession()
+
     /// The blocks as the editor holds them, keyed by block id.
     ///
     /// Held separately from the read model's blocks because a block being
@@ -65,10 +68,24 @@ final class NoteEditorViewModel {
     /// Returns without writing when the text has not changed, because an
     /// unchanged commit is still a CRDT update and an outbox row (FR-030) —
     /// tapping into a block and back out must not enqueue a push.
-    func commit(_ text: String, for blockId: String, current: String) async {
+    ///
+    /// `formatted` routes the write through `ReplaceText`, which edits in place
+    /// and keeps the block's marks and inline nodes: `SetText` would replace a
+    /// formatted block's whole content and drop them. A plain block keeps
+    /// `SetText`'s in-place single-run edit.
+    ///
+    /// `base` is the text the user's typing started from. When `current` has
+    /// moved on since (a peer's edit merged while the block held unsaved
+    /// typing), the write is a `ReplaceText` carrying `base`, so the core
+    /// applies only the user's change and the peer's edit survives; a
+    /// `SetText` of `text` would delete it. With a `base`, "unchanged" means
+    /// the user changed nothing, whatever the peer did.
+    func commit(
+        _ text: String, for blockId: String, current: String, formatted: Bool = false, base: String? = nil
+    ) async {
         guard let editor else { return }
         drafts[blockId] = text
-        guard text != current else {
+        guard text != (base ?? current) else {
             status = .idle
             return
         }
@@ -77,7 +94,9 @@ final class NoteEditorViewModel {
         do {
             let landed = try await editor.edit(
                 noteId: noteId,
-                .setText(blockId: blockId, text: text)
+                formatted || (base != nil && base != current)
+                    ? .replaceText(blockId: blockId, text: text, base: base)
+                    : .setText(blockId: blockId, text: text)
             )
             if landed {
                 status = .idle
@@ -182,6 +201,53 @@ final class NoteEditorViewModel {
         } catch {
             status = .failed(ErrorMapping.userFacing(error))
             return nil
+        }
+    }
+
+    /// The block and everything under it, for an undo step that has to put
+    /// it back (`BlockEdit.restoreBlock`). `nil` when the editor has no
+    /// snapshot read or the read failed: the caller then records no step
+    /// rather than one that cannot undo.
+    func snapshot(_ blockId: String) async -> String? {
+        guard let editor else { return nil }
+        do {
+            return try await editor.snapshot(noteId: noteId, blockId: blockId)
+        } catch {
+            Log.storage.error("a block snapshot could not be read")
+            return nil
+        }
+    }
+
+    /// Whether a block can be moved to another note from here.
+    var canMoveBlocks: Bool { editor?.movesBlocksBetweenNotes ?? false }
+
+    /// Desktop's block menu "Move to" (`moveBlockToNote`): the block, with
+    /// its children, marks and inline nodes, is appended to the end of
+    /// `targetId`'s body, then removed here. **Removed only after the append
+    /// landed**, so a failure leaves it where it was.
+    ///
+    /// - Returns: `nil` when it moved, otherwise what to tell the user.
+    func moveBlock(_ blockId: String, toNote targetId: String) async -> UserFacingError? {
+        guard let editor else { return ErrorMapping.unknownNote }
+        status = .saving
+        do {
+            // A surface that reads blocks answers `nil` only for a note it
+            // does not hold.
+            guard let snapshot = try await editor.snapshot(noteId: noteId, blockId: blockId),
+                  try await editor.appendSnapshot(snapshot, toNote: targetId)
+            else {
+                status = .failed(ErrorMapping.unknownNote)
+                return ErrorMapping.unknownNote
+            }
+            _ = try await editor.edit(noteId: noteId, .delete(blockId: blockId))
+            drafts[blockId] = nil
+            status = .idle
+            return nil
+        } catch {
+            Log.storage.error("a block did not move to another note")
+            let mapped = ErrorMapping.userFacing(error)
+            status = .failed(mapped)
+            return mapped
         }
     }
 
@@ -321,57 +387,49 @@ final class NoteEditorViewModel {
         )
     }
 
-    /// A wiki link to `title` (N602).
+    /// A wiki link to `title` (N602), in desktop's shape.
     ///
-    /// `displayAs` is what the link shows when it should not show the note's
-    /// own title — desktop's alias. Absent rather than equal to the title, so
-    /// a reader can tell "no alias" from "an alias that happens to match".
+    /// Desktop's `wikiLink` is an atom (`content: "none"`) whose props are
+    /// `target` and `alias` (`packages/editor-schema/src/inline/wiki-link.ts`):
+    /// no text inside the node, and an empty `alias` when the link shows its
+    /// target. An alias equal to the target is no alias, as `wikiLinkToText`
+    /// treats it.
     func insertWikiLink(
         in blockId: String,
         from start: Int,
         to end: Int,
         title: String,
-        displayAs: String? = nil,
-        embed: Bool = false
+        alias: String? = nil
     ) async {
-        var attrs = ["target": title]
-        if let displayAs, !displayAs.isEmpty, displayAs != title {
-            attrs["displayAs"] = displayAs
-        }
-        if embed {
-            // An embed shows the target's content rather than a link to it.
-            attrs["embed"] = "true"
-        }
         await insertInline(
             blockId,
             from: start,
             to: end,
             kind: "wikiLink",
-            text: displayAs ?? title,
-            attrs: attrs
+            text: "",
+            attrs: WikiLinkAttrs.attrs(target: title, alias: alias)
         )
     }
 
-    /// A date mention (N601). `remindMe` asks for a reminder on that date.
+    /// A date mention (N601), in desktop's shape.
+    ///
+    /// Desktop's `dateMention` is an atom whose props are `anchorId`,
+    /// `dateISO`, `hasTime`, `dateFormat`, `remind` and `timeFormat`
+    /// (`packages/editor-schema/src/inline/date-mention.ts`), minted by
+    /// `insertDatePill` with a `dm_<uuid>` anchor.
     func insertDateMention(
         in blockId: String,
         from start: Int,
         to end: Int,
-        date: Date,
-        label: String,
-        remindMe: Bool
+        value: DateMentionValue
     ) async {
-        var attrs = ["date": NoteDates.string(from: date)]
-        if remindMe {
-            attrs["remindMe"] = "true"
-        }
         await insertInline(
             blockId,
             from: start,
             to: end,
             kind: "dateMention",
-            text: label,
-            attrs: attrs
+            text: "",
+            attrs: value.attrs(anchorId: DateMentionValue.mintAnchorId())
         )
     }
 
@@ -450,35 +508,28 @@ final class NoteEditorViewModel {
     }
 }
 
-/// What a block view needs to become editable, as plain closures.
+/// What a block view needs to become editable.
 ///
-/// A struct of closures rather than the view model itself, so
-/// `NoteBlockView` — which is in the read feature and has no business knowing
-/// about an editor — depends on three functions instead of on a type.
+/// Built by the page (`NotePageContent`) each render, so the session always
+/// has the page's current reload, note titles and picture picker.
 struct NoteEditingBridge {
-    /// The text to show: the draft if the user has touched this block,
-    /// otherwise what the document says.
-    let text: (String, String) -> String
-    /// Commit this block's text. The third argument is what the document
-    /// currently holds, so an unchanged commit can write nothing.
-    let commit: (String, String, String) -> Void
-    /// Return pressed at the end of this block: a new paragraph after it.
-    let insertAfter: (String) -> Void
+    let session: EditorSession
 
     @MainActor
-    init(model: NoteEditorViewModel, didChange: @escaping () async -> Void) {
-        text = { id, fallback in model.text(for: id, fallback: fallback) }
-        commit = { id, text, current in
-            Task { @MainActor in
-                await model.commit(text, for: id, current: current)
-                await didChange()
-            }
-        }
-        insertAfter = { id in
-            Task { @MainActor in
-                _ = await model.insertParagraph(after: id)
-                await didChange()
-            }
-        }
+    init(
+        model: NoteEditorViewModel,
+        titles: [String] = [],
+        icons: [String: String] = [:],
+        titleExists: ((String) -> Bool)? = nil,
+        pickImage: (() -> Void)? = nil,
+        didChange: @escaping () async -> Void
+    ) {
+        session = model.session
+        session.model = model
+        session.didChange = didChange
+        session.titles = titles
+        session.icons = icons
+        session.titleExists = titleExists
+        if (session.pickImage == nil) != (pickImage == nil) { session.pickImage = pickImage }
     }
 }

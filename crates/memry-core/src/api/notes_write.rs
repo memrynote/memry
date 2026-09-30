@@ -26,8 +26,10 @@
 use std::sync::Arc;
 
 use crate::api::errors::{AuthError, PropertyWriteError, StorageError};
-use crate::crdt::body_edit::BlockEdit;
+use crate::crdt::body_edit::{self, BlockEdit};
 use crate::crdt::errors::CrdtError;
+use crate::crdt::registry::UpdateSink;
+use crate::crdt::{DocumentRegistry, update_log};
 use crate::crypto::{keys, sodium};
 use crate::domain::body_write;
 use crate::domain::calendar::LocalDateTime;
@@ -213,6 +215,69 @@ impl NotesWriter {
             .map_err(CrdtError::from)?
     }
 
+    /// Reads one block, with everything nested under it, as the snapshot
+    /// [`BlockEdit::RestoreBlock`] puts back (iOS undo of a delete or a type
+    /// change).
+    ///
+    /// - Returns: `None` when this vault holds no live note by that id, as
+    ///   [`Self::edit_block`] answers `false`. A block the body does not hold
+    ///   throws.
+    ///
+    /// Writes nothing: the snapshot belongs to the shell's undo stack and is
+    /// never stored or synced.
+    pub fn block_snapshot(
+        &self,
+        note_id: String,
+        block_id: String,
+    ) -> Result<Option<String>, CrdtError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| {
+                if !crate::domain::reads::note_exists(conn, &note_id) {
+                    return Ok(Ok(None));
+                }
+                let read = || -> Result<Option<String>, CrdtError> {
+                    let sink: UpdateSink = Arc::new(|_, _| {});
+                    let document = DocumentRegistry::new(&device_id, sink).get_or_open(&note_id)?;
+                    for blob in update_log::load_plan(conn, &note_id)?.blobs() {
+                        document.apply_durable_update(blob)?;
+                    }
+                    body_edit::snapshot_block(&document, &block_id).map(Some)
+                };
+                Ok(read())
+            })
+            .map_err(CrdtError::from)?
+    }
+
+    /// Appends a block read with [`Self::block_snapshot`] (from any note) to
+    /// the end of `note_id`'s body, with its children, marks and inline
+    /// nodes: the target half of desktop's block menu "Move to".
+    ///
+    /// A container id the target already holds is minted afresh; the rest
+    /// are kept.
+    ///
+    /// - Returns: `false` when this vault holds no live note by that id. The
+    ///   caller removes the source block only after this answered `true`, so
+    ///   a failed append leaves the block where it was.
+    pub fn append_block_snapshot(
+        &self,
+        note_id: String,
+        snapshot: String,
+    ) -> Result<bool, CrdtError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| {
+                Ok(body_write::append_snapshot(
+                    conn,
+                    &note_id,
+                    &snapshot,
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(CrdtError::from)?
+    }
+
     /// Sets or clears a note's icon (N701).
     ///
     /// The payload spells it `emoji` (§13.7.1); it is `icon` here because that
@@ -231,14 +296,15 @@ impl NotesWriter {
         })
     }
 
-    /// Sets or clears a note's cover (N703).
+    /// Sets or clears a note's cover (N703), in desktop's `cover` payload
+    /// field (chapter 13 §13.7.1.1), which desktop writes to the note's
+    /// frontmatter.
     ///
-    /// `coverImage` is not a field of the note schema. Writing it is safe
-    /// because §13.2 makes an unknown top-level payload key something every
-    /// conforming client carries, and §13.2.1 records how desktop does it —
-    /// so a cover written here survives an older desktop editing the note.
-    /// **No other client renders one today**, which is a product gap rather
-    /// than a protocol one.
+    /// `url` is desktop's `cover` value: `attachments/<noteId>/<file>` for a
+    /// picture uploaded to this note, `wash:<id>`, or an http(s) URL.
+    /// `offset_y` is the 0-1 framing, stored as desktop's 0-100 `focus`. The
+    /// photographer credit stays while `url` is unchanged and is dropped with
+    /// a new picture.
     ///
     /// `nil` clears, writing an explicit null rather than removing the key.
     pub fn set_cover(
@@ -344,6 +410,31 @@ impl NotesWriter {
             .map_err(PropertyWriteError::from)?
             .map(|_| ())
             .map_err(PropertyWriteError::from)
+    }
+
+    /// Renames one property on this note, keeping its value, as desktop's
+    /// `properties:rename` does: the old key is dropped rather than left
+    /// `null`, a missing `from` is `NotFound`, and a `to` the note already
+    /// carries is `Invalid`. The vault-wide definition is not renamed.
+    pub fn rename_property(
+        &self,
+        id: String,
+        from: String,
+        to: String,
+    ) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            properties::rename(
+                conn,
+                notes::ITEM_TYPE,
+                &id,
+                &from,
+                &to,
+                &device_id,
+                now_ms(),
+            )
+            .map(|_| ())
+        })
     }
 
     /// Creates a note from a template (N803).

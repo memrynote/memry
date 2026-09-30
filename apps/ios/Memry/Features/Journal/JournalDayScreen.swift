@@ -60,7 +60,7 @@ struct JournalDayScreen: View {
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .safeAreaInset(edge: .top) { JournalFailureBanner(store: store) }
-        .background(Tokens.Canvas.background.color)
+        .background(Tokens.Canvas.background.color.ignoresSafeArea())
         .onChange(of: selection) { _, day in
             if day != date { show(day) }
         }

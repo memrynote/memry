@@ -152,6 +152,19 @@ impl Tasks {
         })
     }
 
+    /// Creates `name`'s definition with desktop's defaults for `type_name`
+    /// when the vault has no live one; an existing definition is untouched.
+    pub fn ensure_property_definition(
+        &self,
+        name: String,
+        type_name: String,
+    ) -> Result<(), StorageError> {
+        let device = self.device_id.clone();
+        self.db.call_blocking(move |c| {
+            property_admin::ensure_definition(c, &name, &type_name, &device, now_ms())
+        })
+    }
+
     pub fn rename_property_option(
         &self,
         name: String,

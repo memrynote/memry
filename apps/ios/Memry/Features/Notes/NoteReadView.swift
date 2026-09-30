@@ -225,12 +225,16 @@ struct NoteReadView: View {
                         .memrySecondaryAction()
                 case let .ready(detail):
                     // The cover sits above everything, as desktop puts it.
-                    // Render-only: `coverImage` is an unknown payload key, so
-                    // this draws what another client wrote and offers no way
-                    // to author one (research.md).
-                    NoteCoverView(
-                        cover: NoteCover.of(model.metadata?.coverJson),
-                        resolve: { model.attachments[$0] ?? .unknown }
+                    NoteCoverSection(
+                        noteId: model.route.id,
+                        coverJson: model.metadata?.coverJson,
+                        reader: model.reader,
+                        filler: model.filler,
+                        reachability: model.reachability,
+                        metadataModel: metadataModel,
+                        composer: composer,
+                        reload: { await model.reload() },
+                        bleed: Tokens.Space.screenInline
                     )
                     if metadataModel.canEdit {
                         NoteTitleEditor(
@@ -287,7 +291,11 @@ struct NoteReadView: View {
             .padding(.vertical, Tokens.Space.screenBlock)
         }
         .restoresScroll(scrollKey)
-        .background(Tokens.Canvas.background.color)
+        // The keyboard accessory is floating glass: paint the page colour under
+        // it and drop the bottom edge blur, or the strip behind the toolbar reads
+        // as a black band with a shadow over it.
+        .scrollEdgeEffectHidden(true, for: .bottom)
+        .background(Tokens.Canvas.background.color.ignoresSafeArea())
         .modifier(NotePageEnvironment(model: model, taskBridge: taskBridge))
         .calmAnimation(.normal, value: model.phase)
         // This screen carries its own bottom toolbar (link and date menus,

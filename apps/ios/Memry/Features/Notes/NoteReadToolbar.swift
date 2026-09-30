@@ -26,6 +26,11 @@ struct NoteReadToolbar: ViewModifier {
     /// The note as text, for the share sheet (N802).
     let export: NoteExport
 
+    /// The page menu's link and date sheets, which insert at the end of the
+    /// last block (the keyboard toolbar inserts at the caret).
+    @State private var linking = false
+    @State private var dating = false
+
     func body(content: Content) -> some View {
         content
             .toolbar {
@@ -36,15 +41,6 @@ struct NoteReadToolbar: ViewModifier {
                         // in place rather than on the next note open.
                         Task { await model.refreshAttachments() }
                     }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    NotePageMenu(
-                        canWrite: actions.canWrite,
-                        folderPath: model.folderPath,
-                        rename: { renaming = true },
-                        move: { moving = true },
-                        delete: { confirmingDelete = true }
-                    )
                 }
                 // The editing affordances, absent entirely on a read-only note
                 // rather than present and refusing.
@@ -63,64 +59,59 @@ struct NoteReadToolbar: ViewModifier {
                                 }
                             }
                             // No `insertPicture`: the picture affordance is the
-                            // adjacent toolbar item (N214), and a second entry
-                            // here would be a duplicate path to the same picker.
-                        )
-                    }
-                    // The inline nodes: a date, and a link to another note
-                    // (N601, N602). Both land in the last block, which is where
-                    // the caret is after the insert menu has been used; a caret
-                    // the shell can address per-block is N501's.
-                    ToolbarItem(placement: .bottomBar) {
-                        DateMentionMenu { date, label, remindMe in
-                            guard let blockId = model.blocks.last?.id else { return }
-                            let end = Int(
-                                model.blocks.last?.inline.map(\.text).joined().count ?? 0
-                            )
-                            Task {
-                                await editorModel.insertDateMention(
-                                    in: blockId,
-                                    from: end,
-                                    to: end,
-                                    date: date,
-                                    label: label,
-                                    remindMe: remindMe
-                                )
-                                await model.reload()
-                            }
-                        }
-                    }
-                    ToolbarItem(placement: .bottomBar) {
-                        WikiLinkMenu(
-                            notes: model.vaultNotes,
-                            create: nil,
-                            insert: { title, alias, embed in
-                                guard let blockId = model.blocks.last?.id else { return }
-                                let end = Int(
-                                    model.blocks.last?.inline.map(\.text).joined().count ?? 0
-                                )
-                                Task {
-                                    await editorModel.insertWikiLink(
-                                        in: blockId,
-                                        from: end,
-                                        to: end,
-                                        title: title,
-                                        displayAs: alias,
-                                        embed: embed
-                                    )
-                                    await model.reload()
-                                }
-                            }
-                        )
-                    }
-                    ToolbarItem(placement: .bottomBar) {
-                        EditorHistoryControls(
-                            stack: history,
-                            undo: { Task { await applyHistory(history.popUndo()?.backward) } },
-                            redo: { Task { await applyHistory(history.popRedo()?.forward) } }
+                            // adjacent toolbar item (N214).
                         )
                     }
                 }
+                // Everything the bottom bar used to hold lives here now: the
+                // keyboard toolbar owns editing at the caret, and one bottom
+                // surface fewer leaves the page to the writing.
+                ToolbarItem(placement: .topBarTrailing) {
+                    NotePageMenu(
+                        canWrite: actions.canWrite,
+                        folderPath: model.folderPath,
+                        rename: { renaming = true },
+                        move: { moving = true },
+                        delete: { confirmingDelete = true },
+                        editing: editorModel.canEdit ? editingItems : nil
+                    )
+                }
             }
+            .sheet(isPresented: $linking) {
+                WikiLinkSheet(
+                    titles: model.vaultNotes.map(\.title),
+                    insert: { kind in
+                        linking = false
+                        append(kind)
+                    },
+                    cancel: { linking = false }
+                )
+            }
+            .sheet(isPresented: $dating) {
+                DateMentionSheet(
+                    insert: { value in
+                        dating = false
+                        append(.date(value))
+                    },
+                    cancel: { dating = false }
+                )
+            }
+    }
+
+    private var editingItems: NotePageEditingItems {
+        let session = editorModel.session
+        return NotePageEditingItems(
+            canUndo: session.history.canUndo,
+            canRedo: session.history.canRedo,
+            undo: { session.undo() },
+            redo: { session.redo() },
+            linkToNote: { linking = true },
+            mentionDate: { dating = true }
+        )
+    }
+
+    private func append(_ kind: EditorSuggestion.Kind) {
+        guard let last = model.blocks.last(where: { $0.id != nil }) else { return }
+        editorModel.session.append(kind, to: last)
     }
 }

@@ -35,10 +35,6 @@ import SwiftUI
 // `FolderTree.swift`.
 
 struct NotesListView: View {
-    /// T155's switch, preserved. `nil` when the account holds one vault and
-    /// there is nothing to switch to.
-    let switchVault: (() -> Void)?
-
     @State private var model: VaultBrowseViewModel
     /// A type-erased path rather than `[FolderRoute]`, because T157 added a
     /// second route type to the same stack. `NavigationPath` is what holds
@@ -66,10 +62,8 @@ struct NotesListView: View {
         vault: Vault,
         executor: CoreExecutor,
         filler: (any VaultFilling)? = nil,
-        store: (any SecureStore)? = nil,
-        switchVault: (() -> Void)? = nil
+        store: (any SecureStore)? = nil
     ) {
-        self.switchVault = switchVault
         _model = State(
             initialValue: VaultBrowseViewModel(
                 vault: vault,
@@ -80,8 +74,7 @@ struct NotesListView: View {
         )
     }
 
-    init(model: VaultBrowseViewModel, switchVault: (() -> Void)? = nil) {
-        self.switchVault = switchVault
+    init(model: VaultBrowseViewModel) {
         _model = State(initialValue: model)
     }
 
@@ -99,6 +92,7 @@ struct NotesListView: View {
                     FolderScreen(
                         route: route,
                         model: model,
+                        openFolder: { path.append(FolderRoute(path: $0)) },
                         openNote: { path.append(NoteRoute(id: $0)) }
                     )
                 }
@@ -149,11 +143,6 @@ struct NotesListView: View {
                         // rule the destination registrations above depend on
                         // and a source check enforces it literally.
                         SortMenu(sort: $sort)
-                    }
-                    if let switchVault {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Switch vault", systemImage: "lock.square") { switchVault() }
-                        }
                     }
                     GlobalSearchToolbarItem()
                 }

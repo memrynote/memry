@@ -13,6 +13,9 @@ import { createLogger } from '../../lib/logger'
 import { getPinnedTagsForNote } from '@memry/sync-client/item-handlers/note-pin-helpers'
 import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import { getNoteProperties, type PropertyValue } from '@main/database/queries/notes'
+import type { NoteCoverSync } from '@memry/contracts/sync-payloads'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
+import { noteCoverForPush, settleNoteCoverRemoval } from './note-cover-sync'
 
 const log = createLogger('NoteHandlerSyncHelpers')
 
@@ -50,12 +53,16 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
 
   let content: string | null = null
   let tags: string[] = []
+  // `undefined` omits the key, which tells peers nothing: the file could not be
+  // read, or this note has had no cover here. `null` is a local removal only.
+  let cover: NoteCoverSync | null | undefined
   const absolutePath = toAbsolutePath(cached.path)
   try {
     const raw = fs.readFileSync(absolutePath, 'utf-8')
     const parsed = parseNote(raw)
     content = operation === 'create' ? parsed.content : null
     tags = parsed.frontmatter.tags ?? []
+    cover = noteCoverForPush(dataDb, itemId, parsed.frontmatter)
   } catch {
     log.warn('Could not read note file for push payload', { noteId: cached.id })
   }
@@ -79,9 +86,27 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
     ...(cached.attachmentReferences?.length
       ? { attachmentReferences: cached.attachmentReferences }
       : {}),
+    ...(cover !== undefined ? { cover } : {}),
+    // An older iOS build's `coverImage` rides along from the kept unknown
+    // fields, and readers fall back to it when `cover` is null. A removal
+    // clears it too, so the old picture does not come back.
+    ...(cover === null ? { coverImage: null } : {}),
     clock: cached.clock ?? {},
     createdAt: cached.createdAt,
     modifiedAt: cached.modifiedAt
+  })
+}
+
+/** Called once a note push is confirmed; see `settleNoteCoverRemoval`. */
+export function settlePushedNoteCover(db: DrizzleDb, itemId: string): void {
+  settleNoteCoverRemoval(db, itemId, () => {
+    const cached = getNoteMetadataById(db, itemId)
+    if (!cached) return null
+    try {
+      return parseNote(fs.readFileSync(toAbsolutePath(cached.path), 'utf-8')).frontmatter
+    } catch {
+      return null
+    }
   })
 }
 

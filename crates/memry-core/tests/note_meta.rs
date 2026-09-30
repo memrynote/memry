@@ -436,39 +436,145 @@ fn clearing_an_icon_writes_null_rather_than_removing_the_key() {
     );
 }
 
-/// **`coverImage` is not a field of the note schema**, and this is what it
-/// means in practice: whatever another client wrote under that key survives
-/// and reaches the shell as the JSON text the payload holds (FR-033).
-///
-/// It is the vectors' canonical *unknown key* case for exactly this reason,
-/// so parsing it into a typed field here would make this client the only one
-/// that believes the key is defined.
+/// A cover an older build of this app wrote under `coverImage`
+/// (`{url, offsetY}`) still reaches the shell, read into desktop's `cover`
+/// shape: the offset becomes a whole-percent `focus`.
 #[test]
-fn an_unknown_cover_key_survives_and_reaches_the_shell_verbatim() {
+fn a_legacy_cover_image_key_reads_as_a_desktop_cover() {
     let (db, _vault) = vault("cover");
     write_note(&db, "note-1", "A note", &[], None);
+    set_payload_key(
+        &db,
+        "coverImage",
+        r#"{"url":"memry://cover/1","offsetY":0.25}"#,
+    );
 
-    // Written the way another client would: a key this schema does not name.
+    let cover = cover_json(&db).expect("the cover must reach the shell");
+    assert_eq!(
+        cover,
+        json!({"ref": "memry://cover/1", "focus": 25, "legacy": true})
+    );
+}
+
+/// Desktop's `cover` field reaches the shell with its four keys and nothing
+/// else, and it wins over a leftover `coverImage`.
+#[test]
+fn a_desktop_cover_reaches_the_shell_and_wins_over_the_legacy_key() {
+    let (db, _vault) = vault("cover-desktop");
+    write_note(&db, "note-1", "A note", &[], None);
+    set_payload_key(&db, "coverImage", r#"{"url":"old.png","offsetY":0.9}"#);
+    set_payload_key(
+        &db,
+        "cover",
+        r#"{"ref":"../attachments/note-1/harbour.jpg","focus":42,"credit":"Ana","creditUrl":"https://unsplash.com/photos/x","extra":1}"#,
+    );
+
+    assert_eq!(
+        cover_json(&db),
+        Some(json!({
+            "ref": "../attachments/note-1/harbour.jpg",
+            "focus": 42,
+            "credit": "Ana",
+            "creditUrl": "https://unsplash.com/photos/x"
+        }))
+    );
+}
+
+/// A `cover: null` alone does not hide an older build's `coverImage`: a
+/// writer that never held that cover may have sent it. A removal nulls both
+/// keys, and then nothing shows. A value this build cannot read is no cover.
+#[test]
+fn a_null_cover_falls_back_to_the_legacy_key_until_both_are_null() {
+    let (db, _vault) = vault("cover-null");
+    write_note(&db, "note-1", "A note", &[], None);
+    set_payload_key(&db, "coverImage", r#"{"url":"old.heic","offsetY":0.5}"#);
+    set_payload_key(&db, "cover", "null");
+    assert_eq!(
+        cover_json(&db),
+        Some(json!({"ref": "old.heic", "focus": 50, "legacy": true}))
+    );
+
+    // Desktop's removal: `cover: null` and `coverImage: null`.
+    set_payload_key(&db, "coverImage", "null");
+    assert_eq!(cover_json(&db), None);
+
+    set_payload_key(&db, "coverImage", r#"{"url":"old.heic","offsetY":0.5}"#);
+    set_payload_key(&db, "cover", r#"{"ref":7}"#);
+    assert_eq!(cover_json(&db), None);
+}
+
+/// Reframing an older build's cover rewrites its `coverImage` rather than
+/// moving a HEIC ref into `cover`, where no reader would take it.
+#[test]
+fn reframing_a_legacy_cover_keeps_it_in_the_legacy_key() {
+    let (db, _vault) = vault("cover-reframe-legacy");
+    write_note(&db, "note-1", "A note", &[], None);
+    set_payload_key(
+        &db,
+        "coverImage",
+        r#"{"url":"old.heic","offsetY":0.5,"fit":"cover"}"#,
+    );
+
     db.call_blocking(|conn: &mut Connection| {
+        notes::set_cover(conn, "note-1", Some("old.heic"), 0.2, DEVICE, NOW)?;
+        Ok(())
+    })
+    .expect("the reframe");
+
+    assert_eq!(
+        cover_json(&db),
+        Some(json!({"ref": "old.heic", "focus": 20, "legacy": true}))
+    );
+    let payload = stored_payload(&db);
+    assert_eq!(payload.get("cover"), None, "{payload}");
+    assert_eq!(
+        payload["coverImage"],
+        json!({"url": "old.heic", "offsetY": 0.2, "fit": "cover"})
+    );
+}
+
+/// Removing a cover here keeps it removed even when an older build's
+/// `coverImage` is still in the payload.
+#[test]
+fn removing_a_cover_also_clears_the_legacy_key() {
+    let (db, _vault) = vault("cover-remove-legacy");
+    write_note(&db, "note-1", "A note", &[], None);
+    set_payload_key(&db, "coverImage", r#"{"url":"old.heic","offsetY":0.5}"#);
+    assert!(cover_json(&db).is_some(), "the old cover shows first");
+
+    db.call_blocking(|conn: &mut Connection| {
+        notes::set_cover(conn, "note-1", None, 0.5, DEVICE, NOW)?;
+        Ok(())
+    })
+    .expect("the removal");
+
+    assert_eq!(cover_json(&db), None);
+    let payload = stored_payload(&db);
+    assert_eq!(payload.get("cover"), Some(&Value::Null), "{payload}");
+    assert_eq!(payload.get("coverImage"), Some(&Value::Null), "{payload}");
+}
+
+fn set_payload_key(db: &Db, key: &'static str, json_text: &'static str) {
+    db.call_blocking(move |conn: &mut Connection| {
         conn.execute(
-            "UPDATE sync_items SET payload = json_set(payload, '$.coverImage', \
-             json('{\"url\":\"memry://cover/1\",\"offsetY\":0.25}')) \
+            "UPDATE sync_items SET payload = json_set(payload, '$.' || ?1, json(?2)) \
              WHERE item_type = 'note' AND item_id = 'note-1'",
-            [],
+            rusqlite::params![key, json_text],
         )
-        .expect("the cover");
+        .expect("the payload write");
         Ok(())
     })
     .expect("the write");
+}
 
+fn cover_json(db: &Db) -> Option<Value> {
     let metadata = db
         .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
         .expect("read")
         .expect("the note");
-    let cover = metadata.cover_json.expect("the cover must reach the shell");
-    let parsed: Value = serde_json::from_str(&cover).expect("the cover is JSON");
-    assert_eq!(parsed["url"], json!("memry://cover/1"));
-    assert_eq!(parsed["offsetY"], json!(0.25));
+    metadata
+        .cover_json
+        .map(|text| serde_json::from_str(&text).expect("the cover is JSON"))
 }
 
 /// A note with no cover key says so, rather than inventing an empty one.
@@ -667,58 +773,92 @@ fn a_deleted_note_stops_counting_towards_its_tags() {
 
 // MARK: - The cover (N703)
 
-/// A cover written here reads back through the same unknown-key path N208
-/// reads, in the shape `payload-schemas.json` already carries for it.
+/// A cover written here lands in desktop's `cover` field and reads back in
+/// the same shape, with the 0-1 offset stored as a whole-percent `focus`.
 #[test]
-fn a_cover_round_trips_through_the_unknown_key() {
+fn a_cover_round_trips_through_the_desktop_field() {
     let (db, _vault) = vault("cover-write");
     write_note(&db, "note-1", "A note", &[], None);
 
     db.call_blocking(|conn: &mut Connection| {
-        notes::set_cover(conn, "note-1", Some("images/cover.png"), 0.25, DEVICE, NOW)?;
+        notes::set_cover(
+            conn,
+            "note-1",
+            Some("attachments/note-1/c.jpg"),
+            0.25,
+            DEVICE,
+            NOW,
+        )?;
         Ok(())
     })
     .expect("the write");
 
-    let metadata = db
-        .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
-        .expect("read")
-        .expect("the note");
-    let cover: Value = serde_json::from_str(&metadata.cover_json.expect("a cover")).expect("JSON");
-    assert_eq!(cover["url"], json!("images/cover.png"));
-    assert_eq!(cover["offsetY"], json!(0.25));
+    assert_eq!(
+        cover_json(&db),
+        Some(json!({"ref": "attachments/note-1/c.jpg", "focus": 25}))
+    );
+    assert_eq!(
+        stored_payload(&db).get("cover"),
+        Some(&json!({"ref": "attachments/note-1/c.jpg", "focus": 25}))
+    );
 }
 
 /// **An offset outside the frame is clamped rather than stored.**
-///
-/// The offset decides which part of a tall image is visible; a value past the
-/// ends would show an empty frame, and storing it would spread that to every
-/// device.
 #[test]
 fn a_cover_offset_is_clamped_to_the_frame() {
     let (db, _vault) = vault("cover-clamp");
     write_note(&db, "note-1", "A note", &[], None);
 
-    for (given, expected) in [(9.0, 1.0), (-4.0, 0.0)] {
+    for (given, expected) in [(9.0, 100), (-4.0, 0)] {
         db.call_blocking(move |conn: &mut Connection| {
             notes::set_cover(conn, "note-1", Some("c.png"), given, DEVICE, NOW)?;
             Ok(())
         })
         .expect("the write");
 
-        let metadata = db
-            .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
-            .expect("read")
-            .expect("the note");
-        let cover: Value =
-            serde_json::from_str(&metadata.cover_json.expect("a cover")).expect("JSON");
-        assert_eq!(cover["offsetY"], json!(expected), "{given} was not clamped");
+        let cover = cover_json(&db).expect("a cover");
+        assert_eq!(cover["focus"], json!(expected), "{given} was not clamped");
     }
 }
 
+/// Reframing keeps the photographer's credit; a new picture drops it, as
+/// desktop's `useNoteCover` does.
+#[test]
+fn a_cover_keeps_its_credit_only_while_the_picture_is_the_same() {
+    let (db, _vault) = vault("cover-credit");
+    write_note(&db, "note-1", "A note", &[], None);
+    set_payload_key(
+        &db,
+        "cover",
+        r#"{"ref":"a.jpg","focus":50,"credit":"Ana","creditUrl":"https://unsplash.com/photos/x"}"#,
+    );
+
+    db.call_blocking(|conn: &mut Connection| {
+        notes::set_cover(conn, "note-1", Some("a.jpg"), 0.1, DEVICE, NOW)?;
+        Ok(())
+    })
+    .expect("the reframe");
+    assert_eq!(
+        cover_json(&db),
+        Some(json!({
+            "ref": "a.jpg",
+            "focus": 10,
+            "credit": "Ana",
+            "creditUrl": "https://unsplash.com/photos/x"
+        }))
+    );
+
+    db.call_blocking(|conn: &mut Connection| {
+        notes::set_cover(conn, "note-1", Some("wash:sage"), 0.5, DEVICE, NOW)?;
+        Ok(())
+    })
+    .expect("the change");
+    assert_eq!(cover_json(&db), Some(json!({"ref": "wash:sage"})));
+}
+
 /// Removing a cover writes an explicit null rather than dropping the key: an
-/// absent key means "this sender does not know" (§13.4), which is not what
-/// removing a cover means.
+/// absent key means "this sender does not know" (§13.4), and desktop keeps its
+/// cover when the key is absent.
 #[test]
 fn removing_a_cover_writes_null_rather_than_removing_the_key() {
     let (db, _vault) = vault("cover-remove");
@@ -731,12 +871,16 @@ fn removing_a_cover_writes_null_rather_than_removing_the_key() {
     })
     .expect("the writes");
 
-    let metadata = db
-        .call_blocking(|conn: &mut Connection| note_meta::metadata(conn, "note-1"))
-        .expect("read")
-        .expect("the note");
-    assert_eq!(metadata.cover_json, None, "the cover reads as cleared");
+    assert_eq!(cover_json(&db), None, "the cover reads as cleared");
+    let payload = stored_payload(&db);
+    assert_eq!(
+        payload.get("cover"),
+        Some(&Value::Null),
+        "the key must be present and null, not removed: {payload}"
+    );
+}
 
+fn stored_payload(db: &Db) -> Value {
     let payload: String = db
         .call_blocking(|conn: &mut Connection| {
             let raw: String = conn
@@ -749,12 +893,7 @@ fn removing_a_cover_writes_null_rather_than_removing_the_key() {
             Ok(raw)
         })
         .expect("read");
-    let object: Value = serde_json::from_str(&payload).expect("JSON");
-    assert_eq!(
-        object.get("coverImage"),
-        Some(&Value::Null),
-        "the key must be present and null, not removed: {payload}"
-    );
+    serde_json::from_str(&payload).expect("JSON")
 }
 
 /// **Writing a cover must not disturb the note's own fields.**

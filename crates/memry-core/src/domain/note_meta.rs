@@ -67,19 +67,21 @@ pub struct NoteMetadata {
     /// symbol name in it. `None` covers both an absent key and an explicit
     /// `null`, which mean the same thing for a value nobody has set.
     pub icon: Option<String>,
-    /// The note's cover, as **preserved unknown payload data** (FR-033).
+    /// The note's cover, as JSON text in desktop's shape (§13.7.1.1):
+    /// `{"ref": ..., "focus"?: 0-100, "credit"?: ..., "creditUrl"?: ...}`.
     ///
-    /// **`coverImage` is not a field of the note schema.** §13.7.1 does not
-    /// list it, desktop has no cover feature, and `payload-schemas.json` uses
-    /// this exact key as its canonical *unknown key* case — the thing a
-    /// conforming client must carry untouched rather than understand. So it
-    /// is surfaced as the JSON text the payload holds rather than parsed into
-    /// a typed field: inventing a schema for a key the specification does not
-    /// define would make this client the only one that thinks it is defined.
+    /// `ref` is desktop's frontmatter `cover` value — a vault path, `wash:<id>`
+    /// or an http(s) URL — and deciding which is the shell's job, the same way
+    /// desktop parses it once at render. Read from the payload's `cover` field;
+    /// when that key is absent or null, the earlier iOS-only `coverImage`
+    /// (`{url, offsetY}`, offset 0-1) is read into the same shape, so a cover
+    /// written by an older build of this app still shows, marked
+    /// `"legacy": true` so the shell accepts its ref whatever its extension.
+    /// A `cover: null` that
+    /// some older writer sent does not hide it; every removal also writes
+    /// `coverImage: null`.
     ///
-    /// `None` when the payload carries no such key. A shell renders it if it
-    /// recognises the shape and ignores it otherwise; either way the bytes
-    /// survive, which is what FR-033 asks for.
+    /// `None` when neither key holds a readable cover.
     pub cover_json: Option<String>,
 }
 
@@ -126,19 +128,72 @@ pub fn metadata(conn: &Connection, id: &str) -> Result<Option<NoteMetadata>, Sto
             .map(str::to_owned),
         cover_json: payload
             .as_ref()
-            .and_then(|object| object.get("coverImage"))
-            .filter(|value| !value.is_null())
-            .map(|value| value.to_string()),
+            .and_then(cover_of)
+            .map(|cover| Value::Object(cover).to_string()),
     }))
+}
+
+/// A note payload's cover in desktop's shape, or `None` when it has none.
+///
+/// Only the four keys §13.7.1.1 names come out, plus `legacy: true` when read
+/// from `coverImage`; `ref` must be a non-empty
+/// string and each optional key must hold its own type, so a malformed value
+/// from some other writer reads as no cover rather than as a broken one.
+pub(crate) fn cover_of(payload: &Map<String, Value>) -> Option<Map<String, Value>> {
+    match payload.get("cover") {
+        Some(Value::Object(cover)) => {
+            let reference = cover.get("ref")?.as_str().filter(|it| !it.is_empty())?;
+            let mut out = Map::new();
+            out.insert("ref".to_owned(), Value::from(reference));
+            if let Some(focus) = cover.get("focus").and_then(Value::as_f64)
+                && (0.0..=100.0).contains(&focus)
+            {
+                out.insert("focus".to_owned(), Value::from(focus.round() as i64));
+            }
+            for key in ["credit", "creditUrl"] {
+                if let Some(text) = cover.get(key).and_then(Value::as_str) {
+                    out.insert(key.to_owned(), Value::from(text));
+                }
+            }
+            Some(out)
+        }
+        // A value this build cannot read is no cover.
+        Some(value) if !value.is_null() => None,
+        // Absent or `null`: an older iOS build's `coverImage` still shows. A
+        // removal writes `coverImage: null` beside `cover: null`, so a removed
+        // cover does not come back through here.
+        _ => {
+            let legacy = payload.get("coverImage")?.as_object()?;
+            let url = legacy.get("url")?.as_str().filter(|it| !it.is_empty())?;
+            let offset = legacy
+                .get("offsetY")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.5)
+                .clamp(0.0, 1.0);
+            let mut out = Map::new();
+            out.insert("ref".to_owned(), Value::from(url));
+            out.insert(
+                "focus".to_owned(),
+                Value::from((offset * 100.0).round() as i64),
+            );
+            // An older iOS build stored any picked picture, HEIC included, so
+            // the shell must not hold this ref to desktop's extension list.
+            out.insert("legacy".to_owned(), Value::Bool(true));
+            Some(out)
+        }
+    }
 }
 
 /// One note's stored payload object, or `None` when it has none yet.
 ///
 /// Read rather than projected because the two values above live in different
-/// places: `emoji` is a schema field with its own column, while `coverImage`
-/// is an unknown key that only exists in the payload. Taking both from the
-/// payload keeps them consistent with each other.
-fn note_payload(conn: &Connection, id: &str) -> Result<Option<Map<String, Value>>, StorageError> {
+/// places: `emoji` is a schema field with its own column, while the cover
+/// exists only in the payload. Taking both from the payload keeps them
+/// consistent with each other.
+pub(crate) fn note_payload(
+    conn: &Connection,
+    id: &str,
+) -> Result<Option<Map<String, Value>>, StorageError> {
     let Some(row) = crate::storage::repositories::sync_items::load(conn, notes::ITEM_TYPE, id)?
     else {
         return Ok(None);

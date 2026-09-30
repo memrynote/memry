@@ -80,6 +80,24 @@ Hover the cover. A small toolbar appears in its lower corner: **Change**, **Repo
 clears its keys from the frontmatter; the picture stays in your vault, and nothing else about the
 note changes.
 
+## On Your Other Devices
+
+A cover syncs with the note. Setting, reframing or removing it on one device changes it on the
+others, and a picture you uploaded travels as one of the note's attachments, so it arrives the same
+way an image in the note's body does. Until it has, the band shows the note's wash.
+
+A device running an older version of memrynote leaves the cover alone: it neither shows it nor
+removes it.
+
+## On iPhone
+
+Tap **Add cover** above a note's title to open the picker: a photo from your library, a picture from
+Files, or one of the twelve washes. On a note that has a cover, the button in the cover's lower corner
+offers **Change cover**, **Reposition** and **Remove cover**. Reposition uses a slider rather than a
+drag. The Photos (Unsplash) and Link tabs are desktop-only.
+
+A photo in a format the desktop app cannot show, such as HEIC from the camera, is saved as a JPEG.
+
 ## If the Picture Is Missing
 
 A photo whose file has been moved, deleted, or has not finished syncing to this device paints a wash

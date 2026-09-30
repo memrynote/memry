@@ -67,10 +67,16 @@ import { applyPinnedTags } from '@memry/sync-client/item-handlers/note-pin-helpe
 import {
   buildNotePushPayload,
   fetchLocalNote,
-  seedUnclockedNotes
+  seedUnclockedNotes,
+  settlePushedNoteCover
 } from './note-handler-sync-helpers'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
+import {
+  applyNoteCoverToFrontmatter,
+  clearNoteCoverMarker,
+  recordAppliedNoteCover
+} from './note-cover-sync'
 
 const log = createLogger('NoteHandler')
 
@@ -334,6 +340,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
       const remoteProperties = data.properties
       const propertiesPresent = remoteProperties !== undefined && remoteProperties !== null
+      // Absent means the sender does not know (an older build): the local cover
+      // stays. Only an explicit `null` removes it.
+      const coverPresent = data.cover !== undefined
 
       log.debug('applyUpsert properties', {
         itemId,
@@ -374,7 +383,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           const dir = path.dirname(newAbsPath)
           fs.mkdirSync(dir, { recursive: true })
 
-          if ((tagsChanged && remoteTags) || propertiesPresent) {
+          if ((tagsChanged && remoteTags) || propertiesPresent || coverPresent) {
             // Content actually changed — rewrite user keys only
             const raw = fs.readFileSync(oldAbsPath, 'utf-8')
             const parsed = parseNote(raw)
@@ -388,6 +397,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             if (propertiesPresent) {
               parsed.frontmatter = replacePropertiesOnRoot(parsed.frontmatter, remoteProperties)
             }
+            if (coverPresent) {
+              parsed.frontmatter = applyNoteCoverToFrontmatter(
+                parsed.frontmatter,
+                data.cover ?? null
+              )
+            }
             const updatedContent = serializeParsedNote(parsed, parsed.content, {
               frontmatterEdited: true
             })
@@ -395,6 +410,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
             fs.renameSync(tmpPath, newAbsPath)
             fs.unlinkSync(oldAbsPath)
+            if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
           } else {
             // Pure rename/move — file bytes untouched
             fs.renameSync(oldAbsPath, newAbsPath)
@@ -422,7 +438,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             source: 'sync'
           })
         }
-      } else if ((tagsChanged && remoteTags) || propertiesPresent) {
+      } else if ((tagsChanged && remoteTags) || propertiesPresent || coverPresent) {
         // emoji is sidecar-only state — never a reason to rewrite the file
         const absPath = toAbsolutePath(existing.path)
         try {
@@ -438,6 +454,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           if (propertiesPresent) {
             parsed.frontmatter = replacePropertiesOnRoot(parsed.frontmatter, remoteProperties)
           }
+          if (coverPresent) {
+            parsed.frontmatter = applyNoteCoverToFrontmatter(parsed.frontmatter, data.cover ?? null)
+          }
           const updatedContent = serializeParsedNote(parsed, parsed.content, {
             frontmatterEdited: true
           })
@@ -447,6 +466,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
             fs.renameSync(tmpPath, absPath)
           }
+          if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
         } catch {
           log.warn('Could not read note for frontmatter update', { itemId })
         }
@@ -610,13 +630,16 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     const content = data.content ?? ''
 
     // User keys only — Memry state (id, title, dates, emoji) stays in the DBs
-    const frontmatter: NoteFrontmatter = {
-      ...(data.tags?.length ? { tags: data.tags } : {}),
-      ...(data.aliases?.length ? { aliases: data.aliases } : {}),
-      ...(data.properties && Object.keys(data.properties).length > 0
-        ? { properties: data.properties }
-        : {})
-    }
+    const frontmatter: NoteFrontmatter = applyNoteCoverToFrontmatter(
+      {
+        ...(data.tags?.length ? { tags: data.tags } : {}),
+        ...(data.aliases?.length ? { aliases: data.aliases } : {}),
+        ...(data.properties && Object.keys(data.properties).length > 0
+          ? { properties: data.properties }
+          : {})
+      },
+      data.cover ?? null
+    )
 
     const fileContent = serializeNote(frontmatter, content)
     const basePath = generateNotePath(notesDir, title, data.folderPath ?? undefined)
@@ -666,6 +689,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     // commit (see bulk-apply.ts for the crash-safety contract); outside one it
     // is the same synchronous tmp-write + rename as always.
     writeSyncedVaultFile(absolutePath, fileContent)
+    if (data.cover !== undefined) recordAppliedNoteCover(ctx.db, itemId, frontmatter)
 
     requestEmbeddedAttachmentDownloads(ctx.db, itemId, data.attachmentReferences, data.modifiedAt)
 
@@ -719,6 +743,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
     const absolutePath = toAbsolutePath(existing.path)
     deleteNoteFromCache(indexDb, itemId)
+    clearNoteCoverMarker(ctx.db, itemId)
     void flushProjectionEvents()
 
     // A remote delete must drop the note's project links + clear any project home
@@ -751,6 +776,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
    */
   markPushSynced(db: DrizzleDb, itemId: string): void {
     updateNoteMetadata(db, itemId, { syncedAt: utcNow() })
+    settlePushedNoteCover(db, itemId)
   }
 
   buildPushPayload(

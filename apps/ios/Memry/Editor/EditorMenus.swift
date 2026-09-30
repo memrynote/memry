@@ -48,6 +48,21 @@ struct InsertableBlock: Identifiable, Sendable {
     static var convertible: [InsertableBlock] {
         all.filter { $0.id != "divider" }
     }
+
+    /// The keyboard toolbar's short name for the caret's block: `H1`, `Text`.
+    static func chip(kind: String?, level: Int?) -> String {
+        switch kind {
+        case "heading": "H\(level ?? 1)"
+        case "bulletListItem": "Bulleted"
+        case "numberedListItem": "Numbered"
+        case "checkListItem": "To-do"
+        case "toggleListItem": "Toggle"
+        case "quote": "Quote"
+        case "codeBlock": "Code"
+        case "callout": "Callout"
+        default: "Text"
+        }
+    }
 }
 
 /// The insert menu, desktop's slash menu.

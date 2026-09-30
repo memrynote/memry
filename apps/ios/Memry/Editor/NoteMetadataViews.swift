@@ -144,9 +144,14 @@ struct NoteTitleEditor: View {
 }
 
 /// Tags, with add and remove (N705), as desktop's coloured chips.
+///
+/// The field searches as it is typed, after desktop's `TagInputPopup`: with
+/// focus it lists the vault's tags the note does not carry (all of them when
+/// empty, the case-insensitive matches while typing) and offers to create
+/// the typed text when no tag is spelled that way.
 struct NoteTagEditor: View {
     let tags: [String]
-    /// Every tag in the vault, for the suggestions desktop offers.
+    /// Every tag in the vault, most used first, for the suggestions.
     var suggestions: [String] = []
     /// A tag's chosen colour, lowercased name to palette name or `#rrggbb`.
     var colors: [String: String] = [:]
@@ -154,15 +159,20 @@ struct NoteTagEditor: View {
     let remove: (String) -> Void
 
     @State private var draft = ""
+    @FocusState private var focused: Bool
 
-    /// Suggestions this note does not already carry, matching what is typed.
+    /// Enough to choose from without burying the note under a tag cloud.
+    private static let shownLimit = 24
+
     private var matching: [String] {
-        let typed = draft.trimmingCharacters(in: .whitespaces).lowercased()
-        return suggestions
-            .filter { !tags.contains($0) }
-            .filter { typed.isEmpty || $0.lowercased().contains(typed) }
-            .prefix(6)
-            .map { $0 }
+        Array(
+            NoteTagSuggestions.matching(draft, all: suggestions, current: tags)
+                .prefix(Self.shownLimit)
+        )
+    }
+
+    private var createCandidate: String? {
+        NoteTagSuggestions.createCandidate(draft, all: suggestions, current: tags)
     }
 
     var body: some View {
@@ -181,33 +191,51 @@ struct NoteTagEditor: View {
                 }
                 TextField("Add a tag", text: $draft)
                     .font(Tokens.Typography.caption.font)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.done)
+                    .focused($focused)
                     .fixedSize()
                     .onSubmit(commit)
                     .accessibilityLabel("Add a tag")
             }
 
-            if !draft.isEmpty, !matching.isEmpty {
+            if focused, !matching.isEmpty || createCandidate != nil {
                 FlowLayout(spacing: Tokens.Space.small) {
                     ForEach(matching, id: \.self) { tag in
                         Button {
-                            add(tag)
-                            draft = ""
+                            choose(tag)
                         } label: {
                             Chip(text: tag, color: Tokens.Palette.color(colors[tag.lowercased()], tag: tag))
                                 .opacity(0.7)
                         }
+                        .buttonStyle(.plain)
                         .accessibilityLabel("Add the tag \(tag)")
+                    }
+                    if let createCandidate {
+                        Button {
+                            choose(createCandidate)
+                        } label: {
+                            Label("Create \u{201C}\(createCandidate)\u{201D}", systemImage: "plus")
+                                .font(Tokens.Typography.caption.font.weight(.medium))
+                                .foregroundStyle(Tokens.Text.secondary.color)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Create the tag \(createCandidate)")
                     }
                 }
             }
         }
     }
 
-    private func commit() {
-        let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        add(trimmed)
+    private func choose(_ tag: String) {
+        add(tag)
         draft = ""
+    }
+
+    private func commit() {
+        guard let target = NoteTagSuggestions.commitTarget(draft, all: suggestions) else { return }
+        choose(target)
     }
 }
 
@@ -285,63 +313,61 @@ struct FlowLayout: Layout {
     }
 }
 
-/// One property, edited against its declared type (N704), laid out as
-/// desktop lays it out: a type glyph and the name in a label column, the
-/// value beside it — coloured chips for choices, relations and projects.
+/// One property, edited against its type (N704), laid out as desktop lays it
+/// out: a type glyph and the name in a label column, the value beside it —
+/// plain text for text, numbers and dates, coloured chips for choices,
+/// relations and projects.
 ///
-/// **A property with no declared type still edits**, as text: one written
-/// before its definition arrived is legal (§13.7.1) and is exactly the case
-/// that would otherwise be unreachable. Clearing is in the row's context
-/// menu, where desktop keeps it, rather than a button on every row.
+/// **A property with no declared type still edits**, as the type its value
+/// implies or as text: one written before its definition arrived is legal
+/// (§13.7.1) and is exactly the case that would otherwise be unreachable.
+/// Renaming and clearing are in the row's context menu, where desktop keeps
+/// them; tapping the name renames too, as desktop's name field does.
 struct NotePropertyEditor: View {
     let property: NoteProperty
+    /// The type this session chose for it, for a value that cannot say so
+    /// itself: a new url is `""`, a relation emptied of notes is `[]`.
+    var kindHint: NotePropertyKind?
     let commit: (String) -> Void
     let clear: () -> Void
+    var rename: ((String) -> Void)?
+    /// Writes a relation's whole list of `memry://` URIs.
+    var setRelations: (([String]) -> Void)?
+    /// The notes a relation may point at.
+    var relationCandidates: [NoteSummary] = []
     /// A note's title and icon by id, for a relation's value.
     var noteTitle: (String) -> String? = { _ in nil }
     var noteIcon: (String) -> String? = { _ in nil }
 
     @State private var draft: String = ""
     @State private var loaded = false
+    @State private var renaming = false
+    @State private var nameDraft = ""
+    @State private var pickingDate = false
+    @State private var pickingRelation = false
 
-    private var kind: NotePropertyKind? { NotePropertyKind.of(property) }
+    private var kind: NotePropertyKind? { NotePropertyKind.of(property) ?? kindHint }
 
     private var options: [String] { NotePropertyOptions.values(of: property.optionsJson) }
     private var optionColors: [String: String] { NotePropertyOptions.colors(of: property.optionsJson) }
 
-    private var symbol: String {
-        switch kind {
-        case .text: "textformat"
-        case .number: "number"
-        case .date: "calendar"
-        case .checkbox: "checkmark.square"
-        case .url: "link"
-        case .status, .select: "list.bullet"
-        case .multiselect: "tag"
-        case .relation: "arrow.up.right.square"
-        case .project: "folder"
-        case nil: "textformat"
-        }
-    }
-
     var body: some View {
         HStack(alignment: .center, spacing: Tokens.Space.medium) {
-            HStack(spacing: Tokens.Space.small) {
-                // One lane for every glyph, so the names share an edge.
-                Image(systemName: symbol)
-                    .frame(width: Tokens.Space.inset, alignment: .center)
-                Text(property.name).lineLimit(1)
-            }
-            .font(Tokens.Typography.supporting.font)
-            .foregroundStyle(Tokens.Text.secondary.color)
-            .frame(width: 118, alignment: .leading)
-            .accessibilityHidden(true)
+            nameLabel
+                .frame(width: 118, alignment: .leading)
 
             editor
                 .font(Tokens.Typography.supporting.font)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .contextMenu {
+            if rename != nil {
+                Button {
+                    startRenaming()
+                } label: {
+                    Label("Rename \(property.name)", systemImage: "pencil")
+                }
+            }
             Button(role: .destructive, action: clear) {
                 Label("Clear \(property.name)", systemImage: "xmark.circle")
             }
@@ -353,6 +379,65 @@ struct NotePropertyEditor: View {
             draft = NotePropertyJSON.decode(property)
             loaded = true
         }
+        .alert("Rename property", isPresented: $renaming) {
+            TextField("Property name", text: $nameDraft)
+                .textInputAutocapitalization(.never)
+            Button("Cancel", role: .cancel) {}
+            Button("Rename") { rename?(nameDraft) }
+        }
+        .sheet(isPresented: $pickingDate) {
+            NotePropertyDateSheet(
+                name: property.name,
+                selected: NotePropertyDate.parse(draft),
+                choose: { day in
+                    draft = NotePropertyDate.encode(day: day)
+                    commit(draft)
+                    pickingDate = false
+                },
+                clear: {
+                    draft = ""
+                    clear()
+                    pickingDate = false
+                }
+            )
+        }
+        .sheet(isPresented: $pickingRelation) {
+            NoteRelationPicker(
+                notes: relationCandidates,
+                excluding: Set(relationURIs.map(NoteRelationValue.id(of:)))
+            ) { note in
+                let next = relationURIs + [NoteRelationValue.uri(noteId: note.id)]
+                draft = next.joined(separator: ", ")
+                setRelations?(next)
+                pickingRelation = false
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var nameLabel: some View {
+        let label = HStack(spacing: Tokens.Space.small) {
+            // One lane for every glyph, so the names share an edge.
+            Image(systemName: kind?.symbol ?? NotePropertyKind.text.symbol)
+                .frame(width: Tokens.Space.inset, alignment: .center)
+            Text(property.name).lineLimit(1)
+        }
+        .font(Tokens.Typography.supporting.font)
+        .foregroundStyle(Tokens.Text.secondary.color)
+
+        if rename != nil {
+            Button(action: startRenaming) { label.contentShape(.rect) }
+                .buttonStyle(.plain)
+                .accessibilityLabel(property.name)
+                .accessibilityHint("Renames this property")
+        } else {
+            label.accessibilityHidden(true)
+        }
+    }
+
+    private func startRenaming() {
+        nameDraft = property.name
+        renaming = true
     }
 
     private var listed: [String] {
@@ -376,19 +461,22 @@ struct NotePropertyEditor: View {
             .accessibilityValue(draft == "true" ? "On" : "Off")
 
         case .date:
-            DatePicker(
-                property.name,
-                selection: Binding(
-                    get: { Self.date(from: draft) ?? Date() },
-                    set: { picked in
-                        draft = Self.iso.string(from: picked)
-                        commit(draft)
-                    }
-                ),
-                displayedComponents: .date
-            )
-            .labelsHidden()
+            // Plain text like every other scalar value, as desktop's
+            // `DateEditor` trigger is; the compact `DatePicker` drew a large
+            // capsule that outweighed the rest of the table.
+            Button {
+                pickingDate = true
+            } label: {
+                if let shown = NotePropertyDate.display(draft) {
+                    Text(shown).foregroundStyle(Tokens.Text.primary.color)
+                } else {
+                    Text(draft.isEmpty ? "Empty" : draft)
+                        .foregroundStyle(Tokens.Text.tertiary.color)
+                }
+            }
+            .buttonStyle(.plain)
             .accessibilityLabel(property.name)
+            .accessibilityValue(NotePropertyDate.display(draft) ?? "Empty")
 
         case .status where !options.isEmpty, .select where !options.isEmpty:
             Menu {
@@ -430,16 +518,29 @@ struct NotePropertyEditor: View {
 
         case .relation:
             // Note titles, not `memry://note/<id>`: the URI is the stored
-            // form and reads as noise. Read only here, because a relation is
-            // made by choosing a note, and a free-text field would let a typo
-            // write a URI that points nowhere.
+            // form and reads as noise. Made by choosing a note, as desktop's
+            // `RelationPicker` does, because a free-text field would let a
+            // typo write a URI that points nowhere.
             FlowLayout(spacing: Tokens.Space.tight) {
-                ForEach(relations, id: \.id) { related in
-                    Chip(text: related.title, color: Tokens.Tint.base.color, symbol: related.icon)
+                ForEach(relationURIs, id: \.self) { uri in
+                    relationChip(uri)
+                }
+                if setRelations != nil {
+                    Button {
+                        pickingRelation = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(Tokens.Typography.caption.font.weight(.medium))
+                            .foregroundStyle(Tokens.Text.tertiary.color)
+                            .padding(.horizontal, Tokens.Space.tight)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add a note to \(property.name)")
                 }
             }
+            .accessibilityElement(children: .contain)
             .accessibilityLabel(property.name)
-            .accessibilityValue(relations.map(\.title).joined(separator: ", "))
 
         case .project:
             FlowLayout(spacing: Tokens.Space.tight) {
@@ -478,29 +579,170 @@ struct NotePropertyEditor: View {
         Chip(text: value, color: Tokens.Palette.color(optionColors[value], tag: value))
     }
 
-    /// Each `memry://<kind>/<id>` in the value, as the title and icon of what
-    /// it points at when this vault knows it, and as the id when it does not.
-    private var relations: [(id: String, title: String, icon: String?)] {
-        listed.map { uri in
-            let id = uri.split(separator: "/").last.map(String.init) ?? uri
-            return (id, noteTitle(id) ?? id, noteIcon(id))
+    private var relationURIs: [String] { listed }
+
+    /// One related note: its icon and title when this vault knows it, the id
+    /// when it does not, and a remove control beside it (desktop's chip).
+    private func relationChip(_ uri: String) -> some View {
+        let id = NoteRelationValue.id(of: uri)
+        let title = noteTitle(id) ?? id
+        return HStack(spacing: Tokens.Space.tight) {
+            Chip(text: title, color: Tokens.Tint.base.color, symbol: noteIcon(id))
+            if setRelations != nil {
+                Button {
+                    let next = relationURIs.filter { $0 != uri }
+                    draft = next.joined(separator: ", ")
+                    setRelations?(next)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(Tokens.Typography.caption.font)
+                        .foregroundStyle(Tokens.Text.tertiary.color)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove \(title) from \(property.name)")
+            }
+        }
+    }
+}
+
+/// A date property's calendar, after desktop's `DateEditor` popover: pick a
+/// day to set it, or clear it.
+private struct NotePropertyDateSheet: View {
+    let name: String
+    let selected: Date?
+    let choose: (Date) -> Void
+    let clear: () -> Void
+
+    @State private var day = Date()
+
+    var body: some View {
+        NavigationStack {
+            DatePicker(name, selection: $day, displayedComponents: .date)
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+                .padding(.horizontal, Tokens.Space.inset)
+                .navigationTitle(name)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Clear", role: .destructive, action: clear)
+                            .disabled(selected == nil)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { choose(day) }
+                    }
+                }
+        }
+        .presentationDetents([.medium, .large])
+        .onAppear { day = selected ?? Date() }
+    }
+}
+
+/// The notes a relation may point at, searched by title (desktop
+/// `RelationPicker`, notes only here).
+struct NoteRelationPicker: View {
+    let notes: [NoteSummary]
+    /// Ids already related, which desktop treats as a no-op and this leaves out.
+    let excluding: Set<String>
+    let choose: (NoteSummary) -> Void
+
+    @State private var query = ""
+    @Environment(\.dismiss) private var dismiss
+
+    private var results: [NoteSummary] {
+        let typed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return notes.filter { note in
+            !excluding.contains(note.id)
+                && (typed.isEmpty || note.title.localizedCaseInsensitiveContains(typed))
         }
     }
 
-    private static let iso: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter
-    }()
+    var body: some View {
+        NavigationStack {
+            List(results, id: \.id) { note in
+                Button {
+                    choose(note)
+                } label: {
+                    HStack(spacing: Tokens.Space.small) {
+                        if let emoji = note.emoji, !emoji.isEmpty {
+                            Text(emoji).accessibilityHidden(true)
+                        } else {
+                            Image(systemName: "doc.text")
+                                .foregroundStyle(Tokens.Text.tertiary.color)
+                                .accessibilityHidden(true)
+                        }
+                        Text(note.title.isEmpty ? "Untitled" : note.title)
+                            .foregroundStyle(Tokens.Text.primary.color)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            .overlay {
+                if results.isEmpty {
+                    ContentUnavailableView.search(text: query)
+                }
+            }
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search notes")
+            .navigationTitle("Link a note")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+}
 
-    private static func date(from text: String) -> Date? {
-        iso.date(from: text)
+/// A new property's name and type, after desktop's `AddPropertyPopup`: a
+/// name field (blank takes the type's label) over the ten types. `project`
+/// takes its reserved name and is offered once.
+private struct NoteAddPropertySheet: View {
+    let existing: [String]
+    let add: (String, NotePropertyKind) -> Void
+
+    @State private var name = ""
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    TextField("Property name", text: $name)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Property name")
+                }
+                Section("Type") {
+                    ForEach(NotePropertyKind.allCases, id: \.self) { kind in
+                        let blocked = kind == .project && existing.contains(NotePropertyKind.projectName)
+                        Button {
+                            add(name, kind)
+                        } label: {
+                            Label(kind.label, systemImage: kind.symbol)
+                                .foregroundStyle(
+                                    blocked ? Tokens.Text.tertiary.color : Tokens.Text.primary.color
+                                )
+                        }
+                        .disabled(blocked)
+                    }
+                }
+            }
+            .navigationTitle("Add a property")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 
 /// The editable metadata block: tags, then a collapsible "Properties · N"
-/// section, as desktop's note header has them.
+/// section with an add row, as desktop's note header has them.
 ///
 /// A sibling of `NoteMetaView` rather than a mode inside it. That view is the
 /// read surface and says so in its own header; giving it a second, editable
@@ -513,13 +755,28 @@ struct NoteMetadataEditors: View {
     var noteTitle: (String) -> String? = { _ in nil }
     var noteIcon: (String) -> String? = { _ in nil }
     var tagColors: [String: String] = [:]
+    /// Every tag in the vault, most used first, for the tag field.
+    var tagSuggestions: [String] = []
+    /// The notes a relation may point at.
+    var relationCandidates: [NoteSummary] = []
 
     @State private var showsProperties = true
+    @State private var addingProperty = false
+    /// Types chosen in this session, for values that cannot carry theirs.
+    @State private var chosenKinds: [String: NotePropertyKind] = [:]
+
+    private var names: [String] { metadata.properties.map(\.name) }
+
+    private var failure: UserFacingError? {
+        if case let .failed(error) = model.status { return error }
+        return nil
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
             NoteTagEditor(
                 tags: metadata.tags,
+                suggestions: tagSuggestions,
                 colors: tagColors,
                 add: { tag in
                     Task {
@@ -535,7 +792,9 @@ struct NoteMetadataEditors: View {
                 }
             )
 
-            if !metadata.properties.isEmpty {
+            if metadata.properties.isEmpty {
+                addPropertyButton
+            } else {
                 Button {
                     showsProperties.toggle()
                 } label: {
@@ -557,32 +816,93 @@ struct NoteMetadataEditors: View {
                 if showsProperties {
                     Divider()
                     ForEach(metadata.properties, id: \.name) { property in
-                        NotePropertyEditor(
-                            property: property,
-                            commit: { input in
-                                Task {
-                                    await model.setProperty(
-                                        property.name,
-                                        input: input,
-                                        kind: NotePropertyKind.of(property)
-                                    )
-                                    await reload()
-                                }
-                            },
-                            clear: {
-                                Task {
-                                    await model.clearProperty(property.name)
-                                    await reload()
-                                }
-                            },
-                            noteTitle: noteTitle,
-                            noteIcon: noteIcon
-                        )
+                        propertyRow(property)
                     }
+                    addPropertyButton
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .sheet(isPresented: $addingProperty) {
+            NoteAddPropertySheet(existing: names) { typed, kind in
+                addingProperty = false
+                Task {
+                    if let added = await model.addProperty(named: typed, kind: kind, existing: names) {
+                        chosenKinds[added] = kind
+                        showsProperties = true
+                    }
+                    await reload()
+                }
+            }
+        }
+        .alert(
+            failure?.title ?? "",
+            isPresented: Binding(
+                get: { failure != nil },
+                set: { if !$0 { model.dismissFailure() } }
+            )
+        ) {
+            Button("OK", role: .cancel) { model.dismissFailure() }
+        } message: {
+            if let guidance = failure?.guidance { Text(guidance) }
+        }
+    }
+
+    private var addPropertyButton: some View {
+        Button {
+            addingProperty = true
+        } label: {
+            Label("Add a property", systemImage: "plus")
+                .font(Tokens.Typography.caption.font)
+                .foregroundStyle(Tokens.Text.tertiary.color)
+                .frame(minHeight: Tokens.Size.minimumHitArea)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func propertyRow(_ property: NoteProperty) -> some View {
+        let kind = NotePropertyKind.of(property) ?? chosenKinds[property.name]
+        return NotePropertyEditor(
+            property: property,
+            kindHint: chosenKinds[property.name],
+            commit: { input in
+                Task {
+                    await model.setProperty(property.name, input: input, kind: kind)
+                    await reload()
+                }
+            },
+            clear: {
+                // A cleared value is `null`, which no longer says what type
+                // it was; keep drawing it as that type for this session.
+                if let kind { chosenKinds[property.name] = kind }
+                Task {
+                    await model.clearProperty(property.name)
+                    await reload()
+                }
+            },
+            rename: { typed in
+                Task {
+                    let renamed = await model.renameProperty(property.name, to: typed, existing: names)
+                    if renamed != property.name, let kind = chosenKinds.removeValue(forKey: property.name) {
+                        chosenKinds[renamed] = kind
+                    }
+                    await reload()
+                }
+            },
+            setRelations: { uris in
+                // An emptied relation is `[]`, which no longer says it is
+                // one; keep drawing it as one for this session.
+                chosenKinds[property.name] = .relation
+                Task {
+                    await model.setRelations(property.name, uris)
+                    await reload()
+                }
+            },
+            relationCandidates: relationCandidates,
+            noteTitle: noteTitle,
+            noteIcon: noteIcon
+        )
     }
 }
 

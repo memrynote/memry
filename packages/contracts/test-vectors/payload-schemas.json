@@ -59,6 +59,10 @@
               "att-1"
             ],
             "folderPath": "Notes",
+            "cover": {
+              "ref": "attachments/n1/harbour.jpg",
+              "focus": 42
+            },
             "clock": {
               "device-a": 1
             },
@@ -88,6 +92,10 @@
               "att-1"
             ],
             "folderPath": "Notes",
+            "cover": {
+              "ref": "attachments/n1/harbour.jpg",
+              "focus": 42
+            },
             "clock": {
               "device-a": 1
             },
@@ -137,6 +145,10 @@
               "att-1"
             ],
             "folderPath": "Notes",
+            "cover": {
+              "ref": "attachments/n1/harbour.jpg",
+              "focus": 42
+            },
             "clock": {
               "device-a": 1
             },
@@ -170,6 +182,10 @@
               "att-1"
             ],
             "folderPath": "Notes",
+            "cover": {
+              "ref": "attachments/n1/harbour.jpg",
+              "focus": 42
+            },
             "clock": {
               "device-a": 1
             },
@@ -183,8 +199,8 @@
         },
         {
           "name": "note: verbatim round trip of the unknown-field instance",
-          "storedPayloadJson": "{\"title\":\"A note\",\"content\":\"# A note\\n\\nBody.\\n\",\"tags\":[\"protocol\"],\"pinnedTags\":[\"protocol\"],\"emoji\":\"📓\",\"properties\":{\"area\":\"Work\"},\"aliases\":[\"note\"],\"fileType\":\"markdown\",\"mimeType\":\"text/markdown\",\"attachmentId\":null,\"attachmentReferences\":[\"att-1\"],\"folderPath\":\"Notes\",\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":1760000000000,\"coverImage\":{\"url\":\"memry://cover/1\",\"offsetY\":0.25}}",
-          "expectedPushedPayloadJson": "{\"title\":\"A note\",\"content\":\"# A note\\n\\nBody.\\n\",\"tags\":[\"protocol\"],\"pinnedTags\":[\"protocol\"],\"emoji\":\"📓\",\"properties\":{\"area\":\"Work\"},\"aliases\":[\"note\"],\"fileType\":\"markdown\",\"mimeType\":\"text/markdown\",\"attachmentId\":null,\"attachmentReferences\":[\"att-1\"],\"folderPath\":\"Notes\",\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":1760000000000,\"coverImage\":{\"url\":\"memry://cover/1\",\"offsetY\":0.25}}",
+          "storedPayloadJson": "{\"title\":\"A note\",\"content\":\"# A note\\n\\nBody.\\n\",\"tags\":[\"protocol\"],\"pinnedTags\":[\"protocol\"],\"emoji\":\"📓\",\"properties\":{\"area\":\"Work\"},\"aliases\":[\"note\"],\"fileType\":\"markdown\",\"mimeType\":\"text/markdown\",\"attachmentId\":null,\"attachmentReferences\":[\"att-1\"],\"folderPath\":\"Notes\",\"cover\":{\"ref\":\"attachments/n1/harbour.jpg\",\"focus\":42},\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":1760000000000,\"coverImage\":{\"url\":\"memry://cover/1\",\"offsetY\":0.25}}",
+          "expectedPushedPayloadJson": "{\"title\":\"A note\",\"content\":\"# A note\\n\\nBody.\\n\",\"tags\":[\"protocol\"],\"pinnedTags\":[\"protocol\"],\"emoji\":\"📓\",\"properties\":{\"area\":\"Work\"},\"aliases\":[\"note\"],\"fileType\":\"markdown\",\"mimeType\":\"text/markdown\",\"attachmentId\":null,\"attachmentReferences\":[\"att-1\"],\"folderPath\":\"Notes\",\"cover\":{\"ref\":\"attachments/n1/harbour.jpg\",\"focus\":42},\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":1760000000000,\"coverImage\":{\"url\":\"memry://cover/1\",\"offsetY\":0.25}}",
           "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
         }
       ]

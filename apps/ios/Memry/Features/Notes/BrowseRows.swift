@@ -147,7 +147,7 @@ extension VaultOutline {
         nodes.flatMap { $0.notes + notes(of: $0.children) }
     }
 
-    private static func rows(
+    fileprivate static func rows(
         of nodes: [FolderNode],
         depth: Int,
         expanded: Set<String>,
@@ -173,6 +173,13 @@ extension VaultOutline {
                 + rows(of: sort.sorted(node.children), depth: depth + 1, expanded: expanded, sort: sort)
                 + sort.sorted(node.notes).map { BrowseRow.note($0, depth: depth + 1) }
         }
+    }
+}
+
+extension FolderNode {
+    /// This folder's child folders as root-style rows, at depth 0.
+    func browseRows(expanded: Set<String>, sort: BrowseSort) -> [BrowseRow] {
+        VaultOutline.rows(of: sort.sorted(children), depth: 0, expanded: expanded, sort: sort)
     }
 }
 

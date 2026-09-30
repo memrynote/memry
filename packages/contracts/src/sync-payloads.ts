@@ -258,6 +258,25 @@ export const ProjectSyncPayloadSchema = z.object({
   links: z.array(ProjectLinkSyncSchema).optional()
 })
 
+/**
+ * A note's cover, the frontmatter keys `cover`, `coverFocus`, `coverCredit` and
+ * `coverCreditUrl` carried across devices (`@memry/shared/cover-image`).
+ *
+ * `ref` is the `cover` value as written: a note-relative or
+ * `attachments/<noteId>/<file>` vault path, `wash:<id>`, or an http(s) URL. A
+ * vault image's bytes travel as the owning note's `attachmentReferences`, and
+ * every client writes an attachment to `attachments/<noteId>/<manifest filename>`,
+ * so the path alone names the same file on each device.
+ */
+export const NoteCoverSyncSchema = z.object({
+  ref: z.string().min(1),
+  focus: z.number().min(0).max(100).optional(),
+  credit: z.string().optional(),
+  creditUrl: z.string().optional()
+})
+
+export type NoteCoverSync = z.infer<typeof NoteCoverSyncSchema>
+
 export const NoteSyncPayloadSchema = z.object({
   title: z.string().optional(),
   content: z.string().nullable().optional(),
@@ -271,6 +290,10 @@ export const NoteSyncPayloadSchema = z.object({
   attachmentId: z.string().nullable().optional(),
   attachmentReferences: z.array(z.string()).nullable().optional(),
   folderPath: z.string().nullable().optional(),
+  // Absent means "this sender does not know" and leaves the receiver's cover
+  // alone; `null` removes it. A value this build cannot read is treated as
+  // absent rather than failing the whole note.
+  cover: NoteCoverSyncSchema.nullable().optional().catch(undefined),
   clock: VectorClockSchema.optional(),
   createdAt: SyncTimestampSchema.optional(),
   modifiedAt: SyncTimestampSchema.optional()

@@ -22,6 +22,14 @@ protocol NoteTaskWriting: Sendable {
     /// checklist item (no text, already a task, or no project to file it in).
     func convertChecklistItem(noteId: String, blockId: String, localNow: String) async throws
         -> String?
+    /// Rewrites a task's linked notes, dropping `unlink` and adding `link`,
+    /// for a task line moved to another note (desktop's `relinkTaskNotes`).
+    func relinkNotes(taskId: String, unlink: String, link: String) async throws
+}
+
+extension NoteTaskWriting {
+    /// A surface with no task reads (test fakes) leaves the links alone.
+    func relinkNotes(taskId: String, unlink: String, link: String) async throws {}
 }
 
 /// The production surface: the core's own `Tasks`, over the shell's one serial
@@ -55,6 +63,27 @@ struct CoreNoteTasks: NoteTaskWriting {
         try await executor.run {
             try tasks().convertChecklistItem(noteId: noteId, blockId: blockId, localNow: localNow)
         }
+    }
+
+    /// One read and one write, as desktop's: a task that is gone, or whose
+    /// links already say so, is left alone.
+    func relinkNotes(taskId: String, unlink: String, link: String) async throws {
+        try await executor.run {
+            let tasks = try tasks()
+            guard let task = try tasks.get(id: taskId) else { return }
+            let current = task.linkedNoteIds
+            let next = NoteTaskLinks.relinked(current, unlink: unlink, link: link)
+            if next != current { _ = try tasks.setLinkedNoteIds(id: taskId, ids: next) }
+        }
+    }
+}
+
+/// A task's linked notes after its line moved from `unlink` to `link`.
+enum NoteTaskLinks {
+    static func relinked(_ current: [String], unlink: String, link: String) -> [String] {
+        var next = current.filter { $0 != unlink }
+        if !next.contains(link) { next.append(link) }
+        return next
     }
 }
 
@@ -126,6 +155,18 @@ final class NoteTaskActions {
         }
     }
 
+    /// Points a moved task line's task at the note it moved to. Best effort,
+    /// as desktop's: the block already moved, so a failure is logged rather
+    /// than shown.
+    func relink(taskId: String, from source: String, to target: String) async {
+        guard let tasks else { return }
+        do {
+            try await tasks.relinkNotes(taskId: taskId, unlink: source, link: target)
+        } catch {
+            Log.core.error("a moved task was not relinked", .code(ErrorMapping.userFacing(error).code))
+        }
+    }
+
     func dismissFailure() { failure = nil }
 
     /// The core answered "not convertible" rather than failing.
@@ -160,6 +201,9 @@ struct NoteTaskBridge {
     var outdent: ((String) -> Void)?
     /// Whether a write for this task or block id is in flight.
     var isBusy: (String) -> Bool = { _ in false }
+    /// Relinks a task whose line moved to another note: task id, the note it
+    /// left, the note it moved to.
+    var relink: ((String, String, String) async -> Void)?
 }
 
 extension NoteTaskBridge {
@@ -177,6 +221,9 @@ extension NoteTaskBridge {
         bridge.open = router.map { router in { router.openTask($0) } }
         bridge.isBusy = { tasks.inFlight.contains($0) }
         if tasks.canWrite {
+            bridge.relink = { taskId, source, target in
+                await tasks.relink(taskId: taskId, from: source, to: target)
+            }
             bridge.setDone = { id, done in
                 Task { @MainActor in
                     if await tasks.setDone(done, taskId: id) { await didChange() }

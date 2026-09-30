@@ -330,6 +330,8 @@ final class NoteReadViewModel {
     /// a chip is the colour desktop draws it. Empty until read, which draws
     /// each tag in the colour its name hashes to — desktop's own default.
     private(set) var tagColors: [String: String] = [:]
+    /// Every tag in the vault, most used first, for the tag field's search.
+    private(set) var vaultTagNames: [String] = []
 
     /// Loads once per screen. `.task` fires again whenever the view is
     /// re-identified, and re-reading a body costs an FFI crossing and a CRDT
@@ -389,10 +391,12 @@ final class NoteReadViewModel {
         }
         do {
             var colors: [String: String] = [:]
-            for tag in try await reader.tags() {
+            let tags = try await reader.tags()
+            for tag in tags {
                 if let color = tag.color, !color.isEmpty { colors[tag.name.lowercased()] = color }
             }
             tagColors = colors
+            vaultTagNames = tags.sorted { $0.noteCount > $1.noteCount }.map(\.name)
         } catch {
             Log.storage.error("the vault's tag colours could not be read")
         }

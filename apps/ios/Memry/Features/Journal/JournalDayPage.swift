@@ -44,7 +44,11 @@ struct JournalDayPage: View {
             .padding(.vertical, Tokens.Space.medium)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Tokens.Canvas.background.color)
+        // The keyboard accessory is floating glass: paint the page colour under
+        // it and drop the bottom edge blur, or the strip behind the toolbar reads
+        // as a black band with a shadow over it.
+        .scrollEdgeEffectHidden(true, for: .bottom)
+        .background(Tokens.Canvas.background.color.ignoresSafeArea())
         .onScrollGeometryChange(for: Bool.self) { geometry in
             geometry.contentOffset.y + geometry.contentInsets.top > Tokens.Size.minimumHitArea * 2
         } action: { _, collapsed in

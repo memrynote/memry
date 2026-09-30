@@ -42,6 +42,9 @@ struct NoteBlockView: View {
     /// cell (N605). `nil` outside a table cell, where there is nothing to
     /// address a checkbox with.
     var checkboxBase: Int?
+    /// Where this block sits among its siblings, for the block menu's Move
+    /// up and Move down. `nil` offers no block menu (a table cell's blocks).
+    var siblings: BlockSiblings?
 
     /// Whether a wiki link's title names a note here, so a broken one can be
     /// drawn as broken. `nil` until the vault's notes are read, which draws
@@ -70,6 +73,32 @@ struct NoteBlockView: View {
             // a list item sits inside another.
             .padding(.leading, CGFloat(block.depth) * Tokens.Space.inset)
             .frame(maxWidth: .infinity, alignment: frameAlignment)
+            // After the frame, so the handle sits in the page margin whatever
+            // the block's depth or alignment.
+            .modifier(BlockActionsAttachment(
+                runner: actionRunner,
+                editsInPlace: editing.flatMap(editableField) != nil
+            ) {
+                NoteBlockView(
+                    block: block, marker: marker, isOpen: isOpen,
+                    tableContent: tableContent, attachment: attachment
+                )
+            })
+    }
+
+    /// Blocks drawn read-only that already answer a long press: a table's
+    /// cells, a task's menu, a checklist item's task menu, and code whose
+    /// text is selectable. The block menu would shadow or fight them.
+    private static let ownLongPressKinds: Set<String> = [
+        "table", "taskBlock", "checkListItem", "codeBlock", "diagram", "mathBlock",
+    ]
+
+    private var actionRunner: BlockActionRunner? {
+        guard let editing, let siblings, block.id != nil else { return nil }
+        if editableField(editing) == nil, Self.ownLongPressKinds.contains(block.kind) { return nil }
+        return BlockActionRunner(
+            session: editing.session, target: BlockActionTarget(block: block, siblings: siblings)
+        )
     }
 
     /// `textColor` on the block itself. `nil` for `default`, for an absent
@@ -85,6 +114,79 @@ struct NoteBlockView: View {
 
     @ViewBuilder
     private var content: some View {
+        if let editing, let field = editableField(editing) {
+            editableRow(field)
+        } else {
+            readContent
+        }
+    }
+
+    /// The kinds whose text is edited in place: every text block the insert
+    /// menu makes, except the callout, whose row draws its own chrome.
+    private static let editableKinds: Set<String> = [
+        "paragraph", "heading", "bulletListItem", "numberedListItem", "checkListItem",
+        "toggleListItem", "quote", "codeBlock",
+    ]
+
+    /// The text view for this block, or `nil` when it draws read-only.
+    ///
+    /// Marks and inline nodes no longer make a block read-only: its text is
+    /// written with `ReplaceText`, which keeps them. Still read-only: a block
+    /// a review mark covers (the mark is pinned by offsets into desktop's
+    /// file, and editing under it moves the words out from under the
+    /// comment), and a cell's inline images and checkboxes.
+    private func editableField(_ editing: NoteEditingBridge) -> EditableBlockView? {
+        guard block.id != nil, Self.editableKinds.contains(block.kind),
+              !block.inline.contains(where: { $0.marks.contains("inlineImage") || $0.marks.contains("inlineCheckbox") }),
+              !reviewMarks.contains(where: { plainText.contains($0.visibleText) })
+        else { return nil }
+        let role: TypeRole = switch block.kind {
+        case "heading": headingRole
+        case "codeBlock": Tokens.Typography.recoveryMaterial
+        default: Tokens.Typography.body
+        }
+        var ink = blockInkName.flatMap { Tokens.Content.ink(named: $0) }.map { UIColor($0.color) }
+        if block.kind == "quote", ink == nil { ink = UIColor(Tokens.Text.secondary.color) }
+        return EditableBlockView(
+            block: block, session: editing.session, role: role, alignment: textViewAlignment, ink: ink
+        )
+    }
+
+    @ViewBuilder
+    private func editableRow(_ field: EditableBlockView) -> some View {
+        switch block.kind {
+        case "heading":
+            field.accessibilityAddTraits(.isHeader)
+        case "bulletListItem", "numberedListItem":
+            EditableMarkerRow(marker: marker ?? bullet) { field }
+        case "checkListItem":
+            EditableCheckRow(isChecked: flag("checked"), toggle: block.id.map { id in
+                { Task { await editing?.session.model?.setProp(id, "checked", flag("checked") ? "false" : "true"); await editing?.session.didChange() } }
+            }) { field }
+                .modifier(ChecklistTaskMenu(blockId: block.id))
+        case "toggleListItem":
+            EditableToggleRow(isOpen: isOpen, toggle: toggle) { field }
+        case "quote":
+            EditableQuoteRow { field }
+        case "codeBlock":
+            VStack(alignment: .leading, spacing: Tokens.Space.small) {
+                if let language = value("language"), !language.isEmpty {
+                    Text(language)
+                        .font(Tokens.Typography.technicalCaption.font)
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                }
+                field
+            }
+            .padding(Tokens.Space.inset)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.card))
+        default:
+            field
+        }
+    }
+
+    @ViewBuilder
+    private var readContent: some View {
         switch block.kind {
         case "heading":
             // No ink of its own: the block's `textColor`, applied in `body`,
@@ -183,35 +285,8 @@ struct NoteBlockView: View {
                 remove: removeAttachment
             )
         default:
-            // N302's end-to-end path: with an editor wired, an ordinary
-            // paragraph is a real `UITextView` (N300's answer) and what the
-            // user types reaches `Notes.editBlock`. Without one, the same
-            // block draws exactly as it always did.
-            //
-            // **Only a paragraph of plain text is editable here.** The text
-            // view holds a `String`, and its commit is `SetText`, which
-            // replaces the block's whole inline content: a paragraph holding a
-            // bold word, a colour, a link or a wiki link would draw without
-            // them and lose them for good on the first keystroke, on every
-            // device. Such a paragraph draws read-only, with everything it
-            // holds, until the editor can edit a range rather than the whole.
-            //
-            // **Nor a paragraph a review mark covers.** The mark is drawn over
-            // the text, which a plain text view cannot show, and it is pinned
-            // by offsets into desktop's file: editing the text under it moves
-            // the words out from under the comment.
-            if let editing, let id = block.id, block.kind == "paragraph", isPlainText,
-               !reviewMarks.contains(where: { plainText.contains($0.visibleText) }) {
-                EditableBlockView(
-                    text: editing.text(id, plainText),
-                    role: .body,
-                    alignment: textViewAlignment,
-                    ink: blockInkName.flatMap { Tokens.Content.ink(named: $0) }
-                        .map { UIColor($0.color) },
-                    commit: { editing.commit(id, $0, plainText) },
-                    onReturn: { editing.insertAfter(id) }
-                )
-            } else if !inlineImages.isEmpty {
+            // An editable paragraph never reaches here (`editableField`).
+            if !inlineImages.isEmpty {
                 // A table cell's inline image (§12.7.1). It has no text, so
                 // as a run it drew as nothing; it is a picture beside the
                 // cell's words instead.
@@ -294,11 +369,6 @@ struct NoteBlockView: View {
 
     private var inlineImages: [InlineRun] {
         block.inline.filter { $0.marks.contains("inlineImage") }
-    }
-
-    /// True when every run is unmarked text: nothing a `String` would lose.
-    private var isPlainText: Bool {
-        block.inline.allSatisfy { $0.marks.isEmpty }
     }
 
     private var blockInkName: String? {

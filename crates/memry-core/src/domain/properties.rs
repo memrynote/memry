@@ -208,6 +208,50 @@ pub fn remove(
     )
 }
 
+/// Renames one property on one item, keeping its value, as desktop's
+/// `properties:rename` does (`ipc/properties-handlers.ts`): the old key is
+/// dropped rather than left `null`, a missing `from` is
+/// [`StorageError::NotFound`], an existing `to` is [`StorageError::Invalid`],
+/// and `from == to` writes nothing. Only this item changes; the vault-wide
+/// definition is not renamed.
+pub fn rename(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+    from: &str,
+    to: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Map<String, Value>, StorageError> {
+    let to = to.trim();
+    if to.is_empty() {
+        return Err(StorageError::Invalid {
+            what: "a property needs a name".to_owned(),
+        });
+    }
+    let payload = require(conn, item_type, item_id)?;
+    let mut values = read_values(payload.object(), item_type, item_id)?;
+    if !values.contains_key(from) {
+        return Err(StorageError::NotFound {
+            what: format!("{item_type}/{item_id} has no property `{from}`"),
+        });
+    }
+    if from == to {
+        return Ok(values);
+    }
+    if values.contains_key(to) {
+        return Err(StorageError::Invalid {
+            what: format!("{item_type}/{item_id} already has a property `{to}`"),
+        });
+    }
+    if let Some(value) = values.remove(from) {
+        values.insert(to.to_owned(), value);
+    }
+    write(
+        conn, item_type, item_id, &payload, values, device_id, now_ms,
+    )
+}
+
 /// The rule FR-048 names. See the module comment for what is exempt and why.
 pub fn refuse_retype(
     name: &str,
@@ -541,6 +585,53 @@ mod tests {
             Ok(())
         })
         .expect("remove");
+    }
+
+    #[test]
+    fn renaming_moves_the_value_and_drops_the_old_key() {
+        let (db, _dir) = open("props-rename", NOTE);
+        db.call_blocking(|conn| {
+            let values = rename(conn, "note", "note-1", "effort", "Effort", DEVICE, NOW + 1)?;
+            assert!(
+                !values.contains_key("effort"),
+                "the old key is dropped, not nulled"
+            );
+            assert_eq!(values["Effort"], json!(3));
+            let payload = pushed(conn);
+            assert_eq!(payload["properties"], json!({"area":"Work","Effort":3}));
+            assert_eq!(payload["coverImage"], json!({"url": "memry://cover/1"}));
+            Ok(())
+        })
+        .expect("rename");
+    }
+
+    #[test]
+    fn a_rename_onto_an_existing_name_or_from_a_missing_one_is_refused() {
+        let (db, _dir) = open("props-rename-refused", NOTE);
+        db.call_blocking(|conn| {
+            assert!(matches!(
+                rename(conn, "note", "note-1", "effort", "area", DEVICE, NOW + 1),
+                Err(StorageError::Invalid { .. })
+            ));
+            assert!(matches!(
+                rename(conn, "note", "note-1", "missing", "x", DEVICE, NOW + 1),
+                Err(StorageError::NotFound { .. })
+            ));
+            assert!(matches!(
+                rename(conn, "note", "note-1", "effort", "  ", DEVICE, NOW + 1),
+                Err(StorageError::Invalid { .. })
+            ));
+            // Same name: nothing written.
+            rename(conn, "note", "note-1", "effort", "effort", DEVICE, NOW + 1)?;
+            let raw = sync_items::push_payload(conn, "note", "note-1")?.expect("a payload");
+            assert_eq!(raw, NOTE);
+            let queued: i64 = conn
+                .query_row("SELECT COUNT(*) FROM outbox", [], |row| row.get(0))
+                .expect("outbox");
+            assert_eq!(queued, 0);
+            Ok(())
+        })
+        .expect("refused");
     }
 
     #[test]

@@ -208,3 +208,85 @@ struct CodeRow: View {
         .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.card))
     }
 }
+
+// MARK: - Editable rows
+
+/// A list item's marker beside its editable text.
+struct EditableMarkerRow<Field: View>: View {
+    let marker: String
+    @ViewBuilder let field: () -> Field
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.small) {
+            Text(marker)
+                .font(Tokens.Typography.body.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .frame(minWidth: Tokens.Space.inset, alignment: .trailing)
+                .accessibilityHidden(true)
+            field()
+        }
+    }
+}
+
+/// A check item's box, tappable, beside its editable text.
+struct EditableCheckRow<Field: View>: View {
+    let isChecked: Bool
+    var toggle: (() -> Void)?
+    @ViewBuilder let field: () -> Field
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.small) {
+            Button {
+                toggle?()
+            } label: {
+                Image(systemName: isChecked ? "checkmark.square" : "square")
+                    .font(Tokens.Typography.body.font)
+                    .foregroundStyle(isChecked ? Tokens.Text.secondary.color : Tokens.Line.focus.color)
+            }
+            .buttonStyle(.plain)
+            .disabled(toggle == nil)
+            .accessibilityLabel(isChecked ? "Done" : "Not done")
+            .accessibilityAddTraits(isChecked ? [.isSelected] : [])
+            field()
+        }
+    }
+}
+
+/// A toggle's chevron, tappable, beside its editable summary.
+struct EditableToggleRow<Field: View>: View {
+    let isOpen: Bool
+    var toggle: (() -> Void)?
+    @ViewBuilder let field: () -> Field
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.small) {
+            Button {
+                toggle?()
+            } label: {
+                Image(systemName: isOpen ? "chevron.down" : "chevron.right")
+                    .font(Tokens.Typography.caption.font)
+                    .foregroundStyle(Tokens.Text.secondary.color)
+                    .frame(minWidth: Tokens.Space.inset, alignment: .trailing)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isOpen ? "Collapse" : "Expand")
+            field()
+        }
+    }
+}
+
+/// A quote's bar beside its editable text.
+struct EditableQuoteRow<Field: View>: View {
+    @ViewBuilder let field: () -> Field
+
+    var body: some View {
+        HStack(alignment: .top, spacing: Tokens.Space.medium) {
+            Rectangle()
+                .fill(Tokens.Line.border.color)
+                .frame(width: 3)
+                .accessibilityHidden(true)
+            field()
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}

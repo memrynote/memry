@@ -108,6 +108,18 @@ extension EditorUndoStep {
         )
     }
 
+    /// The step for a text change in a block holding marks or inline nodes:
+    /// `ReplaceText` both ways, so undo edits in place and keeps them.
+    static func replaceText(blockId: String, from previous: String, to next: String)
+        -> EditorUndoStep
+    {
+        EditorUndoStep(
+            name: "Typing",
+            backward: .replaceText(blockId: blockId, text: previous),
+            forward: .replaceText(blockId: blockId, text: next)
+        )
+    }
+
     /// The step for a prop change.
     static func prop(
         blockId: String, name: String, from previous: String, to next: String, label: String

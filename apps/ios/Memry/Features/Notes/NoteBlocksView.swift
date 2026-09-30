@@ -72,7 +72,8 @@ struct NoteBlocksView: View {
                     tableEditing: tableEditing,
                     checkboxBase: checkboxBase.map { base in
                         base + NoteBlockList.checkboxesBefore(row.id, in: blocks)
-                    }
+                    },
+                    siblings: editing == nil ? nil : BlockSiblings.of(row.id, in: blocks)
                 )
             }
         }

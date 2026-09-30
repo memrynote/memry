@@ -5798,6 +5798,34 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func addReminder(noteId: String, remindAt: String, title: String?) throws  -> String
     
     /**
+     * Appends a block read with [`Self::block_snapshot`] (from any note) to
+     * the end of `note_id`'s body, with its children, marks and inline
+     * nodes: the target half of desktop's block menu "Move to".
+     *
+     * A container id the target already holds is minted afresh; the rest
+     * are kept.
+     *
+     * - Returns: `false` when this vault holds no live note by that id. The
+     * caller removes the source block only after this answered `true`, so
+     * a failed append leaves the block where it was.
+     */
+    func appendBlockSnapshot(noteId: String, snapshot: String) throws  -> Bool
+    
+    /**
+     * Reads one block, with everything nested under it, as the snapshot
+     * [`BlockEdit::RestoreBlock`] puts back (iOS undo of a delete or a type
+     * change).
+     *
+     * - Returns: `None` when this vault holds no live note by that id, as
+     * [`Self::edit_block`] answers `false`. A block the body does not hold
+     * throws.
+     *
+     * Writes nothing: the snapshot belongs to the shell's undo stack and is
+     * never stored or synced.
+     */
+    func blockSnapshot(noteId: String, blockId: String) throws  -> String?
+    
+    /**
      * Clears one property, **leaving the key present and `null`** (§13.4).
      *
      * Not a removal: an absent key means "this sender does not know", so a
@@ -5913,6 +5941,14 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func renameFolder(path: String, newName: String) throws  -> [String]
     
     /**
+     * Renames one property on this note, keeping its value, as desktop's
+     * `properties:rename` does: the old key is dropped rather than left
+     * `null`, a missing `from` is `NotFound`, and a `to` the note already
+     * carries is `Invalid`. The vault-wide definition is not renamed.
+     */
+    func renameProperty(id: String, from: String, to: String) throws 
+    
+    /**
      * Replaces a note's aliases (N706).
      *
      * Whole-array rather than add-one, because that is the shape of the field
@@ -5922,14 +5958,15 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func setAliases(id: String, aliases: [String]) throws 
     
     /**
-     * Sets or clears a note's cover (N703).
+     * Sets or clears a note's cover (N703), in desktop's `cover` payload
+     * field (chapter 13 §13.7.1.1), which desktop writes to the note's
+     * frontmatter.
      *
-     * `coverImage` is not a field of the note schema. Writing it is safe
-     * because §13.2 makes an unknown top-level payload key something every
-     * conforming client carries, and §13.2.1 records how desktop does it —
-     * so a cover written here survives an older desktop editing the note.
-     * **No other client renders one today**, which is a product gap rather
-     * than a protocol one.
+     * `url` is desktop's `cover` value: `attachments/<noteId>/<file>` for a
+     * picture uploaded to this note, `wash:<id>`, or an http(s) URL.
+     * `offset_y` is the 0-1 framing, stored as desktop's 0-100 `focus`. The
+     * photographer credit stays while `url` is unchanged and is dropped with
+     * a new picture.
      *
      * `nil` clears, writing an explicit null rather than removing the key.
      */
@@ -6059,6 +6096,52 @@ open func addReminder(noteId: String, remindAt: String, title: String?)throws  -
         FfiConverterString.lower(noteId),
         FfiConverterString.lower(remindAt),
         FfiConverterOptionString.lower(title),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Appends a block read with [`Self::block_snapshot`] (from any note) to
+     * the end of `note_id`'s body, with its children, marks and inline
+     * nodes: the target half of desktop's block menu "Move to".
+     *
+     * A container id the target already holds is minted afresh; the rest
+     * are kept.
+     *
+     * - Returns: `false` when this vault holds no live note by that id. The
+     * caller removes the source block only after this answered `true`, so
+     * a failed append leaves the block where it was.
+     */
+open func appendBlockSnapshot(noteId: String, snapshot: String)throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_append_block_snapshot(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(noteId),
+        FfiConverterString.lower(snapshot),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Reads one block, with everything nested under it, as the snapshot
+     * [`BlockEdit::RestoreBlock`] puts back (iOS undo of a delete or a type
+     * change).
+     *
+     * - Returns: `None` when this vault holds no live note by that id, as
+     * [`Self::edit_block`] answers `false`. A block the body does not hold
+     * throws.
+     *
+     * Writes nothing: the snapshot belongs to the shell's undo stack and is
+     * never stored or synced.
+     */
+open func blockSnapshot(noteId: String, blockId: String)throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_block_snapshot(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(noteId),
+        FfiConverterString.lower(blockId),uniffiCallStatus
     )
 })
 }
@@ -6286,6 +6369,23 @@ open func renameFolder(path: String, newName: String)throws  -> [String]  {
 }
     
     /**
+     * Renames one property on this note, keeping its value, as desktop's
+     * `properties:rename` does: the old key is dropped rather than left
+     * `null`, a missing `from` is `NotFound`, and a `to` the note already
+     * carries is `Invalid`. The vault-wide definition is not renamed.
+     */
+open func renameProperty(id: String, from: String, to: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_rename_property(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(from),
+        FfiConverterString.lower(to),uniffiCallStatus
+    )
+}
+}
+    
+    /**
      * Replaces a note's aliases (N706).
      *
      * Whole-array rather than add-one, because that is the shape of the field
@@ -6303,14 +6403,15 @@ open func setAliases(id: String, aliases: [String])throws   {try rustCallWithErr
 }
     
     /**
-     * Sets or clears a note's cover (N703).
+     * Sets or clears a note's cover (N703), in desktop's `cover` payload
+     * field (chapter 13 §13.7.1.1), which desktop writes to the note's
+     * frontmatter.
      *
-     * `coverImage` is not a field of the note schema. Writing it is safe
-     * because §13.2 makes an unknown top-level payload key something every
-     * conforming client carries, and §13.2.1 records how desktop does it —
-     * so a cover written here survives an older desktop editing the note.
-     * **No other client renders one today**, which is a product gap rather
-     * than a protocol one.
+     * `url` is desktop's `cover` value: `attachments/<noteId>/<file>` for a
+     * picture uploaded to this note, `wash:<id>`, or an http(s) URL.
+     * `offset_y` is the 0-1 framing, stored as desktop's 0-100 `focus`. The
+     * photographer credit stays while `url` is unchanged and is dropped with
+     * a new picture.
      *
      * `nil` clears, writing an explicit null rather than removing the key.
      */
@@ -9287,6 +9388,12 @@ public protocol TasksProtocol: AnyObject, Sendable {
      */
     func duplicateTemplate(id: String, name: String) throws  -> String
     
+    /**
+     * Creates `name`'s definition with desktop's defaults for `type_name`
+     * when the vault has no live one; an existing definition is untouched.
+     */
+    func ensurePropertyDefinition(name: String, typeName: String) throws 
+    
     func mergeTag(source: String, target: String) throws  -> UInt32
     
     func propertyDefinitions() throws  -> [PropertyDefinitionItem]
@@ -9691,6 +9798,20 @@ open func duplicateTemplate(id: String, name: String)throws  -> String  {
         FfiConverterString.lower(name),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * Creates `name`'s definition with desktop's defaults for `type_name`
+     * when the vault has no live one; an existing definition is untouched.
+     */
+open func ensurePropertyDefinition(name: String, typeName: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_ensure_property_definition(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(name),
+        FfiConverterString.lower(typeName),uniffiCallStatus
+    )
+}
 }
     
 open func mergeTag(source: String, target: String)throws  -> UInt32  {
@@ -19284,19 +19405,21 @@ public struct NoteMetadata: Equatable, Hashable {
      */
     public var icon: String?
     /**
-     * The note's cover, as **preserved unknown payload data** (FR-033).
+     * The note's cover, as JSON text in desktop's shape (§13.7.1.1):
+     * `{"ref": ..., "focus"?: 0-100, "credit"?: ..., "creditUrl"?: ...}`.
      *
-     * **`coverImage` is not a field of the note schema.** §13.7.1 does not
-     * list it, desktop has no cover feature, and `payload-schemas.json` uses
-     * this exact key as its canonical *unknown key* case — the thing a
-     * conforming client must carry untouched rather than understand. So it
-     * is surfaced as the JSON text the payload holds rather than parsed into
-     * a typed field: inventing a schema for a key the specification does not
-     * define would make this client the only one that thinks it is defined.
+     * `ref` is desktop's frontmatter `cover` value — a vault path, `wash:<id>`
+     * or an http(s) URL — and deciding which is the shell's job, the same way
+     * desktop parses it once at render. Read from the payload's `cover` field;
+     * when that key is absent or null, the earlier iOS-only `coverImage`
+     * (`{url, offsetY}`, offset 0-1) is read into the same shape, so a cover
+     * written by an older build of this app still shows, marked
+     * `"legacy": true` so the shell accepts its ref whatever its extension.
+     * A `cover: null` that
+     * some older writer sent does not hide it; every removal also writes
+     * `coverImage: null`.
      *
-     * `None` when the payload carries no such key. A shell renders it if it
-     * recognises the shape and ignores it otherwise; either way the bytes
-     * survive, which is what FR-033 asks for.
+     * `None` when neither key holds a readable cover.
      */
     public var coverJson: String?
 
@@ -19323,19 +19446,21 @@ public struct NoteMetadata: Equatable, Hashable {
          * `null`, which mean the same thing for a value nobody has set.
          */icon: String?, 
         /**
-         * The note's cover, as **preserved unknown payload data** (FR-033).
+         * The note's cover, as JSON text in desktop's shape (§13.7.1.1):
+         * `{"ref": ..., "focus"?: 0-100, "credit"?: ..., "creditUrl"?: ...}`.
          *
-         * **`coverImage` is not a field of the note schema.** §13.7.1 does not
-         * list it, desktop has no cover feature, and `payload-schemas.json` uses
-         * this exact key as its canonical *unknown key* case — the thing a
-         * conforming client must carry untouched rather than understand. So it
-         * is surfaced as the JSON text the payload holds rather than parsed into
-         * a typed field: inventing a schema for a key the specification does not
-         * define would make this client the only one that thinks it is defined.
+         * `ref` is desktop's frontmatter `cover` value — a vault path, `wash:<id>`
+         * or an http(s) URL — and deciding which is the shell's job, the same way
+         * desktop parses it once at render. Read from the payload's `cover` field;
+         * when that key is absent or null, the earlier iOS-only `coverImage`
+         * (`{url, offsetY}`, offset 0-1) is read into the same shape, so a cover
+         * written by an older build of this app still shows, marked
+         * `"legacy": true` so the shell accepts its ref whatever its extension.
+         * A `cover: null` that
+         * some older writer sent does not hide it; every removal also writes
+         * `coverImage: null`.
          *
-         * `None` when the payload carries no such key. A shell renders it if it
-         * recognises the shape and ignores it otherwise; either way the bytes
-         * survive, which is what FR-033 asks for.
+         * `None` when neither key holds a readable cover.
          */coverJson: String?) {
         self.tags = tags
         self.properties = properties
@@ -24755,6 +24880,34 @@ public enum BlockEdit: Equatable, Hashable {
     case setText(blockId: String, text: String
     )
     /**
+     * Rewrites a block's text **in place, keeping its marks and inline
+     * nodes**.
+     *
+     * `text` is the whole block as the shell shows it, with every inline node
+     * (a wiki link, a date, a tag, an inline image) spelled as one U+FFFC
+     * OBJECT REPLACEMENT CHARACTER. The core diffs it against the block's own
+     * flattened text by common prefix and suffix and applies only the span
+     * between them, as deletes and inserts on the runs that hold it: a peer's
+     * concurrent typing elsewhere in the block survives the merge, and bold,
+     * colour and links outside the span are untouched. Inserted text takes the
+     * formatting of the character before it, as typing does. A U+FFFC in the
+     * inserted span is dropped: a node is never made from a placeholder.
+     *
+     * Only BlockNote's inline nodes are placeholders. Any other element in
+     * the block's content (a `hardBreak`) is not part of the shell's text,
+     * takes no position in the diff, and is never removed by it.
+     */
+    case replaceText(blockId: String, text: String, 
+        /**
+         * The block's text as the shell last read it, before the user typed.
+         *
+         * When given and the block has moved on since (a peer's edit merged
+         * while the shell held unsaved typing), only the user's change,
+         * `base` to `text`, is applied on top of the live block, so the
+         * peer's edit survives. `None` diffs `text` against the live block.
+         */base: String? = nil
+    )
+    /**
      * Sets one attribute: `checked` on a check item, `level` on a heading,
      * `language` on a code block, `type` on a callout.
      *
@@ -24910,6 +25063,22 @@ public enum BlockEdit: Equatable, Hashable {
      */
     case delete(blockId: String
     )
+    /**
+     * Puts back a block read with [`snapshot_block`], **with its original
+     * ids**, so a peer's reference to it and the shell's redo still resolve.
+     *
+     * The undo of a delete and of a type change (iOS undo). When the block
+     * is still in the body, only its own element is replaced, with the type,
+     * props, marks and inline nodes it had; the blocks nested under it are
+     * left as they are. When it is gone, the whole container returns after
+     * the sibling it followed, else first in the block it was nested in, else
+     * first in the body.
+     *
+     * `snapshot` is opaque and belongs to the shell's undo stack only: it is
+     * never stored or synced.
+     */
+    case restoreBlock(snapshot: String
+    )
 
 
 
@@ -24934,61 +25103,67 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         case 1: return .setText(blockId: try FfiConverterString.read(from: &buf), text: try FfiConverterString.read(from: &buf)
         )
         
-        case 2: return .setProp(blockId: try FfiConverterString.read(from: &buf), name: try FfiConverterString.read(from: &buf), value: try FfiConverterString.read(from: &buf)
+        case 2: return .replaceText(blockId: try FfiConverterString.read(from: &buf), text: try FfiConverterString.read(from: &buf), base: try FfiConverterOptionString.read(from: &buf)
         )
         
-        case 3: return .insertParagraph(afterBlockId: try FfiConverterOptionString.read(from: &buf), text: try FfiConverterString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
+        case 3: return .setProp(blockId: try FfiConverterString.read(from: &buf), name: try FfiConverterString.read(from: &buf), value: try FfiConverterString.read(from: &buf)
         )
         
-        case 4: return .insertBlock(kind: try FfiConverterString.read(from: &buf), afterBlockId: try FfiConverterOptionString.read(from: &buf), text: try FfiConverterString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
+        case 4: return .insertParagraph(afterBlockId: try FfiConverterOptionString.read(from: &buf), text: try FfiConverterString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
         )
         
-        case 5: return .turnInto(blockId: try FfiConverterString.read(from: &buf), kind: try FfiConverterString.read(from: &buf)
+        case 5: return .insertBlock(kind: try FfiConverterString.read(from: &buf), afterBlockId: try FfiConverterOptionString.read(from: &buf), text: try FfiConverterString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
         )
         
-        case 6: return .setCellText(tableId: try FfiConverterString.read(from: &buf), row: try FfiConverterUInt32.read(from: &buf), column: try FfiConverterUInt32.read(from: &buf), text: try FfiConverterString.read(from: &buf)
+        case 6: return .turnInto(blockId: try FfiConverterString.read(from: &buf), kind: try FfiConverterString.read(from: &buf)
         )
         
-        case 7: return .setCellProp(tableId: try FfiConverterString.read(from: &buf), row: try FfiConverterUInt32.read(from: &buf), column: try FfiConverterUInt32.read(from: &buf), name: try FfiConverterString.read(from: &buf), value: try FfiConverterString.read(from: &buf)
+        case 7: return .setCellText(tableId: try FfiConverterString.read(from: &buf), row: try FfiConverterUInt32.read(from: &buf), column: try FfiConverterUInt32.read(from: &buf), text: try FfiConverterString.read(from: &buf)
         )
         
-        case 8: return .setCellCheckbox(tableId: try FfiConverterString.read(from: &buf), row: try FfiConverterUInt32.read(from: &buf), column: try FfiConverterUInt32.read(from: &buf), index: try FfiConverterUInt32.read(from: &buf), checked: try FfiConverterBool.read(from: &buf)
+        case 8: return .setCellProp(tableId: try FfiConverterString.read(from: &buf), row: try FfiConverterUInt32.read(from: &buf), column: try FfiConverterUInt32.read(from: &buf), name: try FfiConverterString.read(from: &buf), value: try FfiConverterString.read(from: &buf)
         )
         
-        case 9: return .insertRow(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
+        case 9: return .setCellCheckbox(tableId: try FfiConverterString.read(from: &buf), row: try FfiConverterUInt32.read(from: &buf), column: try FfiConverterUInt32.read(from: &buf), index: try FfiConverterUInt32.read(from: &buf), checked: try FfiConverterBool.read(from: &buf)
         )
         
-        case 10: return .deleteRow(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
+        case 10: return .insertRow(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
         )
         
-        case 11: return .insertColumn(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
+        case 11: return .deleteRow(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
         )
         
-        case 12: return .deleteColumn(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
+        case 12: return .insertColumn(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
         )
         
-        case 13: return .duplicate(blockId: try FfiConverterString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
+        case 13: return .deleteColumn(tableId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf)
         )
         
-        case 14: return .moveBlock(blockId: try FfiConverterString.read(from: &buf), afterBlockId: try FfiConverterOptionString.read(from: &buf)
+        case 14: return .duplicate(blockId: try FfiConverterString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
         )
         
-        case 15: return .indent(blockId: try FfiConverterString.read(from: &buf)
+        case 15: return .moveBlock(blockId: try FfiConverterString.read(from: &buf), afterBlockId: try FfiConverterOptionString.read(from: &buf)
         )
         
-        case 16: return .outdent(blockId: try FfiConverterString.read(from: &buf)
+        case 16: return .indent(blockId: try FfiConverterString.read(from: &buf)
         )
         
-        case 17: return .insertInline(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), kind: try FfiConverterString.read(from: &buf), text: try FfiConverterString.read(from: &buf), attrs: try FfiConverterDictionaryStringString.read(from: &buf)
+        case 17: return .outdent(blockId: try FfiConverterString.read(from: &buf)
         )
         
-        case 18: return .setMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf), value: try FfiConverterOptionString.read(from: &buf)
+        case 18: return .insertInline(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), kind: try FfiConverterString.read(from: &buf), text: try FfiConverterString.read(from: &buf), attrs: try FfiConverterDictionaryStringString.read(from: &buf)
         )
         
-        case 19: return .removeMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf)
+        case 19: return .setMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf), value: try FfiConverterOptionString.read(from: &buf)
         )
         
-        case 20: return .delete(blockId: try FfiConverterString.read(from: &buf)
+        case 20: return .removeMark(blockId: try FfiConverterString.read(from: &buf), start: try FfiConverterUInt32.read(from: &buf), end: try FfiConverterUInt32.read(from: &buf), mark: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 21: return .delete(blockId: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 22: return .restoreBlock(snapshot: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -25005,22 +25180,29 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             FfiConverterString.write(text, into: &buf)
             
         
-        case let .setProp(blockId,name,value):
+        case let .replaceText(blockId,text,base):
             writeInt(&buf, Int32(2))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterString.write(text, into: &buf)
+            FfiConverterOptionString.write(base, into: &buf)
+            
+        
+        case let .setProp(blockId,name,value):
+            writeInt(&buf, Int32(3))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterString.write(name, into: &buf)
             FfiConverterString.write(value, into: &buf)
             
         
         case let .insertParagraph(afterBlockId,text,newBlockId):
-            writeInt(&buf, Int32(3))
+            writeInt(&buf, Int32(4))
             FfiConverterOptionString.write(afterBlockId, into: &buf)
             FfiConverterString.write(text, into: &buf)
             FfiConverterString.write(newBlockId, into: &buf)
             
         
         case let .insertBlock(kind,afterBlockId,text,newBlockId):
-            writeInt(&buf, Int32(4))
+            writeInt(&buf, Int32(5))
             FfiConverterString.write(kind, into: &buf)
             FfiConverterOptionString.write(afterBlockId, into: &buf)
             FfiConverterString.write(text, into: &buf)
@@ -25028,13 +25210,13 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             
         
         case let .turnInto(blockId,kind):
-            writeInt(&buf, Int32(5))
+            writeInt(&buf, Int32(6))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterString.write(kind, into: &buf)
             
         
         case let .setCellText(tableId,row,column,text):
-            writeInt(&buf, Int32(6))
+            writeInt(&buf, Int32(7))
             FfiConverterString.write(tableId, into: &buf)
             FfiConverterUInt32.write(row, into: &buf)
             FfiConverterUInt32.write(column, into: &buf)
@@ -25042,7 +25224,7 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             
         
         case let .setCellProp(tableId,row,column,name,value):
-            writeInt(&buf, Int32(7))
+            writeInt(&buf, Int32(8))
             FfiConverterString.write(tableId, into: &buf)
             FfiConverterUInt32.write(row, into: &buf)
             FfiConverterUInt32.write(column, into: &buf)
@@ -25051,7 +25233,7 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             
         
         case let .setCellCheckbox(tableId,row,column,index,checked):
-            writeInt(&buf, Int32(8))
+            writeInt(&buf, Int32(9))
             FfiConverterString.write(tableId, into: &buf)
             FfiConverterUInt32.write(row, into: &buf)
             FfiConverterUInt32.write(column, into: &buf)
@@ -25060,53 +25242,53 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             
         
         case let .insertRow(tableId,at):
-            writeInt(&buf, Int32(9))
-            FfiConverterString.write(tableId, into: &buf)
-            FfiConverterUInt32.write(at, into: &buf)
-            
-        
-        case let .deleteRow(tableId,at):
             writeInt(&buf, Int32(10))
             FfiConverterString.write(tableId, into: &buf)
             FfiConverterUInt32.write(at, into: &buf)
             
         
-        case let .insertColumn(tableId,at):
+        case let .deleteRow(tableId,at):
             writeInt(&buf, Int32(11))
             FfiConverterString.write(tableId, into: &buf)
             FfiConverterUInt32.write(at, into: &buf)
             
         
-        case let .deleteColumn(tableId,at):
+        case let .insertColumn(tableId,at):
             writeInt(&buf, Int32(12))
             FfiConverterString.write(tableId, into: &buf)
             FfiConverterUInt32.write(at, into: &buf)
             
         
-        case let .duplicate(blockId,newBlockId):
+        case let .deleteColumn(tableId,at):
             writeInt(&buf, Int32(13))
+            FfiConverterString.write(tableId, into: &buf)
+            FfiConverterUInt32.write(at, into: &buf)
+            
+        
+        case let .duplicate(blockId,newBlockId):
+            writeInt(&buf, Int32(14))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterString.write(newBlockId, into: &buf)
             
         
         case let .moveBlock(blockId,afterBlockId):
-            writeInt(&buf, Int32(14))
+            writeInt(&buf, Int32(15))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterOptionString.write(afterBlockId, into: &buf)
             
         
         case let .indent(blockId):
-            writeInt(&buf, Int32(15))
-            FfiConverterString.write(blockId, into: &buf)
-            
-        
-        case let .outdent(blockId):
             writeInt(&buf, Int32(16))
             FfiConverterString.write(blockId, into: &buf)
             
         
-        case let .insertInline(blockId,start,end,kind,text,attrs):
+        case let .outdent(blockId):
             writeInt(&buf, Int32(17))
+            FfiConverterString.write(blockId, into: &buf)
+            
+        
+        case let .insertInline(blockId,start,end,kind,text,attrs):
+            writeInt(&buf, Int32(18))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterUInt32.write(start, into: &buf)
             FfiConverterUInt32.write(end, into: &buf)
@@ -25116,7 +25298,7 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             
         
         case let .setMark(blockId,start,end,mark,value):
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(19))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterUInt32.write(start, into: &buf)
             FfiConverterUInt32.write(end, into: &buf)
@@ -25125,7 +25307,7 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             
         
         case let .removeMark(blockId,start,end,mark):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(20))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterUInt32.write(start, into: &buf)
             FfiConverterUInt32.write(end, into: &buf)
@@ -25133,8 +25315,13 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             
         
         case let .delete(blockId):
-            writeInt(&buf, Int32(20))
+            writeInt(&buf, Int32(21))
             FfiConverterString.write(blockId, into: &buf)
+            
+        
+        case let .restoreBlock(snapshot):
+            writeInt(&buf, Int32(22))
+            FfiConverterString.write(snapshot, into: &buf)
             
         }
     }
@@ -31936,6 +32123,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_noteswriter_add_reminder() != 21568) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_noteswriter_append_block_snapshot() != 42475) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_block_snapshot() != 59995) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_noteswriter_clear_property() != 35528) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -31975,10 +32168,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_noteswriter_rename_folder() != 54465) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_noteswriter_rename_property() != 37723) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_noteswriter_set_aliases() != 27902) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_noteswriter_set_cover() != 11273) {
+    if (uniffi_memry_core_checksum_method_noteswriter_set_cover() != 22061) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_set_folder_icon() != 36082) {
@@ -32105,6 +32301,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_duplicate_template() != 61172) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_ensure_property_definition() != 10992) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_merge_tag() != 47770) {

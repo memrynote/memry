@@ -42,6 +42,10 @@ const NOTE_FIELDS: &[Field] = &[
     Field::opt_null("attachmentId", Kind::Text),
     Field::opt_null("attachmentReferences", Kind::TextArray),
     Field::opt_null("folderPath", Kind::Text),
+    // §13.7.1.1. `Any` because desktop reads a cover it cannot parse as absent
+    // (`.catch(undefined)`) rather than failing the note; the shell reads the
+    // shape through `note_meta::cover_of`. No column: it lives in the payload.
+    Field::opt_null("cover", Kind::Any),
     Field::opt_null("clock", Kind::Clock),
     Field::opt_null("createdAt", Kind::SyncTimestamp),
     Field::opt_null("modifiedAt", Kind::SyncTimestamp),

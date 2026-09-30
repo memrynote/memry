@@ -58,145 +58,64 @@ enum NoteDates {
     }
 }
 
-/// Picking a date to mention (N601).
-struct DateMentionMenu: View {
-    /// Handed in rather than read from the clock, so the suggestions can be
-    /// asserted.
-    var today: Date = Date()
-    let insert: (Date, String, Bool) -> Void
+/// Picking a date to mention (N601), from the page menu.
+struct DateMentionSheet: View {
+    let insert: (DateMentionValue) -> Void
+    let cancel: () -> Void
 
-    @State private var custom = Date()
+    @State private var day = Date()
     @State private var remindMe = false
-    @State private var choosing = false
 
     var body: some View {
-        Menu {
-            Toggle("Remind me", isOn: $remindMe)
-            Divider()
-            ForEach(NoteDates.suggestions(from: today), id: \.0) { suggestion in
-                Button(suggestion.0) {
-                    insert(suggestion.1, suggestion.0, remindMe)
-                }
+        NavigationStack {
+            Form {
+                DatePicker("Date", selection: $day, displayedComponents: .date)
+                Toggle("Remind me", isOn: $remindMe)
             }
-            Divider()
-            Button("Pick a date…") { choosing = true }
-        } label: {
-            Label("Date", systemImage: "calendar")
-                .labelStyle(.iconOnly)
-        }
-        .accessibilityLabel("Mention a date")
-        .sheet(isPresented: $choosing) {
-            NavigationStack {
-                Form {
-                    DatePicker("Date", selection: $custom, displayedComponents: .date)
-                    Toggle("Remind me", isOn: $remindMe)
+            .navigationTitle("Mention a date")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Insert") {
+                        let at9 = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: day) ?? day
+                        var value = DateMentionValue(dateISO: DateMentionValue.iso(at9), hasTime: false)
+                        if remindMe { value.remind = "at" }
+                        insert(value)
+                    }
                 }
-                .navigationTitle("Mention a date")
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Insert") {
-                            choosing = false
-                            insert(custom, NoteDates.label(for: custom), remindMe)
-                        }
-                    }
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Cancel") { choosing = false }
-                    }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: cancel)
                 }
             }
         }
     }
 }
 
-/// Linking to another note (N602).
-///
-/// **A link to a note that does not exist is offered as a creation**, which
-/// is what desktop does and what the `note_links` projection is built for: a
-/// forward reference resolves once the note is made.
-struct WikiLinkMenu: View {
-    /// Every note this vault holds, for the search.
-    let notes: [NoteSummary]
-    /// Creates a note by title and returns its id, or `nil` when this vault
-    /// cannot be written to. `nil` hides the creation row rather than
-    /// offering one that cannot work.
-    let create: ((String) async -> String?)?
-    /// `(title, displayAs, embed)`.
-    let insert: (String, String?, Bool) -> Void
+/// Linking to another note (N602), from the page menu. The same rows as the
+/// `[[` menu, including desktop's create row for a title nothing carries.
+struct WikiLinkSheet: View {
+    let titles: [String]
+    let insert: (EditorSuggestion.Kind) -> Void
+    let cancel: () -> Void
 
     @State private var query = ""
-    @State private var alias = ""
-    @State private var embed = false
-    @State private var open = false
-
-    /// Notes whose title matches what is typed, best-effort and bounded: a
-    /// vault can hold thousands and a menu cannot.
-    private var matches: [NoteSummary] {
-        let typed = query.trimmingCharacters(in: .whitespaces)
-        guard !typed.isEmpty else { return Array(notes.prefix(8)) }
-        return notes
-            .filter { $0.title.localizedCaseInsensitiveContains(typed) }
-            .prefix(8)
-            .map { $0 }
-    }
-
-    /// `true` when nothing carries this exact title, which is the case that
-    /// earns the creation row.
-    private var isNew: Bool {
-        let typed = query.trimmingCharacters(in: .whitespaces)
-        return !typed.isEmpty
-            && !notes.contains { $0.title.caseInsensitiveCompare(typed) == .orderedSame }
-    }
 
     var body: some View {
-        Button {
-            open = true
-        } label: {
-            Label("Link to a note", systemImage: "link")
-                .labelStyle(.iconOnly)
-        }
-        .accessibilityLabel("Link to a note")
-        .sheet(isPresented: $open) {
-            NavigationStack {
-                Form {
-                    Section {
-                        TextField("Search notes", text: $query)
-                            .accessibilityLabel("Search notes")
-                        TextField("Show as (optional)", text: $alias)
-                            .accessibilityLabel("Show the link as")
-                        Toggle("Embed the note instead of linking", isOn: $embed)
-                    }
-
-                    Section {
-                        ForEach(matches, id: \.id) { note in
-                            Button(note.title.isEmpty ? "Untitled" : note.title) {
-                                open = false
-                                insert(note.title, alias.isEmpty ? nil : alias, embed)
-                            }
-                        }
-                        if isNew, let create {
-                            Button {
-                                let title = query.trimmingCharacters(in: .whitespaces)
-                                open = false
-                                Task {
-                                    // The note is made first, so the link is
-                                    // not left pointing at nothing.
-                                    _ = await create(title)
-                                    insert(title, alias.isEmpty ? nil : alias, embed)
-                                }
-                            } label: {
-                                Label(
-                                    "Create “\(query.trimmingCharacters(in: .whitespaces))”",
-                                    systemImage: "plus"
-                                )
-                            }
-                        }
+        NavigationStack {
+            List {
+                TextField("Search notes", text: $query)
+                    .accessibilityLabel("Search notes")
+                ForEach(EditorSuggestions.wiki(query: query, titles: titles)) { item in
+                    Button {
+                        insert(item.kind)
+                    } label: {
+                        Label(item.title, systemImage: item.symbol)
                     }
                 }
-                .navigationTitle("Link to a note")
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Cancel") { open = false }
-                    }
+            }
+            .navigationTitle("Link to a note")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: cancel)
                 }
             }
         }

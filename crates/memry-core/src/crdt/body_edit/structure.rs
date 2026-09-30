@@ -33,17 +33,40 @@ pub(super) fn duplicate(
     block_id: &str,
     new_block_id: &str,
 ) -> Result<(), CrdtError> {
-    let (container, block) = locate(txn, block_id).ok_or_else(|| missing(block_id))?;
+    let (container, _) = locate(txn, block_id).ok_or_else(|| missing(block_id))?;
     let parent = parent_of(&container).ok_or_else(|| missing(block_id))?;
     let index = child_index(txn, &parent, &container).ok_or_else(|| missing(block_id))?;
 
-    // The whole block, not its plain text: the original's props (a duplicate
-    // of a red heading is a red heading), its marks and its inline nodes.
-    let content = snapshot_subtree(txn, &block);
-    let copy = parent.insert(txn, index + 1, XmlElementPrelim::empty("blockContainer"));
-    copy.insert_attribute(txn, "id", new_block_id);
-    restore_subtree(txn, &copy, 0, &content);
+    // The whole container, not its plain text and not only its block: the
+    // original's props (a duplicate of a red heading is a red heading), its
+    // marks, its inline nodes, and every block nested under it.
+    let mut copy = snapshot_subtree(txn, &container);
+    // Every container in the copy needs an id of its own: two blocks sharing
+    // one are two blocks no edit can tell apart.
+    copy.set_prop("id", Any::String(new_block_id.into()));
+    for piece in &mut copy.children {
+        if let Piece::Element(child) = piece {
+            child.mint_container_ids();
+        }
+    }
+    restore_subtree(txn, &parent, index + 1, &copy);
     Ok(())
+}
+
+/// A fresh block id in BlockNote's own format, a lowercase UUID v4.
+pub(super) fn new_block_id() -> String {
+    let mut bytes = crate::crypto::sodium::random_bytes(16);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    let hex: String = bytes.iter().map(|byte| format!("{byte:02x}")).collect();
+    format!(
+        "{}-{}-{}-{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..32]
+    )
 }
 
 /// An attribute value as an [`Any`], so a copy keeps its declared types.
@@ -150,7 +173,7 @@ pub(super) fn outdent(txn: &mut TransactionMut, block_id: &str) -> Result<(), Cr
 /// requires a group to hold at least one block, so an empty one is invalid
 /// for every reader. The document's own top-level group (whose parent is the
 /// fragment, not an element) always stays.
-fn drop_if_empty(txn: &mut TransactionMut, group: &XmlElementRef) {
+pub(super) fn drop_if_empty(txn: &mut TransactionMut, group: &XmlElementRef) {
     if group.tag().as_ref() != "blockGroup" || group.len(txn) > 0 {
         return;
     }
@@ -189,16 +212,78 @@ pub(super) fn child_block_group(
 /// text, or moved a mention to the end of its paragraph (spec 004 TP026).
 #[derive(Debug, Clone)]
 pub(super) struct Subtree {
-    tag: String,
-    props: Vec<(String, Any)>,
-    children: Vec<Piece>,
+    pub(super) tag: String,
+    pub(super) props: Vec<(String, Any)>,
+    pub(super) children: Vec<Piece>,
+}
+
+impl Subtree {
+    /// Sets `name`, replacing the value it had.
+    pub(super) fn set_prop(&mut self, name: &str, value: Any) {
+        match self.props.iter_mut().find(|(key, _)| key == name) {
+            Some((_, existing)) => *existing = value,
+            None => self.props.push((name.to_owned(), value)),
+        }
+    }
+
+    /// Mints a fresh id for each `blockContainer` in this subtree whose id is
+    /// in `taken`.
+    pub(super) fn mint_taken_container_ids(&mut self, taken: &std::collections::HashSet<String>) {
+        if self.tag == "blockContainer" {
+            let id = self.props.iter().find_map(|(name, value)| match value {
+                Any::String(id) if name == "id" => Some(id.to_string()),
+                _ => None,
+            });
+            if id.is_some_and(|id| taken.contains(&id)) {
+                self.set_prop("id", Any::String(new_block_id().into()));
+            }
+        }
+        for piece in &mut self.children {
+            if let Piece::Element(child) = piece {
+                child.mint_taken_container_ids(taken);
+            }
+        }
+    }
+
+    /// Gives this subtree's every `blockContainer` a freshly minted id.
+    fn mint_container_ids(&mut self) {
+        if self.tag == "blockContainer" {
+            self.set_prop("id", Any::String(new_block_id().into()));
+        }
+        for piece in &mut self.children {
+            if let Piece::Element(child) = piece {
+                child.mint_container_ids();
+            }
+        }
+    }
+
+    /// The text this subtree holds, marks and node boundaries dropped.
+    pub(super) fn plain_text(&self) -> String {
+        let mut out = String::new();
+        for piece in &self.children {
+            piece.push_plain_text(&mut out);
+        }
+        out
+    }
 }
 
 #[derive(Debug, Clone)]
-enum Piece {
+pub(super) enum Piece {
     /// One `XmlText`, as `(text, attributes)` chunks.
     Text(Vec<(String, Option<Box<yrs::types::Attrs>>)>),
     Element(Subtree),
+}
+
+impl Piece {
+    fn push_plain_text(&self, out: &mut String) {
+        match self {
+            Piece::Text(chunks) => chunks.iter().for_each(|(chunk, _)| out.push_str(chunk)),
+            Piece::Element(child) => child
+                .children
+                .iter()
+                .for_each(|piece| piece.push_plain_text(out)),
+        }
+    }
 }
 
 pub(super) fn snapshot_subtree(txn: &TransactionMut, element: &XmlElementRef) -> Subtree {
@@ -231,7 +316,12 @@ pub(super) fn restore_subtree(
     for (name, value) in &subtree.props {
         element.insert_attribute(txn, name.as_str(), value.clone());
     }
-    for piece in &subtree.children {
+    restore_pieces(txn, &element, &subtree.children);
+}
+
+/// Appends `pieces` to `element`'s children, formatting and order kept.
+pub(super) fn restore_pieces(txn: &mut TransactionMut, element: &XmlElementRef, pieces: &[Piece]) {
+    for piece in pieces {
         let at = element.len(txn);
         match piece {
             Piece::Text(chunks) => {
@@ -250,7 +340,7 @@ pub(super) fn restore_subtree(
                     run.insert_with_attributes(txn, end, chunk, attrs);
                 }
             }
-            Piece::Element(child) => restore_subtree(txn, &element, at, child),
+            Piece::Element(child) => restore_subtree(txn, element, at, child),
         }
     }
 }

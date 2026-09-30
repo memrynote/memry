@@ -25,6 +25,27 @@ protocol NoteMetadataWriting: Sendable {
     /// and a closed enum would have to drop or coerce whatever did not fit.
     func setProperty(id: String, name: String, valueJson: String) async throws
     func clearProperty(id: String, name: String) async throws
+    /// Renames one property on this note only, keeping its value; the old key
+    /// is dropped rather than nulled (desktop `properties:rename`).
+    func renameProperty(id: String, from: String, to: String) async throws
+    /// Creates the vault-wide definition for a new status, select or
+    /// multiselect property when there is none (desktop
+    /// `notes:create-property-definition`). An existing one is untouched.
+    func ensurePropertyDefinition(name: String, typeName: String) async throws
+}
+
+/// A write this surface cannot make, such as renaming a journal day's property
+/// before its writer supports it.
+struct NoteMetadataWriteUnsupported: Error {}
+
+extension NoteMetadataWriting {
+    func renameProperty(id: String, from: String, to: String) async throws {
+        throw NoteMetadataWriteUnsupported()
+    }
+
+    /// No definition to create: the value is still written and draws as the
+    /// type its value implies.
+    func ensurePropertyDefinition(name: String, typeName: String) async throws {}
 }
 
 /// The production writer, over the shell's one serial core queue.
@@ -77,6 +98,18 @@ struct CoreNoteMetadataWriter: NoteMetadataWriting {
     func clearProperty(id: String, name: String) async throws {
         try await executor.run { try writer().clearProperty(id: id, name: name) }
     }
+
+    func renameProperty(id: String, from: String, to: String) async throws {
+        try await executor.run {
+            try writer().renameProperty(id: id, from: from, to: to)
+        }
+    }
+
+    func ensurePropertyDefinition(name: String, typeName: String) async throws {
+        try await executor.run {
+            try vault.tasks(store: store).ensurePropertyDefinition(name: name, typeName: typeName)
+        }
+    }
 }
 
 /// The ten property types §13.7.1 allows, as the editors present them.
@@ -97,16 +130,96 @@ enum NotePropertyKind: String, CaseIterable, Sendable {
     case relation
     case project
 
-    /// The declared type, or `nil` for one this build does not know.
+    /// The reserved name desktop keys the project link off
+    /// (`PROJECT_PROPERTY_KEY`).
+    static let projectName = "project"
+
+    /// The declared type, else the one the value implies, else `nil` (text).
     ///
-    /// **A list of `memry://` URIs is a relation whatever the definition
-    /// says**, which is desktop's own ladder (`resolvePropertyType` in
-    /// `vault/frontmatter.ts`): a relation's definition is never persisted,
-    /// so the stored type is absent or an inferred `text`, and the value is
-    /// the only reliable witness.
+    /// Desktop's own ladder (`resolvePropertyType` in `vault/frontmatter.ts`):
+    /// the reserved `project` name, then **a list of `memry://` URIs is a
+    /// relation whatever the definition says** (a relation's definition is
+    /// never persisted, so the value is the only reliable witness), then the
+    /// definition, then inference from the value (`inferPropertyType`).
     static func of(_ property: NoteProperty) -> NotePropertyKind? {
+        if property.name == projectName { return .project }
         if isRelationValue(property.valueJson) { return .relation }
-        return property.typeName.flatMap { NotePropertyKind(rawValue: $0) }
+        if let declared = property.typeName.flatMap({ NotePropertyKind(rawValue: $0) }) {
+            return declared
+        }
+        return inferred(from: property.valueJson)
+    }
+
+    /// `inferPropertyType`: a boolean is a checkbox, a number a number, an ISO
+    /// date string a date, an http(s) string a url. Anything else is `nil`,
+    /// which edits as text.
+    static func inferred(from json: String) -> NotePropertyKind? {
+        guard
+            let value = try? JSONSerialization.jsonObject(
+                with: Data(json.utf8),
+                options: [.fragmentsAllowed]
+            )
+        else { return nil }
+        if let number = value as? NSNumber {
+            return CFGetTypeID(number) == CFBooleanGetTypeID() ? .checkbox : .number
+        }
+        guard let text = value as? String else { return nil }
+        if NotePropertyDate.isISODate(text) { return .date }
+        if let url = URL(string: text), let scheme = url.scheme?.lowercased(),
+            scheme == "http" || scheme == "https", url.host() != nil
+        {
+            return .url
+        }
+        return nil
+    }
+
+    /// The label desktop gives each type (`PROPERTY_TYPE_CONFIG`), which is
+    /// also the name a new property takes when none is typed.
+    var label: String {
+        switch self {
+        case .text: "Text"
+        case .number: "Number"
+        case .date: "Date"
+        case .checkbox: "Checkbox"
+        case .url: "URL"
+        case .status: "Status"
+        case .select: "Select"
+        case .multiselect: "Multiselect"
+        case .relation: "Relation"
+        case .project: "Project"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .text: "textformat"
+        case .number: "number"
+        case .date: "calendar"
+        case .checkbox: "checkmark.square"
+        case .url: "link"
+        case .status: "checklist"
+        case .select: "list.bullet"
+        case .multiselect: "square.stack"
+        case .relation: "arrow.up.right.square"
+        case .project: "folder"
+        }
+    }
+
+    /// Whether adding one creates a vault-wide definition first, as desktop's
+    /// `handleAddProperty` does for the choice types.
+    var needsDefinition: Bool { isChoice }
+
+    /// The JSON a new property starts with (`getDefaultValueForType`). A date
+    /// starts at now, as desktop's `new Date().toISOString()` does.
+    func defaultValueJSON(now: Date = Date()) -> String {
+        switch self {
+        case .checkbox: "false"
+        case .number: "0"
+        case .date: "\"\(NotePropertyDate.encode(now))\""
+        case .multiselect, .relation, .project: "[]"
+        case .status, .select: "null"
+        case .url, .text: "\"\""
+        }
     }
 
     /// `memry://<kind>/<id>` strings, at least one, and nothing else.
@@ -122,6 +235,134 @@ enum NotePropertyKind: String, CaseIterable, Sendable {
     /// Whether the editor offers a fixed set of choices.
     var isChoice: Bool {
         self == .status || self == .select || self == .multiselect
+    }
+}
+
+/// A date property's value, read and written as desktop does.
+///
+/// Desktop writes `Date.toISOString()` of the picked day's local midnight
+/// (`PropertyRow` → `DateEditor`), and older values may be a bare
+/// `YYYY-MM-DD`. Both read; a bare day is taken as that calendar day here so
+/// it does not shift by a time zone.
+enum NotePropertyDate {
+    /// Desktop's `isISODate` shape.
+    static func isISODate(_ text: String) -> Bool {
+        text.wholeMatch(of: /\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?/) != nil
+            && parse(text) != nil
+    }
+
+    static func parse(_ text: String, calendar: Calendar = .current) -> Date? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        if trimmed.count == 10 {
+            let parts = trimmed.split(separator: "-").compactMap { Int($0) }
+            guard parts.count == 3 else { return nil }
+            let components = DateComponents(year: parts[0], month: parts[1], day: parts[2])
+            guard components.isValidDate(in: calendar) else { return nil }
+            return calendar.date(from: components)
+        }
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: trimmed) { return date }
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        if let date = plain.date(from: trimmed) { return date }
+        // Desktop's pattern allows a missing `Z`, read as UTC like the rest.
+        return plain.date(from: trimmed + "Z")
+    }
+
+    /// The stored form of a picked day: its local midnight as
+    /// `toISOString()` spells it, `2026-10-20T21:00:00.000Z`.
+    static func encode(day: Date, calendar: Calendar = .current) -> String {
+        encode(calendar.startOfDay(for: day))
+    }
+
+    static func encode(_ instant: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter.string(from: instant)
+    }
+
+    /// What the row shows: the day, abbreviated in the reader's locale.
+    static func display(_ text: String) -> String? {
+        parse(text).map { $0.formatted(.dateTime.day().month(.abbreviated).year()) }
+    }
+}
+
+/// A new property's name, as desktop's add-property flow picks it
+/// (`AddPropertyPopup` + `getUniquePropertyName`).
+enum NewPropertyName {
+    /// `nil` when nothing may be added: a second `project`, which desktop
+    /// shows disabled because the link is keyed off that one name.
+    static func resolve(typed: String, kind: NotePropertyKind, existing: [String]) -> String? {
+        if kind == .project {
+            return existing.contains(NotePropertyKind.projectName) ? nil : NotePropertyKind.projectName
+        }
+        let trimmed = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        return unique(trimmed.isEmpty ? kind.label : trimmed, existing: existing)
+    }
+
+    static func unique(_ base: String, existing: [String]) -> String {
+        guard existing.contains(base) else { return base }
+        var counter = 2
+        while existing.contains("\(base) \(counter)") { counter += 1 }
+        return "\(base) \(counter)"
+    }
+}
+
+/// The tag field's suggestions, after desktop's `TagInputPopup`: every tag
+/// the note does not carry, narrowed by a case-insensitive substring of what
+/// is typed, and a create offer when nothing in the vault is spelled that way.
+enum NoteTagSuggestions {
+    static func matching(_ query: String, all: [String], current: [String]) -> [String] {
+        let typed = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let carried = Set(current.map { $0.lowercased() })
+        return all.filter { tag in
+            !carried.contains(tag.lowercased())
+                && (typed.isEmpty || tag.lowercased().contains(typed))
+        }
+    }
+
+    /// The text to offer as a new tag, or `nil` when it is empty or the vault
+    /// or this note already spells it (case folded).
+    static func createCandidate(_ query: String, all: [String], current: [String]) -> String? {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let taken = (all + current).contains { $0.caseInsensitiveCompare(trimmed) == .orderedSame }
+        return taken ? nil : trimmed
+    }
+
+    /// What return adds: an existing tag spelled that way (its stored
+    /// spelling), else the typed text as a new tag.
+    static func commitTarget(_ query: String, all: [String]) -> String? {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return all.first { $0.caseInsensitiveCompare(trimmed) == .orderedSame } ?? trimmed
+    }
+}
+
+/// A relation's value: `memry://<kind>/<id>` strings (`relation-uri.ts`).
+enum NoteRelationValue {
+    static func uri(noteId: String) -> String { "memry://note/\(noteId)" }
+
+    static func uris(_ json: String) -> [String] {
+        guard
+            let parsed = try? JSONSerialization.jsonObject(with: Data(json.utf8)),
+            let values = parsed as? [String]
+        else { return [] }
+        return values
+    }
+
+    /// The id a URI names, or the URI itself when it is not one.
+    static func id(of uri: String) -> String {
+        guard uri.hasPrefix("memry://") else { return uri }
+        return uri.split(separator: "/").last.map(String.init) ?? uri
+    }
+
+    static func json(_ uris: [String]) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: uris, options: [.withoutEscapingSlashes])
+        else { return "[]" }
+        return String(decoding: data, as: UTF8.self)
     }
 }
 
@@ -402,6 +643,63 @@ final class NoteMetadataViewModel {
     func clearProperty(_ name: String) async {
         guard let writer else { return }
         await run { try await writer.clearProperty(id: noteId, name: name) }
+    }
+
+    /// Renames a property on this note only, as desktop's `properties:rename`
+    /// does. An empty or unchanged name writes nothing; a name the note
+    /// already carries is refused here, before a write, with the same answer
+    /// desktop gives.
+    ///
+    /// - Returns: the name the property now has.
+    @discardableResult
+    func renameProperty(_ name: String, to typed: String, existing: [String]) async -> String {
+        guard let writer else { return name }
+        let next = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !next.isEmpty, next != name else { return name }
+        guard !existing.contains(next) else {
+            status = .failed(
+                UserFacingError(
+                    code: "property.nameTaken",
+                    title: "This note already has a property named \(next).",
+                    guidance: "Choose another name. Nothing was changed.",
+                    recourse: .retry,
+                    isUserVisible: true
+                )
+            )
+            return name
+        }
+        await run { try await writer.renameProperty(id: noteId, from: name, to: next) }
+        return status == .idle ? next : name
+    }
+
+    /// Adds a property with desktop's default value for its type, creating
+    /// the vault-wide definition first for a choice type
+    /// (`use-property-section.ts` `handleAddProperty`).
+    ///
+    /// - Returns: the name written, or `nil` when nothing was (a second
+    ///   `project`, or a failed write).
+    func addProperty(named typed: String, kind: NotePropertyKind, existing: [String]) async -> String? {
+        guard let writer,
+            let name = NewPropertyName.resolve(typed: typed, kind: kind, existing: existing)
+        else { return nil }
+        let value = kind.defaultValueJSON()
+        await run {
+            if kind.needsDefinition {
+                try await writer.ensurePropertyDefinition(name: name, typeName: kind.rawValue)
+            }
+            try await writer.setProperty(id: noteId, name: name, valueJson: value)
+        }
+        return status == .idle ? name : nil
+    }
+
+    /// Writes a relation's whole list, as desktop's `RelationEditor` does on
+    /// an add or a remove. A URI already present is not added twice.
+    func setRelations(_ name: String, _ uris: [String]) async {
+        guard let writer else { return }
+        var seen = Set<String>()
+        let unique = uris.filter { seen.insert($0).inserted }
+        let json = NoteRelationValue.json(unique)
+        await run { try await writer.setProperty(id: noteId, name: name, valueJson: json) }
     }
 
     func dismissFailure() { status = .idle }

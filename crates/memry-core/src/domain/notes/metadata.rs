@@ -41,23 +41,23 @@ pub fn set_icon(
 /// itself declares**, so an empty array is written as an empty array rather
 /// than as `null`: the user removing their last alias is a fact, and `null`
 /// would read as "this sender does not know" (§13.4).
-/// Sets or clears a note's cover (N703).
+/// Sets or clears a note's cover (N703), in desktop's `cover` field
+/// (chapter 13 §13.7.1.1).
 ///
-/// **`coverImage` is not a field of the note schema**, and writing it anyway
-/// is safe rather than reckless: §13.2 makes an unknown top-level payload key
-/// a thing every conforming client must carry, and §13.2.1 records how desktop
-/// meets that obligation — it stores every stripped top-level key in
-/// `sync_unknown_fields` and merges it back on push, so a cover written here
-/// survives an older desktop editing the same note.
+/// Desktop keeps a cover in the note's frontmatter and carries it in the
+/// payload as `cover: {ref, focus?, credit?, creditUrl?}`. `url` is that
+/// `ref`: a vault path such as `attachments/<noteId>/<file>`, `wash:<id>`, or
+/// an http(s) URL. `offset_y` is the shell's 0-1 framing, stored as desktop's
+/// whole-percent `focus` for a picture and left out for a wash.
 ///
-/// The shape is `{ "url": ..., "offsetY": ... }`, which is the shape
-/// `payload-schemas.json` already carries for this key and the shape N208
-/// reads. Inventing a different one would leave this client the only reader of
-/// its own writes.
+/// **Credit follows the picture, as `useNoteCover` has it on desktop.**
+/// Reframing the same `ref` keeps its photographer; a new `ref` drops them,
+/// so a cover is never credited to whoever took the previous one.
 ///
-/// `None` writes an explicit **null** rather than removing the key, for
-/// §13.4's reason: an absent key means "this sender does not know", which is
-/// not what removing a cover means.
+/// `None` writes an explicit **null**, never an absent key: §13.4 says an
+/// absent key means "this sender does not know", and desktop keeps its cover
+/// when the key is absent. It nulls the legacy `coverImage` too, which readers
+/// fall back to when `cover` is null.
 pub fn set_cover(
     conn: &Connection,
     note_id: &str,
@@ -66,21 +66,60 @@ pub fn set_cover(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<String>, StorageError> {
-    let change = match url {
-        Some(url) => Change::Set(serde_json::json!({
-            "url": url,
-            "offsetY": offset_y.clamp(0.0, 1.0),
-        })),
-        None => Change::Set(Value::Null),
+    let changes = match url {
+        Some(url) => {
+            let payload = crate::domain::note_meta::note_payload(conn, note_id)?;
+            let previous = payload
+                .as_ref()
+                .and_then(crate::domain::note_meta::cover_of);
+            // Reframing an older build's `coverImage` keeps it there: moved
+            // into `cover`, its HEIC ref would read as no cover, here and on
+            // desktop.
+            if let Some(previous) = &previous
+                && previous.get("legacy") == Some(&Value::Bool(true))
+                && previous.get("ref").and_then(Value::as_str) == Some(url)
+                && let Some(mut legacy) = payload
+                    .as_ref()
+                    .and_then(|it| it.get("coverImage"))
+                    .and_then(Value::as_object)
+                    .cloned()
+            {
+                legacy.insert("offsetY".to_owned(), Value::from(offset_y.clamp(0.0, 1.0)));
+                return edit(
+                    conn,
+                    ITEM_TYPE,
+                    note_id,
+                    vec![("coverImage", Change::Set(Value::Object(legacy)))],
+                    device_id,
+                    now_ms,
+                );
+            }
+            let focus = (offset_y.clamp(0.0, 1.0) * 100.0).round() as i64;
+            let mut cover = serde_json::Map::new();
+            cover.insert("ref".to_owned(), Value::from(url));
+            // A wash has nothing to frame; desktop writes it with no focus.
+            if !url.starts_with("wash:") {
+                cover.insert("focus".to_owned(), Value::from(focus));
+            }
+            if let Some(previous) = previous
+                && previous.get("ref").and_then(Value::as_str) == Some(url)
+            {
+                for key in ["credit", "creditUrl"] {
+                    if let Some(value) = previous.get(key) {
+                        cover.insert(key.to_owned(), value.clone());
+                    }
+                }
+            }
+            vec![("cover", Change::Set(Value::Object(cover)))]
+        }
+        // Readers fall back to an older build's `coverImage` when `cover` is
+        // null, so a removal clears both or the old picture comes back.
+        None => vec![
+            ("cover", Change::Set(Value::Null)),
+            ("coverImage", Change::Set(Value::Null)),
+        ],
     };
-    edit(
-        conn,
-        ITEM_TYPE,
-        note_id,
-        vec![("coverImage", change)],
-        device_id,
-        now_ms,
-    )
+    edit(conn, ITEM_TYPE, note_id, changes, device_id, now_ms)
 }
 
 /// Replaces a note's tags (N705).

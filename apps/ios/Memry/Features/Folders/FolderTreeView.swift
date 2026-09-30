@@ -80,7 +80,11 @@ private struct FolderRowLabel: View {
 struct FolderScreen: View {
     let route: FolderRoute
     let model: VaultBrowseViewModel
+    let openFolder: (String) -> Void
     let openNote: (String) -> Void
+
+    @State private var expanded: Set<String> = []
+    @State private var selectedFolder: String?
 
     /// Shared with the vault root, so both screens order notes the same way.
     @AppStorage("notes.browseSort") private var sort: BrowseSort = .modifiedNewest
@@ -150,8 +154,7 @@ struct FolderScreen: View {
 
     @ViewBuilder
     private func contents(of node: FolderNode) -> some View {
-        let rows = node.subtreeRows
-        if rows.isEmpty, node.notes.isEmpty {
+        if node.children.isEmpty, node.notes.isEmpty {
             // The folder exists and holds nothing. Distinct from a vault with
             // no notes, and distinct from a read that failed.
             ContentUnavailableView {
@@ -160,40 +163,49 @@ struct FolderScreen: View {
                 Text("It holds no notes and no folders on this device.")
             }
         } else {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Tokens.Space.section) {
-                    if !rows.isEmpty {
-                        BrowseSection(title: "Folders") { FolderTreeView(rows: rows) }
+            List {
+                // The same rows the vault root draws, so a folder's contents
+                // read as the root does: folders toggle in place, the selected
+                // one carries the arrow that opens it.
+                ForEach(node.browseRows(expanded: expanded, sort: sort)) { row in
+                    BrowseRowView(
+                        row: row,
+                        toggle: toggle,
+                        model: model,
+                        selectedFolder: selectedFolder,
+                        openFolder: openFolder,
+                        openNote: openNote,
+                        setExpanded: setExpanded
+                    )
+                }
+                switch grouping {
+                case .none:
+                    ForEach(sort.sorted(node.notes), id: \.id) { note in
+                        BrowseRowView(row: .note(note), toggle: toggle, model: model)
                     }
-                    if !node.notes.isEmpty {
-                        FolderNotesView(notes: node.notes, sort: sort, grouping: grouping)
+                case .date:
+                    ForEach(FolderNoteGroup.group(node.notes, sort: sort)) { group in
+                        Section(group.bucket.title) {
+                            ForEach(group.notes, id: \.id) { note in
+                                BrowseRowView(row: .note(note), toggle: toggle, model: model)
+                            }
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, Tokens.Space.screenInline)
-                .padding(.vertical, Tokens.Space.screenBlock)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .environment(\.defaultMinListRowHeight, Tokens.Size.minimumHitArea)
+            .calmAnimation(.fast, value: expanded)
         }
     }
-}
 
-/// A folder's own notes. The navigation title already names the folder, so
-/// ungrouped notes carry no header; grouped ones carry their date bucket.
-private struct FolderNotesView: View {
-    let notes: [NoteSummary]
-    let sort: BrowseSort
-    let grouping: FolderNoteGrouping
+    private func toggle(_ path: String) {
+        if expanded.contains(path) { expanded.remove(path) } else { expanded.insert(path) }
+        selectedFolder = path
+    }
 
-    var body: some View {
-        switch grouping {
-        case .none:
-            NoteRowsView(notes: sort.sorted(notes))
-        case .date:
-            VStack(alignment: .leading, spacing: Tokens.Space.section) {
-                ForEach(FolderNoteGroup.group(notes, sort: sort)) { group in
-                    BrowseSection(title: group.bucket.title) { NoteRowsView(notes: group.notes) }
-                }
-            }
-        }
+    private func setExpanded(_ paths: [String], _ isOpen: Bool) {
+        if isOpen { expanded.formUnion(paths) } else { expanded.subtract(paths) }
     }
 }
