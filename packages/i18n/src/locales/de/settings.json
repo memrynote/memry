@@ -193,11 +193,7 @@
         "MM/DD/YYYY": "MM/TT/JJJJ (USA)",
         "DD/MM/YYYY": "TT/MM/JJJJ",
         "YYYY-MM-DD": "JJJJ-MM-TT (ISO)",
-        "DD": {
-          "MM": {
-            "YYYY": "TT.MM.JJJJ"
-          }
-        }
+        "DD.MM.YYYY": "TT.MM.JJJJ"
       },
       "error": "Datumsformat konnte nicht aktualisiert werden"
     },

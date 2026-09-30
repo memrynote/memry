@@ -141,7 +141,7 @@
     "remindMe": "Bana hatırlat",
     "linkItem": "Not veya tuval bağla",
     "relatedAria": "İlgili öğeler: {count}",
-    "shorthandPreview": "Kısayol yazımıyla ayarlandı"
+    "shorthandPreview": "Kısa yazımla ayarlandı"
   },
   "drawer": {
     "close": "Görev ayrıntılarını kapat",
@@ -384,7 +384,7 @@
     },
     "componentsTasksDatePickerCalendar": {
       "previousMonth": "Önceki ay",
-      "nextMonth": "Gelecek ay",
+      "nextMonth": "Sonraki ay",
       "goToToday": "Bugüne git",
       "today": "Bugün",
       "w": "H",
@@ -416,7 +416,7 @@
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Tüm alt görevler tamamlandı!",
-      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Ana görevi de tamamlandı olarak işaretlemek ister misiniz?",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Üst görevi de tamamlamak ister misiniz?",
       "keepTaskOpen": "Görevi açık tut",
       "completeTask": "Görevi tamamla ✓",
       "allSubtasksDoneBody": "“{title}” görevinin {count, plural, one {tek alt görevi} other {# alt görevinin tümü}} tamamlandı."
@@ -548,7 +548,7 @@
       "add": "Ekle"
     },
     "componentsTasksEmptyStatesSectionEmptyStates": {
-      "noTasksScheduled": "Zamanlanmış görev yok",
+      "noTasksScheduled": "Planlanmış görev yok",
       "addTaskFor": "Görev ekle: ",
       "nothingScheduled": "Planlanmış bir şey yok",
       "addTasksWithDueDatesToPlanYourWeek": "Haftanızı planlamak için son tarihli görevler ekleyin.",
@@ -809,7 +809,7 @@
     },
     "componentsTasksTodayEmptyState": {
       "nothingScheduledForToday": "Bugün için planlanmış bir şey yok",
-      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Yukarıda gecikmiş görevleriniz var. Bugün için görev ekleyin ya da yaklaşan listenize göz atın.",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Yukarıda gecikmiş görevleriniz var. Bugün için görev ekleyin ya da yaklaşan görevlerinize göz atın.",
       "addTaskForToday": "Bugün için görev ekle",
       "allCaughtUpForToday": "Bugünlük her şey tamam",
       "youHaveNothingScheduledEnjoyTheClarity": "Planlanmış bir şeyiniz yok. Bu ferahlığın tadını çıkarın.",
@@ -817,7 +817,7 @@
     },
     "componentsTasksUpcomingEmptyState": {
       "nothingScheduledForTheNext7Days": "Önümüzdeki 7 gün için planlanmış bir şey yok",
-      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Yukarıda gecikmiş görevleriniz var. Önümüzdeki hafta için görev ekleyerek ileriyi planlayın.",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Yukarıda gecikmiş görevleriniz var. Önümüzdeki hafta için görev ekleyerek şimdiden plan yapın.",
       "addTask": "Görev ekle",
       "noUpcomingTasks": "Yaklaşan görev yok",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Son tarihi önümüzdeki 7 gün içinde olan görevler burada görünür. Birkaç görev ekleyerek haftanızı planlayın.",

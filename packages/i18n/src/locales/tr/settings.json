@@ -193,11 +193,7 @@
         "MM/DD/YYYY": "MM/DD/YYYY (ABD)",
         "DD/MM/YYYY": "DD/MM/YYYY",
         "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
-        "DD": {
-          "MM": {
-            "YYYY": "DD.MM.YYYY"
-          }
-        }
+        "DD.MM.YYYY": "DD.MM.YYYY"
       },
       "error": "Tarih biçimi güncellenemedi"
     },

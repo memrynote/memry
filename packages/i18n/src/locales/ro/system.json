@@ -2,70 +2,71 @@
   "dialog": {
     "vault": {
       "title": "Selectați dosarul seifului",
-      "button": "Selectați Seif"
+      "button": "Selectează seiful"
     },
     "exportPdf": {
-      "title": "Exportați ca PDF",
+      "title": "Exportă ca PDF",
       "filterName": "Document PDF"
     },
     "exportHtml": {
-      "title": "Exportați ca HTML",
+      "title": "Exportă ca HTML",
       "filterName": "Document HTML"
     },
     "import": {
       "filterSupported": "Fișiere acceptate",
-      "filterAll": "Toate Fișierele"
+      "filterAll": "Toate fișierele"
     },
     "exportCancelled": "Export anulat",
     "update": {
       "availableTitle": "Actualizare disponibilă",
       "availableMessage": "memrynote {version} este disponibil.",
       "availableDetailFallback": "Descărcați actualizarea acum?",
-      "buttonDownload": "Descărcați",
-      "buttonLater": "mai târziu",
-      "readyTitle": "Actualizare gata",
+      "buttonDownload": "Descarcă",
+      "buttonLater": "Mai târziu",
+      "readyTitle": "Actualizare pregătită",
       "readyMessage": "memrynote {version} a fost descărcat.",
       "readyDetailFallback": "Reporniți memrynote pentru a finaliza instalarea actualizării.",
-      "buttonRestartNow": "Reporniți acum",
+      "buttonRestartNow": "Repornește acum",
       "releaseNotesLabel": "Note de lansare:"
     },
     "pair": {
+      "title": "Asociază extensia de browser",
+      "message": "Permiteți extensiei de browser Memry să trimită capturi către această aplicație?",
       "buttonAllow": "Permite",
       "buttonDeny": "Refuză",
-      "buttonPair": "Asociază",
-      "message": "Permiteți extensiei de browser Memry să trimită capturi către această aplicație?",
-      "title": "Asociați extensia de browser"
+      "buttonPair": "Asociază"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "Notă de memento",
-      "journal": "Memento de jurnal",
-      "highlight": "Evidențiați memento",
-      "fallback": "Memento scadent",
-      "default": "Memento",
-      "task": "Memento sarcină"
-    },
     "inboxReview": {
-      "body": "Ai {count, plural, one {# element} few {# elemente} other {# de elemente}} de revizuit.",
-      "testBody": "Acesta este un test — așa vor arăta mementourile tale zilnice de revizuire.",
-      "title": "E timpul să îți revizuiești inboxul"
+      "title": "Este timpul să revizuiți inboxul",
+      "body": "Aveți {count, plural, one {# element} few {# elemente} other {# de elemente}} de revizuit.",
+      "testBody": "Acesta este un test – așa vor arăta mementourile zilnice pentru revizuire."
+    },
+    "reminder": {
+      "note": "Memento pentru notiță",
+      "journal": "Memento de jurnal",
+      "highlight": "Memento pentru evidențiere",
+      "task": "Memento pentru sarcină",
+      "fallback": "A sosit un memento",
+      "default": "Memento"
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "Ora de memento trebuie să fie în viitor",
+    "reminderTimeMustBeFuture": "Ora mementoului trebuie să fie în viitor",
     "definitionNotFound": "Definiția nu a fost găsită",
-    "noteNotFound": "Nota nu a fost găsită",
-    "updateFailed": "Actualizarea a eșuat"
+    "noteNotFound": "Notița nu a fost găsită",
+    "updateFailed": "Actualizarea a eșuat",
+    "updateReadOnlyVolume": "Actualizările nu pot fi instalate cât timp memrynote rulează din această locație. Mutați memrynote în dosarul Aplicații și deschideți-l din nou."
   },
   "startup": {
-    "failed": {
-      "body": "Acest lucru se poate întâmpla când discul are foarte puțin spațiu liber sau când driverele grafice sunt vechi. Încercați să eliberați spațiu pe disc, apoi redeschideți MemryNote. Dacă se repetă, reinstalarea rezolvă de obicei problema.",
-      "title": "MemryNote nu a putut porni complet"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote va reporni automat.",
-      "title": "Se instalează actualizarea…"
+      "title": "Se instalează actualizarea…",
+      "subtitle": "MemryNote va reporni automat."
+    },
+    "failed": {
+      "title": "MemryNote nu a putut porni complet",
+      "body": "Acest lucru se poate întâmpla când discul are foarte puțin spațiu liber sau când driverele grafice sunt vechi. Încercați să eliberați spațiu pe disc, apoi redeschideți MemryNote. Dacă se repetă, reinstalarea rezolvă de obicei problema."
     }
   }
 }

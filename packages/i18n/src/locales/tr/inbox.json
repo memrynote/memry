@@ -119,7 +119,7 @@
     "deselectAll": "Tümünün seçimini kaldır",
     "ariaLabel": "Seçili {count} öğe için toplu işlemler",
     "file": "Yerleştir",
-    "tag": "Etiket",
+    "tag": "Etiketle",
     "snooze": "Ertele",
     "archive": "Arşivle",
     "add": "Ekle",
@@ -253,7 +253,7 @@
     "pending": "beklemede",
     "failed": "başarısız",
     "copyTranscription": "Metin dökümünü kopyala",
-    "transcribingAudio": "Ses yazıya aktarılıyor…",
+    "transcribingAudio": "Ses metne dönüştürülüyor…",
     "awaitingTranscription": "Metin dökümü bekleniyor…",
     "noTranscription": "Metin dökümü yok",
     "failedPlayAudio": "Ses çalınamadı",
@@ -289,11 +289,11 @@
       },
       "tomorrow": {
         "label": "Yarın",
-        "description": "Yarın 09.00"
+        "description": "Yarın saat 09:00"
       },
       "nextWeek": {
         "label": "Gelecek hafta",
-        "description": "Pazartesi 09.00"
+        "description": "Pazartesi saat 09:00"
       },
       "inMinutes": {
         "label": "{count, plural, one {# dakika sonra} other {# dakika sonra}}"
@@ -478,7 +478,7 @@
     "componentsReminderReminderPicker": {
       "remind": "Hatırlat",
       "remindMe": "Bana hatırlat",
-      "pickDateTime": "Tarih ve saat seçin",
+      "pickDateTime": "Tarih ve saat seç",
       "addANoteOptional": "Not ekleyin (isteğe bağlı)",
       "backToPresets": "Ön ayarlara geri dön",
       "time": "Saat",

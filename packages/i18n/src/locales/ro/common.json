@@ -1,18 +1,27 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Focalizează câmpul de captură",
+    "detailHint": "detalii",
+    "submit": "Capturează"
+  },
   "button": {
-    "save": "Salvați",
+    "save": "Salvează",
     "cancel": "Anulează",
     "close": "Închide",
-    "delete": "Ștergeți",
+    "delete": "Șterge",
     "done": "Gata",
-    "dontSave": "Nu salvați",
-    "add": "Adăugați",
-    "remove": "Eliminați",
-    "retry": "Reîncercați",
+    "dontSave": "Nu salva",
+    "add": "Adaugă",
+    "remove": "Elimină",
+    "retry": "Reîncearcă",
     "back": "Înapoi",
     "continue": "Continuă",
-    "copy": "Copiere",
-    "create": "Creați"
+    "copy": "Copiază",
+    "create": "Creează"
+  },
+  "media": {
+    "video": "Video"
   },
   "state": {
     "loading": "Se încarcă…",
@@ -22,9 +31,9 @@
   },
   "action": {
     "search": "Caută",
-    "expand": "Extindeți",
-    "collapse": "Colaps",
-    "showMore": "+{count, plural, one {# mai mult} other {# mai mult}}",
+    "expand": "Extinde",
+    "collapse": "Restrânge",
+    "showMore": "{count, plural, one {Încă #} few {Încă #} other {Încă #}}",
     "showLess": "Arată mai puțin",
     "undo": "Anulează"
   },
@@ -33,151 +42,624 @@
     "showInExplorer": "Afișează în Explorer",
     "showInFileManager": "Afișează în managerul de fișiere",
     "openInDefaultApp": "Deschide în aplicația implicită",
-    "revealFailed": "Nu s-a putut afișa în folder"
+    "revealFailed": "Nu s-a putut afișa în dosar"
   },
   "tabs": {
-    "pin": "Fila Pin",
-    "unpin": "Anulați fixarea filei",
+    "pin": "Fixează fila",
+    "unpin": "Anulează fixarea filei",
+    "persistence": {
+      "saveFailed": "Filele deschise nu mai sunt salvate",
+      "saveFailedQuota": "Această sesiune este prea mare pentru a fi stocată. Închideți câteva file, altfel este posibil să nu fie restaurată data viitoare când deschideți Memry.",
+      "saveFailedGeneric": "Memry nu a putut stoca această sesiune, așa că este posibil să nu fie restaurată data viitoare când deschideți aplicația.",
+      "lastSessionNotSaved": "Ultima sesiune nu a fost salvată la închiderea aplicației Memry",
+      "lastSessionNotSavedQuota": "Spațiul de stocare era plin atunci, așa că aceste file provin dintr-o salvare anterioară. Închideți câteva file pentru a elibera spațiu.",
+      "lastSessionNotSavedGeneric": "Memry nu a putut stoca filele la ieșire, așa că acestea provin dintr-o salvare anterioară."
+    },
     "contextMenu": {
       "close": "Închide",
-      "closeOthers": "Închide Alții",
-      "closeToRight": "Aproape la Dreapta",
-      "closeAll": "Închideți totul",
-      "duplicate": "Duplicați fila",
-      "splitRight": "Split dreapta",
-      "splitDown": "Split jos",
-      "copyPath": "Copiați calea",
-      "revealInSidebar": "Dezvăluie în bara laterală"
+      "closeOthers": "Închide celelalte",
+      "closeToRight": "Închide filele din dreapta",
+      "closeAll": "Închide toate",
+      "duplicate": "Duplică fila",
+      "splitRight": "Divizează la dreapta",
+      "splitDown": "Divizează în jos",
+      "copyPath": "Copiază calea",
+      "revealInSidebar": "Arată în bara laterală"
     }
   },
   "count": {
-    "note": "{count, plural, one {Notă #} other {Note #}}",
-    "task": "{count, plural, one {Sarcina #} other {Sarcini #}}",
-    "itemDelete": "{count, plural, one {Ștergeți elementul #} other {Ștergeți elementele #}}",
-    "event": "{count, plural, one {# eveniment} few {# evenimente} other {# de evenimente}}",
+    "note": "{count, plural, one {# notiță} few {# notițe} other {# de notițe}}",
     "journal": "{count, plural, one {# jurnal} few {# jurnale} other {# de jurnale}}",
-    "reminder": "{count, plural, one {# memento} few {# mementouri} other {# de mementouri}}"
+    "task": "{count, plural, one {# sarcină} few {# sarcini} other {# de sarcini}}",
+    "event": "{count, plural, one {# eveniment} few {# evenimente} other {# de evenimente}}",
+    "reminder": "{count, plural, one {# memento} few {# mementouri} other {# de mementouri}}",
+    "itemDelete": "{count, plural, one {Șterge # element} few {Șterge # elemente} other {Șterge # de elemente}}"
   },
   "toast": {
-    "actionFailed": "Acțiunea eșuată",
+    "actionFailed": "Acțiunea a eșuat",
     "nothingToUndo": "Nimic de anulat",
     "undone": "Anulat: {description}",
-    "undoFailed": "Acțiunea nu a fost anulată"
+    "undoFailed": "Nu s-a putut anula acțiunea",
+    "filesImported": "{count, plural, one {# fișier importat} few {# fișiere importate} other {# de fișiere importate}}",
+    "filesImportFailed": "{count, plural, one {Nu s-a putut importa # fișier} few {Nu s-au putut importa # fișiere} other {Nu s-au putut importa # de fișiere}}",
+    "filesHiddenInSidebar": "Fișierele sunt ascunse în bara laterală. Activați „Afișează fișierele” din meniul de sortare Colecții pentru a le vedea.",
+    "moreRemindersDue": "{count, plural, one {Încă # memento} few {Încă # mementouri} other {Încă # de mementouri}}",
+    "moreRemindersDueHint": "Consultați panoul de mementouri pentru detalii",
+    "searchIndexRepaired": "Index de căutare reparat",
+    "searchIndexRepairedHint": "O parte din indexul de căutare era deteriorată, așa că Memry l-a reconstruit. Notițele nu au fost afectate."
   },
   "dateRelative": {
     "today": "Astăzi",
     "yesterday": "Ieri",
-    "daysAgo": "{count, plural, one {# zi în urmă} other {# zile în urmă}}",
+    "daysAgo": "{count, plural, one {acum # zi} few {acum # zile} other {acum # de zile}}",
+    "tomorrow": "Mâine",
+    "daysOverdue": "{count, plural, one {# zi de întârziere} few {# zile de întârziere} other {# de zile de întârziere}}",
     "daysLate": "{count, plural, one {# z întârziere} few {# z întârziere} other {# z întârziere}}",
-    "daysOverdue": "{count, plural, one {# zi întârziere} few {# zile întârziere} other {# de zile întârziere}}",
-    "tomorrow": "Mâine"
+    "inDays": "{count, plural, one {peste # zi} few {peste # zile} other {peste # de zile}}",
+    "inWeeks": "{count, plural, one {peste # săptămână} few {peste # săptămâni} other {peste # de săptămâni}}"
   },
   "recurrence": {
-    "everyNDays": "{count, plural, one {În fiecare zi} other {La fiecare # zile}}",
-    "everyNWeeks": "{count, plural, one {În fiecare săptămână} other {La fiecare # săptămâni}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {În fiecare zi a săptămânii} other {La fiecare # săptămâni în zilele lucrătoare}}",
-    "everyNWeeksOnWeekends": "{count, plural, one {În fiecare weekend} other {La fiecare # săptămâni în weekend}}",
-    "everyNWeeksOnDays": "{count, plural, one {În fiecare săptămână pe {days}} other {La fiecare # săptămâni pe {days}}}",
-    "everyNMonths": "{count, plural, one {În fiecare lună} other {La fiecare # luni}}",
-    "everyNMonthsOnDay": "{count, plural, one {În fiecare lună pe {day}{suffix}} other {La fiecare # luni pe {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {În fiecare lună pe {week} {day}} other {La fiecare # luni pe {week} {day}}}",
-    "everyNYears": "{count, plural, one {În fiecare an} other {La fiecare # ani}}",
+    "everyNDays": "{count, plural, one {În fiecare zi} few {La fiecare # zile} other {La fiecare # de zile}}",
+    "everyNWeeks": "{count, plural, one {În fiecare săptămână} few {La fiecare # săptămâni} other {La fiecare # de săptămâni}}",
+    "everyNWeeksOnWeekdays": "{count, plural, one {În fiecare zi lucrătoare} few {La fiecare # săptămâni, în zilele lucrătoare} other {La fiecare # de săptămâni, în zilele lucrătoare}}",
+    "everyNWeeksOnWeekends": "{count, plural, one {În fiecare weekend} few {La fiecare # săptămâni, în weekend} other {La fiecare # de săptămâni, în weekend}}",
+    "everyNWeeksOnDays": "{count, plural, one {În fiecare săptămână, {days}} few {La fiecare # săptămâni, {days}} other {La fiecare # de săptămâni, {days}}}",
+    "everyNMonths": "{count, plural, one {În fiecare lună} few {La fiecare # luni} other {La fiecare # de luni}}",
+    "everyNMonthsOnDay": "{count, plural, one {În fiecare lună, pe {day}{suffix}} few {La fiecare # luni, pe {day}{suffix}} other {La fiecare # de luni, pe {day}{suffix}}}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {În fiecare lună, în {week} {day}} few {La fiecare # luni, în {week} {day}} other {La fiecare # de luni, în {week} {day}}}",
+    "everyNYears": "{count, plural, one {În fiecare an} few {La fiecare # ani} other {La fiecare # de ani}}",
     "repeats": "Se repetă",
     "ordinal": {
       "first": "prima",
-      "fourth": "a patra",
-      "last": "ultima",
       "second": "a doua",
-      "third": "a treia"
+      "third": "a treia",
+      "fourth": "a patra",
+      "last": "ultima"
     },
     "preset": {
-      "everyWeekday": "În fiecare zi lucrătoare (Lun-Vin)",
+      "everyWeekday": "În fiecare zi lucrătoare (luni–vineri)",
       "everyYearOnDate": "În fiecare an pe {date}"
+    }
+  },
+  "agentChat": {
+    "title": "Chat cu agentul",
+    "loading": "Se încarcă chatul cu agentul…",
+    "conversationLoading": "Se încarcă conversația…",
+    "historyNotSaved": "Acest dispozitiv nu poate debloca seiful, așa că această conversație nu va fi salvată când închideți aplicația.",
+    "newConversation": "Conversație nouă",
+    "history": "Istoricul conversațiilor",
+    "openInTab": "Deschide conversația într-o filă",
+    "stop": "Oprește",
+    "thinking": "Agentul se gândește",
+    "enable": {
+      "title": "Activează agentul memrynote",
+      "description": "Agentul memrynote folosește CLI-ul de agent local selectat pentru a discuta despre seif. Claude trimite mesajele către Anthropic; Codex le trimite către OpenAI.",
+      "remote": "memrynote criptează istoricul chatului, local și sincronizat, dar inferența modelului are loc la furnizorul selectat.",
+      "readTools": "Instrumentele de citire rulează automat.",
+      "writeTools": "Instrumentele de creare și actualizare necesită aprobare.",
+      "diff": "Instrumentele de actualizare arată diferențele sau o previzualizare.",
+      "button": "Activează chatul cu agentul"
+    },
+    "approval": {
+      "description": "Agentul dorește să apeleze {name} cu aceste argumente.",
+      "applyOnce": "Aplică o dată",
+      "allowOnce": "Permite o dată",
+      "editAndApply": "Editează și aplică",
+      "editAndAllow": "Editează și permite",
+      "allowAlways": "Permite întotdeauna",
+      "applyEdits": "Aplică modificările",
+      "deny": "Respinge",
+      "invalidJson": "Introduceți JSON valid înainte de a aplica modificări.",
+      "thisTool": "acest instrument",
+      "alwaysAllowHint": "„Permite întotdeauna” se aplică pentru {tool}. Celelalte instrumente cer în continuare aprobare, iar ștergerile cer întotdeauna aprobare.",
+      "alwaysInChat": "Permite întotdeauna în acest chat",
+      "alwaysInChatHint": "Expiră la încheierea conversației",
+      "alwaysInVault": "Permite întotdeauna în acest seif",
+      "alwaysInVaultHint": "Se poate revoca din Setări › Agent",
+      "deletesAlwaysAsk": "Ștergerile cer întotdeauna aprobare"
+    },
+    "diff": {
+      "previewError": "Nu s-a putut previzualiza această modificare",
+      "description": "Agentul dorește să actualizeze {title}. Examinați modificarea înainte de a o aplica.",
+      "fallbackTitle": "acest element",
+      "current": "Actual",
+      "candidate": "Propus",
+      "loading": "Se încarcă…",
+      "apply": "Aplică",
+      "applyEdited": "Aplică versiunea editată",
+      "editBody": "Editează înainte de a aplica"
+    },
+    "inPageReview": {
+      "regionLabel": "Sugestia agentului",
+      "barLabel": "Revizuiește sugestia agentului",
+      "loading": "Se încarcă sugestia…",
+      "loadingTitle": "Sugestia agentului",
+      "title": "{count, plural, =0 {Sugestia agentului} one {Agentul a sugerat # modificare} few {Agentul a sugerat # modificări} other {Agentul a sugerat # de modificări}}",
+      "editingTitle": "Se editează sugestia",
+      "pendingHint": "Nu a fost salvată încă. Acceptați pentru a o aplica.",
+      "editingHint": "Modificările rămân aici până când acceptați.",
+      "baseChanged": "Această notiță s-a modificat în timp ce editați sugestia.",
+      "keepDraft": "Păstrează modificările mele",
+      "restart": "Reia de la cea mai nouă versiune",
+      "reject": "Respinge",
+      "edit": "Editează",
+      "showDiff": "Arată modificările",
+      "accept": "Acceptă",
+      "acceptEdits": "Acceptă modificările",
+      "waiting": "Se așteaptă revizuirea în {title}.",
+      "notOpen": "Deschideți {title} pentru a vedea modificările sau acceptați-le fără revizuire.",
+      "show": "Arată",
+      "openNote": "Deschide notița",
+      "openJournal": "Deschide jurnalul",
+      "fallbackTitle": "această notiță"
+    },
+    "preview": {
+      "unset": "nesetat",
+      "yes": "da",
+      "no": "nu",
+      "noChange": "Nimic din ce poate afișa această previzualizare nu s-ar modifica.",
+      "willBeLost": "Se va pierde",
+      "unchangedLines": "{count, plural, one {# linie nemodificată} few {# linii nemodificate} other {# de linii nemodificate}}",
+      "item": {
+        "note": "Notiță",
+        "folder": "Dosar",
+        "task": "Sarcină",
+        "journal": "Jurnal",
+        "inbox": "Inbox",
+        "project": "Proiect",
+        "status": "Stare",
+        "canvas": "Canvas"
+      },
+      "intent": {
+        "create": "creare",
+        "update": "actualizare",
+        "delete": "ștergere",
+        "move": "mutare",
+        "reorder": "reordonare"
+      },
+      "field": {
+        "archived": "Arhivat",
+        "arguments": "Argumente",
+        "color": "Culoare",
+        "completed": "Finalizat",
+        "description": "Descriere",
+        "due": "Termen",
+        "dueTime": "Ora termenului",
+        "duplicateOf": "Copie după",
+        "edits": "Modificări",
+        "elements": "Elemente",
+        "folder": "Dosar",
+        "icon": "Pictogramă",
+        "isDefault": "Implicit",
+        "isDone": "Stare finală",
+        "items": "Elemente",
+        "name": "Nume",
+        "operation": "Operație",
+        "order": "Ordine",
+        "parent": "Părinte",
+        "path": "Cale",
+        "position": "Poziție",
+        "priority": "Prioritate",
+        "project": "Proiect",
+        "removed": "Eliminat",
+        "repeatFrom": "Repetare de la",
+        "snoozeReason": "Motivul amânării",
+        "snoozedUntil": "Amânat până la",
+        "start": "Început",
+        "status": "Stare",
+        "tags": "Etichete",
+        "title": "Titlu"
+      },
+      "loss": {
+        "words": "{count, plural, one {# cuvânt} few {# cuvinte} other {# de cuvinte}}",
+        "tags": "{count, plural, one {# etichetă} few {# etichete} other {# de etichete}}",
+        "notes": "{count, plural, one {# notiță} few {# notițe} other {# de notițe}}",
+        "folders": "{count, plural, one {# dosar} few {# dosare} other {# de dosare}}",
+        "files": "{count, plural, one {# fișier} few {# fișiere} other {# de fișiere}}",
+        "events": "{count, plural, one {# eveniment} few {# evenimente} other {# de evenimente}}",
+        "tasks": "{count, plural, one {# sarcină} few {# sarcini} other {# de sarcini}}",
+        "due": "termen: {value}"
+      }
+    },
+    "composer": {
+      "currentNote": "Notița curentă",
+      "removeAttachment": "Elimină {label}",
+      "placeholder": "Fă orice cu memrynote… @ pentru a menționa notițe, sarcini și evenimente",
+      "send": "Trimite",
+      "providerLabel": "Furnizorul agentului: {provider}",
+      "settingsSummary": "{reasoning}",
+      "connectedTools": "Instrumente conectate",
+      "connectTool": "Conectează {tool}",
+      "addContext": "Adaugă context",
+      "addContextWithPermissions": "Adaugă context ({permissions})",
+      "mentionContext": "Menționează o notiță, o sarcină sau un eveniment",
+      "voice": {
+        "start": "Pornește dictarea vocală",
+        "stop": "Oprește dictarea vocală",
+        "transcribing": "Se transcrie intrarea vocală",
+        "errors": {
+          "permissionDenied": "Accesul la microfon a fost refuzat",
+          "noMicrophone": "Nu s-a găsit niciun microfon",
+          "accessFailed": "Nu s-a putut accesa microfonul",
+          "recordingFailed": "Nu s-a putut înregistra intrarea vocală",
+          "transcriptionFailed": "Nu s-a putut transcrie intrarea vocală"
+        }
+      },
+      "modelLabel": "Modelul agentului: {provider} {model}",
+      "reasoningLabel": "Raționamentul agentului: {reasoning}",
+      "providers": {
+        "label": "Furnizor",
+        "claude": "Claude",
+        "codex": "Codex",
+        "antigravity": "Antigravity",
+        "local": "Local"
+      },
+      "access": {
+        "vaultOnly": "Doar seiful",
+        "computerAccess": "Acces la computer"
+      },
+      "webSearch": {
+        "on": "Activat",
+        "off": "Dezactivat",
+        "label": "Căutare web"
+      },
+      "models": {
+        "default": "Implicit",
+        "label": "Model",
+        "search": "Caută modele…",
+        "useCustom": "Folosește „{query}”",
+        "localEmpty": "Nu s-au găsit modele – verificați Setările",
+        "localSetup": "Configurează în Setări…",
+        "cliSetup": "Nedetectat – configurează în Setări…",
+        "runtimeUnavailable": "Agent indisponibil – deschide Setările…"
+      },
+      "settings": {
+        "reasoning": "Raționament",
+        "effort": "Efort"
+      },
+      "includeCurrentNote": "Include notița curentă",
+      "chooseModel": "Alege modelul",
+      "claudeSettings": {
+        "reasoning": {
+          "low": "Scăzut",
+          "medium": "Mediu",
+          "high": "Ridicat",
+          "extraHigh": "Foarte ridicat",
+          "extraHighDefault": "Foarte ridicat (implicit)",
+          "max": "Maxim"
+        }
+      },
+      "codexSettings": {
+        "reasoning": {
+          "low": "Scăzut",
+          "medium": "Mediu",
+          "mediumDefault": "Mediu (implicit)",
+          "high": "Ridicat",
+          "extraHigh": "Foarte ridicat"
+        }
+      },
+      "permissionsLabel": "Permisiunile agentului: {access}, căutare web: {webSearch}",
+      "permissions": {
+        "label": "Permisiuni",
+        "access": "Acces",
+        "tools": "Instrumente"
+      },
+      "modelSettingsLabel": "Setările modelului agentului: {model}, {settings}"
+    },
+    "refPicker": {
+      "noMatches": "Nicio potrivire"
+    },
+    "toolResult": {
+      "label": "Rezultatul instrumentului"
+    },
+    "toolCall": {
+      "editedArgs": "Argumente editate",
+      "parameters": "Parametri"
+    },
+    "toolActivity": {
+      "steps": "{count, plural, one {# pas} few {# pași} other {# de pași}}",
+      "running": "În execuție",
+      "awaitingApproval": "Se așteaptă aprobarea",
+      "done": "Finalizat"
+    },
+    "reasoning": {
+      "thinking": "Se gândește…",
+      "thought": "S-a gândit",
+      "thoughtFor": "S-a gândit {seconds} s",
+      "toggle": "Afișează/ascunde raționamentul"
+    },
+    "sidebar": {
+      "label": "Bara laterală din dreapta",
+      "day": "Ziua",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# aprobare în așteptare} few {# aprobări în așteptare} other {# de aprobări în așteptare}}",
+      "inProgress": "Agentul răspunde",
+      "close": "Închide agentul"
+    },
+    "errors": {
+      "loadConversations": "Nu s-au putut încărca conversațiile cu agentul",
+      "loadConversation": "Nu s-a putut încărca conversația cu agentul",
+      "createConversation": "Nu s-a putut crea conversația cu agentul",
+      "busy": "O altă fereastră generează un răspuns în această conversație. Așteptați să se termine sau opriți-l de acolo.",
+      "sendTurn": "Nu s-a putut trimite mesajul către agent",
+      "cancelTurn": "Nu s-a putut anula răspunsul agentului",
+      "submitApproval": "Nu s-a putut trimite aprobarea instrumentului",
+      "updateTrust": "Nu s-au putut actualiza instrumentele de încredere",
+      "saveDisclosure": "Nu s-a putut salva acordul",
+      "resolveWindow": "Nu s-a putut identifica fereastra sursă a agentului",
+      "detectCli": "Nu s-au putut detecta backend-urile agentului",
+      "loadDisclosure": "Nu s-a putut încărca starea acordului"
+    },
+    "actions": {
+      "copy": "Copiază",
+      "copied": "Copiat"
+    },
+    "sources": {
+      "count": "{count, plural, one {# sursă} few {# surse} other {# de surse}}"
+    }
+  },
+  "canvas": {
+    "sectionLabel": "Canvasuri",
+    "newCanvas": "Canvas nou",
+    "newCanvasFolder": "Dosar nou de canvasuri",
+    "untitled": "Canvas fără titlu",
+    "empty": "Niciun canvas încă",
+    "loading": "Se încarcă canvasurile…",
+    "loadFailed": "Nu s-au putut încărca canvasurile",
+    "createFailed": "Nu s-a putut crea canvasul",
+    "openFailed": "Nu s-a putut deschide canvasul",
+    "notFound": "Acest canvas nu a putut fi găsit",
+    "corruptScene": "Acest canvas nu a putut fi citit. Editarea este dezactivată pentru a nu pierde date.",
+    "unreadableTitle": "Acest canvas nu poate fi deschis aici",
+    "unreadableBody": "Documentul lipsește din seif sau canvasul a fost desenat înainte ca acestea să devină fișiere, iar acest dispozitiv nu mai are cheia care îl deblochează. Nu s-a șters nimic – deschideți seiful pe dispozitivul care l-a creat sau restaurați dosarul canvasurilor.",
+    "tooLargeToSync": "Acest canvas este prea mare pentru sincronizare. Este salvat pe acest dispozitiv, dar nu va ajunge pe celelalte dispozitive până nu devine mai mic.",
+    "savedToVault": "Toate modificările se salvează automat în seif",
+    "libraryStoreFailed": "Nu s-a putut salva biblioteca de forme. Modificările recente se pot pierde.",
+    "link": {
+      "itemMissing": "Elementul legat nu mai există.",
+      "elementMissing": "Linkul duce la ceva ce nu mai este pe acest canvas.",
+      "title": "Link către un element",
+      "placeholder": "Caută notițe, sarcini, evenimente, inbox, proiecte…",
+      "hint": "Începeți să tastați pentru a găsi un element.",
+      "empty": "Nimic nu se potrivește.",
+      "selectOneShape": "Selectați o singură formă pentru a o lega de un element.",
+      "cardsCannotLink": "Un card deschide deja propriul element, deci nu poate avea un al doilea link.",
+      "linked": "Link adăugat.",
+      "groupNotes": "Notițe",
+      "groupFiles": "Fișiere",
+      "groupTasks": "Sarcini",
+      "groupEvents": "Evenimente",
+      "groupInbox": "Inbox",
+      "groupJournals": "Jurnale",
+      "groupProjects": "Proiecte",
+      "groupFolders": "Dosare",
+      "useUrl": "Link către {url}",
+      "openTarget": "Deschide {name}",
+      "shapeTarget": "O formă de pe acest canvas",
+      "missingTarget": "Nu mai este pe acest canvas"
+    },
+    "disabledTitle": "Canvasul nu este activat",
+    "disabledBody": "Această filă aparține unei funcții care nu este activată pe acest dispozitiv.",
+    "unreadable": "Documentul acestui canvas lipsește sau nu poate fi citit. Afișați-l în managerul de fișiere sau ștergeți-l din listă.",
+    "actionFailed": "Nu s-a putut finaliza acțiunea pe canvas",
+    "renameLabel": "Numele canvasului",
+    "folderNameLabel": "Numele dosarului",
+    "deleteConfirmTitle": "Ștergeți acest canvas?",
+    "deleteConfirmBody": "„{title}” va fi eliminat din memrynote de pe toate dispozitivele. Fișierul ajunge în coșul de gunoi al acestui computer, dar restaurarea lui de acolo nu va readuce canvasul.",
+    "dropToRoot": "Plasați aici pentru a muta în afara dosarului",
+    "filterPlaceholder": "Filtrează canvasurile",
+    "filterNoMatches": "Niciun canvas nu corespunde filtrului",
+    "folderCanvasCount": "{count, plural, one {# canvas în interior} few {# canvasuri în interior} other {# de canvasuri în interior}}",
+    "folderEmptyHint": "Încă nu există nimic aici",
+    "deleteFolderConfirmTitle": "Ștergeți acest dosar de canvasuri?",
+    "deleteFolderConfirmBody": "„{name}” și tot conținutul său vor fi eliminate din memrynote de pe toate dispozitivele. Canvasuri afectate: {count}. Dosarul ajunge în coșul de gunoi al acestui computer, dar restaurarea lui de acolo nu le va readuce.",
+    "actions": {
+      "rename": "Redenumește",
+      "duplicate": "Duplică",
+      "copyLink": "Copiază linkul",
+      "setIcon": "Setează pictograma",
+      "removeIcon": "Elimină pictograma",
+      "moveToFolder": "Mută în dosar",
+      "moveToRoot": "Rădăcină",
+      "openExternal": "Deschide în editor extern",
+      "newCanvasHere": "Canvas nou aici",
+      "newFolder": "Dosar nou",
+      "canvasMenu": "Acțiuni pentru canvas",
+      "folderMenu": "Acțiuni pentru dosarul de canvasuri"
+    },
+    "card": {
+      "open": "Deschide în filă",
+      "openToEdit": "Deschide în filă pentru a edita",
+      "deleted": "Element șters",
+      "loading": "Se încarcă…",
+      "untitled": "Fără titlu",
+      "allDay": "Toată ziua",
+      "createNoteFailed": "Nu s-a putut crea notița",
+      "addCard": "Adaugă card",
+      "addPlaceholder": "Caută notițe, fișiere, sarcini, evenimente și proiecte…",
+      "addCreateNote": "Creează notița „{query}”",
+      "addCreateNoteEmpty": "Creează o notiță nouă",
+      "addEmpty": "Nu s-a găsit nimic",
+      "addGroupNotes": "Notițe",
+      "addGroupTasks": "Sarcini",
+      "addGroupEvents": "Evenimente",
+      "addOnCanvas": "Pe canvas",
+      "addCreatedAt": "Creat {date}",
+      "bulkGroup": "Adaugă tot din",
+      "bulkFromTag": "O etichetă…",
+      "bulkFromFolder": "Un dosar…",
+      "bulkSearchTags": "Caută etichete…",
+      "bulkSearchFolders": "Caută dosare…",
+      "bulkTagsHeading": "Etichete",
+      "bulkFoldersHeading": "Dosare",
+      "bulkItemCount": "{count, plural, one {# element} few {# elemente} other {# de elemente}}",
+      "bulkViewsHeading": "Adaugă din {name}",
+      "bulkAllItems": "Toate elementele",
+      "bulkConfirmTitle": "{count, plural, one {Adăugați # card din {name}?} few {Adăugați # carduri din {name}?} other {Adăugați # de carduri din {name}?}}",
+      "bulkConfirmBody": "Tablele mari devin mai lente și pot depăși limita de dimensiune a sincronizării.",
+      "bulkConfirmSkipped": "{count, plural, one {# element este deja pe acest canvas și va fi omis.} few {# elemente sunt deja pe acest canvas și vor fi omise.} other {# de elemente sunt deja pe acest canvas și vor fi omise.}}",
+      "bulkConfirmAdd": "{count, plural, one {Adaugă # card} few {Adaugă # carduri} other {Adaugă # de carduri}}",
+      "bulkBack": "Înapoi",
+      "bulkEmpty": "Nu există notițe, fișiere sau sarcini de adăugat",
+      "bulkLoadFailed": "Nu s-au putut încărca elementele",
+      "bulkAdded": "{count, plural, one {# card adăugat} few {# carduri adăugate} other {# de carduri adăugate}}",
+      "bulkAddedSkipped": "{count, plural, one {# card adăugat} few {# carduri adăugate} other {# de carduri adăugate}} · {skipped} deja pe canvas",
+      "bulkAllOnCanvas": "{count, plural, one {Deja pe acest canvas} few {Toate cele # sunt deja pe acest canvas} other {Toate cele # sunt deja pe acest canvas}}"
+    },
+    "cluster": {
+      "button": "Sugerează grupuri",
+      "buttonHint": "Grupează cardurile de notițe de pe această tablă (sau pe cele selectate) după similaritate. Rulează pe acest dispozitiv.",
+      "loading": "Se grupează…",
+      "needMoreNotes": "{count, plural, one {Adăugați cel puțin # card de notiță pentru a sugera grupuri.} few {Adăugați cel puțin # carduri de notițe pentru a sugera grupuri.} other {Adăugați cel puțin # de carduri de notițe pentru a sugera grupuri.}}",
+      "tooMany": "{count, plural, one {Această tablă are mai mult de # card de notiță. Selectați cel mult # și încercați din nou.} few {Această tablă are mai mult de # carduri de notițe. Selectați cel mult # și încercați din nou.} other {Această tablă are mai mult de # de carduri de notițe. Selectați cel mult # și încercați din nou.}}",
+      "disabled": "Activați embeddingurile locale în Setări > AI pentru a sugera grupuri.",
+      "noGroups": "Nu s-au găsit grupuri clare printre aceste notițe.",
+      "missing": "{count, plural, one {# notiță nu are încă embedding și a fost omisă.} few {# notițe nu au încă embedding și au fost omise.} other {# de notițe nu au încă embedding și au fost omise.}}",
+      "failed": "Nu s-au putut sugera grupuri",
+      "title": "Grupuri sugerate",
+      "description": "Grupate după similaritate pe acest dispozitiv. Nimic de pe tablă nu se schimbă până nu creați cadre.",
+      "defaultName": "Grupul {number}",
+      "untitledGroup": "Grup",
+      "groupName": "Numele grupului",
+      "acceptGroup": "Include {name}",
+      "noteCount": "{count, plural, one {# notiță} few {# notițe} other {# de notițe}}",
+      "discard": "Renunță",
+      "create": "{count, plural, one {Creează # cadru} few {Creează # cadre} other {Creează # de cadre}}",
+      "created": "{count, plural, one {# cadru creat} few {# cadre create} other {# de cadre create}}",
+      "cardsGone": "Aceste carduri nu mai sunt pe tablă."
+    },
+    "frame": {
+      "categorize": "Categorizează",
+      "editBinding": "Schimbă categoria acestei secțiuni",
+      "cardCount": "{count, plural, one {# card} few {# carduri} other {# de carduri}}",
+      "bindTitle": "Categorizează această secțiune",
+      "bindHint": "Cardurile plasate în secțiune primesc această etichetă sau valoare de proprietate.",
+      "bindPlaceholder": "Caută etichete și valori de proprietăți sau tastează o etichetă nouă…",
+      "bindEmpty": "Nicio etichetă sau valoare de proprietate potrivită.",
+      "groupTags": "Etichete",
+      "useTag": "Folosește eticheta nouă #{tag}",
+      "unbind": "Oprește categorizarea ca {label}",
+      "current": "Actual",
+      "applied": "{count, plural, one {S-a adăugat {label} la # card} few {S-a adăugat {label} la # carduri} other {S-a adăugat {label} la # de carduri}}",
+      "applyFailed": "Nu s-a putut adăuga {label}",
+      "revertFailed": "Nu s-a putut anula {label}",
+      "leftFrame": "{count, plural, one {# card a fost mutat din {label}. Își păstrează categoria.} few {# carduri au fost mutate din {label}. Își păstrează categoria.} other {# de carduri au fost mutate din {label}. Își păstrează categoria.}}",
+      "removeCategory": "Elimină {label}",
+      "removed": "{count, plural, one {S-a eliminat {label} de la # card} few {S-a eliminat {label} de la # carduri} other {S-a eliminat {label} de la # de carduri}}",
+      "removeFailed": "Nu s-a putut elimina {label}",
+      "skippedFile": "{count, plural, one {Un card de fișier a fost lăsat neschimbat: fișierele nu au etichete sau proprietăți.} few {# carduri de fișier au fost lăsate neschimbate: fișierele nu au etichete sau proprietăți.} other {# de carduri de fișier au fost lăsate neschimbate: fișierele nu au etichete sau proprietăți.}}",
+      "skippedTaskProperty": "{count, plural, one {Un card de sarcină a fost lăsat neschimbat: sarcinile pot primi etichete, nu proprietăți de notiță.} few {# carduri de sarcină au fost lăsate neschimbate: sarcinile pot primi etichete, nu proprietăți de notiță.} other {# de carduri de sarcină au fost lăsate neschimbate: sarcinile pot primi etichete, nu proprietăți de notiță.}}",
+      "skippedUnsupported": "{count, plural, one {Un card a fost lăsat neschimbat: evenimentele și proiectele nu pot fi categorizate.} few {# carduri au fost lăsate neschimbate: evenimentele și proiectele nu pot fi categorizate.} other {# de carduri au fost lăsate neschimbate: evenimentele și proiectele nu pot fi categorizate.}}",
+      "layoutAction": "Aranjează după proprietate",
+      "layoutTitle": "Aranjează după proprietate",
+      "layoutHint": "Creează câte o secțiune pentru fiecare valoare și distribuie în ele notițele de pe această tablă.",
+      "layoutPlaceholder": "Caută proprietăți de tip selecție, selecție multiplă și stare…",
+      "layoutEmpty": "Încă nu există proprietăți de tip selecție, selecție multiplă sau stare cu valori.",
+      "layoutValueCount": "{count, plural, one {# valoare} few {# valori} other {# de valori}}",
+      "layoutDone": "{count, plural, one {S-a creat # secțiune pentru {property}} few {S-au creat # secțiuni pentru {property}} other {S-au creat # de secțiuni pentru {property}}}",
+      "layoutFailed": "Nu s-a putut aranja tabla"
     }
   },
   "phaseF": {
     "componentsAppSidebar": {
       "collections": "Colecții",
-      "newNote": "Notă nouă",
-      "newNote2": "Notă nouă",
+      "projects": "Proiecte",
+      "newNote": "Notiță nouă",
+      "newNote2": "Notiță nouă",
       "newFolder": "Dosar nou",
       "newFolder2": "Dosar nou",
+      "newProject": "Proiect nou",
       "bookmarks": "Marcaje",
       "tags": "Etichete",
-      "dropFilesToImport": "Aruncă fișierele de importat",
-      "newNoteN": "Notă nouă (⌘N)",
+      "reorderSection": "Reordonează {section}",
+      "dropFilesToImport": "Plasați fișierele pentru a le importa",
+      "dropFilesIntoVaultRoot": "Rădăcina seifului",
+      "newNoteN": "Notiță nouă (⌘N)",
       "new": "Nou",
-      "syncDisabled": "Sincronizarea este dezactivată",
-      "syncDisabled2": "Sincronizarea este dezactivată",
+      "newItemMenu": "Creează nou…",
       "feedbackButton": "Trimite feedback",
-      "feedbackDescription": "Spune-ne ce funcționează, ce e defect sau ce ți-ai dori să facă Memry. Citim fiecare mesaj.",
-      "feedbackEmailHint": "Adaugă-ți emailul dacă vrei un răspuns.",
-      "feedbackError": "Nu s-a putut trimite feedbackul. Încearcă din nou.",
-      "feedbackPlaceholder": "Feedbackul tău…",
+      "feedbackTitle": "Trimite feedback",
+      "feedbackDescription": "Spuneți-ne ce funcționează, ce nu merge sau ce v-ați dori să facă MemryNote. Citim fiecare mesaj.",
+      "feedbackPlaceholder": "Scrie feedbackul…",
+      "feedbackEmailHint": "Adăugați adresa de e-mail dacă doriți un răspuns.",
+      "feedbackPrivacyTitle": "Ce se trimite",
+      "feedbackPrivacyMessage": "Mesajul, exact așa cum l-ați scris",
+      "feedbackPrivacyEmailOptional": "Adresa de e-mail – doar dacă o adăugați și doar pentru a vă putea răspunde",
+      "feedbackPrivacyEmailSignedIn": "Adresa de e-mail a contului ({email}), pentru a vă putea răspunde",
+      "feedbackPrivacyVersion": "Versiunea aplicației și sistemul de operare",
+      "feedbackPrivacyPlan": "Planul de abonament (gratuit, Plus, Pro sau Believer)",
+      "feedbackPrivacyNote": "Nimic altceva. Notițele rămân pe dispozitivul dvs.",
       "feedbackSend": "Trimite",
       "feedbackSending": "Se trimite…",
       "feedbackSuccess": "Mulțumim pentru feedback!",
-      "feedbackTitle": "Trimite feedback",
-      "newItemMenu": "Creează nou…",
-      "feedbackPrivacyEmailOptional": "Emailul tău — doar dacă îl adaugi și doar ca să îți putem răspunde",
-      "feedbackPrivacyEmailSignedIn": "Emailul contului tău ({email}), ca să îți putem răspunde",
-      "feedbackPrivacyMessage": "Mesajul tău, exact așa cum l-ai scris",
-      "feedbackPrivacyNote": "Nimic altceva. Notele tale rămân pe dispozitivul tău.",
-      "feedbackPrivacyPlan": "Planul tău (free, Plus, Pro sau Believer)",
-      "feedbackPrivacyTitle": "Ce se trimite",
-      "feedbackPrivacyVersion": "Versiunea aplicației și sistemul de operare",
-      "projects": "Proiecte"
+      "feedbackError": "Nu s-a putut trimite feedbackul. Încercați din nou.",
+      "syncDisabled": "Sincronizarea este dezactivată",
+      "syncDisabled2": "Sincronizarea este dezactivată",
+      "sortLabel": "Sortare {section}: {mode}",
+      "sortModeManual": "Manual",
+      "sortModeNameAsc": "Nume A → Z",
+      "sortModeNameDesc": "Nume Z → A",
+      "sortModeModifiedDesc": "Data modificării: cele mai noi primele",
+      "sortModeModifiedAsc": "Data modificării: cele mai vechi primele",
+      "sortModeCreatedDesc": "Data creării: cele mai noi primele",
+      "sortModeCreatedAsc": "Data creării: cele mai vechi primele",
+      "sortModeCountDesc": "Cele mai folosite",
+      "sortModeCountAsc": "Cele mai puțin folosite",
+      "sortSaveFailed": "Nu s-a putut salva ordinea de sortare",
+      "sectionOrderSaveFailed": "Nu s-a putut salva ordinea din bara laterală"
     },
     "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "Redimensionați panoul de zi",
+      "resizeDayPanel": "Redimensionează panoul zilei",
       "dragToResizeDoubleClickToReset": "Trageți pentru a redimensiona · Faceți dublu clic pentru a reseta"
     },
     "componentsFindBarFindBar": {
-      "findReplaceAsk": "Găsiți, înlocuiți, întrebați..."
+      "findReplaceAsk": "Caută, înlocuiește, întreabă…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Omite la îmbarcare",
+      "skipOnboarding": "Omite introducerea",
       "welcomeToMemry": "Bun venit la memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Baza ta de cunoștințe personale. Să luăm 2 minute pentru a începe.",
-      "getStarted": "Începeți ",
-      "createYourFirstNote": "Creați prima notă",
-      "markdownBasedStoredLocallyAsPlainFiles": "Bazat pe markdown, stocat local ca fișiere simple.",
-      "eGMeetingNotesIdeasAnything": "de ex. Note de întâlnire, idei, orice...",
-      "skip": "Sari peste",
-      "createNote": "Creați o notă ",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Baza dvs. personală de cunoștințe. Vă ajutăm să începeți în 2 minute.",
+      "getStarted": "Începe ",
+      "createYourFirstNote": "Creați prima notiță",
+      "markdownBasedStoredLocallyAsPlainFiles": "Bazate pe Markdown, stocate local ca fișiere simple.",
+      "eGMeetingNotesIdeasAnything": "de ex. Notițe de la ședințe, idei, orice…",
+      "skip": "Omite",
+      "createNote": "Creează notița ",
       "addYourFirstTask": "Adăugați prima sarcină",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Sarcinile se leagă de notele dvs., cu priorități și date limită.",
-      "eGReviewProjectProposal": "de ex. Examinați propunerea de proiect...",
-      "skip2": "Sari peste",
-      "createTask": "Creați sarcină ",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Sarcinile se leagă de notițe și au priorități și termene-limită.",
+      "eGReviewProjectProposal": "de ex. Revizuiește propunerea de proiect…",
+      "skip2": "Omite",
+      "createTask": "Creează sarcina ",
       "syncAcrossDevices": "Sincronizare între dispozitive",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Păstrați notele și sarcinile sincronizate pe toate dispozitivele dvs. Puteți configura oricând acest lucru mai târziu.",
-      "skipForNow": "Sari peste moment",
-      "doneLetSGo": "Gata — hai să mergem! "
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Păstrați notițele și sarcinile sincronizate pe toate dispozitivele. Puteți configura acest lucru oricând mai târziu.",
+      "skipForNow": "Omite deocamdată",
+      "doneLetSGo": "Gata – să începem! "
     },
     "componentsFolderIconButton": {
-      "setFolderIcon": "Setați pictograma folderului"
+      "setFolderIcon": "Setează pictograma dosarului",
+      "expandFolder": "Extinde dosarul",
+      "collapseFolder": "Restrânge dosarul"
     },
     "componentsHintOverlayHintIndicator": {
       "hint": "SUGESTIE"
     },
     "componentsIconPicker": {
       "iconPicker": "Selector de pictograme",
-      "selectIcon": "Selectați pictograma",
-      "closeIconPicker": "Închideți selectorul de pictograme",
-      "searchIcons": "Căutare pictograme...",
+      "selectIcon": "Selectează pictograma",
+      "closeIconPicker": "Închide selectorul de pictograme",
+      "searchIcons": "Caută pictograme…",
       "all": "Toate",
       "clearIcon": "Șterge pictograma",
       "noIconsFoundFor": "Nu s-au găsit pictograme pentru \""
     },
     "componentsKeyboardShortcutsModal": {
       "keyboardShortcuts": "Comenzi rapide de la tastatură",
-      "closeShortcutsHelp": "Închideți comenzile rapide de ajutor",
+      "closeShortcutsHelp": "Închide ajutorul pentru comenzi rapide",
       "press": "Apăsați",
-      "toClose": "a inchide"
+      "toClose": "pentru a închide"
     },
     "componentsKiboUiTreeIndex": {
-      "setIcon": "Set icon",
+      "setIcon": "Setează pictograma",
       "clearIcon": "Șterge pictograma"
     },
     "componentsNavMain": {
@@ -185,40 +667,40 @@
     },
     "componentsNavProjects": {
       "projects": "Proiecte",
-      "more": "Mai mult",
-      "viewProject": "Vedeți proiectul",
-      "shareProject": "Partajați proiectul",
-      "deleteProject": "Ștergeți proiectul",
-      "more2": "Mai mult"
+      "more": "Mai multe",
+      "viewProject": "Vezi proiectul",
+      "shareProject": "Partajează proiectul",
+      "deleteProject": "Șterge proiectul",
+      "more2": "Mai multe"
     },
     "componentsNavUser": {
       "cn": "CN",
       "cn2": "CN",
-      "upgradeToPro": "Faceți upgrade la Pro",
+      "upgradeToPro": "Treci la Pro",
       "account": "Cont",
       "billing": "Facturare",
       "notifications": "Notificări",
-      "logOut": "Deconectați-vă"
+      "logOut": "Deconectare"
     },
     "componentsSearchCommandPalette": {
       "search": "Caută",
-      "searchNotesTasksJournalInbox": "Căutați note, sarcini, jurnal, inbox...",
+      "searchNotesTasksJournalInbox": "Caută notițe, sarcini, jurnal, inbox…",
       "noResultsFor": "Nu există rezultate pentru „",
       "result": "rezultat",
       "noResultsForQuery": "Niciun rezultat pentru „{query}”",
       "resultCount": "{count, plural, one {# rezultat} few {# rezultate} other {# de rezultate}}",
-      "indexBuilding": "Se construiește indexul de căutare {done}/{total} — rezultatele pot fi incomplete",
-      "indexBuildingUnknown": "Se construiește indexul de căutare — rezultatele pot fi incomplete"
+      "indexBuilding": "Se construiește indexul de căutare {done}/{total} – rezultatele pot fi incomplete",
+      "indexBuildingUnknown": "Se construiește indexul de căutare – rezultatele pot fi incomplete"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Căutați și faceți clic pe elemente pentru a vă construi traseul",
       "reasons": "Motive",
-      "clear": "Clar"
+      "clear": "Șterge"
     },
     "componentsSearchSearchFilters": {
-      "clear": "Clar",
+      "clear": "Șterge",
       "tags": "Etichete",
-      "filterByTag": "Filtrați după etichetă...",
+      "filterByTag": "Filtrează după etichetă…",
       "dateRange": "Interval de date"
     },
     "componentsSearchSearchResultGroup": {
@@ -227,20 +709,20 @@
     },
     "componentsSearchSearchResultItem": {
       "p": "P",
-      "fuzzy": "neclară"
+      "fuzzy": "aproximativ"
     },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Nicio filă deschisă",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Deschideți o pagină din bara laterală sau creați o filă nouă pentru a începe",
-      "openInbox": "Deschide Inbox",
-      "closePane": "Închideți panoul"
+      "openInbox": "Deschide inboxul",
+      "closePane": "Închide panoul"
     },
     "componentsSplitViewLayoutPicker": {
       "layoutPresets": "Presetări de aspect",
       "layoutPresets2": "Presetări de aspect"
     },
     "componentsSplitViewResizeHandle": {
-      "resizePanes": "Redimensionați panourile"
+      "resizePanes": "Redimensionează panourile"
     },
     "componentsSplitViewTabContent": {
       "taskscontextNotAvailable": "TasksContext nu este disponibil",
@@ -254,10 +736,10 @@
     "componentsTabsNewTabMenu": {
       "newTab": "Filă nouă",
       "newTab2": "Filă nouă",
-      "newNote": "Notă nouă",
+      "newNote": "Notiță nouă",
       "journal": "Jurnal",
       "calendar": "Calendar",
-      "inboxCapture": "Captură inbox",
+      "inboxCapture": "Captură în inbox",
       "tasks": "Sarcini",
       "tags": "Etichete"
     },
@@ -269,49 +751,49 @@
       "unsavedChanges": "Modificări nesalvate"
     },
     "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "Închideți toate filele"
+      "closeAllTabs": "Închide toate filele"
     },
     "componentsTabsTabBarWithDrag": {
-      "openTabs": "Deschideți filele",
-      "scrollTabsLeft": "Derulați filele la stânga",
-      "scrollTabsRight": "Derulați filele la dreapta",
-      "dayPanel": "Panoul de zi"
+      "openTabs": "File deschise",
+      "scrollTabsLeft": "Derulează filele la stânga",
+      "scrollTabsRight": "Derulează filele la dreapta",
+      "dayPanel": "Panoul zilei"
     },
     "componentsTabsTabErrorBoundary": {
-      "somethingWentWrong": "Ceva a mers prost",
+      "somethingWentWrong": "A apărut o eroare",
       "anErrorOccurredWhileRenderingThisTabContent": "A apărut o eroare la redarea conținutului acestei file.",
-      "tryAgain": "Încercați din nou",
+      "tryAgain": "Reîncearcă",
       "sendReport": "Trimite raport de diagnosticare"
     },
     "componentsTabsTabPreviewCard": {
-      "noteIcon": "Pictograma notă"
+      "noteIcon": "Pictograma notiței"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Modificări nesalvate",
       "unsavedChangesBody": "„{title}” are modificări nesalvate. Ce doriți să faceți?"
     },
     "componentsTeamSwitcher": {
-      "newWorkspace": "Nou spațiu de lucru",
+      "newWorkspace": "Spațiu de lucru nou",
       "darkMode": "Modul întunecat",
       "settings": "Setări",
-      "integrations": "Integrari",
-      "signOut": "Deconectați-vă",
-      "downloadOnIos": "Descărcați pe iOS"
+      "integrations": "Integrări",
+      "signOut": "Deconectare",
+      "downloadOnIos": "Descarcă pentru iOS"
     },
     "componentsTrafficLights": {
       "closeWindow": "Închide fereastra",
-      "minimizeWindow": "Minimizați fereastra",
-      "maximizeWindow": "Maximizați fereastra"
+      "minimizeWindow": "Minimizează fereastra",
+      "maximizeWindow": "Maximizează fereastra"
     },
     "componentsUiAutocompleteDropdown": {
       "suggestions": "Sugestii",
       "or": "sau",
-      "enter": "Intră",
-      "toInsert": "a introduce"
+      "enter": "Enter",
+      "toInsert": "pentru a insera"
     },
     "componentsUiBreadcrumb": {
-      "breadcrumb": "pesmet",
-      "more": "Mai mult"
+      "breadcrumb": "cale de navigare",
+      "more": "Mai multe"
     },
     "componentsUiDialog": {
       "close": "Închide"
@@ -322,541 +804,453 @@
     "componentsUiSidebar": {
       "sidebar": "Bara laterală",
       "displaysTheMobileSidebar": "Afișează bara laterală mobilă.",
-      "toggleSidebar": "Comutați bara laterală",
-      "toggleSidebar2": "Comutați bara laterală",
+      "toggleSidebar": "Afișează/ascunde bara laterală",
+      "toggleSidebar2": "Afișează/ascunde bara laterală",
       "dragToResizeDoubleClickToReset": "Trageți pentru a redimensiona · Faceți dublu clic pentru a reseta"
     },
     "componentsVaultOnboarding": {
       "welcomeToMemry": "Bun venit la memrynote",
       "yourPersonalKnowledgeManagementSystem": "Sistemul dvs. personal de management al cunoștințelor.",
-      "selectAFolderToStoreYourNotesAndTasks": "Selectați un dosar pentru a vă stoca notele și sarcinile.",
-      "opening": "Deschidere...",
-      "selectVaultFolder": "Selectați dosarul seifului",
+      "selectAFolderToStoreYourNotesAndTasks": "Selectați un dosar în care să stocați notițele și sarcinile.",
+      "opening": "Se deschide…",
+      "selectVaultFolder": "Selectează dosarul seifului",
       "plainMarkdown": "Markdown simplu",
-      "yourNotesStayPortable": "Notele dvs. rămân portabile",
-      "syncAnywhere": "Sincronizați oriunde",
+      "yourNotesStayPortable": "Notițele rămân portabile",
+      "syncAnywhere": "Sincronizare oriunde",
       "useDropboxIcloudGit": "Utilizați Dropbox, iCloud, Git",
       "recentVaults": "Seifuri recente",
-      "notesLastOpened": "note · Ultima deschidere",
-      "brandName": "Memrynote",
+      "notesLastOpened": "notițe · Ultima deschidere",
       "preRelease": "Beta",
       "createNewVault": "Creează un seif nou",
-      "createNewVaultDesc": "Începe un seif nou într-un dosar ales de tine.",
+      "createNewVaultDesc": "Creați un seif nou într-un dosar la alegere.",
       "openExistingVault": "Deschide un seif existent",
-      "openExistingVaultDesc": "Alege un dosar cu fișiere Markdown pe care le ai deja.",
-      "signInToSync": "Conectează-te pentru sincronizare",
-      "signInToSyncDesc": "Seifuri criptate end-to-end pe dispozitivele tale.",
+      "openExistingVaultDesc": "Alegeți un dosar cu fișiere Markdown pe care le aveți deja.",
+      "signInToSync": "Conectați-vă pentru sincronizare",
+      "signInToSyncDesc": "Seifuri criptate integral pe toate dispozitivele.",
       "create": "Creează",
       "open": "Deschide",
-      "signIn": "Conectează-te",
+      "signIn": "Conectare",
       "helpAndDocs": "Ajutor și documentație",
-      "signInRequiresVault": "Deschide sau creează mai întâi un seif pentru a configura sincronizarea.",
-      "addVault": "Adaugă seif"
+      "signInRequiresVault": "Deschideți sau creați mai întâi un seif pentru a configura sincronizarea.",
+      "addVault": "Adaugă seif",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "Notițele se află într-un seif, un dosar de pe acest computer.",
+        "createDesc": "Denumiți-l și alegeți unde va fi stocat.",
+        "openFolder": "Deschide un dosar ca seif",
+        "openFolderDesc": "Folosiți un dosar cu fișiere Markdown pe care le aveți deja.",
+        "openFromSync": "Deschide din Memrynote Sync",
+        "openFromSyncDesc": "Conectați-vă și descărcați un seif din cont.",
+        "back": "Înapoi",
+        "createTitle": "Creați un seif nou",
+        "createSubtitle": "Un seif este un dosar cu fișiere Markdown. Îl puteți muta mai târziu.",
+        "nameLabel": "Nume",
+        "namePlaceholder": "Notițele mele",
+        "locationLabel": "Locație",
+        "change": "Schimbă…",
+        "willBeCreatedAt": "Va fi creat în",
+        "errorExists": "Aici există deja un dosar cu acest nume.",
+        "openInstead": "Deschide-l ca seif",
+        "errorInvalidName": "Numele nu pot începe cu punct și nu pot conține / \\ : * ? \" < > |",
+        "createFailed": "Nu s-a putut crea seiful.",
+        "createVault": "Creează seiful",
+        "creating": "Se creează…",
+        "cancel": "Anulează",
+        "chooseTitle": "Alegeți un seif",
+        "chooseSubtitle": "Conectat ca {email}. Alegeți unul pe care să-l deschideți pe acest computer.",
+        "untitledVault": "Seif fără titlu",
+        "items": "{count, plural, one {# element} few {# elemente} other {# de elemente}}",
+        "onThisComputer": "Pe acest computer",
+        "downloadTo": "Descarcă în",
+        "otherVaultsHint": "Celelalte seifuri rămân în cont. Le puteți descărca oricând din selectorul de seifuri.",
+        "openVault": "Deschide seiful",
+        "opening": "Se deschide…",
+        "loadingVaults": "Se încarcă seifurile…",
+        "loadFailed": "Nu s-au putut încărca seifurile.",
+        "retry": "Reîncearcă",
+        "noVaultsTitle": "Încă nu există seifuri în cont",
+        "noVaultsDesc": "Creați unul pe acest computer. Se va sincroniza cu contul dvs.",
+        "createCta": "Creează un seif",
+        "openFailed": "Nu s-a putut deschide seiful."
+      }
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Nu există încă seifuri",
-      "openVault": "Seif deschis",
+      "openVault": "Deschide seiful",
       "settings": "Setări",
-      "logOut": "Deconectați-vă",
-      "signInToSync": "Conectați-vă pentru sincronizare",
-      "remove": "Eliminați „",
-      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Acest seif va fi eliminat din aplicație, dar fișierele dvs. vor rămâne pe disc. Îl poți adăuga oricând din nou mai târziu.",
+      "logOut": "Deconectare",
+      "signInToSync": "Conectare pentru sincronizare",
+      "remove": "Elimină „",
+      "removeVaultTitle": "Eliminați „{name}” din listă?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Acest seif va fi eliminat din aplicație, dar fișierele vor rămâne pe disc. Îl puteți adăuga din nou oricând.",
       "cancel": "Anulează",
-      "remove2": "Eliminați",
-      "inYourAccount": "În contul tău",
-      "itemsCount": "{count} elemente",
+      "remove2": "Elimină",
+      "inYourAccount": "În contul dvs.",
+      "itemsCount": "{count, plural, one {# element} few {# elemente} other {# de elemente}}",
       "untitledVault": "Seif",
       "downloadVaultTitle": "Descarcă „{name}”",
       "downloadLocation": "Locație",
       "changeLocation": "Schimbă…",
       "download": "Descarcă",
-      "downloadFailed": "Seiful nu a putut fi descărcat",
+      "downloadFailed": "Nu s-a putut descărca seiful",
       "deleteFromAccount": "Șterge din cont",
-      "deleteVaultBody": "Această acțiune elimină definitiv toate datele sincronizate ale acestui seif de pe serverele Memry și nu poate fi anulată. Fișierele tale de pe disc nu sunt șterse.",
+      "deleteVaultTitle": "Ștergeți „{name}” din cont?",
+      "deleteVaultBody": "Această acțiune elimină definitiv toate datele sincronizate ale acestui seif de pe serverele Memry și nu poate fi anulată. Fișierele de pe disc nu sunt șterse.",
       "deleteVaultConfirm": "Șterge din cont",
       "deleteVaultFailed": "Nu s-a putut șterge seiful",
-      "deleteVaultTitle": "Ștergi „{name}” din contul tău?",
-      "removeVaultTitle": "Elimini „{name}” din listă?",
       "missing": "Dosarul nu a fost găsit"
     },
     "componentsWindowControls": {
-      "searchK": "Căutați (⌘K)",
-      "browserBack": "Browser înapoi",
+      "searchK": "Caută (⌘K)",
+      "browserBack": "Navighează înapoi",
       "back": "Înapoi",
-      "browserForward": "Browser înainte",
+      "browserForward": "Navighează înainte",
       "forward": "Înainte"
     }
   },
   "phaseI": {
     "errors": {
-      "failedToImportFiles": "Nu s-au putut importa fișiere",
-      "failedToCreateNote": "Nu s-a putut crea nota",
+      "failedToImportFiles": "Nu s-au putut importa fișierele",
+      "failedToCreateNote": "Nu s-a putut crea notița",
       "failedToAccessMicrophone": "Nu s-a putut accesa microfonul"
     },
     "toasts": {
       "undone": "Anulat"
     }
   },
-  "agentChat": {
-    "title": "Chat Agent",
-    "loading": "Se încarcă chatul agentului...",
-    "conversationLoading": "Se încarcă conversația...",
-    "newConversation": "Conversație nouă",
-    "history": "Istoricul conversațiilor",
-    "openInTab": "Deschide conversația într-o filă",
-    "stop": "Opriți",
-    "thinking": "Agent se gândește",
-    "enable": {
-      "title": "Activați memrynote Agent",
-      "description": "memrynote Agent folosește agentul local selectat de dvs. CLI pentru a discuta despre seiful dvs. Claude trimite ture către Anthropic; Codex trimite ture către OpenAI.",
-      "remote": "memrynote criptează istoricul dvs. de chat local și sincronizat, dar deducerea modelului are loc cu furnizorul selectat.",
-      "readTools": "Instrumentele de citire rulează automat.",
-      "writeTools": "Crearea și actualizarea instrumentelor necesită aprobare.",
-      "diff": "Instrumentele de actualizare arată o diferență sau o previzualizare.",
-      "button": "Activează chatul Agent"
-    },
-    "approval": {
-      "description": "Agentul dorește să apeleze {name} cu aceste argumente.",
-      "applyOnce": "Aplicați o dată",
-      "allowOnce": "Permite o dată",
-      "editAndApply": "Editați și aplicați",
-      "editAndAllow": "Editați și permiteți",
-      "allowAlways": "Permite întotdeauna",
-      "applyEdits": "Aplicați editările",
-      "deny": "Negați",
-      "invalidJson": "Introduceți JSON valid înainte de a aplica modificări."
-    },
-    "diff": {
-      "previewError": "Nu s-a putut previzualiza diferența de nota",
-      "description": "Agentul dorește să actualizeze {title}. Examinați conținutul actual și candidat înainte de a-l aplica.",
-      "fallbackTitle": "această notă",
-      "current": "Actual",
-      "candidate": "Candidat",
-      "loading": "Se încarcă...",
-      "apply": "Aplicați",
-      "applyEdited": "Aplicați editat"
-    },
-    "inPageReview": {
-      "regionLabel": "Sugestia agentului",
-      "barLabel": "Revizuiește sugestia agentului",
-      "loading": "Se încarcă sugestia...",
-      "loadingTitle": "Sugestia agentului",
-      "title": "{count, plural, =0 {Sugestia agentului} one {Agentul a sugerat # modificare} few {Agentul a sugerat # modificări} many {Agentul a sugerat # de modificări} other {Agentul a sugerat # de modificări}}",
-      "editingTitle": "Se editează sugestia",
-      "pendingHint": "Nu a fost salvată încă. Acceptă pentru a o aplica.",
-      "editingHint": "Modificările tale rămân aici până accepți.",
-      "baseChanged": "Această notă s-a schimbat în timp ce editai sugestia.",
-      "keepDraft": "Păstrează modificările mele",
-      "restart": "Reia de la cea mai nouă versiune",
-      "reject": "Respinge",
-      "edit": "Editează",
-      "showDiff": "Arată modificările",
-      "accept": "Acceptă",
-      "acceptEdits": "Acceptă modificările",
-      "waiting": "Se așteaptă revizuirea ta în {title}.",
-      "notOpen": "Deschide {title} pentru a vedea modificările sau acceptă-le fără revizuire.",
-      "show": "Arată",
-      "openNote": "Deschide nota",
-      "openJournal": "Deschide jurnalul",
-      "fallbackTitle": "această notă"
-    },
-    "composer": {
-      "currentNote": "Notă curentă",
-      "removeAttachment": "Eliminați {label}",
-      "placeholder": "Întreabă memrynote orice. @ pentru a menționa un fișier",
-      "send": "Trimite",
-      "providerLabel": "Furnizor Agent: {provider}",
-      "settingsSummary": "{reasoning}",
-      "providers": {
-        "claude": "Claude",
-        "codex": "Codex",
-        "antigravity": "Antigravity",
-        "local": "Local"
-      },
-      "models": {
-        "default": "Implicit",
-        "label": "Model"
-      },
-      "settings": {
-        "reasoning": "Raționament"
-      },
-      "claudeSettings": {
-        "reasoning": {
-          "low": "Scăzut",
-          "medium": "Mediu",
-          "high": "Mare",
-          "extraHigh": "Extra ridicat",
-          "extraHighDefault": "Extra mare (implicit)",
-          "max": "Maxim"
-        }
-      },
-      "codexSettings": {
-        "reasoning": {
-          "low": "Scăzut",
-          "medium": "Mediu",
-          "mediumDefault": "Mediu (implicit)",
-          "high": "Mare",
-          "extraHigh": "Extra mare"
-        }
-      },
-      "access": {
-        "vaultOnly": "Doar seiful",
-        "computerAccess": "Acces la computer"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Oprit",
-        "label": "Căutare web"
-      },
-      "permissionsLabel": "Permisiuni agent: {access}, căutare web {webSearch}",
-      "permissions": {
-        "label": "Permisiuni",
-        "access": "Acces",
-        "tools": "Instrumente"
-      },
-      "modelSettingsLabel": "Setări model agent: {model}, {settings}"
-    },
-    "refPicker": {
-      "noMatches": "Nicio potrivire"
-    },
-    "toolResult": {
-      "label": "Rezultatul instrumentului"
-    },
-    "toolCall": {
-      "editedArgs": "Argumente editate",
-      "parameters": "Parametri"
-    },
-    "sidebar": {
-      "label": "Bara laterală din dreapta",
-      "day": "Ziua",
-      "agent": "Agent",
-      "pendingApproval": "{count, plural, one {# în așteptarea aprobării} other {# aprobări în așteptare}}",
-      "inProgress": "Agent turnare în curs",
-      "close": "Închide agentul"
-    },
-    "errors": {
-      "loadConversations": "Nu s-au putut încărca conversațiile cu agentul",
-      "loadConversation": "Nu s-a putut încărca conversația agentului",
-      "createConversation": "Nu s-a putut crea conversația cu agentul",
-      "busy": "O altă fereastră este la mijlocul acestei conversații. Așteptați să se termine sau opriți-l de acolo.",
-      "sendTurn": "Nu s-a putut trimite rândul agentului",
-      "cancelTurn": "Nu s-a putut anula turnarea agentului",
-      "submitApproval": "Nu s-a putut trimite aprobarea instrumentului",
-      "updateTrust": "Nu s-au putut actualiza instrumentele de încredere",
-      "saveDisclosure": "Nu s-a putut salva starea dezvăluirii",
-      "resolveWindow": "Nu s-a putut rezolva fereastra sursă agent",
-      "detectCli": "Nu s-au putut detecta backend-urile agentului",
-      "loadDisclosure": "Nu s-a putut încărca starea dezvăluirii"
-    },
-    "sources": {
-      "used": "{count, plural, one {# sursă folosită} few {# surse folosite} other {# de surse folosite}}"
-    }
-  },
   "home": {
-    "addWidget": "Adaugă widget",
-    "board": {
-      "defaultName": "Acasă",
-      "deleteAria": "Șterge aranjamentul",
-      "label": "Aranjament pagină principală",
-      "newAria": "Panou nou",
-      "newName": "Panou nou"
-    },
-    "disabled": {
-      "createNote": "Creează notiță",
-      "hint": "Nimic deschis. Începe o notiță."
-    },
-    "done": "Gata",
-    "edit": "Editează",
-    "empty": {
-      "body": "Widgeturile îți aduc notițele, sarcinile și marcajele într-un singur loc liniștit.",
-      "cta": "Adaugă primul tău widget",
-      "title": "Panoul tău este gol"
-    },
-    "greeting": {
-      "afternoon": "Bună ziua",
-      "evening": "Bună seara",
-      "morning": "Bună dimineața"
-    },
-    "header": {
-      "events": "{count, plural, one {# eveniment} few {# evenimente} other {# de evenimente}}",
-      "tasksDue": "{count, plural, one {# sarcină scadentă astăzi} few {# sarcini scadente astăzi} other {# de sarcini scadente astăzi}}"
-    },
-    "noBookmarksYet": "Niciun marcaj încă.",
-    "noEventsYet": "Niciun eveniment astăzi.",
-    "noJournalEntriesYet": "Nicio intrare de jurnal încă.",
-    "noNotesYet": "Nicio notiță încă.",
-    "noTasksYet": "Nicio sarcină încă.",
     "widget": {
+      "removeAria": "Elimină widgetul",
+      "dragAria": "Trage widgetul",
+      "configAria": "Configurează widgetul",
+      "resizeAria": "Redimensionează la {size}",
+      "menuAria": "Opțiuni widget",
+      "resize": "Dimensiune",
+      "remove": "Elimină",
+      "filter": {
+        "all": "Toate",
+        "today": "Cu termen astăzi",
+        "tomorrow": "Mâine",
+        "next7": "Următoarele 7 zile",
+        "noDueDate": "Fără termen"
+      },
+      "recentlyEdited": "Editate recent",
+      "recentlyOpened": "Deschise recent",
+      "recentMeta": "editat {time}",
+      "recentMetaWithFolder": "{folder} · editat {time}",
+      "openedMeta": "deschis {time}",
+      "openedMetaWithFolder": "{folder} · deschis {time}",
+      "noRecentlyOpened": "Notițele pe care le deschideți apar aici",
       "bookmarks": "Marcaje",
+      "tasks": "Sarcini",
       "calendar": "Calendar",
       "calendarToday": "Astăzi",
-      "configAria": "Configurează widgetul",
-      "configure": "Configurează",
-      "dragAria": "Trage widgetul",
+      "openCalendar": "Deschide calendarul",
+      "next": "Următor: {title}",
+      "startsIn": "Începe peste {count, plural, one {# min} few {# min} other {# min}}",
       "duration": "{count} min",
-      "filter": {
-        "today": "Scadente astăzi",
-        "tomorrow": "Mâine",
-        "week": "Săptămâna aceasta"
-      },
-      "folder": "Dosar",
-      "folderEmpty": "Niciun dosar încă",
-      "folderNoSelection": "Niciun dosar selectat",
-      "folderPickPrompt": "Alege un dosar",
-      "folderViewSelect": "Vizualizare",
-      "folderView_gallery": "Galerie",
-      "folderView_list": "Listă",
       "inbox": "Inbox",
       "inboxAllTypes": "Toate tipurile",
       "inboxOlder": "{count, plural, one {# mai vechi} few {# mai vechi} other {# mai vechi}}",
-      "inboxOldest": "cel mai vechi acum {count, plural, one {# zi} few {# zile} other {# de zile}}",
+      "inboxOldest": "cel mai vechi: {count, plural, one {# zi} few {# zile} other {# de zile}}",
+      "openInbox": "Deschide inboxul",
+      "folder": "Dosar",
+      "untitled": "Fără titlu",
+      "folderPickPrompt": "Alege un dosar",
+      "folderEmpty": "Niciun dosar încă",
+      "folderNoSelection": "Niciun dosar selectat",
+      "folderView_list": "Listă",
+      "folderView_gallery": "Galerie",
+      "folderViewSelect": "Vizualizare",
+      "project": "Proiect",
+      "projectNoSelection": "Niciun proiect selectat",
+      "projectMissing": "Acest proiect nu mai este disponibil",
+      "projectNoTasks": "Nicio sarcină",
       "journal": "Jurnal",
       "journalStreak": "{count, plural, one {serie de # zi} few {serie de # zile} other {serie de # de zile}}",
       "journalToday": "Astăzi",
       "journalYesterday": "Ieri",
+      "journalTomorrow": "Mâine",
+      "journalUpcoming": "Viitoare",
+      "journalNoEntryYet": "Nicio înregistrare încă",
       "loadError": "Nu s-a putut încărca",
-      "menuAria": "Opțiuni widget",
-      "next": "Următor: {title}",
-      "openCalendar": "Deschide Calendarul",
-      "openInbox": "Deschide inbox",
-      "recentMeta": "editat {time}",
-      "recentMetaWithFolder": "{folder} · editat {time}",
-      "recentlyEdited": "Editate recent",
-      "remove": "Elimină",
-      "removeAria": "Elimină widgetul",
-      "resize": "Dimensiune",
-      "resizeAria": "Redimensionează la {size}",
-      "savedFilterDefault": "Astăzi",
-      "savedFilterHint": "Marchează filtrele cu stea pe pagina Sarcini pentru a le folosi aici",
-      "savedFilterLabel": "Filtru salvat",
-      "startsIn": "Începe în {count, plural, one {# min} few {# min} other {# min}}",
-      "tasks": "Sarcini",
-      "unknown": "Widget necunoscut",
-      "untitled": "Fără titlu"
+      "unknown": "Widget necunoscut"
+    },
+    "board": {
+      "label": "Aspectul paginii Acasă",
+      "deleteAria": "Șterge aspectul",
+      "newAria": "Tablă nouă",
+      "newName": "Tablă nouă",
+      "defaultName": "Acasă",
+      "manage": "Gestionează tablele",
+      "manageTitle": "Gestionează tablele",
+      "manageDescription": "Redenumiți, reordonați sau ștergeți tablele din pagina Acasă.",
+      "renameAria": "Redenumește tabla",
+      "reorderAria": "Reordonează tabla",
+      "nameLabel": "Numele tablei"
+    },
+    "greeting": {
+      "morning": "Bună dimineața",
+      "afternoon": "Bună ziua",
+      "evening": "Bună seara"
+    },
+    "header": {
+      "tasksDue": "{count, plural, one {# sarcină cu termen astăzi} few {# sarcini cu termen astăzi} other {# de sarcini cu termen astăzi}}",
+      "events": "{count, plural, one {# eveniment} few {# evenimente} other {# de evenimente}}"
+    },
+    "edit": "Editează",
+    "done": "Gata",
+    "addWidget": "Adaugă widget",
+    "empty": {
+      "title": "Tabla este goală",
+      "body": "Widgeturile adună notițele, sarcinile și marcajele într-un singur loc liniștit.",
+      "cta": "Adaugă primul widget"
+    },
+    "noBookmarksYet": "Niciun marcaj încă.",
+    "noNotesYet": "Nicio notiță încă.",
+    "noTasksYet": "Nicio sarcină încă.",
+    "noEventsYet": "Niciun eveniment astăzi.",
+    "noJournalEntriesYet": "Nicio înregistrare în jurnal încă.",
+    "disabled": {
+      "createNote": "Creează o notiță",
+      "hint": "Nimic deschis. Începeți o notiță."
     }
   },
-  "media": {
-    "video": "Video"
-  },
   "onboarding": {
-    "agentChat": {
-      "body": "Comută la fila Agent pentru a întreba asistentul MemryNote despre seiful tău.",
-      "title": "Discută cu agentul AI"
-    },
-    "collections": {
-      "body": "Organizează notițele în dosare, fixează marcaje și răsfoiește după etichetă — totul aici.",
-      "title": "Colecții, marcaje și etichete"
-    },
-    "dayPanel": {
-      "body": "Panoul lateral păstrează un calendar și vizualizarea zilei tale lângă orice citești.",
-      "title": "Ziua ta, lângă munca ta"
-    },
-    "feedback": {
-      "body": "Trimite feedback direct echipei de aici.",
-      "title": "Spune-ne ce crezi"
-    },
-    "nav": {
-      "body": "Inbox pentru captură, Jurnal pentru notițe zilnice, Calendar pentru cronologia ta, Sarcini pentru lucruri de făcut și Graf pentru a vedea cum se leagă totul.",
-      "title": "Spațiile tale de lucru"
+    "welcome": {
+      "title": "Bun venit în MemryNote",
+      "body": "Spațiul dvs. privat, care funcționează offline. Notițele sunt criptate integral – nu părăsesc niciodată dispozitivul necriptate."
     },
     "newNote": {
-      "body": "Începe aici. Tot ce scrii este stocat mai întâi local.",
-      "title": "Creează prima ta notiță"
+      "title": "Creați prima notiță",
+      "body": "Începeți aici. Tot ce scrieți este stocat mai întâi local."
     },
-    "settings": {
-      "body": "Importă-ți notițele din peste 12 aplicații — Obsidian, Notion, Apple Notes, Evernote și altele — și reglează tot restul în Setări.",
-      "title": "Setări și importuri"
+    "nav": {
+      "title": "Spațiile de lucru",
+      "body": "Inbox pentru capturi, Jurnal pentru notițe zilnice, Calendar pentru cronologie, Sarcini pentru lucruri de făcut și Graf pentru a vedea cum se leagă totul."
+    },
+    "collections": {
+      "title": "Colecții, marcaje și etichete",
+      "body": "Organizați notițele în dosare, fixați marcaje și răsfoiți după etichetă – totul aici."
+    },
+    "dayPanel": {
+      "title": "Agenda zilei, lângă munca dvs.",
+      "body": "Panoul lateral păstrează un calendar și vizualizarea zilei lângă orice citiți."
+    },
+    "agentChat": {
+      "title": "Discutați cu agentul AI",
+      "body": "Treceți la fila Agent pentru a-i pune asistentului MemryNote întrebări despre seif."
     },
     "sync": {
-      "body": "Activează sincronizarea criptată integral pentru a păstra fiecare dispozitiv la zi.",
-      "title": "Sincronizare privată, criptată"
+      "title": "Sincronizare privată, criptată",
+      "body": "Activați sincronizarea criptată integral pentru a menține toate dispozitivele la zi."
     },
-    "welcome": {
-      "body": "Casa ta privată, offline-first. Notițele sunt criptate integral — nu îți părăsesc niciodată dispozitivul necriptate.",
-      "title": "Bine ai venit la MemryNote"
+    "feedback": {
+      "title": "Spuneți-ne ce părere aveți",
+      "body": "Trimiteți feedback direct echipei, de aici."
+    },
+    "settings": {
+      "title": "Setări și importuri",
+      "body": "Importați notițele din peste 12 aplicații – Obsidian, Notion, Apple Notes, Evernote și altele – și reglați tot restul în Setări."
     },
     "tour": {
       "next": "Următor",
       "previous": "Anterior",
       "progress": "{current} din {total}"
+    },
+    "starPrompt": {
+      "title": "Introducere finalizată",
+      "body": "Vă rugăm să ne dați o stea pe GitHub – îi ajută pe alții să descopere MemryNote.",
+      "action": "Marchează cu stea pe GitHub"
     }
   },
-  "capture": {
-    "focusShortcut": "Focalizează câmpul de captură",
-    "detailHint": "detalii",
-    "focusHint": "Q",
-    "submit": "Capturează"
-  },
-  "canvas": {
-    "card": {
-      "addCard": "Adaugă card",
-      "addCreateNote": "Creează nota „{query}”",
-      "addCreateNoteEmpty": "Creează o notă nouă",
-      "addCreatedAt": "Creat {date}",
-      "addEmpty": "Nu s-a găsit nimic",
-      "addGroupEvents": "Evenimente",
-      "addGroupNotes": "Note",
-      "addGroupTasks": "Sarcini",
-      "addOnCanvas": "Pe canvas",
-      "addPlaceholder": "Caută note, sarcini și evenimente…",
-      "allDay": "Toată ziua",
-      "createNoteFailed": "Nu s-a putut crea nota",
-      "deleted": "Element șters",
-      "loading": "Se încarcă…",
-      "open": "Deschide în filă",
-      "openToEdit": "Deschide în filă pentru a edita",
-      "untitled": "Fără titlu",
-      "bulkGroup": "Adaugă tot din",
-      "bulkFromTag": "O etichetă…",
-      "bulkFromFolder": "Un dosar…",
-      "bulkSearchTags": "Caută etichete…",
-      "bulkSearchFolders": "Caută dosare…",
-      "bulkTagsHeading": "Etichete",
-      "bulkFoldersHeading": "Dosare",
-      "bulkItemCount": "{count, plural, one {# element} few {# elemente} other {# de elemente}}",
-      "bulkViewsHeading": "Adaugă din {name}",
-      "bulkAllItems": "Toate elementele",
-      "bulkConfirmTitle": "{count, plural, one {Adaugi # card din {name}?} few {Adaugi # carduri din {name}?} other {Adaugi # de carduri din {name}?}}",
-      "bulkConfirmBody": "Tablele mari devin mai lente și pot depăși limita de dimensiune a sincronizării.",
-      "bulkConfirmSkipped": "{count, plural, one {# element este deja pe această pânză și va fi omis.} few {# elemente sunt deja pe această pânză și vor fi omise.} other {# de elemente sunt deja pe această pânză și vor fi omise.}}",
-      "bulkConfirmAdd": "{count, plural, one {Adaugă # card} few {Adaugă # carduri} other {Adaugă # de carduri}}",
-      "bulkBack": "Înapoi",
-      "bulkEmpty": "Nu există note, fișiere sau sarcini de adăugat",
-      "bulkLoadFailed": "Elementele nu au putut fi încărcate",
-      "bulkAdded": "{count, plural, one {# card adăugat} few {# carduri adăugate} other {# de carduri adăugate}}",
-      "bulkAddedSkipped": "{count, plural, one {# card adăugat} few {# carduri adăugate} other {# de carduri adăugate}} · {skipped} deja pe pânză",
-      "bulkAllOnCanvas": "{count, plural, one {Deja pe această pânză} few {Toate cele # sunt deja pe această pânză} other {Toate cele # sunt deja pe această pânză}}"
-    },
-    "corruptScene": "Acest canvas nu a putut fi citit. Editarea este dezactivată pentru a nu pierde date.",
-    "createFailed": "Nu s-a putut crea canvasul",
-    "disabledBody": "Această filă aparține unei funcții care nu este activată pe acest dispozitiv.",
-    "disabledTitle": "Canvasul nu este activat",
-    "empty": "Niciun canvas încă",
-    "libraryStoreFailed": "Nu s-a putut salva biblioteca ta de forme. Modificările recente se pot pierde.",
-    "loadFailed": "Nu s-au putut încărca canvasurile",
-    "loading": "Se încarcă canvasurile…",
-    "newCanvas": "Canvas nou",
-    "notFound": "Acest canvas nu a putut fi găsit",
-    "openFailed": "Nu s-a putut deschide canvasul",
-    "savedToVault": "Toate modificările se salvează automat în seiful tău",
-    "sectionLabel": "Canvasuri",
-    "tooLargeToSync": "Acest canvas este prea mare pentru sincronizare. Este salvat pe acest dispozitiv, dar nu va ajunge pe celelalte dispozitive până nu devine mai mic.",
-    "untitled": "Canvas fără titlu"
-  },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Clic pe rând",
-      "reset": "Resetare",
-      "shortcutsTab": "Fila Comenzi rapide"
-    },
-    "description": "Căi rapide pentru a naviga prin memrynote, a-ți captura gândurile și a-ți procesa munca.",
+    "description": "Căi rapide pentru a naviga prin memrynote, a captura gânduri și a procesa munca.",
+    "or": "sau",
+    "then": "apoi",
     "groups": {
       "general": {
-        "description": "Navigare și ajutor în toată aplicația.",
-        "title": "General"
-      },
-      "inbox": {
-        "description": "Procesează rapid elementele capturate.",
-        "title": "Inbox"
-      },
-      "journal": {
-        "description": "Navighează prin vizualizările jurnalului și focalizează zona de scriere.",
-        "title": "Jurnal"
-      },
-      "notes": {
-        "description": "Scrie, formatează și caută note.",
-        "title": "Note / Editor"
-      },
-      "settings": {
-        "description": "Deschide setările și personalizează comenzile rapide.",
-        "title": "Setări"
+        "title": "General",
+        "description": "Navigare și ajutor în toată aplicația."
       },
       "tabs": {
-        "description": "Mută-te între file și panouri.",
-        "title": "File și panouri"
+        "title": "File și panouri",
+        "description": "Navigați între file și panouri."
+      },
+      "inbox": {
+        "title": "Inbox",
+        "description": "Procesați rapid elementele capturate."
+      },
+      "journal": {
+        "title": "Jurnal",
+        "description": "Navigați prin vizualizările jurnalului și focalizați zona de scriere."
+      },
+      "notes": {
+        "title": "Notițe / Editor",
+        "description": "Scrieți, formatați și căutați notițe."
       },
       "tasks": {
-        "description": "Filtrează, selectează și finalizează sarcini.",
-        "title": "Sarcini"
+        "title": "Sarcini",
+        "description": "Filtrați, selectați și finalizați sarcini."
+      },
+      "settings": {
+        "title": "Setări",
+        "description": "Deschideți setările și personalizați comenzile rapide."
       }
     },
     "items": {
       "general": {
-        "createNote": "Creează o notă",
-        "keyboardShortcuts": "Deschide comenzile rapide de la tastatură",
-        "openSettings": "Deschide setările",
         "quickSearch": "Deschide căutarea rapidă",
-        "sidebarSection": "Mergi la o secțiune din bara laterală",
-        "toggleSidebar": "Comută bara laterală",
-        "undoTaskAction": "Anulează ultima acțiune pe sarcini"
+        "createNote": "Creează o notiță",
+        "openSettings": "Deschide setările",
+        "switchVault": "Schimbă seiful",
+        "adjacentVault": "Seiful anterior sau următor",
+        "keyboardShortcuts": "Deschide comenzile rapide de la tastatură",
+        "undoTaskAction": "Anulează ultima acțiune pe sarcini",
+        "toggleSidebar": "Afișează/ascunde bara laterală",
+        "sidebarSection": "Accesează o secțiune din bara laterală"
+      },
+      "tabs": {
+        "newTabMenu": "Deschide meniul pentru filă nouă",
+        "closeTab": "Închide fila",
+        "closeAllInPane": "Închide toate filele din panou",
+        "reopenClosedTab": "Redeschide fila închisă",
+        "nextTab": "Fila următoare",
+        "previousTab": "Fila anterioară",
+        "pinTab": "Fixează sau anulează fixarea filei",
+        "duplicateTab": "Duplică fila",
+        "splitRight": "Divizează la dreapta",
+        "splitDown": "Divizează în jos",
+        "closeSplitPane": "Închide panoul divizat",
+        "focusPane": "Focalizează alt panou",
+        "moveTabToPane": "Mută fila în panou",
+        "maximizePane": "Maximizează panoul curent"
       },
       "inbox": {
-        "archiveItem": "Arhivează elementul selectat",
-        "chooseQuickFileResult": "Alege un rezultat din clasarea rapidă",
-        "clearSelection": "Șterge selecția sau închide clasarea rapidă",
-        "confirmFiling": "Confirmă panoul de clasare",
-        "firstOrLastItem": "Primul sau ultimul element",
-        "jumpByPage": "Sari cu o pagină",
         "nextItem": "Elementul următor",
-        "openOriginal": "Deschide linkul original",
-        "openQuickFile": "Deschide clasarea rapidă",
         "previousItem": "Elementul anterior",
-        "refresh": "Reîmprospătează inboxul",
-        "selectAllVisible": "Selectează toate elementele vizibile",
+        "firstOrLastItem": "Primul sau ultimul element",
+        "jumpByPage": "Salt cu o pagină",
+        "togglePreview": "Afișează/ascunde panoul de previzualizare",
         "selectItem": "Selectează elementul",
-        "togglePreview": "Comută panoul de previzualizare"
+        "selectAllVisible": "Selectează toate elementele vizibile",
+        "clearSelection": "Șterge selecția sau închide clasarea rapidă",
+        "openQuickFile": "Deschide clasarea rapidă",
+        "chooseQuickFileResult": "Alege un rezultat din clasarea rapidă",
+        "archiveItem": "Arhivează elementul selectat",
+        "openOriginal": "Deschide linkul original",
+        "refresh": "Reîmprospătează inboxul",
+        "confirmFiling": "Confirmă panoul de clasare"
       },
       "journal": {
-        "bold": "Îngroașă textul selectat",
-        "find": "Caută în jurnal",
-        "italic": "Înclină textul selectat",
         "returnFromOverview": "Revino din vizualizarea pe lună sau an",
+        "find": "Caută în jurnal",
+        "bold": "Aplică aldin textului selectat",
+        "italic": "Aplică cursiv textului selectat",
         "underline": "Subliniază textul selectat"
       },
       "notes": {
+        "createNote": "Creează o notiță",
+        "find": "Caută în notiță",
         "bold": "Aldin",
-        "closeOverlays": "Închide suprapunerile editorului",
-        "commandMenu": "Deschide meniul de comenzi al editorului",
-        "createNote": "Creează o notă",
-        "find": "Caută în notă",
         "italic": "Cursiv",
-        "underline": "Subliniat"
-      },
-      "settings": {
-        "cancelRecording": "Anulează înregistrarea comenzii rapide",
-        "customizeShortcuts": "Personalizează comenzile rapide de la tastatură",
-        "openSettings": "Deschide setările",
-        "recordShortcut": "Înregistrează o comandă rapidă nouă",
-        "resetShortcut": "Restaurează valoarea implicită a unei comenzi rapide"
-      },
-      "tabs": {
-        "closeAllInPane": "Închide toate filele din panou",
-        "closeSplitPane": "Închide panoul divizat",
-        "closeTab": "Închide fila",
-        "duplicateTab": "Duplică fila",
-        "focusPane": "Focalizează alt panou",
-        "maximizePane": "Maximizează panoul curent",
-        "moveTabToPane": "Mută fila în panou",
-        "newTabMenu": "Deschide meniul pentru filă nouă",
-        "nextTab": "Fila următoare",
-        "pinTab": "Fixează sau anulează fixarea filei",
-        "previousTab": "Fila anterioară",
-        "reopenClosedTab": "Redeschide fila închisă",
-        "splitDown": "Divizează în jos",
-        "splitRight": "Divizează la dreapta"
+        "underline": "Subliniat",
+        "commandMenu": "Deschide meniul de comenzi al editorului",
+        "closeOverlays": "Închide suprapunerile editorului"
       },
       "tasks": {
         "clearFilters": "Șterge filtrele vizibile",
+        "selectAllVisible": "Selectează toate sarcinile vizibile",
         "clearSelection": "Șterge selecția de sarcini",
         "completeSelected": "Finalizează sarcinile selectate",
-        "configureRepeat": "Configurează repetarea pentru sarcina focalizată",
         "deleteSelected": "Șterge sarcinile selectate",
-        "selectAllVisible": "Selectează toate sarcinile vizibile",
+        "configureRepeat": "Configurează repetarea pentru sarcina focalizată",
         "skipOccurrence": "Omite o repetare",
         "stopRepeating": "Oprește repetarea sarcinii"
+      },
+      "settings": {
+        "openSettings": "Deschide setările",
+        "customizeShortcuts": "Personalizează comenzile rapide de la tastatură",
+        "recordShortcut": "Înregistrează o comandă rapidă nouă",
+        "cancelRecording": "Anulează înregistrarea comenzii rapide",
+        "resetShortcut": "Restaurează valoarea implicită a unei comenzi rapide"
       }
     },
-    "or": "sau",
-    "then": "apoi"
+    "combos": {
+      "shortcutsTab": "Fila Comenzi rapide",
+      "clickRow": "Clic pe rând",
+      "reset": "Resetare"
+    }
+  },
+  "update": {
+    "available": "Actualizare disponibilă",
+    "downloading": "Se descarcă {version}",
+    "ready": "Actualizare pregătită",
+    "failed": "Actualizarea a eșuat",
+    "downloadAction": "Descarcă",
+    "restartAction": "Repornește",
+    "detailsAction": "Detalii",
+    "popover": {
+      "readyTitle": "MemryNote {version} este pregătit",
+      "availableTitle": "MemryNote {version} este disponibil",
+      "readySubtitle": "Aveți versiunea {current}",
+      "availableSubtitle": "Aveți versiunea {current} · nu s-a descărcat nimic încă",
+      "allChanges": "Toate modificările",
+      "restartNow": "Repornește acum",
+      "onNextQuit": "La următoarea închidere",
+      "download": "Descarcă",
+      "notNow": "Nu acum",
+      "moreOptions": "Mai multe opțiuni de actualizare",
+      "skipVersion": "Omite {version}",
+      "turnOffAuto": "Dezactivează actualizările automate",
+      "copyVersionInfo": "Copiază informațiile despre versiune",
+      "openSettings": "Deschide setările"
+    },
+    "installing": {
+      "title": "Se instalează {version}",
+      "titleUnknownVersion": "Se instalează actualizarea",
+      "subtitle": "MemryNote se va redeschide în câteva momente. Tot ce ați scris este deja pe disc."
+    },
+    "installFailed": {
+      "title": "MemryNote nu a putut finaliza instalarea versiunii {version}",
+      "titleUnknownVersion": "MemryNote nu a putut finaliza instalarea actualizării",
+      "body": "Seiful nu a fost atins – o actualizare se aplică aplicației, nu notițelor. Aveți în continuare versiunea {current} și totul funcționează ca înainte.",
+      "errorLabel": "Ce nu a funcționat",
+      "downloadManually": "Descarcă manual {version}",
+      "downloadManuallyUnknownVersion": "Descarcă manual MemryNote",
+      "tryAgain": "Reîncearcă",
+      "copyDetails": "Copiază detaliile"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Seifuri",
+    "position": "{name}, seiful {index} din {count}",
+    "openList": "{position}. Deschide lista de seifuri",
+    "switchTo": "Treci la {name}",
+    "switchingTo": "Se trece la {name}",
+    "changeIcon": "Schimbă pictograma…",
+    "resetIcon": "Resetează pictograma",
+    "iconButton": "Schimbă pictograma pentru {name}",
+    "iconFailed": "Nu s-a putut schimba pictograma seifului"
+  },
+  "sidebarHelp": {
+    "label": "Ajutor și feedback",
+    "reportBug": "Raportează o eroare",
+    "requestFeature": "Solicită o funcție",
+    "starOnGithub": "Marchează cu stea pe GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "Noutăți"
+  },
+  "sidebarStar": {
+    "title": "MemryNote are cod sursă deschis",
+    "body": "Dezvoltat public. O stea îi ajută pe alții să-l descopere.",
+    "star": "Marchează cu stea",
+    "later": "Nu acum",
+    "thanks": "Vă mulțumim. Contează mult pentru noi."
+  },
+  "sidebar": {
+    "railLabel": "Secțiuni",
+    "search": "Caută sau salt la…",
+    "vaultMenu": "{name}. Deschide lista de seifuri"
   }
 }

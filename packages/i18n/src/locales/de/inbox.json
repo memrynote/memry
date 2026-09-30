@@ -96,7 +96,7 @@
     "failedArchiveItem": "Element konnte nicht archiviert werden",
     "failedArchiveItems": "Elemente konnten nicht archiviert werden",
     "failedFile": "Ablegen fehlgeschlagen",
-    "failedFileItem": "Das Element konnte nicht abgelegt werden",
+    "failedFileItem": "Element konnte nicht abgelegt werden",
     "failedFileItems": "Elemente konnten nicht abgelegt werden",
     "failedSnooze": "Zurückstellen fehlgeschlagen",
     "failedSnoozeItem": "Element konnte nicht zurückgestellt werden",
@@ -238,7 +238,7 @@
     "capturedAt": "Erfasst {date}",
     "todayAt": "heute um {time}",
     "yesterdayAt": "gestern um {time}",
-    "dateAt": "{date} um {time}",
+    "dateAt": "am {date} um {time}",
     "words": "{count, plural, one {# Wort} other {# Wörter}}",
     "duration": "Dauer: {duration}",
     "dimensions": "Abmessungen",
@@ -345,7 +345,7 @@
     "now": "jetzt",
     "timeAgoMinutes": "vor {count} Min.",
     "timeAgoHours": "vor {count} Std.",
-    "timeAgoDays": "vor {count} T."
+    "timeAgoDays": "vor {count} Tg."
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
@@ -375,7 +375,7 @@
       "searchFolders": "Ordner durchsuchen…",
       "searchFolders2": "Ordner durchsuchen",
       "searchResults": "Suchergebnisse",
-      "create": "Erstellen \"",
+      "create": "Ordner erstellen: \"",
       "suggested": "Vorgeschlagen",
       "recent": "Zuletzt verwendet",
       "allFolders": "Alle Ordner",
@@ -461,7 +461,7 @@
     },
     "componentsQuickCaptureStates": {
       "captured": "Erfasst",
-      "dismissError": "Fehler verwerfen",
+      "dismissError": "Fehlermeldung schließen",
       "alreadyCaptured": "Bereits erfasst",
       "captureAnyway": "Trotzdem erfassen",
       "close": "Schließen",
@@ -528,7 +528,7 @@
     "errors": {
       "failedToCaptureLink": "Link konnte nicht erfasst werden",
       "failedToCaptureNote": "Notiz konnte nicht erfasst werden",
-      "captureFailed": "Erfassen fehlgeschlagen",
+      "captureFailed": "Erfassung fehlgeschlagen",
       "failedToCaptureVoiceMemo": "Sprachmemo konnte nicht erfasst werden",
       "voiceCaptureFailed": "Die Sprachaufnahme ist fehlgeschlagen",
       "failedToCaptureFile": "Datei konnte nicht erfasst werden",

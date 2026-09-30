@@ -16,7 +16,7 @@
     "previous-period": "Önceki dönem",
     "next-period": "Sonraki dönem",
     "previous-month": "Önceki ay",
-    "next-month": "Gelecek ay",
+    "next-month": "Sonraki ay",
     "today": "Bugün"
   },
   "search": {
@@ -112,7 +112,7 @@
     },
     "provider-names": {
       "ics": "abone olunan takvim",
-      "caldav": "CalDAV takvimi",
+      "caldav": "CalDAV takvim",
       "apple-eventkit": "macOS Takvim"
     }
   },
@@ -282,7 +282,7 @@
       "priority": "Öncelik",
       "none": "Gruplama yok"
     },
-    "group-by-label": "{group} bazında",
+    "group-by-label": "Gruplama: {group}",
     "order-by": {
       "start": "Başlangıç tarihi",
       "due": "Son tarih",
@@ -317,8 +317,8 @@
       "schedule": "Planla",
       "set-start": "Başlangıç tarihi ayarla",
       "set-due": "Son tarih ayarla",
-      "move-later": "Bir hafta ileri al",
-      "move-earlier": "Bir hafta geri al",
+      "move-later": "Bir hafta sonraya taşı",
+      "move-earlier": "Bir hafta öncesine taşı",
       "clear-dates": "Tarihleri temizle",
       "clear-start": "Başlangıç tarihini temizle",
       "clear-due": "Son tarihi temizle",

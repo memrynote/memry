@@ -143,8 +143,8 @@
       "schedule": "Plane Aufgaben und Notizen in deinem Kalender"
     },
     "continue": "Mit Google fortfahren",
-    "dismiss": "Verwerfen",
-    "error": "Google Calendar konnte nicht verbunden werden. Versuche es erneut."
+    "dismiss": "Schließen",
+    "error": "Google Calendar konnte nicht verbunden werden. Versuch es erneut."
   },
   "metadata": {
     "attendees": "Teilnehmer",
@@ -182,7 +182,7 @@
       "couldNotEditThisEventTryAgain": "Dieser Termin konnte nicht bearbeitet werden. Versuch es erneut.",
       "failedToDeleteEvent": "Termin konnte nicht gelöscht werden",
       "couldNotUnsnoozeInboxItem": "Zurückstellung konnte nicht aufgehoben werden.",
-      "couldNotRescheduleInboxItem": "Konnte nicht verschoben werden."
+      "couldNotRescheduleInboxItem": "Element konnte nicht neu geplant werden."
     },
     "inboxSnoozePopover": {
       "title": "Zurückgestelltes Element im Eingang",
@@ -317,8 +317,8 @@
       "schedule": "Einplanen",
       "set-start": "Startdatum festlegen",
       "set-due": "Fälligkeitsdatum festlegen",
-      "move-later": "Auf eine Woche später verschieben",
-      "move-earlier": "Auf eine Woche früher verschieben",
+      "move-later": "Eine Woche nach hinten verschieben",
+      "move-earlier": "Eine Woche nach vorne verschieben",
       "clear-dates": "Datumsangaben entfernen",
       "clear-start": "Startdatum entfernen",
       "clear-due": "Fälligkeitsdatum entfernen",
