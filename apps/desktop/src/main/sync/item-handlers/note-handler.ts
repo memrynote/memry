@@ -57,6 +57,7 @@ import { saveCanonicalPropertyDefinition } from '@memry/domain-notes'
 import {
   getNoteCacheByPath,
   getNoteTags,
+  noteCacheExists,
   setNoteTags,
   updateNoteCache,
   setNoteProperties
@@ -476,8 +477,14 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       // carries the sender's frontmatter half, and `setNoteTags` replaces.
       // Re-derive the body half from the file (already at its new path if this
       // update moved it) so a body-only `#hashtag` survives a remote update.
+      //
+      // A note whose file went missing has no index row: the startup reconcile
+      // drops it and keeps the data-DB row. Tag and property rows reference
+      // that row by foreign key, so writing them failed the whole apply on every
+      // retry (#2538). The next index of the file rebuilds them.
+      const indexed = noteCacheExists(indexDb, itemId)
       const indexTags =
-        tagsChanged && remoteTags
+        indexed && tagsChanged && remoteTags
           ? mergeWithLocalBodyTags(remoteTags, updateFields.path ?? existing.path)
           : undefined
 
@@ -485,7 +492,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         setNoteTags(indexDb, itemId, indexTags)
       }
 
-      if (propertiesPresent) {
+      if (indexed && propertiesPresent) {
         const getType = (name: string, value: unknown) => {
           const existing = getCanonicalPropertyDefinition(ctx.db, name)
           const type = resolvePropertyType(

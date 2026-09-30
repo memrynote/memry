@@ -107,7 +107,7 @@ export function createTestDatabase(): TestDatabaseResult {
 export function createTestIndexDb(): TestDatabaseResult {
   const sqlite = new Database(':memory:')
 
-  // Apply pragmas (no foreign keys for index db)
+  // Same pragmas as initIndexDatabase. Foreign keys are on by the build default.
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('synchronous = NORMAL')
 
