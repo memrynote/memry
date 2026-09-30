@@ -383,6 +383,13 @@ and `agent-message-handler.ts` implement it. Never substitute a placeholder id t
 constraint: an invented `'unknown-source'` can only ever FK-fail, and it makes the failure
 unclassifiable as well as fatal.
 
+The index DB enforces foreign keys too. The app never sets the pragma there, and better-sqlite3
+builds with `SQLITE_DEFAULT_FOREIGN_KEYS=1`. `note_tags` and `note_properties` reference
+`note_cache`. A note whose file is missing at its recorded path has a `note_metadata` row but no
+`note_cache` row, because the startup reconcile drops the index row of a missing file. A remote update
+to that note therefore writes no tag or property rows. The rest of the update (title, path, clock)
+applies, and the next index of the file rebuilds the index rows.
+
 ## Adding a New Sync Type
 
 1. Define a Zod schema in `packages/contracts/<domain>-api.ts`.
