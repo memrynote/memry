@@ -32,27 +32,34 @@ interface LaunchedGroup {
 
 const ACTIVE_ITEMS: RoadmapItem[] = [
   {
-    title: 'Mobile apps — iPhone, iPad, and Android',
+    title: 'Native iPhone app, in TestFlight beta',
     caption:
-      'Quick capture on phones plus an iPad-optimized writing and reading surface, backed by the same encrypted vault and offline-first sync as desktop.'
+      'Notes, tasks, journal, inbox with a share extension, and calendar on the same end-to-end encrypted vault and offline-first sync as desktop. Public release planned for the end of November.'
   },
   {
-    title: 'Calendars beyond Google — ICS, CalDAV, Outlook, and Apple',
+    title: 'Graph and canvas you can edit from',
     caption:
-      'Subscribe to any ICS feed (Proton, Notion, holiday calendars), connect CalDAV servers like Fastmail, Nextcloud, and iCloud, and sync Outlook / Microsoft 365.'
+      'Link and tag notes straight from the graph, saved graph views, pinned layouts, canvas sections bound to a tag or property, and similar-note and tag suggestions from local embeddings.'
   }
 ]
 
 const PLANNED_ITEMS: RoadmapItem[] = [
+  {
+    title: 'Outlook and Microsoft 365 calendars',
+    caption: 'The next provider after Google, CalDAV, ICS subscriptions, and macOS Calendar.'
+  },
+  {
+    title: 'iPad and Android apps',
+    caption: 'The iPhone app’s encrypted vault and sync, on a tablet layout and on Android.'
+  },
   {
     title: 'iPad handwriting and PDF annotation',
     caption:
       'Apple Pencil writing, searchable handwritten notes, and markup for PDFs inside the vault.'
   },
   {
-    title: 'Mobile share sheet, widgets, and quick capture',
-    caption:
-      'Capture links, text, images, and voice from iOS or Android without opening the full app.'
+    title: 'Home screen widgets and quick capture on mobile',
+    caption: 'Capture text and voice, or glance at today, without opening the full app.'
   },
   {
     title: 'Locked spaces for sensitive notes',
@@ -77,6 +84,88 @@ const PLANNED_ITEMS: RoadmapItem[] = [
 ]
 
 const LAUNCHED_GROUPS: LaunchedGroup[] = [
+  {
+    period: 'September 2026',
+    items: [
+      {
+        title: 'Calendars beyond Google',
+        caption:
+          'Connect CalDAV servers, subscribe to any ICS or webcal link, and see macOS Calendar read-only without signing in. Plus a Gantt Timeline view, Google Calendar colours, and Google changes that arrive within seconds.'
+      },
+      {
+        title: 'Agent Chat asks before it writes',
+        caption:
+          'Every vault write shows a real preview and waits for approval, agent edits can be reviewed inside the note, and the agent can add sandboxed HTML artifacts. Antigravity CLI joins as a backend, and Gemini as an inline AI provider.'
+      },
+      {
+        title: 'New devices open in seconds',
+        caption:
+          'Notes and attachments download in the background while you work, pending changes survive restarts, and items created on two devices at once no longer go missing.'
+      },
+      {
+        title: 'Whiteboard, math, and Mermaid blocks',
+        caption:
+          'Draw inside a note or embed an existing canvas with @, render formulas with KaTeX, and write Mermaid diagrams.'
+      },
+      {
+        title: 'Edit tasks inline',
+        caption:
+          'Every task property from the task line in a note or journal, quick-add shorthand like #tag @friday !high, start dates in Today, grouping by source note, and archived tasks you can bring back.'
+      },
+      {
+        title: 'Block side menu, foldable bullets, and themed code blocks',
+        caption:
+          'Change, colour, duplicate, or move any block from its handle, fold nested bullets, and copy code with a language picker.'
+      },
+      {
+        title: 'Note cover images and video attachments',
+        caption:
+          'Cover photos from Unsplash, a link, or your vault, and video files that play inline.'
+      },
+      {
+        title: 'Templates from your own notes',
+        caption:
+          'Save any note as a template and insert a template at the cursor from the slash menu.'
+      },
+      {
+        title: 'Make it yours',
+        caption:
+          'Colour themes, rebindable shortcuts that work in the editor, an app-wide zoom level, any installed font, and settings regrouped into searchable pages.'
+      },
+      {
+        title: 'Saved multi-tag filters and richer relations',
+        caption:
+          'Filter by several tags at once and save the result, relate notes to canvases and journal days, and place projects and files on a canvas as live cards.'
+      },
+      {
+        title: 'One attachment picker, reusable across notes',
+        caption: 'Upload a new file or embed one the vault already stores, all from the keyboard.'
+      },
+      {
+        title: 'Vaults: icons, swipe switching, an activity log, and clearer setup',
+        caption:
+          'Switch with a swipe or Cmd+Shift+O, see what Memrynote added, skipped, or failed to sync, and pick create, open, or sync on first run.'
+      },
+      {
+        title: 'Better imports',
+        caption:
+          'Pick Apple Notes folders and keep their tables, bring Obsidian Tasks lines in as real tasks, and turn imported checklists into tasks.'
+      },
+      { title: 'Journal header actions and weekday names in journal filenames' },
+      { title: 'Minimize to tray' },
+      { title: 'Switch plan or billing cadence without cancelling' },
+      {
+        title: 'Windows updates through Velopack',
+        caption:
+          'A signed installer, and failed or interrupted updates roll back to the previous version.'
+      },
+      {
+        title: 'Stability and fixes',
+        caption:
+          'Markdown written in other apps is no longer rewritten, deleted notes stay deleted, vaults stay with their account after sign-out, keychain stalls no longer freeze pages, and the graph renders without a GPU.'
+      }
+    ]
+  },
   {
     period: 'August 2026',
     items: [
