@@ -299,6 +299,16 @@ lifetime by construction:
   empty, and an empty document drops its watermark and downloads the baseline
   (#2511).
 
+In-memory mode also never rebuilds a closed note's document from markdown just to
+push it (#2536). A markdown seed shares no Yjs items with the server body, so
+pushing one adds a second copy of the body, and whichever copy Yjs orders first
+hides the other on every device. So the launch seed pass (`seedExistingDocs`)
+skips every note, the snapshot scheduler reopens a closed note without a seed,
+and the full-state outbox flush reads its state without one. A create push and
+the oversized-update fallback still seed, because for a note the server has
+never seen, the vault file is the only copy of the body. An editor open still
+seeds too, which is the open fork in #2544.
+
 Losing a watermark costs one extra request. Keeping a stale one costs a note
 body, so every unknown — no record, an unreadable record, a store written by a
 build that predates the key — resolves to "download the baseline".
