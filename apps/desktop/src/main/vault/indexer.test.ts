@@ -723,6 +723,40 @@ Body of a note with broken frontmatter
       expect(after).toEqual(expect.objectContaining({ id: before?.id, path: relativePath }))
     })
 
+    it('#2540: re-indexes an image whose path note_metadata already holds, keeping its id', async () => {
+      const activityLog = await import('./activity-log')
+      activityLog.openActivityLog(tempVault.path)
+      try {
+        createTestNote(tempVault, { title: 'Trip', content: 'See the photo' })
+        const imagePath = 'notes/Trip image 0123456789abcdef.png'
+        fs.writeFileSync(path.join(tempVault.path, imagePath), 'png')
+        await indexer.indexVault(tempVault.path)
+        const before = dataDb.db
+          .select()
+          .from(noteMetadata)
+          .where(eq(noteMetadata.path, imagePath))
+          .get()
+        expect(before?.id).toEqual(expect.any(String))
+
+        testDb.db.delete(noteCache).run()
+        const result = await indexer.indexVault(tempVault.path, { activity: 'scan' })
+
+        expect({ indexed: result.indexed, errors: result.errors }).toEqual({
+          indexed: 2,
+          errors: 0
+        })
+        const cacheRow = testDb.db
+          .select()
+          .from(noteCache)
+          .where(eq(noteCache.path, imagePath))
+          .get()
+        expect(cacheRow?.id).toBe(before?.id)
+        expect(activityLog.listActivity().filter((entry) => entry.kind === 'failed')).toEqual([])
+      } finally {
+        await activityLog.closeActivityLog()
+      }
+    })
+
     it('T376: preserves note emoji across index rebuilds via note_metadata byPath', async () => {
       // Emoji is DB-only sidecar state — never written to the vault file — so a
       // cache rebuilt purely from files would lose the icon unless the indexer
