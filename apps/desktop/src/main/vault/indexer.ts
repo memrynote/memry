@@ -24,7 +24,7 @@ import {
 import { parseNote } from './frontmatter'
 import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
-import { syncNoteToCache, syncFileToCache } from './note-sync'
+import { syncNoteToCache, syncFileToCache, findCanonicalNoteByPath } from './note-sync'
 import { flushProjectionEvents } from '../projections'
 import {
   getNoteCacheByPath,
@@ -263,9 +263,10 @@ async function indexMarkdownFile(
  * Index a single non-markdown file (PDF/image/audio/video) into the cache and
  * return its `note_cache` id.
  *
- * Idempotent: `syncFileToCache` resolves the id by path, so calling this before
- * the filesystem watcher indexes the same file (e.g. eagerly during inbox
- * filing) reuses one id and never touches `note_tags`. See #800.
+ * Idempotent: the id is resolved by path, so calling this before the filesystem
+ * watcher indexes the same file (e.g. eagerly during inbox filing) reuses one id
+ * and never touches `note_tags`. See #800. The `note_metadata` row outlives the
+ * cache row, and its path is unique, so its id wins over a fresh one (#2540).
  */
 export async function indexBinaryFile(
   db: ReturnType<typeof getIndexDatabase>,
@@ -276,8 +277,7 @@ export async function indexBinaryFile(
   // Get file stats for metadata
   const stats = await stat(absolutePath)
 
-  // Generate a new ID for this file (reused if the path is already cached)
-  const id = generateNoteId()
+  const id = findCanonicalNoteByPath(relativePath)?.id ?? generateNoteId()
 
   // Get MIME type
   const ext = getExtension(absolutePath)
