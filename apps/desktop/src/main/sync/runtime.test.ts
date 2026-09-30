@@ -943,7 +943,9 @@ describe('sync runtime', () => {
       // Through the batched push: quiet period, then the scheduler's batch window.
       await vi.advanceTimersByTimeAsync(30_000 + SNAPSHOT_BATCH_WINDOW_MS)
       expect(runtimeMocks.crdtProvider.pushSnapshotsForNotes).toHaveBeenCalledTimes(1)
-      expect(runtimeMocks.crdtProvider.pushSnapshotsForNotes).toHaveBeenCalledWith(['note-1'])
+      expect(runtimeMocks.crdtProvider.pushSnapshotsForNotes).toHaveBeenCalledWith(['note-1'], {
+        skipSeed: true
+      })
       expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
     } finally {
       vi.useRealTimers()

@@ -548,7 +548,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       // Batched: notes that come due together share /sync/crdt/snapshot/batch
       // requests instead of spending one push-budget slot each.
       const snapshotScheduler = new CrdtSnapshotScheduler((noteIds) =>
-        crdtProvider.pushSnapshotsForNotes(noteIds)
+        crdtProvider.pushSnapshotsForNotes(noteIds, { skipSeed: true })
       )
       // Durable CRDT body outbox (#2298): note_body rows in sync_queue, pushed
       // through this fn, which keeps the CRDT route's own 429 gate and window.
