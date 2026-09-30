@@ -16,8 +16,8 @@
       "title": "Nem sikerült betölteni a jegyzetet"
     },
     "toast": {
-      "cannotSaveDeleted": "Nem menthető – a jegyzet törölve",
-      "cannotRenameDeleted": "Nem lehet átnevezni – a jegyzet törölve",
+      "cannotSaveDeleted": "Nem menthető – a jegyzetet törölték",
+      "cannotRenameDeleted": "Nem nevezhető át – a jegyzetet törölték",
       "createLinkedFailed": "Nem sikerült létrehozni a hivatkozott jegyzetet",
       "openLinkedFailed": "Nem sikerült megnyitni a hivatkozott elemet",
       "fileNotFound": "A fájl nem található: {target}",
@@ -238,7 +238,7 @@
     "callout": {
       "title": "Kiemelő blokk",
       "group": "Alapblokkok",
-      "subtext": "Emelje ki a fontos információkat",
+      "subtext": "Fontos információk kiemelése",
       "changeType": "Kiemelő blokk típusának módosítása",
       "menuLabel": "Kiemelő blokk típusa",
       "info": "Infó",
@@ -268,7 +268,7 @@
       "noteName": "{note} – rajztábla",
       "untitled": "Névtelen rajztábla",
       "loading": "Rajztábla betöltése…",
-      "openInTab": "Megnyitás lapon",
+      "openInTab": "Megnyitás külön lapon",
       "edit": "Szerkesztés",
       "done": "Kész",
       "surfaceLabel": "Rajz: {title}",
@@ -280,7 +280,7 @@
       "missingBody": "A vásznát törölték, vagy még nem érkezett meg erre az eszközre. Ha még szinkronizálódik, magától megjelenik itt.",
       "unreadableTitle": "Ez a rajztábla itt nem nyitható meg",
       "unreadableBody": "A vászonfájlja hiányzik a széfből, vagy ezen az eszközön nem olvasható. Semmi nem törlődött.",
-      "disabledTitle": "A Vászon ki van kapcsolva",
+      "disabledTitle": "A Vászon funkció ki van kapcsolva",
       "disabledBody": "A rajztábla megtekintéséhez és szerkesztéséhez kapcsolja be a Vászon funkciót itt: Beállítások › Funkciók. A rajz mindenképpen megmarad."
     },
     "viewBlock": {
@@ -546,7 +546,7 @@
   "backlinks": {
     "sortRecent": "Legutóbbi",
     "sortAlpha": "A-Z",
-    "sortMentions": "A legtöbb említés",
+    "sortMentions": "Legtöbb említés",
     "sortBy": "Visszahivatkozások rendezése: {sort}",
     "summary": "{notes} jegyzet · {references} hivatkozás",
     "sectionAria": "Visszahivatkozások",
@@ -593,7 +593,7 @@
     "label": "Javasolt címkék:",
     "hint": "Az ehhez leginkább hasonló jegyzetek közös címkéi. Semmi sem kerül a jegyzetbe, amíg nem választ egyet.",
     "acceptAria": "Címke hozzáadása: {tag}",
-    "support": "{count, plural, one {# hasonló jegyzeten használva} other {# hasonló jegyzeten használva}}",
+    "support": "{count, plural, one {# hasonló jegyzetben szerepel} other {# hasonló jegyzetben szerepel}}",
     "dismiss": "Javasolt címkék elrejtése",
     "failed": "Nem sikerült hozzáadni a címkét"
   },
@@ -604,7 +604,7 @@
     "commentPlaceholder": "Megjegyzés hozzáadása…",
     "createdTooltip": "Létrehozva: {date} {time}",
     "cancel": "Mégse",
-    "resolve": "Megoldás",
+    "resolve": "Megjelölés megoldottként",
     "edit": "Megjegyzés szerkesztése",
     "delete": "Megjegyzés törlése",
     "replyPlaceholder": "Válasz…",
@@ -635,7 +635,7 @@
     "removeAria": "Címke eltávolítása: {tag}",
     "inputPlaceholder": "Írja be a címke nevét…",
     "recent": "Legutóbbiak",
-    "matching": "Egyező",
+    "matching": "Egyező címkék",
     "all": "Minden címke",
     "none": "Nem találhatók címkék",
     "createTag": "Címke létrehozása: „{tag}”",
@@ -745,9 +745,9 @@
         "tileCredit": "{name} · Unsplash",
         "error": {
           "notConfigured": "Az Unsplash-fotók nem érhetők el ebben a verzióban",
-          "offline": "Nincs kapcsolat az Unsplash-sel",
+          "offline": "Nincs kapcsolat az Unsplash szolgáltatással",
           "rateLimited": "Az Unsplash korlátozza a kéréseket, próbálja újra kicsit később",
-          "failed": "Nem sikerült elérni az Unsplash-t",
+          "failed": "Nem sikerült elérni az Unsplash szolgáltatást",
           "writeFailed": "Ezt a fotót nem sikerült elmenteni a széfbe"
         }
       },
@@ -830,7 +830,7 @@
     "hidePreview": "Előnézet elrejtése",
     "showPreview": "Előnézet megjelenítése",
     "empty": "Még nincs mentett verzió",
-    "emptyDescription": "A verziók automatikusan mentésre kerülnek, ha jelentős változtatásokat hajt végre",
+    "emptyDescription": "A verziók automatikusan mentődnek, ha jelentős módosításokat végez",
     "latest": "Legújabb",
     "autoSaved": "Automatikusan mentve",
     "words": "{count} szó",
@@ -839,7 +839,7 @@
     "deleteTitle": "Törli ezt a verziót?",
     "deleteDescription": "Ez a művelet nem vonható vissza. Ez a verzió véglegesen törlődik.",
     "restoreTitle": "Visszaállítja ezt a verziót?",
-    "restoreDescription": "Ez lecseréli a jelenlegi jegyzet tartalmát erre a verzióra. Először az aktuális állapot pillanatképe kerül mentésre, így visszavonhatja ezt a műveletet.",
+    "restoreDescription": "Ez a verzió lecseréli a jegyzet jelenlegi tartalmát. Előtte pillanatkép készül az aktuális állapotról, így a művelet visszavonható.",
     "restoring": "Visszaállítás…",
     "toast": {
       "loadPreviewFailed": "Nem sikerült betölteni a verzió előnézetét",
@@ -901,7 +901,7 @@
     "componentsFolderViewColumnSelector": {
       "properties": "Tulajdonságok",
       "display": "Megjelenítés",
-      "showSummaries": "Összegzések megjelenítése",
+      "showSummaries": "Összesítések megjelenítése",
       "columnBorders": "Oszlopszegélyek",
       "searchColumns": "Oszlopok keresése…",
       "noMatchingColumns": "Nincsenek megfelelő oszlopok",
@@ -919,7 +919,7 @@
     "componentsFolderViewFilterBuilder": {
       "filter": "Szűrés",
       "filters": "Szűrők",
-      "clearAll": "Minden törlése",
+      "clearAll": "Összes törlése",
       "noFiltersApplied": "Nincsenek szűrők",
       "addFiltersToNarrowDownYourNotes": "Adjon hozzá szűrőket a jegyzetek szűkítéséhez",
       "match": "Egyezés",
@@ -980,7 +980,7 @@
       "noGroupablePropertiesFound": "Nem található csoportosítható tulajdonság",
       "sortDirection": "Rendezési irány",
       "collapseGroupsByDefault": "Csoportok összecsukása alapértelmezés szerint",
-      "showGroupSummaries": "Csoportösszefoglalók megjelenítése",
+      "showGroupSummaries": "Csoportösszesítések megjelenítése",
       "clearGrouping2": "Csoportosítás megszüntetése"
     },
     "componentsFolderViewGroupedTable": {
@@ -1101,8 +1101,8 @@
     },
     "componentsSidebarProjectsEmptyState": {
       "noProjectsYet": "Még nincsenek projektek",
-      "createYourFirstProject": "Hozza létre az első projektjét",
-      "createYourFirstProject2": "Hozza létre az első projektjét"
+      "createYourFirstProject": "Első projekt létrehozása",
+      "createYourFirstProject2": "Első projekt létrehozása"
     },
     "componentsSidebarSidebarBookmarkList": {
       "loadingBookmarks": "Könyvjelzők betöltése…",
@@ -1157,7 +1157,7 @@
       "deleteTag": "Címke törlése",
       "recent": "Legutóbbi",
       "created": "Létrehozva",
-      "alphabetical": "ABC sorrendben"
+      "alphabetical": "Betűrendben"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Címke átnevezése",
@@ -1167,8 +1167,8 @@
       "cancel": "Mégse"
     },
     "componentsViewersAudioPlayer": {
-      "failedToLoadAudio": "Nem sikerült betölteni a hangot",
-      "theAudioFileCouldNotBePlayed": "Az audiofájlt nem lehetett lejátszani.",
+      "failedToLoadAudio": "Nem sikerült betölteni a hangfájlt",
+      "theAudioFileCouldNotBePlayed": "Nem sikerült lejátszani a hangfájlt.",
       "skipBack10s": "Ugrás vissza 10 másodperccel",
       "skipForward10s": "Ugrás előre 10 másodperccel"
     },
@@ -1201,7 +1201,7 @@
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Nem sikerült betölteni a videót",
-      "theVideoFileCouldNotBePlayed": "A videofájlt nem lehetett lejátszani."
+      "theVideoFileCouldNotBePlayed": "Nem sikerült lejátszani a videofájlt."
     },
     "pagesFile": {
       "failedToLoadFile": "Nem sikerült betölteni a fájlt",
@@ -1220,7 +1220,7 @@
       "displayDensity": "Megjelenítési sűrűség",
       "comfortable": "Kényelmes",
       "compact": "Kompakt",
-      "showSummaries": "Összefoglalók megjelenítése",
+      "showSummaries": "Összesítések megjelenítése",
       "cancel": "Mégse"
     },
     "componentsFolderViewSortSelector": {
@@ -1251,7 +1251,7 @@
       "failedToReorderBookmarks": "Nem sikerült átrendezni a könyvjelzőket",
       "failedToSave": "Nem sikerült menteni",
       "failedToRename": "Nem sikerült átnevezni",
-      "failedToUpdateEmoji": "Nem sikerült frissíteni a hangulatjelet",
+      "failedToUpdateEmoji": "Nem sikerült frissíteni az emojit",
       "failedToUpdateTags": "Nem sikerült frissíteni a címkéket",
       "failedToSnoozeReminder": "Nem sikerült elhalasztani az emlékeztetőt",
       "failedToCreateFolder": "Nem sikerült létrehozni a mappát",
@@ -1275,7 +1275,7 @@
       "failedToRenameProperty": "Nem sikerült átnevezni a tulajdonságot",
       "failedToReorderProperties": "Nem sikerült átrendezni a tulajdonságokat",
       "cannotAddTagThisNoteWasDeleted": "Nem lehet címkét hozzáadni – ezt a jegyzetet törölték",
-      "cannotRemoveTagThisNoteWasDeleted": "A címke nem távolítható el – ez a jegyzet törölve lett",
+      "cannotRemoveTagThisNoteWasDeleted": "A címke nem távolítható el – ezt a jegyzetet törölték",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Nem módosítható a csak helyi mód – ezt a jegyzetet törölték"
     }
   },
@@ -1291,7 +1291,7 @@
     "clearAria": "Kijelölés törlése",
     "copiedLinks": "{count, plural, one {# hivatkozás másolva} other {# hivatkozás másolva}}",
     "setIcon": "Ikon beállítása",
-    "iconUpdated": "{count, plural, one {Ikon frissítve # jegyzeten} other {Ikon frissítve # jegyzeten}}"
+    "iconUpdated": "{count, plural, one {# jegyzet ikonja frissítve} other {# jegyzet ikonja frissítve}}"
   },
   "applyTemplateConfirm": {
     "title": "Lecseréli a jegyzet tartalmát?",

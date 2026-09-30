@@ -117,7 +117,7 @@
     "repeatTypeOneTime": "لمرة واحدة"
   },
   "quickAdd": {
-    "label": "إضافة مهمة سريعة",
+    "label": "إضافة سريعة لمهمة",
     "placeholder": "إضافة مهمة…    @tomorrow  !high  +مشروع  #وسم  [[ملاحظة]]  every monday",
     "presets": {
       "menu": "خيارات المهمة",
@@ -141,7 +141,7 @@
     "remindMe": "ذكّرني",
     "linkItem": "ربط ملاحظة أو لوحة",
     "relatedAria": "العناصر المرتبطة: {count}",
-    "shorthandPreview": "مضبوط بالاختصار"
+    "shorthandPreview": "مضبوط بالصيغة المختصرة"
   },
   "drawer": {
     "close": "إغلاق تفاصيل المهمة",
@@ -506,7 +506,7 @@
       "moveToProject": "نقل إلى مشروع",
       "current": "الحالي",
       "changeStatus": "تغيير الحالة",
-      "current2": "الحالي",
+      "current2": "الحالية",
       "reorder": "إعادة الترتيب"
     },
     "componentsTasksDragDropMultiDragOverlay": {
@@ -536,7 +536,7 @@
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "تحرير المهمة المتكررة",
-      "youReEditingARepeatingTaskApplyChangesTo": "أنت تقوم بتحرير مهمة متكررة. تطبيق التغييرات على:",
+      "youReEditingARepeatingTaskApplyChangesTo": "أنت تحرّر مهمة متكررة. طبّق التغييرات على:",
       "onlyThisOccurrence": "هذه المرة فقط",
       "onlyFutureTasksUnchanged": "فقط — تبقى المهام القادمة دون تغيير",
       "thisAndAllFutureOccurrences": "هذه المرة وكل المرات القادمة",
@@ -651,7 +651,7 @@
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "عوامل التصفية المحفوظة",
-      "saved": "تم الحفظ",
+      "saved": "المحفوظة",
       "noSavedFiltersYet": "لا توجد عوامل تصفية محفوظة بعد",
       "saveCurrentFilters": "حفظ عوامل التصفية الحالية",
       "saveCurrentFilters2": "حفظ عوامل التصفية الحالية"
@@ -812,7 +812,7 @@
       "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "لديك مهام متأخرة في الأعلى. أضف مهامًا لليوم أو راجع قائمة المهام القادمة.",
       "addTaskForToday": "إضافة مهمة لليوم",
       "allCaughtUpForToday": "أنجزت كل مهام اليوم",
-      "youHaveNothingScheduledEnjoyTheClarity": "ليس لديك أي شيء مقرر. استمتع بالوضوح.",
+      "youHaveNothingScheduledEnjoyTheClarity": "ليس لديك أي شيء مجدول. استمتع بهذا الصفاء.",
       "addTaskForToday2": "إضافة مهمة لليوم"
     },
     "componentsTasksUpcomingEmptyState": {
@@ -905,7 +905,7 @@
     "groups": {
       "today": "اليوم",
       "yesterday": "أمس",
-      "older": "أقدم",
+      "older": "الأقدم",
       "tomorrow": "غدًا",
       "upcoming": "القادمة",
       "past": "الماضية"
@@ -914,9 +914,9 @@
       "viewAll": "عرض الكل",
       "add": "إضافة إلى {title}",
       "emptyTasks": "لا توجد مهام بعد.",
-      "emptyNotes": "لا توجد ملاحظات مرتبطة بعد.",
-      "emptyFiles": "لا توجد ملفات مرتبطة بعد.",
-      "emptyEvents": "لا توجد أحداث مرتبطة بعد.",
+      "emptyNotes": "لم تُربط أي ملاحظات بعد.",
+      "emptyFiles": "لم تُربط أي ملفات بعد.",
+      "emptyEvents": "لم تُربط أي أحداث بعد.",
       "newNoteTitle": "ملاحظة بدون عنوان",
       "newNoteError": "تعذّرت إضافة الملاحظة"
     },

@@ -76,8 +76,8 @@
     "emptyHelp": "Prova a modificare i filtri o",
     "groupBy": "Raggruppa per",
     "groupByOptions": "Opzioni di raggruppamento",
-    "sortAscending": "Ordine crescente",
-    "sortDescending": "Ordine decrescente",
+    "sortAscending": "Ordina in modo crescente",
+    "sortDescending": "Ordina in modo decrescente",
     "sortDirectionAscending": "Crescente",
     "sortDirectionDescending": "Decrescente",
     "groupByFields": {
@@ -102,7 +102,7 @@
       "today": "Oggi",
       "tomorrow": "Domani",
       "thisWeek": "Questa settimana",
-      "nextWeek": "La prossima settimana",
+      "nextWeek": "Settimana prossima",
       "thisMonth": "Questo mese",
       "custom": "Intervallo personalizzato…"
     },
@@ -154,7 +154,7 @@
     "linkedNotes": "Correlati",
     "linkNote": "Aggiungi elemento correlato",
     "loading": "Caricamento…",
-    "searchNotes": "Cerca correlati…",
+    "searchNotes": "Cerca elementi correlati…",
     "noMatchingNotes": "Nessun elemento corrispondente",
     "noNotesAvailable": "Nessun elemento disponibile",
     "noLinkedNotes": "Ancora nessun elemento correlato",
@@ -162,7 +162,7 @@
     "removeLinkFallback": "elemento",
     "related": "Correlati",
     "addRelatedItem": "Aggiungi elemento correlato",
-    "searchRelated": "Cerca correlati…",
+    "searchRelated": "Cerca elementi correlati…",
     "noMatchingRelated": "Nessun elemento corrispondente",
     "noRelatedAvailable": "Nessun elemento disponibile",
     "noRelatedItems": "Ancora nessun elemento correlato",
@@ -281,8 +281,8 @@
       "undoUnarchive": "Ripristina {count} attività dall'archivio"
     },
     "drag": {
-      "rescheduledTo": "Riprogrammata a {target}",
-      "rescheduled": "{count, plural, one {Riprogrammata a {target}} many {# attività riprogrammate a {target}} other {# attività riprogrammate a {target}}}",
+      "rescheduledTo": "Riprogrammata per {target}",
+      "rescheduled": "{count, plural, one {Riprogrammata per {target}} many {# attività riprogrammate per {target}} other {# attività riprogrammate per {target}}}",
       "movedTo": "Spostata in {target}",
       "moved": "{count, plural, one {Spostata in {target}} many {# attività spostate in {target}} other {# attività spostate in {target}}}",
       "prioritySetTo": "Priorità impostata su {priority}",
@@ -501,7 +501,7 @@
       "reschedule": "Riprogramma",
       "today": "Oggi",
       "tomorrow": "Domani",
-      "nextWeek": "La prossima settimana",
+      "nextWeek": "Settimana prossima",
       "removeDate": "Rimuovi la data",
       "moveToProject": "Sposta nel progetto",
       "current": "Corrente",
@@ -532,7 +532,7 @@
       "today": "Oggi",
       "tomorrow": "Domani",
       "thisWeekend": "Questo fine settimana",
-      "nextWeek": "La prossima settimana"
+      "nextWeek": "Settimana prossima"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "Modifica attività ricorrente",
@@ -652,7 +652,7 @@
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Filtri salvati",
       "saved": "Salvato",
-      "noSavedFiltersYet": "Nessun filtro ancora salvato",
+      "noSavedFiltersYet": "Ancora nessun filtro salvato",
       "saveCurrentFilters": "Salva i filtri attuali",
       "saveCurrentFilters2": "Salva i filtri attuali"
     },
@@ -712,7 +712,7 @@
       "archiveProject": "Archivia progetto",
       "deleteProject": "Elimina progetto",
       "selectProject": "Seleziona progetto",
-      "noProjectsYet": "Nessun progetto ancora",
+      "noProjectsYet": "Ancora nessun progetto",
       "createProject": "Crea progetto"
     },
     "componentsTasksProjectsProjectsTabContent": {
@@ -861,7 +861,7 @@
   "addToProject": {
     "menuLabel": "Aggiungi al progetto",
     "dialogTitle": "Aggiungi al progetto",
-    "noProjects": "Nessun progetto ancora",
+    "noProjects": "Ancora nessun progetto",
     "loading": "Caricamento progetti…",
     "toastSuccess": "Aggiunto a {name}",
     "toastError": "Impossibile aggiungere al progetto"
@@ -913,7 +913,7 @@
     "sections": {
       "viewAll": "Visualizza tutto",
       "add": "Aggiungi a {title}",
-      "emptyTasks": "Nessuna attività ancora.",
+      "emptyTasks": "Ancora nessuna attività.",
       "emptyNotes": "Nessuna nota ancora collegata.",
       "emptyFiles": "Nessun file ancora collegato.",
       "emptyEvents": "Nessun evento ancora collegato.",
@@ -943,7 +943,7 @@
       "unpinError": "Impossibile rimuovere la nota dalla panoramica"
     },
     "capture": {
-      "placeholder": "Aggiungi a {name}: scrivi un'attività, annota un pensiero o incolla un link…",
+      "placeholder": "Aggiungi a {name}: scrivi un'attività o una nota, oppure incolla un link…",
       "attach": "Allega file",
       "linkAdded": "Link aggiunto al progetto",
       "linkError": "Impossibile salvare il link",

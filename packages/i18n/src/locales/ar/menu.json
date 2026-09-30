@@ -40,7 +40,7 @@
   },
   "insert": {
     "label": "إدراج",
-    "codeBlock": "كتلة برمجية",
+    "codeBlock": "كتلة شيفرة",
     "table": "جدول",
     "bulletList": "قائمة نقطية",
     "numberedList": "قائمة مرقّمة",
@@ -58,7 +58,7 @@
     "body": "النص الأساسي",
     "bold": "غامق",
     "italic": "مائل",
-    "code": "شفرة",
+    "code": "شيفرة",
     "highlight": "تمييز",
     "strikethrough": "يتوسطه خط"
   },

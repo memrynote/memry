@@ -93,7 +93,7 @@
     "yesterday": "أمس",
     "daysAgo": "{count, plural, zero {اليوم} one {منذ يوم واحد} two {منذ يومين} few {منذ # أيام} many {منذ # يومًا} other {منذ # يوم}}",
     "tomorrow": "غدًا",
-    "daysOverdue": "{count, plural, zero {متأخّرة بـ# يوم} one {متأخّرة بيوم واحد} two {متأخّرة بيومين} few {متأخّرة بـ# أيام} many {متأخّرة بـ# يومًا} other {متأخّرة بـ# يوم}}",
+    "daysOverdue": "{count, plural, zero {متأخرة بـ# يوم} one {متأخرة بيوم واحد} two {متأخرة بيومين} few {متأخرة بـ# أيام} many {متأخرة بـ# يومًا} other {متأخرة بـ# يوم}}",
     "daysLate": "{count, plural, zero {متأخرة بـ# يوم} one {متأخرة بيوم} two {متأخرة بيومين} few {متأخرة بـ# أيام} many {متأخرة بـ# يومًا} other {متأخرة بـ# يوم}}",
     "inDays": "{count, plural, zero {خلال # يوم} one {خلال يوم واحد} two {خلال يومين} few {خلال # أيام} many {خلال # يومًا} other {خلال # يوم}}",
     "inWeeks": "{count, plural, zero {خلال # أسبوع} one {خلال أسبوع واحد} two {خلال أسبوعين} few {خلال # أسابيع} many {خلال # أسبوعًا} other {خلال # أسبوع}}"
@@ -338,7 +338,7 @@
           "extraHigh": "عالٍ جدًا"
         }
       },
-      "permissionsLabel": "أذونات الوكيل: {access}، البحث في الويب {webSearch}",
+      "permissionsLabel": "أذونات الوكيل: {access}، البحث في الويب: {webSearch}",
       "permissions": {
         "label": "الأذونات",
         "access": "الوصول",
@@ -377,17 +377,17 @@
       "close": "إغلاق الوكيل"
     },
     "errors": {
-      "loadConversations": "تعذر تحميل محادثات الوكيل",
-      "loadConversation": "تعذر تحميل محادثة الوكيل",
-      "createConversation": "تعذر إنشاء محادثة الوكيل",
+      "loadConversations": "تعذّر تحميل محادثات الوكيل",
+      "loadConversation": "تعذّر تحميل محادثة الوكيل",
+      "createConversation": "تعذّر إنشاء محادثة الوكيل",
       "busy": "نافذة أخرى تعالج ردًا في هذه المحادثة الآن. انتظر حتى ينتهي أو أوقفه من هناك.",
       "sendTurn": "تعذّر إرسال الرسالة إلى الوكيل",
       "cancelTurn": "تعذّر إلغاء رد الوكيل",
-      "submitApproval": "تعذر إرسال الموافقة على الأداة",
-      "updateTrust": "تعذر تحديث الأدوات الموثوقة",
+      "submitApproval": "تعذّر إرسال الموافقة على الأداة",
+      "updateTrust": "تعذّر تحديث الأدوات الموثوقة",
       "saveDisclosure": "تعذّر حفظ حالة الإفصاح",
       "resolveWindow": "تعذّر تحديد نافذة مصدر الوكيل",
-      "detectCli": "تعذر اكتشاف الواجهات الخلفية للوكيل",
+      "detectCli": "تعذّر اكتشاف الواجهات الخلفية للوكيل",
       "loadDisclosure": "تعذّر تحميل حالة الإفصاح"
     },
     "actions": {
@@ -469,7 +469,7 @@
     },
     "card": {
       "open": "فتح في علامة تبويب",
-      "openToEdit": "افتح في علامة تبويب للتحرير",
+      "openToEdit": "فتح في علامة تبويب للتحرير",
       "deleted": "تم حذف العنصر",
       "loading": "جارٍ التحميل…",
       "untitled": "بدون عنوان",
@@ -501,10 +501,10 @@
       "bulkConfirmAdd": "{count, plural, zero {إضافة بطاقات} one {إضافة بطاقة واحدة} two {إضافة بطاقتين} few {إضافة # بطاقات} many {إضافة # بطاقة} other {إضافة # بطاقة}}",
       "bulkBack": "رجوع",
       "bulkEmpty": "لا توجد ملاحظات أو ملفات أو مهام لإضافتها",
-      "bulkLoadFailed": "تعذر تحميل العناصر",
+      "bulkLoadFailed": "تعذّر تحميل العناصر",
       "bulkAdded": "{count, plural, zero {لم تتم إضافة بطاقات} one {تمت إضافة بطاقة واحدة} two {تمت إضافة بطاقتين} few {تمت إضافة # بطاقات} many {تمت إضافة # بطاقة} other {تمت إضافة # بطاقة}}",
       "bulkAddedSkipped": "{count, plural, zero {لم تتم إضافة بطاقات} one {تمت إضافة بطاقة واحدة} two {تمت إضافة بطاقتين} few {تمت إضافة # بطاقات} many {تمت إضافة # بطاقة} other {تمت إضافة # بطاقة}} · {skipped} موجودة بالفعل على اللوحة",
-      "bulkAllOnCanvas": "{count, plural, zero {موجود بالفعل على هذه اللوحة} one {موجود بالفعل على هذه اللوحة} two {كلاهما موجود بالفعل على هذه اللوحة} few {كل الـ# موجودة بالفعل على هذه اللوحة} many {كل الـ# موجودة بالفعل على هذه اللوحة} other {كل الـ# موجودة بالفعل على هذه اللوحة}}"
+      "bulkAllOnCanvas": "{count, plural, zero {موجود بالفعل على هذه اللوحة} one {موجود بالفعل على هذه اللوحة} two {كلاهما موجود بالفعل على هذه اللوحة} few {كل العناصر (#) موجودة بالفعل على هذه اللوحة} many {كل العناصر (#) موجودة بالفعل على هذه اللوحة} other {كل العناصر (#) موجودة بالفعل على هذه اللوحة}}"
     },
     "cluster": {
       "button": "اقتراح مجموعات",
@@ -579,7 +579,7 @@
       "newItemMenu": "إنشاء جديد…",
       "feedbackButton": "إرسال رأيك",
       "feedbackTitle": "إرسال رأيك",
-      "feedbackDescription": "أخبرنا بما يعمل، وما لا يعمل، أو بما تتمنى أن يفعله Memry. نقرأ كل رسالة.",
+      "feedbackDescription": "أخبرنا بما يعمل، وما لا يعمل، أو بما تتمنى أن يفعله MemryNote. نقرأ كل رسالة.",
       "feedbackPlaceholder": "رأيك…",
       "feedbackEmailHint": "أضف بريدك الإلكتروني إذا كنت ترغب في الحصول على رد.",
       "feedbackPrivacyTitle": "ما الذي يُرسَل",
@@ -587,7 +587,7 @@
       "feedbackPrivacyEmailOptional": "بريدك الإلكتروني — فقط إن أضفته، ولا نستخدمه إلا للرد عليك",
       "feedbackPrivacyEmailSignedIn": "بريد حسابك ({email})، للرد عليك",
       "feedbackPrivacyVersion": "إصدار التطبيق ونظام التشغيل",
-      "feedbackPrivacyPlan": "خطتك (free أو Plus أو Pro أو Believer)",
+      "feedbackPrivacyPlan": "اشتراكك (المجاني أو Plus أو Pro أو Believer)",
       "feedbackPrivacyNote": "لا شيء غير ذلك. تبقى ملاحظاتك على جهازك.",
       "feedbackSend": "إرسال",
       "feedbackSending": "جارٍ الإرسال…",
@@ -621,7 +621,7 @@
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "قاعدة المعرفة الشخصية الخاصة بك. لنأخذ دقيقتين للبدء.",
       "getStarted": "لنبدأ ",
       "createYourFirstNote": "أنشئ ملاحظتك الأولى",
-      "markdownBasedStoredLocallyAsPlainFiles": "يعتمد على Markdown، ويتم تخزينه محليًا كملفات عادية.",
+      "markdownBasedStoredLocallyAsPlainFiles": "تعتمد الملاحظات على Markdown وتُخزَّن محليًا كملفات عادية.",
       "eGMeetingNotesIdeasAnything": "مثال: ملاحظات اجتماع، أفكار، أي شيء…",
       "skip": "تخطي",
       "createNote": "إنشاء ملاحظة ",
@@ -679,7 +679,7 @@
       "upgradeToPro": "الترقية إلى Pro",
       "account": "الحساب",
       "billing": "الفواتير",
-      "notifications": "الإخطارات",
+      "notifications": "الإشعارات",
       "logOut": "تسجيل الخروج"
     },
     "componentsSearchCommandPalette": {
@@ -751,7 +751,7 @@
       "unsavedChanges": "التغييرات غير المحفوظة"
     },
     "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "إغلاق كافة علامات التبويب"
+      "closeAllTabs": "إغلاق كل علامات التبويب"
     },
     "componentsTabsTabBarWithDrag": {
       "openTabs": "علامات التبويب المفتوحة",
@@ -774,7 +774,7 @@
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "مساحة عمل جديدة",
-      "darkMode": "الوضع المظلم",
+      "darkMode": "الوضع الداكن",
       "settings": "الإعدادات",
       "integrations": "التكاملات",
       "signOut": "تسجيل الخروج",
@@ -892,7 +892,7 @@
       "downloadLocation": "الموقع",
       "changeLocation": "تغيير…",
       "download": "تنزيل",
-      "downloadFailed": "تعذر تنزيل الخزنة",
+      "downloadFailed": "تعذّر تنزيل الخزنة",
       "deleteFromAccount": "حذف من الحساب",
       "deleteVaultTitle": "هل تريد حذف «{name}» من حسابك؟",
       "deleteVaultBody": "يزيل هذا نهائيًا كل البيانات المزامَنة لهذه الخزنة من خوادم Memry، ولا يمكن التراجع عنه. لن تُحذف ملفاتك الموجودة على القرص.",
@@ -977,7 +977,7 @@
       "unknown": "أداة غير معروفة"
     },
     "board": {
-      "label": "تخطيط الصفحة الرئيسية",
+      "label": "تخطيط الرئيسية",
       "deleteAria": "حذف التخطيط",
       "newAria": "لوحة معلومات جديدة",
       "newName": "لوحة معلومات جديدة",
@@ -1002,9 +1002,9 @@
     "done": "تم",
     "addWidget": "إضافة أداة",
     "empty": {
-      "title": "لوحتك فارغة",
+      "title": "لوحة معلوماتك فارغة",
       "body": "تجمع الأدوات ملاحظاتك ومهامك وإشاراتك المرجعية في مكان هادئ واحد.",
-      "cta": "أضف أداتك الأولى"
+      "cta": "إضافة أداتك الأولى"
     },
     "noBookmarksYet": "لا توجد إشارات مرجعية بعد.",
     "noNotesYet": "لا توجد ملاحظات بعد.",
@@ -1164,7 +1164,7 @@
         "clearSelection": "مسح تحديد المهام",
         "completeSelected": "إكمال المهام المحددة",
         "deleteSelected": "حذف المهام المحددة",
-        "configureRepeat": "ضبط التكرار للمهمة المُحدّدة",
+        "configureRepeat": "ضبط التكرار للمهمة المحددة",
         "skipOccurrence": "تخطي هذه المرة من التكرار",
         "stopRepeating": "إيقاف تكرار المهمة"
       },
@@ -1239,7 +1239,7 @@
     "requestFeature": "طلب ميزة",
     "starOnGithub": "منح نجمة على GitHub",
     "version": "MemryNote {version}",
-    "whatsNew": "الجديد"
+    "whatsNew": "ما الجديد"
   },
   "sidebarStar": {
     "title": "MemryNote مفتوح المصدر",

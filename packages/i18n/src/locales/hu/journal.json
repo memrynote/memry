@@ -4,7 +4,7 @@
     "aiConnections": "MI-kapcsolatok",
     "todaysNotes": "Mai jegyzetek",
     "todaysSchedule": "Mai napirend",
-    "todaysTasks": "A mai nap feladatai",
+    "todaysTasks": "Mai feladatok",
     "tasks": "Feladatok",
     "technicalDetails": "Műszaki részletek"
   },
@@ -47,7 +47,7 @@
       "today": "Ma",
       "yesterday": "Tegnap",
       "tomorrow": "Holnap",
-      "future": "Jövő"
+      "future": "Jövőbeli nap"
     },
     "weekday": {
       "sunday": "vasárnap",
@@ -118,7 +118,7 @@
   "aria": {
     "moreOptions": "További lehetőségek",
     "documentStatistics": "Dokumentumstatisztika",
-    "dayContext": "Napi kontextus: feladatok és ütemterv",
+    "dayContext": "Napi kontextus: feladatok és napirend",
     "scheduleEvents": "Napirend eseményei",
     "tasks": "Feladatok",
     "notesCreatedToday": "{count} jegyzet készült ma"
@@ -228,7 +228,7 @@
   "error": {
     "title": "Naplóhiba",
     "description": "A Napló hibát észlelt ennél a napnál: {date}. Lehetséges, hogy a legutóbbi módosításait nem mentette a rendszer.",
-    "descriptionNoDate": "A napló hibát észlelt. Lehetséges, hogy a legutóbbi módosításait nem mentette a rendszer.",
+    "descriptionNoDate": "A Napló hibát észlelt. Lehetséges, hogy a legutóbbi módosításait nem mentette a rendszer.",
     "unsavedContent": "Nem mentett tartalom észlelve ({length} karakter)"
   },
   "phaseF": {

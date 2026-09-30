@@ -5,12 +5,12 @@
       "button": "اختيار الخزنة"
     },
     "exportPdf": {
-      "title": "تصدير بصيغة PDF",
-      "filterName": "وثيقة PDF"
+      "title": "تصدير بتنسيق PDF",
+      "filterName": "مستند PDF"
     },
     "exportHtml": {
       "title": "تصدير بتنسيق HTML",
-      "filterName": "وثيقة HTML"
+      "filterName": "مستند HTML"
     },
     "import": {
       "filterSupported": "الملفات المدعومة",
@@ -18,11 +18,11 @@
     },
     "exportCancelled": "تم إلغاء التصدير",
     "update": {
-      "availableTitle": "التحديث متاح",
-      "availableMessage": "memrynote {version} متاح.",
-      "availableDetailFallback": "تنزيل التحديث الآن؟",
+      "availableTitle": "يتوفر تحديث",
+      "availableMessage": "يتوفر memrynote {version}.",
+      "availableDetailFallback": "هل تريد تنزيل التحديث الآن؟",
       "buttonDownload": "تنزيل",
-      "buttonLater": "في وقت لاحق",
+      "buttonLater": "لاحقًا",
       "readyTitle": "التحديث جاهز",
       "readyMessage": "تم تنزيل memrynote {version}.",
       "readyDetailFallback": "أعد تشغيل memrynote لإنهاء تثبيت التحديث.",
@@ -55,7 +55,7 @@
   "error": {
     "reminderTimeMustBeFuture": "يجب أن يكون وقت التذكير في المستقبل",
     "definitionNotFound": "لم يتم العثور على التعريف",
-    "noteNotFound": "لم يتم العثور على ملاحظة",
+    "noteNotFound": "لم يتم العثور على الملاحظة",
     "updateFailed": "فشل التحديث",
     "updateReadOnlyVolume": "لا يمكن تثبيت التحديثات أثناء تشغيل memrynote من هذا الموقع. انقل memrynote إلى مجلد التطبيقات وافتحه مرة أخرى."
   },

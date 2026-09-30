@@ -21,7 +21,7 @@
     "duplicateId": "Esiste già una nota con questo ID.",
     "writeFailed": "Impossibile salvare questa nota. Controlla lo spazio su disco e le autorizzazioni.",
     "readFailed": "Impossibile leggere questa nota. Il file potrebbe essere bloccato o danneggiato.",
-    "deleteFailed": "Impossibile eliminare questa nota. Controlla i permessi dei file.",
+    "deleteFailed": "Impossibile eliminare questa nota. Controlla le autorizzazioni dei file.",
     "invalidPath": "Il percorso della nota non è valido.",
     "createFailed": "Impossibile creare la nota",
     "updateFailed": "Impossibile aggiornare la nota",
@@ -66,7 +66,7 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "La cronologia delle modifiche non viene conservata su questo dispositivo",
-    "persistenceDegradedBody": "Le tue note sono al sicuro: si trovano nel tuo vault come semplici file e si aprono e si salvano normalmente. Solo la cronologia locale delle modifiche e lo stato di unione di questo dispositivo restano in memoria, quindi ripartono da zero a ogni apertura di memrynote."
+    "persistenceDegradedBody": "Le tue note sono al sicuro: si trovano nel tuo vault come semplici file e si aprono e si salvano normalmente. Solo la cronologia locale delle modifiche e lo stato di unione di questo dispositivo vengono tenuti in memoria temporanea, quindi ripartono da zero a ogni apertura di memrynote."
   },
   "encryption": {
     "failed": "Impossibile crittografare i dati. Potrebbe essere necessario rigenerare le chiavi.",
@@ -177,7 +177,7 @@
     "listGoogleCalendarsFailed": "Impossibile elencare i calendari Google",
     "setDefaultGoogleCalendarFailed": "Impossibile impostare il calendario Google predefinito",
     "retryGoogleSourceSyncFailed": "Impossibile ritentare la sincronizzazione della sorgente Google Calendar",
-    "promoteExternalEventFailed": "Impossibile promuovere l'evento di calendario esterno",
+    "promoteExternalEventFailed": "Impossibile creare in memrynote una copia dell'evento di calendario esterno",
     "onlyCalendarSourcesRetryable": "Si può riprovare solo con le sorgenti di calendario",
     "invalidProviderSettings": "Impostazioni del provider di calendario non valide",
     "getExternalEventFailed": "Impossibile caricare questo evento. È ancora nel tuo calendario: prova ad aprirlo di nuovo."
@@ -263,7 +263,7 @@
     "mergeSameTag": "Il tag di origine e quello di destinazione coincidono",
     "categoryNameRequired": "Il nome della categoria è obbligatorio",
     "pinNoteFailed": "Impossibile fissare la nota",
-    "unpinNoteFailed": "Impossibile rimuovere la nota dai fissati",
+    "unpinNoteFailed": "Impossibile annullare il fissaggio della nota",
     "renameFailed": "Impossibile rinominare il tag",
     "updateColorFailed": "Impossibile aggiornare il colore del tag",
     "updateIconFailed": "Impossibile aggiornare l'icona del tag",

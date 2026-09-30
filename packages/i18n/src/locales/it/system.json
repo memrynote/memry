@@ -44,10 +44,10 @@
       "testBody": "Questa è una prova: i tuoi promemoria di revisione giornaliera avranno questo aspetto."
     },
     "reminder": {
-      "note": "Promemoria nota",
+      "note": "Promemoria della nota",
       "journal": "Promemoria del diario",
       "highlight": "Promemoria dell'evidenziazione",
-      "task": "Promemoria attività",
+      "task": "Promemoria dell'attività",
       "fallback": "Promemoria",
       "default": "Promemoria"
     }
@@ -65,7 +65,7 @@
       "subtitle": "MemryNote si riaprirà automaticamente."
     },
     "failed": {
-      "title": "MemryNote non ha completato l'avvio",
+      "title": "MemryNote non è riuscito a completare l'avvio",
       "body": "Può succedere quando lo spazio libero su disco è molto ridotto o con driver grafici datati. Prova a liberare spazio su disco, poi riapri MemryNote. Se continua a succedere, di solito basta reinstallare."
     }
   }

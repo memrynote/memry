@@ -70,7 +70,7 @@
   "form": {
     "create-calendar-event": "إنشاء حدث في التقويم",
     "edit-calendar-event": "تحرير حدث التقويم",
-    "quick-create-description": "أدخل عنوانًا واحفظه لإنشاء حدث في النطاق الزمني المحدد.",
+    "quick-create-description": "أدخل عنوانًا ثم احفظ لإنشاء حدث في النطاق الزمني المحدد.",
     "event-editor-description": "حدّث العنوان والموقع والتاريخ والوقت والملاحظات لهذا الحدث.",
     "new-event-placeholder": "حدث جديد",
     "notes-url-placeholder": "إضافة ملاحظات أو عنوان URL",

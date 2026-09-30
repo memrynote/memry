@@ -140,7 +140,7 @@
     "bullets": {
       "events": "노트와 작업 옆에서 Google 일정 보기",
       "sync": "일정을 만들고 편집하며 양방향으로 동기화",
-      "schedule": "캘린더에 작업과 노트 예약"
+      "schedule": "캘린더에서 작업과 노트 일정 잡기"
     },
     "continue": "Google로 계속하기",
     "dismiss": "닫기",
@@ -223,7 +223,7 @@
     "pick-date-time": "날짜 및 시간 선택…",
     "remove-due-date": "마감일 삭제",
     "subtasks-prefix": "하위 작업",
-    "subtasks-counter": "{total} 중 {done} 완료",
+    "subtasks-counter": "{total}개 중 {done}개 완료",
     "repeats": "반복",
     "repeats-daily": "매일 반복",
     "repeats-weekly": "매주 반복",
@@ -257,7 +257,7 @@
     "events": "일정",
     "schedule-hint": "클릭하여 날짜 설정, 드래그하여 기간 설정",
     "empty-title": "이 구간의 타임라인에 항목이 없습니다",
-    "empty-body": "시작일이나 마감일이 있는 작업과 종일 또는 여러 날에 걸친 일정이 여기에 표시됩니다. 날짜 없는 작업을 드래그해 일정을 잡으려면 표시 메뉴에서 켜세요.",
+    "empty-body": "시작일이나 마감일이 있는 작업과 종일 또는 여러 날에 걸친 일정이 여기에 표시됩니다. 날짜 없는 작업을 드래그해 일정을 잡으려면 표시 메뉴에서 “날짜 없는 작업”을 켜세요.",
     "status": {
       "todo": "할 일",
       "in_progress": "진행 중",
@@ -317,8 +317,8 @@
       "schedule": "일정 잡기",
       "set-start": "시작일 설정",
       "set-due": "마감일 설정",
-      "move-later": "1주 뒤로 이동",
-      "move-earlier": "1주 앞으로 이동",
+      "move-later": "1주 미루기",
+      "move-earlier": "1주 앞당기기",
       "clear-dates": "날짜 지우기",
       "clear-start": "시작일 지우기",
       "clear-due": "마감일 지우기",
@@ -348,7 +348,7 @@
     "blueberry": "블루베리",
     "lavender": "라벤더",
     "grape": "포도",
-    "graphite": "그래파이트"
+    "graphite": "흑연"
   },
   "subscribedEvent": {
     "kind": "구독한 캘린더",

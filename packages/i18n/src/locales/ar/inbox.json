@@ -36,7 +36,7 @@
     "note": "ملاحظة",
     "notes": "ملاحظات",
     "image": "صورة",
-    "images": "الصور",
+    "images": "صور",
     "voice": "صوت",
     "video": "فيديو",
     "clip": "مقطع",
@@ -68,14 +68,14 @@
     "section": {
       "today": "اليوم",
       "yesterday": "أمس",
-      "older": "أقدم"
+      "older": "الأقدم"
     },
     "selectItem": "تحديد {title}",
     "itemAria": "{type}: {title}",
     "untitled": "بدون عنوان",
-    "untitledItem": "عنصر بلا عنوان",
+    "untitledItem": "عنصر بدون عنوان",
     "transcribing": "جارٍ تحويل الصوت إلى نص…",
-    "transcriptionFailed": "فشل تحويل الصوت إلى نص",
+    "transcriptionFailed": "تعذّر تحويل الصوت إلى نص",
     "retryTranscription": "إعادة المحاولة",
     "pageCount": "{count, plural, zero {# صفحة} one {صفحة واحدة} two {صفحتان} few {# صفحات} many {# صفحة} other {# صفحة}}",
     "snoozedUntilShort": "مؤجَّل حتى {date}",
@@ -123,7 +123,7 @@
     "snooze": "تأجيل",
     "archive": "أرشفة",
     "add": "إضافة",
-    "dismissSuggestion": "رفض الاقتراح",
+    "dismissSuggestion": "تجاهل الاقتراح",
     "hint": {
       "file": "نقل",
       "tag": "إضافة وسم",
@@ -502,10 +502,10 @@
       "snooze5": "تأجيل"
     },
     "componentsSocialCard": {
-      "loadingPost": "جارٍ تحميل المشاركة…",
+      "loadingPost": "جارٍ تحميل المنشور…",
       "failedToLoad": "تعذّر التحميل",
-      "loadingPostContent": "جارٍ تحميل محتوى المشاركة…",
-      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "تعذّر تحميل محتوى المشاركة. قد تكون المشاركة خاصة أو محذوفة.",
+      "loadingPostContent": "جارٍ تحميل محتوى المنشور…",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "تعذّر تحميل محتوى المنشور. قد يكون المنشور خاصًا أو محذوفًا.",
       "viewOn": "عرض على "
     },
     "componentsVoiceRecorder": {
@@ -530,9 +530,9 @@
       "failedToCaptureNote": "تعذّر التقاط الملاحظة",
       "captureFailed": "فشل الالتقاط",
       "failedToCaptureVoiceMemo": "تعذّر التقاط المذكرة الصوتية",
-      "voiceCaptureFailed": "فشل التقاط الصوت",
+      "voiceCaptureFailed": "تعذّر التقاط الصوت",
       "failedToCaptureFile": "تعذّر التقاط الملف",
-      "fileCaptureFailed": "فشل التقاط الملف",
+      "fileCaptureFailed": "تعذّر التقاط الملف",
       "failedToCaptureAudio": "تعذّر التقاط الصوت",
       "failedToCaptureVoice": "تعذّر التقاط الصوت",
       "failedToLoadInboxPreferences": "تعذّر تحميل تفضيلات صندوق الوارد",

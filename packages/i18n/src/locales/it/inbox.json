@@ -104,7 +104,7 @@
     "failedCaptureImage": "Impossibile catturare l'immagine",
     "linkedToNote": "Collegato alla nota",
     "linkedToNotes": "Collegato a {count} note",
-    "embedFellBackToLink": "L'immagine era troppo grande per essere incorporata: è stata smistata come file collegato.",
+    "embedFellBackToLink": "L'immagine era troppo grande per essere incorporata: è stata smistata come file collegato",
     "filedTo": "Smistato in {folder}",
     "filedItemsTo": "{count} elementi smistati in {folder}",
     "filedPartial": "Smistati {processed} elementi su {total}",
@@ -277,7 +277,7 @@
     "snooze": "Posticipa",
     "presetInOneHour": "1 ora",
     "presetTomorrow": "Domani",
-    "presetNextWeek": "La prossima settimana",
+    "presetNextWeek": "Settimana prossima",
     "custom": "Personalizzato…",
     "panelUpcoming": "In programma",
     "panelPast": "Passati",
@@ -292,7 +292,7 @@
         "description": "Domani alle 9:00"
       },
       "nextWeek": {
-        "label": "La prossima settimana",
+        "label": "Settimana prossima",
         "description": "Lunedì alle 9:00"
       },
       "inMinutes": {
@@ -311,7 +311,7 @@
         "label": "Tra {count, plural, one {# anno} many {# anni} other {# anni}}"
       },
       "tomorrowMorning": "Domani mattina",
-      "sameDayNextMonth": "Stesso giorno il mese prossimo",
+      "sameDayNextMonth": "Stesso giorno del mese prossimo",
       "reviewInAWeek": "Rivedi tra una settimana",
       "monthlyReflection": "Riflessione mensile",
       "quarterlyReflection": "Riflessione trimestrale",
@@ -333,7 +333,7 @@
     "captured": "Catturati",
     "capturedThisWeek": "+{count} questa settimana",
     "processed": "Smistati",
-    "processRate": "tasso del {rate}%",
+    "processRate": "tasso: {rate}%",
     "stale": "Fermi da tempo",
     "needsAttention": "richiede attenzione",
     "allClear": "tutto in ordine",
@@ -361,7 +361,7 @@
     "componentsCaptureInput": {
       "captureInput": "Campo di cattura",
       "attachFile": "Allega file",
-      "attachFileImagesAudioVideoPdf": "Allega file (Immagini, Audio, Video, PDF)",
+      "attachFileImagesAudioVideoPdf": "Allega file (immagini, audio, video, PDF)",
       "recordVoiceMemo": "Registra un memo vocale",
       "recordVoiceMemo2": "Registra un memo vocale",
       "captureAnyway": "Cattura comunque",
@@ -434,7 +434,7 @@
     },
     "componentsInboxDetailTweetCard": {
       "tweetUnavailable": "Tweet non disponibile",
-      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Questo tweet potrebbe essere stato cancellato o provenire da un account privato.",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Questo tweet potrebbe essere stato eliminato o provenire da un account privato.",
       "openOnXCom": "Apri su x.com",
       "views": "visualizzazioni",
       "xCom": "x.com",
@@ -479,7 +479,7 @@
       "remind": "Ricorda",
       "remindMe": "Ricordamelo",
       "pickDateTime": "Scegli data e ora",
-      "addANoteOptional": "Aggiungi una nota (facoltativo)",
+      "addANoteOptional": "Aggiungi una nota (facoltativa)",
       "backToPresets": "Torna alle preimpostazioni",
       "time": "Ora",
       "noteOptional": "Nota (facoltativa)",

@@ -2,7 +2,7 @@
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Vai al campo di cattura",
-    "detailHint": "dettaglio",
+    "detailHint": "dettagli",
     "submit": "Cattura"
   },
   "button": {
@@ -69,7 +69,7 @@
   },
   "count": {
     "note": "{count, plural, one {# nota} other {# note}}",
-    "journal": "{count, plural, one {# diario} other {# diari}}",
+    "journal": "{count, plural, one {# pagina di diario} other {# pagine di diario}}",
     "task": "{count, plural, one {# attività} other {# attività}}",
     "event": "{count, plural, one {# evento} other {# eventi}}",
     "reminder": "{count, plural, one {# promemoria} other {# promemoria}}",
@@ -82,7 +82,7 @@
     "undoFailed": "Impossibile annullare l'azione",
     "filesImported": "{count, plural, one {# file importato} other {# file importati}}",
     "filesImportFailed": "{count, plural, one {Impossibile importare # file} other {Impossibile importare # file}}",
-    "filesHiddenInSidebar": "I file sono nascosti nella barra laterale. Per vederli, attiva “Mostra file” nel menu di ordinamento delle Raccolte.",
+    "filesHiddenInSidebar": "I file sono nascosti nella barra laterale. Per vederli, attiva “Mostra i file” nel menu di ordinamento delle Raccolte.",
     "moreRemindersDue": "{count, plural, one {# altro promemoria} other {Altri # promemoria}}",
     "moreRemindersDueHint": "Controlla il pannello dei promemoria per i dettagli",
     "searchIndexRepaired": "Indice di ricerca riparato",
@@ -103,10 +103,10 @@
     "everyNWeeks": "{count, plural, one {Ogni settimana} other {Ogni # settimane}}",
     "everyNWeeksOnWeekdays": "{count, plural, one {Tutti i giorni feriali} other {Ogni # settimane nei giorni feriali}}",
     "everyNWeeksOnWeekends": "{count, plural, one {Ogni fine settimana} other {Ogni # settimane nei fine settimana}}",
-    "everyNWeeksOnDays": "{count, plural, one {Ogni settimana il {days}} other {Ogni # settimane il {days}}}",
+    "everyNWeeksOnDays": "{count, plural, one {Ogni settimana di {days}} other {Ogni # settimane di {days}}}",
     "everyNMonths": "{count, plural, one {Ogni mese} other {Ogni # mesi}}",
     "everyNMonthsOnDay": "{count, plural, one {Ogni mese il giorno {day}{suffix}} other {Ogni # mesi il giorno {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {Ogni mese il {week} {day}} other {Ogni # mesi il {week} {day}}}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Ogni mese, {week} {day}} other {Ogni # mesi, {week} {day}}}",
     "everyNYears": "{count, plural, one {Ogni anno} other {Ogni # anni}}",
     "repeats": "Si ripete",
     "ordinal": {
@@ -134,14 +134,14 @@
     "enable": {
       "title": "Attiva l'agente di memrynote",
       "description": "L'agente di memrynote usa la CLI dell'agente locale che hai selezionato per chattare sul tuo vault. Claude invia i messaggi ad Anthropic, Codex a OpenAI.",
-      "remote": "memrynote crittografa la cronologia della chat locale e sincronizzata, ma l'inferenza del modello avviene con il provider selezionato.",
+      "remote": "memrynote crittografa la cronologia delle chat, sia in locale sia sincronizzata, ma l'inferenza del modello avviene presso il provider selezionato.",
       "readTools": "Gli strumenti di lettura vengono eseguiti automaticamente.",
       "writeTools": "Gli strumenti di creazione e modifica richiedono approvazione.",
       "diff": "Gli strumenti di modifica mostrano le differenze o un'anteprima.",
       "button": "Attiva la chat con l'agente"
     },
     "approval": {
-      "description": "L'agente desidera chiamare {name} con questi argomenti.",
+      "description": "L'agente vuole chiamare {name} con questi argomenti.",
       "applyOnce": "Applica una volta",
       "allowOnce": "Consenti una volta",
       "editAndApply": "Modifica e applica",
@@ -198,7 +198,7 @@
       "yes": "sì",
       "no": "no",
       "noChange": "Questa anteprima non rileva alcuna modifica.",
-      "willBeLost": "Andrà perso",
+      "willBeLost": "Contenuto che andrà perso",
       "unchangedLines": "{count, plural, one {# riga invariata} other {# righe invariate}}",
       "item": {
         "note": "Nota",
@@ -382,7 +382,7 @@
       "createConversation": "Impossibile creare la conversazione dell'agente",
       "busy": "Un'altra finestra sta elaborando una risposta in questa conversazione. Attendi che finisca o interrompila da lì.",
       "sendTurn": "Impossibile inviare il messaggio all'agente",
-      "cancelTurn": "Impossibile annullare il turno dell'agente",
+      "cancelTurn": "Impossibile interrompere la risposta dell'agente",
       "submitApproval": "Impossibile inviare l'approvazione dello strumento",
       "updateTrust": "Impossibile aggiornare gli strumenti attendibili",
       "saveDisclosure": "Impossibile salvare l'accettazione dell'informativa",
@@ -459,7 +459,7 @@
       "copyLink": "Copia link",
       "setIcon": "Imposta icona",
       "removeIcon": "Rimuovi icona",
-      "moveToFolder": "Sposta nella cartella",
+      "moveToFolder": "Sposta in una cartella",
       "moveToRoot": "Livello principale",
       "openExternal": "Apri in un editor esterno",
       "newCanvasHere": "Nuova lavagna qui",
@@ -704,7 +704,7 @@
       "dateRange": "Intervallo di date"
     },
     "componentsSearchSearchResultGroup": {
-      "viewAll": "Mostra tutti ",
+      "viewAll": "Mostra tutti i ",
       "results": "risultati"
     },
     "componentsSearchSearchResultItem": {
@@ -718,7 +718,7 @@
       "closePane": "Chiudi riquadro"
     },
     "componentsSplitViewLayoutPicker": {
-      "layoutPresets": "Preimpostazioni del layout",
+      "layoutPresets": "Preimpostazioni di layout",
       "layoutPresets2": "Preimpostazioni di layout"
     },
     "componentsSplitViewResizeHandle": {
@@ -755,7 +755,7 @@
     },
     "componentsTabsTabBarWithDrag": {
       "openTabs": "Schede aperte",
-      "scrollTabsLeft": "Scorri le schede a sinistra",
+      "scrollTabsLeft": "Scorri le schede verso sinistra",
       "scrollTabsRight": "Scorri le schede verso destra",
       "dayPanel": "Pannello del giorno"
     },
@@ -811,7 +811,7 @@
     "componentsVaultOnboarding": {
       "welcomeToMemry": "Ti diamo il benvenuto in memrynote",
       "yourPersonalKnowledgeManagementSystem": "Il tuo sistema personale di gestione della conoscenza.",
-      "selectAFolderToStoreYourNotesAndTasks": "Seleziona una cartella in cui archiviare le note e le attività.",
+      "selectAFolderToStoreYourNotesAndTasks": "Seleziona una cartella in cui salvare le tue note e attività.",
       "opening": "Apertura…",
       "selectVaultFolder": "Seleziona la cartella del vault",
       "plainMarkdown": "Markdown semplice",
@@ -1243,7 +1243,7 @@
   },
   "sidebarStar": {
     "title": "MemryNote è open source",
-    "body": "Sviluppato apertamente. Una stella aiuta altre persone a scoprirlo.",
+    "body": "Sviluppato in modo trasparente. Una stella aiuta altre persone a scoprirlo.",
     "star": "Metti una stella",
     "later": "Non ora",
     "thanks": "Grazie. Significa molto per noi."

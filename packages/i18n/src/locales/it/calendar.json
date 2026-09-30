@@ -28,7 +28,7 @@
   "filter": {
     "filter-calendars": "Filtra i calendari",
     "sources": "Fonti",
-    "memry-items": "Elementi memrynote",
+    "memry-items": "Elementi di memrynote",
     "imported-calendars": "Calendari importati",
     "event-types": "Tipi di eventi",
     "google-calendars": "Calendari di Google",
@@ -46,7 +46,7 @@
     "event": "Evento",
     "imported-event": "Evento importato",
     "note": "Nota",
-    "note-date": "Promemoria data",
+    "note-date": "Promemoria di data",
     "task": "Attività",
     "reminder": "Promemoria",
     "snooze": "Posticipo"
@@ -79,7 +79,7 @@
     "google-calendar": "Calendario di Google",
     "target-calendar": "Calendario di destinazione",
     "use-default-calendar": "Utilizza il calendario predefinito",
-    "use-default-calendar-with-name": "Utilizza predefinito ({calendar})",
+    "use-default-calendar-with-name": "Utilizza il predefinito ({calendar})",
     "use-memry-calendar-default": "Utilizza il calendario memrynote (predefinito)",
     "primary-suffix": "principale",
     "project": "Progetto",
@@ -113,7 +113,7 @@
     "provider-names": {
       "ics": "calendario sottoscritto",
       "caldav": "calendario CalDAV",
-      "apple-eventkit": "Calendario di macOS"
+      "apple-eventkit": "calendario di macOS"
     }
   },
   "promote-dialog": {
@@ -226,8 +226,8 @@
     "subtasks-counter": "{done} di {total} completate",
     "repeats": "Si ripete",
     "repeats-daily": "Si ripete ogni giorno",
-    "repeats-weekly": "Si ripete settimanalmente",
-    "repeats-monthly": "Si ripete mensilmente",
+    "repeats-weekly": "Si ripete ogni settimana",
+    "repeats-monthly": "Si ripete ogni mese",
     "repeats-yearly": "Si ripete ogni anno",
     "errors": {
       "could-not-save": "Impossibile salvare l'attività",
@@ -238,7 +238,7 @@
   },
   "notePopover": {
     "kind": "Nota",
-    "kindDateReminder": "Promemoria data",
+    "kindDateReminder": "Promemoria di data",
     "open": "Apri nota",
     "couldNotOpen": "Impossibile aprire la nota"
   },
