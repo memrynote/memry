@@ -1,3 +1,4 @@
+import { markdownToHTML } from '@blocknote/core'
 import {
   escapeWikiLinkPipesInTableRows,
   fenceIndentedCodeBlocks,
@@ -7,6 +8,7 @@ import {
 } from '@memry/shared/empty-lines'
 import { restoreDetailsMarkup } from './blocks/markdown'
 import { maskInlineTokens, restoreInlineTokens } from './inline/token-masking'
+import { liftImagesOutOfTextBlocks } from './lift-images'
 
 /**
  * Markdown to blocks, with BlockNote 0.51+'s markdown regressions repaired.
@@ -27,6 +29,7 @@ import { maskInlineTokens, restoreInlineTokens } from './inline/token-masking'
 /** The slice of a BlockNote editor this needs. Both surfaces' editors satisfy it. */
 export interface MarkdownParsingEditor {
   tryParseMarkdownToBlocks(markdown: string): Promise<unknown[]>
+  tryParseHTMLToBlocks(html: string): Promise<unknown[]> | unknown[]
 }
 
 /**
@@ -191,7 +194,14 @@ export async function parseMarkdownToBlocksRepaired<T>(
   // intraword emphasis inside.
   const { markdown: withTokensMasked, tokens } = maskInlineTokens(masked)
 
-  const parsed = (await editor.tryParseMarkdownToBlocks(withTokensMasked)) as BlockLike[]
+  // BlockNote parses markdown by way of this same HTML, so the detour changes
+  // nothing but the lifted images, and a note with none keeps the direct call.
+  const lifted = /!\[|<img\b/i.test(withTokensMasked)
+    ? liftImagesOutOfTextBlocks(markdownToHTML(withTokensMasked))
+    : null
+  const parsed = (await (lifted === null
+    ? editor.tryParseMarkdownToBlocks(withTokensMasked)
+    : editor.tryParseHTMLToBlocks(lifted))) as BlockLike[]
   repairBlocks(parsed, { breaks, tokens })
   return parsed as T[]
 }

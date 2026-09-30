@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 122,
+    "exportedCaseCount": 126,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 132,
+    "caseCount": 136,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -883,6 +883,34 @@
       "canonical": "**Bold**\n\n- Item",
       "pending": null,
       "sha256": "fb94fb9c48869655fce839cb21d7eef2e4b2d495a547a46e027a6055e6473a67"
+    },
+    {
+      "name": "image after the text of a paragraph",
+      "markdown": "Caption ![photo.png](attachments/photo.png)",
+      "canonical": "Caption\n\n![photo.png](attachments/photo.png)",
+      "pending": null,
+      "sha256": "5eec41039beda321da073ed10ee79a9499ae8fdd46f4fb8b06f9a5c555349113"
+    },
+    {
+      "name": "image between the words of a paragraph",
+      "markdown": "Before ![photo.png](attachments/photo.png) after\nnext line",
+      "canonical": "Before after\nnext line\n\n![photo.png](attachments/photo.png)",
+      "pending": null,
+      "sha256": "0ddb6bee8e7a1cccb479ae4f2f31ef76f8b8e9597b11dc8048376bbbd46e89ac"
+    },
+    {
+      "name": "plain and linked images in one paragraph keep their order",
+      "markdown": "See ![a.png](a.png) and [![b.png](b.png)](https://example.com/b)",
+      "canonical": "See and [b.png](https://example.com/b)\n\n![a.png](a.png)\n\n![b.png](b.png)",
+      "pending": null,
+      "sha256": "550e5d967847695279586f740b3420c30caa57100e9dd55ca8a1aab93c40897d"
+    },
+    {
+      "name": "linked image in a heading",
+      "markdown": "## [![logo.png](attachments/logo.png)](https://example.com/home)",
+      "canonical": "## [logo.png](https://example.com/home)\n\n![logo.png](attachments/logo.png)",
+      "pending": null,
+      "sha256": "76bda9a912c970ca372668fb84abfb3dbea969e3c198f9e829146e89f937e1db"
     }
   ],
   "storageCases": [
