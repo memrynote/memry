@@ -50,6 +50,8 @@ const CRDT_BATCH_MAX_NOTES = 100
 
 const noCost = (): CrdtPullCost => ({ snapshotGets: 0, batchPosts: 0 })
 
+const isEmptyStateVector = (vector: Uint8Array): boolean => vector.length <= 2
+
 export type ResolveDeviceKey = (deviceId: string) => Promise<Uint8Array | null>
 
 export class CrdtSyncCoordinator extends CrdtPullLedger {
@@ -655,7 +657,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       if (!sawUnmerged) this.settleMergedNotes([noteId], generation)
 
       const postVector = crdtProvider.getStateVector(noteId)
-      if (!postVector || postVector.length <= 2) {
+      if (!postVector || isEmptyStateVector(postVector)) {
         await crdtProvider.seedFromMarkdownPublic(noteId)
         log.debug('applyCrdtIncrementals: seeded from markdown as fallback (no server CRDT)', {
           noteId
@@ -1081,9 +1083,21 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         opened.push(noteId)
       }
 
+      const resumeFrom = new Map<string, number>()
+      for (const noteId of opened) {
+        const since = skipBaseline.get(noteId)
+        const vector = crdtProvider.getStateVector(noteId)
+        if (!vector) continue
+        if (!isEmptyStateVector(vector)) {
+          if (since !== undefined) resumeFrom.set(noteId, since)
+        } else if (this.lastAppliedSequence.has(noteId)) {
+          this.forgetWatermark(noteId)
+        }
+      }
+
       // The snapshot GETs run ahead of the apply, which still takes one note
       // at a time in chunk order: only the network waits overlap.
-      const baselineIds = opened.filter((noteId) => !skipBaseline.has(noteId))
+      const baselineIds = opened.filter((noteId) => !resumeFrom.has(noteId))
       const width =
         getBootstrapElevationFactor() > 1
           ? BOOTSTRAP_CRDT_SNAPSHOT_GET_WINDOW
@@ -1094,7 +1108,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       let baselineIndex = 0
 
       for (const noteId of opened) {
-        const skipSince = skipBaseline.get(noteId)
+        const skipSince = resumeFrom.get(noteId)
         if (skipSince !== undefined) {
           // The GET this whole change exists to avoid. The doc already holds
           // this exact snapshot blob and everything the server pruned behind
@@ -1288,7 +1302,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           log.warn('Skipping markdown seed: CRDT doc closed mid-batch', { noteId })
           continue
         }
-        if (postVector.length <= 2) {
+        if (isEmptyStateVector(postVector)) {
           await crdtProvider.seedFromMarkdownPublic(noteId)
           log.debug('applyCrdtBatch: seeded from markdown as fallback (no server CRDT)', {
             noteId
