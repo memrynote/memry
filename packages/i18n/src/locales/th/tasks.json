@@ -110,10 +110,10 @@
       "overdue": "เลยกำหนด",
       "highPriority": "ความสำคัญสูง",
       "dueThisWeek": "ครบกำหนดสัปดาห์นี้",
-      "repeating": "ที่ทำซ้ำ",
+      "repeating": "งานที่ทำซ้ำ",
       "noDueDate": "ไม่มีวันครบกำหนด"
     },
-    "repeatTypeRepeating": "ที่ทำซ้ำ",
+    "repeatTypeRepeating": "งานที่ทำซ้ำ",
     "repeatTypeOneTime": "ครั้งเดียว"
   },
   "quickAdd": {
@@ -260,7 +260,7 @@
     "moveFailed": "ย้ายงานไม่สำเร็จ",
     "bulk": {
       "completed": "{count, plural, other {งาน # รายการเสร็จแล้ว}}",
-      "undoComplete": "{count, plural, other {ทำงาน # รายการให้เสร็จ}}",
+      "undoComplete": "{count, plural, other {ทำเครื่องหมายว่างาน # รายการเสร็จแล้ว}}",
       "restored": "{count, plural, other {กู้คืนงาน # รายการแล้ว}}",
       "undoUncomplete": "{count, plural, other {ทำเครื่องหมายว่างาน # รายการยังไม่เสร็จ}}",
       "priorityRemoved": "{count, plural, other {ลบลำดับความสำคัญของงาน # รายการแล้ว}}",
@@ -410,7 +410,7 @@
       "deleteProject": "ลบโปรเจกต์"
     },
     "componentsTasksDeleteTaskDialog": {
-      "deleteTask": "ต้องการลบงานหรือไม่?",
+      "deleteTask": "ลบงานนี้หรือไม่?",
       "deleteTask2": "ลบงาน",
       "deleteConfirmBody": "“{title}” จะถูกลบอย่างถาวร การกระทำนี้เลิกทำไม่ได้"
     },
@@ -571,7 +571,7 @@
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "กรองตามวันครบกำหนด",
-      "customRange": "ช่วงกำหนดเอง",
+      "customRange": "ช่วงที่กำหนดเอง",
       "clear": "ล้าง",
       "apply": "ใช้"
     },
@@ -645,8 +645,8 @@
       "summaryDueRange": "ครบกำหนด: {start} - {end}",
       "summaryRepeatRepeating": "การทำซ้ำ: เฉพาะงานที่ทำซ้ำ",
       "summaryRepeatOneTime": "การทำซ้ำ: เฉพาะงานครั้งเดียว",
-      "summaryTimeWith": "เวลา: มีเวลา",
-      "summaryTimeWithout": "เวลา: ไม่มีเวลา",
+      "summaryTimeWith": "เวลา: ตั้งเวลาไว้",
+      "summaryTimeWithout": "เวลา: ไม่ได้ตั้งเวลา",
       "nameRequired": "โปรดใส่ชื่อสำหรับตัวกรองนี้"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
@@ -772,7 +772,7 @@
       "clickTo": "คลิกเพื่อ "
     },
     "componentsTasksTaskBadges": {
-      "priority": "ความสำคัญ",
+      "priority": "(ลำดับความสำคัญ)",
       "repeatingTask": "งานที่ทำซ้ำ",
       "d": "วัน"
     },
@@ -948,7 +948,7 @@
       "linkAdded": "เพิ่มลิงก์ไปยังโปรเจกต์แล้ว",
       "linkError": "บันทึกลิงก์ไม่สำเร็จ",
       "filesAdded": "{count, plural, other {เพิ่มไฟล์ # รายการไปยังโปรเจกต์แล้ว}}",
-      "fileError": "ลิงก์ {name} ไม่สำเร็จ",
+      "fileError": "เชื่อมโยง {name} ไม่สำเร็จ",
       "fileErrorGeneric": "นำเข้าไฟล์ไม่สำเร็จ",
       "label": "เพิ่มไปยัง {name}"
     }
