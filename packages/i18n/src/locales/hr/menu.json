@@ -65,7 +65,7 @@
   "view": {
     "label": "Prikaz",
     "reload": "Ponovno učitaj",
-    "toggleDevTools": "Uključi/isključi alate za razvojne programere",
+    "toggleDevTools": "Prikaži/sakrij alate za razvojne programere",
     "toggleFullscreen": "Uključi/isključi cijeli zaslon",
     "toggleSidebar": "Prikaži/sakrij bočnu traku",
     "toggleDayPanel": "Prikaži/sakrij panel dana",

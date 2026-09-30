@@ -312,7 +312,7 @@
       },
       "tomorrowMorning": "Zajtra ráno",
       "sameDayNextMonth": "Rovnaký deň budúceho mesiaca",
-      "reviewInAWeek": "Prejsť si o týždeň",
+      "reviewInAWeek": "Skontrolovať o týždeň",
       "monthlyReflection": "Mesačná reflexia",
       "quarterlyReflection": "Štvrťročná reflexia",
       "anniversaryReminder": "Pripomienka výročia"
@@ -333,7 +333,7 @@
     "captured": "Zaznamenané",
     "capturedThisWeek": "+{count} tento týždeň",
     "processed": "Spracované",
-    "processRate": "miera {rate} %",
+    "processRate": "miera {rate} %",
     "stale": "Dlho neriešené",
     "needsAttention": "vyžaduje pozornosť",
     "allClear": "všetko v poriadku",
@@ -349,7 +349,7 @@
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
-      "aiDetected": "Rozpoznané AI: „",
+      "aiDetected": "Zistené pomocou AI: „",
       "addToSelection": "Pridať do výberu",
       "dismiss": "Zamietnuť"
     },

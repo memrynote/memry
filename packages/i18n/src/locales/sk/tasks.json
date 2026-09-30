@@ -467,7 +467,7 @@
       "subtask": "podúlohu",
       "whatWouldYouLikeToDo": "Čo by ste chceli urobiť?",
       "deleteTaskAndAllSubtasks": "Odstrániť úlohu a všetky podúlohy",
-      "permanentlyRemovesEverything": "Trvalo odstráni všetko",
+      "permanentlyRemovesEverything": "Natrvalo odstráni všetko",
       "deleteTaskKeepSubtasksAsStandaloneTasks": "Odstrániť úlohu, ponechať podúlohy ako samostatné úlohy",
       "subtasksBecomeTopLevelTasks": "Podúlohy sa stanú úlohami najvyššej úrovne",
       "cancel": "Zrušiť",
@@ -733,13 +733,13 @@
       "completed": "dokončených"
     },
     "componentsTasksRepeatPicker": {
-      "selectRepeatFrequency": "Vyberte frekvenciu opakovania",
+      "selectRepeatFrequency": "Vybrať frekvenciu opakovania",
       "doesNotRepeat": "Neopakuje sa",
       "custom": "Vlastné…"
     },
     "componentsTasksStatusEditor": {
       "changeStatusColor": "Zmeniť farbu stavu",
-      "dragToReorder": "Pretiahnutím zmeniť poradie",
+      "dragToReorder": "Pretiahnutím zmeníte poradie",
       "statusName": "Názov stavu",
       "addStatus": "Pridať stav"
     },
@@ -803,8 +803,8 @@
       "addTask": "Pridať úlohu"
     },
     "componentsTasksTimePicker": {
-      "selectTime": "Vyberte čas",
-      "selectTime2": "Vyberte čas",
+      "selectTime": "Vybrať čas",
+      "selectTime2": "Vybrať čas",
       "clearTime": "Vymazať čas"
     },
     "componentsTasksTodayEmptyState": {
@@ -827,7 +827,7 @@
   "phaseI": {
     "toasts": {
       "changesUndone": "Zmeny vrátené späť",
-      "projectNotFound": "Projekt nenájdený",
+      "projectNotFound": "Projekt sa nenašiel",
       "failedToArchiveTasks": "Nepodarilo sa archivovať úlohy",
       "tasksRestoredFromArchive": "Úlohy obnovené z archívu",
       "subtaskAdded": "Podúloha pridaná",
@@ -847,7 +847,7 @@
       "failedToDeleteSubtask": "Nepodarilo sa odstrániť podúlohu",
       "failedToDeleteTask": "Nepodarilo sa odstrániť úlohu",
       "failedToCompleteTask": "Nepodarilo sa dokončiť úlohu",
-      "failedToMakeSubtask": "Nepodarilo sa nastaviť ako podúlohu",
+      "failedToMakeSubtask": "Úlohu sa nepodarilo nastaviť ako podúlohu",
       "failedToCompleteSubtasks": "Nepodarilo sa dokončiť podúlohy",
       "failedToMarkSubtasksIncomplete": "Nepodarilo sa označiť podúlohy ako nedokončené",
       "failedToSetDueDate": "Nepodarilo sa nastaviť termín",

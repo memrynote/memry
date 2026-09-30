@@ -47,7 +47,7 @@
       "note": "Podsjetnik za bilješku",
       "journal": "Podsjetnik za dnevnik",
       "highlight": "Podsjetnik za istaknuti tekst",
-      "task": "Podsjetnik na zadatak",
+      "task": "Podsjetnik za zadatak",
       "fallback": "Vrijeme za podsjetnik",
       "default": "Podsjetnik"
     }

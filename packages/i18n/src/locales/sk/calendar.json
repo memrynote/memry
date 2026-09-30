@@ -63,7 +63,7 @@
   "time": {
     "all-day": "Celý deň",
     "all-day-lower": "celý deň",
-    "pick-a-date": "Vyberte dátum",
+    "pick-a-date": "Vybrať dátum",
     "new-event": "Nová udalosť",
     "more-events": "{count, plural, one {# ďalšia udalosť} few {# ďalšie udalosti} other {# ďalších udalostí}}"
   },
@@ -99,7 +99,7 @@
   "agent-access-dialog": {
     "aria": "Vyberte, či môže AI čítať vaše udalosti z Google Calendar",
     "title": "Povoliť AI čítať vaše udalosti z Google Calendar?",
-    "body": "Svoje Google udalosti budete v memrynote vidieť tak či tak. Toto rozhoduje len o tom, či ich môže AI agent čítať, keď sa ho opýtate na svoj rozvrh.",
+    "body": "Udalosti z Google Calendar budete v aplikácii memrynote vidieť tak či tak. Toto nastavenie rozhoduje len o tom, či ich môže AI agent čítať, keď sa ho spýtate na svoj program.",
     "footnote": "Kedykoľvek to môžete zmeniť v časti Nastavenia → Integrácie → Google Calendar.",
     "allow": "Povoliť",
     "deny": "Nepovoliť",
@@ -122,13 +122,13 @@
     "body": "Úpravou tejto udalosti sa v aplikácii memrynote vytvorí prepojená kópia a zmeny sa budú synchronizovať oboma smermi. Pokračovať?",
     "do-not-ask-again": "Už sa nepýtať",
     "confirm-label": "Upraviť v memrynote",
-    "agent-notice": "AI agent môže čítať túto kópiu, aj keď je prístup AI ku Google Calendar vypnutý. Vaša pôvodná Google udalosť pred ním zostáva skrytá."
+    "agent-notice": "AI agent môže čítať túto kópiu, aj keď je prístup AI ku Google Calendar vypnutý. Pôvodná udalosť z Google Calendar pred ním zostáva skrytá."
   },
   "onboarding-dialog": {
     "aria": "Vyberte predvolený kalendár Google",
     "title": "Do ktorého kalendára sa majú ukladať nové udalosti memrynote?",
     "body": "Vyberte kalendár Google, ktorý bude memrynote predvolene používať. Pri každej udalosti ho môžete zmeniť.",
-    "default-calendar-label": "Použiť kalendár spravovaný memrynote",
+    "default-calendar-label": "Použiť kalendár spravovaný aplikáciou memrynote",
     "skip": "Preskočiť",
     "use-this-calendar": "Použiť tento kalendár"
   },
@@ -138,7 +138,7 @@
     "title": "Dokončite pripojenie ku Google Calendar",
     "body": "Pripojte svoj účet Google a získajte z kalendára viac:",
     "bullets": {
-      "events": "Zobrazte svoje Google udalosti popri poznámkach a úlohách",
+      "events": "Zobrazte si udalosti Google popri poznámkach a úlohách",
       "sync": "Vytvárajte a upravujte udalosti so synchronizáciou oboma smermi",
       "schedule": "Plánujte úlohy a poznámky vo svojom kalendári"
     },

@@ -211,7 +211,7 @@
         "canvas": "Platno"
       },
       "intent": {
-        "create": "novo",
+        "create": "stvaranje",
         "update": "ažuriranje",
         "delete": "brisanje",
         "move": "premještanje",
@@ -377,9 +377,9 @@
       "close": "Zatvori agenta"
     },
     "errors": {
-      "loadConversations": "Nije moguće učitati razgovore agenta",
-      "loadConversation": "Nije moguće učitati razgovor agenta",
-      "createConversation": "Nije moguće stvoriti razgovor agenta",
+      "loadConversations": "Nije moguće učitati razgovore s agentom",
+      "loadConversation": "Nije moguće učitati razgovor s agentom",
+      "createConversation": "Nije moguće stvoriti razgovor s agentom",
       "busy": "Drugi prozor upravo obrađuje poruku u ovom razgovoru. Pričekajte da završi ili je zaustavite u tom prozoru.",
       "sendTurn": "Nije moguće poslati poruku agentu",
       "cancelTurn": "Nije moguće prekinuti odgovor agenta",
@@ -401,7 +401,7 @@
   "canvas": {
     "sectionLabel": "Platna",
     "newCanvas": "Novo platno",
-    "newCanvasFolder": "Nova mapa platna",
+    "newCanvasFolder": "Nova mapa za platna",
     "untitled": "Platno bez naslova",
     "empty": "Još nema platna",
     "loading": "Učitavanje platna…",
@@ -445,14 +445,14 @@
     "renameLabel": "Naziv platna",
     "folderNameLabel": "Naziv mape",
     "deleteConfirmTitle": "Izbrisati ovo platno?",
-    "deleteConfirmBody": "„{title}” uklanja se iz aplikacije memrynote na svim vašim uređajima. Datoteka odlazi u smeće ovog računala, ali njezinim vraćanjem platno se neće obnoviti.",
+    "deleteConfirmBody": "„{title}” uklanja se iz aplikacije memrynote na svim vašim uređajima. Datoteka odlazi u smeće ovog računala, ali ako je vratite, platno se neće obnoviti.",
     "dropToRoot": "Ispustite ovdje za premještanje izvan mape",
     "filterPlaceholder": "Filtriraj platna",
     "filterNoMatches": "Nijedno platno ne odgovara filtru",
     "folderCanvasCount": "Platna u mapi: {count}",
     "folderEmptyHint": "Ovdje još nema ničega",
-    "deleteFolderConfirmTitle": "Izbrisati ovu mapu platna?",
-    "deleteFolderConfirmBody": "„{name}” i sve u njoj uklanja se iz aplikacije memrynote na svim vašim uređajima. Obuhvaćena platna: {count}. Mapa odlazi u smeće ovog računala, ali njezinim vraćanjem platna se neće obnoviti.",
+    "deleteFolderConfirmTitle": "Izbrisati ovu mapu za platna?",
+    "deleteFolderConfirmBody": "Mapa „{name}” i sav njezin sadržaj uklanjaju se iz aplikacije memrynote na svim vašim uređajima. Obuhvaćena platna: {count}. Mapa odlazi u smeće ovog računala, ali ako je vratite, platna se neće obnoviti.",
     "actions": {
       "rename": "Preimenuj",
       "duplicate": "Dupliciraj",
@@ -465,7 +465,7 @@
       "newCanvasHere": "Novo platno ovdje",
       "newFolder": "Nova mapa",
       "canvasMenu": "Radnje platna",
-      "folderMenu": "Radnje mape platna"
+      "folderMenu": "Radnje mape za platna"
     },
     "card": {
       "open": "Otvori u kartici",
@@ -501,16 +501,16 @@
       "bulkConfirmAdd": "{count, plural, one {Dodaj # karticu} few {Dodaj # kartice} other {Dodaj # kartica}}",
       "bulkBack": "Natrag",
       "bulkEmpty": "Nema bilješki, datoteka ni zadataka za dodavanje",
-      "bulkLoadFailed": "Stavke se nisu mogle učitati",
+      "bulkLoadFailed": "Nije moguće učitati stavke",
       "bulkAdded": "{count, plural, one {Dodana # kartica} few {Dodane # kartice} other {Dodano # kartica}}",
       "bulkAddedSkipped": "{count, plural, one {Dodana # kartica} few {Dodane # kartice} other {Dodano # kartica}} · {skipped} već na platnu",
-      "bulkAllOnCanvas": "{count, plural, one {Već je na ovom platnu} few {Sve # već su na ovom platnu} other {Svih # već je na ovom platnu}}"
+      "bulkAllOnCanvas": "{count, plural, =1 {Već je na ovom platnu} one {Svih # već je na ovom platnu} few {Sve # već su na ovom platnu} other {Svih # već je na ovom platnu}}"
     },
     "cluster": {
       "button": "Predloži grupe",
       "buttonHint": "Grupira kartice bilješki na ovoj ploči (ili odabrane) prema sličnosti. Izvodi se na ovom uređaju.",
       "loading": "Grupiranje…",
-      "needMoreNotes": "Za prijedloge grupa dodajte još kartica bilješki (najmanje {count}).",
+      "needMoreNotes": "{count, plural, one {Za prijedloge grupa dodajte najmanje # karticu bilješke.} few {Za prijedloge grupa dodajte najmanje # kartice bilješki.} other {Za prijedloge grupa dodajte najmanje # kartica bilješki.}}",
       "tooMany": "Ova ploča ima više od {count} kartica bilješki. Odaberite najviše {count} i pokušajte ponovno.",
       "disabled": "Za prijedloge grupa uključite lokalne vektorske prikaze u Postavkama > AI.",
       "noGroups": "Među ovim bilješkama nisu pronađene jasne grupe.",
@@ -581,7 +581,7 @@
       "feedbackTitle": "Pošalji povratne informacije",
       "feedbackDescription": "Recite nam što radi, što je pokvareno ili što biste željeli da Memry radi. Čitamo svaku poruku.",
       "feedbackPlaceholder": "Vaše povratne informacije…",
-      "feedbackEmailHint": "Dodajte svoju e-poštu ako želite odgovor.",
+      "feedbackEmailHint": "Dodajte svoju e-adresu ako želite odgovor.",
       "feedbackPrivacyTitle": "Što se šalje",
       "feedbackPrivacyMessage": "Vaša poruka, točno onako kako ste je napisali",
       "feedbackPrivacyEmailOptional": "Vaša e-adresa – samo ako je upišete i samo kako bismo mogli odgovoriti",
@@ -617,7 +617,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Preskoči uvod",
-      "welcomeToMemry": "Dobrodošli u memrynote",
+      "welcomeToMemry": "Dobro došli u memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaša osobna baza znanja. Za početak su vam potrebne samo 2 minute.",
       "getStarted": "Započni ",
       "createYourFirstNote": "Stvorite svoju prvu bilješku",
@@ -626,7 +626,7 @@
       "skip": "Preskoči",
       "createNote": "Stvori bilješku ",
       "addYourFirstTask": "Dodajte svoj prvi zadatak",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Zadaci se povezuju s vašim bilješkama, s prioritetima i rokovima.",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Zadaci s prioritetima i rokovima povezuju se s vašim bilješkama.",
       "eGReviewProjectProposal": "npr. pregled prijedloga projekta…",
       "skip2": "Preskoči",
       "createTask": "Stvori zadatak ",
@@ -809,7 +809,7 @@
       "dragToResizeDoubleClickToReset": "Povucite za promjenu veličine · Dvaput kliknite za vraćanje na zadano"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Dobrodošli u memrynote",
+      "welcomeToMemry": "Dobro došli u memrynote",
       "yourPersonalKnowledgeManagementSystem": "Vaš osobni sustav upravljanja znanjem.",
       "selectAFolderToStoreYourNotesAndTasks": "Odaberite mapu za pohranjivanje bilješki i zadataka.",
       "opening": "Otvaranje…",
@@ -892,10 +892,10 @@
       "downloadLocation": "Lokacija",
       "changeLocation": "Promijeni…",
       "download": "Preuzmi",
-      "downloadFailed": "Trezor nije bilo moguće preuzeti",
+      "downloadFailed": "Nije moguće preuzeti trezor",
       "deleteFromAccount": "Izbriši s računa",
       "deleteVaultTitle": "Izbrisati „{name}” s vašeg računa?",
-      "deleteVaultBody": "Ovime se svi sinkronizirani podaci ovog trezora trajno uklanjaju s Memryjevih poslužitelja i to se ne može poništiti. Vaše datoteke na disku neće biti izbrisane.",
+      "deleteVaultBody": "Ovime se svi sinkronizirani podaci ovog trezora trajno uklanjaju s poslužitelja aplikacije Memry i to se ne može poništiti. Vaše datoteke na disku neće biti izbrisane.",
       "deleteVaultConfirm": "Izbriši s računa",
       "deleteVaultFailed": "Nije moguće izbrisati trezor",
       "missing": "Mapa nije pronađena"
@@ -952,7 +952,7 @@
       "inbox": "Ulazni pretinac",
       "inboxAllTypes": "Sve vrste",
       "inboxOlder": "{count, plural, one {# starija} few {# starije} other {# starijih}}",
-      "inboxOldest": "najstarija {count, plural, one {# dan} few {# dana} other {# dana}}",
+      "inboxOldest": "najstarija: {count, plural, one {# dan} few {# dana} other {# dana}}",
       "openInbox": "Otvori ulazni pretinac",
       "folder": "Mapa",
       "untitled": "Bez naslova",
@@ -1051,7 +1051,7 @@
     },
     "settings": {
       "title": "Postavke i uvoz",
-      "body": "Uvezite bilješke iz više od 12 aplikacija – Obsidian, Notion, Apple Notes, Evernote i drugih – a sve ostalo podesite u Postavkama."
+      "body": "Uvezite bilješke iz više od 12 aplikacija, kao što su Obsidian, Notion, Apple Notes i Evernote, a sve ostalo podesite u Postavkama."
     },
     "tour": {
       "next": "Dalje",
@@ -1065,7 +1065,7 @@
     }
   },
   "shortcuts": {
-    "description": "Brzi putovi za kretanje kroz memrynote, bilježenje misli i obradu posla.",
+    "description": "Brzi putovi za kretanje kroz aplikaciju memrynote, bilježenje misli i obradu posla.",
     "or": "ili",
     "then": "zatim",
     "groups": {
@@ -1183,7 +1183,7 @@
     }
   },
   "update": {
-    "available": "Dostupno ažuriranje",
+    "available": "Ažuriranje dostupno",
     "downloading": "Preuzimanje verzije {version}",
     "ready": "Ažuriranje spremno",
     "failed": "Ažuriranje nije uspjelo",

@@ -72,7 +72,7 @@
     "failed": "Šifriranje podataka nije uspjelo. Vaše ključeve će možda trebati regenerirati.",
     "decryptionFailed": "Dešifriranje podataka nije uspjelo. Vaši ključevi za šifriranje možda su zastarjeli.",
     "invalidKeyLength": "Nevažeći ključ za šifriranje. Pokušajte se odjaviti i ponovno prijaviti.",
-    "invalidNonceLength": "Greška šifriranja. Pokušajte ponoviti operaciju."
+    "invalidNonceLength": "Pogreška šifriranja. Pokušajte ponoviti operaciju."
   },
   "inboxAttachment": {
     "writeFailed": "Spremanje privitka u ulaznom pretincu nije uspjelo.",
@@ -94,10 +94,10 @@
     "attachmentUploadFailed": "Nije moguće sinkronizirati privitak „{filename}”. Ostaje na ovom uređaju.",
     "paymentRequired": "Za korištenje šifrirane sinkronizacije na našim poslužiteljima potreban je plaćeni plan Sync.",
     "vaultLimitExceeded": "Vaš plan sinkronizira manje trezora nego što ih ima ovaj račun pa ovaj trezor ostaje na ovom uređaju. Uklonite trezor s računa u Postavkama → Račun ili nadogradite plan.",
-    "certificatePinFailed": "Sigurna veza nije uspjela. Provjerite mrežnu vezu.",
+    "certificatePinFailed": "Uspostava sigurne veze nije uspjela. Provjerite mrežnu vezu.",
     "deviceKeyMismatch": "Sigurnosni ključ ovog uređaja više se ne podudara s onim registriranim za vaš račun pa poslužitelj odbija njegove promjene. Ponovno se prijavite na ovom uređaju da biste ga ponovno registrirali.",
     "keychainUnavailable": "Sinkronizacija je pauzirana jer Memry trenutačno ne može pročitati ključeve za sinkronizaciju iz privjeska ključeva sustava. Otključajte privjesak ključeva i sinkronizacija će se sama nastaviti; ako se ne nastavi, ponovno pokrenite Memry. Ništa nije izbrisano.",
-    "unknown": "Došlo je do neočekivane pogreške sinkronizacije. Pokušat će se automatski.",
+    "unknown": "Došlo je do neočekivane pogreške sinkronizacije. Automatski će se pokušati ponovno.",
     "statusFetchFailed": "Dohvaćanje statusa sinkronizacije nije uspjelo",
     "engineNotInitialized": "Sinkronizacija nije pokrenuta. Otvorite trezor za početak sinkronizacije.",
     "triggerFailed": "Sinkronizacija nije uspjela",
@@ -105,7 +105,7 @@
     "resumeFailed": "Nastavak sinkronizacije nije uspio",
     "settingsNotInitialized": "Sinkronizacija postavki nije pokrenuta",
     "securityQuarantinePermanent": "Stavku sinkronizacije nije bilo moguće provjeriti i stavljena je u karantenu radi sigurnosti.",
-    "securityQuarantineRetry": "Stavka sinkronizacije nije uspjela provjeru potpisa i pokušat će se ponovno.",
+    "securityQuarantineRetry": "Stavka sinkronizacije nije prošla provjeru potpisa. Pokušat će se ponovno.",
     "certificatePinPaused": "Nije moguće provjeriti sigurnu vezu s poslužiteljem za sinkronizaciju. Sinkronizacija je pauzirana radi vaše zaštite.",
     "vaultRecovered": "Ključ trezora je vraćen. Sinkronizacija se nastavlja.",
     "serverUnreachable": "Nije moguće povezati se s poslužiteljem za sinkronizaciju. Provjerite internetsku vezu.",
@@ -183,11 +183,11 @@
     "getExternalEventFailed": "Nije moguće učitati ovaj događaj. I dalje je u vašem kalendaru; pokušajte ga ponovno otvoriti."
   },
   "canvasFolder": {
-    "exists": "Mapa platna s tim nazivom ovdje već postoji.",
-    "descendant": "Mapa platna ne može se premjestiti u vlastitu podmapu.",
-    "moveFailed": "Mapu platna nije moguće premjestiti. Možda je otvorena u drugoj aplikaciji.",
-    "depth": "Mape platna ne mogu se dublje ugnijezditi.",
-    "invalidName": "Unesite naziv mape platna."
+    "exists": "Mapa za platna s tim nazivom ovdje već postoji.",
+    "descendant": "Mapa za platna ne može se premjestiti u vlastitu podmapu.",
+    "moveFailed": "Mapu za platna nije moguće premjestiti. Možda je otvorena u drugoj aplikaciji.",
+    "depth": "Mape za platna ne mogu se dublje ugnijezditi.",
+    "invalidName": "Unesite naziv mape za platna."
   },
   "folder": {
     "createFailed": "Stvaranje mape nije uspjelo",
