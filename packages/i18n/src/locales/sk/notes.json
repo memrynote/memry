@@ -203,7 +203,7 @@
     "attachmentMenu": {
       "menuLabel": "Akcie súboru",
       "storedAs": "Uložené ako {name}",
-      "notSynced": "Do tohto zariadenia sa zatiaľ nesynchronizovalo",
+      "notSynced": "Zatiaľ nesynchronizované do tohto zariadenia",
       "revealFailed": "Nepodarilo sa zobraziť súbor",
       "openFailed": "Nepodarilo sa otvoriť súbor",
       "missingTitle": "Súbor prílohy chýba",
@@ -433,7 +433,7 @@
       "addHeading": "Pridať",
       "vaultHeading": "V tomto trezore",
       "uploading": "Nahráva sa…",
-      "noMatches": "Nič nezodpovedá.",
+      "noMatches": "Nič nezodpovedá hľadaniu.",
       "loadFailed": "Nepodarilo sa načítať prílohy trezora",
       "insertFailed": "Nepodarilo sa vložiť prílohu",
       "uploadFailed": "Nepodarilo sa nahrať súbor",
@@ -464,7 +464,7 @@
     "wiki": {
       "aria": "Návrhy poznámok",
       "loading": "Načítavajú sa poznámky…",
-      "empty": "Neboli nájdené žiadne poznámky",
+      "empty": "Nenašli sa žiadne poznámky",
       "create": "Vytvoriť novú poznámku",
       "embed": "Vložiť",
       "wikiLink": "Wiki odkaz",
@@ -537,7 +537,7 @@
     "title": "Osnova",
     "aria": "Osnova dokumentu",
     "empty": "Žiadne nadpisy",
-    "emptyYet": "Ešte žiadne nadpisy",
+    "emptyYet": "Zatiaľ žiadne nadpisy",
     "readTime": "{count} min čítania",
     "words": "{count, plural, one {# slovo} few {# slová} other {# slov}}",
     "created": "Vytvorené",
@@ -659,7 +659,7 @@
     "editName": "Upraviť názov vlastnosti",
     "delete": "Odstrániť vlastnosť",
     "searchOptions": "Hľadať možnosti…",
-    "noOptions": "Ešte žiadne možnosti",
+    "noOptions": "Zatiaľ žiadne možnosti",
     "optionName": "Názov možnosti",
     "newOption": "Nová možnosť",
     "ratingAria": "Hodnotenie",
@@ -904,7 +904,7 @@
       "showSummaries": "Zobraziť súhrny",
       "columnBorders": "Ohraničenie stĺpcov",
       "searchColumns": "Hľadať stĺpce…",
-      "noMatchingColumns": "Žiadne zhodujúce sa stĺpce",
+      "noMatchingColumns": "Žiadne zodpovedajúce stĺpce",
       "formulas": "VZORCE",
       "noFormulasDefined": "Nie sú definované žiadne vzorce",
       "addFormula": "Pridať vzorec",
@@ -921,7 +921,7 @@
       "filters": "Filtre",
       "clearAll": "Vymazať všetko",
       "noFiltersApplied": "Žiadne filtre",
-      "addFiltersToNarrowDownYourNotes": "Pridajte filtre na zúženie poznámok",
+      "addFiltersToNarrowDownYourNotes": "Pridajte filtre a zúžte zoznam poznámok",
       "match": "Zhoda",
       "allAnd": "Všetky (AND)",
       "anyOr": "Ktorákoľvek (OR)",
@@ -1000,7 +1000,7 @@
       "create": "Vytvoriť \"",
       "cancel": "Zrušiť",
       "currentFolderBadge": "(aktuálny)",
-      "noFoldersMatchQuery": "Dopytu „{query}“ nezodpovedá žiadny priečinok",
+      "noFoldersMatchQuery": "Výrazu „{query}“ nezodpovedá žiadny priečinok",
       "createFolderNamed": "Vytvoriť „{name}“"
     },
     "componentsFolderViewRowContextMenu": {
@@ -1100,14 +1100,14 @@
       "modified": "Upravené"
     },
     "componentsSidebarProjectsEmptyState": {
-      "noProjectsYet": "Ešte žiadne projekty",
+      "noProjectsYet": "Zatiaľ žiadne projekty",
       "createYourFirstProject": "Vytvorte svoj prvý projekt",
       "createYourFirstProject2": "Vytvorte svoj prvý projekt"
     },
     "componentsSidebarSidebarBookmarkList": {
       "loadingBookmarks": "Načítavajú sa záložky…",
       "failedToLoadBookmarks": "Nepodarilo sa načítať záložky",
-      "noBookmarksYet": "Ešte žiadne záložky",
+      "noBookmarksYet": "Zatiaľ žiadne záložky",
       "moreOptions": "Viac možností",
       "remove": "Odstrániť"
     },
@@ -1181,8 +1181,8 @@
     },
     "componentsViewersPdfViewer": {
       "failedToLoadPdf": "Nepodarilo sa načítať PDF",
-      "previousPage": "Predchádzajúca stránka",
-      "nextPage": "Ďalšia stránka",
+      "previousPage": "Predchádzajúca strana",
+      "nextPage": "Ďalšia strana",
       "zoomOut": "Oddialiť",
       "zoomIn": "Priblížiť",
       "fitToWidth": "Prispôsobiť šírke",
@@ -1224,7 +1224,7 @@
       "cancel": "Zrušiť"
     },
     "componentsFolderViewSortSelector": {
-      "clearSort": "Vymazať zoradenie",
+      "clearSort": "Zrušiť zoradenie",
       "sort": "Zoradiť",
       "searchProperties": "Hľadať vlastnosti…",
       "builtIn": "Vstavané",
@@ -1248,7 +1248,7 @@
       "failedToLoadMoreBookmarks": "Nepodarilo sa načítať viac záložiek",
       "failedToToggleBookmark": "Nepodarilo sa pridať alebo odstrániť záložku",
       "failedToRemoveBookmark": "Nepodarilo sa odstrániť záložku",
-      "failedToReorderBookmarks": "Nepodarilo sa preusporiadať záložky",
+      "failedToReorderBookmarks": "Nepodarilo sa zmeniť poradie záložiek",
       "failedToSave": "Nepodarilo sa uložiť",
       "failedToRename": "Nepodarilo sa premenovať",
       "failedToUpdateEmoji": "Nepodarilo sa aktualizovať emoji",
@@ -1317,7 +1317,7 @@
   },
   "newNoteFromNote": {
     "action": "Nová poznámka z tejto poznámky",
-    "created": "Vytvorené z poznámky {source}: {tagCount, plural, =0 {žiadne značky} one {# značka} few {# značky} many {# značky} other {# značiek}}, {propertyCount, plural, =0 {žiadne vlastnosti} one {# vlastnosť} few {# vlastnosti} many {# vlastnosti} other {# vlastností}}"
+    "created": "Vytvorené z poznámky „{source}“: {tagCount, plural, =0 {žiadne značky} one {# značka} few {# značky} many {# značky} other {# značiek}}, {propertyCount, plural, =0 {žiadne vlastnosti} one {# vlastnosť} few {# vlastnosti} many {# vlastnosti} other {# vlastností}}"
   },
   "tags": {
     "hubTitle": "Značky",
@@ -1405,9 +1405,9 @@
     },
     "toolbar": {
       "label": "Akcie myšlienkovej mapy",
-      "fit": "Prispôsobiť zobrazeniu",
+      "fit": "Zobraziť celú mapu",
       "copyImage": "Kopírovať ako obrázok",
-      "copyVector": "Kopírovať ako vektor",
+      "copyVector": "Kopírovať ako vektorovú grafiku",
       "imageCopied": "Mapa skopírovaná ako obrázok",
       "vectorCopied": "Mapa skopírovaná ako vektorová grafika",
       "copyFailed": "Nepodarilo sa skopírovať mapu",

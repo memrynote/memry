@@ -1,6 +1,6 @@
 {
   "generic": {
-    "somethingWentWrong": "Ada yang tidak beres. Silakan coba lagi.",
+    "somethingWentWrong": "Terjadi kesalahan. Silakan coba lagi.",
     "operationFailed": "Operasi gagal",
     "unknown": "Terjadi kesalahan yang tidak diketahui"
   },
@@ -106,7 +106,7 @@
     "settingsNotInitialized": "Sinkronisasi pengaturan tidak diinisialisasi",
     "securityQuarantinePermanent": "Item sinkronisasi tidak dapat diverifikasi dan telah dikarantina demi keamanan.",
     "securityQuarantineRetry": "Item sinkronisasi gagal dalam verifikasi tanda tangan dan akan dicoba lagi.",
-    "certificatePinPaused": "Sambungan aman ke server sinkronisasi tidak dapat diverifikasi. Sinkronisasi telah dijeda demi perlindungan Anda.",
+    "certificatePinPaused": "Koneksi aman ke server sinkronisasi tidak dapat diverifikasi. Sinkronisasi telah dijeda demi perlindungan Anda.",
     "vaultRecovered": "Kunci brankas dipulihkan. Sinkronisasi akan dilanjutkan.",
     "serverUnreachable": "Tidak dapat terhubung ke server sinkronisasi. Periksa koneksi internet Anda.",
     "keyPersistenceFailed": "Gagal menyimpan kunci enkripsi dengan aman. Pendaftaran perangkat telah dibatalkan. Silakan coba lagi.",
@@ -177,7 +177,7 @@
     "listGoogleCalendarsFailed": "Gagal menampilkan daftar kalender Google",
     "setDefaultGoogleCalendarFailed": "Gagal menetapkan kalender Google default",
     "retryGoogleSourceSyncFailed": "Gagal mencoba ulang sinkronisasi sumber Google Calendar",
-    "promoteExternalEventFailed": "Gagal mempromosikan acara kalender eksternal",
+    "promoteExternalEventFailed": "Gagal membuat salinan tertaut dari acara kalender eksternal",
     "onlyCalendarSourcesRetryable": "Hanya sumber kalender yang dapat dicoba lagi",
     "invalidProviderSettings": "Pengaturan penyedia kalender tidak valid",
     "getExternalEventFailed": "Tidak dapat memuat acara ini. Acara masih ada di kalender Anda; coba buka lagi."

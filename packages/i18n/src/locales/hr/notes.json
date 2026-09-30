@@ -131,7 +131,7 @@
       "folderTitle": "Izbriši mapu",
       "itemsTitle": "{count, plural, one {Izbriši # stavku} few {Izbriši # stavke} other {Izbriši # stavki}}",
       "noteBody": "Jeste li sigurni da želite izbrisati „{name}”? Ova se radnja ne može poništiti.",
-      "folderBody": "Jeste li sigurni da želite izbrisati „{name}” i sve bilješke u njoj? Ova se radnja ne može poništiti.",
+      "folderBody": "Jeste li sigurni da želite izbrisati mapu „{name}” i sve bilješke u njoj? Ova se radnja ne može poništiti.",
       "itemsBody": "{count, plural, one {Jeste li sigurni da želite izbrisati # stavku? Ova se radnja ne može poništiti.} few {Jeste li sigurni da želite izbrisati # stavke? Ova se radnja ne može poništiti.} other {Jeste li sigurni da želite izbrisati # stavki? Ova se radnja ne može poništiti.}}",
       "folderSuffix": "mapa",
       "moreItems": "…i još {count}",
@@ -316,7 +316,7 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Kao sklopivi",
+        "asToggleHeading": "Kao sklopivi naslov",
         "asLinkedTask": "Kao povezani zadatak",
         "asReminder": "Kao podsjetnik"
       },
@@ -327,7 +327,7 @@
       "matchesAlias": "odgovara",
       "noMatch": "Nijedan blok ne odgovara upitu „{query}”",
       "fallback": {
-        "linkTo": "Poveži s",
+        "linkTo": "Poveži s bilješkom",
         "askAI": "Pitaj AI pomoćnika"
       },
       "pdf": {
@@ -623,7 +623,7 @@
     "openAttachmentAria": "Otvori privitak {name}",
     "kind": {
       "comment": "Komentar",
-      "addition": "Dodatak",
+      "addition": "Dodavanje",
       "deletion": "Brisanje",
       "substitution": "Zamjena"
     }
@@ -711,7 +711,7 @@
     "failed": "Nije moguće premjestiti zadatke bilješke"
   },
   "deleteNoteTasks": {
-    "label": "{count, plural, =1 {Izbriši i zadatak u njoj} one {Izbriši i # zadatak u njoj} few {Izbriši i # zadatka u njoj} other {Izbriši i # zadataka u njoj}}",
+    "label": "{count, plural, =1 {Izbriši i pripadajući zadatak} one {Izbriši i # pripadajući zadatak} few {Izbriši i # pripadajuća zadatka} other {Izbriši i # pripadajućih zadataka}}",
     "description": "{count, plural, =1 {Ako ne označite, ostaje u Zadacima.} one {Ako ne označite, ostaju u Zadacima.} few {Ako ne označite, ostaju u Zadacima.} other {Ako ne označite, ostaju u Zadacima.}}",
     "failed": "Nije moguće izbrisati zadatke. I dalje su u Zadacima."
   },
@@ -746,13 +746,13 @@
         "error": {
           "notConfigured": "Fotografije s Unsplasha nisu dostupne u ovoj verziji",
           "offline": "Nema veze s Unsplashom",
-          "rateLimited": "Unsplash je ograničio broj zahtjeva, pokušajte ponovno uskoro",
-          "failed": "Nije moguće doći do Unsplasha",
+          "rateLimited": "Unsplash je ograničio broj zahtjeva, pokušajte ponovno malo kasnije",
+          "failed": "Nije moguće povezati se s Unsplashom",
           "writeFailed": "Tu fotografiju nije moguće spremiti u trezor"
         }
       },
       "upload": "Prenesi",
-      "uploading": "Prijenos u tijeku…",
+      "uploading": "Prijenos…",
       "uploadFailed": "Nije moguće prenijeti naslovnu sliku",
       "loadFailed": "Nije moguće učitati slike iz trezora",
       "insertFailed": "Nije moguće upotrijebiti tu sliku kao naslovnu",
@@ -937,7 +937,7 @@
       "lockedConditionHint": "Ovaj uvjet definira trenutni prikaz i ovdje se ne može ukloniti."
     },
     "componentsFolderViewFilterRow": {
-      "builtIn": "Ugrađeni",
+      "builtIn": "Ugrađena",
       "properties": "Svojstva",
       "placeholderProperty": "Svojstvo",
       "placeholderOperator": "Operator",
@@ -975,7 +975,7 @@
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Očisti grupiranje",
       "searchProperties": "Pretraži svojstva…",
-      "builtIn": "Ugrađeni",
+      "builtIn": "Ugrađena",
       "properties": "Svojstva",
       "noGroupablePropertiesFound": "Nema pronađenih svojstava koja se mogu grupirati",
       "sortDirection": "Smjer sortiranja",
@@ -1101,8 +1101,8 @@
     },
     "componentsSidebarProjectsEmptyState": {
       "noProjectsYet": "Još nema projekata",
-      "createYourFirstProject": "Stvorite prvi projekt",
-      "createYourFirstProject2": "Stvorite prvi projekt"
+      "createYourFirstProject": "Stvori prvi projekt",
+      "createYourFirstProject2": "Stvori prvi projekt"
     },
     "componentsSidebarSidebarBookmarkList": {
       "loadingBookmarks": "Učitavanje favorita…",
@@ -1151,7 +1151,7 @@
       "unpin": "Otkvači",
       "pinToTag": "Prikvači uz oznaku",
       "pin": "Prikvači",
-      "tagActions": "Radnje oznaka",
+      "tagActions": "Radnje s oznakom",
       "editTagName": "Uredi naziv oznake",
       "changeColor": "Promijeni boju",
       "deleteTag": "Izbriši oznaku",
@@ -1168,9 +1168,9 @@
     },
     "componentsViewersAudioPlayer": {
       "failedToLoadAudio": "Učitavanje zvuka nije uspjelo",
-      "theAudioFileCouldNotBePlayed": "Audio datoteka se nije mogla reproducirati.",
+      "theAudioFileCouldNotBePlayed": "Audiodatoteka se nije mogla reproducirati.",
       "skipBack10s": "Preskoči 10 s unatrag",
-      "skipForward10s": "Preskoči naprijed 10 s"
+      "skipForward10s": "Preskoči 10 s naprijed"
     },
     "componentsViewersImageViewer": {
       "failedToLoadImage": "Učitavanje slike nije uspjelo",
@@ -1201,7 +1201,7 @@
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Učitavanje videozapisa nije uspjelo",
-      "theVideoFileCouldNotBePlayed": "Nije moguće reproducirati video datoteku."
+      "theVideoFileCouldNotBePlayed": "Nije moguće reproducirati videodatoteku."
     },
     "pagesFile": {
       "failedToLoadFile": "Učitavanje datoteke nije uspjelo",
@@ -1227,7 +1227,7 @@
       "clearSort": "Očisti sortiranje",
       "sort": "Sortiraj",
       "searchProperties": "Pretraži svojstva…",
-      "builtIn": "Ugrađeno",
+      "builtIn": "Ugrađena",
       "properties": "Svojstva",
       "noSortablePropertiesFound": "Nema svojstava za sortiranje",
       "sortDirection": "Smjer sortiranja"
@@ -1291,7 +1291,7 @@
     "clearAria": "Očisti odabir",
     "copiedLinks": "{count, plural, one {Kopirana # poveznica} few {Kopirane # poveznice} other {Kopirano # poveznica}}",
     "setIcon": "Postavi ikonu",
-    "iconUpdated": "{count, plural, one {Ikona ažurirana na # bilješci} few {Ikona ažurirana na # bilješke} other {Ikona ažurirana na # bilješki}}"
+    "iconUpdated": "{count, plural, one {Ikona ažurirana za # bilješku} few {Ikona ažurirana za # bilješke} other {Ikona ažurirana za # bilješki}}"
   },
   "applyTemplateConfirm": {
     "title": "Zamijeniti sadržaj bilješke?",

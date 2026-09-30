@@ -16,7 +16,7 @@
     "previous-period": "Předchozí období",
     "next-period": "Další období",
     "previous-month": "Předchozí měsíc",
-    "next-month": "Příští měsíc",
+    "next-month": "Další měsíc",
     "today": "Dnes"
   },
   "search": {
@@ -119,15 +119,15 @@
   "promote-dialog": {
     "aria": "Upravit událost externího kalendáře",
     "title": "Upravit tuto událost v memrynote?",
-    "body": "Úpravou této události se vytvoří propojená kopie v memrynote, takže změny budou synchronizovány oběma způsoby. Pokračovat?",
+    "body": "Úpravou této události se vytvoří propojená kopie v memrynote, takže změny budou synchronizovány oběma směry. Pokračovat?",
     "do-not-ask-again": "Příště se neptat",
     "confirm-label": "Upravit v memrynote",
     "agent-notice": "Agent AI si tuto kopii může přečíst, i když je přístup AI ke Google Calendar vypnutý. Vaše původní událost Google pro něj zůstává skrytá."
   },
   "onboarding-dialog": {
     "aria": "Vyberte svůj výchozí kalendář Google",
-    "title": "Do kterého kalendáře by měly jít nové události memrynote?",
-    "body": "Vyberte kalendář Google, který má memrynote používat jako výchozí. Stále jej můžete přepsat pro každou událost.",
+    "title": "Do kterého kalendáře se mají ukládat nové události memrynote?",
+    "body": "Vyberte kalendář Google, který má memrynote používat jako výchozí. U jednotlivých událostí ho můžete změnit.",
     "default-calendar-label": "Použít kalendář spravovaný memrynote",
     "skip": "Přeskočit",
     "use-this-calendar": "Použít tento kalendář"
@@ -144,7 +144,7 @@
     },
     "continue": "Pokračovat s účtem Google",
     "dismiss": "Zavřít",
-    "error": "Nepodařilo se připojit Google Calendar. Zkuste to znovu."
+    "error": "Google Calendar se nepodařilo připojit. Zkuste to znovu."
   },
   "metadata": {
     "attendees": "Účastníci",
@@ -232,7 +232,7 @@
     "errors": {
       "could-not-save": "Úkol se nepodařilo uložit",
       "could-not-reschedule": "Úkol se nepodařilo přeplánovat",
-      "could-not-remove-due-date": "Termín se nepodařilo odstranit",
+      "could-not-remove-due-date": "Termín se nepodařilo odebrat",
       "could-not-open-note": "Poznámku se nepodařilo otevřít"
     }
   },
@@ -319,7 +319,7 @@
       "set-due": "Nastavit termín",
       "move-later": "Posunout o týden později",
       "move-earlier": "Posunout o týden dříve",
-      "clear-dates": "Vymazat data",
+      "clear-dates": "Vymazat datum zahájení i termín",
       "clear-start": "Vymazat datum zahájení",
       "clear-due": "Vymazat termín",
       "task": "Úkol",

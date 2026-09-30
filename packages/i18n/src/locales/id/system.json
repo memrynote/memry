@@ -61,12 +61,12 @@
   },
   "startup": {
     "installingUpdate": {
-      "title": "Memasang pembaruan…",
+      "title": "Menginstal pembaruan…",
       "subtitle": "MemryNote akan terbuka kembali secara otomatis."
     },
     "failed": {
-      "title": "MemryNote tidak dapat menyelesaikan proses mulai",
-      "body": "Ini bisa terjadi saat ruang kosong disk sangat menipis, atau pada driver grafis versi lama. Coba kosongkan sebagian ruang disk, lalu buka kembali MemryNote. Jika terus terjadi, memasang ulang biasanya mengatasinya."
+      "title": "MemryNote tidak dapat dimulai sepenuhnya",
+      "body": "Ini bisa terjadi saat ruang kosong disk sangat menipis, atau pada driver grafis versi lama. Coba kosongkan sebagian ruang disk, lalu buka kembali MemryNote. Jika terus terjadi, menginstal ulang biasanya mengatasinya."
     }
   }
 }

@@ -117,7 +117,7 @@
       "last": "posledný"
     },
     "preset": {
-      "everyWeekday": "Každý pracovný deň (po-pi)",
+      "everyWeekday": "Každý pracovný deň (po–pi)",
       "everyYearOnDate": "Každý rok dňa {date}"
     }
   },
@@ -186,8 +186,8 @@
       "showDiff": "Zobraziť zmeny",
       "accept": "Prijať",
       "acceptEdits": "Prijať úpravy",
-      "waiting": "{title} čaká na vašu kontrolu.",
-      "notOpen": "{title}: zmeny uvidíte po otvorení, alebo ich môžete prijať bez kontroly.",
+      "waiting": "Na vašu kontrolu čaká {title}.",
+      "notOpen": "{title}: zmeny uvidíte po otvorení alebo ich môžete prijať bez kontroly.",
       "show": "Zobraziť",
       "openNote": "Otvoriť poznámku",
       "openJournal": "Otvoriť denník",
@@ -411,7 +411,7 @@
     "notFound": "Toto plátno sa nenašlo",
     "corruptScene": "Toto plátno sa nepodarilo prečítať. Úpravy sú vypnuté, aby ste neprišli o údaje.",
     "unreadableTitle": "Toto plátno tu nemožno otvoriť",
-    "unreadableBody": "Jeho dokument v trezore chýba, alebo bolo nakreslené predtým, ako sa z pláten stali súbory, a toto zariadenie už nemá kľúč, ktorý ho odomyká. Nič sa neodstránilo – otvorte trezor na zariadení, na ktorom plátno vzniklo, alebo obnovte priečinok s plátnami.",
+    "unreadableBody": "Jeho dokument v trezore chýba alebo bolo plátno nakreslené predtým, ako sa z pláten stali súbory, a toto zariadenie už nemá kľúč, ktorý ho odomyká. Nič sa neodstránilo – otvorte trezor na zariadení, na ktorom plátno vzniklo, alebo obnovte priečinok s plátnami.",
     "tooLargeToSync": "Toto plátno je príliš veľké na synchronizáciu. Je uložené na tomto zariadení, ale kým sa nezmenší, nedostane sa do vašich ostatných zariadení.",
     "savedToVault": "Všetky zmeny sa automaticky ukladajú do vášho trezora",
     "libraryStoreFailed": "Vašu knižnicu tvarov sa nepodarilo uložiť. Posledné zmeny v nej sa môžu stratiť.",
@@ -446,13 +446,13 @@
     "folderNameLabel": "Názov priečinka",
     "deleteConfirmTitle": "Odstrániť toto plátno?",
     "deleteConfirmBody": "„{title}“ sa odstráni z aplikácie memrynote na všetkých vašich zariadeniach. Jeho súbor sa presunie do koša tohto počítača, ale jeho vrátením plátno neobnovíte.",
-    "dropToRoot": "Pustením sem presuniete mimo priečinka",
+    "dropToRoot": "Pustením sem ho presuniete z priečinka",
     "filterPlaceholder": "Filtrovať plátna",
     "filterNoMatches": "Filtru nezodpovedajú žiadne plátna",
     "folderCanvasCount": "Plátna v priečinku: {count}",
     "folderEmptyHint": "Zatiaľ tu nič nie je",
     "deleteFolderConfirmTitle": "Odstrániť tento priečinok pláten?",
-    "deleteFolderConfirmBody": "„{name}“ a všetko v ňom sa odstráni z aplikácie memrynote na všetkých vašich zariadeniach. Dotknuté plátna: {count}. Priečinok sa presunie do koša tohto počítača, ale jeho vrátením plátna neobnovíte.",
+    "deleteFolderConfirmBody": "„{name}“ a všetko v ňom sa odstránia z aplikácie memrynote na všetkých vašich zariadeniach. Dotknuté plátna: {count}. Priečinok sa presunie do koša tohto počítača, ale jeho vrátením plátna neobnovíte.",
     "actions": {
       "rename": "Premenovať",
       "duplicate": "Duplikovať",
@@ -485,9 +485,9 @@
       "addGroupEvents": "Udalosti",
       "addOnCanvas": "Na plátne",
       "addCreatedAt": "Vytvorené {date}",
-      "bulkGroup": "Pridať všetko z",
-      "bulkFromTag": "Značky…",
-      "bulkFromFolder": "Priečinka…",
+      "bulkGroup": "Pridať všetko",
+      "bulkFromTag": "Zo značky…",
+      "bulkFromFolder": "Z priečinka…",
       "bulkSearchTags": "Hľadať značky…",
       "bulkSearchFolders": "Hľadať priečinky…",
       "bulkTagsHeading": "Značky",
@@ -496,7 +496,7 @@
       "bulkViewsHeading": "Pridať z {name}",
       "bulkAllItems": "Všetky položky",
       "bulkConfirmTitle": "{count, plural, one {Pridať # kartu z {name}?} few {Pridať # karty z {name}?} many {Pridať # karty z {name}?} other {Pridať # kariet z {name}?}}",
-      "bulkConfirmBody": "Na veľkých plátnach sa pohyb spomaľuje a môžu prekročiť limit veľkosti synchronizácie.",
+      "bulkConfirmBody": "Veľké plátna sú pri pohybe pomalšie a môžu prekročiť limit veľkosti synchronizácie.",
       "bulkConfirmSkipped": "{count, plural, one {# položka už je na tomto plátne a bude preskočená.} few {# položky už sú na tomto plátne a budú preskočené.} other {# položiek už je na tomto plátne a bude preskočených.}}",
       "bulkConfirmAdd": "{count, plural, one {Pridať # kartu} few {Pridať # karty} many {Pridať # karty} other {Pridať # kariet}}",
       "bulkBack": "Späť",
@@ -540,12 +540,12 @@
       "useTag": "Použiť novú značku #{tag}",
       "unbind": "Prestať kategorizovať ako {label}",
       "current": "Aktuálne",
-      "applied": "{count, plural, one {{label} pridané na # kartu} few {{label} pridané na # karty} other {{label} pridané na # kariet}}",
+      "applied": "{count, plural, one {Pridané na # kartu: {label}} few {Pridané na # karty: {label}} other {Pridané na # kariet: {label}}}",
       "applyFailed": "Nepodarilo sa pridať {label}",
       "revertFailed": "Nepodarilo sa vrátiť späť {label}",
       "leftFrame": "{count, plural, one {# karta bola presunutá zo sekcie {label}. Kategóriu si ponechá.} few {# karty boli presunuté zo sekcie {label}. Kategóriu si ponechajú.} other {# kariet bolo presunutých zo sekcie {label}. Kategóriu si ponechajú.}}",
       "removeCategory": "Odstrániť {label}",
-      "removed": "{count, plural, one {{label} odstránené z # karty} few {{label} odstránené z # kariet} other {{label} odstránené z # kariet}}",
+      "removed": "{count, plural, one {Odstránené z # karty: {label}} few {Odstránené z # kariet: {label}} other {Odstránené z # kariet: {label}}}",
       "removeFailed": "Nepodarilo sa odstrániť {label}",
       "skippedFile": "{count, plural, one {Karta súboru zostala bez zmeny: súbory nemajú značky ani vlastnosti.} few {# karty súborov zostali bez zmeny: súbory nemajú značky ani vlastnosti.} other {# kariet súborov zostalo bez zmeny: súbory nemajú značky ani vlastnosti.}}",
       "skippedTaskProperty": "{count, plural, one {Karta úlohy zostala bez zmeny: úlohy môžu mať značky, nie vlastnosti poznámok.} few {# karty úloh zostali bez zmeny: úlohy môžu mať značky, nie vlastnosti poznámok.} other {# kariet úloh zostalo bez zmeny: úlohy môžu mať značky, nie vlastnosti poznámok.}}",
@@ -587,7 +587,7 @@
       "feedbackPrivacyEmailOptional": "Váš e-mail – iba ak ho uvediete, a len preto, aby sme mohli odpovedať",
       "feedbackPrivacyEmailSignedIn": "E-mail vášho účtu ({email}), aby sme mohli odpovedať",
       "feedbackPrivacyVersion": "Verzia aplikácie a operačný systém",
-      "feedbackPrivacyPlan": "Váš plán (free, Plus, Pro alebo Believer)",
+      "feedbackPrivacyPlan": "Váš plán (Free, Plus, Pro alebo Believer)",
       "feedbackPrivacyNote": "Nič iné. Poznámky zostávajú na vašom zariadení.",
       "feedbackSend": "Odoslať",
       "feedbackSending": "Odosiela sa…",
@@ -857,7 +857,7 @@
         "creating": "Vytvára sa…",
         "cancel": "Zrušiť",
         "chooseTitle": "Vyberte trezor",
-        "chooseSubtitle": "Účet: {email}. Vyberte trezor, ktorý chcete otvoriť v tomto počítači.",
+        "chooseSubtitle": "Prihlásili ste sa ako {email}. Vyberte trezor, ktorý chcete otvoriť v tomto počítači.",
         "untitledVault": "Trezor bez názvu",
         "items": "{count, plural, one {# položka} few {# položky} other {# položiek}}",
         "onThisComputer": "V tomto počítači",
@@ -1027,7 +1027,7 @@
     },
     "nav": {
       "title": "Vaše pracovné priestory",
-      "body": "Prijaté na rýchle záznamy, Denník na denné poznámky, Kalendár pre vašu časovú os, Úlohy na úlohy a Graf, v ktorom uvidíte, ako všetko súvisí."
+      "body": "Prijaté na rýchle záznamy, Denník na denné poznámky, Kalendár pre vašu časovú os, Úlohy na všetko, čo treba urobiť, a Graf, v ktorom uvidíte, ako všetko súvisí."
     },
     "collections": {
       "title": "Kolekcie, záložky a značky",
@@ -1143,7 +1143,7 @@
         "confirmFiling": "Potvrdiť zaradenie"
       },
       "journal": {
-        "returnFromOverview": "Návrat z mesačného alebo ročného zobrazenia",
+        "returnFromOverview": "Vrátiť sa z mesačného alebo ročného zobrazenia",
         "find": "Hľadať v denníku",
         "bold": "Tučné písmo pre vybraný text",
         "italic": "Kurzíva pre vybraný text",
@@ -1243,7 +1243,7 @@
   },
   "sidebarStar": {
     "title": "MemryNote má otvorený zdrojový kód",
-    "body": "Vyvíja sa otvorene. Hviezdička pomôže ostatným nájsť ho.",
+    "body": "Vyvíja sa otvorene. Vďaka hviezdičke ho nájdu aj ďalší.",
     "star": "Dať hviezdičku",
     "later": "Teraz nie",
     "thanks": "Ďakujeme. Veľmi si to vážime."

@@ -83,7 +83,7 @@
     "filesImported": "{count, plural, other {# file diimpor}}",
     "filesImportFailed": "{count, plural, other {Gagal mengimpor # file}}",
     "filesHiddenInSidebar": "File disembunyikan di bilah samping. Aktifkan “Tampilkan file” di menu urutan Koleksi untuk melihatnya.",
-    "moreRemindersDue": "{count, plural, other {# pengingat lain sudah waktunya}}",
+    "moreRemindersDue": "{count, plural, other {# pengingat lain sudah tiba waktunya}}",
     "moreRemindersDueHint": "Lihat panel pengingat untuk detailnya",
     "searchIndexRepaired": "Indeks pencarian diperbaiki",
     "searchIndexRepairedHint": "Sebagian indeks pencarian rusak, jadi Memry membangunnya ulang. Catatan Anda tidak terpengaruh."
@@ -151,7 +151,7 @@
       "deny": "Tolak",
       "invalidJson": "Masukkan JSON yang valid sebelum menerapkan pengeditan.",
       "thisTool": "alat ini",
-      "alwaysAllowHint": "Selalu izinkan berlaku untuk {tool}. Alat lain tetap meminta izin, dan penghapusan selalu meminta izin.",
+      "alwaysAllowHint": "“Selalu izinkan” berlaku untuk {tool}. Alat lain tetap meminta izin, dan penghapusan selalu meminta izin.",
       "alwaysInChat": "Selalu izinkan di obrolan ini",
       "alwaysInChatHint": "Berakhir saat percakapan berakhir",
       "alwaysInVault": "Selalu izinkan di brankas ini",
@@ -579,7 +579,7 @@
       "newItemMenu": "Buat baru…",
       "feedbackButton": "Kirim masukan",
       "feedbackTitle": "Kirim masukan",
-      "feedbackDescription": "Beri tahu kami apa yang berfungsi, apa yang rusak, atau apa yang Anda harapkan dari Memry. Kami membaca setiap pesan.",
+      "feedbackDescription": "Beri tahu kami apa yang berfungsi, apa yang rusak, atau apa yang Anda harapkan dari MemryNote. Kami membaca setiap pesan.",
       "feedbackPlaceholder": "Masukan Anda…",
       "feedbackEmailHint": "Tambahkan email Anda jika ingin dibalas.",
       "feedbackPrivacyTitle": "Apa yang dikirim",
@@ -760,7 +760,7 @@
       "dayPanel": "Panel hari"
     },
     "componentsTabsTabErrorBoundary": {
-      "somethingWentWrong": "Ada yang tidak beres",
+      "somethingWentWrong": "Terjadi kesalahan",
       "anErrorOccurredWhileRenderingThisTabContent": "Terjadi kesalahan saat merender konten tab ini.",
       "tryAgain": "Coba lagi",
       "sendReport": "Kirim laporan diagnostik"
@@ -1031,7 +1031,7 @@
     },
     "collections": {
       "title": "Koleksi, markah & tag",
-      "body": "Atur catatan ke dalam folder, sematkan markah, dan telusuri berdasarkan tag — semua di sini."
+      "body": "Atur catatan ke dalam folder, sematkan markah, dan jelajahi berdasarkan tag — semua di sini."
     },
     "dayPanel": {
       "title": "Hari Anda, di samping pekerjaan Anda",
@@ -1046,12 +1046,12 @@
       "body": "Aktifkan sinkronisasi terenkripsi ujung ke ujung untuk menjaga setiap perangkat tetap selaras."
     },
     "feedback": {
-      "title": "Beri tahu pendapat Anda",
+      "title": "Beri tahu kami pendapat Anda",
       "body": "Kirim masukan langsung ke tim dari sini."
     },
     "settings": {
       "title": "Pengaturan & impor",
-      "body": "Impor catatan Anda dari 12+ aplikasi — Obsidian, Notion, Apple Notes, Evernote dan lainnya — dan atur segala hal lain di Pengaturan."
+      "body": "Impor catatan Anda dari 12+ aplikasi — Obsidian, Notion, Apple Notes, Evernote, dan lainnya — dan atur segala hal lain di Pengaturan."
     },
     "tour": {
       "next": "Berikutnya",
@@ -1087,7 +1087,7 @@
       },
       "notes": {
         "title": "Catatan / Editor",
-        "description": "Menulis, memformat, dan mencari catatan."
+        "description": "Tulis, format, dan cari catatan."
       },
       "tasks": {
         "title": "Tugas",
@@ -1108,7 +1108,7 @@
         "keyboardShortcuts": "Buka pintasan keyboard",
         "undoTaskAction": "Urungkan tindakan tugas terakhir",
         "toggleSidebar": "Alihkan bilah samping",
-        "sidebarSection": "Ke bagian bilah samping"
+        "sidebarSection": "Lompat ke bagian bilah samping"
       },
       "tabs": {
         "newTabMenu": "Buka menu tab baru",

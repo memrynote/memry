@@ -86,7 +86,7 @@
       "newNote": "โน้ตใหม่"
     },
     "syncing": {
-      "body": "กำลังซิงค์โน้ต โน้ตจะปรากฏที่นี่เมื่อซิงค์มาถึง"
+      "body": "กำลังซิงค์โน้ต โน้ตจะทยอยปรากฏที่นี่"
     },
     "loadingError": "โหลดโน้ตไม่สำเร็จ",
     "truncated": {
@@ -104,7 +104,7 @@
       "applyTemplate": "ใช้เทมเพลต",
       "saveAsTemplate": "บันทึกเป็นเทมเพลต",
       "openExternal": "เปิดในโปรแกรมแก้ไขภายนอก",
-      "setDefaultTemplate": "ตั้งค่าเทมเพลตเริ่มต้น",
+      "setDefaultTemplate": "ตั้งเทมเพลตเริ่มต้น",
       "clearDefaultTemplate": "ล้างเทมเพลตเริ่มต้น",
       "setIcon": "ตั้งไอคอน",
       "removeIcon": "เอาไอคอนออก",
@@ -574,7 +574,7 @@
   "similarNotes": {
     "summary": "{count, plural, other {โน้ตที่คล้ายกัน # รายการ}}",
     "sectionAria": "โน้ตที่คล้ายกัน",
-    "hint": "โน้ตที่มีเนื้อหาคล้ายโน้ตนี้และยังไม่ได้ลิงก์กัน ค้นหาในอุปกรณ์นี้จากเอ็มเบดดิงในเครื่อง",
+    "hint": "โน้ตที่มีเนื้อหาคล้ายโน้ตนี้และยังไม่ได้ลิงก์ถึงกัน พบในอุปกรณ์นี้โดยใช้เอ็มเบดดิงในเครื่อง",
     "addLink": "ลิงก์จากโน้ตนี้",
     "addLinkAria": "ลิงก์ {title} จากโน้ตนี้",
     "linked": "ลิงก์ {title} แล้ว",
@@ -766,7 +766,7 @@
       "wash": {
         "sage": "สีเขียวเสจ",
         "sand": "สีทราย",
-        "lilac": "สีม่วงลิแลค",
+        "lilac": "สีม่วงไลแลก",
         "clay": "สีดินเผา",
         "ash": "สีเถ้า",
         "fog": "สีหมอก",
@@ -800,7 +800,7 @@
     "empty": "ไม่พบเทมเพลต",
     "myTemplates": "เทมเพลตของฉัน",
     "essentials": "พื้นฐาน",
-    "setFolderDefault": "ตั้งค่าเป็นค่าเริ่มต้นของโฟลเดอร์",
+    "setFolderDefault": "ตั้งเป็นค่าเริ่มต้นของโฟลเดอร์",
     "useTemplate": "ใช้เทมเพลต",
     "createNote": "สร้างโน้ต",
     "applyToNote": "ใช้เทมเพลต",
@@ -992,7 +992,7 @@
     "componentsFolderViewMoveToFolderDialog": {
       "searchFolders": "ค้นหาโฟลเดอร์…",
       "loadingFolders": "กำลังโหลดโฟลเดอร์…",
-      "suggested": "ที่แนะนำ",
+      "suggested": "แนะนำ",
       "bestMatch": "ตรงที่สุด",
       "current": "ปัจจุบัน)",
       "allFolders": "โฟลเดอร์ทั้งหมด",
@@ -1142,7 +1142,7 @@
       "notes": "โน้ต",
       "loadingNotes": "กำลังโหลดโน้ต…",
       "noNotesWithThisTag": "ไม่มีโน้ตที่มีแท็กนี้",
-      "addThisTagToANoteToSeeItHere": "เพิ่มแท็กนี้กับโน้ตเพื่อดูที่นี่",
+      "addThisTagToANoteToSeeItHere": "เพิ่มแท็กนี้ให้โน้ตเพื่อให้แสดงที่นี่",
       "pinned": "ปักหมุดไว้",
       "allNotes": "โน้ตทั้งหมด",
       "allNotesArePinned": "ปักหมุดโน้ตทั้งหมดไว้แล้ว",
@@ -1266,7 +1266,7 @@
       "failedToUpdateIcon": "อัปเดตไอคอนไม่สำเร็จ",
       "reminderSnoozed": "เลื่อนการเตือนแล้ว",
       "failedToSnoozeReminder": "เลื่อนการเตือนไม่สำเร็จ",
-      "defaultTemplateSet": "ตั้งค่าเทมเพลตเริ่มต้นแล้ว",
+      "defaultTemplateSet": "ตั้งเทมเพลตเริ่มต้นแล้ว",
       "failedToSetDefaultTemplate": "ตั้งเทมเพลตเริ่มต้นไม่สำเร็จ",
       "defaultTemplateCleared": "ล้างเทมเพลตเริ่มต้นแล้ว",
       "failedToClearDefaultTemplate": "ล้างเทมเพลตเริ่มต้นไม่สำเร็จ",
@@ -1290,7 +1290,7 @@
     "delete": "ลบ",
     "clearAria": "ล้างการเลือก",
     "copiedLinks": "คัดลอกลิงก์ {count, plural, other {# รายการ}} แล้ว",
-    "setIcon": "ตั้งค่าไอคอน",
+    "setIcon": "ตั้งไอคอน",
     "iconUpdated": "{count, plural, other {อัปเดตไอคอนของโน้ต # รายการแล้ว}}"
   },
   "applyTemplateConfirm": {
@@ -1392,7 +1392,7 @@
     "chain": {
       "separator": "→"
     },
-    "more": "{count, plural, other {+อีก #}}",
+    "more": "{count, plural, other {อีก # รายการ}}",
     "nodeCapNotice": "ผังนี้มีโหนดถึงขีดจำกัด {count, plural, other {# รายการ}}แล้ว ส่วนที่เหลือจะพับรวมไว้ในโหนดที่ใกล้ที่สุดด้านบน",
     "badge": {
       "table": "{count, plural, other {ตาราง # รายการ}}",

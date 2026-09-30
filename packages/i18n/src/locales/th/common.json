@@ -141,7 +141,7 @@
       "button": "เปิดใช้งานแชทเอเจนต์"
     },
     "approval": {
-      "description": "เอเจนต์ต้องการเรียก {name} ด้วยอาร์กิวเมนต์เหล่านี้",
+      "description": "เอเจนต์ต้องการเรียกใช้ {name} ด้วยอาร์กิวเมนต์เหล่านี้",
       "applyOnce": "นำไปใช้ครั้งเดียว",
       "allowOnce": "อนุญาตครั้งเดียว",
       "editAndApply": "แก้ไขและนำไปใช้",
@@ -163,7 +163,7 @@
       "description": "เอเจนต์ต้องการอัปเดต {title} ตรวจทานการเปลี่ยนแปลงก่อนนำไปใช้",
       "fallbackTitle": "รายการนี้",
       "current": "ปัจจุบัน",
-      "candidate": "ที่เสนอ",
+      "candidate": "ฉบับที่เสนอ",
       "loading": "กำลังโหลด…",
       "apply": "นำไปใช้",
       "applyEdited": "นำฉบับที่แก้ไขไปใช้",
@@ -241,7 +241,7 @@
         "position": "ตำแหน่ง",
         "priority": "ลำดับความสำคัญ",
         "project": "โปรเจกต์",
-        "removed": "ที่นำออก",
+        "removed": "รายการที่นำออก",
         "repeatFrom": "ทำซ้ำจาก",
         "snoozeReason": "เหตุผลที่เลื่อน",
         "snoozedUntil": "เลื่อนไปถึง",
@@ -497,13 +497,13 @@
       "bulkAllItems": "ทุกรายการ",
       "bulkConfirmTitle": "{count, plural, other {เพิ่มการ์ด # ใบจาก {name} หรือไม่?}}",
       "bulkConfirmBody": "บอร์ดขนาดใหญ่จะทำงานช้าลงและอาจเกินขีดจำกัดขนาดการซิงค์",
-      "bulkConfirmSkipped": "{count, plural, other {# รายการอยู่บนแคนวาสนี้แล้วและจะถูกข้าม}}",
+      "bulkConfirmSkipped": "{count, plural, other {มี # รายการอยู่บนแคนวาสนี้แล้ว จึงจะข้ามไป}}",
       "bulkConfirmAdd": "{count, plural, other {เพิ่มการ์ด # ใบ}}",
       "bulkBack": "ย้อนกลับ",
       "bulkEmpty": "ไม่มีโน้ต ไฟล์ หรืองานให้เพิ่ม",
       "bulkLoadFailed": "โหลดรายการไม่สำเร็จ",
       "bulkAdded": "{count, plural, other {เพิ่มการ์ด # ใบแล้ว}}",
-      "bulkAddedSkipped": "{count, plural, other {เพิ่มการ์ด # ใบแล้ว}} · {skipped} อยู่บนแคนวาสแล้ว",
+      "bulkAddedSkipped": "{count, plural, other {เพิ่มการ์ด # ใบแล้ว}} · {skipped} รายการอยู่บนแคนวาสแล้ว",
       "bulkAllOnCanvas": "{count, plural, =1 {อยู่บนแคนวาสนี้แล้ว} other {ทั้ง # รายการอยู่บนแคนวาสนี้แล้ว}}"
     },
     "cluster": {
@@ -512,7 +512,7 @@
       "loading": "กำลังจัดกลุ่ม…",
       "needMoreNotes": "เพิ่มการ์ดโน้ตอย่างน้อย {count} ใบเพื่อรับคำแนะนำกลุ่ม",
       "tooMany": "บอร์ดนี้มีการ์ดโน้ตมากกว่า {count} ใบ เลือกไม่เกิน {count} ใบแล้วลองอีกครั้ง",
-      "disabled": "เปิดเอ็มเบดดิงในเครื่องใน การตั้งค่า > AI เพื่อรับคำแนะนำกลุ่ม",
+      "disabled": "เปิดเอ็มเบดดิงในเครื่องที่ การตั้งค่า > AI เพื่อรับคำแนะนำกลุ่ม",
       "noGroups": "ไม่พบกลุ่มที่ชัดเจนในโน้ตเหล่านี้",
       "missing": "{count, plural, other {โน้ต # รายการยังไม่มีเอ็มเบดดิง จึงไม่ได้รวมไว้}}",
       "failed": "แนะนำกลุ่มไม่สำเร็จ",
@@ -610,7 +610,7 @@
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "ปรับขนาดแผงวัน",
-      "dragToResizeDoubleClickToReset": "ลากเพื่อปรับขนาด · ดับเบิลคลิกเพื่อตั้งค่าใหม่"
+      "dragToResizeDoubleClickToReset": "ลากเพื่อปรับขนาด · ดับเบิลคลิกเพื่อรีเซ็ต"
     },
     "componentsFindBarFindBar": {
       "findReplaceAsk": "ค้นหา แทนที่ ถาม…"
@@ -806,7 +806,7 @@
       "displaysTheMobileSidebar": "แสดงแถบด้านข้างบนมือถือ",
       "toggleSidebar": "แสดง/ซ่อนแถบด้านข้าง",
       "toggleSidebar2": "แสดง/ซ่อนแถบด้านข้าง",
-      "dragToResizeDoubleClickToReset": "ลากเพื่อปรับขนาด · ดับเบิลคลิกเพื่อตั้งค่าใหม่"
+      "dragToResizeDoubleClickToReset": "ลากเพื่อปรับขนาด · ดับเบิลคลิกเพื่อรีเซ็ต"
     },
     "componentsVaultOnboarding": {
       "welcomeToMemry": "ยินดีต้อนรับสู่ memrynote",
@@ -1031,7 +1031,7 @@
     },
     "collections": {
       "title": "คอลเลกชัน บุ๊กมาร์ก และแท็ก",
-      "body": "จัดระเบียบโน้ตเป็นโฟลเดอร์ ปักหมุดบุ๊กมาร์ก และเรียกดูตามแท็ก — ทั้งหมดที่นี่"
+      "body": "จัดระเบียบโน้ตเป็นโฟลเดอร์ ปักหมุดบุ๊กมาร์ก และเรียกดูตามแท็กได้ที่นี่"
     },
     "dayPanel": {
       "title": "ภาพรวมของวัน อยู่ข้างงานที่ทำ",

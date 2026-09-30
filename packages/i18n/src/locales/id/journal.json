@@ -107,9 +107,9 @@
     "previousDay": "Hari sebelumnya",
     "nextDay": "Hari berikutnya",
     "previousMonth": "Bulan sebelumnya",
-    "nextMonth": "Bulan depan",
+    "nextMonth": "Bulan berikutnya",
     "previousYear": "Tahun sebelumnya",
-    "nextYear": "Tahun depan",
+    "nextYear": "Tahun berikutnya",
     "journalBack": "Kembali",
     "journalNavigation": "Navigasi jurnal",
     "dateNavigation": "Navigasi tanggal jurnal",
@@ -140,7 +140,7 @@
     "empty": {
       "willAppear": "Koneksi Anda akan muncul di sini",
       "noneYet": "Belum ada koneksi yang ditemukan",
-      "moreJournaling": "Semakin sering Anda menulis jurnal, AI akan menemukan entri terkait",
+      "moreJournaling": "Seiring Anda makin sering menulis jurnal, AI akan menemukan entri terkait",
       "keepWriting": "Teruslah menulis untuk menemukan entri terkait"
     },
     "error": {

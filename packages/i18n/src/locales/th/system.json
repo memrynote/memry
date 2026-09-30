@@ -25,7 +25,7 @@
       "buttonLater": "ภายหลัง",
       "readyTitle": "พร้อมอัปเดต",
       "readyMessage": "ดาวน์โหลด memrynote {version} แล้ว",
-      "readyDetailFallback": "เริ่มต้น memrynote ใหม่เพื่อเสร็จสิ้นการติดตั้งการอัปเดต",
+      "readyDetailFallback": "เริ่ม memrynote ใหม่เพื่อติดตั้งอัปเดตให้เสร็จ",
       "buttonRestartNow": "เริ่มใหม่ตอนนี้",
       "releaseNotesLabel": "บันทึกประจำเวอร์ชัน:"
     },

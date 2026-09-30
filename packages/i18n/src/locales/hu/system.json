@@ -23,7 +23,7 @@
       "availableDetailFallback": "Letölti most a frissítést?",
       "buttonDownload": "Letöltés",
       "buttonLater": "Később",
-      "readyTitle": "Frissítés kész",
+      "readyTitle": "Frissítés telepítésre kész",
       "readyMessage": "A memrynote {version} letöltődött.",
       "readyDetailFallback": "A frissítés telepítésének befejezéséhez indítsa újra a memrynote-ot.",
       "buttonRestartNow": "Újraindítás most",

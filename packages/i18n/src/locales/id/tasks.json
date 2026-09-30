@@ -26,7 +26,7 @@
   "task": {
     "add": "Tambahkan tugas",
     "title": "Judul",
-    "titleRequired": "Judul diperlukan",
+    "titleRequired": "Judul wajib diisi",
     "titlePlaceholder": "Apa yang perlu dilakukan?",
     "namePlaceholder": "Nama tugas",
     "description": "Deskripsi",
@@ -124,7 +124,7 @@
       "dueDate": "Tenggat {date}. Ubah tenggat",
       "noDate": "Tanpa tanggal",
       "linkNote": "Tautkan catatan",
-      "openDetails": "Buka semua detail",
+      "openDetails": "Buka detail lengkap",
       "back": "Kembali",
       "remove": "Hapus {name}",
       "noReminder": "Tanpa pengingat",
@@ -216,7 +216,7 @@
     "activityTo": "menjadi {value}",
     "activityValueChanged": "diubah",
     "activityUnknownDate": "Tanpa tanggal",
-    "activityFieldRepeatFrom": "Ulangi dari",
+    "activityFieldRepeatFrom": "Acuan pengulangan",
     "activityFieldIsRepeating": "Berulang"
   },
   "kanban": {
@@ -298,7 +298,7 @@
       "parentDeletedKeepSubtasks": "Tugas dihapus, subtugas diubah menjadi tugas",
       "parentDeletedWithSubtasks": "Tugas dan subtugas dihapus",
       "parentAndSubtasksCompleted": "Tugas dan subtugas selesai",
-      "movedUnder": "Dipindahkan ke bawah “{title}”",
+      "movedUnder": "Dijadikan subtugas “{title}”",
       "completed": "{count, plural, other {# subtugas selesai}}",
       "markedIncomplete": "{count, plural, other {# subtugas ditandai belum selesai}}",
       "dueDateSet": "{count, plural, other {Tenggat diatur untuk # subtugas}}",
@@ -384,7 +384,7 @@
     },
     "componentsTasksDatePickerCalendar": {
       "previousMonth": "Bulan sebelumnya",
-      "nextMonth": "Bulan depan",
+      "nextMonth": "Bulan berikutnya",
       "goToToday": "Lompat ke hari ini",
       "today": "Hari ini",
       "w": "Mg",
@@ -404,7 +404,7 @@
       "moveTasksToPersonalProject": "Pindahkan tugas ke proyek Personal",
       "deleteAllTasksPermanently": "Hapus semua tugas secara permanen",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Proyek ini tidak memiliki tugas dan akan dihapus secara permanen.",
-      "notesEventsAndFilesStayNotice": "Tugas di proyek ini akan dihapus. Catatan, acara, dan file Anda tetap ada di brankas Anda.",
+      "notesEventsAndFilesStayNotice": "Tugas di proyek ini akan dihapus. Catatan, acara, dan file Anda tetap ada di brankas.",
       "thisActionCannotBeUndone": "Tindakan ini tidak dapat dibatalkan.",
       "cancel": "Batal",
       "deleteProject": "Hapus proyek"
@@ -633,7 +633,7 @@
       "saveFilter": "Simpan filter",
       "saveYourCurrentFilterSettingsForQuickAccessLater": "Simpan pengaturan filter Anda saat ini untuk akses cepat nanti.",
       "filterName": "Nama filter",
-      "eGHighPriorityThisWeek": "misalnya, Prioritas tinggi minggu ini",
+      "eGHighPriorityThisWeek": "Misalnya: Prioritas tinggi minggu ini",
       "currentFilters": "Filter saat ini:",
       "noFiltersApplied": "Tidak ada filter yang diterapkan",
       "cancel": "Batal",
@@ -681,7 +681,7 @@
     },
     "componentsTasksPrioritySelect": {
       "selectPriority": "Pilih prioritas",
-      "navigate": "menavigasi",
+      "navigate": "navigasi",
       "select": "pilih"
     },
     "componentsTasksProjectModal": {
@@ -739,7 +739,7 @@
     },
     "componentsTasksStatusEditor": {
       "changeStatusColor": "Ubah warna status",
-      "dragToReorder": "Tarik untuk menyusun ulang",
+      "dragToReorder": "Seret untuk menyusun ulang",
       "statusName": "Nama status",
       "addStatus": "Tambahkan status"
     },
@@ -817,7 +817,7 @@
     },
     "componentsTasksUpcomingEmptyState": {
       "nothingScheduledForTheNext7Days": "Tidak ada yang dijadwalkan untuk 7 hari ke depan",
-      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Anda memiliki tugas yang terlambat di atas. Rencanakan ke depan dengan menambahkan tugas untuk minggu mendatang.",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Ada tugas terlambat di atas. Buat rencana dengan menambahkan tugas untuk minggu mendatang.",
       "addTask": "Tambahkan tugas",
       "noUpcomingTasks": "Tidak ada tugas yang akan datang",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Tugas yang harus diselesaikan dalam 7 hari ke depan akan muncul di sini. Rencanakan minggu Anda dengan menambahkan beberapa tugas.",
@@ -847,7 +847,7 @@
       "failedToDeleteSubtask": "Gagal menghapus subtugas",
       "failedToDeleteTask": "Gagal menghapus tugas",
       "failedToCompleteTask": "Gagal menyelesaikan tugas",
-      "failedToMakeSubtask": "Gagal membuat subtugas",
+      "failedToMakeSubtask": "Gagal menjadikan subtugas",
       "failedToCompleteSubtasks": "Gagal menyelesaikan subtugas",
       "failedToMarkSubtasksIncomplete": "Gagal menandai subtugas sebagai belum selesai",
       "failedToSetDueDate": "Gagal mengatur tenggat",
@@ -873,11 +873,11 @@
     "overview": {
       "sectionTitle": "Ikhtisar",
       "create": "Buat catatan ikhtisar",
-      "clear": "Hapus ikhtisar",
+      "clear": "Lepas ikhtisar",
       "defaultTitle": "Ikhtisar",
       "placeholder": "Tulis ikhtisar untuk proyek ini…",
       "createError": "Tidak dapat membuat catatan ikhtisar",
-      "clearError": "Tidak dapat menghapus catatan ikhtisar",
+      "clearError": "Tidak dapat melepas catatan ikhtisar",
       "loadError": "Tidak dapat memuat catatan ikhtisar",
       "saveError": "Tidak dapat menyimpan catatan ikhtisar"
     }

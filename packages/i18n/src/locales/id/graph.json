@@ -15,7 +15,7 @@
     "link-title": "Tautkan catatan Anda",
     "link-description": "Gunakan [[wikilinks]] untuk menghubungkan ide-ide di seluruh catatan",
     "discover-title": "Temukan pola",
-    "discover-description": "Ketika koneksi tumbuh, kelompok dan tema akan muncul secara alami"
+    "discover-description": "Seiring bertambahnya koneksi, kelompok dan tema akan muncul dengan sendirinya"
   },
   "entity": {
     "note": "catatan",
@@ -43,7 +43,7 @@
     "filters": "Filter",
     "display": "Tampilan",
     "show-labels": "Tampilkan label",
-    "live-motion": "Gerakan langsung",
+    "live-motion": "Gerakan dinamis",
     "focus-depth": "kedalaman {depth}",
     "clear-focus": "Hapus fokus simpul",
     "relayout": "Atur ulang tata letak",

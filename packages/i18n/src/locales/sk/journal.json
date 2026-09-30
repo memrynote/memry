@@ -25,9 +25,9 @@
     "changeTemplate": "Zmeniť šablónu",
     "dismissIndicator": "Zavrieť indikátor",
     "refreshConnections": "Obnoviť prepojenia",
-    "reloadJournal": "Načítať denník znova",
+    "reloadJournal": "Znova načítať denník",
     "goToToday": "Prejsť na dnešok",
-    "copyUnsavedContent": "Skopírovať neuložený obsah do schránky",
+    "copyUnsavedContent": "Kopírovať neuložený obsah do schránky",
     "addBookmark": "Pridať do záložiek",
     "removeBookmark": "Odstrániť zo záložiek",
     "deleteEntry": "Odstrániť zápis"
@@ -133,7 +133,7 @@
     "noTasksDueToday": "Dnes nemáte žiadne úlohy s termínom",
     "noTasksWereDue": "Neboli žiadne úlohy s termínom",
     "noNotesToday": "Dnes neboli vytvorené žiadne poznámky",
-    "startDocumenting": "Začnite dokumentovať svoje myšlienky a nápady"
+    "startDocumenting": "Začnite si zapisovať svoje myšlienky a nápady"
   },
   "ai": {
     "loading": "Analyzuje sa zápis…",
@@ -146,7 +146,7 @@
     "error": {
       "loadFailed": "Nepodarilo sa načítať prepojenia"
     },
-    "connectionAria": "Prepojenie s „{label}“, zhoda {scorePercent} %"
+    "connectionAria": "Prepojenie s „{label}“, zhoda {scorePercent} %"
   },
   "count": {
     "note": "poznámka",
@@ -160,7 +160,7 @@
     "moreConnections_plural": "+ {count, plural, one {# ďalšie prepojenie} few {# ďalšie prepojenia} other {# ďalších prepojení}}",
     "moreNotes": "+ {count} ďalšia poznámka",
     "moreNotes_plural": "+ {count, plural, one {# ďalšia poznámka} few {# ďalšie poznámky} other {# ďalších poznámok}}",
-    "daysWithEntries": "dni so zápismi",
+    "daysWithEntries": "dní so zápismi",
     "charactersWritten": "napísaných znakov",
     "words": "{count, plural, one {# slovo} few {# slová} other {# slov}}",
     "characters": "{count, plural, one {# znak} few {# znaky} other {# znakov}}",

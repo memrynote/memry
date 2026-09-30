@@ -250,7 +250,7 @@
     "audioPosition": "Posisi audio",
     "transcription": "Transkripsi",
     "processing": "sedang diproses",
-    "pending": "tertunda",
+    "pending": "menunggu",
     "failed": "gagal",
     "copyTranscription": "Salin transkripsi",
     "transcribingAudio": "Mentranskripsikan audio…",
@@ -344,8 +344,8 @@
     "convertedToTask": "Dikonversi menjadi tugas",
     "now": "sekarang",
     "timeAgoMinutes": "{count} mnt lalu",
-    "timeAgoHours": "{count} j lalu",
-    "timeAgoDays": "{count} h lalu"
+    "timeAgoHours": "{count} jam lalu",
+    "timeAgoDays": "{count} hari lalu"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
@@ -361,7 +361,7 @@
     "componentsCaptureInput": {
       "captureInput": "Kolom catat cepat",
       "attachFile": "Lampirkan file",
-      "attachFileImagesAudioVideoPdf": "Lampirkan file (Gambar, Audio, Video, PDF)",
+      "attachFileImagesAudioVideoPdf": "Lampirkan file (gambar, audio, video, PDF)",
       "recordVoiceMemo": "Rekam memo suara",
       "recordVoiceMemo2": "Rekam memo suara",
       "captureAnyway": "Tetap catat",
@@ -422,7 +422,7 @@
       "loadingInsights": "Memuat wawasan…"
     },
     "componentsInboxInboxTypeDistribution": {
-      "noItemTypesToDisplay": "Tidak ada tipe item untuk ditampilkan",
+      "noItemTypesToDisplay": "Tidak ada jenis item untuk ditampilkan",
       "itemTypes": "Jenis item",
       "distributionOfContentFormats": "Distribusi format konten"
     },
@@ -436,7 +436,7 @@
       "tweetUnavailable": "Tweet tidak tersedia",
       "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Tweet ini mungkin telah dihapus atau berasal dari akun pribadi.",
       "openOnXCom": "Buka di x.com",
-      "views": "dilihat",
+      "views": "tayangan",
       "xCom": "x.com",
       "viewOnX": "Lihat di X"
     },

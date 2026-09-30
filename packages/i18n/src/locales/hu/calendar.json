@@ -20,7 +20,7 @@
     "today": "Ma"
   },
   "search": {
-    "open": "Naptár keresése",
+    "open": "Keresés a naptárban",
     "close": "Keresés bezárása",
     "placeholder": "Események, feladatok, emlékeztetők keresése…",
     "no-results": "Nincs találat"
@@ -220,7 +220,7 @@
     "later-today": "Ma később",
     "tomorrow": "Holnap",
     "next-week-mon": "Jövő hét · hétfő",
-    "pick-date-time": "Dátum és idő kiválasztása…",
+    "pick-date-time": "Dátum és időpont kiválasztása…",
     "remove-due-date": "Határidő eltávolítása",
     "subtasks-prefix": "Részfeladatok",
     "subtasks-counter": "{done}/{total} kész",
@@ -255,7 +255,7 @@
     "untitled": "Névtelen",
     "days": "{count, plural, one {# nap} other {# nap}}",
     "events": "Események",
-    "schedule-hint": "Kattintson a dátum beállításához, húzza a tartomány megadásához",
+    "schedule-hint": "Kattintással dátumot, húzással tartományt állíthat be",
     "empty-title": "Itt nincs semmi az idővonalon",
     "empty-body": "Itt jelennek meg a kezdő dátummal vagy határidővel rendelkező feladatok, valamint az egész napos és többnapos események. A dátum nélküli feladatokat a Megjelenítés menüben kapcsolhatja be, és húzással ütemezheti őket.",
     "status": {

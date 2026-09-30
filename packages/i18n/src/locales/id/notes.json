@@ -16,8 +16,8 @@
       "title": "Gagal memuat catatan"
     },
     "toast": {
-      "cannotSaveDeleted": "Tidak dapat menyimpan - catatan telah dihapus",
-      "cannotRenameDeleted": "Tidak dapat mengganti nama - catatan telah dihapus",
+      "cannotSaveDeleted": "Tidak dapat menyimpan — catatan telah dihapus",
+      "cannotRenameDeleted": "Tidak dapat mengganti nama — catatan telah dihapus",
       "createLinkedFailed": "Gagal membuat catatan tertaut",
       "openLinkedFailed": "Gagal membuka item tertaut",
       "fileNotFound": "File tidak ditemukan: {target}",
@@ -286,7 +286,7 @@
     "viewBlock": {
       "title": "Tampilan",
       "group": "Sisipkan",
-      "subtext": "Daftar catatan langsung dari folder, tag, atau seluruh brankas",
+      "subtext": "Daftar catatan dinamis dari folder, tag, atau seluruh brankas",
       "sourceMenu": "Sumber tampilan ini",
       "chooseSource": "Pilih yang ingin ditampilkan",
       "sourceVault": "Semua catatan",
@@ -482,7 +482,7 @@
       "date": "Tanggal",
       "now": "Sekarang",
       "remindMe": "Ingatkan saya",
-      "dateHint": "Terus ketik tanggal…",
+      "dateHint": "Lanjutkan mengetik tanggal…",
       "showMore": "Tampilkan lebih banyak",
       "canvases": "Kanvas",
       "choiceTitle": "Sisipkan kanvas sebagai",
@@ -541,7 +541,7 @@
     "readTime": "{count} mnt baca",
     "words": "{count} kata",
     "created": "Dibuat",
-    "modified": "Dimodifikasi"
+    "modified": "Diubah"
   },
   "backlinks": {
     "sortRecent": "Terbaru",
@@ -705,7 +705,7 @@
     "title": "Pindahkan tugas catatan ini?",
     "description": "{count} tugas di catatan ini termasuk dalam proyek lain. Pindahkan ke {project}?",
     "subtaskNote": "Subtugas ikut dipindahkan bersama tugas induknya.",
-    "cancel": "Biarkan saja",
+    "cancel": "Biarkan apa adanya",
     "confirm": "{count, plural, other {Pindahkan tugas}}",
     "success": "{count, plural, other {# tugas dipindahkan ke {project}}}",
     "failed": "Tidak dapat memindahkan tugas catatan ini"
@@ -744,9 +744,9 @@
         "remaining": "Tersisa {count}",
         "tileCredit": "{name} · Unsplash",
         "error": {
-          "notConfigured": "Foto Unsplash tidak tersedia di build ini",
+          "notConfigured": "Foto Unsplash tidak tersedia di versi ini",
           "offline": "Tidak ada koneksi ke Unsplash",
-          "rateLimited": "Batas permintaan Unsplash tercapai. Coba lagi sebentar lagi",
+          "rateLimited": "Batas permintaan Unsplash tercapai, coba lagi dalam beberapa saat",
           "failed": "Unsplash tidak dapat dijangkau",
           "writeFailed": "Foto itu tidak dapat disimpan ke brankas"
         }
@@ -815,7 +815,7 @@
     "htmlDescription": "File siap web",
     "pageSize": "Ukuran halaman",
     "selectPageSize": "Pilih ukuran halaman",
-    "options": "Pilihan",
+    "options": "Opsi",
     "includeMetadata": "Sertakan metadata (tag, tanggal)",
     "exporting": "Mengekspor…",
     "exported": "Diekspor!",
@@ -924,11 +924,11 @@
       "addFiltersToNarrowDownYourNotes": "Tambahkan filter untuk mempersempit catatan Anda",
       "match": "Cocok",
       "allAnd": "Semua (DAN)",
-      "anyOr": "Apa saja (ATAU)",
+      "anyOr": "Salah satu (ATAU)",
       "ofTheFollowing": "berikut ini:",
       "match2": "Cocok",
       "all": "Semua",
-      "any": "Apa saja",
+      "any": "Salah satu",
       "of": "dari:",
       "addCondition": "Tambahkan kondisi",
       "addFilter": "Tambahkan filter",
@@ -1005,7 +1005,7 @@
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Hapus ",
-      "notes": "Catatan",
+      "notes": "catatan",
       "open": "Buka",
       "openInExternalEditor": "Buka di editor eksternal",
       "revealInSidebar": "Tampilkan di bilah samping",
@@ -1097,7 +1097,7 @@
       "characters": "Karakter",
       "readingTime": "Waktu membaca",
       "created": "Dibuat",
-      "modified": "Dimodifikasi"
+      "modified": "Diubah"
     },
     "componentsSidebarProjectsEmptyState": {
       "noProjectsYet": "Belum ada proyek",
@@ -1274,9 +1274,9 @@
       "failedToDeleteProperty": "Gagal menghapus properti",
       "failedToRenameProperty": "Gagal mengganti nama properti",
       "failedToReorderProperties": "Gagal menyusun ulang properti",
-      "cannotAddTagThisNoteWasDeleted": "Tidak dapat menambahkan tag - catatan ini telah dihapus",
-      "cannotRemoveTagThisNoteWasDeleted": "Tidak dapat menghapus tag - catatan ini telah dihapus",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "Tidak dapat mengubah hanya lokal — catatan ini telah dihapus"
+      "cannotAddTagThisNoteWasDeleted": "Tidak dapat menambahkan tag — catatan ini telah dihapus",
+      "cannotRemoveTagThisNoteWasDeleted": "Tidak dapat menghapus tag — catatan ini telah dihapus",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Tidak dapat mengubah pengaturan hanya lokal — catatan ini telah dihapus"
     }
   },
   "bulkActions": {

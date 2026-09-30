@@ -18,7 +18,7 @@
       "searchProjects": "Projektek keresése…",
       "editProject": "{name} szerkesztése",
       "unstarSavedFilter": "Csillag eltávolítása: {name}",
-      "openByDefault": "A Feladatok alapértelmezés szerint itt nyíljon meg: {name}",
+      "openByDefault": "Feladatok megnyitása alapértelmezés szerint itt: {name}",
       "defaultProject": "Alapértelmezett projekt",
       "setAsDefault": "Beállítás alapértelmezettként"
     }
@@ -253,7 +253,7 @@
     "completed": "Feladat befejezve!",
     "archived": "Feladat archiválva",
     "undoNotAvailableForDelete": "A törlés nem vonható vissza",
-    "alreadyAllComplete": "Az összes kiválasztott feladat már elkészült",
+    "alreadyAllComplete": "Az összes kiválasztott feladat már be van fejezve",
     "noCompletedSelected": "Nincsenek befejezett feladatok kiválasztva",
     "completeFailed": "Nem sikerült befejezni a feladatokat",
     "deleteFailed": "Nem sikerült törölni a feladatokat",
@@ -262,7 +262,7 @@
       "completed": "{count, plural, one {# feladat befejezve} other {# feladat befejezve}}",
       "undoComplete": "{count, plural, one {# feladat befejezése} other {# feladat befejezése}}",
       "restored": "{count, plural, one {# feladat visszaállítva} other {# feladat visszaállítva}}",
-      "undoUncomplete": "{count, plural, one {# feladat visszaállítása befejezetlenre} other {# feladat visszaállítása befejezetlenre}}",
+      "undoUncomplete": "{count, plural, one {# feladat megjelölése befejezetlenként} other {# feladat megjelölése befejezetlenként}}",
       "priorityRemoved": "{count, plural, one {Prioritás eltávolítva # feladatról} other {Prioritás eltávolítva # feladatról}}",
       "prioritySet": "{count, plural, one {Prioritás beállítva: {priority} (# feladat)} other {Prioritás beállítva: {priority} (# feladat)}}",
       "undoDueDate": "{count, plural, one {Határidő módosítva # feladatnál} other {Határidő módosítva # feladatnál}}",
@@ -270,7 +270,7 @@
       "dueDateRemoved": "{count, plural, one {Határidő eltávolítva # feladatról} other {Határidő eltávolítva # feladatról}}",
       "undoMove": "{count, plural, one {# feladat áthelyezése} other {# feladat áthelyezése}}",
       "movedToProject": "{count, plural, one {# feladat áthelyezve ide: {project}} other {# feladat áthelyezve ide: {project}}}",
-      "undoStatus": "{count, plural, one {Állapot → {status} # feladatnál} other {Állapot → {status} # feladatnál}}",
+      "undoStatus": "{count, plural, one {Állapot → {status} (# feladat)} other {Állapot → {status} (# feladat)}}",
       "movedToStatus": "{count, plural, one {# feladat áthelyezve ide: {status}} other {# feladat áthelyezve ide: {status}}}",
       "undoArchive": "{count, plural, one {# feladat archiválása} other {# feladat archiválása}}",
       "archived": "{count, plural, one {# feladat archiválva} other {# feladat archiválva}}",
@@ -281,8 +281,8 @@
       "undoUnarchive": "{count} feladat archiválásának visszavonása"
     },
     "drag": {
-      "rescheduledTo": "Átütemezve ide: {target}",
-      "rescheduled": "{count, plural, one {Átütemezve ide: {target}} other {# feladat átütemezve ide: {target}}}",
+      "rescheduledTo": "Átütemezve erre: {target}",
+      "rescheduled": "{count, plural, one {Átütemezve erre: {target}} other {# feladat átütemezve erre: {target}}}",
       "movedTo": "Áthelyezve ide: {target}",
       "moved": "{count, plural, one {Áthelyezve ide: {target}} other {# feladat áthelyezve ide: {target}}}",
       "prioritySetTo": "Prioritás beállítva erre: {priority}",
@@ -417,9 +417,9 @@
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Minden részfeladat kész!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "A szülőfeladatot is megjelöli befejezettként?",
-      "keepTaskOpen": "Feladat nyitva tartása",
+      "keepTaskOpen": "Feladat nyitva hagyása",
       "completeTask": "Feladat befejezése ✓",
-      "allSubtasksDoneBody": "A(z) „{title}” {count, plural, one {# részfeladata elkészült} other {mind a(z) # részfeladata elkészült}}."
+      "allSubtasksDoneBody": "A(z) „{title}” feladat {count, plural, one {# részfeladata elkészült} other {mind a(z) # részfeladata elkészült}}."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Határidő beállítása az összes részfeladathoz",
@@ -550,7 +550,7 @@
     "componentsTasksEmptyStatesSectionEmptyStates": {
       "noTasksScheduled": "Nincs ütemezett feladat",
       "addTaskFor": "Feladat hozzáadása: ",
-      "nothingScheduled": "Semmi nincs ütemezve",
+      "nothingScheduled": "Nincs semmi ütemezve",
       "addTasksWithDueDatesToPlanYourWeek": "Adjon hozzá feladatokat határidővel a hét megtervezéséhez.",
       "addTask": "Feladat hozzáadása",
       "viewCalendar": "Naptár megtekintése"
@@ -754,7 +754,7 @@
       "keepThisTaskStopFutureOccurrences": "Feladat megtartása, a későbbi előfordulások leállítása",
       "taskWillBecomeAOneTimeTask": "A feladat egyszeri feladattá válik",
       "deleteThisAndAllFutureOccurrences": "Ez és az összes későbbi előfordulás törlése",
-      "taskWillBeRemovedEntirely": "A feladat teljesen el lesz távolítva",
+      "taskWillBeRemovedEntirely": "A feladat teljesen törlődik",
       "cancel": "Mégse",
       "confirm": "Megerősítés"
     },
@@ -826,7 +826,7 @@
   },
   "phaseI": {
     "toasts": {
-      "changesUndone": "Változások visszavonva",
+      "changesUndone": "Módosítások visszavonva",
       "projectNotFound": "Projekt nem található",
       "failedToArchiveTasks": "Nem sikerült archiválni a feladatokat",
       "tasksRestoredFromArchive": "Feladatok visszaállítva az archívumból",
@@ -948,7 +948,7 @@
       "linkAdded": "Hivatkozás hozzáadva a projekthez",
       "linkError": "Nem sikerült menteni a hivatkozást",
       "filesAdded": "{count, plural, one {# fájl hozzáadva a projekthez} other {# fájl hozzáadva a projekthez}}",
-      "fileError": "Nem sikerült összekapcsolni: {name}",
+      "fileError": "Nem sikerült a projekthez kapcsolni: {name}",
       "fileErrorGeneric": "Nem sikerült importálni a fájlokat",
       "label": "Hozzáadás ehhez: {name}"
     }

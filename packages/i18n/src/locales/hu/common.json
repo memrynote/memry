@@ -52,7 +52,7 @@
       "saveFailedQuota": "Ez a munkamenet túl nagy a tároláshoz. Zárjon be néhány lapot, különben előfordulhat, hogy a Memry következő megnyitásakor nem lehet visszaállítani.",
       "saveFailedGeneric": "A Memry nem tudta tárolni ezt a munkamenetet, ezért előfordulhat, hogy az alkalmazás következő megnyitásakor nem lehet visszaállítani.",
       "lastSessionNotSaved": "A Memry bezárásakor nem sikerült menteni az előző munkamenetet",
-      "lastSessionNotSavedQuota": "A tárhely akkor megtelt, ezért ezek a lapok egy korábbi mentésből származnak. Zárjon be néhány lapot, hogy legyen hely.",
+      "lastSessionNotSavedQuota": "A tárhely akkor tele volt, ezért ezek a lapok egy korábbi mentésből származnak. Zárjon be néhány lapot, hogy legyen hely.",
       "lastSessionNotSavedGeneric": "A Memry kilépéskor nem tudta tárolni a lapjait, ezért ezek a lapok egy korábbi mentésből származnak."
     },
     "contextMenu": {
@@ -84,7 +84,7 @@
     "filesImportFailed": "{count, plural, one {Nem sikerült importálni # fájlt} other {Nem sikerült importálni # fájlt}}",
     "filesHiddenInSidebar": "A fájlok el vannak rejtve az oldalsávon. A megjelenítésükhöz kapcsolja be a Gyűjtemények rendezési menüjében a „Fájlok megjelenítése” beállítást.",
     "moreRemindersDue": "{count, plural, one {Még # esedékes emlékeztető} other {Még # esedékes emlékeztető}}",
-    "moreRemindersDueHint": "A részletekért nézze meg az emlékeztetők panelt",
+    "moreRemindersDueHint": "A részletekért nézze meg az emlékeztetőpanelt",
     "searchIndexRepaired": "Keresési index javítva",
     "searchIndexRepairedHint": "A keresési index egy része megsérült, ezért a Memry újraépítette. A jegyzeteit ez nem érintette."
   },
@@ -171,7 +171,7 @@
     },
     "inPageReview": {
       "regionLabel": "Az ügynök javaslata",
-      "barLabel": "Az ügynök javaslatának áttekintése",
+      "barLabel": "Az ügynök javaslatának átnézése",
       "loading": "Javaslat betöltése…",
       "loadingTitle": "Az ügynök javaslata",
       "title": "{count, plural, =0 {Az ügynök javaslata} one {Az ügynök # módosítást javasolt} other {Az ügynök # módosítást javasolt}}",
@@ -186,8 +186,8 @@
       "showDiff": "Módosítások megjelenítése",
       "accept": "Elfogadás",
       "acceptEdits": "Szerkesztések elfogadása",
-      "waiting": "Áttekintésre vár itt: {title}.",
-      "notOpen": "A módosítások megtekintéséhez nyissa meg ezt: {title}, vagy fogadja el őket áttekintés nélkül.",
+      "waiting": "Átnézésre vár itt: {title}.",
+      "notOpen": "A módosítások megtekintéséhez nyissa meg a következőt: {title}. Átnézés nélkül is elfogadhatja őket.",
       "show": "Megjelenítés",
       "openNote": "Jegyzet megnyitása",
       "openJournal": "Napló megnyitása",
@@ -224,7 +224,7 @@
         "completed": "Befejezve",
         "description": "Leírás",
         "due": "Határidő",
-        "dueTime": "Határidő ideje",
+        "dueTime": "Határidő időpontja",
         "duplicateOf": "Másolat forrása",
         "edits": "Szerkesztések",
         "elements": "Elemek",
@@ -310,7 +310,7 @@
         "useCustom": "„{query}” használata",
         "localEmpty": "Nem található modell – ellenőrizze a Beállításokat",
         "localSetup": "Konfigurálás a Beállításokban…",
-        "cliSetup": "Nem észlelhető – konfigurálás a Beállításokban…",
+        "cliSetup": "Nem található – konfigurálás a Beállításokban…",
         "runtimeUnavailable": "Az ügynök nem érhető el – Beállítások megnyitása…"
       },
       "settings": {
@@ -387,7 +387,7 @@
       "updateTrust": "Nem sikerült frissíteni a megbízható eszközöket",
       "saveDisclosure": "Nem sikerült menteni a tájékoztató elfogadását",
       "resolveWindow": "Nem sikerült azonosítani az ügynök forrásablakát",
-      "detectCli": "Nem sikerült észlelni az ügynök-háttérrendszereket",
+      "detectCli": "Nem sikerült észlelni az ügynökök háttérrendszereit",
       "loadDisclosure": "Nem sikerült betölteni a tájékoztató elfogadási állapotát"
     },
     "actions": {
@@ -497,17 +497,17 @@
       "bulkAllItems": "Minden elem",
       "bulkConfirmTitle": "{count, plural, one {Hozzáad # kártyát innen: {name}?} other {Hozzáad # kártyát innen: {name}?}}",
       "bulkConfirmBody": "A nagy táblák lassabbak lesznek, és túlléphetik a szinkronizálás méretkorlátját.",
-      "bulkConfirmSkipped": "{count, plural, one {# elem már ezen a vásznon van, kihagyjuk.} other {# elem már ezen a vásznon van, kihagyjuk.}}",
+      "bulkConfirmSkipped": "{count, plural, one {# elem már ezen a vásznon van, ezért kimarad.} other {# elem már ezen a vásznon van, ezért kimarad.}}",
       "bulkConfirmAdd": "{count, plural, one {# kártya hozzáadása} other {# kártya hozzáadása}}",
       "bulkBack": "Vissza",
       "bulkEmpty": "Nincs hozzáadható jegyzet, fájl vagy feladat",
-      "bulkLoadFailed": "Az elemek betöltése sikertelen",
+      "bulkLoadFailed": "Nem sikerült betölteni az elemeket",
       "bulkAdded": "{count, plural, one {# kártya hozzáadva} other {# kártya hozzáadva}}",
       "bulkAddedSkipped": "{count, plural, one {# kártya hozzáadva} other {# kártya hozzáadva}} · {skipped} már a vásznon",
       "bulkAllOnCanvas": "{count, plural, one {Már ezen a vásznon van} other {Mind a # már ezen a vásznon van}}"
     },
     "cluster": {
-      "button": "Csoportok javaslása",
+      "button": "Csoportok javasolása",
       "buttonHint": "A táblán lévő (vagy a kijelölt) jegyzetkártyák csoportosítása hasonlóság alapján. Ezen az eszközön fut.",
       "loading": "Csoportosítás…",
       "needMoreNotes": "Csoportjavaslatokhoz legalább {count} jegyzetkártyát adjon hozzá.",
@@ -580,7 +580,7 @@
       "feedbackButton": "Visszajelzés küldése",
       "feedbackTitle": "Visszajelzés küldése",
       "feedbackDescription": "Mondja el, mi működik, mi hibás, vagy mit szeretne, hogy a MemryNote tudjon. Minden üzenetet elolvasunk.",
-      "feedbackPlaceholder": "Visszajelzése…",
+      "feedbackPlaceholder": "Írja le a visszajelzését…",
       "feedbackEmailHint": "Adja meg az e-mail-címét, ha választ szeretne.",
       "feedbackPrivacyTitle": "Mit küldünk el",
       "feedbackPrivacyMessage": "Az üzenete, pontosan úgy, ahogy megírta",
@@ -625,7 +625,7 @@
       "eGMeetingNotesIdeasAnything": "pl. megbeszélési jegyzetek, ötletek, bármi…",
       "skip": "Kihagyás",
       "createNote": "Jegyzet létrehozása ",
-      "addYourFirstTask": "Adja hozzá az első feladatot",
+      "addYourFirstTask": "Adja hozzá első feladatát",
       "tasksLinkToYourNotesWithPrioritiesAndDueDates": "A feladatok a jegyzeteihez kapcsolódnak, prioritásokkal és határidőkkel.",
       "eGReviewProjectProposal": "pl. projektjavaslat áttekintése…",
       "skip2": "Kihagyás",
@@ -782,8 +782,8 @@
     },
     "componentsTrafficLights": {
       "closeWindow": "Ablak bezárása",
-      "minimizeWindow": "Az ablak kicsinyítése",
-      "maximizeWindow": "Az ablak maximalizálása"
+      "minimizeWindow": "Ablak kicsinyítése",
+      "maximizeWindow": "Ablak maximalizálása"
     },
     "componentsUiAutocompleteDropdown": {
       "suggestions": "Javaslatok",
@@ -825,7 +825,7 @@
       "createNewVaultDesc": "Hozzon létre új széfet egy tetszőleges mappában.",
       "openExistingVault": "Meglévő széf megnyitása",
       "openExistingVaultDesc": "Válasszon egy mappát, amelyben már Markdown-fájlokat tárol.",
-      "signInToSync": "Bejelentkezés szinkronizáláshoz",
+      "signInToSync": "Bejelentkezés a szinkronizáláshoz",
       "signInToSyncDesc": "Végpontok között titkosított széfek az összes eszközén.",
       "create": "Létrehozás",
       "open": "Megnyitás",
@@ -835,7 +835,7 @@
       "addVault": "Széf hozzáadása",
       "brandName": "Memrynote",
       "flow": {
-        "tagline": "A jegyzetei egy széfben vannak, amely egy mappa ezen a számítógépen.",
+        "tagline": "A jegyzetei egy széfben, vagyis egy mappában vannak ezen a számítógépen.",
         "createDesc": "Adjon neki nevet, és válassza ki a helyét.",
         "openFolder": "Mappa megnyitása széfként",
         "openFolderDesc": "Használjon egy mappát, amelyben már Markdown-fájlokat tárol.",
@@ -850,7 +850,7 @@
         "change": "Módosítás…",
         "willBeCreatedAt": "Létrehozás helye",
         "errorExists": "Itt már létezik ilyen nevű mappa.",
-        "openInstead": "Inkább megnyitás széfként",
+        "openInstead": "Megnyitás széfként",
         "errorInvalidName": "A név nem kezdődhet ponttal, és nem tartalmazhatja a következőket: / \\ : * ? \" < > |",
         "createFailed": "Nem sikerült létrehozni a széfet.",
         "createVault": "Széf létrehozása",
@@ -956,7 +956,7 @@
       "openInbox": "Beérkezők megnyitása",
       "folder": "Mappa",
       "untitled": "Névtelen",
-      "folderPickPrompt": "Válasszon mappát",
+      "folderPickPrompt": "Mappa kiválasztása",
       "folderEmpty": "Még nincsenek mappák",
       "folderNoSelection": "Nincs kiválasztott mappa",
       "folderView_list": "Lista",
@@ -1023,7 +1023,7 @@
     },
     "newNote": {
       "title": "Hozza létre az első jegyzetét",
-      "body": "Kezdje itt. Minden, amit ír, elsőként helyben tárolódik."
+      "body": "Kezdje itt. Minden, amit ír, elsősorban helyben tárolódik."
     },
     "nav": {
       "title": "Az Ön munkaterületei",
@@ -1108,10 +1108,10 @@
         "keyboardShortcuts": "Billentyűparancsok megnyitása",
         "undoTaskAction": "Az utolsó feladatművelet visszavonása",
         "toggleSidebar": "Oldalsáv megjelenítése/elrejtése",
-        "sidebarSection": "Ugrás egy oldalsáv-szakaszra"
+        "sidebarSection": "Ugrás az oldalsáv egy szakaszára"
       },
       "tabs": {
-        "newTabMenu": "Az új lap menü megnyitása",
+        "newTabMenu": "Az „Új lap” menü megnyitása",
         "closeTab": "Lap bezárása",
         "closeAllInPane": "Az ablaktábla összes lapjának bezárása",
         "reopenClosedTab": "Bezárt lap újranyitása",
@@ -1185,7 +1185,7 @@
   "update": {
     "available": "Frissítés érhető el",
     "downloading": "Letöltés: {version}",
-    "ready": "Frissítés kész",
+    "ready": "Frissítés telepítésre kész",
     "failed": "A frissítés sikertelen",
     "downloadAction": "Letöltés",
     "restartAction": "Újraindítás",
@@ -1214,7 +1214,7 @@
     "installFailed": {
       "title": "A MemryNote nem tudta befejezni a telepítést: {version}",
       "titleUnknownVersion": "A MemryNote nem tudta befejezni a frissítés telepítését",
-      "body": "A széfhez semmi sem nyúlt – a frissítés az alkalmazásra vonatkozik, nem a jegyzeteire. Továbbra is a(z) {current} verziót használja, és minden ugyanúgy működik, mint korábban.",
+      "body": "A széfje érintetlen maradt – a frissítés az alkalmazásra vonatkozik, nem a jegyzeteire. Továbbra is a(z) {current} verziót használja, és minden ugyanúgy működik, mint korábban.",
       "errorLabel": "Mi történt",
       "downloadManually": "Kézi letöltés: {version}",
       "downloadManuallyUnknownVersion": "A MemryNote kézi letöltése",

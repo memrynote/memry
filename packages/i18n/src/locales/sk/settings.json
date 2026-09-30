@@ -116,7 +116,7 @@
       "launchAtLogin": {
         "label": "Spustiť pri prihlásení",
         "description": "Spustiť memrynote po prihlásení",
-        "error": "Nepodarilo sa aktualizovať spustenie pri štarte"
+        "error": "Nepodarilo sa aktualizovať spúšťanie pri prihlásení"
       }
     },
     "updates": {
@@ -135,8 +135,8 @@
       "availableVersion": "Dostupná verzia {version}",
       "unsupported": "Zabalené zostavy môžu kontrolovať, sťahovať a inštalovať aktualizácie z GitHub Releases",
       "available": "memrynote {version} je dostupný na stiahnutie",
-      "downloadingLatest": "Sťahovanie najnovšieho vydania",
-      "downloadingLatestPercent": "Sťahovanie najnovšieho vydania ({percent} %)",
+      "downloadingLatest": "Sťahuje sa najnovšie vydanie",
+      "downloadingLatestPercent": "Sťahuje sa najnovšie vydanie ({percent} %)",
       "downloaded": "memrynote {version} je pripravený na inštaláciu",
       "upToDate": "Používate najnovšie zverejnené vydanie",
       "checking": "Hľadá sa novšia verzia v GitHub Releases",
@@ -188,7 +188,7 @@
     },
     "dateFormat": {
       "label": "Formát dátumu",
-      "description": "Ako sa zobrazujú dátumy v kalendári",
+      "description": "Spôsob zobrazenia dátumov",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (US)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -244,7 +244,7 @@
       },
       "autoSendDiagnostics": {
         "label": "Automaticky odosielať hlásenia o chybách",
-        "description": "Pri zobrazení chybovej obrazovky sa odošlú protokoly bez citlivých údajov. Keď je vypnuté, zakaždým sa opýta.",
+        "description": "Pri zobrazení chybovej obrazovky sa odošlú protokoly bez citlivých údajov. Keď je vypnuté, aplikácia sa zakaždým opýta.",
         "error": "Nepodarilo sa aktualizovať nastavenie hlásení o chybách"
       },
       "diagnostics": {
@@ -256,7 +256,7 @@
         "send": "Odoslať",
         "sending": "Odosiela sa…",
         "notNow": "Teraz nie",
-        "sent": "Správa odoslaná – referencia {incidentId}",
+        "sent": "Správa odoslaná – referenčný kód: {incidentId}",
         "previewError": "Diagnostickú správu sa nepodarilo pripraviť",
         "error": "Nepodarilo sa odoslať diagnostickú správu",
         "sendReport": {
@@ -440,7 +440,7 @@
     },
     "spellCheck": {
       "label": "Kontrola pravopisu",
-      "description": "Podčiarkovať nesprávne napísané slová v poznámkach a denníkoch",
+      "description": "Podčiarkovať nesprávne napísané slová v poznámkach a v denníku",
       "error": "Nepodarilo sa aktualizovať kontrolu pravopisu"
     },
     "v2": {
@@ -536,7 +536,7 @@
     },
     "showStatsFooter": {
       "label": "Zobraziť pätu so štatistikami",
-      "description": "Počet slov, čas čítania, časové značky"
+      "description": "Počet slov, čas čítania, časové pečiatky"
     },
     "folder": {
       "label": "Priečinok denníka",
@@ -709,7 +709,7 @@
     },
     "google": {
       "name": "Google Calendar",
-      "description": "Obojsmerná synchronizácia udalostí memrynote a importovaných Google kalendárov.",
+      "description": "Obojsmerná synchronizácia udalostí memrynote a importovaných kalendárov Google.",
       "statuses": {
         "connected": "Pripojené",
         "notConnected": "Nie je pripojené",
@@ -734,17 +734,17 @@
       },
       "agentAccess": {
         "label": "Povoliť AI čítať udalosti z Google Calendar",
-        "description": "Predvolene vypnuté. Po zapnutí môže AI agent čítať vaše Google udalosti; po vypnutí nedostane pri otázke na ne nič. Svoje Google udalosti tak či tak stále uvidíte v memrynote.",
+        "description": "Predvolene vypnuté. Po zapnutí môže AI agent čítať vaše udalosti Google; po vypnutí nedostane pri otázke na ne nič. Svoje udalosti Google tak či tak stále uvidíte v memrynote.",
         "error": "Nepodarilo sa aktualizovať prístup AI"
       },
       "connect": "Pripojiť",
       "sourcePicker": {
-        "empty": "Žiadne importované Google kalendáre nie sú na tomto zariadení zatiaľ k dispozícii.",
+        "empty": "Na tomto zariadení zatiaľ nie sú k dispozícii žiadne importované kalendáre Google.",
         "statuses": {
           "synced": "Synchronizované",
           "error": "Chyba",
-          "pending": "Čakajúce",
-          "idle": "Nečinný"
+          "pending": "Čaká sa",
+          "idle": "Nečinné"
         },
         "retrying": "Skúša sa znova…",
         "retryNow": "Skúsiť znova"
@@ -1030,7 +1030,7 @@
       },
       "unlimited": "Neobmedzené",
       "historyDays": "{days, plural, one {# deň} few {# dni} other {# dní}}",
-      "activationPendingPrefix": "Aktivácia čaká. Paddle môže chvíľu trvať, kým potvrdí platbu. Obnovte stav alebo napíšte na",
+      "activationPendingPrefix": "Aktivácia čaká. Potvrdenie platby službou Paddle môže chvíľu trvať. Obnovte stav alebo napíšte na",
       "actions": {
         "upgrade": "Prejsť na vyšší plán",
         "unlockSync": "Odomknúť synchronizáciu",
@@ -1041,7 +1041,7 @@
       "toasts": {
         "loadFailed": "Nepodarilo sa načítať stav fakturácie",
         "checkoutFailed": "Nepodarilo sa spustiť platbu",
-        "checkoutOpened": "Platba otvorená vo vašom prehliadači",
+        "checkoutOpened": "Platobná stránka otvorená v prehliadači",
         "refreshFailed": "Nepodarilo sa obnoviť stav fakturácie",
         "billingActive": "Fakturácia je aktívna",
         "activationPending": "Aktivácia čaká",
@@ -1077,7 +1077,7 @@
       "signingOut": "Odhlasuje sa…"
     },
     "toasts": {
-      "signedOut": "Úspešne odhlásené",
+      "signedOut": "Odhlásenie bolo úspešné",
       "signOutFailed": "Nepodarilo sa odhlásiť",
       "deviceLinked": "Zariadenie bolo úspešne prepojené"
     },
@@ -1304,7 +1304,7 @@
       "memoNameModeDescription": "Ako sa hlasové poznámky pomenúvajú po prepise",
       "naming": {
         "transcript": "Názov z prepisu",
-        "timestamp": "Časová značka",
+        "timestamp": "Časová pečiatka",
         "none": "Nepremenovať"
       },
       "namingError": "Nepodarilo sa aktualizovať pomenovanie hlasových poznámok",
@@ -1312,7 +1312,7 @@
       "localModelDescription": "Whisper Small sa sťahuje na požiadanie a zostáva lokálne uložený v cache",
       "status": {
         "ready": "Pripravené",
-        "downloading": "Sťahovanie",
+        "downloading": "Sťahuje sa",
         "downloaded": "Stiahnuté",
         "notDownloaded": "Nestiahnuté"
       },
@@ -1343,13 +1343,13 @@
       "loadSuccess": "Model bol úspešne načítaný",
       "loadFailed": "Nepodarilo sa načítať model",
       "rebuildIndex": "Prebudovať index",
-      "rebuildDescription": "Znova vytvoriť vektorizácie pre všetky poznámky",
+      "rebuildDescription": "Znova vektorizovať všetky poznámky",
       "rebuild": "Prebudovať",
       "scanning": "Skenujú sa poznámky…",
-      "generating": "Generujú sa vektorizácie…",
+      "generating": "Vektorizujú sa poznámky…",
       "complete": "Dokončené!",
-      "reindexed": "Vektorizácie preindexované – vypočítané: {computed}, preskočené: {skipped}",
-      "reindexFailed": "Nepodarilo sa preindexovať vektorizácie"
+      "reindexed": "Index vektorizácie obnovený – vypočítané: {computed}, preskočené: {skipped}",
+      "reindexFailed": "Nepodarilo sa obnoviť index vektorizácie"
     },
     "inline": {
       "loading": "Načítava sa…",
@@ -1492,7 +1492,7 @@
       "folderKeepsAssets": "Priečinok vyberte vtedy, keď sú obrázky mimo priečinka so samotnými poznámkami – exporty ich často ukladajú do spoločného priečinka.",
       "chooseHint": "Vyberte svoj {label}",
       "folderHint": "Kliknite nižšie a keď sa otvorí výber, vyberte priečinok „group.com.apple.notes“ (výber sa otvorí priamo v ňom). Aplikácia Memry tak bude môcť čítať vaše poznámky a prílohy – bez potreby úplného prístupu k disku.",
-      "noteplanFolderHint": "Vyberte priečinok NotePlan – buď dátový priečinok aplikácie, alebo niektorú z jej záložných kópií (Backups). Memry v ňom načíta priečinky Calendar, Notes a @Archive.",
+      "noteplanFolderHint": "Vyberte priečinok NotePlan – buď priečinok s údajmi aplikácie, alebo niektorú z jej záložných kópií (Backups). Memry v ňom načíta priečinky Calendar, Notes a @Archive.",
       "selected": "{count, plural, one {# vybraný súbor} few {# vybrané súbory} other {# vybraných súborov}}",
       "start": "Spustiť import",
       "cancel": "Zrušiť",
@@ -1737,7 +1737,7 @@
   "tags": {
     "header": {
       "title": "Značky",
-      "subtitle": "Spravujte značky naprieč poznámkami, denníkmi a úlohami"
+      "subtitle": "Spravujte značky v poznámkach, denníku a úlohách"
     },
     "loading": "Načítavajú sa značky…",
     "empty": "Ešte žiadne značky. Značky sa tu zobrazia, keď ich pridáte do poznámok a úloh.",
@@ -1756,7 +1756,7 @@
       "deleteTitle": "Odstrániť značku",
       "deleteDescription": "Odstrániť „{name}“ z {count, plural, one {# položky} few {# položiek} other {# položiek}}? Túto akciu nemožno vrátiť späť.",
       "mergeTitle": "Zlúčiť značku",
-      "mergeDescription": "Všetky položky označené „{source}“ budú znova označené cieľovou značkou. Zdrojová značka bude odstránená.",
+      "mergeDescription": "Všetky položky so značkou „{source}“ dostanú cieľovú značku. Zdrojová značka bude odstránená.",
       "targetPlaceholder": "Vyberte cieľovú značku…",
       "colorTitle": "Zmeniť farbu pre „{name}“"
     },
@@ -1884,9 +1884,9 @@
     "toasts": {
       "saveGlobalFailed": "Nepodarilo sa uložiť skratku globálneho rýchleho záznamu",
       "saveFailed": "Nepodarilo sa uložiť skratku",
-      "resetFailed": "Nepodarilo sa resetovať skratku",
+      "resetFailed": "Nepodarilo sa obnoviť predvolenú skratku",
       "resetAllSuccess": "Všetky skratky obnovené na predvolené",
-      "resetAllFailed": "Nepodarilo sa resetovať skratky"
+      "resetAllFailed": "Nepodarilo sa obnoviť predvolené skratky"
     },
     "categories": {
       "navigation": "Navigácia",
@@ -1980,7 +1980,7 @@
         },
         "splitRight": {
           "label": "Rozdeliť doprava",
-          "description": "Rozdeliť aktuálnu tablu vedľa seba"
+          "description": "Rozdeliť aktuálnu tablu na ľavú a pravú"
         },
         "splitDown": {
           "label": "Rozdeliť nadol",
@@ -2023,7 +2023,7 @@
           "description": "Zobraziť alebo skryť bočný panel"
         },
         "shortcuts": {
-          "label": "Pomoc s klávesovými skratkami",
+          "label": "Prehľad klávesových skratiek",
           "description": "Zobraziť prehľad klávesových skratiek"
         },
         "zoomIn": {
@@ -2121,7 +2121,7 @@
       "failedToUpdateGeneralSettings": "Nepodarilo sa aktualizovať všeobecné nastavenia",
       "failedToLoadKeyboardSettings": "Nepodarilo sa načítať nastavenia klávesnice",
       "failedToUpdateKeyboardSettings": "Nepodarilo sa aktualizovať nastavenia klávesnice",
-      "failedToResetKeyboardSettings": "Nepodarilo sa resetovať nastavenia klávesnice",
+      "failedToResetKeyboardSettings": "Nepodarilo sa obnoviť predvolené nastavenia klávesnice",
       "failedToLoadNoteEditorSettings": "Nepodarilo sa načítať nastavenia editora poznámok",
       "failedToUpdateSettings": "Nepodarilo sa aktualizovať nastavenia",
       "failedToLoadTabSettings": "Nepodarilo sa načítať nastavenia kariet",
@@ -2263,10 +2263,10 @@
     "alwaysAllowed": {
       "group": "Vždy povolené",
       "description": "Nástroje, ktorým ste v tomto trezore udelili trvalé schválenie. Pre odstraňovanie ho nikdy nemožno udeliť.",
-      "empty": "Nič nie je vždy povolené. Pri každej zmene sa stále opýta.",
+      "empty": "Nič nie je vždy povolené. Každá zmena stále vyžaduje schválenie.",
       "revoke": "Odvolať",
       "revokeLabel": "Odvolať trvalé schválenie pre {tool}",
-      "ignoredInPageReview": "Ignorované: pri úpravách poznámok a denníka sa vždy opýta."
+      "ignoredInPageReview": "Ignorované: úpravy poznámok a denníka vždy vyžadujú schválenie."
     },
     "v2": {
       "permissions": {

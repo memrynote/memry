@@ -16,7 +16,7 @@
     "previous-period": "Periode sebelumnya",
     "next-period": "Periode berikutnya",
     "previous-month": "Bulan sebelumnya",
-    "next-month": "Bulan depan",
+    "next-month": "Bulan berikutnya",
     "today": "Hari ini"
   },
   "search": {
@@ -75,7 +75,7 @@
     "new-event-placeholder": "Acara baru",
     "notes-url-placeholder": "Tambahkan catatan atau URL",
     "start": "Mulai",
-    "end": "Akhir",
+    "end": "Selesai",
     "google-calendar": "Kalender Google",
     "target-calendar": "Kalender tujuan",
     "use-default-calendar": "Gunakan kalender default",
@@ -99,7 +99,7 @@
   "agent-access-dialog": {
     "aria": "Pilih apakah AI boleh membaca acara Google Calendar Anda",
     "title": "Izinkan AI membaca acara Google Calendar Anda?",
-    "body": "Anda tetap melihat acara Google Anda di memrynote, apa pun pilihan Anda. Ini hanya menentukan apakah agen AI boleh membacanya saat Anda bertanya tentang jadwal Anda.",
+    "body": "Acara Google tetap akan terlihat di memrynote, apa pun pilihan Anda. Pilihan ini hanya menentukan apakah agen AI boleh membacanya saat Anda bertanya tentang jadwal.",
     "footnote": "Anda dapat mengubahnya kapan saja di Pengaturan → Integrasi → Google Calendar.",
     "allow": "Izinkan",
     "deny": "Jangan izinkan",
@@ -107,7 +107,7 @@
     "provider": {
       "aria": "Pilih apakah AI boleh membaca acara {provider} Anda",
       "title": "Izinkan AI membaca acara {provider} Anda?",
-      "body": "Anda tetap akan melihat acara ini di memrynote, apa pun pilihan Anda. Ini hanya menentukan apakah agen AI boleh membacanya saat Anda bertanya tentang jadwal Anda. Setiap layanan kalender memiliki pilihannya sendiri.",
+      "body": "Acara ini tetap akan terlihat di memrynote, apa pun pilihan Anda. Pilihan ini hanya menentukan apakah agen AI boleh membacanya saat Anda bertanya tentang jadwal. Setiap layanan kalender memiliki pilihannya sendiri.",
       "footnote": "Anda dapat mengubahnya kapan saja di Pengaturan → Kalender."
     },
     "provider-names": {
@@ -120,7 +120,7 @@
     "aria": "Edit acara kalender eksternal",
     "title": "Edit acara ini di memrynote?",
     "body": "Mengedit acara ini akan membuat salinan tertaut di memrynote sehingga perubahan disinkronkan ke dua arah. Lanjutkan?",
-    "do-not-ask-again": "Jangan bertanya lagi",
+    "do-not-ask-again": "Jangan tanya lagi",
     "confirm-label": "Edit di memrynote",
     "agent-notice": "Agen AI dapat membaca salinan ini, meskipun akses AI ke Google Calendar dinonaktifkan. Acara Google asli Anda tetap tersembunyi darinya."
   },
@@ -150,7 +150,7 @@
     "attendees": "Peserta",
     "attendees-count": "Peserta ({count})",
     "reminders": "Pengingat",
-    "default-reminders": "Pengingat bawaan",
+    "default-reminders": "Pengingat default",
     "visibility": "Visibilitas:",
     "optional": "Opsional",
     "join-meeting": "Gabung ke rapat",
@@ -159,7 +159,7 @@
       "accepted": "Diterima",
       "declined": "Ditolak",
       "tentative": "Tentatif",
-      "needs-action": "Tertunda"
+      "needs-action": "Menunggu"
     },
     "visibility-value": {
       "private": "Pribadi",
@@ -196,8 +196,8 @@
     "task-completed": "Tugas selesai",
     "could-not-complete": "Tidak dapat menyelesaikan tugas",
     "duration-minutes": "{minutes} mnt",
-    "duration-hours": "{hours} j",
-    "duration-hours-minutes": "{hours} j {minutes} mnt"
+    "duration-hours": "{hours} jam",
+    "duration-hours-minutes": "{hours} jam {minutes} mnt"
   },
   "event-card": {
     "kind": "Acara",

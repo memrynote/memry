@@ -3,7 +3,7 @@
   "section": {
     "aiConnections": "การเชื่อมโยงจาก AI",
     "todaysNotes": "โน้ตวันนี้",
-    "todaysSchedule": "ตารางวันนี้",
+    "todaysSchedule": "กำหนดการวันนี้",
     "todaysTasks": "งานวันนี้",
     "tasks": "งาน",
     "technicalDetails": "รายละเอียดทางเทคนิค"
@@ -169,7 +169,7 @@
   },
   "stats": {
     "wordCount": "จำนวนคำ",
-    "characterCount": "จำนวนอักขระ",
+    "characterCount": "จำนวนตัวอักษร",
     "readingTime": "เวลาอ่านโดยประมาณ",
     "lastModified": "แก้ไขล่าสุด",
     "lessThanOneMinute": "< 1 นาที",
@@ -186,7 +186,7 @@
     "markNotComplete": "ทำเครื่องหมาย “{title}” ว่ายังไม่เสร็จ"
   },
   "template": {
-    "using": "ใช้ “{templateName}”"
+    "using": "กำลังใช้ “{templateName}”"
   },
   "reminder": {
     "hasReminders": "มีการเตือน",

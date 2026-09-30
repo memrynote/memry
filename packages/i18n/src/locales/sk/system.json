@@ -6,11 +6,11 @@
     },
     "exportPdf": {
       "title": "Exportovať ako PDF",
-      "filterName": "PDF dokument"
+      "filterName": "Dokument PDF"
     },
     "exportHtml": {
       "title": "Exportovať ako HTML",
-      "filterName": "HTML dokument"
+      "filterName": "Dokument HTML"
     },
     "import": {
       "filterSupported": "Podporované súbory",

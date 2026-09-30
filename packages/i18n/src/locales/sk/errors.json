@@ -28,7 +28,7 @@
     "renameFailed": "Nepodarilo sa premenovať poznámku",
     "moveFailed": "Nepodarilo sa presunúť poznámku",
     "applyTemplateFailed": "Nepodarilo sa použiť šablónu",
-    "appendBlocksFailed": "Nepodarilo sa presunúť blok do tejto poznámky",
+    "appendBlocksFailed": "Nepodarilo sa presunúť blok do cieľovej poznámky",
     "exportPdfFailed": "Nepodarilo sa exportovať PDF",
     "exportHtmlFailed": "Nepodarilo sa exportovať HTML",
     "restoreVersionFailed": "Nepodarilo sa obnoviť verziu",
@@ -43,7 +43,7 @@
     "queryFailed": "Operácia s databázou zlyhala. Skúste to znova.",
     "notInitialized": "Databáza nie je pripravená. Skúste reštartovať aplikáciu.",
     "constraintViolation": "Vyskytol sa konflikt údajov. Skúste to znova.",
-    "corrupted": "Lokálna databáza je poškodená. Možno bude potrebné ju resetovať."
+    "corrupted": "Lokálna databáza je poškodená. Možno ju bude potrebné resetovať."
   },
   "watcher": {
     "startFailed": "Nepodarilo sa spustiť sledovanie zmien súborov.",
@@ -66,7 +66,7 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "História úprav sa na tomto zariadení neukladá",
-    "persistenceDegradedBody": "Vaše poznámky sú v bezpečí – sú uložené v trezore ako obyčajné súbory a naďalej sa normálne otvárajú aj ukladajú. Len lokálna história úprav a stav zlučovania na tomto zariadení sa uchovávajú iba v pamäti, takže pri každom otvorení aplikácie memrynote začínajú odznova."
+    "persistenceDegradedBody": "Vaše poznámky sú v bezpečí – sú uložené v trezore ako obyčajné súbory a naďalej sa normálne otvárajú aj ukladajú. Týka sa to len lokálnej histórie úprav a stavu zlučovania na tomto zariadení: uchovávajú sa iba v pamäti, takže pri každom otvorení aplikácie memrynote začínajú odznova."
   },
   "encryption": {
     "failed": "Nepodarilo sa zašifrovať údaje. Možno bude potrebné znova vygenerovať vaše kľúče.",
@@ -95,7 +95,7 @@
     "paymentRequired": "Na používanie hostovanej šifrovanej synchronizácie sa vyžaduje platený plán Sync.",
     "vaultLimitExceeded": "Váš plán umožňuje synchronizovať menej trezorov, než má tento účet, preto tento trezor zostáva na tomto zariadení. Odstráňte trezor zo svojho účtu v časti Nastavenia → Účet alebo prejdite na vyšší plán.",
     "certificatePinFailed": "Nepodarilo sa nadviazať bezpečné pripojenie. Skontrolujte svoje sieťové pripojenie.",
-    "deviceKeyMismatch": "Bezpečnostný kľúč tohto zariadenia sa už nezhoduje s kľúčom zaregistrovaným vo vašom účte, preto server jeho zmeny odmieta. Ak ho chcete znova zaregistrovať, prihláste sa na tomto zariadení znova.",
+    "deviceKeyMismatch": "Bezpečnostný kľúč tohto zariadenia sa už nezhoduje s kľúčom zaregistrovaným vo vašom účte, preto server jeho zmeny odmieta. Opätovným prihlásením na tomto zariadení ho znova zaregistrujete.",
     "keychainUnavailable": "Synchronizácia je pozastavená, pretože aplikácia Memry momentálne nemôže prečítať svoje synchronizačné kľúče zo systémovej kľúčenky. Odomknite kľúčenku a synchronizácia sa obnoví sama; ak nie, reštartujte aplikáciu Memry. Nič sa neodstránilo.",
     "unknown": "Vyskytla sa neočakávaná chyba synchronizácie. Skúsi sa to automaticky znova.",
     "statusFetchFailed": "Nepodarilo sa načítať stav synchronizácie",
@@ -124,14 +124,14 @@
   },
   "agent": {
     "runtimeStarting": "Prostredie agenta sa spúšťa. Skúste to znova.",
-    "conversationBusy": "Konverzácia je zaneprázdnená"
+    "conversationBusy": "Agent v tejto konverzácii práve odpovedá"
   },
   "ai": {
     "inlineDisabled": "Úpravy pomocou AI priamo v texte sú vypnuté",
     "listOllamaModelsFailed": "Nepodarilo sa načítať zoznam modelov Ollama"
   },
   "auth": {
-    "notAuthenticated": "Nie ste prihlásení",
+    "notAuthenticated": "Nie je prihlásený žiadny účet",
     "sessionExpired": "Relácia vypršala. Prihláste sa znova.",
     "setupSessionExpired": "Prihlásenie vypršalo skôr, ako sa to dokončilo. Prihláste sa znova a potom zadajte obnovovaciu frázu.",
     "setupSessionExpiredLinking": "Prihlásenie vypršalo skôr, ako sa dokončilo prepojenie tohto zariadenia. Prihláste sa znova a potom znova naskenujte kód.",
@@ -141,7 +141,7 @@
     "requestOtpFailed": "Nepodarilo sa vyžiadať jednorazový kód",
     "verifyOtpFailed": "Nepodarilo sa overiť jednorazový kód",
     "resendOtpFailed": "Nepodarilo sa znova odoslať jednorazový kód",
-    "linkDeviceQrFailed": "Nepodarilo sa prepojiť zariadenie cez QR",
+    "linkDeviceQrFailed": "Nepodarilo sa prepojiť zariadenie pomocou QR kódu",
     "completeLinkingFailed": "Nepodarilo sa dokončiť prepojenie",
     "finalizeVaultChoiceFailed": "Nepodarilo sa dokončiť výber trezora",
     "pickFolderFailed": "Nepodarilo sa vybrať priečinok",
@@ -155,15 +155,15 @@
     "confirmRecoveryPhraseFailed": "Nepodarilo sa potvrdiť obnovovaciu frázu"
   },
   "bookmark": {
-    "alreadyBookmarked": "Položka už je medzi záložkami",
+    "alreadyBookmarked": "Položka už je v záložkách",
     "notFound": "Záložka sa nenašla"
   },
   "calendar": {
     "eventNotFound": "Udalosť v kalendári sa nenašla",
     "sourceNotFound": "Zdroj kalendára sa nenašiel",
     "onlySourcesSelectable": "Vybrať možno len zdroje kalendára",
-    "onlyGoogleSourcesRetryable": "Zopakovať možno len zdroje z Google Calendar",
-    "signInBeforeRefresh": "Pred obnovením služby Google Calendar sa prihláste do aplikácie memrynote",
+    "onlyGoogleSourcesRetryable": "Synchronizáciu možno znova skúsiť len pri zdrojoch z Google Calendar",
+    "signInBeforeRefresh": "Pred obnovením údajov z Google Calendar sa prihláste do aplikácie memrynote",
     "googleNotConnected": "Google Calendar nie je na tomto zariadení pripojený",
     "syncFailed": "Synchronizácia zlyhala",
     "createEventFailed": "Nepodarilo sa vytvoriť udalosť v kalendári",
@@ -177,8 +177,8 @@
     "listGoogleCalendarsFailed": "Nepodarilo sa načítať zoznam kalendárov Google",
     "setDefaultGoogleCalendarFailed": "Nepodarilo sa nastaviť predvolený kalendár Google",
     "retryGoogleSourceSyncFailed": "Nepodarilo sa zopakovať synchronizáciu zdroja Google Calendar",
-    "promoteExternalEventFailed": "Nepodarilo sa povýšiť externú udalosť kalendára",
-    "onlyCalendarSourcesRetryable": "Zopakovať možno len zdroje kalendára",
+    "promoteExternalEventFailed": "Nepodarilo sa vytvoriť prepojenú kópiu externej udalosti kalendára",
+    "onlyCalendarSourcesRetryable": "Synchronizáciu možno znova skúsiť len pri zdrojoch kalendára",
     "invalidProviderSettings": "Neplatné nastavenia poskytovateľa kalendára",
     "getExternalEventFailed": "Túto udalosť sa nepodarilo načítať. V kalendári stále je – skúste ju otvoriť znova."
   },

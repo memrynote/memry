@@ -21,7 +21,7 @@
     "showMoreNotes": "{count, plural, one {Prikaži još # bilješku} few {Prikaži još # bilješke} other {Prikaži još # bilješki}}",
     "showMoreNotes_plural": "{count, plural, one {Prikaži još # bilješku} few {Prikaži još # bilješke} other {Prikaži još # bilješki}}",
     "showFewerNotes": "Prikaži manje bilješki",
-    "startBlank": "Umjesto toga započni s praznom",
+    "startBlank": "Započni bez predloška",
     "changeTemplate": "Promijeni predložak",
     "dismissIndicator": "Odbaci indikator",
     "refreshConnections": "Osvježi veze",
@@ -47,7 +47,7 @@
       "today": "Danas",
       "yesterday": "Jučer",
       "tomorrow": "Sutra",
-      "future": "Budućnost"
+      "future": "Budući dan"
     },
     "weekday": {
       "sunday": "nedjelja",
@@ -99,7 +99,7 @@
       "morning": "Dobro jutro",
       "afternoon": "Dobar dan",
       "evening": "Dobra večer",
-      "night": "Laku noć"
+      "night": "Dobra večer"
     },
     "allDay": "Cijeli dan"
   },
@@ -219,7 +219,7 @@
     "bookmarkFailed": "Ažuriranje favorita nije uspjelo"
   },
   "export": {
-    "noteTitle": "Dnevnik – {day}. {month} {year}."
+    "noteTitle": "Dnevnik – {day}.{month, select, siječanj { siječnja} veljača { veljače} ožujak { ožujka} travanj { travnja} svibanj { svibnja} lipanj { lipnja} srpanj { srpnja} kolovoz { kolovoza} rujan { rujna} listopad { listopada} studeni { studenoga} prosinac { prosinca} other { {month}}} {year}."
   },
   "note": {
     "generatedTitle": "Bilješka – {date}",

@@ -37,7 +37,7 @@
     "notes": "Poznámky",
     "image": "Obrázek",
     "images": "Obrázky",
-    "voice": "Hlas",
+    "voice": "Hlasová poznámka",
     "video": "Video",
     "clip": "Klip",
     "clips": "Klipy",
@@ -126,7 +126,7 @@
     "dismissSuggestion": "Odmítnout návrh",
     "hint": {
       "file": "zařadit",
-      "tag": "štítky",
+      "tag": "přidat štítky",
       "snooze": "odložit",
       "archive": "archivovat",
       "deselect": "zrušit výběr"
@@ -484,7 +484,7 @@
       "time": "Čas",
       "noteOptional": "Poznámka (volitelné)",
       "whyAreYouSettingThisReminder": "Proč nastavujete toto připomenutí?",
-      "set": "Nastavená",
+      "set": "Nastavená připomenutí",
       "editReminder": "Upravit připomenutí",
       "deleteReminder": "Smazat připomenutí",
       "save": "Uložit",
@@ -527,14 +527,14 @@
   "phaseI": {
     "errors": {
       "failedToCaptureLink": "Odkaz se nepodařilo zachytit",
-      "failedToCaptureNote": "Nepodařilo se zachytit poznámku",
+      "failedToCaptureNote": "Poznámku se nepodařilo zachytit",
       "captureFailed": "Zachycení se nezdařilo",
-      "failedToCaptureVoiceMemo": "Nepodařilo se zachytit hlasovou poznámku",
+      "failedToCaptureVoiceMemo": "Hlasovou poznámku se nepodařilo zachytit",
       "voiceCaptureFailed": "Zachycení hlasu se nezdařilo",
-      "failedToCaptureFile": "Nepodařilo se zachytit soubor",
+      "failedToCaptureFile": "Soubor se nepodařilo zachytit",
       "fileCaptureFailed": "Zachycení souboru se nezdařilo",
-      "failedToCaptureAudio": "Nepodařilo se zachytit zvuk",
-      "failedToCaptureVoice": "Nepodařilo se zachytit hlas",
+      "failedToCaptureAudio": "Zvuk se nepodařilo zachytit",
+      "failedToCaptureVoice": "Hlasový záznam se nepodařilo zachytit",
       "failedToLoadInboxPreferences": "Předvolby Doručených se nepodařilo načíst",
       "failedToUpdateInboxPreferences": "Předvolby Doručených se nepodařilo aktualizovat"
     },
@@ -549,7 +549,7 @@
   },
   "snoozeDue": {
     "notificationTitle": "{count, plural, one {# odložená položka} few {# odložené položky} other {# odložených položek}}",
-    "notificationBody": "{count, plural, one {Vaše odložená položka je připravena k projití} few {Vaše odložené položky jsou připraveny} other {Vaše odložené položky jsou připraveny}}",
+    "notificationBody": "{count, plural, one {Vaše odložená položka je připravena ke kontrole} few {Vaše odložené položky jsou připraveny} other {Vaše odložené položky jsou připraveny}}",
     "toast": "{count, plural, =1 {Položka „{itemTitle}“ se vrátila z odložení} one {# odložená položka se vrátila} few {# odložené položky se vrátily} other {# odložených položek se vrátilo}}"
   }
 }

@@ -3,7 +3,7 @@
     "loading": "Načítava sa graf…",
     "load-failed": "Nepodarilo sa načítať údaje grafu",
     "render-failed": "Graf nie je na tomto zariadení k dispozícii",
-    "render-failed-description": "Toto zariadenie nedokázalo spustiť grafický renderer. Poznámky sú v bezpečí.",
+    "render-failed-description": "Na tomto zariadení sa nepodarilo spustiť grafické vykresľovanie. Poznámky sú v bezpečí.",
     "try-again": "Skúsiť znova",
     "aria-label": "Graf znalostí s {nodeCount, plural, one {# uzlom} few {# uzlami} other {# uzlami}} a {edgeCount, plural, one {# prepojením} few {# prepojeniami} other {# prepojeniami}}{summary, select, none {.} other {: {summary}.}}",
     "nodes-list-label": "Uzly grafu",

@@ -217,7 +217,7 @@
     "activityValueChanged": "изменено",
     "activityUnknownDate": "Без даты",
     "activityFieldRepeatFrom": "Отсчёт повтора",
-    "activityFieldIsRepeating": "Повторяющаяся"
+    "activityFieldIsRepeating": "Повторение"
   },
   "kanban": {
     "board": "Канбан-доска",
@@ -262,9 +262,9 @@
       "completed": "{count, plural, one {# задача выполнена} few {# задачи выполнены} many {# задач выполнено} other {# задачи выполнено}}",
       "undoComplete": "{count, plural, one {Выполнить # задачу} few {Выполнить # задачи} many {Выполнить # задач} other {Выполнить # задачи}}",
       "restored": "{count, plural, one {# задача восстановлена} few {# задачи восстановлены} many {# задач восстановлено} other {# задачи восстановлено}}",
-      "undoUncomplete": "{count, plural, one {Снять выполнение с # задачи} few {Снять выполнение с # задач} many {Снять выполнение с # задач} other {Снять выполнение с # задачи}}",
+      "undoUncomplete": "{count, plural, one {Снять отметку о выполнении с # задачи} few {Снять отметку о выполнении с # задач} many {Снять отметку о выполнении с # задач} other {Снять отметку о выполнении с # задачи}}",
       "priorityRemoved": "{count, plural, one {Приоритет убран у # задачи} few {Приоритет убран у # задач} many {Приоритет убран у # задач} other {Приоритет убран у # задачи}}",
-      "prioritySet": "{count, plural, one {Приоритет {priority} задан для # задачи} few {Приоритет {priority} задан для # задач} many {Приоритет {priority} задан для # задач} other {Приоритет {priority} задан для # задачи}}",
+      "prioritySet": "{count, plural, one {Для # задачи задан {priority} приоритет} few {Для # задач задан {priority} приоритет} many {Для # задач задан {priority} приоритет} other {Для # задачи задан {priority} приоритет}}",
       "undoDueDate": "{count, plural, one {Срок изменён у # задачи} few {Срок изменён у # задач} many {Срок изменён у # задач} other {Срок изменён у # задачи}}",
       "dueDateSet": "{count, plural, one {Срок задан для # задачи} few {Срок задан для # задач} many {Срок задан для # задач} other {Срок задан для # задачи}}",
       "dueDateRemoved": "{count, plural, one {Срок убран у # задачи} few {Срок убран у # задач} many {Срок убран у # задач} other {Срок убран у # задачи}}",
@@ -281,14 +281,14 @@
       "undoUnarchive": "{count, plural, one {Вернуть из архива # задачу} few {Вернуть из архива # задачи} many {Вернуть из архива # задач} other {Вернуть из архива # задачи}}"
     },
     "drag": {
-      "rescheduledTo": "Перенесено на {target}",
-      "rescheduled": "{count, plural, one {Перенесено на {target}} few {# задачи перенесены на {target}} many {# задач перенесено на {target}} other {# задачи перенесено на {target}}}",
+      "rescheduledTo": "Новый срок: {target}",
+      "rescheduled": "{count, plural, =1 {Новый срок: {target}} one {Новый срок для # задачи: {target}} few {Новый срок для # задач: {target}} many {Новый срок для # задач: {target}} other {Новый срок для # задачи: {target}}}",
       "movedTo": "Перемещено в «{target}»",
-      "moved": "{count, plural, one {Перемещено в «{target}»} few {# задачи перемещены в «{target}»} many {# задач перемещено в «{target}»} other {# задачи перемещено в «{target}»}}",
-      "prioritySetTo": "Задан приоритет {priority}",
-      "prioritySet": "{count, plural, one {Задан приоритет {priority}} few {# задачам задан приоритет {priority}} many {# задачам задан приоритет {priority}} other {# задачам задан приоритет {priority}}}",
-      "deleted": "{count, plural, one {Задача удалена} few {# задачи удалены} many {# задач удалено} other {# задачи удалено}}",
-      "archived": "{count, plural, one {Задача заархивирована} few {# задачи заархивированы} many {# задач заархивировано} other {# задачи заархивировано}}",
+      "moved": "{count, plural, =1 {Перемещено в «{target}»} one {# задача перемещена в «{target}»} few {# задачи перемещены в «{target}»} many {# задач перемещено в «{target}»} other {# задачи перемещено в «{target}»}}",
+      "prioritySetTo": "Новый приоритет: {priority}",
+      "prioritySet": "{count, plural, =1 {Новый приоритет: {priority}} one {Новый приоритет для # задачи: {priority}} few {Новый приоритет для # задач: {priority}} many {Новый приоритет для # задач: {priority}} other {Новый приоритет для # задачи: {priority}}}",
+      "deleted": "{count, plural, =1 {Задача удалена} one {# задача удалена} few {# задачи удалены} many {# задач удалено} other {# задачи удалено}}",
+      "archived": "{count, plural, =1 {Задача заархивирована} one {# задача заархивирована} few {# задачи заархивированы} many {# задач заархивировано} other {# задачи заархивировано}}",
       "undoArchive": "{count, plural, one {Заархивирована # задача} few {Заархивированы # задачи} many {Заархивировано # задач} other {Заархивировано # задачи}}"
     },
     "subtasks": {
@@ -315,7 +315,7 @@
     },
     "componentsTasksBulkActionsBulkActionDropdown": {
       "for": "для ",
-      "task": "задача"
+      "task": "задачи"
     },
     "componentsTasksBulkActionsBulkActionToolbar": {
       "bulkActions": "Массовые действия",
@@ -333,19 +333,19 @@
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
       "delete": "Удалить ",
-      "task": "задача",
+      "task": "задачу",
       "youReAboutToDelete": "Вы собираетесь удалить ",
-      "task2": "задача",
+      "task2": "задачу",
       "and": "и ещё ",
-      "moreTask": "задач",
+      "moreTask": "задача",
       "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Это действие можно отменить в течение короткого времени после удаления.",
       "cancel": "Отмена",
       "delete2": "Удалить ",
-      "task3": "задача"
+      "task3": "задачу"
     },
     "componentsTasksBulkActionsBulkDueDatePicker": {
       "setDueDateFor": "Установить срок для ",
-      "task": "задача",
+      "task": "задачи",
       "selectADateToSetAsTheDueDateForAllSelectedTasks": "Выберите дату, которая станет сроком для всех выбранных задач.",
       "alsoSetTime": "Также указать время",
       "cancel": "Отмена",
@@ -441,7 +441,7 @@
       "alsoApplyToCompletedSubtasksCount": "Также применить к выполненным подзадачам ({count})"
     },
     "componentsTasksDialogsCompleteParentDialog": {
-      "completeTaskWithIncompleteSubtasks": "Выполнить задачу с незавершёнными подзадачами?",
+      "completeTaskWithIncompleteSubtasks": "Выполнить задачу с невыполненными подзадачами?",
       "has": "содержит ",
       "incompleteSubtask": "невыполненную подзадачу",
       "and": "и ещё ",
@@ -642,7 +642,7 @@
       "summaryProjects": "Проект: {names}",
       "summaryPriorities": "Приоритет: {names}",
       "summaryDue": "Срок: {value}",
-      "summaryDueRange": "Срок: {start}–{end}",
+      "summaryDueRange": "Срок: {start} – {end}",
       "summaryRepeatRepeating": "Повтор: только повторяющиеся",
       "summaryRepeatOneTime": "Повтор: только разовые",
       "summaryTimeWith": "Время: указано",

@@ -59,7 +59,7 @@
     "archivedNoMatches": "Nincsenek megfelelő archivált elemek",
     "noItemsYet": "Még nincsenek elemek",
     "noItemsFiled": "Még nincsenek elhelyezett elemek",
-    "noFolders": "Nem találhatók mappák",
+    "noFolders": "Nem található mappa",
     "noNotes": "Nem található jegyzet",
     "allMatchesLinked": "Minden találat már hozzá van kapcsolva"
   },
@@ -147,7 +147,7 @@
     },
     "tagPopover": {
       "title": "{count, plural, one {# elem címkézése} other {# elem címkézése}}",
-      "placeholder": "Gépeljen a címkék kereséséhez…",
+      "placeholder": "Címkék keresése…",
       "applying": "Alkalmazás…",
       "apply": "{count, plural, one {Alkalmazás # elemre} other {Alkalmazás # elemre}}"
     }
@@ -187,7 +187,7 @@
     "createFolder": "„{name}” létrehozása",
     "addTags": "Címkék hozzáadása…",
     "linkToNote": "Hozzákapcsolás jegyzethez",
-    "linkANote": "Jegyzet összekapcsolása",
+    "linkANote": "Jegyzet hozzákapcsolása",
     "suggestedCount": "{count} javasolt",
     "linkNotesPlaceholder": "Jegyzetek hozzákapcsolása…",
     "linkOrCreateNotePlaceholder": "Jegyzet keresése vagy létrehozása…",
@@ -383,7 +383,7 @@
     },
     "componentsFilingLinkSearch": {
       "linkTo": "Hozzákapcsolás",
-      "optional": "opcionális)",
+      "optional": "nem kötelező)",
       "searchNotesToLink": "Jegyzetek keresése hozzákapcsoláshoz…",
       "searchNotesToLink2": "Jegyzetek keresése hozzákapcsoláshoz",
       "searching": "Keresés…",
@@ -403,7 +403,7 @@
     },
     "componentsFilingTagInput": {
       "tags": "Címkék",
-      "optional": "opcionális)",
+      "optional": "nem kötelező)",
       "addTags": "Címkék hozzáadása…",
       "addTags2": "Címkék hozzáadása",
       "selectedTags": "Kiválasztott címkék",
@@ -414,7 +414,7 @@
     },
     "componentsInboxInboxFilingHistory": {
       "noItemsFiledYet": "Még nincsenek elhelyezett elemek",
-      "recentlyFiled": "Nemrég elhelyezett",
+      "recentlyFiled": "Nemrég elhelyezett elemek",
       "latestActionsOnYourInbox": "Legutóbbi műveletek a Beérkezőkben",
       "linked": "Összekapcsolva"
     },
@@ -510,7 +510,7 @@
     },
     "componentsVoiceRecorder": {
       "startVoiceRecording": "Hangfelvétel indítása",
-      "requestingMicrophoneAccess": "Mikrofon-hozzáférés kérése…",
+      "requestingMicrophoneAccess": "Mikrofonhozzáférés kérése…",
       "settings": "Beállítások",
       "processing": "Feldolgozás…",
       "cancelRecording": "Felvétel megszakítása",
@@ -518,10 +518,10 @@
       "stopRecording": "Felvétel leállítása",
       "stop": "Leállítás",
       "recordingError": "Hiba történt a felvétel közben",
-      "microphoneAccessDenied": "A mikrofon-hozzáférés megtagadva",
+      "microphoneAccessDenied": "Mikrofonhozzáférés megtagadva",
       "noMicrophoneFound": "Nem található mikrofon",
       "failedToStart": "Nem sikerült elindítani a felvételt",
-      "enableMicInSettings": "Engedélyezze a mikrofon-hozzáférést a rendszerbeállításokban, majd próbálja újra."
+      "enableMicInSettings": "Engedélyezze a mikrofonhozzáférést a rendszerbeállításokban, majd próbálja újra."
     }
   },
   "phaseI": {
@@ -550,6 +550,6 @@
   "snoozeDue": {
     "notificationTitle": "{count, plural, one {# elhalasztott elem} other {# elhalasztott elem}}",
     "notificationBody": "{count, plural, one {Az elhalasztott elem készen áll az átnézésre} other {Az elhalasztott elemek készen állnak}}",
-    "toast": "{count, plural, =1 {„{itemTitle}” visszatért az elhalasztásból} one {# elhalasztott elem visszatért} other {# elhalasztott elem visszatért}}"
+    "toast": "{count, plural, =1 {„{itemTitle}” elhalasztása lejárt} one {# elem elhalasztása lejárt} other {# elem elhalasztása lejárt}}"
   }
 }

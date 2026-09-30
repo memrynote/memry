@@ -133,8 +133,8 @@
   },
   "inlineProperties": {
     "addProperty": "Přidat vlastnost",
-    "dates": "Data",
-    "datesAria": "Data: {value}",
+    "dates": "Datum",
+    "datesAria": "Datum: {value}",
     "start": "Začátek",
     "due": "Termín",
     "dueDate": "Termín",
@@ -212,8 +212,8 @@
     "activityFieldArchivedAt": "Archivace",
     "activityFieldRepeatConfig": "Opakování",
     "activityFieldSourceNoteId": "Zdrojová poznámka",
-    "activityFrom": "z {value}",
-    "activityTo": "na {value}",
+    "activityFrom": "z hodnoty {value}",
+    "activityTo": "na hodnotu {value}",
     "activityValueChanged": "změněno",
     "activityUnknownDate": "Bez data",
     "activityFieldRepeatFrom": "Opakovat od",
@@ -384,7 +384,7 @@
     },
     "componentsTasksDatePickerCalendar": {
       "previousMonth": "Předchozí měsíc",
-      "nextMonth": "Příští měsíc",
+      "nextMonth": "Další měsíc",
       "goToToday": "Přejít na dnešek",
       "today": "Dnes",
       "w": "T",
@@ -402,7 +402,7 @@
       "task": "úkol",
       "whatWouldYouLikeToDoWithThem": "Co byste s nimi chtěli dělat?",
       "moveTasksToPersonalProject": "Přesunout úkoly do Osobního projektu",
-      "deleteAllTasksPermanently": "Trvale odstranit všechny úkoly",
+      "deleteAllTasksPermanently": "Trvale smazat všechny úkoly",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Tento projekt nemá žádné úkoly a bude trvale smazán.",
       "notesEventsAndFilesStayNotice": "Úkoly v tomto projektu budou smazány. Vaše poznámky, události a soubory zůstanou v trezoru.",
       "thisActionCannotBeUndone": "Tuto akci nelze vrátit zpět.",
@@ -493,7 +493,7 @@
       "otherProjects": "Jiné projekty"
     },
     "componentsTasksDragDropInsertionIndicator": {
-      "dropToRescheduleTo": "Pusťte pro přeplánování na "
+      "dropToRescheduleTo": "Puštěním přeplánujete na "
     },
     "componentsTasksDragDropMoveMenu": {
       "moveTask": "Přesunout úkol",
@@ -841,17 +841,17 @@
     "errors": {
       "failedToArchiveTasks": "Úkoly se nepodařilo archivovat",
       "failedToAddSubtask": "Dílčí úkol se nepodařilo přidat",
-      "failedToAddSubtasks": "Nepodařilo se přidat dílčí úkoly",
-      "failedToReorderSubtasks": "Nepodařilo se změnit pořadí dílčích úkolů",
+      "failedToAddSubtasks": "Dílčí úkoly se nepodařilo přidat",
+      "failedToReorderSubtasks": "Pořadí dílčích úkolů se nepodařilo změnit",
       "failedToPromoteSubtask": "Dílčí úkol se nepodařilo převést na úkol",
       "failedToDeleteSubtask": "Dílčí úkol se nepodařilo smazat",
       "failedToDeleteTask": "Úkol se nepodařilo smazat",
       "failedToCompleteTask": "Úkol se nepodařilo dokončit",
       "failedToMakeSubtask": "Úkol se nepodařilo převést na dílčí úkol",
-      "failedToCompleteSubtasks": "Nepodařilo se dokončit dílčí úkoly",
+      "failedToCompleteSubtasks": "Dílčí úkoly se nepodařilo dokončit",
       "failedToMarkSubtasksIncomplete": "Dílčí úkoly se nepodařilo označit jako nedokončené",
       "failedToSetDueDate": "Termín se nepodařilo nastavit",
-      "failedToSetPriority": "Nepodařilo se nastavit prioritu",
+      "failedToSetPriority": "Prioritu se nepodařilo nastavit",
       "failedToDeleteSubtasks": "Dílčí úkoly se nepodařilo smazat",
       "failedToLoadTaskPreferences": "Předvolby úkolů se nepodařilo načíst",
       "failedToUpdateTaskPreferences": "Předvolby úkolů se nepodařilo aktualizovat",
@@ -912,7 +912,7 @@
     },
     "sections": {
       "viewAll": "Zobrazit vše",
-      "add": "Přidat do {title}",
+      "add": "Přidat do sekce {title}",
       "emptyTasks": "Zatím žádné úkoly.",
       "emptyNotes": "Zatím nejsou propojené žádné poznámky.",
       "emptyFiles": "Zatím nejsou propojené žádné soubory.",
@@ -938,7 +938,7 @@
       "linked": "Propojeno",
       "linkedSummary": "{notes, plural, one {# poznámka} few {# poznámky} many {# poznámky} other {# poznámek}} · {files, plural, one {# soubor} few {# soubory} many {# souboru} other {# souborů}} · {events, plural, one {# událost} few {# události} many {# události} other {# událostí}}",
       "addNote": "Přidat poznámku",
-      "unpinNote": "Odebrat {title} z přehledu",
+      "unpinNote": "Odebrat poznámku {title} z přehledu",
       "pinError": "Poznámku se nepodařilo přidat do přehledu",
       "unpinError": "Poznámku se nepodařilo odebrat z přehledu"
     },
