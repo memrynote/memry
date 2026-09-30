@@ -208,6 +208,42 @@ describe('blocknote-converter code block language', () => {
     expect((image!.props as { url: string }).url).toBe(url)
   })
 
+  it('keeps the images an earlier import left inside a paragraph and a heading through a house-style rewrite', async () => {
+    // #given a OneNote import as it already sits in a vault (#2537)
+    const markdown = [
+      'Trip notes',
+      '',
+      'Caption ![photo.png](attachments/photo.png)',
+      '',
+      '## [![map.png](attachments/map.png)](https://example.com/map)',
+      '',
+      'End.'
+    ].join('\n')
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    // #when the write-back has no source record to restore and writes house style
+    writeMarkdownSourceToYDoc(doc, null)
+    const written = await yDocToMarkdown(doc)
+
+    // #then both images are still in the file, each in a block of its own
+    expect(written).toBe(
+      [
+        'Trip notes',
+        '',
+        'Caption',
+        '',
+        '![photo.png](attachments/photo.png)',
+        '',
+        '## [map.png](https://example.com/map)',
+        '',
+        '![map.png](attachments/map.png)',
+        '',
+        'End.'
+      ].join('\n')
+    )
+  })
+
   it('applies block color markers when parsing markdown to blocks', async () => {
     // #given
     const markdown = 'Plain intro\n<!-- colors:{"textColor":"red"} -->\nColored line'
@@ -1634,13 +1670,12 @@ describe('a custom spec must not claim the block its text sits in', () => {
    * the block contexts, and the exemption is the point rather than a gap.
    *
    * Its disk form is CommonMark's own `![alt](src)`, which outside a table cell
-   * still parses as an image BLOCK — so an image glued into a heading, a quote
-   * or the middle of a sentence is dropped on parse, exactly as it was before
-   * this spec existed (`separateBlockImages` is the workaround built for that,
-   * and the limitation is asserted directly further down). The spec's `parse`
+   * still parses as an image BLOCK: an image in a paragraph or a heading is
+   * lifted into a block of its own (#2537, asserted directly further down),
+   * and one in a list item or a quote is still dropped. The spec's `parse`
    * claims an `<img>` only inside a `td`/`th`, so it is not what claims those
-   * blocks — sweeping it here would assert a pre-existing markdown limitation
-   * under the banner of a parse gate it cannot fail.
+   * blocks. Sweeping it here would assert the parser's image handling under
+   * the banner of a parse gate it cannot fail.
    */
   const BLOCK_CONTEXT_EXEMPT = new Set<string>(['inlineImage'])
 
@@ -1663,18 +1698,16 @@ describe('a custom spec must not claim the block its text sits in', () => {
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 
-  it('an image outside a table cell is still block-only, as it was before', async () => {
-    // #given the pre-existing limitation the exemption above names: BlockNote
-    // parses `![…](…)` as a block, and a heading has no room for one. Recorded
-    // rather than rediscovered — and asserted here so that if inline images are
-    // ever widened beyond cells, this is the test that says so out loud.
+  it('an image alone in a heading is lifted out of it, not made inline', async () => {
+    // #given the exemption above: `inlineImage` claims `<img>` only inside a
+    // `td`/`th`, so an image in a heading stays block-only
     const doc = new Y.Doc()
     await markdownToYFragment('# ![p.png](p.png)', doc.getXmlFragment(CRDT_FRAGMENT_NAME))
 
-    // #when / #then unchanged by this spec: the image is dropped, the heading
-    // survives. `inlineImage` claims `<img>` only inside a `td`/`th`.
+    // #when / #then the heading stays, now empty, and the image follows it as
+    // a block of its own (#2537). BlockNote writes an empty heading as `# `.
     writeMarkdownSourceToYDoc(doc, null)
-    expect(await yDocToMarkdown(doc)).toBe('#')
+    expect(await yDocToMarkdown(doc)).toBe('# \n\n![p.png](p.png)')
   })
 
   it.each(MEMRY_INLINE_CONTENT_TYPES)('%s inside a table cell keeps the table', async (type) => {

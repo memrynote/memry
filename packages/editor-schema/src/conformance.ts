@@ -702,6 +702,31 @@ const plainCheckboxCases: RoundtripCase[] = [
   }
 ]
 
+/**
+ * An image inside a paragraph or a heading, the shape importers such as
+ * OneNote write (#2537). The editor has no inline image outside a table cell,
+ * so the parse lifts each one into its own image block after the block it sat
+ * in, and house style writes it there. A link around the image stays in the
+ * text block with the alt text as its label, so the link target is kept too.
+ */
+const inlineImageCases: RoundtripCase[] = [
+  {
+    name: 'image after the text of a paragraph',
+    markdown: 'Caption ![photo.png](attachments/photo.png)',
+    canonical: 'Caption\n\n![photo.png](attachments/photo.png)'
+  },
+  {
+    name: 'image between the words of a paragraph',
+    markdown: 'Before ![photo.png](attachments/photo.png) after\nnext line',
+    canonical: 'Before after\nnext line\n\n![photo.png](attachments/photo.png)'
+  },
+  {
+    name: 'linked image in a heading',
+    markdown: '## [![logo.png](attachments/logo.png)](https://example.com/home)',
+    canonical: '## [logo.png](https://example.com/home)\n\n![logo.png](attachments/logo.png)'
+  }
+]
+
 export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...mentionCases,
   ...dateCases,
@@ -716,7 +741,8 @@ export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...diagramCases,
   ...whiteboardCases,
   ...viewBlockCases,
-  ...foreignSpellingCases
+  ...foreignSpellingCases,
+  ...inlineImageCases
 ]
 
 // ---------------------------------------------------------------------------
