@@ -1247,7 +1247,10 @@ export class CrdtProvider {
    * fire a second push for the same bytes. `settle` is what puts them back if
    * the send did not land, and it is the caller's obligation.
    */
-  private async prepareSnapshotForNote(noteId: string): Promise<PreparedSnapshot | null> {
+  private async prepareSnapshotForNote(
+    noteId: string,
+    skipSeed = false
+  ): Promise<PreparedSnapshot | null> {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, noteId)
     if (cached?.fileType && isBinaryFileType(cached.fileType)) {
@@ -1275,7 +1278,7 @@ export class CrdtProvider {
     let clearedAccumulated = 0
     let clearedPending = 0
     try {
-      const doc = await this.open(noteId)
+      const doc = await this.open(noteId, undefined, { skipSeed })
       const entry = this.docs.get(noteId)
       const base = await this.readPushBase(noteId)
       const { state, coverage } = this.encodeForPush(base, () => Y.encodeStateAsUpdate(doc))
@@ -1329,23 +1332,30 @@ export class CrdtProvider {
    * The note's whole doc state for a full-state outbox row, or `null` when the
    * note no longer syncs (deleted, binary, local-only) or is empty. A doc that
    * was not open is closed again afterwards.
+   *
+   * Never seeded: the flush merged the server state just before this read, and
+   * with no store that merge's doc is already gone. A seed then would push a
+   * second copy of the body (#2536).
    */
   async readSyncableState(noteId: string): Promise<Uint8Array | null> {
     if (!this.isNoteSyncable(noteId)) return null
     const wasOpen = this.docs.has(noteId)
     try {
-      const state = Y.encodeStateAsUpdate(await this.open(noteId))
+      const state = Y.encodeStateAsUpdate(await this.open(noteId, undefined, { skipSeed: true }))
       return state.length <= 4 ? null : state
     } finally {
       if (!wasOpen) await this.closeIfInactive(noteId)
     }
   }
 
-  async pushSnapshotForNote(noteId: string): Promise<boolean> {
+  async pushSnapshotForNote(
+    noteId: string,
+    options: { skipSeed?: boolean } = {}
+  ): Promise<boolean> {
     const push = this.snapshotPushFn
     if (!push) return false
 
-    const prepared = await this.prepareSnapshotForNote(noteId)
+    const prepared = await this.prepareSnapshotForNote(noteId, options.skipSeed)
     if (!prepared) return false
 
     try {
@@ -1379,10 +1389,15 @@ export class CrdtProvider {
    * With no batch fn wired this is exactly the old behaviour — N single pushes
    * at the same concurrency — which is what keeps every non-runtime caller and
    * the sign-out path working unchanged.
+   *
+   * `skipSeed` is for the snapshot scheduler. A note it names already has its
+   * edits on the server or in the store, so a doc that is no longer open must
+   * not be rebuilt from the vault file. With no store, that seed is a second
+   * copy of the body, and the push replaces the server's (#2536).
    */
   async pushSnapshotsForNotes(
     noteIds: string[],
-    options: { concurrency?: number; signal?: AbortSignal } = {}
+    options: { concurrency?: number; signal?: AbortSignal; skipSeed?: boolean } = {}
   ): Promise<Map<string, boolean>> {
     const results = new Map<string, boolean>()
     const unique = [...new Set(noteIds)]
@@ -1393,7 +1408,7 @@ export class CrdtProvider {
 
     if (!batchPush) {
       const tasks = unique.map((noteId) => async () => {
-        results.set(noteId, await this.pushSnapshotForNote(noteId))
+        results.set(noteId, await this.pushSnapshotForNote(noteId, { skipSeed: options.skipSeed }))
       })
       await parallelWithLimit(tasks, concurrency, options.signal)
       // A task that threw left no entry; the caller reads a missing id the same
@@ -1409,7 +1424,7 @@ export class CrdtProvider {
     }
 
     const tasks = chunks.map((chunk) => async () => {
-      await this.pushSnapshotChunk(chunk, batchPush, results)
+      await this.pushSnapshotChunk(chunk, batchPush, results, options.skipSeed)
     })
     await parallelWithLimit(tasks, concurrency, options.signal)
 
@@ -1420,11 +1435,12 @@ export class CrdtProvider {
   private async pushSnapshotChunk(
     noteIds: string[],
     batchPush: SnapshotBatchPushFn,
-    results: Map<string, boolean>
+    results: Map<string, boolean>,
+    skipSeed = false
   ): Promise<void> {
     const prepared: PreparedSnapshot[] = []
     for (const noteId of noteIds) {
-      const entry = await this.prepareSnapshotForNote(noteId)
+      const entry = await this.prepareSnapshotForNote(noteId, skipSeed)
       if (!entry) {
         results.set(noteId, false)
         continue
@@ -1625,6 +1641,10 @@ export class CrdtProvider {
     onProgress?: (done: number, total: number) => void,
     signal?: AbortSignal
   ): Promise<number> {
+    // With no store, every launch would seed every note again and push the
+    // seed over the server's body (#2536).
+    if (!this.persistence) return 0
+
     const BATCH_SIZE = 50
     let seeded = 0
 
