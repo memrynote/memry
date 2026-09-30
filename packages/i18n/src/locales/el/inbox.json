@@ -21,7 +21,7 @@
     },
     "filter": {
       "button": "Φίλτρο",
-      "byType": "Φιλτράρισμα ανά τύπο",
+      "byType": "Φιλτράρισμα κατά τύπο",
       "active": "{count, plural, one {Φιλτράρισμα κατά # τύπο} other {Φιλτράρισμα κατά # τύπους}}",
       "clearAll": "Εκκαθάριση όλων"
     },
@@ -68,7 +68,7 @@
     "section": {
       "today": "Σήμερα",
       "yesterday": "Χθες",
-      "older": "Πιο παλιά"
+      "older": "Παλαιότερα"
     },
     "selectItem": "Επιλογή του «{title}»",
     "itemAria": "{type}: {title}",
@@ -104,7 +104,7 @@
     "failedCaptureImage": "Αποτυχία καταγραφής εικόνας",
     "linkedToNote": "Συνδέθηκε με τη σημείωση",
     "linkedToNotes": "Συνδέθηκε με {count} σημειώσεις",
-    "embedFellBackToLink": "Η εικόνα ήταν πολύ μεγάλη για ενσωμάτωση — τοποθετήθηκε ως συνδεδεμένο αρχείο.",
+    "embedFellBackToLink": "Η εικόνα ήταν πολύ μεγάλη για ενσωμάτωση — τοποθετήθηκε ως συνδεδεμένο αρχείο",
     "filedTo": "Τοποθετήθηκε στο «{folder}»",
     "filedItemsTo": "Τοποθετήθηκαν {count} στοιχεία στο «{folder}»",
     "filedPartial": "Τοποθετήθηκαν {processed} από {total} στοιχεία",
@@ -232,7 +232,7 @@
     "remindAt": "Υπενθύμιση στις",
     "time": "Ώρα",
     "success": "Μετατράπηκε σε {target}",
-    "failed": "Αδυναμία μετατροπής: {error}"
+    "failed": "Δεν ήταν δυνατή η μετατροπή: {error}"
   },
   "content": {
     "capturedAt": "Καταγράφηκε {date}",
@@ -249,7 +249,7 @@
     "pause": "Παύση",
     "audioPosition": "Θέση ήχου",
     "transcription": "Μεταγραφή",
-    "processing": "επεξεργασία",
+    "processing": "σε επεξεργασία",
     "pending": "σε εκκρεμότητα",
     "failed": "απέτυχε",
     "copyTranscription": "Αντιγραφή μεταγραφής",
@@ -361,7 +361,7 @@
     "componentsCaptureInput": {
       "captureInput": "Πεδίο καταγραφής",
       "attachFile": "Επισύναψη αρχείου",
-      "attachFileImagesAudioVideoPdf": "Επισύναψη αρχείου (Εικόνες, Ήχος, Βίντεο, PDF)",
+      "attachFileImagesAudioVideoPdf": "Επισύναψη αρχείου (εικόνες, ήχος, βίντεο, PDF)",
       "recordVoiceMemo": "Ηχογράφηση φωνητικής σημείωσης",
       "recordVoiceMemo2": "Ηχογράφηση φωνητικής σημείωσης",
       "captureAnyway": "Καταγραφή παρ’ όλα αυτά",
@@ -479,7 +479,7 @@
       "remind": "Υπενθύμιση",
       "remindMe": "Υπενθύμιση",
       "pickDateTime": "Επιλογή ημερομηνίας και ώρας",
-      "addANoteOptional": "Προσθήκη σημείωσης (προαιρετικό)",
+      "addANoteOptional": "Προσθήκη σημείωσης (προαιρετική)",
       "backToPresets": "Επιστροφή στις προεπιλογές",
       "time": "Ώρα",
       "noteOptional": "Σημείωση (προαιρετική)",
@@ -496,7 +496,7 @@
       "snooze2": "Αναβολή",
       "pickDateTime": "Επιλογή ημερομηνίας και ώρας",
       "pickDateTime2": "Επιλογή ημερομηνίας και ώρας",
-      "selectWhenToBeRemindedAboutThisItem": "Επιλέξτε πότε θα σας υπενθυμίζεται αυτό το στοιχείο",
+      "selectWhenToBeRemindedAboutThisItem": "Επιλέξτε πότε θα σας υπενθυμιστεί αυτό το στοιχείο",
       "snooze3": "Αναβολή",
       "snooze4": "Αναβολή",
       "snooze5": "Αναβολή"
@@ -513,9 +513,9 @@
       "requestingMicrophoneAccess": "Αίτημα πρόσβασης στο μικρόφωνο…",
       "settings": "Ρυθμίσεις",
       "processing": "Επεξεργασία…",
-      "cancelRecording": "Ακύρωση εγγραφής",
+      "cancelRecording": "Ακύρωση ηχογράφησης",
       "cancel": "Ακύρωση",
-      "stopRecording": "Διακοπή εγγραφής",
+      "stopRecording": "Διακοπή ηχογράφησης",
       "stop": "Διακοπή",
       "recordingError": "Παρουσιάστηκε σφάλμα ηχογράφησης",
       "microphoneAccessDenied": "Η πρόσβαση στο μικρόφωνο απορρίφθηκε",

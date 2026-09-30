@@ -241,7 +241,7 @@
     "projectCreated": "Το έργο δημιουργήθηκε",
     "projectSaveError": "Αποτυχία αποθήκευσης έργου",
     "projectArchived": "Το έργο αρχειοθετήθηκε",
-    "projectArchiveError": "Απέτυχε η αρχειοθέτηση του έργου",
+    "projectArchiveError": "Αποτυχία αρχειοθέτησης έργου",
     "projectDeleted": "Το έργο διαγράφηκε",
     "projectDeleteError": "Αποτυχία διαγραφής έργου",
     "filtersCleared": "Τα φίλτρα εκκαθαρίστηκαν",
@@ -286,7 +286,7 @@
       "movedTo": "Μετακινήθηκε στο «{target}»",
       "moved": "{count, plural, one {Μετακινήθηκε στο «{target}»} other {# εργασίες μετακινήθηκαν στο «{target}»}}",
       "prioritySetTo": "Η προτεραιότητα ορίστηκε σε {priority}",
-      "prioritySet": "{count, plural, one {Η προτεραιότητα ορίστηκε σε {priority}} other {# εργασίες ορίστηκαν σε {priority}}}",
+      "prioritySet": "{count, plural, one {Η προτεραιότητα ορίστηκε σε {priority}} other {Η προτεραιότητα # εργασιών ορίστηκε σε {priority}}}",
       "deleted": "{count, plural, one {Η εργασία διαγράφηκε} other {# εργασίες διαγράφηκαν}}",
       "archived": "{count, plural, one {Η εργασία αρχειοθετήθηκε} other {# εργασίες αρχειοθετήθηκαν}}",
       "undoArchive": "{count, plural, one {Αρχειοθετήθηκε # εργασία} other {Αρχειοθετήθηκαν # εργασίες}}"
@@ -302,7 +302,7 @@
       "completed": "{count, plural, one {# υποεργασία ολοκληρώθηκε} other {# υποεργασίες ολοκληρώθηκαν}}",
       "markedIncomplete": "{count, plural, one {# υποεργασία σημειώθηκε ως μη ολοκληρωμένη} other {# υποεργασίες σημειώθηκαν ως μη ολοκληρωμένες}}",
       "dueDateSet": "{count, plural, one {Ορίστηκε ημερομηνία λήξης για # υποεργασία} other {Ορίστηκε ημερομηνία λήξης για # υποεργασίες}}",
-      "dueDateCleared": "{count, plural, one {Η ημερομηνία λήξης εκκαθαρίστηκε για # υποεργασία} other {Η ημερομηνία λήξης εκκαθαρίστηκε για # υποεργασίες}}",
+      "dueDateCleared": "{count, plural, one {Η ημερομηνία λήξης αφαιρέθηκε από # υποεργασία} other {Η ημερομηνία λήξης αφαιρέθηκε από # υποεργασίες}}",
       "prioritySet": "{count, plural, one {Ορίστηκε προτεραιότητα για # υποεργασία} other {Ορίστηκε προτεραιότητα για # υποεργασίες}}",
       "deleted": "{count, plural, one {# υποεργασία διαγράφηκε} other {# υποεργασίες διαγράφηκαν}}"
     }
@@ -474,19 +474,19 @@
       "delete": "Διαγραφή"
     },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
-      "duplicateTask": "Αντιγραφή εργασίας",
+      "duplicateTask": "Δημιουργία αντιγράφου εργασίας",
       "createACopyOf": "Δημιουργία αντιγράφου του «",
       "alsoDuplicateSubtasks": "Αντιγραφή και των υποεργασιών (",
       "cancel": "Ακύρωση",
-      "duplicate": "Αντιγραφή ",
+      "duplicate": "Δημιουργία αντιγράφου ",
       "createACopyOfTitle": "Δημιουργία αντιγράφου του «{title}»",
       "alsoDuplicateSubtasksCount": "Αντιγραφή και των υποεργασιών ({count})",
-      "duplicateWithItems": "Αντιγραφή ({count, plural, one {# στοιχείο} other {# στοιχεία}})",
-      "duplicateTaskOnly": "Αντιγραφή εργασίας"
+      "duplicateWithItems": "Δημιουργία αντιγράφου ({count, plural, one {# στοιχείο} other {# στοιχεία}})",
+      "duplicateTaskOnly": "Δημιουργία αντιγράφου εργασίας"
     },
     "componentsTasksDialogsParentPickerDialog": {
       "makeSubtaskOf": "Μετατροπή σε υποεργασία…",
-      "selectATaskToMake": "Επιλέξτε μια εργασία για να γίνει η \"",
+      "selectATaskToMake": "Επιλέξτε μια εργασία για να γίνει το \"",
       "aSubtaskOf": "υποεργασία της.",
       "searchTasks": "Αναζήτηση εργασιών…",
       "sameProject": "Ίδιο έργο",
@@ -621,7 +621,7 @@
       "priority": "Προτεραιότητα"
     },
     "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "Φιλτράρισμα ανά έργο",
+      "filterByProject": "Φιλτράρισμα κατά έργο",
       "project": "Έργο",
       "allProjects": "Όλα τα έργα",
       "clear": "Εκκαθάριση"
@@ -644,7 +644,7 @@
       "summaryDue": "Λήξη: {value}",
       "summaryDueRange": "Λήξη: {start} - {end}",
       "summaryRepeatRepeating": "Επανάληψη: Μόνο επαναλαμβανόμενες",
-      "summaryRepeatOneTime": "Επανάληψη: Μόνο εφάπαξ",
+      "summaryRepeatOneTime": "Επανάληψη: Μόνο μίας φοράς",
       "summaryTimeWith": "Ώρα: Με ώρα",
       "summaryTimeWithout": "Ώρα: Χωρίς ώρα",
       "nameRequired": "Εισαγάγετε ένα όνομα για αυτό το φίλτρο"
@@ -652,7 +652,7 @@
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Αποθηκευμένα φίλτρα",
       "saved": "Αποθηκευμένα",
-      "noSavedFiltersYet": "Δεν υπάρχουν ακόμα αποθηκευμένα φίλτρα",
+      "noSavedFiltersYet": "Δεν υπάρχουν ακόμη αποθηκευμένα φίλτρα",
       "saveCurrentFilters": "Αποθήκευση τρεχόντων φίλτρων",
       "saveCurrentFilters2": "Αποθήκευση τρεχόντων φίλτρων"
     },
@@ -749,7 +749,7 @@
     },
     "componentsTasksStopRepeatingDialog": {
       "stopRepeating": "Διακοπή επανάληψης",
-      "isSetToRepeat": "έχει οριστεί για επανάληψη ",
+      "isSetToRepeat": "έχει οριστεί να επαναλαμβάνεται ",
       "whatWouldYouLikeToDo": "Τι θέλετε να κάνετε;",
       "keepThisTaskStopFutureOccurrences": "Διατήρηση αυτής της εργασίας, διακοπή μελλοντικών επαναλήψεων",
       "taskWillBecomeAOneTimeTask": "Η εργασία θα γίνει εφάπαξ",
@@ -817,7 +817,7 @@
     },
     "componentsTasksUpcomingEmptyState": {
       "nothingScheduledForTheNext7Days": "Δεν έχει προγραμματιστεί τίποτα για τις επόμενες 7 ημέρες",
-      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Έχετε εκπρόθεσμες εργασίες παραπάνω. Σχεδιάστε από πριν προσθέτοντας εργασίες για την επόμενη εβδομάδα.",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Έχετε εκπρόθεσμες εργασίες παραπάνω. Προγραμματίστε από νωρίς προσθέτοντας εργασίες για την επόμενη εβδομάδα.",
       "addTask": "Προσθήκη εργασίας",
       "noUpcomingTasks": "Δεν υπάρχουν επερχόμενες εργασίες",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Οι εργασίες που πρέπει να γίνουν τις επόμενες 7 ημέρες θα εμφανιστούν εδώ. Προγραμματίστε την εβδομάδα σας προσθέτοντας κάποιες εργασίες.",
