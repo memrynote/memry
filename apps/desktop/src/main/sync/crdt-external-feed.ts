@@ -30,30 +30,31 @@ import { broadcastToAllWindows } from '../lib/window-broadcast'
 
 // Full fragment replace: lossy re Yjs history, but these edits round-trip
 // through markdown, which destroys that history anyway.
+//
+// Resolves true when the markdown is now the doc's body.
 export async function feedExternalEditToCrdt(
   noteId: string,
   markdownContent: string
-): Promise<void> {
+): Promise<boolean> {
   const provider = getCrdtProvider()
 
-  const feed = async (): Promise<void> => {
+  const feed = async (): Promise<boolean> => {
     if (wasRecentNetworkUpdate(noteId)) {
       broadcastToAllWindows('sync:concurrent-edit', { noteId })
     }
 
-    await replaceNoteBodyInCrdt(noteId, markdownContent)
+    return replaceNoteBodyInCrdt(noteId, markdownContent)
   }
 
   if (provider.getDoc(noteId)) {
-    await feed()
-    return
+    return feed()
   }
 
   const doc = await provider.open(noteId, undefined, { skipSeed: true })
   try {
-    if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) return
+    if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) return false
 
-    await feed()
+    return await feed()
   } finally {
     // Only if it is still editor-less: the renderer may have opened the note
     // while the replace was in flight, and that doc belongs to the editor now.
