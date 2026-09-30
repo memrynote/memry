@@ -136,7 +136,7 @@
       "unsupported": "Verpakte builds kunnen updates van GitHub-releases controleren, downloaden en installeren",
       "available": "memrynote {version} kan worden gedownload",
       "downloadingLatest": "De nieuwste versie downloaden",
-      "downloadingLatestPercent": "De nieuwste release downloaden ({percent}%)",
+      "downloadingLatestPercent": "De nieuwste versie downloaden ({percent}%)",
       "downloaded": "memrynote {version} is klaar om te installeren",
       "upToDate": "Je gebruikt de nieuwste gepubliceerde versie",
       "checking": "GitHub-releases controleren op een nieuwere versie",
@@ -193,18 +193,14 @@
         "MM/DD/YYYY": "MM/DD/YYYY (VS)",
         "DD/MM/YYYY": "DD/MM/YYYY",
         "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
-        "DD": {
-          "MM": {
-            "YYYY": "DD.MM.YYYY"
-          }
-        }
+        "DD.MM.YYYY": "DD.MM.YYYY"
       },
-      "error": "Kan datumnotatie niet bijwerken"
+      "error": "Kan de datumnotatie niet bijwerken"
     },
     "tabs": {
       "openPagesInNewTab": {
         "label": "Pagina’s openen in een nieuw tabblad",
-        "description": "Als je op een pagina klikt of er een maakt (notities, mappen, projecten, canvassen, tags, bladwijzers), wordt die in een nieuw tabblad geopend. Als dit uit staat, wordt het huidige tabblad hergebruikt, ook wanneer je links in een notitie volgt; vastgezette tabbladen worden nooit vervangen. “Openen in nieuw tabblad”, “Openen aan de zijkant” en middelklikken openen altijd een nieuw tabblad."
+        "description": "Als je op een pagina klikt of er een maakt (notities, mappen, projecten, canvassen, tags, bladwijzers), wordt die in een nieuw tabblad geopend. Als dit uit staat, wordt het huidige tabblad hergebruikt, ook wanneer je links in een notitie volgt; vastgezette tabbladen worden nooit vervangen. “Openen in nieuw tabblad”, “Openen aan de zijkant” en klikken met de middelste muisknop openen altijd een nieuw tabblad."
       },
       "restoreSession": {
         "label": "Tabbladen herstellen bij starten",
@@ -261,8 +257,8 @@
         "sending": "Versturen…",
         "notNow": "Niet nu",
         "sent": "Rapport verstuurd – referentie {incidentId}",
-        "previewError": "Kan het diagnostisch rapport niet voorbereiden",
-        "error": "Kan het diagnostisch rapport niet versturen",
+        "previewError": "Kan het diagnostische rapport niet voorbereiden",
+        "error": "Kan het diagnostische rapport niet versturen",
         "sendReport": {
           "label": "Diagnostisch rapport",
           "description": "Verstuur eenmalig een rapport met geanonimiseerde technische logs, zodat we het probleem dat je tegenkwam kunnen onderzoeken.",
@@ -338,7 +334,7 @@
       "forLight": "Voor lichte modus",
       "forDark": "Voor donkere modus",
       "reset": "Kleur van het thema gebruiken",
-      "pick": "Kies een kleur"
+      "pick": "Kleur kiezen"
     },
     "advanced": {
       "title": "Geavanceerd",
@@ -480,7 +476,7 @@
     },
     "toasts": {
       "deleted": "Sjabloon verwijderd",
-      "deleteFailed": "Kan sjabloon niet verwijderen",
+      "deleteFailed": "Kan het sjabloon niet verwijderen",
       "duplicated": "Sjabloon gedupliceerd",
       "duplicateFailed": "Kan het sjabloon niet dupliceren"
     },
@@ -618,7 +614,7 @@
         "tomorrow": "Morgen",
         "next7": "Komende 7 dagen"
       },
-      "error": "Kan standaardweergave niet bijwerken"
+      "error": "Kan de standaardweergave niet bijwerken"
     },
     "staleInbox": {
       "label": "Drempel voor verouderde inboxitems",
@@ -689,7 +685,7 @@
         "sunday": "Zondag",
         "monday": "Maandag"
       },
-      "error": "Kan begin van de week niet bijwerken"
+      "error": "Kan het begin van de week niet bijwerken"
     },
     "defaultBehavior": {
       "label": "Standaardgedrag",
@@ -730,16 +726,16 @@
       "connectFailed": "Kan geen verbinding maken met Google Calendar",
       "refreshFailed": "Kan Google Calendar niet vernieuwen",
       "disconnectFailed": "Kan de verbinding met Google Calendar niet verbreken",
-      "retryFailed": "Kan agendasynchronisatie niet opnieuw proberen",
+      "retryFailed": "Kan de agendasynchronisatie niet opnieuw proberen",
       "pushToGoogle": {
         "label": "memrynote-afspraken tonen in Google Calendar",
         "description": "Zet dit uit voor synchronisatie in één richting: je ziet je Google-afspraken nog in memrynote, maar memrynote-afspraken verschijnen niet in Google.",
-        "error": "Kan synchronisatierichting niet bijwerken"
+        "error": "Kan de synchronisatierichting niet bijwerken"
       },
       "agentAccess": {
         "label": "AI afspraken in Google Calendar laten lezen",
         "description": "Staat standaard uit. Zet je dit aan, dan kan de AI-agent je Google-afspraken lezen; zet je het uit, dan krijgt de agent niets terug als ernaar gevraagd wordt. In memrynote blijf je ze hoe dan ook zien.",
-        "error": "Kan AI-toegang niet bijwerken"
+        "error": "Kan de AI-toegang niet bijwerken"
       },
       "connect": "Verbinden",
       "sourcePicker": {
@@ -851,7 +847,7 @@
       "agentAccess": {
         "label": "AI deze afspraken laten lezen",
         "description": "Staat uit tot je het aanzet. Elke agendadienst heeft een eigen instelling; toegang voor Google geeft geen toegang tot deze dienst.",
-        "error": "Kan AI-toegang niet bijwerken"
+        "error": "Kan de AI-toegang niet bijwerken"
       },
       "basic": {
         "serverLabel": "Serveradres",
@@ -910,7 +906,7 @@
       "hostPlaceholder": "cloud.example.com",
       "appleIdLabel": "Apple ID (e-mailadres)",
       "icloudHelp": "Gebruik een app-specifiek wachtwoord, niet het wachtwoord van je Apple ID. Maak er een aan onder Inloggen en beveiliging → App-specifieke wachtwoorden.",
-      "appPasswordHelp": "Als je dienst app-wachtwoorden aanbiedt, maak er dan een aan voor memrynote en gebruik het hier.",
+      "appPasswordHelp": "Als je dienst app-wachtwoorden aanbiedt, maak er dan een aan voor memrynote en gebruik dat hier.",
       "createAppPassword": "App-wachtwoord maken",
       "testConnection": "Verbinding testen",
       "testing": "Testen…",
@@ -929,7 +925,7 @@
       "reconnect": {
         "missing": "Dit apparaat heeft het app-wachtwoord voor dit account nog niet. De afspraken komen nog steeds binnen via je andere apparaten; voer het app-wachtwoord hier in om ook vanaf dit apparaat te synchroniseren.",
         "icloudRevoked": "iCloud accepteert dit app-specifieke wachtwoord niet meer. Als je het wachtwoord van je Apple ID opnieuw instelt, worden alle app-specifieke wachtwoorden ingetrokken. Maak een nieuw wachtwoord aan op account.apple.com en maak opnieuw verbinding.",
-        "rejected": "De server accepteert dit wachtwoord niet meer. Als je het hebt gewijzigd of het app-wachtwoord hebt ingetrokken, maak dan een nieuw aan en maak opnieuw verbinding."
+        "rejected": "De server accepteert dit wachtwoord niet meer. Als je het hebt gewijzigd of het app-wachtwoord hebt ingetrokken, maak er dan een nieuw aan en maak opnieuw verbinding."
       }
     },
     "v2": {
@@ -995,7 +991,7 @@
         "guarantee": "Geld-terug-garantie van 14 dagen. Je kunt op elk moment opzeggen."
       },
       "activating": {
-        "title": "Je activering afronden",
+        "title": "Je activering wordt afgerond",
         "description": "Je abonnement is actief. Synchronisatie start zodra we het hebben bevestigd – meestal helpt vernieuwen."
       }
     },
@@ -1043,13 +1039,13 @@
         "manage": "Facturering beheren"
       },
       "toasts": {
-        "loadFailed": "Kan factureringsstatus niet laden",
+        "loadFailed": "Kan de factureringsstatus niet laden",
         "checkoutFailed": "Kan het afrekenen niet starten",
-        "checkoutOpened": "Afrekenen geopend in je browser",
-        "refreshFailed": "Kan factureringsstatus niet vernieuwen",
+        "checkoutOpened": "Betaalpagina geopend in je browser",
+        "refreshFailed": "Kan de factureringsstatus niet vernieuwen",
         "billingActive": "Facturering is actief",
         "activationPending": "Activering in behandeling",
-        "portalFailed": "Kan factureringsportaal niet openen"
+        "portalFailed": "Kan het factureringsportaal niet openen"
       }
     },
     "storage": {
@@ -1105,13 +1101,13 @@
       "paidPlan": "Synchronisatie vereist een betaald abonnement.",
       "seePlans": "Abonnementen bekijken",
       "errors": {
-        "sendCode": "Kan code niet verzenden",
+        "sendCode": "Kan de code niet verzenden",
         "googleStart": "Kan inloggen met Google niet starten"
       }
     },
     "email": {
       "label": "E-mailadres",
-      "placeholder": "Voer je e-mailadres in…",
+      "placeholder": "E-mailadres invoeren…",
       "invalid": "Voer een geldig e-mailadres in",
       "sending": "Code verzenden…"
     },
@@ -1125,7 +1121,7 @@
       "verifying": "Verifiëren…",
       "resending": "Opnieuw verzenden…",
       "resend": "Code opnieuw verzenden",
-      "resendIn": "Opnieuw verzenden in {time}",
+      "resendIn": "Opnieuw verzenden over {time}",
       "differentEmail": "Ander e-mailadres gebruiken",
       "error": "Verificatie mislukt",
       "resendError": "Opnieuw verzenden mislukt"
@@ -1193,7 +1189,7 @@
       "linking": "Koppelen…",
       "linkDevice": "Apparaat koppelen",
       "failed": "Het koppelen is mislukt",
-      "deviceFailed": "Kan apparaat niet koppelen",
+      "deviceFailed": "Kan het apparaat niet koppelen",
       "pendingSuccess": "Apparaat gekoppeld",
       "goBack": "Terug",
       "waitingTitle": "Wachten op goedkeuring",
@@ -1206,7 +1202,7 @@
       "vaultPickerChooseFolder": "Map kiezen",
       "vaultRow": "Kluis – {count} items · {date}",
       "vaultPickerPrimaryHint": "Opent nu",
-      "vaultPickerDormantHint": "Toegevoegd, opent wanneer je erheen schakelt",
+      "vaultPickerDormantHint": "Toegevoegd, opent wanneer je ernaar overschakelt",
       "vaultPickerConfirm": "Selectie ophalen"
     }
   },
@@ -1235,9 +1231,9 @@
       "renaming": "Naam wijzigen…"
     },
     "toasts": {
-      "loadFailed": "Kan apparaten niet laden",
+      "loadFailed": "Kan de apparaten niet laden",
       "removed": "“{name}” verwijderd",
-      "removeFailed": "Kan apparaat niet verwijderen",
+      "removeFailed": "Kan het apparaat niet verwijderen",
       "renamed": "Naam gewijzigd in “{name}”",
       "renameFailed": "Kan de naam van het apparaat niet wijzigen"
     },
@@ -1249,13 +1245,13 @@
     "encrypted": "End-to-end versleuteld",
     "generating": "Koppelcode genereren…",
     "generatingAria": "Koppelcode genereren",
-    "generateFailed": "Kan koppelcode niet genereren",
+    "generateFailed": "Kan de koppelcode niet genereren",
     "tryAgain": "Opnieuw proberen",
     "expired": "Koppelcode verlopen",
     "generateNew": "Nieuwe code genereren",
     "qrAria": "QR-code voor het koppelen van apparaten",
     "qrImageAria": "QR-code voor apparaatkoppeling",
-    "expiresIn": "Verloopt in {time}",
+    "expiresIn": "Verloopt over {time}",
     "or": "of",
     "codeLabel": "Koppelcode",
     "copyAria": "Koppelcode kopiëren",
@@ -1311,7 +1307,7 @@
         "timestamp": "Tijdstempel",
         "none": "Niet hernoemen"
       },
-      "namingError": "Kan naamgeving van spraakmemo niet bijwerken",
+      "namingError": "Kan de naamgeving van spraakmemo’s niet bijwerken",
       "localModel": "Lokaal model",
       "localModelDescription": "Whisper Small wordt gedownload wanneer nodig en blijft lokaal in de cache",
       "status": {
@@ -1333,7 +1329,7 @@
       "downloadedToast": "Whisper Small gedownload",
       "downloadError": "Kan Whisper Small niet downloaden",
       "keySavedToast": "OpenAI-sleutel opgeslagen",
-      "keySaveError": "Kan OpenAI-sleutel niet opslaan"
+      "keySaveError": "Kan de OpenAI-sleutel niet opslaan"
     },
     "embedding": {
       "loaded": "Geladen",
@@ -1353,17 +1349,17 @@
       "generating": "Embeddings genereren…",
       "complete": "Klaar!",
       "reindexed": "Embeddings opnieuw geïndexeerd: {computed} berekend, {skipped} overgeslagen",
-      "reindexFailed": "Kan embeddings niet opnieuw indexeren"
+      "reindexFailed": "Kan de embeddings niet opnieuw indexeren"
     },
     "inline": {
       "loading": "Laden…",
       "title": "Inline AI-bewerking",
       "enable": "Inline AI inschakelen",
-      "enableDescription": "Toon AI-menu bij het bewerken van notities",
+      "enableDescription": "Toon het AI-menu bij het bewerken van notities",
       "enabled": "Inline AI-bewerking ingeschakeld",
       "disabled": "Inline AI-bewerking uitgeschakeld",
       "provider": "Aanbieder",
-      "providerDescription": "AI-service voor tekstbewerkingen",
+      "providerDescription": "AI-dienst voor tekstbewerkingen",
       "providers": {
         "ollama": "Ollama (lokaal)",
         "openai": "OpenAI",
@@ -1382,7 +1378,7 @@
       "activePort": "Actief op poort {port}",
       "notConnected": "Niet verbonden",
       "test": "Testen",
-      "stopFailed": "Kan bestaande server niet stoppen",
+      "stopFailed": "Kan de bestaande server niet stoppen",
       "connected": "Verbonden! Server draait op poort {port}",
       "connectFailed": "Kan geen verbinding maken",
       "testFailed": "Verbindingstest mislukt",
@@ -1495,7 +1491,7 @@
       "chooseDirectory": "Map kiezen…",
       "folderKeepsAssets": "Kies de map wanneer afbeeldingen buiten de eigen map van de notities staan – exports bewaren media vaak in een gedeelde map.",
       "chooseHint": "Selecteer je {label}",
-      "folderHint": "Klik hieronder en selecteer de map “group.com.apple.notes” wanneer de kiezer opent (die begint daar). Zo kan Memry je notities en bijlagen lezen – Volledige schijftoegang is niet nodig.",
+      "folderHint": "Klik hieronder en selecteer de map “group.com.apple.notes” zodra het venster verschijnt (die map staat dan al open). Zo kan Memry je notities en bijlagen lezen – Volledige schijftoegang is niet nodig.",
       "noteplanFolderHint": "Kies je NotePlan-map – de gegevensmap van de app of een van de kopieën in Backups. Memry leest de mappen Calendar, Notes en @Archive daarin.",
       "selected": "{count, plural, one {# bestand geselecteerd} other {# bestanden geselecteerd}}",
       "start": "Import starten",
@@ -1626,7 +1622,7 @@
       "deleteTitle": "“{name}” uit je account verwijderen?",
       "deleteBody": "Hiermee worden alle gesynchroniseerde gegevens van deze kluis definitief van de servers van Memry verwijderd; dit kan niet ongedaan worden gemaakt. Je bestanden op schijf worden niet verwijderd.",
       "deleteConfirm": "Uit account verwijderen",
-      "deleteFailed": "Kan kluis niet verwijderen",
+      "deleteFailed": "Kan de kluis niet verwijderen",
       "activeHint": "Schakel over naar een andere kluis om deze te verwijderen.",
       "unsyncedTitle": "Deze kluis wordt niet gesynchroniseerd",
       "unsyncedBodyOne": "De kluis die op dit apparaat open is, staat niet in je account en wordt daarom niet gesynchroniseerd. De kluis in je account is “{name}” – open die hier om weer te synchroniseren.",
@@ -1674,8 +1670,8 @@
       "empty": "Nog niets geregistreerd. Bestanden die je aan de kluismap toevoegt, imports en alles wat Memry overslaat, verschijnen hier.",
       "emptyProblems": "Er is niets overgeslagen en niets mislukt.",
       "unavailable": "Open een kluis om de activiteit ervan te zien.",
-      "loadFailed": "Kan kluisactiviteit niet laden",
-      "actionFailed": "Kan kluisactiviteit niet bijwerken",
+      "loadFailed": "Kan de kluisactiviteit niet laden",
+      "actionFailed": "Kan de kluisactiviteit niet bijwerken",
       "showItems": "{count, plural, one {# item tonen} other {# items tonen}}",
       "toastAction": "Details",
       "entry": {
@@ -1683,7 +1679,7 @@
         "removed": "{path} verwijderd",
         "renamed": "{oldPath} hernoemd naar {path}",
         "skipped": "{path} overgeslagen",
-        "skippedUnsupported": "Memry opent geen bestanden van het type {ext}, dus het bestand is gelaten zoals het was.",
+        "skippedUnsupported": "Memry opent geen bestanden van het type {ext}; het bestand is ongewijzigd gelaten.",
         "readFailed": "Kan {path} niet lezen",
         "indexFailed": "Kan {path} niet toevoegen",
         "copyFailed": "Kan {path} niet naar de kluis kopiëren",
@@ -1727,7 +1723,7 @@
         "merge": "Samenvoegen met “{name}”",
         "mergeUnnamed": "Samenvoegen met de kluis van je account",
         "keepLocal": "Op dit apparaat houden",
-        "failed": "Kan niet bijwerken hoe deze kluis synchroniseert"
+        "failed": "Kan de synchronisatie-instelling van deze kluis niet bijwerken"
       },
       "status": {
         "localOnly": "Deze kluis blijft op dit apparaat en wordt niet gesynchroniseerd.",
@@ -1767,13 +1763,13 @@
     "toasts": {
       "renamed": "“{oldName}” hernoemd naar “{newName}”",
       "renameFailed": "Kan de naam van de tag niet wijzigen",
-      "deleteFailed": "Kan tag niet verwijderen",
+      "deleteFailed": "Kan de tag niet verwijderen",
       "deleted": "“{name}” verwijderd uit {count, plural, one {# item} other {# items}}",
-      "mergeFailed": "Kan tags niet samenvoegen",
+      "mergeFailed": "Kan de tags niet samenvoegen",
       "merged": "“{source}” samengevoegd met “{target}” ({count, plural, one {# item} other {# items}})",
       "colorUpdated": "Kleur bijgewerkt voor “{name}”",
       "colorFailed": "Kan de kleur niet bijwerken",
-      "iconFailed": "Kan pictogram niet bijwerken"
+      "iconFailed": "Kan het pictogram niet bijwerken"
     },
     "v2": {
       "actionsAria": "Acties voor {name}"
@@ -1821,7 +1817,7 @@
       "colorFailed": "Kan de kleur niet bijwerken",
       "deleteFailed": "Kan de eigenschap niet verwijderen",
       "deleted": "Eigenschap “{name}” verwijderd",
-      "addFailed": "Kan optie niet toevoegen"
+      "addFailed": "Kan de optie niet toevoegen"
     },
     "v2": {
       "actionsAria": "Acties voor {name}"
@@ -1845,12 +1841,12 @@
     "command": {
       "label": "memrynote-opdracht",
       "toggleLabel": "memrynote-opdracht installeren",
-      "descriptionInstalled": "Geïnstalleerd op {path}",
+      "descriptionInstalled": "Geïnstalleerd in {path}",
       "descriptionNotInstalled": "Installeer de memrynote-opdracht zodat je je kluis vanuit elke terminal kunt gebruiken."
     },
     "status": {
       "loading": "Opdrachtstatus controleren…",
-      "loadFailed": "Kan opdrachtstatus niet laden",
+      "loadFailed": "Kan de opdrachtstatus niet laden",
       "installedToast": "memrynote-opdracht geïnstalleerd",
       "uninstalledToast": "memrynote-opdracht verwijderd",
       "defaultVaultUpdatedToast": "Standaard CLI-kluis bijgewerkt"
@@ -1887,10 +1883,10 @@
     },
     "toasts": {
       "saveGlobalFailed": "Kan de sneltoets voor globaal vastleggen niet opslaan",
-      "saveFailed": "Kan sneltoets niet opslaan",
+      "saveFailed": "Kan de sneltoets niet opslaan",
       "resetFailed": "Kan de sneltoets niet terugzetten",
       "resetAllSuccess": "Alle sneltoetsen teruggezet naar de standaardwaarden",
-      "resetAllFailed": "Kan sneltoetsen niet terugzetten"
+      "resetAllFailed": "Kan de sneltoetsen niet terugzetten"
     },
     "categories": {
       "navigation": "Navigatie",
@@ -1922,7 +1918,7 @@
         },
         "search": {
           "label": "Zoeken",
-          "description": "Globaal zoeken openen"
+          "description": "Open de globale zoekfunctie"
         },
         "settings": {
           "label": "Instellingen openen",
@@ -1947,7 +1943,7 @@
           "description": "Sluit het huidige tabblad"
         },
         "next": {
-          "label": "Volgende tabblad",
+          "label": "Volgend tabblad",
           "description": "Ga naar het volgende tabblad"
         },
         "previous": {
@@ -1968,7 +1964,7 @@
         },
         "newTab": {
           "label": "Nieuw tabblad",
-          "description": "Menu voor nieuw tabblad openen"
+          "description": "Open het menu voor een nieuw tabblad"
         },
         "closeAll": {
           "label": "Alle tabbladen sluiten",
@@ -2091,7 +2087,7 @@
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Laatst gesynchroniseerd ",
-      "pending": "in afwachting",
+      "pending": "in wachtrij",
       "localOnly": "alleen lokaal",
       "detected": "gedetecteerd",
       "dismissConflicts": "Negeren",
@@ -2108,35 +2104,35 @@
     "errors": {
       "failedToUpdateTagColor": "Kan de tagkleur niet bijwerken",
       "googleSignInFailed": "Inloggen met Google mislukt",
-      "failedToSendVerificationCode": "Kan verificatiecode niet verzenden",
+      "failedToSendVerificationCode": "Kan de verificatiecode niet verzenden",
       "invalidVerificationCode": "Ongeldige verificatiecode",
       "accountSetupFailed": "Accountconfiguratie mislukt",
       "failedToResendCode": "Kan de code niet opnieuw verzenden",
-      "failedToSetUpDevice": "Kan apparaat niet instellen",
+      "failedToSetUpDevice": "Kan het apparaat niet instellen",
       "failedToConfirmRecoveryPhrase": "Kan de herstelzin niet bevestigen",
-      "failedToAnalyzeContent": "Kan inhoud niet analyseren",
+      "failedToAnalyzeContent": "Kan de inhoud niet analyseren",
       "failedToLoadUpdaterState": "Kan de updatestatus niet laden",
       "failedToCheckForUpdates": "Kan niet controleren op updates",
       "failedToDownloadUpdate": "Kan de update niet downloaden",
-      "failedToInstallUpdate": "Kan update niet installeren",
-      "failedToLoadEditorSettings": "Kan editorinstellingen niet laden",
+      "failedToInstallUpdate": "Kan de update niet installeren",
+      "failedToLoadEditorSettings": "Kan de editorinstellingen niet laden",
       "failedToUpdateEditorSettings": "Kan de editorinstellingen niet bijwerken",
-      "failedToLoadGeneralSettings": "Kan algemene instellingen niet laden",
+      "failedToLoadGeneralSettings": "Kan de algemene instellingen niet laden",
       "failedToUpdateGeneralSettings": "Kan de algemene instellingen niet bijwerken",
-      "failedToLoadKeyboardSettings": "Kan toetsenbordinstellingen niet laden",
-      "failedToUpdateKeyboardSettings": "Kan toetsenbordinstellingen niet bijwerken",
+      "failedToLoadKeyboardSettings": "Kan de toetsenbordinstellingen niet laden",
+      "failedToUpdateKeyboardSettings": "Kan de toetsenbordinstellingen niet bijwerken",
       "failedToResetKeyboardSettings": "Kan de toetsenbordinstellingen niet terugzetten",
       "failedToLoadNoteEditorSettings": "Kan de instellingen van de notitie-editor niet laden",
-      "failedToUpdateSettings": "Kan instellingen niet bijwerken",
-      "failedToLoadTabSettings": "Kan tabbladinstellingen niet laden",
-      "failedToLoadNotes": "Kan notities niet laden",
-      "failedToLoadTags": "Kan tags niet laden",
-      "failedToLoadTasks": "Kan taken niet laden",
+      "failedToUpdateSettings": "Kan de instellingen niet bijwerken",
+      "failedToLoadTabSettings": "Kan de tabbladinstellingen niet laden",
+      "failedToLoadNotes": "Kan de notities niet laden",
+      "failedToLoadTags": "Kan de tags niet laden",
+      "failedToLoadTasks": "Kan de taken niet laden",
       "failedToLoadVaultStatus": "Kan de kluisstatus niet laden",
-      "failedToSelectVault": "Kan kluis niet selecteren",
+      "failedToSelectVault": "Kan de kluis niet selecteren",
       "failedToCloseVault": "Kan de kluis niet sluiten",
       "failedToSwitchVault": "Kan niet van kluis wisselen",
-      "failedToUpdateConfig": "Kan configuratie niet bijwerken",
+      "failedToUpdateConfig": "Kan de configuratie niet bijwerken",
       "failedToReindex": "Opnieuw indexeren is mislukt"
     }
   },
@@ -2211,7 +2207,7 @@
       "group": "Agentmachtigingen",
       "access": {
         "label": "Standaardtoegang",
-        "description": "Bepaalt de begintoegangsmodus voor nieuwe agentbeurten.",
+        "description": "Bepaalt met welke toegang nieuwe agentbeurten starten.",
         "vaultOnly": "Alleen kluis",
         "computerAccess": "Computertoegang"
       },

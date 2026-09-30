@@ -15,7 +15,7 @@
     "link-title": "Enlaza tus notas",
     "link-description": "Usa [[enlaces wiki]] para conectar ideas entre notas",
     "discover-title": "Descubre patrones",
-    "discover-description": "A medida que crezcan las conexiones, los grupos y temas surgirán de forma natural."
+    "discover-description": "A medida que crezcan las conexiones, los grupos y temas surgirán de forma natural"
   },
   "entity": {
     "note": "nota",
@@ -103,14 +103,14 @@
     "pinned-to": "Fijado: {title}"
   },
   "edit": {
-    "linked": "Se enlazó {source} con {target} en «{property}»",
-    "unlinked": "Se quitó el enlace de {source} a {target}",
+    "linked": "Se ha enlazado {source} con {target} en «{property}»",
+    "unlinked": "Se ha quitado el enlace de {source} a {target}",
     "already-linked": "{source} ya enlaza con {target}",
-    "property-conflict": "«{property}» no es una propiedad de relación en esta nota, así que no se añadió el enlace",
+    "property-conflict": "«{property}» no es una propiedad de relación en esta nota, así que no se ha añadido el enlace",
     "link-unsupported": "Solo se pueden crear enlaces entre notas",
     "link-failed": "No se pudo añadir el enlace",
     "unlink-failed": "No se pudo quitar el enlace",
-    "tag-added": "Se añadió #{tag} a {note}",
+    "tag-added": "Se ha añadido #{tag} a {note}",
     "tag-exists": "Esta nota ya tiene #{tag}",
     "tag-failed": "No se pudo añadir la etiqueta",
     "undo-failed": "No se pudo deshacer el cambio"

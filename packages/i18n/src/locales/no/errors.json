@@ -2,14 +2,14 @@
   "generic": {
     "somethingWentWrong": "Noe gikk galt. Prøv igjen.",
     "operationFailed": "Operasjonen mislyktes",
-    "unknown": "Det oppstod en ukjent feil"
+    "unknown": "Det oppsto en ukjent feil"
   },
   "ipc": {
-    "noVaultOpen": "Ingen hvelv er åpent. Åpne et hvelv først."
+    "noVaultOpen": "Det er ikke noe hvelv åpent. Åpne et hvelv først."
   },
   "vault": {
     "notFound": "Finner ikke hvelvet. Det kan ha blitt flyttet eller slettet.",
-    "notInitialized": "Ingen hvelv er åpent. Åpne eller opprett et hvelv for å fortsette.",
+    "notInitialized": "Det er ikke noe hvelv åpent. Åpne eller opprett et hvelv for å fortsette.",
     "invalidPath": "Den valgte banen er ikke en gyldig hvelvplassering.",
     "permissionDenied": "Tillatelse nektet. Sjekk at du har tilgang til denne mappen.",
     "alreadyExists": "Det finnes allerede et hvelv på dette stedet.",
@@ -46,7 +46,7 @@
     "corrupted": "Den lokale databasen er ødelagt. Du må kanskje tilbakestille den."
   },
   "watcher": {
-    "startFailed": "Kunne ikke begynne å se etter filendringer.",
+    "startFailed": "Kunne ikke starte overvåkingen av filendringer.",
     "stopFailed": "Kunne ikke stoppe filovervåkingen.",
     "eventError": "Det oppsto en feil under overvåkingen av filendringer."
   },
@@ -97,7 +97,7 @@
     "certificatePinFailed": "Sikker tilkobling mislyktes. Sjekk nettverkstilkoblingen.",
     "deviceKeyMismatch": "Sikkerhetsnøkkelen til denne enheten samsvarer ikke lenger med den som er registrert for kontoen din, så serveren avviser endringene fra den. Logg på igjen på denne enheten for å registrere den på nytt.",
     "keychainUnavailable": "Synkroniseringen er satt på pause fordi Memry ikke får lest synkroniseringsnøklene fra nøkkelringen i systemet akkurat nå. Lås opp nøkkelringen, så fortsetter synkroniseringen av seg selv. Hvis ikke, start Memry på nytt. Ingenting ble slettet.",
-    "unknown": "Det oppstod en uventet synkroniseringsfeil. Prøver igjen automatisk.",
+    "unknown": "Det oppsto en uventet synkroniseringsfeil. Prøver igjen automatisk.",
     "statusFetchFailed": "Kunne ikke hente synkroniseringsstatus",
     "engineNotInitialized": "Synkroniseringsmotoren er ikke initialisert. Åpne et hvelv for å starte synkronisering.",
     "triggerFailed": "Synkronisering mislyktes",
@@ -106,7 +106,7 @@
     "settingsNotInitialized": "Innstillingssynkronisering er ikke initialisert",
     "securityQuarantinePermanent": "Et synkroniseringselement kunne ikke bekreftes og har blitt satt i karantene for sikkerhets skyld.",
     "securityQuarantineRetry": "Et synkroniseringselement besto ikke signaturkontrollen og blir forsøkt på nytt.",
-    "certificatePinPaused": "Sikker tilkobling til synkroniseringsserver kunne ikke bekreftes. Synkroniseringen er satt på pause for å beskytte deg.",
+    "certificatePinPaused": "Den sikre tilkoblingen til synkroniseringsserveren kunne ikke bekreftes. Synkroniseringen er satt på pause for å beskytte deg.",
     "vaultRecovered": "Hvelvnøkkelen er gjenopprettet. Synkroniseringen fortsetter.",
     "serverUnreachable": "Kan ikke koble til synkroniseringsserveren. Sjekk internettforbindelsen din.",
     "keyPersistenceFailed": "Kunne ikke lagre krypteringsnøkkelen sikkert. Enhetsregistreringen er rullet tilbake. Prøv igjen.",
@@ -118,12 +118,12 @@
     "connectFailed": "Kunne ikke koble til Google Calendar. Prøv igjen om litt.",
     "reconnectNeeded": "Tilkoblingen til Google Calendar er utløpt. Koble fra og koble til igjen.",
     "misconfigured": "Google Calendar er ikke satt opp riktig. Kontakt kundestøtte hvis dette fortsetter.",
-    "scopeMissing": "Vi fikk ikke tilgang til Google Calendar fordi kalendertillatelsen ikke ble gitt. Prøv igjen, og pass på at avkrysningsboksen for Kalender forblir markert i Googles samtykkeskjerm.",
+    "scopeMissing": "Vi fikk ikke tilgang til Google Calendar fordi kalendertillatelsen ikke ble gitt. Prøv igjen, og pass på at avkrysningsboksen for Kalender forblir markert på Googles samtykkeskjerm.",
     "accessDenied": "Tilgangen til Google Calendar ble avslått. Du kan koble til igjen når du er klar.",
     "temporarilyUnavailable": "Google Calendar er midlertidig utilgjengelig. Prøv igjen om kort tid."
   },
   "agent": {
-    "runtimeStarting": "Agentkjøretiden starter. Prøv igjen.",
+    "runtimeStarting": "Agentens kjøremiljø starter. Prøv igjen.",
     "conversationBusy": "Samtalen er opptatt"
   },
   "ai": {

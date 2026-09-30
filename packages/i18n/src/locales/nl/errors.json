@@ -33,9 +33,9 @@
     "exportHtmlFailed": "Kan niet naar HTML exporteren",
     "restoreVersionFailed": "Kan de versie niet herstellen",
     "deleteVersionFailed": "Kan de versie niet verwijderen",
-    "reorderFailed": "Kan de notities niet herordenen",
+    "reorderFailed": "Kan de volgorde van de notities niet wijzigen",
     "importFilesFailed": "Kan de bestanden niet importeren",
-    "setLocalOnlyFailed": "Kan alleen-lokaal niet instellen"
+    "setLocalOnlyFailed": "Kan de notitie niet op alleen lokaal instellen"
   },
   "database": {
     "connectionFailed": "Kan geen verbinding maken met de lokale database. Probeer de app opnieuw te starten.",
@@ -101,7 +101,7 @@
     "statusFetchFailed": "Kan de synchronisatiestatus niet ophalen",
     "engineNotInitialized": "Synchronisatie-engine niet geïnitialiseerd. Open een kluis om de synchronisatie te starten.",
     "triggerFailed": "Synchronisatie mislukt",
-    "pauseFailed": "Kan de synchronisatie niet onderbreken",
+    "pauseFailed": "Kan de synchronisatie niet pauzeren",
     "resumeFailed": "Kan de synchronisatie niet hervatten",
     "settingsNotInitialized": "Synchronisatie van instellingen is niet geïnitialiseerd",
     "securityQuarantinePermanent": "Een synchronisatie-item kan niet worden geverifieerd en is om veiligheidsredenen in quarantaine geplaatst.",
@@ -217,7 +217,7 @@
     "updateFailed": "Kan het project niet bijwerken",
     "deleteFailed": "Kan het project niet verwijderen",
     "archiveFailed": "Kan het project niet archiveren",
-    "reorderFailed": "Kan de projecten niet herordenen",
+    "reorderFailed": "Kan de volgorde van de projecten niet wijzigen",
     "linkItemFailed": "Kan het item niet koppelen",
     "unlinkItemFailed": "Kan de koppeling met het item niet verwijderen",
     "captureLinkFailed": "Kan de link niet vastleggen",
@@ -270,7 +270,7 @@
     "deleteFailed": "Kan de tag niet verwijderen",
     "removeFromNoteFailed": "Kan de tag niet van de notitie verwijderen",
     "mergeFailed": "Kan de tags niet samenvoegen",
-    "reorderFailed": "Kan de tags niet herordenen",
+    "reorderFailed": "Kan de volgorde van de tags niet wijzigen",
     "listCategoriesFailed": "Kan de tagcategorieën niet ophalen",
     "createCategoryFailed": "Kan de tagcategorie niet maken",
     "renameCategoryFailed": "Kan de naam van de tagcategorie niet wijzigen",
@@ -285,7 +285,7 @@
     "archiveFailed": "Kan de taak niet archiveren",
     "unarchiveFailed": "Kan de taak niet uit het archief halen",
     "moveFailed": "Kan de taak niet verplaatsen",
-    "reorderFailed": "Kan de taken niet herordenen",
+    "reorderFailed": "Kan de volgorde van de taken niet wijzigen",
     "duplicateFailed": "Kan de taak niet dupliceren",
     "convertToSubtaskFailed": "Kan niet omzetten naar subtaak",
     "convertToTaskFailed": "Kan niet omzetten naar taak",
@@ -299,7 +299,7 @@
     "createFailed": "Kan de status niet maken",
     "updateFailed": "Kan de status niet bijwerken",
     "deleteFailed": "Kan de status niet verwijderen",
-    "reorderFailed": "Kan de statussen niet herordenen"
+    "reorderFailed": "Kan de volgorde van de statussen niet wijzigen"
   },
   "template": {
     "createFailed": "Kan het sjabloon niet maken",

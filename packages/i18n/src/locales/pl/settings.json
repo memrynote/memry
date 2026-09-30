@@ -87,7 +87,7 @@
       },
       "graph": {
         "label": "Graf",
-        "description": "Powiązania notatek"
+        "description": "Połączenia między notatkami"
       },
       "spatialCanvas": {
         "label": "Kanwa",
@@ -102,7 +102,7 @@
       "loading": "Ładowanie ustawień…"
     },
     "groups": {
-      "startup": "Uruchomienie",
+      "startup": "Uruchamianie",
       "updates": "Aktualizacje",
       "languageRegion": "Język i region",
       "tabBehavior": "Zachowanie kart",
@@ -184,7 +184,7 @@
         "12h": "12-godzinny",
         "24h": "24-godzinny"
       },
-      "error": "Nie udało się zaktualizować formatu godziny"
+      "error": "Nie udało się zaktualizować formatu czasu"
     },
     "dateFormat": {
       "label": "Format daty",
@@ -193,18 +193,14 @@
         "MM/DD/YYYY": "MM/DD/YYYY (US)",
         "DD/MM/YYYY": "DD/MM/YYYY",
         "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
-        "DD": {
-          "MM": {
-            "YYYY": "DD.MM.YYYY"
-          }
-        }
+        "DD.MM.YYYY": "DD.MM.YYYY"
       },
       "error": "Nie udało się zaktualizować formatu daty"
     },
     "tabs": {
       "openPagesInNewTab": {
         "label": "Otwieraj strony w nowej karcie",
-        "description": "Kliknięcie lub utworzenie strony – notatki, folderu, projektu, kanwy, tagu, zakładki – otwiera ją w nowej karcie. Gdy opcja jest wyłączona, używana jest bieżąca karta, także po kliknięciu linku w notatce; przypięte karty nigdy nie są zastępowane. „Otwórz w nowej karcie”, „Otwórz z boku” i kliknięcie środkowym przyciskiem zawsze otwierają nową kartę."
+        "description": "Kliknięcie lub utworzenie strony – notatki, folderu, projektu, kanwy, tagu, zakładki – otwiera ją w nowej karcie. Gdy opcja jest wyłączona, używana jest bieżąca karta, także po kliknięciu linku w notatce; przypięte karty nigdy nie są zastępowane. „Otwórz w nowej karcie”, „Otwórz obok” i kliknięcie środkowym przyciskiem zawsze otwierają nową kartę."
       },
       "restoreSession": {
         "label": "Przywracaj karty przy uruchomieniu",
@@ -230,11 +226,11 @@
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Utwórz w wybranym folderze",
+        "label": "Twórz w wybranym folderze",
         "description": "Nowe notatki i foldery są tworzone w aktualnie wybranym folderze. Gdy opcja jest wyłączona, elementy są zawsze tworzone w folderze głównym sejfu."
       },
       "defaultNoteFolder": {
-        "label": "Domyślna lokalizacja nowych notatek",
+        "label": "Domyślna lokalizacja",
         "description": "Używana, gdy na pasku bocznym nie wybrano folderu.",
         "placeholder": "notatki",
         "root": "/"
@@ -244,7 +240,7 @@
       "telemetry": {
         "label": "Udostępniaj anonimowe wskaźniki użytkowania",
         "description": "Nigdy nie obejmują treści notatek, tytułów ani nazw. Zawierają zanonimizowane logi diagnostyczne.",
-        "error": "Nie udało się zaktualizować ustawień telemetrii"
+        "error": "Nie udało się zaktualizować ustawienia telemetrii"
       },
       "autoSendDiagnostics": {
         "label": "Automatycznie wysyłaj raporty o błędach",
@@ -325,7 +321,7 @@
         "pink": "Różowy",
         "orange": "Pomarańczowy"
       },
-      "error": "Nie udało się zaktualizować koloru akcentu",
+      "error": "Nie udało się zaktualizować koloru akcentującego",
       "aria": "Gotowy kolor akcentujący",
       "options": {
         "theme": "Motyw",
@@ -383,7 +379,7 @@
         "label": "Rodzina czcionek",
         "description": "Podstawowy krój pisma interfejsu",
         "options": {
-          "system": "Domyślne systemowe",
+          "system": "Domyślny systemowy",
           "sansSerif": "Bezszeryfowy",
           "serif": "Szeryfowy (Crimson Pro)",
           "gelasio": "Gelasio",
@@ -444,7 +440,7 @@
     },
     "spellCheck": {
       "label": "Sprawdzaj pisownię",
-      "description": "Podkreślaj błędnie napisane słowa w notatkach i dziennikach",
+      "description": "Podkreślaj błędnie napisane słowa w notatkach i w dzienniku",
       "error": "Nie udało się zaktualizować sprawdzania pisowni"
     },
     "v2": {
@@ -470,10 +466,10 @@
     },
     "loading": "Ładowanie szablonów…",
     "newTemplateTitle": "Nowy szablon",
-    "copySuffix": "{name} (Kopia)",
+    "copySuffix": "{name} (kopia)",
     "empty": {
       "title": "Nie ma jeszcze żadnych szablonów niestandardowych",
-      "description": "Aby rozpocząć, utwórz szablon"
+      "description": "Utwórz szablon, aby zacząć"
     },
     "preview": {
       "notFound": "Nie udało się załadować tego szablonu."
@@ -558,7 +554,7 @@
     },
     "preview": {
       "label": "Podgląd",
-      "description": "Ścieżka pliku dzisiejszego dziennika"
+      "description": "Ścieżka pliku dzisiejszego wpisu w dzienniku"
     },
     "updateError": "Nie udało się zaktualizować ustawienia",
     "weekday": {
@@ -683,7 +679,7 @@
       "notes": "Notatki"
     },
     "weekStart": {
-      "label": "Tydzień rozpoczyna się w",
+      "label": "Początek tygodnia",
       "description": "Pierwszy dzień tygodnia we wszystkich kalendarzach",
       "options": {
         "sunday": "Niedziela",
@@ -747,7 +743,7 @@
         "statuses": {
           "synced": "Zsynchronizowano",
           "error": "Błąd",
-          "pending": "Oczekujące",
+          "pending": "Oczekuje",
           "idle": "Bezczynny"
         },
         "retrying": "Ponawianie…",
@@ -768,7 +764,7 @@
       "updatedAt": "Zaktualizowano {time}",
       "notCheckedYet": "Jeszcze nie sprawdzono",
       "keptEvents": "Wydarzenia, które już są w kalendarzu, pozostaną do następnej udanej aktualizacji.",
-      "notEncrypted": "Nieszyfrowane",
+      "notEncrypted": "Bez szyfrowania",
       "httpWarning": "Ten link zaczyna się od http://, więc link i wydarzenia są przesyłane bez szyfrowania. Każdy w tej samej sieci może je odczytać. Użyj linku https:// lub webcal://, jeśli kalendarz go udostępnia.",
       "added": "Dodano „{title}”.",
       "addedSummary": "Dodano „{title}”: {count, plural, one {# wydarzenie} few {# wydarzenia} many {# wydarzeń} other {# wydarzenia}}, od {start} do {end}.",
@@ -923,7 +919,7 @@
         "notCaldav": "Pod tym adresem nie znaleziono kalendarzy CalDAV. Sprawdź adres serwera; niektóre usługi wymagają ścieżki, np. /remote.php/dav.",
         "noCalendars": "To konto nie ma kalendarzy z wydarzeniami.",
         "invalidUrl": "To nie jest adres serwera. Wpisz adres w rodzaju https://dav.example.com.",
-        "outdatedDevices": "Na niektórych urządzeniach działa starsza wersja memrynote. Zaktualizuj je lub potwierdź poniżej, że chcesz mimo to połączyć.",
+        "outdatedDevices": "Na niektórych urządzeniach działa starsza wersja memrynote. Zaktualizuj je lub potwierdź poniżej, że mimo to chcesz się połączyć.",
         "unknown": "Nie udało się połączyć ({code}). Nic nie zostało zapisane; spróbuj ponownie później."
       },
       "reconnect": {
@@ -954,7 +950,7 @@
       "identity": "Tożsamość",
       "sync": "Synchronizacja",
       "billing": "Rozliczenia",
-      "storage": "Przechowywanie",
+      "storage": "Pamięć",
       "devices": "Urządzenia"
     },
     "identity": {
@@ -1028,7 +1024,7 @@
       },
       "labels": {
         "storage": "Pamięć",
-        "maxFile": "Maks. plik",
+        "maxFile": "Maks. rozmiar pliku",
         "vaults": "Sejfy",
         "history": "Historia"
       },
@@ -1045,7 +1041,7 @@
       "toasts": {
         "loadFailed": "Nie udało się załadować statusu rozliczeń",
         "checkoutFailed": "Nie udało się rozpocząć płatności",
-        "checkoutOpened": "Otwarto płatność w przeglądarce",
+        "checkoutOpened": "Otwarto stronę płatności w przeglądarce",
         "refreshFailed": "Nie udało się odświeżyć statusu rozliczeń",
         "billingActive": "Rozliczenia są aktywne",
         "activationPending": "Aktywacja w toku",
@@ -1069,7 +1065,7 @@
       }
     },
     "community": {
-      "prompt": "Kochasz memrynote?",
+      "prompt": "Podoba ci się memrynote?",
       "star": "Daj nam gwiazdkę w serwisie GitHub",
       "and": "i",
       "feedback": "podziel się opinią"
@@ -1142,13 +1138,13 @@
       "saved": "Fraza odzyskiwania jest zapisana",
       "confirmTitle": "Potwierdź frazę odzyskiwania",
       "confirmDescription": "Wpisz wskazane słowa, aby sprawdzić, czy fraza została zapisana poprawnie.",
-      "wordPlaceholder": "Wpisz słowo #{index}",
+      "wordPlaceholder": "Wpisz słowo nr {index}",
       "verify": "Zweryfikuj",
       "mustMatch": "Aby kontynuować, wszystkie 3 słowa muszą pasować",
       "inputTitle": "Wprowadź frazę odzyskiwania",
       "inputDescription": "Wpisz 24-wyrazową frazę odzyskiwania, aby przywrócić dostęp do zaszyfrowanych danych.",
       "inputLabel": "Fraza odzyskiwania",
-      "count": "Słowa {count} / {total}",
+      "count": "Słowa: {count} / {total}",
       "inputPlaceholder": "Wpisz 24 słowa frazy odzyskiwania oddzielone spacjami…",
       "lengthHint": "Wprowadź wszystkie 24 słowa, aby włączyć przycisk przywracania",
       "restore": "Przywróć dostęp",
@@ -1172,7 +1168,7 @@
       "description": "Rób to tylko wtedy, gdy fraza odzyskiwania przepadła na dobre. Tej operacji nie można cofnąć.",
       "consequenceSignOut": "To urządzenie zostanie wylogowane i przestanie się synchronizować.",
       "consequenceKey": "Klucz szyfrowania przechowywany na tym urządzeniu zostanie usunięty. Wszystko, co jest już zapisane na koncie, pozostanie zaszyfrowane starym kluczem – bez frazy odzyskiwania nikt nie będzie mógł już tego odczytać.",
-      "consequenceLocal": "Notatki zapisane już na tym komputerze pozostaną w folderze sejfu i będą nadal działać.",
+      "consequenceLocal": "Notatki zapisane już na tym komputerze pozostaną w folderze sejfu i nadal będą dostępne.",
       "confirm": "Wyloguj się i zacznij od nowa",
       "cancel": "Wróć"
     },
@@ -1220,15 +1216,15 @@
     "linked": "Połączono {time} temu",
     "renameAria": "Zmień nazwę urządzenia {name}",
     "rename": "Zmień nazwę",
-    "revoke": "Unieważnij",
+    "revoke": "Odbierz dostęp",
     "showLess": "Pokaż mniej",
     "showMore": "{count, plural, one {Jeszcze # urządzenie} few {Jeszcze # urządzenia} many {Jeszcze # urządzeń} other {Jeszcze # urządzenia}}",
     "showMoreAria": "Pokaż {count, plural, one {jeszcze # urządzenie} few {jeszcze # urządzenia} many {jeszcze # urządzeń} other {jeszcze # urządzenia}}",
     "dialogs": {
-      "revokeTitle": "Unieważnić „{name}”?",
+      "revokeTitle": "Odebrać dostęp urządzeniu „{name}”?",
       "revokeDescription": "To urządzenie utraci dostęp do zsynchronizowanych danych. Aby przywrócić synchronizację, konieczne będzie ponowne połączenie. Dane lokalne na tym urządzeniu pozostaną.",
-      "revokeDevice": "Unieważnij urządzenie",
-      "revoking": "Unieważnianie…",
+      "revokeDevice": "Odbierz dostęp",
+      "revoking": "Odbieranie dostępu…",
       "renameTitle": "Zmień nazwę urządzenia",
       "renameDescription": "Wybierz nazwę identyfikującą to urządzenie.",
       "namePlaceholder": "Nazwa urządzenia",
@@ -1269,7 +1265,7 @@
     "unknownPlatform": "Nieznana platforma",
     "verificationCode": "Kod weryfikacyjny",
     "computing": "Obliczanie…",
-    "unavailable": "Niedostępne",
+    "unavailable": "Niedostępny",
     "confirmCode": "Upewnij się, że ten kod jest zgodny z kodem wyświetlanym na nowym urządzeniu",
     "reject": "Odrzuć",
     "approve": "Zatwierdź",
@@ -1338,7 +1334,7 @@
     "embedding": {
       "loaded": "Załadowano",
       "loading": "Ładowanie",
-      "cacheHint": "~23MB · Buforowane lokalnie · Wszystko na urządzeniu",
+      "cacheHint": "~23 MB · Buforowane lokalnie · Wszystko na urządzeniu",
       "dimensions": "Wymiary",
       "embeddings": "Osadzenia",
       "downloadLoad": "Pobierz i załaduj model",
@@ -1513,7 +1509,7 @@
         "failed": "Nieudane: {count}"
       },
       "error": "Import nie powiódł się",
-      "previewError": "Podgląd nie powiódł się"
+      "previewError": "Nie udało się wygenerować podglądu"
     },
     "messages": {
       "readFileFailed": "Nie udało się odczytać pliku",
@@ -1615,7 +1611,7 @@
       "activity": "Aktywność"
     },
     "loadingStorage": "Ładowanie informacji o pamięci…",
-    "signInStorage": "Zaloguj się, aby zobaczyć wykorzystanie miejsca",
+    "signInStorage": "Zaloguj się, aby zobaczyć wykorzystanie pamięci",
     "vaultPath": "Ścieżka sejfu",
     "reveal": "Pokaż",
     "accountVaults": {
@@ -1636,12 +1632,12 @@
       "unsyncedSwitchFailed": "Nie udało się otworzyć tego sejfu"
     },
     "storage": {
-      "title": "Przechowywanie",
+      "title": "Pamięć",
       "used": "Wykorzystano {used} z {limit}",
       "ratio": "{used} / {limit}",
       "refreshAria": "Odśwież wykorzystanie pamięci",
       "usageAria": "Użycie pamięci: {used} z {limit}",
-      "available": "Dostępne {available}",
+      "available": "Dostępne: {available}",
       "categories": {
         "notes": "Notatki",
         "attachments": "Załączniki",
@@ -1741,7 +1737,7 @@
   "tags": {
     "header": {
       "title": "Tagi",
-      "subtitle": "Zarządzaj tagami w notatkach, dziennikach i zadaniach"
+      "subtitle": "Zarządzaj tagami w notatkach, dzienniku i zadaniach"
     },
     "loading": "Ładowanie tagów…",
     "empty": "Nie ma jeszcze tagów. Tagi będą pojawiać się tutaj, gdy dodasz je do notatek i zadań.",
@@ -1925,7 +1921,7 @@
           "description": "Otwórz wyszukiwanie globalne"
         },
         "settings": {
-          "label": "Otwórz Ustawienia",
+          "label": "Otwórz ustawienia",
           "description": "Otwórz panel ustawień"
         },
         "switchVault": {
@@ -1964,7 +1960,7 @@
         },
         "navForward": {
           "label": "Przejdź do przodu",
-          "description": "Wykonaj ponownie nawigację wstecz"
+          "description": "Cofnij ostatnie przejście wstecz"
         },
         "newTab": {
           "label": "Nowa karta",
@@ -1972,11 +1968,11 @@
         },
         "closeAll": {
           "label": "Zamknij wszystkie karty",
-          "description": "Zamknij wszystkie karty w okienku"
+          "description": "Zamknij wszystkie karty w bieżącym okienku"
         },
         "pin": {
           "label": "Przypnij kartę",
-          "description": "Przypnij lub odepnij kartę"
+          "description": "Przypnij lub odepnij bieżącą kartę"
         },
         "duplicate": {
           "label": "Duplikuj kartę",
@@ -2050,7 +2046,7 @@
       "systemWide": "W całym systemie",
       "globalCapture": "Globalny szybki zapis",
       "recordingHint": "Naciśnij klawisze… esc, aby anulować",
-      "reset": "Resetuj",
+      "reset": "Zresetuj",
       "resetAll": "Przywróć wszystkie domyślne"
     }
   },
@@ -2081,7 +2077,7 @@
       "last7Days": "Ostatnie 7 dni",
       "last30Days": "Ostatnie 30 dni",
       "loadingSyncHistory": "Ładowanie historii synchronizacji",
-      "noSyncActivityYet": "Brak aktywności związanej z synchronizacją",
+      "noSyncActivityYet": "Brak jeszcze aktywności synchronizacji",
       "loadMore": "Załaduj więcej",
       "duration": "· {duration}",
       "summaryFailed": "Synchronizacja nie powiodła się",
@@ -2090,7 +2086,7 @@
       "showErrorDetailsAria": "{summary}, pokaż szczegóły błędu"
     },
     "componentsSyncSyncStatus": {
-      "lastSynced": "Ostatnia synchronizacja ",
+      "lastSynced": "Ostatnia synchronizacja: ",
       "pending": "w toku",
       "localOnly": "tylko lokalnie",
       "detected": "wykryty",
@@ -2143,7 +2139,7 @@
   "agentMcp": {
     "header": {
       "title": "Agent MCP",
-      "subtitle": "Lokalny dostęp do serwera dla zewnętrznych klientów MCP."
+      "subtitle": "Dostęp do lokalnego serwera dla zewnętrznych klientów MCP."
     },
     "groups": {
       "connection": "Połączenie",
@@ -2253,7 +2249,7 @@
     "actions": {
       "save": "Zapisz",
       "models": "Modele",
-      "test": "Testuj połączenie",
+      "test": "Sprawdź połączenie",
       "probe": "Sprawdź narzędzia"
     },
     "status": {
@@ -2268,8 +2264,8 @@
       "group": "Zawsze dozwolone",
       "description": "Narzędzia, którym udzielono stałego zatwierdzenia w tym sejfie. Usuwania nigdy nie można tak zatwierdzić.",
       "empty": "Nic nie jest zawsze dozwolone. Każda zmiana nadal wymaga potwierdzenia.",
-      "revoke": "Cofnij",
-      "revokeLabel": "Cofnij stałe zatwierdzenie dla narzędzia {tool}",
+      "revoke": "Wycofaj",
+      "revokeLabel": "Wycofaj stałe zatwierdzenie dla narzędzia {tool}",
       "ignoredInPageReview": "Ignorowane: edycje notatek i dziennika zawsze wymagają potwierdzenia."
     },
     "v2": {

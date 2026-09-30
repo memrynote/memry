@@ -4,7 +4,7 @@
     "load-failed": "Não foi possível carregar os dados do grafo",
     "render-failed": "O grafo não está disponível neste dispositivo",
     "render-failed-description": "Este dispositivo não conseguiu iniciar o renderizador gráfico. Suas notas estão seguras.",
-    "try-again": "Tente novamente",
+    "try-again": "Tentar novamente",
     "aria-label": "Grafo de conhecimento com {nodeCount, plural, one {# nó} other {# nós}} e {edgeCount, plural, one {# conexão} other {# conexões}}{summary, select, none {.} other {: {summary}.}}",
     "nodes-list-label": "Nós do grafo",
     "node-list-item": "{label} ({type})"
@@ -15,7 +15,7 @@
     "link-title": "Vincule suas notas",
     "link-description": "Use [[wikilinks]] para conectar ideias entre notas",
     "discover-title": "Descubra padrões",
-    "discover-description": "À medida que as conexões crescem, clusters e temas surgirão naturalmente"
+    "discover-description": "À medida que as conexões crescem, agrupamentos e temas surgirão naturalmente"
   },
   "entity": {
     "note": "nota",

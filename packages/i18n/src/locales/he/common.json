@@ -103,7 +103,7 @@
     "everyNWeeks": "{count, plural, one {כל שבוע} two {כל שבועיים} other {כל # שבועות}}",
     "everyNWeeksOnWeekdays": "{count, plural, one {כל יום חול} two {כל שבועיים בימי חול} other {כל # שבועות בימי חול}}",
     "everyNWeeksOnWeekends": "{count, plural, one {כל סוף שבוע} two {כל שבועיים בסופי שבוע} other {כל # שבועות בסופי שבוע}}",
-    "everyNWeeksOnDays": "{count, plural, one {כל שבוע ב-{days}} two {כל שבועיים ב-{days}} other {כל # שבועות ב-{days}}}",
+    "everyNWeeksOnDays": "{count, plural, one {כל שבוע, {days}} two {כל שבועיים, {days}} other {כל # שבועות, {days}}}",
     "everyNMonths": "{count, plural, one {כל חודש} two {כל חודשיים} other {כל # חודשים}}",
     "everyNMonthsOnDay": "{count, plural, one {כל חודש ב-{day}{suffix}} two {כל חודשיים ב-{day}{suffix}} other {כל # חודשים ב-{day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {כל חודש, {day} {week} בחודש} two {כל חודשיים, {day} {week} בחודש} other {כל # חודשים, {day} {week} בחודש}}",
@@ -117,7 +117,7 @@
       "last": "אחרון"
     },
     "preset": {
-      "everyWeekday": "בכל יום חול (שני-שישי)",
+      "everyWeekday": "כל יום חול (שני-שישי)",
       "everyYearOnDate": "כל שנה ב-{date}"
     }
   },
@@ -241,7 +241,7 @@
         "position": "מיקום",
         "priority": "עדיפות",
         "project": "פרויקט",
-        "removed": "הוסרו",
+        "removed": "הוסר",
         "repeatFrom": "חזרה לפי",
         "snoozeReason": "סיבת ההשהיה",
         "snoozedUntil": "מושהה עד",
@@ -424,7 +424,7 @@
       "empty": "אין התאמות.",
       "selectOneShape": "כדי לקשר צורה לפריט, יש לבחור צורה אחת בלבד.",
       "cardsCannotLink": "כרטיס כבר פותח את הפריט שלו, ולכן אי אפשר להוסיף לו קישור נוסף.",
-      "linked": "קושר.",
+      "linked": "הקישור נוסף.",
       "groupNotes": "פתקים",
       "groupFiles": "קבצים",
       "groupTasks": "משימות",
@@ -631,7 +631,7 @@
       "skip2": "דילוג",
       "createTask": "יצירת משימה ",
       "syncAcrossDevices": "סנכרון בין מכשירים",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "הפתקים והמשימות שלך מסונכרנים בכל המכשירים שלך. אפשר להגדיר את זה גם מאוחר יותר.",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "אפשר לשמור על הפתקים והמשימות שלך מסונכרנים בכל המכשירים שלך. את ההגדרה אפשר לעשות גם מאוחר יותר.",
       "skipForNow": "דילוג בינתיים",
       "doneLetSGo": "סיום — יוצאים לדרך! "
     },
@@ -934,8 +934,8 @@
         "next7": "7 הימים הקרובים",
         "noDueDate": "ללא תאריך יעד"
       },
-      "recentlyEdited": "נערך לאחרונה",
-      "recentlyOpened": "נפתח לאחרונה",
+      "recentlyEdited": "נערכו לאחרונה",
+      "recentlyOpened": "נפתחו לאחרונה",
       "recentMeta": "נערך {time}",
       "recentMetaWithFolder": "{folder} · נערך {time}",
       "openedMeta": "נפתח {time}",
@@ -1244,7 +1244,7 @@
   "sidebarStar": {
     "title": "MemryNote הוא קוד פתוח",
     "body": "מפותח בקוד פתוח. כוכב עוזר לאחרים למצוא אותו.",
-    "star": "כוכב",
+    "star": "סימון בכוכב",
     "later": "לא עכשיו",
     "thanks": "תודה. זה משמעותי מאוד בשבילנו."
   },

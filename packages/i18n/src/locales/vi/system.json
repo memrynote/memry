@@ -25,8 +25,8 @@
       "buttonLater": "Để sau",
       "readyTitle": "Bản cập nhật đã sẵn sàng",
       "readyMessage": "memrynote {version} đã được tải xuống.",
-      "readyDetailFallback": "Khởi động lại memrynote để hoàn tất cài đặt cập nhật.",
-      "buttonRestartNow": "Khởi động lại ngay bây giờ",
+      "readyDetailFallback": "Khởi động lại memrynote để hoàn tất cài đặt bản cập nhật.",
+      "buttonRestartNow": "Khởi động lại ngay",
       "releaseNotesLabel": "Ghi chú phát hành:"
     },
     "pair": {

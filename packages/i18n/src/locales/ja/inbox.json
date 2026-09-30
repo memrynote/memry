@@ -16,8 +16,8 @@
       "hide": "スヌーズ中の項目を非表示"
     },
     "density": {
-      "toComfortable": "広めの表示",
-      "toCompact": "コンパクトな表示"
+      "toComfortable": "ゆったり表示",
+      "toCompact": "コンパクト表示"
     },
     "filter": {
       "button": "フィルター",
@@ -259,7 +259,7 @@
     "failedPlayAudio": "音声を再生できませんでした",
     "failedLoadAudio": "音声を読み込めませんでした",
     "video": "動画",
-    "unsupportedVideo": "お使いのブラウザは video タグに対応していません。"
+    "unsupportedVideo": "お使いのブラウザーは video タグに対応していません。"
   },
   "reminder": {
     "dataUnavailable": "リマインダーのデータを利用できません。",

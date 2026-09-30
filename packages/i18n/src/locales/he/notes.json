@@ -90,7 +90,7 @@
     },
     "loadingError": "טעינת הפתקים נכשלה",
     "truncated": {
-      "hidden": "{count, plural, one {פתק ישן יותר אחד לא מוצג} other {# פתקים ישנים יותר לא מוצגים}}",
+      "hidden": "{count, plural, one {פתק אחד ישן יותר לא מוצג} other {# פתקים ישנים יותר לא מוצגים}}",
       "loadMore": "טעינת פתקים נוספים"
     },
     "actions": {
@@ -476,7 +476,7 @@
       "aliasHint": "אפשר להקליד | כדי לתת שם לקישור"
     },
     "mention": {
-      "aria": "הצעות תאריך ופתק",
+      "aria": "הצעות לתאריכים ולפתקים",
       "loading": "טוען פתקים…",
       "empty": "לא נמצאו פתקים",
       "date": "תאריך",
@@ -711,7 +711,7 @@
     "failed": "העברת המשימות של הפתק נכשלה"
   },
   "deleteNoteTasks": {
-    "label": "{count, plural, one {מחיקה גם של המשימה שבפתק} other {מחיקה גם של כל # המשימות שבפתק}}",
+    "label": "{count, plural, one {למחוק גם את המשימה שבפתק} other {למחוק גם את # המשימות שבפתק}}",
     "description": "{count, plural, one {אם התיבה לא מסומנת, המשימה נשארת בדף המשימות.} other {אם התיבה לא מסומנת, המשימות נשארות בדף המשימות.}}",
     "failed": "מחיקת המשימות נכשלה. הן עדיין נמצאות בדף המשימות."
   },
@@ -963,7 +963,7 @@
       "defineAComputedColumnUsingAnExpression": "הגדרת עמודה מחושבת באמצעות ביטוי.",
       "name": "שם",
       "expression": "ביטוי",
-      "available": "זמינות: ",
+      "available": "פונקציות זמינות: ",
       "preview": "תצוגה מקדימה",
       "fixExpressionErrorsToSeePreview": "כדי לראות תצוגה מקדימה, יש לתקן את השגיאות בביטוי",
       "usingNote": "שימוש בפתק: \"",
@@ -1034,7 +1034,7 @@
       "startFreshDefaultColumns": "התחלה מאפס (עמודות ברירת מחדל)",
       "cancel": "ביטול",
       "renameView": "שינוי שם התצוגה",
-      "enterANewNameForThisView": "הזנת שם חדש לתצוגה הזו.",
+      "enterANewNameForThisView": "יש להזין שם חדש לתצוגה הזו.",
       "viewName2": "שם התצוגה",
       "viewName3": "שם התצוגה",
       "cancel2": "ביטול",

@@ -29,13 +29,13 @@
     "moveFailed": "Det gick inte att flytta anteckningen",
     "applyTemplateFailed": "Det gick inte att använda mallen",
     "appendBlocksFailed": "Det gick inte att flytta blocket till den anteckningen",
-    "exportPdfFailed": "Det gick inte att exportera PDF",
-    "exportHtmlFailed": "Det gick inte att exportera HTML",
+    "exportPdfFailed": "Det gick inte att exportera till PDF",
+    "exportHtmlFailed": "Det gick inte att exportera till HTML",
     "restoreVersionFailed": "Det gick inte att återställa versionen",
     "deleteVersionFailed": "Det gick inte att radera versionen",
     "reorderFailed": "Det gick inte att ändra ordning på anteckningarna",
     "importFilesFailed": "Det gick inte att importera filer",
-    "setLocalOnlyFailed": "Det gick inte att ställa in som endast lokal"
+    "setLocalOnlyFailed": "Det gick inte att göra anteckningen endast lokal"
   },
   "database": {
     "connectionFailed": "Det gick inte att ansluta till den lokala databasen. Försök att starta om appen.",
@@ -43,12 +43,12 @@
     "queryFailed": "En databasåtgärd misslyckades. Försök igen.",
     "notInitialized": "Databasen är inte redo. Försök att starta om appen.",
     "constraintViolation": "En datakonflikt uppstod. Försök igen.",
-    "corrupted": "Den lokala databasen är korrupt. Du kan behöva återställa den."
+    "corrupted": "Den lokala databasen är skadad. Du kan behöva återställa den."
   },
   "watcher": {
     "startFailed": "Det gick inte att börja bevaka filändringar.",
     "stopFailed": "Det gick inte att stoppa filbevakningen.",
-    "eventError": "Ett fel uppstod vid övervakning av filändringar."
+    "eventError": "Ett fel uppstod vid bevakning av filändringar."
   },
   "attachment": {
     "fileTooLarge": "Den här filen är för stor för att bifogas.",
@@ -92,9 +92,9 @@
     "noteTooLarge": "En anteckning är för stor för att synkroniseras. Dela upp den i mindre anteckningar så löser det sig.",
     "noteTooLargeNamed": "”{title}” är för stor för att synkroniseras. Dela upp den i mindre anteckningar så löser det sig.",
     "attachmentUploadFailed": "Det gick inte att synkronisera bilagan ”{filename}”. Den stannar på den här enheten.",
-    "paymentRequired": "En betald synkplan krävs för att använda värdbaserad krypterad synk.",
+    "paymentRequired": "En betald synkplan krävs för krypterad synkronisering via våra servrar.",
     "vaultLimitExceeded": "Din plan synkroniserar färre valv än det här kontot har, så det här valvet stannar på den här enheten. Ta bort ett valv från kontot i Inställningar → Konto, eller uppgradera din plan.",
-    "certificatePinFailed": "Säker anslutning misslyckades. Kontrollera din nätverksanslutning.",
+    "certificatePinFailed": "Det gick inte att upprätta en säker anslutning. Kontrollera din nätverksanslutning.",
     "deviceKeyMismatch": "Den här enhetens säkerhetsnyckel stämmer inte längre med den som är registrerad för ditt konto, så servern avvisar dess ändringar. Logga in igen på den här enheten för att registrera den på nytt.",
     "keychainUnavailable": "Synkroniseringen är pausad eftersom Memry inte kan läsa sina synknycklar från systemets nyckelring just nu. Lås upp nyckelringen så återupptas synkroniseringen av sig själv. Om den inte gör det startar du om Memry. Inget har raderats.",
     "unknown": "Ett oväntat synkroniseringsfel uppstod. Försöker igen automatiskt.",

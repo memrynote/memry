@@ -5,7 +5,7 @@
       "today": "Dzisiaj",
       "tomorrow": "Jutro",
       "next7": "Najbliższe 7 dni",
-      "all": "Wszystko",
+      "all": "Wszystkie",
       "archived": "Zarchiwizowane"
     },
     "viewMode": {
@@ -196,7 +196,7 @@
     "activityCharsAdded": "+{count} zn.",
     "activityCharsRemoved": "{count} zn.",
     "activityCharsSame": "przeredagowano",
-    "activityEmptyValue": "puste",
+    "activityEmptyValue": "brak",
     "activityFieldTitle": "Tytuł",
     "activityFieldDescription": "Opis",
     "activityFieldStatusId": "Status",
@@ -209,7 +209,7 @@
     "activityFieldTags": "Tagi",
     "activityFieldLinkedNoteIds": "Powiązane elementy",
     "activityFieldCompletedAt": "Ukończenie",
-    "activityFieldArchivedAt": "Archiwum",
+    "activityFieldArchivedAt": "Archiwizacja",
     "activityFieldRepeatConfig": "Powtarzanie",
     "activityFieldSourceNoteId": "Notatka źródłowa",
     "activityFrom": "z {value}",
@@ -276,7 +276,7 @@
       "archived": "{count, plural, one {Zarchiwizowano # zadanie} few {Zarchiwizowano # zadania} many {Zarchiwizowano # zadań} other {Zarchiwizowano # zadania}}",
       "undoDelete": "{count, plural, one {Usuń # zadanie} few {Usuń # zadania} many {Usuń # zadań} other {Usuń # zadania}}",
       "deleted": "{count, plural, one {Usunięto # zadanie} few {Usunięto # zadania} many {Usunięto # zadań} other {Usunięto # zadania}}",
-      "deletedDescription": "Tę akcję można cofnąć przez krótki czas.",
+      "deletedDescription": "Tę operację można cofnąć przez krótki czas.",
       "unarchived": "Przywrócono z archiwum {count, plural, one {# zadanie} few {# zadania} many {# zadań} other {# zadania}}",
       "undoUnarchive": "Przywróć z archiwum {count, plural, one {# zadanie} few {# zadania} many {# zadań} other {# zadania}}"
     },
@@ -338,7 +338,7 @@
       "task2": "zadanie",
       "and": "i ",
       "moreTask": "inne zadanie",
-      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Przez krótką chwilę po usunięciu można tę operację cofnąć.",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Tę operację można cofnąć przez krótki czas po usunięciu.",
       "cancel": "Anuluj",
       "delete2": "Usuń ",
       "task3": "zadanie"
@@ -718,7 +718,7 @@
     "componentsTasksProjectsProjectsTabContent": {
       "noProjectSelected": "Nie wybrano projektu",
       "selectAProjectFromTheDropdownOrCreateANewOne": "Wybierz projekt z listy rozwijanej lub utwórz nowy",
-      "createYourFirstProject": "Stwórz swój pierwszy projekt"
+      "createYourFirstProject": "Utwórz pierwszy projekt"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "Pomoc: skróty szybkiego dodawania",
@@ -760,15 +760,15 @@
     },
     "componentsTasksSubtaskDots": {
       "of": "z ",
-      "subtasksComplete": "podzadania ukończone (",
+      "subtasksComplete": "podzadań ukończono (",
       "clickTo": "Kliknij, aby ",
       "of2": "z ",
-      "subtasksComplete2": "podzadania ukończone",
+      "subtasksComplete2": "podzadań ukończono",
       "clickTo2": "Kliknij, aby "
     },
     "componentsTasksSubtaskProgressBadge": {
       "of": "z ",
-      "subtasksComplete": "podzadania ukończone (",
+      "subtasksComplete": "podzadań ukończono (",
       "clickTo": "Kliknij, aby "
     },
     "componentsTasksTaskBadges": {

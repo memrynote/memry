@@ -55,7 +55,7 @@
       "placeholder": "Søk i innstillinger",
       "count": "{count, plural, one {# innstilling} other {# innstillinger}}",
       "empty": "Ingen innstillinger samsvarer",
-      "move": "flytt",
+      "move": "naviger",
       "open": "åpne"
     }
   },
@@ -138,7 +138,7 @@
       "downloadingLatest": "Laster ned den siste utgivelsen",
       "downloadingLatestPercent": "Laster ned den siste utgivelsen ({percent} %)",
       "downloaded": "memrynote {version} er klar til installasjon",
-      "upToDate": "Denne installasjonen er på den siste publiserte utgivelsen",
+      "upToDate": "Denne installasjonen har den nyeste publiserte utgivelsen",
       "checking": "Ser etter en nyere versjon i GitHub-utgivelser",
       "idle": "Se etter nye utgivelser og installer dem uten å forlate appen",
       "unsupportedToast": "Automatiske oppdateringer er bare tilgjengelige i pakkede utgivelser",
@@ -181,8 +181,8 @@
       "label": "Tidsformat",
       "description": "12-timers eller 24-timers klokke",
       "options": {
-        "12h": "12 timer",
-        "24h": "24 timer"
+        "12h": "12-timers",
+        "24h": "24-timers"
       },
       "error": "Kunne ikke oppdatere tidsformatet"
     },
@@ -313,9 +313,9 @@
       },
       "presets": {
         "indigo": "Indigo",
-        "amber": "Rav",
+        "amber": "Ravgul",
         "emerald": "Smaragd",
-        "red": "Rødt",
+        "red": "Rød",
         "violet": "Fiolett",
         "cyan": "Cyan",
         "pink": "Rosa",
@@ -466,13 +466,13 @@
     },
     "loading": "Laster inn maler …",
     "newTemplateTitle": "Ny mal",
-    "copySuffix": "{name} (Kopi)",
+    "copySuffix": "{name} (kopi)",
     "empty": {
       "title": "Ingen egendefinerte maler ennå",
       "description": "Opprett en mal for å komme i gang"
     },
     "preview": {
-      "notFound": "Kunne ikke laste denne malen."
+      "notFound": "Kunne ikke laste inn denne malen."
     },
     "toasts": {
       "deleted": "Malen er slettet",
@@ -584,7 +584,7 @@
       "loading": "Laster inn innstillinger …"
     },
     "groups": {
-      "defaults": "Standarder",
+      "defaults": "Standardverdier",
       "inbox": "Innboks"
     },
     "defaultProject": {
@@ -726,11 +726,11 @@
       "connectFailed": "Kunne ikke koble til Google Calendar",
       "refreshFailed": "Kunne ikke oppdatere Google Calendar",
       "disconnectFailed": "Kunne ikke koble fra Google Calendar",
-      "retryFailed": "Kunne ikke prøve kalendersynkronisering på nytt",
+      "retryFailed": "Kunne ikke prøve kalendersynkroniseringen på nytt",
       "pushToGoogle": {
         "label": "Vis memrynote-hendelser i Google Calendar",
         "description": "Slå av for enveis synkronisering – du ser fortsatt Google-hendelsene dine i memrynote, men memrynote-hendelser vises ikke i Google.",
-        "error": "Kunne ikke oppdatere synkroniseringsretning"
+        "error": "Kunne ikke oppdatere synkroniseringsretningen"
       },
       "agentAccess": {
         "label": "La KI lese Google Calendar-hendelser",
@@ -1039,13 +1039,13 @@
         "manage": "Administrer fakturering"
       },
       "toasts": {
-        "loadFailed": "Kunne ikke laste faktureringsstatus",
-        "checkoutFailed": "Kunne ikke starte betaling",
-        "checkoutOpened": "Betaling åpnet i nettleseren din",
-        "refreshFailed": "Kunne ikke oppdatere faktureringsstatus",
-        "billingActive": "Fakturering er aktiv",
+        "loadFailed": "Kunne ikke laste inn faktureringsstatusen",
+        "checkoutFailed": "Kunne ikke starte betalingen",
+        "checkoutOpened": "Betalingssiden er åpnet i nettleseren",
+        "refreshFailed": "Kunne ikke oppdatere faktureringsstatusen",
+        "billingActive": "Faktureringen er aktiv",
         "activationPending": "Aktivering venter",
-        "portalFailed": "Kunne ikke åpne faktureringsportal"
+        "portalFailed": "Kunne ikke åpne faktureringsportalen"
       }
     },
     "storage": {
@@ -1121,7 +1121,7 @@
       "verifying": "Bekrefter …",
       "resending": "Sender på nytt …",
       "resend": "Send kode på nytt",
-      "resendIn": "Send på nytt i {time}",
+      "resendIn": "Send på nytt om {time}",
       "differentEmail": "Bruk en annen e-post",
       "error": "Bekreftelsen mislyktes",
       "resendError": "Kunne ikke sende på nytt"
@@ -1132,7 +1132,7 @@
       "warning": "Skriv dette ned og oppbevar det et trygt sted. Du vil ikke se det igjen.",
       "wordsAria": "Ordene i gjenopprettingsfrasen",
       "wordAria": "Ord {index}: {word}",
-      "copyAria": "Kopier gjenopprettingsfrase til utklippstavlen",
+      "copyAria": "Kopier gjenopprettingsfrasen til utklippstavlen",
       "copiedAria": "Gjenopprettingsfrasen er kopiert",
       "copied": "Kopiert",
       "saved": "Jeg har lagret gjenopprettingsfrasen min",
@@ -1157,7 +1157,7 @@
       "confirmationFailed": "Bekreftelsen mislyktes",
       "unavailable": {
         "loading": "Laster inn gjenopprettingsfrasen din …",
-        "title": "Kunne ikke laste gjenopprettingsfrasen din",
+        "title": "Kunne ikke laste inn gjenopprettingsfrasen din",
         "description": "Gjenopprettingsfrasen din vises bare én gang under oppsettet og kan ikke hentes senere. Start på nytt for å generere en ny.",
         "startOver": "Start på nytt"
       }
@@ -1231,7 +1231,7 @@
       "renaming": "Endrer navn …"
     },
     "toasts": {
-      "loadFailed": "Kunne ikke laste inn enheter",
+      "loadFailed": "Kunne ikke laste inn enhetene",
       "removed": "«{name}» er fjernet",
       "removeFailed": "Kunne ikke fjerne enheten",
       "renamed": "Navnet er endret til «{name}»",
@@ -1241,17 +1241,17 @@
   },
   "qrLinking": {
     "title": "Koble til ny enhet",
-    "description": "Skann denne QR-koden fra enheten du vil koble til for å overføre krypteringsnøklene dine sikkert.",
+    "description": "Skann denne QR-koden fra enheten du vil koble til, for å overføre krypteringsnøklene dine på en sikker måte.",
     "encrypted": "Ende-til-ende-kryptert",
     "generating": "Genererer tilkoblingskode …",
     "generatingAria": "Genererer tilkoblingskode",
-    "generateFailed": "Kunne ikke generere tilkoblingskode",
+    "generateFailed": "Kunne ikke generere tilkoblingskoden",
     "tryAgain": "Prøv igjen",
     "expired": "Tilkoblingskoden er utløpt",
     "generateNew": "Generer ny kode",
     "qrAria": "QR-kode for tilkobling av enhet",
     "qrImageAria": "QR-kode for enhetstilkobling",
-    "expiresIn": "Utløper i {time}",
+    "expiresIn": "Utløper om {time}",
     "or": "eller",
     "codeLabel": "Tilkoblingskode",
     "copyAria": "Kopier tilkoblingskoden",
@@ -1288,7 +1288,7 @@
     },
     "unknownError": "Ukjent feil",
     "groups": {
-      "voice": "Stemmetranskripsjon",
+      "voice": "Taletranskripsjon",
       "embeddingModel": "Lokal embedding-modell",
       "embeddingIndex": "Embedding-indeks",
       "inline": "KI-redigering i teksten"
@@ -1378,7 +1378,7 @@
       "activePort": "Aktiv på port {port}",
       "notConnected": "Ikke tilkoblet",
       "test": "Test",
-      "stopFailed": "Kunne ikke stoppe eksisterende server",
+      "stopFailed": "Kunne ikke stoppe den eksisterende serveren",
       "connected": "Tilkoblet! Serveren kjører på port {port}",
       "connectFailed": "Kunne ikke koble til",
       "testFailed": "Tilkoblingstest mislyktes",
@@ -1679,7 +1679,7 @@
         "removed": "Fjernet {path}",
         "renamed": "Endret navn på {oldPath} til {path}",
         "skipped": "Hoppet over {path}",
-        "skippedUnsupported": "Memry åpner ikke filer av typen {ext}, så filen ble latt være som den er.",
+        "skippedUnsupported": "Memry åpner ikke filer av typen {ext}, så filen ble stående som den er.",
         "readFailed": "Kunne ikke lese {path}",
         "indexFailed": "Kunne ikke legge til {path}",
         "copyFailed": "Kunne ikke kopiere {path} til hvelvet",
@@ -1726,7 +1726,7 @@
         "failed": "Kunne ikke oppdatere hvordan dette hvelvet synkroniseres"
       },
       "status": {
-        "localOnly": "Dette hvelvet blir på denne enheten og synkroniseres ikke.",
+        "localOnly": "Dette hvelvet blir liggende på denne enheten og synkroniseres ikke.",
         "foreign": "Dette hvelvet ble synkronisert av en annen konto, så det synkroniseres ikke med din. Det blir liggende på denne enheten.",
         "needsDecision": "Dette hvelvet er ikke synkronisert ennå.",
         "startSync": "Synkroniser dette hvelvet",
@@ -1765,7 +1765,7 @@
       "renameFailed": "Kunne ikke endre navn på taggen",
       "deleteFailed": "Kunne ikke slette taggen",
       "deleted": "Slettet «{name}» fra {count, plural, one {# element} other {# elementer}}",
-      "mergeFailed": "Kunne ikke slå sammen tagger",
+      "mergeFailed": "Kunne ikke slå sammen taggene",
       "merged": "Slo sammen «{source}» med «{target}» ({count, plural, one {# element} other {# elementer}})",
       "colorUpdated": "Fargen for «{name}» er oppdatert",
       "colorFailed": "Kunne ikke oppdatere fargen",
@@ -1817,7 +1817,7 @@
       "colorFailed": "Kunne ikke oppdatere fargen",
       "deleteFailed": "Kunne ikke slette egenskapen",
       "deleted": "Egenskapen «{name}» er slettet",
-      "addFailed": "Kunne ikke legge til alternativ"
+      "addFailed": "Kunne ikke legge til alternativet"
     },
     "v2": {
       "actionsAria": "Handlinger for {name}"
@@ -1846,10 +1846,10 @@
     },
     "status": {
       "loading": "Sjekker kommandostatus …",
-      "loadFailed": "Kunne ikke laste kommandostatus",
-      "installedToast": "memrynote-kommando installert",
-      "uninstalledToast": "memrynote-kommando fjernet",
-      "defaultVaultUpdatedToast": "Standard CLI-hvelv oppdatert"
+      "loadFailed": "Kunne ikke laste inn kommandostatusen",
+      "installedToast": "memrynote-kommandoen er installert",
+      "uninstalledToast": "memrynote-kommandoen er fjernet",
+      "defaultVaultUpdatedToast": "Standardhvelvet for CLI er oppdatert"
     },
     "actions": {
       "refresh": "Oppdater"
@@ -1960,7 +1960,7 @@
         },
         "navForward": {
           "label": "Naviger fremover",
-          "description": "Gjenta en tilbakenavigering"
+          "description": "Gå fremover igjen etter å ha navigert tilbake"
         },
         "newTab": {
           "label": "Ny fane",
@@ -2005,7 +2005,7 @@
           "description": "Slå kursiv formatering av/på"
         },
         "underline": {
-          "label": "Understrek",
+          "label": "Understreking",
           "description": "Slå understrekingsformatering av/på"
         },
         "strikethrough": {
@@ -2076,7 +2076,7 @@
       "today": "I dag",
       "last7Days": "Siste 7 dager",
       "last30Days": "Siste 30 dager",
-      "loadingSyncHistory": "Laster synkroniseringslogg",
+      "loadingSyncHistory": "Laster inn synkroniseringsloggen",
       "noSyncActivityYet": "Ingen synkroniseringsaktivitet ennå",
       "loadMore": "Last inn mer",
       "duration": "· {duration}",
@@ -2090,7 +2090,7 @@
       "pending": "venter",
       "localOnly": "bare lokalt",
       "detected": "oppdaget",
-      "dismissConflicts": "Avvis",
+      "dismissConflicts": "Skjul",
       "clockSkewDetected": "Klokkeavvik oppdaget",
       "items": "elementer",
       "willSyncWhenBackOnline": "Synkroniseres når du er på nett igjen",
@@ -2110,12 +2110,12 @@
       "failedToResendCode": "Kunne ikke sende koden på nytt",
       "failedToSetUpDevice": "Kunne ikke konfigurere enheten",
       "failedToConfirmRecoveryPhrase": "Kunne ikke bekrefte gjenopprettingsfrasen",
-      "failedToAnalyzeContent": "Kunne ikke analysere innhold",
-      "failedToLoadUpdaterState": "Kunne ikke laste oppdateringsstatus",
+      "failedToAnalyzeContent": "Kunne ikke analysere innholdet",
+      "failedToLoadUpdaterState": "Kunne ikke laste inn oppdateringsstatusen",
       "failedToCheckForUpdates": "Kunne ikke se etter oppdateringer",
       "failedToDownloadUpdate": "Kunne ikke laste ned oppdateringen",
       "failedToInstallUpdate": "Kunne ikke installere oppdateringen",
-      "failedToLoadEditorSettings": "Kunne ikke laste redigeringsinnstillinger",
+      "failedToLoadEditorSettings": "Kunne ikke laste inn redigeringsinnstillingene",
       "failedToUpdateEditorSettings": "Kunne ikke oppdatere redigeringsinnstillingene",
       "failedToLoadGeneralSettings": "Kunne ikke laste inn generelle innstillinger",
       "failedToUpdateGeneralSettings": "Kunne ikke oppdatere generelle innstillinger",
@@ -2249,7 +2249,7 @@
     "actions": {
       "save": "Lagre",
       "models": "Modeller",
-      "test": "Test tilkobling",
+      "test": "Test tilkoblingen",
       "probe": "Undersøk verktøy"
     },
     "status": {

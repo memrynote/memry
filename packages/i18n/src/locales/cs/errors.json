@@ -13,7 +13,7 @@
     "invalidPath": "Vybraná cesta není platným umístěním trezoru.",
     "permissionDenied": "Přístup byl odepřen. Zkontrolujte, zda máte přístup k této složce.",
     "alreadyExists": "Na tomto místě již existuje trezor.",
-    "corrupted": "Tento trezor se zdá být poškozen. Zkuste obnovit ze zálohy."
+    "corrupted": "Tento trezor je zřejmě poškozený. Zkuste ho obnovit ze zálohy."
   },
   "note": {
     "notFound": "Tato poznámka nebyla nalezena. Možná byla smazána.",
@@ -35,7 +35,7 @@
     "deleteVersionFailed": "Nepodařilo se smazat verzi",
     "reorderFailed": "Nepodařilo se změnit pořadí poznámek",
     "importFilesFailed": "Nepodařilo se importovat soubory",
-    "setLocalOnlyFailed": "Nepodařilo se nastavit režim pouze místně"
+    "setLocalOnlyFailed": "Poznámku se nepodařilo nastavit jako pouze místní"
   },
   "database": {
     "connectionFailed": "K místní databázi se nepodařilo připojit. Zkuste aplikaci restartovat.",
@@ -124,7 +124,7 @@
   },
   "agent": {
     "runtimeStarting": "Běhové prostředí agenta se spouští. Zkuste to znovu.",
-    "conversationBusy": "Konverzace je zaneprázdněná"
+    "conversationBusy": "V konverzaci právě probíhá odpověď"
   },
   "ai": {
     "inlineDisabled": "Úpravy pomocí AI přímo v textu jsou vypnuté",
@@ -177,7 +177,7 @@
     "listGoogleCalendarsFailed": "Nepodařilo se načíst seznam kalendářů Google",
     "setDefaultGoogleCalendarFailed": "Nepodařilo se nastavit výchozí kalendář Google",
     "retryGoogleSourceSyncFailed": "Nepodařilo se zopakovat synchronizaci zdroje Google Calendar",
-    "promoteExternalEventFailed": "Nepodařilo se povýšit externí událost kalendáře",
+    "promoteExternalEventFailed": "Propojenou kopii externí události se nepodařilo vytvořit",
     "onlyCalendarSourcesRetryable": "Zopakovat lze pouze zdroje kalendáře",
     "invalidProviderSettings": "Neplatné nastavení poskytovatele kalendáře",
     "getExternalEventFailed": "Tuto událost se nepodařilo načíst. V kalendáři stále je – zkuste ji otevřít znovu."
@@ -223,7 +223,7 @@
     "captureLinkFailed": "Nepodařilo se zachytit odkaz",
     "importFilesFailed": "Nepodařilo se importovat soubory",
     "updatePinnedFailed": "Nepodařilo se aktualizovat stav připnutí",
-    "setHomeNoteFailed": "Nepodařilo se nastavit domovskou poznámku",
+    "setHomeNoteFailed": "Poznámku s přehledem projektu se nepodařilo nastavit",
     "listForItemFailed": "Nepodařilo se načíst projekty pro položku"
   },
   "property": {
@@ -248,7 +248,7 @@
     "notFound": "Uložený filtr nenalezen"
   },
   "search": {
-    "rebuildFailed": "Obnova indexu se nezdařila"
+    "rebuildFailed": "Index se nepodařilo znovu sestavit"
   },
   "settings": {
     "unknownVault": "Neznámý trezor",

@@ -62,8 +62,8 @@
     "tags": "Tag",
     "orphans": "Orfani",
     "canvas-edges": "Connessioni nelle lavagne",
-    "toggle-entity": "Attiva/disattiva {label}",
-    "toggle-orphans": "Attiva/disattiva i nodi orfani"
+    "toggle-entity": "Mostra o nascondi {label}",
+    "toggle-orphans": "Mostra o nascondi i nodi orfani"
   },
   "search": {
     "placeholder": "Cerca nodi…",

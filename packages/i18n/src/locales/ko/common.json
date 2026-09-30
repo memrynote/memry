@@ -83,7 +83,7 @@
     "filesImported": "{count, plural, other {파일 #개를 가져왔습니다}}",
     "filesImportFailed": "{count, plural, other {파일 #개를 가져오지 못했습니다}}",
     "filesHiddenInSidebar": "사이드바에서 파일이 숨겨져 있습니다. 파일을 보려면 컬렉션 정렬 메뉴에서 “파일 표시”를 켜세요.",
-    "moreRemindersDue": "{count, plural, other {리마인더 #개 더}}",
+    "moreRemindersDue": "{count, plural, other {알릴 리마인더가 #개 더 있습니다}}",
     "moreRemindersDueHint": "자세한 내용은 리마인더 패널에서 확인하세요",
     "searchIndexRepaired": "검색 인덱스를 복구했습니다",
     "searchIndexRepairedHint": "검색 인덱스 일부가 손상되어 Memry가 다시 만들었습니다. 노트는 변경되지 않았습니다."
@@ -99,15 +99,15 @@
     "inWeeks": "{count, plural, other {#주 후}}"
   },
   "recurrence": {
-    "everyNDays": "{count, plural, one {매일} other {#일마다}}",
-    "everyNWeeks": "{count, plural, one {매주} other {#주마다}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {평일마다} other {#주마다 평일}}",
-    "everyNWeeksOnWeekends": "{count, plural, one {주말마다} other {#주마다 주말}}",
-    "everyNWeeksOnDays": "{count, plural, one {매주 {days}} other {#주마다 {days}}}",
-    "everyNMonths": "{count, plural, one {매달} other {#개월마다}}",
-    "everyNMonthsOnDay": "{count, plural, one {매달 {day}{suffix}일} other {#개월마다 {day}{suffix}일}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {매달 {week} {day}} other {#개월마다 {week} {day}}}",
-    "everyNYears": "{count, plural, one {매년} other {#년마다}}",
+    "everyNDays": "{count, plural, =1 {매일} other {#일마다}}",
+    "everyNWeeks": "{count, plural, =1 {매주} other {#주마다}}",
+    "everyNWeeksOnWeekdays": "{count, plural, =1 {평일마다} other {#주마다 평일}}",
+    "everyNWeeksOnWeekends": "{count, plural, =1 {주말마다} other {#주마다 주말}}",
+    "everyNWeeksOnDays": "{count, plural, =1 {매주 {days}} other {#주마다 {days}}}",
+    "everyNMonths": "{count, plural, =1 {매달} other {#개월마다}}",
+    "everyNMonthsOnDay": "{count, plural, =1 {매달 {day}{suffix}일} other {#개월마다 {day}{suffix}일}}",
+    "everyNMonthsOnWeekDay": "{count, plural, =1 {매달 {week} {day}} other {#개월마다 {week} {day}}}",
+    "everyNYears": "{count, plural, =1 {매년} other {#년마다}}",
     "repeats": "반복",
     "ordinal": {
       "first": "첫째 주",
@@ -151,7 +151,7 @@
       "deny": "거부",
       "invalidJson": "편집 내용을 적용하기 전에 올바른 JSON을 입력하세요.",
       "thisTool": "이 도구",
-      "alwaysAllowHint": "항상 허용은 {tool}에만 적용됩니다. 다른 도구는 계속 확인을 요청하며, 삭제는 항상 확인합니다.",
+      "alwaysAllowHint": "“항상 허용”은 {tool}에만 적용됩니다. 다른 도구는 계속 확인을 요청하며, 삭제는 항상 확인을 요청합니다.",
       "alwaysInChat": "이 채팅에서 항상 허용",
       "alwaysInChatHint": "대화가 끝날 때까지 유지",
       "alwaysInVault": "이 볼트에서 항상 허용",
@@ -411,7 +411,7 @@
     "notFound": "이 캔버스를 찾을 수 없습니다",
     "corruptScene": "이 캔버스를 읽을 수 없습니다. 데이터 손실을 막기 위해 편집이 비활성화되었습니다.",
     "unreadableTitle": "이 캔버스는 여기에서 열 수 없습니다",
-    "unreadableBody": "문서가 볼트에 없거나, 캔버스가 파일로 바뀌기 전에 그려졌는데 이 기기에 잠금 해제 키가 더 이상 없습니다. 삭제된 것은 없습니다 — 이 캔버스를 만든 기기에서 볼트를 열거나 캔버스 폴더를 복원하세요.",
+    "unreadableBody": "문서가 볼트에 없거나, 캔버스가 파일로 저장되기 전 버전에서 만들어졌는데 이 기기에 이를 잠금 해제할 키가 더 이상 없습니다. 삭제된 것은 없습니다 — 이 캔버스를 만든 기기에서 볼트를 열거나 캔버스 폴더를 복원하세요.",
     "tooLargeToSync": "이 캔버스는 너무 커서 동기화할 수 없습니다. 이 기기에는 저장되지만, 크기가 줄어들기 전까지는 다른 기기로 전달되지 않습니다.",
     "savedToVault": "모든 변경 사항은 볼트에 자동으로 저장됩니다",
     "libraryStoreFailed": "도형 라이브러리를 저장하지 못했습니다. 최근 변경 사항이 사라질 수 있습니다.",
@@ -504,7 +504,7 @@
       "bulkLoadFailed": "항목을 불러오지 못했습니다",
       "bulkAdded": "{count, plural, other {카드 #개를 추가했습니다}}",
       "bulkAddedSkipped": "{count, plural, other {카드 #개를 추가했습니다}} · {skipped}개는 이미 캔버스에 있음",
-      "bulkAllOnCanvas": "{count, plural, one {이미 이 캔버스에 있습니다} other {#개 모두 이미 이 캔버스에 있습니다}}"
+      "bulkAllOnCanvas": "{count, plural, =1 {이미 이 캔버스에 있습니다} other {#개 모두 이미 이 캔버스에 있습니다}}"
     },
     "cluster": {
       "button": "그룹 제안",
@@ -579,7 +579,7 @@
       "newItemMenu": "새로 만들기…",
       "feedbackButton": "피드백 보내기",
       "feedbackTitle": "피드백 보내기",
-      "feedbackDescription": "무엇이 잘 되는지, 무엇이 문제인지, Memry에 무엇을 바라는지 알려주세요. 모든 메시지를 읽습니다.",
+      "feedbackDescription": "무엇이 잘 되는지, 무엇이 문제인지, MemryNote에 무엇을 바라는지 알려주세요. 모든 메시지를 읽습니다.",
       "feedbackPlaceholder": "피드백…",
       "feedbackEmailHint": "답장을 원하시면 이메일을 추가하세요.",
       "feedbackPrivacyTitle": "보내는 항목",
@@ -587,14 +587,14 @@
       "feedbackPrivacyEmailOptional": "이메일 — 직접 입력한 경우에만 보내며, 답장하는 데만 사용합니다",
       "feedbackPrivacyEmailSignedIn": "계정 이메일({email}) — 답장하는 데 사용합니다",
       "feedbackPrivacyVersion": "앱 버전과 운영체제",
-      "feedbackPrivacyPlan": "요금제(free, Plus, Pro 또는 Believer)",
+      "feedbackPrivacyPlan": "요금제(무료, Plus, Pro 또는 Believer)",
       "feedbackPrivacyNote": "그 외에는 없습니다. 노트는 기기에 그대로 남습니다.",
       "feedbackSend": "보내기",
       "feedbackSending": "보내는 중…",
       "feedbackSuccess": "피드백 감사합니다!",
       "feedbackError": "피드백을 보내지 못했습니다. 다시 시도하세요.",
-      "syncDisabled": "동기화가 비활성화되었습니다.",
-      "syncDisabled2": "동기화가 비활성화되었습니다.",
+      "syncDisabled": "동기화 비활성화됨",
+      "syncDisabled2": "동기화 비활성화됨",
       "sortLabel": "{section} 정렬: {mode}",
       "sortModeManual": "수동",
       "sortModeNameAsc": "이름 오름차순",
@@ -940,7 +940,7 @@
       "recentMetaWithFolder": "{folder} · {time} 편집됨",
       "openedMeta": "{time} 열람",
       "openedMetaWithFolder": "{folder} · {time} 열람",
-      "noRecentlyOpened": "연 노트가 여기에 표시됩니다",
+      "noRecentlyOpened": "열어 본 노트가 여기에 표시됩니다",
       "bookmarks": "북마크",
       "tasks": "작업",
       "calendar": "캘린더",
@@ -1042,8 +1042,8 @@
       "body": "에이전트 탭으로 전환해 MemryNote 어시스턴트에게 볼트에 대해 물어보세요."
     },
     "sync": {
-      "title": "비공개, 암호화 동기화",
-      "body": "종단 간 암호화 동기화를 켜서 모든 기기를 맞춰 두세요."
+      "title": "암호화된 비공개 동기화",
+      "body": "종단 간 암호화 동기화를 켜서 모든 기기를 같은 상태로 유지하세요."
     },
     "feedback": {
       "title": "의견을 들려주세요",
@@ -1065,7 +1065,7 @@
     }
   },
   "shortcuts": {
-    "description": "memrynote를 빠르게 오가고, 생각을 기록하고, 할 일을 처리하는 단축키입니다.",
+    "description": "memrynote 안에서 빠르게 이동하고, 생각을 기록하고, 할 일을 처리하는 단축키입니다.",
     "or": "또는",
     "then": "그다음",
     "groups": {
@@ -1083,7 +1083,7 @@
       },
       "journal": {
         "title": "저널",
-        "description": "저널 보기를 이동하고 작성 영역에 포커스합니다."
+        "description": "저널 보기 사이를 이동하고 작성 영역에 포커스합니다."
       },
       "notes": {
         "title": "노트 / 편집기",

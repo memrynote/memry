@@ -26,7 +26,7 @@
       "renameFailed": "Muistiinpanon uudelleennimeäminen epäonnistui",
       "titleRequired": "Muistiinpanolla on oltava otsikko",
       "toggleLocalOnlyFailed": "Vain paikallinen -asetuksen muuttaminen epäonnistui",
-      "toggleFullWidthFailed": "Täyden leveyden muuttaminen epäonnistui",
+      "toggleFullWidthFailed": "Täysleveä-asetuksen muuttaminen epäonnistui",
       "pathCopied": "Polku kopioitu",
       "copyPathFailed": "Polun kopioiminen epäonnistui",
       "revealFailed": "Muistiinpanon näyttäminen epäonnistui",
@@ -55,7 +55,7 @@
       },
       "explanation": "Muokkaaminen vaatisi koko tiedoston jäsentämistä kerralla, mikä jumittaisi sovelluksen. Levyllä olevaan tiedostoon ei ole koskettu.",
       "viewer": {
-        "preparing": "Valmistellaan luettavaksi ({size})…",
+        "preparing": "Valmistellaan tiedostoa luettavaksi ({size})…",
         "preparingHint": "Indeksoidaan rivejä, jotta tiedostoa voi vierittää lataamatta sitä kokonaan kerralla.",
         "lines": "{count, plural, one {# rivi} other {# riviä}}",
         "empty": "Tiedosto on tyhjä.",
@@ -241,7 +241,7 @@
       "subtext": "Korosta tärkeitä tietoja",
       "changeType": "Muuta huomiotekstin tyyppiä",
       "menuLabel": "Huomiotekstin tyyppi",
-      "info": "Tieto",
+      "info": "Info",
       "warning": "Varoitus",
       "error": "Virhe",
       "success": "Onnistuminen"
@@ -310,7 +310,7 @@
         "recent": "Viimeisimmät",
         "bestMatch": "Paras osuma",
         "blocks": "Lohkot",
-        "headings": "Lisää otsikoita",
+        "headings": "Muut otsikot",
         "insert": "Lisää",
         "media": "Media",
         "ai": "Tekoäly"
@@ -591,7 +591,7 @@
   },
   "suggestedTags": {
     "label": "Ehdotetut tunnisteet:",
-    "hint": "Tunnisteet, joita tätä eniten muistuttavat muistiinpanot käyttävät. Mitään ei lisätä ennen kuin valitset tunnisteen.",
+    "hint": "Tunnisteet, joita tätä eniten muistuttavat muistiinpanot käyttävät. Mitään ei lisätä, ennen kuin valitset tunnisteen.",
     "acceptAria": "Lisää tunniste {tag}",
     "support": "{count, plural, one {Käytössä # samankaltaisessa muistiinpanossa} other {Käytössä # samankaltaisessa muistiinpanossa}}",
     "dismiss": "Piilota ehdotetut tunnisteet",
@@ -703,7 +703,7 @@
   },
   "moveNoteTasks": {
     "title": "Siirretäänkö muistiinpanon tehtävät?",
-    "description": "{count, plural, one {# tämän muistiinpanon tehtävä kuuluu toiseen projektiin} other {# tämän muistiinpanon tehtävää kuuluu muihin projekteihin}}. Siirretäänkö {count, plural, one {se} other {ne}} projektiin {project}?",
+    "description": "{count, plural, one {Tämän muistiinpanon # tehtävä kuuluu toiseen projektiin} other {Tämän muistiinpanon # tehtävää kuuluu muihin projekteihin}}. Siirretäänkö {count, plural, one {se} other {ne}} projektiin {project}?",
     "subtaskNote": "Alitehtävät siirtyvät ylätehtävänsä mukana.",
     "cancel": "Pidä ennallaan",
     "confirm": "{count, plural, one {Siirrä tehtävä} other {Siirrä tehtävät}}",
@@ -1039,7 +1039,7 @@
       "viewName3": "Näkymän nimi",
       "cancel2": "Peruuta",
       "deleteView": "Poista näkymä",
-      "areYouSureYouWantToDelete": "Oletko varma, että haluat poistaa \"",
+      "areYouSureYouWantToDelete": "Haluatko varmasti poistaa näkymän \"",
       "thisActionCannotBeUndone": "Tätä ei voi kumota.",
       "cancel3": "Peruuta",
       "newView": "Uusi näkymä",
@@ -1134,7 +1134,7 @@
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Poistetaanko tunniste #",
-      "notesWithThisTagWonTBeDeletedJustUntagged": "Tunnisteella merkittyjä muistiinpanoja ei poisteta, niistä vain poistetaan tunniste.",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Tunnisteella merkittyjä muistiinpanoja ei poisteta, vaan niistä poistetaan vain tunniste.",
       "cancel": "Peruuta"
     },
     "componentsSidebarTagDetailView": {
@@ -1217,14 +1217,14 @@
     "pagesFolderView": {
       "createNewNote": "Luo uusi muistiinpano",
       "viewSettings": "Näkymän asetukset",
-      "displayDensity": "Näytön tiheys",
+      "displayDensity": "Näkymän tiheys",
       "comfortable": "Väljä",
       "compact": "Kompakti",
       "showSummaries": "Näytä yhteenvedot",
       "cancel": "Peruuta"
     },
     "componentsFolderViewSortSelector": {
-      "clearSort": "Tyhjennä lajittelu",
+      "clearSort": "Poista lajittelu",
       "sort": "Lajittele",
       "searchProperties": "Hae ominaisuuksia…",
       "builtIn": "Sisäänrakennettu",
@@ -1260,7 +1260,7 @@
       "failedToLoadTemplates": "Pohjien lataaminen epäonnistui"
     },
     "toasts": {
-      "noteExportedSuccessfully": "Muistiinpanon vienti onnistui",
+      "noteExportedSuccessfully": "Muistiinpano viety",
       "failedToUpdateProperty": "Ominaisuuden päivittäminen epäonnistui",
       "failedToUpdateTags": "Tunnisteiden päivittäminen epäonnistui",
       "failedToUpdateIcon": "Kuvakkeen päivittäminen epäonnistui",

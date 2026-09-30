@@ -232,7 +232,7 @@
       },
       "schedule": {
         "title": "Intet planlagt",
-        "subtitle": "Træk opgaver hertil for at omlægge dem"
+        "subtitle": "Træk opgaver hertil for at omplanlægge dem"
       }
     }
   },
@@ -281,15 +281,15 @@
       "undoUnarchive": "Tag {count} opgaver ud af arkivet"
     },
     "drag": {
-      "rescheduledTo": "Omlagt til {target}",
-      "rescheduled": "{count, plural, one {Omlagt til {target}} other {# opgaver omlagt til {target}}}",
+      "rescheduledTo": "Omplanlagt til {target}",
+      "rescheduled": "{count, plural, one {Omplanlagt til {target}} other {# opgaver omplanlagt til {target}}}",
       "movedTo": "Flyttet til {target}",
       "moved": "{count, plural, one {Flyttet til {target}} other {# opgaver flyttet til {target}}}",
       "prioritySetTo": "Prioritet sat til {priority}",
       "prioritySet": "{count, plural, one {Prioritet sat til {priority}} other {# opgaver sat til {priority}}}",
       "deleted": "{count, plural, one {Opgave slettet} other {# opgaver slettet}}",
       "archived": "{count, plural, one {Opgave arkiveret} other {# opgaver arkiveret}}",
-      "undoArchive": "{count, plural, one {Arkiverede # opgave} other {Arkiverede # opgaver}}"
+      "undoArchive": "{count, plural, one {# opgave arkiveret} other {# opgaver arkiveret}}"
     },
     "subtasks": {
       "added": "{count, plural, one {# delopgave tilføjet} other {# delopgaver tilføjet}}",
@@ -493,7 +493,7 @@
       "otherProjects": "Andre projekter"
     },
     "componentsTasksDragDropInsertionIndicator": {
-      "dropToRescheduleTo": "Slip for at flytte til "
+      "dropToRescheduleTo": "Slip for at omplanlægge til "
     },
     "componentsTasksDragDropMoveMenu": {
       "moveTask": "Flyt opgave",
@@ -855,7 +855,7 @@
       "failedToDeleteSubtasks": "Kunne ikke slette delopgaverne",
       "failedToLoadTaskPreferences": "Kunne ikke indlæse opgaveindstillingerne",
       "failedToUpdateTaskPreferences": "Kunne ikke opdatere opgaveindstillingerne",
-      "failedToLoadLinkedTasks": "Kunne ikke indlæse linkede opgaver"
+      "failedToLoadLinkedTasks": "Kunne ikke indlæse de linkede opgaver"
     }
   },
   "addToProject": {

@@ -29,8 +29,8 @@
     "moveFailed": "Nie udało się przenieść notatki",
     "applyTemplateFailed": "Nie udało się zastosować szablonu",
     "appendBlocksFailed": "Nie udało się przenieść bloku do tej notatki",
-    "exportPdfFailed": "Nie udało się wyeksportować PDF",
-    "exportHtmlFailed": "Nie udało się wyeksportować HTML",
+    "exportPdfFailed": "Nie udało się wyeksportować pliku PDF",
+    "exportHtmlFailed": "Nie udało się wyeksportować pliku HTML",
     "restoreVersionFailed": "Nie udało się przywrócić wersji",
     "deleteVersionFailed": "Nie udało się usunąć wersji",
     "reorderFailed": "Nie udało się zmienić kolejności notatek",
@@ -48,7 +48,7 @@
   "watcher": {
     "startFailed": "Nie udało się rozpocząć obserwowania zmian w plikach.",
     "stopFailed": "Nie udało się zatrzymać obserwowania zmian w plikach.",
-    "eventError": "Wystąpił błąd podczas sprawdzania zmian w plikach."
+    "eventError": "Wystąpił błąd podczas obserwowania zmian w plikach."
   },
   "attachment": {
     "fileTooLarge": "Ten plik jest zbyt duży, aby go załączyć.",
@@ -66,7 +66,7 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "Historia edycji nie jest przechowywana na tym urządzeniu",
-    "persistenceDegradedBody": "Twoje notatki są bezpieczne – znajdują się w sejfie jako zwykłe pliki i nadal normalnie się otwierają i zapisują. Tylko lokalna historia edycji i stan scalania na tym urządzeniu są przechowywane w pamięci operacyjnej, więc zaczynają się od nowa przy każdym uruchomieniu memrynote."
+    "persistenceDegradedBody": "Twoje notatki są bezpieczne – znajdują się w sejfie jako zwykłe pliki i nadal normalnie się otwierają i zapisują. Tylko lokalna historia edycji i stan scalania na tym urządzeniu są przechowywane w pamięci operacyjnej, więc zaczynają się od nowa przy każdym uruchomieniu aplikacji memrynote."
   },
   "encryption": {
     "failed": "Nie udało się zaszyfrować danych. Twoje klucze mogą wymagać regeneracji.",
@@ -86,7 +86,7 @@
     "deviceRevoked": "To urządzenie zostało usunięte z konta.",
     "rateLimited": "Zbyt wiele żądań. Synchronizacja zostanie wkrótce wznowiona.",
     "cryptoFailure": "Nie udało się zaszyfrować lub odszyfrować synchronizowanych danych. Spróbuj się wylogować i zalogować ponownie.",
-    "versionIncompatible": "Ta wersja memrynote nie jest już obsługiwana. Zaktualizuj aplikację.",
+    "versionIncompatible": "Ta wersja aplikacji memrynote nie jest już obsługiwana. Zainstaluj aktualizację.",
     "storageQuotaExceeded": "Pamięć synchronizacji jest pełna. Zwolnij miejsce lub uaktualnij swój plan.",
     "fileTooLarge": "Ten plik przekracza limit twojego planu. Uaktualnij plan, aby synchronizować większe pliki.",
     "noteTooLarge": "Notatka jest zbyt duża, aby ją zsynchronizować. Podziel ją na mniejsze notatki, aby rozwiązać problem.",
@@ -133,8 +133,8 @@
   "auth": {
     "notAuthenticated": "Brak uwierzytelnienia",
     "sessionExpired": "Sesja wygasła. Zaloguj się ponownie.",
-    "setupSessionExpired": "Logowanie wygasło, zanim ten proces się zakończył. Zaloguj się ponownie, a następnie wpisz frazę odzyskiwania.",
-    "setupSessionExpiredLinking": "Logowanie wygasło, zanim to urządzenie zostało połączone. Zaloguj się ponownie, a następnie jeszcze raz zeskanuj kod.",
+    "setupSessionExpired": "Sesja logowania wygasła, zanim ten proces się zakończył. Zaloguj się ponownie, a następnie wpisz frazę odzyskiwania.",
+    "setupSessionExpiredLinking": "Sesja logowania wygasła, zanim to urządzenie zostało połączone. Zaloguj się ponownie, a następnie jeszcze raz zeskanuj kod.",
     "invalidRecoveryPhraseFormat": "Nieprawidłowy format frazy odzyskiwania",
     "recoveryPhraseMismatch": "Fraza odzyskiwania nie pasuje. Spróbuj ponownie.",
     "cannotRemoveCurrentDevice": "Nie można usunąć bieżącego urządzenia",
@@ -163,7 +163,7 @@
     "sourceNotFound": "Nie znaleziono źródła kalendarza",
     "onlySourcesSelectable": "Można wybrać tylko źródła kalendarza",
     "onlyGoogleSourcesRetryable": "Ponowić synchronizację można tylko dla źródeł kalendarza Google",
-    "signInBeforeRefresh": "Zaloguj się do memrynote przed odświeżeniem Google Calendar",
+    "signInBeforeRefresh": "Zaloguj się w aplikacji memrynote, zanim odświeżysz Google Calendar",
     "googleNotConnected": "Konto Google Calendar nie jest połączone na tym urządzeniu",
     "syncFailed": "Synchronizacja nie powiodła się",
     "createEventFailed": "Nie udało się utworzyć wydarzenia w kalendarzu",
@@ -205,7 +205,7 @@
     "importFailed": "Import nie powiódł się",
     "cancelFailed": "Nie udało się anulować",
     "previewFailed": "Nie udało się wyświetlić podglądu",
-    "listFailed": "Nie udało się pobrać listy importerów",
+    "listFailed": "Nie udało się pobrać listy narzędzi importu",
     "appleNotesFoldersFailed": "Nie udało się odczytać folderów Apple Notes",
     "onenoteStatusFailed": "Nie udało się odczytać stanu połączenia z OneNote",
     "onenoteConnectFailed": "Nie udało się zalogować do konta Microsoft",
@@ -254,7 +254,7 @@
     "unknownVault": "Nieznany sejf",
     "modelAlreadyLoading": "Model jest już ładowany",
     "modelLoadFailed": "Nie udało się załadować modelu",
-    "voiceModelDownloadFailed": "Nie udało się pobrać modelu głosu",
+    "voiceModelDownloadFailed": "Nie udało się pobrać modelu transkrypcji głosu",
     "terminalCommandInstallFailed": "Nie udało się zainstalować polecenia terminala",
     "terminalCommandUninstallFailed": "Nie udało się odinstalować polecenia terminala",
     "shortcutInUse": "Skrót {shortcut} jest już używany"

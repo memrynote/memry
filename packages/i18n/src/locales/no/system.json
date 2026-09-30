@@ -53,7 +53,7 @@
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "Påminnelsestidspunkt må ligge i fremtiden",
+    "reminderTimeMustBeFuture": "Påminnelsestidspunktet må ligge frem i tid",
     "definitionNotFound": "Finner ikke definisjonen",
     "noteNotFound": "Finner ikke notatet",
     "updateFailed": "Oppdatering mislyktes",

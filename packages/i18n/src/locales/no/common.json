@@ -46,7 +46,7 @@
   },
   "tabs": {
     "pin": "Fest fane",
-    "unpin": "Løsne fanen",
+    "unpin": "Løsne fane",
     "persistence": {
       "saveFailed": "De åpne fanene dine lagres ikke lenger",
       "saveFailedQuota": "Denne økten er for stor til å lagres. Lukk noen faner, ellers blir den kanskje ikke gjenopprettet neste gang du åpner Memry.",
@@ -117,7 +117,7 @@
       "last": "siste"
     },
     "preset": {
-      "everyWeekday": "Hver ukedag (man-fre)",
+      "everyWeekday": "Hver ukedag (man.–fre.)",
       "everyYearOnDate": "Hvert år den {date}"
     }
   },
@@ -151,12 +151,12 @@
       "deny": "Avvis",
       "invalidJson": "Skriv inn gyldig JSON før du bruker redigeringer.",
       "thisTool": "dette verktøyet",
-      "alwaysAllowHint": "«Tillat alltid» gjelder {tool}. Alle andre verktøy spør fortsatt, og sletting spør alltid.",
+      "alwaysAllowHint": "«Tillat alltid» gjelder {tool}. Alle andre verktøy spør fortsatt, og det spørres alltid før sletting.",
       "alwaysInChat": "Tillat alltid i denne samtalen",
       "alwaysInChatHint": "Gjelder til samtalen avsluttes",
       "alwaysInVault": "Tillat alltid i dette hvelvet",
       "alwaysInVaultHint": "Kan trekkes tilbake i Innstillinger › Agent",
-      "deletesAlwaysAsk": "Sletting spør alltid"
+      "deletesAlwaysAsk": "Spør alltid før sletting"
     },
     "diff": {
       "previewError": "Kunne ikke forhåndsvise denne endringen",
@@ -276,7 +276,7 @@
       "voice": {
         "start": "Start diktering",
         "stop": "Stopp diktering",
-        "transcribing": "Gjør om tale til tekst",
+        "transcribing": "Talen gjøres om til tekst",
         "errors": {
           "permissionDenied": "Tilgang til mikrofonen ble nektet",
           "noMicrophone": "Fant ingen mikrofon",
@@ -378,12 +378,12 @@
     },
     "errors": {
       "loadConversations": "Kunne ikke laste inn agentsamtalene",
-      "loadConversation": "Kunne ikke laste agentsamtalen",
+      "loadConversation": "Kunne ikke laste inn agentsamtalen",
       "createConversation": "Kunne ikke opprette agentsamtale",
       "busy": "Et annet vindu er i ferd med å svare i denne samtalen. Vent til det er ferdig, eller stopp det derfra.",
       "sendTurn": "Kunne ikke sende meldingen til agenten",
       "cancelTurn": "Kunne ikke stoppe agentens svar",
-      "submitApproval": "Kunne ikke sende inn verktøygodkjenning",
+      "submitApproval": "Kunne ikke sende inn verktøygodkjenningen",
       "updateTrust": "Kunne ikke oppdatere klarerte verktøy",
       "saveDisclosure": "Kunne ikke lagre bekreftelsen din",
       "resolveWindow": "Kunne ikke finne agentens kildevindu",
@@ -423,7 +423,7 @@
       "hint": "Begynn å skrive for å finne et element å lenke til.",
       "empty": "Ingen treff.",
       "selectOneShape": "Velg én figur for å lenke den til et element.",
-      "cardsCannotLink": "Et kort åpner allerede sitt eget element, så det kan ikke ha en lenke til.",
+      "cardsCannotLink": "Et kort åpner allerede sitt eget element, så det kan ikke ha en lenke i tillegg.",
       "linked": "Lenket.",
       "groupNotes": "Notater",
       "groupFiles": "Filer",
@@ -439,7 +439,7 @@
       "missingTarget": "Ikke lenger på dette lerretet"
     },
     "disabledTitle": "Lerret er ikke slått på",
-    "disabledBody": "Denne fanen hører til en funksjon som ikke er slått på på denne enheten.",
+    "disabledBody": "Denne fanen hører til en funksjon som er slått av på denne enheten.",
     "unreadable": "Dokumentet til dette lerretet mangler eller kan ikke leses. Vis det i filbehandleren, eller slett oppføringen.",
     "actionFailed": "Handlingen på lerretet kunne ikke fullføres",
     "renameLabel": "Navn på lerret",
@@ -449,7 +449,7 @@
     "dropToRoot": "Slipp her for å flytte ut av en mappe",
     "filterPlaceholder": "Filtrer lerreter",
     "filterNoMatches": "Ingen lerreter samsvarer med filteret",
-    "folderCanvasCount": "Inneholder {count} lerreter",
+    "folderCanvasCount": "{count, plural, one {Inneholder # lerret} other {Inneholder # lerreter}}",
     "folderEmptyHint": "Ingenting her ennå",
     "deleteFolderConfirmTitle": "Vil du slette denne lerretsmappen?",
     "deleteFolderConfirmBody": "«{name}» og alt innholdet fjernes fra memrynote på alle enhetene dine. Berørte lerreter: {count}. Mappen havner i papirkurven på denne datamaskinen, men lerretene blir ikke gjenopprettet om du legger den tilbake.",
@@ -501,7 +501,7 @@
       "bulkConfirmAdd": "{count, plural, one {Legg til # kort} other {Legg til # kort}}",
       "bulkBack": "Tilbake",
       "bulkEmpty": "Ingen notater, filer eller oppgaver å legge til",
-      "bulkLoadFailed": "Kunne ikke laste inn elementer",
+      "bulkLoadFailed": "Kunne ikke laste inn elementene",
       "bulkAdded": "{count, plural, one {# kort lagt til} other {# kort lagt til}}",
       "bulkAddedSkipped": "{count, plural, one {# kort lagt til} other {# kort lagt til}} · {skipped} allerede på lerretet",
       "bulkAllOnCanvas": "{count, plural, one {Allerede på dette lerretet} other {Alle # er allerede på dette lerretet}}"
@@ -627,7 +627,7 @@
       "createNote": "Opprett notat ",
       "addYourFirstTask": "Legg til din første oppgave",
       "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Oppgaver lenker til notatene dine, med prioriteter og forfallsdatoer.",
-      "eGReviewProjectProposal": "f.eks. Gå gjennom prosjektforslaget …",
+      "eGReviewProjectProposal": "f.eks. gå gjennom prosjektforslaget …",
       "skip2": "Hopp over",
       "createTask": "Opprett oppgave ",
       "syncAcrossDevices": "Synkroniser på tvers av enheter",
@@ -669,7 +669,7 @@
       "projects": "Prosjekter",
       "more": "Mer",
       "viewProject": "Se prosjekt",
-      "shareProject": "Del prosjektet",
+      "shareProject": "Del prosjekt",
       "deleteProject": "Slett prosjekt",
       "more2": "Mer"
     },
@@ -886,16 +886,16 @@
       "cancel": "Avbryt",
       "remove2": "Fjern",
       "inYourAccount": "På kontoen din",
-      "itemsCount": "{count} elementer",
+      "itemsCount": "{count, plural, one {# element} other {# elementer}}",
       "untitledVault": "Hvelv",
       "downloadVaultTitle": "Last ned «{name}»",
       "downloadLocation": "Plassering",
       "changeLocation": "Endre …",
       "download": "Last ned",
-      "downloadFailed": "Hvelvet kunne ikke lastes ned",
+      "downloadFailed": "Kunne ikke laste ned hvelvet",
       "deleteFromAccount": "Slett fra kontoen",
       "deleteVaultTitle": "Vil du slette «{name}» fra kontoen din?",
-      "deleteVaultBody": "Dette fjerner for godt alle synkroniserte data for dette hvelvet fra Memrys servere, og kan ikke angres. Filene dine på disken blir ikke slettet.",
+      "deleteVaultBody": "Dette fjerner for godt alle synkroniserte data for dette hvelvet fra Memrys servere og kan ikke angres. Filene dine på disken blir ikke slettet.",
       "deleteVaultConfirm": "Slett fra kontoen",
       "deleteVaultFailed": "Kunne ikke slette hvelvet",
       "missing": "Finner ikke mappen"
@@ -910,7 +910,7 @@
   },
   "phaseI": {
     "errors": {
-      "failedToImportFiles": "Kunne ikke importere filer",
+      "failedToImportFiles": "Kunne ikke importere filene",
       "failedToCreateNote": "Kunne ikke opprette notatet",
       "failedToAccessMicrophone": "Kunne ikke få tilgang til mikrofonen"
     },
@@ -984,7 +984,7 @@
       "defaultName": "Hjem",
       "manage": "Administrer tavler",
       "manageTitle": "Administrer tavler",
-      "manageDescription": "Gi nytt navn til, endre rekkefølge på eller slett tavlene dine på Hjem.",
+      "manageDescription": "Gi nytt navn til tavlene dine på Hjem, endre rekkefølgen på dem eller slett dem.",
       "renameAria": "Gi tavlen nytt navn",
       "reorderAria": "Endre rekkefølge på tavlen",
       "nameLabel": "Tavlenavn"
@@ -1079,7 +1079,7 @@
       },
       "inbox": {
         "title": "Innboks",
-        "description": "Behandle elementer du har fanget opp, raskt."
+        "description": "Behandle raskt det du har fanget opp."
       },
       "journal": {
         "title": "Dagbok",
@@ -1145,8 +1145,8 @@
       "journal": {
         "returnFromOverview": "Gå tilbake fra måneds- eller årsvisning",
         "find": "Finn i dagboken",
-        "bold": "Sett merket tekst i fet",
-        "italic": "Sett merket tekst i kursiv",
+        "bold": "Gjør merket tekst fet",
+        "italic": "Gjør merket tekst kursiv",
         "underline": "Understrek merket tekst"
       },
       "notes": {

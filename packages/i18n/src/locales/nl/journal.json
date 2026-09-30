@@ -209,7 +209,7 @@
     }
   },
   "toast": {
-    "unsavedRetry": "Je inhoud staat nog in het geheugen. Klik om opnieuw te proberen op te slaan.",
+    "unsavedRetry": "Je inhoud staat nog in het geheugen. Klik om het opslaan opnieuw te proberen.",
     "noteNotFound": "Notitie “{target}” niet gevonden",
     "createLinkedFailed": "Kan gekoppelde notitie niet maken",
     "fileNotFound": "Bestand niet gevonden: {target}",

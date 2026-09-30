@@ -13,7 +13,7 @@
   },
   "toolbar": {
     "create-event": "יצירת אירוע",
-    "previous-period": "תקופה קודמת",
+    "previous-period": "התקופה הקודמת",
     "next-period": "התקופה הבאה",
     "previous-month": "החודש הקודם",
     "next-month": "החודש הבא",
@@ -138,7 +138,7 @@
     "title": "השלמת החיבור ל-Google Calendar",
     "body": "כדאי לחבר את חשבון Google כדי לעשות יותר עם לוח השנה:",
     "bullets": {
-      "events": "אירועי Google לצד פתקים ומשימות",
+      "events": "הצגת אירועי Google לצד פתקים ומשימות",
       "sync": "יצירה ועריכה של אירועים, עם סנכרון לשני הכיוונים",
       "schedule": "תזמון משימות ופתקים בלוח השנה"
     },

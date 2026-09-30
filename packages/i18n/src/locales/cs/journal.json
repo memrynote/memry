@@ -39,7 +39,7 @@
       "past": "Zamyslete se nad tímto dnem…"
     },
     "upload": {
-      "failed": "Nahrání obrázku se nezdařilo"
+      "failed": "Obrázek se nepodařilo nahrát"
     }
   },
   "date": {
@@ -107,12 +107,12 @@
     "previousDay": "Předchozí den",
     "nextDay": "Další den",
     "previousMonth": "Předchozí měsíc",
-    "nextMonth": "Příští měsíc",
+    "nextMonth": "Další měsíc",
     "previousYear": "Předchozí rok",
-    "nextYear": "Příští rok",
+    "nextYear": "Další rok",
     "journalBack": "Zpět v deníku",
     "journalNavigation": "Navigace v deníku",
-    "dateNavigation": "Navigace podle data deníku",
+    "dateNavigation": "Navigace v deníku podle data",
     "goToYearView": "Přejít na zobrazení roku"
   },
   "aria": {
@@ -131,9 +131,9 @@
     "noEventsWereScheduled": "Nebyly naplánovány žádné události",
     "noTasksDue": "Žádné úkoly s termínem",
     "noTasksDueToday": "Žádné úkoly s termínem dnes",
-    "noTasksWereDue": "Žádné úkoly neměly termín",
+    "noTasksWereDue": "V tento den neměly termín žádné úkoly",
     "noNotesToday": "Dnes nebyly vytvořeny žádné poznámky",
-    "startDocumenting": "Začněte dokumentovat své myšlenky a nápady"
+    "startDocumenting": "Začněte zapisovat své myšlenky a nápady"
   },
   "ai": {
     "loading": "Analýza vašeho zápisu…",
@@ -209,7 +209,7 @@
     }
   },
   "toast": {
-    "unsavedRetry": "Váš obsah je stále v paměti. Kliknutím zopakujte uložení.",
+    "unsavedRetry": "Váš obsah je stále v paměti. Kliknutím zkusíte uložení zopakovat.",
     "noteNotFound": "Poznámka „{target}“ nebyla nalezena",
     "createLinkedFailed": "Propojenou poznámku se nepodařilo vytvořit",
     "fileNotFound": "Soubor nenalezen: {target}",
@@ -229,7 +229,7 @@
     "title": "Chyba deníku",
     "description": "V deníku došlo u dne {date} k chybě. Vaše nedávné změny možná nebyly uloženy.",
     "descriptionNoDate": "V deníku došlo k chybě. Vaše nedávné změny možná nebyly uloženy.",
-    "unsavedContent": "Byl zjištěn neuložený obsah ({length} znaků)"
+    "unsavedContent": "Byl zjištěn neuložený obsah (počet znaků: {length})"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -240,7 +240,7 @@
     "errors": {
       "failedToSaveJournalEntry": "Zápis v deníku se nepodařilo uložit",
       "failedToLoadJournalSettings": "Nastavení deníku se nepodařilo načíst",
-      "failedToUpdateSettings": "Aktualizace nastavení se nezdařila"
+      "failedToUpdateSettings": "Nastavení se nepodařilo aktualizovat"
     }
   },
   "deleteConfirm": {

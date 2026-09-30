@@ -226,7 +226,7 @@
         "due": "期限",
         "dueTime": "期限の時刻",
         "duplicateOf": "複製元",
-        "edits": "編集",
+        "edits": "編集内容",
         "elements": "要素",
         "folder": "フォルダー",
         "icon": "アイコン",
@@ -244,7 +244,7 @@
         "removed": "削除済み",
         "repeatFrom": "繰り返しの基準",
         "snoozeReason": "スヌーズの理由",
-        "snoozedUntil": "スヌーズ終了",
+        "snoozedUntil": "スヌーズ終了日時",
         "start": "開始",
         "status": "ステータス",
         "tags": "タグ",
@@ -365,8 +365,8 @@
     "reasoning": {
       "thinking": "考え中…",
       "thought": "思考",
-      "thoughtFor": "{seconds} 秒間思考",
-      "toggle": "推論を表示または非表示"
+      "thoughtFor": "思考時間：{seconds} 秒",
+      "toggle": "推論の表示／非表示を切り替え"
     },
     "sidebar": {
       "label": "右サイドバー",
@@ -385,10 +385,10 @@
       "cancelTurn": "エージェントの応答をキャンセルできませんでした",
       "submitApproval": "ツールの承認を送信できませんでした",
       "updateTrust": "信頼済みツールを更新できませんでした",
-      "saveDisclosure": "開示状態を保存できませんでした",
+      "saveDisclosure": "同意の状態を保存できませんでした",
       "resolveWindow": "エージェントの送信元ウィンドウを特定できませんでした",
       "detectCli": "エージェントのバックエンドを検出できませんでした",
-      "loadDisclosure": "開示状態を読み込めませんでした"
+      "loadDisclosure": "同意の状態を読み込めませんでした"
     },
     "actions": {
       "copy": "コピー",
@@ -452,7 +452,7 @@
     "folderCanvasCount": "キャンバス {count} 件",
     "folderEmptyHint": "まだ何もありません",
     "deleteFolderConfirmTitle": "このキャンバスフォルダーを削除しますか？",
-    "deleteFolderConfirmBody": "「{name}」とその中身はすべて、すべてのデバイスの memrynote から削除されます。対象のキャンバス：{count} 件。フォルダーはこのコンピューターのゴミ箱に移動しますが、ゴミ箱から戻してもキャンバスは復元されません。",
+    "deleteFolderConfirmBody": "「{name}」とその中身は、すべてのデバイスの memrynote から削除されます。対象のキャンバス：{count} 件。フォルダーはこのコンピューターのゴミ箱に移動しますが、ゴミ箱から戻してもキャンバスは復元されません。",
     "actions": {
       "rename": "名前を変更",
       "duplicate": "複製",
@@ -462,7 +462,7 @@
       "moveToFolder": "フォルダーに移動",
       "moveToRoot": "最上位",
       "openExternal": "外部エディターで開く",
-      "newCanvasHere": "ここに新しいキャンバス",
+      "newCanvasHere": "ここに新しいキャンバスを作成",
       "newFolder": "新しいフォルダー",
       "canvasMenu": "キャンバスの操作",
       "folderMenu": "キャンバスフォルダーの操作"
@@ -587,7 +587,7 @@
       "feedbackPrivacyEmailOptional": "メールアドレス — 入力した場合のみ、返信のためだけに使います",
       "feedbackPrivacyEmailSignedIn": "アカウントのメールアドレス（{email}）。返信のために使います",
       "feedbackPrivacyVersion": "アプリのバージョンと OS",
-      "feedbackPrivacyPlan": "ご利用のプラン（free、Plus、Pro、Believer）",
+      "feedbackPrivacyPlan": "ご利用のプラン（Free、Plus、Pro、Believer）",
       "feedbackPrivacyNote": "送信されるのはこれだけです。ノートはデバイスの外に出ません。",
       "feedbackSend": "送信",
       "feedbackSending": "送信中…",
@@ -667,7 +667,7 @@
     },
     "componentsNavProjects": {
       "projects": "プロジェクト",
-      "more": "もっと見る",
+      "more": "その他の操作",
       "viewProject": "プロジェクトを見る",
       "shareProject": "プロジェクトを共有",
       "deleteProject": "プロジェクトを削除",
@@ -694,7 +694,7 @@
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "検索して項目をクリックすると、ここに履歴が残ります",
-      "reasons": "理由",
+      "reasons": "履歴",
       "clear": "クリア"
     },
     "componentsSearchSearchFilters": {
@@ -895,7 +895,7 @@
       "downloadFailed": "保管庫をダウンロードできませんでした",
       "deleteFromAccount": "アカウントから削除",
       "deleteVaultTitle": "「{name}」をアカウントから削除しますか？",
-      "deleteVaultBody": "この保管庫の同期データを Memry のサーバーから完全に削除します。この操作は元に戻すことができません。ディスク上のファイルは削除されません。",
+      "deleteVaultBody": "この保管庫のすべての同期データを Memry のサーバーから完全に削除します。この操作は元に戻せません。ディスク上のファイルは削除されません。",
       "deleteVaultConfirm": "アカウントから削除",
       "deleteVaultFailed": "保管庫を削除できませんでした",
       "missing": "フォルダーが見つかりません"
@@ -1013,7 +1013,7 @@
     "noJournalEntriesYet": "ジャーナルの記録はまだありません。",
     "disabled": {
       "createNote": "ノートを作成",
-      "hint": "何も開いていません。ノートを始めましょう。"
+      "hint": "何も開いていません。ノートを書き始めましょう。"
     }
   },
   "onboarding": {
@@ -1056,7 +1056,7 @@
     "tour": {
       "next": "次へ",
       "previous": "戻る",
-      "progress": "{total} 件中 {current} 件目"
+      "progress": "{current} / {total}"
     },
     "starPrompt": {
       "title": "ツアーが完了しました",
@@ -1065,7 +1065,7 @@
     }
   },
   "shortcuts": {
-    "description": "memrynote 内の移動、思いつきの記録、作業の処理を素早く行うための近道です。",
+    "description": "memrynote 内の移動、アイデアのキャプチャ、作業の処理を素早く行うためのショートカットです。",
     "or": "または",
     "then": "続けて",
     "groups": {
@@ -1091,7 +1091,7 @@
       },
       "tasks": {
         "title": "タスク",
-        "description": "タスクを絞り込み、選択し、完了します。"
+        "description": "タスクを絞り込み、選択し、完了にします。"
       },
       "settings": {
         "title": "設定",
@@ -1140,7 +1140,7 @@
         "archiveItem": "選択した項目をアーカイブ",
         "openOriginal": "元のリンクを開く",
         "refresh": "インボックスを更新",
-        "confirmFiling": "振り分けパネルを確定"
+        "confirmFiling": "振り分けを確定"
       },
       "journal": {
         "returnFromOverview": "月表示・年表示から戻る",

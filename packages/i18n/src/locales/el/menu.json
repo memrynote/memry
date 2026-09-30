@@ -3,19 +3,19 @@
     "quit": "Τερματισμός",
     "preferences": "Ρυθμίσεις…",
     "checkForUpdates": "Έλεγχος για ενημερώσεις…",
-    "exit": "Έξοδος",
+    "services": "Υπηρεσίες",
     "hide": "Απόκρυψη MemryNote",
     "hideOthers": "Απόκρυψη άλλων",
-    "services": "Υπηρεσίες",
-    "unhide": "Εμφάνιση όλων"
+    "unhide": "Εμφάνιση όλων",
+    "exit": "Έξοδος"
   },
   "file": {
     "label": "Αρχείο",
-    "newNote": "Νέα Σημείωση",
-    "close": "Κλείσιμο παραθύρου",
-    "closeTab": "Κλείσιμο καρτέλας",
+    "newNote": "Νέα σημείωση",
+    "openQuickly": "Γρήγορο άνοιγμα…",
     "exportPdf": "Εξαγωγή σε PDF…",
-    "openQuickly": "Γρήγορο άνοιγμα…"
+    "closeTab": "Κλείσιμο καρτέλας",
+    "close": "Κλείσιμο παραθύρου"
   },
   "navigation": {
     "back": "Πίσω",
@@ -31,63 +31,68 @@
     "selectAll": "Επιλογή όλων",
     "find": "Εύρεση",
     "speech": "Ομιλία",
-    "delete": "Διαγραφή",
     "pasteAndMatchStyle": "Επικόλληση και αντιστοίχιση στιλ",
+    "delete": "Διαγραφή",
     "startSpeaking": "Έναρξη εκφώνησης",
-    "stopSpeaking": "Διακοπή εκφώνησης"
+    "stopSpeaking": "Διακοπή εκφώνησης",
+    "addToDictionary": "Προσθήκη στο λεξικό",
+    "noSuggestions": "Καμία πρόταση"
   },
-  "view": {
-    "label": "Προβολή",
-    "reload": "Επαναφόρτωση",
-    "toggleDevTools": "Εναλλαγή Εργαλείων προγραμματιστή",
-    "toggleFullscreen": "Εναλλαγή πλήρους οθόνης",
-    "theme": "Θέμα",
-    "themeDark": "Σκοτεινό",
-    "themeLight": "Φωτεινό",
-    "themeSystem": "Σύστημα",
-    "themeWhite": "Χαρτί",
-    "toggleDayPanel": "Εναλλαγή πάνελ ημέρας",
-    "toggleSidebar": "Εναλλαγή πλαϊνής στήλης",
-    "actualSize": "Πραγματικό μέγεθος",
-    "zoomIn": "Μεγέθυνση",
-    "zoomOut": "Σμίκρυνση"
+  "insert": {
+    "label": "Εισαγωγή",
+    "codeBlock": "Μπλοκ κώδικα",
+    "table": "Πίνακας",
+    "bulletList": "Λίστα με κουκκίδες",
+    "numberedList": "Αριθμημένη λίστα",
+    "taskList": "Λίστα εργασιών",
+    "attachment": "Εισαγωγή συνημμένου…"
   },
   "format": {
-    "body": "Σώμα κειμένου",
-    "bold": "Έντονα",
-    "code": "Κώδικας",
+    "label": "Μορφή",
     "heading1": "Επικεφαλίδα 1",
     "heading2": "Επικεφαλίδα 2",
     "heading3": "Επικεφαλίδα 3",
     "heading4": "Επικεφαλίδα 4",
     "heading5": "Επικεφαλίδα 5",
     "heading6": "Επικεφαλίδα 6",
-    "highlight": "Επισήμανση",
+    "body": "Σώμα κειμένου",
+    "bold": "Έντονα",
     "italic": "Πλάγια",
-    "label": "Μορφή",
+    "code": "Κώδικας",
+    "highlight": "Επισήμανση",
     "strikethrough": "Διακριτή διαγραφή"
   },
-  "help": {
-    "about": "Σχετικά με το MemryNote",
-    "documentation": "Τεκμηρίωση",
-    "label": "Βοήθεια",
-    "shortcuts": "Συντομεύσεις πληκτρολογίου",
-    "aboutVersion": "Έκδοση {version}"
-  },
-  "insert": {
-    "attachment": "Εισαγωγή συνημμένου…",
-    "bulletList": "Λίστα με κουκκίδες",
-    "codeBlock": "Μπλοκ κώδικα",
-    "label": "Εισαγωγή",
-    "numberedList": "Αριθμημένη λίστα",
-    "table": "Πίνακας",
-    "taskList": "Λίστα εργασιών"
+  "view": {
+    "label": "Προβολή",
+    "reload": "Επαναφόρτωση",
+    "toggleDevTools": "Εμφάνιση/απόκρυψη εργαλείων προγραμματιστή",
+    "toggleFullscreen": "Πλήρης οθόνη",
+    "toggleSidebar": "Εμφάνιση/απόκρυψη πλαϊνής στήλης",
+    "toggleDayPanel": "Εμφάνιση/απόκρυψη πλαισίου ημέρας",
+    "theme": "Θέμα",
+    "themeLight": "Φωτεινό",
+    "themeDark": "Σκοτεινό",
+    "themeWhite": "Χαρτί",
+    "themeSystem": "Σύστημα",
+    "actualSize": "Πραγματικό μέγεθος",
+    "zoomIn": "Μεγέθυνση",
+    "zoomOut": "Σμίκρυνση"
   },
   "window": {
     "label": "Παράθυρο",
-    "close": "Κλείσιμο",
-    "front": "Μεταφορά όλων μπροστά",
     "minimize": "Ελαχιστοποίηση",
-    "zoom": "Ζουμ"
+    "zoom": "Ζουμ",
+    "front": "Μεταφορά όλων σε πρώτο πλάνο",
+    "close": "Κλείσιμο"
+  },
+  "help": {
+    "label": "Βοήθεια",
+    "documentation": "Τεκμηρίωση",
+    "shortcuts": "Συντομεύσεις πληκτρολογίου",
+    "about": "Σχετικά με το MemryNote",
+    "aboutVersion": "Έκδοση {version}"
+  },
+  "tray": {
+    "show": "Εμφάνιση MemryNote"
   }
 }

@@ -23,7 +23,7 @@
       "availableDetailFallback": "Ladda ner uppdateringen nu?",
       "buttonDownload": "Ladda ner",
       "buttonLater": "Senare",
-      "readyTitle": "Uppdateringen är klar",
+      "readyTitle": "Uppdatering redo",
       "readyMessage": "memrynote {version} har laddats ner.",
       "readyDetailFallback": "Starta om memrynote för att slutföra installationen av uppdateringen.",
       "buttonRestartNow": "Starta om nu",
@@ -65,7 +65,7 @@
       "subtitle": "MemryNote startar om automatiskt."
     },
     "failed": {
-      "title": "MemryNote kunde inte starta klart",
+      "title": "MemryNote kunde inte slutföra starten",
       "body": "Det här kan hända när disken har mycket lite ledigt utrymme, eller med äldre grafikdrivrutiner. Försök frigöra diskutrymme och öppna sedan MemryNote igen. Om det fortsätter hända brukar en ominstallation lösa det."
     }
   }

@@ -193,18 +193,14 @@
         "MM/DD/YYYY": "MM/DD/YYYY（US）",
         "DD/MM/YYYY": "DD/MM/YYYY",
         "YYYY-MM-DD": "YYYY-MM-DD（ISO）",
-        "DD": {
-          "MM": {
-            "YYYY": "DD.MM.YYYY"
-          }
-        }
+        "DD.MM.YYYY": "DD.MM.YYYY"
       },
       "error": "日付の形式を更新できませんでした"
     },
     "tabs": {
       "openPagesInNewTab": {
         "label": "ページを新しいタブで開く",
-        "description": "ページ（ノート、フォルダー、プロジェクト、キャンバス、タグ、ブックマーク）をクリックまたは作成すると、新しいタブで開きます。オフの場合は、ノート内のリンクをたどるときも含めて現在のタブを再利用します。ピン留めしたタブが置き換えられることはありません。「新しいタブで開く」「横に開く」と中クリックでは常に新しいタブで開きます。"
+        "description": "ページ（ノート、フォルダー、プロジェクト、キャンバス、タグ、ブックマーク）をクリックまたは作成すると、新しいタブで開きます。オフの場合は、ノート内のリンクをたどるときも含めて現在のタブを再利用します。ピン留めしたタブが置き換えられることはありません。「新しいタブで開く」「横に並べて開く」と中クリックでは常に新しいタブで開きます。"
       },
       "restoreSession": {
         "label": "起動時にタブを復元",
@@ -319,7 +315,7 @@
         "indigo": "インディゴ",
         "amber": "アンバー",
         "emerald": "エメラルド",
-        "red": "赤",
+        "red": "レッド",
         "violet": "バイオレット",
         "cyan": "シアン",
         "pink": "ピンク",
@@ -531,7 +527,7 @@
       "description": "今日の予定とカレンダーを表示します"
     },
     "showTasks": {
-      "label": "タスクの表示",
+      "label": "タスクを表示",
       "description": "選択した日が期限のタスクを表示します"
     },
     "showAIConnections": {
@@ -600,7 +596,7 @@
     },
     "sortOrder": {
       "label": "デフォルトの並べ替え順序",
-      "description": "リストビューでのタスクの順序付け方法",
+      "description": "リストビューでのタスクの並び順",
       "options": {
         "manual": "手動（ドラッグ＆ドロップ）",
         "dueDate": "期限",
@@ -630,7 +626,7 @@
   "inbox": {
     "header": {
       "title": "インボックス",
-      "subtitle": "毎日の見直しリマインダーとインボックスの設定。",
+      "subtitle": "毎日の見直しリマインダーとインボックスの設定",
       "loading": "読み込み中…"
     },
     "imageFiling": {
@@ -658,7 +654,7 @@
         "description": "各デバイスの現地時刻です。",
         "hourLabel": "時",
         "minuteLabel": "分",
-        "periodLabel": "AM または PM"
+        "periodLabel": "午前または午後"
       },
       "test": {
         "label": "通知のテスト",
@@ -674,7 +670,7 @@
   "calendar": {
     "header": {
       "title": "カレンダー",
-      "subtitle": "デイパネルで日付セルの動作を設定",
+      "subtitle": "デイパネルの日付セルの動作を設定",
       "loading": "設定を読み込み中…"
     },
     "groups": {
@@ -733,7 +729,7 @@
       "retryFailed": "カレンダーの同期を再試行できませんでした",
       "pushToGoogle": {
         "label": "memrynote の予定を Google Calendar に表示",
-        "description": "一方向同期にするにはオフにします — memrynote では引き続き Google の予定を表示しますが、memrynote の予定は Google に表示されません。",
+        "description": "一方向同期にするにはオフにします。memrynote では引き続き Google の予定が表示されますが、memrynote の予定は Google に表示されません。",
         "error": "同期方向を更新できませんでした"
       },
       "agentAccess": {
@@ -771,7 +767,7 @@
       "notEncrypted": "暗号化されていません",
       "httpWarning": "このリンクは http:// で始まるため、リンクと予定は暗号化されずに送信されます。同じネットワーク上の誰でも読み取ることができます。カレンダーが対応している場合は、https:// または webcal:// のリンクを使用してください。",
       "added": "「{title}」を追加しました。",
-      "addedSummary": "「{title}」を追加しました：{start}〜{end} の{count, plural, other {予定 # 件}}。",
+      "addedSummary": "「{title}」を追加しました（{start}〜{end} の{count, plural, other {予定 # 件}}）。",
       "addedEmpty": "「{title}」を追加しました。過去 90 日間と今後 1 年間の予定はまだありません。",
       "rename": "名前を変更",
       "renameLabel": "カレンダー名",
@@ -923,7 +919,7 @@
         "notCaldav": "このアドレスに CalDAV カレンダーが見つかりませんでした。サーバーアドレスを確認してください。サービスによっては /remote.php/dav のようなパスが必要です。",
         "noCalendars": "このアカウントには予定を保存できるカレンダーがありません。",
         "invalidUrl": "サーバーアドレスではありません。https://dav.example.com のようなアドレスを入力してください。",
-        "outdatedDevices": "一部のデバイスで古い memrynote が動作しています。それらをアップデートするか、それでも接続することを下で確認してください。",
+        "outdatedDevices": "一部のデバイスで古い memrynote が動作しています。それらのデバイスをアップデートするか、それでも接続する場合は下で確認してください。",
         "unknown": "接続できませんでした（{code}）。何も保存されていません。後でもう一度お試しください。"
       },
       "reconnect": {
@@ -1047,7 +1043,7 @@
         "checkoutFailed": "チェックアウトを開始できませんでした",
         "checkoutOpened": "チェックアウトをブラウザで開きました",
         "refreshFailed": "請求状態を更新できませんでした",
-        "billingActive": "請求は有効です",
+        "billingActive": "プランは有効です",
         "activationPending": "有効化を待機中",
         "portalFailed": "請求ポータルを開けませんでした"
       }
@@ -1255,12 +1251,12 @@
     "generateNew": "新しいコードを生成",
     "qrAria": "デバイスリンク用の QR コード",
     "qrImageAria": "デバイスリンク用の QR コード",
-    "expiresIn": "{time} で期限切れになります",
+    "expiresIn": "有効期限まであと {time}",
     "or": "または",
     "codeLabel": "リンクコード",
     "copyAria": "リンクコードをコピー",
     "copiedAria": "コピーしました",
-    "copied": "コピーしました！"
+    "copied": "コピーしました"
   },
   "linkingApproval": {
     "title": "新しいデバイスがリンクを求めています",
@@ -1299,7 +1295,7 @@
     },
     "voice": {
       "provider": "プロバイダー",
-      "providerDescription": "ボイスメモ用の Speech-to-Text プロバイダー",
+      "providerDescription": "ボイスメモ用の音声認識プロバイダー",
       "providers": {
         "local": "ローカル（デフォルト）",
         "openai": "OpenAI (BYOK)"
@@ -1440,8 +1436,8 @@
       "evernote": "1 つ以上の Evernote .enex エクスポートファイルをインポート",
       "roam": "ネストされたアウトラインを含む Roam Research グラフ（.json）をインポート",
       "apple-journal": "Apple Journal の HTML エクスポートを日付付きノートとしてインポート",
-      "csv": ".csv ファイルをインポート — 1 行 1 ノート、列はプロパティになります",
-      "raindrop": "Raindrop.io のブックマークエクスポート（.csv）をインポート — ブックマークはインボックスに入ります",
+      "csv": ".csv ファイルをインポート（1 行が 1 ノート、列がプロパティになります）",
+      "raindrop": "Raindrop.io のブックマークエクスポート（.csv）をインポート（ブックマークはインボックスに入ります）",
       "apple-notes": "Apple Notes のデータベース（NoteStore.sqlite、macOS）からインポート",
       "onenote": "OneNote のノートブックをインポート（Microsoft アカウントが必要）"
     },
@@ -1454,8 +1450,8 @@
       "subtasks": "{count, plural, other {# 件のサブタスク}}",
       "reminders": "{count, plural, other {# 件のリマインダー}}",
       "bookmarks": "{count, plural, other {# 件のブックマーク}}",
-      "withTags": "{count} 件タグ付き",
-      "withDueDate": "{count} 件日付付き",
+      "withTags": "タグ付き {count} 件",
+      "withDueDate": "期限付き {count} 件",
       "comments": "{count, plural, other {# 件のコメント}}",
       "skipped": "{count} 件スキップ"
     },
@@ -1722,7 +1718,7 @@
       "dialog": {
         "title": "この保管庫をアカウントに同期しますか？",
         "description": "この保管庫には、まだアカウントにないノートがあります。アカウントに追加するか、このデバイスに残すことができます。決定するまで、データがこのデバイスの外に出ることはありません。",
-        "descriptionWithVaults": "この保管庫には、まだアカウントにないノートがあり、アカウントにはすでに別の保管庫があります。この保管庫を並べて追加するか、2 つを統合するか、このデバイスに残すことができます。決定するまで、データがこのデバイスの外に出ることはありません。",
+        "descriptionWithVaults": "この保管庫には、まだアカウントにないノートがあり、アカウントにはすでに別の保管庫があります。この保管庫を別の保管庫として追加するか、2 つを統合するか、このデバイスに残すことができます。決定するまで、データがこのデバイスの外に出ることはありません。",
         "addAsNew": "別の保管庫として追加",
         "merge": "「{name}」に統合",
         "mergeUnnamed": "アカウントの保管庫に統合",
@@ -1868,7 +1864,7 @@
     "searchPlaceholder": "ショートカットを検索…",
     "resetAll": "すべてリセット",
     "custom": "カスタム",
-    "pressShortcut": "ショートカットを押して…",
+    "pressShortcut": "キーを押してください…",
     "cancelTitle": "キャンセル",
     "rebindTitle": "クリックして割り当てを変更",
     "editorManagedTitle": "ノートエディターで処理されるため、割り当てを変更できません",
@@ -1971,7 +1967,7 @@
           "description": "新規タブメニューを開きます"
         },
         "closeAll": {
-          "label": "ペイン内のすべてのタブを閉じる",
+          "label": "すべてのタブを閉じる",
           "description": "現在のペイン内のすべてのタブを閉じます"
         },
         "pin": {
@@ -2005,7 +2001,7 @@
           "description": "太字の書式設定を切り替えます"
         },
         "italic": {
-          "label": "イタリック体",
+          "label": "斜体",
           "description": "斜体の書式設定を切り替えます"
         },
         "underline": {

@@ -263,7 +263,7 @@
     "whiteboard": {
       "title": "Дошка для малювання",
       "group": "Медіа",
-      "subtext": "Малюйте на полотні, що зберігається в цій нотатці",
+      "subtext": "Малювати на полотні, що зберігається в цій нотатці",
       "defaultName": "Дошка для малювання",
       "noteName": "Дошка для малювання — {note}",
       "untitled": "Дошка для малювання без назви",
@@ -464,7 +464,7 @@
     "wiki": {
       "aria": "Пропозиції щодо нотаток",
       "loading": "Завантаження нотаток…",
-      "empty": "Нотатки не знайдено",
+      "empty": "Нотаток не знайдено",
       "create": "Створити нову нотатку",
       "embed": "Вбудувати",
       "wikiLink": "Вікі-посилання",
@@ -492,7 +492,7 @@
     "tags": {
       "aria": "Пропозиції тегів",
       "loading": "Завантаження тегів…",
-      "empty": "Введіть, щоб створити новий тег",
+      "empty": "Почніть вводити, щоб створити новий тег",
       "create": "Створити #{tag}"
     },
     "pasteLink": {
@@ -637,7 +637,7 @@
     "recent": "Недавні",
     "matching": "Відповідні",
     "all": "Усі теги",
-    "none": "Теги не знайдено",
+    "none": "Тегів не знайдено",
     "createTag": "Створити тег «{tag}»",
     "chooseColor": "Виберіть колір:",
     "preview": "Попередній перегляд:",
@@ -746,7 +746,7 @@
         "error": {
           "notConfigured": "Фото Unsplash недоступні в цій збірці",
           "offline": "Немає з’єднання з Unsplash",
-          "rateLimited": "Unsplash обмежив кількість запитів, спробуйте ще раз незабаром",
+          "rateLimited": "Unsplash обмежив кількість запитів, спробуйте трохи згодом",
           "failed": "Не вдалося з’єднатися з Unsplash",
           "writeFailed": "Не вдалося зберегти це фото у сховище"
         }
@@ -797,7 +797,7 @@
     "description": "Виберіть шаблон для нової нотатки",
     "searchPlaceholder": "Шукати шаблони…",
     "loading": "Завантаження шаблонів…",
-    "empty": "Шаблони не знайдено",
+    "empty": "Шаблонів не знайдено",
     "myTemplates": "Мої шаблони",
     "essentials": "Основні",
     "setFolderDefault": "Встановити як шаблон за замовчуванням для папки",
@@ -837,7 +837,7 @@
     "selectPrompt": "Виберіть версію для перегляду",
     "restore": "Відновити",
     "deleteTitle": "Видалити цю версію?",
-    "deleteDescription": "Цю дію неможливо скасувати. Ця версія буде остаточно видалена.",
+    "deleteDescription": "Цю дію неможливо скасувати. Цю версію буде остаточно видалено.",
     "restoreTitle": "Відновити цю версію?",
     "restoreDescription": "Це замінить поточний вміст нотатки цією версією. Спочатку буде збережено знімок поточного стану, щоб ви могли скасувати цю дію.",
     "restoring": "Відновлення…",
@@ -965,7 +965,7 @@
       "expression": "Вираз",
       "available": "Доступні: ",
       "preview": "Попередній перегляд",
-      "fixExpressionErrorsToSeePreview": "Виправте помилки виразів, щоб побачити попередній перегляд",
+      "fixExpressionErrorsToSeePreview": "Виправте помилки у виразі, щоб побачити попередній перегляд",
       "usingNote": "Використовується нотатка: «",
       "cancel": "Скасувати",
       "namePlaceholder": "days_until_due",
@@ -1004,8 +1004,8 @@
       "createFolderNamed": "Створити «{name}»"
     },
     "componentsFolderViewRowContextMenu": {
-      "delete": "Видалити ",
-      "notes": "нотатки",
+      "delete": "Видалити нотатки: ",
+      "notes": "шт.",
       "open": "Відкрити",
       "openInExternalEditor": "Відкрити у зовнішньому редакторі",
       "revealInSidebar": "Показати на бічній панелі",
@@ -1019,7 +1019,7 @@
     },
     "componentsFolderViewViewSwitcher": {
       "default": "за замовчуванням",
-      "viewActions": "Дії вигляду",
+      "viewActions": "Дії з виглядом",
       "rename": "Перейменувати",
       "duplicate": "Дублювати",
       "setAsDefault": "Встановити за замовчуванням",
@@ -1108,7 +1108,7 @@
       "loadingBookmarks": "Завантаження закладок…",
       "failedToLoadBookmarks": "Не вдалося завантажити закладки",
       "noBookmarksYet": "Поки що немає закладок",
-      "moreOptions": "Більше опцій",
+      "moreOptions": "Інші параметри",
       "remove": "Прибрати"
     },
     "componentsSidebarSidebarItemContextMenu": {
@@ -1134,7 +1134,7 @@
     },
     "componentsSidebarTagDeleteDialog": {
       "deleteTag": "Видалити тег #",
-      "notesWithThisTagWonTBeDeletedJustUntagged": "Нотатки з цим тегом не будуть видалені, лише буде знято тег.",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Нотатки з цим тегом не буде видалено, з них лише буде знято тег.",
       "cancel": "Скасувати"
     },
     "componentsSidebarTagDetailView": {
@@ -1206,7 +1206,7 @@
     "pagesFile": {
       "failedToLoadFile": "Не вдалося завантажити файл",
       "tryAgain": "Спробувати ще раз",
-      "noFileSelected": "Файл не обрано",
+      "noFileSelected": "Файл не вибрано",
       "selectAFileFromTheSidebarToViewIt": "Виберіть файл з бічної панелі, щоб переглянути його",
       "loadingFile": "Завантаження файлу…",
       "open": "Відкрити",
@@ -1307,7 +1307,7 @@
     "description": "Створіть із цієї нотатки шаблон для повторного використання. Сама нотатка залишиться незмінною.",
     "nameLabel": "Назва шаблону",
     "loading": "Читання нотатки…",
-    "summary": "Зберігає текст нотатки, {tagCount, plural, one {# тег} few {# теги} many {# тегів} other {# тега}} і {propertyCount, plural, one {# властивість} few {# властивості} many {# властивостей} other {# властивості}}.",
+    "summary": "Зберігає текст нотатки, {tagCount, plural, one {# тег} few {# теги} many {# тегів} other {# тегу}} і {propertyCount, plural, one {# властивість} few {# властивості} many {# властивостей} other {# властивості}}.",
     "save": "Зберегти шаблон",
     "cancel": "Скасувати",
     "success": "Шаблон збережено",
@@ -1317,7 +1317,7 @@
   },
   "newNoteFromNote": {
     "action": "Нова нотатка з цієї нотатки",
-    "created": "Створено з нотатки {source}: {tagCount, plural, =0 {без тегів} one {# тег} few {# теги} many {# тегів} other {# тега}}, {propertyCount, plural, =0 {без властивостей} one {# властивість} few {# властивості} many {# властивостей} other {# властивості}}"
+    "created": "Створено з нотатки «{source}»: {tagCount, plural, =0 {без тегів} one {# тег} few {# теги} many {# тегів} other {# тегу}}, {propertyCount, plural, =0 {без властивостей} one {# властивість} few {# властивості} many {# властивостей} other {# властивості}}"
   },
   "tags": {
     "hubTitle": "Теги",
@@ -1349,7 +1349,7 @@
       "delete": "Видалити категорію",
       "dragHandle": "Перетягніть, щоб змінити порядок категорій",
       "emptyHint": "Перетягніть тег сюди",
-      "deleteTitle": "Видалити {name}?",
+      "deleteTitle": "Видалити «{name}»?",
       "deleteBody": "Теги перемістяться до «Без категорії». Їх не буде видалено.",
       "deleteConfirm": "Видалити",
       "deleteCancel": "Скасувати"
@@ -1378,7 +1378,7 @@
     "selectView": "Вибрати вигляд",
     "columnHeader": {
       "doubleClickToEdit": "{name} (двічі клацніть, щоб редагувати)",
-      "dragToReorder": "Перетягніть, щоб змінити порядок стовпця: {name}"
+      "dragToReorder": "Перетягніть, щоб перемістити стовпець: {name}"
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# нотатка} few {# нотатки} many {# нотаток} other {# нотатки}}"
@@ -1419,7 +1419,7 @@
   },
   "tagAndFilter": {
     "regionLabel": "Активний фільтр тегів",
-    "matchingAll": "Збіг з усіма:",
+    "matchingAll": "З усіма тегами:",
     "removeTag": "Прибрати {tag} з фільтра",
     "clearAll": "Очистити все",
     "saveSearch": "Зберегти пошук",
@@ -1429,6 +1429,6 @@
     "saveDialogPlaceholder": "Напр., робочі зустрічі",
     "cancel": "Скасувати",
     "save": "Зберегти",
-    "addToFilterHint": "Натисніть тег із Ctrl/Cmd, щоб додати його до фільтра"
+    "addToFilterHint": "Утримуючи Ctrl/Cmd, клацніть тег, щоб додати його до фільтра"
   }
 }

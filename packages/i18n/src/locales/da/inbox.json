@@ -37,7 +37,7 @@
     "notes": "Noter",
     "image": "Billede",
     "images": "Billeder",
-    "voice": "Stemme",
+    "voice": "Stemmememo",
     "video": "Video",
     "clip": "Klip",
     "clips": "Klip",
@@ -345,7 +345,7 @@
     "now": "nu",
     "timeAgoMinutes": "for {count} min. siden",
     "timeAgoHours": "for {count} t. siden",
-    "timeAgoDays": "for {count} d. siden"
+    "timeAgoDays": "{count, plural, one {for # dag siden} other {for # dage siden}}"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
@@ -545,7 +545,7 @@
   "reviewNudge": {
     "title": "{count, plural, one {Tid til at gennemgå # element} other {Tid til at gennemgå # elementer}}",
     "description": "Behandl dagens indfangede elementer i én rolig omgang.",
-    "action": "Åbn indbakke"
+    "action": "Åbn indbakken"
   },
   "snoozeDue": {
     "notificationTitle": "{count, plural, one {# udsat element} other {# udsatte elementer}}",

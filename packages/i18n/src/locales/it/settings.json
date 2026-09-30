@@ -62,7 +62,7 @@
   "features": {
     "header": {
       "title": "Funzionalità",
-      "subtitle": "Attiva o disattiva parti dell'app. Quelle disattivate appaiono sbiadite nella barra laterale e non sono disponibili altrove."
+      "subtitle": "Attiva o disattiva parti dell'app. Quelle disattivate appaiono sbiadite nella barra laterale e sono disattivate ovunque."
     },
     "items": {
       "home": {
@@ -91,7 +91,7 @@
       },
       "spatialCanvas": {
         "label": "Lavagna",
-        "description": "Lavagne spaziali per disporre e collegare le note"
+        "description": "Lavagne su cui disporre e collegare le note"
       }
     }
   },
@@ -200,7 +200,7 @@
     "tabs": {
       "openPagesInNewTab": {
         "label": "Apri le pagine in una nuova scheda",
-        "description": "Facendo clic su una pagina o creandola (note, cartelle, progetti, lavagne, tag, segnalibri), la pagina si apre in una nuova scheda. Se l'opzione è disattivata, viene riutilizzata la scheda corrente, anche quando segui i link all'interno di una nota; le schede fissate non vengono mai sostituite. “Apri in una nuova scheda”, “Apri di lato” e il clic con il tasto centrale aprono sempre una nuova scheda."
+        "description": "Quando fai clic su una pagina o ne crei una (note, cartelle, progetti, lavagne, tag, segnalibri), si apre in una nuova scheda. Se l'opzione è disattivata, viene riutilizzata la scheda corrente, anche quando segui i link all'interno di una nota; le schede fissate non vengono mai sostituite. “Apri in una nuova scheda”, “Apri a lato” e il clic con il tasto centrale aprono sempre una nuova scheda."
       },
       "restoreSession": {
         "label": "Ripristina le schede all'avvio",
@@ -210,8 +210,8 @@
         "label": "Pulsante Chiudi scheda",
         "description": "Quando mostrare il pulsante di chiusura",
         "options": {
-          "always": "Sempre visibile",
-          "hover": "Mostra al passaggio del mouse",
+          "always": "Sempre",
+          "hover": "Al passaggio del mouse",
           "active": "Solo sulla scheda attiva"
         }
       },
@@ -227,7 +227,7 @@
     "fileCreation": {
       "createInSelectedFolder": {
         "label": "Crea nella cartella selezionata",
-        "description": "Nuove note e cartelle vengono create all'interno della cartella attualmente selezionata. Quando è disattivato, gli elementi vengono sempre creati alla radice."
+        "description": "Le nuove note e cartelle vengono create nella cartella attualmente selezionata. Se l'opzione è disattivata, gli elementi vengono sempre creati nella radice del vault."
       },
       "defaultNoteFolder": {
         "label": "Posizione predefinita",
@@ -338,7 +338,7 @@
     },
     "advanced": {
       "title": "Avanzate",
-      "reset": "Ripristina il valore predefinito",
+      "reset": "Ripristina valori predefiniti",
       "error": "Impossibile aggiornare l'impostazione",
       "fontSizeDescription": "Dimensione di base del testo dell'interfaccia",
       "zoomDescription": "Scala dell'intera finestra",
@@ -591,12 +591,12 @@
       "label": "Progetto predefinito",
       "description": "Assegnato quando non è selezionato alcun progetto",
       "placeholder": "Nessun progetto predefinito",
-      "none": "Nessuna impostazione predefinita (usa Personale)",
+      "none": "Nessuno (usa Personale)",
       "error": "Impossibile aggiornare il progetto predefinito"
     },
     "sortOrder": {
       "label": "Ordinamento predefinito",
-      "description": "Come sono ordinate le attività nella visualizzazione elenco",
+      "description": "Come sono ordinate le attività nella vista elenco",
       "options": {
         "manual": "Manuale (trascina e rilascia)",
         "dueDate": "Data di scadenza",
@@ -607,7 +607,7 @@
     },
     "defaultView": {
       "label": "Vista predefinita",
-      "description": "La scheda su cui si apre la pagina Attività",
+      "description": "La vista con cui si apre la pagina Attività",
       "options": {
         "all": "Tutte",
         "today": "Oggi",
@@ -618,7 +618,7 @@
     },
     "staleInbox": {
       "label": "Soglia di anzianità nella posta in arrivo",
-      "description": "Le attività più vecchie di così vengono evidenziate come datate",
+      "description": "Le attività più vecchie di questa soglia vengono evidenziate come datate",
       "unit": "giorni",
       "error": "Impossibile aggiornare la soglia di anzianità della posta in arrivo"
     }
@@ -634,9 +634,9 @@
       "error": "Impossibile aggiornare la preferenza di smistamento delle immagini",
       "mode": {
         "label": "Smistare un'immagine in una nota",
-        "description": "Se incorporata, l'immagine resta dentro la nota e non compare nella barra laterale. Se salvata come file, viene spostata nella cartella che scegli e la nota la collega.",
-        "embed": "Incorpora nella nota",
-        "link": "Salva come file nella barra laterale"
+        "description": "Se incorporata, l'immagine resta nella nota e non compare nella barra laterale. Come file nella barra laterale, viene spostata nella cartella che scegli e la nota contiene un link all'immagine.",
+        "embed": "Incorporata nella nota",
+        "link": "File nella barra laterale"
       },
       "ask": {
         "label": "Chiedi ogni volta",
@@ -679,7 +679,7 @@
       "notes": "Note"
     },
     "weekStart": {
-      "label": "La settimana inizia di",
+      "label": "Inizio della settimana",
       "description": "Primo giorno della settimana in tutti i calendari",
       "options": {
         "sunday": "Domenica",
@@ -705,31 +705,31 @@
     "options": {
       "openJournal": "Apri diario",
       "openCalendar": "Apri calendario",
-      "useGlobal": "Utilizza l'impostazione globale"
+      "useGlobal": "Usa l'impostazione globale"
     },
     "google": {
       "name": "Google Calendar",
-      "description": "Sincronizzazione bidirezionale per eventi memrynote e calendari Google importati.",
+      "description": "Sincronizzazione bidirezionale per gli eventi di memrynote e i calendari Google importati.",
       "statuses": {
         "connected": "Connesso",
         "notConnected": "Non connesso",
         "reconnectRequired": "Riconnessione necessaria"
       },
-      "accountReconnect": "Ricollega Google",
+      "accountReconnect": "Riconnetti Google",
       "addAccount": "Aggiungi account",
       "importedCalendars": "Calendari importati",
       "selected": "Selezionati: {count}",
       "syncNow": "Sincronizza ora",
       "disconnect": "Disconnetti",
-      "reconnect": "Ricollega Google",
+      "reconnect": "Riconnetti Google",
       "syncFailed": "Qualcosa è andato storto",
       "connectFailed": "Impossibile connettere Google Calendar",
       "refreshFailed": "Impossibile aggiornare Google Calendar",
       "disconnectFailed": "Impossibile disconnettere Google Calendar",
       "retryFailed": "Impossibile riprovare la sincronizzazione del calendario",
       "pushToGoogle": {
-        "label": "Mostra gli eventi memrynote in Google Calendar",
-        "description": "Disattiva per una sincronizzazione unidirezionale: vedrai comunque i tuoi eventi Google in memrynote, ma gli eventi memrynote non compariranno in Google.",
+        "label": "Mostra gli eventi di memrynote in Google Calendar",
+        "description": "Disattiva per una sincronizzazione unidirezionale: vedrai comunque i tuoi eventi Google in memrynote, ma gli eventi di memrynote non compariranno in Google.",
         "error": "Impossibile aggiornare la direzione di sincronizzazione"
       },
       "agentAccess": {
@@ -785,7 +785,7 @@
         },
         "icloud": {
           "name": "iCloud",
-          "steps": "In Calendario su un Mac o su iCloud.com, condividi il calendario, attiva Calendario pubblico e copia il link. Per modificare gli eventi iCloud anche qui, collega invece iCloud tramite CalDAV."
+          "steps": "In Calendario su un Mac o su iCloud.com, condividi il calendario, attiva Calendario pubblico e copia il link. Per modificare gli eventi iCloud anche qui, connetti invece iCloud tramite CalDAV."
         },
         "outlook": {
           "name": "Outlook e Microsoft 365",
@@ -919,7 +919,7 @@
         "notCaldav": "Nessun calendario CalDAV trovato a questo indirizzo. Controlla l'indirizzo del server; alcuni servizi richiedono un percorso come /remote.php/dav.",
         "noCalendars": "Questo account non ha calendari che contengono eventi.",
         "invalidUrl": "Questo non è un indirizzo di server. Inserisci un indirizzo come https://dav.example.com.",
-        "outdatedDevices": "Alcuni tuoi dispositivi usano una versione precedente di memrynote. Aggiornali, oppure conferma qui sotto che vuoi connetterti comunque.",
+        "outdatedDevices": "Alcuni dei tuoi dispositivi usano una versione precedente di memrynote. Aggiornali, oppure conferma qui sotto che vuoi connetterti comunque.",
         "unknown": "Impossibile connettersi ({code}). Non è stato salvato nulla; riprova più tardi."
       },
       "reconnect": {
@@ -982,7 +982,7 @@
       },
       "upsell": {
         "title": "Le tue note sono solo su questo dispositivo",
-        "description": "Attiva la sincronizzazione e ogni nota ti segue sugli altri tuoi dispositivi, con crittografia end-to-end: solo tu puoi leggerle.",
+        "description": "Attiva la sincronizzazione e le tue note ti seguono sugli altri tuoi dispositivi, con crittografia end-to-end: solo tu puoi leggerle.",
         "benefits": {
           "devices": "Ogni dispositivo riprende da dove avevi lasciato",
           "encrypted": "Crittografia end-to-end: le chiavi restano sempre con te",
@@ -1032,7 +1032,7 @@
       "historyDays": "{days} giorni",
       "activationPendingPrefix": "Attivazione in sospeso. Paddle può impiegare un momento per confermare il pagamento. Aggiorna lo stato o invia un'email a",
       "actions": {
-        "upgrade": "Aggiorna",
+        "upgrade": "Esegui l'upgrade",
         "unlockSync": "Sblocca la sincronizzazione",
         "opening": "Apertura…",
         "refresh": "Aggiorna stato",
@@ -1041,7 +1041,7 @@
       "toasts": {
         "loadFailed": "Impossibile caricare lo stato di fatturazione",
         "checkoutFailed": "Impossibile avviare il pagamento",
-        "checkoutOpened": "Pagamento aperto nel browser",
+        "checkoutOpened": "Pagina di pagamento aperta nel browser",
         "refreshFailed": "Impossibile aggiornare lo stato di fatturazione",
         "billingActive": "La fatturazione è attiva",
         "activationPending": "Attivazione in sospeso",
@@ -1089,7 +1089,7 @@
   },
   "setup": {
     "steps": {
-      "signIn": "Accedi",
+      "signIn": "Accesso",
       "verify": "Verifica",
       "link": "Collegamento"
     },
@@ -1098,7 +1098,7 @@
       "title": "Configura la sincronizzazione",
       "description": "Crea un account per sincronizzare i tuoi dati su tutti i dispositivi con crittografia end-to-end.",
       "or": "o",
-      "paidPlan": "La sincronizzazione è un piano a pagamento.",
+      "paidPlan": "La sincronizzazione richiede un piano a pagamento.",
       "seePlans": "Vedi i piani",
       "errors": {
         "sendCode": "Impossibile inviare il codice",
@@ -1490,7 +1490,7 @@
       "chooseFolder": "Seleziona la cartella di Apple Notes…",
       "chooseDirectory": "Scegli cartella…",
       "folderKeepsAssets": "Scegli la cartella quando le immagini si trovano fuori dalla cartella delle note: spesso le esportazioni salvano i contenuti multimediali in una cartella condivisa.",
-      "chooseHint": "Seleziona il tuo {label}",
+      "chooseHint": "Seleziona {label}",
       "folderHint": "Fai clic qui sotto e seleziona la cartella “group.com.apple.notes” quando si apre il selettore (parte da lì). Così Memry può leggere le tue note e i tuoi allegati, senza bisogno dell'accesso completo al disco.",
       "noteplanFolderHint": "Scegli la cartella di NotePlan: la cartella dei dati dell'app o una delle sue copie in Backups. Memry legge le cartelle Calendar, Notes e @Archive al suo interno.",
       "selected": "{count, plural, one {# file selezionato} other {# file selezionati}}",
@@ -1868,7 +1868,7 @@
     "cancelTitle": "Annulla",
     "rebindTitle": "Fai clic per modificare",
     "editorManagedTitle": "Gestita dall'editor delle note: non può essere riassegnata",
-    "resetTitle": "Ripristina le impostazioni predefinite",
+    "resetTitle": "Ripristina la scorciatoia predefinita",
     "clearTitle": "Cancella scorciatoia",
     "clickToSet": "Fai clic per impostare",
     "noMatch": "Nessuna scorciatoia corrisponde alla tua ricerca",
@@ -1968,14 +1968,14 @@
         },
         "closeAll": {
           "label": "Chiudi tutte le schede",
-          "description": "Chiudi tutte le schede del riquadro"
+          "description": "Chiudi tutte le schede del riquadro corrente"
         },
         "pin": {
           "label": "Fissa scheda",
           "description": "Fissa la scheda corrente o annulla il fissaggio"
         },
         "duplicate": {
-          "label": "Duplica la scheda",
+          "label": "Duplica scheda",
           "description": "Apri una copia della scheda corrente"
         },
         "splitRight": {
@@ -2213,7 +2213,7 @@
       },
       "confirm": {
         "label": "Conferma le azioni",
-        "description": "Scegli se le chiamate degli strumenti vengono eseguite automaticamente o attendono l'approvazione in chat.",
+        "description": "Scegli se le chiamate agli strumenti vengono eseguite automaticamente o attendono l'approvazione in chat.",
         "alwaysAllow": "Consenti sempre",
         "askBeforeChanges": "Chiedi prima delle modifiche"
       }
@@ -2258,12 +2258,12 @@
       "connected": "Connesso",
       "disconnected": "Disconnesso",
       "toolsDisabled": "Strumenti disattivati",
-      "fullTools": "Strumenti completi attivi"
+      "fullTools": "Tutti gli strumenti attivi"
     },
     "alwaysAllowed": {
       "group": "Sempre consentiti",
       "description": "Strumenti a cui hai concesso un'approvazione permanente in questo vault. Le eliminazioni non possono mai riceverla.",
-      "empty": "Nessuno strumento è sempre consentito. Ogni modifica chiede ancora conferma.",
+      "empty": "Nessuno strumento è sempre consentito. Per ogni modifica viene comunque chiesta conferma.",
       "revoke": "Revoca",
       "revokeLabel": "Revoca l'approvazione permanente per {tool}",
       "ignoredInPageReview": "Ignorato: le modifiche a note e diario chiedono sempre conferma."

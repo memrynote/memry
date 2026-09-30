@@ -3,21 +3,24 @@
     "tabs": {
       "label": "Zobrazenia úloh",
       "today": "Dnes",
-      "all": "Všetko"
+      "tomorrow": "Zajtra",
+      "next7": "Nasledujúcich 7 dní",
+      "all": "Všetko",
+      "archived": "Archivované"
     },
     "viewMode": {
       "label": "Režim zobrazenia",
       "list": "Zobrazenie zoznamu",
-      "kanban": "Kanban zobrazenie"
+      "kanban": "Zobrazenie Kanban"
     },
     "projectScope": {
       "allProjects": "Všetky projekty",
-      "searchProjects": "Hľadať projekty...",
+      "searchProjects": "Hľadať projekty…",
       "editProject": "Upraviť {name}",
-      "unstarSavedFilter": "Odznačiť {name}",
-      "openByDefault": "Predvolene otvárať Úlohy v {name}",
+      "unstarSavedFilter": "Odstrániť hviezdičku: {name}",
+      "openByDefault": "Predvolene otvárať Úlohy v projekte {name}",
       "defaultProject": "Predvolený projekt",
-      "setAsDefault": "Nastaviť ako predvolené"
+      "setAsDefault": "Nastaviť ako predvolený"
     }
   },
   "task": {
@@ -31,22 +34,40 @@
     "details": "Podrobnosti úlohy",
     "status": "Stav",
     "priority": "Priorita",
-    "dueDate": "Dátum splnenia",
+    "tags": "Značky",
+    "startDate": "Dátum začiatku",
+    "changeStartDate": "Začiatok: {date}. Kliknutím ho zmeníte.",
+    "dueDate": "Termín",
     "startsOn": "Začína {date}",
-    "dueOn": "Termín {date}",
+    "dueOn": "Termín: {date}",
+    "reminder": "Pripomienka",
     "project": "Projekt",
     "repeat": "Opakovať",
     "createAnother": "Vytvoriť ďalšiu",
     "delete": "Odstrániť úlohu",
     "created": "Vytvorené {date}",
-    "reminder": "Pripomienka",
-    "tags": "Značky",
     "priorityLabels": {
-      "high": "Vysoká",
+      "none": "Bez priority",
       "low": "Nízka",
       "medium": "Stredná",
-      "none": "Bez priority",
+      "high": "Vysoká",
       "urgent": "Urgentná"
+    },
+    "unarchive": "Zrušiť archiváciu úlohy",
+    "archivedOn": "Archivované {date}"
+  },
+  "reminders": {
+    "summary": "Pripomienka: {date}",
+    "summaryWithMore": "Pripomienka: {date} (+{count, plural, one {# ďalšia} few {# ďalšie} other {# ďalších}})",
+    "hasReminders": "Má pripomienky",
+    "setReminder": "Nastaviť pripomienku",
+    "toast": {
+      "set": "Pripomienka nastavená",
+      "setFailed": "Nepodarilo sa nastaviť pripomienku",
+      "updated": "Pripomienka aktualizovaná",
+      "updateFailed": "Nepodarilo sa aktualizovať pripomienku",
+      "deleted": "Pripomienka odstránená",
+      "deleteFailed": "Nepodarilo sa odstrániť pripomienku"
     }
   },
   "filters": {
@@ -57,41 +78,57 @@
     "groupByOptions": "Možnosti zoskupenia",
     "sortAscending": "Zoradiť vzostupne",
     "sortDescending": "Zoradiť zostupne",
+    "sortDirectionAscending": "Vzostupne",
+    "sortDirectionDescending": "Zostupne",
+    "groupByFields": {
+      "dueDate": "Termín",
+      "priority": "Priorita",
+      "status": "Stav",
+      "createdAt": "Vytvorené",
+      "title": "Názov",
+      "project": "Projekt",
+      "completedAt": "Dokončené",
+      "folder": "Priečinok",
+      "note": "Poznámka"
+    },
+    "groups": {
+      "vaultRoot": "Koreňový priečinok trezora",
+      "noNote": "Bez poznámky"
+    },
     "dueDate": {
       "any": "Ľubovoľný termín",
-      "custom": "Vlastný rozsah...",
-      "nextWeek": "Budúci týždeň",
       "none": "Bez termínu",
       "overdue": "Po termíne",
-      "thisMonth": "Tento mesiac",
-      "thisWeek": "Tento týždeň",
       "today": "Dnes",
-      "tomorrow": "Zajtra"
+      "tomorrow": "Zajtra",
+      "thisWeek": "Tento týždeň",
+      "nextWeek": "Budúci týždeň",
+      "thisMonth": "Tento mesiac",
+      "custom": "Vlastný rozsah…"
     },
     "quickPresets": {
-      "dueThisWeek": "Termín tento týždeň",
-      "highPriority": "Vysoká priorita",
-      "noDueDate": "Bez termínu",
       "overdue": "Po termíne",
-      "repeating": "Opakujúce sa"
+      "highPriority": "Vysoká priorita",
+      "dueThisWeek": "Termín tento týždeň",
+      "repeating": "Opakujúce sa",
+      "noDueDate": "Bez termínu"
     },
-    "repeatTypeOneTime": "Jednorazová",
-    "repeatTypeRepeating": "Opakujúca sa"
+    "repeatTypeRepeating": "Opakujúca sa",
+    "repeatTypeOneTime": "Jednorazová"
   },
   "quickAdd": {
     "label": "Rýchlo pridať úlohu",
-    "focusDescription": "Sústrediť sa na rýchle pridanie vstupu",
-    "placeholder": "Pridať úlohu…    !today  !!high  #project",
+    "placeholder": "Pridať úlohu…    @tomorrow  !high  +project  #tag  [[note]]  every monday",
     "presets": {
       "menu": "Možnosti úlohy",
-      "dueDate": "Termín {date}. Zmeniť termín",
+      "dueDate": "Termín: {date}. Zmeniť termín",
       "noDate": "Bez dátumu",
       "linkNote": "Prepojiť poznámku",
       "openDetails": "Otvoriť všetky podrobnosti",
       "back": "Späť",
       "remove": "Odstrániť {name}",
       "noReminder": "Bez pripomienky",
-      "addTags": "Pridať štítky…"
+      "addTags": "Pridať značky…"
     }
   },
   "inlineProperties": {
@@ -100,52 +137,102 @@
     "datesAria": "Dátumy: {value}",
     "start": "Začiatok",
     "due": "Termín",
-    "dueDate": "Termín splnenia",
-    "remindMe": "Pripomenúť",
+    "dueDate": "Termín",
+    "remindMe": "Pripomenúť mi",
     "linkItem": "Prepojiť poznámku alebo plátno",
     "relatedAria": "Súvisiace položky: {count}",
     "shorthandPreview": "Nastavené skratkou"
   },
   "drawer": {
-    "close": "Zavrieť detaily úlohy",
+    "close": "Zavrieť podrobnosti úlohy",
     "openInTasks": "Otvoriť v Úlohách",
-    "subIssues": "Podproblémy",
-    "addSubIssue": "Pridať podproblém",
-    "subIssuePlaceholder": "Pridať podproblém…",
-    "noSubIssues": "Ešte žiadne podproblémy",
-    "linkedNotes": "Prepojené poznámky",
-    "linkNote": "Prepojiť poznámku",
-    "loading": "Načítavam...",
-    "searchNotes": "Hľadať poznámky…",
-    "noMatchingNotes": "Žiadne zodpovedajúce poznámky",
-    "noNotesAvailable": "Žiadne dostupné poznámky",
-    "noLinkedNotes": "Ešte žiadne prepojené poznámky",
-    "removeLinkTo": "Odstrániť odkaz na {title}",
-    "removeLinkFallback": "poznámka",
+    "resize": "Zmeniť veľkosť panela",
+    "subIssues": "Podúlohy",
+    "addSubIssue": "Pridať podúlohu",
+    "subIssuePlaceholder": "Pridať podúlohu…",
+    "noSubIssues": "Zatiaľ žiadne podúlohy",
+    "linkedNotes": "Súvisiace",
+    "linkNote": "Pridať súvisiacu položku",
+    "loading": "Načítava sa…",
+    "searchNotes": "Hľadať súvisiace…",
+    "noMatchingNotes": "Žiadne zodpovedajúce položky",
+    "noNotesAvailable": "Žiadne dostupné položky",
+    "noLinkedNotes": "Zatiaľ žiadne súvisiace položky",
+    "removeLinkTo": "Odstrániť súvisiacu položku {title}",
+    "removeLinkFallback": "položka",
+    "related": "Súvisiace",
     "addRelatedItem": "Pridať súvisiacu položku",
+    "searchRelated": "Hľadať súvisiace…",
     "noMatchingRelated": "Žiadne zodpovedajúce položky",
     "noRelatedAvailable": "Žiadne dostupné položky",
     "noRelatedItems": "Zatiaľ žiadne súvisiace položky",
-    "related": "Súvisiace",
-    "relatedItemFallback": "položka",
     "removeRelatedItem": "Odstrániť súvisiacu položku {title}",
-    "resize": "Zmeniť veľkosť panela",
-    "searchRelated": "Hľadať súvisiace…"
+    "relatedItemFallback": "položka",
+    "relatedItemMissing": "Táto súvisiaca položka už nie je v tomto trezore.",
+    "activity": "Aktivita",
+    "activityShowAll": "Zobraziť všetko ({count})",
+    "activityEmpty": "Zatiaľ nič nezaznamenané. Tu sa zobrazia úpravy tejto úlohy.",
+    "activityLoading": "Načítava sa aktivita…",
+    "activityError": "Aktivitu sa nepodarilo načítať.",
+    "activityMore": "Načítať ďalšie",
+    "activityTitle": "Aktivita – {title}",
+    "activityDescription": "Všetky zmeny tejto úlohy, od najnovších.",
+    "activityFilter": "Filtrovať podľa typu zmeny",
+    "activityFilterAll": "Všetky zmeny",
+    "activityRetention": "Aktivita staršia ako {days, plural, one {# deň} few {# dni} other {# dní}} sa odstraňuje.",
+    "activityToday": "Dnes",
+    "activityYesterday": "Včera",
+    "activityByYou": "Vy",
+    "activityBySync": "Iné zariadenie",
+    "activityByGoogle": "Google Calendar",
+    "activityActionCreated": "Vytvorené",
+    "activityActionUpdated": "Aktualizované",
+    "activityActionCompleted": "Dokončené",
+    "activityActionUncompleted": "Znova otvorené",
+    "activityActionMoved": "Presunuté",
+    "activityActionDeleted": "Odstránené",
+    "activityActionSuperseded": "Nahradené",
+    "activitySupersededNote": "Nahradené iným zariadením",
+    "activityCharsAdded": "+{count, plural, one {# znak} few {# znaky} other {# znakov}}",
+    "activityCharsRemoved": "{count, plural, one {# znak} few {# znaky} other {# znakov}}",
+    "activityCharsSame": "preformulované",
+    "activityEmptyValue": "prázdne",
+    "activityFieldTitle": "Názov",
+    "activityFieldDescription": "Popis",
+    "activityFieldStatusId": "Stav",
+    "activityFieldPriority": "Priorita",
+    "activityFieldDueDate": "Termín",
+    "activityFieldDueTime": "Čas termínu",
+    "activityFieldStartDate": "Dátum začiatku",
+    "activityFieldProjectId": "Projekt",
+    "activityFieldParentId": "Nadradená úloha",
+    "activityFieldTags": "Značky",
+    "activityFieldLinkedNoteIds": "Súvisiace položky",
+    "activityFieldCompletedAt": "Dokončenie",
+    "activityFieldArchivedAt": "Archivácia",
+    "activityFieldRepeatConfig": "Opakovanie",
+    "activityFieldSourceNoteId": "Zdrojová poznámka",
+    "activityFrom": "z {value}",
+    "activityTo": "na {value}",
+    "activityValueChanged": "zmenené",
+    "activityUnknownDate": "Bez dátumu",
+    "activityFieldRepeatFrom": "Opakovať od",
+    "activityFieldIsRepeating": "Opakuje sa"
   },
   "kanban": {
-    "board": "Kanban tabuľa",
+    "board": "Tabuľa Kanban",
     "empty": {
       "default": {
-        "subtitle": "Presuňte sem úlohy alebo pridajte kliknutím na +",
-        "title": "Žiadne úlohy"
+        "title": "Žiadne úlohy",
+        "subtitle": "Presuňte sem úlohy alebo pridajte kliknutím na +"
       },
       "done": {
-        "subtitle": "Dokončite úlohy a objavia sa tu",
-        "title": "Žiadne dokončené úlohy"
+        "title": "Žiadne dokončené úlohy",
+        "subtitle": "Dokončite úlohy a objavia sa tu"
       },
       "schedule": {
-        "subtitle": "Presuňte sem úlohy na preplánovanie",
-        "title": "Nič naplánované"
+        "title": "Nič naplánované",
+        "subtitle": "Presuňte sem úlohy na preplánovanie"
       }
     }
   },
@@ -157,115 +244,118 @@
     "projectArchiveError": "Nepodarilo sa archivovať projekt",
     "projectDeleted": "Projekt odstránený",
     "projectDeleteError": "Nepodarilo sa odstrániť projekt",
-    "filtersCleared": "Filtre vyčistené",
+    "filtersCleared": "Filtre vymazané",
     "filterSaved": "Filter uložený",
     "filterDeleted": "Filter odstránený",
-    "filterApplied": "Aplikované \"{name}\"",
+    "filterApplied": "Použité: „{name}“",
     "deleted": "Úloha odstránená",
     "deletedSeries": "Séria dokončená!",
     "completed": "Úloha dokončená!",
     "archived": "Úloha archivovaná",
-    "undoNotAvailableForDelete": "Spätné vrátenie nie je dostupné pre odstránenie",
+    "undoNotAvailableForDelete": "Odstránenie nemožno vrátiť späť",
     "alreadyAllComplete": "Všetky vybrané úlohy sú už dokončené",
     "noCompletedSelected": "Nie sú vybrané žiadne dokončené úlohy",
     "completeFailed": "Nepodarilo sa dokončiť úlohy",
     "deleteFailed": "Nepodarilo sa odstrániť úlohy",
     "moveFailed": "Nepodarilo sa presunúť úlohy",
     "bulk": {
-      "archived": "{count, plural, one {# úloha archivovaná} few {# úlohy archivované} many {# úlohy archivované} other {# úloh archivovaných}}",
       "completed": "{count, plural, one {# úloha dokončená} few {# úlohy dokončené} many {# úlohy dokončené} other {# úloh dokončených}}",
-      "deleted": "{count, plural, one {# úloha odstránená} few {# úlohy odstránené} many {# úlohy odstránené} other {# úloh odstránených}}",
-      "deletedDescription": "Túto akciu možno krátky čas vrátiť späť.",
-      "dueDateRemoved": "{count, plural, one {Termín odstránený z # úlohy} few {Termín odstránený z # úloh} many {Termín odstránený z # úlohy} other {Termín odstránený z # úloh}}",
-      "dueDateSet": "{count, plural, one {Termín nastavený pre # úlohu} few {Termín nastavený pre # úlohy} many {Termín nastavený pre # úlohy} other {Termín nastavený pre # úloh}}",
-      "movedToProject": "{count, plural, one {# úloha presunutá do {project}} few {# úlohy presunuté do {project}} many {# úlohy presunuté do {project}} other {# úloh presunutých do {project}}}",
-      "movedToStatus": "{count, plural, one {# úloha presunutá do {status}} few {# úlohy presunuté do {status}} many {# úlohy presunuté do {status}} other {# úloh presunutých do {status}}}",
+      "undoComplete": "{count, plural, one {Dokončiť # úlohu} few {Dokončiť # úlohy} many {Dokončiť # úlohy} other {Dokončiť # úloh}}",
+      "restored": "{count, plural, one {# úloha obnovená} few {# úlohy obnovené} many {# úlohy obnovené} other {# úloh obnovených}}",
+      "undoUncomplete": "{count, plural, one {Zrušiť dokončenie # úlohy} few {Zrušiť dokončenie # úloh} many {Zrušiť dokončenie # úlohy} other {Zrušiť dokončenie # úloh}}",
       "priorityRemoved": "{count, plural, one {Priorita odstránená pre # úlohu} few {Priorita odstránená pre # úlohy} many {Priorita odstránená pre # úlohy} other {Priorita odstránená pre # úloh}}",
       "prioritySet": "{count, plural, one {Priorita {priority} nastavená pre # úlohu} few {Priorita {priority} nastavená pre # úlohy} many {Priorita {priority} nastavená pre # úlohy} other {Priorita {priority} nastavená pre # úloh}}",
-      "restored": "{count, plural, one {# úloha obnovená} few {# úlohy obnovené} many {# úlohy obnovené} other {# úloh obnovených}}",
-      "undoArchive": "{count, plural, one {Archivovať # úlohu} few {Archivovať # úlohy} many {Archivovať # úlohy} other {Archivovať # úloh}}",
-      "undoComplete": "{count, plural, one {Dokončiť # úlohu} few {Dokončiť # úlohy} many {Dokončiť # úlohy} other {Dokončiť # úloh}}",
-      "undoDelete": "{count, plural, one {Odstrániť # úlohu} few {Odstrániť # úlohy} many {Odstrániť # úlohy} other {Odstrániť # úloh}}",
       "undoDueDate": "{count, plural, one {Termín zmenený pre # úlohu} few {Termín zmenený pre # úlohy} many {Termín zmenený pre # úlohy} other {Termín zmenený pre # úloh}}",
+      "dueDateSet": "{count, plural, one {Termín nastavený pre # úlohu} few {Termín nastavený pre # úlohy} many {Termín nastavený pre # úlohy} other {Termín nastavený pre # úloh}}",
+      "dueDateRemoved": "{count, plural, one {Termín odstránený z # úlohy} few {Termín odstránený z # úloh} many {Termín odstránený z # úlohy} other {Termín odstránený z # úloh}}",
       "undoMove": "{count, plural, one {Presunúť # úlohu} few {Presunúť # úlohy} many {Presunúť # úlohy} other {Presunúť # úloh}}",
+      "movedToProject": "{count, plural, one {# úloha presunutá do projektu {project}} few {# úlohy presunuté do projektu {project}} many {# úlohy presunuté do projektu {project}} other {# úloh presunutých do projektu {project}}}",
       "undoStatus": "{count, plural, one {Stav → {status} pre # úlohu} few {Stav → {status} pre # úlohy} many {Stav → {status} pre # úlohy} other {Stav → {status} pre # úloh}}",
-      "undoUncomplete": "{count, plural, one {Zrušiť dokončenie # úlohy} few {Zrušiť dokončenie # úloh} many {Zrušiť dokončenie # úlohy} other {Zrušiť dokončenie # úloh}}"
+      "movedToStatus": "{count, plural, one {# úloha presunutá do stavu {status}} few {# úlohy presunuté do stavu {status}} many {# úlohy presunuté do stavu {status}} other {# úloh presunutých do stavu {status}}}",
+      "undoArchive": "{count, plural, one {Archivovať # úlohu} few {Archivovať # úlohy} many {Archivovať # úlohy} other {Archivovať # úloh}}",
+      "archived": "{count, plural, one {# úloha archivovaná} few {# úlohy archivované} many {# úlohy archivované} other {# úloh archivovaných}}",
+      "undoDelete": "{count, plural, one {Odstrániť # úlohu} few {Odstrániť # úlohy} many {Odstrániť # úlohy} other {Odstrániť # úloh}}",
+      "deleted": "{count, plural, one {# úloha odstránená} few {# úlohy odstránené} many {# úlohy odstránené} other {# úloh odstránených}}",
+      "deletedDescription": "Túto akciu možno krátky čas vrátiť späť.",
+      "unarchived": "{count, plural, one {# úloha obnovená z archívu} few {# úlohy obnovené z archívu} other {# úloh obnovených z archívu}}",
+      "undoUnarchive": "{count, plural, one {Zrušiť archiváciu # úlohy} few {Zrušiť archiváciu # úloh} other {Zrušiť archiváciu # úloh}}"
     },
     "drag": {
-      "archived": "{count, plural, one {Úloha archivovaná} few {# úlohy archivované} many {# úlohy archivované} other {# úloh archivovaných}}",
+      "rescheduledTo": "Preplánované na: {target}",
+      "rescheduled": "{count, plural, one {Preplánované na: {target}} few {# úlohy preplánované na: {target}} many {# úlohy preplánované na: {target}} other {# úloh preplánovaných na: {target}}}",
+      "movedTo": "Presunuté do: {target}",
+      "moved": "{count, plural, one {Presunuté do: {target}} few {# úlohy presunuté do: {target}} many {# úlohy presunuté do: {target}} other {# úloh presunutých do: {target}}}",
+      "prioritySetTo": "Priorita nastavená: {priority}",
+      "prioritySet": "{count, plural, one {Priorita nastavená: {priority}} few {Priorita {priority} nastavená pre # úlohy} many {Priorita {priority} nastavená pre # úlohy} other {Priorita {priority} nastavená pre # úloh}}",
       "deleted": "{count, plural, one {Úloha odstránená} few {# úlohy odstránené} many {# úlohy odstránené} other {# úloh odstránených}}",
-      "moved": "{count, plural, one {Presunuté do {target}} few {# úlohy presunuté do {target}} many {# úlohy presunuté do {target}} other {# úloh presunutých do {target}}}",
-      "movedTo": "Presunuté do {target}",
-      "prioritySet": "{count, plural, one {Priorita nastavená na {priority}} few {# úlohy nastavené na {priority}} many {# úlohy nastavené na {priority}} other {# úloh nastavených na {priority}}}",
-      "prioritySetTo": "Priorita nastavená na {priority}",
-      "rescheduled": "{count, plural, one {Preplánované na {target}} few {# úlohy preplánované na {target}} many {# úlohy preplánované na {target}} other {# úloh preplánovaných na {target}}}",
-      "rescheduledTo": "Preplánované na {target}",
+      "archived": "{count, plural, one {Úloha archivovaná} few {# úlohy archivované} many {# úlohy archivované} other {# úloh archivovaných}}",
       "undoArchive": "{count, plural, one {Archivovaná # úloha} few {Archivované # úlohy} many {Archivované # úlohy} other {Archivovaných # úloh}}"
     },
     "subtasks": {
       "added": "{count, plural, one {# podúloha pridaná} few {# podúlohy pridané} many {# podúlohy pridané} other {# podúloh pridaných}}",
-      "completed": "{count, plural, one {# podúloha dokončená} few {# podúlohy dokončené} many {# podúlohy dokončené} other {# podúloh dokončených}}",
-      "deleted": "{count, plural, one {# podúloha odstránená} few {# podúlohy odstránené} many {# podúlohy odstránené} other {# podúloh odstránených}}",
+      "promoted": "„{title}“ povýšené na úlohu",
       "deletedDescription": "Podúloha bola odstránená",
-      "dueDateCleared": "{count, plural, one {Termín vymazaný pre # podúlohu} few {Termín vymazaný pre # podúlohy} many {Termín vymazaný pre # podúlohy} other {Termín vymazaný pre # podúloh}}",
-      "dueDateSet": "{count, plural, one {Termín nastavený pre # podúlohu} few {Termín nastavený pre # podúlohy} many {Termín nastavený pre # podúlohy} other {Termín nastavený pre # podúloh}}",
-      "markedIncomplete": "{count, plural, one {# podúloha označená ako nedokončená} few {# podúlohy označené ako nedokončené} many {# podúlohy označené ako nedokončené} other {# podúloh označených ako nedokončených}}",
-      "movedUnder": "Presunuté pod „{title}“",
-      "parentAndSubtasksCompleted": "Úloha a podúlohy dokončené",
       "parentDeletedKeepSubtasks": "Úloha odstránená, podúlohy prevedené na úlohy",
       "parentDeletedWithSubtasks": "Úloha a podúlohy odstránené",
+      "parentAndSubtasksCompleted": "Úloha a podúlohy dokončené",
+      "movedUnder": "Presunuté pod „{title}“",
+      "completed": "{count, plural, one {# podúloha dokončená} few {# podúlohy dokončené} many {# podúlohy dokončené} other {# podúloh dokončených}}",
+      "markedIncomplete": "{count, plural, one {# podúloha označená ako nedokončená} few {# podúlohy označené ako nedokončené} many {# podúlohy označené ako nedokončené} other {# podúloh označených ako nedokončených}}",
+      "dueDateSet": "{count, plural, one {Termín nastavený pre # podúlohu} few {Termín nastavený pre # podúlohy} many {Termín nastavený pre # podúlohy} other {Termín nastavený pre # podúloh}}",
+      "dueDateCleared": "{count, plural, one {Termín vymazaný pre # podúlohu} few {Termín vymazaný pre # podúlohy} many {Termín vymazaný pre # podúlohy} other {Termín vymazaný pre # podúloh}}",
       "prioritySet": "{count, plural, one {Priorita nastavená pre # podúlohu} few {Priorita nastavená pre # podúlohy} many {Priorita nastavená pre # podúlohy} other {Priorita nastavená pre # podúloh}}",
-      "promoted": "„{title}“ povýšené na úlohu"
+      "deleted": "{count, plural, one {# podúloha odstránená} few {# podúlohy odstránené} many {# podúlohy odstránené} other {# podúloh odstránených}}"
     }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
-      "addSubtask": "Pridať podúlohu...",
+      "addSubtask": "Pridať podúlohu…",
       "addSubtask2": "Pridať podúlohu",
-      "enterToAdd": "Stlačte Enter pre pridanie"
+      "enterToAdd": "Pridajte stlačením Enter"
     },
     "componentsTasksBulkActionsBulkActionDropdown": {
-      "for": "pre",
-      "task": "úloha"
+      "for": "pre ",
+      "task": "úlohy"
     },
     "componentsTasksBulkActionsBulkActionToolbar": {
       "bulkActions": "Hromadné akcie",
       "selected": "vybrané",
       "complete": "Dokončiť",
       "priority": "Priorita",
-      "dueDate": "Dátum splnenia",
+      "dueDate": "Termín",
       "moveTo": "Presunúť do",
       "status": "Stav",
       "archive": "Archivovať",
-      "delete": "Vymazať",
+      "delete": "Odstrániť",
       "cancelSelection": "Zrušiť výber",
-      "cancel": "Zrušiť"
+      "cancel": "Zrušiť",
+      "unarchive": "Zrušiť archiváciu"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
-      "delete": "Odstrániť",
-      "task": "úloha",
-      "youReAboutToDelete": "Chystáte sa odstrániť",
-      "task2": "úloha",
+      "delete": "Odstrániť ",
+      "task": "úlohy",
+      "youReAboutToDelete": "Chystáte sa odstrániť ",
+      "task2": "úlohy",
       "and": "a ",
-      "moreTask": "viac úloh",
-      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Táto akcia môže byť krátko po vymazaní vrátená späť.",
+      "moreTask": "ďalších úloh",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Túto akciu možno krátko po odstránení vrátiť späť.",
       "cancel": "Zrušiť",
-      "delete2": "Odstrániť",
-      "task3": "úloha"
+      "delete2": "Odstrániť ",
+      "task3": "úlohy"
     },
     "componentsTasksBulkActionsBulkDueDatePicker": {
-      "setDueDateFor": "Nastaviť dátum splatnosti pre ",
-      "task": "úloha",
-      "selectADateToSetAsTheDueDateForAllSelectedTasks": "Vyberte dátum, ktorý sa má nastaviť ako dátum splatnosti pre všetky vybrané úlohy.",
+      "setDueDateFor": "Nastaviť termín pre ",
+      "task": "úlohy",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "Vyberte dátum, ktorý sa nastaví ako termín všetkých vybraných úloh.",
       "alsoSetTime": "Nastaviť aj čas",
       "cancel": "Zrušiť",
-      "setDueDate": "Nastaviť dátum splatnosti"
+      "setDueDate": "Nastaviť termín"
     },
     "componentsTasksCelebrationProgress": {
-      "complete": "Dokončiť"
+      "complete": "Dokončené"
     },
     "componentsTasksColorPicker": {
-      "selectColor": "Vyberte farbu"
+      "selectColor": "Vybrať farbu"
     },
     "componentsTasksCustomRepeatDialog": {
       "onTheseDays": "V týchto dňoch",
@@ -276,15 +366,15 @@
       "ofTheMonth2": "v mesiaci",
       "ends": "Končí",
       "never": "Nikdy",
-      "onDate": "K dátumu",
+      "onDate": "Dňa",
       "after": "Po",
       "occurrences": "výskytoch",
-      "preview": "Ukážka",
-      "of": "z",
-      "andMore": "a viac",
+      "preview": "Náhľad",
+      "of": "z ",
+      "andMore": "a ďalšie",
       "frequency": "Frekvencia",
       "repeatEvery": "Opakovať každých",
-      "day2": "den",
+      "day2": "deň",
       "week": "týždeň",
       "month": "mesiac",
       "year": "rok",
@@ -295,9 +385,9 @@
     "componentsTasksDatePickerCalendar": {
       "previousMonth": "Predchádzajúci mesiac",
       "nextMonth": "Nasledujúci mesiac",
-      "goToToday": "Prejsť na dnes",
+      "goToToday": "Prejsť na dnešok",
       "today": "Dnes",
-      "w": "W",
+      "w": "T",
       "weekNumber": "Týždeň {number}"
     },
     "componentsTasksDatePickerContent": {
@@ -307,66 +397,66 @@
       "time": "Čas"
     },
     "componentsTasksDeleteProjectDialog": {
-      "delete": "Vymazať",
-      "thisProjectHas": "Tento projekt má",
-      "task": "úloha",
+      "delete": "Odstrániť „",
+      "thisProjectHas": "Tento projekt má ",
+      "task": "úlohy",
       "whatWouldYouLikeToDoWithThem": "Čo s nimi chcete urobiť?",
       "moveTasksToPersonalProject": "Presunúť úlohy do Osobného projektu",
-      "deleteAllTasksPermanently": "Trvalo vymazať všetky úlohy",
-      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Tento projekt nemá žiadne úlohy a bude trvalo vymazaný.",
-      "thisActionCannotBeUndone": "Túto akciu nie je možné vrátiť späť.",
+      "deleteAllTasksPermanently": "Natrvalo odstrániť všetky úlohy",
+      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Tento projekt nemá žiadne úlohy a bude natrvalo odstránený.",
+      "notesEventsAndFilesStayNotice": "Úlohy v tomto projekte sa odstránia. Poznámky, udalosti a súbory zostanú v trezore.",
+      "thisActionCannotBeUndone": "Túto akciu nemožno vrátiť späť.",
       "cancel": "Zrušiť",
-      "deleteProject": "Vymazať projekt",
-      "notesEventsAndFilesStayNotice": "Úlohy v tomto projekte sa vymažú. Vaše poznámky, udalosti a súbory zostanú v trezore."
+      "deleteProject": "Odstrániť projekt"
     },
     "componentsTasksDeleteTaskDialog": {
-      "deleteTask": "Vymazať úlohu?",
-      "deleteTask2": "Vymazať úlohu",
-      "deleteConfirmBody": "Úloha „{title}“ bude natrvalo odstránená. Túto akciu nie je možné vrátiť späť."
+      "deleteTask": "Odstrániť úlohu?",
+      "deleteTask2": "Odstrániť úlohu",
+      "deleteConfirmBody": "Úloha „{title}“ bude natrvalo odstránená. Túto akciu nemožno vrátiť späť."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Všetky podúlohy dokončené!",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Chcete tiež označiť nadradenú úlohu ako dokončenú?",
-      "keepTaskOpen": "Nechajte úlohu otvorenú",
+      "keepTaskOpen": "Nechať úlohu otvorenú",
       "completeTask": "Dokončiť úlohu ✓",
       "allSubtasksDoneBody": "V úlohe „{title}“ sú hotové všetky podúlohy ({count, plural, one {# podúloha} few {# podúlohy} many {# podúlohy} other {# podúloh}})."
     },
     "componentsTasksDialogsBulkDueDateDialog": {
-      "setDueDateForAllSubtasks": "Nastaviť lehotu pre všetky podúlohy",
-      "setDueDateFor": "Nastaviť dátum splatnosti pre ",
+      "setDueDateForAllSubtasks": "Nastaviť termín pre všetky podúlohy",
+      "setDueDateFor": "Nastaviť termín pre ",
       "alsoApplyToCompletedSubtasks": "Použiť aj na dokončené podúlohy (",
       "clearDate": "Vymazať dátum",
       "cancel": "Zrušiť",
-      "apply": "Prihláste sa",
-      "alsoApplyToCompletedSubtasksCount": "Použiť aj na dokončené podúlohy ({count})",
-      "setDueDateForSubtasksIn": "Nastaviť termín pre {count, plural, one {# podúlohu} few {# podúlohy} many {# podúlohy} other {# podúloh}} v úlohe „{title}“"
+      "apply": "Použiť",
+      "setDueDateForSubtasksIn": "Nastaviť termín pre {count, plural, one {# podúlohu} few {# podúlohy} many {# podúlohy} other {# podúloh}} v úlohe „{title}“",
+      "alsoApplyToCompletedSubtasksCount": "Použiť aj na dokončené podúlohy ({count})"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Nastaviť prioritu pre všetky podúlohy",
-      "setPriorityFor": "Nastaviť prioritu pre",
+      "setPriorityFor": "Nastaviť prioritu pre ",
       "alsoApplyToCompletedSubtasks": "Použiť aj na dokončené podúlohy (",
       "cancel": "Zrušiť",
-      "apply": "Prihláste sa",
-      "alsoApplyToCompletedSubtasksCount": "Použiť aj na dokončené podúlohy ({count})",
-      "setPriorityForSubtasksIn": "Nastaviť prioritu pre {count, plural, one {# podúlohu} few {# podúlohy} many {# podúlohy} other {# podúloh}} v úlohe „{title}“"
+      "apply": "Použiť",
+      "setPriorityForSubtasksIn": "Nastaviť prioritu pre {count, plural, one {# podúlohu} few {# podúlohy} many {# podúlohy} other {# podúloh}} v úlohe „{title}“",
+      "alsoApplyToCompletedSubtasksCount": "Použiť aj na dokončené podúlohy ({count})"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Dokončiť úlohu s nedokončenými podúlohami?",
       "has": "má ",
-      "incompleteSubtask": "neúplnú podúlohu",
+      "incompleteSubtask": "nedokončené podúlohy",
       "and": "a ",
-      "more": "viac",
+      "more": "ďalších",
       "whatWouldYouLikeToDo": "Čo by ste chceli urobiť?",
-      "completeAllParentSubtasks": "Dokončiť všetko (rodič + podúlohy)",
-      "markTheParentAndAllSubtasksAsComplete": "Označiť rodiča a všetky podúlohy ako dokončené",
-      "completeParentOnlyKeepSubtasksIncomplete": "Dokončiť len rodiča, ponechať podúlohy nedokončené",
-      "onlyMarkTheParentTaskAsComplete": "Označiť ako dokončenú len rodičovskú úlohu",
+      "completeAllParentSubtasks": "Dokončiť všetko (úlohu aj podúlohy)",
+      "markTheParentAndAllSubtasksAsComplete": "Označiť nadradenú úlohu a všetky podúlohy ako dokončené",
+      "completeParentOnlyKeepSubtasksIncomplete": "Dokončiť len nadradenú úlohu, podúlohy ponechať nedokončené",
+      "onlyMarkTheParentTaskAsComplete": "Označiť ako dokončenú len nadradenú úlohu",
       "cancel": "Zrušiť",
       "complete": "Dokončiť"
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
       "deleteAllSubtasks": "Odstrániť všetky podúlohy?",
-      "thisActionCannotBeUndone": "Túto akciu nie je možné vrátiť späť.",
+      "thisActionCannotBeUndone": "Túto akciu nemožno vrátiť späť.",
       "cancel": "Zrušiť",
       "deleteAll": "Odstrániť všetko",
       "deleteSubtasksConfirmation": "Týmto sa z úlohy „{title}“ {count, plural, one {odstráni # podúloha} few {odstránia # podúlohy} many {odstráni # podúlohy} other {odstráni # podúloh}}."
@@ -381,7 +471,7 @@
       "deleteTaskKeepSubtasksAsStandaloneTasks": "Odstrániť úlohu, ponechať podúlohy ako samostatné úlohy",
       "subtasksBecomeTopLevelTasks": "Podúlohy sa stanú úlohami najvyššej úrovne",
       "cancel": "Zrušiť",
-      "delete": "Vymazať"
+      "delete": "Odstrániť"
     },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Duplikovať úlohu",
@@ -389,21 +479,21 @@
       "alsoDuplicateSubtasks": "Duplikovať aj podúlohy (",
       "cancel": "Zrušiť",
       "duplicate": "Duplikovať ",
-      "alsoDuplicateSubtasksCount": "Duplikovať aj podúlohy ({count})",
       "createACopyOfTitle": "Vytvoriť kópiu úlohy „{title}“",
-      "duplicateTaskOnly": "Duplikovať úlohu",
-      "duplicateWithItems": "Duplikovať ({count, plural, one {# položka} few {# položky} many {# položky} other {# položiek}})"
+      "alsoDuplicateSubtasksCount": "Duplikovať aj podúlohy ({count})",
+      "duplicateWithItems": "Duplikovať ({count, plural, one {# položka} few {# položky} many {# položky} other {# položiek}})",
+      "duplicateTaskOnly": "Duplikovať úlohu"
     },
     "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Urobiť podúlohou...",
-      "selectATaskToMake": "Vyberte úlohu na urobienie ",
-      "aSubtaskOf": "podúloha.",
-      "searchTasks": "Hľadať úlohy...",
+      "makeSubtaskOf": "Nastaviť ako podúlohu…",
+      "selectATaskToMake": "Vyberte úlohu, pod ktorú sa „",
+      "aSubtaskOf": "presunie ako podúloha.",
+      "searchTasks": "Hľadať úlohy…",
       "sameProject": "Rovnaký projekt",
       "otherProjects": "Iné projekty"
     },
     "componentsTasksDragDropInsertionIndicator": {
-      "dropToRescheduleTo": "Presuňte sem na preplánovanie na"
+      "dropToRescheduleTo": "Pustením nastavíte termín: "
     },
     "componentsTasksDragDropMoveMenu": {
       "moveTask": "Presunúť úlohu",
@@ -414,42 +504,42 @@
       "nextWeek": "Budúci týždeň",
       "removeDate": "Odstrániť dátum",
       "moveToProject": "Presunúť do projektu",
-      "current": "Aktuálne",
+      "current": "Aktuálny",
       "changeStatus": "Zmeniť stav",
-      "current2": "Aktuálne",
+      "current2": "Aktuálny",
       "reorder": "Zmeniť poradie"
     },
     "componentsTasksDragDropMultiDragOverlay": {
-      "moreTask": "viac úloh",
-      "task": "úloha"
+      "moreTask": "ďalšie",
+      "task": "úlohy"
     },
     "componentsTasksDragDropSidebarDropZones": {
-      "dropHere": "Pusti sem"
+      "dropHere": "Pustite sem"
     },
     "componentsTasksDragDropTaskRow": {
-      "priority": "priorita:"
+      "priority": "priorita: "
     },
     "componentsTasksDueDatePicker": {
-      "selectDueDate": "Vybrať dátum splnenia",
+      "selectDueDate": "Vybrať termín",
       "overdue": "Po termíne",
-      "setDueDate": "Nastaviť dátum splnenia",
+      "setDueDate": "Nastaviť termín",
       "suggestions": "Návrhy",
-      "pickADate": "Vyberte dátum...",
+      "pickADate": "Vybrať dátum…",
       "addTime": "Pridať čas",
       "time": "Čas",
       "clearDate": "Vymazať dátum",
       "backToOptions": "Späť na možnosti",
-      "nextWeek": "Budúci týždeň",
-      "thisWeekend": "Tento víkend",
       "today": "Dnes",
-      "tomorrow": "Zajtra"
+      "tomorrow": "Zajtra",
+      "thisWeekend": "Tento víkend",
+      "nextWeek": "Budúci týždeň"
     },
     "componentsTasksEditRepeatingTaskDialog": {
-      "editRepeatingTask": "Upraviť opakovanú úlohu",
-      "youReEditingARepeatingTaskApplyChangesTo": "Upravujete opakovanú úlohu. Použiť zmeny na:",
-      "onlyThisOccurrence": "Len túto udalosť",
-      "onlyFutureTasksUnchanged": "len — budúce úlohy sa nemenia",
-      "thisAndAllFutureOccurrences": "Túto a všetky budúce udalosti",
+      "editRepeatingTask": "Upraviť opakujúcu sa úlohu",
+      "youReEditingARepeatingTaskApplyChangesTo": "Upravujete opakujúcu sa úlohu. Použiť zmeny na:",
+      "onlyThisOccurrence": "Len tento výskyt",
+      "onlyFutureTasksUnchanged": "– budúce úlohy sa nezmenia",
+      "thisAndAllFutureOccurrences": "Tento a všetky budúce výskyty",
       "andBeyond": "a ďalej",
       "cancel": "Zrušiť",
       "continue": "Pokračovať"
@@ -459,46 +549,46 @@
     },
     "componentsTasksEmptyStatesSectionEmptyStates": {
       "noTasksScheduled": "Žiadne naplánované úlohy",
-      "addTaskFor": "Pridať úlohu pre",
-      "nothingScheduled": "Nić naplánované",
-      "addTasksWithDueDatesToPlanYourWeek": "Pridajte úlohy s dátumom splnenia, aby ste si naplánovali týždeň.",
+      "addTaskFor": "Pridať úlohu na ",
+      "nothingScheduled": "Nič naplánované",
+      "addTasksWithDueDatesToPlanYourWeek": "Pridajte úlohy s termínom a naplánujte si týždeň.",
       "addTask": "Pridať úlohu",
       "viewCalendar": "Zobraziť kalendár"
     },
     "componentsTasksFiltersActiveFiltersBar": {
       "priorityIs": "Priorita je",
       "priority": "priorita",
+      "tagsIs": "Značky sú",
+      "tags": "značky",
       "statusIs": "Stav je",
       "status": "stav",
       "projectIs": "Projekt je",
       "project": "projekt",
       "due": "Termín",
-      "dueDate": "dátum splnenia",
-      "search": "vyhľadať",
-      "clearAll": "Vymazať všetko",
-      "tags": "značky",
-      "tagsIs": "Značky sú"
+      "dueDate": "termín",
+      "search": "vyhľadávanie",
+      "clearAll": "Vymazať všetko"
     },
     "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "Filtrovať podľa termínu splnenia",
+      "filterByDueDate": "Filtrovať podľa termínu",
       "customRange": "Vlastné obdobie",
-      "clear": "Vyčistiť",
-      "apply": "Prihláste sa"
+      "clear": "Vymazať",
+      "apply": "Použiť"
     },
     "componentsTasksFiltersFilterDropdown": {
-      "filterBy": "Filtrovať podľa..."
+      "filterBy": "Filtrovať podľa…"
     },
     "componentsTasksFiltersFilterEmptyState": {
       "activeFilters": "Aktívne filtre: ",
       "clearAllFilters": "Vymazať všetky filtre"
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
-      "dueDate": "Dátum splatnosti"
+      "dueDate": "Termín"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Priorita",
       "is": "je",
-      "search": "Vyhľadať...",
+      "search": "Hľadať…",
       "selected": "vybrané"
     },
     "componentsTasksFiltersFilterPanelsProjectPanel": {
@@ -511,6 +601,12 @@
     "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
       "status": "Stav",
       "pickAProject": "Vybrať projekt"
+    },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "tags": "Značky",
+      "is": "je",
+      "search": "Hľadať…",
+      "selected": "vybrané"
     },
     "componentsTasksFiltersMoreFiltersDropdown": {
       "moreFilters": "Viac filtrov",
@@ -528,30 +624,30 @@
       "filterByProject": "Filtrovať podľa projektu",
       "project": "Projekt",
       "allProjects": "Všetky projekty",
-      "clear": "Vyčistiť"
+      "clear": "Vymazať"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "Rýchle filtre:"
     },
     "componentsTasksFiltersSaveFilterDialog": {
       "saveFilter": "Uložiť filter",
-      "saveYourCurrentFilterSettingsForQuickAccessLater": "Uložte svoje aktuálne nastavenia filtra pre rýchly prístup neskôr.",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "Uložte aktuálne nastavenia filtra, aby ste sa k nim mohli rýchlo vrátiť.",
       "filterName": "Názov filtra",
-      "eGHighPriorityThisWeek": "napr., Vysoká priorita tento týždeň",
+      "eGHighPriorityThisWeek": "napr. Vysoká priorita tento týždeň",
       "currentFilters": "Aktuálne filtre:",
       "noFiltersApplied": "Žiadne filtre",
       "cancel": "Zrušiť",
       "saveFilter2": "Uložiť filter",
-      "nameRequired": "Zadajte prosím názov tohto filtra",
-      "summaryDue": "Termín: {value}",
-      "summaryDueRange": "Termín: {start} - {end}",
-      "summaryPriorities": "Priorita: {names}",
-      "summaryProjects": "Projekt: {names}",
-      "summaryRepeatOneTime": "Opakovanie: Len jednorazové",
-      "summaryRepeatRepeating": "Opakovanie: Len opakujúce sa",
       "summarySearch": "Hľadanie: „{query}“",
+      "summaryProjects": "Projekt: {names}",
+      "summaryPriorities": "Priorita: {names}",
+      "summaryDue": "Termín: {value}",
+      "summaryDueRange": "Termín: {start} – {end}",
+      "summaryRepeatRepeating": "Opakovanie: Len opakujúce sa",
+      "summaryRepeatOneTime": "Opakovanie: Len jednorazové",
       "summaryTimeWith": "Čas: S časom",
-      "summaryTimeWithout": "Čas: Bez času"
+      "summaryTimeWithout": "Čas: Bez času",
+      "nameRequired": "Zadajte názov filtra"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Uložené filtre",
@@ -570,18 +666,18 @@
       "clearSearch": "Vymazať vyhľadávanie"
     },
     "componentsTasksKanbanKanbanColumn": {
-      "dropHere": "Pusti sem",
-      "releaseToMoveTaskToThisColumn": "Uvoľnite pre presun úlohy do tohto stĺpca",
-      "moreCompleted": "viac dokončených",
+      "dropHere": "Pustite sem",
+      "releaseToMoveTaskToThisColumn": "Pustením presuniete úlohu do tohto stĺpca",
+      "moreCompleted": "ďalších dokončených",
       "showFewer": "Zobraziť menej",
-      "taskTitle": "Názov úlohy..."
+      "taskTitle": "Názov úlohy…"
     },
     "componentsTasksNaturalDateInput": {
       "typeADateInNaturalLanguage": "Zadajte dátum v prirodzenom jazyku",
       "select": "Vybrať"
     },
     "componentsTasksParentTaskRow": {
-      "priority": "priorita:"
+      "priority": "priorita: "
     },
     "componentsTasksPrioritySelect": {
       "selectPriority": "Vybrať prioritu",
@@ -592,18 +688,18 @@
       "iconName": "Ikona a názov",
       "selectIcon": "Vybrať ikonu",
       "projectName": "Názov projektu",
-      "clickIconToChange": "Kliknite na ikonu pre zmenu",
+      "clickIconToChange": "Kliknutím na ikonu ju zmeníte",
       "color": "Farba",
       "descriptionOptional": "Popis (voliteľné)",
-      "briefDescriptionOfThisProject": "Krátky popis tohto projektu...",
+      "briefDescriptionOfThisProject": "Krátky popis tohto projektu…",
       "statuses": "Stavy",
       "configureTheWorkflowStagesForThisProject": "Konfigurujte fázy pracovného postupu pre tento projekt.",
-      "deleteProject": "Vymazať projekt",
+      "deleteProject": "Odstrániť projekt",
       "cancel": "Zrušiť",
       "unsavedChanges": "Neuložené zmeny",
       "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?",
       "cancel2": "Zrušiť",
-      "discard": "Vyhodiť",
+      "discard": "Zahodiť",
       "defaultProject": "Predvolený projekt",
       "openTasksOnThisProject": "Úlohy sa otvoria v tomto projekte"
     },
@@ -625,25 +721,21 @@
       "createYourFirstProject": "Vytvorte svoj prvý projekt"
     },
     "componentsTasksQuickAddQuickAddHelp": {
-      "quickAddShortcutsHelp": "Pomoc rýchlych príkazov pre pridanie",
-      "quickAddShortcuts": "Rýchle pridanie príkazov",
-      "exampleBuyMilkTomorrowHighPersonal": "Príklad: \"Kúp mlieko !zajtra !!vysoká #osobné\""
+      "quickAddShortcutsHelp": "Pomocník pre skratky rýchleho pridania",
+      "quickAddShortcuts": "Skratky rýchleho pridania",
+      "exampleBuyMilkTomorrowHighPersonal": "Príklad: „Kúpiť mlieko !tomorrow !!high #osobné“"
     },
     "componentsTasksQuickAddQuickOptionsBar": {
       "quickOptions": "Rýchle možnosti:"
     },
-    "componentsTasksQuickAddInput": {
-      "q": "Q",
-      "q2": "Q"
-    },
     "componentsTasksRepeatIndicator": {
-      "of": "z",
-      "completed": "dokončené"
+      "of": "z ",
+      "completed": "dokončených"
     },
     "componentsTasksRepeatPicker": {
       "selectRepeatFrequency": "Vyberte frekvenciu opakovania",
-      "doesNotRepeat": "Neopakovať",
-      "custom": "Vlastné..."
+      "doesNotRepeat": "Neopakuje sa",
+      "custom": "Vlastné…"
     },
     "componentsTasksStatusEditor": {
       "changeStatusColor": "Zmeniť farbu stavu",
@@ -657,47 +749,47 @@
     },
     "componentsTasksStopRepeatingDialog": {
       "stopRepeating": "Zastaviť opakovanie",
-      "isSetToRepeat": "je nastavené na opakovanie",
+      "isSetToRepeat": "sa opakuje ",
       "whatWouldYouLikeToDo": "Čo by ste chceli urobiť?",
-      "keepThisTaskStopFutureOccurrences": "Uchovať tento úkol, zastaviť budúce výskyty",
-      "taskWillBecomeAOneTimeTask": "Úkol sa stane jednorazovým",
-      "deleteThisAndAllFutureOccurrences": "Vymazať tento a všetky budúce výskyty",
-      "taskWillBeRemovedEntirely": "Úkol bude úplne odstránený",
+      "keepThisTaskStopFutureOccurrences": "Ponechať túto úlohu, zastaviť budúce výskyty",
+      "taskWillBecomeAOneTimeTask": "Úloha sa stane jednorazovou",
+      "deleteThisAndAllFutureOccurrences": "Odstrániť tento a všetky budúce výskyty",
+      "taskWillBeRemovedEntirely": "Úloha bude úplne odstránená",
       "cancel": "Zrušiť",
-      "confirm": "Potvrď"
+      "confirm": "Potvrdiť"
     },
     "componentsTasksSubtaskDots": {
-      "of": "z",
-      "subtasksComplete": "podúlohy dokončené (",
-      "clickTo": "Kliknite pre",
-      "of2": "z",
-      "subtasksComplete2": "podúlohy dokončené",
-      "clickTo2": "Kliknite pre"
+      "of": "z ",
+      "subtasksComplete": "podúloh dokončených (",
+      "clickTo": "Kliknite na ",
+      "of2": "z ",
+      "subtasksComplete2": "podúloh dokončených",
+      "clickTo2": "Kliknite na "
     },
     "componentsTasksSubtaskProgressBadge": {
-      "of": "z",
-      "subtasksComplete": "podúlohy dokončené (",
-      "clickTo": "Kliknite pre"
+      "of": "z ",
+      "subtasksComplete": "podúloh dokončených (",
+      "clickTo": "Kliknite na "
     },
     "componentsTasksTaskBadges": {
       "priority": "priorita",
-      "repeatingTask": "Opakujúci sa úkol",
+      "repeatingTask": "Opakujúca sa úloha",
       "d": "d"
     },
     "componentsTasksTaskEmptyState": {
       "addTask": "Pridať úlohu",
-      "allDescription": "Začnite vytvorením prvej úlohy",
       "allTitle": "Zatiaľ žiadne úlohy",
-      "completedDescription": "Dokončené úlohy sa zobrazia tu",
-      "completedTitle": "Žiadne dokončené úlohy",
-      "projectDescription": "Začnite pridaním úlohy",
-      "projectTitle": "V tomto projekte nie sú žiadne úlohy",
-      "projectTitleNamed": "V projekte {name} nie sú žiadne úlohy",
+      "allDescription": "Začnite vytvorením prvej úlohy",
+      "todayTitle": "Dnes nemáte žiadne termíny",
       "todayDescription": "Máte všetko vybavené!",
-      "todayTitle": "Dnes nemáte žiadne termíny"
+      "completedTitle": "Žiadne dokončené úlohy",
+      "completedDescription": "Dokončené úlohy sa zobrazia tu",
+      "projectTitle": "V tomto projekte nie sú žiadne úlohy",
+      "projectDescription": "Začnite pridaním úlohy",
+      "projectTitleNamed": "V projekte {name} nie sú žiadne úlohy"
     },
     "componentsTasksTaskIcons": {
-      "noPriority": "žiadna priorita"
+      "noPriority": "bez priority"
     },
     "componentsTasksTaskRepeatSection": {
       "repeat": "Opakovať",
@@ -717,40 +809,34 @@
     },
     "componentsTasksTodayEmptyState": {
       "nothingScheduledForToday": "Na dnešok nie je naplánované nič",
-      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Máte nad termínom úlohy vyššie. Pridajte si nejaké úlohy na dnes alebo si skontrolujte nadchádzajúci zoznam.",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Vyššie máte úlohy po termíne. Pridajte úlohy na dnes alebo si pozrite nadchádzajúce.",
       "addTaskForToday": "Pridať úlohu na dnes",
       "allCaughtUpForToday": "Dnes všetko hotové",
-      "youHaveNothingScheduledEnjoyTheClarity": "Nemáte nič naplánované. Užite si jasnosť.",
+      "youHaveNothingScheduledEnjoyTheClarity": "Nemáte nič naplánované. Užite si pokoj.",
       "addTaskForToday2": "Pridať úlohu na dnes"
     },
     "componentsTasksUpcomingEmptyState": {
       "nothingScheduledForTheNext7Days": "Na nasledujúcich 7 dní nie je nič naplánované",
-      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Máte nad termínom úlohy vyššie. Naplánujte si dopredu pridaním úloh na nasledujúci týždeň.",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Vyššie máte úlohy po termíne. Naplánujte si vopred úlohy na nasledujúci týždeň.",
       "addTask": "Pridať úlohu",
       "noUpcomingTasks": "Žiadne nadchádzajúce úlohy",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Úlohy s termínom v nasledujúcich 7 dňoch sa zobrazia tu. Naplánujte si týždeň pridaním niekoľkých úloh.",
       "addTask2": "Pridať úlohu"
-    },
-    "componentsTasksFiltersFilterPanelsTagPanel": {
-      "is": "je",
-      "search": "Hľadať...",
-      "selected": "vybrané",
-      "tags": "Značky"
     }
   },
   "phaseI": {
     "toasts": {
-      "changesUndone": "Zmeny zrušené",
+      "changesUndone": "Zmeny vrátené späť",
       "projectNotFound": "Projekt nenájdený",
       "failedToArchiveTasks": "Nepodarilo sa archivovať úlohy",
       "tasksRestoredFromArchive": "Úlohy obnovené z archívu",
       "subtaskAdded": "Podúloha pridaná",
       "subtaskDeleted": "Podúloha odstránená",
       "taskCompleted": "Úloha dokončená",
-      "allSubtasksCompleteTaskMarkedAsDone": "🎉 Všetky podúlohy dokončené! Úloha označená ako hotová.",
-      "taskReopened": "Úloha znovu otvorená",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 Všetky podúlohy dokončené! Úloha označená ako dokončená.",
+      "taskReopened": "Úloha znova otvorená",
       "taskKeptOpen": "Úloha ponechaná otvorená",
-      "taskMarkedAsDone": "🎉 Úloha označená ako hotová!"
+      "taskMarkedAsDone": "🎉 Úloha označená ako dokončená!"
     },
     "errors": {
       "failedToArchiveTasks": "Nepodarilo sa archivovať úlohy",
@@ -761,171 +847,159 @@
       "failedToDeleteSubtask": "Nepodarilo sa odstrániť podúlohu",
       "failedToDeleteTask": "Nepodarilo sa odstrániť úlohu",
       "failedToCompleteTask": "Nepodarilo sa dokončiť úlohu",
-      "failedToMakeSubtask": "Nepodarilo sa vytvoriť podúlohu",
+      "failedToMakeSubtask": "Nepodarilo sa nastaviť ako podúlohu",
       "failedToCompleteSubtasks": "Nepodarilo sa dokončiť podúlohy",
       "failedToMarkSubtasksIncomplete": "Nepodarilo sa označiť podúlohy ako nedokončené",
       "failedToSetDueDate": "Nepodarilo sa nastaviť termín",
       "failedToSetPriority": "Nepodarilo sa nastaviť prioritu",
       "failedToDeleteSubtasks": "Nepodarilo sa odstrániť podúlohy",
-      "failedToLoadTaskPreferences": "Nepodarilo sa načítať nastavenia úlohy",
-      "failedToUpdateTaskPreferences": "Nepodarilo sa aktualizovať nastavenia úlohy",
+      "failedToLoadTaskPreferences": "Nepodarilo sa načítať nastavenia úloh",
+      "failedToUpdateTaskPreferences": "Nepodarilo sa aktualizovať nastavenia úloh",
       "failedToLoadLinkedTasks": "Nepodarilo sa načítať prepojené úlohy"
     }
   },
-  "reminders": {
-    "hasReminders": "Má pripomienky",
-    "setReminder": "Nastaviť pripomienku",
-    "summary": "Pripomienka: {date}",
-    "summaryWithMore": "Pripomienka: {date} (+{count} ďalších)",
-    "toast": {
-      "deleteFailed": "Nepodarilo sa odstrániť pripomienku",
-      "deleted": "Pripomienka odstránená",
-      "set": "Pripomienka nastavená",
-      "setFailed": "Nepodarilo sa nastaviť pripomienku",
-      "updateFailed": "Nepodarilo sa aktualizovať pripomienku",
-      "updated": "Pripomienka aktualizovaná"
-    }
-  },
   "addToProject": {
-    "dialogTitle": "Pridať do projektu",
-    "loading": "Načítavajú sa projekty…",
     "menuLabel": "Pridať do projektu",
+    "dialogTitle": "Pridať do projektu",
     "noProjects": "Zatiaľ žiadne projekty",
-    "toastError": "Nepodarilo sa pridať do projektu",
-    "toastSuccess": "Pridané do {name}"
-  },
-  "itemProjects": {
-    "openProject": "Otvoriť projekt {name}"
+    "loading": "Načítavajú sa projekty…",
+    "toastSuccess": "Pridané do projektu {name}",
+    "toastError": "Nepodarilo sa pridať do projektu"
   },
   "projectHome": {
-    "emptyBody": "Vyberte projekt v bočnom paneli a otvorte jeho domovskú stránku.",
     "emptyTitle": "Nie je vybratý žiadny projekt",
-    "loadError": "Detaily projektu sa nepodarilo načítať",
+    "emptyBody": "Vyberte projekt v bočnom paneli a otvorte jeho stránku.",
+    "loadError": "Nepodarilo sa načítať podrobnosti projektu",
     "overview": {
-      "clear": "Vymazať prehľad",
-      "clearError": "Poznámku s prehľadom sa nepodarilo vymazať",
+      "sectionTitle": "Prehľad",
       "create": "Vytvoriť poznámku s prehľadom",
-      "createError": "Poznámku s prehľadom sa nepodarilo vytvoriť",
+      "clear": "Vymazať prehľad",
       "defaultTitle": "Prehľad",
-      "loadError": "Poznámku s prehľadom sa nepodarilo načítať",
       "placeholder": "Napíšte prehľad tohto projektu…",
-      "saveError": "Poznámku s prehľadom sa nepodarilo uložiť",
-      "sectionTitle": "Prehľad"
+      "createError": "Poznámku s prehľadom sa nepodarilo vytvoriť",
+      "clearError": "Poznámku s prehľadom sa nepodarilo vymazať",
+      "loadError": "Poznámku s prehľadom sa nepodarilo načítať",
+      "saveError": "Poznámku s prehľadom sa nepodarilo uložiť"
     }
+  },
+  "itemProjects": {
+    "openProject": "Otvoriť projekt {name}",
+    "removeFromProject": "Odstrániť z projektu {name}",
+    "removeFailed": "Nepodarilo sa odstrániť túto položku z projektu"
   },
   "projectHub": {
-    "capture": {
-      "attach": "Priložiť súbory",
-      "fileError": "Súbor {name} sa nepodarilo prepojiť",
-      "fileErrorGeneric": "Súbory sa nepodarilo importovať",
-      "filesAdded": "{count, plural, one {# súbor pridaný do projektu} few {# súbory pridané do projektu} many {# súboru pridaného do projektu} other {# súborov pridaných do projektu}}",
-      "label": "Pridať do {name}",
-      "linkAdded": "Odkaz bol pridaný do projektu",
-      "linkError": "Odkaz sa nepodarilo uložiť",
-      "placeholder": "Pridať do {name} — napíšte úlohu, zapíšte poznámku alebo vložte odkaz…"
-    },
-    "groups": {
-      "older": "Staršie",
-      "past": "Minulé",
-      "today": "Dnes",
-      "tomorrow": "Zajtra",
-      "upcoming": "Nadchádzajúce",
-      "yesterday": "Včera"
-    },
     "header": {
-      "archiveProject": "Archivovať projekt",
-      "editProject": "Upraviť projekt",
+      "toggleRail": "Zobraziť/skryť podrobnosti projektu",
       "menu": "Akcie projektu",
-      "toggleRail": "Zobraziť alebo skryť detaily projektu"
-    },
-    "rail": {
-      "addNote": "Pridať poznámku",
-      "created": "Vytvorené",
-      "details": "Detaily",
-      "doneOf": "Hotovo {done} z {total}",
-      "linked": "Prepojené",
-      "linkedSummary": "{notes, plural, one {# poznámka} few {# poznámky} many {# poznámky} other {# poznámok}} · {files, plural, one {# súbor} few {# súbory} many {# súboru} other {# súborov}} · {events, plural, one {# udalosť} few {# udalosti} many {# udalosti} other {# udalostí}}",
-      "overdue": "Po termíne",
-      "overview": "Prehľad",
-      "pinError": "Poznámku sa nepodarilo pridať do prehľadu",
-      "progress": "Priebeh",
-      "unpinError": "Poznámku sa nepodarilo odstrániť z prehľadu",
-      "unpinNote": "Odstrániť {title} z prehľadu",
-      "updated": "Aktualizované"
-    },
-    "rows": {
-      "openEvent": "Otvoriť udalosť {title}",
-      "openFile": "Otvoriť súbor {title}",
-      "openNote": "Otvoriť poznámku {title}",
-      "openTask": "Otvoriť úlohu {title}",
-      "setNoteIcon": "Nastaviť ikonu pre {title}"
-    },
-    "sections": {
-      "add": "Pridať do {title}",
-      "emptyEvents": "Zatiaľ nie sú prepojené žiadne udalosti.",
-      "emptyFiles": "Zatiaľ nie sú prepojené žiadne súbory.",
-      "emptyNotes": "Zatiaľ nie sú prepojené žiadne poznámky.",
-      "emptyTasks": "Zatiaľ žiadne úlohy.",
-      "newNoteError": "Poznámku sa nepodarilo pridať",
-      "newNoteTitle": "Poznámka bez názvu",
-      "viewAll": "Zobraziť všetko"
+      "editProject": "Upraviť projekt",
+      "archiveProject": "Archivovať projekt"
     },
     "tabs": {
-      "events": "Udalosti",
-      "files": "Súbory",
       "label": "Zobrazenia projektu",
-      "notes": "Poznámky",
       "overview": "Prehľad",
-      "tasks": "Úlohy"
+      "tasks": "Úlohy",
+      "notes": "Poznámky",
+      "files": "Súbory",
+      "events": "Udalosti"
+    },
+    "groups": {
+      "today": "Dnes",
+      "yesterday": "Včera",
+      "older": "Staršie",
+      "tomorrow": "Zajtra",
+      "upcoming": "Nadchádzajúce",
+      "past": "Minulé"
+    },
+    "sections": {
+      "viewAll": "Zobraziť všetko",
+      "add": "Pridať do sekcie {title}",
+      "emptyTasks": "Zatiaľ žiadne úlohy.",
+      "emptyNotes": "Zatiaľ nie sú prepojené žiadne poznámky.",
+      "emptyFiles": "Zatiaľ nie sú prepojené žiadne súbory.",
+      "emptyEvents": "Zatiaľ nie sú prepojené žiadne udalosti.",
+      "newNoteTitle": "Poznámka bez názvu",
+      "newNoteError": "Poznámku sa nepodarilo pridať"
+    },
+    "rows": {
+      "openTask": "Otvoriť úlohu {title}",
+      "openNote": "Otvoriť poznámku {title}",
+      "openFile": "Otvoriť súbor {title}",
+      "openEvent": "Otvoriť udalosť {title}",
+      "setNoteIcon": "Nastaviť ikonu pre {title}"
+    },
+    "rail": {
+      "overview": "Prehľad",
+      "progress": "Priebeh",
+      "details": "Podrobnosti",
+      "doneOf": "Hotovo {done} z {total}",
+      "overdue": "Po termíne",
+      "created": "Vytvorené",
+      "updated": "Aktualizované",
+      "linked": "Prepojené",
+      "linkedSummary": "{notes, plural, one {# poznámka} few {# poznámky} many {# poznámky} other {# poznámok}} · {files, plural, one {# súbor} few {# súbory} many {# súboru} other {# súborov}} · {events, plural, one {# udalosť} few {# udalosti} many {# udalosti} other {# udalostí}}",
+      "addNote": "Pridať poznámku",
+      "unpinNote": "Odstrániť {title} z prehľadu",
+      "pinError": "Poznámku sa nepodarilo pridať do prehľadu",
+      "unpinError": "Poznámku sa nepodarilo odstrániť z prehľadu"
+    },
+    "capture": {
+      "placeholder": "Pridať do projektu {name} – napíšte úlohu, zapíšte poznámku alebo vložte odkaz…",
+      "attach": "Priložiť súbory",
+      "linkAdded": "Odkaz bol pridaný do projektu",
+      "linkError": "Odkaz sa nepodarilo uložiť",
+      "filesAdded": "{count, plural, one {# súbor pridaný do projektu} few {# súbory pridané do projektu} many {# súboru pridaného do projektu} other {# súborov pridaných do projektu}}",
+      "fileError": "Súbor {name} sa nepodarilo prepojiť",
+      "fileErrorGeneric": "Súbory sa nepodarilo importovať",
+      "label": "Pridať do projektu {name}"
     }
-  },
-  "priorityInline": {
-    "high": "vysoká",
-    "low": "nízka",
-    "medium": "stredná",
-    "urgent": "urgentná"
-  },
-  "priorityLabels": {
-    "high": "Vysoká",
-    "low": "Nízka",
-    "medium": "Stredná",
-    "none": "Bez priority",
-    "urgent": "Urgentná"
   },
   "project": {
-    "statusTypes": {
-      "done": "Hotovo",
-      "inProgress": "Prebieha",
-      "todo": "Na urobenie"
-    },
     "validation": {
-      "minStatuses": "Projekty potrebujú aspoň 2 stavy",
       "nameRequired": "Názov projektu je povinný",
       "nameTooLong": "Názov projektu môže mať najviac 50 znakov",
-      "needsDoneStatus": "Projekty potrebujú aspoň jeden stav „Hotovo“",
+      "minStatuses": "Projekty potrebujú aspoň 2 stavy",
+      "needsTodoStatusForNewTasks": "Projekty potrebujú aspoň jeden stav „Na vykonanie“ pre nové úlohy",
       "needsDoneStatusForCompletedTasks": "Projekty potrebujú aspoň jeden stav „Hotovo“ pre dokončené úlohy",
-      "needsTodoStatus": "Projekty potrebujú aspoň jeden stav „Na urobenie“",
-      "needsTodoStatusForNewTasks": "Projekty potrebujú aspoň jeden stav „Na urobenie“ pre nové úlohy",
       "statusNameRequired": "Všetky stavy musia mať názov",
       "statusNamesUnique": "Názvy stavov musia byť jedinečné",
+      "needsTodoStatus": "Projekty potrebujú aspoň jeden stav „Na vykonanie“",
+      "needsDoneStatus": "Projekty potrebujú aspoň jeden stav „Hotovo“",
       "statusNotFound": "Stav sa nenašiel"
+    },
+    "statusTypes": {
+      "todo": "Na vykonanie",
+      "inProgress": "Prebieha",
+      "done": "Hotovo"
     }
   },
+  "priorityLabels": {
+    "none": "Bez priority",
+    "low": "Nízka",
+    "medium": "Stredná",
+    "high": "Vysoká",
+    "urgent": "Urgentná"
+  },
+  "priorityInline": {
+    "low": "nízka",
+    "medium": "stredná",
+    "high": "vysoká",
+    "urgent": "urgentná"
+  },
   "statusLabels": {
-    "done": "Hotovo",
+    "todo": "Na vykonanie",
     "inProgress": "Prebieha",
-    "todo": "Na urobenie"
+    "done": "Hotovo"
   },
   "colors": {
-    "blue": "Modrá",
     "gray": "Sivá",
-    "green": "Zelená",
-    "indigo": "Indigová",
-    "orange": "Oranžová",
-    "pink": "Ružová",
-    "purple": "Fialová",
     "red": "Červená",
+    "orange": "Oranžová",
+    "yellow": "Žltá",
+    "green": "Zelená",
     "teal": "Tyrkysová",
-    "yellow": "Žltá"
+    "blue": "Modrá",
+    "indigo": "Indigová",
+    "purple": "Fialová",
+    "pink": "Ružová"
   }
 }

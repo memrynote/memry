@@ -8,7 +8,7 @@
     "nav": {
       "groups": {
         "account": "Konto",
-        "application": "Applikation",
+        "application": "App",
         "editing": "Redigering",
         "modules": "Moduler",
         "services": "Tjänster",
@@ -195,23 +195,23 @@
         "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
         "DD.MM.YYYY": "DD.MM.YYYY"
       },
-      "error": "Det gick inte att uppdatera datumformat"
+      "error": "Det gick inte att uppdatera datumformatet"
     },
     "tabs": {
       "openPagesInNewTab": {
         "label": "Öppna sidor i en ny flik",
-        "description": "När du klickar på eller skapar en sida – anteckningar, mappar, projekt, canvasar, taggar, bokmärken – öppnas den i en ny flik. När det är avstängt återanvänds den aktuella fliken, även när du följer länkar i en anteckning; fästa flikar ersätts aldrig. ”Öppna i ny flik”, ”Öppna vid sidan” och mittenklick öppnar alltid en ny flik."
+        "description": "När du klickar på eller skapar en sida – anteckningar, mappar, projekt, canvasar, taggar, bokmärken – öppnas den i en ny flik. När det är avstängt återanvänds den aktuella fliken, även när du följer länkar i en anteckning; fästa flikar ersätts aldrig. ”Öppna i ny flik”, ”Öppna bredvid” och mittenklick öppnar alltid en ny flik."
       },
       "restoreSession": {
         "label": "Återställ flikar vid start",
         "description": "Öppna flikarna och de delade vyerna från förra gången igen."
       },
       "closeButton": {
-        "label": "Flikstängningsknapp",
+        "label": "Stängningsknapp för flikar",
         "description": "När stängningsknappen ska visas",
         "options": {
-          "always": "Alltid synlig",
-          "hover": "Visa vid hovring",
+          "always": "Alltid",
+          "hover": "Vid hovring",
           "active": "Endast på aktiv flik"
         }
       },
@@ -219,7 +219,7 @@
     },
     "window": {
       "minimizeToTray": {
-        "label": "Fortsätt köras i menyraden när fönstret stängs",
+        "label": "Kör vidare i menyraden när fönstret stängs",
         "description": "När du stänger fönstret döljs memrynote i systemfältet i stället för att avslutas. Klicka på ikonen i systemfältet för att visa appen igen. På macOS stannar appen även kvar i Dock; på Linux-skrivbord utan systemfält stängs fönstret som vanligt.",
         "error": "Det gick inte att uppdatera inställningen för att minimera till systemfältet"
       }
@@ -351,8 +351,8 @@
         }
       },
       "pointerCursors": {
-        "label": "Använd pekarmarkörer",
-        "description": "Visa en pekarmarkör när du hovrar över interaktiva element"
+        "label": "Använd handmarkör",
+        "description": "Visa en handmarkör när du hovrar över interaktiva element"
       },
       "fontSmoothing": {
         "label": "Kantutjämning av text",
@@ -377,7 +377,7 @@
       },
       "fontFamily": {
         "label": "Teckensnittsfamilj",
-        "description": "Primärt typsnitt för gränssnittet",
+        "description": "Primärt teckensnitt för gränssnittet",
         "options": {
           "system": "Systemstandard",
           "sansSerif": "Sans-serif",
@@ -435,12 +435,12 @@
     },
     "toolbarMode": {
       "label": "Fast formateringsverktygsfält",
-      "description": "Visa alltid verktygsfält ovanför redigeraren",
+      "description": "Visa alltid verktygsfältet ovanför redigeraren",
       "error": "Det gick inte att uppdatera verktygsfältsläget"
     },
     "spellCheck": {
       "label": "Kontrollera stavning",
-      "description": "Stryk under felstavade ord i anteckningar och dagböcker",
+      "description": "Stryk under felstavade ord i anteckningar och dagboksinlägg",
       "error": "Det gick inte att uppdatera stavningskontrollen"
     },
     "v2": {
@@ -685,7 +685,7 @@
         "sunday": "Söndag",
         "monday": "Måndag"
       },
-      "error": "Det gick inte att uppdatera veckostart"
+      "error": "Det gick inte att uppdatera veckostarten"
     },
     "defaultBehavior": {
       "label": "Standardbeteende",
@@ -693,9 +693,9 @@
       "error": "Det gick inte att uppdatera beteendet vid klick på en dag"
     },
     "pageOverride": {
-      "label": "Åsidosättning på kalendersidan",
+      "label": "Beteende på kalendersidan",
       "description": "Beteende när kalenderfliken är aktiv (standard är ”Öppna kalender”)",
-      "error": "Det gick inte att uppdatera åsidosättningen för kalendersidan"
+      "error": "Det gick inte att uppdatera beteendet på kalendersidan"
     },
     "showNotesOnCalendar": {
       "label": "Visa anteckningar i kalendern",
@@ -730,12 +730,12 @@
       "pushToGoogle": {
         "label": "Visa memrynote-händelser i Google Calendar",
         "description": "Stäng av för enkelriktad synkronisering – du ser fortfarande dina Google-händelser i memrynote, men memrynote-händelser visas inte i Google.",
-        "error": "Det gick inte att uppdatera synkriktning"
+        "error": "Det gick inte att uppdatera synkriktningen"
       },
       "agentAccess": {
         "label": "Låt AI läsa händelser i Google Calendar",
         "description": "Avstängd som standard. Slå på så kan AI-agenten läsa dina Google-händelser; stäng av så får den inget tillbaka när den tillfrågas om dem. Du ser dem fortfarande i memrynote oavsett vad.",
-        "error": "Det gick inte att uppdatera AI-åtkomst"
+        "error": "Det gick inte att uppdatera AI-åtkomsten"
       },
       "connect": "Anslut",
       "sourcePicker": {
@@ -954,7 +954,7 @@
       "devices": "Enheter"
     },
     "identity": {
-      "unknown": "Okänt",
+      "unknown": "Okänd",
       "encrypted": "End-to-end-krypterad"
     },
     "sync": {
@@ -991,7 +991,7 @@
         "guarantee": "Pengarna tillbaka inom 14 dagar. Säg upp när du vill."
       },
       "activating": {
-        "title": "Slutför aktiveringen",
+        "title": "Aktiveringen slutförs",
         "description": "Din plan är aktiv. Synkroniseringen startar så snart vi har bekräftat den – det brukar räcka att uppdatera."
       }
     },
@@ -1040,8 +1040,8 @@
       },
       "toasts": {
         "loadFailed": "Det gick inte att läsa in faktureringsstatus",
-        "checkoutFailed": "Det gick inte att starta betalning",
-        "checkoutOpened": "Betalning öppnad i din webbläsare",
+        "checkoutFailed": "Det gick inte att starta betalningen",
+        "checkoutOpened": "Betalningssidan öppnades i webbläsaren",
         "refreshFailed": "Det gick inte att uppdatera faktureringsstatus",
         "billingActive": "Fakturering är aktiv",
         "activationPending": "Aktivering väntar",
@@ -1049,7 +1049,7 @@
       }
     },
     "storage": {
-      "used": "{used} av {limit} använd",
+      "used": "{used} av {limit} används",
       "categories": {
         "notes": "Anteckningar",
         "attachments": "Bilagor",
@@ -1077,7 +1077,7 @@
       "signingOut": "Loggar ut…"
     },
     "toasts": {
-      "signedOut": "Utloggning lyckades",
+      "signedOut": "Du har loggats ut",
       "signOutFailed": "Det gick inte att logga ut",
       "deviceLinked": "Enheten är kopplad"
     },
@@ -1132,15 +1132,15 @@
       "warning": "Skriv ner den och förvara den på en säker plats. Du kommer inte att se den igen.",
       "wordsAria": "Ord i återställningsfrasen",
       "wordAria": "Ord {index}: {word}",
-      "copyAria": "Kopiera återställningsfras till urklipp",
+      "copyAria": "Kopiera återställningsfrasen till urklipp",
       "copiedAria": "Återställningsfras kopierad",
       "copied": "Kopierad",
       "saved": "Jag har sparat min återställningsfras",
       "confirmTitle": "Bekräfta din återställningsfras",
       "confirmDescription": "Ange de efterfrågade orden för att bekräfta att du har sparat frasen korrekt.",
-      "wordPlaceholder": "Ange ord #{index}",
+      "wordPlaceholder": "Ange ord nr {index}",
       "verify": "Verifiera",
-      "mustMatch": "Alla 3 ord måste matcha för att fortsätta",
+      "mustMatch": "Alla tre orden måste stämma för att du ska kunna fortsätta",
       "inputTitle": "Ange återställningsfras",
       "inputDescription": "Ange din återställningsfras på 24 ord för att återfå åtkomst till dina krypterade data.",
       "inputLabel": "Återställningsfras",
@@ -1234,7 +1234,7 @@
       "loadFailed": "Det gick inte att läsa in enheter",
       "removed": "”{name}” har tagits bort",
       "removeFailed": "Det gick inte att ta bort enheten",
-      "renamed": "Bytt namn till ”{name}”",
+      "renamed": "Namnet har ändrats till ”{name}”",
       "renameFailed": "Det gick inte att byta namn på enheten"
     },
     "platformMeta": "{platform} · {detail}"
@@ -1276,7 +1276,7 @@
   "ai": {
     "header": {
       "title": "AI-assistent",
-      "subtitle": "Inbäddningar körs lokalt. Röstanteckningar kan använda Whisper Small eller din OpenAI-nyckel.",
+      "subtitle": "Inbäddningar körs lokalt. Röstmemon kan använda Whisper Small eller din OpenAI-nyckel.",
       "loading": "Läser in inställningar…"
     },
     "enable": {
@@ -1295,7 +1295,7 @@
     },
     "voice": {
       "provider": "Leverantör",
-      "providerDescription": "Tal till text-leverantör för röstanteckningar",
+      "providerDescription": "Tal till text-leverantör för röstmemon",
       "providers": {
         "local": "Lokal (standard)",
         "openai": "OpenAI (BYOK)"
@@ -1307,7 +1307,7 @@
         "timestamp": "Tidsstämpel",
         "none": "Byt inte namn"
       },
-      "namingError": "Det gick inte att uppdatera namngivning av röstmemo",
+      "namingError": "Det gick inte att uppdatera namngivningen av röstmemon",
       "localModel": "Lokal modell",
       "localModelDescription": "Whisper Small laddas ner vid behov och lagras i cache lokalt",
       "status": {
@@ -1319,12 +1319,12 @@
       "cacheHint": "Ingår inte i appen · Laddas ner från Inställningar · Cachas på den här enheten",
       "preparing": "Förbereder Whisper Small…",
       "download": "Ladda ner Whisper Small",
-      "apiKey": "OpenAI API-nyckel",
-      "apiKeyDescription": "Sparad i ditt operativsystems nyckelring och används endast för rösttranskription",
+      "apiKey": "API-nyckel för OpenAI",
+      "apiKeyDescription": "Sparas i operativsystemets nyckelring och används bara för rösttranskribering",
       "replaceKey": "Ersätt sparad OpenAI-nyckel",
-      "enterKey": "Ange OpenAI API-nyckel",
+      "enterKey": "Ange API-nyckel för OpenAI",
       "saveKey": "Spara nyckel",
-      "keySaved": "API-nyckel sparad i nyckelring",
+      "keySaved": "API-nyckeln sparades i nyckelringen",
       "providerError": "Det gick inte att uppdatera röstleverantören",
       "downloadedToast": "Whisper Small nedladdad",
       "downloadError": "Det gick inte att ladda ner Whisper Small",
@@ -1491,7 +1491,7 @@
       "chooseDirectory": "Välj mapp…",
       "folderKeepsAssets": "Välj mappen när bilderna ligger utanför anteckningarnas egen mapp – exporter lägger ofta media i en gemensam mapp.",
       "chooseHint": "Välj {label}",
-      "folderHint": "Klicka nedan och välj mappen ”group.com.apple.notes” när väljaren öppnas (den börjar där). Då kan Memry läsa dina anteckningar och bilagor – ingen full skivåtkomst behövs.",
+      "folderHint": "Klicka nedan och välj mappen ”group.com.apple.notes” när väljaren öppnas (den börjar där). Då kan Memry läsa dina anteckningar och bilagor – ingen Full skivåtkomst behövs.",
       "noteplanFolderHint": "Välj din NotePlan-mapp – antingen appens datamapp eller en av dess säkerhetskopior i Backups. Memry läser mapparna Calendar, Notes och @Archive i den.",
       "selected": "{count, plural, one {# fil vald} other {# filer valda}}",
       "start": "Starta import",
@@ -1508,7 +1508,7 @@
         "skippedReason": "{count, plural, one {# objekt} other {# objekt}}: {reason}",
         "failed": "{count} misslyckades"
       },
-      "error": "Import misslyckades",
+      "error": "Importen misslyckades",
       "previewError": "Förhandsgranskningen misslyckades"
     },
     "messages": {
@@ -1518,7 +1518,7 @@
       },
       "csv": {
         "noHeaders": "CSV-filen saknar rubriker",
-        "emptyTitle": "Hoppade över rad med tom titel (kolumnen ”{column}”)",
+        "emptyTitle": "Rad med tom titel hoppades över (kolumnen ”{column}”)",
         "columns": "Kolumner: {columns}",
         "titleColumn": "Titel från ”{column}”; övriga kolumner sparas som egenskaper"
       },
@@ -1529,7 +1529,7 @@
       },
       "ticktick": {
         "headerNotFound": "TickTick-CSV:ns rubrikrad (”Folder Name”) hittades inte",
-        "foldersDropped": "TickTick-mappar har ingen motsvarighet i Memry och togs bort",
+        "foldersDropped": "TickTick-mappar har ingen motsvarighet i Memry och ignorerades",
         "subtaskParentMissing": "Överordnad uppgift till deluppgiften ”{title}” hittades inte; importerad på översta nivån",
         "unknownPriority": "Okänd TickTick-prioritet {priority} → ingen",
         "unsupportedRepeat": "Upprepningsregeln ”{rule}” stöds inte och hoppades över",
@@ -1615,7 +1615,7 @@
     "vaultPath": "Sökväg till valvet",
     "reveal": "Visa",
     "accountVaults": {
-      "empty": "Inga valv är synkade till ditt konto än.",
+      "empty": "Inga valv har synkroniserats till ditt konto än.",
       "cloudOnly": "Inte på den här enheten",
       "itemsCount": "{count} objekt",
       "delete": "Radera",
@@ -1633,11 +1633,11 @@
     },
     "storage": {
       "title": "Lagring",
-      "used": "{used} av {limit} använd",
+      "used": "{used} av {limit} används",
       "ratio": "{used} / {limit}",
       "refreshAria": "Uppdatera lagringsanvändning",
       "usageAria": "Lagringsanvändning: {used} av {limit}",
-      "available": "Tillgänglig {available}",
+      "available": "{available} tillgängligt",
       "categories": {
         "notes": "Anteckningar",
         "attachments": "Bilagor",
@@ -1675,10 +1675,10 @@
       "showItems": "{count, plural, one {Visa # objekt} other {Visa # objekt}}",
       "toastAction": "Detaljer",
       "entry": {
-        "added": "Lade till {path}",
-        "removed": "Tog bort {path}",
-        "renamed": "Bytte namn på {oldPath} till {path}",
-        "skipped": "Hoppade över {path}",
+        "added": "{path} lades till",
+        "removed": "{path} togs bort",
+        "renamed": "{oldPath} döptes om till {path}",
+        "skipped": "{path} hoppades över",
         "skippedUnsupported": "Memry öppnar inte filer av typen {ext}, så filen lämnades som den är.",
         "readFailed": "Det gick inte att läsa {path}",
         "indexFailed": "Det gick inte att lägga till {path}",
@@ -1692,7 +1692,7 @@
         "importFailed": "Importen från {importer} misslyckades",
         "failedGeneric": "Något gick fel med {path}",
         "failedGenericUnnamed": "Något gick fel",
-        "scan": "Hittade ändringar som gjordes medan Memry var stängt",
+        "scan": "Ändringar som gjordes medan Memry var stängt hittades",
         "indexRebuilt": "Sökindexet byggdes",
         "import": "Import från {importer}",
         "importCanceled": "Import från {importer}, avbruten",
@@ -1737,7 +1737,7 @@
   "tags": {
     "header": {
       "title": "Taggar",
-      "subtitle": "Hantera taggar i anteckningar, dagböcker och uppgifter"
+      "subtitle": "Hantera taggar i anteckningar, dagboksinlägg och uppgifter"
     },
     "loading": "Läser in taggar…",
     "empty": "Inga taggar ännu. Taggar kommer att visas här när du lägger till dem i anteckningar och uppgifter.",
@@ -1746,7 +1746,7 @@
     "summary": "{count, plural, one {# tagg} other {# taggar}} i anteckningar och uppgifter",
     "actions": {
       "rename": "Byt namn",
-      "changeColor": "Byt färg",
+      "changeColor": "Ändra färg",
       "changeIcon": "Ändra ikon",
       "mergeInto": "Sammanfoga med…",
       "merge": "Sammanfoga",
@@ -1761,12 +1761,12 @@
       "colorTitle": "Ändra färg för ”{name}”"
     },
     "toasts": {
-      "renamed": "Bytte namn på ”{oldName}” till ”{newName}”",
+      "renamed": "”{oldName}” har döpts om till ”{newName}”",
       "renameFailed": "Det gick inte att byta namn på taggen",
       "deleteFailed": "Det gick inte att radera taggen",
-      "deleted": "Tog bort ”{name}” från {count, plural, one {# objekt} other {# objekt}}",
+      "deleted": "”{name}” togs bort från {count, plural, one {# objekt} other {# objekt}}",
       "mergeFailed": "Det gick inte att sammanfoga taggarna",
-      "merged": "Sammanfogade ”{source}” med ”{target}” ({count, plural, one {# objekt} other {# objekt}})",
+      "merged": "”{source}” sammanfogades med ”{target}” ({count, plural, one {# objekt} other {# objekt}})",
       "colorUpdated": "Färgen för ”{name}” uppdaterades",
       "colorFailed": "Det gick inte att uppdatera färgen",
       "iconFailed": "Det gick inte att uppdatera ikonen"
@@ -1788,7 +1788,7 @@
     "optionCount": "{count, plural, one {# alternativ} other {# alternativ}}",
     "optionNamePlaceholder": "Alternativnamn",
     "addOption": "Lägg till alternativ",
-    "changeColorTitle": "Byt färg",
+    "changeColorTitle": "Ändra färg",
     "renameTitle": "Byt namn",
     "removeTitle": "Ta bort",
     "actions": {
@@ -1799,7 +1799,7 @@
       "select": "Enkelval",
       "multiselect": "Flerval",
       "text": "Text",
-      "number": "Nummer",
+      "number": "Tal",
       "date": "Datum",
       "checkbox": "Kryssruta",
       "url": "URL"
@@ -1810,7 +1810,7 @@
       "colorTitle": "Ändra färg för ”{name}”"
     },
     "toasts": {
-      "renamed": "Bytte namn på ”{oldValue}” till ”{newValue}”",
+      "renamed": "”{oldValue}” har döpts om till ”{newValue}”",
       "renameFailed": "Det gick inte att byta namn på alternativet",
       "removed": "”{value}” har tagits bort",
       "removeFailed": "Det gick inte att ta bort alternativet",
@@ -1847,8 +1847,8 @@
     "status": {
       "loading": "Kontrollerar kommandostatus…",
       "loadFailed": "Det gick inte att läsa in kommandostatus",
-      "installedToast": "memrynote-kommandot installerat",
-      "uninstalledToast": "memrynote-kommandot borttaget",
+      "installedToast": "memrynote-kommandot installerades",
+      "uninstalledToast": "memrynote-kommandot togs bort",
       "defaultVaultUpdatedToast": "Standardvalv för CLI uppdaterat"
     },
     "actions": {
@@ -2129,7 +2129,7 @@
       "failedToLoadTags": "Det gick inte att läsa in taggar",
       "failedToLoadTasks": "Det gick inte att läsa in uppgifter",
       "failedToLoadVaultStatus": "Det gick inte att läsa in valvstatus",
-      "failedToSelectVault": "Det gick inte att välja valv",
+      "failedToSelectVault": "Det gick inte att välja valvet",
       "failedToCloseVault": "Det gick inte att stänga valvet",
       "failedToSwitchVault": "Det gick inte att byta valv",
       "failedToUpdateConfig": "Det gick inte att uppdatera konfigurationen",
@@ -2266,7 +2266,7 @@
       "empty": "Inget är alltid tillåtet. Du tillfrågas fortfarande om varje ändring.",
       "revoke": "Återkalla",
       "revokeLabel": "Återkalla det permanenta godkännandet för {tool}",
-      "ignoredInPageReview": "Ignoreras: ändringar i anteckningar och dagböcker kräver alltid godkännande."
+      "ignoredInPageReview": "Ignoreras: ändringar i anteckningar och dagboksinlägg kräver alltid godkännande."
     },
     "v2": {
       "permissions": {
@@ -2277,7 +2277,7 @@
       },
       "runtimes": {
         "group": "Körmiljöer för agenter",
-        "hint": "Hittade via PATH"
+        "hint": "Hittas via PATH"
       },
       "localModel": {
         "label": "Lokal modell",

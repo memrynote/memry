@@ -71,7 +71,7 @@
     }
   },
   "filters": {
-    "filter": "מסנן",
+    "filter": "סינון",
     "emptyTitle": "אין משימות שתואמות למסננים שלך",
     "emptyHelp": "אפשר לשנות את המסננים או",
     "groupBy": "קיבוץ לפי",
@@ -102,7 +102,7 @@
       "today": "היום",
       "tomorrow": "מחר",
       "thisWeek": "השבוע",
-      "nextWeek": "בשבוע הבא",
+      "nextWeek": "השבוע הבא",
       "thisMonth": "החודש",
       "custom": "טווח מותאם אישית…"
     },
@@ -179,7 +179,7 @@
     "activityDescription": "כל שינוי במשימה הזו, מהחדש לישן.",
     "activityFilter": "סינון לפי סוג שינוי",
     "activityFilterAll": "כל השינויים",
-    "activityRetention": "פעילות ישנה מ-{days} ימים נמחקת.",
+    "activityRetention": "פעילות מלפני יותר מ-{days} ימים נמחקת.",
     "activityToday": "היום",
     "activityYesterday": "אתמול",
     "activityByYou": "המכשיר הזה",
@@ -231,7 +231,7 @@
         "subtitle": "משימות שהושלמו יופיעו כאן"
       },
       "schedule": {
-        "title": "אין דבר מתוזמן",
+        "title": "שום דבר לא מתוזמן",
         "subtitle": "אפשר לגרור משימות לכאן כדי לתזמן אותן מחדש"
       }
     }
@@ -244,10 +244,10 @@
     "projectArchiveError": "העברת הפרויקט לארכיון נכשלה",
     "projectDeleted": "הפרויקט נמחק",
     "projectDeleteError": "מחיקת הפרויקט נכשלה",
-    "filtersCleared": "מסננים נוקו",
+    "filtersCleared": "המסננים נוקו",
     "filterSaved": "המסנן נשמר",
     "filterDeleted": "המסנן נמחק",
-    "filterApplied": "הוחל \"{name}\"",
+    "filterApplied": "המסנן \"{name}\" הוחל",
     "deleted": "המשימה נמחקה",
     "deletedSeries": "הסדרה הושלמה!",
     "completed": "המשימה הושלמה!",
@@ -556,13 +556,13 @@
       "viewCalendar": "הצגת לוח השנה"
     },
     "componentsTasksFiltersActiveFiltersBar": {
-      "priorityIs": "עדיפות היא",
+      "priorityIs": "עדיפות:",
       "priority": "עדיפות",
-      "tagsIs": "תגיות הן",
+      "tagsIs": "תגיות:",
       "tags": "תגיות",
-      "statusIs": "סטטוס הוא",
+      "statusIs": "סטטוס:",
       "status": "סטטוס",
-      "projectIs": "הפרויקט הוא",
+      "projectIs": "פרויקט:",
       "project": "פרויקט",
       "due": "יעד",
       "dueDate": "תאריך יעד",
@@ -816,7 +816,7 @@
       "addTaskForToday2": "הוספת משימה להיום"
     },
     "componentsTasksUpcomingEmptyState": {
-      "nothingScheduledForTheNext7Days": "שום דבר לא מתוכנן ל-7 הימים הבאים",
+      "nothingScheduledForTheNext7Days": "שום דבר לא מתוכנן ל-7 הימים הקרובים",
       "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "יש משימות באיחור למעלה. כדאי לתכנן מראש ולהוסיף משימות לשבוע הקרוב.",
       "addTask": "הוספת משימה",
       "noUpcomingTasks": "אין משימות קרובות",
@@ -829,7 +829,7 @@
       "changesUndone": "השינויים בוטלו",
       "projectNotFound": "הפרויקט לא נמצא",
       "failedToArchiveTasks": "העברת המשימות לארכיון נכשלה",
-      "tasksRestoredFromArchive": "משימות שוחזרו מהארכיון",
+      "tasksRestoredFromArchive": "המשימות שוחזרו מהארכיון",
       "subtaskAdded": "תת-המשימה נוספה",
       "subtaskDeleted": "תת-המשימה נמחקה",
       "taskCompleted": "המשימה הושלמה",
@@ -853,8 +853,8 @@
       "failedToSetDueDate": "הגדרת תאריך היעד נכשלה",
       "failedToSetPriority": "קביעת העדיפות נכשלה",
       "failedToDeleteSubtasks": "מחיקת תת-המשימות נכשלה",
-      "failedToLoadTaskPreferences": "טעינת העדפות המשימה נכשלה",
-      "failedToUpdateTaskPreferences": "עדכון העדפות המשימה נכשל",
+      "failedToLoadTaskPreferences": "טעינת העדפות המשימות נכשלה",
+      "failedToUpdateTaskPreferences": "עדכון העדפות המשימות נכשל",
       "failedToLoadLinkedTasks": "טעינת המשימות המקושרות נכשלה"
     }
   },
@@ -957,13 +957,13 @@
     "validation": {
       "nameRequired": "נדרש שם לפרויקט",
       "nameTooLong": "שם הפרויקט חייב להיות באורך 50 תווים לכל היותר",
-      "minStatuses": "פרויקטים צריכים לפחות 2 סטטוסים",
-      "needsTodoStatusForNewTasks": "פרויקטים צריכים לפחות סטטוס \"לביצוע\" אחד עבור משימות חדשות",
-      "needsDoneStatusForCompletedTasks": "פרויקטים צריכים לפחות סטטוס \"הושלם\" אחד עבור משימות שהושלמו",
+      "minStatuses": "לפרויקט נדרשים לפחות 2 סטטוסים",
+      "needsTodoStatusForNewTasks": "לפרויקט נדרש לפחות סטטוס \"לביצוע\" אחד עבור משימות חדשות",
+      "needsDoneStatusForCompletedTasks": "לפרויקט נדרש לפחות סטטוס \"הושלם\" אחד עבור משימות שהושלמו",
       "statusNameRequired": "לכל הסטטוסים חייב להיות שם",
       "statusNamesUnique": "שמות הסטטוסים חייבים להיות ייחודיים",
-      "needsTodoStatus": "פרויקטים צריכים לפחות סטטוס \"לביצוע\" אחד",
-      "needsDoneStatus": "פרויקטים צריכים לפחות סטטוס \"הושלם\" אחד",
+      "needsTodoStatus": "לפרויקט נדרש לפחות סטטוס \"לביצוע\" אחד",
+      "needsDoneStatus": "לפרויקט נדרש לפחות סטטוס \"הושלם\" אחד",
       "statusNotFound": "הסטטוס לא נמצא"
     },
     "statusTypes": {

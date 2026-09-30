@@ -177,16 +177,16 @@
       "title": "{count, plural, =0 {代理程式建議} other {代理程式建議了 # 處變更}}",
       "editingTitle": "正在編輯建議",
       "pendingHint": "尚未儲存。接受後即會套用。",
-      "editingHint": "在你接受之前，你的編輯會保留在這裡。",
+      "editingHint": "在你接受之前，編輯內容會保留在這裡。",
       "baseChanged": "你編輯建議時，此筆記已有變更。",
       "keepDraft": "保留我的編輯",
       "restart": "從最新版本重新開始",
       "reject": "拒絕",
       "edit": "編輯",
-      "showDiff": "顯示修改",
+      "showDiff": "顯示變更",
       "accept": "接受",
       "acceptEdits": "接受編輯",
-      "waiting": "正在等待你在 {title} 中檢查。",
+      "waiting": "正在 {title} 中等待你檢查。",
       "notOpen": "開啟 {title} 以查看變更，或不檢查直接接受。",
       "show": "顯示",
       "openNote": "開啟筆記",
@@ -326,7 +326,7 @@
           "high": "高",
           "extraHigh": "超高",
           "extraHighDefault": "超高（預設）",
-          "max": "最大"
+          "max": "最高"
         }
       },
       "codexSettings": {
@@ -621,7 +621,7 @@
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "你的個人知識庫。花兩分鐘開始使用。",
       "getStarted": "開始使用",
       "createYourFirstNote": "建立你的第一則筆記",
-      "markdownBasedStoredLocallyAsPlainFiles": "以 Markdown 為基礎，以純文字檔案儲存在本機。",
+      "markdownBasedStoredLocallyAsPlainFiles": "採用 Markdown 格式，以純文字檔案儲存在本機。",
       "eGMeetingNotesIdeasAnything": "例如：會議紀錄、想法、任何內容…",
       "skip": "略過",
       "createNote": "建立筆記",
@@ -631,7 +631,7 @@
       "skip2": "略過",
       "createTask": "建立任務",
       "syncAcrossDevices": "跨裝置同步",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "讓筆記與任務在所有裝置間保持同步。你隨時可以稍後再設定。",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "讓筆記與任務在所有裝置間保持同步。你也可以稍後再設定。",
       "skipForNow": "暫時略過",
       "doneLetSGo": "完成——開始吧！"
     },
@@ -857,7 +857,7 @@
         "creating": "建立中…",
         "cancel": "取消",
         "chooseTitle": "選擇儲存庫",
-        "chooseSubtitle": "已登入為 {email}。請選擇要在這台電腦上開啟的儲存庫。",
+        "chooseSubtitle": "已使用 {email} 登入。請選擇要在這台電腦上開啟的儲存庫。",
         "untitledVault": "未命名儲存庫",
         "items": "{count, plural, other {# 個項目}}",
         "onThisComputer": "在這台電腦上",
@@ -1019,7 +1019,7 @@
   "onboarding": {
     "welcome": {
       "title": "歡迎使用 MemryNote",
-      "body": "你私密、離線優先的家。筆記採端對端加密——絕不會以未加密的形式離開你的裝置。"
+      "body": "專屬於你、私密且離線優先的空間。筆記採端對端加密——絕不會以未加密的形式離開你的裝置。"
     },
     "newNote": {
       "title": "建立你的第一則筆記",

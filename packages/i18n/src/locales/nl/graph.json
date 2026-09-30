@@ -15,7 +15,7 @@
     "link-title": "Link je notities",
     "link-description": "Gebruik [[wikilinks]] om ideeën in notities met elkaar te verbinden",
     "discover-title": "Ontdek patronen",
-    "discover-description": "Naarmate verbindingen groeien, zullen op natuurlijke wijze clusters en thema’s ontstaan"
+    "discover-description": "Naarmate er meer verbindingen komen, ontstaan er vanzelf clusters en thema’s"
   },
   "entity": {
     "note": "notitie",
@@ -30,7 +30,7 @@
     "tags": "tags",
     "orphan": "los knooppunt",
     "orphans": "losse knooppunten",
-    "unresolved": "onopgelost",
+    "unresolved": "nog niet gemaakt",
     "category": "categorie"
   },
   "summary": {

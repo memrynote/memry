@@ -117,7 +117,7 @@
       "last": "останній"
     },
     "preset": {
-      "everyWeekday": "Щодня у будні (Пн-Пт)",
+      "everyWeekday": "Щодня в будні (Пн–Пт)",
       "everyYearOnDate": "Щороку {date}"
     }
   },
@@ -171,7 +171,7 @@
     },
     "inPageReview": {
       "regionLabel": "Пропозиція агента",
-      "barLabel": "Переглянути пропозицію агента",
+      "barLabel": "Перегляд пропозиції агента",
       "loading": "Завантаження пропозиції…",
       "loadingTitle": "Пропозиція агента",
       "title": "{count, plural, =0 {Пропозиція агента} one {Агент запропонував # зміну} few {Агент запропонував # зміни} many {Агент запропонував # змін} other {Агент запропонував # зміни}}",
@@ -539,7 +539,7 @@
       "groupTags": "Теги",
       "useTag": "Використати новий тег #{tag}",
       "unbind": "Прибрати категорію {label}",
-      "current": "Поточний",
+      "current": "Вибрано",
       "applied": "{count, plural, one {Додано {label} до # картки} few {Додано {label} до # карток} many {Додано {label} до # карток} other {Додано {label} до # картки}}",
       "applyFailed": "Не вдалося додати {label}",
       "revertFailed": "Не вдалося скасувати {label}",
@@ -553,8 +553,8 @@
       "layoutAction": "Упорядкувати за властивістю",
       "layoutTitle": "Упорядкувати за властивістю",
       "layoutHint": "Створює розділ для кожного значення й розподіляє нотатки з цієї дошки по цих розділах.",
-      "layoutPlaceholder": "Шукати властивості типу «вибір», «мультивибір» і «статус»…",
-      "layoutEmpty": "Ще немає властивостей типу «вибір», «мультивибір» чи «статус» зі значеннями.",
+      "layoutPlaceholder": "Шукати властивості типу «вибір», «множинний вибір» і «статус»…",
+      "layoutEmpty": "Ще немає властивостей типу «вибір», «множинний вибір» чи «статус» зі значеннями.",
       "layoutValueCount": "{count, plural, one {# значення} few {# значення} many {# значень} other {# значення}}",
       "layoutDone": "{count, plural, one {Створено # розділ для властивості {property}} few {Створено # розділи для властивості {property}} many {Створено # розділів для властивості {property}} other {Створено # розділу для властивості {property}}}",
       "layoutFailed": "Не вдалося впорядкувати дошку"
@@ -705,7 +705,7 @@
     },
     "componentsSearchSearchResultGroup": {
       "viewAll": "Переглянути всі ",
-      "results": "результати"
+      "results": "результатів"
     },
     "componentsSearchSearchResultItem": {
       "p": "P",
@@ -812,7 +812,7 @@
       "welcomeToMemry": "Ласкаво просимо до memrynote",
       "yourPersonalKnowledgeManagementSystem": "Ваша персональна система керування знаннями.",
       "selectAFolderToStoreYourNotesAndTasks": "Виберіть папку для збереження нотаток і завдань.",
-      "opening": "Відкривається…",
+      "opening": "Відкриття…",
       "selectVaultFolder": "Вибрати папку сховища",
       "plainMarkdown": "Звичайний Markdown",
       "yourNotesStayPortable": "Нотатки легко перенести куди завгодно",
@@ -857,7 +857,7 @@
         "creating": "Створення…",
         "cancel": "Скасувати",
         "chooseTitle": "Виберіть сховище",
-        "chooseSubtitle": "Ви ввійшли як {email}. Виберіть сховище, яке відкрити на цьому комп’ютері.",
+        "chooseSubtitle": "Ви ввійшли як {email}. Виберіть сховище, щоб відкрити його на цьому комп’ютері.",
         "untitledVault": "Сховище без назви",
         "items": "{count, plural, one {# елемент} few {# елементи} many {# елементів} other {# елемента}}",
         "onThisComputer": "На цьому комп’ютері",
@@ -1065,7 +1065,7 @@
     }
   },
   "shortcuts": {
-    "description": "Швидкі способи переходити між розділами memrynote, записувати думки й розбирати роботу.",
+    "description": "Швидкі способи переходити між розділами memrynote, записувати думки й розбиратися зі справами.",
     "or": "або",
     "then": "потім",
     "groups": {

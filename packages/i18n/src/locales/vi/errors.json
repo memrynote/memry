@@ -18,8 +18,8 @@
   "note": {
     "notFound": "Không tìm thấy ghi chú này. Có thể nó đã bị xóa.",
     "invalidFrontmatter": "Ghi chú này có siêu dữ liệu không hợp lệ và không thể đọc được.",
-    "duplicateId": "Một ghi chú với ID này đã tồn tại.",
-    "writeFailed": "Không thể lưu ghi chú này. Kiểm tra dung lượng đĩa và quyền truy cập.",
+    "duplicateId": "Đã có ghi chú với ID này.",
+    "writeFailed": "Không thể lưu ghi chú này. Kiểm tra dung lượng ổ đĩa và quyền truy cập.",
     "readFailed": "Không thể đọc ghi chú này. Tệp có thể bị khóa hoặc bị hỏng.",
     "deleteFailed": "Không thể xóa ghi chú này. Kiểm tra quyền của tệp.",
     "invalidPath": "Đường dẫn ghi chú không hợp lệ.",
@@ -66,7 +66,7 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "Lịch sử chỉnh sửa không được lưu trên thiết bị này",
-    "persistenceDegradedBody": "Ghi chú của bạn vẫn an toàn — chúng nằm trong kho dưới dạng tệp thuần, và vẫn mở, lưu bình thường. Chỉ lịch sử chỉnh sửa cục bộ và trạng thái hợp nhất của thiết bị này đang chạy trong bộ nhớ, nên chúng bắt đầu lại từ đầu mỗi khi memrynote mở."
+    "persistenceDegradedBody": "Ghi chú của bạn vẫn an toàn — chúng nằm trong kho dưới dạng tệp văn bản thuần, và vẫn mở và lưu bình thường. Chỉ lịch sử chỉnh sửa cục bộ và trạng thái hợp nhất của thiết bị này đang chạy trong bộ nhớ, nên chúng bắt đầu lại từ đầu mỗi khi memrynote mở."
   },
   "encryption": {
     "failed": "Không thể mã hóa dữ liệu. Có thể cần tạo lại khóa.",
@@ -80,7 +80,7 @@
   },
   "sync": {
     "networkOffline": "Bạn đang ngoại tuyến. Các thay đổi sẽ được đồng bộ khi bạn kết nối lại.",
-    "networkTimeout": "Máy chủ đồng bộ phản hồi quá lâu. Sẽ thử lại trong thời gian ngắn.",
+    "networkTimeout": "Máy chủ đồng bộ phản hồi quá lâu. Sẽ sớm thử lại.",
     "serverError": "Máy chủ đồng bộ gặp lỗi. Sẽ tự động thử lại.",
     "authExpired": "Phiên đăng nhập của bạn đã hết hạn. Đăng nhập lại để tiếp tục đồng bộ.",
     "deviceRevoked": "Thiết bị này đã bị gỡ khỏi tài khoản của bạn.",
@@ -92,12 +92,12 @@
     "noteTooLarge": "Một ghi chú quá lớn để đồng bộ. Tách ghi chú đó thành các ghi chú nhỏ hơn sẽ khắc phục được lỗi này.",
     "noteTooLargeNamed": "“{title}” quá lớn để đồng bộ. Tách ghi chú này thành các ghi chú nhỏ hơn sẽ khắc phục được lỗi này.",
     "attachmentUploadFailed": "Không thể đồng bộ tệp đính kèm “{filename}”. Tệp vẫn nằm trên thiết bị này.",
-    "paymentRequired": "Cần gói Đồng bộ trả phí để dùng đồng bộ mã hóa qua máy chủ.",
+    "paymentRequired": "Cần gói đồng bộ trả phí để dùng đồng bộ mã hóa qua máy chủ.",
     "vaultLimitExceeded": "Gói của bạn đồng bộ được ít kho hơn số kho trong tài khoản này, nên kho này chỉ nằm trên thiết bị này. Gỡ một kho khỏi tài khoản trong Cài đặt → Tài khoản, hoặc nâng cấp gói.",
     "certificatePinFailed": "Không thể thiết lập kết nối bảo mật. Kiểm tra kết nối mạng của bạn.",
     "deviceKeyMismatch": "Khóa bảo mật của thiết bị này không còn khớp với khóa đã đăng ký cho tài khoản của bạn, nên máy chủ từ chối các thay đổi từ thiết bị này. Đăng nhập lại trên thiết bị này để đăng ký lại.",
     "keychainUnavailable": "Đồng bộ đang tạm dừng vì Memry hiện không thể đọc khóa đồng bộ từ chuỗi khóa hệ thống. Mở khóa chuỗi khóa và đồng bộ sẽ tự tiếp tục; nếu không, hãy khởi động lại Memry. Không có gì bị xóa.",
-    "unknown": "Đã xảy ra lỗi đồng bộ không mong muốn. Sẽ thử lại tự động.",
+    "unknown": "Đã xảy ra lỗi đồng bộ không mong muốn. Sẽ tự động thử lại.",
     "statusFetchFailed": "Không thể lấy trạng thái đồng bộ",
     "engineNotInitialized": "Công cụ đồng bộ chưa được khởi tạo. Mở một kho để bắt đầu đồng bộ.",
     "triggerFailed": "Không thể đồng bộ",
@@ -118,7 +118,7 @@
     "connectFailed": "Không thể kết nối với Google Calendar. Vui lòng thử lại sau giây lát.",
     "reconnectNeeded": "Kết nối Google Calendar của bạn đã hết hạn. Vui lòng ngắt kết nối rồi kết nối lại.",
     "misconfigured": "Google Calendar chưa được cấu hình đúng. Vui lòng liên hệ hỗ trợ nếu việc này tiếp diễn.",
-    "scopeMissing": "Chúng tôi không thể truy cập Google Calendar của bạn vì quyền Calendar chưa được cấp. Vui lòng thử lại và đảm bảo ô Calendar vẫn được chọn trên màn hình cấp quyền của Google.",
+    "scopeMissing": "Chúng tôi không thể truy cập Google Calendar của bạn vì chưa được cấp quyền truy cập lịch. Vui lòng thử lại và đảm bảo ô quyền lịch vẫn được chọn trên màn hình cấp quyền của Google.",
     "accessDenied": "Quyền truy cập Google Calendar đã bị từ chối. Bạn có thể kết nối lại bất cứ khi nào sẵn sàng.",
     "temporarilyUnavailable": "Google Calendar tạm thời không khả dụng. Vui lòng thử lại sau ít phút."
   },
@@ -254,7 +254,7 @@
     "unknownVault": "Kho không xác định",
     "modelAlreadyLoading": "Mô hình đang được tải",
     "modelLoadFailed": "Không thể tải mô hình",
-    "voiceModelDownloadFailed": "Không thể tải mô hình giọng nói",
+    "voiceModelDownloadFailed": "Không thể tải xuống mô hình giọng nói",
     "terminalCommandInstallFailed": "Không thể cài đặt lệnh terminal",
     "terminalCommandUninstallFailed": "Không thể gỡ lệnh terminal",
     "shortcutInUse": "Phím tắt {shortcut} đang được sử dụng"

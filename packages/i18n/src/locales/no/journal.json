@@ -61,7 +61,7 @@
     "weekdayShort": {
       "sunday": "søn",
       "monday": "man",
-      "tuesday": "tirs",
+      "tuesday": "tir",
       "wednesday": "ons",
       "thursday": "tor",
       "friday": "fre",
@@ -118,7 +118,7 @@
   "aria": {
     "moreOptions": "Flere alternativer",
     "documentStatistics": "Dokumentstatistikk",
-    "dayContext": "Dagskontekst: oppgaver og tidsplan",
+    "dayContext": "Dagskontekst: oppgaver og timeplan",
     "scheduleEvents": "Hendelser i timeplanen",
     "tasks": "Oppgaver",
     "notesCreatedToday": "{count} notater opprettet i dag"

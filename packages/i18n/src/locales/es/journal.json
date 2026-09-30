@@ -50,13 +50,13 @@
       "future": "Futuro"
     },
     "weekday": {
-      "sunday": "domingo",
-      "monday": "lunes",
-      "tuesday": "martes",
-      "wednesday": "miércoles",
-      "thursday": "jueves",
-      "friday": "viernes",
-      "saturday": "sábado"
+      "sunday": "Domingo",
+      "monday": "Lunes",
+      "tuesday": "Martes",
+      "wednesday": "Miércoles",
+      "thursday": "Jueves",
+      "friday": "Viernes",
+      "saturday": "Sábado"
     },
     "weekdayShort": {
       "sunday": "dom",
@@ -132,7 +132,7 @@
     "noTasksDue": "Ninguna tarea vence",
     "noTasksDueToday": "Ninguna tarea vence hoy",
     "noTasksWereDue": "Ninguna tarea vencía",
-    "noNotesToday": "No se crearon notas hoy",
+    "noNotesToday": "No se han creado notas hoy",
     "startDocumenting": "Empieza a documentar tus pensamientos e ideas"
   },
   "ai": {
@@ -227,9 +227,9 @@
   },
   "error": {
     "title": "Error del diario",
-    "description": "El diario encontró un error en {date}. Es posible que tus cambios recientes no se hayan guardado.",
-    "descriptionNoDate": "El diario encontró un error. Es posible que tus cambios recientes no se hayan guardado.",
-    "unsavedContent": "Se detectó contenido no guardado ({length} caracteres)"
+    "description": "Se ha producido un error en el diario del {date}. Es posible que tus cambios recientes no se hayan guardado.",
+    "descriptionNoDate": "Se ha producido un error en el diario. Es posible que tus cambios recientes no se hayan guardado.",
+    "unsavedContent": "Se ha detectado contenido sin guardar ({length} caracteres)"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {

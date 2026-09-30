@@ -26,7 +26,7 @@
       "renameFailed": "Poznámku se nepodařilo přejmenovat",
       "titleRequired": "Poznámka musí mít název",
       "toggleLocalOnlyFailed": "Nastavení „pouze místní“ se nepodařilo změnit",
-      "toggleFullWidthFailed": "Plnou šířku se nepodařilo přepnout",
+      "toggleFullWidthFailed": "Nastavení plné šířky se nepodařilo změnit",
       "pathCopied": "Cesta zkopírována",
       "copyPathFailed": "Cestu se nepodařilo zkopírovat",
       "revealFailed": "Poznámku se nepodařilo zobrazit",
@@ -47,13 +47,13 @@
       "deleting": "Mazání…"
     },
     "largeFile": {
-      "title": "Tento soubor je příliš velký na otevření jako poznámka",
+      "title": "Tento soubor je příliš velký, než aby šel otevřít jako poznámka",
       "badge": "Jen pro čtení · nesynchronizováno",
       "reason": {
         "fileBytes": "Má velikost {size}. Poznámky lze upravovat do velikosti {limit}.",
         "blockBytes": "Obsahuje úsek o velikosti {size} bez jediného prázdného řádku. Poznámky lze upravovat do velikosti {limit} na blok."
       },
-      "explanation": "Úprava by vyžadovala zpracovat celý soubor najednou, což by aplikaci zamrazilo. Soubor na disku zůstává beze změny.",
+      "explanation": "Úprava by vyžadovala zpracovat celý soubor najednou a aplikace by zamrzla. Soubor na disku zůstává beze změny.",
       "viewer": {
         "preparing": "Příprava souboru ({size}) ke čtení…",
         "preparingHint": "Indexování řádků, aby šlo soubor posouvat bez načtení celého najednou.",
@@ -105,7 +105,7 @@
       "saveAsTemplate": "Uložit jako šablonu",
       "openExternal": "Otevřít v externím editoru",
       "setDefaultTemplate": "Nastavit výchozí šablonu",
-      "clearDefaultTemplate": "Vymazat výchozí šablonu",
+      "clearDefaultTemplate": "Zrušit výchozí šablonu",
       "setIcon": "Nastavit ikonu",
       "removeIcon": "Odebrat ikonu",
       "deleteSelectedNotes": "{count, plural, one {Smazat # poznámku} few {Smazat # poznámky} other {Smazat # poznámek}}",
@@ -288,14 +288,14 @@
       "group": "Vložení",
       "subtext": "Živý seznam poznámek ze složky, se štítkem nebo z celého trezoru",
       "sourceMenu": "Co toto zobrazení ukazuje",
-      "chooseSource": "Vyberte, co zobrazit",
+      "chooseSource": "Vybrat, co zobrazit",
       "sourceVault": "Všechny poznámky",
       "sourceFolder": "Složka",
       "sourceTag": "Štítek",
       "noFolders": "Zatím žádné složky",
       "noTags": "Zatím žádné štítky",
       "savedView": "Uložené zobrazení",
-      "savedViewMissing": "Uložené zobrazení „{name}“ už neexistuje, proto se zobrazuje výchozí zobrazení.",
+      "savedViewMissing": "Uložené zobrazení „{name}“ už neexistuje, proto je použito výchozí zobrazení.",
       "openAsTab": "Otevřít jako kartu",
       "empty": "Tomuto zobrazení zatím nic neodpovídá.",
       "loadFailed": "Toto zobrazení se nepodařilo načíst. Samotné poznámky zůstaly beze změny.",
@@ -340,7 +340,7 @@
       },
       "linkToNote": {
         "title": "Odkaz na poznámku",
-        "subtext": "Hledat poznámky – nebo kdekoli napište [["
+        "subtext": "Vyhledejte poznámku – nebo kdekoli napište [["
       },
       "media": {
         "title": "Média",
@@ -368,7 +368,7 @@
     "obsidianTask": {
       "refused": "Tento řádek obsahuje ID, závislost nebo odkaz na blok, které Obsidian potřebuje na konci řádku. Nejprve je odeberte v Obsidianu, potom řádek převeďte.",
       "createFailed": "Úkol pro tento řádek se nepodařilo vytvořit.",
-      "completeFailed": "Úkol byl vytvořen, ale jeho datum dokončení se nepodařilo použít."
+      "completeFailed": "Úkol byl vytvořen, ale jeho datum dokončení se nepodařilo nastavit."
     },
     "blockMenu": {
       "turnInto": "Změnit na",
@@ -469,7 +469,7 @@
       "embed": "Vložit",
       "wikiLink": "Wiki odkaz",
       "embedAria": "Vložit {title}",
-      "wikiLinkAria": "Wiki odkaz {title}",
+      "wikiLinkAria": "Wiki odkaz na {title}",
       "noHeadings": "Poznámka „{title}“ nemá žádné nadpisy",
       "noMatchingHeadings": "V poznámce „{title}“ neodpovídají žádné nadpisy",
       "displayAs": "Zobrazit jako",
@@ -518,7 +518,7 @@
         "urlSubmit": "Stáhnout tento obrázek",
         "downloading": "Stahování…",
         "adding": "Přidávání…",
-        "empty": "Zatím žádné vlastní ikony. Přidejte ji přetažením obrázku nebo vložením odkazu.",
+        "empty": "Zatím žádné vlastní ikony. Ikonu přidáte přetažením obrázku nebo vložením odkazu.",
         "noMatches": "Tomuto hledání neodpovídají žádné vlastní ikony",
         "unsupportedFile": "Soubor {name} není podporovaný obrázek",
         "addFailed": "Ikonu se nepodařilo přidat",
@@ -574,7 +574,7 @@
   "similarNotes": {
     "summary": "{count, plural, one {# podobná poznámka} few {# podobné poznámky} other {# podobných poznámek}}",
     "sectionAria": "Podobné poznámky",
-    "hint": "Poznámky, které se čtou podobně jako tato a zatím s ní nejsou propojené. Nalezeno v tomto zařízení pomocí místních embeddingů.",
+    "hint": "Poznámky s podobným obsahem jako tato, které s ní zatím nejsou propojené. Nalezeno v tomto zařízení pomocí místních embeddingů.",
     "addLink": "Přidat odkaz z této poznámky",
     "addLinkAria": "Přidat odkaz na poznámku {title} z této poznámky",
     "linked": "Odkaz na poznámku {title} přidán",
@@ -591,7 +591,7 @@
   },
   "suggestedTags": {
     "label": "Navrhované štítky:",
-    "hint": "Štítky, které sdílejí poznámky nejpodobnější této. Nic se nepřidá, dokud některý nevyberete.",
+    "hint": "Štítky z poznámek, které se této nejvíce podobají. Nic se nepřidá, dokud některý nevyberete.",
     "acceptAria": "Přidat štítek {tag}",
     "support": "{count, plural, one {Použito u # podobné poznámky} few {Použito u # podobných poznámek} other {Použito u # podobných poznámek}}",
     "dismiss": "Skrýt navrhované štítky",
@@ -654,7 +654,7 @@
     "namePlaceholder": "Název vlastnosti",
     "nameAria": "Název vlastnosti",
     "typeSection": "Typ",
-    "empty": "Prázdný",
+    "empty": "Prázdné",
     "dragAria": "Přetažením změníte pořadí vlastnosti",
     "editName": "Upravit název vlastnosti",
     "delete": "Smazat vlastnost",
@@ -726,7 +726,7 @@
     "repositionHint": "Přetažením upravte pozici",
     "repositionSave": "uložit",
     "repositionCancel": "zrušit",
-    "credit": "Foto od {name} na Unsplashi",
+    "credit": "Foto: {name}, Unsplash",
     "focusFailed": "Pozici obálky se nepodařilo uložit",
     "picker": {
       "title": "Obálka poznámky",
@@ -839,10 +839,10 @@
     "deleteTitle": "Smazat tuto verzi?",
     "deleteDescription": "Tuto akci nelze vrátit zpět. Tato verze bude trvale smazána.",
     "restoreTitle": "Obnovit tuto verzi?",
-    "restoreDescription": "To nahradí aktuální obsah poznámky touto verzí. Nejprve se uloží snímek aktuálního stavu, takže tuto akci můžete vrátit zpět.",
+    "restoreDescription": "Aktuální obsah poznámky se nahradí touto verzí. Nejprve se uloží snímek aktuálního stavu, takže tuto akci můžete vrátit zpět.",
     "restoring": "Obnovování…",
     "toast": {
-      "loadPreviewFailed": "Nepodařilo se načíst náhled verze",
+      "loadPreviewFailed": "Náhled verze se nepodařilo načíst",
       "restored": "Poznámka obnovena na předchozí verzi",
       "deleted": "Verze smazána"
     }
@@ -869,7 +869,7 @@
       "more": "Další akce"
     },
     "toast": {
-      "createFailed": "Vytvoření šablony se nezdařilo",
+      "createFailed": "Šablonu se nepodařilo vytvořit",
       "saveFailed": "Šablonu se nepodařilo uložit"
     }
   },
@@ -901,7 +901,7 @@
     "componentsFolderViewColumnSelector": {
       "properties": "Vlastnosti",
       "display": "Zobrazení",
-      "showSummaries": "Zobrazit souhrny",
+      "showSummaries": "Zobrazovat souhrny",
       "columnBorders": "Ohraničení sloupců",
       "searchColumns": "Hledat sloupce…",
       "noMatchingColumns": "Žádné odpovídající sloupce",
@@ -980,7 +980,7 @@
       "noGroupablePropertiesFound": "Nebyly nalezeny žádné seskupitelné vlastnosti",
       "sortDirection": "Směr řazení",
       "collapseGroupsByDefault": "Ve výchozím nastavení sbalit skupiny",
-      "showGroupSummaries": "Zobrazit souhrny skupin",
+      "showGroupSummaries": "Zobrazovat souhrny skupin",
       "clearGrouping2": "Zrušit seskupení"
     },
     "componentsFolderViewGroupedTable": {
@@ -1052,7 +1052,7 @@
       "save": "Uložit"
     },
     "componentsNoteContentAreaFileBlock": {
-      "failedToLoadPdf": "Nepodařilo se načíst PDF: ",
+      "failedToLoadPdf": "Soubor PDF se nepodařilo načíst: ",
       "download": "Stáhnout",
       "download2": "Stáhnout",
       "noFileAttached": "Není připojen žádný soubor",
@@ -1173,14 +1173,14 @@
       "skipForward10s": "Přeskočit o 10 s vpřed"
     },
     "componentsViewersImageViewer": {
-      "failedToLoadImage": "Načtení obrázku se nezdařilo",
+      "failedToLoadImage": "Obrázek se nepodařilo načíst",
       "theImageCouldNotBeDisplayed": "Obrázek se nepodařilo zobrazit.",
       "resetZoom": "Obnovit výchozí zvětšení",
       "rotate": "Otočit",
       "dragToPan": "Přetažením posunete zobrazení"
     },
     "componentsViewersPdfViewer": {
-      "failedToLoadPdf": "Načtení PDF se nezdařilo",
+      "failedToLoadPdf": "Soubor PDF se nepodařilo načíst",
       "previousPage": "Předchozí stránka",
       "nextPage": "Další stránka",
       "zoomOut": "Oddálit",
@@ -1194,13 +1194,13 @@
       "singlePage": "Jedna stránka",
       "twoPageOdd": "Dvě stránky (liché)",
       "twoPageEven": "Dvě stránky (sudé)",
-      "adaptToTheme": "Přizpůsobit motivu",
+      "adaptToTheme": "Přizpůsobovat motivu",
       "goToPage": "Přejít na stránku",
       "showThumbnails": "Zobrazit miniatury",
       "hideThumbnails": "Skrýt miniatury"
     },
     "componentsViewersVideoPlayer": {
-      "failedToLoadVideo": "Načtení videa se nezdařilo",
+      "failedToLoadVideo": "Video se nepodařilo načíst",
       "theVideoFileCouldNotBePlayed": "Soubor videa se nepodařilo přehrát."
     },
     "pagesFile": {
@@ -1239,43 +1239,43 @@
       "failedToOpenInExternalEditor": "Nepodařilo se otevřít v externím editoru",
       "failedToCopyLink": "Odkaz se nepodařilo zkopírovat",
       "failedToCreateView": "Zobrazení se nepodařilo vytvořit",
-      "failedToRenameFolder": "Přejmenování složky se nezdařilo",
-      "failedToCreateTask": "Vytvoření úkolu se nezdařilo",
-      "failedToLoadVersionHistory": "Načtení historie verzí se nezdařilo",
+      "failedToRenameFolder": "Složku se nepodařilo přejmenovat",
+      "failedToCreateTask": "Úkol se nepodařilo vytvořit",
+      "failedToLoadVersionHistory": "Historii verzí se nepodařilo načíst",
       "failedToRestoreVersion": "Verzi se nepodařilo obnovit",
       "failedToDeleteVersion": "Verzi se nepodařilo smazat",
-      "failedToCreateNote": "Vytvoření poznámky se nezdařilo",
-      "failedToLoadMoreBookmarks": "Nepodařilo se načíst další záložky",
-      "failedToToggleBookmark": "Záložku se nepodařilo přepnout",
-      "failedToRemoveBookmark": "Odebrání záložky se nezdařilo",
-      "failedToReorderBookmarks": "Nepodařilo se změnit pořadí záložek",
+      "failedToCreateNote": "Poznámku se nepodařilo vytvořit",
+      "failedToLoadMoreBookmarks": "Další záložky se nepodařilo načíst",
+      "failedToToggleBookmark": "Záložku se nepodařilo změnit",
+      "failedToRemoveBookmark": "Záložku se nepodařilo odebrat",
+      "failedToReorderBookmarks": "Pořadí záložek se nepodařilo změnit",
       "failedToSave": "Uložení se nezdařilo",
       "failedToRename": "Přejmenování se nezdařilo",
       "failedToUpdateEmoji": "Emoji se nepodařilo aktualizovat",
       "failedToUpdateTags": "Štítky se nepodařilo aktualizovat",
       "failedToSnoozeReminder": "Připomenutí se nepodařilo odložit",
-      "failedToCreateFolder": "Vytvoření složky se nezdařilo",
+      "failedToCreateFolder": "Složku se nepodařilo vytvořit",
       "failedToLoadProperties": "Vlastnosti se nepodařilo načíst",
-      "failedToLoadPropertyDefinitions": "Načtení definic vlastností se nezdařilo",
-      "failedToLoadTemplates": "Načtení šablon se nezdařilo"
+      "failedToLoadPropertyDefinitions": "Definice vlastností se nepodařilo načíst",
+      "failedToLoadTemplates": "Šablony se nepodařilo načíst"
     },
     "toasts": {
       "noteExportedSuccessfully": "Poznámka byla úspěšně exportována",
       "failedToUpdateProperty": "Vlastnost se nepodařilo aktualizovat",
       "failedToUpdateTags": "Štítky se nepodařilo aktualizovat",
-      "failedToUpdateIcon": "Nepodařilo se aktualizovat ikonu",
+      "failedToUpdateIcon": "Ikonu se nepodařilo aktualizovat",
       "reminderSnoozed": "Připomenutí odloženo",
       "failedToSnoozeReminder": "Připomenutí se nepodařilo odložit",
       "defaultTemplateSet": "Výchozí šablona nastavena",
-      "failedToSetDefaultTemplate": "Nepodařilo se nastavit výchozí šablonu",
-      "defaultTemplateCleared": "Výchozí šablona byla vymazána",
-      "failedToClearDefaultTemplate": "Vymazání výchozí šablony se nezdařilo",
+      "failedToSetDefaultTemplate": "Výchozí šablonu se nepodařilo nastavit",
+      "defaultTemplateCleared": "Výchozí šablona byla zrušena",
+      "failedToClearDefaultTemplate": "Výchozí šablonu se nepodařilo zrušit",
       "failedToAddProperty": "Vlastnost se nepodařilo přidat",
       "failedToDeleteProperty": "Vlastnost se nepodařilo smazat",
       "failedToRenameProperty": "Vlastnost se nepodařilo přejmenovat",
-      "failedToReorderProperties": "Nepodařilo se změnit pořadí vlastností",
+      "failedToReorderProperties": "Pořadí vlastností se nepodařilo změnit",
       "cannotAddTagThisNoteWasDeleted": "Štítek nelze přidat – tato poznámka byla smazána",
-      "cannotRemoveTagThisNoteWasDeleted": "Štítek nelze odstranit – tato poznámka byla smazána",
+      "cannotRemoveTagThisNoteWasDeleted": "Štítek nelze odebrat – tato poznámka byla smazána",
       "cannotChangeLocalOnlyThisNoteWasDeleted": "Nastavení „pouze místní“ nelze změnit – tato poznámka byla smazána"
     }
   },
@@ -1289,7 +1289,7 @@
     "export": "Exportovat",
     "delete": "Smazat",
     "clearAria": "Zrušit výběr",
-    "copiedLinks": "Zkopírováno {count, plural, one {# odkaz} few {# odkazy} other {# odkazů}}",
+    "copiedLinks": "{count, plural, one {Zkopírován # odkaz} few {Zkopírovány # odkazy} other {Zkopírováno # odkazů}}",
     "setIcon": "Nastavit ikonu",
     "iconUpdated": "{count, plural, one {Ikona aktualizována u # poznámky} few {Ikona aktualizována u # poznámek} other {Ikona aktualizována u # poznámek}}"
   },
@@ -1370,7 +1370,7 @@
       "folder": "Složka",
       "tags": "Štítky",
       "created": "Vytvořeno",
-      "modified": "Změněno",
+      "modified": "Upraveno",
       "wordCount": "Počet slov",
       "kind": "Druh"
     },

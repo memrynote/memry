@@ -136,7 +136,7 @@
       "folderSuffix": "文件夹",
       "moreItems": "…以及另外 {count} 项",
       "deleting": "正在删除…",
-      "deleteCount": "删除 {count}"
+      "deleteCount": "删除 {count} 项"
     }
   },
   "editor": {
@@ -470,8 +470,8 @@
       "wikiLink": "Wiki 链接",
       "embedAria": "嵌入 {title}",
       "wikiLinkAria": "Wiki 链接 {title}",
-      "noHeadings": "{title} 没有标题",
-      "noMatchingHeadings": "{title} 中没有匹配的标题",
+      "noHeadings": "“{title}”中没有标题",
+      "noMatchingHeadings": "“{title}”中没有匹配的标题",
       "displayAs": "显示为",
       "aliasHint": "输入 | 为链接命名"
     },
@@ -901,7 +901,7 @@
     "componentsFolderViewColumnSelector": {
       "properties": "属性",
       "display": "显示",
-      "showSummaries": "显示摘要",
+      "showSummaries": "显示汇总",
       "columnBorders": "列边框",
       "searchColumns": "搜索列…",
       "noMatchingColumns": "没有匹配的列",
@@ -968,7 +968,7 @@
       "fixExpressionErrorsToSeePreview": "修复表达式错误以查看预览",
       "usingNote": "使用笔记：“",
       "cancel": "取消",
-      "namePlaceholder": "距到期天数",
+      "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
       "usingNoteTitle": "使用笔记：“{title}”"
     },
@@ -985,7 +985,7 @@
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "分组笔记表",
-      "more": "更多",
+      "more": "项",
       "selectAll": "选择所有笔记",
       "selectRow": "选择笔记"
     },
@@ -1083,8 +1083,8 @@
       "pdf": "PDF",
       "html": "HTML",
       "a4210X297Mm": "A4（210 x 297 毫米）",
-      "letter85X11In": "信纸（8.5 x 11 英寸）",
-      "legal85X14In": "法律专用纸（8.5 x 14 英寸）"
+      "letter85X11In": "美国信纸（8.5 x 11 英寸）",
+      "legal85X14In": "美国法律用纸（8.5 x 14 英寸）"
     },
     "componentsNoteInfoSectionEditorsDateeditor": {
       "ddMmYyyy": "日.月.年"
@@ -1101,8 +1101,8 @@
     },
     "componentsSidebarProjectsEmptyState": {
       "noProjectsYet": "尚无项目",
-      "createYourFirstProject": "创建你的第一个项目",
-      "createYourFirstProject2": "创建你的第一个项目"
+      "createYourFirstProject": "创建第一个项目",
+      "createYourFirstProject2": "创建第一个项目"
     },
     "componentsSidebarSidebarBookmarkList": {
       "loadingBookmarks": "正在加载书签…",
@@ -1220,7 +1220,7 @@
       "displayDensity": "显示密度",
       "comfortable": "舒适",
       "compact": "紧凑",
-      "showSummaries": "显示摘要",
+      "showSummaries": "显示汇总",
       "cancel": "取消"
     },
     "componentsFolderViewSortSelector": {
@@ -1281,7 +1281,7 @@
   },
   "bulkActions": {
     "toolbarAria": "批量操作",
-    "selected": "已选择",
+    "selected": "项已选择",
     "move": "移动",
     "copyLinks": "复制链接",
     "addTag": "添加标签",
@@ -1289,7 +1289,7 @@
     "export": "导出",
     "delete": "删除",
     "clearAria": "清除选择",
-    "copiedLinks": "{count, plural, other {已复制 # 个链接}}",
+    "copiedLinks": "{count, plural, other {已复制 # 条链接}}",
     "setIcon": "设置图标",
     "iconUpdated": "{count, plural, other {已更新 # 篇笔记的图标}}"
   },
@@ -1304,7 +1304,7 @@
   },
   "saveNoteAsTemplate": {
     "title": "将笔记保存为模板",
-    "description": "用这则笔记创建可重复使用的模板。笔记本身保持不变。",
+    "description": "用此笔记创建可重复使用的模板。笔记本身保持不变。",
     "nameLabel": "模板名称",
     "loading": "正在读取此笔记…",
     "summary": "将保存笔记正文、{tagCount, plural, other {# 个标签}}和 {propertyCount, plural, other {# 个属性}}。",

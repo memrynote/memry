@@ -23,7 +23,7 @@
       "button": "筛选",
       "byType": "按类型筛选",
       "active": "{count, plural, other {按 # 种类型筛选}}",
-      "clearAll": "清除所有"
+      "clearAll": "全部清除"
     },
     "jobs": {
       "running": "{count, plural, other {# 个后台任务正在运行}}",
@@ -126,7 +126,7 @@
     "dismissSuggestion": "忽略建议",
     "hint": {
       "file": "归入",
-      "tag": "标签",
+      "tag": "添加标签",
       "snooze": "延后",
       "archive": "归档",
       "deselect": "取消选择"
@@ -180,7 +180,7 @@
       "weak": "弱匹配"
     },
     "selectFolder": "选择文件夹",
-    "searchOrCreateFolder": "使用 / 搜索或创建…",
+    "searchOrCreateFolder": "搜索，或使用 / 创建…",
     "suggested": "推荐",
     "notesRoot": "笔记",
     "notesRootLabel": "笔记（根目录）",
@@ -231,7 +231,7 @@
     "location": "地点",
     "remindAt": "提醒时间",
     "time": "时间",
-    "success": "已转换为 {target}",
+    "success": "已转换为{target}",
     "failed": "无法转换：{error}"
   },
   "content": {
@@ -319,11 +319,11 @@
     },
     "dateTime": {
       "todayAt": "今天 {time}",
-      "todayCompact": "今天，{time}",
+      "todayCompact": "今天 {time}",
       "tomorrowAt": "明天 {time}",
-      "tomorrowCompact": "明天，{time}",
+      "tomorrowCompact": "明天 {time}",
       "dateAt": "{date} {time}",
-      "dateCompact": "{date}，{time}"
+      "dateCompact": "{date} {time}"
     }
   },
   "insights": {
@@ -416,7 +416,7 @@
       "noItemsFiledYet": "还没有已归入的条目",
       "recentlyFiled": "最近归入",
       "latestActionsOnYourInbox": "收件箱的最新操作",
-      "linked": "已关联"
+      "linked": "已链接"
     },
     "componentsInboxInboxInsightsView": {
       "loadingInsights": "正在加载洞察…"
@@ -483,7 +483,7 @@
       "backToPresets": "返回预设",
       "time": "时间",
       "noteOptional": "备注（可选）",
-      "whyAreYouSettingThisReminder": "你为什么要设置这个提醒？",
+      "whyAreYouSettingThisReminder": "为什么要设置这个提醒？",
       "set": "设置",
       "editReminder": "编辑提醒",
       "deleteReminder": "删除提醒",
@@ -496,7 +496,7 @@
       "snooze2": "延后",
       "pickDateTime": "选择日期和时间",
       "pickDateTime2": "选择日期和时间",
-      "selectWhenToBeRemindedAboutThisItem": "选择何时再次提醒此条目",
+      "selectWhenToBeRemindedAboutThisItem": "选择何时再次收到此条目的提醒",
       "snooze3": "延后",
       "snooze4": "延后",
       "snooze5": "延后"

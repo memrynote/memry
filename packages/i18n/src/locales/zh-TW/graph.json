@@ -34,7 +34,7 @@
     "category": "分類"
   },
   "summary": {
-    "node-type-count": "{count} 個{label}"
+    "node-type-count": "{label} {count}"
   },
   "control": {
     "show-settings": "圖譜設定",
@@ -117,7 +117,7 @@
   },
   "relayout-confirm": {
     "title": "要重新配置圖譜版面嗎？",
-    "description": "所有已釘選的節點都會被釋放，圖譜會重新排列。已儲存的版面配置將被捨棄。",
+    "description": "所有已釘選的節點都會取消釘選，圖譜會重新排列。已儲存的版面配置將被捨棄。",
     "cancel": "取消",
     "confirm": "重新配置版面"
   },

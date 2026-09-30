@@ -70,7 +70,7 @@
         "explanation": "磁碟上的檔案不會被更動。請用能處理這種大小檔案的應用程式開啟。"
       },
       "find": {
-        "searching": "目前 {count} 個…",
+        "searching": "已找到 {count} 個…",
         "limited": "{index}/{shown}（共 {total} 個）"
       }
     }
@@ -202,7 +202,7 @@
     },
     "attachmentMenu": {
       "menuLabel": "檔案動作",
-      "storedAs": "儲存為 {name}",
+      "storedAs": "儲存檔名：{name}",
       "notSynced": "尚未同步到這部裝置",
       "revealFailed": "無法顯示檔案位置",
       "openFailed": "無法開啟檔案",
@@ -238,7 +238,7 @@
     "callout": {
       "title": "標註",
       "group": "基本區塊",
-      "subtext": "醒目提示重要資訊",
+      "subtext": "突顯重要資訊",
       "changeType": "更改標註類型",
       "menuLabel": "標註類型",
       "info": "資訊",
@@ -308,7 +308,7 @@
       "aria": "區塊與動作",
       "groups": {
         "recent": "最近使用",
-        "bestMatch": "最佳符合",
+        "bestMatch": "最相符",
         "blocks": "區塊",
         "headings": "更多標題",
         "insert": "插入",
@@ -348,7 +348,7 @@
       },
       "insertTemplate": {
         "title": "插入範本內容…",
-        "subtext": "只在游標處新增範本的內文",
+        "subtext": "在游標處只插入範本的內文",
         "group": "範本",
         "empty": "該範本沒有可插入的內容",
         "failed": "無法插入該範本"
@@ -536,12 +536,12 @@
   "outline": {
     "title": "大綱",
     "aria": "文件大綱",
-    "empty": "無標題",
+    "empty": "沒有標題",
     "emptyYet": "尚無標題",
-    "readTime": "{count} 分鐘閱讀",
+    "readTime": "閱讀時間 {count} 分鐘",
     "words": "{count} 個字",
-    "created": "建立於",
-    "modified": "修改於"
+    "created": "建立時間",
+    "modified": "修改時間"
   },
   "backlinks": {
     "sortRecent": "最新",
@@ -661,11 +661,11 @@
     "searchOptions": "搜尋選項…",
     "noOptions": "尚無選項",
     "optionName": "選項名稱",
-    "newOption": "新選項",
+    "newOption": "新增選項",
     "ratingAria": "評分",
     "openUrlAria": "開啟 URL",
     "showOnCalendar": "顯示於行事曆",
-    "showingOnCalendar": "顯示於行事曆中",
+    "showingOnCalendar": "已在行事曆中顯示",
     "relation": {
       "deleted": "已刪除",
       "removeAria": "移除「{title}」",
@@ -768,14 +768,14 @@
         "sand": "沙色",
         "lilac": "丁香紫",
         "clay": "陶土色",
-        "ash": "灰燼色",
+        "ash": "煙灰色",
         "fog": "霧灰",
         "wheat": "麥色",
         "moss": "苔蘚綠",
         "slate": "石板灰",
         "bark": "樹皮棕",
         "mist": "薄霧",
-        "plum": "李子紫"
+        "plum": "梅子紫"
       },
       "link": {
         "prompt": "貼上圖片連結",
@@ -836,9 +836,9 @@
     "words": "{count} 個字",
     "selectPrompt": "選擇一個版本以預覽",
     "restore": "還原",
-    "deleteTitle": "刪除此版本？",
+    "deleteTitle": "要刪除此版本嗎？",
     "deleteDescription": "此動作無法復原。此版本將永久刪除。",
-    "restoreTitle": "還原此版本？",
+    "restoreTitle": "要還原此版本嗎？",
     "restoreDescription": "這會以此版本取代目前的筆記內容。系統會先儲存目前狀態的快照，因此你可以復原此動作。",
     "restoring": "正在還原…",
     "toast": {
@@ -906,7 +906,7 @@
       "searchColumns": "搜尋欄位…",
       "noMatchingColumns": "沒有符合的欄位",
       "formulas": "公式",
-      "noFormulasDefined": "未定義公式",
+      "noFormulasDefined": "尚未定義公式",
       "addFormula": "新增公式",
       "deleteFormula": "刪除公式",
       "cancel": "取消",
@@ -924,11 +924,11 @@
       "addFiltersToNarrowDownYourNotes": "新增篩選條件以縮小筆記範圍",
       "match": "符合",
       "allAnd": "全部（且）",
-      "anyOr": "任意（或）",
+      "anyOr": "任一（或）",
       "ofTheFollowing": "以下項目：",
       "match2": "符合",
       "all": "全部",
-      "any": "任意",
+      "any": "任一",
       "of": "以下條件：",
       "addCondition": "新增條件",
       "addFilter": "新增篩選條件",
@@ -941,7 +941,7 @@
       "properties": "屬性",
       "placeholderProperty": "屬性",
       "placeholderOperator": "運算子",
-      "placeholderValue": "數值",
+      "placeholderValue": "值",
       "removeFilter": "移除篩選條件",
       "tagSuggestions": "標籤建議"
     },
@@ -993,7 +993,7 @@
       "searchFolders": "搜尋資料夾…",
       "loadingFolders": "正在載入資料夾…",
       "suggested": "建議",
-      "bestMatch": "最佳符合",
+      "bestMatch": "最相符",
       "current": "目前)",
       "allFolders": "所有資料夾",
       "noFoldersMatch": "沒有符合的資料夾",
@@ -1031,7 +1031,7 @@
       "myCustomView": "我的自訂檢視",
       "baseConfiguration": "基本設定",
       "copyFromCurrentView": "從目前檢視複製",
-      "startFreshDefaultColumns": "重新開始（預設欄位）",
+      "startFreshDefaultColumns": "從頭開始（預設欄位）",
       "cancel": "取消",
       "renameView": "重新命名檢視",
       "enterANewNameForThisView": "輸入此檢視的新名稱。",
@@ -1096,8 +1096,8 @@
       "words": "字數",
       "characters": "字元數",
       "readingTime": "閱讀時間",
-      "created": "建立於",
-      "modified": "修改於"
+      "created": "建立時間",
+      "modified": "修改時間"
     },
     "componentsSidebarProjectsEmptyState": {
       "noProjectsYet": "尚未有專案",
@@ -1281,7 +1281,7 @@
   },
   "bulkActions": {
     "toolbarAria": "批次操作",
-    "selected": "已選取",
+    "selected": "項已選取",
     "move": "移動",
     "copyLinks": "複製連結",
     "addTag": "新增標籤",

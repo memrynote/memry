@@ -134,7 +134,7 @@
       "folderBody": "Voulez-vous vraiment supprimer « {name} » et toutes les notes qu'il contient ? Cette action est irréversible.",
       "itemsBody": "Voulez-vous vraiment supprimer {count} éléments ? Cette action est irréversible.",
       "folderSuffix": "dossier",
-      "moreItems": "…et {count} de plus",
+      "moreItems": "… et {count} de plus",
       "deleting": "Suppression…",
       "deleteCount": "Supprimer {count}"
     }
@@ -167,7 +167,7 @@
     "list": {
       "bulleted": "Liste à puces",
       "numbered": "Liste numérotée",
-      "checklist": "Liste de tâches"
+      "checklist": "Liste à cocher"
     },
     "bulletFold": {
       "collapse": "Réduire les éléments imbriqués",
@@ -438,7 +438,7 @@
       "insertFailed": "Impossible d'insérer la pièce jointe",
       "uploadFailed": "Impossible d'importer le fichier",
       "unsupportedVideo": "Ce format vidéo ne peut pas être lu dans Memry. Formats pris en charge : {formats}.",
-      "tooLarge": "Ce fichier fait {size}, soit plus que la limite de {limit} pour les pièces jointes.",
+      "tooLarge": "Ce fichier fait {size}, ce qui dépasse la limite de {limit} pour les pièces jointes.",
       "hint": {
         "navigate": "Naviguer",
         "insert": "Insérer",
@@ -634,8 +634,8 @@
     "add": "Ajouter un tag",
     "removeAria": "Retirer le tag : {tag}",
     "inputPlaceholder": "Saisir le nom du tag…",
-    "recent": "Récent",
-    "matching": "Correspondance",
+    "recent": "Récents",
+    "matching": "Tags correspondants",
     "all": "Tous les tags",
     "none": "Aucun tag trouvé",
     "createTag": "Créer le tag : « {tag} »",
@@ -670,7 +670,7 @@
       "deleted": "Supprimé",
       "removeAria": "Retirer « {title} »",
       "addAria": "Ajouter une relation",
-      "searchPlaceholder": "Rechercher des notes, tâches, événements, canevas et le journal…",
+      "searchPlaceholder": "Rechercher des notes, tâches, événements, canevas et entrées de journal…",
       "groupNotes": "Notes et fichiers",
       "groupTasks": "Tâches",
       "groupEvents": "Événements",
@@ -875,7 +875,7 @@
   },
   "reminders": {
     "summary": "Rappel : {date}",
-    "summaryWithMore": "Rappel : {date} (+{count} autres)",
+    "summaryWithMore": "Rappel : {date} (+{count, plural, one {# autre} other {# autres}})",
     "hasReminders": "A des rappels",
     "setReminder": "Définir un rappel",
     "toast": {
@@ -963,7 +963,7 @@
       "defineAComputedColumnUsingAnExpression": "Définissez une colonne calculée à l'aide d'une expression.",
       "name": "Nom",
       "expression": "Expression",
-      "available": "Disponible : ",
+      "available": "Disponibles : ",
       "preview": "Aperçu",
       "fixExpressionErrorsToSeePreview": "Corrigez les erreurs de l'expression pour voir l'aperçu",
       "usingNote": "Note utilisée : «",
@@ -1082,7 +1082,7 @@
     "componentsNoteExportDialog": {
       "pdf": "PDF",
       "html": "HTML",
-      "a4210X297Mm": "A4 (210x297mm)",
+      "a4210X297Mm": "A4 (210 x 297 mm)",
       "letter85X11In": "Lettre (8,5 x 11 po)",
       "legal85X14In": "Légal (8,5 x 14 po)"
     },

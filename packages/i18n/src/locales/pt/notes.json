@@ -140,7 +140,7 @@
     }
   },
   "editor": {
-    "bodySyncPending": "Sincronizando — o conteúdo desta nota pode ainda estar a caminho",
+    "bodySyncPending": "Sincronizando — o conteúdo desta nota ainda pode estar a caminho",
     "taskRemoval": {
       "title": "{count, plural, one {Tarefa removida desta nota} other {# tarefas removidas desta nota}}",
       "description": "{count, plural, one {Mantê-la em Tarefas ou excluí-la de todos os lugares?} other {Mantê-las em Tarefas ou excluí-las de todos os lugares?}}",
@@ -277,7 +277,7 @@
       "noCanvas": "Este quadro branco não tem canvas. Remova o bloco ou adicione um novo com /whiteboard.",
       "nested": "Abra este quadro branco em uma aba própria para ver o desenho.",
       "missingTitle": "Este quadro branco não está disponível",
-      "missingBody": "O canvas dele foi excluído ou ainda não chegou a este dispositivo. Se ainda estiver sincronizando, ele aparecerá aqui automaticamente.",
+      "missingBody": "O canvas foi excluído ou ainda não chegou a este dispositivo. Se ainda estiver sincronizando, ele aparecerá aqui automaticamente.",
       "unreadableTitle": "Este quadro branco não pode ser aberto aqui",
       "unreadableBody": "O arquivo do canvas não está no cofre ou não pode ser lido neste dispositivo. Nada foi excluído.",
       "disabledTitle": "O canvas está desativado",
@@ -544,7 +544,7 @@
     "modified": "Modificado"
   },
   "backlinks": {
-    "sortRecent": "Recente",
+    "sortRecent": "Mais recentes",
     "sortAlpha": "A-Z",
     "sortMentions": "Mais menções",
     "sortBy": "Ordenar backlinks por {sort}",
@@ -584,7 +584,7 @@
     "canvasLoading": "Carregando canvas…",
     "noCanvases": "Nenhum canvas ainda",
     "noMatch": "Nenhum canvas corresponde",
-    "addedToCanvas": "{title} foi adicionado a {canvas}",
+    "addedToCanvas": "{title} foi adicionada a {canvas}",
     "alreadyOnCanvas": "{title} já está em {canvas}",
     "openCanvas": "Abrir",
     "addToCanvasFailed": "Não foi possível adicionar a nota ao canvas"
@@ -726,7 +726,7 @@
     "repositionHint": "Arraste para reposicionar",
     "repositionSave": "salvar",
     "repositionCancel": "cancelar",
-    "credit": "Fotografia de {name} no Unsplash",
+    "credit": "Foto de {name} no Unsplash",
     "focusFailed": "Não foi possível salvar a posição da capa",
     "picker": {
       "title": "Capa da nota",
@@ -937,7 +937,7 @@
       "lockedConditionHint": "Esta condição define a visualização atual e não pode ser removida aqui."
     },
     "componentsFolderViewFilterRow": {
-      "builtIn": "Integrado",
+      "builtIn": "Integradas",
       "properties": "Propriedades",
       "placeholderProperty": "Propriedade",
       "placeholderOperator": "Operador",
@@ -975,7 +975,7 @@
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Limpar agrupamento",
       "searchProperties": "Pesquisar propriedades…",
-      "builtIn": "Integrado",
+      "builtIn": "Integradas",
       "properties": "Propriedades",
       "noGroupablePropertiesFound": "Nenhuma propriedade agrupável encontrada",
       "sortDirection": "Direção de ordenação",
@@ -1153,7 +1153,7 @@
       "pin": "Fixar",
       "tagActions": "Ações da tag",
       "editTagName": "Editar nome da tag",
-      "changeColor": "Mudar cor",
+      "changeColor": "Alterar cor",
       "deleteTag": "Excluir tag",
       "recent": "Recente",
       "created": "Criado",
@@ -1205,7 +1205,7 @@
     },
     "pagesFile": {
       "failedToLoadFile": "Não foi possível carregar o arquivo",
-      "tryAgain": "Tente novamente",
+      "tryAgain": "Tentar novamente",
       "noFileSelected": "Nenhum arquivo selecionado",
       "selectAFileFromTheSidebarToViewIt": "Selecione um arquivo na barra lateral para abri-lo",
       "loadingFile": "Carregando arquivo…",
@@ -1227,7 +1227,7 @@
       "clearSort": "Limpar ordenação",
       "sort": "Ordenar",
       "searchProperties": "Pesquisar propriedades…",
-      "builtIn": "Integrado",
+      "builtIn": "Integradas",
       "properties": "Propriedades",
       "noSortablePropertiesFound": "Nenhuma propriedade ordenável encontrada",
       "sortDirection": "Direção de ordenação"
@@ -1276,7 +1276,7 @@
       "failedToReorderProperties": "Não foi possível reordenar as propriedades",
       "cannotAddTagThisNoteWasDeleted": "Não é possível adicionar tag. Esta nota foi excluída",
       "cannotRemoveTagThisNoteWasDeleted": "Não é possível remover a tag. Esta nota foi excluída",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "Não é possível alterar somente local — esta nota foi excluída"
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Não é possível alterar a opção somente local — esta nota foi excluída"
     }
   },
   "bulkActions": {

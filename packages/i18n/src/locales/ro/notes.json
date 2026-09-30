@@ -130,7 +130,7 @@
       "noteTitle": "Ștergeți notița",
       "folderTitle": "Ștergeți dosarul",
       "itemsTitle": "{count, plural, one {Ștergeți # element} few {Ștergeți # elemente} other {Ștergeți # de elemente}}",
-      "noteBody": "Sigur doriți să ștergeți „{name}”? Această acțiune nu poate fi anulată.",
+      "noteBody": "Sigur doriți să ștergeți „{name}”? Acțiunea nu poate fi anulată.",
       "folderBody": "Sigur doriți să ștergeți „{name}” și toate notițele din el? Acțiunea nu poate fi anulată.",
       "itemsBody": "Sigur doriți să ștergeți {count, plural, one {# element} few {# elemente} other {# de elemente}}? Acțiunea nu poate fi anulată.",
       "folderSuffix": "dosar",
@@ -174,7 +174,7 @@
       "expand": "Extinde elementele imbricate"
     },
     "toolbar": {
-      "linkToNote": "Link către o notiță",
+      "linkToNote": "Adaugă un link către o notiță",
       "more": "Mai multe",
       "pinToTop": "Fixează bara de instrumente sus",
       "reminderSet": "Memento setat",
@@ -194,10 +194,10 @@
       "rename": "Redenumește…",
       "moveToFolder": "Mută în dosar…",
       "copyPath": "Copiază calea",
-      "revealInSidebar": "Afișează în bara laterală",
+      "revealInSidebar": "Arată în bara laterală",
       "attachments": "Atașamente…",
       "disableLocalOnly": "Dezactivează modul doar local",
-      "setLocalOnly": "Setează ca doar local",
+      "setLocalOnly": "Activează modul doar local",
       "delete": "Șterge notița"
     },
     "attachmentMenu": {
@@ -327,7 +327,7 @@
       "matchesAlias": "corespunde cu",
       "noMatch": "Niciun bloc nu corespunde cu „{query}”",
       "fallback": {
-        "linkTo": "Link către",
+        "linkTo": "Adaugă un link către",
         "askAI": "Întreabă AI-ul"
       },
       "pdf": {
@@ -574,7 +574,7 @@
   "similarNotes": {
     "summary": "{count, plural, one {# notiță similară} few {# notițe similare} other {# de notițe similare}}",
     "sectionAria": "Notițe similare",
-    "hint": "Notițe asemănătoare cu aceasta, care încă nu au un link către ea. Găsite pe acest dispozitiv din embeddinguri locale.",
+    "hint": "Notițe asemănătoare cu aceasta, dar care încă nu sunt legate de ea. Găsite pe acest dispozitiv pe baza embeddingurilor locale.",
     "addLink": "Adaugă un link din această notiță",
     "addLinkAria": "Adaugă un link către {title} din această notiță",
     "linked": "Link adăugat către {title}",
@@ -766,7 +766,7 @@
       "wash": {
         "sage": "Salvie",
         "sand": "Nisip",
-        "lilac": "Liliac",
+        "lilac": "Lila",
         "clay": "Lut",
         "ash": "Cenușă",
         "fog": "Ceață",
@@ -805,7 +805,7 @@
     "createNote": "Creează notița",
     "applyToNote": "Aplică șablonul",
     "applyTitle": "Aplică un șablon",
-    "applyDescription": "Înlocuiește conținutul acestei notițe cu un șablon"
+    "applyDescription": "Înlocuiți conținutul acestei notițe cu un șablon"
   },
   "exportDialog": {
     "title": "Exportați notița",
@@ -837,7 +837,7 @@
     "selectPrompt": "Selectați o versiune pentru previzualizare",
     "restore": "Restaurează",
     "deleteTitle": "Ștergeți această versiune?",
-    "deleteDescription": "Această acțiune nu poate fi anulată. Această versiune va fi ștearsă definitiv.",
+    "deleteDescription": "Acțiunea nu poate fi anulată. Această versiune va fi ștearsă definitiv.",
     "restoreTitle": "Restaurați această versiune?",
     "restoreDescription": "Conținutul actual al notiței va fi înlocuit cu această versiune. Mai întâi se salvează un instantaneu al stării curente, astfel încât să puteți anula această acțiune.",
     "restoring": "Se restaurează…",
@@ -914,7 +914,7 @@
       "none": "Niciuna",
       "edit": "Editează",
       "delete2": "Șterge",
-      "deleteFormulaBody": "Sigur doriți să ștergeți formula „{name}”? Această acțiune nu poate fi anulată."
+      "deleteFormulaBody": "Sigur doriți să ștergeți formula „{name}”? Acțiunea nu poate fi anulată."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtru",
@@ -1038,9 +1038,9 @@
       "viewName2": "Numele vizualizării",
       "viewName3": "Numele vizualizării",
       "cancel2": "Anulează",
-      "deleteView": "Șterge vizualizarea",
+      "deleteView": "Ștergeți vizualizarea",
       "areYouSureYouWantToDelete": "Sigur doriți să ștergeți \"",
-      "thisActionCannotBeUndone": "Această acțiune nu poate fi anulată.",
+      "thisActionCannotBeUndone": "Acțiunea nu poate fi anulată.",
       "cancel3": "Anulează",
       "newView": "Vizualizare nouă",
       "name": "Nume",
@@ -1392,7 +1392,7 @@
     "chain": {
       "separator": "→"
     },
-    "more": "{count, plural, one {+# în plus} few {+# în plus} other {+# în plus}}",
+    "more": "{count, plural, one {Încă #} few {Încă #} other {Încă #}}",
     "nodeCapNotice": "Această hartă a atins limita de {count, plural, one {# nod} few {# noduri} other {# de noduri}}; restul este pliat în cel mai apropiat nod de deasupra.",
     "badge": {
       "table": "{count, plural, one {# tabel} few {# tabele} other {# de tabele}}",

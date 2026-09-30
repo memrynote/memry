@@ -15,7 +15,7 @@
     "link-title": "链接笔记",
     "link-description": "使用 [[wikilinks]] 在笔记之间连接想法",
     "discover-title": "发现模式",
-    "discover-description": "随着连接的增长，聚类和主题将自然出现"
+    "discover-description": "随着关联增多，聚类和主题会自然浮现"
   },
   "entity": {
     "note": "笔记",
@@ -117,7 +117,7 @@
   },
   "relayout-confirm": {
     "title": "重新布局图谱？",
-    "description": "所有固定的节点都会被释放，图谱将重新排列。已保存的布局会被丢弃。",
+    "description": "所有已固定的节点都会取消固定，图谱将重新排列。已保存的布局会被丢弃。",
     "cancel": "取消",
     "confirm": "重新布局"
   },

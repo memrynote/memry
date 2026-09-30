@@ -6,7 +6,7 @@
     "services": "Dịch vụ",
     "hide": "Ẩn MemryNote",
     "hideOthers": "Ẩn các ứng dụng khác",
-    "unhide": "Hiện tất cả",
+    "unhide": "Hiển thị tất cả",
     "exit": "Thoát"
   },
   "file": {
@@ -68,7 +68,7 @@
     "toggleDevTools": "Bật/tắt công cụ dành cho nhà phát triển",
     "toggleFullscreen": "Bật/tắt toàn màn hình",
     "toggleSidebar": "Hiện/ẩn thanh bên",
-    "toggleDayPanel": "Hiện/ẩn Bảng ngày",
+    "toggleDayPanel": "Hiện/ẩn bảng ngày",
     "theme": "Giao diện",
     "themeLight": "Sáng",
     "themeDark": "Tối",

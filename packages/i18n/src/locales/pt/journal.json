@@ -118,7 +118,7 @@
   "aria": {
     "moreOptions": "Mais opções",
     "documentStatistics": "Estatísticas do documento",
-    "dayContext": "Contexto do dia: tarefas e cronograma",
+    "dayContext": "Contexto do dia: tarefas e programação",
     "scheduleEvents": "Eventos da programação",
     "tasks": "Tarefas",
     "notesCreatedToday": "{count} notas criadas hoje"
@@ -140,7 +140,7 @@
     "empty": {
       "willAppear": "Suas conexões aparecerão aqui",
       "noneYet": "Nenhuma conexão encontrada ainda",
-      "moreJournaling": "À medida que você escreve no diário, a IA encontrará entradas relacionadas",
+      "moreJournaling": "À medida que você escreve mais no diário, a IA encontrará entradas relacionadas",
       "keepWriting": "Continue escrevendo para descobrir entradas relacionadas"
     },
     "error": {
@@ -172,8 +172,8 @@
     "characterCount": "Contagem de caracteres",
     "readingTime": "Tempo estimado de leitura",
     "lastModified": "Última modificação",
-    "lessThanOneMinute": "<1 minuto",
-    "minutes": "{minutes} minutos",
+    "lessThanOneMinute": "< 1 min",
+    "minutes": "{minutes} min",
     "read": "{readingTime} de leitura",
     "modified": "Modificado em {date}"
   },
@@ -227,7 +227,7 @@
   },
   "error": {
     "title": "Erro no diário",
-    "description": "O diário encontrou um erro para {date}. Suas alterações recentes podem não ter sido salvas.",
+    "description": "O diário encontrou um erro na entrada de {date}. Suas alterações recentes podem não ter sido salvas.",
     "descriptionNoDate": "O diário encontrou um erro. Suas alterações recentes podem não ter sido salvas.",
     "unsavedContent": "Conteúdo não salvo detectado ({length} caracteres)"
   },

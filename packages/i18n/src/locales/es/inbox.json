@@ -343,9 +343,9 @@
     "peak": "Pico: {day} {start}–{end}",
     "convertedToTask": "Convertido en tarea",
     "now": "ahora",
-    "timeAgoMinutes": "Hace {count} min",
-    "timeAgoHours": "Hace {count} h",
-    "timeAgoDays": "Hace {count} d"
+    "timeAgoMinutes": "hace {count} min",
+    "timeAgoHours": "hace {count} h",
+    "timeAgoDays": "hace {count} d"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {

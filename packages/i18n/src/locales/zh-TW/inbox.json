@@ -68,9 +68,9 @@
     "section": {
       "today": "今天",
       "yesterday": "昨天",
-      "older": "較舊"
+      "older": "更早"
     },
-    "selectItem": "選擇 {title}",
+    "selectItem": "選取 {title}",
     "itemAria": "{type}：{title}",
     "untitled": "未命名",
     "untitledItem": "未命名項目",
@@ -158,7 +158,7 @@
     "archive": "封存"
   },
   "detail": {
-    "ariaLabel": "項目詳細資訊",
+    "ariaLabel": "項目詳細資料",
     "resize": "調整面板大小",
     "closePanel": "關閉面板",
     "resizeFiling": "調整歸檔區大小",
@@ -168,7 +168,7 @@
     "deletePermanently": "永久刪除",
     "archive": "封存",
     "file": "歸檔",
-    "fileToFolder": "歸檔到 {folder}",
+    "fileToFolder": "歸檔至 {folder}",
     "keyboardHint": "{modifier}⏎ 歸檔 · 1-5 資料夾 · Esc 關閉",
     "voiceTitlePlaceholder": "為這則語音備忘錄命名…",
     "titlePlaceholder": "為這個項目命名…",
@@ -480,10 +480,10 @@
       "remindMe": "提醒我",
       "pickDateTime": "選擇日期與時間",
       "addANoteOptional": "新增備註（選填）",
-      "backToPresets": "返回預設選項",
+      "backToPresets": "返回快速選項",
       "time": "時間",
       "noteOptional": "備註（選填）",
-      "whyAreYouSettingThisReminder": "你為什麼設定這個提醒？",
+      "whyAreYouSettingThisReminder": "為什麼要設定這個提醒？",
       "set": "設定",
       "editReminder": "編輯提醒",
       "deleteReminder": "刪除提醒",
@@ -496,7 +496,7 @@
       "snooze2": "延後",
       "pickDateTime": "選擇日期與時間",
       "pickDateTime2": "選擇日期與時間",
-      "selectWhenToBeRemindedAboutThisItem": "選擇何時提醒此項目",
+      "selectWhenToBeRemindedAboutThisItem": "選擇何時提醒你這個項目",
       "snooze3": "延後",
       "snooze4": "延後",
       "snooze5": "延後"

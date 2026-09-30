@@ -110,7 +110,7 @@
     "link-unsupported": "Linkurile pot fi create doar între notițe",
     "link-failed": "Nu s-a putut adăuga linkul",
     "unlink-failed": "Nu s-a putut elimina linkul",
-    "tag-added": "#{tag} adăugată la {note}",
+    "tag-added": "Eticheta #{tag} adăugată la {note}",
     "tag-exists": "Această notiță are deja eticheta #{tag}",
     "tag-failed": "Nu s-a putut adăuga eticheta",
     "undo-failed": "Nu s-a putut anula modificarea"

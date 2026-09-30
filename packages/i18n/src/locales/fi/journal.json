@@ -23,7 +23,7 @@
     "showFewerNotes": "Näytä vähemmän muistiinpanoja",
     "startBlank": "Aloita sen sijaan tyhjästä",
     "changeTemplate": "Vaihda pohja",
-    "dismissIndicator": "Hylkää ilmaisin",
+    "dismissIndicator": "Sulje ilmaisin",
     "refreshConnections": "Päivitä yhteydet",
     "reloadJournal": "Lataa päiväkirja uudelleen",
     "goToToday": "Siirry tähän päivään",
@@ -47,7 +47,7 @@
       "today": "Tänään",
       "yesterday": "Eilen",
       "tomorrow": "Huomenna",
-      "future": "Tulevaisuus"
+      "future": "Tulossa"
     },
     "weekday": {
       "sunday": "sunnuntai",
@@ -131,9 +131,9 @@
     "noEventsWereScheduled": "Tapahtumia ei ollut suunniteltu",
     "noTasksDue": "Ei erääntyviä tehtäviä",
     "noTasksDueToday": "Ei tänään erääntyviä tehtäviä",
-    "noTasksWereDue": "Ei erääntyneitä tehtäviä",
+    "noTasksWereDue": "Tehtäviä ei erääntynyt",
     "noNotesToday": "Tänään ei luotu muistiinpanoja",
-    "startDocumenting": "Aloita ajatustesi ja ideoiden dokumentointi"
+    "startDocumenting": "Ala kirjoittaa ajatuksiasi ja ideoitasi muistiin"
   },
   "ai": {
     "loading": "Analysoidaan merkintääsi…",
@@ -190,7 +190,7 @@
   },
   "reminder": {
     "hasReminders": "Sisältää muistutuksia",
-    "setToRevisit": "Aseta muistutus palata tähän",
+    "setToRevisit": "Muistuta palaamaan tähän",
     "tooltip": "Muistutus: {date}",
     "tooltipMore": "Muistutus: {date} (+{count} lisää)",
     "success": {

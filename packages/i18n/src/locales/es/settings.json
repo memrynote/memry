@@ -193,11 +193,7 @@
         "MM/DD/YYYY": "MM/DD/YYYY (EE. UU.)",
         "DD/MM/YYYY": "DD/MM/YYYY",
         "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
-        "DD": {
-          "MM": {
-            "YYYY": "DD.MM.YYYY"
-          }
-        }
+        "DD.MM.YYYY": "DD.MM.YYYY"
       },
       "error": "No se pudo actualizar el formato de fecha"
     },
@@ -231,10 +227,10 @@
     "fileCreation": {
       "createInSelectedFolder": {
         "label": "Crear en la carpeta seleccionada",
-        "description": "Se crean nuevas notas y carpetas dentro de la carpeta seleccionada actualmente. Cuando está desactivado, los elementos siempre se crean en la raíz."
+        "description": "Las notas y carpetas nuevas se crean dentro de la carpeta seleccionada. Si está desactivado, los elementos se crean siempre en la raíz."
       },
       "defaultNoteFolder": {
-        "label": "Ubicación predeterminada de las notas nuevas",
+        "label": "Ubicación predeterminada",
         "description": "Se usa cuando no hay ninguna carpeta seleccionada en la barra lateral.",
         "placeholder": "notas",
         "root": "/"
@@ -444,7 +440,7 @@
     },
     "spellCheck": {
       "label": "Corrección ortográfica",
-      "description": "Subraya las palabras mal escritas en las notas y los diarios",
+      "description": "Subraya las palabras mal escritas en las notas y el diario",
       "error": "No se pudo actualizar la corrección ortográfica"
     },
     "v2": {
@@ -470,7 +466,7 @@
     },
     "loading": "Cargando plantillas…",
     "newTemplateTitle": "Nueva plantilla",
-    "copySuffix": "{name} (Copia)",
+    "copySuffix": "{name} (copia)",
     "empty": {
       "title": "Aún no hay plantillas personalizadas",
       "description": "Crea una plantilla para comenzar"
@@ -487,7 +483,7 @@
     "dialogs": {
       "delete": {
         "title": "Eliminar plantilla",
-        "description": "¿Estás seguro de que deseas eliminar esta plantilla? Esta acción no se puede deshacer. Las notas creadas a partir de esta plantilla no se verán afectadas."
+        "description": "¿Seguro que quieres eliminar esta plantilla? Esta acción no se puede deshacer. Las notas creadas a partir de esta plantilla no se verán afectadas."
       },
       "duplicate": {
         "title": "Duplicar plantilla",
@@ -517,7 +513,7 @@
     },
     "template": {
       "label": "Plantilla",
-      "description": "Las nuevas entradas comienzan con esta plantilla.",
+      "description": "Las entradas nuevas empiezan con esta plantilla",
       "placeholder": "Seleccionar una plantilla",
       "unknown": "Plantilla desconocida",
       "none": "Ninguna",
@@ -536,11 +532,11 @@
     },
     "showAIConnections": {
       "label": "Mostrar conexiones de IA",
-      "description": "Mostrar conexiones impulsadas por IA a entradas relacionadas"
+      "description": "Mostrar conexiones con entradas relacionadas sugeridas por IA"
     },
     "showStatsFooter": {
       "label": "Mostrar pie de página de estadísticas",
-      "description": "Recuento de palabras, tiempo de lectura, marcas de tiempo."
+      "description": "Recuento de palabras, tiempo de lectura, marcas de tiempo"
     },
     "folder": {
       "label": "Carpeta del diario",
@@ -595,7 +591,7 @@
       "label": "Proyecto predeterminado",
       "description": "Asignado cuando no se selecciona ningún proyecto",
       "placeholder": "Sin proyecto predeterminado",
-      "none": "Sin predeterminado (usar Personal)",
+      "none": "Ninguno (usar Personal)",
       "error": "No se pudo actualizar el proyecto predeterminado"
     },
     "sortOrder": {
@@ -611,9 +607,9 @@
     },
     "defaultView": {
       "label": "Vista predeterminada",
-      "description": "La pestaña en la que se abre la página de tareas",
+      "description": "La vista con la que se abre la página de Tareas",
       "options": {
-        "all": "Todos",
+        "all": "Todas",
         "today": "Hoy",
         "tomorrow": "Mañana",
         "next7": "Próximos 7 días"
@@ -703,7 +699,7 @@
     },
     "showNotesOnCalendar": {
       "label": "Mostrar notas en el calendario",
-      "description": "Mostrar cada nota en el calendario como un elemento de todo el día en el día en que se creó",
+      "description": "Mostrar cada nota en el calendario como un elemento de todo el día, en la fecha en que se creó",
       "error": "No se pudo actualizar la opción de mostrar notas en el calendario"
     },
     "options": {
@@ -717,7 +713,7 @@
       "statuses": {
         "connected": "Conectado",
         "notConnected": "No conectado",
-        "reconnectRequired": "Se requiere reconectar"
+        "reconnectRequired": "Reconexión necesaria"
       },
       "accountReconnect": "Volver a conectar Google",
       "addAccount": "Añadir cuenta",
@@ -789,7 +785,7 @@
         },
         "icloud": {
           "name": "iCloud",
-          "steps": "En Calendario en un Mac o en iCloud.com, comparte el calendario, activa «Calendario público» y copia el enlace. Para editar también aquí los eventos de iCloud, conecta iCloud mediante CalDAV."
+          "steps": "En la app Calendario de un Mac o en iCloud.com, comparte el calendario, activa «Calendario público» y copia el enlace. Para editar también aquí los eventos de iCloud, conecta iCloud mediante CalDAV en su lugar."
         },
         "outlook": {
           "name": "Outlook y Microsoft 365",
@@ -813,7 +809,7 @@
         "unreachable": "No se pudo acceder a este calendario. Comprueba el enlace y tu conexión a internet.",
         "timeout": "El calendario tardó demasiado en responder. Inténtalo de nuevo en un momento.",
         "not_found": "No se encontró ningún calendario en este enlace. Puede que se haya eliminado o que haya cambiado su enlace para compartir.",
-        "unauthorized": "El calendario denegó el acceso. Copia un enlace para compartir nuevo desde tu app de calendario.",
+        "unauthorized": "El calendario denegó el acceso. Copia un nuevo enlace para compartir desde tu app de calendario.",
         "http_error": "El servidor del calendario devolvió un error. Inténtalo de nuevo más tarde.",
         "too_large": "Este calendario es demasiado grande para añadirlo. Comparte un calendario más pequeño.",
         "not_a_calendar": "Este enlace no devuelve un calendario. Copia el enlace ICS o webcal desde las opciones para compartir de tu app de calendario.",
@@ -869,7 +865,7 @@
       "reconnect": "Volver a conectar",
       "defaultTarget": {
         "label": "Calendario predeterminado",
-        "description": "Dónde van los eventos, tareas, recordatorios y elementos pospuestos nuevos cuando no eliges un calendario. Solo un servicio de calendario puede tener el predeterminado.",
+        "description": "Dónde se guardan los eventos, las tareas, los recordatorios y los elementos pospuestos nuevos cuando no eliges un calendario. Solo un servicio de calendario puede tener el predeterminado.",
         "none": "No es el predeterminado",
         "error": "No se pudo cambiar el calendario predeterminado"
       },
@@ -914,7 +910,7 @@
       "createAppPassword": "Crear una contraseña de app",
       "testConnection": "Probar conexión",
       "testing": "Probando…",
-      "chooseCalendars": "Calendarios que se muestran",
+      "chooseCalendars": "Calendarios que mostrar",
       "reconnectFor": "Introduce la contraseña de app de {username}.",
       "errors": {
         "unauthorizedIcloud": "iCloud no aceptó esta contraseña. Aquí iCloud necesita una contraseña específica de app, no la contraseña de tu Apple ID. Crea una en account.apple.com, en Inicio de sesión y seguridad, e inténtalo de nuevo.",
@@ -1102,7 +1098,7 @@
       "title": "Configurar sincronización",
       "description": "Crea una cuenta para sincronizar tus datos entre dispositivos con cifrado de extremo a extremo.",
       "or": "o",
-      "paidPlan": "La sincronización es un plan de pago.",
+      "paidPlan": "La sincronización requiere un plan de pago.",
       "seePlans": "Ver planes",
       "errors": {
         "sendCode": "No se pudo enviar el código",
@@ -1120,7 +1116,7 @@
     },
     "otp": {
       "title": "Introduce el código de verificación",
-      "sentTo": "Enviamos un código de 6 dígitos a ",
+      "sentTo": "Hemos enviado un código de 6 dígitos a ",
       "aria": "Código de verificación de 6 dígitos",
       "verifying": "Verificando…",
       "resending": "Reenviando…",
@@ -1251,7 +1247,7 @@
     "generatingAria": "Generando código de vinculación",
     "generateFailed": "No se pudo generar el código de vinculación",
     "tryAgain": "Inténtalo de nuevo",
-    "expired": "El código de vinculación expiró",
+    "expired": "El código de vinculación ha caducado",
     "generateNew": "Generar nuevo código",
     "qrAria": "Código QR para vinculación de dispositivos",
     "qrImageAria": "Código QR para vincular el dispositivo",
@@ -1344,7 +1340,7 @@
       "downloadLoad": "Descargar y cargar modelo",
       "downloadingModel": "Descargando modelo…",
       "loadingModel": "Cargando modelo…",
-      "loadSuccess": "Modelo cargado exitosamente",
+      "loadSuccess": "Modelo cargado correctamente",
       "loadFailed": "No se pudo cargar el modelo",
       "rebuildIndex": "Reconstruir índice",
       "rebuildDescription": "Regenera los embeddings de todas las notas",
@@ -1371,7 +1367,7 @@
         "google": "Google Gemini"
       },
       "model": "Modelo",
-      "modelDescription": "Modelo de lenguaje para reescribir y resumir.",
+      "modelDescription": "Modelo de lenguaje para reescribir y resumir",
       "selectModel": "Seleccionar un modelo",
       "apiKey": "Clave de API",
       "apiKeyDescription": "Se guarda localmente y solo se envía al proveedor",
@@ -1605,7 +1601,7 @@
   "vault": {
     "header": {
       "title": "Bóveda",
-      "subtitle": "Configuración y almacenamiento de bóveda"
+      "subtitle": "Configuración y almacenamiento de la bóveda"
     },
     "groups": {
       "storageUsage": "Uso de almacenamiento",
@@ -1649,11 +1645,11 @@
         "other": "Otros"
       },
       "warningTitle": "Almacenamiento casi lleno",
-      "warningDescription": "Libera espacio o actualiza tu plan para evitar problemas de sincronización."
+      "warningDescription": "Libera espacio o mejora tu plan para evitar problemas de sincronización."
     },
     "largeNotes": {
       "description": "Las notas de más de {limit} dejan de sincronizarse. Divídelas en notas más pequeñas para mantenerlas sincronizadas.",
-      "over": "Sin sincronizar",
+      "over": "No se sincroniza",
       "approaching": "Cerca del límite"
     },
     "activity": {
@@ -1741,7 +1737,7 @@
   "tags": {
     "header": {
       "title": "Etiquetas",
-      "subtitle": "Gestiona las etiquetas de notas, diarios y tareas"
+      "subtitle": "Gestiona las etiquetas de las notas, el diario y las tareas"
     },
     "loading": "Cargando etiquetas…",
     "empty": "Aún no hay etiquetas. Aparecerán aquí a medida que las añadas a notas y tareas.",
@@ -1769,7 +1765,7 @@
       "renameFailed": "No se pudo cambiar el nombre de la etiqueta",
       "deleteFailed": "No se pudo eliminar la etiqueta",
       "deleted": "Se eliminó «{name}» de {count, plural, one {# elemento} other {# elementos}}",
-      "mergeFailed": "No se pudieron fusionar etiquetas",
+      "mergeFailed": "No se pudieron fusionar las etiquetas",
       "merged": "Se fusionó «{source}» con «{target}» ({count, plural, one {# elemento} other {# elementos}})",
       "colorUpdated": "Color de «{name}» actualizado",
       "colorFailed": "No se pudo actualizar el color",
@@ -1971,15 +1967,15 @@
           "description": "Abrir el menú de nueva pestaña"
         },
         "closeAll": {
-          "label": "Cerrar todas las pestañas del panel",
+          "label": "Cerrar todas las pestañas",
           "description": "Cerrar todas las pestañas del panel"
         },
         "pin": {
           "label": "Fijar pestaña",
-          "description": "Fijar o dejar de fijar la pestaña"
+          "description": "Fijar o dejar de fijar la pestaña actual"
         },
         "duplicate": {
-          "label": "Duplicar la pestaña",
+          "label": "Duplicar pestaña",
           "description": "Abrir una copia de la pestaña actual"
         },
         "splitRight": {
@@ -1992,7 +1988,7 @@
         },
         "closeSplit": {
           "label": "Cerrar el panel dividido",
-          "description": "Cerrar el panel dividido"
+          "description": "Cerrar el panel dividido actual"
         }
       },
       "editor": {
@@ -2090,7 +2086,7 @@
       "showErrorDetailsAria": "{summary}, mostrar los detalles del error"
     },
     "componentsSyncSyncStatus": {
-      "lastSynced": "Última sincronización ",
+      "lastSynced": "Última sincronización: ",
       "pending": "pendiente",
       "localOnly": "solo local",
       "detected": "detectado",
@@ -2116,7 +2112,7 @@
       "failedToConfirmRecoveryPhrase": "No se pudo confirmar la frase de recuperación",
       "failedToAnalyzeContent": "No se pudo analizar el contenido",
       "failedToLoadUpdaterState": "No se pudo cargar el estado del actualizador",
-      "failedToCheckForUpdates": "No se pudo buscar actualizaciones",
+      "failedToCheckForUpdates": "No se pudieron buscar actualizaciones",
       "failedToDownloadUpdate": "No se pudo descargar la actualización",
       "failedToInstallUpdate": "No se pudo instalar la actualización",
       "failedToLoadEditorSettings": "No se pudieron cargar los ajustes del editor",
@@ -2262,7 +2258,7 @@
       "connected": "Conectado",
       "disconnected": "Desconectado",
       "toolsDisabled": "Herramientas desactivadas",
-      "fullTools": "Herramientas completas activadas"
+      "fullTools": "Todas las herramientas activadas"
     },
     "alwaysAllowed": {
       "group": "Siempre permitidas",

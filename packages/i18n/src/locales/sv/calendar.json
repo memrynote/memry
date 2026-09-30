@@ -3,7 +3,13 @@
     "day": "Dag",
     "week": "Vecka",
     "month": "Månad",
-    "year": "År"
+    "monthGridLabel": "Månadsrutnät",
+    "year": "År",
+    "timeline": "Tidslinje"
+  },
+  "undo": {
+    "moveEvent": "Flytta händelse",
+    "moveTask": "Planera om uppgift"
   },
   "toolbar": {
     "create-event": "Skapa händelse",
@@ -13,27 +19,41 @@
     "next-month": "Nästa månad",
     "today": "Idag"
   },
+  "search": {
+    "open": "Sök i kalender",
+    "close": "Stäng sökning",
+    "placeholder": "Sök händelser, uppgifter, påminnelser…",
+    "no-results": "Inga träffar"
+  },
   "filter": {
     "filter-calendars": "Filtrera kalendrar",
     "sources": "Källor",
-    "memry-items": "memrynote objekt",
+    "memry-items": "memrynote-objekt",
     "imported-calendars": "Importerade kalendrar",
     "event-types": "Händelsetyper",
     "google-calendars": "Google-kalendrar",
-    "refresh-google-calendars": "Uppdatera Google-kalendrar"
+    "refresh-google-calendars": "Uppdatera Google-kalendrar",
+    "not-syncing": "Synkroniseras inte · kryssa i för att slå på",
+    "enable-source-failed": "Det gick inte att slå på kalendern.",
+    "provider-calendars": {
+      "ics": "Prenumererade kalendrar",
+      "caldav": "CalDAV-kalendrar",
+      "apple-eventkit": "Den här Macen",
+      "other": "Andra kalendrar"
+    }
   },
   "visual-type": {
     "event": "Händelse",
     "imported-event": "Importerad händelse",
+    "note": "Anteckning",
+    "note-date": "Datumpåminnelse",
     "task": "Uppgift",
     "reminder": "Påminnelse",
-    "snooze": "Snooza",
-    "note": "Anteckning",
-    "note-date": "Datumpåminnelse"
+    "snooze": "Uppskjuten"
   },
   "state": {
-    "loading-calendar": "Laddar kalender…",
-    "loading-calendars": "Laddar kalendrar…",
+    "loading-calendar": "Läser in kalendern…",
+    "loading-calendars": "Läser in kalendrar…",
     "preparing": "Förbereder…"
   },
   "empty": {
@@ -41,50 +61,90 @@
     "no-events": "Inga händelser"
   },
   "time": {
-    "all-day": "Hela dagen",
+    "all-day": "Heldag",
     "all-day-lower": "heldag",
     "pick-a-date": "Välj ett datum",
     "new-event": "Ny händelse",
-    "more-events": "{count, plural, one {# fler händelser} other {# fler händelser}}"
+    "more-events": "{count, plural, one {# händelse till} other {# händelser till}}"
   },
   "form": {
     "create-calendar-event": "Skapa kalenderhändelse",
     "edit-calendar-event": "Redigera kalenderhändelse",
     "quick-create-description": "Ange en titel och spara för att skapa en händelse under den valda tidsperioden.",
-    "event-editor-description": "Uppdatera titel, plats, datum, tid och anteckningar för denna händelse.",
+    "event-editor-description": "Uppdatera titel, plats, datum, tid och anteckningar för den här händelsen.",
     "new-event-placeholder": "Ny händelse",
     "notes-url-placeholder": "Lägg till anteckningar eller URL",
     "start": "Start",
     "end": "Slut",
-    "google-calendar": "Google Kalender",
+    "google-calendar": "Google-kalender",
     "target-calendar": "Målkalender",
     "use-default-calendar": "Använd standardkalender",
     "use-default-calendar-with-name": "Använd standard ({calendar})",
-    "use-memry-calendar-default": "Använd memrynote kalender (standard)",
-    "primary-suffix": "primär"
+    "use-memry-calendar-default": "Använd memrynote-kalendern (standard)",
+    "primary-suffix": "primär",
+    "project": "Projekt",
+    "no-project": "Inget projekt",
+    "remove-from-project": "Ta bort från {project}",
+    "project-update-failed": "Det gick inte att uppdatera händelsens projekt",
+    "color": "Färg",
+    "default-color": "Standardfärg"
   },
   "delete-dialog": {
-    "title": "Ta bort händelse?",
-    "local-description": "\"{title}\" kommer att tas bort permanent. Denna åtgärd kan inte ångras.",
-    "google-bound-description": "\"{title}\" kommer att tas bort från memrynote och Google Kalender. Denna åtgärd kan inte ångras.",
-    "context-menu-delete-label": "Ta bort händelse",
+    "title": "Radera händelsen?",
+    "local-description": "”{title}” raderas permanent. Den här åtgärden kan inte ångras.",
+    "google-bound-description": "”{title}” raderas från memrynote och Google Calendar. Den här åtgärden kan inte ångras.",
+    "context-menu-delete-label": "Radera händelse",
     "context-menu-add-to-project": "Lägg till i projekt"
+  },
+  "agent-access-dialog": {
+    "aria": "Välj om AI ska få läsa dina händelser i Google Calendar",
+    "title": "Ska AI få läsa dina händelser i Google Calendar?",
+    "body": "Du ser fortfarande dina Google-händelser i memrynote oavsett vad du väljer. Det här avgör bara om AI-agenten får läsa dem när du frågar den om ditt schema.",
+    "footnote": "Du kan ändra det här när som helst under Inställningar → Integrationer → Google Calendar.",
+    "allow": "Tillåt",
+    "deny": "Tillåt inte",
+    "save-error": "Det gick inte att spara ditt val",
+    "provider": {
+      "aria": "Välj om AI får läsa händelserna i din {provider}",
+      "title": "Ska AI få läsa händelserna i din {provider}?",
+      "body": "Du ser fortfarande de här händelserna i memrynote oavsett vad du väljer. Det här avgör bara om AI-agenten får läsa dem när du frågar den om ditt schema. Du väljer separat för varje kalendertjänst.",
+      "footnote": "Du kan ändra det här när som helst under Inställningar → Kalender."
+    },
+    "provider-names": {
+      "ics": "prenumererade kalender",
+      "caldav": "CalDAV-kalender",
+      "apple-eventkit": "macOS-kalender"
+    }
   },
   "promote-dialog": {
     "aria": "Redigera extern kalenderhändelse",
-    "title": "Redigera denna händelse i memrynote?",
-    "body": "Att redigera denna händelse skapar en länkad kopia i memrynote så att ändringar synkroniseras åt båda hållen. Fortsätta?",
+    "title": "Redigera den här händelsen i memrynote?",
+    "body": "Om du redigerar den här händelsen skapas en länkad kopia i memrynote så att ändringar synkroniseras åt båda hållen. Vill du fortsätta?",
     "do-not-ask-again": "Fråga inte igen",
     "confirm-label": "Redigera i memrynote",
     "agent-notice": "AI-agenten kan läsa den här kopian, även om AI-åtkomst till Google Calendar är avstängd. Din ursprungliga Google-händelse förblir dold för den."
   },
   "onboarding-dialog": {
-    "aria": "Välj din standard Google-kalender",
+    "aria": "Välj din standardkalender i Google",
     "title": "Vilken kalender ska nya memrynote-händelser gå till?",
-    "body": "Välj den Google-kalender som memrynote ska använda som standard. Du kan fortfarande åsidosätta detta per händelse.",
+    "body": "Välj den Google-kalender som memrynote ska använda som standard. Du kan fortfarande välja en annan kalender för enskilda händelser.",
     "default-calendar-label": "Använd memrynote-hanterad kalender",
     "skip": "Hoppa över",
-    "use-this-calendar": "Använd denna kalender"
+    "use-this-calendar": "Använd den här kalendern"
+  },
+  "connect-prompt": {
+    "pill": "Anslut Google",
+    "aria": "Anslut Google Calendar",
+    "title": "Slutför anslutningen till Google Calendar",
+    "body": "Anslut ditt Google-konto för att göra mer med din kalender:",
+    "bullets": {
+      "events": "Se dina Google-händelser bredvid anteckningar och uppgifter",
+      "sync": "Skapa och redigera händelser, synkroniserade åt båda håll",
+      "schedule": "Schemalägg uppgifter och anteckningar i din kalender"
+    },
+    "continue": "Fortsätt med Google",
+    "dismiss": "Avfärda",
+    "error": "Det gick inte att ansluta Google Calendar. Försök igen."
   },
   "metadata": {
     "attendees": "Deltagare",
@@ -94,11 +154,12 @@
     "visibility": "Synlighet:",
     "optional": "Valfri",
     "join-meeting": "Gå med i mötet",
+    "video-call": "Videosamtal",
     "response": {
-      "accepted": "Accepterad",
-      "declined": "Avstyrd",
-      "tentative": "Tentativ",
-      "needs-action": "Avvaktar"
+      "accepted": "Tackat ja",
+      "declined": "Tackat nej",
+      "tentative": "Kanske",
+      "needs-action": "Väntar på svar"
     },
     "visibility-value": {
       "private": "Privat",
@@ -113,86 +174,213 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "Kunde inte spara händelsen. Försök igen.",
-      "couldNotCreateEventTryAgain": "Kunde inte skapa händelsen. Försök igen.",
-      "couldNotSaveDefaultCalendarTryAgain": "Kunde inte spara standardkalendern. Försök igen.",
-      "failedToLoadCalendarPreferences": "Misslyckades med att ladda kalenderinställningar",
-      "failedToUpdateCalendarPreferences": "Misslyckades med att uppdatera kalenderinställningar",
-      "couldNotEditThisEventTryAgain": "Kunde inte redigera denna händelse. Försök igen.",
-      "failedToDeleteEvent": "Misslyckades med att ta bort händelse",
-      "couldNotUnsnoozeInboxItem": "Kunde inte avsnooza.",
-      "couldNotRescheduleInboxItem": "Kunde inte schemalägga om."
+      "couldNotSaveEventTryAgain": "Det gick inte att spara händelsen. Försök igen.",
+      "couldNotCreateEventTryAgain": "Det gick inte att skapa händelsen. Försök igen.",
+      "couldNotSaveDefaultCalendarTryAgain": "Det gick inte att spara standardkalendern. Försök igen.",
+      "failedToLoadCalendarPreferences": "Det gick inte att läsa in kalenderinställningarna",
+      "failedToUpdateCalendarPreferences": "Det gick inte att uppdatera kalenderinställningarna",
+      "couldNotEditThisEventTryAgain": "Det gick inte att redigera händelsen. Försök igen.",
+      "failedToDeleteEvent": "Det gick inte att radera händelsen",
+      "couldNotUnsnoozeInboxItem": "Det gick inte att ta tillbaka objektet.",
+      "couldNotRescheduleInboxItem": "Det gick inte att planera om."
     },
     "inboxSnoozePopover": {
-      "title": "Snoozad inkorgspost",
+      "title": "Uppskjutet inkorgsobjekt",
       "openInInbox": "Öppna i inkorgen",
-      "unsnoozeNow": "Avsnooza nu",
-      "reschedule": "Schemalägg om"
+      "unsnoozeNow": "Ta tillbaka nu",
+      "reschedule": "Planera om"
     }
+  },
+  "chip": {
+    "complete-task": "Markera ”{title}” som klar",
+    "task-completed": "Uppgift slutförd",
+    "could-not-complete": "Det gick inte att slutföra uppgiften",
+    "duration-minutes": "{minutes} min",
+    "duration-hours": "{hours} h",
+    "duration-hours-minutes": "{hours} h {minutes} min"
+  },
+  "event-card": {
+    "kind": "Händelse",
+    "close": "Stäng"
   },
   "task-popover": {
     "title-fallback": "Uppgiftsdetaljer",
+    "kind": "Uppgift",
+    "open": "Öppna",
+    "complete": "Slutför",
+    "more-actions": "Fler åtgärder",
+    "move": "Flytta",
+    "later": "Senare",
+    "next-week": "Nästa vecka",
     "open-task": "Öppna uppgift",
     "source-note": "Källanteckning",
-    "reschedule": "Schemalägg om",
+    "reschedule": "Planera om",
     "mark-done": "Markera som klar",
     "mark-not-done": "Markera som inte klar",
     "later-today": "Senare idag",
     "tomorrow": "Imorgon",
-    "next-week-mon": "Nästa vecka · Mån",
+    "next-week-mon": "Nästa vecka · mån",
     "pick-date-time": "Välj datum & tid…",
     "remove-due-date": "Ta bort förfallodatum",
     "subtasks-prefix": "Deluppgifter",
-    "subtasks-counter": "{done} av {total} klar",
+    "subtasks-counter": "{done} av {total} klara",
     "repeats": "Upprepas",
     "repeats-daily": "Upprepas dagligen",
     "repeats-weekly": "Upprepas veckovis",
     "repeats-monthly": "Upprepas månadsvis",
     "repeats-yearly": "Upprepas årligen",
     "errors": {
-      "could-not-save": "Kunde inte spara uppgift",
-      "could-not-reschedule": "Kunde inte ändra uppgiftens schema",
-      "could-not-remove-due-date": "Kunde inte ta bort förfallodatum",
-      "could-not-open-note": "Kunde inte öppna anteckning"
+      "could-not-save": "Det gick inte att spara uppgiften",
+      "could-not-reschedule": "Det gick inte att planera om uppgiften",
+      "could-not-remove-due-date": "Det gick inte att ta bort förfallodatumet",
+      "could-not-open-note": "Det gick inte att öppna anteckningen"
     }
   },
-  "connect-prompt": {
-    "aria": "Anslut Google Calendar",
-    "body": "Anslut ditt Google-konto för att göra mer med din kalender:",
-    "bullets": {
-      "events": "Se dina Google-händelser bredvid anteckningar och uppgifter",
-      "schedule": "Schemalägg uppgifter och anteckningar i din kalender",
-      "sync": "Skapa och redigera händelser, synkroniserade åt båda håll"
-    },
-    "continue": "Fortsätt med Google",
-    "dismiss": "Avfärda",
-    "error": "Det gick inte att ansluta Google Calendar. Försök igen.",
-    "pill": "Anslut Google",
-    "title": "Slutför anslutningen till Google Calendar"
-  },
   "notePopover": {
-    "couldNotOpen": "Det gick inte att öppna anteckningen",
     "kind": "Anteckning",
     "kindDateReminder": "Datumpåminnelse",
-    "open": "Öppna anteckning"
+    "open": "Öppna anteckning",
+    "couldNotOpen": "Det gick inte att öppna anteckningen"
   },
-  "search": {
-    "close": "Stäng sökning",
-    "no-results": "Inga träffar",
-    "open": "Sök i kalender",
-    "placeholder": "Sök händelser, uppgifter, påminnelser…"
+  "timeline": {
+    "label": "Schemalagt arbete på en tidslinje",
+    "tasks-column": "Uppgifter",
+    "span": "{start} – {end}",
+    "due": "Förfaller {date}",
+    "starts": "Startar {date}",
+    "starts-short": "{date} →",
+    "no-date": "Inget datum",
+    "today": "Idag",
+    "overdue": "försenad",
+    "untitled": "Namnlös",
+    "days": "{count, plural, one {# dag} other {# dagar}}",
+    "events": "Händelser",
+    "schedule-hint": "Klicka för att ange ett datum, dra för att ange ett intervall",
+    "empty-title": "Inget på tidslinjen här",
+    "empty-body": "Uppgifter med start- eller förfallodatum samt heldags- och flerdagshändelser visas här. Slå på Uppgifter utan datum under Visning för att schemalägga dem genom att dra.",
+    "status": {
+      "todo": "Att göra",
+      "in_progress": "Pågår",
+      "done": "Klar"
+    },
+    "priority": {
+      "urgent": "Brådskande",
+      "high": "Hög",
+      "medium": "Medel",
+      "low": "Låg",
+      "none": "Ingen prioritet"
+    },
+    "zoom": {
+      "label": "Zoom",
+      "weeks": "Veckor",
+      "months": "Månader",
+      "quarters": "Kvartal"
+    },
+    "group-by": {
+      "project": "Projekt",
+      "status": "Status",
+      "priority": "Prioritet",
+      "none": "Ingen gruppering"
+    },
+    "group-by-label": "Gruppering: {group}",
+    "order-by": {
+      "start": "Startdatum",
+      "due": "Förfallodatum",
+      "title": "Titel"
+    },
+    "display": {
+      "button": "Visning",
+      "group-by": "Gruppera efter",
+      "order-by": "Sortera efter",
+      "show": "Visa",
+      "show-events": "Händelser",
+      "show-undated": "Uppgifter utan datum",
+      "show-completed": "Slutförda uppgifter",
+      "show-subtasks": "Deluppgifter"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# uppgift} other {# uppgifter}} · {events, plural, one {# händelse} other {# händelser}}",
+      "open": "Öppna",
+      "move": "Flytta",
+      "resize": "Ändra längd",
+      "actions": "Åtgärder",
+      "select": "Markera",
+      "today": "Idag"
+    },
+    "actions": {
+      "search": "Sök åtgärder…",
+      "search-projects": "Sök projekt…",
+      "empty": "Ingen matchande åtgärd",
+      "no-projects": "Inget matchande projekt",
+      "open": "Öppna uppgift",
+      "open-in-tasks": "Öppna i Uppgifter",
+      "schedule": "Schemalägg",
+      "set-start": "Ställ in startdatum",
+      "set-due": "Ställ in förfallodatum",
+      "move-later": "Flytta en vecka senare",
+      "move-earlier": "Flytta en vecka tidigare",
+      "clear-dates": "Rensa datum",
+      "clear-start": "Rensa startdatum",
+      "clear-due": "Rensa förfallodatum",
+      "task": "Uppgift",
+      "complete": "Markera som klar",
+      "uncomplete": "Markera som ej klar",
+      "change-project": "Byt projekt",
+      "page": {
+        "root": "Åtgärder",
+        "start": "Startdatum",
+        "due": "Förfallodatum",
+        "project": "Projekt"
+      }
+    },
+    "undo": {
+      "reschedule": "Planera om ”{title}”"
+    }
   },
-  "undo": {
-    "moveEvent": "Flytta händelse",
-    "moveTask": "Schemalägg om uppgift"
+  "calendar-color": {
+    "tomato": "Tomat",
+    "flamingo": "Flamingo",
+    "tangerine": "Mandarin",
+    "banana": "Banan",
+    "sage": "Salvia",
+    "basil": "Basilika",
+    "peacock": "Påfågel",
+    "blueberry": "Blåbär",
+    "lavender": "Lavendel",
+    "grape": "Vindruva",
+    "graphite": "Grafit"
   },
-  "agent-access-dialog": {
-    "allow": "Tillåt",
-    "aria": "Välj om AI ska få läsa dina händelser i Google Calendar",
-    "body": "Du ser fortfarande dina Google-händelser i memrynote oavsett vad du väljer. Det här avgör bara om AI-agenten får läsa dem när du frågar den om ditt schema.",
-    "deny": "Tillåt inte",
-    "footnote": "Du kan ändra det här när som helst under Inställningar → Integrationer → Google Calendar.",
-    "save-error": "Det gick inte att spara ditt val",
-    "title": "Ska AI få läsa dina händelser i Google Calendar?"
+  "subscribedEvent": {
+    "kind": "Prenumererad kalender",
+    "kindAppleEventKit": "Den här Macen",
+    "close": "Stäng",
+    "detailsFailed": "Det gick inte att läsa in deltagarna och länkarna för den här händelsen. Själva händelsen är oförändrad.",
+    "showMore": "Visa mer",
+    "showLess": "Visa mindre",
+    "organizer": "organisatör",
+    "you": "du",
+    "phone": "Delta via telefon",
+    "alert": "{minutes, plural, =0 {Påminnelse vid starttid} one {Påminnelse # minut före} other {Påminnelse # minuter före}}",
+    "alertHours": "{hours, plural, one {Påminnelse # timme före} other {Påminnelse # timmar före}}",
+    "alertDays": "{days, plural, one {Påminnelse # dag före} other {Påminnelse # dagar före}}",
+    "recurrence": {
+      "daily": "{count, plural, one {Upprepas varje dag} =2 {Upprepas varannan dag} other {Upprepas var #:e dag}}",
+      "weekly": "{count, plural, one {Upprepas varje vecka} =2 {Upprepas varannan vecka} other {Upprepas var #:e vecka}}",
+      "weeklyOn": "{count, plural, one {Upprepas varje vecka på {days}} =2 {Upprepas varannan vecka på {days}} other {Upprepas var #:e vecka på {days}}}",
+      "monthly": "{count, plural, one {Upprepas varje månad} =2 {Upprepas varannan månad} other {Upprepas var #:e månad}}",
+      "yearly": "{count, plural, one {Upprepas varje år} =2 {Upprepas vartannat år} other {Upprepas vart #:e år}}",
+      "other": "Upprepas"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Prenumererade kalendrar"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

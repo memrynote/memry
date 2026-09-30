@@ -6,7 +6,7 @@
     "render-failed-description": "تعذّر على هذا الجهاز تشغيل محرك عرض الرسومات. ملاحظاتك آمنة.",
     "try-again": "إعادة المحاولة",
     "aria-label": "الرسم البياني المعرفي يضم {nodeCount, plural, zero {# عُقدة} one {عُقدة واحدة} two {عقدتين} few {# عُقد} many {# عُقدة} other {# عُقدة}} و{edgeCount, plural, zero {# ارتباط} one {ارتباطًا واحدًا} two {ارتباطين} few {# ارتباطات} many {# ارتباطًا} other {# ارتباط}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "عقد الرسم البياني",
+    "nodes-list-label": "عُقد الرسم البياني",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
@@ -41,7 +41,7 @@
     "hide-settings": "إخفاء الإعدادات",
     "reset-filters": "إعادة تعيين عوامل التصفية",
     "filters": "عوامل التصفية",
-    "display": "عرض",
+    "display": "العرض",
     "show-labels": "إظهار التسميات",
     "live-motion": "الحركة الحية",
     "focus-depth": "عمق {depth}",
@@ -62,7 +62,7 @@
     "tags": "الوسوم",
     "orphans": "العُقد المعزولة",
     "canvas-edges": "ارتباطات اللوحات",
-    "toggle-entity": "إظهار {label} أو إخفاؤه",
+    "toggle-entity": "إظهار {label} أو إخفاؤها",
     "toggle-orphans": "إظهار العُقد المعزولة أو إخفاؤها"
   },
   "search": {
@@ -71,7 +71,7 @@
   },
   "context-menu": {
     "untitled": "بدون عنوان",
-    "focus-node": "التركيز على هذه العقدة",
+    "focus-node": "التركيز على هذه العُقدة",
     "open-new-tab": "فتح في علامة تبويب جديدة",
     "create-note": "إنشاء ملاحظة",
     "copy-title": "نسخ العنوان",

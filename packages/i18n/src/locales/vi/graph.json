@@ -6,13 +6,13 @@
     "render-failed-description": "Thiết bị này không khởi động được trình kết xuất đồ họa. Ghi chú của bạn vẫn an toàn.",
     "try-again": "Thử lại",
     "aria-label": "Đồ thị tri thức với {nodeCount, plural, other {# nút}} và {edgeCount, plural, other {# kết nối}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "Các nút của đồ thị",
+    "nodes-list-label": "Nút trong đồ thị",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
     "title": "Đồ thị tri thức của bạn",
     "description": "Các kết nối giữa ghi chú, công việc và dự án sẽ xuất hiện tại đây dưới dạng đồ thị tương tác.",
-    "link-title": "Liên kết ghi chú của bạn",
+    "link-title": "Liên kết các ghi chú",
     "link-description": "Sử dụng [[wikilinks]] để kết nối các ý tưởng giữa các ghi chú",
     "discover-title": "Khám phá các quy luật",
     "discover-description": "Khi các kết nối phát triển, các cụm và chủ đề sẽ tự nhiên xuất hiện"
@@ -43,7 +43,7 @@
     "filters": "Bộ lọc",
     "display": "Hiển thị",
     "show-labels": "Hiển thị nhãn",
-    "live-motion": "Chuyển động trực tiếp",
+    "live-motion": "Chuyển động liên tục",
     "focus-depth": "độ sâu {depth}",
     "clear-focus": "Bỏ tập trung vào nút",
     "relayout": "Sắp xếp lại bố cục",
@@ -99,7 +99,7 @@
     "open-full": "Mở đồ thị đầy đủ",
     "close": "Đóng đồ thị",
     "pin": "Ghim vào ghi chú này",
-    "unpin": "Bỏ ghim và theo ghi chú đang mở",
+    "unpin": "Bỏ ghim và đi theo ghi chú đang mở",
     "pinned-to": "Đã ghim: {title}"
   },
   "edit": {

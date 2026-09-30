@@ -286,7 +286,7 @@
       "movedTo": "Movida para {target}",
       "moved": "{count, plural, one {Movida para {target}} many {# tarefas movidas para {target}} other {# tarefas movidas para {target}}}",
       "prioritySetTo": "Prioridade definida como {priority}",
-      "prioritySet": "{count, plural, one {Prioridade definida como {priority}} many {# tarefas definidas como {priority}} other {# tarefas definidas como {priority}}}",
+      "prioritySet": "{count, plural, one {Prioridade definida como {priority}} many {Prioridade definida como {priority} em # tarefas} other {Prioridade definida como {priority} em # tarefas}}",
       "deleted": "{count, plural, one {Tarefa excluída} many {# tarefas excluídas} other {# tarefas excluídas}}",
       "archived": "{count, plural, one {Tarefa arquivada} many {# tarefas arquivadas} other {# tarefas arquivadas}}",
       "undoArchive": "{count, plural, one {# tarefa arquivada} many {# tarefas arquivadas} other {# tarefas arquivadas}}"
@@ -501,7 +501,7 @@
       "reschedule": "Reagendar",
       "today": "Hoje",
       "tomorrow": "Amanhã",
-      "nextWeek": "Semana que vem",
+      "nextWeek": "Próxima semana",
       "removeDate": "Remover data",
       "moveToProject": "Mover para o projeto",
       "current": "Atual",
@@ -808,18 +808,18 @@
       "clearTime": "Remover horário"
     },
     "componentsTasksTodayEmptyState": {
-      "nothingScheduledForToday": "Nada programado para hoje",
+      "nothingScheduledForToday": "Nada agendado para hoje",
       "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Você tem tarefas atrasadas acima. Adicione algumas tarefas para hoje ou confira suas próximas tarefas.",
       "addTaskForToday": "Adicionar tarefa para hoje",
       "allCaughtUpForToday": "Tudo em dia por hoje",
-      "youHaveNothingScheduledEnjoyTheClarity": "Você não tem nada programado. Aproveite a clareza.",
+      "youHaveNothingScheduledEnjoyTheClarity": "Você não tem nada agendado. Aproveite a clareza.",
       "addTaskForToday2": "Adicionar tarefa para hoje"
     },
     "componentsTasksUpcomingEmptyState": {
-      "nothingScheduledForTheNext7Days": "Nada programado para os próximos 7 dias",
+      "nothingScheduledForTheNext7Days": "Nada agendado para os próximos 7 dias",
       "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Você tem tarefas atrasadas acima. Planeje com antecedência adicionando tarefas para a próxima semana.",
       "addTask": "Adicionar tarefa",
-      "noUpcomingTasks": "Nenhuma próxima tarefa",
+      "noUpcomingTasks": "Sem próximas tarefas",
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "As tarefas com prazo nos próximos 7 dias aparecerão aqui. Planeje sua semana adicionando algumas tarefas.",
       "addTask2": "Adicionar tarefa"
     }

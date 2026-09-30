@@ -107,7 +107,7 @@
     "provider": {
       "aria": "Elige si la IA puede leer tus eventos de {provider}",
       "title": "¿Permitir que la IA lea tus eventos de {provider}?",
-      "body": "De cualquier forma, seguirás viendo estos eventos en memrynote. Esto solo decide si el agente de IA puede leerlos cuando le preguntes por tu agenda. Cada servicio de calendario se decide por separado.",
+      "body": "De cualquier forma, seguirás viendo estos eventos en memrynote. Esto solo decide si el agente de IA puede leerlos cuando le preguntes por tu agenda. Cada servicio de calendario se configura por separado.",
       "footnote": "Puedes cambiarlo cuando quieras en Ajustes → Calendario."
     },
     "provider-names": {
@@ -255,7 +255,7 @@
     "untitled": "Sin título",
     "days": "{count, plural, one {# día} other {# días}}",
     "events": "Eventos",
-    "schedule-hint": "Haz clic para fijar una fecha; arrastra para fijar un intervalo",
+    "schedule-hint": "Haz clic para elegir una fecha; arrastra para elegir un intervalo",
     "empty-title": "No hay nada en la cronología",
     "empty-body": "Aquí aparecen las tareas con fecha de inicio o de vencimiento y los eventos de todo el día o de varios días. Activa «Tareas sin fecha» en Visualización para programarlas arrastrándolas.",
     "status": {

@@ -138,10 +138,10 @@
       "downloadingLatest": "Stahování nejnovější verze",
       "downloadingLatestPercent": "Stahování nejnovější verze ({percent} %)",
       "downloaded": "Verze memrynote {version} je připravena k instalaci",
-      "upToDate": "Tato instalace je na nejnovější publikované verzi",
+      "upToDate": "Máte nainstalovanou nejnovější vydanou verzi",
       "checking": "Hledání novější verze v GitHub Releases",
       "idle": "Vyhledejte nová vydání a nainstalujte je, aniž byste opustili aplikaci",
-      "unsupportedToast": "Automatické aktualizace jsou k dispozici pouze v balených verzích",
+      "unsupportedToast": "Automatické aktualizace jsou k dispozici pouze v zabalených verzích",
       "upToDateToast": "memrynote {version} je aktuální",
       "actionFailed": "Akce aktualizace se nezdařila",
       "actions": {
@@ -167,13 +167,13 @@
       "mode": {
         "label": "Režim aktualizací",
         "off": "Nekontrolovat",
-        "notify": "Pouze upozornit",
+        "notify": "Pouze upozorňovat",
         "auto": "Stahovat automaticky"
       }
     },
     "language": {
       "label": "Jazyk",
-      "helper": "Většina aplikace se aktualizuje okamžitě. Některé systémové texty – již zobrazená oznámení, popisek v Docku, záhlaví okna – se obnoví po dalším spuštění.",
+      "helper": "Většina aplikace se přepne okamžitě. Některé systémové texty – již zobrazená oznámení, popisek v Docku, záhlaví okna – se obnoví po dalším spuštění.",
       "changed": "Jazyk změněn na {nativeName}",
       "failed": "Změna jazyka se nezdařila. Zkuste to prosím znovu."
     },
@@ -184,7 +184,7 @@
         "12h": "12 h",
         "24h": "24 h"
       },
-      "error": "Aktualizace formátu času se nezdařila"
+      "error": "Formát času se nepodařilo aktualizovat"
     },
     "dateFormat": {
       "label": "Formát data",
@@ -195,7 +195,7 @@
         "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
         "DD.MM.YYYY": "DD.MM.YYYY"
       },
-      "error": "Nepodařilo se aktualizovat formát data"
+      "error": "Formát data se nepodařilo aktualizovat"
     },
     "tabs": {
       "openPagesInNewTab": {
@@ -208,14 +208,14 @@
       },
       "closeButton": {
         "label": "Tlačítko pro zavření karty",
-        "description": "Kdy zobrazit tlačítko Zavřít",
+        "description": "Kdy zobrazovat tlačítko pro zavření",
         "options": {
           "always": "Vždy viditelné",
           "hover": "Při najetí myší",
           "active": "Pouze na aktivní kartě"
         }
       },
-      "error": "Aktualizace nastavení se nezdařila"
+      "error": "Nastavení se nepodařilo aktualizovat"
     },
     "window": {
       "minimizeToTray": {
@@ -226,7 +226,7 @@
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Vytvořit ve vybrané složce",
+        "label": "Vytvářet ve vybrané složce",
         "description": "Nové poznámky a složky se vytvářejí v aktuálně vybrané složce. Když je vypnuto, položky se vždy vytvářejí v kořeni trezoru."
       },
       "defaultNoteFolder": {
@@ -289,9 +289,9 @@
         "light": "Světlý",
         "white": "Bílý",
         "dark": "Tmavý",
-        "system": "Systém"
+        "system": "Podle systému"
       },
-      "error": "Aktualizace motivu se nezdařila"
+      "error": "Motiv se nepodařilo aktualizovat"
     },
     "colorTheme": {
       "default": "Memrynote",
@@ -346,7 +346,7 @@
         "label": "Omezit pohyb",
         "description": "Omezit animace nebo použít nastavení systému",
         "options": {
-          "system": "Systém",
+          "system": "Podle systému",
           "on": "Zapnuto"
         }
       },
@@ -397,8 +397,8 @@
         "unavailable": "Nainstalovaná písma nejsou v tomto systému k dispozici.",
         "notInstalled": "V tomto počítači není nainstalováno – používá se náhradní písmo."
       },
-      "fontSizeError": "Aktualizace velikosti písma se nezdařila",
-      "fontFamilyError": "Aktualizace rodiny písem se nezdařila"
+      "fontSizeError": "Velikost písma se nepodařilo aktualizovat",
+      "fontFamilyError": "Rodinu písem se nepodařilo aktualizovat"
     },
     "v2": {
       "groups": {
@@ -431,12 +431,12 @@
         "normal": "Normální",
         "full": "Plná šířka"
       },
-      "error": "Aktualizace šířky editoru se nezdařila"
+      "error": "Šířku editoru se nepodařilo aktualizovat"
     },
     "toolbarMode": {
       "label": "Připnutý panel formátování",
       "description": "Vždy zobrazovat panel nástrojů nad editorem",
-      "error": "Aktualizace režimu panelu nástrojů se nezdařila"
+      "error": "Režim panelu nástrojů se nepodařilo aktualizovat"
     },
     "spellCheck": {
       "label": "Kontrolovat pravopis",
@@ -478,7 +478,7 @@
       "deleted": "Šablona smazána",
       "deleteFailed": "Šablonu se nepodařilo smazat",
       "duplicated": "Šablona duplikována",
-      "duplicateFailed": "Duplikování šablony se nezdařilo"
+      "duplicateFailed": "Šablonu se nepodařilo duplikovat"
     },
     "dialogs": {
       "delete": {
@@ -520,7 +520,7 @@
       "noneAsk": "Žádná (pokaždé se zeptat)",
       "updated": "Výchozí šablona aktualizována",
       "cleared": "Výchozí šablona byla vymazána",
-      "error": "Aktualizace výchozí šablony se nezdařila"
+      "error": "Výchozí šablonu se nepodařilo aktualizovat"
     },
     "showSchedule": {
       "label": "Zobrazovat rozvrh",
@@ -541,7 +541,7 @@
     "folder": {
       "label": "Složka deníku",
       "description": "Složka, kde jsou uloženy denní poznámky",
-      "placeholder": "deník"
+      "placeholder": "journal"
     },
     "dateFormat": {
       "label": "Formát data",
@@ -556,7 +556,7 @@
       "label": "Náhled",
       "description": "Cesta k dnešnímu souboru deníku"
     },
-    "updateError": "Aktualizace nastavení se nezdařila",
+    "updateError": "Nastavení se nepodařilo aktualizovat",
     "weekday": {
       "toggle": "Používat pro každý den jinou šablonu",
       "toggleDescription": "Vyberte šablonu pro každý den v týdnu",
@@ -592,7 +592,7 @@
       "description": "Přiřazeno, když není vybrán žádný projekt",
       "placeholder": "Žádný výchozí projekt",
       "none": "Bez výchozího (použít Osobní)",
-      "error": "Nepodařilo se aktualizovat výchozí projekt"
+      "error": "Výchozí projekt se nepodařilo aktualizovat"
     },
     "sortOrder": {
       "label": "Výchozí pořadí řazení",
@@ -603,7 +603,7 @@
         "priority": "Priorita",
         "createdAt": "Datum vytvoření"
       },
-      "error": "Aktualizace pořadí řazení se nezdařila"
+      "error": "Pořadí řazení se nepodařilo aktualizovat"
     },
     "defaultView": {
       "label": "Výchozí zobrazení",
@@ -614,7 +614,7 @@
         "tomorrow": "Zítra",
         "next7": "Příštích 7 dní"
       },
-      "error": "Nepodařilo se aktualizovat výchozí zobrazení"
+      "error": "Výchozí zobrazení se nepodařilo aktualizovat"
     },
     "staleInbox": {
       "label": "Limit stáří položek v Doručených",
@@ -685,7 +685,7 @@
         "sunday": "Neděle",
         "monday": "Pondělí"
       },
-      "error": "Nepodařilo se aktualizovat začátek týdne"
+      "error": "Začátek týdne se nepodařilo aktualizovat"
     },
     "defaultBehavior": {
       "label": "Výchozí chování",
@@ -695,12 +695,12 @@
     "pageOverride": {
       "label": "Přepsání stránky kalendáře",
       "description": "Chování, když je aktivní karta Kalendář (výchozí: Otevřít kalendář)",
-      "error": "Aktualizace přepsání stránky kalendáře se nezdařila"
+      "error": "Přepsání stránky kalendáře se nepodařilo aktualizovat"
     },
     "showNotesOnCalendar": {
       "label": "Zobrazovat poznámky v kalendáři",
       "description": "Zobrazovat každou poznámku v kalendáři jako celodenní položku v den jejího vytvoření",
-      "error": "Nepodařilo se aktualizovat zobrazení poznámek v kalendáři"
+      "error": "Nastavení zobrazování poznámek v kalendáři se nepodařilo aktualizovat"
     },
     "options": {
       "openJournal": "Otevřít deník",
@@ -726,16 +726,16 @@
       "connectFailed": "Google Calendar se nepodařilo připojit",
       "refreshFailed": "Google Calendar se nepodařilo obnovit",
       "disconnectFailed": "Google Calendar se nepodařilo odpojit",
-      "retryFailed": "Nepodařilo se opakovat synchronizaci kalendáře",
+      "retryFailed": "Synchronizaci kalendáře se nepodařilo zopakovat",
       "pushToGoogle": {
         "label": "Zobrazovat události memrynote v Google Calendar",
         "description": "Vypněte pro jednosměrnou synchronizaci – své události Google budete v memrynote stále vidět, ale události memrynote se v Google nezobrazí.",
-        "error": "Nepodařilo se aktualizovat směr synchronizace"
+        "error": "Směr synchronizace se nepodařilo aktualizovat"
       },
       "agentAccess": {
-        "label": "Umožnit AI číst události v Google Calendar",
+        "label": "Povolit AI číst události v Google Calendar",
         "description": "Ve výchozím nastavení vypnuto. Po zapnutí může agent AI číst vaše události Google; po vypnutí se o nich na dotaz nic nedozví. Vy je v memrynote uvidíte tak jako tak.",
-        "error": "Nepodařilo se aktualizovat přístup AI"
+        "error": "Přístup AI se nepodařilo aktualizovat"
       },
       "connect": "Připojit",
       "sourcePicker": {
@@ -845,7 +845,7 @@
         "description": "Vypněte pro jednosměrnou synchronizaci: tyto události budete v memrynote dál vidět, ale události a úkoly memrynote se sem zapisovat nebudou."
       },
       "agentAccess": {
-        "label": "Umožnit AI číst tyto události",
+        "label": "Povolit AI číst tyto události",
         "description": "Vypnuto, dokud to nezapnete. Každá kalendářová služba se nastavuje zvlášť; povolení pro Google se na tuto službu nevztahuje.",
         "error": "Přístup AI se nepodařilo aktualizovat"
       },
@@ -859,7 +859,7 @@
         "outdated": "Tato zařízení ve vašem účtu používají verzi memrynote starší než {version}:",
         "unverified": "Nepodařilo se ověřit, jaké verze memrynote používají vaše ostatní zařízení.",
         "unknownVersion": "neznámá verze",
-        "consequence": "Starší verze může úkoly a události z tohoto kalendáře zkopírovat do Google Calendar jako duplikáty, nebo je nemusí synchronizovat vůbec. Nejdřív tato zařízení aktualizujte, nebo pokračujte, pokud to přijímáte.",
+        "consequence": "Starší verze může úkoly a události z tohoto kalendáře zkopírovat do Google Calendar jako duplikáty, nebo je nemusí synchronizovat vůbec. Nejdřív tato zařízení aktualizujte, nebo pokračujte, pokud s tím souhlasíte.",
         "acknowledge": "Rozumím, přesto připojit"
       },
       "reconnect": "Znovu připojit",
@@ -871,11 +871,11 @@
       },
       "appleEventKit": {
         "name": "Tento Mac",
-        "description": "Zobrazuje všechny kalendáře, které už aplikace Kalendář na tomto Macu má: iCloud, Google, Exchange a V mém Macu. Bez přihlášení, jen pro čtení a události nikdy neopustí tento Mac ani se nesynchronizují do vašich dalších zařízení.",
+        "description": "Zobrazuje všechny kalendáře, které už aplikace Kalendář na tomto Macu má: iCloud, Google, Exchange a Na mém Macu. Bez přihlášení, jen pro čtení a události nikdy neopustí tento Mac ani se nesynchronizují do vašich dalších zařízení.",
         "connect": "Povolit přístup ke kalendářům",
         "connectHint": "macOS se zeptá jen jednou. Později to můžete změnit v Nastavení systému.",
         "otherCalendars": "Ostatní kalendáře",
-        "alreadyConnected": "Už je připojeno přes {provider}, proto je ve výchozím stavu vypnuto, aby se události nezobrazovaly dvakrát.",
+        "alreadyConnected": "Tento kalendář je už připojený přes {provider}, proto je ve výchozím stavu vypnutý, aby se události nezobrazovaly dvakrát.",
         "openSystemSettings": "Otevřít Nastavení systému",
         "checkAgain": "Zkontrolovat znovu",
         "errors": {
@@ -1024,11 +1024,11 @@
       },
       "labels": {
         "storage": "Úložiště",
-        "maxFile": "Max. soubor",
+        "maxFile": "Max. velikost souboru",
         "vaults": "Trezory",
         "history": "Historie"
       },
-      "unlimited": "Neomezeně",
+      "unlimited": "Bez omezení",
       "historyDays": "{days, plural, one {# den} few {# dny} other {# dní}}",
       "activationPendingPrefix": "Aktivace čeká na dokončení. Potvrzení platby ve službě Paddle může chvíli trvat. Obnovte stav nebo napište na",
       "actions": {
@@ -1039,13 +1039,13 @@
         "manage": "Spravovat fakturaci"
       },
       "toasts": {
-        "loadFailed": "Nepodařilo se načíst stav fakturace",
-        "checkoutFailed": "Nepodařilo se zahájit platbu",
-        "checkoutOpened": "Platba byla otevřena ve vašem prohlížeči",
-        "refreshFailed": "Nepodařilo se obnovit stav fakturace",
+        "loadFailed": "Stav fakturace se nepodařilo načíst",
+        "checkoutFailed": "Platbu se nepodařilo zahájit",
+        "checkoutOpened": "Platební stránka se otevřela v prohlížeči",
+        "refreshFailed": "Stav fakturace se nepodařilo obnovit",
         "billingActive": "Fakturace je aktivní",
         "activationPending": "Aktivace probíhá",
-        "portalFailed": "Nepodařilo se otevřít fakturační portál"
+        "portalFailed": "Fakturační portál se nepodařilo otevřít"
       }
     },
     "storage": {
@@ -1102,7 +1102,7 @@
       "seePlans": "Zobrazit plány",
       "errors": {
         "sendCode": "Kód se nepodařilo odeslat",
-        "googleStart": "Nepodařilo se spustit přihlášení přes Google"
+        "googleStart": "Přihlášení přes Google se nepodařilo spustit"
       }
     },
     "email": {
@@ -1138,7 +1138,7 @@
       "saved": "Frázi pro obnovení mám uloženou",
       "confirmTitle": "Potvrďte frázi pro obnovení",
       "confirmDescription": "Zadejte požadovaná slova, abyste ověřili, že jste je uložili správně.",
-      "wordPlaceholder": "Zadejte slovo #{index}",
+      "wordPlaceholder": "Zadejte slovo č. {index}",
       "verify": "Ověřit",
       "mustMatch": "Aby bylo možné pokračovat, musí se všechna 3 slova shodovat",
       "inputTitle": "Zadejte frázi pro obnovení",
@@ -1202,7 +1202,7 @@
       "vaultPickerChooseFolder": "Vybrat složku",
       "vaultRow": "Trezor – {count, plural, one {# položka} few {# položky} other {# položek}} · {date}",
       "vaultPickerPrimaryHint": "Otevře se nyní",
-      "vaultPickerDormantHint": "Přidáno, otevře se, když na něj přepnete",
+      "vaultPickerDormantHint": "Přidán, otevře se, až na něj přepnete",
       "vaultPickerConfirm": "Stáhnout vybrané"
     }
   },
@@ -1216,15 +1216,15 @@
     "linked": "Propojeno před {time}",
     "renameAria": "Přejmenovat zařízení {name}",
     "rename": "Přejmenovat",
-    "revoke": "Odvolat",
+    "revoke": "Zrušit přístup",
     "showLess": "Zobrazit méně",
     "showMore": "{count, plural, one {# další zařízení} few {# další zařízení} other {# dalších zařízení}}",
     "showMoreAria": "Zobrazit {count, plural, one {# další zařízení} few {# další zařízení} other {# dalších zařízení}}",
     "dialogs": {
-      "revokeTitle": "Odvolat zařízení „{name}“?",
-      "revokeDescription": "Toto zařízení ztratí přístup k vašim synchronizovaným datům. Pro obnovení synchronizace jej bude nutné znovu propojit. Místní data na tomto zařízení zůstanou.",
-      "revokeDevice": "Odvolat zařízení",
-      "revoking": "Odvolávání…",
+      "revokeTitle": "Zrušit přístup zařízení „{name}“?",
+      "revokeDescription": "Toto zařízení ztratí přístup k vašim synchronizovaným datům. Pro obnovení synchronizace jej bude nutné znovu propojit. Místní data v tomto zařízení zůstanou.",
+      "revokeDevice": "Zrušit přístup",
+      "revoking": "Rušení přístupu…",
       "renameTitle": "Přejmenovat zařízení",
       "renameDescription": "Zvolte název, podle kterého toto zařízení poznáte.",
       "namePlaceholder": "Název zařízení",
@@ -1235,7 +1235,7 @@
       "removed": "Zařízení „{name}“ odebráno",
       "removeFailed": "Zařízení se nepodařilo odebrat",
       "renamed": "Přejmenováno na „{name}“",
-      "renameFailed": "Přejmenování zařízení se nezdařilo"
+      "renameFailed": "Zařízení se nepodařilo přejmenovat"
     },
     "platformMeta": "{platform} · {detail}"
   },
@@ -1245,7 +1245,7 @@
     "encrypted": "Koncově šifrováno",
     "generating": "Generování propojovacího kódu…",
     "generatingAria": "Generování propojovacího kódu",
-    "generateFailed": "Vygenerování propojovacího kódu se nezdařilo",
+    "generateFailed": "Propojovací kód se nepodařilo vygenerovat",
     "tryAgain": "Zkusit znovu",
     "expired": "Platnost propojovacího kódu vypršela",
     "generateNew": "Vygenerovat nový kód",
@@ -1284,7 +1284,7 @@
       "description": "Chytré návrhy zařazení a propojení poznámek",
       "enabled": "Funkce AI zapnuty",
       "disabled": "Funkce AI vypnuty",
-      "error": "Aktualizace nastavení se nezdařila"
+      "error": "Nastavení se nepodařilo aktualizovat"
     },
     "unknownError": "Neznámá chyba",
     "groups": {
@@ -1307,7 +1307,7 @@
         "timestamp": "Časové razítko",
         "none": "Nepřejmenovávat"
       },
-      "namingError": "Nepodařilo se aktualizovat pojmenování hlasových poznámek",
+      "namingError": "Pojmenování hlasových poznámek se nepodařilo aktualizovat",
       "localModel": "Místní model",
       "localModelDescription": "Whisper Small se stahuje na vyžádání a zůstává v místní mezipaměti",
       "status": {
@@ -1327,14 +1327,14 @@
       "keySaved": "Klíč API uložen do úložiště klíčů",
       "providerError": "Poskytovatele přepisu hlasu se nepodařilo aktualizovat",
       "downloadedToast": "Model Whisper Small byl stažen",
-      "downloadError": "Stažení Whisper Small se nezdařilo",
+      "downloadError": "Model Whisper Small se nepodařilo stáhnout",
       "keySavedToast": "Klíč OpenAI byl uložen",
-      "keySaveError": "Nepodařilo se uložit klíč OpenAI"
+      "keySaveError": "Klíč OpenAI se nepodařilo uložit"
     },
     "embedding": {
       "loaded": "Načteno",
       "loading": "Načítání",
-      "cacheHint": "~23 MB · Ukládáno do místní mezipaměti · Vše v zařízení",
+      "cacheHint": "~23 MB · Uloženo v místní mezipaměti · Vše v zařízení",
       "dimensions": "Dimenze",
       "embeddings": "Embeddingy",
       "downloadLoad": "Stáhnout a načíst model",
@@ -1370,7 +1370,7 @@
       "modelDescription": "Jazykový model pro přepsání a shrnutí",
       "selectModel": "Vyberte model",
       "apiKey": "Klíč API",
-      "apiKeyDescription": "Uloženo místně, odesíláno pouze poskytovateli",
+      "apiKeyDescription": "Uložen místně, odesílán pouze poskytovateli",
       "apiKeyPlaceholder": "Zadejte klíč API pro {provider}",
       "ollamaUrl": "URL serveru Ollama",
       "ollamaUrlDescription": "Adresa místního serveru",
@@ -1382,7 +1382,7 @@
       "connected": "Připojeno! Server běží na portu {port}",
       "connectFailed": "Připojení se nezdařilo",
       "testFailed": "Test připojení se nezdařil",
-      "updateFailed": "Aktualizace nastavení se nezdařila"
+      "updateFailed": "Nastavení se nepodařilo aktualizovat"
     },
     "tabs": {
       "models": "Modely",
@@ -1410,9 +1410,9 @@
       "voice": {
         "group": "Hlasové poznámky",
         "transcribeWith": "Přepisovat pomocí",
-        "local": "Místně",
+        "local": "Místní model",
         "openai": "OpenAI",
-        "nameBy": "Pojmenovat poznámky podle",
+        "nameBy": "Pojmenování poznámek",
         "keySaved": "Uloženo",
         "keyNotSet": "Nenastaveno"
       }
@@ -1425,8 +1425,8 @@
     },
     "intro": "Jednorázové importy vytvoří ve vašem trezoru nové poznámky. Vaše původní exportované soubory zůstanou nedotčené.",
     "sources": {
-      "notion": "Importovat HTML export (.zip)",
-      "todoist": "Importovat CSV export projektu (.csv)",
+      "notion": "Importovat export HTML (.zip)",
+      "todoist": "Importovat export CSV projektu (.csv)",
       "ticktick": "Importovat zálohu TickTick (.csv) jako projekty, úkoly a připomenutí",
       "markdown": "Importovat soubory .md nebo složku (frontmatter, štítky, přílohy)",
       "noteplan": "Importovat složku NotePlan – denní poznámky se stanou zápisy v deníku, úkoly zůstanou úkoly",
@@ -1435,7 +1435,7 @@
       "bear": "Importovat archiv Bear .bear2bk (poznámky, štítky, přílohy)",
       "evernote": "Importovat jeden nebo více exportovaných souborů Evernote .enex",
       "roam": "Importovat graf Roam Research (.json) s vnořenými osnovami",
-      "apple-journal": "Importovat HTML export Apple Journal jako datované poznámky",
+      "apple-journal": "Importovat export HTML z Apple Journal jako datované poznámky",
       "csv": "Importovat soubor .csv – jedna poznámka na řádek, sloupce se stanou vlastnostmi",
       "raindrop": "Importovat export záložek Raindrop.io (.csv) – záložky se objeví v Doručených",
       "apple-notes": "Importovat z databáze Apple Notes (NoteStore.sqlite, macOS)",
@@ -1491,7 +1491,7 @@
       "chooseDirectory": "Vybrat složku…",
       "folderKeepsAssets": "Vyberte složku, když obrázky leží mimo složku s poznámkami – exporty často ukládají média do jedné sdílené složky.",
       "chooseHint": "Vyberte: {label}",
-      "folderHint": "Po kliknutí níže vyberte v otevřeném dialogu složku „group.com.apple.notes“ (dialog tam začíná). To umožní Memry číst vaše poznámky a přílohy – bez nutnosti plného přístupu k disku.",
+      "folderHint": "Po kliknutí níže vyberte v otevřeném dialogu složku „group.com.apple.notes“ (dialog tam začíná). Aplikace Memry tak bude moci číst vaše poznámky a přílohy – bez nutnosti plného přístupu k disku.",
       "noteplanFolderHint": "Vyberte složku NotePlan – buď datovou složku aplikace, nebo některou z jejích záložních kopií (Backups). Memry v ní načte složky Calendar, Notes a @Archive.",
       "selected": "{count, plural, one {# vybraný soubor} few {# vybrané soubory} other {# vybraných souborů}}",
       "start": "Zahájit import",
@@ -1512,7 +1512,7 @@
       "previewError": "Náhled se nezdařil"
     },
     "messages": {
-      "readFileFailed": "Nepodařilo se přečíst soubor",
+      "readFileFailed": "Soubor se nepodařilo přečíst",
       "appleNotes": {
         "lockedNote": "{count, plural, one {# zamčená poznámka nebyla importována} few {# zamčené poznámky nebyly importovány} other {# zamčených poznámek nebylo importováno}}; Memry je bez hesla k Apple Notes nemůže přečíst."
       },
@@ -1529,9 +1529,9 @@
       },
       "ticktick": {
         "headerNotFound": "Nenalezen řádek záhlaví v CSV z TickTick („Folder Name“)",
-        "foldersDropped": "Složky z TickTick nemají v Memry obdobu a byly vynechány",
+        "foldersDropped": "Složky z TickTick nemají v aplikaci Memry obdobu a byly vynechány",
         "subtaskParentMissing": "Nadřazený úkol dílčího úkolu „{title}“ nenalezen; importován na nejvyšší úrovni",
-        "unknownPriority": "Neznámá priorita {priority} z TickTick → žádná",
+        "unknownPriority": "Neznámá priorita {priority} z TickTick → bez priority",
         "unsupportedRepeat": "Nepodporované pravidlo opakování „{rule}“ přeskočeno",
         "reminderNoAnchor": "Připomenutí „{reminder}“ přeskočeno (chybí ukotvení k datu)"
       },
@@ -1540,9 +1540,9 @@
         "sectionFlattened": "Sekce „{section}“ zploštěna",
         "orphanComment": "Komentář bez předcházejícího úkolu přeskočen",
         "emptyTitle": "Úkol s prázdným obsahem importován jako (bez názvu)",
-        "unknownPriority": "Neznámá priorita {priority} → žádná",
-        "unparsedDate": "Nepodařilo se zpracovat datum „{date}“",
-        "subtaskNoParent": "Dílčí úkol „{title}“ nemá nadřazený úkol na odsazení {indent}; importován na nejvyšší úrovni"
+        "unknownPriority": "Neznámá priorita {priority} → bez priority",
+        "unparsedDate": "Datum „{date}“ se nepodařilo zpracovat",
+        "subtaskNoParent": "Dílčí úkol „{title}“ nemá nadřazený úkol na úrovni odsazení {indent}; importován na nejvyšší úrovni"
       }
     },
     "status": {
@@ -1653,7 +1653,7 @@
       "approaching": "Blíží se limitu"
     },
     "activity": {
-      "description": "Soubory přidané do trezoru nebo z něj odebrané mimo Memry, importy a vše, co bylo přeskočeno nebo selhalo. Uchovává se jen v tomto zařízení.",
+      "description": "Soubory přidané do trezoru nebo z něj odebrané mimo aplikaci Memry, importy a vše, co bylo přeskočeno nebo selhalo. Uchovává se jen v tomto zařízení.",
       "retention": {
         "label": "Aktivita trezoru",
         "days": "{count, plural, one {Uchovávat # den} few {Uchovávat # dny} other {Uchovávat # dní}}"
@@ -1768,8 +1768,8 @@
       "mergeFailed": "Štítky se nepodařilo sloučit",
       "merged": "Štítek „{source}“ sloučen do „{target}“ ({count, plural, one {# položka} few {# položky} other {# položek}})",
       "colorUpdated": "Barva štítku „{name}“ aktualizována",
-      "colorFailed": "Aktualizace barvy se nezdařila",
-      "iconFailed": "Nepodařilo se aktualizovat ikonu"
+      "colorFailed": "Barvu se nepodařilo aktualizovat",
+      "iconFailed": "Ikonu se nepodařilo aktualizovat"
     },
     "v2": {
       "actionsAria": "Akce pro štítek {name}"
@@ -1811,13 +1811,13 @@
     },
     "toasts": {
       "renamed": "Přejmenováno „{oldValue}“ na „{newValue}“",
-      "renameFailed": "Přejmenování možnosti se nezdařilo",
+      "renameFailed": "Možnost se nepodařilo přejmenovat",
       "removed": "Možnost „{value}“ odebrána",
-      "removeFailed": "Odebrání možnosti se nezdařilo",
-      "colorFailed": "Aktualizace barvy se nezdařila",
+      "removeFailed": "Možnost se nepodařilo odebrat",
+      "colorFailed": "Barvu se nepodařilo aktualizovat",
       "deleteFailed": "Vlastnost se nepodařilo smazat",
       "deleted": "Vlastnost „{name}“ smazána",
-      "addFailed": "Nepodařilo se přidat možnost"
+      "addFailed": "Možnost se nepodařilo přidat"
     },
     "v2": {
       "actionsAria": "Akce pro vlastnost {name}"
@@ -1836,7 +1836,7 @@
       "placeholder": "Vyberte trezor",
       "none": "Není vybrán žádný trezor",
       "description": "Vyberte trezor použitý při spuštění memrynote bez --vault.",
-      "descriptionSelected": "Příkazy použijí {path}, když je --vault vynecháno."
+      "descriptionSelected": "Příkazy použijí {path}, pokud není zadán parametr --vault."
     },
     "command": {
       "label": "Příkaz memrynote",
@@ -1846,7 +1846,7 @@
     },
     "status": {
       "loading": "Kontrola stavu příkazu…",
-      "loadFailed": "Nepodařilo se načíst stav příkazu",
+      "loadFailed": "Stav příkazu se nepodařilo načíst",
       "installedToast": "Příkaz memrynote nainstalován",
       "uninstalledToast": "Příkaz memrynote odebrán",
       "defaultVaultUpdatedToast": "Výchozí trezor CLI aktualizován"
@@ -2072,7 +2072,7 @@
       "pulled": "Staženo",
       "errors": "Chyby",
       "filterByTimePeriod": "Filtrovat podle časového období",
-      "allTime": "Celou dobu",
+      "allTime": "Celé období",
       "today": "Dnes",
       "last7Days": "Posledních 7 dní",
       "last30Days": "Posledních 30 dní",
@@ -2104,35 +2104,35 @@
     "errors": {
       "failedToUpdateTagColor": "Barvu štítku se nepodařilo aktualizovat",
       "googleSignInFailed": "Přihlášení přes Google se nezdařilo",
-      "failedToSendVerificationCode": "Odeslání ověřovacího kódu se nezdařilo",
+      "failedToSendVerificationCode": "Ověřovací kód se nepodařilo odeslat",
       "invalidVerificationCode": "Neplatný ověřovací kód",
-      "accountSetupFailed": "Nastavení účtu se nezdařilo",
-      "failedToResendCode": "Nepodařilo se znovu odeslat kód",
-      "failedToSetUpDevice": "Nastavení zařízení se nezdařilo",
-      "failedToConfirmRecoveryPhrase": "Nepodařilo se potvrdit frázi pro obnovení",
+      "accountSetupFailed": "Účet se nepodařilo nastavit",
+      "failedToResendCode": "Kód se nepodařilo znovu odeslat",
+      "failedToSetUpDevice": "Zařízení se nepodařilo nastavit",
+      "failedToConfirmRecoveryPhrase": "Frázi pro obnovení se nepodařilo potvrdit",
       "failedToAnalyzeContent": "Analýza obsahu se nezdařila",
       "failedToLoadUpdaterState": "Stav aktualizátoru se nepodařilo načíst",
       "failedToCheckForUpdates": "Kontrola aktualizací se nezdařila",
-      "failedToDownloadUpdate": "Stažení aktualizace se nezdařilo",
+      "failedToDownloadUpdate": "Aktualizaci se nepodařilo stáhnout",
       "failedToInstallUpdate": "Aktualizaci se nepodařilo nainstalovat",
       "failedToLoadEditorSettings": "Nastavení editoru se nepodařilo načíst",
-      "failedToUpdateEditorSettings": "Aktualizace nastavení editoru se nezdařila",
-      "failedToLoadGeneralSettings": "Nepodařilo se načíst obecná nastavení",
-      "failedToUpdateGeneralSettings": "Aktualizace obecných nastavení se nezdařila",
+      "failedToUpdateEditorSettings": "Nastavení editoru se nepodařilo aktualizovat",
+      "failedToLoadGeneralSettings": "Obecná nastavení se nepodařilo načíst",
+      "failedToUpdateGeneralSettings": "Obecná nastavení se nepodařilo aktualizovat",
       "failedToLoadKeyboardSettings": "Nastavení klávesnice se nepodařilo načíst",
       "failedToUpdateKeyboardSettings": "Nastavení klávesnice se nepodařilo aktualizovat",
       "failedToResetKeyboardSettings": "Nastavení klávesnice se nepodařilo resetovat",
       "failedToLoadNoteEditorSettings": "Nastavení editoru poznámek se nepodařilo načíst",
-      "failedToUpdateSettings": "Aktualizace nastavení se nezdařila",
+      "failedToUpdateSettings": "Nastavení se nepodařilo aktualizovat",
       "failedToLoadTabSettings": "Nastavení karet se nepodařilo načíst",
       "failedToLoadNotes": "Poznámky se nepodařilo načíst",
       "failedToLoadTags": "Štítky se nepodařilo načíst",
       "failedToLoadTasks": "Úkoly se nepodařilo načíst",
-      "failedToLoadVaultStatus": "Nepodařilo se načíst stav trezoru",
-      "failedToSelectVault": "Nepodařilo se vybrat trezor",
+      "failedToLoadVaultStatus": "Stav trezoru se nepodařilo načíst",
+      "failedToSelectVault": "Trezor se nepodařilo vybrat",
       "failedToCloseVault": "Trezor se nepodařilo zavřít",
-      "failedToSwitchVault": "Přepnutí trezoru se nezdařilo",
-      "failedToUpdateConfig": "Aktualizace konfigurace se nezdařila",
+      "failedToSwitchVault": "Trezor se nepodařilo přepnout",
+      "failedToUpdateConfig": "Konfiguraci se nepodařilo aktualizovat",
       "failedToReindex": "Přeindexování se nezdařilo"
     }
   },
@@ -2238,7 +2238,7 @@
       },
       "model": {
         "label": "Model",
-        "description": "Vyberte vrácený model nebo jej zadejte ručně."
+        "description": "Vyberte model ze seznamu nebo ho zadejte ručně."
       },
       "apiKey": {
         "label": "Klíč API",

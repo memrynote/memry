@@ -23,7 +23,7 @@
     "open": "Pesquisar no calendário",
     "close": "Fechar pesquisa",
     "placeholder": "Pesquisar eventos, tarefas, lembretes…",
-    "no-results": "Sem correspondências"
+    "no-results": "Nenhum resultado"
   },
   "filter": {
     "filter-calendars": "Filtrar calendários",
@@ -80,7 +80,7 @@
     "target-calendar": "Calendário de destino",
     "use-default-calendar": "Usar calendário padrão",
     "use-default-calendar-with-name": "Usar padrão ({calendar})",
-    "use-memry-calendar-default": "Usar calendário memrynote (padrão)",
+    "use-memry-calendar-default": "Usar o calendário do memrynote (padrão)",
     "primary-suffix": "principal",
     "project": "Projeto",
     "no-project": "Sem projeto",
@@ -219,7 +219,7 @@
     "mark-not-done": "Marcar como não concluída",
     "later-today": "Mais tarde hoje",
     "tomorrow": "Amanhã",
-    "next-week-mon": "Semana que vem · Seg.",
+    "next-week-mon": "Próxima semana · seg.",
     "pick-date-time": "Escolher data e hora…",
     "remove-due-date": "Remover prazo",
     "subtasks-prefix": "Subtarefas",

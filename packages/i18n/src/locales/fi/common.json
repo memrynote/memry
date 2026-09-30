@@ -69,7 +69,7 @@
   },
   "count": {
     "note": "{count, plural, one {# muistiinpano} other {# muistiinpanoa}}",
-    "journal": "{count, plural, one {# päiväkirja} other {# päiväkirjaa}}",
+    "journal": "{count, plural, one {# päiväkirjamerkintä} other {# päiväkirjamerkintää}}",
     "task": "{count, plural, one {# tehtävä} other {# tehtävää}}",
     "event": "{count, plural, one {# tapahtuma} other {# tapahtumaa}}",
     "reminder": "{count, plural, one {# muistutus} other {# muistutusta}}",
@@ -151,7 +151,7 @@
       "deny": "Hylkää",
       "invalidJson": "Syötä kelvollinen JSON ennen muokkausten käyttämistä.",
       "thisTool": "tämä työkalu",
-      "alwaysAllowHint": "”Salli aina” koskee vain seuraavaa: {tool}. Muut työkalut kysyvät edelleen luvan, ja poistoista kysytään aina.",
+      "alwaysAllowHint": "”Salli aina” koskee vain seuraavaa: {tool}. Muut työkalut kysyvät edelleen lupaa, ja poistoista kysytään aina.",
       "alwaysInChat": "Salli aina tässä keskustelussa",
       "alwaysInChatHint": "Päättyy, kun keskustelu päättyy",
       "alwaysInVault": "Salli aina tässä holvissa",
@@ -163,7 +163,7 @@
       "description": "Agentti haluaa päivittää: {title}. Tarkista muutos ennen kuin otat sen käyttöön.",
       "fallbackTitle": "tämä kohde",
       "current": "Nykyinen",
-      "candidate": "Ehdokas",
+      "candidate": "Ehdotettu versio",
       "loading": "Ladataan…",
       "apply": "Käytä",
       "applyEdited": "Käytä muokattua",
@@ -508,7 +508,7 @@
     },
     "cluster": {
       "button": "Ehdota ryhmiä",
-      "buttonHint": "Ryhmittelee tämän taulun muistiinpanokortit (tai valitut kortit) samankaltaisuuden mukaan. Toimii tällä laitteella.",
+      "buttonHint": "Ryhmittelee tämän taulun muistiinpanokortit (tai valitut kortit) samankaltaisuuden mukaan. Käsittely tapahtuu tällä laitteella.",
       "loading": "Ryhmitellään…",
       "needMoreNotes": "Lisää vähintään {count} muistiinpanokorttia, jotta ryhmiä voidaan ehdottaa.",
       "tooMany": "Tällä taululla on yli {count} muistiinpanokorttia. Valitse enintään {count} ja yritä uudelleen.",
@@ -618,7 +618,7 @@
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Ohita esittely",
       "welcomeToMemry": "Tervetuloa memrynoteen",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Henkilökohtainen tietopohjasi. Käytetään 2 minuuttia, jotta pääset alkuun.",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Henkilökohtainen tietopankkisi. Pääset alkuun kahdessa minuutissa.",
       "getStarted": "Aloita ",
       "createYourFirstNote": "Luo ensimmäinen muistiinpanosi",
       "markdownBasedStoredLocallyAsPlainFiles": "Markdown-pohjainen, tallennettu paikallisesti tavallisina tiedostoina.",
@@ -1140,7 +1140,7 @@
         "archiveItem": "Arkistoi valittu kohde",
         "openOriginal": "Avaa alkuperäinen linkki",
         "refresh": "Päivitä Saapuneet",
-        "confirmFiling": "Vahvista siirtopaneeli"
+        "confirmFiling": "Vahvista siirto"
       },
       "journal": {
         "returnFromOverview": "Palaa kuukausi- tai vuosinäkymästä",
@@ -1200,7 +1200,7 @@
       "onNextQuit": "Seuraavan sulkemisen yhteydessä",
       "download": "Lataa",
       "notNow": "Ei nyt",
-      "moreOptions": "Lisää päivitysvaihtoehtoja",
+      "moreOptions": "Muut päivitysvaihtoehdot",
       "skipVersion": "Ohita versio {version}",
       "turnOffAuto": "Poista automaattiset päivitykset käytöstä",
       "copyVersionInfo": "Kopioi versiotiedot",
@@ -1224,7 +1224,7 @@
   },
   "vaultSwipe": {
     "indicatorLabel": "Holvit",
-    "position": "{name}, holvi {index}/{count}",
+    "position": "{name}, holvi {index}, yhteensä {count}",
     "openList": "{position}. Avaa holviluettelo",
     "switchTo": "Vaihda holviin {name}",
     "switchingTo": "Vaihdetaan holviin {name}",
@@ -1239,7 +1239,7 @@
     "requestFeature": "Ehdota toimintoa",
     "starOnGithub": "Anna tähti GitHubissa",
     "version": "MemryNote {version}",
-    "whatsNew": "Uutta"
+    "whatsNew": "Mitä uutta"
   },
   "sidebarStar": {
     "title": "MemryNote on avointa lähdekoodia",

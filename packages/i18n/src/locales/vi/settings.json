@@ -62,7 +62,7 @@
   "features": {
     "header": {
       "title": "Tính năng",
-      "subtitle": "Bật hoặc tắt từng phần của ứng dụng. Tắt = hiện mờ trong thanh bên và không dùng được ở mọi nơi."
+      "subtitle": "Bật hoặc tắt từng phần của ứng dụng. Tắt = hiện mờ trong thanh bên và không dùng được ở bất kỳ đâu."
     },
     "items": {
       "home": {
@@ -397,7 +397,7 @@
         "unavailable": "Không thể truy cập phông chữ đã cài trên hệ thống này.",
         "notInstalled": "Chưa cài trên máy tính này — đang dùng phông chữ dự phòng."
       },
-      "fontSizeError": "Không thể cập nhật kích thước phông chữ",
+      "fontSizeError": "Không thể cập nhật cỡ chữ",
       "fontFamilyError": "Không thể cập nhật phông chữ"
     },
     "v2": {
@@ -633,7 +633,7 @@
       "group": "Hình ảnh",
       "error": "Không thể cập nhật tùy chọn xếp ảnh",
       "mode": {
-        "label": "Xếp ảnh vào ghi chú",
+        "label": "Khi xếp ảnh vào ghi chú",
         "description": "“Nhúng vào ghi chú” giữ ảnh bên trong ghi chú và không hiện trong thanh bên. “Tệp trong thanh bên” chuyển ảnh vào thư mục bạn chọn và liên kết tới ảnh đó.",
         "embed": "Nhúng vào ghi chú",
         "link": "Tệp trong thanh bên"
@@ -699,7 +699,7 @@
     },
     "showNotesOnCalendar": {
       "label": "Hiện ghi chú trên lịch",
-      "description": "Hiện mọi ghi chú trên lịch như một mục cả ngày vào ngày nó được tạo",
+      "description": "Hiện mọi ghi chú trên lịch dưới dạng mục cả ngày vào ngày tạo ghi chú",
       "error": "Không thể cập nhật cài đặt hiện ghi chú trên lịch"
     },
     "options": {
@@ -781,7 +781,7 @@
         "proton": {
           "name": "Proton Calendar",
           "steps": "Cài đặt → Lịch, chọn lịch, rồi tạo liên kết trong mục Chia sẻ với bất kỳ ai. Chọn chế độ xem đầy đủ để thấy chi tiết sự kiện.",
-          "readOnly": "Trong memrynote, lịch Proton luôn chỉ đọc và đây là chủ ý. Proton mã hóa đầu cuối lịch và không hỗ trợ CalDAV, nên không thể ghi ngược lại. Hãy thực hiện thay đổi trong Proton."
+          "readOnly": "Trong memrynote, lịch Proton luôn chỉ đọc và đây là chủ ý. Proton mã hóa đầu cuối cho lịch và không hỗ trợ CalDAV, nên không thể ghi ngược lại. Hãy thực hiện thay đổi trong Proton."
         },
         "icloud": {
           "name": "iCloud",
@@ -1098,7 +1098,7 @@
       "title": "Thiết lập đồng bộ",
       "description": "Tạo tài khoản để đồng bộ dữ liệu của bạn trên các thiết bị với mã hóa đầu cuối.",
       "or": "hoặc",
-      "paidPlan": "Đồng bộ là gói trả phí.",
+      "paidPlan": "Đồng bộ yêu cầu gói trả phí.",
       "seePlans": "Xem các gói",
       "errors": {
         "sendCode": "Không thể gửi mã",
@@ -1112,7 +1112,7 @@
       "sending": "Đang gửi mã…"
     },
     "oauth": {
-      "google": "Tiếp tục với Google"
+      "google": "Tiếp tục bằng Google"
     },
     "otp": {
       "title": "Nhập mã xác minh",
@@ -1140,7 +1140,7 @@
       "confirmDescription": "Nhập các từ được yêu cầu để xác minh rằng bạn đã lưu chúng chính xác.",
       "wordPlaceholder": "Nhập từ thứ {index}",
       "verify": "Xác minh",
-      "mustMatch": "Tất cả 3 từ phải khớp để tiếp tục",
+      "mustMatch": "Cả 3 từ phải khớp để tiếp tục",
       "inputTitle": "Nhập cụm từ khôi phục",
       "inputDescription": "Nhập cụm từ khôi phục gồm 24 từ của bạn để khôi phục quyền truy cập vào dữ liệu được mã hóa.",
       "inputLabel": "Cụm từ khôi phục",
@@ -1158,7 +1158,7 @@
       "unavailable": {
         "loading": "Đang tải cụm từ khôi phục…",
         "title": "Không thể tải cụm từ khôi phục",
-        "description": "Cụm từ khôi phục chỉ hiển thị một lần trong quá trình thiết lập và không thể lấy lại sau. Bắt đầu lại để tạo cụm mới.",
+        "description": "Cụm từ khôi phục chỉ hiển thị một lần trong quá trình thiết lập và không thể lấy lại sau. Bắt đầu lại để tạo cụm từ mới.",
         "startOver": "Bắt đầu lại"
       }
     },
@@ -1201,7 +1201,7 @@
       "vaultPickerFolderLabel": "Lưu kho trong thư mục",
       "vaultPickerChooseFolder": "Chọn thư mục",
       "vaultRow": "Kho — {count} mục · {date}",
-      "vaultPickerPrimaryHint": "Mở ngay bây giờ",
+      "vaultPickerPrimaryHint": "Sẽ mở ngay",
       "vaultPickerDormantHint": "Đã thêm, sẽ mở khi bạn chuyển sang kho này",
       "vaultPickerConfirm": "Tải về mục đã chọn"
     }
@@ -1222,7 +1222,7 @@
     "showMoreAria": "Hiển thị thêm {count, plural, other {# thiết bị}}",
     "dialogs": {
       "revokeTitle": "Thu hồi “{name}”?",
-      "revokeDescription": "Thiết bị này sẽ mất quyền truy cập vào dữ liệu đồng bộ của bạn. Nó sẽ cần được liên kết lại để khôi phục việc đồng bộ. Dữ liệu cục bộ trên thiết bị đó sẽ vẫn được giữ.",
+      "revokeDescription": "Thiết bị này sẽ mất quyền truy cập vào dữ liệu đã đồng bộ. Cần liên kết lại thiết bị để khôi phục đồng bộ. Dữ liệu cục bộ trên thiết bị đó vẫn được giữ nguyên.",
       "revokeDevice": "Thu hồi thiết bị",
       "revoking": "Đang thu hồi…",
       "renameTitle": "Đổi tên thiết bị",
@@ -1300,7 +1300,7 @@
         "local": "Cục bộ (mặc định)",
         "openai": "OpenAI (dùng khóa riêng)"
       },
-      "memoNameMode": "Tên ghi âm",
+      "memoNameMode": "Tên bản ghi âm",
       "memoNameModeDescription": "Cách đặt tên bản ghi âm sau khi chuyển thành văn bản",
       "naming": {
         "transcript": "Tiêu đề từ bản chép lời",
@@ -1423,7 +1423,7 @@
       "title": "Nhập",
       "subtitle": "Đưa ghi chú và công việc từ ứng dụng khác vào"
     },
-    "intro": "Nhập một lần tạo ghi chú mới trong kho của bạn. Tệp xuất gốc của bạn được giữ nguyên.",
+    "intro": "Mỗi lần nhập sẽ tạo ghi chú mới trong kho. Tệp xuất gốc được giữ nguyên.",
     "sources": {
       "notion": "Nhập bản xuất HTML (.zip)",
       "todoist": "Nhập bản xuất CSV dự án (.csv)",
@@ -1442,7 +1442,7 @@
       "onenote": "Nhập sổ tay OneNote (cần tài khoản Microsoft)"
     },
     "action": "Nhập",
-    "select": "Chọn ứng dụng cần nhập dữ liệu…",
+    "select": "Chọn ứng dụng nguồn để nhập…",
     "stats": {
       "notes": "{count, plural, other {# ghi chú}}",
       "projects": "{count, plural, other {# dự án}}",
@@ -1491,9 +1491,9 @@
       "chooseDirectory": "Chọn thư mục…",
       "folderKeepsAssets": "Hãy chọn thư mục khi ảnh nằm ngoài thư mục chứa ghi chú — các bản xuất thường để tệp phương tiện trong một thư mục dùng chung.",
       "chooseHint": "Chọn {label} của bạn",
-      "folderHint": "Nhấp bên dưới và chọn thư mục “group.com.apple.notes” khi bộ chọn mở ra (nó bắt đầu ở đó). Điều này cho phép Memry đọc ghi chú và tệp đính kèm của bạn — không cần Toàn quyền truy cập đĩa.",
+      "folderHint": "Nhấp bên dưới và chọn thư mục “group.com.apple.notes” khi bộ chọn mở ra (bộ chọn sẽ mở sẵn tại đó). Nhờ vậy, Memry có thể đọc ghi chú và tệp đính kèm — không cần quyền Truy cập toàn bộ ổ đĩa.",
       "noteplanFolderHint": "Chọn thư mục NotePlan — thư mục dữ liệu của ứng dụng hoặc một bản sao trong Backups. Memry đọc các thư mục Calendar, Notes và @Archive bên trong.",
-      "selected": "{count, plural, other {# tệp đã chọn}}",
+      "selected": "{count, plural, other {Đã chọn # tệp}}",
       "start": "Bắt đầu nhập",
       "cancel": "Hủy",
       "close": "Đóng",
@@ -1514,7 +1514,7 @@
     "messages": {
       "readFileFailed": "Không thể đọc tệp",
       "appleNotes": {
-        "lockedNote": "{count, plural, other {# ghi chú bị khóa}} chưa được nhập; Memry không thể đọc chúng nếu không có mật khẩu Apple Notes của bạn."
+        "lockedNote": "{count, plural, other {# ghi chú bị khóa}} không được nhập; Memry không thể đọc chúng nếu không có mật khẩu Apple Notes của bạn."
       },
       "csv": {
         "noHeaders": "Tệp CSV không có dòng tiêu đề",
@@ -1532,7 +1532,7 @@
         "foldersDropped": "Thư mục TickTick không có tương đương trong Memry nên đã bị bỏ qua",
         "subtaskParentMissing": "Không tìm thấy công việc cha của “{title}”; đã nhập ở cấp cao nhất",
         "unknownPriority": "Mức ưu tiên TickTick không xác định {priority} → không có",
-        "unsupportedRepeat": "Đã bỏ qua quy tắc lặp không được hỗ trợ “{rule}”",
+        "unsupportedRepeat": "Đã bỏ qua quy tắc lặp lại không được hỗ trợ “{rule}”",
         "reminderNoAnchor": "Đã bỏ qua lời nhắc “{reminder}” (không có mốc ngày)"
       },
       "todoist": {
@@ -1606,7 +1606,7 @@
     "groups": {
       "storageUsage": "Dung lượng đã dùng",
       "location": "Vị trí",
-      "accountVaults": "Các kho trong tài khoản của bạn",
+      "accountVaults": "Kho trong tài khoản của bạn",
       "largeNotes": "Ghi chú gần đạt giới hạn đồng bộ",
       "activity": "Hoạt động"
     },
@@ -1649,11 +1649,11 @@
     },
     "largeNotes": {
       "description": "Ghi chú lớn hơn {limit} sẽ ngừng đồng bộ. Hãy tách chúng thành các ghi chú nhỏ hơn để tiếp tục đồng bộ.",
-      "over": "Không đồng bộ",
+      "over": "Đã ngừng đồng bộ",
       "approaching": "Sắp đạt giới hạn"
     },
     "activity": {
-      "description": "Các tệp được thêm vào hoặc gỡ khỏi kho từ bên ngoài Memry, các lần nhập, và mọi thứ bị bỏ qua hoặc lỗi. Chỉ lưu trên thiết bị này.",
+      "description": "Các tệp được thêm vào hoặc gỡ khỏi kho từ bên ngoài Memry, các lần nhập và mọi thứ bị bỏ qua hoặc lỗi. Chỉ lưu trên thiết bị này.",
       "retention": {
         "label": "Hoạt động của kho",
         "days": "{count, plural, other {Giữ # ngày}}"
@@ -1727,7 +1727,7 @@
       },
       "status": {
         "localOnly": "Kho này chỉ ở trên thiết bị này và không được đồng bộ.",
-        "foreign": "Kho này đã được đồng bộ bởi một tài khoản khác, nên không đồng bộ với tài khoản của bạn. Kho vẫn ở trên thiết bị này.",
+        "foreign": "Kho này đã được đồng bộ bằng một tài khoản khác, nên không được đồng bộ với tài khoản của bạn. Kho vẫn ở trên thiết bị này.",
         "needsDecision": "Kho này chưa được đồng bộ.",
         "startSync": "Đồng bộ kho này",
         "choose": "Chọn…"
@@ -1781,7 +1781,7 @@
       "subtitle": "Quản lý các định nghĩa thuộc tính trên tất cả các ghi chú"
     },
     "loading": "Đang tải thuộc tính…",
-    "empty": "Chưa có định nghĩa thuộc tính nào. Thêm một thuộc tính Trạng thái, Chọn hoặc Chọn nhiều vào bất kỳ ghi chú nào để bắt đầu.",
+    "empty": "Chưa có định nghĩa thuộc tính nào. Thêm một thuộc tính Trạng thái, Chọn một hoặc Chọn nhiều vào bất kỳ ghi chú nào để bắt đầu.",
     "filterPlaceholder": "Lọc thuộc tính…",
     "noMatch": "Không có thuộc tính nào khớp với “{query}”",
     "summary": "{count, plural, other {# định nghĩa thuộc tính}}",
@@ -1796,7 +1796,7 @@
     },
     "types": {
       "status": "Trạng thái",
-      "select": "Chọn",
+      "select": "Chọn một",
       "multiselect": "Chọn nhiều",
       "text": "Văn bản",
       "number": "Số",
@@ -1868,7 +1868,7 @@
     "cancelTitle": "Hủy",
     "rebindTitle": "Nhấn để gán lại",
     "editorManagedTitle": "Do trình soạn thảo ghi chú xử lý — không thể gán lại",
-    "resetTitle": "Đặt về mặc định",
+    "resetTitle": "Đặt lại về mặc định",
     "clearTitle": "Xóa phím tắt",
     "clickToSet": "Nhấn để thiết lập",
     "noMatch": "Không có phím tắt nào khớp với tìm kiếm của bạn",
@@ -1956,11 +1956,11 @@
         },
         "navBack": {
           "label": "Quay lại",
-          "description": "Chuyển lại tab đang mở trước đó"
+          "description": "Chuyển về tab đã mở trước đó"
         },
         "navForward": {
           "label": "Tiến tới",
-          "description": "Thực hiện lại thao tác quay lại"
+          "description": "Đảo ngược thao tác quay lại"
         },
         "newTab": {
           "label": "Tab mới",
@@ -1984,7 +1984,7 @@
         },
         "splitDown": {
           "label": "Chia xuống dưới",
-          "description": "Chia ngăn hiện tại thành trên và dưới"
+          "description": "Chia ngăn hiện tại thành hai phần trên và dưới"
         },
         "closeSplit": {
           "label": "Đóng ngăn chia",
@@ -2133,7 +2133,7 @@
       "failedToCloseVault": "Không thể đóng kho",
       "failedToSwitchVault": "Không thể chuyển kho",
       "failedToUpdateConfig": "Không thể cập nhật cấu hình",
-      "failedToReindex": "Không thể lập chỉ mục lại"
+      "failedToReindex": "Không thể lập lại chỉ mục"
     }
   },
   "agentMcp": {
@@ -2199,8 +2199,8 @@
         "detected": "Đã phát hiện · v{version}",
         "detectedNoVersion": "Đã phát hiện",
         "belowMinimum": "Đã cài v{version} — cần {minimum} trở lên",
-        "notDetected": "Không phát hiện",
-        "runtimeUnavailable": "Không khả dụng — môi trường chạy tác nhân không khởi động"
+        "notDetected": "Chưa phát hiện",
+        "runtimeUnavailable": "Không khả dụng — môi trường chạy tác nhân không khởi động được"
       }
     },
     "permissions": {
@@ -2208,7 +2208,7 @@
       "access": {
         "label": "Quyền truy cập mặc định",
         "description": "Đặt chế độ truy cập ban đầu cho các lượt tác nhân mới.",
-        "vaultOnly": "Chỉ kho",
+        "vaultOnly": "Chỉ trong kho",
         "computerAccess": "Truy cập máy tính"
       },
       "confirm": {
@@ -2248,7 +2248,7 @@
     },
     "actions": {
       "save": "Lưu",
-      "models": "Tải mô hình",
+      "models": "Tải danh sách mô hình",
       "test": "Kiểm tra kết nối",
       "probe": "Dò tìm công cụ"
     },
@@ -2257,13 +2257,13 @@
       "checking": "Đang kiểm tra…",
       "connected": "Đã kết nối",
       "disconnected": "Đã ngắt kết nối",
-      "toolsDisabled": "Công cụ đã tắt",
+      "toolsDisabled": "Đã tắt công cụ",
       "fullTools": "Đã bật đầy đủ công cụ"
     },
     "alwaysAllowed": {
       "group": "Luôn cho phép",
       "description": "Các công cụ bạn đã cấp phê duyệt lâu dài trong kho này. Thao tác xóa không bao giờ được cấp phê duyệt lâu dài.",
-      "empty": "Chưa có công cụ nào được luôn cho phép. Mọi thay đổi vẫn cần hỏi trước.",
+      "empty": "Chưa có công cụ nào luôn được cho phép. Mọi thay đổi vẫn cần hỏi trước.",
       "revoke": "Thu hồi",
       "revokeLabel": "Thu hồi phê duyệt lâu dài cho {tool}",
       "ignoredInPageReview": "Không áp dụng: chỉnh sửa ghi chú và nhật ký luôn cần hỏi trước."

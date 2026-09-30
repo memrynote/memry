@@ -59,7 +59,7 @@
       "close": "Cerrar",
       "closeOthers": "Cerrar las demás",
       "closeToRight": "Cerrar las de la derecha",
-      "closeAll": "Cerrar todo",
+      "closeAll": "Cerrar todas",
       "duplicate": "Duplicar pestaña",
       "splitRight": "Dividir a la derecha",
       "splitDown": "Dividir hacia abajo",
@@ -82,7 +82,7 @@
     "undoFailed": "No se pudo deshacer la acción",
     "filesImported": "{count, plural, one {Se importó # archivo} other {Se importaron # archivos}}",
     "filesImportFailed": "{count, plural, one {No se pudo importar # archivo} other {No se pudieron importar # archivos}}",
-    "filesHiddenInSidebar": "Los archivos están ocultos en la barra lateral. Activa «Mostrar archivos» en el menú de orden de Colecciones para verlos.",
+    "filesHiddenInSidebar": "Los archivos están ocultos en la barra lateral. Activa «Mostrar archivos» en el menú de ordenación de Colecciones para verlos.",
     "moreRemindersDue": "{count, plural, one {Vence # recordatorio más} other {Vencen # recordatorios más}}",
     "moreRemindersDueHint": "Consulta el panel de recordatorios para ver los detalles",
     "searchIndexRepaired": "Índice de búsqueda reparado",
@@ -377,7 +377,7 @@
       "close": "Cerrar el agente"
     },
     "errors": {
-      "loadConversations": "No se pudieron cargar las conversaciones de los agentes",
+      "loadConversations": "No se pudieron cargar las conversaciones del agente",
       "loadConversation": "No se pudo cargar la conversación del agente",
       "createConversation": "No se pudo crear una conversación con el agente",
       "busy": "Otra ventana está a mitad de un turno en esta conversación. Espera a que termine o detenlo desde allí.",
@@ -496,7 +496,7 @@
       "bulkViewsHeading": "Añadir desde {name}",
       "bulkAllItems": "Todos los elementos",
       "bulkConfirmTitle": "{count, plural, one {¿Añadir # tarjeta desde {name}?} other {¿Añadir # tarjetas desde {name}?}}",
-      "bulkConfirmBody": "Los lienzos grandes se vuelven más lentos al desplazarse y pueden superar el límite de tamaño de sincronización.",
+      "bulkConfirmBody": "Los lienzos grandes son más lentos de recorrer y pueden superar el límite de tamaño de sincronización.",
       "bulkConfirmSkipped": "{count, plural, one {# elemento ya está en este lienzo y se omitirá.} other {# elementos ya están en este lienzo y se omitirán.}}",
       "bulkConfirmAdd": "{count, plural, one {Añadir # tarjeta} other {Añadir # tarjetas}}",
       "bulkBack": "Atrás",
@@ -603,8 +603,8 @@
       "sortModeModifiedAsc": "Modificación: más antiguos primero",
       "sortModeCreatedDesc": "Creación: más recientes primero",
       "sortModeCreatedAsc": "Creación: más antiguos primero",
-      "sortModeCountDesc": "Más usados",
-      "sortModeCountAsc": "Menos usados",
+      "sortModeCountDesc": "Más usadas",
+      "sortModeCountAsc": "Menos usadas",
       "sortSaveFailed": "No se pudo guardar el orden",
       "sectionOrderSaveFailed": "No se pudo guardar el orden de la barra lateral"
     },
@@ -617,7 +617,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Omitir la introducción",
-      "welcomeToMemry": "Bienvenido a memrynote",
+      "welcomeToMemry": "Te damos la bienvenida a memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Tu base de conocimiento personal. En 2 minutos te ayudamos a empezar.",
       "getStarted": "Empezar ",
       "createYourFirstNote": "Crea tu primera nota",
@@ -698,7 +698,7 @@
       "clear": "Borrar"
     },
     "componentsSearchSearchFilters": {
-      "clear": "Borrar",
+      "clear": "Quitar",
       "tags": "Etiquetas",
       "filterByTag": "Filtrar por etiqueta…",
       "dateRange": "Rango de fechas"
@@ -745,7 +745,7 @@
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Cambios no guardados",
-      "unsaved": "no guardado)"
+      "unsaved": "sin guardar)"
     },
     "componentsTabsRegularTab": {
       "unsavedChanges": "Cambios no guardados"
@@ -809,7 +809,7 @@
       "dragToResizeDoubleClickToReset": "Arrastra para cambiar el tamaño · Haz doble clic para restablecer"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Bienvenido a memrynote",
+      "welcomeToMemry": "Te damos la bienvenida a memrynote",
       "yourPersonalKnowledgeManagementSystem": "Tu sistema personal de gestión del conocimiento.",
       "selectAFolderToStoreYourNotesAndTasks": "Selecciona una carpeta para guardar tus notas y tareas.",
       "opening": "Abriendo…",
@@ -822,7 +822,7 @@
       "notesLastOpened": "notas · Última apertura",
       "preRelease": "Beta",
       "createNewVault": "Crear nueva bóveda",
-      "createNewVaultDesc": "Inicia una bóveda nueva en una carpeta de tu elección.",
+      "createNewVaultDesc": "Crea una bóveda nueva en la carpeta que elijas.",
       "openExistingVault": "Abrir bóveda existente",
       "openExistingVaultDesc": "Elige una carpeta con archivos Markdown que ya tengas.",
       "signInToSync": "Iniciar sesión para sincronizar",
@@ -972,7 +972,7 @@
       "journalYesterday": "Ayer",
       "journalTomorrow": "Mañana",
       "journalUpcoming": "Próximamente",
-      "journalNoEntryYet": "Aún no hay entrada",
+      "journalNoEntryYet": "Aún no hay ninguna entrada",
       "loadError": "No se pudo cargar",
       "unknown": "Widget desconocido"
     },
@@ -1134,7 +1134,7 @@
         "togglePreview": "Mostrar u ocultar el panel de vista previa",
         "selectItem": "Seleccionar elemento",
         "selectAllVisible": "Seleccionar todos los elementos visibles",
-        "clearSelection": "Borrar la selección o cerrar la clasificación rápida",
+        "clearSelection": "Anular la selección o cerrar la clasificación rápida",
         "openQuickFile": "Abrir la clasificación rápida",
         "chooseQuickFileResult": "Elegir un resultado de la clasificación rápida",
         "archiveItem": "Archivar el elemento seleccionado",
@@ -1161,7 +1161,7 @@
       "tasks": {
         "clearFilters": "Quitar los filtros visibles",
         "selectAllVisible": "Seleccionar todas las tareas visibles",
-        "clearSelection": "Borrar la selección de tareas",
+        "clearSelection": "Anular la selección de tareas",
         "completeSelected": "Completar las tareas seleccionadas",
         "deleteSelected": "Eliminar las tareas seleccionadas",
         "configureRepeat": "Configurar la repetición de la tarea enfocada",

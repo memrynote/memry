@@ -140,8 +140,8 @@
     "empty": {
       "willAppear": "Conexiunile vor apărea aici",
       "noneYet": "Nu s-au găsit conexiuni încă",
-      "moreJournaling": "Pe măsură ce scrieți mai mult în jurnal, AI-ul va găsi înregistrări similare",
-      "keepWriting": "Continuați să scrieți pentru a descoperi înregistrări similare"
+      "moreJournaling": "Pe măsură ce scrieți mai mult în jurnal, AI-ul va găsi înregistrări conexe",
+      "keepWriting": "Continuați să scrieți pentru a descoperi înregistrări conexe"
     },
     "error": {
       "loadFailed": "Nu s-au putut încărca conexiunile"
@@ -169,7 +169,7 @@
   },
   "stats": {
     "wordCount": "Număr de cuvinte",
-    "characterCount": "Numărul de caractere",
+    "characterCount": "Număr de caractere",
     "readingTime": "Timp de citire estimat",
     "lastModified": "Ultima modificare",
     "lessThanOneMinute": "< 1 min",
@@ -227,8 +227,8 @@
   },
   "error": {
     "title": "Eroare de jurnal",
-    "description": "Jurnalul a întâmpinat o eroare pentru {date}. Este posibil ca modificările dvs. recente să nu fi fost salvate.",
-    "descriptionNoDate": "Jurnalul a întâmpinat o eroare. Este posibil ca modificările dvs. recente să nu fi fost salvate.",
+    "description": "Jurnalul a întâmpinat o eroare pentru {date}. Este posibil ca modificările recente să nu fi fost salvate.",
+    "descriptionNoDate": "Jurnalul a întâmpinat o eroare. Este posibil ca modificările recente să nu fi fost salvate.",
     "unsavedContent": "S-a detectat conținut nesalvat ({length, plural, one {# caracter} few {# caractere} other {# de caractere}})"
   },
   "phaseF": {

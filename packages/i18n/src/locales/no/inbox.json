@@ -259,7 +259,7 @@
     "failedPlayAudio": "Kunne ikke spille av lyd",
     "failedLoadAudio": "Kunne ikke laste inn lyd",
     "video": "Video",
-    "unsupportedVideo": "Nettleseren din støtter ikke video-elementet."
+    "unsupportedVideo": "Nettleseren din støtter ikke videoelementet."
   },
   "reminder": {
     "dataUnavailable": "Påminnelsesdata er utilgjengelige.",
@@ -336,7 +336,7 @@
     "processRate": "{rate} % andel",
     "stale": "Gamle",
     "needsAttention": "trenger oppmerksomhet",
-    "allClear": "alt klart",
+    "allClear": "alt i orden",
     "avgTimeToFile": "Gj.sn. tid til plassering",
     "noCapturesYet": "Ingenting fanget opp ennå",
     "captures": "{count, plural, one {# element fanget opp} other {# elementer fanget opp}}",
@@ -534,7 +534,7 @@
       "failedToCaptureFile": "Kunne ikke fange opp filen",
       "fileCaptureFailed": "Oppfanging av fil mislyktes",
       "failedToCaptureAudio": "Kunne ikke fange opp lyd",
-      "failedToCaptureVoice": "Kunne ikke fange opp talen",
+      "failedToCaptureVoice": "Kunne ikke fange opp taleopptaket",
       "failedToLoadInboxPreferences": "Kunne ikke laste inn innboksinnstillingene",
       "failedToUpdateInboxPreferences": "Kunne ikke oppdatere innboksinnstillingene"
     },

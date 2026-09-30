@@ -25,11 +25,11 @@
       "willSync": "De notitie wordt gesynchroniseerd met de cloud",
       "renameFailed": "Kan de naam van de notitie niet wijzigen",
       "titleRequired": "Een notitie heeft een titel nodig",
-      "toggleLocalOnlyFailed": "Kan ‘alleen lokaal’ niet wijzigen",
+      "toggleLocalOnlyFailed": "Kan “alleen lokaal” niet wijzigen",
       "toggleFullWidthFailed": "Kan de volledige breedte niet wijzigen",
       "pathCopied": "Pad gekopieerd",
       "copyPathFailed": "Kan pad niet kopiëren",
-      "revealFailed": "Kan notitie niet tonen",
+      "revealFailed": "Kan notitie niet in map tonen",
       "openExternalFailed": "Kan notitie niet openen",
       "moved": "Notitie verplaatst",
       "moveFailed": "Kan notitie niet verplaatsen",
@@ -53,7 +53,7 @@
         "fileBytes": "Het is {size}. Notities blijven bewerkbaar tot {limit}.",
         "blockBytes": "Het bevat een stuk tekst van {size} zonder lege regel. Notities blijven bewerkbaar tot {limit} per blok."
       },
-      "explanation": "Om het te bewerken zou het hele bestand in één keer verwerkt moeten worden, waardoor de app vastloopt. Het bestand op schijf blijft ongewijzigd.",
+      "explanation": "Om het te bewerken zou het hele bestand in één keer verwerkt moeten worden, waardoor de app zou vastlopen. Het bestand op schijf blijft ongewijzigd.",
       "viewer": {
         "preparing": "{size} voorbereiden om te lezen…",
         "preparingHint": "De regels worden geïndexeerd, zodat je kunt scrollen zonder alles in één keer te laden.",
@@ -204,7 +204,7 @@
       "menuLabel": "Bestandsacties",
       "storedAs": "Opgeslagen als {name}",
       "notSynced": "Nog niet naar dit apparaat gesynchroniseerd",
-      "revealFailed": "Kan bestand niet tonen",
+      "revealFailed": "Kan bestand niet in map tonen",
       "openFailed": "Kan bestand niet openen",
       "missingTitle": "Bijlagebestand ontbreekt",
       "missingExpected": "Verwacht bestand: {name}"
@@ -340,7 +340,7 @@
       },
       "linkToNote": {
         "title": "Naar notitie linken",
-        "subtext": "Notities zoeken – of typ overal [["
+        "subtext": "Zoek een notitie – of typ overal [["
       },
       "media": {
         "title": "Media",
@@ -600,7 +600,7 @@
   "comments": {
     "railAria": "Opmerkingen",
     "badgeAria": "{count, plural, one {# opmerking} other {# opmerkingen}}",
-    "toolbarComment": "Opmerking",
+    "toolbarComment": "Opmerking toevoegen",
     "commentPlaceholder": "Opmerking toevoegen…",
     "createdTooltip": "Gemaakt op {date} om {time}",
     "cancel": "Annuleren",
@@ -768,7 +768,7 @@
         "sand": "Zand",
         "lilac": "Lila",
         "clay": "Klei",
-        "ash": "As",
+        "ash": "Asgrijs",
         "fog": "Mist",
         "wheat": "Tarwe",
         "moss": "Mos",
@@ -980,7 +980,7 @@
       "noGroupablePropertiesFound": "Geen groepeerbare eigenschappen gevonden",
       "sortDirection": "Sorteerrichting",
       "collapseGroupsByDefault": "Groepen standaard samenvouwen",
-      "showGroupSummaries": "Groepssamenvattingen weergeven",
+      "showGroupSummaries": "Groepssamenvattingen tonen",
       "clearGrouping2": "Groepering wissen"
     },
     "componentsFolderViewGroupedTable": {
@@ -1210,7 +1210,7 @@
       "selectAFileFromTheSidebarToViewIt": "Selecteer een bestand in de zijbalk om het te bekijken",
       "loadingFile": "Bestand laden…",
       "open": "Openen",
-      "reveal": "Tonen",
+      "reveal": "In map tonen",
       "unsupportedFileType": "Niet-ondersteund bestandstype",
       "fileActions": "Bestandsacties"
     },
@@ -1220,7 +1220,7 @@
       "displayDensity": "Weergavedichtheid",
       "comfortable": "Comfortabel",
       "compact": "Compact",
-      "showSummaries": "Samenvattingen weergeven",
+      "showSummaries": "Samenvattingen tonen",
       "cancel": "Annuleren"
     },
     "componentsFolderViewSortSelector": {
@@ -1276,7 +1276,7 @@
       "failedToReorderProperties": "Kan de eigenschappen niet opnieuw rangschikken",
       "cannotAddTagThisNoteWasDeleted": "Kan tag niet toevoegen – deze notitie is verwijderd",
       "cannotRemoveTagThisNoteWasDeleted": "Kan tag niet verwijderen – deze notitie is verwijderd",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan ‘alleen lokaal’ niet wijzigen – deze notitie is verwijderd"
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan “alleen lokaal” niet wijzigen – deze notitie is verwijderd"
     }
   },
   "bulkActions": {
@@ -1291,7 +1291,7 @@
     "clearAria": "Selectie wissen",
     "copiedLinks": "{count, plural, one {# link gekopieerd} other {# links gekopieerd}}",
     "setIcon": "Pictogram instellen",
-    "iconUpdated": "{count, plural, one {Pictogram bijgewerkt op # notitie} other {Pictogram bijgewerkt op # notities}}"
+    "iconUpdated": "{count, plural, one {Pictogram van # notitie bijgewerkt} other {Pictogram van # notities bijgewerkt}}"
   },
   "applyTemplateConfirm": {
     "title": "Notitie-inhoud vervangen?",
@@ -1317,7 +1317,7 @@
   },
   "newNoteFromNote": {
     "action": "Nieuwe notitie op basis van deze notitie",
-    "created": "Gemaakt met {tagCount, plural, =0 {geen tags} one {# tag} other {# tags}} en {propertyCount, plural, =0 {geen eigenschappen} one {# eigenschap} other {# eigenschappen}} uit {source}"
+    "created": "Gemaakt op basis van {source}: {tagCount, plural, =0 {geen tags} one {# tag} other {# tags}} en {propertyCount, plural, =0 {geen eigenschappen} one {# eigenschap} other {# eigenschappen}} overgenomen"
   },
   "tags": {
     "hubTitle": "Tags",
@@ -1326,7 +1326,7 @@
   "tagView": {
     "moreActions": "Meer acties",
     "pin": {
-      "action": "{count, plural, one {# notitie} other {# notities}} vastzetten aan tag",
+      "action": "{count, plural, one {# notitie aan tag vastzetten} other {# notities aan tag vastzetten}}",
       "success": "{count, plural, one {# notitie} other {# notities}} vastgezet aan tag",
       "failed": "Kan notitie niet aan tag vastzetten"
     }

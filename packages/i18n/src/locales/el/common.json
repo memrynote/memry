@@ -1,18 +1,27 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Εστίαση στο πεδίο καταγραφής",
+    "detailHint": "λεπτομέρειες",
+    "submit": "Καταγραφή"
+  },
   "button": {
     "save": "Αποθήκευση",
     "cancel": "Ακύρωση",
     "close": "Κλείσιμο",
     "delete": "Διαγραφή",
-    "done": "Έγινε",
-    "dontSave": "Μην Αποθήκευση",
+    "done": "Τέλος",
+    "dontSave": "Χωρίς αποθήκευση",
     "add": "Προσθήκη",
     "remove": "Αφαίρεση",
-    "retry": "Επανάληψη",
+    "retry": "Δοκιμάστε ξανά",
     "back": "Πίσω",
     "continue": "Συνέχεια",
     "copy": "Αντιγραφή",
     "create": "Δημιουργία"
+  },
+  "media": {
+    "video": "Βίντεο"
   },
   "state": {
     "loading": "Φόρτωση…",
@@ -23,9 +32,9 @@
   "action": {
     "search": "Αναζήτηση",
     "expand": "Ανάπτυξη",
-    "collapse": "Κατάρρευση",
-    "showMore": "+{count, plural, one {# περισσότερα} other {# περισσότερα}}",
-    "showLess": "Δείξτε λιγότερα",
+    "collapse": "Σύμπτυξη",
+    "showMore": "+{count, plural, one {# ακόμη} other {# ακόμη}}",
+    "showLess": "Εμφάνιση λιγότερων",
     "undo": "Αναίρεση"
   },
   "fileActions": {
@@ -37,147 +46,620 @@
   },
   "tabs": {
     "pin": "Καρφίτσωμα καρτέλας",
-    "unpin": "Ξεκαρφιτσώστε την καρτέλα",
+    "unpin": "Ξεκαρφίτσωμα καρτέλας",
+    "persistence": {
+      "saveFailed": "Οι ανοιχτές καρτέλες δεν αποθηκεύονται πλέον",
+      "saveFailedQuota": "Αυτή η συνεδρία είναι πολύ μεγάλη για να αποθηκευτεί. Κλείστε μερικές καρτέλες, αλλιώς ίσως να μην επαναφερθεί την επόμενη φορά που θα ανοίξετε το Memry.",
+      "saveFailedGeneric": "Το Memry δεν μπόρεσε να αποθηκεύσει αυτήν τη συνεδρία, οπότε ίσως να μην επαναφερθεί την επόμενη φορά που θα ανοίξετε την εφαρμογή.",
+      "lastSessionNotSaved": "Η τελευταία συνεδρία δεν αποθηκεύτηκε όταν έκλεισε το Memry",
+      "lastSessionNotSavedQuota": "Ο αποθηκευτικός χώρος ήταν τότε γεμάτος, οπότε αυτές οι καρτέλες προέρχονται από προηγούμενη αποθήκευση. Κλείστε μερικές καρτέλες για να ελευθερωθεί χώρος.",
+      "lastSessionNotSavedGeneric": "Το Memry δεν μπόρεσε να αποθηκεύσει τις καρτέλες κατά την έξοδο, οπότε αυτές οι καρτέλες προέρχονται από προηγούμενη αποθήκευση."
+    },
     "contextMenu": {
       "close": "Κλείσιμο",
-      "closeOthers": "Κλείστε τους Άλλους",
-      "closeToRight": "Κοντά στα δεξιά",
+      "closeOthers": "Κλείσιμο άλλων",
+      "closeToRight": "Κλείσιμο καρτελών στα δεξιά",
       "closeAll": "Κλείσιμο όλων",
-      "duplicate": "Διπλότυπη καρτέλα",
+      "duplicate": "Δημιουργία αντιγράφου καρτέλας",
       "splitRight": "Διαίρεση δεξιά",
       "splitDown": "Διαίρεση κάτω",
       "copyPath": "Αντιγραφή διαδρομής",
-      "revealInSidebar": "Αποκάλυψη στο Sidebar"
+      "revealInSidebar": "Εμφάνιση στην πλαϊνή στήλη"
     }
   },
   "count": {
-    "note": "{count, plural, one {Σημείωση #} other {Σημειώσεις #}}",
-    "task": "{count, plural, one {Εργασία #} other {Εργασίες #}}",
-    "itemDelete": "{count, plural, one {Διαγραφή στοιχείου #} other {Διαγραφή στοιχείων #}}",
-    "event": "{count, plural, one {# εκδήλωση} other {# εκδηλώσεις}}",
-    "journal": "{count, plural, one {# εφημερίδα} other {# εφημερίδες}}",
-    "reminder": "{count, plural, one {# υπενθύμιση} other {# υπενθυμίσεις}}"
+    "note": "{count, plural, one {# σημείωση} other {# σημειώσεις}}",
+    "journal": "{count, plural, one {# ημερήσια σημείωση} other {# ημερήσιες σημειώσεις}}",
+    "task": "{count, plural, one {# εργασία} other {# εργασίες}}",
+    "event": "{count, plural, one {# συμβάν} other {# συμβάντα}}",
+    "reminder": "{count, plural, one {# υπενθύμιση} other {# υπενθυμίσεις}}",
+    "itemDelete": "{count, plural, one {Διαγραφή # στοιχείου} other {Διαγραφή # στοιχείων}}"
   },
   "toast": {
     "actionFailed": "Η ενέργεια απέτυχε",
     "nothingToUndo": "Δεν υπάρχει τίποτα για αναίρεση",
-    "undone": "Αναίρεση: {description}",
-    "undoFailed": "Η αναίρεση της ενέργειας απέτυχε"
+    "undone": "Αναιρέθηκε: {description}",
+    "undoFailed": "Η αναίρεση της ενέργειας απέτυχε",
+    "filesImported": "{count, plural, one {Εισήχθη # αρχείο} other {Εισήχθησαν # αρχεία}}",
+    "filesImportFailed": "{count, plural, one {Αποτυχία εισαγωγής # αρχείου} other {Αποτυχία εισαγωγής # αρχείων}}",
+    "filesHiddenInSidebar": "Τα αρχεία είναι κρυφά στην πλαϊνή στήλη. Ενεργοποιήστε την επιλογή «Εμφάνιση αρχείων» στο μενού ταξινόμησης των Συλλογών για να τα δείτε.",
+    "moreRemindersDue": "{count, plural, one {Ώρα για # ακόμη υπενθύμιση} other {Ώρα για # ακόμη υπενθυμίσεις}}",
+    "moreRemindersDueHint": "Δείτε τις λεπτομέρειες στο πλαίσιο υπενθυμίσεων",
+    "searchIndexRepaired": "Το ευρετήριο αναζήτησης επιδιορθώθηκε",
+    "searchIndexRepairedHint": "Μέρος του ευρετηρίου αναζήτησης είχε καταστραφεί, οπότε το Memry το δημιούργησε ξανά. Οι σημειώσεις δεν επηρεάστηκαν."
   },
   "dateRelative": {
     "today": "Σήμερα",
     "yesterday": "Χθες",
-    "daysAgo": "{count, plural, one {# πριν από μια μέρα} other {# πριν από μέρες}}",
-    "daysLate": "{count, plural, one {# ημ. καθυστέρηση} other {# ημ. καθυστέρηση}}",
-    "daysOverdue": "{count, plural, one {# ημέρα καθυστέρηση} other {# ημέρες καθυστέρηση}}",
-    "tomorrow": "Αύριο"
+    "daysAgo": "{count, plural, one {πριν από # ημέρα} other {πριν από # ημέρες}}",
+    "tomorrow": "Αύριο",
+    "daysOverdue": "{count, plural, one {καθυστέρηση # ημέρας} other {καθυστέρηση # ημερών}}",
+    "daysLate": "{count, plural, one {καθυστέρηση # ημ.} other {καθυστέρηση # ημ.}}",
+    "inDays": "{count, plural, one {σε # ημέρα} other {σε # ημέρες}}",
+    "inWeeks": "{count, plural, one {σε # εβδομάδα} other {σε # εβδομάδες}}"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Κάθε μέρα} other {Κάθε # ημέρες}}",
     "everyNWeeks": "{count, plural, one {Κάθε εβδομάδα} other {Κάθε # εβδομάδες}}",
     "everyNWeeksOnWeekdays": "{count, plural, one {Κάθε καθημερινή} other {Κάθε # εβδομάδες τις καθημερινές}}",
     "everyNWeeksOnWeekends": "{count, plural, one {Κάθε Σαββατοκύριακο} other {Κάθε # εβδομάδες τα Σαββατοκύριακα}}",
-    "everyNWeeksOnDays": "{count, plural, one {Κάθε εβδομάδα στο {days}} other {Κάθε # εβδομάδες στο {days}}}",
+    "everyNWeeksOnDays": "{count, plural, one {Κάθε εβδομάδα: {days}} other {Κάθε # εβδομάδες: {days}}}",
     "everyNMonths": "{count, plural, one {Κάθε μήνα} other {Κάθε # μήνες}}",
-    "everyNMonthsOnDay": "{count, plural, one {Κάθε μήνα στο {day}{suffix}} other {Κάθε # μήνες στο {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {Κάθε μήνα στο {week} {day}} other {Κάθε # μήνες στο {week} {day}}}",
+    "everyNMonthsOnDay": "{count, plural, one {Κάθε μήνα στις {day}{suffix}} other {Κάθε # μήνες στις {day}{suffix}}}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Κάθε μήνα την {week} {day}} other {Κάθε # μήνες την {week} {day}}}",
     "everyNYears": "{count, plural, one {Κάθε χρόνο} other {Κάθε # χρόνια}}",
-    "repeats": "Επαναλαμβάνει",
+    "repeats": "Επαναλαμβάνεται",
     "ordinal": {
       "first": "πρώτη",
-      "fourth": "τέταρτη",
-      "last": "τελευταία",
       "second": "δεύτερη",
-      "third": "τρίτη"
+      "third": "τρίτη",
+      "fourth": "τέταρτη",
+      "last": "τελευταία"
     },
     "preset": {
       "everyWeekday": "Κάθε καθημερινή (Δευ-Παρ)",
       "everyYearOnDate": "Κάθε χρόνο στις {date}"
     }
   },
+  "agentChat": {
+    "title": "Συνομιλία με πράκτορα",
+    "loading": "Φόρτωση συνομιλίας με πράκτορα…",
+    "conversationLoading": "Φόρτωση συνομιλίας…",
+    "historyNotSaved": "Αυτή η συσκευή δεν μπορεί να ξεκλειδώσει το θησαυροφυλάκιο, οπότε η συνομιλία δεν θα αποθηκευτεί όταν κλείσετε την εφαρμογή.",
+    "newConversation": "Νέα συνομιλία",
+    "history": "Ιστορικό συνομιλιών",
+    "openInTab": "Άνοιγμα συνομιλίας σε καρτέλα",
+    "stop": "Διακοπή",
+    "thinking": "Ο πράκτορας σκέφτεται",
+    "enable": {
+      "title": "Ενεργοποίηση πράκτορα memrynote",
+      "description": "Ο πράκτορας memrynote χρησιμοποιεί το τοπικό CLI πράκτορα που έχετε επιλέξει για να συνομιλεί για το θησαυροφυλάκιο. Το Claude στέλνει τα μηνύματα στην Anthropic· το Codex στέλνει τα μηνύματα στην OpenAI.",
+      "remote": "Το memrynote κρυπτογραφεί το τοπικό και το συγχρονισμένο ιστορικό συνομιλιών, αλλά την εκτέλεση του μοντέλου αναλαμβάνει ο επιλεγμένος πάροχος.",
+      "readTools": "Τα εργαλεία ανάγνωσης εκτελούνται αυτόματα.",
+      "writeTools": "Τα εργαλεία δημιουργίας και ενημέρωσης απαιτούν έγκριση.",
+      "diff": "Τα εργαλεία ενημέρωσης εμφανίζουν διαφορά ή προεπισκόπηση.",
+      "button": "Ενεργοποίηση συνομιλίας με πράκτορα"
+    },
+    "approval": {
+      "description": "Ο πράκτορας θέλει να καλέσει το {name} με αυτά τα ορίσματα.",
+      "applyOnce": "Εφαρμογή μία φορά",
+      "allowOnce": "Να επιτρέπεται μία φορά",
+      "editAndApply": "Επεξεργασία και εφαρμογή",
+      "editAndAllow": "Επεξεργασία και έγκριση",
+      "allowAlways": "Να επιτρέπεται πάντα",
+      "applyEdits": "Εφαρμογή τροποποιήσεων",
+      "deny": "Απόρριψη",
+      "invalidJson": "Εισαγάγετε έγκυρο JSON πριν από την εφαρμογή τροποποιήσεων.",
+      "thisTool": "αυτό το εργαλείο",
+      "alwaysAllowHint": "Η επιλογή «Να επιτρέπεται πάντα» ισχύει μόνο για: {tool}. Τα άλλα εργαλεία εξακολουθούν να ζητούν έγκριση, και οι διαγραφές ζητούν πάντα έγκριση.",
+      "alwaysInChat": "Να επιτρέπεται πάντα σε αυτήν τη συνομιλία",
+      "alwaysInChatHint": "Λήγει όταν τελειώσει η συνομιλία",
+      "alwaysInVault": "Να επιτρέπεται πάντα σε αυτό το θησαυροφυλάκιο",
+      "alwaysInVaultHint": "Ανακαλείται από τις Ρυθμίσεις › Πράκτορας",
+      "deletesAlwaysAsk": "Οι διαγραφές ζητούν πάντα έγκριση"
+    },
+    "diff": {
+      "previewError": "Δεν ήταν δυνατή η προεπισκόπηση αυτής της αλλαγής",
+      "description": "Ο πράκτορας θέλει να ενημερώσει: {title}. Ελέγξτε την αλλαγή πριν την εφαρμόσετε.",
+      "fallbackTitle": "αυτό το στοιχείο",
+      "current": "Τρέχον",
+      "candidate": "Προτεινόμενο",
+      "loading": "Φόρτωση…",
+      "apply": "Εφαρμογή",
+      "applyEdited": "Εφαρμογή επεξεργασίας",
+      "editBody": "Επεξεργασία πριν από την εφαρμογή"
+    },
+    "inPageReview": {
+      "regionLabel": "Πρόταση του πράκτορα",
+      "barLabel": "Έλεγχος της πρότασης του πράκτορα",
+      "loading": "Φόρτωση πρότασης…",
+      "loadingTitle": "Πρόταση του πράκτορα",
+      "title": "{count, plural, =0 {Πρόταση του πράκτορα} one {Ο πράκτορας πρότεινε # αλλαγή} other {Ο πράκτορας πρότεινε # αλλαγές}}",
+      "editingTitle": "Επεξεργασία της πρότασης",
+      "pendingHint": "Δεν έχει αποθηκευτεί ακόμη. Αποδεχτείτε για να εφαρμοστεί.",
+      "editingHint": "Οι αλλαγές σας μένουν εδώ μέχρι να αποδεχτείτε.",
+      "baseChanged": "Αυτή η σημείωση άλλαξε ενώ επεξεργαζόσασταν την πρόταση.",
+      "keepDraft": "Διατήρηση των αλλαγών μου",
+      "restart": "Έναρξη από την πιο πρόσφατη έκδοση",
+      "reject": "Απόρριψη",
+      "edit": "Επεξεργασία",
+      "showDiff": "Εμφάνιση αλλαγών",
+      "accept": "Αποδοχή",
+      "acceptEdits": "Αποδοχή αλλαγών",
+      "waiting": "Αναμένεται ο έλεγχός σας: {title}.",
+      "notOpen": "Οι αλλαγές αφορούν: {title}. Ανοίξτε για να τις δείτε ή αποδεχτείτε τες χωρίς έλεγχο.",
+      "show": "Εμφάνιση",
+      "openNote": "Άνοιγμα σημείωσης",
+      "openJournal": "Άνοιγμα ημερολογίου γραφής",
+      "fallbackTitle": "αυτή η σημείωση"
+    },
+    "preview": {
+      "unset": "δεν έχει οριστεί",
+      "yes": "ναι",
+      "no": "όχι",
+      "noChange": "Δεν θα αλλάξει τίποτα από όσα μπορεί να δείξει αυτή η προεπισκόπηση.",
+      "willBeLost": "Θα χαθούν",
+      "unchangedLines": "{count, plural, one {# αμετάβλητη γραμμή} other {# αμετάβλητες γραμμές}}",
+      "item": {
+        "note": "Σημείωση",
+        "folder": "Φάκελος",
+        "task": "Εργασία",
+        "journal": "Ημερολόγιο γραφής",
+        "inbox": "Εισερχόμενα",
+        "project": "Έργο",
+        "status": "Κατάσταση",
+        "canvas": "Καμβάς"
+      },
+      "intent": {
+        "create": "δημιουργία",
+        "update": "ενημέρωση",
+        "delete": "διαγραφή",
+        "move": "μετακίνηση",
+        "reorder": "αναδιάταξη"
+      },
+      "field": {
+        "archived": "Αρχειοθέτηση",
+        "arguments": "Ορίσματα",
+        "color": "Χρώμα",
+        "completed": "Ολοκλήρωση",
+        "description": "Περιγραφή",
+        "due": "Λήξη",
+        "dueTime": "Ώρα λήξης",
+        "duplicateOf": "Αντίγραφο του",
+        "edits": "Αλλαγές",
+        "elements": "Στοιχεία",
+        "folder": "Φάκελος",
+        "icon": "Εικονίδιο",
+        "isDefault": "Προεπιλογή",
+        "isDone": "Κατάσταση ολοκλήρωσης",
+        "items": "Στοιχεία",
+        "name": "Όνομα",
+        "operation": "Ενέργεια",
+        "order": "Σειρά",
+        "parent": "Γονικό στοιχείο",
+        "path": "Διαδρομή",
+        "position": "Θέση",
+        "priority": "Προτεραιότητα",
+        "project": "Έργο",
+        "removed": "Αφαιρέθηκε",
+        "repeatFrom": "Επανάληψη από",
+        "snoozeReason": "Αιτία αναβολής",
+        "snoozedUntil": "Σε αναβολή έως",
+        "start": "Έναρξη",
+        "status": "Κατάσταση",
+        "tags": "Ετικέτες",
+        "title": "Τίτλος"
+      },
+      "loss": {
+        "words": "{count, plural, one {# λέξη} other {# λέξεις}}",
+        "tags": "{count, plural, one {# ετικέτα} other {# ετικέτες}}",
+        "notes": "{count, plural, one {# σημείωση} other {# σημειώσεις}}",
+        "folders": "{count, plural, one {# φάκελος} other {# φάκελοι}}",
+        "files": "{count, plural, one {# αρχείο} other {# αρχεία}}",
+        "events": "{count, plural, one {# συμβάν} other {# συμβάντα}}",
+        "tasks": "{count, plural, one {# εργασία} other {# εργασίες}}",
+        "due": "λήγει {value}"
+      }
+    },
+    "composer": {
+      "currentNote": "Τρέχουσα σημείωση",
+      "removeAttachment": "Αφαίρεση του «{label}»",
+      "placeholder": "Κάντε οτιδήποτε με το memrynote… @ για αναφορά σε σημειώσεις, εργασίες και συμβάντα",
+      "send": "Αποστολή",
+      "providerLabel": "Πάροχος πράκτορα: {provider}",
+      "settingsSummary": "{reasoning}",
+      "connectedTools": "Συνδεδεμένα εργαλεία",
+      "connectTool": "Σύνδεση του {tool}",
+      "addContext": "Προσθήκη πλαισίου",
+      "addContextWithPermissions": "Προσθήκη πλαισίου ({permissions})",
+      "mentionContext": "Αναφορά σε σημείωση, εργασία ή συμβάν",
+      "voice": {
+        "start": "Έναρξη φωνητικής υπαγόρευσης",
+        "stop": "Διακοπή φωνητικής υπαγόρευσης",
+        "transcribing": "Μεταγραφή φωνητικής εισόδου",
+        "errors": {
+          "permissionDenied": "Δεν επιτράπηκε η πρόσβαση στο μικρόφωνο",
+          "noMicrophone": "Δεν βρέθηκε μικρόφωνο",
+          "accessFailed": "Δεν ήταν δυνατή η πρόσβαση στο μικρόφωνο",
+          "recordingFailed": "Δεν ήταν δυνατή η ηχογράφηση φωνής",
+          "transcriptionFailed": "Δεν ήταν δυνατή η μεταγραφή φωνής"
+        }
+      },
+      "modelLabel": "Μοντέλο πράκτορα: {provider} {model}",
+      "reasoningLabel": "Συλλογισμός πράκτορα: {reasoning}",
+      "providers": {
+        "label": "Πάροχος",
+        "claude": "Claude",
+        "codex": "Codex",
+        "antigravity": "Antigravity",
+        "local": "Τοπικό"
+      },
+      "access": {
+        "vaultOnly": "Μόνο θησαυροφυλάκιο",
+        "computerAccess": "Πρόσβαση στον υπολογιστή"
+      },
+      "webSearch": {
+        "on": "Ενεργή",
+        "off": "Ανενεργή",
+        "label": "Αναζήτηση στον ιστό"
+      },
+      "models": {
+        "default": "Προεπιλογή",
+        "label": "Μοντέλο",
+        "search": "Αναζήτηση μοντέλων…",
+        "useCustom": "Χρήση του «{query}»",
+        "localEmpty": "Δεν βρέθηκαν μοντέλα — ελέγξτε τις Ρυθμίσεις",
+        "localSetup": "Διαμόρφωση στις Ρυθμίσεις…",
+        "cliSetup": "Δεν εντοπίστηκε — διαμόρφωση στις Ρυθμίσεις…",
+        "runtimeUnavailable": "Ο πράκτορας δεν είναι διαθέσιμος — άνοιγμα Ρυθμίσεων…"
+      },
+      "settings": {
+        "reasoning": "Συλλογισμός",
+        "effort": "Προσπάθεια"
+      },
+      "includeCurrentNote": "Συμπερίληψη τρέχουσας σημείωσης",
+      "chooseModel": "Επιλογή μοντέλου",
+      "claudeSettings": {
+        "reasoning": {
+          "low": "Χαμηλό",
+          "medium": "Μεσαίο",
+          "high": "Υψηλό",
+          "extraHigh": "Πολύ υψηλό",
+          "extraHighDefault": "Πολύ υψηλό (προεπιλογή)",
+          "max": "Μέγιστο"
+        }
+      },
+      "codexSettings": {
+        "reasoning": {
+          "low": "Χαμηλό",
+          "medium": "Μεσαίο",
+          "mediumDefault": "Μεσαίο (προεπιλογή)",
+          "high": "Υψηλό",
+          "extraHigh": "Πολύ υψηλό"
+        }
+      },
+      "permissionsLabel": "Δικαιώματα πράκτορα: {access}, αναζήτηση στον ιστό {webSearch}",
+      "permissions": {
+        "label": "Δικαιώματα",
+        "access": "Πρόσβαση",
+        "tools": "Εργαλεία"
+      },
+      "modelSettingsLabel": "Ρυθμίσεις μοντέλου πράκτορα: {model}, {settings}"
+    },
+    "refPicker": {
+      "noMatches": "Δεν υπάρχουν αντιστοιχίες"
+    },
+    "toolResult": {
+      "label": "Αποτέλεσμα εργαλείου"
+    },
+    "toolCall": {
+      "editedArgs": "Επεξεργασμένα ορίσματα",
+      "parameters": "Παράμετροι"
+    },
+    "toolActivity": {
+      "steps": "{count, plural, one {# βήμα} other {# βήματα}}",
+      "running": "Εκτελείται",
+      "awaitingApproval": "Αναμονή έγκρισης",
+      "done": "Ολοκληρώθηκε"
+    },
+    "reasoning": {
+      "thinking": "Σκέψη…",
+      "thought": "Σκέφτηκε",
+      "thoughtFor": "Σκέφτηκε για {seconds} δευτ.",
+      "toggle": "Εμφάνιση ή απόκρυψη συλλογισμού"
+    },
+    "sidebar": {
+      "label": "Δεξιά πλαϊνή στήλη",
+      "day": "Ημέρα",
+      "agent": "Πράκτορας",
+      "pendingApproval": "{count, plural, one {# έγκριση σε εκκρεμότητα} other {# εγκρίσεις σε εκκρεμότητα}}",
+      "inProgress": "Ο πράκτορας απαντά",
+      "close": "Κλείσιμο πράκτορα"
+    },
+    "errors": {
+      "loadConversations": "Δεν ήταν δυνατή η φόρτωση των συνομιλιών με τον πράκτορα",
+      "loadConversation": "Δεν ήταν δυνατή η φόρτωση της συνομιλίας με τον πράκτορα",
+      "createConversation": "Δεν ήταν δυνατή η δημιουργία συνομιλίας με τον πράκτορα",
+      "busy": "Σε άλλο παράθυρο εκτελείται ήδη ένας γύρος αυτής της συνομιλίας. Περιμένετε να ολοκληρωθεί ή διακόψτε τον από εκεί.",
+      "sendTurn": "Δεν ήταν δυνατή η αποστολή του μηνύματος στον πράκτορα",
+      "cancelTurn": "Δεν ήταν δυνατή η ακύρωση της απάντησης του πράκτορα",
+      "submitApproval": "Δεν ήταν δυνατή η υποβολή έγκρισης εργαλείου",
+      "updateTrust": "Δεν ήταν δυνατή η ενημέρωση των αξιόπιστων εργαλείων",
+      "saveDisclosure": "Δεν ήταν δυνατή η αποθήκευση της αποδοχής της γνωστοποίησης",
+      "resolveWindow": "Δεν ήταν δυνατός ο εντοπισμός του παραθύρου προέλευσης του πράκτορα",
+      "detectCli": "Δεν ήταν δυνατός ο εντοπισμός των διαθέσιμων πρακτόρων",
+      "loadDisclosure": "Δεν ήταν δυνατή η φόρτωση της κατάστασης της γνωστοποίησης"
+    },
+    "actions": {
+      "copy": "Αντιγραφή",
+      "copied": "Αντιγράφηκε"
+    },
+    "sources": {
+      "count": "{count, plural, one {# πηγή} other {# πηγές}}"
+    }
+  },
+  "canvas": {
+    "sectionLabel": "Καμβάδες",
+    "newCanvas": "Νέος καμβάς",
+    "newCanvasFolder": "Νέος φάκελος καμβάδων",
+    "untitled": "Καμβάς χωρίς τίτλο",
+    "empty": "Δεν υπάρχουν ακόμη καμβάδες",
+    "loading": "Φόρτωση καμβάδων…",
+    "loadFailed": "Δεν ήταν δυνατή η φόρτωση των καμβάδων",
+    "createFailed": "Δεν ήταν δυνατή η δημιουργία του καμβά",
+    "openFailed": "Δεν ήταν δυνατό το άνοιγμα του καμβά",
+    "notFound": "Δεν ήταν δυνατή η εύρεση αυτού του καμβά",
+    "corruptScene": "Δεν ήταν δυνατή η ανάγνωση αυτού του καμβά. Η επεξεργασία είναι απενεργοποιημένη για να μη χαθούν δεδομένα.",
+    "unreadableTitle": "Αυτός ο καμβάς δεν μπορεί να ανοίξει εδώ",
+    "unreadableBody": "Το έγγραφό του λείπει από το θησαυροφυλάκιο ή σχεδιάστηκε πριν οι καμβάδες γίνουν αρχεία και αυτή η συσκευή δεν έχει πλέον το κλειδί που τον ξεκλειδώνει. Δεν διαγράφηκε τίποτα — ανοίξτε το θησαυροφυλάκιο στη συσκευή όπου δημιουργήθηκε ή επαναφέρετε τον φάκελο των καμβάδων.",
+    "tooLargeToSync": "Αυτός ο καμβάς είναι πολύ μεγάλος για συγχρονισμό. Έχει αποθηκευτεί σε αυτήν τη συσκευή, αλλά δεν θα φτάσει στις άλλες συσκευές σας μέχρι να μικρύνει.",
+    "savedToVault": "Όλες οι αλλαγές αποθηκεύονται αυτόματα στο θησαυροφυλάκιό σας",
+    "libraryStoreFailed": "Δεν ήταν δυνατή η αποθήκευση της βιβλιοθήκης σχημάτων σας. Οι πρόσφατες αλλαγές σε αυτήν μπορεί να χαθούν.",
+    "link": {
+      "itemMissing": "Το συνδεδεμένο στοιχείο δεν υπάρχει πλέον.",
+      "elementMissing": "Ο σύνδεσμος οδηγεί σε κάτι που δεν βρίσκεται πλέον σε αυτόν τον καμβά.",
+      "title": "Σύνδεση με στοιχείο",
+      "placeholder": "Αναζήτηση σημειώσεων, εργασιών, συμβάντων, εισερχομένων, έργων…",
+      "hint": "Αρχίστε να πληκτρολογείτε για να βρείτε ένα στοιχείο προς σύνδεση.",
+      "empty": "Δεν υπάρχει αντιστοιχία.",
+      "selectOneShape": "Επιλέξτε ένα μόνο σχήμα για να το συνδέσετε με ένα στοιχείο.",
+      "cardsCannotLink": "Μια κάρτα ανοίγει ήδη το δικό της στοιχείο, οπότε δεν μπορεί να έχει δεύτερο σύνδεσμο.",
+      "linked": "Συνδέθηκε.",
+      "groupNotes": "Σημειώσεις",
+      "groupFiles": "Αρχεία",
+      "groupTasks": "Εργασίες",
+      "groupEvents": "Συμβάντα",
+      "groupInbox": "Εισερχόμενα",
+      "groupJournals": "Ημερήσιες σημειώσεις",
+      "groupProjects": "Έργα",
+      "groupFolders": "Φάκελοι",
+      "useUrl": "Σύνδεση με {url}",
+      "openTarget": "Άνοιγμα του «{name}»",
+      "shapeTarget": "Ένα σχήμα σε αυτόν τον καμβά",
+      "missingTarget": "Δεν βρίσκεται πλέον σε αυτόν τον καμβά"
+    },
+    "disabledTitle": "Ο καμβάς δεν είναι ενεργοποιημένος",
+    "disabledBody": "Αυτή η καρτέλα ανήκει σε μια λειτουργία που δεν είναι ενεργοποιημένη σε αυτήν τη συσκευή.",
+    "unreadable": "Το έγγραφο αυτού του καμβά λείπει ή δεν μπορεί να διαβαστεί. Εμφανίστε το στη διαχείριση αρχείων ή διαγράψτε τον από τη λίστα.",
+    "actionFailed": "Δεν ήταν δυνατή η ολοκλήρωση αυτής της ενέργειας στον καμβά",
+    "renameLabel": "Όνομα καμβά",
+    "folderNameLabel": "Όνομα φακέλου",
+    "deleteConfirmTitle": "Διαγραφή αυτού του καμβά;",
+    "deleteConfirmBody": "Το «{title}» αφαιρείται από το memrynote σε όλες τις συσκευές σας. Το αρχείο του μεταφέρεται στον κάδο αυτού του υπολογιστή, αλλά η επαναφορά του από εκεί δεν θα επαναφέρει τον καμβά.",
+    "dropToRoot": "Αποθέστε εδώ για μετακίνηση εκτός φακέλου",
+    "filterPlaceholder": "Φιλτράρισμα καμβάδων",
+    "filterNoMatches": "Κανένας καμβάς δεν ταιριάζει με αυτό το φίλτρο",
+    "folderCanvasCount": "Καμβάδες στον φάκελο: {count}",
+    "folderEmptyHint": "Δεν υπάρχει τίποτα εδώ ακόμη",
+    "deleteFolderConfirmTitle": "Διαγραφή αυτού του φακέλου καμβάδων;",
+    "deleteFolderConfirmBody": "Το «{name}» και όλο το περιεχόμενό του αφαιρούνται από το memrynote σε όλες τις συσκευές σας. Καμβάδες που επηρεάζονται: {count}. Ο φάκελος μεταφέρεται στον κάδο αυτού του υπολογιστή, αλλά η επαναφορά του από εκεί δεν θα τους επαναφέρει.",
+    "actions": {
+      "rename": "Μετονομασία",
+      "duplicate": "Δημιουργία αντιγράφου",
+      "copyLink": "Αντιγραφή συνδέσμου",
+      "setIcon": "Ορισμός εικονιδίου",
+      "removeIcon": "Αφαίρεση εικονιδίου",
+      "moveToFolder": "Μετακίνηση σε φάκελο",
+      "moveToRoot": "Ρίζα",
+      "openExternal": "Άνοιγμα σε εξωτερικό επεξεργαστή",
+      "newCanvasHere": "Νέος καμβάς εδώ",
+      "newFolder": "Νέος φάκελος",
+      "canvasMenu": "Ενέργειες καμβά",
+      "folderMenu": "Ενέργειες φακέλου καμβάδων"
+    },
+    "card": {
+      "open": "Άνοιγμα σε καρτέλα",
+      "openToEdit": "Άνοιγμα σε καρτέλα για επεξεργασία",
+      "deleted": "Το στοιχείο διαγράφηκε",
+      "loading": "Φόρτωση…",
+      "untitled": "Χωρίς τίτλο",
+      "allDay": "Ολοήμερο",
+      "createNoteFailed": "Δεν ήταν δυνατή η δημιουργία της σημείωσης",
+      "addCard": "Προσθήκη κάρτας",
+      "addPlaceholder": "Αναζήτηση σημειώσεων, αρχείων, εργασιών, συμβάντων και έργων…",
+      "addCreateNote": "Δημιουργία σημείωσης «{query}»",
+      "addCreateNoteEmpty": "Δημιουργία νέας σημείωσης",
+      "addEmpty": "Δεν βρέθηκε τίποτα",
+      "addGroupNotes": "Σημειώσεις",
+      "addGroupTasks": "Εργασίες",
+      "addGroupEvents": "Συμβάντα",
+      "addOnCanvas": "Στον καμβά",
+      "addCreatedAt": "Δημιουργήθηκε {date}",
+      "bulkGroup": "Προσθήκη όλων από",
+      "bulkFromTag": "Μια ετικέτα…",
+      "bulkFromFolder": "Έναν φάκελο…",
+      "bulkSearchTags": "Αναζήτηση ετικετών…",
+      "bulkSearchFolders": "Αναζήτηση φακέλων…",
+      "bulkTagsHeading": "Ετικέτες",
+      "bulkFoldersHeading": "Φάκελοι",
+      "bulkItemCount": "{count, plural, one {# στοιχείο} other {# στοιχεία}}",
+      "bulkViewsHeading": "Προσθήκη από «{name}»",
+      "bulkAllItems": "Όλα τα στοιχεία",
+      "bulkConfirmTitle": "{count, plural, one {Προσθήκη # κάρτας από «{name}»;} other {Προσθήκη # καρτών από «{name}»;}}",
+      "bulkConfirmBody": "Οι μεγάλοι καμβάδες γίνονται πιο αργοί στην πλοήγηση και μπορεί να ξεπεράσουν το όριο μεγέθους συγχρονισμού.",
+      "bulkConfirmSkipped": "{count, plural, one {# στοιχείο βρίσκεται ήδη σε αυτόν τον καμβά και θα παραλειφθεί.} other {# στοιχεία βρίσκονται ήδη σε αυτόν τον καμβά και θα παραλειφθούν.}}",
+      "bulkConfirmAdd": "{count, plural, one {Προσθήκη # κάρτας} other {Προσθήκη # καρτών}}",
+      "bulkBack": "Πίσω",
+      "bulkEmpty": "Δεν υπάρχουν σημειώσεις, αρχεία ή εργασίες για προσθήκη",
+      "bulkLoadFailed": "Δεν ήταν δυνατή η φόρτωση των στοιχείων",
+      "bulkAdded": "{count, plural, one {Προστέθηκε # κάρτα} other {Προστέθηκαν # κάρτες}}",
+      "bulkAddedSkipped": "{count, plural, one {Προστέθηκε # κάρτα} other {Προστέθηκαν # κάρτες}} · {skipped} ήδη στον καμβά",
+      "bulkAllOnCanvas": "{count, plural, one {Ήδη σε αυτόν τον καμβά} other {Και τα # είναι ήδη σε αυτόν τον καμβά}}"
+    },
+    "cluster": {
+      "button": "Πρόταση ομάδων",
+      "buttonHint": "Ομαδοποιεί τις κάρτες σημειώσεων αυτού του καμβά (ή τις επιλεγμένες) με βάση την ομοιότητα. Εκτελείται σε αυτήν τη συσκευή.",
+      "loading": "Ομαδοποίηση…",
+      "needMoreNotes": "Προσθέστε τουλάχιστον {count} κάρτες σημειώσεων για να προταθούν ομάδες.",
+      "tooMany": "Αυτός ο καμβάς έχει περισσότερες από {count} κάρτες σημειώσεων. Επιλέξτε έως {count} και δοκιμάστε ξανά.",
+      "disabled": "Ενεργοποιήστε τις τοπικές ενσωματώσεις στις Ρυθμίσεις > AI για να προτείνονται ομάδες.",
+      "noGroups": "Δεν βρέθηκαν σαφείς ομάδες σε αυτές τις σημειώσεις.",
+      "missing": "{count, plural, one {# σημείωση δεν έχει ακόμη ενσωμάτωση και παραλείφθηκε.} other {# σημειώσεις δεν έχουν ακόμη ενσωματώσεις και παραλείφθηκαν.}}",
+      "failed": "Δεν ήταν δυνατή η πρόταση ομάδων",
+      "title": "Προτεινόμενες ομάδες",
+      "description": "Ομαδοποιήθηκαν με βάση την ομοιότητα σε αυτήν τη συσκευή. Τίποτα δεν αλλάζει στον καμβά μέχρι να δημιουργήσετε πλαίσια.",
+      "defaultName": "Ομάδα {number}",
+      "untitledGroup": "Ομάδα",
+      "groupName": "Όνομα ομάδας",
+      "acceptGroup": "Συμπερίληψη του «{name}»",
+      "noteCount": "{count, plural, one {# σημείωση} other {# σημειώσεις}}",
+      "discard": "Απόρριψη",
+      "create": "{count, plural, one {Δημιουργία # πλαισίου} other {Δημιουργία # πλαισίων}}",
+      "created": "{count, plural, one {Δημιουργήθηκε # πλαίσιο} other {Δημιουργήθηκαν # πλαίσια}}",
+      "cardsGone": "Αυτές οι κάρτες δεν βρίσκονται πλέον στον καμβά."
+    },
+    "frame": {
+      "categorize": "Κατηγοριοποίηση",
+      "editBinding": "Αλλαγή της κατηγορίας αυτής της ενότητας",
+      "cardCount": "{count, plural, one {# κάρτα} other {# κάρτες}}",
+      "bindTitle": "Κατηγοριοποίηση αυτής της ενότητας",
+      "bindHint": "Οι κάρτες που αποτίθενται στην ενότητα λαμβάνουν αυτήν την ετικέτα ή τιμή ιδιότητας.",
+      "bindPlaceholder": "Αναζήτηση ετικετών και τιμών ιδιοτήτων ή πληκτρολόγηση νέας ετικέτας…",
+      "bindEmpty": "Καμία ετικέτα ή τιμή ιδιότητας δεν ταιριάζει.",
+      "groupTags": "Ετικέτες",
+      "useTag": "Χρήση νέας ετικέτας #{tag}",
+      "unbind": "Διακοπή κατηγοριοποίησης ως «{label}»",
+      "current": "Τρέχουσα",
+      "applied": "{count, plural, one {Το «{label}» προστέθηκε σε # κάρτα} other {Το «{label}» προστέθηκε σε # κάρτες}}",
+      "applyFailed": "Δεν ήταν δυνατή η προσθήκη του «{label}»",
+      "revertFailed": "Δεν ήταν δυνατή η αναίρεση του «{label}»",
+      "leftFrame": "{count, plural, one {# κάρτα μετακινήθηκε εκτός του «{label}». Διατηρεί την κατηγορία.} other {# κάρτες μετακινήθηκαν εκτός του «{label}». Διατηρούν την κατηγορία.}}",
+      "removeCategory": "Αφαίρεση του «{label}»",
+      "removed": "{count, plural, one {Το «{label}» αφαιρέθηκε από # κάρτα} other {Το «{label}» αφαιρέθηκε από # κάρτες}}",
+      "removeFailed": "Δεν ήταν δυνατή η αφαίρεση του «{label}»",
+      "skippedFile": "{count, plural, one {Μια κάρτα αρχείου έμεινε ως έχει: τα αρχεία δεν έχουν ετικέτες ή ιδιότητες.} other {# κάρτες αρχείων έμειναν ως έχουν: τα αρχεία δεν έχουν ετικέτες ή ιδιότητες.}}",
+      "skippedTaskProperty": "{count, plural, one {Μια κάρτα εργασίας έμεινε ως έχει: οι εργασίες δέχονται ετικέτες, όχι ιδιότητες σημειώσεων.} other {# κάρτες εργασιών έμειναν ως έχουν: οι εργασίες δέχονται ετικέτες, όχι ιδιότητες σημειώσεων.}}",
+      "skippedUnsupported": "{count, plural, one {Μια κάρτα έμεινε ως έχει: τα συμβάντα και τα έργα δεν μπορούν να κατηγοριοποιηθούν.} other {# κάρτες έμειναν ως έχουν: τα συμβάντα και τα έργα δεν μπορούν να κατηγοριοποιηθούν.}}",
+      "layoutAction": "Διάταξη κατά ιδιότητα",
+      "layoutTitle": "Διάταξη κατά ιδιότητα",
+      "layoutHint": "Δημιουργεί μια ενότητα για κάθε τιμή και ταξινομεί σε αυτές τις σημειώσεις του καμβά.",
+      "layoutPlaceholder": "Αναζήτηση ιδιοτήτων επιλογής, πολλαπλής επιλογής και κατάστασης…",
+      "layoutEmpty": "Δεν υπάρχουν ακόμη ιδιότητες επιλογής, πολλαπλής επιλογής ή κατάστασης με τιμές.",
+      "layoutValueCount": "{count, plural, one {# τιμή} other {# τιμές}}",
+      "layoutDone": "{count, plural, one {Δημιουργήθηκε # ενότητα για «{property}»} other {Δημιουργήθηκαν # ενότητες για «{property}»}}",
+      "layoutFailed": "Δεν ήταν δυνατή η διάταξη του καμβά"
+    }
+  },
   "phaseF": {
     "componentsAppSidebar": {
       "collections": "Συλλογές",
+      "projects": "Έργα",
       "newNote": "Νέα σημείωση",
       "newNote2": "Νέα σημείωση",
       "newFolder": "Νέος φάκελος",
       "newFolder2": "Νέος φάκελος",
+      "newProject": "Νέο έργο",
       "bookmarks": "Σελιδοδείκτες",
       "tags": "Ετικέτες",
+      "reorderSection": "Αναδιάταξη ενότητας «{section}»",
       "dropFilesToImport": "Απόθεση αρχείων για εισαγωγή",
+      "dropFilesIntoVaultRoot": "Ρίζα θησαυροφυλακίου",
       "newNoteN": "Νέα σημείωση (⌘N)",
       "new": "Νέο",
-      "syncDisabled": "Ο συγχρονισμός απενεργοποιήθηκε",
-      "syncDisabled2": "Ο συγχρονισμός απενεργοποιήθηκε",
+      "newItemMenu": "Δημιουργία νέου…",
       "feedbackButton": "Αποστολή σχολίων",
+      "feedbackTitle": "Αποστολή σχολίων",
       "feedbackDescription": "Πείτε μας τι λειτουργεί, τι έχει χαλάσει ή τι θα θέλατε να κάνει το Memry. Διαβάζουμε κάθε μήνυμα.",
-      "feedbackEmailHint": "Προσθέστε το email σας αν θέλετε απάντηση.",
-      "feedbackError": "Δεν ήταν δυνατή η αποστολή σχολίων. Δοκιμάστε ξανά.",
       "feedbackPlaceholder": "Τα σχόλιά σας…",
+      "feedbackEmailHint": "Προσθέστε το email σας αν θέλετε απάντηση.",
+      "feedbackPrivacyTitle": "Τι στέλνεται",
+      "feedbackPrivacyMessage": "Το μήνυμά σας, ακριβώς όπως το γράψατε",
+      "feedbackPrivacyEmailOptional": "Το email σας — μόνο αν το προσθέσετε, και μόνο για να μπορέσουμε να απαντήσουμε",
+      "feedbackPrivacyEmailSignedIn": "Το email του λογαριασμού σας ({email}), για να μπορέσουμε να απαντήσουμε",
+      "feedbackPrivacyVersion": "Έκδοση εφαρμογής και λειτουργικό σύστημα",
+      "feedbackPrivacyPlan": "Το πρόγραμμά σας (δωρεάν, Plus, Pro ή Believer)",
+      "feedbackPrivacyNote": "Τίποτα άλλο. Οι σημειώσεις σας μένουν στη συσκευή σας.",
       "feedbackSend": "Αποστολή",
       "feedbackSending": "Αποστολή…",
       "feedbackSuccess": "Ευχαριστούμε για τα σχόλια!",
-      "feedbackTitle": "Αποστολή σχολίων",
-      "newItemMenu": "Δημιουργία νέου…",
-      "feedbackPrivacyEmailOptional": "Το email σας — μόνο αν το προσθέσετε, και μόνο για να μπορέσουμε να απαντήσουμε",
-      "feedbackPrivacyEmailSignedIn": "Το email του λογαριασμού σας ({email}), για να μπορέσουμε να απαντήσουμε",
-      "feedbackPrivacyMessage": "Το μήνυμά σας, ακριβώς όπως το γράψατε",
-      "feedbackPrivacyNote": "Τίποτα άλλο. Οι σημειώσεις σας μένουν στη συσκευή σας.",
-      "feedbackPrivacyPlan": "Το πρόγραμμά σας (free, Plus, Pro ή Believer)",
-      "feedbackPrivacyTitle": "Τι στέλνεται",
-      "feedbackPrivacyVersion": "Έκδοση εφαρμογής και λειτουργικό σύστημα",
-      "projects": "Έργα"
+      "feedbackError": "Δεν ήταν δυνατή η αποστολή σχολίων. Δοκιμάστε ξανά.",
+      "syncDisabled": "Ο συγχρονισμός απενεργοποιήθηκε",
+      "syncDisabled2": "Ο συγχρονισμός απενεργοποιήθηκε",
+      "sortLabel": "Ταξινόμηση ενότητας «{section}»: {mode}",
+      "sortModeManual": "Χειροκίνητη",
+      "sortModeNameAsc": "Όνομα Α → Ω",
+      "sortModeNameDesc": "Όνομα Ω → Α",
+      "sortModeModifiedDesc": "Τροποποίηση: νεότερα πρώτα",
+      "sortModeModifiedAsc": "Τροποποίηση: παλαιότερα πρώτα",
+      "sortModeCreatedDesc": "Δημιουργία: νεότερα πρώτα",
+      "sortModeCreatedAsc": "Δημιουργία: παλαιότερα πρώτα",
+      "sortModeCountDesc": "Συχνότερα χρησιμοποιούμενα",
+      "sortModeCountAsc": "Λιγότερο χρησιμοποιούμενα",
+      "sortSaveFailed": "Δεν ήταν δυνατή η αποθήκευση της σειράς ταξινόμησης",
+      "sectionOrderSaveFailed": "Δεν ήταν δυνατή η αποθήκευση της σειράς της πλαϊνής στήλης"
     },
     "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "Αλλαγή μεγέθους πίνακα ημέρας",
+      "resizeDayPanel": "Αλλαγή μεγέθους πλαισίου ημέρας",
       "dragToResizeDoubleClickToReset": "Σύρετε για αλλαγή μεγέθους · Κάντε διπλό κλικ για επαναφορά"
     },
     "componentsFindBarFindBar": {
-      "findReplaceAsk": "Βρείτε, αντικαταστήστε, ρωτήστε..."
+      "findReplaceAsk": "Εύρεση, αντικατάσταση, ερώτηση…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Παράλειψη ενσωμάτωσης",
+      "skipOnboarding": "Παράλειψη περιήγησης",
       "welcomeToMemry": "Καλώς ήρθατε στο memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Η προσωπική σας βάση γνώσεων. Ας αφιερώσουμε 2 λεπτά για να ξεκινήσετε.",
-      "getStarted": "Ξεκινήστε ",
+      "getStarted": "Έναρξη ",
       "createYourFirstNote": "Δημιουργήστε την πρώτη σας σημείωση",
       "markdownBasedStoredLocallyAsPlainFiles": "Βασισμένο σε Markdown, αποθηκευμένο τοπικά ως απλά αρχεία.",
-      "eGMeetingNotesIdeasAnything": "π.χ. Σημειώσεις συνάντησης, ιδέες, οτιδήποτε...",
+      "eGMeetingNotesIdeasAnything": "π.χ. Σημειώσεις συνάντησης, ιδέες, οτιδήποτε…",
       "skip": "Παράλειψη",
       "createNote": "Δημιουργία σημείωσης ",
       "addYourFirstTask": "Προσθέστε την πρώτη σας εργασία",
       "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Οι εργασίες συνδέονται με τις σημειώσεις σας, με προτεραιότητες και ημερομηνίες λήξης.",
-      "eGReviewProjectProposal": "π.χ. Εξέταση πρότασης έργου...",
+      "eGReviewProjectProposal": "π.χ. Εξέταση πρότασης έργου…",
       "skip2": "Παράλειψη",
       "createTask": "Δημιουργία εργασίας ",
       "syncAcrossDevices": "Συγχρονισμός μεταξύ συσκευών",
       "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Διατηρήστε τις σημειώσεις και τις εργασίες σας συγχρονισμένες σε όλες τις συσκευές σας. Μπορείτε πάντα να το ρυθμίσετε αργότερα.",
       "skipForNow": "Παράλειψη προς το παρόν",
-      "doneLetSGo": "Έγινε — πάμε! "
+      "doneLetSGo": "Τέλος — πάμε! "
     },
     "componentsFolderIconButton": {
-      "setFolderIcon": "Ορισμός εικονιδίου φακέλου"
+      "setFolderIcon": "Ορισμός εικονιδίου φακέλου",
+      "expandFolder": "Ανάπτυξη φακέλου",
+      "collapseFolder": "Σύμπτυξη φακέλου"
     },
     "componentsHintOverlayHintIndicator": {
       "hint": "ΣΥΜΒΟΥΛΗ"
     },
     "componentsIconPicker": {
       "iconPicker": "Επιλογέας εικονιδίων",
-      "selectIcon": "Επιλέξτε Εικονίδιο",
+      "selectIcon": "Επιλογή εικονιδίου",
       "closeIconPicker": "Κλείσιμο εργαλείου επιλογής εικονιδίων",
-      "searchIcons": "Εικονίδια αναζήτησης...",
+      "searchIcons": "Αναζήτηση εικονιδίων…",
       "all": "Όλα",
       "clearIcon": "Διαγραφή εικονιδίου",
       "noIconsFoundFor": "Δεν βρέθηκαν εικονίδια για το \""
     },
     "componentsKeyboardShortcutsModal": {
       "keyboardShortcuts": "Συντομεύσεις πληκτρολογίου",
-      "closeShortcutsHelp": "Βοήθεια για το κλείσιμο συντομεύσεων",
+      "closeShortcutsHelp": "Κλείσιμο βοήθειας συντομεύσεων",
       "press": "Πατήστε",
-      "toClose": "να κλείσει"
+      "toClose": "για κλείσιμο"
     },
     "componentsKiboUiTreeIndex": {
-      "setIcon": "Σετ εικονίδιο",
+      "setIcon": "Ορισμός εικονιδίου",
       "clearIcon": "Διαγραφή εικονιδίου"
     },
     "componentsNavMain": {
@@ -192,17 +674,17 @@
       "more2": "Περισσότερα"
     },
     "componentsNavUser": {
-      "cn": "ΣΟ",
-      "cn2": "ΣΟ",
+      "cn": "CN",
+      "cn2": "CN",
       "upgradeToPro": "Αναβάθμιση σε Pro",
       "account": "Λογαριασμός",
       "billing": "Χρέωση",
       "notifications": "Ειδοποιήσεις",
-      "logOut": "Αποσυνδεθείτε"
+      "logOut": "Αποσύνδεση"
     },
     "componentsSearchCommandPalette": {
       "search": "Αναζήτηση",
-      "searchNotesTasksJournalInbox": "Αναζήτηση σημειώσεων, εργασιών, ημερολογίου, εισερχομένων...",
+      "searchNotesTasksJournalInbox": "Αναζήτηση σημειώσεων, εργασιών, ημερολογίου γραφής, εισερχομένων…",
       "noResultsFor": "Δεν υπάρχουν αποτελέσματα για \"",
       "result": "αποτέλεσμα",
       "noResultsForQuery": "Δεν υπάρχουν αποτελέσματα για «{query}»",
@@ -213,17 +695,17 @@
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Αναζητήστε και κάντε κλικ σε στοιχεία για να δημιουργήσετε το μονοπάτι σας",
       "reasons": "Λόγοι",
-      "clear": "Καθαρό"
+      "clear": "Απαλοιφή"
     },
     "componentsSearchSearchFilters": {
-      "clear": "Καθαρό",
+      "clear": "Απαλοιφή",
       "tags": "Ετικέτες",
-      "filterByTag": "Φιλτράρισμα ανά ετικέτα...",
+      "filterByTag": "Φιλτράρισμα κατά ετικέτα…",
       "dateRange": "Εύρος ημερομηνιών"
     },
     "componentsSearchSearchResultGroup": {
-      "viewAll": "Προβολή όλων ",
-      "results": "αποτελέσματα"
+      "viewAll": "Προβολή και των ",
+      "results": "αποτελεσμάτων"
     },
     "componentsSearchSearchResultItem": {
       "p": "Π",
@@ -231,16 +713,16 @@
     },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Δεν υπάρχουν ανοιχτές καρτέλες",
-      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Ανοίξτε μια σελίδα από την πλαϊνή γραμμή ή δημιουργήστε μια νέα καρτέλα για να ξεκινήσετε",
-      "openInbox": "Ανοίξτε τα Εισερχόμενα",
-      "closePane": "Κλείσιμο παραθύρου"
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Ανοίξτε μια σελίδα από την πλαϊνή στήλη ή δημιουργήστε μια νέα καρτέλα για να ξεκινήσετε",
+      "openInbox": "Άνοιγμα εισερχομένων",
+      "closePane": "Κλείσιμο τμήματος"
     },
     "componentsSplitViewLayoutPicker": {
       "layoutPresets": "Προεπιλογές διάταξης",
       "layoutPresets2": "Προεπιλογές διάταξης"
     },
     "componentsSplitViewResizeHandle": {
-      "resizePanes": "Αλλαγή μεγέθους τζαμιών"
+      "resizePanes": "Αλλαγή μεγέθους τμημάτων"
     },
     "componentsSplitViewTabContent": {
       "taskscontextNotAvailable": "Το TasksContext δεν είναι διαθέσιμο",
@@ -254,11 +736,11 @@
     "componentsTabsNewTabMenu": {
       "newTab": "Νέα καρτέλα",
       "newTab2": "Νέα καρτέλα",
-      "newNote": "Νέα Σημείωση",
-      "journal": "Εφημερίδα",
+      "newNote": "Νέα σημείωση",
+      "journal": "Ημερολόγιο γραφής",
       "calendar": "Ημερολόγιο",
-      "inboxCapture": "Λήψη εισερχομένων",
-      "tasks": "Καθήκοντα",
+      "inboxCapture": "Καταγραφή στα εισερχόμενα",
+      "tasks": "Εργασίες",
       "tags": "Ετικέτες"
     },
     "componentsTabsPinnedTab": {
@@ -269,13 +751,13 @@
       "unsavedChanges": "Μη αποθηκευμένες αλλαγές"
     },
     "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "Κλείστε όλες τις καρτέλες"
+      "closeAllTabs": "Κλείσιμο όλων των καρτελών"
     },
     "componentsTabsTabBarWithDrag": {
-      "openTabs": "Ανοίξτε τις καρτέλες",
-      "scrollTabsLeft": "Κάντε κύλιση στις καρτέλες αριστερά",
-      "scrollTabsRight": "Κάντε κύλιση στις καρτέλες δεξιά",
-      "dayPanel": "Πάνελ ημέρας"
+      "openTabs": "Ανοιχτές καρτέλες",
+      "scrollTabsLeft": "Κύλιση καρτελών προς τα αριστερά",
+      "scrollTabsRight": "Κύλιση καρτελών προς τα δεξιά",
+      "dayPanel": "Πλαίσιο ημέρας"
     },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Κάτι πήγε στραβά",
@@ -284,7 +766,7 @@
       "sendReport": "Αποστολή διαγνωστικής αναφοράς"
     },
     "componentsTabsTabPreviewCard": {
-      "noteIcon": "Σημείωση εικονίδιο"
+      "noteIcon": "Εικονίδιο σημείωσης"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Μη αποθηκευμένες αλλαγές",
@@ -306,11 +788,11 @@
     "componentsUiAutocompleteDropdown": {
       "suggestions": "Προτάσεις",
       "or": "ή",
-      "enter": "Εισαγάγετε",
-      "toInsert": "να εισάγετε"
+      "enter": "Enter",
+      "toInsert": "για εισαγωγή"
     },
     "componentsUiBreadcrumb": {
-      "breadcrumb": "φρυγανιά",
+      "breadcrumb": "διαδρομή πλοήγησης",
       "more": "Περισσότερα"
     },
     "componentsUiDialog": {
@@ -320,25 +802,24 @@
       "close": "Κλείσιμο"
     },
     "componentsUiSidebar": {
-      "sidebar": "Πλαϊνή γραμμή",
-      "displaysTheMobileSidebar": "Εμφανίζει την πλαϊνή γραμμή του κινητού.",
-      "toggleSidebar": "Εναλλαγή πλευρικής γραμμής",
-      "toggleSidebar2": "Εναλλαγή πλευρικής γραμμής",
+      "sidebar": "Πλαϊνή στήλη",
+      "displaysTheMobileSidebar": "Εμφανίζει την πλαϊνή στήλη για κινητά.",
+      "toggleSidebar": "Εμφάνιση/απόκρυψη πλαϊνής στήλης",
+      "toggleSidebar2": "Εμφάνιση/απόκρυψη πλαϊνής στήλης",
       "dragToResizeDoubleClickToReset": "Σύρετε για αλλαγή μεγέθους · Κάντε διπλό κλικ για επαναφορά"
     },
     "componentsVaultOnboarding": {
       "welcomeToMemry": "Καλώς ήρθατε στο memrynote",
       "yourPersonalKnowledgeManagementSystem": "Το προσωπικό σας σύστημα διαχείρισης γνώσεων.",
-      "selectAFolderToStoreYourNotesAndTasks": "Επιλέξτε ένα φάκελο για να αποθηκεύσετε τις σημειώσεις και τις εργασίες σας.",
-      "opening": "Άνοιγμα...",
-      "selectVaultFolder": "Επιλέξτε Φάκελος Vault",
+      "selectAFolderToStoreYourNotesAndTasks": "Επιλέξτε έναν φάκελο για να αποθηκεύσετε τις σημειώσεις και τις εργασίες σας.",
+      "opening": "Άνοιγμα…",
+      "selectVaultFolder": "Επιλογή φακέλου θησαυροφυλακίου",
       "plainMarkdown": "Απλό Markdown",
       "yourNotesStayPortable": "Οι σημειώσεις σας παραμένουν φορητές",
       "syncAnywhere": "Συγχρονισμός οπουδήποτε",
       "useDropboxIcloudGit": "Χρησιμοποιήστε Dropbox, iCloud, Git",
       "recentVaults": "Πρόσφατα θησαυροφυλάκια",
       "notesLastOpened": "σημειώσεις · Τελευταίο άνοιγμα",
-      "brandName": "Memrynote",
       "preRelease": "Beta",
       "createNewVault": "Δημιουργία νέου θησαυροφυλακίου",
       "createNewVaultDesc": "Ξεκινήστε ένα νέο θησαυροφυλάκιο σε φάκελο της επιλογής σας.",
@@ -349,514 +830,427 @@
       "create": "Δημιουργία",
       "open": "Άνοιγμα",
       "signIn": "Σύνδεση",
-      "helpAndDocs": "Βοήθεια & έγγραφα",
+      "helpAndDocs": "Βοήθεια και τεκμηρίωση",
       "signInRequiresVault": "Ανοίξτε ή δημιουργήστε πρώτα ένα θησαυροφυλάκιο για να ρυθμίσετε τον συγχρονισμό.",
-      "addVault": "Προσθήκη θησαυροφυλακίου"
+      "addVault": "Προσθήκη θησαυροφυλακίου",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "Οι σημειώσεις βρίσκονται σε ένα θησαυροφυλάκιο, έναν φάκελο σε αυτόν τον υπολογιστή.",
+        "createDesc": "Δώστε του όνομα και επιλέξτε πού θα βρίσκεται.",
+        "openFolder": "Άνοιγμα φακέλου ως θησαυροφυλακίου",
+        "openFolderDesc": "Χρησιμοποιήστε έναν φάκελο με αρχεία Markdown που ήδη διατηρείτε.",
+        "openFromSync": "Άνοιγμα από το Memrynote Sync",
+        "openFromSyncDesc": "Συνδεθείτε και κατεβάστε ένα θησαυροφυλάκιο από τον λογαριασμό σας.",
+        "back": "Πίσω",
+        "createTitle": "Δημιουργία νέου θησαυροφυλακίου",
+        "createSubtitle": "Ένα θησαυροφυλάκιο είναι ένας φάκελος με αρχεία Markdown. Μπορείτε να τον μετακινήσετε αργότερα.",
+        "nameLabel": "Όνομα",
+        "namePlaceholder": "Οι σημειώσεις μου",
+        "locationLabel": "Τοποθεσία",
+        "change": "Αλλαγή…",
+        "willBeCreatedAt": "Θα δημιουργηθεί στη θέση",
+        "errorExists": "Υπάρχει ήδη φάκελος με αυτό το όνομα εδώ.",
+        "openInstead": "Άνοιγμα του φακέλου ως θησαυροφυλακίου",
+        "errorInvalidName": "Τα ονόματα δεν μπορούν να ξεκινούν με τελεία ούτε να περιέχουν / \\ : * ? \" < > |",
+        "createFailed": "Δεν ήταν δυνατή η δημιουργία του θησαυροφυλακίου.",
+        "createVault": "Δημιουργία θησαυροφυλακίου",
+        "creating": "Δημιουργία…",
+        "cancel": "Ακύρωση",
+        "chooseTitle": "Επιλογή θησαυροφυλακίου",
+        "chooseSubtitle": "Έχετε συνδεθεί ως {email}. Επιλέξτε ένα για να ανοίξει σε αυτόν τον υπολογιστή.",
+        "untitledVault": "Θησαυροφυλάκιο χωρίς τίτλο",
+        "items": "{count, plural, one {# στοιχείο} other {# στοιχεία}}",
+        "onThisComputer": "Σε αυτόν τον υπολογιστή",
+        "downloadTo": "Λήψη σε",
+        "otherVaultsHint": "Τα άλλα θησαυροφυλάκια παραμένουν στον λογαριασμό σας. Μπορείτε να τα κατεβάσετε οποιαδήποτε στιγμή από τον επιλογέα θησαυροφυλακίων.",
+        "openVault": "Άνοιγμα θησαυροφυλακίου",
+        "opening": "Άνοιγμα…",
+        "loadingVaults": "Φόρτωση θησαυροφυλακίων…",
+        "loadFailed": "Δεν ήταν δυνατή η φόρτωση των θησαυροφυλακίων.",
+        "retry": "Δοκιμάστε ξανά",
+        "noVaultsTitle": "Δεν υπάρχουν ακόμη θησαυροφυλάκια στον λογαριασμό σας",
+        "noVaultsDesc": "Δημιουργήστε ένα σε αυτόν τον υπολογιστή. Θα συγχρονίζεται με τον λογαριασμό σας.",
+        "createCta": "Δημιουργία θησαυροφυλακίου",
+        "openFailed": "Δεν ήταν δυνατό το άνοιγμα του θησαυροφυλακίου."
+      }
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Δεν υπάρχουν ακόμη θησαυροφυλάκια",
-      "openVault": "Ανοιχτό θησαυροφυλάκιο",
+      "openVault": "Άνοιγμα θησαυροφυλακίου",
       "settings": "Ρυθμίσεις",
-      "logOut": "Αποσυνδεθείτε",
-      "signInToSync": "Συνδεθείτε για συγχρονισμό",
+      "logOut": "Αποσύνδεση",
+      "signInToSync": "Σύνδεση για συγχρονισμό",
       "remove": "Αφαίρεση \"",
-      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Αυτό το θησαυροφυλάκιο θα αφαιρεθεί από την εφαρμογή, αλλά τα αρχεία σας θα παραμείνουν στο δίσκο. Μπορείτε πάντα να το προσθέσετε ξανά αργότερα.",
+      "removeVaultTitle": "Αφαίρεση του «{name}» από τη λίστα;",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Αυτό το θησαυροφυλάκιο θα αφαιρεθεί από την εφαρμογή, αλλά τα αρχεία σας θα παραμείνουν στον δίσκο. Μπορείτε πάντα να το προσθέσετε ξανά αργότερα.",
       "cancel": "Ακύρωση",
       "remove2": "Αφαίρεση",
       "inYourAccount": "Στον λογαριασμό σας",
       "itemsCount": "{count} στοιχεία",
       "untitledVault": "Θησαυροφυλάκιο",
-      "downloadVaultTitle": "Λήψη “{name}”",
+      "downloadVaultTitle": "Λήψη του «{name}»",
       "downloadLocation": "Τοποθεσία",
       "changeLocation": "Αλλαγή…",
       "download": "Λήψη",
       "downloadFailed": "Δεν ήταν δυνατή η λήψη του θησαυροφυλακίου",
       "deleteFromAccount": "Διαγραφή από τον λογαριασμό",
+      "deleteVaultTitle": "Διαγραφή του «{name}» από τον λογαριασμό σας;",
       "deleteVaultBody": "Αυτό αφαιρεί οριστικά όλα τα συγχρονισμένα δεδομένα αυτού του θησαυροφυλακίου από τους διακομιστές του Memry και δεν μπορεί να αναιρεθεί. Τα αρχεία σας στον δίσκο δεν διαγράφονται.",
       "deleteVaultConfirm": "Διαγραφή από τον λογαριασμό",
       "deleteVaultFailed": "Δεν ήταν δυνατή η διαγραφή του θησαυροφυλακίου",
-      "deleteVaultTitle": "Διαγραφή του “{name}” από τον λογαριασμό σας;",
-      "removeVaultTitle": "Αφαίρεση του “{name}” από τη λίστα;",
       "missing": "Ο φάκελος δεν βρέθηκε"
     },
     "componentsWindowControls": {
       "searchK": "Αναζήτηση (⌘K)",
-      "browserBack": "Επιστροφή προγράμματος περιήγησης",
+      "browserBack": "Μετάβαση πίσω",
       "back": "Πίσω",
-      "browserForward": "Προώθηση προγράμματος περιήγησης",
+      "browserForward": "Μετάβαση εμπρός",
       "forward": "Εμπρός"
     }
   },
   "phaseI": {
     "errors": {
       "failedToImportFiles": "Αποτυχία εισαγωγής αρχείων",
-      "failedToCreateNote": "Η δημιουργία σημείωσης απέτυχε",
+      "failedToCreateNote": "Αποτυχία δημιουργίας σημείωσης",
       "failedToAccessMicrophone": "Αποτυχία πρόσβασης στο μικρόφωνο"
     },
     "toasts": {
-      "undone": "Αναίρεση"
-    }
-  },
-  "agentChat": {
-    "title": "συνομιλία Agent",
-    "loading": "Φόρτωση συνομιλίας αντιπροσώπου...",
-    "conversationLoading": "Φόρτωση συνομιλίας...",
-    "newConversation": "Νέα συνομιλία",
-    "history": "Ιστορικό συνομιλιών",
-    "openInTab": "Άνοιγμα συνομιλίας σε καρτέλα",
-    "stop": "Σταματήστε",
-    "thinking": "Το Agent σκέφτεται",
-    "enable": {
-      "title": "Ενεργοποίηση memrynote Agent",
-      "description": "Το memrynote Agent χρησιμοποιεί τον επιλεγμένο τοπικό σας αντιπρόσωπο CLI για να συνομιλήσει σχετικά με το θησαυροφυλάκιό σας. Το Claude στέλνει στροφές στο Anthropic. Το Codex στέλνει στροφές στο OpenAI.",
-      "remote": "Το memrynote κρυπτογραφεί το τοπικό και το συγχρονισμένο ιστορικό συνομιλιών σας, αλλά το συμπέρασμα μοντέλου γίνεται με τον επιλεγμένο πάροχο.",
-      "readTools": "Τα εργαλεία ανάγνωσης εκτελούνται αυτόματα.",
-      "writeTools": "Τα εργαλεία δημιουργίας και ενημέρωσης απαιτούν έγκριση.",
-      "diff": "Τα εργαλεία ενημέρωσης εμφανίζουν διαφορά ή προεπισκόπηση.",
-      "button": "Ενεργοποίηση συνομιλίας Agent"
-    },
-    "approval": {
-      "description": "Ο πράκτορας θέλει να καλέσει το {name} με αυτά τα ορίσματα.",
-      "applyOnce": "Κάντε αίτηση μία φορά",
-      "allowOnce": "Επιτρέψτε μία φορά",
-      "editAndApply": "Επεξεργασία και εφαρμογή",
-      "editAndAllow": "Επεξεργασία και άδεια",
-      "allowAlways": "Να επιτρέπεται πάντα",
-      "applyEdits": "Εφαρμογή τροποποιήσεων",
-      "deny": "Αρνηθείτε",
-      "invalidJson": "Εισαγάγετε έγκυρο JSON πριν από την εφαρμογή τροποποιήσεων."
-    },
-    "diff": {
-      "previewError": "Δεν ήταν δυνατή η προεπισκόπηση της διαφοράς σημείωσης",
-      "description": "Ο πράκτορας θέλει να ενημερώσει το {title}. Ελέγξτε το τρέχον και το υποψήφιο περιεχόμενο πριν το εφαρμόσετε.",
-      "fallbackTitle": "αυτή η σημείωση",
-      "current": "Τρέχον",
-      "candidate": "Υποψήφιος",
-      "loading": "Φόρτωση...",
-      "apply": "Αίτηση",
-      "applyEdited": "Εφαρμογή επεξεργασίας"
-    },
-    "inPageReview": {
-      "regionLabel": "Πρόταση του πράκτορα",
-      "barLabel": "Έλεγχος της πρότασης του πράκτορα",
-      "loading": "Φόρτωση πρότασης...",
-      "loadingTitle": "Πρόταση του πράκτορα",
-      "title": "{count, plural, =0 {Πρόταση του πράκτορα} one {Ο πράκτορας πρότεινε # αλλαγή} other {Ο πράκτορας πρότεινε # αλλαγές}}",
-      "editingTitle": "Επεξεργασία της πρότασης",
-      "pendingHint": "Δεν έχει αποθηκευτεί ακόμη. Αποδεχτείτε για να εφαρμοστεί.",
-      "editingHint": "Οι αλλαγές σας μένουν εδώ μέχρι να αποδεχτείτε.",
-      "baseChanged": "Αυτή η σημείωση άλλαξε ενώ επεξεργαζόσασταν την πρόταση.",
-      "keepDraft": "Διατήρηση των αλλαγών μου",
-      "restart": "Έναρξη από την πιο πρόσφατη έκδοση",
-      "reject": "Απόρριψη",
-      "edit": "Επεξεργασία",
-      "showDiff": "Εμφάνιση αλλαγών",
-      "accept": "Αποδοχή",
-      "acceptEdits": "Αποδοχή αλλαγών",
-      "waiting": "Αναμένεται ο έλεγχός σας στο {title}.",
-      "notOpen": "Ανοίξτε το {title} για να δείτε τις αλλαγές ή αποδεχτείτε τις χωρίς έλεγχο.",
-      "show": "Εμφάνιση",
-      "openNote": "Άνοιγμα σημείωσης",
-      "openJournal": "Άνοιγμα ημερολογίου",
-      "fallbackTitle": "αυτή η σημείωση"
-    },
-    "composer": {
-      "currentNote": "Τρέχουσα σημείωση",
-      "removeAttachment": "Κατάργηση {label}",
-      "placeholder": "Ρωτήστε το memrynote οτιδήποτε. @ για αναφορά αρχείου",
-      "send": "Αποστολή",
-      "providerLabel": "Agent πάροχος: {provider}",
-      "settingsSummary": "{reasoning}",
-      "providers": {
-        "claude": "Claude",
-        "codex": "Codex",
-        "antigravity": "Antigravity",
-        "local": "Τοπικό"
-      },
-      "models": {
-        "default": "Προεπιλογή",
-        "label": "Μοντέλο"
-      },
-      "settings": {
-        "reasoning": "Συλλογισμός"
-      },
-      "claudeSettings": {
-        "reasoning": {
-          "low": "Χαμηλό",
-          "medium": "Μεσαίο",
-          "high": "Ψηλά",
-          "extraHigh": "Πολύ υψηλό",
-          "extraHighDefault": "Πολύ υψηλό (προεπιλογή)",
-          "max": "Μέγ"
-        }
-      },
-      "codexSettings": {
-        "reasoning": {
-          "low": "Χαμηλό",
-          "medium": "Μεσαίο",
-          "mediumDefault": "Μεσαίο (προεπιλογή)",
-          "high": "Ψηλά",
-          "extraHigh": "Πολύ υψηλό"
-        }
-      },
-      "access": {
-        "vaultOnly": "Μόνο θησαυροφυλάκιο",
-        "computerAccess": "Πρόσβαση στον υπολογιστή"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Ανενεργή",
-        "label": "Αναζήτηση στον ιστό"
-      },
-      "permissionsLabel": "Δικαιώματα Agent: {access}, αναζήτηση στον ιστό {webSearch}",
-      "permissions": {
-        "label": "Δικαιώματα",
-        "access": "Πρόσβαση",
-        "tools": "Εργαλεία"
-      },
-      "modelSettingsLabel": "Ρυθμίσεις μοντέλου Agent: {model}, {settings}"
-    },
-    "refPicker": {
-      "noMatches": "Δεν υπάρχουν αντιστοιχίες"
-    },
-    "toolResult": {
-      "label": "Αποτέλεσμα εργαλείου"
-    },
-    "toolCall": {
-      "editedArgs": "Επεξεργασμένα ορίσματα",
-      "parameters": "Παράμετροι"
-    },
-    "sidebar": {
-      "label": "Δεξιά πλαϊνή γραμμή",
-      "day": "Ημέρα",
-      "agent": "Πράκτορας",
-      "pendingApproval": "{count, plural, one {# εκκρεμεί έγκριση} other {# εγκρίσεις σε εκκρεμότητα}}",
-      "inProgress": "Agent στροφή σε εξέλιξη",
-      "close": "Κλείσιμο πράκτορα"
-    },
-    "errors": {
-      "loadConversations": "Δεν ήταν δυνατή η φόρτωση συνομιλιών αντιπροσώπων",
-      "loadConversation": "Δεν ήταν δυνατή η φόρτωση της συνομιλίας αντιπροσώπου",
-      "createConversation": "Δεν ήταν δυνατή η δημιουργία συνομιλίας αντιπροσώπου",
-      "busy": "Ένα άλλο παράθυρο βρίσκεται στη μέση για αυτήν τη συνομιλία. Περιμένετε να τελειώσει ή σταματήστε το από εκεί.",
-      "sendTurn": "Δεν ήταν δυνατή η αποστολή της σειράς του πράκτορα",
-      "cancelTurn": "Δεν ήταν δυνατή η ακύρωση της σειράς αντιπροσώπου",
-      "submitApproval": "Δεν ήταν δυνατή η υποβολή έγκρισης εργαλείου",
-      "updateTrust": "Δεν ήταν δυνατή η ενημέρωση των αξιόπιστων εργαλείων",
-      "saveDisclosure": "Δεν ήταν δυνατή η αποθήκευση της κατάστασης αποκάλυψης",
-      "resolveWindow": "Δεν ήταν δυνατή η επίλυση του παραθύρου πηγής πράκτορα",
-      "detectCli": "Δεν ήταν δυνατός ο εντοπισμός backend πρακτόρων",
-      "loadDisclosure": "Δεν ήταν δυνατή η φόρτωση της κατάστασης αποκάλυψης"
-    },
-    "sources": {
-      "used": "{count, plural, one {Χρησιμοποιήθηκε # πηγή} other {Χρησιμοποιήθηκαν # πηγές}}"
+      "undone": "Αναιρέθηκε"
     }
   },
   "home": {
-    "addWidget": "Προσθήκη μικροεφαρμογής",
-    "board": {
-      "defaultName": "Αρχική",
-      "deleteAria": "Διαγραφή διάταξης",
-      "label": "Διάταξη αρχικής",
-      "newAria": "Νέος πίνακας",
-      "newName": "Νέος πίνακας"
-    },
-    "disabled": {
-      "createNote": "Δημιουργία σημείωσης",
-      "hint": "Τίποτα ανοιχτό. Ξεκινήστε μια σημείωση."
-    },
-    "done": "Έγινε",
-    "edit": "Επεξεργασία",
-    "empty": {
-      "body": "Οι μικροεφαρμογές συγκεντρώνουν σημειώσεις, εργασίες και σελιδοδείκτες σε ένα ήρεμο μέρος.",
-      "cta": "Προσθέστε την πρώτη σας μικροεφαρμογή",
-      "title": "Ο πίνακάς σας είναι κενός"
-    },
-    "greeting": {
-      "afternoon": "Καλό απόγευμα",
-      "evening": "Καλησπέρα",
-      "morning": "Καλημέρα"
-    },
-    "header": {
-      "events": "{count, plural, one {# εκδήλωση} other {# εκδηλώσεις}}",
-      "tasksDue": "{count, plural, one {# εργασία λήγει σήμερα} other {# εργασίες λήγουν σήμερα}}"
-    },
-    "noBookmarksYet": "Δεν υπάρχουν ακόμη σελιδοδείκτες.",
-    "noEventsYet": "Δεν υπάρχουν εκδηλώσεις σήμερα.",
-    "noJournalEntriesYet": "Δεν υπάρχουν ακόμη καταχωρίσεις εφημερίδας.",
-    "noNotesYet": "Δεν υπάρχουν ακόμη σημειώσεις.",
-    "noTasksYet": "Δεν υπάρχουν ακόμη εργασίες.",
     "widget": {
-      "bookmarks": "Σελιδοδείκτες",
-      "calendar": "Ημερολόγιο",
-      "calendarToday": "Σήμερα",
-      "configAria": "Διαμόρφωση μικροεφαρμογής",
-      "configure": "Διαμόρφωση",
-      "dragAria": "Μετακίνηση μικροεφαρμογής",
-      "duration": "{count} λεπτά",
+      "removeAria": "Αφαίρεση γραφικού στοιχείου",
+      "dragAria": "Μετακίνηση γραφικού στοιχείου",
+      "configAria": "Διαμόρφωση γραφικού στοιχείου",
+      "resizeAria": "Αλλαγή μεγέθους σε {size}",
+      "menuAria": "Επιλογές γραφικού στοιχείου",
+      "resize": "Μέγεθος",
+      "remove": "Αφαίρεση",
       "filter": {
+        "all": "Όλες",
         "today": "Λήγουν σήμερα",
         "tomorrow": "Αύριο",
-        "week": "Αυτή την εβδομάδα"
+        "next7": "Επόμενες 7 ημέρες",
+        "noDueDate": "Χωρίς ημερομηνία λήξης"
       },
-      "folder": "Φάκελος",
-      "folderEmpty": "Δεν υπάρχουν ακόμη φάκελοι",
-      "folderNoSelection": "Δεν έχει επιλεγεί φάκελος",
-      "folderPickPrompt": "Επιλέξτε φάκελο",
-      "folderViewSelect": "Προβολή",
-      "folderView_gallery": "Γκαλερί",
-      "folderView_list": "Λίστα",
+      "recentlyEdited": "Πρόσφατα επεξεργασμένα",
+      "recentlyOpened": "Πρόσφατα ανοιγμένα",
+      "recentMeta": "επεξεργάστηκε {time}",
+      "recentMetaWithFolder": "{folder} · επεξεργάστηκε {time}",
+      "openedMeta": "ανοίχτηκε {time}",
+      "openedMetaWithFolder": "{folder} · ανοίχτηκε {time}",
+      "noRecentlyOpened": "Οι σημειώσεις που ανοίγετε εμφανίζονται εδώ",
+      "bookmarks": "Σελιδοδείκτες",
+      "tasks": "Εργασίες",
+      "calendar": "Ημερολόγιο",
+      "calendarToday": "Σήμερα",
+      "openCalendar": "Άνοιγμα ημερολογίου",
+      "next": "Επόμενο: {title}",
+      "startsIn": "Ξεκινά σε {count, plural, one {# λεπτό} other {# λεπτά}}",
+      "duration": "{count} λεπ.",
       "inbox": "Εισερχόμενα",
       "inboxAllTypes": "Όλοι οι τύποι",
       "inboxOlder": "{count, plural, one {# παλαιότερο} other {# παλαιότερα}}",
-      "inboxOldest": "παλαιότερο {count, plural, one {# ημέρα} other {# ημέρες}}",
-      "journal": "Εφημερίδα",
+      "inboxOldest": "παλαιότερο: {count, plural, one {# ημέρα} other {# ημέρες}}",
+      "openInbox": "Άνοιγμα εισερχομένων",
+      "folder": "Φάκελος",
+      "untitled": "Χωρίς τίτλο",
+      "folderPickPrompt": "Επιλέξτε φάκελο",
+      "folderEmpty": "Δεν υπάρχουν ακόμη φάκελοι",
+      "folderNoSelection": "Δεν έχει επιλεγεί φάκελος",
+      "folderView_list": "Λίστα",
+      "folderView_gallery": "Γκαλερί",
+      "folderViewSelect": "Προβολή",
+      "project": "Έργο",
+      "projectNoSelection": "Δεν έχει επιλεγεί έργο",
+      "projectMissing": "Αυτό το έργο δεν είναι πλέον διαθέσιμο",
+      "projectNoTasks": "Καμία εργασία",
+      "journal": "Ημερολόγιο γραφής",
       "journalStreak": "{count, plural, one {σερί # ημέρας} other {σερί # ημερών}}",
       "journalToday": "Σήμερα",
       "journalYesterday": "Χθες",
+      "journalTomorrow": "Αύριο",
+      "journalUpcoming": "Επερχόμενα",
+      "journalNoEntryYet": "Καμία καταχώριση ακόμη",
       "loadError": "Αποτυχία φόρτωσης",
-      "menuAria": "Επιλογές μικροεφαρμογής",
-      "next": "Επόμενο: {title}",
-      "openCalendar": "Άνοιγμα ημερολογίου",
-      "openInbox": "Άνοιγμα εισερχομένων",
-      "recentMeta": "επεξεργάστηκε {time}",
-      "recentMetaWithFolder": "{folder} · επεξεργάστηκε {time}",
-      "recentlyEdited": "Πρόσφατα επεξεργασμένα",
-      "remove": "Αφαίρεση",
-      "removeAria": "Αφαίρεση μικροεφαρμογής",
-      "resize": "Μέγεθος",
-      "resizeAria": "Αλλαγή μεγέθους σε {size}",
-      "savedFilterDefault": "Σήμερα",
-      "savedFilterHint": "Επισημάνετε φίλτρα με αστέρι στη σελίδα Καθήκοντα για να τα χρησιμοποιήσετε εδώ",
-      "savedFilterLabel": "Αποθηκευμένο φίλτρο",
-      "startsIn": "Ξεκινά σε {count, plural, one {# λεπτό} other {# λεπτά}}",
-      "tasks": "Εργασίες",
-      "unknown": "Άγνωστη μικροεφαρμογή",
-      "untitled": "Χωρίς τίτλο"
+      "unknown": "Άγνωστο γραφικό στοιχείο"
+    },
+    "board": {
+      "label": "Διάταξη αρχικής",
+      "deleteAria": "Διαγραφή διάταξης",
+      "newAria": "Νέος πίνακας",
+      "newName": "Νέος πίνακας",
+      "defaultName": "Αρχική",
+      "manage": "Διαχείριση πινάκων",
+      "manageTitle": "Διαχείριση πινάκων",
+      "manageDescription": "Μετονομάστε, αναδιατάξτε ή διαγράψτε τους πίνακες της Αρχικής.",
+      "renameAria": "Μετονομασία πίνακα",
+      "reorderAria": "Αναδιάταξη πίνακα",
+      "nameLabel": "Όνομα πίνακα"
+    },
+    "greeting": {
+      "morning": "Καλημέρα",
+      "afternoon": "Καλό απόγευμα",
+      "evening": "Καλησπέρα"
+    },
+    "header": {
+      "tasksDue": "{count, plural, one {# εργασία λήγει σήμερα} other {# εργασίες λήγουν σήμερα}}",
+      "events": "{count, plural, one {# συμβάν} other {# συμβάντα}}"
+    },
+    "edit": "Επεξεργασία",
+    "done": "Τέλος",
+    "addWidget": "Προσθήκη γραφικού στοιχείου",
+    "empty": {
+      "title": "Ο πίνακάς σας είναι κενός",
+      "body": "Τα γραφικά στοιχεία συγκεντρώνουν σημειώσεις, εργασίες και σελιδοδείκτες σε ένα ήρεμο μέρος.",
+      "cta": "Προσθήκη του πρώτου γραφικού στοιχείου"
+    },
+    "noBookmarksYet": "Δεν υπάρχουν ακόμη σελιδοδείκτες.",
+    "noNotesYet": "Δεν υπάρχουν ακόμη σημειώσεις.",
+    "noTasksYet": "Δεν υπάρχουν ακόμη εργασίες.",
+    "noEventsYet": "Δεν υπάρχουν συμβάντα σήμερα.",
+    "noJournalEntriesYet": "Δεν υπάρχουν ακόμη καταχωρίσεις στο ημερολόγιο γραφής.",
+    "disabled": {
+      "createNote": "Δημιουργία σημείωσης",
+      "hint": "Τίποτα ανοιχτό. Ξεκινήστε μια σημείωση."
     }
   },
-  "media": {
-    "video": "Βίντεο"
-  },
   "onboarding": {
-    "agentChat": {
-      "body": "Μεταβείτε στην καρτέλα Πράκτορας για να ρωτήσετε τον βοηθό του MemryNote για το θησαυροφυλάκιό σας.",
-      "title": "Συνομιλήστε με τον πράκτορα AI"
-    },
-    "collections": {
-      "body": "Οργανώστε σημειώσεις σε φακέλους, καρφιτσώστε σελιδοδείκτες και περιηγηθείτε ανά ετικέτα — όλα εδώ.",
-      "title": "Συλλογές, σελιδοδείκτες και ετικέτες"
-    },
-    "dayPanel": {
-      "body": "Το πλαϊνό πάνελ κρατά ένα ημερολόγιο και την προβολή της ημέρας σας δίπλα σε ό,τι διαβάζετε.",
-      "title": "Η μέρα σας, δίπλα στη δουλειά σας"
-    },
-    "feedback": {
-      "body": "Στείλτε σχόλια απευθείας στην ομάδα από εδώ.",
-      "title": "Πείτε μας τη γνώμη σας"
-    },
-    "nav": {
-      "body": "Εισερχόμενα για καταγραφή, Εφημερίδα για καθημερινές σημειώσεις, Ημερολόγιο για το χρονοδιάγραμμά σας, Καθήκοντα για εκκρεμότητες και Γράφος για να δείτε πώς συνδέονται όλα.",
-      "title": "Οι χώροι εργασίας σας"
+    "welcome": {
+      "title": "Καλώς ήρθατε στο MemryNote",
+      "body": "Ο ιδιωτικός σας χώρος, που λειτουργεί και εκτός σύνδεσης. Οι σημειώσεις είναι κρυπτογραφημένες από άκρο σε άκρο — δεν φεύγουν ποτέ από τη συσκευή σας χωρίς κρυπτογράφηση."
     },
     "newNote": {
-      "body": "Ξεκινήστε εδώ. Ό,τι γράφετε αποθηκεύεται πρώτα τοπικά.",
-      "title": "Δημιουργήστε την πρώτη σας σημείωση"
+      "title": "Δημιουργήστε την πρώτη σας σημείωση",
+      "body": "Ξεκινήστε εδώ. Ό,τι γράφετε αποθηκεύεται πρώτα τοπικά."
     },
-    "settings": {
-      "body": "Εισαγάγετε τις σημειώσεις σας από 12+ εφαρμογές — Obsidian, Notion, Apple Notes, Evernote και άλλες — και ρυθμίστε όλα τα υπόλοιπα στις Ρυθμίσεις.",
-      "title": "Ρυθμίσεις και εισαγωγές"
+    "nav": {
+      "title": "Οι χώροι εργασίας σας",
+      "body": "Εισερχόμενα για καταγραφή, Ημερολόγιο γραφής για ημερήσιες σημειώσεις, Ημερολόγιο για το χρονοδιάγραμμά σας, Εργασίες για εκκρεμότητες και Γράφημα για να δείτε πώς συνδέονται όλα."
+    },
+    "collections": {
+      "title": "Συλλογές, σελιδοδείκτες και ετικέτες",
+      "body": "Οργανώστε σημειώσεις σε φακέλους, καρφιτσώστε σελιδοδείκτες και περιηγηθείτε ανά ετικέτα — όλα εδώ."
+    },
+    "dayPanel": {
+      "title": "Η μέρα σας, δίπλα στη δουλειά σας",
+      "body": "Το πλαϊνό πλαίσιο κρατά ένα ημερολόγιο και την προβολή της ημέρας σας δίπλα σε ό,τι διαβάζετε."
+    },
+    "agentChat": {
+      "title": "Συνομιλήστε με τον πράκτορα AI",
+      "body": "Μεταβείτε στην καρτέλα Πράκτορας για να ρωτήσετε τον βοηθό του MemryNote για το θησαυροφυλάκιό σας."
     },
     "sync": {
-      "body": "Ενεργοποιήστε τον κρυπτογραφημένο από άκρο σε άκρο συγχρονισμό για να διατηρείτε κάθε συσκευή ενημερωμένη.",
-      "title": "Ιδιωτικός, κρυπτογραφημένος συγχρονισμός"
+      "title": "Ιδιωτικός, κρυπτογραφημένος συγχρονισμός",
+      "body": "Ενεργοποιήστε τον κρυπτογραφημένο από άκρο σε άκρο συγχρονισμό για να διατηρείτε κάθε συσκευή ενημερωμένη."
     },
-    "welcome": {
-      "body": "Το ιδιωτικό, offline-first σπίτι σας. Οι σημειώσεις είναι κρυπτογραφημένες από άκρο σε άκρο — δεν φεύγουν ποτέ από τη συσκευή σας χωρίς κρυπτογράφηση.",
-      "title": "Καλώς ήρθατε στο MemryNote"
+    "feedback": {
+      "title": "Πείτε μας τη γνώμη σας",
+      "body": "Στείλτε σχόλια απευθείας στην ομάδα από εδώ."
+    },
+    "settings": {
+      "title": "Ρυθμίσεις και εισαγωγές",
+      "body": "Εισαγάγετε τις σημειώσεις σας από 12+ εφαρμογές — Obsidian, Notion, Apple Notes, Evernote και άλλες — και ρυθμίστε όλα τα υπόλοιπα στις Ρυθμίσεις."
     },
     "tour": {
       "next": "Επόμενο",
       "previous": "Προηγούμενο",
       "progress": "{current} από {total}"
+    },
+    "starPrompt": {
+      "title": "Η περιήγηση γνωριμίας ολοκληρώθηκε",
+      "body": "Δώστε μας ένα αστέρι στο GitHub — βοηθά και άλλους να ανακαλύψουν το MemryNote.",
+      "action": "Προσθήκη αστεριού στο GitHub"
     }
   },
-  "capture": {
-    "focusShortcut": "Εστίαση στο πεδίο καταγραφής",
-    "detailHint": "λεπτομέρειες",
-    "focusHint": "Q",
-    "submit": "Καταγραφή"
-  },
-  "canvas": {
-    "card": {
-      "addCard": "Προσθήκη κάρτας",
-      "addCreateNote": "Δημιουργία σημείωσης \"{query}\"",
-      "addCreateNoteEmpty": "Δημιουργία νέας σημείωσης",
-      "addCreatedAt": "Δημιουργήθηκε {date}",
-      "addEmpty": "Δεν βρέθηκε τίποτα",
-      "addGroupEvents": "Εκδηλώσεις",
-      "addGroupNotes": "Σημειώσεις",
-      "addGroupTasks": "Εργασίες",
-      "addOnCanvas": "Στον καμβά",
-      "addPlaceholder": "Αναζήτηση σε σημειώσεις, εργασίες και εκδηλώσεις…",
-      "allDay": "Ολοήμερο",
-      "createNoteFailed": "Δεν ήταν δυνατή η δημιουργία της σημείωσης",
-      "deleted": "Το στοιχείο διαγράφηκε",
-      "loading": "Φόρτωση…",
-      "open": "Άνοιγμα σε καρτέλα",
-      "openToEdit": "Άνοιγμα σε καρτέλα για επεξεργασία",
-      "untitled": "Χωρίς τίτλο",
-      "bulkGroup": "Προσθήκη όλων από",
-      "bulkFromTag": "Μια ετικέτα…",
-      "bulkFromFolder": "Έναν φάκελο…",
-      "bulkSearchTags": "Αναζήτηση ετικετών…",
-      "bulkSearchFolders": "Αναζήτηση φακέλων…",
-      "bulkTagsHeading": "Ετικέτες",
-      "bulkFoldersHeading": "Φάκελοι",
-      "bulkItemCount": "{count, plural, one {# στοιχείο} other {# στοιχεία}}",
-      "bulkViewsHeading": "Προσθήκη από {name}",
-      "bulkAllItems": "Όλα τα στοιχεία",
-      "bulkConfirmTitle": "{count, plural, one {Προσθήκη # κάρτας από {name};} other {Προσθήκη # καρτών από {name};}}",
-      "bulkConfirmBody": "Οι μεγάλοι πίνακες γίνονται πιο αργοί και μπορεί να ξεπεράσουν το όριο μεγέθους συγχρονισμού.",
-      "bulkConfirmSkipped": "{count, plural, one {# στοιχείο βρίσκεται ήδη σε αυτόν τον καμβά και θα παραλειφθεί.} other {# στοιχεία βρίσκονται ήδη σε αυτόν τον καμβά και θα παραλειφθούν.}}",
-      "bulkConfirmAdd": "{count, plural, one {Προσθήκη # κάρτας} other {Προσθήκη # καρτών}}",
-      "bulkBack": "Πίσω",
-      "bulkEmpty": "Δεν υπάρχουν σημειώσεις, αρχεία ή εργασίες για προσθήκη",
-      "bulkLoadFailed": "Δεν ήταν δυνατή η φόρτωση των στοιχείων",
-      "bulkAdded": "{count, plural, one {Προστέθηκε # κάρτα} other {Προστέθηκαν # κάρτες}}",
-      "bulkAddedSkipped": "{count, plural, one {Προστέθηκε # κάρτα} other {Προστέθηκαν # κάρτες}} · {skipped} ήδη στον καμβά",
-      "bulkAllOnCanvas": "{count, plural, one {Ήδη σε αυτόν τον καμβά} other {Και τα # είναι ήδη σε αυτόν τον καμβά}}"
-    },
-    "corruptScene": "Δεν ήταν δυνατή η ανάγνωση αυτού του καμβά. Η επεξεργασία είναι απενεργοποιημένη για να μη χαθούν δεδομένα.",
-    "createFailed": "Δεν ήταν δυνατή η δημιουργία του καμβά",
-    "disabledBody": "Αυτή η καρτέλα ανήκει σε μια λειτουργία που δεν είναι ενεργοποιημένη σε αυτήν τη συσκευή.",
-    "disabledTitle": "Ο καμβάς δεν είναι ενεργοποιημένος",
-    "empty": "Δεν υπάρχουν ακόμη καμβάδες",
-    "libraryStoreFailed": "Δεν ήταν δυνατή η αποθήκευση της βιβλιοθήκης σχημάτων σας. Οι πρόσφατες αλλαγές σε αυτήν μπορεί να χαθούν.",
-    "loadFailed": "Δεν ήταν δυνατή η φόρτωση των καμβάδων",
-    "loading": "Φόρτωση καμβάδων…",
-    "newCanvas": "Νέος καμβάς",
-    "notFound": "Δεν ήταν δυνατή η εύρεση αυτού του καμβά",
-    "openFailed": "Δεν ήταν δυνατό το άνοιγμα του καμβά",
-    "savedToVault": "Όλες οι αλλαγές αποθηκεύονται αυτόματα στο θησαυροφυλάκιό σας",
-    "sectionLabel": "Καμβάδες",
-    "tooLargeToSync": "Αυτός ο καμβάς είναι πολύ μεγάλος για συγχρονισμό. Έχει αποθηκευτεί σε αυτήν τη συσκευή, αλλά δεν θα φτάσει στις άλλες συσκευές σας μέχρι να μικρύνει.",
-    "untitled": "Καμβάς χωρίς τίτλο"
-  },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Κλικ στη γραμμή",
-      "reset": "Επαναφορά",
-      "shortcutsTab": "Καρτέλα συντομεύσεων"
-    },
-    "description": "Γρήγορες διαδρομές για να κινείστε στο memrynote, να καταγράφετε σκέψεις και να επεξεργάζεστε τη δουλειά σας.",
+    "description": "Γρήγορες διαδρομές για να κινείστε στο memrynote, να καταγράφετε σκέψεις και να τακτοποιείτε τη δουλειά σας.",
+    "or": "ή",
+    "then": "μετά",
     "groups": {
       "general": {
-        "description": "Πλοήγηση και βοήθεια σε όλη την εφαρμογή.",
-        "title": "Γενικά"
-      },
-      "inbox": {
-        "description": "Επεξεργαστείτε γρήγορα τα καταγεγραμμένα στοιχεία.",
-        "title": "Εισερχόμενα"
-      },
-      "journal": {
-        "description": "Πλοηγηθείτε στις προβολές της εφημερίδας και εστιάστε στην περιοχή γραφής.",
-        "title": "Εφημερίδα"
-      },
-      "notes": {
-        "description": "Γράψτε, μορφοποιήστε και αναζητήστε σημειώσεις.",
-        "title": "Σημειώσεις / Επεξεργαστής"
-      },
-      "settings": {
-        "description": "Ανοίξτε τις ρυθμίσεις και προσαρμόστε τις συντομεύσεις.",
-        "title": "Ρυθμίσεις"
+        "title": "Γενικά",
+        "description": "Πλοήγηση και βοήθεια σε όλη την εφαρμογή."
       },
       "tabs": {
-        "description": "Μετακινηθείτε ανάμεσα σε καρτέλες και τμήματα.",
-        "title": "Καρτέλες & Διαχωρισμοί"
+        "title": "Καρτέλες και τμήματα",
+        "description": "Μετακινηθείτε ανάμεσα σε καρτέλες και τμήματα."
+      },
+      "inbox": {
+        "title": "Εισερχόμενα",
+        "description": "Τακτοποιήστε γρήγορα τα καταγεγραμμένα στοιχεία."
+      },
+      "journal": {
+        "title": "Ημερολόγιο γραφής",
+        "description": "Πλοηγηθείτε στις προβολές του ημερολογίου γραφής και εστιάστε στην περιοχή γραφής."
+      },
+      "notes": {
+        "title": "Σημειώσεις / Επεξεργαστής",
+        "description": "Γράψτε, μορφοποιήστε και αναζητήστε σημειώσεις."
       },
       "tasks": {
-        "description": "Φιλτράρετε, επιλέξτε και ολοκληρώστε εργασίες.",
-        "title": "Εργασίες"
+        "title": "Εργασίες",
+        "description": "Φιλτράρετε, επιλέξτε και ολοκληρώστε εργασίες."
+      },
+      "settings": {
+        "title": "Ρυθμίσεις",
+        "description": "Ανοίξτε τις ρυθμίσεις και προσαρμόστε τις συντομεύσεις."
       }
     },
     "items": {
       "general": {
-        "createNote": "Δημιουργία σημείωσης",
-        "keyboardShortcuts": "Άνοιγμα συντομεύσεων πληκτρολογίου",
-        "openSettings": "Άνοιγμα ρυθμίσεων",
         "quickSearch": "Άνοιγμα γρήγορης αναζήτησης",
-        "sidebarSection": "Μετάβαση σε ενότητα της πλαϊνής γραμμής",
-        "toggleSidebar": "Εναλλαγή της πλαϊνής γραμμής",
-        "undoTaskAction": "Αναίρεση τελευταίας ενέργειας εργασίας"
+        "createNote": "Δημιουργία σημείωσης",
+        "openSettings": "Άνοιγμα ρυθμίσεων",
+        "switchVault": "Αλλαγή θησαυροφυλακίου",
+        "adjacentVault": "Προηγούμενο ή επόμενο θησαυροφυλάκιο",
+        "keyboardShortcuts": "Άνοιγμα συντομεύσεων πληκτρολογίου",
+        "undoTaskAction": "Αναίρεση τελευταίας ενέργειας εργασίας",
+        "toggleSidebar": "Εμφάνιση/απόκρυψη πλαϊνής στήλης",
+        "sidebarSection": "Μετάβαση σε ενότητα της πλαϊνής στήλης"
+      },
+      "tabs": {
+        "newTabMenu": "Άνοιγμα του μενού νέας καρτέλας",
+        "closeTab": "Κλείσιμο καρτέλας",
+        "closeAllInPane": "Κλείσιμο όλων των καρτελών στο τμήμα",
+        "reopenClosedTab": "Επαναφορά κλειστής καρτέλας",
+        "nextTab": "Επόμενη καρτέλα",
+        "previousTab": "Προηγούμενη καρτέλα",
+        "pinTab": "Καρφίτσωμα ή ξεκαρφίτσωμα καρτέλας",
+        "duplicateTab": "Δημιουργία αντιγράφου καρτέλας",
+        "splitRight": "Διαίρεση δεξιά",
+        "splitDown": "Διαίρεση κάτω",
+        "closeSplitPane": "Κλείσιμο διαχωρισμένου τμήματος",
+        "focusPane": "Εστίαση σε άλλο τμήμα",
+        "moveTabToPane": "Μετακίνηση καρτέλας σε τμήμα",
+        "maximizePane": "Μεγιστοποίηση τρέχοντος τμήματος"
       },
       "inbox": {
-        "archiveItem": "Αρχειοθέτηση επιλεγμένου στοιχείου",
-        "chooseQuickFileResult": "Επιλογή αποτελέσματος γρήγορης αρχειοθέτησης",
-        "clearSelection": "Εκκαθάριση επιλογής ή κλείσιμο γρήγορης αρχειοθέτησης",
-        "confirmFiling": "Επιβεβαίωση του πίνακα αρχειοθέτησης",
+        "nextItem": "Επόμενο στοιχείο",
+        "previousItem": "Προηγούμενο στοιχείο",
         "firstOrLastItem": "Πρώτο ή τελευταίο στοιχείο",
         "jumpByPage": "Μετάβαση ανά σελίδα",
-        "nextItem": "Επόμενο στοιχείο",
-        "openOriginal": "Άνοιγμα αρχικού συνδέσμου",
-        "openQuickFile": "Άνοιγμα γρήγορης αρχειοθέτησης",
-        "previousItem": "Προηγούμενο στοιχείο",
-        "refresh": "Ανανέωση εισερχομένων",
-        "selectAllVisible": "Επιλογή όλων των ορατών στοιχείων",
+        "togglePreview": "Εμφάνιση/απόκρυψη πλαισίου προεπισκόπησης",
         "selectItem": "Επιλογή στοιχείου",
-        "togglePreview": "Εναλλαγή πίνακα προεπισκόπησης"
+        "selectAllVisible": "Επιλογή όλων των ορατών στοιχείων",
+        "clearSelection": "Εκκαθάριση επιλογής ή κλείσιμο γρήγορης τοποθέτησης",
+        "openQuickFile": "Άνοιγμα γρήγορης τοποθέτησης",
+        "chooseQuickFileResult": "Επιλογή αποτελέσματος γρήγορης τοποθέτησης",
+        "archiveItem": "Αρχειοθέτηση επιλεγμένου στοιχείου",
+        "openOriginal": "Άνοιγμα αρχικού συνδέσμου",
+        "refresh": "Ανανέωση εισερχομένων",
+        "confirmFiling": "Επιβεβαίωση στο πλαίσιο τοποθέτησης"
       },
       "journal": {
-        "bold": "Έντονη γραφή στο επιλεγμένο κείμενο",
-        "find": "Εύρεση στην εφημερίδα",
-        "italic": "Πλάγια γραφή στο επιλεγμένο κείμενο",
         "returnFromOverview": "Επιστροφή από την προβολή μήνα ή έτους",
+        "find": "Εύρεση στο ημερολόγιο γραφής",
+        "bold": "Έντονη γραφή στο επιλεγμένο κείμενο",
+        "italic": "Πλάγια γραφή στο επιλεγμένο κείμενο",
         "underline": "Υπογράμμιση επιλεγμένου κειμένου"
       },
       "notes": {
-        "bold": "Έντονα",
-        "closeOverlays": "Κλείσιμο των επικαλύψεων του επεξεργαστή",
-        "commandMenu": "Άνοιγμα του μενού εντολών του επεξεργαστή",
         "createNote": "Δημιουργία σημείωσης",
         "find": "Εύρεση στη σημείωση",
+        "bold": "Έντονα",
         "italic": "Πλάγια",
-        "underline": "Υπογράμμιση"
-      },
-      "settings": {
-        "cancelRecording": "Ακύρωση της καταγραφής συντόμευσης",
-        "customizeShortcuts": "Προσαρμογή συντομεύσεων πληκτρολογίου",
-        "openSettings": "Άνοιγμα ρυθμίσεων",
-        "recordShortcut": "Καταγραφή νέας συντόμευσης",
-        "resetShortcut": "Επαναφορά προεπιλογής συντόμευσης"
-      },
-      "tabs": {
-        "closeAllInPane": "Κλείσιμο όλων των καρτελών στο τμήμα",
-        "closeSplitPane": "Κλείσιμο διαχωρισμένου τμήματος",
-        "closeTab": "Κλείσιμο καρτέλας",
-        "duplicateTab": "Διπλασιασμός καρτέλας",
-        "focusPane": "Εστίαση σε άλλο τμήμα",
-        "maximizePane": "Μεγιστοποίηση τρέχοντος τμήματος",
-        "moveTabToPane": "Μετακίνηση καρτέλας σε τμήμα",
-        "newTabMenu": "Άνοιγμα του μενού νέας καρτέλας",
-        "nextTab": "Επόμενη καρτέλα",
-        "pinTab": "Καρφίτσωμα ή ξεκαρφίτσωμα καρτέλας",
-        "previousTab": "Προηγούμενη καρτέλα",
-        "reopenClosedTab": "Επαναφορά κλειστής καρτέλας",
-        "splitDown": "Διαίρεση κάτω",
-        "splitRight": "Διαίρεση δεξιά"
+        "underline": "Υπογράμμιση",
+        "commandMenu": "Άνοιγμα του μενού εντολών του επεξεργαστή",
+        "closeOverlays": "Κλείσιμο των επικαλύψεων του επεξεργαστή"
       },
       "tasks": {
         "clearFilters": "Εκκαθάριση των ορατών φίλτρων",
+        "selectAllVisible": "Επιλογή όλων των ορατών εργασιών",
         "clearSelection": "Εκκαθάριση της επιλογής εργασιών",
         "completeSelected": "Ολοκλήρωση επιλεγμένων εργασιών",
-        "configureRepeat": "Ρύθμιση επανάληψης στην εστιασμένη εργασία",
         "deleteSelected": "Διαγραφή επιλεγμένων εργασιών",
-        "selectAllVisible": "Επιλογή όλων των ορατών εργασιών",
+        "configureRepeat": "Ρύθμιση επανάληψης στην εστιασμένη εργασία",
         "skipOccurrence": "Παράλειψη μιας επανάληψης",
         "stopRepeating": "Διακοπή επανάληψης της εργασίας"
+      },
+      "settings": {
+        "openSettings": "Άνοιγμα ρυθμίσεων",
+        "customizeShortcuts": "Προσαρμογή συντομεύσεων πληκτρολογίου",
+        "recordShortcut": "Καταγραφή νέας συντόμευσης",
+        "cancelRecording": "Ακύρωση της καταγραφής συντόμευσης",
+        "resetShortcut": "Επαναφορά προεπιλογής συντόμευσης"
       }
     },
-    "or": "ή",
-    "then": "μετά"
+    "combos": {
+      "shortcutsTab": "Καρτέλα συντομεύσεων",
+      "clickRow": "Κλικ στη γραμμή",
+      "reset": "Επαναφορά"
+    }
+  },
+  "update": {
+    "available": "Διαθέσιμη ενημέρωση",
+    "downloading": "Λήψη έκδοσης {version}",
+    "ready": "Η ενημέρωση είναι έτοιμη",
+    "failed": "Η ενημέρωση απέτυχε",
+    "downloadAction": "Λήψη",
+    "restartAction": "Επανεκκίνηση",
+    "detailsAction": "Λεπτομέρειες",
+    "popover": {
+      "readyTitle": "Το MemryNote {version} είναι έτοιμο",
+      "availableTitle": "Το MemryNote {version} είναι διαθέσιμο",
+      "readySubtitle": "Χρησιμοποιείτε την έκδοση {current}",
+      "availableSubtitle": "Χρησιμοποιείτε την έκδοση {current} · δεν έχει γίνει ακόμη λήψη",
+      "allChanges": "Όλες οι αλλαγές",
+      "restartNow": "Επανεκκίνηση τώρα",
+      "onNextQuit": "Στην επόμενη έξοδο",
+      "download": "Λήψη",
+      "notNow": "Όχι τώρα",
+      "moreOptions": "Περισσότερες επιλογές ενημέρωσης",
+      "skipVersion": "Παράλειψη της έκδοσης {version}",
+      "turnOffAuto": "Απενεργοποίηση αυτόματων ενημερώσεων",
+      "copyVersionInfo": "Αντιγραφή πληροφοριών έκδοσης",
+      "openSettings": "Άνοιγμα ρυθμίσεων"
+    },
+    "installing": {
+      "title": "Εγκατάσταση της έκδοσης {version}",
+      "titleUnknownVersion": "Εγκατάσταση ενημέρωσης",
+      "subtitle": "Το MemryNote θα ανοίξει ξανά σε λίγο. Ό,τι έχετε γράψει βρίσκεται ήδη στον δίσκο."
+    },
+    "installFailed": {
+      "title": "Το MemryNote δεν μπόρεσε να ολοκληρώσει την εγκατάσταση της έκδοσης {version}",
+      "titleUnknownVersion": "Το MemryNote δεν μπόρεσε να ολοκληρώσει την εγκατάσταση της ενημέρωσης",
+      "body": "Το θησαυροφυλάκιο δεν επηρεάστηκε — η ενημέρωση εφαρμόζεται στην εφαρμογή, όχι στις σημειώσεις σας. Χρησιμοποιείτε ακόμη την έκδοση {current} και όλα λειτουργούν όπως πριν.",
+      "errorLabel": "Τι πήγε στραβά",
+      "downloadManually": "Χειροκίνητη λήψη της έκδοσης {version}",
+      "downloadManuallyUnknownVersion": "Χειροκίνητη λήψη του MemryNote",
+      "tryAgain": "Δοκιμάστε ξανά",
+      "copyDetails": "Αντιγραφή λεπτομερειών"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Θησαυροφυλάκια",
+    "position": "{name}, θησαυροφυλάκιο {index} από {count}",
+    "openList": "{position}. Άνοιγμα λίστας θησαυροφυλακίων",
+    "switchTo": "Μετάβαση στο «{name}»",
+    "switchingTo": "Γίνεται μετάβαση στο «{name}»",
+    "changeIcon": "Αλλαγή εικονιδίου…",
+    "resetIcon": "Επαναφορά εικονιδίου",
+    "iconButton": "Αλλαγή του εικονιδίου του «{name}»",
+    "iconFailed": "Δεν ήταν δυνατή η αλλαγή του εικονιδίου του θησαυροφυλακίου"
+  },
+  "sidebarHelp": {
+    "label": "Βοήθεια και σχόλια",
+    "reportBug": "Αναφορά σφάλματος",
+    "requestFeature": "Πρόταση λειτουργίας",
+    "starOnGithub": "Προσθήκη αστεριού στο GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "Τι νέο υπάρχει"
+  },
+  "sidebarStar": {
+    "title": "Το MemryNote είναι ανοιχτού κώδικα",
+    "body": "Αναπτύσσεται δημόσια. Ένα αστέρι βοηθά και άλλους να το ανακαλύψουν.",
+    "star": "Προσθήκη αστεριού",
+    "later": "Όχι τώρα",
+    "thanks": "Σας ευχαριστούμε. Σημαίνει πολλά για εμάς."
+  },
+  "sidebar": {
+    "railLabel": "Ενότητες",
+    "search": "Αναζήτηση ή μετάβαση σε…",
+    "vaultMenu": "{name}. Άνοιγμα λίστας θησαυροφυλακίων"
   }
 }

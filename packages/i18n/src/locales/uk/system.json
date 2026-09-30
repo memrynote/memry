@@ -53,7 +53,7 @@
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "Час нагадування має бути у майбутньому",
+    "reminderTimeMustBeFuture": "Час нагадування має бути в майбутньому",
     "definitionNotFound": "Визначення не знайдено",
     "noteNotFound": "Нотатку не знайдено",
     "updateFailed": "Не вдалося оновити",

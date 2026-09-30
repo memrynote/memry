@@ -141,7 +141,7 @@
       "willAppear": "关联内容会显示在这里",
       "noneYet": "尚未找到关联",
       "moreJournaling": "日记写得越多，AI 越能找到相关的日记",
-      "keepWriting": "继续写作以发现相关条目"
+      "keepWriting": "继续写作以发现相关日记"
     },
     "error": {
       "loadFailed": "无法加载关联"

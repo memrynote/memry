@@ -31,7 +31,7 @@
     "namePlaceholder": "任務名稱",
     "description": "描述",
     "descriptionPlaceholder": "新增描述…",
-    "details": "任務詳細資訊",
+    "details": "任務詳細資料",
     "status": "狀態",
     "priority": "優先順序",
     "tags": "標籤",
@@ -144,7 +144,7 @@
     "shorthandPreview": "由簡寫語法設定"
   },
   "drawer": {
-    "close": "關閉任務詳情",
+    "close": "關閉任務詳細資料",
     "openInTasks": "在任務中開啟",
     "resize": "調整面板大小",
     "subIssues": "子任務",
@@ -254,7 +254,7 @@
     "archived": "任務已封存",
     "undoNotAvailableForDelete": "刪除無法復原",
     "alreadyAllComplete": "所有已選任務均已完成",
-    "noCompletedSelected": "未選擇已完成任務",
+    "noCompletedSelected": "未選取任何已完成的任務",
     "completeFailed": "無法完成任務",
     "deleteFailed": "無法刪除任務",
     "moveFailed": "無法移動任務",
@@ -319,7 +319,7 @@
     },
     "componentsTasksBulkActionsBulkActionToolbar": {
       "bulkActions": "批次操作",
-      "selected": "已選取",
+      "selected": "項已選取",
       "complete": "完成",
       "priority": "優先順序",
       "dueDate": "到期日",
@@ -344,8 +344,8 @@
       "task3": "項任務"
     },
     "componentsTasksBulkActionsBulkDueDatePicker": {
-      "setDueDateFor": "設定到期日，共 ",
-      "task": "項任務",
+      "setDueDateFor": "為 ",
+      "task": "項任務設定到期日",
       "selectADateToSetAsTheDueDateForAllSelectedTasks": "選擇一個日期，設為所有已選取任務的到期日。",
       "alsoSetTime": "同時設定時間",
       "cancel": "取消",
@@ -401,7 +401,7 @@
       "thisProjectHas": "此專案有 ",
       "task": "項任務",
       "whatWouldYouLikeToDoWithThem": "要如何處理這些任務？",
-      "moveTasksToPersonalProject": "將任務移動到個人專案",
+      "moveTasksToPersonalProject": "將任務移至個人專案",
       "deleteAllTasksPermanently": "永久刪除所有任務",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "此專案沒有任何任務，將被永久刪除。",
       "notesEventsAndFilesStayNotice": "此專案中的任務會被刪除。筆記、活動與檔案會保留在儲存庫中。",
@@ -446,10 +446,10 @@
       "incompleteSubtask": "項未完成的子任務",
       "and": "還有 ",
       "more": "項",
-      "whatWouldYouLikeToDo": "你想做什麼？",
-      "completeAllParentSubtasks": "完成所有（父任務 + 子任務）",
+      "whatWouldYouLikeToDo": "要如何處理？",
+      "completeAllParentSubtasks": "全部完成（父任務 + 子任務）",
       "markTheParentAndAllSubtasksAsComplete": "將父任務與所有子任務標記為已完成",
-      "completeParentOnlyKeepSubtasksIncomplete": "僅完成父任務，保留子任務未完成",
+      "completeParentOnlyKeepSubtasksIncomplete": "僅完成父任務，子任務維持未完成",
       "onlyMarkTheParentTaskAsComplete": "僅將父任務標記為已完成",
       "cancel": "取消",
       "complete": "完成"
@@ -462,10 +462,10 @@
       "deleteSubtasksConfirmation": "這將從「{title}」中刪除 {count, plural, other {# 項子任務}}。"
     },
     "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "刪除包含子任務的任務嗎？",
+      "deleteTaskWithSubtasks": "要刪除包含子任務的任務嗎？",
       "has": "有 ",
       "subtask": "項子任務",
-      "whatWouldYouLikeToDo": "你想做什麼？",
+      "whatWouldYouLikeToDo": "要如何處理？",
       "deleteTaskAndAllSubtasks": "刪除任務及所有子任務",
       "permanentlyRemovesEverything": "永久刪除所有內容",
       "deleteTaskKeepSubtasksAsStandaloneTasks": "刪除任務，將子任務保留為獨立任務",
@@ -503,9 +503,9 @@
       "tomorrow": "明天",
       "nextWeek": "下週",
       "removeDate": "移除日期",
-      "moveToProject": "移動至專案",
+      "moveToProject": "移至專案",
       "current": "目前",
-      "changeStatus": "更改狀態",
+      "changeStatus": "變更狀態",
       "current2": "目前",
       "reorder": "重新排序"
     },
@@ -539,7 +539,7 @@
       "youReEditingARepeatingTaskApplyChangesTo": "你正在編輯重複任務。將變更套用至：",
       "onlyThisOccurrence": "僅這一次",
       "onlyFutureTasksUnchanged": "當天——之後的任務維持不變",
-      "thisAndAllFutureOccurrences": "這一次及之後的所有重複",
+      "thisAndAllFutureOccurrences": "這一次及之後的每一次",
       "andBeyond": "及之後",
       "cancel": "取消",
       "continue": "繼續"
@@ -576,11 +576,11 @@
       "apply": "套用"
     },
     "componentsTasksFiltersFilterDropdown": {
-      "filterBy": "依…篩選"
+      "filterBy": "篩選依據…"
     },
     "componentsTasksFiltersFilterEmptyState": {
       "activeFilters": "目前篩選條件：",
-      "clearAllFilters": "清除所有篩選"
+      "clearAllFilters": "清除所有篩選條件"
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "到期日"
@@ -589,7 +589,7 @@
       "priority": "優先順序",
       "is": "是",
       "search": "搜尋…",
-      "selected": "已選取"
+      "selected": "項已選取"
     },
     "componentsTasksFiltersFilterPanelsProjectPanel": {
       "project": "專案",
@@ -606,7 +606,7 @@
       "tags": "標籤",
       "is": "是",
       "search": "搜尋…",
-      "selected": "已選取"
+      "selected": "個已選取"
     },
     "componentsTasksFiltersMoreFiltersDropdown": {
       "moreFilters": "更多篩選條件",
@@ -632,7 +632,7 @@
     "componentsTasksFiltersSaveFilterDialog": {
       "saveFilter": "儲存篩選條件",
       "saveYourCurrentFilterSettingsForQuickAccessLater": "儲存目前的篩選設定以便日後快速存取。",
-      "filterName": "篩選名稱",
+      "filterName": "篩選條件名稱",
       "eGHighPriorityThisWeek": "例如：本週高優先順序",
       "currentFilters": "目前的篩選條件：",
       "noFiltersApplied": "未套用任何篩選條件",
@@ -712,7 +712,7 @@
       "archiveProject": "封存專案",
       "deleteProject": "刪除專案",
       "selectProject": "選擇專案",
-      "noProjectsYet": "尚未有專案",
+      "noProjectsYet": "尚無專案",
       "createProject": "建立專案"
     },
     "componentsTasksProjectsProjectsTabContent": {
@@ -738,7 +738,7 @@
       "custom": "自訂…"
     },
     "componentsTasksStatusEditor": {
-      "changeStatusColor": "更改狀態顏色",
+      "changeStatusColor": "變更狀態顏色",
       "dragToReorder": "拖曳以重新排序",
       "statusName": "狀態名稱",
       "addStatus": "新增狀態"
@@ -750,10 +750,10 @@
     "componentsTasksStopRepeatingDialog": {
       "stopRepeating": "停止重複",
       "isSetToRepeat": "設定為重複：",
-      "whatWouldYouLikeToDo": "你想做什麼？",
+      "whatWouldYouLikeToDo": "要如何處理？",
       "keepThisTaskStopFutureOccurrences": "保留此任務，停止之後的重複",
       "taskWillBecomeAOneTimeTask": "任務將變為一次性任務",
-      "deleteThisAndAllFutureOccurrences": "刪除這一次及之後的所有重複",
+      "deleteThisAndAllFutureOccurrences": "刪除這一次及之後的每一次",
       "taskWillBeRemovedEntirely": "任務將完全被移除",
       "cancel": "取消",
       "confirm": "確認"
@@ -808,7 +808,7 @@
       "clearTime": "清除時間"
     },
     "componentsTasksTodayEmptyState": {
-      "nothingScheduledForToday": "今天沒有行程",
+      "nothingScheduledForToday": "今天沒有排定的任務",
       "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "上方有已逾期的任務。新增今天的任務，或查看即將到來的清單。",
       "addTaskForToday": "新增今天的任務",
       "allCaughtUpForToday": "今天的任務已全部完成",
@@ -816,11 +816,11 @@
       "addTaskForToday2": "新增今天的任務"
     },
     "componentsTasksUpcomingEmptyState": {
-      "nothingScheduledForTheNext7Days": "未來七天沒有排定的任務",
+      "nothingScheduledForTheNext7Days": "未來 7 天沒有排定的任務",
       "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "上方有已逾期的任務。新增未來一週的任務，提前做好規劃。",
       "addTask": "新增任務",
       "noUpcomingTasks": "沒有即將到來的任務",
-      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "未來七天到期的任務將顯示在這裡。透過新增任務來規劃你的一週。",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "未來 7 天到期的任務會顯示在這裡。新增一些任務，規劃你的一週。",
       "addTask2": "新增任務"
     }
   },
@@ -833,10 +833,10 @@
       "subtaskAdded": "子任務已新增",
       "subtaskDeleted": "子任務已刪除",
       "taskCompleted": "任務已完成",
-      "allSubtasksCompleteTaskMarkedAsDone": "🎉 全部子任務完成！任務已標記為完成。",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 所有子任務皆已完成！任務已標記為已完成。",
       "taskReopened": "任務已重新開啟",
       "taskKeptOpen": "任務維持未完成",
-      "taskMarkedAsDone": "🎉 任務已標記為完成！"
+      "taskMarkedAsDone": "🎉 任務已標記為已完成！"
     },
     "errors": {
       "failedToArchiveTasks": "無法封存任務",
@@ -861,7 +861,7 @@
   "addToProject": {
     "menuLabel": "加入專案",
     "dialogTitle": "加入專案",
-    "noProjects": "尚未有專案",
+    "noProjects": "尚無專案",
     "loading": "正在載入專案…",
     "toastSuccess": "已加入 {name}",
     "toastError": "無法加入專案"
@@ -905,7 +905,7 @@
     "groups": {
       "today": "今天",
       "yesterday": "昨天",
-      "older": "較舊",
+      "older": "更早",
       "tomorrow": "明天",
       "upcoming": "即將到來",
       "past": "過去"
@@ -931,7 +931,7 @@
       "overview": "總覽",
       "progress": "進度",
       "details": "詳細資料",
-      "doneOf": "已完成 {done}／{total}",
+      "doneOf": "已完成 {done}/{total}",
       "overdue": "已逾期",
       "created": "建立於",
       "updated": "更新於",
@@ -998,7 +998,7 @@
     "green": "綠色",
     "teal": "藍綠色",
     "blue": "藍色",
-    "indigo": "靛藍",
+    "indigo": "靛藍色",
     "purple": "紫色",
     "pink": "粉紅色"
   }

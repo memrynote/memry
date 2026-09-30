@@ -77,7 +77,7 @@
   },
   "toast": {
     "actionFailed": "操作失败",
-    "nothingToUndo": "没有可撤销操作",
+    "nothingToUndo": "没有可撤销的操作",
     "undone": "已撤销：{description}",
     "undoFailed": "撤销操作失败",
     "filesImported": "{count, plural, other {已导入 # 个文件}}",
@@ -91,7 +91,7 @@
   "dateRelative": {
     "today": "今天",
     "yesterday": "昨天",
-    "daysAgo": "{count, plural, one {# 天前} other {# 天前}}",
+    "daysAgo": "{count, plural, other {# 天前}}",
     "tomorrow": "明天",
     "daysOverdue": "{count, plural, other {逾期 # 天}}",
     "daysLate": "{count, plural, other {逾期 # 天}}",
@@ -99,15 +99,15 @@
     "inWeeks": "{count, plural, other {# 周后}}"
   },
   "recurrence": {
-    "everyNDays": "{count, plural, one {每天} other {每 # 天}}",
-    "everyNWeeks": "{count, plural, one {每周} other {每 # 周}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {每个工作日} other {每 # 周的工作日}}",
-    "everyNWeeksOnWeekends": "{count, plural, one {每个周末} other {每 # 周的周末}}",
-    "everyNWeeksOnDays": "{count, plural, one {每周的{days}} other {每 # 周的{days}}}",
-    "everyNMonths": "{count, plural, one {每月} other {每 # 个月}}",
-    "everyNMonthsOnDay": "{count, plural, one {每月 {day}{suffix} 日} other {每 # 个月的 {day}{suffix} 日}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {每月的{week}{day}} other {每 # 个月的{week}{day}}}",
-    "everyNYears": "{count, plural, one {每年} other {每 # 年}}",
+    "everyNDays": "{count, plural, =1 {每天} other {每 # 天}}",
+    "everyNWeeks": "{count, plural, =1 {每周} other {每 # 周}}",
+    "everyNWeeksOnWeekdays": "{count, plural, =1 {每个工作日} other {每 # 周的工作日}}",
+    "everyNWeeksOnWeekends": "{count, plural, =1 {每个周末} other {每 # 周的周末}}",
+    "everyNWeeksOnDays": "{count, plural, =1 {每周的{days}} other {每 # 周的{days}}}",
+    "everyNMonths": "{count, plural, =1 {每月} other {每 # 个月}}",
+    "everyNMonthsOnDay": "{count, plural, =1 {每月 {day}{suffix} 日} other {每 # 个月的 {day}{suffix} 日}}",
+    "everyNMonthsOnWeekDay": "{count, plural, =1 {每月的{week}{day}} other {每 # 个月的{week}{day}}}",
+    "everyNYears": "{count, plural, =1 {每年} other {每 # 年}}",
     "repeats": "重复",
     "ordinal": {
       "first": "第一个",
@@ -147,7 +147,7 @@
       "editAndApply": "编辑并应用",
       "editAndAllow": "编辑并允许",
       "allowAlways": "始终允许",
-      "applyEdits": "应用编辑",
+      "applyEdits": "应用修改",
       "deny": "拒绝",
       "invalidJson": "请输入有效的 JSON 后再应用修改。",
       "thisTool": "此工具",
@@ -177,15 +177,15 @@
       "title": "{count, plural, =0 {智能体建议} other {智能体建议了 # 处修改}}",
       "editingTitle": "正在编辑建议",
       "pendingHint": "尚未保存。接受后即会应用。",
-      "editingHint": "在你接受之前，你的编辑会保留在这里。",
+      "editingHint": "在你接受之前，修改会保留在这里。",
       "baseChanged": "你编辑建议时，此笔记已发生变化。",
-      "keepDraft": "保留我的编辑",
+      "keepDraft": "保留我的修改",
       "restart": "从最新版本重新开始",
       "reject": "拒绝",
       "edit": "编辑",
       "showDiff": "显示修改",
       "accept": "接受",
-      "acceptEdits": "接受编辑",
+      "acceptEdits": "接受修改",
       "waiting": "正在等待你在 {title} 中查看。",
       "notOpen": "打开 {title} 查看修改，或不查看直接接受。",
       "show": "显示",
@@ -225,7 +225,7 @@
         "description": "描述",
         "due": "截止日期",
         "dueTime": "截止时间",
-        "duplicateOf": "副本来源",
+        "duplicateOf": "复制自",
         "edits": "修改内容",
         "elements": "元素",
         "folder": "文件夹",
@@ -251,7 +251,7 @@
         "title": "标题"
       },
       "loss": {
-        "words": "{count, plural, other {# 个词}}",
+        "words": "{count, plural, other {# 字}}",
         "tags": "{count, plural, other {# 个标签}}",
         "notes": "{count, plural, other {# 篇笔记}}",
         "folders": "{count, plural, other {# 个文件夹}}",
@@ -326,7 +326,7 @@
           "high": "高",
           "extraHigh": "超高",
           "extraHighDefault": "超高（默认）",
-          "max": "最大"
+          "max": "最高"
         }
       },
       "codexSettings": {
@@ -423,7 +423,7 @@
       "hint": "输入内容以查找要链接的条目。",
       "empty": "没有匹配的内容。",
       "selectOneShape": "选择单个图形以将其链接到条目。",
-      "cardsCannotLink": "卡片本身已会打开对应的条目，因此无法再添加第二个链接。",
+      "cardsCannotLink": "卡片本身就会打开对应的条目，因此无法再添加其他链接。",
       "linked": "已链接。",
       "groupNotes": "笔记",
       "groupFiles": "文件",
@@ -504,7 +504,7 @@
       "bulkLoadFailed": "无法加载条目",
       "bulkAdded": "{count, plural, other {已添加 # 张卡片}}",
       "bulkAddedSkipped": "{count, plural, other {已添加 # 张卡片}} · {skipped} 项已在画布上",
-      "bulkAllOnCanvas": "{count, plural, other {全部 # 项已在此画布上}}"
+      "bulkAllOnCanvas": "{count, plural, =1 {已在此画布上} other {全部 # 项已在此画布上}}"
     },
     "cluster": {
       "button": "建议分组",
@@ -579,7 +579,7 @@
       "newItemMenu": "新建…",
       "feedbackButton": "发送反馈",
       "feedbackTitle": "发送反馈",
-      "feedbackDescription": "告诉我们哪些运行良好、哪些出了问题，或你希望 Memry 实现什么。我们会阅读每一条消息。",
+      "feedbackDescription": "告诉我们哪些运行良好、哪些出了问题，或你希望 MemryNote 能做什么。我们会阅读每一条消息。",
       "feedbackPlaceholder": "你的反馈…",
       "feedbackEmailHint": "如果希望得到回复，请留下你的邮箱。",
       "feedbackPrivacyTitle": "会发送哪些内容",
@@ -619,21 +619,21 @@
       "skipOnboarding": "跳过新手引导",
       "welcomeToMemry": "欢迎使用 memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "你的个人知识库。只需 2 分钟即可上手。",
-      "getStarted": "开始使用",
+      "getStarted": "开始使用 ",
       "createYourFirstNote": "创建第一篇笔记",
       "markdownBasedStoredLocallyAsPlainFiles": "基于 Markdown，以纯文本文件形式存储在本地。",
       "eGMeetingNotesIdeasAnything": "例如：会议记录、想法，什么都可以…",
       "skip": "跳过",
       "createNote": "创建笔记 ",
-      "addYourFirstTask": "添加你的第一个任务",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "任务链接到你的笔记，包含优先级和截止日期。",
+      "addYourFirstTask": "添加第一个任务",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "任务可链接到笔记，并支持优先级和截止日期。",
       "eGReviewProjectProposal": "例如：审阅项目提案…",
       "skip2": "跳过",
       "createTask": "创建任务 ",
       "syncAcrossDevices": "跨设备同步",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "在所有设备上保持笔记和任务同步。你可以随时设置。",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "在所有设备间同步笔记和任务。也可以稍后再设置。",
       "skipForNow": "暂不设置",
-      "doneLetSGo": "完成——开始吧！"
+      "doneLetSGo": "完成——开始吧！ "
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "设置文件夹图标",
@@ -951,7 +951,7 @@
       "duration": "{count} 分钟",
       "inbox": "收件箱",
       "inboxAllTypes": "所有类型",
-      "inboxOlder": "{count, plural, other {# 项较早}}",
+      "inboxOlder": "{count, plural, other {另有 # 项较早的条目}}",
       "inboxOldest": "{count, plural, other {最早一项为 # 天前}}",
       "openInbox": "打开收件箱",
       "folder": "文件夹",
@@ -1013,7 +1013,7 @@
     "noJournalEntriesYet": "还没有日记。",
     "disabled": {
       "createNote": "创建笔记",
-      "hint": "没有打开的内容。开始一篇笔记吧。"
+      "hint": "没有打开的内容。写一篇笔记吧。"
     }
   },
   "onboarding": {
@@ -1195,7 +1195,7 @@
       "availableTitle": "MemryNote {version} 已发布",
       "readySubtitle": "当前版本：{current}",
       "availableSubtitle": "当前版本：{current} · 尚未下载任何内容",
-      "allChanges": "全部更改",
+      "allChanges": "完整更新日志",
       "restartNow": "立即重新启动",
       "onNextQuit": "下次退出时",
       "download": "下载",

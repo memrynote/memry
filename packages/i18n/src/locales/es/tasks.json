@@ -117,7 +117,7 @@
     "repeatTypeOneTime": "Únicas"
   },
   "quickAdd": {
-    "label": "Añadir tarea rápida",
+    "label": "Añadir tarea rápidamente",
     "placeholder": "Añadir una tarea…    @tomorrow  !high  +proyecto  #etiqueta  [[nota]]  every monday",
     "presets": {
       "menu": "Opciones de la tarea",
@@ -811,7 +811,7 @@
       "nothingScheduledForToday": "No hay nada programado para hoy",
       "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Tienes tareas vencidas arriba. Añade algunas tareas para hoy o revisa tus próximas tareas.",
       "addTaskForToday": "Añadir tarea para hoy",
-      "allCaughtUpForToday": "Todo al día por hoy",
+      "allCaughtUpForToday": "Todo listo por hoy",
       "youHaveNothingScheduledEnjoyTheClarity": "No tienes nada programado. Disfruta de la claridad.",
       "addTaskForToday2": "Añadir tarea para hoy"
     },

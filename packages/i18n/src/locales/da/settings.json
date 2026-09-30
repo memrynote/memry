@@ -91,7 +91,7 @@
       },
       "spatialCanvas": {
         "label": "Lærred",
-        "description": "Rumlige tavler til at arrangere og linke noter"
+        "description": "Visuelle tavler til at arrangere og linke noter"
       }
     }
   },
@@ -116,7 +116,7 @@
       "launchAtLogin": {
         "label": "Start ved log ind",
         "description": "Start memrynote, når du logger ind",
-        "error": "Kunne ikke opdatere start ved opstart"
+        "error": "Kunne ikke opdatere indstillingen for start ved log ind"
       }
     },
     "updates": {
@@ -181,8 +181,8 @@
       "label": "Tidsformat",
       "description": "12-timers eller 24-timers ur",
       "options": {
-        "12h": "12 timer",
-        "24h": "24 timer"
+        "12h": "12-timers",
+        "24h": "24-timers"
       },
       "error": "Kunne ikke opdatere tidsformatet"
     },
@@ -193,11 +193,7 @@
         "MM/DD/YYYY": "MM/DD/YYYY (USA)",
         "DD/MM/YYYY": "DD/MM/YYYY",
         "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
-        "DD": {
-          "MM": {
-            "YYYY": "DD.MM.YYYY"
-          }
-        }
+        "DD.MM.YYYY": "DD.MM.YYYY"
       },
       "error": "Kunne ikke opdatere datoformatet"
     },
@@ -224,7 +220,7 @@
     "window": {
       "minimizeToTray": {
         "label": "Bliv kørende i menulinjen, når vinduet lukkes",
-        "description": "Når du lukker vinduet, skjules memrynote i systembakken i stedet for at blive lukket. Klik på ikonet i systembakken for at hente appen frem igen. På macOS bliver appen også i Dock; på Linux-skriveborde uden systembakke lukkes vinduet som normalt.",
+        "description": "Når du lukker vinduet, skjules memrynote i systembakken i stedet for at blive lukket. Klik på ikonet i systembakken for at hente appen frem igen. På macOS bliver appen også i Dock; i Linux-skrivebordsmiljøer uden systembakke lukkes vinduet som normalt.",
         "error": "Kunne ikke opdatere indstillingen for minimering til systembakken"
       }
     },
@@ -234,7 +230,7 @@
         "description": "Nye noter og mapper oprettes i den valgte mappe. Når indstillingen er slået fra, oprettes elementer altid i roden."
       },
       "defaultNoteFolder": {
-        "label": "Standardplacering for nye noter",
+        "label": "Standardplacering",
         "description": "Bruges, når der ikke er valgt en mappe i sidebjælken.",
         "placeholder": "noter",
         "root": "/"
@@ -317,8 +313,8 @@
       },
       "presets": {
         "indigo": "Indigo",
-        "amber": "Rav",
-        "emerald": "Smaragd",
+        "amber": "Ravgul",
+        "emerald": "Smaragdgrøn",
         "red": "Rød",
         "violet": "Violet",
         "cyan": "Cyan",
@@ -381,7 +377,7 @@
       },
       "fontFamily": {
         "label": "Skrifttype",
-        "description": "Primær skrifttype til grænsefladen",
+        "description": "Primær skrifttype i brugerfladen",
         "options": {
           "system": "Systemstandard",
           "sansSerif": "Sans-serif",
@@ -470,7 +466,7 @@
     },
     "loading": "Indlæser skabeloner…",
     "newTemplateTitle": "Ny skabelon",
-    "copySuffix": "{name} (Kopi)",
+    "copySuffix": "{name} (kopi)",
     "empty": {
       "title": "Ingen brugerdefinerede skabeloner endnu",
       "description": "Opret en skabelon for at komme i gang"
@@ -699,7 +695,7 @@
     "pageOverride": {
       "label": "Tilsidesættelse af kalenderside",
       "description": "Adfærd, når fanen Kalender er aktiv (som standard »Åbn kalender«)",
-      "error": "Kunne ikke opdatere tilsidesættelse af kalenderside"
+      "error": "Kunne ikke opdatere tilsidesættelsen af kalendersiden"
     },
     "showNotesOnCalendar": {
       "label": "Vis noter i kalenderen",
@@ -709,11 +705,11 @@
     "options": {
       "openJournal": "Åbn dagbog",
       "openCalendar": "Åbn kalender",
-      "useGlobal": "Brug globale indstillinger"
+      "useGlobal": "Brug den globale indstilling"
     },
     "google": {
       "name": "Google Calendar",
-      "description": "Tovejssynkronisering til memrynote-begivenheder og importerede Google-kalendere.",
+      "description": "Tovejssynkronisering af memrynote-begivenheder og importerede Google-kalendere.",
       "statuses": {
         "connected": "Forbundet",
         "notConnected": "Ikke forbundet",
@@ -730,7 +726,7 @@
       "connectFailed": "Kunne ikke forbinde Google Calendar",
       "refreshFailed": "Kunne ikke opdatere Google Calendar",
       "disconnectFailed": "Kunne ikke afbryde forbindelsen til Google Calendar",
-      "retryFailed": "Kunne ikke prøve kalendersynkronisering igen",
+      "retryFailed": "Kunne ikke prøve kalendersynkroniseringen igen",
       "pushToGoogle": {
         "label": "Vis memrynote-begivenheder i Google Calendar",
         "description": "Slå fra for envejssynkronisering – du ser stadig dine Google-begivenheder i memrynote, men memrynote-begivenheder vises ikke i Google.",
@@ -767,7 +763,7 @@
       "readOnly": "Skrivebeskyttet",
       "updatedAt": "Opdateret {time}",
       "notCheckedYet": "Ikke tjekket endnu",
-      "keptEvents": "Begivenheder, der allerede er i din kalender, bliver, indtil næste opdatering lykkes.",
+      "keptEvents": "Begivenheder, der allerede er i din kalender, bliver liggende, indtil næste opdatering lykkes.",
       "notEncrypted": "Ikke krypteret",
       "httpWarning": "Dette link starter med http://, så linket og begivenhederne sendes ukrypteret. Alle på samme netværk kan læse dem. Brug et https://- eller webcal://-link, hvis kalenderen tilbyder et.",
       "added": "{title} tilføjet.",
@@ -863,7 +859,7 @@
         "outdated": "Disse enheder på din konto kører en version af memrynote, der er ældre end {version}:",
         "unverified": "memrynote kunne ikke tjekke, hvilke versioner dine andre enheder kører.",
         "unknownVersion": "ukendt version",
-        "consequence": "En ældre version kan kopiere opgaver og begivenheder fra denne kalender til Google Calendar som dubletter eller undlade at synkronisere dem. Opdatér disse enheder først, eller fortsæt, hvis du accepterer det.",
+        "consequence": "En ældre version kan kopiere opgaver og begivenheder fra denne kalender til Google Calendar som dubletter eller slet ikke kunne synkronisere dem. Opdatér disse enheder først, eller fortsæt, hvis du accepterer det.",
         "acknowledge": "Jeg forstår, forbind alligevel"
       },
       "reconnect": "Forbind igen",
@@ -989,7 +985,7 @@
         "description": "Slå synkronisering til, så følger alle dine noter med dig til dine andre enheder – end-to-end-krypteret, så kun du kan læse dem.",
         "benefits": {
           "devices": "Alle enheder fortsætter, hvor du slap",
-          "encrypted": "End-to-end-krypteret – nøglerne forlader dig aldrig",
+          "encrypted": "End-to-end-krypteret – nøglerne bliver altid hos dig",
           "backup": "En krypteret sikkerhedskopi, hvis denne enhed ikke er ved hånden"
         },
         "guarantee": "14 dages pengene-tilbage-garanti. Opsig når som helst."
@@ -1076,7 +1072,7 @@
     },
     "signOutDialog": {
       "title": "Vil du logge ud af synkronisering?",
-      "description": "Synkronisering stopper, og krypteringsnøgler vil blive fjernet fra denne enhed. Dine noter forbliver på denne enhed. Du skal bruge din gendannelsessætning for at konfigurere synkronisering igen.",
+      "description": "Synkroniseringen stopper, og krypteringsnøglerne fjernes fra denne enhed. Dine noter bliver på denne enhed. Du skal bruge din gendannelsessætning for at konfigurere synkronisering igen.",
       "confirm": "Log ud",
       "signingOut": "Logger ud…"
     },
@@ -1125,7 +1121,7 @@
       "verifying": "Bekræfter…",
       "resending": "Sender igen…",
       "resend": "Send kode igen",
-      "resendIn": "Send igen i {time}",
+      "resendIn": "Send igen om {time}",
       "differentEmail": "Brug en anden e-mail",
       "error": "Bekræftelse mislykkedes",
       "resendError": "Kunne ikke sende igen"
@@ -1158,7 +1154,7 @@
         "registering": "Registrerer enhed…"
       },
       "failed": "Gendannelse mislykkedes",
-      "confirmationFailed": "Bekræftelsen mislykkedes",
+      "confirmationFailed": "Bekræftelse mislykkedes",
       "unavailable": {
         "loading": "Indlæser din gendannelsessætning…",
         "title": "Kunne ikke indlæse din gendannelsessætning",
@@ -1171,16 +1167,16 @@
       "title": "Start forfra på denne enhed",
       "description": "Gør kun dette, hvis din gendannelsessætning er væk for altid. Det kan ikke fortrydes.",
       "consequenceSignOut": "Denne enhed logger ud og stopper synkroniseringen.",
-      "consequenceKey": "Krypteringsnøglen på denne enhed slettes. Alt, der allerede er gemt på din konto, forbliver krypteret med den gamle nøgle – uden gendannelsessætningen kan intet nogensinde læse det igen.",
+      "consequenceKey": "Krypteringsnøglen på denne enhed slettes. Alt, der allerede er gemt på din konto, forbliver krypteret med den gamle nøgle – uden gendannelsessætningen kan det aldrig læses igen.",
       "consequenceLocal": "Noter, der allerede er gemt på denne computer, bliver i din boksmappe og fungerer fortsat.",
-      "confirm": "Log ud, og start forfra",
+      "confirm": "Log ud og start forfra",
       "cancel": "Gå tilbage"
     },
     "linking": {
       "choiceTitle": "Tilknyt denne enhed",
       "choiceDescription": "Overfør krypteringsnøgler fra en anden enhed, eller gendan fra din gendannelsessætning.",
       "qrChoice": "Tilknyt via QR-kode",
-      "qrChoiceDescription": "Scan koden vist på din anden enhed",
+      "qrChoiceDescription": "Scan koden, der vises på din anden enhed",
       "recoveryChoice": "Gendannelsessætning",
       "recoveryChoiceDescription": "Indtast din 24-ords gendannelsessætning",
       "codeTitle": "Indtast tilknytningskode",
@@ -1255,7 +1251,7 @@
     "generateNew": "Generér ny kode",
     "qrAria": "QR-kode til tilknytning af enhed",
     "qrImageAria": "QR-kode til enhedstilknytning",
-    "expiresIn": "Udløber i {time}",
+    "expiresIn": "Udløber om {time}",
     "or": "eller",
     "codeLabel": "Tilknytningskode",
     "copyAria": "Kopiér tilknytningskoden",
@@ -1328,7 +1324,7 @@
       "replaceKey": "Erstat den gemte OpenAI-nøgle",
       "enterKey": "Indtast API-nøgle til OpenAI",
       "saveKey": "Gem nøgle",
-      "keySaved": "API-nøgle gemt i nøglering",
+      "keySaved": "API-nøgle gemt i nøgleringen",
       "providerError": "Kunne ikke opdatere taleudbyderen",
       "downloadedToast": "Whisper Small hentet",
       "downloadError": "Kunne ikke hente Whisper Small",
@@ -1353,7 +1349,7 @@
       "generating": "Genererer indlejringer…",
       "complete": "Fuldført!",
       "reindexed": "Indlejringer genindekseret: {computed} beregnet, {skipped} sprunget over",
-      "reindexFailed": "Kunne ikke genindeksere indlejringer"
+      "reindexFailed": "Kunne ikke genindeksere indlejringerne"
     },
     "inline": {
       "loading": "Indlæser…",
@@ -1382,8 +1378,8 @@
       "activePort": "Aktiv på port {port}",
       "notConnected": "Ikke forbundet",
       "test": "Test",
-      "stopFailed": "Kunne ikke stoppe eksisterende server",
-      "connected": "Forbundet! Server kører på port {port}",
+      "stopFailed": "Kunne ikke stoppe den eksisterende server",
+      "connected": "Forbundet! Serveren kører på port {port}",
       "connectFailed": "Kunne ikke oprette forbindelse",
       "testFailed": "Forbindelsestest mislykkedes",
       "updateFailed": "Kunne ikke opdatere indstillingen"
@@ -1427,7 +1423,7 @@
       "title": "Import",
       "subtitle": "Hent dine noter og opgaver ind fra andre apps"
     },
-    "intro": "Engangsimporter opretter nye noter i din boks. Dine oprindelige eksportfiler efterlades urørt.",
+    "intro": "Engangsimporter opretter nye noter i din boks. Dine oprindelige eksportfiler efterlades urørte.",
     "sources": {
       "notion": "Importér en HTML-eksport (.zip)",
       "todoist": "Importér en CSV-eksport af et projekt (.csv)",
@@ -1657,14 +1653,14 @@
       "approaching": "Nærmer sig grænsen"
     },
     "activity": {
-      "description": "Filer, der er tilføjet til eller fjernet fra boksen uden for Memry, importer og alt, der er sprunget over eller mislykkedes. Gemmes kun på denne enhed.",
+      "description": "Filer, der er tilføjet til eller fjernet fra boksen uden for Memry, importer og alt, der blev sprunget over eller mislykkedes. Gemmes kun på denne enhed.",
       "retention": {
         "label": "Boksaktivitet",
         "days": "{count, plural, one {Behold # dag} other {Behold # dage}}"
       },
       "filter": {
         "all": "Alle",
-        "problems": "Sprunget over og mislykkedes"
+        "problems": "Oversprungne og mislykkede"
       },
       "reveal": "Vis logfil",
       "clear": "Ryd",
@@ -1845,7 +1841,7 @@
     "command": {
       "label": "memrynote-kommando",
       "toggleLabel": "Installér memrynote-kommandoen",
-      "descriptionInstalled": "Installeret på {path}",
+      "descriptionInstalled": "Installeret i {path}",
       "descriptionNotInstalled": "Installér memrynote-kommandoen, så du kan bruge din boks fra en hvilken som helst terminal."
     },
     "status": {
@@ -1943,7 +1939,7 @@
       },
       "tabs": {
         "close": {
-          "label": "Luk fanen",
+          "label": "Luk fane",
           "description": "Luk den aktuelle fane"
         },
         "next": {
@@ -2094,7 +2090,7 @@
       "pending": "afventer",
       "localOnly": "kun lokalt",
       "detected": "opdaget",
-      "dismissConflicts": "Afvis",
+      "dismissConflicts": "Luk",
       "clockSkewDetected": "Tidsforskel i uret registreret",
       "items": "elementer",
       "willSyncWhenBackOnline": "Synkroniseres, når du er online igen",
@@ -2115,22 +2111,22 @@
       "failedToSetUpDevice": "Kunne ikke konfigurere enheden",
       "failedToConfirmRecoveryPhrase": "Kunne ikke bekræfte gendannelsessætningen",
       "failedToAnalyzeContent": "Kunne ikke analysere indholdet",
-      "failedToLoadUpdaterState": "Kunne ikke indlæse opdateringstilstanden",
+      "failedToLoadUpdaterState": "Kunne ikke indlæse opdateringsstatus",
       "failedToCheckForUpdates": "Kunne ikke søge efter opdateringer",
       "failedToDownloadUpdate": "Kunne ikke hente opdateringen",
       "failedToInstallUpdate": "Kunne ikke installere opdateringen",
       "failedToLoadEditorSettings": "Kunne ikke indlæse editorindstillingerne",
       "failedToUpdateEditorSettings": "Kunne ikke opdatere editorindstillingerne",
-      "failedToLoadGeneralSettings": "Kunne ikke indlæse generelle indstillinger",
-      "failedToUpdateGeneralSettings": "Kunne ikke opdatere generelle indstillinger",
-      "failedToLoadKeyboardSettings": "Kunne ikke indlæse tastaturindstillinger",
+      "failedToLoadGeneralSettings": "Kunne ikke indlæse de generelle indstillinger",
+      "failedToUpdateGeneralSettings": "Kunne ikke opdatere de generelle indstillinger",
+      "failedToLoadKeyboardSettings": "Kunne ikke indlæse tastaturindstillingerne",
       "failedToUpdateKeyboardSettings": "Kunne ikke opdatere tastaturindstillingerne",
-      "failedToResetKeyboardSettings": "Kunne ikke nulstille tastaturindstillinger",
+      "failedToResetKeyboardSettings": "Kunne ikke nulstille tastaturindstillingerne",
       "failedToLoadNoteEditorSettings": "Kunne ikke indlæse indstillingerne for noteeditoren",
       "failedToUpdateSettings": "Kunne ikke opdatere indstillingerne",
       "failedToLoadTabSettings": "Kunne ikke indlæse faneindstillingerne",
       "failedToLoadNotes": "Kunne ikke indlæse noterne",
-      "failedToLoadTags": "Kunne ikke indlæse tags",
+      "failedToLoadTags": "Kunne ikke indlæse taggene",
       "failedToLoadTasks": "Kunne ikke indlæse opgaverne",
       "failedToLoadVaultStatus": "Kunne ikke indlæse boksens status",
       "failedToSelectVault": "Kunne ikke vælge boksen",
@@ -2253,7 +2249,7 @@
     "actions": {
       "save": "Gem",
       "models": "Modeller",
-      "test": "Test forbindelsen",
+      "test": "Test forbindelse",
       "probe": "Afprøv værktøjer"
     },
     "status": {

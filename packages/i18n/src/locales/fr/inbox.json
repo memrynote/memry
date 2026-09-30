@@ -50,7 +50,7 @@
   "empty": {
     "successAria": "Tout est traité, la boîte de réception est vide",
     "title": "Boîte de réception vide",
-    "body": "Tout est traité. Capturez quelque chose de nouveau avec le champ ci-dessus, ou collez un lien pour commencer.",
+    "body": "Tout est traité. Capturez quelque chose de nouveau avec le champ ci-dessus ou collez un lien pour commencer.",
     "filedThisWeek": "{count, plural, one {# classé cette semaine} other {# classés cette semaine}}",
     "dayStreak": "{count, plural, one {# jour d'affilée} other {# jours d'affilée}}",
     "tipPrefix": "Astuce : utilisez",
@@ -181,7 +181,7 @@
     },
     "selectFolder": "Sélectionner un dossier",
     "searchOrCreateFolder": "Rechercher ou créer avec /…",
-    "suggested": "Suggéré",
+    "suggested": "Suggestions",
     "notesRoot": "Notes",
     "notesRootLabel": "Notes (racine)",
     "createFolder": "Créer « {name} »",
@@ -489,7 +489,7 @@
       "deleteReminder": "Supprimer le rappel",
       "save": "Enregistrer",
       "setReminder": "Définir un rappel",
-      "setting": "Définition…"
+      "setting": "Enregistrement…"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Reporter",

@@ -6,30 +6,28 @@
       "insights": "Wawasan",
       "ariaLabel": "Pilihan tampilan kotak masuk"
     },
-    "triageButton": "Triase",
-    "processInboxTitle": "Kotak masuk proses (Cmd+P)",
-    "itemCaptured": "Barang ditangkap",
+    "itemCaptured": "Item dicatat",
     "searchArchivedTitle": "Cari item yang diarsipkan",
-    "searchPlaceholder": "Cari...",
+    "searchPlaceholder": "Cari…",
     "archivedItemsAria": "Item yang diarsipkan",
     "snoozed": {
       "show": "Tampilkan item yang ditunda",
       "showWithCount": "Tampilkan item yang ditunda ({count})",
       "hide": "Sembunyikan item yang ditunda"
     },
-    "filter": {
-      "button": "Menyaring",
-      "byType": "Saring berdasarkan jenis",
-      "active": "{count, plural, one {Memfilter berdasarkan tipe #} other {Memfilter berdasarkan tipe #}}",
-      "clearAll": "Hapus semuanya"
-    },
-    "jobs": {
-      "running": "{count, plural, one {Pekerjaan latar belakang # berjalan} other {Pekerjaan latar belakang # berjalan}}",
-      "failed": "{count} gagal"
-    },
     "density": {
       "toComfortable": "Tampilan nyaman",
       "toCompact": "Tampilan ringkas"
+    },
+    "filter": {
+      "button": "Filter",
+      "byType": "Filter berdasarkan jenis",
+      "active": "{count, plural, other {Memfilter berdasarkan # jenis}}",
+      "clearAll": "Hapus semuanya"
+    },
+    "jobs": {
+      "running": "{count, plural, other {# proses latar belakang berjalan}}",
+      "failed": "{count} gagal"
     }
   },
   "type": {
@@ -51,43 +49,45 @@
   },
   "empty": {
     "successAria": "Berhasil, kotak masuk kosong",
-    "title": "Kotak Masuk Nol",
-    "body": "Semuanya sudah diproses. Tangkap sesuatu yang baru dengan masukan di atas, atau tempelkan tautan untuk memulai.",
-    "filedThisWeek": "{count, plural, one {# diajukan minggu ini} other {# diajukan minggu ini}}",
+    "title": "Kotak masuk bersih",
+    "body": "Semua sudah diproses. Catat sesuatu yang baru lewat kolom input di atas, atau tempel tautan untuk memulai.",
+    "filedThisWeek": "{count, plural, other {# dipindahkan minggu ini}}",
     "dayStreak": "{count, plural, one {# hari berturut-turut} other {# hari berturut-turut}}",
     "tipPrefix": "Tip: gunakan",
-    "tipSuffix": "untuk mengambil cepat dari clipboard",
+    "tipSuffix": "untuk mencatat cepat dari papan klip",
     "archivedNone": "Tidak ada item yang diarsipkan",
     "archivedNoMatches": "Tidak ada item arsip yang cocok",
     "noItemsYet": "Belum ada item",
-    "noItemsFiled": "Belum ada barang yang diajukan",
+    "noItemsFiled": "Belum ada item yang dipindahkan",
     "noFolders": "Tidak ada folder yang ditemukan",
     "noNotes": "Tidak ada catatan yang ditemukan",
-    "allMatchesLinked": "Semua pertandingan sudah ditautkan"
+    "allMatchesLinked": "Semua hasil yang cocok sudah ditautkan"
   },
   "list": {
     "ariaLabel": "Item kotak masuk",
     "section": {
       "today": "Hari ini",
       "yesterday": "Kemarin",
-      "older": "Lebih tua"
+      "older": "Lebih lama"
     },
     "selectItem": "Pilih {title}",
     "itemAria": "{type}: {title}",
     "untitled": "Tanpa judul",
-    "untitledItem": "Barang Tanpa Judul",
-    "transcribing": "Mentranskripsikan...",
+    "untitledItem": "Item tanpa judul",
+    "transcribing": "Mentranskripsikan…",
     "transcriptionFailed": "Transkripsi gagal",
     "retryTranscription": "Coba lagi",
-    "pageCount": "{count, plural, one {halaman #} other {# halaman}}",
-    "snoozedUntilShort": "ditunda hingga {date}"
+    "pageCount": "{count, plural, other {# halaman}}",
+    "snoozedUntilShort": "ditunda hingga {date}",
+    "rename": "Ganti nama",
+    "renameLabel": "Ganti nama item"
   },
   "loading": {
-    "inbox": "Memuat kotak masuk...",
+    "inbox": "Memuat kotak masuk…",
     "failed": "Gagal memuat kotak masuk",
     "tryAgain": "Coba lagi",
-    "capturingImage": "Mengambil gambar...",
-    "dropImageTitle": "Jatuhkan gambar untuk diambil",
+    "capturingImage": "Mencatat gambar…",
+    "dropImageTitle": "Lepaskan gambar untuk mencatatnya",
     "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
     "unsupportedImageType": "Jenis gambar yang tidak didukung: {type}",
     "imageTooLarge": "Gambar terlalu besar (maks 50MB)"
@@ -95,139 +95,150 @@
   "toast": {
     "failedArchiveItem": "Gagal mengarsipkan item",
     "failedArchiveItems": "Gagal mengarsipkan item",
-    "failedFile": "Gagal mengajukan",
-    "failedFileItem": "Gagal mengarsipkan item",
-    "failedFileItems": "Gagal mengarsipkan item",
+    "failedFile": "Gagal memindahkan",
+    "failedFileItem": "Gagal memindahkan item",
+    "failedFileItems": "Gagal memindahkan item",
     "failedSnooze": "Gagal menunda",
     "failedSnoozeItem": "Gagal menunda item",
     "failedApplyTags": "Gagal menerapkan tag",
-    "failedCaptureImage": "Gagal mengambil gambar",
+    "failedCaptureImage": "Gagal mencatat gambar",
     "linkedToNote": "Tertaut ke catatan",
-    "linkedToNotes": "Tertaut ke catatan {count}",
-    "filedTo": "Diarsipkan ke {folder}",
-    "filedItemsTo": "Mengajukan item {count} ke {folder}",
-    "filedPartial": "Mengajukan {processed} dari item {total}",
-    "appliedTags": "{tagCount, plural, one {Tag # diterapkan} other {Tag # yang diterapkan}} hingga {itemCount, plural, one {Barang #} other {Barang #}}",
-    "archivedItems": "{count, plural, one {Barang # yang diarsipkan} other {Arsip item #}}",
+    "linkedToNotes": "Tertaut ke {count} catatan",
+    "embedFellBackToLink": "Gambar terlalu besar untuk dibenamkan — dipindahkan sebagai file tertaut",
+    "filedTo": "Dipindahkan ke {folder}",
+    "filedItemsTo": "{count} item dipindahkan ke {folder}",
+    "filedPartial": "{processed} dari {total} item dipindahkan",
+    "appliedTags": "{tagCount, plural, other {# tag diterapkan}} ke {itemCount, plural, other {# item}}",
+    "archivedItems": "{count, plural, other {# item diarsipkan}}",
     "snoozedUntil": "Ditunda hingga {time}",
-    "snoozedItemsUntil": "{count, plural, one {Menunda item # hingga {time}} other {Menunda item # hingga {time}}}"
-  },
-  "triage": {
-    "modeTitle": "Mode Triase",
-    "exitHint": "Esc untuk keluar",
-    "exitAria": "Keluar dari mode triase",
-    "position": "{current} dari {total}",
-    "action": {
-      "discard": "Buang",
-      "archive": "Arsip",
-      "open": "Buka",
-      "toTask": "Untuk Tugas",
-      "toNote": "Untuk Diperhatikan",
-      "file": "Mengajukan",
-      "snooze": "Tunda",
-      "cancel": "Batalkan"
-    },
-    "snoozeUntil": "Tunda sampai...",
-    "complete": {
-      "title": "Kotak Masuk Nol",
-      "processed": "{count, plural, one {Barang # diproses} other {Barang # diproses}}",
-      "streak": "coretan",
-      "streakCount": "Pukulan {count}",
-      "dayProcessingStreak": "{count, plural, one {Pemrosesan beruntun # sehari} other {Pemrosesan beruntun # sehari}}",
-      "back": "Kembali ke Kotak Masuk",
-      "motivation0": "Diri masa depanmu, terima kasih.",
-      "motivation1": "Semuanya ada pada tempatnya.",
-      "motivation2": "Hapus kotak masuk, pikiran jernih.",
-      "motivation3": "Hutang keputusan: dibayar lunas.",
-      "motivation4": "Rasanya menyenangkan, bukan?"
-    }
+    "snoozedItemsUntil": "{count, plural, other {# item ditunda hingga {time}}}",
+    "restored": "“{title}” dipulihkan"
   },
   "bulk": {
     "selected": "{count} dipilih",
-    "deselectAll": "Batalkan pilihan semua",
-    "ariaLabel": "Tindakan massal untuk item yang dipilih {count}",
-    "file": "Mengajukan",
-    "tag": "Menandai",
+    "deselectAll": "Batalkan semua pilihan",
+    "ariaLabel": "Tindakan massal untuk {count} item yang dipilih",
+    "file": "Pindahkan",
+    "tag": "Beri tag",
     "snooze": "Tunda",
-    "archive": "Arsip",
+    "archive": "Arsipkan",
     "add": "Tambahkan",
-    "dismissSuggestion": "Tolak saran",
+    "dismissSuggestion": "Abaikan saran",
     "hint": {
-      "file": "mengajukan",
-      "tag": "menandai",
+      "file": "pindahkan",
+      "tag": "beri tag",
       "snooze": "tunda",
-      "archive": "arsip",
+      "archive": "arsipkan",
       "deselect": "batalkan pilihan"
     },
     "archiveDialog": {
-      "title": "{count, plural, one {Arsipkan item #?} other {Arsipkan item #?}}",
+      "title": "{count, plural, other {Arsipkan # item?}}",
       "description": "Item ini akan diarsipkan. Anda dapat melihat item yang diarsipkan nanti.",
-      "confirm": "{count, plural, one {Arsipkan item #} other {Arsipkan item #}}"
+      "confirm": "{count, plural, other {Arsipkan # item}}"
     },
     "filePanel": {
-      "title": "{count, plural, one {Berkas Barang #} other {File Item #}}",
-      "itemsToFile": "Item untuk diarsipkan",
-      "multipleNoteLinksUnavailable": "Catatan: Tautan ke catatan lain tidak dapat ditambahkan ketika mengajukan beberapa item.",
-      "filing": "Mengajukan...",
-      "submit": "{count, plural, one {File item #} other {File item #}}",
-      "macHint": "⌘⏎ untuk mengajukan · Esc untuk menutup",
-      "ctrlHint": "Ctrl+Enter ke file · Esc untuk menutup"
+      "title": "{count, plural, other {Pindahkan # item}}",
+      "itemsToFile": "Item yang akan dipindahkan",
+      "multipleNoteLinksUnavailable": "Catatan: Tautan ke catatan lain tidak dapat ditambahkan saat memindahkan beberapa item.",
+      "filing": "Memindahkan…",
+      "submit": "{count, plural, other {Pindahkan # item}}",
+      "macHint": "⌘⏎ untuk memindahkan · Esc untuk menutup",
+      "ctrlHint": "Ctrl+Enter untuk memindahkan · Esc untuk menutup"
     },
     "tagPopover": {
-      "title": "{count, plural, one {Tandai Barang #} other {Tandai Item #}}",
-      "placeholder": "Ketik untuk mencari tag...",
-      "applying": "Melamar...",
-      "apply": "{count, plural, one {Berlaku untuk item #} other {Berlaku untuk item #}}"
+      "title": "{count, plural, other {Beri tag pada # item}}",
+      "placeholder": "Ketik untuk mencari tag…",
+      "applying": "Menerapkan…",
+      "apply": "{count, plural, other {Terapkan ke # item}}"
     }
   },
   "quickActions": {
     "groupAria": "Tindakan cepat",
-    "archiveItem": "Barang arsip",
-    "archive": "Arsip"
+    "archiveItem": "Arsipkan item",
+    "archive": "Arsipkan"
   },
   "detail": {
-    "ariaLabel": "Detail barang",
+    "ariaLabel": "Detail item",
+    "resize": "Ubah ukuran panel",
     "closePanel": "Tutup panel",
-    "resizeFiling": "Ubah ukuran bagian pengarsipan",
+    "resizeFiling": "Ubah ukuran bagian pemindahan",
     "restore": "Pulihkan",
-    "restoreToInbox": "Kembalikan ke kotak masuk",
+    "restoreToInbox": "Pulihkan ke kotak masuk",
     "delete": "Hapus",
-    "deletePermanently": "Hapus secara permanen",
-    "archive": "Arsip",
-    "file": "Mengajukan",
-    "fileToFolder": "Simpan ke {folder}",
-    "keyboardHint": "File {modifier}⏎ · 1-5 folder · Esc tutup",
-    "voiceTitlePlaceholder": "Beri nama memo suara ini...",
-    "fileTo": "File ke",
+    "deletePermanently": "Hapus permanen",
+    "archive": "Arsipkan",
+    "file": "Pindahkan",
+    "fileToFolder": "Pindahkan ke {folder}",
+    "keyboardHint": "{modifier}⏎ pindahkan · 1-5 folder · Esc tutup",
+    "voiceTitlePlaceholder": "Beri nama memo suara ini…",
+    "titlePlaceholder": "Beri nama item ini…",
+    "fileTo": "Pindahkan ke",
     "ai": "AI",
-    "selectFolder": "Pilih map",
-    "searchOrCreateFolder": "Cari atau buat dengan /...",
+    "match": {
+      "strong": "Kecocokan kuat",
+      "likely": "Kemungkinan cocok",
+      "weak": "Kecocokan lemah"
+    },
+    "selectFolder": "Pilih folder",
+    "searchOrCreateFolder": "Cari atau buat dengan /…",
     "suggested": "Disarankan",
     "notesRoot": "Catatan",
     "notesRootLabel": "Catatan (akar)",
-    "createFolder": "Buat \"{name}\"",
-    "addTags": "Tambahkan tag...",
-    "linkToNote": "Tautan ke catatan",
-    "linkNotesPlaceholder": "Catatan tautan...",
-    "searchNotesAria": "Cari catatan untuk ditautkan",
+    "createFolder": "Buat “{name}”",
+    "addTags": "Tambahkan tag…",
+    "linkToNote": "Tautkan ke catatan",
+    "linkANote": "Tautkan catatan",
+    "suggestedCount": "{count} disarankan",
+    "linkNotesPlaceholder": "Tautkan catatan…",
+    "linkOrCreateNotePlaceholder": "Cari atau buat catatan…",
+    "createNote": "Buat “{title}”",
+    "pendingNote": "Catatan baru",
+    "searchNotesAria": "Cari catatan untuk ditautkan atau dibuat",
+    "imageFilingModeLabel": "Gambar disimpan sebagai",
+    "imageFilingModeEmbed": "Dibenamkan di catatan",
+    "imageFilingModeLink": "File di bilah samping",
+    "imageFilingModeRemember": "Jangan tanya lagi",
     "linkedNotesAria": "Catatan tertaut",
     "removeLinkTo": "Hapus tautan ke {title}",
-    "notePlaceholder": "Tulis catatan Anda...",
-    "textPlaceholder": "Edit teks yang Anda ambil...",
-    "linkANote": "Tautkan catatan",
-    "match": {
-      "likely": "Kemungkinan cocok",
-      "strong": "Kecocokan kuat",
-      "weak": "Kecocokan lemah"
-    },
-    "resize": "Ubah ukuran panel",
-    "suggestedCount": "{count} disarankan"
+    "notePlaceholder": "Tulis catatan Anda…",
+    "textPlaceholder": "Edit teks yang Anda catat…"
+  },
+  "convert": {
+    "title": "Konversi",
+    "chooseType": "Konversi ke",
+    "note": "Catatan",
+    "task": "Tugas",
+    "event": "Acara",
+    "reminder": "Pengingat",
+    "create": "Buat",
+    "addTask": "Tambahkan tugas",
+    "addEvent": "Tambahkan acara",
+    "setReminder": "Atur pengingat",
+    "project": "Proyek",
+    "inboxProject": "Kotak masuk",
+    "dueDate": "Tenggat",
+    "dueTime": "Waktu tenggat",
+    "priority": "Prioritas",
+    "priorityNone": "Tanpa prioritas",
+    "priorityLow": "Rendah",
+    "priorityMedium": "Sedang",
+    "priorityHigh": "Tinggi",
+    "priorityUrgent": "Mendesak",
+    "date": "Tanggal",
+    "start": "Mulai",
+    "end": "Selesai",
+    "allDay": "Sepanjang hari",
+    "location": "Lokasi",
+    "remindAt": "Ingatkan saya pada",
+    "time": "Waktu",
+    "success": "Dikonversi ke {target}",
+    "failed": "Tidak dapat mengonversi: {error}"
   },
   "content": {
-    "capturedAt": "Menangkap {date}",
-    "todayAt": "hari ini di {time}",
-    "yesterdayAt": "kemarin di {time}",
-    "dateAt": "{date} dan {time}",
+    "capturedAt": "Dicatat {date}",
+    "todayAt": "hari ini pukul {time}",
+    "yesterdayAt": "kemarin pukul {time}",
+    "dateAt": "{date} pukul {time}",
     "words": "{count, plural, one {# kata} other {# kata}}",
     "duration": "Durasi: {duration}",
     "dimensions": "Dimensi",
@@ -238,12 +249,12 @@
     "pause": "Jeda",
     "audioPosition": "Posisi audio",
     "transcription": "Transkripsi",
-    "processing": "pemrosesan",
+    "processing": "sedang diproses",
     "pending": "tertunda",
     "failed": "gagal",
     "copyTranscription": "Salin transkripsi",
-    "transcribingAudio": "Mentranskripsikan audio...",
-    "awaitingTranscription": "Menunggu transkripsi...",
+    "transcribingAudio": "Mentranskripsikan audio…",
+    "awaitingTranscription": "Menunggu transkripsi…",
     "noTranscription": "Tidak ada transkripsi yang tersedia",
     "failedPlayAudio": "Gagal memutar audio",
     "failedLoadAudio": "Gagal memuat audio",
@@ -253,132 +264,129 @@
   "reminder": {
     "dataUnavailable": "Data pengingat tidak tersedia.",
     "triggered": "Pengingat dipicu",
-    "noteLabel": "Catatan Pengingat",
+    "noteLabel": "Catatan pengingat",
     "source": "Sumber",
     "journalTitle": "Jurnal — {date}",
     "noteFallback": "Catatan",
     "journalFallback": "Jurnal",
-    "highlighted": "Disorot: \"{text}\"",
+    "taskFallback": "Tugas",
+    "highlighted": "Disorot: “{text}”",
     "viewed": "Dilihat",
-    "markViewed": "Tandai sebagai telah dilihat",
+    "archive": "Arsipkan",
     "notYetViewed": "Belum dilihat",
     "snooze": "Tunda",
     "presetInOneHour": "1 jam",
     "presetTomorrow": "Besok",
     "presetNextWeek": "Minggu depan",
-    "custom": "Kustom...",
-    "archive": "Arsipkan",
-    "panelEmpty": "Tidak ada pengingat mendatang.",
-    "panelPast": "Lampau",
+    "custom": "Khusus…",
     "panelUpcoming": "Mendatang",
-    "taskFallback": "Tugas",
+    "panelPast": "Sebelumnya",
+    "panelEmpty": "Tidak ada pengingat mendatang.",
+    "presets": {
+      "laterToday": {
+        "label": "Nanti hari ini",
+        "description": "Dalam {count, plural, other {# jam}}"
+      },
+      "tomorrow": {
+        "label": "Besok",
+        "description": "Besok pukul 09.00"
+      },
+      "nextWeek": {
+        "label": "Minggu depan",
+        "description": "Senin pukul 09.00"
+      },
+      "inMinutes": {
+        "label": "Dalam {count, plural, other {# menit}}"
+      },
+      "inHours": {
+        "label": "Dalam {count, plural, other {# jam}}"
+      },
+      "inWeeks": {
+        "label": "Dalam {count, plural, other {# minggu}}"
+      },
+      "inMonths": {
+        "label": "Dalam {count, plural, other {# bulan}}"
+      },
+      "inYears": {
+        "label": "Dalam {count, plural, other {# tahun}}"
+      },
+      "tomorrowMorning": "Besok pagi",
+      "sameDayNextMonth": "Hari yang sama bulan depan",
+      "reviewInAWeek": "Tinjau dalam seminggu",
+      "monthlyReflection": "Refleksi bulanan",
+      "quarterlyReflection": "Refleksi triwulanan",
+      "anniversaryReminder": "Pengingat hari jadi"
+    },
     "dateTime": {
-      "dateAt": "{date} pukul {time}",
-      "dateCompact": "{date}, {time}",
       "todayAt": "Hari ini pukul {time}",
       "todayCompact": "Hari ini, {time}",
       "tomorrowAt": "Besok pukul {time}",
-      "tomorrowCompact": "Besok, {time}"
-    },
-    "presets": {
-      "anniversaryReminder": "Pengingat peringatan",
-      "inHours": {
-        "label": "Dalam {count, plural, other {# Jam}}"
-      },
-      "inMinutes": {
-        "label": "Dalam {count, plural, other {# Menit}}"
-      },
-      "inMonths": {
-        "label": "Dalam {count, plural, other {# Bulan}}"
-      },
-      "inWeeks": {
-        "label": "Dalam {count, plural, other {# Minggu}}"
-      },
-      "inYears": {
-        "label": "Dalam {count, plural, other {# Tahun}}"
-      },
-      "laterToday": {
-        "description": "Dalam {count, plural, other {# jam}}",
-        "label": "Nanti Hari Ini"
-      },
-      "monthlyReflection": "Refleksi bulanan",
-      "nextWeek": {
-        "description": "Senin pukul 09.00",
-        "label": "Minggu Depan"
-      },
-      "quarterlyReflection": "Refleksi triwulanan",
-      "reviewInAWeek": "Tinjau dalam seminggu",
-      "sameDayNextMonth": "Hari yang sama bulan depan",
-      "tomorrow": {
-        "description": "Besok pukul 09.00",
-        "label": "Besok"
-      },
-      "tomorrowMorning": "Besok Pagi"
+      "tomorrowCompact": "Besok, {time}",
+      "dateAt": "{date} pukul {time}",
+      "dateCompact": "{date}, {time}"
     }
   },
   "insights": {
-    "captureActivity": "Aktivitas Tangkap",
-    "byType": "Berdasarkan Jenis",
-    "recentFilings": "Pengajuan Terbaru",
-    "captured": "Ditangkap",
+    "captureActivity": "Aktivitas pencatatan",
+    "byType": "Berdasarkan jenis",
+    "recentFilings": "Baru dipindahkan",
+    "captured": "Dicatat",
     "capturedThisWeek": "+{count} minggu ini",
     "processed": "Diproses",
-    "processRate": "Tarif {rate}%.",
-    "stale": "Basi",
+    "processRate": "tingkat {rate}%",
+    "stale": "Terbengkalai",
     "needsAttention": "membutuhkan perhatian",
-    "allClear": "semuanya jelas",
-    "avgTimeToFile": "Waktu Rata-Rata untuk Mengajukan",
-    "noCapturesYet": "Belum ada tangkapan",
-    "captures": "{count, plural, one {Pengambilan #} other {Pengambilan #}}",
+    "allClear": "semua beres",
+    "avgTimeToFile": "Rata-rata waktu pemindahan",
+    "noCapturesYet": "Belum ada item masuk",
+    "captures": "{count, plural, other {# item}}",
     "peak": "Puncak: {day} {start}–{end}",
     "convertedToTask": "Dikonversi menjadi tugas",
     "now": "sekarang",
-    "timeAgoMinutes": "{count}m yang lalu",
-    "timeAgoHours": "{count}h yang lalu",
-    "timeAgoDays": "{count}d yang lalu"
+    "timeAgoMinutes": "{count} mnt lalu",
+    "timeAgoHours": "{count} j lalu",
+    "timeAgoDays": "{count} h lalu"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
-      "aiDetected": "AI terdeteksi: \"",
+      "aiDetected": "Deteksi AI: \"",
       "addToSelection": "Tambahkan ke pilihan",
-      "dismiss": "Singkirkan"
+      "dismiss": "Abaikan"
     },
     "componentsBulkDeleteConfirmationDialog": {
       "delete": "Hapus ",
-      "item": "barang",
-      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Item ini akan dihapus dari kotak masuk Anda. Anda dapat membatalkan tindakan ini segera setelahnya."
+      "item": "item",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Item ini akan dihapus dari kotak masuk. Anda dapat mengurungkan tindakan ini segera setelahnya."
     },
     "componentsCaptureInput": {
-      "captureInput": "Tangkap masukan",
-      "attachFile": "Lampirkan berkas",
+      "captureInput": "Kolom catat cepat",
+      "attachFile": "Lampirkan file",
       "attachFileImagesAudioVideoPdf": "Lampirkan file (Gambar, Audio, Video, PDF)",
       "recordVoiceMemo": "Rekam memo suara",
       "recordVoiceMemo2": "Rekam memo suara",
-      "captureAnyway": "Tangkap Pokoknya",
-      "focusShortcut": "Fokuskan input tangkapan",
-      "q": "Q",
-      "captureLink": "Tangkap tautan",
-      "captureNote": "Tangkap catatan",
-      "placeholder": "Tangkap cepat — tempel tautan, catat ide…",
-      "duplicateNotice": "Sudah ditangkap: “{title}”"
+      "captureAnyway": "Tetap catat",
+      "placeholder": "Catat cepat — tempel tautan, tulis ide…",
+      "captureLink": "Catat tautan",
+      "captureNote": "Catat sebagai catatan",
+      "duplicateNotice": "Sudah dicatat: “{title}”"
     },
     "componentsFilingFolderSelector": {
-      "chooseFolder": "Pilih map",
-      "searchFolders": "Cari folder...",
+      "chooseFolder": "Pilih folder",
+      "searchFolders": "Cari folder…",
       "searchFolders2": "Cari folder",
       "searchResults": "Hasil pencarian",
       "create": "Buat \"",
       "suggested": "Disarankan",
-      "recent": "Baru-baru ini",
+      "recent": "Terbaru",
       "allFolders": "Semua folder",
       "allFolders2": "Semua folder"
     },
     "componentsFilingLinkSearch": {
-      "linkTo": "Tautan ke",
+      "linkTo": "Tautkan ke",
       "optional": "opsional)",
-      "searchNotesToLink": "Telusuri catatan untuk ditautkan...",
+      "searchNotesToLink": "Cari catatan untuk ditautkan…",
       "searchNotesToLink2": "Cari catatan untuk ditautkan",
-      "searching": "Mencari...",
+      "searching": "Mencari…",
       "noNotesFound": "Tidak ada catatan yang ditemukan",
       "linkedNotes": "Catatan tertaut",
       "noLinksAdded": "Tidak ada tautan yang ditambahkan"
@@ -390,45 +398,39 @@
       "tags": "Tag",
       "selectedTags": "Tag yang dipilih",
       "addTags": "Tambahkan tag",
-      "tagSuggestions": "Tandai saran",
+      "tagSuggestions": "Saran tag",
       "removeTag": "Hapus {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Tag",
       "optional": "opsional)",
-      "addTags": "Tambahkan tag...",
+      "addTags": "Tambahkan tag…",
       "addTags2": "Tambahkan tag",
       "selectedTags": "Tag yang dipilih",
       "suggested": "Disarankan"
     },
     "componentsInboxInboxCaptureHeatmap": {
-      "captureActivity": "Aktivitas Tangkap"
+      "captureActivity": "Aktivitas pencatatan"
     },
     "componentsInboxInboxFilingHistory": {
-      "noItemsFiledYet": "Belum ada barang yang diajukan",
-      "recentlyFiled": "Baru-baru ini Diajukan",
+      "noItemsFiledYet": "Belum ada item yang dipindahkan",
+      "recentlyFiled": "Baru dipindahkan",
       "latestActionsOnYourInbox": "Tindakan terbaru di kotak masuk Anda",
       "linked": "Tertaut"
     },
     "componentsInboxInboxInsightsView": {
-      "loadingInsights": "Memuat wawasan..."
+      "loadingInsights": "Memuat wawasan…"
     },
     "componentsInboxInboxTypeDistribution": {
       "noItemTypesToDisplay": "Tidak ada tipe item untuk ditampilkan",
-      "itemTypes": "Jenis Barang",
+      "itemTypes": "Jenis item",
       "distributionOfContentFormats": "Distribusi format konten"
-    },
-    "componentsInboxTriageItemCard": {
-      "captured": "Ditangkap "
     },
     "componentsInboxDetailContentSection": {
       "x": "x "
     },
     "componentsInboxDetailInboxContentEditor": {
       "contentEditor": "Editor konten"
-    },
-    "componentsInboxDetailReminderDetail": {
-      "middot": "titik tengah; "
     },
     "componentsInboxDetailTweetCard": {
       "tweetUnavailable": "Tweet tidak tersedia",
@@ -439,39 +441,39 @@
       "viewOnX": "Lihat di X"
     },
     "componentsInlineQuickFile": {
-      "typeFolderName": "Ketik nama folder...",
-      "quickFileFolderSearch": "Pencarian folder file cepat"
+      "typeFolderName": "Ketik nama folder…",
+      "quickFileFolderSearch": "Cari folder untuk pindah cepat"
     },
     "componentsQuickCaptureFooter": {
       "close": "tutup",
-      "capture": "menangkap"
+      "capture": "catat"
     },
     "componentsQuickCaptureImagePreview": {
       "removeAttachment": "Hapus lampiran"
     },
     "componentsQuickCaptureInput": {
-      "quickCaptureInput": "Masukan pengambilan cepat",
+      "quickCaptureInput": "Kolom catat cepat",
       "recordVoiceMemo": "Rekam memo suara",
-      "attachFile": "Lampirkan berkas"
+      "attachFile": "Lampirkan file"
     },
     "componentsQuickCaptureLinkPreview": {
       "link": "TAUTAN"
     },
     "componentsQuickCaptureStates": {
-      "captured": "Ditangkap",
-      "dismissError": "Singkirkan kesalahan",
-      "alreadyCaptured": "Sudah ditangkap",
-      "captureAnyway": "Tangkap Pokoknya",
+      "captured": "Dicatat",
+      "dismissError": "Tutup pesan kesalahan",
+      "alreadyCaptured": "Sudah dicatat",
+      "captureAnyway": "Tetap catat",
       "close": "Tutup",
       "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
-      "dropToCapture": "Jatuhkan untuk menangkap",
-      "capturing": "Menangkap..."
+      "dropToCapture": "Lepaskan untuk mencatat",
+      "capturing": "Mencatat…"
     },
     "componentsQuickFileDropdown": {
       "folderSuggestions": "Saran folder",
-      "noFoldersMatch": "Tidak ada folder yang cocok \""
+      "noFoldersMatch": "Tidak ada folder yang cocok dengan \""
     },
     "componentsReminderReminderPicker": {
       "remind": "Ingatkan",
@@ -481,56 +483,58 @@
       "backToPresets": "Kembali ke preset",
       "time": "Waktu",
       "noteOptional": "Catatan (opsional)",
-      "whyAreYouSettingThisReminder": "Mengapa Anda menyetel pengingat ini?",
-      "deleteReminder": "Hapus pengingat",
+      "whyAreYouSettingThisReminder": "Mengapa Anda mengatur pengingat ini?",
+      "set": "Atur",
       "editReminder": "Edit pengingat",
+      "deleteReminder": "Hapus pengingat",
       "save": "Simpan",
-      "set": "Atur"
+      "setReminder": "Atur pengingat",
+      "setting": "Mengatur…"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Tunda",
       "snooze2": "Tunda",
-      "pickDateTime": "Pilih Tanggal & Waktu",
-      "pickDateTime2": "Pilih Tanggal & Waktu",
+      "pickDateTime": "Pilih tanggal & waktu",
+      "pickDateTime2": "Pilih tanggal & waktu",
       "selectWhenToBeRemindedAboutThisItem": "Pilih waktu untuk diingatkan tentang item ini",
       "snooze3": "Tunda",
       "snooze4": "Tunda",
       "snooze5": "Tunda"
     },
     "componentsSocialCard": {
-      "loadingPost": "Memuat postingan...",
+      "loadingPost": "Memuat postingan…",
       "failedToLoad": "Gagal memuat",
-      "loadingPostContent": "Memuat konten postingan...",
+      "loadingPostContent": "Memuat konten postingan…",
       "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Gagal memuat konten postingan. Postingan tersebut mungkin bersifat pribadi atau dihapus.",
       "viewOn": "Lihat di "
     },
     "componentsVoiceRecorder": {
       "startVoiceRecording": "Mulai merekam suara",
-      "requestingMicrophoneAccess": "Meminta akses mikrofon...",
+      "requestingMicrophoneAccess": "Meminta akses mikrofon…",
       "settings": "Pengaturan",
-      "processing": "Memproses...",
+      "processing": "Memproses…",
       "cancelRecording": "Batalkan perekaman",
-      "cancel": "Batalkan",
+      "cancel": "Batal",
       "stopRecording": "Berhenti merekam",
       "stop": "Berhenti",
-      "enableMicInSettings": "Aktifkan akses mikrofon di pengaturan sistem Anda, lalu coba lagi.",
-      "failedToStart": "Gagal memulai perekaman",
+      "recordingError": "Terjadi kesalahan perekaman",
       "microphoneAccessDenied": "Akses mikrofon ditolak",
       "noMicrophoneFound": "Mikrofon tidak ditemukan",
-      "recordingError": "Terjadi kesalahan perekaman"
+      "failedToStart": "Gagal memulai perekaman",
+      "enableMicInSettings": "Aktifkan akses mikrofon di pengaturan sistem Anda, lalu coba lagi."
     }
   },
   "phaseI": {
     "errors": {
-      "failedToCaptureLink": "Gagal mengambil tautan",
-      "failedToCaptureNote": "Gagal menangkap catatan",
-      "captureFailed": "Pengambilan gagal",
-      "failedToCaptureVoiceMemo": "Gagal menangkap memo suara",
-      "voiceCaptureFailed": "Pengambilan suara gagal",
-      "failedToCaptureFile": "Gagal mengambil file",
-      "fileCaptureFailed": "Pengambilan file gagal",
-      "failedToCaptureAudio": "Gagal menangkap audio",
-      "failedToCaptureVoice": "Gagal menangkap suara",
+      "failedToCaptureLink": "Gagal mencatat tautan",
+      "failedToCaptureNote": "Gagal menambahkan catatan",
+      "captureFailed": "Pencatatan gagal",
+      "failedToCaptureVoiceMemo": "Gagal mencatat memo suara",
+      "voiceCaptureFailed": "Pencatatan suara gagal",
+      "failedToCaptureFile": "Gagal mencatat file",
+      "fileCaptureFailed": "Pencatatan file gagal",
+      "failedToCaptureAudio": "Gagal mencatat audio",
+      "failedToCaptureVoice": "Gagal mencatat suara",
       "failedToLoadInboxPreferences": "Gagal memuat preferensi kotak masuk",
       "failedToUpdateInboxPreferences": "Gagal memperbarui preferensi kotak masuk"
     },
@@ -538,40 +542,14 @@
       "inboxRefreshed": "Kotak masuk disegarkan"
     }
   },
-  "convert": {
-    "addEvent": "Tambah acara",
-    "addTask": "Tambah tugas",
-    "allDay": "Sepanjang hari",
-    "chooseType": "Konversi ke",
-    "create": "Buat",
-    "date": "Tanggal",
-    "dueDate": "Tanggal jatuh tempo",
-    "dueTime": "Waktu jatuh tempo",
-    "end": "Selesai",
-    "event": "Acara",
-    "failed": "Tidak dapat mengonversi: {error}",
-    "inboxProject": "Inbox",
-    "location": "Lokasi",
-    "note": "Catatan",
-    "priority": "Prioritas",
-    "priorityHigh": "Tinggi",
-    "priorityLow": "Rendah",
-    "priorityMedium": "Sedang",
-    "priorityNone": "Tidak ada",
-    "priorityUrgent": "Mendesak",
-    "project": "Proyek",
-    "remindAt": "Ingatkan saya pada",
-    "reminder": "Pengingat",
-    "setReminder": "Atur pengingat",
-    "start": "Mulai",
-    "success": "Dikonversi ke {target}",
-    "task": "Tugas",
-    "time": "Waktu",
-    "title": "Konversi"
-  },
   "reviewNudge": {
-    "action": "Buka kotak masuk",
-    "description": "Selesaikan tangkapan hari ini dalam satu sesi yang tenang.",
-    "title": "{count, plural, other {Waktunya meninjau # item}}"
+    "title": "{count, plural, other {Waktunya meninjau # item}}",
+    "description": "Proses item masuk hari ini dalam satu sesi yang tenang.",
+    "action": "Buka kotak masuk"
+  },
+  "snoozeDue": {
+    "notificationTitle": "{count, plural, other {# item ditunda}}",
+    "notificationBody": "{count, plural, other {Item yang ditunda siap ditinjau}}",
+    "toast": "{count, plural, =1 {“{itemTitle}” kembali dari penundaan} other {# item yang ditunda telah kembali}}"
   }
 }

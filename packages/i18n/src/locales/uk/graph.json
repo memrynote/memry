@@ -14,7 +14,7 @@
     "description": "Зв’язки між нотатками, завданнями й проєктами з’являться тут у вигляді інтерактивного графа.",
     "link-title": "Пов’язуйте нотатки",
     "link-description": "Використовуйте [[wikilinks]] для зв’язку ідей між нотатками",
-    "discover-title": "Відкрийте закономірності",
+    "discover-title": "Виявляйте закономірності",
     "discover-description": "Зі зростанням кількості зв’язків кластери та теми будуть виникати природно"
   },
   "entity": {
@@ -34,7 +34,7 @@
     "category": "категорія"
   },
   "summary": {
-    "node-type-count": "{count} {label}"
+    "node-type-count": "{label} — {count}"
   },
   "control": {
     "show-settings": "Налаштування графа",

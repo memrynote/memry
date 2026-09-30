@@ -53,7 +53,7 @@
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "La hora del recordatorio debe ser en el futuro.",
+    "reminderTimeMustBeFuture": "La hora del recordatorio debe estar en el futuro",
     "definitionNotFound": "Definición no encontrada",
     "noteNotFound": "Nota no encontrada",
     "updateFailed": "La actualización falló",

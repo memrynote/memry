@@ -100,7 +100,7 @@
       "newFolder": "新しいフォルダー",
       "expandSubfolders": "すべてのサブフォルダーを展開",
       "collapseSubfolders": "すべてのサブフォルダーを折りたたむ",
-      "rename": "名前の変更",
+      "rename": "名前を変更",
       "applyTemplate": "テンプレートを適用",
       "saveAsTemplate": "テンプレートとして保存",
       "openExternal": "外部エディターで開く",
@@ -233,7 +233,7 @@
       "body": "エディターでエラーが発生しました。ノートの内容は安全です。",
       "technicalDetails": "技術的な詳細",
       "reloadAria": "エディターをリロード",
-      "reload": "エディターのリロード"
+      "reload": "エディターをリロード"
     },
     "callout": {
       "title": "コールアウト",
@@ -499,7 +499,7 @@
       "title": "貼り付け形式",
       "url": "URL",
       "mention": "メンション",
-      "embedVideo": "ビデオを埋め込む",
+      "embedVideo": "動画を埋め込む",
       "bookmark": "ブックマーク"
     },
     "emoji": {
@@ -668,7 +668,7 @@
     "showingOnCalendar": "カレンダーに表示中",
     "relation": {
       "deleted": "削除済み",
-      "removeAria": "{title} を削除",
+      "removeAria": "{title} を外す",
       "addAria": "リレーションを追加",
       "searchPlaceholder": "ノート、タスク、予定、キャンバス、ジャーナルを検索…",
       "groupNotes": "ノートとファイル",
@@ -858,7 +858,7 @@
       "label": "テンプレートのアイコン"
     },
     "content": {
-      "placeholder": "このテンプレートから作成されるノートの既定の内容です。'{{'title'}}' でノートのタイトルを挿入できます。"
+      "placeholder": "このテンプレートから作成されるノートのデフォルトの内容です。'{{'title'}}' でノートのタイトルを挿入できます。"
     },
     "actions": {
       "create": "テンプレートを作成",
@@ -1020,7 +1020,7 @@
     "componentsFolderViewViewSwitcher": {
       "default": "デフォルト",
       "viewActions": "ビューの操作",
-      "rename": "名前の変更",
+      "rename": "名前を変更",
       "duplicate": "複製",
       "setAsDefault": "デフォルトとして設定",
       "delete": "削除",
@@ -1181,7 +1181,7 @@
     },
     "componentsViewersPdfViewer": {
       "failedToLoadPdf": "PDF を読み込めませんでした",
-      "previousPage": "前のページへ",
+      "previousPage": "前のページ",
       "nextPage": "次のページ",
       "zoomOut": "ズームアウト",
       "zoomIn": "ズームイン",
@@ -1201,7 +1201,7 @@
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "動画を読み込めませんでした",
-      "theVideoFileCouldNotBePlayed": "ビデオファイルを再生できませんでした。"
+      "theVideoFileCouldNotBePlayed": "動画ファイルを再生できませんでした。"
     },
     "pagesFile": {
       "failedToLoadFile": "ファイルを読み込めませんでした",
@@ -1281,7 +1281,7 @@
   },
   "bulkActions": {
     "toolbarAria": "一括操作",
-    "selected": "選択中",
+    "selected": "件を選択中",
     "move": "移動",
     "copyLinks": "リンクをコピー",
     "addTag": "タグを追加",

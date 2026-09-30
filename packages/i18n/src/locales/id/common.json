@@ -1,11 +1,17 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Fokuskan kolom catat cepat",
+    "detailHint": "detail",
+    "submit": "Catat"
+  },
   "button": {
     "save": "Simpan",
-    "cancel": "Batalkan",
+    "cancel": "Batal",
     "close": "Tutup",
     "delete": "Hapus",
     "done": "Selesai",
-    "dontSave": "Jangan Simpan",
+    "dontSave": "Jangan simpan",
     "add": "Tambahkan",
     "remove": "Hapus",
     "retry": "Coba lagi",
@@ -13,6 +19,9 @@
     "continue": "Lanjutkan",
     "copy": "Salin",
     "create": "Buat"
+  },
+  "media": {
+    "video": "Video"
   },
   "state": {
     "loading": "Memuat…",
@@ -23,397 +32,113 @@
   "action": {
     "search": "Cari",
     "expand": "Perluas",
-    "collapse": "Runtuh",
-    "showMore": "+{count, plural, one {# lebih banyak} other {# lebih banyak}}",
+    "collapse": "Ciutkan",
+    "showMore": "+{count, plural, other {# lainnya}}",
     "showLess": "Tampilkan lebih sedikit",
     "undo": "Urungkan"
   },
   "fileActions": {
-    "revealInFinder": "Buka di Finder",
+    "revealInFinder": "Tampilkan di Finder",
     "showInExplorer": "Tampilkan di File Explorer",
-    "showInFileManager": "Tampilkan di pengelola berkas",
+    "showInFileManager": "Tampilkan di pengelola file",
     "openInDefaultApp": "Buka di aplikasi default",
     "revealFailed": "Gagal menampilkan di folder"
   },
   "tabs": {
-    "pin": "Sematkan Tab",
-    "unpin": "Lepas sematan Tab",
+    "pin": "Sematkan tab",
+    "unpin": "Lepas sematan tab",
+    "persistence": {
+      "saveFailed": "Tab yang terbuka tidak lagi disimpan",
+      "saveFailedQuota": "Sesi ini terlalu besar untuk disimpan. Tutup beberapa tab, atau sesi ini mungkin tidak dipulihkan saat Anda membuka Memry lagi.",
+      "saveFailedGeneric": "Memry tidak dapat menyimpan sesi ini, jadi sesi ini mungkin tidak dipulihkan saat Anda membuka aplikasi lagi.",
+      "lastSessionNotSaved": "Sesi terakhir tidak tersimpan saat Memry ditutup",
+      "lastSessionNotSavedQuota": "Penyimpanan penuh saat itu, jadi tab ini berasal dari penyimpanan sebelumnya. Tutup beberapa tab untuk mengosongkan ruang.",
+      "lastSessionNotSavedGeneric": "Memry tidak dapat menyimpan tab saat keluar, jadi tab ini berasal dari penyimpanan sebelumnya."
+    },
     "contextMenu": {
       "close": "Tutup",
-      "closeOthers": "Tutup Lainnya",
-      "closeToRight": "Dekat ke Kanan",
-      "closeAll": "Tutup Semua",
-      "duplicate": "Tab Duplikat",
-      "splitRight": "Berpisah ke Kanan",
-      "splitDown": "Berpisah",
-      "copyPath": "Salin Jalur",
-      "revealInSidebar": "Buka di Sidebar"
+      "closeOthers": "Tutup lainnya",
+      "closeToRight": "Tutup tab di sebelah kanan",
+      "closeAll": "Tutup semua",
+      "duplicate": "Duplikat tab",
+      "splitRight": "Bagi ke kanan",
+      "splitDown": "Bagi ke bawah",
+      "copyPath": "Salin jalur",
+      "revealInSidebar": "Tampilkan di bilah samping"
     }
   },
   "count": {
-    "note": "{count, plural, one {Catatan #} other {Catatan #}}",
-    "task": "{count, plural, one {Tugas #} other {Tugas #}}",
-    "itemDelete": "{count, plural, one {Hapus item #} other {Hapus item #}}",
-    "event": "{count, plural, one {# acara} other {# acara}}",
+    "note": "{count, plural, other {# catatan}}",
     "journal": "{count, plural, one {# jurnal} other {# jurnal}}",
-    "reminder": "{count, plural, one {# pengingat} other {# pengingat}}"
+    "task": "{count, plural, other {# tugas}}",
+    "event": "{count, plural, one {# acara} other {# acara}}",
+    "reminder": "{count, plural, one {# pengingat} other {# pengingat}}",
+    "itemDelete": "{count, plural, other {Hapus # item}}"
   },
   "toast": {
     "actionFailed": "Tindakan gagal",
-    "nothingToUndo": "Tidak ada yang perlu dibatalkan",
-    "undone": "Dibatalkan: {description}",
-    "undoFailed": "Gagal mengurungkan tindakan"
+    "nothingToUndo": "Tidak ada yang dapat diurungkan",
+    "undone": "Diurungkan: {description}",
+    "undoFailed": "Gagal mengurungkan tindakan",
+    "filesImported": "{count, plural, other {# file diimpor}}",
+    "filesImportFailed": "{count, plural, other {Gagal mengimpor # file}}",
+    "filesHiddenInSidebar": "File disembunyikan di bilah samping. Aktifkan “Tampilkan file” di menu urutan Koleksi untuk melihatnya.",
+    "moreRemindersDue": "{count, plural, other {# pengingat lain sudah waktunya}}",
+    "moreRemindersDueHint": "Lihat panel pengingat untuk detailnya",
+    "searchIndexRepaired": "Indeks pencarian diperbaiki",
+    "searchIndexRepairedHint": "Sebagian indeks pencarian rusak, jadi Memry membangunnya ulang. Catatan Anda tidak terpengaruh."
   },
   "dateRelative": {
     "today": "Hari ini",
     "yesterday": "Kemarin",
     "daysAgo": "{count, plural, one {# hari yang lalu} other {# hari yang lalu}}",
-    "daysLate": "{count, plural, other {telat #h}}",
+    "tomorrow": "Besok",
     "daysOverdue": "{count, plural, other {terlambat # hari}}",
-    "tomorrow": "Besok"
+    "daysLate": "{count, plural, other {terlambat #h}}",
+    "inDays": "{count, plural, other {dalam # hari}}",
+    "inWeeks": "{count, plural, other {dalam # minggu}}"
   },
   "recurrence": {
-    "everyNDays": "{count, plural, one {Setiap hari} other {Setiap # hari}}",
-    "everyNWeeks": "{count, plural, one {Setiap minggu} other {Setiap # minggu}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {Setiap hari kerja} other {Setiap # minggu pada hari kerja}}",
-    "everyNWeeksOnWeekends": "{count, plural, one {Setiap akhir pekan} other {Setiap # minggu di akhir pekan}}",
-    "everyNWeeksOnDays": "{count, plural, one {Setiap minggu di {days}} other {Setiap # minggu di {days}}}",
-    "everyNMonths": "{count, plural, one {Setiap bulan} other {Setiap # bulan}}",
-    "everyNMonthsOnDay": "{count, plural, one {Setiap bulan di {day}{suffix}} other {Setiap # bulan di {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {Setiap bulan di {week} {day}} other {Setiap # bulan di {week} {day}}}",
-    "everyNYears": "{count, plural, one {Setiap tahun} other {Setiap # tahun}}",
+    "everyNDays": "{count, plural, =1 {Setiap hari} other {Setiap # hari}}",
+    "everyNWeeks": "{count, plural, =1 {Setiap minggu} other {Setiap # minggu}}",
+    "everyNWeeksOnWeekdays": "{count, plural, =1 {Setiap hari kerja} other {Setiap # minggu pada hari kerja}}",
+    "everyNWeeksOnWeekends": "{count, plural, =1 {Setiap akhir pekan} other {Setiap # minggu pada akhir pekan}}",
+    "everyNWeeksOnDays": "{count, plural, =1 {Setiap minggu pada {days}} other {Setiap # minggu pada {days}}}",
+    "everyNMonths": "{count, plural, =1 {Setiap bulan} other {Setiap # bulan}}",
+    "everyNMonthsOnDay": "{count, plural, =1 {Setiap bulan pada tanggal {day}{suffix}} other {Setiap # bulan pada tanggal {day}{suffix}}}",
+    "everyNMonthsOnWeekDay": "{count, plural, =1 {Setiap bulan pada {day} {week}} other {Setiap # bulan pada {day} {week}}}",
+    "everyNYears": "{count, plural, =1 {Setiap tahun} other {Setiap # tahun}}",
     "repeats": "Berulang",
     "ordinal": {
       "first": "pertama",
-      "fourth": "keempat",
-      "last": "terakhir",
       "second": "kedua",
-      "third": "ketiga"
+      "third": "ketiga",
+      "fourth": "keempat",
+      "last": "terakhir"
     },
     "preset": {
       "everyWeekday": "Setiap hari kerja (Sen-Jum)",
       "everyYearOnDate": "Setiap tahun pada {date}"
     }
   },
-  "phaseF": {
-    "componentsAppSidebar": {
-      "collections": "Koleksi",
-      "newNote": "Catatan baru",
-      "newNote2": "Catatan baru",
-      "newFolder": "Folder baru",
-      "newFolder2": "Folder baru",
-      "bookmarks": "Bookmark",
-      "tags": "Tag",
-      "dropFilesToImport": "Jatuhkan file untuk diimpor",
-      "newNoteN": "Catatan baru (⌘N)",
-      "new": "Baru",
-      "syncDisabled": "Sinkronisasi dinonaktifkan",
-      "syncDisabled2": "Sinkronisasi dinonaktifkan",
-      "feedbackButton": "Kirim masukan",
-      "feedbackDescription": "Beri tahu kami apa yang berfungsi, apa yang rusak, atau apa yang Anda harapkan dari Memry. Kami membaca setiap pesan.",
-      "feedbackEmailHint": "Tambahkan email Anda jika ingin dibalas.",
-      "feedbackError": "Tidak dapat mengirim masukan. Silakan coba lagi.",
-      "feedbackPlaceholder": "Masukan Anda…",
-      "feedbackSend": "Kirim",
-      "feedbackSending": "Mengirim…",
-      "feedbackSuccess": "Terima kasih atas masukannya!",
-      "feedbackTitle": "Kirim masukan",
-      "newItemMenu": "Buat baru…",
-      "feedbackPrivacyEmailOptional": "Email Anda — hanya jika Anda menambahkannya, dan hanya agar kami dapat membalas",
-      "feedbackPrivacyEmailSignedIn": "Email akun Anda ({email}), agar kami dapat membalas",
-      "feedbackPrivacyMessage": "Pesan Anda, persis seperti yang Anda tulis",
-      "feedbackPrivacyNote": "Tidak ada yang lain. Catatan Anda tetap di perangkat Anda.",
-      "feedbackPrivacyPlan": "Paket Anda (free, Plus, Pro atau Believer)",
-      "feedbackPrivacyTitle": "Apa yang dikirim",
-      "feedbackPrivacyVersion": "Versi aplikasi dan sistem operasi",
-      "projects": "Proyek"
-    },
-    "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "Ubah Ukuran Panel Hari",
-      "dragToResizeDoubleClickToReset": "Seret untuk mengubah ukuran · Klik dua kali untuk mengatur ulang"
-    },
-    "componentsFindBarFindBar": {
-      "findReplaceAsk": "Temukan, ganti, tanyakan..."
-    },
-    "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Lewati orientasi",
-      "welcomeToMemry": "Selamat datang di memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Basis pengetahuan pribadi Anda. Mari kita luangkan waktu 2 menit untuk memulai.",
-      "getStarted": "Mulailah ",
-      "createYourFirstNote": "Buat catatan pertama Anda",
-      "markdownBasedStoredLocallyAsPlainFiles": "Berbasis penurunan harga, disimpan secara lokal sebagai file biasa.",
-      "eGMeetingNotesIdeasAnything": "misalnya Catatan rapat, ide, apa saja...",
-      "skip": "Lewati",
-      "createNote": "Buat catatan ",
-      "addYourFirstTask": "Tambahkan tugas pertama Anda",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Tautan tugas ke catatan Anda, dengan prioritas dan tanggal jatuh tempo.",
-      "eGReviewProjectProposal": "misalnya Tinjau proposal proyek...",
-      "skip2": "Lewati",
-      "createTask": "Buat tugas ",
-      "syncAcrossDevices": "Sinkronisasi antar perangkat",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Sinkronkan catatan dan tugas Anda di semua perangkat Anda. Anda selalu dapat mengaturnya nanti.",
-      "skipForNow": "Lewati untuk saat ini",
-      "doneLetSGo": "Selesai — ayo berangkat! "
-    },
-    "componentsFolderIconButton": {
-      "setFolderIcon": "Atur ikon folder"
-    },
-    "componentsHintOverlayHintIndicator": {
-      "hint": "PETUNJUK"
-    },
-    "componentsIconPicker": {
-      "iconPicker": "Pemilih ikon",
-      "selectIcon": "Pilih Ikon",
-      "closeIconPicker": "Tutup pemilih ikon",
-      "searchIcons": "Ikon pencarian...",
-      "all": "Semua",
-      "clearIcon": "Hapus Ikon",
-      "noIconsFoundFor": "Tidak ada ikon yang ditemukan untuk \""
-    },
-    "componentsKeyboardShortcutsModal": {
-      "keyboardShortcuts": "Pintasan Papan Ketik",
-      "closeShortcutsHelp": "Tutup bantuan pintasan",
-      "press": "Tekan",
-      "toClose": "untuk menutup"
-    },
-    "componentsKiboUiTreeIndex": {
-      "setIcon": "Atur Ikon",
-      "clearIcon": "Hapus Ikon"
-    },
-    "componentsNavMain": {
-      "platform": "Peron"
-    },
-    "componentsNavProjects": {
-      "projects": "Proyek",
-      "more": "Lebih lanjut",
-      "viewProject": "Lihat Proyek",
-      "shareProject": "Bagikan Proyek",
-      "deleteProject": "Hapus Proyek",
-      "more2": "Lebih lanjut"
-    },
-    "componentsNavUser": {
-      "cn": "CN",
-      "cn2": "CN",
-      "upgradeToPro": "Tingkatkan ke Pro",
-      "account": "Akun",
-      "billing": "Penagihan",
-      "notifications": "Pemberitahuan",
-      "logOut": "Keluar"
-    },
-    "componentsSearchCommandPalette": {
-      "search": "Cari",
-      "searchNotesTasksJournalInbox": "Cari catatan, tugas, jurnal, kotak masuk...",
-      "noResultsFor": "Tidak ada hasil untuk “",
-      "result": "hasil",
-      "noResultsForQuery": "Tidak ada hasil untuk “{query}”",
-      "resultCount": "{count, plural, other {# hasil}}",
-      "indexBuilding": "Membangun indeks pencarian {done}/{total} — hasil mungkin tidak lengkap",
-      "indexBuildingUnknown": "Membangun indeks pencarian — hasil mungkin tidak lengkap"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Cari dan klik item untuk membangun jejak Anda",
-      "reasons": "Alasan",
-      "clear": "Jelas"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Jelas",
-      "tags": "Tag",
-      "filterByTag": "Filter berdasarkan tag...",
-      "dateRange": "Rentang Tanggal"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Lihat semuanya ",
-      "results": "hasil"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "hal",
-      "fuzzy": "kabur"
-    },
-    "componentsSplitViewEmptyPaneState": {
-      "noTabsOpen": "Tidak ada tab yang terbuka",
-      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Buka halaman dari sidebar atau buat tab baru untuk memulai",
-      "openInbox": "Buka Kotak Masuk",
-      "closePane": "Tutup Panel"
-    },
-    "componentsSplitViewLayoutPicker": {
-      "layoutPresets": "Preset tata letak",
-      "layoutPresets2": "Preset Tata Letak"
-    },
-    "componentsSplitViewResizeHandle": {
-      "resizePanes": "Ubah ukuran panel"
-    },
-    "componentsSplitViewTabContent": {
-      "taskscontextNotAvailable": "Konteks Tugas tidak tersedia",
-      "searchResults": "Hasil Pencarian",
-      "unknownTabType": "Jenis tab tidak dikenal: "
-    },
-    "componentsTabsAccessibleTab": {
-      "unsavedChanges": "perubahan yang belum disimpan",
-      "preview": "pratinjau"
-    },
-    "componentsTabsNewTabMenu": {
-      "newTab": "Tab Baru",
-      "newTab2": "Tab Baru",
-      "newNote": "Catatan Baru",
-      "journal": "Jurnal",
-      "calendar": "Kalender",
-      "inboxCapture": "Pengambilan Kotak Masuk",
-      "tasks": "Tugas",
-      "tags": "Tag"
-    },
-    "componentsTabsPinnedTab": {
-      "unsavedChanges": "Perubahan yang belum disimpan",
-      "unsaved": "belum disimpan)"
-    },
-    "componentsTabsRegularTab": {
-      "unsavedChanges": "Perubahan yang belum disimpan"
-    },
-    "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "Tutup Semua Tab"
-    },
-    "componentsTabsTabBarWithDrag": {
-      "openTabs": "Buka tab",
-      "scrollTabsLeft": "Gulir tab ke kiri",
-      "scrollTabsRight": "Gulir tab ke kanan",
-      "dayPanel": "Panel Hari"
-    },
-    "componentsTabsTabErrorBoundary": {
-      "somethingWentWrong": "Ada yang tidak beres",
-      "anErrorOccurredWhileRenderingThisTabContent": "Terjadi kesalahan saat merender konten tab ini.",
-      "tryAgain": "Coba Lagi",
-      "sendReport": "Kirim laporan diagnostik"
-    },
-    "componentsTabsTabPreviewCard": {
-      "noteIcon": "Ikon catatan"
-    },
-    "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Perubahan yang Belum Disimpan",
-      "unsavedChangesBody": "“{title}” memiliki perubahan yang belum disimpan. Apa yang ingin Anda lakukan?"
-    },
-    "componentsTeamSwitcher": {
-      "newWorkspace": "Ruang kerja baru",
-      "darkMode": "Mode gelap",
-      "settings": "Pengaturan",
-      "integrations": "Integrasi",
-      "signOut": "Keluar",
-      "downloadOnIos": "Unduh di iOS"
-    },
-    "componentsTrafficLights": {
-      "closeWindow": "Tutup jendela",
-      "minimizeWindow": "Minimalkan jendela",
-      "maximizeWindow": "Maksimalkan jendela"
-    },
-    "componentsUiAutocompleteDropdown": {
-      "suggestions": "Saran",
-      "or": "atau",
-      "enter": "Masuk",
-      "toInsert": "untuk memasukkan"
-    },
-    "componentsUiBreadcrumb": {
-      "breadcrumb": "remah roti",
-      "more": "Lebih lanjut"
-    },
-    "componentsUiDialog": {
-      "close": "Tutup"
-    },
-    "componentsUiSheet": {
-      "close": "Tutup"
-    },
-    "componentsUiSidebar": {
-      "sidebar": "Bilah samping",
-      "displaysTheMobileSidebar": "Menampilkan sidebar seluler.",
-      "toggleSidebar": "Alihkan Bilah Sisi",
-      "toggleSidebar2": "Alihkan Bilah Sisi",
-      "dragToResizeDoubleClickToReset": "Seret untuk mengubah ukuran · Klik dua kali untuk mengatur ulang"
-    },
-    "componentsVaultOnboarding": {
-      "welcomeToMemry": "Selamat datang di memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Sistem manajemen pengetahuan pribadi Anda.",
-      "selectAFolderToStoreYourNotesAndTasks": "Pilih folder untuk menyimpan catatan dan tugas Anda.",
-      "opening": "Pembukaan...",
-      "selectVaultFolder": "Pilih Folder Gudang",
-      "plainMarkdown": "Penurunan Harga Biasa",
-      "yourNotesStayPortable": "Catatan Anda tetap portabel",
-      "syncAnywhere": "Sinkronkan Di Mana Saja",
-      "useDropboxIcloudGit": "Gunakan Dropbox, iCloud, Git",
-      "recentVaults": "Vault Terbaru",
-      "notesLastOpened": "catatan · Terakhir dibuka",
-      "brandName": "Memrynote",
-      "preRelease": "Beta",
-      "createNewVault": "Buat vault baru",
-      "createNewVaultDesc": "Mulai vault baru di folder pilihan Anda.",
-      "openExistingVault": "Buka vault yang ada",
-      "openExistingVaultDesc": "Pilih folder berisi file Markdown yang sudah Anda simpan.",
-      "signInToSync": "Masuk untuk sinkronisasi",
-      "signInToSyncDesc": "Vault terenkripsi end-to-end di seluruh perangkat Anda.",
-      "create": "Buat",
-      "open": "Buka",
-      "signIn": "Masuk",
-      "helpAndDocs": "Bantuan & dokumentasi",
-      "signInRequiresVault": "Buka atau buat vault terlebih dahulu untuk menyiapkan sinkronisasi.",
-      "addVault": "Tambah vault"
-    },
-    "componentsVaultSwitcher": {
-      "noVaultsYet": "Belum ada brankas",
-      "openVault": "Buka brankas",
-      "settings": "Pengaturan",
-      "logOut": "Keluar",
-      "signInToSync": "Masuk untuk menyinkronkan",
-      "remove": "Hapus “",
-      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Vault ini akan dihapus dari aplikasi, namun file Anda akan tetap ada di disk. Anda selalu dapat menambahkannya kembali nanti.",
-      "cancel": "Batalkan",
-      "remove2": "Hapus",
-      "inYourAccount": "Di akun Anda",
-      "itemsCount": "{count} item",
-      "untitledVault": "Brankas",
-      "downloadVaultTitle": "Unduh “{name}”",
-      "downloadLocation": "Lokasi",
-      "changeLocation": "Ubah…",
-      "download": "Unduh",
-      "downloadFailed": "Brankas tidak dapat diunduh",
-      "deleteFromAccount": "Hapus dari akun",
-      "deleteVaultBody": "Semua data brankas ini yang sudah disinkronkan akan dihapus permanen dari server Memry, dan tindakan ini tidak dapat dibatalkan. File Anda di disk tidak ikut terhapus.",
-      "deleteVaultConfirm": "Hapus dari akun",
-      "deleteVaultFailed": "Tidak dapat menghapus brankas",
-      "deleteVaultTitle": "Hapus “{name}” dari akun Anda?",
-      "removeVaultTitle": "Hapus “{name}” dari daftar?",
-      "missing": "Folder tidak ditemukan"
-    },
-    "componentsWindowControls": {
-      "searchK": "Pencarian (⌘K)",
-      "browserBack": "Peramban kembali",
-      "back": "Kembali",
-      "browserForward": "Peramban maju",
-      "forward": "Maju"
-    }
-  },
-  "phaseI": {
-    "errors": {
-      "failedToImportFiles": "Gagal mengimpor file",
-      "failedToCreateNote": "Gagal membuat catatan",
-      "failedToAccessMicrophone": "Gagal mengakses mikrofon"
-    },
-    "toasts": {
-      "undone": "Dibatalkan"
-    }
-  },
   "agentChat": {
-    "title": "Obrolan Agent",
-    "loading": "Memuat obrolan agen...",
-    "conversationLoading": "Percakapan sedang dimuat...",
+    "title": "Obrolan agen",
+    "loading": "Memuat obrolan agen…",
+    "conversationLoading": "Memuat percakapan…",
+    "historyNotSaved": "Perangkat ini tidak dapat membuka kunci brankas, jadi percakapan ini tidak akan disimpan saat Anda menutup aplikasi.",
     "newConversation": "Percakapan baru",
     "history": "Riwayat percakapan",
     "openInTab": "Buka percakapan di tab",
-    "stop": "Berhenti",
-    "thinking": "Agent sedang berpikir",
+    "stop": "Hentikan",
+    "thinking": "Agen sedang berpikir",
     "enable": {
-      "title": "Aktifkan memrynote Agent",
-      "description": "memrynote Agent menggunakan agen lokal pilihan Anda CLI untuk mengobrol tentang brankas Anda. Claude mengirimkan giliran ke Anthropic; Codex mengirimkan giliran ke OpenAI.",
-      "remote": "memrynote mengenkripsi riwayat obrolan lokal dan tersinkronisasi Anda, namun inferensi model terjadi pada penyedia yang dipilih.",
+      "title": "Aktifkan agen memrynote",
+      "description": "Agen memrynote menggunakan CLI agen lokal pilihan Anda untuk mengobrol tentang brankas Anda. Claude mengirim giliran ke Anthropic; Codex mengirim giliran ke OpenAI.",
+      "remote": "memrynote mengenkripsi riwayat obrolan lokal dan yang tersinkron, tetapi inferensi model dijalankan oleh penyedia yang dipilih.",
       "readTools": "Alat baca berjalan secara otomatis.",
-      "writeTools": "Membuat dan memperbarui alat memerlukan persetujuan.",
+      "writeTools": "Alat untuk membuat dan memperbarui memerlukan persetujuan.",
       "diff": "Alat pembaruan menampilkan perbedaan atau pratinjau.",
-      "button": "Aktifkan obrolan Agent"
+      "button": "Aktifkan obrolan agen"
     },
     "approval": {
       "description": "Agen ingin memanggil {name} dengan argumen berikut.",
@@ -421,32 +146,40 @@
       "allowOnce": "Izinkan sekali",
       "editAndApply": "Edit dan terapkan",
       "editAndAllow": "Edit dan izinkan",
-      "allowAlways": "Izinkan selalu",
+      "allowAlways": "Selalu izinkan",
       "applyEdits": "Terapkan pengeditan",
       "deny": "Tolak",
-      "invalidJson": "Masukkan JSON yang valid sebelum menerapkan pengeditan."
+      "invalidJson": "Masukkan JSON yang valid sebelum menerapkan pengeditan.",
+      "thisTool": "alat ini",
+      "alwaysAllowHint": "Selalu izinkan berlaku untuk {tool}. Alat lain tetap meminta izin, dan penghapusan selalu meminta izin.",
+      "alwaysInChat": "Selalu izinkan di obrolan ini",
+      "alwaysInChatHint": "Berakhir saat percakapan berakhir",
+      "alwaysInVault": "Selalu izinkan di brankas ini",
+      "alwaysInVaultHint": "Dapat dicabut di Pengaturan › Agen",
+      "deletesAlwaysAsk": "Penghapusan selalu meminta izin"
     },
     "diff": {
-      "previewError": "Tidak dapat melihat pratinjau perbedaan catatan",
-      "description": "Agen ingin memperbarui {title}. Tinjau konten saat ini dan konten kandidat sebelum menerapkannya.",
-      "fallbackTitle": "catatan ini",
-      "current": "Terkini",
+      "previewError": "Tidak dapat menampilkan pratinjau perubahan ini",
+      "description": "Agen ingin memperbarui {title}. Tinjau perubahannya sebelum menerapkannya.",
+      "fallbackTitle": "item ini",
+      "current": "Saat ini",
       "candidate": "Kandidat",
-      "loading": "Memuat...",
+      "loading": "Memuat…",
       "apply": "Terapkan",
-      "applyEdited": "Terapkan yang telah diedit"
+      "applyEdited": "Terapkan yang telah diedit",
+      "editBody": "Edit sebelum menerapkan"
     },
     "inPageReview": {
       "regionLabel": "Saran agen",
       "barLabel": "Tinjau saran agen",
-      "loading": "Memuat saran...",
+      "loading": "Memuat saran…",
       "loadingTitle": "Saran agen",
       "title": "{count, plural, =0 {Saran agen} other {Agen menyarankan # perubahan}}",
       "editingTitle": "Mengedit saran",
       "pendingHint": "Belum disimpan. Terima untuk menerapkannya.",
       "editingHint": "Editan Anda tetap di sini sampai Anda menerima.",
       "baseChanged": "Catatan ini berubah saat Anda mengedit saran.",
-      "keepDraft": "Simpan editan saya",
+      "keepDraft": "Pertahankan editan saya",
       "restart": "Mulai ulang dari versi terbaru",
       "reject": "Tolak",
       "edit": "Edit",
@@ -460,33 +193,139 @@
       "openJournal": "Buka jurnal",
       "fallbackTitle": "catatan ini"
     },
+    "preview": {
+      "unset": "belum diatur",
+      "yes": "ya",
+      "no": "tidak",
+      "noChange": "Pratinjau ini tidak menemukan hal yang akan berubah.",
+      "willBeLost": "Akan hilang",
+      "unchangedLines": "{count, plural, other {# baris tidak berubah}}",
+      "item": {
+        "note": "Catatan",
+        "folder": "Folder",
+        "task": "Tugas",
+        "journal": "Jurnal",
+        "inbox": "Kotak masuk",
+        "project": "Proyek",
+        "status": "Status",
+        "canvas": "Kanvas"
+      },
+      "intent": {
+        "create": "baru",
+        "update": "pembaruan",
+        "delete": "penghapusan",
+        "move": "pemindahan",
+        "reorder": "pengurutan ulang"
+      },
+      "field": {
+        "archived": "Diarsipkan",
+        "arguments": "Argumen",
+        "color": "Warna",
+        "completed": "Selesai",
+        "description": "Deskripsi",
+        "due": "Tenggat",
+        "dueTime": "Waktu tenggat",
+        "duplicateOf": "Salinan dari",
+        "edits": "Editan",
+        "elements": "Elemen",
+        "folder": "Folder",
+        "icon": "Ikon",
+        "isDefault": "Default",
+        "isDone": "Status selesai",
+        "items": "Item",
+        "name": "Nama",
+        "operation": "Operasi",
+        "order": "Urutan",
+        "parent": "Induk",
+        "path": "Jalur",
+        "position": "Posisi",
+        "priority": "Prioritas",
+        "project": "Proyek",
+        "removed": "Dihapus",
+        "repeatFrom": "Ulangi dari",
+        "snoozeReason": "Alasan penundaan",
+        "snoozedUntil": "Ditunda hingga",
+        "start": "Mulai",
+        "status": "Status",
+        "tags": "Tag",
+        "title": "Judul"
+      },
+      "loss": {
+        "words": "{count, plural, other {# kata}}",
+        "tags": "{count, plural, other {# tag}}",
+        "notes": "{count, plural, other {# catatan}}",
+        "folders": "{count, plural, other {# folder}}",
+        "files": "{count, plural, other {# file}}",
+        "events": "{count, plural, other {# acara}}",
+        "tasks": "{count, plural, other {# tugas}}",
+        "due": "tenggat {value}"
+      }
+    },
     "composer": {
-      "currentNote": "Catatan terkini",
+      "currentNote": "Catatan saat ini",
       "removeAttachment": "Hapus {label}",
-      "placeholder": "Tanyakan apa saja kepada memrynote. @ untuk menyebut file",
+      "placeholder": "Lakukan apa saja dengan memrynote… @ untuk menyebut catatan, tugas, dan acara",
       "send": "Kirim",
-      "providerLabel": "Penyedia Agent: {provider}",
+      "providerLabel": "Penyedia agen: {provider}",
       "settingsSummary": "{reasoning}",
+      "connectedTools": "Alat terhubung",
+      "connectTool": "Hubungkan {tool}",
+      "addContext": "Tambahkan konteks",
+      "addContextWithPermissions": "Tambahkan konteks ({permissions})",
+      "mentionContext": "Sebut catatan, tugas, atau acara",
+      "voice": {
+        "start": "Mulai dikte suara",
+        "stop": "Hentikan dikte suara",
+        "transcribing": "Mentranskripsikan input suara",
+        "errors": {
+          "permissionDenied": "Akses mikrofon ditolak",
+          "noMicrophone": "Mikrofon tidak ditemukan",
+          "accessFailed": "Tidak dapat mengakses mikrofon",
+          "recordingFailed": "Tidak dapat merekam input suara",
+          "transcriptionFailed": "Tidak dapat mentranskripsikan input suara"
+        }
+      },
+      "modelLabel": "Model agen: {provider} {model}",
+      "reasoningLabel": "Penalaran agen: {reasoning}",
       "providers": {
+        "label": "Penyedia",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
         "local": "Lokal"
       },
+      "access": {
+        "vaultOnly": "Hanya brankas",
+        "computerAccess": "Akses komputer"
+      },
+      "webSearch": {
+        "on": "Aktif",
+        "off": "Nonaktif",
+        "label": "Pencarian web"
+      },
       "models": {
-        "default": "Bawaan",
-        "label": "Model"
+        "default": "Default",
+        "label": "Model",
+        "search": "Cari model…",
+        "useCustom": "Gunakan “{query}”",
+        "localEmpty": "Model tidak ditemukan — periksa Pengaturan",
+        "localSetup": "Siapkan di Pengaturan…",
+        "cliSetup": "Tidak terdeteksi — siapkan di Pengaturan…",
+        "runtimeUnavailable": "Agen tidak tersedia — buka Pengaturan…"
       },
       "settings": {
-        "reasoning": "Penalaran"
+        "reasoning": "Penalaran",
+        "effort": "Upaya"
       },
+      "includeCurrentNote": "Sertakan catatan saat ini",
+      "chooseModel": "Pilih model",
       "claudeSettings": {
         "reasoning": {
           "low": "Rendah",
           "medium": "Sedang",
           "high": "Tinggi",
-          "extraHigh": "Ekstra Tinggi",
-          "extraHighDefault": "Ekstra Tinggi (default)",
+          "extraHigh": "Ekstra tinggi",
+          "extraHighDefault": "Ekstra tinggi (default)",
           "max": "Maks"
         }
       },
@@ -496,25 +335,16 @@
           "medium": "Sedang",
           "mediumDefault": "Sedang (default)",
           "high": "Tinggi",
-          "extraHigh": "Ekstra Tinggi"
+          "extraHigh": "Ekstra tinggi"
         }
       },
-      "access": {
-        "vaultOnly": "Hanya brankas",
-        "computerAccess": "Akses komputer"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Nonaktif",
-        "label": "Pencarian web"
-      },
-      "permissionsLabel": "Izin Agent: {access}, pencarian web {webSearch}",
+      "permissionsLabel": "Izin agen: {access}, pencarian web {webSearch}",
       "permissions": {
         "label": "Izin",
         "access": "Akses",
         "tools": "Alat"
       },
-      "modelSettingsLabel": "Pengaturan model Agent: {model}, {settings}"
+      "modelSettingsLabel": "Pengaturan model agen: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Tidak ada kecocokan"
@@ -526,186 +356,135 @@
       "editedArgs": "Argumen yang diedit",
       "parameters": "Parameter"
     },
+    "toolActivity": {
+      "steps": "{count, plural, other {# langkah}}",
+      "running": "Berjalan",
+      "awaitingApproval": "Menunggu persetujuan",
+      "done": "Selesai"
+    },
+    "reasoning": {
+      "thinking": "Berpikir…",
+      "thought": "Selesai berpikir",
+      "thoughtFor": "Berpikir selama {seconds} dtk",
+      "toggle": "Tampilkan atau sembunyikan penalaran"
+    },
     "sidebar": {
-      "label": "Bilah sisi kanan",
+      "label": "Bilah samping kanan",
       "day": "Hari",
       "agent": "Agen",
       "pendingApproval": "{count, plural, one {# menunggu persetujuan} other {# menunggu persetujuan}}",
-      "inProgress": "Putaran Agent sedang berlangsung",
+      "inProgress": "Giliran agen sedang berlangsung",
       "close": "Tutup agen"
     },
     "errors": {
       "loadConversations": "Tidak dapat memuat percakapan agen",
       "loadConversation": "Tidak dapat memuat percakapan agen",
       "createConversation": "Tidak dapat membuat percakapan agen",
-      "busy": "Jendela lain berada di tengah-tengah percakapan ini. Tunggu sampai selesai atau hentikan dari sana.",
+      "busy": "Jendela lain sedang menjalankan giliran di percakapan ini. Tunggu hingga selesai atau hentikan dari jendela tersebut.",
       "sendTurn": "Tidak dapat mengirimkan giliran agen",
       "cancelTurn": "Tidak dapat membatalkan giliran agen",
       "submitApproval": "Tidak dapat mengirimkan persetujuan alat",
       "updateTrust": "Tidak dapat memperbarui alat tepercaya",
       "saveDisclosure": "Tidak dapat menyimpan status pengungkapan",
-      "resolveWindow": "Tidak dapat menyelesaikan jendela sumber agen",
+      "resolveWindow": "Tidak dapat menentukan jendela sumber agen",
       "detectCli": "Tidak dapat mendeteksi backend agen",
       "loadDisclosure": "Tidak dapat memuat status pengungkapan"
     },
+    "actions": {
+      "copy": "Salin",
+      "copied": "Disalin"
+    },
     "sources": {
-      "used": "{count, plural, one {Menggunakan # sumber} other {Menggunakan # sumber}}"
+      "count": "{count, plural, other {# sumber}}"
     }
-  },
-  "home": {
-    "addWidget": "Tambah widget",
-    "board": {
-      "defaultName": "Beranda",
-      "deleteAria": "Hapus tata letak",
-      "label": "Tata letak Beranda",
-      "newAria": "Papan baru",
-      "newName": "Papan baru"
-    },
-    "disabled": {
-      "createNote": "Buat catatan",
-      "hint": "Tidak ada yang terbuka. Mulai catatan."
-    },
-    "done": "Selesai",
-    "edit": "Edit",
-    "empty": {
-      "body": "Widget menyatukan catatan, tugas, dan bookmark Anda di satu tempat yang tenang.",
-      "cta": "Tambahkan widget pertama Anda",
-      "title": "Papan Anda kosong"
-    },
-    "greeting": {
-      "afternoon": "Selamat siang",
-      "evening": "Selamat malam",
-      "morning": "Selamat pagi"
-    },
-    "header": {
-      "events": "{count, plural, one {# acara} other {# acara}}",
-      "tasksDue": "{count, plural, one {# tugas jatuh tempo hari ini} other {# tugas jatuh tempo hari ini}}"
-    },
-    "noBookmarksYet": "Belum ada bookmark.",
-    "noEventsYet": "Tidak ada acara hari ini.",
-    "noJournalEntriesYet": "Belum ada entri jurnal.",
-    "noNotesYet": "Belum ada catatan.",
-    "noTasksYet": "Belum ada tugas.",
-    "widget": {
-      "bookmarks": "Bookmark",
-      "calendar": "Kalender",
-      "calendarToday": "Hari ini",
-      "configAria": "Konfigurasi widget",
-      "configure": "Konfigurasi",
-      "dragAria": "Seret widget",
-      "duration": "{count} mnt",
-      "filter": {
-        "today": "Jatuh Tempo Hari Ini",
-        "tomorrow": "Besok",
-        "week": "Minggu Ini"
-      },
-      "folder": "Folder",
-      "folderEmpty": "Belum ada folder",
-      "folderNoSelection": "Tidak ada folder dipilih",
-      "folderPickPrompt": "Pilih folder",
-      "folderViewSelect": "Tampilan",
-      "folderView_gallery": "Galeri",
-      "folderView_list": "Daftar",
-      "inbox": "Inbox",
-      "inboxAllTypes": "Semua jenis",
-      "inboxOlder": "{count, plural, one {# lebih lama} other {# lebih lama}}",
-      "inboxOldest": "terlama {count, plural, one {# hari} other {# hari}}",
-      "journal": "Jurnal",
-      "journalStreak": "{count, plural, one {rentetan #-hari} other {rentetan #-hari}}",
-      "journalToday": "Hari ini",
-      "journalYesterday": "Kemarin",
-      "loadError": "Tidak dapat memuat",
-      "menuAria": "Opsi widget",
-      "next": "Berikutnya: {title}",
-      "openCalendar": "Buka Kalender",
-      "openInbox": "Buka inbox",
-      "recentMeta": "diedit {time}",
-      "recentMetaWithFolder": "{folder} · diedit {time}",
-      "recentlyEdited": "Baru diedit",
-      "remove": "Hapus",
-      "removeAria": "Hapus widget",
-      "resize": "Ukuran",
-      "resizeAria": "Ubah ukuran ke {size}",
-      "savedFilterDefault": "Hari ini",
-      "savedFilterHint": "Bintangi filter di halaman Tugas untuk menggunakannya di sini",
-      "savedFilterLabel": "Filter tersimpan",
-      "startsIn": "Mulai dalam {count, plural, one {# mnt} other {# mnt}}",
-      "tasks": "Tugas",
-      "unknown": "Widget tidak dikenal",
-      "untitled": "Tanpa judul"
-    }
-  },
-  "media": {
-    "video": "Video"
-  },
-  "onboarding": {
-    "agentChat": {
-      "body": "Beralih ke tab Agen untuk bertanya pada asisten MemryNote tentang vault Anda.",
-      "title": "Mengobrol dengan agen AI"
-    },
-    "collections": {
-      "body": "Atur catatan ke dalam folder, sematkan bookmark, dan telusuri berdasarkan tag — semua di sini.",
-      "title": "Koleksi, bookmark & tag"
-    },
-    "dayPanel": {
-      "body": "Panel samping menjaga kalender dan tampilan hari Anda di samping apa pun yang Anda baca.",
-      "title": "Hari Anda, di samping pekerjaan Anda"
-    },
-    "feedback": {
-      "body": "Kirim masukan langsung ke tim dari sini.",
-      "title": "Beri tahu pendapat Anda"
-    },
-    "nav": {
-      "body": "Inbox untuk menangkap, Jurnal untuk catatan harian, Kalender untuk lini masa Anda, Tugas untuk daftar tugas, dan Grafik untuk melihat bagaimana semuanya terhubung.",
-      "title": "Ruang kerja Anda"
-    },
-    "newNote": {
-      "body": "Mulai di sini. Semua yang Anda tulis disimpan lokal terlebih dahulu.",
-      "title": "Buat catatan pertama Anda"
-    },
-    "settings": {
-      "body": "Impor catatan Anda dari 12+ aplikasi — Obsidian, Notion, Apple Notes, Evernote dan lainnya — dan atur segala hal lain di Pengaturan.",
-      "title": "Pengaturan & impor"
-    },
-    "sync": {
-      "body": "Aktifkan sinkronisasi terenkripsi ujung ke ujung untuk menjaga setiap perangkat tetap selaras.",
-      "title": "Sinkronisasi privat dan terenkripsi"
-    },
-    "welcome": {
-      "body": "Rumah privat dan offline-first Anda. Catatan terenkripsi ujung ke ujung — tidak pernah meninggalkan perangkat Anda tanpa terenkripsi.",
-      "title": "Selamat datang di MemryNote"
-    },
-    "tour": {
-      "next": "Berikutnya",
-      "previous": "Sebelumnya",
-      "progress": "{current} dari {total}"
-    }
-  },
-  "capture": {
-    "focusShortcut": "Fokuskan input tangkapan",
-    "detailHint": "detail",
-    "focusHint": "Q",
-    "submit": "Tangkap"
   },
   "canvas": {
+    "sectionLabel": "Kanvas",
+    "newCanvas": "Kanvas baru",
+    "newCanvasFolder": "Folder kanvas baru",
+    "untitled": "Kanvas tanpa judul",
+    "empty": "Belum ada kanvas",
+    "loading": "Memuat kanvas…",
+    "loadFailed": "Tidak dapat memuat kanvas",
+    "createFailed": "Tidak dapat membuat kanvas",
+    "openFailed": "Tidak dapat membuka kanvas",
+    "notFound": "Kanvas ini tidak ditemukan",
+    "corruptScene": "Kanvas ini tidak dapat dibaca. Pengeditan dinonaktifkan agar data tidak hilang.",
+    "unreadableTitle": "Kanvas ini tidak dapat dibuka di sini",
+    "unreadableBody": "Dokumennya tidak ada di brankas, atau kanvas ini digambar sebelum kanvas menjadi file dan perangkat ini tidak lagi menyimpan kunci untuk membukanya. Tidak ada yang dihapus — buka brankas di perangkat yang membuatnya, atau pulihkan folder kanvas.",
+    "tooLargeToSync": "Kanvas ini terlalu besar untuk disinkronkan. Kanvas tersimpan di perangkat ini, tetapi tidak akan sampai ke perangkat lain Anda sebelum ukurannya lebih kecil.",
+    "savedToVault": "Semua perubahan disimpan otomatis ke brankas Anda",
+    "libraryStoreFailed": "Tidak dapat menyimpan pustaka bentuk Anda. Perubahan terbaru pada pustaka mungkin hilang.",
+    "link": {
+      "itemMissing": "Item yang ditautkan sudah tidak ada.",
+      "elementMissing": "Tautan tersebut mengarah ke sesuatu yang sudah tidak ada di kanvas ini.",
+      "title": "Tautkan ke item",
+      "placeholder": "Cari catatan, tugas, acara, kotak masuk, proyek…",
+      "hint": "Mulai mengetik untuk mencari item yang akan ditautkan.",
+      "empty": "Tidak ada yang cocok.",
+      "selectOneShape": "Pilih satu bentuk untuk menautkannya ke item.",
+      "cardsCannotLink": "Kartu sudah membuka itemnya sendiri, jadi tidak dapat memuat tautan kedua.",
+      "linked": "Tertaut.",
+      "groupNotes": "Catatan",
+      "groupFiles": "File",
+      "groupTasks": "Tugas",
+      "groupEvents": "Acara",
+      "groupInbox": "Kotak masuk",
+      "groupJournals": "Jurnal",
+      "groupProjects": "Proyek",
+      "groupFolders": "Folder",
+      "useUrl": "Tautkan ke {url}",
+      "openTarget": "Buka {name}",
+      "shapeTarget": "Bentuk di kanvas ini",
+      "missingTarget": "Sudah tidak ada di kanvas ini"
+    },
+    "disabledTitle": "Kanvas belum diaktifkan",
+    "disabledBody": "Tab ini berasal dari fitur yang belum diaktifkan di perangkat ini.",
+    "unreadable": "Dokumen kanvas ini hilang atau tidak dapat dibaca. Tampilkan di pengelola file, atau hapus entrinya.",
+    "actionFailed": "Tindakan kanvas tersebut tidak dapat diselesaikan",
+    "renameLabel": "Nama kanvas",
+    "folderNameLabel": "Nama folder",
+    "deleteConfirmTitle": "Hapus kanvas ini?",
+    "deleteConfirmBody": "“{title}” dihapus dari memrynote di semua perangkat Anda. File kanvas dipindahkan ke sampah komputer ini, tetapi mengembalikannya dari sampah tidak akan memulihkan kanvas.",
+    "dropToRoot": "Letakkan di sini untuk mengeluarkan dari folder",
+    "filterPlaceholder": "Filter kanvas",
+    "filterNoMatches": "Tidak ada kanvas yang cocok dengan filter tersebut",
+    "folderCanvasCount": "{count} kanvas di dalamnya",
+    "folderEmptyHint": "Belum ada apa pun di sini",
+    "deleteFolderConfirmTitle": "Hapus folder kanvas ini?",
+    "deleteFolderConfirmBody": "“{name}” beserta seluruh isinya dihapus dari memrynote di semua perangkat Anda. Kanvas yang terdampak: {count}. Folder dipindahkan ke sampah komputer ini, tetapi mengembalikannya dari sampah tidak akan memulihkan kanvas tersebut.",
+    "actions": {
+      "rename": "Ganti nama",
+      "duplicate": "Duplikat",
+      "copyLink": "Salin tautan",
+      "setIcon": "Atur ikon",
+      "removeIcon": "Hapus ikon",
+      "moveToFolder": "Pindahkan ke folder",
+      "moveToRoot": "Akar",
+      "openExternal": "Buka di editor eksternal",
+      "newCanvasHere": "Kanvas baru di sini",
+      "newFolder": "Folder baru",
+      "canvasMenu": "Tindakan kanvas",
+      "folderMenu": "Tindakan folder kanvas"
+    },
     "card": {
-      "addCard": "Tambah kartu",
-      "addCreateNote": "Buat catatan \"{query}\"",
-      "addCreateNoteEmpty": "Buat catatan baru",
-      "addCreatedAt": "Dibuat {date}",
-      "addEmpty": "Tidak ada hasil",
-      "addGroupEvents": "Acara",
-      "addGroupNotes": "Catatan",
-      "addGroupTasks": "Tugas",
-      "addOnCanvas": "Di kanvas",
-      "addPlaceholder": "Cari catatan, tugas, dan acara…",
-      "allDay": "Sepanjang hari",
-      "createNoteFailed": "Tidak dapat membuat catatan",
-      "deleted": "Item dihapus",
-      "loading": "Memuat…",
       "open": "Buka di tab",
       "openToEdit": "Buka di tab untuk mengedit",
+      "deleted": "Item dihapus",
+      "loading": "Memuat…",
       "untitled": "Tanpa judul",
+      "allDay": "Sepanjang hari",
+      "createNoteFailed": "Tidak dapat membuat catatan",
+      "addCard": "Tambahkan kartu",
+      "addPlaceholder": "Cari catatan, file, tugas, acara, dan proyek…",
+      "addCreateNote": "Buat catatan “{query}”",
+      "addCreateNoteEmpty": "Buat catatan baru",
+      "addEmpty": "Tidak ada hasil",
+      "addGroupNotes": "Catatan",
+      "addGroupTasks": "Tugas",
+      "addGroupEvents": "Acara",
+      "addOnCanvas": "Di kanvas",
+      "addCreatedAt": "Dibuat {date}",
       "bulkGroup": "Tambahkan semua dari",
       "bulkFromTag": "Sebuah tag…",
       "bulkFromFolder": "Sebuah folder…",
@@ -725,138 +504,753 @@
       "bulkLoadFailed": "Tidak dapat memuat item",
       "bulkAdded": "{count, plural, other {# kartu ditambahkan}}",
       "bulkAddedSkipped": "{count, plural, other {# kartu ditambahkan}} · {skipped} sudah ada di kanvas",
-      "bulkAllOnCanvas": "{count, plural, other {Semua # sudah ada di kanvas ini}}"
+      "bulkAllOnCanvas": "{count, plural, =1 {Sudah ada di kanvas ini} other {Semua # sudah ada di kanvas ini}}"
     },
-    "corruptScene": "Kanvas ini tidak dapat dibaca. Pengeditan dinonaktifkan agar data tidak hilang.",
-    "createFailed": "Tidak dapat membuat kanvas",
-    "disabledBody": "Tab ini berasal dari fitur yang belum diaktifkan di perangkat ini.",
-    "disabledTitle": "Kanvas belum diaktifkan",
-    "empty": "Belum ada kanvas",
-    "libraryStoreFailed": "Tidak dapat menyimpan pustaka bentuk Anda. Perubahan terbaru pada pustaka mungkin hilang.",
-    "loadFailed": "Tidak dapat memuat kanvas",
-    "loading": "Memuat kanvas…",
-    "newCanvas": "Kanvas baru",
-    "notFound": "Kanvas ini tidak ditemukan",
-    "openFailed": "Tidak dapat membuka kanvas",
-    "savedToVault": "Semua perubahan disimpan otomatis ke brankas Anda",
-    "sectionLabel": "Kanvas",
-    "tooLargeToSync": "Kanvas ini terlalu besar untuk disinkronkan. Kanvas tersimpan di perangkat ini, tetapi tidak akan sampai ke perangkat lain Anda sebelum ukurannya lebih kecil.",
-    "untitled": "Kanvas tanpa judul"
+    "cluster": {
+      "button": "Sarankan kelompok",
+      "buttonHint": "Kelompokkan kartu catatan di papan ini (atau yang dipilih) berdasarkan kemiripan. Berjalan di perangkat ini.",
+      "loading": "Mengelompokkan…",
+      "needMoreNotes": "Tambahkan setidaknya {count} kartu catatan untuk menyarankan kelompok.",
+      "tooMany": "Papan ini memiliki lebih dari {count} kartu catatan. Pilih hingga {count} kartu, lalu coba lagi.",
+      "disabled": "Aktifkan embedding lokal di Pengaturan > AI untuk menyarankan kelompok.",
+      "noGroups": "Tidak ditemukan kelompok yang jelas di antara catatan ini.",
+      "missing": "{count, plural, other {# catatan belum memiliki embedding dan tidak disertakan.}}",
+      "failed": "Tidak dapat menyarankan kelompok",
+      "title": "Kelompok yang disarankan",
+      "description": "Dikelompokkan berdasarkan kemiripan di perangkat ini. Tidak ada yang berubah di papan sampai Anda membuat bingkai.",
+      "defaultName": "Kelompok {number}",
+      "untitledGroup": "Kelompok",
+      "groupName": "Nama kelompok",
+      "acceptGroup": "Sertakan {name}",
+      "noteCount": "{count, plural, other {# catatan}}",
+      "discard": "Buang",
+      "create": "{count, plural, other {Buat # bingkai}}",
+      "created": "{count, plural, other {# bingkai dibuat}}",
+      "cardsGone": "Kartu tersebut sudah tidak ada di papan."
+    },
+    "frame": {
+      "categorize": "Kategorikan",
+      "editBinding": "Ubah kategori yang diberikan bagian ini",
+      "cardCount": "{count, plural, other {# kartu}}",
+      "bindTitle": "Kategorikan bagian ini",
+      "bindHint": "Kartu yang diletakkan di bagian ini mendapat tag atau nilai properti ini.",
+      "bindPlaceholder": "Cari tag dan nilai properti, atau ketik tag baru…",
+      "bindEmpty": "Tidak ada tag atau nilai properti yang cocok.",
+      "groupTags": "Tag",
+      "useTag": "Gunakan tag baru #{tag}",
+      "unbind": "Berhenti mengategorikan sebagai {label}",
+      "current": "Saat ini",
+      "applied": "{count, plural, other {{label} ditambahkan ke # kartu}}",
+      "applyFailed": "Tidak dapat menambahkan {label}",
+      "revertFailed": "Tidak dapat mengurungkan {label}",
+      "leftFrame": "{count, plural, other {# kartu dipindahkan keluar dari {label}. Kategorinya tetap dipertahankan.}}",
+      "removeCategory": "Hapus {label}",
+      "removed": "{count, plural, other {{label} dihapus dari # kartu}}",
+      "removeFailed": "Tidak dapat menghapus {label}",
+      "skippedFile": "{count, plural, =1 {Satu kartu file dibiarkan apa adanya: file tidak memiliki tag atau properti.} other {# kartu file dibiarkan apa adanya: file tidak memiliki tag atau properti.}}",
+      "skippedTaskProperty": "{count, plural, =1 {Satu kartu tugas dibiarkan apa adanya: tugas dapat diberi tag, tetapi tidak dapat diberi properti catatan.} other {# kartu tugas dibiarkan apa adanya: tugas dapat diberi tag, tetapi tidak dapat diberi properti catatan.}}",
+      "skippedUnsupported": "{count, plural, =1 {Satu kartu dibiarkan apa adanya: acara dan proyek tidak dapat dikategorikan.} other {# kartu dibiarkan apa adanya: acara dan proyek tidak dapat dikategorikan.}}",
+      "layoutAction": "Atur tata letak menurut properti",
+      "layoutTitle": "Atur tata letak menurut properti",
+      "layoutHint": "Membuat satu bagian per nilai dan memasukkan catatan di papan ini ke bagian yang sesuai.",
+      "layoutPlaceholder": "Cari properti pilihan, pilihan ganda, dan status…",
+      "layoutEmpty": "Belum ada properti pilihan, pilihan ganda, atau status yang memiliki nilai.",
+      "layoutValueCount": "{count, plural, other {# nilai}}",
+      "layoutDone": "{count, plural, other {# bagian dibuat untuk {property}}}",
+      "layoutFailed": "Tidak dapat menata papan"
+    }
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Koleksi",
+      "projects": "Proyek",
+      "newNote": "Catatan baru",
+      "newNote2": "Catatan baru",
+      "newFolder": "Folder baru",
+      "newFolder2": "Folder baru",
+      "newProject": "Proyek baru",
+      "bookmarks": "Markah",
+      "tags": "Tag",
+      "reorderSection": "Ubah urutan {section}",
+      "dropFilesToImport": "Letakkan file untuk mengimpor",
+      "dropFilesIntoVaultRoot": "Akar brankas",
+      "newNoteN": "Catatan baru (⌘N)",
+      "new": "Baru",
+      "newItemMenu": "Buat baru…",
+      "feedbackButton": "Kirim masukan",
+      "feedbackTitle": "Kirim masukan",
+      "feedbackDescription": "Beri tahu kami apa yang berfungsi, apa yang rusak, atau apa yang Anda harapkan dari Memry. Kami membaca setiap pesan.",
+      "feedbackPlaceholder": "Masukan Anda…",
+      "feedbackEmailHint": "Tambahkan email Anda jika ingin dibalas.",
+      "feedbackPrivacyTitle": "Apa yang dikirim",
+      "feedbackPrivacyMessage": "Pesan Anda, persis seperti yang Anda tulis",
+      "feedbackPrivacyEmailOptional": "Email Anda — hanya jika Anda menambahkannya, dan hanya agar kami dapat membalas",
+      "feedbackPrivacyEmailSignedIn": "Email akun Anda ({email}), agar kami dapat membalas",
+      "feedbackPrivacyVersion": "Versi aplikasi dan sistem operasi",
+      "feedbackPrivacyPlan": "Paket Anda (gratis, Plus, Pro, atau Believer)",
+      "feedbackPrivacyNote": "Tidak ada yang lain. Catatan Anda tetap di perangkat Anda.",
+      "feedbackSend": "Kirim",
+      "feedbackSending": "Mengirim…",
+      "feedbackSuccess": "Terima kasih atas masukannya!",
+      "feedbackError": "Tidak dapat mengirim masukan. Silakan coba lagi.",
+      "syncDisabled": "Sinkronisasi dinonaktifkan",
+      "syncDisabled2": "Sinkronisasi dinonaktifkan",
+      "sortLabel": "Urutkan {section}: {mode}",
+      "sortModeManual": "Manual",
+      "sortModeNameAsc": "Nama A → Z",
+      "sortModeNameDesc": "Nama Z → A",
+      "sortModeModifiedDesc": "Diubah: terbaru dulu",
+      "sortModeModifiedAsc": "Diubah: terlama dulu",
+      "sortModeCreatedDesc": "Dibuat: terbaru dulu",
+      "sortModeCreatedAsc": "Dibuat: terlama dulu",
+      "sortModeCountDesc": "Paling sering digunakan",
+      "sortModeCountAsc": "Paling jarang digunakan",
+      "sortSaveFailed": "Tidak dapat menyimpan urutan",
+      "sectionOrderSaveFailed": "Tidak dapat menyimpan urutan bilah samping"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Ubah ukuran panel hari",
+      "dragToResizeDoubleClickToReset": "Seret untuk mengubah ukuran · Klik dua kali untuk mengatur ulang"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Temukan, ganti, tanyakan…"
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Lewati pengenalan",
+      "welcomeToMemry": "Selamat datang di memrynote",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Basis pengetahuan pribadi Anda. Mari kita luangkan waktu 2 menit untuk memulai.",
+      "getStarted": "Mulai ",
+      "createYourFirstNote": "Buat catatan pertama Anda",
+      "markdownBasedStoredLocallyAsPlainFiles": "Berbasis Markdown, disimpan secara lokal sebagai file biasa.",
+      "eGMeetingNotesIdeasAnything": "mis. catatan rapat, ide, apa saja…",
+      "skip": "Lewati",
+      "createNote": "Buat catatan ",
+      "addYourFirstTask": "Tambahkan tugas pertama Anda",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Tugas tertaut ke catatan Anda, lengkap dengan prioritas dan tenggat.",
+      "eGReviewProjectProposal": "mis. tinjau proposal proyek…",
+      "skip2": "Lewati",
+      "createTask": "Buat tugas ",
+      "syncAcrossDevices": "Sinkronisasi antarperangkat",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Sinkronkan catatan dan tugas Anda di semua perangkat Anda. Anda selalu dapat mengaturnya nanti.",
+      "skipForNow": "Lewati untuk saat ini",
+      "doneLetSGo": "Selesai — ayo mulai! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Atur ikon folder",
+      "expandFolder": "Perluas folder",
+      "collapseFolder": "Ciutkan folder"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "PETUNJUK"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Pemilih ikon",
+      "selectIcon": "Pilih ikon",
+      "closeIconPicker": "Tutup pemilih ikon",
+      "searchIcons": "Cari ikon…",
+      "all": "Semua",
+      "clearIcon": "Hapus ikon",
+      "noIconsFoundFor": "Tidak ada ikon yang ditemukan untuk \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Pintasan keyboard",
+      "closeShortcutsHelp": "Tutup bantuan pintasan",
+      "press": "Tekan",
+      "toClose": "untuk menutup"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Atur ikon",
+      "clearIcon": "Hapus ikon"
+    },
+    "componentsNavMain": {
+      "platform": "Platform"
+    },
+    "componentsNavProjects": {
+      "projects": "Proyek",
+      "more": "Lainnya",
+      "viewProject": "Lihat proyek",
+      "shareProject": "Bagikan proyek",
+      "deleteProject": "Hapus proyek",
+      "more2": "Lainnya"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Tingkatkan ke Pro",
+      "account": "Akun",
+      "billing": "Penagihan",
+      "notifications": "Pemberitahuan",
+      "logOut": "Keluar"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Cari",
+      "searchNotesTasksJournalInbox": "Cari catatan, tugas, jurnal, kotak masuk…",
+      "noResultsFor": "Tidak ada hasil untuk “",
+      "result": "hasil",
+      "noResultsForQuery": "Tidak ada hasil untuk “{query}”",
+      "resultCount": "{count, plural, other {# hasil}}",
+      "indexBuilding": "Membangun indeks pencarian {done}/{total} — hasil mungkin tidak lengkap",
+      "indexBuildingUnknown": "Membangun indeks pencarian — hasil mungkin tidak lengkap"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Cari dan klik item untuk membangun jejak Anda",
+      "reasons": "Alasan",
+      "clear": "Hapus"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Hapus",
+      "tags": "Tag",
+      "filterByTag": "Filter berdasarkan tag…",
+      "dateRange": "Rentang tanggal"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Lihat semuanya ",
+      "results": "hasil"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "mirip"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Tidak ada tab yang terbuka",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Buka halaman dari bilah samping atau buat tab baru untuk memulai",
+      "openInbox": "Buka kotak masuk",
+      "closePane": "Tutup panel"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Preset tata letak",
+      "layoutPresets2": "Preset tata letak"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Ubah ukuran panel"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext tidak tersedia",
+      "searchResults": "Hasil pencarian",
+      "unknownTabType": "Jenis tab tidak dikenal: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "perubahan yang belum disimpan",
+      "preview": "pratinjau"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Tab baru",
+      "newTab2": "Tab baru",
+      "newNote": "Catatan baru",
+      "journal": "Jurnal",
+      "calendar": "Kalender",
+      "inboxCapture": "Catat ke kotak masuk",
+      "tasks": "Tugas",
+      "tags": "Tag"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Perubahan yang belum disimpan",
+      "unsaved": "belum disimpan)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Perubahan yang belum disimpan"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Tutup semua tab"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Tab terbuka",
+      "scrollTabsLeft": "Gulir tab ke kiri",
+      "scrollTabsRight": "Gulir tab ke kanan",
+      "dayPanel": "Panel hari"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Ada yang tidak beres",
+      "anErrorOccurredWhileRenderingThisTabContent": "Terjadi kesalahan saat merender konten tab ini.",
+      "tryAgain": "Coba lagi",
+      "sendReport": "Kirim laporan diagnostik"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Ikon catatan"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Perubahan belum disimpan",
+      "unsavedChangesBody": "“{title}” memiliki perubahan yang belum disimpan. Apa yang ingin Anda lakukan?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Ruang kerja baru",
+      "darkMode": "Mode gelap",
+      "settings": "Pengaturan",
+      "integrations": "Integrasi",
+      "signOut": "Keluar",
+      "downloadOnIos": "Unduh di iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Tutup jendela",
+      "minimizeWindow": "Minimalkan jendela",
+      "maximizeWindow": "Maksimalkan jendela"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Saran",
+      "or": "atau",
+      "enter": "Enter",
+      "toInsert": "untuk memasukkan"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "remah roti",
+      "more": "Lainnya"
+    },
+    "componentsUiDialog": {
+      "close": "Tutup"
+    },
+    "componentsUiSheet": {
+      "close": "Tutup"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Bilah samping",
+      "displaysTheMobileSidebar": "Menampilkan bilah samping seluler.",
+      "toggleSidebar": "Tampilkan atau sembunyikan bilah samping",
+      "toggleSidebar2": "Tampilkan atau sembunyikan bilah samping",
+      "dragToResizeDoubleClickToReset": "Seret untuk mengubah ukuran · Klik dua kali untuk mengatur ulang"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Selamat datang di memrynote",
+      "yourPersonalKnowledgeManagementSystem": "Sistem manajemen pengetahuan pribadi Anda.",
+      "selectAFolderToStoreYourNotesAndTasks": "Pilih folder untuk menyimpan catatan dan tugas Anda.",
+      "opening": "Membuka…",
+      "selectVaultFolder": "Pilih folder brankas",
+      "plainMarkdown": "Markdown biasa",
+      "yourNotesStayPortable": "Catatan Anda tetap portabel",
+      "syncAnywhere": "Sinkronkan di mana saja",
+      "useDropboxIcloudGit": "Gunakan Dropbox, iCloud, Git",
+      "recentVaults": "Brankas terbaru",
+      "notesLastOpened": "catatan · Terakhir dibuka",
+      "preRelease": "Beta",
+      "createNewVault": "Buat brankas baru",
+      "createNewVaultDesc": "Mulai brankas baru di folder pilihan Anda.",
+      "openExistingVault": "Buka brankas yang ada",
+      "openExistingVaultDesc": "Pilih folder berisi file Markdown yang sudah Anda simpan.",
+      "signInToSync": "Masuk untuk sinkronisasi",
+      "signInToSyncDesc": "Brankas terenkripsi ujung ke ujung di semua perangkat Anda.",
+      "create": "Buat",
+      "open": "Buka",
+      "signIn": "Masuk",
+      "helpAndDocs": "Bantuan & dokumentasi",
+      "signInRequiresVault": "Buka atau buat brankas terlebih dahulu untuk menyiapkan sinkronisasi.",
+      "addVault": "Tambahkan brankas",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "Catatan Anda tersimpan di brankas, yaitu sebuah folder di komputer ini.",
+        "createDesc": "Beri nama dan pilih lokasinya.",
+        "openFolder": "Buka folder sebagai brankas",
+        "openFolderDesc": "Gunakan folder berisi file Markdown yang sudah Anda miliki.",
+        "openFromSync": "Buka dari Memrynote Sync",
+        "openFromSyncDesc": "Masuk dan unduh brankas dari akun Anda.",
+        "back": "Kembali",
+        "createTitle": "Buat brankas baru",
+        "createSubtitle": "Brankas adalah folder berisi file Markdown. Anda dapat memindahkannya nanti.",
+        "nameLabel": "Nama",
+        "namePlaceholder": "Catatan saya",
+        "locationLabel": "Lokasi",
+        "change": "Ubah…",
+        "willBeCreatedAt": "Akan dibuat di",
+        "errorExists": "Folder dengan nama ini sudah ada di sini.",
+        "openInstead": "Buka sebagai brankas saja",
+        "errorInvalidName": "Nama tidak boleh diawali titik atau berisi / \\ : * ? \" < > |",
+        "createFailed": "Tidak dapat membuat brankas.",
+        "createVault": "Buat brankas",
+        "creating": "Membuat…",
+        "cancel": "Batal",
+        "chooseTitle": "Pilih brankas",
+        "chooseSubtitle": "Masuk sebagai {email}. Pilih satu untuk dibuka di komputer ini.",
+        "untitledVault": "Brankas tanpa judul",
+        "items": "{count, plural, other {# item}}",
+        "onThisComputer": "Di komputer ini",
+        "downloadTo": "Unduh ke",
+        "otherVaultsHint": "Brankas lain tetap ada di akun Anda. Unduh kapan saja dari pengalih brankas.",
+        "openVault": "Buka brankas",
+        "opening": "Membuka…",
+        "loadingVaults": "Memuat brankas Anda…",
+        "loadFailed": "Tidak dapat memuat brankas Anda.",
+        "retry": "Coba lagi",
+        "noVaultsTitle": "Belum ada brankas di akun Anda",
+        "noVaultsDesc": "Buat satu di komputer ini. Brankas akan disinkronkan ke akun Anda.",
+        "createCta": "Buat brankas",
+        "openFailed": "Tidak dapat membuka brankas."
+      }
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Belum ada brankas",
+      "openVault": "Buka brankas",
+      "settings": "Pengaturan",
+      "logOut": "Keluar",
+      "signInToSync": "Masuk untuk menyinkronkan",
+      "remove": "Hapus “",
+      "removeVaultTitle": "Hapus “{name}” dari daftar?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Brankas ini akan dihapus dari aplikasi, tetapi file Anda tetap ada di disk. Anda dapat menambahkannya kembali kapan saja.",
+      "cancel": "Batal",
+      "remove2": "Hapus",
+      "inYourAccount": "Di akun Anda",
+      "itemsCount": "{count} item",
+      "untitledVault": "Brankas",
+      "downloadVaultTitle": "Unduh “{name}”",
+      "downloadLocation": "Lokasi",
+      "changeLocation": "Ubah…",
+      "download": "Unduh",
+      "downloadFailed": "Brankas tidak dapat diunduh",
+      "deleteFromAccount": "Hapus dari akun",
+      "deleteVaultTitle": "Hapus “{name}” dari akun Anda?",
+      "deleteVaultBody": "Semua data brankas ini yang sudah disinkronkan akan dihapus permanen dari server Memry, dan tindakan ini tidak dapat dibatalkan. File Anda di disk tidak ikut terhapus.",
+      "deleteVaultConfirm": "Hapus dari akun",
+      "deleteVaultFailed": "Tidak dapat menghapus brankas",
+      "missing": "Folder tidak ditemukan"
+    },
+    "componentsWindowControls": {
+      "searchK": "Cari (⌘K)",
+      "browserBack": "Kembali ke halaman sebelumnya",
+      "back": "Kembali",
+      "browserForward": "Maju ke halaman berikutnya",
+      "forward": "Maju"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Gagal mengimpor file",
+      "failedToCreateNote": "Gagal membuat catatan",
+      "failedToAccessMicrophone": "Gagal mengakses mikrofon"
+    },
+    "toasts": {
+      "undone": "Diurungkan"
+    }
+  },
+  "home": {
+    "widget": {
+      "removeAria": "Hapus widget",
+      "dragAria": "Seret widget",
+      "configAria": "Konfigurasi widget",
+      "resizeAria": "Ubah ukuran ke {size}",
+      "menuAria": "Opsi widget",
+      "resize": "Ukuran",
+      "remove": "Hapus",
+      "filter": {
+        "all": "Semua",
+        "today": "Tenggat hari ini",
+        "tomorrow": "Besok",
+        "next7": "7 hari ke depan",
+        "noDueDate": "Tanpa tenggat"
+      },
+      "recentlyEdited": "Baru diedit",
+      "recentlyOpened": "Baru dibuka",
+      "recentMeta": "diedit {time}",
+      "recentMetaWithFolder": "{folder} · diedit {time}",
+      "openedMeta": "dibuka {time}",
+      "openedMetaWithFolder": "{folder} · dibuka {time}",
+      "noRecentlyOpened": "Catatan yang Anda buka akan muncul di sini",
+      "bookmarks": "Markah",
+      "tasks": "Tugas",
+      "calendar": "Kalender",
+      "calendarToday": "Hari ini",
+      "openCalendar": "Buka kalender",
+      "next": "Berikutnya: {title}",
+      "startsIn": "Mulai dalam {count, plural, one {# mnt} other {# mnt}}",
+      "duration": "{count} mnt",
+      "inbox": "Kotak masuk",
+      "inboxAllTypes": "Semua jenis",
+      "inboxOlder": "{count, plural, one {# lebih lama} other {# lebih lama}}",
+      "inboxOldest": "terlama {count, plural, one {# hari} other {# hari}}",
+      "openInbox": "Buka kotak masuk",
+      "folder": "Folder",
+      "untitled": "Tanpa judul",
+      "folderPickPrompt": "Pilih folder",
+      "folderEmpty": "Belum ada folder",
+      "folderNoSelection": "Tidak ada folder dipilih",
+      "folderView_list": "Daftar",
+      "folderView_gallery": "Galeri",
+      "folderViewSelect": "Tampilan",
+      "project": "Proyek",
+      "projectNoSelection": "Tidak ada proyek dipilih",
+      "projectMissing": "Proyek ini sudah tidak tersedia",
+      "projectNoTasks": "Tidak ada tugas",
+      "journal": "Jurnal",
+      "journalStreak": "{count, plural, other {# hari beruntun}}",
+      "journalToday": "Hari ini",
+      "journalYesterday": "Kemarin",
+      "journalTomorrow": "Besok",
+      "journalUpcoming": "Mendatang",
+      "journalNoEntryYet": "Belum ada entri",
+      "loadError": "Tidak dapat memuat",
+      "unknown": "Widget tidak dikenal"
+    },
+    "board": {
+      "label": "Tata letak beranda",
+      "deleteAria": "Hapus tata letak",
+      "newAria": "Papan baru",
+      "newName": "Papan baru",
+      "defaultName": "Beranda",
+      "manage": "Kelola papan",
+      "manageTitle": "Kelola papan",
+      "manageDescription": "Ganti nama, ubah urutan, atau hapus papan beranda Anda.",
+      "renameAria": "Ganti nama papan",
+      "reorderAria": "Ubah urutan papan",
+      "nameLabel": "Nama papan"
+    },
+    "greeting": {
+      "morning": "Selamat pagi",
+      "afternoon": "Selamat siang",
+      "evening": "Selamat malam"
+    },
+    "header": {
+      "tasksDue": "{count, plural, other {# tugas dengan tenggat hari ini}}",
+      "events": "{count, plural, one {# acara} other {# acara}}"
+    },
+    "edit": "Edit",
+    "done": "Selesai",
+    "addWidget": "Tambahkan widget",
+    "empty": {
+      "title": "Papan Anda kosong",
+      "body": "Widget menyatukan catatan, tugas, dan markah Anda di satu tempat yang tenang.",
+      "cta": "Tambahkan widget pertama Anda"
+    },
+    "noBookmarksYet": "Belum ada markah.",
+    "noNotesYet": "Belum ada catatan.",
+    "noTasksYet": "Belum ada tugas.",
+    "noEventsYet": "Tidak ada acara hari ini.",
+    "noJournalEntriesYet": "Belum ada entri jurnal.",
+    "disabled": {
+      "createNote": "Buat catatan",
+      "hint": "Tidak ada yang terbuka. Mulai catatan."
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Selamat datang di MemryNote",
+      "body": "Rumah pribadi Anda yang mengutamakan offline. Catatan terenkripsi ujung ke ujung — tidak pernah meninggalkan perangkat Anda tanpa enkripsi."
+    },
+    "newNote": {
+      "title": "Buat catatan pertama Anda",
+      "body": "Mulai di sini. Semua yang Anda tulis disimpan lokal terlebih dahulu."
+    },
+    "nav": {
+      "title": "Ruang kerja Anda",
+      "body": "Kotak masuk untuk mencatat, Jurnal untuk catatan harian, Kalender untuk lini masa, Tugas untuk daftar tugas, dan Grafik untuk melihat bagaimana semuanya terhubung."
+    },
+    "collections": {
+      "title": "Koleksi, markah & tag",
+      "body": "Atur catatan ke dalam folder, sematkan markah, dan telusuri berdasarkan tag — semua di sini."
+    },
+    "dayPanel": {
+      "title": "Hari Anda, di samping pekerjaan Anda",
+      "body": "Panel samping menampilkan kalender dan tampilan hari Anda di samping apa pun yang sedang Anda baca."
+    },
+    "agentChat": {
+      "title": "Mengobrol dengan agen AI",
+      "body": "Beralih ke tab Agen untuk bertanya kepada asisten MemryNote tentang brankas Anda."
+    },
+    "sync": {
+      "title": "Sinkronisasi privat dan terenkripsi",
+      "body": "Aktifkan sinkronisasi terenkripsi ujung ke ujung untuk menjaga setiap perangkat tetap selaras."
+    },
+    "feedback": {
+      "title": "Beri tahu pendapat Anda",
+      "body": "Kirim masukan langsung ke tim dari sini."
+    },
+    "settings": {
+      "title": "Pengaturan & impor",
+      "body": "Impor catatan Anda dari 12+ aplikasi — Obsidian, Notion, Apple Notes, Evernote dan lainnya — dan atur segala hal lain di Pengaturan."
+    },
+    "tour": {
+      "next": "Berikutnya",
+      "previous": "Sebelumnya",
+      "progress": "{current} dari {total}"
+    },
+    "starPrompt": {
+      "title": "Pengenalan selesai",
+      "body": "Mohon beri bintang di GitHub — ini membantu orang lain menemukan MemryNote.",
+      "action": "Beri bintang di GitHub"
+    }
   },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Klik baris",
-      "reset": "Atur ulang",
-      "shortcutsTab": "Tab Pintasan"
-    },
-    "description": "Jalur cepat untuk menjelajahi memrynote, menangkap pemikiran, dan memproses pekerjaan.",
+    "description": "Jalur cepat untuk menjelajahi memrynote, mencatat pemikiran, dan memproses pekerjaan.",
+    "or": "atau",
+    "then": "lalu",
     "groups": {
       "general": {
-        "description": "Navigasi dan bantuan di seluruh aplikasi.",
-        "title": "Umum"
-      },
-      "inbox": {
-        "description": "Proses item yang ditangkap dengan cepat.",
-        "title": "Kotak Masuk"
-      },
-      "journal": {
-        "description": "Jelajahi tampilan jurnal dan fokuskan area menulis.",
-        "title": "Jurnal"
-      },
-      "notes": {
-        "description": "Menulis, memformat, dan mencari catatan.",
-        "title": "Catatan / Editor"
-      },
-      "settings": {
-        "description": "Buka pengaturan dan sesuaikan pintasan.",
-        "title": "Pengaturan"
+        "title": "Umum",
+        "description": "Navigasi dan bantuan di seluruh aplikasi."
       },
       "tabs": {
-        "description": "Berpindah antar tab dan panel.",
-        "title": "Tab & Panel Terbagi"
+        "title": "Tab & tampilan terbagi",
+        "description": "Berpindah antara tab dan panel."
+      },
+      "inbox": {
+        "title": "Kotak masuk",
+        "description": "Proses item masuk dengan cepat."
+      },
+      "journal": {
+        "title": "Jurnal",
+        "description": "Jelajahi tampilan jurnal dan fokuskan area menulis."
+      },
+      "notes": {
+        "title": "Catatan / Editor",
+        "description": "Menulis, memformat, dan mencari catatan."
       },
       "tasks": {
-        "description": "Saring, pilih, dan selesaikan tugas.",
-        "title": "Tugas"
+        "title": "Tugas",
+        "description": "Filter, pilih, dan selesaikan tugas."
+      },
+      "settings": {
+        "title": "Pengaturan",
+        "description": "Buka pengaturan dan sesuaikan pintasan."
       }
     },
     "items": {
       "general": {
-        "createNote": "Buat catatan",
-        "keyboardShortcuts": "Buka pintasan keyboard",
-        "openSettings": "Buka pengaturan",
         "quickSearch": "Buka pencarian cepat",
-        "sidebarSection": "Ke bagian bilah samping",
+        "createNote": "Buat catatan",
+        "openSettings": "Buka pengaturan",
+        "switchVault": "Ganti brankas",
+        "adjacentVault": "Brankas sebelumnya atau berikutnya",
+        "keyboardShortcuts": "Buka pintasan keyboard",
+        "undoTaskAction": "Urungkan tindakan tugas terakhir",
         "toggleSidebar": "Alihkan bilah samping",
-        "undoTaskAction": "Urungkan tindakan tugas terakhir"
+        "sidebarSection": "Ke bagian bilah samping"
+      },
+      "tabs": {
+        "newTabMenu": "Buka menu tab baru",
+        "closeTab": "Tutup tab",
+        "closeAllInPane": "Tutup semua tab di panel",
+        "reopenClosedTab": "Buka kembali tab yang ditutup",
+        "nextTab": "Tab berikutnya",
+        "previousTab": "Tab sebelumnya",
+        "pinTab": "Sematkan atau lepas sematan tab",
+        "duplicateTab": "Duplikat tab",
+        "splitRight": "Bagi ke kanan",
+        "splitDown": "Bagi ke bawah",
+        "closeSplitPane": "Tutup panel terbagi",
+        "focusPane": "Fokus ke panel lain",
+        "moveTabToPane": "Pindahkan tab ke panel",
+        "maximizePane": "Maksimalkan panel saat ini"
       },
       "inbox": {
-        "archiveItem": "Arsipkan item terpilih",
-        "chooseQuickFileResult": "Pilih hasil file cepat",
-        "clearSelection": "Hapus pilihan atau tutup file cepat",
-        "confirmFiling": "Konfirmasi panel pengarsipan",
+        "nextItem": "Item berikutnya",
+        "previousItem": "Item sebelumnya",
         "firstOrLastItem": "Item pertama atau terakhir",
         "jumpByPage": "Lompat per halaman",
-        "nextItem": "Item berikutnya",
-        "openOriginal": "Buka tautan asli",
-        "openQuickFile": "Buka file cepat",
-        "previousItem": "Item sebelumnya",
-        "refresh": "Segarkan kotak masuk",
-        "selectAllVisible": "Pilih semua item yang terlihat",
+        "togglePreview": "Alihkan panel pratinjau",
         "selectItem": "Pilih item",
-        "togglePreview": "Alihkan panel pratinjau"
+        "selectAllVisible": "Pilih semua item yang terlihat",
+        "clearSelection": "Hapus pilihan atau tutup pindah cepat",
+        "openQuickFile": "Buka pindah cepat",
+        "chooseQuickFileResult": "Pilih hasil pindah cepat",
+        "archiveItem": "Arsipkan item terpilih",
+        "openOriginal": "Buka tautan asli",
+        "refresh": "Segarkan kotak masuk",
+        "confirmFiling": "Konfirmasi panel pemindahan"
       },
       "journal": {
-        "bold": "Tebalkan teks terpilih",
-        "find": "Cari di jurnal",
-        "italic": "Miringkan teks terpilih",
         "returnFromOverview": "Kembali dari tampilan bulan atau tahun",
+        "find": "Cari di jurnal",
+        "bold": "Tebalkan teks terpilih",
+        "italic": "Miringkan teks terpilih",
         "underline": "Garis bawahi teks terpilih"
       },
       "notes": {
-        "bold": "Tebal",
-        "closeOverlays": "Tutup lapisan editor",
-        "commandMenu": "Buka menu perintah editor",
         "createNote": "Buat catatan",
         "find": "Cari di catatan",
+        "bold": "Tebal",
         "italic": "Miring",
-        "underline": "Garis bawah"
-      },
-      "settings": {
-        "cancelRecording": "Batalkan perekaman pintasan",
-        "customizeShortcuts": "Sesuaikan pintasan keyboard",
-        "openSettings": "Buka pengaturan",
-        "recordShortcut": "Rekam pintasan baru",
-        "resetShortcut": "Pulihkan pintasan bawaan"
-      },
-      "tabs": {
-        "closeAllInPane": "Tutup semua tab di panel",
-        "closeSplitPane": "Tutup panel terbagi",
-        "closeTab": "Tutup tab",
-        "duplicateTab": "Duplikat tab",
-        "focusPane": "Fokus ke panel lain",
-        "maximizePane": "Maksimalkan panel saat ini",
-        "moveTabToPane": "Pindahkan tab ke panel",
-        "newTabMenu": "Buka menu tab baru",
-        "nextTab": "Tab berikutnya",
-        "pinTab": "Sematkan atau lepas sematan tab",
-        "previousTab": "Tab sebelumnya",
-        "reopenClosedTab": "Buka kembali tab yang ditutup",
-        "splitDown": "Bagi ke bawah",
-        "splitRight": "Bagi ke kanan"
+        "underline": "Garis bawah",
+        "commandMenu": "Buka menu perintah editor",
+        "closeOverlays": "Tutup lapisan editor"
       },
       "tasks": {
         "clearFilters": "Hapus filter yang terlihat",
+        "selectAllVisible": "Pilih semua tugas yang terlihat",
         "clearSelection": "Hapus pilihan tugas",
         "completeSelected": "Selesaikan tugas terpilih",
-        "configureRepeat": "Atur pengulangan pada tugas terfokus",
         "deleteSelected": "Hapus tugas terpilih",
-        "selectAllVisible": "Pilih semua tugas yang terlihat",
-        "skipOccurrence": "Lewati kejadian berulang",
+        "configureRepeat": "Atur pengulangan pada tugas terfokus",
+        "skipOccurrence": "Lewati sekali ini",
         "stopRepeating": "Hentikan pengulangan tugas"
+      },
+      "settings": {
+        "openSettings": "Buka pengaturan",
+        "customizeShortcuts": "Sesuaikan pintasan keyboard",
+        "recordShortcut": "Rekam pintasan baru",
+        "cancelRecording": "Batalkan perekaman pintasan",
+        "resetShortcut": "Pulihkan default pintasan"
       }
     },
-    "or": "atau",
-    "then": "lalu"
+    "combos": {
+      "shortcutsTab": "Tab pintasan",
+      "clickRow": "Klik baris",
+      "reset": "Atur ulang"
+    }
+  },
+  "update": {
+    "available": "Pembaruan tersedia",
+    "downloading": "Mengunduh {version}",
+    "ready": "Pembaruan siap",
+    "failed": "Pembaruan gagal",
+    "downloadAction": "Unduh",
+    "restartAction": "Mulai ulang",
+    "detailsAction": "Detail",
+    "popover": {
+      "readyTitle": "MemryNote {version} siap",
+      "availableTitle": "MemryNote {version} tersedia",
+      "readySubtitle": "Anda menggunakan {current}",
+      "availableSubtitle": "Anda menggunakan {current} · belum ada yang diunduh",
+      "allChanges": "Semua perubahan",
+      "restartNow": "Mulai ulang sekarang",
+      "onNextQuit": "Saat keluar berikutnya",
+      "download": "Unduh",
+      "notNow": "Nanti saja",
+      "moreOptions": "Opsi pembaruan lainnya",
+      "skipVersion": "Lewati {version}",
+      "turnOffAuto": "Nonaktifkan pembaruan otomatis",
+      "copyVersionInfo": "Salin info versi",
+      "openSettings": "Buka pengaturan"
+    },
+    "installing": {
+      "title": "Menginstal {version}",
+      "titleUnknownVersion": "Menginstal pembaruan",
+      "subtitle": "MemryNote akan terbuka kembali sebentar lagi. Semua yang Anda tulis sudah tersimpan di disk."
+    },
+    "installFailed": {
+      "title": "MemryNote tidak dapat menyelesaikan instalasi {version}",
+      "titleUnknownVersion": "MemryNote tidak dapat menyelesaikan instalasi pembaruan",
+      "body": "Brankas Anda sama sekali tidak tersentuh — pembaruan diterapkan ke aplikasi, bukan ke catatan Anda. Anda masih menggunakan {current} dan semuanya berfungsi seperti sebelumnya.",
+      "errorLabel": "Apa yang salah",
+      "downloadManually": "Unduh {version} secara manual",
+      "downloadManuallyUnknownVersion": "Unduh MemryNote secara manual",
+      "tryAgain": "Coba lagi",
+      "copyDetails": "Salin detail"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Brankas",
+    "position": "{name}, brankas {index} dari {count}",
+    "openList": "{position}. Buka daftar brankas",
+    "switchTo": "Beralih ke {name}",
+    "switchingTo": "Sedang beralih ke {name}",
+    "changeIcon": "Ubah ikon…",
+    "resetIcon": "Atur ulang ikon",
+    "iconButton": "Ubah ikon {name}",
+    "iconFailed": "Tidak dapat mengubah ikon brankas"
+  },
+  "sidebarHelp": {
+    "label": "Bantuan dan masukan",
+    "reportBug": "Laporkan bug",
+    "requestFeature": "Minta fitur",
+    "starOnGithub": "Beri bintang di GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "Yang baru"
+  },
+  "sidebarStar": {
+    "title": "MemryNote bersifat sumber terbuka",
+    "body": "Dibangun secara terbuka. Bintang dari Anda membantu orang lain menemukannya.",
+    "star": "Beri bintang",
+    "later": "Nanti saja",
+    "thanks": "Terima kasih. Itu sangat berarti."
+  },
+  "sidebar": {
+    "railLabel": "Bagian",
+    "search": "Cari atau lompat ke…",
+    "vaultMenu": "{name}. Buka daftar brankas"
   }
 }

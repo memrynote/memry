@@ -1,6 +1,6 @@
 {
   "toast": {
-    "exportNotImplemented": "ייצוא נתונים מקומי עדיין לא מיושם"
+    "exportNotImplemented": "ייצוא נתונים מקומיים עדיין לא זמין"
   },
   "page": {
     "title": "הגדרות",
@@ -87,7 +87,7 @@
       },
       "graph": {
         "label": "גרף",
-        "description": "קשרים בין פתקים"
+        "description": "חיבורים בין פתקים"
       },
       "spatialCanvas": {
         "label": "קנבס",
@@ -136,9 +136,9 @@
       "unsupported": "בגרסאות ארוזות אפשר לבדוק, להוריד ולהתקין עדכונים מ-GitHub Releases",
       "available": "memrynote {version} זמין להורדה",
       "downloadingLatest": "מוריד את המהדורה האחרונה",
-      "downloadingLatestPercent": "הורדת המהדורה האחרונה ({percent}%)",
+      "downloadingLatestPercent": "מוריד את המהדורה האחרונה ({percent}%)",
       "downloaded": "memrynote {version} מוכן להתקנה",
-      "upToDate": "התקנה זו נמצאת במהדורה האחרונה שפורסמה",
+      "upToDate": "ההתקנה הזו מעודכנת למהדורה האחרונה שפורסמה",
       "checking": "מחפש גרסה חדשה יותר ב-GitHub Releases",
       "idle": "אפשר לבדוק אם יש מהדורות חדשות ולהתקין אותן בלי לצאת מהאפליקציה",
       "unsupportedToast": "עדכונים אוטומטיים זמינים במהדורות ארוזות בלבד",
@@ -188,16 +188,12 @@
     },
     "dateFormat": {
       "label": "פורמט תאריך",
-      "description": "כיצד מוצגים תאריכי לוח השנה",
+      "description": "אופן הצגת התאריכים",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (ארה״ב)",
         "DD/MM/YYYY": "DD/MM/YYYY",
         "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
-        "DD": {
-          "MM": {
-            "YYYY": "DD.MM.YYYY"
-          }
-        }
+        "DD.MM.YYYY": "DD.MM.YYYY"
       },
       "error": "עדכון פורמט התאריך נכשל"
     },
@@ -211,7 +207,7 @@
         "description": "הכרטיסיות והתצוגות המפוצלות מהפעם הקודמת ייפתחו מחדש."
       },
       "closeButton": {
-        "label": "לחצן סגירת כרטיסיות",
+        "label": "כפתור סגירה בכרטיסיות",
         "description": "מתי להציג את כפתור הסגירה",
         "options": {
           "always": "תמיד גלוי",
@@ -231,7 +227,7 @@
     "fileCreation": {
       "createInSelectedFolder": {
         "label": "יצירה בתוך התיקייה שנבחרה",
-        "description": "פתקים ותיקיות חדשים נוצרים בתוך התיקייה שנבחרה כעת. כשההגדרה כבויה, פריטים תמיד נוצרים בשורש."
+        "description": "פתקים ותיקיות חדשים נוצרים בתוך התיקייה שנבחרה כעת. כשההגדרה כבויה, פריטים תמיד נוצרים בשורש הכספת."
       },
       "defaultNoteFolder": {
         "label": "מיקום ברירת מחדל",
@@ -274,7 +270,7 @@
   "appearance": {
     "header": {
       "title": "מראה",
-      "subtitle": "התאמה אישית של המראה והתחושה",
+      "subtitle": "התאמה אישית של מראה האפליקציה",
       "loading": "טוען הגדרות…"
     },
     "groups": {
@@ -293,9 +289,9 @@
         "light": "בהיר",
         "white": "לבן",
         "dark": "כהה",
-        "system": "מערכת"
+        "system": "לפי המערכת"
       },
-      "error": "עדכון העיצוב נכשל"
+      "error": "עדכון ערכת הנושא נכשל"
     },
     "colorTheme": {
       "default": "Memrynote",
@@ -318,14 +314,14 @@
       "presets": {
         "indigo": "אינדיגו",
         "amber": "ענבר",
-        "emerald": "אמרלד",
+        "emerald": "אזמרגד",
         "red": "אדום",
         "violet": "סגול",
         "cyan": "ציאן",
         "pink": "ורוד",
         "orange": "כתום"
       },
-      "error": "עדכון צבע הדגשה נכשל",
+      "error": "עדכון צבע ההדגשה נכשל",
       "aria": "צבע הדגשה מוגדר מראש",
       "options": {
         "theme": "ערכת נושא",
@@ -350,7 +346,7 @@
         "label": "הפחתת תנועה",
         "description": "הפחתת אנימציות או התאמה להגדרת המערכת",
         "options": {
-          "system": "מערכת",
+          "system": "לפי המערכת",
           "on": "מופעל"
         }
       },
@@ -429,7 +425,7 @@
       "spelling": "איות"
     },
     "width": {
-      "label": "רוחב עורך",
+      "label": "רוחב העורך",
       "description": "חל על כל פתק ועל כל דף ביומן",
       "options": {
         "normal": "רגיל",
@@ -470,7 +466,7 @@
     },
     "loading": "טוען תבניות…",
     "newTemplateTitle": "תבנית חדשה",
-    "copySuffix": "{name} (העתק)",
+    "copySuffix": "{name} (עותק)",
     "empty": {
       "title": "עדיין אין תבניות מותאמות אישית",
       "description": "כדי להתחיל, אפשר ליצור תבנית"
@@ -523,7 +519,7 @@
       "none": "ללא",
       "noneAsk": "ללא (לשאול בכל פעם)",
       "updated": "תבנית ברירת המחדל עודכנה",
-      "cleared": "תבנית ברירת המחדל נוקתה",
+      "cleared": "תבנית ברירת המחדל הוסרה",
       "error": "עדכון תבנית ברירת המחדל נכשל"
     },
     "showSchedule": {
@@ -570,7 +566,7 @@
       "missing": "תבנית שנמחקה",
       "clear": "ניקוי",
       "updated": "התבנית עבור {day} עודכנה",
-      "cleared": "התבנית עבור {day} נוקתה",
+      "cleared": "התבנית עבור {day} הוסרה",
       "error": "עדכון התבנית עבור {day} נכשל",
       "summary": "הוגדרו {count} מתוך 7"
     },
@@ -595,7 +591,7 @@
       "label": "פרויקט ברירת מחדל",
       "description": "מוקצה כאשר לא נבחר פרויקט",
       "placeholder": "אין פרויקט ברירת מחדל",
-      "none": "ללא ברירת מחדל (שימוש ב\"אישי\")",
+      "none": "ללא ברירת מחדל (שימוש בפרויקט האישי)",
       "error": "עדכון פרויקט ברירת המחדל נכשל"
     },
     "sortOrder": {
@@ -611,7 +607,7 @@
     },
     "defaultView": {
       "label": "תצוגת ברירת מחדל",
-      "description": "הכרטיסייה שבה נפתח דף המשימות",
+      "description": "התצוגה שבה נפתח דף המשימות",
       "options": {
         "all": "הכול",
         "today": "היום",
@@ -719,13 +715,13 @@
         "notConnected": "לא מחובר",
         "reconnectRequired": "דרוש חיבור מחדש"
       },
-      "accountReconnect": "חיבור מחדש של Google",
+      "accountReconnect": "חיבור מחדש ל-Google",
       "addAccount": "הוספת חשבון",
       "importedCalendars": "לוחות שנה מיובאים",
       "selected": "נבחרו: {count}",
       "syncNow": "סנכרון עכשיו",
       "disconnect": "ניתוק",
-      "reconnect": "חיבור מחדש של Google",
+      "reconnect": "חיבור מחדש ל-Google",
       "syncFailed": "משהו השתבש",
       "connectFailed": "חיבור Google Calendar נכשל",
       "refreshFailed": "רענון Google Calendar נכשל",
@@ -831,7 +827,7 @@
         "notConnected": "לא מחובר"
       },
       "readOnly": "לקריאה בלבד",
-      "pollInterval": "בדיקת שינויים כל {minutes} דקות. שינויים שנעשים במקום אחר לא מופיעים מיד.",
+      "pollInterval": "השינויים נבדקים כל {minutes} דקות. שינויים שנעשים במקום אחר לא מופיעים מיד.",
       "connect": "חיבור",
       "connecting": "מתחבר…",
       "connectFailed": "לא ניתן היה להתחבר. כדאי לבדוק את הפרטים ולנסות שוב.",
@@ -927,7 +923,7 @@
         "unknown": "לא ניתן היה להתחבר ({code}). שום דבר לא נשמר; אפשר לנסות שוב מאוחר יותר."
       },
       "reconnect": {
-        "missing": "במכשיר הזה עדיין אין את סיסמת האפליקציה של החשבון הזה. האירועים שלו עדיין מגיעים מהמכשירים האחרים שלך; כדי לסנכרן גם מהמכשיר הזה, יש להזין כאן את סיסמת האפליקציה.",
+        "missing": "במכשיר הזה עדיין לא שמורה סיסמת האפליקציה של החשבון הזה. האירועים שלו עדיין מגיעים מהמכשירים האחרים שלך; כדי לסנכרן גם מהמכשיר הזה, יש להזין כאן את סיסמת האפליקציה.",
         "icloudRevoked": "iCloud הפסיק לקבל את הסיסמה הייעודית הזו. איפוס סיסמת ה-Apple ID מבטל את כל הסיסמאות הייעודיות לאפליקציות. יש ליצור סיסמה חדשה ב-account.apple.com ולהתחבר מחדש.",
         "rejected": "השרת הפסיק לקבל את הסיסמה הזו. אם שינית אותה או ביטלת את סיסמת האפליקציה, יש ליצור סיסמה חדשה ולהתחבר מחדש."
       }
@@ -982,7 +978,7 @@
         "pushedPulled": "{parts}",
         "changesPending": "{count, plural, one {שינוי אחד בהמתנה} other {# שינויים בהמתנה}}",
         "offlinePending": "לא מקוון ({count, plural, one {שינוי אחד בהמתנה} other {# שינויים בהמתנה}})",
-        "never": "לעולם לא"
+        "never": "אף פעם"
       },
       "upsell": {
         "title": "הפתקים שלך נמצאים רק במכשיר הזה",
@@ -1001,7 +997,7 @@
     },
     "billing": {
       "planStatus": "מצב התוכנית",
-      "checking": "בודק מצב חיוב",
+      "checking": "בודק את מצב החיוב",
       "annualSwitch": {
         "title": "מעבר לחיוב שנתי",
         "description": "חיסכון של 20%. יתרת החודש הנוכחי מחושבת באופן יחסי, ללא חיוב נוסף.",
@@ -1045,7 +1041,7 @@
       "toasts": {
         "loadFailed": "לא ניתן היה לטעון את מצב החיוב",
         "checkoutFailed": "לא ניתן היה להתחיל את התשלום",
-        "checkoutOpened": "התשלום נפתח בדפדפן שלך",
+        "checkoutOpened": "דף התשלום נפתח בדפדפן שלך",
         "refreshFailed": "לא ניתן היה לרענן את מצב החיוב",
         "billingActive": "החיוב פעיל",
         "activationPending": "ההפעלה ממתינה",
@@ -1102,7 +1098,7 @@
       "title": "הגדרת סנכרון",
       "description": "כדי לסנכרן את הנתונים שלך בין מכשירים עם הצפנה מקצה לקצה, יש ליצור חשבון.",
       "or": "או",
-      "paidPlan": "סנכרון הוא תוכנית בתשלום.",
+      "paidPlan": "הסנכרון זמין בתוכנית בתשלום.",
       "seePlans": "הצגת התוכניות",
       "errors": {
         "sendCode": "שליחת הקוד נכשלה",
@@ -1134,7 +1130,7 @@
       "displayTitle": "שמירת ביטוי השחזור שלך",
       "displayDescription": "זו הדרך היחידה לשחזר את הנתונים המוצפנים שלך אם הגישה לכל המכשירים שלך תאבד.",
       "warning": "כדאי לרשום את הביטוי ולשמור אותו במקום בטוח. הוא לא יוצג שוב.",
-      "wordsAria": "מילות ביטוי שחזור",
+      "wordsAria": "מילות ביטוי השחזור",
       "wordAria": "המילה {index}: {word}",
       "copyAria": "העתקת ביטוי השחזור ללוח",
       "copiedAria": "ביטוי השחזור הועתק",
@@ -1212,7 +1208,7 @@
   },
   "devices": {
     "loading": "טוען מכשירים…",
-    "loadingAria": "טעינת מכשירים",
+    "loadingAria": "טוען מכשירים",
     "none": "אין מכשירים מקושרים עדיין",
     "linkNew": "קישור מכשיר חדש",
     "thisDevice": "המכשיר הזה",
@@ -1248,7 +1244,7 @@
     "description": "כדי להעביר את מפתחות ההצפנה בצורה מאובטחת, יש לסרוק את קוד ה-QR הזה מהמכשיר שברצונך לקשר.",
     "encrypted": "מוצפן מקצה לקצה",
     "generating": "יוצר קוד קישור…",
-    "generatingAria": "יצירת קוד קישור",
+    "generatingAria": "יוצר קוד קישור",
     "generateFailed": "יצירת קוד קישור נכשלה",
     "tryAgain": "ניסיון חוזר",
     "expired": "תוקף קוד הקישור פג",
@@ -1268,7 +1264,7 @@
     "unknownDevice": "מכשיר לא ידוע",
     "unknownPlatform": "פלטפורמה לא ידועה",
     "verificationCode": "קוד אימות",
-    "computing": "מחשב…",
+    "computing": "מחשב את הקוד…",
     "unavailable": "לא זמין",
     "confirmCode": "יש לוודא שהקוד הזה תואם לקוד שמוצג במכשיר החדש",
     "reject": "דחייה",
@@ -1328,8 +1324,8 @@
       "replaceKey": "החלפת מפתח OpenAI השמור",
       "enterKey": "הזנת מפתח API של OpenAI",
       "saveKey": "שמירת המפתח",
-      "keySaved": "מפתח API נשמר במחזיק מפתחות",
-      "providerError": "עדכון ספק הקול נכשל",
+      "keySaved": "מפתח ה-API נשמר במחזיק המפתחות",
+      "providerError": "עדכון ספק התמלול נכשל",
       "downloadedToast": "Whisper Small הורד",
       "downloadError": "הורדת Whisper Small נכשלה",
       "keySavedToast": "מפתח OpenAI נשמר",
@@ -1400,7 +1396,7 @@
       },
       "embedding": {
         "label": "וקטורי הטמעה לחיפוש",
-        "hint": "{dimension} ממדים · {count, plural, one {פתק אחד עבר הטמעה} other {# פתקים עברו הטמעה}}"
+        "hint": "{dimension} ממדים · {count, plural, one {פתק אחד עם וקטורי הטמעה} other {# פתקים עם וקטורי הטמעה}}"
       },
       "voiceModel": {
         "label": "תמלול קולי"
@@ -1429,24 +1425,24 @@
     },
     "intro": "ייבוא חד-פעמי יוצר פתקים חדשים בכספת שלך. קובצי הייצוא המקוריים שלך נשארים ללא שינוי.",
     "sources": {
-      "notion": "ייבוא של ייצוא HTML (.zip)",
-      "todoist": "ייבוא של ייצוא CSV של פרויקט (.csv)",
+      "notion": "ייבוא קובץ ייצוא HTML (.zip)",
+      "todoist": "ייבוא קובץ ייצוא CSV של פרויקט (.csv)",
       "ticktick": "ייבוא גיבוי TickTick (.csv) כפרויקטים, משימות ותזכורות",
       "markdown": "ייבוא קובצי .md או תיקייה (frontmatter, תגיות, קבצים מצורפים)",
       "noteplan": "ייבוא תיקיית NotePlan — פתקים יומיים הופכים לרשומות יומן, ומשימות הופכות למשימות",
       "html": "ייבוא קובצי .html עם תמונות מקושרות וקישורים בין דפים",
-      "google-keep": "ייבוא ייצוא Google Takeout Keep (.json או .zip)",
+      "google-keep": "ייבוא קובץ ייצוא של Google Takeout Keep (.json או .zip)",
       "bear": "ייבוא ארכיון Bear ‎.bear2bk (פתקים, תגיות, קבצים מצורפים)",
       "evernote": "ייבוא קובץ ייצוא Evernote אחד או יותר מסוג .enex",
       "roam": "ייבוא גרף Roam Research (.json) עם מתארים מקוננים",
-      "apple-journal": "ייבוא ייצוא HTML של Apple Journal כפתקים מתוארכים",
+      "apple-journal": "ייבוא קובץ ייצוא HTML של Apple Journal כפתקים מתוארכים",
       "csv": "ייבוא קובץ .csv — פתק אחד לכל שורה, העמודות הופכות למאפיינים",
-      "raindrop": "ייבוא ייצוא סימניות של Raindrop.io (.csv) — הסימניות מגיעות לתיבת הנכנסים",
+      "raindrop": "ייבוא קובץ ייצוא סימניות של Raindrop.io (.csv) — הסימניות מגיעות לתיבת הנכנסים",
       "apple-notes": "ייבוא ממסד הנתונים של Apple Notes (NoteStore.sqlite, macOS)",
       "onenote": "ייבוא מחברות OneNote (נדרש חשבון Microsoft)"
     },
     "action": "ייבוא",
-    "select": "בחירת אפליקציה לייבוא…",
+    "select": "בחירת אפליקציה לייבוא ממנה…",
     "stats": {
       "notes": "{count, plural, one {פתק אחד} other {# פתקים}}",
       "projects": "{count, plural, one {פרויקט אחד} other {# פרויקטים}}",
@@ -1455,7 +1451,7 @@
       "reminders": "{count, plural, one {תזכורת אחת} other {# תזכורות}}",
       "bookmarks": "{count, plural, one {סימנייה אחת} other {# סימניות}}",
       "withTags": "{count} מתויגים",
-      "withDueDate": "{count} מתוארכים",
+      "withDueDate": "{count} עם תאריך יעד",
       "comments": "{count, plural, one {הערה אחת} other {# הערות}}",
       "skipped": "{count} דולגו"
     },
@@ -1534,7 +1530,7 @@
       "ticktick": {
         "headerNotFound": "שורת הכותרות של קובץ ה-CSV מ-TickTick (\"Folder Name\") לא נמצאה",
         "foldersDropped": "לתיקיות של TickTick אין מקבילה ב-Memry והן הושמטו",
-        "subtaskParentMissing": "משימת האב של \"{title}\" לא נמצאה; יובאה כמשימה ראשית",
+        "subtaskParentMissing": "לא נמצאה משימת אב לתת-המשימה \"{title}\"; היא יובאה כמשימה ראשית",
         "unknownPriority": "עדיפות לא מוכרת של TickTick {priority} ← ללא",
         "unsupportedRepeat": "כלל חזרה לא נתמך \"{rule}\" דולג",
         "reminderNoAnchor": "התזכורת \"{reminder}\" דולגה (אין תאריך עוגן)"
@@ -1605,7 +1601,7 @@
   "vault": {
     "header": {
       "title": "כספת",
-      "subtitle": "תצורה ואחסון של כספת"
+      "subtitle": "תצורה ואחסון של הכספת"
     },
     "groups": {
       "storageUsage": "שימוש באחסון",
@@ -1641,14 +1637,14 @@
       "ratio": "{used} / {limit}",
       "refreshAria": "רענון השימוש באחסון",
       "usageAria": "שימוש באחסון: {used} מתוך {limit}",
-      "available": "{available} זמין",
+      "available": "זמין: {available}",
       "categories": {
         "notes": "פתקים",
         "attachments": "קבצים מצורפים",
         "crdt": "CRDT",
         "other": "אחר"
       },
-      "warningTitle": "אחסון כמעט מלא",
+      "warningTitle": "האחסון כמעט מלא",
       "warningDescription": "כדי למנוע בעיות סנכרון, אפשר לפנות מקום או לשדרג את התוכנית."
     },
     "largeNotes": {
@@ -1816,7 +1812,7 @@
     "toasts": {
       "renamed": "השם \"{oldValue}\" שונה ל-\"{newValue}\"",
       "renameFailed": "שינוי שם האפשרות נכשל",
-      "removed": "הוסר \"{value}\"",
+      "removed": "האפשרות \"{value}\" הוסרה",
       "removeFailed": "הסרת האפשרות נכשלה",
       "colorFailed": "עדכון הצבע נכשל",
       "deleteFailed": "מחיקת המאפיין נכשלה",
@@ -1887,10 +1883,10 @@
     },
     "toasts": {
       "saveGlobalFailed": "שמירת הקיצור ללכידה מכל מקום נכשלה",
-      "saveFailed": "שמירת קיצור הדרך נכשלה",
-      "resetFailed": "איפוס קיצור הדרך נכשל",
+      "saveFailed": "שמירת קיצור המקלדת נכשלה",
+      "resetFailed": "איפוס קיצור המקלדת נכשל",
       "resetAllSuccess": "כל הקיצורים אופסו לברירות המחדל",
-      "resetAllFailed": "איפוס קיצורי הדרך נכשל"
+      "resetAllFailed": "איפוס קיצורי המקלדת נכשל"
     },
     "categories": {
       "navigation": "ניווט",
@@ -2128,7 +2124,7 @@
       "failedToResetKeyboardSettings": "איפוס הגדרות המקלדת נכשל",
       "failedToLoadNoteEditorSettings": "טעינת הגדרות עורך הפתקים נכשלה",
       "failedToUpdateSettings": "עדכון ההגדרות נכשל",
-      "failedToLoadTabSettings": "טעינת הגדרות הכרטיסייה נכשלה",
+      "failedToLoadTabSettings": "טעינת הגדרות הכרטיסיות נכשלה",
       "failedToLoadNotes": "טעינת הפתקים נכשלה",
       "failedToLoadTags": "טעינת התגיות נכשלה",
       "failedToLoadTasks": "טעינת המשימות נכשלה",

@@ -58,7 +58,7 @@
   },
   "reminders": {
     "summary": "Нагадування: {date}",
-    "summaryWithMore": "Нагадування: {date} (+ще {count})",
+    "summaryWithMore": "Нагадування: {date} (і ще {count})",
     "hasReminders": "Має нагадування",
     "setReminder": "Встановити нагадування",
     "toast": {
@@ -298,7 +298,7 @@
       "parentDeletedKeepSubtasks": "Завдання видалено, підзавдання перетворено на завдання",
       "parentDeletedWithSubtasks": "Завдання та підзавдання видалено",
       "parentAndSubtasksCompleted": "Завдання та підзавдання виконано",
-      "movedUnder": "Переміщено під «{title}»",
+      "movedUnder": "Перетворено на підзавдання «{title}»",
       "completed": "{count, plural, one {# підзавдання виконано} few {# підзавдання виконано} many {# підзавдань виконано} other {# підзавдання виконано}}",
       "markedIncomplete": "{count, plural, one {# підзавдання позначено як невиконане} few {# підзавдання позначено як невиконані} many {# підзавдань позначено як невиконані} other {# підзавдання позначено як невиконані}}",
       "dueDateSet": "{count, plural, one {Термін встановлено для # підзавдання} few {Термін встановлено для # підзавдань} many {Термін встановлено для # підзавдань} other {Термін встановлено для # підзавдання}}",
@@ -371,7 +371,7 @@
       "occurrences": "повторень",
       "preview": "Перегляд",
       "of": "з ",
-      "andMore": "і більше",
+      "andMore": "і далі",
       "frequency": "Частота",
       "repeatEvery": "Повторювати кожні",
       "day2": "день",
@@ -475,7 +475,7 @@
     },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Дублювати завдання",
-      "createACopyOf": "Створити копію „",
+      "createACopyOf": "Створити копію «",
       "alsoDuplicateSubtasks": "Також дублювати підзавдання (",
       "cancel": "Скасувати",
       "duplicate": "Дублювати ",
@@ -531,7 +531,7 @@
       "backToOptions": "Назад до параметрів",
       "today": "Сьогодні",
       "tomorrow": "Завтра",
-      "thisWeekend": "Ці вихідні",
+      "thisWeekend": "На вихідних",
       "nextWeek": "Наступного тижня"
     },
     "componentsTasksEditRepeatingTaskDialog": {
@@ -642,7 +642,7 @@
       "summaryProjects": "Проєкт: {names}",
       "summaryPriorities": "Пріоритет: {names}",
       "summaryDue": "Термін: {value}",
-      "summaryDueRange": "Термін: {start} - {end}",
+      "summaryDueRange": "Термін: {start} — {end}",
       "summaryRepeatRepeating": "Повтор: лише повторювані",
       "summaryRepeatOneTime": "Повтор: лише одноразові",
       "summaryTimeWith": "Час: із часом",
@@ -685,10 +685,10 @@
       "select": "вибрати"
     },
     "componentsTasksProjectModal": {
-      "iconName": "Іконка й назва",
-      "selectIcon": "Вибрати іконку",
+      "iconName": "Значок і назва",
+      "selectIcon": "Вибрати значок",
       "projectName": "Назва проєкту",
-      "clickIconToChange": "Натисніть на іконку, щоб змінити",
+      "clickIconToChange": "Натисніть значок, щоб змінити",
       "color": "Колір",
       "descriptionOptional": "Опис (за бажанням)",
       "briefDescriptionOfThisProject": "Короткий опис проєкту…",
@@ -774,7 +774,7 @@
     "componentsTasksTaskBadges": {
       "priority": "пріоритет",
       "repeatingTask": "Повторюване завдання",
-      "d": "дн"
+      "d": "д"
     },
     "componentsTasksTaskEmptyState": {
       "addTask": "Додати завдання",
@@ -847,7 +847,7 @@
       "failedToDeleteSubtask": "Не вдалося видалити підзавдання",
       "failedToDeleteTask": "Не вдалося видалити завдання",
       "failedToCompleteTask": "Не вдалося виконати завдання",
-      "failedToMakeSubtask": "Не вдалося зробити підзавданням",
+      "failedToMakeSubtask": "Не вдалося зробити завдання підзавданням",
       "failedToCompleteSubtasks": "Не вдалося виконати підзавдання",
       "failedToMarkSubtasksIncomplete": "Не вдалося позначити підзавдання як невиконані",
       "failedToSetDueDate": "Не вдалося встановити термін",
@@ -912,7 +912,7 @@
     },
     "sections": {
       "viewAll": "Переглянути всі",
-      "add": "Додати до {title}",
+      "add": "Додати в розділ «{title}»",
       "emptyTasks": "Завдань ще немає.",
       "emptyNotes": "Пов’язаних нотаток ще немає.",
       "emptyFiles": "Пов’язаних файлів ще немає.",

@@ -1,7 +1,7 @@
 {
   "capture": {
     "focusHint": "Q",
-    "focusShortcut": "Activer le champ de capture",
+    "focusShortcut": "Aller au champ de capture",
     "detailHint": "détail",
     "submit": "Capturer"
   },
@@ -183,7 +183,7 @@
       "restart": "Recommencer depuis la dernière version",
       "reject": "Refuser",
       "edit": "Modifier",
-      "showDiff": "Afficher les changements",
+      "showDiff": "Afficher les modifications",
       "accept": "Accepter",
       "acceptEdits": "Accepter les modifications",
       "waiting": "En attente de votre vérification dans {title}.",
@@ -198,7 +198,7 @@
       "yes": "oui",
       "no": "non",
       "noChange": "Aucune modification à afficher dans cet aperçu.",
-      "willBeLost": "Sera perdu",
+      "willBeLost": "Ce qui sera perdu",
       "unchangedLines": "{count, plural, one {# ligne inchangée} other {# lignes inchangées}}",
       "item": {
         "note": "Note",
@@ -496,7 +496,7 @@
       "bulkViewsHeading": "Ajouter depuis {name}",
       "bulkAllItems": "Tous les éléments",
       "bulkConfirmTitle": "{count, plural, one {Ajouter # carte depuis {name} ?} other {Ajouter # cartes depuis {name} ?}}",
-      "bulkConfirmBody": "Les grands tableaux deviennent plus lents et peuvent dépasser la limite de taille de synchronisation.",
+      "bulkConfirmBody": "Les grands tableaux sont plus lents à parcourir et peuvent dépasser la limite de taille de synchronisation.",
       "bulkConfirmSkipped": "{count, plural, one {# élément est déjà sur ce canevas et sera ignoré.} other {# éléments sont déjà sur ce canevas et seront ignorés.}}",
       "bulkConfirmAdd": "{count, plural, one {Ajouter # carte} other {Ajouter # cartes}}",
       "bulkBack": "Retour",
@@ -617,11 +617,11 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Passer la prise en main",
-      "welcomeToMemry": "Bienvenue sur memrynote",
+      "welcomeToMemry": "Bienvenue dans memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Votre base de connaissances personnelle. Prenons 2 minutes pour commencer.",
       "getStarted": "Commencer ",
       "createYourFirstNote": "Créez votre première note",
-      "markdownBasedStoredLocallyAsPlainFiles": "Au format Markdown, stocké localement sous forme de fichiers texte.",
+      "markdownBasedStoredLocallyAsPlainFiles": "Des notes Markdown, stockées localement sous forme de fichiers texte.",
       "eGMeetingNotesIdeasAnything": "p. ex. notes de réunion, idées, tout ce que vous voulez…",
       "skip": "Passer",
       "createNote": "Créer une note ",
@@ -809,7 +809,7 @@
       "dragToResizeDoubleClickToReset": "Faites glisser pour redimensionner · Double-cliquez pour réinitialiser"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Bienvenue sur memrynote",
+      "welcomeToMemry": "Bienvenue dans memrynote",
       "yourPersonalKnowledgeManagementSystem": "Votre système de gestion des connaissances personnelles.",
       "selectAFolderToStoreYourNotesAndTasks": "Sélectionnez un dossier pour stocker vos notes et tâches.",
       "opening": "Ouverture…",
@@ -946,7 +946,7 @@
       "calendar": "Calendrier",
       "calendarToday": "Aujourd'hui",
       "openCalendar": "Ouvrir le calendrier",
-      "next": "Suivant : {title}",
+      "next": "À suivre : {title}",
       "startsIn": "Commence dans {count, plural, one {# min} other {# min}}",
       "duration": "{count} min",
       "inbox": "Boîte de réception",
@@ -1004,7 +1004,7 @@
     "empty": {
       "title": "Votre tableau est vide",
       "body": "Les widgets réunissent vos notes, tâches et favoris dans un même endroit apaisant.",
-      "cta": "Ajoutez votre premier widget"
+      "cta": "Ajouter votre premier widget"
     },
     "noBookmarksYet": "Aucun favori pour l'instant.",
     "noNotesYet": "Aucune note pour l'instant.",
@@ -1031,7 +1031,7 @@
     },
     "collections": {
       "title": "Collections, favoris et tags",
-      "body": "Organisez vos notes en dossiers, épinglez des favoris et parcourez-les par tag : tout se passe ici."
+      "body": "Organisez vos notes en dossiers, épinglez des favoris et naviguez par tag : tout se passe ici."
     },
     "dayPanel": {
       "title": "Votre journée, à côté de votre travail",
@@ -1164,7 +1164,7 @@
         "clearSelection": "Effacer la sélection de tâches",
         "completeSelected": "Terminer les tâches sélectionnées",
         "deleteSelected": "Supprimer les tâches sélectionnées",
-        "configureRepeat": "Configurer la répétition de la tâche ciblée",
+        "configureRepeat": "Configurer la répétition de la tâche active",
         "skipOccurrence": "Ignorer une occurrence de la répétition",
         "stopRepeating": "Arrêter la répétition de la tâche"
       },
@@ -1173,7 +1173,7 @@
         "customizeShortcuts": "Personnaliser les raccourcis clavier",
         "recordShortcut": "Enregistrer un nouveau raccourci",
         "cancelRecording": "Annuler l'enregistrement du raccourci",
-        "resetShortcut": "Rétablir un raccourci par défaut"
+        "resetShortcut": "Rétablir le raccourci par défaut"
       }
     },
     "combos": {

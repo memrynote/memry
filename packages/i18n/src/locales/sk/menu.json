@@ -3,19 +3,19 @@
     "quit": "Ukončiť",
     "preferences": "Nastavenia…",
     "checkForUpdates": "Skontrolovať aktualizácie…",
-    "exit": "Ukončiť",
+    "services": "Služby",
     "hide": "Skryť MemryNote",
     "hideOthers": "Skryť ostatné",
-    "services": "Služby",
-    "unhide": "Zobraziť všetko"
+    "unhide": "Zobraziť všetko",
+    "exit": "Ukončiť"
   },
   "file": {
     "label": "Súbor",
     "newNote": "Nová poznámka",
-    "close": "Zatvoriť okno",
-    "closeTab": "Zavrieť kartu",
+    "openQuickly": "Rýchlo otvoriť…",
     "exportPdf": "Exportovať do PDF…",
-    "openQuickly": "Otvoriť rýchlo…"
+    "closeTab": "Zavrieť kartu",
+    "close": "Zavrieť okno"
   },
   "navigation": {
     "back": "Späť",
@@ -24,70 +24,75 @@
   "edit": {
     "label": "Upraviť",
     "undo": "Späť",
-    "redo": "Znovu",
+    "redo": "Znova",
     "cut": "Vystrihnúť",
     "copy": "Kopírovať",
     "paste": "Prilepiť",
     "selectAll": "Vybrať všetko",
     "find": "Hľadať",
     "speech": "Reč",
-    "delete": "Odstrániť",
     "pasteAndMatchStyle": "Prilepiť a prispôsobiť štýl",
+    "delete": "Odstrániť",
     "startSpeaking": "Spustiť čítanie",
-    "stopSpeaking": "Zastaviť čítanie"
+    "stopSpeaking": "Zastaviť čítanie",
+    "addToDictionary": "Pridať do slovníka",
+    "noSuggestions": "Žiadne návrhy"
   },
-  "view": {
-    "label": "Zobraziť",
-    "reload": "Obnoviť",
-    "toggleDevTools": "Prepnúť nástroje pre vývojárov",
-    "toggleFullscreen": "Prepnúť režim celej obrazovky",
-    "theme": "Motív",
-    "themeDark": "Tmavý",
-    "themeLight": "Svetlý",
-    "themeSystem": "Systémový",
-    "themeWhite": "Papier",
-    "toggleDayPanel": "Prepnúť panel dňa",
-    "toggleSidebar": "Prepnúť bočný panel",
-    "actualSize": "Skutočná veľkosť",
-    "zoomIn": "Priblížiť",
-    "zoomOut": "Oddialiť"
+  "insert": {
+    "label": "Vložiť",
+    "codeBlock": "Blok kódu",
+    "table": "Tabuľka",
+    "bulletList": "Odrážkový zoznam",
+    "numberedList": "Číslovaný zoznam",
+    "taskList": "Zoznam úloh",
+    "attachment": "Vložiť prílohu…"
   },
   "format": {
-    "body": "Text",
-    "bold": "Tučné",
-    "code": "Kód",
+    "label": "Formát",
     "heading1": "Nadpis 1",
     "heading2": "Nadpis 2",
     "heading3": "Nadpis 3",
     "heading4": "Nadpis 4",
     "heading5": "Nadpis 5",
     "heading6": "Nadpis 6",
-    "highlight": "Zvýraznenie",
+    "body": "Text",
+    "bold": "Tučné",
     "italic": "Kurzíva",
-    "label": "Formát",
+    "code": "Kód",
+    "highlight": "Zvýraznenie",
     "strikethrough": "Prečiarknuté"
   },
-  "help": {
-    "about": "O aplikácii MemryNote",
-    "documentation": "Dokumentácia",
-    "label": "Pomocník",
-    "shortcuts": "Klávesové skratky",
-    "aboutVersion": "Verzia {version}"
-  },
-  "insert": {
-    "attachment": "Vložiť prílohu…",
-    "bulletList": "Odrážkový zoznam",
-    "codeBlock": "Blok kódu",
-    "label": "Vložiť",
-    "numberedList": "Číslovaný zoznam",
-    "table": "Tabuľka",
-    "taskList": "Zoznam úloh"
+  "view": {
+    "label": "Zobraziť",
+    "reload": "Znova načítať",
+    "toggleDevTools": "Zobraziť/skryť nástroje pre vývojárov",
+    "toggleFullscreen": "Zapnúť/vypnúť režim celej obrazovky",
+    "toggleSidebar": "Zobraziť/skryť bočný panel",
+    "toggleDayPanel": "Zobraziť/skryť panel dňa",
+    "theme": "Motív",
+    "themeLight": "Svetlý",
+    "themeDark": "Tmavý",
+    "themeWhite": "Papier",
+    "themeSystem": "Systémový",
+    "actualSize": "Skutočná veľkosť",
+    "zoomIn": "Priblížiť",
+    "zoomOut": "Oddialiť"
   },
   "window": {
     "label": "Okno",
-    "close": "Zavrieť",
-    "front": "Preniesť všetko do popredia",
     "minimize": "Minimalizovať",
-    "zoom": "Zväčšiť"
+    "zoom": "Zväčšiť",
+    "front": "Preniesť všetko do popredia",
+    "close": "Zavrieť"
+  },
+  "help": {
+    "label": "Pomocník",
+    "documentation": "Dokumentácia",
+    "shortcuts": "Klávesové skratky",
+    "about": "O aplikácii MemryNote",
+    "aboutVersion": "Verzia {version}"
+  },
+  "tray": {
+    "show": "Zobraziť MemryNote"
   }
 }

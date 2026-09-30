@@ -38,7 +38,7 @@
     "provider-calendars": {
       "ics": "Abonnerte kalendere",
       "caldav": "CalDAV-kalendere",
-      "apple-eventkit": "Denne Mac-en",
+      "apple-eventkit": "Denne Macen",
       "other": "Andre kalendere"
     }
   },
@@ -111,8 +111,8 @@
       "footnote": "Du kan endre dette når som helst i Innstillinger → Kalender."
     },
     "provider-names": {
-      "ics": "abonnert kalender",
-      "caldav": "CalDAV-kalender",
+      "ics": "abonnerte kalendere",
+      "caldav": "CalDAV-kalendere",
       "apple-eventkit": "Kalender i macOS"
     }
   },
@@ -177,7 +177,7 @@
       "couldNotSaveEventTryAgain": "Kunne ikke lagre hendelsen. Prøv igjen.",
       "couldNotCreateEventTryAgain": "Kunne ikke opprette hendelsen. Prøv igjen.",
       "couldNotSaveDefaultCalendarTryAgain": "Kunne ikke lagre standardkalenderen. Prøv igjen.",
-      "failedToLoadCalendarPreferences": "Kunne ikke laste inn kalenderinnstillinger",
+      "failedToLoadCalendarPreferences": "Kunne ikke laste inn kalenderinnstillingene",
       "failedToUpdateCalendarPreferences": "Kunne ikke oppdatere kalenderinnstillingene",
       "couldNotEditThisEventTryAgain": "Kunne ikke redigere denne hendelsen. Prøv igjen.",
       "failedToDeleteEvent": "Kunne ikke slette hendelsen",
@@ -186,7 +186,7 @@
     },
     "inboxSnoozePopover": {
       "title": "Slumret innbokselement",
-      "openInInbox": "Åpne i innboks",
+      "openInInbox": "Åpne i innboksen",
       "unsnoozeNow": "Opphev slumringen nå",
       "reschedule": "Omplanlegg"
     }
@@ -257,7 +257,7 @@
     "events": "Hendelser",
     "schedule-hint": "Klikk for å angi en dato, dra for å angi en periode",
     "empty-title": "Ingenting på tidslinjen her",
-    "empty-body": "Oppgaver med startdato eller forfallsdato, og heldags- eller flerdagershendelser, vises her. Slå på oppgaver uten dato under Visning for å planlegge dem ved å dra.",
+    "empty-body": "Oppgaver med startdato eller forfallsdato, og heldags- eller flerdagshendelser, vises her. Slå på oppgaver uten dato under Visning for å planlegge dem ved å dra.",
     "status": {
       "todo": "Å gjøre",
       "in_progress": "Pågår",
@@ -352,13 +352,13 @@
   },
   "subscribedEvent": {
     "kind": "Abonnert kalender",
-    "kindAppleEventKit": "Denne Mac-en",
+    "kindAppleEventKit": "Denne Macen",
     "close": "Lukk",
     "detailsFailed": "Kunne ikke laste inn deltakerne og lenkene for denne hendelsen. Selve hendelsen er uendret.",
     "showMore": "Vis mer",
     "showLess": "Vis mindre",
     "organizer": "arrangør",
-    "you": "deg",
+    "you": "du",
     "phone": "Bli med via telefon",
     "alert": "{minutes, plural, =0 {Varsel ved starttidspunktet} one {Varsel # minutt før} other {Varsel # minutter før}}",
     "alertHours": "{hours, plural, one {Varsel # time før} other {Varsel # timer før}}",

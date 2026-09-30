@@ -219,7 +219,7 @@
     "mark-not-done": "未完了にする",
     "later-today": "今日の後ほど",
     "tomorrow": "明日",
-    "next-week-mon": "来週 · 月",
+    "next-week-mon": "来週（月）",
     "pick-date-time": "日時を選択…",
     "remove-due-date": "期限を削除",
     "subtasks-prefix": "サブタスク",
@@ -243,7 +243,7 @@
     "couldNotOpen": "ノートを開けませんでした"
   },
   "timeline": {
-    "label": "タイムライン上の予定済みの作業",
+    "label": "スケジュール済みの作業のタイムライン",
     "tasks-column": "タスク",
     "span": "{start}〜{end}",
     "due": "期限：{date}",

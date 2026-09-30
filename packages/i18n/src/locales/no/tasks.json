@@ -63,7 +63,7 @@
     "setReminder": "Angi påminnelse",
     "toast": {
       "set": "Påminnelse angitt",
-      "setFailed": "Kunne ikke angi påminnelse",
+      "setFailed": "Kunne ikke angi påminnelsen",
       "updated": "Påminnelse oppdatert",
       "updateFailed": "Kunne ikke oppdatere påminnelsen",
       "deleted": "Påminnelse slettet",
@@ -154,7 +154,7 @@
     "linkedNotes": "Relatert",
     "linkNote": "Legg til relatert element",
     "loading": "Laster inn …",
-    "searchNotes": "Søk i relaterte …",
+    "searchNotes": "Søk etter elementer …",
     "noMatchingNotes": "Ingen samsvarende elementer",
     "noNotesAvailable": "Ingen elementer tilgjengelig",
     "noLinkedNotes": "Ingen relaterte elementer ennå",
@@ -162,7 +162,7 @@
     "removeLinkFallback": "element",
     "related": "Relatert",
     "addRelatedItem": "Legg til relatert element",
-    "searchRelated": "Søk i relaterte …",
+    "searchRelated": "Søk etter elementer …",
     "noMatchingRelated": "Ingen samsvarende elementer",
     "noRelatedAvailable": "Ingen elementer tilgjengelig",
     "noRelatedItems": "Ingen relaterte elementer ennå",
@@ -337,7 +337,7 @@
       "youReAboutToDelete": "Du er i ferd med å slette ",
       "task2": "oppgave",
       "and": "og ",
-      "moreTask": "flere oppgave",
+      "moreTask": "ekstra oppgave",
       "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Denne handlingen kan angres i en kort stund etter sletting.",
       "cancel": "Avbryt",
       "delete2": "Slett ",
@@ -510,7 +510,7 @@
       "reorder": "Endre rekkefølge"
     },
     "componentsTasksDragDropMultiDragOverlay": {
-      "moreTask": "flere oppgave",
+      "moreTask": "ekstra oppgave",
       "task": "oppgave"
     },
     "componentsTasksDragDropSidebarDropZones": {
@@ -809,10 +809,10 @@
     },
     "componentsTasksTodayEmptyState": {
       "nothingScheduledForToday": "Ingenting planlagt i dag",
-      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Du har forfalte oppgaver ovenfor. Legg til noen oppgaver for i dag eller sjekk den kommende listen din.",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Du har forfalte oppgaver ovenfor. Legg til noen oppgaver for i dag, eller sjekk listen over kommende oppgaver.",
       "addTaskForToday": "Legg til oppgave for i dag",
       "allCaughtUpForToday": "Alt er unnagjort for i dag",
-      "youHaveNothingScheduledEnjoyTheClarity": "Du har ingenting planlagt. Nyt klarheten.",
+      "youHaveNothingScheduledEnjoyTheClarity": "Du har ingenting planlagt. Nyt roen.",
       "addTaskForToday2": "Legg til oppgave for i dag"
     },
     "componentsTasksUpcomingEmptyState": {
@@ -820,7 +820,7 @@
       "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Du har forfalte oppgaver ovenfor. Planlegg ved å legge til oppgaver for den kommende uken.",
       "addTask": "Legg til oppgave",
       "noUpcomingTasks": "Ingen kommende oppgaver",
-      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Oppgaver som skal forfalle i løpet av de neste 7 dagene vil vises her. Planlegg uken ved å legge til noen oppgaver.",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Oppgaver som forfaller i løpet av de neste 7 dagene, vises her. Planlegg uken ved å legge til noen oppgaver.",
       "addTask2": "Legg til oppgave"
     }
   },

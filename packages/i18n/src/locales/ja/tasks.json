@@ -188,7 +188,7 @@
     "activityActionCreated": "作成",
     "activityActionUpdated": "更新",
     "activityActionCompleted": "完了",
-    "activityActionUncompleted": "再開",
+    "activityActionUncompleted": "未完了に変更",
     "activityActionMoved": "移動",
     "activityActionDeleted": "削除",
     "activityActionSuperseded": "置き換え",
@@ -415,7 +415,7 @@
       "deleteConfirmBody": "「{title}」は完全に削除されます。この操作は元に戻すことができません。"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
-      "allSubtasksComplete": "すべてのサブタスクが完了しました。",
+      "allSubtasksComplete": "すべてのサブタスクが完了しました",
       "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "親タスクも完了にしますか？",
       "keepTaskOpen": "未完了のままにする",
       "completeTask": "タスクを完了 ✓",
@@ -781,7 +781,7 @@
       "allTitle": "まだタスクはありません",
       "allDescription": "最初のタスクを作成して始めましょう",
       "todayTitle": "今日が期限のタスクはありません",
-      "todayDescription": "すべて片づきました！",
+      "todayDescription": "すべて片づきました",
       "completedTitle": "完了したタスクはありません",
       "completedDescription": "完了したタスクはここに表示されます",
       "projectTitle": "このプロジェクトにタスクはありません",
@@ -834,7 +834,7 @@
       "subtaskDeleted": "サブタスクを削除しました",
       "taskCompleted": "タスクを完了しました",
       "allSubtasksCompleteTaskMarkedAsDone": "🎉 すべてのサブタスクが完了しました。タスクを完了にしました。",
-      "taskReopened": "タスクを再開しました",
+      "taskReopened": "タスクを未完了に戻しました",
       "taskKeptOpen": "タスクを未完了のままにしました",
       "taskMarkedAsDone": "🎉 タスクを完了にしました"
     },
@@ -943,7 +943,7 @@
       "unpinError": "ノートを概要から外せませんでした"
     },
     "capture": {
-      "placeholder": "{name} に追加 — タスクを入力、ノートを書き留める、リンクを貼り付ける…",
+      "placeholder": "{name} に追加：タスクやノートを入力、またはリンクを貼り付け…",
       "attach": "ファイルを添付",
       "linkAdded": "リンクをプロジェクトに追加しました",
       "linkError": "リンクを保存できませんでした",

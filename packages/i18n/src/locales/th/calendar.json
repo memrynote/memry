@@ -3,7 +3,13 @@
     "day": "วัน",
     "week": "สัปดาห์",
     "month": "เดือน",
-    "year": "ปี"
+    "monthGridLabel": "ตารางเดือน",
+    "year": "ปี",
+    "timeline": "ไทม์ไลน์"
+  },
+  "undo": {
+    "moveEvent": "ย้ายกิจกรรม",
+    "moveTask": "เปลี่ยนกำหนดงาน"
   },
   "toolbar": {
     "create-event": "สร้างกิจกรรม",
@@ -13,47 +19,61 @@
     "next-month": "เดือนถัดไป",
     "today": "วันนี้"
   },
+  "search": {
+    "open": "ค้นหาปฏิทิน",
+    "close": "ปิดการค้นหา",
+    "placeholder": "ค้นหากิจกรรม งาน การเตือน…",
+    "no-results": "ไม่พบรายการที่ตรงกัน"
+  },
   "filter": {
     "filter-calendars": "กรองปฏิทิน",
     "sources": "แหล่งที่มา",
-    "memry-items": "memrynote รายการ",
+    "memry-items": "รายการของ memrynote",
     "imported-calendars": "ปฏิทินที่นำเข้า",
     "event-types": "ประเภทกิจกรรม",
     "google-calendars": "ปฏิทิน Google",
-    "refresh-google-calendars": "รีเฟรชปฏิทิน Google"
+    "refresh-google-calendars": "รีเฟรชปฏิทิน Google",
+    "not-syncing": "ไม่ได้ซิงค์ · เลือกเพื่อเปิดใช้",
+    "enable-source-failed": "เปิดใช้ปฏิทินนั้นไม่สำเร็จ",
+    "provider-calendars": {
+      "ics": "ปฏิทินที่สมัครรับ",
+      "caldav": "ปฏิทิน CalDAV",
+      "apple-eventkit": "Mac เครื่องนี้",
+      "other": "ปฏิทินอื่น"
+    }
   },
   "visual-type": {
     "event": "กิจกรรม",
     "imported-event": "กิจกรรมที่นำเข้า",
+    "note": "โน้ต",
+    "note-date": "การเตือนตามวันที่",
     "task": "งาน",
     "reminder": "การเตือน",
-    "snooze": "เลื่อน",
-    "note": "โน้ต",
-    "note-date": "การเตือนตามวันที่"
+    "snooze": "เลื่อน"
   },
   "state": {
     "loading-calendar": "กำลังโหลดปฏิทิน…",
-    "loading-calendars": "กำลังโหลดปฏิทินหลายรายการ…",
+    "loading-calendars": "กำลังโหลดปฏิทิน…",
     "preparing": "กำลังเตรียม…"
   },
   "empty": {
     "no-imported-calendars-yet": "ยังไม่มีปฏิทินที่นำเข้า",
-    "no-events": "ไม่มีเหตุการณ์"
+    "no-events": "ไม่มีกิจกรรม"
   },
   "time": {
-    "all-day": "ตลอดวัน",
-    "all-day-lower": "ตลอดวัน",
+    "all-day": "ทั้งวัน",
+    "all-day-lower": "ทั้งวัน",
     "pick-a-date": "เลือกวันที่",
     "new-event": "กิจกรรมใหม่",
-    "more-events": "{count, plural, one {# กิจกรรมเพิ่มเติม} other {# กิจกรรมเพิ่มเติม}}"
+    "more-events": "{count, plural, other {อีก # รายการ}}"
   },
   "form": {
     "create-calendar-event": "สร้างกิจกรรมปฏิทิน",
     "edit-calendar-event": "แก้ไขกิจกรรมปฏิทิน",
     "quick-create-description": "กรอกชื่อเรื่องและบันทึกเพื่อสร้างกิจกรรมในช่วงเวลาที่เลือก",
-    "event-editor-description": "อัปเดตชื่อเรื่อง สถานที่ วันที่ เวลา และบันทึกสำหรับกิจกรรมนี้",
+    "event-editor-description": "อัปเดตชื่อ สถานที่ วันที่ เวลา และโน้ตของกิจกรรมนี้",
     "new-event-placeholder": "กิจกรรมใหม่",
-    "notes-url-placeholder": "เพิ่มบันทึกหรือ URL",
+    "notes-url-placeholder": "เพิ่มโน้ตหรือ URL",
     "start": "เริ่ม",
     "end": "สิ้นสุด",
     "google-calendar": "ปฏิทิน Google",
@@ -61,44 +81,85 @@
     "use-default-calendar": "ใช้ปฏิทินเริ่มต้น",
     "use-default-calendar-with-name": "ใช้ค่าเริ่มต้น ({calendar})",
     "use-memry-calendar-default": "ใช้ปฏิทิน memrynote (ค่าเริ่มต้น)",
-    "primary-suffix": "หลัก"
+    "primary-suffix": "หลัก",
+    "project": "โปรเจกต์",
+    "no-project": "ไม่มีโปรเจกต์",
+    "remove-from-project": "นำออกจาก {project}",
+    "project-update-failed": "อัปเดตโปรเจกต์ของกิจกรรมไม่สำเร็จ",
+    "color": "สี",
+    "default-color": "สีเริ่มต้น"
   },
   "delete-dialog": {
-    "title": "ลบกิจกรรม?",
-    "local-description": "\"{title}\" จะถูกลบอย่างถาวร การกระทำนี้ไม่สามารถย้อนกลับได้",
-    "google-bound-description": "\"{title}\" จะถูกลบออกจาก memrynote และ Google Calendar การดำเนินการนี้ไม่สามารถย้อนกลับได้  ",
-    "context-menu-delete-label": "  \nลบกิจกรรม  ",
-    "context-menu-add-to-project": "เพิ่มไปยังโครงการ"
+    "title": "ลบกิจกรรมหรือไม่?",
+    "local-description": "“{title}” จะถูกลบอย่างถาวร การกระทำนี้เลิกทำไม่ได้",
+    "google-bound-description": "“{title}” จะถูกนำออกจาก memrynote และ Google Calendar การกระทำนี้เลิกทำไม่ได้",
+    "context-menu-delete-label": "ลบกิจกรรม",
+    "context-menu-add-to-project": "เพิ่มไปยังโปรเจกต์"
+  },
+  "agent-access-dialog": {
+    "aria": "เลือกว่าจะให้ AI อ่านกิจกรรมใน Google Calendar ได้หรือไม่",
+    "title": "ให้ AI อ่านกิจกรรมใน Google Calendar หรือไม่?",
+    "body": "กิจกรรม Google จะยังแสดงใน memrynote ไม่ว่าจะเลือกแบบใด ตัวเลือกนี้กำหนดเพียงว่าเอเจนต์ AI จะอ่านกิจกรรมเหล่านั้นได้หรือไม่เมื่อถามถึงตารางเวลา",
+    "footnote": "เปลี่ยนตัวเลือกนี้ได้ทุกเมื่อใน การตั้งค่า → การรวมระบบ → Google Calendar",
+    "allow": "อนุญาต",
+    "deny": "ไม่อนุญาต",
+    "save-error": "บันทึกตัวเลือกไม่สำเร็จ",
+    "provider": {
+      "aria": "เลือกว่าจะให้ AI อ่านกิจกรรมจาก {provider} ได้หรือไม่",
+      "title": "ให้ AI อ่านกิจกรรมจาก {provider} หรือไม่?",
+      "body": "กิจกรรมเหล่านี้จะยังแสดงใน memrynote ไม่ว่าจะเลือกแบบใด ตัวเลือกนี้กำหนดเพียงว่าเอเจนต์ AI จะอ่านกิจกรรมเหล่านั้นได้หรือไม่เมื่อถามถึงตารางเวลา บริการปฏิทินแต่ละแห่งมีตัวเลือกแยกกัน",
+      "footnote": "เปลี่ยนตัวเลือกนี้ได้ทุกเมื่อใน การตั้งค่า → ปฏิทิน"
+    },
+    "provider-names": {
+      "ics": "ปฏิทินที่สมัครรับ",
+      "caldav": "ปฏิทิน CalDAV",
+      "apple-eventkit": "ปฏิทิน macOS"
+    }
   },
   "promote-dialog": {
-    "aria": "  \nแก้ไขกิจกรรมในปฏิทินภายนอก  ",
-    "title": "  \nแก้ไขกิจกรรมนี้ใน memrynote?  ",
-    "body": "  \nการแก้ไขกิจกรรมนี้จะสร้างสำเนาที่เชื่อมโยงใน memrynote เพื่อให้การเปลี่ยนแปลงซิงค์ทั้งสองทาง ดำเนินการต่อหรือไม่?  ",
-    "do-not-ask-again": "  \nไม่ต้องถามอีก  ",
-    "confirm-label": "  \nแก้ไขใน memrynote  ",
-    "agent-notice": "เอเจนต์ AI อ่านสำเนานี้ได้ แม้ว่าการเข้าถึง Google Calendar ของ AI จะปิดอยู่ กิจกรรม Google ต้นฉบับของคุณยังคงถูกซ่อนจากเอเจนต์"
+    "aria": "แก้ไขกิจกรรมในปฏิทินภายนอก",
+    "title": "แก้ไขกิจกรรมนี้ใน memrynote หรือไม่?",
+    "body": "การแก้ไขกิจกรรมนี้จะสร้างสำเนาที่ลิงก์ไว้ใน memrynote เพื่อให้การเปลี่ยนแปลงซิงค์ทั้งสองทาง ดำเนินการต่อหรือไม่?",
+    "do-not-ask-again": "ไม่ต้องถามอีก",
+    "confirm-label": "แก้ไขใน memrynote",
+    "agent-notice": "เอเจนต์ AI อ่านสำเนานี้ได้ แม้ว่าการเข้าถึง Google Calendar ของ AI จะปิดอยู่ ส่วนกิจกรรม Google ต้นฉบับยังคงซ่อนจากเอเจนต์"
   },
   "onboarding-dialog": {
-    "aria": "  \nเลือกปฏิทิน Google เริ่มต้นของคุณ  ",
-    "title": "  \nกิจกรรม memrynote ใหม่ควรไปที่ปฏิทินใด?  ",
-    "body": "  \nเลือกปฏิทิน Google ที่ memrynote ควรใช้เป็นค่าเริ่มต้น คุณยังสามารถแก้ไขตามแต่ละเหตุการณ์ได้  ",
+    "aria": "เลือกปฏิทิน Google เริ่มต้น",
+    "title": "กิจกรรมใหม่ใน memrynote ควรไปที่ปฏิทินใด?",
+    "body": "เลือกปฏิทิน Google ที่ memrynote จะใช้เป็นค่าเริ่มต้น และยังเปลี่ยนได้สำหรับแต่ละกิจกรรม",
     "default-calendar-label": "ใช้ปฏิทินที่จัดการโดย memrynote",
     "skip": "ข้าม",
-    "use-this-calendar": "  \nใช้ปฏิทินนี้  "
+    "use-this-calendar": "ใช้ปฏิทินนี้"
+  },
+  "connect-prompt": {
+    "pill": "เชื่อมต่อ Google",
+    "aria": "เชื่อมต่อ Google Calendar",
+    "title": "เชื่อมต่อกับ Google Calendar ให้เสร็จสิ้น",
+    "body": "เชื่อมต่อบัญชี Google เพื่อใช้ปฏิทินได้มากขึ้น:",
+    "bullets": {
+      "events": "ดูกิจกรรม Google ควบคู่กับโน้ตและงาน",
+      "sync": "สร้างและแก้ไขกิจกรรม ซิงค์ทั้งสองทาง",
+      "schedule": "จัดกำหนดการงานและโน้ตในปฏิทิน"
+    },
+    "continue": "ดำเนินการต่อด้วย Google",
+    "dismiss": "ปิด",
+    "error": "เชื่อมต่อ Google Calendar ไม่สำเร็จ ลองอีกครั้ง"
   },
   "metadata": {
-    "attendees": "  \nผู้เข้าร่วม  ",
-    "attendees-count": "  \nผู้เข้าร่วม ({count})  ",
+    "attendees": "ผู้เข้าร่วม",
+    "attendees-count": "ผู้เข้าร่วม ({count})",
     "reminders": "การเตือน",
-    "default-reminders": "  \nการแจ้งเตือนเริ่มต้น  ",
-    "visibility": "  \nการมองเห็น:  ",
-    "optional": "  \nไม่บังคับ  ",
-    "join-meeting": "  \nเข้าร่วมการประชุม  ",
+    "default-reminders": "การเตือนเริ่มต้น",
+    "visibility": "การมองเห็น:",
+    "optional": "ไม่บังคับ",
+    "join-meeting": "เข้าร่วมการประชุม",
+    "video-call": "วิดีโอคอล",
     "response": {
-      "accepted": "  \nยอมรับ  ",
-      "declined": "  \nปฏิเสธ",
-      "tentative": "ชั่วคราว",
-      "needs-action": "รอดำเนินการ"
+      "accepted": "ตอบรับแล้ว",
+      "declined": "ปฏิเสธแล้ว",
+      "tentative": "อาจจะ",
+      "needs-action": "รอการตอบกลับ"
     },
     "visibility-value": {
       "private": "ส่วนตัว",
@@ -113,86 +174,213 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "ไม่สามารถบันทึกเหตุการณ์ได้ ลองอีกครั้ง",
-      "couldNotCreateEventTryAgain": "ไม่สามารถสร้างเหตุการณ์ได้ ลองอีกครั้ง",
-      "couldNotSaveDefaultCalendarTryAgain": "ไม่สามารถบันทึกปฏิทินเริ่มต้นได้ ลองอีกครั้ง",
-      "failedToLoadCalendarPreferences": "การโหลดการตั้งค่าปฏิทินล้มเหลว",
-      "failedToUpdateCalendarPreferences": "การอัปเดตการตั้งค่าปฏิทินล้มเหลว",
-      "couldNotEditThisEventTryAgain": "ไม่สามารถแก้ไขเหตุการณ์นี้ได้ ลองอีกครั้ง",
-      "failedToDeleteEvent": "การลบเหตุการณ์ล้มเหลว",
-      "couldNotUnsnoozeInboxItem": "ไม่สามารถเลิกเลื่อนแจ้งเตือนได้",
-      "couldNotRescheduleInboxItem": "ไม่สามารถกำหนดเวลาซ้ำได้"
+      "couldNotSaveEventTryAgain": "บันทึกกิจกรรมไม่สำเร็จ ลองอีกครั้ง",
+      "couldNotCreateEventTryAgain": "สร้างกิจกรรมไม่สำเร็จ ลองอีกครั้ง",
+      "couldNotSaveDefaultCalendarTryAgain": "บันทึกปฏิทินเริ่มต้นไม่สำเร็จ ลองอีกครั้ง",
+      "failedToLoadCalendarPreferences": "โหลดการตั้งค่าปฏิทินไม่สำเร็จ",
+      "failedToUpdateCalendarPreferences": "อัปเดตการตั้งค่าปฏิทินไม่สำเร็จ",
+      "couldNotEditThisEventTryAgain": "แก้ไขกิจกรรมนี้ไม่สำเร็จ ลองอีกครั้ง",
+      "failedToDeleteEvent": "ลบกิจกรรมไม่สำเร็จ",
+      "couldNotUnsnoozeInboxItem": "เลิกเลื่อนไม่สำเร็จ",
+      "couldNotRescheduleInboxItem": "เปลี่ยนกำหนดไม่สำเร็จ"
     },
     "inboxSnoozePopover": {
-      "title": "รายการในกล่องจดหมายที่ถูกเลื่อน",
-      "openInInbox": "เปิดในกล่องจดหมาย",
+      "title": "รายการในกล่องขาเข้าที่เลื่อนไว้",
+      "openInInbox": "เปิดในกล่องขาเข้า",
       "unsnoozeNow": "เลิกเลื่อนตอนนี้",
-      "reschedule": "กำหนดเวลาซ้ำ"
+      "reschedule": "เปลี่ยนกำหนด"
     }
+  },
+  "chip": {
+    "complete-task": "ทำเครื่องหมายว่า “{title}” เสร็จแล้ว",
+    "task-completed": "งานเสร็จแล้ว",
+    "could-not-complete": "ทำเครื่องหมายว่างานเสร็จแล้วไม่สำเร็จ",
+    "duration-minutes": "{minutes} นาที",
+    "duration-hours": "{hours} ชม.",
+    "duration-hours-minutes": "{hours} ชม. {minutes} นาที"
+  },
+  "event-card": {
+    "kind": "กิจกรรม",
+    "close": "ปิด"
   },
   "task-popover": {
     "title-fallback": "รายละเอียดงาน",
+    "kind": "งาน",
+    "open": "เปิด",
+    "complete": "ทำเสร็จ",
+    "more-actions": "การดำเนินการเพิ่มเติม",
+    "move": "ย้ายไป",
+    "later": "ภายหลัง",
+    "next-week": "สัปดาห์หน้า",
     "open-task": "เปิดงาน",
-    "source-note": "บันทึกต้นทาง",
-    "reschedule": "กำหนดเวลาซ้ำ",
-    "mark-done": "ทำเครื่องหมายว่าสำเร็จแล้ว",
+    "source-note": "โน้ตต้นทาง",
+    "reschedule": "เปลี่ยนกำหนด",
+    "mark-done": "ทำเครื่องหมายว่าเสร็จแล้ว",
     "mark-not-done": "ทำเครื่องหมายว่ายังไม่เสร็จ",
     "later-today": "ภายหลังวันนี้",
     "tomorrow": "พรุ่งนี้",
     "next-week-mon": "สัปดาห์หน้า · จันทร์",
-    "pick-date-time": "เลือกวันที่ & เวลา…",
+    "pick-date-time": "เลือกวันที่และเวลา…",
     "remove-due-date": "ลบวันครบกำหนด",
     "subtasks-prefix": "งานย่อย",
-    "subtasks-counter": "ทำ {done} ของ {total} เสร็จแล้ว",
+    "subtasks-counter": "เสร็จแล้ว {done} จาก {total}",
     "repeats": "ทำซ้ำ",
     "repeats-daily": "ทำซ้ำทุกวัน",
     "repeats-weekly": "ทำซ้ำทุกสัปดาห์",
     "repeats-monthly": "ทำซ้ำทุกเดือน",
     "repeats-yearly": "ทำซ้ำทุกปี",
     "errors": {
-      "could-not-save": "ไม่สามารถบันทึกงานได้",
-      "could-not-reschedule": "ไม่สามารถกำหนดเวลางานใหม่ได้",
-      "could-not-remove-due-date": "ไม่สามารถลบวันครบกำหนดได้",
-      "could-not-open-note": "ไม่สามารถเปิดบันทึกได้"
+      "could-not-save": "บันทึกงานไม่สำเร็จ",
+      "could-not-reschedule": "เปลี่ยนกำหนดงานไม่สำเร็จ",
+      "could-not-remove-due-date": "ลบวันครบกำหนดไม่สำเร็จ",
+      "could-not-open-note": "เปิดโน้ตไม่สำเร็จ"
     }
   },
-  "connect-prompt": {
-    "aria": "เชื่อมต่อ Google Calendar",
-    "body": "เชื่อมต่อบัญชี Google ของคุณเพื่อทำสิ่งต่างๆ กับปฏิทินได้มากขึ้น:",
-    "bullets": {
-      "events": "ดูกิจกรรม Google ควบคู่กับโน้ตและงาน",
-      "schedule": "จัดกำหนดการงานและโน้ตในปฏิทินของคุณ",
-      "sync": "สร้างและแก้ไขกิจกรรม ซิงค์ทั้งสองทาง"
-    },
-    "continue": "ดำเนินการต่อด้วย Google",
-    "dismiss": "ปิด",
-    "error": "ไม่สามารถเชื่อมต่อ Google Calendar ได้ ลองอีกครั้ง",
-    "pill": "เชื่อมต่อ Google",
-    "title": "เชื่อมต่อกับ Google Calendar ให้เสร็จสิ้น"
-  },
   "notePopover": {
-    "couldNotOpen": "ไม่สามารถเปิดโน้ตได้",
     "kind": "โน้ต",
     "kindDateReminder": "การเตือนตามวันที่",
-    "open": "เปิดโน้ต"
+    "open": "เปิดโน้ต",
+    "couldNotOpen": "เปิดโน้ตไม่สำเร็จ"
   },
-  "search": {
-    "close": "ปิดการค้นหา",
-    "no-results": "ไม่พบรายการที่ตรงกัน",
-    "open": "ค้นหาปฏิทิน",
-    "placeholder": "ค้นหากิจกรรม งาน การเตือน…"
+  "timeline": {
+    "label": "งานที่กำหนดไว้บนไทม์ไลน์",
+    "tasks-column": "งาน",
+    "span": "{start} – {end}",
+    "due": "ครบกำหนด {date}",
+    "starts": "เริ่ม {date}",
+    "starts-short": "{date} →",
+    "no-date": "ไม่มีวันที่",
+    "today": "วันนี้",
+    "overdue": "เลยกำหนด",
+    "untitled": "ไม่มีชื่อ",
+    "days": "{count, plural, other {# วัน}}",
+    "events": "กิจกรรม",
+    "schedule-hint": "คลิกเพื่อตั้งวันที่ ลากเพื่อตั้งช่วงวันที่",
+    "empty-title": "ไม่มีรายการบนไทม์ไลน์ในช่วงนี้",
+    "empty-body": "งานที่มีวันที่เริ่มหรือวันครบกำหนด รวมถึงกิจกรรมทั้งวันหรือหลายวันจะแสดงที่นี่ เปิด “งานที่ไม่มีวันที่” ในเมนูการแสดงผลเพื่อกำหนดเวลาด้วยการลาก",
+    "status": {
+      "todo": "ต้องทำ",
+      "in_progress": "กำลังทำ",
+      "done": "เสร็จแล้ว"
+    },
+    "priority": {
+      "urgent": "ด่วน",
+      "high": "สูง",
+      "medium": "ปานกลาง",
+      "low": "ต่ำ",
+      "none": "ไม่มีลำดับความสำคัญ"
+    },
+    "zoom": {
+      "label": "ซูม",
+      "weeks": "สัปดาห์",
+      "months": "เดือน",
+      "quarters": "ไตรมาส"
+    },
+    "group-by": {
+      "project": "โปรเจกต์",
+      "status": "สถานะ",
+      "priority": "ลำดับความสำคัญ",
+      "none": "ไม่จัดกลุ่ม"
+    },
+    "group-by-label": "ตาม {group}",
+    "order-by": {
+      "start": "วันที่เริ่ม",
+      "due": "วันครบกำหนด",
+      "title": "หัวข้อ"
+    },
+    "display": {
+      "button": "การแสดงผล",
+      "group-by": "จัดกลุ่มตาม",
+      "order-by": "เรียงตาม",
+      "show": "แสดง",
+      "show-events": "กิจกรรม",
+      "show-undated": "งานที่ไม่มีวันที่",
+      "show-completed": "งานที่เสร็จแล้ว",
+      "show-subtasks": "งานย่อย"
+    },
+    "bar": {
+      "summary": "{tasks, plural, other {งาน # รายการ}} · {events, plural, other {กิจกรรม # รายการ}}",
+      "open": "เปิด",
+      "move": "ย้าย",
+      "resize": "ปรับขนาด",
+      "actions": "การดำเนินการ",
+      "select": "เลือก",
+      "today": "วันนี้"
+    },
+    "actions": {
+      "search": "ค้นหาการดำเนินการ…",
+      "search-projects": "ค้นหาโปรเจกต์…",
+      "empty": "ไม่มีการดำเนินการที่ตรงกัน",
+      "no-projects": "ไม่มีโปรเจกต์ที่ตรงกัน",
+      "open": "เปิดงาน",
+      "open-in-tasks": "เปิดในหน้างาน",
+      "schedule": "กำหนดเวลา",
+      "set-start": "ตั้งวันที่เริ่ม",
+      "set-due": "ตั้งวันครบกำหนด",
+      "move-later": "ขยับไปหลัง 1 สัปดาห์",
+      "move-earlier": "ขยับมาก่อน 1 สัปดาห์",
+      "clear-dates": "ล้างวันที่",
+      "clear-start": "ล้างวันที่เริ่ม",
+      "clear-due": "ล้างวันครบกำหนด",
+      "task": "งาน",
+      "complete": "ทำเครื่องหมายว่าเสร็จแล้ว",
+      "uncomplete": "ทำเครื่องหมายว่ายังไม่เสร็จ",
+      "change-project": "เปลี่ยนโปรเจกต์",
+      "page": {
+        "root": "การดำเนินการ",
+        "start": "วันที่เริ่ม",
+        "due": "วันครบกำหนด",
+        "project": "โปรเจกต์"
+      }
+    },
+    "undo": {
+      "reschedule": "เปลี่ยนกำหนด “{title}”"
+    }
   },
-  "undo": {
-    "moveEvent": "ย้ายกิจกรรม",
-    "moveTask": "เลื่อนกำหนดงาน"
+  "calendar-color": {
+    "tomato": "สีมะเขือเทศ",
+    "flamingo": "สีฟลามิงโก",
+    "tangerine": "สีส้มเขียวหวาน",
+    "banana": "สีกล้วย",
+    "sage": "สีเสจ",
+    "basil": "สีโหระพา",
+    "peacock": "สีนกยูง",
+    "blueberry": "สีบลูเบอร์รี่",
+    "lavender": "สีลาเวนเดอร์",
+    "grape": "สีองุ่น",
+    "graphite": "สีกราไฟต์"
   },
-  "agent-access-dialog": {
-    "allow": "อนุญาต",
-    "aria": "เลือกว่าจะให้ AI อ่านกิจกรรมใน Google Calendar ของคุณได้หรือไม่",
-    "body": "คุณจะยังเห็นกิจกรรม Google ใน memrynote ไม่ว่าจะเลือกแบบใด ตัวเลือกนี้กำหนดเพียงว่าเอเจนต์ AI จะอ่านกิจกรรมเหล่านั้นได้หรือไม่เมื่อคุณถามถึงตารางเวลาของคุณ",
-    "deny": "ไม่อนุญาต",
-    "footnote": "คุณเปลี่ยนตัวเลือกนี้ได้ทุกเมื่อใน การตั้งค่า → การรวมระบบ → Google Calendar",
-    "save-error": "บันทึกตัวเลือกของคุณไม่สำเร็จ",
-    "title": "ให้ AI อ่านกิจกรรมใน Google Calendar ของคุณหรือไม่?"
+  "subscribedEvent": {
+    "kind": "ปฏิทินที่สมัครรับ",
+    "kindAppleEventKit": "Mac เครื่องนี้",
+    "close": "ปิด",
+    "detailsFailed": "โหลดผู้เข้าร่วมและลิงก์ของกิจกรรมนี้ไม่สำเร็จ ตัวกิจกรรมไม่มีการเปลี่ยนแปลง",
+    "showMore": "แสดงเพิ่มเติม",
+    "showLess": "แสดงน้อยลง",
+    "organizer": "ผู้จัด",
+    "you": "คุณ",
+    "phone": "เข้าร่วมทางโทรศัพท์",
+    "alert": "{minutes, plural, =0 {เตือนเมื่อถึงเวลาเริ่ม} other {เตือนก่อน # นาที}}",
+    "alertHours": "{hours, plural, other {เตือนก่อน # ชั่วโมง}}",
+    "alertDays": "{days, plural, other {เตือนก่อน # วัน}}",
+    "recurrence": {
+      "daily": "{count, plural, =1 {ทำซ้ำทุกวัน} other {ทำซ้ำทุก # วัน}}",
+      "weekly": "{count, plural, =1 {ทำซ้ำทุกสัปดาห์} other {ทำซ้ำทุก # สัปดาห์}}",
+      "weeklyOn": "{count, plural, =1 {ทำซ้ำทุกสัปดาห์ใน {days}} other {ทำซ้ำทุก # สัปดาห์ใน {days}}}",
+      "monthly": "{count, plural, =1 {ทำซ้ำทุกเดือน} other {ทำซ้ำทุก # เดือน}}",
+      "yearly": "{count, plural, =1 {ทำซ้ำทุกปี} other {ทำซ้ำทุก # ปี}}",
+      "other": "ทำซ้ำ"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "ปฏิทินที่สมัครรับ"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

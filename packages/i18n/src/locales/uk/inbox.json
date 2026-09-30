@@ -85,7 +85,7 @@
   "loading": {
     "inbox": "Завантаження вхідних…",
     "failed": "Не вдалося завантажити вхідні",
-    "tryAgain": "Спробуйте ще раз",
+    "tryAgain": "Спробувати ще раз",
     "capturingImage": "Збереження зображення…",
     "dropImageTitle": "Відпустіть зображення, щоб зберегти",
     "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
@@ -264,7 +264,7 @@
   "reminder": {
     "dataUnavailable": "Дані нагадування недоступні.",
     "triggered": "Нагадування спрацювало",
-    "noteLabel": "Нотатка нагадування",
+    "noteLabel": "Примітка до нагадування",
     "source": "Джерело",
     "journalTitle": "Щоденник — {date}",
     "noteFallback": "Нотатка",
@@ -345,7 +345,7 @@
     "now": "зараз",
     "timeAgoMinutes": "{count} хв тому",
     "timeAgoHours": "{count} год тому",
-    "timeAgoDays": "{count} дн тому"
+    "timeAgoDays": "{count} дн. тому"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
@@ -424,7 +424,7 @@
     "componentsInboxInboxTypeDistribution": {
       "noItemTypesToDisplay": "Немає типів елементів для відображення",
       "itemTypes": "Типи елементів",
-      "distributionOfContentFormats": "Розподіл форматів контенту"
+      "distributionOfContentFormats": "Розподіл форматів вмісту"
     },
     "componentsInboxDetailContentSection": {
       "x": "x "
@@ -434,7 +434,7 @@
     },
     "componentsInboxDetailTweetCard": {
       "tweetUnavailable": "Твіт недоступний",
-      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Цей твіт міг бути видалений або належати приватному акаунту.",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Можливо, цей твіт видалено або він належить приватному обліковому запису.",
       "openOnXCom": "Відкрити на x.com",
       "views": "переглядів",
       "xCom": "x.com",
@@ -488,7 +488,7 @@
       "editReminder": "Редагувати нагадування",
       "deleteReminder": "Видалити нагадування",
       "save": "Зберегти",
-      "setReminder": "Установити нагадування",
+      "setReminder": "Встановити нагадування",
       "setting": "Встановлення…"
     },
     "componentsSnoozeSnoozePicker": {

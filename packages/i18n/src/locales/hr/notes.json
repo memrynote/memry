@@ -1,4 +1,12 @@
 {
+  "wikiLinkCreateDialog": {
+    "title": "Stvoriti bilješku?",
+    "body": "Nema bilješke s naslovom „{title}”. Stvoriti je?",
+    "create": "Stvori"
+  },
+  "wikiLinkPreview": {
+    "notFound": "Nije pronađeno – kliknite da biste stvorili „{title}”"
+  },
   "page": {
     "empty": {
       "title": "Nije odabrana nijedna bilješka",
@@ -8,116 +16,221 @@
       "title": "Učitavanje bilješke nije uspjelo"
     },
     "toast": {
-      "cannotSaveDeleted": "Nije moguće spremiti - bilješka je izbrisana",
-      "cannotRenameDeleted": "Nije moguće preimenovati - bilješka je izbrisana",
+      "cannotSaveDeleted": "Nije moguće spremiti – bilješka je izbrisana",
+      "cannotRenameDeleted": "Nije moguće preimenovati – bilješka je izbrisana",
       "createLinkedFailed": "Stvaranje povezane bilješke nije uspjelo",
       "openLinkedFailed": "Otvaranje povezane stavke nije uspjelo",
-      "localOnly": "Napomena postavljena samo na lokalno",
-      "willSync": "Napomena će se sinkronizirati s oblakom",
+      "fileNotFound": "Datoteka nije pronađena: {target}",
+      "localOnly": "Bilješka se čuva samo lokalno",
+      "willSync": "Bilješka će se sinkronizirati s oblakom",
       "renameFailed": "Preimenovanje bilješke nije uspjelo",
-      "toggleLocalOnlyFailed": "Nije uspjelo prebacivanje samo lokalno",
+      "titleRequired": "Bilješka mora imati naslov",
+      "toggleLocalOnlyFailed": "Promjena postavke „Samo lokalno” nije uspjela",
       "toggleFullWidthFailed": "Promjena pune širine nije uspjela",
-      "copyPathFailed": "Kopiranje puta nije uspjelo",
-      "deleteFailed": "Brisanje bilješke nije uspjelo",
-      "moveFailed": "Premještanje bilješke nije uspjelo",
-      "moved": "Bilješka je premještena",
+      "pathCopied": "Putanja kopirana",
+      "copyPathFailed": "Kopiranje putanje nije uspjelo",
+      "revealFailed": "Prikazivanje bilješke nije uspjelo",
       "openExternalFailed": "Otvaranje bilješke nije uspjelo",
-      "pathCopied": "Put je kopiran",
-      "revealFailed": "Otkrivanje bilješke nije uspjelo"
+      "moved": "Bilješka premještena",
+      "moveFailed": "Premještanje bilješke nije uspjelo",
+      "deleteFailed": "Brisanje bilješke nije uspjelo"
     },
-    "deleteDialogTitle": "{count, plural, one {Izbriši bilješku} other {Izbrišite bilješke #}}",
-    "deleteConfirm": {
-      "cancel": "Odustani",
-      "confirm": "Izbriši",
-      "deleting": "Brisanje...",
-      "description": "Jeste li sigurni da želite izbrisati „{title}”? Ova se radnja ne može poništiti.",
-      "title": "Izbriši bilješku"
-    },
+    "deleteDialogTitle": "{count, plural, =1 {Izbriši bilješku} one {Izbriši # bilješku} few {Izbriši # bilješke} other {Izbriši # bilješki}}",
     "itemsCount": "{count, plural, one {# stavka} few {# stavke} other {# stavki}}",
     "itemsCountFiltered": "{shown} od {total, plural, one {# stavke} few {# stavke} other {# stavki}}",
-    "tagFilterLabel": "oznaka = {tag}"
+    "tagFilterLabel": "oznaka = {tag}",
+    "deleteConfirm": {
+      "title": "Izbriši bilješku",
+      "description": "Jeste li sigurni da želite izbrisati „{title}”? Ova se radnja ne može poništiti.",
+      "cancel": "Odustani",
+      "confirm": "Izbriši",
+      "deleting": "Brisanje…"
+    },
+    "largeFile": {
+      "title": "Datoteka je prevelika da bi se otvorila kao bilješka",
+      "badge": "Samo za čitanje · nije sinkronizirano",
+      "reason": {
+        "fileBytes": "Datoteka ima {size}. Bilješke se mogu uređivati do {limit}.",
+        "blockBytes": "Sadrži {size} teksta bez ijednog praznog retka. Bilješke se mogu uređivati do {limit} po bloku."
+      },
+      "explanation": "Uređivanje bi zahtijevalo raščlambu cijele datoteke odjednom, što bi zamrznulo aplikaciju. Datoteka na disku ostaje netaknuta.",
+      "viewer": {
+        "preparing": "Priprema datoteke od {size} za čitanje…",
+        "preparingHint": "Indeksiranje redaka da bi se datoteka mogla pregledavati bez učitavanja cijele odjednom.",
+        "lines": "{count, plural, one {# redak} few {# retka} other {# redaka}}",
+        "empty": "Datoteka je prazna.",
+        "failed": "Datoteku nije moguće pripremiti za čitanje.",
+        "missing": "Datoteka više nije na disku.",
+        "lineTruncated": "dugi redak skraćen ovdje",
+        "showRestOfLine": "Prikaži ostatak retka"
+      },
+      "tooLarge": {
+        "title": "Datoteka je prevelika za otvaranje",
+        "reason": "Datoteka ima {size}. Memry može prikazati datoteke do {limit}.",
+        "explanation": "Datoteka na disku ostaje netaknuta. Otvorite je u aplikaciji namijenjenoj ovako velikim datotekama."
+      },
+      "find": {
+        "searching": "Dosad {count}…",
+        "limited": "{index}/{shown} od {total}"
+      }
+    }
   },
   "tree": {
     "aria": {
       "tree": "Stablo bilješki",
-      "openFolderView": "Otvaranje prikaza mape"
+      "openFolderView": "Otvori prikaz mape"
     },
     "empty": {
       "title": "Još nema bilješki",
-      "body": "Napravite bilješku da biste započeli",
+      "body": "Stvorite bilješku za početak",
       "newNote": "Nova bilješka"
     },
+    "syncing": {
+      "body": "Sinkronizacija bilješki – pojavit će se ovdje čim stignu"
+    },
     "loadingError": "Učitavanje bilješki nije uspjelo",
+    "truncated": {
+      "hidden": "{count, plural, one {# starija bilješka nije prikazana} few {# starije bilješke nisu prikazane} other {# starijih bilješki nije prikazano}}",
+      "loadMore": "Učitaj više"
+    },
     "actions": {
+      "openInNewTab": "Otvori u novoj kartici",
+      "openToTheSide": "Otvori sa strane",
       "newNote": "Nova bilješka",
       "newFolder": "Nova mapa",
+      "expandSubfolders": "Proširi sve podmape",
+      "collapseSubfolders": "Sažmi sve podmape",
       "rename": "Preimenuj",
-      "openExternal": "Otvorite u vanjskom uređivaču",
+      "applyTemplate": "Primijeni predložak",
+      "saveAsTemplate": "Spremi kao predložak",
+      "openExternal": "Otvori u vanjskom uređivaču",
       "setDefaultTemplate": "Postavi zadani predložak",
-      "clearDefaultTemplate": "Obriši zadani predložak",
+      "clearDefaultTemplate": "Ukloni zadani predložak",
       "setIcon": "Postavi ikonu",
       "removeIcon": "Ukloni ikonu",
-      "deleteSelectedNotes": "Izbrišite bilješke {count}",
-      "deleteSelectedItems": "Izbrišite stavke {count}",
-      "bookmark": "Zabilježi",
-      "removeFromBookmarks": "Ukloni iz zabilješki",
-      "applyTemplate": "Primijeni predložak",
-      "saveAsTemplate": "Spremi kao predložak"
+      "deleteSelectedNotes": "{count, plural, one {Izbriši # bilješku} few {Izbriši # bilješke} other {Izbriši # bilješki}}",
+      "deleteSelectedItems": "{count, plural, one {Izbriši # stavku} few {Izbriši # stavke} other {Izbriši # stavki}}",
+      "bookmark": "Dodaj u favorite",
+      "removeFromBookmarks": "Ukloni iz favorita",
+      "journalSettings": "Postavke dnevnika…"
+    },
+    "nav": {
+      "label": "Navigacija",
+      "ariaExpanded": "Odjeljak navigacije, proširen",
+      "ariaCollapsed": "Odjeljak navigacije, sažet",
+      "saveFailed": "Nije moguće spremiti stanje odjeljka navigacije"
+    },
+    "viewOptions": {
+      "label": "Mogućnosti prikaza",
+      "notesFirst": "Bilješke prije mapa",
+      "showFiles": "Prikaži datoteke",
+      "saveFailed": "Nije moguće spremiti mogućnosti prikaza bočne trake"
     },
     "deleteDialog": {
       "noteTitle": "Izbriši bilješku",
       "folderTitle": "Izbriši mapu",
-      "itemsTitle": "Izbrišite {count} stavke",
-      "noteBody": "Jeste li sigurni da želite izbrisati \"{name}\"? Ova se radnja ne može poništiti.",
-      "folderBody": "Jeste li sigurni da želite izbrisati \"{name}\" i sve bilješke unutar njega? Ova se radnja ne može poništiti.",
-      "itemsBody": "Jeste li sigurni da želite izbrisati {count} stavke? Ova se radnja ne može poništiti.",
+      "itemsTitle": "{count, plural, one {Izbriši # stavku} few {Izbriši # stavke} other {Izbriši # stavki}}",
+      "noteBody": "Jeste li sigurni da želite izbrisati „{name}”? Ova se radnja ne može poništiti.",
+      "folderBody": "Jeste li sigurni da želite izbrisati „{name}” i sve bilješke u njoj? Ova se radnja ne može poništiti.",
+      "itemsBody": "{count, plural, one {Jeste li sigurni da želite izbrisati # stavku? Ova se radnja ne može poništiti.} few {Jeste li sigurni da želite izbrisati # stavke? Ova se radnja ne može poništiti.} other {Jeste li sigurni da želite izbrisati # stavki? Ova se radnja ne može poništiti.}}",
       "folderSuffix": "mapa",
-      "moreItems": "...i još {count}",
-      "deleting": "Brisanje...",
+      "moreItems": "…i još {count}",
+      "deleting": "Brisanje…",
       "deleteCount": "Izbriši {count}"
     }
   },
   "editor": {
+    "bodySyncPending": "Sinkronizacija – sadržaj ove bilješke možda još stiže",
+    "taskRemoval": {
+      "title": "{count, plural, =1 {Zadatak uklonjen iz ove bilješke} one {# zadatak uklonjen iz ove bilješke} few {# zadatka uklonjena iz ove bilješke} other {# zadataka uklonjeno iz ove bilješke}}",
+      "description": "{count, plural, =1 {Zadržati ga u Zadacima ili ga izbrisati posvuda?} one {Zadržati ih u Zadacima ili ih izbrisati posvuda?} few {Zadržati ih u Zadacima ili ih izbrisati posvuda?} other {Zadržati ih u Zadacima ili ih izbrisati posvuda?}}",
+      "keep": "Zadrži u Zadacima",
+      "delete": "{count, plural, =1 {Izbriši zadatak} one {Izbriši zadatke} few {Izbriši zadatke} other {Izbriši zadatke}}",
+      "deleteFailed": "Nije moguće izbrisati zadatke. I dalje su u Zadacima."
+    },
     "title": {
       "untitled": "Bez naslova",
       "aria": "Naslov bilješke"
     },
     "content": {
-      "placeholder": "Počnite pisati ili pritisnite '/' za naredbe...",
+      "placeholder": "Počnite pisati ili pritisnite „/” za naredbe…",
       "regionAria": "Uređivač bilješki",
       "richTextAria": "Uređivač obogaćenog teksta",
       "headingPlaceholder": "Naslov",
       "listPlaceholder": "Stavka popisa",
-      "todoPlaceholder": "Stavka zadatka"
+      "todoPlaceholder": "Stavka popisa zadataka"
+    },
+    "table": {
+      "keyboardMenuAria": "Radnje tablice za redak {row}, stupac {column}",
+      "keyboardMenuTitle": "Redak {row} · Stupac {column}"
+    },
+    "list": {
+      "bulleted": "Popis s grafičkim oznakama",
+      "numbered": "Numerirani popis",
+      "checklist": "Kontrolni popis"
+    },
+    "bulletFold": {
+      "collapse": "Sažmi ugniježđene stavke",
+      "expand": "Proširi ugniježđene stavke"
     },
     "toolbar": {
+      "linkToNote": "Poveži s bilješkom",
+      "more": "Više",
+      "pinToTop": "Prikvači alatnu traku na vrh",
       "reminderSet": "Podsjetnik postavljen",
       "setReminder": "Postavi podsjetnik",
-      "removeBookmark": "Ukloni oznaku",
-      "addBookmark": "Dodaj knjižnu oznaku",
-      "hideLocalGraph": "Sakrij lokalni grafikon",
-      "showLocalGraph": "Prikaži lokalni grafikon",
-      "versionHistory": "Povijest verzija",
-      "export": "Izvoz",
-      "fullWidth": "Puna širina",
-      "disableLocalOnly": "Onemogući samo lokalno",
-      "setLocalOnly": "Postavi samo lokalno",
-      "saveAsTemplate": "Spremi kao predložak",
-      "copyPath": "Kopiraj put",
-      "delete": "Izbriši bilješku",
-      "find": "Pronađi…",
+      "removeBookmark": "Ukloni iz favorita",
+      "addBookmark": "Dodaj u favorite",
+      "showMindMap": "Prikaži umnu mapu",
+      "hideMindMap": "Sakrij umnu mapu",
+      "hideLocalGraph": "Sakrij lokalni graf",
+      "showLocalGraph": "Prikaži lokalni graf",
       "moreActions": "Više radnji",
-      "moveToFolder": "Premjesti u mapu…",
+      "find": "Pronađi…",
+      "versionHistory": "Povijest verzija",
+      "export": "Izvezi",
+      "saveAsTemplate": "Spremi kao predložak",
+      "fullWidth": "Puna širina",
       "rename": "Preimenuj…",
-      "revealInSidebar": "Otkrij u navigaciji"
+      "moveToFolder": "Premjesti u mapu…",
+      "copyPath": "Kopiraj putanju",
+      "revealInSidebar": "Prikaži u navigaciji",
+      "attachments": "Privici…",
+      "disableLocalOnly": "Isključi „Samo lokalno”",
+      "setLocalOnly": "Uključi „Samo lokalno”",
+      "delete": "Izbriši bilješku"
+    },
+    "attachmentMenu": {
+      "menuLabel": "Radnje s datotekom",
+      "storedAs": "Pohranjeno kao {name}",
+      "notSynced": "Još nije sinkronizirano na ovaj uređaj",
+      "revealFailed": "Prikazivanje datoteke nije uspjelo",
+      "openFailed": "Otvaranje datoteke nije uspjelo",
+      "missingTitle": "Datoteka privitka nedostaje",
+      "missingExpected": "Očekivana datoteka: {name}"
+    },
+    "attachmentRename": {
+      "menuItem": "Preimenuj…",
+      "title": "Preimenuj privitak",
+      "description": "Datoteka se preimenuje na disku i na vašim drugim uređajima. Nastavak naziva datoteke ostaje isti.",
+      "fieldLabel": "Naziv privitka",
+      "confirm": "Preimenuj",
+      "renamed": "Preimenovano u {name}",
+      "failed": "Preimenovanje privitka nije uspjelo"
+    },
+    "attachmentsDialog": {
+      "title": "Privici",
+      "description": "Datoteke pohranjene uz ovu bilješku",
+      "empty": "Ova bilješka nema privitaka.",
+      "loadFailed": "Učitavanje privitaka nije uspjelo"
     },
     "breadcrumb": {
-      "locationAria": "Napomena mjesto",
-      "parentFolderAria": "Idite u nadređenu mapu"
+      "locationAria": "Lokacija bilješke",
+      "parentFolderAria": "Idi u nadređenu mapu"
     },
     "errorBoundary": {
-      "title": "Greška urednika",
-      "body": "Urednik je naišao na pogrešku. Sadržaj vaše bilješke je siguran.",
+      "title": "Pogreška uređivača",
+      "body": "Došlo je do pogreške u uređivaču. Sadržaj bilješke je siguran.",
       "technicalDetails": "Tehnički detalji",
       "reloadAria": "Ponovno učitaj uređivač",
       "reload": "Ponovno učitaj uređivač"
@@ -126,96 +239,409 @@
       "title": "Oblačić",
       "group": "Osnovni blokovi",
       "subtext": "Istaknite važne informacije",
-      "changeType": "Promjena vrste oblačića",
+      "changeType": "Promijeni vrstu oblačića",
       "menuLabel": "Vrsta oblačića",
       "info": "Informacija",
       "warning": "Upozorenje",
       "error": "Greška",
       "success": "Uspjeh"
+    },
+    "diagram": {
+      "title": "Dijagram",
+      "subtext": "Dijagram toka, dijagram slijeda ili Ganttov grafikon iz koda Mermaid"
+    },
+    "math": {
+      "title": "Jednadžba",
+      "group": "Osnovni blokovi",
+      "subtext": "Napišite formulu u LaTeX-u",
+      "empty": "Dodaj jednadžbu",
+      "edit": "Uredi jednadžbu",
+      "placeholder": "E = mc^2",
+      "sourceLabel": "LaTeX kod",
+      "hint": "LaTeX. Pritisnite Escape kada završite."
+    },
+    "whiteboard": {
+      "title": "Bijela ploča",
+      "group": "Mediji",
+      "subtext": "Crtajte na platnu koje je dio ove bilješke",
+      "defaultName": "Bijela ploča",
+      "noteName": "{note} – bijela ploča",
+      "untitled": "Bijela ploča bez naslova",
+      "loading": "Učitavanje bijele ploče…",
+      "openInTab": "Otvori u kartici",
+      "edit": "Uredi",
+      "done": "Gotovo",
+      "surfaceLabel": "Crtež: {title}",
+      "createFailed": "Nije moguće stvoriti bijelu ploču. Ništa nije dodano u bilješku.",
+      "loadFailed": "Nije moguće učitati ovu bijelu ploču. Sam crtež je netaknut.",
+      "noCanvas": "Ova bijela ploča nema platno. Uklonite blok ili dodajte novi pomoću /whiteboard.",
+      "nested": "Otvorite ovu bijelu ploču u zasebnoj kartici da biste vidjeli crtež.",
+      "missingTitle": "Ova bijela ploča nije dostupna",
+      "missingBody": "Njezino je platno izbrisano ili još nije stiglo na ovaj uređaj. Ako se još sinkronizira, pojavit će se ovdje automatski.",
+      "unreadableTitle": "Ovu bijelu ploču nije moguće otvoriti ovdje",
+      "unreadableBody": "Datoteka njezina platna nedostaje u trezoru ili se ne može pročitati na ovom uređaju. Ništa nije izbrisano.",
+      "disabledTitle": "Platno je isključeno",
+      "disabledBody": "Uključite značajku „Platno” u odjeljku Postavke › Značajke da biste vidjeli i uređivali ovu bijelu ploču. Crtež se čuva u svakom slučaju."
+    },
+    "viewBlock": {
+      "title": "Prikaz",
+      "group": "Umetni",
+      "subtext": "Popis bilješki iz mape, oznake ili cijelog trezora, ažuriran uživo",
+      "sourceMenu": "Što prikaz sadrži",
+      "chooseSource": "Odaberi što će se prikazati",
+      "sourceVault": "Sve bilješke",
+      "sourceFolder": "Mapa",
+      "sourceTag": "Oznaka",
+      "noFolders": "Još nema mapa",
+      "noTags": "Još nema oznaka",
+      "savedView": "Spremljeni prikaz",
+      "savedViewMissing": "Spremljeni prikaz „{name}” više ne postoji pa se prikazuje zadani prikaz.",
+      "openAsTab": "Otvori kao karticu",
+      "empty": "Ovom prikazu još ništa ne odgovara.",
+      "loadFailed": "Nije moguće učitati ovaj prikaz. Same bilješke su netaknute.",
+      "folderMissing": "Ova mapa više nije u trezoru. Odaberite drugi izvor.",
+      "invalidJson": "Definicija ovog prikaza nije valjani JSON. Ispravite je u nastavku ili uklonite blok.",
+      "invalidShape": "Definicija ovog prikaza nema izvor. Odaberite ga gore ili ispravite definiciju u nastavku.",
+      "definition": "Definicija"
+    },
+    "slashMenu": {
+      "aria": "Blokovi i radnje",
+      "groups": {
+        "recent": "Nedavno",
+        "bestMatch": "Najbolje podudaranje",
+        "blocks": "Blokovi",
+        "headings": "Više naslova",
+        "insert": "Umetni",
+        "media": "Mediji",
+        "ai": "AI"
+      },
+      "secondary": {
+        "asToggleHeading": "Kao sklopivi",
+        "asLinkedTask": "Kao povezani zadatak",
+        "asReminder": "Kao podsjetnik"
+      },
+      "actions": {
+        "insert": "Umetni",
+        "open": "Otvori"
+      },
+      "matchesAlias": "odgovara",
+      "noMatch": "Nijedan blok ne odgovara upitu „{query}”",
+      "fallback": {
+        "linkTo": "Poveži s",
+        "askAI": "Pitaj AI pomoćnika"
+      },
+      "pdf": {
+        "title": "PDF",
+        "subtext": "Priložite PDF i čitajte ga unutar bilješke"
+      },
+      "html": {
+        "title": "HTML datoteka",
+        "subtext": "Ugradite .html datoteku i koristite je unutar bilješke"
+      },
+      "linkToNote": {
+        "title": "Poveži s bilješkom",
+        "subtext": "Pretražite bilješke – ili bilo gdje upišite [["
+      },
+      "media": {
+        "title": "Mediji",
+        "subtext": "Priložite sliku, videozapis ili audiodatoteku"
+      },
+      "insertTemplate": {
+        "title": "Umetni sadržaj predloška…",
+        "subtext": "Dodajte samo sadržaj predloška na mjesto pokazivača",
+        "group": "Predlošci",
+        "empty": "Taj predložak nema sadržaja za umetanje",
+        "failed": "Nije moguće umetnuti taj predložak"
+      }
+    },
+    "filePanel": {
+      "choose": "Odaberi datoteku…"
+    },
+    "upload": {
+      "failed": "Nije moguće priložiti tu datoteku"
+    },
+    "checkboxTask": {
+      "converted": "Potvrdni okvir pretvoren u zadatak",
+      "hint": "Novi potvrdni okvir postaje zadatak. Pritisnite {undo} da ostane potvrdni okvir.",
+      "keepAsCheckbox": "Zadrži kao potvrdni okvir"
+    },
+    "obsidianTask": {
+      "refused": "Ovaj redak sadrži ID, ovisnost ili poveznicu na blok koje Obsidian treba na kraju retka. Najprije ih uklonite u Obsidianu, a zatim pretvorite.",
+      "createFailed": "Nije moguće stvoriti zadatak za ovaj redak.",
+      "completeFailed": "Zadatak je stvoren, ali datum dovršetka nije moguće primijeniti."
+    },
+    "blockMenu": {
+      "turnInto": "Pretvori u",
+      "turnIntoTypes": {
+        "paragraph": "Tekst",
+        "heading1": "Naslov 1",
+        "heading2": "Naslov 2",
+        "heading3": "Naslov 3",
+        "bulletList": "Popis s grafičkim oznakama",
+        "numberedList": "Numerirani popis",
+        "checkbox": "Potvrdni okvir",
+        "task": "Zadatak",
+        "toggleList": "Sklopivi popis",
+        "quote": "Citat",
+        "codeBlock": "Kôd",
+        "callout": "Oblačić"
+      },
+      "turnIntoCheckbox": "Pretvori u potvrdni okvir",
+      "colors": "Boje",
+      "duplicate": "Dupliciraj",
+      "insertTemplate": "Umetni predložak…",
+      "moveTo": "Premjesti u…",
+      "delete": "Izbriši",
+      "comment": "Komentiraj",
+      "moveDialog": {
+        "title": "Premjesti blok u bilješku",
+        "searchPlaceholder": "Pretraži bilješke…",
+        "noResults": "Nema odgovarajućih bilješki",
+        "moved": "Blok premješten u „{title}”",
+        "failed": "Nije moguće premjestiti blok"
+      }
+    },
+    "attachmentPicker": {
+      "title": {
+        "image": "Dodaj sliku",
+        "media": "Dodaj medije",
+        "pdf": "Dodaj PDF",
+        "html": "Ugradi HTML datoteku",
+        "file": "Dodaj datoteku"
+      },
+      "placeholder": {
+        "image": "Pretraži slike ili prenesi novu…",
+        "media": "Pretraži medije ili prenesi nove…",
+        "pdf": "Pretraži PDF-ove ili prenesi novi…",
+        "html": "Pretraži HTML datoteke ili prenesi novu…",
+        "file": "Pretraži privitke ili prenesi novi…"
+      },
+      "upload": {
+        "image": "Prenesi sliku…",
+        "media": "Prenesi medije…",
+        "pdf": "Prenesi PDF…",
+        "html": "Prenesi HTML datoteku…",
+        "file": "Prenesi datoteku…"
+      },
+      "empty": {
+        "image": "U ovom trezoru još nema slika.",
+        "media": "U ovom trezoru još nema medija.",
+        "pdf": "U ovom trezoru još nema PDF-ova.",
+        "html": "U ovom trezoru još nema HTML datoteka.",
+        "file": "U ovom trezoru još nema privitaka."
+      },
+      "addHeading": "Dodaj",
+      "vaultHeading": "U ovom trezoru",
+      "uploading": "Prijenos…",
+      "noMatches": "Ništa ne odgovara.",
+      "loadFailed": "Učitavanje privitaka iz trezora nije uspjelo",
+      "insertFailed": "Umetanje privitka nije uspjelo",
+      "uploadFailed": "Prijenos datoteke nije uspio",
+      "unsupportedVideo": "Taj se format videozapisa ne može reproducirati u aplikaciji Memry. Podržani formati: {formats}.",
+      "tooLarge": "Datoteka ima {size}, što premašuje ograničenje za privitke od {limit}.",
+      "hint": {
+        "navigate": "Kretanje",
+        "insert": "Umetanje",
+        "close": "Zatvaranje"
+      }
+    },
+    "codeBlock": {
+      "copy": "Kopiraj kôd",
+      "copied": "Kopirano",
+      "language": "Jezik"
     }
+  },
+  "dateMention": {
+    "dateInput": "Datum",
+    "time": "Vrijeme",
+    "includeTime": "Uključi vrijeme",
+    "timeFormat": "Format vremena",
+    "dateFormat": "Format datuma",
+    "remind": "Podsjeti",
+    "clear": "Očisti"
   },
   "menus": {
     "wiki": {
-      "aria": "Zabilježite prijedloge",
-      "loading": "Učitavanje bilješki...",
+      "aria": "Prijedlozi bilješki",
+      "loading": "Učitavanje bilješki…",
       "empty": "Nisu pronađene bilješke",
       "create": "Stvori novu bilješku",
       "embed": "Ugradi",
-      "embedAria": "Ugradi {title}",
       "wikiLink": "Wiki poveznica",
-      "wikiLinkAria": "Wiki poveznica {title}"
+      "embedAria": "Ugradi „{title}”",
+      "wikiLinkAria": "Wiki poveznica na „{title}”",
+      "noHeadings": "Bilješka „{title}” nema naslova",
+      "noMatchingHeadings": "Nijedan naslov u bilješci „{title}” ne odgovara",
+      "displayAs": "Prikaži kao",
+      "aliasHint": "Upišite | da biste imenovali poveznicu"
+    },
+    "mention": {
+      "aria": "Prijedlozi datuma i bilješki",
+      "loading": "Učitavanje bilješki…",
+      "empty": "Nema pronađenih bilješki",
+      "date": "Datum",
+      "now": "Sada",
+      "remindMe": "Podsjeti me",
+      "dateHint": "Nastavite tipkati datum…",
+      "showMore": "Prikaži više",
+      "canvases": "Platna",
+      "choiceTitle": "Umetni platno kao",
+      "choiceMention": "Spominjanje",
+      "choiceEmbed": "Ugrađeni sadržaj"
     },
     "tags": {
       "aria": "Prijedlozi oznaka",
-      "loading": "Učitavanje oznaka...",
-      "empty": "Upišite za izradu nove oznake",
-      "create": "Stvorite #{tag}"
+      "loading": "Učitavanje oznaka…",
+      "empty": "Upišite naziv da biste stvorili novu oznaku",
+      "create": "Stvori #{tag}"
     },
     "pasteLink": {
       "title": "Zalijepi kao",
       "url": "URL",
-      "mention": "Spomenuti",
+      "mention": "Spominjanje",
       "embedVideo": "Ugradi video",
-      "bookmark": "Oznaka"
+      "bookmark": "Kartica poveznice"
     },
     "emoji": {
-      "aria": "Emojiji i birač ikona",
+      "aria": "Birač emojija i ikona",
       "emojiTab": "Emoji",
       "iconsTab": "Ikone",
-      "searchPlaceholder": "Traži",
+      "searchPlaceholder": "Pretraži",
       "noIcons": "Nisu pronađene ikone",
-      "clearSearch": "Očisti pretragu"
-    },
-    "mention": {
-      "aria": "Prijedlozi datuma i bilješki",
-      "date": "Datum",
-      "dateHint": "Nastavite tipkati datum…",
-      "empty": "Nema pronađenih bilješki",
-      "loading": "Učitavanje bilješki...",
-      "remindMe": "Podsjeti me",
-      "showMore": "Prikaži više"
+      "clearSearch": "Očisti pretraživanje",
+      "customTab": "Prilagođeno",
+      "custom": {
+        "searchPlaceholder": "Pretraži vlastite ikone",
+        "dropHint": "Ispustite sliku ili kliknite za prijenos",
+        "urlPlaceholder": "Ili zalijepite poveznicu na sliku",
+        "urlLabel": "Poveznica na sliku",
+        "urlSubmit": "Preuzmi ovu sliku",
+        "downloading": "Preuzimanje…",
+        "adding": "Dodavanje…",
+        "empty": "Još nema prilagođenih ikona. Ispustite sliku ili zalijepite poveznicu da biste je dodali.",
+        "noMatches": "Nijedna prilagođena ikona ne odgovara pretraživanju",
+        "unsupportedFile": "„{name}” nije podržana slika",
+        "addFailed": "Nije moguće dodati tu ikonu",
+        "deleteFailed": "Nije moguće izbrisati tu ikonu",
+        "renameFailed": "Nije moguće preimenovati tu ikonu",
+        "rename": "Preimenuj „{name}”",
+        "delete": "Izbriši „{name}”",
+        "renameLabel": "Naziv ikone",
+        "saveName": "Spremi naziv",
+        "cancelRename": "Odustani od preimenovanja",
+        "addUrlFailed": "Nije moguće preuzeti tu sliku"
+      }
     }
   },
   "outline": {
-    "title": "Obris",
-    "aria": "Pregled dokumenta",
+    "title": "Struktura",
+    "aria": "Struktura dokumenta",
     "empty": "Nema naslova",
     "emptyYet": "Još nema naslova",
     "readTime": "{count} min čitanja",
-    "words": "{count} riječi",
+    "words": "{count, plural, one {# riječ} few {# riječi} other {# riječi}}",
     "created": "Stvoreno",
     "modified": "Izmijenjeno"
   },
   "backlinks": {
     "sortRecent": "Nedavno",
-    "sortAlpha": "A-Ž",
-    "sortMentions": "Većina spominjanja",
-    "sortBy": "Poredaj povratne veze prema {sort}",
-    "summary": "{notes} bilješke · {references} reference",
-    "sectionAria": "Povratne veze",
-    "listAria": "Popis povratnih veza",
-    "fromAria": "Povratne veze s {title}",
-    "collapse": "Sažimanje",
+    "sortAlpha": "A–Ž",
+    "sortMentions": "Najviše spominjanja",
+    "sortBy": "Sortiraj povratne poveznice: {sort}",
+    "summary": "{notes, plural, one {# bilješka} few {# bilješke} other {# bilješki}} · {references, plural, one {# referenca} few {# reference} other {# referenci}}",
+    "sectionAria": "Povratne poveznice",
+    "listAria": "Popis povratnih poveznica",
+    "fromAria": "Povratne poveznice iz bilješke „{title}”",
+    "collapse": "Sažmi",
     "expand": "Proširi",
-    "collapseSection": "Sažmi odjeljak povratnih veza",
-    "expandSection": "Proširite odjeljak povratnih veza",
-    "showMore": "Prikaži {count} više povratnih veza",
-    "more": "{count} više"
+    "collapseSection": "Sažmi odjeljak povratnih poveznica",
+    "expandSection": "Proširi odjeljak povratnih poveznica",
+    "showMore": "{count, plural, one {Prikaži još # povratnu poveznicu} few {Prikaži još # povratne poveznice} other {Prikaži još # povratnih poveznica}}",
+    "more": "Još {count}",
+    "viaProperty": "{property} → {title}"
+  },
+  "outgoingLinks": {
+    "summary": "{count, plural, one {# odlazna poveznica} few {# odlazne poveznice} other {# odlaznih poveznica}}",
+    "sectionAria": "Odlazne poveznice",
+    "unresolved": "Još nije stvoreno",
+    "showMore": "{count, plural, one {Prikaži još # odlaznu poveznicu} few {Prikaži još # odlazne poveznice} other {Prikaži još # odlaznih poveznica}}",
+    "more": "Još {count}"
+  },
+  "canvasLinks": {
+    "connectedOn": "Povezano na platnu „{canvas}”",
+    "untitledCanvas": "Platno bez naslova"
+  },
+  "similarNotes": {
+    "summary": "{count, plural, one {# slična bilješka} few {# slične bilješke} other {# sličnih bilješki}}",
+    "sectionAria": "Slične bilješke",
+    "hint": "Bilješke slične ovoj koje s njom još nisu povezane. Pronađene na ovom uređaju pomoću lokalnih vektorskih prikaza.",
+    "addLink": "Poveži iz ove bilješke",
+    "addLinkAria": "Poveži „{title}” iz ove bilješke",
+    "linked": "Povezano: „{title}”",
+    "addToCanvas": "Dodaj na platno",
+    "addToCanvasAria": "Dodaj „{title}” na platno",
+    "searchCanvases": "Pretraži platna…",
+    "canvasLoading": "Učitavanje platana…",
+    "noCanvases": "Još nema nijednog platna",
+    "noMatch": "Nijedno platno ne odgovara",
+    "addedToCanvas": "„{title}” dodano na platno „{canvas}”",
+    "alreadyOnCanvas": "„{title}” već je na platnu „{canvas}”",
+    "openCanvas": "Otvori",
+    "addToCanvasFailed": "Nije moguće dodati bilješku na platno"
+  },
+  "suggestedTags": {
+    "label": "Predložene oznake:",
+    "hint": "Oznake koje dijele bilješke najsličnije ovoj. Ništa se ne dodaje dok ne odaberete oznaku.",
+    "acceptAria": "Dodaj oznaku {tag}",
+    "support": "{count, plural, one {Ima je # slična bilješka} few {Imaju je # slične bilješke} other {Ima je # sličnih bilješki}}",
+    "dismiss": "Sakrij predložene oznake",
+    "failed": "Nije moguće dodati oznaku"
+  },
+  "comments": {
+    "railAria": "Komentari",
+    "badgeAria": "{count, plural, one {# komentar} few {# komentara} other {# komentara}}",
+    "toolbarComment": "Komentiraj",
+    "commentPlaceholder": "Dodaj komentar…",
+    "createdTooltip": "Stvoreno {date} u {time}",
+    "cancel": "Odustani",
+    "resolve": "Razriješi",
+    "edit": "Uredi komentar",
+    "delete": "Izbriši komentar",
+    "replyPlaceholder": "Odgovori…",
+    "attachAria": "Priloži datoteku",
+    "mentionAria": "Spomeni osobu, stranicu ili datum",
+    "sendAria": "Pošalji komentar",
+    "formatToolbarAria": "Oblikovanje teksta",
+    "format": {
+      "bold": "Podebljano",
+      "italic": "Kurziv",
+      "underline": "Podcrtano",
+      "strike": "Precrtano",
+      "code": "Kôd"
+    },
+    "openImageAria": "Otvori sliku {name}",
+    "openAttachmentAria": "Otvori privitak {name}",
+    "kind": {
+      "comment": "Komentar",
+      "addition": "Dodatak",
+      "deletion": "Brisanje",
+      "substitution": "Zamjena"
+    }
   },
   "tagsRow": {
-    "aria": "oznake",
-    "empty": "Dodajte oznake",
+    "aria": "Oznake",
+    "empty": "Dodaj oznake",
     "add": "Dodaj oznaku",
     "removeAria": "Ukloni oznaku: {tag}",
-    "inputPlaceholder": "Upišite naziv oznake...",
+    "inputPlaceholder": "Upišite naziv oznake…",
     "recent": "Nedavno",
-    "matching": "Podudaranje",
+    "matching": "Odgovarajuće",
     "all": "Sve oznake",
     "none": "Nema pronađenih oznaka",
-    "createTag": "Izradi oznaku: \"{tag}\"",
+    "createTag": "Stvori oznaku „{tag}”",
     "chooseColor": "Odaberite boju:",
-    "preview": "Pregled:",
-    "colorAria": "Odaberite {color} boju",
+    "preview": "Pretpregled:",
+    "colorAria": "Odaberi boju: {color}",
     "customColor": "Prilagođena boja"
   },
   "properties": {
@@ -223,38 +649,71 @@
     "noteAria": "Svojstva bilješke",
     "workspaceAria": "Svojstva radnog prostora",
     "listAria": "Popis svojstava",
-    "add": "Dodaj imovinu",
+    "add": "Dodaj svojstvo",
     "addDescription": "Dodajte novo svojstvo ovoj bilješci",
-    "namePlaceholder": "Naziv nekretnine",
-    "nameAria": "Naziv nekretnine",
+    "namePlaceholder": "Naziv svojstva",
+    "nameAria": "Naziv svojstva",
     "typeSection": "Vrsta",
-    "empty": "Prazna",
+    "empty": "Prazno",
     "dragAria": "Povucite za promjenu redoslijeda svojstva",
     "editName": "Uredi naziv svojstva",
     "delete": "Izbriši svojstvo",
-    "searchOptions": "Opcije pretraživanja...",
+    "searchOptions": "Pretraži opcije…",
     "noOptions": "Još nema opcija",
     "optionName": "Naziv opcije",
     "newOption": "Nova opcija",
     "ratingAria": "Ocjena",
     "openUrlAria": "Otvori URL",
+    "showOnCalendar": "Prikaži u kalendaru",
+    "showingOnCalendar": "Prikazuje se u kalendaru",
+    "relation": {
+      "deleted": "Izbrisano",
+      "removeAria": "Ukloni „{title}”",
+      "addAria": "Dodaj relaciju",
+      "searchPlaceholder": "Pretraži bilješke, zadatke, događaje, platna i dnevnik…",
+      "groupNotes": "Bilješke i datoteke",
+      "groupTasks": "Zadaci",
+      "groupEvents": "Događaji",
+      "groupCanvases": "Platna",
+      "groupJournals": "Dnevnik",
+      "empty": "Nema rezultata"
+    },
     "types": {
       "text": "Tekst",
-      "number": "broj",
+      "number": "Broj",
       "date": "Datum",
       "checkbox": "Potvrdni okvir",
       "url": "URL",
       "status": "Status",
-      "select": "Odaberite",
-      "multiselect": "Višestruki odabir"
+      "select": "Odabir",
+      "multiselect": "Višestruki odabir",
+      "relation": "Relacija",
+      "project": "Projekt"
     },
-    "showOnCalendar": "Prikaži u kalendaru",
-    "showingOnCalendar": "Prikazuje se u kalendaru",
     "statusCategories": {
-      "done": "Dovršeno",
+      "todo": "Nije započeto",
       "inProgress": "U tijeku",
-      "todo": "Za napraviti"
-    }
+      "done": "Dovršeno"
+    },
+    "projectAlreadySet": "Ova bilješka već ima svojstvo projekta",
+    "projectPlaceholder": "Bez projekta",
+    "projectSearch": "Pretraži projekte",
+    "projectEmpty": "Nema projekata",
+    "projectRemove": "Ukloni iz projekta „{name}”"
+  },
+  "moveNoteTasks": {
+    "title": "Premjestiti zadatke ove bilješke?",
+    "description": "{count, plural, =1 {# zadatak u ovoj bilješci pripada drugom projektu} one {# zadatak u ovoj bilješci pripada drugim projektima} few {# zadatka u ovoj bilješci pripadaju drugim projektima} other {# zadataka u ovoj bilješci pripada drugim projektima}}. Premjestiti {count, plural, =1 {ga} one {ih} few {ih} other {ih}} u projekt „{project}”?",
+    "subtaskNote": "Podzadaci se premještaju zajedno s nadređenim zadatkom.",
+    "cancel": "Ostavi kako jest",
+    "confirm": "{count, plural, =1 {Premjesti zadatak} one {Premjesti zadatke} few {Premjesti zadatke} other {Premjesti zadatke}}",
+    "success": "{count, plural, one {# zadatak premješten u projekt „{project}”} few {# zadatka premještena u projekt „{project}”} other {# zadataka premješteno u projekt „{project}”}}",
+    "failed": "Nije moguće premjestiti zadatke bilješke"
+  },
+  "deleteNoteTasks": {
+    "label": "{count, plural, =1 {Izbriši i zadatak u njoj} one {Izbriši i # zadatak u njoj} few {Izbriši i # zadatka u njoj} other {Izbriši i # zadataka u njoj}}",
+    "description": "{count, plural, =1 {Ako ne označite, ostaje u Zadacima.} one {Ako ne označite, ostaju u Zadacima.} few {Ako ne označite, ostaju u Zadacima.} other {Ako ne označite, ostaju u Zadacima.}}",
+    "failed": "Nije moguće izbrisati zadatke. I dalje su u Zadacima."
   },
   "cover": {
     "add": "Dodaj naslovnu sliku",
@@ -263,20 +722,21 @@
     "alt": "Naslovna slika",
     "setFailed": "Nije moguće postaviti naslovnu sliku",
     "removeFailed": "Nije moguće ukloniti naslovnu sliku",
-    "reposition": "Premjesti",
-    "repositionHint": "Povuci za premještanje",
+    "reposition": "Promijeni položaj",
+    "repositionHint": "Povucite za promjenu položaja",
     "repositionSave": "spremi",
     "repositionCancel": "odustani",
-    "credit": "Fotografija: {name} na Unsplash",
+    "credit": "Fotografija: {name} na Unsplashu",
     "focusFailed": "Nije moguće spremiti položaj naslovne slike",
     "picker": {
       "title": "Naslovna slika bilješke",
-      "placeholder": "Traži naslovne slike",
+      "placeholder": "Pretraži naslovne slike",
       "tab": {
         "washes": "Tonovi",
         "photos": "Unsplash",
         "fromNote": "Iz bilješke",
-        "upload": "Prijenos"
+        "upload": "Prijenos",
+        "link": "Poveznica"
       },
       "photos": {
         "searching": "Pretraživanje Unsplasha…",
@@ -300,7 +760,7 @@
       "empty": "U ovom trezoru još nema slika",
       "hint": {
         "apply": "Primijeni",
-        "applyReposition": "Primijeni i premjesti",
+        "applyReposition": "Primijeni i promijeni položaj",
         "close": "Zatvori"
       },
       "wash": {
@@ -316,27 +776,40 @@
         "bark": "Kora",
         "mist": "Izmaglica",
         "plum": "Šljiva"
+      },
+      "link": {
+        "prompt": "Zalijepite poveznicu na sliku",
+        "invalid": "Memry ne može otvoriti tu poveznicu",
+        "use": "Upotrijebi ovu sliku",
+        "saving": "Spremanje slike…",
+        "error": {
+          "notAnImage": "Ta poveznica ne vodi na sliku",
+          "tooLarge": "Slika je prevelika za pohranu",
+          "offline": "Nije moguće pristupiti toj poveznici",
+          "failed": "Tu sliku nije moguće preuzeti",
+          "writeFailed": "Tu sliku nije moguće spremiti u trezor"
+        }
       }
     }
   },
   "templateSelector": {
-    "title": "Odaberite svoje platno",
+    "title": "Odaberite polaznu točku",
     "description": "Odaberite predložak za početak svoje bilješke",
-    "searchPlaceholder": "Predlošci pretraživanja...",
-    "loading": "Učitavanje predložaka...",
+    "searchPlaceholder": "Pretraži predloške…",
+    "loading": "Učitavanje predložaka…",
     "empty": "Nema pronađenih predložaka",
     "myTemplates": "Moji predlošci",
     "essentials": "Osnove",
-    "setFolderDefault": "Postavi kao zadanu mapu",
-    "useTemplate": "Koristite predložak",
+    "setFolderDefault": "Postavi kao zadani za mapu",
+    "useTemplate": "Upotrijebi predložak",
     "createNote": "Stvori bilješku",
-    "applyDescription": "Zamijenite sadržaj ove bilješke predloškom",
+    "applyToNote": "Primijeni predložak",
     "applyTitle": "Primijeni predložak",
-    "applyToNote": "Primijeni predložak"
+    "applyDescription": "Zamijenite sadržaj ove bilješke predloškom"
   },
   "exportDialog": {
-    "title": "Bilješka o izvozu",
-    "description": "Izvezite \"{title}\" u datoteku",
+    "title": "Izvezi bilješku",
+    "description": "Izvezite „{title}” u datoteku",
     "format": "Format",
     "pdfDescription": "Dokument spreman za ispis",
     "htmlDescription": "Datoteka spremna za web",
@@ -344,39 +817,39 @@
     "selectPageSize": "Odaberite veličinu stranice",
     "options": "Mogućnosti",
     "includeMetadata": "Uključi metapodatke (oznake, datume)",
-    "exporting": "Izvoz...",
+    "exporting": "Izvoz…",
     "exported": "Izvezeno!",
-    "export": "Izvoz",
+    "export": "Izvezi",
     "toast": {
       "failed": "Izvoz nije uspio"
     }
   },
   "versionHistory": {
     "title": "Povijest verzija",
-    "description": "Pregledajte i vratite prethodne verzije \"{title}\"",
+    "description": "Pregledajte i vratite prethodne verzije bilješke „{title}”",
     "hidePreview": "Sakrij pretpregled",
-    "showPreview": "Prikaži pregled",
+    "showPreview": "Prikaži pretpregled",
     "empty": "Još nema spremljenih verzija",
     "emptyDescription": "Verzije se automatski spremaju kada napravite značajne promjene",
-    "latest": "Najnoviji",
+    "latest": "Najnovija",
     "autoSaved": "Automatski spremljeno",
-    "words": "{count} riječi",
-    "selectPrompt": "Odaberite verziju za pregled",
-    "restore": "Vratiti",
+    "words": "{count, plural, one {# riječ} few {# riječi} other {# riječi}}",
+    "selectPrompt": "Odaberite verziju za pretpregled",
+    "restore": "Vrati",
     "deleteTitle": "Izbrisati ovu verziju?",
     "deleteDescription": "Ova se radnja ne može poništiti. Ova će verzija biti trajno izbrisana.",
     "restoreTitle": "Vratiti ovu verziju?",
     "restoreDescription": "Ovo će zamijeniti trenutni sadržaj bilješke ovom verzijom. Prvo će se spremiti snimka trenutnog stanja, tako da možete poništiti ovu radnju.",
-    "restoring": "Vraćanje...",
+    "restoring": "Vraćanje…",
     "toast": {
-      "loadPreviewFailed": "Nije uspjelo učitavanje pregleda verzije",
-      "restored": "Napomena vraćena na prethodnu verziju",
+      "loadPreviewFailed": "Učitavanje pretpregleda verzije nije uspjelo",
+      "restored": "Bilješka vraćena na prethodnu verziju",
       "deleted": "Verzija izbrisana"
     }
   },
   "templateEditor": {
     "loading": "Učitavanje predloška…",
-    "copySuffix": "{name} (Kopiraj)",
+    "copySuffix": "{name} (kopija)",
     "title": {
       "new": "Novi predložak",
       "placeholder": "Naziv predloška"
@@ -402,7 +875,7 @@
   },
   "reminders": {
     "summary": "Podsjetnik: {date}",
-    "summaryWithMore": "Podsjetnik: {date} (+{count} još)",
+    "summaryWithMore": "Podsjetnik: {date} (i još {count})",
     "hasReminders": "Ima podsjetnike",
     "setReminder": "Postavi podsjetnik",
     "toast": {
@@ -410,13 +883,15 @@
       "setFailed": "Postavljanje podsjetnika nije uspjelo",
       "deleted": "Podsjetnik izbrisan",
       "deleteFailed": "Brisanje podsjetnika nije uspjelo",
-      "dismissed": "Podsjetnik je odbačen",
-      "dismissFailed": "Odbacivanje podsjetnika nije uspjelo"
+      "dismissed": "Podsjetnik odbačen",
+      "dismissFailed": "Odbacivanje podsjetnika nije uspjelo",
+      "updated": "Podsjetnik ažuriran",
+      "updateFailed": "Ažuriranje podsjetnika nije uspjelo"
     }
   },
   "linkedTasks": {
     "title": "Povezani zadaci",
-    "loading": "Učitavanje povezanih zadataka..."
+    "loading": "Učitavanje povezanih zadataka…"
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
@@ -425,38 +900,38 @@
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Svojstva",
-      "searchColumns": "Pretraži stupce...",
+      "display": "Prikaz",
+      "showSummaries": "Prikaži sažetke",
+      "columnBorders": "Rubovi stupaca",
+      "searchColumns": "Pretraži stupce…",
       "noMatchingColumns": "Nema podudarnih stupaca",
       "formulas": "FORMULE",
       "noFormulasDefined": "Nema definiranih formula",
       "addFormula": "Dodaj formulu",
-      "deleteFormula": "Brisanje formule",
+      "deleteFormula": "Izbriši formulu",
       "cancel": "Odustani",
       "delete": "Izbriši",
       "none": "Nijedan",
       "edit": "Uredi",
       "delete2": "Izbriši",
-      "columnBorders": "Rubovi stupaca",
-      "display": "Prikaz",
-      "showSummaries": "Prikaži sažetke",
       "deleteFormulaBody": "Jeste li sigurni da želite izbrisati formulu „{name}”? Ova se radnja ne može poništiti."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtar",
-      "filters": "Filteri",
-      "clearAll": "Obriši sve",
+      "filters": "Filtri",
+      "clearAll": "Očisti sve",
       "noFiltersApplied": "Nema primijenjenih filtara",
-      "addFiltersToNarrowDownYourNotes": "Dodajte filtre da suzite bilješke",
-      "match": "Podudaranje",
+      "addFiltersToNarrowDownYourNotes": "Dodajte filtre da biste suzili popis bilješki",
+      "match": "Zadovolji",
       "allAnd": "Svi (I)",
       "anyOr": "Bilo koji (ILI)",
       "ofTheFollowing": "od sljedećeg:",
-      "match2": "Podudaranje",
+      "match2": "Zadovolji",
       "all": "sve",
-      "any": "Bilo koje",
+      "any": "bilo koji",
       "of": "od:",
       "addCondition": "Dodaj uvjet",
-      "addFilter": "Dodajte filter",
+      "addFilter": "Dodaj filtar",
       "addGroup": "Dodaj grupu",
       "removeGroup": "Ukloni grupu",
       "lockedConditionHint": "Ovaj uvjet definira trenutni prikaz i ovdje se ne može ukloniti."
@@ -464,76 +939,77 @@
     "componentsFolderViewFilterRow": {
       "builtIn": "Ugrađeni",
       "properties": "Svojstva",
-      "placeholderProperty": "Vlasništvo",
-      "placeholderOperator": "Operater",
+      "placeholderProperty": "Svojstvo",
+      "placeholderOperator": "Operator",
       "placeholderValue": "Vrijednost",
-      "removeFilter": "Ukloni filtar"
+      "removeFilter": "Ukloni filtar",
+      "tagSuggestions": "Prijedlozi oznaka"
     },
     "componentsFolderViewFolderTableView": {
       "notesTable": "Tablica s bilješkama",
       "selectAll": "Odaberi sve bilješke",
       "selectRow": "Odaberi bilješku",
       "kind": {
-        "Inbox": "Pristigla pošta",
         "Note": "Bilješka",
-        "Task": "Zadatak"
+        "Task": "Zadatak",
+        "Inbox": "Ulazni pretinac"
       }
     },
     "componentsFolderViewFolderViewToolbar": {
-      "searchNotes": "Pretraži bilješke...",
-      "clearSearch": "Očisti pretragu"
+      "searchNotes": "Pretraži bilješke…",
+      "clearSearch": "Očisti pretraživanje"
     },
     "componentsFolderViewFormulaEditorModal": {
       "defineAComputedColumnUsingAnExpression": "Definirajte izračunati stupac pomoću izraza.",
-      "name": "Ime",
-      "expression": "Izražavanje",
+      "name": "Naziv",
+      "expression": "Izraz",
       "available": "Dostupno: ",
-      "preview": "Pregled",
-      "fixExpressionErrorsToSeePreview": "Ispravite pogreške izraza da biste vidjeli pregled",
-      "usingNote": "Korištenje napomene: \"",
+      "preview": "Pretpregled",
+      "fixExpressionErrorsToSeePreview": "Ispravite pogreške u izrazu da biste vidjeli pretpregled",
+      "usingNote": "Koristi se bilješka: „",
       "cancel": "Odustani",
       "namePlaceholder": "dana_do_roka",
-      "expressionPlaceholder": "dateDiff(datum_roka, danas(), \"dani\")",
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
       "usingNoteTitle": "Koristi se bilješka: „{title}”"
     },
     "componentsFolderViewGroupBySelector": {
-      "clearGrouping": "Jasno grupiranje",
-      "searchProperties": "Pretraži svojstva...",
+      "clearGrouping": "Očisti grupiranje",
+      "searchProperties": "Pretraži svojstva…",
       "builtIn": "Ugrađeni",
       "properties": "Svojstva",
       "noGroupablePropertiesFound": "Nema pronađenih svojstava koja se mogu grupirati",
       "sortDirection": "Smjer sortiranja",
-      "collapseGroupsByDefault": "Sažmi grupe prema zadanim postavkama",
+      "collapseGroupsByDefault": "Zadano sažmi grupe",
       "showGroupSummaries": "Prikaži grupne sažetke",
-      "clearGrouping2": "Jasno grupiranje"
+      "clearGrouping2": "Očisti grupiranje"
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Tablica grupiranih bilješki",
-      "more": "više",
+      "more": "dodatno",
       "selectAll": "Odaberi sve bilješke",
       "selectRow": "Odaberi bilješku"
     },
     "componentsFolderViewMoveToFolderDialog": {
-      "searchFolders": "Traži mape...",
-      "loadingFolders": "Učitavanje mapa...",
+      "searchFolders": "Pretraži mape…",
+      "loadingFolders": "Učitavanje mapa…",
       "suggested": "PREDLOŽENO",
-      "bestMatch": "Najbolji spoj",
-      "current": "trenutno)",
+      "bestMatch": "Najbolje podudaranje",
+      "current": "trenutna)",
       "allFolders": "SVE MAPE",
       "noFoldersMatch": "Nijedna mapa ne odgovara \"",
       "create": "Stvori \"",
       "cancel": "Odustani",
-      "createFolderNamed": "Stvori „{name}”",
       "currentFolderBadge": "(trenutna)",
-      "noFoldersMatchQuery": "Nijedna mapa ne odgovara upitu „{query}”"
+      "noFoldersMatchQuery": "Nijedna mapa ne odgovara upitu „{query}”",
+      "createFolderNamed": "Stvori „{name}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Izbriši ",
-      "notes": "Bilješke",
-      "open": "Otvoreno",
-      "openInExternalEditor": "Otvorite u vanjskom uređivaču",
-      "revealInSidebar": "Otkrij na bočnoj traci",
-      "copyLink": "Kopiraj vezu",
+      "notes": "bilješke",
+      "open": "Otvori",
+      "openInExternalEditor": "Otvori u vanjskom uređivaču",
+      "revealInSidebar": "Prikaži na bočnoj traci",
+      "copyLink": "Kopiraj poveznicu",
       "delete2": "Izbriši"
     },
     "componentsFolderViewSortableColumnHeader": {
@@ -542,61 +1018,62 @@
       "editColumnName": "Uredi naziv stupca"
     },
     "componentsFolderViewViewSwitcher": {
-      "default": "zadana vrijednost",
+      "default": "zadani",
+      "viewActions": "Radnje prikaza",
       "rename": "Preimenuj",
-      "duplicate": "Duplikat",
+      "duplicate": "Dupliciraj",
       "setAsDefault": "Postavi kao zadano",
       "delete": "Izbriši",
       "createNewView": "Stvori novi prikaz",
       "createNewView2": "Stvori novi prikaz",
       "createANewViewWithCustomColumnsFiltersAndSorting": "Stvorite novi prikaz s prilagođenim stupcima, filtrima i sortiranjem.",
-      "viewName": "Pogled Naziv",
+      "viewName": "Naziv prikaza",
       "myCustomView": "Moj prilagođeni prikaz",
       "baseConfiguration": "Osnovna konfiguracija",
       "copyFromCurrentView": "Kopiraj iz trenutnog prikaza",
       "startFreshDefaultColumns": "Počni ispočetka (zadani stupci)",
       "cancel": "Odustani",
-      "renameView": "Preimenuj pogled",
+      "renameView": "Preimenuj prikaz",
       "enterANewNameForThisView": "Unesite novi naziv za ovaj prikaz.",
-      "viewName2": "Pogled Naziv",
-      "viewName3": "Prikaži naziv",
+      "viewName2": "Naziv prikaza",
+      "viewName3": "Naziv prikaza",
       "cancel2": "Odustani",
-      "deleteView": "Izbriši pogled",
+      "deleteView": "Izbriši prikaz",
       "areYouSureYouWantToDelete": "Jeste li sigurni da želite izbrisati \"",
       "thisActionCannotBeUndone": "Ova se radnja ne može poništiti.",
       "cancel3": "Odustani",
-      "createView": "Stvori prikaz",
-      "gallery": "Galerija",
-      "layout": "Raspored",
-      "list": "Popis",
-      "name": "Naziv",
       "newView": "Novi prikaz",
-      "save": "Spremi",
+      "name": "Naziv",
+      "layout": "Raspored",
       "table": "Tablica",
-      "viewActions": "Radnje prikaza"
+      "list": "Popis",
+      "gallery": "Galerija",
+      "createView": "Stvori prikaz",
+      "save": "Spremi"
     },
     "componentsNoteContentAreaFileBlock": {
-      "failedToLoadPdf": "Nije uspjelo učitavanje PDF-a: ",
-      "download": "preuzimanje",
-      "download2": "preuzimanje",
+      "failedToLoadPdf": "Učitavanje PDF-a nije uspjelo: ",
+      "download": "Preuzmi",
+      "download2": "Preuzmi",
       "noFileAttached": "Nema priložene datoteke",
-      "alignCenter": "Poravnaj po sredini",
+      "resizePdf": "Promijeni veličinu PDF-a",
+      "resizeHtml": "Promijeni veličinu ugrađenog HTML-a",
       "alignLeft": "Poravnaj lijevo",
+      "alignCenter": "Poravnaj po sredini",
       "alignRight": "Poravnaj desno",
-      "nextPage": "Sljedeća stranica",
       "previousPage": "Prethodna stranica",
-      "resizePdf": "Promijeni veličinu PDF-a"
+      "nextPage": "Sljedeća stranica"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
-      "openInTaskPanel": "Otvori na ploči zadataka",
-      "taskName": "Naziv zadatka...",
+      "openInTaskPanel": "Otvori u panelu zadatka",
+      "taskName": "Naziv zadatka…",
       "taskDeleted": "Zadatak izbrisan",
-      "loading": "Učitavanje..."
+      "loading": "Učitavanje…"
     },
     "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
       "project": "Projekt",
       "priority": "Prioritet",
-      "dueDate": "Datum dospijeća",
+      "dueDate": "Rok",
       "cancel": "Odustani"
     },
     "componentsNoteContentAreaYoutubeEmbedBlock": {
@@ -607,7 +1084,7 @@
       "html": "HTML",
       "a4210X297Mm": "A4 (210 x 297 mm)",
       "letter85X11In": "Letter (8,5 x 11 in)",
-      "legal85X14In": "Pravni (8,5 x 14 in)"
+      "legal85X14In": "Legal (8,5 x 14 in)"
     },
     "componentsNoteInfoSectionEditorsDateeditor": {
       "ddMmYyyy": "dd.mm.gggg"
@@ -616,77 +1093,77 @@
       "synced": "Sinkronizirano"
     },
     "componentsSharedDocumentInfoTab": {
-      "words": "riječi",
-      "characters": "Likovi",
+      "words": "Riječi",
+      "characters": "Znakovi",
       "readingTime": "Vrijeme čitanja",
       "created": "Stvoreno",
       "modified": "Izmijenjeno"
     },
     "componentsSidebarProjectsEmptyState": {
       "noProjectsYet": "Još nema projekata",
-      "createYourFirstProject": "Napravite svoj prvi projekt",
-      "createYourFirstProject2": "Napravite svoj prvi projekt"
+      "createYourFirstProject": "Stvorite prvi projekt",
+      "createYourFirstProject2": "Stvorite prvi projekt"
     },
     "componentsSidebarSidebarBookmarkList": {
-      "loadingBookmarks": "Učitavanje oznaka...",
-      "failedToLoadBookmarks": "Nije uspjelo učitavanje oznaka",
-      "noBookmarksYet": "Još nema oznaka",
+      "loadingBookmarks": "Učitavanje favorita…",
+      "failedToLoadBookmarks": "Učitavanje favorita nije uspjelo",
+      "noBookmarksYet": "Još nema favorita",
       "moreOptions": "Više mogućnosti",
-      "remove": "Ukloniti"
+      "remove": "Ukloni"
     },
     "componentsSidebarSidebarItemContextMenu": {
-      "open": "Otvoreno",
-      "openToTheSide": "Otvoreno sa strane",
+      "open": "Otvori",
+      "openToTheSide": "Otvori sa strane",
       "pinToTabs": "Prikvači na kartice",
       "edit": "Uredi",
       "delete": "Izbriši",
-      "copyLink": "Kopiraj vezu"
+      "copyLink": "Kopiraj poveznicu"
     },
     "componentsSidebarSidebarTagList": {
-      "loadingTags": "Učitavanje oznaka...",
+      "loadingTags": "Učitavanje oznaka…",
       "failedToLoadTags": "Učitavanje oznaka nije uspjelo",
       "noTagsYet": "Još nema oznaka",
-      "filterTags": "Oznake filtera...",
+      "filterTags": "Filtriraj oznake…",
       "noMatchingTags": "Nema podudarnih oznaka",
       "Uncategorized": "Nekategorizirano"
     },
     "componentsSidebarSortableProjectItem": {
-      "dropHere": "Baci ovdje",
+      "dropHere": "Ispusti ovdje",
       "editProject": "Uredi projekt",
       "settings": "Postavke"
     },
     "componentsSidebarTagDeleteDialog": {
-      "deleteTag": "Izbriši oznaku #",
-      "notesWithThisTagWonTBeDeletedJustUntagged": "Bilješke s ovom oznakom neće biti izbrisane, samo poništene oznake.",
+      "deleteTag": "Izbrisati oznaku #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Bilješke s ovom oznakom neće se izbrisati, samo će se s njih ukloniti oznaka.",
       "cancel": "Odustani"
     },
     "componentsSidebarTagDetailView": {
       "goBack": "Idi natrag",
       "notes": "bilješke",
-      "loadingNotes": "Učitavanje bilješki...",
+      "loadingNotes": "Učitavanje bilješki…",
       "noNotesWithThisTag": "Nema bilješki s ovom oznakom",
       "addThisTagToANoteToSeeItHere": "Dodajte ovu oznaku bilješci da biste je vidjeli ovdje",
-      "pinned": "ZAKAČENO",
+      "pinned": "PRIKVAČENO",
       "allNotes": "SVE BILJEŠKE",
       "allNotesArePinned": "Sve bilješke su prikvačene",
+      "tasks": "ZADACI",
       "unpinFromTag": "Otkvači s oznake",
       "unpin": "Otkvači",
-      "pinToTag": "Prikvači za oznaku",
+      "pinToTag": "Prikvači uz oznaku",
       "pin": "Prikvači",
       "tagActions": "Radnje oznaka",
       "editTagName": "Uredi naziv oznake",
-      "changeColor": "Promjena boje",
+      "changeColor": "Promijeni boju",
       "deleteTag": "Izbriši oznaku",
       "recent": "Nedavno",
       "created": "Stvoreno",
-      "alphabetical": "Abecedno",
-      "tasks": "ZADACI"
+      "alphabetical": "Abecedno"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Preimenuj oznaku",
-      "rename": "Preimenuj ",
-      "acrossEveryNoteThatUsesIt": "preko svake note koja ga koristi.",
-      "newName": "Novo ime",
+      "rename": "Preimenujte ",
+      "acrossEveryNoteThatUsesIt": "u svim bilješkama koje je koriste.",
+      "newName": "Novi naziv",
       "cancel": "Odustani"
     },
     "componentsViewersAudioPlayer": {
@@ -698,8 +1175,8 @@
     "componentsViewersImageViewer": {
       "failedToLoadImage": "Učitavanje slike nije uspjelo",
       "theImageCouldNotBeDisplayed": "Slika se nije mogla prikazati.",
-      "resetZoom": "Resetiraj zumiranje",
-      "rotate": "Rotirajte",
+      "resetZoom": "Vrati zumiranje na zadano",
+      "rotate": "Zakreni",
       "dragToPan": "Povucite za pomicanje"
     },
     "componentsViewersPdfViewer": {
@@ -709,18 +1186,18 @@
       "zoomOut": "Smanji",
       "zoomIn": "Povećaj",
       "fitToWidth": "Prilagodi širini",
-      "rotate": "Rotirajte",
-      "fitToHeight": "Fit to height",
-      "viewOptions": "View options",
-      "fit": "Fit",
-      "pageLayout": "Page layout",
-      "singlePage": "Single page",
-      "twoPageOdd": "Two-page (odd)",
-      "twoPageEven": "Two-page (even)",
-      "adaptToTheme": "Adapt to theme",
-      "goToPage": "Go to page",
-      "showThumbnails": "Show thumbnails",
-      "hideThumbnails": "Hide thumbnails"
+      "rotate": "Zakreni",
+      "fitToHeight": "Prilagodi visini",
+      "viewOptions": "Mogućnosti prikaza",
+      "fit": "Prilagodba",
+      "pageLayout": "Raspored stranica",
+      "singlePage": "Jedna stranica",
+      "twoPageOdd": "Dvije stranice (neparne)",
+      "twoPageEven": "Dvije stranice (parne)",
+      "adaptToTheme": "Prilagodi temi",
+      "goToPage": "Idi na stranicu",
+      "showThumbnails": "Prikaži minijature",
+      "hideThumbnails": "Sakrij minijature"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Učitavanje videozapisa nije uspjelo",
@@ -728,18 +1205,18 @@
     },
     "pagesFile": {
       "failedToLoadFile": "Učitavanje datoteke nije uspjelo",
-      "tryAgain": "Pokušajte ponovno",
+      "tryAgain": "Pokušaj ponovno",
       "noFileSelected": "Nije odabrana datoteka",
       "selectAFileFromTheSidebarToViewIt": "Odaberite datoteku na bočnoj traci da biste je pogledali",
-      "loadingFile": "Učitavanje datoteke...",
-      "open": "Otvoreno",
-      "reveal": "otkriti",
+      "loadingFile": "Učitavanje datoteke…",
+      "open": "Otvori",
+      "reveal": "Prikaži",
       "unsupportedFileType": "Nepodržana vrsta datoteke",
-      "fileActions": "File actions"
+      "fileActions": "Radnje s datotekom"
     },
     "pagesFolderView": {
       "createNewNote": "Stvori novu bilješku",
-      "viewSettings": "Prikaži postavke",
+      "viewSettings": "Postavke prikaza",
       "displayDensity": "Gustoća prikaza",
       "comfortable": "Udoban",
       "compact": "Kompaktan",
@@ -747,12 +1224,12 @@
       "cancel": "Odustani"
     },
     "componentsFolderViewSortSelector": {
-      "builtIn": "Ugrađeno",
       "clearSort": "Očisti sortiranje",
-      "noSortablePropertiesFound": "Nema svojstava za sortiranje",
-      "properties": "Svojstva",
-      "searchProperties": "Pretraži svojstva...",
       "sort": "Sortiraj",
+      "searchProperties": "Pretraži svojstva…",
+      "builtIn": "Ugrađeno",
+      "properties": "Svojstva",
+      "noSortablePropertiesFound": "Nema svojstava za sortiranje",
       "sortDirection": "Smjer sortiranja"
     }
   },
@@ -760,102 +1237,70 @@
     "errors": {
       "failedToSaveFormula": "Spremanje formule nije uspjelo",
       "failedToOpenInExternalEditor": "Otvaranje u vanjskom uređivaču nije uspjelo",
-      "failedToCopyLink": "Kopiranje veze nije uspjelo",
-      "failedToCreateView": "Izrada prikaza nije uspjela",
-      "failedToRenameFolder": "Nije uspjelo preimenovanje mape",
-      "failedToCreateTask": "Izrada zadatka nije uspjela",
+      "failedToCopyLink": "Kopiranje poveznice nije uspjelo",
+      "failedToCreateView": "Stvaranje prikaza nije uspjelo",
+      "failedToRenameFolder": "Preimenovanje mape nije uspjelo",
+      "failedToCreateTask": "Stvaranje zadatka nije uspjelo",
       "failedToLoadVersionHistory": "Učitavanje povijesti verzija nije uspjelo",
       "failedToRestoreVersion": "Vraćanje verzije nije uspjelo",
       "failedToDeleteVersion": "Brisanje verzije nije uspjelo",
       "failedToCreateNote": "Stvaranje bilješke nije uspjelo",
-      "failedToLoadMoreBookmarks": "Nije uspjelo učitavanje dodatnih oznaka",
-      "failedToToggleBookmark": "Promjena oznake nije uspjela",
-      "failedToRemoveBookmark": "Uklanjanje oznake nije uspjelo",
-      "failedToReorderBookmarks": "Promjena redoslijeda oznaka nije uspjela",
+      "failedToLoadMoreBookmarks": "Učitavanje dodatnih favorita nije uspjelo",
+      "failedToToggleBookmark": "Promjena favorita nije uspjela",
+      "failedToRemoveBookmark": "Uklanjanje iz favorita nije uspjelo",
+      "failedToReorderBookmarks": "Promjena redoslijeda favorita nije uspjela",
       "failedToSave": "Spremanje nije uspjelo",
       "failedToRename": "Preimenovanje nije uspjelo",
       "failedToUpdateEmoji": "Ažuriranje emotikona nije uspjelo",
       "failedToUpdateTags": "Ažuriranje oznaka nije uspjelo",
       "failedToSnoozeReminder": "Odgoda podsjetnika nije uspjela",
-      "failedToCreateFolder": "Izrada mape nije uspjela",
+      "failedToCreateFolder": "Stvaranje mape nije uspjelo",
       "failedToLoadProperties": "Učitavanje svojstava nije uspjelo",
-      "failedToLoadPropertyDefinitions": "Nije uspjelo učitavanje definicija svojstava",
+      "failedToLoadPropertyDefinitions": "Učitavanje definicija svojstava nije uspjelo",
       "failedToLoadTemplates": "Učitavanje predložaka nije uspjelo"
     },
     "toasts": {
-      "noteExportedSuccessfully": "Bilješka je uspješno izvezena",
+      "noteExportedSuccessfully": "Bilješka uspješno izvezena",
       "failedToUpdateProperty": "Ažuriranje svojstva nije uspjelo",
       "failedToUpdateTags": "Ažuriranje oznaka nije uspjelo",
       "failedToUpdateIcon": "Ažuriranje ikone nije uspjelo",
-      "reminderSnoozed": "Podsjetnik je odgođen",
+      "reminderSnoozed": "Podsjetnik odgođen",
       "failedToSnoozeReminder": "Odgoda podsjetnika nije uspjela",
-      "defaultTemplateSet": "Zadani skup predložaka",
+      "defaultTemplateSet": "Zadani predložak postavljen",
       "failedToSetDefaultTemplate": "Postavljanje zadanog predloška nije uspjelo",
-      "defaultTemplateCleared": "Zadani predložak je izbrisan",
-      "failedToClearDefaultTemplate": "Brisanje zadanog predloška nije uspjelo",
+      "defaultTemplateCleared": "Zadani predložak uklonjen",
+      "failedToClearDefaultTemplate": "Uklanjanje zadanog predloška nije uspjelo",
       "failedToAddProperty": "Dodavanje svojstva nije uspjelo",
       "failedToDeleteProperty": "Brisanje svojstva nije uspjelo",
       "failedToRenameProperty": "Promjena naziva svojstva nije uspjela",
       "failedToReorderProperties": "Promjena redoslijeda svojstava nije uspjela",
-      "cannotAddTagThisNoteWasDeleted": "Nije moguće dodati oznaku - ova bilješka je izbrisana",
-      "cannotRemoveTagThisNoteWasDeleted": "Nije moguće ukloniti oznaku - ova bilješka je izbrisana",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "Nije moguće promijeniti samo lokalno — ova bilješka je izbrisana"
+      "cannotAddTagThisNoteWasDeleted": "Nije moguće dodati oznaku – ova bilješka je izbrisana",
+      "cannotRemoveTagThisNoteWasDeleted": "Nije moguće ukloniti oznaku – ova bilješka je izbrisana",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Nije moguće promijeniti postavku „Samo lokalno” – ova bilješka je izbrisana"
     }
   },
   "bulkActions": {
-    "addTag": "Dodaj oznaku",
-    "clearAria": "Očisti odabir",
-    "copiedLinks": "Kopirano {count, plural, one {# poveznica} few {# poveznice} other {# poveznica}}",
-    "copyLinks": "Kopiraj poveznice",
-    "delete": "Izbriši",
-    "export": "Izvezi",
-    "iconUpdated": "{count, plural, one {Ikona ažurirana na # bilješci} few {Ikona ažurirana na # bilješke} other {Ikona ažurirana na # bilješki}}",
-    "move": "Premjesti",
+    "toolbarAria": "Skupne radnje",
     "selected": "odabrano",
-    "setIcon": "Postavi ikonu",
+    "move": "Premjesti",
+    "copyLinks": "Kopiraj poveznice",
+    "addTag": "Dodaj oznaku",
     "tagNamePlaceholder": "Naziv oznake",
-    "toolbarAria": "Skupne radnje"
-  },
-  "comments": {
-    "attachAria": "Priloži datoteku",
-    "badgeAria": "{count, plural, one {# komentar} few {# komentara} other {# komentara}}",
-    "cancel": "Odustani",
-    "commentPlaceholder": "Dodaj komentar...",
-    "createdTooltip": "Stvoreno {date} u {time}",
-    "delete": "Izbriši komentar",
-    "edit": "Uredi komentar",
-    "kind": {
-      "addition": "Dodatak",
-      "comment": "Komentar",
-      "deletion": "Brisanje",
-      "substitution": "Zamjena"
-    },
-    "mentionAria": "Spomeni osobu, stranicu ili datum",
-    "railAria": "Komentari",
-    "replyPlaceholder": "Odgovori...",
-    "resolve": "Razriješi",
-    "sendAria": "Pošalji komentar",
-    "toolbarComment": "Komentar",
-    "openAttachmentAria": "Otvori privitak {name}",
-    "openImageAria": "Otvori sliku {name}"
-  },
-  "dateMention": {
-    "clear": "Očisti",
-    "dateFormat": "Format datuma",
-    "dateInput": "Datum",
-    "includeTime": "Uključi vrijeme",
-    "remind": "Podsjeti",
-    "time": "Vrijeme",
-    "timeFormat": "Format vremena"
+    "export": "Izvezi",
+    "delete": "Izbriši",
+    "clearAria": "Očisti odabir",
+    "copiedLinks": "{count, plural, one {Kopirana # poveznica} few {Kopirane # poveznice} other {Kopirano # poveznica}}",
+    "setIcon": "Postavi ikonu",
+    "iconUpdated": "{count, plural, one {Ikona ažurirana na # bilješci} few {Ikona ažurirana na # bilješke} other {Ikona ažurirana na # bilješki}}"
   },
   "applyTemplateConfirm": {
+    "title": "Zamijeniti sadržaj bilješke?",
+    "description": "Primjena predloška „{name}” zamijenit će trenutni sadržaj ove bilješke. To se ne može poništiti.",
+    "full": "Zamijeni sadržaj i dodaj podatke predloška",
     "body": "Zamijeni samo sadržaj",
     "cancel": "Odustani",
-    "description": "Primjena predloška „{name}” zamijenit će trenutni sadržaj ove bilješke. To se ne može poništiti.",
-    "failed": "Primjena predloška nije uspjela",
-    "full": "Zamijeni sadržaj i dodaj podatke predloška",
-    "success": "Predložak je primijenjen",
-    "title": "Zamijeniti sadržaj bilješke?"
+    "success": "Predložak primijenjen",
+    "failed": "Primjena predloška nije uspjela"
   },
   "saveNoteAsTemplate": {
     "title": "Spremi bilješku kao predložak",
@@ -865,78 +1310,125 @@
     "summary": "Sprema sadržaj bilješke, {tagCount, plural, one {# oznaku} few {# oznake} other {# oznaka}} i {propertyCount, plural, one {# svojstvo} few {# svojstva} other {# svojstava}}.",
     "save": "Spremi predložak",
     "cancel": "Odustani",
-    "success": "Predložak je spremljen",
+    "success": "Predložak spremljen",
     "edit": "Uredi predložak",
     "failed": "Spremanje predloška nije uspjelo",
     "loadFailed": "Bilješku nije moguće pročitati"
   },
   "newNoteFromNote": {
     "action": "Nova bilješka iz ove bilješke",
-    "created": "Stvoreno iz bilješke {source}: {tagCount, plural, =0 {bez oznaka} one {# oznaka} few {# oznake} other {# oznaka}}, {propertyCount, plural, =0 {bez svojstava} one {# svojstvo} few {# svojstva} other {# svojstava}}"
+    "created": "Stvoreno iz bilješke „{source}”: {tagCount, plural, =0 {bez oznaka} one {# oznaka} few {# oznake} other {# oznaka}}, {propertyCount, plural, =0 {bez svojstava} one {# svojstvo} few {# svojstva} other {# svojstava}}"
+  },
+  "tags": {
+    "hubTitle": "Oznake",
+    "openHub": "Otvori stranicu oznaka"
   },
   "tagView": {
     "moreActions": "Više radnji",
     "pin": {
-      "action": "Prikvači {count, plural, one {# bilješku} few {# bilješke} other {# bilješki}} na oznaku",
-      "failed": "Prikvačivanje bilješke na oznaku nije uspjelo",
-      "success": "{count, plural, one {# bilješka prikvačena na oznaku} few {# bilješke prikvačene na oznaku} other {# bilješki prikvačeno na oznaku}}"
+      "action": "Prikvači {count, plural, one {# bilješku} few {# bilješke} other {# bilješki}} uz oznaku",
+      "success": "{count, plural, one {# bilješka prikvačena uz oznaku} few {# bilješke prikvačene uz oznaku} other {# bilješki prikvačeno uz oznaku}}",
+      "failed": "Prikvačivanje bilješke uz oznaku nije uspjelo"
     }
   },
-  "tags": {
-    "hubTitle": "Oznake",
-    "openHub": "Otvori središte oznaka"
-  },
   "tagsHub": {
-    "cancelCreate": "Odustani",
-    "category": {
-      "delete": "Izbriši kategoriju",
-      "deleteBody": "Oznake će se premjestiti u Nekategorizirano. Neće biti izbrisane.",
-      "deleteCancel": "Odustani",
-      "deleteConfirm": "Izbriši",
-      "deleteTitle": "Izbrisati {name}?",
-      "dragHandle": "Povucite za promjenu redoslijeda kategorija",
-      "emptyHint": "Povucite oznaku ovamo",
-      "more": "Mogućnosti kategorije",
-      "rename": "Preimenuj kategoriju"
-    },
-    "categoryNamePlaceholder": "Naziv kategorije",
-    "errors": {
-      "createCategoryFailed": "Stvaranje kategorije nije uspjelo",
-      "createTagCategorizeFailed": "Oznaka je stvorena, ali dodavanje u kategoriju nije uspjelo",
-      "createTagFailed": "Stvaranje oznake nije uspjelo",
-      "deleteCategoryFailed": "Brisanje kategorije nije uspjelo",
-      "loadFailed": "Učitavanje kategorija oznaka nije uspjelo",
-      "renameCategoryFailed": "Preimenovanje kategorije nije uspjelo",
-      "reorderFailed": "Promjena redoslijeda oznaka nije uspjela"
-    },
-    "loading": "Učitavanje oznaka...",
+    "loading": "Učitavanje oznaka…",
     "newCategory": "Nova kategorija",
     "newTag": "Nova oznaka",
-    "search": {
-      "empty": "Nijedna kategorija ni oznaka ne odgovara vašoj pretrazi",
-      "placeholder": "Pretraži kategorije i oznake"
-    },
+    "cancelCreate": "Odustani",
+    "categoryNamePlaceholder": "Naziv kategorije",
     "tagNamePlaceholder": "Naziv oznake",
-    "uncategorized": "Nekategorizirano"
+    "uncategorized": "Nekategorizirano",
+    "search": {
+      "placeholder": "Pretraži kategorije i oznake",
+      "empty": "Nijedna kategorija ni oznaka ne odgovara pretraživanju"
+    },
+    "category": {
+      "more": "Mogućnosti kategorije",
+      "rename": "Preimenuj kategoriju",
+      "delete": "Izbriši kategoriju",
+      "dragHandle": "Povucite za promjenu redoslijeda kategorija",
+      "emptyHint": "Povucite oznaku ovamo",
+      "deleteTitle": "Izbrisati kategoriju „{name}”?",
+      "deleteBody": "Oznake će se premjestiti u „Nekategorizirano”. Neće se izbrisati.",
+      "deleteConfirm": "Izbriši",
+      "deleteCancel": "Odustani"
+    },
+    "errors": {
+      "loadFailed": "Učitavanje kategorija oznaka nije uspjelo",
+      "createCategoryFailed": "Stvaranje kategorije nije uspjelo",
+      "renameCategoryFailed": "Preimenovanje kategorije nije uspjelo",
+      "deleteCategoryFailed": "Brisanje kategorije nije uspjelo",
+      "createTagFailed": "Stvaranje oznake nije uspjelo",
+      "createTagCategorizeFailed": "Oznaka je stvorena, ali dodavanje u kategoriju nije uspjelo",
+      "reorderFailed": "Promjena redoslijeda oznaka nije uspjela"
+    }
   },
   "folderView": {
+    "columns": {
+      "title": "Naslov",
+      "folder": "Mapa",
+      "tags": "Oznake",
+      "created": "Stvoreno",
+      "modified": "Izmijenjeno",
+      "wordCount": "Broj riječi",
+      "kind": "Vrsta"
+    },
+    "defaultViewName": "Zadano",
+    "selectView": "Odaberi prikaz",
     "columnHeader": {
       "doubleClickToEdit": "{name} (dvoklik za uređivanje)",
       "dragToReorder": "Povucite za promjenu redoslijeda stupca: {name}"
     },
-    "columns": {
-      "created": "Stvoreno",
-      "folder": "Mapa",
-      "kind": "Vrsta",
-      "modified": "Izmijenjeno",
-      "tags": "Oznake",
-      "title": "Naslov",
-      "wordCount": "Broj riječi"
-    },
-    "defaultViewName": "Zadano",
     "groupHeader": {
       "noteCount": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}"
+    }
+  },
+  "mindMap": {
+    "regionLabel": "Umna mapa bilješke „{title}”, {count, plural, one {# čvor} few {# čvora} other {# čvorova}}",
+    "treeLabel": "Struktura umne mape bilješke „{title}”",
+    "emptyHint": "Dodajte naslov u ovu bilješku i umna mapa će se razgranati.",
+    "linkHint": "poveznica na drugu stranicu",
+    "chain": {
+      "separator": "→"
     },
-    "selectView": "Odaberi prikaz"
+    "more": "{count, plural, one {još #} few {još #} other {još #}}",
+    "nodeCapNotice": "Ova umna mapa dosegnula je ograničenje od {count, plural, one {# čvora} few {# čvora} other {# čvorova}}; ostatak je sažet u najbliži čvor iznad.",
+    "badge": {
+      "table": "{count, plural, one {# tablica} few {# tablice} other {# tablica}}",
+      "code": "{count, plural, one {# blok koda} few {# bloka koda} other {# blokova koda}}",
+      "image": "{count, plural, one {# slika} few {# slike} other {# slika}}",
+      "quote": "{count, plural, one {# citat} few {# citata} other {# citata}}",
+      "embed": "{count, plural, one {# ugrađeni sadržaj} few {# ugrađena sadržaja} other {# ugrađenih sadržaja}}",
+      "bookmark": "{count, plural, one {# kartica poveznice} few {# kartice poveznica} other {# kartica poveznica}}",
+      "file": "{count, plural, one {# datoteka} few {# datoteke} other {# datoteka}}"
+    },
+    "toolbar": {
+      "label": "Radnje umne mape",
+      "fit": "Prilagodi prikazu",
+      "copyImage": "Kopiraj kao sliku",
+      "copyVector": "Kopiraj kao vektorsku grafiku",
+      "imageCopied": "Umna mapa kopirana kao slika",
+      "vectorCopied": "Umna mapa kopirana kao vektorska grafika",
+      "copyFailed": "Kopiranje umne mape nije uspjelo",
+      "saveCanvas": "Spremi kao platno",
+      "saved": "Spremljeno kao platno „{title}”",
+      "saveFailed": "Spremanje umne mape kao platna nije uspjelo",
+      "snapshotOn": "Snimka stanja · {date}"
+    }
+  },
+  "tagAndFilter": {
+    "regionLabel": "Aktivni filtar oznaka",
+    "matchingAll": "Odgovara svim oznakama:",
+    "removeTag": "Ukloni {tag} iz filtra",
+    "clearAll": "Očisti sve",
+    "saveSearch": "Spremi pretraživanje",
+    "savedSearches": "Spremljena pretraživanja",
+    "deleteSearch": "Izbriši spremljeno pretraživanje „{name}”",
+    "saveDialogTitle": "Imenujte ovo pretraživanje",
+    "saveDialogPlaceholder": "npr. Poslovni sastanci",
+    "cancel": "Odustani",
+    "save": "Spremi",
+    "addToFilterHint": "Ctrl/Cmd + klik na oznaku dodaje je u filtar"
   }
 }

@@ -52,8 +52,8 @@
       "saveFailedQuota": "Den här sessionen är för stor för att lagras. Stäng några flikar, annars kanske den inte återställs nästa gång du öppnar Memry.",
       "saveFailedGeneric": "Memry kunde inte lagra den här sessionen, så den kanske inte återställs nästa gång du öppnar appen.",
       "lastSessionNotSaved": "Din senaste session sparades inte när Memry stängdes",
-      "lastSessionNotSavedQuota": "Lagringsutrymmet var fullt då, så de här flikarna kommer från en tidigare sparning. Stäng några flikar för att frigöra utrymme.",
-      "lastSessionNotSavedGeneric": "Memry kunde inte lagra dina flikar när appen avslutades, så de här flikarna kommer från en tidigare sparning."
+      "lastSessionNotSavedQuota": "Lagringsutrymmet var fullt då, så de här flikarna kommer från ett tidigare sparat läge. Stäng några flikar för att frigöra utrymme.",
+      "lastSessionNotSavedGeneric": "Memry kunde inte lagra dina flikar när appen avslutades, så de här flikarna kommer från ett tidigare sparat läge."
     },
     "contextMenu": {
       "close": "Stäng",
@@ -82,8 +82,8 @@
     "undoFailed": "Det gick inte att ångra åtgärden",
     "filesImported": "{count, plural, one {# fil importerad} other {# filer importerade}}",
     "filesImportFailed": "{count, plural, one {Det gick inte att importera # fil} other {Det gick inte att importera # filer}}",
-    "filesHiddenInSidebar": "Filer är dolda i sidofältet. Slå på Visa filer i sorteringsmenyn för Samlingar för att se dem.",
-    "moreRemindersDue": "{count, plural, one {Ytterligare # påminnelse förfaller} other {Ytterligare # påminnelser förfaller}}",
+    "filesHiddenInSidebar": "Filer är dolda i sidofältet. Slå på ”Visa filer” i sorteringsmenyn för Samlingar för att se dem.",
+    "moreRemindersDue": "{count, plural, one {Ytterligare # påminnelse väntar} other {Ytterligare # påminnelser väntar}}",
     "moreRemindersDueHint": "Se påminnelsepanelen för mer information",
     "searchIndexRepaired": "Sökindexet har reparerats",
     "searchIndexRepairedHint": "En del av sökindexet var skadat, så Memry byggde om det. Dina anteckningar har inte påverkats."
@@ -117,7 +117,7 @@
       "last": "sista"
     },
     "preset": {
-      "everyWeekday": "Varje vardag (mån-fre)",
+      "everyWeekday": "Varje vardag (mån–fre)",
       "everyYearOnDate": "Varje år den {date}"
     }
   },
@@ -166,7 +166,7 @@
       "candidate": "Förslag",
       "loading": "Läser in…",
       "apply": "Tillämpa",
-      "applyEdited": "Tillämpa redigerad",
+      "applyEdited": "Tillämpa redigerad version",
       "editBody": "Redigera innan du tillämpar"
     },
     "inPageReview": {
@@ -347,7 +347,7 @@
       "modelSettingsLabel": "Agentens modellinställningar: {model}, {settings}"
     },
     "refPicker": {
-      "noMatches": "Inga matchningar"
+      "noMatches": "Inga träffar"
     },
     "toolResult": {
       "label": "Verktygsresultat"
@@ -379,11 +379,11 @@
     "errors": {
       "loadConversations": "Det gick inte att läsa in agentkonversationer",
       "loadConversation": "Det gick inte att läsa in agentkonversationen",
-      "createConversation": "Det gick inte att skapa agentkonversation",
+      "createConversation": "Det gick inte att skapa agentkonversationen",
       "busy": "Ett annat fönster är mitt i ett svar i den här konversationen. Vänta tills det är klart eller stoppa det därifrån.",
       "sendTurn": "Det gick inte att skicka meddelandet till agenten",
       "cancelTurn": "Det gick inte att avbryta agentens körning",
-      "submitApproval": "Det gick inte att skicka verktygsgodkännande",
+      "submitApproval": "Det gick inte att skicka verktygsgodkännandet",
       "updateTrust": "Det gick inte att uppdatera betrodda verktyg",
       "saveDisclosure": "Det gick inte att spara aktiveringen av agenten",
       "resolveWindow": "Det gick inte att hitta agentens källfönster",
@@ -411,7 +411,7 @@
     "notFound": "Den här canvasen kunde inte hittas",
     "corruptScene": "Den här canvasen kunde inte läsas. Redigering är avstängd för att inte förlora data.",
     "unreadableTitle": "Den här canvasen kan inte öppnas här",
-    "unreadableBody": "Dess dokument saknas i valvet, eller så ritades den innan canvasar blev filer och den här enheten har inte längre nyckeln som låser upp den. Inget har raderats – öppna valvet på enheten som skapade den, eller återställ mappen med canvasar.",
+    "unreadableBody": "Canvasens dokument saknas i valvet, eller så ritades den innan canvasar blev filer och den här enheten har inte längre nyckeln som låser upp den. Inget har raderats – öppna valvet på enheten som skapade den, eller återställ mappen med canvasar.",
     "tooLargeToSync": "Den här canvasen är för stor för att synkroniseras. Den är sparad på den här enheten men når inte dina andra enheter förrän den blir mindre.",
     "savedToVault": "Alla ändringar sparas automatiskt i ditt valv",
     "libraryStoreFailed": "Det gick inte att spara ditt formbibliotek. De senaste ändringarna i det kan gå förlorade.",
@@ -496,7 +496,7 @@
       "bulkViewsHeading": "Lägg till från {name}",
       "bulkAllItems": "Alla objekt",
       "bulkConfirmTitle": "{count, plural, one {Lägga till # kort från {name}?} other {Lägga till # kort från {name}?}}",
-      "bulkConfirmBody": "Stora tavlor blir långsammare och kan överskrida storleksgränsen för synkronisering.",
+      "bulkConfirmBody": "Stora tavlor blir långsammare att navigera i och kan överskrida storleksgränsen för synkronisering.",
       "bulkConfirmSkipped": "{count, plural, one {# objekt finns redan på den här canvasen och hoppas över.} other {# objekt finns redan på den här canvasen och hoppas över.}}",
       "bulkConfirmAdd": "{count, plural, one {Lägg till # kort} other {Lägg till # kort}}",
       "bulkBack": "Tillbaka",
@@ -530,7 +530,7 @@
     },
     "frame": {
       "categorize": "Kategorisera",
-      "editBinding": "Ändra vad den här sektionen kategoriserar som",
+      "editBinding": "Ändra sektionens kategori",
       "cardCount": "{count, plural, one {# kort} other {# kort}}",
       "bindTitle": "Kategorisera den här sektionen",
       "bindHint": "Kort som släpps i sektionen får den här taggen eller det här egenskapsvärdet.",
@@ -616,7 +616,7 @@
       "findReplaceAsk": "Sök, ersätt, fråga…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Hoppa över introduktion",
+      "skipOnboarding": "Hoppa över introduktionen",
       "welcomeToMemry": "Välkommen till memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Din personliga kunskapsbas. Det tar bara 2 minuter att komma igång.",
       "getStarted": "Kom igång ",
@@ -755,8 +755,8 @@
     },
     "componentsTabsTabBarWithDrag": {
       "openTabs": "Öppna flikar",
-      "scrollTabsLeft": "Skrolla flikar åt vänster",
-      "scrollTabsRight": "Skrolla flikar åt höger",
+      "scrollTabsLeft": "Rulla flikar åt vänster",
+      "scrollTabsRight": "Rulla flikar åt höger",
       "dayPanel": "Dagpanel"
     },
     "componentsTabsTabErrorBoundary": {
@@ -849,7 +849,7 @@
         "locationLabel": "Plats",
         "change": "Ändra…",
         "willBeCreatedAt": "Skapas i",
-        "errorExists": "Det finns redan en mapp med det här namnet här.",
+        "errorExists": "Det finns redan en mapp med samma namn på den här platsen.",
         "openInstead": "Öppna den som valv i stället",
         "errorInvalidName": "Namn får inte börja med en punkt eller innehålla / \\ : * ? \" < > |",
         "createFailed": "Det gick inte att skapa valvet.",
@@ -892,7 +892,7 @@
       "downloadLocation": "Plats",
       "changeLocation": "Ändra…",
       "download": "Ladda ner",
-      "downloadFailed": "Valvet kunde inte laddas ner",
+      "downloadFailed": "Det gick inte att ladda ner valvet",
       "deleteFromAccount": "Radera från kontot",
       "deleteVaultTitle": "Radera ”{name}” från ditt konto?",
       "deleteVaultBody": "All synkroniserad data för det här valvet raderas permanent från Memrys servrar. Det går inte att ångra. Dina filer på disken raderas inte.",
@@ -1013,7 +1013,7 @@
     "noJournalEntriesYet": "Inga dagboksinlägg än.",
     "disabled": {
       "createNote": "Skapa anteckning",
-      "hint": "Inget öppet. Börja en anteckning."
+      "hint": "Inget öppet. Påbörja en anteckning."
     }
   },
   "onboarding": {
@@ -1042,8 +1042,8 @@
       "body": "Byt till fliken Agent för att fråga MemryNotes assistent om ditt valv."
     },
     "sync": {
-      "title": "Privat, krypterad synk",
-      "body": "Slå på end-to-end-krypterad synkronisering för att hålla alla enheter i takt."
+      "title": "Privat, krypterad synkronisering",
+      "body": "Slå på end-to-end-krypterad synkronisering för att hålla alla enheter uppdaterade."
     },
     "feedback": {
       "title": "Berätta vad du tycker",
@@ -1185,7 +1185,7 @@
   "update": {
     "available": "Uppdatering tillgänglig",
     "downloading": "Laddar ner {version}",
-    "ready": "Uppdateringen är klar",
+    "ready": "Uppdatering redo",
     "failed": "Uppdateringen misslyckades",
     "downloadAction": "Ladda ner",
     "restartAction": "Starta om",

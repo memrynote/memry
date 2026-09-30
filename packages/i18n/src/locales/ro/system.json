@@ -45,7 +45,7 @@
     },
     "reminder": {
       "note": "Memento pentru notiță",
-      "journal": "Memento de jurnal",
+      "journal": "Memento pentru jurnal",
       "highlight": "Memento pentru evidențiere",
       "task": "Memento pentru sarcină",
       "fallback": "A sosit un memento",
@@ -62,7 +62,7 @@
   "startup": {
     "installingUpdate": {
       "title": "Se instalează actualizarea…",
-      "subtitle": "MemryNote va reporni automat."
+      "subtitle": "MemryNote se va redeschide automat."
     },
     "failed": {
       "title": "MemryNote nu a putut porni complet",

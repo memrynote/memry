@@ -2,20 +2,20 @@
   "app": {
     "quit": "Izađi",
     "preferences": "Postavke…",
-    "checkForUpdates": "Provjeri ima li ažuriranja…",
-    "exit": "Izlaz",
+    "checkForUpdates": "Provjeri ažuriranja…",
+    "services": "Usluge",
     "hide": "Sakrij MemryNote",
     "hideOthers": "Sakrij ostale",
-    "services": "Usluge",
-    "unhide": "Prikaži sve"
+    "unhide": "Prikaži sve",
+    "exit": "Izlaz"
   },
   "file": {
     "label": "Datoteka",
     "newNote": "Nova bilješka",
-    "close": "Zatvori prozor",
-    "closeTab": "Zatvori karticu",
+    "openQuickly": "Brzo otvori…",
     "exportPdf": "Izvezi u PDF…",
-    "openQuickly": "Brzo otvori…"
+    "closeTab": "Zatvori karticu",
+    "close": "Zatvori prozor"
   },
   "navigation": {
     "back": "Natrag",
@@ -31,63 +31,68 @@
     "selectAll": "Odaberi sve",
     "find": "Pronađi",
     "speech": "Govor",
-    "delete": "Izbriši",
     "pasteAndMatchStyle": "Zalijepi i prilagodi stil",
+    "delete": "Izbriši",
     "startSpeaking": "Počni govoriti",
-    "stopSpeaking": "Prestani govoriti"
+    "stopSpeaking": "Prestani govoriti",
+    "addToDictionary": "Dodaj u rječnik",
+    "noSuggestions": "Nema prijedloga"
   },
-  "view": {
-    "label": "Prikaz",
-    "reload": "Ponovno učitaj",
-    "toggleDevTools": "Uključi/isključi alate za razvojne programere",
-    "toggleFullscreen": "Uključi/isključi cijeli zaslon",
-    "theme": "Tema",
-    "themeDark": "Tamna",
-    "themeLight": "Svijetla",
-    "themeSystem": "Sustav",
-    "themeWhite": "Papir",
-    "toggleDayPanel": "Uključi/isključi ploču dana",
-    "toggleSidebar": "Uključi/isključi bočnu traku",
-    "actualSize": "Stvarna veličina",
-    "zoomIn": "Povećaj",
-    "zoomOut": "Smanji"
+  "insert": {
+    "label": "Umetni",
+    "codeBlock": "Blok koda",
+    "table": "Tablica",
+    "bulletList": "Popis s grafičkim oznakama",
+    "numberedList": "Numerirani popis",
+    "taskList": "Popis zadataka",
+    "attachment": "Umetni privitak…"
   },
   "format": {
-    "body": "Tijelo teksta",
-    "bold": "Podebljano",
-    "code": "Kod",
+    "label": "Oblikovanje",
     "heading1": "Naslov 1",
     "heading2": "Naslov 2",
     "heading3": "Naslov 3",
     "heading4": "Naslov 4",
     "heading5": "Naslov 5",
     "heading6": "Naslov 6",
-    "highlight": "Istakni",
+    "body": "Tijelo teksta",
+    "bold": "Podebljano",
     "italic": "Kurziv",
-    "label": "Oblikovanje",
+    "code": "Kod",
+    "highlight": "Istakni",
     "strikethrough": "Precrtano"
   },
-  "help": {
-    "about": "O aplikaciji MemryNote",
-    "documentation": "Dokumentacija",
-    "label": "Pomoć",
-    "shortcuts": "Tipkovnički prečaci",
-    "aboutVersion": "Verzija {version}"
-  },
-  "insert": {
-    "attachment": "Umetni privitak…",
-    "bulletList": "Popis s grafičkim oznakama",
-    "codeBlock": "Blok koda",
-    "label": "Umetni",
-    "numberedList": "Numerirani popis",
-    "table": "Tablica",
-    "taskList": "Popis zadataka"
+  "view": {
+    "label": "Prikaz",
+    "reload": "Ponovno učitaj",
+    "toggleDevTools": "Uključi/isključi alate za razvojne programere",
+    "toggleFullscreen": "Uključi/isključi cijeli zaslon",
+    "toggleSidebar": "Prikaži/sakrij bočnu traku",
+    "toggleDayPanel": "Prikaži/sakrij panel dana",
+    "theme": "Tema",
+    "themeLight": "Svijetla",
+    "themeDark": "Tamna",
+    "themeWhite": "Papir",
+    "themeSystem": "Sustav",
+    "actualSize": "Stvarna veličina",
+    "zoomIn": "Povećaj",
+    "zoomOut": "Smanji"
   },
   "window": {
     "label": "Prozor",
-    "close": "Zatvori",
-    "front": "Sve u prvi plan",
     "minimize": "Minimiziraj",
-    "zoom": "Zumiraj"
+    "zoom": "Zumiraj",
+    "front": "Sve u prvi plan",
+    "close": "Zatvori"
+  },
+  "help": {
+    "label": "Pomoć",
+    "documentation": "Dokumentacija",
+    "shortcuts": "Tipkovnički prečaci",
+    "about": "O aplikaciji MemryNote",
+    "aboutVersion": "Verzija {version}"
+  },
+  "tray": {
+    "show": "Prikaži MemryNote"
   }
 }

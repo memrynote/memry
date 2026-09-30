@@ -117,7 +117,7 @@
   },
   "aria": {
     "moreOptions": "المزيد من الخيارات",
-    "documentStatistics": "إحصائيات الوثيقة",
+    "documentStatistics": "إحصائيات المستند",
     "dayContext": "سياق اليوم: المهام والجدول الزمني",
     "scheduleEvents": "أحداث الجدول",
     "tasks": "المهام",
@@ -174,7 +174,7 @@
     "lastModified": "آخر تعديل",
     "lessThanOneMinute": "< 1 دقيقة",
     "minutes": "{minutes} د",
-    "read": "قراءة {readingTime}",
+    "read": "مدة القراءة: {readingTime}",
     "modified": "تاريخ التعديل: {date}"
   },
   "task": {

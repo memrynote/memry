@@ -96,9 +96,9 @@
       "december": "12월"
     },
     "greeting": {
-      "morning": "좋은 아침",
-      "afternoon": "안녕하세요",
-      "evening": "안녕하세요",
+      "morning": "좋은 아침입니다",
+      "afternoon": "좋은 오후입니다",
+      "evening": "좋은 저녁입니다",
       "night": "좋은 밤 되세요"
     },
     "allDay": "종일"
@@ -118,7 +118,7 @@
   "aria": {
     "moreOptions": "추가 옵션",
     "documentStatistics": "문서 통계",
-    "dayContext": "일별 맥락: 작업 및 일정",
+    "dayContext": "이날의 작업 및 일정",
     "scheduleEvents": "일정 목록",
     "tasks": "작업",
     "notesCreatedToday": "오늘 만든 노트 {count}개"

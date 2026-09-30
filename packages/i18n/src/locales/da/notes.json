@@ -793,7 +793,7 @@
     }
   },
   "templateSelector": {
-    "title": "Vælg dit lærred",
+    "title": "Vælg dit udgangspunkt",
     "description": "Vælg en skabelon for at starte din note",
     "searchPlaceholder": "Søg i skabeloner…",
     "loading": "Indlæser skabeloner…",
@@ -839,7 +839,7 @@
     "deleteTitle": "Vil du slette denne version?",
     "deleteDescription": "Denne handling kan ikke fortrydes. Denne version slettes permanent.",
     "restoreTitle": "Vil du gendanne denne version?",
-    "restoreDescription": "Dette vil erstatte det nuværende noteindhold med denne version. Et øjebliksbillede af den aktuelle tilstand gemmes først, så du kan fortryde denne handling.",
+    "restoreDescription": "Dette erstatter notens nuværende indhold med denne version. Der gemmes først et øjebliksbillede af den aktuelle tilstand, så du kan fortryde handlingen.",
     "restoring": "Gendanner…",
     "toast": {
       "loadPreviewFailed": "Kunne ikke indlæse forhåndsvisningen af versionen",
@@ -924,11 +924,11 @@
       "addFiltersToNarrowDownYourNotes": "Tilføj filtre for at indsnævre dine noter",
       "match": "Match",
       "allAnd": "Alle (OG)",
-      "anyOr": "Enhver (ELLER)",
+      "anyOr": "Mindst én (ELLER)",
       "ofTheFollowing": "af følgende:",
       "match2": "Match",
       "all": "Alle",
-      "any": "Enhver",
+      "any": "Mindst én",
       "of": "af:",
       "addCondition": "Tilføj betingelse",
       "addFilter": "Tilføj filter",
@@ -1121,7 +1121,7 @@
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Indlæser tags…",
-      "failedToLoadTags": "Kunne ikke indlæse tags",
+      "failedToLoadTags": "Kunne ikke indlæse taggene",
       "noTagsYet": "Ingen tags endnu",
       "filterTags": "Filtrér tags…",
       "noMatchingTags": "Ingen matchende tags",
@@ -1142,7 +1142,7 @@
       "notes": "noter",
       "loadingNotes": "Indlæser noter…",
       "noNotesWithThisTag": "Ingen noter med dette tag",
-      "addThisTagToANoteToSeeItHere": "Tilføj dette tag til en note for at se det her",
+      "addThisTagToANoteToSeeItHere": "Tilføj tagget til en note for at se den her",
       "pinned": "FASTGJORT",
       "allNotes": "ALLE NOTER",
       "allNotesArePinned": "Alle noter er fastgjort",
@@ -1252,7 +1252,7 @@
       "failedToSave": "Kunne ikke gemme",
       "failedToRename": "Kunne ikke omdøbe",
       "failedToUpdateEmoji": "Kunne ikke opdatere emojien",
-      "failedToUpdateTags": "Kunne ikke opdatere tags",
+      "failedToUpdateTags": "Kunne ikke opdatere taggene",
       "failedToSnoozeReminder": "Kunne ikke udsætte påmindelsen",
       "failedToCreateFolder": "Kunne ikke oprette mappen",
       "failedToLoadProperties": "Kunne ikke indlæse egenskaberne",
@@ -1262,7 +1262,7 @@
     "toasts": {
       "noteExportedSuccessfully": "Note eksporteret",
       "failedToUpdateProperty": "Kunne ikke opdatere egenskaben",
-      "failedToUpdateTags": "Kunne ikke opdatere tags",
+      "failedToUpdateTags": "Kunne ikke opdatere taggene",
       "failedToUpdateIcon": "Kunne ikke opdatere ikonet",
       "reminderSnoozed": "Påmindelse udsat",
       "failedToSnoozeReminder": "Kunne ikke udsætte påmindelsen",
@@ -1276,7 +1276,7 @@
       "failedToReorderProperties": "Kunne ikke ændre rækkefølgen af egenskaberne",
       "cannotAddTagThisNoteWasDeleted": "Kan ikke tilføje tag – denne note blev slettet",
       "cannotRemoveTagThisNoteWasDeleted": "Kan ikke fjerne tag – denne note blev slettet",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan ikke ændre kun lokalt – denne note blev slettet"
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan ikke ændre, om noten kun gemmes lokalt – den blev slettet"
     }
   },
   "bulkActions": {
@@ -1350,7 +1350,7 @@
       "dragHandle": "Træk for at ændre kategoriens placering",
       "emptyHint": "Træk et tag hertil",
       "deleteTitle": "Vil du slette {name}?",
-      "deleteBody": "Tags flyttes til Ukategoriseret. De bliver ikke slettet.",
+      "deleteBody": "Taggene flyttes til Ukategoriseret. De bliver ikke slettet.",
       "deleteConfirm": "Slet",
       "deleteCancel": "Annullér"
     },
@@ -1361,7 +1361,7 @@
       "deleteCategoryFailed": "Kunne ikke slette kategorien",
       "createTagFailed": "Kunne ikke oprette tagget",
       "createTagCategorizeFailed": "Tagget blev oprettet, men kunne ikke føjes til kategorien",
-      "reorderFailed": "Kunne ikke ændre rækkefølgen af tags"
+      "reorderFailed": "Kunne ikke ændre rækkefølgen af taggene"
     }
   },
   "folderView": {

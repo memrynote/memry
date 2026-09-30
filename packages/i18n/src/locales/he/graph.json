@@ -15,7 +15,7 @@
     "link-title": "קישור בין פתקים",
     "link-description": "אפשר להשתמש ב-[[wikilinks]] כדי לחבר רעיונות בין פתקים",
     "discover-title": "גילוי דפוסים",
-    "discover-description": "ככל שהקשרים יגדלו, אשכולות ונושאים יצוצו באופן טבעי"
+    "discover-description": "ככל שהחיבורים יתרבו, אשכולות ונושאים יצוצו באופן טבעי"
   },
   "entity": {
     "note": "פתק",
@@ -110,7 +110,7 @@
     "link-unsupported": "אפשר ליצור קישורים רק בין פתקים",
     "link-failed": "הוספת הקישור נכשלה",
     "unlink-failed": "הסרת הקישור נכשלה",
-    "tag-added": "#{tag} נוספה ל-{note}",
+    "tag-added": "התגית #{tag} נוספה ל-{note}",
     "tag-exists": "לפתק הזה כבר יש את #{tag}",
     "tag-failed": "הוספת התגית נכשלה",
     "undo-failed": "ביטול השינוי נכשל"

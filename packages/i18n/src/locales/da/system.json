@@ -53,8 +53,8 @@
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "Påmindelsestidspunkt skal ligge i fremtiden",
-    "definitionNotFound": "Definition ikke fundet",
+    "reminderTimeMustBeFuture": "Påmindelsestidspunktet skal ligge i fremtiden",
+    "definitionNotFound": "Definitionen blev ikke fundet",
     "noteNotFound": "Noten blev ikke fundet",
     "updateFailed": "Opdatering mislykkedes",
     "updateReadOnlyVolume": "Opdateringer kan ikke installeres, mens memrynote kører fra denne placering. Flyt memrynote til mappen Programmer, og åbn den igen."

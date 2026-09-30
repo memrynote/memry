@@ -131,7 +131,7 @@
     "noEventsWereScheduled": "當天沒有排定的活動",
     "noTasksDue": "沒有到期任務",
     "noTasksDueToday": "今天沒有到期任務",
-    "noTasksWereDue": "沒有到期任務",
+    "noTasksWereDue": "當天沒有到期任務",
     "noNotesToday": "今天沒有建立筆記",
     "startDocumenting": "開始記錄你的想法和點子"
   },

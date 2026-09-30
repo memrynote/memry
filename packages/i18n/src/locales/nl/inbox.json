@@ -165,7 +165,7 @@
     "restore": "Herstellen",
     "restoreToInbox": "Herstellen naar inbox",
     "delete": "Verwijderen",
-    "deletePermanently": "Permanent verwijderen",
+    "deletePermanently": "Definitief verwijderen",
     "archive": "Archiveren",
     "file": "Opbergen",
     "fileToFolder": "Opbergen in {folder}",

@@ -46,7 +46,7 @@
   },
   "tabs": {
     "pin": "Fastgør fane",
-    "unpin": "Frigør fanen",
+    "unpin": "Frigør fane",
     "persistence": {
       "saveFailed": "Dine åbne faner bliver ikke længere gemt",
       "saveFailedQuota": "Denne session er for stor til at blive gemt. Luk nogle faner, ellers bliver den måske ikke gendannet, næste gang du åbner Memry.",
@@ -117,7 +117,7 @@
       "last": "sidste"
     },
     "preset": {
-      "everyWeekday": "Hver hverdag (man.-fre.)",
+      "everyWeekday": "Hver hverdag (man.–fre.)",
       "everyYearOnDate": "Hvert år den {date}"
     }
   },
@@ -224,7 +224,7 @@
         "completed": "Fuldført",
         "description": "Beskrivelse",
         "due": "Forfaldsdato",
-        "dueTime": "Forfaldstidspunkt",
+        "dueTime": "Forfaldstid",
         "duplicateOf": "Kopi af",
         "edits": "Ændringer",
         "elements": "Elementer",
@@ -411,7 +411,7 @@
     "notFound": "Dette lærred blev ikke fundet",
     "corruptScene": "Dette lærred kunne ikke læses. Redigering er slået fra, så du ikke mister data.",
     "unreadableTitle": "Dette lærred kan ikke åbnes her",
-    "unreadableBody": "Dets dokument mangler i boksen, eller det blev tegnet, før lærreder blev til filer, og denne enhed har ikke længere nøglen, der låser det op. Intet er slettet – åbn boksen på den enhed, der oprettede det, eller gendan mappen med lærreder.",
+    "unreadableBody": "Lærredets dokument mangler i boksen, eller det blev tegnet, før lærreder blev til filer, og denne enhed har ikke længere nøglen, der låser det op. Intet er slettet – åbn boksen på den enhed, der oprettede det, eller gendan mappen med lærreder.",
     "tooLargeToSync": "Dette lærred er for stort til at blive synkroniseret. Det er gemt på denne enhed, men når ikke frem til dine andre enheder, før det fylder mindre.",
     "savedToVault": "Alle ændringer gemmes automatisk i din boks",
     "libraryStoreFailed": "Kunne ikke gemme dit formbibliotek. De seneste ændringer i det kan gå tabt.",
@@ -530,7 +530,7 @@
     },
     "frame": {
       "categorize": "Kategorisér",
-      "editBinding": "Skift, hvad denne sektion kategoriserer som",
+      "editBinding": "Skift kategorien for denne sektion",
       "cardCount": "{count, plural, one {# kort} other {# kort}}",
       "bindTitle": "Kategorisér denne sektion",
       "bindHint": "Kort, der slippes i sektionen, får dette tag eller denne egenskabsværdi.",
@@ -626,7 +626,7 @@
       "skip": "Spring over",
       "createNote": "Opret note ",
       "addYourFirstTask": "Tilføj din første opgave",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Opgaver linker til dine noter med prioriteter og forfaldsdatoer.",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Opgaver linker til dine noter og har prioriteter og forfaldsdatoer.",
       "eGReviewProjectProposal": "f.eks. Gennemgå projektforslag…",
       "skip2": "Spring over",
       "createTask": "Opret opgave ",
@@ -636,7 +636,7 @@
       "doneLetSGo": "Færdig – lad os komme i gang! "
     },
     "componentsFolderIconButton": {
-      "setFolderIcon": "Indstil mappeikon",
+      "setFolderIcon": "Angiv mappeikon",
       "expandFolder": "Udvid mappe",
       "collapseFolder": "Fold mappe sammen"
     },
@@ -659,7 +659,7 @@
       "toClose": "for at lukke"
     },
     "componentsKiboUiTreeIndex": {
-      "setIcon": "Indstil ikon",
+      "setIcon": "Angiv ikon",
       "clearIcon": "Ryd ikon"
     },
     "componentsNavMain": {
@@ -811,7 +811,7 @@
     "componentsVaultOnboarding": {
       "welcomeToMemry": "Velkommen til memrynote",
       "yourPersonalKnowledgeManagementSystem": "Dit personlige videnstyringssystem.",
-      "selectAFolderToStoreYourNotesAndTasks": "Vælg en mappe til at gemme dine noter og opgaver.",
+      "selectAFolderToStoreYourNotesAndTasks": "Vælg en mappe, hvor dine noter og opgaver skal gemmes.",
       "opening": "Åbner…",
       "selectVaultFolder": "Vælg mappe til boksen",
       "plainMarkdown": "Almindelig Markdown",
@@ -911,7 +911,7 @@
   "phaseI": {
     "errors": {
       "failedToImportFiles": "Kunne ikke importere filer",
-      "failedToCreateNote": "Kunne ikke oprette note",
+      "failedToCreateNote": "Kunne ikke oprette noten",
       "failedToAccessMicrophone": "Kunne ikke få adgang til mikrofonen"
     },
     "toasts": {
@@ -953,7 +953,7 @@
       "inboxAllTypes": "Alle typer",
       "inboxOlder": "{count, plural, one {# ældre} other {# ældre}}",
       "inboxOldest": "ældste {count, plural, one {# dag} other {# dage}}",
-      "openInbox": "Åbn indbakke",
+      "openInbox": "Åbn indbakken",
       "folder": "Mappe",
       "untitled": "Uden titel",
       "folderPickPrompt": "Vælg en mappe",
@@ -1122,7 +1122,7 @@
         "splitRight": "Opdel til højre",
         "splitDown": "Opdel nedad",
         "closeSplitPane": "Luk den opdelte rude",
-        "focusPane": "Fokusér en anden rude",
+        "focusPane": "Fokusér på en anden rude",
         "moveTabToPane": "Flyt fane til rude",
         "maximizePane": "Maksimér den aktuelle rude"
       },
@@ -1243,7 +1243,7 @@
   },
   "sidebarStar": {
     "title": "MemryNote er open source",
-    "body": "Udviklet i det åbne. En stjerne hjælper andre med at finde det.",
+    "body": "Udviklet i fuld åbenhed. En stjerne hjælper andre med at finde det.",
     "star": "Giv en stjerne",
     "later": "Ikke nu",
     "thanks": "Tak. Det betyder meget."

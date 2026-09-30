@@ -1,6 +1,6 @@
 {
   "toast": {
-    "exportNotImplemented": "Paikallista tietojen vientiä ei ole vielä otettu käyttöön"
+    "exportNotImplemented": "Paikallisten tietojen vientiä ei ole vielä toteutettu"
   },
   "page": {
     "title": "Asetukset",
@@ -133,7 +133,7 @@
       "appUpdates": "Sovelluspäivitykset",
       "installedVersion": "Asennettu versio {version}",
       "availableVersion": "Saatavilla oleva versio {version}",
-      "unsupported": "Pakatut koontiversiot voivat tarkistaa, ladata ja asentaa päivityksiä GitHub-julkaisuista",
+      "unsupported": "Paketoidut koontiversiot voivat tarkistaa, ladata ja asentaa päivityksiä GitHub-julkaisuista",
       "available": "memrynote {version} on ladattavissa",
       "downloadingLatest": "Ladataan uusinta julkaisua",
       "downloadingLatestPercent": "Ladataan uusinta julkaisua ({percent} %)",
@@ -149,13 +149,13 @@
         "available": "Lataa päivitys",
         "downloading": "Ladataan…",
         "downloadingPercent": "Ladataan {percent} %",
-        "downloaded": "Käynnistä uudelleen asentaaksesi",
+        "downloaded": "Käynnistä uudelleen ja asenna",
         "idle": "Tarkista päivitykset"
       },
       "label": "Päivitykset",
       "checkedAgo": "{status} · tarkistettu {time}",
       "status": {
-        "unsupported": "Saatavilla pakatuissa julkaisuissa",
+        "unsupported": "Saatavilla paketoiduissa julkaisuissa",
         "idle": "Ei vielä tarkistettu",
         "checking": "Tarkistetaan…",
         "upToDate": "Ajan tasalla",
@@ -178,13 +178,13 @@
       "failed": "Kielen vaihtaminen epäonnistui. Yritä uudelleen."
     },
     "clockFormat": {
-      "label": "Aikamuoto",
+      "label": "Kellonajan muoto",
       "description": "12 tunnin tai 24 tunnin kello",
       "options": {
         "12h": "12 h",
         "24h": "24 h"
       },
-      "error": "Aikamuodon päivittäminen epäonnistui"
+      "error": "Kellonajan muodon päivittäminen epäonnistui"
     },
     "dateFormat": {
       "label": "Päivämäärämuoto",
@@ -200,7 +200,7 @@
     "tabs": {
       "openPagesInNewTab": {
         "label": "Avaa sivut uuteen välilehteen",
-        "description": "Sivun – muistiinpanon, kansion, projektin, taulun, tunnisteen tai kirjanmerkin – napsauttaminen tai luominen avaa sen uuteen välilehteen. Kun asetus on pois, nykyistä välilehteä käytetään uudelleen myös muistiinpanon linkkejä seurattaessa; kiinnitettyjä välilehtiä ei koskaan korvata. ”Avaa uudessa välilehdessä”, ”Avaa sivuun” ja keskinapsautus avaavat aina uuden välilehden."
+        "description": "Sivun – muistiinpanon, kansion, projektin, taulun, tunnisteen tai kirjanmerkin – napsauttaminen tai luominen avaa sen uuteen välilehteen. Kun asetus on pois päältä, nykyistä välilehteä käytetään uudelleen myös muistiinpanon linkkejä seurattaessa; kiinnitettyjä välilehtiä ei koskaan korvata. ”Avaa uudessa välilehdessä”, ”Avaa sivuun” ja keskinapsautus avaavat aina uuden välilehden."
       },
       "restoreSession": {
         "label": "Palauta välilehdet käynnistettäessä",
@@ -227,10 +227,10 @@
     "fileCreation": {
       "createInSelectedFolder": {
         "label": "Luo valittuun kansioon",
-        "description": "Uudet muistiinpanot ja kansiot luodaan valittuna olevaan kansioon. Kun asetus on pois, kohteet luodaan aina juureen."
+        "description": "Uudet muistiinpanot ja kansiot luodaan valittuna olevaan kansioon. Kun asetus on pois päältä, kohteet luodaan aina juureen."
       },
       "defaultNoteFolder": {
-        "label": "Uusien muistiinpanojen oletussijainti",
+        "label": "Oletussijainti",
         "description": "Käytetään, kun sivupalkissa ei ole valittuna kansiota.",
         "placeholder": "muistiinpanot",
         "root": "/"
@@ -244,7 +244,7 @@
       },
       "autoSendDiagnostics": {
         "label": "Lähetä virheraportit automaattisesti",
-        "description": "Lokit, joista tunnistetiedot on poistettu, kun virhenäkymä tulee esiin. Pois = kysytään joka kerta.",
+        "description": "Kun virhenäkymä tulee esiin, lähetetään lokit, joista tunnistetiedot on poistettu. Kun asetus on pois päältä, lupaa kysytään joka kerta.",
         "error": "Virheraporttiasetuksen päivittäminen epäonnistui"
       },
       "diagnostics": {
@@ -351,8 +351,8 @@
         }
       },
       "pointerCursors": {
-        "label": "Käytä osoitinkursoria",
-        "description": "Näytä osoitinkursori, kun hiiri on vuorovaikutteisen elementin päällä"
+        "label": "Käytä käsiosoitinta",
+        "description": "Näytä käsiosoitin, kun hiiri on vuorovaikutteisen elementin päällä"
       },
       "fontSmoothing": {
         "label": "Fonttien pehmennys",
@@ -369,7 +369,7 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Fontin koko",
+        "label": "Fonttikoko",
         "description": "Käyttöliittymän tekstin peruskoko pikseleinä",
         "decrease": "Pienennä fonttikokoa",
         "increase": "Suurenna fonttikokoa",
@@ -377,9 +377,9 @@
       },
       "fontFamily": {
         "label": "Fonttiperhe",
-        "description": "Käyttöliittymän ensisijainen kirjasintyyppi",
+        "description": "Käyttöliittymän ensisijainen fontti",
         "options": {
-          "system": "Järjestelmän oletusarvo",
+          "system": "Järjestelmän oletus",
           "sansSerif": "Päätteetön",
           "serif": "Päätteellinen (Crimson Pro)",
           "gelasio": "Gelasio",
@@ -397,8 +397,8 @@
         "unavailable": "Asennettuja fontteja ei voi käyttää tässä järjestelmässä.",
         "notInstalled": "Ei asennettu tähän tietokoneeseen – käytetään varafonttia."
       },
-      "fontSizeError": "Kirjasinkoon päivittäminen epäonnistui",
-      "fontFamilyError": "Kirjasinperheen päivittäminen epäonnistui"
+      "fontSizeError": "Fonttikoon päivittäminen epäonnistui",
+      "fontFamilyError": "Fonttiperheen päivittäminen epäonnistui"
     },
     "v2": {
       "groups": {
@@ -461,7 +461,7 @@
       "delete": "Poista"
     },
     "groups": {
-      "builtIn": "Sisäänrakennettu",
+      "builtIn": "Sisäänrakennetut",
       "myTemplates": "Omat pohjat"
     },
     "loading": "Ladataan pohjia…",
@@ -513,7 +513,7 @@
     },
     "template": {
       "label": "Pohja",
-      "description": "Uudet merkinnät alkavat tällä pohjalla",
+      "description": "Uusiin merkintöihin käytetään tätä pohjaa",
       "placeholder": "Valitse pohja",
       "unknown": "Tuntematon pohja",
       "none": "Ei mitään",
@@ -580,7 +580,7 @@
   "tasks": {
     "header": {
       "title": "Tehtävät",
-      "subtitle": "Määritä tehtävän oletusasetukset ja toiminta",
+      "subtitle": "Määritä tehtävien oletukset ja toiminta",
       "loading": "Ladataan asetuksia…"
     },
     "groups": {
@@ -640,7 +640,7 @@
       },
       "ask": {
         "label": "Kysy joka kerta",
-        "description": "Kun asetus on pois, uusiin kuviin käytetään yllä olevaa valintaa kysymättä."
+        "description": "Kun asetus on pois päältä, uusiin kuviin käytetään yllä olevaa valintaa kysymättä."
       }
     },
     "reviewReminder": {
@@ -675,7 +675,7 @@
     },
     "groups": {
       "weekStart": "Viikko",
-      "dayCellClick": "Päivän solun napsautus",
+      "dayCellClick": "Päiväsolun napsautus",
       "notes": "Muistiinpanot"
     },
     "weekStart": {
@@ -688,7 +688,7 @@
       "error": "Viikon alkupäivän päivittäminen epäonnistui"
     },
     "defaultBehavior": {
-      "label": "Oletuskäyttäytyminen",
+      "label": "Oletustoiminta",
       "description": "Kun napsautat päivää päiväpaneelin kalenterissa muulla kuin kalenterivälilehdellä",
       "error": "Päivän napsautustoiminnon päivittäminen epäonnistui"
     },
@@ -722,7 +722,7 @@
       "syncNow": "Synkronoi nyt",
       "disconnect": "Katkaise yhteys",
       "reconnect": "Yhdistä Google uudelleen",
-      "syncFailed": "Jotain meni pieleen",
+      "syncFailed": "Jokin meni vikaan",
       "connectFailed": "Google Calendarin yhdistäminen epäonnistui",
       "refreshFailed": "Google Calendarin päivittäminen epäonnistui",
       "disconnectFailed": "Google Calendarin yhteyden katkaiseminen epäonnistui",
@@ -752,8 +752,8 @@
     },
     "subscriptions": {
       "name": "Tilatut kalenterit",
-      "description": "Lisää kalenteri, jota voi vain lukea, sen jakolinkillä (ICS tai webcal), esimerkiksi Proton-, iCloud-, Outlook- tai Fastmail-kalenteri. Muutokset tarkistetaan noin kerran tunnissa.",
-      "urlLabel": "Kalenterin linkki",
+      "description": "Lisää vain luku -kalenteri sen jakolinkillä (ICS tai webcal), esimerkiksi Proton-, iCloud-, Outlook- tai Fastmail-kalenteri. Muutokset tarkistetaan noin kerran tunnissa.",
+      "urlLabel": "Kalenterilinkki",
       "urlPlaceholder": "Kalenterilinkki (webcal:// tai https://)",
       "subscribe": "Tilaa",
       "subscribing": "Tilataan…",
@@ -875,16 +875,16 @@
         "connect": "Salli kalenterien käyttö",
         "connectHint": "macOS kysyy kerran. Voit muuttaa tätä myöhemmin Järjestelmäasetuksissa.",
         "otherCalendars": "Muut kalenterit",
-        "alreadyConnected": "Yhdistetty jo palvelun {provider} kautta, joten tämä on aluksi pois, jotta tapahtumia ei näytetä kahdesti.",
+        "alreadyConnected": "Yhdistetty jo palvelun {provider} kautta, joten tämä on aluksi pois päältä, jotta tapahtumia ei näytetä kahdesti.",
         "openSystemSettings": "Avaa Järjestelmäasetukset",
         "checkAgain": "Tarkista uudelleen",
         "errors": {
-          "permission_denied": "memrynote ei saa käyttää kalentereita. Salli se kohdassa Järjestelmäasetukset → Tietosuoja ja turvallisuus → Kalenterit ja tarkista sitten uudelleen.",
+          "permission_denied": "memrynote ei saa käyttää kalentereita. Salli se kohdassa Järjestelmäasetukset → Yksityisyys ja suojaus → Kalenterit ja tarkista sitten uudelleen.",
           "permission_restricted": "Kalenterien käyttö on estetty tällä Macilla, yleensä hallintaprofiilin vuoksi. memrynotessa ei muuttunut mitään; tämän Macin ylläpitäjä voi sallia sen.",
-          "permission_write_only": "memrynote voi vain lisätä tapahtumia, mikä ei riitä niiden näyttämiseen. Vaihda asetukseksi Täysi käyttöoikeus kohdassa Järjestelmäasetukset → Tietosuoja ja turvallisuus → Kalenterit.",
+          "permission_write_only": "memrynote voi vain lisätä tapahtumia, mikä ei riitä niiden näyttämiseen. Vaihda asetukseksi Täysi käyttöoikeus kohdassa Järjestelmäasetukset → Yksityisyys ja suojaus → Kalenterit.",
           "permission_not_determined": "memrynotelle ei ole vielä annettu kalenterien käyttöoikeutta. Salli se, jotta Macisi kalenterit voidaan näyttää.",
           "unavailable": "macOSin kalenterinlukija ei käynnistynyt. Kalenterisi ovat ennallaan; käynnistä memrynote uudelleen ja yritä uudelleen.",
-          "sync_failed": "Kalenteri-apin lukeminen epäonnistui juuri nyt. Kalenterisi pysyvät ennallaan, ja memrynote yrittää uudelleen, kun Kalenteri-appi muuttuu."
+          "sync_failed": "Kalenteri-apin lukeminen epäonnistui juuri nyt. Kalenterisi pysyvät ennallaan, ja memrynote yrittää uudelleen, kun Kalenteri-apin tiedot muuttuvat."
         }
       }
     },
@@ -905,7 +905,7 @@
       "hostLabel": "Palvelimen nimi",
       "hostPlaceholder": "cloud.example.com",
       "appleIdLabel": "Apple ID (sähköposti)",
-      "icloudHelp": "Käytä appikohtaista salasanaa, älä Apple ID -salasanaasi. Luo sellainen kohdassa Sisäänkirjautuminen ja suojaus → Appikohtaiset salasanat.",
+      "icloudHelp": "Käytä appikohtaista salasanaa, älä Apple ID -salasanaasi. Luo sellainen kohdassa Kirjautuminen ja suojaus → Appikohtaiset salasanat.",
       "appPasswordHelp": "Jos palvelusi tarjoaa sovellussalasanoja, luo sellainen memrynotelle ja käytä sitä tässä.",
       "createAppPassword": "Luo sovellussalasana",
       "testConnection": "Testaa yhteys",
@@ -913,7 +913,7 @@
       "chooseCalendars": "Näytettävät kalenterit",
       "reconnectFor": "Anna käyttäjän {username} sovellussalasana.",
       "errors": {
-        "unauthorizedIcloud": "iCloud ei hyväksynyt tätä salasanaa. iCloud vaatii tässä appikohtaisen salasanan, ei Apple ID -salasanaasi. Luo sellainen osoitteessa account.apple.com kohdassa Sisäänkirjautuminen ja suojaus ja yritä sitten uudelleen.",
+        "unauthorizedIcloud": "iCloud ei hyväksynyt tätä salasanaa. iCloud vaatii tässä appikohtaisen salasanan, ei Apple ID -salasanaasi. Luo sellainen osoitteessa account.apple.com kohdassa Kirjautuminen ja suojaus ja yritä sitten uudelleen.",
         "unauthorized": "Palvelin ei hyväksynyt tätä käyttäjätunnusta ja salasanaa. Tarkista molemmat ja käytä sovellussalasanaa, jos palvelusi tarjoaa niitä.",
         "unreachable": "Palvelimeen ei saatu yhteyttä. Tarkista osoite ja internetyhteys ja yritä sitten uudelleen.",
         "notCaldav": "Tästä osoitteesta ei löytynyt CalDAV-kalentereita. Tarkista palvelimen osoite; jotkin palvelut vaativat polun, kuten /remote.php/dav.",
@@ -962,7 +962,7 @@
       "pending": "{count, plural, one {# odottaa} other {# odottaa}}",
       "attachmentAutoDownload": {
         "label": "Lataa liitteet automaattisesti",
-        "description": "Hae synkronoitujen muistiinpanojen liitteet taustalla. Kun asetus on pois, tiedostot ladataan vasta, kun avaat ne.",
+        "description": "Hae synkronoitujen muistiinpanojen liitteet taustalla. Kun asetus on pois päältä, tiedostot ladataan vasta, kun avaat ne.",
         "saveFailed": "Liitteiden latausasetuksen tallentaminen epäonnistui"
       },
       "statuses": {
@@ -985,7 +985,7 @@
         "description": "Ota synkronointi käyttöön, niin jokainen muistiinpano seuraa sinua muille laitteillesi – päästä päähän salattuna, joten vain sinä voit lukea ne.",
         "benefits": {
           "devices": "Jokainen laite jatkaa siitä, mihin jäit",
-          "encrypted": "Päästä päähän salattu – avaimet eivät koskaan lähde sinulta",
+          "encrypted": "Päästä päähän salattu – avaimet pysyvät aina vain sinulla",
           "backup": "Salattu varmuuskopio siltä varalta, ettei tämä laite ole tallella"
         },
         "guarantee": "14 päivän rahat takaisin -takuu. Peru milloin tahansa."
@@ -1006,7 +1006,7 @@
         "preview": "{amount} maksettavana tänään, sen jälkeen {recurring} vuodessa",
         "confirm": "Vahvista vaihto",
         "switching": "Vaihdetaan…",
-        "success": "Olet nyt vuosilaskutuksessa.",
+        "success": "Käytössäsi on nyt vuosilaskutus.",
         "failed": "Tilauksen vaihtaminen epäonnistui"
       },
       "plans": {
@@ -1020,11 +1020,11 @@
         "active": "Aktiivinen",
         "past_due": "Erääntynyt",
         "paused": "Keskeytetty",
-        "canceled": "Peruutettu"
+        "canceled": "Peruttu"
       },
       "labels": {
         "storage": "Tallennustila",
-        "maxFile": "Suurin tiedosto",
+        "maxFile": "Tiedoston enimmäiskoko",
         "vaults": "Holvit",
         "history": "Historia"
       },
@@ -1060,7 +1060,7 @@
     "security": {
       "signOut": {
         "label": "Kirjaudu ulos",
-        "description": "Irrota tämän laitteen synkronointi",
+        "description": "Irrota tämä laite synkronoinnista",
         "action": "Kirjaudu ulos"
       }
     },
@@ -1099,7 +1099,7 @@
       "description": "Luo tili synkronoidaksesi tietosi laitteiden välillä päästä päähän -salauksella.",
       "or": "tai",
       "paidPlan": "Synkronointi on maksullinen tilaus.",
-      "seePlans": "Katso tilaukset",
+      "seePlans": "Näytä tilausvaihtoehdot",
       "errors": {
         "sendCode": "Koodin lähettäminen epäonnistui",
         "googleStart": "Google-sisäänkirjautumisen käynnistäminen epäonnistui"
@@ -1122,7 +1122,7 @@
       "resending": "Lähetetään uudelleen…",
       "resend": "Lähetä koodi uudelleen",
       "resendIn": "Lähetä uudelleen ({time})",
-      "differentEmail": "Käytä toista sähköpostia",
+      "differentEmail": "Käytä toista sähköpostiosoitetta",
       "error": "Vahvistus epäonnistui",
       "resendError": "Uudelleenlähetys epäonnistui"
     },
@@ -1138,7 +1138,7 @@
       "saved": "Olen tallentanut palautuslauseeni",
       "confirmTitle": "Vahvista palautuslauseesi",
       "confirmDescription": "Anna pyydetyt sanat varmistaaksesi, että olet tallentanut sen oikein.",
-      "wordPlaceholder": "Kirjoita sana #{index}",
+      "wordPlaceholder": "Kirjoita {index}. sana",
       "verify": "Vahvista",
       "mustMatch": "Kaikkien kolmen sanan on oltava oikein, jotta voit jatkaa",
       "inputTitle": "Anna palautuslause",
@@ -1146,7 +1146,7 @@
       "inputLabel": "Palautuslause",
       "count": "{count}/{total} sanaa",
       "inputPlaceholder": "Kirjoita 24-sanainen palautuslause välilyönnein erotettuna…",
-      "lengthHint": "Ota palautuspainike käyttöön kirjoittamalla kaikki 24 sanaa",
+      "lengthHint": "Kirjoita kaikki 24 sanaa, niin palautuspainike tulee käyttöön",
       "restore": "Palauta käyttöoikeus",
       "progress": {
         "deriving": "Luodaan salausavaimia…",
@@ -1174,7 +1174,7 @@
     },
     "linking": {
       "choiceTitle": "Linkitä tämä laite",
-      "choiceDescription": "Siirrä salausavaimet toisesta laitteesta tai palauta palautuslauseesta.",
+      "choiceDescription": "Siirrä salausavaimet toisesta laitteesta tai palauta ne palautuslauseella.",
       "qrChoice": "Linkitä QR-koodilla",
       "qrChoiceDescription": "Skannaa toisessa laitteessa näkyvä koodi",
       "recoveryChoice": "Palautuslause",
@@ -1182,7 +1182,7 @@
       "codeTitle": "Anna linkityskoodi",
       "codeDescription": "Siirrä salausavaimesi turvallisesti liittämällä linkityskoodi toisesta laitteestasi.",
       "codeLabel": "Linkityskoodi",
-      "valid": "Voimassa",
+      "valid": "Kelvollinen",
       "invalid": "Virheellinen muoto",
       "codePlaceholder": "Liitä koodi toisesta laitteesta…",
       "formatHint": "Liitä JSON-linkityskoodi toisesta laitteestasi",
@@ -1309,7 +1309,7 @@
       },
       "namingError": "Äänimuistioiden nimeämisasetuksen päivittäminen epäonnistui",
       "localModel": "Paikallinen malli",
-      "localModelDescription": "Whisper Small latautuu pyynnöstä ja pysyy välimuistissa paikallisesti",
+      "localModelDescription": "Whisper Small ladataan tarvittaessa ja säilytetään paikallisessa välimuistissa",
       "status": {
         "ready": "Valmis",
         "downloading": "Ladataan",
@@ -1334,7 +1334,7 @@
     "embedding": {
       "loaded": "Ladattu",
       "loading": "Ladataan",
-      "cacheHint": "~23 Mt · Välimuistissa paikallisesti · Kaikki laitteella",
+      "cacheHint": "~23 Mt · Välimuistissa paikallisesti · Täysin laitteella",
       "dimensions": "Ulottuvuudet",
       "embeddings": "Upotukset",
       "downloadLoad": "Lataa ja ota malli käyttöön",
@@ -1392,7 +1392,7 @@
     "v2": {
       "onDevice": {
         "label": "Laitteella toimivat mallit",
-        "hint": "Ladataan kerran, toimivat ilman verkkoyhteyttä"
+        "hint": "Ladataan kerran, käytetään ilman verkkoyhteyttä"
       },
       "embedding": {
         "label": "Haun upotukset",
@@ -1532,11 +1532,11 @@
         "foldersDropped": "TickTick-kansioille ei ole vastinetta Memryssä, joten ne jätettiin pois",
         "subtaskParentMissing": "Alitehtävän ”{title}” ylätehtävää ei löytynyt; tuotiin ylimmälle tasolle",
         "unknownPriority": "Tuntematon TickTick-prioriteetti {priority} → ei mitään",
-        "unsupportedRepeat": "Toistosääntöä ”{rule}” ei tueta, se ohitettiin",
+        "unsupportedRepeat": "Toistosääntö ”{rule}” ohitettiin, koska sitä ei tueta",
         "reminderNoAnchor": "Muistutus ”{reminder}” ohitettiin (ei päivämääräankkuria)"
       },
       "todoist": {
-        "headerNotFound": "Ei Todoist-CSV: TYPE-otsikkorivi puuttuu",
+        "headerNotFound": "Ei Todoistin CSV-tiedosto: TYPE-otsikkorivi puuttuu",
         "sectionFlattened": "Osio ”{section}” purettiin",
         "orphanComment": "Kommentti, jota ei edeltänyt tehtävä, ohitettiin",
         "emptyTitle": "Tehtävä, jonka sisältö oli tyhjä, tuotiin nimellä (nimetön)",
@@ -1608,7 +1608,7 @@
       "location": "Sijainti",
       "accountVaults": "Tilisi holvit",
       "largeNotes": "Synkronointirajaa lähestyvät muistiinpanot",
-      "activity": "Toiminta"
+      "activity": "Toimintaloki"
     },
     "loadingStorage": "Ladataan tallennustilatietoja…",
     "signInStorage": "Kirjaudu sisään nähdäksesi tallennustilan käytön",
@@ -1619,7 +1619,7 @@
       "cloudOnly": "Ei tällä laitteella",
       "itemsCount": "{count} kohdetta",
       "delete": "Poista",
-      "deleteTitle": "Poistetaanko ”{name}” tililtäsi?",
+      "deleteTitle": "Poistetaanko holvi ”{name}” tililtäsi?",
       "deleteBody": "Tämä poistaa pysyvästi kaikki tämän holvin synkronoidut tiedot Memryn palvelimilta, eikä sitä voi kumota. Levyllä olevia tiedostojasi ei poisteta.",
       "deleteConfirm": "Poista tililtä",
       "deleteFailed": "Holvin poistaminen epäonnistui",
@@ -1655,7 +1655,7 @@
     "activity": {
       "description": "Holviin Memryn ulkopuolella lisätyt tai siitä poistetut tiedostot, tuonnit sekä kaikki ohitettu tai epäonnistunut. Säilytetään vain tällä laitteella.",
       "retention": {
-        "label": "Holvin toiminta",
+        "label": "Holvin toimintaloki",
         "days": "{count, plural, one {Säilytä # päivä} other {Säilytä # päivää}}"
       },
       "filter": {
@@ -1669,7 +1669,7 @@
       "clearConfirm": "Tyhjennä loki",
       "empty": "Lokissa ei ole vielä mitään. Holvikansioon lisäämäsi tiedostot, tuonnit ja kaikki, minkä Memry ohittaa, näkyvät täällä.",
       "emptyProblems": "Mitään ei ohitettu eikä mikään epäonnistunut.",
-      "unavailable": "Avaa holvi nähdäksesi sen toiminnan.",
+      "unavailable": "Avaa holvi nähdäksesi sen toimintalokin.",
       "loadFailed": "Holvin toimintalokin lataaminen epäonnistui",
       "actionFailed": "Holvin toimintalokin päivittäminen epäonnistui",
       "showItems": "{count, plural, one {Näytä # kohde} other {Näytä # kohdetta}}",
@@ -1696,7 +1696,7 @@
         "indexRebuilt": "Hakuindeksi luotu",
         "import": "Tuonti: {importer}",
         "importCanceled": "Tuonti: {importer}, peruttu",
-        "unknown": "Tunnistamaton toiminto"
+        "unknown": "Tunnistamaton merkintä"
       },
       "counts": {
         "added": "{count, plural, one {# uusi tiedosto} other {# uutta tiedostoa}}",
@@ -1756,8 +1756,8 @@
       "deleteTitle": "Poistetaanko tunniste?",
       "deleteDescription": "Poistetaanko tunniste ”{name}” {count, plural, one {# kohteesta} other {# kohteesta}}? Tätä ei voi kumota.",
       "mergeTitle": "Yhdistä tunniste",
-      "mergeDescription": "Kaikki kohteet, jotka on merkitty tunnisteella ”{source}”, merkitään uudelleen kohdetunnisteella. Lähdetunniste poistetaan.",
-      "targetPlaceholder": "Valitse kohdetunniste…",
+      "mergeDescription": "Kaikki kohteet, joilla on tunniste ”{source}”, merkitään valitsemallasi tunnisteella. Alkuperäinen tunniste poistetaan.",
+      "targetPlaceholder": "Valitse tunniste, johon yhdistetään…",
       "colorTitle": "Vaihda tunnisteen ”{name}” väri"
     },
     "toasts": {
@@ -1869,7 +1869,7 @@
     "rebindTitle": "Muuta napsauttamalla",
     "editorManagedTitle": "Muistiinpanoeditorin käsittelemä – ei voi määrittää uudelleen",
     "resetTitle": "Palauta oletusarvo",
-    "clearTitle": "Tyhjennä pikanäppäin",
+    "clearTitle": "Poista pikanäppäin",
     "clickToSet": "Aseta napsauttamalla",
     "noMatch": "Mikään pikanäppäin ei vastaa hakuasi",
     "conflict": "Ristiriidassa: {labels}",
@@ -1921,7 +1921,7 @@
           "description": "Avaa yleinen haku"
         },
         "settings": {
-          "label": "Avaa Asetukset",
+          "label": "Avaa asetukset",
           "description": "Avaa asetuspaneeli"
         },
         "switchVault": {
@@ -1967,7 +1967,7 @@
           "description": "Avaa uuden välilehden valikko"
         },
         "closeAll": {
-          "label": "Sulje ruudun kaikki välilehdet",
+          "label": "Sulje kaikki välilehdet",
           "description": "Sulje ruudun kaikki välilehdet"
         },
         "pin": {
@@ -1997,8 +1997,8 @@
           "description": "Tallenna nykyinen muistiinpano"
         },
         "bold": {
-          "label": "Lihavoitu",
-          "description": "Lihavoitu muotoilu päälle/pois"
+          "label": "Lihavointi",
+          "description": "Lihavointi päälle/pois"
         },
         "italic": {
           "label": "Kursiivi",
@@ -2106,7 +2106,7 @@
       "googleSignInFailed": "Google-sisäänkirjautuminen epäonnistui",
       "failedToSendVerificationCode": "Vahvistuskoodin lähettäminen epäonnistui",
       "invalidVerificationCode": "Virheellinen vahvistuskoodi",
-      "accountSetupFailed": "Tilin luominen epäonnistui",
+      "accountSetupFailed": "Tilin määrittäminen epäonnistui",
       "failedToResendCode": "Koodin uudelleenlähettäminen epäonnistui",
       "failedToSetUpDevice": "Laitteen määrittäminen epäonnistui",
       "failedToConfirmRecoveryPhrase": "Palautuslauseen vahvistaminen epäonnistui",
@@ -2115,8 +2115,8 @@
       "failedToCheckForUpdates": "Päivitysten tarkistaminen epäonnistui",
       "failedToDownloadUpdate": "Päivityksen lataaminen epäonnistui",
       "failedToInstallUpdate": "Päivityksen asentaminen epäonnistui",
-      "failedToLoadEditorSettings": "Muokkausasetusten lataaminen epäonnistui",
-      "failedToUpdateEditorSettings": "Muokkausasetusten päivittäminen epäonnistui",
+      "failedToLoadEditorSettings": "Editorin asetusten lataaminen epäonnistui",
+      "failedToUpdateEditorSettings": "Editorin asetusten päivittäminen epäonnistui",
       "failedToLoadGeneralSettings": "Yleisten asetusten lataaminen epäonnistui",
       "failedToUpdateGeneralSettings": "Yleisten asetusten päivittäminen epäonnistui",
       "failedToLoadKeyboardSettings": "Näppäimistön asetusten lataaminen epäonnistui",
@@ -2124,7 +2124,7 @@
       "failedToResetKeyboardSettings": "Näppäimistön asetusten nollaaminen epäonnistui",
       "failedToLoadNoteEditorSettings": "Muistiinpanoeditorin asetusten lataaminen epäonnistui",
       "failedToUpdateSettings": "Asetusten päivittäminen epäonnistui",
-      "failedToLoadTabSettings": "Välilehden asetusten lataaminen epäonnistui",
+      "failedToLoadTabSettings": "Välilehtien asetusten lataaminen epäonnistui",
       "failedToLoadNotes": "Muistiinpanojen lataaminen epäonnistui",
       "failedToLoadTags": "Tunnisteiden lataaminen epäonnistui",
       "failedToLoadTasks": "Tehtävien lataaminen epäonnistui",
@@ -2238,7 +2238,7 @@
       },
       "model": {
         "label": "Malli",
-        "description": "Valitse palautettu malli tai syötä malli manuaalisesti."
+        "description": "Valitse malli luettelosta tai anna se manuaalisesti."
       },
       "apiKey": {
         "label": "API-avain",

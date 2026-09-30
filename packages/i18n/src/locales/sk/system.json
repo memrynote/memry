@@ -1,7 +1,7 @@
 {
   "dialog": {
     "vault": {
-      "title": "Vybrať priečinok trezoru",
+      "title": "Vybrať priečinok trezora",
       "button": "Vybrať trezor"
     },
     "exportPdf": {
@@ -24,48 +24,49 @@
       "buttonDownload": "Stiahnuť",
       "buttonLater": "Neskôr",
       "readyTitle": "Aktualizácia pripravená",
-      "readyMessage": "memrynote {version} bol stiahnutý.",
-      "readyDetailFallback": "Reštartujte memrynote, aby sa dokončila inštalácia aktualizácie.",
+      "readyMessage": "Verzia memrynote {version} je stiahnutá.",
+      "readyDetailFallback": "Reštartujte aplikáciu memrynote, aby sa dokončila inštalácia aktualizácie.",
       "buttonRestartNow": "Reštartovať teraz",
       "releaseNotesLabel": "Poznámky k vydaniu:"
     },
     "pair": {
+      "title": "Spárovať rozšírenie prehliadača",
+      "message": "Povoliť rozšíreniu prehliadača Memry odosielať záznamy do tejto aplikácie?",
       "buttonAllow": "Povoliť",
       "buttonDeny": "Zamietnuť",
-      "buttonPair": "Spárovať",
-      "message": "Povoliť rozšíreniu prehliadača Memry odosielať zachytenia do tejto aplikácie?",
-      "title": "Spárovať rozšírenie prehliadača"
+      "buttonPair": "Spárovať"
     }
   },
   "notification": {
+    "inboxReview": {
+      "title": "Čas prejsť Prijaté",
+      "body": "Máte {count, plural, one {# položku} few {# položky} many {# položky} other {# položiek}} na prejdenie.",
+      "testBody": "Toto je test – takto budú vyzerať vaše pripomienky dennej kontroly."
+    },
     "reminder": {
       "note": "Pripomienka poznámky",
       "journal": "Pripomienka v denníku",
       "highlight": "Pripomienka zvýraznenia",
-      "fallback": "Pripomienka splatná",
-      "default": "Pripomienka",
-      "task": "Pripomienka úlohy"
-    },
-    "inboxReview": {
-      "body": "Máte {count, plural, one {# položku} few {# položky} many {# položky} other {# položiek}} na prejdenie.",
-      "testBody": "Toto je test — vaše denné pripomienky na prehliadnutie budú vyzerať takto.",
-      "title": "Čas prejsť si schránku"
+      "task": "Pripomienka úlohy",
+      "fallback": "Čas na pripomienku",
+      "default": "Pripomienka"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "Čas pripomienky musí byť v budúcnosti",
     "definitionNotFound": "Definícia nenájdená",
     "noteNotFound": "Poznámka nenájdená",
-    "updateFailed": "Aktualizácia zlyhala"
+    "updateFailed": "Aktualizácia zlyhala",
+    "updateReadOnlyVolume": "Aktualizácie nemožno inštalovať, kým sa aplikácia memrynote spúšťa z tohto umiestnenia. Presuňte ju do priečinka Aplikácie a otvorte ju znova."
   },
   "startup": {
-    "failed": {
-      "body": "Môže sa to stať, keď je na disku veľmi málo voľného miesta alebo pri starších grafických ovládačoch. Skúste uvoľniť miesto na disku a potom MemryNote znova otvorte. Ak to pretrváva, zvyčajne pomôže preinštalovanie.",
-      "title": "MemryNote sa nepodarilo úplne spustiť"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote sa automaticky znova otvorí.",
-      "title": "Inštaluje sa aktualizácia…"
+      "title": "Inštaluje sa aktualizácia…",
+      "subtitle": "MemryNote sa automaticky znova otvorí."
+    },
+    "failed": {
+      "title": "MemryNote sa nepodarilo úplne spustiť",
+      "body": "Môže sa to stať, keď je na disku veľmi málo voľného miesta alebo pri starších grafických ovládačoch. Skúste uvoľniť miesto na disku a potom MemryNote znova otvorte. Ak to pretrváva, zvyčajne pomôže preinštalovanie."
     }
   }
 }

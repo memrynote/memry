@@ -37,7 +37,7 @@
     "notes": "Notatki",
     "image": "Obraz",
     "images": "Obrazy",
-    "voice": "Głos",
+    "voice": "Nagranie głosowe",
     "video": "Wideo",
     "clip": "Klip",
     "clips": "Klipy",
@@ -345,7 +345,7 @@
     "now": "teraz",
     "timeAgoMinutes": "{count} min temu",
     "timeAgoHours": "{count} godz. temu",
-    "timeAgoDays": "{count} d temu"
+    "timeAgoDays": "{count, plural, one {# dzień temu} few {# dni temu} many {# dni temu} other {# dnia temu}}"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
@@ -436,7 +436,7 @@
       "tweetUnavailable": "Tweet niedostępny",
       "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Ten tweet mógł zostać usunięty lub pochodzi z konta prywatnego.",
       "openOnXCom": "Otwórz na x.com",
-      "views": "wyświetlenia",
+      "views": "wyświetleń",
       "xCom": "x.com",
       "viewOnX": "Zobacz na X"
     },
@@ -544,7 +544,7 @@
   },
   "reviewNudge": {
     "title": "{count, plural, one {Czas przejrzeć # element} few {Czas przejrzeć # elementy} many {Czas przejrzeć # elementów} other {Czas przejrzeć # elementu}}",
-    "description": "Uporządkuj dzisiejsze zapisy za jednym, spokojnym podejściem.",
+    "description": "Uporządkuj dzisiejsze zapisy spokojnie, za jednym podejściem.",
     "action": "Otwórz skrzynkę odbiorczą"
   },
   "snoozeDue": {

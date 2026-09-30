@@ -27,7 +27,7 @@
       "readyMessage": "memrynote {version} is gedownload.",
       "readyDetailFallback": "Start memrynote opnieuw om de installatie van de update te voltooien.",
       "buttonRestartNow": "Nu opnieuw starten",
-      "releaseNotesLabel": "Release-opmerkingen:"
+      "releaseNotesLabel": "Releaseopmerkingen:"
     },
     "pair": {
       "title": "Browserextensie koppelen",

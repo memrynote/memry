@@ -139,7 +139,7 @@
       "downloadingLatestPercent": "正在下载最新版本（{percent}%）",
       "downloaded": "memrynote {version} 已准备好安装",
       "upToDate": "当前已是最新发布的版本",
-      "checking": "正在 GitHub Releases 检查新版本",
+      "checking": "正在 GitHub Releases 上检查新版本",
       "idle": "检查新版本并在不离开应用的情况下安装",
       "unsupportedToast": "自动更新仅在打包版本中提供",
       "upToDateToast": "memrynote {version} 已是最新",
@@ -316,7 +316,7 @@
         "amber": "琥珀色",
         "emerald": "翡翠绿",
         "red": "红色",
-        "violet": "紫罗兰",
+        "violet": "紫罗兰色",
         "cyan": "青色",
         "pink": "粉色",
         "orange": "橙色"
@@ -434,7 +434,7 @@
       "error": "无法更新编辑器宽度"
     },
     "toolbarMode": {
-      "label": "固定格式工具栏",
+      "label": "常驻格式工具栏",
       "description": "始终在编辑器上方显示工具栏",
       "error": "无法更新工具栏模式"
     },
@@ -445,7 +445,7 @@
     },
     "v2": {
       "width": "编辑器宽度",
-      "toolbarMode": "固定格式工具栏",
+      "toolbarMode": "常驻格式工具栏",
       "spellCheck": "拼写检查"
     }
   },
@@ -589,7 +589,7 @@
     },
     "defaultProject": {
       "label": "默认项目",
-      "description": "未选择项目时分配",
+      "description": "未选择项目时使用",
       "placeholder": "无默认项目",
       "none": "无默认项目（使用“个人”）",
       "error": "无法更新默认项目"
@@ -709,7 +709,7 @@
     },
     "google": {
       "name": "Google 日历",
-      "description": "在 memrynote 日程与导入的 Google 日历之间双向同步。",
+      "description": "双向同步 memrynote 日程和导入的 Google 日历。",
       "statuses": {
         "connected": "已连接",
         "notConnected": "未连接",
@@ -982,7 +982,7 @@
       },
       "upsell": {
         "title": "笔记只保存在此设备上",
-        "description": "开启同步后，每篇笔记都会跟随你到其他设备——端到端加密，只有你能读取。",
+        "description": "开启同步后，每篇笔记都会同步到你的其他设备——端到端加密，只有你能读取。",
         "benefits": {
           "devices": "在任何设备上都能从上次离开的地方继续",
           "encrypted": "端到端加密——密钥始终由你掌握",
@@ -1001,7 +1001,7 @@
       "annualSwitch": {
         "title": "切换为按年计费",
         "description": "节省 20%。本月剩余部分按比例折算，不会重复收费。",
-        "action": "切换为按年",
+        "action": "切换为年付",
         "pricing": "正在计算价格…",
         "preview": "今天应付 {amount}，之后每年 {recurring}",
         "confirm": "确认切换",
@@ -1041,11 +1041,11 @@
       "toasts": {
         "loadFailed": "无法加载账单状态",
         "checkoutFailed": "无法开始结账",
-        "checkoutOpened": "结账已在浏览器中打开",
+        "checkoutOpened": "已在浏览器中打开结账页面",
         "refreshFailed": "无法刷新账单状态",
-        "billingActive": "账单已激活",
+        "billingActive": "套餐已生效",
         "activationPending": "正在等待激活",
-        "portalFailed": "无法打开账单门户"
+        "portalFailed": "无法打开账单管理页面"
       }
     },
     "storage": {
@@ -1140,7 +1140,7 @@
       "confirmDescription": "输入指定的单词，以验证你已正确保存。",
       "wordPlaceholder": "输入第 {index} 个单词",
       "verify": "验证",
-      "mustMatch": "所有 3 个单词必须匹配才能继续",
+      "mustMatch": "3 个单词必须全部匹配才能继续",
       "inputTitle": "输入恢复短语",
       "inputDescription": "输入由 24 个单词组成的恢复短语，以恢复对加密数据的访问。",
       "inputLabel": "恢复短语",
@@ -1156,9 +1156,9 @@
       "failed": "恢复失败",
       "confirmationFailed": "确认失败",
       "unavailable": {
-        "loading": "正在加载你的恢复短语…",
-        "title": "无法加载你的恢复短语",
-        "description": "你的恢复短语仅在设置时显示一次，之后无法找回。重新开始以生成新的恢复短语。",
+        "loading": "正在加载恢复短语…",
+        "title": "无法加载恢复短语",
+        "description": "恢复短语仅在设置时显示一次，之后无法找回。重新开始即可生成新的恢复短语。",
         "startOver": "重新开始"
       }
     },
@@ -1174,7 +1174,7 @@
     },
     "linking": {
       "choiceTitle": "关联此设备",
-      "choiceDescription": "从其他设备传输加密密钥或从恢复短语恢复。",
+      "choiceDescription": "从其他设备传输加密密钥，或使用恢复短语恢复。",
       "qrChoice": "通过二维码关联",
       "qrChoiceDescription": "扫描其他设备上显示的二维码",
       "recoveryChoice": "恢复短语",
@@ -1216,15 +1216,15 @@
     "linked": "{time}前关联",
     "renameAria": "重命名 {name}",
     "rename": "重命名",
-    "revoke": "撤销",
+    "revoke": "撤销授权",
     "showLess": "收起",
     "showMore": "{count, plural, other {另外 # 台设备}}",
     "showMoreAria": "显示另外 {count, plural, other {# 台设备}}",
     "dialogs": {
-      "revokeTitle": "要撤销“{name}”吗？",
+      "revokeTitle": "要撤销“{name}”的授权吗？",
       "revokeDescription": "此设备将失去访问同步数据的权限。需要重新关联以恢复同步。该设备上的本地数据将保留。",
-      "revokeDevice": "撤销设备",
-      "revoking": "正在撤销…",
+      "revokeDevice": "撤销授权",
+      "revoking": "正在撤销授权…",
       "renameTitle": "重命名设备",
       "renameDescription": "为此设备设置一个便于识别的名称。",
       "namePlaceholder": "设备名称",
@@ -1276,7 +1276,7 @@
   "ai": {
     "header": {
       "title": "AI 助手",
-      "subtitle": "向量嵌入在本地运行。语音备忘可以使用 Whisper Small 或你的 OpenAI 密钥。",
+      "subtitle": "向量嵌入在本地运行。语音备忘录可以使用 Whisper Small 或你的 OpenAI 密钥。",
       "loading": "正在加载设置…"
     },
     "enable": {
@@ -1295,19 +1295,19 @@
     },
     "voice": {
       "provider": "提供商",
-      "providerDescription": "语音备忘的语音转文字提供商",
+      "providerDescription": "语音备忘录的语音转文字提供商",
       "providers": {
         "local": "本地（默认）",
         "openai": "OpenAI（自带密钥）"
       },
-      "memoNameMode": "备忘命名",
-      "memoNameModeDescription": "转录后语音备忘的命名方式",
+      "memoNameMode": "备忘录命名",
+      "memoNameModeDescription": "转录后语音备忘录的命名方式",
       "naming": {
         "transcript": "转录标题",
         "timestamp": "时间戳",
         "none": "不重命名"
       },
-      "namingError": "无法更新语音备忘命名",
+      "namingError": "无法更新语音备忘录命名",
       "localModel": "本地模型",
       "localModelDescription": "Whisper Small 会按需下载，并缓存在本地",
       "status": {
@@ -1395,7 +1395,7 @@
         "hint": "下载一次，即可离线运行"
       },
       "embedding": {
-        "label": "搜索向量嵌入",
+        "label": "用于搜索的向量嵌入",
         "hint": "{dimension} 维 · 已嵌入 {count, plural, other {# 篇笔记}}"
       },
       "voiceModel": {
@@ -1408,11 +1408,11 @@
         "enabled": "已启用"
       },
       "voice": {
-        "group": "语音备忘",
+        "group": "语音备忘录",
         "transcribeWith": "转录方式",
         "local": "本地",
         "openai": "OpenAI",
-        "nameBy": "备忘命名方式",
+        "nameBy": "备忘录命名方式",
         "keySaved": "已保存",
         "keyNotSet": "未设置"
       }
@@ -1421,7 +1421,7 @@
   "import": {
     "header": {
       "title": "导入",
-      "subtitle": "从其他应用导入你的笔记和任务"
+      "subtitle": "从其他应用导入笔记和任务"
     },
     "intro": "一次性导入会在仓库中创建新笔记。原始导出文件不会被改动。",
     "sources": {
@@ -1435,7 +1435,7 @@
       "bear": "导入 Bear .bear2bk 归档文件（笔记、标签、附件）",
       "evernote": "导入一个或多个 Evernote .enex 导出文件",
       "roam": "导入 Roam Research 图谱（.json），含嵌套大纲",
-      "apple-journal": "将 Apple Journal HTML 导出导入为带日期的笔记",
+      "apple-journal": "将 Apple Journal 的 HTML 导出文件导入为带日期的笔记",
       "csv": "导入 .csv 文件——每行一篇笔记，各列成为属性",
       "raindrop": "导入 Raindrop.io 书签导出文件（.csv）——书签进入收件箱",
       "apple-notes": "从 Apple Notes 数据库导入（NoteStore.sqlite，macOS）",
@@ -1464,7 +1464,7 @@
       "choose": "选择文件…",
       "onenote": {
         "connect": "使用 Microsoft 登录",
-        "connecting": "正在等待浏览器中的登录…",
+        "connecting": "正在等待在浏览器中完成登录…",
         "connectedAs": "已登录为 {name}（{email}）",
         "switchAccount": "切换账户",
         "loadingNotebooks": "正在加载笔记本…",
@@ -1613,7 +1613,7 @@
     "loadingStorage": "正在加载存储信息…",
     "signInStorage": "登录以查看存储使用情况",
     "vaultPath": "仓库路径",
-    "reveal": "显示",
+    "reveal": "在文件夹中显示",
     "accountVaults": {
       "empty": "还没有仓库同步到你的账户。",
       "cloudOnly": "不在此设备上",
@@ -1660,7 +1660,7 @@
       },
       "filter": {
         "all": "全部",
-        "problems": "已跳过和失败"
+        "problems": "已跳过或失败"
       },
       "reveal": "显示日志文件",
       "clear": "清除",
@@ -1718,7 +1718,7 @@
       "dialog": {
         "title": "要将此仓库同步到你的账户吗？",
         "description": "此仓库中有尚未加入账户的笔记。你可以将其添加到账户，或保留在此设备上。在你做出决定之前，任何内容都不会离开此设备。",
-        "descriptionWithVaults": "此仓库中有尚未加入账户的笔记，而你的账户中已有一个仓库。你可以将此仓库与其并列添加、合并两者，或保留在此设备上。在你做出决定之前，任何内容都不会离开此设备。",
+        "descriptionWithVaults": "此仓库中有尚未加入账户的笔记，而你的账户中已有一个仓库。你可以将此仓库作为另一个仓库添加、将两者合并，或将其保留在此设备上。在你做出决定之前，任何内容都不会离开此设备。",
         "addAsNew": "添加为独立仓库",
         "merge": "合并到“{name}”",
         "mergeUnnamed": "合并到账户中的仓库",
@@ -1826,7 +1826,7 @@
   "commandLine": {
     "header": {
       "title": "命令行",
-      "subtitle": "为你的终端设置 memrynote 命令"
+      "subtitle": "为终端设置 memrynote 命令"
     },
     "groups": {
       "terminal": "终端"
@@ -2087,12 +2087,12 @@
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "上次同步：",
-      "pending": "待处理",
+      "pending": "待同步",
       "localOnly": "仅本地",
       "detected": "已检测到",
       "dismissConflicts": "忽略",
       "clockSkewDetected": "检测到时钟偏移",
-      "items": "条目",
+      "items": "项",
       "willSyncWhenBackOnline": "恢复联网后将同步",
       "openSyncSettings": "打开同步设置"
     },
@@ -2263,7 +2263,7 @@
     "alwaysAllowed": {
       "group": "始终允许",
       "description": "你在此仓库中已授予长期批准的工具。删除操作永远无法获得长期批准。",
-      "empty": "没有始终允许的工具。每次更改仍会询问。",
+      "empty": "没有始终允许的工具。每次更改前仍会询问。",
       "revoke": "撤销",
       "revokeLabel": "撤销 {tool} 的长期批准",
       "ignoredInPageReview": "已忽略：编辑笔记和日记时始终会询问。"

@@ -9,7 +9,7 @@
       "filterName": "Dokument PDF"
     },
     "exportHtml": {
-      "title": "Eksportuj jako HTML",
+      "title": "Eksportuj jako plik HTML",
       "filterName": "Dokument HTML"
     },
     "import": {
@@ -25,7 +25,7 @@
       "buttonLater": "Później",
       "readyTitle": "Aktualizacja gotowa",
       "readyMessage": "Pobrano wersję {version} aplikacji memrynote.",
-      "readyDetailFallback": "Uruchom ponownie memrynote, aby zakończyć instalację aktualizacji.",
+      "readyDetailFallback": "Uruchom ponownie aplikację memrynote, aby zakończyć instalację aktualizacji.",
       "buttonRestartNow": "Uruchom ponownie teraz",
       "releaseNotesLabel": "Informacje o wydaniu:"
     },
@@ -57,7 +57,7 @@
     "definitionNotFound": "Nie znaleziono definicji",
     "noteNotFound": "Nie znaleziono notatki",
     "updateFailed": "Aktualizacja nie powiodła się",
-    "updateReadOnlyVolume": "Nie można zainstalować aktualizacji, gdy memrynote działa z tej lokalizacji. Przenieś aplikację memrynote do folderu Aplikacje i otwórz ją ponownie."
+    "updateReadOnlyVolume": "Nie można zainstalować aktualizacji, gdy memrynote działa z tej lokalizacji. Przenieś aplikację memrynote do folderu Programy i otwórz ją ponownie."
   },
   "startup": {
     "installingUpdate": {
@@ -66,7 +66,7 @@
     },
     "failed": {
       "title": "Nie udało się dokończyć uruchamiania aplikacji MemryNote",
-      "body": "Może się to zdarzyć, gdy na dysku jest bardzo mało wolnego miejsca lub przy starszych sterownikach graficznych. Zwolnij trochę miejsca na dysku, a następnie otwórz ponownie MemryNote. Jeśli problem się powtarza, zwykle pomaga ponowna instalacja."
+      "body": "Może się to zdarzyć, gdy na dysku jest bardzo mało wolnego miejsca lub przy starszych sterownikach graficznych. Zwolnij trochę miejsca na dysku, a następnie otwórz ponownie aplikację MemryNote. Jeśli problem się powtarza, zwykle pomaga ponowna instalacja."
     }
   }
 }

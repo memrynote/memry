@@ -24,14 +24,14 @@
       "buttonDownload": "ダウンロード",
       "buttonLater": "後で",
       "readyTitle": "アップデートの準備ができました",
-      "readyMessage": "memrynote {version} がダウンロードされました。",
+      "readyMessage": "memrynote {version} をダウンロードしました。",
       "readyDetailFallback": "アップデートのインストールを完了するには、memrynote を再起動してください。",
       "buttonRestartNow": "今すぐ再起動",
       "releaseNotesLabel": "リリースノート："
     },
     "pair": {
-      "title": "ブラウザ拡張機能をペアリング",
-      "message": "Memry のブラウザ拡張機能から、このアプリへのキャプチャ送信を許可しますか？",
+      "title": "ブラウザー拡張機能をペアリング",
+      "message": "Memry のブラウザー拡張機能から、このアプリへのキャプチャ送信を許可しますか？",
       "buttonAllow": "許可",
       "buttonDeny": "許可しない",
       "buttonPair": "ペアリング"

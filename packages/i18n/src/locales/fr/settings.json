@@ -150,7 +150,7 @@
         "downloading": "Téléchargement…",
         "downloadingPercent": "Téléchargement : {percent} %",
         "downloaded": "Redémarrer pour installer",
-        "idle": "Vérifier les mises à jour"
+        "idle": "Vérifier maintenant"
       },
       "label": "Mises à jour",
       "checkedAgo": "{status} · vérifié {time}",
@@ -190,10 +190,10 @@
       "label": "Format de la date",
       "description": "Format d'affichage des dates du calendrier",
       "options": {
-        "MM/DD/YYYY": "MM/DD/YYYY (US)",
-        "DD/MM/YYYY": "DD/MM/YYYY",
-        "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
-        "DD.MM.YYYY": "DD.MM.YYYY"
+        "MM/DD/YYYY": "MM/JJ/AAAA (US)",
+        "DD/MM/YYYY": "JJ/MM/AAAA",
+        "YYYY-MM-DD": "AAAA-MM-JJ (ISO)",
+        "DD.MM.YYYY": "JJ.MM.AAAA"
       },
       "error": "Impossible de modifier le format de la date"
     },
@@ -210,9 +210,9 @@
         "label": "Bouton de fermeture de l'onglet",
         "description": "Quand afficher le bouton de fermeture",
         "options": {
-          "always": "Toujours visible",
-          "hover": "Afficher au survol",
-          "active": "Uniquement sur l'onglet actif"
+          "always": "Toujours",
+          "hover": "Au survol",
+          "active": "Onglet actif uniquement"
         }
       },
       "error": "Impossible de modifier le paramètre"
@@ -251,7 +251,7 @@
         "title": "Envoyer un rapport de diagnostic ?",
         "consent": "Envoyer un rapport de diagnostic ponctuel ? Il ne contient que des journaux techniques expurgés, sans aucun contenu de note.",
         "building": "Préparation du rapport…",
-        "previewLabel": "Aperçu du contenu du rapport",
+        "previewLabel": "Afficher l'aperçu du rapport",
         "snapshotLabel": "Instantané de l'appareil",
         "send": "Envoyer",
         "sending": "Envoi…",
@@ -261,7 +261,7 @@
         "error": "Impossible d'envoyer le rapport de diagnostic",
         "sendReport": {
           "label": "Rapport de diagnostic",
-          "description": "Envoyez un rapport ponctuel de journaux techniques expurgés pour nous aider à corriger un problème que vous avez rencontré.",
+          "description": "Envoyer un rapport ponctuel de journaux techniques expurgés pour nous aider à corriger un problème que vous avez rencontré.",
           "button": "Envoyer un rapport…"
         }
       }
@@ -466,7 +466,7 @@
     },
     "loading": "Chargement des modèles…",
     "newTemplateTitle": "Nouveau modèle",
-    "copySuffix": "{name} (Copie)",
+    "copySuffix": "{name} (copie)",
     "empty": {
       "title": "Aucun modèle personnalisé pour l'instant",
       "description": "Créez un modèle pour commencer"
@@ -550,7 +550,7 @@
       "renameNote": "Changer le format renomme les fichiers de journal existants. Un fichier dont le nouveau nom est déjà pris reste tel quel.",
       "tokensHelp": "Aide sur le format de date",
       "tokensNote": "Les autres caractères sont conservés tels quels. Les noms des jours sont toujours en anglais.",
-      "tokensTitle": "Jetons de format"
+      "tokensTitle": "Codes de format"
     },
     "preview": {
       "label": "Aperçu",
@@ -568,7 +568,7 @@
       "updated": "Modèle du {day} mis à jour",
       "cleared": "Modèle du {day} retiré",
       "error": "Impossible de modifier le modèle du {day}",
-      "summary": "{count} sur 7 définis"
+      "summary": "{count, plural, one {# sur 7 défini} other {# sur 7 définis}}"
     },
     "v2": {
       "groups": {
@@ -658,7 +658,7 @@
       },
       "test": {
         "label": "Notification de test",
-        "description": "Déclenchez le rappel maintenant pour vérifier vos notifications système.",
+        "description": "Déclencher le rappel maintenant pour vérifier vos notifications système.",
         "button": "Envoyer un test",
         "sent": "Notification de test envoyée.",
         "sentHint": "Si rien n'apparaît, autorisez les notifications pour MemryNote dans les paramètres de votre système.",
@@ -694,7 +694,7 @@
     },
     "pageOverride": {
       "label": "Comportement sur la page Calendrier",
-      "description": "Comportement lorsque l'onglet Calendrier est actif (par défaut, Ouvrir le calendrier)",
+      "description": "Comportement lorsque l'onglet Calendrier est actif (par défaut : « Ouvrir le calendrier »)",
       "error": "Impossible de modifier le comportement sur la page Calendrier"
     },
     "showNotesOnCalendar": {
@@ -734,7 +734,7 @@
       },
       "agentAccess": {
         "label": "Autoriser l'IA à lire les événements Google Calendar",
-        "description": "Désactivé par défaut. Activez-le et l'agent IA pourra lire vos événements Google ; désactivez-le et il ne renverra rien si vous l'interrogez à leur sujet. Vous continuez à les voir dans memrynote dans les deux cas.",
+        "description": "Désactivé par défaut. Une fois l'option activée, l'agent IA peut lire vos événements Google ; désactivée, il n'obtient rien s'il est interrogé à leur sujet. Vous continuez à les voir dans memrynote dans les deux cas.",
         "error": "Impossible de modifier l'accès de l'IA"
       },
       "connect": "Connecter",
@@ -751,7 +751,7 @@
       }
     },
     "subscriptions": {
-      "name": "Calendriers abonnés",
+      "name": "Calendriers par abonnement",
       "description": "Ajoutez un calendrier en lecture seule à partir de son lien de partage (ICS ou webcal), comme un calendrier Proton, iCloud, Outlook ou Fastmail. Ses modifications sont vérifiées environ une fois par heure.",
       "urlLabel": "Lien du calendrier",
       "urlPlaceholder": "Lien de calendrier webcal:// ou https://",
@@ -1068,7 +1068,7 @@
       "prompt": "Vous aimez memrynote ?",
       "star": "Donnez-nous une étoile sur GitHub",
       "and": "et",
-      "feedback": "donnez-nous votre avis"
+      "feedback": "partagez votre avis"
     },
     "signOutDialog": {
       "title": "Se déconnecter de la synchronisation ?",
@@ -1090,7 +1090,7 @@
   "setup": {
     "steps": {
       "signIn": "Connexion",
-      "verify": "Vérifier",
+      "verify": "Vérification",
       "link": "Association"
     },
     "progress": "Étape {current} sur {total} : {label}",
@@ -1098,7 +1098,7 @@
       "title": "Configurer la synchronisation",
       "description": "Créez un compte pour synchroniser vos données entre vos appareils grâce au chiffrement de bout en bout.",
       "or": "ou",
-      "paidPlan": "La synchronisation est un forfait payant.",
+      "paidPlan": "La synchronisation nécessite un forfait payant.",
       "seePlans": "Voir les forfaits",
       "errors": {
         "sendCode": "Impossible d'envoyer le code",
@@ -1200,7 +1200,7 @@
       "vaultPickerDescription": "Ce compte comporte plusieurs coffres. Choisissez un dossier et le ou les coffres à ajouter à cet appareil.",
       "vaultPickerFolderLabel": "Stocker les coffres dans le dossier",
       "vaultPickerChooseFolder": "Choisir un dossier",
-      "vaultRow": "Coffre – {count} éléments · {date}",
+      "vaultRow": "Coffre – {count, plural, one {# élément} other {# éléments}} · {date}",
       "vaultPickerPrimaryHint": "S'ouvre maintenant",
       "vaultPickerDormantHint": "Ajouté, s'ouvre lorsque vous passez à ce coffre",
       "vaultPickerConfirm": "Récupérer la sélection"
@@ -1334,7 +1334,7 @@
     "embedding": {
       "loaded": "Chargé",
       "loading": "Chargement",
-      "cacheHint": "~ 23 Mo · Mis en cache localement · Tout sur l'appareil",
+      "cacheHint": "~23 Mo · Mis en cache localement · Entièrement sur l'appareil",
       "dimensions": "Dimensions",
       "embeddings": "Embeddings",
       "downloadLoad": "Télécharger et charger le modèle",
@@ -1473,7 +1473,7 @@
         "deselectAll": "Effacer la sélection",
         "sectionsSelected": "{count, plural, one {# section sélectionnée} other {# sections sélectionnées}}",
         "includeIncompatible": "Importer les pièces jointes incompatibles",
-        "includeIncompatibleHint": "Enregistrer aussi les types de fichiers que Memry ne peut pas prévisualiser (présentations, médias, archives, jamais d'exécutables). Ils apparaissent sous forme de blocs de fichier.",
+        "includeIncompatibleHint": "Enregistrer aussi les types de fichiers que Memry ne peut pas prévisualiser (présentations, médias, archives, mais jamais d'exécutables). Ils apparaissent sous forme de blocs de fichier.",
         "skipPrevious": "Ignorer les pages déjà importées",
         "skipPreviousHint": "Les pages importées lors d'une précédente importation OneNote sont ignorées : une nouvelle importation ne récupère que les nouveautés."
       },
@@ -1532,7 +1532,7 @@
         "foldersDropped": "Les dossiers TickTick n'ont pas d'équivalent dans Memry et ont été ignorés",
         "subtaskParentMissing": "Parent de la sous-tâche « {title} » introuvable ; importée au niveau supérieur",
         "unknownPriority": "Priorité TickTick inconnue {priority} → aucune",
-        "unsupportedRepeat": "Règle de répétition non prise en charge « {rule} » ignorée",
+        "unsupportedRepeat": "Règle de répétition « {rule} » non prise en charge, ignorée",
         "reminderNoAnchor": "Rappel « {reminder} » ignoré (aucune date de référence)"
       },
       "todoist": {
@@ -1617,7 +1617,7 @@
     "accountVaults": {
       "empty": "Aucun coffre synchronisé avec votre compte pour l'instant.",
       "cloudOnly": "Pas sur cet appareil",
-      "itemsCount": "{count} éléments",
+      "itemsCount": "{count, plural, one {# élément} other {# éléments}}",
       "delete": "Supprimer",
       "deleteTitle": "Supprimer le coffre « {name} » de votre compte ?",
       "deleteBody": "Toutes les données synchronisées de ce coffre seront définitivement supprimées des serveurs de Memry. Cette action est irréversible. Vos fichiers sur le disque ne sont pas supprimés.",
@@ -1692,7 +1692,7 @@
         "importFailed": "Échec de l'importation depuis {importer}",
         "failedGeneric": "Un problème est survenu avec {path}",
         "failedGenericUnnamed": "Un problème est survenu",
-        "scan": "Modifications détectées pendant que Memry était fermé",
+        "scan": "Memry a détecté des modifications apportées pendant sa fermeture",
         "indexRebuilt": "Index de recherche créé",
         "import": "Importation depuis {importer}",
         "importCanceled": "Importation depuis {importer}, annulée",
@@ -2005,7 +2005,7 @@
           "description": "Activer/Désactiver l'italique"
         },
         "underline": {
-          "label": "Souligner",
+          "label": "Souligné",
           "description": "Activer/Désactiver le soulignement"
         },
         "strikethrough": {
@@ -2060,7 +2060,7 @@
       "toToggleThisDialog": "pour afficher ou masquer cette boîte de dialogue"
     },
     "componentsSyncDeviceRevokedDialog": {
-      "thisDeviceHasBeenRemoved": "Cet appareil a été supprimé",
+      "thisDeviceHasBeenRemoved": "Cet appareil a été retiré",
       "exporting": "Exportation…",
       "signOut": "Se déconnecter"
     },
@@ -2086,7 +2086,7 @@
       "showErrorDetailsAria": "{summary}, afficher les détails de l'erreur"
     },
     "componentsSyncSyncStatus": {
-      "lastSynced": "Dernière synchronisation ",
+      "lastSynced": "Dernière synchronisation : ",
       "pending": "en attente",
       "localOnly": "local uniquement",
       "detected": "détecté",
@@ -2207,7 +2207,7 @@
       "group": "Autorisations de l'agent",
       "access": {
         "label": "Accès par défaut",
-        "description": "Définit le mode d'accès initial des nouveaux tours de l'agent.",
+        "description": "Définit le mode d'accès initial des nouveaux échanges avec l'agent.",
         "vaultOnly": "Coffre uniquement",
         "computerAccess": "Accès à l'ordinateur"
       },
@@ -2265,7 +2265,7 @@
       "description": "Outils pour lesquels vous avez accordé une approbation permanente dans ce coffre. Les suppressions ne peuvent jamais en bénéficier.",
       "empty": "Rien n'est toujours autorisé. Chaque modification demande une confirmation.",
       "revoke": "Révoquer",
-      "revokeLabel": "Révoquer l'approbation permanente de {tool}",
+      "revokeLabel": "Révoquer l'approbation permanente pour {tool}",
       "ignoredInPageReview": "Ignoré : les modifications de notes et du journal demandent toujours une confirmation."
     },
     "v2": {

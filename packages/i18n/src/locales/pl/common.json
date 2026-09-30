@@ -59,11 +59,11 @@
       "close": "Zamknij",
       "closeOthers": "Zamknij pozostałe",
       "closeToRight": "Zamknij karty po prawej",
-      "closeAll": "Zamknij wszystko",
+      "closeAll": "Zamknij wszystkie",
       "duplicate": "Duplikuj kartę",
       "splitRight": "Podziel w prawo",
       "splitDown": "Podziel w dół",
-      "copyPath": "Skopiuj ścieżkę",
+      "copyPath": "Kopiuj ścieżkę",
       "revealInSidebar": "Pokaż na pasku bocznym"
     }
   },
@@ -94,7 +94,7 @@
     "daysAgo": "{count, plural, one {# dzień temu} few {# dni temu} many {# dni temu} other {# dnia temu}}",
     "tomorrow": "Jutro",
     "daysOverdue": "{count, plural, one {# dzień po terminie} few {# dni po terminie} many {# dni po terminie} other {# dnia po terminie}}",
-    "daysLate": "{count, plural, one {#d po terminie} few {#d po terminie} many {#d po terminie} other {#d po terminie}}",
+    "daysLate": "{count, plural, one {# dzień po terminie} few {# dni po terminie} many {# dni po terminie} other {# dnia po terminie}}",
     "inDays": "{count, plural, one {za # dzień} few {za # dni} many {za # dni} other {za # dnia}}",
     "inWeeks": "{count, plural, one {za # tydzień} few {za # tygodnie} many {za # tygodni} other {za # tygodnia}}"
   },
@@ -133,11 +133,11 @@
     "thinking": "Agent myśli",
     "enable": {
       "title": "Włącz agenta memrynote",
-      "description": "Agent memrynote korzysta z wybranego lokalnego agenta CLI, aby rozmawiać o zawartości sejfu. Claude wysyła wiadomości do Anthropic, a Codex – do OpenAI.",
+      "description": "Agent memrynote korzysta z wybranego lokalnego agenta CLI, aby rozmawiać o zawartości sejfu. Claude wysyła wiadomości do firmy Anthropic, a Codex – do firmy OpenAI.",
       "remote": "memrynote szyfruje lokalną i zsynchronizowaną historię czatów, ale przetwarzanie przez model odbywa się u wybranego dostawcy.",
       "readTools": "Narzędzia do odczytu działają automatycznie.",
       "writeTools": "Narzędzia do tworzenia i aktualizowania wymagają zatwierdzenia.",
-      "diff": "Narzędzia aktualizacji pokazują różnicę lub podgląd.",
+      "diff": "Narzędzia do aktualizowania pokazują różnice lub podgląd.",
       "button": "Włącz czat z agentem"
     },
     "approval": {
@@ -155,7 +155,7 @@
       "alwaysInChat": "Zawsze zezwalaj w tym czacie",
       "alwaysInChatHint": "Wygasa po zakończeniu rozmowy",
       "alwaysInVault": "Zawsze zezwalaj w tym sejfie",
-      "alwaysInVaultHint": "Możesz to odwołać w: Ustawienia › Agent",
+      "alwaysInVaultHint": "Możesz to odwołać w sekcji Ustawienia › Agent",
       "deletesAlwaysAsk": "Usuwanie zawsze wymaga zgody"
     },
     "diff": {
@@ -186,7 +186,7 @@
       "showDiff": "Pokaż zmiany",
       "accept": "Akceptuj",
       "acceptEdits": "Akceptuj zmiany",
-      "waiting": "Czekam, aż przejrzysz {title}.",
+      "waiting": "Czeka, aż przejrzysz {title}.",
       "notOpen": "Otwórz {title}, aby zobaczyć zmiany, lub zaakceptuj je bez przeglądania.",
       "show": "Pokaż",
       "openNote": "Otwórz notatkę",
@@ -194,7 +194,7 @@
       "fallbackTitle": "tę notatkę"
     },
     "preview": {
-      "unset": "nie ustawiono",
+      "unset": "brak",
       "yes": "tak",
       "no": "nie",
       "noChange": "Ten podgląd nie wskazuje żadnych zmian.",
@@ -236,7 +236,7 @@
         "name": "Nazwa",
         "operation": "Operacja",
         "order": "Kolejność",
-        "parent": "Nadrzędny",
+        "parent": "Element nadrzędny",
         "path": "Ścieżka",
         "position": "Położenie",
         "priority": "Priorytet",
@@ -304,7 +304,7 @@
         "label": "Wyszukiwanie w sieci"
       },
       "models": {
-        "default": "Domyślne",
+        "default": "Domyślny",
         "label": "Model",
         "search": "Szukaj modeli…",
         "useCustom": "Użyj „{query}”",
@@ -583,11 +583,11 @@
       "feedbackPlaceholder": "Twoja opinia…",
       "feedbackEmailHint": "Dodaj swój e-mail, jeśli chcesz otrzymać odpowiedź.",
       "feedbackPrivacyTitle": "Co jest wysyłane",
-      "feedbackPrivacyMessage": "Twoja wiadomość – dokładnie tak, jak ją napisano",
+      "feedbackPrivacyMessage": "Twoja wiadomość – dokładnie tak, jak ją napiszesz",
       "feedbackPrivacyEmailOptional": "Twój e-mail – tylko jeśli go podasz i tylko po to, żebyśmy mogli odpowiedzieć",
       "feedbackPrivacyEmailSignedIn": "Adres e-mail konta ({email}), żebyśmy mogli odpowiedzieć",
       "feedbackPrivacyVersion": "Wersja aplikacji i system operacyjny",
-      "feedbackPrivacyPlan": "Twój plan (free, Plus, Pro lub Believer)",
+      "feedbackPrivacyPlan": "Twój plan (Free, Plus, Pro lub Believer)",
       "feedbackPrivacyNote": "Nic więcej. Notatki zostają na twoim urządzeniu.",
       "feedbackSend": "Wyślij",
       "feedbackSending": "Wysyłanie…",
@@ -621,7 +621,7 @@
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Twoja osobista baza wiedzy. Na początek poświęćmy 2 minuty.",
       "getStarted": "Zacznij ",
       "createYourFirstNote": "Utwórz swoją pierwszą notatkę",
-      "markdownBasedStoredLocallyAsPlainFiles": "Oparte na Markdown, przechowywane lokalnie jako zwykłe pliki.",
+      "markdownBasedStoredLocallyAsPlainFiles": "Oparte na formacie Markdown, przechowywane lokalnie jako zwykłe pliki.",
       "eGMeetingNotesIdeasAnything": "np. notatki ze spotkań, pomysły, cokolwiek…",
       "skip": "Pomiń",
       "createNote": "Utwórz notatkę ",
@@ -655,8 +655,8 @@
     "componentsKeyboardShortcutsModal": {
       "keyboardShortcuts": "Skróty klawiszowe",
       "closeShortcutsHelp": "Zamknij pomoc dotyczącą skrótów",
-      "press": "Naciśnij",
-      "toClose": "aby zamknąć"
+      "press": "Klawisz",
+      "toClose": "zamyka to okno"
     },
     "componentsKiboUiTreeIndex": {
       "setIcon": "Ustaw ikonę",
@@ -704,8 +704,8 @@
       "dateRange": "Zakres dat"
     },
     "componentsSearchSearchResultGroup": {
-      "viewAll": "Zobacz wszystkie ",
-      "results": "wyniki"
+      "viewAll": "Wyniki: ",
+      "results": "– pokaż wszystkie"
     },
     "componentsSearchSearchResultItem": {
       "p": "P",
@@ -789,7 +789,7 @@
       "suggestions": "Sugestie",
       "or": "lub",
       "enter": "Enter",
-      "toInsert": "aby wstawić"
+      "toInsert": "wstawia sugestię"
     },
     "componentsUiBreadcrumb": {
       "breadcrumb": "ścieżka nawigacji",
@@ -822,7 +822,7 @@
       "notesLastOpened": "notatki · Ostatnio otwarte",
       "preRelease": "Beta",
       "createNewVault": "Utwórz nowy sejf",
-      "createNewVaultDesc": "Rozpocznij nowy sejf w wybranym folderze.",
+      "createNewVaultDesc": "Zacznij od pustego sejfu w wybranym folderze.",
       "openExistingVault": "Otwórz istniejący sejf",
       "openExistingVaultDesc": "Wybierz folder z plikami Markdown, które już masz.",
       "signInToSync": "Zaloguj się, aby synchronizować",
@@ -903,9 +903,9 @@
     "componentsWindowControls": {
       "searchK": "Szukaj (⌘K)",
       "browserBack": "Przejdź wstecz",
-      "back": "Powrót",
+      "back": "Wstecz",
       "browserForward": "Przejdź dalej",
-      "forward": "Naprzód"
+      "forward": "Dalej"
     }
   },
   "phaseI": {
@@ -1065,7 +1065,7 @@
     }
   },
   "shortcuts": {
-    "description": "Szybkie sposoby poruszania się po memrynote, zapisywania myśli i porządkowania pracy.",
+    "description": "Szybkie sposoby poruszania się po aplikacji memrynote, zapisywania myśli i porządkowania pracy.",
     "or": "lub",
     "then": "potem",
     "groups": {

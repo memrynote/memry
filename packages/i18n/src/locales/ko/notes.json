@@ -1,7 +1,7 @@
 {
   "wikiLinkCreateDialog": {
     "title": "노트를 만드시겠습니까?",
-    "body": "“{title}” 제목의 노트가 없습니다. 만드시겠습니까?",
+    "body": "제목이 “{title}”인 노트가 없습니다. 만드시겠습니까?",
     "create": "만들기"
   },
   "wikiLinkPreview": {
@@ -238,7 +238,7 @@
     "callout": {
       "title": "콜아웃",
       "group": "기본 블록",
-      "subtext": "중요한 정보를 강조하세요",
+      "subtext": "중요한 정보 강조",
       "changeType": "콜아웃 유형 변경",
       "menuLabel": "콜아웃 유형",
       "info": "정보",
@@ -248,7 +248,7 @@
     },
     "diagram": {
       "title": "다이어그램",
-      "subtext": "Mermaid 소스로 만드는 순서도, 시퀀스 또는 간트 차트"
+      "subtext": "Mermaid 소스로 만드는 순서도, 시퀀스 다이어그램 또는 간트 차트"
     },
     "math": {
       "title": "수식",
@@ -366,7 +366,7 @@
       "keepAsCheckbox": "체크박스로 유지"
     },
     "obsidianTask": {
-      "refused": "이 줄에는 Obsidian이 줄 끝에 두어야 하는 ID, 종속성 또는 블록 링크가 있습니다. Obsidian에서 먼저 제거한 다음 변환하세요.",
+      "refused": "이 줄에는 Obsidian에서 줄 끝에 있어야 하는 ID, 종속성 또는 블록 링크가 있습니다. Obsidian에서 먼저 제거한 다음 변환하세요.",
       "createFailed": "이 줄의 작업을 만들지 못했습니다.",
       "completeFailed": "작업을 만들었지만 완료 날짜를 적용하지 못했습니다."
     },
@@ -493,7 +493,7 @@
       "aria": "태그 제안",
       "loading": "태그 불러오는 중…",
       "empty": "새 태그를 만들려면 입력하세요",
-      "create": "#{tag} 생성"
+      "create": "#{tag} 만들기"
     },
     "pasteLink": {
       "title": "다음으로 붙여넣기",
@@ -540,8 +540,8 @@
     "emptyYet": "아직 제목이 없습니다",
     "readTime": "읽는 시간 {count}분",
     "words": "단어 {count}개",
-    "created": "생성됨",
-    "modified": "수정됨"
+    "created": "만든 날짜",
+    "modified": "수정한 날짜"
   },
   "backlinks": {
     "sortRecent": "최근",
@@ -551,7 +551,7 @@
     "summary": "노트 {notes}개 · 참조 {references}개",
     "sectionAria": "백링크",
     "listAria": "백링크 목록",
-    "fromAria": "{title}의 백링크",
+    "fromAria": "{title}에서 온 백링크",
     "collapse": "접기",
     "expand": "펼치기",
     "collapseSection": "백링크 섹션 접기",
@@ -575,7 +575,7 @@
     "summary": "{count, plural, other {유사한 노트 #개}}",
     "sectionAria": "유사한 노트",
     "hint": "이 노트와 내용이 비슷하지만 아직 링크되지 않은 노트입니다. 이 기기의 로컬 임베딩으로 찾았습니다.",
-    "addLink": "이 노트에서 링크",
+    "addLink": "이 노트에 링크 추가",
     "addLinkAria": "이 노트에 {title} 링크 추가",
     "linked": "{title}을(를) 링크했습니다",
     "addToCanvas": "캔버스에 추가",
@@ -661,7 +661,7 @@
     "searchOptions": "옵션 검색…",
     "noOptions": "아직 옵션이 없습니다",
     "optionName": "옵션 이름",
-    "newOption": "새로운 옵션",
+    "newOption": "새 옵션",
     "ratingAria": "평점",
     "openUrlAria": "URL 열기",
     "showOnCalendar": "캘린더에 표시",
@@ -726,7 +726,7 @@
     "repositionHint": "드래그하여 위치 조정",
     "repositionSave": "저장",
     "repositionCancel": "취소",
-    "credit": "{name}님의 사진 (Unsplash)",
+    "credit": "사진: Unsplash의 {name}",
     "focusFailed": "커버 이미지 위치를 저장하지 못했습니다",
     "picker": {
       "title": "노트 커버",
@@ -924,11 +924,11 @@
       "addFiltersToNarrowDownYourNotes": "필터를 추가하여 노트 범위를 좁히세요",
       "match": "일치 조건",
       "allAnd": "모두(AND)",
-      "anyOr": "하나라도(OR)",
+      "anyOr": "하나 이상(OR)",
       "ofTheFollowing": "다음 중:",
       "match2": "일치 조건",
       "all": "모두",
-      "any": "하나라도",
+      "any": "하나 이상",
       "of": ":",
       "addCondition": "조건 추가",
       "addFilter": "필터 추가",
@@ -937,7 +937,7 @@
       "lockedConditionHint": "이 조건은 현재 보기를 정의하므로 여기서 제거할 수 없습니다."
     },
     "componentsFolderViewFilterRow": {
-      "builtIn": "내장",
+      "builtIn": "기본 제공",
       "properties": "속성",
       "placeholderProperty": "속성",
       "placeholderOperator": "연산자",
@@ -975,11 +975,11 @@
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "그룹화 해제",
       "searchProperties": "속성 검색…",
-      "builtIn": "내장",
+      "builtIn": "기본 제공",
       "properties": "속성",
       "noGroupablePropertiesFound": "그룹화할 수 있는 속성이 없습니다",
       "sortDirection": "정렬 방향",
-      "collapseGroupsByDefault": "기본적으로 그룹 축소",
+      "collapseGroupsByDefault": "기본적으로 그룹 접기",
       "showGroupSummaries": "그룹 요약 표시",
       "clearGrouping2": "그룹화 해제"
     },
@@ -1004,8 +1004,8 @@
       "createFolderNamed": "“{name}” 만들기"
     },
     "componentsFolderViewRowContextMenu": {
-      "delete": "노트 삭제: ",
-      "notes": "개",
+      "delete": "노트 ",
+      "notes": "개 삭제",
       "open": "열기",
       "openInExternalEditor": "외부 편집기에서 열기",
       "revealInSidebar": "사이드바에서 보기",
@@ -1096,8 +1096,8 @@
       "words": "단어",
       "characters": "문자",
       "readingTime": "읽는 시간",
-      "created": "생성됨",
-      "modified": "수정됨"
+      "created": "만든 날짜",
+      "modified": "수정한 날짜"
     },
     "componentsSidebarProjectsEmptyState": {
       "noProjectsYet": "아직 프로젝트가 없습니다",
@@ -1156,7 +1156,7 @@
       "changeColor": "색상 변경",
       "deleteTag": "태그 삭제",
       "recent": "최근",
-      "created": "생성됨",
+      "created": "만든 날짜",
       "alphabetical": "알파벳순"
     },
     "componentsSidebarTagRenameDialog": {
@@ -1281,7 +1281,7 @@
   },
   "bulkActions": {
     "toolbarAria": "일괄 처리",
-    "selected": "선택됨",
+    "selected": "개 선택됨",
     "move": "이동",
     "copyLinks": "링크 복사",
     "addTag": "태그 추가",
@@ -1289,7 +1289,7 @@
     "export": "내보내기",
     "delete": "삭제",
     "clearAria": "선택 해제",
-    "copiedLinks": "{count, plural, other {링크 #개}} 복사됨",
+    "copiedLinks": "{count, plural, other {링크 #개를 복사했습니다}}",
     "setIcon": "아이콘 설정",
     "iconUpdated": "{count, plural, other {노트 #개의 아이콘을 업데이트했습니다}}"
   },

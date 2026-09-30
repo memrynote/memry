@@ -26,7 +26,7 @@
       "renameFailed": "Impossibile rinominare la nota",
       "titleRequired": "Una nota deve avere un titolo",
       "toggleLocalOnlyFailed": "Impossibile modificare l'opzione “Solo in locale”",
-      "toggleFullWidthFailed": "Impossibile attivare/disattivare la larghezza intera",
+      "toggleFullWidthFailed": "Impossibile modificare l'opzione “Tutta la larghezza”",
       "pathCopied": "Percorso copiato",
       "copyPathFailed": "Impossibile copiare il percorso",
       "revealFailed": "Impossibile mostrare la nota",
@@ -196,8 +196,8 @@
       "copyPath": "Copia percorso",
       "revealInSidebar": "Mostra nella navigazione",
       "attachments": "Allegati…",
-      "disableLocalOnly": "Disattiva solo locale",
-      "setLocalOnly": "Imposta solo locale",
+      "disableLocalOnly": "Disattiva “Solo in locale”",
+      "setLocalOnly": "Mantieni solo in locale",
       "delete": "Elimina nota"
     },
     "attachmentMenu": {
@@ -242,7 +242,7 @@
       "changeType": "Modifica il tipo di callout",
       "menuLabel": "Tipo di callout",
       "info": "Informazioni",
-      "warning": "Avvertimento",
+      "warning": "Avviso",
       "error": "Errore",
       "success": "Successo"
     },
@@ -336,7 +336,7 @@
       },
       "html": {
         "title": "File HTML",
-        "subtext": "Incorpora un file .html e interagisci con esso nella nota"
+        "subtext": "Incorpora un file .html e usalo direttamente nella nota"
       },
       "linkToNote": {
         "title": "Collega a una nota",
@@ -476,7 +476,7 @@
       "aliasHint": "Digita | per dare un nome al link"
     },
     "mention": {
-      "aria": "Suggerimenti date e note",
+      "aria": "Suggerimenti di date e note",
       "loading": "Caricamento delle note…",
       "empty": "Nessuna nota trovata",
       "date": "Data",
@@ -528,7 +528,7 @@
         "delete": "Elimina {name}",
         "renameLabel": "Nome dell'icona",
         "saveName": "Salva nome",
-        "cancelRename": "Annulla la ridenominazione",
+        "cancelRename": "Annulla la modifica del nome",
         "addUrlFailed": "Impossibile scaricare l'immagine"
       }
     }
@@ -575,8 +575,8 @@
     "summary": "{count, plural, one {# nota simile} other {# note simili}}",
     "sectionAria": "Note simili",
     "hint": "Note che somigliano a questa e non sono ancora collegate. Trovate su questo dispositivo tramite gli embedding locali.",
-    "addLink": "Collega da questa nota",
-    "addLinkAria": "Collega {title} da questa nota",
+    "addLink": "Aggiungi un link in questa nota",
+    "addLinkAria": "Aggiungi un link a {title} in questa nota",
     "linked": "Link a {title} aggiunto",
     "addToCanvas": "Aggiungi alla lavagna",
     "addToCanvasAria": "Aggiungi {title} a una lavagna",
@@ -814,7 +814,7 @@
     "pdfDescription": "Documento pronto per la stampa",
     "htmlDescription": "File pronto per il Web",
     "pageSize": "Dimensioni della pagina",
-    "selectPageSize": "Seleziona la dimensione della pagina",
+    "selectPageSize": "Seleziona le dimensioni della pagina",
     "options": "Opzioni",
     "includeMetadata": "Includi metadati (tag, date)",
     "exporting": "Esportazione…",
@@ -848,7 +848,7 @@
     }
   },
   "templateEditor": {
-    "loading": "Caricamento modello…",
+    "loading": "Caricamento del modello…",
     "copySuffix": "{name} (Copia)",
     "title": {
       "new": "Nuovo modello",
@@ -876,7 +876,7 @@
   "reminders": {
     "summary": "Promemoria: {date}",
     "summaryWithMore": "Promemoria: {date} (+{count} altri)",
-    "hasReminders": "Ha promemoria",
+    "hasReminders": "Promemoria attivi",
     "setReminder": "Imposta promemoria",
     "toast": {
       "set": "Promemoria impostato",
@@ -902,7 +902,7 @@
       "properties": "Proprietà",
       "display": "Visualizzazione",
       "showSummaries": "Mostra riepiloghi",
-      "columnBorders": "Bordi colonna",
+      "columnBorders": "Bordi delle colonne",
       "searchColumns": "Cerca colonne…",
       "noMatchingColumns": "Nessuna colonna corrispondente",
       "formulas": "FORMULE",
@@ -1019,7 +1019,7 @@
     },
     "componentsFolderViewViewSwitcher": {
       "default": "predefinita",
-      "viewActions": "Azioni vista",
+      "viewActions": "Azioni della vista",
       "rename": "Rinomina",
       "duplicate": "Duplica",
       "setAsDefault": "Imposta come predefinita",
@@ -1168,7 +1168,7 @@
     },
     "componentsViewersAudioPlayer": {
       "failedToLoadAudio": "Impossibile caricare l'audio",
-      "theAudioFileCouldNotBePlayed": "Non è stato possibile riprodurre il file audio.",
+      "theAudioFileCouldNotBePlayed": "Impossibile riprodurre il file audio.",
       "skipBack10s": "Torna indietro di 10 secondi",
       "skipForward10s": "Salta avanti di 10 secondi"
     },
@@ -1201,7 +1201,7 @@
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Impossibile caricare il video",
-      "theVideoFileCouldNotBePlayed": "Non è stato possibile riprodurre il file video."
+      "theVideoFileCouldNotBePlayed": "Impossibile riprodurre il file video."
     },
     "pagesFile": {
       "failedToLoadFile": "Impossibile caricare il file",
@@ -1230,7 +1230,7 @@
       "builtIn": "Di sistema",
       "properties": "Proprietà",
       "noSortablePropertiesFound": "Nessuna proprietà ordinabile trovata",
-      "sortDirection": "Direzione ordinamento"
+      "sortDirection": "Direzione dell'ordinamento"
     }
   },
   "phaseI": {
@@ -1263,7 +1263,7 @@
       "noteExportedSuccessfully": "Nota esportata con successo",
       "failedToUpdateProperty": "Impossibile aggiornare la proprietà",
       "failedToUpdateTags": "Impossibile aggiornare i tag",
-      "failedToUpdateIcon": "Aggiornamento dell'icona non riuscito",
+      "failedToUpdateIcon": "Impossibile aggiornare l'icona",
       "reminderSnoozed": "Promemoria posticipato",
       "failedToSnoozeReminder": "Impossibile posticipare il promemoria",
       "defaultTemplateSet": "Modello predefinito impostato",
@@ -1393,7 +1393,7 @@
       "separator": "→"
     },
     "more": "{count, plural, one {+# altro} other {+# altri}}",
-    "nodeCapNotice": "Questa mappa ha raggiunto il limite di {count, plural, one {# nodo} other {# nodi}}; il resto è raccolto nel nodo più vicino sopra.",
+    "nodeCapNotice": "Questa mappa ha raggiunto il limite di {count, plural, one {# nodo} other {# nodi}}; il resto è raccolto nel nodo superiore più vicino.",
     "badge": {
       "table": "{count, plural, one {# tabella} other {# tabelle}}",
       "code": "{count, plural, one {# blocco di codice} other {# blocchi di codice}}",
@@ -1407,7 +1407,7 @@
       "label": "Azioni della mappa mentale",
       "fit": "Adatta alla vista",
       "copyImage": "Copia come immagine",
-      "copyVector": "Copia come vettoriale",
+      "copyVector": "Copia come grafica vettoriale",
       "imageCopied": "Mappa copiata come immagine",
       "vectorCopied": "Mappa copiata come grafica vettoriale",
       "copyFailed": "Impossibile copiare la mappa",

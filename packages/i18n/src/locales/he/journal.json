@@ -35,7 +35,7 @@
   "editor": {
     "placeholder": {
       "future": "מה מתוכנן…",
-      "today": "מה עובר עליך היום…",
+      "today": "מה עובר לך בראש היום…",
       "past": "מחשבות על היום הזה…"
     },
     "upload": {
@@ -108,7 +108,7 @@
     "nextDay": "היום הבא",
     "previousMonth": "החודש הקודם",
     "nextMonth": "החודש הבא",
-    "previousYear": "שנה קודמת",
+    "previousYear": "השנה הקודמת",
     "nextYear": "השנה הבאה",
     "journalBack": "חזרה ביומן",
     "journalNavigation": "ניווט ביומן",
@@ -118,7 +118,7 @@
   "aria": {
     "moreOptions": "אפשרויות נוספות",
     "documentStatistics": "סטטיסטיקת המסמך",
-    "dayContext": "הקשר היום: משימות ולוח זמנים",
+    "dayContext": "ההקשר של היום: משימות ולוח זמנים",
     "scheduleEvents": "אירועים בלוח הזמנים",
     "tasks": "משימות",
     "notesCreatedToday": "{count} פתקים שנוצרו היום"

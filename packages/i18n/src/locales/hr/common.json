@@ -1,451 +1,184 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Fokusiraj polje za brzi zapis",
+    "detailHint": "detalji",
+    "submit": "Zabilježi"
+  },
   "button": {
-    "save": "spremiti",
+    "save": "Spremi",
     "cancel": "Odustani",
     "close": "Zatvori",
     "delete": "Izbriši",
     "done": "Gotovo",
-    "dontSave": "Ne štedi",
+    "dontSave": "Nemoj spremiti",
     "add": "Dodaj",
-    "remove": "Ukloniti",
-    "retry": "Pokušaj ponovo",
-    "back": "natrag",
-    "continue": "nastavi",
+    "remove": "Ukloni",
+    "retry": "Pokušaj ponovno",
+    "back": "Natrag",
+    "continue": "Nastavi",
     "copy": "Kopiraj",
-    "create": "Stvorite"
+    "create": "Stvori"
+  },
+  "media": {
+    "video": "Videozapis"
   },
   "state": {
-    "loading": "učitavanje...",
-    "saving": "Spremanje...",
-    "deleting": "Brisanje...",
+    "loading": "Učitavanje…",
+    "saving": "Spremanje…",
+    "deleting": "Brisanje…",
     "searching": "Pretraživanje…"
   },
   "action": {
-    "search": "Traži",
+    "search": "Pretraži",
     "expand": "Proširi",
-    "collapse": "Sažimanje",
-    "showMore": "+{count, plural, one {# više} other {# više}}",
+    "collapse": "Sažmi",
+    "showMore": "+{count, plural, one {#} few {#} other {#}}",
     "showLess": "Prikaži manje",
     "undo": "Poništi"
   },
   "fileActions": {
-    "revealInFinder": "Otkrij u Finderu",
+    "revealInFinder": "Prikaži u Finderu",
     "showInExplorer": "Prikaži u Exploreru",
     "showInFileManager": "Prikaži u upravitelju datoteka",
     "openInDefaultApp": "Otvori u zadanoj aplikaciji",
-    "revealFailed": "Nije uspjelo prikazivanje u mapi"
+    "revealFailed": "Prikaz u mapi nije uspio"
   },
   "tabs": {
     "pin": "Prikvači karticu",
     "unpin": "Otkvači karticu",
+    "persistence": {
+      "saveFailed": "Otvorene kartice više se ne spremaju",
+      "saveFailedQuota": "Ova je sesija prevelika za spremanje. Zatvorite nekoliko kartica jer se inače možda neće vratiti kad sljedeći put otvorite Memry.",
+      "saveFailedGeneric": "Aplikacija Memry nije mogla spremiti ovu sesiju pa se ona možda neće vratiti kad sljedeći put otvorite aplikaciju.",
+      "lastSessionNotSaved": "Posljednja sesija nije spremljena pri zatvaranju aplikacije Memry",
+      "lastSessionNotSavedQuota": "Pohrana je tada bila puna pa su ove kartice iz ranijeg spremanja. Zatvorite nekoliko kartica da oslobodite prostor.",
+      "lastSessionNotSavedGeneric": "Aplikacija Memry nije mogla spremiti kartice pri izlazu pa su ove kartice iz ranijeg spremanja."
+    },
     "contextMenu": {
       "close": "Zatvori",
-      "closeOthers": "Zatvori Ostalo",
-      "closeToRight": "Blizu desnice",
+      "closeOthers": "Zatvori ostale",
+      "closeToRight": "Zatvori kartice s desne strane",
       "closeAll": "Zatvori sve",
-      "duplicate": "Duplicirana kartica",
-      "splitRight": "Split desno",
-      "splitDown": "Split dolje",
-      "copyPath": "Kopiraj put",
-      "revealInSidebar": "Otkrij na bočnoj traci"
+      "duplicate": "Dupliciraj karticu",
+      "splitRight": "Podijeli udesno",
+      "splitDown": "Podijeli prema dolje",
+      "copyPath": "Kopiraj putanju",
+      "revealInSidebar": "Prikaži na bočnoj traci"
     }
   },
   "count": {
-    "note": "{count, plural, one {Napomena #} other {Bilješke #}}",
-    "task": "{count, plural, one {# zadatak} other {# zadaci}}",
-    "itemDelete": "{count, plural, one {Izbrišite stavku #} other {Izbrišite stavke #}}",
+    "note": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}",
+    "journal": "{count, plural, one {# zapis u dnevniku} few {# zapisa u dnevniku} other {# zapisa u dnevniku}}",
+    "task": "{count, plural, one {# zadatak} few {# zadatka} other {# zadataka}}",
     "event": "{count, plural, one {# događaj} few {# događaja} other {# događaja}}",
-    "journal": "{count, plural, one {# dnevnik} few {# dnevnika} other {# dnevnika}}",
-    "reminder": "{count, plural, one {# podsjetnik} few {# podsjetnika} other {# podsjetnika}}"
+    "reminder": "{count, plural, one {# podsjetnik} few {# podsjetnika} other {# podsjetnika}}",
+    "itemDelete": "{count, plural, one {Izbriši # stavku} few {Izbriši # stavke} other {Izbriši # stavki}}"
   },
   "toast": {
     "actionFailed": "Radnja nije uspjela",
-    "nothingToUndo": "Ništa za poništiti",
+    "nothingToUndo": "Nema ničega za poništavanje",
     "undone": "Poništeno: {description}",
-    "undoFailed": "Poništavanje radnje nije uspjelo"
+    "undoFailed": "Poništavanje radnje nije uspjelo",
+    "filesImported": "{count, plural, one {# datoteka uvezena} few {# datoteke uvezene} other {# datoteka uvezeno}}",
+    "filesImportFailed": "{count, plural, one {Uvoz # datoteke nije uspio} few {Uvoz # datoteke nije uspio} other {Uvoz # datoteka nije uspio}}",
+    "filesHiddenInSidebar": "Datoteke su skrivene na bočnoj traci. Da biste ih vidjeli, uključite „Prikaži datoteke” u izborniku sortiranja odjeljka „Zbirke”.",
+    "moreRemindersDue": "{count, plural, one {Još # podsjetnik na čekanju} few {Još # podsjetnika na čekanju} other {Još # podsjetnika na čekanju}}",
+    "moreRemindersDueHint": "Pojedinosti potražite u panelu podsjetnika",
+    "searchIndexRepaired": "Indeks pretraživanja popravljen",
+    "searchIndexRepairedHint": "Dio indeksa pretraživanja bio je oštećen pa ga je Memry ponovno izgradio. Vaše bilješke nisu mijenjane."
   },
   "dateRelative": {
     "today": "Danas",
-    "yesterday": "jučer",
-    "daysAgo": "{count, plural, one {# prije dan} other {# prije dana}}",
+    "yesterday": "Jučer",
+    "daysAgo": "{count, plural, one {prije # dan} few {prije # dana} other {prije # dana}}",
+    "tomorrow": "Sutra",
+    "daysOverdue": "{count, plural, one {kasni # dan} few {kasni # dana} other {kasni # dana}}",
     "daysLate": "{count, plural, one {kasni #d} few {kasni #d} other {kasni #d}}",
-    "daysOverdue": "{count, plural, one {# dan zakašnjenja} few {# dana zakašnjenja} other {# dana zakašnjenja}}",
-    "tomorrow": "Sutra"
+    "inDays": "{count, plural, one {za # dan} few {za # dana} other {za # dana}}",
+    "inWeeks": "{count, plural, one {za # tjedan} few {za # tjedna} other {za # tjedana}}"
   },
   "recurrence": {
-    "everyNDays": "{count, plural, one {Svaki dan} other {Svakih # dana}}",
-    "everyNWeeks": "{count, plural, one {Svaki tjedan} other {Svakih # tjedana}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {Svaki radni dan} other {Svakih # tjedana radnim danima}}",
-    "everyNWeeksOnWeekends": "{count, plural, one {Svaki vikend} other {Svakih # tjedana vikendom}}",
-    "everyNWeeksOnDays": "{count, plural, one {Svaki tjedan na {days}} other {Svakih # tjedana na {days}}}",
-    "everyNMonths": "{count, plural, one {Svaki mjesec} other {Svakih # mjeseci}}",
-    "everyNMonthsOnDay": "{count, plural, one {Svaki mjesec na {day}{suffix}} other {Svakih # mjeseci na {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {Svaki mjesec na {week} {day}} other {Svakih # mjeseci na {week} {day}}}",
-    "everyNYears": "{count, plural, one {Svake godine} other {Svakih # godina}}",
+    "everyNDays": "{count, plural, =1 {Svaki dan} one {Svaki # dan} few {Svaka # dana} other {Svakih # dana}}",
+    "everyNWeeks": "{count, plural, =1 {Svaki tjedan} one {Svaki # tjedan} few {Svaka # tjedna} other {Svakih # tjedana}}",
+    "everyNWeeksOnWeekdays": "{count, plural, =1 {Svaki radni dan} one {Svaki # tjedan radnim danima} few {Svaka # tjedna radnim danima} other {Svakih # tjedana radnim danima}}",
+    "everyNWeeksOnWeekends": "{count, plural, =1 {Svaki vikend} one {Svaki # tjedan vikendom} few {Svaka # tjedna vikendom} other {Svakih # tjedana vikendom}}",
+    "everyNWeeksOnDays": "{count, plural, =1 {Svaki tjedan: {days}} one {Svaki # tjedan: {days}} few {Svaka # tjedna: {days}} other {Svakih # tjedana: {days}}}",
+    "everyNMonths": "{count, plural, =1 {Svaki mjesec} one {Svaki # mjesec} few {Svaka # mjeseca} other {Svakih # mjeseci}}",
+    "everyNMonthsOnDay": "{count, plural, =1 {Svaki mjesec, {day}{suffix}. dan} one {Svaki # mjesec, {day}{suffix}. dan} few {Svaka # mjeseca, {day}{suffix}. dan} other {Svakih # mjeseci, {day}{suffix}. dan}}",
+    "everyNMonthsOnWeekDay": "{count, plural, =1 {Svaki mjesec, {week} {day}} one {Svaki # mjesec, {week} {day}} few {Svaka # mjeseca, {week} {day}} other {Svakih # mjeseci, {week} {day}}}",
+    "everyNYears": "{count, plural, =1 {Svake godine} one {Svake # godine} few {Svake # godine} other {Svakih # godina}}",
     "repeats": "Ponavlja se",
     "ordinal": {
-      "first": "prvi",
-      "fourth": "četvrti",
-      "last": "posljednji",
-      "second": "drugi",
-      "third": "treći"
+      "first": "1.",
+      "second": "2.",
+      "third": "3.",
+      "fourth": "4.",
+      "last": "posljednji"
     },
     "preset": {
-      "everyWeekday": "Svaki radni dan (pon-pet)",
+      "everyWeekday": "Svaki radni dan (pon.–pet.)",
       "everyYearOnDate": "Svake godine {date}"
-    }
-  },
-  "phaseF": {
-    "componentsAppSidebar": {
-      "collections": "Zbirke",
-      "newNote": "Nova bilješka",
-      "newNote2": "Nova bilješka",
-      "newFolder": "Nova mapa",
-      "newFolder2": "Nova mapa",
-      "bookmarks": "Knjižne oznake",
-      "tags": "oznake",
-      "dropFilesToImport": "Ispustite datoteke za uvoz",
-      "newNoteN": "Nova bilješka (⌘N)",
-      "new": "novo",
-      "syncDisabled": "Sinkronizacija onemogućena",
-      "syncDisabled2": "Sinkronizacija onemogućena",
-      "feedbackButton": "Pošalji povratne informacije",
-      "feedbackDescription": "Recite nam što radi, što je pokvareno ili što biste željeli da Memry radi. Čitamo svaku poruku.",
-      "feedbackEmailHint": "Dodajte svoju e-poštu ako želite odgovor.",
-      "feedbackError": "Slanje povratnih informacija nije uspjelo. Pokušajte ponovno.",
-      "feedbackPlaceholder": "Vaše povratne informacije…",
-      "feedbackSend": "Pošalji",
-      "feedbackSending": "Slanje…",
-      "feedbackSuccess": "Hvala na povratnim informacijama!",
-      "feedbackTitle": "Pošalji povratne informacije",
-      "newItemMenu": "Stvori novo…",
-      "feedbackPrivacyEmailOptional": "Vaša e-adresa — samo ako je upišete i samo kako bismo mogli odgovoriti",
-      "feedbackPrivacyEmailSignedIn": "E-adresa vašeg računa ({email}), kako bismo mogli odgovoriti",
-      "feedbackPrivacyMessage": "Vaša poruka, točno onako kako ste je napisali",
-      "feedbackPrivacyNote": "Ništa drugo. Vaše bilješke ostaju na vašem uređaju.",
-      "feedbackPrivacyPlan": "Vaš plan (free, Plus, Pro ili Believer)",
-      "feedbackPrivacyTitle": "Što se šalje",
-      "feedbackPrivacyVersion": "Verzija aplikacije i operacijski sustav",
-      "projects": "Projekti"
-    },
-    "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "Promjena veličine dnevne ploče",
-      "dragToResizeDoubleClickToReset": "Povucite za promjenu veličine · Dvaput kliknite za poništavanje"
-    },
-    "componentsFindBarFindBar": {
-      "findReplaceAsk": "Pronađi, zamijeni, pitaj..."
-    },
-    "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Preskoči ukrcavanje",
-      "welcomeToMemry": "Dobrodošli u memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaša osobna baza znanja. Uzmimo 2 minute da započnemo.",
-      "getStarted": "Započnite ",
-      "createYourFirstNote": "Napravite svoju prvu bilješku",
-      "markdownBasedStoredLocallyAsPlainFiles": "Na temelju markdowna, pohranjeno lokalno kao obične datoteke.",
-      "eGMeetingNotesIdeasAnything": "npr. Bilješke sa sastanka, ideje, bilo što...",
-      "skip": "Preskoči",
-      "createNote": "Napravi bilješku ",
-      "addYourFirstTask": "Dodajte svoj prvi zadatak",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Zadaci se povezuju s vašim bilješkama, s prioritetima i rokovima.",
-      "eGReviewProjectProposal": "npr. Pregledajte prijedlog projekta...",
-      "skip2": "Preskoči",
-      "createTask": "Izradi zadatak ",
-      "syncAcrossDevices": "Sinkronizacija na svim uređajima",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Sinkronizirajte svoje bilješke i zadatke na svim svojim uređajima. To uvijek možete postaviti kasnije.",
-      "skipForNow": "Preskoči za sada",
-      "doneLetSGo": "Gotovo — idemo! "
-    },
-    "componentsFolderIconButton": {
-      "setFolderIcon": "Postavi ikonu mape"
-    },
-    "componentsHintOverlayHintIndicator": {
-      "hint": "SAVJET"
-    },
-    "componentsIconPicker": {
-      "iconPicker": "Birač ikona",
-      "selectIcon": "Odaberite ikonu",
-      "closeIconPicker": "Zatvori birač ikona",
-      "searchIcons": "Ikone pretraživanja...",
-      "all": "sve",
-      "clearIcon": "Očisti ikonu",
-      "noIconsFoundFor": "Nisu pronađene ikone za \""
-    },
-    "componentsKeyboardShortcutsModal": {
-      "keyboardShortcuts": "Tipkovnički prečaci",
-      "closeShortcutsHelp": "Zatvorite prečace pomoći",
-      "press": "Pritisnite",
-      "toClose": "zatvoriti"
-    },
-    "componentsKiboUiTreeIndex": {
-      "setIcon": "Postavi ikonu",
-      "clearIcon": "Očisti ikonu"
-    },
-    "componentsNavMain": {
-      "platform": "Platforma"
-    },
-    "componentsNavProjects": {
-      "projects": "Projekti",
-      "more": "Više",
-      "viewProject": "Prikaži projekt",
-      "shareProject": "Podijelite projekt",
-      "deleteProject": "Izbriši projekt",
-      "more2": "Više"
-    },
-    "componentsNavUser": {
-      "cn": "CN",
-      "cn2": "CN",
-      "upgradeToPro": "Nadogradite na Pro",
-      "account": "Račun",
-      "billing": "Naplata",
-      "notifications": "Obavijesti",
-      "logOut": "Odjavi se"
-    },
-    "componentsSearchCommandPalette": {
-      "search": "Traži",
-      "searchNotesTasksJournalInbox": "Pretražite bilješke, zadatke, dnevnik, inbox...",
-      "noResultsFor": "Nema rezultata za \"",
-      "result": "rezultat",
-      "noResultsForQuery": "Nema rezultata za „{query}”",
-      "resultCount": "{count, plural, one {# rezultat} few {# rezultata} other {# rezultata}}",
-      "indexBuilding": "Izgradnja indeksa pretraživanja {done}/{total} — rezultati možda nisu potpuni",
-      "indexBuildingUnknown": "Izgradnja indeksa pretraživanja — rezultati možda nisu potpuni"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Pretražujte i kliknite stavke kako biste izgradili svoj trag",
-      "reasons": "Razlozi",
-      "clear": "čisto"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "čisto",
-      "tags": "oznake",
-      "filterByTag": "Filtriraj po oznaci...",
-      "dateRange": "Raspon datuma"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Pogledaj sve ",
-      "results": "rezultate"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "mutan"
-    },
-    "componentsSplitViewEmptyPaneState": {
-      "noTabsOpen": "Nema otvorenih kartica",
-      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Otvorite stranicu s bočne trake ili izradite novu karticu da biste započeli",
-      "openInbox": "Otvorite Inbox",
-      "closePane": "Zatvori okno"
-    },
-    "componentsSplitViewLayoutPicker": {
-      "layoutPresets": "Zadane postavke izgleda",
-      "layoutPresets2": "Unaprijed postavljeni rasporedi"
-    },
-    "componentsSplitViewResizeHandle": {
-      "resizePanes": "Promjena veličine okna"
-    },
-    "componentsSplitViewTabContent": {
-      "taskscontextNotAvailable": "TasksContext nije dostupan",
-      "searchResults": "Rezultati pretraživanja",
-      "unknownTabType": "Nepoznata vrsta kartice: "
-    },
-    "componentsTabsAccessibleTab": {
-      "unsavedChanges": "nespremljene promjene",
-      "preview": "pretpregled"
-    },
-    "componentsTabsNewTabMenu": {
-      "newTab": "Nova kartica",
-      "newTab2": "Nova kartica",
-      "newNote": "Nova bilješka",
-      "journal": "časopis",
-      "calendar": "Kalendar",
-      "inboxCapture": "Snimanje pristigle pošte",
-      "tasks": "Zadaci",
-      "tags": "Oznake"
-    },
-    "componentsTabsPinnedTab": {
-      "unsavedChanges": "Nespremljene promjene",
-      "unsaved": "nespremljeno)"
-    },
-    "componentsTabsRegularTab": {
-      "unsavedChanges": "Nespremljene promjene"
-    },
-    "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "Zatvori sve kartice"
-    },
-    "componentsTabsTabBarWithDrag": {
-      "openTabs": "Otvorene kartice",
-      "scrollTabsLeft": "Pomičite kartice lijevo",
-      "scrollTabsRight": "Pomaknite kartice udesno",
-      "dayPanel": "Dnevni panel"
-    },
-    "componentsTabsTabErrorBoundary": {
-      "somethingWentWrong": "Nešto nije u redu",
-      "anErrorOccurredWhileRenderingThisTabContent": "Došlo je do pogreške prilikom renderiranja sadržaja ove kartice.",
-      "tryAgain": "Pokušajte ponovno",
-      "sendReport": "Pošalji dijagnostičko izvješće"
-    },
-    "componentsTabsTabPreviewCard": {
-      "noteIcon": "Ikona bilješke"
-    },
-    "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Nespremljene promjene",
-      "unsavedChangesBody": "„{title}” ima nespremljene promjene. Što želite učiniti?"
-    },
-    "componentsTeamSwitcher": {
-      "newWorkspace": "Novi radni prostor",
-      "darkMode": "Tamni način rada",
-      "settings": "postavke",
-      "integrations": "Integracije",
-      "signOut": "Odjavi se",
-      "downloadOnIos": "Preuzmite na iOS"
-    },
-    "componentsTrafficLights": {
-      "closeWindow": "Zatvori prozor",
-      "minimizeWindow": "Minimiziraj prozor",
-      "maximizeWindow": "Maksimiziraj prozor"
-    },
-    "componentsUiAutocompleteDropdown": {
-      "suggestions": "Prijedlozi",
-      "or": "ili",
-      "enter": "Uđi",
-      "toInsert": "umetnuti"
-    },
-    "componentsUiBreadcrumb": {
-      "breadcrumb": "krušna mrvica",
-      "more": "Više"
-    },
-    "componentsUiDialog": {
-      "close": "Zatvori"
-    },
-    "componentsUiSheet": {
-      "close": "Zatvori"
-    },
-    "componentsUiSidebar": {
-      "sidebar": "Bočna traka",
-      "displaysTheMobileSidebar": "Prikazuje mobilnu bočnu traku.",
-      "toggleSidebar": "Uključi/isključi bočnu traku",
-      "toggleSidebar2": "Uključi/isključi bočnu traku",
-      "dragToResizeDoubleClickToReset": "Povucite za promjenu veličine · Dvaput kliknite za poništavanje"
-    },
-    "componentsVaultOnboarding": {
-      "welcomeToMemry": "Dobrodošli u memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Vaš osobni sustav upravljanja znanjem.",
-      "selectAFolderToStoreYourNotesAndTasks": "Odaberite mapu za pohranjivanje bilješki i zadataka.",
-      "opening": "Otvaranje...",
-      "selectVaultFolder": "Odaberite mapu trezora",
-      "plainMarkdown": "Običan Markdown",
-      "yourNotesStayPortable": "Vaše bilješke ostaju prenosive",
-      "syncAnywhere": "Sinkronizirajte bilo gdje",
-      "useDropboxIcloudGit": "Koristite Dropbox, iCloud, Git",
-      "recentVaults": "Nedavni trezori",
-      "notesLastOpened": "bilješke · Zadnje otvaranje",
-      "brandName": "Memrynote",
-      "preRelease": "Beta",
-      "createNewVault": "Stvori novi trezor",
-      "createNewVaultDesc": "Započni novi trezor u mapi po vlastitom izboru.",
-      "openExistingVault": "Otvori postojeći trezor",
-      "openExistingVaultDesc": "Odaberi mapu s Markdown datotekama koje već imaš.",
-      "signInToSync": "Prijavi se za sinkronizaciju",
-      "signInToSyncDesc": "Trezori šifrirani od kraja do kraja na svim tvojim uređajima.",
-      "create": "Stvori",
-      "open": "Otvori",
-      "signIn": "Prijavi se",
-      "helpAndDocs": "Pomoć i dokumentacija",
-      "signInRequiresVault": "Najprije otvori ili stvori trezor da bi postavio sinkronizaciju.",
-      "addVault": "Dodaj trezor"
-    },
-    "componentsVaultSwitcher": {
-      "noVaultsYet": "Još nema trezora",
-      "openVault": "Otvoreni trezor",
-      "settings": "postavke",
-      "logOut": "Odjavi se",
-      "signInToSync": "Prijavite se za sinkronizaciju",
-      "remove": "Ukloni \"",
-      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ovaj će trezor biti uklonjen iz aplikacije, ali će vaše datoteke ostati na disku. Uvijek ga možete ponovno dodati kasnije.",
-      "cancel": "Odustani",
-      "remove2": "Ukloniti",
-      "inYourAccount": "Na vašem računu",
-      "itemsCount": "{count} stavki",
-      "untitledVault": "Trezor",
-      "downloadVaultTitle": "Preuzmi „{name}“",
-      "downloadLocation": "Lokacija",
-      "changeLocation": "Promijeni…",
-      "download": "Preuzmi",
-      "downloadFailed": "Trezor nije bilo moguće preuzeti",
-      "deleteFromAccount": "Izbriši s računa",
-      "deleteVaultBody": "Ovime se svi sinkronizirani podaci ovog trezora trajno uklanjaju s Memryjevih poslužitelja i to se ne može poništiti. Vaše datoteke na disku neće biti izbrisane.",
-      "deleteVaultConfirm": "Izbriši s računa",
-      "deleteVaultFailed": "Nije moguće izbrisati trezor",
-      "deleteVaultTitle": "Izbrisati „{name}” s vašeg računa?",
-      "removeVaultTitle": "Ukloniti „{name}” s popisa?",
-      "missing": "Mapa nije pronađena"
-    },
-    "componentsWindowControls": {
-      "searchK": "Pretraživanje (⌘K)",
-      "browserBack": "Preglednik natrag",
-      "back": "natrag",
-      "browserForward": "Preglednik naprijed",
-      "forward": "Naprijed"
-    }
-  },
-  "phaseI": {
-    "errors": {
-      "failedToImportFiles": "Uvoz datoteka nije uspio",
-      "failedToCreateNote": "Stvaranje bilješke nije uspjelo",
-      "failedToAccessMicrophone": "Pristup mikrofonu nije uspio"
-    },
-    "toasts": {
-      "undone": "Poništeno"
     }
   },
   "agentChat": {
     "title": "Razgovor s agentom",
-    "loading": "Učitavanje razgovora agenta...",
-    "conversationLoading": "Razgovor se učitava...",
+    "loading": "Učitavanje razgovora s agentom…",
+    "conversationLoading": "Učitavanje razgovora…",
+    "historyNotSaved": "Ovaj uređaj ne može otključati trezor pa se ovaj razgovor neće spremiti kad zatvorite aplikaciju.",
     "newConversation": "Novi razgovor",
     "history": "Povijest razgovora",
     "openInTab": "Otvori razgovor u kartici",
-    "stop": "Stani",
+    "stop": "Zaustavi",
     "thinking": "Agent razmišlja",
     "enable": {
-      "title": "Omogući memrynote Agent",
-      "description": "memrynote Agent koristi vašeg odabranog lokalnog agenta CLI za razgovor o vašem trezoru. Claude šalje skretanja na Anthropic; Codex šalje skretanje na OpenAI.",
-      "remote": "memrynote kriptira vašu lokalnu i sinkroniziranu povijest razgovora, ali zaključivanje modela događa se s odabranim pružateljem usluga.",
+      "title": "Uključi memrynote Agent",
+      "description": "memrynote Agent za razgovor o vašem trezoru koristi odabrani lokalni CLI agenta. Claude šalje poruke tvrtki Anthropic, a Codex tvrtki OpenAI.",
+      "remote": "Aplikacija memrynote šifrira vašu lokalnu i sinkroniziranu povijest razgovora, ali model se izvodi kod odabranog pružatelja usluge.",
       "readTools": "Alati za čitanje pokreću se automatski.",
-      "writeTools": "Alati za izradu i ažuriranje zahtijevaju odobrenje.",
-      "diff": "Alati za ažuriranje prikazuju razliku ili pregled.",
-      "button": "Omogući Agent chat"
+      "writeTools": "Alati za stvaranje i ažuriranje zahtijevaju odobrenje.",
+      "diff": "Alati za ažuriranje prikazuju razlike ili pretpregled.",
+      "button": "Uključi razgovor s agentom"
     },
     "approval": {
       "description": "Agent želi pozvati {name} s ovim argumentima.",
       "applyOnce": "Primijeni jednom",
       "allowOnce": "Dopusti jednom",
-      "editAndApply": "Uredite i primijenite",
+      "editAndApply": "Uredi i primijeni",
       "editAndAllow": "Uredi i dopusti",
-      "allowAlways": "Dopusti uvijek",
+      "allowAlways": "Uvijek dopusti",
       "applyEdits": "Primijeni izmjene",
-      "deny": "Odbiti",
-      "invalidJson": "Unesite važeći JSON prije primjene izmjena."
+      "deny": "Odbij",
+      "invalidJson": "Unesite važeći JSON prije primjene izmjena.",
+      "thisTool": "ovaj alat",
+      "alwaysAllowHint": "„Uvijek dopusti” odnosi se na {tool}. Svi ostali alati i dalje traže odobrenje, a brisanje ga uvijek traži.",
+      "alwaysInChat": "Uvijek dopusti u ovom razgovoru",
+      "alwaysInChatHint": "Vrijedi do kraja razgovora",
+      "alwaysInVault": "Uvijek dopusti u ovom trezoru",
+      "alwaysInVaultHint": "Može se opozvati u Postavkama › Agent",
+      "deletesAlwaysAsk": "Brisanje uvijek traži odobrenje"
     },
     "diff": {
-      "previewError": "Nije moguće pregledati razliku bilješke",
-      "description": "Agent želi ažurirati {title}. Pregledajte trenutni i kandidatski sadržaj prije nego što ga primijenite.",
-      "fallbackTitle": "ovu bilješku",
+      "previewError": "Nije moguće prikazati pretpregled ove promjene",
+      "description": "Agent želi ažurirati {title}. Pregledajte promjenu prije nego što je primijenite.",
+      "fallbackTitle": "ovu stavku",
       "current": "Trenutno",
-      "candidate": "Kandidat",
-      "loading": "Učitavanje...",
+      "candidate": "Predloženo",
+      "loading": "Učitavanje…",
       "apply": "Primijeni",
-      "applyEdited": "Primijeni uređeno"
+      "applyEdited": "Primijeni uređeno",
+      "editBody": "Uredi prije primjene"
     },
     "inPageReview": {
       "regionLabel": "Prijedlog agenta",
       "barLabel": "Pregledaj prijedlog agenta",
-      "loading": "Učitavanje prijedloga...",
+      "loading": "Učitavanje prijedloga…",
       "loadingTitle": "Prijedlog agenta",
-      "title": "{count, plural, =0 {Prijedlog agenta} one {Agent je predložio # promjenu} few {Agent je predložio # promjene} many {Agent je predložio # promjena} other {Agent je predložio # promjena}}",
+      "title": "{count, plural, =0 {Prijedlog agenta} one {Agent je predložio # promjenu} few {Agent je predložio # promjene} other {Agent je predložio # promjena}}",
       "editingTitle": "Uređivanje prijedloga",
-      "pendingHint": "Još nije spremljeno. Prihvati da se primijeni.",
-      "editingHint": "Tvoje izmjene ostaju ovdje dok ih ne prihvatiš.",
-      "baseChanged": "Ova se bilješka promijenila dok si uređivao prijedlog.",
+      "pendingHint": "Još nije spremljeno. Prihvatite prijedlog da biste ga primijenili.",
+      "editingHint": "Vaše izmjene ostaju ovdje dok ih ne prihvatite.",
+      "baseChanged": "Ova se bilješka promijenila dok ste uređivali prijedlog.",
       "keepDraft": "Zadrži moje izmjene",
       "restart": "Počni ispočetka od najnovije verzije",
       "reject": "Odbij",
@@ -453,41 +186,147 @@
       "showDiff": "Prikaži promjene",
       "accept": "Prihvati",
       "acceptEdits": "Prihvati izmjene",
-      "waiting": "Čeka tvoj pregled u {title}.",
-      "notOpen": "Otvori {title} da vidiš promjene ili ih prihvati bez pregleda.",
+      "waiting": "Čeka vaš pregled: {title}.",
+      "notOpen": "Otvorite „{title}” da biste vidjeli promjene ili ih prihvatite bez pregleda.",
       "show": "Prikaži",
       "openNote": "Otvori bilješku",
       "openJournal": "Otvori dnevnik",
       "fallbackTitle": "ova bilješka"
     },
+    "preview": {
+      "unset": "nije postavljeno",
+      "yes": "da",
+      "no": "ne",
+      "noChange": "Ova promjena ne mijenja ništa što pretpregled može prikazati.",
+      "willBeLost": "Bit će izgubljeno",
+      "unchangedLines": "{count, plural, one {# nepromijenjeni redak} few {# nepromijenjena retka} other {# nepromijenjenih redaka}}",
+      "item": {
+        "note": "Bilješka",
+        "folder": "Mapa",
+        "task": "Zadatak",
+        "journal": "Dnevnik",
+        "inbox": "Ulazni pretinac",
+        "project": "Projekt",
+        "status": "Status",
+        "canvas": "Platno"
+      },
+      "intent": {
+        "create": "novo",
+        "update": "ažuriranje",
+        "delete": "brisanje",
+        "move": "premještanje",
+        "reorder": "promjena redoslijeda"
+      },
+      "field": {
+        "archived": "Arhivirano",
+        "arguments": "Argumenti",
+        "color": "Boja",
+        "completed": "Dovršeno",
+        "description": "Opis",
+        "due": "Rok",
+        "dueTime": "Vrijeme roka",
+        "duplicateOf": "Izvornik",
+        "edits": "Izmjene",
+        "elements": "Elementi",
+        "folder": "Mapa",
+        "icon": "Ikona",
+        "isDefault": "Zadano",
+        "isDone": "Označava dovršeno",
+        "items": "Stavke",
+        "name": "Naziv",
+        "operation": "Operacija",
+        "order": "Redoslijed",
+        "parent": "Nadređeno",
+        "path": "Putanja",
+        "position": "Položaj",
+        "priority": "Prioritet",
+        "project": "Projekt",
+        "removed": "Uklonjeno",
+        "repeatFrom": "Ponavljanje od",
+        "snoozeReason": "Razlog odgode",
+        "snoozedUntil": "Odgođeno do",
+        "start": "Početak",
+        "status": "Status",
+        "tags": "Oznake",
+        "title": "Naslov"
+      },
+      "loss": {
+        "words": "{count, plural, one {# riječ} few {# riječi} other {# riječi}}",
+        "tags": "{count, plural, one {# oznaka} few {# oznake} other {# oznaka}}",
+        "notes": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}",
+        "folders": "{count, plural, one {# mapa} few {# mape} other {# mapa}}",
+        "files": "{count, plural, one {# datoteka} few {# datoteke} other {# datoteka}}",
+        "events": "{count, plural, one {# događaj} few {# događaja} other {# događaja}}",
+        "tasks": "{count, plural, one {# zadatak} few {# zadatka} other {# zadataka}}",
+        "due": "rok: {value}"
+      }
+    },
     "composer": {
       "currentNote": "Trenutna bilješka",
       "removeAttachment": "Ukloni {label}",
-      "placeholder": "Pitajte memrynote bilo što. @ za spominjanje datoteke",
+      "placeholder": "Zatražite bilo što od aplikacije memrynote… @ za spominjanje bilješki, zadataka i događaja",
       "send": "Pošalji",
-      "providerLabel": "Agent pružatelj: {provider}",
+      "providerLabel": "Pružatelj agenta: {provider}",
       "settingsSummary": "{reasoning}",
+      "connectedTools": "Povezani alati",
+      "connectTool": "Poveži {tool}",
+      "addContext": "Dodaj kontekst",
+      "addContextWithPermissions": "Dodaj kontekst ({permissions})",
+      "mentionContext": "Spomeni bilješku, zadatak ili događaj",
+      "voice": {
+        "start": "Pokreni glasovni diktat",
+        "stop": "Zaustavi glasovni diktat",
+        "transcribing": "Pretvaranje govora u tekst",
+        "errors": {
+          "permissionDenied": "Pristup mikrofonu odbijen",
+          "noMicrophone": "Mikrofon nije pronađen",
+          "accessFailed": "Nije moguće pristupiti mikrofonu",
+          "recordingFailed": "Nije moguće snimiti glasovni unos",
+          "transcriptionFailed": "Nije moguće pretvoriti glasovni unos u tekst"
+        }
+      },
+      "modelLabel": "Model agenta: {provider} {model}",
+      "reasoningLabel": "Razmišljanje agenta: {reasoning}",
       "providers": {
+        "label": "Pružatelj usluge",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
         "local": "Lokalno"
       },
+      "access": {
+        "vaultOnly": "Samo trezor",
+        "computerAccess": "Pristup računalu"
+      },
+      "webSearch": {
+        "on": "Uključeno",
+        "off": "Isključeno",
+        "label": "Pretraživanje weba"
+      },
       "models": {
         "default": "Zadano",
-        "label": "Model"
+        "label": "Model",
+        "search": "Pretraži modele…",
+        "useCustom": "Koristi „{query}”",
+        "localEmpty": "Nema pronađenih modela – provjerite Postavke",
+        "localSetup": "Podesi u Postavkama…",
+        "cliSetup": "Nije otkriveno – podesi u Postavkama…",
+        "runtimeUnavailable": "Agent nije dostupan – otvori Postavke…"
       },
       "settings": {
-        "reasoning": "Obrazloženje"
+        "reasoning": "Razmišljanje",
+        "effort": "Razina truda"
       },
+      "includeCurrentNote": "Uključi trenutnu bilješku",
+      "chooseModel": "Odaberi model",
       "claudeSettings": {
         "reasoning": {
           "low": "Nisko",
           "medium": "Srednje",
           "high": "Visoko",
-          "extraHigh": "Ekstra visoko",
-          "extraHighDefault": "Ekstra visoko (zadano)",
-          "max": "Maks"
+          "extraHigh": "Vrlo visoko",
+          "extraHighDefault": "Vrlo visoko (zadano)",
+          "max": "Maksimalno"
         }
       },
       "codexSettings": {
@@ -496,17 +335,8 @@
           "medium": "Srednje",
           "mediumDefault": "Srednje (zadano)",
           "high": "Visoko",
-          "extraHigh": "Ekstra visoko"
+          "extraHigh": "Vrlo visoko"
         }
-      },
-      "access": {
-        "vaultOnly": "Samo trezor",
-        "computerAccess": "Pristup računalu"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Isključeno",
-        "label": "Pretraživanje weba"
       },
       "permissionsLabel": "Dopuštenja agenta: {access}, pretraživanje weba {webSearch}",
       "permissions": {
@@ -526,186 +356,135 @@
       "editedArgs": "Uređeni argumenti",
       "parameters": "Parametri"
     },
+    "toolActivity": {
+      "steps": "{count, plural, one {# korak} few {# koraka} other {# koraka}}",
+      "running": "Izvodi se",
+      "awaitingApproval": "Čeka odobrenje",
+      "done": "Završeno"
+    },
+    "reasoning": {
+      "thinking": "Razmišlja…",
+      "thought": "Razmišljanje",
+      "thoughtFor": "Razmišljanje: {seconds} s",
+      "toggle": "Prikaži/sakrij razmišljanje"
+    },
     "sidebar": {
       "label": "Desna bočna traka",
       "day": "Dan",
       "agent": "Agent",
-      "pendingApproval": "{count, plural, one {# čeka odobrenje} other {# odobrenja na čekanju}}",
-      "inProgress": "Agent okret u tijeku",
+      "pendingApproval": "{count, plural, one {# odobrenje na čekanju} few {# odobrenja na čekanju} other {# odobrenja na čekanju}}",
+      "inProgress": "Agent upravo odgovara",
       "close": "Zatvori agenta"
     },
     "errors": {
       "loadConversations": "Nije moguće učitati razgovore agenta",
       "loadConversation": "Nije moguće učitati razgovor agenta",
       "createConversation": "Nije moguće stvoriti razgovor agenta",
-      "busy": "Još jedan prozor je u sredini za ovaj razgovor. Pričekajte da završi ili ga zaustavite od tamo.",
-      "sendTurn": "Nije moguće poslati red agenta",
-      "cancelTurn": "Nije moguće otkazati red agenta",
+      "busy": "Drugi prozor upravo obrađuje poruku u ovom razgovoru. Pričekajte da završi ili je zaustavite u tom prozoru.",
+      "sendTurn": "Nije moguće poslati poruku agentu",
+      "cancelTurn": "Nije moguće prekinuti odgovor agenta",
       "submitApproval": "Nije moguće poslati odobrenje alata",
       "updateTrust": "Nije moguće ažurirati pouzdane alate",
-      "saveDisclosure": "Nije moguće spremiti stanje otkrivanja",
-      "resolveWindow": "Nije moguće riješiti prozor izvora agenta",
-      "detectCli": "Nije moguće otkriti pozadinu agenta",
-      "loadDisclosure": "Nije moguće učitati stanje otkrivanja"
+      "saveDisclosure": "Nije moguće spremiti prihvaćanje obavijesti",
+      "resolveWindow": "Nije moguće odrediti izvorni prozor agenta",
+      "detectCli": "Nije moguće otkriti pozadinske sustave agenta",
+      "loadDisclosure": "Nije moguće učitati prihvaćanje obavijesti"
+    },
+    "actions": {
+      "copy": "Kopiraj",
+      "copied": "Kopirano"
     },
     "sources": {
-      "used": "{count, plural, one {Korišten # izvor} few {Korištena # izvora} other {Korišteno # izvora}}"
+      "count": "{count, plural, one {# izvor} few {# izvora} other {# izvora}}"
     }
-  },
-  "home": {
-    "addWidget": "Dodaj widget",
-    "board": {
-      "defaultName": "Početna",
-      "deleteAria": "Izbriši raspored",
-      "label": "Raspored početne stranice",
-      "newAria": "Nova ploča",
-      "newName": "Nova ploča"
-    },
-    "disabled": {
-      "createNote": "Stvori bilješku",
-      "hint": "Ništa nije otvoreno. Započnite bilješku."
-    },
-    "done": "Gotovo",
-    "edit": "Uredi",
-    "empty": {
-      "body": "Widgeti spajaju vaše bilješke, zadatke i zabilješke na jednom mirnom mjestu.",
-      "cta": "Dodajte svoj prvi widget",
-      "title": "Vaša ploča je prazna"
-    },
-    "greeting": {
-      "afternoon": "Dobar dan",
-      "evening": "Dobra večer",
-      "morning": "Dobro jutro"
-    },
-    "header": {
-      "events": "{count, plural, one {# događaj} few {# događaja} other {# događaja}}",
-      "tasksDue": "{count, plural, one {# zadatak s rokom danas} few {# zadatka s rokom danas} other {# zadataka s rokom danas}}"
-    },
-    "noBookmarksYet": "Još nema zabilješki.",
-    "noEventsYet": "Nema događaja danas.",
-    "noJournalEntriesYet": "Još nema unosa u dnevnik.",
-    "noNotesYet": "Još nema bilješki.",
-    "noTasksYet": "Još nema zadataka.",
-    "widget": {
-      "bookmarks": "Zabilješke",
-      "calendar": "Kalendar",
-      "calendarToday": "Danas",
-      "configAria": "Konfiguriraj widget",
-      "configure": "Konfiguriraj",
-      "dragAria": "Povuci widget",
-      "duration": "{count} min",
-      "filter": {
-        "today": "Rok danas",
-        "tomorrow": "Sutra",
-        "week": "Ovaj tjedan"
-      },
-      "folder": "Mapa",
-      "folderEmpty": "Još nema mapa",
-      "folderNoSelection": "Nijedna mapa nije odabrana",
-      "folderPickPrompt": "Odaberi mapu",
-      "folderViewSelect": "Prikaz",
-      "folderView_gallery": "Galerija",
-      "folderView_list": "Popis",
-      "inbox": "Pristigla pošta",
-      "inboxAllTypes": "Sve vrste",
-      "inboxOlder": "{count, plural, one {# starija} few {# starije} other {# starijih}}",
-      "inboxOldest": "najstarija {count, plural, one {# dan} few {# dana} other {# dana}}",
-      "journal": "Dnevnik",
-      "journalStreak": "{count, plural, one {niz od # dana} few {niz od # dana} other {niz od # dana}}",
-      "journalToday": "Danas",
-      "journalYesterday": "Jučer",
-      "loadError": "Učitavanje nije uspjelo",
-      "menuAria": "Opcije widgeta",
-      "next": "Sljedeće: {title}",
-      "openCalendar": "Otvori kalendar",
-      "openInbox": "Otvori pristiglu poštu",
-      "recentMeta": "uređeno {time}",
-      "recentMetaWithFolder": "{folder} · uređeno {time}",
-      "recentlyEdited": "Nedavno uređeno",
-      "remove": "Ukloni",
-      "removeAria": "Ukloni widget",
-      "resize": "Veličina",
-      "resizeAria": "Promijeni veličinu na {size}",
-      "savedFilterDefault": "Danas",
-      "savedFilterHint": "Označite filtre zvjezdicom na stranici Zadaci da biste ih koristili ovdje",
-      "savedFilterLabel": "Spremljeni filtar",
-      "startsIn": "Počinje za {count, plural, one {# min} few {# min} other {# min}}",
-      "tasks": "Zadaci",
-      "unknown": "Nepoznati widget",
-      "untitled": "Bez naslova"
-    }
-  },
-  "media": {
-    "video": "Videozapis"
-  },
-  "onboarding": {
-    "agentChat": {
-      "body": "Prijeđite na karticu Agent da biste pitali MemryNote asistenta o svom trezoru.",
-      "title": "Razgovarajte s AI agentom"
-    },
-    "collections": {
-      "body": "Organizirajte bilješke u mape, prikvačite zabilješke i pregledavajte po oznakama — sve ovdje.",
-      "title": "Zbirke, zabilješke i oznake"
-    },
-    "dayPanel": {
-      "body": "Bočna ploča drži kalendar i pregled vašeg dana uz sve što čitate.",
-      "title": "Vaš dan, uz vaš rad"
-    },
-    "feedback": {
-      "body": "Pošaljite povratne informacije izravno timu odavde.",
-      "title": "Recite nam što mislite"
-    },
-    "nav": {
-      "body": "Pristigla pošta za snimanje, Dnevnik za dnevne bilješke, Kalendar za vašu vremensku crtu, Zadaci za obveze i Graf za pregled kako je sve povezano.",
-      "title": "Vaši radni prostori"
-    },
-    "newNote": {
-      "body": "Započnite ovdje. Sve što napišete prvo se pohranjuje lokalno.",
-      "title": "Stvorite svoju prvu bilješku"
-    },
-    "settings": {
-      "body": "Uvezite bilješke iz 12+ aplikacija — Obsidian, Notion, Apple Notes, Evernote i drugih — i podesite sve ostalo u Postavkama.",
-      "title": "Postavke i uvozi"
-    },
-    "sync": {
-      "body": "Uključite sinkronizaciju šifriranu s kraja na kraj da svaki uređaj bude usklađen.",
-      "title": "Privatna, šifrirana sinkronizacija"
-    },
-    "welcome": {
-      "body": "Vaš privatni, offline-first dom. Bilješke su šifrirane s kraja na kraj — nikad ne napuštaju vaš uređaj nešifrirane.",
-      "title": "Dobro došli u MemryNote"
-    },
-    "tour": {
-      "next": "Dalje",
-      "previous": "Natrag",
-      "progress": "{current} od {total}"
-    }
-  },
-  "capture": {
-    "focusShortcut": "Fokusiraj polje za snimanje",
-    "detailHint": "detalji",
-    "focusHint": "Q",
-    "submit": "Zabilježi"
   },
   "canvas": {
+    "sectionLabel": "Platna",
+    "newCanvas": "Novo platno",
+    "newCanvasFolder": "Nova mapa platna",
+    "untitled": "Platno bez naslova",
+    "empty": "Još nema platna",
+    "loading": "Učitavanje platna…",
+    "loadFailed": "Nije moguće učitati platna",
+    "createFailed": "Nije moguće stvoriti platno",
+    "openFailed": "Nije moguće otvoriti platno",
+    "notFound": "Ovo platno nije pronađeno",
+    "corruptScene": "Ovo platno nije moguće pročitati. Uređivanje je onemogućeno kako se podaci ne bi izgubili.",
+    "unreadableTitle": "Ovo platno ne može se otvoriti ovdje",
+    "unreadableBody": "Dokument platna nedostaje u trezoru ili je platno nacrtano prije nego što su platna postala datoteke, a ovaj uređaj više nema ključ kojim se otključava. Ništa nije izbrisano – otvorite trezor na uređaju na kojem je platno stvoreno ili vratite mapu s platnima.",
+    "tooLargeToSync": "Ovo je platno preveliko za sinkronizaciju. Spremljeno je na ovom uređaju, ali neće stići na vaše druge uređaje dok se ne smanji.",
+    "savedToVault": "Sve se promjene automatski spremaju u vaš trezor",
+    "libraryStoreFailed": "Nije moguće spremiti vašu knjižnicu oblika. Nedavne promjene u njoj mogle bi se izgubiti.",
+    "link": {
+      "itemMissing": "Povezana stavka više ne postoji.",
+      "elementMissing": "Ta poveznica vodi na nešto čega više nema na ovom platnu.",
+      "title": "Poveži sa stavkom",
+      "placeholder": "Pretraži bilješke, zadatke, događaje, ulazni pretinac, projekte…",
+      "hint": "Počnite tipkati da biste pronašli stavku za povezivanje.",
+      "empty": "Ništa ne odgovara upitu.",
+      "selectOneShape": "Odaberite jedan oblik da biste ga povezali sa stavkom.",
+      "cardsCannotLink": "Kartica već otvara vlastitu stavku pa ne može imati drugu poveznicu.",
+      "linked": "Povezano.",
+      "groupNotes": "Bilješke",
+      "groupFiles": "Datoteke",
+      "groupTasks": "Zadaci",
+      "groupEvents": "Događaji",
+      "groupInbox": "Ulazni pretinac",
+      "groupJournals": "Dnevnik",
+      "groupProjects": "Projekti",
+      "groupFolders": "Mape",
+      "useUrl": "Poveži s {url}",
+      "openTarget": "Otvori „{name}”",
+      "shapeTarget": "Oblik na ovom platnu",
+      "missingTarget": "Više nije na ovom platnu"
+    },
+    "disabledTitle": "Platno nije uključeno",
+    "disabledBody": "Ova kartica pripada značajki koja nije uključena na ovom uređaju.",
+    "unreadable": "Dokument ovog platna nedostaje ili se ne može pročitati. Prikažite ga u upravitelju datoteka ili izbrišite unos.",
+    "actionFailed": "Tu radnju na platnu nije moguće dovršiti",
+    "renameLabel": "Naziv platna",
+    "folderNameLabel": "Naziv mape",
+    "deleteConfirmTitle": "Izbrisati ovo platno?",
+    "deleteConfirmBody": "„{title}” uklanja se iz aplikacije memrynote na svim vašim uređajima. Datoteka odlazi u smeće ovog računala, ali njezinim vraćanjem platno se neće obnoviti.",
+    "dropToRoot": "Ispustite ovdje za premještanje izvan mape",
+    "filterPlaceholder": "Filtriraj platna",
+    "filterNoMatches": "Nijedno platno ne odgovara filtru",
+    "folderCanvasCount": "Platna u mapi: {count}",
+    "folderEmptyHint": "Ovdje još nema ničega",
+    "deleteFolderConfirmTitle": "Izbrisati ovu mapu platna?",
+    "deleteFolderConfirmBody": "„{name}” i sve u njoj uklanja se iz aplikacije memrynote na svim vašim uređajima. Obuhvaćena platna: {count}. Mapa odlazi u smeće ovog računala, ali njezinim vraćanjem platna se neće obnoviti.",
+    "actions": {
+      "rename": "Preimenuj",
+      "duplicate": "Dupliciraj",
+      "copyLink": "Kopiraj poveznicu",
+      "setIcon": "Postavi ikonu",
+      "removeIcon": "Ukloni ikonu",
+      "moveToFolder": "Premjesti u mapu",
+      "moveToRoot": "Korijen",
+      "openExternal": "Otvori u vanjskom uređivaču",
+      "newCanvasHere": "Novo platno ovdje",
+      "newFolder": "Nova mapa",
+      "canvasMenu": "Radnje platna",
+      "folderMenu": "Radnje mape platna"
+    },
     "card": {
-      "addCard": "Dodaj karticu",
-      "addCreateNote": "Stvori bilješku „{query}”",
-      "addCreateNoteEmpty": "Stvori novu bilješku",
-      "addCreatedAt": "Stvoreno {date}",
-      "addEmpty": "Ništa nije pronađeno",
-      "addGroupEvents": "Događaji",
-      "addGroupNotes": "Bilješke",
-      "addGroupTasks": "Zadaci",
-      "addOnCanvas": "Na platnu",
-      "addPlaceholder": "Pretraži bilješke, zadatke i događaje…",
-      "allDay": "Cijeli dan",
-      "createNoteFailed": "Nije moguće stvoriti bilješku",
-      "deleted": "Stavka je izbrisana",
-      "loading": "Učitavanje…",
       "open": "Otvori u kartici",
       "openToEdit": "Otvori u kartici za uređivanje",
+      "deleted": "Stavka je izbrisana",
+      "loading": "Učitavanje…",
       "untitled": "Bez naslova",
+      "allDay": "Cijeli dan",
+      "createNoteFailed": "Nije moguće stvoriti bilješku",
+      "addCard": "Dodaj karticu",
+      "addPlaceholder": "Pretraži bilješke, datoteke, zadatke, događaje i projekte…",
+      "addCreateNote": "Stvori bilješku „{query}”",
+      "addCreateNoteEmpty": "Stvori novu bilješku",
+      "addEmpty": "Ništa nije pronađeno",
+      "addGroupNotes": "Bilješke",
+      "addGroupTasks": "Zadaci",
+      "addGroupEvents": "Događaji",
+      "addOnCanvas": "Na platnu",
+      "addCreatedAt": "Stvoreno {date}",
       "bulkGroup": "Dodaj sve iz",
       "bulkFromTag": "Oznake…",
       "bulkFromFolder": "Mape…",
@@ -714,11 +493,11 @@
       "bulkTagsHeading": "Oznake",
       "bulkFoldersHeading": "Mape",
       "bulkItemCount": "{count, plural, one {# stavka} few {# stavke} other {# stavki}}",
-      "bulkViewsHeading": "Dodaj iz {name}",
+      "bulkViewsHeading": "Dodaj iz „{name}”",
       "bulkAllItems": "Sve stavke",
-      "bulkConfirmTitle": "{count, plural, one {Dodati # karticu iz {name}?} few {Dodati # kartice iz {name}?} other {Dodati # kartica iz {name}?}}",
+      "bulkConfirmTitle": "{count, plural, one {Dodati # karticu iz „{name}”?} few {Dodati # kartice iz „{name}”?} other {Dodati # kartica iz „{name}”?}}",
       "bulkConfirmBody": "Velike ploče postaju sporije i mogu premašiti ograničenje veličine sinkronizacije.",
-      "bulkConfirmSkipped": "{count, plural, one {# stavka već je na ovom platnu i bit će preskočena.} few {# stavke već su na ovom platnu i bit će preskočene.} other {# stavki već je na ovom platnu i bit će preskočene.}}",
+      "bulkConfirmSkipped": "{count, plural, one {# stavka već je na ovom platnu i bit će preskočena.} few {# stavke već su na ovom platnu i bit će preskočene.} other {# stavki već je na ovom platnu i bit će preskočeno.}}",
       "bulkConfirmAdd": "{count, plural, one {Dodaj # karticu} few {Dodaj # kartice} other {Dodaj # kartica}}",
       "bulkBack": "Natrag",
       "bulkEmpty": "Nema bilješki, datoteka ni zadataka za dodavanje",
@@ -727,136 +506,751 @@
       "bulkAddedSkipped": "{count, plural, one {Dodana # kartica} few {Dodane # kartice} other {Dodano # kartica}} · {skipped} već na platnu",
       "bulkAllOnCanvas": "{count, plural, one {Već je na ovom platnu} few {Sve # već su na ovom platnu} other {Svih # već je na ovom platnu}}"
     },
-    "corruptScene": "Ovo platno nije moguće pročitati. Uređivanje je onemogućeno kako se podaci ne bi izgubili.",
-    "createFailed": "Nije moguće stvoriti platno",
-    "disabledBody": "Ova kartica pripada značajki koja nije uključena na ovom uređaju.",
-    "disabledTitle": "Platno nije uključeno",
-    "empty": "Još nema platna",
-    "libraryStoreFailed": "Nije moguće spremiti vašu knjižnicu oblika. Nedavne promjene u njoj mogle bi se izgubiti.",
-    "loadFailed": "Nije moguće učitati platna",
-    "loading": "Učitavanje platna…",
-    "newCanvas": "Novo platno",
-    "notFound": "Ovo platno nije pronađeno",
-    "openFailed": "Nije moguće otvoriti platno",
-    "savedToVault": "Sve se promjene automatski spremaju u vaš trezor",
-    "sectionLabel": "Platna",
-    "tooLargeToSync": "Ovo je platno preveliko za sinkronizaciju. Spremljeno je na ovom uređaju, ali neće stići na vaše druge uređaje dok se ne smanji.",
-    "untitled": "Platno bez naslova"
+    "cluster": {
+      "button": "Predloži grupe",
+      "buttonHint": "Grupira kartice bilješki na ovoj ploči (ili odabrane) prema sličnosti. Izvodi se na ovom uređaju.",
+      "loading": "Grupiranje…",
+      "needMoreNotes": "Za prijedloge grupa dodajte još kartica bilješki (najmanje {count}).",
+      "tooMany": "Ova ploča ima više od {count} kartica bilješki. Odaberite najviše {count} i pokušajte ponovno.",
+      "disabled": "Za prijedloge grupa uključite lokalne vektorske prikaze u Postavkama > AI.",
+      "noGroups": "Među ovim bilješkama nisu pronađene jasne grupe.",
+      "missing": "{count, plural, one {# bilješka još nema vektorski prikaz i izostavljena je.} few {# bilješke još nemaju vektorski prikaz i izostavljene su.} other {# bilješki još nema vektorski prikaz i izostavljeno je.}}",
+      "failed": "Nije moguće predložiti grupe",
+      "title": "Predložene grupe",
+      "description": "Grupirano prema sličnosti na ovom uređaju. Ništa se na ploči ne mijenja dok ne stvorite okvire.",
+      "defaultName": "Grupa {number}",
+      "untitledGroup": "Grupa",
+      "groupName": "Naziv grupe",
+      "acceptGroup": "Uključi grupu {name}",
+      "noteCount": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}",
+      "discard": "Odbaci",
+      "create": "{count, plural, one {Stvori # okvir} few {Stvori # okvira} other {Stvori # okvira}}",
+      "created": "{count, plural, one {# okvir stvoren} few {# okvira stvorena} other {# okvira stvoreno}}",
+      "cardsGone": "Te kartice više nisu na ploči."
+    },
+    "frame": {
+      "categorize": "Kategoriziraj",
+      "editBinding": "Promijeni kategoriju ovog odjeljka",
+      "cardCount": "{count, plural, one {# kartica} few {# kartice} other {# kartica}}",
+      "bindTitle": "Kategoriziraj ovaj odjeljak",
+      "bindHint": "Kartice ispuštene u odjeljak dobivaju ovu oznaku ili vrijednost svojstva.",
+      "bindPlaceholder": "Pretraži oznake i vrijednosti svojstava ili upiši novu oznaku…",
+      "bindEmpty": "Nijedna oznaka ni vrijednost svojstva ne odgovara.",
+      "groupTags": "Oznake",
+      "useTag": "Koristi novu oznaku #{tag}",
+      "unbind": "Prestani kategorizirati kao {label}",
+      "current": "Trenutno",
+      "applied": "{count, plural, one {{label} dodano na # karticu} few {{label} dodano na # kartice} other {{label} dodano na # kartica}}",
+      "applyFailed": "Nije moguće dodati {label}",
+      "revertFailed": "Nije moguće poništiti {label}",
+      "leftFrame": "{count, plural, one {# kartica premještena je iz odjeljka {label}. Zadržava kategoriju.} few {# kartice premještene su iz odjeljka {label}. Zadržavaju kategoriju.} other {# kartica premješteno je iz odjeljka {label}. Zadržavaju kategoriju.}}",
+      "removeCategory": "Ukloni {label}",
+      "removed": "{count, plural, one {{label} uklonjeno s # kartice} few {{label} uklonjeno s # kartice} other {{label} uklonjeno s # kartica}}",
+      "removeFailed": "Nije moguće ukloniti {label}",
+      "skippedFile": "{count, plural, =1 {Kartica datoteke ostavljena je nepromijenjena: datoteke nemaju oznake ni svojstva.} one {# kartica datoteke ostavljena je nepromijenjena: datoteke nemaju oznake ni svojstva.} few {# kartice datoteka ostavljene su nepromijenjene: datoteke nemaju oznake ni svojstva.} other {# kartica datoteka ostavljeno je nepromijenjeno: datoteke nemaju oznake ni svojstva.}}",
+      "skippedTaskProperty": "{count, plural, =1 {Kartica zadatka ostavljena je nepromijenjena: zadaci mogu imati oznake, ali ne i svojstva bilješki.} one {# kartica zadatka ostavljena je nepromijenjena: zadaci mogu imati oznake, ali ne i svojstva bilješki.} few {# kartice zadataka ostavljene su nepromijenjene: zadaci mogu imati oznake, ali ne i svojstva bilješki.} other {# kartica zadataka ostavljeno je nepromijenjeno: zadaci mogu imati oznake, ali ne i svojstva bilješki.}}",
+      "skippedUnsupported": "{count, plural, =1 {Kartica je ostavljena nepromijenjena: događaji i projekti ne mogu se kategorizirati.} one {# kartica ostavljena je nepromijenjena: događaji i projekti ne mogu se kategorizirati.} few {# kartice ostavljene su nepromijenjene: događaji i projekti ne mogu se kategorizirati.} other {# kartica ostavljeno je nepromijenjeno: događaji i projekti ne mogu se kategorizirati.}}",
+      "layoutAction": "Rasporedi po svojstvu",
+      "layoutTitle": "Rasporedi po svojstvu",
+      "layoutHint": "Stvara odjeljak za svaku vrijednost i raspoređuje bilješke s ove ploče u njih.",
+      "layoutPlaceholder": "Pretraži svojstva odabira, višestrukog odabira i statusa…",
+      "layoutEmpty": "Još nema svojstava odabira, višestrukog odabira ni statusa s vrijednostima.",
+      "layoutValueCount": "{count, plural, one {# vrijednost} few {# vrijednosti} other {# vrijednosti}}",
+      "layoutDone": "{count, plural, one {Stvoren # odjeljak za svojstvo {property}} few {Stvorena # odjeljka za svojstvo {property}} other {Stvoreno # odjeljaka za svojstvo {property}}}",
+      "layoutFailed": "Nije moguće rasporediti ploču"
+    }
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Zbirke",
+      "projects": "Projekti",
+      "newNote": "Nova bilješka",
+      "newNote2": "Nova bilješka",
+      "newFolder": "Nova mapa",
+      "newFolder2": "Nova mapa",
+      "newProject": "Novi projekt",
+      "bookmarks": "Favoriti",
+      "tags": "Oznake",
+      "reorderSection": "Promijeni redoslijed odjeljka {section}",
+      "dropFilesToImport": "Ispustite datoteke za uvoz",
+      "dropFilesIntoVaultRoot": "Korijen trezora",
+      "newNoteN": "Nova bilješka (⌘N)",
+      "new": "Novo",
+      "newItemMenu": "Stvori novo…",
+      "feedbackButton": "Pošalji povratne informacije",
+      "feedbackTitle": "Pošalji povratne informacije",
+      "feedbackDescription": "Recite nam što radi, što je pokvareno ili što biste željeli da Memry radi. Čitamo svaku poruku.",
+      "feedbackPlaceholder": "Vaše povratne informacije…",
+      "feedbackEmailHint": "Dodajte svoju e-poštu ako želite odgovor.",
+      "feedbackPrivacyTitle": "Što se šalje",
+      "feedbackPrivacyMessage": "Vaša poruka, točno onako kako ste je napisali",
+      "feedbackPrivacyEmailOptional": "Vaša e-adresa – samo ako je upišete i samo kako bismo mogli odgovoriti",
+      "feedbackPrivacyEmailSignedIn": "E-adresa vašeg računa ({email}), kako bismo mogli odgovoriti",
+      "feedbackPrivacyVersion": "Verzija aplikacije i operacijski sustav",
+      "feedbackPrivacyPlan": "Vaš plan (besplatni, Plus, Pro ili Believer)",
+      "feedbackPrivacyNote": "Ništa drugo. Vaše bilješke ostaju na vašem uređaju.",
+      "feedbackSend": "Pošalji",
+      "feedbackSending": "Slanje…",
+      "feedbackSuccess": "Hvala na povratnim informacijama!",
+      "feedbackError": "Slanje povratnih informacija nije uspjelo. Pokušajte ponovno.",
+      "syncDisabled": "Sinkronizacija isključena",
+      "syncDisabled2": "Sinkronizacija isključena",
+      "sortLabel": "Sortiranje odjeljka {section}: {mode}",
+      "sortModeManual": "Ručno",
+      "sortModeNameAsc": "Naziv A → Z",
+      "sortModeNameDesc": "Naziv Z → A",
+      "sortModeModifiedDesc": "Izmijenjeno: prvo najnovije",
+      "sortModeModifiedAsc": "Izmijenjeno: prvo najstarije",
+      "sortModeCreatedDesc": "Stvoreno: prvo najnovije",
+      "sortModeCreatedAsc": "Stvoreno: prvo najstarije",
+      "sortModeCountDesc": "Najčešće korišteno",
+      "sortModeCountAsc": "Najrjeđe korišteno",
+      "sortSaveFailed": "Nije moguće spremiti redoslijed sortiranja",
+      "sectionOrderSaveFailed": "Nije moguće spremiti redoslijed bočne trake"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Promijeni veličinu panela dana",
+      "dragToResizeDoubleClickToReset": "Povucite za promjenu veličine · Dvaput kliknite za vraćanje na zadano"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Pronađi, zamijeni, pitaj…"
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Preskoči uvod",
+      "welcomeToMemry": "Dobrodošli u memrynote",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaša osobna baza znanja. Za početak su vam potrebne samo 2 minute.",
+      "getStarted": "Započni ",
+      "createYourFirstNote": "Stvorite svoju prvu bilješku",
+      "markdownBasedStoredLocallyAsPlainFiles": "Temelji se na Markdownu i sprema lokalno kao obične datoteke.",
+      "eGMeetingNotesIdeasAnything": "npr. bilješke sa sastanka, ideje, bilo što…",
+      "skip": "Preskoči",
+      "createNote": "Stvori bilješku ",
+      "addYourFirstTask": "Dodajte svoj prvi zadatak",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Zadaci se povezuju s vašim bilješkama, s prioritetima i rokovima.",
+      "eGReviewProjectProposal": "npr. pregled prijedloga projekta…",
+      "skip2": "Preskoči",
+      "createTask": "Stvori zadatak ",
+      "syncAcrossDevices": "Sinkronizacija na svim uređajima",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Sinkronizirajte svoje bilješke i zadatke na svim svojim uređajima. To uvijek možete postaviti kasnije.",
+      "skipForNow": "Preskoči za sada",
+      "doneLetSGo": "Gotovo – krenimo! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Postavi ikonu mape",
+      "expandFolder": "Proširi mapu",
+      "collapseFolder": "Sažmi mapu"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "SAVJET"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Birač ikona",
+      "selectIcon": "Odaberite ikonu",
+      "closeIconPicker": "Zatvori birač ikona",
+      "searchIcons": "Pretraži ikone…",
+      "all": "Sve",
+      "clearIcon": "Očisti ikonu",
+      "noIconsFoundFor": "Nisu pronađene ikone za \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Tipkovnički prečaci",
+      "closeShortcutsHelp": "Zatvori pomoć za prečace",
+      "press": "Pritisnite",
+      "toClose": "za zatvaranje"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Postavi ikonu",
+      "clearIcon": "Očisti ikonu"
+    },
+    "componentsNavMain": {
+      "platform": "Platforma"
+    },
+    "componentsNavProjects": {
+      "projects": "Projekti",
+      "more": "Više",
+      "viewProject": "Prikaži projekt",
+      "shareProject": "Podijeli projekt",
+      "deleteProject": "Izbriši projekt",
+      "more2": "Više"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Nadogradi na Pro",
+      "account": "Račun",
+      "billing": "Naplata",
+      "notifications": "Obavijesti",
+      "logOut": "Odjavi se"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Pretraži",
+      "searchNotesTasksJournalInbox": "Pretraži bilješke, zadatke, dnevnik, ulazni pretinac…",
+      "noResultsFor": "Nema rezultata za „",
+      "result": "rezultat",
+      "noResultsForQuery": "Nema rezultata za „{query}”",
+      "resultCount": "{count, plural, one {# rezultat} few {# rezultata} other {# rezultata}}",
+      "indexBuilding": "Izgradnja indeksa pretraživanja {done}/{total} – rezultati možda nisu potpuni",
+      "indexBuildingUnknown": "Izgradnja indeksa pretraživanja – rezultati možda nisu potpuni"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Pretražujte i kliknite stavke kako biste izgradili svoj trag",
+      "reasons": "Razlozi",
+      "clear": "Očisti"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Očisti",
+      "tags": "Oznake",
+      "filterByTag": "Filtriraj po oznaci…",
+      "dateRange": "Raspon datuma"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Prikaži sve: ",
+      "results": "rezultata"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "približno"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Nema otvorenih kartica",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Otvorite stranicu s bočne trake ili stvorite novu karticu za početak",
+      "openInbox": "Otvori ulazni pretinac",
+      "closePane": "Zatvori okno"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Gotovi rasporedi",
+      "layoutPresets2": "Gotovi rasporedi"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Promijeni veličinu okana"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext nije dostupan",
+      "searchResults": "Rezultati pretraživanja",
+      "unknownTabType": "Nepoznata vrsta kartice: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "nespremljene promjene",
+      "preview": "pretpregled"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Nova kartica",
+      "newTab2": "Nova kartica",
+      "newNote": "Nova bilješka",
+      "journal": "Dnevnik",
+      "calendar": "Kalendar",
+      "inboxCapture": "Brzi zapis u ulazni pretinac",
+      "tasks": "Zadaci",
+      "tags": "Oznake"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Nespremljene promjene",
+      "unsaved": "nespremljeno)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Nespremljene promjene"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Zatvori sve kartice"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Otvorene kartice",
+      "scrollTabsLeft": "Pomakni kartice ulijevo",
+      "scrollTabsRight": "Pomakni kartice udesno",
+      "dayPanel": "Panel dana"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Nešto nije u redu",
+      "anErrorOccurredWhileRenderingThisTabContent": "Došlo je do pogreške prilikom renderiranja sadržaja ove kartice.",
+      "tryAgain": "Pokušaj ponovno",
+      "sendReport": "Pošalji dijagnostičko izvješće"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Ikona bilješke"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Nespremljene promjene",
+      "unsavedChangesBody": "„{title}” ima nespremljene promjene. Što želite učiniti?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Novi radni prostor",
+      "darkMode": "Tamni način rada",
+      "settings": "Postavke",
+      "integrations": "Integracije",
+      "signOut": "Odjavi se",
+      "downloadOnIos": "Preuzmi za iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Zatvori prozor",
+      "minimizeWindow": "Minimiziraj prozor",
+      "maximizeWindow": "Maksimiziraj prozor"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Prijedlozi",
+      "or": "ili",
+      "enter": "Enter",
+      "toInsert": "za umetanje"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "navigacijska putanja",
+      "more": "Više"
+    },
+    "componentsUiDialog": {
+      "close": "Zatvori"
+    },
+    "componentsUiSheet": {
+      "close": "Zatvori"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Bočna traka",
+      "displaysTheMobileSidebar": "Prikazuje mobilnu bočnu traku.",
+      "toggleSidebar": "Prikaži/sakrij bočnu traku",
+      "toggleSidebar2": "Prikaži/sakrij bočnu traku",
+      "dragToResizeDoubleClickToReset": "Povucite za promjenu veličine · Dvaput kliknite za vraćanje na zadano"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Dobrodošli u memrynote",
+      "yourPersonalKnowledgeManagementSystem": "Vaš osobni sustav upravljanja znanjem.",
+      "selectAFolderToStoreYourNotesAndTasks": "Odaberite mapu za pohranjivanje bilješki i zadataka.",
+      "opening": "Otvaranje…",
+      "selectVaultFolder": "Odaberi mapu trezora",
+      "plainMarkdown": "Običan Markdown",
+      "yourNotesStayPortable": "Vaše bilješke ostaju prenosive",
+      "syncAnywhere": "Sinkronizirajte bilo gdje",
+      "useDropboxIcloudGit": "Koristite Dropbox, iCloud, Git",
+      "recentVaults": "Nedavni trezori",
+      "notesLastOpened": "bilješke · Zadnje otvaranje",
+      "preRelease": "Beta",
+      "createNewVault": "Stvori novi trezor",
+      "createNewVaultDesc": "Stvorite novi trezor u mapi po vlastitom izboru.",
+      "openExistingVault": "Otvori postojeći trezor",
+      "openExistingVaultDesc": "Odaberite mapu s Markdown datotekama koje već imate.",
+      "signInToSync": "Prijavi se za sinkronizaciju",
+      "signInToSyncDesc": "Sveobuhvatno šifrirani trezori na svim vašim uređajima.",
+      "create": "Stvori",
+      "open": "Otvori",
+      "signIn": "Prijavi se",
+      "helpAndDocs": "Pomoć i dokumentacija",
+      "signInRequiresVault": "Da biste postavili sinkronizaciju, najprije otvorite ili stvorite trezor.",
+      "addVault": "Dodaj trezor",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "Vaše bilješke nalaze se u trezoru, mapi na ovom računalu.",
+        "createDesc": "Dajte mu naziv i odaberite gdje će se nalaziti.",
+        "openFolder": "Otvori mapu kao trezor",
+        "openFolderDesc": "Koristite mapu s Markdown datotekama koje već imate.",
+        "openFromSync": "Otvori iz usluge Memrynote Sync",
+        "openFromSyncDesc": "Prijavite se i preuzmite trezor sa svojeg računa.",
+        "back": "Natrag",
+        "createTitle": "Stvorite novi trezor",
+        "createSubtitle": "Trezor je mapa s Markdown datotekama. Kasnije ga možete premjestiti.",
+        "nameLabel": "Naziv",
+        "namePlaceholder": "Moje bilješke",
+        "locationLabel": "Lokacija",
+        "change": "Promijeni…",
+        "willBeCreatedAt": "Bit će stvoren u",
+        "errorExists": "Mapa s ovim nazivom ovdje već postoji.",
+        "openInstead": "Umjesto toga otvori je kao trezor",
+        "errorInvalidName": "Nazivi ne smiju počinjati točkom ni sadržavati / \\ : * ? \" < > |",
+        "createFailed": "Nije moguće stvoriti trezor.",
+        "createVault": "Stvori trezor",
+        "creating": "Stvaranje…",
+        "cancel": "Odustani",
+        "chooseTitle": "Odaberite trezor",
+        "chooseSubtitle": "Prijavljeni račun: {email}. Odaberite trezor koji želite otvoriti na ovom računalu.",
+        "untitledVault": "Trezor bez naslova",
+        "items": "{count, plural, one {# stavka} few {# stavke} other {# stavki}}",
+        "onThisComputer": "Na ovom računalu",
+        "downloadTo": "Preuzmi u",
+        "otherVaultsHint": "Ostali trezori ostaju na vašem računu. Možete ih preuzeti bilo kada putem izbornika za promjenu trezora.",
+        "openVault": "Otvori trezor",
+        "opening": "Otvaranje…",
+        "loadingVaults": "Učitavanje trezora…",
+        "loadFailed": "Nije moguće učitati trezore.",
+        "retry": "Pokušaj ponovno",
+        "noVaultsTitle": "Na vašem računu još nema trezora",
+        "noVaultsDesc": "Stvorite trezor na ovom računalu. Sinkronizirat će se s vašim računom.",
+        "createCta": "Stvori trezor",
+        "openFailed": "Nije moguće otvoriti trezor."
+      }
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Još nema trezora",
+      "openVault": "Otvori trezor",
+      "settings": "Postavke",
+      "logOut": "Odjavi se",
+      "signInToSync": "Prijavi se za sinkronizaciju",
+      "remove": "Ukloni „",
+      "removeVaultTitle": "Ukloniti „{name}” s popisa?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ovaj će trezor biti uklonjen iz aplikacije, ali će vaše datoteke ostati na disku. Uvijek ga možete ponovno dodati kasnije.",
+      "cancel": "Odustani",
+      "remove2": "Ukloni",
+      "inYourAccount": "Na vašem računu",
+      "itemsCount": "Stavke: {count}",
+      "untitledVault": "Trezor",
+      "downloadVaultTitle": "Preuzmi „{name}”",
+      "downloadLocation": "Lokacija",
+      "changeLocation": "Promijeni…",
+      "download": "Preuzmi",
+      "downloadFailed": "Trezor nije bilo moguće preuzeti",
+      "deleteFromAccount": "Izbriši s računa",
+      "deleteVaultTitle": "Izbrisati „{name}” s vašeg računa?",
+      "deleteVaultBody": "Ovime se svi sinkronizirani podaci ovog trezora trajno uklanjaju s Memryjevih poslužitelja i to se ne može poništiti. Vaše datoteke na disku neće biti izbrisane.",
+      "deleteVaultConfirm": "Izbriši s računa",
+      "deleteVaultFailed": "Nije moguće izbrisati trezor",
+      "missing": "Mapa nije pronađena"
+    },
+    "componentsWindowControls": {
+      "searchK": "Pretraživanje (⌘K)",
+      "browserBack": "Idi natrag",
+      "back": "Natrag",
+      "browserForward": "Idi naprijed",
+      "forward": "Naprijed"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Uvoz datoteka nije uspio",
+      "failedToCreateNote": "Stvaranje bilješke nije uspjelo",
+      "failedToAccessMicrophone": "Pristup mikrofonu nije uspio"
+    },
+    "toasts": {
+      "undone": "Poništeno"
+    }
+  },
+  "home": {
+    "widget": {
+      "removeAria": "Ukloni widget",
+      "dragAria": "Povuci widget",
+      "configAria": "Konfiguriraj widget",
+      "resizeAria": "Promijeni veličinu na {size}",
+      "menuAria": "Mogućnosti widgeta",
+      "resize": "Veličina",
+      "remove": "Ukloni",
+      "filter": {
+        "all": "Sve",
+        "today": "Rok danas",
+        "tomorrow": "Sutra",
+        "next7": "Sljedećih 7 dana",
+        "noDueDate": "Bez roka"
+      },
+      "recentlyEdited": "Nedavno uređeno",
+      "recentlyOpened": "Nedavno otvoreno",
+      "recentMeta": "uređeno {time}",
+      "recentMetaWithFolder": "{folder} · uređeno {time}",
+      "openedMeta": "otvoreno {time}",
+      "openedMetaWithFolder": "{folder} · otvoreno {time}",
+      "noRecentlyOpened": "Ovdje će se prikazati bilješke koje otvorite",
+      "bookmarks": "Favoriti",
+      "tasks": "Zadaci",
+      "calendar": "Kalendar",
+      "calendarToday": "Danas",
+      "openCalendar": "Otvori kalendar",
+      "next": "Sljedeće: {title}",
+      "startsIn": "Počinje za {count, plural, one {# min} few {# min} other {# min}}",
+      "duration": "{count} min",
+      "inbox": "Ulazni pretinac",
+      "inboxAllTypes": "Sve vrste",
+      "inboxOlder": "{count, plural, one {# starija} few {# starije} other {# starijih}}",
+      "inboxOldest": "najstarija {count, plural, one {# dan} few {# dana} other {# dana}}",
+      "openInbox": "Otvori ulazni pretinac",
+      "folder": "Mapa",
+      "untitled": "Bez naslova",
+      "folderPickPrompt": "Odaberi mapu",
+      "folderEmpty": "Još nema mapa",
+      "folderNoSelection": "Nijedna mapa nije odabrana",
+      "folderView_list": "Popis",
+      "folderView_gallery": "Galerija",
+      "folderViewSelect": "Prikaz",
+      "project": "Projekt",
+      "projectNoSelection": "Nijedan projekt nije odabran",
+      "projectMissing": "Ovaj projekt više nije dostupan",
+      "projectNoTasks": "Nema zadataka",
+      "journal": "Dnevnik",
+      "journalStreak": "{count, plural, one {niz od # dana} few {niz od # dana} other {niz od # dana}}",
+      "journalToday": "Danas",
+      "journalYesterday": "Jučer",
+      "journalTomorrow": "Sutra",
+      "journalUpcoming": "Nadolazeće",
+      "journalNoEntryYet": "Još nema zapisa",
+      "loadError": "Učitavanje nije uspjelo",
+      "unknown": "Nepoznati widget"
+    },
+    "board": {
+      "label": "Raspored početne stranice",
+      "deleteAria": "Izbriši raspored",
+      "newAria": "Nova ploča",
+      "newName": "Nova ploča",
+      "defaultName": "Početna",
+      "manage": "Upravljaj pločama",
+      "manageTitle": "Upravljanje pločama",
+      "manageDescription": "Preimenujte, promijenite redoslijed ili izbrišite ploče na početnoj stranici.",
+      "renameAria": "Preimenuj ploču",
+      "reorderAria": "Promijeni redoslijed ploče",
+      "nameLabel": "Naziv ploče"
+    },
+    "greeting": {
+      "morning": "Dobro jutro",
+      "afternoon": "Dobar dan",
+      "evening": "Dobra večer"
+    },
+    "header": {
+      "tasksDue": "{count, plural, one {# zadatak s rokom danas} few {# zadatka s rokom danas} other {# zadataka s rokom danas}}",
+      "events": "{count, plural, one {# događaj} few {# događaja} other {# događaja}}"
+    },
+    "edit": "Uredi",
+    "done": "Gotovo",
+    "addWidget": "Dodaj widget",
+    "empty": {
+      "title": "Ploča je prazna",
+      "body": "Widgeti spajaju vaše bilješke, zadatke i favorite na jednom mirnom mjestu.",
+      "cta": "Dodaj prvi widget"
+    },
+    "noBookmarksYet": "Još nema favorita.",
+    "noNotesYet": "Još nema bilješki.",
+    "noTasksYet": "Još nema zadataka.",
+    "noEventsYet": "Nema događaja danas.",
+    "noJournalEntriesYet": "U dnevniku još nema zapisa.",
+    "disabled": {
+      "createNote": "Stvori bilješku",
+      "hint": "Ništa nije otvoreno. Započnite bilješku."
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Dobro došli u MemryNote",
+      "body": "Vaš privatni prostor koji radi i bez interneta. Bilješke su sveobuhvatno šifrirane – nikad ne napuštaju vaš uređaj nešifrirane."
+    },
+    "newNote": {
+      "title": "Stvorite svoju prvu bilješku",
+      "body": "Započnite ovdje. Sve što napišete prvo se pohranjuje lokalno."
+    },
+    "nav": {
+      "title": "Vaši radni prostori",
+      "body": "Ulazni pretinac za brze zapise, Dnevnik za dnevne bilješke, Kalendar za vašu vremensku crtu, Zadaci za sve što trebate obaviti i Graf za pregled kako je sve povezano."
+    },
+    "collections": {
+      "title": "Zbirke, favoriti i oznake",
+      "body": "Organizirajte bilješke u mape, prikvačite favorite i pregledavajte po oznakama – sve ovdje."
+    },
+    "dayPanel": {
+      "title": "Vaš dan, uz vaš rad",
+      "body": "Bočni panel drži kalendar i pregled vašeg dana uz sve što čitate."
+    },
+    "agentChat": {
+      "title": "Razgovarajte s AI agentom",
+      "body": "Prijeđite na karticu „Agent” i pitajte pomoćnika aplikacije MemryNote o svom trezoru."
+    },
+    "sync": {
+      "title": "Privatna, šifrirana sinkronizacija",
+      "body": "Uključite sveobuhvatno šifriranu sinkronizaciju kako bi svi vaši uređaji bili usklađeni."
+    },
+    "feedback": {
+      "title": "Recite nam što mislite",
+      "body": "Pošaljite povratne informacije izravno timu odavde."
+    },
+    "settings": {
+      "title": "Postavke i uvoz",
+      "body": "Uvezite bilješke iz više od 12 aplikacija – Obsidian, Notion, Apple Notes, Evernote i drugih – a sve ostalo podesite u Postavkama."
+    },
+    "tour": {
+      "next": "Dalje",
+      "previous": "Natrag",
+      "progress": "{current} od {total}"
+    },
+    "starPrompt": {
+      "title": "Uvod završen",
+      "body": "Dajte nam zvjezdicu na GitHubu – tako i drugi lakše pronalaze MemryNote.",
+      "action": "Dodaj zvjezdicu na GitHubu"
+    }
   },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Klik na redak",
-      "reset": "Vrati zadano",
-      "shortcutsTab": "Kartica Prečaci"
-    },
     "description": "Brzi putovi za kretanje kroz memrynote, bilježenje misli i obradu posla.",
+    "or": "ili",
+    "then": "zatim",
     "groups": {
       "general": {
-        "description": "Navigacija i pomoć u cijeloj aplikaciji.",
-        "title": "Općenito"
-      },
-      "inbox": {
-        "description": "Brzo obradite zabilježene stavke.",
-        "title": "Pristigla pošta"
-      },
-      "journal": {
-        "description": "Krećite se prikazima dnevnika i fokusirajte prostor za pisanje.",
-        "title": "Dnevnik"
-      },
-      "notes": {
-        "description": "Pišite, oblikujte i pretražujte bilješke.",
-        "title": "Bilješke / Uređivač"
-      },
-      "settings": {
-        "description": "Otvorite postavke i prilagodite prečace.",
-        "title": "Postavke"
+        "title": "Općenito",
+        "description": "Navigacija i pomoć u cijeloj aplikaciji."
       },
       "tabs": {
-        "description": "Krećite se između kartica i okana.",
-        "title": "Kartice i podjele"
+        "title": "Kartice i podjele",
+        "description": "Krećite se između kartica i okana."
+      },
+      "inbox": {
+        "title": "Ulazni pretinac",
+        "description": "Brzo obradite zabilježene stavke."
+      },
+      "journal": {
+        "title": "Dnevnik",
+        "description": "Krećite se prikazima dnevnika i fokusirajte prostor za pisanje."
+      },
+      "notes": {
+        "title": "Bilješke / Uređivač",
+        "description": "Pišite, oblikujte i pretražujte bilješke."
       },
       "tasks": {
-        "description": "Filtrirajte, odaberite i dovršite zadatke.",
-        "title": "Zadaci"
+        "title": "Zadaci",
+        "description": "Filtrirajte, odaberite i dovršite zadatke."
+      },
+      "settings": {
+        "title": "Postavke",
+        "description": "Otvorite postavke i prilagodite prečace."
       }
     },
     "items": {
       "general": {
+        "quickSearch": "Otvori brzo pretraživanje",
         "createNote": "Stvori bilješku",
-        "keyboardShortcuts": "Otvori tipkovničke prečace",
         "openSettings": "Otvori postavke",
-        "quickSearch": "Otvori brzu pretragu",
-        "sidebarSection": "Idi na odjeljak bočne trake",
-        "toggleSidebar": "Uključi/isključi bočnu traku",
-        "undoTaskAction": "Poništi posljednju radnju sa zadatkom"
+        "switchVault": "Promijeni trezor",
+        "adjacentVault": "Prethodni ili sljedeći trezor",
+        "keyboardShortcuts": "Otvori tipkovničke prečace",
+        "undoTaskAction": "Poništi posljednju radnju sa zadatkom",
+        "toggleSidebar": "Prikaži/sakrij bočnu traku",
+        "sidebarSection": "Idi na odjeljak bočne trake"
+      },
+      "tabs": {
+        "newTabMenu": "Otvori izbornik nove kartice",
+        "closeTab": "Zatvori karticu",
+        "closeAllInPane": "Zatvori sve kartice u oknu",
+        "reopenClosedTab": "Ponovno otvori zatvorenu karticu",
+        "nextTab": "Sljedeća kartica",
+        "previousTab": "Prethodna kartica",
+        "pinTab": "Prikvači ili otkvači karticu",
+        "duplicateTab": "Dupliciraj karticu",
+        "splitRight": "Podijeli udesno",
+        "splitDown": "Podijeli prema dolje",
+        "closeSplitPane": "Zatvori podijeljeno okno",
+        "focusPane": "Fokusiraj drugo okno",
+        "moveTabToPane": "Premjesti karticu u okno",
+        "maximizePane": "Maksimiziraj trenutno okno"
       },
       "inbox": {
-        "archiveItem": "Arhiviraj odabranu stavku",
-        "chooseQuickFileResult": "Odaberi rezultat brzog razvrstavanja",
-        "clearSelection": "Poništi odabir ili zatvori brzo razvrstavanje",
-        "confirmFiling": "Potvrdi ploču razvrstavanja",
-        "firstOrLastItem": "Prva ili posljednja stavka",
-        "jumpByPage": "Skoči za stranicu",
         "nextItem": "Sljedeća stavka",
-        "openOriginal": "Otvori izvornu poveznicu",
-        "openQuickFile": "Otvori brzo razvrstavanje",
         "previousItem": "Prethodna stavka",
-        "refresh": "Osvježi pristiglu poštu",
-        "selectAllVisible": "Odaberi sve vidljive stavke",
+        "firstOrLastItem": "Prva ili posljednja stavka",
+        "jumpByPage": "Pomakni se za jednu stranicu",
+        "togglePreview": "Prikaži/sakrij panel pretpregleda",
         "selectItem": "Odaberi stavku",
-        "togglePreview": "Uključi/isključi ploču pretpregleda"
+        "selectAllVisible": "Odaberi sve vidljive stavke",
+        "clearSelection": "Poništi odabir ili zatvori brzo smještanje",
+        "openQuickFile": "Otvori brzo smještanje",
+        "chooseQuickFileResult": "Odaberi rezultat brzog smještanja",
+        "archiveItem": "Arhiviraj odabranu stavku",
+        "openOriginal": "Otvori izvornu poveznicu",
+        "refresh": "Osvježi ulazni pretinac",
+        "confirmFiling": "Potvrdi panel smještanja"
       },
       "journal": {
-        "bold": "Podebljaj odabrani tekst",
-        "find": "Pronađi u dnevniku",
-        "italic": "Ukosi odabrani tekst",
         "returnFromOverview": "Vrati se s mjesečnog ili godišnjeg prikaza",
+        "find": "Pronađi u dnevniku",
+        "bold": "Podebljaj odabrani tekst",
+        "italic": "Ukosi odabrani tekst",
         "underline": "Podcrtaj odabrani tekst"
       },
       "notes": {
-        "bold": "Podebljano",
-        "closeOverlays": "Zatvori slojeve uređivača",
-        "commandMenu": "Otvori naredbeni izbornik uređivača",
         "createNote": "Stvori bilješku",
         "find": "Pronađi u bilješci",
+        "bold": "Podebljano",
         "italic": "Kurziv",
-        "underline": "Podcrtano"
-      },
-      "settings": {
-        "cancelRecording": "Odustani od snimanja prečaca",
-        "customizeShortcuts": "Prilagodi tipkovničke prečace",
-        "openSettings": "Otvori postavke",
-        "recordShortcut": "Snimi novi prečac",
-        "resetShortcut": "Vrati zadani prečac"
-      },
-      "tabs": {
-        "closeAllInPane": "Zatvori sve kartice u oknu",
-        "closeSplitPane": "Zatvori podijeljeno okno",
-        "closeTab": "Zatvori karticu",
-        "duplicateTab": "Dupliciraj karticu",
-        "focusPane": "Fokusiraj drugo okno",
-        "maximizePane": "Maksimiziraj trenutno okno",
-        "moveTabToPane": "Premjesti karticu u okno",
-        "newTabMenu": "Otvori izbornik nove kartice",
-        "nextTab": "Sljedeća kartica",
-        "pinTab": "Prikvači ili otkvači karticu",
-        "previousTab": "Prethodna kartica",
-        "reopenClosedTab": "Ponovno otvori zatvorenu karticu",
-        "splitDown": "Podijeli prema dolje",
-        "splitRight": "Podijeli udesno"
+        "underline": "Podcrtano",
+        "commandMenu": "Otvori naredbeni izbornik uređivača",
+        "closeOverlays": "Zatvori slojeve uređivača"
       },
       "tasks": {
         "clearFilters": "Očisti vidljive filtre",
+        "selectAllVisible": "Odaberi sve vidljive zadatke",
         "clearSelection": "Poništi odabir zadataka",
         "completeSelected": "Dovrši odabrane zadatke",
-        "configureRepeat": "Postavi ponavljanje za fokusirani zadatak",
         "deleteSelected": "Izbriši odabrane zadatke",
-        "selectAllVisible": "Odaberi sve vidljive zadatke",
-        "skipOccurrence": "Preskoči pojavljivanje ponavljanja",
+        "configureRepeat": "Postavi ponavljanje za fokusirani zadatak",
+        "skipOccurrence": "Preskoči ovo ponavljanje",
         "stopRepeating": "Zaustavi ponavljanje zadatka"
+      },
+      "settings": {
+        "openSettings": "Otvori postavke",
+        "customizeShortcuts": "Prilagodi tipkovničke prečace",
+        "recordShortcut": "Snimi novi prečac",
+        "cancelRecording": "Odustani od snimanja prečaca",
+        "resetShortcut": "Vrati zadani prečac"
       }
     },
-    "or": "ili",
-    "then": "zatim"
+    "combos": {
+      "shortcutsTab": "Kartica „Prečaci”",
+      "clickRow": "Klik na redak",
+      "reset": "Vrati na zadano"
+    }
+  },
+  "update": {
+    "available": "Dostupno ažuriranje",
+    "downloading": "Preuzimanje verzije {version}",
+    "ready": "Ažuriranje spremno",
+    "failed": "Ažuriranje nije uspjelo",
+    "downloadAction": "Preuzmi",
+    "restartAction": "Ponovno pokreni",
+    "detailsAction": "Pojedinosti",
+    "popover": {
+      "readyTitle": "MemryNote {version} je spreman",
+      "availableTitle": "Dostupan je MemryNote {version}",
+      "readySubtitle": "Trenutna verzija: {current}",
+      "availableSubtitle": "Trenutna verzija: {current} · još ništa nije preuzeto",
+      "allChanges": "Sve promjene",
+      "restartNow": "Ponovno pokreni sada",
+      "onNextQuit": "Pri sljedećem izlasku",
+      "download": "Preuzmi",
+      "notNow": "Ne sada",
+      "moreOptions": "Više mogućnosti ažuriranja",
+      "skipVersion": "Preskoči verziju {version}",
+      "turnOffAuto": "Isključi automatska ažuriranja",
+      "copyVersionInfo": "Kopiraj podatke o verziji",
+      "openSettings": "Otvori postavke"
+    },
+    "installing": {
+      "title": "Instaliranje verzije {version}",
+      "titleUnknownVersion": "Instaliranje ažuriranja",
+      "subtitle": "MemryNote će se uskoro ponovno otvoriti. Sve napisano već je spremljeno na disk."
+    },
+    "installFailed": {
+      "title": "Aplikacija MemryNote nije uspjela dovršiti instalaciju verzije {version}",
+      "titleUnknownVersion": "Aplikacija MemryNote nije uspjela dovršiti instalaciju ažuriranja",
+      "body": "Vaš trezor nije diran – ažuriranje se primjenjuje na aplikaciju, a ne na vaše bilješke. I dalje koristite verziju {current} i sve radi kao prije.",
+      "errorLabel": "Što je pošlo po zlu",
+      "downloadManually": "Ručno preuzmi verziju {version}",
+      "downloadManuallyUnknownVersion": "Ručno preuzmi MemryNote",
+      "tryAgain": "Pokušaj ponovno",
+      "copyDetails": "Kopiraj pojedinosti"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Trezori",
+    "position": "{name}, trezor {index} od {count}",
+    "openList": "{position}. Otvori popis trezora",
+    "switchTo": "Prijeđi na trezor {name}",
+    "switchingTo": "Prelazak na trezor {name}",
+    "changeIcon": "Promijeni ikonu…",
+    "resetIcon": "Vrati zadanu ikonu",
+    "iconButton": "Promijeni ikonu trezora {name}",
+    "iconFailed": "Nije moguće promijeniti ikonu trezora"
+  },
+  "sidebarHelp": {
+    "label": "Pomoć i povratne informacije",
+    "reportBug": "Prijavi pogrešku",
+    "requestFeature": "Predloži značajku",
+    "starOnGithub": "Dodaj zvjezdicu na GitHubu",
+    "version": "MemryNote {version}",
+    "whatsNew": "Novosti"
+  },
+  "sidebarStar": {
+    "title": "MemryNote je otvorenog koda",
+    "body": "Razvija se javno. Zvjezdica pomaže drugima da ga pronađu.",
+    "star": "Dodaj zvjezdicu",
+    "later": "Ne sada",
+    "thanks": "Hvala. To nam puno znači."
+  },
+  "sidebar": {
+    "railLabel": "Odjeljci",
+    "search": "Pretraži ili prijeđi na…",
+    "vaultMenu": "{name}. Otvori popis trezora"
   }
 }

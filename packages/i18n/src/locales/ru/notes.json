@@ -41,7 +41,7 @@
     "tagFilterLabel": "тег = {tag}",
     "deleteConfirm": {
       "title": "Удалить заметку",
-      "description": "Вы уверены, что хотите удалить «{title}»? Это действие нельзя отменить.",
+      "description": "Удалить заметку «{title}»? Это действие нельзя отменить.",
       "cancel": "Отмена",
       "confirm": "Удалить",
       "deleting": "Удаление…"
@@ -130,9 +130,9 @@
       "noteTitle": "Удалить заметку",
       "folderTitle": "Удалить папку",
       "itemsTitle": "{count, plural, one {Удалить # элемент} few {Удалить # элемента} many {Удалить # элементов} other {Удалить # элемента}}",
-      "noteBody": "Вы уверены, что хотите удалить «{name}»? Это действие нельзя отменить.",
+      "noteBody": "Удалить заметку «{name}»? Это действие нельзя отменить.",
       "folderBody": "Удалить папку «{name}» и все заметки в ней? Это действие нельзя отменить.",
-      "itemsBody": "Вы уверены, что хотите удалить {count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}}? Это действие нельзя отменить.",
+      "itemsBody": "Удалить {count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}}? Это действие нельзя отменить.",
       "folderSuffix": "папка",
       "moreItems": "…и ещё {count}",
       "deleting": "Удаление…",
@@ -157,7 +157,7 @@
       "regionAria": "Редактор заметок",
       "richTextAria": "Редактор форматированного текста",
       "headingPlaceholder": "Заголовок",
-      "listPlaceholder": "Элемент списка",
+      "listPlaceholder": "Пункт списка",
       "todoPlaceholder": "Пункт списка задач"
     },
     "table": {
@@ -410,11 +410,11 @@
         "file": "Добавить файл"
       },
       "placeholder": {
-        "image": "Найдите изображение или добавьте новое…",
-        "media": "Найдите медиафайл или добавьте новый…",
-        "pdf": "Найдите PDF или добавьте новый…",
-        "html": "Найдите HTML-файл или добавьте новый…",
-        "file": "Найдите вложение или добавьте новое…"
+        "image": "Найти изображение или добавить новое…",
+        "media": "Найти медиафайл или добавить новый…",
+        "pdf": "Найти PDF или добавить новый…",
+        "html": "Найти HTML-файл или добавить новый…",
+        "file": "Найти вложение или добавить новое…"
       },
       "upload": {
         "image": "Добавить изображение…",
@@ -651,8 +651,8 @@
     "listAria": "Список свойств",
     "add": "Добавить свойство",
     "addDescription": "Добавить новое свойство в эту заметку",
-    "namePlaceholder": "Имя свойства",
-    "nameAria": "Имя свойства",
+    "namePlaceholder": "Название свойства",
+    "nameAria": "Название свойства",
     "typeSection": "Тип",
     "empty": "Пусто",
     "dragAria": "Перетащите, чтобы изменить порядок свойств",
@@ -815,7 +815,7 @@
     "htmlDescription": "Файл для веба",
     "pageSize": "Размер страницы",
     "selectPageSize": "Выберите размер страницы",
-    "options": "Опции",
+    "options": "Параметры",
     "includeMetadata": "Включать метаданные (теги, даты)",
     "exporting": "Экспорт…",
     "exported": "Экспортировано!",
@@ -914,7 +914,7 @@
       "none": "Нет",
       "edit": "Изменить",
       "delete2": "Удалить",
-      "deleteFormulaBody": "Вы уверены, что хотите удалить формулу «{name}»? Это действие нельзя отменить."
+      "deleteFormulaBody": "Удалить формулу «{name}»? Это действие нельзя отменить."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Фильтр",
@@ -937,7 +937,7 @@
       "lockedConditionHint": "Это условие определяет текущий вид, и здесь его нельзя удалить."
     },
     "componentsFolderViewFilterRow": {
-      "builtIn": "Встроенный",
+      "builtIn": "Встроенные",
       "properties": "Свойства",
       "placeholderProperty": "Свойство",
       "placeholderOperator": "Оператор",
@@ -975,7 +975,7 @@
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Очистить группировку",
       "searchProperties": "Поиск свойств…",
-      "builtIn": "Встроенный",
+      "builtIn": "Встроенные",
       "properties": "Свойства",
       "noGroupablePropertiesFound": "Группируемые свойства не найдены",
       "sortDirection": "Направление сортировки",
@@ -1039,7 +1039,7 @@
       "viewName3": "Название представления",
       "cancel2": "Отмена",
       "deleteView": "Удалить представление",
-      "areYouSureYouWantToDelete": "Вы уверены, что хотите удалить \"",
+      "areYouSureYouWantToDelete": "Удалить представление \"",
       "thisActionCannotBeUndone": "Это действие нельзя отменить.",
       "cancel3": "Отмена",
       "newView": "Новое представление",
@@ -1082,7 +1082,7 @@
     "componentsNoteExportDialog": {
       "pdf": "PDF",
       "html": "HTML",
-      "a4210X297Mm": "А4 (210 х 297 мм)",
+      "a4210X297Mm": "А4 (210 × 297 мм)",
       "letter85X11In": "Letter (8,5 × 11 дюймов)",
       "legal85X14In": "Legal (8,5 × 14 дюймов)"
     },
@@ -1101,8 +1101,8 @@
     },
     "componentsSidebarProjectsEmptyState": {
       "noProjectsYet": "Пока нет проектов",
-      "createYourFirstProject": "Создайте свой первый проект",
-      "createYourFirstProject2": "Создайте свой первый проект"
+      "createYourFirstProject": "Создать первый проект",
+      "createYourFirstProject2": "Создать первый проект"
     },
     "componentsSidebarSidebarBookmarkList": {
       "loadingBookmarks": "Загрузка закладок…",
@@ -1189,7 +1189,7 @@
       "rotate": "Повернуть",
       "fitToHeight": "По высоте",
       "viewOptions": "Параметры просмотра",
-      "fit": "Вписать",
+      "fit": "Масштаб",
       "pageLayout": "Расположение страниц",
       "singlePage": "Одна страница",
       "twoPageOdd": "Две страницы (нечётные)",
@@ -1227,7 +1227,7 @@
       "clearSort": "Очистить сортировку",
       "sort": "Сортировка",
       "searchProperties": "Поиск свойств…",
-      "builtIn": "Встроенное",
+      "builtIn": "Встроенные",
       "properties": "Свойства",
       "noSortablePropertiesFound": "Не найдено свойств для сортировки",
       "sortDirection": "Направление сортировки"
@@ -1289,7 +1289,7 @@
     "export": "Экспортировать",
     "delete": "Удалить",
     "clearAria": "Снять выделение",
-    "copiedLinks": "Скопировано {count, plural, one {# ссылка} few {# ссылки} many {# ссылок} other {# ссылки}}",
+    "copiedLinks": "{count, plural, one {Скопирована # ссылка} few {Скопированы # ссылки} many {Скопировано # ссылок} other {Скопировано # ссылки}}",
     "setIcon": "Установить значок",
     "iconUpdated": "{count, plural, one {Значок обновлён у # заметки} few {Значок обновлён у # заметок} many {Значок обновлён у # заметок} other {Значок обновлён у # заметки}}"
   },
@@ -1317,7 +1317,7 @@
   },
   "newNoteFromNote": {
     "action": "Новая заметка из этой заметки",
-    "created": "Создано из заметки {source}: {tagCount, plural, =0 {без тегов} one {# тег} few {# тега} many {# тегов} other {# тега}}, {propertyCount, plural, =0 {без свойств} one {# свойство} few {# свойства} many {# свойств} other {# свойства}}"
+    "created": "Создано из заметки «{source}»: {tagCount, plural, =0 {без тегов} one {# тег} few {# тега} many {# тегов} other {# тега}}, {propertyCount, plural, =0 {без свойств} one {# свойство} few {# свойства} many {# свойств} other {# свойства}}"
   },
   "tags": {
     "hubTitle": "Теги",
@@ -1419,7 +1419,7 @@
   },
   "tagAndFilter": {
     "regionLabel": "Активный фильтр по тегам",
-    "matchingAll": "Совпадение со всеми:",
+    "matchingAll": "Со всеми тегами:",
     "removeTag": "Убрать тег {tag} из фильтра",
     "clearAll": "Сбросить все",
     "saveSearch": "Сохранить поиск",
@@ -1429,6 +1429,6 @@
     "saveDialogPlaceholder": "Например, рабочие встречи",
     "cancel": "Отмена",
     "save": "Сохранить",
-    "addToFilterHint": "Щёлкните по тегу с Ctrl/Cmd, чтобы добавить его в фильтр"
+    "addToFilterHint": "Щёлкните тег, удерживая Ctrl/Cmd, чтобы добавить его в фильтр"
   }
 }

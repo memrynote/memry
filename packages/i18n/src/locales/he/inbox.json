@@ -20,7 +20,7 @@
       "toCompact": "תצוגה קומפקטית"
     },
     "filter": {
-      "button": "מסנן",
+      "button": "סינון",
       "byType": "סינון לפי סוג",
       "active": "{count, plural, one {סינון לפי סוג אחד} other {סינון לפי # סוגים}}",
       "clearAll": "ניקוי הכול"
@@ -39,8 +39,8 @@
     "images": "תמונות",
     "voice": "הקלטה קולית",
     "video": "וידאו",
-    "clip": "קליפ",
-    "clips": "קליפים",
+    "clip": "קטע",
+    "clips": "קטעים",
     "pdf": "PDF",
     "pdfs": "קובצי PDF",
     "social": "רשת חברתית",
@@ -280,7 +280,7 @@
     "presetNextWeek": "בשבוע הבא",
     "custom": "מותאם אישית…",
     "panelUpcoming": "קרובות",
-    "panelPast": "עברו",
+    "panelPast": "קודמות",
     "panelEmpty": "אין תזכורות קרובות.",
     "presets": {
       "laterToday": {
@@ -335,7 +335,7 @@
     "processed": "טופלו",
     "processRate": "שיעור {rate}%",
     "stale": "ממתינים זמן רב",
-    "needsAttention": "דורש טיפול",
+    "needsAttention": "דורשים טיפול",
     "allClear": "הכול תקין",
     "avgTimeToFile": "זמן ממוצע לתיוק",
     "noCapturesYet": "עדיין לא נלכדו פריטים",
@@ -345,7 +345,7 @@
     "now": "עכשיו",
     "timeAgoMinutes": "לפני {count} דק׳",
     "timeAgoHours": "לפני {count} שע׳",
-    "timeAgoDays": "לפני {count} ימים"
+    "timeAgoDays": "{count, plural, one {לפני יום} two {לפני יומיים} other {לפני # ימים}}"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
@@ -473,10 +473,10 @@
     },
     "componentsQuickFileDropdown": {
       "folderSuggestions": "הצעות לתיקיות",
-      "noFoldersMatch": "אין תיקיות תואמות \""
+      "noFoldersMatch": "אין תיקיות תואמות עבור \""
     },
     "componentsReminderReminderPicker": {
-      "remind": "להזכיר",
+      "remind": "תזכורת",
       "remindMe": "להזכיר לי",
       "pickDateTime": "בחירת תאריך ושעה",
       "addANoteOptional": "הוספת הערה (אופציונלי)",

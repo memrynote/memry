@@ -41,7 +41,7 @@
     "inboxReview": {
       "title": "该回顾你的收件箱了",
       "body": "你有 {count, plural, other {# 项内容}}待回顾。",
-      "testBody": "这是一条测试——你的每日回顾提醒就是这样。"
+      "testBody": "这是一条测试通知——每日回顾提醒将以这种形式显示。"
     },
     "reminder": {
       "note": "笔记提醒",
@@ -53,7 +53,7 @@
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "提醒时间必须在将来",
+    "reminderTimeMustBeFuture": "提醒时间必须晚于当前时间",
     "definitionNotFound": "未找到定义",
     "noteNotFound": "未找到笔记",
     "updateFailed": "更新失败",

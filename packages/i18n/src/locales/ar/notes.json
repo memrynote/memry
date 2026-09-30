@@ -236,7 +236,7 @@
       "reload": "إعادة تحميل المحرر"
     },
     "callout": {
-      "title": "وسيلة الشرح",
+      "title": "وسيلة شرح",
       "group": "الكتل الأساسية",
       "subtext": "تمييز المعلومات المهمة",
       "changeType": "تغيير نوع وسيلة الشرح",
@@ -287,7 +287,7 @@
       "title": "عرض",
       "group": "إدراج",
       "subtext": "قائمة حية بالملاحظات من مجلد أو وسم أو الخزنة كلها",
-      "sourceMenu": "ما يعرضه هذا العرض",
+      "sourceMenu": "محتوى هذا العرض",
       "chooseSource": "اختيار ما يُعرض",
       "sourceVault": "كل الملاحظات",
       "sourceFolder": "مجلد",
@@ -327,7 +327,7 @@
       "matchesAlias": "يطابق",
       "noMatch": "لا توجد كتل تطابق «{query}»",
       "fallback": {
-        "linkTo": "رابط إلى",
+        "linkTo": "إضافة رابط إلى",
         "askAI": "سؤال الذكاء الاصطناعي"
       },
       "pdf": {
@@ -472,7 +472,7 @@
       "wikiLinkAria": "رابط ويكي {title}",
       "noHeadings": "لا توجد عناوين في {title}",
       "noMatchingHeadings": "لا توجد عناوين مطابقة في {title}",
-      "displayAs": "العرض باسم",
+      "displayAs": "عرض الرابط باسم",
       "aliasHint": "اكتب | لتسمية الرابط"
     },
     "mention": {
@@ -505,7 +505,7 @@
     "emoji": {
       "aria": "منتقي الرموز التعبيرية والأيقونات",
       "emojiTab": "الرموز التعبيرية",
-      "iconsTab": "أيقونات",
+      "iconsTab": "الأيقونات",
       "searchPlaceholder": "بحث",
       "noIcons": "لم يتم العثور على أي أيقونات",
       "clearSearch": "مسح البحث",
@@ -544,7 +544,7 @@
     "modified": "تاريخ التعديل"
   },
   "backlinks": {
-    "sortRecent": "الأخيرة",
+    "sortRecent": "الأحدث",
     "sortAlpha": "من الألف إلى الياء",
     "sortMentions": "الأكثر إشارة",
     "sortBy": "ترتيب الروابط الخلفية حسب {sort}",
@@ -726,7 +726,7 @@
     "repositionHint": "اسحب لتغيير الموضع",
     "repositionSave": "حفظ",
     "repositionCancel": "إلغاء",
-    "credit": "صورة بواسطة {name} على Unsplash",
+    "credit": "تصوير {name} على Unsplash",
     "focusFailed": "تعذّر حفظ موضع صورة الغلاف",
     "picker": {
       "title": "غلاف الملاحظة",
@@ -811,7 +811,7 @@
     "title": "تصدير الملاحظة",
     "description": "تصدير «{title}» إلى ملف",
     "format": "التنسيق",
-    "pdfDescription": "وثيقة جاهزة للطباعة",
+    "pdfDescription": "مستند جاهز للطباعة",
     "htmlDescription": "ملف جاهز للويب",
     "pageSize": "حجم الصفحة",
     "selectPageSize": "اختيار حجم الصفحة",
@@ -843,7 +843,7 @@
     "restoring": "جارٍ الاستعادة…",
     "toast": {
       "loadPreviewFailed": "تعذّر تحميل معاينة الإصدار",
-      "restored": "تمت استعادة الملاحظة إلى الإصدار السابق",
+      "restored": "تمّت استعادة الملاحظة إلى الإصدار السابق",
       "deleted": "تم حذف الإصدار"
     }
   },
@@ -906,7 +906,7 @@
       "searchColumns": "البحث في الأعمدة…",
       "noMatchingColumns": "لا توجد أعمدة مطابقة",
       "formulas": "الصيغ",
-      "noFormulasDefined": "لم يتم تحديد أي صيغ",
+      "noFormulasDefined": "لم يتم تعريف أي صيغ",
       "addFormula": "إضافة صيغة",
       "deleteFormula": "حذف الصيغة",
       "cancel": "إلغاء",
@@ -960,7 +960,7 @@
       "clearSearch": "مسح البحث"
     },
     "componentsFolderViewFormulaEditorModal": {
-      "defineAComputedColumnUsingAnExpression": "تحديد عمود محسوب باستخدام تعبير.",
+      "defineAComputedColumnUsingAnExpression": "عرّف عمودًا محسوبًا باستخدام تعبير.",
       "name": "الاسم",
       "expression": "التعبير",
       "available": "متاح: ",
@@ -980,7 +980,7 @@
       "noGroupablePropertiesFound": "لم يتم العثور على خصائص قابلة للتجميع",
       "sortDirection": "اتجاه الترتيب",
       "collapseGroupsByDefault": "طي المجموعات بشكل افتراضي",
-      "showGroupSummaries": "عرض ملخصات المجموعة",
+      "showGroupSummaries": "إظهار ملخصات المجموعات",
       "clearGrouping2": "مسح التجميع"
     },
     "componentsFolderViewGroupedTable": {
@@ -1090,7 +1090,7 @@
       "ddMmYyyy": "dd.mm.yyyy"
     },
     "componentsNoteNoteHeader": {
-      "synced": "تمت المزامنة"
+      "synced": "تمّت المزامنة"
     },
     "componentsSharedDocumentInfoTab": {
       "words": "الكلمات",
@@ -1155,7 +1155,7 @@
       "editTagName": "تحرير اسم الوسم",
       "changeColor": "تغيير اللون",
       "deleteTag": "حذف الوسم",
-      "recent": "الأخيرة",
+      "recent": "الأحدث",
       "created": "تاريخ الإنشاء",
       "alphabetical": "أبجديًا"
     },
@@ -1168,13 +1168,13 @@
     },
     "componentsViewersAudioPlayer": {
       "failedToLoadAudio": "تعذّر تحميل الصوت",
-      "theAudioFileCouldNotBePlayed": "لا يمكن تشغيل الملف الصوتي.",
+      "theAudioFileCouldNotBePlayed": "تعذّر تشغيل الملف الصوتي.",
       "skipBack10s": "الرجوع 10 ثوانٍ",
       "skipForward10s": "التقدّم 10 ثوانٍ"
     },
     "componentsViewersImageViewer": {
       "failedToLoadImage": "تعذّر تحميل الصورة",
-      "theImageCouldNotBeDisplayed": "لا يمكن عرض الصورة.",
+      "theImageCouldNotBeDisplayed": "تعذّر عرض الصورة.",
       "resetZoom": "إعادة ضبط التكبير",
       "rotate": "تدوير",
       "dragToPan": "اسحب للتحريك"
@@ -1201,7 +1201,7 @@
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "تعذّر تحميل الفيديو",
-      "theVideoFileCouldNotBePlayed": "لا يمكن تشغيل ملف الفيديو."
+      "theVideoFileCouldNotBePlayed": "تعذّر تشغيل ملف الفيديو."
     },
     "pagesFile": {
       "failedToLoadFile": "تعذّر تحميل الملف",
@@ -1219,8 +1219,8 @@
       "viewSettings": "إعدادات العرض",
       "displayDensity": "كثافة العرض",
       "comfortable": "مريح",
-      "compact": "مدمج",
-      "showSummaries": "عرض الملخصات",
+      "compact": "مضغوط",
+      "showSummaries": "إظهار الملخصات",
       "cancel": "إلغاء"
     },
     "componentsFolderViewSortSelector": {
@@ -1375,7 +1375,7 @@
       "kind": "النوع"
     },
     "defaultViewName": "افتراضي",
-    "selectView": "تحديد العرض",
+    "selectView": "اختيار العرض",
     "columnHeader": {
       "doubleClickToEdit": "{name} (انقر نقرًا مزدوجًا للتحرير)",
       "dragToReorder": "سحب لإعادة ترتيب العمود: {name}"

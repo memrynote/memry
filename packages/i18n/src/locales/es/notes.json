@@ -16,8 +16,8 @@
       "title": "No se pudo cargar la nota"
     },
     "toast": {
-      "cannotSaveDeleted": "No se puede guardar: la nota fue eliminada",
-      "cannotRenameDeleted": "No se puede cambiar el nombre: la nota fue eliminada",
+      "cannotSaveDeleted": "No se puede guardar: la nota se ha eliminado",
+      "cannotRenameDeleted": "No se puede cambiar el nombre: la nota se ha eliminado",
       "createLinkedFailed": "No se pudo crear la nota enlazada",
       "openLinkedFailed": "No se pudo abrir el elemento enlazado",
       "fileNotFound": "Archivo no encontrado: {target}",
@@ -230,7 +230,7 @@
     },
     "errorBoundary": {
       "title": "Error del editor",
-      "body": "El editor encontró un error. El contenido de tu nota está a salvo.",
+      "body": "Se ha producido un error en el editor. El contenido de tu nota está a salvo.",
       "technicalDetails": "Detalles técnicos",
       "reloadAria": "Recargar editor",
       "reload": "Recargar editor"
@@ -277,7 +277,7 @@
       "noCanvas": "Esta pizarra no tiene lienzo. Quita el bloque o añade uno nuevo con /whiteboard.",
       "nested": "Abre esta pizarra en su propia pestaña para ver el dibujo.",
       "missingTitle": "Esta pizarra no está disponible",
-      "missingBody": "Su lienzo se eliminó o aún no ha llegado a este dispositivo. Si todavía se está sincronizando, aparecerá aquí automáticamente.",
+      "missingBody": "Su lienzo se ha eliminado o aún no ha llegado a este dispositivo. Si todavía se está sincronizando, aparecerá aquí automáticamente.",
       "unreadableTitle": "Esta pizarra no se puede abrir aquí",
       "unreadableBody": "Su archivo de lienzo no está en la bóveda o no se puede leer en este dispositivo. No se ha eliminado nada.",
       "disabledTitle": "La función Lienzo está desactivada",
@@ -286,7 +286,7 @@
     "viewBlock": {
       "title": "Vista",
       "group": "Insertar",
-      "subtext": "Una lista actualizada de notas de una carpeta, una etiqueta o toda la bóveda",
+      "subtext": "Una lista dinámica de notas de una carpeta, una etiqueta o toda la bóveda",
       "sourceMenu": "Qué muestra esta vista",
       "chooseSource": "Elegir qué mostrar",
       "sourceVault": "Todas las notas",
@@ -584,7 +584,7 @@
     "canvasLoading": "Cargando lienzos…",
     "noCanvases": "Aún no hay lienzos",
     "noMatch": "Ningún lienzo coincide",
-    "addedToCanvas": "Se añadió {title} a {canvas}",
+    "addedToCanvas": "Se ha añadido {title} a {canvas}",
     "alreadyOnCanvas": "{title} ya está en {canvas}",
     "openCanvas": "Abrir",
     "addToCanvasFailed": "No se pudo añadir la nota al lienzo"
@@ -639,14 +639,14 @@
     "all": "Todas las etiquetas",
     "none": "No se encontraron etiquetas",
     "createTag": "Crear etiqueta: «{tag}»",
-    "chooseColor": "Elige color:",
+    "chooseColor": "Elige un color:",
     "preview": "Vista previa:",
     "colorAria": "Seleccionar el color {color}",
     "customColor": "Color personalizado"
   },
   "properties": {
     "title": "Propiedades",
-    "noteAria": "Propiedades de nota",
+    "noteAria": "Propiedades de la nota",
     "workspaceAria": "Propiedades del espacio de trabajo",
     "listAria": "Lista de propiedades",
     "add": "Añadir propiedad",
@@ -693,7 +693,7 @@
     "statusCategories": {
       "todo": "Por hacer",
       "inProgress": "En curso",
-      "done": "Completada"
+      "done": "Completado"
     },
     "projectAlreadySet": "Esta nota ya tiene una propiedad de proyecto",
     "projectPlaceholder": "Sin proyecto",
@@ -746,7 +746,7 @@
         "error": {
           "notConfigured": "Las fotos de Unsplash no están disponibles en esta versión",
           "offline": "Sin conexión con Unsplash",
-          "rateLimited": "Unsplash tiene un límite de solicitudes, inténtalo de nuevo en breve",
+          "rateLimited": "Se ha alcanzado el límite de solicitudes de Unsplash. Inténtalo de nuevo en breve.",
           "failed": "No se pudo contactar con Unsplash",
           "writeFailed": "Esa foto no se pudo guardar en la bóveda"
         }
@@ -880,7 +880,7 @@
     "setReminder": "Establecer recordatorio",
     "toast": {
       "set": "Recordatorio establecido",
-      "setFailed": "No se pudo configurar el recordatorio",
+      "setFailed": "No se pudo establecer el recordatorio",
       "deleted": "Recordatorio eliminado",
       "deleteFailed": "No se pudo eliminar el recordatorio",
       "dismissed": "Recordatorio descartado",
@@ -965,7 +965,7 @@
       "expression": "Expresión",
       "available": "Disponibles: ",
       "preview": "Vista previa",
-      "fixExpressionErrorsToSeePreview": "Corregir errores de expresión para ver la vista previa",
+      "fixExpressionErrorsToSeePreview": "Corrige los errores de la expresión para ver la vista previa",
       "usingNote": "Usando la nota: «",
       "cancel": "Cancelar",
       "namePlaceholder": "dias_hasta_vencimiento",
@@ -1031,7 +1031,7 @@
       "myCustomView": "Mi vista personalizada",
       "baseConfiguration": "Configuración base",
       "copyFromCurrentView": "Copiar desde la vista actual",
-      "startFreshDefaultColumns": "Empezar de nuevo (columnas predeterminadas)",
+      "startFreshDefaultColumns": "Empezar desde cero (columnas predeterminadas)",
       "cancel": "Cancelar",
       "renameView": "Cambiar nombre de vista",
       "enterANewNameForThisView": "Introduce un nuevo nombre para esta vista.",
@@ -1218,8 +1218,8 @@
       "createNewNote": "Crear nueva nota",
       "viewSettings": "Ajustes de la vista",
       "displayDensity": "Densidad de visualización",
-      "comfortable": "Cómodo",
-      "compact": "Compacto",
+      "comfortable": "Cómoda",
+      "compact": "Compacta",
       "showSummaries": "Mostrar resúmenes",
       "cancel": "Cancelar"
     },
@@ -1274,9 +1274,9 @@
       "failedToDeleteProperty": "No se pudo eliminar la propiedad",
       "failedToRenameProperty": "No se pudo cambiar el nombre de la propiedad",
       "failedToReorderProperties": "No se pudieron reordenar las propiedades",
-      "cannotAddTagThisNoteWasDeleted": "No se puede añadir la etiqueta: esta nota fue eliminada",
-      "cannotRemoveTagThisNoteWasDeleted": "No se puede quitar la etiqueta: esta nota fue eliminada",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "No se puede cambiar solo local: esta nota fue eliminada"
+      "cannotAddTagThisNoteWasDeleted": "No se puede añadir la etiqueta: esta nota se ha eliminado",
+      "cannotRemoveTagThisNoteWasDeleted": "No se puede quitar la etiqueta: esta nota se ha eliminado",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "No se puede cambiar el modo solo local: esta nota se ha eliminado"
     }
   },
   "bulkActions": {
@@ -1289,7 +1289,7 @@
     "export": "Exportar",
     "delete": "Eliminar",
     "clearAria": "Anular selección",
-    "copiedLinks": "{count, plural, one {Se copió # enlace} other {Se copiaron # enlaces}}",
+    "copiedLinks": "{count, plural, one {Se ha copiado # enlace} other {Se han copiado # enlaces}}",
     "setIcon": "Establecer icono",
     "iconUpdated": "{count, plural, one {Icono actualizado en # nota} other {Icono actualizado en # notas}}"
   },
@@ -1316,7 +1316,7 @@
     "loadFailed": "No se pudo leer esta nota"
   },
   "newNoteFromNote": {
-    "action": "Nueva nota a partir de esta nota",
+    "action": "Nueva nota a partir de esta",
     "created": "Creada con {tagCount, plural, =0 {ninguna etiqueta} one {# etiqueta} other {# etiquetas}} y {propertyCount, plural, =0 {ninguna propiedad} one {# propiedad} other {# propiedades}} de {source}"
   },
   "tags": {
@@ -1347,7 +1347,7 @@
       "more": "Opciones de categoría",
       "rename": "Cambiar el nombre de la categoría",
       "delete": "Eliminar categoría",
-      "dragHandle": "Arrastra para reordenar la categoría",
+      "dragHandle": "Arrastrar para reordenar la categoría",
       "emptyHint": "Arrastra una etiqueta aquí",
       "deleteTitle": "¿Eliminar {name}?",
       "deleteBody": "Las etiquetas pasarán a Sin categoría. No se eliminarán.",
@@ -1393,7 +1393,7 @@
       "separator": "→"
     },
     "more": "{count, plural, one {+# más} other {+# más}}",
-    "nodeCapNotice": "Este mapa ha alcanzado su límite de {count, plural, one {# nodo} other {# nodos}}; el resto se agrupa en el nodo más cercano por encima.",
+    "nodeCapNotice": "Este mapa ha alcanzado su límite de {count, plural, one {# nodo} other {# nodos}}; el resto se agrupa en el nodo superior más cercano.",
     "badge": {
       "table": "{count, plural, one {# tabla} other {# tablas}}",
       "code": "{count, plural, one {# bloque de código} other {# bloques de código}}",
@@ -1419,7 +1419,7 @@
   },
   "tagAndFilter": {
     "regionLabel": "Filtro de etiquetas activo",
-    "matchingAll": "Coincidir con todas:",
+    "matchingAll": "Con todas estas etiquetas:",
     "removeTag": "Quitar {tag} del filtro",
     "clearAll": "Quitar todo",
     "saveSearch": "Guardar búsqueda",

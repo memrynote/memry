@@ -3,7 +3,7 @@
   "section": {
     "aiConnections": "Connessioni IA",
     "todaysNotes": "Note di oggi",
-    "todaysSchedule": "Il programma di oggi",
+    "todaysSchedule": "Programma di oggi",
     "todaysTasks": "Attività di oggi",
     "tasks": "Attività",
     "technicalDetails": "Dettagli tecnici"
@@ -189,7 +189,7 @@
     "using": "Con il modello “{templateName}”"
   },
   "reminder": {
-    "hasReminders": "Ha promemoria",
+    "hasReminders": "Promemoria attivi",
     "setToRevisit": "Imposta un promemoria per tornarci",
     "tooltip": "Promemoria: {date}",
     "tooltipMore": "Promemoria: {date} (+{count} altri)",

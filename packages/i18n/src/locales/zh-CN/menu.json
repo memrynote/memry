@@ -42,8 +42,8 @@
     "label": "插入",
     "codeBlock": "代码块",
     "table": "表格",
-    "bulletList": "项目符号列表",
-    "numberedList": "编号列表",
+    "bulletList": "无序列表",
+    "numberedList": "有序列表",
     "taskList": "任务列表",
     "attachment": "插入附件…"
   },

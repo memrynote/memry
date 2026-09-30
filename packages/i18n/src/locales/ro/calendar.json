@@ -16,7 +16,7 @@
     "previous-period": "Perioada anterioară",
     "next-period": "Următoarea perioadă",
     "previous-month": "Luna anterioară",
-    "next-month": "Luna viitoare",
+    "next-month": "Luna următoare",
     "today": "Astăzi"
   },
   "search": {
@@ -113,7 +113,7 @@
     "provider-names": {
       "ics": "calendarul abonat",
       "caldav": "calendarul CalDAV",
-      "apple-eventkit": "Calendarul macOS"
+      "apple-eventkit": "calendarul macOS"
     }
   },
   "promote-dialog": {
@@ -243,7 +243,7 @@
     "couldNotOpen": "Nu s-a putut deschide notița"
   },
   "timeline": {
-    "label": "Cronologia lucrărilor programate",
+    "label": "Cronologia elementelor programate",
     "tasks-column": "Sarcini",
     "span": "{start} – {end}",
     "due": "Termen: {date}",

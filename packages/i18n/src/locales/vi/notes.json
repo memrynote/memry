@@ -105,7 +105,7 @@
       "saveAsTemplate": "Lưu làm mẫu",
       "openExternal": "Mở bằng trình soạn thảo bên ngoài",
       "setDefaultTemplate": "Đặt mẫu mặc định",
-      "clearDefaultTemplate": "Xóa mẫu mặc định",
+      "clearDefaultTemplate": "Bỏ mẫu mặc định",
       "setIcon": "Đặt biểu tượng",
       "removeIcon": "Gỡ biểu tượng",
       "deleteSelectedNotes": "Xóa {count} ghi chú",
@@ -167,7 +167,7 @@
     "list": {
       "bulleted": "Danh sách dấu đầu dòng",
       "numbered": "Danh sách đánh số",
-      "checklist": "Danh sách kiểm"
+      "checklist": "Danh sách kiểm tra"
     },
     "bulletFold": {
       "collapse": "Thu gọn mục lồng nhau",
@@ -202,7 +202,7 @@
     },
     "attachmentMenu": {
       "menuLabel": "Thao tác với tệp",
-      "storedAs": "Lưu dưới tên {name}",
+      "storedAs": "Đã lưu dưới tên {name}",
       "notSynced": "Chưa đồng bộ về thiết bị này",
       "revealFailed": "Không thể hiển thị tệp trong trình quản lý tệp",
       "openFailed": "Không thể mở tệp",
@@ -381,7 +381,7 @@
         "numberedList": "Danh sách đánh số",
         "checkbox": "Hộp kiểm",
         "task": "Công việc",
-        "toggleList": "Danh sách thu gọn",
+        "toggleList": "Danh sách thu gọn được",
         "quote": "Trích dẫn",
         "codeBlock": "Mã",
         "callout": "Khung chú thích"
@@ -730,7 +730,7 @@
     "focusFailed": "Không thể lưu vị trí ảnh bìa",
     "picker": {
       "title": "Ảnh bìa ghi chú",
-      "placeholder": "Tìm ảnh bìa",
+      "placeholder": "Tìm kiếm ảnh bìa",
       "tab": {
         "washes": "Màu nền",
         "photos": "Unsplash",
@@ -827,8 +827,8 @@
   "versionHistory": {
     "title": "Lịch sử phiên bản",
     "description": "Xem và khôi phục các phiên bản trước của “{title}”",
-    "hidePreview": "Ẩn xem trước",
-    "showPreview": "Hiển thị xem trước",
+    "hidePreview": "Ẩn bản xem trước",
+    "showPreview": "Hiển thị bản xem trước",
     "empty": "Chưa lưu phiên bản nào",
     "emptyDescription": "Các phiên bản được lưu tự động khi bạn thực hiện các thay đổi quan trọng",
     "latest": "Mới nhất",
@@ -1182,7 +1182,7 @@
     "componentsViewersPdfViewer": {
       "failedToLoadPdf": "Không thể tải PDF",
       "previousPage": "Trang trước",
-      "nextPage": "Trang tiếp theo",
+      "nextPage": "Trang sau",
       "zoomOut": "Thu nhỏ",
       "zoomIn": "Phóng to",
       "fitToWidth": "Vừa với chiều rộng",
@@ -1268,8 +1268,8 @@
       "failedToSnoozeReminder": "Không thể hoãn lời nhắc",
       "defaultTemplateSet": "Đã đặt mẫu mặc định",
       "failedToSetDefaultTemplate": "Không thể đặt mẫu mặc định",
-      "defaultTemplateCleared": "Đã xóa mẫu mặc định",
-      "failedToClearDefaultTemplate": "Không thể xóa mẫu mặc định",
+      "defaultTemplateCleared": "Đã bỏ mẫu mặc định",
+      "failedToClearDefaultTemplate": "Không thể bỏ mẫu mặc định",
       "failedToAddProperty": "Không thể thêm thuộc tính",
       "failedToDeleteProperty": "Không thể xóa thuộc tính",
       "failedToRenameProperty": "Không thể đổi tên thuộc tính",
@@ -1340,7 +1340,7 @@
     "tagNamePlaceholder": "Tên thẻ",
     "uncategorized": "Chưa phân loại",
     "search": {
-      "placeholder": "Tìm danh mục và thẻ",
+      "placeholder": "Tìm kiếm danh mục và thẻ",
       "empty": "Không có danh mục hoặc thẻ nào khớp với tìm kiếm"
     },
     "category": {
@@ -1370,14 +1370,14 @@
       "folder": "Thư mục",
       "tags": "Thẻ",
       "created": "Ngày tạo",
-      "modified": "Ngày sửa",
+      "modified": "Ngày sửa đổi",
       "wordCount": "Số từ",
       "kind": "Loại"
     },
     "defaultViewName": "Mặc định",
     "selectView": "Chọn chế độ xem",
     "columnHeader": {
-      "doubleClickToEdit": "{name} (nhấp đúp để chỉnh sửa)",
+      "doubleClickToEdit": "{name} (bấm đúp để chỉnh sửa)",
       "dragToReorder": "Kéo để sắp xếp lại cột: {name}"
     },
     "groupHeader": {

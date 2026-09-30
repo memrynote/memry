@@ -167,7 +167,7 @@
       "mode": {
         "label": "Mod de actualizare",
         "off": "Nu verifica",
-        "notify": "Doar notificare",
+        "notify": "Doar notifică",
         "auto": "Descarcă automat"
       }
     },
@@ -193,11 +193,7 @@
         "MM/DD/YYYY": "MM/DD/YYYY (SUA)",
         "DD/MM/YYYY": "DD/MM/YYYY",
         "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
-        "DD": {
-          "MM": {
-            "YYYY": "DD.MM.YYYY"
-          }
-        }
+        "DD.MM.YYYY": "DD.MM.YYYY"
       },
       "error": "Nu s-a putut actualiza formatul datei"
     },
@@ -383,13 +379,13 @@
         "label": "Familia de fonturi",
         "description": "Font principal pentru interfață",
         "options": {
-          "system": "Implicit sistem",
+          "system": "Fontul sistemului",
           "sansSerif": "Sans-serif",
           "serif": "Serif (Crimson Pro)",
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
-          "monospace": "Monospațiu"
+          "monospace": "Monospațiat"
         },
         "sections": {
           "builtin": "Integrate",
@@ -486,7 +482,7 @@
     },
     "dialogs": {
       "delete": {
-        "title": "Ștergeți șablonul",
+        "title": "Ștergeți șablonul?",
         "description": "Sigur doriți să ștergeți acest șablon? Acțiunea nu poate fi anulată. Notițele create din acest șablon nu vor fi afectate."
       },
       "duplicate": {
@@ -644,7 +640,7 @@
       },
       "ask": {
         "label": "Întreabă de fiecare dată",
-        "description": "Dacă este dezactivată, imaginile noi folosesc opțiunea de mai sus fără să întrebe."
+        "description": "Dacă este dezactivată, pentru imaginile noi se folosește opțiunea de mai sus, fără confirmare."
       }
     },
     "reviewReminder": {
@@ -662,7 +658,7 @@
       },
       "test": {
         "label": "Notificare de test",
-        "description": "Declanșează mementoul acum pentru a verifica notificările sistemului.",
+        "description": "Declanșați mementoul acum pentru a verifica notificările sistemului.",
         "button": "Trimite un test",
         "sent": "Notificare de test trimisă.",
         "sentHint": "Dacă nu apare nimic, permiteți notificările pentru MemryNote în setările sistemului.",
@@ -702,8 +698,8 @@
       "error": "Nu s-a putut actualiza excepția pentru pagina Calendar"
     },
     "showNotesOnCalendar": {
-      "label": "Arată notițele în calendar",
-      "description": "Arată fiecare notiță în calendar ca element pe toată ziua, în ziua în care a fost creată",
+      "label": "Afișează notițele în calendar",
+      "description": "Afișează fiecare notiță în calendar ca element pe toată ziua, în ziua în care a fost creată",
       "error": "Nu s-a putut actualiza afișarea notițelor în calendar"
     },
     "options": {
@@ -717,7 +713,7 @@
       "statuses": {
         "connected": "Conectat",
         "notConnected": "Nu este conectat",
-        "reconnectRequired": "Reconectare obligatorie"
+        "reconnectRequired": "Necesită reconectare"
       },
       "accountReconnect": "Reconectează Google",
       "addAccount": "Adaugă un cont",
@@ -732,7 +728,7 @@
       "disconnectFailed": "Nu s-a putut deconecta Google Calendar",
       "retryFailed": "Nu s-a putut reîncerca sincronizarea calendarului",
       "pushToGoogle": {
-        "label": "Arată evenimentele memrynote în Google Calendar",
+        "label": "Afișează evenimentele memrynote în Google Calendar",
         "description": "Dezactivați pentru sincronizare într-un singur sens – veți vedea în continuare evenimentele Google în memrynote, dar evenimentele memrynote nu vor apărea în Google.",
         "error": "Nu s-a putut actualiza direcția de sincronizare"
       },
@@ -812,7 +808,7 @@
         "invalid_url": "Acesta nu este un link de calendar. Lipiți o adresă care începe cu webcal://, https:// sau http://.",
         "unreachable": "Nu s-a putut accesa acest calendar. Verificați linkul și conexiunea la internet.",
         "timeout": "Calendarul a întârziat prea mult să răspundă. Încercați din nou peste câteva momente.",
-        "not_found": "Nu s-a găsit niciun calendar la acest link. Este posibil să fi fost șters sau linkul de partajare s-a schimbat.",
+        "not_found": "Nu s-a găsit niciun calendar la acest link. Este posibil să fi fost șters sau să i se fi schimbat linkul de partajare.",
         "unauthorized": "Calendarul a refuzat accesul. Copiați un link de partajare nou din aplicația de calendar.",
         "http_error": "Serverul calendarului a returnat o eroare. Încercați din nou mai târziu.",
         "too_large": "Acest calendar este prea mare pentru a fi adăugat. Partajați un calendar mai mic.",
@@ -877,7 +873,7 @@
         "name": "Acest Mac",
         "description": "Afișează toate calendarele pe care Calendar.app le are deja pe acest Mac: iCloud, Google, Exchange și Pe Mac-ul meu. Fără conectare, doar în citire, iar evenimentele nu părăsesc niciodată acest Mac și nu se sincronizează cu celelalte dispozitive.",
         "connect": "Permite accesul la calendar",
-        "connectHint": "macOS întreabă o singură dată. Puteți schimba ulterior în Configurări sistem.",
+        "connectHint": "macOS întreabă o singură dată. Puteți modifica ulterior această opțiune în Configurări sistem.",
         "otherCalendars": "Alte calendare",
         "alreadyConnected": "Deja conectat prin {provider}, deci pornește dezactivat pentru a evita afișarea dublă a evenimentelor.",
         "openSystemSettings": "Deschide Configurări sistem",
@@ -885,7 +881,7 @@
         "errors": {
           "permission_denied": "Accesul la calendar este dezactivat pentru memrynote. Activați-l în Configurări sistem → Confidențialitate și securitate → Calendare, apoi verificați din nou.",
           "permission_restricted": "Accesul la calendar este blocat pe acest Mac, de obicei de un profil de gestionare. Nu s-a schimbat nimic în memrynote; administratorul acestui Mac îl poate permite.",
-          "permission_write_only": "memrynote poate doar să adauge evenimente, ceea ce nu este suficient pentru a le afișa. Schimbați la Acces complet în Configurări sistem → Confidențialitate și securitate → Calendare.",
+          "permission_write_only": "memrynote poate doar să adauge evenimente, ceea ce nu este suficient pentru a le afișa. Alegeți Acces complet în Configurări sistem → Confidențialitate și securitate → Calendare.",
           "permission_not_determined": "memrynote nu a primit încă acces la calendar. Permiteți accesul pentru a afișa calendarele de pe Mac.",
           "unavailable": "Cititorul pentru Calendar din macOS nu a putut porni. Calendarele sunt neschimbate; reporniți memrynote și încercați din nou.",
           "sync_failed": "Nu s-a putut citi Calendar.app acum. Calendarele rămân neschimbate, iar memrynote încearcă din nou când Calendar.app se modifică."
@@ -915,7 +911,7 @@
       "testConnection": "Testează conexiunea",
       "testing": "Se testează…",
       "chooseCalendars": "Calendare de afișat",
-      "reconnectFor": "Introduceți parola pentru aplicație pentru {username}.",
+      "reconnectFor": "Introduceți parola pentru aplicație a contului {username}.",
       "errors": {
         "unauthorizedIcloud": "iCloud nu a acceptat această parolă. iCloud necesită aici o parolă specifică aplicației, nu parola ID-ului Apple. Creați una pe account.apple.com, la Autentificare și securitate, apoi încercați din nou.",
         "unauthorized": "Serverul nu a acceptat acest nume de utilizator și această parolă. Verificați-le pe amândouă și folosiți o parolă pentru aplicație, dacă serviciul oferă așa ceva.",
@@ -951,7 +947,7 @@
       "loading": "Se încarcă…"
     },
     "groups": {
-      "identity": "Identitatea",
+      "identity": "Identitate",
       "sync": "Sincronizare",
       "billing": "Facturare",
       "storage": "Stocare",
@@ -990,7 +986,7 @@
         "benefits": {
           "devices": "Fiecare dispozitiv continuă de unde ați rămas",
           "encrypted": "Criptare integrală – cheile rămân mereu la dvs.",
-          "backup": "O copie de rezervă criptată, pentru cazul în care acest dispozitiv nu este la îndemână"
+          "backup": "O copie de rezervă criptată, pentru cazul în care acest dispozitiv nu mai este disponibil"
         },
         "guarantee": "Garanție de rambursare a banilor în 14 zile. Anulați oricând."
       },
@@ -1044,7 +1040,7 @@
       },
       "toasts": {
         "loadFailed": "Nu s-a putut încărca starea facturării",
-        "checkoutFailed": "Nu s-a putut porni achiziția",
+        "checkoutFailed": "Nu s-a putut iniția plata",
         "checkoutOpened": "Pagina de plată s-a deschis în browser",
         "refreshFailed": "Nu s-a putut reîmprospăta starea facturării",
         "billingActive": "Facturarea este activă",
@@ -1053,7 +1049,7 @@
       }
     },
     "storage": {
-      "used": "{used} din {limit} utilizați",
+      "used": "Utilizat: {used} din {limit}",
       "categories": {
         "notes": "Notițe",
         "attachments": "Atașamente",
@@ -1125,7 +1121,7 @@
       "verifying": "Se verifică…",
       "resending": "Se retrimite…",
       "resend": "Retrimite codul",
-      "resendIn": "Retrimite în {time}",
+      "resendIn": "Retrimite peste {time}",
       "differentEmail": "Folosește alt e-mail",
       "error": "Verificarea a eșuat",
       "resendError": "Nu s-a putut retrimite codul"
@@ -1148,7 +1144,7 @@
       "inputTitle": "Introduceți fraza de recuperare",
       "inputDescription": "Introduceți fraza de recuperare de 24 de cuvinte pentru a restabili accesul la datele criptate.",
       "inputLabel": "Fraza de recuperare",
-      "count": "{count} / {total} cuvinte",
+      "count": "Cuvinte: {count} / {total}",
       "inputPlaceholder": "Introduceți fraza de recuperare de 24 de cuvinte, separate prin spații…",
       "lengthHint": "Introduceți toate cele 24 de cuvinte pentru a activa butonul de restaurare",
       "restore": "Restabilește accesul",
@@ -1173,7 +1169,7 @@
       "consequenceSignOut": "Acest dispozitiv se deconectează și nu se mai sincronizează.",
       "consequenceKey": "Cheia de criptare păstrată pe acest dispozitiv este ștearsă. Tot ce este deja stocat în cont rămâne criptat cu cheia veche – fără fraza de recuperare, nimic nu îl va mai putea citi vreodată.",
       "consequenceLocal": "Notițele deja salvate pe acest computer rămân în dosarul seifului și funcționează în continuare.",
-      "confirm": "Deconectează și începe de la zero",
+      "confirm": "Deconectare și reluare de la zero",
       "cancel": "Înapoi"
     },
     "linking": {
@@ -1186,7 +1182,7 @@
       "codeTitle": "Introduceți codul de asociere",
       "codeDescription": "Lipiți codul de asociere de pe celălalt dispozitiv pentru a transfera în siguranță cheile de criptare.",
       "codeLabel": "Cod de asociere",
-      "valid": "Valabil",
+      "valid": "Valid",
       "invalid": "Format nevalid",
       "codePlaceholder": "Lipește codul de pe celălalt dispozitiv…",
       "formatHint": "Lipiți codul de asociere JSON de pe celălalt dispozitiv",
@@ -1202,7 +1198,7 @@
       "confirmCode": "Confirmați că acesta se potrivește cu codul de pe celălalt dispozitiv",
       "vaultPickerTitle": "Alegeți ce să preluați",
       "vaultPickerDescription": "Acest cont are mai multe seifuri. Alegeți un dosar și seifurile de adăugat pe acest dispozitiv.",
-      "vaultPickerFolderLabel": "Stochează seifurile în dosarul",
+      "vaultPickerFolderLabel": "Dosarul pentru seifuri",
       "vaultPickerChooseFolder": "Alege dosarul",
       "vaultRow": "Seif – {count, plural, one {# element} few {# elemente} other {# de elemente}} · {date}",
       "vaultPickerPrimaryHint": "Se deschide acum",
@@ -1221,7 +1217,7 @@
     "renameAria": "Redenumește {name}",
     "rename": "Redenumește",
     "revoke": "Revocă",
-    "showLess": "Arată mai puțin",
+    "showLess": "Afișează mai puțin",
     "showMore": "{count, plural, one {încă # dispozitiv} few {încă # dispozitive} other {încă # de dispozitive}}",
     "showMoreAria": "Afișează {count, plural, one {încă # dispozitiv} few {încă # dispozitive} other {încă # de dispozitive}}",
     "dialogs": {
@@ -1255,7 +1251,7 @@
     "generateNew": "Generează un cod nou",
     "qrAria": "Cod QR pentru asocierea dispozitivului",
     "qrImageAria": "Codul QR de asociere a dispozitivului",
-    "expiresIn": "Expiră în {time}",
+    "expiresIn": "Expiră peste {time}",
     "or": "sau",
     "codeLabel": "Cod de asociere",
     "copyAria": "Copiază codul de asociere",
@@ -1332,7 +1328,7 @@
       "providerError": "Nu s-a putut actualiza furnizorul de transcriere",
       "downloadedToast": "Whisper Small a fost descărcat",
       "downloadError": "Nu s-a putut descărca Whisper Small",
-      "keySavedToast": "Cheia OpenAI salvată",
+      "keySavedToast": "Cheie OpenAI salvată",
       "keySaveError": "Nu s-a putut salva cheia OpenAI"
     },
     "embedding": {
@@ -1351,7 +1347,7 @@
       "rebuild": "Reconstruiește",
       "scanning": "Se scanează notițele…",
       "generating": "Se generează embeddingurile…",
-      "complete": "Complet!",
+      "complete": "Finalizat!",
       "reindexed": "Embeddinguri reindexate: {computed} calculate, {skipped} omise",
       "reindexFailed": "Nu s-au putut reindexa embeddingurile"
     },
@@ -1359,7 +1355,7 @@
       "loading": "Se încarcă…",
       "title": "Editare AI în linie",
       "enable": "Activează AI în linie",
-      "enableDescription": "Afișează meniul AI când editați notițe",
+      "enableDescription": "Afișează meniul AI la editarea notițelor",
       "enabled": "Editare AI în linie activată",
       "disabled": "Editare AI în linie dezactivată",
       "provider": "Furnizor",
@@ -1400,7 +1396,7 @@
       },
       "embedding": {
         "label": "Embeddinguri pentru căutare",
-        "hint": "{dimension} dimensiuni · {count, plural, one {# notiță indexată} few {# notițe indexate} other {# de notițe indexate}}"
+        "hint": "Dimensiuni: {dimension} · {count, plural, one {# notiță indexată} few {# notițe indexate} other {# de notițe indexate}}"
       },
       "voiceModel": {
         "label": "Transcriere vocală"
@@ -1427,7 +1423,7 @@
       "title": "Import",
       "subtitle": "Aduceți notițele și sarcinile din alte aplicații"
     },
-    "intro": "Importurile unice creează notițe noi în seif. Fișierele de export originale rămân neatinse.",
+    "intro": "Importul se face o singură dată și creează notițe noi în seif. Fișierele de export originale rămân neatinse.",
     "sources": {
       "notion": "Importă un export HTML (.zip)",
       "todoist": "Importă un export CSV de proiect (.csv)",
@@ -1479,7 +1475,7 @@
         "includeIncompatible": "Importă atașamentele incompatibile",
         "includeIncompatibleHint": "Se salvează și tipurile de fișiere pe care Memry nu le poate previzualiza (prezentări, fișiere media, arhive – niciodată executabile). Acestea apar ca blocuri de fișier.",
         "skipPrevious": "Omite paginile importate anterior",
-        "skipPreviousHint": "Paginile importate la o rulare OneNote anterioară sunt omise, astfel încât o nouă rulare preia doar ce este nou."
+        "skipPreviousHint": "Paginile aduse la un import OneNote anterior sunt omise, astfel încât un nou import preia doar ce este nou."
       },
       "appleNotes": {
         "loadingFolders": "Se citesc dosarele…",
@@ -1637,9 +1633,9 @@
     },
     "storage": {
       "title": "Stocare",
-      "used": "{used} din {limit} utilizați",
+      "used": "Utilizat: {used} din {limit}",
       "ratio": "{used} / {limit}",
-      "refreshAria": "Actualizează utilizarea stocării",
+      "refreshAria": "Reîmprospătează utilizarea stocării",
       "usageAria": "Utilizarea stocării: {used} din {limit}",
       "available": "Disponibil: {available}",
       "categories": {
@@ -1666,12 +1662,12 @@
         "all": "Toate",
         "problems": "Omise și eșuate"
       },
-      "reveal": "Arată fișierul jurnal",
+      "reveal": "Arată fișierul de jurnalizare",
       "clear": "Golește",
       "clearTitle": "Goliți activitatea seifului?",
-      "clearBody": "Toate intrările din jurnalul de activitate al acestui dispozitiv vor fi eliminate. Fișierele nu sunt afectate.",
+      "clearBody": "Toate înregistrările din jurnalul de activitate al acestui dispozitiv vor fi eliminate. Fișierele nu sunt afectate.",
       "clearConfirm": "Golește activitatea",
-      "empty": "Nimic înregistrat încă. Fișierele adăugate în dosarul seifului, importurile și tot ce omite Memry vor apărea aici.",
+      "empty": "Încă nu s-a înregistrat nimic. Fișierele adăugate în dosarul seifului, importurile și tot ce omite Memry vor apărea aici.",
       "emptyProblems": "Nu s-a omis nimic și nimic nu a eșuat.",
       "unavailable": "Deschideți un seif pentru a-i vedea activitatea.",
       "loadFailed": "Nu s-a putut încărca activitatea seifului",
@@ -1741,7 +1737,7 @@
   "tags": {
     "header": {
       "title": "Etichete",
-      "subtitle": "Gestionați etichetele în notițe, jurnale și sarcini"
+      "subtitle": "Gestionați etichetele din notițe, jurnale și sarcini"
     },
     "loading": "Se încarcă etichetele…",
     "empty": "Încă nu există etichete. Etichetele vor apărea aici pe măsură ce le adăugați la notițe și sarcini.",
@@ -1757,7 +1753,7 @@
       "delete": "Șterge"
     },
     "dialogs": {
-      "deleteTitle": "Ștergeți eticheta",
+      "deleteTitle": "Ștergeți eticheta?",
       "deleteDescription": "Eliminați „{name}” din {count, plural, one {# element} few {# elemente} other {# de elemente}}? Acțiunea nu poate fi anulată.",
       "mergeTitle": "Combinați eticheta",
       "mergeDescription": "Toate elementele etichetate cu „{source}” vor primi eticheta țintă. Eticheta sursă va fi ștearsă.",
@@ -1809,7 +1805,7 @@
       "url": "URL"
     },
     "dialogs": {
-      "deleteTitle": "Ștergeți proprietatea",
+      "deleteTitle": "Ștergeți proprietatea?",
       "deleteDescription": "Eliminați definiția proprietății „{name}”? Notițele care folosesc această proprietate își vor păstra valorile ca text simplu.",
       "colorTitle": "Schimbați culoarea pentru „{name}”"
     },
@@ -1868,7 +1864,7 @@
     "searchPlaceholder": "Caută comenzi rapide…",
     "resetAll": "Resetează tot",
     "custom": "Personalizat",
-    "pressShortcut": "Apăsați comanda rapidă…",
+    "pressShortcut": "Apăsați combinația de taste…",
     "cancelTitle": "Anulează",
     "rebindTitle": "Faceți clic pentru a reatribui",
     "editorManagedTitle": "Gestionată de editorul de notițe – nu poate fi reatribuită",
@@ -1929,7 +1925,7 @@
           "description": "Deschide panoul de setări"
         },
         "switchVault": {
-          "label": "Comută seiful",
+          "label": "Schimbă seiful",
           "description": "Deschide selectorul de seifuri"
         },
         "nextVault": {

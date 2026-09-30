@@ -51,7 +51,7 @@
       "saveFailed": "Je geopende tabbladen worden niet meer opgeslagen",
       "saveFailedQuota": "Deze sessie is te groot om op te slaan. Sluit een paar tabbladen, anders wordt ze mogelijk niet hersteld wanneer je Memry weer opent.",
       "saveFailedGeneric": "Memry kon deze sessie niet opslaan, dus wordt ze mogelijk niet hersteld wanneer je de app weer opent.",
-      "lastSessionNotSaved": "Je vorige sessie is niet opgeslagen toen Memry werd afgesloten",
+      "lastSessionNotSaved": "Je vorige sessie is niet opgeslagen bij het afsluiten van Memry",
       "lastSessionNotSavedQuota": "De opslag was op dat moment vol, dus deze tabbladen komen uit een eerder opgeslagen sessie. Sluit een paar tabbladen om ruimte te maken.",
       "lastSessionNotSavedGeneric": "Memry kon je tabbladen bij het afsluiten niet opslaan, dus deze tabbladen komen uit een eerder opgeslagen sessie."
     },
@@ -82,7 +82,7 @@
     "undoFailed": "Kan actie niet ongedaan maken",
     "filesImported": "{count, plural, one {# bestand geïmporteerd} other {# bestanden geïmporteerd}}",
     "filesImportFailed": "{count, plural, one {Kan # bestand niet importeren} other {Kan # bestanden niet importeren}}",
-    "filesHiddenInSidebar": "Bestanden zijn verborgen in de zijbalk. Zet Bestanden tonen aan in het sorteermenu van Collecties om ze te zien.",
+    "filesHiddenInSidebar": "Bestanden zijn verborgen in de zijbalk. Schakel “Bestanden tonen” in via het sorteermenu van Collecties om ze te zien.",
     "moreRemindersDue": "{count, plural, one {Nog # herinnering} other {Nog # herinneringen}}",
     "moreRemindersDueHint": "Bekijk het herinneringenpaneel voor details",
     "searchIndexRepaired": "Zoekindex hersteld",
@@ -353,7 +353,7 @@
       "label": "Toolresultaat"
     },
     "toolCall": {
-      "editedArgs": "Argumenten bewerkt",
+      "editedArgs": "Bewerkte argumenten",
       "parameters": "Parameters"
     },
     "toolActivity": {
@@ -420,7 +420,7 @@
       "elementMissing": "Die link verwijst naar iets dat niet meer op dit canvas staat.",
       "title": "Link naar item",
       "placeholder": "Notities, taken, afspraken, inbox, projecten zoeken…",
-      "hint": "Begin te typen om een item te vinden om naar te linken.",
+      "hint": "Typ om een item te zoeken dat je wilt linken.",
       "empty": "Geen overeenkomsten.",
       "selectOneShape": "Selecteer één vorm om die aan een item te linken.",
       "cardsCannotLink": "Een kaart opent al een eigen item en kan dus geen tweede link hebben.",
@@ -469,7 +469,7 @@
     },
     "card": {
       "open": "Openen in tabblad",
-      "openToEdit": "Open in tabblad om te bewerken",
+      "openToEdit": "Openen in tabblad om te bewerken",
       "deleted": "Item verwijderd",
       "loading": "Laden…",
       "untitled": "Zonder titel",
@@ -501,7 +501,7 @@
       "bulkConfirmAdd": "{count, plural, one {# kaart toevoegen} other {# kaarten toevoegen}}",
       "bulkBack": "Terug",
       "bulkEmpty": "Geen notities, bestanden of taken om toe te voegen",
-      "bulkLoadFailed": "Items konden niet worden geladen",
+      "bulkLoadFailed": "Kan items niet laden",
       "bulkAdded": "{count, plural, one {# kaart toegevoegd} other {# kaarten toegevoegd}}",
       "bulkAddedSkipped": "{count, plural, one {# kaart toegevoegd} other {# kaarten toegevoegd}} · {skipped} al op het canvas",
       "bulkAllOnCanvas": "{count, plural, one {Staat al op dit canvas} other {Alle # staan al op dit canvas}}"
@@ -577,9 +577,9 @@
       "newNoteN": "Nieuwe notitie (⌘N)",
       "new": "Nieuw",
       "newItemMenu": "Nieuw maken…",
-      "feedbackButton": "Feedback verzenden",
-      "feedbackTitle": "Feedback verzenden",
-      "feedbackDescription": "Vertel ons wat goed werkt, wat niet werkt of wat je MemryNote graag zou zien doen. We lezen elk bericht.",
+      "feedbackButton": "Feedback sturen",
+      "feedbackTitle": "Feedback sturen",
+      "feedbackDescription": "Vertel ons wat goed werkt, wat niet werkt of wat je graag in MemryNote zou zien. We lezen elk bericht.",
       "feedbackPlaceholder": "Je feedback…",
       "feedbackEmailHint": "Voeg je e-mailadres toe als je een antwoord wilt.",
       "feedbackPrivacyTitle": "Wat er wordt verstuurd",
@@ -587,7 +587,7 @@
       "feedbackPrivacyEmailOptional": "Je e-mailadres – alleen als je het invult, en alleen zodat we kunnen antwoorden",
       "feedbackPrivacyEmailSignedIn": "Het e-mailadres van je account ({email}), zodat we kunnen antwoorden",
       "feedbackPrivacyVersion": "Appversie en besturingssysteem",
-      "feedbackPrivacyPlan": "Je abonnement (free, Plus, Pro of Believer)",
+      "feedbackPrivacyPlan": "Je abonnement (gratis, Plus, Pro of Believer)",
       "feedbackPrivacyNote": "Verder niets. Je notities blijven op je apparaat.",
       "feedbackSend": "Verzenden",
       "feedbackSending": "Verzenden…",
@@ -685,7 +685,7 @@
     "componentsSearchCommandPalette": {
       "search": "Zoeken",
       "searchNotesTasksJournalInbox": "Notities, taken, dagboek, inbox zoeken…",
-      "noResultsFor": "Geen resultaat voor “",
+      "noResultsFor": "Geen resultaten voor “",
       "result": "resultaat",
       "noResultsForQuery": "Geen resultaten voor “{query}”",
       "resultCount": "{count, plural, one {# resultaat} other {# resultaten}}",
@@ -722,7 +722,7 @@
       "layoutPresets2": "Voorinstellingen voor indeling"
     },
     "componentsSplitViewResizeHandle": {
-      "resizePanes": "Het formaat van deelvensters wijzigen"
+      "resizePanes": "Formaat van deelvensters wijzigen"
     },
     "componentsSplitViewTabContent": {
       "taskscontextNotAvailable": "TasksContext niet beschikbaar",
@@ -892,7 +892,7 @@
       "downloadLocation": "Locatie",
       "changeLocation": "Wijzigen…",
       "download": "Downloaden",
-      "downloadFailed": "De kluis kon niet worden gedownload",
+      "downloadFailed": "Kan de kluis niet downloaden",
       "deleteFromAccount": "Uit account verwijderen",
       "deleteVaultTitle": "“{name}” uit je account verwijderen?",
       "deleteVaultBody": "Hiermee worden alle gesynchroniseerde gegevens van deze kluis definitief van de servers van Memry verwijderd; dit kan niet ongedaan worden gemaakt. Je bestanden op schijf worden niet verwijderd.",
@@ -923,7 +923,7 @@
       "removeAria": "Widget verwijderen",
       "dragAria": "Widget slepen",
       "configAria": "Widget configureren",
-      "resizeAria": "Vergroten/verkleinen naar {size}",
+      "resizeAria": "Formaat wijzigen naar {size}",
       "menuAria": "Widgetopties",
       "resize": "Grootte",
       "remove": "Verwijderen",
@@ -1019,7 +1019,7 @@
   "onboarding": {
     "welcome": {
       "title": "Welkom bij MemryNote",
-      "body": "Je eigen, privéplek die ook offline werkt. Notities zijn end-to-end versleuteld – ze verlaten je apparaat nooit onversleuteld."
+      "body": "Je eigen privéplek, die ook offline werkt. Notities zijn end-to-end versleuteld – ze verlaten je apparaat nooit onversleuteld."
     },
     "newNote": {
       "title": "Maak je eerste notitie",
@@ -1065,7 +1065,7 @@
     }
   },
   "shortcuts": {
-    "description": "Snelle routes om door memrynote te bewegen, gedachten vast te leggen en werk te verwerken.",
+    "description": "Snelle routes om door memrynote te navigeren, gedachten vast te leggen en werk te verwerken.",
     "or": "of",
     "then": "dan",
     "groups": {
@@ -1197,7 +1197,7 @@
       "availableSubtitle": "Je gebruikt {current} · er is nog niets gedownload",
       "allChanges": "Alle wijzigingen",
       "restartNow": "Nu opnieuw starten",
-      "onNextQuit": "Bij volgende keer afsluiten",
+      "onNextQuit": "Bij afsluiten",
       "download": "Downloaden",
       "notNow": "Niet nu",
       "moreOptions": "Meer updateopties",

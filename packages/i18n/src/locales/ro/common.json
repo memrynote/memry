@@ -82,7 +82,7 @@
     "undoFailed": "Nu s-a putut anula acțiunea",
     "filesImported": "{count, plural, one {# fișier importat} few {# fișiere importate} other {# de fișiere importate}}",
     "filesImportFailed": "{count, plural, one {Nu s-a putut importa # fișier} few {Nu s-au putut importa # fișiere} other {Nu s-au putut importa # de fișiere}}",
-    "filesHiddenInSidebar": "Fișierele sunt ascunse în bara laterală. Activați „Afișează fișierele” din meniul de sortare Colecții pentru a le vedea.",
+    "filesHiddenInSidebar": "Fișierele sunt ascunse în bara laterală. Activați „Afișează fișierele” în meniul de sortare din Colecții pentru a le vedea.",
     "moreRemindersDue": "{count, plural, one {Încă # memento} few {Încă # mementouri} other {Încă # de mementouri}}",
     "moreRemindersDueHint": "Consultați panoul de mementouri pentru detalii",
     "searchIndexRepaired": "Index de căutare reparat",
@@ -411,7 +411,7 @@
     "notFound": "Acest canvas nu a putut fi găsit",
     "corruptScene": "Acest canvas nu a putut fi citit. Editarea este dezactivată pentru a nu pierde date.",
     "unreadableTitle": "Acest canvas nu poate fi deschis aici",
-    "unreadableBody": "Documentul lipsește din seif sau canvasul a fost desenat înainte ca acestea să devină fișiere, iar acest dispozitiv nu mai are cheia care îl deblochează. Nu s-a șters nimic – deschideți seiful pe dispozitivul care l-a creat sau restaurați dosarul canvasurilor.",
+    "unreadableBody": "Documentul lipsește din seif sau canvasul a fost desenat înainte ca canvasurile să devină fișiere, iar acest dispozitiv nu mai are cheia care îl deblochează. Nu s-a șters nimic – deschideți seiful pe dispozitivul care l-a creat sau restaurați dosarul canvasurilor.",
     "tooLargeToSync": "Acest canvas este prea mare pentru sincronizare. Este salvat pe acest dispozitiv, dar nu va ajunge pe celelalte dispozitive până nu devine mai mic.",
     "savedToVault": "Toate modificările se salvează automat în seif",
     "libraryStoreFailed": "Nu s-a putut salva biblioteca de forme. Modificările recente se pot pierde.",
@@ -622,7 +622,7 @@
       "getStarted": "Începe ",
       "createYourFirstNote": "Creați prima notiță",
       "markdownBasedStoredLocallyAsPlainFiles": "Bazate pe Markdown, stocate local ca fișiere simple.",
-      "eGMeetingNotesIdeasAnything": "de ex. Notițe de la ședințe, idei, orice…",
+      "eGMeetingNotesIdeasAnything": "de ex. notițe de la ședințe, idei, orice…",
       "skip": "Omite",
       "createNote": "Creează notița ",
       "addYourFirstTask": "Adăugați prima sarcină",
@@ -946,7 +946,7 @@
       "calendar": "Calendar",
       "calendarToday": "Astăzi",
       "openCalendar": "Deschide calendarul",
-      "next": "Următor: {title}",
+      "next": "Următorul: {title}",
       "startsIn": "Începe peste {count, plural, one {# min} few {# min} other {# min}}",
       "duration": "{count} min",
       "inbox": "Inbox",
@@ -1018,7 +1018,7 @@
   },
   "onboarding": {
     "welcome": {
-      "title": "Bun venit în MemryNote",
+      "title": "Bun venit la MemryNote",
       "body": "Spațiul dvs. privat, care funcționează offline. Notițele sunt criptate integral – nu părăsesc niciodată dispozitivul necriptate."
     },
     "newNote": {
@@ -1214,7 +1214,7 @@
     "installFailed": {
       "title": "MemryNote nu a putut finaliza instalarea versiunii {version}",
       "titleUnknownVersion": "MemryNote nu a putut finaliza instalarea actualizării",
-      "body": "Seiful nu a fost atins – o actualizare se aplică aplicației, nu notițelor. Aveți în continuare versiunea {current} și totul funcționează ca înainte.",
+      "body": "Seiful nu a fost afectat – o actualizare se aplică aplicației, nu notițelor. Aveți în continuare versiunea {current} și totul funcționează ca înainte.",
       "errorLabel": "Ce nu a funcționat",
       "downloadManually": "Descarcă manual {version}",
       "downloadManuallyUnknownVersion": "Descarcă manual MemryNote",
@@ -1250,7 +1250,7 @@
   },
   "sidebar": {
     "railLabel": "Secțiuni",
-    "search": "Caută sau salt la…",
+    "search": "Caută sau accesează…",
     "vaultMenu": "{name}. Deschide lista de seifuri"
   }
 }

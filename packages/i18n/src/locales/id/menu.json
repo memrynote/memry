@@ -3,26 +3,26 @@
     "quit": "Keluar dari MemryNote",
     "preferences": "Pengaturan…",
     "checkForUpdates": "Periksa Pembaruan…",
-    "exit": "Keluar",
+    "services": "Layanan",
     "hide": "Sembunyikan MemryNote",
     "hideOthers": "Sembunyikan Lainnya",
-    "services": "Layanan",
-    "unhide": "Tampilkan Semua"
+    "unhide": "Tampilkan Semua",
+    "exit": "Keluar"
   },
   "file": {
-    "label": "Berkas",
+    "label": "File",
     "newNote": "Catatan Baru",
-    "close": "Tutup Jendela",
-    "closeTab": "Tutup Tab",
+    "openQuickly": "Buka Cepat…",
     "exportPdf": "Ekspor ke PDF…",
-    "openQuickly": "Buka Cepat…"
+    "closeTab": "Tutup Tab",
+    "close": "Tutup Jendela"
   },
   "navigation": {
     "back": "Kembali",
     "forward": "Maju"
   },
   "edit": {
-    "label": "Sunting",
+    "label": "Edit",
     "undo": "Urungkan",
     "redo": "Ulangi",
     "cut": "Potong",
@@ -31,63 +31,68 @@
     "selectAll": "Pilih Semua",
     "find": "Cari",
     "speech": "Ucapan",
-    "delete": "Hapus",
     "pasteAndMatchStyle": "Tempel dan Cocokkan Gaya",
+    "delete": "Hapus",
     "startSpeaking": "Mulai Berbicara",
-    "stopSpeaking": "Berhenti Berbicara"
+    "stopSpeaking": "Berhenti Berbicara",
+    "addToDictionary": "Tambahkan ke Kamus",
+    "noSuggestions": "Tidak Ada Saran"
   },
-  "view": {
-    "label": "Tampilan",
-    "reload": "Muat Ulang",
-    "toggleDevTools": "Alihkan Alat Pengembang",
-    "toggleFullscreen": "Alihkan Layar Penuh",
-    "theme": "Tema",
-    "themeDark": "Gelap",
-    "themeLight": "Terang",
-    "themeSystem": "Sistem",
-    "themeWhite": "Kertas",
-    "toggleDayPanel": "Alihkan Panel Hari",
-    "toggleSidebar": "Alihkan Bilah Samping",
-    "actualSize": "Ukuran Sebenarnya",
-    "zoomIn": "Perbesar",
-    "zoomOut": "Perkecil"
+  "insert": {
+    "label": "Sisipkan",
+    "codeBlock": "Blok Kode",
+    "table": "Tabel",
+    "bulletList": "Daftar Berpoin",
+    "numberedList": "Daftar Bernomor",
+    "taskList": "Daftar Tugas",
+    "attachment": "Sisipkan Lampiran…"
   },
   "format": {
-    "body": "Isi",
-    "bold": "Tebal",
-    "code": "Kode",
+    "label": "Format",
     "heading1": "Judul 1",
     "heading2": "Judul 2",
     "heading3": "Judul 3",
     "heading4": "Judul 4",
     "heading5": "Judul 5",
     "heading6": "Judul 6",
-    "highlight": "Sorot",
+    "body": "Isi",
+    "bold": "Tebal",
     "italic": "Miring",
-    "label": "Format",
+    "code": "Kode",
+    "highlight": "Sorot",
     "strikethrough": "Coret"
   },
-  "help": {
-    "about": "Tentang MemryNote",
-    "documentation": "Dokumentasi",
-    "label": "Bantuan",
-    "shortcuts": "Pintasan Keyboard",
-    "aboutVersion": "Versi {version}"
-  },
-  "insert": {
-    "attachment": "Sisipkan Lampiran…",
-    "bulletList": "Daftar Berpoin",
-    "codeBlock": "Blok Kode",
-    "label": "Sisipkan",
-    "numberedList": "Daftar Bernomor",
-    "table": "Tabel",
-    "taskList": "Daftar Tugas"
+  "view": {
+    "label": "Tampilan",
+    "reload": "Muat Ulang",
+    "toggleDevTools": "Alihkan Alat Pengembang",
+    "toggleFullscreen": "Alihkan Layar Penuh",
+    "toggleSidebar": "Alihkan Bilah Samping",
+    "toggleDayPanel": "Alihkan Panel Hari",
+    "theme": "Tema",
+    "themeLight": "Terang",
+    "themeDark": "Gelap",
+    "themeWhite": "Kertas",
+    "themeSystem": "Sistem",
+    "actualSize": "Ukuran Sebenarnya",
+    "zoomIn": "Perbesar",
+    "zoomOut": "Perkecil"
   },
   "window": {
     "label": "Jendela",
-    "close": "Tutup",
-    "front": "Bawa Semua ke Depan",
     "minimize": "Minimalkan",
-    "zoom": "Maksimalkan"
+    "zoom": "Maksimalkan",
+    "front": "Bawa Semua ke Depan",
+    "close": "Tutup"
+  },
+  "help": {
+    "label": "Bantuan",
+    "documentation": "Dokumentasi",
+    "shortcuts": "Pintasan Keyboard",
+    "about": "Tentang MemryNote",
+    "aboutVersion": "Versi {version}"
+  },
+  "tray": {
+    "show": "Tampilkan MemryNote"
   }
 }

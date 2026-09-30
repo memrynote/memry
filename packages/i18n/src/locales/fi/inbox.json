@@ -2,41 +2,39 @@
   "view": {
     "tabs": {
       "inbox": "Saapuneet",
-      "archived": "Arkistoitu",
-      "insights": "Näkemyksiä",
-      "ariaLabel": "Saapuneet-kansionäkymän valinta"
+      "archived": "Arkistoidut",
+      "insights": "Tilastot",
+      "ariaLabel": "Saapuneiden näkymän valinta"
     },
-    "triageButton": "Triage",
-    "processInboxTitle": "Käsittele postilaatikko (Cmd+P)",
-    "itemCaptured": "Kohde otettu",
+    "itemCaptured": "Kohde kirjattu",
     "searchArchivedTitle": "Hae arkistoituja kohteita",
-    "searchPlaceholder": "Hae...",
+    "searchPlaceholder": "Hae…",
     "archivedItemsAria": "Arkistoidut kohteet",
     "snoozed": {
       "show": "Näytä torkutetut kohteet",
       "showWithCount": "Näytä torkutetut kohteet ({count})",
       "hide": "Piilota torkutetut kohteet"
     },
-    "filter": {
-      "button": "Suodata",
-      "byType": "Suodata tyypin mukaan",
-      "active": "{count, plural, one {Suodatus #-tyypin mukaan} other {Suodatus #-tyyppien mukaan}}",
-      "clearAll": "Tyhjennä kaikki"
-    },
-    "jobs": {
-      "running": "{count, plural, one {# taustatyö käynnissä} other {# taustatyöt käynnissä}}",
-      "failed": "{count} epäonnistui"
-    },
     "density": {
       "toComfortable": "Väljä näkymä",
       "toCompact": "Tiivis näkymä"
+    },
+    "filter": {
+      "button": "Suodata",
+      "byType": "Suodata tyypin mukaan",
+      "active": "{count, plural, one {Suodatettu # tyypin mukaan} other {Suodatettu # tyypin mukaan}}",
+      "clearAll": "Tyhjennä kaikki"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# taustatyö käynnissä} other {# taustatyötä käynnissä}}",
+      "failed": "{count} epäonnistui"
     }
   },
   "type": {
     "link": "Linkki",
     "links": "Linkit",
-    "note": "Huom",
-    "notes": "Huomautuksia",
+    "note": "Muistiinpano",
+    "notes": "Muistiinpanot",
     "image": "Kuva",
     "images": "Kuvat",
     "voice": "Ääni",
@@ -44,348 +42,358 @@
     "clip": "Leike",
     "clips": "Leikkeet",
     "pdf": "PDF",
-    "pdfs": "PDF-tiedostoja",
-    "social": "Sosiaalinen",
+    "pdfs": "PDF-tiedostot",
+    "social": "Sosiaalinen media",
     "reminder": "Muistutus",
     "reminders": "Muistutukset"
   },
   "empty": {
-    "successAria": "Onnistui, postilaatikko on tyhjä",
-    "title": "Saapuneet Nolla",
-    "body": "Kaikki on käsitelty. Tallenna jotain uutta yllä olevan syötteen avulla tai aloita liittämällä linkki.",
-    "filedThisWeek": "{count, plural, one {# jätetty tällä viikolla} other {# jätetty tällä viikolla}}",
-    "dayStreak": "{count, plural, one {# päiväputki} other {# päiväputki}}",
-    "tipPrefix": "Vinkki: käytä",
-    "tipSuffix": "pikakaappaus leikepöydältä",
+    "successAria": "Onnistui, Saapuneet on tyhjä",
+    "title": "Saapuneet on tyhjä",
+    "body": "Kaikki on käsitelty. Kirjaa jotain uutta yllä olevalla kentällä tai aloita liittämällä linkki.",
+    "filedThisWeek": "{count, plural, one {# siirretty tällä viikolla} other {# siirretty tällä viikolla}}",
+    "dayStreak": "{count, plural, one {# päivän putki} other {# päivän putki}}",
+    "tipPrefix": "Vinkki: paina",
+    "tipSuffix": "kirjataksesi leikepöydän sisällön",
     "archivedNone": "Ei arkistoituja kohteita",
     "archivedNoMatches": "Ei vastaavia arkistoituja kohteita",
-    "noItemsYet": "Ei kohteita vielä",
-    "noItemsFiled": "Kohteita ei ole vielä tallennettu",
+    "noItemsYet": "Ei vielä kohteita",
+    "noItemsFiled": "Kohteita ei ole vielä siirretty",
     "noFolders": "Kansioita ei löytynyt",
     "noNotes": "Muistiinpanoja ei löytynyt",
-    "allMatchesLinked": "Kaikki ottelut on jo linkitetty"
+    "allMatchesLinked": "Kaikki osumat on jo linkitetty"
   },
   "list": {
-    "ariaLabel": "Saapuneet-kansion kohteet",
+    "ariaLabel": "Saapuneiden kohteet",
     "section": {
       "today": "Tänään",
-      "yesterday": "eilen",
-      "older": "Vanhempi"
+      "yesterday": "Eilen",
+      "older": "Vanhemmat"
     },
     "selectItem": "Valitse {title}",
     "itemAria": "{type}: {title}",
     "untitled": "Nimetön",
     "untitledItem": "Nimetön kohde",
-    "transcribing": "Litteroidaan...",
-    "transcriptionFailed": "Transkriptio epäonnistui",
+    "transcribing": "Litteroidaan…",
+    "transcriptionFailed": "Litterointi epäonnistui",
     "retryTranscription": "Yritä uudelleen",
     "pageCount": "{count, plural, one {# sivu} other {# sivua}}",
-    "snoozedUntilShort": "torkutettu {date} asti"
+    "snoozedUntilShort": "torkutettu {date} asti",
+    "rename": "Nimeä uudelleen",
+    "renameLabel": "Nimeä kohde uudelleen"
   },
   "loading": {
-    "inbox": "Ladataan postilaatikkoa...",
-    "failed": "Postilaatikon lataaminen epäonnistui",
+    "inbox": "Ladataan Saapuneita…",
+    "failed": "Saapuneiden lataaminen epäonnistui",
     "tryAgain": "Yritä uudelleen",
-    "capturingImage": "Otetaan kuvaa...",
-    "dropImageTitle": "Pudota kuva kaapattavaksi",
+    "capturingImage": "Lisätään kuvaa…",
+    "dropImageTitle": "Lisää kuva pudottamalla",
     "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
     "unsupportedImageType": "Kuvatyyppiä ei tueta: {type}",
     "imageTooLarge": "Kuva liian suuri (enintään 50 Mt)"
   },
   "toast": {
-    "failedArchiveItem": "Kohteen arkistointi epäonnistui",
-    "failedArchiveItems": "Kohteiden arkistointi epäonnistui",
-    "failedFile": "Arkistointi epäonnistui",
-    "failedFileItem": "Kohteen arkistointi epäonnistui",
-    "failedFileItems": "Kohteiden arkistointi epäonnistui",
-    "failedSnooze": "Torkkuminen epäonnistui",
+    "failedArchiveItem": "Kohteen arkistoiminen epäonnistui",
+    "failedArchiveItems": "Kohteiden arkistoiminen epäonnistui",
+    "failedFile": "Siirtäminen epäonnistui",
+    "failedFileItem": "Kohteen siirtäminen epäonnistui",
+    "failedFileItems": "Kohteiden siirtäminen epäonnistui",
+    "failedSnooze": "Torkuttaminen epäonnistui",
     "failedSnoozeItem": "Kohteen torkuttaminen epäonnistui",
     "failedApplyTags": "Tunnisteiden lisääminen epäonnistui",
-    "failedCaptureImage": "Kuvan ottaminen epäonnistui",
+    "failedCaptureImage": "Kuvan lisääminen epäonnistui",
     "linkedToNote": "Linkitetty muistiinpanoon",
-    "linkedToNotes": "Linkitetty {count} muistiinpanoihin",
-    "filedTo": "Arkistoitu osoitteeseen {folder}",
-    "filedItemsTo": "Arkistoitu {count} kohteet osoitteeseen {folder}",
-    "filedPartial": "Arkistoitu {processed}/{total} kohteista",
-    "appliedTags": "{tagCount, plural, one {#-tunniste kiinnitetty} other {#-tunnisteet kiinnitetty}} - {itemCount, plural, one {# tuote} other {# tuotteet}}",
-    "archivedItems": "{count, plural, one {Arkistoitu kohde #} other {Arkistoidut # kohteet}}",
+    "linkedToNotes": "Linkitetty {count} muistiinpanoon",
+    "embedFellBackToLink": "Kuva oli liian suuri upotettavaksi – siirretty sen sijaan linkitettynä tiedostona",
+    "filedTo": "Siirretty kansioon {folder}",
+    "filedItemsTo": "{count} kohdetta siirretty kansioon {folder}",
+    "filedPartial": "Siirretty {processed}/{total} kohdetta",
+    "appliedTags": "{tagCount, plural, one {# tunniste lisätty} other {# tunnistetta lisätty}} {itemCount, plural, one {# kohteeseen} other {# kohteeseen}}",
+    "archivedItems": "{count, plural, one {# kohde arkistoitu} other {# kohdetta arkistoitu}}",
     "snoozedUntil": "Torkutettu {time} asti",
-    "snoozedItemsUntil": "{count, plural, one {Torkutettu # kohde {time} asti} other {Torkutettu # kohdetta {time} asti}}"
-  },
-  "triage": {
-    "modeTitle": "Triage-tila",
-    "exitHint": "Esc poistuaksesi",
-    "exitAria": "Poistu triage-tilasta",
-    "position": "{current}/{total}",
-    "action": {
-      "discard": "Hävitä",
-      "archive": "Arkisto",
-      "open": "Avaa",
-      "toTask": "Tehtävään",
-      "toNote": "Huomioon",
-      "file": "Tiedosto",
-      "snooze": "Torkku",
-      "cancel": "Peruuta"
-    },
-    "snoozeUntil": "Torkku kunnes...",
-    "complete": {
-      "title": "Saapuneet Nolla",
-      "processed": "{count, plural, one {# tuote käsitelty} other {# tuotteet käsitelty}}",
-      "streak": "putki",
-      "streakCount": "{count}-putki",
-      "dayProcessingStreak": "{count, plural, one {# päivän käsittelyputki} other {# päivän käsittelyputki}}",
-      "back": "Takaisin postilaatikkoon",
-      "motivation0": "Tulevaisuuden itsesi kiittää sinua.",
-      "motivation1": "Kaikki paikoillaan.",
-      "motivation2": "Selkeä postilaatikko, selkeä mieli.",
-      "motivation3": "Päätösvelka: maksettu kokonaisuudessaan.",
-      "motivation4": "Se tuntui hyvältä, eikö niin?"
-    }
+    "snoozedItemsUntil": "{count, plural, one {Torkutettu # kohde {time} asti} other {Torkutettu # kohdetta {time} asti}}",
+    "restored": "”{title}” palautettu"
   },
   "bulk": {
     "selected": "{count} valittu",
     "deselectAll": "Poista kaikki valinnat",
-    "ariaLabel": "Joukkotoiminnot {count} valituille kohteille",
-    "file": "Tiedosto",
-    "tag": "Tunniste",
-    "snooze": "Torkku",
-    "archive": "Arkisto",
+    "ariaLabel": "Joukkotoiminnot {count} valitulle kohteelle",
+    "file": "Siirrä",
+    "tag": "Lisää tunniste",
+    "snooze": "Torkuta",
+    "archive": "Arkistoi",
     "add": "Lisää",
     "dismissSuggestion": "Hylkää ehdotus",
     "hint": {
-      "file": "tiedosto",
-      "tag": "-tunniste",
-      "snooze": "torkku",
-      "archive": "arkisto",
+      "file": "siirrä",
+      "tag": "lisää tunniste",
+      "snooze": "torkuta",
+      "archive": "arkistoi",
       "deselect": "poista valinta"
     },
     "archiveDialog": {
-      "title": "{count, plural, one {Arkistoidaanko # kohde?} other {Arkistoidaanko # kohteet?}}",
+      "title": "{count, plural, one {Arkistoidaanko # kohde?} other {Arkistoidaanko # kohdetta?}}",
       "description": "Nämä kohteet arkistoidaan. Voit tarkastella arkistoituja kohteita myöhemmin.",
-      "confirm": "{count, plural, one {Arkistoi kohde #} other {Arkistoi # kohteet}}"
+      "confirm": "{count, plural, one {Arkistoi # kohde} other {Arkistoi # kohdetta}}"
     },
     "filePanel": {
-      "title": "{count, plural, one {Tiedosto # Tuote} other {Tiedosto # kohteet}}",
-      "itemsToFile": "Arkistoitavat kohteet",
-      "multipleNoteLinksUnavailable": "Huomautus: Linkkejä muihin muistiinpanoihin ei voi lisätä, kun arkistoidaan useita kohteita.",
-      "filing": "Arkistoidaan...",
-      "submit": "{count, plural, one {Tiedosto # kohde} other {Tiedosto # kohteet}}",
-      "macHint": "⌘⏎ arkistoida · Esc sulkea",
-      "ctrlHint": "Ctrl+Enter tiedostoon · Esc sulkeaksesi"
+      "title": "{count, plural, one {Siirrä # kohde} other {Siirrä # kohdetta}}",
+      "itemsToFile": "Siirrettävät kohteet",
+      "multipleNoteLinksUnavailable": "Huom.: Linkkejä muihin muistiinpanoihin ei voi lisätä, kun siirretään useita kohteita.",
+      "filing": "Siirretään…",
+      "submit": "{count, plural, one {Siirrä # kohde} other {Siirrä # kohdetta}}",
+      "macHint": "⌘⏎ siirrä · Esc sulje",
+      "ctrlHint": "Ctrl+Enter siirrä · Esc sulje"
     },
     "tagPopover": {
-      "title": "{count, plural, one {Tag # Tuote} other {Merkitse # tuotteet}}",
-      "placeholder": "Hae tunnisteita kirjoittamalla...",
-      "applying": "Haetaan...",
-      "apply": "{count, plural, one {Käytä #-kohteeseen} other {Käytä #-tuotteisiin}}"
+      "title": "{count, plural, one {Lisää tunnisteita # kohteeseen} other {Lisää tunnisteita # kohteeseen}}",
+      "placeholder": "Hae tunnisteita kirjoittamalla…",
+      "applying": "Lisätään…",
+      "apply": "{count, plural, one {Lisää # kohteeseen} other {Lisää # kohteeseen}}"
     }
   },
   "quickActions": {
-    "groupAria": "Nopeita toimia",
+    "groupAria": "Pikatoiminnot",
     "archiveItem": "Arkistoi kohde",
-    "archive": "Arkisto"
+    "archive": "Arkistoi"
   },
   "detail": {
-    "ariaLabel": "Tuotteen tiedot",
+    "ariaLabel": "Kohteen tiedot",
+    "resize": "Muuta paneelin kokoa",
     "closePanel": "Sulje paneeli",
-    "resizeFiling": "Muuta arkistointiosion kokoa",
+    "resizeFiling": "Muuta siirto-osion kokoa",
     "restore": "Palauta",
-    "restoreToInbox": "Palauta postilaatikkoon",
+    "restoreToInbox": "Palauta Saapuneisiin",
     "delete": "Poista",
     "deletePermanently": "Poista pysyvästi",
-    "archive": "Arkisto",
-    "file": "Tiedosto",
-    "fileToFolder": "Arkistoi kansioon {folder}",
-    "keyboardHint": "{modifier}⏎ tiedosto · 1-5 kansiota · Esc sulkea",
-    "voiceTitlePlaceholder": "Nimeä tämä äänimuistio...",
-    "fileTo": "Tiedosto kohteeseen",
-    "ai": "AI",
-    "selectFolder": "Valitse kansio",
-    "searchOrCreateFolder": "Hae tai luo /...",
-    "suggested": "Ehdotettu",
-    "notesRoot": "Huomautuksia",
-    "notesRootLabel": "Muistiinpanot (juuri)",
-    "createFolder": "Luo \"{name}\"",
-    "addTags": "Lisää tunnisteita...",
-    "linkToNote": "Linkki muistiinpanoon",
-    "linkNotesPlaceholder": "Linkin muistiinpanot...",
-    "searchNotesAria": "Hae linkitettävät muistiinpanot",
-    "linkedNotesAria": "Linkitetyt muistiinpanot",
-    "removeLinkTo": "Poista linkki {title}",
-    "notePlaceholder": "Kirjoita muistiinpanosi...",
-    "textPlaceholder": "Muokkaa kaapattua tekstiä...",
-    "linkANote": "Linkitä muistiinpano",
+    "archive": "Arkistoi",
+    "file": "Siirrä",
+    "fileToFolder": "Siirrä kansioon {folder}",
+    "keyboardHint": "{modifier}⏎ siirrä · 1–5 kansio · Esc sulje",
+    "voiceTitlePlaceholder": "Nimeä tämä äänimuistio…",
+    "titlePlaceholder": "Nimeä tämä kohde…",
+    "fileTo": "Siirrä",
+    "ai": "Tekoälyehdotukset",
     "match": {
-      "likely": "Todennäköinen osuma",
       "strong": "Vahva osuma",
+      "likely": "Todennäköinen osuma",
       "weak": "Heikko osuma"
     },
-    "resize": "Muuta paneelin kokoa",
-    "suggestedCount": "{count} ehdotettu"
+    "selectFolder": "Valitse kansio",
+    "searchOrCreateFolder": "Hae tai luo /-merkillä…",
+    "suggested": "Ehdotukset",
+    "notesRoot": "Muistiinpanot",
+    "notesRootLabel": "Muistiinpanot (juuri)",
+    "createFolder": "Luo ”{name}”",
+    "addTags": "Lisää tunnisteita…",
+    "linkToNote": "Linkitä muistiinpanoon",
+    "linkANote": "Linkitä muistiinpano",
+    "suggestedCount": "{count} ehdotettu",
+    "linkNotesPlaceholder": "Linkitä muistiinpanoja…",
+    "linkOrCreateNotePlaceholder": "Hae tai luo muistiinpano…",
+    "createNote": "Luo ”{title}”",
+    "pendingNote": "Uusi muistiinpano",
+    "searchNotesAria": "Hae linkitettäviä muistiinpanoja tai luo uusi",
+    "imageFilingModeLabel": "Kuva lisätään",
+    "imageFilingModeEmbed": "Upotettuna muistiinpanoon",
+    "imageFilingModeLink": "Tiedostona sivupalkissa",
+    "imageFilingModeRemember": "Älä kysy uudelleen",
+    "linkedNotesAria": "Linkitetyt muistiinpanot",
+    "removeLinkTo": "Poista linkki muistiinpanoon {title}",
+    "notePlaceholder": "Kirjoita muistiinpanosi…",
+    "textPlaceholder": "Muokkaa kirjattua tekstiä…"
+  },
+  "convert": {
+    "title": "Muunna",
+    "chooseType": "Muunna muotoon",
+    "note": "Muistiinpano",
+    "task": "Tehtävä",
+    "event": "Tapahtuma",
+    "reminder": "Muistutus",
+    "create": "Luo",
+    "addTask": "Lisää tehtävä",
+    "addEvent": "Lisää tapahtuma",
+    "setReminder": "Aseta muistutus",
+    "project": "Projekti",
+    "inboxProject": "Saapuneet",
+    "dueDate": "Eräpäivä",
+    "dueTime": "Erääntymisaika",
+    "priority": "Prioriteetti",
+    "priorityNone": "Ei mitään",
+    "priorityLow": "Matala",
+    "priorityMedium": "Keskitaso",
+    "priorityHigh": "Korkea",
+    "priorityUrgent": "Kiireellinen",
+    "date": "Päivämäärä",
+    "start": "Alkaa",
+    "end": "Päättyy",
+    "allDay": "Koko päivän",
+    "location": "Sijainti",
+    "remindAt": "Muistuta klo",
+    "time": "Aika",
+    "success": "Muunnettu: {target}",
+    "failed": "Muuntaminen epäonnistui: {error}"
   },
   "content": {
-    "capturedAt": "Kuvattu {date}",
-    "todayAt": "tänään {time}",
+    "capturedAt": "Kirjattu {date}",
+    "todayAt": "tänään klo {time}",
     "yesterdayAt": "eilen klo {time}",
-    "dateAt": "{date} osoitteessa {time}",
-    "words": "{count, plural, one {# sana} other {# sanat}}",
+    "dateAt": "{date} klo {time}",
+    "words": "{count, plural, one {# sana} other {# sanaa}}",
     "duration": "Kesto: {duration}",
     "dimensions": "Mitat",
     "format": "Muoto",
     "size": "Koko",
     "voiceMemo": "Äänimuistio",
-    "play": "Pelaa",
-    "pause": "Tauko",
-    "audioPosition": "Äänen sijainti",
-    "transcription": "Transkriptio",
-    "processing": "käsittelyä",
-    "pending": "vireillä",
+    "play": "Toista",
+    "pause": "Keskeytä",
+    "audioPosition": "Toistokohta",
+    "transcription": "Litterointi",
+    "processing": "käsitellään",
+    "pending": "odottaa",
     "failed": "epäonnistunut",
-    "copyTranscription": "Kopioi transkriptio",
-    "transcribingAudio": "Transkriptoidaan ääntä...",
-    "awaitingTranscription": "Odotetaan transkriptiota...",
-    "noTranscription": "Transkriptiota ei ole saatavilla",
+    "copyTranscription": "Kopioi litterointi",
+    "transcribingAudio": "Litteroidaan ääntä…",
+    "awaitingTranscription": "Odotetaan litterointia…",
+    "noTranscription": "Litterointia ei ole saatavilla",
     "failedPlayAudio": "Äänen toistaminen epäonnistui",
     "failedLoadAudio": "Äänen lataaminen epäonnistui",
     "video": "Video",
-    "unsupportedVideo": "Selaimesi ei tue videotunnistetta."
+    "unsupportedVideo": "Selaimesi ei tue videoelementtiä."
   },
   "reminder": {
     "dataUnavailable": "Muistutustiedot eivät ole saatavilla.",
     "triggered": "Muistutus aktivoitu",
-    "noteLabel": "Muistutushuomautus",
-    "source": "lähde",
-    "journalTitle": "Päiväkirja — {date}",
-    "noteFallback": "Huom",
+    "noteLabel": "Muistutuksen muistiinpano",
+    "source": "Lähde",
+    "journalTitle": "Päiväkirja – {date}",
+    "noteFallback": "Muistiinpano",
     "journalFallback": "Päiväkirja",
-    "highlighted": "Korostettu: \"{text}\"",
+    "taskFallback": "Tehtävä",
+    "highlighted": "Korostettu: ”{text}”",
     "viewed": "Katsottu",
-    "markViewed": "Merkitse katsotuksi",
+    "archive": "Arkistoi",
     "notYetViewed": "Ei vielä katsottu",
-    "snooze": "Torkku",
+    "snooze": "Torkuta",
     "presetInOneHour": "1 tunti",
     "presetTomorrow": "Huomenna",
     "presetNextWeek": "Ensi viikolla",
-    "custom": "Mukautettu...",
-    "archive": "Arkistoi",
-    "panelEmpty": "Ei tulevia muistutuksia.",
-    "panelPast": "Menneet",
+    "custom": "Mukautettu…",
     "panelUpcoming": "Tulossa",
-    "taskFallback": "Tehtävä",
-    "dateTime": {
-      "dateAt": "{date} klo {time}",
-      "dateCompact": "{date}, {time}",
-      "todayAt": "Tänään klo {time}",
-      "todayCompact": "Tänään, {time}",
-      "tomorrowAt": "Huomenna klo {time}",
-      "tomorrowCompact": "Huomenna, {time}"
-    },
+    "panelPast": "Menneet",
+    "panelEmpty": "Ei tulevia muistutuksia.",
     "presets": {
-      "anniversaryReminder": "Vuosipäivämuistutus",
-      "inHours": {
-        "label": "{count, plural, one {# tunnin kuluttua} other {# tunnin kuluttua}}"
+      "laterToday": {
+        "label": "Myöhemmin tänään",
+        "description": "{count, plural, one {# tunnin kuluttua} other {# tunnin kuluttua}}"
+      },
+      "tomorrow": {
+        "label": "Huomenna",
+        "description": "Huomenna klo 9.00"
+      },
+      "nextWeek": {
+        "label": "Ensi viikolla",
+        "description": "Maanantaina klo 9.00"
       },
       "inMinutes": {
         "label": "{count, plural, one {# minuutin kuluttua} other {# minuutin kuluttua}}"
       },
-      "inMonths": {
-        "label": "{count, plural, one {# kuukauden kuluttua} other {# kuukauden kuluttua}}"
+      "inHours": {
+        "label": "{count, plural, one {# tunnin kuluttua} other {# tunnin kuluttua}}"
       },
       "inWeeks": {
         "label": "{count, plural, one {# viikon kuluttua} other {# viikon kuluttua}}"
       },
+      "inMonths": {
+        "label": "{count, plural, one {# kuukauden kuluttua} other {# kuukauden kuluttua}}"
+      },
       "inYears": {
         "label": "{count, plural, one {# vuoden kuluttua} other {# vuoden kuluttua}}"
       },
-      "laterToday": {
-        "description": "{count, plural, one {# tunnin kuluttua} other {# tunnin kuluttua}}",
-        "label": "Myöhemmin tänään"
-      },
-      "monthlyReflection": "Kuukausittainen katsaus",
-      "nextWeek": {
-        "description": "Maanantaina klo 9.00",
-        "label": "Ensi viikolla"
-      },
-      "quarterlyReflection": "Neljännesvuosikatsaus",
-      "reviewInAWeek": "Katso uudelleen viikon kuluttua",
+      "tomorrowMorning": "Huomisaamuna",
       "sameDayNextMonth": "Sama päivä ensi kuussa",
-      "tomorrow": {
-        "description": "Huomenna klo 9.00",
-        "label": "Huomenna"
-      },
-      "tomorrowMorning": "Huomisaamuna"
+      "reviewInAWeek": "Käy läpi viikon kuluttua",
+      "monthlyReflection": "Kuukausittainen katsaus",
+      "quarterlyReflection": "Neljännesvuosikatsaus",
+      "anniversaryReminder": "Vuosipäivämuistutus"
+    },
+    "dateTime": {
+      "todayAt": "Tänään klo {time}",
+      "todayCompact": "Tänään, {time}",
+      "tomorrowAt": "Huomenna klo {time}",
+      "tomorrowCompact": "Huomenna, {time}",
+      "dateAt": "{date} klo {time}",
+      "dateCompact": "{date}, {time}"
     }
   },
   "insights": {
-    "captureActivity": "Sieppausaktiivisuus",
+    "captureActivity": "Kirjausaktiivisuus",
     "byType": "Tyypin mukaan",
-    "recentFilings": "Viimeaikaiset hakemukset",
-    "captured": "Vangittu",
+    "recentFilings": "Viimeisimmät siirrot",
+    "captured": "Kirjattu",
     "capturedThisWeek": "+{count} tällä viikolla",
     "processed": "Käsitelty",
-    "processRate": "{rate}% korko",
+    "processRate": "osuus {rate} %",
     "stale": "Vanhentunut",
     "needsAttention": "tarvitsee huomiota",
     "allClear": "kaikki selvä",
-    "avgTimeToFile": "Keskimääräinen arkistointiaika",
-    "noCapturesYet": "Ei vielä kaappauksia",
-    "captures": "{count, plural, one {# sieppaus} other {# kaappaa}}",
+    "avgTimeToFile": "Keskimääräinen siirtoaika",
+    "noCapturesYet": "Ei vielä kirjauksia",
+    "captures": "{count, plural, one {# kirjaus} other {# kirjausta}}",
     "peak": "Huippu: {day} {start}–{end}",
     "convertedToTask": "Muunnettu tehtäväksi",
     "now": "nyt",
-    "timeAgoMinutes": "{count}m sitten",
-    "timeAgoHours": "{count}h sitten",
-    "timeAgoDays": "{count}p sitten"
+    "timeAgoMinutes": "{count} min sitten",
+    "timeAgoHours": "{count} h sitten",
+    "timeAgoDays": "{count} pv sitten"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
-      "aiDetected": "AI havaitsi: \"",
+      "aiDetected": "Tekoäly havaitsi: \"",
       "addToSelection": "Lisää valintaan",
       "dismiss": "Hylkää"
     },
     "componentsBulkDeleteConfirmationDialog": {
       "delete": "Poista ",
       "item": "kohde",
-      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Nämä kohteet poistetaan postilaatikostasi. Voit peruuttaa tämän toiminnon heti sen jälkeen."
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Nämä kohteet poistetaan Saapuneista. Voit kumota poiston heti sen jälkeen."
     },
     "componentsCaptureInput": {
-      "captureInput": "Kaappaa sisääntulo",
-      "attachFile": "Liitä tiedosto",
-      "attachFileImagesAudioVideoPdf": "Liitä tiedosto (kuvat, ääni, video, PDF)",
+      "captureInput": "Pikakirjauskenttä",
+      "attachFile": "Lisää liite",
+      "attachFileImagesAudioVideoPdf": "Lisää liite (kuvat, ääni, video, PDF)",
       "recordVoiceMemo": "Nauhoita äänimuistio",
       "recordVoiceMemo2": "Nauhoita äänimuistio",
-      "captureAnyway": "Kaappaa joka tapauksessa",
-      "focusShortcut": "Kohdista tallennussyöttöön",
-      "q": "Q",
-      "captureLink": "Tallenna linkki",
-      "captureNote": "Tallenna muistiinpano",
-      "placeholder": "Pikatallennus — liitä linkki tai kirjaa ajatus…",
-      "duplicateNotice": "Jo tallennettu: ”{title}”"
+      "captureAnyway": "Kirjaa silti",
+      "placeholder": "Pikakirjaus – liitä linkki tai kirjoita ajatus…",
+      "captureLink": "Kirjaa linkki",
+      "captureNote": "Kirjaa muistiinpano",
+      "duplicateNotice": "Jo kirjattu: ”{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Valitse kansio",
-      "searchFolders": "Hae kansioita...",
+      "searchFolders": "Hae kansioita…",
       "searchFolders2": "Hae kansioita",
       "searchResults": "Hakutulokset",
       "create": "Luo \"",
-      "suggested": "Ehdotettu",
+      "suggested": "Ehdotukset",
       "recent": "Viimeaikaiset",
       "allFolders": "Kaikki kansiot",
       "allFolders2": "Kaikki kansiot"
     },
     "componentsFilingLinkSearch": {
-      "linkTo": "Linkki kohteeseen",
+      "linkTo": "Linkitä muistiinpanoihin",
       "optional": "valinnainen)",
-      "searchNotesToLink": "Hae linkitettävät muistiinpanot...",
-      "searchNotesToLink2": "Hae linkitettävät muistiinpanot",
-      "searching": "Haetaan...",
+      "searchNotesToLink": "Hae linkitettäviä muistiinpanoja…",
+      "searchNotesToLink2": "Hae linkitettäviä muistiinpanoja",
+      "searching": "Haetaan…",
       "noNotesFound": "Muistiinpanoja ei löytynyt",
       "linkedNotes": "Linkitetyt muistiinpanot",
-      "noLinksAdded": "Ei lisätty linkkejä"
+      "noLinksAdded": "Ei lisättyjä linkkejä"
     },
     "componentsFilingTagAutocomplete": {
-      "suggested": "Ehdotettu",
-      "ai": "AI",
+      "suggested": "Ehdotukset",
+      "ai": "Tekoäly",
       "create": "Luo",
       "tags": "Tunnisteet",
       "selectedTags": "Valitut tunnisteet",
@@ -396,82 +404,76 @@
     "componentsFilingTagInput": {
       "tags": "Tunnisteet",
       "optional": "valinnainen)",
-      "addTags": "Lisää tunnisteita...",
+      "addTags": "Lisää tunnisteita…",
       "addTags2": "Lisää tunnisteita",
       "selectedTags": "Valitut tunnisteet",
-      "suggested": "Ehdotettu"
+      "suggested": "Ehdotukset"
     },
     "componentsInboxInboxCaptureHeatmap": {
-      "captureActivity": "Sieppausaktiivisuus"
+      "captureActivity": "Kirjausaktiivisuus"
     },
     "componentsInboxInboxFilingHistory": {
-      "noItemsFiledYet": "Kohteita ei ole vielä tallennettu",
-      "recentlyFiled": "Äskettäin tehty",
-      "latestActionsOnYourInbox": "Viimeisimmät toimet postilaatikossasi",
+      "noItemsFiledYet": "Kohteita ei ole vielä siirretty",
+      "recentlyFiled": "Viimeksi siirretyt",
+      "latestActionsOnYourInbox": "Viimeisimmät toimet Saapuneissa",
       "linked": "Linkitetty"
     },
     "componentsInboxInboxInsightsView": {
-      "loadingInsights": "Ladataan tietoja..."
+      "loadingInsights": "Ladataan tilastoja…"
     },
     "componentsInboxInboxTypeDistribution": {
       "noItemTypesToDisplay": "Ei näytettävää kohdetyyppiä",
-      "itemTypes": "Tuotetyypit",
-      "distributionOfContentFormats": "Sisältömuotojen jakelu"
-    },
-    "componentsInboxTriageItemCard": {
-      "captured": "Vangittu "
+      "itemTypes": "Kohdetyypit",
+      "distributionOfContentFormats": "Sisältömuotojen jakauma"
     },
     "componentsInboxDetailContentSection": {
-      "x": "x "
+      "x": "× "
     },
     "componentsInboxDetailInboxContentEditor": {
-      "contentEditor": "Sisällön editori"
-    },
-    "componentsInboxDetailReminderDetail": {
-      "middot": "keskipiste; "
+      "contentEditor": "Sisältöeditori"
     },
     "componentsInboxDetailTweetCard": {
-      "tweetUnavailable": "Tweet ei ole saatavilla",
+      "tweetUnavailable": "Twiitti ei ole saatavilla",
       "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Tämä twiitti on ehkä poistettu tai se on peräisin yksityiseltä tililtä.",
       "openOnXCom": "Avaa osoitteessa x.com",
-      "views": "näkymät",
+      "views": "katselukertaa",
       "xCom": "x.com",
       "viewOnX": "Katso X:stä"
     },
     "componentsInlineQuickFile": {
-      "typeFolderName": "Kirjoita kansion nimi...",
-      "quickFileFolderSearch": "Nopea tiedostokansiohaku"
+      "typeFolderName": "Kirjoita kansion nimi…",
+      "quickFileFolderSearch": "Pikasiirron kansiohaku"
     },
     "componentsQuickCaptureFooter": {
       "close": "sulje",
-      "capture": "vangita"
+      "capture": "kirjaa"
     },
     "componentsQuickCaptureImagePreview": {
       "removeAttachment": "Poista liite"
     },
     "componentsQuickCaptureInput": {
-      "quickCaptureInput": "Nopea sieppaussyöttö",
+      "quickCaptureInput": "Pikakirjauskenttä",
       "recordVoiceMemo": "Nauhoita äänimuistio",
-      "attachFile": "Liitä tiedosto"
+      "attachFile": "Lisää liite"
     },
     "componentsQuickCaptureLinkPreview": {
       "link": "LINKKI"
     },
     "componentsQuickCaptureStates": {
-      "captured": "Vangittu",
-      "dismissError": "Hylkää virhe",
-      "alreadyCaptured": "Jo vangittu",
-      "captureAnyway": "Kaappaa joka tapauksessa",
+      "captured": "Kirjattu",
+      "dismissError": "Sulje virheilmoitus",
+      "alreadyCaptured": "Jo kirjattu",
+      "captureAnyway": "Kirjaa silti",
       "close": "Sulje",
       "duplicateMeta": "”{title}” · {date}"
     },
     "componentsQuickCapture": {
-      "dropToCapture": "Kuvaa pudottamalla",
-      "capturing": "Tallennetaan..."
+      "dropToCapture": "Kirjaa pudottamalla",
+      "capturing": "Kirjataan…"
     },
     "componentsQuickFileDropdown": {
       "folderSuggestions": "Kansioehdotukset",
-      "noFoldersMatch": "Yksikään kansio ei vastaa \""
+      "noFoldersMatch": "Yksikään kansio ei vastaa hakua \""
     },
     "componentsReminderReminderPicker": {
       "remind": "Muistuta",
@@ -480,98 +482,74 @@
       "addANoteOptional": "Lisää muistiinpano (valinnainen)",
       "backToPresets": "Takaisin esiasetuksiin",
       "time": "Aika",
-      "noteOptional": "Huomautus (valinnainen)",
+      "noteOptional": "Muistiinpano (valinnainen)",
       "whyAreYouSettingThisReminder": "Miksi asetat tämän muistutuksen?",
-      "deleteReminder": "Poista muistutus",
+      "set": "Aseta",
       "editReminder": "Muokkaa muistutusta",
+      "deleteReminder": "Poista muistutus",
       "save": "Tallenna",
-      "set": "Aseta"
+      "setReminder": "Aseta muistutus",
+      "setting": "Asetetaan…"
     },
     "componentsSnoozeSnoozePicker": {
-      "snooze": "Torkku",
-      "snooze2": "Torkku",
+      "snooze": "Torkuta",
+      "snooze2": "Torkuta",
       "pickDateTime": "Valitse päivämäärä ja aika",
       "pickDateTime2": "Valitse päivämäärä ja aika",
       "selectWhenToBeRemindedAboutThisItem": "Valitse, milloin haluat saada muistutuksen tästä kohteesta",
-      "snooze3": "Torkku",
-      "snooze4": "Torkku",
-      "snooze5": "Torkku"
+      "snooze3": "Torkuta",
+      "snooze4": "Torkuta",
+      "snooze5": "Torkuta"
     },
     "componentsSocialCard": {
-      "loadingPost": "Ladataan viestiä...",
-      "failedToLoad": "Lataus epäonnistui",
-      "loadingPostContent": "Ladataan viestin sisältöä...",
-      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Viestin sisällön lataaminen epäonnistui. Viesti voi olla yksityinen tai poistettu.",
-      "viewOn": "Katso päälle "
+      "loadingPost": "Ladataan julkaisua…",
+      "failedToLoad": "Lataaminen epäonnistui",
+      "loadingPostContent": "Ladataan julkaisun sisältöä…",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Julkaisun sisällön lataaminen epäonnistui. Julkaisu voi olla yksityinen tai poistettu.",
+      "viewOn": "Näytä palvelussa "
     },
     "componentsVoiceRecorder": {
       "startVoiceRecording": "Aloita äänen tallennus",
-      "requestingMicrophoneAccess": "Pyydetään mikrofonin käyttöoikeutta...",
+      "requestingMicrophoneAccess": "Pyydetään mikrofonin käyttöoikeutta…",
       "settings": "Asetukset",
-      "processing": "Käsitellään...",
+      "processing": "Käsitellään…",
       "cancelRecording": "Peruuta tallennus",
       "cancel": "Peruuta",
       "stopRecording": "Lopeta tallennus",
-      "stop": "Pysähdy",
-      "enableMicInSettings": "Salli mikrofonin käyttö järjestelmäasetuksissa ja yritä uudelleen.",
-      "failedToStart": "Tallennuksen aloittaminen epäonnistui",
+      "stop": "Lopeta",
+      "recordingError": "Tallennuksessa tapahtui virhe",
       "microphoneAccessDenied": "Mikrofonin käyttö estetty",
       "noMicrophoneFound": "Mikrofonia ei löytynyt",
-      "recordingError": "Tallennuksessa tapahtui virhe"
+      "failedToStart": "Tallennuksen aloittaminen epäonnistui",
+      "enableMicInSettings": "Salli mikrofonin käyttö järjestelmäasetuksissa ja yritä uudelleen."
     }
   },
   "phaseI": {
     "errors": {
-      "failedToCaptureLink": "Linkin kaappaus epäonnistui",
-      "failedToCaptureNote": "Muistiinpano epäonnistui",
-      "captureFailed": "Sieppaus epäonnistui",
-      "failedToCaptureVoiceMemo": "Äänimuistion kaappaaminen epäonnistui",
-      "voiceCaptureFailed": "Äänenkaappaus epäonnistui",
-      "failedToCaptureFile": "Tiedoston sieppaus epäonnistui",
-      "fileCaptureFailed": "Tiedoston sieppaus epäonnistui",
-      "failedToCaptureAudio": "Äänen sieppaus epäonnistui",
-      "failedToCaptureVoice": "Äänen sieppaus epäonnistui",
-      "failedToLoadInboxPreferences": "Saapuneet-asetusten lataaminen epäonnistui",
-      "failedToUpdateInboxPreferences": "Saapuneet-asetusten päivittäminen epäonnistui"
+      "failedToCaptureLink": "Linkin kirjaaminen epäonnistui",
+      "failedToCaptureNote": "Muistiinpanon kirjaaminen epäonnistui",
+      "captureFailed": "Kirjaaminen epäonnistui",
+      "failedToCaptureVoiceMemo": "Äänimuistion kirjaaminen epäonnistui",
+      "voiceCaptureFailed": "Äänen kirjaaminen epäonnistui",
+      "failedToCaptureFile": "Tiedoston kirjaaminen epäonnistui",
+      "fileCaptureFailed": "Tiedoston kirjaaminen epäonnistui",
+      "failedToCaptureAudio": "Äänen kirjaaminen epäonnistui",
+      "failedToCaptureVoice": "Äänen kirjaaminen epäonnistui",
+      "failedToLoadInboxPreferences": "Saapuneiden asetusten lataaminen epäonnistui",
+      "failedToUpdateInboxPreferences": "Saapuneiden asetusten päivittäminen epäonnistui"
     },
     "toasts": {
-      "inboxRefreshed": "Postilaatikko päivitetty"
+      "inboxRefreshed": "Saapuneet päivitetty"
     }
   },
-  "convert": {
-    "addEvent": "Lisää tapahtuma",
-    "addTask": "Lisää tehtävä",
-    "allDay": "Koko päivä",
-    "chooseType": "Muunna muotoon",
-    "create": "Luo",
-    "date": "Päivämäärä",
-    "dueDate": "Eräpäivä",
-    "dueTime": "Eräaika",
-    "end": "Päättyy",
-    "event": "Tapahtuma",
-    "failed": "Muunnos epäonnistui: {error}",
-    "inboxProject": "Saapuneet",
-    "location": "Sijainti",
-    "note": "Muistiinpano",
-    "priority": "Prioriteetti",
-    "priorityHigh": "Korkea",
-    "priorityLow": "Matala",
-    "priorityMedium": "Keskitaso",
-    "priorityNone": "Ei mitään",
-    "priorityUrgent": "Kiireellinen",
-    "project": "Projekti",
-    "remindAt": "Muistuta klo",
-    "reminder": "Muistutus",
-    "setReminder": "Aseta muistutus",
-    "start": "Alkaa",
-    "success": "Muunnettu muotoon {target}",
-    "task": "Tehtävä",
-    "time": "Aika",
-    "title": "Muunna"
-  },
   "reviewNudge": {
-    "action": "Avaa saapuneet",
-    "description": "Käy tämän päivän tallennukset läpi yhdellä rauhallisella kierroksella.",
-    "title": "{count, plural, one {Aika käydä läpi # kohde} other {Aika käydä läpi # kohdetta}}"
+    "title": "{count, plural, one {Aika käydä läpi # kohde} other {Aika käydä läpi # kohdetta}}",
+    "description": "Käy tämän päivän kirjaukset läpi yhdellä rauhallisella kierroksella.",
+    "action": "Avaa Saapuneet"
+  },
+  "snoozeDue": {
+    "notificationTitle": "{count, plural, one {# torkutettu kohde} other {# torkutettua kohdetta}}",
+    "notificationBody": "{count, plural, one {Torkutettu kohteesi odottaa läpikäyntiä} other {Torkutetut kohteesi odottavat läpikäyntiä}}",
+    "toast": "{count, plural, =1 {”{itemTitle}” palasi torkutuksesta} one {# torkutettu kohde palasi} other {# torkutettua kohdetta palasi}}"
   }
 }

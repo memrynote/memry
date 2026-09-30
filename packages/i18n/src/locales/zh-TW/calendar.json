@@ -33,8 +33,8 @@
     "event-types": "項目類型",
     "google-calendars": "Google 行事曆",
     "refresh-google-calendars": "重新整理 Google 行事曆",
-    "not-syncing": "未同步 · 勾選以開啟",
-    "enable-source-failed": "無法開啟該行事曆。",
+    "not-syncing": "未同步 · 勾選以啟用",
+    "enable-source-failed": "無法啟用這個行事曆。",
     "provider-calendars": {
       "ics": "已訂閱的行事曆",
       "caldav": "CalDAV 行事曆",
@@ -204,7 +204,7 @@
     "close": "關閉"
   },
   "task-popover": {
-    "title-fallback": "任務詳細資訊",
+    "title-fallback": "任務詳細資料",
     "kind": "任務",
     "open": "開啟",
     "complete": "完成",

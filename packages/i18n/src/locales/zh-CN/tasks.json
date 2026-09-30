@@ -18,7 +18,7 @@
       "searchProjects": "搜索项目…",
       "editProject": "编辑 {name}",
       "unstarSavedFilter": "取消星标 {name}",
-      "openByDefault": "默认在 {name} 中打开任务",
+      "openByDefault": "默认在任务页面打开 {name}",
       "defaultProject": "默认项目",
       "setAsDefault": "设为默认"
     }
@@ -43,7 +43,7 @@
     "reminder": "提醒",
     "project": "项目",
     "repeat": "重复",
-    "createAnother": "创建另一个",
+    "createAnother": "继续创建",
     "delete": "删除任务",
     "created": "创建于 {date}",
     "priorityLabels": {
@@ -344,8 +344,8 @@
       "task3": "个任务"
     },
     "componentsTasksBulkActionsBulkDueDatePicker": {
-      "setDueDateFor": "设置截止日期：",
-      "task": "个任务",
+      "setDueDateFor": "为 ",
+      "task": "个任务设置截止日期",
       "selectADateToSetAsTheDueDateForAllSelectedTasks": "选择一个日期作为所有选定任务的截止日期。",
       "alsoSetTime": "同时设置时间",
       "cancel": "取消",
@@ -358,7 +358,7 @@
       "selectColor": "选择颜色"
     },
     "componentsTasksCustomRepeatDialog": {
-      "onTheseDays": "在以下日期",
+      "onTheseDays": "在以下几天",
       "repeatOn": "重复于",
       "day": "每月第",
       "ofTheMonth": "天",
@@ -539,7 +539,7 @@
       "youReEditingARepeatingTaskApplyChangesTo": "你正在编辑重复任务。将更改应用于：",
       "onlyThisOccurrence": "仅此一次",
       "onlyFutureTasksUnchanged": "当天——后续任务不变",
-      "thisAndAllFutureOccurrences": "此任务及所有未来的任务",
+      "thisAndAllFutureOccurrences": "此任务及所有后续任务",
       "andBeyond": "及之后的任务",
       "cancel": "取消",
       "continue": "继续"
@@ -567,7 +567,7 @@
       "due": "截止",
       "dueDate": "截止日期",
       "search": "搜索",
-      "clearAll": "清除所有"
+      "clearAll": "全部清除"
     },
     "componentsTasksFiltersDueDateFilter": {
       "filterByDueDate": "按截止日期筛选",
@@ -785,7 +785,7 @@
       "completedTitle": "暂无已完成的任务",
       "completedDescription": "已完成的任务会显示在这里",
       "projectTitle": "此项目中还没有任务",
-      "projectDescription": "添加一个任务来开始",
+      "projectDescription": "添加一个任务即可开始",
       "projectTitleNamed": "{name} 中还没有任务"
     },
     "componentsTasksTaskIcons": {

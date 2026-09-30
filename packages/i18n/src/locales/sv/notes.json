@@ -25,7 +25,7 @@
       "willSync": "Anteckningen synkroniseras nu till molnet",
       "renameFailed": "Det gick inte att byta namn på anteckningen",
       "titleRequired": "Anteckningen måste ha en titel",
-      "toggleLocalOnlyFailed": "Det gick inte att ändra inställningen endast lokal",
+      "toggleLocalOnlyFailed": "Det gick inte att ändra om anteckningen sparas endast lokalt",
       "toggleFullWidthFailed": "Det gick inte att ändra sidbredden",
       "pathCopied": "Sökväg kopierad",
       "copyPathFailed": "Det gick inte att kopiera sökvägen",
@@ -286,7 +286,7 @@
     "viewBlock": {
       "title": "Vy",
       "group": "Infoga",
-      "subtext": "En levande lista med anteckningar från en mapp, en tagg eller hela valvet",
+      "subtext": "En dynamisk lista med anteckningar från en mapp, en tagg eller hela valvet",
       "sourceMenu": "Vad vyn visar",
       "chooseSource": "Välj vad som ska visas",
       "sourceVault": "Alla anteckningar",
@@ -411,7 +411,7 @@
       },
       "placeholder": {
         "image": "Sök bilder eller ladda upp en ny…",
-        "media": "Sök media eller ladda upp nytt…",
+        "media": "Sök media eller ladda upp en ny fil…",
         "pdf": "Sök PDF-filer eller ladda upp en ny…",
         "html": "Sök HTML-filer eller ladda upp en ny…",
         "file": "Sök bilagor eller ladda upp en ny…"
@@ -425,7 +425,7 @@
       },
       "empty": {
         "image": "Inga bilder i valvet än.",
-        "media": "Ingen media i valvet än.",
+        "media": "Inga mediefiler i valvet än.",
         "pdf": "Inga PDF-filer i valvet än.",
         "html": "Inga HTML-filer i valvet än.",
         "file": "Inga bilagor i valvet än."
@@ -568,13 +568,13 @@
     "more": "{count} till"
   },
   "canvasLinks": {
-    "connectedOn": "Kopplad i {canvas}",
+    "connectedOn": "Kopplad på {canvas}",
     "untitledCanvas": "Namnlös canvas"
   },
   "similarNotes": {
     "summary": "{count, plural, one {# liknande anteckning} other {# liknande anteckningar}}",
     "sectionAria": "Liknande anteckningar",
-    "hint": "Anteckningar som liknar den här och som inte är länkade till den än. Hittade på den här enheten med lokala inbäddningar.",
+    "hint": "Anteckningar som liknar den här och som inte är länkade till den än. De hittas med lokala inbäddningar på den här enheten.",
     "addLink": "Länka från den här anteckningen",
     "addLinkAria": "Länka {title} från den här anteckningen",
     "linked": "Länk till {title} tillagd",
@@ -811,7 +811,7 @@
     "title": "Exportera anteckning",
     "description": "Exportera ”{title}” till en fil",
     "format": "Format",
-    "pdfDescription": "Tryckvänligt dokument",
+    "pdfDescription": "Utskriftsklart dokument",
     "htmlDescription": "Webbfärdig fil",
     "pageSize": "Sidstorlek",
     "selectPageSize": "Välj sidstorlek",
@@ -920,7 +920,7 @@
       "filter": "Filter",
       "filters": "Filter",
       "clearAll": "Rensa allt",
-      "noFiltersApplied": "Inga filter applicerade",
+      "noFiltersApplied": "Inga filter används",
       "addFiltersToNarrowDownYourNotes": "Lägg till filter för att begränsa dina anteckningar",
       "match": "Matcha",
       "allAnd": "Alla (OCH)",
@@ -937,7 +937,7 @@
       "lockedConditionHint": "Det här villkoret definierar den aktuella vyn och kan inte tas bort här."
     },
     "componentsFolderViewFilterRow": {
-      "builtIn": "Inbyggd",
+      "builtIn": "Inbyggda",
       "properties": "Egenskaper",
       "placeholderProperty": "Egenskap",
       "placeholderOperator": "Operator",
@@ -965,7 +965,7 @@
       "expression": "Uttryck",
       "available": "Tillgängliga: ",
       "preview": "Förhandsvisning",
-      "fixExpressionErrorsToSeePreview": "Åtgärda uttrycksfel för att se förhandsgranskning",
+      "fixExpressionErrorsToSeePreview": "Åtgärda felen i uttrycket för att se förhandsvisningen",
       "usingNote": "Använder anteckning: ”",
       "cancel": "Avbryt",
       "namePlaceholder": "days_until_due",
@@ -975,7 +975,7 @@
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Rensa gruppering",
       "searchProperties": "Sök egenskaper…",
-      "builtIn": "Inbyggd",
+      "builtIn": "Inbyggda",
       "properties": "Egenskaper",
       "noGroupablePropertiesFound": "Inga grupperbara egenskaper hittades",
       "sortDirection": "Sorteringsriktning",
@@ -993,7 +993,7 @@
       "searchFolders": "Sök mappar…",
       "loadingFolders": "Läser in mappar…",
       "suggested": "FÖRESLAGNA",
-      "bestMatch": "Bästa matchning",
+      "bestMatch": "Bästa träff",
       "current": "nuvarande)",
       "allFolders": "ALLA MAPPAR",
       "noFoldersMatch": "Inga mappar matchar ”",
@@ -1227,7 +1227,7 @@
       "clearSort": "Rensa sortering",
       "sort": "Sortera",
       "searchProperties": "Sök egenskaper…",
-      "builtIn": "Inbyggd",
+      "builtIn": "Inbyggda",
       "properties": "Egenskaper",
       "noSortablePropertiesFound": "Inga sorterbara egenskaper hittades",
       "sortDirection": "Sorteringsriktning"
@@ -1276,7 +1276,7 @@
       "failedToReorderProperties": "Det gick inte att ändra ordning på egenskaperna",
       "cannotAddTagThisNoteWasDeleted": "Det går inte att lägga till taggen – anteckningen har raderats",
       "cannotRemoveTagThisNoteWasDeleted": "Det går inte att ta bort taggen – anteckningen har raderats",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "Det går inte att ändra endast lokal – anteckningen har raderats"
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Det går inte att ändra om anteckningen sparas endast lokalt – den har raderats"
     }
   },
   "bulkActions": {
@@ -1289,7 +1289,7 @@
     "export": "Exportera",
     "delete": "Radera",
     "clearAria": "Rensa urval",
-    "copiedLinks": "Kopierade {count, plural, one {# länk} other {# länkar}}",
+    "copiedLinks": "{count, plural, one {# länk kopierad} other {# länkar kopierade}}",
     "setIcon": "Ställ in ikon",
     "iconUpdated": "{count, plural, one {Ikon uppdaterad på # anteckning} other {Ikon uppdaterad på # anteckningar}}"
   },

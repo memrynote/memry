@@ -20,8 +20,8 @@
   "entity": {
     "note": "anteckning",
     "notes": "anteckningar",
-    "journal": "dagbok",
-    "journals": "dagböcker",
+    "journal": "dagboksinlägg",
+    "journals": "dagboksinlägg",
     "task": "uppgift",
     "tasks": "uppgifter",
     "project": "projekt",
@@ -56,7 +56,7 @@
   },
   "filter": {
     "notes": "Anteckningar",
-    "journals": "Dagböcker",
+    "journals": "Dagboksinlägg",
     "tasks": "Uppgifter",
     "projects": "Projekt",
     "tags": "Taggar",
@@ -103,14 +103,14 @@
     "pinned-to": "Fäst: {title}"
   },
   "edit": {
-    "linked": "Länkade {source} till {target} i ”{property}”",
-    "unlinked": "Tog bort länken från {source} till {target}",
+    "linked": "{source} länkades till {target} i ”{property}”",
+    "unlinked": "Länken från {source} till {target} togs bort",
     "already-linked": "{source} länkar redan till {target}",
     "property-conflict": "”{property}” i den här anteckningen är inte en relationsegenskap, så länken lades inte till",
     "link-unsupported": "Länkar kan bara skapas mellan anteckningar",
     "link-failed": "Det gick inte att lägga till länken",
     "unlink-failed": "Det gick inte att ta bort länken",
-    "tag-added": "Lade till #{tag} i {note}",
+    "tag-added": "#{tag} lades till i {note}",
     "tag-exists": "Anteckningen har redan #{tag}",
     "tag-failed": "Det gick inte att lägga till taggen",
     "undo-failed": "Det gick inte att ångra ändringen"

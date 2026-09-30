@@ -277,11 +277,11 @@
     "snooze": "Adiar",
     "presetInOneHour": "1 hora",
     "presetTomorrow": "Amanhã",
-    "presetNextWeek": "Semana que vem",
+    "presetNextWeek": "Próxima semana",
     "custom": "Personalizado…",
     "panelUpcoming": "Próximos",
     "panelPast": "Passados",
-    "panelEmpty": "Nenhum próximo lembrete.",
+    "panelEmpty": "Não há próximos lembretes.",
     "presets": {
       "laterToday": {
         "label": "Mais tarde hoje",
@@ -364,7 +364,7 @@
       "attachFileImagesAudioVideoPdf": "Anexar arquivo (imagens, áudio, vídeo, PDF)",
       "recordVoiceMemo": "Gravar áudio",
       "recordVoiceMemo2": "Gravar áudio",
-      "captureAnyway": "Capturar de qualquer maneira",
+      "captureAnyway": "Capturar mesmo assim",
       "placeholder": "Captura rápida — cole um link, anote uma ideia…",
       "captureLink": "Capturar link",
       "captureNote": "Capturar nota",
@@ -463,7 +463,7 @@
       "captured": "Capturado",
       "dismissError": "Ignorar erro",
       "alreadyCaptured": "Já capturado",
-      "captureAnyway": "Capturar de qualquer maneira",
+      "captureAnyway": "Capturar mesmo assim",
       "close": "Fechar",
       "duplicateMeta": "“{title}” · {date}"
     },

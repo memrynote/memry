@@ -66,7 +66,7 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "Muokkaushistoriaa ei säilytetä tällä laitteella",
-    "persistenceDegradedBody": "Muistiinpanosi ovat turvassa – ne ovat holvissasi tavallisina tiedostoina, ja ne avautuvat ja tallentuvat edelleen normaalisti. Vain tämän laitteen paikallinen muokkaushistoria ja yhdistämistila ovat pelkästään muistissa, joten ne alkavat alusta aina, kun memrynote avataan."
+    "persistenceDegradedBody": "Muistiinpanosi ovat turvassa – ne ovat holvissasi tavallisina tiedostoina, ja ne avautuvat ja tallentuvat edelleen normaalisti. Vain tämän laitteen paikallista muokkaushistoriaa ja yhdistämistilaa pidetään muistissa, joten ne alkavat alusta aina, kun memrynote avataan."
   },
   "encryption": {
     "failed": "Tietojen salaaminen epäonnistui. Avaimesi on ehkä luotava uudelleen.",
@@ -186,7 +186,7 @@
     "exists": "Tässä sijainnissa on jo samanniminen taulukansio.",
     "descendant": "Taulukansiota ei voi siirtää sen omaan alikansioon.",
     "moveFailed": "Taulukansion siirtäminen epäonnistui. Se voi olla auki toisessa sovelluksessa.",
-    "depth": "Taulukansioita ei voi sisäkkäistää syvemmälle.",
+    "depth": "Taulukansioita ei voi sijoittaa sisäkkäin tätä syvemmälle.",
     "invalidName": "Anna taulukansiolle nimi."
   },
   "folder": {

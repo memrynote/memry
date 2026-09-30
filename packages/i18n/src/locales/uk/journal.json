@@ -99,7 +99,7 @@
       "morning": "Доброго ранку",
       "afternoon": "Доброго дня",
       "evening": "Доброго вечора",
-      "night": "На добраніч"
+      "night": "Доброї ночі"
     },
     "allDay": "Цілий день"
   },
@@ -116,7 +116,7 @@
     "goToYearView": "Перейти до вигляду року"
   },
   "aria": {
-    "moreOptions": "Більше опцій",
+    "moreOptions": "Інші параметри",
     "documentStatistics": "Статистика документа",
     "dayContext": "Контекст дня: завдання та розклад",
     "scheduleEvents": "Події розкладу",
@@ -124,7 +124,7 @@
     "notesCreatedToday": "Нотаток створено сьогодні: {count}"
   },
   "empty": {
-    "noEntry": "Записів немає",
+    "noEntry": "Запису немає",
     "noDaysInMonth": "У цьому місяці немає днів",
     "noEventsScheduled": "Немає запланованих подій",
     "noEventsScheduledToday": "Сьогодні немає запланованих подій",
@@ -133,7 +133,7 @@
     "noTasksDueToday": "Немає завдань із терміном на сьогодні",
     "noTasksWereDue": "Не було завдань із терміном",
     "noNotesToday": "Сьогодні нотатки не створювались",
-    "startDocumenting": "Почніть документувати свої думки та ідеї"
+    "startDocumenting": "Почніть записувати свої думки та ідеї"
   },
   "ai": {
     "loading": "Аналіз запису…",
@@ -160,7 +160,7 @@
     "moreConnections_plural": "+ ще {count, plural, one {# зв’язок} few {# зв’язки} many {# зв’язків} other {# зв’язку}}",
     "moreNotes": "+ ще {count} нотатка",
     "moreNotes_plural": "+ ще {count, plural, one {# нотатка} few {# нотатки} many {# нотаток} other {# нотатки}}",
-    "daysWithEntries": "дні з записами",
+    "daysWithEntries": "днів із записами",
     "charactersWritten": "написано символів",
     "words": "слів: {count}",
     "characters": "символів: {count}",

@@ -177,7 +177,7 @@
     "listGoogleCalendarsFailed": "Google 캘린더 목록을 가져오지 못했습니다.",
     "setDefaultGoogleCalendarFailed": "기본 Google 캘린더를 설정하지 못했습니다.",
     "retryGoogleSourceSyncFailed": "Google Calendar 소스 동기화를 다시 시도하지 못했습니다.",
-    "promoteExternalEventFailed": "외부 캘린더 일정을 승격하지 못했습니다.",
+    "promoteExternalEventFailed": "외부 캘린더 일정의 연결된 복사본을 만들지 못했습니다.",
     "onlyCalendarSourcesRetryable": "캘린더 소스만 다시 시도할 수 있습니다.",
     "invalidProviderSettings": "캘린더 제공자 설정이 잘못되었습니다.",
     "getExternalEventFailed": "이 일정을 불러오지 못했습니다. 캘린더에는 그대로 있으니 다시 열어 보세요."

@@ -46,7 +46,7 @@
     "corrupted": "本地数据库已损坏。你可能需要重置它。"
   },
   "watcher": {
-    "startFailed": "无法启动文件更改监控。",
+    "startFailed": "无法开始监视文件更改。",
     "stopFailed": "无法停止文件监视器。",
     "eventError": "在监视文件更改时发生错误。"
   },
@@ -70,7 +70,7 @@
   },
   "encryption": {
     "failed": "无法加密数据。你的密钥可能需要重新生成。",
-    "decryptionFailed": "无法解密数据。你的加密密钥可能已过期。",
+    "decryptionFailed": "无法解密数据。加密密钥可能已过时。",
     "invalidKeyLength": "无效的加密密钥。请尝试退出登录后重新登录。",
     "invalidNonceLength": "加密错误。请重试操作。"
   },
@@ -193,10 +193,10 @@
     "createFailed": "创建文件夹失败",
     "renameFailed": "重命名文件夹失败",
     "deleteFailed": "删除文件夹失败",
-    "setConfigFailed": "设置文件夹配置失败"
+    "setConfigFailed": "保存文件夹配置失败"
   },
   "folderView": {
-    "setConfigFailed": "设置配置失败",
+    "setConfigFailed": "保存配置失败",
     "setViewFailed": "设置视图失败",
     "deleteViewFailed": "删除视图失败"
   },
@@ -209,7 +209,7 @@
     "appleNotesFoldersFailed": "无法读取 Apple Notes 文件夹",
     "onenoteStatusFailed": "无法读取 OneNote 连接状态",
     "onenoteConnectFailed": "Microsoft 登录失败",
-    "onenoteDisconnectFailed": "无法断开 Microsoft 账户",
+    "onenoteDisconnectFailed": "无法断开与 Microsoft 账户的连接",
     "onenoteNotebooksFailed": "无法加载 OneNote 笔记本"
   },
   "project": {

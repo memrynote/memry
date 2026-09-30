@@ -25,7 +25,7 @@
       "willSync": "Notatet blir synkronisert til skyen",
       "renameFailed": "Kunne ikke gi notatet nytt navn",
       "titleRequired": "Et notat må ha en tittel",
-      "toggleLocalOnlyFailed": "Kunne ikke slå bare lokalt av/på",
+      "toggleLocalOnlyFailed": "Kunne ikke slå «Bare lokalt» av/på",
       "toggleFullWidthFailed": "Kunne ikke slå full bredde av/på",
       "pathCopied": "Banen er kopiert",
       "copyPathFailed": "Kunne ikke kopiere banen",
@@ -174,7 +174,7 @@
       "expand": "Utvid nestede elementer"
     },
     "toolbar": {
-      "linkToNote": "Lenke til notat",
+      "linkToNote": "Lenk til notat",
       "more": "Mer",
       "pinToTop": "Fest verktøylinjen øverst",
       "reminderSet": "Påminnelse angitt",
@@ -196,8 +196,8 @@
       "copyPath": "Kopier bane",
       "revealInSidebar": "Vis i navigasjonen",
       "attachments": "Vedlegg …",
-      "disableLocalOnly": "Slå av bare lokalt",
-      "setLocalOnly": "Slå på bare lokalt",
+      "disableLocalOnly": "Slå av «Bare lokalt»",
+      "setLocalOnly": "Slå på «Bare lokalt»",
       "delete": "Slett notat"
     },
     "attachmentMenu": {
@@ -286,7 +286,7 @@
     "viewBlock": {
       "title": "Visning",
       "group": "Sett inn",
-      "subtext": "En liste som holder seg oppdatert, med notater fra en mappe, en tagg eller hele hvelvet",
+      "subtext": "En automatisk oppdatert liste over notater fra en mappe, en tagg eller hele hvelvet",
       "sourceMenu": "Hva denne visningen viser",
       "chooseSource": "Velg hva som skal vises",
       "sourceVault": "Alle notater",
@@ -327,7 +327,7 @@
       "matchesAlias": "samsvarer med",
       "noMatch": "Ingen blokker samsvarer med «{query}»",
       "fallback": {
-        "linkTo": "Lenke til",
+        "linkTo": "Lenk til",
         "askAI": "Spør KI"
       },
       "pdf": {
@@ -339,7 +339,7 @@
         "subtext": "Bygg inn en .html-fil og bruk den direkte i notatet"
       },
       "linkToNote": {
-        "title": "Lenke til notat",
+        "title": "Lenk til notat",
         "subtext": "Søk i notater – eller skriv [[ hvor som helst"
       },
       "media": {
@@ -348,7 +348,7 @@
       },
       "insertTemplate": {
         "title": "Sett inn malinnhold …",
-        "subtext": "Sett bare inn innholdet i en mal der markøren står",
+        "subtext": "Sett inn bare innholdet i en mal der markøren står",
         "group": "Maler",
         "empty": "Den malen har ikke noe innhold å sette inn",
         "failed": "Kunne ikke sette inn malen"
@@ -575,7 +575,7 @@
     "summary": "{count, plural, one {# lignende notat} other {# lignende notater}}",
     "sectionAria": "Lignende notater",
     "hint": "Notater som ligner på dette og ikke er lenket til det ennå. Funnet på denne enheten ved hjelp av lokale embeddinger.",
-    "addLink": "Lenk til fra dette notatet",
+    "addLink": "Lenk fra dette notatet",
     "addLinkAria": "Lenk til {title} fra dette notatet",
     "linked": "Lenket til {title}",
     "addToCanvas": "Legg til på lerret",
@@ -670,7 +670,7 @@
       "deleted": "Slettet",
       "removeAria": "Fjern {title}",
       "addAria": "Legg til relasjon",
-      "searchPlaceholder": "Søk i notater, oppgaver, hendelser, lerreter og dagbok …",
+      "searchPlaceholder": "Søk i notater, oppgaver, hendelser, lerreter og dagboken …",
       "groupNotes": "Notater og filer",
       "groupTasks": "Oppgaver",
       "groupEvents": "Hendelser",
@@ -934,7 +934,7 @@
       "addFilter": "Legg til filter",
       "addGroup": "Legg til gruppe",
       "removeGroup": "Fjern gruppe",
-      "lockedConditionHint": "Dette vilkåret definerer den gjeldende visningen og kan ikke fjernes her."
+      "lockedConditionHint": "Denne betingelsen definerer den gjeldende visningen og kan ikke fjernes her."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Innebygd",
@@ -1276,7 +1276,7 @@
       "failedToReorderProperties": "Kunne ikke omorganisere egenskaper",
       "cannotAddTagThisNoteWasDeleted": "Kan ikke legge til taggen – dette notatet ble slettet",
       "cannotRemoveTagThisNoteWasDeleted": "Kan ikke fjerne taggen – dette notatet ble slettet",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan ikke endre bare lokalt – dette notatet ble slettet"
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan ikke endre «Bare lokalt» – dette notatet ble slettet"
     }
   },
   "bulkActions": {

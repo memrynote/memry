@@ -1,7 +1,7 @@
 {
-  "title": "วารสาร",
+  "title": "บันทึกประจำวัน",
   "section": {
-    "aiConnections": "การเชื่อมต่อ AI",
+    "aiConnections": "การเชื่อมโยงจาก AI",
     "todaysNotes": "โน้ตวันนี้",
     "todaysSchedule": "ตารางวันนี้",
     "todaysTasks": "งานวันนี้",
@@ -9,36 +9,37 @@
     "technicalDetails": "รายละเอียดทางเทคนิค"
   },
   "action": {
-    "versionHistory": "ประวัติรุ่น",
+    "versionHistory": "ประวัติเวอร์ชัน",
     "export": "ส่งออก",
     "fullWidth": "ความกว้างเต็ม",
-    "journalSettings": "การตั้งค่าวารสาร",
+    "journalSettings": "การตั้งค่าบันทึกประจำวัน",
     "fullMode": "โหมดเต็ม",
     "compactMode": "โหมดกะทัดรัด",
-    "createNote": "สร้างบันทึก",
-    "createNewNote": "สร้างบันทึกใหม่",
+    "createNote": "สร้างโน้ต",
+    "createNewNote": "สร้างโน้ตใหม่",
     "showLess": "แสดงน้อยลง",
-    "showMoreNotes": "แสดงบันทึก {count} เพิ่มเติม",
-    "showMoreNotes_plural": "แสดงบันทึก {count} อื่นๆ",
-    "showFewerNotes": "แสดงบันทึกให้น้อยลง",
-    "startBlank": "เริ่มต้นว่างแทน",
-    "changeTemplate": "เปลี่ยนแบบฟอร์ม",
+    "showMoreNotes": "แสดงโน้ตอีก {count} รายการ",
+    "showMoreNotes_plural": "แสดงโน้ตอีก {count} รายการ",
+    "showFewerNotes": "แสดงโน้ตน้อยลง",
+    "startBlank": "เริ่มจากหน้าว่างแทน",
+    "changeTemplate": "เปลี่ยนเทมเพลต",
     "dismissIndicator": "ปิดตัวบ่งชี้",
-    "refreshConnections": "รีเฟรชการเชื่อมต่อ",
-    "reloadJournal": "โหลดสมุดบันทึกใหม่",
+    "refreshConnections": "รีเฟรชการเชื่อมโยง",
+    "reloadJournal": "โหลดบันทึกประจำวันใหม่",
     "goToToday": "ไปที่วันนี้",
     "copyUnsavedContent": "คัดลอกเนื้อหาที่ยังไม่ได้บันทึกไปยังคลิปบอร์ด",
     "addBookmark": "เพิ่มบุ๊กมาร์ก",
-    "removeBookmark": "ลบบุ๊กมาร์ก"
+    "removeBookmark": "ลบบุ๊กมาร์ก",
+    "deleteEntry": "ลบหน้าบันทึกประจำวัน"
   },
   "editor": {
     "placeholder": {
-      "future": "คุณกำลังวางแผนอะไร...",
-      "today": "คุณคิดอะไรอยู่วันนี้...",
-      "past": "ใคร่ครวญวันวันนี้..."
+      "future": "วางแผนอะไรไว้บ้าง…",
+      "today": "วันนี้คิดอะไรอยู่…",
+      "past": "ทบทวนเรื่องราวในวันนั้น…"
     },
     "upload": {
-      "failed": "การอัปโหลดรูปภาพล้มเหลว"
+      "failed": "อัปโหลดรูปภาพไม่สำเร็จ"
     }
   },
   "date": {
@@ -85,7 +86,7 @@
       "february": "ก.พ.",
       "march": "มี.ค.",
       "april": "เม.ย.",
-      "may": "พฤษภาคม",
+      "may": "พ.ค.",
       "june": "มิ.ย.",
       "july": "ก.ค.",
       "august": "ส.ค.",
@@ -100,129 +101,134 @@
       "evening": "สวัสดีตอนเย็น",
       "night": "ราตรีสวัสดิ์"
     },
-    "allDay": "ตลอดวัน"
+    "allDay": "ทั้งวัน"
   },
   "nav": {
-    "previousDay": "วันก่อน",
+    "previousDay": "วันก่อนหน้า",
     "nextDay": "วันถัดไป",
-    "previousMonth": "เดือนก่อน",
+    "previousMonth": "เดือนก่อนหน้า",
     "nextMonth": "เดือนถัดไป",
-    "previousYear": "ปีก่อน",
+    "previousYear": "ปีก่อนหน้า",
     "nextYear": "ปีถัดไป",
-    "journalBack": "กลับไปที่สมุดบันทึก",
-    "journalNavigation": "การนำทางสมุดบันทึก",
-    "dateNavigation": "การนำทางวันที่ในสมุดบันทึก",
+    "journalBack": "ย้อนกลับ",
+    "journalNavigation": "การนำทางบันทึกประจำวัน",
+    "dateNavigation": "การนำทางวันที่ในบันทึกประจำวัน",
     "goToYearView": "ไปยังมุมมองรายปี"
   },
   "aria": {
     "moreOptions": "ตัวเลือกเพิ่มเติม",
     "documentStatistics": "สถิติเอกสาร",
     "dayContext": "บริบทของวัน: งานและกำหนดการ",
-    "scheduleEvents": "เหตุการณ์กำหนดการ",
+    "scheduleEvents": "กิจกรรมในกำหนดการ",
     "tasks": "งาน",
-    "notesCreatedToday": "{count} โน้ตที่สร้างวันนี้"
+    "notesCreatedToday": "โน้ตที่สร้างวันนี้ {count} รายการ"
   },
   "empty": {
-    "noEntry": "ไม่มีรายการ",
+    "noEntry": "ไม่มีบันทึก",
     "noDaysInMonth": "ไม่มีวันในเดือนนี้",
-    "noEventsScheduled": "ไม่มีเหตุการณ์ที่กำหนดไว้",
-    "noEventsScheduledToday": "ไม่มีเหตุการณ์ที่กำหนดไว้วันนี้",
-    "noEventsWereScheduled": "ไม่มีเหตุการณ์ถูกกำหนดไว้",
-    "noTasksDue": "ไม่มีงานที่ต้องทำ",
-    "noTasksDueToday": "ไม่มีงานที่ต้องทำวันนี้",
-    "noTasksWereDue": "ไม่มีงานที่ต้องทำ",
-    "noNotesToday": "ไม่มีบันทึกที่สร้างขึ้นวันนี้",
-    "startDocumenting": "เริ่มบันทึกความคิดและไอเดียของคุณ"
+    "noEventsScheduled": "ไม่มีกิจกรรมที่กำหนดไว้",
+    "noEventsScheduledToday": "วันนี้ไม่มีกิจกรรมที่กำหนดไว้",
+    "noEventsWereScheduled": "ไม่มีกิจกรรมที่กำหนดไว้",
+    "noTasksDue": "ไม่มีงานที่ครบกำหนด",
+    "noTasksDueToday": "ไม่มีงานที่ครบกำหนดวันนี้",
+    "noTasksWereDue": "ไม่มีงานที่ครบกำหนด",
+    "noNotesToday": "ไม่มีโน้ตที่สร้างวันนี้",
+    "startDocumenting": "เริ่มบันทึกความคิดและไอเดีย"
   },
   "ai": {
-    "loading": "กำลังวิเคราะห์การบันทึกของคุณ...",
+    "loading": "กำลังวิเคราะห์บันทึกประจำวัน…",
     "empty": {
-      "willAppear": "การเชื่อมต่อของคุณจะแสดงที่นี่",
-      "noneYet": "ยังไม่พบการเชื่อมต่อ",
-      "moreJournaling": "เมื่อคุณบันทึกมากขึ้น AI จะหาบันทึกที่เกี่ยวข้อง",
+      "willAppear": "การเชื่อมโยงจะแสดงที่นี่",
+      "noneYet": "ยังไม่พบการเชื่อมโยง",
+      "moreJournaling": "เมื่อเขียนบันทึกประจำวันมากขึ้น AI จะค้นหาบันทึกที่เกี่ยวข้องให้",
       "keepWriting": "เขียนต่อไปเพื่อค้นหาบันทึกที่เกี่ยวข้อง"
     },
     "error": {
-      "loadFailed": "ไม่สามารถโหลดการเชื่อมต่อได้"
+      "loadFailed": "โหลดการเชื่อมโยงไม่สำเร็จ"
     },
-    "connectionAria": "การเชื่อมต่อกับ {label}, {scorePercent}% ตรงกัน"
+    "connectionAria": "การเชื่อมโยงกับ {label} ตรงกัน {scorePercent}%"
   },
   "count": {
-    "note": "บันทึก",
+    "note": "โน้ต",
     "day": "วัน",
     "days": "วัน",
-    "event": "เหตุการณ์",
-    "events": "เหตุการณ์",
+    "event": "กิจกรรม",
+    "events": "กิจกรรม",
     "task": "งาน",
     "todo": "ต้องทำ",
-    "moreConnections": "+ การเชื่อมต่อเพิ่มเติม {count}",
-    "moreConnections_plural": "+ การเชื่อมต่อเพิ่มเติม {count}",
-    "moreNotes": "+ บันทึกเพิ่มเติม {count}",
-    "moreNotes_plural": "+ บันทึกเพิ่มเติม {count}",
-    "daysWithEntries": "วันกับการบันทึก",
+    "moreConnections": "+ การเชื่อมโยงอีก {count} รายการ",
+    "moreConnections_plural": "+ การเชื่อมโยงอีก {count} รายการ",
+    "moreNotes": "+ โน้ตอีก {count} รายการ",
+    "moreNotes_plural": "+ โน้ตอีก {count} รายการ",
+    "daysWithEntries": "วันที่มีบันทึก",
     "charactersWritten": "ตัวอักษรที่เขียน",
     "words": "{count} คำ",
     "characters": "ตัวอักษร {count}",
-    "completed": "เสร็จสิ้น {count}",
-    "overdue": "เกินกำหนด {count}"
+    "completed": "เสร็จแล้ว {count} รายการ",
+    "overdue": "เลยกำหนด {count} รายการ"
   },
   "stats": {
     "wordCount": "จำนวนคำ",
     "characterCount": "จำนวนอักขระ",
-    "readingTime": "เวลาที่ประมาณการอ่าน",
+    "readingTime": "เวลาอ่านโดยประมาณ",
     "lastModified": "แก้ไขล่าสุด",
     "lessThanOneMinute": "< 1 นาที",
     "minutes": "{minutes} นาที",
     "read": "อ่าน {readingTime}",
-    "modified": "แก้ไข {date}"
+    "modified": "แก้ไขเมื่อ {date}"
   },
   "task": {
-    "completed": "เสร็จสิ้น",
-    "notCompleted": "ยังไม่เสร็จสิ้น",
-    "priority": "ลำดับความสำคัญ {priority}",
-    "overdue": "เกินกำหนด",
-    "markComplete": "ทำเครื่องหมาย \"{title}\" ว่าเสร็จสิ้น",
-    "markNotComplete": "ทำเครื่องหมาย \"{title}\" ว่ายังไม่เสร็จสิ้น"
+    "completed": "เสร็จแล้ว",
+    "notCompleted": "ยังไม่เสร็จ",
+    "priority": "ความสำคัญ {priority}",
+    "overdue": "เลยกำหนด",
+    "markComplete": "ทำเครื่องหมาย “{title}” ว่าเสร็จแล้ว",
+    "markNotComplete": "ทำเครื่องหมาย “{title}” ว่ายังไม่เสร็จ"
   },
   "template": {
-    "using": "ใช้ \"{templateName}\""
+    "using": "ใช้ “{templateName}”"
   },
   "reminder": {
-    "hasReminders": "มีการแจ้งเตือน",
-    "setToRevisit": "ตั้งค่าการเตือนให้กลับมาเยี่ยมชม",
-    "tooltip": "การแจ้งเตือน: {date}",
-    "tooltipMore": "การแจ้งเตือน: {date} (+{count} เพิ่มเติม)",
+    "hasReminders": "มีการเตือน",
+    "setToRevisit": "ตั้งการเตือนให้กลับมาดูอีกครั้ง",
+    "tooltip": "การเตือน: {date}",
+    "tooltipMore": "การเตือน: {date} (และอีก {count} รายการ)",
     "success": {
-      "set": "ตั้งค่าการเตือนสำหรับบันทึกประจำวันนี้แล้ว",
-      "deleted": "ลบการแจ้งเตือนแล้ว",
-      "dismissed": "ยกเลิกการแจ้งเตือนแล้ว",
-      "snoozed": "เลื่อนการเตือนแล้ว"
+      "set": "ตั้งการเตือนสำหรับหน้าบันทึกประจำวันนี้แล้ว",
+      "deleted": "ลบการเตือนแล้ว",
+      "dismissed": "ปิดการเตือนแล้ว",
+      "snoozed": "เลื่อนการเตือนแล้ว",
+      "updated": "อัปเดตการเตือนแล้ว"
     },
     "error": {
-      "set": "ไม่สามารถตั้งค่าการแจ้งเตือนได้",
-      "delete": "ไม่สามารถลบการแจ้งเตือนได้",
-      "dismiss": "ไม่สามารถยกเลิกการแจ้งเตือนได้",
-      "snooze": "ไม่สามารถเลื่อนเตือนความจำได้"
+      "set": "ตั้งการเตือนไม่สำเร็จ",
+      "delete": "ลบการเตือนไม่สำเร็จ",
+      "dismiss": "ปิดการเตือนไม่สำเร็จ",
+      "snooze": "เลื่อนการเตือนไม่สำเร็จ",
+      "update": "อัปเดตการเตือนไม่สำเร็จ"
     }
   },
   "toast": {
-    "unsavedRetry": "เนื้อหาของคุณยังอยู่ในหน่วยความจำ คลิกเพื่อบันทึกอีกครั้ง",
-    "noteNotFound": "ไม่พบบันทึก \"{target}\"",
+    "unsavedRetry": "เนื้อหายังอยู่ในหน่วยความจำ คลิกเพื่อลองบันทึกอีกครั้ง",
+    "noteNotFound": "ไม่พบโน้ต “{target}”",
+    "createLinkedFailed": "สร้างโน้ตที่ลิงก์ไม่สำเร็จ",
     "fileNotFound": "ไม่พบไฟล์: {target}",
-    "openLinkedItemFailed": "เปิดรายการลิงก์ล้มเหลว",
-    "errorPrefix": "ข้อผิดพลาด:"
+    "openLinkedItemFailed": "เปิดรายการที่ลิงก์ไม่สำเร็จ",
+    "errorPrefix": "ข้อผิดพลาด:",
+    "deleteFailed": "ลบหน้าบันทึกประจำวันไม่สำเร็จ",
+    "bookmarkFailed": "อัปเดตบุ๊กมาร์กไม่สำเร็จ"
   },
   "export": {
-    "noteTitle": "บันทึกประจำวัน - {month} {day}, {year}"
+    "noteTitle": "บันทึกประจำวัน - {day} {month} {year}"
   },
   "note": {
-    "generatedTitle": "บันทึก - {date}",
-    "openAria": "เปิด {title}, สร้างเมื่อ {time}"
+    "generatedTitle": "โน้ต - {date}",
+    "openAria": "เปิด {title} สร้างเมื่อ {time}"
   },
   "error": {
     "title": "ข้อผิดพลาดของบันทึกประจำวัน",
-    "description": "บันทึกประจำวันพบข้อผิดพลาดสำหรับ {date} การเปลี่ยนแปลงล่าสุดของคุณอาจไม่ได้รับการบันทึก",
-    "descriptionNoDate": "บันทึกประจำวันพบข้อผิดพลาด การเปลี่ยนแปลงล่าสุดของคุณอาจไม่ได้รับการบันทึก",
+    "description": "บันทึกประจำวันของ {date} พบข้อผิดพลาด การเปลี่ยนแปลงล่าสุดอาจยังไม่ได้บันทึก",
+    "descriptionNoDate": "บันทึกประจำวันพบข้อผิดพลาด การเปลี่ยนแปลงล่าสุดอาจยังไม่ได้บันทึก",
     "unsavedContent": "ตรวจพบเนื้อหาที่ยังไม่ได้บันทึก ({length} ตัวอักษร)"
   },
   "phaseF": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "ไม่สามารถบันทึกบันทึกประจำวันได้",
-      "failedToLoadJournalSettings": "ไม่สามารถโหลดการตั้งค่าบันทึกประจำวันได้",
-      "failedToUpdateSettings": "ไม่สามารถอัปเดตการตั้งค่าได้"
+      "failedToSaveJournalEntry": "บันทึกหน้าบันทึกประจำวันไม่สำเร็จ",
+      "failedToLoadJournalSettings": "โหลดการตั้งค่าบันทึกประจำวันไม่สำเร็จ",
+      "failedToUpdateSettings": "อัปเดตการตั้งค่าไม่สำเร็จ"
     }
+  },
+  "deleteConfirm": {
+    "title": "ลบหน้าบันทึกประจำวัน",
+    "description": "ต้องการลบ “{title}” หรือไม่? การกระทำนี้เลิกทำไม่ได้"
   }
 }

@@ -126,14 +126,14 @@
   "empty": {
     "noEntry": "Aucune entrée",
     "noDaysInMonth": "Aucun jour ce mois-ci",
-    "noEventsScheduled": "Aucun événement programmé",
+    "noEventsScheduled": "Aucun événement prévu",
     "noEventsScheduledToday": "Aucun événement prévu aujourd'hui",
-    "noEventsWereScheduled": "Aucun événement n'était programmé",
+    "noEventsWereScheduled": "Aucun événement n'était prévu",
     "noTasksDue": "Aucune tâche prévue",
     "noTasksDueToday": "Aucune tâche prévue aujourd'hui",
     "noTasksWereDue": "Aucune tâche n'était prévue",
     "noNotesToday": "Aucune note créée aujourd'hui",
-    "startDocumenting": "Commencez à documenter vos pensées et vos idées"
+    "startDocumenting": "Commencez à noter vos pensées et vos idées"
   },
   "ai": {
     "loading": "Analyse de votre entrée…",
@@ -164,7 +164,7 @@
     "charactersWritten": "caractères écrits",
     "words": "{count} mots",
     "characters": "{count} caractères",
-    "completed": "{count} terminé",
+    "completed": "{count, plural, one {# terminée} other {# terminées}}",
     "overdue": "{count} en retard"
   },
   "stats": {
@@ -192,7 +192,7 @@
     "hasReminders": "A des rappels",
     "setToRevisit": "Définir un rappel pour y revenir",
     "tooltip": "Rappel : {date}",
-    "tooltipMore": "Rappel : {date} (+{count} autres)",
+    "tooltipMore": "Rappel : {date} (+{count, plural, one {# autre} other {# autres}})",
     "success": {
       "set": "Rappel défini pour cette entrée de journal",
       "deleted": "Rappel supprimé",

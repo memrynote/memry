@@ -58,7 +58,7 @@
   },
   "reminders": {
     "summary": "Rappel : {date}",
-    "summaryWithMore": "Rappel : {date} (+{count} de plus)",
+    "summaryWithMore": "Rappel : {date} (+{count})",
     "hasReminders": "Comporte des rappels",
     "setReminder": "Définir un rappel",
     "toast": {
@@ -212,11 +212,11 @@
     "activityFieldArchivedAt": "Archivage",
     "activityFieldRepeatConfig": "Répétition",
     "activityFieldSourceNoteId": "Note source",
-    "activityFrom": "de {value}",
-    "activityTo": "à {value}",
+    "activityFrom": "de « {value} »",
+    "activityTo": "à « {value} »",
     "activityValueChanged": "modifié",
     "activityUnknownDate": "Sans date",
-    "activityFieldRepeatFrom": "Répéter à partir de",
+    "activityFieldRepeatFrom": "Répétition à partir de",
     "activityFieldIsRepeating": "Récurrente"
   },
   "kanban": {
@@ -366,7 +366,7 @@
       "ofTheMonth2": "du mois",
       "ends": "Se termine",
       "never": "Jamais",
-      "onDate": "À la date",
+      "onDate": "Le",
       "after": "Après",
       "occurrences": "occurrences",
       "preview": "Aperçu",
@@ -447,7 +447,7 @@
       "and": "et ",
       "more": "de plus",
       "whatWouldYouLikeToDo": "Qu'aimeriez-vous faire ?",
-      "completeAllParentSubtasks": "Terminer tout (parent + sous-tâches)",
+      "completeAllParentSubtasks": "Tout terminer (tâche parente + sous-tâches)",
       "markTheParentAndAllSubtasksAsComplete": "Marquer la tâche parente et toutes les sous-tâches comme terminées",
       "completeParentOnlyKeepSubtasksIncomplete": "Terminer seulement la tâche parente, garder les sous-tâches non terminées",
       "onlyMarkTheParentTaskAsComplete": "Marquer uniquement la tâche parente comme terminée",
@@ -458,7 +458,7 @@
       "deleteAllSubtasks": "Supprimer toutes les sous-tâches ?",
       "thisActionCannotBeUndone": "Cette action est irréversible.",
       "cancel": "Annuler",
-      "deleteAll": "Supprimer tout",
+      "deleteAll": "Tout supprimer",
       "deleteSubtasksConfirmation": "Cette action supprimera {count, plural, one {# sous-tâche} many {# sous-tâches} other {# sous-tâches}} de « {title} »."
     },
     "componentsTasksDialogsDeleteParentDialog": {
@@ -467,7 +467,7 @@
       "subtask": "sous-tâche",
       "whatWouldYouLikeToDo": "Qu'aimeriez-vous faire ?",
       "deleteTaskAndAllSubtasks": "Supprimer la tâche et toutes les sous-tâches",
-      "permanentlyRemovesEverything": "Supprime définitivement tout",
+      "permanentlyRemovesEverything": "Supprime tout définitivement",
       "deleteTaskKeepSubtasksAsStandaloneTasks": "Supprimer la tâche, conserver les sous-tâches en tant que tâches autonomes",
       "subtasksBecomeTopLevelTasks": "Les sous-tâches deviennent des tâches de niveau supérieur",
       "cancel": "Annuler",
@@ -673,7 +673,7 @@
       "taskTitle": "Titre de la tâche…"
     },
     "componentsTasksNaturalDateInput": {
-      "typeADateInNaturalLanguage": "Tapez une date en langage naturel",
+      "typeADateInNaturalLanguage": "Saisir une date en langage naturel",
       "select": "Sélectionner"
     },
     "componentsTasksParentTaskRow": {
@@ -688,7 +688,7 @@
       "iconName": "Icône et nom",
       "selectIcon": "Sélectionner l'icône",
       "projectName": "Nom du projet",
-      "clickIconToChange": "Cliquez sur l'icône pour changer",
+      "clickIconToChange": "Cliquez sur l'icône pour la changer",
       "color": "Couleur",
       "descriptionOptional": "Description (facultative)",
       "briefDescriptionOfThisProject": "Brève description de ce projet…",
@@ -863,7 +863,7 @@
     "dialogTitle": "Ajouter au projet",
     "noProjects": "Aucun projet pour l'instant",
     "loading": "Chargement des projets…",
-    "toastSuccess": "Ajouté à {name}",
+    "toastSuccess": "Élément ajouté au projet « {name} »",
     "toastError": "Impossible d'ajouter au projet"
   },
   "projectHome": {
@@ -925,7 +925,7 @@
       "openNote": "Ouvrir la note {title}",
       "openFile": "Ouvrir le fichier {title}",
       "openEvent": "Ouvrir l'événement {title}",
-      "setNoteIcon": "Définir l'icône de {title}"
+      "setNoteIcon": "Définir l'icône de « {title} »"
     },
     "rail": {
       "overview": "Vue d'ensemble",

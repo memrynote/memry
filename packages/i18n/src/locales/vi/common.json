@@ -52,8 +52,8 @@
       "saveFailedQuota": "Phiên này quá lớn để lưu. Đóng bớt tab, nếu không phiên này có thể không được khôi phục vào lần tới bạn mở Memry.",
       "saveFailedGeneric": "Memry không thể lưu phiên này, nên phiên có thể không được khôi phục vào lần tới bạn mở ứng dụng.",
       "lastSessionNotSaved": "Phiên trước không được lưu khi Memry đóng",
-      "lastSessionNotSavedQuota": "Khi đó bộ nhớ đã đầy, nên các tab này là từ một lần lưu trước đó. Đóng bớt tab để giải phóng dung lượng.",
-      "lastSessionNotSavedGeneric": "Memry không thể lưu các tab khi thoát, nên các tab này là từ một lần lưu trước đó."
+      "lastSessionNotSavedQuota": "Khi đó bộ nhớ đã đầy, nên các tab này lấy từ một lần lưu trước đó. Đóng bớt tab để giải phóng dung lượng.",
+      "lastSessionNotSavedGeneric": "Memry không thể lưu các tab khi thoát, nên các tab này lấy từ một lần lưu trước đó."
     },
     "contextMenu": {
       "close": "Đóng",
@@ -79,7 +79,7 @@
     "actionFailed": "Không thể thực hiện thao tác",
     "nothingToUndo": "Không có gì để hoàn tác",
     "undone": "Đã hoàn tác: {description}",
-    "undoFailed": "Không thể hoàn tác hành động",
+    "undoFailed": "Không thể hoàn tác thao tác",
     "filesImported": "{count, plural, other {Đã nhập # tệp}}",
     "filesImportFailed": "{count, plural, other {Không thể nhập # tệp}}",
     "filesHiddenInSidebar": "Tệp đang ẩn trong thanh bên. Bật “Hiển thị tệp” trong menu sắp xếp của Bộ sưu tập để xem.",
@@ -101,7 +101,7 @@
   "recurrence": {
     "everyNDays": "{count, plural, one {Mỗi ngày} other {Mỗi # ngày}}",
     "everyNWeeks": "{count, plural, one {Mỗi tuần} other {Mỗi # tuần}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {Mỗi ngày trong tuần} other {Mỗi # tuần vào các ngày trong tuần}}",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Mỗi ngày làm việc} other {Mỗi # tuần vào các ngày làm việc}}",
     "everyNWeeksOnWeekends": "{count, plural, one {Mỗi cuối tuần} other {Mỗi # tuần vào cuối tuần}}",
     "everyNWeeksOnDays": "{count, plural, one {Mỗi tuần vào {days}} other {Mỗi # tuần vào {days}}}",
     "everyNMonths": "{count, plural, one {Mỗi tháng} other {Mỗi # tháng}}",
@@ -117,7 +117,7 @@
       "last": "cuối cùng"
     },
     "preset": {
-      "everyWeekday": "Mỗi ngày trong tuần (T2-T6)",
+      "everyWeekday": "Mỗi ngày làm việc (T2-T6)",
       "everyYearOnDate": "Hằng năm vào {date}"
     }
   },
@@ -353,7 +353,7 @@
       "label": "Kết quả công cụ"
     },
     "toolCall": {
-      "editedArgs": "Đối số đã được chỉnh sửa",
+      "editedArgs": "Đối số đã chỉnh sửa",
       "parameters": "Tham số"
     },
     "toolActivity": {
@@ -423,7 +423,7 @@
       "hint": "Bắt đầu nhập để tìm mục cần liên kết.",
       "empty": "Không có kết quả phù hợp.",
       "selectOneShape": "Chọn một hình duy nhất để liên kết với một mục.",
-      "cardsCannotLink": "Mỗi thẻ đã mở mục riêng của nó, nên không thể có thêm liên kết thứ hai.",
+      "cardsCannotLink": "Thẻ vốn dùng để mở mục riêng của nó, nên không thể có thêm liên kết thứ hai.",
       "linked": "Đã liên kết.",
       "groupNotes": "Ghi chú",
       "groupFiles": "Tệp",
@@ -488,15 +488,15 @@
       "bulkGroup": "Thêm tất cả từ",
       "bulkFromTag": "Một thẻ…",
       "bulkFromFolder": "Một thư mục…",
-      "bulkSearchTags": "Tìm thẻ…",
-      "bulkSearchFolders": "Tìm thư mục…",
+      "bulkSearchTags": "Tìm kiếm thẻ…",
+      "bulkSearchFolders": "Tìm kiếm thư mục…",
       "bulkTagsHeading": "Thẻ",
       "bulkFoldersHeading": "Thư mục",
       "bulkItemCount": "{count, plural, other {# mục}}",
       "bulkViewsHeading": "Thêm từ {name}",
       "bulkAllItems": "Tất cả các mục",
       "bulkConfirmTitle": "{count, plural, other {Thêm # thẻ từ {name}?}}",
-      "bulkConfirmBody": "Bảng lớn sẽ chậm hơn và có thể vượt giới hạn kích thước đồng bộ.",
+      "bulkConfirmBody": "Bảng trắng lớn sẽ di chuyển chậm hơn và có thể vượt giới hạn kích thước đồng bộ.",
       "bulkConfirmSkipped": "{count, plural, other {# mục đã có trên bảng trắng này và sẽ được bỏ qua.}}",
       "bulkConfirmAdd": "{count, plural, other {Thêm # thẻ}}",
       "bulkBack": "Quay lại",
@@ -579,7 +579,7 @@
       "newItemMenu": "Tạo mới…",
       "feedbackButton": "Gửi phản hồi",
       "feedbackTitle": "Gửi phản hồi",
-      "feedbackDescription": "Cho chúng tôi biết điều gì đang hiệu quả, điều gì bị hỏng, hoặc điều bạn mong Memry làm được. Chúng tôi đọc mọi tin nhắn.",
+      "feedbackDescription": "Cho chúng tôi biết điều gì đang hiệu quả, điều gì bị hỏng, hoặc điều bạn mong MemryNote làm được. Chúng tôi đọc mọi tin nhắn.",
       "feedbackPlaceholder": "Phản hồi của bạn…",
       "feedbackEmailHint": "Thêm email nếu bạn muốn được trả lời.",
       "feedbackPrivacyTitle": "Những gì được gửi đi",
@@ -588,7 +588,7 @@
       "feedbackPrivacyEmailSignedIn": "Email tài khoản của bạn ({email}), để chúng tôi trả lời",
       "feedbackPrivacyVersion": "Phiên bản ứng dụng và hệ điều hành",
       "feedbackPrivacyPlan": "Gói của bạn (Miễn phí, Plus, Pro hoặc Believer)",
-      "feedbackPrivacyNote": "Không gì khác. Ghi chú của bạn vẫn nằm trên thiết bị.",
+      "feedbackPrivacyNote": "Không có gì khác. Ghi chú của bạn vẫn nằm trên thiết bị.",
       "feedbackSend": "Gửi",
       "feedbackSending": "Đang gửi…",
       "feedbackSuccess": "Cảm ơn phản hồi của bạn!",
@@ -609,7 +609,7 @@
       "sectionOrderSaveFailed": "Không thể lưu thứ tự thanh bên"
     },
     "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "Thay đổi kích thước Bảng ngày",
+      "resizeDayPanel": "Thay đổi kích thước bảng ngày",
       "dragToResizeDoubleClickToReset": "Kéo để thay đổi kích thước · Nhấp đúp để đặt lại"
     },
     "componentsFindBarFindBar": {
@@ -621,7 +621,7 @@
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Cơ sở tri thức cá nhân của bạn. Hãy dành 2 phút để bắt đầu.",
       "getStarted": "Bắt đầu ",
       "createYourFirstNote": "Tạo ghi chú đầu tiên của bạn",
-      "markdownBasedStoredLocallyAsPlainFiles": "Dựa trên Markdown, lưu cục bộ dưới dạng tệp thuần.",
+      "markdownBasedStoredLocallyAsPlainFiles": "Dựa trên Markdown, lưu cục bộ dưới dạng tệp văn bản thuần.",
       "eGMeetingNotesIdeasAnything": "vd. Ghi chú cuộc họp, ý tưởng, bất cứ điều gì…",
       "skip": "Bỏ qua",
       "createNote": "Tạo ghi chú ",
@@ -810,7 +810,7 @@
     },
     "componentsVaultOnboarding": {
       "welcomeToMemry": "Chào mừng đến với memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Hệ thống quản lý kiến thức cá nhân của bạn.",
+      "yourPersonalKnowledgeManagementSystem": "Hệ thống quản lý tri thức cá nhân của bạn.",
       "selectAFolderToStoreYourNotesAndTasks": "Chọn một thư mục để lưu ghi chú và công việc.",
       "opening": "Đang mở…",
       "selectVaultFolder": "Chọn thư mục kho",
@@ -926,7 +926,7 @@
       "resizeAria": "Đổi kích thước thành {size}",
       "menuAria": "Tùy chọn tiện ích",
       "resize": "Kích thước",
-      "remove": "Gỡ",
+      "remove": "Gỡ bỏ",
       "filter": {
         "all": "Tất cả",
         "today": "Đến hạn hôm nay",
@@ -1013,7 +1013,7 @@
     "noJournalEntriesYet": "Chưa có mục nhật ký nào.",
     "disabled": {
       "createNote": "Tạo ghi chú",
-      "hint": "Chưa có gì mở. Bắt đầu một ghi chú."
+      "hint": "Không có gì đang mở. Bắt đầu một ghi chú."
     }
   },
   "onboarding": {
@@ -1031,7 +1031,7 @@
     },
     "collections": {
       "title": "Bộ sưu tập, dấu trang & thẻ",
-      "body": "Sắp xếp ghi chú vào thư mục, ghim dấu trang và duyệt theo thẻ — tất cả tại đây."
+      "body": "Tổ chức ghi chú theo thư mục, ghim dấu trang và duyệt theo thẻ — tất cả tại đây."
     },
     "dayPanel": {
       "title": "Ngày của bạn, ngay cạnh công việc",

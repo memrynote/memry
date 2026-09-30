@@ -3,7 +3,13 @@
     "day": "Ngày",
     "week": "Tuần",
     "month": "Tháng",
-    "year": "Năm"
+    "monthGridLabel": "Lưới tháng",
+    "year": "Năm",
+    "timeline": "Dòng thời gian"
+  },
+  "undo": {
+    "moveEvent": "Di chuyển sự kiện",
+    "moveTask": "Lên lịch lại công việc"
   },
   "toolbar": {
     "create-event": "Tạo sự kiện",
@@ -13,39 +19,53 @@
     "next-month": "Tháng sau",
     "today": "Hôm nay"
   },
+  "search": {
+    "open": "Tìm trong lịch",
+    "close": "Đóng tìm kiếm",
+    "placeholder": "Tìm sự kiện, công việc, lời nhắc…",
+    "no-results": "Không có kết quả"
+  },
   "filter": {
     "filter-calendars": "Lọc lịch",
     "sources": "Nguồn",
-    "memry-items": "memrynote mục",
+    "memry-items": "Mục memrynote",
     "imported-calendars": "Lịch đã nhập",
     "event-types": "Loại sự kiện",
     "google-calendars": "Lịch Google",
-    "refresh-google-calendars": "Làm mới lịch Google"
+    "refresh-google-calendars": "Làm mới lịch Google",
+    "not-syncing": "Không đồng bộ · đánh dấu để bật",
+    "enable-source-failed": "Không thể bật lịch đó.",
+    "provider-calendars": {
+      "ics": "Lịch đã đăng ký",
+      "caldav": "Lịch CalDAV",
+      "apple-eventkit": "Máy Mac này",
+      "other": "Lịch khác"
+    }
   },
   "visual-type": {
     "event": "Sự kiện",
     "imported-event": "Sự kiện đã nhập",
-    "task": "Công việc",
-    "reminder": "Nhắc nhở",
-    "snooze": "Hoãn",
     "note": "Ghi chú",
-    "note-date": "Nhắc theo ngày"
+    "note-date": "Lời nhắc theo ngày",
+    "task": "Công việc",
+    "reminder": "Lời nhắc",
+    "snooze": "Mục tạm ẩn"
   },
   "state": {
     "loading-calendar": "Đang tải lịch…",
-    "loading-calendars": "Đang tải các lịch…",
+    "loading-calendars": "Đang tải lịch…",
     "preparing": "Đang chuẩn bị…"
   },
   "empty": {
-    "no-imported-calendars-yet": "Chưa có lịch nhập nào.",
-    "no-events": "Chưa có sự kiện nào"
+    "no-imported-calendars-yet": "Chưa có lịch đã nhập nào.",
+    "no-events": "Không có sự kiện nào"
   },
   "time": {
     "all-day": "Cả ngày",
     "all-day-lower": "cả ngày",
     "pick-a-date": "Chọn ngày",
     "new-event": "Sự kiện mới",
-    "more-events": "{count, plural, one {# thêm sự kiện} other {# thêm các sự kiện}}"
+    "more-events": "{count, plural, other {# sự kiện khác}}"
   },
   "form": {
     "create-calendar-event": "Tạo sự kiện lịch",
@@ -61,14 +81,40 @@
     "use-default-calendar": "Sử dụng lịch mặc định",
     "use-default-calendar-with-name": "Sử dụng mặc định ({calendar})",
     "use-memry-calendar-default": "Sử dụng lịch memrynote (mặc định)",
-    "primary-suffix": "chính"
+    "primary-suffix": "chính",
+    "project": "Dự án",
+    "no-project": "Không có dự án",
+    "remove-from-project": "Gỡ khỏi {project}",
+    "project-update-failed": "Không thể cập nhật dự án của sự kiện",
+    "color": "Màu",
+    "default-color": "Màu mặc định"
   },
   "delete-dialog": {
     "title": "Xóa sự kiện?",
-    "local-description": "\"{title}\" sẽ bị xóa vĩnh viễn. Hành động này không thể hồi phục.",
-    "google-bound-description": "\"{title}\" sẽ bị xóa khỏi memrynote và Google Calendar. Hành động này không thể hoàn tác.",
+    "local-description": "“{title}” sẽ bị xóa vĩnh viễn. Không thể hoàn tác thao tác này.",
+    "google-bound-description": "“{title}” sẽ bị xóa khỏi memrynote và Google Calendar. Không thể hoàn tác thao tác này.",
     "context-menu-delete-label": "Xóa sự kiện",
     "context-menu-add-to-project": "Thêm vào dự án"
+  },
+  "agent-access-dialog": {
+    "aria": "Chọn xem AI có được đọc các sự kiện Google Calendar của bạn hay không",
+    "title": "Cho AI đọc các sự kiện Google Calendar của bạn?",
+    "body": "Dù chọn cách nào, bạn vẫn thấy sự kiện Google trong memrynote. Lựa chọn này chỉ quyết định tác nhân AI có được đọc chúng hay không khi bạn hỏi về lịch trình của mình.",
+    "footnote": "Bạn có thể thay đổi điều này bất cứ lúc nào trong Cài đặt → Tích hợp → Google Calendar.",
+    "allow": "Cho phép",
+    "deny": "Không cho phép",
+    "save-error": "Không thể lưu lựa chọn",
+    "provider": {
+      "aria": "Chọn xem AI có được đọc sự kiện {provider} của bạn hay không",
+      "title": "Cho AI đọc sự kiện {provider} của bạn?",
+      "body": "Dù chọn cách nào, bạn vẫn thấy các sự kiện này trong memrynote. Lựa chọn này chỉ quyết định tác nhân AI có được đọc chúng hay không khi bạn hỏi về lịch trình của mình. Mỗi dịch vụ lịch có lựa chọn riêng.",
+      "footnote": "Bạn có thể thay đổi điều này bất cứ lúc nào trong Cài đặt → Lịch."
+    },
+    "provider-names": {
+      "ics": "lịch đã đăng ký",
+      "caldav": "lịch CalDAV",
+      "apple-eventkit": "Lịch macOS"
+    }
   },
   "promote-dialog": {
     "aria": "Chỉnh sửa sự kiện trên lịch ngoài",
@@ -76,28 +122,43 @@
     "body": "Chỉnh sửa sự kiện này sẽ tạo một bản sao liên kết trong memrynote để các thay đổi đồng bộ hai chiều. Tiếp tục?",
     "do-not-ask-again": "Không hỏi lại",
     "confirm-label": "Chỉnh sửa trong memrynote",
-    "agent-notice": "Trợ lý AI có thể đọc bản sao này, ngay cả khi quyền truy cập của AI vào Google Calendar đang tắt. Sự kiện Google gốc của bạn vẫn ẩn với trợ lý AI."
+    "agent-notice": "Tác nhân AI có thể đọc bản sao này, ngay cả khi quyền truy cập của AI vào Google Calendar đang tắt. Sự kiện Google gốc vẫn được ẩn khỏi tác nhân."
   },
   "onboarding-dialog": {
     "aria": "Chọn lịch Google mặc định của bạn",
-    "title": "Sự kiện memrynote mới nên đi vào lịch nào?",
+    "title": "Sự kiện memrynote mới nên được thêm vào lịch nào?",
     "body": "Chọn lịch Google mà memrynote nên sử dụng mặc định. Bạn vẫn có thể ghi đè cho từng sự kiện.",
     "default-calendar-label": "Sử dụng lịch do memrynote quản lý",
     "skip": "Bỏ qua",
     "use-this-calendar": "Sử dụng lịch này"
   },
+  "connect-prompt": {
+    "pill": "Kết nối Google",
+    "aria": "Kết nối Google Calendar",
+    "title": "Hoàn tất kết nối với Google Calendar",
+    "body": "Kết nối tài khoản Google để làm được nhiều hơn với lịch của bạn:",
+    "bullets": {
+      "events": "Xem sự kiện Google bên cạnh ghi chú và công việc",
+      "sync": "Tạo và sửa sự kiện, đồng bộ hai chiều",
+      "schedule": "Lên lịch công việc và ghi chú trên lịch của bạn"
+    },
+    "continue": "Tiếp tục với Google",
+    "dismiss": "Bỏ qua",
+    "error": "Không thể kết nối Google Calendar. Thử lại."
+  },
   "metadata": {
     "attendees": "Người tham dự",
     "attendees-count": "Người tham dự ({count})",
-    "reminders": "Các nhắc nhở",
-    "default-reminders": "Nhắc nhở mặc định",
-    "visibility": "Hiển thị:",
+    "reminders": "Lời nhắc",
+    "default-reminders": "Lời nhắc mặc định",
+    "visibility": "Chế độ hiển thị:",
     "optional": "Tùy chọn",
     "join-meeting": "Tham gia cuộc họp",
+    "video-call": "Cuộc gọi video",
     "response": {
       "accepted": "Đã chấp nhận",
       "declined": "Đã từ chối",
-      "tentative": "Tạm thời",
+      "tentative": "Có thể tham dự",
       "needs-action": "Đang chờ"
     },
     "visibility-value": {
@@ -116,83 +177,210 @@
       "couldNotSaveEventTryAgain": "Không thể lưu sự kiện. Thử lại.",
       "couldNotCreateEventTryAgain": "Không thể tạo sự kiện. Thử lại.",
       "couldNotSaveDefaultCalendarTryAgain": "Không thể lưu lịch mặc định. Thử lại.",
-      "failedToLoadCalendarPreferences": "Không tải được tùy chọn lịch",
-      "failedToUpdateCalendarPreferences": "Cập nhật tùy chọn lịch thất bại",
+      "failedToLoadCalendarPreferences": "Không thể tải tùy chọn lịch",
+      "failedToUpdateCalendarPreferences": "Không thể cập nhật tùy chọn lịch",
       "couldNotEditThisEventTryAgain": "Không thể chỉnh sửa sự kiện này. Thử lại.",
-      "failedToDeleteEvent": "Xóa sự kiện thất bại",
-      "couldNotUnsnoozeInboxItem": "Không thể hủy tạm hoãn.",
-      "couldNotRescheduleInboxItem": "Không thể sắp xếp lại."
+      "failedToDeleteEvent": "Không thể xóa sự kiện",
+      "couldNotUnsnoozeInboxItem": "Không thể bỏ tạm ẩn.",
+      "couldNotRescheduleInboxItem": "Không thể lên lịch lại."
     },
     "inboxSnoozePopover": {
-      "title": "Mục hộp thư đi tạm hoãn",
+      "title": "Mục hộp thư đến đã tạm ẩn",
       "openInInbox": "Mở trong hộp thư đến",
-      "unsnoozeNow": "Hủy tạm hoãn ngay",
-      "reschedule": "Sắp xếp lại"
+      "unsnoozeNow": "Hiện lại ngay",
+      "reschedule": "Lên lịch lại"
     }
+  },
+  "chip": {
+    "complete-task": "Hoàn thành {title}",
+    "task-completed": "Đã hoàn thành công việc",
+    "could-not-complete": "Không thể hoàn thành công việc",
+    "duration-minutes": "{minutes} phút",
+    "duration-hours": "{hours} giờ",
+    "duration-hours-minutes": "{hours} giờ {minutes} phút"
+  },
+  "event-card": {
+    "kind": "Sự kiện",
+    "close": "Đóng"
   },
   "task-popover": {
     "title-fallback": "Chi tiết công việc",
+    "kind": "Công việc",
+    "open": "Mở",
+    "complete": "Hoàn thành",
+    "more-actions": "Thao tác khác",
+    "move": "Dời",
+    "later": "Để sau",
+    "next-week": "Tuần tới",
     "open-task": "Mở công việc",
     "source-note": "Ghi chú nguồn",
-    "reschedule": "Sắp xếp lại",
+    "reschedule": "Lên lịch lại",
     "mark-done": "Đánh dấu đã xong",
     "mark-not-done": "Đánh dấu chưa xong",
-    "later-today": "Sau hôm nay",
+    "later-today": "Cuối ngày hôm nay",
     "tomorrow": "Ngày mai",
-    "next-week-mon": "Tuần tới · Thứ Hai ",
-    "pick-date-time": " Chọn ngày & giờ… ",
-    "remove-due-date": " Xóa hạn chót ",
-    "subtasks-prefix": " Các nhiệm vụ con ",
-    "subtasks-counter": " {done} của {total} đã xong ",
+    "next-week-mon": "Tuần tới · Thứ Hai",
+    "pick-date-time": "Chọn ngày & giờ…",
+    "remove-due-date": "Gỡ ngày đến hạn",
+    "subtasks-prefix": "Công việc con",
+    "subtasks-counter": "{done} trên {total} đã xong",
     "repeats": "Lặp lại",
-    "repeats-daily": " Lặp lại hàng ngày ",
-    "repeats-weekly": " Lặp lại hàng tuần ",
-    "repeats-monthly": " Lặp lại hàng tháng ",
-    "repeats-yearly": " Lặp lại hàng năm ",
+    "repeats-daily": "Lặp lại hằng ngày",
+    "repeats-weekly": "Lặp lại hằng tuần",
+    "repeats-monthly": "Lặp lại hằng tháng",
+    "repeats-yearly": "Lặp lại hằng năm",
     "errors": {
-      "could-not-save": " Không thể lưu nhiệm vụ ",
-      "could-not-reschedule": " Không thể thay đổi lịch nhiệm vụ ",
-      "could-not-remove-due-date": " Không thể xóa hạn chót ",
-      "could-not-open-note": " Không thể mở ghi chú "
+      "could-not-save": "Không thể lưu công việc",
+      "could-not-reschedule": "Không thể lên lịch lại công việc",
+      "could-not-remove-due-date": "Không thể gỡ ngày đến hạn",
+      "could-not-open-note": "Không thể mở ghi chú"
     }
   },
-  "connect-prompt": {
-    "aria": "Kết nối Google Calendar",
-    "body": "Kết nối tài khoản Google để làm được nhiều hơn với lịch của bạn:",
-    "bullets": {
-      "events": "Xem sự kiện Google bên cạnh ghi chú và công việc",
-      "schedule": "Lên lịch công việc và ghi chú trên lịch của bạn",
-      "sync": "Tạo và sửa sự kiện, đồng bộ hai chiều"
-    },
-    "continue": "Tiếp tục với Google",
-    "dismiss": "Bỏ qua",
-    "error": "Không thể kết nối Google Calendar. Thử lại.",
-    "pill": "Kết nối Google",
-    "title": "Hoàn tất kết nối với Google Calendar"
-  },
   "notePopover": {
-    "couldNotOpen": "Không thể mở ghi chú",
     "kind": "Ghi chú",
-    "kindDateReminder": "Nhắc theo ngày",
-    "open": "Mở ghi chú"
+    "kindDateReminder": "Lời nhắc theo ngày",
+    "open": "Mở ghi chú",
+    "couldNotOpen": "Không thể mở ghi chú"
   },
-  "search": {
-    "close": "Đóng tìm kiếm",
-    "no-results": "Không có kết quả",
-    "open": "Tìm trong lịch",
-    "placeholder": "Tìm sự kiện, công việc, nhắc nhở…"
+  "timeline": {
+    "label": "Công việc đã lên lịch trên dòng thời gian",
+    "tasks-column": "Công việc",
+    "span": "{start} – {end}",
+    "due": "Đến hạn {date}",
+    "starts": "Bắt đầu {date}",
+    "starts-short": "{date} →",
+    "no-date": "Không có ngày",
+    "today": "Hôm nay",
+    "overdue": "quá hạn",
+    "untitled": "Không có tiêu đề",
+    "days": "{count, plural, other {# ngày}}",
+    "events": "Sự kiện",
+    "schedule-hint": "Nhấp để đặt ngày, kéo để đặt khoảng thời gian",
+    "empty-title": "Không có gì trên dòng thời gian ở đây",
+    "empty-body": "Công việc có ngày bắt đầu hoặc ngày đến hạn, cùng sự kiện cả ngày hoặc nhiều ngày, sẽ xuất hiện ở đây. Bật công việc không có ngày trong Hiển thị để lên lịch bằng cách kéo.",
+    "status": {
+      "todo": "Cần làm",
+      "in_progress": "Đang làm",
+      "done": "Đã xong"
+    },
+    "priority": {
+      "urgent": "Khẩn cấp",
+      "high": "Cao",
+      "medium": "Trung bình",
+      "low": "Thấp",
+      "none": "Không ưu tiên"
+    },
+    "zoom": {
+      "label": "Thu phóng",
+      "weeks": "Tuần",
+      "months": "Tháng",
+      "quarters": "Quý"
+    },
+    "group-by": {
+      "project": "Dự án",
+      "status": "Trạng thái",
+      "priority": "Mức ưu tiên",
+      "none": "Không nhóm"
+    },
+    "group-by-label": "Theo {group}",
+    "order-by": {
+      "start": "Ngày bắt đầu",
+      "due": "Ngày đến hạn",
+      "title": "Tiêu đề"
+    },
+    "display": {
+      "button": "Hiển thị",
+      "group-by": "Nhóm theo",
+      "order-by": "Sắp xếp theo",
+      "show": "Hiển thị",
+      "show-events": "Sự kiện",
+      "show-undated": "Công việc không có ngày",
+      "show-completed": "Công việc đã hoàn thành",
+      "show-subtasks": "Công việc con"
+    },
+    "bar": {
+      "summary": "{tasks, plural, other {# công việc}} · {events, plural, other {# sự kiện}}",
+      "open": "Mở",
+      "move": "Di chuyển",
+      "resize": "Đổi kích thước",
+      "actions": "Thao tác",
+      "select": "Chọn",
+      "today": "Hôm nay"
+    },
+    "actions": {
+      "search": "Tìm kiếm thao tác…",
+      "search-projects": "Tìm kiếm dự án…",
+      "empty": "Không có thao tác phù hợp",
+      "no-projects": "Không có dự án phù hợp",
+      "open": "Mở công việc",
+      "open-in-tasks": "Mở trong Công việc",
+      "schedule": "Lên lịch",
+      "set-start": "Đặt ngày bắt đầu",
+      "set-due": "Đặt ngày đến hạn",
+      "move-later": "Dời muộn hơn một tuần",
+      "move-earlier": "Dời sớm hơn một tuần",
+      "clear-dates": "Xóa ngày",
+      "clear-start": "Xóa ngày bắt đầu",
+      "clear-due": "Xóa ngày đến hạn",
+      "task": "Công việc",
+      "complete": "Đánh dấu đã hoàn thành",
+      "uncomplete": "Đánh dấu chưa hoàn thành",
+      "change-project": "Đổi dự án",
+      "page": {
+        "root": "Thao tác",
+        "start": "Ngày bắt đầu",
+        "due": "Ngày đến hạn",
+        "project": "Dự án"
+      }
+    },
+    "undo": {
+      "reschedule": "Lên lịch lại “{title}”"
+    }
   },
-  "undo": {
-    "moveEvent": "Di chuyển sự kiện",
-    "moveTask": "Đổi lịch công việc"
+  "calendar-color": {
+    "tomato": "Đỏ cà chua",
+    "flamingo": "Hồng hạc",
+    "tangerine": "Cam quýt",
+    "banana": "Vàng chuối",
+    "sage": "Xanh xô thơm",
+    "basil": "Xanh húng quế",
+    "peacock": "Xanh lông công",
+    "blueberry": "Xanh việt quất",
+    "lavender": "Tím oải hương",
+    "grape": "Tím nho",
+    "graphite": "Xám than chì"
   },
-  "agent-access-dialog": {
-    "allow": "Cho phép",
-    "aria": "Chọn xem AI có được đọc các sự kiện Google Calendar của bạn hay không",
-    "body": "Dù bạn chọn cách nào, bạn vẫn thấy sự kiện Google của mình trong memrynote. Lựa chọn này chỉ quyết định trợ lý AI có được đọc chúng hay không khi bạn hỏi nó về lịch trình của mình.",
-    "deny": "Không cho phép",
-    "footnote": "Bạn có thể thay đổi điều này bất cứ lúc nào trong Cài đặt → Tích hợp → Google Calendar.",
-    "save-error": "Không lưu được lựa chọn của bạn",
-    "title": "Cho AI đọc các sự kiện Google Calendar của bạn?"
+  "subscribedEvent": {
+    "kind": "Lịch đã đăng ký",
+    "kindAppleEventKit": "Máy Mac này",
+    "close": "Đóng",
+    "detailsFailed": "Không thể tải người tham dự và liên kết của sự kiện này. Sự kiện vẫn không thay đổi.",
+    "showMore": "Hiển thị thêm",
+    "showLess": "Ẩn bớt",
+    "organizer": "người tổ chức",
+    "you": "bạn",
+    "phone": "Tham gia qua điện thoại",
+    "alert": "{minutes, plural, =0 {Thông báo lúc bắt đầu} other {Thông báo trước # phút}}",
+    "alertHours": "{hours, plural, other {Thông báo trước # giờ}}",
+    "alertDays": "{days, plural, other {Thông báo trước # ngày}}",
+    "recurrence": {
+      "daily": "{count, plural, =1 {Lặp lại hằng ngày} other {Lặp lại mỗi # ngày}}",
+      "weekly": "{count, plural, =1 {Lặp lại hằng tuần} other {Lặp lại mỗi # tuần}}",
+      "weeklyOn": "{count, plural, =1 {Lặp lại hằng tuần vào {days}} other {Lặp lại mỗi # tuần vào {days}}}",
+      "monthly": "{count, plural, =1 {Lặp lại hằng tháng} other {Lặp lại mỗi # tháng}}",
+      "yearly": "{count, plural, =1 {Lặp lại hằng năm} other {Lặp lại mỗi # năm}}",
+      "other": "Lặp lại"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Lịch đã đăng ký"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

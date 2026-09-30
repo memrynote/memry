@@ -35,7 +35,7 @@
     "deleteVersionFailed": "バージョンを削除できませんでした",
     "reorderFailed": "ノートを並べ替えられませんでした",
     "importFilesFailed": "ファイルをインポートできませんでした",
-    "setLocalOnlyFailed": "ローカル限定に設定できませんでした"
+    "setLocalOnlyFailed": "ローカルのみに設定できませんでした"
   },
   "database": {
     "connectionFailed": "ローカルデータベースに接続できませんでした。アプリを再起動してみてください。",
@@ -47,7 +47,7 @@
   },
   "watcher": {
     "startFailed": "ファイル変更の監視を開始できませんでした。",
-    "stopFailed": "ファイルウォッチャーを停止できませんでした。",
+    "stopFailed": "ファイルの監視を停止できませんでした。",
     "eventError": "ファイルの変更を監視中にエラーが発生しました。"
   },
   "attachment": {
@@ -61,7 +61,7 @@
     "downloadFailed": "添付ファイルをダウンロードできませんでした",
     "downloadProgressFailed": "ダウンロードの進捗を取得できませんでした",
     "exceedsMaxSize": "ファイルが大きすぎます：{size} は上限の {limit} を超えています",
-    "exceedsPlanLimit": "ファイルがプランの上限を超えています：{size} は {limit} を超えています",
+    "exceedsPlanLimit": "ファイルがプランの上限を超えています：{size}（上限 {limit}）",
     "emptyFile": "空のファイルはアップロードできません"
   },
   "crdt": {
@@ -86,8 +86,8 @@
     "deviceRevoked": "このデバイスはアカウントから削除されました。",
     "rateLimited": "リクエストが多すぎます。同期はすぐに再開されます。",
     "cryptoFailure": "同期データを暗号化または復号できませんでした。サインアウトしてから再度サインインしてみてください。",
-    "versionIncompatible": "このバージョンの memrynote はサポートされなくなりました。更新してください。",
-    "storageQuotaExceeded": "同期ストレージがいっぱいです。スペースを解放するか、プランをアップグレードしてください。",
+    "versionIncompatible": "このバージョンの memrynote はサポートされなくなりました。アップデートしてください。",
+    "storageQuotaExceeded": "同期ストレージがいっぱいです。空き容量を確保するか、プランをアップグレードしてください。",
     "fileTooLarge": "このファイルはプランの上限を超えています。大きなファイルを同期するにはプランをアップグレードしてください。",
     "noteTooLarge": "ノートが大きすぎて同期できません。小さなノートに分割すると解決します。",
     "noteTooLargeNamed": "「{title}」は大きすぎて同期できません。小さなノートに分割すると解決します。",
@@ -98,7 +98,7 @@
     "deviceKeyMismatch": "このデバイスのセキュリティキーがアカウントに登録されているキーと一致しないため、サーバーが変更を拒否しています。このデバイスで再度サインインして、再登録してください。",
     "keychainUnavailable": "Memry がシステムのキーチェーンから同期キーを読み取れないため、同期を一時停止しています。キーリングのロックを解除すると同期は自動的に再開されます。再開しない場合は Memry を再起動してください。何も削除されていません。",
     "unknown": "予期しない同期エラーが発生しました。自動的に再試行されます。",
-    "statusFetchFailed": "同期ステータスを取得できませんでした",
+    "statusFetchFailed": "同期の状態を取得できませんでした",
     "engineNotInitialized": "同期エンジンが初期化されていません。同期を開始するには、保管庫を開いてください。",
     "triggerFailed": "同期できませんでした",
     "pauseFailed": "同期を一時停止できませんでした",
@@ -106,10 +106,10 @@
     "settingsNotInitialized": "設定の同期が初期化されていません",
     "securityQuarantinePermanent": "同期項目を検証できなかったため、セキュリティのために隔離しました。",
     "securityQuarantineRetry": "同期項目の署名を検証できなかったため、再試行します。",
-    "certificatePinPaused": "同期サーバーへの安全な接続を確認できませんでした。保護のため、同期は一時停止されました。",
+    "certificatePinPaused": "同期サーバーへの安全な接続を確認できませんでした。保護のため、同期を一時停止しました。",
     "vaultRecovered": "保管庫のキーを復元しました。同期を再開します。",
     "serverUnreachable": "同期サーバーに接続できません。インターネット接続を確認してください。",
-    "keyPersistenceFailed": "暗号化キーを安全に保存できませんでした。デバイスの登録は取り消されました。もう一度お試しください。",
+    "keyPersistenceFailed": "暗号化キーを安全に保存できませんでした。デバイスの登録を取り消しました。もう一度お試しください。",
     "historyFetchFailed": "同期履歴を取得できませんでした",
     "updateSyncedSettingFailed": "同期された設定を更新できませんでした",
     "requestTimedOut": "同期リクエストがタイムアウトしました。インターネット接続を確認してください。"
@@ -175,7 +175,7 @@
     "disconnectProviderFailed": "カレンダープロバイダーの接続を解除できませんでした",
     "refreshProviderFailed": "カレンダープロバイダーを更新できませんでした",
     "listGoogleCalendarsFailed": "Google のカレンダー一覧を取得できませんでした",
-    "setDefaultGoogleCalendarFailed": "デフォルトの Google カレンダーを設定できませんでした",
+    "setDefaultGoogleCalendarFailed": "デフォルトで使う Google のカレンダーを設定できませんでした",
     "retryGoogleSourceSyncFailed": "Google Calendar ソースの同期を再試行できませんでした",
     "promoteExternalEventFailed": "外部カレンダーの予定を取り込めませんでした",
     "onlyCalendarSourcesRetryable": "再試行できるのはカレンダーソースのみです",

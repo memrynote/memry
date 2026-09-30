@@ -46,9 +46,9 @@
     "corrupted": "מסד הנתונים המקומי פגום. ייתכן שיהיה צורך לאפס אותו."
   },
   "watcher": {
-    "startFailed": "לא ניתן היה להתחיל לצפות בשינויים בקבצים.",
+    "startFailed": "לא ניתן היה להתחיל את המעקב אחר שינויים בקבצים.",
     "stopFailed": "לא ניתן היה לעצור את המעקב אחר שינויים בקבצים.",
-    "eventError": "אירעה שגיאה בעת צפייה בשינויים בקבצים."
+    "eventError": "אירעה שגיאה במעקב אחר שינויים בקבצים."
   },
   "attachment": {
     "fileTooLarge": "קובץ זה גדול מכדי לצרף.",
@@ -70,7 +70,7 @@
   },
   "encryption": {
     "failed": "הצפנת הנתונים נכשלה. ייתכן שיהיה צורך ליצור מחדש את המפתחות שלך.",
-    "decryptionFailed": "פענוח הנתונים נכשל. מפתחות ההצפנה שלך עשויים להיות לא מעודכנים.",
+    "decryptionFailed": "פענוח הנתונים נכשל. ייתכן שמפתחות ההצפנה שלך אינם מעודכנים.",
     "invalidKeyLength": "מפתח הצפנה לא תקין. אפשר לנסות להתנתק ולהתחבר מחדש.",
     "invalidNonceLength": "שגיאת הצפנה. אפשר לנסות את הפעולה שוב."
   },
@@ -135,7 +135,7 @@
     "sessionExpired": "פג תוקף ההתחברות. יש להתחבר שוב.",
     "setupSessionExpired": "תוקף ההתחברות פג לפני שהתהליך הסתיים. יש להתחבר שוב ואז להזין את ביטוי השחזור.",
     "setupSessionExpiredLinking": "תוקף ההתחברות פג לפני שקישור המכשיר הזה הסתיים. יש להתחבר שוב ואז לסרוק את הקוד פעם נוספת.",
-    "invalidRecoveryPhraseFormat": "תבנית ביטוי השחזור אינה חוקית",
+    "invalidRecoveryPhraseFormat": "ביטוי השחזור אינו בפורמט תקין",
     "recoveryPhraseMismatch": "ביטוי השחזור לא תואם. אפשר לנסות שוב.",
     "cannotRemoveCurrentDevice": "לא ניתן להסיר את המכשיר הנוכחי",
     "requestOtpFailed": "בקשת הקוד החד-פעמי נכשלה",
@@ -240,9 +240,9 @@
     "notFound": "התזכורת לא נמצאה",
     "createFailed": "יצירת התזכורת נכשלה",
     "updateFailed": "עדכון התזכורת נכשל",
-    "dismissFailed": "ביטול התזכורת נכשל",
+    "dismissFailed": "סגירת התזכורת נכשלה",
     "snoozeFailed": "השהיית התזכורת נכשלה",
-    "dismissAllFailed": "ביטול התזכורות נכשל"
+    "dismissAllFailed": "סגירת התזכורות נכשלה"
   },
   "savedFilter": {
     "notFound": "המסנן השמור לא נמצא"
@@ -252,7 +252,7 @@
   },
   "settings": {
     "unknownVault": "כספת לא מוכרת",
-    "modelAlreadyLoading": "המודל כבר נטען",
+    "modelAlreadyLoading": "המודל כבר בטעינה",
     "modelLoadFailed": "טעינת המודל נכשלה",
     "voiceModelDownloadFailed": "הורדת מודל הקול נכשלה",
     "terminalCommandInstallFailed": "התקנת פקודת הטרמינל נכשלה",

@@ -25,7 +25,7 @@
       "willSync": "Notatka zostanie zsynchronizowana z chmurą",
       "renameFailed": "Nie udało się zmienić nazwy notatki",
       "titleRequired": "Notatka musi mieć tytuł",
-      "toggleLocalOnlyFailed": "Nie udało się przełączyć trybu tylko lokalnego",
+      "toggleLocalOnlyFailed": "Nie udało się zmienić trybu tylko lokalnego",
       "toggleFullWidthFailed": "Nie udało się zmienić trybu pełnej szerokości",
       "pathCopied": "Skopiowano ścieżkę",
       "copyPathFailed": "Nie udało się skopiować ścieżki",
@@ -48,7 +48,7 @@
     },
     "largeFile": {
       "title": "Ten plik jest za duży, aby otworzyć go jako notatkę",
-      "badge": "Tylko do odczytu · niezsynchronizowany",
+      "badge": "Tylko do odczytu · niesynchronizowany",
       "reason": {
         "fileBytes": "Ma rozmiar {size}. Notatki można edytować do rozmiaru {limit}.",
         "blockBytes": "Zawiera fragment o rozmiarze {size} bez pustego wiersza. Notatki można edytować do {limit} na blok."
@@ -82,7 +82,7 @@
     },
     "empty": {
       "title": "Nie ma jeszcze żadnych notatek",
-      "body": "Aby rozpocząć, utwórz notatkę",
+      "body": "Utwórz notatkę, aby zacząć",
       "newNote": "Nowa notatka"
     },
     "syncing": {
@@ -193,7 +193,7 @@
       "fullWidth": "Pełna szerokość",
       "rename": "Zmień nazwę…",
       "moveToFolder": "Przenieś do folderu…",
-      "copyPath": "Skopiuj ścieżkę",
+      "copyPath": "Kopiuj ścieżkę",
       "revealInSidebar": "Pokaż w nawigacji",
       "attachments": "Załączniki…",
       "disableLocalOnly": "Wyłącz tryb tylko lokalny",
@@ -361,7 +361,7 @@
       "failed": "Nie udało się załączyć tego pliku"
     },
     "checkboxTask": {
-      "converted": "Zamieniono pole wyboru w zadanie",
+      "converted": "Zamieniono pole wyboru na zadanie",
       "hint": "Nowe pole wyboru staje się zadaniem. Naciśnij {undo}, aby zostawić pole wyboru.",
       "keepAsCheckbox": "Zostaw jako pole wyboru"
     },
@@ -547,7 +547,7 @@
     "sortRecent": "Najnowsze",
     "sortAlpha": "A-Z",
     "sortMentions": "Najwięcej wzmianek",
-    "sortBy": "Sortuj linki zwrotne według {sort}",
+    "sortBy": "Sortowanie linków zwrotnych: {sort}",
     "summary": "Notatki: {notes} · Odwołania: {references}",
     "sectionAria": "Linki zwrotne",
     "listAria": "Lista linków zwrotnych",
@@ -712,7 +712,7 @@
   },
   "deleteNoteTasks": {
     "label": "{count, plural, one {Usuń też zadanie z tej notatki} few {Usuń też # zadania z tej notatki} many {Usuń też # zadań z tej notatki} other {Usuń też # zadania z tej notatki}}",
-    "description": "{count, plural, one {Bez zaznaczenia zadanie pozostanie w Zadaniach.} few {Bez zaznaczenia zadania pozostaną w Zadaniach.} many {Bez zaznaczenia zadania pozostaną w Zadaniach.} other {Bez zaznaczenia zadania pozostaną w Zadaniach.}}",
+    "description": "{count, plural, one {Jeśli tego nie zaznaczysz, zadanie pozostanie w Zadaniach.} few {Jeśli tego nie zaznaczysz, zadania pozostaną w Zadaniach.} many {Jeśli tego nie zaznaczysz, zadania pozostaną w Zadaniach.} other {Jeśli tego nie zaznaczysz, zadania pozostaną w Zadaniach.}}",
     "failed": "Nie udało się usunąć zadań. Nadal są w Zadaniach."
   },
   "cover": {
@@ -921,14 +921,14 @@
       "filters": "Filtry",
       "clearAll": "Wyczyść wszystko",
       "noFiltersApplied": "Nie zastosowano żadnych filtrów",
-      "addFiltersToNarrowDownYourNotes": "Dodaj filtry, aby zawęzić swoje notatki",
+      "addFiltersToNarrowDownYourNotes": "Dodaj filtry, aby zawęzić listę notatek",
       "match": "Warunki:",
       "allAnd": "Wszystkie (ORAZ)",
-      "anyOr": "Dowolny (LUB)",
+      "anyOr": "Co najmniej jeden (LUB)",
       "ofTheFollowing": "z następujących:",
       "match2": "Warunki:",
       "all": "Wszystkie",
-      "any": "Dowolny",
+      "any": "Co najmniej jeden",
       "of": "z:",
       "addCondition": "Dodaj warunek",
       "addFilter": "Dodaj filtr",
@@ -1009,7 +1009,7 @@
       "open": "Otwórz",
       "openInExternalEditor": "Otwórz w edytorze zewnętrznym",
       "revealInSidebar": "Pokaż na pasku bocznym",
-      "copyLink": "Skopiuj link",
+      "copyLink": "Kopiuj link",
       "delete2": "Usuń"
     },
     "componentsFolderViewSortableColumnHeader": {
@@ -1031,7 +1031,7 @@
       "myCustomView": "Mój widok niestandardowy",
       "baseConfiguration": "Konfiguracja podstawowa",
       "copyFromCurrentView": "Skopiuj z bieżącego widoku",
-      "startFreshDefaultColumns": "Zacznij od nowa (kolumny domyślne)",
+      "startFreshDefaultColumns": "Zacznij od zera (kolumny domyślne)",
       "cancel": "Anuluj",
       "renameView": "Zmień nazwę widoku",
       "enterANewNameForThisView": "Wprowadź nową nazwę tego widoku.",
@@ -1117,7 +1117,7 @@
       "pinToTabs": "Przypnij do kart",
       "edit": "Edytuj",
       "delete": "Usuń",
-      "copyLink": "Skopiuj link"
+      "copyLink": "Kopiuj link"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Ładowanie tagów…",
@@ -1281,7 +1281,7 @@
   },
   "bulkActions": {
     "toolbarAria": "Operacje zbiorcze",
-    "selected": "wybrano",
+    "selected": "zaznaczone",
     "move": "Przenieś",
     "copyLinks": "Kopiuj linki",
     "addTag": "Dodaj tag",
@@ -1317,7 +1317,7 @@
   },
   "newNoteFromNote": {
     "action": "Nowa notatka z tej notatki",
-    "created": "Utworzono z notatki {source}: {tagCount, plural, =0 {brak tagów} one {# tag} few {# tagi} many {# tagów} other {# tagu}}, {propertyCount, plural, =0 {brak właściwości} one {# właściwość} few {# właściwości} many {# właściwości} other {# właściwości}}"
+    "created": "Utworzono z notatki „{source}”: {tagCount, plural, =0 {brak tagów} one {# tag} few {# tagi} many {# tagów} other {# tagu}}, {propertyCount, plural, =0 {brak właściwości} one {# właściwość} few {# właściwości} many {# właściwości} other {# właściwości}}"
   },
   "tags": {
     "hubTitle": "Tagi",

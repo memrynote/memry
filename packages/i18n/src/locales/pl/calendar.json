@@ -152,14 +152,14 @@
     "reminders": "Przypomnienia",
     "default-reminders": "Domyślne przypomnienia",
     "visibility": "Widoczność:",
-    "optional": "Opcjonalne",
+    "optional": "Opcjonalnie",
     "join-meeting": "Dołącz do spotkania",
     "video-call": "Rozmowa wideo",
     "response": {
       "accepted": "Zaakceptowano",
       "declined": "Odrzucono",
-      "tentative": "Wstępnie",
-      "needs-action": "Oczekujące"
+      "tentative": "Może",
+      "needs-action": "Oczekuje"
     },
     "visibility-value": {
       "private": "Prywatne",
@@ -271,7 +271,7 @@
       "none": "Bez priorytetu"
     },
     "zoom": {
-      "label": "Powiększenie",
+      "label": "Skala",
       "weeks": "Tygodnie",
       "months": "Miesiące",
       "quarters": "Kwartały"

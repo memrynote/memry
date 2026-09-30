@@ -168,7 +168,7 @@
     "overdue": "{count} forfaldne"
   },
   "stats": {
-    "wordCount": "Ordantal",
+    "wordCount": "Antal ord",
     "characterCount": "Antal tegn",
     "readingTime": "Estimeret læsetid",
     "lastModified": "Sidst ændret",

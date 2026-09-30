@@ -18,7 +18,7 @@
       "searchProjects": "Caută proiecte…",
       "editProject": "Editează {name}",
       "unstarSavedFilter": "Elimină steaua de la {name}",
-      "openByDefault": "Deschide Sarcinile în {name} implicit",
+      "openByDefault": "Deschide implicit Sarcini în proiectul {name}",
       "defaultProject": "Proiect implicit",
       "setAsDefault": "Setează ca implicit"
     }
@@ -58,7 +58,7 @@
   },
   "reminders": {
     "summary": "Memento: {date}",
-    "summaryWithMore": "Memento: {date} (+încă {count})",
+    "summaryWithMore": "Memento: {date} (încă {count})",
     "hasReminders": "Are mementouri",
     "setReminder": "Setează un memento",
     "toast": {
@@ -114,7 +114,7 @@
       "noDueDate": "Fără termen"
     },
     "repeatTypeRepeating": "Recurente",
-    "repeatTypeOneTime": "Unice"
+    "repeatTypeOneTime": "Nerecurente"
   },
   "quickAdd": {
     "label": "Adăugare rapidă de sarcini",
@@ -384,7 +384,7 @@
     },
     "componentsTasksDatePickerCalendar": {
       "previousMonth": "Luna anterioară",
-      "nextMonth": "Luna viitoare",
+      "nextMonth": "Luna următoare",
       "goToToday": "Accesează ziua de astăzi",
       "today": "Astăzi",
       "w": "Săpt.",
@@ -424,21 +424,21 @@
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Setați termenul pentru toate subsarcinile",
       "setDueDateFor": "Setați termenul pentru ",
-      "alsoApplyToCompletedSubtasks": "Se aplică și subsarcinilor finalizate (",
+      "alsoApplyToCompletedSubtasks": "Aplică și subsarcinilor finalizate (",
       "clearDate": "Șterge data",
       "cancel": "Anulează",
       "apply": "Aplică",
       "setDueDateForSubtasksIn": "Setați termenul pentru {count, plural, one {# subsarcină} few {# subsarcini} other {# de subsarcini}} din „{title}”",
-      "alsoApplyToCompletedSubtasksCount": "Se aplică și subsarcinilor finalizate ({count})"
+      "alsoApplyToCompletedSubtasksCount": "Aplică și subsarcinilor finalizate ({count})"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Setați prioritatea pentru toate subsarcinile",
       "setPriorityFor": "Setați prioritatea pentru ",
-      "alsoApplyToCompletedSubtasks": "Se aplică și subsarcinilor finalizate (",
+      "alsoApplyToCompletedSubtasks": "Aplică și subsarcinilor finalizate (",
       "cancel": "Anulează",
       "apply": "Aplică",
       "setPriorityForSubtasksIn": "Setați prioritatea pentru {count, plural, one {# subsarcină} few {# subsarcini} other {# de subsarcini}} din „{title}”",
-      "alsoApplyToCompletedSubtasksCount": "Se aplică și subsarcinilor finalizate ({count})"
+      "alsoApplyToCompletedSubtasksCount": "Aplică și subsarcinilor finalizate ({count})"
     },
     "componentsTasksDialogsCompleteParentDialog": {
       "completeTaskWithIncompleteSubtasks": "Finalizați sarcina cu subsarcini nefinalizate?",
@@ -506,7 +506,7 @@
       "moveToProject": "Mută în proiect",
       "current": "Curent",
       "changeStatus": "Schimbă starea",
-      "current2": "Curent",
+      "current2": "Curentă",
       "reorder": "Reordonează"
     },
     "componentsTasksDragDropMultiDragOverlay": {
@@ -561,7 +561,7 @@
       "tagsIs": "Etichetele sunt",
       "tags": "etichete",
       "statusIs": "Starea este",
-      "status": "starea",
+      "status": "stare",
       "projectIs": "Proiectul este",
       "project": "proiect",
       "due": "Termen",
@@ -633,7 +633,7 @@
       "saveFilter": "Salvați filtrul",
       "saveYourCurrentFilterSettingsForQuickAccessLater": "Salvați setările curente ale filtrului pentru acces rapid mai târziu.",
       "filterName": "Nume filtru",
-      "eGHighPriorityThisWeek": "de ex., Prioritate ridicată săptămâna aceasta",
+      "eGHighPriorityThisWeek": "de ex. Prioritate ridicată săptămâna aceasta",
       "currentFilters": "Filtre curente:",
       "noFiltersApplied": "Nu s-au aplicat filtre",
       "cancel": "Anulează",
@@ -644,7 +644,7 @@
       "summaryDue": "Termen: {value}",
       "summaryDueRange": "Termen: {start} – {end}",
       "summaryRepeatRepeating": "Repetare: Doar recurente",
-      "summaryRepeatOneTime": "Repetare: Doar o singură dată",
+      "summaryRepeatOneTime": "Repetare: Doar nerecurente",
       "summaryTimeWith": "Oră: Cu oră",
       "summaryTimeWithout": "Oră: Fără oră",
       "nameRequired": "Introduceți un nume pentru acest filtru"
@@ -652,7 +652,7 @@
     "componentsTasksFiltersSavedFiltersDropdown": {
       "savedFilters": "Filtre salvate",
       "saved": "Salvate",
-      "noSavedFiltersYet": "Încă nu au fost salvate filtre",
+      "noSavedFiltersYet": "Niciun filtru salvat încă",
       "saveCurrentFilters": "Salvează filtrele curente",
       "saveCurrentFilters2": "Salvează filtrele curente"
     },
@@ -688,7 +688,7 @@
       "iconName": "Pictogramă și nume",
       "selectIcon": "Selectează pictograma",
       "projectName": "Numele proiectului",
-      "clickIconToChange": "Faceți clic pe pictogramă pentru a schimba",
+      "clickIconToChange": "Faceți clic pe pictogramă pentru a o schimba",
       "color": "Culoare",
       "descriptionOptional": "Descriere (opțional)",
       "briefDescriptionOfThisProject": "Scurtă descriere a acestui proiect…",
@@ -752,7 +752,7 @@
       "isSetToRepeat": "este setată să se repete ",
       "whatWouldYouLikeToDo": "Ce doriți să faceți?",
       "keepThisTaskStopFutureOccurrences": "Păstrează această sarcină, oprește aparițiile viitoare",
-      "taskWillBecomeAOneTimeTask": "Sarcina va deveni o sarcină unică",
+      "taskWillBecomeAOneTimeTask": "Sarcina va deveni nerecurentă",
       "deleteThisAndAllFutureOccurrences": "Șterge aceasta și toate aparițiile viitoare",
       "taskWillBeRemovedEntirely": "Sarcina va fi eliminată în întregime",
       "cancel": "Anulează",
@@ -809,7 +809,7 @@
     },
     "componentsTasksTodayEmptyState": {
       "nothingScheduledForToday": "Nimic programat pentru astăzi",
-      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Aveți sarcini restante mai sus. Adăugați câteva sarcini pentru astăzi sau verificați lista viitoare.",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Aveți sarcini restante mai sus. Adăugați câteva sarcini pentru astăzi sau verificați sarcinile viitoare.",
       "addTaskForToday": "Adaugă o sarcină pentru astăzi",
       "allCaughtUpForToday": "Totul este gata pentru astăzi",
       "youHaveNothingScheduledEnjoyTheClarity": "Nu aveți nimic programat. Bucurați-vă de claritate.",

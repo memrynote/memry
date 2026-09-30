@@ -133,14 +133,14 @@
       "appUpdates": "Atualizações do app",
       "installedVersion": "Versão instalada {version}",
       "availableVersion": "Versão disponível {version}",
-      "unsupported": "As compilações empacotadas podem verificar, baixar e instalar atualizações das versões do GitHub",
+      "unsupported": "As versões empacotadas do app podem verificar, baixar e instalar atualizações do GitHub Releases",
       "available": "O memrynote {version} está disponível para download",
       "downloadingLatest": "Baixando a versão mais recente",
       "downloadingLatestPercent": "Baixando a versão mais recente ({percent}%)",
       "downloaded": "O memrynote {version} está pronto para instalar",
       "upToDate": "Esta instalação está na última versão publicada",
       "checking": "Procurando uma versão mais recente no GitHub Releases",
-      "idle": "Verifique se há novos lançamentos e instale-os sem sair do aplicativo",
+      "idle": "Verifique se há novas versões e instale-as sem sair do app",
       "unsupportedToast": "As atualizações automáticas estão disponíveis apenas em versões empacotadas",
       "upToDateToast": "O memrynote {version} está atualizado",
       "actionFailed": "Não foi possível concluir a ação de atualização",
@@ -210,8 +210,8 @@
         "label": "Botão de fechar aba",
         "description": "Quando mostrar o botão Fechar",
         "options": {
-          "always": "Sempre visível",
-          "hover": "Mostrar ao passar o mouse",
+          "always": "Sempre",
+          "hover": "Ao passar o mouse",
           "active": "Somente na aba ativa"
         }
       },
@@ -261,7 +261,7 @@
         "error": "Não foi possível enviar o relatório de diagnóstico",
         "sendReport": {
           "label": "Relatório de diagnóstico",
-          "description": "Envie, só desta vez, um relatório de registros técnicos anonimizados para nos ajudar a resolver um problema que você encontrou.",
+          "description": "Enviar um relatório pontual com registros técnicos anonimizados para nos ajudar a investigar um problema que você encontrou.",
           "button": "Enviar relatório…"
         }
       }
@@ -385,7 +385,7 @@
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
-          "monospace": "Monoespaçado"
+          "monospace": "Monoespaçada"
         },
         "sections": {
           "builtin": "Integradas",
@@ -506,7 +506,7 @@
     },
     "groups": {
       "defaultTemplate": "Modelo padrão",
-      "location": "Localização e formato",
+      "location": "Local e formato",
       "sidebarVisibility": "Visibilidade da barra lateral",
       "footer": "Rodapé",
       "weekdayTemplates": "Modelos por dia"
@@ -607,7 +607,7 @@
     },
     "defaultView": {
       "label": "Visualização padrão",
-      "description": "A aba em que a página de Tarefas abre",
+      "description": "Visualização inicial da página Tarefas",
       "options": {
         "all": "Todas",
         "today": "Hoje",
@@ -718,7 +718,7 @@
       "accountReconnect": "Reconectar o Google",
       "addAccount": "Adicionar conta",
       "importedCalendars": "Calendários importados",
-      "selected": "{count, plural, one {# selecionado} other {# selecionados}}",
+      "selected": "{count, plural, =0 {Nenhum selecionado} one {# selecionado} other {# selecionados}}",
       "syncNow": "Sincronizar agora",
       "disconnect": "Desconectar",
       "reconnect": "Reconectar o Google",
@@ -1003,7 +1003,7 @@
         "description": "Economize 20%. Calculamos proporcionalmente o restante deste mês, sem uma segunda cobrança.",
         "action": "Mudar para anual",
         "pricing": "Calculando preço…",
-        "preview": "{amount} hoje, depois {recurring} por ano",
+        "preview": "{amount} a pagar hoje, depois {recurring} por ano",
         "confirm": "Confirmar mudança",
         "switching": "Mudando…",
         "success": "Agora você está na cobrança anual.",
@@ -1041,7 +1041,7 @@
       "toasts": {
         "loadFailed": "Não foi possível carregar o status do faturamento",
         "checkoutFailed": "Não foi possível iniciar a compra",
-        "checkoutOpened": "Compra aberta no seu navegador",
+        "checkoutOpened": "Página de pagamento aberta no seu navegador",
         "refreshFailed": "Não foi possível atualizar o status do faturamento",
         "billingActive": "O faturamento está ativo",
         "activationPending": "Ativação pendente",
@@ -1115,7 +1115,7 @@
       "google": "Continuar com o Google"
     },
     "otp": {
-      "title": "Insira o código de verificação",
+      "title": "Digite o código de verificação",
       "sentTo": "Enviamos um código de 6 dígitos para ",
       "aria": "Código de verificação de 6 dígitos",
       "verifying": "Verificando…",
@@ -1129,7 +1129,7 @@
     "recovery": {
       "displayTitle": "Salve sua frase de recuperação",
       "displayDescription": "Esta é a única maneira de recuperar seus dados criptografados caso você perca o acesso a todos os seus dispositivos.",
-      "warning": "Anote isso e guarde-o em algum lugar seguro. Você não verá isso novamente.",
+      "warning": "Anote a frase e guarde-a em um lugar seguro. Você não a verá novamente.",
       "wordsAria": "Palavras da frase de recuperação",
       "wordAria": "Palavra {index}: {word}",
       "copyAria": "Copiar a frase de recuperação para a área de transferência",
@@ -1141,7 +1141,7 @@
       "wordPlaceholder": "Digite a palavra #{index}",
       "verify": "Verificar",
       "mustMatch": "Todas as 3 palavras devem corresponder para continuar",
-      "inputTitle": "Insira a frase de recuperação",
+      "inputTitle": "Digite a frase de recuperação",
       "inputDescription": "Digite sua frase de recuperação de 24 palavras para restaurar o acesso aos seus dados criptografados.",
       "inputLabel": "Frase de recuperação",
       "count": "{count} / {total} palavras",
@@ -1195,15 +1195,15 @@
       "waitingTitle": "Aguardando aprovação",
       "waitingDescription": "Abra o memrynote no seu outro dispositivo e aprove a solicitação de vinculação.",
       "verificationCode": "Código de verificação",
-      "confirmCode": "Confirme se este corresponde ao código no seu outro dispositivo",
-      "vaultPickerTitle": "Escolha o que obter",
+      "confirmCode": "Confirme se este código corresponde ao do seu outro dispositivo",
+      "vaultPickerTitle": "Escolha o que baixar",
       "vaultPickerDescription": "Esta conta tem vários cofres. Escolha uma pasta e o(s) cofre(s) a adicionar a este dispositivo.",
       "vaultPickerFolderLabel": "Armazenar cofres na pasta",
       "vaultPickerChooseFolder": "Escolher pasta",
-      "vaultRow": "Cofre — {count, plural, one {# item} other {# itens}} · {date}",
+      "vaultRow": "Cofre — {count, plural, =0 {nenhum item} one {# item} other {# itens}} · {date}",
       "vaultPickerPrimaryHint": "Abre agora",
       "vaultPickerDormantHint": "Adicionado, abre quando mudar para ele",
-      "vaultPickerConfirm": "Obter selecionados"
+      "vaultPickerConfirm": "Baixar selecionados"
     }
   },
   "devices": {
@@ -1241,7 +1241,7 @@
   },
   "qrLinking": {
     "title": "Vincular novo dispositivo",
-    "description": "Escaneie este código QR no dispositivo que deseja vincular para transferir suas chaves de criptografia com segurança.",
+    "description": "Escaneie este código QR com o dispositivo que deseja vincular para transferir suas chaves de criptografia com segurança.",
     "encrypted": "Criptografado de ponta a ponta",
     "generating": "Gerando código de vinculação…",
     "generatingAria": "Gerando código de vinculação",
@@ -1276,7 +1276,7 @@
   "ai": {
     "header": {
       "title": "Assistente de IA",
-      "subtitle": "Os embeddings são executados localmente. Os memorandos de voz podem usar o Whisper Small ou sua chave da OpenAI.",
+      "subtitle": "Os embeddings são gerados localmente. As gravações de voz podem usar o Whisper Small ou sua chave da OpenAI.",
       "loading": "Carregando configurações…"
     },
     "enable": {
@@ -1295,19 +1295,19 @@
     },
     "voice": {
       "provider": "Provedor",
-      "providerDescription": "Provedor de conversão de fala em texto para memorandos de voz",
+      "providerDescription": "Provedor de conversão de fala em texto para gravações de voz",
       "providers": {
         "local": "Local (padrão)",
         "openai": "OpenAI (BYOK)"
       },
-      "memoNameMode": "Nomes dos memorandos",
-      "memoNameModeDescription": "Como os memorandos de voz são nomeados após a transcrição",
+      "memoNameMode": "Nomes das gravações",
+      "memoNameModeDescription": "Como as gravações de voz são nomeadas após a transcrição",
       "naming": {
         "transcript": "Título da transcrição",
         "timestamp": "Data/hora",
         "none": "Não mudar o nome"
       },
-      "namingError": "Não foi possível atualizar a nomeação dos memorandos de voz",
+      "namingError": "Não foi possível atualizar a nomeação das gravações de voz",
       "localModel": "Modelo local",
       "localModelDescription": "O Whisper Small é baixado sob demanda e fica em cache localmente",
       "status": {
@@ -1319,16 +1319,16 @@
       "cacheHint": "Não incluído no aplicativo · Baixado em Configurações · Armazenado em cache neste dispositivo",
       "preparing": "Preparando o Whisper Small…",
       "download": "Baixar o Whisper Small",
-      "apiKey": "Chave de API OpenAI",
+      "apiKey": "Chave de API da OpenAI",
       "apiKeyDescription": "Armazenada no chaveiro do sistema e usada apenas para transcrição de voz",
       "replaceKey": "Substituir a chave da OpenAI salva",
-      "enterKey": "Insira a chave da API OpenAI",
+      "enterKey": "Digite a chave de API da OpenAI",
       "saveKey": "Salvar chave",
       "keySaved": "Chave de API salva no chaveiro",
       "providerError": "Não foi possível atualizar o provedor de voz",
       "downloadedToast": "Whisper Small baixado",
       "downloadError": "Não foi possível baixar o Whisper Small",
-      "keySavedToast": "Chave OpenAI salva",
+      "keySavedToast": "Chave da OpenAI salva",
       "keySaveError": "Não foi possível salvar a chave da OpenAI"
     },
     "embedding": {
@@ -1408,11 +1408,11 @@
         "enabled": "Ativada"
       },
       "voice": {
-        "group": "Memorandos de voz",
+        "group": "Gravações de voz",
         "transcribeWith": "Transcrever com",
         "local": "Local",
         "openai": "OpenAI",
-        "nameBy": "Nomear memorandos por",
+        "nameBy": "Nomear gravações por",
         "keySaved": "Salva",
         "keyNotSet": "Não definida"
       }
@@ -1423,7 +1423,7 @@
       "title": "Importar",
       "subtitle": "Traga suas notas e tarefas de outros apps"
     },
-    "intro": "Importações únicas criam novas notas no seu cofre. Seus arquivos de exportação originais permanecem intactos.",
+    "intro": "Cada importação é feita uma única vez e cria novas notas no seu cofre. Seus arquivos de exportação originais permanecem intactos.",
     "sources": {
       "notion": "Importar uma exportação HTML (.zip)",
       "todoist": "Importar uma exportação CSV de projeto (.csv)",
@@ -1453,7 +1453,7 @@
       "withTags": "{count} com tags",
       "withDueDate": "{count} com prazo",
       "comments": "{count, plural, one {# comentário} other {# comentários}}",
-      "skipped": "{count} ignorados"
+      "skipped": "{count, plural, one {# ignorado} other {# ignorados}}"
     },
     "preview": {
       "warnings": "Avisos",
@@ -1475,7 +1475,7 @@
         "includeIncompatible": "Importar anexos incompatíveis",
         "includeIncompatibleHint": "Salvar também tipos de arquivo que o Memry não consegue pré-visualizar (apresentações, mídia, arquivos compactados — nunca executáveis). Eles aparecem como blocos de arquivo.",
         "skipPrevious": "Ignorar páginas já importadas",
-        "skipPreviousHint": "Páginas importadas em uma execução anterior do OneNote são ignoradas, então executar novamente importa apenas o que é novo."
+        "skipPreviousHint": "Páginas trazidas em uma importação anterior do OneNote são ignoradas, então importar de novo traz apenas o que for novo."
       },
       "appleNotes": {
         "loadingFolders": "Lendo suas pastas…",
@@ -1502,9 +1502,9 @@
       "progress": "{completed} de {total}",
       "summary": {
         "title": "Importação concluída",
-        "imported": "{count, plural, one {# item importado} other {# itens importados}}",
+        "imported": "{count, plural, =0 {Nenhum item importado} one {# item importado} other {# itens importados}}",
         "attachments": "{count, plural, one {# anexo copiado} other {# anexos copiados}}",
-        "skipped": "{count} ignorados",
+        "skipped": "{count, plural, one {# ignorado} other {# ignorados}}",
         "skippedReason": "{count, plural, one {# item} other {# itens}}: {reason}",
         "failed": "{count} com falha"
       },
@@ -1537,7 +1537,7 @@
       },
       "todoist": {
         "headerNotFound": "Não é um CSV do Todoist: falta a linha de cabeçalho TYPE",
-        "sectionFlattened": "Seção “{section}” nivelada",
+        "sectionFlattened": "Seção “{section}” não importada; as tarefas ficam direto no projeto",
         "orphanComment": "Comentário sem tarefa anterior ignorado",
         "emptyTitle": "Tarefa com conteúdo vazio importada como (sem título)",
         "unknownPriority": "Prioridade {priority} desconhecida → nenhuma",
@@ -1613,11 +1613,11 @@
     "loadingStorage": "Carregando informações de armazenamento…",
     "signInStorage": "Entre para ver o uso do armazenamento",
     "vaultPath": "Caminho do cofre",
-    "reveal": "Revelar",
+    "reveal": "Mostrar",
     "accountVaults": {
       "empty": "Ainda não há cofres sincronizados com sua conta.",
       "cloudOnly": "Não está neste dispositivo",
-      "itemsCount": "{count, plural, one {# item} other {# itens}}",
+      "itemsCount": "{count, plural, =0 {nenhum item} one {# item} other {# itens}}",
       "delete": "Excluir",
       "deleteTitle": "Excluir “{name}” da sua conta?",
       "deleteBody": "Isso remove permanentemente todos os dados sincronizados deste cofre dos servidores do Memry e não pode ser desfeito. Seus arquivos no disco não são excluídos.",
@@ -1746,7 +1746,7 @@
     "summary": "{count, plural, one {# tag} other {# tags}} em notas e tarefas",
     "actions": {
       "rename": "Renomear",
-      "changeColor": "Mudar cor",
+      "changeColor": "Alterar cor",
       "changeIcon": "Alterar ícone",
       "mergeInto": "Mesclar em…",
       "merge": "Mesclar",
@@ -1788,7 +1788,7 @@
     "optionCount": "{count, plural, one {# opção} other {# opções}}",
     "optionNamePlaceholder": "Nome da opção",
     "addOption": "Adicionar opção",
-    "changeColorTitle": "Mudar cor",
+    "changeColorTitle": "Alterar cor",
     "renameTitle": "Renomear",
     "removeTitle": "Remover",
     "actions": {
@@ -1839,7 +1839,7 @@
       "descriptionSelected": "Os comandos usam {path} quando --vault é omitido."
     },
     "command": {
-      "label": "comando memrynote",
+      "label": "Comando memrynote",
       "toggleLabel": "Instalar o comando memrynote",
       "descriptionInstalled": "Instalado em {path}",
       "descriptionNotInstalled": "Instale o comando memrynote para usar seu cofre em qualquer terminal."
@@ -1960,7 +1960,7 @@
         },
         "navForward": {
           "label": "Avançar",
-          "description": "Refazer uma navegação de volta"
+          "description": "Desfazer a última navegação para trás"
         },
         "newTab": {
           "label": "Nova aba",
@@ -2233,7 +2233,7 @@
         "description": "Endpoint /v1 compatível com OpenAI."
       },
       "allowNonLoopback": {
-        "label": "Permitir endpoint não-loopback",
+        "label": "Permitir endpoint não loopback",
         "description": "Os dados são enviados para o endpoint configurado."
       },
       "model": {

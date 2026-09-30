@@ -97,7 +97,7 @@
     "context-menu-add-to-project": "Ajouter au projet"
   },
   "agent-access-dialog": {
-    "aria": "Choisissez si l'IA peut lire vos événements Google Calendar",
+    "aria": "Choisir si l'IA peut lire vos événements Google Calendar",
     "title": "Autoriser l'IA à lire vos événements Google Calendar ?",
     "body": "Vous continuerez à voir vos événements Google dans memrynote dans les deux cas. Ce choix détermine uniquement si l'agent IA peut les lire lorsque vous l'interrogez sur votre planning.",
     "footnote": "Vous pouvez modifier ce choix à tout moment dans Paramètres → Intégrations → Google Calendar.",
@@ -125,7 +125,7 @@
     "agent-notice": "L'agent IA peut lire cette copie, même si l'accès de l'IA à Google Calendar est désactivé. Votre événement Google d'origine lui reste invisible."
   },
   "onboarding-dialog": {
-    "aria": "Choisissez votre calendrier Google par défaut",
+    "aria": "Choisir votre calendrier Google par défaut",
     "title": "Dans quel calendrier les nouveaux événements memrynote doivent-ils être placés ?",
     "body": "Choisissez le calendrier Google que memrynote doit utiliser par défaut. Vous pourrez toujours en choisir un autre pour chaque événement.",
     "default-calendar-label": "Utiliser le calendrier géré par memrynote",
@@ -140,7 +140,7 @@
     "bullets": {
       "events": "Voir vos événements Google à côté des notes et des tâches",
       "sync": "Créer et modifier des événements, synchronisés dans les deux sens",
-      "schedule": "Planifier tâches et notes sur votre calendrier"
+      "schedule": "Planifier des tâches et des notes dans votre calendrier"
     },
     "continue": "Continuer avec Google",
     "dismiss": "Ignorer",
@@ -225,9 +225,9 @@
     "subtasks-prefix": "Sous-tâches",
     "subtasks-counter": "{done} sur {total} terminées",
     "repeats": "Se répète",
-    "repeats-daily": "Se répète quotidiennement",
+    "repeats-daily": "Se répète chaque jour",
     "repeats-weekly": "Se répète chaque semaine",
-    "repeats-monthly": "Se répète mensuellement",
+    "repeats-monthly": "Se répète chaque mois",
     "repeats-yearly": "Se répète chaque année",
     "errors": {
       "could-not-save": "Impossible d'enregistrer la tâche",

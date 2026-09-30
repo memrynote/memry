@@ -18,7 +18,7 @@
     },
     "exportCancelled": "匯出已取消",
     "update": {
-      "availableTitle": "有更新可用",
+      "availableTitle": "有可用的更新",
       "availableMessage": "memrynote {version} 現已推出。",
       "availableDetailFallback": "要立即下載更新嗎？",
       "buttonDownload": "下載",

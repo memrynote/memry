@@ -312,7 +312,7 @@
       },
       "tomorrowMorning": "Mâine dimineață",
       "sameDayNextMonth": "Aceeași zi luna viitoare",
-      "reviewInAWeek": "Revizuire într-o săptămână",
+      "reviewInAWeek": "Revizuire peste o săptămână",
       "monthlyReflection": "Reflecție lunară",
       "quarterlyReflection": "Reflecție trimestrială",
       "anniversaryReminder": "Memento aniversar"
@@ -341,11 +341,11 @@
     "noCapturesYet": "Nicio captură încă",
     "captures": "{count, plural, one {# captură} few {# capturi} other {# de capturi}}",
     "peak": "Vârf: {day} {start}–{end}",
-    "convertedToTask": "Transformat în sarcină",
+    "convertedToTask": "Convertit în sarcină",
     "now": "acum",
     "timeAgoMinutes": "acum {count} min",
     "timeAgoHours": "acum {count} h",
-    "timeAgoDays": "acum {count} z"
+    "timeAgoDays": "acum {count, plural, one {# zi} few {# zile} other {# de zile}}"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
@@ -377,7 +377,7 @@
       "searchResults": "Rezultatele căutării",
       "create": "Creează \"",
       "suggested": "Sugerate",
-      "recent": "Recent",
+      "recent": "Recente",
       "allFolders": "Toate dosarele",
       "allFolders2": "Toate dosarele"
     },
@@ -424,7 +424,7 @@
     "componentsInboxInboxTypeDistribution": {
       "noItemTypesToDisplay": "Niciun tip de element de afișat",
       "itemTypes": "Tipuri de elemente",
-      "distributionOfContentFormats": "Distribuirea formatelor de conținut"
+      "distributionOfContentFormats": "Distribuția formatelor de conținut"
     },
     "componentsInboxDetailContentSection": {
       "x": "x "

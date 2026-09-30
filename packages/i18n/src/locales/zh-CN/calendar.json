@@ -73,7 +73,7 @@
     "quick-create-description": "输入标题并保存，即可在所选时间段创建日程。",
     "event-editor-description": "更新此日程的标题、地点、日期、时间和备注。",
     "new-event-placeholder": "新建日程",
-    "notes-url-placeholder": "添加备注或网址",
+    "notes-url-placeholder": "添加备注或 URL",
     "start": "开始",
     "end": "结束",
     "google-calendar": "Google 日历",
@@ -257,7 +257,7 @@
     "events": "日程",
     "schedule-hint": "点击设置日期，拖动设置时间范围",
     "empty-title": "此处时间线上没有内容",
-    "empty-body": "设有开始日期或截止日期的任务，以及全天或跨天的日程会显示在这里。在“显示”中开启无日期的任务，即可拖动来安排。",
+    "empty-body": "设有开始日期或截止日期的任务，以及全天或跨天的日程会显示在这里。在“显示选项”中开启无日期的任务，即可拖动来安排。",
     "status": {
       "todo": "待办",
       "in_progress": "进行中",
@@ -289,7 +289,7 @@
       "title": "标题"
     },
     "display": {
-      "button": "显示",
+      "button": "显示选项",
       "group-by": "分组方式",
       "order-by": "排序方式",
       "show": "显示",
@@ -359,7 +359,7 @@
     "showLess": "收起",
     "organizer": "组织者",
     "you": "你",
-    "phone": "电话加入",
+    "phone": "通过电话加入",
     "alert": "{minutes, plural, =0 {开始时提醒} other {提前 # 分钟提醒}}",
     "alertHours": "{hours, plural, other {提前 # 小时提醒}}",
     "alertDays": "{days, plural, other {提前 # 天提醒}}",
