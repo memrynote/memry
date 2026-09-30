@@ -1233,14 +1233,24 @@ re-downloading baselines a device already holds. It runs each chunk in two phase
   note whose baseline the probe proved redundant skips the `GET /sync/crdt/snapshot/:noteId` and
   resumes its incrementals from the sequence it already applied.
 
-A baseline is skipped only when **both** of these hold:
+A baseline is skipped only when **all three** of these hold:
 
-1. the note's `revision` in `snapshotMeta` equals the revision this session actually merged, and
-2. the sequence this session applied is at or above the note's `sequenceNum` in `snapshotMeta`.
+1. the note's `revision` in `snapshotMeta` equals the revision this session actually merged,
+2. the sequence this session applied is at or above the note's `sequenceNum` in `snapshotMeta`, and
+3. the document the apply phase opened for the note is not empty.
 
 The second condition is not implied by the first. `sequenceNum` is the server's prune watermark, and
 `pruneUpdatesBeforeSnapshot` has already deleted every update at or below it — a pull starting under
 that line is answered with silence rather than an error, so the note would go quietly stale.
+
+The third condition checks the document, not the server. A watermark describes the document its
+baseline was merged into. With a CRDT store, reopening the note loads that document again. In
+memory-only mode there is nothing to load it from. Closing the note destroys the document, and the
+next open builds an empty one. Resuming that document from the watermark merges only the updates
+above it. Those updates depend on content that exists only in the baseline, so Yjs holds them back
+and the peer's edits never reach the note (#2511). An empty document therefore drops its watermark
+and downloads the baseline. A note the probe finishes is never opened, so an unchanged note still
+costs no download.
 
 Everything else falls through to a fetch: an absent `snapshotMeta` key (an older server), a note the
 server left out of the response, and any note this session holds no merged revision for. A missed

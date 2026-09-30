@@ -293,8 +293,11 @@ lifetime by construction:
   or setting a legacy document aside drops its watermark in the same operation;
 - quarantine, a rebuild and a re-path all move or destroy the whole directory,
   so watermarks travel with the documents or vanish with them;
-- in-memory mode has no store handle at all, so nothing is read and nothing is
-  written — every note falls back to downloading its baseline.
+- in-memory mode has no store handle at all, so no watermark is read from disk or
+  written to it. The sweep still keeps each watermark in memory for the session.
+  Closing a note destroys its document in this mode, so the next open starts
+  empty, and an empty document drops its watermark and downloads the baseline
+  (#2511).
 
 Losing a watermark costs one extra request. Keeping a stale one costs a note
 body, so every unknown — no record, an unreadable record, a store written by a
