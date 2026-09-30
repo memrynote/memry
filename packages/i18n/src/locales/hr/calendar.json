@@ -91,8 +91,8 @@
   },
   "delete-dialog": {
     "title": "Izbrisati događaj?",
-    "local-description": "„{title}” bit će trajno izbrisan. Ova se radnja ne može poništiti.",
-    "google-bound-description": "„{title}” bit će uklonjen iz aplikacije memrynote i usluge Google Calendar. Ova se radnja ne može poništiti.",
+    "local-description": "Događaj „{title}” bit će trajno izbrisan. Ova se radnja ne može poništiti.",
+    "google-bound-description": "Događaj „{title}” bit će uklonjen iz aplikacije memrynote i usluge Google Calendar. Ova se radnja ne može poništiti.",
     "context-menu-delete-label": "Izbriši događaj",
     "context-menu-add-to-project": "Dodaj u projekt"
   },
@@ -138,7 +138,7 @@
     "title": "Dovršite povezivanje s uslugom Google Calendar",
     "body": "Povežite svoj Google račun da učinite više sa svojim kalendarom:",
     "bullets": {
-      "events": "Vidite Google događaje uz bilješke i zadatke",
+      "events": "Pregledavajte Google događaje uz bilješke i zadatke",
       "sync": "Stvarajte i uređujte događaje, sinkronizirane u oba smjera",
       "schedule": "Rasporedite zadatke i bilješke u kalendaru"
     },

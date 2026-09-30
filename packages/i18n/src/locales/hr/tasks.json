@@ -286,14 +286,14 @@
       "movedTo": "Premješteno u „{target}”",
       "moved": "{count, plural, =1 {Premješteno u „{target}”} one {# zadatak premješten u „{target}”} few {# zadatka premještena u „{target}”} other {# zadataka premješteno u „{target}”}}",
       "prioritySetTo": "Prioritet postavljen na {priority}",
-      "prioritySet": "{count, plural, =1 {Prioritet postavljen na {priority}} one {# zadatak postavljen na {priority}} few {# zadatka postavljena na {priority}} other {# zadataka postavljeno na {priority}}}",
+      "prioritySet": "{count, plural, =1 {Prioritet postavljen na {priority}} one {Prioritet postavljen na {priority} za # zadatak} few {Prioritet postavljen na {priority} za # zadatka} other {Prioritet postavljen na {priority} za # zadataka}}",
       "deleted": "{count, plural, =1 {Zadatak izbrisan} one {# zadatak izbrisan} few {# zadatka izbrisana} other {# zadataka izbrisano}}",
       "archived": "{count, plural, =1 {Zadatak arhiviran} one {# zadatak arhiviran} few {# zadatka arhivirana} other {# zadataka arhivirano}}",
       "undoArchive": "{count, plural, one {Arhiviran # zadatak} few {Arhivirana # zadatka} other {Arhivirano # zadataka}}"
     },
     "subtasks": {
       "added": "{count, plural, one {# podzadatak dodan} few {# podzadatka dodana} other {# podzadataka dodano}}",
-      "promoted": "„{title}” pretvoren u zadatak",
+      "promoted": "Podzadatak „{title}” pretvoren u zadatak",
       "deletedDescription": "Podzadatak je uklonjen",
       "parentDeletedKeepSubtasks": "Zadatak izbrisan, podzadaci pretvoreni u zadatke",
       "parentDeletedWithSubtasks": "Zadatak i podzadaci izbrisani",
@@ -412,7 +412,7 @@
     "componentsTasksDeleteTaskDialog": {
       "deleteTask": "Izbrisati zadatak?",
       "deleteTask2": "Izbriši zadatak",
-      "deleteConfirmBody": "„{title}” bit će trajno izbrisan. Ova se radnja ne može poništiti."
+      "deleteConfirmBody": "Zadatak „{title}” bit će trajno izbrisan. Ova se radnja ne može poništiti."
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
       "allSubtasksComplete": "Svi podzadaci dovršeni!",
@@ -538,7 +538,7 @@
       "editRepeatingTask": "Uredi ponavljajući zadatak",
       "youReEditingARepeatingTaskApplyChangesTo": "Uređujete zadatak koji se ponavlja. Primijenite promjene na:",
       "onlyThisOccurrence": "Samo ovo ponavljanje",
-      "onlyFutureTasksUnchanged": "samo – budući zadaci ostaju nepromijenjeni",
+      "onlyFutureTasksUnchanged": "– samo taj dan, budući zadaci ostaju nepromijenjeni",
       "thisAndAllFutureOccurrences": "Ovo i sva buduća ponavljanja",
       "andBeyond": "i nadalje",
       "cancel": "Odustani",
@@ -621,7 +621,7 @@
       "priority": "Prioritet"
     },
     "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "Filtriraj prema projektu",
+      "filterByProject": "Filtriraj po projektu",
       "project": "Projekt",
       "allProjects": "Svi projekti",
       "clear": "Očisti"
@@ -726,7 +726,7 @@
       "exampleBuyMilkTomorrowHighPersonal": "Primjer: „Kupi mlijeko !tomorrow !!high #osobno”"
     },
     "componentsTasksQuickAddQuickOptionsBar": {
-      "quickOptions": "Brze opcije:"
+      "quickOptions": "Brze mogućnosti:"
     },
     "componentsTasksRepeatIndicator": {
       "of": "od ",
@@ -812,7 +812,7 @@
       "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Iznad su zakašnjeli zadaci. Dodajte zadatke za danas ili pogledajte popis nadolazećih.",
       "addTaskForToday": "Dodaj zadatak za danas",
       "allCaughtUpForToday": "Za danas je sve gotovo",
-      "youHaveNothingScheduledEnjoyTheClarity": "Nemate ništa planirano. Uživajte u jasnoći.",
+      "youHaveNothingScheduledEnjoyTheClarity": "Nemate ništa planirano. Uživajte u mirnom danu.",
       "addTaskForToday2": "Dodaj zadatak za danas"
     },
     "componentsTasksUpcomingEmptyState": {
@@ -854,7 +854,7 @@
       "failedToSetPriority": "Postavljanje prioriteta nije uspjelo",
       "failedToDeleteSubtasks": "Brisanje podzadataka nije uspjelo",
       "failedToLoadTaskPreferences": "Učitavanje postavki zadataka nije uspjelo",
-      "failedToUpdateTaskPreferences": "Ažuriranje postavki zadatka nije uspjelo",
+      "failedToUpdateTaskPreferences": "Ažuriranje postavki zadataka nije uspjelo",
       "failedToLoadLinkedTasks": "Učitavanje povezanih zadataka nije uspjelo"
     }
   },

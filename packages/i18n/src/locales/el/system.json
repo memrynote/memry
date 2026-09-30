@@ -53,7 +53,7 @@
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "Ο χρόνος υπενθύμισης πρέπει να είναι στο μέλλον",
+    "reminderTimeMustBeFuture": "Η ώρα της υπενθύμισης πρέπει να είναι στο μέλλον",
     "definitionNotFound": "Ο ορισμός δεν βρέθηκε",
     "noteNotFound": "Η σημείωση δεν βρέθηκε",
     "updateFailed": "Η ενημέρωση απέτυχε",
