@@ -2,7 +2,7 @@
   "title": "יומן",
   "section": {
     "aiConnections": "חיבורי AI",
-    "todaysNotes": "הערות היום",
+    "todaysNotes": "הפתקים של היום",
     "todaysSchedule": "לוח הזמנים של היום",
     "todaysTasks": "המשימות של היום",
     "tasks": "משימות",
@@ -15,27 +15,28 @@
     "journalSettings": "הגדרות יומן",
     "fullMode": "מצב מלא",
     "compactMode": "מצב קומפקטי",
-    "createNote": "צור הערה",
-    "createNewNote": "צור הערה חדשה",
-    "showLess": "הצג פחות",
-    "showMoreNotes": "הצג הערה נוספת של {count}",
-    "showMoreNotes_plural": "הצג עוד הערות {count}",
-    "showFewerNotes": "הצג פחות הערות",
-    "startBlank": "התחל ריק במקום זאת",
-    "changeTemplate": "שנה תבנית",
-    "dismissIndicator": "ביטול מחוון",
-    "refreshConnections": "רענן חיבורים",
-    "reloadJournal": "טען מחדש יומן",
-    "goToToday": "עבור אל היום",
-    "copyUnsavedContent": "העתק תוכן שלא נשמר ללוח",
-    "addBookmark": "הוסף סימניה",
-    "removeBookmark": "הסר את הסימניה"
+    "createNote": "יצירת פתק",
+    "createNewNote": "יצירת פתק חדש",
+    "showLess": "הצגת פחות",
+    "showMoreNotes": "הצגת {count} פתק נוסף",
+    "showMoreNotes_plural": "הצגת {count} פתקים נוספים",
+    "showFewerNotes": "הצגת פחות פתקים",
+    "startBlank": "התחלה מדף ריק",
+    "changeTemplate": "שינוי תבנית",
+    "dismissIndicator": "הסתרת המחוון",
+    "refreshConnections": "רענון החיבורים",
+    "reloadJournal": "טעינה מחדש של היומן",
+    "goToToday": "מעבר להיום",
+    "copyUnsavedContent": "העתקת התוכן שלא נשמר ללוח העריכה",
+    "addBookmark": "הוספה לסימניות",
+    "removeBookmark": "הסרת הסימנייה",
+    "deleteEntry": "מחיקת הרשומה"
   },
   "editor": {
     "placeholder": {
-      "future": "מה אתה מתכנן...",
-      "today": "מה עובר עליך היום...",
-      "past": "תחשוב על היום הזה..."
+      "future": "מה מתוכנן…",
+      "today": "מה עובר עליך היום…",
+      "past": "מחשבות על היום הזה…"
     },
     "upload": {
       "failed": "העלאת התמונה נכשלה"
@@ -58,12 +59,12 @@
       "saturday": "שבת"
     },
     "weekdayShort": {
-      "sunday": "שמש",
-      "monday": "יום שני",
-      "tuesday": "ג'",
-      "wednesday": "יום רביעי",
-      "thursday": "יום ה'",
-      "friday": "שישי",
+      "sunday": "יום א׳",
+      "monday": "יום ב׳",
+      "tuesday": "יום ג׳",
+      "wednesday": "יום ד׳",
+      "thursday": "יום ה׳",
+      "friday": "יום ו׳",
       "saturday": "שבת"
     },
     "month": {
@@ -81,18 +82,18 @@
       "december": "דצמבר"
     },
     "monthShort": {
-      "january": "ינואר",
-      "february": "פברואר",
+      "january": "ינו׳",
+      "february": "פבר׳",
       "march": "מרץ",
-      "april": "אפריל",
+      "april": "אפר׳",
       "may": "מאי",
       "june": "יוני",
       "july": "יולי",
-      "august": "אוגוסט",
-      "september": "ספטמבר",
-      "october": "אוקטובר",
-      "november": "נובמבר",
-      "december": "דצמבר"
+      "august": "אוג׳",
+      "september": "ספט׳",
+      "october": "אוק׳",
+      "november": "נוב׳",
+      "december": "דצמ׳"
     },
     "greeting": {
       "morning": "בוקר טוב",
@@ -104,66 +105,66 @@
   },
   "nav": {
     "previousDay": "היום הקודם",
-    "nextDay": "למחרת",
+    "nextDay": "היום הבא",
     "previousMonth": "החודש הקודם",
-    "nextMonth": "בחודש הבא",
+    "nextMonth": "החודש הבא",
     "previousYear": "שנה קודמת",
-    "nextYear": "שנה הבאה",
-    "journalBack": "יומן חזרה",
+    "nextYear": "השנה הבאה",
+    "journalBack": "חזרה ביומן",
     "journalNavigation": "ניווט ביומן",
-    "dateNavigation": "ניווט תאריך ביומן",
-    "goToYearView": "עבור לתצוגת שנה"
+    "dateNavigation": "ניווט בתאריכי היומן",
+    "goToYearView": "מעבר לתצוגת שנה"
   },
   "aria": {
     "moreOptions": "אפשרויות נוספות",
-    "documentStatistics": "סטטיסטיקות מסמכים",
-    "dayContext": "הקשר יום: משימות ולוח זמנים",
-    "scheduleEvents": "תזמן אירועים",
+    "documentStatistics": "סטטיסטיקת המסמך",
+    "dayContext": "הקשר היום: משימות ולוח זמנים",
+    "scheduleEvents": "אירועים בלוח הזמנים",
     "tasks": "משימות",
-    "notesCreatedToday": "הערות {count} שנוצרו היום"
+    "notesCreatedToday": "{count} פתקים שנוצרו היום"
   },
   "empty": {
-    "noEntry": "אין כניסה",
+    "noEntry": "אין רשומה",
     "noDaysInMonth": "אין ימים בחודש זה",
     "noEventsScheduled": "לא מתוכננים אירועים",
     "noEventsScheduledToday": "לא מתוכננים אירועים היום",
     "noEventsWereScheduled": "לא נקבעו אירועים",
-    "noTasksDue": "אין משימות בשל",
-    "noTasksDueToday": "אין לבצע משימות היום",
-    "noTasksWereDue": "לא נדרשו משימות",
-    "noNotesToday": "לא נוצרו היום הערות",
-    "startDocumenting": "התחל לתעד את המחשבות והרעיונות שלך"
+    "noTasksDue": "אין משימות ליום הזה",
+    "noTasksDueToday": "אין משימות להיום",
+    "noTasksWereDue": "לא היו משימות ליום הזה",
+    "noNotesToday": "לא נוצרו היום פתקים",
+    "startDocumenting": "אפשר להתחיל לתעד כאן מחשבות ורעיונות"
   },
   "ai": {
-    "loading": "מנתח את הערך שלך...",
+    "loading": "מנתח את הרשומה שלך…",
     "empty": {
       "willAppear": "החיבורים שלך יופיעו כאן",
-      "noneYet": "עדיין לא נמצאו קשרים",
-      "moreJournaling": "ככל שתרשם יותר, AI תמצא ערכים קשורים",
-      "keepWriting": "המשך לכתוב כדי לגלות ערכים קשורים"
+      "noneYet": "עדיין לא נמצאו חיבורים",
+      "moreJournaling": "ככל שהיומן יתמלא, ה-AI ימצא רשומות קשורות",
+      "keepWriting": "כדאי להמשיך לכתוב כדי לגלות רשומות קשורות"
     },
     "error": {
       "loadFailed": "לא ניתן לטעון חיבורים"
     },
-    "connectionAria": "חיבור ל-{label}, התאמה של {scorePercent}"
+    "connectionAria": "חיבור ל-{label}, התאמה של {scorePercent}%"
   },
   "count": {
-    "note": "הערה",
+    "note": "פתק",
     "day": "יום",
     "days": "ימים",
     "event": "אירוע",
     "events": "אירועים",
     "task": "משימה",
-    "todo": "לעשות",
-    "moreConnections": "+ חיבור {count} נוסף",
+    "todo": "לביצוע",
+    "moreConnections": "+ {count} חיבור נוסף",
     "moreConnections_plural": "+ {count} חיבורים נוספים",
-    "moreNotes": "+ הערה נוספת של {count}",
-    "moreNotes_plural": "+ {count} הערות נוספות",
-    "daysWithEntries": "ימים עם ערכים",
+    "moreNotes": "+ {count} פתק נוסף",
+    "moreNotes_plural": "+ {count} פתקים נוספים",
+    "daysWithEntries": "ימים עם רשומות",
     "charactersWritten": "תווים שנכתבו",
-    "words": "מילים {count}",
-    "characters": "תווים {count}",
-    "completed": "{count} הושלם",
+    "words": "{count} מילים",
+    "characters": "{count} תווים",
+    "completed": "{count} הושלמו",
     "overdue": "{count} באיחור"
   },
   "stats": {
@@ -173,7 +174,7 @@
     "lastModified": "שונה לאחרונה",
     "lessThanOneMinute": "< דקה אחת",
     "minutes": "{minutes} דקות",
-    "read": "{readingTime} קרא",
+    "read": "{readingTime} קריאה",
     "modified": "שונה {date}"
   },
   "task": {
@@ -181,60 +182,69 @@
     "notCompleted": "לא הושלם",
     "priority": "עדיפות {priority}",
     "overdue": "באיחור",
-    "markComplete": "סמן את \"{title}\" כמושלם",
-    "markNotComplete": "סמן את \"{title}\" כלא הושלם"
+    "markComplete": "סימון \"{title}\" כהושלם",
+    "markNotComplete": "סימון \"{title}\" כלא הושלם"
   },
   "template": {
     "using": "שימוש ב-\"{templateName}\""
   },
   "reminder": {
     "hasReminders": "יש תזכורות",
-    "setToRevisit": "הגדר תזכורת לביקור חוזר",
+    "setToRevisit": "הגדרת תזכורת לחזרה לרשומה",
     "tooltip": "תזכורת: {date}",
-    "tooltipMore": "תזכורת: {date} (+{count} יותר)",
+    "tooltipMore": "תזכורת: {date} (+{count} נוספות)",
     "success": {
-      "set": "הוגדרה תזכורת עבור ערך יומן זה",
+      "set": "הוגדרה תזכורת לרשומת היומן הזו",
       "deleted": "התזכורת נמחקה",
-      "dismissed": "התזכורת נדחתה",
-      "snoozed": "התזכורת הושהה"
+      "dismissed": "התזכורת נסגרה",
+      "snoozed": "התזכורת הושהתה",
+      "updated": "התזכורת עודכנה"
     },
     "error": {
       "set": "הגדרת התזכורת נכשלה",
       "delete": "מחיקת התזכורת נכשלה",
-      "dismiss": "ביטול התזכורת נכשל",
-      "snooze": "השהיית התזכורת נכשלה"
+      "dismiss": "סגירת התזכורת נכשלה",
+      "snooze": "השהיית התזכורת נכשלה",
+      "update": "עדכון התזכורת נכשל"
     }
   },
   "toast": {
-    "unsavedRetry": "התוכן שלך עדיין בזיכרון. לחץ כדי לנסות שוב לשמור.",
-    "noteNotFound": "הערה \"{target}\" לא נמצא",
+    "unsavedRetry": "התוכן שלך עדיין בזיכרון. אפשר ללחוץ כדי לנסות לשמור שוב.",
+    "noteNotFound": "הפתק \"{target}\" לא נמצא",
+    "createLinkedFailed": "יצירת הפתק המקושר נכשלה",
     "fileNotFound": "הקובץ לא נמצא: {target}",
     "openLinkedItemFailed": "פתיחת הפריט המקושר נכשלה",
-    "errorPrefix": "שגיאה:"
+    "errorPrefix": "שגיאה:",
+    "deleteFailed": "מחיקת רשומת היומן נכשלה",
+    "bookmarkFailed": "עדכון הסימנייה נכשל"
   },
   "export": {
-    "noteTitle": "יומן - {month} {day}, {year}"
+    "noteTitle": "יומן - {day} ב-{month} {year}"
   },
   "note": {
-    "generatedTitle": "הערה - {date}",
-    "openAria": "פתח את {title}, נוצר ב-{time}"
+    "generatedTitle": "פתק - {date}",
+    "openAria": "פתיחת {title}, נוצר בשעה {time}"
   },
   "error": {
     "title": "שגיאת יומן",
     "description": "היומן נתקל בשגיאה עבור {date}. ייתכן שהשינויים האחרונים שלך לא נשמרו.",
     "descriptionNoDate": "היומן נתקל בשגיאה. ייתכן שהשינויים האחרונים שלך לא נשמרו.",
-    "unsavedContent": "זוהה תוכן שלא נשמר (תווים {length})"
+    "unsavedContent": "זוהה תוכן שלא נשמר ({length} תווים)"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
-      "k": "ק"
+      "k": "K"
     }
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "שמירת רישום היומן נכשלה",
+      "failedToSaveJournalEntry": "שמירת רשומת היומן נכשלה",
       "failedToLoadJournalSettings": "טעינת הגדרות היומן נכשלה",
       "failedToUpdateSettings": "עדכון ההגדרות נכשל"
     }
+  },
+  "deleteConfirm": {
+    "title": "מחיקת רשומת יומן",
+    "description": "למחוק את \"{title}\"? אי אפשר לבטל את הפעולה."
   }
 }

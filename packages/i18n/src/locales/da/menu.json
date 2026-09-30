@@ -3,26 +3,26 @@
     "quit": "Slut",
     "preferences": "Indstillinger…",
     "checkForUpdates": "Søg efter opdateringer…",
-    "exit": "Afslut",
+    "services": "Tjenester",
     "hide": "Skjul MemryNote",
     "hideOthers": "Skjul andre",
-    "services": "Tjenester",
-    "unhide": "Vis alle"
+    "unhide": "Vis alle",
+    "exit": "Afslut"
   },
   "file": {
-    "label": "Fil",
+    "label": "Arkiv",
     "newNote": "Ny note",
-    "close": "Luk vindue",
-    "closeTab": "Luk faneblad",
+    "openQuickly": "Åbn hurtigt…",
     "exportPdf": "Eksportér til PDF…",
-    "openQuickly": "Åbn hurtigt…"
+    "closeTab": "Luk fane",
+    "close": "Luk vindue"
   },
   "navigation": {
     "back": "Tilbage",
     "forward": "Fremad"
   },
   "edit": {
-    "label": "Rediger",
+    "label": "Redigér",
     "undo": "Fortryd",
     "redo": "Gentag",
     "cut": "Klip",
@@ -31,63 +31,68 @@
     "selectAll": "Vælg alt",
     "find": "Find",
     "speech": "Tale",
+    "pasteAndMatchStyle": "Sæt ind og tilpas stil",
     "delete": "Slet",
-    "pasteAndMatchStyle": "Sæt ind og tilpas typografi",
     "startSpeaking": "Start oplæsning",
-    "stopSpeaking": "Stop oplæsning"
+    "stopSpeaking": "Stop oplæsning",
+    "addToDictionary": "Føj til ordbog",
+    "noSuggestions": "Ingen forslag"
   },
-  "view": {
-    "label": "Visning",
-    "reload": "Genindlæs",
-    "toggleDevTools": "Vis/skjul udviklerværktøjer",
-    "toggleFullscreen": "Slå fuld skærm til/fra",
-    "theme": "Tema",
-    "themeDark": "Mørkt",
-    "themeLight": "Lyst",
-    "themeSystem": "System",
-    "themeWhite": "Papir",
-    "toggleDayPanel": "Vis/skjul dagpanel",
-    "toggleSidebar": "Vis/skjul sidebjælke",
-    "actualSize": "Faktisk størrelse",
-    "zoomIn": "Zoom ind",
-    "zoomOut": "Zoom ud"
+  "insert": {
+    "label": "Indsæt",
+    "codeBlock": "Kodeblok",
+    "table": "Tabel",
+    "bulletList": "Punktliste",
+    "numberedList": "Nummereret liste",
+    "taskList": "Opgaveliste",
+    "attachment": "Indsæt vedhæftet fil…"
   },
   "format": {
-    "body": "Brødtekst",
-    "bold": "Fed",
-    "code": "Kode",
+    "label": "Format",
     "heading1": "Overskrift 1",
     "heading2": "Overskrift 2",
     "heading3": "Overskrift 3",
     "heading4": "Overskrift 4",
     "heading5": "Overskrift 5",
     "heading6": "Overskrift 6",
-    "highlight": "Fremhæv",
+    "body": "Brødtekst",
+    "bold": "Fed",
     "italic": "Kursiv",
-    "label": "Format",
+    "code": "Kode",
+    "highlight": "Fremhæv",
     "strikethrough": "Gennemstregning"
   },
-  "help": {
-    "about": "Om MemryNote",
-    "documentation": "Dokumentation",
-    "label": "Hjælp",
-    "shortcuts": "Tastaturgenveje",
-    "aboutVersion": "Version {version}"
-  },
-  "insert": {
-    "attachment": "Indsæt vedhæftning…",
-    "bulletList": "Punktliste",
-    "codeBlock": "Kodeblok",
-    "label": "Indsæt",
-    "numberedList": "Nummereret liste",
-    "table": "Tabel",
-    "taskList": "Opgaveliste"
+  "view": {
+    "label": "Vis",
+    "reload": "Genindlæs",
+    "toggleDevTools": "Vis/skjul udviklerværktøjer",
+    "toggleFullscreen": "Slå fuld skærm til/fra",
+    "toggleSidebar": "Vis/skjul sidebjælke",
+    "toggleDayPanel": "Vis/skjul dagspanel",
+    "theme": "Tema",
+    "themeLight": "Lyst",
+    "themeDark": "Mørkt",
+    "themeWhite": "Papir",
+    "themeSystem": "System",
+    "actualSize": "Faktisk størrelse",
+    "zoomIn": "Zoom ind",
+    "zoomOut": "Zoom ud"
   },
   "window": {
     "label": "Vindue",
-    "close": "Luk",
-    "front": "Placer alle forrest",
-    "minimize": "Minimer",
-    "zoom": "Zoom"
+    "minimize": "Minimér",
+    "zoom": "Zoom",
+    "front": "Anbring alle forrest",
+    "close": "Luk"
+  },
+  "help": {
+    "label": "Hjælp",
+    "documentation": "Dokumentation",
+    "shortcuts": "Tastaturgenveje",
+    "about": "Om MemryNote",
+    "aboutVersion": "Version {version}"
+  },
+  "tray": {
+    "show": "Vis MemryNote"
   }
 }

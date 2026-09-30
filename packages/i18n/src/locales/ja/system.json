@@ -1,71 +1,72 @@
 {
   "dialog": {
     "vault": {
-      "title": "ボルトフォルダの選択",
-      "button": "保管庫の選択"
+      "title": "保管庫のフォルダーを選択",
+      "button": "保管庫を選択"
     },
     "exportPdf": {
-      "title": "PDFとしてエクスポート",
-      "filterName": "PDFドキュメント"
+      "title": "PDF としてエクスポート",
+      "filterName": "PDF ドキュメント"
     },
     "exportHtml": {
-      "title": "HTMLとしてエクスポート",
-      "filterName": "HTMLドキュメント"
+      "title": "HTML としてエクスポート",
+      "filterName": "HTML ドキュメント"
     },
     "import": {
       "filterSupported": "サポートされているファイル",
       "filterAll": "すべてのファイル"
     },
-    "exportCancelled": "エクスポートがキャンセルされました",
+    "exportCancelled": "エクスポートをキャンセルしました",
     "update": {
-      "availableTitle": "利用可能なアップデート",
-      "availableMessage": "memrynote {version}が利用可能です。",
-      "availableDetailFallback": "今すぐアップデートをダウンロードしますか?",
+      "availableTitle": "アップデートがあります",
+      "availableMessage": "memrynote {version} を利用できます。",
+      "availableDetailFallback": "今すぐアップデートをダウンロードしますか？",
       "buttonDownload": "ダウンロード",
       "buttonLater": "後で",
       "readyTitle": "アップデートの準備ができました",
       "readyMessage": "memrynote {version} がダウンロードされました。",
-      "readyDetailFallback": "memrynote を再起動して、アップデートのインストールを完了します。",
-      "buttonRestartNow": "今すぐ再起動してください",
-      "releaseNotesLabel": "リリースノート:"
+      "readyDetailFallback": "アップデートのインストールを完了するには、memrynote を再起動してください。",
+      "buttonRestartNow": "今すぐ再起動",
+      "releaseNotesLabel": "リリースノート："
     },
     "pair": {
+      "title": "ブラウザ拡張機能をペアリング",
+      "message": "Memry のブラウザ拡張機能から、このアプリへのキャプチャ送信を許可しますか？",
       "buttonAllow": "許可",
       "buttonDeny": "許可しない",
-      "buttonPair": "ペアリング",
-      "message": "Memry のブラウザ拡張機能から、このアプリへのキャプチャ送信を許可しますか？",
-      "title": "ブラウザ拡張機能をペアリング"
+      "buttonPair": "ペアリング"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "リマインダーに注意してください",
-      "journal": "日記リマインダー",
-      "highlight": "ハイライトリマインダー",
-      "fallback": "リマインダーの期限",
-      "default": "リマインダー",
-      "task": "タスクのリマインダー"
-    },
     "inboxReview": {
-      "body": "見直すアイテムが{count, plural, other {#件}}あります。",
-      "testBody": "これはテストです — 毎日の見直しリマインダーはこのように表示されます。",
-      "title": "受信箱を見直す時間です"
+      "title": "インボックスを確認する時間です",
+      "body": "確認する項目が {count, plural, other {# 件}}あります。",
+      "testBody": "これはテストです。毎日の確認リマインダーはこのように表示されます。"
+    },
+    "reminder": {
+      "note": "ノートのリマインダー",
+      "journal": "ジャーナルのリマインダー",
+      "highlight": "ハイライトのリマインダー",
+      "task": "タスクのリマインダー",
+      "fallback": "リマインダーの時刻です",
+      "default": "リマインダー"
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "リマインダーの時刻は将来の時刻である必要があります",
+    "reminderTimeMustBeFuture": "リマインダーには現在より後の時刻を指定してください",
     "definitionNotFound": "定義が見つかりません",
-    "noteNotFound": "メモが見つかりません",
-    "updateFailed": "アップデートに失敗しました"
+    "noteNotFound": "ノートが見つかりません",
+    "updateFailed": "アップデートできませんでした",
+    "updateReadOnlyVolume": "memrynote をこの場所から実行している間は、アップデートをインストールできません。memrynote を「アプリケーション」フォルダーに移動してから、もう一度開いてください。"
   },
   "startup": {
-    "failed": {
-      "body": "ディスクの空き容量が非常に少ない場合や、古いグラフィックスドライバをお使いの場合に起こることがあります。ディスクの空き容量を増やしてから MemryNote を開き直してください。それでも解決しない場合は、再インストールすると通常は解消します。",
-      "title": "MemryNote を起動できませんでした"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote は自動的に再起動します。",
-      "title": "アップデートをインストール中…"
+      "title": "アップデートをインストール中…",
+      "subtitle": "MemryNote は自動的に再起動します。"
+    },
+    "failed": {
+      "title": "MemryNote を起動できませんでした",
+      "body": "ディスクの空き容量が非常に少ない場合や、古いグラフィックスドライバーをお使いの場合に起こることがあります。ディスクの空き容量を増やしてから MemryNote を開き直してください。それでも解決しない場合は、再インストールすると通常は解消します。"
     }
   }
 }

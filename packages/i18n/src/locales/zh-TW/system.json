@@ -1,8 +1,8 @@
 {
   "dialog": {
     "vault": {
-      "title": "選擇保險庫資料夾",
-      "button": "選擇保險箱"
+      "title": "選擇儲存庫資料夾",
+      "button": "選擇儲存庫"
     },
     "exportPdf": {
       "title": "匯出為 PDF",
@@ -19,8 +19,8 @@
     "exportCancelled": "匯出已取消",
     "update": {
       "availableTitle": "有更新可用",
-      "availableMessage": "memrynote {version} 可用。",
-      "availableDetailFallback": "現在下載更新嗎？",
+      "availableMessage": "memrynote {version} 現已推出。",
+      "availableDetailFallback": "要立即下載更新嗎？",
       "buttonDownload": "下載",
       "buttonLater": "稍後",
       "readyTitle": "更新已就緒",
@@ -30,42 +30,43 @@
       "releaseNotesLabel": "版本更新說明："
     },
     "pair": {
+      "title": "配對瀏覽器擴充功能",
+      "message": "要允許 Memry 瀏覽器擴充功能將擷取內容傳送到這個應用程式嗎？",
       "buttonAllow": "允許",
       "buttonDeny": "拒絕",
-      "buttonPair": "配對",
-      "message": "要允許 Memry 瀏覽器擴充功能將擷取內容傳送到這個應用程式嗎？",
-      "title": "配對瀏覽器擴充功能"
+      "buttonPair": "配對"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "備註提醒",
-      "journal": "日誌提醒",
-      "highlight": "重點提醒",
-      "fallback": "提醒到期",
-      "default": "提醒",
-      "task": "任務提醒"
-    },
     "inboxReview": {
-      "body": "您有 {count, plural, other {# 個項目}}待回顧。",
-      "testBody": "這是一則測試——您的每日檢閱提醒會像這樣顯示。",
-      "title": "該回顧收件匣了"
+      "title": "該整理收件匣了",
+      "body": "有 {count, plural, other {# 個項目}}待整理。",
+      "testBody": "這是一則測試——每日整理提醒會像這樣顯示。"
+    },
+    "reminder": {
+      "note": "筆記提醒",
+      "journal": "日誌提醒",
+      "highlight": "醒目提示的提醒",
+      "task": "任務提醒",
+      "fallback": "提醒到期",
+      "default": "提醒"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "提醒時間必須為未來時間",
-    "definitionNotFound": "未找到定義",
-    "noteNotFound": "未找到備註",
-    "updateFailed": "更新失敗"
+    "definitionNotFound": "找不到定義",
+    "noteNotFound": "找不到筆記",
+    "updateFailed": "更新失敗",
+    "updateReadOnlyVolume": "memrynote 從目前位置執行時無法安裝更新。請將 memrynote 移至「應用程式」資料夾，然後再次開啟。"
   },
   "startup": {
-    "failed": {
-      "body": "當磁碟可用空間過低，或顯示卡驅動程式較舊時，可能會發生這種情況。請試著釋放一些磁碟空間，然後重新開啟 MemryNote。若持續發生，重新安裝通常就能解決。",
-      "title": "MemryNote 無法完成啟動"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote 將會自動重新開啟。",
-      "title": "正在安裝更新…"
+      "title": "正在安裝更新…",
+      "subtitle": "MemryNote 將會自動重新開啟。"
+    },
+    "failed": {
+      "title": "MemryNote 無法完成啟動",
+      "body": "當磁碟可用空間過低，或顯示卡驅動程式較舊時，可能會發生這種情況。請試著釋放一些磁碟空間，然後重新開啟 MemryNote。若持續發生，重新安裝通常就能解決。"
     }
   }
 }

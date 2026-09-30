@@ -1,10 +1,10 @@
 {
-  "title": "Journaal",
+  "title": "Dagboek",
   "section": {
     "aiConnections": "AI-verbindingen",
     "todaysNotes": "Notities van vandaag",
-    "todaysSchedule": "Het schema van vandaag",
-    "todaysTasks": "De taken van vandaag",
+    "todaysSchedule": "Planning van vandaag",
+    "todaysTasks": "Taken van vandaag",
     "tasks": "Taken",
     "technicalDetails": "Technische details"
   },
@@ -12,30 +12,31 @@
     "versionHistory": "Versiegeschiedenis",
     "export": "Exporteren",
     "fullWidth": "Volledige breedte",
-    "journalSettings": "Journaalinstellingen",
+    "journalSettings": "Dagboekinstellingen",
     "fullMode": "Volledige modus",
     "compactMode": "Compacte modus",
     "createNote": "Notitie maken",
     "createNewNote": "Nieuwe notitie maken",
-    "showLess": "Laat minder zien",
-    "showMoreNotes": "Toon {count} meer notitie",
-    "showMoreNotes_plural": "Toon {count} meer notities",
-    "showFewerNotes": "Toon minder notities",
-    "startBlank": "Begin in plaats daarvan blanco",
+    "showLess": "Minder tonen",
+    "showMoreNotes": "Nog {count} notitie tonen",
+    "showMoreNotes_plural": "Nog {count} notities tonen",
+    "showFewerNotes": "Minder notities tonen",
+    "startBlank": "Toch leeg beginnen",
     "changeTemplate": "Sjabloon wijzigen",
-    "dismissIndicator": "Indicator afwijzen",
-    "refreshConnections": "Vernieuw verbindingen",
-    "reloadJournal": "Journaal opnieuw laden",
+    "dismissIndicator": "Indicator sluiten",
+    "refreshConnections": "Verbindingen vernieuwen",
+    "reloadJournal": "Dagboek opnieuw laden",
     "goToToday": "Ga naar Vandaag",
-    "copyUnsavedContent": "Kopieer niet-opgeslagen inhoud naar het klembord",
+    "copyUnsavedContent": "Niet-opgeslagen inhoud naar klembord kopiëren",
     "addBookmark": "Bladwijzer toevoegen",
-    "removeBookmark": "Bladwijzer verwijderen"
+    "removeBookmark": "Bladwijzer verwijderen",
+    "deleteEntry": "Dagboeknotitie verwijderen"
   },
   "editor": {
     "placeholder": {
-      "future": "Wat ben je van plan...",
-      "today": "Waar denk je vandaag aan...",
-      "past": "Denk eens na over deze dag..."
+      "future": "Wat ben je van plan…",
+      "today": "Waar denk je vandaag aan…",
+      "past": "Blik terug op deze dag…"
     },
     "upload": {
       "failed": "Kan afbeelding niet uploaden"
@@ -58,13 +59,13 @@
       "saturday": "Zaterdag"
     },
     "weekdayShort": {
-      "sunday": "Zon",
+      "sunday": "zo",
       "monday": "ma",
       "tuesday": "di",
       "wednesday": "wo",
-      "thursday": "Do",
-      "friday": "Vr",
-      "saturday": "Zat"
+      "thursday": "do",
+      "friday": "vr",
+      "saturday": "za"
     },
     "month": {
       "january": "Januari",
@@ -82,14 +83,14 @@
     },
     "monthShort": {
       "january": "jan",
-      "february": "februari",
-      "march": "Maart",
-      "april": "april",
-      "may": "Mei",
+      "february": "feb",
+      "march": "mrt",
+      "april": "apr",
+      "may": "mei",
       "june": "jun",
-      "july": "juli",
-      "august": "augustus",
-      "september": "september",
+      "july": "jul",
+      "august": "aug",
+      "september": "sep",
       "october": "okt",
       "november": "nov",
       "december": "dec"
@@ -98,9 +99,9 @@
       "morning": "Goedemorgen",
       "afternoon": "Goedemiddag",
       "evening": "Goedenavond",
-      "night": "Goede nacht"
+      "night": "Goedenacht"
     },
-    "allDay": "De hele dag"
+    "allDay": "Hele dag"
   },
   "nav": {
     "previousDay": "Vorige dag",
@@ -109,38 +110,38 @@
     "nextMonth": "Volgende maand",
     "previousYear": "Vorig jaar",
     "nextYear": "Volgend jaar",
-    "journalBack": "Journaal terug",
-    "journalNavigation": "Journaalnavigatie",
-    "dateNavigation": "Journaaldatumnavigatie",
+    "journalBack": "Terug naar dagboek",
+    "journalNavigation": "Dagboeknavigatie",
+    "dateNavigation": "Datumnavigatie van dagboek",
     "goToYearView": "Ga naar jaaroverzicht"
   },
   "aria": {
     "moreOptions": "Meer opties",
     "documentStatistics": "Documentstatistieken",
     "dayContext": "Dagcontext: taken en planning",
-    "scheduleEvents": "Plan evenementen",
+    "scheduleEvents": "Geplande afspraken",
     "tasks": "Taken",
-    "notesCreatedToday": "{count}-notities vandaag gemaakt"
+    "notesCreatedToday": "{count} notities vandaag gemaakt"
   },
   "empty": {
-    "noEntry": "Geen toegang",
+    "noEntry": "Geen notitie",
     "noDaysInMonth": "Geen dagen in deze maand",
-    "noEventsScheduled": "Geen evenementen gepland",
-    "noEventsScheduledToday": "Er zijn vandaag geen evenementen gepland",
-    "noEventsWereScheduled": "Er waren geen evenementen gepland",
-    "noTasksDue": "Geen taken verschuldigd",
-    "noTasksDueToday": "Er zijn vandaag geen taken gepland",
-    "noTasksWereDue": "Er waren geen taken gepland",
+    "noEventsScheduled": "Geen afspraken gepland",
+    "noEventsScheduledToday": "Vandaag geen afspraken gepland",
+    "noEventsWereScheduled": "Er waren geen afspraken gepland",
+    "noTasksDue": "Geen taken die vervallen",
+    "noTasksDueToday": "Geen taken die vandaag vervallen",
+    "noTasksWereDue": "Er vervielen geen taken",
     "noNotesToday": "Er zijn vandaag geen notities gemaakt",
-    "startDocumenting": "Begin met het documenteren van uw gedachten en ideeën"
+    "startDocumenting": "Leg je gedachten en ideeën vast"
   },
   "ai": {
-    "loading": "Uw invoer analyseren...",
+    "loading": "Dagboeknotitie analyseren…",
     "empty": {
-      "willAppear": "Hier verschijnen uw verbindingen",
+      "willAppear": "Hier verschijnen je verbindingen",
       "noneYet": "Nog geen verbindingen gevonden",
-      "moreJournaling": "Naarmate u meer dagboeken bijhoudt, zal AI gerelateerde vermeldingen vinden",
-      "keepWriting": "Blijf schrijven om gerelateerde artikelen te ontdekken"
+      "moreJournaling": "Hoe meer je in je dagboek schrijft, hoe meer verwante dagboeknotities AI vindt",
+      "keepWriting": "Blijf schrijven om verwante dagboeknotities te ontdekken"
     },
     "error": {
       "loadFailed": "Kan verbindingen niet laden"
@@ -148,82 +149,87 @@
     "connectionAria": "Verbinding met {label}, {scorePercent}% overeenkomst"
   },
   "count": {
-    "note": "opmerking",
+    "note": "notitie",
     "day": "dag",
     "days": "dagen",
-    "event": "evenement",
-    "events": "evenementen",
+    "event": "afspraak",
+    "events": "afspraken",
     "task": "taak",
     "todo": "te doen",
-    "moreConnections": "+ {count} meer verbinding",
-    "moreConnections_plural": "+ {count} meer verbindingen",
-    "moreNotes": "+ {count} meer opmerking",
-    "moreNotes_plural": "+ {count} meer notities",
-    "daysWithEntries": "dagen met inzendingen",
-    "charactersWritten": "karakters geschreven",
-    "words": "{count}-woorden",
-    "characters": "{count}-tekens",
+    "moreConnections": "+ nog {count} verbinding",
+    "moreConnections_plural": "+ nog {count} verbindingen",
+    "moreNotes": "+ nog {count} notitie",
+    "moreNotes_plural": "+ nog {count} notities",
+    "daysWithEntries": "dagen met notities",
+    "charactersWritten": "tekens geschreven",
+    "words": "{count} woorden",
+    "characters": "{count} tekens",
     "completed": "{count} voltooid",
     "overdue": "{count} te laat"
   },
   "stats": {
     "wordCount": "Aantal woorden",
-    "characterCount": "Aantal karakters",
+    "characterCount": "Aantal tekens",
     "readingTime": "Geschatte leestijd",
     "lastModified": "Laatst gewijzigd",
     "lessThanOneMinute": "< 1 min",
     "minutes": "{minutes} min",
-    "read": "{readingTime} lezen",
-    "modified": "Gemodificeerde {date}"
+    "read": "{readingTime} leestijd",
+    "modified": "Gewijzigd {date}"
   },
   "task": {
     "completed": "Voltooid",
     "notCompleted": "Niet voltooid",
-    "priority": "{priority}-prioriteit",
+    "priority": "Prioriteit {priority}",
     "overdue": "te laat",
-    "markComplete": "Markeer \"{title}\" als voltooid",
-    "markNotComplete": "Markeer \"{title}\" als niet voltooid"
+    "markComplete": "“{title}” als voltooid markeren",
+    "markNotComplete": "“{title}” als niet voltooid markeren"
   },
   "template": {
-    "using": "\"{templateName}\" gebruiken"
+    "using": "Sjabloon “{templateName}” wordt gebruikt"
   },
   "reminder": {
     "hasReminders": "Heeft herinneringen",
-    "setToRevisit": "Herinnering instellen om opnieuw te bezoeken",
+    "setToRevisit": "Herinnering instellen om hierop terug te komen",
     "tooltip": "Herinnering: {date}",
     "tooltipMore": "Herinnering: {date} (+{count} meer)",
     "success": {
-      "set": "Herinnering ingesteld voor deze journaalboeking",
+      "set": "Herinnering ingesteld voor deze dagboeknotitie",
       "deleted": "Herinnering verwijderd",
-      "dismissed": "Herinnering afgewezen",
-      "snoozed": "Herinnering gesnoozed"
+      "dismissed": "Herinnering gesloten",
+      "snoozed": "Herinnering uitgesteld",
+      "updated": "Herinnering bijgewerkt"
     },
     "error": {
       "set": "Kan herinnering niet instellen",
       "delete": "Kan herinnering niet verwijderen",
-      "dismiss": "Kan de herinnering niet negeren",
-      "snooze": "Kan herinnering niet snoozen"
+      "dismiss": "Kan de herinnering niet sluiten",
+      "snooze": "Kan herinnering niet uitstellen",
+      "update": "Kan herinnering niet bijwerken"
     }
   },
   "toast": {
-    "unsavedRetry": "Uw inhoud bevindt zich nog steeds in het geheugen. Klik om opnieuw te proberen op te slaan.",
-    "noteNotFound": "Opmerking \"{target}\" niet gevonden",
+    "unsavedRetry": "Je inhoud staat nog in het geheugen. Klik om opnieuw te proberen op te slaan.",
+    "noteNotFound": "Notitie “{target}” niet gevonden",
+    "createLinkedFailed": "Kan gekoppelde notitie niet maken",
     "fileNotFound": "Bestand niet gevonden: {target}",
     "openLinkedItemFailed": "Kan het gekoppelde item niet openen",
-    "errorPrefix": "Fout:"
+    "errorPrefix": "Fout:",
+    "deleteFailed": "Kan dagboeknotitie niet verwijderen",
+    "bookmarkFailed": "Kan bladwijzer niet bijwerken"
   },
   "export": {
-    "noteTitle": "Journaal - {month} {day}, {year}"
+    "noteTitle": "Dagboek – {day} {month} {year}"
   },
   "note": {
-    "generatedTitle": "Opmerking - {date}",
-    "openAria": "Open {title}, gemaakt op {time}"
+    "generatedTitle": "Notitie – {date}",
+    "openAria": "{title} openen, gemaakt om {time}"
   },
   "error": {
-    "title": "Journaalfout",
-    "description": "Het journaal heeft een fout aangetroffen voor {date}. Uw recente wijzigingen zijn mogelijk niet opgeslagen.",
-    "descriptionNoDate": "Er is een fout opgetreden in het journaal. Uw recente wijzigingen zijn mogelijk niet opgeslagen.",
-    "unsavedContent": "Niet-opgeslagen inhoud gedetecteerd ({length}-tekens)"
+    "title": "Dagboekfout",
+    "description": "Er is een fout opgetreden in het dagboek voor {date}. Je recente wijzigingen zijn mogelijk niet opgeslagen.",
+    "descriptionNoDate": "Er is een fout opgetreden in het dagboek. Je recente wijzigingen zijn mogelijk niet opgeslagen.",
+    "unsavedContent": "Niet-opgeslagen inhoud gevonden ({length} tekens)"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "Kan journaalboeking niet opslaan",
-      "failedToLoadJournalSettings": "Kan journaalinstellingen niet laden",
-      "failedToUpdateSettings": "Kan instellingen niet updaten"
+      "failedToSaveJournalEntry": "Kan dagboeknotitie niet opslaan",
+      "failedToLoadJournalSettings": "Kan dagboekinstellingen niet laden",
+      "failedToUpdateSettings": "Kan instellingen niet bijwerken"
     }
+  },
+  "deleteConfirm": {
+    "title": "Dagboeknotitie verwijderen",
+    "description": "Weet je zeker dat je “{title}” wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt."
   }
 }

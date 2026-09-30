@@ -1,8 +1,8 @@
 {
   "dialog": {
     "vault": {
-      "title": "Wählen Sie den Tresorordner aus",
-      "button": "Wählen Sie Tresor aus"
+      "title": "Tresorordner auswählen",
+      "button": "Tresor auswählen"
     },
     "exportPdf": {
       "title": "Als PDF exportieren",
@@ -20,52 +20,53 @@
     "update": {
       "availableTitle": "Update verfügbar",
       "availableMessage": "memrynote {version} ist verfügbar.",
-      "availableDetailFallback": "Jetzt das Update herunterladen?",
+      "availableDetailFallback": "Update jetzt herunterladen?",
       "buttonDownload": "Herunterladen",
       "buttonLater": "Später",
       "readyTitle": "Update bereit",
       "readyMessage": "memrynote {version} wurde heruntergeladen.",
-      "readyDetailFallback": "Starten Sie memrynote neu, um die Installation des Updates abzuschließen.",
-      "buttonRestartNow": "Starten Sie jetzt neu",
+      "readyDetailFallback": "Starte memrynote neu, um die Installation des Updates abzuschließen.",
+      "buttonRestartNow": "Jetzt neu starten",
       "releaseNotesLabel": "Versionshinweise:"
     },
     "pair": {
+      "title": "Browsererweiterung koppeln",
+      "message": "Der Memry-Browsererweiterung erlauben, Erfasstes an diese App zu senden?",
       "buttonAllow": "Erlauben",
       "buttonDeny": "Ablehnen",
-      "buttonPair": "Koppeln",
-      "message": "Der Memry-Browsererweiterung erlauben, Erfasstes an diese App zu senden?",
-      "title": "Browsererweiterung koppeln"
+      "buttonPair": "Koppeln"
     }
   },
   "notification": {
+    "inboxReview": {
+      "title": "Zeit, deinen Eingang durchzusehen",
+      "body": "Du hast {count, plural, one {# Element} other {# Elemente}} zum Durchsehen.",
+      "testBody": "Das ist ein Test – so sehen deine täglichen Erinnerungen zur Durchsicht aus."
+    },
     "reminder": {
       "note": "Notizerinnerung",
-      "journal": "Tagebucherinnerung",
-      "highlight": "Markieren Sie die Erinnerung",
-      "fallback": "Mahnung fällig",
-      "default": "Erinnerung",
-      "task": "Aufgabenerinnerung"
-    },
-    "inboxReview": {
-      "body": "Du hast {count, plural, one {# Element} other {# Elemente}} zum Durchsehen.",
-      "testBody": "Das ist ein Test — so sehen deine täglichen Erinnerungen aus.",
-      "title": "Zeit, deinen Posteingang durchzusehen"
+      "journal": "Journalerinnerung",
+      "highlight": "Erinnerung zur Hervorhebung",
+      "task": "Aufgabenerinnerung",
+      "fallback": "Erinnerung fällig",
+      "default": "Erinnerung"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "Der Erinnerungszeitpunkt muss in der Zukunft liegen",
     "definitionNotFound": "Definition nicht gefunden",
     "noteNotFound": "Notiz nicht gefunden",
-    "updateFailed": "Update fehlgeschlagen"
+    "updateFailed": "Update fehlgeschlagen",
+    "updateReadOnlyVolume": "Updates können nicht installiert werden, solange memrynote von diesem Speicherort aus läuft. Verschiebe memrynote in den Ordner „Programme“ und öffne die App erneut."
   },
   "startup": {
-    "failed": {
-      "body": "Das kann passieren, wenn der freie Speicherplatz sehr knapp ist oder bei älteren Grafiktreibern. Geben Sie etwas Speicherplatz frei und öffnen Sie MemryNote dann erneut. Wenn es weiterhin auftritt, hilft in der Regel eine Neuinstallation.",
-      "title": "MemryNote konnte den Start nicht abschließen"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote wird automatisch neu geöffnet.",
-      "title": "Update wird installiert…"
+      "title": "Update wird installiert…",
+      "subtitle": "MemryNote wird automatisch neu geöffnet."
+    },
+    "failed": {
+      "title": "MemryNote konnte den Start nicht abschließen",
+      "body": "Das kann passieren, wenn der freie Speicherplatz sehr knapp ist oder bei älteren Grafiktreibern. Gib etwas Speicherplatz frei und öffne MemryNote dann erneut. Wenn es weiterhin auftritt, hilft in der Regel eine Neuinstallation."
     }
   }
 }

@@ -2,40 +2,41 @@
   "title": "Jurnal",
   "section": {
     "aiConnections": "Sambungan AI",
-    "todaysNotes": "Nota Hari Ini",
-    "todaysSchedule": "Jadual Hari Ini",
-    "todaysTasks": "Tugasan Hari Ini",
-    "tasks": "Tugasan",
+    "todaysNotes": "Nota hari ini",
+    "todaysSchedule": "Jadual hari ini",
+    "todaysTasks": "Tugas hari ini",
+    "tasks": "Tugas",
     "technicalDetails": "Butiran teknikal"
   },
   "action": {
-    "versionHistory": "Sejarah Versi",
+    "versionHistory": "Sejarah versi",
     "export": "Eksport",
     "fullWidth": "Lebar penuh",
-    "journalSettings": "Tetapan Jurnal",
-    "fullMode": "Mod Penuh",
-    "compactMode": "Mod Padat",
-    "createNote": "Cipta Nota",
+    "journalSettings": "Tetapan jurnal",
+    "fullMode": "Mod penuh",
+    "compactMode": "Mod padat",
+    "createNote": "Buat nota",
     "createNewNote": "Buat nota baharu",
     "showLess": "Tunjukkan lebih sedikit",
     "showMoreNotes": "Tunjukkan {count} lagi nota",
     "showMoreNotes_plural": "Tunjukkan {count} lagi nota",
     "showFewerNotes": "Tunjukkan lebih sedikit nota",
-    "startBlank": "Mulakan kosong sebaliknya",
+    "startBlank": "Mula dengan halaman kosong",
     "changeTemplate": "Tukar templat",
-    "dismissIndicator": "Tolak penunjuk",
+    "dismissIndicator": "Ketepikan penunjuk",
     "refreshConnections": "Muat semula sambungan",
-    "reloadJournal": "Muat Semula Jurnal",
-    "goToToday": "Pergi ke Hari Ini",
+    "reloadJournal": "Muat semula jurnal",
+    "goToToday": "Pergi ke hari ini",
     "copyUnsavedContent": "Salin kandungan yang belum disimpan ke papan keratan",
     "addBookmark": "Tambah penanda halaman",
-    "removeBookmark": "Alih keluar penanda halaman"
+    "removeBookmark": "Alih keluar penanda halaman",
+    "deleteEntry": "Padam entri"
   },
   "editor": {
     "placeholder": {
-      "future": "Apa yang anda rancang...",
-      "today": "Apa yang ada dalam fikiran anda hari ini...",
-      "past": "Renungkan hari ini..."
+      "future": "Apa yang anda rancang…",
+      "today": "Apa yang ada dalam fikiran anda hari ini…",
+      "past": "Renungkan hari tersebut…"
     },
     "upload": {
       "failed": "Gagal memuat naik imej"
@@ -46,7 +47,7 @@
       "today": "Hari ini",
       "yesterday": "Semalam",
       "tomorrow": "Esok",
-      "future": "masa depan"
+      "future": "Masa depan"
     },
     "weekday": {
       "sunday": "Ahad",
@@ -58,10 +59,10 @@
       "saturday": "Sabtu"
     },
     "weekdayShort": {
-      "sunday": "Matahari",
-      "monday": "isn",
+      "sunday": "Ahd",
+      "monday": "Isn",
       "tuesday": "Sel",
-      "wednesday": "Rabu",
+      "wednesday": "Rab",
       "thursday": "Kha",
       "friday": "Jum",
       "saturday": "Sab"
@@ -95,21 +96,21 @@
       "december": "Dis"
     },
     "greeting": {
-      "morning": "selamat pagi",
-      "afternoon": "selamat petang",
-      "evening": "selamat petang",
-      "night": "selamat malam"
+      "morning": "Selamat pagi",
+      "afternoon": "Selamat petang",
+      "evening": "Selamat petang",
+      "night": "Selamat malam"
     },
     "allDay": "Sepanjang hari"
   },
   "nav": {
     "previousDay": "Hari sebelumnya",
-    "nextDay": "Keesokan harinya",
+    "nextDay": "Hari seterusnya",
     "previousMonth": "Bulan sebelumnya",
-    "nextMonth": "Bulan depan",
-    "previousYear": "tahun sebelumnya",
-    "nextYear": "Tahun depan",
-    "journalBack": "Jurnal kembali",
+    "nextMonth": "Bulan seterusnya",
+    "previousYear": "Tahun sebelumnya",
+    "nextYear": "Tahun seterusnya",
+    "journalBack": "Kembali",
     "journalNavigation": "Navigasi jurnal",
     "dateNavigation": "Navigasi tarikh jurnal",
     "goToYearView": "Pergi ke paparan tahun"
@@ -119,27 +120,27 @@
     "documentStatistics": "Statistik dokumen",
     "dayContext": "Konteks hari: tugas dan jadual",
     "scheduleEvents": "Jadual acara",
-    "tasks": "Tugasan",
-    "notesCreatedToday": "Nota {count} dibuat hari ini"
+    "tasks": "Tugas",
+    "notesCreatedToday": "{count} nota dibuat hari ini"
   },
   "empty": {
-    "noEntry": "Tiada kemasukan",
+    "noEntry": "Tiada entri",
     "noDaysInMonth": "Tiada hari dalam bulan ini",
     "noEventsScheduled": "Tiada acara yang dijadualkan",
     "noEventsScheduledToday": "Tiada acara dijadualkan hari ini",
     "noEventsWereScheduled": "Tiada acara dijadualkan",
-    "noTasksDue": "Tiada tugas yang perlu dibayar",
-    "noTasksDueToday": "Tiada tugasan tertunggak hari ini",
-    "noTasksWereDue": "Tiada tugas yang perlu dibayar",
+    "noTasksDue": "Tiada tugas perlu disiapkan",
+    "noTasksDueToday": "Tiada tugas perlu disiapkan hari ini",
+    "noTasksWereDue": "Tiada tugas yang perlu disiapkan",
     "noNotesToday": "Tiada nota dibuat hari ini",
     "startDocumenting": "Mula mendokumentasikan pemikiran dan idea anda"
   },
   "ai": {
-    "loading": "Menganalisis entri anda...",
+    "loading": "Menganalisis entri anda…",
     "empty": {
       "willAppear": "Sambungan anda akan dipaparkan di sini",
       "noneYet": "Tiada sambungan ditemui lagi",
-      "moreJournaling": "Semasa anda membuat jurnal lebih banyak, AI akan mencari entri berkaitan",
+      "moreJournaling": "Apabila anda lebih kerap menulis jurnal, AI akan mencari entri yang berkaitan",
       "keepWriting": "Teruskan menulis untuk menemui entri berkaitan"
     },
     "error": {
@@ -151,76 +152,81 @@
     "note": "nota",
     "day": "hari",
     "days": "hari",
-    "event": "peristiwa",
-    "events": "peristiwa",
-    "task": "tugasan",
-    "todo": "untuk dilakukan",
+    "event": "acara",
+    "events": "acara",
+    "task": "tugas",
+    "todo": "perlu dibuat",
     "moreConnections": "+ {count} lagi sambungan",
     "moreConnections_plural": "+ {count} lagi sambungan",
     "moreNotes": "+ {count} lagi nota",
     "moreNotes_plural": "+ {count} lagi nota",
-    "daysWithEntries": "hari dengan penyertaan",
+    "daysWithEntries": "hari dengan entri",
     "charactersWritten": "aksara yang ditulis",
     "words": "{count} perkataan",
-    "characters": "aksara {count}",
+    "characters": "{count} aksara",
     "completed": "{count} selesai",
-    "overdue": "{count} tertunggak"
+    "overdue": "{count} lewat tempoh"
   },
   "stats": {
     "wordCount": "Bilangan perkataan",
-    "characterCount": "Kiraan aksara",
+    "characterCount": "Bilangan aksara",
     "readingTime": "Anggaran masa membaca",
     "lastModified": "Terakhir diubah suai",
     "lessThanOneMinute": "< 1 min",
     "minutes": "{minutes} min",
-    "read": "{readingTime} dibaca",
-    "modified": "{date} yang diubah suai"
+    "read": "{readingTime} bacaan",
+    "modified": "Diubah suai {date}"
   },
   "task": {
     "completed": "Selesai",
-    "notCompleted": "Tidak selesai",
+    "notCompleted": "Belum selesai",
     "priority": "Keutamaan {priority}",
-    "overdue": "tertunggak",
-    "markComplete": "Tandai \"{title}\" sebagai selesai",
-    "markNotComplete": "Tandai \"{title}\" sebagai belum selesai"
+    "overdue": "lewat tempoh",
+    "markComplete": "Tandakan “{title}” sebagai selesai",
+    "markNotComplete": "Tandakan “{title}” sebagai belum selesai"
   },
   "template": {
-    "using": "Menggunakan \"{templateName}\""
+    "using": "Menggunakan “{templateName}”"
   },
   "reminder": {
     "hasReminders": "Mempunyai peringatan",
-    "setToRevisit": "Tetapkan peringatan untuk melawat semula",
+    "setToRevisit": "Tetapkan peringatan untuk menyemak semula",
     "tooltip": "Peringatan: {date}",
     "tooltipMore": "Peringatan: {date} (+{count} lagi)",
     "success": {
-      "set": "Peringatan ditetapkan untuk catatan jurnal ini",
+      "set": "Peringatan ditetapkan untuk entri jurnal ini",
       "deleted": "Peringatan dipadamkan",
-      "dismissed": "Peringatan ditolak",
-      "snoozed": "Peringatan ditunda"
+      "dismissed": "Peringatan diketepikan",
+      "snoozed": "Peringatan ditunda",
+      "updated": "Peringatan dikemas kini"
     },
     "error": {
       "set": "Gagal menetapkan peringatan",
       "delete": "Gagal memadamkan peringatan",
       "dismiss": "Gagal mengetepikan peringatan",
-      "snooze": "Gagal menunda peringatan"
+      "snooze": "Gagal menunda peringatan",
+      "update": "Gagal mengemas kini peringatan"
     }
   },
   "toast": {
     "unsavedRetry": "Kandungan anda masih dalam ingatan. Klik untuk cuba menyimpan semula.",
-    "noteNotFound": "Nota \"{target}\" tidak ditemui",
+    "noteNotFound": "Nota “{target}” tidak ditemui",
+    "createLinkedFailed": "Gagal membuat nota terpaut",
     "fileNotFound": "Fail tidak dijumpai: {target}",
     "openLinkedItemFailed": "Gagal membuka item terpaut",
-    "errorPrefix": "Ralat:"
+    "errorPrefix": "Ralat:",
+    "deleteFailed": "Gagal memadam entri jurnal",
+    "bookmarkFailed": "Gagal mengemas kini penanda halaman"
   },
   "export": {
-    "noteTitle": "Jurnal - {month} {day}, {year}"
+    "noteTitle": "Jurnal - {day} {month} {year}"
   },
   "note": {
     "generatedTitle": "Nota - {date}",
-    "openAria": "Buka {title}, dibuat di {time}"
+    "openAria": "Buka {title}, dibuat pada {time}"
   },
   "error": {
-    "title": "Ralat Jurnal",
+    "title": "Ralat jurnal",
     "description": "Jurnal mengalami ralat untuk {date}. Perubahan terbaru anda mungkin tidak disimpan.",
     "descriptionNoDate": "Jurnal mengalami ralat. Perubahan terbaru anda mungkin tidak disimpan.",
     "unsavedContent": "Kandungan tidak disimpan dikesan ({length} aksara)"
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "Gagal menyimpan catatan jurnal",
+      "failedToSaveJournalEntry": "Gagal menyimpan entri jurnal",
       "failedToLoadJournalSettings": "Gagal memuatkan tetapan jurnal",
       "failedToUpdateSettings": "Gagal mengemas kini tetapan"
     }
+  },
+  "deleteConfirm": {
+    "title": "Padam entri jurnal",
+    "description": "Adakah anda pasti mahu memadamkan “{title}”? Tindakan ini tidak boleh dibuat asal."
   }
 }

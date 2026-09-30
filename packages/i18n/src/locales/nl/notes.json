@@ -1,4 +1,12 @@
 {
+  "wikiLinkCreateDialog": {
+    "title": "Notitie maken?",
+    "body": "Er is geen notitie met de titel “{title}”. Wil je die maken?",
+    "create": "Maken"
+  },
+  "wikiLinkPreview": {
+    "notFound": "Niet gevonden – klik om “{title}” te maken"
+  },
   "page": {
     "empty": {
       "title": "Geen notitie geselecteerd",
@@ -8,253 +16,704 @@
       "title": "Kan notitie niet laden"
     },
     "toast": {
-      "cannotSaveDeleted": "Kan niet opslaan - notitie is verwijderd",
-      "cannotRenameDeleted": "Kan de naam niet wijzigen - de notitie is verwijderd",
+      "cannotSaveDeleted": "Kan niet opslaan – notitie is verwijderd",
+      "cannotRenameDeleted": "Kan de naam niet wijzigen – de notitie is verwijderd",
       "createLinkedFailed": "Kan gekoppelde notitie niet maken",
       "openLinkedFailed": "Kan het gekoppelde item niet openen",
-      "localOnly": "Opmerking ingesteld op alleen lokaal",
+      "fileNotFound": "Bestand niet gevonden: {target}",
+      "localOnly": "Notitie ingesteld op alleen lokaal",
       "willSync": "De notitie wordt gesynchroniseerd met de cloud",
       "renameFailed": "Kan de naam van de notitie niet wijzigen",
-      "toggleLocalOnlyFailed": "Kan alleen lokaal niet inschakelen",
+      "titleRequired": "Een notitie heeft een titel nodig",
+      "toggleLocalOnlyFailed": "Kan ‘alleen lokaal’ niet wijzigen",
       "toggleFullWidthFailed": "Kan de volledige breedte niet wijzigen",
-      "copyPathFailed": "Kan pad niet kopiëren",
-      "deleteFailed": "Kan notitie niet verwijderen",
-      "moveFailed": "Kan notitie niet verplaatsen",
-      "moved": "Notitie verplaatst",
-      "openExternalFailed": "Kan notitie niet openen",
       "pathCopied": "Pad gekopieerd",
-      "revealFailed": "Kan notitie niet tonen"
+      "copyPathFailed": "Kan pad niet kopiëren",
+      "revealFailed": "Kan notitie niet tonen",
+      "openExternalFailed": "Kan notitie niet openen",
+      "moved": "Notitie verplaatst",
+      "moveFailed": "Kan notitie niet verplaatsen",
+      "deleteFailed": "Kan notitie niet verwijderen"
     },
-    "deleteDialogTitle": "{count, plural, one {Notitie verwijderen} other {Verwijder #-notities}}",
-    "deleteConfirm": {
-      "cancel": "Annuleren",
-      "confirm": "Verwijderen",
-      "deleting": "Verwijderen...",
-      "description": "Weet je zeker dat je \"{title}\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
-      "title": "Notitie verwijderen"
-    },
+    "deleteDialogTitle": "{count, plural, one {Notitie verwijderen} other {# notities verwijderen}}",
     "itemsCount": "{count, plural, one {# item} other {# items}}",
     "itemsCountFiltered": "{shown} van {total, plural, one {# item} other {# items}}",
-    "tagFilterLabel": "tag = {tag}"
+    "tagFilterLabel": "tag = {tag}",
+    "deleteConfirm": {
+      "title": "Notitie verwijderen",
+      "description": "Weet je zeker dat je “{title}” wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+      "cancel": "Annuleren",
+      "confirm": "Verwijderen",
+      "deleting": "Verwijderen…"
+    },
+    "largeFile": {
+      "title": "Dit bestand is te groot om als notitie te openen",
+      "badge": "Alleen-lezen · niet gesynchroniseerd",
+      "reason": {
+        "fileBytes": "Het is {size}. Notities blijven bewerkbaar tot {limit}.",
+        "blockBytes": "Het bevat een stuk tekst van {size} zonder lege regel. Notities blijven bewerkbaar tot {limit} per blok."
+      },
+      "explanation": "Om het te bewerken zou het hele bestand in één keer verwerkt moeten worden, waardoor de app vastloopt. Het bestand op schijf blijft ongewijzigd.",
+      "viewer": {
+        "preparing": "{size} voorbereiden om te lezen…",
+        "preparingHint": "De regels worden geïndexeerd, zodat je kunt scrollen zonder alles in één keer te laden.",
+        "lines": "{count} regels",
+        "empty": "Dit bestand is leeg.",
+        "failed": "Dit bestand kan niet worden voorbereid om te lezen.",
+        "missing": "Dit bestand staat niet meer op de schijf.",
+        "lineTruncated": "lange regel hier afgebroken",
+        "showRestOfLine": "Rest van deze regel tonen"
+      },
+      "tooLarge": {
+        "title": "Dit bestand is te groot om te openen",
+        "reason": "Het is {size}. Memry kan bestanden tot {limit} weergeven.",
+        "explanation": "Het bestand op schijf blijft ongewijzigd. Open het in een app die geschikt is voor bestanden van deze grootte."
+      },
+      "find": {
+        "searching": "{count} tot nu toe…",
+        "limited": "{index}/{shown} van {total}"
+      }
+    }
   },
   "tree": {
     "aria": {
-      "tree": "Notities boom",
+      "tree": "Notitieboom",
       "openFolderView": "Mapweergave openen"
     },
     "empty": {
-      "title": "Nog geen opmerkingen",
+      "title": "Nog geen notities",
       "body": "Maak een notitie om aan de slag te gaan",
       "newNote": "Nieuwe notitie"
     },
+    "syncing": {
+      "body": "Je notities worden gesynchroniseerd – ze verschijnen hier zodra ze binnenkomen"
+    },
     "loadingError": "Kan notities niet laden",
+    "truncated": {
+      "hidden": "{count, plural, one {# oudere notitie niet getoond} other {# oudere notities niet getoond}}",
+      "loadMore": "Meer laden"
+    },
     "actions": {
+      "openInNewTab": "Openen in nieuw tabblad",
+      "openToTheSide": "Openen aan de zijkant",
       "newNote": "Nieuwe notitie",
       "newFolder": "Nieuwe map",
+      "expandSubfolders": "Alle submappen uitvouwen",
+      "collapseSubfolders": "Alle submappen samenvouwen",
       "rename": "Hernoemen",
+      "applyTemplate": "Sjabloon toepassen",
+      "saveAsTemplate": "Opslaan als sjabloon",
       "openExternal": "Openen in externe editor",
-      "setDefaultTemplate": "Stel standaardsjabloon in",
-      "clearDefaultTemplate": "Wis standaardsjabloon",
+      "setDefaultTemplate": "Standaardsjabloon instellen",
+      "clearDefaultTemplate": "Standaardsjabloon wissen",
       "setIcon": "Pictogram instellen",
       "removeIcon": "Pictogram verwijderen",
-      "deleteSelectedNotes": "Verwijder {count}-notities",
-      "deleteSelectedItems": "Verwijder {count}-items",
-      "bookmark": "Bladwijzer",
-      "removeFromBookmarks": "Verwijderen uit bladwijzers",
-      "applyTemplate": "Sjabloon toepassen",
-      "saveAsTemplate": "Opslaan als sjabloon"
+      "deleteSelectedNotes": "{count} notities verwijderen",
+      "deleteSelectedItems": "{count} items verwijderen",
+      "bookmark": "Bladwijzer toevoegen",
+      "removeFromBookmarks": "Uit bladwijzers verwijderen",
+      "journalSettings": "Dagboekinstellingen…"
+    },
+    "nav": {
+      "label": "Navigatie",
+      "ariaExpanded": "Navigatiesectie, uitgevouwen",
+      "ariaCollapsed": "Navigatiesectie, samengevouwen",
+      "saveFailed": "Kan de status van de navigatiesectie niet opslaan"
+    },
+    "viewOptions": {
+      "label": "Weergaveopties",
+      "notesFirst": "Notities vóór mappen",
+      "showFiles": "Bestanden tonen",
+      "saveFailed": "Kan de weergaveopties van de zijbalk niet opslaan"
     },
     "deleteDialog": {
       "noteTitle": "Notitie verwijderen",
       "folderTitle": "Map verwijderen",
-      "itemsTitle": "Verwijder {count}-items",
-      "noteBody": "Weet u zeker dat u \"{name}\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
-      "folderBody": "Weet u zeker dat u \"{name}\" en alle notities daarin wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
-      "itemsBody": "Weet u zeker dat u {count}-items wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+      "itemsTitle": "{count} items verwijderen",
+      "noteBody": "Weet je zeker dat je “{name}” wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+      "folderBody": "Weet je zeker dat je “{name}” en alle notities daarin wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+      "itemsBody": "Weet je zeker dat je {count} items wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
       "folderSuffix": "map",
-      "moreItems": "...en {count} meer",
-      "deleting": "Verwijderen...",
-      "deleteCount": "Verwijder {count}"
+      "moreItems": "…en nog {count}",
+      "deleting": "Verwijderen…",
+      "deleteCount": "{count} verwijderen"
     }
   },
   "editor": {
+    "bodySyncPending": "Synchroniseren – de inhoud van deze notitie is mogelijk nog onderweg",
+    "taskRemoval": {
+      "title": "{count, plural, one {Taak uit deze notitie verwijderd} other {# taken uit deze notitie verwijderd}}",
+      "description": "{count, plural, one {Wil je deze taak in Taken houden of overal verwijderen?} other {Wil je deze taken in Taken houden of overal verwijderen?}}",
+      "keep": "In Taken houden",
+      "delete": "{count, plural, one {Taak verwijderen} other {Taken verwijderen}}",
+      "deleteFailed": "Kan de taken niet verwijderen. Ze staan nog in Taken."
+    },
     "title": {
       "untitled": "Zonder titel",
-      "aria": "Let op titel"
+      "aria": "Notitietitel"
     },
     "content": {
-      "placeholder": "Begin met schrijven of druk op '/' voor opdrachten...",
+      "placeholder": "Begin met schrijven of druk op “/” voor opdrachten…",
       "regionAria": "Notitie-editor",
       "richTextAria": "Rich-text-editor",
-      "headingPlaceholder": "Rubriek",
+      "headingPlaceholder": "Kop",
       "listPlaceholder": "Lijstitem",
       "todoPlaceholder": "To-do-item"
     },
+    "table": {
+      "keyboardMenuAria": "Tabelacties voor rij {row}, kolom {column}",
+      "keyboardMenuTitle": "Rij {row} · Kolom {column}"
+    },
+    "list": {
+      "bulleted": "Lijst met opsommingstekens",
+      "numbered": "Genummerde lijst",
+      "checklist": "Checklist"
+    },
+    "bulletFold": {
+      "collapse": "Geneste items samenvouwen",
+      "expand": "Geneste items uitvouwen"
+    },
     "toolbar": {
+      "linkToNote": "Naar notitie linken",
+      "more": "Meer",
+      "pinToTop": "Werkbalk bovenaan vastzetten",
       "reminderSet": "Herinnering ingesteld",
       "setReminder": "Herinnering instellen",
       "removeBookmark": "Bladwijzer verwijderen",
       "addBookmark": "Bladwijzer toevoegen",
+      "showMindMap": "Mindmap tonen",
+      "hideMindMap": "Mindmap verbergen",
       "hideLocalGraph": "Lokale grafiek verbergen",
-      "showLocalGraph": "Toon lokale grafiek",
+      "showLocalGraph": "Lokale grafiek tonen",
+      "moreActions": "Meer acties",
+      "find": "Zoeken…",
       "versionHistory": "Versiegeschiedenis",
       "export": "Exporteren",
-      "fullWidth": "Volledige breedte",
-      "disableLocalOnly": "Schakel alleen lokaal uit",
-      "setLocalOnly": "Alleen lokaal instellen",
       "saveAsTemplate": "Opslaan als sjabloon",
-      "copyPath": "Pad kopiëren",
-      "delete": "Notitie verwijderen",
-      "find": "Zoeken…",
-      "moreActions": "Meer acties",
-      "moveToFolder": "Verplaatsen naar map…",
+      "fullWidth": "Volledige breedte",
       "rename": "Hernoemen…",
-      "revealInSidebar": "Toon in navigatie"
+      "moveToFolder": "Verplaatsen naar map…",
+      "copyPath": "Pad kopiëren",
+      "revealInSidebar": "Tonen in navigatie",
+      "attachments": "Bijlagen…",
+      "disableLocalOnly": "Alleen lokaal uitschakelen",
+      "setLocalOnly": "Alleen lokaal instellen",
+      "delete": "Notitie verwijderen"
+    },
+    "attachmentMenu": {
+      "menuLabel": "Bestandsacties",
+      "storedAs": "Opgeslagen als {name}",
+      "notSynced": "Nog niet naar dit apparaat gesynchroniseerd",
+      "revealFailed": "Kan bestand niet tonen",
+      "openFailed": "Kan bestand niet openen",
+      "missingTitle": "Bijlagebestand ontbreekt",
+      "missingExpected": "Verwacht bestand: {name}"
+    },
+    "attachmentRename": {
+      "menuItem": "Hernoemen…",
+      "title": "Bijlage hernoemen",
+      "description": "Het bestand wordt hernoemd op schijf en op je andere apparaten. De extensie blijft hetzelfde.",
+      "fieldLabel": "Naam van bijlage",
+      "confirm": "Hernoemen",
+      "renamed": "Hernoemd naar {name}",
+      "failed": "Kan bijlage niet hernoemen"
+    },
+    "attachmentsDialog": {
+      "title": "Bijlagen",
+      "description": "Bestanden die bij deze notitie zijn opgeslagen",
+      "empty": "Deze notitie heeft geen bijlagen.",
+      "loadFailed": "Kan bijlagen niet laden"
     },
     "breadcrumb": {
-      "locationAria": "Let op locatie",
+      "locationAria": "Locatie van notitie",
       "parentFolderAria": "Ga naar de bovenliggende map"
     },
     "errorBoundary": {
       "title": "Editorfout",
-      "body": "De redacteur heeft een fout aangetroffen. De inhoud van uw notitie is veilig.",
+      "body": "Er is een fout opgetreden in de editor. De inhoud van je notitie is veilig.",
       "technicalDetails": "Technische details",
       "reloadAria": "Editor opnieuw laden",
       "reload": "Editor opnieuw laden"
     },
     "callout": {
-      "title": "Bijschrift",
-      "group": "Basis blokken",
+      "title": "Callout",
+      "group": "Basisblokken",
       "subtext": "Markeer belangrijke informatie",
-      "changeType": "Wijzig het highlight-type",
-      "menuLabel": "Type toelichting",
+      "changeType": "Type callout wijzigen",
+      "menuLabel": "Type callout",
       "info": "Info",
       "warning": "Waarschuwing",
       "error": "Fout",
       "success": "Succes"
+    },
+    "diagram": {
+      "title": "Diagram",
+      "subtext": "Stroomdiagram, sequentiediagram of Gantt-diagram vanuit Mermaid-broncode"
+    },
+    "math": {
+      "title": "Formule",
+      "group": "Basisblokken",
+      "subtext": "Schrijf een formule in LaTeX",
+      "empty": "Formule toevoegen",
+      "edit": "Formule bewerken",
+      "placeholder": "E = mc^2",
+      "sourceLabel": "LaTeX-broncode",
+      "hint": "LaTeX. Druk op Escape als je klaar bent."
+    },
+    "whiteboard": {
+      "title": "Whiteboard",
+      "group": "Media",
+      "subtext": "Teken op een canvas dat in deze notitie staat",
+      "defaultName": "Whiteboard",
+      "noteName": "Whiteboard van {note}",
+      "untitled": "Whiteboard zonder titel",
+      "loading": "Whiteboard laden…",
+      "openInTab": "Openen in tabblad",
+      "edit": "Bewerken",
+      "done": "Klaar",
+      "surfaceLabel": "Tekening: {title}",
+      "createFailed": "Kan het whiteboard niet maken. Er is niets aan de notitie toegevoegd.",
+      "loadFailed": "Kan dit whiteboard niet laden. De tekening zelf blijft ongewijzigd.",
+      "noCanvas": "Dit whiteboard heeft geen canvas. Verwijder het blok of voeg een nieuw blok toe met /whiteboard.",
+      "nested": "Open dit whiteboard in een eigen tabblad om de tekening te zien.",
+      "missingTitle": "Dit whiteboard is niet beschikbaar",
+      "missingBody": "Het canvas is verwijderd of heeft dit apparaat nog niet bereikt. Als het nog wordt gesynchroniseerd, verschijnt het hier vanzelf.",
+      "unreadableTitle": "Dit whiteboard kan hier niet worden geopend",
+      "unreadableBody": "Het canvasbestand ontbreekt in de kluis of kan op dit apparaat niet worden gelezen. Er is niets verwijderd.",
+      "disabledTitle": "Canvas is uitgeschakeld",
+      "disabledBody": "Schakel Canvas in via Instellingen › Functies om dit whiteboard te bekijken en te bewerken. De tekening blijft hoe dan ook bewaard."
+    },
+    "viewBlock": {
+      "title": "Weergave",
+      "group": "Invoegen",
+      "subtext": "Een live lijst met notities uit een map, een tag of de hele kluis",
+      "sourceMenu": "Wat deze weergave toont",
+      "chooseSource": "Kies wat je wilt tonen",
+      "sourceVault": "Alle notities",
+      "sourceFolder": "Map",
+      "sourceTag": "Tag",
+      "noFolders": "Nog geen mappen",
+      "noTags": "Nog geen tags",
+      "savedView": "Opgeslagen weergave",
+      "savedViewMissing": "De opgeslagen weergave “{name}” bestaat niet meer, dus hier wordt de standaardweergave getoond.",
+      "openAsTab": "Openen als tabblad",
+      "empty": "Er komt nog niets overeen met deze weergave.",
+      "loadFailed": "Kan deze weergave niet laden. De notities zelf blijven ongewijzigd.",
+      "folderMissing": "Deze map staat niet meer in de kluis. Kies een andere bron.",
+      "invalidJson": "De definitie van deze weergave is geen geldige JSON. Herstel die hieronder of verwijder het blok.",
+      "invalidShape": "De definitie van deze weergave heeft geen bron. Kies er hierboven een of herstel de definitie hieronder.",
+      "definition": "Definitie"
+    },
+    "slashMenu": {
+      "aria": "Blokken en acties",
+      "groups": {
+        "recent": "Recent",
+        "bestMatch": "Beste overeenkomst",
+        "blocks": "Blokken",
+        "headings": "Meer koppen",
+        "insert": "Invoegen",
+        "media": "Media",
+        "ai": "AI"
+      },
+      "secondary": {
+        "asToggleHeading": "Als uitklapbare kop",
+        "asLinkedTask": "Als gekoppelde taak",
+        "asReminder": "Als herinnering"
+      },
+      "actions": {
+        "insert": "Invoegen",
+        "open": "Openen"
+      },
+      "matchesAlias": "via",
+      "noMatch": "Geen blokken gevonden voor “{query}”",
+      "fallback": {
+        "linkTo": "Linken naar",
+        "askAI": "Aan AI vragen"
+      },
+      "pdf": {
+        "title": "PDF",
+        "subtext": "Voeg een PDF toe en lees die in de notitie"
+      },
+      "html": {
+        "title": "HTML-bestand",
+        "subtext": "Sluit een .html-bestand in en gebruik het in de notitie"
+      },
+      "linkToNote": {
+        "title": "Naar notitie linken",
+        "subtext": "Notities zoeken – of typ overal [["
+      },
+      "media": {
+        "title": "Media",
+        "subtext": "Voeg een afbeelding, video of audiobestand toe"
+      },
+      "insertTemplate": {
+        "title": "Sjablooninhoud invoegen…",
+        "subtext": "Voeg alleen de inhoud van een sjabloon in bij de cursor",
+        "group": "Sjablonen",
+        "empty": "Dat sjabloon heeft geen inhoud om in te voegen",
+        "failed": "Kan dat sjabloon niet invoegen"
+      }
+    },
+    "filePanel": {
+      "choose": "Bestand kiezen…"
+    },
+    "upload": {
+      "failed": "Kan dat bestand niet bijvoegen"
+    },
+    "checkboxTask": {
+      "converted": "Selectievakje omgezet in taak",
+      "hint": "Een nieuw selectievakje wordt een taak. Druk op {undo} om het als selectievakje te houden.",
+      "keepAsCheckbox": "Als selectievakje houden"
+    },
+    "obsidianTask": {
+      "refused": "Deze regel bevat een ID, een afhankelijkheid of een bloklink die Obsidian aan het einde van de regel nodig heeft. Verwijder die eerst in Obsidian en zet de regel daarna om.",
+      "createFailed": "Kan de taak voor deze regel niet maken.",
+      "completeFailed": "De taak is gemaakt, maar de voltooiingsdatum kon niet worden toegepast."
+    },
+    "blockMenu": {
+      "turnInto": "Omzetten in",
+      "turnIntoTypes": {
+        "paragraph": "Tekst",
+        "heading1": "Kop 1",
+        "heading2": "Kop 2",
+        "heading3": "Kop 3",
+        "bulletList": "Lijst met opsommingstekens",
+        "numberedList": "Genummerde lijst",
+        "checkbox": "Selectievakje",
+        "task": "Taak",
+        "toggleList": "Uitklapbare lijst",
+        "quote": "Citaat",
+        "codeBlock": "Code",
+        "callout": "Callout"
+      },
+      "turnIntoCheckbox": "Omzetten in selectievakje",
+      "colors": "Kleuren",
+      "duplicate": "Dupliceren",
+      "insertTemplate": "Sjabloon invoegen…",
+      "moveTo": "Verplaatsen naar…",
+      "delete": "Verwijderen",
+      "comment": "Opmerking toevoegen",
+      "moveDialog": {
+        "title": "Blok naar notitie verplaatsen",
+        "searchPlaceholder": "Notities zoeken…",
+        "noResults": "Geen overeenkomende notities",
+        "moved": "Blok verplaatst naar “{title}”",
+        "failed": "Kan het blok niet verplaatsen"
+      }
+    },
+    "attachmentPicker": {
+      "title": {
+        "image": "Afbeelding toevoegen",
+        "media": "Media toevoegen",
+        "pdf": "PDF toevoegen",
+        "html": "HTML-bestand insluiten",
+        "file": "Bestand toevoegen"
+      },
+      "placeholder": {
+        "image": "Afbeeldingen zoeken of een nieuwe uploaden…",
+        "media": "Media zoeken of nieuwe uploaden…",
+        "pdf": "PDF’s zoeken of een nieuwe uploaden…",
+        "html": "HTML-bestanden zoeken of een nieuw bestand uploaden…",
+        "file": "Bijlagen zoeken of een nieuwe uploaden…"
+      },
+      "upload": {
+        "image": "Afbeelding uploaden…",
+        "media": "Media uploaden…",
+        "pdf": "PDF uploaden…",
+        "html": "HTML-bestand uploaden…",
+        "file": "Bestand uploaden…"
+      },
+      "empty": {
+        "image": "Nog geen afbeeldingen in deze kluis.",
+        "media": "Nog geen media in deze kluis.",
+        "pdf": "Nog geen PDF’s in deze kluis.",
+        "html": "Nog geen HTML-bestanden in deze kluis.",
+        "file": "Nog geen bijlagen in deze kluis."
+      },
+      "addHeading": "Toevoegen",
+      "vaultHeading": "In deze kluis",
+      "uploading": "Uploaden…",
+      "noMatches": "Niets gevonden.",
+      "loadFailed": "Kan de bijlagen van de kluis niet laden",
+      "insertFailed": "Kan de bijlage niet invoegen",
+      "uploadFailed": "Kan het bestand niet uploaden",
+      "unsupportedVideo": "Dat videoformaat kan niet worden afgespeeld in Memry. Ondersteunde formaten: {formats}.",
+      "tooLarge": "Dat bestand is {size} en overschrijdt de limiet van {limit} voor bijlagen.",
+      "hint": {
+        "navigate": "Navigeren",
+        "insert": "Invoegen",
+        "close": "Sluiten"
+      }
+    },
+    "codeBlock": {
+      "copy": "Code kopiëren",
+      "copied": "Gekopieerd",
+      "language": "Taal"
     }
+  },
+  "dateMention": {
+    "dateInput": "Datum",
+    "time": "Tijd",
+    "includeTime": "Tijd opnemen",
+    "timeFormat": "Tijdnotatie",
+    "dateFormat": "Datumnotatie",
+    "remind": "Herinneren",
+    "clear": "Wissen"
   },
   "menus": {
     "wiki": {
-      "aria": "Suggesties noteren",
-      "loading": "Notities laden...",
+      "aria": "Notitiesuggesties",
+      "loading": "Notities laden…",
       "empty": "Geen notities gevonden",
       "create": "Nieuwe notitie maken",
       "embed": "Insluiten",
+      "wikiLink": "Wikilink",
       "embedAria": "{title} insluiten",
-      "wikiLink": "Wiki-link",
-      "wikiLinkAria": "Wiki-link {title}"
+      "wikiLinkAria": "Wikilink naar {title}",
+      "noHeadings": "{title} heeft geen koppen",
+      "noMatchingHeadings": "Geen overeenkomende koppen in {title}",
+      "displayAs": "Weergeven als",
+      "aliasHint": "Typ | om de link een naam te geven"
+    },
+    "mention": {
+      "aria": "Datum- en notitiesuggesties",
+      "loading": "Notities laden…",
+      "empty": "Geen notities gevonden",
+      "date": "Datum",
+      "now": "Nu",
+      "remindMe": "Herinner me",
+      "dateHint": "Typ verder voor een datum…",
+      "showMore": "Meer tonen",
+      "canvases": "Canvassen",
+      "choiceTitle": "Canvas invoegen als",
+      "choiceMention": "Vermelding",
+      "choiceEmbed": "Insluiting"
     },
     "tags": {
-      "aria": "Tag suggesties",
-      "loading": "Labels laden...",
+      "aria": "Tagsuggesties",
+      "loading": "Tags laden…",
       "empty": "Typ om een nieuwe tag te maken",
-      "create": "Maak #{tag}"
+      "create": "#{tag} maken"
     },
     "pasteLink": {
       "title": "Plakken als",
       "url": "URL",
-      "mention": "Vermeld",
+      "mention": "Vermelding",
       "embedVideo": "Video insluiten",
       "bookmark": "Bladwijzer"
     },
     "emoji": {
-      "aria": "Emoji en pictogramkiezer",
+      "aria": "Emoji- en pictogramkiezer",
       "emojiTab": "Emoji",
       "iconsTab": "Pictogrammen",
       "searchPlaceholder": "Zoeken",
-      "noIcons": "Geen iconen gevonden",
-      "clearSearch": "Duidelijke zoekopdracht"
-    },
-    "mention": {
-      "aria": "Datum- en notitiesuggesties",
-      "date": "Datum",
-      "dateHint": "Blijf een datum typen…",
-      "empty": "Geen notities gevonden",
-      "loading": "Notities laden...",
-      "remindMe": "Herinner me",
-      "showMore": "Meer tonen"
+      "noIcons": "Geen pictogrammen gevonden",
+      "clearSearch": "Zoekopdracht wissen",
+      "customTab": "Aangepast",
+      "custom": {
+        "searchPlaceholder": "Je pictogrammen zoeken",
+        "dropHint": "Sleep een afbeelding hierheen of klik om te uploaden",
+        "urlPlaceholder": "Of plak een afbeeldingslink",
+        "urlLabel": "Afbeeldingslink",
+        "urlSubmit": "Deze afbeelding downloaden",
+        "downloading": "Downloaden…",
+        "adding": "Toevoegen…",
+        "empty": "Nog geen aangepaste pictogrammen. Sleep een afbeelding hierheen of plak een link om er een toe te voegen.",
+        "noMatches": "Geen aangepaste pictogrammen gevonden voor deze zoekopdracht",
+        "unsupportedFile": "{name} is geen ondersteunde afbeelding",
+        "addFailed": "Kan dat pictogram niet toevoegen",
+        "deleteFailed": "Kan dat pictogram niet verwijderen",
+        "renameFailed": "Kan dat pictogram niet hernoemen",
+        "rename": "{name} hernoemen",
+        "delete": "{name} verwijderen",
+        "renameLabel": "Naam van pictogram",
+        "saveName": "Naam opslaan",
+        "cancelRename": "Hernoemen annuleren",
+        "addUrlFailed": "Kan die afbeelding niet downloaden"
+      }
     }
   },
   "outline": {
-    "title": "Overzicht",
-    "aria": "Documentoverzicht",
-    "empty": "Geen kopjes",
-    "emptyYet": "Nog geen kopjes",
-    "readTime": "{count} min. gelezen",
-    "words": "{count}-woorden",
+    "title": "Structuur",
+    "aria": "Documentstructuur",
+    "empty": "Geen koppen",
+    "emptyYet": "Nog geen koppen",
+    "readTime": "{count} min. leestijd",
+    "words": "{count} woorden",
     "created": "Gemaakt",
     "modified": "Gewijzigd"
   },
   "backlinks": {
     "sortRecent": "Recent",
     "sortAlpha": "A-Z",
-    "sortMentions": "De meeste vermeldingen",
-    "sortBy": "Sorteer backlinks op {sort}",
-    "summary": "{notes}-opmerkingen · {references}-referenties",
+    "sortMentions": "Meeste vermeldingen",
+    "sortBy": "Backlinks sorteren op {sort}",
+    "summary": "{notes} notities · {references} verwijzingen",
     "sectionAria": "Backlinks",
-    "listAria": "Backlinks-lijst",
+    "listAria": "Lijst met backlinks",
     "fromAria": "Backlinks van {title}",
     "collapse": "Samenvouwen",
-    "expand": "Uitbreiden",
-    "collapseSection": "Backlinks-sectie samenvouwen",
-    "expandSection": "Vouw de backlinkssectie uit",
-    "showMore": "Toon {count} meer backlinks",
-    "more": "{count} meer"
+    "expand": "Uitvouwen",
+    "collapseSection": "Backlinksectie samenvouwen",
+    "expandSection": "Backlinksectie uitvouwen",
+    "showMore": "Nog {count} backlinks tonen",
+    "more": "Nog {count}",
+    "viaProperty": "{property} → {title}"
+  },
+  "outgoingLinks": {
+    "summary": "{count, plural, one {# uitgaande link} other {# uitgaande links}}",
+    "sectionAria": "Uitgaande links",
+    "unresolved": "Nog niet gemaakt",
+    "showMore": "Nog {count} uitgaande links tonen",
+    "more": "Nog {count}"
+  },
+  "canvasLinks": {
+    "connectedOn": "Verbonden op {canvas}",
+    "untitledCanvas": "Canvas zonder titel"
+  },
+  "similarNotes": {
+    "summary": "{count, plural, one {# vergelijkbare notitie} other {# vergelijkbare notities}}",
+    "sectionAria": "Vergelijkbare notities",
+    "hint": "Notities die op deze notitie lijken en er nog niet mee gelinkt zijn. Op dit apparaat gevonden via lokale embeddings.",
+    "addLink": "Linken vanuit deze notitie",
+    "addLinkAria": "{title} linken vanuit deze notitie",
+    "linked": "{title} gelinkt",
+    "addToCanvas": "Aan canvas toevoegen",
+    "addToCanvasAria": "{title} aan een canvas toevoegen",
+    "searchCanvases": "Canvassen zoeken…",
+    "canvasLoading": "Canvassen laden…",
+    "noCanvases": "Nog geen canvassen",
+    "noMatch": "Geen canvas gevonden",
+    "addedToCanvas": "{title} toegevoegd aan {canvas}",
+    "alreadyOnCanvas": "{title} staat al op {canvas}",
+    "openCanvas": "Openen",
+    "addToCanvasFailed": "Kan de notitie niet aan het canvas toevoegen"
+  },
+  "suggestedTags": {
+    "label": "Voorgestelde tags:",
+    "hint": "Tags van de notities die het meest op deze lijken. Er wordt niets toegevoegd tot je er een kiest.",
+    "acceptAria": "Tag {tag} toevoegen",
+    "support": "{count, plural, one {Gebruikt in # vergelijkbare notitie} other {Gebruikt in # vergelijkbare notities}}",
+    "dismiss": "Voorgestelde tags verbergen",
+    "failed": "Kan de tag niet toevoegen"
+  },
+  "comments": {
+    "railAria": "Opmerkingen",
+    "badgeAria": "{count, plural, one {# opmerking} other {# opmerkingen}}",
+    "toolbarComment": "Opmerking",
+    "commentPlaceholder": "Opmerking toevoegen…",
+    "createdTooltip": "Gemaakt op {date} om {time}",
+    "cancel": "Annuleren",
+    "resolve": "Oplossen",
+    "edit": "Opmerking bewerken",
+    "delete": "Opmerking verwijderen",
+    "replyPlaceholder": "Antwoorden…",
+    "attachAria": "Bestand bijvoegen",
+    "mentionAria": "Een persoon, pagina of datum vermelden",
+    "sendAria": "Opmerking verzenden",
+    "formatToolbarAria": "Tekstopmaak",
+    "format": {
+      "bold": "Vet",
+      "italic": "Cursief",
+      "underline": "Onderstrepen",
+      "strike": "Doorhalen",
+      "code": "Code"
+    },
+    "openImageAria": "Afbeelding {name} openen",
+    "openAttachmentAria": "Bijlage {name} openen",
+    "kind": {
+      "comment": "Opmerking",
+      "addition": "Toevoeging",
+      "deletion": "Verwijdering",
+      "substitution": "Vervanging"
+    }
   },
   "tagsRow": {
-    "aria": "Labels",
+    "aria": "Tags",
     "empty": "Tags toevoegen",
-    "add": "Label toevoegen",
-    "removeAria": "Verwijder tag: {tag}",
-    "inputPlaceholder": "Typ tagnaam...",
+    "add": "Tag toevoegen",
+    "removeAria": "Tag verwijderen: {tag}",
+    "inputPlaceholder": "Tagnaam typen…",
     "recent": "Recent",
-    "matching": "Passend",
-    "all": "Alle labels",
+    "matching": "Overeenkomend",
+    "all": "Alle tags",
     "none": "Geen tags gevonden",
-    "createTag": "Tag maken: \"{tag}\"",
+    "createTag": "Tag maken: “{tag}”",
     "chooseColor": "Kies kleur:",
     "preview": "Voorbeeld:",
-    "colorAria": "Selecteer {color}-kleur",
+    "colorAria": "Kleur {color} selecteren",
     "customColor": "Aangepaste kleur"
   },
   "properties": {
     "title": "Eigenschappen",
-    "noteAria": "Let op eigenschappen",
+    "noteAria": "Notitie-eigenschappen",
     "workspaceAria": "Eigenschappen van de werkruimte",
-    "listAria": "Eigenschappen lijst",
+    "listAria": "Lijst met eigenschappen",
     "add": "Eigenschap toevoegen",
     "addDescription": "Voeg een nieuwe eigenschap toe aan deze notitie",
-    "namePlaceholder": "Eigendomsnaam",
-    "nameAria": "Eigendomsnaam",
-    "typeSection": "Typ",
+    "namePlaceholder": "Naam van eigenschap",
+    "nameAria": "Naam van eigenschap",
+    "typeSection": "Type",
     "empty": "Leeg",
     "dragAria": "Sleep om de eigenschap opnieuw te rangschikken",
-    "editName": "Eigendomsnaam bewerken",
+    "editName": "Naam van eigenschap bewerken",
     "delete": "Eigenschap verwijderen",
-    "searchOptions": "Zoekopties...",
+    "searchOptions": "Opties zoeken…",
     "noOptions": "Nog geen opties",
     "optionName": "Naam van optie",
     "newOption": "Nieuwe optie",
     "ratingAria": "Beoordeling",
     "openUrlAria": "URL openen",
+    "showOnCalendar": "Tonen in agenda",
+    "showingOnCalendar": "Wordt getoond in agenda",
+    "relation": {
+      "deleted": "Verwijderd",
+      "removeAria": "{title} verwijderen",
+      "addAria": "Relatie toevoegen",
+      "searchPlaceholder": "Notities, taken, afspraken, canvassen en dagboek zoeken…",
+      "groupNotes": "Notities en bestanden",
+      "groupTasks": "Taken",
+      "groupEvents": "Afspraken",
+      "groupCanvases": "Canvassen",
+      "groupJournals": "Dagboek",
+      "empty": "Geen resultaten"
+    },
     "types": {
       "text": "Tekst",
-      "number": "Nummer",
+      "number": "Getal",
       "date": "Datum",
       "checkbox": "Selectievakje",
       "url": "URL",
       "status": "Status",
-      "select": "Selecteer",
-      "multiselect": "Multiselecteren"
+      "select": "Selectie",
+      "multiselect": "Meervoudige selectie",
+      "relation": "Relatie",
+      "project": "Project"
     },
-    "showOnCalendar": "Tonen in agenda",
-    "showingOnCalendar": "Wordt getoond in agenda",
     "statusCategories": {
-      "done": "Voltooid",
-      "inProgress": "In uitvoering",
-      "todo": "Te doen"
-    }
+      "todo": "Te doen",
+      "inProgress": "Bezig",
+      "done": "Voltooid"
+    },
+    "projectAlreadySet": "Deze notitie heeft al een projecteigenschap",
+    "projectPlaceholder": "Geen project",
+    "projectSearch": "Projecten zoeken",
+    "projectEmpty": "Geen projecten",
+    "projectRemove": "Uit {name} verwijderen"
+  },
+  "moveNoteTasks": {
+    "title": "Taken van deze notitie verplaatsen?",
+    "description": "{count, plural, one {# taak in deze notitie hoort bij een ander project} other {# taken in deze notitie horen bij andere projecten}}. {count, plural, one {Deze taak} other {Deze taken}} naar {project} verplaatsen?",
+    "subtaskNote": "Subtaken worden samen met hun bovenliggende taak verplaatst.",
+    "cancel": "Zo laten",
+    "confirm": "{count, plural, one {Taak verplaatsen} other {Taken verplaatsen}}",
+    "success": "{count, plural, one {# taak verplaatst naar {project}} other {# taken verplaatst naar {project}}}",
+    "failed": "Kan de taken van de notitie niet verplaatsen"
+  },
+  "deleteNoteTasks": {
+    "label": "{count, plural, one {Ook de taak in deze notitie verwijderen} other {Ook de # taken in deze notitie verwijderen}}",
+    "description": "{count, plural, one {Als je dit niet aanvinkt, blijft de taak in Taken.} other {Als je dit niet aanvinkt, blijven de taken in Taken.}}",
+    "failed": "Kan de taken niet verwijderen. Ze staan nog in Taken."
   },
   "cover": {
     "add": "Omslag toevoegen",
@@ -276,15 +735,16 @@
         "washes": "Tinten",
         "photos": "Unsplash",
         "fromNote": "Uit notitie",
-        "upload": "Uploaden"
+        "upload": "Uploaden",
+        "link": "Link"
       },
       "photos": {
         "searching": "Zoeken op Unsplash…",
-        "noResults": "Geen foto's komen overeen met die zoekopdracht",
+        "noResults": "Geen foto’s gevonden voor deze zoekopdracht",
         "remaining": "Nog {count}",
         "tileCredit": "{name} · Unsplash",
         "error": {
-          "notConfigured": "Unsplash-foto's zijn niet beschikbaar in deze build",
+          "notConfigured": "Unsplash-foto’s zijn niet beschikbaar in deze build",
           "offline": "Geen verbinding met Unsplash",
           "rateLimited": "Unsplash heeft een snelheidslimiet bereikt, probeer het straks opnieuw",
           "failed": "Kan Unsplash niet bereiken",
@@ -316,35 +776,48 @@
         "bark": "Schors",
         "mist": "Nevel",
         "plum": "Pruim"
+      },
+      "link": {
+        "prompt": "Plak een link naar een afbeelding",
+        "invalid": "Dat is geen link die Memry kan openen",
+        "use": "Deze afbeelding gebruiken",
+        "saving": "Afbeelding opslaan…",
+        "error": {
+          "notAnImage": "Die link verwijst niet naar een afbeelding",
+          "tooLarge": "Die afbeelding is te groot om op te slaan",
+          "offline": "Die link is niet bereikbaar",
+          "failed": "Die afbeelding kan niet worden gedownload",
+          "writeFailed": "Die afbeelding kan niet in de kluis worden opgeslagen"
+        }
       }
     }
   },
   "templateSelector": {
-    "title": "Kies uw canvas",
-    "description": "Selecteer een sjabloon om uw notitie te beginnen",
-    "searchPlaceholder": "Sjablonen zoeken...",
-    "loading": "Sjablonen laden...",
+    "title": "Kies je startpunt",
+    "description": "Kies een sjabloon om je notitie mee te beginnen",
+    "searchPlaceholder": "Sjablonen zoeken…",
+    "loading": "Sjablonen laden…",
     "empty": "Geen sjablonen gevonden",
     "myTemplates": "Mijn sjablonen",
-    "essentials": "Essentiële zaken",
-    "setFolderDefault": "Instellen als mapstandaard",
-    "useTemplate": "Gebruik sjabloon",
+    "essentials": "Basissjablonen",
+    "setFolderDefault": "Als standaard voor map instellen",
+    "useTemplate": "Sjabloon gebruiken",
     "createNote": "Notitie maken",
-    "applyDescription": "Vervang de inhoud van deze notitie door een sjabloon",
+    "applyToNote": "Sjabloon toepassen",
     "applyTitle": "Een sjabloon toepassen",
-    "applyToNote": "Sjabloon toepassen"
+    "applyDescription": "Vervang de inhoud van deze notitie door een sjabloon"
   },
   "exportDialog": {
     "title": "Notitie exporteren",
-    "description": "Exporteer \"{title}\" naar een bestand",
+    "description": "Exporteer “{title}” naar een bestand",
     "format": "Formaat",
     "pdfDescription": "Printklaar document",
     "htmlDescription": "Webklaar bestand",
-    "pageSize": "Paginagrootte",
-    "selectPageSize": "Selecteer paginaformaat",
+    "pageSize": "Paginaformaat",
+    "selectPageSize": "Paginaformaat selecteren",
     "options": "Opties",
     "includeMetadata": "Metagegevens opnemen (tags, datums)",
-    "exporting": "Exporteren...",
+    "exporting": "Exporteren…",
     "exported": "Geëxporteerd!",
     "export": "Exporteren",
     "toast": {
@@ -353,24 +826,24 @@
   },
   "versionHistory": {
     "title": "Versiegeschiedenis",
-    "description": "Bekijk en herstel eerdere versies van \"{title}\"",
+    "description": "Bekijk en herstel eerdere versies van “{title}”",
     "hidePreview": "Voorbeeld verbergen",
     "showPreview": "Voorbeeld tonen",
     "empty": "Nog geen versies opgeslagen",
-    "emptyDescription": "Versies worden automatisch opgeslagen als u belangrijke wijzigingen aanbrengt",
+    "emptyDescription": "Versies worden automatisch opgeslagen als je belangrijke wijzigingen aanbrengt",
     "latest": "Nieuwste",
     "autoSaved": "Automatisch opgeslagen",
-    "words": "{count}-woorden",
-    "selectPrompt": "Selecteer een versie waarvan u een voorbeeld wilt bekijken",
+    "words": "{count} woorden",
+    "selectPrompt": "Selecteer een versie om een voorbeeld te bekijken",
     "restore": "Herstellen",
     "deleteTitle": "Deze versie verwijderen?",
     "deleteDescription": "Deze actie kan niet ongedaan worden gemaakt. Deze versie wordt definitief verwijderd.",
     "restoreTitle": "Deze versie herstellen?",
-    "restoreDescription": "Hierdoor wordt de huidige notitie-inhoud vervangen door deze versie. Er wordt eerst een momentopname van de huidige status opgeslagen, zodat u deze actie ongedaan kunt maken.",
-    "restoring": "Herstellen...",
+    "restoreDescription": "Hierdoor wordt de huidige inhoud van de notitie vervangen door deze versie. Er wordt eerst een momentopname van de huidige staat opgeslagen, zodat je dit ongedaan kunt maken.",
+    "restoring": "Herstellen…",
     "toast": {
       "loadPreviewFailed": "Kan versievoorbeeld niet laden",
-      "restored": "Opmerking hersteld naar de vorige versie",
+      "restored": "Notitie hersteld naar vorige versie",
       "deleted": "Versie verwijderd"
     }
   },
@@ -378,7 +851,7 @@
     "loading": "Sjabloon laden…",
     "copySuffix": "{name} (kopie)",
     "title": {
-      "new": "Nieuwe sjabloon",
+      "new": "Nieuw sjabloon",
       "placeholder": "Sjabloonnaam"
     },
     "icon": {
@@ -410,13 +883,15 @@
       "setFailed": "Kan herinnering niet instellen",
       "deleted": "Herinnering verwijderd",
       "deleteFailed": "Kan herinnering niet verwijderen",
-      "dismissed": "Herinnering afgewezen",
-      "dismissFailed": "Kan de herinnering niet negeren"
+      "dismissed": "Herinnering gesloten",
+      "dismissFailed": "Kan de herinnering niet sluiten",
+      "updated": "Herinnering bijgewerkt",
+      "updateFailed": "Kan herinnering niet bijwerken"
     }
   },
   "linkedTasks": {
     "title": "Gekoppelde taken",
-    "loading": "Gekoppelde taken laden..."
+    "loading": "Gekoppelde taken laden…"
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
@@ -425,20 +900,20 @@
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Eigenschappen",
-      "searchColumns": "Kolommen zoeken...",
+      "display": "Weergave",
+      "showSummaries": "Samenvattingen tonen",
+      "columnBorders": "Kolomranden",
+      "searchColumns": "Kolommen zoeken…",
       "noMatchingColumns": "Geen overeenkomende kolommen",
       "formulas": "FORMULES",
       "noFormulasDefined": "Geen formules gedefinieerd",
       "addFormula": "Formule toevoegen",
       "deleteFormula": "Formule verwijderen",
-      "cancel": "Annuleer",
+      "cancel": "Annuleren",
       "delete": "Verwijderen",
       "none": "Geen",
       "edit": "Bewerken",
       "delete2": "Verwijderen",
-      "columnBorders": "Kolomranden",
-      "display": "Weergave",
-      "showSummaries": "Samenvattingen tonen",
       "deleteFormulaBody": "Weet je zeker dat je de formule “{name}” wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt."
     },
     "componentsFolderViewFilterBuilder": {
@@ -446,14 +921,14 @@
       "filters": "Filters",
       "clearAll": "Alles wissen",
       "noFiltersApplied": "Geen filters toegepast",
-      "addFiltersToNarrowDownYourNotes": "Voeg filters toe om uw notities te verfijnen",
-      "match": "Overeenkomen",
-      "allAnd": "Alles (EN)",
-      "anyOr": "Elke (OF)",
-      "ofTheFollowing": "van het volgende:",
-      "match2": "Overeenkomen",
-      "all": "Allemaal",
-      "any": "Elke",
+      "addFiltersToNarrowDownYourNotes": "Voeg filters toe om je notities te verfijnen",
+      "match": "Voldoet aan",
+      "allAnd": "Alle (EN)",
+      "anyOr": "Minstens één (OF)",
+      "ofTheFollowing": "van de volgende:",
+      "match2": "Voldoet aan",
+      "all": "Alle",
+      "any": "Minstens één",
       "of": "van:",
       "addCondition": "Voorwaarde toevoegen",
       "addFilter": "Filter toevoegen",
@@ -464,24 +939,25 @@
     "componentsFolderViewFilterRow": {
       "builtIn": "Ingebouwd",
       "properties": "Eigenschappen",
-      "placeholderProperty": "Eigendom",
-      "placeholderOperator": "Exploitant",
+      "placeholderProperty": "Eigenschap",
+      "placeholderOperator": "Operator",
       "placeholderValue": "Waarde",
-      "removeFilter": "Filter verwijderen"
+      "removeFilter": "Filter verwijderen",
+      "tagSuggestions": "Tagsuggesties"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Notitie tabel",
+      "notesTable": "Notitietabel",
       "selectAll": "Alle notities selecteren",
       "selectRow": "Notitie selecteren",
       "kind": {
-        "Inbox": "Inbox",
         "Note": "Notitie",
-        "Task": "Taak"
+        "Task": "Taak",
+        "Inbox": "Inbox"
       }
     },
     "componentsFolderViewFolderViewToolbar": {
-      "searchNotes": "Zoek notities...",
-      "clearSearch": "Duidelijke zoekopdracht"
+      "searchNotes": "Notities zoeken…",
+      "clearSearch": "Zoekopdracht wissen"
     },
     "componentsFolderViewFormulaEditorModal": {
       "defineAComputedColumnUsingAnExpression": "Definieer een berekende kolom met behulp van een expressie.",
@@ -489,23 +965,23 @@
       "expression": "Expressie",
       "available": "Beschikbaar: ",
       "preview": "Voorbeeld",
-      "fixExpressionErrorsToSeePreview": "Repareer expressiefouten om een voorbeeld te zien",
-      "usingNote": "Opmerking gebruiken: \"",
-      "cancel": "Annuleer",
-      "namePlaceholder": "dagen_tot_due",
-      "expressionPlaceholder": "dateDiff(due_date, vandaag(), \"dagen\")",
+      "fixExpressionErrorsToSeePreview": "Herstel de fouten in de expressie om een voorbeeld te zien",
+      "usingNote": "Gebruikte notitie: “",
+      "cancel": "Annuleren",
+      "namePlaceholder": "dagen_tot_vervaldatum",
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
       "usingNoteTitle": "Gebruikte notitie: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
-      "clearGrouping": "Duidelijke groepering",
-      "searchProperties": "Zoek eigenschappen...",
+      "clearGrouping": "Groepering wissen",
+      "searchProperties": "Eigenschappen zoeken…",
       "builtIn": "Ingebouwd",
       "properties": "Eigenschappen",
       "noGroupablePropertiesFound": "Geen groepeerbare eigenschappen gevonden",
-      "sortDirection": "Sorteer richting",
+      "sortDirection": "Sorteerrichting",
       "collapseGroupsByDefault": "Groepen standaard samenvouwen",
       "showGroupSummaries": "Groepssamenvattingen weergeven",
-      "clearGrouping2": "Duidelijke groepering"
+      "clearGrouping2": "Groepering wissen"
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Gegroepeerde notitietabel",
@@ -514,26 +990,26 @@
       "selectRow": "Notitie selecteren"
     },
     "componentsFolderViewMoveToFolderDialog": {
-      "searchFolders": "Mappen zoeken...",
-      "loadingFolders": "Mappen laden...",
+      "searchFolders": "Mappen zoeken…",
+      "loadingFolders": "Mappen laden…",
       "suggested": "VOORGESTELD",
-      "bestMatch": "Beste wedstrijd",
+      "bestMatch": "Beste overeenkomst",
       "current": "huidig)",
       "allFolders": "ALLE MAPPEN",
-      "noFoldersMatch": "Er komen geen mappen overeen \"",
-      "create": "Creëer \"",
-      "cancel": "Annuleer",
-      "createFolderNamed": "“{name}” aanmaken",
+      "noFoldersMatch": "Geen mappen gevonden voor \"",
+      "create": "Maken: \"",
+      "cancel": "Annuleren",
       "currentFolderBadge": "(huidige)",
-      "noFoldersMatchQuery": "Geen mappen gevonden voor “{query}”"
+      "noFoldersMatchQuery": "Geen mappen gevonden voor “{query}”",
+      "createFolderNamed": "“{name}” aanmaken"
     },
     "componentsFolderViewRowContextMenu": {
-      "delete": "Verwijderen ",
-      "notes": "Opmerkingen",
+      "delete": "Verwijderen: ",
+      "notes": "notities",
       "open": "Openen",
       "openInExternalEditor": "Openen in externe editor",
-      "revealInSidebar": "Onthullen in zijbalk",
-      "copyLink": "Kopieer link",
+      "revealInSidebar": "Tonen in zijbalk",
+      "copyLink": "Link kopiëren",
       "delete2": "Verwijderen"
     },
     "componentsFolderViewSortableColumnHeader": {
@@ -543,71 +1019,72 @@
     },
     "componentsFolderViewViewSwitcher": {
       "default": "standaard",
+      "viewActions": "Weergaveacties",
       "rename": "Hernoemen",
-      "duplicate": "Duplicaat",
+      "duplicate": "Dupliceren",
       "setAsDefault": "Instellen als standaard",
       "delete": "Verwijderen",
       "createNewView": "Nieuwe weergave maken",
       "createNewView2": "Nieuwe weergave maken",
       "createANewViewWithCustomColumnsFiltersAndSorting": "Maak een nieuwe weergave met aangepaste kolommen, filters en sortering.",
-      "viewName": "Naam bekijken",
+      "viewName": "Naam van weergave",
       "myCustomView": "Mijn aangepaste weergave",
       "baseConfiguration": "Basisconfiguratie",
-      "copyFromCurrentView": "Kopieer vanuit de huidige weergave",
-      "startFreshDefaultColumns": "Begin opnieuw (standaardkolommen)",
-      "cancel": "Annuleer",
+      "copyFromCurrentView": "Kopiëren van huidige weergave",
+      "startFreshDefaultColumns": "Nieuw beginnen (standaardkolommen)",
+      "cancel": "Annuleren",
       "renameView": "Weergave hernoemen",
       "enterANewNameForThisView": "Voer een nieuwe naam in voor deze weergave.",
-      "viewName2": "Naam bekijken",
-      "viewName3": "Naam bekijken",
-      "cancel2": "Annuleer",
+      "viewName2": "Naam van weergave",
+      "viewName3": "Naam van weergave",
+      "cancel2": "Annuleren",
       "deleteView": "Weergave verwijderen",
-      "areYouSureYouWantToDelete": "Weet u zeker dat u wilt verwijderen \"",
+      "areYouSureYouWantToDelete": "Weet je zeker dat je deze weergave wilt verwijderen: \"",
       "thisActionCannotBeUndone": "Deze actie kan niet ongedaan worden gemaakt.",
-      "cancel3": "Annuleer",
-      "createView": "Weergave maken",
-      "gallery": "Galerij",
-      "layout": "Lay-out",
-      "list": "Lijst",
-      "name": "Naam",
+      "cancel3": "Annuleren",
       "newView": "Nieuwe weergave",
-      "save": "Opslaan",
+      "name": "Naam",
+      "layout": "Indeling",
       "table": "Tabel",
-      "viewActions": "Weergaveacties"
+      "list": "Lijst",
+      "gallery": "Galerij",
+      "createView": "Weergave maken",
+      "save": "Opslaan"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Kan PDF niet laden: ",
       "download": "Downloaden",
       "download2": "Downloaden",
       "noFileAttached": "Geen bestand bijgevoegd",
-      "alignCenter": "Centreren",
+      "resizePdf": "Formaat van PDF wijzigen",
+      "resizeHtml": "Formaat van HTML-insluiting wijzigen",
       "alignLeft": "Links uitlijnen",
+      "alignCenter": "Centreren",
       "alignRight": "Rechts uitlijnen",
-      "nextPage": "Volgende pagina",
       "previousPage": "Vorige pagina",
-      "resizePdf": "Formaat van PDF wijzigen"
+      "nextPage": "Volgende pagina"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Openen in taakpaneel",
-      "taskName": "Taaknaam...",
+      "taskName": "Taaknaam…",
       "taskDeleted": "Taak verwijderd",
-      "loading": "Laden..."
+      "loading": "Laden…"
     },
     "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
       "project": "Project",
       "priority": "Prioriteit",
       "dueDate": "Vervaldatum",
-      "cancel": "Annuleer"
+      "cancel": "Annuleren"
     },
     "componentsNoteContentAreaYoutubeEmbedBlock": {
       "noVideoUrl": "Geen video-URL"
     },
     "componentsNoteExportDialog": {
-      "pdf": "Pdf",
+      "pdf": "PDF",
       "html": "HTML",
       "a4210X297Mm": "A4 (210 x 297 mm)",
-      "letter85X11In": "Brief (8,5 x 11 inch)",
-      "legal85X14In": "Juridisch (8,5 x 14 inch)"
+      "letter85X11In": "Letter (8,5 x 11 inch)",
+      "legal85X14In": "Legal (8,5 x 14 inch)"
     },
     "componentsNoteInfoSectionEditorsDateeditor": {
       "ddMmYyyy": "dd.mm.jjjj"
@@ -617,18 +1094,18 @@
     },
     "componentsSharedDocumentInfoTab": {
       "words": "Woorden",
-      "characters": "Karakters",
+      "characters": "Tekens",
       "readingTime": "Leestijd",
       "created": "Gemaakt",
       "modified": "Gewijzigd"
     },
     "componentsSidebarProjectsEmptyState": {
       "noProjectsYet": "Nog geen projecten",
-      "createYourFirstProject": "Maak uw eerste project",
-      "createYourFirstProject2": "Maak uw eerste project"
+      "createYourFirstProject": "Je eerste project maken",
+      "createYourFirstProject2": "Je eerste project maken"
     },
     "componentsSidebarSidebarBookmarkList": {
-      "loadingBookmarks": "Bladwijzers laden...",
+      "loadingBookmarks": "Bladwijzers laden…",
       "failedToLoadBookmarks": "Kan bladwijzers niet laden",
       "noBookmarksYet": "Nog geen bladwijzers",
       "moreOptions": "Meer opties",
@@ -636,69 +1113,69 @@
     },
     "componentsSidebarSidebarItemContextMenu": {
       "open": "Openen",
-      "openToTheSide": "Open naar de zijkant",
-      "pinToTabs": "Vastzetten op tabbladen",
+      "openToTheSide": "Openen aan de zijkant",
+      "pinToTabs": "Vastzetten als tabblad",
       "edit": "Bewerken",
       "delete": "Verwijderen",
-      "copyLink": "Kopieer link"
+      "copyLink": "Link kopiëren"
     },
     "componentsSidebarSidebarTagList": {
-      "loadingTags": "Labels laden...",
+      "loadingTags": "Tags laden…",
       "failedToLoadTags": "Kan tags niet laden",
       "noTagsYet": "Nog geen tags",
-      "filterTags": "Labels filteren...",
-      "noMatchingTags": "Geen overeenkomende labels",
+      "filterTags": "Tags filteren…",
+      "noMatchingTags": "Geen overeenkomende tags",
       "Uncategorized": "Zonder categorie"
     },
     "componentsSidebarSortableProjectItem": {
-      "dropHere": "Laat het hier vallen",
+      "dropHere": "Hier neerzetten",
       "editProject": "Project bewerken",
       "settings": "Instellingen"
     },
     "componentsSidebarTagDeleteDialog": {
-      "deleteTag": "Verwijder tag #",
-      "notesWithThisTagWonTBeDeletedJustUntagged": "Notities met deze tag worden niet verwijderd, maar worden alleen verwijderd.",
-      "cancel": "Annuleer"
+      "deleteTag": "Tag verwijderen: #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Notities met deze tag blijven bestaan; alleen de tag wordt eruit verwijderd.",
+      "cancel": "Annuleren"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Ga terug",
+      "goBack": "Terug",
       "notes": "notities",
-      "loadingNotes": "Notities laden...",
+      "loadingNotes": "Notities laden…",
       "noNotesWithThisTag": "Geen notities met deze tag",
       "addThisTagToANoteToSeeItHere": "Voeg deze tag toe aan een notitie om deze hier te zien",
-      "pinned": "GESPELD",
-      "allNotes": "ALLE OPMERKINGEN",
+      "pinned": "VASTGEZET",
+      "allNotes": "ALLE NOTITIES",
       "allNotesArePinned": "Alle notities zijn vastgezet",
+      "tasks": "TAKEN",
       "unpinFromTag": "Losmaken van tag",
       "unpin": "Losmaken",
-      "pinToTag": "Vastzetten aan tag",
+      "pinToTag": "Aan tag vastzetten",
       "pin": "Vastzetten",
-      "tagActions": "Tag acties",
+      "tagActions": "Tagacties",
       "editTagName": "Tagnaam bewerken",
-      "changeColor": "Verander kleur",
-      "deleteTag": "Label verwijderen",
+      "changeColor": "Kleur wijzigen",
+      "deleteTag": "Tag verwijderen",
       "recent": "Recent",
       "created": "Gemaakt",
-      "alphabetical": "Alfabetisch",
-      "tasks": "TAKEN"
+      "alphabetical": "Alfabetisch"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Naam van tag wijzigen",
-      "rename": "Hernoemen ",
-      "acrossEveryNoteThatUsesIt": "voor elke noot die er gebruik van maakt.",
+      "rename": "Hernoem ",
+      "acrossEveryNoteThatUsesIt": "in elke notitie die deze tag gebruikt.",
       "newName": "Nieuwe naam",
-      "cancel": "Annuleer"
+      "cancel": "Annuleren"
     },
     "componentsViewersAudioPlayer": {
       "failedToLoadAudio": "Kan audio niet laden",
       "theAudioFileCouldNotBePlayed": "Het audiobestand kon niet worden afgespeeld.",
-      "skipBack10s": "Spring 10s terug",
-      "skipForward10s": "Spring 10 seconden vooruit"
+      "skipBack10s": "10 seconden terug",
+      "skipForward10s": "10 seconden vooruit"
     },
     "componentsViewersImageViewer": {
       "failedToLoadImage": "Kan afbeelding niet laden",
       "theImageCouldNotBeDisplayed": "De afbeelding kon niet worden weergegeven.",
-      "resetZoom": "Zoom opnieuw instellen",
+      "resetZoom": "Zoom herstellen",
       "rotate": "Draaien",
       "dragToPan": "Sleep om te pannen"
     },
@@ -708,19 +1185,19 @@
       "nextPage": "Volgende pagina",
       "zoomOut": "Uitzoomen",
       "zoomIn": "Inzoomen",
-      "fitToWidth": "Pasvorm op breedte",
+      "fitToWidth": "Aanpassen aan breedte",
       "rotate": "Draaien",
-      "fitToHeight": "Fit to height",
-      "viewOptions": "View options",
-      "fit": "Fit",
-      "pageLayout": "Page layout",
-      "singlePage": "Single page",
-      "twoPageOdd": "Two-page (odd)",
-      "twoPageEven": "Two-page (even)",
-      "adaptToTheme": "Adapt to theme",
-      "goToPage": "Go to page",
-      "showThumbnails": "Show thumbnails",
-      "hideThumbnails": "Hide thumbnails"
+      "fitToHeight": "Aanpassen aan hoogte",
+      "viewOptions": "Weergaveopties",
+      "fit": "Aanpassen",
+      "pageLayout": "Pagina-indeling",
+      "singlePage": "Eén pagina",
+      "twoPageOdd": "Twee pagina’s (oneven)",
+      "twoPageEven": "Twee pagina’s (even)",
+      "adaptToTheme": "Aanpassen aan thema",
+      "goToPage": "Ga naar pagina",
+      "showThumbnails": "Miniaturen tonen",
+      "hideThumbnails": "Miniaturen verbergen"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Kan video niet laden",
@@ -728,31 +1205,31 @@
     },
     "pagesFile": {
       "failedToLoadFile": "Kan bestand niet laden",
-      "tryAgain": "Probeer het opnieuw",
+      "tryAgain": "Opnieuw proberen",
       "noFileSelected": "Geen bestand geselecteerd",
       "selectAFileFromTheSidebarToViewIt": "Selecteer een bestand in de zijbalk om het te bekijken",
-      "loadingFile": "Bestand laden...",
+      "loadingFile": "Bestand laden…",
       "open": "Openen",
-      "reveal": "Onthullen",
+      "reveal": "Tonen",
       "unsupportedFileType": "Niet-ondersteund bestandstype",
-      "fileActions": "File actions"
+      "fileActions": "Bestandsacties"
     },
     "pagesFolderView": {
       "createNewNote": "Nieuwe notitie maken",
-      "viewSettings": "Bekijk instellingen",
+      "viewSettings": "Weergave-instellingen",
       "displayDensity": "Weergavedichtheid",
       "comfortable": "Comfortabel",
       "compact": "Compact",
       "showSummaries": "Samenvattingen weergeven",
-      "cancel": "Annuleer"
+      "cancel": "Annuleren"
     },
     "componentsFolderViewSortSelector": {
-      "builtIn": "Ingebouwd",
       "clearSort": "Sortering wissen",
-      "noSortablePropertiesFound": "Geen sorteerbare eigenschappen gevonden",
-      "properties": "Eigenschappen",
-      "searchProperties": "Eigenschappen zoeken...",
       "sort": "Sorteren",
+      "searchProperties": "Eigenschappen zoeken…",
+      "builtIn": "Ingebouwd",
+      "properties": "Eigenschappen",
+      "noSortablePropertiesFound": "Geen sorteerbare eigenschappen gevonden",
       "sortDirection": "Sorteerrichting"
     }
   },
@@ -768,101 +1245,69 @@
       "failedToRestoreVersion": "Kan de versie niet herstellen",
       "failedToDeleteVersion": "Kan de versie niet verwijderen",
       "failedToCreateNote": "Kan notitie niet maken",
-      "failedToLoadMoreBookmarks": "Kan niet meer bladwijzers laden",
-      "failedToToggleBookmark": "Kan bladwijzer niet omschakelen",
+      "failedToLoadMoreBookmarks": "Kan de overige bladwijzers niet laden",
+      "failedToToggleBookmark": "Kan bladwijzer niet wijzigen",
       "failedToRemoveBookmark": "Kan bladwijzer niet verwijderen",
       "failedToReorderBookmarks": "Kan de bladwijzers niet opnieuw rangschikken",
       "failedToSave": "Kan niet opslaan",
       "failedToRename": "Kan de naam niet wijzigen",
-      "failedToUpdateEmoji": "Kan emoji niet updaten",
-      "failedToUpdateTags": "Kan tags niet updaten",
-      "failedToSnoozeReminder": "Kan herinnering niet snoozen",
+      "failedToUpdateEmoji": "Kan emoji niet bijwerken",
+      "failedToUpdateTags": "Kan tags niet bijwerken",
+      "failedToSnoozeReminder": "Kan herinnering niet uitstellen",
       "failedToCreateFolder": "Kan map niet maken",
       "failedToLoadProperties": "Kan eigenschappen niet laden",
       "failedToLoadPropertyDefinitions": "Kan eigenschapsdefinities niet laden",
       "failedToLoadTemplates": "Kan sjablonen niet laden"
     },
     "toasts": {
-      "noteExportedSuccessfully": "Opmerking succesvol geëxporteerd",
-      "failedToUpdateProperty": "Kan de eigenschap niet updaten",
-      "failedToUpdateTags": "Kan tags niet updaten",
+      "noteExportedSuccessfully": "Notitie geëxporteerd",
+      "failedToUpdateProperty": "Kan de eigenschap niet bijwerken",
+      "failedToUpdateTags": "Kan tags niet bijwerken",
       "failedToUpdateIcon": "Kan pictogram niet bijwerken",
-      "reminderSnoozed": "Herinnering gesnoozed",
-      "failedToSnoozeReminder": "Kan herinnering niet snoozen",
-      "defaultTemplateSet": "Standaardsjabloonset",
+      "reminderSnoozed": "Herinnering uitgesteld",
+      "failedToSnoozeReminder": "Kan herinnering niet uitstellen",
+      "defaultTemplateSet": "Standaardsjabloon ingesteld",
       "failedToSetDefaultTemplate": "Kan standaardsjabloon niet instellen",
       "defaultTemplateCleared": "Standaardsjabloon gewist",
-      "failedToClearDefaultTemplate": "Kan de standaardsjabloon niet wissen",
+      "failedToClearDefaultTemplate": "Kan het standaardsjabloon niet wissen",
       "failedToAddProperty": "Kan eigenschap niet toevoegen",
       "failedToDeleteProperty": "Kan de eigenschap niet verwijderen",
       "failedToRenameProperty": "Kan de naam van de eigenschap niet wijzigen",
       "failedToReorderProperties": "Kan de eigenschappen niet opnieuw rangschikken",
-      "cannotAddTagThisNoteWasDeleted": "Kan tag niet toevoegen - deze notitie is verwijderd",
-      "cannotRemoveTagThisNoteWasDeleted": "Kan tag niet verwijderen - deze notitie is verwijderd",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan alleen lokaal niet wijzigen: deze notitie is verwijderd"
+      "cannotAddTagThisNoteWasDeleted": "Kan tag niet toevoegen – deze notitie is verwijderd",
+      "cannotRemoveTagThisNoteWasDeleted": "Kan tag niet verwijderen – deze notitie is verwijderd",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan ‘alleen lokaal’ niet wijzigen – deze notitie is verwijderd"
     }
   },
   "bulkActions": {
+    "toolbarAria": "Bulkacties",
+    "selected": "geselecteerd",
+    "move": "Verplaatsen",
+    "copyLinks": "Links kopiëren",
     "addTag": "Tag toevoegen",
+    "tagNamePlaceholder": "Tagnaam",
+    "export": "Exporteren",
+    "delete": "Verwijderen",
     "clearAria": "Selectie wissen",
     "copiedLinks": "{count, plural, one {# link gekopieerd} other {# links gekopieerd}}",
-    "copyLinks": "Links kopiëren",
-    "delete": "Verwijderen",
-    "export": "Exporteren",
-    "iconUpdated": "{count, plural, one {Pictogram bijgewerkt op # notitie} other {Pictogram bijgewerkt op # notities}}",
-    "move": "Verplaatsen",
-    "selected": "geselecteerd",
     "setIcon": "Pictogram instellen",
-    "tagNamePlaceholder": "Tagnaam",
-    "toolbarAria": "Bulkacties"
-  },
-  "comments": {
-    "attachAria": "Bestand bijvoegen",
-    "badgeAria": "{count, plural, one {# opmerking} other {# opmerkingen}}",
-    "cancel": "Annuleren",
-    "commentPlaceholder": "Voeg een opmerking toe...",
-    "createdTooltip": "Gemaakt op {date} om {time}",
-    "delete": "Opmerking verwijderen",
-    "edit": "Opmerking bewerken",
-    "kind": {
-      "addition": "Toevoeging",
-      "comment": "Opmerking",
-      "deletion": "Verwijdering",
-      "substitution": "Vervanging"
-    },
-    "mentionAria": "Een persoon, pagina of datum vermelden",
-    "railAria": "Opmerkingen",
-    "replyPlaceholder": "Antwoorden...",
-    "resolve": "Oplossen",
-    "sendAria": "Opmerking verzenden",
-    "toolbarComment": "Opmerking",
-    "openAttachmentAria": "Bijlage {name} openen",
-    "openImageAria": "Afbeelding {name} openen"
-  },
-  "dateMention": {
-    "clear": "Wissen",
-    "dateFormat": "Datumnotatie",
-    "dateInput": "Datum",
-    "includeTime": "Tijd opnemen",
-    "remind": "Herinneren",
-    "time": "Tijd",
-    "timeFormat": "Tijdnotatie"
+    "iconUpdated": "{count, plural, one {Pictogram bijgewerkt op # notitie} other {Pictogram bijgewerkt op # notities}}"
   },
   "applyTemplateConfirm": {
+    "title": "Notitie-inhoud vervangen?",
+    "description": "Als je “{name}” toepast, wordt de huidige inhoud van deze notitie vervangen. Dit kan niet ongedaan worden gemaakt.",
+    "full": "Inhoud vervangen en sjabloondetails toevoegen",
     "body": "Alleen inhoud vervangen",
     "cancel": "Annuleren",
-    "description": "Als je \"{name}\" toepast, wordt de huidige inhoud van deze notitie vervangen. Dit kan niet ongedaan worden gemaakt.",
-    "failed": "Kan sjabloon niet toepassen",
-    "full": "Inhoud vervangen en sjabloondetails toevoegen",
     "success": "Sjabloon toegepast",
-    "title": "Notitie-inhoud vervangen?"
+    "failed": "Kan sjabloon niet toepassen"
   },
   "saveNoteAsTemplate": {
     "title": "Notitie opslaan als sjabloon",
     "description": "Maak van deze notitie een herbruikbaar sjabloon. De notitie zelf blijft ongewijzigd.",
     "nameLabel": "Sjabloonnaam",
     "loading": "Notitie wordt gelezen…",
-    "summary": "Slaat de inhoud van de notitie op, samen met {tagCount, plural, one {# label} other {# labels}} en {propertyCount, plural, one {# eigenschap} other {# eigenschappen}}.",
+    "summary": "Slaat de inhoud van de notitie op, samen met {tagCount, plural, one {# tag} other {# tags}} en {propertyCount, plural, one {# eigenschap} other {# eigenschappen}}.",
     "save": "Sjabloon opslaan",
     "cancel": "Annuleren",
     "success": "Sjabloon opgeslagen",
@@ -872,71 +1317,118 @@
   },
   "newNoteFromNote": {
     "action": "Nieuwe notitie op basis van deze notitie",
-    "created": "Gemaakt met {tagCount, plural, =0 {geen labels} one {# label} other {# labels}} en {propertyCount, plural, =0 {geen eigenschappen} one {# eigenschap} other {# eigenschappen}} uit {source}"
-  },
-  "tagView": {
-    "moreActions": "Meer acties",
-    "pin": {
-      "action": "{count, plural, one {# notitie} other {# notities}} vastzetten aan tag",
-      "failed": "Kan notitie niet aan tag vastzetten",
-      "success": "{count, plural, one {# notitie} other {# notities}} vastgezet aan tag"
-    }
+    "created": "Gemaakt met {tagCount, plural, =0 {geen tags} one {# tag} other {# tags}} en {propertyCount, plural, =0 {geen eigenschappen} one {# eigenschap} other {# eigenschappen}} uit {source}"
   },
   "tags": {
     "hubTitle": "Tags",
     "openHub": "Tagoverzicht openen"
   },
+  "tagView": {
+    "moreActions": "Meer acties",
+    "pin": {
+      "action": "{count, plural, one {# notitie} other {# notities}} vastzetten aan tag",
+      "success": "{count, plural, one {# notitie} other {# notities}} vastgezet aan tag",
+      "failed": "Kan notitie niet aan tag vastzetten"
+    }
+  },
   "tagsHub": {
-    "cancelCreate": "Annuleren",
-    "category": {
-      "delete": "Categorie verwijderen",
-      "deleteBody": "Tags gaan naar Zonder categorie. Ze worden niet verwijderd.",
-      "deleteCancel": "Annuleren",
-      "deleteConfirm": "Verwijderen",
-      "deleteTitle": "{name} verwijderen?",
-      "dragHandle": "Sleep om de volgorde van categorieën te wijzigen",
-      "emptyHint": "Sleep hier een tag naartoe",
-      "more": "Categorieopties",
-      "rename": "Categorie hernoemen"
-    },
-    "categoryNamePlaceholder": "Categorienaam",
-    "errors": {
-      "createCategoryFailed": "Kan categorie niet maken",
-      "createTagCategorizeFailed": "Tag gemaakt, maar kon niet aan de categorie worden toegevoegd",
-      "createTagFailed": "Kan tag niet maken",
-      "deleteCategoryFailed": "Kan categorie niet verwijderen",
-      "loadFailed": "Kan tagcategorieën niet laden",
-      "renameCategoryFailed": "Kan categorie niet hernoemen",
-      "reorderFailed": "Kan de volgorde van tags niet wijzigen"
-    },
-    "loading": "Tags laden...",
+    "loading": "Tags laden…",
     "newCategory": "Nieuwe categorie",
     "newTag": "Nieuwe tag",
-    "search": {
-      "empty": "Geen categorieën of tags gevonden voor je zoekopdracht",
-      "placeholder": "Zoek categorieën en tags"
-    },
+    "cancelCreate": "Annuleren",
+    "categoryNamePlaceholder": "Categorienaam",
     "tagNamePlaceholder": "Tagnaam",
-    "uncategorized": "Zonder categorie"
+    "uncategorized": "Zonder categorie",
+    "search": {
+      "placeholder": "Categorieën en tags zoeken",
+      "empty": "Geen categorieën of tags gevonden voor je zoekopdracht"
+    },
+    "category": {
+      "more": "Categorieopties",
+      "rename": "Categorie hernoemen",
+      "delete": "Categorie verwijderen",
+      "dragHandle": "Sleep om de volgorde van categorieën te wijzigen",
+      "emptyHint": "Sleep hier een tag naartoe",
+      "deleteTitle": "{name} verwijderen?",
+      "deleteBody": "Tags gaan naar Zonder categorie. Ze worden niet verwijderd.",
+      "deleteConfirm": "Verwijderen",
+      "deleteCancel": "Annuleren"
+    },
+    "errors": {
+      "loadFailed": "Kan tagcategorieën niet laden",
+      "createCategoryFailed": "Kan categorie niet maken",
+      "renameCategoryFailed": "Kan categorie niet hernoemen",
+      "deleteCategoryFailed": "Kan categorie niet verwijderen",
+      "createTagFailed": "Kan tag niet maken",
+      "createTagCategorizeFailed": "Tag gemaakt, maar kon niet aan de categorie worden toegevoegd",
+      "reorderFailed": "Kan de volgorde van tags niet wijzigen"
+    }
   },
   "folderView": {
+    "columns": {
+      "title": "Titel",
+      "folder": "Map",
+      "tags": "Tags",
+      "created": "Aangemaakt",
+      "modified": "Gewijzigd",
+      "wordCount": "Aantal woorden",
+      "kind": "Soort"
+    },
+    "defaultViewName": "Standaard",
+    "selectView": "Weergave selecteren",
     "columnHeader": {
       "doubleClickToEdit": "{name} (dubbelklik om te bewerken)",
       "dragToReorder": "Sleep om de kolom opnieuw te ordenen: {name}"
     },
-    "columns": {
-      "created": "Aangemaakt",
-      "folder": "Map",
-      "kind": "Soort",
-      "modified": "Gewijzigd",
-      "tags": "Tags",
-      "title": "Titel",
-      "wordCount": "Aantal woorden"
-    },
-    "defaultViewName": "Standaard",
     "groupHeader": {
       "noteCount": "{count, plural, one {# notitie} other {# notities}}"
+    }
+  },
+  "mindMap": {
+    "regionLabel": "Mindmap van {title}, {count, plural, one {# knooppunt} other {# knooppunten}}",
+    "treeLabel": "Mindmapstructuur van {title}",
+    "emptyHint": "Voeg een kop toe aan deze notitie, dan vertakt de mindmap zich.",
+    "linkHint": "link naar een andere pagina",
+    "chain": {
+      "separator": "→"
     },
-    "selectView": "Weergave selecteren"
+    "more": "{count, plural, one {+# meer} other {+# meer}}",
+    "nodeCapNotice": "Deze mindmap heeft de limiet van {count, plural, one {# knooppunt} other {# knooppunten}} bereikt; de rest is samengevouwen in het dichtstbijzijnde knooppunt erboven.",
+    "badge": {
+      "table": "{count, plural, one {# tabel} other {# tabellen}}",
+      "code": "{count, plural, one {# codeblok} other {# codeblokken}}",
+      "image": "{count, plural, one {# afbeelding} other {# afbeeldingen}}",
+      "quote": "{count, plural, one {# citaat} other {# citaten}}",
+      "embed": "{count, plural, one {# insluiting} other {# insluitingen}}",
+      "bookmark": "{count, plural, one {# bladwijzer} other {# bladwijzers}}",
+      "file": "{count, plural, one {# bestand} other {# bestanden}}"
+    },
+    "toolbar": {
+      "label": "Mindmapacties",
+      "fit": "Aanpassen aan weergave",
+      "copyImage": "Kopiëren als afbeelding",
+      "copyVector": "Kopiëren als vector",
+      "imageCopied": "Mindmap gekopieerd als afbeelding",
+      "vectorCopied": "Mindmap gekopieerd als vectorafbeelding",
+      "copyFailed": "Kan de mindmap niet kopiëren",
+      "saveCanvas": "Opslaan als canvas",
+      "saved": "Opgeslagen als canvas “{title}”",
+      "saveFailed": "Kan de mindmap niet als canvas opslaan",
+      "snapshotOn": "Momentopname · {date}"
+    }
+  },
+  "tagAndFilter": {
+    "regionLabel": "Actief tagfilter",
+    "matchingAll": "Bevat alle:",
+    "removeTag": "{tag} uit het filter verwijderen",
+    "clearAll": "Alles wissen",
+    "saveSearch": "Zoekopdracht opslaan",
+    "savedSearches": "Opgeslagen zoekopdrachten",
+    "deleteSearch": "Opgeslagen zoekopdracht {name} verwijderen",
+    "saveDialogTitle": "Geef deze zoekopdracht een naam",
+    "saveDialogPlaceholder": "bijv. Werkoverleggen",
+    "cancel": "Annuleren",
+    "save": "Opslaan",
+    "addToFilterHint": "Ctrl/Cmd-klik op een tag om deze aan het filter toe te voegen"
   }
 }

@@ -1,20 +1,20 @@
 {
   "dialog": {
     "vault": {
-      "title": "Kasa Klasörünü Seçin",
-      "button": "Apps Kasası'nı seçin"
+      "title": "Kasa klasörünü seçin",
+      "button": "Kasayı seç"
     },
     "exportPdf": {
       "title": "PDF olarak dışa aktar",
-      "filterName": "PDF Belgesi"
+      "filterName": "PDF belgesi"
     },
     "exportHtml": {
       "title": "HTML olarak dışa aktar",
-      "filterName": "HTML Belgesi"
+      "filterName": "HTML belgesi"
     },
     "import": {
-      "filterSupported": "Desteklenen Dosyalar",
-      "filterAll": "Tüm Dosyalar"
+      "filterSupported": "Desteklenen dosyalar",
+      "filterAll": "Tüm dosyalar"
     },
     "exportCancelled": "Dışa aktarma iptal edildi",
     "update": {
@@ -25,47 +25,48 @@
       "buttonLater": "Sonra",
       "readyTitle": "Güncelleme hazır",
       "readyMessage": "memrynote {version} indirildi.",
-      "readyDetailFallback": "Yüklemeyi tamamlamak için memrynote'yi yeniden başlatın.",
+      "readyDetailFallback": "Güncellemenin yüklenmesini tamamlamak için memrynote'u yeniden başlatın.",
       "buttonRestartNow": "Şimdi yeniden başlat",
       "releaseNotesLabel": "Sürüm notları:"
     },
     "pair": {
-      "buttonAllow": "İzin Ver",
+      "title": "Tarayıcı uzantısını eşle",
+      "message": "Memry tarayıcı uzantısının bu uygulamaya kayıt göndermesine izin verilsin mi?",
+      "buttonAllow": "İzin ver",
       "buttonDeny": "Reddet",
-      "buttonPair": "Eşle",
-      "message": "Memry tarayıcı uzantısının bu uygulamaya yakalama göndermesine izin verilsin mi?",
-      "title": "Tarayıcı uzantısını eşle"
+      "buttonPair": "Eşle"
     }
   },
   "notification": {
+    "inboxReview": {
+      "title": "Gelen kutunuzu gözden geçirme zamanı",
+      "body": "Gözden geçirilecek {count, plural, one {# öğeniz} other {# öğeniz}} var.",
+      "testBody": "Bu bir testtir — günlük gözden geçirme hatırlatıcılarınız böyle görünecek."
+    },
     "reminder": {
       "note": "Not hatırlatıcısı",
       "journal": "Günlük hatırlatıcısı",
-      "highlight": "Hatırlatıcıyı vurgula",
+      "highlight": "Vurgu hatırlatıcısı",
       "task": "Görev hatırlatıcısı",
       "fallback": "Hatırlatma zamanı",
-      "default": "Hatırlatma"
-    },
-    "inboxReview": {
-      "body": "Gözden geçirilecek {count, plural, one {# öğeniz} other {# öğeniz}} var.",
-      "testBody": "Bu bir testtir — günlük gözden geçirme hatırlatıcılarınız böyle görünecek.",
-      "title": "Gelen kutunuzu gözden geçirme zamanı"
+      "default": "Hatırlatıcı"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "Hatırlatma zamanı gelecekte olmalıdır",
     "definitionNotFound": "Tanım bulunamadı",
     "noteNotFound": "Not bulunamadı",
-    "updateFailed": "Güncelleme başarısız oldu"
+    "updateFailed": "Güncellenemedi",
+    "updateReadOnlyVolume": "memrynote bu konumdan çalışırken güncellemeler yüklenemez. memrynote'u Uygulamalar klasörünüze taşıyın ve yeniden açın."
   },
   "startup": {
-    "failed": {
-      "body": "Bu, diskte çok az boş alan kaldığında veya eski ekran kartı sürücülerinde olabilir. Biraz disk alanı açmayı deneyin, ardından MemryNote'yi yeniden açın. Sorun devam ederse yeniden kurmak genellikle çözer.",
-      "title": "MemryNote başlatmayı tamamlayamadı"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote otomatik olarak yeniden açılacak.",
-      "title": "Güncelleme yükleniyor…"
+      "title": "Güncelleme yükleniyor…",
+      "subtitle": "MemryNote otomatik olarak yeniden açılacak."
+    },
+    "failed": {
+      "title": "MemryNote başlatmayı tamamlayamadı",
+      "body": "Bu, diskte çok az boş alan kaldığında veya eski ekran kartı sürücülerinde olabilir. Biraz disk alanı açmayı deneyin, ardından MemryNote'u yeniden açın. Sorun devam ederse yeniden kurmak genellikle çözer."
     }
   }
 }

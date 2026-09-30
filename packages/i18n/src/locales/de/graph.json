@@ -1,77 +1,137 @@
 {
   "page": {
-    "loading": "Grafik wird geladen...",
-    "load-failed": "Diagrammdaten konnten nicht geladen werden",
-    "try-again": "Versuchen Sie es erneut",
-    "aria-label": "Wissensgraph mit {nodeCount, plural, one {#-Knoten} other {#-Knoten}} und {edgeCount, plural, one {#-Verbindung} other {#-Verbindungen}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "Diagrammknoten",
+    "loading": "Graph wird geladen…",
+    "load-failed": "Graphdaten konnten nicht geladen werden",
+    "render-failed": "Der Graph ist auf diesem Gerät nicht verfügbar",
+    "render-failed-description": "Dieses Gerät konnte den Grafik-Renderer nicht starten. Deine Notizen sind sicher.",
+    "try-again": "Erneut versuchen",
+    "aria-label": "Wissensgraph mit {nodeCount, plural, one {# Knoten} other {# Knoten}} und {edgeCount, plural, one {# Verbindung} other {# Verbindungen}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Knoten des Graphen",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "Ihr Wissensgraph",
-    "description": "Verbindungen zwischen Ihren Notizen, Aufgaben und Projekten werden hier als interaktives Diagramm angezeigt.",
-    "link-title": "Verknüpfen Sie Ihre Notizen",
-    "link-description": "Verwenden Sie [[Wikilinks]], um Ideen notizübergreifend zu verbinden",
-    "discover-title": "Entdecken Sie Muster",
+    "title": "Dein Wissensgraph",
+    "description": "Verbindungen zwischen deinen Notizen, Aufgaben und Projekten erscheinen hier als interaktiver Graph.",
+    "link-title": "Notizen verlinken",
+    "link-description": "Verbinde Ideen über Notizen hinweg mit [[Wikilinks]]",
+    "discover-title": "Muster entdecken",
     "discover-description": "Wenn die Verbindungen wachsen, entstehen auf natürliche Weise Cluster und Themen"
   },
   "entity": {
-    "note": "Hinweis",
+    "note": "Notiz",
     "notes": "Notizen",
-    "journal": "Tagebuch",
-    "journals": "Zeitschriften",
+    "journal": "Journal",
+    "journals": "Journale",
     "task": "Aufgabe",
     "tasks": "Aufgaben",
     "project": "Projekt",
     "projects": "Projekte",
     "tag": "Tag",
     "tags": "Tags",
-    "orphan": "Waise",
-    "orphans": "Waisen",
-    "unresolved": "ungelöst"
+    "orphan": "verwaister Knoten",
+    "orphans": "verwaiste Knoten",
+    "unresolved": "nicht erstellt",
+    "category": "Kategorie"
   },
   "summary": {
     "node-type-count": "{count} {label}"
   },
   "control": {
-    "show-settings": "Grafikeinstellungen",
+    "show-settings": "Grapheinstellungen",
     "hide-settings": "Einstellungen ausblenden",
     "reset-filters": "Filter zurücksetzen",
     "filters": "Filter",
     "display": "Anzeige",
     "show-labels": "Beschriftungen anzeigen",
+    "live-motion": "Live-Bewegung",
     "focus-depth": "Tiefe {depth}",
-    "clear-focus": "Klar fokussierter Knoten"
+    "clear-focus": "Fokus aufheben",
+    "relayout": "Neu anordnen",
+    "categories": "Tag-Kategorien",
+    "color-by-category": "Nach Kategorie einfärben",
+    "no-categories": "Gruppiere Tags in der Tag-Übersicht in Kategorien, um den Graphen nach Kategorie einzufärben und zuzuklappen.",
+    "collapse-category": "{name} zuklappen",
+    "expand-category": "{name} aufklappen",
+    "uncategorized": "Ohne Kategorie"
   },
   "filter": {
     "notes": "Notizen",
-    "journals": "Zeitschriften",
+    "journals": "Journale",
     "tasks": "Aufgaben",
     "projects": "Projekte",
-    "tags": "Schlagworte",
-    "orphans": "Waisen",
-    "toggle-entity": "Schalten Sie {label} um",
-    "toggle-orphans": "Verwaiste Knoten umschalten"
+    "tags": "Tags",
+    "orphans": "Verwaiste Knoten",
+    "canvas-edges": "Canvas-Verbindungen",
+    "toggle-entity": "{label} ein-/ausblenden",
+    "toggle-orphans": "Verwaiste Knoten ein-/ausblenden"
   },
   "search": {
-    "placeholder": "Knoten durchsuchen...",
-    "clear": "Klare Diagrammsuche"
+    "placeholder": "Knoten durchsuchen…",
+    "clear": "Graphsuche löschen"
   },
   "context-menu": {
     "untitled": "Ohne Titel",
-    "focus-node": "Konzentrieren Sie sich auf diesen Knoten",
+    "focus-node": "Auf diesen Knoten fokussieren",
     "open-new-tab": "In neuem Tab öffnen",
     "create-note": "Notiz erstellen",
-    "copy-title": "Titel kopieren"
+    "copy-title": "Titel kopieren",
+    "link-to": "Verlinken mit…",
+    "add-tag": "Tag hinzufügen…",
+    "back": "Zurück",
+    "link-search": "Notizen durchsuchen…",
+    "tag-search": "Tag suchen oder erstellen…",
+    "no-matches": "Keine Treffer",
+    "create-tag": "#{tag} erstellen",
+    "remove-link": "Link zu {title} entfernen",
+    "unpin": "Lösen",
+    "collapse-category": "{name} zuklappen",
+    "expand-category": "{name} aufklappen"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {#-Verbindung} other {#-Verbindungen}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# Verbindung} other {# Verbindungen}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# Element} other {# Elemente}}",
+    "click-to-expand": "Zum Aufklappen klicken"
   },
   "local-panel": {
-    "loading": "Grafik wird geladen...",
+    "loading": "Graph wird geladen…",
     "empty": "Keine Verbindungen gefunden",
-    "open-full": "Vollständiges Diagramm öffnen",
-    "close": "Diagramm schließen"
+    "open-full": "Vollständigen Graphen öffnen",
+    "close": "Graphen schließen",
+    "pin": "An diese Notiz anheften",
+    "unpin": "Lösen und der geöffneten Notiz folgen",
+    "pinned-to": "Angeheftet: {title}"
+  },
+  "edit": {
+    "linked": "{source} mit {target} in „{property}“ verlinkt",
+    "unlinked": "Link von {source} zu {target} entfernt",
+    "already-linked": "{source} verlinkt bereits auf {target}",
+    "property-conflict": "„{property}“ ist in dieser Notiz keine Verknüpfungseigenschaft, daher wurde der Link nicht hinzugefügt",
+    "link-unsupported": "Links sind nur zwischen Notizen möglich",
+    "link-failed": "Der Link konnte nicht hinzugefügt werden",
+    "unlink-failed": "Der Link konnte nicht entfernt werden",
+    "tag-added": "#{tag} zu {note} hinzugefügt",
+    "tag-exists": "Diese Notiz hat bereits #{tag}",
+    "tag-failed": "Das Tag konnte nicht hinzugefügt werden",
+    "undo-failed": "Die Änderung konnte nicht rückgängig gemacht werden"
+  },
+  "relayout-confirm": {
+    "title": "Graphen neu anordnen?",
+    "description": "Alle angehefteten Knoten werden gelöst und der Graph ordnet sich neu an. Dein gespeichertes Layout wird verworfen.",
+    "cancel": "Abbrechen",
+    "confirm": "Neu anordnen"
+  },
+  "views": {
+    "title": "Gespeicherte Ansichten",
+    "unsaved": "Nicht gespeicherte Ansicht",
+    "edited": "Bearbeitet",
+    "empty": "Noch keine gespeicherten Ansichten",
+    "save-as": "Als neue Ansicht speichern…",
+    "update": "„{name}“ aktualisieren",
+    "delete": "Ansicht {name} löschen",
+    "save-dialog-title": "Graphansicht speichern",
+    "save-dialog-placeholder": "Name der Ansicht",
+    "cancel": "Abbrechen",
+    "save": "Speichern"
   }
 }

@@ -7,56 +7,129 @@
     "backToApp": "Terug naar app",
     "nav": {
       "groups": {
-        "account": "Rekening",
+        "account": "Account",
         "application": "Applicatie",
         "editing": "Bewerken",
         "modules": "Modules",
         "services": "Diensten",
-        "data": "Gegevens"
+        "data": "Gegevens",
+        "workspace": "Werkruimte",
+        "features": "Functies"
       },
       "items": {
-        "account": "Rekening",
+        "account": "Account",
         "general": "Algemeen",
         "templates": "Sjablonen",
-        "editor": "Redacteur",
-        "journal": "Journaal",
+        "editor": "Editor",
+        "journal": "Dagboek",
         "tasks": "Taken",
-        "calendar": "Kalender",
+        "inbox": "Inbox",
+        "calendar": "Agenda",
         "appearance": "Uiterlijk",
-        "shortcuts": "Snelkoppelingen",
+        "shortcuts": "Sneltoetsen",
+        "commandLine": "Opdrachtregel",
         "ai": "AI-assistent",
         "vault": "Kluis",
-        "tags": "Labels",
+        "tags": "Tags",
         "properties": "Eigenschappen",
-        "commandLine": "Opdrachtregel",
-        "features": "Functies",
         "import": "Importeren",
-        "inbox": "Inbox"
+        "features": "Functies",
+        "modules": "Modules",
+        "aiAgents": "AI & agents",
+        "tagsProperties": "Tags & eigenschappen",
+        "vaultData": "Kluis & gegevens"
+      }
+    },
+    "drillIn": {
+      "back": "Terug naar {section}"
+    },
+    "modules": {
+      "configure": "{module} configureren"
+    },
+    "vaultImport": {
+      "label": "Importeren uit een andere app",
+      "description": "Notion, Evernote, Bear, Apple Notes, Todoist en meer",
+      "action": "Importeren…"
+    },
+    "search": {
+      "placeholder": "Instellingen zoeken",
+      "count": "{count, plural, one {# instelling} other {# instellingen}}",
+      "empty": "Geen overeenkomende instellingen",
+      "move": "navigeren",
+      "open": "openen"
+    }
+  },
+  "features": {
+    "header": {
+      "title": "Functies",
+      "subtitle": "Schakel delen van de app in of uit. Uit = grijs weergegeven in de zijbalk en overal uitgeschakeld."
+    },
+    "items": {
+      "home": {
+        "label": "Start",
+        "description": "Startdashboard"
+      },
+      "inbox": {
+        "label": "Inbox",
+        "description": "Snel vastleggen en verwerken"
+      },
+      "journal": {
+        "label": "Dagboek",
+        "description": "Dagelijkse notities"
+      },
+      "tasks": {
+        "label": "Taken",
+        "description": "To-do’s en vervaldatums"
+      },
+      "calendar": {
+        "label": "Agenda",
+        "description": "Afspraken en planning"
+      },
+      "graph": {
+        "label": "Grafiek",
+        "description": "Notitieverbindingen"
+      },
+      "spatialCanvas": {
+        "label": "Canvas",
+        "description": "Ruimtelijke borden om notities te ordenen en te koppelen"
       }
     }
   },
   "general": {
     "header": {
       "title": "Algemeen",
-      "subtitle": "Opstart- en tabbladgedrag van applicatie",
-      "loading": "Instellingen laden..."
+      "subtitle": "Taal, opstarten, tabbladen en privacy.",
+      "loading": "Instellingen laden…"
     },
     "groups": {
       "startup": "Opstarten",
       "updates": "Updates",
-      "languageRegion": "Taal & Regio",
+      "languageRegion": "Taal en regio",
       "tabBehavior": "Tabbladgedrag",
+      "window": "Venstergedrag",
       "fileCreation": "Bestanden maken",
-      "privacy": "Privacy"
+      "privacy": "Privacy",
+      "startupWindows": "Opstarten en vensters",
+      "newNotes": "Nieuwe notities"
     },
     "startup": {
       "launchAtLogin": {
-        "label": "Start bij Inloggen",
-        "description": "Start memrynote wanneer u inlogt",
-        "error": "Kan het starten bij het opstarten niet updaten"
+        "label": "Starten bij inloggen",
+        "description": "Start memrynote wanneer je inlogt",
+        "error": "Kan de instelling voor starten bij inloggen niet bijwerken"
       }
     },
     "updates": {
+      "autoCheck": {
+        "label": "Automatisch controleren op updates",
+        "description": "Controleer op nieuwe releases bij het starten en daarna regelmatig zolang de app open is.",
+        "error": "Kan de instelling voor automatisch controleren niet bijwerken"
+      },
+      "autoDownload": {
+        "label": "Updates automatisch downloaden",
+        "description": "Download en installeer nieuwe releases op de achtergrond, zonder te vragen.",
+        "error": "Kan de instelling voor automatisch downloaden niet bijwerken"
+      },
       "appUpdates": "App-updates",
       "installedVersion": "Geïnstalleerde versie {version}",
       "availableVersion": "Beschikbare versie {version}",
@@ -65,29 +138,37 @@
       "downloadingLatest": "De nieuwste versie downloaden",
       "downloadingLatestPercent": "De nieuwste release downloaden ({percent}%)",
       "downloaded": "memrynote {version} is klaar om te installeren",
-      "upToDate": "Deze installatie is gebaseerd op de laatst gepubliceerde release",
+      "upToDate": "Je gebruikt de nieuwste gepubliceerde versie",
       "checking": "GitHub-releases controleren op een nieuwere versie",
       "idle": "Controleer op nieuwe releases en installeer deze zonder de app te verlaten",
       "unsupportedToast": "Automatische updates zijn alleen beschikbaar in verpakte releases",
       "upToDateToast": "memrynote {version} is up-to-date",
       "actionFailed": "Updateactie mislukt",
       "actions": {
-        "checking": "Controleren...",
+        "checking": "Controleren…",
         "available": "Update downloaden",
-        "downloading": "Downloaden...",
-        "downloadingPercent": "{percent}% downloaden",
-        "downloaded": "Start opnieuw om te installeren",
-        "idle": "Controleer op updates"
+        "downloading": "Downloaden…",
+        "downloadingPercent": "{percent}% gedownload",
+        "downloaded": "Herstarten om te installeren",
+        "idle": "Nu controleren"
       },
-      "autoCheck": {
-        "description": "Controleer op nieuwe releases bij het starten en daarna regelmatig zolang de app open is.",
-        "error": "Kan de instelling voor automatisch controleren niet bijwerken",
-        "label": "Automatisch controleren op updates"
+      "label": "Updates",
+      "checkedAgo": "{status} · gecontroleerd {time}",
+      "status": {
+        "unsupported": "Beschikbaar in verpakte releases",
+        "idle": "Nog niet gecontroleerd",
+        "checking": "Controleren…",
+        "upToDate": "Up-to-date",
+        "available": "Versie {version} beschikbaar",
+        "downloading": "Downloaden…",
+        "downloadingPercent": "{percent}% gedownload",
+        "downloaded": "Versie {version} klaar om te installeren"
       },
-      "autoDownload": {
-        "description": "Download en installeer nieuwe releases op de achtergrond, zonder te vragen.",
-        "error": "Kan de instelling voor automatisch downloaden niet bijwerken",
-        "label": "Updates automatisch downloaden"
+      "mode": {
+        "label": "Updatemodus",
+        "off": "Niet controleren",
+        "notify": "Alleen melden",
+        "auto": "Automatisch downloaden"
       }
     },
     "language": {
@@ -97,102 +178,135 @@
       "failed": "Kan de taal niet wijzigen. Probeer het opnieuw."
     },
     "clockFormat": {
-      "label": "Tijdformaat",
+      "label": "Tijdnotatie",
       "description": "12-uurs- of 24-uursklok",
       "options": {
         "12h": "12 uur",
-        "24h": "24 uur per dag"
+        "24h": "24 uur"
       },
-      "error": "Kan de tijdnotatie niet updaten"
+      "error": "Kan de tijdnotatie niet bijwerken"
+    },
+    "dateFormat": {
+      "label": "Datumnotatie",
+      "description": "Hoe datums worden weergegeven",
+      "options": {
+        "MM/DD/YYYY": "MM/DD/YYYY (VS)",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
+        "DD": {
+          "MM": {
+            "YYYY": "DD.MM.YYYY"
+          }
+        }
+      },
+      "error": "Kan datumnotatie niet bijwerken"
     },
     "tabs": {
+      "openPagesInNewTab": {
+        "label": "Pagina’s openen in een nieuw tabblad",
+        "description": "Als je op een pagina klikt of er een maakt (notities, mappen, projecten, canvassen, tags, bladwijzers), wordt die in een nieuw tabblad geopend. Als dit uit staat, wordt het huidige tabblad hergebruikt, ook wanneer je links in een notitie volgt; vastgezette tabbladen worden nooit vervangen. “Openen in nieuw tabblad”, “Openen aan de zijkant” en middelklikken openen altijd een nieuw tabblad."
+      },
       "restoreSession": {
-        "label": "Herstel sessie bij starten",
-        "description": "Open tabbladen van uw laatste sessie opnieuw"
+        "label": "Tabbladen herstellen bij starten",
+        "description": "Open de tabbladen en gesplitste weergaven van de vorige keer opnieuw."
       },
       "closeButton": {
-        "label": "Knop Sluiten tabblad",
-        "description": "Wanneer moet de sluitknop worden weergegeven?",
+        "label": "Sluitknop van tabblad",
+        "description": "Wanneer de sluitknop wordt getoond",
         "options": {
           "always": "Altijd zichtbaar",
-          "hover": "Toon bij hover",
+          "hover": "Bij aanwijzen",
           "active": "Alleen op actief tabblad"
         }
       },
-      "error": "Kan de instelling niet updaten"
+      "error": "Kan de instelling niet bijwerken"
+    },
+    "window": {
+      "minimizeToTray": {
+        "label": "Actief blijven in menubalk na sluiten",
+        "description": "Als je het venster sluit, wordt memrynote naar het systeemvak verplaatst in plaats van afgesloten. Klik op het pictogram in het systeemvak om het terug te halen. Op macOS blijft de app ook in het Dock staan; op Linux-bureaubladen zonder systeemvak wordt het venster gewoon gesloten.",
+        "error": "Kan de instelling voor actief blijven in de menubalk niet bijwerken"
+      }
     },
     "fileCreation": {
       "createInSelectedFolder": {
         "label": "Maken in geselecteerde map",
-        "description": "Nieuwe notities en mappen worden gemaakt in de momenteel geselecteerde map. Indien uitgeschakeld, worden items altijd in de root gemaakt."
+        "description": "Nieuwe notities en mappen worden gemaakt in de momenteel geselecteerde map. Als dit uit staat, worden items altijd in de hoofdmap gemaakt."
       },
       "defaultNoteFolder": {
-        "description": "Leeg = kluishoofdmap",
         "label": "Standaardlocatie voor nieuwe notities",
-        "placeholder": "notities"
+        "description": "Wordt gebruikt als er geen map in de zijbalk is geselecteerd.",
+        "placeholder": "notities",
+        "root": "/"
       }
     },
     "privacy": {
       "telemetry": {
-        "label": "Deel anonieme gebruiksstatistieken",
-        "description": "Het zijn alleen anonieme statistieken: er worden nooit notitie-inhoud, zoekopdrachten, bestandspaden, e-mails of onbewerkte ID's verzonden.",
-        "error": "Kan de telemetrie-instelling niet updaten"
+        "label": "Anonieme gebruiksstatistieken delen",
+        "description": "Nooit de inhoud, titels of namen van notities. Inclusief geanonimiseerde diagnostische logs.",
+        "error": "Kan de telemetrie-instelling niet bijwerken"
+      },
+      "autoSendDiagnostics": {
+        "label": "Foutrapporten automatisch versturen",
+        "description": "Geanonimiseerde logs zodra er een foutscherm verschijnt. Staat dit uit, dan wordt het telkens gevraagd.",
+        "error": "Kan de instelling voor foutrapporten niet bijwerken"
       },
       "diagnostics": {
+        "title": "Een diagnostisch rapport versturen?",
+        "consent": "Eenmalig een diagnostisch rapport versturen? Het bevat alleen geanonimiseerde technische logs – geen notitie-inhoud.",
         "building": "Rapport voorbereiden…",
-        "consent": "Eenmalig een diagnostisch rapport versturen? Het bevat alleen geanonimiseerde technische logs — geen notitie-inhoud.",
-        "error": "Kan het diagnostisch rapport niet versturen",
-        "notNow": "Niet nu",
-        "previewError": "Kan het diagnostisch rapport niet voorbereiden",
-        "previewLabel": "Inhoud van het rapport bekijken",
-        "send": "Versturen",
-        "sendReport": {
-          "button": "Diagnostisch rapport versturen",
-          "description": "Verstuur eenmalig een rapport met geanonimiseerde technische logs, zodat we het probleem dat je tegenkwam kunnen onderzoeken.",
-          "label": "Diagnostisch rapport"
-        },
-        "sending": "Versturen…",
-        "sent": "Rapport verstuurd — referentie {incidentId}",
+        "previewLabel": "Voorbeeld van het rapport bekijken",
         "snapshotLabel": "Momentopname van apparaat",
-        "title": "Een diagnostisch rapport versturen?"
-      }
-    },
-    "dateFormat": {
-      "description": "Hoe agendadatums worden weergegeven",
-      "error": "Kan datumnotatie niet bijwerken",
-      "label": "Datumnotatie",
-      "options": {
-        "DD.MM.YYYY": "DD.MM.YYYY",
-        "DD/MM/YYYY": "DD/MM/YYYY",
-        "MM/DD/YYYY": "MM/DD/YYYY (VS)",
-        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
+        "send": "Versturen",
+        "sending": "Versturen…",
+        "notNow": "Niet nu",
+        "sent": "Rapport verstuurd – referentie {incidentId}",
+        "previewError": "Kan het diagnostisch rapport niet voorbereiden",
+        "error": "Kan het diagnostisch rapport niet versturen",
+        "sendReport": {
+          "label": "Diagnostisch rapport",
+          "description": "Verstuur eenmalig een rapport met geanonimiseerde technische logs, zodat we het probleem dat je tegenkwam kunnen onderzoeken.",
+          "button": "Rapport versturen…"
+        }
       }
     }
   },
   "appearance": {
     "header": {
       "title": "Uiterlijk",
-      "subtitle": "Pas de look en feel aan",
-      "loading": "Instellingen laden..."
+      "subtitle": "Pas het uiterlijk van de app aan",
+      "loading": "Instellingen laden…"
     },
     "groups": {
       "theme": "Thema",
       "accentColor": "Accentkleur",
-      "typography": "Typografie"
+      "typography": "Typografie",
+      "zoom": "Zoom"
     },
     "theme": {
       "colorMode": {
         "label": "Kleurmodus",
-        "description": "Kies het thema van uw voorkeur",
+        "description": "Kies je voorkeursthema",
         "aria": "Kleurmodus"
       },
       "options": {
-        "light": "Warm",
+        "light": "Licht",
         "white": "Wit",
         "dark": "Donker",
         "system": "Systeem"
       },
-      "error": "Kan het thema niet updaten"
+      "error": "Kan het thema niet bijwerken"
+    },
+    "colorTheme": {
+      "default": "Memrynote",
+      "themes": "Memrynote-thema’s",
+      "warm": "Warm",
+      "error": "Kan het kleurthema niet bijwerken",
+      "copy": "Thema kopiëren",
+      "copied": "Thema gekopieerd naar klembord",
+      "copyError": "Kan het thema niet kopiëren",
+      "import": "Thema importeren vanaf klembord",
+      "importInvalid": "Het klembord bevat geen memrynote-thema"
     },
     "accent": {
       "pick": "Kies een accentkleur",
@@ -211,13 +325,59 @@
         "pink": "Roze",
         "orange": "Oranje"
       },
-      "error": "Kan de accentkleur niet updaten"
+      "error": "Kan de accentkleur niet bijwerken",
+      "aria": "Vooraf ingestelde accentkleur",
+      "options": {
+        "theme": "Thema",
+        "custom": "Aangepast"
+      }
+    },
+    "colors": {
+      "background": "Achtergrond",
+      "foreground": "Voorgrond",
+      "forLight": "Voor lichte modus",
+      "forDark": "Voor donkere modus",
+      "reset": "Kleur van het thema gebruiken",
+      "pick": "Kies een kleur"
+    },
+    "advanced": {
+      "title": "Geavanceerd",
+      "reset": "Standaard herstellen",
+      "error": "Kan de instelling niet bijwerken",
+      "fontSizeDescription": "Basisgrootte van de interfacetekst",
+      "zoomDescription": "Schaal van het hele venster",
+      "reduceMotion": {
+        "label": "Beweging beperken",
+        "description": "Beperk animaties of volg je systeeminstelling",
+        "options": {
+          "system": "Systeem",
+          "on": "Aan"
+        }
+      },
+      "pointerCursors": {
+        "label": "Handcursor gebruiken",
+        "description": "Toon een handcursor bij het aanwijzen van interactieve elementen"
+      },
+      "fontSmoothing": {
+        "label": "Lettertypen vloeiend weergeven",
+        "description": "Dunnere tekst met anti-aliasing in grijstinten op macOS"
+      }
+    },
+    "zoom": {
+      "label": "Zoomniveau",
+      "description": "Schaal de hele interface",
+      "decrease": "Uitzoomen",
+      "increase": "Inzoomen",
+      "reset": "Standaardzoom herstellen",
+      "error": "Kan het zoomniveau niet bijwerken"
     },
     "typography": {
       "fontSize": {
         "label": "Lettergrootte",
-        "description": "Pas de basistekstgrootte aan",
-        "aria": "Lettergrootte"
+        "description": "Basisgrootte van de interfacetekst in pixels",
+        "decrease": "Lettergrootte verkleinen",
+        "increase": "Lettergrootte vergroten",
+        "reset": "Standaardlettergrootte herstellen"
       },
       "fontFamily": {
         "label": "Lettertypefamilie",
@@ -229,18 +389,39 @@
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
-          "monospace": "Monoruimte"
-        }
+          "monospace": "Monospace"
+        },
+        "sections": {
+          "builtin": "Ingebouwd",
+          "system": "Geïnstalleerd op deze computer"
+        },
+        "searchPlaceholder": "Lettertypen zoeken…",
+        "empty": "Geen overeenkomende lettertypen",
+        "loading": "Geïnstalleerde lettertypen laden…",
+        "unavailable": "Geïnstalleerde lettertypen zijn niet beschikbaar op dit systeem.",
+        "notInstalled": "Niet geïnstalleerd op deze computer – het reservelettertype wordt gebruikt."
       },
       "fontSizeError": "Kan de lettergrootte niet bijwerken",
-      "fontFamilyError": "Kan de lettertypefamilie niet updaten"
+      "fontFamilyError": "Kan de lettertypefamilie niet bijwerken"
+    },
+    "v2": {
+      "groups": {
+        "text": "Tekst en zoom"
+      },
+      "colorMode": "Kleurmodus",
+      "colorTheme": "Thema",
+      "accent": "Accentkleur",
+      "customColor": "Aangepaste kleur",
+      "fontFamily": "Lettertypefamilie",
+      "fontSize": "Lettergrootte",
+      "zoom": "Zoom"
     }
   },
   "editor": {
     "header": {
-      "title": "Redacteur",
-      "subtitle": "Noteer de instellingen en voorkeuren van de editor",
-      "loading": "Instellingen laden..."
+      "title": "Editor",
+      "subtitle": "Instellingen en voorkeuren voor de notitie-editor",
+      "loading": "Instellingen laden…"
     },
     "groups": {
       "layout": "Indeling",
@@ -249,146 +430,173 @@
     },
     "width": {
       "label": "Editorbreedte",
-      "description": "Maximale breedte van het schrijfgebied",
+      "description": "Geldt voor elke notitie en dagboekpagina",
       "options": {
-        "narrow": "Smal",
-        "medium": "Middelmatig",
-        "wide": "Breed",
-        "full": "Volledige breedte",
-        "normal": "Normaal"
+        "normal": "Normaal",
+        "full": "Volledige breedte"
       },
       "error": "Kan de breedte van de editor niet bijwerken"
     },
     "toolbarMode": {
       "label": "Vaste opmaakwerkbalk",
       "description": "Toon altijd de werkbalk boven de editor",
-      "error": "Kan de werkbalkmodus niet updaten"
+      "error": "Kan de werkbalkmodus niet bijwerken"
     },
     "spellCheck": {
+      "label": "Spelling controleren",
       "description": "Onderstreep verkeerd gespelde woorden in notities en dagboeken",
-      "error": "Kan de spellingcontrole niet bijwerken",
-      "label": "Spelling controleren"
+      "error": "Kan de spellingcontrole niet bijwerken"
+    },
+    "v2": {
+      "width": "Editorbreedte",
+      "toolbarMode": "Vaste opmaakwerkbalk",
+      "spellCheck": "Spelling controleren"
     }
   },
   "templates": {
     "header": {
       "title": "Sjablonen",
-      "subtitle": "Beheer notitiesjablonen voor snelle creatie"
+      "subtitle": "Beheer notitiesjablonen om snel notities te maken"
     },
     "actions": {
-      "new": "Nieuwe sjabloon",
+      "new": "Nieuw sjabloon",
       "edit": "Bewerken",
-      "duplicate": "Duplicaat",
+      "duplicate": "Dupliceren",
       "delete": "Verwijderen"
     },
     "groups": {
       "builtIn": "Ingebouwd",
       "myTemplates": "Mijn sjablonen"
     },
-    "loading": "Sjablonen laden...",
-    "newTemplateTitle": "Nieuwe sjabloon",
+    "loading": "Sjablonen laden…",
+    "newTemplateTitle": "Nieuw sjabloon",
     "copySuffix": "{name} (kopie)",
     "empty": {
       "title": "Nog geen aangepaste sjablonen",
       "description": "Maak een sjabloon om aan de slag te gaan"
     },
+    "preview": {
+      "notFound": "Kan dit sjabloon niet laden."
+    },
     "toasts": {
       "deleted": "Sjabloon verwijderd",
       "deleteFailed": "Kan sjabloon niet verwijderen",
       "duplicated": "Sjabloon gedupliceerd",
-      "duplicateFailed": "Kan de sjabloon niet dupliceren"
+      "duplicateFailed": "Kan het sjabloon niet dupliceren"
     },
     "dialogs": {
       "delete": {
         "title": "Sjabloon verwijderen",
-        "description": "Weet u zeker dat u deze sjabloon wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt. Notities die op basis van deze sjabloon zijn gemaakt, worden niet beïnvloed."
+        "description": "Weet je zeker dat je dit sjabloon wilt verwijderen? Dit kan niet ongedaan worden gemaakt. Notities die met dit sjabloon zijn gemaakt, blijven ongewijzigd."
       },
       "duplicate": {
-        "title": "Dubbele sjabloon",
+        "title": "Sjabloon dupliceren",
         "description": "Voer een naam in voor de nieuwe sjabloonkopie.",
         "placeholder": "Sjabloonnaam"
       }
     },
-    "preview": {
-      "notFound": "Kan dit sjabloon niet laden."
+    "v2": {
+      "new": "Nieuw sjabloon",
+      "groups": {
+        "mine": "Mijn sjablonen"
+      }
     }
   },
   "journal": {
     "header": {
-      "title": "Journaal",
-      "subtitle": "Journaalinstellingen en voorkeuren",
-      "loading": "Instellingen laden..."
+      "title": "Dagboek",
+      "subtitle": "Dagboekinstellingen en -voorkeuren",
+      "loading": "Instellingen laden…"
     },
     "groups": {
       "defaultTemplate": "Standaardsjabloon",
+      "location": "Locatie en notatie",
       "sidebarVisibility": "Zichtbaarheid van de zijbalk",
       "footer": "Voettekst",
-      "location": "Locatie en notatie"
+      "weekdayTemplates": "Sjablonen per dag"
     },
     "template": {
       "label": "Sjabloon",
-      "description": "Nieuwe vermeldingen beginnen met dit sjabloon",
+      "description": "Nieuwe dagboeknotities beginnen met dit sjabloon",
       "placeholder": "Selecteer een sjabloon",
       "unknown": "Onbekend sjabloon",
       "none": "Geen",
       "noneAsk": "Geen (elke keer vragen)",
       "updated": "Standaardsjabloon bijgewerkt",
       "cleared": "Standaardsjabloon gewist",
-      "error": "Kan de standaardsjabloon niet updaten"
+      "error": "Kan het standaardsjabloon niet bijwerken"
     },
     "showSchedule": {
-      "label": "Schema tonen",
-      "description": "Geef de evenementen en agenda van vandaag weer"
+      "label": "Planning tonen",
+      "description": "Toon de afspraken en agenda van vandaag"
     },
     "showTasks": {
-      "label": "Taken weergeven",
-      "description": "Geef taken weer die op de geselecteerde dag moeten plaatsvinden"
+      "label": "Taken tonen",
+      "description": "Toon taken die op de geselecteerde dag vervallen"
     },
     "showAIConnections": {
-      "label": "Toon AI-verbindingen",
-      "description": "Geef AI-aangedreven verbindingen met gerelateerde vermeldingen weer"
+      "label": "AI-verbindingen tonen",
+      "description": "Toon door AI gevonden verbanden met gerelateerde dagboeknotities"
     },
     "showStatsFooter": {
-      "label": "Voettekst statistieken weergeven",
+      "label": "Voettekst met statistieken tonen",
       "description": "Aantal woorden, leestijd, tijdstempels"
     },
-    "updateError": "Kan de instelling niet updaten",
+    "folder": {
+      "label": "Dagboekmap",
+      "description": "Map waar dagelijkse notities worden opgeslagen",
+      "placeholder": "journal"
+    },
     "dateFormat": {
-      "description": "Bestandsnaamnotatie voor dagelijkse notities (bijv. YYYY-MM-DD dddd)",
       "label": "Datumnotatie",
+      "description": "Bestandsnaamnotatie voor dagelijkse notities (bijv. YYYY-MM-DD dddd)",
       "placeholder": "YYYY-MM-DD",
       "renameNote": "Als je de notatie wijzigt, worden bestaande dagboekbestanden hernoemd. Een bestand waarvan de nieuwe naam al bestaat, blijft ongewijzigd.",
       "tokensHelp": "Hulp bij datumnotatie",
       "tokensNote": "Andere tekens blijven ongewijzigd. Namen van weekdagen zijn altijd in het Engels.",
       "tokensTitle": "Notatiecodes"
     },
-    "folder": {
-      "description": "Map waar dagelijkse notities worden opgeslagen",
-      "label": "Dagboekmap",
-      "placeholder": "dagboek"
-    },
     "preview": {
-      "description": "Bestandspad van het dagboek van vandaag",
-      "label": "Voorbeeld"
+      "label": "Voorbeeld",
+      "description": "Bestandspad van het dagboek van vandaag"
+    },
+    "updateError": "Kan de instelling niet bijwerken",
+    "weekday": {
+      "toggle": "Per dag een ander sjabloon gebruiken",
+      "toggleDescription": "Kies een sjabloon voor elke dag van de week",
+      "inherit": "Standaard gebruiken",
+      "inheritWith": "Standaard · {name}",
+      "inheritNone": "Standaard · geen",
+      "missing": "Verwijderd sjabloon",
+      "clear": "Wissen",
+      "updated": "Sjabloon bijgewerkt voor {day}",
+      "cleared": "Sjabloon gewist voor {day}",
+      "error": "Kan het sjabloon voor {day} niet bijwerken",
+      "summary": "{count} van 7 ingesteld"
+    },
+    "v2": {
+      "groups": {
+        "defaultTemplate": "Standaardsjabloon",
+        "location": "Locatie en notatie"
+      }
     }
   },
   "tasks": {
     "header": {
       "title": "Taken",
-      "subtitle": "Configureer taakstandaarden en gedrag",
-      "loading": "Instellingen laden..."
+      "subtitle": "Stel standaardwaarden en gedrag voor taken in",
+      "loading": "Instellingen laden…"
     },
     "groups": {
       "defaults": "Standaardinstellingen",
-      "calendar": "Kalender",
-      "inbox": "Postvak IN"
+      "inbox": "Inbox"
     },
     "defaultProject": {
       "label": "Standaardproject",
       "description": "Toegewezen als er geen project is geselecteerd",
       "placeholder": "Geen standaardproject",
-      "none": "Geen standaard (gebruik persoonlijk)",
-      "error": "Kan het standaardproject niet updaten"
+      "none": "Geen standaard (Persoonlijk gebruiken)",
+      "error": "Kan het standaardproject niet bijwerken"
     },
     "sortOrder": {
       "label": "Standaard sorteervolgorde",
@@ -397,107 +605,145 @@
         "manual": "Handmatig (slepen en neerzetten)",
         "dueDate": "Vervaldatum",
         "priority": "Prioriteit",
-        "createdAt": "Datum gemaakt"
+        "createdAt": "Aanmaakdatum"
       },
-      "error": "Kan de sorteervolgorde niet updaten"
-    },
-    "weekStart": {
-      "label": "De week begint",
-      "description": "Eerste dag van de week in kalenderweergaven",
-      "options": {
-        "sunday": "Zondag",
-        "monday": "Maandag"
-      },
-      "error": "Kan het begin van de week niet updaten"
+      "error": "Kan de sorteervolgorde niet bijwerken"
     },
     "defaultView": {
       "label": "Standaardweergave",
-      "description": "Het tabblad waarop de Taken-pagina wordt geopend",
+      "description": "Met welke weergave de takenpagina opent",
       "options": {
-        "all": "Allemaal",
-        "today": "Vandaag"
+        "all": "Alle",
+        "today": "Vandaag",
+        "tomorrow": "Morgen",
+        "next7": "Komende 7 dagen"
       },
       "error": "Kan standaardweergave niet bijwerken"
     },
     "staleInbox": {
-      "label": "Verouderde inboxdrempel",
+      "label": "Drempel voor verouderde inboxitems",
       "description": "Taken die ouder zijn, worden als verouderd gemarkeerd",
       "unit": "dagen",
-      "error": "Kan de drempelwaarde voor het verouderde postvak IN niet updaten"
+      "error": "Kan de drempel voor verouderde inboxitems niet bijwerken"
+    }
+  },
+  "inbox": {
+    "header": {
+      "title": "Inbox",
+      "subtitle": "Dagelijkse herinnering en inboxvoorkeuren.",
+      "loading": "Laden…"
+    },
+    "imageFiling": {
+      "group": "Afbeeldingen",
+      "error": "Kan de voorkeur voor het opbergen van afbeeldingen niet bijwerken",
+      "mode": {
+        "label": "Een afbeelding opbergen in een notitie",
+        "description": "Bij insluiten blijft de afbeelding in de notitie en verschijnt ze niet in de zijbalk. Bij opbergen in de zijbalk wordt ze verplaatst naar de map die je kiest, met een link ernaartoe.",
+        "embed": "In de notitie insluiten",
+        "link": "In de zijbalk opbergen"
+      },
+      "ask": {
+        "label": "Elke keer vragen",
+        "description": "Als dit uit staat, gebruiken nieuwe afbeeldingen de keuze hierboven zonder te vragen."
+      }
+    },
+    "reviewReminder": {
+      "group": "Dagelijkse inboxherinnering",
+      "enabled": {
+        "label": "Herinner me eraan mijn inbox door te nemen",
+        "description": "Een vriendelijk dagelijks duwtje wanneer er iets in je inbox staat."
+      },
+      "time": {
+        "label": "Tijdstip van de herinnering",
+        "description": "Lokale tijd, op elk apparaat.",
+        "hourLabel": "Uur",
+        "minuteLabel": "Minuut",
+        "periodLabel": "AM of PM"
+      },
+      "test": {
+        "label": "Testmelding",
+        "description": "Stuur de herinnering nu om je systeemmeldingen te controleren.",
+        "button": "Test versturen",
+        "sent": "Testmelding verstuurd.",
+        "sentHint": "Verschijnt er niets? Sta meldingen voor MemryNote toe in je systeeminstellingen.",
+        "unsupported": "Dit apparaat kan geen bureaubladmeldingen tonen."
+      },
+      "error": "Kan de herinnering niet bijwerken."
     }
   },
   "calendar": {
     "header": {
-      "title": "Kalender",
-      "subtitle": "Configureer het dagcelgedrag in het Dagpaneel",
-      "loading": "Instellingen laden..."
+      "title": "Agenda",
+      "subtitle": "Bepaal wat er gebeurt als je in het Dagpaneel op een dag klikt",
+      "loading": "Instellingen laden…"
     },
     "groups": {
-      "dayCellClick": "Dagcelklik",
-      "notes": "Notities",
-      "weekStart": "Week"
+      "weekStart": "Week",
+      "dayCellClick": "Klikken op een dag",
+      "notes": "Notities"
+    },
+    "weekStart": {
+      "label": "Week begint op",
+      "description": "Eerste dag van de week in alle agenda’s",
+      "options": {
+        "sunday": "Zondag",
+        "monday": "Maandag"
+      },
+      "error": "Kan begin van de week niet bijwerken"
     },
     "defaultBehavior": {
       "label": "Standaardgedrag",
-      "description": "Wanneer u op een dag in de kalender van het Dagpaneel klikt vanuit een niet-kalendertabblad",
-      "error": "Kan het klikgedrag van de dag niet updaten"
+      "description": "Wanneer je in de agenda van het Dagpaneel op een dag klikt vanuit een ander tabblad dan Agenda",
+      "error": "Kan het klikgedrag voor dagen niet bijwerken"
     },
     "pageOverride": {
-      "label": "Agendapagina overschrijven",
+      "label": "Afwijking voor agendapagina",
       "description": "Gedrag wanneer het tabblad Agenda actief is (standaard ingesteld op Agenda openen)",
-      "error": "Kan de overschrijving van de agendapagina niet bijwerken"
-    },
-    "options": {
-      "openJournal": "Journaal openen",
-      "openCalendar": "Agenda openen",
-      "useGlobal": "Gebruik de globale instelling"
+      "error": "Kan de afwijking voor de agendapagina niet bijwerken"
     },
     "showNotesOnCalendar": {
-      "description": "Toon elke notitie in de agenda als een hele-dag-item op de dag waarop deze is gemaakt",
-      "error": "Kan 'notities tonen in agenda' niet bijwerken",
-      "label": "Notities tonen in agenda"
+      "label": "Notities tonen in agenda",
+      "description": "Toon elke notitie in de agenda als item voor de hele dag op de dag waarop deze is gemaakt",
+      "error": "Kan de instelling “Notities tonen in agenda” niet bijwerken"
     },
-    "weekStart": {
-      "description": "Eerste dag van de week in alle agenda's",
-      "error": "Kan begin van de week niet bijwerken",
-      "label": "Week begint op",
-      "options": {
-        "monday": "Maandag",
-        "sunday": "Zondag"
-      }
+    "options": {
+      "openJournal": "Dagboek openen",
+      "openCalendar": "Agenda openen",
+      "useGlobal": "Globale instelling gebruiken"
     },
     "google": {
-      "name": "Google Agenda",
-      "description": "Tweerichtingssynchronisatie voor memrynote-evenementen en geïmporteerde Google-agenda's.",
+      "name": "Google Calendar",
+      "description": "Synchronisatie in twee richtingen voor memrynote-afspraken en geïmporteerde Google-agenda’s.",
       "statuses": {
         "connected": "Verbonden",
         "notConnected": "Niet verbonden",
         "reconnectRequired": "Opnieuw verbinden vereist"
       },
-      "accountReconnect": "Maak opnieuw verbinding met Google",
-      "importedCalendars": "Geïmporteerde kalenders",
+      "accountReconnect": "Opnieuw verbinden met Google",
+      "addAccount": "Account toevoegen",
+      "importedCalendars": "Geïmporteerde agenda’s",
       "selected": "{count} geselecteerd",
-      "syncNow": "Synchroniseer nu",
-      "disconnect": "Verbreek de verbinding",
-      "reconnect": "Maak opnieuw verbinding met Google",
+      "syncNow": "Nu synchroniseren",
+      "disconnect": "Verbinding verbreken",
+      "reconnect": "Opnieuw verbinden met Google",
       "syncFailed": "Er is iets misgegaan",
-      "connectFailed": "Kan geen verbinding maken met Google Agenda",
-      "refreshFailed": "Kan Google Agenda niet vernieuwen",
-      "disconnectFailed": "Kan Google Agenda niet ontkoppelen",
+      "connectFailed": "Kan geen verbinding maken met Google Calendar",
+      "refreshFailed": "Kan Google Calendar niet vernieuwen",
+      "disconnectFailed": "Kan de verbinding met Google Calendar niet verbreken",
       "retryFailed": "Kan agendasynchronisatie niet opnieuw proberen",
       "pushToGoogle": {
-        "description": "Schakel uit voor eenrichtingssynchronisatie — je ziet je Google-gebeurtenissen nog in memrynote, maar memrynote-gebeurtenissen verschijnen niet in Google.",
-        "error": "Kan synchronisatierichting niet bijwerken",
-        "label": "memrynote-gebeurtenissen tonen in Google Calendar"
+        "label": "memrynote-afspraken tonen in Google Calendar",
+        "description": "Zet dit uit voor synchronisatie in één richting: je ziet je Google-afspraken nog in memrynote, maar memrynote-afspraken verschijnen niet in Google.",
+        "error": "Kan synchronisatierichting niet bijwerken"
       },
       "agentAccess": {
-        "description": "Staat standaard uit. Zet je dit aan, dan kan de AI-agent je Google-gebeurtenissen lezen; zet je het uit, dan krijgt hij er niets over terug wanneer je ernaar vraagt. Je blijft ze hoe dan ook in memrynote zien.",
-        "error": "Kan AI-toegang niet bijwerken",
-        "label": "AI Google Calendar-gebeurtenissen laten lezen"
+        "label": "AI afspraken in Google Calendar laten lezen",
+        "description": "Staat standaard uit. Zet je dit aan, dan kan de AI-agent je Google-afspraken lezen; zet je het uit, dan krijgt de agent niets terug als ernaar gevraagd wordt. In memrynote blijf je ze hoe dan ook zien.",
+        "error": "Kan AI-toegang niet bijwerken"
       },
       "connect": "Verbinden",
       "sourcePicker": {
-        "empty": "Er zijn nog geen geïmporteerde Google-agenda's beschikbaar op dit apparaat.",
+        "empty": "Er zijn nog geen geïmporteerde Google-agenda’s beschikbaar op dit apparaat.",
         "statuses": {
           "synced": "Gesynchroniseerd",
           "error": "Fout",
@@ -505,52 +751,314 @@
           "idle": "Inactief"
         },
         "retrying": "Opnieuw proberen…",
-        "retryNow": "Probeer het nu opnieuw"
+        "retryNow": "Nu opnieuw proberen"
       }
+    },
+    "subscriptions": {
+      "name": "Geabonneerde agenda’s",
+      "description": "Voeg een alleen-lezen agenda toe via de gedeelde link (ICS of webcal), zoals een agenda van Proton, iCloud, Outlook of Fastmail. Er wordt ongeveer eens per uur op wijzigingen gecontroleerd.",
+      "urlLabel": "Agendalink",
+      "urlPlaceholder": "Agendalink (webcal:// of https://)",
+      "subscribe": "Abonneren",
+      "subscribing": "Abonneren…",
+      "refresh": "Vernieuwen",
+      "refreshing": "Vernieuwen…",
+      "remove": "Verwijderen",
+      "readOnly": "Alleen-lezen",
+      "updatedAt": "Bijgewerkt {time}",
+      "notCheckedYet": "Nog niet gecontroleerd",
+      "keptEvents": "Afspraken die al in je agenda staan, blijven staan tot de agenda weer met succes is bijgewerkt.",
+      "notEncrypted": "Niet versleuteld",
+      "httpWarning": "Deze link begint met http://, dus de link en de afspraken worden onversleuteld verstuurd. Iedereen op hetzelfde netwerk kan ze lezen. Gebruik een https://- of webcal://-link als de agenda die aanbiedt.",
+      "added": "{title} toegevoegd.",
+      "addedSummary": "{title} toegevoegd: {count, plural, one {# afspraak} other {# afspraken}}, van {start} tot {end}.",
+      "addedEmpty": "{title} toegevoegd. Er staan nog geen afspraken in voor de afgelopen 90 dagen of het komende jaar.",
+      "rename": "Naam wijzigen",
+      "renameLabel": "Agendanaam",
+      "save": "Opslaan",
+      "cancel": "Annuleren",
+      "color": "Agendakleur",
+      "colorOption": "Kleur: {color}",
+      "help": {
+        "toggle": "Waar vind ik de link?",
+        "intro": "Zoek naar een deeloptie zoals openbare link, geheim adres, publiceren of iCal. De link eindigt op .ics of begint met webcal://.",
+        "proton": {
+          "name": "Proton Calendar",
+          "steps": "Instellingen → Agenda’s, kies de agenda en maak een link onder Delen met iedereen. Kies volledige weergave om de details van afspraken te zien.",
+          "readOnly": "Proton-agenda’s blijven in memrynote bewust alleen-lezen. Proton versleutelt agenda’s end-to-end en biedt geen CalDAV, dus terugschrijven is niet mogelijk. Breng wijzigingen aan in Proton."
+        },
+        "icloud": {
+          "name": "iCloud",
+          "steps": "Deel de agenda in Agenda op een Mac of op iCloud.com, zet Openbare agenda aan en kopieer de link. Wil je iCloud-afspraken hier ook bewerken, koppel iCloud dan via CalDAV."
+        },
+        "outlook": {
+          "name": "Outlook en Microsoft 365",
+          "steps": "Outlook op het web → Instellingen → Agenda → Gedeelde agenda’s → Een agenda publiceren. Kies Kan alle details weergeven, publiceer en kopieer de ICS-link."
+        },
+        "fastmail": {
+          "name": "Fastmail",
+          "steps": "Instellingen → Agenda’s, open de agenda, zet publiceren aan en kopieer de iCalendar-link."
+        },
+        "notion": {
+          "name": "Notion Calendar",
+          "steps": "De afspraken staan in het Google- of iCloud-account dat je eraan hebt gekoppeld. Deel de link vanuit dat account."
+        },
+        "public": {
+          "name": "Feestdagen, scholen en sport",
+          "steps": "Zoek op de site van de organisator naar Abonneren, Toevoegen aan agenda of iCal en kopieer die link."
+        }
+      },
+      "errors": {
+        "invalid_url": "Dat is geen agendalink. Plak een adres dat begint met webcal://, https:// of http://.",
+        "unreachable": "Kan deze agenda niet bereiken. Controleer de link en je internetverbinding.",
+        "timeout": "De agenda reageerde te traag. Probeer het zo opnieuw.",
+        "not_found": "Er is geen agenda gevonden via deze link. Misschien is die verwijderd of is de deellink gewijzigd.",
+        "unauthorized": "De agenda weigerde de toegang. Kopieer een nieuwe deellink uit je agenda-app.",
+        "http_error": "De agendaserver gaf een fout. Probeer het later opnieuw.",
+        "too_large": "Deze agenda is te groot om toe te voegen. Deel in plaats daarvan een kleinere agenda.",
+        "not_a_calendar": "Deze link levert geen agenda op. Kopieer de ICS- of webcal-link uit de deelinstellingen van je agenda-app.",
+        "too_many_redirects": "Deze link blijft doorverwijzen en komt nooit bij een agenda uit. Kopieer de link opnieuw uit je agenda-app.",
+        "unsupported_redirect": "Deze link verwijst door naar een adres dat geen weblink is, dus memrynote volgt hem niet. Kopieer de ICS- of webcal-link uit je agenda-app.",
+        "unknown": "Kan deze agenda niet bijwerken ({code}). Probeer het later opnieuw."
+      }
+    },
+    "providers": {
+      "caldav": {
+        "name": "CalDAV"
+      },
+      "statuses": {
+        "connected": "Verbonden",
+        "notConnected": "Niet verbonden"
+      },
+      "readOnly": "Alleen-lezen",
+      "pollInterval": "Controleert elke {minutes} minuten op wijzigingen. Wijzigingen die elders worden gemaakt, verschijnen niet direct.",
+      "connect": "Verbinden",
+      "connecting": "Verbinden…",
+      "connectFailed": "Kan geen verbinding maken. Controleer de gegevens en probeer het opnieuw.",
+      "disconnect": "Verbinding verbreken",
+      "disconnectFailed": "Kan de verbinding niet verbreken. Probeer het opnieuw.",
+      "syncNow": "Nu synchroniseren",
+      "refreshFailed": "Synchronisatie mislukt. Je agenda’s blijven zoals ze waren; probeer het later opnieuw.",
+      "addAccount": "Account toevoegen",
+      "accounts": "Accounts",
+      "calendars": "Agenda’s",
+      "retry": "Nu opnieuw proberen",
+      "reconnectRequired": "Dit apparaat heeft geen wachtwoord voor dit account. Maak opnieuw verbinding om vanaf hier te synchroniseren.",
+      "push": {
+        "label": "memrynote-afspraken naar deze agenda schrijven",
+        "description": "Zet dit uit voor synchronisatie in één richting: je blijft deze afspraken in memrynote zien, maar memrynote-afspraken en -taken worden hier niet naartoe geschreven."
+      },
+      "agentAccess": {
+        "label": "AI deze afspraken laten lezen",
+        "description": "Staat uit tot je het aanzet. Elke agendadienst heeft een eigen instelling; toegang voor Google geeft geen toegang tot deze dienst.",
+        "error": "Kan AI-toegang niet bijwerken"
+      },
+      "basic": {
+        "serverLabel": "Serveradres",
+        "serverPlaceholder": "https://dav.example.com",
+        "usernameLabel": "Gebruikersnaam",
+        "passwordLabel": "App-wachtwoord"
+      },
+      "compat": {
+        "outdated": "Op deze apparaten in je account draait een memrynote-versie ouder dan {version}:",
+        "unverified": "memrynote kan niet nagaan welke versies je andere apparaten gebruiken.",
+        "unknownVersion": "versie onbekend",
+        "consequence": "Een oudere versie kan taken en afspraken uit deze agenda als duplicaten naar Google Calendar kopiëren, of ze niet synchroniseren. Werk die apparaten eerst bij, of ga door als je dat accepteert.",
+        "acknowledge": "Ik begrijp het, toch verbinden"
+      },
+      "reconnect": "Opnieuw verbinden",
+      "defaultTarget": {
+        "label": "Standaardagenda",
+        "description": "Waar nieuwe afspraken, taken, herinneringen en uitgestelde items terechtkomen als je geen agenda kiest. Maar één agendadienst kan de standaard zijn.",
+        "none": "Niet de standaard",
+        "error": "Kan de standaardagenda niet wijzigen"
+      },
+      "appleEventKit": {
+        "name": "Deze Mac",
+        "description": "Toont alle agenda’s die de Agenda-app al op deze Mac heeft: iCloud, Google, Exchange en Op mijn Mac. Zonder inloggen en alleen-lezen; de afspraken verlaten deze Mac nooit en worden niet met je andere apparaten gesynchroniseerd.",
+        "connect": "Agendatoegang toestaan",
+        "connectHint": "macOS vraagt dit één keer. Je kunt het later wijzigen in Systeeminstellingen.",
+        "otherCalendars": "Andere agenda’s",
+        "alreadyConnected": "Al verbonden via {provider}, dus dit staat eerst uit om dubbele afspraken te voorkomen.",
+        "openSystemSettings": "Systeeminstellingen openen",
+        "checkAgain": "Opnieuw controleren",
+        "errors": {
+          "permission_denied": "Agendatoegang staat uit voor memrynote. Zet het aan in Systeeminstellingen → Privacy en beveiliging → Agenda’s en controleer het daarna opnieuw.",
+          "permission_restricted": "Agendatoegang is geblokkeerd op deze Mac, meestal door een beheerprofiel. Er is niets gewijzigd in memrynote; de beheerder van deze Mac kan het toestaan.",
+          "permission_write_only": "memrynote kan alleen afspraken toevoegen, en dat is niet genoeg om ze te tonen. Zet het op Volledige toegang in Systeeminstellingen → Privacy en beveiliging → Agenda’s.",
+          "permission_not_determined": "memrynote heeft nog geen agendatoegang gekregen. Sta dit toe om de agenda’s van je Mac te tonen.",
+          "unavailable": "De agendalezer van macOS kan niet starten. Je agenda’s zijn ongewijzigd; start memrynote opnieuw en probeer het nog eens.",
+          "sync_failed": "Kan de Agenda-app nu niet lezen. Je agenda’s blijven zoals ze waren en memrynote probeert het opnieuw zodra er iets verandert in de Agenda-app."
+        }
+      }
+    },
+    "caldav": {
+      "presetLabel": "Dienst",
+      "presets": {
+        "icloud": "Apple iCloud",
+        "fastmail": "Fastmail",
+        "nextcloud": "Nextcloud",
+        "selfHosted": "Radicale of Baïkal (zelf gehost)",
+        "zoho": "Zoho",
+        "yahoo": "Yahoo",
+        "mailboxOrg": "mailbox.org",
+        "posteo": "Posteo",
+        "synology": "Synology",
+        "other": "Andere CalDAV-server"
+      },
+      "hostLabel": "Servernaam",
+      "hostPlaceholder": "cloud.example.com",
+      "appleIdLabel": "Apple ID (e-mailadres)",
+      "icloudHelp": "Gebruik een app-specifiek wachtwoord, niet het wachtwoord van je Apple ID. Maak er een aan onder Inloggen en beveiliging → App-specifieke wachtwoorden.",
+      "appPasswordHelp": "Als je dienst app-wachtwoorden aanbiedt, maak er dan een aan voor memrynote en gebruik het hier.",
+      "createAppPassword": "App-wachtwoord maken",
+      "testConnection": "Verbinding testen",
+      "testing": "Testen…",
+      "chooseCalendars": "Te tonen agenda’s",
+      "reconnectFor": "Voer het app-wachtwoord voor {username} in.",
+      "errors": {
+        "unauthorizedIcloud": "iCloud heeft dit wachtwoord niet geaccepteerd. iCloud vereist hier een app-specifiek wachtwoord, niet het wachtwoord van je Apple ID. Maak er een aan op account.apple.com onder Inloggen en beveiliging en probeer het opnieuw.",
+        "unauthorized": "De server heeft deze gebruikersnaam en dit wachtwoord niet geaccepteerd. Controleer beide en gebruik een app-wachtwoord als je dienst die aanbiedt.",
+        "unreachable": "Kan de server niet bereiken. Controleer het adres en je internetverbinding en probeer het opnieuw.",
+        "notCaldav": "Er zijn geen CalDAV-agenda’s gevonden op dit adres. Controleer het serveradres; sommige diensten hebben een pad nodig, zoals /remote.php/dav.",
+        "noCalendars": "Dit account heeft geen agenda’s met afspraken.",
+        "invalidUrl": "Dat is geen serveradres. Voer een adres in zoals https://dav.example.com.",
+        "outdatedDevices": "Op sommige van je apparaten draait een oudere versie van memrynote. Werk ze bij, of bevestig hieronder dat je toch wilt verbinden.",
+        "unknown": "Kan geen verbinding maken ({code}). Er is niets opgeslagen; probeer het later opnieuw."
+      },
+      "reconnect": {
+        "missing": "Dit apparaat heeft het app-wachtwoord voor dit account nog niet. De afspraken komen nog steeds binnen via je andere apparaten; voer het app-wachtwoord hier in om ook vanaf dit apparaat te synchroniseren.",
+        "icloudRevoked": "iCloud accepteert dit app-specifieke wachtwoord niet meer. Als je het wachtwoord van je Apple ID opnieuw instelt, worden alle app-specifieke wachtwoorden ingetrokken. Maak een nieuw wachtwoord aan op account.apple.com en maak opnieuw verbinding.",
+        "rejected": "De server accepteert dit wachtwoord niet meer. Als je het hebt gewijzigd of het app-wachtwoord hebt ingetrokken, maak dan een nieuw aan en maak opnieuw verbinding."
+      }
+    },
+    "v2": {
+      "groups": {
+        "layout": "Indeling",
+        "connected": "Verbonden agenda’s"
+      },
+      "addCalendar": "Agenda toevoegen",
+      "calendarCount": "{selected} van {count, plural, one {# agenda} other {# agenda’s}}",
+      "defaultPill": "Standaard",
+      "subscription": "Abonnement",
+      "subscriptionCount": "{count, plural, =0 {Geen abonnementen} one {# abonnement} other {# abonnementen}}"
     }
   },
   "account": {
     "header": {
-      "title": "Rekening",
-      "subtitle": "Uw account, synchronisatie en beveiliging",
-      "loading": "Laden..."
+      "title": "Account",
+      "subtitle": "Je account, synchronisatie en beveiliging",
+      "loading": "Laden…"
     },
     "groups": {
       "identity": "Identiteit",
-      "sync": "Synchroniseren",
+      "sync": "Synchronisatie",
+      "billing": "Facturering",
       "storage": "Opslag",
-      "devices": "Apparaten",
-      "billing": "Facturering"
+      "devices": "Apparaten"
     },
     "identity": {
       "unknown": "Onbekend",
       "encrypted": "End-to-end versleuteld"
     },
     "sync": {
-      "lastSynced": "Laatst gesynchroniseerde {time}",
-      "pending": "{count, plural, one {# in behandeling} other {# in behandeling}}",
+      "lastSynced": "Laatst gesynchroniseerd: {time}",
+      "pending": "{count, plural, one {# in wachtrij} other {# in wachtrij}}",
+      "attachmentAutoDownload": {
+        "label": "Bijlagen automatisch downloaden",
+        "description": "Haal bijlagen van gesynchroniseerde notities op de achtergrond op. Als dit uit staat, worden bestanden pas gedownload wanneer je ze opent.",
+        "saveFailed": "Kan de voorkeur voor het downloaden van bijlagen niet opslaan"
+      },
       "statuses": {
         "synced": "Gesynchroniseerd",
-        "syncing": "Synchroniseren...",
+        "syncing": "Synchroniseren…",
         "paused": "Gepauzeerd",
         "syncError": "Synchronisatiefout",
         "offline": "Offline",
-        "connecting": "Verbinden...",
-        "pushed": "{count, plural, one {# ingedrukt} other {# ingedrukt}}",
-        "pulled": "{count, plural, one {# getrokken} other {# getrokken}}",
+        "connecting": "Verbinden…",
+        "localOnly": "Alleen lokaal",
+        "pushed": "{count, plural, one {# verzonden} other {# verzonden}}",
+        "pulled": "{count, plural, one {# opgehaald} other {# opgehaald}}",
         "pushedPulled": "{parts}",
-        "changesPending": "{count, plural, one {#-wijziging in behandeling} other {#-wijzigingen in behandeling}}",
-        "offlinePending": "Offline ({count, plural, one {#-wijziging in behandeling} other {#-wijzigingen in behandeling}})",
+        "changesPending": "{count, plural, one {# wijziging in wachtrij} other {# wijzigingen in wachtrij}}",
+        "offlinePending": "Offline ({count, plural, one {# wijziging in wachtrij} other {# wijzigingen in wachtrij}})",
         "never": "Nooit"
+      },
+      "upsell": {
+        "title": "Je notities staan alleen op dit apparaat",
+        "description": "Zet Synchronisatie aan en al je notities gaan mee naar je andere apparaten – end-to-end versleuteld, zodat alleen jij ze kunt lezen.",
+        "benefits": {
+          "devices": "Op elk apparaat ga je verder waar je gebleven was",
+          "encrypted": "End-to-end versleuteld – de sleutels blijven altijd bij jou",
+          "backup": "Een versleutelde back-up, voor het geval dit apparaat er niet meer is"
+        },
+        "guarantee": "Geld-terug-garantie van 14 dagen. Je kunt op elk moment opzeggen."
+      },
+      "activating": {
+        "title": "Je activering afronden",
+        "description": "Je abonnement is actief. Synchronisatie start zodra we het hebben bevestigd – meestal helpt vernieuwen."
+      }
+    },
+    "billing": {
+      "planStatus": "Abonnementsstatus",
+      "checking": "Factureringsstatus controleren",
+      "annualSwitch": {
+        "title": "Overstappen op jaarlijkse facturering",
+        "description": "Bespaar 20%. We verrekenen de rest van deze maand naar rato, zonder tweede afschrijving.",
+        "action": "Overstappen op jaarlijks",
+        "pricing": "Prijs berekenen…",
+        "preview": "{amount} vandaag te betalen, daarna {recurring} per jaar",
+        "confirm": "Overstap bevestigen",
+        "switching": "Overstappen…",
+        "success": "Je wordt nu jaarlijks gefactureerd.",
+        "failed": "Kan je abonnement niet wijzigen"
+      },
+      "plans": {
+        "free": "Gratis abonnement",
+        "plus": "Plus-abonnement",
+        "pro": "Pro-abonnement",
+        "believer": "Believer-abonnement"
+      },
+      "statuses": {
+        "inactive": "Inactief",
+        "active": "Actief",
+        "past_due": "Achterstallig",
+        "paused": "Gepauzeerd",
+        "canceled": "Geannuleerd"
+      },
+      "labels": {
+        "storage": "Opslag",
+        "maxFile": "Max. bestand",
+        "vaults": "Kluizen",
+        "history": "Geschiedenis"
+      },
+      "unlimited": "Onbeperkt",
+      "historyDays": "{days} dagen",
+      "activationPendingPrefix": "Activering in behandeling. Paddle kan even nodig hebben om de betaling te bevestigen. Vernieuw de status of e-mail",
+      "actions": {
+        "upgrade": "Upgraden",
+        "unlockSync": "Synchronisatie ontgrendelen",
+        "opening": "Openen…",
+        "refresh": "Status vernieuwen",
+        "manage": "Facturering beheren"
+      },
+      "toasts": {
+        "loadFailed": "Kan factureringsstatus niet laden",
+        "checkoutFailed": "Kan het afrekenen niet starten",
+        "checkoutOpened": "Afrekenen geopend in je browser",
+        "refreshFailed": "Kan factureringsstatus niet vernieuwen",
+        "billingActive": "Facturering is actief",
+        "activationPending": "Activering in behandeling",
+        "portalFailed": "Kan factureringsportaal niet openen"
       }
     },
     "storage": {
-      "used": "{used} of {limit} gebruikt",
+      "used": "{used} van {limit} gebruikt",
       "categories": {
-        "notes": "Opmerkingen",
+        "notes": "Notities",
         "attachments": "Bijlagen",
         "crdt": "CRDT",
-        "other": "Anders"
+        "other": "Overig"
       }
     },
     "security": {
@@ -560,270 +1068,252 @@
         "action": "Uitloggen"
       }
     },
+    "community": {
+      "prompt": "Vind je memrynote leuk?",
+      "star": "Geef ons een ster op GitHub",
+      "and": "en",
+      "feedback": "deel feedback"
+    },
     "signOutDialog": {
-      "title": "Afmelden voor synchronisatie?",
-      "description": "De synchronisatie stopt en de coderingssleutels worden van dit apparaat verwijderd. Je aantekeningen blijven op dit apparaat staan. U heeft uw herstelzin nodig om de synchronisatie opnieuw in te stellen.",
-      "confirm": "Meld u af",
-      "signingOut": "Afmelden..."
+      "title": "Uitloggen bij synchronisatie?",
+      "description": "De synchronisatie stopt en de versleutelingssleutels worden van dit apparaat verwijderd. Je notities blijven op dit apparaat staan. Je hebt je herstelzin nodig om de synchronisatie opnieuw in te stellen.",
+      "confirm": "Uitloggen",
+      "signingOut": "Uitloggen…"
     },
     "toasts": {
-      "signedOut": "Afgemeld",
-      "signOutFailed": "Afmelden is mislukt",
-      "deviceLinked": "Apparaat succesvol gekoppeld"
+      "signedOut": "Uitgelogd",
+      "signOutFailed": "Uitloggen mislukt",
+      "deviceLinked": "Apparaat gekoppeld"
     },
-    "billing": {
-      "actions": {
-        "manage": "Facturering beheren",
-        "opening": "Openen...",
-        "refresh": "Status vernieuwen",
-        "upgrade": "Upgraden"
-      },
-      "activationPendingPrefix": "Activering in behandeling. Paddle kan even nodig hebben om de betaling te bevestigen. Vernieuw de status of e-mail",
-      "checking": "Factureringsstatus controleren",
-      "historyDays": "{days} dagen",
-      "labels": {
-        "history": "Geschiedenis",
-        "maxFile": "Max. bestand",
-        "storage": "Opslag",
-        "vaults": "Kluizen"
-      },
-      "planStatus": "Abonnementsstatus",
-      "plans": {
-        "believer": "Believer-abonnement",
-        "free": "Gratis abonnement",
-        "plus": "Plus-abonnement",
-        "pro": "Pro-abonnement"
-      },
-      "statuses": {
-        "active": "Actief",
-        "canceled": "Geannuleerd",
-        "inactive": "Inactief",
-        "past_due": "Achterstallig",
-        "paused": "Gepauzeerd"
-      },
-      "toasts": {
-        "activationPending": "Activering in behandeling",
-        "billingActive": "Facturering is actief",
-        "checkoutFailed": "Kan het afrekenen niet starten",
-        "checkoutOpened": "Afrekenen geopend in je browser",
-        "loadFailed": "Kan factureringsstatus niet laden",
-        "portalFailed": "Kan factureringsportaal niet openen",
-        "refreshFailed": "Kan factureringsstatus niet vernieuwen"
-      },
-      "unlimited": "Onbeperkt"
-    },
-    "community": {
-      "and": "en",
-      "feedback": "deel feedback",
-      "prompt": "Vind je memrynote leuk?",
-      "star": "Geef ons een ster op GitHub"
+    "v2": {
+      "stats": {
+        "plan": "Abonnement"
+      }
     }
   },
   "setup": {
     "steps": {
       "signIn": "Inloggen",
-      "verify": "Verifieer",
-      "link": "Koppeling"
+      "verify": "Verifiëren",
+      "link": "Koppelen"
     },
     "progress": "Stap {current} van {total}: {label}",
     "signIn": {
       "title": "Synchronisatie instellen",
-      "description": "Maak een account aan om uw gegevens op verschillende apparaten te synchroniseren met end-to-end-codering.",
+      "description": "Maak een account aan om je gegevens met end-to-end-versleuteling op al je apparaten te synchroniseren.",
       "or": "of",
+      "paidPlan": "Synchronisatie vereist een betaald abonnement.",
+      "seePlans": "Abonnementen bekijken",
       "errors": {
         "sendCode": "Kan code niet verzenden",
-        "googleStart": "Kan inloggen bij Google niet starten"
-      },
-      "paidPlan": "Synchronisatie is een betaald abonnement.",
-      "seePlans": "Bekijk abonnementen"
+        "googleStart": "Kan inloggen met Google niet starten"
+      }
     },
     "email": {
       "label": "E-mailadres",
-      "placeholder": "Voer uw e-mailadres in...",
+      "placeholder": "Voer je e-mailadres in…",
       "invalid": "Voer een geldig e-mailadres in",
-      "sending": "Code verzenden..."
+      "sending": "Code verzenden…"
     },
     "oauth": {
-      "google": "Ga verder met Google"
+      "google": "Doorgaan met Google"
     },
     "otp": {
       "title": "Voer de verificatiecode in",
       "sentTo": "We hebben een 6-cijferige code gestuurd naar ",
       "aria": "6-cijferige verificatiecode",
-      "verifying": "Verifiëren...",
-      "resending": "Opnieuw verzenden...",
+      "verifying": "Verifiëren…",
+      "resending": "Opnieuw verzenden…",
       "resend": "Code opnieuw verzenden",
       "resendIn": "Opnieuw verzenden in {time}",
-      "differentEmail": "Gebruik een ander e-mailadres",
+      "differentEmail": "Ander e-mailadres gebruiken",
       "error": "Verificatie mislukt",
       "resendError": "Opnieuw verzenden mislukt"
     },
     "recovery": {
-      "displayTitle": "Bewaar uw herstelzin",
-      "displayDescription": "Dit is de enige manier om uw gecodeerde gegevens te herstellen als u de toegang tot al uw apparaten verliest.",
+      "displayTitle": "Bewaar je herstelzin",
+      "displayDescription": "Dit is de enige manier om je versleutelde gegevens te herstellen als je de toegang tot al je apparaten kwijtraakt.",
       "warning": "Schrijf dit op en bewaar het op een veilige plek. Je zult het niet meer zien.",
-      "wordsAria": "Herstelzinwoorden",
+      "wordsAria": "Woorden van de herstelzin",
       "wordAria": "Woord {index}: {word}",
-      "copyAria": "Kopieer de herstelzin naar het klembord",
+      "copyAria": "Herstelzin naar klembord kopiëren",
       "copiedAria": "Herstelzin gekopieerd",
       "copied": "Gekopieerd",
       "saved": "Ik heb mijn herstelzin opgeslagen",
-      "confirmTitle": "Bevestig uw herstelzin",
-      "confirmDescription": "Voer de gevraagde woorden in om te verifiëren dat u deze correct hebt opgeslagen.",
-      "wordPlaceholder": "Voer het woord #{index} in",
-      "verify": "Verifieer",
+      "confirmTitle": "Bevestig je herstelzin",
+      "confirmDescription": "Voer de gevraagde woorden in om te controleren of je de zin goed hebt bewaard.",
+      "wordPlaceholder": "Woord #{index} invoeren",
+      "verify": "Verifiëren",
       "mustMatch": "Alle drie de woorden moeten overeenkomen om door te gaan",
       "inputTitle": "Voer de herstelzin in",
-      "inputDescription": "Voer uw herstelzin van 24 woorden in om de toegang tot uw gecodeerde gegevens te herstellen.",
+      "inputDescription": "Voer je herstelzin van 24 woorden in om weer toegang te krijgen tot je versleutelde gegevens.",
       "inputLabel": "Herstelzin",
-      "count": "{count} / {total}-woorden",
-      "inputPlaceholder": "Voer uw herstelzin van 24 woorden in, gescheiden door spaties...",
+      "count": "{count} / {total} woorden",
+      "inputPlaceholder": "Voer je herstelzin van 24 woorden in, gescheiden door spaties…",
       "lengthHint": "Voer alle 24 woorden in om de herstelknop in te schakelen",
       "restore": "Toegang herstellen",
       "progress": {
-        "deriving": "Encryptiesleutels afleiden...",
-        "validating": "Herstelzin valideren...",
-        "registering": "Apparaat registreren..."
+        "deriving": "Versleutelingssleutels afleiden…",
+        "validating": "Herstelzin valideren…",
+        "registering": "Apparaat registreren…"
       },
       "failed": "Herstel is mislukt",
       "confirmationFailed": "Bevestiging mislukt",
       "unavailable": {
-        "description": "Je herstelzin wordt maar één keer getoond tijdens de installatie en kan later niet worden opgehaald. Begin opnieuw om een nieuwe te genereren.",
         "loading": "Je herstelzin laden…",
-        "startOver": "Opnieuw beginnen",
-        "title": "Kan je herstelzin niet laden"
+        "title": "Kan je herstelzin niet laden",
+        "description": "Je herstelzin wordt maar één keer getoond tijdens het instellen en kan later niet worden opgehaald. Begin opnieuw om een nieuwe te genereren.",
+        "startOver": "Opnieuw beginnen"
       }
     },
+    "startFresh": {
+      "trigger": "Ik kan mijn herstelzin niet terugvinden",
+      "title": "Opnieuw beginnen op dit apparaat",
+      "description": "Doe dit alleen als je herstelzin definitief kwijt is. Dit kan niet ongedaan worden gemaakt.",
+      "consequenceSignOut": "Dit apparaat wordt uitgelogd en stopt met synchroniseren.",
+      "consequenceKey": "De versleutelingssleutel op dit apparaat wordt verwijderd. Alles wat al in je account is opgeslagen, blijft versleuteld met de oude sleutel – zonder de herstelzin kan niemand het ooit nog lezen.",
+      "consequenceLocal": "Notities die al op deze computer zijn opgeslagen, blijven in je kluismap staan en blijven gewoon werken.",
+      "confirm": "Uitloggen en opnieuw beginnen",
+      "cancel": "Terug"
+    },
     "linking": {
-      "choiceTitle": "Koppel dit apparaat",
-      "choiceDescription": "Breng encryptiesleutels over van een ander apparaat of herstel ze vanaf uw herstelzin.",
-      "qrChoice": "Link via QR-code",
-      "qrChoiceDescription": "Scan de code die op uw andere apparaat wordt weergegeven",
+      "choiceTitle": "Dit apparaat koppelen",
+      "choiceDescription": "Draag versleutelingssleutels over van een ander apparaat of herstel ze met je herstelzin.",
+      "qrChoice": "Koppelen via QR-code",
+      "qrChoiceDescription": "Scan de code die op je andere apparaat wordt getoond",
       "recoveryChoice": "Herstelzin",
-      "recoveryChoiceDescription": "Voer uw herstelzin van 24 woorden in",
-      "codeTitle": "Voer de koppelingscode in",
-      "codeDescription": "Plak de koppelingscode van uw andere apparaat om uw coderingssleutels veilig over te dragen.",
-      "codeLabel": "Koppelingscode",
+      "recoveryChoiceDescription": "Voer je herstelzin van 24 woorden in",
+      "codeTitle": "Voer de koppelcode in",
+      "codeDescription": "Plak de koppelcode van je andere apparaat om je versleutelingssleutels veilig over te dragen.",
+      "codeLabel": "Koppelcode",
       "valid": "Geldig",
       "invalid": "Ongeldig formaat",
-      "codePlaceholder": "Plak de code vanaf uw andere apparaat...",
-      "formatHint": "Plak de JSON-koppelingscode vanaf uw andere apparaat",
-      "linking": "Koppelen...",
+      "codePlaceholder": "Plak de code van je andere apparaat…",
+      "formatHint": "Plak de JSON-koppelcode van je andere apparaat",
+      "linking": "Koppelen…",
       "linkDevice": "Apparaat koppelen",
       "failed": "Het koppelen is mislukt",
       "deviceFailed": "Kan apparaat niet koppelen",
-      "pendingSuccess": "Apparaat succesvol gekoppeld",
-      "goBack": "Ga terug",
+      "pendingSuccess": "Apparaat gekoppeld",
+      "goBack": "Terug",
       "waitingTitle": "Wachten op goedkeuring",
-      "waitingDescription": "Open memrynote op uw andere apparaat en keur het koppelingsverzoek goed.",
+      "waitingDescription": "Open memrynote op je andere apparaat en keur het koppelverzoek goed.",
       "verificationCode": "Verificatiecode",
-      "confirmCode": "Controleer of dit overeenkomt met de code op uw andere apparaat",
-      "vaultPickerChooseFolder": "Map kiezen",
-      "vaultPickerConfirm": "Geselecteerde ophalen",
-      "vaultPickerDescription": "Dit account heeft meerdere kluizen. Kies een map en de kluis(en) om aan dit apparaat toe te voegen.",
-      "vaultPickerDormantHint": "Toegevoegd, opent wanneer je erheen schakelt",
-      "vaultPickerFolderLabel": "Kluizen opslaan in map",
-      "vaultPickerPrimaryHint": "Opent nu",
+      "confirmCode": "Controleer of dit overeenkomt met de code op je andere apparaat",
       "vaultPickerTitle": "Kies wat je wilt ophalen",
-      "vaultRow": "Kluis — {count} items · {date}"
+      "vaultPickerDescription": "Dit account heeft meerdere kluizen. Kies een map en de kluis(en) om aan dit apparaat toe te voegen.",
+      "vaultPickerFolderLabel": "Kluizen opslaan in map",
+      "vaultPickerChooseFolder": "Map kiezen",
+      "vaultRow": "Kluis – {count} items · {date}",
+      "vaultPickerPrimaryHint": "Opent nu",
+      "vaultPickerDormantHint": "Toegevoegd, opent wanneer je erheen schakelt",
+      "vaultPickerConfirm": "Selectie ophalen"
     }
   },
   "devices": {
-    "loading": "Apparaten laden...",
+    "loading": "Apparaten laden…",
     "loadingAria": "Apparaten laden",
     "none": "Nog geen apparaten gekoppeld",
     "linkNew": "Nieuw apparaat koppelen",
     "thisDevice": "Dit apparaat",
     "lastSeen": "Laatst gezien {time} geleden",
     "linked": "{time} geleden gekoppeld",
-    "renameAria": "Hernoem {name}",
+    "renameAria": "Naam van {name} wijzigen",
     "rename": "Hernoemen",
     "revoke": "Intrekken",
-    "showLess": "Laat minder zien",
-    "showMore": "{count, plural, one {# meer apparaat} other {# meer apparaten}}",
-    "showMoreAria": "Toon {count, plural, one {# meer apparaat} other {# meer apparaten}}",
+    "showLess": "Minder tonen",
+    "showMore": "{count, plural, one {Nog # apparaat} other {Nog # apparaten}}",
+    "showMoreAria": "{count, plural, one {Nog # apparaat tonen} other {Nog # apparaten tonen}}",
     "dialogs": {
-      "revokeTitle": "\"{name}\" intrekken?",
-      "revokeDescription": "Dit apparaat verliest de toegang tot uw gesynchroniseerde gegevens. Het moet opnieuw worden gekoppeld om de synchronisatie te herstellen. Lokale gegevens op dat apparaat blijven behouden.",
-      "revokeDevice": "Apparaat intrekken",
-      "revoking": "Intrekken...",
+      "revokeTitle": "Toegang van “{name}” intrekken?",
+      "revokeDescription": "Dit apparaat verliest de toegang tot je gesynchroniseerde gegevens. Het moet opnieuw worden gekoppeld om weer te synchroniseren. Lokale gegevens op dat apparaat blijven behouden.",
+      "revokeDevice": "Toegang intrekken",
+      "revoking": "Intrekken…",
       "renameTitle": "Apparaat hernoemen",
       "renameDescription": "Kies een naam om dit apparaat te identificeren.",
       "namePlaceholder": "Apparaatnaam",
-      "renaming": "Naam wijzigen..."
+      "renaming": "Naam wijzigen…"
     },
     "toasts": {
       "loadFailed": "Kan apparaten niet laden",
-      "removed": "\"{name}\" verwijderd",
+      "removed": "“{name}” verwijderd",
       "removeFailed": "Kan apparaat niet verwijderen",
-      "renamed": "Hernoemd naar \"{name}\"",
+      "renamed": "Naam gewijzigd in “{name}”",
       "renameFailed": "Kan de naam van het apparaat niet wijzigen"
     },
     "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Nieuw apparaat koppelen",
-    "description": "Scan deze QR-code vanaf het apparaat dat u wilt koppelen om uw coderingssleutels veilig over te dragen.",
-    "encrypted": "End-to-end gecodeerd",
-    "generating": "Koppelingscode genereren...",
-    "generatingAria": "Koppelingscode genereren",
-    "generateFailed": "Kan koppelingscode niet genereren",
-    "tryAgain": "Probeer het opnieuw",
-    "expired": "Koppelingscode is verlopen",
-    "generateNew": "Genereer nieuwe code",
+    "description": "Scan deze QR-code met het apparaat dat je wilt koppelen om je versleutelingssleutels veilig over te dragen.",
+    "encrypted": "End-to-end versleuteld",
+    "generating": "Koppelcode genereren…",
+    "generatingAria": "Koppelcode genereren",
+    "generateFailed": "Kan koppelcode niet genereren",
+    "tryAgain": "Opnieuw proberen",
+    "expired": "Koppelcode verlopen",
+    "generateNew": "Nieuwe code genereren",
     "qrAria": "QR-code voor het koppelen van apparaten",
-    "qrImageAria": "Apparaat dat QR-code koppelt",
+    "qrImageAria": "QR-code voor apparaatkoppeling",
     "expiresIn": "Verloopt in {time}",
     "or": "of",
-    "codeLabel": "Koppelingscode",
-    "copyAria": "Koppelingscode kopiëren",
+    "codeLabel": "Koppelcode",
+    "copyAria": "Koppelcode kopiëren",
     "copiedAria": "Gekopieerd",
     "copied": "Gekopieerd!"
   },
   "linkingApproval": {
     "title": "Nieuw apparaat wil koppelen",
-    "description": "Een apparaat vraagt om toegang tot uw gecodeerde gegevens. Keur alleen goed als u dit verzoek heeft ingediend.",
+    "description": "Een apparaat vraagt toegang tot je versleutelde gegevens. Keur dit alleen goed als je dit verzoek zelf hebt gedaan.",
     "unknownDevice": "Onbekend apparaat",
     "unknownPlatform": "Onbekend platform",
     "verificationCode": "Verificatiecode",
-    "computing": "Computergebruik...",
+    "computing": "Berekenen…",
     "unavailable": "Niet beschikbaar",
     "confirmCode": "Bevestig dat deze code overeenkomt met de code die op het nieuwe apparaat wordt weergegeven",
     "reject": "Afwijzen",
     "approve": "Goedkeuren",
-    "approving": "Goedkeuren...",
+    "approving": "Goedkeuren…",
     "approvalFailed": "Goedkeuring mislukt",
     "failedToApprove": "Kan het apparaat niet goedkeuren"
   },
   "ai": {
     "header": {
       "title": "AI-assistent",
-      "subtitle": "Insluitingen worden lokaal uitgevoerd. Spraakmemo's kunnen Whisper Small of uw OpenAI-sleutel gebruiken.",
-      "loading": "Instellingen laden..."
+      "subtitle": "Embeddings worden lokaal berekend. Spraakmemo’s kunnen Whisper Small of je OpenAI-sleutel gebruiken.",
+      "loading": "Instellingen laden…"
     },
     "enable": {
-      "label": "Schakel AI-functies in",
-      "description": "Slimme archiveringssuggesties en notitiekoppelingen",
+      "label": "AI-functies inschakelen",
+      "description": "Slimme suggesties voor opbergen en verbanden tussen notities",
       "enabled": "AI-functies ingeschakeld",
       "disabled": "AI-functies uitgeschakeld",
-      "error": "Kan de instelling niet updaten"
+      "error": "Kan de instelling niet bijwerken"
     },
     "unknownError": "Onbekende fout",
     "groups": {
-      "voice": "Stemtranscriptie",
-      "embeddingModel": "Lokaal inbeddingsmodel",
-      "embeddingIndex": "Inbeddingsindex",
+      "voice": "Spraaktranscriptie",
+      "embeddingModel": "Lokaal embeddingmodel",
+      "embeddingIndex": "Embeddingindex",
       "inline": "Inline AI-bewerking"
     },
     "voice": {
       "provider": "Aanbieder",
-      "providerDescription": "Spraak-naar-tekstprovider voor spraakmemo's",
+      "providerDescription": "Spraak-naar-tekstaanbieder voor spraakmemo’s",
       "providers": {
         "local": "Lokaal (standaard)",
-        "openai": "Open AI (BYOK)"
+        "openai": "OpenAI (BYOK)"
       },
+      "memoNameMode": "Memonamen",
+      "memoNameModeDescription": "Hoe spraakmemo’s na transcriptie een naam krijgen",
+      "naming": {
+        "transcript": "Transcripttitel",
+        "timestamp": "Tijdstempel",
+        "none": "Niet hernoemen"
+      },
+      "namingError": "Kan naamgeving van spraakmemo niet bijwerken",
       "localModel": "Lokaal model",
-      "localModelDescription": "Whisper Small downloadt op aanvraag en blijft lokaal in de cache",
+      "localModelDescription": "Whisper Small wordt gedownload wanneer nodig en blijft lokaal in de cache",
       "status": {
         "ready": "Klaar",
         "downloading": "Downloaden",
@@ -831,52 +1321,44 @@
         "notDownloaded": "Niet gedownload"
       },
       "cacheHint": "Niet gebundeld met de app · Gedownload via Instellingen · In cache opgeslagen op dit apparaat",
-      "preparing": "Whisper Klein bereiden...",
-      "download": "Whisper klein downloaden",
+      "preparing": "Whisper Small voorbereiden…",
+      "download": "Whisper Small downloaden",
       "apiKey": "OpenAI API-sleutel",
-      "apiKeyDescription": "Opgeslagen in de sleutelhanger van uw besturingssysteem en alleen gebruikt voor spraaktranscriptie",
-      "replaceKey": "Vervang de opgeslagen OpenAI-sleutel",
-      "enterKey": "Voer de OpenAI API-sleutel in",
+      "apiKeyDescription": "Opgeslagen in de sleutelhanger van je besturingssysteem en alleen gebruikt voor spraaktranscriptie",
+      "replaceKey": "Opgeslagen OpenAI-sleutel vervangen",
+      "enterKey": "OpenAI API-sleutel invoeren",
       "saveKey": "Sleutel opslaan",
       "keySaved": "API-sleutel opgeslagen in sleutelhanger",
-      "providerError": "Kan de spraakprovider niet updaten",
-      "downloadedToast": "Whisper Klein gedownload",
+      "providerError": "Kan de spraakaanbieder niet bijwerken",
+      "downloadedToast": "Whisper Small gedownload",
       "downloadError": "Kan Whisper Small niet downloaden",
       "keySavedToast": "OpenAI-sleutel opgeslagen",
-      "keySaveError": "Kan OpenAI-sleutel niet opslaan",
-      "memoNameMode": "Memonamen",
-      "memoNameModeDescription": "Hoe spraakmemo's een naam krijgen na transcriptie",
-      "naming": {
-        "none": "Niet hernoemen",
-        "timestamp": "Tijdstempel",
-        "transcript": "Transcripttitel"
-      },
-      "namingError": "Kan naamgeving van spraakmemo niet bijwerken"
+      "keySaveError": "Kan OpenAI-sleutel niet opslaan"
     },
     "embedding": {
       "loaded": "Geladen",
       "loading": "Laden",
       "cacheHint": "~23MB · Lokaal in cache opgeslagen · Alles op het apparaat",
-      "dimensions": "Afmetingen",
-      "embeddings": "Inbedding",
+      "dimensions": "Dimensies",
+      "embeddings": "Embeddings",
       "downloadLoad": "Model downloaden en laden",
-      "downloadingModel": "Model downloaden...",
-      "loadingModel": "Model laden...",
+      "downloadingModel": "Model downloaden…",
+      "loadingModel": "Model laden…",
       "loadSuccess": "Model succesvol geladen",
       "loadFailed": "Kan het model niet laden",
       "rebuildIndex": "Index opnieuw opbouwen",
-      "rebuildDescription": "Genereer insluitingen voor alle notities opnieuw",
-      "rebuild": "Herbouwen",
-      "scanning": "Notities scannen...",
-      "generating": "Insluitingen genereren...",
-      "complete": "Compleet!",
-      "reindexed": "Insluitingen opnieuw geïndexeerd: {computed} berekend, {skipped} overgeslagen",
-      "reindexFailed": "Kan insluitingen niet opnieuw indexeren"
+      "rebuildDescription": "Genereer embeddings voor alle notities opnieuw",
+      "rebuild": "Opnieuw opbouwen",
+      "scanning": "Notities scannen…",
+      "generating": "Embeddings genereren…",
+      "complete": "Klaar!",
+      "reindexed": "Embeddings opnieuw geïndexeerd: {computed} berekend, {skipped} overgeslagen",
+      "reindexFailed": "Kan embeddings niet opnieuw indexeren"
     },
     "inline": {
-      "loading": "Laden...",
+      "loading": "Laden…",
       "title": "Inline AI-bewerking",
-      "enable": "Schakel Inline AI in",
+      "enable": "Inline AI inschakelen",
       "enableDescription": "Toon AI-menu bij het bewerken van notities",
       "enabled": "Inline AI-bewerking ingeschakeld",
       "disabled": "Inline AI-bewerking uitgeschakeld",
@@ -885,15 +1367,15 @@
       "providers": {
         "ollama": "Ollama (lokaal)",
         "openai": "OpenAI",
-        "anthropic": "Antropisch",
+        "anthropic": "Anthropic",
         "google": "Google Gemini"
       },
       "model": "Model",
       "modelDescription": "Taalmodel voor herschrijven en samenvatten",
       "selectModel": "Selecteer een model",
       "apiKey": "API-sleutel",
-      "apiKeyDescription": "Lokaal opgeslagen, alleen verzonden naar de provider",
-      "apiKeyPlaceholder": "Voer de {provider} API-sleutel in",
+      "apiKeyDescription": "Lokaal opgeslagen, alleen verzonden naar de aanbieder",
+      "apiKeyPlaceholder": "API-sleutel voor {provider} invoeren",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokaal serveradres",
       "connection": "Verbinding",
@@ -904,7 +1386,220 @@
       "connected": "Verbonden! Server draait op poort {port}",
       "connectFailed": "Kan geen verbinding maken",
       "testFailed": "Verbindingstest mislukt",
-      "updateFailed": "Kan de instelling niet updaten"
+      "updateFailed": "Kan de instelling niet bijwerken"
+    },
+    "tabs": {
+      "models": "Modellen",
+      "agents": "Agents",
+      "connect": "Verbinden"
+    },
+    "v2": {
+      "onDevice": {
+        "label": "Modellen op dit apparaat",
+        "hint": "Eén keer gedownload, werken offline"
+      },
+      "embedding": {
+        "label": "Embeddings voor zoeken",
+        "hint": "{dimension} dimensies · {count, plural, one {# notitie} other {# notities}} ingebed"
+      },
+      "voiceModel": {
+        "label": "Spraaktranscriptie"
+      },
+      "download": "Downloaden",
+      "connected": "Verbonden",
+      "inline": {
+        "group": "Inline bewerken",
+        "enabled": "Ingeschakeld"
+      },
+      "voice": {
+        "group": "Spraakmemo’s",
+        "transcribeWith": "Transcriberen met",
+        "local": "Lokaal",
+        "openai": "OpenAI",
+        "nameBy": "Naamgeving van memo’s",
+        "keySaved": "Opgeslagen",
+        "keyNotSet": "Niet ingesteld"
+      }
+    }
+  },
+  "import": {
+    "header": {
+      "title": "Importeren",
+      "subtitle": "Haal je notities en taken uit andere apps"
+    },
+    "intro": "Eenmalige imports maken nieuwe notities in je kluis. Je oorspronkelijke exportbestanden blijven onaangeroerd.",
+    "sources": {
+      "notion": "Importeer een HTML-export (.zip)",
+      "todoist": "Importeer een project-CSV-export (.csv)",
+      "ticktick": "Importeer een TickTick-back-up (.csv) als projecten, taken en herinneringen",
+      "markdown": "Importeer .md-bestanden of een map (frontmatter, tags, bijlagen)",
+      "noteplan": "Importeer een NotePlan-map – dagelijkse notities worden dagboeknotities, taken worden taken",
+      "html": "Importeer .html-bestanden met gekoppelde afbeeldingen en links tussen pagina’s",
+      "google-keep": "Importeer een Google Takeout Keep-export (.json of .zip)",
+      "bear": "Importeer een Bear .bear2bk-archief (notities, tags, bijlagen)",
+      "evernote": "Importeer een of meer Evernote .enex-exportbestanden",
+      "roam": "Importeer een Roam Research-grafiek (.json) met geneste lijsten",
+      "apple-journal": "Importeer een Apple Journal HTML-export als gedateerde notities",
+      "csv": "Importeer een .csv-bestand – één notitie per rij, kolommen worden eigenschappen",
+      "raindrop": "Importeer een Raindrop.io-bladwijzerexport (.csv) – bladwijzers komen in de inbox",
+      "apple-notes": "Importeer uit de Apple Notes-database (NoteStore.sqlite, macOS)",
+      "onenote": "Importeer OneNote-notitieblokken (vereist een Microsoft-account)"
+    },
+    "action": "Importeren",
+    "select": "Selecteer een app om uit te importeren…",
+    "stats": {
+      "notes": "{count, plural, one {# notitie} other {# notities}}",
+      "projects": "{count, plural, one {# project} other {# projecten}}",
+      "tasks": "{count, plural, one {# taak} other {# taken}}",
+      "subtasks": "{count, plural, one {# subtaak} other {# subtaken}}",
+      "reminders": "{count, plural, one {# herinnering} other {# herinneringen}}",
+      "bookmarks": "{count, plural, one {# bladwijzer} other {# bladwijzers}}",
+      "withTags": "{count} getagd",
+      "withDueDate": "{count} met datum",
+      "comments": "{count, plural, one {# opmerking} other {# opmerkingen}}",
+      "skipped": "{count} overgeslagen"
+    },
+    "preview": {
+      "warnings": "Waarschuwingen",
+      "confirm": "Importeren"
+    },
+    "dialog": {
+      "title": "Importeren uit {name}",
+      "choose": "Bestand kiezen…",
+      "onenote": {
+        "connect": "Inloggen met Microsoft",
+        "connecting": "Wachten op inloggen in de browser…",
+        "connectedAs": "Ingelogd als {name} ({email})",
+        "switchAccount": "Account wisselen",
+        "loadingNotebooks": "Notitieblokken laden…",
+        "notebooksEmpty": "Geen notitieblokken gevonden in dit account.",
+        "selectAll": "Alles selecteren",
+        "deselectAll": "Selectie wissen",
+        "sectionsSelected": "{count, plural, one {# sectie geselecteerd} other {# secties geselecteerd}}",
+        "includeIncompatible": "Incompatibele bijlagen importeren",
+        "includeIncompatibleHint": "Sla ook bestandstypen op waarvan Memry geen voorbeeld kan tonen (presentaties, media, archieven – nooit uitvoerbare bestanden). Ze verschijnen als bestandsblokken.",
+        "skipPrevious": "Eerder geïmporteerde pagina’s overslaan",
+        "skipPreviousHint": "Pagina’s uit een eerdere OneNote-import worden overgeslagen, zodat een nieuwe import alleen nieuwe pagina’s ophaalt."
+      },
+      "appleNotes": {
+        "loadingFolders": "Je mappen inlezen…",
+        "foldersError": "Kan je mappen niet lezen – de hele bibliotheek wordt geïmporteerd.",
+        "unfiled": "Notities zonder map",
+        "selectAll": "Alles selecteren",
+        "deselectAll": "Selectie wissen",
+        "foldersSelected": "{count, plural, one {# map geselecteerd} other {# mappen geselecteerd}}",
+        "noteCount": "{count}",
+        "noteCountWithSubfolders": "{count} ({total})"
+      },
+      "chooseFolder": "Apple Notes-map selecteren…",
+      "chooseDirectory": "Map kiezen…",
+      "folderKeepsAssets": "Kies de map wanneer afbeeldingen buiten de eigen map van de notities staan – exports bewaren media vaak in een gedeelde map.",
+      "chooseHint": "Selecteer je {label}",
+      "folderHint": "Klik hieronder en selecteer de map “group.com.apple.notes” wanneer de kiezer opent (die begint daar). Zo kan Memry je notities en bijlagen lezen – Volledige schijftoegang is niet nodig.",
+      "noteplanFolderHint": "Kies je NotePlan-map – de gegevensmap van de app of een van de kopieën in Backups. Memry leest de mappen Calendar, Notes en @Archive daarin.",
+      "selected": "{count, plural, one {# bestand geselecteerd} other {# bestanden geselecteerd}}",
+      "start": "Import starten",
+      "cancel": "Annuleren",
+      "close": "Sluiten",
+      "done": "Klaar",
+      "running": "Importeren…",
+      "progress": "{completed} van {total}",
+      "summary": {
+        "title": "Import voltooid",
+        "imported": "{count, plural, one {# item geïmporteerd} other {# items geïmporteerd}}",
+        "attachments": "{count, plural, one {# bijlage gekopieerd} other {# bijlagen gekopieerd}}",
+        "skipped": "{count} overgeslagen",
+        "skippedReason": "{count, plural, one {# item} other {# items}}: {reason}",
+        "failed": "{count} mislukt"
+      },
+      "error": "Import mislukt",
+      "previewError": "Voorbeeld mislukt"
+    },
+    "messages": {
+      "readFileFailed": "Kan het bestand niet lezen",
+      "appleNotes": {
+        "lockedNote": "{count, plural, one {# vergrendelde notitie is} other {# vergrendelde notities zijn}} niet geïmporteerd; Memry kan ze niet lezen zonder je wachtwoord voor Notities."
+      },
+      "csv": {
+        "noHeaders": "Het CSV-bestand heeft geen kopregel",
+        "emptyTitle": "Rij met lege titel overgeslagen (kolom “{column}”)",
+        "columns": "Kolommen: {columns}",
+        "titleColumn": "Titel uit “{column}”; overige kolommen zijn als eigenschappen opgeslagen"
+      },
+      "raindrop": {
+        "csvEmpty": "De Raindrop-CSV is leeg",
+        "headerNotFound": "Kopregel van de Raindrop-CSV (kolom “url”) niet gevonden",
+        "rowNoUrl": "Rij {row} overgeslagen: geen URL"
+      },
+      "ticktick": {
+        "headerNotFound": "Kopregel van de TickTick-CSV (“Folder Name”) niet gevonden",
+        "foldersDropped": "TickTick-mappen hebben geen equivalent in Memry en zijn weggelaten",
+        "subtaskParentMissing": "Bovenliggende taak van subtaak “{title}” niet gevonden; geïmporteerd op hoofdniveau",
+        "unknownPriority": "Onbekende TickTick-prioriteit {priority} → geen",
+        "unsupportedRepeat": "Niet-ondersteunde herhaalregel “{rule}” overgeslagen",
+        "reminderNoAnchor": "Herinnering “{reminder}” overgeslagen (geen datumanker)"
+      },
+      "todoist": {
+        "headerNotFound": "Geen Todoist-CSV: de kopregel TYPE ontbreekt",
+        "sectionFlattened": "Sectie “{section}” afgevlakt",
+        "orphanComment": "Opmerking zonder voorafgaande taak overgeslagen",
+        "emptyTitle": "Taak met lege inhoud geïmporteerd als (zonder titel)",
+        "unknownPriority": "Onbekende prioriteit {priority} → geen",
+        "unparsedDate": "Kan de datum “{date}” niet lezen",
+        "subtaskNoParent": "Subtaak “{title}” heeft geen bovenliggende taak op inspringniveau {indent}; geïmporteerd op hoofdniveau"
+      }
+    },
+    "status": {
+      "scanningFiles": "Bestanden scannen…",
+      "scanningExport": "Export scannen…",
+      "importingItem": "{title} importeren",
+      "appleNotes": {
+        "copyingDatabase": "Apple Notes-database kopiëren…"
+      },
+      "bear": {
+        "scanning": "Bear-export scannen…"
+      },
+      "csv": {
+        "importing": "CSV-notities importeren…"
+      },
+      "evernote": {
+        "scanning": ".enex-bestanden scannen…"
+      },
+      "html": {
+        "scanning": "HTML-bestanden scannen…"
+      },
+      "noteplan": {
+        "scanning": "NotePlan-map scannen…"
+      },
+      "onenote": {
+        "loadingNotebooks": "OneNote-notitieblokken laden…",
+        "rateLimited": "OneNote beperkt het aantal verzoeken; even wachten voordat het opnieuw wordt geprobeerd…",
+        "downloadingAttachment": "Bijlage {name} downloaden"
+      },
+      "raindrop": {
+        "importing": "Raindrop-bladwijzers importeren…"
+      },
+      "roam": {
+        "reading": "Roam-export lezen…"
+      },
+      "ticktick": {
+        "importing": "TickTick-taken importeren…"
+      },
+      "todoist": {
+        "importing": "Todoist-taken importeren…"
+      }
+    },
+    "v2": {
+      "searchPlaceholder": "App of bestandstype zoeken…",
+      "noMatch": "Geen bronnen gevonden voor “{query}”",
+      "formatAccount": "Account",
+      "showMore": "{count, plural, one {Nog # tonen} other {Nog # tonen}}",
+      "showLess": "Minder tonen",
+      "groups": {
+        "noteApps": "Notitie-apps",
+        "tasks": "Taken, dagboek en bladwijzers",
+        "files": "Bestanden"
+      }
     }
   },
   "vault": {
@@ -915,76 +1610,173 @@
     "groups": {
       "storageUsage": "Opslaggebruik",
       "location": "Locatie",
-      "accountVaults": "Kluizen in je account"
+      "accountVaults": "Kluizen in je account",
+      "largeNotes": "Notities die de synchronisatielimiet naderen",
+      "activity": "Activiteit"
     },
-    "loadingStorage": "Opslaginformatie laden...",
-    "signInStorage": "Meld u aan om het opslaggebruik te bekijken",
+    "loadingStorage": "Opslaginformatie laden…",
+    "signInStorage": "Log in om het opslaggebruik te bekijken",
     "vaultPath": "Kluispad",
-    "reveal": "Onthullen",
+    "reveal": "Tonen",
+    "accountVaults": {
+      "empty": "Nog geen kluizen gesynchroniseerd met je account.",
+      "cloudOnly": "Niet op dit apparaat",
+      "itemsCount": "{count} items",
+      "delete": "Verwijderen",
+      "deleteTitle": "“{name}” uit je account verwijderen?",
+      "deleteBody": "Hiermee worden alle gesynchroniseerde gegevens van deze kluis definitief van de servers van Memry verwijderd; dit kan niet ongedaan worden gemaakt. Je bestanden op schijf worden niet verwijderd.",
+      "deleteConfirm": "Uit account verwijderen",
+      "deleteFailed": "Kan kluis niet verwijderen",
+      "activeHint": "Schakel over naar een andere kluis om deze te verwijderen.",
+      "unsyncedTitle": "Deze kluis wordt niet gesynchroniseerd",
+      "unsyncedBodyOne": "De kluis die op dit apparaat open is, staat niet in je account en wordt daarom niet gesynchroniseerd. De kluis in je account is “{name}” – open die hier om weer te synchroniseren.",
+      "unsyncedBodyMany": "De kluis die op dit apparaat open is, staat niet in je account en wordt daarom niet gesynchroniseerd. Open een van de kluizen hieronder om weer te synchroniseren.",
+      "unsyncedOpen": "Accountkluis openen",
+      "unsyncedDownload": "Accountkluis downloaden",
+      "unsyncedSwitchFailed": "Kan die kluis niet openen"
+    },
     "storage": {
       "title": "Opslag",
-      "used": "{used} of {limit} gebruikt",
+      "used": "{used} van {limit} gebruikt",
       "ratio": "{used} / {limit}",
-      "refreshAria": "Ververs het opslaggebruik",
-      "usageAria": "Opslaggebruik: {used} of {limit}",
-      "available": "Beschikbaar {available}",
+      "refreshAria": "Opslaggebruik vernieuwen",
+      "usageAria": "Opslaggebruik: {used} van {limit}",
+      "available": "{available} beschikbaar",
       "categories": {
-        "notes": "Opmerkingen",
+        "notes": "Notities",
         "attachments": "Bijlagen",
         "crdt": "CRDT",
-        "other": "Anders"
+        "other": "Overig"
       },
       "warningTitle": "Opslag bijna vol",
-      "warningDescription": "Maak ruimte vrij of upgrade uw abonnement om synchronisatieproblemen te voorkomen."
+      "warningDescription": "Maak ruimte vrij of upgrade je abonnement om synchronisatieproblemen te voorkomen."
     },
-    "accountVaults": {
-      "activeHint": "Schakel over naar een andere kluis om deze te verwijderen.",
-      "cloudOnly": "Niet op dit apparaat",
-      "delete": "Verwijderen",
-      "deleteBody": "Hiermee worden alle gesynchroniseerde gegevens van deze kluis definitief van de servers van Memry verwijderd; dit kan niet ongedaan worden gemaakt. Je bestanden op schijf worden niet verwijderd.",
-      "deleteConfirm": "Verwijderen uit account",
-      "deleteFailed": "Kan kluis niet verwijderen",
-      "deleteTitle": "“{name}” uit je account verwijderen?",
-      "empty": "Nog geen kluizen gesynchroniseerd met je account.",
-      "itemsCount": "{count} items"
+    "largeNotes": {
+      "description": "Notities groter dan {limit} worden niet meer gesynchroniseerd. Splits ze op in kleinere notities om ze gesynchroniseerd te houden.",
+      "over": "Niet gesynchroniseerd",
+      "approaching": "Bijna aan de limiet"
+    },
+    "activity": {
+      "description": "Bestanden die buiten Memry aan de kluis zijn toegevoegd of eruit zijn verwijderd, imports, en alles wat is overgeslagen of mislukt. Alleen op dit apparaat bewaard.",
+      "retention": {
+        "label": "Kluisactiviteit",
+        "days": "{count, plural, one {# dag bewaren} other {# dagen bewaren}}"
+      },
+      "filter": {
+        "all": "Alle",
+        "problems": "Overgeslagen en mislukt"
+      },
+      "reveal": "Logbestand tonen",
+      "clear": "Wissen",
+      "clearTitle": "Kluisactiviteit wissen?",
+      "clearBody": "Hiermee worden alle items uit het activiteitenlogboek van dit apparaat verwijderd. Je bestanden blijven onaangeroerd.",
+      "clearConfirm": "Activiteit wissen",
+      "empty": "Nog niets geregistreerd. Bestanden die je aan de kluismap toevoegt, imports en alles wat Memry overslaat, verschijnen hier.",
+      "emptyProblems": "Er is niets overgeslagen en niets mislukt.",
+      "unavailable": "Open een kluis om de activiteit ervan te zien.",
+      "loadFailed": "Kan kluisactiviteit niet laden",
+      "actionFailed": "Kan kluisactiviteit niet bijwerken",
+      "showItems": "{count, plural, one {# item tonen} other {# items tonen}}",
+      "toastAction": "Details",
+      "entry": {
+        "added": "{path} toegevoegd",
+        "removed": "{path} verwijderd",
+        "renamed": "{oldPath} hernoemd naar {path}",
+        "skipped": "{path} overgeslagen",
+        "skippedUnsupported": "Memry opent geen bestanden van het type {ext}, dus het bestand is gelaten zoals het was.",
+        "readFailed": "Kan {path} niet lezen",
+        "indexFailed": "Kan {path} niet toevoegen",
+        "copyFailed": "Kan {path} niet naar de kluis kopiëren",
+        "uploadFailed": "Kan {path} niet uploaden",
+        "uploadFailedHint": "Het blijft op dit apparaat tot een upload lukt.",
+        "downloadFailed": "Kan {path} niet downloaden",
+        "fileTooLarge": "{path} is te groot om te synchroniseren",
+        "noteTooLarge": "“{title}” is te groot om te synchroniseren",
+        "noteTooLargeUnnamed": "Een notitie is te groot om te synchroniseren",
+        "importFailed": "Import uit {importer} mislukt",
+        "failedGeneric": "Er ging iets mis met {path}",
+        "failedGenericUnnamed": "Er ging iets mis",
+        "scan": "Wijzigingen gevonden die zijn gemaakt terwijl Memry gesloten was",
+        "indexRebuilt": "Zoekindex opgebouwd",
+        "import": "Import uit {importer}",
+        "importCanceled": "Import uit {importer}, geannuleerd",
+        "unknown": "Onbekende activiteit"
+      },
+      "counts": {
+        "added": "{count, plural, one {# nieuw bestand} other {# nieuwe bestanden}}",
+        "indexed": "{count, plural, one {# bestand geïndexeerd} other {# bestanden geïndexeerd}}",
+        "imported": "{count, plural, one {# geïmporteerd} other {# geïmporteerd}}",
+        "attachments": "{count, plural, one {# bijlage} other {# bijlagen}}",
+        "skipped": "{count, plural, one {# overgeslagen} other {# overgeslagen}}",
+        "unsupported": "{count, plural, one {# niet-ondersteund bestand overgeslagen} other {# niet-ondersteunde bestanden overgeslagen}}",
+        "failed": "{count, plural, one {# mislukt} other {# mislukt}}"
+      }
+    },
+    "v2": {
+      "groups": {
+        "thisVault": "Deze kluis"
+      },
+      "largeNotesCount": "{count, plural, one {# notitie} other {# notities}}"
+    },
+    "binding": {
+      "dialog": {
+        "title": "Deze kluis met je account synchroniseren?",
+        "description": "Deze kluis bevat notities die nog niet in je account staan. Je kunt hem aan je account toevoegen of op dit apparaat houden. Er verlaat niets dit apparaat tot je een keuze maakt.",
+        "descriptionWithVaults": "Deze kluis bevat notities die nog niet in je account staan, en je account heeft al een kluis. Je kunt deze ernaast toevoegen, de twee samenvoegen of hem op dit apparaat houden. Er verlaat niets dit apparaat tot je een keuze maakt.",
+        "addAsNew": "Toevoegen als aparte kluis",
+        "merge": "Samenvoegen met “{name}”",
+        "mergeUnnamed": "Samenvoegen met de kluis van je account",
+        "keepLocal": "Op dit apparaat houden",
+        "failed": "Kan niet bijwerken hoe deze kluis synchroniseert"
+      },
+      "status": {
+        "localOnly": "Deze kluis blijft op dit apparaat en wordt niet gesynchroniseerd.",
+        "foreign": "Deze kluis is gesynchroniseerd door een ander account en wordt daarom niet met het jouwe gesynchroniseerd. Hij blijft op dit apparaat.",
+        "needsDecision": "Deze kluis wordt nog niet gesynchroniseerd.",
+        "startSync": "Deze kluis synchroniseren",
+        "choose": "Kiezen…"
+      }
     }
   },
   "tags": {
     "header": {
-      "title": "Labels",
+      "title": "Tags",
       "subtitle": "Beheer tags voor notities, dagboeken en taken"
     },
-    "loading": "Labels laden...",
-    "empty": "Nog geen tags. Tags verschijnen hier wanneer u ze aan notities en taken toevoegt.",
-    "filterPlaceholder": "Labels filteren...",
-    "noMatch": "Geen tags die overeenkomen met \"{query}\"",
-    "summary": "{count, plural, one {#-tag} other {#-tags}} voor notities en taken",
+    "loading": "Tags laden…",
+    "empty": "Nog geen tags. Tags verschijnen hier zodra je ze aan notities en taken toevoegt.",
+    "filterPlaceholder": "Tags filteren…",
+    "noMatch": "Geen tags die overeenkomen met “{query}”",
+    "summary": "{count, plural, one {# tag} other {# tags}} in notities en taken",
     "actions": {
       "rename": "Hernoemen",
-      "changeColor": "Verander kleur",
-      "mergeInto": "Samenvoegen in...",
+      "changeColor": "Kleur wijzigen",
+      "changeIcon": "Pictogram wijzigen",
+      "mergeInto": "Samenvoegen met…",
       "merge": "Samenvoegen",
-      "delete": "Verwijderen",
-      "changeIcon": "Pictogram wijzigen"
+      "delete": "Verwijderen"
     },
     "dialogs": {
-      "deleteTitle": "Label verwijderen",
-      "deleteDescription": "\"{name}\" verwijderen uit {count, plural, one {#-artikel} other {#-artikelen}}? Dit kan niet ongedaan worden gemaakt.",
+      "deleteTitle": "Tag verwijderen",
+      "deleteDescription": "“{name}” verwijderen uit {count, plural, one {# item} other {# items}}? Dit kan niet ongedaan worden gemaakt.",
       "mergeTitle": "Tag samenvoegen",
-      "mergeDescription": "Alle items die zijn getagd met \"{source}\" worden opnieuw getagd met de doeltag. De brontag wordt verwijderd.",
-      "targetPlaceholder": "Doeltag selecteren...",
-      "colorTitle": "Verander de kleur voor \"{name}\""
+      "mergeDescription": "Alle items die zijn getagd met “{source}” worden opnieuw getagd met de doeltag. De brontag wordt verwijderd.",
+      "targetPlaceholder": "Doeltag selecteren…",
+      "colorTitle": "Kleur wijzigen voor “{name}”"
     },
     "toasts": {
-      "renamed": "Hernoemd \"{oldName}\" naar \"{newName}\"",
+      "renamed": "“{oldName}” hernoemd naar “{newName}”",
       "renameFailed": "Kan de naam van de tag niet wijzigen",
       "deleteFailed": "Kan tag niet verwijderen",
-      "deleted": "\"{name}\" verwijderd uit {count, plural, one {#-artikel} other {#-artikelen}}",
+      "deleted": "“{name}” verwijderd uit {count, plural, one {# item} other {# items}}",
       "mergeFailed": "Kan tags niet samenvoegen",
-      "merged": "Samengevoegd \"{source}\" in \"{target}\" ({count, plural, one {#-artikel} other {#-artikelen}})",
-      "colorUpdated": "Bijgewerkte kleur voor \"{name}\"",
-      "colorFailed": "Kan de kleur niet updaten",
+      "merged": "“{source}” samengevoegd met “{target}” ({count, plural, one {# item} other {# items}})",
+      "colorUpdated": "Kleur bijgewerkt voor “{name}”",
+      "colorFailed": "Kan de kleur niet bijwerken",
       "iconFailed": "Kan pictogram niet bijwerken"
+    },
+    "v2": {
+      "actionsAria": "Acties voor {name}"
     }
   },
   "properties": {
@@ -992,15 +1784,15 @@
       "title": "Eigenschappen",
       "subtitle": "Beheer eigenschapsdefinities voor alle notities"
     },
-    "loading": "Eigenschappen laden...",
-    "empty": "Er zijn nog geen eigendomsdefinities. Voeg een Status-, Select- of Multiselect-eigenschap toe aan een notitie om aan de slag te gaan.",
-    "filterPlaceholder": "Eigenschappen filteren...",
-    "noMatch": "Geen zoekresultaten die overeenkomen met \"{query}\"",
-    "summary": "{count, plural, one {# eigenschapsdefinitie} other {#-eigenschapsdefinities}}",
-    "optionCount": "{count, plural, one {#-optie} other {#-opties}}",
+    "loading": "Eigenschappen laden…",
+    "empty": "Nog geen eigenschapsdefinities. Voeg een eigenschap van het type Status, Selectie of Meervoudige selectie toe aan een notitie om te beginnen.",
+    "filterPlaceholder": "Eigenschappen filteren…",
+    "noMatch": "Geen eigenschappen die overeenkomen met “{query}”",
+    "summary": "{count, plural, one {# eigenschapsdefinitie} other {# eigenschapsdefinities}}",
+    "optionCount": "{count, plural, one {# optie} other {# opties}}",
     "optionNamePlaceholder": "Naam van optie",
     "addOption": "Optie toevoegen",
-    "changeColorTitle": "Verander kleur",
+    "changeColorTitle": "Kleur wijzigen",
     "renameTitle": "Hernoemen",
     "removeTitle": "Verwijderen",
     "actions": {
@@ -1008,64 +1800,103 @@
     },
     "types": {
       "status": "Status",
-      "select": "Selecteer",
-      "multiselect": "Multiselecteren",
+      "select": "Selectie",
+      "multiselect": "Meervoudige selectie",
       "text": "Tekst",
-      "number": "Nummer",
+      "number": "Getal",
       "date": "Datum",
       "checkbox": "Selectievakje",
       "url": "URL"
     },
     "dialogs": {
       "deleteTitle": "Eigenschap verwijderen",
-      "deleteDescription": "De eigenschapsdefinitie \"{name}\" verwijderen? Notities die deze eigenschap gebruiken, behouden hun waarden als platte tekst.",
-      "colorTitle": "Verander de kleur voor \"{name}\""
+      "deleteDescription": "De eigenschapsdefinitie “{name}” verwijderen? Notities die deze eigenschap gebruiken, behouden hun waarden als platte tekst.",
+      "colorTitle": "Kleur wijzigen voor “{name}”"
     },
     "toasts": {
-      "renamed": "Hernoemd \"{oldValue}\" naar \"{newValue}\"",
+      "renamed": "“{oldValue}” hernoemd naar “{newValue}”",
       "renameFailed": "Kan de naam van de optie niet wijzigen",
-      "removed": "\"{value}\" verwijderd",
+      "removed": "“{value}” verwijderd",
       "removeFailed": "Kan de optie niet verwijderen",
-      "colorFailed": "Kan de kleur niet updaten",
+      "colorFailed": "Kan de kleur niet bijwerken",
       "deleteFailed": "Kan de eigenschap niet verwijderen",
-      "deleted": "Eigenschap \"{name}\" verwijderd",
+      "deleted": "Eigenschap “{name}” verwijderd",
       "addFailed": "Kan optie niet toevoegen"
+    },
+    "v2": {
+      "actionsAria": "Acties voor {name}"
+    }
+  },
+  "commandLine": {
+    "header": {
+      "title": "Opdrachtregel",
+      "subtitle": "Stel de memrynote-opdracht voor je terminal in"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "defaultVault": {
+      "label": "Standaardkluis",
+      "placeholder": "Kluis selecteren",
+      "none": "Geen kluis geselecteerd",
+      "description": "Kies de kluis die wordt gebruikt wanneer je memrynote zonder --vault uitvoert.",
+      "descriptionSelected": "Opdrachten gebruiken {path} wanneer --vault wordt weggelaten."
+    },
+    "command": {
+      "label": "memrynote-opdracht",
+      "toggleLabel": "memrynote-opdracht installeren",
+      "descriptionInstalled": "Geïnstalleerd op {path}",
+      "descriptionNotInstalled": "Installeer de memrynote-opdracht zodat je je kluis vanuit elke terminal kunt gebruiken."
+    },
+    "status": {
+      "loading": "Opdrachtstatus controleren…",
+      "loadFailed": "Kan opdrachtstatus niet laden",
+      "installedToast": "memrynote-opdracht geïnstalleerd",
+      "uninstalledToast": "memrynote-opdracht verwijderd",
+      "defaultVaultUpdatedToast": "Standaard CLI-kluis bijgewerkt"
+    },
+    "actions": {
+      "refresh": "Vernieuwen"
     }
   },
   "shortcuts": {
     "header": {
       "title": "Sneltoetsen",
-      "subtitle": "Klik op een snelkoppeling om deze opnieuw te binden",
-      "loading": "Instellingen laden..."
+      "subtitle": "Klik op een sneltoets om deze opnieuw toe te wijzen",
+      "loading": "Instellingen laden…"
     },
-    "searchPlaceholder": "Snelkoppelingen zoeken...",
-    "resetAll": "Alles resetten",
+    "searchPlaceholder": "Sneltoetsen zoeken…",
+    "resetAll": "Alles terugzetten",
     "custom": "Aangepast",
-    "pressShortcut": "Druk op snelkoppeling…",
-    "cancelTitle": "Annuleer",
-    "rebindTitle": "Klik om opnieuw te binden",
-    "resetTitle": "Resetten naar standaard",
-    "clearTitle": "Snelkoppeling wissen",
+    "pressShortcut": "Druk op een toetscombinatie…",
+    "cancelTitle": "Annuleren",
+    "rebindTitle": "Klik om opnieuw toe te wijzen",
+    "editorManagedTitle": "Wordt beheerd door de notitie-editor – kan niet opnieuw worden toegewezen",
+    "resetTitle": "Standaard herstellen",
+    "clearTitle": "Sneltoets wissen",
     "clickToSet": "Klik om in te stellen",
-    "noMatch": "Er zijn geen snelkoppelingen die overeenkomen met uw zoekopdracht",
+    "noMatch": "Geen sneltoetsen die overeenkomen met je zoekopdracht",
     "conflict": "Conflicteert met: {labels}",
     "globalCapture": {
-      "title": "Mondiale vangst",
+      "title": "Globaal vastleggen",
       "description": "Leg overal een notitie vast",
-      "active": "Actief"
+      "active": "Actief",
+      "inUse": "{shortcut} wordt al gebruikt door een andere app. Kies een andere combinatie.",
+      "unsupported": "{shortcut} kan niet als globale sneltoets worden gebruikt. Kies een andere combinatie.",
+      "fallbackInUse": "De standaardsneltoets {shortcut} wordt al gebruikt door een andere app. Stel een andere combinatie in om Globaal vastleggen te gebruiken."
     },
     "toasts": {
-      "saveGlobalFailed": "Kan de globale snelkoppeling voor vastleggen niet opslaan",
-      "saveFailed": "Kan snelkoppeling niet opslaan",
-      "resetFailed": "Kan de snelkoppeling niet opnieuw instellen",
-      "resetAllSuccess": "Alle snelkoppelingen worden teruggezet naar de standaardwaarden",
-      "resetAllFailed": "Kan snelkoppelingen niet opnieuw instellen"
+      "saveGlobalFailed": "Kan de sneltoets voor globaal vastleggen niet opslaan",
+      "saveFailed": "Kan sneltoets niet opslaan",
+      "resetFailed": "Kan de sneltoets niet terugzetten",
+      "resetAllSuccess": "Alle sneltoetsen teruggezet naar de standaardwaarden",
+      "resetAllFailed": "Kan sneltoetsen niet terugzetten"
     },
     "categories": {
       "navigation": "Navigatie",
       "tabs": "Tabbladen",
-      "editor": "Redacteur",
-      "view": "Bekijk"
+      "editor": "Editor",
+      "view": "Weergave"
     },
     "entries": {
       "nav": {
@@ -1078,7 +1909,7 @@
           "description": "Maak een nieuwe taak"
         },
         "inbox": {
-          "label": "Ga naar Postvak IN",
+          "label": "Ga naar Inbox",
           "description": "Navigeer naar de inbox"
         },
         "notes": {
@@ -1096,6 +1927,18 @@
         "settings": {
           "label": "Instellingen openen",
           "description": "Open het instellingenpaneel"
+        },
+        "switchVault": {
+          "label": "Kluis wisselen",
+          "description": "Open de kluiswisselaar"
+        },
+        "nextVault": {
+          "label": "Volgende kluis",
+          "description": "Ga naar de volgende kluis in de zijbalk"
+        },
+        "prevVault": {
+          "label": "Vorige kluis",
+          "description": "Ga naar de vorige kluis in de zijbalk"
         }
       },
       "tabs": {
@@ -1112,44 +1955,44 @@
           "description": "Ga naar het vorige tabblad"
         },
         "reopen": {
-          "label": "Open het laatste tabblad opnieuw",
+          "label": "Laatste tabblad opnieuw openen",
           "description": "Open het meest recent gesloten tabblad opnieuw"
         },
         "navBack": {
-          "label": "Navigeer terug",
+          "label": "Terug navigeren",
           "description": "Activeer het eerder actieve tabblad opnieuw"
         },
         "navForward": {
-          "label": "Navigeer vooruit",
-          "description": "Voer een terugnavigatie opnieuw uit"
+          "label": "Vooruit navigeren",
+          "description": "Ga weer vooruit na een stap terug"
         },
         "newTab": {
           "label": "Nieuw tabblad",
           "description": "Menu voor nieuw tabblad openen"
         },
         "closeAll": {
-          "label": "Alle tabbladen in het paneel sluiten",
-          "description": "Alle tabbladen in het paneel sluiten"
+          "label": "Alle tabbladen sluiten",
+          "description": "Sluit alle tabbladen in het huidige deelvenster"
         },
         "pin": {
-          "label": "Tabblad vastzetten of losmaken",
-          "description": "Tabblad vastzetten of losmaken"
+          "label": "Tabblad vastzetten",
+          "description": "Zet het huidige tabblad vast of maak het los"
         },
         "duplicate": {
           "label": "Tabblad dupliceren",
-          "description": "Tabblad dupliceren"
+          "description": "Open een kopie van het huidige tabblad"
         },
         "splitRight": {
           "label": "Naar rechts splitsen",
-          "description": "Naar rechts splitsen"
+          "description": "Splits het huidige deelvenster naast elkaar"
         },
         "splitDown": {
-          "label": "Omlaag splitsen",
-          "description": "Omlaag splitsen"
+          "label": "Naar beneden splitsen",
+          "description": "Splits het huidige deelvenster boven en onder elkaar"
         },
         "closeSplit": {
-          "label": "Gesplitst paneel sluiten",
-          "description": "Gesplitst paneel sluiten"
+          "label": "Gesplitst deelvenster sluiten",
+          "description": "Sluit het huidige gesplitste deelvenster"
         }
       },
       "editor": {
@@ -1166,33 +2009,33 @@
           "description": "Schakel cursieve opmaak in of uit"
         },
         "underline": {
-          "label": "Onderstreep",
+          "label": "Onderstrepen",
           "description": "Schakel onderstrepingsopmaak in of uit"
         },
         "strikethrough": {
           "label": "Doorhalen",
-          "description": "Doorhalen"
+          "description": "Schakel doorhalen in of uit"
         },
         "code": {
-          "label": "Code",
-          "description": "Code"
+          "label": "Inline code",
+          "description": "Schakel inline-codeopmaak in of uit"
         }
       },
       "view": {
         "toggleSidebar": {
-          "label": "Schakel zijbalk in",
+          "label": "Zijbalk tonen/verbergen",
           "description": "Toon of verberg de zijbalk"
         },
         "shortcuts": {
           "label": "Hulp bij sneltoetsen",
-          "description": "Toon referentie voor sneltoetsen"
+          "description": "Toon een overzicht van alle sneltoetsen"
         },
         "zoomIn": {
-          "label": "Zoom in",
+          "label": "Inzoomen",
           "description": "Alles groter maken"
         },
         "zoomOut": {
-          "label": "Zoom uit",
+          "label": "Uitzoomen",
           "description": "Alles kleiner maken"
         },
         "actualSize": {
@@ -1200,52 +2043,62 @@
           "description": "Zoom terugzetten naar 100%"
         }
       }
+    },
+    "v2": {
+      "all": "Alle",
+      "categoryFilter": "Filteren op categorie",
+      "systemWide": "Systeembreed",
+      "globalCapture": "Globaal vastleggen",
+      "recordingHint": "Druk op toetsen… esc om te annuleren",
+      "reset": "Terugzetten",
+      "resetAll": "Alles terugzetten naar standaard"
     }
   },
   "phaseF": {
     "componentsKeyboardChordIndicator": {
-      "pressedWaitingForSecondKey": "ingedrukt — wachtend op de tweede toets..."
+      "pressedWaitingForSecondKey": "ingedrukt – wachten op tweede toets…"
     },
     "componentsKeyboardKeyboardShortcutsDialog": {
       "keyboardShortcuts": "Sneltoetsen",
       "press": "Druk op ",
-      "toToggleThisDialog": "om dit dialoogvenster in of uit te schakelen"
+      "toToggleThisDialog": "om dit venster te openen of te sluiten"
     },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Dit apparaat is verwijderd",
-      "exporting": "Exporteren...",
+      "exporting": "Exporteren…",
       "signOut": "Uitloggen"
     },
     "componentsSyncSyncHistory": {
       "activity": "Activiteit",
-      "filterBySyncType": "Filter op synchronisatietype",
-      "allTypes": "Alle soorten",
-      "pushed": "Geduwd",
-      "pulled": "Getrokken",
+      "filterBySyncType": "Filteren op synchronisatietype",
+      "allTypes": "Alle typen",
+      "pushed": "Verzonden",
+      "pulled": "Opgehaald",
       "errors": "Fouten",
-      "filterByTimePeriod": "Filter op tijdsperiode",
+      "filterByTimePeriod": "Filteren op periode",
       "allTime": "Altijd",
       "today": "Vandaag",
       "last7Days": "Laatste 7 dagen",
       "last30Days": "Laatste 30 dagen",
       "loadingSyncHistory": "Synchronisatiegeschiedenis laden",
       "noSyncActivityYet": "Nog geen synchronisatieactiviteit",
-      "loadMore": "Laad meer",
+      "loadMore": "Meer laden",
       "duration": "· {duration}",
-      "showErrorDetailsAria": "{summary}, foutdetails tonen",
       "summaryFailed": "Synchronisatie mislukt",
+      "summaryPushed": "{count, plural, one {# item verzonden} other {# items verzonden}}",
       "summaryPulled": "{count, plural, one {# item opgehaald} other {# items opgehaald}}",
-      "summaryPushed": "{count, plural, one {# item verzonden} other {# items verzonden}}"
+      "showErrorDetailsAria": "{summary}, foutdetails tonen"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Laatst gesynchroniseerd ",
       "pending": "in afwachting",
       "localOnly": "alleen lokaal",
       "detected": "gedetecteerd",
+      "dismissConflicts": "Negeren",
       "clockSkewDetected": "Klokafwijking gedetecteerd",
-      "items": "artikelen",
-      "willSyncWhenBackOnline": "Zal synchroniseren zodra ik weer online ben",
-      "openSyncSettings": "Open de synchronisatie-instellingen"
+      "items": "items",
+      "willSyncWhenBackOnline": "Wordt gesynchroniseerd zodra je weer online bent",
+      "openSyncSettings": "Synchronisatie-instellingen openen"
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -1253,8 +2106,8 @@
   },
   "phaseI": {
     "errors": {
-      "failedToUpdateTagColor": "Kan de tagkleur niet updaten",
-      "googleSignInFailed": "Inloggen bij Google is mislukt",
+      "failedToUpdateTagColor": "Kan de tagkleur niet bijwerken",
+      "googleSignInFailed": "Inloggen met Google mislukt",
       "failedToSendVerificationCode": "Kan verificatiecode niet verzenden",
       "invalidVerificationCode": "Ongeldige verificatiecode",
       "accountSetupFailed": "Accountconfiguratie mislukt",
@@ -1262,29 +2115,29 @@
       "failedToSetUpDevice": "Kan apparaat niet instellen",
       "failedToConfirmRecoveryPhrase": "Kan de herstelzin niet bevestigen",
       "failedToAnalyzeContent": "Kan inhoud niet analyseren",
-      "failedToLoadUpdaterState": "Kan updaterstatus niet laden",
+      "failedToLoadUpdaterState": "Kan de updatestatus niet laden",
       "failedToCheckForUpdates": "Kan niet controleren op updates",
       "failedToDownloadUpdate": "Kan de update niet downloaden",
       "failedToInstallUpdate": "Kan update niet installeren",
       "failedToLoadEditorSettings": "Kan editorinstellingen niet laden",
-      "failedToUpdateEditorSettings": "Kan de editorinstellingen niet updaten",
+      "failedToUpdateEditorSettings": "Kan de editorinstellingen niet bijwerken",
       "failedToLoadGeneralSettings": "Kan algemene instellingen niet laden",
-      "failedToUpdateGeneralSettings": "Kan de algemene instellingen niet updaten",
+      "failedToUpdateGeneralSettings": "Kan de algemene instellingen niet bijwerken",
       "failedToLoadKeyboardSettings": "Kan toetsenbordinstellingen niet laden",
-      "failedToUpdateKeyboardSettings": "Kan toetsenbordinstellingen niet updaten",
-      "failedToResetKeyboardSettings": "Kan de toetsenbordinstellingen niet resetten",
+      "failedToUpdateKeyboardSettings": "Kan toetsenbordinstellingen niet bijwerken",
+      "failedToResetKeyboardSettings": "Kan de toetsenbordinstellingen niet terugzetten",
       "failedToLoadNoteEditorSettings": "Kan de instellingen van de notitie-editor niet laden",
-      "failedToUpdateSettings": "Kan instellingen niet updaten",
+      "failedToUpdateSettings": "Kan instellingen niet bijwerken",
       "failedToLoadTabSettings": "Kan tabbladinstellingen niet laden",
       "failedToLoadNotes": "Kan notities niet laden",
       "failedToLoadTags": "Kan tags niet laden",
+      "failedToLoadTasks": "Kan taken niet laden",
       "failedToLoadVaultStatus": "Kan de kluisstatus niet laden",
       "failedToSelectVault": "Kan kluis niet selecteren",
       "failedToCloseVault": "Kan de kluis niet sluiten",
       "failedToSwitchVault": "Kan niet van kluis wisselen",
-      "failedToUpdateConfig": "Kan configuratie niet updaten",
-      "failedToReindex": "Opnieuw indexeren is mislukt",
-      "failedToLoadTasks": "Kan taken niet laden"
+      "failedToUpdateConfig": "Kan configuratie niet bijwerken",
+      "failedToReindex": "Opnieuw indexeren is mislukt"
     }
   },
   "agentMcp": {
@@ -1303,7 +2156,7 @@
       },
       "bearer": {
         "label": "Bearer-token",
-        "description": "Referentie in het geheugen voor deze app-start."
+        "description": "Alleen in het geheugen, geldig zolang de app draait."
       }
     },
     "actions": {
@@ -1314,16 +2167,60 @@
     },
     "copyLabel": "{label} kopiëren",
     "notRunning": "Niet actief",
-    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+    "toolsBadge": "{count, plural, one {# tool} other {# tools}}",
+    "v2": {
+      "hint": "Lokale server voor Cursor, Claude Desktop, Zed",
+      "running": "Actief",
+      "tokenHint": "Alleen voor deze sessie",
+      "copy": "Kopiëren",
+      "rotate": "Vernieuwen"
+    }
   },
   "agentProviders": {
     "header": {
       "title": "Agentmachtigingen",
-      "subtitle": "Kies de standaardtoegang, bevestigingen en lokale providers voor Agent-chat."
+      "subtitle": "Kies standaardtoegang, bevestigingen en lokale aanbieders voor Agentchat."
     },
     "groups": {
-      "local": "Lokale OpenAI-compatibele provider",
+      "cliAgents": "CLI-agents",
+      "local": "Lokale OpenAI-compatibele aanbieder",
       "actions": "Verbindingscontroles"
+    },
+    "cliAgents": {
+      "claude": {
+        "label": "Claude Code CLI",
+        "description": "Installeer Claude Code via claude.ai/code en voer daarna `claude login` uit. MemryNote detecteert het automatisch."
+      },
+      "codex": {
+        "label": "Codex CLI",
+        "description": "Installeer met `npm install -g @openai/codex` en voer daarna `codex login` uit om in te loggen bij je OpenAI-account. MemryNote detecteert het automatisch."
+      },
+      "antigravity": {
+        "label": "Antigravity CLI",
+        "description": "Installeer Antigravity CLI via antigravity.google/docs/cli en voer daarna één keer `agy` uit om in te loggen bij je Google-account. MemryNote detecteert het automatisch."
+      },
+      "status": {
+        "detected": "Gedetecteerd · v{version}",
+        "detectedNoVersion": "Gedetecteerd",
+        "belowMinimum": "v{version} geïnstalleerd – {minimum} of nieuwer vereist",
+        "notDetected": "Niet gedetecteerd",
+        "runtimeUnavailable": "Niet beschikbaar – de agentruntime is niet gestart"
+      }
+    },
+    "permissions": {
+      "group": "Agentmachtigingen",
+      "access": {
+        "label": "Standaardtoegang",
+        "description": "Bepaalt de begintoegangsmodus voor nieuwe agentbeurten.",
+        "vaultOnly": "Alleen kluis",
+        "computerAccess": "Computertoegang"
+      },
+      "confirm": {
+        "label": "Acties bevestigen",
+        "description": "Kies of toolaanroepen automatisch worden uitgevoerd of op goedkeuring in de chat wachten.",
+        "alwaysAllow": "Altijd toestaan",
+        "askBeforeChanges": "Vragen vóór wijzigingen"
+      }
     },
     "presets": {
       "ollama": "Ollama",
@@ -1360,253 +2257,41 @@
       "probe": "Tools controleren"
     },
     "status": {
-      "disconnected": "Niet verbonden",
-      "toolsDisabled": "Tools uitgeschakeld",
-      "fullTools": "Alle tools ingeschakeld",
+      "label": "Verbinding",
       "checking": "Controleren…",
       "connected": "Verbonden",
-      "label": "Verbinding"
+      "disconnected": "Niet verbonden",
+      "toolsDisabled": "Tools uitgeschakeld",
+      "fullTools": "Alle tools ingeschakeld"
     },
-    "permissions": {
-      "group": "Agentmachtigingen",
-      "access": {
-        "label": "Standaardtoegang",
-        "description": "Bepaalt de begintoegangsmodus voor nieuwe agentbeurten.",
-        "vaultOnly": "Alleen kluis",
-        "computerAccess": "Computertoegang"
-      },
-      "confirm": {
-        "label": "Acties bevestigen",
-        "description": "Kies of toolaanroepen automatisch worden uitgevoerd of op goedkeuring in de chat wachten.",
-        "alwaysAllow": "Altijd toestaan",
-        "askBeforeChanges": "Vragen vóór wijzigingen"
-      }
-    }
-  },
-  "commandLine": {
-    "actions": {
-      "refresh": "Vernieuwen"
+    "alwaysAllowed": {
+      "group": "Altijd toegestaan",
+      "description": "Tools waarvoor je in deze kluis blijvende goedkeuring hebt gegeven. Voor verwijderacties kan dat nooit.",
+      "empty": "Niets is altijd toegestaan. Bij elke wijziging wordt nog steeds gevraagd.",
+      "revoke": "Intrekken",
+      "revokeLabel": "Blijvende goedkeuring voor {tool} intrekken",
+      "ignoredInPageReview": "Genegeerd: voor bewerkingen in notities en het dagboek wordt altijd gevraagd."
     },
-    "command": {
-      "descriptionInstalled": "Geïnstalleerd op {path}",
-      "descriptionNotInstalled": "Installeer de memrynote-opdracht zodat je je kluis vanuit elke terminal kunt gebruiken.",
-      "label": "memrynote-opdracht",
-      "toggleLabel": "memrynote-opdracht installeren"
-    },
-    "defaultVault": {
-      "description": "Kies de kluis die wordt gebruikt wanneer je memrynote zonder --vault uitvoert.",
-      "descriptionSelected": "Opdrachten gebruiken {path} wanneer --vault wordt weggelaten.",
-      "label": "Standaardkluis",
-      "none": "Geen kluis geselecteerd",
-      "placeholder": "Kluis selecteren"
-    },
-    "groups": {
-      "terminal": "Terminal"
-    },
-    "header": {
-      "subtitle": "Stel de memrynote-opdracht voor je terminal in",
-      "title": "Opdrachtregel"
-    },
-    "status": {
-      "defaultVaultUpdatedToast": "Standaard CLI-kluis bijgewerkt",
-      "installedToast": "memrynote-opdracht geïnstalleerd",
-      "loadFailed": "Kan opdrachtstatus niet laden",
-      "loading": "Opdrachtstatus controleren...",
-      "uninstalledToast": "memrynote-opdracht verwijderd"
-    }
-  },
-  "features": {
-    "header": {
-      "subtitle": "Schakel delen van de app in of uit. Uit = grijs weergegeven in de zijbalk en overal uitgeschakeld.",
-      "title": "Functies"
-    },
-    "items": {
-      "calendar": {
-        "description": "Gebeurtenissen en planning",
-        "label": "Agenda"
+    "v2": {
+      "permissions": {
+        "group": "Machtigingen",
+        "hint": "Geldt voor elke agentchat",
+        "access": "Toegang",
+        "changes": "Wijzigingen"
       },
-      "graph": {
-        "description": "Notitieverbindingen",
-        "label": "Graaf"
+      "runtimes": {
+        "group": "Agentruntimes",
+        "hint": "Gedetecteerd via PATH"
       },
-      "home": {
-        "description": "Startdashboard",
-        "label": "Start"
+      "localModel": {
+        "label": "Lokaal model",
+        "hint": "OpenAI-compatibele server op deze computer",
+        "notChecked": "Niet gecontroleerd",
+        "optional": "Optioneel",
+        "fetchModels": "Modellen ophalen"
       },
-      "inbox": {
-        "description": "Snel vastleggen en triage",
-        "label": "Inbox"
-      },
-      "journal": {
-        "description": "Dagelijkse notities",
-        "label": "Dagboek"
-      },
-      "tasks": {
-        "description": "To-do's en vervaldatums",
-        "label": "Taken"
-      },
-      "spatialCanvas": {
-        "description": "Ruimtelijke borden om notities te ordenen en te koppelen",
-        "label": "Canvas"
-      }
-    }
-  },
-  "import": {
-    "action": "Importeren",
-    "dialog": {
-      "cancel": "Annuleren",
-      "choose": "Bestand kiezen…",
-      "chooseFolder": "Apple Notes-map selecteren…",
-      "chooseHint": "Selecteer je {label}",
-      "close": "Sluiten",
-      "done": "Klaar",
-      "error": "Import mislukt",
-      "folderHint": "Klik hieronder en selecteer de map “group.com.apple.notes” wanneer de kiezer opent (die begint daar). Zo kan Memry je notities en bijlagen lezen — geen volledige schijftoegang nodig.",
-      "progress": "{completed} van {total}",
-      "running": "Importeren…",
-      "selected": "{count, plural, one {# bestand geselecteerd} other {# bestanden geselecteerd}}",
-      "start": "Import starten",
-      "summary": {
-        "attachments": "{count, plural, one {# bijlage gekopieerd} other {# bijlagen gekopieerd}}",
-        "failed": "{count} mislukt",
-        "imported": "{count, plural, one {# item geïmporteerd} other {# items geïmporteerd}}",
-        "skipped": "{count} overgeslagen",
-        "title": "Import voltooid"
-      },
-      "title": "Importeren uit {name}",
-      "chooseDirectory": "Map kiezen…",
-      "folderKeepsAssets": "Kies de map wanneer afbeeldingen buiten de eigen map van de notities staan — exports bewaren media vaak in een gedeelde map.",
-      "previewError": "Voorbeeld mislukt"
-    },
-    "header": {
-      "subtitle": "Haal je notities en taken uit andere apps",
-      "title": "Importeren"
-    },
-    "intro": "Eenmalige imports maken nieuwe notities in je kluis. Je oorspronkelijke exportbestanden blijven onaangeroerd.",
-    "preview": {
-      "confirm": "Importeren",
-      "warnings": "Waarschuwingen"
-    },
-    "select": "Selecteer een app om uit te importeren…",
-    "sources": {
-      "apple-journal": "Importeer een Apple Journal HTML-export als gedateerde notities",
-      "apple-notes": "Importeer uit de Apple Notes-database (NoteStore.sqlite, macOS)",
-      "bear": "Importeer een Bear .bear2bk-archief (notities, tags, bijlagen)",
-      "csv": "Importeer een .csv-bestand — één notitie per rij, kolommen worden eigenschappen",
-      "evernote": "Importeer een of meer Evernote .enex-exportbestanden",
-      "google-keep": "Importeer een Google Takeout Keep-export (.json of .zip)",
-      "html": "Importeer .html-bestanden met gekoppelde afbeeldingen en koppelingen tussen pagina's",
-      "markdown": "Importeer .md-bestanden of een map (frontmatter, tags, bijlagen)",
-      "notion": "Importeer een HTML-export (.zip)",
-      "onenote": "Importeer OneNote-notitieblokken (vereist een Microsoft-account)",
-      "raindrop": "Importeer een Raindrop.io-bladwijzerexport (.csv) — bladwijzers komen in de inbox",
-      "roam": "Importeer een Roam Research-graaf (.json) met geneste overzichten",
-      "ticktick": "Importeer een TickTick-back-up (.csv) als projecten, taken en herinneringen",
-      "todoist": "Importeer een project-CSV-export (.csv)"
-    },
-    "stats": {
-      "bookmarks": "{count, plural, one {# bladwijzer} other {# bladwijzers}}",
-      "comments": "{count, plural, one {# opmerking} other {# opmerkingen}}",
-      "notes": "{count, plural, one {# notitie} other {# notities}}",
-      "projects": "{count, plural, one {# project} other {# projecten}}",
-      "reminders": "{count, plural, one {# herinnering} other {# herinneringen}}",
-      "skipped": "{count} overgeslagen",
-      "subtasks": "{count, plural, one {# subtaak} other {# subtaken}}",
-      "tasks": "{count, plural, one {# taak} other {# taken}}",
-      "withDueDate": "{count} met datum",
-      "withTags": "{count} getagd"
-    },
-    "messages": {
-      "csv": {
-        "columns": "Kolommen: {columns}",
-        "emptyTitle": "Rij met lege titel overgeslagen (kolom “{column}”)",
-        "noHeaders": "Het CSV-bestand heeft geen kopregel",
-        "titleColumn": "Titel uit “{column}”; overige kolommen zijn als eigenschappen opgeslagen"
-      },
-      "raindrop": {
-        "csvEmpty": "De Raindrop-CSV is leeg",
-        "headerNotFound": "Kopregel van de Raindrop-CSV (kolom “url”) niet gevonden",
-        "rowNoUrl": "Rij {row} overgeslagen: geen URL"
-      },
-      "readFileFailed": "Kan het bestand niet lezen",
-      "ticktick": {
-        "foldersDropped": "TickTick-mappen hebben geen equivalent in Memry en zijn weggelaten",
-        "headerNotFound": "Kopregel van de TickTick-CSV (“Folder Name”) niet gevonden",
-        "reminderNoAnchor": "Herinnering “{reminder}” overgeslagen (geen datumanker)",
-        "subtaskParentMissing": "Bovenliggende taak van subtaak “{title}” niet gevonden; geïmporteerd op hoofdniveau",
-        "unknownPriority": "Onbekende TickTick-prioriteit {priority} → geen",
-        "unsupportedRepeat": "Niet-ondersteunde herhaalregel “{rule}” overgeslagen"
-      },
-      "todoist": {
-        "emptyTitle": "Taak met lege inhoud geïmporteerd als (zonder titel)",
-        "headerNotFound": "Geen Todoist-CSV: de kopregel TYPE ontbreekt",
-        "orphanComment": "Opmerking zonder voorafgaande taak overgeslagen",
-        "sectionFlattened": "Sectie “{section}” afgevlakt",
-        "subtaskNoParent": "Subtaak “{title}” heeft geen bovenliggende taak op inspringniveau {indent}; geïmporteerd op hoofdniveau",
-        "unknownPriority": "Onbekende prioriteit {priority} → geen",
-        "unparsedDate": "Kan de datum “{date}” niet lezen"
-      }
-    },
-    "status": {
-      "appleNotes": {
-        "copyingDatabase": "Apple Notes-database kopiëren…"
-      },
-      "bear": {
-        "scanning": "Bear-export scannen…"
-      },
-      "csv": {
-        "importing": "CSV-notities importeren…"
-      },
-      "evernote": {
-        "scanning": ".enex-bestanden scannen…"
-      },
-      "html": {
-        "scanning": "HTML-bestanden scannen…"
-      },
-      "importingItem": "{title} importeren",
-      "raindrop": {
-        "importing": "Raindrop-bladwijzers importeren…"
-      },
-      "roam": {
-        "reading": "Roam-export lezen…"
-      },
-      "scanningExport": "Export scannen…",
-      "scanningFiles": "Bestanden scannen…",
-      "ticktick": {
-        "importing": "TickTick-taken importeren…"
-      },
-      "todoist": {
-        "importing": "Todoist-taken importeren…"
-      }
-    }
-  },
-  "inbox": {
-    "header": {
-      "loading": "Laden…",
-      "subtitle": "Dagelijkse herinnering en inboxvoorkeuren.",
-      "title": "Inbox"
-    },
-    "reviewReminder": {
-      "enabled": {
-        "description": "Een vriendelijk dagelijks duwtje wanneer er iets in je inbox staat.",
-        "label": "Herinner me eraan mijn inbox door te nemen"
-      },
-      "error": "Kan de herinnering niet bijwerken.",
-      "group": "Dagelijkse inboxherinnering",
-      "test": {
-        "button": "Test versturen",
-        "description": "Stuur de herinnering nu om je systeemmeldingen te controleren.",
-        "label": "Testmelding",
-        "sent": "Testmelding verstuurd.",
-        "sentHint": "Verschijnt er niets? Sta meldingen voor MemryNote toe in je systeeminstellingen.",
-        "unsupported": "Dit apparaat kan geen bureaubladmeldingen tonen."
-      },
-      "time": {
-        "description": "Lokale tijd, op elk apparaat.",
-        "hourLabel": "Uur",
-        "label": "Tijdstip van de herinnering",
-        "minuteLabel": "Minuut",
-        "periodLabel": "AM of PM"
+      "alwaysAllowed": {
+        "group": "Altijd toegestane tools"
       }
     }
   }

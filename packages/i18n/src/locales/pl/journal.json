@@ -4,7 +4,7 @@
     "aiConnections": "Połączenia AI",
     "todaysNotes": "Dzisiejsze notatki",
     "todaysSchedule": "Dzisiejszy harmonogram",
-    "todaysTasks": "Dzisiejsze Zadania",
+    "todaysTasks": "Dzisiejsze zadania",
     "tasks": "Zadania",
     "technicalDetails": "Szczegóły techniczne"
   },
@@ -18,24 +18,25 @@
     "createNote": "Utwórz notatkę",
     "createNewNote": "Utwórz nową notatkę",
     "showLess": "Pokaż mniej",
-    "showMoreNotes": "Pokaż {count} dodatkową notatkę",
-    "showMoreNotes_plural": "Pokaż {count} więcej notatek",
+    "showMoreNotes": "Pokaż więcej notatek: {count}",
+    "showMoreNotes_plural": "Pokaż więcej notatek: {count}",
     "showFewerNotes": "Pokaż mniej notatek",
-    "startBlank": "Zamiast tego zacznij od pustego miejsca",
+    "startBlank": "Zacznij od pustej strony",
     "changeTemplate": "Zmień szablon",
-    "dismissIndicator": "Wskaźnik odrzucenia",
+    "dismissIndicator": "Ukryj wskaźnik",
     "refreshConnections": "Odśwież połączenia",
     "reloadJournal": "Załaduj ponownie dziennik",
-    "goToToday": "Przejdź do Dzisiaj",
+    "goToToday": "Przejdź do dzisiaj",
     "copyUnsavedContent": "Skopiuj niezapisaną zawartość do schowka",
     "addBookmark": "Dodaj zakładkę",
-    "removeBookmark": "Usuń zakładkę"
+    "removeBookmark": "Usuń zakładkę",
+    "deleteEntry": "Usuń wpis"
   },
   "editor": {
     "placeholder": {
-      "future": "Co planujesz...",
-      "today": "Co masz dzisiaj na myśli...",
-      "past": "Zastanów się nad tym dniem..."
+      "future": "Co planujesz…",
+      "today": "Co dzisiaj chodzi ci po głowie…",
+      "past": "Wróć myślami do tego dnia…"
     },
     "upload": {
       "failed": "Nie udało się przesłać obrazu"
@@ -58,41 +59,41 @@
       "saturday": "sobota"
     },
     "weekdayShort": {
-      "sunday": "niedziela",
-      "monday": "pon",
-      "tuesday": "wt",
-      "wednesday": "śr",
-      "thursday": "czw",
-      "friday": "piątek",
-      "saturday": "sob"
+      "sunday": "niedz.",
+      "monday": "pon.",
+      "tuesday": "wt.",
+      "wednesday": "śr.",
+      "thursday": "czw.",
+      "friday": "pt.",
+      "saturday": "sob."
     },
     "month": {
-      "january": "Styczeń",
-      "february": "luty",
-      "march": "Marzec",
-      "april": "kwiecień",
-      "may": "Maj",
-      "june": "Czerwiec",
-      "july": "Lipiec",
-      "august": "sierpień",
-      "september": "Wrzesień",
-      "october": "Październik",
-      "november": "Listopad",
-      "december": "Grudzień"
-    },
-    "monthShort": {
       "january": "styczeń",
       "february": "luty",
-      "march": "marca",
+      "march": "marzec",
       "april": "kwiecień",
-      "may": "Maj",
-      "june": "czerwca",
+      "may": "maj",
+      "june": "czerwiec",
       "july": "lipiec",
       "august": "sierpień",
       "september": "wrzesień",
-      "october": "paź",
+      "october": "październik",
       "november": "listopad",
       "december": "grudzień"
+    },
+    "monthShort": {
+      "january": "sty",
+      "february": "lut",
+      "march": "mar",
+      "april": "kwi",
+      "may": "maj",
+      "june": "cze",
+      "july": "lip",
+      "august": "sie",
+      "september": "wrz",
+      "october": "paź",
+      "november": "lis",
+      "december": "gru"
     },
     "greeting": {
       "morning": "Dzień dobry",
@@ -109,18 +110,18 @@
     "nextMonth": "Następny miesiąc",
     "previousYear": "Poprzedni rok",
     "nextYear": "Następny rok",
-    "journalBack": "Dziennik z powrotem",
+    "journalBack": "Wstecz w dzienniku",
     "journalNavigation": "Nawigacja dziennika",
     "dateNavigation": "Nawigacja po datach dziennika",
     "goToYearView": "Przejdź do widoku roku"
   },
   "aria": {
     "moreOptions": "Więcej opcji",
-    "documentStatistics": "Statystyki dokumentów",
+    "documentStatistics": "Statystyki dokumentu",
     "dayContext": "Kontekst dnia: zadania i harmonogram",
-    "scheduleEvents": "Zaplanuj wydarzenia",
+    "scheduleEvents": "Zaplanowane wydarzenia",
     "tasks": "Zadania",
-    "notesCreatedToday": "Notatki {count} utworzone dzisiaj"
+    "notesCreatedToday": "Notatki utworzone dzisiaj: {count}"
   },
   "empty": {
     "noEntry": "Brak wpisu",
@@ -128,43 +129,43 @@
     "noEventsScheduled": "Brak zaplanowanych wydarzeń",
     "noEventsScheduledToday": "Na dzisiaj nie zaplanowano żadnych wydarzeń",
     "noEventsWereScheduled": "Nie zaplanowano żadnych wydarzeń",
-    "noTasksDue": "Brak zadań do wykonania",
+    "noTasksDue": "Brak zadań z terminem",
     "noTasksDueToday": "Brak zadań z terminem na dzisiaj",
-    "noTasksWereDue": "Nie przypadały żadne zadania",
+    "noTasksWereDue": "Tego dnia nie było zadań z terminem",
     "noNotesToday": "Dzisiaj nie utworzono żadnych notatek",
     "startDocumenting": "Zacznij dokumentować swoje przemyślenia i pomysły"
   },
   "ai": {
-    "loading": "Analizuję Twój wpis...",
+    "loading": "Analizowanie wpisu…",
     "empty": {
-      "willAppear": "Tutaj pojawią się Twoje połączenia",
+      "willAppear": "Tutaj pojawią się połączenia",
       "noneYet": "Nie znaleziono jeszcze żadnych połączeń",
-      "moreJournaling": "W miarę pisania kolejnych wpisów sztuczna inteligencja będzie znajdować powiązane wpisy",
+      "moreJournaling": "W miarę dodawania kolejnych wpisów AI będzie znajdować powiązane wpisy",
       "keepWriting": "Pisz dalej, aby odkryć powiązane wpisy"
     },
     "error": {
-      "loadFailed": "Nie udało się wczytać połączeń"
+      "loadFailed": "Nie udało się załadować połączeń"
     },
-    "connectionAria": "Połączenie z {label}, {scorePercent}% pasuje"
+    "connectionAria": "Połączenie z: {label}, dopasowanie {scorePercent}%"
   },
   "count": {
-    "note": "uwaga",
+    "note": "notatka",
     "day": "dzień",
     "days": "dni",
     "event": "wydarzenie",
     "events": "wydarzenia",
     "task": "zadanie",
-    "todo": "zrobić",
-    "moreConnections": "+ {count} więcej połączenia",
-    "moreConnections_plural": "+ {count} więcej połączeń",
-    "moreNotes": "+ {count} dodatkowa uwaga",
-    "moreNotes_plural": "+ {count} więcej notatek",
+    "todo": "do zrobienia",
+    "moreConnections": "+ jeszcze {count} połączenie",
+    "moreConnections_plural": "{count, plural, one {+ jeszcze # połączenie} few {+ jeszcze # połączenia} many {+ jeszcze # połączeń} other {+ jeszcze # połączenia}}",
+    "moreNotes": "+ jeszcze {count} notatka",
+    "moreNotes_plural": "{count, plural, one {+ jeszcze # notatka} few {+ jeszcze # notatki} many {+ jeszcze # notatek} other {+ jeszcze # notatki}}",
     "daysWithEntries": "dni z wpisami",
     "charactersWritten": "zapisane znaki",
-    "words": "{count} słów",
-    "characters": "{count} znaków",
-    "completed": "{count} ukończono",
-    "overdue": "{count} spóźniony"
+    "words": "{count, plural, one {# słowo} few {# słowa} many {# słów} other {# słowa}}",
+    "characters": "{count, plural, one {# znak} few {# znaki} many {# znaków} other {# znaku}}",
+    "completed": "ukończone: {count}",
+    "overdue": "Zaległe: {count}"
   },
   "stats": {
     "wordCount": "Liczba słów",
@@ -173,57 +174,62 @@
     "lastModified": "Ostatnia modyfikacja",
     "lessThanOneMinute": "< 1 min",
     "minutes": "{minutes} min",
-    "read": "Odczytano {readingTime}",
+    "read": "{readingTime} czytania",
     "modified": "Zmodyfikowano {date}"
   },
   "task": {
-    "completed": "Ukończono",
+    "completed": "Ukończone",
     "notCompleted": "Nieukończone",
     "priority": "Priorytet {priority}",
-    "overdue": "spóźnione",
-    "markComplete": "Oznacz „{title}” jako ukończony",
-    "markNotComplete": "Oznacz „{title}” jako nieukończony"
+    "overdue": "zaległe",
+    "markComplete": "Oznacz „{title}” jako ukończone",
+    "markNotComplete": "Oznacz „{title}” jako nieukończone"
   },
   "template": {
-    "using": "Korzystanie z „{templateName}”"
+    "using": "Użyto szablonu „{templateName}”"
   },
   "reminder": {
     "hasReminders": "Zawiera przypomnienia",
-    "setToRevisit": "Ustaw przypomnienie o ponownej wizycie",
+    "setToRevisit": "Ustaw przypomnienie, aby wrócić do wpisu",
     "tooltip": "Przypomnienie: {date}",
     "tooltipMore": "Przypomnienie: {date} (+{count} więcej)",
     "success": {
       "set": "Ustawiono przypomnienie dla tego wpisu w dzienniku",
-      "deleted": "Przypomnienie zostało usunięte",
-      "dismissed": "Przypomnienie odrzucone",
-      "snoozed": "Przypomnienie zostało odłożone"
+      "deleted": "Usunięto przypomnienie",
+      "dismissed": "Odrzucono przypomnienie",
+      "snoozed": "Odłożono przypomnienie",
+      "updated": "Zaktualizowano przypomnienie"
     },
     "error": {
       "set": "Nie udało się ustawić przypomnienia",
       "delete": "Nie udało się usunąć przypomnienia",
       "dismiss": "Nie udało się odrzucić przypomnienia",
-      "snooze": "Nie udało się odłożyć przypomnienia"
+      "snooze": "Nie udało się odłożyć przypomnienia",
+      "update": "Nie udało się zaktualizować przypomnienia"
     }
   },
   "toast": {
     "unsavedRetry": "Twoja treść jest nadal w pamięci. Kliknij, aby spróbować ponownie zapisać.",
-    "noteNotFound": "Uwaga: Nie znaleziono „{target}”.",
+    "noteNotFound": "Nie znaleziono notatki „{target}”",
+    "createLinkedFailed": "Nie udało się utworzyć połączonej notatki",
     "fileNotFound": "Nie znaleziono pliku: {target}",
     "openLinkedItemFailed": "Nie udało się otworzyć połączonego elementu",
-    "errorPrefix": "Błąd:"
+    "errorPrefix": "Błąd:",
+    "deleteFailed": "Nie udało się usunąć wpisu w dzienniku",
+    "bookmarkFailed": "Nie udało się zaktualizować zakładki"
   },
   "export": {
-    "noteTitle": "Dziennik - {month} {day}, {year}"
+    "noteTitle": "Dziennik – {month} {year}, dzień {day}"
   },
   "note": {
-    "generatedTitle": "Uwaga - {date}",
-    "openAria": "Otwórz {title}, utworzony w {time}"
+    "generatedTitle": "Notatka – {date}",
+    "openAria": "Otwórz notatkę „{title}”, utworzoną o {time}"
   },
   "error": {
     "title": "Błąd dziennika",
-    "description": "W dzienniku wystąpił błąd dla {date}. Twoje ostatnie zmiany mogły nie zostać zapisane.",
-    "descriptionNoDate": "W czasopiśmie wystąpił błąd. Twoje ostatnie zmiany mogły nie zostać zapisane.",
-    "unsavedContent": "Wykryto niezapisaną treść (znaki {length})"
+    "description": "W dzienniku wystąpił błąd (dzień: {date}). Ostatnie zmiany mogły nie zostać zapisane.",
+    "descriptionNoDate": "W dzienniku wystąpił błąd. Ostatnie zmiany mogły nie zostać zapisane.",
+    "unsavedContent": "Wykryto niezapisaną treść (znaki: {length})"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "Nie udało się zapisać wpisu do dziennika",
+      "failedToSaveJournalEntry": "Nie udało się zapisać wpisu w dzienniku",
       "failedToLoadJournalSettings": "Nie udało się załadować ustawień dziennika",
       "failedToUpdateSettings": "Nie udało się zaktualizować ustawień"
     }
+  },
+  "deleteConfirm": {
+    "title": "Usuń wpis w dzienniku",
+    "description": "Czy na pewno chcesz usunąć „{title}”? Tej operacji nie można cofnąć."
   }
 }

@@ -1,15 +1,17 @@
 {
   "page": {
-    "loading": "Memuatkan graf...",
+    "loading": "Memuatkan graf…",
     "load-failed": "Gagal memuatkan data graf",
+    "render-failed": "Graf tidak tersedia pada peranti ini",
+    "render-failed-description": "Peranti ini tidak dapat memulakan pemapar grafik. Nota anda selamat.",
     "try-again": "Cuba lagi",
-    "aria-label": "Graf pengetahuan dengan {nodeCount, plural, one {Nod #} other {Nod #}} dan {edgeCount, plural, one {Sambungan #} other {Sambungan #}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "nod graf",
+    "aria-label": "Graf pengetahuan dengan {nodeCount, plural, other {# nod}} dan {edgeCount, plural, other {# sambungan}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Nod graf",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
     "title": "Graf pengetahuan anda",
-    "description": "Sambungan antara nota, tugasan dan projek anda akan dipaparkan di sini sebagai graf interaktif.",
+    "description": "Sambungan antara nota, tugas dan projek anda akan dipaparkan di sini sebagai graf interaktif.",
     "link-title": "Pautkan nota anda",
     "link-description": "Gunakan [[wikilinks]] untuk menyambung idea merentas nota",
     "discover-title": "Temui corak",
@@ -20,15 +22,16 @@
     "notes": "nota",
     "journal": "jurnal",
     "journals": "jurnal",
-    "task": "tugasan",
-    "tasks": "tugasan",
+    "task": "tugas",
+    "tasks": "tugas",
     "project": "projek",
     "projects": "projek",
     "tag": "teg",
-    "tags": "tag",
-    "orphan": "yatim piatu",
-    "orphans": "anak yatim",
-    "unresolved": "tidak dapat diselesaikan"
+    "tags": "teg",
+    "orphan": "nod terasing",
+    "orphans": "nod terasing",
+    "unresolved": "belum dibuat",
+    "category": "kategori"
   },
   "summary": {
     "node-type-count": "{count} {label}"
@@ -40,38 +43,95 @@
     "filters": "Penapis",
     "display": "Paparan",
     "show-labels": "Tunjukkan label",
+    "live-motion": "Gerakan langsung",
     "focus-depth": "kedalaman {depth}",
-    "clear-focus": "Kosongkan nod fokus"
+    "clear-focus": "Kosongkan nod fokus",
+    "relayout": "Susun atur semula",
+    "categories": "Kategori teg",
+    "color-by-category": "Warna mengikut kategori",
+    "no-categories": "Kumpulkan teg ke dalam kategori di hab teg untuk mewarnakan dan meruntuhkan graf mengikut kategori.",
+    "collapse-category": "Runtuhkan {name}",
+    "expand-category": "Kembangkan {name}",
+    "uncategorized": "Tidak dikategorikan"
   },
   "filter": {
     "notes": "Nota",
     "journals": "Jurnal",
-    "tasks": "Tugasan",
+    "tasks": "Tugas",
     "projects": "Projek",
-    "tags": "Tag",
-    "orphans": "anak yatim",
-    "toggle-entity": "Togol {label}",
-    "toggle-orphans": "Togol nod anak yatim"
+    "tags": "Teg",
+    "orphans": "Nod terasing",
+    "canvas-edges": "Sambungan kanvas",
+    "toggle-entity": "Tunjuk/sembunyi {label}",
+    "toggle-orphans": "Tunjuk/sembunyi nod terasing"
   },
   "search": {
-    "placeholder": "Cari nod...",
+    "placeholder": "Cari nod…",
     "clear": "Kosongkan carian graf"
   },
   "context-menu": {
-    "untitled": "Tidak bertajuk",
+    "untitled": "Tanpa tajuk",
     "focus-node": "Fokus pada nod ini",
     "open-new-tab": "Buka dalam tab baharu",
     "create-note": "Buat nota",
-    "copy-title": "Salin tajuk"
+    "copy-title": "Salin tajuk",
+    "link-to": "Pautkan ke…",
+    "add-tag": "Tambah teg…",
+    "back": "Kembali",
+    "link-search": "Cari nota…",
+    "tag-search": "Cari atau buat teg…",
+    "no-matches": "Tiada padanan",
+    "create-tag": "Buat #{tag}",
+    "remove-link": "Alih keluar pautan ke {title}",
+    "unpin": "Nyahsemat",
+    "collapse-category": "Runtuhkan {name}",
+    "expand-category": "Kembangkan {name}"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {Sambungan #} other {Sambungan #}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, other {# sambungan}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, other {# item}}",
+    "click-to-expand": "Klik untuk kembangkan"
   },
   "local-panel": {
-    "loading": "Memuatkan graf...",
+    "loading": "Memuatkan graf…",
     "empty": "Tiada sambungan ditemui",
     "open-full": "Buka graf penuh",
-    "close": "Tutup graf"
+    "close": "Tutup graf",
+    "pin": "Semat pada nota ini",
+    "unpin": "Nyahsemat dan ikut nota yang dibuka",
+    "pinned-to": "Disemat: {title}"
+  },
+  "edit": {
+    "linked": "{source} dipautkan ke {target} dalam “{property}”",
+    "unlinked": "Pautan daripada {source} ke {target} dialih keluar",
+    "already-linked": "{source} sudah dipautkan ke {target}",
+    "property-conflict": "“{property}” pada nota ini bukan sifat hubungan, jadi pautan tidak ditambah",
+    "link-unsupported": "Pautan hanya boleh dibuat antara nota",
+    "link-failed": "Tidak dapat menambah pautan",
+    "unlink-failed": "Tidak dapat mengalih keluar pautan",
+    "tag-added": "#{tag} ditambah pada {note}",
+    "tag-exists": "Nota ini sudah mempunyai #{tag}",
+    "tag-failed": "Tidak dapat menambah teg",
+    "undo-failed": "Tidak dapat membuat asal perubahan"
+  },
+  "relayout-confirm": {
+    "title": "Susun atur semula graf?",
+    "description": "Semua nod yang disemat akan dilepaskan dan graf akan menyusun dirinya semula. Susun atur yang disimpan akan dibuang.",
+    "cancel": "Batal",
+    "confirm": "Susun atur semula"
+  },
+  "views": {
+    "title": "Paparan tersimpan",
+    "unsaved": "Paparan belum disimpan",
+    "edited": "Diedit",
+    "empty": "Belum ada paparan tersimpan",
+    "save-as": "Simpan sebagai paparan baharu…",
+    "update": "Kemas kini “{name}”",
+    "delete": "Padam paparan {name}",
+    "save-dialog-title": "Simpan paparan graf",
+    "save-dialog-placeholder": "Nama paparan",
+    "cancel": "Batal",
+    "save": "Simpan"
   }
 }

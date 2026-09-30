@@ -1,77 +1,137 @@
 {
   "page": {
-    "loading": "グラフを読み込んでいます...",
-    "load-failed": "グラフデータの読み込みに失敗しました",
-    "try-again": "もう一度試してください",
-    "aria-label": "{nodeCount, plural, one {# ノード} other {# ノード}} および {edgeCount, plural, one {#接続} other {# 接続}}{summary, select, none {。} other {: {summary}。}} を使用したナレッジ グラフ",
+    "loading": "グラフを読み込み中…",
+    "load-failed": "グラフのデータを読み込めませんでした",
+    "render-failed": "このデバイスではグラフを利用できません",
+    "render-failed-description": "このデバイスでグラフィックレンダラーを起動できませんでした。ノートは安全です。",
+    "try-again": "再試行",
+    "aria-label": "{nodeCount, plural, other {ノード # 個}}、{edgeCount, plural, other {つながり # 件}}のナレッジグラフ{summary, select, none {。} other {（{summary}）。}}",
     "nodes-list-label": "グラフノード",
-    "node-list-item": "{label} ({type})"
+    "node-list-item": "{label}（{type}）"
   },
   "empty": {
-    "title": "あなたのナレッジグラフ",
-    "description": "メモ、タスク、プロジェクト間のつながりが、インタラクティブなグラフとしてここに表示されます。",
-    "link-title": "メモをリンクする",
-    "link-description": "[[wikilinks]] を使用してメモ間でアイデアを結び付ける",
-    "discover-title": "パターンを発見する",
+    "title": "ナレッジグラフ",
+    "description": "ノート、タスク、プロジェクト間のつながりが、インタラクティブなグラフとしてここに表示されます。",
+    "link-title": "ノートをリンク",
+    "link-description": "[[wikilinks]] を使ってノート間のアイデアをつなげましょう",
+    "discover-title": "パターンを発見",
     "discover-description": "つながりが増えると、クラスターとテーマが自然に現れます"
   },
   "entity": {
-    "note": "メモ",
-    "notes": "メモ",
-    "journal": "日記",
-    "journals": "雑誌",
+    "note": "ノート",
+    "notes": "ノート",
+    "journal": "ジャーナル",
+    "journals": "ジャーナル",
     "task": "タスク",
     "tasks": "タスク",
     "project": "プロジェクト",
     "projects": "プロジェクト",
     "tag": "タグ",
     "tags": "タグ",
-    "orphan": "孤児",
-    "orphans": "孤児",
-    "unresolved": "未解決"
+    "orphan": "孤立ノード",
+    "orphans": "孤立ノード",
+    "unresolved": "未解決",
+    "category": "カテゴリー"
   },
   "summary": {
-    "node-type-count": "{count} {label}"
+    "node-type-count": "{label} {count} 件"
   },
   "control": {
     "show-settings": "グラフ設定",
-    "hide-settings": "設定を非表示にする",
-    "reset-filters": "フィルターをリセットする",
+    "hide-settings": "設定を非表示",
+    "reset-filters": "フィルターをリセット",
     "filters": "フィルター",
-    "display": "ディスプレイ",
-    "show-labels": "ラベルを表示する",
+    "display": "表示",
+    "show-labels": "ラベルを表示",
+    "live-motion": "リアルタイムの動き",
     "focus-depth": "深さ {depth}",
-    "clear-focus": "フォーカスされたノードをクリアする"
+    "clear-focus": "ノードのフォーカスを解除",
+    "relayout": "再レイアウト",
+    "categories": "タグのカテゴリー",
+    "color-by-category": "カテゴリーで色分け",
+    "no-categories": "タグハブでタグをカテゴリーにまとめると、グラフをカテゴリーごとに色分けしたり折りたたんだりできます。",
+    "collapse-category": "{name} を折りたたむ",
+    "expand-category": "{name} を展開",
+    "uncategorized": "未分類"
   },
   "filter": {
-    "notes": "注意事項",
-    "journals": "雑誌",
+    "notes": "ノート",
+    "journals": "ジャーナル",
     "tasks": "タスク",
     "projects": "プロジェクト",
     "tags": "タグ",
-    "orphans": "孤児たち",
+    "orphans": "孤立ノード",
+    "canvas-edges": "キャンバス上のつながり",
     "toggle-entity": "{label} を切り替え",
     "toggle-orphans": "孤立ノードの切り替え"
   },
   "search": {
-    "placeholder": "ノードを検索...",
-    "clear": "グラフ検索をクリアする"
+    "placeholder": "ノードを検索…",
+    "clear": "グラフの検索をクリア"
   },
   "context-menu": {
     "untitled": "無題",
-    "focus-node": "このノードに注目",
+    "focus-node": "このノードにフォーカス",
     "open-new-tab": "新しいタブで開く",
-    "create-note": "メモを作成する",
-    "copy-title": "タイトルをコピー"
+    "create-note": "ノートを作成",
+    "copy-title": "タイトルをコピー",
+    "link-to": "リンク先を指定…",
+    "add-tag": "タグを追加…",
+    "back": "戻る",
+    "link-search": "ノートを検索…",
+    "tag-search": "タグを検索または作成…",
+    "no-matches": "一致する項目はありません",
+    "create-tag": "#{tag} を作成",
+    "remove-link": "{title} へのリンクを削除",
+    "unpin": "ピン留めを解除",
+    "collapse-category": "{name} を折りたたむ",
+    "expand-category": "{name} を展開"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {#接続} other {# 接続}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, other {つながり # 件}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, other {# 件}}",
+    "click-to-expand": "クリックして展開"
   },
   "local-panel": {
-    "loading": "グラフを読み込んでいます...",
-    "empty": "接続が見つかりません",
+    "loading": "グラフを読み込み中…",
+    "empty": "つながりが見つかりません",
     "open-full": "グラフ全体を開く",
-    "close": "グラフを閉じる"
+    "close": "グラフを閉じる",
+    "pin": "このノートにピン留め",
+    "unpin": "ピン留めを解除して開いているノートに追従",
+    "pinned-to": "ピン留め中：{title}"
+  },
+  "edit": {
+    "linked": "「{property}」で {source} から {target} にリンクしました",
+    "unlinked": "{source} から {target} へのリンクを削除しました",
+    "already-linked": "{source} はすでに {target} にリンクしています",
+    "property-conflict": "このノートの「{property}」はリレーションプロパティではないため、リンクを追加しませんでした",
+    "link-unsupported": "リンクはノート間でのみ作成できます",
+    "link-failed": "リンクを追加できませんでした",
+    "unlink-failed": "リンクを削除できませんでした",
+    "tag-added": "{note} に #{tag} を追加しました",
+    "tag-exists": "このノートにはすでに #{tag} があります",
+    "tag-failed": "タグを追加できませんでした",
+    "undo-failed": "変更を元に戻せませんでした"
+  },
+  "relayout-confirm": {
+    "title": "グラフを再レイアウトしますか？",
+    "description": "ピン留めされたノードはすべて解放され、グラフが新しく配置し直されます。保存済みのレイアウトは破棄されます。",
+    "cancel": "キャンセル",
+    "confirm": "再レイアウト"
+  },
+  "views": {
+    "title": "保存済みビュー",
+    "unsaved": "未保存のビュー",
+    "edited": "編集済み",
+    "empty": "保存済みビューはまだありません",
+    "save-as": "新しいビューとして保存…",
+    "update": "「{name}」を更新",
+    "delete": "ビュー {name} を削除",
+    "save-dialog-title": "グラフのビューを保存",
+    "save-dialog-placeholder": "ビュー名",
+    "cancel": "キャンセル",
+    "save": "保存"
   }
 }

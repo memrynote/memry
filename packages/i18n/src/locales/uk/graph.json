@@ -1,16 +1,18 @@
 {
   "page": {
-    "loading": "Завантаження графіка...",
-    "load-failed": "Не вдалося завантажити дані графіка",
-    "try-again": "Спробуйте ще раз",
-    "aria-label": "Граф знань з {nodeCount, plural, one {# вузол} other {# вузли}} та {edgeCount, plural, one {# з'єднання} other {# з'єднання}}{summary, select, none {.} other {: {summary}.}}",
+    "loading": "Завантаження графа…",
+    "load-failed": "Не вдалося завантажити дані графа",
+    "render-failed": "Граф недоступний на цьому пристрої",
+    "render-failed-description": "Цьому пристрою не вдалося запустити графічний рендерер. Нотатки не постраждали.",
+    "try-again": "Спробувати ще раз",
+    "aria-label": "Граф знань із {nodeCount, plural, one {# вузлом} few {# вузлами} many {# вузлами} other {# вузла}} і {edgeCount, plural, one {# зв’язком} few {# зв’язками} many {# зв’язками} other {# зв’язку}}{summary, select, none {.} other {: {summary}.}}",
     "nodes-list-label": "Вузли графа",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "Ваш граф знань",
-    "description": "З’єднання між вашими нотатками, завданнями та проєктами з’являться тут у вигляді інтерактивного графа.",
-    "link-title": "Пов’язати ваші нотатки",
+    "title": "Граф знань",
+    "description": "Зв’язки між нотатками, завданнями й проєктами з’являться тут у вигляді інтерактивного графа.",
+    "link-title": "Пов’язуйте нотатки",
     "link-description": "Використовуйте [[wikilinks]] для зв’язку ідей між нотатками",
     "discover-title": "Відкрийте закономірності",
     "discover-description": "Зі зростанням кількості зв’язків кластери та теми будуть виникати природно"
@@ -22,13 +24,14 @@
     "journals": "щоденники",
     "task": "завдання",
     "tasks": "завдання",
-    "project": "проект",
+    "project": "проєкт",
     "projects": "проєкти",
-    "tag": "позначка",
+    "tag": "тег",
     "tags": "теги",
-    "orphan": "сирота",
-    "orphans": "сироти",
-    "unresolved": "нерозв’язані"
+    "orphan": "без зв’язків",
+    "orphans": "без зв’язків",
+    "unresolved": "ще не створені",
+    "category": "категорія"
   },
   "summary": {
     "node-type-count": "{count} {label}"
@@ -40,38 +43,95 @@
     "filters": "Фільтри",
     "display": "Відображення",
     "show-labels": "Показати підписи",
+    "live-motion": "Жива анімація",
     "focus-depth": "глибина {depth}",
-    "clear-focus": "Очистити виділений вузол"
+    "clear-focus": "Скинути фокус",
+    "relayout": "Перебудувати макет",
+    "categories": "Категорії тегів",
+    "color-by-category": "Колір за категоріями",
+    "no-categories": "Згрупуйте теги в категорії на сторінці тегів, щоб розфарбовувати й згортати граф за категоріями.",
+    "collapse-category": "Згорнути «{name}»",
+    "expand-category": "Розгорнути «{name}»",
+    "uncategorized": "Без категорії"
   },
   "filter": {
-    "notes": "Примітки",
-    "journals": "Журнали",
+    "notes": "Нотатки",
+    "journals": "Щоденник",
     "tasks": "Завдання",
-    "projects": "Проекти",
+    "projects": "Проєкти",
     "tags": "Теги",
-    "orphans": "Сироти",
-    "toggle-entity": "Перемкнути {label}",
-    "toggle-orphans": "Перемкнути вузли-сироти"
+    "orphans": "Без зв’язків",
+    "canvas-edges": "Зв’язки на полотнах",
+    "toggle-entity": "Показати або сховати: {label}",
+    "toggle-orphans": "Показати або сховати вузли без зв’язків"
   },
   "search": {
-    "placeholder": "Пошук вузлів...",
-    "clear": "Очистити пошук по графу"
+    "placeholder": "Шукати вузли…",
+    "clear": "Очистити пошук у графі"
   },
   "context-menu": {
     "untitled": "Без назви",
     "focus-node": "Зосередитися на цьому вузлі",
     "open-new-tab": "Відкрити у новій вкладці",
     "create-note": "Створити нотатку",
-    "copy-title": "Скопіювати заголовок"
+    "copy-title": "Копіювати назву",
+    "link-to": "Додати посилання на…",
+    "add-tag": "Додати тег…",
+    "back": "Назад",
+    "link-search": "Шукати нотатки…",
+    "tag-search": "Шукати або створити тег…",
+    "no-matches": "Немає збігів",
+    "create-tag": "Створити #{tag}",
+    "remove-link": "Прибрати посилання на «{title}»",
+    "unpin": "Відкріпити",
+    "collapse-category": "Згорнути «{name}»",
+    "expand-category": "Розгорнути «{name}»"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {# з'єднання} other {# з'єднання}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# зв’язок} few {# зв’язки} many {# зв’язків} other {# зв’язку}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# елемент} few {# елементи} many {# елементів} other {# елемента}}",
+    "click-to-expand": "Натисніть, щоб розгорнути"
   },
   "local-panel": {
-    "loading": "Завантаження графіка...",
-    "empty": "З’єднань не знайдено",
+    "loading": "Завантаження графа…",
+    "empty": "Зв’язків не знайдено",
     "open-full": "Відкрити повний граф",
-    "close": "Закрити граф"
+    "close": "Закрити граф",
+    "pin": "Закріпити за цією нотаткою",
+    "unpin": "Відкріпити й стежити за відкритою нотаткою",
+    "pinned-to": "Закріплено: {title}"
+  },
+  "edit": {
+    "linked": "«{source}» пов’язано з «{target}» у властивості «{property}»",
+    "unlinked": "Посилання з «{source}» на «{target}» прибрано",
+    "already-linked": "«{source}» уже посилається на «{target}»",
+    "property-conflict": "Властивість «{property}» у цій нотатці не є властивістю-зв’язком, тому посилання не додано",
+    "link-unsupported": "Посилання можна створювати лише між нотатками",
+    "link-failed": "Не вдалося додати посилання",
+    "unlink-failed": "Не вдалося прибрати посилання",
+    "tag-added": "Тег #{tag} додано до «{note}»",
+    "tag-exists": "Ця нотатка вже має тег #{tag}",
+    "tag-failed": "Не вдалося додати тег",
+    "undo-failed": "Не вдалося скасувати зміну"
+  },
+  "relayout-confirm": {
+    "title": "Перебудувати макет графа?",
+    "description": "Усі закріплені вузли буде відкріплено, і граф набуде нового розташування. Збережений макет буде відкинуто.",
+    "cancel": "Скасувати",
+    "confirm": "Перебудувати"
+  },
+  "views": {
+    "title": "Збережені вигляди",
+    "unsaved": "Незбережений вигляд",
+    "edited": "Змінено",
+    "empty": "Збережених виглядів ще немає",
+    "save-as": "Зберегти як новий вигляд…",
+    "update": "Оновити «{name}»",
+    "delete": "Видалити вигляд «{name}»",
+    "save-dialog-title": "Зберегти вигляд графа",
+    "save-dialog-placeholder": "Назва вигляду",
+    "cancel": "Скасувати",
+    "save": "Зберегти"
   }
 }

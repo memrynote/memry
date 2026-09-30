@@ -1,25 +1,27 @@
 {
   "page": {
-    "loading": "Cargando gráfico...",
-    "load-failed": "No se pudieron cargar los datos del gráfico",
+    "loading": "Cargando grafo…",
+    "load-failed": "No se pudieron cargar los datos del grafo",
+    "render-failed": "El grafo no está disponible en este dispositivo",
+    "render-failed-description": "Este dispositivo no pudo iniciar el motor gráfico. Tus notas están a salvo.",
     "try-again": "Inténtalo de nuevo",
-    "aria-label": "Gráfico de conocimiento con {nodeCount, plural, one {Nodo #} other {Nodos #}} y {edgeCount, plural, one {Conexión #} other {Conexiones #}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "Nodos gráficos",
+    "aria-label": "Grafo de conocimiento con {nodeCount, plural, one {# nodo} other {# nodos}} y {edgeCount, plural, one {# conexión} other {# conexiones}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Nodos del grafo",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "Tu gráfico de conocimiento",
-    "description": "Las conexiones entre sus notas, tareas y proyectos aparecerán aquí como un gráfico interactivo.",
-    "link-title": "Vincula tus notas",
-    "link-description": "Utilice [[wikilinks]] para conectar ideas entre notas",
+    "title": "Tu grafo de conocimiento",
+    "description": "Las conexiones entre tus notas, tareas y proyectos aparecerán aquí como un grafo interactivo.",
+    "link-title": "Enlaza tus notas",
+    "link-description": "Usa [[enlaces wiki]] para conectar ideas entre notas",
     "discover-title": "Descubre patrones",
     "discover-description": "A medida que crezcan las conexiones, los grupos y temas surgirán de forma natural."
   },
   "entity": {
     "note": "nota",
     "notes": "notas",
-    "journal": "diario",
-    "journals": "revistas",
+    "journal": "entrada del diario",
+    "journals": "entradas del diario",
     "task": "tarea",
     "tasks": "tareas",
     "project": "proyecto",
@@ -28,50 +30,108 @@
     "tags": "etiquetas",
     "orphan": "huérfano",
     "orphans": "huérfanos",
-    "unresolved": "sin resolver"
+    "unresolved": "sin resolver",
+    "category": "categoría"
   },
   "summary": {
     "node-type-count": "{count} {label}"
   },
   "control": {
-    "show-settings": "Configuración de gráficos",
-    "hide-settings": "Ocultar configuración",
+    "show-settings": "Ajustes del grafo",
+    "hide-settings": "Ocultar ajustes",
     "reset-filters": "Restablecer filtros",
     "filters": "Filtros",
-    "display": "Pantalla",
-    "show-labels": "Mostrar etiquetas",
+    "display": "Visualización",
+    "show-labels": "Mostrar nombres",
+    "live-motion": "Movimiento en tiempo real",
     "focus-depth": "profundidad {depth}",
-    "clear-focus": "Borrar nodo enfocado"
+    "clear-focus": "Quitar el foco del nodo",
+    "relayout": "Reorganizar",
+    "categories": "Categorías de etiquetas",
+    "color-by-category": "Colorear por categoría",
+    "no-categories": "Agrupa las etiquetas en categorías en el centro de etiquetas para colorear y contraer el grafo por categoría.",
+    "collapse-category": "Contraer {name}",
+    "expand-category": "Expandir {name}",
+    "uncategorized": "Sin categoría"
   },
   "filter": {
     "notes": "Notas",
-    "journals": "Revistas",
+    "journals": "Diario",
     "tasks": "Tareas",
     "projects": "Proyectos",
     "tags": "Etiquetas",
     "orphans": "Huérfanos",
-    "toggle-entity": "Alternar {label}",
-    "toggle-orphans": "Alternar nodos huérfanos"
+    "canvas-edges": "Conexiones de lienzo",
+    "toggle-entity": "Mostrar u ocultar {label}",
+    "toggle-orphans": "Mostrar u ocultar nodos huérfanos"
   },
   "search": {
-    "placeholder": "Buscar nodos...",
-    "clear": "Borrar búsqueda de gráficos"
+    "placeholder": "Buscar nodos…",
+    "clear": "Borrar la búsqueda del grafo"
   },
   "context-menu": {
     "untitled": "Sin título",
     "focus-node": "Centrarse en este nodo",
-    "open-new-tab": "Abrir en nueva pestaña",
+    "open-new-tab": "Abrir en una pestaña nueva",
     "create-note": "Crear nota",
-    "copy-title": "Copiar título"
+    "copy-title": "Copiar título",
+    "link-to": "Enlazar a…",
+    "add-tag": "Añadir etiqueta…",
+    "back": "Atrás",
+    "link-search": "Buscar notas…",
+    "tag-search": "Buscar o crear una etiqueta…",
+    "no-matches": "Sin coincidencias",
+    "create-tag": "Crear #{tag}",
+    "remove-link": "Quitar el enlace a {title}",
+    "unpin": "Dejar de fijar",
+    "collapse-category": "Contraer {name}",
+    "expand-category": "Expandir {name}"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {Conexión #} other {Conexiones #}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# conexión} other {# conexiones}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# elemento} other {# elementos}}",
+    "click-to-expand": "Haz clic para expandir"
   },
   "local-panel": {
-    "loading": "Cargando gráfico...",
+    "loading": "Cargando grafo…",
     "empty": "No se encontraron conexiones",
-    "open-full": "Abrir gráfico completo",
-    "close": "Cerrar gráfico"
+    "open-full": "Abrir grafo completo",
+    "close": "Cerrar grafo",
+    "pin": "Fijar a esta nota",
+    "unpin": "Dejar de fijar y seguir la nota abierta",
+    "pinned-to": "Fijado: {title}"
+  },
+  "edit": {
+    "linked": "Se enlazó {source} con {target} en «{property}»",
+    "unlinked": "Se quitó el enlace de {source} a {target}",
+    "already-linked": "{source} ya enlaza con {target}",
+    "property-conflict": "«{property}» no es una propiedad de relación en esta nota, así que no se añadió el enlace",
+    "link-unsupported": "Solo se pueden crear enlaces entre notas",
+    "link-failed": "No se pudo añadir el enlace",
+    "unlink-failed": "No se pudo quitar el enlace",
+    "tag-added": "Se añadió #{tag} a {note}",
+    "tag-exists": "Esta nota ya tiene #{tag}",
+    "tag-failed": "No se pudo añadir la etiqueta",
+    "undo-failed": "No se pudo deshacer el cambio"
+  },
+  "relayout-confirm": {
+    "title": "¿Reorganizar el grafo?",
+    "description": "Se sueltan todos los nodos fijados y el grafo se reorganiza desde cero. Se descarta la disposición guardada.",
+    "cancel": "Cancelar",
+    "confirm": "Reorganizar"
+  },
+  "views": {
+    "title": "Vistas guardadas",
+    "unsaved": "Vista sin guardar",
+    "edited": "Editada",
+    "empty": "Aún no hay vistas guardadas",
+    "save-as": "Guardar como vista nueva…",
+    "update": "Actualizar «{name}»",
+    "delete": "Eliminar la vista {name}",
+    "save-dialog-title": "Guardar vista del grafo",
+    "save-dialog-placeholder": "Nombre de la vista",
+    "cancel": "Cancelar",
+    "save": "Guardar"
   }
 }

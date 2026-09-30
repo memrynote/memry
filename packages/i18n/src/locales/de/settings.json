@@ -11,90 +11,171 @@
         "application": "Anwendung",
         "editing": "Bearbeitung",
         "modules": "Module",
-        "services": "Dienstleistungen",
-        "data": "Daten"
+        "services": "Dienste",
+        "data": "Daten",
+        "workspace": "Arbeitsbereich",
+        "features": "Funktionen"
       },
       "items": {
         "account": "Konto",
         "general": "Allgemein",
         "templates": "Vorlagen",
-        "editor": "Herausgeber",
-        "journal": "Tagebuch",
+        "editor": "Editor",
+        "journal": "Journal",
         "tasks": "Aufgaben",
+        "inbox": "Eingang",
         "calendar": "Kalender",
         "appearance": "Aussehen",
-        "shortcuts": "Verknüpfungen",
+        "shortcuts": "Tastenkürzel",
+        "commandLine": "Befehlszeile",
         "ai": "KI-Assistent",
         "vault": "Tresor",
-        "tags": "Schlagworte",
+        "tags": "Tags",
         "properties": "Eigenschaften",
-        "commandLine": "Befehlszeile",
-        "features": "Funktionen",
         "import": "Import",
-        "inbox": "Posteingang"
+        "features": "Funktionen",
+        "modules": "Module",
+        "aiAgents": "KI und Agenten",
+        "tagsProperties": "Tags und Eigenschaften",
+        "vaultData": "Tresor und Daten"
+      }
+    },
+    "drillIn": {
+      "back": "Zurück zu {section}"
+    },
+    "modules": {
+      "configure": "{module} konfigurieren"
+    },
+    "vaultImport": {
+      "label": "Aus einer anderen App importieren",
+      "description": "Notion, Evernote, Bear, Apple Notes, Todoist und mehr",
+      "action": "Importieren…"
+    },
+    "search": {
+      "placeholder": "Einstellungen durchsuchen",
+      "count": "{count, plural, one {# Einstellung} other {# Einstellungen}}",
+      "empty": "Keine passenden Einstellungen",
+      "move": "navigieren",
+      "open": "öffnen"
+    }
+  },
+  "features": {
+    "header": {
+      "title": "Funktionen",
+      "subtitle": "Aktiviere oder deaktiviere Teile der App. Aus = in der Seitenleiste ausgegraut und überall deaktiviert."
+    },
+    "items": {
+      "home": {
+        "label": "Start",
+        "description": "Dashboard zum Einstieg"
+      },
+      "inbox": {
+        "label": "Eingang",
+        "description": "Schnell erfassen und sichten"
+      },
+      "journal": {
+        "label": "Journal",
+        "description": "Tägliche Notizen"
+      },
+      "tasks": {
+        "label": "Aufgaben",
+        "description": "To-dos und Fälligkeitsdaten"
+      },
+      "calendar": {
+        "label": "Kalender",
+        "description": "Termine und Zeitplan"
+      },
+      "graph": {
+        "label": "Graph",
+        "description": "Notizverbindungen"
+      },
+      "spatialCanvas": {
+        "label": "Canvas",
+        "description": "Räumliche Boards zum Anordnen und Verlinken von Notizen"
       }
     }
   },
   "general": {
     "header": {
       "title": "Allgemein",
-      "subtitle": "Anwendungsstart und Tab-Verhalten",
-      "loading": "Einstellungen werden geladen..."
+      "subtitle": "Sprache, Start, Tabs und Privatsphäre.",
+      "loading": "Einstellungen werden geladen…"
     },
     "groups": {
       "startup": "Anwendungsstart",
       "updates": "Aktualisierungen",
       "languageRegion": "Sprache und Region",
       "tabBehavior": "Tab-Verhalten",
+      "window": "Fensterverhalten",
       "fileCreation": "Dateierstellung",
-      "privacy": "Privatsphäre"
+      "privacy": "Privatsphäre",
+      "startupWindows": "Start und Fenster",
+      "newNotes": "Neue Notizen"
     },
     "startup": {
       "launchAtLogin": {
         "label": "Beim Anmelden starten",
-        "description": "Starten Sie memrynote, wenn Sie sich anmelden",
-        "error": "Der Aktualisierungsstart beim Booten ist fehlgeschlagen"
+        "description": "Startet memrynote, wenn du dich anmeldest",
+        "error": "Autostart-Einstellung konnte nicht aktualisiert werden"
       }
     },
     "updates": {
+      "autoCheck": {
+        "label": "Automatisch nach Updates suchen",
+        "description": "Beim Start und regelmäßig während der Nutzung nach neuen Versionen suchen.",
+        "error": "Die Einstellung für die automatische Prüfung konnte nicht aktualisiert werden"
+      },
+      "autoDownload": {
+        "label": "Updates automatisch herunterladen",
+        "description": "Neue Versionen im Hintergrund herunterladen und ohne Nachfrage installieren.",
+        "error": "Die Einstellung für den automatischen Download konnte nicht aktualisiert werden"
+      },
       "appUpdates": "App-Updates",
       "installedVersion": "Installierte Version {version}",
       "availableVersion": "Verfügbare Version {version}",
       "unsupported": "Mit gepackten Builds können Updates von GitHub-Releases überprüft, heruntergeladen und installiert werden",
       "available": "memrynote {version} steht zum Download bereit",
-      "downloadingLatest": "Laden Sie die neueste Version herunter",
-      "downloadingLatestPercent": "Herunterladen der neuesten Version ({percent}%)",
+      "downloadingLatest": "Neueste Version wird heruntergeladen",
+      "downloadingLatestPercent": "Neueste Version wird heruntergeladen ({percent} %)",
       "downloaded": "memrynote {version} ist zur Installation bereit",
-      "upToDate": "Bei dieser Installation handelt es sich um die neueste veröffentlichte Version",
-      "checking": "GitHub-Releases auf eine neuere Version prüfen",
-      "idle": "Suchen Sie nach neuen Versionen und installieren Sie diese, ohne die App zu verlassen",
-      "unsupportedToast": "Automatische Updates sind nur in Paketversionen verfügbar",
+      "upToDate": "Du verwendest die neueste veröffentlichte Version",
+      "checking": "GitHub-Releases werden nach einer neueren Version durchsucht",
+      "idle": "Suche nach neuen Versionen und installiere sie, ohne die App zu verlassen",
+      "unsupportedToast": "Automatische Updates gibt es nur in gepackten Versionen",
       "upToDateToast": "memrynote {version} ist aktuell",
-      "actionFailed": "Die Aktualisierungsaktion ist fehlgeschlagen",
+      "actionFailed": "Update-Aktion konnte nicht ausgeführt werden",
       "actions": {
-        "checking": "Überprüfen...",
-        "available": "Laden Sie das Update herunter",
-        "downloading": "Herunterladen...",
-        "downloadingPercent": "{percent}% wird heruntergeladen",
-        "downloaded": "Starten Sie die Installation neu",
-        "idle": "Suchen Sie nach Updates"
+        "checking": "Wird geprüft…",
+        "available": "Update herunterladen",
+        "downloading": "Wird heruntergeladen…",
+        "downloadingPercent": "Wird heruntergeladen: {percent} %",
+        "downloaded": "Neu starten und installieren",
+        "idle": "Jetzt prüfen"
       },
-      "autoCheck": {
-        "description": "Beim Start und regelmäßig während der Nutzung nach neuen Versionen suchen.",
-        "error": "Die Einstellung für die automatische Prüfung konnte nicht aktualisiert werden",
-        "label": "Automatisch nach Updates suchen"
+      "label": "Updates",
+      "checkedAgo": "{status} · geprüft {time}",
+      "status": {
+        "unsupported": "In gepackten Versionen verfügbar",
+        "idle": "Noch nicht geprüft",
+        "checking": "Wird geprüft…",
+        "upToDate": "Aktuell",
+        "available": "Version {version} verfügbar",
+        "downloading": "Wird heruntergeladen…",
+        "downloadingPercent": "Wird heruntergeladen: {percent} %",
+        "downloaded": "Version {version} bereit zur Installation"
       },
-      "autoDownload": {
-        "description": "Neue Versionen im Hintergrund herunterladen und ohne Nachfrage installieren.",
-        "error": "Die Einstellung für den automatischen Download konnte nicht aktualisiert werden",
-        "label": "Updates automatisch herunterladen"
+      "mode": {
+        "label": "Update-Modus",
+        "off": "Nicht prüfen",
+        "notify": "Nur benachrichtigen",
+        "auto": "Automatisch herunterladen"
       }
     },
     "language": {
       "label": "Sprache",
-      "helper": "Die meisten Apps werden sofort aktualisiert. Einige Texte auf Systemebene – bereits angezeigte Benachrichtigungen, Dock-Beschriftung, Fenstertitelleiste – werden nach dem nächsten Start aktualisiert.",
-      "changed": "Die Sprache wurde in {nativeName} geändert",
-      "failed": "Die Sprache konnte nicht geändert werden. Bitte versuchen Sie es erneut."
+      "helper": "Der Großteil der App wird sofort aktualisiert. Einige Texte auf Systemebene – bereits angezeigte Benachrichtigungen, Dock-Beschriftung, Fenstertitelleiste – werden erst nach dem nächsten Start aktualisiert.",
+      "changed": "Sprache auf {nativeName} umgestellt",
+      "failed": "Die Sprache konnte nicht geändert werden. Versuch es erneut."
     },
     "clockFormat": {
       "label": "Zeitformat",
@@ -105,100 +186,133 @@
       },
       "error": "Zeitformat konnte nicht aktualisiert werden"
     },
+    "dateFormat": {
+      "label": "Datumsformat",
+      "description": "Wie Datumsangaben angezeigt werden",
+      "options": {
+        "MM/DD/YYYY": "MM/TT/JJJJ (USA)",
+        "DD/MM/YYYY": "TT/MM/JJJJ",
+        "YYYY-MM-DD": "JJJJ-MM-TT (ISO)",
+        "DD": {
+          "MM": {
+            "YYYY": "TT.MM.JJJJ"
+          }
+        }
+      },
+      "error": "Datumsformat konnte nicht aktualisiert werden"
+    },
     "tabs": {
+      "openPagesInNewTab": {
+        "label": "Seiten in neuem Tab öffnen",
+        "description": "Wenn du eine Seite anklickst oder erstellst – Notizen, Ordner, Projekte, Canvas, Tags, Lesezeichen –, wird sie in einem neuen Tab geöffnet. Ist die Option aus, wird der aktuelle Tab wiederverwendet, auch beim Folgen von Links in einer Notiz; angeheftete Tabs werden nie ersetzt. „In neuem Tab öffnen“, „Seitlich öffnen“ und Mittelklick öffnen immer einen neuen Tab."
+      },
       "restoreSession": {
-        "label": "Sitzung beim Start wiederherstellen",
-        "description": "Öffnen Sie die Tabs Ihrer letzten Sitzung erneut"
+        "label": "Tabs beim Start wiederherstellen",
+        "description": "Öffnet die Tabs und geteilten Ansichten deiner letzten Sitzung erneut."
       },
       "closeButton": {
         "label": "Schaltfläche zum Schließen des Tabs",
         "description": "Wann die Schaltfläche „Schließen“ angezeigt werden soll",
         "options": {
           "always": "Immer sichtbar",
-          "hover": "Beim Schweben anzeigen",
-          "active": "Nur auf der aktiven Registerkarte"
+          "hover": "Beim Darüberfahren",
+          "active": "Nur beim aktiven Tab"
         }
       },
       "error": "Die Einstellung konnte nicht aktualisiert werden"
     },
+    "window": {
+      "minimizeToTray": {
+        "label": "Beim Schließen in der Menüleiste weiterlaufen",
+        "description": "Beim Schließen des Fensters wird memrynote in den Infobereich verschoben statt beendet. Klicke auf das Symbol im Infobereich, um es zurückzuholen. Unter macOS bleibt die App außerdem im Dock; auf Linux-Desktops ohne Infobereich wird das Fenster wie gewohnt geschlossen.",
+        "error": "Einstellung zum Minimieren in den Infobereich konnte nicht aktualisiert werden"
+      }
+    },
     "fileCreation": {
       "createInSelectedFolder": {
         "label": "Im ausgewählten Ordner erstellen",
-        "description": "Neue Notizen und Ordner werden im aktuell ausgewählten Ordner erstellt. Wenn diese Option deaktiviert ist, werden Elemente immer im Stammverzeichnis erstellt."
+        "description": "Neue Notizen und Ordner werden im aktuell ausgewählten Ordner erstellt. Wenn diese Option deaktiviert ist, werden Elemente immer im Stammordner des Tresors erstellt."
       },
       "defaultNoteFolder": {
-        "description": "Leer = Vault-Stammverzeichnis",
-        "label": "Standardspeicherort für neue Notizen",
-        "placeholder": "notizen"
+        "label": "Standardspeicherort",
+        "description": "Wird verwendet, wenn in der Seitenleiste kein Ordner ausgewählt ist.",
+        "placeholder": "notizen",
+        "root": "/"
       }
     },
     "privacy": {
       "telemetry": {
-        "label": "Teilen Sie anonyme Nutzungsmetriken",
-        "description": "Es handelt sich lediglich um anonyme Messwerte – es werden niemals Notizinhalte, Suchanfragen, Dateipfade, E-Mails oder Roh-IDs gesendet.",
+        "label": "Anonyme Nutzungsdaten teilen",
+        "description": "Niemals Notizinhalte, Titel oder Namen. Enthält bereinigte Diagnoseprotokolle.",
         "error": "Die Telemetrieeinstellung konnte nicht aktualisiert werden"
       },
+      "autoSendDiagnostics": {
+        "label": "Fehlerberichte automatisch senden",
+        "description": "Bereinigte Protokolle, wenn ein Fehlerbildschirm erscheint. Aus = jedes Mal nachfragen.",
+        "error": "Einstellung für Fehlerberichte konnte nicht aktualisiert werden"
+      },
       "diagnostics": {
+        "title": "Diagnosebericht senden?",
+        "consent": "Einmalig einen Diagnosebericht senden? Er enthält nur bereinigte technische Protokolle – keine Notizinhalte.",
         "building": "Bericht wird vorbereitet…",
-        "consent": "Einmalig einen Diagnosebericht senden? Er enthält nur bereinigte technische Protokolle — keine Notizinhalte.",
-        "error": "Der Diagnosebericht konnte nicht gesendet werden",
-        "notNow": "Nicht jetzt",
-        "previewError": "Der Diagnosebericht konnte nicht vorbereitet werden",
         "previewLabel": "Berichtsinhalt ansehen",
+        "snapshotLabel": "Geräteübersicht",
         "send": "Senden",
-        "sendReport": {
-          "button": "Diagnosebericht senden",
-          "description": "Sende einmalig einen Bericht mit bereinigten technischen Protokollen, damit wir ein Problem nachvollziehen können, das bei dir aufgetreten ist.",
-          "label": "Diagnosebericht"
-        },
         "sending": "Wird gesendet…",
-        "sent": "Bericht gesendet — Referenz {incidentId}",
-        "snapshotLabel": "Geräteinformationen",
-        "title": "Diagnosebericht senden?"
-      }
-    },
-    "dateFormat": {
-      "description": "Wie Kalenderdaten angezeigt werden",
-      "error": "Datumsformat konnte nicht aktualisiert werden",
-      "label": "Datumsformat",
-      "options": {
-        "DD.MM.YYYY": "DD.MM.YYYY",
-        "DD/MM/YYYY": "DD/MM/YYYY",
-        "MM/DD/YYYY": "MM/DD/YYYY (US)",
-        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
+        "notNow": "Nicht jetzt",
+        "sent": "Bericht gesendet – Referenz {incidentId}",
+        "previewError": "Der Diagnosebericht konnte nicht vorbereitet werden",
+        "error": "Der Diagnosebericht konnte nicht gesendet werden",
+        "sendReport": {
+          "label": "Diagnosebericht",
+          "description": "Sende einmalig einen Bericht mit bereinigten technischen Protokollen, damit wir ein Problem nachvollziehen können, das bei dir aufgetreten ist.",
+          "button": "Bericht senden…"
+        }
       }
     }
   },
   "appearance": {
     "header": {
       "title": "Aussehen",
-      "subtitle": "Passen Sie das Erscheinungsbild an",
-      "loading": "Einstellungen werden geladen..."
+      "subtitle": "Passe das Erscheinungsbild an",
+      "loading": "Einstellungen werden geladen…"
     },
     "groups": {
-      "theme": "Thema",
+      "theme": "Design",
       "accentColor": "Akzentfarbe",
-      "typography": "Typografie"
+      "typography": "Typografie",
+      "zoom": "Zoom"
     },
     "theme": {
       "colorMode": {
         "label": "Farbmodus",
-        "description": "Wählen Sie Ihr bevorzugtes Thema",
+        "description": "Wähle dein bevorzugtes Design",
         "aria": "Farbmodus"
       },
       "options": {
-        "light": "Warm",
+        "light": "Hell",
         "white": "Weiß",
         "dark": "Dunkel",
         "system": "System"
       },
-      "error": "Das Thema konnte nicht aktualisiert werden"
+      "error": "Design konnte nicht aktualisiert werden"
+    },
+    "colorTheme": {
+      "default": "Memrynote",
+      "themes": "Memrynote-Designs",
+      "warm": "Warm",
+      "error": "Farbdesign konnte nicht aktualisiert werden",
+      "copy": "Design kopieren",
+      "copied": "Design in die Zwischenablage kopiert",
+      "copyError": "Design konnte nicht kopiert werden",
+      "import": "Design aus Zwischenablage importieren",
+      "importInvalid": "Die Zwischenablage enthält kein memrynote-Design"
     },
     "accent": {
-      "pick": "Wählen Sie eine Akzentfarbe",
+      "pick": "Akzentfarbe wählen",
       "custom": {
         "label": "Benutzerdefinierte Farbe",
-        "description": "Geben Sie einen Hexadezimalwert ein",
+        "description": "Gib einen Hexwert ein",
         "placeholder": "#000000"
       },
       "presets": {
@@ -211,36 +325,103 @@
         "pink": "Rosa",
         "orange": "Orange"
       },
-      "error": "Akzentfarbe konnte nicht aktualisiert werden"
+      "error": "Akzentfarbe konnte nicht aktualisiert werden",
+      "aria": "Vordefinierte Akzentfarbe",
+      "options": {
+        "theme": "Design",
+        "custom": "Benutzerdefiniert"
+      }
+    },
+    "colors": {
+      "background": "Hintergrund",
+      "foreground": "Vordergrund",
+      "forLight": "Für den hellen Modus",
+      "forDark": "Für den dunklen Modus",
+      "reset": "Farbe des Designs verwenden",
+      "pick": "Farbe wählen"
+    },
+    "advanced": {
+      "title": "Erweitert",
+      "reset": "Auf Standard zurücksetzen",
+      "error": "Einstellung konnte nicht aktualisiert werden",
+      "fontSizeDescription": "Grundgröße des Oberflächentexts",
+      "zoomDescription": "Skalierung des gesamten Fensters",
+      "reduceMotion": {
+        "label": "Bewegung reduzieren",
+        "description": "Animationen reduzieren oder Systemeinstellung übernehmen",
+        "options": {
+          "system": "System",
+          "on": "Ein"
+        }
+      },
+      "pointerCursors": {
+        "label": "Handzeiger verwenden",
+        "description": "Handzeiger über interaktiven Elementen anzeigen"
+      },
+      "fontSmoothing": {
+        "label": "Schriftglättung",
+        "description": "Dünnerer Text mit Graustufen-Kantenglättung unter macOS"
+      }
+    },
+    "zoom": {
+      "label": "Zoomstufe",
+      "description": "Gesamte Oberfläche skalieren",
+      "decrease": "Verkleinern",
+      "increase": "Vergrößern",
+      "reset": "Zoom auf Standard zurücksetzen",
+      "error": "Zoomstufe konnte nicht aktualisiert werden"
     },
     "typography": {
       "fontSize": {
         "label": "Schriftgröße",
-        "description": "Passen Sie die Basistextgröße an",
-        "aria": "Schriftgröße"
+        "description": "Grundgröße des Oberflächentexts in Pixeln",
+        "decrease": "Schrift verkleinern",
+        "increase": "Schrift vergrößern",
+        "reset": "Schriftgröße auf Standard zurücksetzen"
       },
       "fontFamily": {
         "label": "Schriftfamilie",
-        "description": "Primäre Schriftart für die Schnittstelle",
+        "description": "Primäre Schriftart der Oberfläche",
         "options": {
           "system": "Systemstandard",
           "sansSerif": "Ohne Serifen",
-          "serif": "Serif (Crimson Pro)",
+          "serif": "Mit Serifen (Crimson Pro)",
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
           "monospace": "Nichtproportional"
-        }
+        },
+        "sections": {
+          "builtin": "Integriert",
+          "system": "Auf diesem Computer installiert"
+        },
+        "searchPlaceholder": "Schriften durchsuchen…",
+        "empty": "Keine passenden Schriften",
+        "loading": "Installierte Schriften werden gelesen…",
+        "unavailable": "Installierte Schriften sind auf diesem System nicht verfügbar.",
+        "notInstalled": "Nicht auf diesem Computer installiert – Ersatzschrift wird verwendet."
       },
       "fontSizeError": "Die Schriftgröße konnte nicht aktualisiert werden",
       "fontFamilyError": "Die Schriftfamilie konnte nicht aktualisiert werden"
+    },
+    "v2": {
+      "groups": {
+        "text": "Text und Zoom"
+      },
+      "colorMode": "Farbmodus",
+      "colorTheme": "Design",
+      "accent": "Akzentfarbe",
+      "customColor": "Benutzerdefinierte Farbe",
+      "fontFamily": "Schriftfamilie",
+      "fontSize": "Schriftgröße",
+      "zoom": "Zoom"
     }
   },
   "editor": {
     "header": {
-      "title": "Herausgeber",
-      "subtitle": "Einstellungen und Voreinstellungen des Notizeditors",
-      "loading": "Einstellungen werden geladen..."
+      "title": "Editor",
+      "subtitle": "Einstellungen für den Notizeditor",
+      "loading": "Einstellungen werden geladen…"
     },
     "groups": {
       "layout": "Layout",
@@ -249,31 +430,33 @@
     },
     "width": {
       "label": "Editorbreite",
-      "description": "Maximale Breite des Schreibbereichs",
+      "description": "Gilt für alle Notizen und Journalseiten",
       "options": {
-        "narrow": "Schmal",
-        "medium": "Mittel",
-        "wide": "Breit",
-        "full": "Volle Breite",
-        "normal": "Normal"
+        "normal": "Normal",
+        "full": "Volle Breite"
       },
       "error": "Die Editorbreite konnte nicht aktualisiert werden"
     },
     "toolbarMode": {
-      "label": "Sticky-Formatierungssymbolleiste",
+      "label": "Fixierte Formatierungsleiste",
       "description": "Symbolleiste immer über dem Editor anzeigen",
       "error": "Der Symbolleistenmodus konnte nicht aktualisiert werden"
     },
     "spellCheck": {
+      "label": "Rechtschreibung prüfen",
       "description": "Falsch geschriebene Wörter in Notizen und Journalen unterstreichen",
-      "error": "Die Rechtschreibprüfung konnte nicht aktualisiert werden",
-      "label": "Rechtschreibung prüfen"
+      "error": "Die Rechtschreibprüfung konnte nicht aktualisiert werden"
+    },
+    "v2": {
+      "width": "Editorbreite",
+      "toolbarMode": "Fixierte Formatierungsleiste",
+      "spellCheck": "Rechtschreibung prüfen"
     }
   },
   "templates": {
     "header": {
       "title": "Vorlagen",
-      "subtitle": "Verwalten Sie Notizvorlagen für eine schnelle Erstellung"
+      "subtitle": "Verwalte Notizvorlagen zum schnellen Erstellen"
     },
     "actions": {
       "new": "Neue Vorlage",
@@ -282,15 +465,18 @@
       "delete": "Löschen"
     },
     "groups": {
-      "builtIn": "Eingebaut",
+      "builtIn": "Integriert",
       "myTemplates": "Meine Vorlagen"
     },
-    "loading": "Vorlagen werden geladen...",
+    "loading": "Vorlagen werden geladen…",
     "newTemplateTitle": "Neue Vorlage",
     "copySuffix": "{name} (Kopie)",
     "empty": {
       "title": "Noch keine benutzerdefinierten Vorlagen",
-      "description": "Erstellen Sie zunächst eine Vorlage"
+      "description": "Erstelle eine Vorlage, um loszulegen"
+    },
+    "preview": {
+      "notFound": "Diese Vorlage konnte nicht geladen werden."
     },
     "toasts": {
       "deleted": "Vorlage gelöscht",
@@ -301,44 +487,48 @@
     "dialogs": {
       "delete": {
         "title": "Vorlage löschen",
-        "description": "Sind Sie sicher, dass Sie diese Vorlage löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden. Notizen, die mit dieser Vorlage erstellt wurden, sind nicht betroffen."
+        "description": "Möchtest du diese Vorlage wirklich löschen? Das lässt sich nicht rückgängig machen. Notizen, die mit dieser Vorlage erstellt wurden, sind nicht betroffen."
       },
       "duplicate": {
-        "title": "Duplizierte Vorlage",
-        "description": "Geben Sie einen Namen für die neue Vorlagenkopie ein.",
+        "title": "Vorlage duplizieren",
+        "description": "Gib einen Namen für die Kopie der Vorlage ein.",
         "placeholder": "Vorlagenname"
       }
     },
-    "preview": {
-      "notFound": "Diese Vorlage konnte nicht geladen werden."
+    "v2": {
+      "new": "Neue Vorlage",
+      "groups": {
+        "mine": "Meine Vorlagen"
+      }
     }
   },
   "journal": {
     "header": {
-      "title": "Tagebuch",
-      "subtitle": "Journaleinstellungen und -präferenzen",
-      "loading": "Einstellungen werden geladen..."
+      "title": "Journal",
+      "subtitle": "Einstellungen für das Journal",
+      "loading": "Einstellungen werden geladen…"
     },
     "groups": {
       "defaultTemplate": "Standardvorlage",
+      "location": "Speicherort und Format",
       "sidebarVisibility": "Sichtbarkeit der Seitenleiste",
       "footer": "Fußzeile",
-      "location": "Speicherort & Format"
+      "weekdayTemplates": "Vorlagen pro Wochentag"
     },
     "template": {
       "label": "Vorlage",
       "description": "Neue Einträge beginnen mit dieser Vorlage",
-      "placeholder": "Wählen Sie eine Vorlage aus",
+      "placeholder": "Vorlage auswählen",
       "unknown": "Unbekannte Vorlage",
       "none": "Keine",
       "noneAsk": "Keine (jedes Mal nachfragen)",
       "updated": "Standardvorlage aktualisiert",
-      "cleared": "Standardvorlage gelöscht",
+      "cleared": "Standardvorlage entfernt",
       "error": "Standardvorlage konnte nicht aktualisiert werden"
     },
     "showSchedule": {
       "label": "Zeitplan anzeigen",
-      "description": "Zeigen Sie die heutigen Ereignisse und den Kalender an"
+      "description": "Heutige Termine und Kalender anzeigen"
     },
     "showTasks": {
       "label": "Aufgaben anzeigen",
@@ -346,154 +536,210 @@
     },
     "showAIConnections": {
       "label": "KI-Verbindungen anzeigen",
-      "description": "Zeigen Sie KI-gestützte Verbindungen zu verwandten Einträgen an"
+      "description": "KI-gestützte Verbindungen zu verwandten Einträgen anzeigen"
     },
     "showStatsFooter": {
       "label": "Statistik-Fußzeile anzeigen",
       "description": "Wortzahl, Lesezeit, Zeitstempel"
     },
-    "updateError": "Die Einstellung konnte nicht aktualisiert werden",
+    "folder": {
+      "label": "Journal-Ordner",
+      "description": "Ordner, in dem tägliche Notizen gespeichert werden",
+      "placeholder": "journal"
+    },
     "dateFormat": {
-      "description": "Dateinamenformat für tägliche Notizen (z. B. YYYY-MM-DD dddd)",
       "label": "Datumsformat",
+      "description": "Dateinamenformat für tägliche Notizen (z. B. YYYY-MM-DD dddd)",
       "placeholder": "YYYY-MM-DD",
       "renameNote": "Wenn du das Format änderst, werden vorhandene Journaldateien umbenannt. Eine Datei, deren neuer Name bereits vergeben ist, bleibt unverändert.",
       "tokensHelp": "Hilfe zum Datumsformat",
       "tokensNote": "Andere Zeichen bleiben unverändert. Wochentagsnamen sind immer auf Englisch.",
       "tokensTitle": "Formatplatzhalter"
     },
-    "folder": {
-      "description": "Ordner, in dem tägliche Notizen gespeichert werden",
-      "label": "Journal-Ordner",
-      "placeholder": "tagebuch"
-    },
     "preview": {
-      "description": "Pfad der heutigen Journaldatei",
-      "label": "Vorschau"
+      "label": "Vorschau",
+      "description": "Pfad der heutigen Journaldatei"
+    },
+    "updateError": "Die Einstellung konnte nicht aktualisiert werden",
+    "weekday": {
+      "toggle": "Für jeden Tag eine eigene Vorlage verwenden",
+      "toggleDescription": "Wähle eine Vorlage für jeden Wochentag",
+      "inherit": "Standard verwenden",
+      "inheritWith": "Standard · {name}",
+      "inheritNone": "Standard · keine",
+      "missing": "Gelöschte Vorlage",
+      "clear": "Zurücksetzen",
+      "updated": "Vorlage für {day} aktualisiert",
+      "cleared": "Vorlage für {day} zurückgesetzt",
+      "error": "Vorlage für {day} konnte nicht aktualisiert werden",
+      "summary": "{count} von 7 festgelegt"
+    },
+    "v2": {
+      "groups": {
+        "defaultTemplate": "Standardvorlage",
+        "location": "Speicherort und Format"
+      }
     }
   },
   "tasks": {
     "header": {
       "title": "Aufgaben",
-      "subtitle": "Konfigurieren Sie Aufgabenstandards und -verhalten",
-      "loading": "Einstellungen werden geladen..."
+      "subtitle": "Lege Standardwerte und Verhalten für Aufgaben fest",
+      "loading": "Einstellungen werden geladen…"
     },
     "groups": {
       "defaults": "Standardeinstellungen",
-      "calendar": "Kalender",
-      "inbox": "Posteingang"
+      "inbox": "Eingang"
     },
     "defaultProject": {
       "label": "Standardprojekt",
       "description": "Wird zugewiesen, wenn kein Projekt ausgewählt ist",
       "placeholder": "Kein Standardprojekt",
-      "none": "Keine Standardeinstellung (persönlich verwenden)",
+      "none": "Kein Standard („Personal“ verwenden)",
       "error": "Standardprojekt konnte nicht aktualisiert werden"
     },
     "sortOrder": {
-      "label": "Standardsortierreihenfolge",
+      "label": "Standardsortierung",
       "description": "So werden Aufgaben in der Listenansicht sortiert",
       "options": {
-        "manual": "Handbuch (Drag & Drop)",
+        "manual": "Manuell (Drag & Drop)",
         "dueDate": "Fälligkeitsdatum",
         "priority": "Priorität",
         "createdAt": "Erstellungsdatum"
       },
       "error": "Sortierreihenfolge konnte nicht aktualisiert werden"
     },
-    "weekStart": {
-      "label": "Die Woche beginnt am",
-      "description": "Erster Tag der Woche in Kalenderansichten",
-      "options": {
-        "sunday": "Sonntag",
-        "monday": "Montag"
-      },
-      "error": "Der Wochenanfang konnte nicht aktualisiert werden"
-    },
     "defaultView": {
       "label": "Standardansicht",
-      "description": "Registerkarte, mit der die Aufgabenseite geöffnet wird",
+      "description": "Ansicht, mit der sich die Aufgabenseite öffnet",
       "options": {
         "all": "Alle",
-        "today": "Heute"
+        "today": "Heute",
+        "tomorrow": "Morgen",
+        "next7": "Nächste 7 Tage"
       },
       "error": "Standardansicht konnte nicht aktualisiert werden"
     },
     "staleInbox": {
-      "label": "Schwellenwert für veralteten Posteingang",
+      "label": "Schwellenwert für veraltete Elemente im Eingang",
       "description": "Ältere Aufgaben werden als veraltet hervorgehoben",
       "unit": "Tage",
-      "error": "Der Schwellenwert für veraltete Posteingänge konnte nicht aktualisiert werden"
+      "error": "Schwellenwert für veraltete Elemente im Eingang konnte nicht aktualisiert werden"
+    }
+  },
+  "inbox": {
+    "header": {
+      "title": "Eingang",
+      "subtitle": "Tägliche Erinnerung zur Durchsicht und Einstellungen für den Eingang.",
+      "loading": "Wird geladen…"
+    },
+    "imageFiling": {
+      "group": "Bilder",
+      "error": "Einstellung zum Ablegen von Bildern konnte nicht aktualisiert werden",
+      "mode": {
+        "label": "Bild in einer Notiz ablegen",
+        "description": "Beim Einbetten bleibt das Bild in der Notiz und erscheint nicht in der Seitenleiste. Beim Ablegen in der Seitenleiste wird es in den gewählten Ordner verschoben und verlinkt.",
+        "embed": "In die Notiz einbetten",
+        "link": "In der Seitenleiste ablegen"
+      },
+      "ask": {
+        "label": "Jedes Mal fragen",
+        "description": "Ist die Option deaktiviert, wird für neue Bilder ohne Nachfrage die obige Auswahl verwendet."
+      }
+    },
+    "reviewReminder": {
+      "group": "Tägliche Erinnerung zur Durchsicht",
+      "enabled": {
+        "label": "An die Durchsicht des Eingangs erinnern",
+        "description": "Ein sanfter täglicher Hinweis, wenn dein Eingang Elemente enthält."
+      },
+      "time": {
+        "label": "Erinnerungszeit",
+        "description": "Ortszeit, auf jedem Gerät.",
+        "hourLabel": "Stunde",
+        "minuteLabel": "Minute",
+        "periodLabel": "AM oder PM"
+      },
+      "test": {
+        "label": "Testbenachrichtigung",
+        "description": "Die Erinnerung jetzt auslösen, um deine Systembenachrichtigungen zu prüfen.",
+        "button": "Test senden",
+        "sent": "Testbenachrichtigung gesendet.",
+        "sentHint": "Wenn nichts erscheint, erlaube Benachrichtigungen für MemryNote in deinen Systemeinstellungen.",
+        "unsupported": "Dieses Gerät kann keine Desktop-Benachrichtigungen anzeigen."
+      },
+      "error": "Die Erinnerung konnte nicht aktualisiert werden."
     }
   },
   "calendar": {
     "header": {
       "title": "Kalender",
-      "subtitle": "Konfigurieren Sie das Tageszellenverhalten im Tagesbereich",
-      "loading": "Einstellungen werden geladen..."
+      "subtitle": "Lege das Verhalten der Tageszellen im Tagesbereich fest",
+      "loading": "Einstellungen werden geladen…"
     },
     "groups": {
-      "dayCellClick": "Klicken Sie auf die Zelle „Tag“.",
-      "notes": "Notizen",
-      "weekStart": "Woche"
+      "weekStart": "Woche",
+      "dayCellClick": "Klick auf Tageszelle",
+      "notes": "Notizen"
+    },
+    "weekStart": {
+      "label": "Woche beginnt am",
+      "description": "Erster Wochentag über alle Kalender hinweg",
+      "options": {
+        "sunday": "Sonntag",
+        "monday": "Montag"
+      },
+      "error": "Wochenbeginn konnte nicht aktualisiert werden"
     },
     "defaultBehavior": {
       "label": "Standardverhalten",
-      "description": "Wenn Sie auf einer beliebigen Nicht-Kalender-Registerkarte auf einen Tag im Tagesbereich-Kalender klicken",
-      "error": "Das Klickverhalten am Tag konnte nicht aktualisiert werden"
+      "description": "Beim Klick auf einen Tag im Kalender des Tagesbereichs, wenn ein anderer Tab als der Kalender aktiv ist",
+      "error": "Klickverhalten für Tage konnte nicht aktualisiert werden"
     },
     "pageOverride": {
-      "label": "Kalenderseitenüberschreibung",
-      "description": "Verhalten, wenn die Registerkarte „Kalender“ aktiv ist (standardmäßig „Kalender öffnen“)",
-      "error": "Die Überschreibung der Kalenderseite konnte nicht aktualisiert werden"
+      "label": "Abweichendes Verhalten auf der Kalenderseite",
+      "description": "Verhalten, wenn der Kalender-Tab aktiv ist (standardmäßig „Kalender öffnen“)",
+      "error": "Verhalten für die Kalenderseite konnte nicht aktualisiert werden"
+    },
+    "showNotesOnCalendar": {
+      "label": "Notizen im Kalender anzeigen",
+      "description": "Jede Notiz im Kalender als ganztägiges Element an dem Tag anzeigen, an dem sie erstellt wurde",
+      "error": "Einstellung „Notizen im Kalender anzeigen“ konnte nicht aktualisiert werden"
     },
     "options": {
-      "openJournal": "Öffnen Sie das Tagebuch",
+      "openJournal": "Journal öffnen",
       "openCalendar": "Kalender öffnen",
       "useGlobal": "Globale Einstellung verwenden"
     },
-    "showNotesOnCalendar": {
-      "description": "Jede Notiz im Kalender als ganztägiges Element an dem Tag anzeigen, an dem sie erstellt wurde",
-      "error": "Notizen im Kalender anzeigen konnte nicht aktualisiert werden",
-      "label": "Notizen im Kalender anzeigen"
-    },
-    "weekStart": {
-      "description": "Erster Wochentag über alle Kalender hinweg",
-      "error": "Wochenbeginn konnte nicht aktualisiert werden",
-      "label": "Woche beginnt am",
-      "options": {
-        "monday": "Montag",
-        "sunday": "Sonntag"
-      }
-    },
     "google": {
-      "name": "Google Kalender",
-      "description": "Bidirektionale Synchronisierung für memrynote-Ereignisse und importierte Google-Kalender.",
+      "name": "Google Calendar",
+      "description": "Bidirektionale Synchronisierung für memrynote-Termine und importierte Google-Kalender.",
       "statuses": {
         "connected": "Verbunden",
         "notConnected": "Nicht verbunden",
         "reconnectRequired": "Erneute Verbindung erforderlich"
       },
-      "accountReconnect": "Verbinden Sie Google erneut",
+      "accountReconnect": "Google erneut verbinden",
+      "addAccount": "Konto hinzufügen",
       "importedCalendars": "Importierte Kalender",
       "selected": "{count} ausgewählt",
       "syncNow": "Jetzt synchronisieren",
       "disconnect": "Trennen",
-      "reconnect": "Verbinden Sie Google erneut",
-      "syncFailed": "Etwas ist schief gelaufen",
-      "connectFailed": "Verbindung mit Google Kalender fehlgeschlagen",
-      "refreshFailed": "Google Kalender konnte nicht aktualisiert werden",
-      "disconnectFailed": "Google Kalender konnte nicht getrennt werden",
+      "reconnect": "Google erneut verbinden",
+      "syncFailed": "Etwas ist schiefgelaufen",
+      "connectFailed": "Google Calendar konnte nicht verbunden werden",
+      "refreshFailed": "Google Calendar konnte nicht aktualisiert werden",
+      "disconnectFailed": "Google Calendar konnte nicht getrennt werden",
       "retryFailed": "Die Kalendersynchronisierung konnte nicht wiederholt werden",
       "pushToGoogle": {
-        "description": "Deaktivieren für Ein-Wege-Synchronisierung — du siehst weiterhin deine Google-Termine in memrynote, aber memrynote-Termine erscheinen nicht in Google.",
-        "error": "Synchronisierungsrichtung konnte nicht aktualisiert werden",
-        "label": "memrynote-Termine in Google Calendar anzeigen"
+        "label": "memrynote-Termine in Google Calendar anzeigen",
+        "description": "Deaktiviere die Option für eine Ein-Wege-Synchronisierung – du siehst deine Google-Termine weiterhin in memrynote, aber memrynote-Termine erscheinen nicht in Google.",
+        "error": "Sync-Richtung konnte nicht aktualisiert werden"
       },
       "agentAccess": {
-        "description": "Standardmäßig deaktiviert. Ist die Option aktiviert, kann der KI-Agent Ihre Google-Termine lesen; ist sie deaktiviert, erhält er bei Fragen dazu nichts zurück. In memrynote sehen Sie Ihre Termine in jedem Fall weiterhin.",
-        "error": "Der KI-Zugriff konnte nicht aktualisiert werden",
-        "label": "KI Termine aus Google Calendar lesen lassen"
+        "label": "Google-Calendar-Termine für die KI freigeben",
+        "description": "Standardmäßig aus. Ist die Option an, kann der KI-Agent deine Google-Termine lesen; ist sie aus, erhält er bei Fragen dazu nichts zurück. In memrynote siehst du deine Termine in jedem Fall weiterhin.",
+        "error": "Der KI-Zugriff konnte nicht aktualisiert werden"
       },
       "connect": "Verbinden",
       "sourcePicker": {
@@ -504,23 +750,212 @@
           "pending": "Ausstehend",
           "idle": "Leerlauf"
         },
-        "retrying": "Erneuter Versuch…",
-        "retryNow": "Versuchen Sie es jetzt noch einmal"
+        "retrying": "Wird erneut versucht…",
+        "retryNow": "Jetzt erneut versuchen"
       }
+    },
+    "subscriptions": {
+      "name": "Abonnierte Kalender",
+      "description": "Füge einen schreibgeschützten Kalender über seinen Freigabelink (ICS oder webcal) hinzu, z. B. einen Kalender von Proton, iCloud, Outlook oder Fastmail. Er wird etwa einmal pro Stunde auf Änderungen geprüft.",
+      "urlLabel": "Kalenderlink",
+      "urlPlaceholder": "Kalenderlink (webcal:// oder https://)",
+      "subscribe": "Abonnieren",
+      "subscribing": "Wird abonniert…",
+      "refresh": "Aktualisieren",
+      "refreshing": "Wird aktualisiert…",
+      "remove": "Entfernen",
+      "readOnly": "Schreibgeschützt",
+      "updatedAt": "Aktualisiert {time}",
+      "notCheckedYet": "Noch nicht geprüft",
+      "keptEvents": "Termine, die bereits in deinem Kalender sind, bleiben bis zur nächsten erfolgreichen Aktualisierung erhalten.",
+      "notEncrypted": "Nicht verschlüsselt",
+      "httpWarning": "Dieser Link beginnt mit http://, daher werden der Link und die Termine unverschlüsselt übertragen. Jeder im selben Netzwerk kann sie mitlesen. Verwende einen Link mit https:// oder webcal://, falls der Kalender einen anbietet.",
+      "added": "{title} hinzugefügt.",
+      "addedSummary": "{title} hinzugefügt: {count, plural, one {# Termin} other {# Termine}}, {start} bis {end}.",
+      "addedEmpty": "{title} hinzugefügt. Der Kalender enthält noch keine Termine in den letzten 90 Tagen oder im nächsten Jahr.",
+      "rename": "Umbenennen",
+      "renameLabel": "Kalendername",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "color": "Kalenderfarbe",
+      "colorOption": "Farbe: {color}",
+      "help": {
+        "toggle": "Wo finde ich den Link?",
+        "intro": "Suche nach einer Freigabeoption wie „Öffentlicher Link“, „Geheime Adresse“, „Veröffentlichen“ oder „iCal“. Der Link endet auf .ics oder beginnt mit webcal://.",
+        "proton": {
+          "name": "Proton Calendar",
+          "steps": "Einstellungen → Kalender, wähle den Kalender und erstelle dann unter „Mit allen teilen“ einen Link. Wähle die vollständige Ansicht, um Termindetails zu sehen.",
+          "readOnly": "Proton-Kalender bleiben in memrynote bewusst schreibgeschützt. Proton verschlüsselt Kalender Ende-zu-Ende und bietet kein CalDAV, daher ist kein Zurückschreiben möglich. Nimm Änderungen in Proton vor."
+        },
+        "icloud": {
+          "name": "iCloud",
+          "steps": "Teile den Kalender in der Kalender-App auf einem Mac oder auf iCloud.com, aktiviere „Öffentlicher Kalender“ und kopiere den Link. Um iCloud-Termine auch hier zu bearbeiten, verbinde iCloud stattdessen über CalDAV."
+        },
+        "outlook": {
+          "name": "Outlook und Microsoft 365",
+          "steps": "Outlook im Web → Einstellungen → Kalender → Freigegebene Kalender → Kalender veröffentlichen. Wähle „Kann alle Details anzeigen“, veröffentliche den Kalender und kopiere den ICS-Link."
+        },
+        "fastmail": {
+          "name": "Fastmail",
+          "steps": "Einstellungen → Kalender, öffne den Kalender, aktiviere das Veröffentlichen und kopiere den iCalendar-Link."
+        },
+        "notion": {
+          "name": "Notion Calendar",
+          "steps": "Die Termine liegen in dem Google- oder iCloud-Konto, das du damit verbunden hast. Teile den Link aus diesem Konto."
+        },
+        "public": {
+          "name": "Feiertage, Schulen und Sport",
+          "steps": "Suche auf der Website des Veranstalters nach „Abonnieren“, „Zum Kalender hinzufügen“ oder „iCal“ und kopiere diesen Link."
+        }
+      },
+      "errors": {
+        "invalid_url": "Das ist kein Kalenderlink. Füge eine Adresse ein, die mit webcal://, https:// oder http:// beginnt.",
+        "unreachable": "Dieser Kalender ist nicht erreichbar. Prüfe den Link und deine Internetverbindung.",
+        "timeout": "Der Kalender hat nicht rechtzeitig geantwortet. Versuch es gleich noch einmal.",
+        "not_found": "Unter diesem Link wurde kein Kalender gefunden. Er wurde möglicherweise gelöscht oder sein Freigabelink hat sich geändert.",
+        "unauthorized": "Der Kalender hat den Zugriff verweigert. Kopiere einen neuen Freigabelink aus deiner Kalender-App.",
+        "http_error": "Der Kalenderserver hat einen Fehler gemeldet. Versuch es später erneut.",
+        "too_large": "Dieser Kalender ist zu groß zum Hinzufügen. Teile stattdessen einen kleineren Kalender.",
+        "not_a_calendar": "Dieser Link liefert keinen Kalender. Kopiere den ICS- oder webcal-Link aus den Freigabeeinstellungen deiner Kalender-App.",
+        "too_many_redirects": "Dieser Link leitet immer wieder weiter und erreicht nie einen Kalender. Kopiere den Link erneut aus deiner Kalender-App.",
+        "unsupported_redirect": "Dieser Link leitet an eine Adresse weiter, die kein Weblink ist, daher folgt memrynote ihm nicht. Kopiere den ICS- oder webcal-Link aus deiner Kalender-App.",
+        "unknown": "Dieser Kalender konnte nicht aktualisiert werden ({code}). Versuch es später erneut."
+      }
+    },
+    "providers": {
+      "caldav": {
+        "name": "CalDAV"
+      },
+      "statuses": {
+        "connected": "Verbunden",
+        "notConnected": "Nicht verbunden"
+      },
+      "readOnly": "Schreibgeschützt",
+      "pollInterval": "Prüft alle {minutes} Minuten auf Änderungen. Anderswo vorgenommene Änderungen erscheinen nicht sofort.",
+      "connect": "Verbinden",
+      "connecting": "Wird verbunden…",
+      "connectFailed": "Verbindung konnte nicht hergestellt werden. Prüfe die Angaben und versuch es erneut.",
+      "disconnect": "Trennen",
+      "disconnectFailed": "Verbindung konnte nicht getrennt werden. Versuch es erneut.",
+      "syncNow": "Jetzt synchronisieren",
+      "refreshFailed": "Synchronisierung fehlgeschlagen. Deine Kalender bleiben unverändert; versuch es später erneut.",
+      "addAccount": "Konto hinzufügen",
+      "accounts": "Konten",
+      "calendars": "Kalender",
+      "retry": "Jetzt erneut versuchen",
+      "reconnectRequired": "Auf diesem Gerät ist kein Passwort für dieses Konto gespeichert. Verbinde es erneut, um von hier aus zu synchronisieren.",
+      "push": {
+        "label": "memrynote-Termine in diesen Kalender schreiben",
+        "description": "Deaktiviere die Option für eine Ein-Wege-Synchronisierung: Du siehst diese Termine weiterhin in memrynote, aber memrynote-Termine und -Aufgaben werden nicht in diesen Kalender geschrieben."
+      },
+      "agentAccess": {
+        "label": "Diese Termine für die KI freigeben",
+        "description": "Aus, bis du es aktivierst. Jeder Kalenderdienst hat eine eigene Einstellung; eine Freigabe für Google gilt nicht für diesen.",
+        "error": "KI-Zugriff konnte nicht aktualisiert werden"
+      },
+      "basic": {
+        "serverLabel": "Serveradresse",
+        "serverPlaceholder": "https://dav.example.com",
+        "usernameLabel": "Benutzername",
+        "passwordLabel": "App-Passwort"
+      },
+      "compat": {
+        "outdated": "Auf diesen Geräten deines Kontos läuft eine memrynote-Version, die älter ist als {version}:",
+        "unverified": "memrynote konnte nicht prüfen, welche Versionen auf deinen anderen Geräten laufen.",
+        "unknownVersion": "Version unbekannt",
+        "consequence": "Eine ältere Version kann Aufgaben und Termine aus diesem Kalender als Duplikate in Google Calendar kopieren oder sie nicht synchronisieren. Aktualisiere zuerst diese Geräte oder fahre fort, wenn du das in Kauf nimmst.",
+        "acknowledge": "Verstanden, trotzdem verbinden"
+      },
+      "reconnect": "Erneut verbinden",
+      "defaultTarget": {
+        "label": "Standardkalender",
+        "description": "Hierhin kommen neue Termine, Aufgaben, Erinnerungen und zurückgestellte Elemente, wenn du keinen Kalender auswählst. Nur ein Kalenderdienst kann den Standardkalender stellen.",
+        "none": "Nicht der Standard",
+        "error": "Standardkalender konnte nicht geändert werden"
+      },
+      "appleEventKit": {
+        "name": "Dieser Mac",
+        "description": "Zeigt alle Kalender, die die Kalender-App auf diesem Mac bereits hat: iCloud, Google, Exchange und „Auf meinem Mac“. Keine Anmeldung, schreibgeschützt, und die Termine verlassen diesen Mac nie und werden nicht mit deinen anderen Geräten synchronisiert.",
+        "connect": "Kalenderzugriff erlauben",
+        "connectHint": "macOS fragt einmal. Du kannst das später in den Systemeinstellungen ändern.",
+        "otherCalendars": "Andere Kalender",
+        "alreadyConnected": "Bereits über {provider} verbunden, daher zunächst deaktiviert, damit Termine nicht doppelt erscheinen.",
+        "openSystemSettings": "Systemeinstellungen öffnen",
+        "checkAgain": "Erneut prüfen",
+        "errors": {
+          "permission_denied": "Der Kalenderzugriff ist für memrynote deaktiviert. Aktiviere ihn unter Systemeinstellungen → Datenschutz & Sicherheit → Kalender und prüfe dann erneut.",
+          "permission_restricted": "Der Kalenderzugriff ist auf diesem Mac gesperrt, meist durch ein Verwaltungsprofil. In memrynote wurde nichts geändert; wer diesen Mac verwaltet, kann den Zugriff erlauben.",
+          "permission_write_only": "memrynote kann nur Termine hinzufügen, das reicht nicht, um sie anzuzeigen. Stelle den Zugriff unter Systemeinstellungen → Datenschutz & Sicherheit → Kalender auf „Vollzugriff“ um.",
+          "permission_not_determined": "memrynote hat noch keinen Kalenderzugriff. Erlaube ihn, um die Kalender deines Macs anzuzeigen.",
+          "unavailable": "Das Lesemodul für den macOS-Kalender konnte nicht starten. Deine Kalender sind unverändert; starte memrynote neu und versuch es erneut.",
+          "sync_failed": "Die Kalender-App konnte gerade nicht gelesen werden. Deine Kalender bleiben unverändert, und memrynote versucht es erneut, sobald sich in der Kalender-App etwas ändert."
+        }
+      }
+    },
+    "caldav": {
+      "presetLabel": "Dienst",
+      "presets": {
+        "icloud": "Apple iCloud",
+        "fastmail": "Fastmail",
+        "nextcloud": "Nextcloud",
+        "selfHosted": "Radicale oder Baïkal (selbst gehostet)",
+        "zoho": "Zoho",
+        "yahoo": "Yahoo",
+        "mailboxOrg": "mailbox.org",
+        "posteo": "Posteo",
+        "synology": "Synology",
+        "other": "Anderer CalDAV-Server"
+      },
+      "hostLabel": "Servername",
+      "hostPlaceholder": "cloud.example.com",
+      "appleIdLabel": "Apple-ID (E-Mail)",
+      "icloudHelp": "Verwende ein app-spezifisches Passwort, nicht das Passwort deiner Apple-ID. Erstelle eines unter „Anmeldung und Sicherheit“ → „App-spezifische Passwörter“.",
+      "appPasswordHelp": "Wenn dein Dienst App-Passwörter anbietet, erstelle eines für memrynote und verwende es hier.",
+      "createAppPassword": "App-Passwort erstellen",
+      "testConnection": "Verbindung testen",
+      "testing": "Wird getestet…",
+      "chooseCalendars": "Anzuzeigende Kalender",
+      "reconnectFor": "Gib das App-Passwort für {username} ein.",
+      "errors": {
+        "unauthorizedIcloud": "iCloud hat dieses Passwort nicht akzeptiert. iCloud benötigt hier ein app-spezifisches Passwort, nicht das Passwort deiner Apple-ID. Erstelle eines auf account.apple.com unter „Anmeldung und Sicherheit“ und versuch es dann erneut.",
+        "unauthorized": "Der Server hat diesen Benutzernamen und dieses Passwort nicht akzeptiert. Prüfe beides und verwende ein App-Passwort, falls dein Dienst welche anbietet.",
+        "unreachable": "Der Server ist nicht erreichbar. Prüfe die Adresse und deine Internetverbindung und versuch es dann erneut.",
+        "notCaldav": "Unter dieser Adresse wurden keine CalDAV-Kalender gefunden. Prüfe die Serveradresse; manche Dienste benötigen einen Pfad wie /remote.php/dav.",
+        "noCalendars": "Dieses Konto hat keine Kalender, die Termine enthalten.",
+        "invalidUrl": "Das ist keine Serveradresse. Gib eine Adresse wie https://dav.example.com ein.",
+        "outdatedDevices": "Auf einigen deiner Geräte läuft eine ältere memrynote-Version. Aktualisiere sie oder bestätige unten, dass du trotzdem verbinden möchtest.",
+        "unknown": "Verbindung konnte nicht hergestellt werden ({code}). Es wurde nichts gespeichert; versuch es später erneut."
+      },
+      "reconnect": {
+        "missing": "Auf diesem Gerät ist das App-Passwort für dieses Konto noch nicht hinterlegt. Die Termine kommen weiterhin über deine anderen Geräte an; gib das App-Passwort hier ein, um auch von diesem Gerät aus zu synchronisieren.",
+        "icloudRevoked": "iCloud akzeptiert dieses app-spezifische Passwort nicht mehr. Wenn du das Passwort deiner Apple-ID zurücksetzt, werden alle app-spezifischen Passwörter widerrufen. Erstelle auf account.apple.com ein neues und verbinde dich erneut.",
+        "rejected": "Der Server akzeptiert dieses Passwort nicht mehr. Wenn du es geändert oder das App-Passwort widerrufen hast, erstelle ein neues und verbinde dich erneut."
+      }
+    },
+    "v2": {
+      "groups": {
+        "layout": "Layout",
+        "connected": "Verbundene Kalender"
+      },
+      "addCalendar": "Kalender hinzufügen",
+      "calendarCount": "{selected} von {count, plural, one {# Kalender} other {# Kalendern}}",
+      "defaultPill": "Standard",
+      "subscription": "Abonnement",
+      "subscriptionCount": "{count, plural, =0 {Keine Abonnements} one {# Abonnement} other {# Abonnements}}"
     }
   },
   "account": {
     "header": {
       "title": "Konto",
-      "subtitle": "Ihr Konto, Synchronisierung und Sicherheit",
-      "loading": "Laden..."
+      "subtitle": "Dein Konto, Synchronisierung und Sicherheit",
+      "loading": "Wird geladen…"
     },
     "groups": {
       "identity": "Identität",
-      "sync": "Synchronisieren",
-      "storage": "Lagerung",
-      "devices": "Geräte",
-      "billing": "Abrechnung"
+      "sync": "Synchronisierung",
+      "billing": "Abrechnung",
+      "storage": "Speicher",
+      "devices": "Geräte"
     },
     "identity": {
       "unknown": "Unbekannt",
@@ -529,19 +964,92 @@
     "sync": {
       "lastSynced": "Zuletzt synchronisiert {time}",
       "pending": "{count, plural, one {# ausstehend} other {# ausstehend}}",
+      "attachmentAutoDownload": {
+        "label": "Anhänge automatisch herunterladen",
+        "description": "Anhänge synchronisierter Notizen im Hintergrund abrufen. Ist die Option deaktiviert, werden Dateien erst beim Öffnen heruntergeladen.",
+        "saveFailed": "Einstellung für den Download von Anhängen konnte nicht gespeichert werden"
+      },
       "statuses": {
         "synced": "Synchronisiert",
-        "syncing": "Synchronisierung...",
+        "syncing": "Wird synchronisiert…",
         "paused": "Angehalten",
-        "syncError": "Synchronisierungsfehler",
+        "syncError": "Sync-Fehler",
         "offline": "Offline",
-        "connecting": "Verbinden...",
-        "pushed": "{count, plural, one {# gepusht} other {# gepusht}}",
-        "pulled": "{count, plural, one {# gezogen} other {# gezogen}}",
+        "connecting": "Wird verbunden…",
+        "localOnly": "Nur lokal",
+        "pushed": "{count, plural, one {# gesendet} other {# gesendet}}",
+        "pulled": "{count, plural, one {# empfangen} other {# empfangen}}",
         "pushedPulled": "{parts}",
-        "changesPending": "{count, plural, one {#-Änderung steht aus} other {#-Änderungen stehen aus}}",
-        "offlinePending": "Offline ({count, plural, one {#-Änderung steht aus} other {#-Änderungen stehen aus}})",
-        "never": "Niemals"
+        "changesPending": "{count, plural, one {# Änderung ausstehend} other {# Änderungen ausstehend}}",
+        "offlinePending": "Offline ({count, plural, one {# Änderung ausstehend} other {# Änderungen ausstehend}})",
+        "never": "Nie"
+      },
+      "upsell": {
+        "title": "Deine Notizen liegen nur auf diesem Gerät",
+        "description": "Aktiviere die Synchronisierung, und jede Notiz begleitet dich auf deine anderen Geräte – Ende-zu-Ende-verschlüsselt, sodass nur du sie lesen kannst.",
+        "benefits": {
+          "devices": "Jedes Gerät macht dort weiter, wo du aufgehört hast",
+          "encrypted": "Ende-zu-Ende-verschlüsselt – die Schlüssel bleiben immer bei dir",
+          "backup": "Ein verschlüsseltes Backup, falls dieses Gerät einmal nicht verfügbar ist"
+        },
+        "guarantee": "14 Tage Geld-zurück-Garantie. Jederzeit kündbar."
+      },
+      "activating": {
+        "title": "Aktivierung wird abgeschlossen",
+        "description": "Dein Tarif ist aktiv. Die Synchronisierung startet, sobald wir ihn bestätigt haben – meist hilft es, den Status zu aktualisieren."
+      }
+    },
+    "billing": {
+      "planStatus": "Tarifstatus",
+      "checking": "Abrechnungsstatus wird geprüft",
+      "annualSwitch": {
+        "title": "Zur jährlichen Abrechnung wechseln",
+        "description": "Spare 20 %. Wir verrechnen den Rest dieses Monats anteilig, ohne zweite Abbuchung.",
+        "action": "Auf jährlich umstellen",
+        "pricing": "Preis wird berechnet…",
+        "preview": "Heute fällig: {amount}, danach {recurring} pro Jahr",
+        "confirm": "Wechsel bestätigen",
+        "switching": "Wird gewechselt…",
+        "success": "Du nutzt jetzt die jährliche Abrechnung.",
+        "failed": "Tarif konnte nicht gewechselt werden"
+      },
+      "plans": {
+        "free": "Kostenloser Tarif",
+        "plus": "Plus-Tarif",
+        "pro": "Pro-Tarif",
+        "believer": "Believer-Tarif"
+      },
+      "statuses": {
+        "inactive": "Inaktiv",
+        "active": "Aktiv",
+        "past_due": "Zahlung überfällig",
+        "paused": "Pausiert",
+        "canceled": "Gekündigt"
+      },
+      "labels": {
+        "storage": "Speicher",
+        "maxFile": "Max. Dateigröße",
+        "vaults": "Tresore",
+        "history": "Verlauf"
+      },
+      "unlimited": "Unbegrenzt",
+      "historyDays": "{days} Tage",
+      "activationPendingPrefix": "Aktivierung ausstehend. Paddle kann einen Moment brauchen, um den Checkout zu bestätigen. Aktualisiere den Status oder schreibe eine E-Mail an",
+      "actions": {
+        "upgrade": "Upgraden",
+        "unlockSync": "Synchronisierung entsperren",
+        "opening": "Wird geöffnet…",
+        "refresh": "Status aktualisieren",
+        "manage": "Abrechnung verwalten"
+      },
+      "toasts": {
+        "loadFailed": "Abrechnungsstatus konnte nicht geladen werden",
+        "checkoutFailed": "Checkout konnte nicht gestartet werden",
+        "checkoutOpened": "Checkout im Browser geöffnet",
+        "refreshFailed": "Abrechnungsstatus konnte nicht aktualisiert werden",
+        "billingActive": "Abrechnung ist aktiv",
+        "activationPending": "Aktivierung ausstehend",
+        "portalFailed": "Abrechnungsportal konnte nicht geöffnet werden"
       }
     },
     "storage": {
@@ -550,207 +1058,181 @@
         "notes": "Notizen",
         "attachments": "Anhänge",
         "crdt": "CRDT",
-        "other": "Andere"
+        "other": "Sonstiges"
       }
     },
     "security": {
       "signOut": {
         "label": "Abmelden",
-        "description": "Trennen Sie die Synchronisierung dieses Geräts",
+        "description": "Dieses Gerät von der Synchronisierung trennen",
         "action": "Abmelden"
       }
     },
+    "community": {
+      "prompt": "Gefällt dir memrynote?",
+      "star": "Gib uns einen Stern auf GitHub",
+      "and": "und",
+      "feedback": "teile dein Feedback"
+    },
     "signOutDialog": {
-      "title": "Nicht synchron abmelden?",
-      "description": "Die Synchronisierung wird beendet und die Verschlüsselungsschlüssel werden von diesem Gerät entfernt. Ihre Notizen bleiben auf diesem Gerät. Sie benötigen Ihre Wiederherstellungsphrase, um die Synchronisierung erneut einzurichten.",
+      "title": "Von der Synchronisierung abmelden?",
+      "description": "Die Synchronisierung wird beendet und die Verschlüsselungsschlüssel werden von diesem Gerät entfernt. Deine Notizen bleiben auf diesem Gerät. Du brauchst deine Wiederherstellungsphrase, um die Synchronisierung erneut einzurichten.",
       "confirm": "Abmelden",
-      "signingOut": "Abmelden..."
+      "signingOut": "Wird abgemeldet…"
     },
     "toasts": {
       "signedOut": "Erfolgreich abgemeldet",
       "signOutFailed": "Abmelden fehlgeschlagen",
-      "deviceLinked": "Gerät erfolgreich verknüpft"
+      "deviceLinked": "Gerät erfolgreich gekoppelt"
     },
-    "billing": {
-      "actions": {
-        "manage": "Abrechnung verwalten",
-        "opening": "Wird geöffnet...",
-        "refresh": "Status aktualisieren",
-        "upgrade": "Upgraden"
-      },
-      "activationPendingPrefix": "Aktivierung ausstehend. Paddle kann einen Moment brauchen, um den Checkout zu bestätigen. Aktualisiere den Status oder schreibe eine E-Mail an",
-      "checking": "Abrechnungsstatus wird geprüft",
-      "historyDays": "{days} Tage",
-      "labels": {
-        "history": "Verlauf",
-        "maxFile": "Max. Datei",
-        "storage": "Speicher",
-        "vaults": "Tresore"
-      },
-      "planStatus": "Tarifstatus",
-      "plans": {
-        "believer": "Believer-Tarif",
-        "free": "Kostenloser Tarif",
-        "plus": "Plus-Tarif",
-        "pro": "Pro-Tarif"
-      },
-      "statuses": {
-        "active": "Aktiv",
-        "canceled": "Gekündigt",
-        "inactive": "Inaktiv",
-        "past_due": "Überfällig",
-        "paused": "Pausiert"
-      },
-      "toasts": {
-        "activationPending": "Aktivierung ausstehend",
-        "billingActive": "Abrechnung ist aktiv",
-        "checkoutFailed": "Checkout konnte nicht gestartet werden",
-        "checkoutOpened": "Checkout im Browser geöffnet",
-        "loadFailed": "Abrechnungsstatus konnte nicht geladen werden",
-        "portalFailed": "Abrechnungsportal konnte nicht geöffnet werden",
-        "refreshFailed": "Abrechnungsstatus konnte nicht aktualisiert werden"
-      },
-      "unlimited": "Unbegrenzt"
-    },
-    "community": {
-      "and": "und",
-      "feedback": "Feedback teilen",
-      "prompt": "Liebst du memrynote?",
-      "star": "Gib uns einen Stern auf GitHub"
+    "v2": {
+      "stats": {
+        "plan": "Tarif"
+      }
     }
   },
   "setup": {
     "steps": {
       "signIn": "Anmelden",
       "verify": "Überprüfen",
-      "link": "Verknüpfen"
+      "link": "Koppeln"
     },
     "progress": "Schritt {current} von {total}: {label}",
     "signIn": {
       "title": "Synchronisierung einrichten",
-      "description": "Erstellen Sie ein Konto, um Ihre Daten geräteübergreifend mit Ende-zu-Ende-Verschlüsselung zu synchronisieren.",
+      "description": "Erstelle ein Konto, um deine Daten geräteübergreifend mit Ende-zu-Ende-Verschlüsselung zu synchronisieren.",
       "or": "oder",
+      "paidPlan": "Die Synchronisierung ist Teil eines kostenpflichtigen Tarifs.",
+      "seePlans": "Tarife ansehen",
       "errors": {
         "sendCode": "Code konnte nicht gesendet werden",
         "googleStart": "Die Google-Anmeldung konnte nicht gestartet werden"
-      },
-      "paidPlan": "Synchronisierung ist ein kostenpflichtiger Tarif.",
-      "seePlans": "Tarife ansehen"
+      }
     },
     "email": {
       "label": "E-Mail-Adresse",
-      "placeholder": "Geben Sie Ihre E-Mail-Adresse ein...",
-      "invalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
-      "sending": "Code wird gesendet..."
+      "placeholder": "E-Mail-Adresse eingeben…",
+      "invalid": "Bitte gib eine gültige E-Mail-Adresse ein",
+      "sending": "Code wird gesendet…"
     },
     "oauth": {
       "google": "Weiter mit Google"
     },
     "otp": {
-      "title": "Geben Sie den Bestätigungscode ein",
-      "sentTo": "Wir haben einen 6-stelligen Code an gesendet ",
+      "title": "Bestätigungscode eingeben",
+      "sentTo": "Wir haben einen 6-stelligen Code gesendet an ",
       "aria": "6-stelliger Bestätigungscode",
-      "verifying": "Überprüfung...",
-      "resending": "Erneut senden...",
+      "verifying": "Wird überprüft…",
+      "resending": "Wird erneut gesendet…",
       "resend": "Code erneut senden",
-      "resendIn": "Erneut in {time} senden",
-      "differentEmail": "Verwenden Sie eine andere E-Mail",
+      "resendIn": "Erneut senden in {time}",
+      "differentEmail": "Andere E-Mail-Adresse verwenden",
       "error": "Die Überprüfung ist fehlgeschlagen",
       "resendError": "Erneutes Senden fehlgeschlagen"
     },
     "recovery": {
-      "displayTitle": "Speichern Sie Ihre Wiederherstellungsphrase",
-      "displayDescription": "Nur so können Sie Ihre verschlüsselten Daten wiederherstellen, wenn Sie den Zugriff auf alle Ihre Geräte verlieren.",
-      "warning": "Schreiben Sie dies auf und bewahren Sie es an einem sicheren Ort auf. Du wirst es nicht wieder sehen.",
-      "wordsAria": "Wiederherstellungsphrasenwörter",
+      "displayTitle": "Speichere deine Wiederherstellungsphrase",
+      "displayDescription": "Nur so kannst du deine verschlüsselten Daten wiederherstellen, wenn du den Zugriff auf alle deine Geräte verlierst.",
+      "warning": "Schreib sie auf und bewahre sie an einem sicheren Ort auf. Du wirst sie nicht noch einmal sehen.",
+      "wordsAria": "Wörter der Wiederherstellungsphrase",
       "wordAria": "Wort {index}: {word}",
-      "copyAria": "Kopieren Sie die Wiederherstellungsphrase in die Zwischenablage",
+      "copyAria": "Wiederherstellungsphrase in die Zwischenablage kopieren",
       "copiedAria": "Wiederherstellungsphrase kopiert",
       "copied": "Kopiert",
       "saved": "Ich habe meine Wiederherstellungsphrase gespeichert",
-      "confirmTitle": "Bestätigen Sie Ihre Wiederherstellungsphrase",
-      "confirmDescription": "Geben Sie die angeforderten Wörter ein, um zu überprüfen, ob Sie sie korrekt gespeichert haben.",
-      "wordPlaceholder": "Geben Sie das Wort #{index} ein",
+      "confirmTitle": "Bestätige deine Wiederherstellungsphrase",
+      "confirmDescription": "Gib die angeforderten Wörter ein, um zu prüfen, ob du sie richtig gespeichert hast.",
+      "wordPlaceholder": "Wort #{index} eingeben",
       "verify": "Überprüfen",
       "mustMatch": "Um fortzufahren, müssen alle drei Wörter übereinstimmen",
-      "inputTitle": "Geben Sie die Wiederherstellungsphrase ein",
-      "inputDescription": "Geben Sie Ihre 24-Wort-Wiederherstellungsphrase ein, um den Zugriff auf Ihre verschlüsselten Daten wiederherzustellen.",
-      "inputLabel": "Wiederherstellungssatz",
+      "inputTitle": "Wiederherstellungsphrase eingeben",
+      "inputDescription": "Gib deine Wiederherstellungsphrase aus 24 Wörtern ein, um wieder auf deine verschlüsselten Daten zuzugreifen.",
+      "inputLabel": "Wiederherstellungsphrase",
       "count": "{count} / {total} Wörter",
-      "inputPlaceholder": "Geben Sie Ihre 24 Wörter umfassende Wiederherstellungsphrase ein, getrennt durch Leerzeichen ...",
-      "lengthHint": "Geben Sie alle 24 Wörter ein, um die Schaltfläche „Wiederherstellen“ zu aktivieren",
+      "inputPlaceholder": "Wiederherstellungsphrase aus 24 Wörtern eingeben, durch Leerzeichen getrennt…",
+      "lengthHint": "Gib alle 24 Wörter ein, um „Zugriff wiederherstellen“ zu aktivieren",
       "restore": "Zugriff wiederherstellen",
       "progress": {
-        "deriving": "Verschlüsselungsschlüssel ableiten...",
-        "validating": "Wiederherstellungsphrase wird validiert...",
-        "registering": "Gerät wird registriert..."
+        "deriving": "Verschlüsselungsschlüssel werden abgeleitet…",
+        "validating": "Wiederherstellungsphrase wird geprüft…",
+        "registering": "Gerät wird registriert…"
       },
       "failed": "Die Wiederherstellung ist fehlgeschlagen",
       "confirmationFailed": "Die Bestätigung ist fehlgeschlagen",
       "unavailable": {
-        "description": "Deine Wiederherstellungsphrase wird nur einmal während der Einrichtung angezeigt und kann später nicht abgerufen werden. Beginne von vorne, um eine neue zu generieren.",
         "loading": "Deine Wiederherstellungsphrase wird geladen…",
-        "startOver": "Von vorne beginnen",
-        "title": "Deine Wiederherstellungsphrase konnte nicht geladen werden"
+        "title": "Deine Wiederherstellungsphrase konnte nicht geladen werden",
+        "description": "Deine Wiederherstellungsphrase wird nur einmal während der Einrichtung angezeigt und kann später nicht abgerufen werden. Beginne von vorne, um eine neue zu generieren.",
+        "startOver": "Von vorne beginnen"
       }
     },
+    "startFresh": {
+      "trigger": "Ich kann meine Wiederherstellungsphrase nicht wiederfinden",
+      "title": "Auf diesem Gerät neu beginnen",
+      "description": "Tu das nur, wenn deine Wiederherstellungsphrase endgültig verloren ist. Das lässt sich nicht rückgängig machen.",
+      "consequenceSignOut": "Dieses Gerät wird abgemeldet und synchronisiert nicht mehr.",
+      "consequenceKey": "Der auf diesem Gerät gespeicherte Verschlüsselungsschlüssel wird gelöscht. Alles, was bereits in deinem Konto gespeichert ist, bleibt mit dem alten Schlüssel verschlüsselt – ohne die Wiederherstellungsphrase kann es nie wieder gelesen werden.",
+      "consequenceLocal": "Notizen, die bereits auf diesem Computer gespeichert sind, bleiben in deinem Tresorordner und funktionieren weiter.",
+      "confirm": "Abmelden und neu beginnen",
+      "cancel": "Zurück"
+    },
     "linking": {
-      "choiceTitle": "Verknüpfen Sie dieses Gerät",
-      "choiceDescription": "Übertragen Sie Verschlüsselungsschlüssel von einem anderen Gerät oder stellen Sie sie aus Ihrer Wiederherstellungsphrase wieder her.",
-      "qrChoice": "Link per QR-Code",
-      "qrChoiceDescription": "Scannen Sie den auf Ihrem anderen Gerät angezeigten Code",
-      "recoveryChoice": "Wiederherstellungssatz",
-      "recoveryChoiceDescription": "Geben Sie Ihren Wiederherstellungssatz mit 24 Wörtern ein",
-      "codeTitle": "Geben Sie den Verknüpfungscode ein",
-      "codeDescription": "Fügen Sie den Verknüpfungscode von Ihrem anderen Gerät ein, um Ihre Verschlüsselungsschlüssel sicher zu übertragen.",
-      "codeLabel": "Verlinkungscode",
+      "choiceTitle": "Dieses Gerät koppeln",
+      "choiceDescription": "Übertrage die Verschlüsselungsschlüssel von einem anderen Gerät oder stelle sie mit deiner Wiederherstellungsphrase wieder her.",
+      "qrChoice": "Per QR-Code koppeln",
+      "qrChoiceDescription": "Scanne den Code, der auf deinem anderen Gerät angezeigt wird",
+      "recoveryChoice": "Wiederherstellungsphrase",
+      "recoveryChoiceDescription": "Gib deine Wiederherstellungsphrase aus 24 Wörtern ein",
+      "codeTitle": "Kopplungscode eingeben",
+      "codeDescription": "Füge den Kopplungscode von deinem anderen Gerät ein, um deine Verschlüsselungsschlüssel sicher zu übertragen.",
+      "codeLabel": "Kopplungscode",
       "valid": "Gültig",
       "invalid": "Ungültiges Format",
-      "codePlaceholder": "Fügen Sie den Code von Ihrem anderen Gerät ein...",
-      "formatHint": "Fügen Sie den JSON-Verknüpfungscode von Ihrem anderen Gerät ein",
-      "linking": "Verlinkung...",
-      "linkDevice": "Gerät verknüpfen",
-      "failed": "Die Verknüpfung ist fehlgeschlagen",
-      "deviceFailed": "Gerät konnte nicht verknüpft werden",
-      "pendingSuccess": "Gerät erfolgreich verknüpft",
-      "goBack": "Geh zurück",
-      "waitingTitle": "Warten auf Genehmigung",
-      "waitingDescription": "Öffnen Sie memrynote auf Ihrem anderen Gerät und genehmigen Sie die Verknüpfungsanfrage.",
+      "codePlaceholder": "Code von deinem anderen Gerät einfügen…",
+      "formatHint": "Füge den JSON-Kopplungscode von deinem anderen Gerät ein",
+      "linking": "Wird gekoppelt…",
+      "linkDevice": "Gerät koppeln",
+      "failed": "Kopplung fehlgeschlagen",
+      "deviceFailed": "Gerät konnte nicht gekoppelt werden",
+      "pendingSuccess": "Gerät erfolgreich gekoppelt",
+      "goBack": "Zurück",
+      "waitingTitle": "Warten auf Bestätigung",
+      "waitingDescription": "Öffne memrynote auf deinem anderen Gerät und bestätige die Kopplungsanfrage.",
       "verificationCode": "Bestätigungscode",
-      "confirmCode": "Bestätigen Sie, dass dieser mit dem Code auf Ihrem anderen Gerät übereinstimmt",
-      "vaultPickerChooseFolder": "Ordner wählen",
-      "vaultPickerConfirm": "Ausgewählte abrufen",
-      "vaultPickerDescription": "Dieses Konto hat mehrere Vaults. Wähle einen Ordner und den/die Vault(s), die zu diesem Gerät hinzugefügt werden sollen.",
-      "vaultPickerDormantHint": "Hinzugefügt, öffnet sich, wenn du dazu wechselst",
-      "vaultPickerFolderLabel": "Vaults in Ordner speichern",
-      "vaultPickerPrimaryHint": "Öffnet sich jetzt",
+      "confirmCode": "Prüfe, ob dieser Code mit dem Code auf deinem anderen Gerät übereinstimmt",
       "vaultPickerTitle": "Wähle, was abgerufen werden soll",
-      "vaultRow": "Vault — {count} Elemente · {date}"
+      "vaultPickerDescription": "Dieses Konto hat mehrere Tresore. Wähle einen Ordner und die Tresore, die diesem Gerät hinzugefügt werden sollen.",
+      "vaultPickerFolderLabel": "Tresore in Ordner speichern",
+      "vaultPickerChooseFolder": "Ordner wählen",
+      "vaultRow": "Tresor – {count} Elemente · {date}",
+      "vaultPickerPrimaryHint": "Wird jetzt geöffnet",
+      "vaultPickerDormantHint": "Hinzugefügt, wird geöffnet, wenn du zu ihm wechselst",
+      "vaultPickerConfirm": "Ausgewählte abrufen"
     }
   },
   "devices": {
-    "loading": "Geräte werden geladen...",
-    "loadingAria": "Ladegeräte",
-    "none": "Noch keine Geräte verknüpft",
-    "linkNew": "Neues Gerät verknüpfen",
+    "loading": "Geräte werden geladen…",
+    "loadingAria": "Geräte werden geladen",
+    "none": "Noch keine Geräte gekoppelt",
+    "linkNew": "Neues Gerät koppeln",
     "thisDevice": "Dieses Gerät",
     "lastSeen": "Zuletzt gesehen vor {time}",
-    "linked": "Vor {time} verlinkt",
-    "renameAria": "Benennen Sie {name} um",
+    "linked": "Vor {time} gekoppelt",
+    "renameAria": "{name} umbenennen",
     "rename": "Umbenennen",
     "revoke": "Widerrufen",
     "showLess": "Weniger anzeigen",
     "showMore": "{count, plural, one {# weiteres Gerät} other {# weitere Geräte}}",
     "showMoreAria": "{count, plural, one {# weiteres Gerät} other {# weitere Geräte}} anzeigen",
     "dialogs": {
-      "revokeTitle": "„{name}“ widerrufen?",
-      "revokeDescription": "Dieses Gerät verliert den Zugriff auf Ihre synchronisierten Daten. Es muss erneut verknüpft werden, um die Synchronisierung wiederherzustellen. Lokale Daten auf diesem Gerät bleiben erhalten.",
-      "revokeDevice": "Gerät widerrufen",
-      "revoking": "Widerrufen...",
+      "revokeTitle": "Zugriff für „{name}“ widerrufen?",
+      "revokeDescription": "Dieses Gerät verliert den Zugriff auf deine synchronisierten Daten. Es muss erneut gekoppelt werden, um die Synchronisierung wiederherzustellen. Lokale Daten auf diesem Gerät bleiben erhalten.",
+      "revokeDevice": "Zugriff widerrufen",
+      "revoking": "Wird widerrufen…",
       "renameTitle": "Gerät umbenennen",
-      "renameDescription": "Wählen Sie einen Namen, um dieses Gerät zu identifizieren.",
+      "renameDescription": "Wähle einen Namen, an dem du dieses Gerät erkennst.",
       "namePlaceholder": "Gerätename",
-      "renaming": "Umbenennen..."
+      "renaming": "Wird umbenannt…"
     },
     "toasts": {
       "loadFailed": "Geräte konnten nicht geladen werden",
@@ -762,47 +1244,47 @@
     "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
-    "title": "Neues Gerät verknüpfen",
-    "description": "Scannen Sie diesen QR-Code von dem Gerät, das Sie verknüpfen möchten, um Ihre Verschlüsselungsschlüssel sicher zu übertragen.",
-    "encrypted": "Ende-zu-Ende verschlüsselt",
-    "generating": "Verknüpfungscode wird generiert...",
-    "generatingAria": "Verknüpfungscode generieren",
-    "generateFailed": "Der Verknüpfungscode konnte nicht generiert werden",
-    "tryAgain": "Versuchen Sie es erneut",
-    "expired": "Der Verknüpfungscode ist abgelaufen",
-    "generateNew": "Generieren Sie neuen Code",
-    "qrAria": "QR-Code zur Geräteverknüpfung",
-    "qrImageAria": "QR-Code zur Geräteverknüpfung",
+    "title": "Neues Gerät koppeln",
+    "description": "Scanne diesen QR-Code mit dem Gerät, das du koppeln möchtest, um deine Verschlüsselungsschlüssel sicher zu übertragen.",
+    "encrypted": "Ende-zu-Ende-verschlüsselt",
+    "generating": "Kopplungscode wird erstellt…",
+    "generatingAria": "Kopplungscode wird erstellt",
+    "generateFailed": "Kopplungscode konnte nicht erstellt werden",
+    "tryAgain": "Erneut versuchen",
+    "expired": "Kopplungscode abgelaufen",
+    "generateNew": "Neuen Code erstellen",
+    "qrAria": "QR-Code zum Koppeln von Geräten",
+    "qrImageAria": "QR-Code zur Gerätekopplung",
     "expiresIn": "Läuft in {time} ab",
     "or": "oder",
-    "codeLabel": "Verlinkungscode",
-    "copyAria": "Linkcode kopieren",
+    "codeLabel": "Kopplungscode",
+    "copyAria": "Kopplungscode kopieren",
     "copiedAria": "Kopiert",
     "copied": "Kopiert!"
   },
   "linkingApproval": {
-    "title": "Neues Gerät möchte sich verknüpfen",
-    "description": "Ein Gerät fordert Zugriff auf Ihre verschlüsselten Daten. Genehmigen Sie nur, wenn Sie diese Anfrage initiiert haben.",
+    "title": "Neues Gerät möchte sich koppeln",
+    "description": "Ein Gerät bittet um Zugriff auf deine verschlüsselten Daten. Bestätige nur, wenn du diese Anfrage selbst gestartet hast.",
     "unknownDevice": "Unbekanntes Gerät",
     "unknownPlatform": "Unbekannte Plattform",
     "verificationCode": "Bestätigungscode",
-    "computing": "Computer...",
+    "computing": "Wird berechnet…",
     "unavailable": "Nicht verfügbar",
-    "confirmCode": "Bestätigen Sie, dass dieser Code mit dem auf dem neuen Gerät angezeigten Code übereinstimmt",
+    "confirmCode": "Prüfe, ob dieser Code mit dem auf dem neuen Gerät angezeigten Code übereinstimmt",
     "reject": "Ablehnen",
-    "approve": "Genehmigen",
-    "approving": "Genehmigen...",
-    "approvalFailed": "Die Genehmigung ist fehlgeschlagen",
-    "failedToApprove": "Gerät konnte nicht genehmigt werden"
+    "approve": "Bestätigen",
+    "approving": "Wird bestätigt…",
+    "approvalFailed": "Bestätigung fehlgeschlagen",
+    "failedToApprove": "Gerät konnte nicht bestätigt werden"
   },
   "ai": {
     "header": {
       "title": "KI-Assistent",
-      "subtitle": "Einbettungen werden lokal ausgeführt. Für Sprachnotizen können Sie Whisper Small oder Ihren OpenAI-Schlüssel verwenden.",
-      "loading": "Einstellungen werden geladen..."
+      "subtitle": "Embeddings werden lokal berechnet. Für Sprachnotizen kannst du Whisper Small oder deinen OpenAI-Schlüssel verwenden.",
+      "loading": "Einstellungen werden geladen…"
     },
     "enable": {
-      "label": "Aktivieren Sie KI-Funktionen",
+      "label": "KI-Funktionen aktivieren",
       "description": "Intelligente Ablagevorschläge und Notizverbindungen",
       "enabled": "KI-Funktionen aktiviert",
       "disabled": "KI-Funktionen deaktiviert",
@@ -811,73 +1293,73 @@
     "unknownError": "Unbekannter Fehler",
     "groups": {
       "voice": "Sprachtranskription",
-      "embeddingModel": "Lokales Einbettungsmodell",
-      "embeddingIndex": "Einbettungsindex",
+      "embeddingModel": "Lokales Embedding-Modell",
+      "embeddingIndex": "Embedding-Index",
       "inline": "Inline-KI-Bearbeitung"
     },
     "voice": {
       "provider": "Anbieter",
-      "providerDescription": "Speech-to-Text-Anbieter für Sprachnotizen",
+      "providerDescription": "Spracherkennungsanbieter für Sprachnotizen",
       "providers": {
         "local": "Lokal (Standard)",
         "openai": "OpenAI (BYOK)"
       },
+      "memoNameMode": "Benennung von Sprachnotizen",
+      "memoNameModeDescription": "Wie Sprachnotizen nach der Transkription benannt werden",
+      "naming": {
+        "transcript": "Transkripttitel",
+        "timestamp": "Zeitstempel",
+        "none": "Nicht umbenennen"
+      },
+      "namingError": "Benennung von Sprachnotizen konnte nicht aktualisiert werden",
       "localModel": "Lokales Modell",
       "localModelDescription": "Whisper Small wird bei Bedarf heruntergeladen und bleibt lokal zwischengespeichert",
       "status": {
         "ready": "Bereit",
-        "downloading": "Herunterladen",
+        "downloading": "Wird heruntergeladen",
         "downloaded": "Heruntergeladen",
         "notDownloaded": "Nicht heruntergeladen"
       },
       "cacheHint": "Nicht mit der App gebündelt · Aus den Einstellungen heruntergeladen · Auf diesem Gerät zwischengespeichert",
-      "preparing": "Whisper Small wird vorbereitet...",
-      "download": "Laden Sie Whisper Small herunter",
+      "preparing": "Whisper Small wird vorbereitet…",
+      "download": "Whisper Small herunterladen",
       "apiKey": "OpenAI-API-Schlüssel",
-      "apiKeyDescription": "Wird im Schlüsselbund Ihres Betriebssystems gespeichert und nur für die Sprachtranskription verwendet",
-      "replaceKey": "Ersetzen Sie den gespeicherten OpenAI-Schlüssel",
-      "enterKey": "Geben Sie den OpenAI-API-Schlüssel ein",
+      "apiKeyDescription": "Wird im Schlüsselbund deines Betriebssystems gespeichert und nur für die Sprachtranskription verwendet",
+      "replaceKey": "Gespeicherten OpenAI-Schlüssel ersetzen",
+      "enterKey": "OpenAI-API-Schlüssel eingeben",
       "saveKey": "Schlüssel speichern",
       "keySaved": "API-Schlüssel im Schlüsselbund gespeichert",
       "providerError": "Der Sprachanbieter konnte nicht aktualisiert werden",
       "downloadedToast": "Whisper Small heruntergeladen",
       "downloadError": "Whisper Small konnte nicht heruntergeladen werden",
       "keySavedToast": "OpenAI-Schlüssel gespeichert",
-      "keySaveError": "Der OpenAI-Schlüssel konnte nicht gespeichert werden",
-      "memoNameMode": "Notiznamen",
-      "memoNameModeDescription": "Wie Sprachnotizen nach der Transkription benannt werden",
-      "naming": {
-        "none": "Nicht umbenennen",
-        "timestamp": "Zeitstempel",
-        "transcript": "Transkripttitel"
-      },
-      "namingError": "Benennung von Sprachnotizen konnte nicht aktualisiert werden"
+      "keySaveError": "Der OpenAI-Schlüssel konnte nicht gespeichert werden"
     },
     "embedding": {
       "loaded": "Geladen",
-      "loading": "Laden",
+      "loading": "Wird geladen",
       "cacheHint": "~23 MB · Lokal zwischengespeichert · Alles auf dem Gerät",
-      "dimensions": "Abmessungen",
-      "embeddings": "Einbettungen",
+      "dimensions": "Dimensionen",
+      "embeddings": "Embeddings",
       "downloadLoad": "Modell herunterladen und laden",
-      "downloadingModel": "Modell wird heruntergeladen...",
-      "loadingModel": "Modell wird geladen...",
+      "downloadingModel": "Modell wird heruntergeladen…",
+      "loadingModel": "Modell wird geladen…",
       "loadSuccess": "Modell erfolgreich geladen",
       "loadFailed": "Modell konnte nicht geladen werden",
       "rebuildIndex": "Index neu erstellen",
-      "rebuildDescription": "Einbettungen für alle Notizen neu generieren",
-      "rebuild": "Wiederaufbau",
-      "scanning": "Notizen scannen...",
-      "generating": "Einbettungen werden generiert...",
-      "complete": "Komplett!",
-      "reindexed": "Einbettungen neu indiziert: {computed} berechnet, {skipped} übersprungen",
-      "reindexFailed": "Einbettungen konnten nicht neu indiziert werden"
+      "rebuildDescription": "Embeddings für alle Notizen neu erzeugen",
+      "rebuild": "Neu erstellen",
+      "scanning": "Notizen werden gescannt…",
+      "generating": "Embeddings werden erzeugt…",
+      "complete": "Fertig!",
+      "reindexed": "Embeddings neu indiziert: {computed} berechnet, {skipped} übersprungen",
+      "reindexFailed": "Embeddings konnten nicht neu indiziert werden"
     },
     "inline": {
-      "loading": "Laden...",
+      "loading": "Wird geladen…",
       "title": "Inline-KI-Bearbeitung",
-      "enable": "Aktivieren Sie Inline-KI",
-      "enableDescription": "AI-Menü beim Bearbeiten von Notizen anzeigen",
+      "enable": "Inline-KI aktivieren",
+      "enableDescription": "KI-Menü beim Bearbeiten von Notizen anzeigen",
       "enabled": "Inline-KI-Bearbeitung aktiviert",
       "disabled": "Inline-KI-Bearbeitung deaktiviert",
       "provider": "Anbieter",
@@ -885,15 +1367,15 @@
       "providers": {
         "ollama": "Ollama (lokal)",
         "openai": "OpenAI",
-        "anthropic": "Anthropisch",
+        "anthropic": "Anthropic",
         "google": "Google Gemini"
       },
       "model": "Modell",
       "modelDescription": "Sprachmodell zum Umschreiben und Zusammenfassen",
-      "selectModel": "Wählen Sie ein Modell aus",
+      "selectModel": "Modell auswählen",
       "apiKey": "API-Schlüssel",
       "apiKeyDescription": "Lokal gespeichert, nur an den Anbieter gesendet",
-      "apiKeyPlaceholder": "Geben Sie den API-Schlüssel {provider} ein",
+      "apiKeyPlaceholder": "API-Schlüssel für {provider} eingeben",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokale Serveradresse",
       "connection": "Verbindung",
@@ -905,99 +1387,409 @@
       "connectFailed": "Verbindung konnte nicht hergestellt werden",
       "testFailed": "Verbindungstest fehlgeschlagen",
       "updateFailed": "Die Einstellung konnte nicht aktualisiert werden"
+    },
+    "tabs": {
+      "models": "Modelle",
+      "agents": "Agenten",
+      "connect": "Verbinden"
+    },
+    "v2": {
+      "onDevice": {
+        "label": "Modelle auf dem Gerät",
+        "hint": "Einmal heruntergeladen, offline nutzbar"
+      },
+      "embedding": {
+        "label": "Such-Embeddings",
+        "hint": "{dimension} Dim. · {count, plural, one {# Notiz} other {# Notizen}} indiziert"
+      },
+      "voiceModel": {
+        "label": "Sprachtranskription"
+      },
+      "download": "Herunterladen",
+      "connected": "Verbunden",
+      "inline": {
+        "group": "Inline-Bearbeitung",
+        "enabled": "Aktiviert"
+      },
+      "voice": {
+        "group": "Sprachnotizen",
+        "transcribeWith": "Transkribieren mit",
+        "local": "Lokal",
+        "openai": "OpenAI",
+        "nameBy": "Sprachnotizen benennen nach",
+        "keySaved": "Gespeichert",
+        "keyNotSet": "Nicht festgelegt"
+      }
+    }
+  },
+  "import": {
+    "header": {
+      "title": "Import",
+      "subtitle": "Übernimm deine Notizen und Aufgaben aus anderen Apps"
+    },
+    "intro": "Einmalige Importe erstellen neue Notizen in deinem Tresor. Deine ursprünglichen Exportdateien bleiben unverändert.",
+    "sources": {
+      "notion": "Einen HTML-Export importieren (.zip)",
+      "todoist": "Einen Projekt-CSV-Export importieren (.csv)",
+      "ticktick": "Ein TickTick-Backup (.csv) als Projekte, Aufgaben und Erinnerungen importieren",
+      "markdown": ".md-Dateien oder einen Ordner importieren (Frontmatter, Tags, Anhänge)",
+      "noteplan": "Einen NotePlan-Ordner importieren – tägliche Notizen werden zu Journaleinträgen, Aufgaben bleiben Aufgaben",
+      "html": ".html-Dateien mit verlinkten Bildern und seitenübergreifenden Links importieren",
+      "google-keep": "Einen Google-Takeout-Keep-Export importieren (.json oder .zip)",
+      "bear": "Ein .bear2bk-Archiv aus Bear importieren (Notizen, Tags, Anhänge)",
+      "evernote": "Eine oder mehrere .enex-Exportdateien aus Evernote importieren",
+      "roam": "Einen Roam-Research-Graphen (.json) mit verschachtelten Gliederungen importieren",
+      "apple-journal": "Einen Apple-Journal-HTML-Export als datierte Notizen importieren",
+      "csv": "Eine .csv-Datei importieren – eine Notiz pro Zeile, Spalten werden zu Eigenschaften",
+      "raindrop": "Einen Raindrop.io-Lesezeichen-Export (.csv) importieren – Lesezeichen landen im Eingang",
+      "apple-notes": "Aus der Apple-Notes-Datenbank importieren (NoteStore.sqlite, macOS)",
+      "onenote": "OneNote-Notizbücher importieren (erfordert ein Microsoft-Konto)"
+    },
+    "action": "Importieren",
+    "select": "Wähle eine App zum Importieren aus…",
+    "stats": {
+      "notes": "{count, plural, one {# Notiz} other {# Notizen}}",
+      "projects": "{count, plural, one {# Projekt} other {# Projekte}}",
+      "tasks": "{count, plural, one {# Aufgabe} other {# Aufgaben}}",
+      "subtasks": "{count, plural, one {# Teilaufgabe} other {# Teilaufgaben}}",
+      "reminders": "{count, plural, one {# Erinnerung} other {# Erinnerungen}}",
+      "bookmarks": "{count, plural, one {# Lesezeichen} other {# Lesezeichen}}",
+      "withTags": "{count} mit Tags",
+      "withDueDate": "{count} mit Datum",
+      "comments": "{count, plural, one {# Kommentar} other {# Kommentare}}",
+      "skipped": "{count} übersprungen"
+    },
+    "preview": {
+      "warnings": "Warnungen",
+      "confirm": "Importieren"
+    },
+    "dialog": {
+      "title": "Aus {name} importieren",
+      "choose": "Datei wählen…",
+      "onenote": {
+        "connect": "Mit Microsoft anmelden",
+        "connecting": "Warten auf die Anmeldung im Browser…",
+        "connectedAs": "Angemeldet als {name} ({email})",
+        "switchAccount": "Konto wechseln",
+        "loadingNotebooks": "Notizbücher werden geladen…",
+        "notebooksEmpty": "In diesem Konto wurden keine Notizbücher gefunden.",
+        "selectAll": "Alle auswählen",
+        "deselectAll": "Auswahl aufheben",
+        "sectionsSelected": "{count, plural, one {# Abschnitt ausgewählt} other {# Abschnitte ausgewählt}}",
+        "includeIncompatible": "Inkompatible Anhänge importieren",
+        "includeIncompatibleHint": "Auch Dateitypen speichern, für die Memry keine Vorschau hat (Präsentationen, Medien, Archive – niemals ausführbare Dateien). Sie erscheinen als Dateiblöcke.",
+        "skipPrevious": "Bereits importierte Seiten überspringen",
+        "skipPreviousHint": "Seiten aus einem früheren OneNote-Import werden übersprungen, sodass ein erneuter Durchlauf nur Neues übernimmt."
+      },
+      "appleNotes": {
+        "loadingFolders": "Deine Ordner werden gelesen…",
+        "foldersError": "Deine Ordner konnten nicht gelesen werden – die gesamte Bibliothek wird importiert.",
+        "unfiled": "Notizen ohne Ordner",
+        "selectAll": "Alle auswählen",
+        "deselectAll": "Auswahl aufheben",
+        "foldersSelected": "{count, plural, one {# Ordner ausgewählt} other {# Ordner ausgewählt}}",
+        "noteCount": "{count}",
+        "noteCountWithSubfolders": "{count} ({total})"
+      },
+      "chooseFolder": "Apple-Notes-Ordner auswählen…",
+      "chooseDirectory": "Ordner wählen…",
+      "folderKeepsAssets": "Wähle den Ordner, wenn die Bilder außerhalb des Notizordners liegen – Exporte legen Medien oft in einem gemeinsamen Ordner ab.",
+      "chooseHint": "{label} auswählen",
+      "folderHint": "Klicke unten und wähle den Ordner „group.com.apple.notes“, wenn sich der Auswahldialog öffnet (er startet dort). So kann Memry deine Notizen und Anhänge lesen – kein Festplattenvollzugriff nötig.",
+      "noteplanFolderHint": "Wähle deinen NotePlan-Ordner – entweder den Datenordner der App oder eine ihrer Backup-Kopien. Memry liest darin die Ordner Calendar, Notes und @Archive.",
+      "selected": "{count, plural, one {# Datei ausgewählt} other {# Dateien ausgewählt}}",
+      "start": "Import starten",
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "done": "Fertig",
+      "running": "Wird importiert…",
+      "progress": "{completed} von {total}",
+      "summary": {
+        "title": "Import abgeschlossen",
+        "imported": "{count, plural, one {# Element importiert} other {# Elemente importiert}}",
+        "attachments": "{count, plural, one {# Anhang kopiert} other {# Anhänge kopiert}}",
+        "skipped": "{count} übersprungen",
+        "skippedReason": "{count, plural, one {# Element} other {# Elemente}}: {reason}",
+        "failed": "{count} fehlgeschlagen"
+      },
+      "error": "Import fehlgeschlagen",
+      "previewError": "Vorschau fehlgeschlagen"
+    },
+    "messages": {
+      "readFileFailed": "Die Datei konnte nicht gelesen werden",
+      "appleNotes": {
+        "lockedNote": "{count, plural, one {# gesperrte Notiz wurde} other {# gesperrte Notizen wurden}} nicht importiert; Memry kann sie ohne dein Notizen-Passwort nicht lesen."
+      },
+      "csv": {
+        "noHeaders": "Die CSV-Datei hat keine Kopfzeile",
+        "emptyTitle": "Zeile mit leerem Titel übersprungen (Spalte „{column}“)",
+        "columns": "Spalten: {columns}",
+        "titleColumn": "Titel aus „{column}“; weitere Spalten als Eigenschaften gespeichert"
+      },
+      "raindrop": {
+        "csvEmpty": "Die Raindrop-CSV ist leer",
+        "headerNotFound": "Die Kopfzeile der Raindrop-CSV (Spalte „url“) wurde nicht gefunden",
+        "rowNoUrl": "Zeile {row} übersprungen: keine URL"
+      },
+      "ticktick": {
+        "headerNotFound": "Die Kopfzeile der TickTick-CSV („Folder Name“) wurde nicht gefunden",
+        "foldersDropped": "TickTick-Ordner haben keine Entsprechung in Memry und wurden verworfen",
+        "subtaskParentMissing": "Übergeordnete Aufgabe von Teilaufgabe „{title}“ nicht gefunden; auf oberster Ebene importiert",
+        "unknownPriority": "Unbekannte TickTick-Priorität {priority} → keine",
+        "unsupportedRepeat": "Nicht unterstützte Wiederholungsregel „{rule}“ übersprungen",
+        "reminderNoAnchor": "Erinnerung „{reminder}“ übersprungen (kein Datumsbezug)"
+      },
+      "todoist": {
+        "headerNotFound": "Keine Todoist-CSV: Die TYPE-Kopfzeile fehlt",
+        "sectionFlattened": "Abschnitt „{section}“ aufgelöst",
+        "orphanComment": "Kommentar ohne vorangehende Aufgabe übersprungen",
+        "emptyTitle": "Aufgabe mit leerem Inhalt als (ohne Titel) importiert",
+        "unknownPriority": "Unbekannte Priorität {priority} → keine",
+        "unparsedDate": "Das Datum „{date}“ konnte nicht gelesen werden",
+        "subtaskNoParent": "Teilaufgabe „{title}“ hat bei Einrückung {indent} keine übergeordnete Aufgabe; auf oberster Ebene importiert"
+      }
+    },
+    "status": {
+      "scanningFiles": "Dateien werden durchsucht…",
+      "scanningExport": "Export wird durchsucht…",
+      "importingItem": "{title} wird importiert",
+      "appleNotes": {
+        "copyingDatabase": "Apple-Notes-Datenbank wird kopiert…"
+      },
+      "bear": {
+        "scanning": "Bear-Export wird durchsucht…"
+      },
+      "csv": {
+        "importing": "CSV-Notizen werden importiert…"
+      },
+      "evernote": {
+        "scanning": ".enex-Dateien werden durchsucht…"
+      },
+      "html": {
+        "scanning": "HTML-Dateien werden durchsucht…"
+      },
+      "noteplan": {
+        "scanning": "NotePlan-Ordner wird durchsucht…"
+      },
+      "onenote": {
+        "loadingNotebooks": "OneNote-Notizbücher werden geladen…",
+        "rateLimited": "OneNote drosselt die Anfragen; kurze Pause vor dem nächsten Versuch…",
+        "downloadingAttachment": "Anhang {name} wird heruntergeladen"
+      },
+      "raindrop": {
+        "importing": "Raindrop-Lesezeichen werden importiert…"
+      },
+      "roam": {
+        "reading": "Roam-Export wird gelesen…"
+      },
+      "ticktick": {
+        "importing": "TickTick-Aufgaben werden importiert…"
+      },
+      "todoist": {
+        "importing": "Todoist-Aufgaben werden importiert…"
+      }
+    },
+    "v2": {
+      "searchPlaceholder": "App oder Dateityp suchen…",
+      "noMatch": "Keine Quellen für „{query}“",
+      "formatAccount": "Konto",
+      "showMore": "{count, plural, one {# weitere anzeigen} other {# weitere anzeigen}}",
+      "showLess": "Weniger anzeigen",
+      "groups": {
+        "noteApps": "Notiz-Apps",
+        "tasks": "Aufgaben, Journal und Lesezeichen",
+        "files": "Dateien"
+      }
     }
   },
   "vault": {
     "header": {
       "title": "Tresor",
-      "subtitle": "Tresorkonfiguration und -speicherung"
+      "subtitle": "Konfiguration und Speicher des Tresors"
     },
     "groups": {
       "storageUsage": "Speichernutzung",
-      "location": "Standort",
-      "accountVaults": "Tresore in deinem Konto"
+      "location": "Speicherort",
+      "accountVaults": "Tresore in deinem Konto",
+      "largeNotes": "Notizen nahe am Sync-Limit",
+      "activity": "Aktivität"
     },
-    "loadingStorage": "Speicherinformationen werden geladen...",
-    "signInStorage": "Melden Sie sich an, um die Speichernutzung anzuzeigen",
+    "loadingStorage": "Speicherinformationen werden geladen…",
+    "signInStorage": "Melde dich an, um die Speichernutzung zu sehen",
     "vaultPath": "Tresorpfad",
-    "reveal": "Enthüllen",
+    "reveal": "Anzeigen",
+    "accountVaults": {
+      "empty": "Noch keine Tresore mit deinem Konto synchronisiert.",
+      "cloudOnly": "Nicht auf diesem Gerät",
+      "itemsCount": "{count, plural, one {# Element} other {# Elemente}}",
+      "delete": "Löschen",
+      "deleteTitle": "„{name}“ aus deinem Konto löschen?",
+      "deleteBody": "Damit werden alle synchronisierten Daten dieses Tresors dauerhaft von den Memry-Servern entfernt. Das lässt sich nicht rückgängig machen. Deine Dateien auf der Festplatte bleiben erhalten.",
+      "deleteConfirm": "Aus Konto löschen",
+      "deleteFailed": "Der Tresor konnte nicht gelöscht werden",
+      "activeHint": "Wechsle zu einem anderen Tresor, um diesen zu löschen.",
+      "unsyncedTitle": "Dieser Tresor wird nicht synchronisiert",
+      "unsyncedBodyOne": "Der auf diesem Gerät geöffnete Tresor gehört nicht zu deinem Konto, daher wird er nicht synchronisiert. Der Tresor deines Kontos ist „{name}“ – öffne ihn hier, um wieder zu synchronisieren.",
+      "unsyncedBodyMany": "Der auf diesem Gerät geöffnete Tresor gehört nicht zu deinem Konto, daher wird er nicht synchronisiert. Öffne einen der unten aufgeführten Tresore, um wieder zu synchronisieren.",
+      "unsyncedOpen": "Tresor des Kontos öffnen",
+      "unsyncedDownload": "Tresor des Kontos herunterladen",
+      "unsyncedSwitchFailed": "Dieser Tresor konnte nicht geöffnet werden"
+    },
     "storage": {
-      "title": "Lagerung",
+      "title": "Speicher",
       "used": "{used} von {limit} verwendet",
       "ratio": "{used} / {limit}",
       "refreshAria": "Speichernutzung aktualisieren",
-      "usageAria": "Speichernutzung: {used} oder {limit}",
-      "available": "Verfügbar {available}",
+      "usageAria": "Speichernutzung: {used} von {limit}",
+      "available": "{available} verfügbar",
       "categories": {
         "notes": "Notizen",
         "attachments": "Anhänge",
         "crdt": "CRDT",
-        "other": "Andere"
+        "other": "Sonstiges"
       },
       "warningTitle": "Speicher fast voll",
-      "warningDescription": "Geben Sie Speicherplatz frei oder aktualisieren Sie Ihren Plan, um Synchronisierungsprobleme zu vermeiden."
+      "warningDescription": "Gib Speicherplatz frei oder wechsle zu einem größeren Tarif, um Probleme bei der Synchronisierung zu vermeiden."
     },
-    "accountVaults": {
-      "activeHint": "Wechsle zu einem anderen Tresor, um diesen zu löschen.",
-      "cloudOnly": "Nicht auf diesem Gerät",
-      "delete": "Löschen",
-      "deleteBody": "Damit werden alle synchronisierten Daten dieses Tresors dauerhaft von den Memry-Servern entfernt. Das lässt sich nicht rückgängig machen. Deine Dateien auf der Festplatte bleiben erhalten.",
-      "deleteConfirm": "Aus Konto löschen",
-      "deleteFailed": "Der Tresor konnte nicht gelöscht werden",
-      "deleteTitle": "„{name}“ aus deinem Konto löschen?",
-      "empty": "Noch keine Tresore mit deinem Konto synchronisiert.",
-      "itemsCount": "{count, plural, one {# Element} other {# Elemente}}"
+    "largeNotes": {
+      "description": "Notizen, die größer als {limit} sind, werden nicht mehr synchronisiert. Teile sie in kleinere Notizen auf, damit sie synchronisiert bleiben.",
+      "over": "Wird nicht synchronisiert",
+      "approaching": "Nahe am Limit"
+    },
+    "activity": {
+      "description": "Dateien, die außerhalb von Memry zum Tresor hinzugefügt oder daraus entfernt wurden, Importe sowie alles, was übersprungen wurde oder fehlgeschlagen ist. Wird nur auf diesem Gerät gespeichert.",
+      "retention": {
+        "label": "Tresoraktivität",
+        "days": "{count, plural, one {# Tag aufbewahren} other {# Tage aufbewahren}}"
+      },
+      "filter": {
+        "all": "Alle",
+        "problems": "Übersprungen und fehlgeschlagen"
+      },
+      "reveal": "Protokolldatei anzeigen",
+      "clear": "Leeren",
+      "clearTitle": "Tresoraktivität leeren?",
+      "clearBody": "Dadurch werden alle Einträge aus dem Aktivitätsprotokoll dieses Geräts entfernt. Deine Dateien bleiben unberührt.",
+      "clearConfirm": "Aktivität leeren",
+      "empty": "Noch nichts aufgezeichnet. Dateien, die du dem Tresorordner hinzufügst, Importe und alles, was Memry überspringt, erscheinen hier.",
+      "emptyProblems": "Nichts wurde übersprungen und nichts ist fehlgeschlagen.",
+      "unavailable": "Öffne einen Tresor, um seine Aktivität zu sehen.",
+      "loadFailed": "Tresoraktivität konnte nicht geladen werden",
+      "actionFailed": "Tresoraktivität konnte nicht aktualisiert werden",
+      "showItems": "{count, plural, one {# Element anzeigen} other {# Elemente anzeigen}}",
+      "toastAction": "Details",
+      "entry": {
+        "added": "{path} hinzugefügt",
+        "removed": "{path} entfernt",
+        "renamed": "{oldPath} in {path} umbenannt",
+        "skipped": "{path} übersprungen",
+        "skippedUnsupported": "Memry öffnet keine Dateien vom Typ {ext}, daher wurde die Datei unverändert gelassen.",
+        "readFailed": "{path} konnte nicht gelesen werden",
+        "indexFailed": "{path} konnte nicht hinzugefügt werden",
+        "copyFailed": "{path} konnte nicht in den Tresor kopiert werden",
+        "uploadFailed": "{path} konnte nicht hochgeladen werden",
+        "uploadFailedHint": "Die Datei bleibt auf diesem Gerät, bis ein Upload gelingt.",
+        "downloadFailed": "{path} konnte nicht heruntergeladen werden",
+        "fileTooLarge": "{path} ist zu groß für die Synchronisierung",
+        "noteTooLarge": "„{title}“ ist zu groß für die Synchronisierung",
+        "noteTooLargeUnnamed": "Eine Notiz ist zu groß für die Synchronisierung",
+        "importFailed": "Import aus {importer} fehlgeschlagen",
+        "failedGeneric": "Bei {path} ist etwas schiefgelaufen",
+        "failedGenericUnnamed": "Etwas ist schiefgelaufen",
+        "scan": "Änderungen gefunden, die gemacht wurden, während Memry geschlossen war",
+        "indexRebuilt": "Suchindex erstellt",
+        "import": "Import aus {importer}",
+        "importCanceled": "Import aus {importer}, abgebrochen",
+        "unknown": "Unbekannte Aktivität"
+      },
+      "counts": {
+        "added": "{count, plural, one {# neue Datei} other {# neue Dateien}}",
+        "indexed": "{count, plural, one {# Datei indiziert} other {# Dateien indiziert}}",
+        "imported": "{count, plural, one {# importiert} other {# importiert}}",
+        "attachments": "{count, plural, one {# Anhang} other {# Anhänge}}",
+        "skipped": "{count, plural, one {# übersprungen} other {# übersprungen}}",
+        "unsupported": "{count, plural, one {# nicht unterstützte Datei übersprungen} other {# nicht unterstützte Dateien übersprungen}}",
+        "failed": "{count, plural, one {# fehlgeschlagen} other {# fehlgeschlagen}}"
+      }
+    },
+    "v2": {
+      "groups": {
+        "thisVault": "Dieser Tresor"
+      },
+      "largeNotesCount": "{count, plural, one {# Notiz} other {# Notizen}}"
+    },
+    "binding": {
+      "dialog": {
+        "title": "Diesen Tresor mit deinem Konto synchronisieren?",
+        "description": "Dieser Tresor enthält Notizen, die noch nicht in deinem Konto sind. Du kannst ihn zu deinem Konto hinzufügen oder auf diesem Gerät behalten. Nichts verlässt dieses Gerät, bevor du dich entscheidest.",
+        "descriptionWithVaults": "Dieser Tresor enthält Notizen, die noch nicht in deinem Konto sind, und dein Konto hat bereits einen Tresor. Du kannst diesen daneben hinzufügen, die beiden zusammenführen oder ihn auf diesem Gerät behalten. Nichts verlässt dieses Gerät, bevor du dich entscheidest.",
+        "addAsNew": "Als separaten Tresor hinzufügen",
+        "merge": "Mit „{name}“ zusammenführen",
+        "mergeUnnamed": "Mit dem Tresor deines Kontos zusammenführen",
+        "keepLocal": "Auf diesem Gerät behalten",
+        "failed": "Sync-Einstellung dieses Tresors konnte nicht aktualisiert werden"
+      },
+      "status": {
+        "localOnly": "Dieser Tresor bleibt auf diesem Gerät und wird nicht synchronisiert.",
+        "foreign": "Dieser Tresor wurde von einem anderen Konto synchronisiert und wird daher nicht mit deinem synchronisiert. Er bleibt auf diesem Gerät.",
+        "needsDecision": "Dieser Tresor wird noch nicht synchronisiert.",
+        "startSync": "Diesen Tresor synchronisieren",
+        "choose": "Auswählen…"
+      }
     }
   },
   "tags": {
     "header": {
-      "title": "Schlagworte",
-      "subtitle": "Verwalten Sie Tags für Notizen, Tagebücher und Aufgaben"
+      "title": "Tags",
+      "subtitle": "Verwalte Tags für Notizen, Journale und Aufgaben"
     },
-    "loading": "Tags werden geladen...",
-    "empty": "Noch keine Tags. Hier werden Tags angezeigt, wenn Sie sie zu Notizen und Aufgaben hinzufügen.",
-    "filterPlaceholder": "Tags filtern...",
+    "loading": "Tags werden geladen…",
+    "empty": "Noch keine Tags. Tags erscheinen hier, sobald du sie Notizen und Aufgaben hinzufügst.",
+    "filterPlaceholder": "Tags filtern…",
     "noMatch": "Keine Tags, die mit „{query}“ übereinstimmen",
-    "summary": "{count, plural, one {#-Tag} other {#-Tags}} über Notizen und Aufgaben hinweg",
+    "summary": "{count, plural, one {# Tag} other {# Tags}} in Notizen und Aufgaben",
     "actions": {
       "rename": "Umbenennen",
       "changeColor": "Farbe ändern",
-      "mergeInto": "Verschmelzen mit...",
+      "changeIcon": "Symbol ändern",
+      "mergeInto": "Zusammenführen mit…",
       "merge": "Zusammenführen",
-      "delete": "Löschen",
-      "changeIcon": "Symbol ändern"
+      "delete": "Löschen"
     },
     "dialogs": {
       "deleteTitle": "Tag löschen",
-      "deleteDescription": "„{name}“ aus {count, plural, one {#-Element} other {#-Elemente}} entfernen? Dies kann nicht rückgängig gemacht werden.",
+      "deleteDescription": "„{name}“ aus {count, plural, one {# Element} other {# Elementen}} entfernen? Das lässt sich nicht rückgängig machen.",
       "mergeTitle": "Tag zusammenführen",
-      "mergeDescription": "Alle mit „{source}“ getaggten Elemente werden erneut mit dem Ziel-Tag getaggt. Das Quell-Tag wird gelöscht.",
-      "targetPlaceholder": "Ziel-Tag auswählen...",
+      "mergeDescription": "Alle Elemente mit dem Tag „{source}“ erhalten stattdessen das Ziel-Tag. Das Quell-Tag wird gelöscht.",
+      "targetPlaceholder": "Ziel-Tag auswählen…",
       "colorTitle": "Farbe für „{name}“ ändern"
     },
     "toasts": {
       "renamed": "„{oldName}“ in „{newName}“ umbenannt",
-      "renameFailed": "Das Umbenennen des Tags ist fehlgeschlagen",
+      "renameFailed": "Tag konnte nicht umbenannt werden",
       "deleteFailed": "Tag konnte nicht gelöscht werden",
-      "deleted": "„{name}“ aus {count, plural, one {#-Element} other {#-Elemente}} gelöscht",
+      "deleted": "„{name}“ aus {count, plural, one {# Element} other {# Elementen}} entfernt",
       "mergeFailed": "Tags konnten nicht zusammengeführt werden",
-      "merged": "„{source}“ mit „{target}“ ({count, plural, one {#-Element} other {#-Elemente}}) zusammengeführt",
-      "colorUpdated": "Aktualisierte Farbe für „{name}“",
+      "merged": "„{source}“ mit „{target}“ zusammengeführt ({count, plural, one {# Element} other {# Elemente}})",
+      "colorUpdated": "Farbe für „{name}“ aktualisiert",
       "colorFailed": "Die Farbe konnte nicht aktualisiert werden",
       "iconFailed": "Symbol konnte nicht aktualisiert werden"
+    },
+    "v2": {
+      "actionsAria": "Aktionen für {name}"
     }
   },
   "properties": {
     "header": {
       "title": "Eigenschaften",
-      "subtitle": "Verwalten Sie Eigenschaftsdefinitionen für alle Notizen"
+      "subtitle": "Verwalte Eigenschaftsdefinitionen für alle Notizen"
     },
-    "loading": "Eigenschaften werden geladen...",
-    "empty": "Noch keine Eigenschaftsdefinitionen. Fügen Sie zunächst einer Notiz eine Eigenschaft „Status“, „Auswählen“ oder „Mehrfachauswahl“ hinzu.",
-    "filterPlaceholder": "Eigenschaften filtern...",
+    "loading": "Eigenschaften werden geladen…",
+    "empty": "Noch keine Eigenschaftsdefinitionen. Füge einer Notiz eine Eigenschaft vom Typ „Status“, „Auswahl“ oder „Mehrfachauswahl“ hinzu, um loszulegen.",
+    "filterPlaceholder": "Eigenschaften filtern…",
     "noMatch": "Keine Eigenschaften, die mit „{query}“ übereinstimmen",
-    "summary": "{count, plural, one {#-Eigenschaftsdefinition} other {#-Eigenschaftsdefinitionen}}",
-    "optionCount": "{count, plural, one {#-Option} other {#-Optionen}}",
+    "summary": "{count, plural, one {# Eigenschaftsdefinition} other {# Eigenschaftsdefinitionen}}",
+    "optionCount": "{count, plural, one {# Option} other {# Optionen}}",
     "optionNamePlaceholder": "Optionsname",
     "addOption": "Option hinzufügen",
     "changeColorTitle": "Farbe ändern",
@@ -1008,17 +1800,17 @@
     },
     "types": {
       "status": "Status",
-      "select": "Auswählen",
+      "select": "Auswahl",
       "multiselect": "Mehrfachauswahl",
       "text": "Text",
-      "number": "Nummer",
+      "number": "Zahl",
       "date": "Datum",
       "checkbox": "Kontrollkästchen",
       "url": "URL"
     },
     "dialogs": {
       "deleteTitle": "Eigenschaft löschen",
-      "deleteDescription": "Eigenschaftsdefinition „{name}“ entfernen? Notizen, die diese Eigenschaft verwenden, behalten ihre Werte als Klartext.",
+      "deleteDescription": "Eigenschaftsdefinition „{name}“ entfernen? Notizen, die diese Eigenschaft verwenden, behalten ihre Werte als einfachen Text.",
       "colorTitle": "Farbe für „{name}“ ändern"
     },
     "toasts": {
@@ -1030,136 +1822,187 @@
       "deleteFailed": "Die Eigenschaft konnte nicht gelöscht werden",
       "deleted": "Eigenschaft „{name}“ gelöscht",
       "addFailed": "Option konnte nicht hinzugefügt werden"
+    },
+    "v2": {
+      "actionsAria": "Aktionen für {name}"
+    }
+  },
+  "commandLine": {
+    "header": {
+      "title": "Befehlszeile",
+      "subtitle": "Richte den memrynote-Befehl für dein Terminal ein"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "defaultVault": {
+      "label": "Standardtresor",
+      "placeholder": "Tresor auswählen",
+      "none": "Kein Tresor ausgewählt",
+      "description": "Wähle den Tresor, der verwendet wird, wenn du memrynote ohne --vault ausführst.",
+      "descriptionSelected": "Befehle verwenden {path}, wenn --vault weggelassen wird."
+    },
+    "command": {
+      "label": "memrynote-Befehl",
+      "toggleLabel": "memrynote-Befehl installieren",
+      "descriptionInstalled": "Installiert unter {path}",
+      "descriptionNotInstalled": "Installiere den memrynote-Befehl, damit du deinen Tresor aus jedem Terminal nutzen kannst."
+    },
+    "status": {
+      "loading": "Befehlsstatus wird geprüft…",
+      "loadFailed": "Befehlsstatus konnte nicht geladen werden",
+      "installedToast": "memrynote-Befehl installiert",
+      "uninstalledToast": "memrynote-Befehl entfernt",
+      "defaultVaultUpdatedToast": "Standardtresor für die CLI aktualisiert"
+    },
+    "actions": {
+      "refresh": "Aktualisieren"
     }
   },
   "shortcuts": {
     "header": {
-      "title": "Tastaturkürzel",
-      "subtitle": "Klicken Sie auf eine beliebige Verknüpfung, um sie erneut zu binden",
-      "loading": "Einstellungen werden geladen..."
+      "title": "Tastenkürzel",
+      "subtitle": "Klicke auf ein Tastenkürzel, um es neu zuzuweisen",
+      "loading": "Einstellungen werden geladen…"
     },
-    "searchPlaceholder": "Suchverknüpfungen...",
+    "searchPlaceholder": "Tastenkürzel durchsuchen…",
     "resetAll": "Alles zurücksetzen",
     "custom": "Benutzerdefiniert",
     "pressShortcut": "Tastenkombination drücken…",
     "cancelTitle": "Abbrechen",
-    "rebindTitle": "Klicken Sie zum erneuten Binden",
+    "rebindTitle": "Klicken, um neu zuzuweisen",
+    "editorManagedTitle": "Wird vom Notizeditor verwaltet – kann nicht neu zugewiesen werden",
     "resetTitle": "Auf Standard zurücksetzen",
-    "clearTitle": "Verknüpfung löschen",
-    "clickToSet": "Klicken Sie zum Festlegen",
-    "noMatch": "Zu Ihrer Suche passen keine Verknüpfungen",
-    "conflict": "Konflikte mit: {labels}",
+    "clearTitle": "Tastenkürzel entfernen",
+    "clickToSet": "Klicken zum Festlegen",
+    "noMatch": "Keine Tastenkürzel passen zu deiner Suche",
+    "conflict": "Konflikt mit: {labels}",
     "globalCapture": {
-      "title": "Globale Erfassung",
-      "description": "Erfassen Sie eine Notiz von überall",
-      "active": "Aktiv"
+      "title": "Globale Schnellerfassung",
+      "description": "Notiz von überall aus erfassen",
+      "active": "Aktiv",
+      "inUse": "{shortcut} wird von einer anderen App verwendet. Wähle eine andere Kombination.",
+      "unsupported": "{shortcut} kann nicht als globales Tastenkürzel verwendet werden. Wähle eine andere Kombination.",
+      "fallbackInUse": "Das Standardkürzel {shortcut} wird von einer anderen App verwendet. Lege eine andere Kombination fest, um die globale Schnellerfassung zu nutzen."
     },
     "toasts": {
-      "saveGlobalFailed": "Die globale Erfassungsverknüpfung konnte nicht gespeichert werden",
-      "saveFailed": "Verknüpfung konnte nicht gespeichert werden",
-      "resetFailed": "Verknüpfung konnte nicht zurückgesetzt werden",
-      "resetAllSuccess": "Alle Verknüpfungen werden auf die Standardeinstellungen zurückgesetzt",
-      "resetAllFailed": "Verknüpfungen konnten nicht zurückgesetzt werden"
+      "saveGlobalFailed": "Tastenkürzel für die globale Schnellerfassung konnte nicht gespeichert werden",
+      "saveFailed": "Tastenkürzel konnte nicht gespeichert werden",
+      "resetFailed": "Tastenkürzel konnte nicht zurückgesetzt werden",
+      "resetAllSuccess": "Alle Tastenkürzel auf Standard zurückgesetzt",
+      "resetAllFailed": "Tastenkürzel konnten nicht zurückgesetzt werden"
     },
     "categories": {
       "navigation": "Navigation",
       "tabs": "Tabs",
-      "editor": "Herausgeber",
+      "editor": "Editor",
       "view": "Ansicht"
     },
     "entries": {
       "nav": {
         "newNote": {
           "label": "Neue Notiz",
-          "description": "Erstellen Sie eine neue Notiz"
+          "description": "Neue Notiz erstellen"
         },
         "newTask": {
           "label": "Neue Aufgabe",
-          "description": "Erstellen Sie eine neue Aufgabe"
+          "description": "Neue Aufgabe erstellen"
         },
         "inbox": {
-          "label": "Gehen Sie zum Posteingang",
-          "description": "Navigieren Sie zum Posteingang"
+          "label": "Zum Eingang wechseln",
+          "description": "Eingang öffnen"
         },
         "notes": {
-          "label": "Gehen Sie zu Notizen",
-          "description": "Navigieren Sie zu Notizen"
+          "label": "Zu Notizen wechseln",
+          "description": "Notizen öffnen"
         },
         "tasks": {
-          "label": "Gehen Sie zu Aufgaben",
-          "description": "Navigieren Sie zu Aufgaben"
+          "label": "Zu Aufgaben wechseln",
+          "description": "Aufgaben öffnen"
         },
         "search": {
           "label": "Suchen",
           "description": "Globale Suche öffnen"
         },
         "settings": {
-          "label": "Öffnen Sie Einstellungen",
-          "description": "Öffnen Sie das Einstellungsfeld"
+          "label": "Einstellungen öffnen",
+          "description": "Einstellungsbereich öffnen"
+        },
+        "switchVault": {
+          "label": "Tresor wechseln",
+          "description": "Tresorauswahl öffnen"
+        },
+        "nextVault": {
+          "label": "Nächster Tresor",
+          "description": "Zum nächsten Tresor in der Seitenleiste wechseln"
+        },
+        "prevVault": {
+          "label": "Vorheriger Tresor",
+          "description": "Zum vorherigen Tresor in der Seitenleiste wechseln"
         }
       },
       "tabs": {
         "close": {
           "label": "Tab schließen",
-          "description": "Schließen Sie die aktuelle Registerkarte"
+          "description": "Aktuellen Tab schließen"
         },
         "next": {
-          "label": "Nächste Registerkarte",
-          "description": "Wechseln Sie zur nächsten Registerkarte"
+          "label": "Nächster Tab",
+          "description": "Zum nächsten Tab wechseln"
         },
         "previous": {
           "label": "Vorheriger Tab",
-          "description": "Wechseln Sie zur vorherigen Registerkarte"
+          "description": "Zum vorherigen Tab wechseln"
         },
         "reopen": {
           "label": "Letzten Tab erneut öffnen",
-          "description": "Öffnen Sie den zuletzt geschlossenen Tab erneut"
+          "description": "Zuletzt geschlossenen Tab erneut öffnen"
         },
         "navBack": {
-          "label": "Navigieren Sie zurück",
-          "description": "Aktivieren Sie die zuvor aktive Registerkarte erneut"
+          "label": "Zurück navigieren",
+          "description": "Zuvor aktiven Tab wieder aktivieren"
         },
         "navForward": {
-          "label": "Navigieren Sie vorwärts",
-          "description": "Führen Sie eine Rückwärtsnavigation erneut durch"
+          "label": "Vorwärts navigieren",
+          "description": "Zurück-Navigation wiederholen"
         },
         "newTab": {
           "label": "Neuer Tab",
           "description": "Menü für neue Tabs öffnen"
         },
         "closeAll": {
-          "label": "Alle Tabs im Bereich schließen",
-          "description": "Alle Tabs im Bereich schließen"
+          "label": "Alle Tabs schließen",
+          "description": "Alle Tabs im aktuellen Bereich schließen"
         },
         "pin": {
-          "label": "Tab anheften oder lösen",
-          "description": "Tab anheften oder lösen"
+          "label": "Tab anheften",
+          "description": "Aktuellen Tab anheften oder lösen"
         },
         "duplicate": {
           "label": "Tab duplizieren",
-          "description": "Tab duplizieren"
+          "description": "Kopie des aktuellen Tabs öffnen"
         },
         "splitRight": {
           "label": "Nach rechts teilen",
-          "description": "Nach rechts teilen"
+          "description": "Aktuellen Bereich nebeneinander teilen"
         },
         "splitDown": {
           "label": "Nach unten teilen",
-          "description": "Nach unten teilen"
+          "description": "Aktuellen Bereich übereinander teilen"
         },
         "closeSplit": {
           "label": "Geteilten Bereich schließen",
-          "description": "Geteilten Bereich schließen"
+          "description": "Aktuellen geteilten Bereich schließen"
         }
       },
       "editor": {
         "save": {
           "label": "Speichern",
-          "description": "Speichern Sie die aktuelle Notiz"
+          "description": "Aktuelle Notiz speichern"
         },
         "bold": {
           "label": "Fett",
-          "description": "Schalten Sie die Fettformatierung um"
+          "description": "Fettformatierung umschalten"
         },
         "italic": {
           "label": "Kursiv",
@@ -1171,21 +2014,21 @@
         },
         "strikethrough": {
           "label": "Durchgestrichen",
-          "description": "Durchgestrichen"
+          "description": "Durchstreichen umschalten"
         },
         "code": {
-          "label": "Code",
-          "description": "Code"
+          "label": "Inline-Code",
+          "description": "Inline-Code-Formatierung umschalten"
         }
       },
       "view": {
         "toggleSidebar": {
-          "label": "Seitenleiste umschalten",
+          "label": "Seitenleiste ein-/ausblenden",
           "description": "Seitenleiste ein- oder ausblenden"
         },
         "shortcuts": {
-          "label": "Hilfe zu Tastaturkürzeln",
-          "description": "Referenz zu Tastaturkürzeln anzeigen"
+          "label": "Hilfe zu Tastenkürzeln",
+          "description": "Übersicht der Tastenkürzel anzeigen"
         },
         "zoomIn": {
           "label": "Vergrößern",
@@ -1200,52 +2043,62 @@
           "description": "Zoom auf 100 % zurücksetzen"
         }
       }
+    },
+    "v2": {
+      "all": "Alle",
+      "categoryFilter": "Nach Kategorie filtern",
+      "systemWide": "Systemweit",
+      "globalCapture": "Globale Schnellerfassung",
+      "recordingHint": "Tasten drücken… esc zum Abbrechen",
+      "reset": "Zurücksetzen",
+      "resetAll": "Alle auf Standard zurücksetzen"
     }
   },
   "phaseF": {
     "componentsKeyboardChordIndicator": {
-      "pressedWaitingForSecondKey": "gedrückt – wartet auf zweite Taste..."
+      "pressedWaitingForSecondKey": "gedrückt – wartet auf zweite Taste…"
     },
     "componentsKeyboardKeyboardShortcutsDialog": {
-      "keyboardShortcuts": "Tastaturkürzel",
-      "press": "Drücken Sie ",
-      "toToggleThisDialog": "um diesen Dialog umzuschalten"
+      "keyboardShortcuts": "Tastenkürzel",
+      "press": "Drücke ",
+      "toToggleThisDialog": "zum Ein- und Ausblenden dieses Dialogs"
     },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Dieses Gerät wurde entfernt",
-      "exporting": "Exportieren...",
+      "exporting": "Wird exportiert…",
       "signOut": "Abmelden"
     },
     "componentsSyncSyncHistory": {
       "activity": "Aktivität",
-      "filterBySyncType": "Nach Synchronisierungstyp filtern",
-      "allTypes": "Alle Arten",
-      "pushed": "Gedrängt",
-      "pulled": "Gezogen",
+      "filterBySyncType": "Nach Sync-Typ filtern",
+      "allTypes": "Alle Typen",
+      "pushed": "Gesendet",
+      "pulled": "Empfangen",
       "errors": "Fehler",
       "filterByTimePeriod": "Nach Zeitraum filtern",
-      "allTime": "Alle Zeiten",
+      "allTime": "Gesamter Zeitraum",
       "today": "Heute",
       "last7Days": "Letzte 7 Tage",
       "last30Days": "Letzte 30 Tage",
-      "loadingSyncHistory": "Synchronisierungsverlauf wird geladen",
-      "noSyncActivityYet": "Noch keine Synchronisierungsaktivität",
+      "loadingSyncHistory": "Sync-Verlauf wird geladen",
+      "noSyncActivityYet": "Noch keine Sync-Aktivität",
       "loadMore": "Mehr laden",
       "duration": "· {duration}",
-      "showErrorDetailsAria": "{summary}, Fehlerdetails anzeigen",
       "summaryFailed": "Synchronisierung fehlgeschlagen",
+      "summaryPushed": "{count, plural, one {# Element gesendet} other {# Elemente gesendet}}",
       "summaryPulled": "{count, plural, one {# Element empfangen} other {# Elemente empfangen}}",
-      "summaryPushed": "{count, plural, one {# Element gesendet} other {# Elemente gesendet}}"
+      "showErrorDetailsAria": "{summary}, Fehlerdetails anzeigen"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Zuletzt synchronisiert ",
       "pending": "ausstehend",
-      "localOnly": "Nur lokal",
+      "localOnly": "nur lokale",
       "detected": "erkannt",
-      "clockSkewDetected": "Taktversatz erkannt",
-      "items": "Artikel",
-      "willSyncWhenBackOnline": "Wird synchronisiert, wenn Sie wieder online sind",
-      "openSyncSettings": "Öffnen Sie die Synchronisierungseinstellungen"
+      "dismissConflicts": "Ausblenden",
+      "clockSkewDetected": "Uhrzeitabweichung erkannt",
+      "items": "Elemente",
+      "willSyncWhenBackOnline": "Wird synchronisiert, sobald du wieder online bist",
+      "openSyncSettings": "Sync-Einstellungen öffnen"
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -1258,11 +2111,11 @@
       "failedToSendVerificationCode": "Der Bestätigungscode konnte nicht gesendet werden",
       "invalidVerificationCode": "Ungültiger Bestätigungscode",
       "accountSetupFailed": "Die Kontoeinrichtung ist fehlgeschlagen",
-      "failedToResendCode": "Fehler beim erneuten Senden des Codes",
+      "failedToResendCode": "Code konnte nicht erneut gesendet werden",
       "failedToSetUpDevice": "Gerät konnte nicht eingerichtet werden",
       "failedToConfirmRecoveryPhrase": "Wiederherstellungsphrase konnte nicht bestätigt werden",
       "failedToAnalyzeContent": "Inhalt konnte nicht analysiert werden",
-      "failedToLoadUpdaterState": "Updater-Status konnte nicht geladen werden",
+      "failedToLoadUpdaterState": "Update-Status konnte nicht geladen werden",
       "failedToCheckForUpdates": "Die Suche nach Updates ist fehlgeschlagen",
       "failedToDownloadUpdate": "Update konnte nicht heruntergeladen werden",
       "failedToInstallUpdate": "Update konnte nicht installiert werden",
@@ -1278,18 +2131,18 @@
       "failedToLoadTabSettings": "Die Tab-Einstellungen konnten nicht geladen werden",
       "failedToLoadNotes": "Notizen konnten nicht geladen werden",
       "failedToLoadTags": "Tags konnten nicht geladen werden",
+      "failedToLoadTasks": "Aufgaben konnten nicht geladen werden",
       "failedToLoadVaultStatus": "Der Tresorstatus konnte nicht geladen werden",
       "failedToSelectVault": "Tresor konnte nicht ausgewählt werden",
       "failedToCloseVault": "Der Tresor konnte nicht geschlossen werden",
       "failedToSwitchVault": "Der Tresor konnte nicht gewechselt werden",
       "failedToUpdateConfig": "Konfiguration konnte nicht aktualisiert werden",
-      "failedToReindex": "Neuindizierung fehlgeschlagen",
-      "failedToLoadTasks": "Aufgaben konnten nicht geladen werden"
+      "failedToReindex": "Neuindizierung fehlgeschlagen"
     }
   },
   "agentMcp": {
     "header": {
-      "title": "Agent MCP",
+      "title": "Agent-MCP",
       "subtitle": "Lokaler Serverzugriff für externe MCP-Clients."
     },
     "groups": {
@@ -1299,7 +2152,7 @@
     "fields": {
       "url": {
         "label": "URL",
-        "description": "Verwenden Sie diesen localhost-Endpunkt in Cursor, Claude Desktop oder Zed."
+        "description": "Verwende diesen localhost-Endpunkt in Cursor, Claude Desktop oder Zed."
       },
       "bearer": {
         "label": "Bearer-Token",
@@ -1314,16 +2167,60 @@
     },
     "copyLabel": "{label} kopieren",
     "notRunning": "Läuft nicht",
-    "toolsBadge": "{count, plural, one {# Tool} other {# Tools}}"
+    "toolsBadge": "{count, plural, one {# Tool} other {# Tools}}",
+    "v2": {
+      "hint": "Lokaler Server für Cursor, Claude Desktop, Zed",
+      "running": "Läuft",
+      "tokenHint": "Nur für diesen Start",
+      "copy": "Kopieren",
+      "rotate": "Erneuern"
+    }
   },
   "agentProviders": {
     "header": {
       "title": "Agent-Berechtigungen",
-      "subtitle": "Wählen Sie Standardzugriff, Bestätigungen und lokale Anbieter für den Agent-Chat."
+      "subtitle": "Wähle Standardzugriff, Bestätigungen und lokale Anbieter für den Agent-Chat."
     },
     "groups": {
+      "cliAgents": "CLI-Agenten",
       "local": "Lokaler OpenAI-kompatibler Anbieter",
       "actions": "Verbindungsprüfungen"
+    },
+    "cliAgents": {
+      "claude": {
+        "label": "Claude Code CLI",
+        "description": "Installiere Claude Code von claude.ai/code und führe dann `claude login` aus. MemryNote erkennt es automatisch."
+      },
+      "codex": {
+        "label": "Codex CLI",
+        "description": "Installiere es mit `npm install -g @openai/codex` und führe dann `codex login` aus, um dich bei deinem OpenAI-Konto anzumelden. MemryNote erkennt es automatisch."
+      },
+      "antigravity": {
+        "label": "Antigravity CLI",
+        "description": "Installiere die Antigravity CLI von antigravity.google/docs/cli und führe dann einmal `agy` aus, um dich bei deinem Google-Konto anzumelden. MemryNote erkennt sie automatisch."
+      },
+      "status": {
+        "detected": "Erkannt · v{version}",
+        "detectedNoVersion": "Erkannt",
+        "belowMinimum": "v{version} installiert – benötigt {minimum} oder neuer",
+        "notDetected": "Nicht erkannt",
+        "runtimeUnavailable": "Nicht verfügbar – die Agent-Laufzeit konnte nicht starten"
+      }
+    },
+    "permissions": {
+      "group": "Agent-Berechtigungen",
+      "access": {
+        "label": "Standardzugriff",
+        "description": "Legt den anfänglichen Zugriffsmodus für neue Anfragen an den Agenten fest.",
+        "vaultOnly": "Nur Tresor",
+        "computerAccess": "Computerzugriff"
+      },
+      "confirm": {
+        "label": "Aktionen bestätigen",
+        "description": "Lege fest, ob Tool-Aufrufe automatisch ausgeführt werden oder im Chat auf Freigabe warten.",
+        "alwaysAllow": "Immer erlauben",
+        "askBeforeChanges": "Vor Änderungen fragen"
+      }
     },
     "presets": {
       "ollama": "Ollama",
@@ -1345,7 +2242,7 @@
       },
       "model": {
         "label": "Modell",
-        "description": "Wählen Sie ein gefundenes Modell oder geben Sie eines manuell ein."
+        "description": "Wähle ein gefundenes Modell oder gib eines manuell ein."
       },
       "apiKey": {
         "label": "API-Schlüssel",
@@ -1360,253 +2257,41 @@
       "probe": "Tools prüfen"
     },
     "status": {
-      "disconnected": "Getrennt",
-      "toolsDisabled": "Tools deaktiviert",
-      "fullTools": "Alle Tools aktiviert",
+      "label": "Verbindung",
       "checking": "Wird geprüft…",
       "connected": "Verbunden",
-      "label": "Verbindung"
+      "disconnected": "Getrennt",
+      "toolsDisabled": "Tools deaktiviert",
+      "fullTools": "Alle Tools aktiviert"
     },
-    "permissions": {
-      "group": "Agent-Berechtigungen",
-      "access": {
-        "label": "Standardzugriff",
-        "description": "Legt den anfänglichen Zugriffsmodus für neue Agent-Turns fest.",
-        "vaultOnly": "Nur Tresor",
-        "computerAccess": "Computerzugriff"
-      },
-      "confirm": {
-        "label": "Aktionen bestätigen",
-        "description": "Legen Sie fest, ob Tool-Aufrufe automatisch ausgeführt werden oder im Chat auf Genehmigung warten.",
-        "alwaysAllow": "Immer zulassen",
-        "askBeforeChanges": "Vor Änderungen fragen"
-      }
-    }
-  },
-  "commandLine": {
-    "actions": {
-      "refresh": "Aktualisieren"
+    "alwaysAllowed": {
+      "group": "Immer erlaubt",
+      "description": "Tools, denen du in diesem Tresor eine dauerhafte Freigabe erteilt hast. Löschvorgänge können nie dauerhaft freigegeben werden.",
+      "empty": "Nichts ist immer erlaubt. Bei jeder Änderung wird weiterhin gefragt.",
+      "revoke": "Widerrufen",
+      "revokeLabel": "Dauerhafte Freigabe für {tool} widerrufen",
+      "ignoredInPageReview": "Ignoriert: Bei Änderungen an Notizen und Journaleinträgen wird immer gefragt."
     },
-    "command": {
-      "descriptionInstalled": "Installiert unter {path}",
-      "descriptionNotInstalled": "Installiere den memrynote-Befehl, damit du deinen Vault aus jedem Terminal nutzen kannst.",
-      "label": "memrynote-Befehl",
-      "toggleLabel": "memrynote-Befehl installieren"
-    },
-    "defaultVault": {
-      "description": "Wähle den Vault, der verwendet wird, wenn du memrynote ohne --vault ausführst.",
-      "descriptionSelected": "Befehle verwenden {path}, wenn --vault weggelassen wird.",
-      "label": "Standard-Vault",
-      "none": "Kein Vault ausgewählt",
-      "placeholder": "Vault auswählen"
-    },
-    "groups": {
-      "terminal": "Terminal"
-    },
-    "header": {
-      "subtitle": "Richte den memrynote-Befehl für dein Terminal ein",
-      "title": "Befehlszeile"
-    },
-    "status": {
-      "defaultVaultUpdatedToast": "Standard-CLI-Vault aktualisiert",
-      "installedToast": "memrynote-Befehl installiert",
-      "loadFailed": "Befehlsstatus konnte nicht geladen werden",
-      "loading": "Befehlsstatus wird geprüft...",
-      "uninstalledToast": "memrynote-Befehl entfernt"
-    }
-  },
-  "features": {
-    "header": {
-      "subtitle": "Aktiviere oder deaktiviere Teile der App. Aus = in der Seitenleiste ausgegraut und überall deaktiviert.",
-      "title": "Funktionen"
-    },
-    "items": {
-      "calendar": {
-        "description": "Termine und Zeitplan",
-        "label": "Kalender"
+    "v2": {
+      "permissions": {
+        "group": "Berechtigungen",
+        "hint": "Gilt für jeden Agent-Chat",
+        "access": "Zugriff",
+        "changes": "Änderungen"
       },
-      "graph": {
-        "description": "Notizverbindungen",
-        "label": "Graph"
+      "runtimes": {
+        "group": "Agent-Laufzeiten",
+        "hint": "Aus PATH erkannt"
       },
-      "home": {
-        "description": "Landing-Dashboard",
-        "label": "Start"
+      "localModel": {
+        "label": "Lokales Modell",
+        "hint": "OpenAI-kompatibler Server auf diesem Rechner",
+        "notChecked": "Nicht geprüft",
+        "optional": "Optional",
+        "fetchModels": "Modelle abrufen"
       },
-      "inbox": {
-        "description": "Schnelles Erfassen und Sortieren",
-        "label": "Posteingang"
-      },
-      "journal": {
-        "description": "Tägliche Notizen",
-        "label": "Tagebuch"
-      },
-      "tasks": {
-        "description": "To-dos und Fälligkeitsdaten",
-        "label": "Aufgaben"
-      },
-      "spatialCanvas": {
-        "description": "Räumliche Boards, um Notizen anzuordnen und zu verknüpfen",
-        "label": "Canvas"
-      }
-    }
-  },
-  "import": {
-    "action": "Importieren",
-    "dialog": {
-      "cancel": "Abbrechen",
-      "choose": "Datei wählen…",
-      "chooseFolder": "Apple-Notes-Ordner auswählen…",
-      "chooseHint": "Wähle deine {label}",
-      "close": "Schließen",
-      "done": "Fertig",
-      "error": "Import fehlgeschlagen",
-      "folderHint": "Klicke unten und wähle den Ordner „group.com.apple.notes“, wenn der Auswahldialog öffnet (er startet dort). So kann Memry deine Notizen und Anhänge lesen — kein vollständiger Festplattenzugriff nötig.",
-      "progress": "{completed} von {total}",
-      "running": "Wird importiert…",
-      "selected": "{count, plural, one {# Datei ausgewählt} other {# Dateien ausgewählt}}",
-      "start": "Import starten",
-      "summary": {
-        "attachments": "{count, plural, one {# Anhang kopiert} other {# Anhänge kopiert}}",
-        "failed": "{count} fehlgeschlagen",
-        "imported": "{count, plural, one {# Element importiert} other {# Elemente importiert}}",
-        "skipped": "{count} übersprungen",
-        "title": "Import abgeschlossen"
-      },
-      "title": "Aus {name} importieren",
-      "chooseDirectory": "Ordner wählen…",
-      "folderKeepsAssets": "Wähle den Ordner, wenn die Bilder außerhalb des Notizordners liegen — Exporte legen Medien oft in einem gemeinsamen Ordner ab.",
-      "previewError": "Vorschau fehlgeschlagen"
-    },
-    "header": {
-      "subtitle": "Bring deine Notizen und Aufgaben aus anderen Apps herein",
-      "title": "Import"
-    },
-    "intro": "Einmalige Importe erstellen neue Notizen in deinem Vault. Deine ursprünglichen Exportdateien bleiben unberührt.",
-    "preview": {
-      "confirm": "Importieren",
-      "warnings": "Warnungen"
-    },
-    "select": "Wähle eine App zum Importieren aus…",
-    "sources": {
-      "apple-journal": "Einen Apple-Journal-HTML-Export als datierte Notizen importieren",
-      "apple-notes": "Aus der Apple-Notes-Datenbank importieren (NoteStore.sqlite, macOS)",
-      "bear": "Ein Bear-.bear2bk-Archiv importieren (Notizen, Tags, Anhänge)",
-      "csv": "Eine .csv-Datei importieren — eine Notiz pro Zeile, Spalten werden zu Eigenschaften",
-      "evernote": "Eine oder mehrere Evernote-.enex-Exportdateien importieren",
-      "google-keep": "Einen Google-Takeout-Keep-Export importieren (.json oder .zip)",
-      "html": ".html-Dateien mit verknüpften Bildern und seitenübergreifenden Links importieren",
-      "markdown": ".md-Dateien oder einen Ordner importieren (Frontmatter, Tags, Anhänge)",
-      "notion": "Einen HTML-Export importieren (.zip)",
-      "onenote": "OneNote-Notizbücher importieren (erfordert ein Microsoft-Konto)",
-      "raindrop": "Einen Raindrop.io-Lesezeichen-Export (.csv) importieren — Lesezeichen landen in der Inbox",
-      "roam": "Einen Roam-Research-Graphen (.json) mit verschachtelten Gliederungen importieren",
-      "ticktick": "Ein TickTick-Backup (.csv) als Projekte, Aufgaben und Erinnerungen importieren",
-      "todoist": "Einen Projekt-CSV-Export importieren (.csv)"
-    },
-    "stats": {
-      "bookmarks": "{count, plural, one {# Lesezeichen} other {# Lesezeichen}}",
-      "comments": "{count, plural, one {# Kommentar} other {# Kommentare}}",
-      "notes": "{count, plural, one {# Notiz} other {# Notizen}}",
-      "projects": "{count, plural, one {# Projekt} other {# Projekte}}",
-      "reminders": "{count, plural, one {# Erinnerung} other {# Erinnerungen}}",
-      "skipped": "{count} übersprungen",
-      "subtasks": "{count, plural, one {# Teilaufgabe} other {# Teilaufgaben}}",
-      "tasks": "{count, plural, one {# Aufgabe} other {# Aufgaben}}",
-      "withDueDate": "{count} datiert",
-      "withTags": "{count} getaggt"
-    },
-    "messages": {
-      "csv": {
-        "columns": "Spalten: {columns}",
-        "emptyTitle": "Zeile mit leerem Titel übersprungen (Spalte „{column}“)",
-        "noHeaders": "Die CSV-Datei hat keine Kopfzeile",
-        "titleColumn": "Titel aus „{column}“; weitere Spalten als Eigenschaften gespeichert"
-      },
-      "raindrop": {
-        "csvEmpty": "Die Raindrop-CSV ist leer",
-        "headerNotFound": "Die Kopfzeile der Raindrop-CSV (Spalte „url“) wurde nicht gefunden",
-        "rowNoUrl": "Zeile {row} übersprungen: keine URL"
-      },
-      "readFileFailed": "Die Datei konnte nicht gelesen werden",
-      "ticktick": {
-        "foldersDropped": "TickTick-Ordner haben keine Entsprechung in Memry und wurden verworfen",
-        "headerNotFound": "Die Kopfzeile der TickTick-CSV („Folder Name“) wurde nicht gefunden",
-        "reminderNoAnchor": "Erinnerung „{reminder}“ übersprungen (kein Datumsbezug)",
-        "subtaskParentMissing": "Übergeordnete Aufgabe von Teilaufgabe „{title}“ nicht gefunden; auf oberster Ebene importiert",
-        "unknownPriority": "Unbekannte TickTick-Priorität {priority} → keine",
-        "unsupportedRepeat": "Nicht unterstützte Wiederholungsregel „{rule}“ übersprungen"
-      },
-      "todoist": {
-        "emptyTitle": "Aufgabe mit leerem Inhalt als (ohne Titel) importiert",
-        "headerNotFound": "Keine Todoist-CSV: Die TYPE-Kopfzeile fehlt",
-        "orphanComment": "Kommentar ohne vorangehende Aufgabe übersprungen",
-        "sectionFlattened": "Abschnitt „{section}“ eingeebnet",
-        "subtaskNoParent": "Teilaufgabe „{title}“ hat bei Einrückung {indent} keine übergeordnete Aufgabe; auf oberster Ebene importiert",
-        "unknownPriority": "Unbekannte Priorität {priority} → keine",
-        "unparsedDate": "Das Datum „{date}“ konnte nicht gelesen werden"
-      }
-    },
-    "status": {
-      "appleNotes": {
-        "copyingDatabase": "Apple-Notizen-Datenbank wird kopiert…"
-      },
-      "bear": {
-        "scanning": "Bear-Export wird durchsucht…"
-      },
-      "csv": {
-        "importing": "CSV-Notizen werden importiert…"
-      },
-      "evernote": {
-        "scanning": ".enex-Dateien werden durchsucht…"
-      },
-      "html": {
-        "scanning": "HTML-Dateien werden durchsucht…"
-      },
-      "importingItem": "{title} wird importiert",
-      "raindrop": {
-        "importing": "Raindrop-Lesezeichen werden importiert…"
-      },
-      "roam": {
-        "reading": "Roam-Export wird gelesen…"
-      },
-      "scanningExport": "Export wird durchsucht…",
-      "scanningFiles": "Dateien werden durchsucht…",
-      "ticktick": {
-        "importing": "TickTick-Aufgaben werden importiert…"
-      },
-      "todoist": {
-        "importing": "Todoist-Aufgaben werden importiert…"
-      }
-    }
-  },
-  "inbox": {
-    "header": {
-      "loading": "Wird geladen…",
-      "subtitle": "Tägliche Erinnerung zum Durchsehen und Einstellungen für den Posteingang.",
-      "title": "Posteingang"
-    },
-    "reviewReminder": {
-      "enabled": {
-        "description": "Ein sanfter täglicher Hinweis, wenn dein Posteingang Elemente enthält.",
-        "label": "Mich erinnern, meinen Posteingang durchzusehen"
-      },
-      "error": "Die Erinnerung konnte nicht aktualisiert werden.",
-      "group": "Tägliche Erinnerung zum Durchsehen",
-      "test": {
-        "button": "Test senden",
-        "description": "Die Erinnerung jetzt auslösen, um deine Systembenachrichtigungen zu prüfen.",
-        "label": "Testbenachrichtigung",
-        "sent": "Testbenachrichtigung gesendet.",
-        "sentHint": "Wenn nichts erscheint, erlaube Benachrichtigungen für MemryNote in deinen Systemeinstellungen.",
-        "unsupported": "Dieses Gerät kann keine Desktop-Benachrichtigungen anzeigen."
-      },
-      "time": {
-        "description": "Ortszeit, auf jedem Gerät.",
-        "hourLabel": "Stunde",
-        "label": "Erinnerungszeit",
-        "minuteLabel": "Minute",
-        "periodLabel": "AM oder PM"
+      "alwaysAllowed": {
+        "group": "Immer erlaubte Tools"
       }
     }
   }

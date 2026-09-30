@@ -1,9 +1,11 @@
 {
   "page": {
-    "loading": "Indlæser graf...",
-    "load-failed": "Kunne ikke indlæse grafdata",
+    "loading": "Indlæser graf…",
+    "load-failed": "Kunne ikke indlæse grafdataene",
+    "render-failed": "Grafen er ikke tilgængelig på denne enhed",
+    "render-failed-description": "Denne enhed kunne ikke starte grafikmotoren. Dine noter er i sikkerhed.",
     "try-again": "Prøv igen",
-    "aria-label": "Vidensgraf med {nodeCount, plural, one {# node} other {# noder}} og {edgeCount, plural, one {# forbindelse} other {#-forbindelser}}{summary, select, none {.} other {: {summary}.}}",
+    "aria-label": "Vidensgraf med {nodeCount, plural, one {# knude} other {# knuder}} og {edgeCount, plural, one {# forbindelse} other {# forbindelser}}{summary, select, none {.} other {: {summary}.}}",
     "nodes-list-label": "Grafknuder",
     "node-list-item": "{label} ({type})"
   },
@@ -16,10 +18,10 @@
     "discover-description": "Efterhånden som forbindelser vokser, vil klynger og temaer opstå naturligt"
   },
   "entity": {
-    "note": "bemærk",
+    "note": "note",
     "notes": "noter",
-    "journal": "journal",
-    "journals": "journaler",
+    "journal": "dagbog",
+    "journals": "dagbøger",
     "task": "opgave",
     "tasks": "opgaver",
     "project": "projekt",
@@ -27,8 +29,9 @@
     "tag": "tag",
     "tags": "tags",
     "orphan": "forældreløs",
-    "orphans": "forældreløse børn",
-    "unresolved": "uafklaret"
+    "orphans": "forældreløse",
+    "unresolved": "uafklaret",
+    "category": "kategori"
   },
   "summary": {
     "node-type-count": "{count} {label}"
@@ -40,38 +43,95 @@
     "filters": "Filtre",
     "display": "Visning",
     "show-labels": "Vis etiketter",
+    "live-motion": "Bevægelse i realtid",
     "focus-depth": "dybde {depth}",
-    "clear-focus": "Klar fokuseret node"
+    "clear-focus": "Ryd fokuseret knude",
+    "relayout": "Omarrangér layout",
+    "categories": "Tagkategorier",
+    "color-by-category": "Farv efter kategori",
+    "no-categories": "Gruppér tags i kategorier på tagsiden for at farve og folde grafen efter kategori.",
+    "collapse-category": "Fold {name} sammen",
+    "expand-category": "Fold {name} ud",
+    "uncategorized": "Ukategoriseret"
   },
   "filter": {
     "notes": "Noter",
-    "journals": "Journaler",
+    "journals": "Dagbøger",
     "tasks": "Opgaver",
     "projects": "Projekter",
     "tags": "Tags",
-    "orphans": "Forældreløse børn",
-    "toggle-entity": "Skift {label}",
-    "toggle-orphans": "Skift forældreløse noder"
+    "orphans": "Forældreløse",
+    "canvas-edges": "Lærredsforbindelser",
+    "toggle-entity": "Vis/skjul {label}",
+    "toggle-orphans": "Vis/skjul forældreløse knuder"
   },
   "search": {
-    "placeholder": "Søg noder...",
+    "placeholder": "Søg efter knuder…",
     "clear": "Ryd grafsøgning"
   },
   "context-menu": {
     "untitled": "Uden titel",
-    "focus-node": "Fokuser på denne node",
+    "focus-node": "Fokusér på denne knude",
     "open-new-tab": "Åbn i ny fane",
     "create-note": "Opret note",
-    "copy-title": "Kopiér titel"
+    "copy-title": "Kopiér titel",
+    "link-to": "Link til…",
+    "add-tag": "Tilføj tag…",
+    "back": "Tilbage",
+    "link-search": "Søg i noter…",
+    "tag-search": "Søg efter eller opret et tag…",
+    "no-matches": "Ingen resultater",
+    "create-tag": "Opret #{tag}",
+    "remove-link": "Fjern link til {title}",
+    "unpin": "Frigør",
+    "collapse-category": "Fold {name} sammen",
+    "expand-category": "Fold {name} ud"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {# forbindelse} other {#-forbindelser}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# forbindelse} other {# forbindelser}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# element} other {# elementer}}",
+    "click-to-expand": "Klik for at folde ud"
   },
   "local-panel": {
-    "loading": "Indlæser graf...",
+    "loading": "Indlæser graf…",
     "empty": "Ingen forbindelser fundet",
     "open-full": "Åbn hele grafen",
-    "close": "Luk graf"
+    "close": "Luk graf",
+    "pin": "Fastgør til denne note",
+    "unpin": "Frigør, og følg den åbne note",
+    "pinned-to": "Fastgjort: {title}"
+  },
+  "edit": {
+    "linked": "{source} linket til {target} i »{property}«",
+    "unlinked": "Link fra {source} til {target} fjernet",
+    "already-linked": "{source} linker allerede til {target}",
+    "property-conflict": "»{property}« på denne note er ikke en relationsegenskab, så linket blev ikke tilføjet",
+    "link-unsupported": "Der kan kun oprettes links mellem noter",
+    "link-failed": "Kunne ikke tilføje linket",
+    "unlink-failed": "Kunne ikke fjerne linket",
+    "tag-added": "#{tag} føjet til {note}",
+    "tag-exists": "Denne note har allerede #{tag}",
+    "tag-failed": "Kunne ikke tilføje tagget",
+    "undo-failed": "Kunne ikke fortryde ændringen"
+  },
+  "relayout-confirm": {
+    "title": "Vil du omarrangere grafens layout?",
+    "description": "Alle fastgjorte knuder frigøres, og grafen finder et nyt layout. Dit gemte layout kasseres.",
+    "cancel": "Annullér",
+    "confirm": "Omarrangér layout"
+  },
+  "views": {
+    "title": "Gemte visninger",
+    "unsaved": "Ikke-gemt visning",
+    "edited": "Redigeret",
+    "empty": "Ingen gemte visninger endnu",
+    "save-as": "Gem som ny visning…",
+    "update": "Opdatér »{name}«",
+    "delete": "Slet visningen {name}",
+    "save-dialog-title": "Gem grafvisning",
+    "save-dialog-placeholder": "Visningsnavn",
+    "cancel": "Annullér",
+    "save": "Gem"
   }
 }

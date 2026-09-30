@@ -3,19 +3,19 @@
     "quit": "MemryNote beenden",
     "preferences": "Einstellungen…",
     "checkForUpdates": "Nach Updates suchen…",
-    "exit": "Beenden",
+    "services": "Dienste",
     "hide": "MemryNote ausblenden",
     "hideOthers": "Andere ausblenden",
-    "services": "Dienste",
-    "unhide": "Alle einblenden"
+    "unhide": "Alle einblenden",
+    "exit": "Beenden"
   },
   "file": {
     "label": "Datei",
     "newNote": "Neue Notiz",
-    "close": "Fenster schließen",
-    "closeTab": "Tab schließen",
+    "openQuickly": "Schnell öffnen…",
     "exportPdf": "Als PDF exportieren…",
-    "openQuickly": "Schnell öffnen…"
+    "closeTab": "Tab schließen",
+    "close": "Fenster schließen"
   },
   "navigation": {
     "back": "Zurück",
@@ -31,63 +31,68 @@
     "selectAll": "Alles auswählen",
     "find": "Suchen",
     "speech": "Sprachausgabe",
-    "delete": "Löschen",
     "pasteAndMatchStyle": "Einfügen und Stil anpassen",
+    "delete": "Löschen",
     "startSpeaking": "Sprachausgabe starten",
-    "stopSpeaking": "Sprachausgabe stoppen"
+    "stopSpeaking": "Sprachausgabe stoppen",
+    "addToDictionary": "Zum Wörterbuch hinzufügen",
+    "noSuggestions": "Keine Vorschläge"
   },
-  "view": {
-    "label": "Ansicht",
-    "reload": "Neu laden",
-    "toggleDevTools": "Entwicklertools umschalten",
-    "toggleFullscreen": "Vollbild umschalten",
-    "theme": "Design",
-    "themeDark": "Dunkel",
-    "themeLight": "Hell",
-    "themeSystem": "System",
-    "themeWhite": "Papier",
-    "toggleDayPanel": "Tagespanel umschalten",
-    "toggleSidebar": "Seitenleiste umschalten",
-    "actualSize": "Originalgröße",
-    "zoomIn": "Vergrößern",
-    "zoomOut": "Verkleinern"
+  "insert": {
+    "label": "Einfügen",
+    "codeBlock": "Codeblock",
+    "table": "Tabelle",
+    "bulletList": "Aufzählungsliste",
+    "numberedList": "Nummerierte Liste",
+    "taskList": "Aufgabenliste",
+    "attachment": "Anhang einfügen…"
   },
   "format": {
-    "body": "Fließtext",
-    "bold": "Fett",
-    "code": "Code",
+    "label": "Format",
     "heading1": "Überschrift 1",
     "heading2": "Überschrift 2",
     "heading3": "Überschrift 3",
     "heading4": "Überschrift 4",
     "heading5": "Überschrift 5",
     "heading6": "Überschrift 6",
-    "highlight": "Hervorheben",
+    "body": "Fließtext",
+    "bold": "Fett",
     "italic": "Kursiv",
-    "label": "Format",
+    "code": "Code",
+    "highlight": "Hervorheben",
     "strikethrough": "Durchgestrichen"
   },
-  "help": {
-    "about": "Über MemryNote",
-    "documentation": "Dokumentation",
-    "label": "Hilfe",
-    "shortcuts": "Tastenkürzel",
-    "aboutVersion": "Version {version}"
-  },
-  "insert": {
-    "attachment": "Anhang einfügen…",
-    "bulletList": "Aufzählungsliste",
-    "codeBlock": "Codeblock",
-    "label": "Einfügen",
-    "numberedList": "Nummerierte Liste",
-    "table": "Tabelle",
-    "taskList": "Aufgabenliste"
+  "view": {
+    "label": "Ansicht",
+    "reload": "Neu laden",
+    "toggleDevTools": "Entwicklertools ein-/ausblenden",
+    "toggleFullscreen": "Vollbild umschalten",
+    "toggleSidebar": "Seitenleiste ein-/ausblenden",
+    "toggleDayPanel": "Tagesbereich ein-/ausblenden",
+    "theme": "Design",
+    "themeLight": "Hell",
+    "themeDark": "Dunkel",
+    "themeWhite": "Papier",
+    "themeSystem": "System",
+    "actualSize": "Originalgröße",
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern"
   },
   "window": {
     "label": "Fenster",
-    "close": "Schließen",
-    "front": "Alle nach vorne bringen",
     "minimize": "Minimieren",
-    "zoom": "Zoomen"
+    "zoom": "Zoomen",
+    "front": "Alle nach vorne bringen",
+    "close": "Schließen"
+  },
+  "help": {
+    "label": "Hilfe",
+    "documentation": "Dokumentation",
+    "shortcuts": "Tastenkürzel",
+    "about": "Über MemryNote",
+    "aboutVersion": "Version {version}"
+  },
+  "tray": {
+    "show": "MemryNote anzeigen"
   }
 }

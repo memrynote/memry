@@ -1,7 +1,13 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Fokusér på indfangningsfeltet",
+    "detailHint": "detaljer",
+    "submit": "Indfang"
+  },
   "button": {
     "save": "Gem",
-    "cancel": "Annuller",
+    "cancel": "Annullér",
     "close": "Luk",
     "delete": "Slet",
     "done": "Færdig",
@@ -14,16 +20,19 @@
     "copy": "Kopiér",
     "create": "Opret"
   },
+  "media": {
+    "video": "Video"
+  },
   "state": {
-    "loading": "Indlæser...",
-    "saving": "Gemmer...",
-    "deleting": "Sletter...",
-    "searching": "Søger..."
+    "loading": "Indlæser…",
+    "saving": "Gemmer…",
+    "deleting": "Sletter…",
+    "searching": "Søger…"
   },
   "action": {
     "search": "Søg",
     "expand": "Udvid",
-    "collapse": "Kollaps",
+    "collapse": "Fold sammen",
     "showMore": "+{count, plural, one {# mere} other {# mere}}",
     "showLess": "Vis mindre",
     "undo": "Fortryd"
@@ -33,457 +42,287 @@
     "showInExplorer": "Vis i Stifinder",
     "showInFileManager": "Vis i filhåndtering",
     "openInDefaultApp": "Åbn i standardapp",
-    "revealFailed": "Kunne ikke vises i mappen"
+    "revealFailed": "Kunne ikke vise filen i mappen"
   },
   "tabs": {
-    "pin": "Pin fane",
+    "pin": "Fastgør fane",
     "unpin": "Frigør fanen",
+    "persistence": {
+      "saveFailed": "Dine åbne faner bliver ikke længere gemt",
+      "saveFailedQuota": "Denne session er for stor til at blive gemt. Luk nogle faner, ellers bliver den måske ikke gendannet, næste gang du åbner Memry.",
+      "saveFailedGeneric": "Memry kunne ikke gemme denne session, så den bliver måske ikke gendannet, næste gang du åbner appen.",
+      "lastSessionNotSaved": "Din sidste session blev ikke gemt, da Memry lukkede",
+      "lastSessionNotSavedQuota": "Lagerpladsen var fuld på det tidspunkt, så disse faner er fra en tidligere lagring. Luk nogle faner for at gøre plads.",
+      "lastSessionNotSavedGeneric": "Memry kunne ikke gemme dine faner ved lukning, så disse faner er fra en tidligere lagring."
+    },
     "contextMenu": {
       "close": "Luk",
-      "closeOthers": "Luk Andre",
-      "closeToRight": "Tæt på højre",
+      "closeOthers": "Luk andre",
+      "closeToRight": "Luk til højre",
       "closeAll": "Luk alle",
-      "duplicate": "Dupliker fane",
-      "splitRight": "Split højre",
-      "splitDown": "Split ned",
-      "copyPath": "Kopier sti",
-      "revealInSidebar": "Afsløre i Sidebar"
+      "duplicate": "Duplikér fane",
+      "splitRight": "Opdel til højre",
+      "splitDown": "Opdel nedad",
+      "copyPath": "Kopiér sti",
+      "revealInSidebar": "Vis i sidebjælken"
     }
   },
   "count": {
     "note": "{count, plural, one {# note} other {# noter}}",
+    "journal": "{count, plural, one {# dagbogsindlæg} other {# dagbogsindlæg}}",
     "task": "{count, plural, one {# opgave} other {# opgaver}}",
-    "itemDelete": "{count, plural, one {Slet # element} other {Slet # elementer}}",
     "event": "{count, plural, one {# begivenhed} other {# begivenheder}}",
-    "journal": "{count, plural, one {# journal} other {# journaler}}",
-    "reminder": "{count, plural, one {# påmindelse} other {# påmindelser}}"
+    "reminder": "{count, plural, one {# påmindelse} other {# påmindelser}}",
+    "itemDelete": "{count, plural, one {Slet # element} other {Slet # elementer}}"
   },
   "toast": {
     "actionFailed": "Handlingen mislykkedes",
     "nothingToUndo": "Intet at fortryde",
-    "undone": "Fortryd: {description}",
-    "undoFailed": "Handlingen kunne ikke fortrydes"
+    "undone": "Fortrudt: {description}",
+    "undoFailed": "Kunne ikke fortryde handlingen",
+    "filesImported": "{count, plural, one {# fil importeret} other {# filer importeret}}",
+    "filesImportFailed": "{count, plural, one {Kunne ikke importere # fil} other {Kunne ikke importere # filer}}",
+    "filesHiddenInSidebar": "Filer er skjult i sidebjælken. Slå »Vis filer« til i sorteringsmenuen for Samlinger for at se dem.",
+    "moreRemindersDue": "{count, plural, one {# påmindelse mere forfalder} other {# påmindelser mere forfalder}}",
+    "moreRemindersDueHint": "Se detaljer i påmindelsespanelet",
+    "searchIndexRepaired": "Søgeindeks repareret",
+    "searchIndexRepairedHint": "En del af søgeindekset var beskadiget, så Memry genopbyggede det. Dine noter blev ikke berørt."
   },
   "dateRelative": {
     "today": "I dag",
     "yesterday": "I går",
-    "daysAgo": "{count, plural, one {# dag siden} other {# dage siden}}",
-    "daysLate": "{count, plural, one {#d forsinket} other {#d forsinket}}",
-    "daysOverdue": "{count, plural, one {# dag forsinket} other {# dage forsinket}}",
-    "tomorrow": "I morgen"
+    "daysAgo": "{count, plural, one {for # dag siden} other {for # dage siden}}",
+    "tomorrow": "I morgen",
+    "daysOverdue": "{count, plural, one {forfalden for # dag siden} other {forfalden for # dage siden}}",
+    "daysLate": "{count, plural, one {# d. over tid} other {# d. over tid}}",
+    "inDays": "{count, plural, one {om # dag} other {om # dage}}",
+    "inWeeks": "{count, plural, one {om # uge} other {om # uger}}"
   },
   "recurrence": {
-    "everyNDays": "{count, plural, one {Hver dag} other {Hver # dag}}",
-    "everyNWeeks": "{count, plural, one {Hver uge} other {Hver # uge}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {Hver hverdag} other {Hver # uge på hverdage}}",
-    "everyNWeeksOnWeekends": "{count, plural, one {Hver weekend} other {Hver # uge i weekenden}}",
-    "everyNWeeksOnDays": "{count, plural, one {Hver uge på {days}} other {Hver # uge på {days}}}",
-    "everyNMonths": "{count, plural, one {Hver måned} other {Hver # måned}}",
-    "everyNMonthsOnDay": "{count, plural, one {Hver måned på {day}{suffix}} other {Hver # måned på {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {Hver måned på {week} {day}} other {Hver # måned på {week} {day}}}",
-    "everyNYears": "{count, plural, one {Hvert år} other {Hvert # år}}",
-    "repeats": "Gentager",
+    "everyNDays": "{count, plural, one {Hver dag} other {Hver #. dag}}",
+    "everyNWeeks": "{count, plural, one {Hver uge} other {Hver #. uge}}",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Hver hverdag} other {Hver #. uge på hverdage}}",
+    "everyNWeeksOnWeekends": "{count, plural, one {Hver weekend} other {Hver #. uge i weekenden}}",
+    "everyNWeeksOnDays": "{count, plural, one {Hver uge på {days}} other {Hver #. uge på {days}}}",
+    "everyNMonths": "{count, plural, one {Hver måned} other {Hver #. måned}}",
+    "everyNMonthsOnDay": "{count, plural, one {Hver måned den {day}.{suffix}} other {Hver #. måned den {day}.{suffix}}}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Hver måned den {week} {day}} other {Hver #. måned den {week} {day}}}",
+    "everyNYears": "{count, plural, one {Hvert år} other {Hvert #. år}}",
+    "repeats": "Gentages",
     "ordinal": {
       "first": "første",
-      "fourth": "fjerde",
-      "last": "sidste",
       "second": "anden",
-      "third": "tredje"
+      "third": "tredje",
+      "fourth": "fjerde",
+      "last": "sidste"
     },
     "preset": {
       "everyWeekday": "Hver hverdag (man.-fre.)",
       "everyYearOnDate": "Hvert år den {date}"
     }
   },
-  "phaseF": {
-    "componentsAppSidebar": {
-      "collections": "Samlinger",
-      "newNote": "Ny seddel",
-      "newNote2": "Ny seddel",
-      "newFolder": "Ny mappe",
-      "newFolder2": "Ny mappe",
-      "bookmarks": "Bogmærker",
-      "tags": "Tags",
-      "dropFilesToImport": "Slip filer for at importere",
-      "newNoteN": "Ny note (⌘N)",
-      "new": "Ny",
-      "syncDisabled": "Synkronisering deaktiveret",
-      "syncDisabled2": "Synkronisering deaktiveret",
-      "feedbackButton": "Send feedback",
-      "feedbackDescription": "Fortæl os, hvad der virker, hvad der er i stykker, eller hvad du ønsker Memry kunne. Vi læser hver besked.",
-      "feedbackEmailHint": "Tilføj din e-mail, hvis du ønsker et svar.",
-      "feedbackError": "Kunne ikke sende feedback. Prøv igen.",
-      "feedbackPlaceholder": "Din feedback…",
-      "feedbackSend": "Send",
-      "feedbackSending": "Sender…",
-      "feedbackSuccess": "Tak for din feedback!",
-      "feedbackTitle": "Send feedback",
-      "newItemMenu": "Opret ny…",
-      "feedbackPrivacyEmailOptional": "Din e-mail — kun hvis du tilføjer den, og kun så vi kan svare",
-      "feedbackPrivacyEmailSignedIn": "Din konto-e-mail ({email}), så vi kan svare",
-      "feedbackPrivacyMessage": "Din besked, præcis som du skrev den",
-      "feedbackPrivacyNote": "Intet andet. Dine noter bliver på din enhed.",
-      "feedbackPrivacyPlan": "Din plan (free, Plus, Pro eller Believer)",
-      "feedbackPrivacyTitle": "Hvad der sendes",
-      "feedbackPrivacyVersion": "Appversion og styresystem",
-      "projects": "Projekter"
-    },
-    "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "Ændr størrelse på dagpanel",
-      "dragToResizeDoubleClickToReset": "Træk for at ændre størrelse · Dobbeltklik for at nulstille"
-    },
-    "componentsFindBarFindBar": {
-      "findReplaceAsk": "Find, udskift, spørg..."
-    },
-    "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Spring onboarding over",
-      "welcomeToMemry": "Velkommen til memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Din personlige vidensbase. Lad os bruge 2 minutter på at komme i gang.",
-      "getStarted": "Kom godt i gang ",
-      "createYourFirstNote": "Opret din første note",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-baseret, gemt lokalt som almindelige filer.",
-      "eGMeetingNotesIdeasAnything": "f.eks. Mødenotater, ideer, hvad som helst...",
-      "skip": "Spring over",
-      "createNote": "Opret note ",
-      "addYourFirstTask": "Tilføj din første opgave",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Opgaver linker til dine noter med prioriteter og forfaldsdatoer.",
-      "eGReviewProjectProposal": "f.eks. Gennemgå projektforslag...",
-      "skip2": "Spring over",
-      "createTask": "Opret opgave ",
-      "syncAcrossDevices": "Synkroniser på tværs af enheder",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Hold dine noter og opgaver synkroniseret på tværs af alle dine enheder. Du kan altid konfigurere dette senere.",
-      "skipForNow": "Spring over for nu",
-      "doneLetSGo": "Færdig - lad os gå! "
-    },
-    "componentsFolderIconButton": {
-      "setFolderIcon": "Indstil mappeikon"
-    },
-    "componentsHintOverlayHintIndicator": {
-      "hint": "TIP"
-    },
-    "componentsIconPicker": {
-      "iconPicker": "Ikonvælger",
-      "selectIcon": "Vælg ikon",
-      "closeIconPicker": "Luk ikonvælgeren",
-      "searchIcons": "Søg ikoner...",
-      "all": "Alle",
-      "clearIcon": "Ryd ikon",
-      "noIconsFoundFor": "Ingen ikoner fundet for \""
-    },
-    "componentsKeyboardShortcutsModal": {
-      "keyboardShortcuts": "Tastaturgenveje",
-      "closeShortcutsHelp": "Hjælp til at lukke genveje",
-      "press": "Tryk på",
-      "toClose": "at lukke"
-    },
-    "componentsKiboUiTreeIndex": {
-      "setIcon": "Indstil ikon",
-      "clearIcon": "Ryd ikon"
-    },
-    "componentsNavMain": {
-      "platform": "Platform"
-    },
-    "componentsNavProjects": {
-      "projects": "Projekter",
-      "more": "Mere",
-      "viewProject": "Se projekt",
-      "shareProject": "Del projekt",
-      "deleteProject": "Slet projekt",
-      "more2": "Mere"
-    },
-    "componentsNavUser": {
-      "cn": "CN",
-      "cn2": "CN",
-      "upgradeToPro": "Opgrader til Pro",
-      "account": "Konto",
-      "billing": "Fakturering",
-      "notifications": "Meddelelser",
-      "logOut": "Log ud"
-    },
-    "componentsSearchCommandPalette": {
-      "search": "Søg",
-      "searchNotesTasksJournalInbox": "Søg i noter, opgaver, journal, indbakke...",
-      "noResultsFor": "Ingen resultater for \"",
-      "result": "resultat",
-      "noResultsForQuery": "Ingen resultater for “{query}”",
-      "resultCount": "{count, plural, one {# resultat} other {# resultater}}",
-      "indexBuilding": "Bygger søgeindeks {done}/{total} — resultatet er muligvis ikke fuldstændigt",
-      "indexBuildingUnknown": "Bygger søgeindeks — resultatet er muligvis ikke fuldstændigt"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Søg og klik på elementer for at bygge dit spor",
-      "reasons": "Årsager",
-      "clear": "Ryd"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Ryd",
-      "tags": "Tags",
-      "filterByTag": "Filtrer efter tag...",
-      "dateRange": "Datointerval"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Se alle ",
-      "results": "resultater"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "sløret"
-    },
-    "componentsSplitViewEmptyPaneState": {
-      "noTabsOpen": "Ingen faner åbne",
-      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Åbn en side fra sidebjælken, eller opret en ny fane for at komme i gang",
-      "openInbox": "Åbn Indbakke",
-      "closePane": "Luk rude"
-    },
-    "componentsSplitViewLayoutPicker": {
-      "layoutPresets": "Forudindstillinger af layout",
-      "layoutPresets2": "Forudindstillinger for layout"
-    },
-    "componentsSplitViewResizeHandle": {
-      "resizePanes": "Ændr størrelse på ruder"
-    },
-    "componentsSplitViewTabContent": {
-      "taskscontextNotAvailable": "TasksContext er ikke tilgængelig",
-      "searchResults": "Søgeresultater",
-      "unknownTabType": "Ukendt fanetype: "
-    },
-    "componentsTabsAccessibleTab": {
-      "unsavedChanges": "ikke-gemte ændringer",
-      "preview": "forhåndsvisning"
-    },
-    "componentsTabsNewTabMenu": {
-      "newTab": "Ny fane",
-      "newTab2": "Ny fane",
-      "newNote": "Ny note",
-      "journal": "Journal",
-      "calendar": "Kalender",
-      "inboxCapture": "Indbakke-optagelse",
-      "tasks": "Opgaver",
-      "tags": "Tags"
-    },
-    "componentsTabsPinnedTab": {
-      "unsavedChanges": "Ikke-gemte ændringer",
-      "unsaved": "ikke gemt)"
-    },
-    "componentsTabsRegularTab": {
-      "unsavedChanges": "Ikke-gemte ændringer"
-    },
-    "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "Luk alle faner"
-    },
-    "componentsTabsTabBarWithDrag": {
-      "openTabs": "Åbn faner",
-      "scrollTabsLeft": "Rul faner til venstre",
-      "scrollTabsRight": "Rul faner til højre",
-      "dayPanel": "Dagspanel"
-    },
-    "componentsTabsTabErrorBoundary": {
-      "somethingWentWrong": "Noget gik galt",
-      "anErrorOccurredWhileRenderingThisTabContent": "Der opstod en fejl under gengivelsen af denne faneindhold.",
-      "tryAgain": "Prøv igen",
-      "sendReport": "Send diagnostikrapport"
-    },
-    "componentsTabsTabPreviewCard": {
-      "noteIcon": "Bemærk ikon"
-    },
-    "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Ikke-gemte ændringer",
-      "unsavedChangesBody": "“{title}” har ikke-gemte ændringer. Hvad vil du gøre?"
-    },
-    "componentsTeamSwitcher": {
-      "newWorkspace": "Nyt arbejdsrum",
-      "darkMode": "Mørk tilstand",
-      "settings": "Indstillinger",
-      "integrations": "Integrationer",
-      "signOut": "Log ud",
-      "downloadOnIos": "Download på iOS"
-    },
-    "componentsTrafficLights": {
-      "closeWindow": "Luk vinduet",
-      "minimizeWindow": "Minimer vinduet",
-      "maximizeWindow": "Maksimer vinduet"
-    },
-    "componentsUiAutocompleteDropdown": {
-      "suggestions": "Forslag",
-      "or": "eller",
-      "enter": "Indtast",
-      "toInsert": "at indsætte"
-    },
-    "componentsUiBreadcrumb": {
-      "breadcrumb": "brødkrumme",
-      "more": "Mere"
-    },
-    "componentsUiDialog": {
-      "close": "Luk"
-    },
-    "componentsUiSheet": {
-      "close": "Luk"
-    },
-    "componentsUiSidebar": {
-      "sidebar": "Sidebjælke",
-      "displaysTheMobileSidebar": "Viser den mobile sidebjælke.",
-      "toggleSidebar": "Skift sidebjælke",
-      "toggleSidebar2": "Skift sidebjælke",
-      "dragToResizeDoubleClickToReset": "Træk for at ændre størrelse · Dobbeltklik for at nulstille"
-    },
-    "componentsVaultOnboarding": {
-      "welcomeToMemry": "Velkommen til memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Dit personlige videnstyringssystem.",
-      "selectAFolderToStoreYourNotesAndTasks": "Vælg en mappe til at gemme dine noter og opgaver.",
-      "opening": "Åbner...",
-      "selectVaultFolder": "Vælg Vault Folder",
-      "plainMarkdown": "Almindelig Markdown",
-      "yourNotesStayPortable": "Dine noter forbliver bærbare",
-      "syncAnywhere": "Synkroniser hvor som helst",
-      "useDropboxIcloudGit": "Brug Dropbox, iCloud, Git",
-      "recentVaults": "Nylige hvælvinger",
-      "notesLastOpened": "noter · Sidst åbnet",
-      "brandName": "Memrynote",
-      "preRelease": "Beta",
-      "createNewVault": "Opret ny boks",
-      "createNewVaultDesc": "Start en ny boks i en mappe efter eget valg.",
-      "openExistingVault": "Åbn eksisterende boks",
-      "openExistingVaultDesc": "Vælg en mappe med Markdown-filer, du allerede bruger.",
-      "signInToSync": "Log ind for at synkronisere",
-      "signInToSyncDesc": "End-to-end-krypterede bokse på tværs af dine enheder.",
-      "create": "Opret",
-      "open": "Åbn",
-      "signIn": "Log ind",
-      "helpAndDocs": "Hjælp og dokumentation",
-      "signInRequiresVault": "Åbn eller opret først en boks for at konfigurere synkronisering.",
-      "addVault": "Tilføj boks"
-    },
-    "componentsVaultSwitcher": {
-      "noVaultsYet": "Ingen hvælvinger endnu",
-      "openVault": "Åben hvælving",
-      "settings": "Indstillinger",
-      "logOut": "Log ud",
-      "signInToSync": "Log ind for at synkronisere",
-      "remove": "Fjern \"",
-      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Denne boks vil blive fjernet fra appen, men dine filer forbliver på disken. Du kan altid tilføje det igen senere.",
-      "cancel": "Annuller",
-      "remove2": "Fjern",
-      "inYourAccount": "På din konto",
-      "itemsCount": "{count} elementer",
-      "untitledVault": "Boks",
-      "downloadVaultTitle": "Download “{name}”",
-      "downloadLocation": "Placering",
-      "changeLocation": "Skift…",
-      "download": "Hent",
-      "downloadFailed": "Boksen kunne ikke downloades",
-      "deleteFromAccount": "Slet fra konto",
-      "deleteVaultBody": "Alle synkroniserede data for denne boks fjernes permanent fra Memrys servere. Denne handling kan ikke fortrydes. Dine filer på disken bliver ikke slettet.",
-      "deleteVaultConfirm": "Slet fra konto",
-      "deleteVaultFailed": "Boksen kunne ikke slettes",
-      "deleteVaultTitle": "Vil du slette “{name}” fra din konto?",
-      "removeVaultTitle": "Vil du fjerne “{name}” fra listen?",
-      "missing": "Mappen blev ikke fundet"
-    },
-    "componentsWindowControls": {
-      "searchK": "Søg (⌘K)",
-      "browserBack": "Browser tilbage",
-      "back": "Tilbage",
-      "browserForward": "Browser frem",
-      "forward": "Fremad"
-    }
-  },
-  "phaseI": {
-    "errors": {
-      "failedToImportFiles": "Kunne ikke importere filer",
-      "failedToCreateNote": "Kunne ikke oprette note",
-      "failedToAccessMicrophone": "Kunne ikke få adgang til mikrofonen"
-    },
-    "toasts": {
-      "undone": "Fortryd"
-    }
-  },
   "agentChat": {
     "title": "Agentchat",
-    "loading": "Indlæser agentchat...",
-    "conversationLoading": "Samtalen indlæses...",
+    "loading": "Indlæser agentchat…",
+    "conversationLoading": "Indlæser samtale…",
+    "historyNotSaved": "Denne enhed kan ikke låse boksen op, så denne samtale bliver ikke gemt, når du lukker appen.",
     "newConversation": "Ny samtale",
     "history": "Samtalehistorik",
     "openInTab": "Åbn samtale i fane",
     "stop": "Stop",
-    "thinking": "Agent tænker",
+    "thinking": "Agenten tænker",
     "enable": {
-      "title": "Aktiver memrynote Agent",
-      "description": "memrynote Agent bruger din valgte lokale agent CLI til at chatte om din boks. Claude sender tur til Anthropic; Codex sender vendinger til OpenAI.",
-      "remote": "memrynote krypterer din lokale og synkroniserede chathistorik, men modelinferens sker med den valgte udbyder.",
+      "title": "Aktivér memrynote Agent",
+      "description": "memrynote Agent bruger den lokale agent-CLI, du har valgt, til at chatte om din boks. Claude sender samtalen til Anthropic; Codex sender den til OpenAI.",
+      "remote": "memrynote krypterer din lokale og synkroniserede chathistorik, men modellens inferens sker hos den valgte udbyder.",
       "readTools": "Læseværktøjer kører automatisk.",
-      "writeTools": "Opret og opdater værktøjer kræver godkendelse.",
-      "diff": "Opdateringsværktøjer viser en forskel eller forhåndsvisning.",
-      "button": "Aktiver Agent-chat"
+      "writeTools": "Værktøjer, der opretter og opdaterer, kræver godkendelse.",
+      "diff": "Værktøjer, der opdaterer, viser ændringerne eller en forhåndsvisning.",
+      "button": "Aktivér Agentchat"
     },
     "approval": {
       "description": "Agenten ønsker at kalde {name} med disse argumenter.",
-      "applyOnce": "Ansøg én gang",
+      "applyOnce": "Anvend én gang",
       "allowOnce": "Tillad én gang",
-      "editAndApply": "Rediger og anvend",
-      "editAndAllow": "Rediger og tillad",
+      "editAndApply": "Redigér og anvend",
+      "editAndAllow": "Redigér og tillad",
       "allowAlways": "Tillad altid",
       "applyEdits": "Anvend redigeringer",
       "deny": "Afvis",
-      "invalidJson": "Indtast gyldig JSON, før du anvender redigeringer."
+      "invalidJson": "Indtast gyldig JSON, før du anvender redigeringer.",
+      "thisTool": "dette værktøj",
+      "alwaysAllowHint": "»Tillad altid« gælder {tool}. Alle andre værktøjer spørger stadig, og sletninger kræver altid godkendelse.",
+      "alwaysInChat": "Tillad altid i denne chat",
+      "alwaysInChatHint": "Gælder, indtil samtalen slutter",
+      "alwaysInVault": "Tillad altid i denne boks",
+      "alwaysInVaultHint": "Kan tilbagekaldes i Indstillinger › Agent",
+      "deletesAlwaysAsk": "Sletninger kræver altid godkendelse"
     },
     "diff": {
-      "previewError": "Kunne ikke forhåndsvise note diff",
-      "description": "Agenten ønsker at opdatere {title}. Gennemgå det aktuelle og kandidatindhold, før du anvender det.",
-      "fallbackTitle": "denne note",
+      "previewError": "Kunne ikke forhåndsvise ændringen",
+      "description": "Agenten vil opdatere {title}. Gennemgå ændringen, før du anvender den.",
+      "fallbackTitle": "dette element",
       "current": "Aktuel",
-      "candidate": "Kandidat",
-      "loading": "Indlæser...",
-      "apply": "Ansøg",
-      "applyEdited": "Anvend redigeret"
+      "candidate": "Forslag",
+      "loading": "Indlæser…",
+      "apply": "Anvend",
+      "applyEdited": "Anvend redigeret version",
+      "editBody": "Redigér, før du anvender"
     },
     "inPageReview": {
       "regionLabel": "Agentens forslag",
       "barLabel": "Gennemgå agentens forslag",
-      "loading": "Indlæser forslaget...",
+      "loading": "Indlæser forslaget…",
       "loadingTitle": "Agentens forslag",
       "title": "{count, plural, =0 {Agentens forslag} one {Agenten foreslog # ændring} other {Agenten foreslog # ændringer}}",
       "editingTitle": "Redigerer forslaget",
-      "pendingHint": "Ikke gemt endnu. Accepter for at anvende det.",
+      "pendingHint": "Ikke gemt endnu. Acceptér for at anvende det.",
       "editingHint": "Dine ændringer bliver her, indtil du accepterer.",
       "baseChanged": "Denne note blev ændret, mens du redigerede forslaget.",
       "keepDraft": "Behold mine ændringer",
-      "restart": "Start forfra fra den nyeste version",
+      "restart": "Start forfra med den nyeste version",
       "reject": "Afvis",
-      "edit": "Rediger",
+      "edit": "Redigér",
       "showDiff": "Vis ændringer",
-      "accept": "Accepter",
-      "acceptEdits": "Accepter ændringer",
+      "accept": "Acceptér",
+      "acceptEdits": "Acceptér ændringer",
       "waiting": "Venter på din gennemgang i {title}.",
-      "notOpen": "Åbn {title} for at se ændringerne, eller accepter dem uden at gennemgå dem.",
+      "notOpen": "Åbn {title} for at se ændringerne, eller acceptér dem uden at gennemgå dem.",
       "show": "Vis",
       "openNote": "Åbn note",
       "openJournal": "Åbn dagbog",
       "fallbackTitle": "denne note"
     },
+    "preview": {
+      "unset": "ikke angivet",
+      "yes": "ja",
+      "no": "nej",
+      "noChange": "Intet, som denne forhåndsvisning kan vise, vil blive ændret.",
+      "willBeLost": "Går tabt",
+      "unchangedLines": "{count, plural, one {# uændret linje} other {# uændrede linjer}}",
+      "item": {
+        "note": "Note",
+        "folder": "Mappe",
+        "task": "Opgave",
+        "journal": "Dagbog",
+        "inbox": "Indbakke",
+        "project": "Projekt",
+        "status": "Status",
+        "canvas": "Lærred"
+      },
+      "intent": {
+        "create": "oprettes",
+        "update": "opdateres",
+        "delete": "slettes",
+        "move": "flyttes",
+        "reorder": "omarrangeres"
+      },
+      "field": {
+        "archived": "Arkiveret",
+        "arguments": "Argumenter",
+        "color": "Farve",
+        "completed": "Fuldført",
+        "description": "Beskrivelse",
+        "due": "Forfaldsdato",
+        "dueTime": "Forfaldstidspunkt",
+        "duplicateOf": "Kopi af",
+        "edits": "Ændringer",
+        "elements": "Elementer",
+        "folder": "Mappe",
+        "icon": "Ikon",
+        "isDefault": "Standard",
+        "isDone": "Tæller som færdig",
+        "items": "Elementer",
+        "name": "Navn",
+        "operation": "Handling",
+        "order": "Rækkefølge",
+        "parent": "Overordnet",
+        "path": "Sti",
+        "position": "Position",
+        "priority": "Prioritet",
+        "project": "Projekt",
+        "removed": "Fjernet",
+        "repeatFrom": "Gentag fra",
+        "snoozeReason": "Årsag til udsættelse",
+        "snoozedUntil": "Udsat til",
+        "start": "Start",
+        "status": "Status",
+        "tags": "Tags",
+        "title": "Titel"
+      },
+      "loss": {
+        "words": "{count, plural, one {# ord} other {# ord}}",
+        "tags": "{count, plural, one {# tag} other {# tags}}",
+        "notes": "{count, plural, one {# note} other {# noter}}",
+        "folders": "{count, plural, one {# mappe} other {# mapper}}",
+        "files": "{count, plural, one {# fil} other {# filer}}",
+        "events": "{count, plural, one {# begivenhed} other {# begivenheder}}",
+        "tasks": "{count, plural, one {# opgave} other {# opgaver}}",
+        "due": "forfalder {value}"
+      }
+    },
     "composer": {
       "currentNote": "Aktuel note",
       "removeAttachment": "Fjern {label}",
-      "placeholder": "Spørg memrynote om hvad som helst. @ for at nævne en fil",
-      "send": "Sende",
-      "providerLabel": "Agent udbyder: {provider}",
+      "placeholder": "Gør hvad som helst med memrynote… @ for at nævne noter, opgaver og begivenheder",
+      "send": "Send",
+      "providerLabel": "Agentudbyder: {provider}",
       "settingsSummary": "{reasoning}",
+      "connectedTools": "Forbundne værktøjer",
+      "connectTool": "Forbind {tool}",
+      "addContext": "Tilføj kontekst",
+      "addContextWithPermissions": "Tilføj kontekst ({permissions})",
+      "mentionContext": "Nævn en note, opgave eller begivenhed",
+      "voice": {
+        "start": "Start diktering",
+        "stop": "Stop diktering",
+        "transcribing": "Transskriberer tale",
+        "errors": {
+          "permissionDenied": "Adgang til mikrofonen blev nægtet",
+          "noMicrophone": "Ingen mikrofon fundet",
+          "accessFailed": "Kunne ikke få adgang til mikrofonen",
+          "recordingFailed": "Kunne ikke optage talen",
+          "transcriptionFailed": "Kunne ikke transskribere talen"
+        }
+      },
+      "modelLabel": "Agentmodel: {provider} {model}",
+      "reasoningLabel": "Agentens ræsonnering: {reasoning}",
       "providers": {
+        "label": "Udbyder",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
         "local": "Lokal"
       },
+      "access": {
+        "vaultOnly": "Kun boksen",
+        "computerAccess": "Computeradgang"
+      },
+      "webSearch": {
+        "on": "Til",
+        "off": "Fra",
+        "label": "Websøgning"
+      },
       "models": {
         "default": "Standard",
-        "label": "Model"
+        "label": "Model",
+        "search": "Søg i modeller…",
+        "useCustom": "Brug »{query}«",
+        "localEmpty": "Ingen modeller fundet – tjek Indstillinger",
+        "localSetup": "Konfigurér i Indstillinger…",
+        "cliSetup": "Ikke fundet – konfigurér i Indstillinger…",
+        "runtimeUnavailable": "Agenten er ikke tilgængelig – åbn Indstillinger…"
       },
       "settings": {
-        "reasoning": "Begrundelse"
+        "reasoning": "Ræsonnering",
+        "effort": "Indsats"
       },
+      "includeCurrentNote": "Medtag aktuel note",
+      "chooseModel": "Vælg model",
       "claudeSettings": {
         "reasoning": {
           "low": "Lav",
-          "medium": "Medium",
+          "medium": "Mellem",
           "high": "Høj",
           "extraHigh": "Ekstra høj",
           "extraHighDefault": "Ekstra høj (standard)",
@@ -493,20 +332,11 @@
       "codexSettings": {
         "reasoning": {
           "low": "Lav",
-          "medium": "Medium",
-          "mediumDefault": "Medium (standard)",
+          "medium": "Mellem",
+          "mediumDefault": "Mellem (standard)",
           "high": "Høj",
           "extraHigh": "Ekstra høj"
         }
-      },
-      "access": {
-        "vaultOnly": "Kun boksen",
-        "computerAccess": "Computeradgang"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Fra",
-        "label": "Websøgning"
       },
       "permissionsLabel": "Agenttilladelser: {access}, websøgning {webSearch}",
       "permissions": {
@@ -526,186 +356,135 @@
       "editedArgs": "Redigerede argumenter",
       "parameters": "Parametre"
     },
+    "toolActivity": {
+      "steps": "{count, plural, one {# trin} other {# trin}}",
+      "running": "Kører",
+      "awaitingApproval": "Venter på godkendelse",
+      "done": "Fuldført"
+    },
+    "reasoning": {
+      "thinking": "Tænker…",
+      "thought": "Tænkte",
+      "thoughtFor": "Tænkte i {seconds} s",
+      "toggle": "Vis eller skjul ræsonnering"
+    },
     "sidebar": {
       "label": "Højre sidebjælke",
-      "day": "dag",
+      "day": "Dag",
       "agent": "Agent",
-      "pendingApproval": "{count, plural, one {# afventer godkendelse} other {# afventende godkendelser}}",
-      "inProgress": "Agent tur i gang",
+      "pendingApproval": "{count, plural, one {# afventer godkendelse} other {# afventer godkendelse}}",
+      "inProgress": "Agenten er i gang med at svare",
       "close": "Luk agent"
     },
     "errors": {
       "loadConversations": "Kunne ikke indlæse agentsamtaler",
       "loadConversation": "Kunne ikke indlæse agentsamtale",
       "createConversation": "Kunne ikke oprette agentsamtale",
-      "busy": "Et andet vindue er midt i svinget for denne samtale. Vent til det er færdigt, eller stop det derfra.",
-      "sendTurn": "Kunne ikke sende agenttur",
-      "cancelTurn": "Kunne ikke annullere agentturen",
+      "busy": "Et andet vindue er midt i et svar i denne samtale. Vent, til det er færdigt, eller stop det derfra.",
+      "sendTurn": "Kunne ikke sende beskeden til agenten",
+      "cancelTurn": "Kunne ikke annullere agentens svar",
       "submitApproval": "Kunne ikke indsende værktøjsgodkendelse",
-      "updateTrust": "Kunne ikke opdatere pålidelige værktøjer",
-      "saveDisclosure": "Kunne ikke gemme oplysningstilstand",
-      "resolveWindow": "Kunne ikke løse agentkildevinduet",
+      "updateTrust": "Kunne ikke opdatere betroede værktøjer",
+      "saveDisclosure": "Kunne ikke gemme, at du har accepteret oplysningerne",
+      "resolveWindow": "Kunne ikke bestemme agentens kildevindue",
       "detectCli": "Kunne ikke finde agent-backends",
-      "loadDisclosure": "Kunne ikke indlæse afsløringstilstand"
+      "loadDisclosure": "Kunne ikke indlæse, om du har accepteret oplysningerne"
+    },
+    "actions": {
+      "copy": "Kopiér",
+      "copied": "Kopieret"
     },
     "sources": {
-      "used": "{count, plural, one {Brugte # kilde} other {Brugte # kilder}}"
+      "count": "{count, plural, one {# kilde} other {# kilder}}"
     }
-  },
-  "home": {
-    "addWidget": "Tilføj widget",
-    "board": {
-      "defaultName": "Start",
-      "deleteAria": "Slet layout",
-      "label": "Startlayout",
-      "newAria": "Ny tavle",
-      "newName": "Ny tavle"
-    },
-    "disabled": {
-      "createNote": "Opret note",
-      "hint": "Intet åbent. Start en note."
-    },
-    "done": "Færdig",
-    "edit": "Redigér",
-    "empty": {
-      "body": "Widgets samler dine noter, opgaver og bogmærker ét roligt sted.",
-      "cta": "Tilføj din første widget",
-      "title": "Din tavle er tom"
-    },
-    "greeting": {
-      "afternoon": "God eftermiddag",
-      "evening": "Godaften",
-      "morning": "Godmorgen"
-    },
-    "header": {
-      "events": "{count, plural, one {# begivenhed} other {# begivenheder}}",
-      "tasksDue": "{count, plural, one {# opgave forfalder i dag} other {# opgaver forfalder i dag}}"
-    },
-    "noBookmarksYet": "Ingen bogmærker endnu.",
-    "noEventsYet": "Ingen begivenheder i dag.",
-    "noJournalEntriesYet": "Ingen journalindførsler endnu.",
-    "noNotesYet": "Ingen noter endnu.",
-    "noTasksYet": "Ingen opgaver endnu.",
-    "widget": {
-      "bookmarks": "Bogmærker",
-      "calendar": "Kalender",
-      "calendarToday": "I dag",
-      "configAria": "Konfigurér widget",
-      "configure": "Konfigurér",
-      "dragAria": "Træk widget",
-      "duration": "{count} min",
-      "filter": {
-        "today": "Forfalder i dag",
-        "tomorrow": "I morgen",
-        "week": "Denne uge"
-      },
-      "folder": "Mappe",
-      "folderEmpty": "Ingen mapper endnu",
-      "folderNoSelection": "Ingen mappe valgt",
-      "folderPickPrompt": "Vælg en mappe",
-      "folderViewSelect": "Visning",
-      "folderView_gallery": "Galleri",
-      "folderView_list": "Liste",
-      "inbox": "Indbakke",
-      "inboxAllTypes": "Alle typer",
-      "inboxOlder": "{count, plural, one {# ældre} other {# ældre}}",
-      "inboxOldest": "ældste {count, plural, one {# dag} other {# dage}}",
-      "journal": "Journal",
-      "journalStreak": "{count, plural, one {#-dages stime} other {#-dages stime}}",
-      "journalToday": "I dag",
-      "journalYesterday": "I går",
-      "loadError": "Kunne ikke indlæse",
-      "menuAria": "Widget-indstillinger",
-      "next": "Næste: {title}",
-      "openCalendar": "Åbn kalender",
-      "openInbox": "Åbn indbakke",
-      "recentMeta": "redigeret {time}",
-      "recentMetaWithFolder": "{folder} · redigeret {time}",
-      "recentlyEdited": "Senest redigeret",
-      "remove": "Fjern",
-      "removeAria": "Fjern widget",
-      "resize": "Størrelse",
-      "resizeAria": "Tilpas til {size}",
-      "savedFilterDefault": "I dag",
-      "savedFilterHint": "Stjernemarkér filtre på Opgaver-siden for at bruge dem her",
-      "savedFilterLabel": "Gemt filter",
-      "startsIn": "Starter om {count, plural, one {# min} other {# min}}",
-      "tasks": "Opgaver",
-      "unknown": "Ukendt widget",
-      "untitled": "Uden titel"
-    }
-  },
-  "media": {
-    "video": "Video"
-  },
-  "onboarding": {
-    "agentChat": {
-      "body": "Skift til Agent-fanen for at spørge MemryNotes assistent om din boks.",
-      "title": "Chat med AI-agenten"
-    },
-    "collections": {
-      "body": "Organisér noter i mapper, fastgør bogmærker og gennemse efter tag — alt sammen her.",
-      "title": "Samlinger, bogmærker og tags"
-    },
-    "dayPanel": {
-      "body": "Sidepanelet holder en kalender og din dagsvisning ved siden af, hvad end du læser.",
-      "title": "Din dag, ved siden af dit arbejde"
-    },
-    "feedback": {
-      "body": "Send feedback direkte til teamet herfra.",
-      "title": "Fortæl os, hvad du synes"
-    },
-    "nav": {
-      "body": "Indbakke til at fange, Journal til daglige noter, Kalender til din tidslinje, Opgaver til gøremål og Graf til at se, hvordan det hele hænger sammen.",
-      "title": "Dine arbejdsområder"
-    },
-    "newNote": {
-      "body": "Start her. Alt, hvad du skriver, gemmes lokalt først.",
-      "title": "Opret din første note"
-    },
-    "settings": {
-      "body": "Importér dine noter fra 12+ apps — Obsidian, Notion, Apple Notes, Evernote og flere — og finjustér alt andet i Indstillinger.",
-      "title": "Indstillinger og import"
-    },
-    "sync": {
-      "body": "Slå ende-til-ende-krypteret synkronisering til for at holde alle enheder i trit.",
-      "title": "Privat, krypteret synkronisering"
-    },
-    "welcome": {
-      "body": "Dit private, offline-first hjem. Noter er ende-til-ende-krypterede — de forlader aldrig din enhed ukrypteret.",
-      "title": "Velkommen til MemryNote"
-    },
-    "tour": {
-      "next": "Næste",
-      "previous": "Forrige",
-      "progress": "{current} af {total}"
-    }
-  },
-  "capture": {
-    "focusShortcut": "Fokusér optagelsesfelt",
-    "detailHint": "detaljer",
-    "focusHint": "Q",
-    "submit": "Optag"
   },
   "canvas": {
+    "sectionLabel": "Lærreder",
+    "newCanvas": "Nyt lærred",
+    "newCanvasFolder": "Ny lærredsmappe",
+    "untitled": "Lærred uden titel",
+    "empty": "Ingen lærreder endnu",
+    "loading": "Indlæser lærreder…",
+    "loadFailed": "Kunne ikke indlæse lærreder",
+    "createFailed": "Kunne ikke oprette lærredet",
+    "openFailed": "Kunne ikke åbne lærredet",
+    "notFound": "Dette lærred blev ikke fundet",
+    "corruptScene": "Dette lærred kunne ikke læses. Redigering er slået fra, så du ikke mister data.",
+    "unreadableTitle": "Dette lærred kan ikke åbnes her",
+    "unreadableBody": "Dets dokument mangler i boksen, eller det blev tegnet, før lærreder blev til filer, og denne enhed har ikke længere nøglen, der låser det op. Intet er slettet – åbn boksen på den enhed, der oprettede det, eller gendan mappen med lærreder.",
+    "tooLargeToSync": "Dette lærred er for stort til at blive synkroniseret. Det er gemt på denne enhed, men når ikke frem til dine andre enheder, før det fylder mindre.",
+    "savedToVault": "Alle ændringer gemmes automatisk i din boks",
+    "libraryStoreFailed": "Kunne ikke gemme dit formbibliotek. De seneste ændringer i det kan gå tabt.",
+    "link": {
+      "itemMissing": "Det linkede element findes ikke længere.",
+      "elementMissing": "Linket peger på noget, der ikke længere er på dette lærred.",
+      "title": "Link til element",
+      "placeholder": "Søg i noter, opgaver, begivenheder, indbakke, projekter…",
+      "hint": "Begynd at skrive for at finde et element, du vil linke til.",
+      "empty": "Intet matcher.",
+      "selectOneShape": "Vælg en enkelt form for at linke den til et element.",
+      "cardsCannotLink": "Et kort åbner allerede sit eget element, så det kan ikke have et link mere.",
+      "linked": "Linket.",
+      "groupNotes": "Noter",
+      "groupFiles": "Filer",
+      "groupTasks": "Opgaver",
+      "groupEvents": "Begivenheder",
+      "groupInbox": "Indbakke",
+      "groupJournals": "Dagbogsindlæg",
+      "groupProjects": "Projekter",
+      "groupFolders": "Mapper",
+      "useUrl": "Link til {url}",
+      "openTarget": "Åbn {name}",
+      "shapeTarget": "En form på dette lærred",
+      "missingTarget": "Ikke længere på dette lærred"
+    },
+    "disabledTitle": "Lærred er ikke slået til",
+    "disabledBody": "Denne fane hører til en funktion, der ikke er slået til på denne enhed.",
+    "unreadable": "Dokumentet til dette lærred mangler eller kan ikke læses. Vis det i din filhåndtering, eller slet posten.",
+    "actionFailed": "Kunne ikke udføre handlingen på lærredet",
+    "renameLabel": "Lærredets navn",
+    "folderNameLabel": "Mappenavn",
+    "deleteConfirmTitle": "Vil du slette dette lærred?",
+    "deleteConfirmBody": "»{title}« fjernes fra memrynote på alle dine enheder. Filen flyttes til computerens papirkurv, men lærredet gendannes ikke, hvis du lægger den tilbage.",
+    "dropToRoot": "Slip her for at flytte ud af en mappe",
+    "filterPlaceholder": "Filtrér lærreder",
+    "filterNoMatches": "Ingen lærreder matcher filteret",
+    "folderCanvasCount": "{count} lærreder i mappen",
+    "folderEmptyHint": "Intet her endnu",
+    "deleteFolderConfirmTitle": "Vil du slette denne lærredsmappe?",
+    "deleteFolderConfirmBody": "»{name}« og alt i den fjernes fra memrynote på alle dine enheder. Berørte lærreder: {count}. Mappen flyttes til computerens papirkurv, men lærrederne gendannes ikke, hvis du lægger den tilbage.",
+    "actions": {
+      "rename": "Omdøb",
+      "duplicate": "Duplikér",
+      "copyLink": "Kopiér link",
+      "setIcon": "Angiv ikon",
+      "removeIcon": "Fjern ikon",
+      "moveToFolder": "Flyt til mappe",
+      "moveToRoot": "Øverste niveau",
+      "openExternal": "Åbn i ekstern editor",
+      "newCanvasHere": "Nyt lærred her",
+      "newFolder": "Ny mappe",
+      "canvasMenu": "Handlinger for lærred",
+      "folderMenu": "Handlinger for lærredsmappe"
+    },
     "card": {
-      "addCard": "Tilføj kort",
-      "addCreateNote": "Opret note \"{query}\"",
-      "addCreateNoteEmpty": "Opret ny note",
-      "addCreatedAt": "Oprettet {date}",
-      "addEmpty": "Intet fundet",
-      "addGroupEvents": "Begivenheder",
-      "addGroupNotes": "Noter",
-      "addGroupTasks": "Opgaver",
-      "addOnCanvas": "På canvasset",
-      "addPlaceholder": "Søg i noter, opgaver og begivenheder…",
-      "allDay": "Hele dagen",
-      "createNoteFailed": "Noten kunne ikke oprettes",
-      "deleted": "Elementet er slettet",
-      "loading": "Indlæser…",
       "open": "Åbn i fane",
       "openToEdit": "Åbn i fane for at redigere",
+      "deleted": "Elementet er slettet",
+      "loading": "Indlæser…",
       "untitled": "Uden titel",
+      "allDay": "Hele dagen",
+      "createNoteFailed": "Kunne ikke oprette noten",
+      "addCard": "Tilføj kort",
+      "addPlaceholder": "Søg i noter, filer, opgaver, begivenheder og projekter…",
+      "addCreateNote": "Opret note »{query}«",
+      "addCreateNoteEmpty": "Opret ny note",
+      "addEmpty": "Intet fundet",
+      "addGroupNotes": "Noter",
+      "addGroupTasks": "Opgaver",
+      "addGroupEvents": "Begivenheder",
+      "addOnCanvas": "På lærredet",
+      "addCreatedAt": "Oprettet {date}",
       "bulkGroup": "Tilføj alt fra",
       "bulkFromTag": "Et tag…",
       "bulkFromFolder": "En mappe…",
@@ -727,136 +506,751 @@
       "bulkAddedSkipped": "{count, plural, one {# kort tilføjet} other {# kort tilføjet}} · {skipped} allerede på lærredet",
       "bulkAllOnCanvas": "{count, plural, one {Allerede på dette lærred} other {Alle # er allerede på dette lærred}}"
     },
-    "corruptScene": "Dette canvas kunne ikke læses. Redigering er slået fra, så du ikke mister data.",
-    "createFailed": "Canvasset kunne ikke oprettes",
-    "disabledBody": "Denne fane hører til en funktion, der ikke er slået til på denne enhed.",
-    "disabledTitle": "Canvas er ikke slået til",
-    "empty": "Ingen canvas endnu",
-    "libraryStoreFailed": "Dit formbibliotek kunne ikke gemmes. De seneste ændringer i det kan gå tabt.",
-    "loadFailed": "Canvas kunne ikke indlæses",
-    "loading": "Indlæser canvas…",
-    "newCanvas": "Nyt canvas",
-    "notFound": "Dette canvas blev ikke fundet",
-    "openFailed": "Canvasset kunne ikke åbnes",
-    "savedToVault": "Alle ændringer gemmes automatisk i din boks",
-    "sectionLabel": "Canvas",
-    "tooLargeToSync": "Dette canvas er for stort til at synkronisere. Det er gemt på denne enhed, men bliver ikke sendt til dine andre enheder, før det fylder mindre.",
-    "untitled": "Canvas uden titel"
+    "cluster": {
+      "button": "Foreslå grupper",
+      "buttonHint": "Gruppér notekortene på denne tavle (eller de valgte) efter lighed. Kører på denne enhed.",
+      "loading": "Grupperer…",
+      "needMoreNotes": "Tilføj mindst {count} notekort for at få forslag til grupper.",
+      "tooMany": "Denne tavle har mere end {count} notekort. Vælg op til {count}, og prøv igen.",
+      "disabled": "Slå lokale indlejringer til i Indstillinger > AI for at få forslag til grupper.",
+      "noGroups": "Der blev ikke fundet tydelige grupper blandt disse noter.",
+      "missing": "{count, plural, one {# note har endnu ingen indlejring og blev udeladt.} other {# noter har endnu ingen indlejring og blev udeladt.}}",
+      "failed": "Kunne ikke foreslå grupper",
+      "title": "Foreslåede grupper",
+      "description": "Grupperet efter lighed på denne enhed. Intet på tavlen ændres, før du opretter rammer.",
+      "defaultName": "Gruppe {number}",
+      "untitledGroup": "Gruppe",
+      "groupName": "Gruppenavn",
+      "acceptGroup": "Medtag {name}",
+      "noteCount": "{count, plural, one {# note} other {# noter}}",
+      "discard": "Kassér",
+      "create": "{count, plural, one {Opret # ramme} other {Opret # rammer}}",
+      "created": "{count, plural, one {# ramme oprettet} other {# rammer oprettet}}",
+      "cardsGone": "Kortene er ikke længere på tavlen."
+    },
+    "frame": {
+      "categorize": "Kategorisér",
+      "editBinding": "Skift, hvad denne sektion kategoriserer som",
+      "cardCount": "{count, plural, one {# kort} other {# kort}}",
+      "bindTitle": "Kategorisér denne sektion",
+      "bindHint": "Kort, der slippes i sektionen, får dette tag eller denne egenskabsværdi.",
+      "bindPlaceholder": "Søg i tags og egenskabsværdier, eller skriv et nyt tag…",
+      "bindEmpty": "Ingen tags eller egenskabsværdier matcher.",
+      "groupTags": "Tags",
+      "useTag": "Brug nyt tag #{tag}",
+      "unbind": "Stop med at kategorisere som {label}",
+      "current": "Aktuel",
+      "applied": "{count, plural, one {{label} tilføjet til # kort} other {{label} tilføjet til # kort}}",
+      "applyFailed": "Kunne ikke tilføje {label}",
+      "revertFailed": "Kunne ikke fortryde {label}",
+      "leftFrame": "{count, plural, one {# kort flyttet ud af {label}. Det beholder kategorien.} other {# kort flyttet ud af {label}. De beholder kategorien.}}",
+      "removeCategory": "Fjern {label}",
+      "removed": "{count, plural, one {{label} fjernet fra # kort} other {{label} fjernet fra # kort}}",
+      "removeFailed": "Kunne ikke fjerne {label}",
+      "skippedFile": "{count, plural, one {Et filkort blev ikke ændret: filer har ingen tags eller egenskaber.} other {# filkort blev ikke ændret: filer har ingen tags eller egenskaber.}}",
+      "skippedTaskProperty": "{count, plural, one {Et opgavekort blev ikke ændret: opgaver kan få tags, men ikke noteegenskaber.} other {# opgavekort blev ikke ændret: opgaver kan få tags, men ikke noteegenskaber.}}",
+      "skippedUnsupported": "{count, plural, one {Et kort blev ikke ændret: begivenheder og projekter kan ikke kategoriseres.} other {# kort blev ikke ændret: begivenheder og projekter kan ikke kategoriseres.}}",
+      "layoutAction": "Arrangér efter egenskab",
+      "layoutTitle": "Arrangér efter egenskab",
+      "layoutHint": "Opretter en sektion pr. værdi og sorterer noterne på denne tavle ind i dem.",
+      "layoutPlaceholder": "Søg i egenskaber af typen valg, flervalg og status…",
+      "layoutEmpty": "Ingen egenskaber af typen valg, flervalg eller status med værdier endnu.",
+      "layoutValueCount": "{count, plural, one {# værdi} other {# værdier}}",
+      "layoutDone": "{count, plural, one {# sektion oprettet for {property}} other {# sektioner oprettet for {property}}}",
+      "layoutFailed": "Kunne ikke arrangere tavlen"
+    }
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Samlinger",
+      "projects": "Projekter",
+      "newNote": "Ny note",
+      "newNote2": "Ny note",
+      "newFolder": "Ny mappe",
+      "newFolder2": "Ny mappe",
+      "newProject": "Nyt projekt",
+      "bookmarks": "Bogmærker",
+      "tags": "Tags",
+      "reorderSection": "Skift rækkefølge for {section}",
+      "dropFilesToImport": "Slip filer for at importere",
+      "dropFilesIntoVaultRoot": "Boksens øverste niveau",
+      "newNoteN": "Ny note (⌘N)",
+      "new": "Ny",
+      "newItemMenu": "Opret ny…",
+      "feedbackButton": "Send feedback",
+      "feedbackTitle": "Send feedback",
+      "feedbackDescription": "Fortæl os, hvad der virker, hvad der ikke virker, eller hvad du ønsker, at MemryNote kunne. Vi læser alle beskeder.",
+      "feedbackPlaceholder": "Din feedback…",
+      "feedbackEmailHint": "Tilføj din e-mail, hvis du ønsker et svar.",
+      "feedbackPrivacyTitle": "Hvad der sendes",
+      "feedbackPrivacyMessage": "Din besked, præcis som du skrev den",
+      "feedbackPrivacyEmailOptional": "Din e-mail – kun hvis du tilføjer den, og kun så vi kan svare",
+      "feedbackPrivacyEmailSignedIn": "Din konto-e-mail ({email}), så vi kan svare",
+      "feedbackPrivacyVersion": "Appversion og styresystem",
+      "feedbackPrivacyPlan": "Dit abonnement (gratis, Plus, Pro eller Believer)",
+      "feedbackPrivacyNote": "Intet andet. Dine noter bliver på din enhed.",
+      "feedbackSend": "Send",
+      "feedbackSending": "Sender…",
+      "feedbackSuccess": "Tak for din feedback!",
+      "feedbackError": "Kunne ikke sende feedback. Prøv igen.",
+      "syncDisabled": "Synkronisering deaktiveret",
+      "syncDisabled2": "Synkronisering deaktiveret",
+      "sortLabel": "Sortér {section}: {mode}",
+      "sortModeManual": "Manuel",
+      "sortModeNameAsc": "Navn A → Z",
+      "sortModeNameDesc": "Navn Z → A",
+      "sortModeModifiedDesc": "Ændret: nyeste først",
+      "sortModeModifiedAsc": "Ændret: ældste først",
+      "sortModeCreatedDesc": "Oprettet: nyeste først",
+      "sortModeCreatedAsc": "Oprettet: ældste først",
+      "sortModeCountDesc": "Mest brugt",
+      "sortModeCountAsc": "Mindst brugt",
+      "sortSaveFailed": "Kunne ikke gemme sorteringsrækkefølgen",
+      "sectionOrderSaveFailed": "Kunne ikke gemme rækkefølgen i sidebjælken"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Ændr størrelse på dagspanelet",
+      "dragToResizeDoubleClickToReset": "Træk for at ændre størrelse · Dobbeltklik for at nulstille"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Find, erstat, spørg…"
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Spring introduktionen over",
+      "welcomeToMemry": "Velkommen til memrynote",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Din personlige vidensbase. Lad os bruge 2 minutter på at komme i gang.",
+      "getStarted": "Kom i gang ",
+      "createYourFirstNote": "Opret din første note",
+      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-baseret, gemt lokalt som almindelige filer.",
+      "eGMeetingNotesIdeasAnything": "f.eks. Mødenoter, idéer, hvad som helst…",
+      "skip": "Spring over",
+      "createNote": "Opret note ",
+      "addYourFirstTask": "Tilføj din første opgave",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Opgaver linker til dine noter med prioriteter og forfaldsdatoer.",
+      "eGReviewProjectProposal": "f.eks. Gennemgå projektforslag…",
+      "skip2": "Spring over",
+      "createTask": "Opret opgave ",
+      "syncAcrossDevices": "Synkronisér på tværs af enheder",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Hold dine noter og opgaver synkroniseret på tværs af alle dine enheder. Du kan altid konfigurere dette senere.",
+      "skipForNow": "Spring over for nu",
+      "doneLetSGo": "Færdig – lad os komme i gang! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Indstil mappeikon",
+      "expandFolder": "Udvid mappe",
+      "collapseFolder": "Fold mappe sammen"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "TIP"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Ikonvælger",
+      "selectIcon": "Vælg ikon",
+      "closeIconPicker": "Luk ikonvælgeren",
+      "searchIcons": "Søg efter ikoner…",
+      "all": "Alle",
+      "clearIcon": "Ryd ikon",
+      "noIconsFoundFor": "Ingen ikoner fundet for \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Tastaturgenveje",
+      "closeShortcutsHelp": "Luk oversigten over genveje",
+      "press": "Tryk på",
+      "toClose": "for at lukke"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Indstil ikon",
+      "clearIcon": "Ryd ikon"
+    },
+    "componentsNavMain": {
+      "platform": "Platform"
+    },
+    "componentsNavProjects": {
+      "projects": "Projekter",
+      "more": "Mere",
+      "viewProject": "Se projekt",
+      "shareProject": "Del projekt",
+      "deleteProject": "Slet projekt",
+      "more2": "Mere"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Opgradér til Pro",
+      "account": "Konto",
+      "billing": "Fakturering",
+      "notifications": "Meddelelser",
+      "logOut": "Log ud"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Søg",
+      "searchNotesTasksJournalInbox": "Søg i noter, opgaver, dagbog, indbakke…",
+      "noResultsFor": "Ingen resultater for \"",
+      "result": "resultat",
+      "noResultsForQuery": "Ingen resultater for »{query}«",
+      "resultCount": "{count, plural, one {# resultat} other {# resultater}}",
+      "indexBuilding": "Bygger søgeindeks {done}/{total} – resultaterne kan være ufuldstændige",
+      "indexBuildingUnknown": "Bygger søgeindeks – resultaterne kan være ufuldstændige"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Søg og klik på elementer for at bygge dit spor",
+      "reasons": "Årsager",
+      "clear": "Ryd"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Ryd",
+      "tags": "Tags",
+      "filterByTag": "Filtrér efter tag…",
+      "dateRange": "Datointerval"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Se alle ",
+      "results": "resultater"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "omtrentlig"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Ingen faner åbne",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Åbn en side fra sidebjælken, eller opret en ny fane for at komme i gang",
+      "openInbox": "Åbn indbakken",
+      "closePane": "Luk rude"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Layoutskabeloner",
+      "layoutPresets2": "Layoutskabeloner"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Ændr størrelse på ruder"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext er ikke tilgængelig",
+      "searchResults": "Søgeresultater",
+      "unknownTabType": "Ukendt fanetype: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "ikke-gemte ændringer",
+      "preview": "forhåndsvisning"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Ny fane",
+      "newTab2": "Ny fane",
+      "newNote": "Ny note",
+      "journal": "Dagbog",
+      "calendar": "Kalender",
+      "inboxCapture": "Indfangning til indbakken",
+      "tasks": "Opgaver",
+      "tags": "Tags"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Ikke-gemte ændringer",
+      "unsaved": "ikke gemt)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Ikke-gemte ændringer"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Luk alle faner"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Åbne faner",
+      "scrollTabsLeft": "Rul faner til venstre",
+      "scrollTabsRight": "Rul faner til højre",
+      "dayPanel": "Dagspanel"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Noget gik galt",
+      "anErrorOccurredWhileRenderingThisTabContent": "Der opstod en fejl under visningen af indholdet i denne fane.",
+      "tryAgain": "Prøv igen",
+      "sendReport": "Send diagnostikrapport"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Noteikon"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Ikke-gemte ændringer",
+      "unsavedChangesBody": "»{title}« har ændringer, der ikke er gemt. Hvad vil du gøre?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Nyt arbejdsområde",
+      "darkMode": "Mørk tilstand",
+      "settings": "Indstillinger",
+      "integrations": "Integrationer",
+      "signOut": "Log ud",
+      "downloadOnIos": "Hent til iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Luk vinduet",
+      "minimizeWindow": "Minimér vinduet",
+      "maximizeWindow": "Maksimér vinduet"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Forslag",
+      "or": "eller",
+      "enter": "Enter",
+      "toInsert": "for at indsætte"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "brødkrumme",
+      "more": "Mere"
+    },
+    "componentsUiDialog": {
+      "close": "Luk"
+    },
+    "componentsUiSheet": {
+      "close": "Luk"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Sidebjælke",
+      "displaysTheMobileSidebar": "Viser den mobile sidebjælke.",
+      "toggleSidebar": "Vis/skjul sidebjælke",
+      "toggleSidebar2": "Vis/skjul sidebjælke",
+      "dragToResizeDoubleClickToReset": "Træk for at ændre størrelse · Dobbeltklik for at nulstille"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Velkommen til memrynote",
+      "yourPersonalKnowledgeManagementSystem": "Dit personlige videnstyringssystem.",
+      "selectAFolderToStoreYourNotesAndTasks": "Vælg en mappe til at gemme dine noter og opgaver.",
+      "opening": "Åbner…",
+      "selectVaultFolder": "Vælg mappe til boksen",
+      "plainMarkdown": "Almindelig Markdown",
+      "yourNotesStayPortable": "Dine noter kan altid tages med",
+      "syncAnywhere": "Synkronisér hvor som helst",
+      "useDropboxIcloudGit": "Brug Dropbox, iCloud, Git",
+      "recentVaults": "Seneste bokse",
+      "notesLastOpened": "noter · Sidst åbnet",
+      "preRelease": "Beta",
+      "createNewVault": "Opret ny boks",
+      "createNewVaultDesc": "Start en ny boks i en mappe efter eget valg.",
+      "openExistingVault": "Åbn eksisterende boks",
+      "openExistingVaultDesc": "Vælg en mappe med Markdown-filer, du allerede bruger.",
+      "signInToSync": "Log ind for at synkronisere",
+      "signInToSyncDesc": "End-to-end-krypterede bokse på tværs af dine enheder.",
+      "create": "Opret",
+      "open": "Åbn",
+      "signIn": "Log ind",
+      "helpAndDocs": "Hjælp og dokumentation",
+      "signInRequiresVault": "Åbn eller opret først en boks for at konfigurere synkronisering.",
+      "addVault": "Tilføj boks",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "Dine noter ligger i en boks – en mappe på denne computer.",
+        "createDesc": "Giv den et navn, og vælg, hvor den skal ligge.",
+        "openFolder": "Åbn mappe som boks",
+        "openFolderDesc": "Brug en mappe med Markdown-filer, du allerede har.",
+        "openFromSync": "Åbn fra Memrynote Sync",
+        "openFromSyncDesc": "Log ind, og hent en boks fra din konto.",
+        "back": "Tilbage",
+        "createTitle": "Opret en ny boks",
+        "createSubtitle": "En boks er en mappe med Markdown-filer. Du kan flytte den senere.",
+        "nameLabel": "Navn",
+        "namePlaceholder": "Mine noter",
+        "locationLabel": "Placering",
+        "change": "Skift…",
+        "willBeCreatedAt": "Oprettes i",
+        "errorExists": "Der findes allerede en mappe med dette navn her.",
+        "openInstead": "Åbn den som boks i stedet",
+        "errorInvalidName": "Navne kan ikke starte med et punktum eller indeholde / \\ : * ? \" < > |",
+        "createFailed": "Kunne ikke oprette boksen.",
+        "createVault": "Opret boks",
+        "creating": "Opretter…",
+        "cancel": "Annullér",
+        "chooseTitle": "Vælg en boks",
+        "chooseSubtitle": "Logget ind som {email}. Vælg den, du vil åbne på denne computer.",
+        "untitledVault": "Boks uden titel",
+        "items": "{count, plural, one {# element} other {# elementer}}",
+        "onThisComputer": "På denne computer",
+        "downloadTo": "Hent til",
+        "otherVaultsHint": "Andre bokse bliver på din konto. Du kan altid hente dem fra boksvælgeren.",
+        "openVault": "Åbn boks",
+        "opening": "Åbner…",
+        "loadingVaults": "Indlæser dine bokse…",
+        "loadFailed": "Kunne ikke indlæse dine bokse.",
+        "retry": "Prøv igen",
+        "noVaultsTitle": "Ingen bokse på din konto endnu",
+        "noVaultsDesc": "Opret en på denne computer. Den synkroniseres til din konto.",
+        "createCta": "Opret en boks",
+        "openFailed": "Kunne ikke åbne boksen."
+      }
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Ingen bokse endnu",
+      "openVault": "Åbn boks",
+      "settings": "Indstillinger",
+      "logOut": "Log ud",
+      "signInToSync": "Log ind for at synkronisere",
+      "remove": "Fjern \"",
+      "removeVaultTitle": "Vil du fjerne »{name}« fra listen?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Denne boks fjernes fra appen, men dine filer bliver på disken. Du kan altid tilføje den igen senere.",
+      "cancel": "Annullér",
+      "remove2": "Fjern",
+      "inYourAccount": "På din konto",
+      "itemsCount": "{count} elementer",
+      "untitledVault": "Boks",
+      "downloadVaultTitle": "Hent »{name}«",
+      "downloadLocation": "Placering",
+      "changeLocation": "Skift…",
+      "download": "Hent",
+      "downloadFailed": "Kunne ikke hente boksen",
+      "deleteFromAccount": "Slet fra konto",
+      "deleteVaultTitle": "Vil du slette »{name}« fra din konto?",
+      "deleteVaultBody": "Alle synkroniserede data for denne boks fjernes permanent fra Memrys servere. Denne handling kan ikke fortrydes. Dine filer på disken bliver ikke slettet.",
+      "deleteVaultConfirm": "Slet fra konto",
+      "deleteVaultFailed": "Kunne ikke slette boksen",
+      "missing": "Mappen blev ikke fundet"
+    },
+    "componentsWindowControls": {
+      "searchK": "Søg (⌘K)",
+      "browserBack": "Gå tilbage",
+      "back": "Tilbage",
+      "browserForward": "Gå frem",
+      "forward": "Fremad"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Kunne ikke importere filer",
+      "failedToCreateNote": "Kunne ikke oprette note",
+      "failedToAccessMicrophone": "Kunne ikke få adgang til mikrofonen"
+    },
+    "toasts": {
+      "undone": "Fortrudt"
+    }
+  },
+  "home": {
+    "widget": {
+      "removeAria": "Fjern widget",
+      "dragAria": "Træk widget",
+      "configAria": "Konfigurér widget",
+      "resizeAria": "Tilpas til {size}",
+      "menuAria": "Widgetindstillinger",
+      "resize": "Størrelse",
+      "remove": "Fjern",
+      "filter": {
+        "all": "Alle",
+        "today": "Forfalder i dag",
+        "tomorrow": "I morgen",
+        "next7": "De næste 7 dage",
+        "noDueDate": "Ingen forfaldsdato"
+      },
+      "recentlyEdited": "Senest redigeret",
+      "recentlyOpened": "Senest åbnet",
+      "recentMeta": "redigeret {time}",
+      "recentMetaWithFolder": "{folder} · redigeret {time}",
+      "openedMeta": "åbnet {time}",
+      "openedMetaWithFolder": "{folder} · åbnet {time}",
+      "noRecentlyOpened": "Noter, du åbner, vises her",
+      "bookmarks": "Bogmærker",
+      "tasks": "Opgaver",
+      "calendar": "Kalender",
+      "calendarToday": "I dag",
+      "openCalendar": "Åbn kalender",
+      "next": "Næste: {title}",
+      "startsIn": "Starter om {count, plural, one {# min} other {# min}}",
+      "duration": "{count} min",
+      "inbox": "Indbakke",
+      "inboxAllTypes": "Alle typer",
+      "inboxOlder": "{count, plural, one {# ældre} other {# ældre}}",
+      "inboxOldest": "ældste {count, plural, one {# dag} other {# dage}}",
+      "openInbox": "Åbn indbakke",
+      "folder": "Mappe",
+      "untitled": "Uden titel",
+      "folderPickPrompt": "Vælg en mappe",
+      "folderEmpty": "Ingen mapper endnu",
+      "folderNoSelection": "Ingen mappe valgt",
+      "folderView_list": "Liste",
+      "folderView_gallery": "Galleri",
+      "folderViewSelect": "Visning",
+      "project": "Projekt",
+      "projectNoSelection": "Intet projekt valgt",
+      "projectMissing": "Dette projekt er ikke længere tilgængeligt",
+      "projectNoTasks": "Ingen opgaver",
+      "journal": "Dagbog",
+      "journalStreak": "{count, plural, one {# dag i træk} other {# dage i træk}}",
+      "journalToday": "I dag",
+      "journalYesterday": "I går",
+      "journalTomorrow": "I morgen",
+      "journalUpcoming": "Kommende",
+      "journalNoEntryYet": "Intet indlæg endnu",
+      "loadError": "Kunne ikke indlæse",
+      "unknown": "Ukendt widget"
+    },
+    "board": {
+      "label": "Layout for Hjem",
+      "deleteAria": "Slet layout",
+      "newAria": "Ny tavle",
+      "newName": "Ny tavle",
+      "defaultName": "Hjem",
+      "manage": "Administrér tavler",
+      "manageTitle": "Administrér tavler",
+      "manageDescription": "Omdøb, omarrangér eller slet dine tavler på Hjem.",
+      "renameAria": "Omdøb tavle",
+      "reorderAria": "Skift rækkefølge for tavle",
+      "nameLabel": "Tavlenavn"
+    },
+    "greeting": {
+      "morning": "Godmorgen",
+      "afternoon": "God eftermiddag",
+      "evening": "Godaften"
+    },
+    "header": {
+      "tasksDue": "{count, plural, one {# opgave forfalder i dag} other {# opgaver forfalder i dag}}",
+      "events": "{count, plural, one {# begivenhed} other {# begivenheder}}"
+    },
+    "edit": "Redigér",
+    "done": "Færdig",
+    "addWidget": "Tilføj widget",
+    "empty": {
+      "title": "Din tavle er tom",
+      "body": "Widgets samler dine noter, opgaver og bogmærker ét roligt sted.",
+      "cta": "Tilføj din første widget"
+    },
+    "noBookmarksYet": "Ingen bogmærker endnu.",
+    "noNotesYet": "Ingen noter endnu.",
+    "noTasksYet": "Ingen opgaver endnu.",
+    "noEventsYet": "Ingen begivenheder i dag.",
+    "noJournalEntriesYet": "Ingen dagbogsindlæg endnu.",
+    "disabled": {
+      "createNote": "Opret note",
+      "hint": "Intet åbent. Start en note."
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Velkommen til MemryNote",
+      "body": "Dit private hjem, der også virker offline. Noter er end-to-end-krypterede – de forlader aldrig din enhed ukrypteret."
+    },
+    "newNote": {
+      "title": "Opret din første note",
+      "body": "Start her. Alt, hvad du skriver, gemmes først og fremmest på din enhed."
+    },
+    "nav": {
+      "title": "Dine arbejdsområder",
+      "body": "Indbakke til at indfange, Dagbog til daglige noter, Kalender til din tidslinje, Opgaver til gøremål og Graf til at se, hvordan det hele hænger sammen."
+    },
+    "collections": {
+      "title": "Samlinger, bogmærker og tags",
+      "body": "Organisér noter i mapper, fastgør bogmærker, og gennemse efter tag – alt sammen her."
+    },
+    "dayPanel": {
+      "title": "Din dag, ved siden af dit arbejde",
+      "body": "Sidepanelet holder en kalender og din dagsvisning ved siden af, hvad end du læser."
+    },
+    "agentChat": {
+      "title": "Chat med AI-agenten",
+      "body": "Skift til fanen Agent for at spørge MemryNotes assistent om din boks."
+    },
+    "sync": {
+      "title": "Privat, krypteret synkronisering",
+      "body": "Slå end-to-end-krypteret synkronisering til for at holde alle enheder i trit."
+    },
+    "feedback": {
+      "title": "Fortæl os, hvad du synes",
+      "body": "Send feedback direkte til teamet herfra."
+    },
+    "settings": {
+      "title": "Indstillinger og import",
+      "body": "Importér dine noter fra over 12 apps – Obsidian, Notion, Apple Notes, Evernote og flere – og finjustér alt andet i Indstillinger."
+    },
+    "tour": {
+      "next": "Næste",
+      "previous": "Forrige",
+      "progress": "{current} af {total}"
+    },
+    "starPrompt": {
+      "title": "Introduktionen er fuldført",
+      "body": "Giv os en stjerne på GitHub – det hjælper andre med at finde MemryNote.",
+      "action": "Giv en stjerne på GitHub"
+    }
   },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Klik på række",
-      "reset": "Nulstil",
-      "shortcutsTab": "Genveje-fanen"
-    },
-    "description": "Hurtige veje til at bevæge dig rundt i memrynote, fange tanker og få arbejdet fra hånden.",
+    "description": "Hurtige veje til at bevæge dig rundt i memrynote, indfange tanker og få arbejdet fra hånden.",
+    "or": "eller",
+    "then": "derefter",
     "groups": {
       "general": {
-        "description": "Navigation og hjælp i hele appen.",
-        "title": "Generelt"
-      },
-      "inbox": {
-        "description": "Behandl opsamlede elementer hurtigt.",
-        "title": "Indbakke"
-      },
-      "journal": {
-        "description": "Naviger i journalvisninger, og fokusér skrivefeltet.",
-        "title": "Journal"
-      },
-      "notes": {
-        "description": "Skriv, formatér og søg i noter.",
-        "title": "Noter / Editor"
-      },
-      "settings": {
-        "description": "Åbn indstillinger, og tilpas genveje.",
-        "title": "Indstillinger"
+        "title": "Generelt",
+        "description": "Navigation og hjælp i hele appen."
       },
       "tabs": {
-        "description": "Bevæg dig mellem faneblade og ruder.",
-        "title": "Faneblade og opdelinger"
+        "title": "Faner og opdelinger",
+        "description": "Bevæg dig mellem faner og ruder."
+      },
+      "inbox": {
+        "title": "Indbakke",
+        "description": "Behandl indfangede elementer hurtigt."
+      },
+      "journal": {
+        "title": "Dagbog",
+        "description": "Navigér i dagbogsvisninger, og fokusér på skrivefeltet."
+      },
+      "notes": {
+        "title": "Noter / Editor",
+        "description": "Skriv, formatér og søg i noter."
       },
       "tasks": {
-        "description": "Filtrér, vælg og fuldfør opgaver.",
-        "title": "Opgaver"
+        "title": "Opgaver",
+        "description": "Filtrér, vælg og fuldfør opgaver."
+      },
+      "settings": {
+        "title": "Indstillinger",
+        "description": "Åbn indstillinger, og tilpas genveje."
       }
     },
     "items": {
       "general": {
-        "createNote": "Opret en note",
-        "keyboardShortcuts": "Åbn tastaturgenveje",
-        "openSettings": "Åbn indstillinger",
         "quickSearch": "Åbn hurtig søgning",
-        "sidebarSection": "Gå til sektion i sidebjælken",
+        "createNote": "Opret en note",
+        "openSettings": "Åbn indstillinger",
+        "switchVault": "Skift boks",
+        "adjacentVault": "Forrige eller næste boks",
+        "keyboardShortcuts": "Åbn tastaturgenveje",
+        "undoTaskAction": "Fortryd seneste opgavehandling",
         "toggleSidebar": "Vis eller skjul sidebjælken",
-        "undoTaskAction": "Fortryd seneste opgavehandling"
+        "sidebarSection": "Gå til sektion i sidebjælken"
+      },
+      "tabs": {
+        "newTabMenu": "Åbn menuen for ny fane",
+        "closeTab": "Luk fane",
+        "closeAllInPane": "Luk alle faner i ruden",
+        "reopenClosedTab": "Genåbn lukket fane",
+        "nextTab": "Næste fane",
+        "previousTab": "Forrige fane",
+        "pinTab": "Fastgør eller frigør fane",
+        "duplicateTab": "Duplikér fane",
+        "splitRight": "Opdel til højre",
+        "splitDown": "Opdel nedad",
+        "closeSplitPane": "Luk den opdelte rude",
+        "focusPane": "Fokusér en anden rude",
+        "moveTabToPane": "Flyt fane til rude",
+        "maximizePane": "Maksimér den aktuelle rude"
       },
       "inbox": {
-        "archiveItem": "Arkivér det valgte element",
-        "chooseQuickFileResult": "Vælg et resultat i hurtig arkivering",
-        "clearSelection": "Ryd markering, eller luk hurtig arkivering",
-        "confirmFiling": "Bekræft arkiveringspanelet",
+        "nextItem": "Næste element",
+        "previousItem": "Forrige element",
         "firstOrLastItem": "Første eller sidste element",
         "jumpByPage": "Spring en side ad gangen",
-        "nextItem": "Næste element",
-        "openOriginal": "Åbn det oprindelige link",
-        "openQuickFile": "Åbn hurtig arkivering",
-        "previousItem": "Forrige element",
-        "refresh": "Opdater indbakken",
-        "selectAllVisible": "Vælg alle synlige elementer",
+        "togglePreview": "Vis eller skjul forhåndsvisningen",
         "selectItem": "Vælg element",
-        "togglePreview": "Vis eller skjul forhåndsvisningen"
+        "selectAllVisible": "Vælg alle synlige elementer",
+        "clearSelection": "Ryd markering, eller luk hurtig placering",
+        "openQuickFile": "Åbn hurtig placering",
+        "chooseQuickFileResult": "Vælg et resultat i hurtig placering",
+        "archiveItem": "Arkivér det valgte element",
+        "openOriginal": "Åbn det oprindelige link",
+        "refresh": "Opdatér indbakken",
+        "confirmFiling": "Bekræft placeringspanelet"
       },
       "journal": {
-        "bold": "Gør den markerede tekst fed",
-        "find": "Find i journalen",
-        "italic": "Gør den markerede tekst kursiv",
         "returnFromOverview": "Vend tilbage fra måneds- eller årsvisning",
+        "find": "Find i dagbogen",
+        "bold": "Gør den markerede tekst fed",
+        "italic": "Gør den markerede tekst kursiv",
         "underline": "Understreg den markerede tekst"
       },
       "notes": {
-        "bold": "Fed",
-        "closeOverlays": "Luk editorens overlejringer",
-        "commandMenu": "Åbn editorens kommandomenu",
         "createNote": "Opret en note",
         "find": "Find i noten",
+        "bold": "Fed",
         "italic": "Kursiv",
-        "underline": "Understreg"
-      },
-      "settings": {
-        "cancelRecording": "Annullér optagelse af genvej",
-        "customizeShortcuts": "Tilpas tastaturgenveje",
-        "openSettings": "Åbn indstillinger",
-        "recordShortcut": "Optag en ny genvej",
-        "resetShortcut": "Gendan en genvejs standard"
-      },
-      "tabs": {
-        "closeAllInPane": "Luk alle faneblade i ruden",
-        "closeSplitPane": "Luk den opdelte rude",
-        "closeTab": "Luk faneblad",
-        "duplicateTab": "Dublér faneblad",
-        "focusPane": "Fokusér en anden rude",
-        "maximizePane": "Maksimér den aktuelle rude",
-        "moveTabToPane": "Flyt faneblad til rude",
-        "newTabMenu": "Åbn menuen for nyt faneblad",
-        "nextTab": "Næste faneblad",
-        "pinTab": "Fastgør eller frigør faneblad",
-        "previousTab": "Forrige faneblad",
-        "reopenClosedTab": "Genåbn lukket faneblad",
-        "splitDown": "Opdel nedad",
-        "splitRight": "Opdel til højre"
+        "underline": "Understreg",
+        "commandMenu": "Åbn editorens kommandomenu",
+        "closeOverlays": "Luk editorens overlejringer"
       },
       "tasks": {
         "clearFilters": "Ryd de synlige filtre",
+        "selectAllVisible": "Vælg alle synlige opgaver",
         "clearSelection": "Ryd opgavemarkeringen",
         "completeSelected": "Fuldfør de valgte opgaver",
-        "configureRepeat": "Indstil gentagelse på den fokuserede opgave",
         "deleteSelected": "Slet de valgte opgaver",
-        "selectAllVisible": "Vælg alle synlige opgaver",
-        "skipOccurrence": "Spring gentagelsen over",
+        "configureRepeat": "Indstil gentagelse på den fokuserede opgave",
+        "skipOccurrence": "Spring forekomsten over",
         "stopRepeating": "Stop med at gentage opgaven"
+      },
+      "settings": {
+        "openSettings": "Åbn indstillinger",
+        "customizeShortcuts": "Tilpas tastaturgenveje",
+        "recordShortcut": "Optag en ny genvej",
+        "cancelRecording": "Annullér optagelse af genvej",
+        "resetShortcut": "Gendan standardgenvejen"
       }
     },
-    "or": "eller",
-    "then": "derefter"
+    "combos": {
+      "shortcutsTab": "Fanen Genveje",
+      "clickRow": "Klik på række",
+      "reset": "Nulstil"
+    }
+  },
+  "update": {
+    "available": "Opdatering tilgængelig",
+    "downloading": "Henter {version}",
+    "ready": "Opdateringen er klar",
+    "failed": "Opdateringen mislykkedes",
+    "downloadAction": "Hent",
+    "restartAction": "Genstart",
+    "detailsAction": "Detaljer",
+    "popover": {
+      "readyTitle": "MemryNote {version} er klar",
+      "availableTitle": "MemryNote {version} er tilgængelig",
+      "readySubtitle": "Du bruger {current}",
+      "availableSubtitle": "Du bruger {current} · intet er hentet endnu",
+      "allChanges": "Alle ændringer",
+      "restartNow": "Genstart nu",
+      "onNextQuit": "Ved næste afslutning",
+      "download": "Hent",
+      "notNow": "Ikke nu",
+      "moreOptions": "Flere opdateringsindstillinger",
+      "skipVersion": "Spring {version} over",
+      "turnOffAuto": "Slå automatiske opdateringer fra",
+      "copyVersionInfo": "Kopiér versionsoplysninger",
+      "openSettings": "Åbn indstillinger"
+    },
+    "installing": {
+      "title": "Installerer {version}",
+      "titleUnknownVersion": "Installerer opdatering",
+      "subtitle": "MemryNote åbner igen om et øjeblik. Alt, hvad du har skrevet, er allerede gemt på disken."
+    },
+    "installFailed": {
+      "title": "MemryNote kunne ikke fuldføre installationen af {version}",
+      "titleUnknownVersion": "MemryNote kunne ikke fuldføre installationen af opdateringen",
+      "body": "Din boks blev aldrig berørt – en opdatering anvendes på appen, ikke på dine noter. Du bruger stadig {current}, og alt virker som før.",
+      "errorLabel": "Hvad gik galt",
+      "downloadManually": "Hent {version} manuelt",
+      "downloadManuallyUnknownVersion": "Hent MemryNote manuelt",
+      "tryAgain": "Prøv igen",
+      "copyDetails": "Kopiér detaljer"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Bokse",
+    "position": "{name}, boks {index} af {count}",
+    "openList": "{position}. Åbn listen over bokse",
+    "switchTo": "Skift til {name}",
+    "switchingTo": "Skifter til {name}",
+    "changeIcon": "Skift ikon…",
+    "resetIcon": "Nulstil ikon",
+    "iconButton": "Skift ikonet for {name}",
+    "iconFailed": "Kunne ikke ændre boksens ikon"
+  },
+  "sidebarHelp": {
+    "label": "Hjælp og feedback",
+    "reportBug": "Rapportér en fejl",
+    "requestFeature": "Foreslå en funktion",
+    "starOnGithub": "Giv en stjerne på GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "Nyheder"
+  },
+  "sidebarStar": {
+    "title": "MemryNote er open source",
+    "body": "Udviklet i det åbne. En stjerne hjælper andre med at finde det.",
+    "star": "Giv en stjerne",
+    "later": "Ikke nu",
+    "thanks": "Tak. Det betyder meget."
+  },
+  "sidebar": {
+    "railLabel": "Sektioner",
+    "search": "Søg eller gå til…",
+    "vaultMenu": "{name}. Åbn listen over bokse"
   }
 }
