@@ -344,7 +344,12 @@ test.describe('Inline Subtasks', () => {
     expect(subAfter).toBeDefined()
     expect(subAfter!.parentId).toBeNull()
 
-    // #then — markdown file has both lines un-indented
+    // #then — markdown file has both lines un-indented. The DB update and the
+    // debounced note save are independent, so poll the file rather than
+    // reading it once after a fixed sleep.
+    await expect
+      .poll(() => readNoteFiles(testVaultPath)[0]?.content ?? '', { timeout: 15000 })
+      .not.toContain(`  - [ ] ${subTitle}`)
     const md = readNoteFiles(testVaultPath)[0].content
     expect(md).toContain(`- [ ] ${parentTitle} {task:${parentBefore!.id}}`)
     expect(md).toContain(`- [ ] ${subTitle} {task:${subBefore!.id}}`)

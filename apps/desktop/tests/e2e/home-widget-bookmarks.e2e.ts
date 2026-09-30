@@ -74,19 +74,20 @@ function bookmarkRows(page: import('@playwright/test').Page) {
 /**
  * Land on Home and wait for the board to render.
  *
- * Home is the default startup tab, but it is NOT necessarily the active tab
- * after a reload that follows opening another tab (clicking a note/task
- * bookmark switches the active tab; the app restores that tab on reload). The
- * Home tab is a persistent singleton in the strip, so click it to focus Home.
+ * Home is the default startup tab, but it is NOT necessarily open after a
+ * reload that follows opening a bookmark: bookmarks open like sidebar items, so
+ * the click can replace the Home tab and the app restores that tab on reload.
+ * The Sections rail Home button always navigates Home, whether or not a Home
+ * tab is still in the strip.
  */
 async function gotoHome(page: import('@playwright/test').Page): Promise<void> {
   await waitForAppReady(page)
   await waitForVaultReady(page)
   await dismissFirstRunOnboarding(page)
-  const homeTab = page.locator('[data-testid="nav-home"]').first()
-  if (await homeTab.count()) {
-    await homeTab.click()
-  }
+  await page
+    .getByRole('navigation', { name: 'Sections' })
+    .getByRole('button', { name: 'Home' })
+    .click()
   await expect(page.locator('[data-testid="home-page"]')).toBeVisible({ timeout: 15000 })
   await expect(bookmarksWidget(page)).toBeVisible({ timeout: 15000 })
 }
@@ -366,13 +367,12 @@ test.describe('Group G — Bookmarks widget', () => {
     await expect(bookmarkRows(page)).toHaveCount(6)
   })
 
-  // G6: null-title bookmark shows the "Untitled" fallback.
-  // Feasible: a bookmark whose itemId is not in the note cache resolves itemTitle: null,
-  // and the widget renders the t('home.widget.untitled') fallback string ("Untitled").
-  test('G6: null-title bookmark shows the Untitled fallback', async ({ page }) => {
+  // G6: a bookmark whose target no longer exists (itemExists: false) is hidden
+  // from the widget instead of rendering an unopenable "Untitled" row.
+  test('G6: orphan bookmark is hidden from the widget', async ({ page }) => {
     await gotoHome(page)
 
-    // Bookmark a note id that does not exist → resolveBookmarkItem returns itemTitle: null.
+    // Bookmark a note id that does not exist → resolveBookmarkItem returns itemExists: false.
     const ghostId = 'ghost-note-id-does-not-exist'
     await bookmark(page, 'note', ghostId)
 
@@ -381,10 +381,7 @@ test.describe('Group G — Bookmarks widget', () => {
     const row = bookmarksWidget(page).locator(
       `[data-testid="bookmark-item"][data-item-type="note"][data-item-id="${ghostId}"]`
     )
-    await expect(row).toBeVisible()
-    // The row prefixes a screen-reader-only type label ("Note") before the
-    // Untitled fallback span, so assert containment rather than exact text.
-    await expect(row).toContainText('Untitled')
+    await expect(row).toHaveCount(0)
   })
 
   // G7: Un-bookmark (toggle again) → row disappears after refresh.

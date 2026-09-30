@@ -95,6 +95,14 @@ test.describe('Calendar week view infinite horizontal scroll', () => {
     expect(nextDelta).toBeLessThanOrEqual(14)
 
     await page.getByTestId('calendar-page').getByRole('button', { name: 'Previous period' }).click()
+    // Previous is a smooth scroll. On a loaded CI runner (software rendering)
+    // the animation can stall past the 500ms stability window and read an
+    // intermediate day, so poll until the landing position instead.
+    await expect
+      .poll(async () => Math.abs((await getVisibleDayStart(page)) - initial), {
+        timeout: STABLE_TIMEOUT_MS
+      })
+      .toBeLessThanOrEqual(1)
     const afterPrev = await settledVisibleDayStart(page)
     expect(afterPrev).toBeLessThan(afterNext)
     expect(Math.abs(afterPrev - initial)).toBeLessThanOrEqual(1)
