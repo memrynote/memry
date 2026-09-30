@@ -160,4 +160,54 @@ extension NoteReadViewModel {
         }
         return detail.summary.title
     }
+
+    /// Fetches the bytes for every attachment this note is still waiting on,
+    /// then re-resolves so the pictures appear **in place**.
+    ///
+    /// FR-045 asks for exactly this: a picture whose bytes have not arrived
+    /// shows a placeholder and "becomes visible on arrival without the note
+    /// being recreated". Re-resolving into `attachments` re-renders the
+    /// existing views rather than rebuilding the screen, which is what keeps
+    /// the reader's scroll position.
+    ///
+    /// **Deferred is not failure.** On a metered path the core answers
+    /// `deferred` and writes nothing; the placeholder simply stays, which is
+    /// the feature working rather than an error to report.
+    ///
+    /// A single failure does not abandon the rest: one unverifiable manifest
+    /// must not stop the other pictures in the note from arriving.
+    func fetchWaitingAttachments() async {
+        guard let filler else { return }
+        // The screen passes `PathReachability.forAttachments`. With none, the
+        // documented answer for "we have not seen a path" is `.cellular`:
+        // usable, metered, and the honest unknown, so an unmetered-only
+        // attachment defers rather than spending a stranger's data plan.
+        let reachable = reachability?.current() ?? PathReachability.unknownPath
+
+        var landed = false
+        for (_, binding) in attachments {
+            guard case let .bound(attachment) = binding,
+                  attachment.localPath == nil
+            else { continue }
+            do {
+                let summary = try await filler.fetchAttachment(
+                    attachmentId: attachment.attachmentId,
+                    reachable: reachable
+                )
+                if summary.downloaded { landed = true }
+            } catch {
+                let mapped = ErrorMapping.userFacing(error)
+                Log.sync.error("an attachment could not be fetched", .code(mapped.code))
+            }
+        }
+
+        if landed {
+            await loadAttachments()
+        }
+    }
+
+    /// Re-resolves after bytes land, so the picture appears in place.
+    func refreshAttachments() async {
+        await loadAttachments()
+    }
 }
