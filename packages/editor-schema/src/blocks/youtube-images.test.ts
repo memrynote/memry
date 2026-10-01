@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import type { Block } from '@blocknote/core'
-import { normalizeYoutubeImages } from './youtube-image-utils'
+import { normalizeYoutubeImages } from './youtube-images'
 
-const image = (props: Record<string, unknown>, children: unknown[] = []): Block =>
-  ({ id: 'img-1', type: 'image', props, content: undefined, children }) as unknown as Block
+const image = (props: Record<string, unknown>, children: unknown[] = []) => ({
+  id: 'img-1',
+  type: 'image',
+  props,
+  children
+})
 
 describe('normalizeYoutubeImages', () => {
   it('turns an image an older build parsed from a YouTube line into an embed that keeps its alt', () => {

@@ -13,7 +13,7 @@ import { normalizeHashTags, extractInlineTags } from '../hash-tag'
 import { normalizeNoteBlocks } from '../normalize-note-blocks'
 import { normalizeInlineCheckboxes } from '../inline-checkbox-utils'
 import { normalizeDateMentions } from '../date-mention-utils'
-import { normalizeYoutubeImages } from '../youtube-image-utils'
+import { normalizeYoutubeImages } from '@memry/editor-schema/blocks'
 import {
   parseMarkdownPreservingBlanks,
   sanitizeBlockIds,

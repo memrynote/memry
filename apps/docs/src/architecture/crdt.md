@@ -1508,9 +1508,13 @@ not only Memry's own `![embed](…)`. Obsidian embeds a video from an image line
 text (`![](…)` is common), and an older build read those lines as image blocks pointing at a
 web page, which rendered as broken images. The alt text is stored in the block's `alt` prop
 (default `embed`) and written back unchanged, so the file still opens the same way in the
-app that wrote it. Image blocks an older build already stored in a shared doc are turned
-into embeds when the note opens (`normalizeYoutubeImages`, called from `use-editor-sync.ts`).
-This is byte-neutral: the embed writes the same line the image did.
+app that wrote it. A YouTube image line that continues a paragraph (OneNote exports through
+Obsidian's importer put one directly under the video's title) never reaches the whole-line
+parser, so the `image` block it is lifted to is converted after every parse
+(`normalizeYoutubeImages` in `@memry/editor-schema/blocks`, run by `markdownToBlocks` in main
+and `normalizeNoteBlocks` in the renderer). Image blocks an older build already stored in a
+shared doc are converted the same way when the note opens (`use-editor-sync.ts`). This is
+byte-neutral: the embed writes the same line the image did.
 
 Some inline nodes have no `parse` rule that could recognise their markdown form, because
 that form is ordinary text: `[[wiki link]]`, a table cell's `[ ]`, a link mention's

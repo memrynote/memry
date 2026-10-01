@@ -22,11 +22,15 @@ import { normalizeDateMentions } from './date-mention-utils'
 import { normalizeInlineCheckboxes } from './inline-checkbox-utils'
 import { normalizeTaskBlocks } from './task-block/task-block-utils'
 import { normalizePlainCheckboxes } from '@memry/shared/plain-checkbox'
+import { normalizeYoutubeImages } from '@memry/editor-schema/blocks'
 import { reportUnclaimedTokens } from './unclaimed-token-telemetry'
 
 /** `source` is the markdown `blocks` were parsed from, or null when they were not. */
 export function normalizeNoteBlocks(blocks: Block[], source: string | null): Block[] {
-  let normalized = normalizeWikiLinks(blocks).blocks
+  // A YouTube image line inside a paragraph is lifted to an `image` block that
+  // renders broken; main's twin runs in `markdownToBlocks`.
+  let normalized = normalizeYoutubeImages(blocks).blocks
+  normalized = normalizeWikiLinks(normalized).blocks
   normalized = normalizeLinkMentions(normalized).blocks
   normalized = normalizeDateMentions(normalized).blocks
   // Table cells only, and last of the inline passes: `[ ]` at the head of a

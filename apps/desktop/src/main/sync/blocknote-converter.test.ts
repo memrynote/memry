@@ -2488,6 +2488,26 @@ describe('custom block markers are not claimed out of context', () => {
     expect(result).toContain('block-nesting-level=1')
   })
 
+  it('plays a YouTube image line that continues a paragraph, and keeps its bytes', async () => {
+    // #given the shape a customer's OneNote export (via Obsidian's importer)
+    // holds: the image line sits directly under text, indented by a space, so
+    // it is part of that paragraph and the whole-line marker parser never sees it
+    const embed =
+      '![Embedded YouTube video](https://www.youtube.com/embed/nLPcwwwpvg0?feature=oembed&autoplay=true)'
+    const markdown = `A Pitada do Pai\n ${embed}`
+
+    // #when
+    const blocks = await markdownToBlocks(markdown)
+
+    // #then it is a video, not a broken image, and it writes back as its own line
+    expect(blocks?.map((block) => block.type)).toEqual(['paragraph', 'youtubeEmbed'])
+    expect(blocks?.[1].props).toMatchObject({
+      videoId: 'nLPcwwwpvg0',
+      alt: 'Embedded YouTube video'
+    })
+    expect(await roundTrip(markdown)).toBe(`A Pitada do Pai\n\n${embed}`)
+  })
+
   it('leaves a real image whose alt text happens to be bookmark alone', async () => {
     // #given someone's screenshot, not a bookmark card. The embed branch has
     // extractYouTubeVideoId for this; the bookmark branch needs its own check.

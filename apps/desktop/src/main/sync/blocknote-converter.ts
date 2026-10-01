@@ -8,6 +8,7 @@ import {
   parseFileBlockMarker,
   parseWhiteboardLine,
   parseYoutubeEmbedLine,
+  normalizeYoutubeImages,
   serializeFileBlock,
   type FileBlockProps,
   readCalloutRun,
@@ -345,7 +346,11 @@ export async function markdownToBlocks(
 ): Promise<Block[] | null> {
   try {
     const editor = getEditor()
-    const blocks = await markdownToBlocksPreserving(editor, markdown, notePath)
+    // A YouTube image line inside a paragraph never reaches the whole-line
+    // marker parser; the image block it is lifted to becomes the embed here.
+    const blocks = normalizeYoutubeImages(
+      await markdownToBlocksPreserving(editor, markdown, notePath)
+    ).blocks
     restoreUntaggedFenceLanguages(markdown, blocks)
     return blocks
   } catch (err) {
