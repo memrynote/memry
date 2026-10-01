@@ -22,6 +22,7 @@ import {
   serializePropertyValue,
   deserializePropertyValue,
   createSnippet,
+  cleanCachedSnippet,
   type NoteFrontmatter
 } from './frontmatter'
 
@@ -525,6 +526,27 @@ describe('createSnippet inline color spans (issue #2566)', () => {
 
   it('strips span tags around emphasis and wiki links', () => {
     expect(createSnippet('<span style="color:blue">**bold** [[Note|n]]</span>!')).toBe('bold n!')
+  })
+})
+
+// #2554: snippets cached before the #2566 fix keep raw span tags until the
+// note is edited, so the tab hover preview showed them.
+describe('cleanCachedSnippet (issue #2554)', () => {
+  it('strips span tags from a stale cached snippet', () => {
+    expect(cleanCachedSnippet('<span style="color:blue">Notes:</span> buy milk')).toBe(
+      'Notes: buy milk'
+    )
+  })
+
+  it('drops a span tag cut in half by the old truncation', () => {
+    expect(cleanCachedSnippet('first line <span...')).toBe('first line...')
+    expect(cleanCachedSnippet('first line <span style="col...')).toBe('first line...')
+    expect(cleanCachedSnippet('first <span style="color:red">red</sp...')).toBe('first red...')
+  })
+
+  it('leaves a clean snippet untouched', () => {
+    expect(cleanCachedSnippet('a < b and c > d...')).toBe('a < b and c > d...')
+    expect(cleanCachedSnippet(createSnippet('plain **text**'))).toBe('plain text')
   })
 })
 

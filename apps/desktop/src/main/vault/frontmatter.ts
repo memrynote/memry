@@ -734,3 +734,16 @@ export function createSnippet(content: string, maxLength = 200): string {
 
   return truncated + '...'
 }
+
+// Pre-#2574 truncation could cut a span tag in half at the ellipsis:
+// `… <span...` (word-boundary cut) or `… <span style="col...` (hard cut).
+const TRUNCATED_SPAN_TAG_REGEX = /\s*<\/?(?:span|spa|sp|s)?(?:\s[^<>]*)?(?=\.\.\.$)/
+
+/**
+ * Clean a snippet read from `note_cache`. Snippets cached before #2574 kept
+ * raw `<span style="…">` tags, and a cached snippet is only recomputed when
+ * the note's content changes, so unedited notes still carry them.
+ */
+export function cleanCachedSnippet(snippet: string): string {
+  return stripInlineStyleSpanTags(snippet).replace(TRUNCATED_SPAN_TAG_REGEX, '')
+}
