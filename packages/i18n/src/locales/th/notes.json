@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "เปลี่ยนเป็นช่องทำเครื่องหมาย",
       "colors": "สี",
+      "copy": "คัดลอก",
+      "copyFailed": "ไม่สามารถคัดลอกบล็อกได้",
       "duplicate": "ทำสำเนา",
       "insertTemplate": "แทรกเทมเพลต…",
       "moveTo": "ย้ายไปที่…",

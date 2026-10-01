@@ -473,6 +473,8 @@
       },
       "turnIntoCheckbox": "Turn into checkbox",
       "colors": "Colors",
+      "copy": "Copy",
+      "copyFailed": "Could not copy the block",
       "duplicate": "Duplicate",
       "insertTemplate": "Insert template…",
       "moveTo": "Move to…",

@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "轉換為核取方塊",
       "colors": "顏色",
+      "copy": "複製",
+      "copyFailed": "無法複製該區塊",
       "duplicate": "製作副本",
       "insertTemplate": "插入範本…",
       "moveTo": "移至…",

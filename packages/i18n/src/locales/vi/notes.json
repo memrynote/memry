@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Chuyển thành hộp kiểm",
       "colors": "Màu sắc",
+      "copy": "Sao chép",
+      "copyFailed": "Không thể sao chép khối",
       "duplicate": "Nhân bản",
       "insertTemplate": "Chèn mẫu…",
       "moveTo": "Di chuyển đến…",

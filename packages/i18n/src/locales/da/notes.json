@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Lav om til afkrydsningsfelt",
       "colors": "Farver",
+      "copy": "Kopiér",
+      "copyFailed": "Blokken kunne ikke kopieres",
       "duplicate": "Duplikér",
       "insertTemplate": "Indsæt skabelon…",
       "moveTo": "Flyt til…",

@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Onay kutusuna dönüştür",
       "colors": "Renkler",
+      "copy": "Kopyala",
+      "copyFailed": "Blok kopyalanamadı",
       "duplicate": "Çoğalt",
       "insertTemplate": "Şablon ekle…",
       "moveTo": "Şuraya taşı…",

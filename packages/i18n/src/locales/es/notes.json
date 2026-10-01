@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Convertir en casilla",
       "colors": "Colores",
+      "copy": "Copiar",
+      "copyFailed": "No se pudo copiar el bloque",
       "duplicate": "Duplicar",
       "insertTemplate": "Insertar plantilla…",
       "moveTo": "Mover a…",

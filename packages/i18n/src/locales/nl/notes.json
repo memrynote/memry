@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Omzetten in selectievakje",
       "colors": "Kleuren",
+      "copy": "Kopiëren",
+      "copyFailed": "Kan het blok niet kopiëren",
       "duplicate": "Dupliceren",
       "insertTemplate": "Sjabloon invoegen…",
       "moveTo": "Verplaatsen naar…",

@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Gör om till kryssruta",
       "colors": "Färger",
+      "copy": "Kopiera",
+      "copyFailed": "Det gick inte att kopiera blocket",
       "duplicate": "Duplicera",
       "insertTemplate": "Infoga mall…",
       "moveTo": "Flytta till…",

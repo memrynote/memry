@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Gawing checkbox",
       "colors": "Mga kulay",
+      "copy": "Kopyahin",
+      "copyFailed": "Hindi makopya ang block",
       "duplicate": "I-duplicate",
       "insertTemplate": "Ipasok ang template…",
       "moveTo": "Ilipat sa…",

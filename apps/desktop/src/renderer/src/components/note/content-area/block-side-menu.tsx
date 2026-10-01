@@ -7,11 +7,12 @@
  * so `RemoveBlockItem` / `BlockColorsItem` keep their behaviour, their markdown
  * round-trip and their `data-test` hooks.
  *
- * Everything acts on the block whose handle was clicked, with one exception:
- * Turn into, when that block is part of a marquee block selection, converts
+ * Everything acts on the block whose handle was clicked, with two exceptions
+ * when that block is part of a marquee block selection: Turn into converts
  * every text block in the selection (non-text blocks such as tables are
- * skipped). Duplicate, Move to, Delete and Comment stay single-block, because
- * the handle itself names the target.
+ * skipped), and Copy copies the whole selection in document order. Duplicate,
+ * Move to, Delete and Comment stay single-block, because the handle itself
+ * names the target.
  *
  * @module note/content-area/block-side-menu
  */
@@ -34,9 +35,11 @@ import { SideMenuExtension } from '@blocknote/core/extensions'
 import { TextSelection } from 'prosemirror-state'
 import type { Node as ProseMirrorNode } from 'prosemirror-model'
 import type { BlockNoteEditor } from '@blocknote/core'
+import { toast } from 'sonner'
 import {
   ArrowRight,
   CheckSquare,
+  Clipboard,
   Copy,
   LayoutTemplate,
   MessageCircle,
@@ -46,6 +49,9 @@ import {
 } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import { isMac } from '@/lib/shortcut-registry'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { createLogger } from '@/lib/logger'
+import { copyBlocksFromMenu } from './block-clipboard'
 import { getEditorSelectionFromState, getProseMirrorState } from './review-formatting-toolbar'
 import type { TemplateAnchor } from './insert-template'
 import { getBlockSelection, getMarqueeSelectedBlocks } from './marquee-block-registry'
@@ -53,6 +59,8 @@ import { getCheckboxTaskActions } from './checkbox-task-actions'
 import type { ReviewSelection } from './types'
 
 type AnyBlock = { id: string; type: string; props?: Record<string, unknown>; content?: unknown }
+
+const log = createLogger('BlockSideMenu')
 
 /**
  * Blocks with no inline text of their own. Turn into and Comment are hidden on
@@ -275,6 +283,26 @@ function TaskToCheckboxItem() {
   )
 }
 
+function CopyItem() {
+  const { t } = useT('notes')
+  const editor = useBlockNoteEditor<any, any, any>()
+  const block = useCurrentBlock()
+
+  const copy = useCallback(() => {
+    if (!block) return
+    copyBlocksFromMenu(editor, block.id).catch((err: unknown) => {
+      log.error('Failed to copy blocks', err)
+      toast.error(extractErrorMessage(err, t('editor.blockMenu.copyFailed')))
+    })
+  }, [editor, block, t])
+
+  if (!block) return null
+
+  return (
+    <MenuItem icon={<Clipboard size={16} />} label={t('editor.blockMenu.copy')} onClick={copy} />
+  )
+}
+
 function DuplicateItem() {
   const { t } = useT('notes')
   const editor = useBlockNoteEditor<any, any, any>()
@@ -463,6 +491,7 @@ function MemryDragHandleMenu({
         </span>
       </BlockColorsItem>
       <Components.Generic.Menu.Divider />
+      <CopyItem />
       <DuplicateItem />
       <InsertTemplateItem onRequestInsertTemplate={onRequestInsertTemplate} />
       <MoveToItem onRequestMove={onRequestMove} />
