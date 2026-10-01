@@ -561,38 +561,43 @@ are not plain CommonMark:
 
 | Block            | On-disk form                                                                                                                    | Anchor                                  |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| callout          | `> [!info\|warning\|error\|success]` alone on its line, then one `> ` per non-empty content line                                | `:26`, `:45-50`                         |
-| structured quote | one `> ` per line, a bare `>` for each blank line between the quote's own blocks                                                | `:165-170`                              |
-| youtube embed    | `![embed](videoUrl)`                                                                                                            | `:304`, `:307`                          |
-| bookmark         | `![bookmark](url)`                                                                                                              | `:305`, `:311`                          |
-| whiteboard       | `![whiteboard](memry://canvas/<id>)`, the canvas by id; a block with no canvas writes no line                                   | `:324`, `:326-332`, `:335-337`          |
-| file             | `<!-- file:{…} -->`, an HTML comment with JSON props                                                                            | `:373`, `:382`, `:423`                  |
-| math             | `$$` alone on its line, the LaTeX source, then `$$`; the body's blank lines are dropped                                         | `:452`, `:464-473`                      |
-| toggle           | `<details data-memry-toggle>` / `<summary>…</summary>` / blank / body / blank / `</details>`; the expanded variant adds ` open` | `:542`, `:549-550`, `:590-622`          |
+| callout          | `> [!info\|warning\|error\|success]` alone on its line, then one `> ` per non-empty content line                                | `:27`, `:46-51`                         |
+| structured quote | one `> ` per line, a bare `>` for each blank line between the quote's own blocks                                                | `:166-171`                              |
+| youtube embed    | `![alt](videoUrl)` with a YouTube URL; Memry writes alt `embed`, any other alt is kept                                          | `:331`, `:340`                          |
+| bookmark         | `![bookmark](url)`                                                                                                              | `:305`, `:347`                          |
+| whiteboard       | `![whiteboard](memry://canvas/<id>)`, the canvas by id; a block with no canvas writes no line                                   | `:360`, `:362-368`, `:371-373`          |
+| file             | `<!-- file:{…} -->`, an HTML comment with JSON props                                                                            | `:409`, `:418`, `:459`                  |
+| math             | `$$` alone on its line, the LaTeX source, then `$$`; the body's blank lines are dropped                                         | `:488`, `:500-509`                      |
+| toggle           | `<details data-memry-toggle>` / `<summary>…</summary>` / blank / body / blank / `</details>`; the expanded variant adds ` open` | `:578`, `:585-586`, `:626-658`          |
 | plain checkbox   | `- [ ] text {check}`: a `checkListItem` whose `plain` prop is `true`; the marker ends the line, after one space                 | `packages/shared/src/plain-checkbox.ts` |
 
 **Claiming rules matter as much as the forms:**
 
+- a youtube embed is claimed from any WHOLE line `![alt](url)` whose URL is a
+  YouTube video, except alt `bookmark` and `whiteboard` (`:331-338`). The alt
+  is kept in the block's `alt` prop (default `embed`) and written back
+  unchanged, so another app's `![](url)` keeps its bytes. Builds before this
+  rule claimed only alt `embed` and read any other alt as an `image`;
 - the callout marker regex is strict — `> [!note]` and `> [!info] A title` are
   deliberately **not** claimed
-  (`packages/editor-schema/src/blocks/markdown.ts:32-36`);
-- a run abutting more quote lines is refused whole (`:93`);
+  (`packages/editor-schema/src/blocks/markdown.ts:33-37`);
+- a run abutting more quote lines is refused whole (`:94`);
 - **a run is claimed only by proof**: the body must re-serialise byte for byte
-  (`:145`);
+  (`:146`);
 - structured quotes refuse a `>text` line and claim only a run that is separated
-  or nested (`:220-226`);
+  or nested (`:221-227`);
 - a math run is claimed only when it OWNS its paragraph at both ends and
   `serializeMathBlock` reproduces it byte for byte
-  (`packages/editor-schema/src/blocks/markdown.ts:502-520`), so a one-line
+  (`packages/editor-schema/src/blocks/markdown.ts:538-556`), so a one-line
   `$$x$$`, an indented fence, a fence with trailing spaces and an unterminated
   one all stay the author's markdown;
 - **the file marker's JSON key order is fixed** as `url, name, size, mimeType`,
   then `width` and `height` only when greater than zero and `align` only when set
-  and not `left`, so legacy markers stay byte-identical (`:408-423`);
+  and not `left`, so legacy markers stay byte-identical (`:444-459`);
 - the comment-terminator escape replaces only the `>` in `-->` and `--!>` with
-  `>`, so a filename containing `--` keeps its bytes (`:397`);
+  `>`, so a filename containing `--` keeps its bytes (`:433`);
 - a whiteboard is claimed only as a WHOLE, unindented line whose target is
-  `memry://canvas/` followed by an id in `[A-Za-z0-9_-]+` (`:324`), and never
+  `memry://canvas/` followed by an id in `[A-Za-z0-9_-]+` (`:360`), and never
   inside a code fence: `![whiteboard](https://…)` is somebody's image and stays
   an `image` block. The marker names the canvas by id, not title, so renaming a
   canvas rewrites no note. A whiteboard whose `canvasId` is empty is written as

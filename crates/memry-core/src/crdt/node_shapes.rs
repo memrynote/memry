@@ -198,7 +198,12 @@ pub fn defaults_for(kind: &str) -> Option<Vec<PropDefault>> {
             text("title", ""),
             text("url", ""),
         ],
-        "youtubeEmbed" => vec![text("title", ""), text("videoId", ""), text("videoUrl", "")],
+        "youtubeEmbed" => vec![
+            text("alt", "embed"),
+            text("title", ""),
+            text("videoId", ""),
+            text("videoUrl", ""),
+        ],
         _ => return None,
     };
     Some(props)

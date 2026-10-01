@@ -72,6 +72,7 @@ describe('parseMarkdownPreservingBlanks', () => {
       [
         'Intro',
         '![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)',
+        '![Embedded YouTube video](https://youtu.be/aaaaaaaaaaa)',
         '![embed](https://example.com/not-youtube)',
         '',
         '> [!warning]',
@@ -85,7 +86,17 @@ describe('parseMarkdownPreservingBlanks', () => {
           type: 'youtubeEmbed',
           props: {
             videoId: 'dQw4w9WgXcQ',
-            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            alt: 'embed'
+          }
+        }),
+        // Another app's alt text still plays, and is kept for write-back.
+        expect.objectContaining({
+          type: 'youtubeEmbed',
+          props: {
+            videoId: 'aaaaaaaaaaa',
+            videoUrl: 'https://youtu.be/aaaaaaaaaaa',
+            alt: 'Embedded YouTube video'
           }
         }),
         expect.objectContaining({

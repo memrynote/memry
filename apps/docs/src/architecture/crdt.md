@@ -1503,6 +1503,15 @@ the renderer uses on its own save path. Markers
 inside a code fence are the author's text and stay text; the fence tracker follows
 CommonMark, so a longer fence quoting a shorter one is not mistaken for a closing one.
 
+A YouTube embed is claimed from any whole `![alt](url)` line whose URL is a YouTube video,
+not only Memry's own `![embed](…)`. Obsidian embeds a video from an image line with any alt
+text (`![](…)` is common), and an older build read those lines as image blocks pointing at a
+web page, which rendered as broken images. The alt text is stored in the block's `alt` prop
+(default `embed`) and written back unchanged, so the file still opens the same way in the
+app that wrote it. Image blocks an older build already stored in a shared doc are turned
+into embeds when the note opens (`normalizeYoutubeImages`, called from `use-editor-sync.ts`).
+This is byte-neutral: the embed writes the same line the image did.
+
 Some inline nodes have no `parse` rule that could recognise their markdown form, because
 that form is ordinary text: `[[wiki link]]`, a table cell's `[ ]`, a link mention's
 `((mention:…))` and a date pill's `((date:…))` all reach the shared doc as plain text runs.

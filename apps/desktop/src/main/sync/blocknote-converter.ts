@@ -4,10 +4,10 @@ import { createMemrySchema } from '@memry/editor-schema'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
 import {
   BOOKMARK_LINE_REGEX,
-  EMBED_LINE_REGEX,
   FILE_BLOCK_LINE_REGEX,
   parseFileBlockMarker,
   parseWhiteboardLine,
+  parseYoutubeEmbedLine,
   serializeFileBlock,
   type FileBlockProps,
   readCalloutRun,
@@ -22,7 +22,6 @@ import {
   type ToggleBlockSegment
 } from '@memry/editor-schema/blocks'
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
-import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import {
@@ -693,7 +692,7 @@ async function serializeBlocksWithNestingMarkers(
       (block.type as string) === 'file'
         ? serializeFileBlock(block.props as FileBlockProps)
         : (block.type as string) === 'mathBlock'
-          ? // Same reason as `file`: the `$$` fence is three lines of ONE
+          ? // Same reason as `file`: the `$` fence is three lines of ONE
             // paragraph in the spec's DOM, and a nested block that serializes
             // through BlockNote alone depends on its `<br>` handling to keep
             // them. Written from the shared serializer instead, so a nested
@@ -1106,21 +1105,19 @@ function parseCustomBlockMarkerLine(line: string): Block | null {
     }
   }
 
-  const embed = line.match(EMBED_LINE_REGEX)
+  // Any alt text, so another app's `![](youtube-url)` plays instead of
+  // rendering as a broken image. A non-YouTube line stays an image.
+  const embed = parseYoutubeEmbedLine(line)
   if (embed) {
-    const videoId = extractYouTubeVideoId(embed[1])
-    // A non-YouTube `![embed](…)` has no video to play; it stays an image.
-    if (videoId) {
-      // SAFETY: `youtubeEmbed`'s two declared props, both strings.
-      return { type: 'youtubeEmbed', props: { videoId, videoUrl: embed[1] } } as unknown as Block
-    }
+    // SAFETY: `youtubeEmbed`'s declared props, all strings.
+    return { type: 'youtubeEmbed', props: embed } as unknown as Block
   }
 
   const bookmark = line.match(BOOKMARK_LINE_REGEX)
   if (bookmark) {
     const url = bookmark[1]
     // `![bookmark](assets/photo.png)` is someone's image with an unlucky alt
-    // text, not a bookmark card. The embed branch has `extractYouTubeVideoId`
+    // text, not a bookmark card. The embed branch checks for a video id
     // for the same reason; this is its counterpart.
     const parsed = parseHttpUrl(url)
     if (parsed) {

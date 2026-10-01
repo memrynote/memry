@@ -39,6 +39,7 @@ import { splitMarkdownByBlockquoteRuns, serializeCalloutBlock } from './callout-
 import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdown'
 import {
   parseWhiteboardLine,
+  parseYoutubeEmbedLine,
   readMathRun,
   resolveCalloutRun,
   resolveQuoteRun,
@@ -50,7 +51,6 @@ import {
   splitMarkdownByToggles,
   type ToggleBlockSegment
 } from '@memry/editor-schema/blocks'
-import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { serializeYoutubeEmbed } from './youtube-embed-block'
 import { serializeBookmark } from './bookmark-block'
 import { extractDomain } from '@/lib/url-metadata'
@@ -485,10 +485,10 @@ async function parseMarkdownSegmentText(editor: any, text: string, blocks: Block
       const embedParts = splitByEmbedMarkers(seg.text)
       for (const part of embedParts) {
         if (part.kind === 'embed') {
-          // SAFETY: `youtubeEmbed`'s two declared props, both strings.
+          // SAFETY: `youtubeEmbed`'s declared props, all strings.
           blocks.push({
             type: 'youtubeEmbed' as const,
-            props: { videoId: part.videoId, videoUrl: part.url }
+            props: { videoId: part.videoId, videoUrl: part.url, alt: part.alt }
           } as unknown as Block)
         } else if (part.kind === 'bookmark') {
           // SAFETY: `bookmark`'s two required props; the rest of its
@@ -598,8 +598,8 @@ export async function serializeBlocksPreservingBlanks(
     } else if ((block.type as string) === 'youtubeEmbed') {
       await flushContent()
       flushGap()
-      const videoUrl = (block.props as any).videoUrl as string
-      segments.push({ type: 'content', text: serializeYoutubeEmbed(videoUrl) })
+      const { videoUrl, alt } = block.props as { videoUrl: string; alt?: string }
+      segments.push({ type: 'content', text: serializeYoutubeEmbed(videoUrl, alt) })
     } else if ((block.type as string) === 'bookmark') {
       await flushContent()
       flushGap()
@@ -691,13 +691,12 @@ export async function serializeBlocksPreservingBlanks(
 
 type EmbedPart =
   | { kind: 'text'; text: string; patches?: SidecarPatch[] }
-  | { kind: 'embed'; url: string; videoId: string }
+  | { kind: 'embed'; url: string; videoId: string; alt: string }
   | { kind: 'bookmark'; url: string }
   | { kind: 'file'; props: FileBlockProps }
   | { kind: 'math'; latex: string }
   | { kind: 'whiteboard'; canvasId: string }
 
-const EMBED_LINE_REGEX = /^!\[embed\]\(([^)]+)\)$/
 const BOOKMARK_LINE_REGEX = /^!\[bookmark\]\(([^)]+)\)$/
 const FILE_BLOCK_LINE_REGEX = /^<!-- file:\{[^}]+\} -->$/
 
@@ -759,15 +758,13 @@ function splitByEmbedMarkers(text: string): EmbedPart[] {
       continue
     }
 
-    const match = line.match(EMBED_LINE_REGEX)
-    if (match) {
-      const url = match[1]
-      const videoId = extractYouTubeVideoId(url)
-      if (videoId) {
-        flushBuffer()
-        parts.push({ kind: 'embed', url, videoId })
-        continue
-      }
+    // Any alt text, so another app's `![](youtube-url)` plays instead of
+    // rendering as a broken image. Main's twin is `parseCustomBlockMarkerLine`.
+    const embed = parseYoutubeEmbedLine(line)
+    if (embed) {
+      flushBuffer()
+      parts.push({ kind: 'embed', url: embed.videoUrl, videoId: embed.videoId, alt: embed.alt })
+      continue
     }
 
     const bookmarkMatch = line.match(BOOKMARK_LINE_REGEX)

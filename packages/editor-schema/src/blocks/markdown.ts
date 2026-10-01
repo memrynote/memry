@@ -18,6 +18,7 @@
 
 import { BLOCK_COLORS_LINE_REGEX } from '@memry/shared/block-colors'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
+import { extractYouTubeVideoId } from '@memry/shared/youtube'
 
 // ---------------------------------------------------------------------------
 // callout — `> [!type]` followed by the content, one `> ` per line
@@ -300,12 +301,47 @@ async function settles(
 // youtubeEmbed / bookmark — an image embed whose alt text names the block
 // ---------------------------------------------------------------------------
 
-/** A whole line that is nothing but an embed / bookmark marker. */
-export const EMBED_LINE_REGEX = /^!\[embed\]\(([^)]+)\)$/
+/** A whole line that is nothing but a bookmark marker. */
 export const BOOKMARK_LINE_REGEX = /^!\[bookmark\]\(([^)]+)\)$/
 
-export function serializeYoutubeEmbed(videoUrl: string): string {
-  return `![embed](${videoUrl})`
+/** The alt text Memry itself writes, and the `alt` prop's default. */
+export const YOUTUBE_EMBED_DEFAULT_ALT = 'embed'
+
+/** A whole line that is nothing but `![alt](url)`, with any alt text. */
+const IMAGE_LINE_REGEX = /^!\[([^\]\n]*)\]\(([^)\s]+)\)$/
+
+/** Alt texts that name another marker block; never a YouTube embed. */
+const RESERVED_IMAGE_ALTS = new Set(['bookmark', 'whiteboard'])
+
+export interface YoutubeEmbedLine {
+  videoId: string
+  videoUrl: string
+  alt: string
+}
+
+/**
+ * A whole line `![alt](youtube-url)`, with any alt text, as a YouTube embed.
+ *
+ * Obsidian and other markdown apps embed a YouTube video from an image line
+ * whatever its alt text says (`![](…)`, `![Embedded YouTube video](…)`). Only
+ * `![embed](…)` used to be claimed, so those lines came in as image blocks
+ * pointing at a web page and rendered as broken images. The alt is kept so
+ * the line writes back byte-for-byte and still opens in the app that wrote it.
+ */
+export function parseYoutubeEmbedLine(line: string): YoutubeEmbedLine | null {
+  const match = line.match(IMAGE_LINE_REGEX)
+  if (!match) return null
+  const [, alt, videoUrl] = match
+  if (RESERVED_IMAGE_ALTS.has(alt)) return null
+  const videoId = extractYouTubeVideoId(videoUrl)
+  return videoId ? { videoId, videoUrl, alt } : null
+}
+
+export function serializeYoutubeEmbed(
+  videoUrl: string,
+  alt: string = YOUTUBE_EMBED_DEFAULT_ALT
+): string {
+  return `![${alt}](${videoUrl})`
 }
 
 export function serializeBookmark(url: string): string {

@@ -47,6 +47,7 @@ import {
   fileBlockCommentData,
   serializeMathBlock,
   whiteboardUrl,
+  YOUTUBE_EMBED_DEFAULT_ALT,
   type FileBlockProps
 } from './markdown'
 import { assertSpecKeysMatchNodeTypes } from '../spec-keys'
@@ -65,8 +66,10 @@ function imageEmbedDom(url: string, alt: string): { dom: HTMLElement } {
   return { dom }
 }
 
-function youtubeEmbedDom(block: { props: { videoUrl: string } }): { dom: HTMLElement } {
-  return imageEmbedDom(block.props.videoUrl || '', 'embed')
+function youtubeEmbedDom(block: { props: { videoUrl: string; alt?: string } }): {
+  dom: HTMLElement
+} {
+  return imageEmbedDom(block.props.videoUrl || '', block.props.alt ?? YOUTUBE_EMBED_DEFAULT_ALT)
 }
 
 function bookmarkDom(block: { props: { url: string } }): { dom: HTMLElement } {

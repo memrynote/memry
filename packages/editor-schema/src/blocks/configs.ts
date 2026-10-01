@@ -72,7 +72,15 @@ export const youtubeEmbedConfig = {
      * carries no title, so a block read back from a file — or written by an
      * older build — has none, and both renderers fall back to the URL alone.
      */
-    title: { default: '' }
+    title: { default: '' },
+    /**
+     * The alt text of the `![alt](url)` line the block was read from.
+     *
+     * Additive, defaulting to the `embed` Memry writes, so a block written by an
+     * older build serializes exactly as before. Anything else is another app's
+     * spelling (`![](…)` from Obsidian, say) and is written back unchanged.
+     */
+    alt: { default: 'embed' }
   },
   content: 'none' as const
 }
