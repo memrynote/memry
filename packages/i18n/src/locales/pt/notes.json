@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Transformar em caixa de seleção",
       "colors": "Cores",
+      "copy": "Copiar",
+      "copyFailed": "Não foi possível copiar o bloco",
       "duplicate": "Duplicar",
       "insertTemplate": "Inserir modelo…",
       "moveTo": "Mover para…",

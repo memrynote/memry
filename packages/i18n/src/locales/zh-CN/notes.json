@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "转换为复选框",
       "colors": "颜色",
+      "copy": "复制",
+      "copyFailed": "无法复制该块",
       "duplicate": "创建副本",
       "insertTemplate": "插入模板…",
       "moveTo": "移动到…",

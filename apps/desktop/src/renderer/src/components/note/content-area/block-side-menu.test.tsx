@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockSideMenuController } from './block-side-menu'
 import { registerCheckboxTaskActions } from './checkbox-task-actions'
+import { copyBlocksFromMenu } from './block-clipboard'
 
 const state = vi.hoisted(() => ({
   block: undefined as
@@ -18,6 +19,8 @@ vi.mock('@memry/i18n/renderer', () => ({
         'editor.blockMenu.turnInto': 'Turn into',
         'editor.blockMenu.turnIntoTypes.paragraph': 'Text',
         'editor.blockMenu.colors': 'Colors',
+        'editor.blockMenu.copy': 'Copy',
+        'editor.blockMenu.copyFailed': 'Could not copy the block',
         'editor.blockMenu.duplicate': 'Duplicate',
         'editor.blockMenu.insertTemplate': 'Insert template…',
         'editor.blockMenu.moveTo': 'Move to…',
@@ -33,6 +36,11 @@ vi.mock('@memry/i18n/renderer', () => ({
 }))
 
 vi.mock('@blocknote/core/extensions', () => ({ SideMenuExtension: { name: 'sideMenu' } }))
+
+vi.mock('./block-clipboard', () => ({ copyBlocksFromMenu: vi.fn(async () => true) }))
+
+const toastError = vi.hoisted(() => vi.fn())
+vi.mock('sonner', () => ({ toast: { error: toastError } }))
 
 vi.mock('./review-formatting-toolbar', () => ({
   getEditorSelectionFromState: vi.fn(() => null),
@@ -88,6 +96,7 @@ describe('BlockSideMenuController insert template item', () => {
     expect(menuItemNames()).toEqual([
       'Turn into',
       'Text',
+      'Copy',
       expect.stringMatching(/^Duplicate/),
       'Insert template…',
       'Move to…'
@@ -118,6 +127,41 @@ describe('BlockSideMenuController insert template item', () => {
     render(<BlockSideMenuController onRequestInsertTemplate={vi.fn()} />)
 
     expect(screen.queryByRole('menuitem', { name: 'Insert template…' })).toBeNull()
+  })
+})
+
+describe('BlockSideMenuController copy item', () => {
+  beforeEach(() => {
+    state.editor = { schema: { blockSchema: { paragraph: {} } } }
+    state.block = { id: 'block-1', type: 'paragraph', content: [{ type: 'text', text: 'Line' }] }
+    vi.mocked(copyBlocksFromMenu).mockReset()
+    toastError.mockReset()
+  })
+
+  it('copies from the hovered block', async () => {
+    vi.mocked(copyBlocksFromMenu).mockResolvedValue(true)
+    render(<BlockSideMenuController />)
+
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Copy' }))
+
+    expect(copyBlocksFromMenu).toHaveBeenCalledWith(state.editor, 'block-1')
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('is offered on blocks without text too', () => {
+    state.block = { id: 'img', type: 'image', props: { url: 'x' } }
+    render(<BlockSideMenuController />)
+
+    expect(screen.getByRole('menuitem', { name: 'Copy' })).toBeTruthy()
+  })
+
+  it('reports a failed clipboard write', async () => {
+    vi.mocked(copyBlocksFromMenu).mockRejectedValue(new Error('denied'))
+    render(<BlockSideMenuController />)
+
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Copy' }))
+
+    await vi.waitFor(() => expect(toastError).toHaveBeenCalledTimes(1))
   })
 })
 

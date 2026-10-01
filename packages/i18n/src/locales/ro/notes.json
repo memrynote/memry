@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Transformă în casetă de selectare",
       "colors": "Culori",
+      "copy": "Copiază",
+      "copyFailed": "Blocul nu a putut fi copiat",
       "duplicate": "Duplică",
       "insertTemplate": "Inserează un șablon…",
       "moveTo": "Mută în…",

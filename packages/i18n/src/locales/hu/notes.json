@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Átalakítás jelölőnégyzetté",
       "colors": "Színek",
+      "copy": "Másolás",
+      "copyFailed": "A blokkot nem sikerült másolni",
       "duplicate": "Megkettőzés",
       "insertTemplate": "Sablon beszúrása…",
       "moveTo": "Áthelyezés…",

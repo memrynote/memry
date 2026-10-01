@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Zamień na pole wyboru",
       "colors": "Kolory",
+      "copy": "Kopiuj",
+      "copyFailed": "Nie udało się skopiować bloku",
       "duplicate": "Duplikuj",
       "insertTemplate": "Wstaw szablon…",
       "moveTo": "Przenieś do…",

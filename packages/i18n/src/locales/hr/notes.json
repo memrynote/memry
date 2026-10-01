@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Pretvori u potvrdni okvir",
       "colors": "Boje",
+      "copy": "Kopiraj",
+      "copyFailed": "Blok nije moguće kopirati",
       "duplicate": "Dupliciraj",
       "insertTemplate": "Umetni predložak…",
       "moveTo": "Premjesti u…",

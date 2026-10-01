@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "In Kontrollkästchen umwandeln",
       "colors": "Farben",
+      "copy": "Kopieren",
+      "copyFailed": "Block konnte nicht kopiert werden",
       "duplicate": "Duplizieren",
       "insertTemplate": "Vorlage einfügen…",
       "moveTo": "Verschieben nach…",

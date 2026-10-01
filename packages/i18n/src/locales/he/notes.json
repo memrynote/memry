@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "המרה לתיבת סימון",
       "colors": "צבעים",
+      "copy": "העתקה",
+      "copyFailed": "לא ניתן להעתיק את הבלוק",
       "duplicate": "שכפול",
       "insertTemplate": "הוספת תבנית…",
       "moveTo": "העברה אל…",

@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "チェックボックスに変換",
       "colors": "色",
+      "copy": "コピー",
+      "copyFailed": "ブロックをコピーできませんでした",
       "duplicate": "複製",
       "insertTemplate": "テンプレートを挿入…",
       "moveTo": "ノートに移動…",

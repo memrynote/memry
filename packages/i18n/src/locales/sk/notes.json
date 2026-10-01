@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Zmeniť na začiarkavacie políčko",
       "colors": "Farby",
+      "copy": "Kopírovať",
+      "copyFailed": "Blok sa nepodarilo skopírovať",
       "duplicate": "Duplikovať",
       "insertTemplate": "Vložiť šablónu…",
       "moveTo": "Presunúť do…",

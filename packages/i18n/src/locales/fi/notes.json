@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Muuta valintaruuduksi",
       "colors": "Värit",
+      "copy": "Kopioi",
+      "copyFailed": "Lohkoa ei voitu kopioida",
       "duplicate": "Monista",
       "insertTemplate": "Lisää pohja…",
       "moveTo": "Siirrä…",

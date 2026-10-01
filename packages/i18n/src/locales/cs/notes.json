@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Změnit na zaškrtávací políčko",
       "colors": "Barvy",
+      "copy": "Kopírovat",
+      "copyFailed": "Blok se nepodařilo zkopírovat",
       "duplicate": "Duplikovat",
       "insertTemplate": "Vložit šablonu…",
       "moveTo": "Přesunout do…",

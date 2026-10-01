@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Ubah menjadi kotak centang",
       "colors": "Warna",
+      "copy": "Salin",
+      "copyFailed": "Tidak dapat menyalin blok",
       "duplicate": "Duplikat",
       "insertTemplate": "Sisipkan templat…",
       "moveTo": "Pindahkan ke…",

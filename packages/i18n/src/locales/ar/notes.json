@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "تحويل إلى خانة اختيار",
       "colors": "الألوان",
+      "copy": "نسخ",
+      "copyFailed": "تعذّر نسخ الكتلة",
       "duplicate": "إنشاء نسخة",
       "insertTemplate": "إدراج قالب…",
       "moveTo": "نقل إلى…",

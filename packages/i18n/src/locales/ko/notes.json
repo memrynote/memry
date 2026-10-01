@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "체크박스로 변환",
       "colors": "색상",
+      "copy": "복사",
+      "copyFailed": "블록을 복사할 수 없습니다",
       "duplicate": "복제",
       "insertTemplate": "템플릿 삽입…",
       "moveTo": "이동…",

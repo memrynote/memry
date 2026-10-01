@@ -388,6 +388,8 @@
       },
       "turnIntoCheckbox": "Gjør om til avmerkingsboks",
       "colors": "Farger",
+      "copy": "Kopier",
+      "copyFailed": "Kunne ikke kopiere blokken",
       "duplicate": "Dupliser",
       "insertTemplate": "Sett inn mal …",
       "moveTo": "Flytt til …",
