@@ -8,6 +8,8 @@
 
 import { marked } from 'marked'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
+import type { CustomIconRow } from '@memry/db-schema/schema/custom-icons'
+import { sanitizeSvgBytes } from '../icons/sanitize-svg'
 
 // ============================================================================
 // Types
@@ -17,6 +19,7 @@ export interface NoteExportData {
   id: string
   title: string
   content: string
+  /** The stored note icon: a bare emoji, `icon:<Name>` or `custom:<id>`. */
   emoji?: string | null
   tags: string[]
   created: Date
@@ -28,7 +31,15 @@ export interface RenderOptions {
   includeMetadata?: boolean
   /** Page size for PDF export */
   pageSize?: 'A4' | 'Letter' | 'Legal'
+  /**
+   * Looks up an uploaded icon by id, for a note whose icon is `custom:<id>`.
+   * Without it, or when the icon is gone, the header shows no icon.
+   */
+  findCustomIcon?: (id: string) => ExportCustomIcon | undefined
 }
+
+/** The parts of a stored custom icon an export needs. */
+export type ExportCustomIcon = Pick<CustomIconRow, 'ext' | 'data'>
 
 // ============================================================================
 // Markdown to HTML Conversion
@@ -70,6 +81,44 @@ export function escapeHtml(text: string): string {
     "'": '&#39;'
   }
   return text.replace(/[&<>"']/g, (char) => htmlEscapes[char] || char)
+}
+
+// The note `emoji` column holds a bare emoji, a library icon (`icon:<Name>`) or
+// an uploaded image (`custom:<id>`). Restated from the renderer's
+// `emoji-icon-utils.ts`, which is not importable here.
+const LIBRARY_ICON_PREFIX = 'icon:'
+const CUSTOM_ICON_PREFIX = 'custom:'
+
+function customIconDataUri({ ext, data }: ExportCustomIcon): string | null {
+  if (ext === 'png') return `data:image/png;base64,${data}`
+  if (ext === 'svg') {
+    // The row is synced input and can predate the sanitizer, and the export is
+    // a file the user hands on, so it gets the same inert bytes as the disk copy.
+    const svg = sanitizeSvgBytes(Buffer.from(data, 'base64'))
+    return svg ? `data:image/svg+xml;base64,${svg.toString('base64')}` : null
+  }
+  return null
+}
+
+/**
+ * The header markup for a note's stored icon.
+ *
+ * An uploaded image travels inside the document as a `data:` URI, the way
+ * `inlineExportImages` carries the body's images. A library icon is left out:
+ * its glyphs ship in the renderer bundle, not here, and its reference is not
+ * text to print. So is a custom icon whose row is gone.
+ */
+function renderNoteIcon(
+  value: string | null | undefined,
+  findCustomIcon: RenderOptions['findCustomIcon']
+): string {
+  if (!value || value.startsWith(LIBRARY_ICON_PREFIX)) return ''
+  if (value.startsWith(CUSTOM_ICON_PREFIX)) {
+    const icon = findCustomIcon?.(value.slice(CUSTOM_ICON_PREFIX.length))
+    const src = icon ? customIconDataUri(icon) : null
+    return src ? `<img class="note-emoji" src="${escapeHtml(src)}" alt="">` : ''
+  }
+  return `<span class="note-emoji">${escapeHtml(value)}</span>`
 }
 
 /**
@@ -122,6 +171,14 @@ export function getEmbeddedStyles(): string {
       line-height: 1;
       margin-bottom: 16px;
       display: block;
+    }
+
+    img.note-emoji {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      margin: 0 0 16px 0;
+      border-radius: 0;
     }
 
     .note-title {
@@ -391,7 +448,7 @@ export function renderNoteAsHtml(note: NoteExportData, options: RenderOptions = 
 <body>
   <article>
     <header class="note-header">
-      ${note.emoji ? `<span class="note-emoji">${note.emoji}</span>` : ''}
+      ${renderNoteIcon(note.emoji, options.findCustomIcon)}
       <h1 class="note-title">${escapeHtml(note.title)}</h1>
       ${metadataSection}
     </header>

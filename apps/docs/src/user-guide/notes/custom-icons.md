@@ -99,6 +99,12 @@ If a device ever ends up with a library entry whose file is missing (it pulled t
 vault was closed, or the file was deleted outside the app), opening any icon picker rewrites it from
 the synced copy.
 
+## In Exports
+
+A note exported to PDF or HTML carries its custom icon inside the file, above the title, so the
+export still shows it once it leaves your vault. Icons from the **Icons** tab are left out of
+exports for now; emoji export as before.
+
 ## Deleting an Icon
 
 Deleting an icon from the library removes it everywhere, on every device. Folders and notes that

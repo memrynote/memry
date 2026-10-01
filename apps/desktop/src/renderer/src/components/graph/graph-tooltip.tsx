@@ -1,5 +1,6 @@
 import type Graph from 'graphology'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { ProjectIcon } from '@/components/tasks/project-icon'
 import { useT } from '@memry/i18n/renderer'
 
 const TYPE_COLORS: Record<string, string> = {
@@ -55,7 +56,15 @@ export function GraphTooltip({ nodeId, graph, x, y }: GraphTooltipProps): React.
       }}
     >
       <div className="flex items-center gap-1.5 mb-1">
-        {emoji && <NoteIconDisplay value={emoji} className="text-sm" />}
+        {emoji &&
+          (nodeType === 'project' ? (
+            // A project node carries the project's icon, which can be a legacy
+            // lucide name ("Folder" is the default) that the note renderer would
+            // print as text.
+            <ProjectIcon icon={emoji} className="size-3.5 text-sm" fallback={null} />
+          ) : (
+            <NoteIconDisplay value={emoji} className="text-sm" />
+          ))}
         <span className="text-sm font-medium text-foreground truncate">{label}</span>
       </div>
 

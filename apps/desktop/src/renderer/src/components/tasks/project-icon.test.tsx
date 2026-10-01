@@ -48,6 +48,16 @@ describe('ProjectIcon', () => {
     expect(screen.queryByTestId('fallback')).not.toBeInTheDocument()
   })
 
+  it('renders an uploaded "custom:<id>" image through NoteIconDisplay, not the fallback', () => {
+    // ASCII like a legacy name, so only the prefix tells them apart.
+    render(<ProjectIcon icon="custom:i4D0i_NKqVZr0a9eb-6B3" fallback={DOT} />)
+
+    const icon = screen.getByTestId('note-icon')
+    expect(icon).toHaveAttribute('data-value', 'custom:i4D0i_NKqVZr0a9eb-6B3')
+    expect(icon.closest('[aria-hidden="true"]')).toBeInTheDocument()
+    expect(screen.queryByTestId('fallback')).not.toBeInTheDocument()
+  })
+
   it('renders a raw emoji through NoteIconDisplay, marked decorative', () => {
     render(<ProjectIcon icon="📚" fallback={DOT} />)
 

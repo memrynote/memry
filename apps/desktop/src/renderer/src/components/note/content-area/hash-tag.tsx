@@ -3,8 +3,14 @@
 import { type Block } from '@blocknote/core'
 import { createHashTagSpec } from '@memry/editor-schema/inline'
 import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
-import { isIconValue, parseIconName } from '@/components/note/note-title/emoji-icon-utils'
+import {
+  isCustomIconValue,
+  isIconValue,
+  parseCustomIconId,
+  parseIconName
+} from '@/components/note/note-title/emoji-icon-utils'
 import { loadAllIcons } from '@/lib/hugeicon-renderer'
+import { readCustomIcon } from '@/lib/custom-icons-store'
 
 export function createHashTagInlineContent(tag: string, color: string = '', icon: string = '') {
   return {
@@ -35,22 +41,43 @@ function buildHugeIconSvg(
   return svg
 }
 
+/** The box a library or uploaded icon is drawn into once it has loaded. */
+function prependIconHolder(dom: HTMLElement): HTMLSpanElement {
+  const holder = document.createElement('span')
+  holder.style.display = 'inline-flex'
+  holder.style.alignItems = 'center'
+  // An inline-flex box baselines at its bottom edge, so the icon rides high
+  // above the text — center it on the line instead.
+  holder.style.verticalAlign = 'middle'
+  holder.style.marginInlineEnd = '3px'
+  holder.setAttribute('aria-hidden', 'true')
+  dom.insertBefore(holder, dom.firstChild)
+  return holder
+}
+
 /** Prepend a tag's emoji/icon to its inline #tag chip. */
 function prependTagIcon(dom: HTMLElement, iconValue: string, colorHex: string): void {
   if (isIconValue(iconValue)) {
-    const holder = document.createElement('span')
-    holder.style.display = 'inline-flex'
-    holder.style.alignItems = 'center'
-    // An inline-flex box baselines at its bottom edge, so the icon rides high
-    // above the text — center it on the line instead.
-    holder.style.verticalAlign = 'middle'
-    holder.style.marginInlineEnd = '3px'
-    holder.setAttribute('aria-hidden', 'true')
-    dom.insertBefore(holder, dom.firstChild)
+    const holder = prependIconHolder(dom)
     const name = parseIconName(iconValue)
     void loadAllIcons().then((mod) => {
       const data = mod[name] as Array<[string, Record<string, string>]> | undefined
       if (data) holder.appendChild(buildHugeIconSvg(data, colorHex))
+    })
+  } else if (isCustomIconValue(iconValue)) {
+    // An uploaded image. The reference is not text: an id the library does not
+    // have (deleted on another device) leaves the box empty instead.
+    const holder = prependIconHolder(dom)
+    void readCustomIcon(parseCustomIconId(iconValue)).then((icon) => {
+      if (!icon) return
+      const img = document.createElement('img')
+      img.src = icon.url
+      img.alt = ''
+      img.draggable = false
+      img.style.width = '1em'
+      img.style.height = '1em'
+      img.style.objectFit = 'contain'
+      holder.appendChild(img)
     })
   } else {
     const span = document.createElement('span')

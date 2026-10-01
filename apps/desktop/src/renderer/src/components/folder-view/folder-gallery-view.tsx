@@ -11,6 +11,7 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { Folder } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { handleMiddleClick } from '@/lib/middle-click'
 import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
@@ -126,7 +127,14 @@ export function FolderGalleryView({
                 pastelFor(note.emoji || note.title || note.id)
               )}
             >
-              <span className="text-[34px] leading-none">{note.emoji || '📄'}</span>
+              {note.emoji ? (
+                <NoteIconDisplay
+                  value={note.emoji}
+                  className="size-[34px] text-[34px] leading-none"
+                />
+              ) : (
+                <span className="text-[34px] leading-none">📄</span>
+              )}
             </div>
             <div className="flex flex-col gap-2 p-3">
               {note.kind === 'task' || note.kind === 'inbox' ? (

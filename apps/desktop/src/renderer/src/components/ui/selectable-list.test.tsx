@@ -40,6 +40,20 @@ describe('selectable-list', () => {
     expect(screen.getByText('Plain')).toBeInTheDocument()
   })
 
+  // The template picker hands each template's stored icon straight to the row.
+  it.each(['custom:i4D0i_NKqVZr0a9eb-6B3', 'icon:StarIcon'])(
+    'draws a %s icon value as an icon, not as literal text',
+    (icon) => {
+      render(
+        <SelectableListSection title="Templates">
+          <SelectableListItem id="meeting" label="Meeting" icon={icon} />
+        </SelectableListSection>
+      )
+
+      expect(screen.getByRole('button', { name: /Meeting/ }).textContent).not.toContain(icon)
+    }
+  )
+
   it('throws outside a section and covers standalone selected/unselected rows', () => {
     expect(() => render(<SelectableListItem id="orphan" label="Orphan" />)).toThrow(
       'SelectableListItem must be used within a SelectableListSection'

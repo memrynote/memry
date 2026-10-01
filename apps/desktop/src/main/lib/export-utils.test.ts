@@ -57,6 +57,54 @@ describe('export-utils', () => {
     expect(html).toContain('<p>')
   })
 
+  describe('renderNoteAsHtml note icon', () => {
+    const note: NoteExportData = {
+      id: 'note789',
+      title: 'Iconic',
+      content: 'Body',
+      tags: [],
+      created: new Date(2026, 0, 2),
+      modified: new Date(2026, 0, 3)
+    }
+
+    it.each(['icon:StarIcon', 'custom:gone'])(
+      'leaves a %s icon out of the header instead of printing its reference',
+      (emoji) => {
+        const html = renderNoteAsHtml({ ...note, emoji }, { findCustomIcon: () => undefined })
+
+        expect(html).not.toContain(emoji)
+        expect(html).not.toContain('class="note-emoji"')
+      }
+    )
+
+    it('embeds an uploaded icon as a data URI, with SVG sanitized', () => {
+      const svg =
+        '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><circle r="4"/></svg>'
+      const icons = new Map([
+        ['png', { ext: 'png', data: 'iVBORw0KGgo=' }],
+        ['svg', { ext: 'svg', data: Buffer.from(svg).toString('base64') }]
+      ])
+      const findCustomIcon = (id: string) => icons.get(id)
+
+      const png = renderNoteAsHtml({ ...note, emoji: 'custom:png' }, { findCustomIcon })
+      expect(png).toContain(
+        '<img class="note-emoji" src="data:image/png;base64,iVBORw0KGgo=" alt="">'
+      )
+
+      const html = renderNoteAsHtml({ ...note, emoji: 'custom:svg' }, { findCustomIcon })
+      const svgSrc = /class="note-emoji" src="data:image\/svg\+xml;base64,([^"]+)"/
+      const markup = Buffer.from(svgSrc.exec(html)?.[1] ?? '', 'base64').toString()
+      expect(markup).toContain('<circle')
+      expect(markup).not.toContain('<script')
+    })
+
+    it('escapes a stored emoji', () => {
+      const html = renderNoteAsHtml({ ...note, emoji: '<img src=x onerror=alert(1)>' })
+
+      expect(html).toContain('<span class="note-emoji">&lt;img src=x onerror=alert(1)&gt;</span>')
+    })
+  })
+
   it('renderNoteAsHtml omits metadata when disabled', () => {
     const note: NoteExportData = {
       id: 'note456',

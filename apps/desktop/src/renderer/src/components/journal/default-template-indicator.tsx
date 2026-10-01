@@ -11,12 +11,13 @@ import { useCallback, useState, useEffect } from 'react'
 import { FileText, RefreshCw, X } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { useT } from '@memry/i18n/renderer'
 
 interface DefaultTemplateIndicatorProps {
   /** Name of the current default template */
   templateName: string
-  /** Icon of the template (emoji or null) */
+  /** Icon of the template: an emoji, `icon:<Name>`, `custom:<id>` or null */
   templateIcon?: string | null
   /** Whether the entry is being created */
   isCreating?: boolean
@@ -86,7 +87,7 @@ export function DefaultTemplateIndicator({
         {/* Template icon */}
         <div className="flex-shrink-0 w-8 h-8 rounded-md bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/50 dark:to-orange-900/40 flex items-center justify-center border border-amber-200/50 dark:border-amber-800/30 shadow-sm">
           {templateIcon ? (
-            <span className="text-base">{templateIcon}</span>
+            <NoteIconDisplay value={templateIcon} className="size-4 text-base" />
           ) : (
             <FileText className="w-4 h-4 text-amber-700 dark:text-amber-400" />
           )}

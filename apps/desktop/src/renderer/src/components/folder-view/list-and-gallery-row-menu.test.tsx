@@ -140,4 +140,15 @@ describe.each(views)('%s row context menu', (_name, View) => {
     expect(screen.getByText('Alpha')).toBeInTheDocument()
     expect(screen.queryByTestId('context-menu')).toBeNull()
   })
+
+  it.each(['custom:1l4E1zFoOCBC_x6h', 'icon:StarIcon'])(
+    'draws a %s note icon as an icon, not as literal text',
+    (emoji) => {
+      const { container } = render(
+        <View notes={[{ ...notes[0], emoji }]} tagMetaMap={new Map()} onNoteOpen={vi.fn()} />
+      )
+
+      expect(container.textContent).not.toContain(emoji)
+    }
+  )
 })
