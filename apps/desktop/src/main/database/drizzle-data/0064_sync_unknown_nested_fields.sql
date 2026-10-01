@@ -1,0 +1,21 @@
+-- Unknown keys nested inside a known payload object, kept for round trip (#2183).
+--
+-- `sync_unknown_fields.fields` holds whole top-level keys this build's schema
+-- does not know, and builds since 0057 spread it under the push payload as is.
+-- A key stripped from inside a known object (e.g. a newer `cover.<field>` on a
+-- note) cannot live there: an older 0057+ build would push it as a top-level
+-- value, and a remainder for a parent the local payload no longer has would
+-- push a partial object. So it gets its own column, read only by builds that
+-- know to merge it into an existing parent object.
+--
+-- Additive only. One nullable column, no backfill, no DELETE. Existing rows read
+-- `nested_fields = NULL`, which is "nothing nested captured"; the next apply of
+-- the item fills it.
+--
+-- A downgrade is inert: an older build selects only `fields` (Drizzle lists
+-- columns explicitly) and its upsert sets only `fields`, so it never sees the
+-- column. Its max journal `when` is lower than this one's, so its migrator
+-- applies nothing.
+--
+-- Hand-written (project switched off the Drizzle generator after 0020).
+ALTER TABLE `sync_unknown_fields` ADD COLUMN `nested_fields` text;

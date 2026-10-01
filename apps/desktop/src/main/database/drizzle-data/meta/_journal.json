@@ -449,6 +449,13 @@
       "when": 1788004359433,
       "tag": "0063_canvas_entity_edges",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "6",
+      "when": 1788090759433,
+      "tag": "0064_sync_unknown_nested_fields",
+      "breakpoints": true
     }
   ]
 }
