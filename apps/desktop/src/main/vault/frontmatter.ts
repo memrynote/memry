@@ -21,11 +21,16 @@ import {
   COVER_CREDIT_FRONTMATTER_KEY,
   COVER_CREDIT_URL_FRONTMATTER_KEY,
   COVER_FOCUS_FRONTMATTER_KEY,
+  COVER_FOCUS_X_FRONTMATTER_KEY,
   COVER_FRONTMATTER_KEY,
+  COVER_HEIGHT_FRONTMATTER_KEY,
+  COVER_ZOOM_FRONTMATTER_KEY,
   isCoverCreditUrlValue,
   isCoverCreditValue,
   isCoverFocusValue,
-  isCoverValue
+  isCoverHeightValue,
+  isCoverValue,
+  isCoverZoomValue
 } from '@memry/shared/cover-image'
 
 // ============================================================================
@@ -386,6 +391,9 @@ const RESERVED_FRONTMATTER_KEYS = new Set(['tags', 'aliases', 'properties'])
 const VALUE_GATED_FRONTMATTER_KEYS: ReadonlyMap<string, (value: unknown) => boolean> = new Map([
   [COVER_FRONTMATTER_KEY, isCoverValue as (value: unknown) => boolean],
   [COVER_FOCUS_FRONTMATTER_KEY, isCoverFocusValue as (value: unknown) => boolean],
+  [COVER_FOCUS_X_FRONTMATTER_KEY, isCoverFocusValue as (value: unknown) => boolean],
+  [COVER_ZOOM_FRONTMATTER_KEY, isCoverZoomValue as (value: unknown) => boolean],
+  [COVER_HEIGHT_FRONTMATTER_KEY, isCoverHeightValue as (value: unknown) => boolean],
   [COVER_CREDIT_FRONTMATTER_KEY, isCoverCreditValue as (value: unknown) => boolean],
   [COVER_CREDIT_URL_FRONTMATTER_KEY, isCoverCreditUrlValue as (value: unknown) => boolean]
 ])

@@ -588,6 +588,50 @@ Body text
 describe('value-gated cover keys', () => {
   const COVER_REF = '../attachments/n1/abc123-photo.jpg'
 
+  it('reserves coverFocusX, coverZoom and coverHeight only when the value fits', () => {
+    expect(
+      extractProperties({ coverFocusX: 70, coverZoom: 1.5, coverHeight: 320, status: 'reading' })
+    ).toEqual({ status: 'reading' })
+
+    expect(
+      extractProperties({ coverFocusX: 'left', coverZoom: '2x', coverHeight: 'tall' })
+    ).toEqual({ coverFocusX: 'left', coverZoom: '2x', coverHeight: 'tall' })
+  })
+
+  it('round-trips the framing keys through the markdown file and a property rewrite', () => {
+    const raw = `---
+cover: ${COVER_REF}
+coverFocus: 30
+coverFocusX: 70
+coverZoom: 1.5
+coverHeight: 320
+status: todo
+---
+
+Body text
+`
+    const parsed = parseNote(raw, 'notes/Books/Dune.md')
+    expect(parsed.frontmatter).toMatchObject({
+      coverFocus: 30,
+      coverFocusX: 70,
+      coverZoom: 1.5,
+      coverHeight: 320
+    })
+
+    const rewritten = replacePropertiesOnRoot(parsed.frontmatter, { status: 'done' })
+    const serialized = serializeNote(rewritten, parsed.content)
+    const reparsed = parseNote(serialized, 'notes/Books/Dune.md')
+    expect(reparsed.frontmatter).toEqual({
+      cover: COVER_REF,
+      coverFocus: 30,
+      coverFocusX: 70,
+      coverZoom: 1.5,
+      coverHeight: 320,
+      status: 'done'
+    })
+    expect(serializeNote(reparsed.frontmatter, reparsed.content)).toBe(serialized)
+  })
+
   it('hides a wash cover from extractProperties the way an image cover is hidden', () => {
     expect(extractProperties({ cover: 'wash:sage', status: 'reading' })).toEqual({
       status: 'reading'

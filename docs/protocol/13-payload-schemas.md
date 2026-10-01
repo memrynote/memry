@@ -204,22 +204,36 @@ optional on every type; `fieldClocks` appears only where §13.9 says so.
 
 #### 13.7.1.1 `cover`
 
-A note's cover image, the frontmatter keys `cover`, `coverFocus`, `coverCredit`
-and `coverCreditUrl` (`packages/shared/src/cover-image.ts`). Those keys are
-reserved from `properties`, so they travel in their own field:
+A note's cover image, the frontmatter keys `cover`, `coverFocus`, `coverFocusX`,
+`coverZoom`, `coverHeight`, `coverCredit` and `coverCreditUrl`
+(`packages/shared/src/cover-image.ts`). Those keys are reserved from
+`properties`, so they travel in their own field:
 
-| Field       | Type          | Rule                                                                                                    |
-| ----------- | ------------- | ------------------------------------------------------------------------------------------------------- |
-| `ref`       | string        | the `cover` value: a note-relative or `attachments/<noteId>/<file>` vault path, `wash:<id>`, or http(s) |
-| `focus`     | number 0-100? | vertical framing of an image, 0 top, 100 bottom; absent means centred                                   |
-| `credit`    | string?       | photographer name, written only with `creditUrl`                                                        |
-| `creditUrl` | string?       | http(s) link to the photo's page                                                                        |
+| Field       | Type            | Rule                                                                                                    |
+| ----------- | --------------- | ------------------------------------------------------------------------------------------------------- |
+| `ref`       | string          | the `cover` value: a note-relative or `attachments/<noteId>/<file>` vault path, `wash:<id>`, or http(s) |
+| `focus`     | number 0-100?   | vertical framing of an image, 0 top, 100 bottom; absent means centred                                   |
+| `focusX`    | number 0-100?   | horizontal framing of an image, 0 left, 100 right; see below for absent                                 |
+| `zoom`      | number 1-3?     | scale of an image around its focal point; see below for absent                                          |
+| `height`    | number 120-480? | band height in CSS pixels; see below for absent                                                         |
+| `credit`    | string?         | photographer name, written only with `creditUrl`                                                        |
+| `creditUrl` | string?         | http(s) link to the photo's page                                                                        |
 
 A vault image's bytes are not named here. They travel as an attachment the
 owning note lists in `attachmentReferences` (chapter 14), and every client
 materialises an attachment at `attachments/<noteId>/<basename(manifest.filename)>`,
 so the path in `ref` names the same file on each device. A client writes an
 image cover's file as a note attachment before it writes the ref.
+
+`focusX`, `zoom` and `height` were added after the rest. A sender that knows
+them sends all three with every image cover, defaults included (50, 1, 200).
+A payload that omits them therefore came from an older sender, and a receiver
+whose file has the same `ref` keeps its own values for them; for a different
+`ref` it uses the defaults. A receiver writes none of the three at its default,
+so an unframed note's frontmatter is unchanged. Each of the three is read on its
+own (`.catch(undefined)`): a value out of range drops that field, not the cover.
+An older receiver strips all three and renders the cover centred and unzoomed at
+200px, exactly as before.
 
 A sender that cannot read the note's frontmatter omits the key rather than
 sending `null`. A receiver that cannot read the value treats it as absent

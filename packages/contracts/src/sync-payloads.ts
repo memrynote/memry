@@ -259,8 +259,15 @@ export const ProjectSyncPayloadSchema = z.object({
 })
 
 /**
- * A note's cover, the frontmatter keys `cover`, `coverFocus`, `coverCredit` and
- * `coverCreditUrl` carried across devices (`@memry/shared/cover-image`).
+ * A note's cover, the frontmatter keys `cover`, `coverFocus`, `coverFocusX`,
+ * `coverZoom`, `coverHeight`, `coverCredit` and `coverCreditUrl` carried across
+ * devices (`@memry/shared/cover-image`).
+ *
+ * `focusX`, `zoom` and `height` came after the rest. A build that knows them
+ * sends all three with every image cover, so a payload that omits them came from
+ * an older build, and a receiver keeps its own framing for the same `ref`. Each
+ * one is read on its own (`.catch(undefined)`), so a value outside this build's
+ * range drops that field instead of the whole cover.
  *
  * `ref` is the `cover` value as written: a note-relative or
  * `attachments/<noteId>/<file>` vault path, `wash:<id>`, or an http(s) URL. A
@@ -271,6 +278,9 @@ export const ProjectSyncPayloadSchema = z.object({
 export const NoteCoverSyncSchema = z.object({
   ref: z.string().min(1),
   focus: z.number().min(0).max(100).optional(),
+  focusX: z.number().min(0).max(100).optional().catch(undefined),
+  zoom: z.number().min(1).max(3).optional().catch(undefined),
+  height: z.number().min(120).max(480).optional().catch(undefined),
   credit: z.string().optional(),
   creditUrl: z.string().optional()
 })

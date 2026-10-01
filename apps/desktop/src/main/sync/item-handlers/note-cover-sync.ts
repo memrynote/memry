@@ -6,12 +6,22 @@ import {
   COVER_CREDIT_FRONTMATTER_KEY,
   COVER_CREDIT_URL_FRONTMATTER_KEY,
   COVER_FOCUS_FRONTMATTER_KEY,
+  COVER_FOCUS_X_FRONTMATTER_KEY,
   COVER_FRONTMATTER_KEY,
+  COVER_HEIGHT_FRONTMATTER_KEY,
+  COVER_ZOOM_FRONTMATTER_KEY,
+  DEFAULT_COVER_FRAMING,
   clampCoverFocus,
+  clampCoverHeight,
+  clampCoverZoom,
   isCoverCreditUrlValue,
   isCoverCreditValue,
   isCoverFocusValue,
-  isCoverValue
+  isCoverHeightValue,
+  isCoverValue,
+  isCoverZoomValue,
+  parseCoverFraming,
+  parseCoverValue
 } from '@memry/shared/cover-image'
 import type { NoteFrontmatter } from '../../vault/frontmatter'
 
@@ -27,9 +37,13 @@ export function noteCoverFromFrontmatter(frontmatter: NoteFrontmatter): NoteCove
   const focus = frontmatter[COVER_FOCUS_FRONTMATTER_KEY]
   const credit = frontmatter[COVER_CREDIT_FRONTMATTER_KEY]
   const creditUrl = frontmatter[COVER_CREDIT_URL_FRONTMATTER_KEY]
+  // Sent in full, defaults included, so a receiver can read an omission as an
+  // older sender rather than a reset (see `NoteCoverSyncSchema`).
+  const framing = parseCoverValue(ref)?.kind === 'image' ? parseCoverFraming(frontmatter) : null
   return {
     ref,
     ...(isCoverFocusValue(focus) ? { focus: clampCoverFocus(focus) } : {}),
+    ...(framing ? { focusX: framing.focusX, zoom: framing.zoom, height: framing.height } : {}),
     ...(isCoverCreditValue(credit) ? { credit } : {}),
     ...(isCoverCreditUrlValue(creditUrl) ? { creditUrl } : {})
   }
@@ -45,10 +59,44 @@ function deleteGated(
 }
 
 /**
+ * A framing key added after `coverFocus`, with the gate that reserves it, the
+ * clamp it is written through, and the payload field that carries it.
+ */
+const LATER_FRAMING_KEYS = [
+  {
+    key: COVER_FOCUS_X_FRONTMATTER_KEY,
+    field: 'focusX',
+    gate: isCoverFocusValue,
+    clamp: clampCoverFocus,
+    fallback: DEFAULT_COVER_FRAMING.focusX
+  },
+  {
+    key: COVER_ZOOM_FRONTMATTER_KEY,
+    field: 'zoom',
+    gate: isCoverZoomValue,
+    clamp: clampCoverZoom,
+    fallback: DEFAULT_COVER_FRAMING.zoom
+  },
+  {
+    key: COVER_HEIGHT_FRONTMATTER_KEY,
+    field: 'height',
+    gate: isCoverHeightValue,
+    clamp: clampCoverHeight,
+    fallback: DEFAULT_COVER_FRAMING.height
+  }
+] as const
+
+/**
  * Writes a remote cover into frontmatter, the way `useNoteCover` writes a local
  * one: the ref, and with it either its own framing and credit or none of them.
  * `null` removes the cover. A ref this build does not read as a cover is left
  * out rather than written, because it would land as a user property.
+ *
+ * `coverFocusX`, `coverZoom` and `coverHeight` are the exception. A sender that
+ * predates them omits them, so for the same `ref` the local values stay rather
+ * than an older device's unrelated edit resetting the framing. A default value
+ * is not written, so the file keeps reading the way it did before the key
+ * existed.
  */
 export function applyNoteCoverToFrontmatter(
   frontmatter: NoteFrontmatter,
@@ -65,8 +113,15 @@ export function applyNoteCoverToFrontmatter(
     return next
   }
 
+  const sameRef = cover !== null && next[COVER_FRONTMATTER_KEY] === cover.ref
+  const keptFraming = LATER_FRAMING_KEYS.map(({ key, gate }) => {
+    const local = next[key]
+    return sameRef && gate(local) ? local : undefined
+  })
+
   deleteGated(next, COVER_FRONTMATTER_KEY, isCoverValue)
   deleteGated(next, COVER_FOCUS_FRONTMATTER_KEY, isCoverFocusValue)
+  for (const { key, gate } of LATER_FRAMING_KEYS) deleteGated(next, key, gate)
   deleteGated(next, COVER_CREDIT_FRONTMATTER_KEY, isCoverCreditValue)
   deleteGated(next, COVER_CREDIT_URL_FRONTMATTER_KEY, isCoverCreditUrlValue)
   if (cover === null) return next
@@ -75,6 +130,13 @@ export function applyNoteCoverToFrontmatter(
   if (cover.focus !== undefined && isCoverFocusValue(cover.focus)) {
     next[COVER_FOCUS_FRONTMATTER_KEY] = clampCoverFocus(cover.focus)
   }
+  LATER_FRAMING_KEYS.forEach(({ key, field, gate, clamp, fallback }, index) => {
+    const remote = cover[field]
+    const value = remote !== undefined && gate(remote) ? remote : keptFraming[index]
+    if (value === undefined) return
+    const clamped = clamp(value)
+    if (clamped !== fallback) next[key] = clamped
+  })
   if (isCoverCreditValue(cover.credit)) next[COVER_CREDIT_FRONTMATTER_KEY] = cover.credit
   if (isCoverCreditUrlValue(cover.creditUrl)) {
     next[COVER_CREDIT_URL_FRONTMATTER_KEY] = cover.creditUrl

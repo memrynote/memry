@@ -1,15 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import {
   COVER_WASHES,
+  DEFAULT_COVER_FRAMING,
   clampCoverFocus,
+  clampCoverHeight,
+  clampCoverZoom,
   coverWashForSeed,
   coverWashGradient,
   coverWashRef,
   isCoverCreditUrlValue,
   isCoverCreditValue,
   isCoverFocusValue,
+  isCoverHeightValue,
   isCoverValue,
+  isCoverZoomValue,
   parseCoverFocus,
+  parseCoverFraming,
   parseCoverValue
 } from './cover-image'
 
@@ -126,5 +132,52 @@ describe('cover key value gates', () => {
     expect(isCoverCreditUrlValue('unsplash.com/@ana')).toBe(false)
     expect(isCoverCreditUrlValue('javascript:alert(1)')).toBe(false)
     expect(isCoverCreditUrlValue(null)).toBe(false)
+  })
+})
+
+describe('cover zoom and height', () => {
+  it('clamps zoom onto 1..3 at two decimals', () => {
+    expect(clampCoverZoom(0.4)).toBe(1)
+    expect(clampCoverZoom(1.1 + 0.1)).toBe(1.2)
+    expect(clampCoverZoom(1.456)).toBe(1.46)
+    expect(clampCoverZoom(9)).toBe(3)
+    expect(clampCoverZoom(Number.NaN)).toBe(1)
+  })
+
+  it('clamps height onto 120..480 whole pixels', () => {
+    expect(clampCoverHeight(40)).toBe(120)
+    expect(clampCoverHeight(260.6)).toBe(261)
+    expect(clampCoverHeight(2000)).toBe(480)
+    expect(clampCoverHeight(Number.NaN)).toBe(200)
+  })
+
+  it('gates coverZoom and coverHeight on an in-range number', () => {
+    expect(isCoverZoomValue(1)).toBe(true)
+    expect(isCoverZoomValue(3)).toBe(true)
+    expect(isCoverZoomValue(0.5)).toBe(false)
+    expect(isCoverZoomValue('2x')).toBe(false)
+    expect(isCoverHeightValue(120)).toBe(true)
+    expect(isCoverHeightValue(480)).toBe(true)
+    expect(isCoverHeightValue(600)).toBe(false)
+    expect(isCoverHeightValue('tall')).toBe(false)
+  })
+})
+
+describe('parseCoverFraming', () => {
+  it('reads a note without any framing key as the framing every cover had before', () => {
+    expect(parseCoverFraming({})).toEqual({ focusX: 50, focusY: 50, zoom: 1, height: 200 })
+    expect(parseCoverFraming({ coverFocus: 30 })).toEqual({ ...DEFAULT_COVER_FRAMING, focusY: 30 })
+  })
+
+  it('reads every framing key', () => {
+    expect(
+      parseCoverFraming({ coverFocus: 30, coverFocusX: 70, coverZoom: 1.5, coverHeight: 320 })
+    ).toEqual({ focusX: 70, focusY: 30, zoom: 1.5, height: 320 })
+  })
+
+  it('falls back per key for values that are not framing', () => {
+    expect(parseCoverFraming({ coverFocusX: 'left', coverZoom: 7, coverHeight: 'tall' })).toEqual(
+      DEFAULT_COVER_FRAMING
+    )
   })
 })

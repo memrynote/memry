@@ -61,15 +61,23 @@ of a photo's page instead of the photo — is refused and says so, as is an imag
 
 A picture from your computer, stored in this note's attachments folder.
 
-## Repositioning a Photo
+## Framing a Photo
 
-A photo is cropped to the band, so a tall image has to lose something. Hover the cover and choose
-**Reposition**, or use `⌘↵` when applying it, then drag up and down to choose which part of the
-picture the band keeps. `↑` and `↓` nudge it two percent at a time.
+A photo is cropped to the band, so an image that does not match its shape has to lose something.
+Hover the cover and choose **Reposition**, or use `⌘↵` when applying it. While repositioning you can:
+
+- **Move the focal point.** Drag anywhere on the band to choose which part of the picture it keeps,
+  up and down as well as left and right. `↑` `↓` `←` `→` nudge it two percent at a time.
+- **Zoom.** The magnifier buttons next to the hint zoom in and out around the focal point, from the
+  full picture up to three times. `+` and `-` do the same.
+- **Change the height.** Drag the grip on the band's bottom edge to make the cover shorter or taller,
+  between 120 and 480 pixels. `⇧↑` and `⇧↓` resize it from the keyboard. The default is 200.
 
 **save** and **cancel** sit in the cover's lower corner while you are repositioning, in place of the
 usual toolbar; `↵` and `esc` do the same. Clicking anywhere else on the page also saves the framing,
 so you are never stuck in reposition.
+
+Choosing a different cover starts it centred, unzoomed and at the default height again.
 
 Washes have no reposition control. A gradient has nothing to reframe.
 
@@ -87,7 +95,9 @@ others, and a picture you uploaded travels as one of the note's attachments, so 
 way an image in the note's body does. Until it has, the band shows the note's wash.
 
 A device running an older version of memrynote leaves the cover alone: it neither shows it nor
-removes it.
+removes it. A version that predates zoom and height shows a framed photo centred, unzoomed and at the
+default height, and editing the note there keeps the zoom, horizontal position and height you set on
+this device.
 
 ## On iPhone
 
@@ -112,6 +122,9 @@ The cover lives in the note's YAML frontmatter, on root keys:
 ---
 cover: ../attachments/a1b2c3d4/e5f6g7-harbour.jpg
 coverFocus: 42
+coverFocusX: 60
+coverZoom: 1.4
+coverHeight: 280
 coverCredit: Ana Ferreira
 coverCreditUrl: https://unsplash.com/photos/Qx7a2Kp9
 ---
@@ -119,7 +132,10 @@ coverCreditUrl: https://unsplash.com/photos/Qx7a2Kp9
 
 `cover` is either a path relative to the note, an `http`/`https` URL, or `wash:` followed by a wash
 name such as `wash:sage`. `coverFocus` is the vertical framing, from 0 for the top of the picture to
-100 for the bottom. The two credit keys are written only for a photo that came from Unsplash. Every
+100 for the bottom, and `coverFocusX` the horizontal one, from 0 for the left to 100 for the right.
+`coverZoom` is the zoom, from 1 to 3, and `coverHeight` the band's height in pixels, from 120 to 480.
+These three are left out while they hold their defaults (centred, 1 and 200), so a cover you never
+framed stays exactly as it was written. The two credit keys are written only for a photo that came from Unsplash. Every
 key is optional and each one is written only when it has something to say.
 
 A cover path is never absolute, like `/Users/you/vault/attachments/...`, and that is deliberate. An
@@ -138,7 +154,8 @@ note with `cover: Hardback` in its frontmatter is saying something about the bin
 
 So the key alone does not make a cover — the value does. memrynote treats these keys as cover data
 only when the value looks the part: an image path, an `http`/`https` URL, or a wash name for `cover`;
-a number between 0 and 100 for `coverFocus`; a link for `coverCreditUrl`. Anything else stays a plain
+a number between 0 and 100 for `coverFocus` and `coverFocusX`; a number between 1 and 3 for
+`coverZoom`; a number between 120 and 480 for `coverHeight`; a link for `coverCreditUrl`. Anything else stays a plain
 text property and shows in the properties list exactly as it did before, untouched.
 
 ## Where Covers Appear

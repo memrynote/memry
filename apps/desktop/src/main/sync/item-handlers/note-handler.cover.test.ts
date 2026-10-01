@@ -10,7 +10,7 @@ import os from 'os'
 import path from 'path'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
-import { NoteSyncPayloadSchema } from '@memry/contracts/sync-payloads'
+import { NoteCoverSyncSchema, NoteSyncPayloadSchema } from '@memry/contracts/sync-payloads'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-cover-'))
@@ -126,6 +126,10 @@ describe('note cover sync', () => {
     expect(pushPayload('n1').cover).toEqual({
       ref: '../attachments/n1/harbour.jpg',
       focus: 42,
+      // Defaults sent explicitly: an omission means an older sender.
+      focusX: 50,
+      zoom: 1,
+      height: 200,
       credit: 'Ana Ferreira',
       creditUrl: 'https://unsplash.com/photos/x'
     })
@@ -291,6 +295,139 @@ describe('note cover sync', () => {
       fs.readFileSync(path.join(VAULT_ROOT, file as string), 'utf-8')
     ).frontmatter
     expect(frontmatter.cover).toBe('wash:plum')
+  })
+
+  it('pushes the image framing keys and leaves them off a wash', () => {
+    seedNote(
+      'n1',
+      '---\ncover: attachments/n1/harbour.jpg\ncoverFocus: 30\ncoverFocusX: 70\ncoverZoom: 1.5\ncoverHeight: 320\n---\nbody\n'
+    )
+    seedNote('n2', '---\ncover: wash:sage\n---\nbody\n')
+
+    expect(pushPayload('n1').cover).toEqual({
+      ref: 'attachments/n1/harbour.jpg',
+      focus: 30,
+      focusX: 70,
+      zoom: 1.5,
+      height: 320
+    })
+    expect(pushPayload('n2').cover).toEqual({ ref: 'wash:sage' })
+  })
+
+  it('writes remote framing, leaving default values off the file', () => {
+    seedNote('n1', '---\ntitle: n1\n---\nbody\n')
+    seedNote('n2', '---\ncover: attachments/n2/a.jpg\ncoverZoom: 2\ncoverHeight: 300\n---\nbody\n')
+
+    noteHandler.applyUpsert(
+      ctx,
+      'n1',
+      {
+        cover: { ref: 'attachments/n1/a.jpg', focus: 30, focusX: 70, zoom: 1.5, height: 320 },
+        clock: REMOTE_CLOCK
+      },
+      REMOTE_CLOCK
+    )
+    expect(frontmatterOf('n1')).toMatchObject({
+      cover: 'attachments/n1/a.jpg',
+      coverFocus: 30,
+      coverFocusX: 70,
+      coverZoom: 1.5,
+      coverHeight: 320
+    })
+
+    // A newer sender reset the framing on the same cover.
+    noteHandler.applyUpsert(
+      ctx,
+      'n2',
+      {
+        cover: { ref: 'attachments/n2/a.jpg', focusX: 50, zoom: 1, height: 200 },
+        clock: REMOTE_CLOCK
+      },
+      REMOTE_CLOCK
+    )
+    const reset = frontmatterOf('n2')
+    expect(reset.cover).toBe('attachments/n2/a.jpg')
+    expect(reset).not.toHaveProperty('coverFocusX')
+    expect(reset).not.toHaveProperty('coverZoom')
+    expect(reset).not.toHaveProperty('coverHeight')
+  })
+
+  it('keeps local framing when an older sender sends the same cover without it', () => {
+    seedNote(
+      'n1',
+      '---\ncover: attachments/n1/a.jpg\ncoverFocus: 30\ncoverFocusX: 70\ncoverZoom: 1.5\ncoverHeight: 320\n---\nbody\n'
+    )
+
+    // An older build only knows `focus`; its unrelated edit must not reset the rest.
+    noteHandler.applyUpsert(
+      ctx,
+      'n1',
+      { cover: { ref: 'attachments/n1/a.jpg', focus: 40 }, clock: REMOTE_CLOCK },
+      REMOTE_CLOCK
+    )
+
+    expect(frontmatterOf('n1')).toMatchObject({
+      cover: 'attachments/n1/a.jpg',
+      coverFocus: 40,
+      coverFocusX: 70,
+      coverZoom: 1.5,
+      coverHeight: 320
+    })
+  })
+
+  it('drops local framing when the remote cover is a different image', () => {
+    seedNote(
+      'n1',
+      '---\ncover: attachments/n1/a.jpg\ncoverFocusX: 70\ncoverZoom: 1.5\ncoverHeight: 320\n---\nbody\n'
+    )
+
+    noteHandler.applyUpsert(
+      ctx,
+      'n1',
+      { cover: { ref: 'attachments/n1/b.jpg' }, clock: REMOTE_CLOCK },
+      REMOTE_CLOCK
+    )
+
+    const frontmatter = frontmatterOf('n1')
+    expect(frontmatter.cover).toBe('attachments/n1/b.jpg')
+    expect(frontmatter).not.toHaveProperty('coverFocusX')
+    expect(frontmatter).not.toHaveProperty('coverZoom')
+    expect(frontmatter).not.toHaveProperty('coverHeight')
+  })
+
+  it('never deletes a text-valued framing key the user wrote', () => {
+    seedNote('n1', '---\ncover: attachments/n1/a.jpg\ncoverHeight: tall\n---\nbody\n')
+
+    noteHandler.applyUpsert(ctx, 'n1', { cover: null, clock: REMOTE_CLOCK }, REMOTE_CLOCK)
+
+    expect(frontmatterOf('n1').cover).toBeUndefined()
+    expect(frontmatterOf('n1').coverHeight).toBe('tall')
+  })
+
+  it('reads an out-of-range framing field as absent without dropping the cover', () => {
+    const parsed = NoteSyncPayloadSchema.parse({
+      cover: { ref: 'attachments/n1/a.jpg', focus: 20, focusX: 70, zoom: 9, height: 5000 }
+    })
+    expect(parsed.cover).toEqual({ ref: 'attachments/n1/a.jpg', focus: 20, focusX: 70 })
+  })
+
+  it('lets an older build read a framed cover as the cover it already knew', () => {
+    // The cover schema an older build shipped: zod strips the keys it lacks.
+    const olderCoverSchema = NoteCoverSyncSchema.pick({
+      ref: true,
+      focus: true,
+      credit: true,
+      creditUrl: true
+    })
+    expect(
+      olderCoverSchema.parse({
+        ref: 'attachments/n1/a.jpg',
+        focus: 30,
+        focusX: 70,
+        zoom: 1.5,
+        height: 320
+      })
+    ).toEqual({ ref: 'attachments/n1/a.jpg', focus: 30 })
   })
 
   it('reads an unreadable cover value as absent rather than failing the note', () => {
