@@ -6,6 +6,7 @@ import { trackMainError } from '../../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../../telemetry/throttle'
 import { trackMainEvent } from '../../telemetry/track'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
+import { archiveCalendarsOfDisconnectedGoogleAccounts } from './disconnected-accounts'
 import { hasGoogleCalendarConnection } from './oauth'
 import { listCalendarSources } from '../repositories/calendar-sources-repository'
 import { getGooglePushRuntime, getOrInitGooglePushRuntime } from './push-runtime'
@@ -130,6 +131,16 @@ export async function startGoogleCalendarSyncRunner(): Promise<void> {
 
 async function runStart(): Promise<void> {
   const generation = startGeneration
+  // Clean up calendars older versions left live after a disconnect (#2516,
+  // #2555). Runs ahead of the gates below: an install whose only account was
+  // disconnected never passes them, and that is exactly the stuck install.
+  if (isDatabaseInitialized()) {
+    try {
+      archiveCalendarsOfDisconnectedGoogleAccounts(requireDatabase())
+    } catch (error) {
+      log.warn('Archiving calendars of disconnected Google accounts failed', error)
+    }
+  }
   if (!(await isMemryUserSignedIn())) return
   if (!(await hasGoogleCalendarConnection(requireDatabase()))) return
   // Sign-out / disconnect can call stop() while this start is still parked on
