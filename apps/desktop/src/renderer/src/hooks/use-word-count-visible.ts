@@ -42,15 +42,12 @@ export function useWordCountVisible(): readonly [boolean, () => void] {
     setState(current)
   }
 
+  const currentVisible = current.visible
   const toggle = useCallback(() => {
-    setState((previous) => {
-      const active =
-        previous.vaultKey === vaultKey ? previous : { vaultKey, visible: readVisible(vaultKey) }
-      const visible = !active.visible
-      persist(vaultKey, visible)
-      return { vaultKey, visible }
-    })
-  }, [vaultKey])
+    const visible = !currentVisible
+    persist(vaultKey, visible)
+    setState({ vaultKey, visible })
+  }, [vaultKey, currentVisible])
 
   return [current.visible, toggle] as const
 }

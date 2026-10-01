@@ -29,7 +29,7 @@ export type EditorMenuEntry =
   | { kind: 'action'; action: EditorMenuAction; disabled: boolean; shortcut?: string }
   | { kind: 'spelling'; suggestion: string }
   | { kind: 'noSpelling' }
-  | { kind: 'separator' }
+  | { kind: 'separator'; id: string }
 
 export interface EditorMenuContext {
   /** A non-empty text selection is live */
@@ -62,7 +62,7 @@ export function editorContextMenuEntries(context: EditorMenuContext): EditorMenu
     for (const suggestion of suggestions) entries.push({ kind: 'spelling', suggestion })
     entries.push(
       { kind: 'action', action: 'addToDictionary', disabled: false },
-      { kind: 'separator' }
+      { kind: 'separator', id: 'spelling' }
     )
   }
 
@@ -71,10 +71,10 @@ export function editorContextMenuEntries(context: EditorMenuContext): EditorMenu
     { kind: 'action', action: 'copy', disabled: !context.hasSelection, shortcut: `${MOD}C` },
     { kind: 'action', action: 'paste', disabled: false, shortcut: `${MOD}V` },
     { kind: 'action', action: 'selectAll', disabled: false, shortcut: `${MOD}A` },
-    { kind: 'separator' },
+    { kind: 'separator', id: 'clipboard' },
     { kind: 'action', action: 'undo', disabled: !context.canUndo, shortcut: `${MOD}Z` },
     { kind: 'action', action: 'redo', disabled: !context.canRedo, shortcut: REDO_SHORTCUT },
-    { kind: 'separator' }
+    { kind: 'separator', id: 'history' }
   )
 
   if (context.canComment !== undefined) {
@@ -95,7 +95,7 @@ export function editorContextMenuEntries(context: EditorMenuContext): EditorMenu
   }
 
   entries.push(
-    { kind: 'separator' },
+    { kind: 'separator', id: 'alternatives' },
     context.insideGhost
       ? { kind: 'action', action: 'revive', disabled: false }
       : { kind: 'action', action: 'ghost', disabled: !context.hasSelection },
@@ -177,10 +177,10 @@ export function EditorContextMenu({
         // Focus goes back to the editor, not to the invisible anchor.
         onCloseAutoFocus={(event) => event.preventDefault()}
       >
-        {entries.map((entry, index) => {
+        {entries.map((entry) => {
           switch (entry.kind) {
             case 'separator':
-              return <DropdownMenuSeparator key={`separator-${index}`} />
+              return <DropdownMenuSeparator key={`separator-${entry.id}`} />
             case 'noSpelling':
               return (
                 <DropdownMenuItem key="no-spelling" disabled>
