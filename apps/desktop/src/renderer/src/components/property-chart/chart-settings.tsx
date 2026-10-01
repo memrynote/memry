@@ -21,7 +21,8 @@ import {
   defaultRangeDays,
   resolveChartType,
   suggestedChartType,
-  valueKindFor
+  valueKindFor,
+  type ChartValueKind
 } from '@/lib/property-chart/chart-model'
 import { cn } from '@/lib/utils'
 import type { ChartPropertyOption } from './use-chart-data'
@@ -126,6 +127,207 @@ export interface ChartSettingsProps {
   sourceSlot?: React.ReactNode
 }
 
+function SettingsTrigger({
+  chart,
+  rangeDays,
+  type
+}: {
+  chart: ViewBlockChart
+  rangeDays: number
+  type: ViewBlockChartType
+}): React.JSX.Element {
+  const { t } = useT('notes')
+  return (
+    <>
+      <SlidersHorizontal className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <span className={cn('truncate', !chart.property && 'text-muted-foreground')}>
+        {chart.property ?? t('editor.chart.chooseProperty')}
+      </span>
+      {chart.property ? (
+        <span className="truncate text-xs text-text-tertiary">
+          {t('editor.chart.headerMeta', {
+            range: t('editor.chart.lastDays', { count: rangeDays }),
+            type: t(TYPE_LABEL_KEYS[type])
+          })}
+        </span>
+      ) : null}
+    </>
+  )
+}
+
+function PropertyList({
+  properties,
+  selected,
+  onChange
+}: {
+  properties: ChartPropertyOption[]
+  selected: string | undefined
+  onChange: (patch: ChartPatch) => void
+}): React.JSX.Element {
+  const { t } = useT('notes')
+  if (properties.length === 0) {
+    return <p className="py-1 text-[13px] text-text-tertiary">{t('editor.chart.noProperties')}</p>
+  }
+  return (
+    <div
+      role="listbox"
+      aria-label={t('editor.chart.property')}
+      className="flex max-h-56 flex-col gap-px overflow-y-auto"
+    >
+      {properties.map((property) => {
+        const isSelected = property.name === selected
+        return (
+          <button
+            key={property.name}
+            type="button"
+            role="option"
+            aria-selected={isSelected}
+            // A new property brings its own suggested chart.
+            onClick={() =>
+              onChange({ property: property.name, type: undefined, rangeDays: undefined })
+            }
+            className={cn(
+              'flex h-8 items-center gap-2 rounded-[5px] px-2 text-start text-[13px] text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+              isSelected && 'bg-muted'
+            )}
+          >
+            <span className="min-w-0 grow truncate">{property.name}</span>
+            <span className="w-20 shrink-0 truncate text-xs text-text-tertiary">
+              {t(`editor.chart.propertyTypes.${property.type}`, { defaultValue: property.type })}
+            </span>
+            <span className="flex w-4 shrink-0">
+              {isSelected ? <Check className="size-3.5" aria-hidden="true" /> : null}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function ChartTypePicker({
+  kind,
+  type,
+  onChange
+}: {
+  kind: ChartValueKind
+  type: ViewBlockChartType
+  onChange: (patch: ChartPatch) => void
+}): React.JSX.Element {
+  const { t } = useT('notes')
+  const suggested = suggestedChartType(kind)
+  return (
+    <div
+      role="radiogroup"
+      aria-label={t('editor.chart.chartType')}
+      className="flex flex-wrap gap-1.5"
+    >
+      {allowedChartTypes(kind).map((option) => (
+        <button
+          key={option}
+          type="button"
+          role="radio"
+          aria-checked={option === type}
+          onClick={() =>
+            onChange({ type: option === suggested ? undefined : option, rangeDays: undefined })
+          }
+          className={cn(
+            'inline-flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+            option === type
+              ? 'border-foreground font-medium text-foreground'
+              : 'border-border text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {t(TYPE_LABEL_KEYS[option])}
+          {option === suggested ? (
+            <span className="rounded bg-tint-lighter px-1 text-[10px] font-medium text-foreground">
+              {t('editor.chart.suggested')}
+            </span>
+          ) : null}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Range, and the settings only some charts have: same-day entries, missing days, date from. */
+function DetailSettings({
+  chart,
+  kind,
+  type,
+  rangeDays,
+  properties,
+  needsDateFrom,
+  onChange
+}: {
+  chart: ViewBlockChart
+  kind: ChartValueKind
+  type: ViewBlockChartType
+  rangeDays: number
+  properties: ChartPropertyOption[]
+  needsDateFrom: boolean
+  onChange: (patch: ChartPatch) => void
+}): React.JSX.Element {
+  const { t } = useT('notes')
+  const ranges = [...new Set<number>([...VIEW_BLOCK_CHART_RANGES, rangeDays])]
+    .sort((a, b) => a - b)
+    .map((days) => ({ value: days, label: t('editor.chart.lastDays', { count: days }) }))
+  const dateFromOptions = [
+    { value: 'created', label: t('editor.chart.dateFrom.created') },
+    { value: 'modified', label: t('editor.chart.dateFrom.modified') },
+    ...properties
+      .filter((p) => DATE_TYPES.has(p.type))
+      .map((p) => ({ value: p.name, label: p.name }))
+  ]
+  const isNumber = kind === 'number'
+  return (
+    <>
+      <SettingSelect
+        label={t('editor.chart.range')}
+        value={rangeDays}
+        options={ranges}
+        onChange={(days) =>
+          onChange({ rangeDays: days === defaultRangeDays(type) ? undefined : days })
+        }
+        testId="chart-range"
+      />
+      {isNumber ? (
+        <SettingSelect
+          label={t('editor.chart.sameDay')}
+          value={chart.aggregate ?? 'average'}
+          options={VIEW_BLOCK_CHART_AGGREGATES.map((value) => ({
+            value,
+            label: t(`editor.chart.aggregates.${value}`)
+          }))}
+          onChange={(value) => onChange({ aggregate: value === 'average' ? undefined : value })}
+          testId="chart-aggregate"
+        />
+      ) : null}
+      {isNumber && type !== 'heatmap' ? (
+        <SettingSelect
+          label={t('editor.chart.missingDays')}
+          value={chart.missing ?? 'gap'}
+          options={VIEW_BLOCK_CHART_MISSING.map((value) => ({
+            value,
+            label: t(`editor.chart.missing.${value}`)
+          }))}
+          onChange={(value) => onChange({ missing: value === 'gap' ? undefined : value })}
+          testId="chart-missing"
+        />
+      ) : null}
+      {needsDateFrom ? (
+        <SettingSelect
+          label={t('editor.chart.dateFrom.label')}
+          value={chart.dateFrom ?? 'created'}
+          options={dateFromOptions}
+          onChange={(value) => onChange({ dateFrom: value === 'created' ? undefined : value })}
+          testId="chart-date-from"
+        />
+      ) : null}
+    </>
+  )
+}
+
 /**
  * The chart's settings, one popover off the block header. The property and
  * the chart type are the choices that matter; everything under them has a
@@ -145,22 +347,7 @@ export function ChartSettings({
   const selected = properties.find((p) => p.name === chart.property)
   const kind = valueKindFor(selected?.type)
   const type = resolveChartType(kind, chart.type)
-  const suggested = suggestedChartType(kind)
   const rangeDays = chart.rangeDays ?? defaultRangeDays(type)
-
-  const typeLabel = (propertyType: string): string =>
-    t(`editor.chart.propertyTypes.${propertyType}`, { defaultValue: propertyType })
-
-  const ranges = [...new Set<number>([...VIEW_BLOCK_CHART_RANGES, rangeDays])]
-    .sort((a, b) => a - b)
-    .map((days) => ({ value: days, label: t('editor.chart.lastDays', { count: days }) }))
-
-  const dateProperties = properties.filter((p) => DATE_TYPES.has(p.type))
-  const dateFromOptions = [
-    { value: 'created', label: t('editor.chart.dateFrom.created') },
-    { value: 'modified', label: t('editor.chart.dateFrom.modified') },
-    ...dateProperties.map((p) => ({ value: p.name, label: p.name }))
-  ]
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -171,21 +358,7 @@ export function ChartSettings({
           aria-label={t('editor.chart.settings')}
           className="inline-flex h-7 min-w-0 max-w-[240px] items-center gap-1.5 rounded-md px-1.5 text-[13px] text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-default disabled:hover:bg-transparent"
         >
-          <SlidersHorizontal
-            className="size-3.5 shrink-0 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <span className={cn('truncate', !chart.property && 'text-muted-foreground')}>
-            {chart.property ?? t('editor.chart.chooseProperty')}
-          </span>
-          {chart.property ? (
-            <span className="truncate text-xs text-text-tertiary">
-              {t('editor.chart.headerMeta', {
-                range: t('editor.chart.lastDays', { count: rangeDays }),
-                type: t(TYPE_LABEL_KEYS[type])
-              })}
-            </span>
-          ) : null}
+          <SettingsTrigger chart={chart} rangeDays={rangeDays} type={type} />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[340px] p-0 py-1.5" data-testid="chart-settings">
@@ -195,128 +368,23 @@ export function ChartSettings({
           </Section>
         ) : null}
         <Section label={t('editor.chart.property')} bordered={Boolean(sourceSlot)}>
-          {properties.length === 0 ? (
-            <p className="py-1 text-[13px] text-text-tertiary">{t('editor.chart.noProperties')}</p>
-          ) : (
-            <div
-              role="listbox"
-              aria-label={t('editor.chart.property')}
-              className="flex max-h-56 flex-col gap-px overflow-y-auto"
-            >
-              {properties.map((property) => {
-                const isSelected = property.name === chart.property
-                return (
-                  <button
-                    key={property.name}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
-                    onClick={() =>
-                      // A new property brings its own suggested chart.
-                      onChange({ property: property.name, type: undefined, rangeDays: undefined })
-                    }
-                    className={cn(
-                      'flex h-8 items-center gap-2 rounded-[5px] px-2 text-start text-[13px] text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
-                      isSelected && 'bg-muted'
-                    )}
-                  >
-                    <span className="min-w-0 grow truncate">{property.name}</span>
-                    <span className="w-20 shrink-0 truncate text-xs text-text-tertiary">
-                      {typeLabel(property.type)}
-                    </span>
-                    <span className="flex w-4 shrink-0">
-                      {isSelected ? <Check className="size-3.5" aria-hidden="true" /> : null}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
+          <PropertyList properties={properties} selected={chart.property} onChange={onChange} />
         </Section>
         {selected ? (
           <>
             <Section label={t('editor.chart.chartType')}>
-              <div
-                role="radiogroup"
-                aria-label={t('editor.chart.chartType')}
-                className="flex flex-wrap gap-1.5"
-              >
-                {allowedChartTypes(kind).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    role="radio"
-                    aria-checked={option === type}
-                    onClick={() =>
-                      onChange({
-                        type: option === suggested ? undefined : option,
-                        rangeDays: undefined
-                      })
-                    }
-                    className={cn(
-                      'inline-flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
-                      option === type
-                        ? 'border-foreground font-medium text-foreground'
-                        : 'border-border text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    {t(TYPE_LABEL_KEYS[option])}
-                    {option === suggested ? (
-                      <span className="rounded bg-tint-lighter px-1 text-[10px] font-medium text-foreground">
-                        {t('editor.chart.suggested')}
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
+              <ChartTypePicker kind={kind} type={type} onChange={onChange} />
             </Section>
             <Section>
-              <SettingSelect
-                label={t('editor.chart.range')}
-                value={rangeDays}
-                options={ranges}
-                onChange={(days) =>
-                  onChange({ rangeDays: days === defaultRangeDays(type) ? undefined : days })
-                }
-                testId="chart-range"
+              <DetailSettings
+                chart={chart}
+                kind={kind}
+                type={type}
+                rangeDays={rangeDays}
+                properties={properties}
+                needsDateFrom={needsDateFrom}
+                onChange={onChange}
               />
-              {kind === 'number' ? (
-                <SettingSelect
-                  label={t('editor.chart.sameDay')}
-                  value={chart.aggregate ?? 'average'}
-                  options={VIEW_BLOCK_CHART_AGGREGATES.map((value) => ({
-                    value,
-                    label: t(`editor.chart.aggregates.${value}`)
-                  }))}
-                  onChange={(value) =>
-                    onChange({ aggregate: value === 'average' ? undefined : value })
-                  }
-                  testId="chart-aggregate"
-                />
-              ) : null}
-              {kind === 'number' && type !== 'heatmap' ? (
-                <SettingSelect
-                  label={t('editor.chart.missingDays')}
-                  value={chart.missing ?? 'gap'}
-                  options={VIEW_BLOCK_CHART_MISSING.map((value) => ({
-                    value,
-                    label: t(`editor.chart.missing.${value}`)
-                  }))}
-                  onChange={(value) => onChange({ missing: value === 'gap' ? undefined : value })}
-                  testId="chart-missing"
-                />
-              ) : null}
-              {needsDateFrom ? (
-                <SettingSelect
-                  label={t('editor.chart.dateFrom.label')}
-                  value={chart.dateFrom ?? 'created'}
-                  options={dateFromOptions}
-                  onChange={(value) =>
-                    onChange({ dateFrom: value === 'created' ? undefined : value })
-                  }
-                  testId="chart-date-from"
-                />
-              ) : null}
             </Section>
           </>
         ) : null}

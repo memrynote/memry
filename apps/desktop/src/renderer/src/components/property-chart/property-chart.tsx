@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import type { ViewBlockChart } from '@memry/shared/view-block'
-import { defaultTagColorName, getTagColors } from '@/components/note/tags-row/tag-colors'
+import type { ViewBlockChart, ViewBlockChartType } from '@memry/shared/view-block'
 import {
   addDays,
   buildChartDays,
@@ -9,27 +8,17 @@ import {
   dayRange,
   defaultRangeDays,
   resolveChartType,
-  summarizeLogged,
-  summarizeNumbers,
-  summarizeStreaks,
   valueKindFor,
+  type CategoryCount,
   type ChartDay,
   type ChartRow,
   type ChartValueKind
 } from '@/lib/property-chart/chart-model'
 import { CalendarHeatmap } from './calendar-heatmap'
-import { ChartStats, useChartFormat, type ChartStat } from './chart-parts'
+import { categoryColor, cellColor, chartStats, describeDay } from './chart-presentation'
+import { ChartStats, useChartFormat } from './chart-parts'
 import { DistributionBars } from './distribution-bars'
 import { TimeSeriesChart } from './time-series-chart'
-
-/** `color-mix` of the accent into the empty-cell colour, for intensity levels. */
-const LEVELS = [
-  'color-mix(in srgb, var(--tint) 30%, var(--muted))',
-  'color-mix(in srgb, var(--tint) 55%, var(--muted))',
-  'color-mix(in srgb, var(--tint) 80%, var(--muted))',
-  'var(--tint)'
-]
-const EMPTY_CELL = 'var(--muted)'
 
 export interface PropertyChartProps {
   /** Rows covering the range and the same length before it. */
@@ -45,18 +34,95 @@ export interface PropertyChartProps {
   compact?: boolean
 }
 
-function levelColor(value: number, sorted: number[]): string {
-  if (sorted.length === 0) return LEVELS[LEVELS.length - 1]
-  // The value's place among the recorded values, so one outlier does not wash
-  // every other day out to the palest level.
-  let below = 0
-  while (below < sorted.length && sorted[below] < value) below++
-  const rank = sorted.length === 1 ? 1 : below / (sorted.length - 1)
-  return LEVELS[Math.min(LEVELS.length - 1, Math.floor(rank * LEVELS.length))]
+/** The range's days, the period before it, and how often each select value came up. */
+function useChartSeries(
+  rows: ChartRow[],
+  property: string,
+  kind: ChartValueKind,
+  chart: ViewBlockChart,
+  today: string,
+  rangeDays: number
+): { days: ChartDay[]; previous: ChartDay[]; counts: CategoryCount[] } {
+  return useMemo(() => {
+    const list = dayRange(today, rangeDays)
+    const settings = { rows, property, kind, aggregate: chart.aggregate, missing: chart.missing }
+    const categorical = kind === 'category' || kind === 'categories'
+    return {
+      days: buildChartDays({ ...settings, days: list }),
+      previous: buildChartDays({
+        ...settings,
+        days: dayRange(addDays(today, -rangeDays), rangeDays)
+      }),
+      counts: categorical ? countCategories(rows, property, new Set(list)) : []
+    }
+  }, [rows, property, kind, chart.aggregate, chart.missing, today, rangeDays])
 }
 
-function categoryColor(value: string, optionColors?: ReadonlyMap<string, string>): string {
-  return getTagColors(optionColors?.get(value) ?? defaultTagColorName(value)).background
+interface ChartBodyProps {
+  type: ViewBlockChartType
+  kind: ChartValueKind
+  days: ChartDay[]
+  counts: CategoryCount[]
+  optionColors?: ReadonlyMap<string, string>
+  onOpenDay?: (day: ChartDay) => void
+  ariaLabel: string
+  compact: boolean
+}
+
+/** The chart itself, one of three shapes. */
+function ChartBody({
+  type,
+  kind,
+  days,
+  counts,
+  optionColors,
+  onOpenDay,
+  ariaLabel,
+  compact
+}: ChartBodyProps): React.JSX.Element {
+  const { t } = useT('notes')
+  const format = useChartFormat()
+  const sortedValues = useMemo(
+    () =>
+      days
+        .map((d) => d.value)
+        .filter((v): v is number => v !== null && v > 0)
+        .sort((a, b) => a - b),
+    [days]
+  )
+  const describe = (day: ChartDay): string => describeDay(kind, day, t, format)
+
+  if (type === 'heatmap') {
+    return (
+      <CalendarHeatmap
+        days={days}
+        colorFor={(day) => cellColor(kind, day, sortedValues, optionColors)}
+        describe={describe}
+        onOpenDay={onOpenDay}
+        ariaLabel={ariaLabel}
+        maxCell={compact ? 22 : undefined}
+      />
+    )
+  }
+  if (type === 'bar' && (kind === 'category' || kind === 'categories')) {
+    return (
+      <DistributionBars
+        counts={counts}
+        colorOf={(value) => categoryColor(value, optionColors)}
+        ariaLabel={ariaLabel}
+      />
+    )
+  }
+  return (
+    <TimeSeriesChart
+      days={days}
+      type={type === 'bar' ? 'bar' : 'line'}
+      height={compact ? 140 : 220}
+      describe={describe}
+      onOpenDay={onOpenDay}
+      ariaLabel={ariaLabel}
+    />
+  )
 }
 
 /**
@@ -75,151 +141,32 @@ export function PropertyChart({
 }: PropertyChartProps): React.JSX.Element {
   const { t } = useT('notes')
   const format = useChartFormat()
-  const kind: ChartValueKind = valueKindFor(propertyType)
+  const kind = valueKindFor(propertyType)
   const type = resolveChartType(kind, chart.type)
   const rangeDays = chart.rangeDays ?? defaultRangeDays(type)
+  const { days, previous, counts } = useChartSeries(rows, property, kind, chart, today, rangeDays)
 
-  const { days, previous, dayList } = useMemo(() => {
-    const list = dayRange(today, rangeDays)
-    const settings = { rows, property, kind, aggregate: chart.aggregate, missing: chart.missing }
-    return {
-      dayList: list,
-      days: buildChartDays({ ...settings, days: list }),
-      previous: buildChartDays({
-        ...settings,
-        days: dayRange(addDays(today, -rangeDays), rangeDays)
-      })
-    }
-  }, [rows, property, kind, chart.aggregate, chart.missing, today, rangeDays])
-
-  const counts = useMemo(
-    () =>
-      kind === 'category' || kind === 'categories'
-        ? countCategories(rows, property, new Set(dayList))
-        : [],
-    [kind, rows, property, dayList]
-  )
-
-  const sortedValues = useMemo(
-    () =>
-      days
-        .map((d) => d.value)
-        .filter((v): v is number => v !== null && v > 0)
-        .sort((a, b) => a - b),
-    [days]
-  )
-
-  const describe = (day: ChartDay): string => {
-    if (day.value === null) return t('editor.chart.noEntry')
-    switch (kind) {
-      case 'number':
-        return format.number(day.value)
-      case 'boolean':
-        return day.value > 0 ? t('editor.chart.done') : t('editor.chart.notDone')
-      case 'category':
-        return day.category ?? ''
-      case 'categories':
-        return t('editor.chart.valueCount', { count: day.value })
-      default:
-        return t('editor.chart.logged')
-    }
-  }
-
-  const colorFor = (day: ChartDay): string => {
-    if (day.value === null) return EMPTY_CELL
-    if (kind === 'category') return categoryColor(day.category ?? '', optionColors)
-    if (kind === 'boolean' || kind === 'presence') return day.value > 0 ? LEVELS[3] : EMPTY_CELL
-    return day.value > 0 ? levelColor(day.value, sortedValues) : EMPTY_CELL
-  }
-
-  const stats: ChartStat[] = []
-  const ofTotal = (part: number, total: number): string =>
-    t('editor.chart.ofTotal', { part: format.number(part), total: format.number(total) })
-  if (kind === 'number') {
-    const summary = summarizeNumbers(days, previous)
-    if (summary.average !== null) {
-      stats.push({ label: t('editor.chart.average'), value: format.number(summary.average) })
-    }
-    if (summary.average !== null && summary.previousAverage !== null) {
-      const delta = summary.average - summary.previousAverage
-      stats.push({
-        label: t('editor.chart.vsPrevious'),
-        value: `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${format.number(Math.abs(delta))}`
-      })
-    }
-    if (summary.min) {
-      stats.push({
-        label: t('editor.chart.lowest'),
-        value: `${format.number(summary.min.value)} · ${format.shortDay(summary.min.day)}`
-      })
-    }
-  } else if (kind === 'boolean' || kind === 'presence') {
-    const streaks = summarizeStreaks(days)
-    stats.push(
-      {
-        label: t('editor.chart.currentStreak'),
-        value: t('editor.chart.dayCount', { count: streaks.current })
-      },
-      {
-        label: t('editor.chart.longestStreak'),
-        value: t('editor.chart.dayCount', { count: streaks.longest })
-      },
-      {
-        label: kind === 'boolean' ? t('editor.chart.doneDays') : t('editor.chart.loggedDays'),
-        value: ofTotal(streaks.done, streaks.total)
-      }
-    )
-  } else {
-    const logged = summarizeLogged(days)
-    if (counts[0]) stats.push({ label: t('editor.chart.mostCommon'), value: counts[0].value })
-    stats.push({
-      label: t('editor.chart.loggedDays'),
-      value: ofTotal(logged.logged, logged.total)
-    })
-  }
-
-  const ariaLabel = t('editor.chart.aria', { property, days: rangeDays })
-  const hasData = days.some((d) => d.value !== null)
-
-  let body: React.ReactNode
-  if (!hasData) {
-    body = <p className="py-6 text-center text-sm text-text-tertiary">{t('editor.chart.noData')}</p>
-  } else if (type === 'heatmap') {
-    body = (
-      <CalendarHeatmap
-        days={days}
-        colorFor={colorFor}
-        describe={describe}
-        onOpenDay={onOpenDay}
-        ariaLabel={ariaLabel}
-        maxCell={compact ? 22 : undefined}
-      />
-    )
-  } else if (type === 'bar' && (kind === 'category' || kind === 'categories')) {
-    body = (
-      <DistributionBars
-        counts={counts}
-        colorOf={(value) => categoryColor(value, optionColors)}
-        ariaLabel={ariaLabel}
-      />
-    )
-  } else {
-    body = (
-      <TimeSeriesChart
-        days={days}
-        type={type === 'bar' ? 'bar' : 'line'}
-        height={compact ? 140 : 220}
-        describe={describe}
-        onOpenDay={onOpenDay}
-        ariaLabel={ariaLabel}
-      />
+  if (!days.some((d) => d.value !== null)) {
+    return (
+      <div data-property-chart={type}>
+        <p className="py-6 text-center text-sm text-text-tertiary">{t('editor.chart.noData')}</p>
+      </div>
     )
   }
 
   return (
     <div className="flex flex-col gap-4" data-property-chart={type}>
-      {compact || !hasData ? null : <ChartStats stats={stats} />}
-      {body}
+      {compact ? null : <ChartStats stats={chartStats(kind, days, previous, counts, t, format)} />}
+      <ChartBody
+        type={type}
+        kind={kind}
+        days={days}
+        counts={counts}
+        optionColors={optionColors}
+        onOpenDay={onOpenDay}
+        ariaLabel={t('editor.chart.aria', { property, days: rangeDays })}
+        compact={compact}
+      />
     </div>
   )
 }
