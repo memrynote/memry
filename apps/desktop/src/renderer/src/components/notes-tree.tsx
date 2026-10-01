@@ -24,7 +24,11 @@ import {
 import { useNoteTreeData } from '@/hooks/use-note-tree-data'
 import { useNoteTreeActions } from '@/hooks/use-note-tree-actions'
 import { useCreateNoteFromNote } from '@/hooks/use-create-note-from-note'
-import { NoteTreeDeleteDialog, NoteTreeTemplateSelector } from '@/components/note-tree-dialogs'
+import {
+  NoteTreeDeleteDialog,
+  NoteTreeJournalChangeDialog,
+  NoteTreeTemplateSelector
+} from '@/components/note-tree-dialogs'
 import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { SaveNoteAsTemplateDialog } from '@/components/note/save-note-as-template-dialog'
 import {
@@ -429,6 +433,9 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     const isBeingRenamed = actions.renamingNoteId === note.id
     const isSelected = selectedIds.includes(note.id)
     const isPartOfSelection = isSelected && selectedIds.length > 1
+    // Journal entries belong to the Journal: note-only actions (templates,
+    // icons, bookmarks) would write to the journal as if it were a note.
+    const isJournal = !!note.journalDate
 
     return (
       <TreeNode
@@ -453,34 +460,38 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                     <Pencil className="me-2 h-4 w-4" />
                     {t('tree.actions.rename')}
                   </ContextMenuItem>
-                  <ContextMenuItem onClick={() => setApplyTemplateNote(note)}>
-                    <LayoutTemplate className="me-2 h-4 w-4" />
-                    {t('tree.actions.applyTemplate')}
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => setSaveAsTemplateNote(note)}>
-                    <Save className="me-2 h-4 w-4" />
-                    {t('tree.actions.saveAsTemplate')}
-                  </ContextMenuItem>
-                  {(note.fileType ?? 'markdown') === 'markdown' && (
-                    <ContextMenuItem onClick={() => void createNoteFromNote(note.id)}>
-                      <FilePlus className="me-2 h-4 w-4" />
-                      {t('newNoteFromNote.action')}
-                    </ContextMenuItem>
-                  )}
-                  <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => actions.setIconPickerNoteId(note.id)}>
-                    <Smile className="me-2 h-4 w-4" />
-                    {t('tree.actions.setIcon')}
-                  </ContextMenuItem>
-                  {note.emoji && (
-                    <ContextMenuItem
-                      onClick={() =>
-                        void data.mutations.updateNote.mutateAsync({ id: note.id, emoji: null })
-                      }
-                    >
-                      <X className="me-2 h-4 w-4" />
-                      {t('tree.actions.removeIcon')}
-                    </ContextMenuItem>
+                  {!isJournal && (
+                    <>
+                      <ContextMenuItem onClick={() => setApplyTemplateNote(note)}>
+                        <LayoutTemplate className="me-2 h-4 w-4" />
+                        {t('tree.actions.applyTemplate')}
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={() => setSaveAsTemplateNote(note)}>
+                        <Save className="me-2 h-4 w-4" />
+                        {t('tree.actions.saveAsTemplate')}
+                      </ContextMenuItem>
+                      {(note.fileType ?? 'markdown') === 'markdown' && (
+                        <ContextMenuItem onClick={() => void createNoteFromNote(note.id)}>
+                          <FilePlus className="me-2 h-4 w-4" />
+                          {t('newNoteFromNote.action')}
+                        </ContextMenuItem>
+                      )}
+                      <ContextMenuSeparator />
+                      <ContextMenuItem onClick={() => actions.setIconPickerNoteId(note.id)}>
+                        <Smile className="me-2 h-4 w-4" />
+                        {t('tree.actions.setIcon')}
+                      </ContextMenuItem>
+                      {note.emoji && (
+                        <ContextMenuItem
+                          onClick={() =>
+                            void data.mutations.updateNote.mutateAsync({ id: note.id, emoji: null })
+                          }
+                        >
+                          <X className="me-2 h-4 w-4" />
+                          {t('tree.actions.removeIcon')}
+                        </ContextMenuItem>
+                      )}
+                    </>
                   )}
                   <ContextMenuSeparator />
                   <ContextMenuItem onClick={() => void actions.handleOpenExternal(note)}>
@@ -492,8 +503,12 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                     {fileActions.revealInFolder}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
-                  <BookmarkMenuItem itemType="note" itemId={note.id} />
-                  <ContextMenuSeparator />
+                  {!isJournal && (
+                    <>
+                      <BookmarkMenuItem itemType="note" itemId={note.id} />
+                      <ContextMenuSeparator />
+                    </>
+                  )}
                   <ContextMenuItem
                     variant="destructive"
                     onClick={() => actions.handleDeleteClick(note)}
@@ -512,18 +527,25 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
             </>
           }
         >
-          <IconPickerButton
-            leading={LEADING_SPACER}
-            hasIcon={!!note.emoji}
-            onIconChange={(icon) =>
-              void data.mutations.updateNote.mutateAsync({ id: note.id, emoji: icon })
-            }
-            ariaLabel={t('tree.actions.setIcon')}
-            pickerOpen={actions.iconPickerNoteId === note.id}
-            onPickerOpenChange={(open) => actions.setIconPickerNoteId(open ? note.id : null)}
-          >
-            {getFileIcon(note)}
-          </IconPickerButton>
+          {isJournal ? (
+            <div className="shrink-0 flex items-center gap-0.5">
+              {LEADING_SPACER}
+              <span className="flex h-5 w-5 items-center justify-center">{getFileIcon(note)}</span>
+            </div>
+          ) : (
+            <IconPickerButton
+              leading={LEADING_SPACER}
+              hasIcon={!!note.emoji}
+              onIconChange={(icon) =>
+                void data.mutations.updateNote.mutateAsync({ id: note.id, emoji: icon })
+              }
+              ariaLabel={t('tree.actions.setIcon')}
+              pickerOpen={actions.iconPickerNoteId === note.id}
+              onPickerOpenChange={(open) => actions.setIconPickerNoteId(open ? note.id : null)}
+            >
+              {getFileIcon(note)}
+            </IconPickerButton>
+          )}
           {isBeingRenamed ? (
             <input
               ref={renameCallbackRef}
@@ -836,6 +858,12 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         foldersToDelete={actions.foldersToDelete}
         isDeleting={actions.isDeleting}
         onConfirm={(...args) => void actions.handleDeleteConfirm(...args)}
+        journalFolder={actions.journalFolder}
+      />
+
+      <NoteTreeJournalChangeDialog
+        kind={actions.journalConfirm}
+        onResolve={actions.resolveJournalConfirm}
       />
 
       <NoteTreeTemplateSelector

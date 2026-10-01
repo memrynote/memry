@@ -87,7 +87,11 @@ describe('Journal settings — date format help', () => {
     expect(tooltip.textContent).toContain(`dddd${weekday}`)
     expect(tooltip.textContent).toContain(`ddd${weekday.slice(0, 3)}`)
     expect(tooltip.textContent).toContain(`YYYY${new Date().getFullYear()}`)
-    expect(tooltip.textContent).toContain('Weekday names are always in English.')
+    expect(tooltip.textContent).toContain(
+      `MMMM${new Date().toLocaleDateString('en-US', { month: 'long' })}`
+    )
+    expect(tooltip.textContent).toContain('Weekday and month names are always in English.')
+    expect(tooltip.textContent).toContain('Use / to file entries in subfolders')
     expect(tooltip.textContent).toContain('Changing the format renames existing journal files.')
   })
 })

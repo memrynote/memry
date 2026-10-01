@@ -14,6 +14,8 @@ import {
 import { TemplateSelector } from '@/components/note/template-selector'
 import { DeleteNoteTasksOption, useNoteTasksChoice } from '@/components/note/delete-note-tasks'
 import { useT } from '@memry/i18n/renderer'
+import { containsJournalFolder } from '@/lib/journal-path'
+import type { JournalChangeKind } from '@/hooks/use-note-tree-actions'
 
 // ============================================================================
 // Delete Confirmation Dialog
@@ -27,6 +29,8 @@ interface NoteTreeDeleteDialogProps {
   isDeleting: boolean
   /** `taskIds`: the notes' tasks the user chose to delete with them, or none. */
   onConfirm: (taskIds: string[]) => void
+  /** The vault's journal folder, to warn when a deleted folder holds it. */
+  journalFolder?: string | null
 }
 
 export function NoteTreeDeleteDialog({
@@ -35,7 +39,8 @@ export function NoteTreeDeleteDialog({
   notesToDelete,
   foldersToDelete,
   isDeleting,
-  onConfirm
+  onConfirm,
+  journalFolder = null
 }: NoteTreeDeleteDialogProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
@@ -60,6 +65,12 @@ export function NoteTreeDeleteDialog({
           <AlertDialogDescription asChild>
             <div className="text-sm text-muted-foreground">
               <DeleteDialogBody notesToDelete={notesToDelete} foldersToDelete={foldersToDelete} />
+              {journalFolder &&
+                foldersToDelete.some((folder) => containsJournalFolder(folder, journalFolder)) && (
+                  <p className="mt-2 font-medium text-destructive">
+                    {t('tree.deleteDialog.journalFolderWarning')}
+                  </p>
+                )}
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -128,6 +139,48 @@ function DeleteDialogBody({
         )}
       </ul>
     </>
+  )
+}
+
+// ============================================================================
+// Journal Change Dialog
+// ============================================================================
+
+interface NoteTreeJournalChangeDialogProps {
+  kind: JournalChangeKind | null
+  onResolve: (confirmed: boolean) => void
+}
+
+/**
+ * Asked before a rename or move turns journal entries into notes or notes into
+ * journal entries: either one deletes the old item and creates a new one on
+ * every synced device.
+ */
+export function NoteTreeJournalChangeDialog({ kind, onResolve }: NoteTreeJournalChangeDialogProps) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
+
+  return (
+    <AlertDialog open={kind !== null} onOpenChange={(open) => !open && onResolve(false)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {kind === 'join'
+              ? t('tree.journalChange.joinTitle')
+              : t('tree.journalChange.leaveTitle')}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {kind === 'join' ? t('tree.journalChange.joinBody') : t('tree.journalChange.leaveBody')}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
+          <AlertDialogAction onClick={() => onResolve(true)}>
+            {t('tree.journalChange.confirm')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 

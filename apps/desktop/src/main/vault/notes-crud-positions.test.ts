@@ -72,7 +72,10 @@ vi.mock('./note-sync', () => ({
 vi.mock('./notes-queries', () => ({ noteToListItem: vi.fn(() => ({})) }))
 vi.mock('./notes-versions', () => ({ maybeCreateSignificantSnapshot: vi.fn() }))
 vi.mock('./folders', () => ({ readFolderConfig: vi.fn(), getFolderTemplate: vi.fn(() => null) }))
-vi.mock('./index', () => ({ getStatus: vi.fn(), getConfig: vi.fn(() => ({})) }))
+vi.mock('./index', () => ({
+  getStatus: vi.fn(),
+  getConfig: vi.fn(() => ({ journalFolder: 'journal' }))
+}))
 vi.mock('./templates', () => ({ getTemplate: vi.fn(() => null), applyTemplate: vi.fn() }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainLog: vi.fn() }))
 vi.mock('../sync/crdt-writeback', () => ({ hasPendingWriteback: vi.fn(() => false) }))

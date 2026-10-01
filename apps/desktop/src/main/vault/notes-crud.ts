@@ -68,6 +68,8 @@ import { trackMainLog } from '../telemetry/diagnostics'
 import { markExpectedWarning } from '../telemetry/expected-conditions'
 import { getFileType, getExtension, isBinaryFileType } from '@memry/shared/file-types'
 import { getStatus, getConfig } from './index'
+import { followJournalFolderMove } from './journal-folder-follow'
+import { createTreeFolderFilter } from './folder-visibility'
 import {
   emitNoteEvent,
   getDefaultNoteDir,
@@ -75,7 +77,6 @@ import {
   toAbsolutePath,
   toRelativePath
 } from './notes-io'
-import { CANVAS_DIR } from '../canvas/scene-file'
 import { maybeCreateSignificantSnapshot } from './notes-versions'
 import { noteToListItem } from './notes-queries'
 import { createRemindersService, type RemindersServiceHooks } from '@memry/app-core/reminders'
@@ -140,6 +141,8 @@ export interface NoteListItem {
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
   mimeType?: string | null
   fileSize?: number | null
+  /** Set on journal entries, which only `includeJournals` lists return. */
+  journalDate?: string | null
 }
 
 export interface FileMetadata {
@@ -199,6 +202,8 @@ export interface NoteListOptions {
   offset?: number
   includeProperties?: boolean
   fields?: NoteListFields
+  /** Also list journal entries (the sidebar, when the journal folder is shown). */
+  includeJournals?: boolean
 }
 
 export interface NoteListResponse {
@@ -832,17 +837,8 @@ export async function deleteNote(id: string): Promise<void> {
 
 export async function getFolders(): Promise<FolderInfo[]> {
   const notesDir = getVaultRoot()
-  const config = getConfig()
-  // Hide structural/excluded top-level folders (journal, attachments, canvases,
-  // node_modules, etc.) from the collection tree; journals live in the Journal
-  // view and canvases have their own sidebar section with their own tree.
-  const hiddenRoots = new Set(
-    [config.journalFolder, config.attachmentsFolder, CANVAS_DIR, ...config.excludePatterns]
-      .filter(Boolean)
-      .map((p) => p.replace(/\/+$/, '').split('/')[0])
-  )
   const paths = (await listDirectories(notesDir, notesDir)).filter(
-    (folderPath) => !hiddenRoots.has(folderPath.split('/')[0])
+    createTreeFolderFilter(getConfig())
   )
   const db = getDatabase()
 
@@ -897,6 +893,7 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<vo
     throw error
   }
 
+  followJournalFolderMove(oldPath, newPath)
   carryFolderPositions(getDatabase(), oldPath, newPath)
 }
 

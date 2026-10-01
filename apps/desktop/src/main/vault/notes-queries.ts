@@ -66,7 +66,7 @@ export function listNotes(options: NoteListOptions = {}): NoteListResponse {
   const hasMore = cached.length > limit
   const notes = cached.slice(0, limit)
 
-  const total = countNotes(db, options.folder)
+  const total = countNotes(db, options.folder, options.includeJournals)
 
   const noteIds = notes.map((n) => n.id)
   const tagsMap = getTagsForNotes(db, noteIds)
@@ -86,6 +86,7 @@ export function listNotes(options: NoteListOptions = {}): NoteListResponse {
     ...(treeShape ? {} : { snippet: c.snippet ?? undefined }),
     emoji: c.emoji,
     localOnly: c.localOnly ?? false,
+    ...(c.date ? { journalDate: c.date } : {}),
     fileType: c.fileType ?? 'markdown',
     ...(treeShape ? {} : { mimeType: c.mimeType, fileSize: c.fileSize }),
     ...(propertiesMap && { properties: propertiesMap.get(c.id) ?? {} })

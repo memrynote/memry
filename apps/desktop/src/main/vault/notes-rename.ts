@@ -27,7 +27,7 @@ import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import { rewriteInboundWikiLinksForRename } from './rename-link-rewrite'
 import { replaceNoteBodyInCrdt } from '../sync/crdt-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
-import { getNoteCacheById } from '@main/database/queries/notes'
+import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import {
   carryPositionToPath,
   deleteNotePosition,
@@ -45,6 +45,18 @@ import type { Note } from './notes-crud'
 // ============================================================================
 // Rename
 // ============================================================================
+
+/**
+ * True when the new path turns a journal into a note, a date-named note into a
+ * journal, or a journal into another day's. Notes and journals are separate
+ * sync types keyed by id, so that is not a rename: only the file moves here,
+ * and the watcher, seeing the unlink + add, finishes the old item's delete and
+ * lists the file as a new item with a fresh id (see `renameKeepsJournalDate`).
+ * The sidebar asks the user to confirm before it gets here.
+ */
+function changesJournalDate(oldDate: string | null, newRelativePath: string): boolean {
+  return oldDate !== extractDateFromPath(newRelativePath)
+}
 
 export async function renameNote(id: string, newTitle: string): Promise<Note> {
   const db = getIndexDatabase()
@@ -68,6 +80,10 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
 
   // Pure filesystem rename — file bytes untouched; title/dates live in the DBs
   await fs.rename(oldPath, newPath)
+
+  if (!isBinary && changesJournalDate(cached?.date ?? null, newRelativePath)) {
+    return { ...existing, path: newRelativePath, title: newTitle, modified: new Date(now) }
+  }
 
   if (isBinary) {
     syncFileToCache(db, {
@@ -173,6 +189,10 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
   // place below rather than during the move, so a failed write cannot strand the
   // file between two folders.
   await fs.rename(oldPath, newPath)
+
+  if (!isBinary && changesJournalDate(cached?.date ?? null, newRelativePath)) {
+    return { ...existing, path: newRelativePath, modified: new Date(now) }
+  }
 
   if (isBinary) {
     syncFileToCache(db, {

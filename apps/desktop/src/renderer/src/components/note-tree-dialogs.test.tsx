@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@tests/utils/render'
 import type { NoteListItem } from '@/hooks/use-notes-query'
-import { NoteTreeDeleteDialog } from './note-tree-dialogs'
+import { NoteTreeDeleteDialog, NoteTreeJournalChangeDialog } from './note-tree-dialogs'
 
 const getCarriedTasks = vi.fn()
 
@@ -15,7 +15,7 @@ vi.mock('@/services/notes-service', () => ({
 
 const note = { id: 'n1', path: 'Groceries.md', title: 'Groceries' } as NoteListItem
 
-function renderDialog(onConfirm = vi.fn()) {
+function renderDialog(onConfirm = vi.fn(), journalFolder: string | null = null) {
   renderWithProviders(
     <NoteTreeDeleteDialog
       open
@@ -24,6 +24,7 @@ function renderDialog(onConfirm = vi.fn()) {
       foldersToDelete={['Archive']}
       isDeleting={false}
       onConfirm={onConfirm}
+      journalFolder={journalFolder}
     />
   )
   return onConfirm
@@ -65,5 +66,48 @@ describe('NoteTreeDeleteDialog', () => {
     await userEvent.click(option)
     await userEvent.click(screen.getByRole('button', { name: 'Delete 2' }))
     expect(onConfirm).toHaveBeenLastCalledWith(['t1', 't2'])
+  })
+})
+
+describe('NoteTreeDeleteDialog journal warning', () => {
+  beforeEach(() => {
+    getCarriedTasks.mockReset()
+    getCarriedTasks.mockResolvedValue({ taskIds: [] })
+  })
+
+  it('warns when a deleted folder holds the journal folder', async () => {
+    renderDialog(vi.fn(), 'Archive/Daily')
+    expect(await screen.findByText(/This includes your journal folder/)).toBeInTheDocument()
+  })
+
+  it('says nothing about the journal for any other folder', async () => {
+    renderDialog(vi.fn(), 'Daily')
+    await waitFor(() => expect(getCarriedTasks).toHaveBeenCalled())
+    expect(screen.queryByText(/This includes your journal folder/)).not.toBeInTheDocument()
+  })
+})
+
+describe('NoteTreeJournalChangeDialog', () => {
+  it('stays closed until there is something to confirm', () => {
+    renderWithProviders(<NoteTreeJournalChangeDialog kind={null} onResolve={vi.fn()} />)
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('confirms an entry leaving the journal', async () => {
+    const onResolve = vi.fn()
+    renderWithProviders(<NoteTreeJournalChangeDialog kind="leave" onResolve={onResolve} />)
+
+    expect(screen.getByText('Turn journal entries into notes?')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(onResolve).toHaveBeenCalledWith(true)
+  })
+
+  it('cancels a note joining the journal', async () => {
+    const onResolve = vi.fn()
+    renderWithProviders(<NoteTreeJournalChangeDialog kind="join" onResolve={onResolve} />)
+
+    expect(screen.getByText('Turn notes into journal entries?')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onResolve).toHaveBeenCalledWith(false)
   })
 })

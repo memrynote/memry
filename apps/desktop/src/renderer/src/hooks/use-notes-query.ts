@@ -28,6 +28,11 @@ import {
   onTagsChanged,
   onFolderConfigUpdated
 } from '@/services/notes-service'
+import {
+  onJournalEntryCreated,
+  onJournalEntryUpdated,
+  onJournalEntryDeleted
+} from '@/services/journal-service'
 import { onVaultIndexProgress } from '@/services/vault-service'
 import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
 import { tagsService } from '@/services/tags-service'
@@ -78,6 +83,8 @@ export interface NoteListInput {
    * can never overwrite a full-shape consumer's cache entry.
    */
   fields?: NoteListFields
+  /** Also list journal entries; part of the query key like `fields`. */
+  includeJournals?: boolean
 }
 
 export interface UseNoteOptions {
@@ -285,6 +292,25 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
       unsubIndexProgress()
     }
   }, [queryClient])
+
+  // Journal entries are listed only on request (the sidebar, when the journal
+  // folder is shown), and the Journal page's writes emit journal events, not
+  // note events.
+  const includeJournals = listOptions.includeJournals === true
+  useEffect(() => {
+    if (!includeJournals) return
+    const invalidate = () => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+    }
+    const unsubscribers = [
+      onJournalEntryCreated(invalidate),
+      onJournalEntryUpdated(invalidate),
+      onJournalEntryDeleted(invalidate)
+    ]
+    return () => {
+      for (const unsubscribe of unsubscribers) unsubscribe()
+    }
+  }, [includeJournals, queryClient])
 
   // Memoize data to avoid recreating object reference
   const data = useMemo(() => query.data ?? EMPTY_NOTES_LIST, [query.data])

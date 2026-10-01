@@ -8,6 +8,7 @@
  */
 
 import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
+import { getI18n } from 'react-i18next'
 import { getDisplayName } from '@/components/notes-tree-utils'
 import type { OpenTargetTab } from '@/hooks/use-open-target'
 
@@ -17,13 +18,30 @@ interface NoteLike {
   path: string
   emoji?: string | null
   fileType?: string | null
+  journalDate?: string | null
 }
 
 /**
  * Non-markdown files open in the file viewer, not the editor — the type drives
- * both the route and the icon, so it must be decided in one place.
+ * both the route and the icon, so it must be decided in one place. A journal
+ * entry (listed when the journal folder is shown in the tree) opens its day in
+ * the Journal, the one editor that owns it.
  */
 export const noteTabData = (note: NoteLike): OpenTargetTab => {
+  if (note.journalDate) {
+    return {
+      type: 'journal',
+      title: getI18n().getFixedT(null, 'common')('home.widget.journal'),
+      icon: 'book-open',
+      path: '/journal',
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false,
+      viewState: { date: note.journalDate }
+    }
+  }
+
   const fileType = (note.fileType ?? 'markdown') as FileType
   const isMarkdown = fileType === 'markdown'
 

@@ -167,6 +167,31 @@ describe('renameJournalsForFormatChange', () => {
     expect(fs.existsSync(journalFile('2026-09-27 Sunday.md'))).toBe(true)
   })
 
+  it('moves flat entries into year/month folders and back, pruning emptied folders', async () => {
+    seedJournal('2025-01-14.md', 'j2025-01-14', '2025-01-14')
+    fs.writeFileSync(journalFile('ideas.md'), 'not a journal\n')
+    const nested = 'YYYY/MMMM/YYYY-MM-DD'
+
+    const toNested = await renameJournalsForFormatChange(vaultPath, 'journal', DAILY, nested)
+
+    expect(toNested).toEqual({ renamed: 1, skipped: 0, failed: 0 })
+    expect(fs.existsSync(journalFile('2025/January/2025-01-14.md'))).toBe(true)
+    expect(fs.existsSync(journalFile('ideas.md'))).toBe(true)
+    expect(getNoteMetadataById(asClientDb(testDb.db), 'j2025-01-14')?.path).toBe(
+      'journal/2025/January/2025-01-14.md'
+    )
+
+    fs.writeFileSync(journalFile('2025/notes.md'), 'kept\n')
+    const toFlat = await renameJournalsForFormatChange(vaultPath, 'journal', nested, DAILY)
+
+    expect(toFlat).toEqual({ renamed: 1, skipped: 0, failed: 0 })
+    expect(fs.existsSync(journalFile('2025-01-14.md'))).toBe(true)
+    // `January` was emptied and removed; `2025` still holds a file and stays.
+    expect(fs.existsSync(journalFile('2025/January'))).toBe(false)
+    expect(fs.existsSync(journalFile('2025/notes.md'))).toBe(true)
+    expect(fs.existsSync(path.join(vaultPath, 'journal'))).toBe(true)
+  })
+
   it('is a no-op when the journal folder does not exist', async () => {
     const result = await renameJournalsForFormatChange(vaultPath, 'daily', DAILY, WEEKDAY)
     expect(result).toEqual({ renamed: 0, skipped: 0, failed: 0 })

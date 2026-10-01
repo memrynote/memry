@@ -260,7 +260,7 @@ export interface MainIpcInvokeHandlers {
   "notes:large-file-open": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").LargeFileOpenResult>>
   "notes:large-file-read-lines": (...args: [{ sessionId: string; startLine: number; count: number; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").LargeFileLinesResult | null>>
   "notes:large-file-search": (...args: [{ sessionId: string; query: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").LargeFileSearchResult | null>>
-  "notes:list": (...args: [{ folder?: string | undefined; tags?: string[] | undefined; sortBy?: "title" | "modified" | "created" | "position" | undefined; sortOrder?: "asc" | "desc" | undefined; limit?: number | undefined; offset?: number | undefined; fields?: "full" | "tree" | undefined; }]) => Awaited<Promise<import("../vault/notes-crud").NoteListResponse>>
+  "notes:list": (...args: [{ folder?: string | undefined; tags?: string[] | undefined; sortBy?: "title" | "modified" | "created" | "position" | undefined; sortOrder?: "asc" | "desc" | undefined; limit?: number | undefined; offset?: number | undefined; fields?: "full" | "tree" | undefined; includeJournals?: boolean | undefined; }]) => Awaited<Promise<import("../vault/notes-crud").NoteListResponse>>
   "notes:list-attachments": (...args: [string]) => Awaited<Promise<import("../vault/attachments").AttachmentInfo[]>>
   "notes:list-vault-attachments": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").VaultAttachmentEntry[]>>
   "notes:move": (...args: [{ id: string; newFolder: string; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
@@ -523,7 +523,7 @@ export interface MainIpcInvokeHandlers {
   "vault:select": (...args: [{ path?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").SelectVaultResponse>>
   "vault:set-icon": (...args: [{ path: string; icon: string | null; }]) => Awaited<Promise<void>>
   "vault:switch": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").SelectVaultResponse>>
-  "vault:update-config": (...args: [{ excludePatterns?: string[] | undefined; defaultNoteFolder?: string | undefined; journalFolder?: string | undefined; journalDateFormat?: string | undefined; attachmentsFolder?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").VaultConfig>>
+  "vault:update-config": (...args: [{ excludePatterns?: string[] | undefined; defaultNoteFolder?: string | undefined; journalFolder?: string | undefined; journalDateFormat?: string | undefined; attachmentsFolder?: string | undefined; journalShowInSidebar?: boolean | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").VaultConfig>>
 }
 
 export type MainIpcInvokeChannel = keyof MainIpcInvokeHandlers

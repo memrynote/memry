@@ -52,6 +52,17 @@ describe('journal detection (config-aware)', () => {
     expect(generateJournalPath('2026-06-15')).toBe('journal/2026-06-15.md')
   })
 
+  it('detects and names entries in year/month subfolders when the format has them', () => {
+    setJournalConfig({ journalFolder: 'Daily Notes', journalDateFormat: 'YYYY/MMMM/YYYY-MM-DD' })
+
+    expect(generateJournalPath('2025-01-14')).toBe('Daily Notes/2025/January/2025-01-14.md')
+    expect(extractDateFromPath('Daily Notes/2025/January/2025-01-14.md')).toBe('2025-01-14')
+    // Flat files and folders that disagree with the filename are plain notes.
+    expect(isJournalEntry('Daily Notes/2025-01-14.md')).toBe(false)
+    expect(isJournalEntry('Daily Notes/2025/February/2025-01-14.md')).toBe(false)
+    expect(isJournalEntry('Daily Notes/2025/January/ideas.md')).toBe(false)
+  })
+
   it('treats a regex-matching but out-of-range date as a regular note', () => {
     // Detection range-validates, so isJournalEntry agrees with extractDateFromPath
     // and never yields a journal with an empty date.

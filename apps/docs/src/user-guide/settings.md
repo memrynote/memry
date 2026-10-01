@@ -231,14 +231,19 @@ Clicking a row — built-in or custom — opens it in the [template editor](/use
 
 **Journal Folder** is where daily notes are stored. **Date Format** sets their filename; **Preview** shows today's resulting path, and the info icon next to the field lists the tokens with today's date rendered through each. Supported tokens:
 
-| Token          | Output             |
-| -------------- | ------------------ |
-| `YYYY` / `YY`  | `2026` / `26`      |
-| `MM` / `M`     | `09` / `9`         |
-| `DD` / `D`     | `05` / `5`         |
-| `dddd` / `ddd` | `Saturday` / `Sat` |
+| Token          | Output              |
+| -------------- | ------------------- |
+| `YYYY` / `YY`  | `2026` / `26`       |
+| `MMMM` / `MMM` | `September` / `Sep` |
+| `MM` / `M`     | `09` / `9`          |
+| `DD` / `D`     | `05` / `5`          |
+| `dddd` / `ddd` | `Saturday` / `Sat`  |
 
-Everything else is kept as-is, so `YYYY-MM-DD dddd` gives `2026-09-26 Saturday.md`. Weekday names are always English, whatever the app language, so filenames keep matching after a language change. A file only counts as a journal entry if its name matches the format; one whose weekday doesn't match its date (`2026-09-26 Friday.md`) stays a regular note. Changing the format renames the existing entries in the journal folder to match, so `2026-09-25.md` becomes `2026-09-25 Friday.md` and stays in your Journal. Only the filename changes: contents and sync are untouched, and other devices keep their own format. A file is never overwritten: if its new name is already taken it keeps its old name and shows up as a regular note. A format that leaves out the year, month or day renames nothing. Wiki links that point at an entry by its old filename are not rewritten.
+Everything else is kept as-is, so `YYYY-MM-DD dddd` gives `2026-09-26 Saturday.md`. A `/` starts a subfolder: `YYYY/MMMM/YYYY-MM-DD` files each day under its year and month, as `2026/September/2026-09-26.md` inside the journal folder. When a field appears more than once, every copy has to agree, so `2026/August/2026-09-26.md` is a regular note. Weekday and month names are always English, whatever the app language, so filenames keep matching after a language change. A file only counts as a journal entry if its name matches the format; one whose weekday doesn't match its date (`2026-09-26 Friday.md`) stays a regular note. Changing the format renames the existing entries in the journal folder to match, so `2026-09-25.md` becomes `2026-09-25 Friday.md` and stays in your Journal. Only the filename changes: contents and sync are untouched, and other devices keep their own format. A file is never overwritten: if its new name is already taken it keeps its old name and shows up as a regular note. A format that leaves out the year, month or day renames nothing. Wiki links that point at an entry by its old filename are not rewritten. Switching between a flat format and one with subfolders moves the entries between folders the same way, and folders left empty by the move are removed.
+
+**Show in sidebar** lists the journal folder, its subfolders and its entries in the notes tree. It's off by default, which keeps the journal folder out of the tree as before. A journal entry in the tree opens its day in the Journal and has no template, icon or bookmark actions. Moving an entry out of the journal folder, renaming it off the date format, or moving a date-named note into the folder asks first: the entry stops (or starts) being a journal entry, and on your other devices the old item is deleted and a new one appears in its place. Deleting a folder that holds the journal folder warns that every entry in it goes too.
+
+The journal setting follows the folder. Renaming or moving the journal folder (or a folder above it) in the sidebar updates **Journal Folder** to the new place, and so does a rename in Finder, Explorer or another app, as long as the old folder is gone and the entries kept their paths inside it. Entries keep their identity and nothing is re-synced.
 
 ### Default Template
 

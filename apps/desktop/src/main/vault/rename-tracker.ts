@@ -52,6 +52,12 @@ interface PendingDelete {
   onRealDelete: () => Promise<void>
 }
 
+export interface RenameMatch {
+  id: string
+  oldPath: string
+  onRealDelete: () => Promise<void>
+}
+
 // ============================================================================
 // State
 // ============================================================================
@@ -188,13 +194,16 @@ export function trackPendingDelete(
  * @param newPath - Relative path of the new file
  * @param statKey - Size + mtime of the new file, which matches a pending delete
  *   whose body was never read and therefore has no hash to compare
- * @returns The matched note id and old path if this was a rename, null if new
+ * @returns The matched note id and old path if this was a rename, null if new.
+ *   `onRealDelete` is the matched delete's own callback, for a caller that
+ *   decides the move is not a rename after all (a journal leaving the journal
+ *   folder) and has to finish the delete itself.
  */
 export function checkForRename(
   contentHash: string | null,
   newPath: string,
   statKey?: string | null
-): { id: string; oldPath: string } | null {
+): RenameMatch | null {
   const pending =
     (contentHash !== null ? takeMatch(pendingDeletes, contentHash) : null) ??
     (statKey ? takeMatch(pendingDeletesByStat, statKey) : null)
@@ -207,7 +216,7 @@ export function checkForRename(
   logger.info(`Rename detected: ${pending.path} -> ${newPath}`)
   clearTimeout(pending.timeout)
 
-  return { id: pending.id, oldPath: pending.path }
+  return { id: pending.id, oldPath: pending.path, onRealDelete: pending.onRealDelete }
 }
 
 /**
@@ -284,7 +293,12 @@ export function getPendingDeleteCount(): number {
  * @param oldPath - Old relative path
  * @param newPath - New relative path
  */
-export function processRename(id: string, oldPath: string, newPath: string): void {
+export function processRename(
+  id: string,
+  oldPath: string,
+  newPath: string,
+  options: { sync?: boolean } = {}
+): void {
   // Extract old and new titles from filenames
   const oldTitle = path.basename(oldPath, '.md')
   const newTitle = path.basename(newPath, '.md')
@@ -302,7 +316,10 @@ export function processRename(id: string, oldPath: string, newPath: string): voi
   emitNoteRenamed(event)
   logger.debug(`Emitted RENAMED event for ${id}`)
 
-  onRenameSyncCallback?.(id)
+  // A journal's path is never synced (every device derives it from the date),
+  // and the callback pushes a `note` item: handing it a journal id would make
+  // the server hold the journal under both types.
+  if (options.sync !== false) onRenameSyncCallback?.(id)
 }
 
 /**

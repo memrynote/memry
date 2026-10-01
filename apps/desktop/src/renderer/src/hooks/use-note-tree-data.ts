@@ -15,6 +15,7 @@ import {
 } from '@/components/notes-tree-utils'
 import { createLogger } from '@/lib/logger'
 import { trackWorkspaceLoad } from '@/lib/workspace-load-tracker'
+import { useVaultConfig } from './use-vault-config'
 
 const log = createLogger('Hook:NoteTreeData')
 
@@ -75,6 +76,8 @@ export function useNoteTreeData(): NoteTreeData {
   const [limit, setLimit] = useState(NOTE_TREE_PAGE_SIZE)
   const { mode: sortMode } = useSidebarSortMode('collections')
   const { notesFirst, showFiles } = useSidebarTreeViewOptions()
+  // Journal entries join the tree only when the user shows the journal folder.
+  const includeJournals = useVaultConfig()?.journalShowInSidebar === true
 
   // `fields: 'tree'` — the sidebar renders path/title/modified/tags/emoji/
   // localOnly/fileType and nothing else, so main skips the snippet and the
@@ -86,7 +89,7 @@ export function useNoteTreeData(): NoteTreeData {
     hasMore,
     isLoading: isPageLoading,
     error
-  } = useNotesList({ limit, fields: 'tree' })
+  } = useNotesList({ limit, fields: 'tree', ...(includeJournals ? { includeJournals } : {}) })
 
   // Raising the ceiling changes the query key, so TanStack starts a fresh entry
   // with no data and `isLoading` flips back to true. Hold the page already on

@@ -94,6 +94,7 @@ const NOTE_TREE_COLUMNS = {
   id: noteCache.id,
   path: noteCache.path,
   title: noteCache.title,
+  date: noteCache.date,
   fileType: noteCache.fileType,
   emoji: noteCache.emoji,
   localOnly: noteCache.localOnly,
@@ -117,6 +118,8 @@ export interface ListNotesOptions {
    * to the full `note_cache` row so every existing caller is unaffected.
    */
   shape?: 'full' | 'tree'
+  /** Journal entries are left out unless this is set. */
+  includeJournals?: boolean
 }
 
 export function listNotesFromCache(
@@ -138,12 +141,13 @@ export function listNotesFromCache(
     sortOrder = 'desc',
     limit = 100,
     offset = 0,
-    shape = 'full'
+    shape = 'full',
+    includeJournals = false
   } = options
 
   const conditions: SQL<unknown>[] = []
 
-  conditions.push(sql`${noteCache.date} IS NULL`)
+  if (!includeJournals) conditions.push(sql`${noteCache.date} IS NULL`)
 
   if (folder) {
     conditions.push(like(noteCache.path, `${folder}/%`))
@@ -252,8 +256,8 @@ export function listNoteCacheUnderFolder(
     .filter((row) => row.path.startsWith(prefix))
 }
 
-export function countNotes(db: IndexDb, folder?: string): number {
-  const conditions: SQL<unknown>[] = [sql`${noteCache.date} IS NULL`]
+export function countNotes(db: IndexDb, folder?: string, includeJournals = false): number {
+  const conditions: SQL<unknown>[] = includeJournals ? [] : [sql`${noteCache.date} IS NULL`]
 
   if (folder) {
     conditions.push(like(noteCache.path, `${folder}/%`))

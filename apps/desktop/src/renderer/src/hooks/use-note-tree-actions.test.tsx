@@ -1,7 +1,7 @@
 import type React from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
 
 import { useNoteTreeActions, type NoteTreeActionsDeps } from './use-note-tree-actions'
@@ -14,7 +14,17 @@ const mocks = vi.hoisted(() => ({
   openPagesInNewTab: true,
   openTab: vi.fn(),
   closeTab: vi.fn(),
-  updateTabTitleByEntityId: vi.fn()
+  updateTabTitleByEntityId: vi.fn(),
+  vaultConfig: null as null | Record<string, unknown>,
+  deleteJournalEntry: vi.fn()
+}))
+
+vi.mock('@/hooks/use-vault-config', () => ({
+  useVaultConfig: () => mocks.vaultConfig
+}))
+
+vi.mock('@/services/journal-service', () => ({
+  journalService: { deleteEntry: mocks.deleteJournalEntry }
 }))
 
 vi.mock('sonner', () => ({
@@ -589,5 +599,134 @@ describe('useNoteTreeActions', () => {
     expect(deps.expandFolderPath).toHaveBeenLastCalledWith('Work')
     expect(result.current.renamingFolderPath).toBe('Work/Untitled Folder')
     expect(result.current.folderRenameValue).toBe('Untitled Folder')
+  })
+
+  describe('journal entries in the tree', () => {
+    const journalConfig = {
+      excludePatterns: [],
+      defaultNoteFolder: '',
+      journalFolder: 'Daily',
+      journalDateFormat: 'YYYY-MM-DD',
+      attachmentsFolder: 'attachments',
+      journalShowInSidebar: true
+    }
+    const entry = createNote('j-entry', 'Daily/2026-10-01.md', { journalDate: '2026-10-01' })
+    const dated = createNote('dated', 'Work/2026-10-02.md')
+    const journalNotes = [entry, dated, workA]
+    const journalNoteMap = new Map(journalNotes.map((note) => [note.id, note]))
+    const journalTree = buildTreeFromNotes(
+      journalNotes,
+      [{ path: 'Daily' }, { path: 'Work' }] as any[],
+      {}
+    )
+
+    const renderJournalActions = (overrides: Partial<NoteTreeActionsDeps> = {}) =>
+      renderActions({ noteMap: journalNoteMap, tree: journalTree, selectedIds: [], ...overrides })
+
+    beforeEach(() => {
+      mocks.vaultConfig = journalConfig
+      mocks.deleteJournalEntry.mockResolvedValue({ success: true })
+    })
+
+    afterEach(() => {
+      mocks.vaultConfig = null
+    })
+
+    it('asks before a rename takes an entry off the date format, and stops on cancel', async () => {
+      const { result, mutations } = renderJournalActions()
+
+      act(() => result.current.handleRenameClick(entry))
+      act(() => result.current.handleRenameInputChange('j-entry', 'Retro'))
+      let submit!: Promise<void>
+      act(() => {
+        submit = result.current.handleRenameSubmit('j-entry', entry.path)
+      })
+      await waitFor(() => expect(result.current.journalConfirm).toBe('leave'))
+
+      await act(async () => {
+        result.current.resolveJournalConfirm(false)
+        await submit
+      })
+      expect(mutations.renameNote.mutateAsync).not.toHaveBeenCalled()
+      expect(result.current.journalConfirm).toBeNull()
+
+      act(() => result.current.handleRenameClick(entry))
+      act(() => result.current.handleRenameInputChange('j-entry', 'Retro'))
+      act(() => {
+        submit = result.current.handleRenameSubmit('j-entry', entry.path)
+      })
+      await waitFor(() => expect(result.current.journalConfirm).toBe('leave'))
+      await act(async () => {
+        result.current.resolveJournalConfirm(true)
+        await submit
+      })
+      expect(mutations.renameNote.mutateAsync).toHaveBeenCalledWith({
+        id: 'j-entry',
+        newTitle: 'Retro'
+      })
+    })
+
+    it('asks before a date-named note is dropped into the journal folder', async () => {
+      const { result, mutations } = renderJournalActions()
+
+      let move!: Promise<void>
+      act(() => {
+        move = result.current.handleMove({
+          draggedId: 'dated',
+          targetId: 'folder-Daily',
+          position: 'inside'
+        })
+      })
+      await waitFor(() => expect(result.current.journalConfirm).toBe('join'))
+      await act(async () => {
+        result.current.resolveJournalConfirm(true)
+        await move
+      })
+      expect(mutations.moveNote.mutateAsync).toHaveBeenCalledWith({
+        id: 'dated',
+        newFolder: 'Daily'
+      })
+    })
+
+    it('moves a plain note without asking', async () => {
+      const { result, mutations } = renderJournalActions()
+
+      await act(async () => {
+        await result.current.handleMove({
+          draggedId: 'work-a',
+          targetId: 'folder-Daily',
+          position: 'inside'
+        })
+      })
+      expect(result.current.journalConfirm).toBeNull()
+      expect(mutations.moveNote.mutateAsync).toHaveBeenCalledWith({
+        id: 'work-a',
+        newFolder: 'Daily'
+      })
+    })
+
+    it('renames the journal folder without asking: main follows it', async () => {
+      const { result } = renderJournalActions()
+
+      act(() => result.current.handleRenameFolderClick('Daily'))
+      act(() => result.current.setFolderRenameValue('Diary'))
+      await act(async () => {
+        await result.current.handleFolderRenameSubmit('Daily')
+      })
+      expect(result.current.journalConfirm).toBeNull()
+      expect(notesService.renameFolder).toHaveBeenCalledWith('Daily', 'Diary')
+    })
+
+    it('deletes a journal entry as a journal, by date', async () => {
+      const { result, mutations } = renderJournalActions()
+
+      act(() => result.current.handleDeleteClick(entry))
+      await act(async () => {
+        await result.current.handleDeleteConfirm()
+      })
+      expect(mocks.deleteJournalEntry).toHaveBeenCalledWith('2026-10-01')
+      expect(mutations.deleteNote.mutateAsync).not.toHaveBeenCalled()
+      expect(result.current.journalFolder).toBe('Daily')
+    })
   })
 })

@@ -533,6 +533,21 @@ describe('T522: NotesTree - context menu', () => {
     expect(await screen.findByText('Save as Template')).toBeInTheDocument()
     expect(screen.queryByText('New note from this note')).not.toBeInTheDocument()
   })
+
+  it('offers no note-only actions on a journal entry', async () => {
+    setupMocks([createNote('j-1', '2026-10-01.md', { journalDate: '2026-10-01' })], [])
+    const user = userEvent.setup()
+    renderWithProviders(<NotesTree />)
+
+    // A journal entry gets a plain icon, not an icon picker.
+    expect(screen.queryByRole('button', { name: 'Set Icon' })).not.toBeInTheDocument()
+    await user.pointer({ target: screen.getByText('2026-10-01'), keys: '[MouseRight]' })
+
+    expect(await screen.findByText(/rename/i)).toBeInTheDocument()
+    expect(screen.queryByText('Save as Template')).not.toBeInTheDocument()
+    expect(screen.queryByText('Apply Template')).not.toBeInTheDocument()
+    expect(screen.queryByText('New note from this note')).not.toBeInTheDocument()
+  })
 })
 
 describe('NotesTree - one folder subtree, view options', () => {

@@ -110,16 +110,27 @@ vi.mock('./index', () => ({
   getConfig: vi.fn(() => baseConfig)
 }))
 
+vi.mock('./journal-folder-follow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./journal-folder-follow')>()),
+  followJournalFolder: vi.fn()
+}))
+
 vi.mock('../telemetry/diagnostics', () => ({
   trackMainError: vi.fn(),
   trackMainLog: vi.fn()
 }))
 
 import { getIndexDatabase, getDatabase, updateFtsContent } from '../database'
-import { enqueueJournalCreate, initializeJournalCrdt } from '../journal/runtime-effects'
+import {
+  enqueueJournalCreate,
+  enqueueJournalDelete,
+  initializeJournalCrdt
+} from '../journal/runtime-effects'
+import { setJournalConfig } from './journal-config'
 import { syncNoteCreate, unlinkTasksFromDeletedNote } from '../notes/runtime-effects'
 import { updateNoteEmbedding } from '../inbox/suggestions'
 import { getConfig } from './index'
+import { followJournalFolder } from './journal-folder-follow'
 import { safeRead } from './file-ops'
 import { scanMarkdownFile } from './file-scan'
 import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
@@ -157,6 +168,7 @@ describe('vault watcher', () => {
     await stopProjectionRuntime({ drain: true })
     clearIngestBackfill()
     clearAllPendingDeletes()
+    setJournalConfig({ journalFolder: 'journal', journalDateFormat: 'YYYY-MM-DD' })
     indexDb.close()
     dataDb.close()
     vault.cleanup()
@@ -1320,5 +1332,102 @@ describe('vault watcher', () => {
     // rather than swallowed by a promise nobody awaits
     expect(reportedErrors).toEqual([failing])
     expect(trackMainError).toHaveBeenCalledWith('vault', 'file_add', failing)
+  })
+
+  describe('a move across the journal folder boundary', () => {
+    async function indexJournal(watcher: any, name: string): Promise<string> {
+      const journalPath = path.join(vault.journalDir, name)
+      fs.writeFileSync(journalPath, 'Entry body\n', 'utf8')
+      await watcher.handleFileAdd(journalPath)
+      await drainIngestBackfill()
+      const row = indexDb.db
+        .select()
+        .from(noteCache)
+        .where(eq(noteCache.path, `journal/${name}`))
+        .get()
+      expect(row?.date).toBe(name.slice(0, -3))
+      vi.mocked(enqueueJournalDelete).mockClear()
+      vi.mocked(syncNoteCreate).mockClear()
+      return row!.id
+    }
+
+    it('turns a journal moved out of its folder into a new note, deleting the journal', async () => {
+      vi.useFakeTimers()
+      const watcher = new VaultWatcher() as any
+      watcher.vaultPath = vault.path
+      const journalId = await indexJournal(watcher, '2026-05-10.md')
+
+      const oldPath = path.join(vault.journalDir, '2026-05-10.md')
+      const newPath = path.join(vault.notesDir, '2026-05-10.md')
+      fs.renameSync(oldPath, newPath)
+      watcher.handleFileDelete(oldPath)
+      await watcher.handleFileAdd(newPath)
+      await vi.advanceTimersByTimeAsync(500)
+      await drainIngestBackfill()
+
+      // The journal is deleted as a journal, and the file comes back as a note
+      // under a new id: one id never crosses between the two sync types.
+      expect(enqueueJournalDelete).toHaveBeenCalledWith(journalId, '2026-05-10')
+      const note = indexDb.db
+        .select()
+        .from(noteCache)
+        .where(eq(noteCache.path, 'notes/2026-05-10.md'))
+        .get()
+      expect(note?.date).toBeNull()
+      expect(note?.id).not.toBe(journalId)
+      expect(syncNoteCreate).toHaveBeenCalledWith(
+        note?.id,
+        expect.anything(),
+        [],
+        expect.anything()
+      )
+      expect(indexDb.db.select().from(noteCache).where(eq(noteCache.id, journalId)).get()).toBe(
+        undefined
+      )
+    })
+
+    it('follows a journal folder renamed outside the app, keeping every entry', async () => {
+      vi.useFakeTimers()
+      const watcher = new VaultWatcher() as any
+      watcher.vaultPath = vault.path
+      const journalId = await indexJournal(watcher, '2026-05-10.md')
+      vi.mocked(followJournalFolder).mockImplementation((folder: string) => {
+        setJournalConfig({ journalFolder: folder, journalDateFormat: 'YYYY-MM-DD' })
+      })
+
+      const diaryDir = path.join(vault.path, 'Diary')
+      fs.renameSync(vault.journalDir, diaryDir)
+      watcher.handleFileDelete(path.join(vault.journalDir, '2026-05-10.md'))
+      await watcher.handleFileAdd(path.join(diaryDir, '2026-05-10.md'))
+      await vi.advanceTimersByTimeAsync(500)
+
+      expect(followJournalFolder).toHaveBeenCalledWith('Diary')
+      const row = indexDb.db.select().from(noteCache).where(eq(noteCache.id, journalId)).get()
+      expect(row?.path).toBe('Diary/2026-05-10.md')
+      expect(row?.date).toBe('2026-05-10')
+      expect(enqueueJournalDelete).not.toHaveBeenCalled()
+    })
+
+    it('does not follow while the configured journal folder still exists', async () => {
+      vi.useFakeTimers()
+      const watcher = new VaultWatcher() as any
+      watcher.vaultPath = vault.path
+      await indexJournal(watcher, '2026-05-10.md')
+
+      // A copy of the folder elsewhere, then the one file moved into it: the
+      // journal folder is still there, so this is one entry leaving it.
+      const otherDir = path.join(vault.path, 'Other')
+      fs.mkdirSync(otherDir)
+      fs.renameSync(
+        path.join(vault.journalDir, '2026-05-10.md'),
+        path.join(otherDir, '2026-05-10.md')
+      )
+      watcher.handleFileDelete(path.join(vault.journalDir, '2026-05-10.md'))
+      await watcher.handleFileAdd(path.join(otherDir, '2026-05-10.md'))
+      await vi.advanceTimersByTimeAsync(500)
+
+      expect(followJournalFolder).not.toHaveBeenCalled()
+      expect(enqueueJournalDelete).toHaveBeenCalledTimes(1)
+    })
   })
 })

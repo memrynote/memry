@@ -76,6 +76,11 @@ export interface VaultConfig {
   /** Configurable date format for journal filenames (e.g. 'YYYY-MM-DD') */
   journalDateFormat: string
   attachmentsFolder: string
+  /**
+   * Show the journal folder in the sidebar notes tree. Absent in configs written
+   * before the setting existed, which read as `false` (hidden).
+   */
+  journalShowInSidebar?: boolean
 }
 
 // ============================================================================
@@ -123,7 +128,8 @@ export const UpdateVaultConfigSchema = z.object({
   defaultNoteFolder: z.string().optional(),
   journalFolder: z.string().optional(),
   journalDateFormat: z.string().optional(),
-  attachmentsFolder: z.string().optional()
+  attachmentsFolder: z.string().optional(),
+  journalShowInSidebar: z.boolean().optional()
 })
 
 // ============================================================================

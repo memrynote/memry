@@ -79,6 +79,8 @@ export interface NoteListItem {
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
   mimeType?: string | null
   fileSize?: number | null
+  /** Set on journal entries, which only `includeJournals` lists return. */
+  journalDate?: string | null
 }
 
 export interface FileMetadata {
@@ -349,6 +351,8 @@ export interface NoteListOptions {
   limit?: number
   offset?: number
   fields?: NoteListFields
+  /** Also list journal entries (the sidebar, when the journal folder is shown). */
+  includeJournals?: boolean
 }
 
 export interface NoteCreateResponse {

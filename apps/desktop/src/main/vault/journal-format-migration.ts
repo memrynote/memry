@@ -1,6 +1,12 @@
 /**
  * Rename existing journal files when the journal date format changes.
  *
+ * A format may carry folder segments (`YYYY/MMMM/YYYY-MM-DD`), so a rename can
+ * move a file between subfolders of the journal folder: `2025-01-14.md` becomes
+ * `2025/January/2025-01-14.md` and back. Target folders are created on demand,
+ * and source folders a move leaves empty are removed, never the journal folder
+ * itself and never a folder that still holds anything.
+ *
  * A file only counts as a journal entry while its name matches the configured
  * format. Without this, switching `YYYY-MM-DD` to `YYYY-MM-DD dddd` leaves
  * `journal/2026-09-25.md` behind as a plain note: the day shows empty in the
@@ -26,7 +32,11 @@
 
 import fs from 'fs/promises'
 import path from 'path'
-import { formatJournalFilename, parseJournalDate } from '@memry/storage-vault'
+import {
+  formatJournalFilename,
+  normalizeJournalFolder,
+  parseJournalDate
+} from '@memry/storage-vault'
 import { getNoteMetadataByPath, updateNoteMetadata } from '@memry/storage-data'
 import { carryPositionToPath } from '@main/database/queries/note-positions'
 import { getDatabase } from '../database'
@@ -68,8 +78,9 @@ export function isCompleteJournalFormat(format: string): boolean {
 }
 
 /**
- * Pure planner over the file names of the journal folder (direct children).
- * Collisions are compared case-insensitively: on the default macOS and Windows
+ * Pure planner over the files of the journal folder, as `/`-separated paths
+ * relative to it (`2025-01-14.md`, `2025/01/2025-01-14.md`). Collisions are
+ * compared case-insensitively: on the default macOS and Windows
  * filesystems two names differing only in case are the same file.
  */
 export function planJournalRenames(
@@ -110,13 +121,43 @@ export function planJournalRenames(
   return { renames, skipped }
 }
 
-async function listFileNames(dir: string): Promise<string[] | null> {
+/**
+ * Every file under `dir`, as a `/`-separated path relative to it. Dot entries
+ * (`.obsidian`, editor temp files) are skipped. `null` when `dir` is missing.
+ */
+async function listFilesRecursive(dir: string): Promise<string[] | null> {
+  const files: string[] = []
+
+  const walk = async (relativeDir: string): Promise<void> => {
+    const entries = await fs.readdir(path.join(dir, relativeDir), { withFileTypes: true })
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue
+      const relative = relativeDir ? `${relativeDir}/${entry.name}` : entry.name
+      if (entry.isDirectory()) await walk(relative)
+      else if (entry.isFile()) files.push(relative)
+    }
+  }
+
   try {
-    const entries = await fs.readdir(dir, { withFileTypes: true })
-    return entries.filter((entry) => entry.isFile()).map((entry) => entry.name)
+    await walk('')
+    return files
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
     throw error
+  }
+}
+
+/** Remove the now-empty folders between `relativeFile` and the journal folder. */
+async function pruneEmptyParents(dir: string, relativeFile: string): Promise<void> {
+  let parent = path.posix.dirname(relativeFile)
+  while (parent !== '.' && parent !== '') {
+    try {
+      // rmdir refuses a non-empty folder, which is exactly the guard we want.
+      await fs.rmdir(path.join(dir, parent))
+    } catch {
+      return
+    }
+    parent = path.posix.dirname(parent)
   }
 }
 
@@ -127,7 +168,7 @@ export async function renameJournalsForFormatChange(
   newFormat: string
 ): Promise<JournalRenameResult> {
   const result: JournalRenameResult = { renamed: 0, skipped: 0, failed: 0 }
-  const folder = journalFolder.replace(/^\/+|\/+$/g, '')
+  const folder = normalizeJournalFolder(journalFolder)
   if (!folder) return result
 
   if (!isCompleteJournalFormat(newFormat)) {
@@ -138,7 +179,7 @@ export async function renameJournalsForFormatChange(
   }
 
   const dir = path.join(vaultPath, folder)
-  const fileNames = await listFileNames(dir)
+  const fileNames = await listFilesRecursive(dir)
   if (!fileNames) return result
 
   const plan = planJournalRenames(fileNames, oldFormat, newFormat)
@@ -164,6 +205,7 @@ export async function renameJournalsForFormatChange(
     }
 
     try {
+      await fs.mkdir(path.dirname(path.join(dir, to)), { recursive: true })
       await fs.rename(path.join(dir, from), path.join(dir, to))
     } catch (error) {
       result.failed += 1
@@ -176,6 +218,7 @@ export async function renameJournalsForFormatChange(
       if (row) updateNoteMetadata(db, row.id, { path: toRel })
       carryPositionToPath(db, fromRel, toRel)
       result.renamed += 1
+      await pruneEmptyParents(dir, from)
     } catch (error) {
       // File and row must agree, or the rebuild mints a new id for the moved
       // file and strands the old row. Put the file back.

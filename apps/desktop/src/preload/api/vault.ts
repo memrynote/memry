@@ -40,6 +40,9 @@ export const vaultEvents = {
   onVaultListChanged: (callback: () => void): (() => void) =>
     subscribe<void>(VaultChannels.events.LIST_CHANGED, () => callback()),
 
+  onVaultConfigChanged: (callback: (config: unknown) => void): (() => void) =>
+    subscribe<unknown>(VaultChannels.events.CONFIG_CHANGED, callback),
+
   onVaultIndexRecovered: (
     callback: (event: { reason: string; filesIndexed: number; duration: number }) => void
   ): (() => void) =>

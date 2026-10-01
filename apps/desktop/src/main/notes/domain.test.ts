@@ -9,6 +9,13 @@ vi.mock('../vault/notes', () => ({
   getNoteById: vi.fn()
 }))
 
+// No index row: every note here is a plain note, never a journal entry.
+vi.mock('../database', () => ({ getIndexDatabase: vi.fn(() => ({})) }))
+vi.mock('@main/database/queries/notes', () => ({
+  getNoteCacheById: vi.fn(() => undefined),
+  extractDateFromPath: vi.fn(() => null)
+}))
+
 vi.mock('./runtime-effects', () => ({
   syncNoteCreate: vi.fn(),
   syncNoteUpdate: vi.fn(),

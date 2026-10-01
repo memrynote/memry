@@ -1,6 +1,7 @@
 import { FileText, FileType2, Image, Music, Video } from '@/lib/icons'
 import { getExtension } from '@memry/shared/file-types'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { PageJournalIcon } from '@/lib/icons/page-icons'
 import type { FolderInfo } from '../../../preload/index.d'
 import type { SidebarSortMode } from '@memry/contracts/sidebar-sort'
 import { compareNotes, compareFolders } from './notes-tree-sort'
@@ -323,6 +324,8 @@ export function getFileIcon(note: NoteListItem): React.ReactElement {
 
   const fileType = note.fileType ?? 'markdown'
   const iconClass = 'h-4 w-4 text-muted-foreground shrink-0'
+
+  if (note.journalDate) return <PageJournalIcon className={iconClass} />
 
   switch (fileType) {
     case 'pdf':
