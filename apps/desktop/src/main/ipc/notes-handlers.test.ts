@@ -70,6 +70,7 @@ vi.mock('../notes/domain', () => ({
   updateNoteCommand: vi.fn(),
   renameNoteCommand: vi.fn(),
   moveNoteCommand: vi.fn(),
+  renameFolderCommand: vi.fn(),
   deleteNoteCommand: vi.fn(),
   setNoteLocalOnlyCommand: vi.fn()
 }))
@@ -490,7 +491,7 @@ describe('notes-handlers', () => {
     })
 
     it('should rename a folder', async () => {
-      ;(notesVault.renameFolder as Mock).mockResolvedValue(undefined)
+      ;(notesDomain.renameFolderCommand as Mock).mockResolvedValue(undefined)
 
       const result = await invokeHandler(NotesChannels.invoke.RENAME_FOLDER, {
         oldPath: 'old-name',
@@ -498,7 +499,7 @@ describe('notes-handlers', () => {
       })
 
       expect(result).toEqual({ success: true })
-      expect(notesVault.renameFolder).toHaveBeenCalledWith('old-name', 'new-name')
+      expect(notesDomain.renameFolderCommand).toHaveBeenCalledWith('old-name', 'new-name')
     })
   })
 

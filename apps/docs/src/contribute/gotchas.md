@@ -180,6 +180,8 @@ Moving a folder rewrites the note paths, so **every folder-path mutation must re
 
 `useNoteTreeActions.refreshFolderTree()` refreshes both and is what rename, delete and drag-move call. Folder **creation** does not move note paths, so it still refreshes folders alone.
 
+The refresh only helps if the index already holds the new paths. `renameFolder` moves the index rows of everything under the folder itself (`moveIndexedNotesWithFolder`, `src/main/vault/folder-move-index.ts`) before it returns. It used to leave that to the watcher's per-file unlink + add, so a missed watcher event kept the folder at its old path until a restart (#2513). Once the rows have moved, the watcher's events for those files do nothing. Rows whose journal date the move would change are still left to the watcher.
+
 An empty folder cannot produce a phantom, so this class of bug hides until a folder has notes in it — the first rename after creating a folder always looks correct.
 
 Related: folder expanded state is keyed by the `folder-<path>` node id and persisted, in both renderers. A path change must **remap** those keys (`remapExpandedFolderIds`, exposed as `renameNode` on both tree handles), or the folder and everything open inside it collapse on rename and the dead ids linger in storage.

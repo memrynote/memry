@@ -1649,6 +1649,45 @@ describe('notes operations', () => {
         await notes.renameFolder('Life', 'Archive/Life')
         expect(journalSetting()).toBe('Archive/Life/Daily')
       })
+
+      it('moves the index rows of nested notes and files without the watcher (#2513)', async () => {
+        // #given a folder with a subfolder, notes at both levels, and an image
+        const top = await notes.createNote({ title: 'Top', content: 'T.', folder: 'Work' })
+        const deep = await notes.createNote({ title: 'Deep', content: 'D.', folder: 'Work/Sub' })
+        const outside = await notes.createNote({ title: 'Out', content: 'O.', folder: 'Other' })
+        await notes.createFolder('Archive')
+        fs.writeFileSync(path.join(tempVault.path, 'Work', 'pic.png'), Buffer.from([0x89, 0x50]))
+        const { insertNoteCache, listNoteCacheUnderFolder } =
+          await import('@main/database/queries/notes')
+        insertNoteCache(testDb.db, {
+          id: 'image-in-work',
+          path: 'Work/pic.png',
+          title: 'pic',
+          fileType: 'image',
+          createdAt: '2026-01-15T12:00:00.000Z',
+          modifiedAt: '2026-01-15T12:00:00.000Z'
+        })
+
+        // #when the folder is moved under another one, with no watcher running
+        await notes.renameFolder('Work', 'Archive/Work')
+
+        // #then every row points at the new path, ids kept, none left behind
+        expect(listNoteCacheUnderFolder(testDb.db, 'Work')).toEqual([])
+        expect(
+          listNoteCacheUnderFolder(testDb.db, 'Archive/Work').sort((a, b) =>
+            a.path.localeCompare(b.path)
+          )
+        ).toEqual(
+          [
+            { id: top.id, path: 'Archive/Work/Top.md' },
+            { id: deep.id, path: 'Archive/Work/Sub/Deep.md' },
+            { id: 'image-in-work', path: 'Archive/Work/pic.png' }
+          ].sort((a, b) => a.path.localeCompare(b.path))
+        )
+        expect(listNoteCacheUnderFolder(testDb.db, 'Other')).toEqual([
+          { id: outside.id, path: outside.path }
+        ])
+      })
     })
 
     describe('deleteFolder', () => {

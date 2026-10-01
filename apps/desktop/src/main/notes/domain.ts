@@ -3,6 +3,7 @@ import {
   updateNote,
   renameNote,
   moveNote,
+  renameFolder,
   deleteNote,
   getNoteById,
   type Note,
@@ -68,6 +69,18 @@ export async function moveNoteCommand(id: string, newFolder: string): Promise<No
   const note = await moveNote(id, newFolder)
   if (before === null && extractDateFromPath(note.path) === null) syncNoteUpdate(id)
   return note
+}
+
+/**
+ * A folder rename or move carries the index rows of everything inside it, so
+ * each moved note's new path is pushed the way `moveNoteCommand` pushes one.
+ * Journals are skipped: their path is derived from the date on every device.
+ */
+export async function renameFolderCommand(oldPath: string, newPath: string): Promise<void> {
+  const movedNotes = await renameFolder(oldPath, newPath)
+  for (const note of movedNotes) {
+    if (note.date === null) syncNoteUpdate(note.id)
+  }
 }
 
 export async function deleteNoteCommand(id: string): Promise<void> {
