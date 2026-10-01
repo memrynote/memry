@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   getPropertyRows: vi.fn(),
   folderView: {
     rows: [] as NoteWithProperties[],
+    properties: [] as Array<{ name: string; type: string; usageCount: number }>,
     scope: null as unknown,
     initialViewName: undefined as string | undefined
   }
@@ -61,7 +62,7 @@ vi.mock('@/hooks/use-folder-view', () => ({
       unfilteredCount: mocks.folderView.rows.length,
       hasMore: false,
       loadMore: vi.fn(),
-      availableProperties: [],
+      availableProperties: mocks.folderView.properties,
       builtInColumns: [{ id: 'title', displayName: 'Title', type: 'text' }],
       formulasMap: {},
       isLoading: false,
@@ -346,6 +347,50 @@ describe('ViewBlockRenderer over the journal', () => {
       source: { kind: 'journal' },
       layout: 'chart'
     })
+  })
+})
+
+describe('ViewBlockRenderer chart over a tag', () => {
+  beforeEach(() => {
+    mocks.openSidebarItem.mockReset()
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(640)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    mocks.folderView.properties = []
+  })
+
+  it('plots every matching note, ignoring the list limit, and opens the note on a day', () => {
+    // #given two rated notes, created yesterday and today, under a block limited to one row
+    const today = localDayKey(new Date())
+    const at = (day: string) => new Date(`${day}T12:00:00`).toISOString()
+    mocks.folderView.properties = [{ name: 'rating', type: 'number', usageCount: 2 }]
+    mocks.folderView.rows = [
+      row('Old', { created: at(addDays(today, -1)), properties: { rating: 3 } }),
+      row('New', { created: at(today), properties: { rating: 5 } })
+    ]
+
+    renderBlock(
+      JSON.stringify({
+        source: { kind: 'tag', tag: 'reading' },
+        layout: 'chart',
+        limit: 1,
+        chart: { property: 'rating', type: 'bar', rangeDays: 7 }
+      })
+    )
+
+    // #then both notes are bars: a limit shapes a list, not a range
+    const chart = screen.getByRole('img', { name: 'rating over the last 7 days' })
+    expect(chart.querySelectorAll('rect')).toHaveLength(2)
+
+    // #when today's bar is clicked
+    fireEvent.pointerMove(chart, { clientX: 630 })
+    fireEvent.click(chart)
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'note', entityId: 'New' }),
+      undefined
+    )
   })
 })
 

@@ -71,6 +71,30 @@ describe('buildChartDays', () => {
     expect(summed.map((d) => d.value)).toEqual([14, 0, 0])
   })
 
+  it.each([
+    ['min', 2],
+    ['max', 9],
+    ['count', 3]
+  ] as const)('reads several entries on a day as their %s', (aggregate, expected) => {
+    const rows = [
+      row('a', '2026-09-01', { steps: 2 }),
+      row('b', '2026-09-01', { steps: 9 }),
+      row('c', '2026-09-01', { steps: '4' })
+    ]
+    const [first] = buildChartDays({ rows, property: 'steps', kind: 'number', days, aggregate })
+    expect(first.value).toBe(expected)
+  })
+
+  it('reads checkbox values written as text, and leaves anything else out', () => {
+    const rows = [
+      row('a', '2026-09-01', { workout: 'yes' }),
+      row('b', '2026-09-02', { workout: 'no' }),
+      row('c', '2026-09-03', { workout: 'maybe' })
+    ]
+    const result = buildChartDays({ rows, property: 'workout', kind: 'boolean', days })
+    expect(result.map((d) => d.value)).toEqual([1, 0, null])
+  })
+
   it('marks a checkbox day done when any entry that day is checked', () => {
     const rows = [
       row('a', '2026-09-01', { workout: false }),

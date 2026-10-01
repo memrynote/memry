@@ -52,7 +52,10 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string, values?: Record<string, unknown>) => values?.count ?? key })
+  useT: () => ({
+    t: (key: string, values?: Record<string, unknown>) => values?.count ?? key,
+    i18n: { language: 'en' }
+  })
 }))
 
 vi.mock('@/lib/logger', () => ({
@@ -118,6 +121,10 @@ vi.mock('@/services/notes-service', () => ({
     move: mocks.moveNote,
     delete: mocks.deleteNote
   }
+}))
+
+vi.mock('@/hooks/use-property-definitions', () => ({
+  usePropertyDefinitions: () => ({ getDefinition: () => undefined })
 }))
 
 vi.mock('@/hooks/use-folder-view', () => ({
@@ -216,7 +223,9 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   ),
   DropdownMenuSub: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuSubTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuSubContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+  DropdownMenuSubContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuRadioGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuRadioItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }))
 
 vi.mock('@/components/ui/alert-dialog', () => ({
@@ -623,6 +632,35 @@ describe('FolderViewPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear table filters' }))
     expect(mocks.updateFilters).toHaveBeenCalledWith(undefined)
+  })
+
+  it('shows a chart as tab state without writing it into the saved view', async () => {
+    // #given a note rated today
+    mocks.folderState.notes = [
+      {
+        ...note,
+        created: new Date().toISOString(),
+        modified: new Date().toISOString(),
+        properties: { rating: 4 }
+      }
+    ]
+    renderWithProviders(<FolderViewPage scope={{ kind: 'folder', path: 'Work/Plans' }} />)
+
+    // #when the layout switches to Chart and a property is picked
+    await userEvent.click(screen.getByRole('button', { name: 'editor.chart.layout' }))
+    expect(await screen.findByTestId('folder-chart')).toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('option', { name: /rating/ }))
+
+    // #then the chart draws and the folder's view config is untouched
+    expect(await screen.findByText('editor.chart.average')).toBeInTheDocument()
+    expect(mocks.updateView).not.toHaveBeenCalled()
+
+    // #and leaving it for a list writes only the list
+    await userEvent.click(
+      screen.getByRole('button', { name: 'phaseF.componentsFolderViewViewSwitcher.list' })
+    )
+    expect(screen.queryByTestId('folder-chart')).toBeNull()
+    expect(mocks.updateView).toHaveBeenCalledWith({ type: 'list' })
   })
 
   it('drives view toolbar and destructive dialogs', async () => {
