@@ -1575,38 +1575,95 @@ describe('ContentArea', () => {
     })
   })
 
-  it('inserts new tables with the header row markdown is going to give them anyway', async () => {
+  it('asks for a size before /table inserts anything, then inserts that size', async () => {
+    // #given an empty line, and BlockNote's own `/table` row, which would
+    // insert a fixed 2x3 table straight away
     const defaultTableClick = vi.fn()
-    const table = {
-      id: 'new-table',
-      type: 'table',
-      content: {
-        type: 'tableContent',
-        columnWidths: [null, null],
-        rows: [{ cells: [{}, {}] }, { cells: [{}, {}] }]
-      }
-    }
     vi.mocked(getDefaultReactSlashMenuItems).mockReturnValueOnce([
       { key: 'table', title: 'Table', group: 'Basic blocks', onItemClick: defaultTableClick }
     ] as never)
-    contentAreaMocks.editor.getTextCursorPosition.mockReturnValue({ block: table })
+    const empty = createBlock('empty-line', { content: [] })
+    contentAreaMocks.editor.getTextCursorPosition.mockReturnValue({ block: empty })
+    contentAreaMocks.editor.setTextCursorPosition = vi.fn()
+    contentAreaMocks.editor.focus = vi.fn()
+    // BlockNote's helper reads the caret block's content kind to place the caret.
+    contentAreaMocks.editor.schema = {
+      blockSchema: { diagram: {}, paragraph: { content: 'inline' }, table: { content: 'table' } }
+    }
+    contentAreaMocks.editor.updateBlock.mockImplementationOnce(
+      (block: any, update: Record<string, unknown>) => ({ ...block, ...update })
+    )
+    const tiptap = contentAreaMocks.editor._tiptapEditor as Record<string, unknown>
+    const caretView = {
+      state: { selection: { from: 1 } },
+      coordsAtPos: vi.fn(() => ({ left: 10, right: 10, top: 20, bottom: 36 })),
+      // `TableBorderHandles` reads the same view; no table here.
+      domAtPos: vi.fn(() => ({ node: document.body, offset: 0 }))
+    }
+    tiptap.editorView = caretView
+    tiptap.view = caretView
 
     render(<ContentArea noteId="note-1" />)
     const slashController = contentAreaMocks.suggestionControllers.find(
       (controller) => controller.triggerCharacter === '/'
     )
-    const items = await slashController.getItems('table')
+    const [tableItem] = await slashController.getItems('table')
 
-    items[0].onItemClick()
+    // #when the row is picked
+    act(() => tableItem.onItemClick())
 
-    expect(defaultTableClick).toHaveBeenCalledTimes(1)
-    expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(
-      table,
-      expect.objectContaining({
-        type: 'table',
-        content: expect.objectContaining({ headerRows: 1 })
-      })
+    // #then the grid is up and nothing is inserted yet
+    const grid = await screen.findByRole('application', { name: /table size/i })
+    expect(defaultTableClick).not.toHaveBeenCalled()
+    expect(contentAreaMocks.editor.updateBlock).not.toHaveBeenCalled()
+
+    // #when a 4-row, 2-column size is chosen from the keyboard
+    fireEvent.keyDown(grid, { key: 'ArrowDown' })
+    fireEvent.keyDown(grid, { key: 'ArrowLeft' })
+    fireEvent.keyDown(grid, { key: 'Enter' })
+
+    // #then that table replaces the empty line, header row included, because
+    // markdown is going to give it one anyway
+    expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(empty, {
+      type: 'table',
+      content: {
+        type: 'tableContent',
+        headerRows: 1,
+        rows: Array.from({ length: 4 }, () => ({ cells: ['', ''] }))
+      }
+    })
+    expect(screen.queryByRole('application', { name: /table size/i })).not.toBeInTheDocument()
+  })
+
+  it('closes the /table size grid on Escape with nothing inserted', async () => {
+    vi.mocked(getDefaultReactSlashMenuItems).mockReturnValueOnce([
+      { key: 'table', title: 'Table', group: 'Basic blocks', onItemClick: vi.fn() }
+    ] as never)
+    contentAreaMocks.editor.focus = vi.fn()
+    const tiptap = contentAreaMocks.editor._tiptapEditor as Record<string, unknown>
+    const caretView = {
+      state: { selection: { from: 1 } },
+      coordsAtPos: vi.fn(() => ({ left: 10, right: 10, top: 20, bottom: 36 })),
+      domAtPos: vi.fn(() => ({ node: document.body, offset: 0 }))
+    }
+    tiptap.editorView = caretView
+    tiptap.view = caretView
+
+    render(<ContentArea noteId="note-1" />)
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
     )
+    const [tableItem] = await slashController.getItems('table')
+    act(() => tableItem.onItemClick())
+    const grid = await screen.findByRole('application', { name: /table size/i })
+
+    fireEvent.keyDown(grid, { key: 'Escape' })
+
+    await waitFor(() =>
+      expect(screen.queryByRole('application', { name: /table size/i })).not.toBeInTheDocument()
+    )
+    expect(contentAreaMocks.editor.focus).toHaveBeenCalled()
+    expect(contentAreaMocks.editor.updateBlock).not.toHaveBeenCalled()
   })
 
   it('offers the diagram row under /mermaid, in Memry’s words', async () => {

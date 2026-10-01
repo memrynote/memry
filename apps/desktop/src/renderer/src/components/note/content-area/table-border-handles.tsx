@@ -11,9 +11,9 @@ import {
 import { createPortal } from 'react-dom'
 import { TableHandlesExtension } from '@blocknote/core/extensions'
 import {
-  AddButton,
+  ColorPickerButton,
   ComponentsContext,
-  DeleteButton,
+  SplitButton,
   TableCellMenu,
   TableHandleMenu,
   useBlockNoteEditor,
@@ -26,6 +26,7 @@ import { useT } from '@memry/i18n/renderer'
 
 import { getLiveProseMirrorView } from './live-prosemirror-view'
 import { isTableMenuShortcut } from './table-keyboard-menu'
+import { TableLineActions } from './table-line-actions'
 
 /**
  * Table row/column/cell handles that sit ON the table's own border lines.
@@ -168,6 +169,7 @@ interface Geometry {
 /** The caret's cell, as a box in its wrapper's content coordinates. */
 interface FocusRing {
   wrapper: HTMLElement
+  cell: HTMLTableCellElement
   inlineStart: number
   blockStart: number
   inlineSize: number
@@ -230,6 +232,7 @@ function measureFocus(cell: HTMLTableCellElement): FocusRing | null {
   const rect = cell.getBoundingClientRect()
   return {
     wrapper: seam.wrapper,
+    cell,
     inlineStart: inlineStartOf(rect),
     blockStart: blockStartOf(rect),
     inlineSize: rect.width,
@@ -664,7 +667,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
 
   let handles: ReactNode = null
   if (geometry && menuComponents) {
-    const { Root, Trigger } = menuComponents.Generic.Menu
+    const { Root, Trigger, Divider } = menuComponents.Generic.Menu
     const targetCell = geometry.cell
     handles = createPortal(
       <ComponentsContext.Provider value={menuComponents}>
@@ -723,7 +726,18 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
                   </button>
                 </Trigger>
                 {bar.kind === 'cell' ? (
-                  <TableCellMenu />
+                  // BlockNote's two cell items, then the row and column
+                  // actions: the cell nub is the pointer's one way to them
+                  // that honours a multi-row or multi-column selection, since
+                  // the row and column menus keep BlockNote's single-line items.
+                  <TableCellMenu>
+                    <SplitButton />
+                    <ColorPickerButton />
+                    <Divider />
+                    <TableLineActions cell={targetCell} axis="row" />
+                    <Divider />
+                    <TableLineActions cell={targetCell} axis="column" />
+                  </TableCellMenu>
                 ) : (
                   <TableHandleMenu orientation={bar.kind} />
                 )}
@@ -742,8 +756,8 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
    * One menu rather than the pointer's two, because a keyboard has no cell to
    * point at: the caret's cell names both a row and a column at once, so both
    * sets of actions belong in the menu that cell opens. The items are
-   * BlockNote's own `AddButton` / `DeleteButton`, so the edits and their labels
-   * are the same ones the nubs perform.
+   * `TableLineActions`, so a cell selection over several rows or columns is
+   * deleted or matched with as many new ones in one go.
    *
    * Mounted for as long as the caret is in a cell, not raised by the shortcut:
    * Radix opens a dropdown from an event on its trigger, so the trigger has to
@@ -786,13 +800,9 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
             else, so the class is also what names this menu in the E2E. */}
           <Dropdown className="bn-table-handle-menu memry-table-keyboard-menu">
             <Label>{t('editor.table.keyboardMenuTitle', position)}</Label>
-            <DeleteButton orientation="row" />
-            <AddButton orientation="row" side="above" />
-            <AddButton orientation="row" side="below" />
+            <TableLineActions cell={focusRing.cell} axis="row" />
             <Divider />
-            <DeleteButton orientation="column" />
-            <AddButton orientation="column" side="left" />
-            <AddButton orientation="column" side="right" />
+            <TableLineActions cell={focusRing.cell} axis="column" />
           </Dropdown>
         </Root>
       </ComponentsContext.Provider>,

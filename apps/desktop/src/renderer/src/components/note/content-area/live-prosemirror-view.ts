@@ -30,7 +30,10 @@ export function getLiveTiptapView(tiptap: TiptapLike | null | undefined): Editor
 }
 
 export function getLiveProseMirrorView(
-  editor: BlockNoteEditor | null | undefined
+  // Any editor, whatever its schema: only the two view fields are read, and an
+  // editor typed against Memry's custom schema is not assignable to the
+  // default-schema `BlockNoteEditor`.
+  editor: BlockNoteEditor | object | null | undefined
 ): EditorView | undefined {
   const host = editor as unknown as TiptapHost | null | undefined
   const tiptap = host?._tiptapEditor

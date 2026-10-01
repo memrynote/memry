@@ -170,7 +170,19 @@
     },
     "table": {
       "keyboardMenuAria": "Table actions for row {row}, column {column}",
-      "keyboardMenuTitle": "Row {row} · Column {column}"
+      "keyboardMenuTitle": "Row {row} · Column {column}",
+      "sizePicker": {
+        "aria": "Table size. Use the arrow keys to choose rows and columns, then press Enter.",
+        "size": "{rows, plural, one {# row} other {# rows}} × {columns, plural, one {# column} other {# columns}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, one {Delete row} other {Delete # rows}}",
+        "addRowsAbove": "{count, plural, one {Add row above} other {Add # rows above}}",
+        "addRowsBelow": "{count, plural, one {Add row below} other {Add # rows below}}",
+        "deleteColumns": "{count, plural, one {Delete column} other {Delete # columns}}",
+        "addColumnsLeft": "{count, plural, one {Add column left} other {Add # columns left}}",
+        "addColumnsRight": "{count, plural, one {Add column right} other {Add # columns right}}"
+      }
     },
     "list": {
       "bulleted": "Bulleted list",
