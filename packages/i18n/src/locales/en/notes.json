@@ -304,6 +304,83 @@
       "invalidShape": "This view’s definition has no source. Pick one above, or fix it below.",
       "definition": "Definition"
     },
+    "chart": {
+      "title": "Chart",
+      "subtext": "Plot a property over time: a line, bars or a calendar heatmap",
+      "layout": "Chart",
+      "settings": "Chart settings",
+      "chooseProperty": "Choose what to plot",
+      "source": "Source",
+      "headerMeta": "{range} · {type}",
+      "property": "Property",
+      "noProperties": "Nothing to plot yet. Add a property to a journal entry or a note first.",
+      "chartType": "Chart",
+      "suggested": "Suggested",
+      "types": {
+        "line": "Line",
+        "bar": "Bar",
+        "heatmap": "Heatmap"
+      },
+      "range": "Range",
+      "lastDays": "{count, plural, one {Last day} other {Last # days}}",
+      "sameDay": "Same-day entries",
+      "aggregates": {
+        "average": "Average",
+        "sum": "Sum",
+        "min": "Lowest",
+        "max": "Highest",
+        "count": "Count"
+      },
+      "missingDays": "Missing days",
+      "missing": {
+        "gap": "Leave a gap",
+        "zero": "Count as zero"
+      },
+      "dateFrom": {
+        "label": "Date from",
+        "created": "Created",
+        "modified": "Modified"
+      },
+      "propertyTypes": {
+        "text": "Text",
+        "number": "Number",
+        "checkbox": "Checkbox",
+        "date": "Date",
+        "url": "URL",
+        "status": "Status",
+        "select": "Select",
+        "multiselect": "Multi-select",
+        "relation": "Relation",
+        "project": "Project",
+        "rating": "Rating"
+      },
+      "noEntry": "No entry",
+      "done": "Done",
+      "notDone": "Not done",
+      "logged": "Logged",
+      "valueCount": "{count, plural, one {# value} other {# values}}",
+      "average": "Average",
+      "vsPrevious": "vs previous period",
+      "lowest": "Lowest",
+      "currentStreak": "Current streak",
+      "longestStreak": "Longest streak",
+      "dayCount": "{count, plural, one {# day} other {# days}}",
+      "doneDays": "Done",
+      "loggedDays": "Logged",
+      "mostCommon": "Most common",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} over the last {days} days",
+      "noData": "Nothing recorded in this range yet.",
+      "loadFailed": "Could not load this chart. The entries themselves are untouched.",
+      "sourceJournal": "Journal",
+      "history": {
+        "show": "Show history",
+        "title": "{property} history",
+        "range": "Last 13 weeks",
+        "insert": "Copy as chart block",
+        "copied": "Chart block copied. Paste it into any note."
+      }
+    },
     "slashMenu": {
       "aria": "Blocks and actions",
       "groups": {

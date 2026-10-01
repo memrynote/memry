@@ -42,6 +42,7 @@ export function useJournalChangeEvents(): void {
       void queryClient.invalidateQueries({
         queryKey: journalKeys.heatmap(Number(date.slice(0, 4)))
       })
+      void queryClient.invalidateQueries({ queryKey: journalKeys.propertyRows() })
     }
 
     const unsubscribeCreated = onJournalEntryCreated((event) => invalidate(event.date))

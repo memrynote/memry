@@ -147,6 +147,8 @@ note. It starts as the ten notes you changed most recently, with its source menu
 open so you can point it somewhere else:
 
 - **All notes**: every note outside the journal
+- **Journal**: your journal entries, one per day. A view over the journal is
+  always a [chart](#charts).
 - **Folder**: the notes in a folder and its subfolders
 - **Tag**: the notes, tasks and inbox items carrying a tag
 
@@ -157,7 +159,7 @@ The header next to the source holds the rest:
   sort.
 - **Filter**, the same filter builder a folder page has. Filters set here apply on
   top of the saved view's.
-- **Layout**: list, table or gallery.
+- **Layout**: list, table, gallery or [chart](#charts).
 - **Open as tab** opens the folder or tag page itself, on the same saved view.
 
 The list stays current. Create, edit, tag or delete a note anywhere and the view
@@ -202,6 +204,52 @@ Use `{{date:YYYY-MM-DD}}` rather than `{{date}}`: the plain form is a long,
 localized date that a filter cannot compare against.
 
 </div>
+
+## Charts
+
+`/chart` (or `/graph`, `/plot`, `/heatmap`, `/tracker`) plots one property over
+time. It starts on the journal with its settings open, so the first step is to
+pick the property. Any view can also switch to the chart layout, which plots its
+folder's or tag's notes instead.
+
+The property's type picks the chart, marked **Suggested** in the settings:
+
+| Property       | Suggested chart                                                                 | Also                                   |
+| -------------- | ------------------------------------------------------------------------------- | -------------------------------------- |
+| Number, rating | Line, with the average, the change against the period before and the lowest day | Bar, heatmap                           |
+| Checkbox       | Heatmap of done days, with the current and longest streak                       | Bar                                    |
+| Select, status | Heatmap coloured by each option's own colour, with the most common value        | Bar of how often each value was picked |
+| Multi-select   | Bar of how often each value was picked                                          | Heatmap                                |
+| Anything else  | Heatmap of the days it was filled in                                            | Bar                                    |
+
+The settings also hold:
+
+- **Range**: the last 7, 30 or 90 days, half a year or a year, ending today.
+  Lines default to 30 days and heatmaps to half a year.
+- **Same-day entries**, for numbers: when more than one note falls on a day, their
+  average, sum, lowest, highest or count.
+- **Missing days**, for lines and bars of numbers: leave a gap, or count as zero.
+- **Date from**, for a folder or a tag: the day a note falls on, from when it was
+  created, last modified, or a date property. The journal always uses the entry's
+  own day.
+
+Hover a day to see its value. Click it to open that day's journal entry, or the
+note that falls on it.
+
+A chart is the same `memry-view` fence as a view, with a `chart` layout:
+
+````
+```memry-view
+{
+  "source": { "kind": "journal" },
+  "layout": "chart",
+  "chart": { "property": "sleep", "rangeDays": 90 }
+}
+```
+````
+
+Older versions of memrynote show a chart over a folder or a tag as a list, and a
+chart over the journal as a view they cannot read. Both leave the text as it is.
 
 ## Tables
 

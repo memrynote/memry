@@ -60,7 +60,7 @@ import { BodySyncPendingHint } from './body-sync-pending-hint'
 import { getCalloutSlashMenuItem } from './callout-block'
 import { getMathSlashMenuItem } from './math-block'
 import { getWhiteboardSlashMenuItem } from './whiteboard-block'
-import { getViewSlashMenuItem } from './view-block'
+import { getChartSlashMenuItem, getViewSlashMenuItem } from './view-block'
 import { createViewBlockKeysPlugin } from './view-block-keys-plugin'
 import { isFromWhiteboard } from './whiteboard-events'
 import { withTableHeaderRow, type TableInsertEditor } from './slash-menu-utils'
@@ -2710,6 +2710,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         group: t('editor.viewBlock.group'),
                         subtext: t('editor.viewBlock.subtext')
                       })
+                  // `/chart` is the same view block in its chart layout.
+                  const chartItem = inCell
+                    ? null
+                    : getChartSlashMenuItem(editor, {
+                        title: t('editor.chart.title'),
+                        group: t('editor.viewBlock.group'),
+                        subtext: t('editor.chart.subtext')
+                      })
                   // `/date` and `/remind` both surface the same two-row Date group:
                   // a plain date and a "Remind me — <subtitle>" (aliases overlap so
                   // either trigger shows both). Selecting inserts a configurable pill.
@@ -2798,6 +2806,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     { ...mathItem, id: 'math' },
                     ...(whiteboardItem ? [{ ...whiteboardItem, id: 'whiteboard' }] : []),
                     ...(viewItem ? [{ ...viewItem, id: 'view' }] : []),
+                    ...(chartItem ? [{ ...chartItem, id: 'chart' }] : []),
                     ...(taskItem ? [{ ...taskItem, id: 'task' }] : []),
                     ...dateItems,
                     { ...linkToNoteItem, id: 'link_to_note' },

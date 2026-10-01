@@ -7,19 +7,25 @@
  * filters, order and limit narrow the source, that a row opens where the
  * folder page would open it, that every control writes the definition back
  * into the document without losing keys a newer build wrote, and that `/view`
- * leaves a code block the rest of the pipeline already knows.
+ * leaves a code block the rest of the pipeline already knows. A journal source
+ * reads entries by day range instead, stubbed at the journal service.
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockNoteEditor } from '@blocknote/core'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
 import type { NoteWithProperties } from '@/hooks/use-folder-view'
+import { addDays, localDayKey } from '@/lib/property-chart/chart-model'
 
 const mocks = vi.hoisted(() => ({
   openSidebarItem: vi.fn(),
+  getPropertyRows: vi.fn(),
   folderView: {
     rows: [] as NoteWithProperties[],
+    properties: [] as Array<{ name: string; type: string; usageCount: number }>,
     scope: null as unknown,
     initialViewName: undefined as string | undefined
   }
@@ -39,6 +45,12 @@ vi.mock('@/hooks/use-notes-query', () => ({
   useNoteTagsQuery: () => ({ tags: [] }),
   useNoteFoldersQuery: () => ({ folders: [{ path: 'Projects' }] })
 }))
+vi.mock('@/services/journal-service', () => ({
+  journalService: { getPropertyRows: mocks.getPropertyRows }
+}))
+vi.mock('@/hooks/use-property-definitions', () => ({
+  usePropertyDefinitions: () => ({ getDefinition: () => undefined })
+}))
 vi.mock('@/hooks/use-folder-view', () => ({
   useFolderView: ({ scope, initialViewName }: { scope: unknown; initialViewName?: string }) => {
     mocks.folderView.scope = scope
@@ -50,7 +62,7 @@ vi.mock('@/hooks/use-folder-view', () => ({
       unfilteredCount: mocks.folderView.rows.length,
       hasMore: false,
       loadMore: vi.fn(),
-      availableProperties: [],
+      availableProperties: mocks.folderView.properties,
       builtInColumns: [{ id: 'title', displayName: 'Title', type: 'text' }],
       formulasMap: {},
       isLoading: false,
@@ -61,7 +73,7 @@ vi.mock('@/hooks/use-folder-view', () => ({
 }))
 
 import { editorSchema } from './editor-schema'
-import { getViewSlashMenuItem, ViewBlockRenderer } from './view-block'
+import { getChartSlashMenuItem, getViewSlashMenuItem, ViewBlockRenderer } from './view-block'
 
 function row(id: string, overrides: Partial<NoteWithProperties> = {}): NoteWithProperties {
   return {
@@ -99,16 +111,19 @@ function fakeEditor(overrides: { caretBlockId?: string; isEditable?: boolean } =
 }
 
 function renderBlock(definition: string, editor = fakeEditor()) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
-    <ViewBlockRenderer
-      block={{
-        id: 'view-1',
-        props: { language: 'memry-view' },
-        content: [{ type: 'text', text: definition, styles: {} }]
-      }}
-      editor={editor}
-      contentRef={() => {}}
-    />
+    <QueryClientProvider client={queryClient}>
+      <ViewBlockRenderer
+        block={{
+          id: 'view-1',
+          props: { language: 'memry-view' },
+          content: [{ type: 'text', text: definition, styles: {} }]
+        }}
+        editor={editor}
+        contentRef={() => {}}
+      />
+    </QueryClientProvider>
   )
   return editor
 }
@@ -265,6 +280,120 @@ describe('ViewBlockRenderer', () => {
   })
 })
 
+describe('ViewBlockRenderer over the journal', () => {
+  beforeEach(() => {
+    mocks.openSidebarItem.mockReset()
+    mocks.getPropertyRows.mockReset()
+    // jsdom lays nothing out; the chart draws only once it has a width.
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(640)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('charts a checkbox as a streak heatmap and opens a day in the journal', async () => {
+    // #given two journal days in a row with the workout checked
+    const today = localDayKey(new Date())
+    const yesterday = addDays(today, -1)
+    const entry = (id: string, date: string) => ({
+      id,
+      date,
+      path: `journal/${date}.md`,
+      title: date,
+      properties: { workout: true }
+    })
+    mocks.getPropertyRows.mockResolvedValue({
+      rows: [entry('j1', yesterday), entry('j2', today)],
+      properties: [{ name: 'workout', type: 'checkbox', count: 2 }]
+    } satisfies GetPropertyRowsOutput)
+
+    // #when the block charts it without naming a chart type
+    renderBlock(
+      JSON.stringify({
+        source: { kind: 'journal' },
+        layout: 'chart',
+        chart: { property: 'workout' }
+      })
+    )
+
+    // #then the checkbox picked the heatmap, over half a year ending today
+    const chart = await screen.findByRole('img', { name: 'workout over the last 182 days' })
+    const [from, to] = mocks.getPropertyRows.mock.calls[0] as [string, string]
+    expect(to).toBe(today)
+    expect(from).toBe(addDays(today, -363))
+    expect(screen.getByText('Current streak').nextElementSibling).toHaveTextContent('2 days')
+
+    // #and today's square opens today's entry
+    const cells = chart.querySelectorAll('rect')
+    fireEvent.click(cells[cells.length - 1])
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'journal', viewState: { date: today } })
+    )
+  })
+
+  it('turns the block into a chart when the journal is picked as its source', async () => {
+    // #given a list over the vault
+    mocks.getPropertyRows.mockResolvedValue({ rows: [], properties: [] })
+    const editor = renderBlock(JSON.stringify({ source: { kind: 'vault' }, layout: 'list' }))
+
+    // #when
+    await userEvent.click(screen.getByTestId('view-block-source'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Journal' }))
+
+    // #then the journal has no list here, so the layout follows
+    const [, update] = editor.updateBlock.mock.calls[0] as [string, { content: string }]
+    expect(JSON.parse(update.content)).toEqual({
+      source: { kind: 'journal' },
+      layout: 'chart'
+    })
+  })
+})
+
+describe('ViewBlockRenderer chart over a tag', () => {
+  beforeEach(() => {
+    mocks.openSidebarItem.mockReset()
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(640)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    mocks.folderView.properties = []
+  })
+
+  it('plots every matching note, ignoring the list limit, and opens the note on a day', () => {
+    // #given two rated notes, created yesterday and today, under a block limited to one row
+    const today = localDayKey(new Date())
+    const at = (day: string) => new Date(`${day}T12:00:00`).toISOString()
+    mocks.folderView.properties = [{ name: 'rating', type: 'number', usageCount: 2 }]
+    mocks.folderView.rows = [
+      row('Old', { created: at(addDays(today, -1)), properties: { rating: 3 } }),
+      row('New', { created: at(today), properties: { rating: 5 } })
+    ]
+
+    renderBlock(
+      JSON.stringify({
+        source: { kind: 'tag', tag: 'reading' },
+        layout: 'chart',
+        limit: 1,
+        chart: { property: 'rating', type: 'bar', rangeDays: 7 }
+      })
+    )
+
+    // #then both notes are bars: a limit shapes a list, not a range
+    const chart = screen.getByRole('img', { name: 'rating over the last 7 days' })
+    expect(chart.querySelectorAll('rect')).toHaveLength(2)
+
+    // #when today's bar is clicked
+    fireEvent.pointerMove(chart, { clientX: 630 })
+    fireEvent.click(chart)
+    expect(mocks.openSidebarItem).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'note', entityId: 'New' }),
+      undefined
+    )
+  })
+})
+
 describe('/view', () => {
   const mounted: Array<{ editor: BlockNoteEditor; element: HTMLElement }> = []
 
@@ -308,5 +437,26 @@ describe('/view', () => {
     })
     // and typing goes into the note, not into the JSON
     expect(editor.getTextCursorPosition().block.id).toBe(after.id)
+  })
+
+  it('/chart inserts the same block as a journal chart with no property yet', () => {
+    const editor = BlockNoteEditor.create({ schema: editorSchema })
+    const element = document.createElement('div')
+    document.body.appendChild(element)
+    editor.mount(element)
+    mounted.push({ editor: editor as unknown as BlockNoteEditor, element })
+    editor.replaceBlocks(editor.document, [{ type: 'paragraph' }])
+    editor.setTextCursorPosition(editor.document[0], 'end')
+
+    getChartSlashMenuItem(editor, { title: 'Chart', group: 'Insert', subtext: '' }).onItemClick()
+
+    const [chart] = editor.document
+    expect(chart.props).toEqual({ language: 'memry-view' })
+    const text = (chart.content as Array<{ text: string }>).map((run) => run.text).join('')
+    expect(JSON.parse(text)).toEqual({
+      source: { kind: 'journal' },
+      layout: 'chart',
+      chart: {}
+    })
   })
 })

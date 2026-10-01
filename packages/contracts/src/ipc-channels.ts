@@ -366,7 +366,11 @@ export const JournalChannels = {
 
     // Streak
     /** Get current and longest streak */
-    GET_STREAK: 'journal:getStreak'
+    GET_STREAK: 'journal:getStreak',
+
+    // Charts
+    /** Get entries' days and property values in a date range */
+    GET_PROPERTY_ROWS: 'journal:getPropertyRows'
   },
   events: {
     /** Journal entry was created */

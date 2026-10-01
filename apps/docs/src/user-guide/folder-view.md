@@ -64,6 +64,19 @@ Middle-click a row — in the table, list, or gallery layout — to open it in a
 the same gesture the sidebar rows support. On a tag page this follows the row's kind: a task
 row opens Tasks and an inbox row opens the Inbox, exactly as a normal click would.
 
+## Chart layout
+
+The layout toggle's last button turns the page into a chart of one property
+across the notes the view shows, after its filters. Pick the property, the chart
+and the range from the settings above the chart; **Date from** decides which day
+each note falls on (created, modified, or a date property). Clicking a day opens
+the note on it. See [Charts](/user-guide/notes/editing#charts) for what each
+property type draws.
+
+The chart is kept by the tab, not saved into the folder's views, so older
+versions of memrynote on your other devices keep reading the folder's views as
+before. Switch back with any other layout button.
+
 ## Density
 
 A density toggle in the toolbar:

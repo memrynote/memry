@@ -18,8 +18,7 @@ import {
   viewBlockScope,
   type ParsedViewBlock,
   type ViewBlockDefinition,
-  type ViewBlockLayout,
-  type ViewBlockSource
+  type ViewBlockLayout
 } from '@memry/shared/view-block'
 import { DEFAULT_COLUMNS, type FilterExpression } from '@memry/contracts/folder-view-api'
 import { useT } from '@memry/i18n/renderer'
@@ -27,32 +26,40 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { FilterBuilder } from '@/components/folder-view/filter-builder'
 import { FolderListView } from '@/components/folder-view/folder-list-view'
 import { FolderGalleryView } from '@/components/folder-view/folder-gallery-view'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { LayoutToggle } from '@/components/folder-view/layout-toggle'
 import type { TagMetaMap } from '@/components/folder-view/note-card-pieces'
+import { ChartSettings, patchChart } from '@/components/property-chart/chart-settings'
+import {
+  notesToChartRows,
+  type ChartPropertyOption
+} from '@/components/property-chart/use-chart-data'
 import { useFolderView, type NoteWithProperties } from '@/hooks/use-folder-view'
-import type { SidebarItem } from '@/contexts/tabs/types'
-import { useNoteFoldersQuery, useNoteTagsQuery } from '@/hooks/use-notes-query'
+import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { getViewDisplayName } from '@/lib/contract-display-names'
 import { evaluateFilter, isFilterEmpty } from '@/lib/filter-evaluator'
 import { sidebarItemForRow } from '@/lib/folder-row-navigation'
-import { Check, ChevronDown, Database, ExternalLink, Folder, Globe, Hash } from '@/lib/icons'
+import { Check, ChevronDown } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { sortNotes } from '@/lib/sort-notes'
 import { cn } from '@/lib/utils'
 import type { EditorSchema } from './editor-schema'
+import { JournalChartBody, ViewBlockChartArea } from './view-block-chart'
+import {
+  OpenSourceButton,
+  SourcePicker,
+  ViewBlockNotice,
+  ViewBlockSkeleton,
+  sourcePatch,
+  type DefinitionPatch,
+  type ViewBlockBodyProps
+} from './view-block-parts'
 
 const log = createLogger('ViewBlock')
 
@@ -82,8 +89,18 @@ export const STARTER_VIEW_DEFINITION: ViewBlockDefinition = {
   limit: 10
 }
 
+/** What `/chart` starts from: the journal, with the property still to pick. */
+export const STARTER_CHART_DEFINITION: ViewBlockDefinition = {
+  source: { kind: 'journal' },
+  layout: 'chart',
+  chart: {}
+}
+
 /** Blocks this window just inserted with `/view`; they open with the source menu up. */
 const freshViewBlocks = new Set<string>()
+
+/** Blocks this window just inserted with `/chart`; they open with the chart settings up. */
+const freshChartBlocks = new Set<string>()
 
 type TablePropertyTypes = NonNullable<React.ComponentProps<typeof FolderTableView>['propertyTypes']>
 
@@ -144,133 +161,6 @@ function useCaretInBlock(editor: ViewBlockEditor, blockId: string): boolean {
   return inside
 }
 
-function sourceLabel(source: ViewBlockSource, allNotesLabel: string): string {
-  if (source.kind === 'vault') return allNotesLabel
-  if (source.kind === 'folder') {
-    return source.path.split('/').filter(Boolean).pop() ?? (source.path || allNotesLabel)
-  }
-  return [source.tag, ...(source.andTags ?? [])].map((tag) => `#${tag}`).join(' + ')
-}
-
-function SourceIcon({ source }: { source: ViewBlockSource }): React.JSX.Element {
-  const Icon = source.kind === 'vault' ? Globe : source.kind === 'folder' ? Folder : Hash
-  return <Icon className="size-3.5 shrink-0" aria-hidden="true" />
-}
-
-/**
- * Where the rows come from: the whole vault, a folder or a tag. Changing it
- * drops the saved view, which belonged to the previous source.
- */
-function SourcePicker({
-  source,
-  disabled,
-  defaultOpen,
-  onChange
-}: {
-  source: ViewBlockSource | null
-  disabled: boolean
-  defaultOpen: boolean
-  onChange: (source: ViewBlockSource) => void
-}): React.JSX.Element {
-  const { t } = useT('notes')
-  const [open, setOpen] = useState(defaultOpen)
-  const { folders } = useNoteFoldersQuery({ enabled: open })
-  const { tags } = useNoteTagsQuery({ enabled: open })
-  const allNotes = t('editor.viewBlock.sourceVault')
-
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild disabled={disabled}>
-        <button
-          type="button"
-          data-testid="view-block-source"
-          aria-label={t('editor.viewBlock.sourceMenu')}
-          className="inline-flex h-7 min-w-0 max-w-[220px] items-center gap-1.5 rounded-md px-1.5 text-[13px] font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-default disabled:hover:bg-transparent"
-        >
-          {source ? (
-            <SourceIcon source={source} />
-          ) : (
-            <Database className="size-3.5" aria-hidden="true" />
-          )}
-          <span className="truncate">
-            {source ? sourceLabel(source, allNotes) : t('editor.viewBlock.chooseSource')}
-          </span>
-          {disabled ? null : (
-            <ChevronDown className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
-          )}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuItem className="gap-2" onSelect={() => onChange({ kind: 'vault' })}>
-          <Globe className="size-3.5 text-muted-foreground" aria-hidden="true" />
-          <span className="truncate">{allNotes}</span>
-          {source?.kind === 'vault' ? (
-            <Check className="ms-auto size-3.5 text-tint" aria-hidden="true" />
-          ) : null}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="gap-2">
-            <Folder className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            {t('editor.viewBlock.sourceFolder')}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="max-h-72 w-56 overflow-y-auto">
-            {folders.length === 0 ? (
-              <DropdownMenuItem disabled>{t('editor.viewBlock.noFolders')}</DropdownMenuItem>
-            ) : (
-              folders.map((folder) => (
-                <DropdownMenuItem
-                  key={folder.path}
-                  className="gap-2"
-                  onSelect={() => onChange({ kind: 'folder', path: folder.path })}
-                >
-                  <span className="truncate">{folder.path}</span>
-                  {source?.kind === 'folder' && source.path === folder.path ? (
-                    <Check className="ms-auto size-3.5 text-tint" aria-hidden="true" />
-                  ) : null}
-                </DropdownMenuItem>
-              ))
-            )}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="gap-2">
-            <Hash className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            {t('editor.viewBlock.sourceTag')}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="max-h-72 w-56 overflow-y-auto">
-            {tags.length === 0 ? (
-              <DropdownMenuItem disabled>{t('editor.viewBlock.noTags')}</DropdownMenuItem>
-            ) : (
-              tags.map((tag) => (
-                <DropdownMenuItem
-                  key={tag.tag}
-                  className="gap-2"
-                  onSelect={() => onChange({ kind: 'tag', tag: tag.tag })}
-                >
-                  <span className="truncate">#{tag.tag}</span>
-                  {source?.kind === 'tag' && source.tag.toLowerCase() === tag.tag.toLowerCase() ? (
-                    <Check className="ms-auto size-3.5 text-tint" aria-hidden="true" />
-                  ) : null}
-                </DropdownMenuItem>
-              ))
-            )}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
-type DefinitionPatch = Partial<Record<keyof ViewBlockDefinition, unknown>>
-
-interface ViewBlockBodyProps {
-  definition: ViewBlockDefinition
-  editable: boolean
-  onChange: (patch: DefinitionPatch) => void
-  sourceMenuOpen: boolean
-}
-
 type FolderViewResult = ReturnType<typeof useFolderView>
 
 /** The source's rows, narrowed by the block's own filters, order and limit. */
@@ -291,30 +181,6 @@ function applyDefinition(
   const sorted = sortNotes(matched, definition.order ?? activeView?.order)
   const limit = definition.limit ?? activeView?.limit
   return limit ? sorted.slice(0, limit) : sorted
-}
-
-/** The folder or tag page this block reads, on the same saved view. */
-function sourcePageItem(definition: ViewBlockDefinition, vaultTitle: string): SidebarItem {
-  const viewState = definition.view ? { folderViewName: definition.view } : undefined
-  if (definition.source.kind === 'tag') {
-    const { tag, andTags } = definition.source
-    return {
-      type: 'tag',
-      title: tag,
-      path: '/tags/' + tag,
-      entityId: tag,
-      viewState: { ...viewState, ...(andTags?.length ? { tagAndTags: andTags } : {}) }
-    }
-  }
-  const path = definition.source.kind === 'folder' ? definition.source.path : ''
-  return {
-    type: 'folder',
-    title: sourceLabel(definition.source, vaultTitle),
-    icon: 'folder',
-    path: `/folder/${encodeURIComponent(path)}`,
-    entityId: path,
-    viewState
-  }
 }
 
 /**
@@ -377,11 +243,15 @@ function ViewBlockHeader({
   editable,
   onChange,
   sourceMenuOpen,
+  chartSettingsOpen,
   folderView,
-  layout
-}: ViewBlockBodyProps & { folderView: FolderViewResult; layout: ViewBlockLayout }) {
-  const { t } = useT('notes')
-  const { openSidebarItem } = useSidebarNavigation()
+  layout,
+  chartProperties
+}: ViewBlockBodyProps & {
+  folderView: FolderViewResult
+  layout: ViewBlockLayout
+  chartProperties: ChartPropertyOption[]
+}) {
   const { views, activeView, availableProperties, builtInColumns } = folderView
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-1 pb-1.5">
@@ -389,8 +259,18 @@ function ViewBlockHeader({
         source={definition.source}
         disabled={!editable}
         defaultOpen={sourceMenuOpen}
-        onChange={(source) => onChange({ source, view: undefined })}
+        onChange={(source) => onChange(sourcePatch(source))}
       />
+      {layout === 'chart' ? (
+        <ChartSettings
+          chart={definition.chart ?? {}}
+          properties={chartProperties}
+          needsDateFrom
+          disabled={!editable}
+          defaultOpen={chartSettingsOpen}
+          onChange={(patch) => onChange({ chart: patchChart(definition.chart, patch) })}
+        />
+      ) : null}
       {views.length > 1 || definition.view ? (
         <SavedViewPicker
           views={views}
@@ -414,23 +294,13 @@ function ViewBlockHeader({
           />
           <LayoutToggle
             value={layout}
+            withChart
             onChange={(next) => onChange({ layout: next })}
             className="h-7 [&>button]:h-6 [&>button]:w-6"
           />
         </>
       ) : null}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 px-2 text-muted-foreground"
-        onClick={() =>
-          openSidebarItem(sourcePageItem(definition, t('editor.viewBlock.sourceVault')))
-        }
-      >
-        <ExternalLink />
-        {t('editor.viewBlock.openAsTab')}
-      </Button>
+      <OpenSourceButton definition={definition} />
     </div>
   )
 }
@@ -523,10 +393,21 @@ function ViewBlockRows({
  * changes invalidate the same query everywhere (`useFolderViewEvents`).
  */
 export function ViewBlockBody(props: ViewBlockBodyProps): React.JSX.Element {
-  const { definition } = props
+  const scope = viewBlockScope(props.definition.source)
+  if (scope.kind === 'journal') return <JournalChartBody {...props} />
+  return <FolderViewBlockBody {...props} scope={scope} />
+}
+
+function FolderViewBlockBody(
+  props: ViewBlockBodyProps & {
+    scope: Exclude<ReturnType<typeof viewBlockScope>, { kind: 'journal' }>
+  }
+): React.JSX.Element {
+  const { definition, scope } = props
   const { t } = useT('notes')
+  const { openSidebarItem } = useSidebarNavigation()
   const folderView = useFolderView({
-    scope: viewBlockScope(definition.source),
+    scope,
     initialViewName: definition.view
   })
   const { views, activeView, notes, unfilteredCount, hasMore, loadMore, isLoading } = folderView
@@ -541,6 +422,22 @@ export function ViewBlockBody(props: ViewBlockBodyProps): React.JSX.Element {
     () => applyDefinition(notes, definition, activeView),
     [notes, definition, activeView]
   )
+  // A chart plots every matching note: order and limit shape a list, not a range.
+  const chartNotes = useMemo(
+    () =>
+      layout === 'chart'
+        ? applyDefinition(notes, { ...definition, order: undefined, limit: undefined }, null)
+        : [],
+    [layout, notes, definition]
+  )
+  const chartRows = useMemo(
+    () => notesToChartRows(chartNotes, definition.chart?.dateFrom ?? 'created'),
+    [chartNotes, definition.chart?.dateFrom]
+  )
+  const chartProperties = useMemo<ChartPropertyOption[]>(
+    () => folderView.availableProperties.map((p) => ({ name: p.name, type: p.type })),
+    [folderView.availableProperties]
+  )
   const savedViewMissing =
     !isLoading && definition.view !== undefined && !views.some((v) => v.name === definition.view)
 
@@ -550,12 +447,19 @@ export function ViewBlockBody(props: ViewBlockBodyProps): React.JSX.Element {
   } else if (folderView.error) {
     body = <ViewBlockNotice body={t('editor.viewBlock.loadFailed')} destructive />
   } else if (isLoading) {
+    body = <ViewBlockSkeleton />
+  } else if (layout === 'chart') {
+    const byId = new Map(chartNotes.map((note) => [note.id, note]))
     body = (
-      <div className="flex flex-col gap-1.5 py-1" aria-busy="true">
-        <Skeleton className="h-5 w-full" />
-        <Skeleton className="h-5 w-4/5" />
-        <Skeleton className="h-5 w-3/5" />
-      </div>
+      <ViewBlockChartArea
+        chart={definition.chart ?? {}}
+        rows={chartRows}
+        properties={chartProperties}
+        onOpenDay={(day) => {
+          const note = byId.get(day.rowIds[0])
+          if (note) openSidebarItem(sidebarItemForRow(note), undefined)
+        }}
+      />
     )
   } else if (rows.length === 0) {
     body = <ViewBlockNotice body={t('editor.viewBlock.empty')} />
@@ -572,7 +476,12 @@ export function ViewBlockBody(props: ViewBlockBodyProps): React.JSX.Element {
 
   return (
     <>
-      <ViewBlockHeader {...props} folderView={folderView} layout={layout} />
+      <ViewBlockHeader
+        {...props}
+        folderView={folderView}
+        layout={layout}
+        chartProperties={chartProperties}
+      />
       {savedViewMissing ? (
         <p className="pb-1 text-xs text-muted-foreground">
           {t('editor.viewBlock.savedViewMissing', { name: definition.view ?? '' })}
@@ -585,22 +494,6 @@ export function ViewBlockBody(props: ViewBlockBodyProps): React.JSX.Element {
         {body}
       </div>
     </>
-  )
-}
-
-function ViewBlockNotice({
-  body,
-  destructive = false
-}: {
-  body: string
-  destructive?: boolean
-}): React.JSX.Element {
-  return (
-    <p
-      className={cn('px-3 py-2.5 text-sm', destructive ? 'text-destructive' : 'text-text-tertiary')}
-    >
-      {body}
-    </p>
   )
 }
 
@@ -662,10 +555,12 @@ export function ViewBlockRenderer({
   const caretInside = useCaretInBlock(editor, block.id)
   const editable = editor.isEditable
   const [sourceMenuOpen] = useState(() => freshViewBlocks.has(block.id))
+  const [chartSettingsOpen] = useState(() => freshChartBlocks.has(block.id))
   const frameRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     freshViewBlocks.delete(block.id)
+    freshChartBlocks.delete(block.id)
   }, [block.id])
 
   useClaimPresses(frameRef)
@@ -707,6 +602,7 @@ export function ViewBlockRenderer({
             editable={editable}
             onChange={write}
             sourceMenuOpen={sourceMenuOpen}
+            chartSettingsOpen={chartSettingsOpen}
           />
         ) : (
           <div className="flex items-center gap-1 pb-1.5">
@@ -714,7 +610,7 @@ export function ViewBlockRenderer({
               source={null}
               disabled={!editable}
               defaultOpen={sourceMenuOpen}
-              onChange={(source) => write({ source })}
+              onChange={(source) => write(sourcePatch(source))}
             />
           </div>
         )}
@@ -761,11 +657,34 @@ export const createViewBlockSpec = createReactBlockSpec(
 )
 
 /**
+ * Insert a view block for `definition` and move the caret past it. Left
+ * inside, the next keystroke would land in the definition's JSON rather than
+ * in the note.
+ */
+function insertViewBlock(
+  editor: EditorSchema['BlockNoteEditor'],
+  definition: ViewBlockDefinition,
+  fresh: Set<string>
+): void {
+  const inserted = insertOrUpdateBlockForSlashMenu(editor, {
+    type: 'codeBlock',
+    props: { language: VIEW_BLOCK_LANGUAGE },
+    content: serializeViewBlockDefinition({ ...definition })
+  })
+  fresh.add(inserted.id)
+  const next = editor.getNextBlock(inserted.id)
+  const nextIsEmptyParagraph =
+    next?.type === 'paragraph' && Array.isArray(next.content) && next.content.length === 0
+  const target =
+    next && nextIsEmptyParagraph
+      ? next
+      : editor.insertBlocks([{ type: 'paragraph' }], inserted.id, 'after')[0]
+  editor.setTextCursorPosition(target, 'start')
+}
+
+/**
  * `/view`: a view block listing the ten notes touched most recently, with its
  * source menu open so the reader can point it somewhere else at once.
- *
- * The caret is moved past the block. Left inside, the next keystroke would
- * land in the definition's JSON rather than in the note.
  */
 export function getViewSlashMenuItem(
   editor: EditorSchema['BlockNoteEditor'],
@@ -773,23 +692,26 @@ export function getViewSlashMenuItem(
 ) {
   return {
     title: labels.title,
-    onItemClick: () => {
-      const inserted = insertOrUpdateBlockForSlashMenu(editor, {
-        type: 'codeBlock',
-        props: { language: VIEW_BLOCK_LANGUAGE },
-        content: serializeViewBlockDefinition({ ...STARTER_VIEW_DEFINITION })
-      })
-      freshViewBlocks.add(inserted.id)
-      const next = editor.getNextBlock(inserted.id)
-      const nextIsEmptyParagraph =
-        next?.type === 'paragraph' && Array.isArray(next.content) && next.content.length === 0
-      const target =
-        next && nextIsEmptyParagraph
-          ? next
-          : editor.insertBlocks([{ type: 'paragraph' }], inserted.id, 'after')[0]
-      editor.setTextCursorPosition(target, 'start')
-    },
+    onItemClick: () => insertViewBlock(editor, STARTER_VIEW_DEFINITION, freshViewBlocks),
     aliases: ['view', 'query', 'base', 'database', 'saved view', 'embed view'],
+    group: labels.group,
+    subtext: labels.subtext
+  }
+}
+
+/**
+ * `/chart`: a chart over the journal with its settings open, so the first
+ * thing the reader does is pick the property to plot. The same view block as
+ * `/view`, in its chart layout.
+ */
+export function getChartSlashMenuItem(
+  editor: EditorSchema['BlockNoteEditor'],
+  labels: { title: string; group: string; subtext: string }
+) {
+  return {
+    title: labels.title,
+    onItemClick: () => insertViewBlock(editor, STARTER_CHART_DEFINITION, freshChartBlocks),
+    aliases: ['chart', 'graph', 'plot', 'heatmap', 'tracker', 'habit', 'trend'],
     group: labels.group,
     subtext: labels.subtext
   }

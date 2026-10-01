@@ -59,6 +59,46 @@ describe('parseViewBlockDefinition', () => {
     }
   })
 
+  it('reads a chart over the journal', () => {
+    const parsed = parseViewBlockDefinition(
+      JSON.stringify({
+        source: { kind: 'journal' },
+        layout: 'chart',
+        chart: { property: 'sleep', type: 'line', rangeDays: 30, aggregate: 'average' }
+      })
+    )
+
+    expect(parsed).toMatchObject({
+      ok: true,
+      definition: {
+        source: { kind: 'journal' },
+        layout: 'chart',
+        chart: { property: 'sleep', type: 'line', rangeDays: 30, aggregate: 'average' }
+      }
+    })
+  })
+
+  it('drops chart settings it cannot use and caps the range', () => {
+    // #given a chart a newer build, or a hand edit, wrote
+    const parsed = parseViewBlockDefinition(
+      JSON.stringify({
+        source: { kind: 'journal' },
+        layout: 'chart',
+        chart: { property: '', type: 'radar', rangeDays: 5000, missing: 'interpolate' }
+      })
+    )
+    if (!parsed.ok) throw new Error('expected a definition')
+
+    // #then the chart keeps only what this build draws
+    expect(parsed.definition.chart).toEqual({ rangeDays: 366 })
+    expect(parsed.raw.chart).toEqual({
+      property: '',
+      type: 'radar',
+      rangeDays: 5000,
+      missing: 'interpolate'
+    })
+  })
+
   it('keeps unknown keys for the next rewrite', () => {
     const parsed = parseViewBlockDefinition(
       JSON.stringify({ source: { kind: 'vault' }, groupBy: 'folder', layout: 'kanban' })
@@ -103,5 +143,6 @@ describe('viewBlockScope', () => {
   it('reads the whole vault through the root folder', () => {
     expect(viewBlockScope({ kind: 'vault' })).toEqual({ kind: 'folder', path: '' })
     expect(viewBlockScope({ kind: 'tag', tag: 'a' })).toEqual({ kind: 'tag', tag: 'a' })
+    expect(viewBlockScope({ kind: 'journal' })).toEqual({ kind: 'journal' })
   })
 })

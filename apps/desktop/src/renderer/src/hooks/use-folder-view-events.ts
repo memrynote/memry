@@ -24,6 +24,7 @@ import {
   onNoteExternalChange
 } from '@/services/notes-service'
 import { folderViewKeys } from './use-folder-view'
+import { journalKeys } from './journal-query-keys'
 
 /**
  * How long a burst of `notes:updated` events is coalesced before the folder-view
@@ -64,6 +65,9 @@ export function useFolderViewEvents(): void {
         updateTimer = null
       }
       void queryClient.invalidateQueries({ queryKey: folderViewKeys.all })
+      // Journal entries are notes: a property edited in one reaches charts
+      // over the journal through the same note events.
+      void queryClient.invalidateQueries({ queryKey: journalKeys.propertyRows() })
     }
 
     const invalidateAfterUpdateBurst = () => {

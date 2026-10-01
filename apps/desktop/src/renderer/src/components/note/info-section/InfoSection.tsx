@@ -39,6 +39,8 @@ export interface InfoSectionProps {
   hideAddButton?: boolean
   /** Types this surface cannot store, and so must not offer when adding. */
   excludeTypes?: PropertyType[]
+  /** An extra control per property row, such as the journal's history chart. */
+  renderPropertyAction?: (property: Property, hovered: boolean) => React.ReactNode
 }
 
 export const InfoSection = memo(function InfoSection({
@@ -55,7 +57,8 @@ export const InfoSection = memo(function InfoSection({
   disabled = false,
   variant = 'default',
   hideAddButton = false,
-  excludeTypes
+  excludeTypes,
+  renderPropertyAction
 }: InfoSectionProps) {
   const { t } = useT('notes')
   const [internalNewlyAdded, setInternalNewlyAdded] = useState<{
@@ -203,6 +206,11 @@ export const InfoSection = memo(function InfoSection({
                     disabled={disabled}
                     autoFocus={property.id === newlyAddedPropertyId}
                     isSortable={isSortable}
+                    renderAction={
+                      renderPropertyAction
+                        ? (hovered) => renderPropertyAction(property, hovered)
+                        : undefined
+                    }
                   />
                 ))}
               </ul>

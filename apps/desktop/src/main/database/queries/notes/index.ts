@@ -111,6 +111,9 @@ export {
   getJournalStreak,
   listJournalEntries,
   listJournalEntriesInRange,
+  getJournalPropertyRows,
+  type JournalPropertyRow,
+  type JournalPropertySummary,
   countJournalEntries,
   clearJournalCache
 } from './journal-queries'

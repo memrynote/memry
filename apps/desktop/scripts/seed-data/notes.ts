@@ -1,6 +1,6 @@
 import { generateNoteId } from '../../src/main/lib/id'
 import type { NoteFile } from '../seed-vault/file-writer'
-import { seedJournalDate, seedPastISOAt } from './date'
+import { seedDateOnly, seedJournalDate, seedPastISOAt } from './date'
 
 const dayOffset = (days: number, hour = 12): string => {
   return seedPastISOAt(days, hour, 30)
@@ -3006,6 +3006,27 @@ const EXTRA_PROPS: Record<string, Record<string, unknown>> = {
   [NOTE_IDS.travelLisbonFoodMap]: { energy: 'shallow', shared: true }
 }
 
+/**
+ * The day each finished book and watched film was finished, spread over the
+ * last six months so a folder chart of `books/` or `movies/` (Date from:
+ * finished) has a real shape. Never before the note was created, never after
+ * the seed day.
+ */
+const FINISHED_SPAN_DAYS = 175
+const FINISHED_SPECS = SPECS.filter((spec) => {
+  const status = spec.customProps?.status
+  return (status === 'done' || status === 'watched') && /^(books|movies)\//.test(spec.relativePath)
+})
+const FINISHED_ON = new Map(
+  FINISHED_SPECS.map((spec, i) => {
+    const spread = -Math.round(
+      3 + (i * FINISHED_SPAN_DAYS) / Math.max(1, FINISHED_SPECS.length - 1)
+    )
+    const offset = Math.min(0, Math.max(spec.daysAgoCreated + 1, spread))
+    return [spec.id, seedDateOnly(offset)]
+  })
+)
+
 /** Canonical note_metadata rows so note ids stay stable across indexing. */
 export const NOTE_METADATA = SPECS.map((spec) => ({
   id: spec.id,
@@ -3029,6 +3050,7 @@ export const NOTES: NoteFile[] = SPECS.map((spec) => {
         ? { area: FOLDER_AREAS[spec.relativePath.split('/')[0]] }
         : {}),
       ...(spec.customProps ?? {}),
+      ...(FINISHED_ON.has(spec.id) ? { finished: FINISHED_ON.get(spec.id) } : {}),
       ...(EXTRA_PROPS[spec.id] ?? {})
     },
     body: spec.body,

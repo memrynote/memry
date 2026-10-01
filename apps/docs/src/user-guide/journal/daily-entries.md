@@ -18,6 +18,15 @@ Journal entries also share note review tools: selection comments and the aligned
 
 Use **Add property** or **Add tag** above the date heading to organize a daily entry before writing.
 
+## Tracking a Property
+
+A property you fill in every day, such as `sleep`, `workout` or `mood`, can be
+charted over time. Hover its row and click the chart icon at the end to see its
+last 13 weeks: a line for numbers, a heatmap for checkboxes and selects. Click a
+day to open that entry. **Copy as chart block** copies a chart of the property
+that you can paste into any note, such as a habits dashboard. To start one from
+scratch, type `/chart` in a note; see [Charts](/user-guide/notes/editing#charts).
+
 ## Header Actions
 
 The journal header carries the same controls as a note:
