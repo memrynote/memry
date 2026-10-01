@@ -3,15 +3,18 @@
  * view block's; what is only true here is the widget config: it is read with
  * the view block's tolerant readers, and the header writes it back whole.
  */
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { localDayKey } from '@/lib/property-chart/chart-model'
 import type { ReactNode } from 'react'
 
 const mocks = vi.hoisted(() => ({
   getPropertyRows: vi.fn(),
-  scopes: [] as unknown[]
+  openSidebarItem: vi.fn(),
+  scopes: [] as unknown[],
+  notes: [] as unknown[]
 }))
 
 vi.mock('@/services/journal-service', () => ({
@@ -21,7 +24,7 @@ vi.mock('@/hooks/use-property-definitions', () => ({
   usePropertyDefinitions: () => ({ getDefinition: () => undefined })
 }))
 vi.mock('@/hooks/use-sidebar-navigation', () => ({
-  useSidebarNavigation: () => ({ openSidebarItem: vi.fn() })
+  useSidebarNavigation: () => ({ openSidebarItem: mocks.openSidebarItem })
 }))
 vi.mock('@/hooks/use-notes-query', () => ({
   useNoteTagsQuery: () => ({ tags: [] }),
@@ -31,7 +34,7 @@ vi.mock('@/hooks/use-folder-view', () => ({
   useFolderView: ({ scope }: { scope: unknown }) => {
     mocks.scopes.push(scope)
     return {
-      notes: [],
+      notes: mocks.notes,
       availableProperties: [{ name: 'rating', type: 'number', usageCount: 3 }],
       hasMore: false,
       unfilteredCount: 0,
@@ -51,6 +54,8 @@ function wrap(node: ReactNode): ReactNode {
 describe('Home chart widget', () => {
   beforeEach(() => {
     mocks.scopes = []
+    mocks.notes = []
+    mocks.openSidebarItem.mockReset()
     mocks.getPropertyRows.mockReset().mockResolvedValue({
       rows: [],
       properties: [{ name: 'sleep', type: 'number', count: 1 }]
@@ -88,6 +93,58 @@ describe('Home chart widget', () => {
       source: { kind: 'folder', path: 'books' },
       chart: {},
       pinned: true
+    })
+  })
+
+  describe('over a folder', () => {
+    beforeEach(() => {
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(640)
+    })
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('places notes on the day Date from names, and opens the note on that day', () => {
+      // #given a book finished today, created long ago
+      const today = localDayKey(new Date())
+      mocks.notes = [
+        {
+          id: 'dune',
+          path: 'books/Dune.md',
+          title: 'Dune',
+          emoji: null,
+          folder: 'books',
+          tags: [],
+          created: '2020-01-01T12:00:00.000Z',
+          modified: '2020-01-01T12:00:00.000Z',
+          wordCount: 0,
+          properties: { rating: 5, finished: today }
+        }
+      ]
+
+      render(
+        wrap(
+          <ChartWidget
+            config={{
+              source: { kind: 'folder', path: 'books' },
+              chart: { property: 'rating', type: 'bar', rangeDays: 7, dateFrom: 'finished' }
+            }}
+            size="M"
+          />
+        )
+      )
+
+      // #then the rating lands on today, not on the day the note was created
+      const chart = screen.getByRole('img', { name: 'rating over the last 7 days' })
+      expect(mocks.scopes[0]).toEqual({ kind: 'folder', path: 'books' })
+      expect(chart.querySelectorAll('rect')).toHaveLength(1)
+
+      fireEvent.pointerMove(chart, { clientX: 630 })
+      fireEvent.click(chart)
+      expect(mocks.openSidebarItem).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'note', entityId: 'dune', path: 'books/Dune.md' }),
+        undefined
+      )
     })
   })
 })
