@@ -376,20 +376,64 @@ describe('CrdtProvider with no store (#2536)', () => {
     return { provider, coordinator, pushUpdate }
   }
 
-  it.fails(
-    'hazard 1: a sweep over a note open in the editor shows the server body (#2544)',
-    async () => {
-      await serveNoteWithPeerEdit()
-      const { provider, coordinator } = await startRuntime()
+  it('hazard 1: a sweep over a note open in the editor shows the server body (#2544)', async () => {
+    await serveNoteWithPeerEdit()
+    const { provider, coordinator } = await startRuntime()
 
-      const doc = await provider.open(NOTE, EDITOR_WINDOW)
-      await coordinator.pullCrdtForNotes([NOTE])
+    const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+      coordinator.pullCrdtForNote(id)
+    )
+    await coordinator.pullCrdtForNotes([NOTE])
 
-      expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
-        EXPECTED_BODY
-      )
-    }
-  )
+    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+      EXPECTED_BODY
+    )
+  })
+
+  it('hazard 1: a note typed into and closed after an editor open keeps the server body', async () => {
+    const peer = await serveNoteWithPeerEdit()
+    const { provider, coordinator } = await startRuntime()
+
+    const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+      coordinator.pullCrdtForNote(id)
+    )
+    const editor = new Y.Doc()
+    Y.applyUpdate(editor, Y.encodeStateAsUpdate(doc))
+    const seen = Y.encodeStateVector(editor)
+    const text = findText(editor.getXmlFragment(CRDT_FRAGMENT_NAME), 'Tent packed.')
+    text.insert(text.length, ' Map printed.')
+    provider.applyIpcUpdate(NOTE, Y.encodeStateAsUpdate(editor, seen), EDITOR_WINDOW)
+    await provider.close(NOTE, EDITOR_WINDOW)
+
+    const typed = EXPECTED_BODY.replace('Tent packed.', 'Tent packed. Map printed.')
+    expect([await bodyAfterPull(), await bodyAfterPull(peer)]).toEqual([typed, typed])
+  })
+
+  it('an editor open seeds from the vault file when the merge does not finish', async () => {
+    await serveNoteWithPeerEdit()
+    const { provider } = await startRuntime()
+
+    const doc = await provider.openForEditor(
+      NOTE,
+      EDITOR_WINDOW,
+      () => new Promise<boolean>(() => {}),
+      10
+    )
+
+    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(ORIGINAL)
+  })
+
+  it('an editor open of a note the server has never seen seeds from the vault file', async () => {
+    h.server = { snapshot: null, updates: [] }
+    putNoteInVault(ORIGINAL)
+    const { provider, coordinator } = await startRuntime()
+
+    const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+      coordinator.pullCrdtForNote(id)
+    )
+
+    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(ORIGINAL)
+  })
 
   it('hazard 2: a scheduled snapshot push of a closed note keeps the server body', async () => {
     const peer = await serveNoteWithPeerEdit()
