@@ -170,7 +170,6 @@ import { AllSelection, TextSelection } from '@tiptap/pm/state'
 import { yUndoPluginKey } from 'y-prosemirror'
 import type { EditorContextMenuSpelling } from '@memry/contracts/writing-tools-api'
 import { getEditorSelectionFromState } from './review-formatting-toolbar'
-import { getLiveProseMirrorView } from './live-prosemirror-view'
 import {
   EditorContextMenu,
   editorContextMenuEntries,
