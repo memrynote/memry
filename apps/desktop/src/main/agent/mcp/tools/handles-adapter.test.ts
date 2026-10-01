@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
   getFolders: vi.fn(),
   getNoteById: vi.fn(),
   listNotes: vi.fn(),
-  renameFolder: vi.fn(),
+  renameFolderCommand: vi.fn(),
   syncFolderConfigCreate: vi.fn(),
   syncFolderConfigDelete: vi.fn(),
   syncFolderConfigRename: vi.fn(),
@@ -66,6 +66,7 @@ vi.mock('../../../notes/domain', () => ({
   createNoteCommand: mocks.createNoteCommand,
   deleteNoteCommand: mocks.deleteNoteCommand,
   moveNoteCommand: mocks.moveNoteCommand,
+  renameFolderCommand: mocks.renameFolderCommand,
   renameNoteCommand: mocks.renameNoteCommand,
   updateNoteCommand: mocks.updateNoteCommand
 }))
@@ -83,8 +84,7 @@ vi.mock('../../../vault/notes', () => ({
   deleteFolder: mocks.deleteFolder,
   getFolders: mocks.getFolders,
   getNoteById: mocks.getNoteById,
-  listNotes: mocks.listNotes,
-  renameFolder: mocks.renameFolder
+  listNotes: mocks.listNotes
 }))
 
 vi.mock('../../../notes/folder-config-effects', () => ({
@@ -621,7 +621,7 @@ describe('createVaultServiceHandles', () => {
     await expect(
       handles.folders.rename({ old_path: '/planning', new_path: '/archive/planning' })
     ).resolves.toEqual({ path: '/archive/planning' })
-    expect(mocks.renameFolder).toHaveBeenCalledWith('planning', 'archive/planning')
+    expect(mocks.renameFolderCommand).toHaveBeenCalledWith('planning', 'archive/planning')
     expect(mocks.syncFolderConfigRename).toHaveBeenCalledWith('planning', 'archive/planning')
 
     await expect(handles.folders.delete('/archive/planning')).resolves.toEqual({

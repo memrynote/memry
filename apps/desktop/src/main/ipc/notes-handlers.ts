@@ -71,7 +71,6 @@ import {
   getNoteLinks,
   getFolders,
   createFolder,
-  renameFolder,
   deleteFolder,
   noteExists,
   openExternal,
@@ -88,6 +87,7 @@ import {
   updateNoteCommand,
   renameNoteCommand,
   moveNoteCommand,
+  renameFolderCommand,
   deleteNoteCommand,
   setNoteLocalOnlyCommand
 } from '../notes/domain'
@@ -541,7 +541,7 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.RENAME_FOLDER,
     RenameFolderSchema,
     async (input) => {
-      await renameFolder(input.oldPath, input.newPath)
+      await renameFolderCommand(input.oldPath, input.newPath)
       syncFolderConfigRename(input.oldPath, input.newPath)
       return { success: true as const }
     },

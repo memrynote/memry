@@ -38,7 +38,9 @@ vi.mock('@main/database/queries/notes', () => ({
   getNoteTags: vi.fn(() => []),
   ensureTagDefinitions: vi.fn(),
   getNotePropertiesAsRecord: vi.fn(() => ({})),
-  resolveNoteByTitle: vi.fn()
+  resolveNoteByTitle: vi.fn(),
+  listNoteCacheUnderFolder: vi.fn(() => []),
+  extractDateFromPath: vi.fn(() => null)
 }))
 
 vi.mock('./file-ops', () => ({

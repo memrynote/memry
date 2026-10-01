@@ -138,6 +138,7 @@ vi.mock('../notes/domain', () => ({
   updateNoteCommand: vi.fn(),
   renameNoteCommand: vi.fn(),
   moveNoteCommand: vi.fn(),
+  renameFolderCommand: vi.fn(),
   deleteNoteCommand: vi.fn(),
   setNoteLocalOnlyCommand: mocks.setNoteLocalOnlyCommand
 }))
