@@ -8,7 +8,7 @@ import { NOTE_IDS } from './notes'
 //
 // Coords are react-grid-layout units on the 8-column Home grid. Every widget
 // type here populates from existing seed data (tasks, calendar, inbox, journal,
-// notes, folders, bookmarks).
+// notes, folders, bookmarks, journal trackers).
 export const HOME_PAGES: SeedHomePage[] = [
   {
     id: 'home-demo',
@@ -25,8 +25,27 @@ export const HOME_PAGES: SeedHomePage[] = [
       // Browse.
       { id: 'w-recent', type: 'recently-edited', x: 0, y: 9, w: 4, h: 4 },
       { id: 'w-folder', type: 'folder', x: 4, y: 9, w: 4, h: 4, config: { folderPath: 'books' } },
+      // Track: journal property charts over the seeded tracker days (trackers.ts).
+      {
+        id: 'w-chart-sleep',
+        type: 'chart',
+        x: 0,
+        y: 13,
+        w: 4,
+        h: 5,
+        config: { source: { kind: 'journal' }, chart: { property: 'sleep' } }
+      },
+      {
+        id: 'w-chart-workout',
+        type: 'chart',
+        x: 4,
+        y: 13,
+        w: 4,
+        h: 5,
+        config: { source: { kind: 'journal' }, chart: { property: 'workout' } }
+      },
       // Full-width footer.
-      { id: 'w-bookmarks', type: 'bookmarks', x: 0, y: 13, w: 8, h: 3 }
+      { id: 'w-bookmarks', type: 'bookmarks', x: 0, y: 18, w: 8, h: 3 }
     ]
   }
 ]

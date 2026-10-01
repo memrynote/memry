@@ -25,19 +25,67 @@
  * and `updateViewBlockDefinition` writes them back untouched. A known key
  * holding a value this build does not understand is ignored for display and
  * also kept.
+ *
+ * Compatibility of the chart additions. A `chart` layout read by an older
+ * build is not in its layout list, so it falls back to the saved view's
+ * layout and shows the source as a list; the `chart` key rides along in
+ * `raw`. A `journal` source is a shape an older build cannot read: it shows
+ * the block's "invalid definition" notice and keeps the bytes as they are.
  */
 
 /** The fence info string. Also the `codeBlock` `language` prop value. */
 export const VIEW_BLOCK_LANGUAGE = 'memry-view'
 
-/** Where the rows come from. `vault` is every note outside the journal. */
+/**
+ * Where the rows come from. `vault` is every note outside the journal;
+ * `journal` is the journal entries, one per day.
+ */
 export type ViewBlockSource =
   | { kind: 'vault' }
+  | { kind: 'journal' }
   | { kind: 'folder'; path: string }
   | { kind: 'tag'; tag: string; andTags?: string[] }
 
-export const VIEW_BLOCK_LAYOUTS = ['list', 'table', 'grid'] as const
+export const VIEW_BLOCK_LAYOUTS = ['list', 'table', 'grid', 'chart'] as const
 export type ViewBlockLayout = (typeof VIEW_BLOCK_LAYOUTS)[number]
+
+export const VIEW_BLOCK_CHART_TYPES = ['line', 'bar', 'heatmap'] as const
+export type ViewBlockChartType = (typeof VIEW_BLOCK_CHART_TYPES)[number]
+
+/** How several rows on the same day become one value. */
+export const VIEW_BLOCK_CHART_AGGREGATES = ['average', 'sum', 'min', 'max', 'count'] as const
+export type ViewBlockChartAggregate = (typeof VIEW_BLOCK_CHART_AGGREGATES)[number]
+
+/** What a day without a value draws as: nothing, or zero. */
+export const VIEW_BLOCK_CHART_MISSING = ['gap', 'zero'] as const
+export type ViewBlockChartMissing = (typeof VIEW_BLOCK_CHART_MISSING)[number]
+
+/** The ranges the chart settings offer, in days. Any positive whole number parses. */
+export const VIEW_BLOCK_CHART_RANGES = [7, 30, 90, 182, 365] as const
+
+/** Longest range a chart will plot; a year and a leap day. */
+export const MAX_CHART_RANGE_DAYS = 366
+
+/**
+ * A chart over one property. Every key is optional: a missing one takes the
+ * default the property's type suggests, so `{ "property": "mood" }` is a
+ * whole chart.
+ */
+export interface ViewBlockChart {
+  /** The property plotted. Absent until the reader picks one. */
+  property?: string
+  type?: ViewBlockChartType
+  /** The last this many days, ending today. */
+  rangeDays?: number
+  aggregate?: ViewBlockChartAggregate
+  missing?: ViewBlockChartMissing
+  /**
+   * The day a row falls on, for sources other than the journal: `created`,
+   * `modified`, or the name of a date property. The journal always uses the
+   * entry's own day.
+   */
+  dateFrom?: string
+}
 
 /** Structurally the folder view's `FilterExpression`. */
 export type ViewBlockFilter =
@@ -60,6 +108,8 @@ export interface ViewBlockDefinition {
   order?: ViewBlockOrder[]
   /** At most this many rows. */
   limit?: number
+  /** The chart settings, read when the layout is `chart`. */
+  chart?: ViewBlockChart
 }
 
 export type ParsedViewBlock =
@@ -81,9 +131,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function readSource(value: unknown): ViewBlockSource | null {
+/** A source as stored, or null when this build cannot read it. */
+export function readViewBlockSource(value: unknown): ViewBlockSource | null {
   if (!isRecord(value)) return null
   if (value.kind === 'vault') return { kind: 'vault' }
+  if (value.kind === 'journal') return { kind: 'journal' }
   if (value.kind === 'folder' && typeof value.path === 'string') {
     return { kind: 'folder', path: value.path }
   }
@@ -127,6 +179,36 @@ function readOrder(value: unknown): ViewBlockOrder[] | undefined {
     : undefined
 }
 
+function oneOf<T extends string>(list: readonly T[], value: unknown): T | undefined {
+  return list.includes(value as T) ? (value as T) : undefined
+}
+
+/** The chart settings. A key this build cannot use is left out, not fatal. */
+export function readViewBlockChart(value: unknown): ViewBlockChart | undefined {
+  if (!isRecord(value)) return undefined
+  const chart: ViewBlockChart = {}
+  if (typeof value.property === 'string' && value.property.trim() !== '') {
+    chart.property = value.property
+  }
+  const type = oneOf(VIEW_BLOCK_CHART_TYPES, value.type)
+  if (type) chart.type = type
+  if (
+    typeof value.rangeDays === 'number' &&
+    Number.isInteger(value.rangeDays) &&
+    value.rangeDays > 0
+  ) {
+    chart.rangeDays = Math.min(value.rangeDays, MAX_CHART_RANGE_DAYS)
+  }
+  const aggregate = oneOf(VIEW_BLOCK_CHART_AGGREGATES, value.aggregate)
+  if (aggregate) chart.aggregate = aggregate
+  const missing = oneOf(VIEW_BLOCK_CHART_MISSING, value.missing)
+  if (missing) chart.missing = missing
+  if (typeof value.dateFrom === 'string' && value.dateFrom.trim() !== '') {
+    chart.dateFrom = value.dateFrom
+  }
+  return chart
+}
+
 /**
  * Read a view block's text. Never throws: the text is note content, and a
  * block whose JSON is broken must still render (as an error the reader can
@@ -143,7 +225,7 @@ export function parseViewBlockDefinition(text: string): ParsedViewBlock {
   }
   if (!isRecord(json)) return { ok: false, reason: 'shape' }
 
-  const source = readSource(json.source)
+  const source = readViewBlockSource(json.source)
   if (!source) return { ok: false, reason: 'shape', raw: json }
 
   const definition: ViewBlockDefinition = { source }
@@ -159,6 +241,8 @@ export function parseViewBlockDefinition(text: string): ParsedViewBlock {
   if (typeof json.limit === 'number' && Number.isInteger(json.limit) && json.limit > 0) {
     definition.limit = json.limit
   }
+  const chart = readViewBlockChart(json.chart)
+  if (chart) definition.chart = chart
 
   return { ok: true, definition, raw: json }
 }
@@ -194,7 +278,10 @@ export function updateViewBlockDefinition(
  */
 export function viewBlockScope(
   source: ViewBlockSource
-): { kind: 'folder'; path: string } | { kind: 'tag'; tag: string; andTags?: string[] } {
+):
+  | { kind: 'folder'; path: string }
+  | { kind: 'tag'; tag: string; andTags?: string[] }
+  | { kind: 'journal' } {
   if (source.kind === 'vault') return { kind: 'folder', path: '' }
   return source
 }

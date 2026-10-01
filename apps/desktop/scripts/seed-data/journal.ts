@@ -1,6 +1,7 @@
 import { generateJournalId } from '../../src/main/lib/id'
 import type { NoteFile } from '../seed-vault/file-writer'
 import { seedJournalDate } from './date'
+import { TRACKER_DAYS_LIST, trackerBody, trackerProps } from './trackers'
 
 interface JournalSpec {
   date: string
@@ -400,10 +401,26 @@ const dateToModifiedISO = (date: string): string => {
 }
 
 // Resolve narrative dates to real dates around the run day before building files.
-const RESOLVED_ENTRIES = ENTRIES.map((entry) => ({
+const NARRATIVE_ENTRIES = ENTRIES.map((entry) => ({
   ...entry,
   date: seedJournalDate(entry.date)
 }))
+
+// Tracked days the story does not cover get a short entry of their own, so the
+// journal's property charts have half a year of data (see trackers.ts).
+const narrativeDates = new Set(NARRATIVE_ENTRIES.map((entry) => entry.date))
+const TRACKER_ENTRIES: JournalSpec[] = TRACKER_DAYS_LIST.filter(
+  (day) => !narrativeDates.has(day.date)
+).map((day, index) => ({
+  date: day.date,
+  mood: day.mood,
+  tags: ['daily'],
+  body: trackerBody(day, index)
+}))
+
+const RESOLVED_ENTRIES = [...NARRATIVE_ENTRIES, ...TRACKER_ENTRIES].sort((a, b) =>
+  a.date.localeCompare(b.date)
+)
 
 export const JOURNAL_NOTES: NoteFile[] = RESOLVED_ENTRIES.map((entry) => ({
   relativePath: `journal/${entry.date}.md`,
@@ -411,6 +428,8 @@ export const JOURNAL_NOTES: NoteFile[] = RESOLVED_ENTRIES.map((entry) => ({
   frontmatter: {
     date: entry.date,
     mood: entry.mood,
+    // Future entries have no tracking yet; past ones carry the day's trackers.
+    ...trackerProps(entry.date, entry.mood),
     ...(entry.tags.length > 0 ? { tags: entry.tags } : {})
   },
   body: entry.body,

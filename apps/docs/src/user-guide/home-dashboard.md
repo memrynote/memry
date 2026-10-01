@@ -47,6 +47,7 @@ Widgets are the cards on a board. Available types:
 | Calendar        | An at-a-glance calendar of upcoming entries                                                                                                   |
 | Journal         | Recent and upcoming journal days, and your current streak                                                                                     |
 | Project         | One project's overview, tasks, notes, files and events                                                                                        |
+| Chart           | One property over time, from the journal, a folder or a tag                                                                                   |
 
 **Recently Edited and Recently Opened are siblings, not duplicates.** The first answers "what did I change?", the second "what did I read?" — and a note you open without typing in it appears only in the second. Recently Opened also lists canvases: a canvas row carries its own icon and reopens the canvas when you click it. A note you open _and_ edit shows up in both; the row subtitle is what tells them apart, reading "opened 12m ago" on one and "edited 3m ago" on the other.
 
@@ -61,6 +62,8 @@ The Journal widget keeps up the same way. Write on the Journal tab, let an edit 
 Under the week strip and the recent entries, the Journal widget lists **Upcoming**: today and the next three days on your own calendar. A day you have already written for shows the start of that entry; a day you have not shows "No entry yet" and is still a button. Click any of them and the Journal tab opens on exactly that date, including one in next month or next year — so writing tomorrow's plan is one click, not a walk through the date picker. Calendar events are not repeated here; those stay in the Calendar widget.
 
 The Project widget is a chosen project in miniature. Its body has the same five tabs as the project page: **Overview**, **Tasks**, **Notes**, **Files** and **Events**. Rows behave as they do on the page — open a note, tick a task off, change a status or a priority. Pick the project from the pill in the widget's header, the way the Folder widget picks its folder; the pill carries the project's colour and name, so several project widgets side by side stay tellable apart.
+
+The Chart widget draws the same chart as a [`/chart` block](/user-guide/notes/editing#charts). Its header opens the chart settings: the source (the journal, all notes, a folder or a tag) at the top, then the property, the chart type and the range. A new Chart widget opens them on its own. Changing the source starts the chart over, since the properties belong to the source. Click a day to open that journal entry or the note on it. At the smallest size the widget drops the summary figures and keeps the chart.
 
 Two actions hand off to the full project page rather than happening in the widget: adding a task and adding a file both need the page's capture bar and its drop zone, so they open the project on that tab. The tab you are looking at is not remembered — a project widget opens on **Overview** each time Memry starts. If the project is later deleted or archived (including on another device, since boards sync) the widget says so and stays where it is; it never removes itself from your board.
 

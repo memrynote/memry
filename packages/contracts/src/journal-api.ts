@@ -269,6 +269,46 @@ export const GetDayContextOutputSchema = DayContextSchema
 
 export type GetDayContextOutput = z.infer<typeof GetDayContextOutputSchema>
 
+// --- Get Property Rows ---
+
+const JournalDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD')
+
+/** Journal entries whose day falls in `[from, to]`, both inclusive. */
+export const GetPropertyRowsInputSchema = z.object({
+  from: JournalDateSchema,
+  to: JournalDateSchema
+})
+
+export type GetPropertyRowsInput = z.infer<typeof GetPropertyRowsInputSchema>
+
+/** One journal entry's day and property values, for charts. */
+export const JournalPropertyRowSchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  path: z.string(),
+  title: z.string(),
+  properties: z.record(z.string(), z.unknown())
+})
+
+export type JournalPropertyRow = z.infer<typeof JournalPropertyRowSchema>
+
+/** A property used by at least one journal entry, with its indexed type. */
+export const JournalPropertySummarySchema = z.object({
+  name: z.string(),
+  type: z.string(),
+  count: z.number().int().nonnegative()
+})
+
+export type JournalPropertySummary = z.infer<typeof JournalPropertySummarySchema>
+
+export const GetPropertyRowsOutputSchema = z.object({
+  rows: z.array(JournalPropertyRowSchema),
+  /** Every property on any journal entry, not only the ones in range. */
+  properties: z.array(JournalPropertySummarySchema)
+})
+
+export type GetPropertyRowsOutput = z.infer<typeof GetPropertyRowsOutputSchema>
+
 // --- Get All Tags ---
 
 export const GetAllTagsOutputSchema = z.array(
@@ -301,6 +341,9 @@ export const JOURNAL_IPC_CHANNELS = {
 
   // Tags
   GET_ALL_TAGS: 'journal:getAllTags',
+
+  // Charts
+  GET_PROPERTY_ROWS: 'journal:getPropertyRows',
 
   // Events (main → renderer)
   ENTRY_UPDATED: 'journal:entryUpdated',

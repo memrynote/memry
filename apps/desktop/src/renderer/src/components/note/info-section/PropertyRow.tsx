@@ -332,6 +332,11 @@ interface PropertyRowProps {
   disabled?: boolean
   autoFocus?: boolean
   isSortable?: boolean
+  /**
+   * An extra control after the value, shown while the row is hovered or
+   * focused. Receives whether the row is hovered.
+   */
+  renderAction?: (hovered: boolean) => React.ReactNode
 }
 
 export function PropertyRow({
@@ -341,7 +346,8 @@ export function PropertyRow({
   onDelete,
   disabled,
   autoFocus = false,
-  isSortable = false
+  isSortable = false,
+  renderAction
 }: PropertyRowProps) {
   const { t } = useT('notes')
   const { isEnabled, setEnabled } = useCalendarProperties()
@@ -551,6 +557,8 @@ export function PropertyRow({
           onEndEdit={handleEndEdit}
         />
       </div>
+
+      {renderAction ? renderAction(isHovered && !isEditing) : null}
 
       {/* Calendar toggle — date properties only. One click toggles; the icon
           stays visible and tinted (chip color) while enabled so the state is

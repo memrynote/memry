@@ -11,6 +11,7 @@ export type WidgetType =
   | 'calendar'
   | 'journal'
   | 'project'
+  | 'chart'
 
 export interface WidgetInstance {
   id: string

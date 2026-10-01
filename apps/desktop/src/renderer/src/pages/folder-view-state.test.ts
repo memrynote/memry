@@ -4,6 +4,7 @@ import {
   FOLDER_SCROLL_KEYS,
   FOLDER_VIEW_STATE_KEYS,
   folderScrollKey,
+  parseChartState,
   parseSearchOpen,
   parseSearchQuery,
   parseViewName
@@ -97,5 +98,17 @@ describe('folder view-state readers', () => {
     expect(parseSearchOpen(false)).toBe(false)
     expect(parseSearchOpen('true')).toBeUndefined()
     expect(parseSearchOpen(1)).toBeUndefined()
+  })
+
+  it('reads the chart layout as off, a chart, or nothing stored', () => {
+    // #given tab state from an older build (no key), this one, and a newer one
+    expect(parseChartState(null)).toBeNull()
+    expect(parseChartState(undefined)).toBeUndefined()
+    expect(parseChartState('line')).toBeUndefined()
+    // #then a chart keeps only the settings this build can draw
+    expect(parseChartState({ property: 'mood', type: 'radar', rangeDays: 90 })).toEqual({
+      property: 'mood',
+      rangeDays: 90
+    })
   })
 })

@@ -163,6 +163,7 @@ import {
   CancelCircleIcon,
   Cancel01Icon,
   ChartIncreaseIcon,
+  Analytics01Icon,
   CheckListIcon,
   CheckmarkBadge01Icon,
   CheckmarkCircle01Icon,
@@ -583,6 +584,7 @@ export const Plus = createIcon(HugePlusSignIcon)
 export const PlusSignIcon = createIcon(HugePlusSignIcon)
 export const Minus = createIcon(MinusSignIcon)
 export const TrendingUp = createIcon(ChartIncreaseIcon)
+export const Analytics = createIcon(Analytics01Icon)
 export const ZoomIn = createIcon(ZoomInAreaIcon)
 export const ZoomOut = createIcon(ZoomOutAreaIcon)
 

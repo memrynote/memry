@@ -1,10 +1,16 @@
 import { eq, desc, and, like, sql, count } from 'drizzle-orm'
-import { noteCache, type NoteCache } from '@memry/db-schema/schema/notes-cache'
+import {
+  noteCache,
+  noteProperties,
+  propertyDefinitions,
+  type NoteCache
+} from '@memry/db-schema/schema/notes-cache'
 import { parseJournalDate, formatJournalFilename } from '@memry/storage-vault'
 import type { IndexDb } from '../../types'
 import { type ActivityLevel, calculateActivityLevel } from './query-helpers'
 import { getJournalConfig } from '@main/vault/journal-config'
 import { computeJournalStreak, utcDateKey, yearMonthStats } from '@memry/domain-notes/journal'
+import { getPropertiesForNotes } from './property-queries'
 
 // ============================================================================
 // Journal Entry Utilities
@@ -177,6 +183,87 @@ export function listJournalEntriesInRange(db: IndexDb, from: string, to: string)
     .where(and(sql`${noteCache.date} >= ${from}`, sql`${noteCache.date} <= ${to}`))
     .orderBy(desc(noteCache.date))
     .all()
+}
+
+export interface JournalPropertyRow {
+  id: string
+  date: string
+  path: string
+  title: string
+  properties: Record<string, unknown>
+}
+
+export interface JournalPropertySummary {
+  name: string
+  type: string
+  count: number
+}
+
+/**
+ * The journal entries in `[from, to]`, oldest first, with their property
+ * values, plus every property any journal entry uses. A property's type is its
+ * vault definition's when there is one, else the type most of its values were
+ * indexed as.
+ */
+export function getJournalPropertyRows(
+  db: IndexDb,
+  from: string,
+  to: string
+): { rows: JournalPropertyRow[]; properties: JournalPropertySummary[] } {
+  const entries = listJournalEntriesInRange(db, from, to).reverse()
+  const values = getPropertiesForNotes(
+    db,
+    entries.map((entry) => entry.id)
+  )
+  const rows = entries.map((entry) => ({
+    id: entry.id,
+    date: entry.date!,
+    path: entry.path,
+    title: entry.title,
+    properties: values.get(entry.id) ?? {}
+  }))
+
+  const counts = db
+    .select({
+      name: noteProperties.name,
+      type: noteProperties.type,
+      count: count()
+    })
+    .from(noteProperties)
+    .innerJoin(noteCache, eq(noteCache.id, noteProperties.noteId))
+    .where(sql`${noteCache.date} IS NOT NULL`)
+    .groupBy(noteProperties.name, noteProperties.type)
+    .all()
+  const definedTypes = new Map(
+    db
+      .select({ name: propertyDefinitions.name, type: propertyDefinitions.type })
+      .from(propertyDefinitions)
+      .all()
+      .map((row) => [row.name, row.type])
+  )
+
+  const byName = new Map<string, { total: number; type: string; typeCount: number }>()
+  for (const row of counts) {
+    const seen = byName.get(row.name)
+    if (!seen) {
+      byName.set(row.name, { total: row.count, type: row.type, typeCount: row.count })
+      continue
+    }
+    seen.total += row.count
+    if (row.count > seen.typeCount) {
+      seen.type = row.type
+      seen.typeCount = row.count
+    }
+  }
+  const properties = [...byName.entries()]
+    .map(([name, { total, type }]) => ({
+      name,
+      type: definedTypes.get(name) ?? type,
+      count: total
+    }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+
+  return { rows, properties }
 }
 
 export function countJournalEntries(db: IndexDb): number {

@@ -15,6 +15,7 @@ import { JournalWidget } from './journal-widget'
 import { JournalHeaderStreak } from './journal-header'
 import { ProjectWidget } from './project-widget'
 import { ProjectWidgetPicker } from './project-widget-picker'
+import { ChartWidget, ChartWidgetHeader } from './chart-widget'
 
 registerWidget({
   type: 'recently-edited',
@@ -109,4 +110,15 @@ registerWidget({
   defaultConfig: { projectId: '' },
   Component: ProjectWidget,
   HeaderFilter: ProjectWidgetPicker
+})
+
+registerWidget({
+  type: 'chart',
+  titleKey: 'home.widget.chart',
+  icon: 'chart',
+  defaultLayout: { w: 4, h: 4 },
+  minLayout: { w: 3, h: 3 },
+  defaultConfig: { source: { kind: 'journal' }, chart: {} },
+  Component: ChartWidget,
+  HeaderFilter: ChartWidgetHeader
 })

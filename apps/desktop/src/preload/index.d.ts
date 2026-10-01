@@ -84,6 +84,7 @@ import type {
   ConfigUpdatedEvent as FolderViewConfigUpdatedEvent
 } from '@memry/contracts/folder-view-api'
 import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
+import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
 import type {
   CustomIcon,
   CustomIconAddInput,
@@ -608,6 +609,9 @@ export interface JournalClientAPI {
 
   // Streak
   getStreak(): Promise<JournalStreak>
+
+  // Charts
+  getPropertyRows(from: string, to: string): Promise<GetPropertyRowsOutput>
 }
 
 // Home Page types

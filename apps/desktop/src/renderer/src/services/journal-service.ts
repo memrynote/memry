@@ -12,6 +12,7 @@ import type {
   JournalEntryDeletedEvent,
   JournalExternalChangeEvent
 } from '../../../preload/index.d'
+import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
 
 /**
  * Journal service - thin wrapper around window.api.journal
@@ -136,6 +137,11 @@ export const journalService: JournalClientAPI = {
    */
   getStreak: (): Promise<JournalStreak> => {
     return window.api.journal.getStreak()
+  },
+
+  /** Entries' days and property values in `[from, to]`, for charts. */
+  getPropertyRows: (from: string, to: string): Promise<GetPropertyRowsOutput> => {
+    return window.api.journal.getPropertyRows(from, to)
   }
 }
 

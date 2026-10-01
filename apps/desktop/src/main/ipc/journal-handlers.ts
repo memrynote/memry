@@ -17,6 +17,8 @@ import {
   GetMonthEntriesInputSchema,
   GetYearStatsInputSchema,
   GetDayContextInputSchema,
+  GetPropertyRowsInputSchema,
+  type GetPropertyRowsOutput,
   type JournalEntry,
   type HeatmapEntry,
   type MonthEntryPreview,
@@ -43,6 +45,7 @@ import {
   getJournalMonthEntries,
   getJournalYearStats,
   getJournalStreak,
+  getJournalPropertyRows,
   getNoteTags,
   getAllTags,
   calculateActivityLevel as calculateActivityLevelFromCharCount
@@ -387,6 +390,19 @@ export function registerJournalHandlers(): void {
       const db = getIndexDatabase()
       const tagsWithCounts = getAllTags(db)
       return tagsWithCounts.map((t) => ({ tag: t.tag, count: t.count }))
+    })
+  )
+
+  // =========================================================================
+  // Charts
+  // =========================================================================
+
+  // journal:getPropertyRows - Entries' days and property values in a range
+  ipcMain.handle(
+    JournalChannels.invoke.GET_PROPERTY_ROWS,
+    createValidatedHandler(GetPropertyRowsInputSchema, (input): GetPropertyRowsOutput => {
+      const db = getIndexDatabase()
+      return getJournalPropertyRows(db, input.from, input.to)
     })
   )
 

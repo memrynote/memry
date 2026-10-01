@@ -5,6 +5,7 @@ export { default as AlarmClockIcon } from '@hugeicons/core-free-icons/AlarmClock
 export { default as Alert02Icon } from '@hugeicons/core-free-icons/Alert02Icon'
 export { default as AlertCircleIcon } from '@hugeicons/core-free-icons/AlertCircleIcon'
 export { default as AlignLeftIcon } from '@hugeicons/core-free-icons/AlignLeftIcon'
+export { default as Analytics01Icon } from '@hugeicons/core-free-icons/Analytics01Icon'
 export { default as Archive03Icon } from '@hugeicons/core-free-icons/Archive03Icon'
 export { default as ArchiveIcon } from '@hugeicons/core-free-icons/ArchiveIcon'
 export { default as ArrowDown01Icon } from '@hugeicons/core-free-icons/ArrowDown01Icon'

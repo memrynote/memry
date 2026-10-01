@@ -1,4 +1,4 @@
-import { Bookmark, Clock, Folder, FolderKanban, TrendingUp } from '@/lib/icons/icon-map'
+import { Analytics, Bookmark, Clock, Folder, FolderKanban, TrendingUp } from '@/lib/icons/icon-map'
 import {
   PageCalendarIcon,
   PageInboxIcon,
@@ -17,5 +17,6 @@ export const WIDGET_ICONS: Record<string, typeof Clock> = {
   folder: Folder,
   calendar: PageCalendarIcon,
   'book-open': PageJournalIcon,
-  'folder-kanban': FolderKanban
+  'folder-kanban': FolderKanban,
+  chart: Analytics
 }

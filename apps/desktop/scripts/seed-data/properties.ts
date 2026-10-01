@@ -160,6 +160,33 @@ export const PERSISTABLE_PROPERTY_DEFINITIONS: PersistableDefinition[] = [
     ]
   },
 
+  // Journal trackers (see trackers.ts): a select and a multi-select that the
+  // property charts colour by these options.
+  {
+    name: 'feeling',
+    type: 'select',
+    options: [
+      { value: 'great', color: 'emerald' },
+      { value: 'good', color: 'sage' },
+      { value: 'okay', color: 'lemon' },
+      { value: 'low', color: 'coral' },
+      { value: 'rough', color: 'rose' }
+    ]
+  },
+  {
+    name: 'habits',
+    type: 'multiselect',
+    options: [
+      { value: 'Reading', color: 'violet' },
+      { value: 'Meditation', color: 'teal' },
+      { value: 'Stretching', color: 'amber' },
+      { value: 'Walk', color: 'sky' }
+    ]
+  },
+
+  // The day a book or film was finished: what a folder chart places it on.
+  { name: 'finished', type: 'date', showOnCalendar: false },
+
   // Date props that surface on the calendar — the notes carrying them show up
   // as date chips on the month grid, which is a lot of the screenshot value.
   { name: 'deadline', type: 'date', showOnCalendar: true },
@@ -209,6 +236,9 @@ export const PROPERTY_DEFINITION_ROWS: SeedPropertyDefinition[] = [
   { name: 'year', type: 'number', color: '#748CE0' },
   { name: 'mood', type: 'number', color: '#A470D0' },
   { name: 'weight', type: 'number', color: '#7CB86C' },
+  { name: 'sleep', type: 'number', color: '#748CE0' },
+  { name: 'steps', type: 'number', color: '#52AACC' },
+  { name: 'workout', type: 'checkbox', color: '#50B888' },
   { name: 'bodyFat', type: 'number', color: '#7CB86C' },
   { name: 'author', type: 'text', color: '#52AACC' },
   { name: 'director', type: 'text', color: '#D46C96' },

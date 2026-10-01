@@ -16,5 +16,8 @@ export const journalKeys = {
   yearStatsForYear: (year: number) => [...journalKeys.yearStats(), year] as const,
   dayContext: () => [...journalKeys.all, 'dayContext'] as const,
   dayContextForDate: (date: string) => [...journalKeys.dayContext(), date] as const,
-  streak: () => [...journalKeys.all, 'streak'] as const
+  streak: () => [...journalKeys.all, 'streak'] as const,
+  propertyRows: () => [...journalKeys.all, 'propertyRows'] as const,
+  propertyRowsForRange: (from: string, to: string) =>
+    [...journalKeys.propertyRows(), from, to] as const
 }

@@ -10,6 +10,8 @@
  *
  * - which of the folder's named views this particular tab is looking at
  * - the transient in-page search
+ * - the chart layout, which the file must not hold: older builds validate a
+ *   saved view's `type` as table/list/gallery and would reject the file
  *
  * The active view is stored by NAME, never by index. `useFolderView` tracks an
  * `activeViewIndex`, but indices shift the moment a view is added, deleted or
@@ -17,6 +19,8 @@
  * stale index silently lands on someone else's view. A stale NAME just fails to
  * match, and the folder's own `defaultIndex` takes over.
  */
+
+import { readViewBlockChart, type ViewBlockChart } from '@memry/shared/view-block'
 
 export const FOLDER_VIEW_STATE_KEYS = {
   /** Name of the folder's view this tab is on. `null` means "use the default". */
@@ -30,7 +34,12 @@ export const FOLDER_VIEW_STATE_KEYS = {
    * rather than in `.folder.md` because a tag has no config file, and because
    * this is a per-tab lens — two tabs on `#work` may narrow differently.
    */
-  tagAndTags: 'tagAndTags'
+  tagAndTags: 'tagAndTags',
+  /**
+   * The chart layout's settings while the tab shows a chart; `null` when it
+   * shows the view's own layout. A lens over the active view, like the search.
+   */
+  chart: 'folderChart'
 } as const
 
 /**
@@ -72,6 +81,12 @@ export const parseSearchQuery = (raw: unknown): string | undefined =>
 
 export const parseSearchOpen = (raw: unknown): boolean | undefined =>
   typeof raw === 'boolean' ? raw : undefined
+
+/** `null` is "no chart"; settings this build cannot use are dropped, as in the view block. */
+export const parseChartState = (raw: unknown): ViewBlockChart | null | undefined => {
+  if (raw === null) return null
+  return readViewBlockChart(raw)
+}
 
 /**
  * Tag-scope AND selection. Older sessions have no such key at all, and a

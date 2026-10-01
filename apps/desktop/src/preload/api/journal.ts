@@ -18,7 +18,10 @@ export const journalApi = {
 
   getAllTags: () => invoke(JournalChannels.invoke.GET_ALL_TAGS),
 
-  getStreak: () => invoke(JournalChannels.invoke.GET_STREAK)
+  getStreak: () => invoke(JournalChannels.invoke.GET_STREAK),
+
+  getPropertyRows: (from: string, to: string) =>
+    invoke(JournalChannels.invoke.GET_PROPERTY_ROWS, { from, to })
 }
 
 export const journalEvents = {

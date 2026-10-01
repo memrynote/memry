@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { seedDateOnly } from './date'
+import { FEELINGS, TRACKER_DAYS } from './trackers'
 import { JOURNAL_METADATA, JOURNAL_NOTES } from './journal'
 
 describe('journal seed data', () => {
@@ -40,6 +41,30 @@ describe('journal seed data', () => {
       'Inbox redesign'
     ]) {
       expect(entry.body).not.toContain(technicalTerm)
+    }
+  })
+
+  it('tracks the half year up to the seed day so journal property charts have data', () => {
+    const today = seedDateOnly(0)
+    const tracked = JOURNAL_NOTES.filter((note) => note.frontmatter.sleep !== undefined)
+    const dates = tracked.map((note) => note.frontmatter.date as string)
+
+    // most of the heatmap's default range is filled, ending today, never later
+    expect(tracked.length).toBeGreaterThan(TRACKER_DAYS * 0.85)
+    expect(dates.every((date) => date >= seedDateOnly(-(TRACKER_DAYS - 1)) && date <= today)).toBe(
+      true
+    )
+    expect(dates).toContain(today)
+
+    // the select and the number describe the same day
+    for (const note of tracked) {
+      expect(note.frontmatter.feeling).toBe(FEELINGS[(note.frontmatter.mood as number) - 1])
+    }
+
+    // the last nine days are a workout streak
+    const lastNine = Array.from({ length: 9 }, (_, i) => seedDateOnly(-i))
+    for (const date of lastNine) {
+      expect(tracked.find((note) => note.frontmatter.date === date)?.frontmatter.workout).toBe(true)
     }
   })
 })

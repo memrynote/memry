@@ -61,7 +61,8 @@ import {
 } from '@/components/note/backlinks'
 
 import { TagsRow, type Tag } from '@/components/note/tags-row'
-import { InfoSection, type NewProperty } from '@/components/note/info-section'
+import { InfoSection, type NewProperty, type Property } from '@/components/note/info-section'
+import { PropertyHistoryButton } from '@/components/property-chart/property-history-popover'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
 import { useActiveHeading } from '@/hooks/use-active-heading'
@@ -574,6 +575,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   )
 
   const properties = useMemo(() => rawProperties.filter((p) => p.name !== 'date'), [rawProperties])
+
+  // A journal property's recent history, off its row. Stable, so the memoized
+  // InfoSection does not re-render on every keystroke in the entry.
+  const renderPropertyHistory = useCallback(
+    (property: Property, hovered: boolean) => (
+      <PropertyHistoryButton
+        property={property.name}
+        propertyType={property.type}
+        visible={hovered}
+      />
+    ),
+    []
+  )
 
   // Navigation
   const navigateToMonth = useCallback(
@@ -1278,6 +1292,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               onAddProperty={handleAddPropertyWithExpand}
                               onDeleteProperty={handleDeleteProperty}
                               hideAddButton
+                              renderPropertyAction={renderPropertyHistory}
                             />
                           )}
 

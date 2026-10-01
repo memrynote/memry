@@ -43,6 +43,9 @@ import { BulkActionBar } from '@/components/folder-view/bulk-action-bar'
 import type { TagMetaMap } from '@/components/folder-view/note-card-pieces'
 import { ViewSwitcher } from '@/components/folder-view/view-switcher'
 import { LayoutToggle } from '@/components/folder-view/layout-toggle'
+import { FolderChartPanel } from '@/components/property-chart/folder-chart-panel'
+import { patchChart } from '@/components/property-chart/chart-settings'
+import type { ViewBlockChart } from '@memry/shared/view-block'
 import { TagIconChip } from '@/components/settings/tag-icon-chip'
 import { TagAndFilterBar } from '@/components/folder-view/tag-and-filter-bar'
 import { useTagAndTags } from '@/hooks/use-tag-and-tags'
@@ -66,6 +69,7 @@ import {
   FOLDER_VIEW_STATE_KEYS,
   folderScrollKey,
   parseSearchOpen,
+  parseChartState,
   parseSearchQuery,
   parseViewName
 } from './folder-view-state'
@@ -172,6 +176,14 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
 
   // Active view render mode (table / list / grid) — persisted via the view config.
   const viewType = activeView?.type ?? 'table'
+
+  // The chart layout, when on. Tab state, not the view config: see
+  // FOLDER_VIEW_STATE_KEYS.chart for why `.folder.md` must not hold it.
+  const [chartState, setChartState] = useTabViewState<ViewBlockChart | null>({
+    key: FOLDER_VIEW_STATE_KEYS.chart,
+    defaultValue: null,
+    parse: parseChartState
+  })
 
   // Only one of the four scrollers is mounted at a time, and the tab holds ONE
   // scroll record, so the key says which one wrote it. Without that, turning on
@@ -1208,7 +1220,18 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
 
           {/* Layout: writes into the active view, so "New view" (which copies
               the active view) saves it together with filters and sort. */}
-          <LayoutToggle value={viewType} onChange={(type) => void updateView({ type })} />
+          <LayoutToggle
+            value={chartState ? 'chart' : viewType}
+            withChart
+            onChange={(type) => {
+              if (type === 'chart') {
+                setChartState({})
+                return
+              }
+              setChartState(null)
+              if (type !== viewType) void updateView({ type })
+            }}
+          />
 
           {/* Saved views */}
           <ViewSwitcher
@@ -1283,6 +1306,14 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             />
           ) : isLoading ? (
             <FolderViewSkeleton columns={activeView?.columns ?? DEFAULT_COLUMNS} />
+          ) : chartState ? (
+            <FolderChartPanel
+              notes={notes}
+              availableProperties={availableProperties}
+              chart={chartState}
+              onChange={(patch) => setChartState(patchChart(chartState, patch))}
+              onOpenNote={onRowOpen}
+            />
           ) : viewType === 'list' ? (
             <FolderListView
               notes={notes}
@@ -1392,6 +1423,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
 
         {/* Floating bulk action bar — table/grouped views, while rows are selected */}
         {selectedRowIds.size > 0 &&
+          !chartState &&
           viewType !== 'list' &&
           viewType !== 'grid' &&
           !folderNotFound &&

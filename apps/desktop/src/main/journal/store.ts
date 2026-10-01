@@ -5,6 +5,7 @@ export {
   getJournalMonthEntries,
   getJournalYearStats,
   getJournalStreak,
+  getJournalPropertyRows,
   getNoteTags,
   getAllTags,
   calculateActivityLevel
