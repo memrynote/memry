@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 128,
+    "exportedCaseCount": 129,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 138,
+    "caseCount": 139,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -250,6 +250,13 @@
       "canonical": "> Outer\n>\n> > [!warning] Inner\n> > Inner body",
       "pending": null,
       "sha256": "fa2dfd5e20b0bd5b6af17f6090dda50ec60baad0ca878a6bfd661bcecbf428ec"
+    },
+    {
+      "name": "nested quote with no outer paragraph keeps both levels",
+      "markdown": "> > Inner only",
+      "canonical": null,
+      "pending": null,
+      "sha256": "8ae71606eee2deeb2998ec27799c3bccf3dcfbc005f28909a9313614ffce4170"
     },
     {
       "name": "empty toggle",

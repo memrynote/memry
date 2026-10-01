@@ -250,7 +250,7 @@ export function readStructuredQuoteRun(lines: readonly string[], start: number):
  * those bytes reproduces them — which trades an unreachable byte identity for a
  * one-step normalization that keeps the nesting.
  *
- * The first inner block becomes the quote's own content and the rest its
+ * A leading paragraph becomes the quote's own content and the rest its
  * children, which is the list `serializeQuoteBlock` is handed on the way out.
  */
 export async function resolveQuoteRun(
@@ -259,11 +259,8 @@ export async function resolveQuoteRun(
   serializeBlocks: (blocks: ParsedBlockShape[]) => Promise<string>
 ): Promise<{ content: unknown; children: ParsedBlockShape[] } | null> {
   const parsed = await parseMarkdown(run.innerMarkdown)
-  const [first, ...children] = parsed
-  if (!first || first.type !== 'paragraph' || first.children?.length) return null
-  // No children means a flat quote, which the untouched path already serializes
-  // correctly — claiming it would only route identical bytes through more code.
-  if (children.length === 0) return null
+  const claimed = splitQuoteBlocks(parsed)
+  if (!claimed) return null
 
   const canonical = serializeQuoteBlock((await serializeBlocks(parsed)).trim())
   if (canonical !== run.raw) {
@@ -271,7 +268,30 @@ export async function resolveQuoteRun(
     if (!(await settles(canonical, parseMarkdown, serializeBlocks))) return null
   }
 
-  return { content: first.content ?? [], children }
+  return claimed
+}
+
+/**
+ * Split a run's parsed inner blocks into the quote's own content and its
+ * children, or null when a quote block cannot hold them.
+ *
+ * A leading paragraph is the quote's own line. A run that opens straight on a
+ * nested level (`> > Inner only`) has no own line: its inner markdown parses to
+ * a lone `quote`, so the quote keeps empty own content and every parsed block
+ * as a child (#1896). Empty own content serializes to nothing ahead of the
+ * children, so the bytes reproduce. Any other leading block declines, as before.
+ *
+ * No children means a flat quote, which the untouched path already serializes
+ * correctly — claiming it would only route identical bytes through more code.
+ */
+function splitQuoteBlocks(
+  parsed: ParsedBlockShape[]
+): { content: unknown; children: ParsedBlockShape[] } | null {
+  const [first, ...rest] = parsed
+  if (!first || first.children?.length) return null
+  if (first.type === 'quote') return { content: [], children: parsed }
+  if (first.type !== 'paragraph' || rest.length === 0) return null
+  return { content: first.content ?? [], children: rest }
 }
 
 /**
@@ -290,9 +310,7 @@ async function settles(
   if (!reread || reread.end !== lines.length) return false
 
   const reparsed = await parseMarkdown(reread.innerMarkdown)
-  const [first, ...children] = reparsed
-  if (!first || first.type !== 'paragraph' || first.children?.length) return false
-  if (children.length === 0) return false
+  if (!splitQuoteBlocks(reparsed)) return false
 
   return serializeQuoteBlock((await serializeBlocks(reparsed)).trim()) === canonical
 }
