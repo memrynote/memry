@@ -98,6 +98,20 @@ The line is logged at `warn` when the reveal came from the fallback or took ≥5
 `error` records reach the diagnostic log sink — and at `info` otherwise, so healthy launches stay
 local instead of flooding the sink.
 
+### Main-Thread Stalls and Renderer Hangs
+
+The timeline only reports at reveal, so a launch that blocks the main process never writes it.
+`src/main/main-thread-stall.ts` starts at the top of `app.whenReady()`, before any synchronous
+startup work, and ticks every second. A tick that fires 2s or more late means the event loop was
+blocked for that long; the monitor logs `main thread stalled` at `warn` under the
+`MainThreadStall` scope once the loop resumes, with `durationMs`, `phase` (the latest launch phase
+reached, or `startup` before the first one) and `count`. At most 20 stalls are reported per run.
+Ticks between `powerMonitor` `suspend` and `resume` never report, so system sleep is not a stall.
+
+The main window logs `main window renderer unresponsive` when Electron emits `unresponsive`, and
+`main window renderer responsive again` with `durationMs` when it recovers. Together the two say
+whether a frozen window was the main process or the renderer.
+
 ### Post-Reveal Startup Queue
 
 `src/main/post-reveal.ts` holds startup work the first frame does not depend on, so it cannot sit
