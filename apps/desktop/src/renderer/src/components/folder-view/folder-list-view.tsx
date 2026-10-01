@@ -11,6 +11,7 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { FileText } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { handleMiddleClick } from '@/lib/middle-click'
 import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
@@ -119,7 +120,7 @@ export function FolderListView({
             )}
           >
             {note.emoji ? (
-              <span className="shrink-0 text-sm leading-none">{note.emoji}</span>
+              <NoteIconDisplay value={note.emoji} className="shrink-0 text-sm leading-none" />
             ) : (
               <FileText className="size-[15px] shrink-0 text-muted-foreground/70" />
             )}

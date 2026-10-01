@@ -10,6 +10,7 @@ import {
   type AppIcon
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { propertiesService, type ResolvedRelationRef } from '@/services/properties-service'
 import { createLogger } from '@/lib/logger'
@@ -94,7 +95,7 @@ export function RelationEditor({ value, onChange }: RelationEditorProps) {
         // notes carry one; files, tasks and events keep their kind icon.
         const glyph = ref.emoji ? (
           <span className="size-3 shrink-0 leading-none text-[11px]" aria-hidden>
-            {ref.emoji}
+            <NoteIconDisplay value={ref.emoji} />
           </span>
         ) : (
           <Icon className="size-3 shrink-0" aria-hidden />

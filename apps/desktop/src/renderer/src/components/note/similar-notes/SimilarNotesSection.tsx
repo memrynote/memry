@@ -3,6 +3,7 @@ import type { SimilarNoteItem } from '@memry/contracts/notes-api'
 import { useT } from '@memry/i18n/renderer'
 import { ChevronDown, Link2, Network } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { AddToCanvasPicker, type CanvasOption } from './AddToCanvasPicker'
 
 interface SimilarNotesSectionProps {
@@ -86,7 +87,7 @@ export function SimilarNotesSection({
                 >
                   {note.emoji ? (
                     <span className="flex-shrink-0 text-[13px]/4" aria-hidden="true">
-                      {note.emoji}
+                      <NoteIconDisplay value={note.emoji} />
                     </span>
                   ) : null}
                   <span className="truncate text-[13px]/4 font-medium text-text-bright">

@@ -5,6 +5,7 @@ import { getTagColors, withAlpha } from '../tags-row/tag-colors'
 import { formatDate } from '@/lib/format-date'
 import { useDateFormat } from '@/hooks/use-date-format'
 import { FileText } from '@/lib/icons'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { useT } from '@memry/i18n/renderer'
 
 interface WikiLinkPreviewCardProps {
@@ -85,7 +86,7 @@ export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
         >
           <div className="flex items-center gap-1.5">
             {preview.emoji ? (
-              <span className="text-sm shrink-0">{preview.emoji}</span>
+              <NoteIconDisplay value={preview.emoji} className="text-sm shrink-0" />
             ) : (
               <FileText className="size-3.5 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
             )}

@@ -10,6 +10,7 @@ import {
   FileVideo
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -234,9 +235,10 @@ export function TaskLinkedNoteIndicator({
               className="cursor-pointer text-xs"
             >
               {noteInfo?.emoji ? (
-                <span className="size-3.5 shrink-0 text-center text-[13px] leading-3.5">
-                  {noteInfo.emoji}
-                </span>
+                <NoteIconDisplay
+                  value={noteInfo.emoji}
+                  className="size-3.5 shrink-0 text-[13px] leading-3.5"
+                />
               ) : (
                 <RelatedItemIcon
                   fileType={noteInfo?.fileType ?? 'markdown'}
