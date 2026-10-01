@@ -613,6 +613,10 @@ describe('calculateActivityLevelFromContent', () => {
 // ============================================================================
 
 describe('extractPreview', () => {
+  it('drops inline color span tags and keeps their text (issue #2566)', () => {
+    expect(extractPreview('a <span style="color:red">red</span> word')).toBe('a red word')
+  })
+
   it('T383: removes markdown headers', () => {
     const content = '# Header\n## Subheader\nText here'
 

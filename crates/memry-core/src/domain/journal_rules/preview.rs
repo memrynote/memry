@@ -2,7 +2,8 @@
 //!
 //! Mirrors `extractJournalPreview` (`domain-notes/src/journal/preview.ts`) and
 //! `replaceWikiLinks` / `wikiLinkLabel` / `splitWikiTarget`
-//! (`shared/src/wiki-target.ts`). The core has no regex engine, so each JS
+//! (`shared/src/wiki-target.ts`) and `stripInlineStyleSpanTags`
+//! (`shared/src/inline-colors.ts`). The core has no regex engine, so each JS
 //! regex is a hand-written scanner with the same global-replace semantics:
 //! left to right, a match resumes the scan at its end, a failed position
 //! advances by one. None of the patterns can match inside a surrogate pair, so
@@ -13,8 +14,8 @@ use super::{is_js_whitespace, js_trim};
 /// The preview length desktop asks for everywhere it shows one.
 pub const JOURNAL_PREVIEW_LENGTH: usize = 100;
 
-/// Markdown to a short plain preview: headings, link targets, wiki-link
-/// syntax, images and emphasis markers removed, whitespace collapsed, then
+/// Markdown to a short plain preview: inline color/underline span tags,
+/// headings, link targets, wiki-link syntax, images and emphasis markers removed, whitespace collapsed, then
 /// truncated at a word boundary when one falls in the last 30 % of the limit.
 ///
 /// `max_length` counts UTF-16 code units. A cut that splits a surrogate pair
@@ -22,6 +23,7 @@ pub const JOURNAL_PREVIEW_LENGTH: usize = 100;
 /// cannot carry.
 pub fn extract_journal_preview(content: &str, max_length: usize) -> String {
     let chars: Vec<char> = content.chars().collect();
+    let chars = replace_all(&chars, |c, i| span_tag(c, i).map(|end| (end, Vec::new())));
     let chars = replace_all(&chars, |c, i| {
         strip_heading(c, i).map(|end| (end, Vec::new()))
     });
@@ -85,6 +87,28 @@ fn at(chars: &[char], i: usize, expected: char) -> bool {
 /// JS LineTerminator: where a multiline `^` may match.
 fn is_line_terminator(c: char) -> bool {
     matches!(c, '\n' | '\r' | '\u{2028}' | '\u{2029}')
+}
+
+fn starts_with(chars: &[char], i: usize, literal: &str) -> bool {
+    (i..)
+        .zip(literal.chars())
+        .all(|(offset, expected)| at(chars, offset, expected))
+}
+
+/// `/<span style="[^"]*">|<\/span>/g`: the match end. `[^"]*` cannot hold the
+/// quote that ends it, so the first `"` after the opening one decides the match.
+fn span_tag(chars: &[char], i: usize) -> Option<usize> {
+    const OPEN: &str = "<span style=\"";
+    const CLOSE: &str = "</span>";
+    if starts_with(chars, i, CLOSE) {
+        return Some(i + CLOSE.chars().count());
+    }
+    if !starts_with(chars, i, OPEN) {
+        return None;
+    }
+    let value_start = i + OPEN.chars().count();
+    let quote = value_start + chars[value_start..].iter().position(|&c| c == '"')?;
+    at(chars, quote + 1, '>').then_some(quote + 2)
 }
 
 /// `/^#+\s+/gm`: the match end.
@@ -237,6 +261,16 @@ mod tests {
     fn wiki_link_without_close_is_kept() {
         assert_eq!(preview("[[a|b] c"), "[[a|b] c");
         assert_eq!(preview("[[a]] [[#x|  ]]"), "a x");
+    }
+
+    #[test]
+    fn span_tags_drop_and_keep_their_text() {
+        assert_eq!(
+            preview("a <span style=\"color:red\">red</span> word"),
+            "a red word"
+        );
+        assert_eq!(preview("<span style=\"x\"y\">t"), "<span style=\"x\"y\">t");
+        assert_eq!(preview("<span class=\"a\">t"), "<span class=\"a\">t");
     }
 
     #[test]

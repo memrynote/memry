@@ -204,6 +204,36 @@
       "content": "# \n![](a.png)\n",
       "maxLength": 100,
       "expected": ""
+    },
+    {
+      "name": "inline color span",
+      "content": "a <span style=\"color:red\">red</span> word",
+      "maxLength": 100,
+      "expected": "a red word"
+    },
+    {
+      "name": "inline background and underline spans",
+      "content": "<span style=\"background-color:yellow\"><span style=\"text-decoration:underline\">key</span></span> term",
+      "maxLength": 100,
+      "expected": "key term"
+    },
+    {
+      "name": "inline color span around emphasis and wiki link",
+      "content": "### He<span style=\"color:blue\">**llo** [[Note|n]]</span>!",
+      "maxLength": 100,
+      "expected": "Hello n!"
+    },
+    {
+      "name": "span without style keeps its open tag",
+      "content": "<span class=\"a\">t</span> x",
+      "maxLength": 100,
+      "expected": "<span class=\"a\">t x"
+    },
+    {
+      "name": "span with stray quote kept",
+      "content": "<span style=\"x\"y\">t",
+      "maxLength": 100,
+      "expected": "<span style=\"x\"y\">t"
     }
   ],
   "words": [

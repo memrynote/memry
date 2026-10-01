@@ -7,21 +7,25 @@
  * @module journal/preview
  */
 
+import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
 
 /** The preview length desktop asks for everywhere it shows one. */
 export const JOURNAL_PREVIEW_LENGTH = 100
 
 /**
- * Markdown to a short plain preview: headings, link targets, wiki-link
- * syntax, images and emphasis markers removed, whitespace collapsed, then
+ * Markdown to a short plain preview: inline color/underline span tags,
+ * headings, link targets, wiki-link syntax, images and emphasis markers removed, whitespace collapsed, then
  * truncated at a word boundary when one falls in the last 30 % of the limit.
  *
  * Lengths are JavaScript string lengths (UTF-16 code units).
  */
 export function extractJournalPreview(content: string, maxLength = JOURNAL_PREVIEW_LENGTH): string {
+  // Remove inline color/underline span tags, keeping their text
+  let cleaned = stripInlineStyleSpanTags(content)
+
   // Remove markdown headers
-  let cleaned = content.replace(/^#+\s+/gm, '')
+  cleaned = cleaned.replace(/^#+\s+/gm, '')
 
   // Remove links but keep text
   cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')

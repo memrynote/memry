@@ -50,7 +50,19 @@ export const PREVIEW_CASES: ReadonlyArray<{ name: string; content: string; maxLe
   },
   { name: 'custom max 10 no space', content: 'abcdefghijklmnop', maxLength: 10 },
   { name: 'emoji utf16 truncation', content: '😀'.repeat(60) },
-  { name: 'only markup', content: '# \n![](a.png)\n' }
+  { name: 'only markup', content: '# \n![](a.png)\n' },
+  { name: 'inline color span', content: 'a <span style="color:red">red</span> word' },
+  {
+    name: 'inline background and underline spans',
+    content:
+      '<span style="background-color:yellow"><span style="text-decoration:underline">key</span></span> term'
+  },
+  {
+    name: 'inline color span around emphasis and wiki link',
+    content: '### He<span style="color:blue">**llo** [[Note|n]]</span>!'
+  },
+  { name: 'span without style keeps its open tag', content: '<span class="a">t</span> x' },
+  { name: 'span with stray quote kept', content: '<span style="x"y">t' }
 ]
 
 export const WORD_TEXTS: ReadonlyArray<string> = [
