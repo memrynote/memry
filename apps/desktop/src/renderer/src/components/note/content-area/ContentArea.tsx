@@ -63,7 +63,9 @@ import { getWhiteboardSlashMenuItem } from './whiteboard-block'
 import { getChartSlashMenuItem, getViewSlashMenuItem } from './view-block'
 import { createViewBlockKeysPlugin } from './view-block-keys-plugin'
 import { isFromWhiteboard } from './whiteboard-events'
-import { withTableHeaderRow, type TableInsertEditor } from './slash-menu-utils'
+import { buildTableContent, type TableSize } from './slash-menu-utils'
+import { TableSizePicker } from './table-size-picker'
+import { getLiveProseMirrorView } from './live-prosemirror-view'
 import {
   buildSlashMenuItems,
   readSlashMenuRecents,
@@ -1741,6 +1743,34 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     setAttachmentPicker({ kind })
   }, [])
 
+  // `/table` asks for a size before it inserts (#2568). The caret's box is
+  // both the open flag and where the grid opens; the caret itself stays put in
+  // the block the slash command was typed in, which is where the table lands.
+  const [tablePickerAnchor, setTablePickerAnchor] = useState<DOMRect | null>(null)
+
+  const openTableSizePicker = useCallback((): void => {
+    const view = getLiveProseMirrorView(editor)
+    if (!view) return
+    const caret = view.coordsAtPos(view.state.selection.from)
+    setTablePickerAnchor(
+      new DOMRect(caret.left, caret.top, caret.right - caret.left, caret.bottom - caret.top)
+    )
+  }, [editor])
+
+  const closeTableSizePicker = useCallback((): void => {
+    setTablePickerAnchor(null)
+    editor.focus()
+  }, [editor])
+
+  const insertTableOfSize = useCallback(
+    (size: TableSize): void => {
+      setTablePickerAnchor(null)
+      editor.focus()
+      insertOrUpdateBlockForSlashMenu(editor, { type: 'table', content: buildTableContent(size) })
+    },
+    [editor]
+  )
+
   const { templates: templateList, getTemplate } = useTemplates()
   const [templateAnchor, setTemplateAnchor] = useState<TemplateAnchor | null>(null)
 
@@ -2437,6 +2467,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               }}
             />
           )}
+          {tablePickerAnchor && (
+            <TableSizePicker
+              anchorRect={tablePickerAnchor}
+              onPick={insertTableOfSize}
+              onClose={closeTableSizePicker}
+            />
+          )}
           {attachmentPicker && noteId && (
             <AttachmentPickerDialog
               open
@@ -2548,72 +2585,66 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   // cell empty (#1640). Same row, same label — inside a cell it
                   // picks a file and inserts the inline node instead.
                   const inCell = isSelectionInTableCell(editor)
-                  const defaults = withTableHeaderRow(
-                    getDefaultReactSlashMenuItems(editor).map((item) => {
-                      // Same reasoning for `/check`: `checkListItem` is a BLOCK,
-                      // so inside a cell BlockNote puts the checklist after the
-                      // whole table. Inside a cell the item inserts the inline
-                      // node at the caret instead — same row, same label.
-                      //
-                      // Outside a cell the row makes a PLAIN checkbox: picking
-                      // "Check List" from a menu is asking for a checkbox, and
-                      // the task is one ⌘Enter away (`As linked task`). Typing
-                      // `[] ` is still the quick way to a task.
-                      if ((item as { key?: string }).key === 'check_list') {
-                        return inCell
-                          ? {
-                              ...item,
-                              onItemClick: () =>
-                                editor.insertInlineContent([createInlineCheckboxContent(false)])
-                            }
-                          : {
-                              ...item,
-                              onItemClick: () =>
-                                insertOrUpdateBlockForSlashMenu(editor, {
-                                  type: 'checkListItem',
-                                  props: { plain: true }
-                                } as any)
-                            }
+                  const defaults = getDefaultReactSlashMenuItems(editor).map((item) => {
+                    // Same reasoning for `/check`: `checkListItem` is a BLOCK,
+                    // so inside a cell BlockNote puts the checklist after the
+                    // whole table. Inside a cell the item inserts the inline
+                    // node at the caret instead — same row, same label.
+                    //
+                    // Outside a cell the row makes a PLAIN checkbox: picking
+                    // "Check List" from a menu is asking for a checkbox, and
+                    // the task is one ⌘Enter away (`As linked task`). Typing
+                    // `[] ` is still the quick way to a task.
+                    if ((item as { key?: string }).key === 'check_list') {
+                      return inCell
+                        ? {
+                            ...item,
+                            onItemClick: () =>
+                              editor.insertInlineContent([createInlineCheckboxContent(false)])
+                          }
+                        : {
+                            ...item,
+                            onItemClick: () =>
+                              insertOrUpdateBlockForSlashMenu(editor, {
+                                type: 'checkListItem',
+                                props: { plain: true }
+                              } as any)
+                          }
+                    }
+                    // Every attachment command opens the same picker (#2161).
+                    // BlockNote's own items insert an empty block and pop the
+                    // file panel, which can only upload — so a file already in
+                    // the vault had to be found through a separate "existing
+                    // attachment" command the user had to know existed. The
+                    // picker offers upload and the vault's own files together,
+                    // narrowed to the kind that was asked for.
+                    const key = (item as { key?: string }).key
+                    if (key === 'table') {
+                      return { ...item, onItemClick: openTableSizePicker }
+                    }
+                    if (key === 'image') {
+                      // `img` and `picture` already ship as image aliases;
+                      // `photo` did not, and is what people actually type.
+                      const withPhoto = {
+                        ...item,
+                        aliases: [...(item.aliases ?? []), 'photo']
                       }
-                      // Every attachment command opens the same picker (#2161).
-                      // BlockNote's own items insert an empty block and pop the
-                      // file panel, which can only upload — so a file already in
-                      // the vault had to be found through a separate "existing
-                      // attachment" command the user had to know existed. The
-                      // picker offers upload and the vault's own files together,
-                      // narrowed to the kind that was asked for.
-                      const key = (item as { key?: string }).key
-                      if (key === 'image') {
-                        // `img` and `picture` already ship as image aliases;
-                        // `photo` did not, and is what people actually type.
-                        const withPhoto = {
-                          ...item,
-                          aliases: [...(item.aliases ?? []), 'photo']
-                        }
-                        return inCell
-                          ? { ...withPhoto, onItemClick: pickImageForCell }
-                          : { ...withPhoto, onItemClick: () => openAttachmentPicker('image') }
+                      return inCell
+                        ? { ...withPhoto, onItemClick: pickImageForCell }
+                        : { ...withPhoto, onItemClick: () => openAttachmentPicker('image') }
+                    }
+                    if (key === 'video' || key === 'audio') {
+                      return { ...item, onItemClick: () => openAttachmentPicker('media') }
+                    }
+                    if (key === 'file') {
+                      return {
+                        ...item,
+                        aliases: [...(item.aliases ?? []), 'attachment', 'upload'],
+                        onItemClick: () => openAttachmentPicker('file')
                       }
-                      if (key === 'video' || key === 'audio') {
-                        return { ...item, onItemClick: () => openAttachmentPicker('media') }
-                      }
-                      if (key === 'file') {
-                        return {
-                          ...item,
-                          aliases: [...(item.aliases ?? []), 'attachment', 'upload'],
-                          onItemClick: () => openAttachmentPicker('file')
-                        }
-                      }
-                      return item
-                    }),
-                    // SAFETY: `updateBlock` is typed against the whole schema
-                    // union, so a helper that only ever writes table content
-                    // cannot state its parameter in terms the editor's own
-                    // signature accepts. The editor is the real BlockNote editor
-                    // and the helper only calls members `TableInsertEditor`
-                    // declares.
-                    editor as unknown as TableInsertEditor
-                  )
+                    }
+                    return item
+                  })
                   // `/pdf` and `/media` are the same item as `/file` — same
                   // picker, same insert — relabelled and pre-narrowed, because
                   // "attach a PDF" or "add a picture or a video" is what people

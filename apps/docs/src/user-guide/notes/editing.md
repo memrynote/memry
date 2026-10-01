@@ -253,9 +253,12 @@ chart over the journal as a view they cannot read. Both leave the text as it is.
 
 ## Tables
 
-`/table` inserts a table with a header row and two body rows. The header row is
-part of the table, not a style: notes are stored as markdown, and a markdown
-table always writes its first row as the header.
+`/table` opens a size grid before it inserts anything. Hover the grid and click,
+or size it with the arrow keys and press Enter; Escape closes it with nothing
+inserted. The grid opens on 3 rows by 3 columns and goes up to 10 by 10. The
+first row is the header row, and it counts toward the rows you pick. The header
+row is part of the table, not a style: notes are stored as markdown, and a
+markdown table always writes its first row as the header.
 
 Use the row and column handles on the edge of a table to toggle a header row or
 a header column on and off. The same table controls are available in task
@@ -271,11 +274,11 @@ has no row height to store.
 Put the pointer in a cell and three small grey marks appear, on the table's own
 border lines rather than floating beside it:
 
-| mark                                             | where        | opens                                                             |
-| ------------------------------------------------ | ------------ | ----------------------------------------------------------------- |
-| on the table's left edge, beside the cell's row  | outer border | the **row** menu — delete the row, insert one above or below      |
-| on the table's top edge, above the cell's column | outer border | the **column** menu — delete the column, insert one left or right |
-| on the cell's own right border                   | inner border | the **cell** menu — **Colors**, and splitting or merging          |
+| mark                                             | where        | opens                                                                                |
+| ------------------------------------------------ | ------------ | ------------------------------------------------------------------------------------ |
+| on the table's left edge, beside the cell's row  | outer border | the **row** menu — delete the row, insert one above or below                         |
+| on the table's top edge, above the cell's column | outer border | the **column** menu — delete the column, insert one left or right                    |
+| on the cell's own right border                   | inner border | the **cell** menu — **Colors**, splitting or merging, and the row and column actions |
 
 Hover a mark and it grows into a small six-dot button; click it for the menu.
 A mark's clickable area reaches a few pixels either side of the line it is
@@ -301,6 +304,12 @@ Drag across cells to select them. The selection is a range of cells, and
 Backspace clears what is inside them and leaves the table standing. To select
 the table itself as a block — to move it or delete it whole — start the drag in
 the margin beside it rather than inside a cell.
+
+With several rows or columns selected, the row and column actions in the cell
+menu and in the keyboard menu (`Mod+Shift+Enter`) act on all of them at once:
+**Delete 3 rows** removes the three, **Add 3 rows below** adds three new ones
+under them. One undo takes the whole change back. Deleting every row or every
+column is not offered; delete the table as a block instead.
 
 ### Row and column actions from the keyboard
 
