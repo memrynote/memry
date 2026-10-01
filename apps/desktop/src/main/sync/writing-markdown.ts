@@ -17,8 +17,11 @@
  */
 
 import * as Y from 'yjs'
+import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import {
   createSentinelAllocator,
+  readCriticMarkupMarksFromYDoc,
+  serializeCriticMarkup,
   isWritingAlternativeId,
   readWritingAlternativesFromYDoc,
   readWritingGhostsFromYDoc,
@@ -35,6 +38,9 @@ import {
   type WritingSentinelMap,
   type WritingVariant
 } from '@memry/shared'
+// Types only: the converter loads lazily (blocknote-converter-loader.ts), and
+// the write-back hands its functions in.
+import type * as BlockNoteConverter from './blocknote-converter'
 
 interface TextRun {
   type: Y.XmlText
@@ -382,6 +388,8 @@ export function applyWritingSeed(
   if (!frontmatter) return
 
   // File order is display order (newest first); the timestamps only carry it.
+  // The file holds plain text. An item whose text is unchanged keeps the
+  // formatted copy (`html`) the doc already has for it.
   const takenOverflow = new Set<string>()
   const overflow = frontmatter.overflow.map((item, index): WritingOverflowItem => {
     const match = existingOverflow.find(
@@ -390,6 +398,7 @@ export function applyWritingSeed(
     return {
       id: uniqueId(match?.id ?? `overflow-${index}`, takenOverflow),
       text: item.text,
+      ...(match?.html ? { html: match.html } : {}),
       ...(item.label ? { label: item.label } : {}),
       createdAt: frontmatter.overflow.length - index
     }
@@ -398,8 +407,52 @@ export function applyWritingSeed(
 }
 
 /** True when the doc holds a range the file has to carry as markers. */
-export function hasWritingRanges(doc: Y.Doc): boolean {
+function hasWritingRanges(doc: Y.Doc): boolean {
   return (
     readWritingAlternativesFromYDoc(doc).length > 0 || readWritingGhostsFromYDoc(doc).length > 0
   )
+}
+
+// ----------------------------------------------------------------------------
+// The file body
+// ----------------------------------------------------------------------------
+
+/** What the vault file gets for a doc: the body, and the `writing` frontmatter beside it. */
+export interface NoteBody {
+  markdown: string
+  writing: WritingFrontmatter
+}
+
+/**
+ * The body with its CriticMarkup and, when the doc has alternatives or
+ * ghosts, the writing tools markers; plus the `writing` frontmatter.
+ */
+export async function serializeNoteBody(
+  doc: Y.Doc,
+  options: Parameters<typeof BlockNoteConverter.yDocToMarkdown>[2],
+  converter: Pick<typeof BlockNoteConverter, 'yDocToMarkdown' | 'yDocToMarkdownWithWritingRanges'>
+): Promise<NoteBody | null> {
+  const criticMarks = readCriticMarkupMarksFromYDoc(doc)
+  const overflow = readWritingOverflowFromYDoc(doc)
+  if (hasWritingRanges(doc)) {
+    const ranged = await converter.yDocToMarkdownWithWritingRanges(
+      doc,
+      CRDT_FRAGMENT_NAME,
+      criticMarks,
+      options
+    )
+    if (ranged === null) return null
+    if (ranged) {
+      return {
+        markdown: ranged.markdown,
+        writing: writingFrontmatterFor(ranged.alternatives, overflow)
+      }
+    }
+  }
+  const plain = await converter.yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, options)
+  if (plain === null) return null
+  return {
+    markdown: serializeCriticMarkup(plain, criticMarks),
+    writing: writingFrontmatterFor([], overflow)
+  }
 }

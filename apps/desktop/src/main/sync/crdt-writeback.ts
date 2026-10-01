@@ -4,12 +4,13 @@ import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
 import { feedExternalEditToCrdt } from './crdt-external-feed'
-import type { NoteBody, SourceRestoreOutcome } from './blocknote-converter'
+import type { SourceRestoreOutcome } from './blocknote-converter'
+import { serializeNoteBody, type NoteBody } from './writing-markdown'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
-import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import {
   isWritingFrontmatterValue,
+  writingFrontmatterOf,
   toWritingFrontmatterValue,
   WRITING_FRONTMATTER_KEY,
   type WritingFrontmatter
@@ -20,7 +21,6 @@ import { atomicWrite, safeRead, ensureDirectory } from '../vault/file-ops'
 import {
   generateContentHash,
   parseNote,
-  writingFrontmatterOf,
   serializeNote,
   serializeParsedNote,
   type NoteFrontmatter
@@ -504,7 +504,7 @@ async function performWriteback(
   // Loaded before the note row is read, so the row below is as fresh as it
   // was before the converter became lazy: past this line nothing awaits until
   // the serialization itself.
-  const { findUnrepresentableNodes, yDocToNoteBody } = await loadBlockNoteConverter()
+  const converter = await loadBlockNoteConverter()
   // A doc with no note row is never turned into a note. Its record may not
   // have arrived yet, or it may be a tombstone this device has not pulled (a
   // packed body applied before the first record pull), and both look the
@@ -525,7 +525,7 @@ async function performWriteback(
   // would push it to every other device. Keeping the file costs the user a
   // stale body until a build that knows the type runs; writing costs them the
   // content. Checked before serializing, since the answer decides nothing else.
-  const unrepresentable = findUnrepresentableNodes(doc)
+  const unrepresentable = converter.findUnrepresentableNodes(doc)
   if (unrepresentable.length > 0) {
     updateDebugState(noteId, {
       pending: false,
@@ -545,10 +545,14 @@ async function performWriteback(
     return
   }
 
-  const body = await yDocToNoteBody(doc, CRDT_FRAGMENT_NAME, {
-    notePath: cached.path,
-    onSourceRestore: (sourceRestore) => updateDebugState(noteId, { sourceRestore })
-  })
+  const body = await serializeNoteBody(
+    doc,
+    {
+      notePath: cached.path,
+      onSourceRestore: (sourceRestore) => updateDebugState(noteId, { sourceRestore })
+    },
+    converter
+  )
   const markdown = body?.markdown ?? null
   updateDebugState(noteId, {
     pending: false,

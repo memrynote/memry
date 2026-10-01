@@ -7,12 +7,8 @@
  */
 
 import fs from 'fs/promises'
-import {
-  parseNote,
-  calculateWordCount,
-  generateContentHash,
-  writingFrontmatterOf
-} from './frontmatter'
+import { parseNote, calculateWordCount, generateContentHash } from './frontmatter'
+import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { syncNoteToCache } from './note-sync'
 import { atomicWrite } from './file-ops'
 import {

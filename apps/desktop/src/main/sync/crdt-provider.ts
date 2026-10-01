@@ -39,7 +39,7 @@ import { prepareVaultCrdtStore } from './crdt-store-path'
 import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
 import { getVaultRoot, toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
-import { generateContentHash, parseNote, writingFrontmatterOf } from '../vault/frontmatter'
+import { generateContentHash, parseNote } from '../vault/frontmatter'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { repairEmptyBlockIds } from './repair-block-ids'
 import { compactYDoc } from '@memry/sync-client/crdt-compact-utils'
@@ -52,7 +52,8 @@ import {
   MARKDOWN_SOURCE_MAP,
   WRITING_ALTERNATIVES_ARRAY,
   WRITING_GHOSTS_ARRAY,
-  WRITING_OVERFLOW_ARRAY
+  WRITING_OVERFLOW_ARRAY,
+  writingFrontmatterOf
 } from '@memry/shared'
 
 const log = createLogger('CrdtProvider')

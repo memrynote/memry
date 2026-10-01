@@ -31,10 +31,9 @@ import {
   readCriticMarkupMarksFromYDoc,
   readWritingAlternativesFromYDoc,
   readWritingGhostsFromYDoc,
-  readWritingOverflowFromYDoc,
-  serializeCriticMarkup,
   withoutWritingSentinels,
   writeCriticMarkupMarksToYDoc,
+  type CriticMarkupMark,
   type WritingFrontmatter,
   type WritingSentinelMap
 } from '@memry/shared'
@@ -96,7 +95,6 @@ import { resolveVaultEmbeds } from '../vault/resolve-embed'
 import {
   applyWritingSeed,
   insertWritingSentinels,
-  writingFrontmatterFor,
   type EncodedWritingRanges
 } from './writing-markdown'
 
@@ -231,52 +229,36 @@ export async function yDocToMarkdown(
   }
 }
 
-export interface NoteBody {
-  /** The file body: CriticMarkup and writing tools markers included. */
-  markdown: string
-  /** The `writing` frontmatter that goes with it. */
-  writing: WritingFrontmatter
-}
-
 /**
- * Everything the vault file holds for this document: the body with its
- * CriticMarkup and writing tools markers, and the `writing` frontmatter.
- *
- * A doc with alternatives or ghosts keeps house style, as one with
- * CriticMarkup does: the markers are placed by the serializer, and restoring
- * the author's spelling around them is not something the merge can prove.
+ * The file body of a doc that holds alternatives or ghosts: house style with
+ * the writing tools markers in place and `criticMarks` applied around them.
+ * House style, as with CriticMarkup: the markers are placed by the
+ * serializer, and restoring the author's spelling around them is not
+ * something the merge can prove. Resolves undefined when no range resolves
+ * any more (the caller serializes as usual), null when conversion failed.
  */
-export async function yDocToNoteBody(
+export async function yDocToMarkdownWithWritingRanges(
   doc: Y.Doc,
-  fragmentName: string = CRDT_FRAGMENT_NAME,
+  fragmentName: string,
+  criticMarks: CriticMarkupMark[],
   options: YDocToMarkdownOptions = {}
-): Promise<NoteBody | null> {
-  const criticMarks = readCriticMarkupMarksFromYDoc(doc)
-  const overflow = readWritingOverflowFromYDoc(doc)
+): Promise<
+  { markdown: string; alternatives: EncodedWritingRanges['alternatives'] } | null | undefined
+> {
   const alternatives = readWritingAlternativesFromYDoc(doc)
   const ghosts = readWritingGhostsFromYDoc(doc)
-
-  if (alternatives.length > 0 || ghosts.length > 0) {
-    let encoded: EncodedWritingRanges | null = null
-    const text = await serializeCanonical(doc, fragmentName, (snapshot) => {
-      encoded = insertWritingSentinels(snapshot, fragmentName, alternatives, ghosts)
-    })
-    if (text === null) return null
-    const ranges = encoded as EncodedWritingRanges | null
-    if (ranges && ranges.sentinels.size > 0) {
-      options.onSourceRestore?.('writing-marks')
-      return {
-        markdown: encodeWritingBody(text, ranges.sentinels, criticMarks),
-        writing: writingFrontmatterFor(ranges.alternatives, overflow)
-      }
-    }
-  }
-
-  const plain = await yDocToMarkdown(doc, fragmentName, options)
-  if (plain === null) return null
+  if (alternatives.length === 0 && ghosts.length === 0) return undefined
+  let encoded: EncodedWritingRanges | null = null
+  const text = await serializeCanonical(doc, fragmentName, (snapshot) => {
+    encoded = insertWritingSentinels(snapshot, fragmentName, alternatives, ghosts)
+  })
+  if (text === null) return null
+  const ranges = encoded as EncodedWritingRanges | null
+  if (!ranges || ranges.sentinels.size === 0) return undefined
+  options.onSourceRestore?.('writing-marks')
   return {
-    markdown: serializeCriticMarkup(plain, criticMarks),
-    writing: writingFrontmatterFor([], overflow)
+    markdown: encodeWritingBody(text, ranges.sentinels, criticMarks),
+    alternatives: ranges.alternatives
   }
 }
 

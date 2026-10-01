@@ -19,10 +19,8 @@ import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
 import { replaceWikiLinks, splitWikiTarget } from '@memry/shared/wiki-target'
 import {
   isWritingFrontmatterValue,
-  readWritingFrontmatter,
-  WRITING_FRONTMATTER_KEY,
-  type WritingFrontmatter
-} from '@memry/shared'
+  WRITING_FRONTMATTER_KEY
+} from '@memry/shared/writing-tools/markdown'
 import {
   COVER_CREDIT_FRONTMATTER_KEY,
   COVER_CREDIT_URL_FRONTMATTER_KEY,
@@ -405,22 +403,6 @@ const VALUE_GATED_FRONTMATTER_KEYS: ReadonlyMap<string, (value: unknown) => bool
   // Writing tools data (alternative versions, overflow), not a property.
   [WRITING_FRONTMATTER_KEY, isWritingFrontmatterValue]
 ])
-
-/**
- * The note's writing tools frontmatter, for a caller that read the whole file:
- * an absent or foreign `writing` key reads as empty, since the file is what
- * says there is nothing.
- */
-export function writingFrontmatterOf(
-  frontmatter: NoteFrontmatter | null | undefined
-): WritingFrontmatter {
-  return (
-    readWritingFrontmatter(frontmatter?.[WRITING_FRONTMATTER_KEY]) ?? {
-      alternatives: {},
-      overflow: []
-    }
-  )
-}
 
 function isReservedFrontmatterKey(name: string, value: unknown): boolean {
   if (RESERVED_FRONTMATTER_KEYS.has(name)) return true

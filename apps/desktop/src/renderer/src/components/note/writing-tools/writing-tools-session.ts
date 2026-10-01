@@ -17,6 +17,7 @@ import {
   WRITING_ALTERNATIVES_ARRAY,
   WRITING_GHOSTS_ARRAY,
   WRITING_OVERFLOW_ARRAY,
+  newWritingAlternativeId,
   readWritingAlternativesFromYDoc,
   readWritingGhostsFromYDoc,
   readWritingOverflowFromYDoc,
@@ -131,16 +132,6 @@ const OPEN_MENUS = '[role="menu"], .bn-suggestion-menu, .bn-grid-suggestion-menu
 
 function newId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID()}`
-}
-
-/**
- * An alternative's id is written into the note file (`<!--alt:k3x9q2xm-->`),
- * so it is kept short. Eight base-36 characters; a clash within one note is
- * negligible, and the parser keeps the first range if one ever happens.
- */
-function newAlternativeId(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(8))
-  return Array.from(bytes, (byte) => (byte % 36).toString(36)).join('')
 }
 
 function singleLine(text: string): string {
@@ -603,7 +594,7 @@ export class WritingToolsSession {
     const text = singleLine(rawText)
     if (!draft || !text || text === draft.original) return
     const record: WritingAlternative = {
-      id: newAlternativeId(),
+      id: newWritingAlternativeId(),
       anchorStart: draft.anchorStart,
       anchorEnd: draft.anchorEnd,
       original: draft.original,
@@ -677,7 +668,7 @@ export class WritingToolsSession {
       this.patch({ focusAlternativeId: latest.id })
     } else if (anchors) {
       const record: WritingAlternative = {
-        id: newAlternativeId(),
+        id: newWritingAlternativeId(),
         ...anchors,
         original,
         variants: added,

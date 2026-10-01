@@ -14,7 +14,8 @@
 
 import path from 'path'
 import fs from 'fs/promises'
-import { parseNote, writingFrontmatterOf } from './frontmatter'
+import { parseNote } from './frontmatter'
+import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { syncNoteToCache, syncFileToCache } from './note-sync'
 import {
   ensureDirectory,

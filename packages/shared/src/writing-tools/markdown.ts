@@ -76,6 +76,16 @@ export function isWritingAlternativeId(value: string): boolean {
   return ID_PATTERN.test(value)
 }
 
+/**
+ * A new alternative id. Short, because it is written into the note file
+ * (`<!--alt:k3x9q2xm-->`); a clash within one note is negligible, and the
+ * parser keeps the first range if one ever happens.
+ */
+export function newWritingAlternativeId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(8))
+  return Array.from(bytes, (byte) => (byte % 36).toString(36)).join('')
+}
+
 // ----------------------------------------------------------------------------
 // Sentinels
 // ----------------------------------------------------------------------------
@@ -380,6 +390,23 @@ export function readWritingFrontmatter(value: unknown): WritingFrontmatter | nul
     return item ? [item] : []
   })
   return { alternatives, overflow }
+}
+
+/**
+ * The writing tools frontmatter of a note whose whole file was read: an absent
+ * or foreign `writing` key reads as empty, since the file says there is
+ * nothing. (Undefined, by contrast, is what a caller with only the body passes
+ * on.)
+ */
+export function writingFrontmatterOf(
+  frontmatter: Record<string, unknown> | null | undefined
+): WritingFrontmatter {
+  return (
+    readWritingFrontmatter(frontmatter?.[WRITING_FRONTMATTER_KEY]) ?? {
+      alternatives: {},
+      overflow: []
+    }
+  )
 }
 
 export function isWritingFrontmatterValue(value: unknown): boolean {

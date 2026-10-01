@@ -16,7 +16,6 @@ import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getConfig } from './index'
 import {
   parseNote,
-  writingFrontmatterOf,
   generateContentHash,
   extractProperties,
   extractTitleFromPath
@@ -63,6 +62,7 @@ import { isWritebackIgnored } from '../sync/crdt-writeback'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { flushProjectionEvents } from '../projections'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
 import { enqueueJournalDelete } from '../journal/runtime-effects'
 import {
