@@ -208,6 +208,22 @@ describe('note cover sync', () => {
     expect(merged.coverImage).toEqual(kept.coverImage)
   })
 
+  it('keeps a cover field a newer client wrote across a pull and the next push (#2183)', () => {
+    seedNote('n1', '---\ntitle: n1\n---\nbody\n')
+    const raw = { cover: { ref: 'wash:sage', blur: 4 }, clock: REMOTE_CLOCK }
+    const data = NoteSyncPayloadSchema.parse(raw)
+    expect(data.cover).not.toHaveProperty('blur')
+
+    recordUnknownPayloadFields(ctx.db, 'note', 'n1', raw, data)
+    noteHandler.applyUpsert(ctx, 'n1', data, REMOTE_CLOCK)
+
+    const built = noteHandler.buildPushPayload(ctx.db, 'n1', 'device-A', 'update') as string
+    const merged = JSON.parse(mergeUnknownPayloadFields(ctx.db, 'note', 'n1', built)) as {
+      cover: Record<string, unknown>
+    }
+    expect(merged.cover).toMatchObject({ ref: 'wash:sage', blur: 4 })
+  })
+
   it('does not replace a text-valued cover property with a remote cover', () => {
     seedNote('n1', '---\ncover: Hardback\n---\nbody\n')
 

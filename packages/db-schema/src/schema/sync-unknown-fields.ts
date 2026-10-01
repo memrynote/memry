@@ -31,6 +31,14 @@ export const syncUnknownFields = sqliteTable(
      */
     fields: text('fields').notNull(),
 
+    /**
+     * JSON object of keys stripped from inside a known payload object, shaped
+     * like the payload down to each stripped key (e.g. `{"cover":{"blur":2}}`).
+     * Merged on push only into a parent object the local payload still has,
+     * never added as a whole value. Null on rows written before 0064.
+     */
+    nestedFields: text('nested_fields'),
+
     /** When the remainder was last captured. Diagnostics only. */
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
   },
