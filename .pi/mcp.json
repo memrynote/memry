@@ -5,7 +5,8 @@
       "headers": { "Authorization": "Bearer ${PADDLE_SANDBOX_API_KEY}" }
     },
     "paper": {
-      "url": "http://127.0.0.1:29979/mcp"
+      "command": "~/.paper/bin/paper",
+      "args": ["mcp"]
     },
     "posthog": {
       "url": "https://mcp.posthog.com/mcp"
