@@ -827,7 +827,7 @@ export const RelationCell = memo(function RelationCell({
         // A note's own emoji stands in for the generic kind icon.
         const glyph = ref.emoji ? (
           <span className="size-3 shrink-0 leading-none text-[11px]" aria-hidden>
-            {ref.emoji}
+            <NoteIconDisplay value={ref.emoji} />
           </span>
         ) : (
           <Icon className="size-3 shrink-0" aria-hidden />

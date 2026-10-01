@@ -60,7 +60,7 @@ export const RelatedIcon = ({
   }
   const emoji = info?.kind === 'note' ? info.emoji : null
   return emoji ? (
-    <span className="size-3.5 text-center text-[13px] leading-3.5 shrink-0">{emoji}</span>
+    <NoteIconDisplay value={emoji} className="size-3.5 shrink-0 text-[13px] leading-3.5" />
   ) : (
     <RelatedFileIcon
       fileType={info?.kind === 'note' ? info.fileType : 'markdown'}

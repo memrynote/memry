@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Lock, ChevronDown, ChevronRight, Info } from '@/lib/icons'
 import { useTemplates } from '@/hooks/use-templates'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { useVault } from '@/hooks/use-vault'
 import { useWeekStartsOn } from '@/hooks/use-calendar-preferences'
@@ -177,7 +178,7 @@ export function JournalSettings() {
               {templates.map((template) => (
                 <SelectItem key={template.id} value={template.id}>
                   <span className="flex items-center gap-2">
-                    {template.icon && <span>{template.icon}</span>}
+                    {template.icon && <NoteIconDisplay value={template.icon} />}
                     {template.name}
                     {template.isBuiltIn && <Lock className="w-3 h-3 text-muted-foreground ms-1" />}
                   </span>
@@ -243,7 +244,7 @@ export function JournalSettings() {
                     {templates.map((template) => (
                       <SelectItem key={template.id} value={template.id}>
                         <span className="flex items-center gap-2">
-                          {template.icon && <span>{template.icon}</span>}
+                          {template.icon && <NoteIconDisplay value={template.icon} />}
                           {template.name}
                           {template.isBuiltIn && (
                             <Lock className="w-3 h-3 text-muted-foreground ms-1" />

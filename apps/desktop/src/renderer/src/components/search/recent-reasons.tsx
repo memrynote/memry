@@ -1,5 +1,6 @@
 import { Command } from 'cmdk'
 import { FileText, Trash2 } from '@/lib/icons'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { PageInboxIcon, PageJournalIcon, PageTasksIcon } from '@/lib/icons/page-icons'
 import type { SearchReason } from '@memry/contracts/search-api'
 import { useT } from '@memry/i18n/renderer'
@@ -61,9 +62,10 @@ export function RecentReasons({
                 cursor-pointer data-[selected=true]:bg-muted transition-colors duration-75"
             >
               {reason.itemIcon ? (
-                <span className="size-3.5 shrink-0 text-sm leading-none flex items-center justify-center">
-                  {reason.itemIcon}
-                </span>
+                <NoteIconDisplay
+                  value={reason.itemIcon}
+                  className="size-3.5 shrink-0 text-sm leading-none flex items-center justify-center"
+                />
               ) : (
                 <Icon className="size-3.5 text-text-tertiary shrink-0" />
               )}

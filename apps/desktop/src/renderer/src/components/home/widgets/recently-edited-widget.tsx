@@ -5,6 +5,7 @@ import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { FileImage, FileText } from '@/lib/icons'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { formatRelative } from '@/components/folder-view/note-card-pieces'
 import { extractFolderFromPath } from '@/components/notes-tree-utils'
 import { WidgetRow, WidgetEmptyState } from './widget-list'
@@ -64,7 +65,7 @@ export function RecentlyEditedWidget({ size }: WidgetComponentProps): React.JSX.
               }
             >
               {n.emoji ? (
-                <span className="shrink-0 text-sm leading-none">{n.emoji}</span>
+                <NoteIconDisplay value={n.emoji} className="shrink-0 text-sm leading-none" />
               ) : n.fileType === 'image' ? (
                 <FileImage className="size-4 shrink-0 text-muted-foreground/70" />
               ) : (

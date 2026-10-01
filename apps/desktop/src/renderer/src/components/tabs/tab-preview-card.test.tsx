@@ -40,6 +40,17 @@ describe('TabPreviewCard', () => {
       expect(screen.getByText('📝')).toBeInTheDocument()
     })
 
+    it('should render a custom image icon instead of its raw reference', () => {
+      // #given
+      const preview = createPreview({ emoji: 'custom:1l4E1zFoOCBC_x6h' })
+
+      // #when
+      const { container } = render(<TabPreviewCard preview={preview} />)
+
+      // #then
+      expect(container.textContent).not.toContain('custom:')
+    })
+
     it('should render fallback icon when no emoji', () => {
       // #given
       const preview = createPreview({ emoji: null })

@@ -245,6 +245,18 @@ describe('RecentReasons', () => {
       expect(screen.getByText('🏗️')).toBeInTheDocument()
     })
 
+    it('renders a custom image icon instead of its raw reference', () => {
+      // #given
+      const reason = createReason({ itemIcon: 'custom:1l4E1zFoOCBC_x6h' })
+
+      // #when
+      const { container } = renderReasons({ reasons: [reason], onSelect, onClear })
+
+      // #then
+      expect(container.textContent).not.toContain('custom:')
+      expect(screen.getByText('Turkey Trip Planning')).toBeInTheDocument()
+    })
+
     it('renders SVG fallback icon when itemIcon is null', () => {
       // #given
       const reason = createReason({ itemIcon: null })
