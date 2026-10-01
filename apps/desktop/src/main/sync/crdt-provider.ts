@@ -72,6 +72,8 @@ const SIZE_CHECK_INTERVAL_MS = 60_000
 const ENCODED_SIZE_COMPACTION_THRESHOLD = 1024 * 1024
 const ACCUMULATED_BYTES_RECHECK_THRESHOLD = 512 * 1024
 const DEFAULT_INACTIVE_DOC_LIMIT = 32
+/** How long an editor open with no store waits for the server body before it seeds (#2544). */
+export const EDITOR_OPEN_MERGE_TIMEOUT_MS = 3_000
 
 /**
  * What a snapshot push may claim about the state it carries (#2299, protocol 07
@@ -682,6 +684,55 @@ export class CrdtProvider {
     } finally {
       this.openLocks.delete(noteId)
     }
+  }
+
+  /**
+   * Open a note for an editor window.
+   *
+   * With a store this is `open()`: the doc reloads from the store, and the seed
+   * only fills a note the store never held. With no store (#2544) every open
+   * starts from an empty doc, and a seed from the vault file shares no Yjs
+   * items with the server body. When the sync pull later merges that body,
+   * the fragment holds two block groups, the editor shows whichever Yjs orders
+   * first, and a close after typing pushes the fork as a snapshot.
+   *
+   * So with no store and a running sync runtime (`mergeRemote` set), the doc
+   * opens unseeded, the server state is merged first, and the file seeds only
+   * a doc that is still empty. The pull seeds on its own when the server holds
+   * nothing. A merge that fails or outlasts the timeout (offline) falls back to
+   * the seed, which is the behavior before this change.
+   */
+  async openForEditor(
+    noteId: string,
+    windowId: number | undefined,
+    mergeRemote: ((noteId: string) => Promise<boolean>) | null,
+    timeoutMs: number = EDITOR_OPEN_MERGE_TIMEOUT_MS
+  ): Promise<Y.Doc> {
+    if (this.persistence || !mergeRemote) return this.open(noteId, windowId)
+
+    const doc = await this.open(noteId, windowId, { skipSeed: true })
+    if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return doc
+
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      await Promise.race([
+        mergeRemote(noteId),
+        new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, timeoutMs)
+        })
+      ])
+    } catch (err) {
+      log.warn('Server CRDT merge failed before editor open; seeding from vault file', {
+        noteId,
+        error: err
+      })
+    } finally {
+      clearTimeout(timer)
+    }
+
+    // The window may have closed the doc while the merge ran.
+    if (this.docs.get(noteId)?.doc === doc) await this.seedFromMarkdown(noteId, doc)
+    return doc
   }
 
   private async doOpen(

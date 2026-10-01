@@ -93,6 +93,11 @@ vi.mock('@memry/sync-client/microtask-batch-broadcaster', () => ({
   }
 }))
 
+const syncEngine = vi.hoisted(() => ({
+  current: null as null | { mergeRemoteCrdtForNote: (noteId: string) => Promise<boolean> }
+}))
+vi.mock('./runtime', () => ({ getSyncEngine: () => syncEngine.current }))
+
 vi.mock('y-leveldb', () => ({
   LeveldbPersistence: class {
     async destroy() {}
@@ -117,6 +122,7 @@ import { _resetCrdtIpcHandlersForTests, registerCrdtIpcHandlers } from '../ipc/c
 describe('CRDT IPC handlers — lifecycle resilience', () => {
   beforeEach(() => {
     preflight.gate = null
+    syncEngine.current = null
     resetIpcMocks()
     mockIpcMain._clearHandlers()
     resetCrdtProvider()
@@ -318,6 +324,51 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       await vi.waitFor(() => {
         expect(provider.getOpenNoteIds()).toEqual([])
       })
+    })
+  })
+
+  describe('an editor open with no store (#2544)', () => {
+    beforeEach(() => {
+      senderWindow.current = { id: 5, once: vi.fn() }
+      mockGetNoteCacheById.mockReturnValue({ id: 'n1', path: 'n1.md', fileType: 'markdown' })
+    })
+
+    it('crdt:open-doc hands the running engine merge to the editor open', async () => {
+      const provider = getCrdtProvider()
+      await provider.init()
+      const openForEditor = vi.spyOn(provider, 'openForEditor')
+      const mergeRemoteCrdtForNote = vi.fn(async () => true)
+      syncEngine.current = { mergeRemoteCrdtForNote }
+
+      const result = await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })
+
+      expect(result).toEqual({ success: true })
+      expect(openForEditor).toHaveBeenCalledWith('n1', 5, expect.any(Function))
+      await openForEditor.mock.calls[0][2]!('n1')
+      expect(mergeRemoteCrdtForNote).toHaveBeenCalledWith('n1')
+    })
+
+    it('crdt:open-doc with no sync runtime opens without a merge', async () => {
+      const provider = getCrdtProvider()
+      await provider.init()
+      const openForEditor = vi.spyOn(provider, 'openForEditor')
+
+      await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })
+
+      expect(openForEditor).toHaveBeenCalledWith('n1', 5, null)
+    })
+
+    it('crdt:open-doc with a store does not wait on a merge', async () => {
+      const provider = getCrdtProvider()
+      await provider.init()
+      expect(provider.hasPersistence()).toBe(true)
+      const mergeRemoteCrdtForNote = vi.fn(async () => true)
+      syncEngine.current = { mergeRemoteCrdtForNote }
+
+      await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })
+
+      expect(mergeRemoteCrdtForNote).not.toHaveBeenCalled()
+      expect(provider.getOpenNoteIds()).toEqual(['n1'])
     })
   })
 
