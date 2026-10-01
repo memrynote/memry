@@ -158,6 +158,34 @@ describe('discoverGoogleCalendarSources', () => {
     expect(after.every((row) => row.archivedAt === null)).toBe(true)
   })
 
+  it('does not revive calendars when the account is disconnected mid-discovery (#2516, #2555)', async () => {
+    const now = '2026-08-08T00:00:00.000Z'
+    upsertCalendarSource(db, {
+      id: 'google-account:work@example.com',
+      provider: 'google',
+      kind: 'account',
+      accountId: 'work@example.com',
+      remoteId: 'work@example.com',
+      title: 'Work',
+      createdAt: now,
+      modifiedAt: now
+    })
+    await discoverGoogleCalendarSources(db, stubClient(), 'work@example.com')
+
+    // The disconnect tombstones every source of the account while the next
+    // pass is still waiting on listCalendars.
+    const client = {
+      listCalendars: vi.fn(async () => {
+        db.update(calendarSources).set({ archivedAt: now }).run()
+        return REMOTE_CALENDARS
+      })
+    }
+    await discoverGoogleCalendarSources(db, client, 'work@example.com')
+
+    const rows = db.select().from(calendarSources).all()
+    expect(rows.every((row) => row.archivedAt === now)).toBe(true)
+  })
+
   it('keeps two accounts separate rather than reassigning shared calendars', async () => {
     await discoverGoogleCalendarSources(db, stubClient(), 'work@example.com')
     await discoverGoogleCalendarSources(
