@@ -1507,5 +1507,86 @@
     "cancel": "Cancel",
     "save": "Save",
     "addToFilterHint": "Ctrl/Cmd-click a tag to add it to the filter"
+  },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Alternatives",
+      "overflow": "Overflow",
+      "lab": "Lab",
+      "wordCount": "Word count",
+      "words": "{count, plural, one {# word} other {# words}}",
+      "hideWordCount": "Hide word count"
+    },
+    "menu": {
+      "aria": "Editor actions",
+      "cut": "Cut",
+      "copy": "Copy",
+      "paste": "Paste",
+      "selectAll": "Select All",
+      "undo": "Undo",
+      "redo": "Redo",
+      "comment": "Comment",
+      "addAlternative": "Add alternative",
+      "suggestAlternatives": "Suggest alternatives",
+      "ghost": "Ghost",
+      "revive": "Revive",
+      "stash": "Stash in overflow",
+      "noSpellingSuggestions": "No suggestions",
+      "addToDictionary": "Add to dictionary",
+      "clipboardFailed": "Could not use the clipboard"
+    },
+    "alternatives": {
+      "railAria": "Alternatives",
+      "hint": "{position} of {total} ↑ ↓",
+      "original": "Original",
+      "byYou": "Written by you",
+      "byAI": "Suggested by AI",
+      "showing": "Showing",
+      "addPlaceholder": "Add alternative…",
+      "removeSuggestions": "Remove suggestions",
+      "removeVariant": "Remove alternative",
+      "empty": "Select text and choose Add alternative to keep other ways of saying it.",
+      "suggesting": "Suggesting alternatives…",
+      "suggestFailed": "Could not suggest alternatives",
+      "noSuggestions": "No new alternatives were suggested"
+    },
+    "overflow": {
+      "railAria": "Overflow",
+      "addPlaceholder": "Write something to keep…",
+      "empty": "Lines you stash or write here stay with this note, out of the text.",
+      "dragHint": "Drag into the note",
+      "copy": "Copy",
+      "copied": "Copied",
+      "delete": "Delete"
+    },
+    "lab": {
+      "railAria": "Lab",
+      "check": "Check",
+      "convoluted": "Convoluted sentences",
+      "tone": "Words that don’t fit the tone",
+      "run": "Run",
+      "running": "Running…",
+      "results": "Results",
+      "noResults": "Nothing flagged.",
+      "trim": "Trim",
+      "slight": "Slight trim",
+      "tighten": "Tighten",
+      "sharper": "Even sharper",
+      "half": "Cut in half",
+      "stop": "Stop",
+      "checkFailed": "The check could not run",
+      "trimFailed": "Could not suggest cuts",
+      "noCuts": "Nothing to cut",
+      "emptyNote": "Write something first"
+    },
+    "trimReview": {
+      "aria": "Review cuts",
+      "position": "Cut {position} of {total}",
+      "previous": "Previous cut",
+      "next": "Next cut",
+      "keep": "Keep",
+      "cut": "Cut",
+      "cutAll": "Cut all"
+    }
   }
 }

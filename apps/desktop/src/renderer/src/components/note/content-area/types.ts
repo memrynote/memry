@@ -4,6 +4,7 @@
  */
 
 import type { Block } from '@blocknote/core'
+import type { WritingToolsSession } from '../writing-tools/writing-tools-session'
 
 // =============================================================================
 // HEADING TYPES
@@ -201,6 +202,12 @@ export interface ContentAreaProps {
     onMarkPositionsChange?: (positions: Record<string, number>) => void
     onReplaceMarksFromYjs?: (marks: import('@memry/shared').CriticMarkupMark[]) => void
   }
+  /**
+   * The note page's writing tools (alternatives, ghosts, overflow, Lab). When
+   * set, the editor attaches to the session and right-clicking text opens the
+   * editor's own context menu instead of the native one.
+   */
+  writingTools?: WritingToolsSession
 }
 
 // =============================================================================

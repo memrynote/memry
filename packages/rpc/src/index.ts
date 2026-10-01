@@ -20,6 +20,8 @@ import type { TelemetryClientAPI } from './telemetry.ts'
 import { telemetryRpc } from './telemetry.ts'
 import type { UnsplashClientAPI } from './unsplash.ts'
 import { unsplashRpc } from './unsplash.ts'
+import type { WritingToolsClientAPI, WritingToolsSubscriptions } from './writing-tools.ts'
+import { writingToolsRpc } from './writing-tools.ts'
 
 export type {
   RpcDomainSpec,
@@ -41,6 +43,7 @@ export { telemetryRpc } from './telemetry.ts'
 export { feedbackRpc } from './feedback.ts'
 export { diagnosticsRpc } from './diagnostics.ts'
 export { unsplashRpc } from './unsplash.ts'
+export { writingToolsRpc } from './writing-tools.ts'
 
 export type { NotesClientAPI, NotesSubscriptions } from './notes.ts'
 export type { TasksClientAPI, TasksSubscriptions } from './tasks.ts'
@@ -53,6 +56,7 @@ export type { TelemetryClientAPI, TelemetrySettings } from './telemetry.ts'
 export type { FeedbackClientAPI } from './feedback.ts'
 export type { DiagnosticsClientAPI } from './diagnostics.ts'
 export type { UnsplashClientAPI } from './unsplash.ts'
+export type { WritingToolsClientAPI, WritingToolsSubscriptions } from './writing-tools.ts'
 
 export const rpcDomains = [
   notesRpc,
@@ -65,7 +69,8 @@ export const rpcDomains = [
   telemetryRpc,
   feedbackRpc,
   diagnosticsRpc,
-  unsplashRpc
+  unsplashRpc,
+  writingToolsRpc
 ] as const
 
 export interface GeneratedRpcApi
@@ -76,7 +81,8 @@ export interface GeneratedRpcApi
     SettingsSubscriptions,
     CalendarSubscriptions,
     CanvasSubscriptions,
-    CanvasFolderSubscriptions {
+    CanvasFolderSubscriptions,
+    WritingToolsSubscriptions {
   notes: NotesClientAPI
   tasks: TasksClientAPI
   inbox: InboxClientAPI
@@ -88,4 +94,5 @@ export interface GeneratedRpcApi
   feedback: FeedbackClientAPI
   diagnostics: DiagnosticsClientAPI
   unsplash: UnsplashClientAPI
+  writingTools: WritingToolsClientAPI
 }

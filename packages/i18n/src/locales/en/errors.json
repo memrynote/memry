@@ -128,7 +128,8 @@
   },
   "ai": {
     "inlineDisabled": "AI inline editing is disabled",
-    "listOllamaModelsFailed": "Failed to list Ollama models"
+    "listOllamaModelsFailed": "Failed to list Ollama models",
+    "writingAssistInvalid": "That request could not be sent to the AI model."
   },
   "auth": {
     "notAuthenticated": "Not authenticated",

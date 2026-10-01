@@ -146,6 +146,14 @@ import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-review'
+import {
+  TrimReviewBar,
+  WritingChrome,
+  WritingRail,
+  useWritingTools
+} from '@/components/note/writing-tools'
+import { useWordCountVisible } from '@/hooks/use-word-count-visible'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 
 import { useT } from '@memry/i18n/renderer'
 import { useFileActionLabels } from '@/hooks/use-file-action-labels'
@@ -881,6 +889,17 @@ export function NotePage({ noteId }: NotePageProps) {
   const hasReviewContent = review.marks.length > 0 || !!review.activeDraft
   const [reviewRailHidden, setReviewRailHidden] = useState(false)
 
+  // Writing tools: the side rail's Alternatives / Overflow / Lab modes, the
+  // live word count, and the editor right-click menu (see writing-tools/).
+  const { session: writingTools, snapshot: writingSnapshot } = useWritingTools()
+  const { enabled: aiEnabled } = useAISettingsContext()
+  const [wordCountVisible, toggleWordCount] = useWordCountVisible()
+  useEffect(() => {
+    writingTools.setWordCountEnabled(wordCountVisible)
+  }, [writingTools, wordCountVisible])
+  // The Lab needs AI; with AI off it is never shown, whatever was open.
+  const writingMode = writingSnapshot.mode === 'lab' && !aiEnabled ? null : writingSnapshot.mode
+
   // An agent edit to this note is reviewed here, in place of the editor.
   const agentReviewTarget = useMemo(
     () => (noteId ? ({ kind: 'note', id: noteId } as const) : null),
@@ -1522,6 +1541,17 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const actionIcons = (
     <div className="flex items-center gap-0.5">
+      {!isLargeFile && (
+        <WritingChrome
+          mode={writingMode}
+          onToggleMode={(mode) => writingTools.toggleMode(mode)}
+          aiEnabled={aiEnabled}
+          wordCountVisible={wordCountVisible}
+          wordCount={writingSnapshot.wordCount}
+          onToggleWordCount={toggleWordCount}
+          disabled={isDeleted || Boolean(agentReview)}
+        />
+      )}
       <ReminderPicker
         onSelect={(date, reminderNote) => void handleSetReminder(date, reminderNote)}
         presetType="standard"
@@ -1772,7 +1802,13 @@ export function NotePage({ noteId }: NotePageProps) {
       actions={actionIcons}
       fullWidth={isFullWidth}
       contentWidth={noteContentWidth ?? undefined}
-      sideRail={hasReviewContent ? <ReviewRail review={review} targetId={noteId} /> : undefined}
+      sideRail={
+        writingMode && !isLargeFile && !agentReview ? (
+          <WritingRail mode={writingMode} session={writingTools} snapshot={writingSnapshot} />
+        ) : hasReviewContent ? (
+          <ReviewRail review={review} targetId={noteId} />
+        ) : undefined
+      }
       overlay={
         mindMap.isOpen && mindMap.map ? (
           <MindMapView
@@ -1788,17 +1824,22 @@ export function NotePage({ noteId }: NotePageProps) {
       onRailHiddenChange={setReviewRailHidden}
       marqueeZoneRef={setMarqueeZoneEl}
       topBar={
-        <FindBar
-          isOpen={findInPage.isOpen}
-          query={findInPage.query}
-          matchCount={findInPage.matchCount}
-          currentIndex={findInPage.currentIndex}
-          inputRef={findInPage.inputRef}
-          onQueryChange={findInPage.setQuery}
-          onNext={findInPage.next}
-          onPrev={findInPage.prev}
-          onClose={findInPage.close}
-        />
+        <>
+          <FindBar
+            isOpen={findInPage.isOpen}
+            query={findInPage.query}
+            matchCount={findInPage.matchCount}
+            currentIndex={findInPage.currentIndex}
+            inputRef={findInPage.inputRef}
+            onQueryChange={findInPage.setQuery}
+            onNext={findInPage.next}
+            onPrev={findInPage.prev}
+            onClose={findInPage.close}
+          />
+          {writingSnapshot.lab.trim && (
+            <TrimReviewBar session={writingTools} trim={writingSnapshot.lab.trim} />
+          )}
+        </>
       }
       breadcrumb={<NoteBreadcrumb notePath={note.path} noteTitle={note.title} />}
       stats={documentStats}
@@ -1989,6 +2030,7 @@ export function NotePage({ noteId }: NotePageProps) {
                   focusAtEndRef={focusAtEndRef}
                   openTemplateInsertRef={openTemplateInsertRef}
                   marqueeZoneEl={marqueeZoneEl}
+                  writingTools={writingTools}
                   review={{
                     plainMarkdown: review.plainMarkdown,
                     marks: review.marks,
@@ -2014,7 +2056,8 @@ export function NotePage({ noteId }: NotePageProps) {
               review={review}
               targetId={noteId}
               containerRef={editorContainerRef}
-              active={reviewRailHidden}
+              // A writing mode borrows the rail, so comments fall back to badges.
+              active={reviewRailHidden || writingMode !== null}
             />
           )}
         </div>

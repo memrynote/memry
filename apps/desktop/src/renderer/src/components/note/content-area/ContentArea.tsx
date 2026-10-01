@@ -13,7 +13,7 @@ import {
   type SuggestionMenuProps
 } from '@blocknote/react'
 import { SuggestionMenu } from '@blocknote/core/extensions'
-import { insertOrUpdateBlockForSlashMenu } from '@blocknote/core'
+import { insertOrUpdateBlockForSlashMenu, type BlockNoteEditor } from '@blocknote/core'
 import { withCollaborationIfLive } from './collaboration-options'
 import { Paperclip } from '@/lib/icons'
 import { BlockNoteView } from '@blocknote/shadcn'
@@ -164,8 +164,51 @@ import { createLogger } from '@/lib/logger'
 import { useMentionSuggestions } from './hooks/use-mention-suggestions'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
+import { AllSelection, TextSelection } from '@tiptap/pm/state'
+import { yUndoPluginKey } from 'y-prosemirror'
+import type { EditorContextMenuSpelling } from '@memry/contracts/writing-tools-api'
+import { getEditorSelectionFromState } from './review-formatting-toolbar'
+import { getLiveProseMirrorView } from './live-prosemirror-view'
+import {
+  EditorContextMenu,
+  editorContextMenuEntries,
+  findWordAt,
+  isAlternativeRange,
+  isStashableRange,
+  type EditorMenuAction
+} from '../writing-tools'
+import { pasteClipboardIntoEditor } from '../writing-tools/editor-clipboard'
+import { writingToolsService } from '@/services/writing-tools-service'
 
 const log = createLogger('ContentArea')
+
+/**
+ * How long a claimed context menu waits for main to forward the spelling data
+ * before it opens without it. The forward normally lands within a frame.
+ */
+const EDITOR_MENU_SPELLING_WAIT_MS = 400
+
+/** The schema-agnostic editor `getLiveProseMirrorView` reads the view off. */
+type LiveViewEditor = Parameters<typeof getLiveProseMirrorView>[0]
+
+/** The editor's own right-click menu, as captured when it opened. */
+interface EditorMenuTarget {
+  x: number
+  y: number
+  /** The selection when the menu opened */
+  from: number
+  to: number
+  /** Document position under the pointer */
+  clickPos: number | null
+  hasSelection: boolean
+  ghostId: string | null
+  canAddAlternative: boolean
+  canComment?: boolean
+  canStash: boolean
+  canUndo: boolean
+  canRedo: boolean
+  spelling: EditorContextMenuSpelling | null
+}
 
 /** localStorage flag: the first-conversion hint has been shown on this device. */
 const CONVERSION_HINT_KEY = 'memry_checkbox_task_hint_seen'
@@ -364,6 +407,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   isRemoteUpdateRef,
   marqueeZoneEl,
   review,
+  writingTools,
   runSideEffects = true
 }: ContentAreaEditorProps) {
   const { t } = useT('notes')
@@ -2003,6 +2047,249 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { hoverTarget: imageHoverTarget, handleMenuOpenChange: handleImageHoverMenuOpenChange } =
     useImageHoverMenu(containerRef, resolveImageFromElement)
 
+  // Writing tools: the note page's session decorates this editor and owns
+  // alternatives, ghosts, overflow and the Lab (see writing-tools-session.ts).
+  useEffect(() => {
+    if (!writingTools || !yjsDoc) return
+    const container = editorContainerRef.current
+    if (!container) return
+    return writingTools.attach({ editor, doc: yjsDoc, container })
+  }, [editor, writingTools, yjsDoc])
+
+  // The editor's own right-click menu for text. Only the note page has one
+  // (it needs the writing tools session); every other surface keeps the
+  // native menu. Spelling suggestions only exist in main's `context-menu`
+  // event, so the menu claims that event and opens once main forwards them.
+  const [editorMenu, setEditorMenu] = useState<EditorMenuTarget | null>(null)
+  const pendingEditorMenuRef = useRef<{ x: number; y: number; timer: number } | null>(null)
+
+  // Read at open time, not at the click: on macOS the right-click selects the
+  // word under the pointer, and the editor may not have caught up with that
+  // selection change by the time the DOM event is handled.
+  const describeEditorMenu = useCallback(
+    (x: number, y: number, spelling: EditorContextMenuSpelling | null): EditorMenuTarget | null => {
+      const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+      if (!view || !writingTools) return null
+      const { from, to, empty } = view.state.selection
+      const clickPos = view.posAtCoords({ left: x, top: y })?.pos ?? null
+      const hasSelection =
+        !empty && view.state.doc.textBetween(from, to, '\n', '\ufffc').trim().length > 0
+      const undoManager = (
+        yUndoPluginKey.getState(view.state) as { undoManager?: Y.UndoManager } | undefined
+      )?.undoManager
+      const ghostId =
+        (clickPos !== null ? writingTools.ghostAt(clickPos) : null) ??
+        (hasSelection ? writingTools.ghostAt(from, to) : null)
+      const alternativeId = hasSelection
+        ? writingTools.alternativeAt(from, to)
+        : clickPos !== null
+          ? writingTools.alternativeAt(clickPos)
+          : null
+      return {
+        x,
+        y,
+        from,
+        to,
+        clickPos,
+        hasSelection,
+        ghostId,
+        canAddAlternative:
+          alternativeId !== null || (hasSelection && isAlternativeRange(view, from, to)),
+        canComment: review?.onAddComment
+          ? hasSelection && view.state.doc.resolve(from).sameParent(view.state.doc.resolve(to))
+          : undefined,
+        canStash: hasSelection && isStashableRange(view.state.doc, from, to),
+        // Without a collaborative undo manager (no Y.Doc) BlockNote's own
+        // history answers instead, so both stay available.
+        canUndo: undoManager ? undoManager.undoStack.length > 0 : true,
+        canRedo: undoManager ? undoManager.redoStack.length > 0 : true,
+        spelling: spelling?.misspelledWord ? spelling : null
+      }
+    },
+    [editor, review?.onAddComment, writingTools]
+  )
+
+  const openPendingEditorMenu = useCallback(
+    (spelling: EditorContextMenuSpelling | null) => {
+      const pending = pendingEditorMenuRef.current
+      if (!pending) return
+      pendingEditorMenuRef.current = null
+      window.clearTimeout(pending.timer)
+      setEditorMenu(describeEditorMenu(pending.x, pending.y, spelling))
+    },
+    [describeEditorMenu]
+  )
+
+  useEffect(
+    () => writingToolsService.onEditorContextMenu((spelling) => openPendingEditorMenu(spelling)),
+    [openPendingEditorMenu]
+  )
+  useEffect(
+    () => () => {
+      const pending = pendingEditorMenuRef.current
+      if (pending) window.clearTimeout(pending.timer)
+    },
+    []
+  )
+
+  const openEditorMenu = useCallback(
+    (e: React.MouseEvent) => {
+      if (!writingTools || !editable) return
+      const target = e.target as HTMLElement
+      const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+      if (!view || !view.dom.contains(target)) return
+      // Form fields and non-editable islands inside blocks (task titles,
+      // embeds, widgets) keep their own menu.
+      if (target.closest('input, textarea, select, [contenteditable="false"]')) return
+
+      if (pendingEditorMenuRef.current) window.clearTimeout(pendingEditorMenuRef.current.timer)
+      const { clientX: x, clientY: y } = e
+      if (writingToolsService.claimEditorContextMenu()) {
+        // Not prevented: Chromium must still send `context-menu` to main,
+        // which answers with the spelling data instead of a native popup.
+        pendingEditorMenuRef.current = {
+          x,
+          y,
+          timer: window.setTimeout(() => openPendingEditorMenu(null), EDITOR_MENU_SPELLING_WAIT_MS)
+        }
+        return
+      }
+      e.preventDefault()
+      pendingEditorMenuRef.current = null
+      setEditorMenu(describeEditorMenu(x, y, null))
+    },
+    [describeEditorMenu, editable, editor, openPendingEditorMenu, writingTools]
+  )
+
+  const replaceSpelling = useCallback(
+    (menu: EditorMenuTarget, suggestion: string) => {
+      const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+      const word = menu.spelling?.misspelledWord
+      if (!view || !word) return
+      const { doc } = view.state
+      let range: { from: number; to: number } | null = null
+      if (menu.to <= doc.content.size && doc.textBetween(menu.from, menu.to) === word) {
+        range = { from: menu.from, to: menu.to }
+      } else if (menu.clickPos !== null && menu.clickPos <= doc.content.size) {
+        const $pos = doc.resolve(menu.clickPos)
+        if ($pos.parent.isTextblock) {
+          const start = $pos.start()
+          const text = $pos.parent.textBetween(0, $pos.parent.content.size, undefined, '\ufffc')
+          const hit = findWordAt(text, menu.clickPos - start, word)
+          if (hit) range = { from: start + hit.start, to: start + hit.end }
+        }
+      }
+      if (!range) return
+      view.dispatch(view.state.tr.insertText(suggestion, range.from, range.to))
+      view.focus()
+    },
+    [editor]
+  )
+
+  const runEditorMenuAction = useCallback(
+    (menu: EditorMenuTarget, action: EditorMenuAction) => {
+      const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+      if (!view || !writingTools) return
+      const restoreSelection = (): void => {
+        view.focus()
+        const { selection, doc } = view.state
+        if (menu.to > doc.content.size) return
+        if (selection.from === menu.from && selection.to === menu.to) return
+        view.dispatch(view.state.tr.setSelection(TextSelection.create(doc, menu.from, menu.to)))
+      }
+      const at = menu.hasSelection
+        ? { from: menu.from, to: menu.to }
+        : { from: menu.clickPos ?? menu.from, to: menu.clickPos ?? menu.from }
+
+      switch (action) {
+        case 'cut':
+        case 'copy':
+          // ProseMirror's own cut/copy handlers serialize the slice, and a cut
+          // goes through the same task-aware path as ⌘X.
+          restoreSelection()
+          document.execCommand(action)
+          return
+        case 'selectAll':
+          view.focus()
+          view.dispatch(view.state.tr.setSelection(new AllSelection(view.state.doc)))
+          return
+        case 'undo':
+          view.focus()
+          editor.undo()
+          return
+        case 'redo':
+          view.focus()
+          editor.redo()
+          return
+        case 'paste':
+          restoreSelection()
+          pasteClipboardIntoEditor(view, editor).catch((err: unknown) =>
+            toast.error(extractErrorMessage(err, t('writingTools.menu.clipboardFailed')))
+          )
+          return
+        case 'comment':
+          restoreSelection()
+          review?.onAddComment?.(getEditorSelectionFromState(editor as BlockNoteEditor, view.state))
+          return
+        case 'addAlternative':
+          writingTools.startAlternative(at.from, at.to)
+          return
+        case 'suggestAlternatives': {
+          const toastId = toast.loading(t('writingTools.alternatives.suggesting'))
+          writingTools
+            .suggestAlternatives(at.from, at.to)
+            .then((count) => {
+              toast.dismiss(toastId)
+              if (count === 0) toast(t('writingTools.alternatives.noSuggestions'))
+            })
+            .catch((err: unknown) =>
+              toast.error(extractErrorMessage(err, t('writingTools.alternatives.suggestFailed')), {
+                id: toastId
+              })
+            )
+          return
+        }
+        case 'ghost':
+          writingTools.ghost(menu.from, menu.to)
+          return
+        case 'revive':
+          if (menu.ghostId) writingTools.revive(menu.ghostId)
+          return
+        case 'stash':
+          writingTools.stash(menu.from, menu.to)
+          return
+        case 'addToDictionary':
+          if (menu.spelling) {
+            void writingToolsService
+              .addWordToDictionary(menu.spelling.misspelledWord)
+              .catch((err: unknown) => log.warn('Failed to add a word to the dictionary', err))
+          }
+          return
+      }
+    },
+    [editor, review, t, writingTools]
+  )
+
+  // Actions run after the menu has closed and let go of focus, so the editor
+  // can take it back (the menu's focus trap would pull it away mid-close).
+  const handleEditorMenuAction = useCallback(
+    (action: EditorMenuAction) => {
+      const menu = editorMenu
+      setEditorMenu(null)
+      if (menu) window.setTimeout(() => runEditorMenuAction(menu, action), 0)
+    },
+    [editorMenu, runEditorMenuAction]
+  )
+
+  const handleEditorMenuSpelling = useCallback(
+    (suggestion: string) => {
+      const menu = editorMenu
+      setEditorMenu(null)
+      if (menu) window.setTimeout(() => replaceSpelling(menu, suggestion), 0)
+    },
+    [editorMenu, replaceSpelling]
+  )
+
   const handleEditorContextMenu = useCallback(
     (e: React.MouseEvent) => {
       const target = e.target as HTMLElement
@@ -2020,14 +2307,18 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         return
       }
 
-      if (!target.closest('img')) return
-      const image = resolveImageFromElement(target)
-      if (!image) return
+      if (target.closest('img')) {
+        const image = resolveImageFromElement(target)
+        if (!image) return
 
-      e.preventDefault()
-      setImageMenuTarget({ x: e.clientX, y: e.clientY, ...image })
+        e.preventDefault()
+        setImageMenuTarget({ x: e.clientX, y: e.clientY, ...image })
+        return
+      }
+
+      openEditorMenu(e)
     },
-    [editor, convertCheckboxToTask, resolveImageFromElement, runSideEffects]
+    [editor, convertCheckboxToTask, resolveImageFromElement, runSideEffects, openEditorMenu]
   )
 
   // Backspace-at-start guard for taskBlock neighbours.
@@ -2415,6 +2706,26 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         >
           {!marqueeZoneEl && (
             <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
+          )}
+          {editorMenu && (
+            <EditorContextMenu
+              x={editorMenu.x}
+              y={editorMenu.y}
+              entries={editorContextMenuEntries({
+                hasSelection: editorMenu.hasSelection,
+                canUndo: editorMenu.canUndo,
+                canRedo: editorMenu.canRedo,
+                canStash: editorMenu.canStash,
+                canAddAlternative: editorMenu.canAddAlternative,
+                canComment: editorMenu.canComment,
+                aiEnabled,
+                insideGhost: editorMenu.ghostId !== null,
+                spelling: editorMenu.spelling
+              })}
+              onAction={handleEditorMenuAction}
+              onReplaceSpelling={handleEditorMenuSpelling}
+              onClose={() => setEditorMenu(null)}
+            />
           )}
           {imageMenuTarget && (
             <ImageAttachmentMenu

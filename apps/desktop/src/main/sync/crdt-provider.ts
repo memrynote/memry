@@ -49,7 +49,10 @@ import {
   CRITIC_MARKUP_MARKS_ARRAY,
   LINK_REFERENCE_DEFINITIONS_ARRAY,
   LINK_REFERENCE_USAGES_ARRAY,
-  MARKDOWN_SOURCE_MAP
+  MARKDOWN_SOURCE_MAP,
+  WRITING_ALTERNATIVES_ARRAY,
+  WRITING_GHOSTS_ARRAY,
+  WRITING_OVERFLOW_ARRAY
 } from '@memry/shared'
 
 const log = createLogger('CrdtProvider')
@@ -1489,6 +1492,11 @@ export class CrdtProvider {
     doc.getMap(MARKDOWN_SOURCE_MAP)
     doc.getArray(LINK_REFERENCE_DEFINITIONS_ARRAY)
     doc.getArray(LINK_REFERENCE_USAGES_ARRAY)
+    // Writing tools side data (alternatives, ghosted ranges, overflow). Written
+    // by the renderer; typed here for the same compaction reason as above.
+    doc.getArray(WRITING_ALTERNATIVES_ARRAY)
+    doc.getArray(WRITING_GHOSTS_ARRAY)
+    doc.getArray(WRITING_OVERFLOW_ARRAY)
   }
 
   private async seedFromMarkdown(noteId: string, doc: Y.Doc): Promise<void> {

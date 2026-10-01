@@ -40,6 +40,7 @@ export interface MainIpcInvokeHandlers {
   "ai-inline:set-settings": (...args: [Partial<import("../../../../../packages/contracts/src/ai-inline-channels").AIInlineSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "ai-inline:start-server": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; port?: undefined; } | { success: boolean; port: number; error?: undefined; }>>
   "ai-inline:stop-server": (...args: []) => Awaited<Promise<{ success: boolean; }>>
+  "ai:generateWritingAssist": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/writing-tools-api").WritingAssistResponse>>
   "auth:init-oauth": (...args: [{ provider: "google"; }]) => Awaited<Promise<{ state: string; }> | { success: false; error: string }>
   "auth:refresh-token": (...args: []) => Awaited<Promise<{ success: boolean; error: string | undefined; }>>
   "auth:request-otp": (...args: [{ email: string; }]) => Awaited<Promise<unknown> | { success: false; error: string }>
@@ -386,6 +387,7 @@ export interface MainIpcInvokeHandlers {
   "settings:setVoiceTranscriptionOpenAIKey": (...args: [{ apiKey: string; }]) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
   "settings:setVoiceTranscriptionSettings": (...args: [Partial<{ provider: "local" | "openai"; memoNameMode: "timestamp" | "none" | "transcript"; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:uninstallTerminalCommand": (...args: []) => Awaited<Promise<import("./settings-handlers").TerminalCommandMutationResult>>
+  "spellcheck:addWord": (...args: [unknown]) => Awaited<boolean>
   "sync:approve-linking": (...args: [{ sessionId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-devices").ApproveLinkingResult> | { success: false; error: string }>
   "sync:check-device-status": (...args: []) => Awaited<Promise<{ status: string; }>>
   "sync:complete-linking-qr": (...args: [{ sessionId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-devices").CompleteLinkingQrResult> | { success: false; error: string }>

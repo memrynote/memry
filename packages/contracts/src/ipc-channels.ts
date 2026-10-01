@@ -1129,3 +1129,29 @@ export const UnsplashChannels = {
 
 export type UnsplashInvokeChannel =
   (typeof UnsplashChannels.invoke)[keyof typeof UnsplashChannels.invoke]
+
+// ============================================================================
+// Writing Tools Channels
+// ============================================================================
+
+export const WritingToolsChannels = {
+  invoke: {
+    /** One-shot inline-AI request: alternatives, a style check, or trim cuts */
+    GENERATE_ASSIST: 'ai:generateWritingAssist',
+    /**
+     * Sync. The note editor is about to show its own context menu, so main's
+     * next `context-menu` event for this window forwards the spelling data
+     * instead of popping the native editable-text menu.
+     */
+    CLAIM_EDITOR_CONTEXT_MENU: 'editor-context-menu:claim',
+    /** Add a word to the session spellchecker dictionary */
+    ADD_WORD_TO_DICTIONARY: 'spellcheck:addWord'
+  },
+  events: {
+    /** The spelling data of a claimed `context-menu` event */
+    EDITOR_CONTEXT_MENU: 'editor-context-menu:open'
+  }
+} as const
+
+export type WritingToolsInvokeChannel =
+  (typeof WritingToolsChannels.invoke)[keyof typeof WritingToolsChannels.invoke]

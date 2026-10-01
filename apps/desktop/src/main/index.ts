@@ -161,7 +161,12 @@ import { closeAllDatabases, getIndexDatabase } from './database/client'
 import { toAbsolutePath, createSnapshot } from './vault/notes'
 import { safeRead } from './vault/file-ops'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
-import { SettingsChannels, InboxChannels } from '@memry/contracts/ipc-channels'
+import {
+  SettingsChannels,
+  InboxChannels,
+  WritingToolsChannels
+} from '@memry/contracts/ipc-channels'
+import type { EditorContextMenuSpelling } from '@memry/contracts/writing-tools-api'
 import { parseInboxOpenItemId } from './deeplink-utils'
 import {
   initializeUpdater,
@@ -177,6 +182,7 @@ import {
   shouldRecordGpuCrash
 } from './gpu-crash-guard'
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
+import { takeEditorContextMenuClaim } from './editor-context-menu'
 import { getMainI18n, setMainI18n } from './lib/main-i18n'
 import {
   sendAppNavigationCommand,
@@ -987,6 +993,16 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.on('context-menu', (_event, params) => {
+    // The note editor claimed this menu (see editor-context-menu.ts): it
+    // shows its own, so it gets the spelling data instead of a native popup.
+    if (takeEditorContextMenuClaim(mainWindow.webContents.id)) {
+      const spelling: EditorContextMenuSpelling = {
+        misspelledWord: params.misspelledWord ?? '',
+        dictionarySuggestions: params.dictionarySuggestions ?? []
+      }
+      mainWindow.webContents.send(WritingToolsChannels.events.EDITOR_CONTEXT_MENU, spelling)
+      return
+    }
     const menu = buildEditableTextContextMenu(mainI18n, params, mainWindow.webContents)
     if (!menu) return
 

@@ -29,7 +29,8 @@
     "./frontmatter-split": "./src/frontmatter-split.ts",
     "./cover-image": "./src/cover-image.ts",
     "./template-placeholders": "./src/template-placeholders.ts",
-    "./view-block": "./src/view-block.ts"
+    "./view-block": "./src/view-block.ts",
+    "./writing-tools": "./src/writing-tools/yjs.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

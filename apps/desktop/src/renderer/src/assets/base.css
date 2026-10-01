@@ -1434,6 +1434,143 @@
   width: 308px;
 }
 
+/* ===== Writing tools: alternatives, ghosts, Lab flags and trim cuts =====
+   Decorations only (writing-tools-plugin.ts); the note text is untouched. */
+.writing-alt {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-color: var(--text-tertiary);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.writing-alt-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-inline-start: 3px;
+  vertical-align: middle;
+  user-select: none;
+}
+
+.writing-alt-dots > span {
+  width: 4px;
+  height: 4px;
+  border: 1px solid var(--text-tertiary);
+  border-radius: 9999px;
+}
+
+.writing-alt-dots.is-active > span:nth-child(2) {
+  background-color: var(--text-tertiary);
+}
+
+.writing-alt-hint-anchor {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 1em;
+  vertical-align: baseline;
+}
+
+.writing-alt-hint {
+  position: absolute;
+  inset-inline-start: 0;
+  bottom: calc(100% + 6px);
+  z-index: 5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: var(--foreground);
+  color: var(--background);
+  font-size: 11px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.writing-ghost {
+  opacity: 0.18;
+  transition: opacity 150ms ease-out;
+}
+
+.writing-lab-flag {
+  text-decoration-line: underline;
+  text-decoration-style: solid;
+  text-decoration-color: var(--tint);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.writing-lab-flag.is-focused {
+  background-color: var(--tint-lighter);
+}
+
+.writing-trim {
+  opacity: 0.35;
+  transition: opacity 150ms ease-out;
+}
+
+.writing-trim.is-focused {
+  opacity: 0.6;
+  background-color: var(--surface-active);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .writing-ghost,
+  .writing-trim {
+    transition: none;
+  }
+}
+
+/* Writing rails reuse the review rail geometry and card styling; cards that
+   hold inputs and rows stay put on hover instead of sliding. */
+.writing-rail-card[data-hovered='true'],
+.writing-rail-card:hover {
+  transform: none;
+}
+
+.writing-rail-card-title {
+  margin-block-end: 6px;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.writing-rail-panel {
+  width: 308px;
+}
+
+.writing-rail-empty {
+  width: 308px;
+  padding: 8px 2px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.writing-rail-heading {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.writing-overflow-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background-color: var(--background);
+  cursor: grab;
+}
+
+.writing-overflow-item:active {
+  cursor: grabbing;
+}
+
 /* Inline badge fallback when the review rail is hidden (narrow windows). */
 .critic-review-badge-layer {
   position: absolute;
