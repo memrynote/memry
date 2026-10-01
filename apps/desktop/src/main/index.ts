@@ -102,6 +102,7 @@ import {
   stopActiveHeartbeat
 } from './telemetry/diagnostics'
 import { recordLaunchPhase, reportLaunchTimeline } from './launch-timeline'
+import { startMainThreadStallMonitor } from './main-thread-stall'
 import { onceWindowShown, schedulePostRevealTasks } from './post-reveal'
 import { toErrorCode } from '@memry/contracts/telemetry-api'
 import { drainEarlyMainEvents, trackMainEvent } from './telemetry/track'
@@ -931,6 +932,21 @@ function createWindow(): void {
   }, 10_000)
   mainWindow.on('closed', () => clearTimeout(fallbackShowTimer))
 
+  // A hung renderer looks the same to the user as a hung main process; log
+  // which one it was and for how long (#2556).
+  let unresponsiveSince: number | null = null
+  mainWindow.on('unresponsive', () => {
+    unresponsiveSince = Date.now()
+    mainLog.warn('main window renderer unresponsive')
+  })
+  mainWindow.on('responsive', () => {
+    if (unresponsiveSince === null) return
+    mainLog.warn('main window renderer responsive again', {
+      durationMs: Date.now() - unresponsiveSince
+    })
+    unresponsiveSince = null
+  })
+
   mainWindow.on('ready-to-show', () => {
     // Zoom out once (equivalent to Cmd+-)
     // mainWindow.webContents.setZoomLevel(-0.8)
@@ -1357,6 +1373,9 @@ const appReady = app.whenReady().then(async () => {
   // runtime initializes (see telemetry/track.ts), so these early reports ship
   // once it does. The later registerMainDiagnostics call is an idempotent no-op.
   registerMainDiagnostics()
+  // Before any synchronous startup work, so a launch that blocks the main
+  // process leaves a trail in main.log (#2556).
+  startMainThreadStallMonitor()
   // The identity itself is already settled (module scope, see applyMemrynoteIdentity).
   // safeStorage only becomes usable after 'ready', so this is the first point at
   // which we can check the derivation by actually decrypting something. On a

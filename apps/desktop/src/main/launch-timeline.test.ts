@@ -141,4 +141,16 @@ describe('launch timeline', () => {
     expect(trackLaunchPhaseMock).toHaveBeenCalledWith('window_created', 500)
     expect(trackLaunchPhaseMock).toHaveBeenCalledWith('window_created', 9_000)
   })
+
+  it('names the most recent new phase as the latest one', async () => {
+    const { recordLaunchPhase, latestLaunchPhase } = await importTimeline()
+
+    expect(latestLaunchPhase()).toBeNull()
+    recordLaunchPhase('app_ready')
+    recordLaunchPhase('vault_open_start')
+    // A repeat of an earlier phase does not move the startup forward.
+    recordLaunchPhase('app_ready')
+
+    expect(latestLaunchPhase()).toBe('vault_open_start')
+  })
 })
