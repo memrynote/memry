@@ -390,6 +390,21 @@ export function maskInlineColorSpans(markdown: string): {
   return { text: lines.join('\n'), spans }
 }
 
+// Any `style` span, not only the decls parseColorDecls accepts: a preview is
+// plain text, so a hand-authored span's tags are noise there too.
+const PREVIEW_SPAN_TAG_REGEX = /<span style="[^"]*">|<\/span>/g
+
+/**
+ * Plain-text previews (note snippets, journal previews) read the vault
+ * markdown directly, so a colored or underlined word would show its raw
+ * `<span style="…">` tags. Drops the tags and keeps the text inside them.
+ * The journal preview's Rust mirror (`journal_rules/preview.rs`) matches this
+ * exactly; the `journal.json` vectors hold both to it.
+ */
+export function stripInlineStyleSpanTags(markdown: string): string {
+  return markdown.replace(PREVIEW_SPAN_TAG_REGEX, '')
+}
+
 function mergeActive(
   styles: Record<string, unknown>,
   active: InlineColorStyles[]

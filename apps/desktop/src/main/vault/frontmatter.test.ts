@@ -515,6 +515,19 @@ describe('createSnippet wiki links (issue #1556)', () => {
   })
 })
 
+describe('createSnippet inline color spans (issue #2566)', () => {
+  it('drops color, background and underline span tags and keeps their text', () => {
+    const content =
+      'a <span style="color:red">red</span> and ' +
+      '<span style="background-color:yellow"><span style="text-decoration:underline">key</span></span> term'
+    expect(createSnippet(content)).toBe('a red and key term')
+  })
+
+  it('strips span tags around emphasis and wiki links', () => {
+    expect(createSnippet('<span style="color:blue">**bold** [[Note|n]]</span>!')).toBe('bold n!')
+  })
+})
+
 describe('the cover frontmatter key', () => {
   const COVER_REF = '../attachments/n1/abc123-photo.jpg'
 

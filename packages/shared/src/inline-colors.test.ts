@@ -3,7 +3,8 @@ import {
   applyInlineColorTokens,
   extractInlineColorRuns,
   maskInlineColorSpans,
-  restoreInlineColorTokens
+  restoreInlineColorTokens,
+  stripInlineStyleSpanTags
 } from './inline-colors'
 
 describe('extractInlineColorRuns / restoreInlineColorTokens (serialize side)', () => {
@@ -477,5 +478,25 @@ describe('maskInlineColorSpans / applyInlineColorTokens (parse side)', () => {
     expect((applied[0] as { content: Array<{ text: string }> }).content[0].text).toBe(
       '<span style="color:red">x</span>'
     )
+  })
+})
+
+describe('stripInlineStyleSpanTags', () => {
+  it('drops style span tags and keeps the text inside', () => {
+    expect(
+      stripInlineStyleSpanTags(
+        '<span style="color:red">a</span> <span style="background-color:blue;text-decoration:underline">b</span>'
+      )
+    ).toBe('a b')
+  })
+
+  it('keeps tags that are not style spans', () => {
+    expect(stripInlineStyleSpanTags('<span class="x">a</span> <b>c</b>')).toBe(
+      '<span class="x">a <b>c</b>'
+    )
+  })
+
+  it('leaves markdown with no spans untouched', () => {
+    expect(stripInlineStyleSpanTags('**a** [[b]]')).toBe('**a** [[b]]')
   })
 })

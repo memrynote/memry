@@ -15,6 +15,7 @@ import {
 } from '@memry/app-core/markdown'
 import { generateNoteId, isValidNoteId } from '../lib/id'
 import { isRelationValue } from '@memry/contracts/relation-uri'
+import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
 import { replaceWikiLinks, splitWikiTarget } from '@memry/shared/wiki-target'
 import {
   COVER_CREDIT_FRONTMATTER_KEY,
@@ -691,6 +692,9 @@ export function createSnippet(content: string, maxLength = 200): string {
     previousCleaned = cleaned
     cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, '')
   } while (cleaned !== previousCleaned)
+
+  // Remove inline color/underline span tags, keeping their text
+  cleaned = stripInlineStyleSpanTags(cleaned)
 
   // Remove markdown headers
   cleaned = cleaned.replace(/^#+\s+/gm, '')
