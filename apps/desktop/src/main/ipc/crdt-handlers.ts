@@ -11,6 +11,7 @@ import {
   type CrdtSyncStep1Result
 } from '@memry/contracts/ipc-crdt'
 import { getCrdtProvider } from '../sync/crdt-provider'
+import { getSyncEngine } from '../sync/runtime'
 import { getCrdtInMemorySessions } from '../store'
 import { createLogger } from '../lib/logger'
 import { trackNoteBodyEditThrottled } from '../telemetry/diagnostics'
@@ -100,7 +101,13 @@ export function registerCrdtIpcHandlers(): void {
       return { success: false, error: validation.error }
     }
 
-    await provider.open(noteId, windowId)
+    // With no store, merge the server body before any seed (#2544).
+    const engine = getSyncEngine()
+    await provider.openForEditor(
+      noteId,
+      windowId,
+      engine ? (id) => engine.mergeRemoteCrdtForNote(id) : null
+    )
     return { success: true }
   })
 

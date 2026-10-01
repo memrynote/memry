@@ -85,17 +85,20 @@ top-level key verbatim in `sync_unknown_fields`
 payload, locally built keys winning
 (`apps/desktop/src/main/sync/engine/push-coordinator.ts`). The observable
 round-trip guarantee of rules 1 to 4 holds: a field written by a newer client
-survives an older desktop's edit. **The stated ceiling is nesting** — an unknown
-key inside a known object is still stripped by that object's schema, where a
+survives an older desktop's edit. Keys stripped from inside a known object are
+kept as key paths in `sync_unknown_fields.nested_fields` and merged back only
+into a parent object the push payload still has. **The remaining ceiling is
+arrays**: an unknown key inside an array element is still stripped, where a
 verbatim implementation would keep it.
 
-It still violates rule 5: an item whose payload fails `parse` is marked
-`'skipped'` **with the cursor advanced and no retry**
-(`apps/desktop/src/main/sync/apply-item.ts`, and the comment naming it a
-mixed-version tripwire). Routing it to `'parse_error'` would refetch identical
-bytes forever, so the fix is a real quarantine state, not a reclassification.
+Rule 5 is met by the schema-invalid ledger (#2285): an item whose payload fails
+`parse` returns `'schema_invalid'` from `apps/desktop/src/main/sync/apply-item.ts`
+and the pull records it for a retry
+(`apps/desktop/src/main/sync/engine/schema-invalid-ledger.ts`) instead of
+skipping past it.
 
-**#2183** closed the key-loss half. Rule 5 and nested keys remain open.
+**#2183** is closed by #2265 (top-level keys), #2285 (rule 5) and the nested-key
+capture above.
 
 ### 13.2.2 The wire envelope is a different matter
 

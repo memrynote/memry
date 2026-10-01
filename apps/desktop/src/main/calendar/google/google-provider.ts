@@ -23,14 +23,14 @@ import {
 import {
   syncCalendarBindingDelete,
   syncCalendarExternalEventDelete,
-  syncCalendarSourceDelete,
-  syncCalendarSourceUpdate
+  syncCalendarSourceDelete
 } from '../runtime-effects'
 import { PROVIDER_CAPABILITIES } from '../provider/capabilities'
 import type { ProviderDefinition } from '../provider/registry'
 import { purgeCalendarSourceMirrors, upsertSyncedCalendarSource } from '../provider/source-mirrors'
 import { buildProviderStatus } from '../provider/status'
 import { createGoogleCalendarClient } from './client'
+import { archiveGoogleSources } from './disconnected-accounts'
 import {
   connectGoogleCalendar,
   disconnectGoogleCalendar,
@@ -187,29 +187,7 @@ async function disconnectGoogleAccount(
     }
   }
 
-  // Mirrors first, then the tombstones. If a crash lands between the two the
-  // sources stay unarchived with nothing under them, which the next disconnect
-  // or a rediscovery both resolve — the reverse order would strand events
-  // under a source no longer listed anywhere.
-  purgeCalendarSourceMirrors(db, provider, targetSources)
-
-  const now = new Date().toISOString()
-
-  db.transaction((tx) => {
-    for (const source of targetSources) {
-      if (source.archivedAt) continue
-      tx.update(calendarSources)
-        .set({ archivedAt: now, modifiedAt: now })
-        .where(eq(calendarSources.id, source.id))
-        .run()
-    }
-  })
-
-  for (const source of targetSources) {
-    if (source.archivedAt) continue
-    syncCalendarSourceUpdate(source.id)
-    emitCalendarChanged({ entityType: 'calendar_source', id: source.id })
-  }
+  archiveGoogleSources(db, provider, targetSources)
 
   return {
     success: true,

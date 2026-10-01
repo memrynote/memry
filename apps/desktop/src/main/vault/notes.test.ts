@@ -1649,6 +1649,45 @@ describe('notes operations', () => {
         await notes.renameFolder('Life', 'Archive/Life')
         expect(journalSetting()).toBe('Archive/Life/Daily')
       })
+
+      it('moves the index rows of nested notes and files without the watcher (#2513)', async () => {
+        // #given a folder with a subfolder, notes at both levels, and an image
+        const top = await notes.createNote({ title: 'Top', content: 'T.', folder: 'Work' })
+        const deep = await notes.createNote({ title: 'Deep', content: 'D.', folder: 'Work/Sub' })
+        const outside = await notes.createNote({ title: 'Out', content: 'O.', folder: 'Other' })
+        await notes.createFolder('Archive')
+        fs.writeFileSync(path.join(tempVault.path, 'Work', 'pic.png'), Buffer.from([0x89, 0x50]))
+        const { insertNoteCache, listNoteCacheUnderFolder } =
+          await import('@main/database/queries/notes')
+        insertNoteCache(testDb.db, {
+          id: 'image-in-work',
+          path: 'Work/pic.png',
+          title: 'pic',
+          fileType: 'image',
+          createdAt: '2026-01-15T12:00:00.000Z',
+          modifiedAt: '2026-01-15T12:00:00.000Z'
+        })
+
+        // #when the folder is moved under another one, with no watcher running
+        await notes.renameFolder('Work', 'Archive/Work')
+
+        // #then every row points at the new path, ids kept, none left behind
+        expect(listNoteCacheUnderFolder(testDb.db, 'Work')).toEqual([])
+        expect(
+          listNoteCacheUnderFolder(testDb.db, 'Archive/Work').sort((a, b) =>
+            a.path.localeCompare(b.path)
+          )
+        ).toEqual(
+          [
+            { id: top.id, path: 'Archive/Work/Top.md' },
+            { id: deep.id, path: 'Archive/Work/Sub/Deep.md' },
+            { id: 'image-in-work', path: 'Archive/Work/pic.png' }
+          ].sort((a, b) => a.path.localeCompare(b.path))
+        )
+        expect(listNoteCacheUnderFolder(testDb.db, 'Other')).toEqual([
+          { id: outside.id, path: outside.path }
+        ])
+      })
     })
 
     describe('deleteFolder', () => {
@@ -1870,6 +1909,30 @@ describe('notes operations', () => {
       // Fixture config sets `defaultNoteFolder: 'notes'`; an empty vault-relative
       // target means "wherever a folderless new note would go", not "vault/notes".
       expect(result.importedFiles[0].destPath).toBe(path.join(tempVault.path, 'notes', 'loose.pdf'))
+    })
+
+    it('resolves an imported file to its indexed id from the absolute destPath (#1998)', async () => {
+      // #given — a PDF imported and then indexed the way the watcher keys it: vault-relative
+      const sourcePath = path.join(tempVault.path, 'brief.pdf')
+      fs.writeFileSync(sourcePath, Buffer.from([0x25, 0x50, 0x44, 0x46]))
+      const result = await notes.importFiles({ sourcePaths: [sourcePath] })
+      const { destPath } = result.importedFiles[0]
+      expect(path.isAbsolute(destPath)).toBe(true)
+
+      expect(notes.getIndexedIdByImportedPath(destPath)).toBeNull()
+
+      const { insertNoteCache } = await import('@main/database/queries/notes')
+      insertNoteCache(testDb.db, {
+        id: 'imported-pdf-1',
+        path: 'notes/brief.pdf',
+        title: 'brief',
+        fileType: 'pdf',
+        createdAt: '2026-01-15T12:00:00.000Z',
+        modifiedAt: '2026-01-15T12:00:00.000Z'
+      })
+
+      // #then — the absolute path the import returned finds the vault-relative row
+      expect(notes.getIndexedIdByImportedPath(destPath)).toBe('imported-pdf-1')
     })
 
     it('rejects imports when no vault is open', async () => {

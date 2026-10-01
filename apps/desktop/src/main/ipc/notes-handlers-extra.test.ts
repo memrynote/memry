@@ -138,6 +138,7 @@ vi.mock('../notes/domain', () => ({
   updateNoteCommand: vi.fn(),
   renameNoteCommand: vi.fn(),
   moveNoteCommand: vi.fn(),
+  renameFolderCommand: vi.fn(),
   deleteNoteCommand: vi.fn(),
   setNoteLocalOnlyCommand: mocks.setNoteLocalOnlyCommand
 }))
@@ -337,6 +338,23 @@ describe('notes-handlers extra coverage', () => {
 
     mocks.resolveNoteByTitle.mockReturnValueOnce({ id: 'asset-a', fileType: 'pdf' })
     await expect(invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, 'Asset')).resolves.toBeNull()
+  })
+
+  // #2554: a snippet cached before span stripping still holds raw tags.
+  it('previews a stale cached snippet as plain text', async () => {
+    mocks.resolveNoteByTitle.mockReturnValueOnce({
+      id: 'note-a',
+      title: 'Daily',
+      fileType: 'markdown',
+      emoji: null,
+      snippet: '<span style="color:blue">Notes:</span> buy milk',
+      createdAt: '2026-05-10T00:00:00.000Z'
+    })
+    mocks.getNoteTags.mockReturnValue([])
+    mocks.getAllTagDefinitions.mockReturnValue([])
+
+    const preview = await invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, 'Daily')
+    expect(preview).toMatchObject({ snippet: 'Notes: buy milk' })
   })
 
   // #1557: `resolveByTitle` is heading-blind by contract, so an agent following

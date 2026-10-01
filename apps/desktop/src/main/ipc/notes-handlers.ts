@@ -61,6 +61,7 @@ import {
 } from './validate'
 import { registerCommand } from './lib/register-command'
 import type { Note } from '../vault/notes'
+import { cleanCachedSnippet } from '../vault/frontmatter'
 import {
   getNoteById,
   getNoteByPath,
@@ -70,7 +71,6 @@ import {
   getNoteLinks,
   getFolders,
   createFolder,
-  renameFolder,
   deleteFolder,
   noteExists,
   openExternal,
@@ -87,6 +87,7 @@ import {
   updateNoteCommand,
   renameNoteCommand,
   moveNoteCommand,
+  renameFolderCommand,
   deleteNoteCommand,
   setNoteLocalOnlyCommand
 } from '../notes/domain'
@@ -361,7 +362,7 @@ export function registerNotesHandlers(): void {
         id: result.id,
         title: result.title,
         emoji: result.emoji ?? null,
-        snippet: result.snippet ?? null,
+        snippet: result.snippet ? cleanCachedSnippet(result.snippet) : null,
         tags: tags.map((t) => ({ name: t, color: colorMap.get(t) ?? 'stone' })),
         createdAt: result.createdAt
       }
@@ -540,7 +541,7 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.RENAME_FOLDER,
     RenameFolderSchema,
     async (input) => {
-      await renameFolder(input.oldPath, input.newPath)
+      await renameFolderCommand(input.oldPath, input.newPath)
       syncFolderConfigRename(input.oldPath, input.newPath)
       return { success: true as const }
     },

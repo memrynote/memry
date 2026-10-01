@@ -23,6 +23,7 @@ import {
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
+import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
 import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { hasPendingWriteback } from '../sync/crdt-writeback'
@@ -869,7 +870,7 @@ export async function createFolder(folderPath: string): Promise<void> {
   placeNewItemAtTop(getDatabase(), folderPath, path.posix.dirname(folderPath).replace(/^\.$/, ''))
 }
 
-export async function renameFolder(oldPath: string, newPath: string): Promise<void> {
+export async function renameFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
   const notesDir = getVaultRoot()
   const oldAbsPath = path.join(notesDir, oldPath)
   const newAbsPath = path.join(notesDir, newPath)
@@ -895,6 +896,7 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<vo
 
   followJournalFolderMove(oldPath, newPath)
   carryFolderPositions(getDatabase(), oldPath, newPath)
+  return moveIndexedNotesWithFolder(oldPath, newPath)
 }
 
 export async function deleteFolder(folderPath: string): Promise<void> {
@@ -1025,4 +1027,15 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
     errors,
     importedFiles
   }
+}
+
+/**
+ * The indexed id of a file `importFiles` just copied, or null until the watcher
+ * has indexed it. `importedFiles[].destPath` is absolute while the index keys
+ * vault-relative paths, so the path must be relativized before the lookup.
+ * Cache-only on purpose: `getNoteByPath`'s read-and-parse fallback would index
+ * a PDF or image as a markdown note.
+ */
+export function getIndexedIdByImportedPath(destPath: string): string | null {
+  return getNoteCacheByPath(getIndexDatabase(), toRelativePath(destPath))?.id ?? null
 }

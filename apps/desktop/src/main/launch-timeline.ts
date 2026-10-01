@@ -49,6 +49,16 @@ export const recordLaunchPhase = (phase: LaunchPhase): void => {
 }
 
 /**
+ * The most recent launch phase reached so far, so a main-thread stall can name
+ * the startup step it interrupted. `null` before the first phase.
+ */
+export const latestLaunchPhase = (): LaunchPhase | null => {
+  let latest: LaunchPhase | null = null
+  for (const phase of marks.keys()) latest = phase
+  return latest
+}
+
+/**
  * Emit the timeline once, at the moment the window is revealed — the point the
  * user stops staring at nothing. `reason` names what revealed it, so a
  * fallback reveal and a normal one are one field apart in the log sink.

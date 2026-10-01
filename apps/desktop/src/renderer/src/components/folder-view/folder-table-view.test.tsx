@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { FolderTableView } from './folder-table-view'
 import { GroupedTable } from './grouped-table'
@@ -1019,5 +1019,78 @@ describe('binary file rows (#2073)', () => {
 
     fireEvent.mouseEnter(screen.getByRole('option', { name: 'billing' }))
     expect(screen.queryByRole('button', { name: 'removeAria billing' })).toBeNull()
+  })
+})
+
+// Regression for #1897: the grid container's keydown handler receives every
+// keystroke from its React descendants, including real cell editors and
+// selection checkboxes. Space and Enter must act only on the grid itself;
+// arrow navigation must still work from a focused descendant.
+describe.each([
+  ['FolderTableView', 'notesTable'],
+  ['GroupedTable', 'groupedNotesTable']
+] as const)('%s grid keydown target guard', (component, gridName) => {
+  const statusColumns = [
+    { id: 'title', displayName: 'Title', width: 220 },
+    { id: 'status', displayName: 'Status', width: 120 }
+  ] as any[]
+
+  function renderTable(props: {
+    onNoteOpen: (id: string) => void
+    onSelectionChange: (ids: Set<string>) => void
+    onPropertyUpdate: (id: string, property: string, value: unknown) => void
+  }): HTMLElement {
+    const shared = {
+      notes,
+      columns: statusColumns,
+      propertyTypes: { status: 'text' } as any,
+      ...props
+    }
+    render(
+      component === 'FolderTableView' ? (
+        <FolderTableView {...shared} />
+      ) : (
+        <GroupedTable {...shared} groupBy={{ property: 'status' } as any} />
+      )
+    )
+    return screen.getByRole('grid', { name: gridName })
+  }
+
+  it('ignores Space and Enter from a descendant but keeps arrow navigation', () => {
+    const onNoteOpen = vi.fn()
+    const onSelectionChange = vi.fn()
+    const grid = renderTable({ onNoteOpen, onSelectionChange, onPropertyUpdate: vi.fn() })
+
+    const firstRow = grid.querySelector('[data-row-id="note-1"]') as HTMLElement
+    fireEvent.click(firstRow)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+
+    const rowCheckbox = firstRow.querySelector('[role="checkbox"]') as HTMLElement
+    // fireEvent returns false when a handler called preventDefault().
+    expect(fireEvent.keyDown(rowCheckbox, { key: ' ', code: 'Space' })).toBe(true)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+
+    fireEvent.keyDown(rowCheckbox, { key: 'Enter' })
+    expect(onNoteOpen).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(rowCheckbox, { key: 'ArrowDown' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+
+    fireEvent.keyDown(grid, { key: 'Enter' })
+    expect(onNoteOpen).toHaveBeenCalledWith('note-2')
+  })
+
+  it('keeps the space bar in a real cell editor', () => {
+    const onSelectionChange = vi.fn()
+    const grid = renderTable({ onNoteOpen: vi.fn(), onSelectionChange, onPropertyUpdate: vi.fn() })
+
+    const firstRow = grid.querySelector('[data-row-id="note-1"]') as HTMLElement
+    fireEvent.click(within(firstRow).getByRole('button', { name: 'Open' }))
+    const input = firstRow.querySelector('input[type="text"]') as HTMLInputElement
+    expect(input).not.toBeNull()
+
+    onSelectionChange.mockClear()
+    expect(fireEvent.keyDown(input, { key: ' ', code: 'Space' })).toBe(true)
+    expect(onSelectionChange).not.toHaveBeenCalled()
   })
 })

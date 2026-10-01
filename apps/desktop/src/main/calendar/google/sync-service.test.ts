@@ -509,6 +509,72 @@ describe('google calendar sync service', () => {
     })
   })
 
+  describe('a source removed while its listEvents is in flight (#2516, #2555)', () => {
+    const remoteEvent = {
+      id: 'remote-event-race',
+      calendarId: 'remote-selected-calendar',
+      title: 'Imported review',
+      startAt: '2026-04-14T13:00:00.000Z',
+      endAt: '2026-04-14T14:00:00.000Z',
+      isAllDay: false,
+      timezone: 'UTC',
+      status: 'confirmed' as const,
+      etag: '"etag-1"',
+      updatedAt: '2026-04-12T10:20:00.000Z',
+      raw: { summary: 'Imported review' }
+    }
+
+    function clientThatChangesSourceMidFetch(change: Partial<typeof calendarSources.$inferInsert>) {
+      return {
+        listEvents: vi.fn(async () => {
+          db.update(calendarSources)
+            .set(change)
+            .where(eq(calendarSources.id, 'google-calendar:selected'))
+            .run()
+          return { nextSyncCursor: 'cursor-2', events: [remoteEvent] }
+        })
+      }
+    }
+
+    beforeEach(() => {
+      seedGoogleCalendarSource({
+        id: 'google-calendar:selected',
+        remoteId: 'remote-selected-calendar',
+        title: 'Work',
+        isMemryManaged: false
+      })
+    })
+
+    it('keeps a calendar disconnected mid-sync archived and writes none of its events', async () => {
+      const client = clientThatChangesSourceMidFetch({ archivedAt: '2026-04-12T10:00:00.000Z' })
+
+      await syncGoogleCalendarSource(db, 'google-calendar:selected', { client })
+
+      const source = db
+        .select()
+        .from(calendarSources)
+        .where(eq(calendarSources.id, 'google-calendar:selected'))
+        .get()
+      expect(source?.archivedAt).toBe('2026-04-12T10:00:00.000Z')
+      expect(source?.syncCursor).toBeNull()
+      expect(db.select().from(calendarExternalEvents).all()).toHaveLength(0)
+    })
+
+    it('keeps a calendar turned off mid-sync off and writes none of its events', async () => {
+      const client = clientThatChangesSourceMidFetch({ isSelected: false })
+
+      await syncGoogleCalendarSource(db, 'google-calendar:selected', { client })
+
+      const source = db
+        .select()
+        .from(calendarSources)
+        .where(eq(calendarSources.id, 'google-calendar:selected'))
+        .get()
+      expect(source?.isSelected).toBe(false)
+      expect(db.select().from(calendarExternalEvents).all()).toHaveLength(0)
+    })
+  })
+
   it('seeds a clock on newly imported Google events and preserves an existing one (#1215)', async () => {
     seedGoogleCalendarSource({
       id: 'google-calendar:selected',

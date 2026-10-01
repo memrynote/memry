@@ -1097,6 +1097,86 @@ describe('0063_canvas_entity_edges migration', () => {
   })
 })
 
+// #2183: keys stripped from inside a known payload object get their own column.
+describe('0064_sync_unknown_nested_fields migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-unknown-nested-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  function makePre0064Folder(): string {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0064')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0064_sync_unknown_nested_fields')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  it('adds a null column to existing captures and changes no row', () => {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: makePre0064Folder() })
+    sqlite
+      .prepare(
+        `INSERT INTO sync_unknown_fields (type, item_id, fields, updated_at) VALUES ('task', 't1', '{"snoozedUntil":1}', 1)`
+      )
+      .run()
+
+    migrate(db, { migrationsFolder: migrationsDir })
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    expect(sqlite.prepare('SELECT * FROM sync_unknown_fields').all()).toEqual([
+      {
+        type: 'task',
+        item_id: 't1',
+        fields: '{"snoozedUntil":1}',
+        updated_at: 1,
+        nested_fields: null
+      }
+    ])
+    sqlite.close()
+  })
+
+  it('is inert for an older build that opens the upgraded database', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+    const sqlite = new Database(dbPath)
+    sqlite
+      .prepare(
+        `INSERT INTO sync_unknown_fields (type, item_id, fields, nested_fields, updated_at) VALUES ('note', 'n1', '{}', '[{"path":["cover","blur"],"value":4}]', 1)`
+      )
+      .run()
+
+    expect(() => migrate(drizzle(sqlite), { migrationsFolder: makePre0064Folder() })).not.toThrow()
+    // The older build's upsert names only `fields`.
+    sqlite
+      .prepare(
+        `INSERT INTO sync_unknown_fields (type, item_id, fields, updated_at) VALUES ('note', 'n1', '{"x":1}', 2)
+         ON CONFLICT (type, item_id) DO UPDATE SET fields = excluded.fields, updated_at = excluded.updated_at`
+      )
+      .run()
+
+    expect(sqlite.prepare('SELECT fields FROM sync_unknown_fields').all()).toEqual([
+      { fields: '{"x":1}' }
+    ])
+    sqlite.close()
+  })
+})
+
 // #2301 review B-6/A-8: drizzle applies a migration only when its `when` is
 // greater than the newest one already applied. Two stacked migrations that
 // share a `when` (or go backwards) make every install that has the first skip

@@ -122,8 +122,12 @@ A handler needs no code for this; it happens around every handler at the apply a
 a later build learns a field for real, its schema keeps the key, the stripped remainder comes back
 empty, and the row clears itself.
 
-Only top-level keys are preserved. An unknown key nested inside a known object is still stripped by
-that object's schema.
+Keys stripped from inside a known object are kept too, e.g. a newer client's `cover.<field>` on a
+note. They are stored apart, in `nested_fields`, as key paths, because they merge differently: a
+nested key is put back only into a parent object the push payload still has, and only when that
+parent does not already state the key. A cover the user cleared (`null`) or a payload that omits
+the cover never comes back as a partial object. Arrays are not descended into; their elements have
+no stable identity to line a remainder up against.
 
 `id` and `syncedAt` are never kept. Many push payloads are row dumps that carry both, but `id` is
 the envelope id and `syncedAt` is device-local, so no schema models them. Keeping them wrote a row

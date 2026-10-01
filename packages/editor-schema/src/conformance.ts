@@ -198,6 +198,13 @@ const calloutCases: RoundtripCase[] = [
     name: 'lazily continued nested callout keeps its nesting',
     markdown: '> Outer\n> > [!warning] Inner\n> > Inner body',
     canonical: '> Outer\n>\n> > [!warning] Inner\n> > Inner body'
+  },
+  {
+    // No outer paragraph to anchor the claim: the inner markdown parses to a
+    // lone quote, which becomes the child of a quote with empty own content.
+    // The flat fallback used to drop the outer level (#1896).
+    name: 'nested quote with no outer paragraph keeps both levels',
+    markdown: '> > Inner only'
   }
 ]
 

@@ -172,6 +172,16 @@ Generic IPC channels sit next to the provider-specific ones:
 The old channels are never removed. During a partial update an older renderer can talk to a
 newer main process, and a missing channel breaks the app in that window.
 
+**Disconnecting Google during a sync.** A per-account disconnect tombstones the account's
+sources and purges their mirrors while a sync pass may still be waiting on Google. Once the
+network call returns, the pass re-reads the source and drops its result if the source is now
+archived or was turned off; discovery likewise skips an account whose row is archived. Before
+this check the pass wrote its stale row back with `archivedAt` cleared, which left the
+calendar and its events on screen with no account to sync or disconnect it (#2516, #2555).
+The runner archives such leftovers at start: a live Google calendar whose account row exists
+and is archived. Calendars without an account id are left alone. Reconnecting the account
+revives its calendars through discovery as before.
+
 ## Credentials and settings
 
 - **Credentials** are stored per provider under `com.memry.calendar.<providerId>`, with the

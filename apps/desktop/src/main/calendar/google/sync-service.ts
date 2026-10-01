@@ -13,6 +13,7 @@ import {
   resolveDefaultGoogleAccountId
 } from './oauth'
 import { resolveTargetGoogleAccountId } from './account-routing'
+import { isGoogleAccountDisconnected } from './disconnected-accounts'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createGoogleCalendarClient } from './client'
@@ -145,6 +146,10 @@ export async function discoverGoogleCalendarSources(
   accountId: string
 ): Promise<void> {
   const discovered = await client.listCalendars()
+  // A disconnect can land while listCalendars is in flight. Writing
+  // `archivedAt: null` below would then revive every calendar of the account
+  // the user just removed (#2516, #2555).
+  if (isGoogleAccountDisconnected(db, accountId)) return
   const now = getNow()
 
   for (const remote of discovered) {
@@ -450,6 +455,22 @@ function recordSyncError(db: DataDb, sourceId: string, error: unknown): void {
   emitCalendarChanged({ entityType: 'calendar_source', id: updated.id })
 }
 
+/**
+ * Re-read a source after a network await. Returns null when the user
+ * disconnected its account or turned it off meanwhile: the mirror is already
+ * purged, and writing the sync result plus the stale row back would resurrect
+ * the calendar with no account left to sync or disconnect it (#2516, #2555).
+ */
+function rereadSyncableSource(
+  db: DataDb,
+  before: typeof calendarSources.$inferSelect
+): typeof calendarSources.$inferSelect | null {
+  const current = getCalendarSourceById(db, before.id)
+  if (!current || current.archivedAt) return null
+  if (before.isSelected && !current.isSelected) return null
+  return current
+}
+
 async function syncGoogleCalendarSourceInner(
   db: DataDb,
   sourceId: string,
@@ -477,9 +498,11 @@ async function syncGoogleCalendarSourceInner(
     })
   } catch (error) {
     if (isGoneError(error) && source.syncCursor) {
+      const current = rereadSyncableSource(db, source)
+      if (!current) return
       log.warn('Google returned 410 for source; clearing cursor and re-syncing', { sourceId })
       const freshSource = upsertCalendarSource(db, {
-        ...source,
+        ...current,
         syncCursor: null,
         syncStatus: 'pending',
         modifiedAt: now
@@ -490,10 +513,16 @@ async function syncGoogleCalendarSourceInner(
     throw error
   }
 
+  const current = rereadSyncableSource(db, source)
+  if (!current) {
+    log.info('Dropping Google sync result for a source removed mid-sync', { sourceId })
+    return
+  }
+
   if (!result.nextSyncCursor && source.syncCursor) {
     log.warn('sync cursor invalidated for source, re-syncing from scratch', { sourceId })
     const freshSource = upsertCalendarSource(db, {
-      ...source,
+      ...current,
       syncCursor: null,
       syncStatus: 'pending',
       modifiedAt: now
@@ -558,8 +587,11 @@ async function syncGoogleCalendarSourceInner(
     emitCalendarChanged({ entityType: 'calendar_external_event', id: record.id })
   }
 
+  // Writeback/delete above await; re-check before writing the row back.
+  const latest = rereadSyncableSource(db, source)
+  if (!latest) return
   const updatedSource = upsertCalendarSource(db, {
-    ...source,
+    ...latest,
     syncCursor: result.nextSyncCursor,
     syncStatus: 'ok',
     lastSyncedAt: now,

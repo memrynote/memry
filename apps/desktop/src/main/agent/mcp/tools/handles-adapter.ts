@@ -10,6 +10,7 @@ import {
   createNoteCommand,
   deleteNoteCommand,
   moveNoteCommand,
+  renameFolderCommand,
   renameNoteCommand,
   updateNoteCommand
 } from '../../../notes/domain'
@@ -22,8 +23,7 @@ import {
   deleteFolder,
   getFolders,
   getNoteById,
-  listNotes,
-  renameFolder
+  listNotes
 } from '../../../vault/notes'
 import { getAllTagsWithCounts, listTagCategories } from '../../../tags/store'
 import { generateId } from '../../../lib/id'
@@ -378,7 +378,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       async rename({ old_path, new_path }) {
         const oldInternal = internalFolderFromToolPath(old_path) ?? ''
         const newInternal = internalFolderFromToolPath(new_path) ?? ''
-        await renameFolder(oldInternal, newInternal)
+        await renameFolderCommand(oldInternal, newInternal)
         syncFolderConfigRename(oldInternal, newInternal)
         return { path: new_path }
       },
