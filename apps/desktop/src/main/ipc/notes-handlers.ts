@@ -61,6 +61,7 @@ import {
 } from './validate'
 import { registerCommand } from './lib/register-command'
 import type { Note } from '../vault/notes'
+import { cleanCachedSnippet } from '../vault/frontmatter'
 import {
   getNoteById,
   getNoteByPath,
@@ -361,7 +362,7 @@ export function registerNotesHandlers(): void {
         id: result.id,
         title: result.title,
         emoji: result.emoji ?? null,
-        snippet: result.snippet ?? null,
+        snippet: result.snippet ? cleanCachedSnippet(result.snippet) : null,
         tags: tags.map((t) => ({ name: t, color: colorMap.get(t) ?? 'stone' })),
         createdAt: result.createdAt
       }
