@@ -77,6 +77,18 @@ pnpm --filter @memry/desktop db:studio:index
 - Test files are typechecked by `tsconfig.test.node.json` / `tsconfig.test.web.json`. Both carry an `exclude` backlog of 309 test files that already failed to compile when the gate landed. That list only ever shrinks: never add a file to it. A new or newly-touched test file must compile.
 - If you create or modify a test, run it and iterate until it passes.
 
+## Live App Verification
+
+When a change affects what the user sees or does (UI, IPC flows, main-process behavior behind a UI action) and the flow can be exercised in one window, verify it in the running app before reporting done. Use judgment: skip it for pure refactors, tests, docs, sync-server-only changes, and flows that need two synced devices.
+
+1. `pnpm --filter @memry/desktop exec electron-vite build`. Native modules must be built for Electron; `agent-app.mjs start` fails fast if not.
+2. `node apps/desktop/scripts/agent-app.mjs start`. Launches with a copy of the E2E test vault, a temp profile, and an `e2e-agent-*` keychain device. Never real data. Single instance on CDP `9222` / inspector `9229`.
+3. Drive the flow with the `playwright-memry` MCP: snapshot, click, type, screenshot.
+4. When the change writes data, check it from main: `agent-app.mjs eval "__memryDebug.query('SELECT …')"`. `__memryDebug` SQL is read-only; seeding goes through `__memryTestHooks`.
+5. `node apps/desktop/scripts/agent-app.mjs stop`. Removes the temp dirs and keychain items.
+
+Report what you exercised and what you observed.
+
 ## Agent Chat
 
 - Start from `docs/superpowers/specs/2026-05-10-agent-chat-design.md` before changing Agent Chat architecture.

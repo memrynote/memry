@@ -8,6 +8,17 @@
       "command": "~/.paper/bin/paper",
       "args": ["mcp"]
     },
+    "playwright-memry": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--cdp-endpoint",
+        "http://127.0.0.1:9222",
+        "--output-dir",
+        "/tmp/memry-playwright-mcp"
+      ]
+    },
     "posthog": {
       "url": "https://mcp.posthog.com/mcp"
     },

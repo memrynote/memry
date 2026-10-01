@@ -4,6 +4,7 @@ export {
   getDatabase,
   getIndexDatabase,
   getRawIndexDatabase,
+  getRawDataDatabase,
   requireDatabase,
   isDatabaseInitialized,
   isDataDatabaseCorrupt,

@@ -134,6 +134,7 @@ import { HTML_EMBED_SCHEME, isHtmlEmbedPath, serveHtmlEmbed } from './vault/html
 import { decideFrameNavigation } from './lib/frame-navigation'
 import { decideEmbedRequestHeaders } from './lib/embed-referer'
 import { registerTestHooks } from './test-hooks'
+import { registerAgentDebugHandles } from './agent-debug'
 import {
   computeSpkiHashFromPem,
   isPinningDisabled,
@@ -503,6 +504,7 @@ function rebuildMenu(_locale: Locale): void {
 }
 
 registerTestHooks()
+registerAgentDebugHandles()
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {

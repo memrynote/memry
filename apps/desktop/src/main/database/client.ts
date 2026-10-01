@@ -125,6 +125,12 @@ export function getDatabase(): DataDb {
   return dataDb
 }
 
+/** The raw better-sqlite3 connection behind getDatabase(), for SQL Drizzle cannot express. */
+export function getRawDataDatabase(): Database.Database {
+  if (!sqliteDataDb) throw new Error('Database not initialized')
+  return sqliteDataDb
+}
+
 export function requireDatabase(): DataDb {
   try {
     return getDatabase()
