@@ -18,6 +18,12 @@ import { isRelationValue } from '@memry/contracts/relation-uri'
 import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
 import { replaceWikiLinks, splitWikiTarget } from '@memry/shared/wiki-target'
 import {
+  isWritingFrontmatterValue,
+  readWritingFrontmatter,
+  WRITING_FRONTMATTER_KEY,
+  type WritingFrontmatter
+} from '@memry/shared'
+import {
   COVER_CREDIT_FRONTMATTER_KEY,
   COVER_CREDIT_URL_FRONTMATTER_KEY,
   COVER_FOCUS_FRONTMATTER_KEY,
@@ -395,8 +401,26 @@ const VALUE_GATED_FRONTMATTER_KEYS: ReadonlyMap<string, (value: unknown) => bool
   [COVER_ZOOM_FRONTMATTER_KEY, isCoverZoomValue as (value: unknown) => boolean],
   [COVER_HEIGHT_FRONTMATTER_KEY, isCoverHeightValue as (value: unknown) => boolean],
   [COVER_CREDIT_FRONTMATTER_KEY, isCoverCreditValue as (value: unknown) => boolean],
-  [COVER_CREDIT_URL_FRONTMATTER_KEY, isCoverCreditUrlValue as (value: unknown) => boolean]
+  [COVER_CREDIT_URL_FRONTMATTER_KEY, isCoverCreditUrlValue as (value: unknown) => boolean],
+  // Writing tools data (alternative versions, overflow), not a property.
+  [WRITING_FRONTMATTER_KEY, isWritingFrontmatterValue]
 ])
+
+/**
+ * The note's writing tools frontmatter, for a caller that read the whole file:
+ * an absent or foreign `writing` key reads as empty, since the file is what
+ * says there is nothing.
+ */
+export function writingFrontmatterOf(
+  frontmatter: NoteFrontmatter | null | undefined
+): WritingFrontmatter {
+  return (
+    readWritingFrontmatter(frontmatter?.[WRITING_FRONTMATTER_KEY]) ?? {
+      alternatives: {},
+      overflow: []
+    }
+  )
+}
 
 function isReservedFrontmatterKey(name: string, value: unknown): boolean {
   if (RESERVED_FRONTMATTER_KEYS.has(name)) return true

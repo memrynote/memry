@@ -14,10 +14,11 @@
  *   other the way a whole-array replace would.
  *
  * Anchors are `Y.RelativePosition` JSON (`Y.relativePositionToJSON`) taken
- * against the prosemirror fragment. They survive edits around the range, but
- * not a re-seed of the doc from the markdown file (an external edit that
- * rebuilds the fragment) or a doc compaction, which mint new item ids. That is
- * the known limit of any side data that is not encoded in the markdown.
+ * against the prosemirror fragment, so a range follows edits while the note
+ * is open. These arrays are the live copy; the markdown file is the source of
+ * truth (`./markdown.ts`). The write-back puts every record into the file as
+ * comment markers and `writing` frontmatter, and a seed from the file (first
+ * open, an external edit) rebuilds the arrays from it with fresh anchors.
  */
 
 export const WRITING_ALTERNATIVES_ARRAY = 'writingAlternatives'

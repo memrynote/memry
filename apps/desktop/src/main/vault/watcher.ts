@@ -16,6 +16,7 @@ import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getConfig } from './index'
 import {
   parseNote,
+  writingFrontmatterOf,
   generateContentHash,
   extractProperties,
   extractTitleFromPath
@@ -725,7 +726,11 @@ export class VaultWatcher {
       },
       source: 'external'
     })
-    feedExternalEditToCrdt(cached.id, parsed.content).catch((err) => {
+    feedExternalEditToCrdt(
+      cached.id,
+      parsed.content,
+      writingFrontmatterOf(parsed.frontmatter)
+    ).catch((err) => {
       logger.warn('Failed to feed external edit to CRDT', { noteId: cached.id, error: err })
     })
 

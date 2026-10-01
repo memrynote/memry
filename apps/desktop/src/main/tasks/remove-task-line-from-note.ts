@@ -104,7 +104,8 @@ async function rewriteSourceNote(taskId: string, noteId: string): Promise<void> 
   const { getIndexDatabase } = await import('../database')
   const { getNoteCacheById } = await import('@main/database/queries/notes')
   const { safeRead, atomicWrite } = await import('../vault/file-ops')
-  const { parseNote, serializeParsedNote } = await import('../vault/frontmatter')
+  const { parseNote, serializeParsedNote, writingFrontmatterOf } =
+    await import('../vault/frontmatter')
   const { syncNoteToCache } = await import('../vault/note-sync')
   const { emitNoteEvent, toAbsolutePath } = await import('../vault/notes-io')
   const { markWritebackIgnored } = await import('../sync/crdt-writeback')
@@ -157,7 +158,7 @@ async function rewriteSourceNote(taskId: string, noteId: string): Promise<void> 
   }
   emitNoteEvent(NotesChannels.events.UPDATED, event)
 
-  await feedExternalEditToCrdt(noteId, parsed.content)
+  await feedExternalEditToCrdt(noteId, parsed.content, writingFrontmatterOf(parsed.frontmatter))
 
   log.info('Removed a deleted task line from its source note', { taskId, noteId })
 }

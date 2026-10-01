@@ -14,7 +14,7 @@
 
 import path from 'path'
 import fs from 'fs/promises'
-import { parseNote } from './frontmatter'
+import { parseNote, writingFrontmatterOf } from './frontmatter'
 import { syncNoteToCache, syncFileToCache } from './note-sync'
 import {
   ensureDirectory,
@@ -252,7 +252,7 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       // undo the loss. The cache row already points at the new path, so the
       // embed resolution inside this call reads the note from where it now
       // lives. Same order `applyTemplateToNote` uses: file first, then the doc.
-      await replaceNoteBodyInCrdt(id, parsed.content)
+      await replaceNoteBodyInCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter))
     }
   }
 

@@ -7,7 +7,12 @@
  */
 
 import fs from 'fs/promises'
-import { parseNote, calculateWordCount, generateContentHash } from './frontmatter'
+import {
+  parseNote,
+  calculateWordCount,
+  generateContentHash,
+  writingFrontmatterOf
+} from './frontmatter'
 import { syncNoteToCache } from './note-sync'
 import { atomicWrite } from './file-ops'
 import {
@@ -243,7 +248,11 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
   // either (`vault/watcher.ts`) — without these two lines a restore of an open
   // note shows nothing and the next write-back rewrites the file from the
   // unrestored Y.Doc. Same closing step as `vault/append-blocks.ts`.
-  await feedExternalEditToCrdt(cached.id, snapshotParsed.content)
+  await feedExternalEditToCrdt(
+    cached.id,
+    snapshotParsed.content,
+    writingFrontmatterOf(snapshotParsed.frontmatter)
+  )
   replaceNoteTagsInCrdt(cached.id, syncResult.tags)
 
   return restoredNote

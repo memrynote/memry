@@ -33,7 +33,9 @@ describe('syncErrorTelemetry', () => {
   })
 
   it('#given a 503 with no server code #then it is distinguishable from the 400', () => {
-    const client = syncErrorTelemetryFor(new SyncServerError('Bad Request', 400, 'VALIDATION_ERROR: nope'))
+    const client = syncErrorTelemetryFor(
+      new SyncServerError('Bad Request', 400, 'VALIDATION_ERROR: nope')
+    )
     const server = syncErrorTelemetryFor(new SyncServerError('Server returned 503', 503))
 
     expect(server.failure).toEqual({ httpStatus: 503, retryable: true })

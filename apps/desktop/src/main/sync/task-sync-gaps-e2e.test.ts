@@ -12,8 +12,16 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskTags, taskNotes } from '@memry/db-schema/schema/task-relations'
 import { ItemApplier } from './apply-item'
 import { SyncQueueManager } from '@memry/sync-client/queue'
-import { TASK_SYNCABLE_FIELDS, initAllFieldClocks, type FieldClocks } from '@memry/sync-client/field-merge'
-import { TaskSyncService, initTaskSyncService, resetTaskSyncService } from '@memry/sync-client/task-sync'
+import {
+  TASK_SYNCABLE_FIELDS,
+  initAllFieldClocks,
+  type FieldClocks
+} from '@memry/sync-client/field-merge'
+import {
+  TaskSyncService,
+  initTaskSyncService,
+  resetTaskSyncService
+} from '@memry/sync-client/task-sync'
 import { taskHandler } from './item-handlers/task-handler'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { resetProjectSyncService } from '@memry/sync-client/project-sync'

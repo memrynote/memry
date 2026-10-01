@@ -31,7 +31,7 @@ import { getNoteCacheById } from '@main/database/queries/notes'
 import { getIndexDatabase } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
-import { parseNote, serializeParsedNote } from './frontmatter'
+import { parseNote, serializeParsedNote, writingFrontmatterOf } from './frontmatter'
 import { syncNoteToCache } from './note-sync'
 import { safeRead, atomicWrite } from './file-ops'
 import { emitNoteEvent, toAbsolutePath } from './notes-io'
@@ -120,7 +120,11 @@ export async function appendBlocksToNote(
   }
   emitNoteEvent(NotesChannels.events.UPDATED, event)
 
-  await feedExternalEditToCrdt(targetNoteId, parsed.content)
+  await feedExternalEditToCrdt(
+    targetNoteId,
+    parsed.content,
+    writingFrontmatterOf(parsed.frontmatter)
+  )
 
   log.info('Appended blocks to note', { targetNoteId, sourceNoteId, chars: rewritten.length })
 

@@ -41,7 +41,7 @@ import { getIndexDatabase, type IndexDb } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { rewriteWikiLinksForRename } from '@memry/shared/rewrite-wiki-links'
-import { parseNote } from './frontmatter'
+import { parseNote, writingFrontmatterOf } from './frontmatter'
 import { syncNoteToCache } from './note-sync'
 import { safeRead, atomicWrite } from './file-ops'
 import { emitNoteEvent, toAbsolutePath } from './notes-io'
@@ -182,7 +182,7 @@ async function rewriteSource(
   }
   emitNoteEvent(NotesChannels.events.UPDATED, event)
 
-  await feedExternalEditToCrdt(sourceId, parsed.content)
+  await feedExternalEditToCrdt(sourceId, parsed.content, writingFrontmatterOf(parsed.frontmatter))
 
   if (isJournalEntry(sourcePath)) {
     const journalDate = extractDateFromPath(sourcePath) ?? ''

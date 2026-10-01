@@ -684,6 +684,21 @@ Body text
     })
   })
 
+  it('reserves writing only for writing tools data, and keeps it through a property rewrite', () => {
+    const writing = { alternatives: { k3x9: { versions: ['calm'] } }, overflow: ['spare'] }
+    expect(extractProperties({ writing, status: 'draft' })).toEqual({ status: 'draft' })
+    expect(replacePropertiesOnRoot({ writing, status: 'draft' }, { status: 'done' })).toEqual({
+      writing,
+      status: 'done'
+    })
+
+    // A `writing` key the author uses for something else stays their property.
+    expect(extractProperties({ writing: 'fiction' })).toEqual({ writing: 'fiction' })
+    expect(extractProperties({ writing: { genre: 'fiction' } })).toEqual({
+      writing: { genre: 'fiction' }
+    })
+  })
+
   it('REGRESSION: a property rewrite preserves focus and credit alongside the cover', () => {
     expect(
       replacePropertiesOnRoot(
