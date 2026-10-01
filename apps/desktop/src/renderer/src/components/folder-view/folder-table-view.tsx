@@ -1004,7 +1004,14 @@ export function FolderTableView({
           break
         }
 
+        // Space and Enter act only on the grid's own keystrokes. React routes
+        // synthetic events up the component tree, including out of Radix
+        // portals, so a descendant control (a cell editor, a selection
+        // checkbox) would otherwise lose its space bar or open the note.
+        // Arrow keys stay unguarded so row navigation works from a focused
+        // descendant.
         case ' ': {
+          if (e.target !== e.currentTarget) break
           e.preventDefault()
           const lastRow = rows[rows.length - 1]
           setFocusedRowId(lastRow.original.id)
@@ -1015,6 +1022,7 @@ export function FolderTableView({
         }
 
         case 'Enter': {
+          if (e.target !== e.currentTarget) break
           if (focusedRowId) {
             e.preventDefault()
             onNoteOpen?.(focusedRowId)
