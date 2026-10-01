@@ -69,7 +69,9 @@ export const VaultChannels = {
     INDEX_RECOVERED: 'vault:index-recovered',
     ERROR: 'vault:error',
     /** The vault list's display data changed (an icon, locally or from sync); refetch `vault:get-all` */
-    LIST_CHANGED: 'vault:list-changed'
+    LIST_CHANGED: 'vault:list-changed',
+    /** The open vault's config changed (settings, or the journal folder followed a rename); payload: VaultConfig */
+    CONFIG_CHANGED: 'vault:config-changed'
   }
 } as const
 

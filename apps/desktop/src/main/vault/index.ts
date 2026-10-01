@@ -30,7 +30,7 @@ import {
   getDataDbPath,
   getIndexDbPath
 } from './init'
-import { getJournalConfig, setJournalConfig } from './journal-config'
+import { normalizeJournalSettings, syncJournalConfig } from './journal-config'
 import {
   initDatabase,
   isDataDatabaseCorrupt,
@@ -907,43 +907,24 @@ export function getConfig(): VaultConfig {
       defaultNoteFolder: '',
       journalFolder: 'journal',
       journalDateFormat: 'YYYY-MM-DD',
-      attachmentsFolder: 'attachments'
+      attachmentsFolder: 'attachments',
+      journalShowInSidebar: false
     }
     syncJournalConfig(fallback)
     return fallback
   }
 
   const config = readVaultConfig(currentStatus.path)
-  const resolved: VaultConfig = {
+  const resolved: VaultConfig = normalizeJournalSettings({
     excludePatterns: config.excludePatterns,
     defaultNoteFolder: config.defaultNoteFolder,
     journalFolder: config.journalFolder,
     journalDateFormat: config.journalDateFormat,
-    attachmentsFolder: config.attachmentsFolder
-  }
+    attachmentsFolder: config.attachmentsFolder,
+    journalShowInSidebar: config.journalShowInSidebar === true
+  })
   syncJournalConfig(resolved)
   return resolved
-}
-
-/**
- * Push journal settings into the process-wide holder, but only when they differ.
- *
- * getConfig() runs on most vault operations and many callers depend on it
- * keeping the holder fresh, so the side effect stays — writing an identical
- * value on every call is the part that was pure overhead.
- */
-function syncJournalConfig(config: VaultConfig): void {
-  const current = getJournalConfig()
-  if (
-    current.journalFolder === config.journalFolder &&
-    current.journalDateFormat === config.journalDateFormat
-  ) {
-    return
-  }
-  setJournalConfig({
-    journalFolder: config.journalFolder,
-    journalDateFormat: config.journalDateFormat
-  })
 }
 
 /**
@@ -969,13 +950,14 @@ function drainDeferredEmbeddings(): void {
   })
 }
 
-export async function updateConfig(updates: Partial<VaultConfig>): Promise<VaultConfig> {
+export async function updateConfig(rawUpdates: Partial<VaultConfig>): Promise<VaultConfig> {
   if (!currentStatus.path) {
     throw new VaultError('No vault is currently open', VaultErrorCode.NOT_INITIALIZED)
   }
 
   const vaultPath = currentStatus.path
   const oldConfig = getConfig()
+  const updates = normalizeJournalSettings(rawUpdates)
   const renameJournals = journalFormatChange(oldConfig, updates)
 
   // Journal files move to their new names before the new format is written.
@@ -1045,6 +1027,7 @@ export async function updateConfig(updates: Partial<VaultConfig>): Promise<Vault
     drainDeferredEmbeddings()
   }
 
+  broadcastToAllWindows(VaultChannels.events.CONFIG_CHANGED, newConfig)
   return newConfig
 }
 

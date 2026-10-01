@@ -169,6 +169,7 @@ describe('zero-covered leaf surfaces', () => {
       onVaultIndexProgress: vi.fn(() => () => {}),
       onVaultError: vi.fn(() => () => {}),
       onVaultIndexRecovered: vi.fn(() => () => {}),
+      onVaultConfigChanged: vi.fn(() => () => {}),
       syncOps: {
         getLargeNotes: vi.fn().mockResolvedValue({ maxBytes: 3_826_189, notes: [] })
       }

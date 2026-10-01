@@ -136,7 +136,15 @@
       "folderSuffix": "folder",
       "moreItems": "...and {count} more",
       "deleting": "Deleting...",
-      "deleteCount": "Delete {count}"
+      "deleteCount": "Delete {count}",
+      "journalFolderWarning": "This includes your journal folder. Every journal entry in it is deleted, on all your devices."
+    },
+    "journalChange": {
+      "leaveTitle": "Turn journal entries into notes?",
+      "leaveBody": "Moved out of the journal folder, or renamed off its date format, journal entries become regular notes and leave your Journal. On your other devices those days are removed from the Journal and the notes appear instead.",
+      "joinTitle": "Turn notes into journal entries?",
+      "joinBody": "Files named by the journal date format inside the journal folder become journal entries. On your other devices those notes are replaced by journal entries.",
+      "confirm": "Continue"
     }
   },
   "editor": {

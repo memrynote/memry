@@ -5,7 +5,11 @@ import {
   propertyDefinitions,
   type NoteCache
 } from '@memry/db-schema/schema/notes-cache'
-import { parseJournalDate, formatJournalFilename } from '@memry/storage-vault'
+import {
+  parseJournalDate,
+  formatJournalFilename,
+  normalizeJournalFolder
+} from '@memry/storage-vault'
 import type { IndexDb } from '../../types'
 import { type ActivityLevel, calculateActivityLevel } from './query-helpers'
 import { getJournalConfig } from '@main/vault/journal-config'
@@ -15,23 +19,22 @@ import { getPropertiesForNotes } from './property-queries'
 // ============================================================================
 // Journal Entry Utilities
 //
-// A journal entry is a direct child of the configured journal folder whose
-// filename matches the configured journal date format. Config comes from
-// the journal-config holder, kept in sync by the vault's getConfig().
+// A journal entry is a file under the configured journal folder whose path
+// relative to that folder matches the configured journal date format. A flat
+// format (`YYYY-MM-DD`) matches direct children only; a format with folder
+// segments (`YYYY/MM/YYYY-MM-DD`) matches its own subfolders and nothing else,
+// because no date token matches a `/`. Config comes from the journal-config
+// holder, kept in sync by the vault's getConfig().
 // ============================================================================
 
-function normalizeFolder(folder: string): string {
-  return folder.endsWith('/') ? folder.slice(0, -1) : folder
-}
-
-/** Filename stem (no extension) when `path` is a direct child of the journal folder. */
+/** Path stem (no extension) relative to the journal folder, when `path` is under it. */
 function journalStem(path: string): string | null {
-  const folder = normalizeFolder(getJournalConfig().journalFolder)
+  const folder = normalizeJournalFolder(getJournalConfig().journalFolder)
   if (!folder) return null
   const prefix = `${folder}/`
   if (!path.startsWith(prefix)) return null
   const rest = path.slice(prefix.length)
-  if (rest.includes('/') || !rest.endsWith('.md')) return null
+  if (!rest.endsWith('.md')) return null
   return rest.slice(0, -3)
 }
 
@@ -49,7 +52,7 @@ export function extractDateFromPath(path: string): string | null {
 
 export function generateJournalPath(date: string): string {
   const { journalFolder, journalDateFormat } = getJournalConfig()
-  const folder = normalizeFolder(journalFolder)
+  const folder = normalizeJournalFolder(journalFolder)
   const filename = formatJournalFilename(date, journalDateFormat)
   return folder ? `${folder}/${filename}.md` : `${filename}.md`
 }

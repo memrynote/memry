@@ -23,7 +23,8 @@ const DEFAULT_CONFIG = {
   defaultNoteFolder: '',
   journalFolder: 'journal',
   journalDateFormat: 'YYYY-MM-DD',
-  attachmentsFolder: 'attachments'
+  attachmentsFolder: 'attachments',
+  journalShowInSidebar: false
 }
 
 /**

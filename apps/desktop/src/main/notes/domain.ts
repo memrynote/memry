@@ -10,6 +10,8 @@ import {
   type NoteUpdateInput
 } from '../vault/notes'
 import { extractTags } from '../vault/frontmatter'
+import { getIndexDatabase } from '../database'
+import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import {
   syncNoteCreate,
@@ -44,15 +46,27 @@ export async function updateNoteCommand(input: NoteUpdateInput): Promise<Note> {
   return note
 }
 
+/**
+ * A rename or move that turns a journal into a note or back is handed to the
+ * watcher (see `changesJournalDate` in notes-rename), which deletes the old item
+ * and creates the new one. Pushing a note update for the old id on top would
+ * send a journal's id as a note.
+ */
+function journalDateOf(id: string): string | null {
+  return getNoteCacheById(getIndexDatabase(), id)?.date ?? null
+}
+
 export async function renameNoteCommand(id: string, newTitle: string): Promise<Note> {
+  const before = journalDateOf(id)
   const note = await renameNote(id, newTitle)
-  syncNoteUpdate(id, newTitle)
+  if (before === null && extractDateFromPath(note.path) === null) syncNoteUpdate(id, newTitle)
   return note
 }
 
 export async function moveNoteCommand(id: string, newFolder: string): Promise<Note> {
+  const before = journalDateOf(id)
   const note = await moveNote(id, newFolder)
-  syncNoteUpdate(id)
+  if (before === null && extractDateFromPath(note.path) === null) syncNoteUpdate(id)
   return note
 }
 

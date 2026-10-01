@@ -165,6 +165,15 @@ export function onVaultError(callback: (error: string) => void): () => void {
 }
 
 /**
+ * Subscribe to config changes of the open vault: a settings save in any window,
+ * or main following a journal folder that was renamed.
+ * Returns unsubscribe function.
+ */
+export function onVaultConfigChanged(callback: (config: VaultConfig) => void): () => void {
+  return window.api.onVaultConfigChanged(callback)
+}
+
+/**
  * Subscribe to vault index recovery events.
  * Fired when index database is automatically rebuilt from source files.
  * Returns unsubscribe function.

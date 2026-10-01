@@ -99,6 +99,8 @@ export interface NoteListItem {
   snippet?: string | null // First 200 chars of content — omitted when fields: 'tree'
   emoji?: string | null // Emoji icon for visual identification
   localOnly?: boolean
+  /** Set on journal entries, which only `includeJournals` lists return. */
+  journalDate?: string | null
 }
 
 /**
@@ -308,7 +310,10 @@ export const NoteListSchema = z.object({
   // Optional (not `.default()`) on purpose: an older renderer omits it and the
   // handler still resolves to the full shape, so the payload an existing
   // caller receives is byte-identical to before this field existed.
-  fields: z.enum(['full', 'tree']).optional()
+  fields: z.enum(['full', 'tree']).optional(),
+  // Journal entries are left out unless asked for, for the same reason: the
+  // sidebar asks only when the user shows the journal folder in it.
+  includeJournals: z.boolean().optional()
 })
 
 export const NoteReorderSchema = z.object({

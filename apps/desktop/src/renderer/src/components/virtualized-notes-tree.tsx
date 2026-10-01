@@ -742,6 +742,9 @@ function NoteRow({
   const rowRef = useRef<HTMLDivElement>(null)
   const showBulkActions = isSelected && selectedCount > 1
   const showSelectionBadge = showBulkActions && isLastSelected
+  // Journal entries belong to the Journal: note-only actions (templates,
+  // icons, bookmarks) would write to the journal as if it were a note.
+  const isJournal = !!item.note.journalDate
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -847,16 +850,25 @@ function NoteRow({
           )}
 
           {/* Note icon or emoji — click to set a custom icon/emoji */}
-          <IconPickerButton
-            leading={NOTE_ICON_SPACER}
-            hasIcon={!!item.note.emoji}
-            onIconChange={(icon) => onSetNoteIcon?.(item.note.id, icon)}
-            ariaLabel={t('tree.actions.setIcon')}
-            pickerOpen={iconPickerNoteId === item.note.id}
-            onPickerOpenChange={(open) => onIconPickerOpenChange?.(open ? item.note.id : null)}
-          >
-            {getFileIcon(item.note)}
-          </IconPickerButton>
+          {isJournal ? (
+            <div className="shrink-0 flex items-center gap-0.5">
+              {NOTE_ICON_SPACER}
+              <span className="flex h-5 w-5 items-center justify-center">
+                {getFileIcon(item.note)}
+              </span>
+            </div>
+          ) : (
+            <IconPickerButton
+              leading={NOTE_ICON_SPACER}
+              hasIcon={!!item.note.emoji}
+              onIconChange={(icon) => onSetNoteIcon?.(item.note.id, icon)}
+              ariaLabel={t('tree.actions.setIcon')}
+              pickerOpen={iconPickerNoteId === item.note.id}
+              onPickerOpenChange={(open) => onIconPickerOpenChange?.(open ? item.note.id : null)}
+            >
+              {getFileIcon(item.note)}
+            </IconPickerButton>
+          )}
 
           {isBeingRenamed ? (
             <input
@@ -920,30 +932,34 @@ function NoteRow({
               <Pencil className="me-2 h-4 w-4" />
               {t('tree.actions.rename')}
             </ContextMenuItem>
-            <ContextMenuItem onClick={() => onApplyTemplateToNote?.(item.note)}>
-              <LayoutTemplate className="me-2 h-4 w-4" />
-              {t('tree.actions.applyTemplate')}
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => onSaveNoteAsTemplate?.(item.note)}>
-              <Save className="me-2 h-4 w-4" />
-              {t('tree.actions.saveAsTemplate')}
-            </ContextMenuItem>
-            {(item.note.fileType ?? 'markdown') === 'markdown' && (
-              <ContextMenuItem onClick={() => onNewNoteFromNote?.(item.note)}>
-                <FilePlus className="me-2 h-4 w-4" />
-                {t('newNoteFromNote.action')}
-              </ContextMenuItem>
-            )}
-            <ContextMenuSeparator />
-            <ContextMenuItem onClick={() => onIconPickerOpenChange?.(item.note.id)}>
-              <Smile className="me-2 h-4 w-4" />
-              {t('tree.actions.setIcon')}
-            </ContextMenuItem>
-            {item.note.emoji && (
-              <ContextMenuItem onClick={() => onSetNoteIcon?.(item.note.id, null)}>
-                <X className="me-2 h-4 w-4" />
-                {t('tree.actions.removeIcon')}
-              </ContextMenuItem>
+            {!isJournal && (
+              <>
+                <ContextMenuItem onClick={() => onApplyTemplateToNote?.(item.note)}>
+                  <LayoutTemplate className="me-2 h-4 w-4" />
+                  {t('tree.actions.applyTemplate')}
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => onSaveNoteAsTemplate?.(item.note)}>
+                  <Save className="me-2 h-4 w-4" />
+                  {t('tree.actions.saveAsTemplate')}
+                </ContextMenuItem>
+                {(item.note.fileType ?? 'markdown') === 'markdown' && (
+                  <ContextMenuItem onClick={() => onNewNoteFromNote?.(item.note)}>
+                    <FilePlus className="me-2 h-4 w-4" />
+                    {t('newNoteFromNote.action')}
+                  </ContextMenuItem>
+                )}
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => onIconPickerOpenChange?.(item.note.id)}>
+                  <Smile className="me-2 h-4 w-4" />
+                  {t('tree.actions.setIcon')}
+                </ContextMenuItem>
+                {item.note.emoji && (
+                  <ContextMenuItem onClick={() => onSetNoteIcon?.(item.note.id, null)}>
+                    <X className="me-2 h-4 w-4" />
+                    {t('tree.actions.removeIcon')}
+                  </ContextMenuItem>
+                )}
+              </>
             )}
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onOpenExternal?.(item.note)}>
@@ -955,8 +971,12 @@ function NoteRow({
               {fileActions.revealInFolder}
             </ContextMenuItem>
             <ContextMenuSeparator />
-            <BookmarkMenuItem itemType="note" itemId={item.note.id} />
-            <ContextMenuSeparator />
+            {!isJournal && (
+              <>
+                <BookmarkMenuItem itemType="note" itemId={item.note.id} />
+                <ContextMenuSeparator />
+              </>
+            )}
             <ContextMenuItem
               className="text-destructive focus:text-destructive"
               onClick={() => onDeleteNote?.(item.note)}

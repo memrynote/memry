@@ -46,8 +46,14 @@ import {
   clearAllPendingDeletes,
   hasPendingDeletes,
   buildStatRenameKey,
-  processRename
+  processRename,
+  type RenameMatch
 } from './rename-tracker'
+import {
+  folderExistsExactCase,
+  followJournalFolder,
+  inferMovedJournalFolder
+} from './journal-folder-follow'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
@@ -389,8 +395,20 @@ export class VaultWatcher {
 
     const renameMatch = await this.matchPendingRename(absolutePath, relativePath, stats)
     if (renameMatch !== null) {
-      await this.applyMarkdownRename(db, relativePath, stats, renameMatch)
-      return
+      if (this.renameKeepsJournalDate(db, relativePath, renameMatch)) {
+        await this.applyMarkdownRename(db, relativePath, stats, renameMatch)
+        return
+      }
+      // The move changes what the file is: a journal leaving the journal folder
+      // (or its date), or a date-named note joining it. Notes and journals are
+      // separate sync types keyed by id, so the same id must not cross over.
+      // Finish the old item's delete — a journal delete or a note delete,
+      // synced — and list the file below as a new item with a fresh id.
+      logger.info('Move changes the file between note and journal; re-creating it', {
+        from: renameMatch.oldPath,
+        to: relativePath
+      })
+      await renameMatch.onRealDelete()
     }
 
     // Genuinely new external file: fresh internal id, fs-stat dates. A path the
@@ -463,7 +481,7 @@ export class VaultWatcher {
     absolutePath: string,
     relativePath: string,
     stats: Stats
-  ): Promise<{ id: string; oldPath: string } | null> {
+  ): Promise<RenameMatch | null> {
     if (!hasPendingDeletes()) return null
 
     const scan = await scanMarkdownFile(absolutePath, 0)
@@ -472,11 +490,41 @@ export class VaultWatcher {
     return checkForRename(scan?.contentHash ?? null, relativePath, statKey)
   }
 
+  /**
+   * Whether a matched unlink + add is a plain rename: the file was a journal
+   * for some date and still is, for the same date, or was a note and still is.
+   * A journal that seems to leave because its whole folder was moved makes the
+   * config follow the folder first (see `journal-folder-follow`).
+   */
+  private renameKeepsJournalDate(
+    db: ReturnType<typeof getIndexDatabase>,
+    relativePath: string,
+    renameMatch: RenameMatch
+  ): boolean {
+    const oldDate = getNoteCacheById(db, renameMatch.id)?.date ?? null
+    let newDate = extractDateFromPath(relativePath)
+
+    if (oldDate !== null && newDate === null && this.vaultPath) {
+      const { journalFolder } = getConfig()
+      const movedTo = inferMovedJournalFolder(journalFolder, renameMatch.oldPath, relativePath)
+      if (
+        movedTo !== null &&
+        !folderExistsExactCase(this.vaultPath, journalFolder) &&
+        folderExistsExactCase(this.vaultPath, movedTo)
+      ) {
+        followJournalFolder(movedTo)
+        newDate = extractDateFromPath(relativePath)
+      }
+    }
+
+    return oldDate === newDate
+  }
+
   private async applyMarkdownRename(
     db: ReturnType<typeof getIndexDatabase>,
     relativePath: string,
     stats: Stats,
-    renameMatch: { id: string; oldPath: string }
+    renameMatch: RenameMatch
   ): Promise<void> {
     const { id, oldPath } = renameMatch
     const cached = getNoteCacheById(db, id)
@@ -501,7 +549,7 @@ export class VaultWatcher {
     )
     await flushProjectionEvents()
 
-    processRename(id, oldPath, relativePath)
+    processRename(id, oldPath, relativePath, { sync: !cached?.date })
 
     recordActivity({ kind: 'renamed', source: 'watcher', path: relativePath, oldPath })
 
@@ -775,8 +823,11 @@ export class VaultWatcher {
         return
       }
 
-      const isJournal = isJournalPath(relativePath)
-      const journalDate = isJournal ? extractJournalDate(relativePath) : null
+      // The row's own date, not the path read with today's config: a journal
+      // folder or format change between the row's indexing and this unlink
+      // must not turn a journal's delete into a note delete, or back.
+      const journalDate = cached.date ?? null
+      const isJournal = journalDate !== null
 
       // Track as pending delete - wait for potential rename (matching 'add'
       // event with the same content hash). A row the tier-1 backfill has not

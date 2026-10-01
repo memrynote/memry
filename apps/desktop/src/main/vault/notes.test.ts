@@ -14,6 +14,7 @@ import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import * as projections from '../projections'
+import { readVaultConfig } from './init'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -1566,6 +1567,31 @@ describe('notes operations', () => {
         expect(folderPaths).not.toContain('canvases/work')
       })
 
+      it('hides the journal folder as an exact subtree, and shows it when asked', async () => {
+        const config = {
+          excludePatterns: [],
+          defaultNoteFolder: 'notes',
+          journalFolder: 'Life/Daily',
+          journalDateFormat: 'YYYY/MM/YYYY-MM-DD',
+          attachmentsFolder: 'attachments'
+        } satisfies VaultConfig
+        vi.mocked(vaultIndex.getConfig).mockReturnValue(config)
+        await notes.createFolder('Life/Daily/2026/10')
+        await notes.createFolder('Life/Projects')
+
+        // Only the journal subtree goes; the rest of `Life` stays.
+        const hidden = (await notes.getFolders()).map((f) => f.path)
+        expect(hidden).toContain('Life')
+        expect(hidden).toContain('Life/Projects')
+        expect(hidden).not.toContain('Life/Daily')
+        expect(hidden).not.toContain('Life/Daily/2026/10')
+
+        vi.mocked(vaultIndex.getConfig).mockReturnValue({ ...config, journalShowInSidebar: true })
+        const shown = (await notes.getFolders()).map((f) => f.path)
+        expect(shown).toContain('Life/Daily')
+        expect(shown).toContain('Life/Daily/2026/10')
+      })
+
       it('includes folder icons from database config rows', async () => {
         const { folderConfigs } = await import('@memry/db-schema/schema/folder-configs')
         await notes.createFolder('configured')
@@ -1606,6 +1632,22 @@ describe('notes operations', () => {
         expect(fs.existsSync(path.join(tempVault.path, 'new-name'))).toBe(true)
         // Note should still exist in renamed folder
         expect(fs.existsSync(path.join(tempVault.path, 'new-name', 'Inside.md'))).toBe(true)
+      })
+
+      it('takes the journal setting along when the journal folder or a parent moves', async () => {
+        const base = vi.mocked(vaultIndex.getConfig).getMockImplementation()?.()
+        vi.mocked(vaultIndex.getConfig).mockReturnValue({ ...base!, journalFolder: 'Life/Daily' })
+        await notes.createFolder('Life/Daily')
+        await notes.createFolder('Elsewhere')
+        await notes.createFolder('Archive')
+
+        const journalSetting = () => readVaultConfig(tempVault.path).journalFolder
+
+        await notes.renameFolder('Elsewhere', 'Moved')
+        expect(journalSetting()).not.toBe('Moved')
+
+        await notes.renameFolder('Life', 'Archive/Life')
+        expect(journalSetting()).toBe('Archive/Life/Daily')
       })
     })
 

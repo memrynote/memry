@@ -29,7 +29,10 @@ vi.mock('fs/promises', () => ({
 }))
 
 vi.mock('./notes-crud', () => ({ getNoteById: mocks.getNoteById }))
-vi.mock('@main/database/queries/notes', () => ({ getNoteCacheById: vi.fn(() => undefined) }))
+vi.mock('@main/database/queries/notes', () => ({
+  getNoteCacheById: vi.fn(() => undefined),
+  extractDateFromPath: vi.fn(() => null)
+}))
 vi.mock('../database', () => ({
   getDatabase: mocks.getDatabase,
   getIndexDatabase: vi.fn(() => ({}))

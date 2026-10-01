@@ -13,6 +13,7 @@ import {
   onVaultIndexProgress,
   onVaultError,
   onVaultIndexRecovered,
+  onVaultConfigChanged,
   onVaultListChanged
 } from '../services/vault-service'
 import { getI18n } from 'react-i18next'
@@ -170,6 +171,9 @@ export function useVault() {
       setError(extractErrorMessage(errorMsg, ''))
     })
 
+    // Another window's settings save, or main following a renamed journal folder.
+    const unsubConfig = onVaultConfigChanged(setConfig)
+
     let recoveryClearTimer: ReturnType<typeof setTimeout> | undefined
 
     const unsubRecovered = onVaultIndexRecovered((event) => {
@@ -183,6 +187,7 @@ export function useVault() {
       unsubStatus()
       unsubProgress()
       unsubError()
+      unsubConfig()
       unsubRecovered()
       clearTimeout(recoveryClearTimer)
     }

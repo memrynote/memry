@@ -549,8 +549,9 @@
       "placeholder": "YYYY-MM-DD",
       "renameNote": "Changing the format renames existing journal files. A file whose new name is already taken is left as it is.",
       "tokensHelp": "Date format help",
-      "tokensNote": "Other characters are kept as-is. Weekday names are always in English.",
-      "tokensTitle": "Format tokens"
+      "tokensNote": "Other characters are kept as-is. Weekday and month names are always in English.",
+      "tokensTitle": "Format tokens",
+      "foldersNote": "Use / to file entries in subfolders: YYYY/MMMM/YYYY-MM-DD puts each day under its year and month."
     },
     "preview": {
       "label": "Preview",
@@ -575,6 +576,10 @@
         "defaultTemplate": "Default template",
         "location": "Location & format"
       }
+    },
+    "showInSidebar": {
+      "label": "Show in sidebar",
+      "description": "Show the journal folder and its entries in the notes tree"
     }
   },
   "tasks": {

@@ -483,6 +483,7 @@ export interface VaultConfig {
   journalFolder: string
   journalDateFormat: string
   attachmentsFolder: string
+  journalShowInSidebar?: boolean
 }
 
 export interface SelectVaultResponse {
@@ -1956,6 +1957,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
   onVaultError: (callback: (error: string) => void) => () => void
   onVaultListChanged: (callback: () => void) => () => void
+  onVaultConfigChanged: (callback: (config: VaultConfig) => void) => () => void
   onVaultIndexRecovered: (callback: (event: IndexRecoveredEvent) => void) => () => void
   onVaultActivityChanged: (callback: () => void) => () => void
   // Saved Filters event subscriptions

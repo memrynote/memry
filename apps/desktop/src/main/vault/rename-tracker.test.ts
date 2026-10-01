@@ -93,7 +93,7 @@ describe('rename-tracker', () => {
 
     const match = checkForRename('hash', 'notes/new-name.md')
 
-    expect(match).toEqual({ id: 'note-2', oldPath: 'notes/old-name.md' })
+    expect(match).toMatchObject({ id: 'note-2', oldPath: 'notes/old-name.md' })
 
     const unchanged = indexDb.db.select().from(noteCache).where(eq(noteCache.id, 'note-2')).get()
 
@@ -117,11 +117,11 @@ describe('rename-tracker', () => {
     trackPendingDelete('note-b', 'same-hash', 'notes/b.md', onRealDeleteB)
     expect(getPendingDeleteCount()).toBe(2)
 
-    expect(checkForRename('same-hash', 'notes/a-renamed.md')).toEqual({
+    expect(checkForRename('same-hash', 'notes/a-renamed.md')).toMatchObject({
       id: 'note-a',
       oldPath: 'notes/a.md'
     })
-    expect(checkForRename('same-hash', 'notes/b-renamed.md')).toEqual({
+    expect(checkForRename('same-hash', 'notes/b-renamed.md')).toMatchObject({
       id: 'note-b',
       oldPath: 'notes/b.md'
     })

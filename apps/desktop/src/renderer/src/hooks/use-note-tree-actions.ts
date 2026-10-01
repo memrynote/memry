@@ -15,7 +15,7 @@ import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useOpenPage } from '@/hooks/use-open-target'
-import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
+import { noteTabData } from '@/lib/sidebar-tab-data'
 import {
   getDisplayName,
   extractFolderFromPath,
@@ -28,8 +28,19 @@ import {
 import type { MoveOperation, DropPosition } from '@/components/kibo-ui/tree'
 import { deleteNoteTasks } from '@/components/note/delete-note-tasks'
 import { getI18n } from 'react-i18next'
+import { journalService } from '@/services/journal-service'
+import { useVaultConfig } from '@/hooks/use-vault-config'
+import { containsJournalFolder, journalDateForPath } from '@/lib/journal-path'
 
 const log = createLogger('Hook:NoteTreeActions')
+
+/**
+ * What a rename or move does to the journal, when it does something:
+ * `leave` turns journal entries into notes, `join` turns notes into journal
+ * entries. Either one deletes the old item and creates a new one on every
+ * synced device, so the tree asks first.
+ */
+export type JournalChangeKind = 'leave' | 'join'
 
 type NoteMutations = ReturnType<typeof useNoteMutations>
 
@@ -61,6 +72,68 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
   const { openPage } = useOpenPage()
   const queryClient = useQueryClient()
   const originalRenameTitle = useRef<string>('')
+  const vaultConfig = useVaultConfig()
+
+  // ---- Journal change confirmation ----
+
+  const [journalConfirm, setJournalConfirm] = useState<JournalChangeKind | null>(null)
+  const journalConfirmResolve = useRef<((confirmed: boolean) => void) | null>(null)
+
+  const resolveJournalConfirm = useCallback((confirmed: boolean) => {
+    journalConfirmResolve.current?.(confirmed)
+    journalConfirmResolve.current = null
+    setJournalConfirm(null)
+  }, [])
+
+  /**
+   * Resolves true when nothing changes type or the user confirms. `moves` pairs
+   * each note with the path it would end up at.
+   */
+  const confirmJournalChange = useCallback(
+    (moves: Array<{ note: NoteListItem; newPath: string }>): Promise<boolean> => {
+      if (!vaultConfig) return Promise.resolve(true)
+      let kind: JournalChangeKind | null = null
+      for (const { note, newPath } of moves) {
+        const before = note.journalDate ?? null
+        if (before === journalDateForPath(newPath, vaultConfig)) continue
+        if (before !== null) {
+          kind = 'leave'
+          break
+        }
+        kind = 'join'
+      }
+      if (kind === null) return Promise.resolve(true)
+
+      journalConfirmResolve.current?.(false)
+      return new Promise((resolve) => {
+        journalConfirmResolve.current = resolve
+        setJournalConfirm(kind)
+      })
+    },
+    [vaultConfig]
+  )
+
+  /**
+   * A folder rename or move carries every note inside it along. Moving the
+   * journal folder itself, or a folder above it, is not a change: main points
+   * the journal setting at the new place.
+   */
+  const confirmFolderJournalChange = useCallback(
+    (oldPath: string, newPath: string): Promise<boolean> => {
+      if (vaultConfig && containsJournalFolder(oldPath, vaultConfig.journalFolder)) {
+        return Promise.resolve(true)
+      }
+      const prefix = `${oldPath}/`
+      const moves: Array<{ note: NoteListItem; newPath: string }> = []
+      for (const note of deps.noteMap.values()) {
+        if (note.path.startsWith(prefix)) {
+          moves.push({ note, newPath: `${newPath}/${note.path.slice(prefix.length)}` })
+        }
+      }
+      return confirmJournalChange(moves)
+    },
+    [vaultConfig, deps.noteMap, confirmJournalChange]
+  )
 
   const [isCreating, setIsCreating] = useState(false)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
@@ -98,23 +171,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       const noteIds = ids.filter((id) => !id.startsWith('folder-') && id !== 'notes-root')
       if (noteIds.length === 1) {
         const note = deps.noteMap.get(noteIds[0])
-        if (note) {
-          const fileType = (note.fileType ?? 'markdown') as FileType
-          const isMarkdown = fileType === 'markdown'
-
-          openPage({
-            type: isMarkdown ? 'note' : 'file',
-            title: getDisplayName(note.path),
-            icon: getTabIconForFileType(fileType),
-            emoji: isMarkdown ? note.emoji : undefined,
-            path: isMarkdown ? `/notes/${note.id}` : `/file/${note.id}`,
-            entityId: note.id,
-            isPinned: false,
-            isModified: false,
-            isPreview: false,
-            isDeleted: false
-          })
-        }
+        if (note) openPage(noteTabData(note))
       }
     },
     [deps, openPage]
@@ -405,6 +462,17 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
       setIsRenaming(true)
       try {
+        const note = deps.noteMap.get(noteId)
+        if (note) {
+          const folder = extractFolderFromPath(originalPath)
+          const ext = originalPath.slice(originalPath.lastIndexOf('.'))
+          const newName = `${renameValue.trim()}${ext}`
+          const newPath = folder ? `${folder}/${newName}` : newName
+          if (!(await confirmJournalChange([{ note, newPath }]))) {
+            revertOptimisticTitle(noteId)
+            return
+          }
+        }
         await deps.mutations.renameNote.mutateAsync({ id: noteId, newTitle: renameValue.trim() })
       } catch (err) {
         trackRendererError('note_rename_failed', err)
@@ -418,7 +486,14 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setRenamingNoteId(null)
       }
     },
-    [renameValue, isRenaming, revertOptimisticTitle, deps.mutations.renameNote]
+    [
+      renameValue,
+      isRenaming,
+      revertOptimisticTitle,
+      deps.noteMap,
+      deps.mutations.renameNote,
+      confirmJournalChange
+    ]
   )
 
   const handleRenameCancel = useCallback(
@@ -481,6 +556,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           ? `${parentPath}/${folderRenameValue.trim()}`
           : folderRenameValue.trim()
 
+        if (!(await confirmFolderJournalChange(oldPath, newPath))) return
         await notesService.renameFolder(oldPath, newPath)
         deps.renameFolderPath(oldPath, newPath)
         await refreshFolderTree()
@@ -498,7 +574,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setRenamingFolderPath(null)
       }
     },
-    [folderRenameValue, isFolderRenaming, deps, refreshFolderTree]
+    [folderRenameValue, isFolderRenaming, deps, refreshFolderTree, confirmFolderJournalChange]
   )
 
   const handleFolderRenameCancel = useCallback(() => {
@@ -552,6 +628,13 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         // survived its delete still shows them.
         let everyDeleteSucceeded = true
         for (const note of notesToDelete) {
+          // A journal entry is deleted as a journal: a note delete would push a
+          // `note` tombstone for the journal's id.
+          if (note.journalDate) {
+            const result = await journalService.deleteEntry(note.journalDate)
+            if (!result.success) everyDeleteSucceeded = false
+            continue
+          }
           const result = await deps.mutations.deleteNote.mutateAsync(note.id)
           if (result.success) {
             closeTab(`/notes/${note.id}`)
@@ -747,6 +830,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       }
 
       if (newPath === sourceFolderPath) return false
+      if (!(await confirmFolderJournalChange(sourceFolderPath, newPath))) return false
 
       try {
         await notesService.renameFolder(sourceFolderPath, newPath)
@@ -767,7 +851,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         return false
       }
     },
-    [deps, refreshFolderTree]
+    [deps, refreshFolderTree, confirmFolderJournalChange]
   )
 
   // Reordering writes a stored position, and only the manual mode reads one.
@@ -896,6 +980,14 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
         const targetFolderPath = calculateTargetFolder(targetId, position)
 
+        const moves = notesToMove.flatMap((noteId) => {
+          const note = deps.noteMap.get(noteId)
+          if (!note || extractFolderFromPath(note.path) === targetFolderPath) return []
+          const name = note.path.split('/').pop() ?? note.path
+          return [{ note, newPath: targetFolderPath ? `${targetFolderPath}/${name}` : name }]
+        })
+        if (!(await confirmJournalChange(moves))) return
+
         if (
           foldersToMoveList.length === 1 &&
           notesToMove.length === 0 &&
@@ -967,7 +1059,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       handleReorderFoldersInParent,
       handleFolderMove,
       handleReorderInFolder,
-      handleNoteMove
+      handleNoteMove,
+      confirmJournalChange
     ]
   )
 
@@ -1033,6 +1126,11 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
     // Move / Drag-drop
     isMoving,
-    handleMove
+    handleMove,
+
+    // Journal change confirmation (rename / move across the journal boundary)
+    journalConfirm,
+    resolveJournalConfirm,
+    journalFolder: vaultConfig?.journalFolder ?? null
   }
 }

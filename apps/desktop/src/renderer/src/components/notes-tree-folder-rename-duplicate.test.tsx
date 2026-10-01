@@ -169,7 +169,8 @@ vi.mock('@/components/note-tree-dialogs', () => ({
         Confirm delete
       </button>
     ) : null,
-  NoteTreeTemplateSelector: () => null
+  NoteTreeTemplateSelector: () => null,
+  NoteTreeJournalChangeDialog: () => null
 }))
 
 // Radix renders menu content only once opened through a real pointer stack.

@@ -1045,7 +1045,8 @@ describe('settings section coverage', () => {
     expect(screen.queryByText('journal.showTasks.label')).toBeNull()
     expect(screen.queryByText('journal.showAIConnections.label')).toBeNull()
 
-    fireEvent.click(screen.getAllByRole('switch')[3])
+    // [3] is "Show in sidebar" in the location group; the footer switch follows.
+    fireEvent.click(screen.getAllByRole('switch')[4])
     await waitFor(() =>
       expect(mocks.journalSettings.updateSettings).toHaveBeenCalledWith({
         showStatsFooter: false

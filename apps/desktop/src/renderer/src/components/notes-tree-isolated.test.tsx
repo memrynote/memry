@@ -164,7 +164,8 @@ vi.mock('@/components/note-tree-dialogs', () => ({
         select template
       </button>
     </div>
-  )
+  ),
+  NoteTreeJournalChangeDialog: () => null
 }))
 
 vi.mock('@/components/note-tree-states', () => ({

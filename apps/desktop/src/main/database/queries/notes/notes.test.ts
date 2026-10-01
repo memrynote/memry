@@ -183,6 +183,7 @@ describe('notes cache queries', () => {
       'id',
       'path',
       'title',
+      'date',
       'fileType',
       'emoji',
       'localOnly',

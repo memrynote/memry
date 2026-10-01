@@ -36,7 +36,7 @@ const INHERIT_VALUE = '__inherit__'
 
 // Tokens understood by `formatJournalFilename`, shown in the Date Format help
 // tooltip with today's rendering of each.
-const DATE_FORMAT_TOKENS = ['YYYY', 'YY', 'MM', 'M', 'DD', 'D', 'dddd', 'ddd']
+const DATE_FORMAT_TOKENS = ['YYYY', 'YY', 'MMMM', 'MMM', 'MM', 'M', 'DD', 'D', 'dddd', 'ddd']
 
 export function JournalSettings() {
   const { t } = useT('settings')
@@ -298,6 +298,7 @@ export function JournalSettings() {
                     ))}
                   </dl>
                   <p className="mt-1.5 opacity-70">{t('journal.dateFormat.tokensNote')}</p>
+                  <p className="mt-1 opacity-70">{t('journal.dateFormat.foldersNote')}</p>
                   <p className="mt-1 opacity-70">{t('journal.dateFormat.renameNote')}</p>
                 </TooltipContent>
               </Tooltip>
@@ -323,6 +324,19 @@ export function JournalSettings() {
             {previewPath}
           </div>
         </SettingRowTall>
+
+        <SettingRow
+          label={t('journal.showInSidebar.label')}
+          description={t('journal.showInSidebar.description')}
+        >
+          <Switch
+            checked={config?.journalShowInSidebar === true}
+            onCheckedChange={(checked) => void updateConfig({ journalShowInSidebar: checked })}
+            disabled={!config}
+            aria-label={t('journal.showInSidebar.label')}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
       </SettingsGroup>
 
       {/*

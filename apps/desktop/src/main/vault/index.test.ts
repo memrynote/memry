@@ -968,7 +968,8 @@ describe('vault lifecycle', () => {
       excludePatterns: ['node_modules'],
       defaultNoteFolder: 'notes',
       journalFolder: 'journal',
-      attachmentsFolder: 'attachments'
+      attachmentsFolder: 'attachments',
+      journalShowInSidebar: false
     })
 
     expect(mocks.writeVaultConfig).toHaveBeenCalledWith('/vault/config', {
@@ -1170,7 +1171,8 @@ describe('vault lifecycle', () => {
       defaultNoteFolder: '',
       journalFolder: 'journal',
       journalDateFormat: 'YYYY-MM-DD',
-      attachmentsFolder: 'attachments'
+      attachmentsFolder: 'attachments',
+      journalShowInSidebar: false
     })
     expect(mocks.closeAllDatabases).toHaveBeenCalled()
     expect(mocks.destroyPropertyDefinitions).toHaveBeenCalled()
