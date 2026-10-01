@@ -13,32 +13,33 @@
     "export": "Exportar",
     "fullWidth": "Largura total",
     "journalSettings": "Configurações do diário",
-    "fullMode": "Modo Completo",
-    "compactMode": "Modo Compacto",
+    "fullMode": "Modo completo",
+    "compactMode": "Modo compacto",
     "createNote": "Criar nota",
     "createNewNote": "Criar nova nota",
     "showLess": "Mostrar menos",
-    "showMoreNotes": "Mostrar mais notas para {count}",
-    "showMoreNotes_plural": "Mostrar mais notas de {count}",
+    "showMoreNotes": "Mostrar mais {count} nota",
+    "showMoreNotes_plural": "Mostrar mais {count} notas",
     "showFewerNotes": "Mostrar menos notas",
-    "startBlank": "Comece em branco",
+    "startBlank": "Começar em branco",
     "changeTemplate": "Alterar modelo",
-    "dismissIndicator": "Indicador de dispensa",
+    "dismissIndicator": "Dispensar indicador",
     "refreshConnections": "Atualizar conexões",
-    "reloadJournal": "Recarregar Diário",
+    "reloadJournal": "Recarregar diário",
     "goToToday": "Ir para hoje",
-    "copyUnsavedContent": "Copie o conteúdo não salvo para a área de transferência",
-    "addBookmark": "Adicionar favorito",
-    "removeBookmark": "Remover favorito"
+    "copyUnsavedContent": "Copiar conteúdo não salvo para a área de transferência",
+    "addBookmark": "Adicionar aos favoritos",
+    "removeBookmark": "Remover dos favoritos",
+    "deleteEntry": "Excluir entrada"
   },
   "editor": {
     "placeholder": {
-      "future": "O que você está planejando...",
-      "today": "O que está em sua mente hoje...",
-      "past": "Reflita sobre este dia..."
+      "future": "O que você está planejando…",
+      "today": "No que você está pensando hoje…",
+      "past": "Reflita sobre este dia…"
     },
     "upload": {
-      "failed": "Falha ao carregar a imagem"
+      "failed": "Não foi possível enviar a imagem"
     }
   },
   "date": {
@@ -49,50 +50,50 @@
       "future": "Futuro"
     },
     "weekday": {
-      "sunday": "Domingo",
-      "monday": "Segunda-feira",
-      "tuesday": "Terça-feira",
-      "wednesday": "Quarta-feira",
-      "thursday": "Quinta-feira",
-      "friday": "Sexta-feira",
-      "saturday": "Sábado"
+      "sunday": "domingo",
+      "monday": "segunda-feira",
+      "tuesday": "terça-feira",
+      "wednesday": "quarta-feira",
+      "thursday": "quinta-feira",
+      "friday": "sexta-feira",
+      "saturday": "sábado"
     },
     "weekdayShort": {
-      "sunday": "Sol",
-      "monday": "segunda-feira",
-      "tuesday": "Terça",
-      "wednesday": "Quarta",
-      "thursday": "Qui",
-      "friday": "Sexta-feira",
-      "saturday": "Sábado"
+      "sunday": "dom",
+      "monday": "seg",
+      "tuesday": "ter",
+      "wednesday": "qua",
+      "thursday": "qui",
+      "friday": "sex",
+      "saturday": "sáb"
     },
     "month": {
-      "january": "Janeiro",
-      "february": "Fevereiro",
-      "march": "Março",
-      "april": "abril",
-      "may": "Maio",
-      "june": "Junho",
-      "july": "Julho",
-      "august": "Agosto",
-      "september": "Setembro",
-      "october": "Outubro",
-      "november": "Novembro",
-      "december": "Dezembro"
-    },
-    "monthShort": {
       "january": "janeiro",
-      "february": "Fevereiro",
-      "march": "Março",
+      "february": "fevereiro",
+      "march": "março",
       "april": "abril",
-      "may": "Maio",
+      "may": "maio",
       "june": "junho",
       "july": "julho",
-      "august": "Agosto",
-      "september": "Setembro",
-      "october": "Outubro",
-      "november": "Novembro",
+      "august": "agosto",
+      "september": "setembro",
+      "october": "outubro",
+      "november": "novembro",
       "december": "dezembro"
+    },
+    "monthShort": {
+      "january": "jan",
+      "february": "fev",
+      "march": "mar",
+      "april": "abr",
+      "may": "mai",
+      "june": "jun",
+      "july": "jul",
+      "august": "ago",
+      "september": "set",
+      "october": "out",
+      "november": "nov",
+      "december": "dez"
     },
     "greeting": {
       "morning": "Bom dia",
@@ -100,27 +101,27 @@
       "evening": "Boa noite",
       "night": "Boa noite"
     },
-    "allDay": "O dia todo"
+    "allDay": "Dia inteiro"
   },
   "nav": {
     "previousDay": "Dia anterior",
     "nextDay": "Dia seguinte",
     "previousMonth": "Mês anterior",
-    "nextMonth": "No próximo mês",
+    "nextMonth": "Próximo mês",
     "previousYear": "Ano anterior",
-    "nextYear": "No próximo ano",
-    "journalBack": "Diário de volta",
+    "nextYear": "Próximo ano",
+    "journalBack": "Voltar no diário",
     "journalNavigation": "Navegação no diário",
     "dateNavigation": "Navegação por data do diário",
     "goToYearView": "Ir para a visualização do ano"
   },
   "aria": {
     "moreOptions": "Mais opções",
-    "documentStatistics": "Estatísticas de documentos",
-    "dayContext": "Contexto do dia: tarefas e cronograma",
-    "scheduleEvents": "Agendar eventos",
+    "documentStatistics": "Estatísticas do documento",
+    "dayContext": "Contexto do dia: tarefas e programação",
+    "scheduleEvents": "Eventos da programação",
     "tasks": "Tarefas",
-    "notesCreatedToday": "Notas {count} criadas hoje"
+    "notesCreatedToday": "{count} notas criadas hoje"
   },
   "empty": {
     "noEntry": "Nenhuma entrada",
@@ -128,18 +129,18 @@
     "noEventsScheduled": "Nenhum evento agendado",
     "noEventsScheduledToday": "Nenhum evento agendado para hoje",
     "noEventsWereScheduled": "Nenhum evento foi agendado",
-    "noTasksDue": "Nenhuma tarefa vencida",
-    "noTasksDueToday": "Nenhuma tarefa para vencer hoje",
-    "noTasksWereDue": "Nenhuma tarefa era devida",
+    "noTasksDue": "Nenhuma tarefa com prazo",
+    "noTasksDueToday": "Nenhuma tarefa vence hoje",
+    "noTasksWereDue": "Nenhuma tarefa vencia neste dia",
     "noNotesToday": "Nenhuma nota criada hoje",
     "startDocumenting": "Comece a documentar seus pensamentos e ideias"
   },
   "ai": {
-    "loading": "Analisando sua entrada...",
+    "loading": "Analisando sua entrada…",
     "empty": {
       "willAppear": "Suas conexões aparecerão aqui",
       "noneYet": "Nenhuma conexão encontrada ainda",
-      "moreJournaling": "À medida que você registra mais, a IA encontrará entradas relacionadas",
+      "moreJournaling": "À medida que você escreve mais no diário, a IA encontrará entradas relacionadas",
       "keepWriting": "Continue escrevendo para descobrir entradas relacionadas"
     },
     "error": {
@@ -154,76 +155,81 @@
     "event": "evento",
     "events": "eventos",
     "task": "tarefa",
-    "todo": "fazer",
-    "moreConnections": "+ {count} mais conexão",
-    "moreConnections_plural": "+ {count} mais conexões",
-    "moreNotes": "+ {count} mais nota",
-    "moreNotes_plural": "+ {count} mais notas",
+    "todo": "a fazer",
+    "moreConnections": "+ {count} outra conexão",
+    "moreConnections_plural": "+ {count} outras conexões",
+    "moreNotes": "+ {count} outra nota",
+    "moreNotes_plural": "+ {count} outras notas",
     "daysWithEntries": "dias com entradas",
     "charactersWritten": "caracteres escritos",
-    "words": "Palavras {count}",
-    "characters": "Caracteres {count}",
-    "completed": "{count} concluído",
-    "overdue": "{count} vencido"
+    "words": "{count} palavras",
+    "characters": "{count} caracteres",
+    "completed": "{count} concluídas",
+    "overdue": "{count} em atraso"
   },
   "stats": {
     "wordCount": "Contagem de palavras",
     "characterCount": "Contagem de caracteres",
     "readingTime": "Tempo estimado de leitura",
     "lastModified": "Última modificação",
-    "lessThanOneMinute": "<1 minuto",
-    "minutes": "{minutes} minutos",
-    "read": "{readingTime} lido",
-    "modified": "{date} modificado"
+    "lessThanOneMinute": "< 1 min",
+    "minutes": "{minutes} min",
+    "read": "{readingTime} de leitura",
+    "modified": "Modificado em {date}"
   },
   "task": {
     "completed": "Concluído",
     "notCompleted": "Não concluído",
     "priority": "Prioridade {priority}",
-    "overdue": "atrasado",
-    "markComplete": "Marque \"{title}\" como concluído",
-    "markNotComplete": "Marcar \"{title}\" como não concluído"
+    "overdue": "em atraso",
+    "markComplete": "Marcar “{title}” como concluída",
+    "markNotComplete": "Marcar “{title}” como não concluída"
   },
   "template": {
-    "using": "Usando \"{templateName}\""
+    "using": "Usando “{templateName}”"
   },
   "reminder": {
     "hasReminders": "Tem lembretes",
     "setToRevisit": "Definir lembrete para revisitar",
     "tooltip": "Lembrete: {date}",
-    "tooltipMore": "Lembrete: {date} (+{count} mais)",
+    "tooltipMore": "Lembrete: {date} (+{count})",
     "success": {
-      "set": "Lembrete definido para este lançamento contábil manual",
+      "set": "Lembrete definido para esta entrada do diário",
       "deleted": "Lembrete excluído",
       "dismissed": "Lembrete dispensado",
-      "snoozed": "Lembrete adiado"
+      "snoozed": "Lembrete adiado",
+      "updated": "Lembrete atualizado"
     },
     "error": {
-      "set": "Falha ao definir lembrete",
-      "delete": "Falha ao excluir lembrete",
-      "dismiss": "Falha ao dispensar lembrete",
-      "snooze": "Falha ao adiar o lembrete"
+      "set": "Não foi possível definir o lembrete",
+      "delete": "Não foi possível excluir o lembrete",
+      "dismiss": "Não foi possível dispensar o lembrete",
+      "snooze": "Não foi possível adiar o lembrete",
+      "update": "Não foi possível atualizar o lembrete"
     }
   },
   "toast": {
     "unsavedRetry": "Seu conteúdo ainda está na memória. Clique para tentar salvar novamente.",
-    "noteNotFound": "Nota \"{target}\" não encontrado",
+    "noteNotFound": "Nota “{target}” não encontrada",
+    "createLinkedFailed": "Não foi possível criar a nota vinculada",
     "fileNotFound": "Arquivo não encontrado: {target}",
-    "openLinkedItemFailed": "Falha ao abrir o item vinculado",
-    "errorPrefix": "Erro:"
+    "openLinkedItemFailed": "Não foi possível abrir o item vinculado",
+    "errorPrefix": "Erro:",
+    "deleteFailed": "Não foi possível excluir a entrada do diário",
+    "bookmarkFailed": "Não foi possível atualizar os favoritos"
   },
   "export": {
-    "noteTitle": "Diário - {month} {day}, {year}"
+    "noteTitle": "Diário - {day} de {month} de {year}"
   },
   "note": {
     "generatedTitle": "Nota - {date}",
-    "openAria": "Abra {title}, criado em {time}"
+    "openAria": "Abrir {title}, criada às {time}"
   },
   "error": {
-    "title": "Erro de diário",
-    "description": "O diário encontrou um erro para {date}. Suas alterações recentes podem não ter sido salvas.",
+    "title": "Erro no diário",
+    "description": "O diário encontrou um erro na entrada de {date}. Suas alterações recentes podem não ter sido salvas.",
     "descriptionNoDate": "O diário encontrou um erro. Suas alterações recentes podem não ter sido salvas.",
-    "unsavedContent": "Conteúdo não salvo detectado (caracteres {length})"
+    "unsavedContent": "Conteúdo não salvo detectado ({length} caracteres)"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "Falha ao salvar o lançamento contábil manual",
-      "failedToLoadJournalSettings": "Falha ao carregar as configurações do diário",
-      "failedToUpdateSettings": "Falha ao atualizar as configurações"
+      "failedToSaveJournalEntry": "Não foi possível salvar a entrada do diário",
+      "failedToLoadJournalSettings": "Não foi possível carregar as configurações do diário",
+      "failedToUpdateSettings": "Não foi possível atualizar as configurações"
     }
+  },
+  "deleteConfirm": {
+    "title": "Excluir entrada do diário",
+    "description": "Tem certeza de que deseja excluir “{title}”? Esta ação não pode ser desfeita."
   }
 }

@@ -1,77 +1,137 @@
 {
   "page": {
-    "loading": "Загрузка графика...",
-    "load-failed": "Не удалось загрузить данные графика.",
-    "try-again": "Попробуйте еще раз",
-    "aria-label": "График знаний с {nodeCount, plural, one {Узел #} other {Узлы #}} и {edgeCount, plural, one {Соединение #} other {Соединения #}}{summary, select, none {.} other {: {summary}.}}",
+    "loading": "Загрузка графа…",
+    "load-failed": "Не удалось загрузить данные графа",
+    "render-failed": "Граф недоступен на этом устройстве",
+    "render-failed-description": "Этому устройству не удалось запустить графический движок. Заметки не пострадали.",
+    "try-again": "Повторить",
+    "aria-label": "Граф знаний: {nodeCount, plural, one {# узел} few {# узла} many {# узлов} other {# узла}} и {edgeCount, plural, one {# связь} few {# связи} many {# связей} other {# связи}}{summary, select, none {.} other {: {summary}.}}",
     "nodes-list-label": "Узлы графа",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "График ваших знаний",
-    "description": "Связи между вашими заметками, задачами и проектами будут отображаться здесь в виде интерактивного графика.",
+    "title": "Граф знаний",
+    "description": "Связи между вашими заметками, задачами и проектами появятся здесь в виде интерактивного графа.",
     "link-title": "Свяжите свои заметки",
-    "link-description": "Используйте [[wikilinks]] для объединения идей в заметках",
-    "discover-title": "Откройте для себя шаблоны",
-    "discover-description": "По мере роста связей естественным образом будут возникать кластеры и темы."
+    "link-description": "Связывайте идеи из разных заметок с помощью [[wikilinks]]",
+    "discover-title": "Находите закономерности",
+    "discover-description": "По мере роста числа связей естественным образом появятся кластеры и темы"
   },
   "entity": {
-    "note": "Примечание",
+    "note": "заметка",
     "notes": "заметки",
-    "journal": "журнал",
-    "journals": "журналы",
+    "journal": "запись журнала",
+    "journals": "записи журнала",
     "task": "задача",
     "tasks": "задачи",
     "project": "проект",
     "projects": "проекты",
     "tag": "тег",
     "tags": "теги",
-    "orphan": "сирота",
-    "orphans": "сироты",
-    "unresolved": "нерешенный"
+    "orphan": "узел без связей",
+    "orphans": "узлы без связей",
+    "unresolved": "не создана",
+    "category": "категория"
   },
   "summary": {
-    "node-type-count": "{count} {label}"
+    "node-type-count": "{label}: {count}"
   },
   "control": {
-    "show-settings": "Настройки графика",
+    "show-settings": "Настройки графа",
     "hide-settings": "Скрыть настройки",
     "reset-filters": "Сбросить фильтры",
     "filters": "Фильтры",
-    "display": "Дисплей",
-    "show-labels": "Показать ярлыки",
+    "display": "Отображение",
+    "show-labels": "Показывать подписи",
+    "live-motion": "Движение узлов",
     "focus-depth": "глубина {depth}",
-    "clear-focus": "Очистить сфокусированный узел"
+    "clear-focus": "Снять фокус с узла",
+    "relayout": "Перестроить расположение",
+    "categories": "Категории тегов",
+    "color-by-category": "Раскрашивать по категориям",
+    "no-categories": "Сгруппируйте теги по категориям на странице тегов, чтобы раскрашивать и сворачивать граф по категориям.",
+    "collapse-category": "Свернуть «{name}»",
+    "expand-category": "Развернуть «{name}»",
+    "uncategorized": "Без категории"
   },
   "filter": {
-    "notes": "Примечания",
-    "journals": "Журналы",
+    "notes": "Заметки",
+    "journals": "Журнал",
     "tasks": "Задачи",
     "projects": "Проекты",
     "tags": "Теги",
-    "orphans": "Сироты",
-    "toggle-entity": "Переключить {label}",
-    "toggle-orphans": "Переключить потерянные узлы"
+    "orphans": "Без связей",
+    "canvas-edges": "Связи на холстах",
+    "toggle-entity": "Показать или скрыть: {label}",
+    "toggle-orphans": "Показать или скрыть узлы без связей"
   },
   "search": {
-    "placeholder": "Поиск узлов...",
-    "clear": "Очистить поиск по графику"
+    "placeholder": "Поиск узлов…",
+    "clear": "Очистить поиск по графу"
   },
   "context-menu": {
     "untitled": "Без названия",
-    "focus-node": "Сосредоточьтесь на этом узле",
+    "focus-node": "Сфокусироваться на узле",
     "open-new-tab": "Открыть в новой вкладке",
     "create-note": "Создать заметку",
-    "copy-title": "Копировать заголовок"
+    "copy-title": "Скопировать название",
+    "link-to": "Добавить ссылку на…",
+    "add-tag": "Добавить тег…",
+    "back": "Назад",
+    "link-search": "Поиск заметок…",
+    "tag-search": "Найти или создать тег…",
+    "no-matches": "Ничего не найдено",
+    "create-tag": "Создать #{tag}",
+    "remove-link": "Удалить ссылку на «{title}»",
+    "unpin": "Открепить",
+    "collapse-category": "Свернуть «{name}»",
+    "expand-category": "Развернуть «{name}»"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {Соединение #} other {Соединения #}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# связь} few {# связи} many {# связей} other {# связи}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# элемент} few {# элемента} many {# элементов} other {# элемента}}",
+    "click-to-expand": "Нажмите, чтобы развернуть"
   },
   "local-panel": {
-    "loading": "Загрузка графика...",
+    "loading": "Загрузка графа…",
     "empty": "Связей не найдено",
-    "open-full": "Открыть полный график",
-    "close": "Закрыть график"
+    "open-full": "Открыть полный граф",
+    "close": "Закрыть граф",
+    "pin": "Закрепить на этой заметке",
+    "unpin": "Открепить и следовать за открытой заметкой",
+    "pinned-to": "Закреплено: {title}"
+  },
+  "edit": {
+    "linked": "Ссылка с «{source}» на «{target}» добавлена в свойство «{property}»",
+    "unlinked": "Ссылка с «{source}» на «{target}» удалена",
+    "already-linked": "«{source}» уже ссылается на «{target}»",
+    "property-conflict": "Свойство «{property}» в этой заметке не относится к типу «Связь», поэтому ссылка не добавлена",
+    "link-unsupported": "Ссылки можно создавать только между заметками",
+    "link-failed": "Не удалось добавить ссылку",
+    "unlink-failed": "Не удалось удалить ссылку",
+    "tag-added": "Тег #{tag} добавлен к заметке «{note}»",
+    "tag-exists": "У этой заметки уже есть тег #{tag}",
+    "tag-failed": "Не удалось добавить тег",
+    "undo-failed": "Не удалось отменить изменение"
+  },
+  "relayout-confirm": {
+    "title": "Перестроить расположение графа?",
+    "description": "Все закреплённые узлы будут откреплены, и граф выстроится заново. Сохранённое расположение будет сброшено.",
+    "cancel": "Отмена",
+    "confirm": "Перестроить"
+  },
+  "views": {
+    "title": "Сохранённые представления",
+    "unsaved": "Несохранённое представление",
+    "edited": "Изменено",
+    "empty": "Сохранённых представлений пока нет",
+    "save-as": "Сохранить как новое представление…",
+    "update": "Обновить «{name}»",
+    "delete": "Удалить представление «{name}»",
+    "save-dialog-title": "Сохранить представление графа",
+    "save-dialog-placeholder": "Название представления",
+    "cancel": "Отмена",
+    "save": "Сохранить"
   }
 }

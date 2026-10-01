@@ -1,254 +1,265 @@
 {
   "view": {
     "tabs": {
-      "inbox": "Posteingang",
+      "inbox": "Eingang",
       "archived": "Archiviert",
       "insights": "Einblicke",
-      "ariaLabel": "Auswahl der Posteingangsansicht"
+      "ariaLabel": "Ansicht des Eingangs auswählen"
     },
-    "triageButton": "Triage",
-    "processInboxTitle": "Posteingang bearbeiten (Befehl+P)",
-    "itemCaptured": "Gegenstand erfasst",
-    "searchArchivedTitle": "Durchsuchen Sie archivierte Elemente",
-    "searchPlaceholder": "Suchen...",
+    "itemCaptured": "Element erfasst",
+    "searchArchivedTitle": "Archivierte Elemente durchsuchen",
+    "searchPlaceholder": "Suchen…",
     "archivedItemsAria": "Archivierte Elemente",
     "snoozed": {
       "show": "Zurückgestellte Elemente anzeigen",
       "showWithCount": "Zurückgestellte Elemente anzeigen ({count})",
-      "hide": "Versteckte Elemente ausblenden"
-    },
-    "filter": {
-      "button": "Filtern",
-      "byType": "Nach Typ filtern",
-      "active": "{count, plural, one {Filterung nach #-Typ} other {Filterung nach #-Typen}}",
-      "clearAll": "Alles löschen"
-    },
-    "jobs": {
-      "running": "{count, plural, one {#-Hintergrundjob wird ausgeführt} other {#-Hintergrundjobs werden ausgeführt}}",
-      "failed": "{count} ist fehlgeschlagen"
+      "hide": "Zurückgestellte Elemente ausblenden"
     },
     "density": {
       "toComfortable": "Komfortable Ansicht",
       "toCompact": "Kompakte Ansicht"
+    },
+    "filter": {
+      "button": "Filtern",
+      "byType": "Nach Typ filtern",
+      "active": "{count, plural, one {Gefiltert nach # Typ} other {Gefiltert nach # Typen}}",
+      "clearAll": "Alle entfernen"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# Hintergrundvorgang läuft} other {# Hintergrundvorgänge laufen}}",
+      "failed": "{count} fehlgeschlagen"
     }
   },
   "type": {
     "link": "Link",
     "links": "Links",
-    "note": "Hinweis",
+    "note": "Notiz",
     "notes": "Notizen",
     "image": "Bild",
     "images": "Bilder",
-    "voice": "Stimme",
+    "voice": "Sprachmemo",
     "video": "Video",
     "clip": "Clip",
     "clips": "Clips",
     "pdf": "PDF",
     "pdfs": "PDFs",
-    "social": "Sozial",
+    "social": "Social Media",
     "reminder": "Erinnerung",
     "reminders": "Erinnerungen"
   },
   "empty": {
-    "successAria": "Erfolgreich, Posteingang ist leer",
-    "title": "Posteingang Null",
-    "body": "Alles ist verarbeitet. Erfassen Sie etwas Neues mit der Eingabe oben oder fügen Sie einen Link ein, um loszulegen.",
-    "filedThisWeek": "{count, plural, one {# wurde diese Woche eingereicht} other {# wurde diese Woche eingereicht}}",
-    "dayStreak": "{count, plural, one {# Tagessträhne} other {# Tagessträhne}}",
-    "tipPrefix": "Tipp: verwenden",
-    "tipSuffix": "zum schnellen Erfassen aus der Zwischenablage",
+    "successAria": "Geschafft, der Eingang ist leer",
+    "title": "Eingang leer",
+    "body": "Alles ist abgearbeitet. Erfasse oben etwas Neues oder füge einen Link ein, um loszulegen.",
+    "filedThisWeek": "{count, plural, one {# diese Woche abgelegt} other {# diese Woche abgelegt}}",
+    "dayStreak": "{count, plural, one {# Tag in Folge} other {# Tage in Folge}}",
+    "tipPrefix": "Tipp: Mit",
+    "tipSuffix": "schnell aus der Zwischenablage erfassen",
     "archivedNone": "Keine archivierten Elemente",
     "archivedNoMatches": "Keine passenden archivierten Elemente",
-    "noItemsYet": "Noch keine Artikel",
-    "noItemsFiled": "Noch keine Artikel eingereicht",
+    "noItemsYet": "Noch keine Elemente",
+    "noItemsFiled": "Noch keine Elemente abgelegt",
     "noFolders": "Keine Ordner gefunden",
     "noNotes": "Keine Notizen gefunden",
     "allMatchesLinked": "Alle Übereinstimmungen sind bereits verlinkt"
   },
   "list": {
-    "ariaLabel": "Posteingangselemente",
+    "ariaLabel": "Elemente im Eingang",
     "section": {
       "today": "Heute",
       "yesterday": "Gestern",
       "older": "Älter"
     },
-    "selectItem": "Wählen Sie {title}",
+    "selectItem": "{title} auswählen",
     "itemAria": "{type}: {title}",
     "untitled": "Ohne Titel",
-    "untitledItem": "Artikel ohne Titel",
-    "transcribing": "Transkribieren...",
-    "transcriptionFailed": "Die Transkription ist fehlgeschlagen",
-    "retryTranscription": "Versuchen Sie es noch einmal",
-    "pageCount": "{count, plural, one {#-Seite} other {#-Seiten}}",
-    "snoozedUntilShort": "Schlummert bis {date}"
+    "untitledItem": "Element ohne Titel",
+    "transcribing": "Wird transkribiert…",
+    "transcriptionFailed": "Transkription fehlgeschlagen",
+    "retryTranscription": "Erneut versuchen",
+    "pageCount": "{count, plural, one {# Seite} other {# Seiten}}",
+    "snoozedUntilShort": "zurückgestellt bis {date}",
+    "rename": "Umbenennen",
+    "renameLabel": "Element umbenennen"
   },
   "loading": {
-    "inbox": "Posteingang wird geladen...",
-    "failed": "Posteingang konnte nicht geladen werden",
-    "tryAgain": "Versuchen Sie es erneut",
-    "capturingImage": "Bild wird aufgenommen...",
-    "dropImageTitle": "Lassen Sie das Bild zur Aufnahme fallen",
+    "inbox": "Eingang wird geladen…",
+    "failed": "Eingang konnte nicht geladen werden",
+    "tryAgain": "Erneut versuchen",
+    "capturingImage": "Bild wird erfasst…",
+    "dropImageTitle": "Bild zum Erfassen hier ablegen",
     "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
     "unsupportedImageType": "Nicht unterstützter Bildtyp: {type}",
     "imageTooLarge": "Bild zu groß (max. 50 MB)"
   },
   "toast": {
-    "failedArchiveItem": "Das Archivieren des Elements ist fehlgeschlagen",
+    "failedArchiveItem": "Element konnte nicht archiviert werden",
     "failedArchiveItems": "Elemente konnten nicht archiviert werden",
-    "failedFile": "Datei konnte nicht eingereicht werden",
-    "failedFileItem": "Das Element konnte nicht abgelegt werden",
+    "failedFile": "Ablegen fehlgeschlagen",
+    "failedFileItem": "Element konnte nicht abgelegt werden",
     "failedFileItems": "Elemente konnten nicht abgelegt werden",
-    "failedSnooze": "Schlummerfunktion fehlgeschlagen",
-    "failedSnoozeItem": "Das Element konnte nicht in den Schlummermodus versetzt werden",
+    "failedSnooze": "Zurückstellen fehlgeschlagen",
+    "failedSnoozeItem": "Element konnte nicht zurückgestellt werden",
     "failedApplyTags": "Tags konnten nicht angewendet werden",
-    "failedCaptureImage": "Bild konnte nicht aufgenommen werden",
-    "linkedToNote": "Mit Hinweis verlinkt",
-    "linkedToNotes": "Verknüpft mit {count}-Notizen",
-    "filedTo": "Abgelegt bei {folder}",
-    "filedItemsTo": "Abgelegte {count}-Elemente an {folder}",
-    "filedPartial": "Abgelegt als {processed} von {total}-Elementen",
-    "appliedTags": "{tagCount, plural, one {Angewandtes #-Tag} other {Angewandte #-Tags}} bis {itemCount, plural, one {#-Element} other {#-Elemente}}",
-    "archivedItems": "{count, plural, one {Archiviertes #-Element} other {Archivierte #-Elemente}}",
-    "snoozedUntil": "Schlummert bis {time}",
-    "snoozedItemsUntil": "{count, plural, one {#-Element bis {time} zurückgestellt} other {#-Elemente wurden bis {time} zurückgestellt}}"
-  },
-  "triage": {
-    "modeTitle": "Triage-Modus",
-    "exitHint": "Esc zum Beenden",
-    "exitAria": "Beenden Sie den Triage-Modus",
-    "position": "{current} von {total}",
-    "action": {
-      "discard": "Verwerfen",
-      "archive": "Archiv",
-      "open": "Offen",
-      "toTask": "Zur Aufgabe",
-      "toNote": "Zu beachten",
-      "file": "Datei",
-      "snooze": "Schlummern",
-      "cancel": "Abbrechen"
-    },
-    "snoozeUntil": "Schlummern, bis...",
-    "complete": {
-      "title": "Posteingang Null",
-      "processed": "{count, plural, one {#-Element verarbeitet} other {# Elemente verarbeitet}}",
-      "streak": "Streifen",
-      "streakCount": "{count}-Strähne",
-      "dayProcessingStreak": "{count, plural, one {# Tagesverarbeitungssträhne} other {# Tagesverarbeitungssträhne}}",
-      "back": "Zurück zum Posteingang",
-      "motivation0": "Dein zukünftiges Ich dankt es dir.",
-      "motivation1": "Alles an seinem Platz.",
-      "motivation2": "Klarer Posteingang, klarer Kopf.",
-      "motivation3": "Entscheidungsschuld: vollständig bezahlt.",
-      "motivation4": "Das fühlte sich gut an, nicht wahr?"
-    }
+    "failedCaptureImage": "Bild konnte nicht erfasst werden",
+    "linkedToNote": "Mit Notiz verlinkt",
+    "linkedToNotes": "Mit {count} Notizen verlinkt",
+    "embedFellBackToLink": "Bild war zu groß zum Einbetten – stattdessen als verlinkte Datei abgelegt",
+    "filedTo": "In {folder} abgelegt",
+    "filedItemsTo": "{count} Elemente in {folder} abgelegt",
+    "filedPartial": "{processed} von {total} Elementen abgelegt",
+    "appliedTags": "{tagCount, plural, one {# Tag} other {# Tags}} auf {itemCount, plural, one {# Element} other {# Elemente}} angewendet",
+    "archivedItems": "{count, plural, one {# Element archiviert} other {# Elemente archiviert}}",
+    "snoozedUntil": "Zurückgestellt bis {time}",
+    "snoozedItemsUntil": "{count, plural, one {# Element bis {time} zurückgestellt} other {# Elemente bis {time} zurückgestellt}}",
+    "restored": "„{title}“ wiederhergestellt"
   },
   "bulk": {
     "selected": "{count} ausgewählt",
     "deselectAll": "Alle abwählen",
     "ariaLabel": "Massenaktionen für {count} ausgewählte Elemente",
-    "file": "Datei",
-    "tag": "Etikett",
-    "snooze": "Schlummern",
-    "archive": "Archiv",
+    "file": "Ablegen",
+    "tag": "Taggen",
+    "snooze": "Zurückstellen",
+    "archive": "Archivieren",
     "add": "Hinzufügen",
     "dismissSuggestion": "Vorschlag ablehnen",
     "hint": {
-      "file": "Datei",
-      "tag": "Tag",
-      "snooze": "dösen",
-      "archive": "Archiv",
+      "file": "ablegen",
+      "tag": "taggen",
+      "snooze": "zurückstellen",
+      "archive": "archivieren",
       "deselect": "abwählen"
     },
     "archiveDialog": {
-      "title": "{count, plural, one {#-Element archivieren?} other {#-Elemente archivieren?}}",
-      "description": "Diese Elemente werden archiviert. Sie können archivierte Elemente später anzeigen.",
-      "confirm": "{count, plural, one {Archivieren Sie das #-Element} other {Archivieren Sie #-Elemente}}"
+      "title": "{count, plural, one {# Element archivieren?} other {# Elemente archivieren?}}",
+      "description": "Diese Elemente werden archiviert. Du kannst archivierte Elemente später ansehen.",
+      "confirm": "{count, plural, one {# Element archivieren} other {# Elemente archivieren}}"
     },
     "filePanel": {
-      "title": "{count, plural, one {Datei # Element} other {Datei #-Elemente}}",
-      "itemsToFile": "Zu archivierende Elemente",
+      "title": "{count, plural, one {# Element ablegen} other {# Elemente ablegen}}",
+      "itemsToFile": "Abzulegende Elemente",
       "multipleNoteLinksUnavailable": "Hinweis: Links zu anderen Notizen können nicht hinzugefügt werden, wenn mehrere Elemente abgelegt werden.",
-      "filing": "Einreichung...",
-      "submit": "{count, plural, one {Dateielement #} other {Datei #-Elemente}}",
-      "macHint": "⌘⏎ zur Datei · Esc zum Schließen",
-      "ctrlHint": "Strg+Enter zur Datei · Esc zum Schließen"
+      "filing": "Wird abgelegt…",
+      "submit": "{count, plural, one {# Element ablegen} other {# Elemente ablegen}}",
+      "macHint": "⌘⏎ zum Ablegen · Esc zum Schließen",
+      "ctrlHint": "Ctrl+Enter zum Ablegen · Esc zum Schließen"
     },
     "tagPopover": {
-      "title": "{count, plural, one {Markieren Sie das #-Element} other {Markieren Sie #-Elemente}}",
-      "placeholder": "Geben Sie ein, um nach Tags zu suchen...",
-      "applying": "Bewerben...",
-      "apply": "{count, plural, one {Auf #-Element anwenden} other {Auf #-Elemente anwenden}}"
+      "title": "{count, plural, one {# Element taggen} other {# Elemente taggen}}",
+      "placeholder": "Tags durchsuchen…",
+      "applying": "Wird angewendet…",
+      "apply": "{count, plural, one {Auf # Element anwenden} other {Auf # Elemente anwenden}}"
     }
   },
   "quickActions": {
-    "groupAria": "Schnelle Aktionen",
-    "archiveItem": "Archivelement",
-    "archive": "Archiv"
+    "groupAria": "Schnellaktionen",
+    "archiveItem": "Element archivieren",
+    "archive": "Archivieren"
   },
   "detail": {
-    "ariaLabel": "Artikeldetails",
-    "closePanel": "Panel schließen",
+    "ariaLabel": "Elementdetails",
+    "resize": "Größe des Bereichs ändern",
+    "closePanel": "Bereich schließen",
     "resizeFiling": "Größe des Ablagebereichs ändern",
     "restore": "Wiederherstellen",
-    "restoreToInbox": "Im Posteingang wiederherstellen",
+    "restoreToInbox": "Im Eingang wiederherstellen",
     "delete": "Löschen",
     "deletePermanently": "Dauerhaft löschen",
-    "archive": "Archiv",
-    "file": "Datei",
+    "archive": "Archivieren",
+    "file": "Ablegen",
     "fileToFolder": "In {folder} ablegen",
-    "keyboardHint": "{modifier}⏎ Datei · 1-5 Ordner · Esc schließen",
-    "voiceTitlePlaceholder": "Benennen Sie diese Sprachnotiz...",
-    "fileTo": "Datei an",
+    "keyboardHint": "{modifier}⏎ ablegen · 1–5 Ordner · Esc schließen",
+    "voiceTitlePlaceholder": "Sprachmemo benennen…",
+    "titlePlaceholder": "Element benennen…",
+    "fileTo": "Ablegen in",
     "ai": "KI",
-    "selectFolder": "Ordner auswählen",
-    "searchOrCreateFolder": "Suchen oder erstellen mit /...",
-    "suggested": "Vorgeschlagen",
-    "notesRoot": "Notizen",
-    "notesRootLabel": "Notizen (Wurzel)",
-    "createFolder": "Erstellen Sie „{name}“",
-    "addTags": "Tags hinzufügen...",
-    "linkToNote": "Link zur Notiz",
-    "linkNotesPlaceholder": "Linknotizen...",
-    "searchNotesAria": "Suchen Sie nach Notizen, die Sie verlinken möchten",
-    "linkedNotesAria": "Verlinkte Notizen",
-    "removeLinkTo": "Link zu {title} entfernen",
-    "notePlaceholder": "Schreiben Sie Ihre Notiz...",
-    "textPlaceholder": "Bearbeiten Sie Ihren erfassten Text ...",
-    "linkANote": "Eine Notiz verknüpfen",
     "match": {
-      "likely": "Wahrscheinliche Übereinstimmung",
       "strong": "Starke Übereinstimmung",
+      "likely": "Wahrscheinliche Übereinstimmung",
       "weak": "Schwache Übereinstimmung"
     },
-    "resize": "Panel-Größe ändern",
-    "suggestedCount": "{count} vorgeschlagen"
+    "selectFolder": "Ordner auswählen",
+    "searchOrCreateFolder": "Suchen oder mit / erstellen…",
+    "suggested": "Vorgeschlagen",
+    "notesRoot": "Notizen",
+    "notesRootLabel": "Notizen (Stammordner)",
+    "createFolder": "„{name}“ erstellen",
+    "addTags": "Tags hinzufügen…",
+    "linkToNote": "Mit Notiz verlinken",
+    "linkANote": "Notiz verlinken",
+    "suggestedCount": "{count} vorgeschlagen",
+    "linkNotesPlaceholder": "Notizen verlinken…",
+    "linkOrCreateNotePlaceholder": "Notiz suchen oder erstellen…",
+    "createNote": "„{title}“ erstellen",
+    "pendingNote": "Neue Notiz",
+    "searchNotesAria": "Notizen zum Verlinken suchen oder erstellen",
+    "imageFilingModeLabel": "Bild ablegen als",
+    "imageFilingModeEmbed": "In die Notiz eingebettet",
+    "imageFilingModeLink": "Datei in der Seitenleiste",
+    "imageFilingModeRemember": "Nicht mehr fragen",
+    "linkedNotesAria": "Verlinkte Notizen",
+    "removeLinkTo": "Link zu {title} entfernen",
+    "notePlaceholder": "Notiz schreiben…",
+    "textPlaceholder": "Erfassten Text bearbeiten…"
+  },
+  "convert": {
+    "title": "Umwandeln",
+    "chooseType": "Umwandeln in",
+    "note": "Notiz",
+    "task": "Aufgabe",
+    "event": "Termin",
+    "reminder": "Erinnerung",
+    "create": "Erstellen",
+    "addTask": "Aufgabe hinzufügen",
+    "addEvent": "Termin hinzufügen",
+    "setReminder": "Erinnerung festlegen",
+    "project": "Projekt",
+    "inboxProject": "Eingang",
+    "dueDate": "Fälligkeitsdatum",
+    "dueTime": "Fälligkeitszeit",
+    "priority": "Priorität",
+    "priorityNone": "Keine",
+    "priorityLow": "Niedrig",
+    "priorityMedium": "Mittel",
+    "priorityHigh": "Hoch",
+    "priorityUrgent": "Dringend",
+    "date": "Datum",
+    "start": "Beginn",
+    "end": "Ende",
+    "allDay": "Ganztägig",
+    "location": "Ort",
+    "remindAt": "Erinnern um",
+    "time": "Uhrzeit",
+    "success": "In {target} umgewandelt",
+    "failed": "Umwandlung fehlgeschlagen: {error}"
   },
   "content": {
-    "capturedAt": "{date} erfasst",
-    "todayAt": "heute bei {time}",
-    "yesterdayAt": "gestern bei {time}",
-    "dateAt": "{date} bei {time}",
+    "capturedAt": "Erfasst {date}",
+    "todayAt": "heute um {time}",
+    "yesterdayAt": "gestern um {time}",
+    "dateAt": "am {date} um {time}",
     "words": "{count, plural, one {# Wort} other {# Wörter}}",
     "duration": "Dauer: {duration}",
     "dimensions": "Abmessungen",
-    "format": "Formatieren",
+    "format": "Format",
     "size": "Größe",
-    "voiceMemo": "Sprachnotiz",
-    "play": "Spielen",
+    "voiceMemo": "Sprachmemo",
+    "play": "Abspielen",
     "pause": "Pause",
     "audioPosition": "Audioposition",
     "transcription": "Transkription",
-    "processing": "Verarbeitung",
+    "processing": "Wird verarbeitet",
     "pending": "ausstehend",
-    "failed": "gescheitert",
+    "failed": "fehlgeschlagen",
     "copyTranscription": "Transkription kopieren",
-    "transcribingAudio": "Audio wird transkribiert...",
-    "awaitingTranscription": "Warte auf Transkription...",
+    "transcribingAudio": "Audio wird transkribiert…",
+    "awaitingTranscription": "Warten auf Transkription…",
     "noTranscription": "Keine Transkription verfügbar",
     "failedPlayAudio": "Audio konnte nicht abgespielt werden",
     "failedLoadAudio": "Audio konnte nicht geladen werden",
     "video": "Video",
-    "unsupportedVideo": "Ihr Browser unterstützt das Video-Tag nicht."
+    "unsupportedVideo": "Dein Browser unterstützt das Video-Tag nicht."
   },
   "reminder": {
     "dataUnavailable": "Erinnerungsdaten nicht verfügbar.",
@@ -256,129 +267,126 @@
     "noteLabel": "Erinnerungsnotiz",
     "source": "Quelle",
     "journalTitle": "Journal – {date}",
-    "noteFallback": "Hinweis",
-    "journalFallback": "Tagebuch",
+    "noteFallback": "Notiz",
+    "journalFallback": "Journal",
+    "taskFallback": "Aufgabe",
     "highlighted": "Hervorgehoben: „{text}“",
     "viewed": "Gesehen",
-    "markViewed": "Als angesehen markieren",
+    "archive": "Archivieren",
     "notYetViewed": "Noch nicht angesehen",
-    "snooze": "Schlummern",
+    "snooze": "Zurückstellen",
     "presetInOneHour": "1 Stunde",
     "presetTomorrow": "Morgen",
     "presetNextWeek": "Nächste Woche",
-    "custom": "Benutzerdefinierte...",
-    "archive": "Archivieren",
-    "panelEmpty": "Keine anstehenden Erinnerungen.",
+    "custom": "Benutzerdefiniert…",
+    "panelUpcoming": "Demnächst",
     "panelPast": "Vergangen",
-    "panelUpcoming": "Anstehend",
-    "taskFallback": "Aufgabe",
-    "dateTime": {
-      "dateAt": "{date} um {time}",
-      "dateCompact": "{date}, {time}",
-      "todayAt": "Heute um {time}",
-      "todayCompact": "Heute, {time}",
-      "tomorrowAt": "Morgen um {time}",
-      "tomorrowCompact": "Morgen, {time}"
-    },
+    "panelEmpty": "Keine anstehenden Erinnerungen.",
     "presets": {
-      "anniversaryReminder": "Jahrestag-Erinnerung",
-      "inHours": {
-        "label": "In {count, plural, one {# Stunde} other {# Stunden}}"
+      "laterToday": {
+        "label": "Später heute",
+        "description": "In {count, plural, one {# Stunde} other {# Stunden}}"
+      },
+      "tomorrow": {
+        "label": "Morgen",
+        "description": "Morgen um 9 Uhr"
+      },
+      "nextWeek": {
+        "label": "Nächste Woche",
+        "description": "Montag um 9 Uhr"
       },
       "inMinutes": {
         "label": "In {count, plural, one {# Minute} other {# Minuten}}"
       },
-      "inMonths": {
-        "label": "In {count, plural, one {# Monat} other {# Monaten}}"
+      "inHours": {
+        "label": "In {count, plural, one {# Stunde} other {# Stunden}}"
       },
       "inWeeks": {
         "label": "In {count, plural, one {# Woche} other {# Wochen}}"
       },
+      "inMonths": {
+        "label": "In {count, plural, one {# Monat} other {# Monaten}}"
+      },
       "inYears": {
         "label": "In {count, plural, one {# Jahr} other {# Jahren}}"
       },
-      "laterToday": {
-        "description": "In {count, plural, one {# Stunde} other {# Stunden}}",
-        "label": "Später heute"
-      },
-      "monthlyReflection": "Monatlicher Rückblick",
-      "nextWeek": {
-        "description": "Montag um 9 Uhr",
-        "label": "Nächste Woche"
-      },
-      "quarterlyReflection": "Vierteljährlicher Rückblick",
-      "reviewInAWeek": "In einer Woche durchsehen",
+      "tomorrowMorning": "Morgen früh",
       "sameDayNextMonth": "Gleicher Tag im nächsten Monat",
-      "tomorrow": {
-        "description": "Morgen um 9 Uhr",
-        "label": "Morgen"
-      },
-      "tomorrowMorning": "Morgen früh"
+      "reviewInAWeek": "In einer Woche durchsehen",
+      "monthlyReflection": "Monatlicher Rückblick",
+      "quarterlyReflection": "Vierteljährlicher Rückblick",
+      "anniversaryReminder": "Jahrestag-Erinnerung"
+    },
+    "dateTime": {
+      "todayAt": "Heute um {time}",
+      "todayCompact": "Heute, {time}",
+      "tomorrowAt": "Morgen um {time}",
+      "tomorrowCompact": "Morgen, {time}",
+      "dateAt": "{date} um {time}",
+      "dateCompact": "{date}, {time}"
     }
   },
   "insights": {
-    "captureActivity": "Aktivität erfassen",
+    "captureActivity": "Erfassungsaktivität",
     "byType": "Nach Typ",
-    "recentFilings": "Aktuelle Einreichungen",
-    "captured": "Gefangen",
+    "recentFilings": "Zuletzt abgelegt",
+    "captured": "Erfasst",
     "capturedThisWeek": "+{count} diese Woche",
     "processed": "Verarbeitet",
-    "processRate": "{rate}%-Rate",
-    "stale": "Abgestanden",
+    "processRate": "{rate} % Quote",
+    "stale": "Veraltet",
     "needsAttention": "braucht Aufmerksamkeit",
     "allClear": "alles klar",
-    "avgTimeToFile": "Durchschnittliche Zeit bis zur Datei",
-    "noCapturesYet": "Noch keine Aufnahmen",
-    "captures": "{count, plural, one {#-Erfassung} other {# erfasst}}",
-    "peak": "Spitzenwert: {day} {start}–{end}",
+    "avgTimeToFile": "Durchschn. Zeit bis zur Ablage",
+    "noCapturesYet": "Noch nichts erfasst",
+    "captures": "{count, plural, one {# Erfassung} other {# Erfassungen}}",
+    "peak": "Spitzenzeit: {day} {start}–{end}",
     "convertedToTask": "In Aufgabe umgewandelt",
     "now": "jetzt",
-    "timeAgoMinutes": "Vor {count}m",
-    "timeAgoHours": "Vor {count}h",
-    "timeAgoDays": "Vor {count}d"
+    "timeAgoMinutes": "vor {count} Min.",
+    "timeAgoHours": "vor {count} Std.",
+    "timeAgoDays": "vor {count} Tg."
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
-      "aiDetected": "KI erkannt: „",
+      "aiDetected": "KI erkannt: \"",
       "addToSelection": "Zur Auswahl hinzufügen",
-      "dismiss": "Entlassen"
+      "dismiss": "Verwerfen"
     },
     "componentsBulkDeleteConfirmationDialog": {
       "delete": "Löschen ",
-      "item": "Artikel",
-      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Diese Elemente werden aus Ihrem Posteingang entfernt. Sie können diese Aktion sofort danach rückgängig machen."
+      "item": "Element",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Diese Elemente werden aus deinem Eingang entfernt. Du kannst das direkt danach rückgängig machen."
     },
     "componentsCaptureInput": {
-      "captureInput": "Eingaben erfassen",
+      "captureInput": "Eingabefeld zum Erfassen",
       "attachFile": "Datei anhängen",
       "attachFileImagesAudioVideoPdf": "Datei anhängen (Bilder, Audio, Video, PDF)",
-      "recordVoiceMemo": "Nehmen Sie eine Sprachnotiz auf",
-      "recordVoiceMemo2": "Nehmen Sie eine Sprachnotiz auf",
+      "recordVoiceMemo": "Sprachmemo aufnehmen",
+      "recordVoiceMemo2": "Sprachmemo aufnehmen",
       "captureAnyway": "Trotzdem erfassen",
-      "focusShortcut": "Erfassungseingabe fokussieren",
-      "q": "Q",
+      "placeholder": "Schnell erfassen – Link einfügen, Gedanken festhalten…",
       "captureLink": "Link erfassen",
       "captureNote": "Notiz erfassen",
-      "placeholder": "Schnell erfassen — Link einfügen, Gedanken festhalten…",
       "duplicateNotice": "Bereits erfasst: „{title}“"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Ordner auswählen",
-      "searchFolders": "Ordner durchsuchen...",
+      "searchFolders": "Ordner durchsuchen…",
       "searchFolders2": "Ordner durchsuchen",
       "searchResults": "Suchergebnisse",
-      "create": "Erstellen \"",
+      "create": "Ordner erstellen: \"",
       "suggested": "Vorgeschlagen",
-      "recent": "Neu",
+      "recent": "Zuletzt verwendet",
       "allFolders": "Alle Ordner",
       "allFolders2": "Alle Ordner"
     },
     "componentsFilingLinkSearch": {
-      "linkTo": "Link zu",
+      "linkTo": "Verlinken mit",
       "optional": "optional)",
-      "searchNotesToLink": "Notizen zum Verlinken durchsuchen...",
-      "searchNotesToLink2": "Suchen Sie nach Notizen, die Sie verlinken möchten",
-      "searching": "Suche...",
+      "searchNotesToLink": "Notizen zum Verlinken durchsuchen…",
+      "searchNotesToLink2": "Notizen zum Verlinken durchsuchen",
+      "searching": "Wird gesucht…",
       "noNotesFound": "Keine Notizen gefunden",
       "linkedNotes": "Verlinkte Notizen",
       "noLinksAdded": "Keine Links hinzugefügt"
@@ -387,39 +395,36 @@
       "suggested": "Vorgeschlagen",
       "ai": "KI",
       "create": "Erstellen",
-      "tags": "Schlagworte",
+      "tags": "Tags",
       "selectedTags": "Ausgewählte Tags",
-      "addTags": "Fügen Sie Tags hinzu",
+      "addTags": "Tags hinzufügen",
       "tagSuggestions": "Tag-Vorschläge",
       "removeTag": "{tag} entfernen"
     },
     "componentsFilingTagInput": {
-      "tags": "Schlagworte",
+      "tags": "Tags",
       "optional": "optional)",
-      "addTags": "Tags hinzufügen...",
-      "addTags2": "Fügen Sie Tags hinzu",
+      "addTags": "Tags hinzufügen…",
+      "addTags2": "Tags hinzufügen",
       "selectedTags": "Ausgewählte Tags",
       "suggested": "Vorgeschlagen"
     },
     "componentsInboxInboxCaptureHeatmap": {
-      "captureActivity": "Aktivität erfassen"
+      "captureActivity": "Erfassungsaktivität"
     },
     "componentsInboxInboxFilingHistory": {
-      "noItemsFiledYet": "Noch keine Artikel eingereicht",
-      "recentlyFiled": "Kürzlich eingereicht",
-      "latestActionsOnYourInbox": "Neueste Aktionen in Ihrem Posteingang",
+      "noItemsFiledYet": "Noch keine Elemente abgelegt",
+      "recentlyFiled": "Kürzlich abgelegt",
+      "latestActionsOnYourInbox": "Neueste Aktionen in deinem Eingang",
       "linked": "Verlinkt"
     },
     "componentsInboxInboxInsightsView": {
-      "loadingInsights": "Einblicke werden geladen..."
+      "loadingInsights": "Einblicke werden geladen…"
     },
     "componentsInboxInboxTypeDistribution": {
       "noItemTypesToDisplay": "Keine Elementtypen zum Anzeigen",
-      "itemTypes": "Artikeltypen",
-      "distributionOfContentFormats": "Verbreitung von Inhaltsformaten"
-    },
-    "componentsInboxTriageItemCard": {
-      "captured": "Gefangen "
+      "itemTypes": "Elementtypen",
+      "distributionOfContentFormats": "Verteilung der Inhaltsformate"
     },
     "componentsInboxDetailContentSection": {
       "x": "x "
@@ -427,20 +432,17 @@
     "componentsInboxDetailInboxContentEditor": {
       "contentEditor": "Inhaltseditor"
     },
-    "componentsInboxDetailReminderDetail": {
-      "middot": "Mittelpunkt; "
-    },
     "componentsInboxDetailTweetCard": {
       "tweetUnavailable": "Tweet nicht verfügbar",
       "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Dieser Tweet wurde möglicherweise gelöscht oder stammt von einem privaten Konto.",
-      "openOnXCom": "Öffnen Sie auf x.com",
-      "views": "Ansichten",
+      "openOnXCom": "Auf x.com öffnen",
+      "views": "Aufrufe",
       "xCom": "x.com",
-      "viewOnX": "Ansicht auf X"
+      "viewOnX": "Auf X ansehen"
     },
     "componentsInlineQuickFile": {
-      "typeFolderName": "Geben Sie den Ordnernamen ein...",
-      "quickFileFolderSearch": "Schnelle Suche nach Dateiordnern"
+      "typeFolderName": "Ordnername eingeben…",
+      "quickFileFolderSearch": "Ordnersuche zum schnellen Ablegen"
     },
     "componentsQuickCaptureFooter": {
       "close": "schließen",
@@ -450,128 +452,104 @@
       "removeAttachment": "Anhang entfernen"
     },
     "componentsQuickCaptureInput": {
-      "quickCaptureInput": "Schnelle Erfassungseingabe",
-      "recordVoiceMemo": "Nehmen Sie eine Sprachnotiz auf",
+      "quickCaptureInput": "Eingabefeld der Schnellerfassung",
+      "recordVoiceMemo": "Sprachmemo aufnehmen",
       "attachFile": "Datei anhängen"
     },
     "componentsQuickCaptureLinkPreview": {
       "link": "LINK"
     },
     "componentsQuickCaptureStates": {
-      "captured": "Gefangen",
-      "dismissError": "Fehler verwerfen",
+      "captured": "Erfasst",
+      "dismissError": "Fehlermeldung schließen",
       "alreadyCaptured": "Bereits erfasst",
       "captureAnyway": "Trotzdem erfassen",
       "close": "Schließen",
       "duplicateMeta": "„{title}“ · {date}"
     },
     "componentsQuickCapture": {
-      "dropToCapture": "Lassen Sie es fallen, um es einzufangen",
-      "capturing": "Aufnahme..."
+      "dropToCapture": "Zum Erfassen ablegen",
+      "capturing": "Wird erfasst…"
     },
     "componentsQuickFileDropdown": {
       "folderSuggestions": "Ordnervorschläge",
-      "noFoldersMatch": "Keine Ordner passen zu „"
+      "noFoldersMatch": "Keine Ordner passen zu \""
     },
     "componentsReminderReminderPicker": {
       "remind": "Erinnern",
-      "remindMe": "Erinnere mich daran",
-      "pickDateTime": "Wählen Sie Datum und Uhrzeit",
-      "addANoteOptional": "Fügen Sie eine Notiz hinzu (optional)",
+      "remindMe": "Erinnere mich",
+      "pickDateTime": "Datum und Uhrzeit auswählen",
+      "addANoteOptional": "Notiz hinzufügen (optional)",
       "backToPresets": "Zurück zu den Voreinstellungen",
-      "time": "Zeit",
-      "noteOptional": "Hinweis (optional)",
-      "whyAreYouSettingThisReminder": "Warum richten Sie diese Erinnerung ein?",
-      "deleteReminder": "Erinnerung löschen",
+      "time": "Uhrzeit",
+      "noteOptional": "Notiz (optional)",
+      "whyAreYouSettingThisReminder": "Warum legst du diese Erinnerung an?",
+      "set": "Festlegen",
       "editReminder": "Erinnerung bearbeiten",
+      "deleteReminder": "Erinnerung löschen",
       "save": "Speichern",
-      "set": "Festlegen"
+      "setReminder": "Erinnerung festlegen",
+      "setting": "Wird festgelegt…"
     },
     "componentsSnoozeSnoozePicker": {
-      "snooze": "Schlummern",
-      "snooze2": "Schlummern",
-      "pickDateTime": "Wählen Sie Datum und Uhrzeit",
-      "pickDateTime2": "Wählen Sie Datum und Uhrzeit",
-      "selectWhenToBeRemindedAboutThisItem": "Wählen Sie aus, wann Sie an diesen Artikel erinnert werden möchten",
-      "snooze3": "Schlummern",
-      "snooze4": "Schlummern",
-      "snooze5": "Schlummern"
+      "snooze": "Zurückstellen",
+      "snooze2": "Zurückstellen",
+      "pickDateTime": "Datum und Uhrzeit auswählen",
+      "pickDateTime2": "Datum und Uhrzeit auswählen",
+      "selectWhenToBeRemindedAboutThisItem": "Wähle, wann du an dieses Element erinnert werden möchtest",
+      "snooze3": "Zurückstellen",
+      "snooze4": "Zurückstellen",
+      "snooze5": "Zurückstellen"
     },
     "componentsSocialCard": {
-      "loadingPost": "Beitrag wird geladen...",
+      "loadingPost": "Beitrag wird geladen…",
       "failedToLoad": "Laden fehlgeschlagen",
-      "loadingPostContent": "Beitragsinhalt wird geladen...",
-      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Beitragsinhalt konnte nicht geladen werden. Der Beitrag kann privat sein oder gelöscht werden.",
-      "viewOn": "Weiter ansehen "
+      "loadingPostContent": "Beitragsinhalt wird geladen…",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Beitragsinhalt konnte nicht geladen werden. Der Beitrag ist möglicherweise privat oder wurde gelöscht.",
+      "viewOn": "Ansehen auf "
     },
     "componentsVoiceRecorder": {
-      "startVoiceRecording": "Starten Sie die Sprachaufnahme",
-      "requestingMicrophoneAccess": "Mikrofonzugriff wird angefordert...",
+      "startVoiceRecording": "Sprachaufnahme starten",
+      "requestingMicrophoneAccess": "Mikrofonzugriff wird angefordert…",
       "settings": "Einstellungen",
-      "processing": "Verarbeitung...",
+      "processing": "Wird verarbeitet…",
       "cancelRecording": "Aufnahme abbrechen",
       "cancel": "Abbrechen",
-      "stopRecording": "Stoppen Sie die Aufnahme",
+      "stopRecording": "Aufnahme beenden",
       "stop": "Stopp",
-      "enableMicInSettings": "Erlaube den Mikrofonzugriff in deinen Systemeinstellungen und versuche es erneut.",
-      "failedToStart": "Die Aufnahme konnte nicht gestartet werden",
+      "recordingError": "Bei der Aufnahme ist ein Fehler aufgetreten",
       "microphoneAccessDenied": "Mikrofonzugriff verweigert",
       "noMicrophoneFound": "Kein Mikrofon gefunden",
-      "recordingError": "Bei der Aufnahme ist ein Fehler aufgetreten"
+      "failedToStart": "Die Aufnahme konnte nicht gestartet werden",
+      "enableMicInSettings": "Erlaube den Mikrofonzugriff in deinen Systemeinstellungen und versuche es erneut."
     }
   },
   "phaseI": {
     "errors": {
       "failedToCaptureLink": "Link konnte nicht erfasst werden",
       "failedToCaptureNote": "Notiz konnte nicht erfasst werden",
-      "captureFailed": "Die Aufnahme ist fehlgeschlagen",
-      "failedToCaptureVoiceMemo": "Die Sprachnotiz konnte nicht erfasst werden",
+      "captureFailed": "Erfassung fehlgeschlagen",
+      "failedToCaptureVoiceMemo": "Sprachmemo konnte nicht erfasst werden",
       "voiceCaptureFailed": "Die Sprachaufnahme ist fehlgeschlagen",
       "failedToCaptureFile": "Datei konnte nicht erfasst werden",
       "fileCaptureFailed": "Die Dateierfassung ist fehlgeschlagen",
       "failedToCaptureAudio": "Audio konnte nicht aufgenommen werden",
       "failedToCaptureVoice": "Die Sprachaufnahme ist fehlgeschlagen",
-      "failedToLoadInboxPreferences": "Die Posteingangseinstellungen konnten nicht geladen werden",
-      "failedToUpdateInboxPreferences": "Die Posteingangseinstellungen konnten nicht aktualisiert werden"
+      "failedToLoadInboxPreferences": "Die Einstellungen des Eingangs konnten nicht geladen werden",
+      "failedToUpdateInboxPreferences": "Die Einstellungen des Eingangs konnten nicht aktualisiert werden"
     },
     "toasts": {
-      "inboxRefreshed": "Posteingang aktualisiert"
+      "inboxRefreshed": "Eingang aktualisiert"
     }
   },
-  "convert": {
-    "addEvent": "Termin hinzufügen",
-    "addTask": "Aufgabe hinzufügen",
-    "allDay": "Ganztägig",
-    "chooseType": "Umwandeln in",
-    "create": "Erstellen",
-    "date": "Datum",
-    "dueDate": "Fälligkeitsdatum",
-    "dueTime": "Fälligkeitszeit",
-    "end": "Ende",
-    "event": "Termin",
-    "failed": "Umwandlung fehlgeschlagen: {error}",
-    "inboxProject": "Posteingang",
-    "location": "Ort",
-    "note": "Notiz",
-    "priority": "Priorität",
-    "priorityHigh": "Hoch",
-    "priorityLow": "Niedrig",
-    "priorityMedium": "Mittel",
-    "priorityNone": "Keine",
-    "priorityUrgent": "Dringend",
-    "project": "Projekt",
-    "remindAt": "Erinnere mich um",
-    "reminder": "Erinnerung",
-    "setReminder": "Erinnerung festlegen",
-    "start": "Beginn",
-    "success": "In {target} umgewandelt",
-    "task": "Aufgabe",
-    "time": "Zeit",
-    "title": "Umwandeln"
-  },
   "reviewNudge": {
-    "action": "Posteingang öffnen",
+    "title": "{count, plural, one {# Element zum Durchsehen} other {# Elemente zum Durchsehen}}",
     "description": "Geh die heutigen Erfassungen in einem ruhigen Durchgang durch.",
-    "title": "{count, plural, one {# Element zum Durchsehen} other {# Elemente zum Durchsehen}}"
+    "action": "Eingang öffnen"
+  },
+  "snoozeDue": {
+    "notificationTitle": "{count, plural, one {# zurückgestelltes Element} other {# zurückgestellte Elemente}}",
+    "notificationBody": "{count, plural, one {Dein zurückgestelltes Element ist bereit zur Durchsicht} other {Deine zurückgestellten Elemente sind bereit}}",
+    "toast": "{count, plural, =1 {„{itemTitle}“ ist wieder da} one {# zurückgestelltes Element ist wieder da} other {# zurückgestellte Elemente sind wieder da}}"
   }
 }

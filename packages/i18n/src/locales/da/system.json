@@ -1,15 +1,15 @@
 {
   "dialog": {
     "vault": {
-      "title": "Vælg Vault Folder",
-      "button": "Vælg Vault"
+      "title": "Vælg mappe til boksen",
+      "button": "Vælg boks"
     },
     "exportPdf": {
-      "title": "Eksporter som PDF",
+      "title": "Eksportér som PDF",
       "filterName": "PDF-dokument"
     },
     "exportHtml": {
-      "title": "Eksporter som HTML",
+      "title": "Eksportér som HTML",
       "filterName": "HTML-dokument"
     },
     "import": {
@@ -20,52 +20,53 @@
     "update": {
       "availableTitle": "Opdatering tilgængelig",
       "availableMessage": "memrynote {version} er tilgængelig.",
-      "availableDetailFallback": "Vil du downloade opdateringen nu?",
+      "availableDetailFallback": "Vil du hente opdateringen nu?",
       "buttonDownload": "Hent",
       "buttonLater": "Senere",
       "readyTitle": "Opdatering klar",
-      "readyMessage": "memrynote {version} er blevet downloadet.",
+      "readyMessage": "memrynote {version} er hentet.",
       "readyDetailFallback": "Genstart memrynote for at afslutte installationen af opdateringen.",
       "buttonRestartNow": "Genstart nu",
       "releaseNotesLabel": "Udgivelsesbemærkninger:"
     },
     "pair": {
+      "title": "Forbind browserudvidelse",
+      "message": "Vil du tillade, at Memry-browserudvidelsen sender indfangede elementer til denne app?",
       "buttonAllow": "Tillad",
       "buttonDeny": "Afvis",
-      "buttonPair": "Forbind",
-      "message": "Vil du tillade, at Memry-browserudvidelsen sender opsamlinger til denne app?",
-      "title": "Forbind browserudvidelse"
+      "buttonPair": "Forbind"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "Bemærk påmindelse",
-      "journal": "Journal påmindelse",
-      "highlight": "Fremhæv påmindelse",
-      "fallback": "Påmindelse forfalder",
-      "default": "Påmindelse",
-      "task": "Opgavepåmindelse"
-    },
     "inboxReview": {
+      "title": "Tid til at gennemgå din indbakke",
       "body": "Du har {count, plural, one {# element} other {# elementer}} at gennemgå.",
-      "testBody": "Dette er en test — dine daglige påmindelser om gennemgang vil se sådan ud.",
-      "title": "Tid til at gennemgå din indbakke"
+      "testBody": "Dette er en test – dine daglige påmindelser om gennemgang vil se sådan ud."
+    },
+    "reminder": {
+      "note": "Notepåmindelse",
+      "journal": "Dagbogspåmindelse",
+      "highlight": "Påmindelse om fremhævning",
+      "task": "Opgavepåmindelse",
+      "fallback": "Påmindelse forfalder",
+      "default": "Påmindelse"
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "Påmindelsestidspunkt skal ligge i fremtiden",
-    "definitionNotFound": "Definition ikke fundet",
-    "noteNotFound": "Bemærk ikke fundet",
-    "updateFailed": "Opdatering mislykkedes"
+    "reminderTimeMustBeFuture": "Påmindelsestidspunktet skal ligge i fremtiden",
+    "definitionNotFound": "Definitionen blev ikke fundet",
+    "noteNotFound": "Noten blev ikke fundet",
+    "updateFailed": "Opdatering mislykkedes",
+    "updateReadOnlyVolume": "Opdateringer kan ikke installeres, mens memrynote kører fra denne placering. Flyt memrynote til mappen Programmer, og åbn den igen."
   },
   "startup": {
-    "failed": {
-      "body": "Det kan ske, når der er meget lidt ledig plads på disken, eller ved ældre grafikdrivere. Prøv at frigøre noget diskplads, og åbn så MemryNote igen. Hvis det bliver ved, plejer en geninstallation at løse det.",
-      "title": "MemryNote kunne ikke starte helt op"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote åbner igen automatisk.",
-      "title": "Installerer opdatering…"
+      "title": "Installerer opdatering…",
+      "subtitle": "MemryNote åbner igen automatisk."
+    },
+    "failed": {
+      "title": "MemryNote kunne ikke starte helt op",
+      "body": "Det kan ske, når der er meget lidt ledig plads på disken, eller ved ældre grafikdrivere. Prøv at frigøre noget diskplads, og åbn så MemryNote igen. Hvis det bliver ved, plejer en geninstallation at løse det."
     }
   }
 }

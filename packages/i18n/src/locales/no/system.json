@@ -1,8 +1,8 @@
 {
   "dialog": {
     "vault": {
-      "title": "Velg Vault-mappe",
-      "button": "Velg Hvelv"
+      "title": "Velg hvelvmappe",
+      "button": "Velg hvelv"
     },
     "exportPdf": {
       "title": "Eksporter som PDF",
@@ -20,7 +20,7 @@
     "update": {
       "availableTitle": "Oppdatering tilgjengelig",
       "availableMessage": "memrynote {version} er tilgjengelig.",
-      "availableDetailFallback": "Laste ned oppdateringen nå?",
+      "availableDetailFallback": "Vil du laste ned oppdateringen nå?",
       "buttonDownload": "Last ned",
       "buttonLater": "Senere",
       "readyTitle": "Oppdatering klar",
@@ -30,42 +30,43 @@
       "releaseNotesLabel": "Utgivelsesnotater:"
     },
     "pair": {
+      "title": "Koble til nettleserutvidelse",
+      "message": "Vil du la Memry-nettleserutvidelsen sende det du fanger opp, til denne appen?",
       "buttonAllow": "Tillat",
-      "buttonDeny": "Avslå",
-      "buttonPair": "Koble til",
-      "message": "Vil du la Memry-nettleserutvidelsen sende innfangede elementer til denne appen?",
-      "title": "Koble til nettleserutvidelse"
+      "buttonDeny": "Ikke tillat",
+      "buttonPair": "Koble til"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "Merk påminnelse",
-      "journal": "Journalpåminnelse",
-      "highlight": "Fremhev påminnelse",
-      "fallback": "Påminnelse forfaller",
-      "default": "Påminnelse",
-      "task": "Oppgavepåminnelse"
-    },
     "inboxReview": {
+      "title": "På tide å gå gjennom innboksen",
       "body": "Du har {count, plural, one {# element} other {# elementer}} å gå gjennom.",
-      "testBody": "Dette er en test — slik vil de daglige påminnelsene om gjennomgang se ut.",
-      "title": "På tide å gå gjennom innboksen"
+      "testBody": "Dette er en test – slik ser de daglige påminnelsene om gjennomgang ut."
+    },
+    "reminder": {
+      "note": "Notatpåminnelse",
+      "journal": "Dagbokpåminnelse",
+      "highlight": "Påminnelse om utheving",
+      "task": "Oppgavepåminnelse",
+      "fallback": "Påminnelse forfaller",
+      "default": "Påminnelse"
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "Påminnelsestidspunkt må ligge i fremtiden",
+    "reminderTimeMustBeFuture": "Påminnelsestidspunktet må ligge frem i tid",
     "definitionNotFound": "Finner ikke definisjonen",
-    "noteNotFound": "Notat ikke funnet",
-    "updateFailed": "Oppdatering mislyktes"
+    "noteNotFound": "Finner ikke notatet",
+    "updateFailed": "Oppdatering mislyktes",
+    "updateReadOnlyVolume": "Oppdateringer kan ikke installeres mens memrynote kjøres fra denne plasseringen. Flytt memrynote til Programmer-mappen, og åpne appen igjen."
   },
   "startup": {
-    "failed": {
-      "body": "Dette kan skje når disken har svært lite ledig plass, eller med eldre grafikkdrivere. Prøv å frigjøre litt diskplass, og åpne MemryNote på nytt. Hvis det fortsetter, hjelper det som regel å installere på nytt.",
-      "title": "MemryNote kunne ikke fullføre oppstarten"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote åpnes automatisk igjen.",
-      "title": "Installerer oppdatering…"
+      "title": "Installerer oppdateringen …",
+      "subtitle": "MemryNote åpnes automatisk igjen."
+    },
+    "failed": {
+      "title": "MemryNote kunne ikke fullføre oppstarten",
+      "body": "Dette kan skje når disken har svært lite ledig plass, eller med eldre grafikkdrivere. Prøv å frigjøre litt diskplass, og åpne MemryNote på nytt. Hvis det fortsetter, hjelper det som regel å installere på nytt."
     }
   }
 }

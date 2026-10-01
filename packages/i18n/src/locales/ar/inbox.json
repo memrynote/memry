@@ -1,35 +1,33 @@
 {
   "view": {
     "tabs": {
-      "inbox": "البريد الوارد",
-      "archived": "مؤرشف",
-      "insights": "رؤى",
-      "ariaLabel": "اختيار عرض البريد الوارد"
+      "inbox": "صندوق الوارد",
+      "archived": "المؤرشفة",
+      "insights": "الرؤى",
+      "ariaLabel": "اختيار عرض صندوق الوارد"
     },
-    "triageButton": "الفرز",
-    "processInboxTitle": "علبة الوارد للعملية (Cmd+P)",
     "itemCaptured": "تم التقاط العنصر",
     "searchArchivedTitle": "البحث في العناصر المؤرشفة",
-    "searchPlaceholder": "بحث...",
+    "searchPlaceholder": "البحث…",
     "archivedItemsAria": "العناصر المؤرشفة",
     "snoozed": {
       "show": "إظهار العناصر المؤجلة",
       "showWithCount": "إظهار العناصر المؤجلة ({count})",
       "hide": "إخفاء العناصر المؤجلة"
     },
-    "filter": {
-      "button": "تصفية",
-      "byType": "تصفية حسب النوع",
-      "active": "{count, plural, one {التصفية حسب نوع #} other {التصفية حسب أنواع #}}",
-      "clearAll": "مسح الكل"
-    },
-    "jobs": {
-      "running": "{count, plural, one {تشغيل وظيفة # في الخلفية} other {تشغيل وظائف الخلفية #}}",
-      "failed": "فشل {count}"
-    },
     "density": {
       "toComfortable": "عرض مريح",
       "toCompact": "عرض مضغوط"
+    },
+    "filter": {
+      "button": "تصفية",
+      "byType": "تصفية حسب النوع",
+      "active": "{count, plural, zero {التصفية حسب # نوع} one {التصفية حسب نوع واحد} two {التصفية حسب نوعين} few {التصفية حسب # أنواع} many {التصفية حسب # نوعًا} other {التصفية حسب # نوع}}",
+      "clearAll": "مسح الكل"
+    },
+    "jobs": {
+      "running": "{count, plural, zero {لا توجد عمليات قيد التشغيل في الخلفية} one {عملية واحدة قيد التشغيل في الخلفية} two {عمليتان قيد التشغيل في الخلفية} few {# عمليات قيد التشغيل في الخلفية} many {# عملية قيد التشغيل في الخلفية} other {# عملية قيد التشغيل في الخلفية}}",
+      "failed": "فشلت: {count}"
     }
   },
   "type": {
@@ -38,12 +36,12 @@
     "note": "ملاحظة",
     "notes": "ملاحظات",
     "image": "صورة",
-    "images": "الصور",
+    "images": "صور",
     "voice": "صوت",
     "video": "فيديو",
     "clip": "مقطع",
     "clips": "مقاطع",
-    "pdf": "قوات الدفاع الشعبي",
+    "pdf": "PDF",
     "pdfs": "ملفات PDF",
     "social": "اجتماعي",
     "reminder": "تذكير",
@@ -51,527 +49,507 @@
   },
   "empty": {
     "successAria": "تم بنجاح، صندوق الوارد فارغ",
-    "title": "البريد الوارد صفر",
-    "body": "تمت معالجة كل شيء. التقط شيئًا جديدًا باستخدام الإدخال أعلاه، أو الصق رابطًا للبدء.",
-    "filedThisWeek": "{count, plural, one {تم تقديم # هذا الأسبوع} other {تم تقديم # هذا الأسبوع}}",
-    "dayStreak": "{count, plural, one {خط يوم #} other {خط يوم #}}",
+    "title": "صندوق الوارد فارغ",
+    "body": "تمّت معالجة كل شيء. التقط شيئًا جديدًا من حقل الإدخال في الأعلى، أو الصق رابطًا للبدء.",
+    "filedThisWeek": "{count, plural, zero {تم نقل # عنصر هذا الأسبوع} one {تم نقل عنصر واحد هذا الأسبوع} two {تم نقل عنصرين هذا الأسبوع} few {تم نقل # عناصر هذا الأسبوع} many {تم نقل # عنصرًا هذا الأسبوع} other {تم نقل # عنصر هذا الأسبوع}}",
+    "dayStreak": "{count, plural, zero {# يوم على التوالي} one {يوم واحد على التوالي} two {يومان على التوالي} few {# أيام على التوالي} many {# يومًا على التوالي} other {# يوم على التوالي}}",
     "tipPrefix": "نصيحة: استخدم",
     "tipSuffix": "لالتقاط سريع من الحافظة",
     "archivedNone": "لا توجد عناصر مؤرشفة",
     "archivedNoMatches": "لا توجد عناصر مؤرشفة مطابقة",
     "noItemsYet": "لا توجد عناصر بعد",
-    "noItemsFiled": "لم يتم تقديم أي عناصر حتى الآن",
+    "noItemsFiled": "لم يتم نقل أي عناصر بعد",
     "noFolders": "لم يتم العثور على مجلدات",
     "noNotes": "لم يتم العثور على أي ملاحظات",
-    "allMatchesLinked": "جميع المباريات مرتبطة بالفعل"
+    "allMatchesLinked": "جميع النتائج المطابقة مرتبطة بالفعل"
   },
   "list": {
-    "ariaLabel": "عناصر البريد الوارد",
+    "ariaLabel": "عناصر صندوق الوارد",
     "section": {
       "today": "اليوم",
       "yesterday": "أمس",
-      "older": "أقدم"
+      "older": "الأقدم"
     },
-    "selectItem": "حدد {title}",
+    "selectItem": "تحديد {title}",
     "itemAria": "{type}: {title}",
     "untitled": "بدون عنوان",
-    "untitledItem": "عنصر بلا عنوان",
-    "transcribing": "جارٍ النسخ...",
-    "transcriptionFailed": "فشل النسخ",
-    "retryTranscription": "أعد المحاولة",
-    "pageCount": "{count, plural, one {صفحة #} other {صفحات #}}",
-    "snoozedUntilShort": "تم التأجيل حتى {date}"
+    "untitledItem": "عنصر بدون عنوان",
+    "transcribing": "جارٍ تحويل الصوت إلى نص…",
+    "transcriptionFailed": "تعذّر تحويل الصوت إلى نص",
+    "retryTranscription": "إعادة المحاولة",
+    "pageCount": "{count, plural, zero {# صفحة} one {صفحة واحدة} two {صفحتان} few {# صفحات} many {# صفحة} other {# صفحة}}",
+    "snoozedUntilShort": "مؤجَّل حتى {date}",
+    "rename": "إعادة تسمية",
+    "renameLabel": "إعادة تسمية العنصر"
   },
   "loading": {
-    "inbox": "جارٍ تحميل البريد الوارد...",
-    "failed": "فشل تحميل البريد الوارد",
+    "inbox": "جارٍ تحميل صندوق الوارد…",
+    "failed": "تعذّر تحميل صندوق الوارد",
     "tryAgain": "حاول مرة أخرى",
-    "capturingImage": "جارٍ التقاط الصورة...",
-    "dropImageTitle": "قم بإسقاط الصورة لالتقاطها",
+    "capturingImage": "جارٍ التقاط الصورة…",
+    "dropImageTitle": "أفلِت الصورة لالتقاطها",
     "dropImageTypes": "PNG، JPEG، GIF، WebP، SVG",
     "unsupportedImageType": "نوع الصورة غير مدعوم: {type}",
     "imageTooLarge": "الصورة كبيرة جدًا (الحد الأقصى 50 ميجابايت)"
   },
   "toast": {
-    "failedArchiveItem": "فشل في أرشفة العنصر",
-    "failedArchiveItems": "فشل في أرشفة العناصر",
-    "failedFile": "فشل الملف",
-    "failedFileItem": "فشل في ملف العنصر",
-    "failedFileItems": "فشل في ملف العناصر",
-    "failedSnooze": "فشل في التأجيل",
-    "failedSnoozeItem": "فشل تأجيل العنصر",
-    "failedApplyTags": "فشل تطبيق العلامات",
-    "failedCaptureImage": "فشل التقاط الصورة",
-    "linkedToNote": "مرتبطة بالملاحظة",
-    "linkedToNotes": "مرتبط بملاحظات {count}",
-    "filedTo": "قدمت إلى {folder}",
-    "filedItemsTo": "تم تقديم عناصر {count} إلى {folder}",
-    "filedPartial": "تم تقديم {processed} لعناصر {total}",
-    "appliedTags": "من {tagCount, plural, one {تم تطبيق علامة #} other {تم تطبيق علامات #}} إلى {itemCount, plural, one {عنصر #} other {عناصر #}}",
-    "archivedItems": "{count, plural, one {عنصر # المؤرشف} other {عناصر # المؤرشفة}}",
+    "failedArchiveItem": "تعذّر أرشفة العنصر",
+    "failedArchiveItems": "تعذّر أرشفة العناصر",
+    "failedFile": "تعذّر النقل",
+    "failedFileItem": "تعذّر نقل العنصر",
+    "failedFileItems": "تعذّر نقل العناصر",
+    "failedSnooze": "تعذّر التأجيل",
+    "failedSnoozeItem": "تعذّر تأجيل العنصر",
+    "failedApplyTags": "تعذّر تطبيق الوسوم",
+    "failedCaptureImage": "تعذّر التقاط الصورة",
+    "linkedToNote": "تم الربط بالملاحظة",
+    "linkedToNotes": "تم الربط بـ{count} من الملاحظات",
+    "embedFellBackToLink": "الصورة كبيرة جدًا للتضمين — تم نقلها كملف مرتبط بدلًا من ذلك",
+    "filedTo": "تم النقل إلى {folder}",
+    "filedItemsTo": "تم نقل {count} من العناصر إلى {folder}",
+    "filedPartial": "تم نقل {processed} من أصل {total}",
+    "appliedTags": "{tagCount, plural, zero {تم تطبيق # وسم} one {تم تطبيق وسم واحد} two {تم تطبيق وسمين} few {تم تطبيق # وسوم} many {تم تطبيق # وسمًا} other {تم تطبيق # وسم}} على {itemCount, plural, zero {# عنصر} one {عنصر واحد} two {عنصرين} few {# عناصر} many {# عنصرًا} other {# عنصر}}",
+    "archivedItems": "{count, plural, zero {تمّت أرشفة # عنصر} one {تمّت أرشفة عنصر واحد} two {تمّت أرشفة عنصرين} few {تمّت أرشفة # عناصر} many {تمّت أرشفة # عنصرًا} other {تمّت أرشفة # عنصر}}",
     "snoozedUntil": "تم التأجيل حتى {time}",
-    "snoozedItemsUntil": "{count, plural, one {تم تأجيل عنصر # حتى {time}} other {تم تأجيل عناصر # حتى {time}}}"
-  },
-  "triage": {
-    "modeTitle": "وضع الفرز",
-    "exitHint": "Esc للخروج",
-    "exitAria": "الخروج من وضع الفرز",
-    "position": "{current} من {total}",
-    "action": {
-      "discard": "تجاهل",
-      "archive": "أرشيف",
-      "open": "مفتوح",
-      "toTask": "إلى المهمة",
-      "toNote": "ملاحظة",
-      "file": "ملف",
-      "snooze": "غفوة",
-      "cancel": "إلغاء"
-    },
-    "snoozeUntil": "تأجيل حتى...",
-    "complete": {
-      "title": "البريد الوارد صفر",
-      "processed": "{count, plural, one {تمت معالجة عنصر #} other {تمت معالجة عناصر #}}",
-      "streak": "خط",
-      "streakCount": "خط {count}",
-      "dayProcessingStreak": "{count, plural, one {خط معالجة يوم #} other {خط معالجة يوم #}}",
-      "back": "العودة إلى البريد الوارد",
-      "motivation0": "نفسك المستقبلية تشكرك.",
-      "motivation1": "كل شيء في مكانه.",
-      "motivation2": "مسح البريد الوارد، وعقل واضح.",
-      "motivation3": "قرار الديون: مدفوع بالكامل.",
-      "motivation4": "لقد كان ذلك شعورًا جيدًا، أليس كذلك؟"
-    }
+    "snoozedItemsUntil": "{count, plural, zero {تم تأجيل # عنصر حتى {time}} one {تم تأجيل عنصر واحد حتى {time}} two {تم تأجيل عنصرين حتى {time}} few {تم تأجيل # عناصر حتى {time}} many {تم تأجيل # عنصرًا حتى {time}} other {تم تأجيل # عنصر حتى {time}}}",
+    "restored": "تمّت استعادة «{title}»"
   },
   "bulk": {
     "selected": "تم تحديد {count}",
-    "deselectAll": "قم بإلغاء تحديد الكل",
-    "ariaLabel": "الإجراءات المجمعة للعناصر المحددة {count}",
-    "file": "ملف",
-    "tag": "علامة",
-    "snooze": "غفوة",
-    "archive": "أرشيف",
-    "add": "أضف",
-    "dismissSuggestion": "رفض الاقتراح",
+    "deselectAll": "إلغاء تحديد الكل",
+    "ariaLabel": "إجراءات جماعية للعناصر المحددة ({count})",
+    "file": "نقل",
+    "tag": "إضافة وسم",
+    "snooze": "تأجيل",
+    "archive": "أرشفة",
+    "add": "إضافة",
+    "dismissSuggestion": "تجاهل الاقتراح",
     "hint": {
-      "file": "حفظ",
-      "tag": "علامة",
-      "snooze": "قيلولة بعد الظهر",
+      "file": "نقل",
+      "tag": "إضافة وسم",
+      "snooze": "تأجيل",
       "archive": "أرشفة",
-      "deselect": "قم بإلغاء التحديد"
+      "deselect": "إلغاء التحديد"
     },
     "archiveDialog": {
-      "title": "{count, plural, one {أرشفة عنصر #؟} other {أرشفة عناصر #؟}}",
-      "description": "سيتم أرشفة هذه العناصر. يمكنك عرض العناصر المؤرشفة لاحقًا.",
-      "confirm": "{count, plural, one {أرشفة عنصر #} other {أرشفة عناصر #}}"
+      "title": "{count, plural, zero {هل تريد أرشفة # عنصر؟} one {هل تريد أرشفة عنصر واحد؟} two {هل تريد أرشفة عنصرين؟} few {هل تريد أرشفة # عناصر؟} many {هل تريد أرشفة # عنصرًا؟} other {هل تريد أرشفة # عنصر؟}}",
+      "description": "ستتم أرشفة هذه العناصر. يمكنك عرض العناصر المؤرشفة لاحقًا.",
+      "confirm": "{count, plural, zero {أرشفة # عنصر} one {أرشفة عنصر واحد} two {أرشفة عنصرين} few {أرشفة # عناصر} many {أرشفة # عنصرًا} other {أرشفة # عنصر}}"
     },
     "filePanel": {
-      "title": "{count, plural, one {ملف # البند} other {ملف عناصر #}}",
-      "itemsToFile": "العناصر المطلوب حفظها",
-      "multipleNoteLinksUnavailable": "ملاحظة: لا يمكن إضافة روابط إلى ملاحظات أخرى عند حفظ عناصر متعددة.",
-      "filing": "الايداع...",
-      "submit": "{count, plural, one {ملف # العنصر} other {عناصر ملف #}}",
-      "macHint": "⌘⏎ للملف · Esc للإغلاق",
-      "ctrlHint": "Ctrl+Enter للملف · Esc للإغلاق"
+      "title": "{count, plural, zero {نقل # عنصر} one {نقل عنصر واحد} two {نقل عنصرين} few {نقل # عناصر} many {نقل # عنصرًا} other {نقل # عنصر}}",
+      "itemsToFile": "العناصر المطلوب نقلها",
+      "multipleNoteLinksUnavailable": "ملاحظة: لا يمكن إضافة روابط إلى ملاحظات أخرى عند نقل عدة عناصر.",
+      "filing": "جارٍ النقل…",
+      "submit": "{count, plural, zero {نقل # عنصر} one {نقل عنصر واحد} two {نقل عنصرين} few {نقل # عناصر} many {نقل # عنصرًا} other {نقل # عنصر}}",
+      "macHint": "⌘⏎ للنقل · Esc للإغلاق",
+      "ctrlHint": "Ctrl+Enter للنقل · Esc للإغلاق"
     },
     "tagPopover": {
-      "title": "{count, plural, one {وضع علامة على العنصر #} other {وضع علامة على عناصر #}}",
-      "placeholder": "اكتب للبحث عن العلامات...",
-      "applying": "جارٍ التقديم...",
-      "apply": "{count, plural, one {تنطبق على عنصر #} other {تنطبق على عناصر #}}"
+      "title": "{count, plural, zero {إضافة وسوم إلى # عنصر} one {إضافة وسوم إلى عنصر واحد} two {إضافة وسوم إلى عنصرين} few {إضافة وسوم إلى # عناصر} many {إضافة وسوم إلى # عنصرًا} other {إضافة وسوم إلى # عنصر}}",
+      "placeholder": "اكتب للبحث عن الوسوم…",
+      "applying": "جارٍ التطبيق…",
+      "apply": "{count, plural, zero {تطبيق على # عنصر} one {تطبيق على عنصر واحد} two {تطبيق على عنصرين} few {تطبيق على # عناصر} many {تطبيق على # عنصرًا} other {تطبيق على # عنصر}}"
     }
   },
   "quickActions": {
     "groupAria": "إجراءات سريعة",
-    "archiveItem": "عنصر الأرشيف",
-    "archive": "أرشيف"
+    "archiveItem": "أرشفة العنصر",
+    "archive": "أرشفة"
   },
   "detail": {
-    "ariaLabel": "تفاصيل السلعة",
-    "closePanel": "إغلاق اللوحة",
-    "resizeFiling": "تغيير حجم قسم الملفات",
+    "ariaLabel": "تفاصيل العنصر",
+    "resize": "تغيير حجم اللوحة الجانبية",
+    "closePanel": "إغلاق اللوحة الجانبية",
+    "resizeFiling": "تغيير حجم قسم النقل",
     "restore": "استعادة",
-    "restoreToInbox": "استعادة إلى البريد الوارد",
+    "restoreToInbox": "استعادة إلى صندوق الوارد",
     "delete": "حذف",
-    "deletePermanently": "حذف نهائيا",
-    "archive": "أرشيف",
-    "file": "ملف",
-    "fileToFolder": "حفظ في {folder}",
-    "keyboardHint": "{modifier}⏎ ملف · 1-5 مجلد · إغلاق Esc",
-    "voiceTitlePlaceholder": "قم بتسمية هذه المذكرة الصوتية...",
-    "fileTo": "ملف ل",
-    "ai": "منظمة العفو الدولية",
-    "selectFolder": "حدد المجلد",
-    "searchOrCreateFolder": "ابحث أو أنشئ باستخدام /...",
-    "suggested": "مقترح",
-    "notesRoot": "ملاحظات",
-    "notesRootLabel": "ملاحظات (الجذر)",
-    "createFolder": "إنشاء \"{name}\"",
-    "addTags": "إضافة علامات...",
-    "linkToNote": "رابط للملاحظة",
-    "linkNotesPlaceholder": "رابط الملاحظات...",
-    "searchNotesAria": "ملاحظات البحث للارتباط",
-    "linkedNotesAria": "الملاحظات المرتبطة",
-    "removeLinkTo": "قم بإزالة الرابط إلى {title}",
-    "notePlaceholder": "أكتب مذكرتك...",
-    "textPlaceholder": "تحرير النص الذي تم التقاطه...",
-    "linkANote": "ربط ملاحظة",
+    "deletePermanently": "حذف نهائيًا",
+    "archive": "أرشفة",
+    "file": "نقل",
+    "fileToFolder": "نقل إلى {folder}",
+    "keyboardHint": "{modifier}⏎ نقل · 1-5 مجلد · Esc إغلاق",
+    "voiceTitlePlaceholder": "تسمية هذه المذكرة الصوتية…",
+    "titlePlaceholder": "تسمية هذا العنصر…",
+    "fileTo": "نقل إلى",
+    "ai": "الذكاء الاصطناعي",
     "match": {
-      "likely": "تطابق محتمل",
       "strong": "تطابق قوي",
+      "likely": "تطابق محتمل",
       "weak": "تطابق ضعيف"
     },
-    "resize": "تغيير حجم اللوحة",
-    "suggestedCount": "{count} مقترح"
+    "selectFolder": "اختيار مجلد",
+    "searchOrCreateFolder": "البحث أو الإنشاء باستخدام /…",
+    "suggested": "مقترحات",
+    "notesRoot": "الملاحظات",
+    "notesRootLabel": "الملاحظات (الجذر)",
+    "createFolder": "إنشاء «{name}»",
+    "addTags": "إضافة وسوم…",
+    "linkToNote": "ربط بملاحظة",
+    "linkANote": "ربط ملاحظة",
+    "suggestedCount": "المقترحة: {count}",
+    "linkNotesPlaceholder": "ربط ملاحظات…",
+    "linkOrCreateNotePlaceholder": "البحث عن ملاحظة أو إنشاؤها…",
+    "createNote": "إنشاء «{title}»",
+    "pendingNote": "ملاحظة جديدة",
+    "searchNotesAria": "البحث في الملاحظات لربطها أو إنشاء ملاحظة",
+    "imageFilingModeLabel": "طريقة إضافة الصورة",
+    "imageFilingModeEmbed": "مضمنة في الملاحظة",
+    "imageFilingModeLink": "ملف في الشريط الجانبي",
+    "imageFilingModeRemember": "عدم السؤال مرة أخرى",
+    "linkedNotesAria": "الملاحظات المرتبطة",
+    "removeLinkTo": "إزالة الرابط إلى {title}",
+    "notePlaceholder": "اكتب ملاحظتك…",
+    "textPlaceholder": "تحرير النص الملتقط…"
+  },
+  "convert": {
+    "title": "تحويل",
+    "chooseType": "تحويل إلى",
+    "note": "ملاحظة",
+    "task": "مهمة",
+    "event": "حدث",
+    "reminder": "تذكير",
+    "create": "إنشاء",
+    "addTask": "إضافة مهمة",
+    "addEvent": "إضافة حدث",
+    "setReminder": "ضبط تذكير",
+    "project": "المشروع",
+    "inboxProject": "صندوق الوارد",
+    "dueDate": "تاريخ الاستحقاق",
+    "dueTime": "وقت الاستحقاق",
+    "priority": "الأولوية",
+    "priorityNone": "بلا أولوية",
+    "priorityLow": "منخفضة",
+    "priorityMedium": "متوسطة",
+    "priorityHigh": "عالية",
+    "priorityUrgent": "عاجلة",
+    "date": "التاريخ",
+    "start": "البداية",
+    "end": "النهاية",
+    "allDay": "طوال اليوم",
+    "location": "الموقع",
+    "remindAt": "ذكّرني في",
+    "time": "الوقت",
+    "success": "تم التحويل إلى {target}",
+    "failed": "تعذّر التحويل: {error}"
   },
   "content": {
-    "capturedAt": "تم التقاط {date}",
+    "capturedAt": "التُقط {date}",
     "todayAt": "اليوم في {time}",
     "yesterdayAt": "أمس في {time}",
     "dateAt": "{date} في {time}",
-    "words": "{count, plural, one {كلمة #} other {كلمات #}}",
+    "words": "{count, plural, zero {# كلمة} one {كلمة واحدة} two {كلمتان} few {# كلمات} many {# كلمة} other {# كلمة}}",
     "duration": "المدة: {duration}",
     "dimensions": "الأبعاد",
     "format": "التنسيق",
     "size": "الحجم",
     "voiceMemo": "مذكرة صوتية",
-    "play": "العب",
-    "pause": "وقفة",
+    "play": "تشغيل",
+    "pause": "إيقاف مؤقت",
     "audioPosition": "موضع الصوت",
-    "transcription": "النسخ",
-    "processing": "المعالجة",
-    "pending": "في انتظار",
+    "transcription": "التفريغ النصي",
+    "processing": "جارٍ المعالجة",
+    "pending": "قيد الانتظار",
     "failed": "فشل",
-    "copyTranscription": "نسخ النسخ",
-    "transcribingAudio": "جارٍ تحويل الصوت إلى نص...",
-    "awaitingTranscription": "في انتظار النسخ...",
-    "noTranscription": "لا يوجد نسخ متاح",
-    "failedPlayAudio": "فشل تشغيل الصوت",
-    "failedLoadAudio": "فشل تحميل الصوت",
+    "copyTranscription": "نسخ التفريغ النصي",
+    "transcribingAudio": "جارٍ تحويل الصوت إلى نص…",
+    "awaitingTranscription": "بانتظار التفريغ النصي…",
+    "noTranscription": "لا يتوفر تفريغ نصي",
+    "failedPlayAudio": "تعذّر تشغيل الصوت",
+    "failedLoadAudio": "تعذّر تحميل الصوت",
     "video": "فيديو",
-    "unsupportedVideo": "متصفحك لا يدعم علامة الفيديو."
+    "unsupportedVideo": "متصفحك لا يدعم تشغيل الفيديو."
   },
   "reminder": {
     "dataUnavailable": "بيانات التذكير غير متاحة.",
-    "triggered": "تم تشغيل التذكير",
+    "triggered": "حان موعد التذكير",
     "noteLabel": "ملاحظة تذكيرية",
     "source": "المصدر",
-    "journalTitle": "المجلة - {date}",
+    "journalTitle": "اليوميات — {date}",
     "noteFallback": "ملاحظة",
-    "journalFallback": "مجلة",
-    "highlighted": "المميز: \"{text}\"",
-    "viewed": "تم المشاهدة",
-    "markViewed": "وضع علامة كما تم عرضها",
-    "notYetViewed": "لم يتم عرضها بعد",
-    "snooze": "غفوة",
-    "presetInOneHour": "1 ساعة",
-    "presetTomorrow": "غدا",
-    "presetNextWeek": "الاسبوع القادم",
-    "custom": "مخصص...",
-    "archive": "أرشفة",
-    "panelEmpty": "لا توجد تذكيرات قادمة.",
-    "panelPast": "السابقة",
-    "panelUpcoming": "القادمة",
+    "journalFallback": "اليوميات",
     "taskFallback": "مهمة",
+    "highlighted": "النص المميز: «{text}»",
+    "viewed": "تم العرض",
+    "archive": "أرشفة",
+    "notYetViewed": "لم يتم عرضها بعد",
+    "snooze": "تأجيل",
+    "presetInOneHour": "ساعة واحدة",
+    "presetTomorrow": "غدًا",
+    "presetNextWeek": "الأسبوع القادم",
+    "custom": "مخصص…",
+    "panelUpcoming": "القادمة",
+    "panelPast": "السابقة",
+    "panelEmpty": "لا توجد تذكيرات قادمة.",
+    "presets": {
+      "laterToday": {
+        "label": "لاحقًا اليوم",
+        "description": "بعد {count, plural, zero {# ساعة} one {ساعة واحدة} two {ساعتين} few {# ساعات} many {# ساعة} other {# ساعة}}"
+      },
+      "tomorrow": {
+        "label": "غدًا",
+        "description": "غدًا في 9 صباحًا"
+      },
+      "nextWeek": {
+        "label": "الأسبوع القادم",
+        "description": "الاثنين في 9 صباحًا"
+      },
+      "inMinutes": {
+        "label": "بعد {count, plural, zero {# دقيقة} one {دقيقة واحدة} two {دقيقتين} few {# دقائق} many {# دقيقة} other {# دقيقة}}"
+      },
+      "inHours": {
+        "label": "بعد {count, plural, zero {# ساعة} one {ساعة واحدة} two {ساعتين} few {# ساعات} many {# ساعة} other {# ساعة}}"
+      },
+      "inWeeks": {
+        "label": "بعد {count, plural, zero {# أسبوع} one {أسبوع واحد} two {أسبوعين} few {# أسابيع} many {# أسبوعًا} other {# أسبوع}}"
+      },
+      "inMonths": {
+        "label": "بعد {count, plural, zero {# شهر} one {شهر واحد} two {شهرين} few {# أشهر} many {# شهرًا} other {# شهر}}"
+      },
+      "inYears": {
+        "label": "بعد {count, plural, zero {# سنة} one {سنة واحدة} two {سنتين} few {# سنوات} many {# سنة} other {# سنة}}"
+      },
+      "tomorrowMorning": "صباح الغد",
+      "sameDayNextMonth": "اليوم نفسه من الشهر القادم",
+      "reviewInAWeek": "مراجعة بعد أسبوع",
+      "monthlyReflection": "تأمل شهري",
+      "quarterlyReflection": "تأمل ربع سنوي",
+      "anniversaryReminder": "تذكير بالذكرى السنوية"
+    },
     "dateTime": {
-      "dateAt": "{date} في {time}",
-      "dateCompact": "{date}، {time}",
       "todayAt": "اليوم في {time}",
       "todayCompact": "اليوم، {time}",
       "tomorrowAt": "غدًا في {time}",
-      "tomorrowCompact": "غدًا، {time}"
-    },
-    "presets": {
-      "anniversaryReminder": "تذكير بالذكرى السنوية",
-      "inHours": {
-        "label": "خلال {count, plural, zero {# ساعة} one {ساعة واحدة} two {ساعتين} few {# ساعات} many {# ساعة} other {# ساعة}}"
-      },
-      "inMinutes": {
-        "label": "خلال {count, plural, zero {# دقيقة} one {دقيقة واحدة} two {دقيقتين} few {# دقائق} many {# دقيقة} other {# دقيقة}}"
-      },
-      "inMonths": {
-        "label": "خلال {count, plural, zero {# شهر} one {شهر واحد} two {شهرين} few {# أشهر} many {# شهرًا} other {# شهر}}"
-      },
-      "inWeeks": {
-        "label": "خلال {count, plural, zero {# أسبوع} one {أسبوع واحد} two {أسبوعين} few {# أسابيع} many {# أسبوعًا} other {# أسبوع}}"
-      },
-      "inYears": {
-        "label": "خلال {count, plural, zero {# سنة} one {سنة واحدة} two {سنتين} few {# سنوات} many {# سنة} other {# سنة}}"
-      },
-      "laterToday": {
-        "description": "خلال {count, plural, zero {# ساعة} one {ساعة واحدة} two {ساعتين} few {# ساعات} many {# ساعة} other {# ساعة}}",
-        "label": "لاحقًا اليوم"
-      },
-      "monthlyReflection": "تأمل شهري",
-      "nextWeek": {
-        "description": "الاثنين في 9 صباحًا",
-        "label": "الأسبوع القادم"
-      },
-      "quarterlyReflection": "تأمل ربع سنوي",
-      "reviewInAWeek": "مراجعة بعد أسبوع",
-      "sameDayNextMonth": "اليوم نفسه من الشهر القادم",
-      "tomorrow": {
-        "description": "غدًا في 9 صباحًا",
-        "label": "غدًا"
-      },
-      "tomorrowMorning": "صباح الغد"
+      "tomorrowCompact": "غدًا، {time}",
+      "dateAt": "{date} في {time}",
+      "dateCompact": "{date}، {time}"
     }
   },
   "insights": {
-    "captureActivity": "التقاط النشاط",
+    "captureActivity": "نشاط الالتقاط",
     "byType": "حسب النوع",
-    "recentFilings": "الإيداعات الأخيرة",
+    "recentFilings": "المنقولة مؤخرًا",
     "captured": "تم التقاطها",
     "capturedThisWeek": "+{count} هذا الأسبوع",
     "processed": "تمت معالجتها",
     "processRate": "معدل {rate}%",
-    "stale": "قديمة",
-    "needsAttention": "يحتاج إلى الاهتمام",
-    "allClear": "كل شيء واضح",
-    "avgTimeToFile": "متوسط الوقت للملف",
-    "noCapturesYet": "لا يلتقط حتى الآن",
-    "captures": "{count, plural, one {التقاط #} other {يلتقط #}}",
+    "stale": "الراكدة",
+    "needsAttention": "تحتاج إلى اهتمام",
+    "allClear": "كل شيء على ما يرام",
+    "avgTimeToFile": "متوسط الوقت حتى النقل",
+    "noCapturesYet": "لا توجد عناصر ملتقطة بعد",
+    "captures": "{count, plural, zero {# عنصر ملتقط} one {عنصر ملتقط واحد} two {عنصران ملتقطان} few {# عناصر ملتقطة} many {# عنصرًا ملتقطًا} other {# عنصر ملتقط}}",
     "peak": "الذروة: {day} {start}–{end}",
     "convertedToTask": "تم تحويله إلى مهمة",
     "now": "الآن",
-    "timeAgoMinutes": "منذ {count}m",
-    "timeAgoHours": "منذ {count}h",
-    "timeAgoDays": "منذ {count}d"
+    "timeAgoMinutes": "منذ {count} د",
+    "timeAgoHours": "منذ {count} س",
+    "timeAgoDays": "منذ {count} ي"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
-      "aiDetected": "تم اكتشاف الذكاء الاصطناعي: \"",
-      "addToSelection": "أضف إلى الاختيار",
-      "dismiss": "استبعاد"
+      "aiDetected": "رصد الذكاء الاصطناعي: \"",
+      "addToSelection": "إضافة إلى التحديد",
+      "dismiss": "تجاهل"
     },
     "componentsBulkDeleteConfirmationDialog": {
       "delete": "حذف ",
-      "item": "البند",
-      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "ستتم إزالة هذه العناصر من صندوق الوارد الخاص بك. ويمكنك التراجع عن هذا الإجراء فورًا بعد ذلك."
+      "item": "عنصر",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "ستتم إزالة هذه العناصر من صندوق الوارد. يمكنك التراجع عن هذا الإجراء فورًا بعد ذلك."
     },
     "componentsCaptureInput": {
-      "captureInput": "التقاط المدخلات",
-      "attachFile": "إرفاق الملف",
+      "captureInput": "حقل الالتقاط",
+      "attachFile": "إرفاق ملف",
       "attachFileImagesAudioVideoPdf": "إرفاق ملف (صور، صوت، فيديو، PDF)",
-      "recordVoiceMemo": "سجل مذكرة صوتية",
-      "recordVoiceMemo2": "سجل مذكرة صوتية",
-      "captureAnyway": "التقط على أي حال",
-      "focusShortcut": "التركيز على حقل الالتقاط",
-      "q": "Q",
+      "recordVoiceMemo": "تسجيل مذكرة صوتية",
+      "recordVoiceMemo2": "تسجيل مذكرة صوتية",
+      "captureAnyway": "التقاط على أي حال",
+      "placeholder": "التقاط سريع — الصق رابطًا، أو دوّن فكرة…",
       "captureLink": "التقاط رابط",
       "captureNote": "التقاط ملاحظة",
-      "placeholder": "التقاط سريع — الصق رابطًا، أو دوّن فكرة…",
-      "duplicateNotice": "تم التقاطه بالفعل: “{title}”"
+      "duplicateNotice": "تم التقاطه بالفعل: «{title}»"
     },
     "componentsFilingFolderSelector": {
-      "chooseFolder": "اختر المجلد",
-      "searchFolders": "بحث في المجلدات...",
-      "searchFolders2": "مجلدات البحث",
+      "chooseFolder": "اختيار مجلد",
+      "searchFolders": "البحث في المجلدات…",
+      "searchFolders2": "البحث في المجلدات",
       "searchResults": "نتائج البحث",
       "create": "إنشاء \"",
-      "suggested": "مقترح",
+      "suggested": "مقترحات",
       "recent": "الأخيرة",
       "allFolders": "كافة المجلدات",
       "allFolders2": "كافة المجلدات"
     },
     "componentsFilingLinkSearch": {
-      "linkTo": "رابط ل",
+      "linkTo": "ربط بملاحظة",
       "optional": "اختياري)",
-      "searchNotesToLink": "بحث في الملاحظات للربط...",
-      "searchNotesToLink2": "ملاحظات البحث للارتباط",
-      "searching": "جارٍ البحث...",
+      "searchNotesToLink": "البحث في الملاحظات لربطها…",
+      "searchNotesToLink2": "البحث في الملاحظات لربطها",
+      "searching": "جارٍ البحث…",
       "noNotesFound": "لم يتم العثور على أي ملاحظات",
       "linkedNotes": "الملاحظات المرتبطة",
       "noLinksAdded": "لم تتم إضافة أي روابط"
     },
     "componentsFilingTagAutocomplete": {
-      "suggested": "مقترح",
-      "ai": "منظمة العفو الدولية",
+      "suggested": "مقترحات",
+      "ai": "الذكاء الاصطناعي",
       "create": "إنشاء",
-      "tags": "العلامات",
-      "selectedTags": "العلامات المختارة",
-      "addTags": "إضافة العلامات",
-      "tagSuggestions": "اقتراحات العلامات",
+      "tags": "الوسوم",
+      "selectedTags": "الوسوم المحددة",
+      "addTags": "إضافة وسوم",
+      "tagSuggestions": "اقتراحات الوسوم",
       "removeTag": "إزالة {tag}"
     },
     "componentsFilingTagInput": {
-      "tags": "العلامات",
+      "tags": "الوسوم",
       "optional": "اختياري)",
-      "addTags": "إضافة علامات...",
-      "addTags2": "إضافة العلامات",
-      "selectedTags": "العلامات المختارة",
-      "suggested": "مقترح"
+      "addTags": "إضافة وسوم…",
+      "addTags2": "إضافة وسوم",
+      "selectedTags": "الوسوم المحددة",
+      "suggested": "مقترحات"
     },
     "componentsInboxInboxCaptureHeatmap": {
-      "captureActivity": "التقاط النشاط"
+      "captureActivity": "نشاط الالتقاط"
     },
     "componentsInboxInboxFilingHistory": {
-      "noItemsFiledYet": "لم يتم تقديم أي عناصر حتى الآن",
-      "recentlyFiled": "تم تقديمه مؤخرًا",
-      "latestActionsOnYourInbox": "أحدث الإجراءات على البريد الوارد الخاص بك",
+      "noItemsFiledYet": "لم يتم نقل أي عناصر بعد",
+      "recentlyFiled": "المنقولة مؤخرًا",
+      "latestActionsOnYourInbox": "أحدث الإجراءات في صندوق الوارد",
       "linked": "مرتبط"
     },
     "componentsInboxInboxInsightsView": {
-      "loadingInsights": "جارٍ تحميل الرؤى..."
+      "loadingInsights": "جارٍ تحميل الرؤى…"
     },
     "componentsInboxInboxTypeDistribution": {
       "noItemTypesToDisplay": "لا توجد أنواع عناصر لعرضها",
       "itemTypes": "أنواع العناصر",
       "distributionOfContentFormats": "توزيع تنسيقات المحتوى"
     },
-    "componentsInboxTriageItemCard": {
-      "captured": "تم التقاطها "
-    },
     "componentsInboxDetailContentSection": {
-      "x": "س "
+      "x": "× "
     },
     "componentsInboxDetailInboxContentEditor": {
       "contentEditor": "محرر المحتوى"
     },
-    "componentsInboxDetailReminderDetail": {
-      "middot": "ميدوت; "
-    },
     "componentsInboxDetailTweetCard": {
       "tweetUnavailable": "التغريدة غير متاحة",
       "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "ربما تم حذف هذه التغريدة أو أنها من حساب خاص.",
-      "openOnXCom": "مفتوح على x.com",
-      "views": "وجهات النظر",
+      "openOnXCom": "فتح في x.com",
+      "views": "مشاهدات",
       "xCom": "x.com",
       "viewOnX": "عرض على X"
     },
     "componentsInlineQuickFile": {
-      "typeFolderName": "اكتب اسم المجلد...",
-      "quickFileFolderSearch": "بحث سريع في مجلد الملفات"
+      "typeFolderName": "اكتب اسم المجلد…",
+      "quickFileFolderSearch": "البحث السريع عن مجلد للنقل"
     },
     "componentsQuickCaptureFooter": {
-      "close": "قريب",
+      "close": "إغلاق",
       "capture": "التقاط"
     },
     "componentsQuickCaptureImagePreview": {
       "removeAttachment": "إزالة المرفق"
     },
     "componentsQuickCaptureInput": {
-      "quickCaptureInput": "إدخال التقاط سريع",
-      "recordVoiceMemo": "سجل مذكرة صوتية",
-      "attachFile": "إرفاق الملف"
+      "quickCaptureInput": "حقل الالتقاط السريع",
+      "recordVoiceMemo": "تسجيل مذكرة صوتية",
+      "attachFile": "إرفاق ملف"
     },
     "componentsQuickCaptureLinkPreview": {
       "link": "رابط"
     },
     "componentsQuickCaptureStates": {
-      "captured": "تم التقاطها",
+      "captured": "تم الالتقاط",
       "dismissError": "تجاهل الخطأ",
-      "alreadyCaptured": "تم التقاطها بالفعل",
-      "captureAnyway": "التقط على أي حال",
+      "alreadyCaptured": "تم التقاطه بالفعل",
+      "captureAnyway": "التقاط على أي حال",
       "close": "إغلاق",
-      "duplicateMeta": "“{title}” · {date}"
+      "duplicateMeta": "«{title}» · {date}"
     },
     "componentsQuickCapture": {
-      "dropToCapture": "إسقاط لالتقاط",
-      "capturing": "جارٍ الالتقاط..."
+      "dropToCapture": "أفلِت للالتقاط",
+      "capturing": "جارٍ الالتقاط…"
     },
     "componentsQuickFileDropdown": {
       "folderSuggestions": "اقتراحات المجلدات",
-      "noFoldersMatch": "لا توجد مجلدات متطابقة \""
+      "noFoldersMatch": "لا توجد مجلدات تطابق \""
     },
     "componentsReminderReminderPicker": {
       "remind": "تذكير",
-      "remindMe": "ذكرني",
-      "pickDateTime": "اختر التاريخ والوقت",
+      "remindMe": "ذكّرني",
+      "pickDateTime": "اختيار التاريخ والوقت",
       "addANoteOptional": "إضافة ملاحظة (اختياري)",
       "backToPresets": "العودة إلى الإعدادات المسبقة",
       "time": "الوقت",
       "noteOptional": "ملاحظة (اختياري)",
-      "whyAreYouSettingThisReminder": "لماذا تقوم بتعيين هذا التذكير؟",
-      "deleteReminder": "حذف التذكير",
+      "whyAreYouSettingThisReminder": "لماذا تضبط هذا التذكير؟",
+      "set": "ضبط",
       "editReminder": "تحرير التذكير",
+      "deleteReminder": "حذف التذكير",
       "save": "حفظ",
-      "set": "تعيين"
+      "setReminder": "ضبط تذكير",
+      "setting": "جارٍ الضبط…"
     },
     "componentsSnoozeSnoozePicker": {
-      "snooze": "غفوة",
-      "snooze2": "غفوة",
-      "pickDateTime": "اختر التاريخ والوقت",
-      "pickDateTime2": "اختر التاريخ والوقت",
+      "snooze": "تأجيل",
+      "snooze2": "تأجيل",
+      "pickDateTime": "اختيار التاريخ والوقت",
+      "pickDateTime2": "اختيار التاريخ والوقت",
       "selectWhenToBeRemindedAboutThisItem": "حدد متى سيتم تذكيرك بهذا العنصر",
-      "snooze3": "غفوة",
-      "snooze4": "غفوة",
-      "snooze5": "غفوة"
+      "snooze3": "تأجيل",
+      "snooze4": "تأجيل",
+      "snooze5": "تأجيل"
     },
     "componentsSocialCard": {
-      "loadingPost": "جارٍ تحميل المشاركة...",
-      "failedToLoad": "فشل التحميل",
-      "loadingPostContent": "جارٍ تحميل محتوى المشاركة...",
-      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "فشل في تحميل محتوى المشاركة. قد تكون المشاركة خاصة أو محذوفة.",
+      "loadingPost": "جارٍ تحميل المنشور…",
+      "failedToLoad": "تعذّر التحميل",
+      "loadingPostContent": "جارٍ تحميل محتوى المنشور…",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "تعذّر تحميل محتوى المنشور. قد يكون المنشور خاصًا أو محذوفًا.",
       "viewOn": "عرض على "
     },
     "componentsVoiceRecorder": {
-      "startVoiceRecording": "ابدأ التسجيل الصوتي",
-      "requestingMicrophoneAccess": "جارٍ طلب الوصول إلى الميكروفون...",
+      "startVoiceRecording": "بدء التسجيل الصوتي",
+      "requestingMicrophoneAccess": "جارٍ طلب الوصول إلى الميكروفون…",
       "settings": "الإعدادات",
-      "processing": "جارٍ المعالجة...",
+      "processing": "جارٍ المعالجة…",
       "cancelRecording": "إلغاء التسجيل",
       "cancel": "إلغاء",
-      "stopRecording": "توقف عن التسجيل",
-      "stop": "توقف",
-      "enableMicInSettings": "فعّل الوصول إلى الميكروفون في إعدادات النظام، ثم حاول مرة أخرى.",
-      "failedToStart": "فشل بدء التسجيل",
+      "stopRecording": "إيقاف التسجيل",
+      "stop": "إيقاف",
+      "recordingError": "حدث خطأ أثناء التسجيل",
       "microphoneAccessDenied": "تم رفض الوصول إلى الميكروفون",
       "noMicrophoneFound": "لم يتم العثور على ميكروفون",
-      "recordingError": "حدث خطأ أثناء التسجيل"
+      "failedToStart": "تعذّر بدء التسجيل",
+      "enableMicInSettings": "فعّل الوصول إلى الميكروفون في إعدادات النظام، ثم حاول مرة أخرى."
     }
   },
   "phaseI": {
     "errors": {
-      "failedToCaptureLink": "فشل التقاط الرابط",
-      "failedToCaptureNote": "فشل في التقاط الملاحظة",
+      "failedToCaptureLink": "تعذّر التقاط الرابط",
+      "failedToCaptureNote": "تعذّر التقاط الملاحظة",
       "captureFailed": "فشل الالتقاط",
-      "failedToCaptureVoiceMemo": "فشل في التقاط المذكرة الصوتية",
-      "voiceCaptureFailed": "فشل التقاط الصوت",
-      "failedToCaptureFile": "فشل في التقاط الملف",
-      "fileCaptureFailed": "فشل التقاط الملف",
-      "failedToCaptureAudio": "فشل في التقاط الصوت",
-      "failedToCaptureVoice": "فشل في التقاط الصوت",
-      "failedToLoadInboxPreferences": "فشل تحميل تفضيلات البريد الوارد",
-      "failedToUpdateInboxPreferences": "فشل تحديث تفضيلات البريد الوارد"
+      "failedToCaptureVoiceMemo": "تعذّر التقاط المذكرة الصوتية",
+      "voiceCaptureFailed": "تعذّر التقاط الصوت",
+      "failedToCaptureFile": "تعذّر التقاط الملف",
+      "fileCaptureFailed": "تعذّر التقاط الملف",
+      "failedToCaptureAudio": "تعذّر التقاط الصوت",
+      "failedToCaptureVoice": "تعذّر التقاط الصوت",
+      "failedToLoadInboxPreferences": "تعذّر تحميل تفضيلات صندوق الوارد",
+      "failedToUpdateInboxPreferences": "تعذّر تحديث تفضيلات صندوق الوارد"
     },
     "toasts": {
-      "inboxRefreshed": "تم تحديث البريد الوارد"
+      "inboxRefreshed": "تم تحديث صندوق الوارد"
     }
   },
-  "convert": {
-    "addEvent": "إضافة حدث",
-    "addTask": "إضافة مهمة",
-    "allDay": "طوال اليوم",
-    "chooseType": "تحويل إلى",
-    "create": "إنشاء",
-    "date": "التاريخ",
-    "dueDate": "تاريخ الاستحقاق",
-    "dueTime": "وقت الاستحقاق",
-    "end": "النهاية",
-    "event": "حدث",
-    "failed": "تعذّر التحويل: {error}",
-    "inboxProject": "البريد الوارد",
-    "location": "الموقع",
-    "note": "ملاحظة",
-    "priority": "الأولوية",
-    "priorityHigh": "عالية",
-    "priorityLow": "منخفضة",
-    "priorityMedium": "متوسطة",
-    "priorityNone": "بلا",
-    "priorityUrgent": "عاجلة",
-    "project": "مشروع",
-    "remindAt": "ذكّرني في",
-    "reminder": "تذكير",
-    "setReminder": "تعيين تذكير",
-    "start": "البداية",
-    "success": "تم التحويل إلى {target}",
-    "task": "مهمة",
-    "time": "الوقت",
-    "title": "تحويل"
-  },
   "reviewNudge": {
-    "action": "فتح البريد الوارد",
+    "title": "{count, plural, zero {حان وقت مراجعة # عنصر} one {حان وقت مراجعة عنصر واحد} two {حان وقت مراجعة عنصرين} few {حان وقت مراجعة # عناصر} many {حان وقت مراجعة # عنصرًا} other {حان وقت مراجعة # عنصر}}",
     "description": "راجع ما التقطته اليوم في جلسة واحدة هادئة.",
-    "title": "{count, plural, zero {حان وقت مراجعة # عنصر} one {حان وقت مراجعة عنصر واحد} two {حان وقت مراجعة عنصرين} few {حان وقت مراجعة # عناصر} many {حان وقت مراجعة # عنصراً} other {حان وقت مراجعة # عنصر}}"
+    "action": "فتح صندوق الوارد"
+  },
+  "snoozeDue": {
+    "notificationTitle": "{count, plural, zero {# عنصر مؤجل} one {عنصر مؤجل واحد} two {عنصران مؤجلان} few {# عناصر مؤجلة} many {# عنصرًا مؤجلًا} other {# عنصر مؤجل}}",
+    "notificationBody": "{count, plural, zero {عناصرك المؤجلة جاهزة} one {عنصرك المؤجل جاهز للمراجعة} two {عنصراك المؤجلان جاهزان} few {عناصرك المؤجلة جاهزة} many {عناصرك المؤجلة جاهزة} other {عناصرك المؤجلة جاهزة}}",
+    "toast": "{count, plural, =1 {انتهى تأجيل «{itemTitle}»} zero {انتهى تأجيل # عنصر} one {انتهى تأجيل عنصر واحد} two {انتهى تأجيل عنصرين} few {انتهى تأجيل # عناصر} many {انتهى تأجيل # عنصرًا} other {انتهى تأجيل # عنصر}}"
   }
 }

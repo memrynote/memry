@@ -1,8 +1,8 @@
 {
   "title": "Щоденник",
   "section": {
-    "aiConnections": "Підключення ШІ",
-    "todaysNotes": "Сьогоднішні замітки",
+    "aiConnections": "ШІ-зв’язки",
+    "todaysNotes": "Нотатки за сьогодні",
     "todaysSchedule": "Сьогоднішній розклад",
     "todaysTasks": "Сьогоднішні завдання",
     "tasks": "Завдання",
@@ -12,30 +12,31 @@
     "versionHistory": "Історія версій",
     "export": "Експорт",
     "fullWidth": "Повна ширина",
-    "journalSettings": "Налаштування журналу",
+    "journalSettings": "Налаштування щоденника",
     "fullMode": "Повний режим",
     "compactMode": "Компактний режим",
     "createNote": "Створити нотатку",
     "createNewNote": "Створити нову нотатку",
     "showLess": "Показати менше",
-    "showMoreNotes": "Показати ще одну нотатку {count}",
-    "showMoreNotes_plural": "Показати ще нотатки {count}",
+    "showMoreNotes": "Показати ще {count} нотатку",
+    "showMoreNotes_plural": "Показати ще {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}}",
     "showFewerNotes": "Показати менше нотаток",
-    "startBlank": "Почати з порожнього",
+    "startBlank": "Почати з порожньої сторінки",
     "changeTemplate": "Змінити шаблон",
     "dismissIndicator": "Закрити індикатор",
-    "refreshConnections": "Оновити з'єднання",
-    "reloadJournal": "Перезавантажити журнал",
+    "refreshConnections": "Оновити зв’язки",
+    "reloadJournal": "Перезавантажити щоденник",
     "goToToday": "Перейти до сьогодні",
     "copyUnsavedContent": "Скопіювати незбережений вміст у буфер обміну",
-    "addBookmark": "Додати закладку",
-    "removeBookmark": "Видалити закладку"
+    "addBookmark": "Додати в закладки",
+    "removeBookmark": "Прибрати із закладок",
+    "deleteEntry": "Видалити запис"
   },
   "editor": {
     "placeholder": {
-      "future": "Що ви плануєте...",
-      "today": "Про що сьогодні думаєте...",
-      "past": "Озирнутись на цей день..."
+      "future": "Що ви плануєте…",
+      "today": "Про що сьогодні думаєте…",
+      "past": "Поміркуйте про цей день…"
     },
     "upload": {
       "failed": "Не вдалося завантажити зображення"
@@ -44,7 +45,7 @@
   "date": {
     "relative": {
       "today": "Сьогодні",
-      "yesterday": "Вчора",
+      "yesterday": "Учора",
       "tomorrow": "Завтра",
       "future": "Майбутнє"
     },
@@ -85,7 +86,7 @@
       "february": "Лют",
       "march": "Бер",
       "april": "Кві",
-      "may": "Травень",
+      "may": "Тра",
       "june": "Чер",
       "july": "Лип",
       "august": "Сер",
@@ -98,7 +99,7 @@
       "morning": "Доброго ранку",
       "afternoon": "Доброго дня",
       "evening": "Доброго вечора",
-      "night": "На добраніч"
+      "night": "Доброї ночі"
     },
     "allDay": "Цілий день"
   },
@@ -109,121 +110,126 @@
     "nextMonth": "Наступний місяць",
     "previousYear": "Попередній рік",
     "nextYear": "Наступний рік",
-    "journalBack": "Назад до журналу",
-    "journalNavigation": "Навігація журналом",
-    "dateNavigation": "Навігація за датою журналу",
-    "goToYearView": "Перейти до перегляду року"
+    "journalBack": "Назад до щоденника",
+    "journalNavigation": "Навігація щоденником",
+    "dateNavigation": "Навігація датами щоденника",
+    "goToYearView": "Перейти до вигляду року"
   },
   "aria": {
-    "moreOptions": "Більше опцій",
-    "documentStatistics": "Статистика документу",
+    "moreOptions": "Інші параметри",
+    "documentStatistics": "Статистика документа",
     "dayContext": "Контекст дня: завдання та розклад",
     "scheduleEvents": "Події розкладу",
     "tasks": "Завдання",
-    "notesCreatedToday": "{count} нотаток створено сьогодні"
+    "notesCreatedToday": "Нотаток створено сьогодні: {count}"
   },
   "empty": {
-    "noEntry": "Записів немає",
+    "noEntry": "Запису немає",
     "noDaysInMonth": "У цьому місяці немає днів",
     "noEventsScheduled": "Немає запланованих подій",
     "noEventsScheduledToday": "Сьогодні немає запланованих подій",
     "noEventsWereScheduled": "Подій не було заплановано",
-    "noTasksDue": "Немає завдань до виконання",
-    "noTasksDueToday": "Сьогодні немає завдань до виконання",
-    "noTasksWereDue": "Завдань не було до виконання",
+    "noTasksDue": "Немає завдань із терміном",
+    "noTasksDueToday": "Немає завдань із терміном на сьогодні",
+    "noTasksWereDue": "Не було завдань із терміном",
     "noNotesToday": "Сьогодні нотатки не створювались",
-    "startDocumenting": "Почніть документувати свої думки та ідеї"
+    "startDocumenting": "Почніть записувати свої думки та ідеї"
   },
   "ai": {
-    "loading": "Аналіз вашого запису...",
+    "loading": "Аналіз запису…",
     "empty": {
-      "willAppear": "Ваші зв'язки з'являться тут",
-      "noneYet": "Зв'язки ще не знайдені",
-      "moreJournaling": "Якщо ви будете вести журнал більше, ШІ знайде пов'язані записи",
-      "keepWriting": "Продовжуйте писати, щоб знайти пов'язані записи"
+      "willAppear": "Тут з’являться зв’язки",
+      "noneYet": "Зв’язків ще не знайдено",
+      "moreJournaling": "Що більше записів у щоденнику, то більше пов’язаних записів знайде ШІ",
+      "keepWriting": "Продовжуйте писати, щоб знайти пов’язані записи"
     },
     "error": {
-      "loadFailed": "Не вдалося завантажити зв'язки"
+      "loadFailed": "Не вдалося завантажити зв’язки"
     },
-    "connectionAria": "Зв'язок з {label}, збіг {scorePercent}%"
+    "connectionAria": "Зв’язок із {label}, збіг {scorePercent}%"
   },
   "count": {
     "note": "нотатка",
     "day": "день",
-    "days": "дні",
+    "days": "дн.",
     "event": "подія",
     "events": "події",
     "task": "завдання",
     "todo": "до виконання",
-    "moreConnections": "+ більше зв'язків {count}",
-    "moreConnections_plural": "+ більше зв'язків {count}",
-    "moreNotes": "+ більше нотатки {count}",
-    "moreNotes_plural": "+ більше нотаток {count}",
-    "daysWithEntries": "дні з записами",
-    "charactersWritten": "написані символи",
-    "words": "слова {count}",
-    "characters": "символи {count}",
-    "completed": "завершено {count}",
-    "overdue": "просрочено {count}"
+    "moreConnections": "+ ще {count} зв’язок",
+    "moreConnections_plural": "+ ще {count, plural, one {# зв’язок} few {# зв’язки} many {# зв’язків} other {# зв’язку}}",
+    "moreNotes": "+ ще {count} нотатка",
+    "moreNotes_plural": "+ ще {count, plural, one {# нотатка} few {# нотатки} many {# нотаток} other {# нотатки}}",
+    "daysWithEntries": "днів із записами",
+    "charactersWritten": "написано символів",
+    "words": "слів: {count}",
+    "characters": "символів: {count}",
+    "completed": "виконано: {count}",
+    "overdue": "Прострочено: {count}"
   },
   "stats": {
     "wordCount": "Кількість слів",
     "characterCount": "Кількість символів",
-    "readingTime": "Оцінений час читання",
+    "readingTime": "Орієнтовний час читання",
     "lastModified": "Остання зміна",
     "lessThanOneMinute": "< 1 хв",
-    "minutes": "хв {minutes}",
-    "read": "прочитано {readingTime}",
+    "minutes": "{minutes} хв",
+    "read": "{readingTime} читання",
     "modified": "Змінено {date}"
   },
   "task": {
-    "completed": "Завершено",
-    "notCompleted": "Не завершено",
-    "priority": "пріоритет {priority}",
-    "overdue": "просрочено",
-    "markComplete": "Позначити «{title}» як завершене",
-    "markNotComplete": "Позначити «{title}» як не завершене"
+    "completed": "Виконано",
+    "notCompleted": "Не виконано",
+    "priority": "Пріоритет: {priority}",
+    "overdue": "прострочено",
+    "markComplete": "Позначити «{title}» як виконане",
+    "markNotComplete": "Позначити «{title}» як невиконане"
   },
   "template": {
-    "using": "Використання «{templateName}»"
+    "using": "Використовується шаблон «{templateName}»"
   },
   "reminder": {
     "hasReminders": "Є нагадування",
     "setToRevisit": "Встановити нагадування для повторного перегляду",
     "tooltip": "Нагадування: {date}",
-    "tooltipMore": "Нагадування: {date} (+{count} більше)",
+    "tooltipMore": "Нагадування: {date} (і ще {count})",
     "success": {
-      "set": "Нагадування встановлено для цього запису в журналі",
+      "set": "Нагадування для цього запису щоденника встановлено",
       "deleted": "Нагадування видалено",
-      "dismissed": "Нагадування відхилено",
-      "snoozed": "Нагадування відкладено"
+      "dismissed": "Нагадування закрито",
+      "snoozed": "Нагадування відкладено",
+      "updated": "Нагадування оновлено"
     },
     "error": {
       "set": "Не вдалося встановити нагадування",
       "delete": "Не вдалося видалити нагадування",
-      "dismiss": "Не вдалося відхилити нагадування",
-      "snooze": "Не вдалося відкласти нагадування"
+      "dismiss": "Не вдалося закрити нагадування",
+      "snooze": "Не вдалося відкласти нагадування",
+      "update": "Не вдалося оновити нагадування"
     }
   },
   "toast": {
-    "unsavedRetry": "Ваш вміст все ще в пам'яті. Натисніть, щоб повторити збереження.",
-    "noteNotFound": "Нотатка \"{target}\" не знайдена",
+    "unsavedRetry": "Вміст досі зберігається в пам’яті. Натисніть, щоб спробувати зберегти ще раз.",
+    "noteNotFound": "Нотатку «{target}» не знайдено",
+    "createLinkedFailed": "Не вдалося створити пов’язану нотатку",
     "fileNotFound": "Файл не знайдено: {target}",
-    "openLinkedItemFailed": "Не вдалося відкрити пов'язаний елемент",
-    "errorPrefix": "Помилка:"
+    "openLinkedItemFailed": "Не вдалося відкрити пов’язаний елемент",
+    "errorPrefix": "Помилка:",
+    "deleteFailed": "Не вдалося видалити запис щоденника",
+    "bookmarkFailed": "Не вдалося оновити закладку"
   },
   "export": {
-    "noteTitle": "Журнал - {month} {day}, {year}"
+    "noteTitle": "Щоденник — {month} {day}, {year}"
   },
   "note": {
-    "generatedTitle": "Нотатка - {date}",
+    "generatedTitle": "Нотатка — {date}",
     "openAria": "Відкрити {title}, створено о {time}"
   },
   "error": {
-    "title": "Помилка журналу",
-    "description": "Журнал зазнав помилки для {date}. Ваші останні зміни могли не зберегтись.",
-    "descriptionNoDate": "Журнал зазнав помилки. Ваші останні зміни могли не зберегтись.",
-    "unsavedContent": "Виявлено незбережений вміст ({length} символів)"
+    "title": "Помилка щоденника",
+    "description": "Сталася помилка в записі щоденника за {date}. Останні зміни могли не зберегтися.",
+    "descriptionNoDate": "У щоденнику сталася помилка. Останні зміни могли не зберегтися.",
+    "unsavedContent": "Виявлено незбережений вміст (символів: {length})"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "Не вдалося зберегти запис у журналі",
-      "failedToLoadJournalSettings": "Не вдалося завантажити налаштування журналу",
+      "failedToSaveJournalEntry": "Не вдалося зберегти запис щоденника",
+      "failedToLoadJournalSettings": "Не вдалося завантажити налаштування щоденника",
       "failedToUpdateSettings": "Не вдалося оновити налаштування"
     }
+  },
+  "deleteConfirm": {
+    "title": "Видалити запис щоденника",
+    "description": "Ви впевнені, що хочете видалити «{title}»? Цю дію неможливо скасувати."
   }
 }

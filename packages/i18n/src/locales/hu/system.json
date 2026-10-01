@@ -1,16 +1,16 @@
 {
   "dialog": {
     "vault": {
-      "title": "Válassza ki a Vault mappát",
-      "button": "Válassza a Vault lehetőséget"
+      "title": "Széfmappa kiválasztása",
+      "button": "Széf kiválasztása"
     },
     "exportPdf": {
       "title": "Exportálás PDF-ként",
-      "filterName": "PDF dokumentum"
+      "filterName": "PDF-dokumentum"
     },
     "exportHtml": {
       "title": "Exportálás HTML-ként",
-      "filterName": "HTML dokumentum"
+      "filterName": "HTML-dokumentum"
     },
     "import": {
       "filterSupported": "Támogatott fájlok",
@@ -19,53 +19,54 @@
     "exportCancelled": "Exportálás megszakítva",
     "update": {
       "availableTitle": "Frissítés elérhető",
-      "availableMessage": "memrynote Az {version} elérhető.",
-      "availableDetailFallback": "Töltse le most a frissítést?",
+      "availableMessage": "A memrynote {version} elérhető.",
+      "availableDetailFallback": "Letölti most a frissítést?",
       "buttonDownload": "Letöltés",
       "buttonLater": "Később",
-      "readyTitle": "Frissítés kész",
-      "readyMessage": "memrynote Az {version} letöltve.",
-      "readyDetailFallback": "A frissítés telepítésének befejezéséhez indítsa újra az memrynote programot.",
-      "buttonRestartNow": "Indítsa újra most",
+      "readyTitle": "Frissítés telepítésre kész",
+      "readyMessage": "A memrynote {version} letöltődött.",
+      "readyDetailFallback": "A frissítés telepítésének befejezéséhez indítsa újra a memrynote-ot.",
+      "buttonRestartNow": "Újraindítás most",
       "releaseNotesLabel": "Kiadási megjegyzések:"
     },
     "pair": {
+      "title": "Böngészőbővítmény párosítása",
+      "message": "Engedélyezi, hogy a Memry böngészőbővítmény rögzített elemeket küldjön ennek az alkalmazásnak?",
       "buttonAllow": "Engedélyezés",
       "buttonDeny": "Elutasítás",
-      "buttonPair": "Párosítás",
-      "message": "Engedélyezed, hogy a Memry böngészőbővítmény rögzítéseket küldjön ennek az alkalmazásnak?",
-      "title": "Böngészőbővítmény párosítása"
+      "buttonPair": "Párosítás"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "Megjegyzés emlékeztető",
-      "journal": "Napló emlékeztető",
-      "highlight": "Emlékeztető kiemelése",
-      "fallback": "Emlékeztető esedékes",
-      "default": "Emlékeztető",
-      "task": "Feladat-emlékeztető"
-    },
     "inboxReview": {
+      "title": "Ideje átnézni a Beérkezőket",
       "body": "{count, plural, one {# elem} other {# elem}} vár átnézésre.",
-      "testBody": "Ez egy teszt — így fognak kinézni a napi átnézési emlékeztetőid.",
-      "title": "Ideje átnézni a Beérkezőket"
+      "testBody": "Ez egy teszt – így fognak kinézni a napi átnézési emlékeztetői."
+    },
+    "reminder": {
+      "note": "Jegyzetemlékeztető",
+      "journal": "Naplóemlékeztető",
+      "highlight": "Emlékeztető kiemeléshez",
+      "task": "Feladatemlékeztető",
+      "fallback": "Emlékeztető esedékes",
+      "default": "Emlékeztető"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "Az emlékeztető időpontjának a jövőben kell lennie",
     "definitionNotFound": "A definíció nem található",
-    "noteNotFound": "Megjegyzés nem található",
-    "updateFailed": "A frissítés nem sikerült"
+    "noteNotFound": "A jegyzet nem található",
+    "updateFailed": "A frissítés sikertelen",
+    "updateReadOnlyVolume": "A frissítések nem telepíthetők, amíg a memrynote erről a helyről fut. Helyezze át a memrynote-ot az Alkalmazások mappába, és nyissa meg újra."
   },
   "startup": {
-    "failed": {
-      "body": "Ez akkor fordulhat elő, ha nagyon kevés a szabad lemezterület, vagy régebbi a grafikus illesztőprogram. Szabadíts fel egy kis lemezterületet, majd nyisd meg újra a MemryNote-ot. Ha továbbra is előfordul, az újratelepítés általában megoldja.",
-      "title": "A MemryNote nem tudott elindulni"
-    },
     "installingUpdate": {
-      "subtitle": "A MemryNote automatikusan újraindul.",
-      "title": "Frissítés telepítése…"
+      "title": "Frissítés telepítése…",
+      "subtitle": "A MemryNote automatikusan újraindul."
+    },
+    "failed": {
+      "title": "A MemryNote nem tudott elindulni",
+      "body": "Ez akkor fordulhat elő, ha nagyon kevés a szabad lemezterület, vagy régebbi a grafikus illesztőprogram. Szabadítson fel egy kis lemezterületet, majd nyissa meg újra a MemryNote-ot. Ha továbbra is előfordul, az újratelepítés általában megoldja."
     }
   }
 }

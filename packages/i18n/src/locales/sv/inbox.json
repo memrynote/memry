@@ -2,34 +2,32 @@
   "view": {
     "tabs": {
       "inbox": "Inkorg",
-      "archived": "Arkiverad",
+      "archived": "Arkiverade",
       "insights": "Insikter",
       "ariaLabel": "Val av inkorgsvy"
     },
-    "triageButton": "Triage",
-    "processInboxTitle": "Bearbeta inkorg (Cmd+P)",
     "itemCaptured": "Objekt fångat",
     "searchArchivedTitle": "Sök arkiverade objekt",
-    "searchPlaceholder": "Sök...",
+    "searchPlaceholder": "Sök…",
     "archivedItemsAria": "Arkiverade objekt",
     "snoozed": {
-      "show": "Visa avvaktande objekt",
-      "showWithCount": "Visa avvaktande objekt ({count})",
-      "hide": "Dölj avvaktande objekt"
+      "show": "Visa uppskjutna objekt",
+      "showWithCount": "Visa uppskjutna objekt ({count})",
+      "hide": "Dölj uppskjutna objekt"
+    },
+    "density": {
+      "toComfortable": "Bekväm vy",
+      "toCompact": "Kompakt vy"
     },
     "filter": {
-      "button": "Filter",
+      "button": "Filtrera",
       "byType": "Filtrera efter typ",
-      "active": "{count, plural, one {Filtrering efter #-typ} other {Filtrering efter #-typer}}",
+      "active": "{count, plural, one {Filtrerar efter # typ} other {Filtrerar efter # typer}}",
       "clearAll": "Rensa allt"
     },
     "jobs": {
       "running": "{count, plural, one {# bakgrundsjobb körs} other {# bakgrundsjobb körs}}",
       "failed": "{count} misslyckades"
-    },
-    "density": {
-      "toComfortable": "Bekväm vy",
-      "toCompact": "Kompakt vy"
     }
   },
   "type": {
@@ -51,19 +49,19 @@
   },
   "empty": {
     "successAria": "Klart, inkorgen är tom",
-    "title": "Inkorgen Noll",
-    "body": "Allt är bearbetat. Fånga något nytt med inmatningen ovan, eller klistra in en länk för att komma igång.",
-    "filedThisWeek": "{count, plural, one {# arkiverad denna vecka} other {# arkiverad denna vecka}}",
-    "dayStreak": "{count, plural, one {# dagliga streak} other {# dagliga streak}}",
+    "title": "Tom inkorg",
+    "body": "Allt är genomgånget. Fånga något nytt i fältet ovan, eller klistra in en länk för att komma igång.",
+    "filedThisWeek": "{count, plural, one {# insorterad den här veckan} other {# insorterade den här veckan}}",
+    "dayStreak": "{count, plural, one {# dag i rad} other {# dagar i rad}}",
     "tipPrefix": "Tips: använd",
     "tipSuffix": "för att snabbt fånga från urklipp",
     "archivedNone": "Inga arkiverade objekt",
     "archivedNoMatches": "Inga matchande arkiverade objekt",
     "noItemsYet": "Inga objekt ännu",
-    "noItemsFiled": "Inga objekt arkiverade ännu",
+    "noItemsFiled": "Inga objekt insorterade än",
     "noFolders": "Inga mappar hittades",
     "noNotes": "Inga anteckningar hittades",
-    "allMatchesLinked": "Alla matchningar redan länkade"
+    "allMatchesLinked": "Alla träffar är redan länkade"
   },
   "list": {
     "ariaLabel": "Inkorgsobjekt",
@@ -72,354 +70,361 @@
       "yesterday": "Igår",
       "older": "Äldre"
     },
-    "selectItem": "Välj {title}",
+    "selectItem": "Markera {title}",
     "itemAria": "{type}: {title}",
     "untitled": "Namnlös",
-    "untitledItem": "Objekt utan titel",
-    "transcribing": "Transkriberar...",
+    "untitledItem": "Namnlöst objekt",
+    "transcribing": "Transkriberar…",
     "transcriptionFailed": "Transkribering misslyckades",
     "retryTranscription": "Försök igen",
     "pageCount": "{count, plural, one {# sida} other {# sidor}}",
-    "snoozedUntilShort": "utsatt tills {date}"
+    "snoozedUntilShort": "uppskjuten till {date}",
+    "rename": "Byt namn",
+    "renameLabel": "Byt namn på objekt"
   },
   "loading": {
-    "inbox": "Laddar inkorg...",
-    "failed": "Misslyckades att ladda inkorg",
+    "inbox": "Läser in inkorgen…",
+    "failed": "Det gick inte att läsa in inkorgen",
     "tryAgain": "Försök igen",
-    "capturingImage": "Tar bilder...",
+    "capturingImage": "Fångar bild…",
     "dropImageTitle": "Släpp bild för att fånga",
     "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
-    "unsupportedImageType": "Ej stödd bildtyp: {type}",
-    "imageTooLarge": "Bild för stor (max 50MB)"
+    "unsupportedImageType": "Bildtypen stöds inte: {type}",
+    "imageTooLarge": "Bilden är för stor (max 50 MB)"
   },
   "toast": {
-    "failedArchiveItem": "Misslyckades med att arkivera objekt",
-    "failedArchiveItems": "Misslyckades med att arkivera objekt",
-    "failedFile": "Misslyckades med att arkivera",
-    "failedFileItem": "Misslyckades med att arkivera objekt",
-    "failedFileItems": "Misslyckades med att arkivera objekt",
-    "failedSnooze": "Misslyckades med att senarelägga",
-    "failedSnoozeItem": "Misslyckades med att senarelägga objekt",
-    "failedApplyTags": "Misslyckades med att tillämpa etiketter",
-    "failedCaptureImage": "Misslyckades med att fånga bild",
+    "failedArchiveItem": "Det gick inte att arkivera objektet",
+    "failedArchiveItems": "Det gick inte att arkivera objekten",
+    "failedFile": "Det gick inte att sortera in",
+    "failedFileItem": "Det gick inte att sortera in objektet",
+    "failedFileItems": "Det gick inte att sortera in objekten",
+    "failedSnooze": "Det gick inte att skjuta upp",
+    "failedSnoozeItem": "Det gick inte att skjuta upp objektet",
+    "failedApplyTags": "Det gick inte att lägga till taggar",
+    "failedCaptureImage": "Det gick inte att fånga bilden",
     "linkedToNote": "Länkat till anteckning",
     "linkedToNotes": "Länkat till {count} anteckningar",
-    "filedTo": "Arkiverad till {folder}",
-    "filedItemsTo": "Arkiverade {count} objekt till {folder}",
-    "filedPartial": "Arkiverade {processed} av {total} objekt",
-    "appliedTags": "{tagCount, plural, one {Tillämpade # etikett} other {Tillämpade # etiketter}} till {itemCount, plural, one {# objekt} other {# objekt}}",
-    "archivedItems": "{count, plural, one {Arkiverad #-post} other {Arkiverade #-poster}}",
-    "snoozedUntil": "Snoozad till {time}",
-    "snoozedItemsUntil": "{count, plural, one {Snoozad #-post till {time}} other {Snoozade #-poster till {time}}}"
-  },
-  "triage": {
-    "modeTitle": "Triagemodus",
-    "exitHint": "Esc för att avsluta",
-    "exitAria": "Avsluta triagemodus",
-    "position": "{current} av {total}",
-    "action": {
-      "discard": "Kassera",
-      "archive": "Arkiv",
-      "open": "Öppna",
-      "toTask": "Till uppgift",
-      "toNote": "Till anteckning",
-      "file": "Fil",
-      "snooze": "Snooza",
-      "cancel": "Avbryt"
-    },
-    "snoozeUntil": "Snooza till...",
-    "complete": {
-      "title": "Inkorgen Noll",
-      "processed": "{count, plural, one {#-post bearbetad} other {#-poster bearbetade}}",
-      "streak": "serie",
-      "streakCount": "{count}-serie",
-      "dayProcessingStreak": "{count, plural, one {# dagars bearbetningsserie} other {# dagars bearbetningsserie}}",
-      "back": "Tillbaka till inkorgen",
-      "motivation0": "Ditt framtida jag tackar dig.",
-      "motivation1": "Allt på sin plats.",
-      "motivation2": "Rensa inkorgen, rensa sinnet.",
-      "motivation3": "Besluts skuld: betald i sin helhet.",
-      "motivation4": "Det kändes bra, eller hur?"
-    }
+    "embedFellBackToLink": "Bilden var för stor för att bäddas in – den sorterades in som en länkad fil i stället",
+    "filedTo": "Insorterad i {folder}",
+    "filedItemsTo": "{count} objekt insorterade i {folder}",
+    "filedPartial": "{processed} av {total} objekt insorterade",
+    "appliedTags": "{tagCount, plural, one {# tagg tillagd} other {# taggar tillagda}} på {itemCount, plural, one {# objekt} other {# objekt}}",
+    "archivedItems": "{count, plural, one {# objekt arkiverat} other {# objekt arkiverade}}",
+    "snoozedUntil": "Uppskjuten till {time}",
+    "snoozedItemsUntil": "{count, plural, one {# objekt uppskjutet till {time}} other {# objekt uppskjutna till {time}}}",
+    "restored": "”{title}” återställdes"
   },
   "bulk": {
-    "selected": "{count} markerad",
+    "selected": "{count} markerade",
     "deselectAll": "Avmarkera alla",
-    "ariaLabel": "Massåtgärder för markerade {count}",
-    "file": "Fil",
+    "ariaLabel": "Massåtgärder för {count} markerade objekt",
+    "file": "Sortera in",
     "tag": "Tagga",
-    "snooze": "Snooza",
-    "archive": "Arkiv",
+    "snooze": "Skjut upp",
+    "archive": "Arkivera",
     "add": "Lägg till",
     "dismissSuggestion": "Avvisa förslag",
     "hint": {
-      "file": "fil",
+      "file": "sortera in",
       "tag": "tagga",
-      "snooze": "snooza",
+      "snooze": "skjut upp",
       "archive": "arkivera",
       "deselect": "avmarkera"
     },
     "archiveDialog": {
-      "title": "{count, plural, one {Arkivera #-objekt?} other {Arkivera #-objekt?}}",
-      "description": "Dessa objekt kommer att arkiveras. Du kan se arkiverade objekt senare.",
-      "confirm": "{count, plural, one {Arkivera #-objekt} other {Arkivera #-objekt}}"
+      "title": "{count, plural, one {Arkivera # objekt?} other {Arkivera # objekt?}}",
+      "description": "De här objekten arkiveras. Du kan se arkiverade objekt senare.",
+      "confirm": "{count, plural, one {Arkivera # objekt} other {Arkivera # objekt}}"
     },
     "filePanel": {
-      "title": "{count, plural, one {Filhantera #-objekt} other {Filhantera #-objekt}}",
-      "itemsToFile": "Objekt att arkivera",
-      "multipleNoteLinksUnavailable": "Observera: Länkar till andra anteckningar kan inte läggas till när flera objekt arkiveras.",
-      "filing": "Arkiverar...",
-      "submit": "{count, plural, one {Filhantera #-objekt} other {Fil # objekt}}",
-      "macHint": "⌘⏎ för att arkivera · Esc för att stänga",
-      "ctrlHint": "Ctrl+Enter för att arkivera · Esc för att stänga"
+      "title": "{count, plural, one {Sortera in # objekt} other {Sortera in # objekt}}",
+      "itemsToFile": "Objekt att sortera in",
+      "multipleNoteLinksUnavailable": "Obs! Länkar till andra anteckningar kan inte läggas till när flera objekt sorteras in samtidigt.",
+      "filing": "Sorterar in…",
+      "submit": "{count, plural, one {Sortera in # objekt} other {Sortera in # objekt}}",
+      "macHint": "⌘⏎ för att sortera in · Esc för att stänga",
+      "ctrlHint": "Ctrl+Enter för att sortera in · Esc för att stänga"
     },
     "tagPopover": {
       "title": "{count, plural, one {Tagga # objekt} other {Tagga # objekt}}",
-      "placeholder": "Skriv för att söka taggar...",
-      "applying": "Tillämpas...",
-      "apply": "{count, plural, one {Tillämpa på # objekt} other {Tillämpa på # objekt}}"
+      "placeholder": "Skriv för att söka taggar…",
+      "applying": "Lägger till…",
+      "apply": "{count, plural, one {Lägg till på # objekt} other {Lägg till på # objekt}}"
     }
   },
   "quickActions": {
     "groupAria": "Snabbåtgärder",
     "archiveItem": "Arkivera objekt",
-    "archive": "Arkiv"
+    "archive": "Arkivera"
   },
   "detail": {
     "ariaLabel": "Objektinformation",
+    "resize": "Ändra storlek på panel",
     "closePanel": "Stäng panel",
-    "resizeFiling": "Ändra storlek på arkivsektion",
+    "resizeFiling": "Ändra storlek på insorteringspanelen",
     "restore": "Återställ",
     "restoreToInbox": "Återställ till inkorgen",
-    "delete": "Ta bort",
+    "delete": "Radera",
     "deletePermanently": "Radera permanent",
-    "archive": "Arkiv",
-    "file": "Fil",
-    "fileToFolder": "Arkivera i {folder}",
-    "keyboardHint": "{modifier}⏎ arkivera · 1-5 mapp · Esc stäng",
-    "voiceTitlePlaceholder": "Namnge detta röstmeddelande...",
-    "fileTo": "Arkivera till",
+    "archive": "Arkivera",
+    "file": "Sortera in",
+    "fileToFolder": "Sortera in i {folder}",
+    "keyboardHint": "{modifier}⏎ sortera in · 1–5 mapp · Esc stäng",
+    "voiceTitlePlaceholder": "Namnge det här röstmemot…",
+    "titlePlaceholder": "Namnge det här objektet…",
+    "fileTo": "Sortera in i",
     "ai": "AI",
-    "selectFolder": "Välj mapp",
-    "searchOrCreateFolder": "Sök eller skapa med /...",
-    "suggested": "Föreslaget",
-    "notesRoot": "Anteckningar",
-    "notesRootLabel": "Anteckningar (rot)",
-    "createFolder": "Skapa \"{name}\"",
-    "addTags": "Lägg till taggar...",
-    "linkToNote": "Länk till anteckning",
-    "linkNotesPlaceholder": "Länk anteckningar...",
-    "searchNotesAria": "Sök anteckningar att länka",
-    "linkedNotesAria": "Länkade anteckningar",
-    "removeLinkTo": "Ta bort länk till {title}",
-    "notePlaceholder": "Skriv din anteckning...",
-    "textPlaceholder": "Redigera din inspelade text...",
-    "linkANote": "Länka en anteckning",
     "match": {
-      "likely": "Trolig träff",
       "strong": "Stark träff",
+      "likely": "Trolig träff",
       "weak": "Svag träff"
     },
-    "resize": "Ändra storlek på panel",
-    "suggestedCount": "{count} föreslagna"
+    "selectFolder": "Välj mapp",
+    "searchOrCreateFolder": "Sök eller skapa med /…",
+    "suggested": "Förslag",
+    "notesRoot": "Anteckningar",
+    "notesRootLabel": "Anteckningar (rot)",
+    "createFolder": "Skapa ”{name}”",
+    "addTags": "Lägg till taggar…",
+    "linkToNote": "Länka till anteckning",
+    "linkANote": "Länka en anteckning",
+    "suggestedCount": "{count} föreslagna",
+    "linkNotesPlaceholder": "Länka anteckningar…",
+    "linkOrCreateNotePlaceholder": "Hitta eller skapa en anteckning…",
+    "createNote": "Skapa ”{title}”",
+    "pendingNote": "Ny anteckning",
+    "searchNotesAria": "Sök anteckningar att länka eller skapa",
+    "imageFilingModeLabel": "Bilden hamnar som",
+    "imageFilingModeEmbed": "Inbäddad i anteckningen",
+    "imageFilingModeLink": "Fil i sidofältet",
+    "imageFilingModeRemember": "Fråga inte igen",
+    "linkedNotesAria": "Länkade anteckningar",
+    "removeLinkTo": "Ta bort länk till {title}",
+    "notePlaceholder": "Skriv din anteckning…",
+    "textPlaceholder": "Redigera texten du fångade…"
+  },
+  "convert": {
+    "title": "Konvertera",
+    "chooseType": "Konvertera till",
+    "note": "Anteckning",
+    "task": "Uppgift",
+    "event": "Händelse",
+    "reminder": "Påminnelse",
+    "create": "Skapa",
+    "addTask": "Lägg till uppgift",
+    "addEvent": "Lägg till händelse",
+    "setReminder": "Ställ in påminnelse",
+    "project": "Projekt",
+    "inboxProject": "Inkorg",
+    "dueDate": "Förfallodatum",
+    "dueTime": "Förfallotid",
+    "priority": "Prioritet",
+    "priorityNone": "Ingen",
+    "priorityLow": "Låg",
+    "priorityMedium": "Medel",
+    "priorityHigh": "Hög",
+    "priorityUrgent": "Brådskande",
+    "date": "Datum",
+    "start": "Start",
+    "end": "Slut",
+    "allDay": "Heldag",
+    "location": "Plats",
+    "remindAt": "Påminn mig kl.",
+    "time": "Tid",
+    "success": "Konverterad till {target}",
+    "failed": "Det gick inte att konvertera: {error}"
   },
   "content": {
     "capturedAt": "Fångad {date}",
-    "todayAt": "idag kl {time}",
-    "yesterdayAt": "igår kl {time}",
-    "dateAt": "{date} vid {time}",
+    "todayAt": "idag kl. {time}",
+    "yesterdayAt": "igår kl. {time}",
+    "dateAt": "{date} kl. {time}",
     "words": "{count, plural, one {# ord} other {# ord}}",
-    "duration": "Varaktighet: {duration}",
+    "duration": "Längd: {duration}",
     "dimensions": "Dimensioner",
     "format": "Format",
     "size": "Storlek",
-    "voiceMemo": "Röstmeddelande",
-    "play": "Spela",
-    "pause": "Paus",
+    "voiceMemo": "Röstmemo",
+    "play": "Spela upp",
+    "pause": "Pausa",
     "audioPosition": "Ljudposition",
     "transcription": "Transkription",
-    "processing": "bearbetning",
+    "processing": "bearbetas",
     "pending": "väntar",
     "failed": "misslyckades",
     "copyTranscription": "Kopiera transkription",
-    "transcribingAudio": "Transkriberar ljud...",
-    "awaitingTranscription": "Väntar på transkription...",
+    "transcribingAudio": "Transkriberar ljud…",
+    "awaitingTranscription": "Väntar på transkription…",
     "noTranscription": "Ingen transkription tillgänglig",
-    "failedPlayAudio": "Misslyckades med att spela upp ljud",
-    "failedLoadAudio": "Misslyckades med att ladda ljud",
+    "failedPlayAudio": "Det gick inte att spela upp ljudet",
+    "failedLoadAudio": "Det gick inte att läsa in ljudet",
     "video": "Video",
     "unsupportedVideo": "Din webbläsare stöder inte videotaggen."
   },
   "reminder": {
-    "dataUnavailable": "Påminnelsedata är inte tillgänglig.",
-    "triggered": "Påminnelse utlösts",
-    "noteLabel": "Påminnelsenot",
+    "dataUnavailable": "Påminnelsedata är inte tillgängliga.",
+    "triggered": "Påminnelsen har utlösts",
+    "noteLabel": "Påminnelseanteckning",
     "source": "Källa",
-    "journalTitle": "Journal — {date}",
+    "journalTitle": "Dagbok – {date}",
     "noteFallback": "Anteckning",
     "journalFallback": "Dagbok",
-    "highlighted": "Markerad: \"{text}\"",
+    "taskFallback": "Uppgift",
+    "highlighted": "Överstrykning: ”{text}”",
     "viewed": "Visad",
-    "markViewed": "Markera som visad",
+    "archive": "Arkivera",
     "notYetViewed": "Inte visad än",
-    "snooze": "Snooza",
+    "snooze": "Skjut upp",
     "presetInOneHour": "1 timme",
     "presetTomorrow": "Imorgon",
     "presetNextWeek": "Nästa vecka",
-    "custom": "Anpassad...",
-    "archive": "Arkivera",
-    "panelEmpty": "Inga kommande påminnelser.",
-    "panelPast": "Tidigare",
+    "custom": "Anpassad…",
     "panelUpcoming": "Kommande",
-    "taskFallback": "Uppgift",
-    "dateTime": {
-      "dateAt": "{date} kl. {time}",
-      "dateCompact": "{date}, {time}",
-      "todayAt": "Idag kl. {time}",
-      "todayCompact": "Idag, {time}",
-      "tomorrowAt": "Imorgon kl. {time}",
-      "tomorrowCompact": "Imorgon, {time}"
-    },
+    "panelPast": "Tidigare",
+    "panelEmpty": "Inga kommande påminnelser.",
     "presets": {
-      "anniversaryReminder": "Årsdagspåminnelse",
-      "inHours": {
-        "label": "Om {count, plural, one {# timme} other {# timmar}}"
+      "laterToday": {
+        "label": "Senare idag",
+        "description": "Om {count, plural, one {# timme} other {# timmar}}"
+      },
+      "tomorrow": {
+        "label": "Imorgon",
+        "description": "Imorgon kl. 09:00"
+      },
+      "nextWeek": {
+        "label": "Nästa vecka",
+        "description": "Måndag kl. 09:00"
       },
       "inMinutes": {
         "label": "Om {count, plural, one {# minut} other {# minuter}}"
       },
-      "inMonths": {
-        "label": "Om {count, plural, one {# månad} other {# månader}}"
+      "inHours": {
+        "label": "Om {count, plural, one {# timme} other {# timmar}}"
       },
       "inWeeks": {
         "label": "Om {count, plural, one {# vecka} other {# veckor}}"
       },
+      "inMonths": {
+        "label": "Om {count, plural, one {# månad} other {# månader}}"
+      },
       "inYears": {
         "label": "Om {count, plural, one {# år} other {# år}}"
       },
-      "laterToday": {
-        "description": "Om {count, plural, one {# timme} other {# timmar}}",
-        "label": "Senare idag"
-      },
-      "monthlyReflection": "Månadsreflektion",
-      "nextWeek": {
-        "description": "Måndag kl. 09:00",
-        "label": "Nästa vecka"
-      },
-      "quarterlyReflection": "Kvartalsreflektion",
-      "reviewInAWeek": "Gå igenom om en vecka",
+      "tomorrowMorning": "Imorgon bitti",
       "sameDayNextMonth": "Samma dag nästa månad",
-      "tomorrow": {
-        "description": "Imorgon kl. 09:00",
-        "label": "Imorgon"
-      },
-      "tomorrowMorning": "Imorgon bitti"
+      "reviewInAWeek": "Gå igenom om en vecka",
+      "monthlyReflection": "Månadsreflektion",
+      "quarterlyReflection": "Kvartalsreflektion",
+      "anniversaryReminder": "Årsdagspåminnelse"
+    },
+    "dateTime": {
+      "todayAt": "Idag kl. {time}",
+      "todayCompact": "Idag, {time}",
+      "tomorrowAt": "Imorgon kl. {time}",
+      "tomorrowCompact": "Imorgon, {time}",
+      "dateAt": "{date} kl. {time}",
+      "dateCompact": "{date}, {time}"
     }
   },
   "insights": {
-    "captureActivity": "Fånga aktivitet",
+    "captureActivity": "Aktivitet",
     "byType": "Efter typ",
-    "recentFilings": "Senaste inlämningar",
-    "captured": "Fångad",
-    "capturedThisWeek": "+{count} denna vecka",
-    "processed": "Bearbetad",
-    "processRate": "{rate}% hastighet",
-    "stale": "Föråldrad",
+    "recentFilings": "Senast insorterade",
+    "captured": "Fångade",
+    "capturedThisWeek": "+{count} den här veckan",
+    "processed": "Genomgångna",
+    "processRate": "{rate} % genomgångna",
+    "stale": "Kvarliggande",
     "needsAttention": "behöver uppmärksamhet",
     "allClear": "allt klart",
-    "avgTimeToFile": "Genomsnittlig tid till arkivering",
-    "noCapturesYet": "Inga fångster ännu",
-    "captures": "{count, plural, one {# fångst} other {# fångster}}",
+    "avgTimeToFile": "Genomsnittlig tid till insortering",
+    "noCapturesYet": "Inget fångat än",
+    "captures": "{count, plural, one {# fångat objekt} other {# fångade objekt}}",
     "peak": "Topp: {day} {start}–{end}",
-    "convertedToTask": "Omvandlad till uppgift",
+    "convertedToTask": "Konverterad till uppgift",
     "now": "nu",
-    "timeAgoMinutes": "för {count}m sedan",
-    "timeAgoHours": "för {count}h sedan",
-    "timeAgoDays": "för {count}d sedan"
+    "timeAgoMinutes": "för {count} min sedan",
+    "timeAgoHours": "för {count} tim sedan",
+    "timeAgoDays": "för {count, plural, one {# dag} other {# dagar}} sedan"
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
-      "aiDetected": "AI upptäckt: ",
-      "addToSelection": "Lägg till i urval",
+      "aiDetected": "AI hittade: \"",
+      "addToSelection": "Lägg till i markeringen",
       "dismiss": "Avfärda"
     },
     "componentsBulkDeleteConfirmationDialog": {
       "delete": "Radera ",
       "item": "objekt",
-      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Dessa objekt kommer att tas bort från din inkorg. Du kan ångra denna åtgärd direkt efter."
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "De här objekten tas bort från inkorgen. Du kan ångra det direkt efteråt."
     },
     "componentsCaptureInput": {
-      "captureInput": "Fångstinput",
+      "captureInput": "Fält för att fånga snabbt",
       "attachFile": "Bifoga fil",
-      "attachFileImagesAudioVideoPdf": "Bifoga fil (Bilder, Ljud, Video, PDF)",
+      "attachFileImagesAudioVideoPdf": "Bifoga fil (bilder, ljud, video, PDF)",
       "recordVoiceMemo": "Spela in röstmemo",
       "recordVoiceMemo2": "Spela in röstmemo",
-      "captureAnyway": "Spela in ändå",
-      "focusShortcut": "Fokusera insamlingsfält",
-      "q": "Q",
+      "captureAnyway": "Fånga ändå",
+      "placeholder": "Fånga snabbt – klistra in en länk, skriv ner en tanke…",
       "captureLink": "Fånga länk",
       "captureNote": "Fånga anteckning",
-      "placeholder": "Snabbfångst — klistra in en länk, skriv ner en tanke…",
       "duplicateNotice": "Redan fångad: ”{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Välj mapp",
-      "searchFolders": "Sök mappar...",
+      "searchFolders": "Sök mappar…",
       "searchFolders2": "Sök mappar",
       "searchResults": "Sökresultat",
-      "create": "Skapa ",
-      "suggested": "Föreslaget",
+      "create": "Skapa \"",
+      "suggested": "Förslag",
       "recent": "Senaste",
       "allFolders": "Alla mappar",
       "allFolders2": "Alla mappar"
     },
     "componentsFilingLinkSearch": {
-      "linkTo": "Länk till",
+      "linkTo": "Länka till",
       "optional": "valfritt)",
-      "searchNotesToLink": "Sök anteckningar att länka...",
+      "searchNotesToLink": "Sök anteckningar att länka…",
       "searchNotesToLink2": "Sök anteckningar att länka",
-      "searching": "Söker...",
+      "searching": "Söker…",
       "noNotesFound": "Inga anteckningar hittades",
       "linkedNotes": "Länkade anteckningar",
       "noLinksAdded": "Inga länkar tillagda"
     },
     "componentsFilingTagAutocomplete": {
-      "suggested": "Föreslaget",
+      "suggested": "Förslag",
       "ai": "AI",
       "create": "Skapa",
       "tags": "Taggar",
-      "selectedTags": "Valda etiketter",
-      "addTags": "Lägg till etiketter",
-      "tagSuggestions": "Etikettförslag",
+      "selectedTags": "Valda taggar",
+      "addTags": "Lägg till taggar",
+      "tagSuggestions": "Taggförslag",
       "removeTag": "Ta bort {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Taggar",
       "optional": "valfritt)",
-      "addTags": "Lägg till taggar...",
-      "addTags2": "Lägg till etiketter",
-      "selectedTags": "Valda etiketter",
-      "suggested": "Föreslaget"
+      "addTags": "Lägg till taggar…",
+      "addTags2": "Lägg till taggar",
+      "selectedTags": "Valda taggar",
+      "suggested": "Förslag"
     },
     "componentsInboxInboxCaptureHeatmap": {
-      "captureActivity": "Fånga aktivitet"
+      "captureActivity": "Aktivitet"
     },
     "componentsInboxInboxFilingHistory": {
-      "noItemsFiledYet": "Inga objekt arkiverade ännu",
-      "recentlyFiled": "Nyligen inlämnade",
+      "noItemsFiledYet": "Inga objekt insorterade än",
+      "recentlyFiled": "Nyligen insorterade",
       "latestActionsOnYourInbox": "Senaste åtgärder i din inkorg",
       "linked": "Länkad"
     },
     "componentsInboxInboxInsightsView": {
-      "loadingInsights": "Laddar insikter..."
+      "loadingInsights": "Läser in insikter…"
     },
     "componentsInboxInboxTypeDistribution": {
       "noItemTypesToDisplay": "Inga objekttyper att visa",
-      "itemTypes": "Objektstyper",
+      "itemTypes": "Objekttyper",
       "distributionOfContentFormats": "Fördelning av innehållsformat"
-    },
-    "componentsInboxTriageItemCard": {
-      "captured": "Inspelat "
     },
     "componentsInboxDetailContentSection": {
       "x": "x "
@@ -427,20 +432,17 @@
     "componentsInboxDetailInboxContentEditor": {
       "contentEditor": "Innehållsredigerare"
     },
-    "componentsInboxDetailReminderDetail": {
-      "middot": "middot; "
-    },
     "componentsInboxDetailTweetCard": {
       "tweetUnavailable": "Tweet ej tillgänglig",
-      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Denna tweet kan ha raderats eller komma från ett privat konto.",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Den här tweeten kan ha raderats eller komma från ett privat konto.",
       "openOnXCom": "Öppna på x.com",
       "views": "visningar",
       "xCom": "x.com",
       "viewOnX": "Visa på X"
     },
     "componentsInlineQuickFile": {
-      "typeFolderName": "Skriv mappnamn...",
-      "quickFileFolderSearch": "Snabb mappsökning"
+      "typeFolderName": "Skriv mappnamn…",
+      "quickFileFolderSearch": "Mappsökning för snabbinsortering"
     },
     "componentsQuickCaptureFooter": {
       "close": "stäng",
@@ -450,7 +452,7 @@
       "removeAttachment": "Ta bort bilaga"
     },
     "componentsQuickCaptureInput": {
-      "quickCaptureInput": "Snabb fångst input",
+      "quickCaptureInput": "Fält för att fånga snabbt",
       "recordVoiceMemo": "Spela in röstmemo",
       "attachFile": "Bifoga fil"
     },
@@ -459,19 +461,19 @@
     },
     "componentsQuickCaptureStates": {
       "captured": "Fångad",
-      "dismissError": "Avvisa fel",
+      "dismissError": "Stäng felmeddelandet",
       "alreadyCaptured": "Redan fångad",
-      "captureAnyway": "Spela in ändå",
+      "captureAnyway": "Fånga ändå",
       "close": "Stäng",
       "duplicateMeta": "”{title}” · {date}"
     },
     "componentsQuickCapture": {
       "dropToCapture": "Släpp för att fånga",
-      "capturing": "Fångar..."
+      "capturing": "Fångar…"
     },
     "componentsQuickFileDropdown": {
       "folderSuggestions": "Mappförslag",
-      "noFoldersMatch": "Inga mappar matchar"
+      "noFoldersMatch": "Inga mappar matchar \""
     },
     "componentsReminderReminderPicker": {
       "remind": "Påminn",
@@ -481,97 +483,73 @@
       "backToPresets": "Tillbaka till förinställningar",
       "time": "Tid",
       "noteOptional": "Anteckning (valfritt)",
-      "whyAreYouSettingThisReminder": "Varför ställer du in denna påminnelse?",
-      "deleteReminder": "Radera påminnelse",
+      "whyAreYouSettingThisReminder": "Varför ställer du in den här påminnelsen?",
+      "set": "Ställ in",
       "editReminder": "Redigera påminnelse",
+      "deleteReminder": "Radera påminnelse",
       "save": "Spara",
-      "set": "Ange"
+      "setReminder": "Ställ in påminnelse",
+      "setting": "Ställer in…"
     },
     "componentsSnoozeSnoozePicker": {
-      "snooze": "Snooza",
-      "snooze2": "Snooza",
+      "snooze": "Skjut upp",
+      "snooze2": "Skjut upp",
       "pickDateTime": "Välj datum & tid",
       "pickDateTime2": "Välj datum & tid",
-      "selectWhenToBeRemindedAboutThisItem": "Välj när du vill bli påmind om detta objekt",
-      "snooze3": "Snooza",
-      "snooze4": "Snooza",
-      "snooze5": "Snooza"
+      "selectWhenToBeRemindedAboutThisItem": "Välj när du vill bli påmind om det här objektet",
+      "snooze3": "Skjut upp",
+      "snooze4": "Skjut upp",
+      "snooze5": "Skjut upp"
     },
     "componentsSocialCard": {
-      "loadingPost": "Laddar inlägg...",
-      "failedToLoad": "Misslyckades att ladda",
-      "loadingPostContent": "Laddar inläggsinnehåll...",
-      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Misslyckades med att ladda inläggsinnehåll. Inlägget kan vara privat eller raderat.",
+      "loadingPost": "Läser in inlägg…",
+      "failedToLoad": "Det gick inte att läsa in",
+      "loadingPostContent": "Läser in inläggets innehåll…",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Det gick inte att läsa in inläggets innehåll. Inlägget kan vara privat eller raderat.",
       "viewOn": "Visa på "
     },
     "componentsVoiceRecorder": {
       "startVoiceRecording": "Starta röstinspelning",
-      "requestingMicrophoneAccess": "Begär åtkomst till mikrofon...",
+      "requestingMicrophoneAccess": "Begär åtkomst till mikrofonen…",
       "settings": "Inställningar",
-      "processing": "Bearbetar...",
+      "processing": "Bearbetar…",
       "cancelRecording": "Avbryt inspelning",
       "cancel": "Avbryt",
       "stopRecording": "Stoppa inspelning",
-      "stop": "Stopp",
-      "enableMicInSettings": "Tillåt mikrofonåtkomst i dina systeminställningar och försök igen.",
-      "failedToStart": "Misslyckades med att starta inspelningen",
+      "stop": "Stoppa",
+      "recordingError": "Ett inspelningsfel uppstod",
       "microphoneAccessDenied": "Mikrofonåtkomst nekad",
       "noMicrophoneFound": "Ingen mikrofon hittades",
-      "recordingError": "Ett inspelningsfel uppstod"
+      "failedToStart": "Det gick inte att starta inspelningen",
+      "enableMicInSettings": "Tillåt mikrofonåtkomst i dina systeminställningar och försök igen."
     }
   },
   "phaseI": {
     "errors": {
-      "failedToCaptureLink": "Misslyckades med att fånga länk",
-      "failedToCaptureNote": "Misslyckades med att fånga anteckning",
-      "captureFailed": "Fångstmisslyckande",
-      "failedToCaptureVoiceMemo": "Misslyckades med att fånga röstmeddelande",
-      "voiceCaptureFailed": "Röstfångst misslyckades",
-      "failedToCaptureFile": "Misslyckades med att fånga fil",
-      "fileCaptureFailed": "Filfångst misslyckades",
-      "failedToCaptureAudio": "Misslyckades med att fånga ljud",
-      "failedToCaptureVoice": "Misslyckades med att fånga röst",
-      "failedToLoadInboxPreferences": "Misslyckades med att ladda inkorgsinställningar",
-      "failedToUpdateInboxPreferences": "Misslyckades med att uppdatera inkorgsinställningar"
+      "failedToCaptureLink": "Det gick inte att fånga länken",
+      "failedToCaptureNote": "Det gick inte att fånga anteckningen",
+      "captureFailed": "Det gick inte att fånga",
+      "failedToCaptureVoiceMemo": "Det gick inte att fånga röstmemot",
+      "voiceCaptureFailed": "Röstinspelningen misslyckades",
+      "failedToCaptureFile": "Det gick inte att fånga filen",
+      "fileCaptureFailed": "Det gick inte att fånga filen",
+      "failedToCaptureAudio": "Det gick inte att fånga ljudet",
+      "failedToCaptureVoice": "Det gick inte att fånga röstinspelningen",
+      "failedToLoadInboxPreferences": "Det gick inte att läsa in inkorgsinställningarna",
+      "failedToUpdateInboxPreferences": "Det gick inte att uppdatera inkorgsinställningarna"
     },
     "toasts": {
       "inboxRefreshed": "Inkorgen uppdaterad"
     }
   },
-  "convert": {
-    "addEvent": "Lägg till händelse",
-    "addTask": "Lägg till uppgift",
-    "allDay": "Heldag",
-    "chooseType": "Konvertera till",
-    "create": "Skapa",
-    "date": "Datum",
-    "dueDate": "Förfallodatum",
-    "dueTime": "Förfallotid",
-    "end": "Slut",
-    "event": "Händelse",
-    "failed": "Kunde inte konvertera: {error}",
-    "inboxProject": "Inkorg",
-    "location": "Plats",
-    "note": "Anteckning",
-    "priority": "Prioritet",
-    "priorityHigh": "Hög",
-    "priorityLow": "Låg",
-    "priorityMedium": "Medel",
-    "priorityNone": "Ingen",
-    "priorityUrgent": "Brådskande",
-    "project": "Projekt",
-    "remindAt": "Påminn mig kl.",
-    "reminder": "Påminnelse",
-    "setReminder": "Ange påminnelse",
-    "start": "Start",
-    "success": "Konverterad till {target}",
-    "task": "Uppgift",
-    "time": "Tid",
-    "title": "Konvertera"
-  },
   "reviewNudge": {
-    "action": "Öppna inkorg",
-    "description": "Gå igenom dagens fångster i ett lugnt svep.",
-    "title": "{count, plural, one {Dags att gå igenom # objekt} other {Dags att gå igenom # objekt}}"
+    "title": "{count, plural, one {Dags att gå igenom # objekt} other {Dags att gå igenom # objekt}}",
+    "description": "Gå igenom det du fångat idag i ett lugnt svep.",
+    "action": "Öppna inkorg"
+  },
+  "snoozeDue": {
+    "notificationTitle": "{count, plural, one {# uppskjutet objekt} other {# uppskjutna objekt}}",
+    "notificationBody": "{count, plural, one {Ditt uppskjutna objekt är redo att gås igenom} other {Dina uppskjutna objekt är redo}}",
+    "toast": "{count, plural, =1 {”{itemTitle}” är tillbaka} one {# uppskjutet objekt är tillbaka} other {# uppskjutna objekt är tillbaka}}"
   }
 }

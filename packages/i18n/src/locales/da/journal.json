@@ -1,5 +1,5 @@
 {
-  "title": "Journal",
+  "title": "Dagbog",
   "section": {
     "aiConnections": "AI-forbindelser",
     "todaysNotes": "Dagens noter",
@@ -10,35 +10,36 @@
   },
   "action": {
     "versionHistory": "Versionshistorik",
-    "export": "Eksporter",
+    "export": "Eksportér",
     "fullWidth": "Fuld bredde",
-    "journalSettings": "Journalindstillinger",
+    "journalSettings": "Indstillinger for dagbog",
     "fullMode": "Fuld tilstand",
     "compactMode": "Kompakt tilstand",
     "createNote": "Opret note",
     "createNewNote": "Opret ny note",
     "showLess": "Vis mindre",
-    "showMoreNotes": "Vis {count} mere note",
+    "showMoreNotes": "Vis {count} note mere",
     "showMoreNotes_plural": "Vis {count} flere noter",
     "showFewerNotes": "Vis færre noter",
-    "startBlank": "Start blank i stedet",
+    "startBlank": "Start med en tom side i stedet",
     "changeTemplate": "Skift skabelon",
-    "dismissIndicator": "Afvis indikator",
-    "refreshConnections": "Opdater forbindelser",
-    "reloadJournal": "Genindlæs journal",
+    "dismissIndicator": "Skjul indikator",
+    "refreshConnections": "Opdatér forbindelser",
+    "reloadJournal": "Genindlæs dagbog",
     "goToToday": "Gå til i dag",
-    "copyUnsavedContent": "Kopier ikke-gemt indhold til udklipsholder",
+    "copyUnsavedContent": "Kopiér ikke-gemt indhold til udklipsholderen",
     "addBookmark": "Tilføj bogmærke",
-    "removeBookmark": "Fjern bogmærke"
+    "removeBookmark": "Fjern bogmærke",
+    "deleteEntry": "Slet indlæg"
   },
   "editor": {
     "placeholder": {
-      "future": "Hvad planlægger du...",
-      "today": "Hvad tænker du på i dag...",
-      "past": "Tænk på denne dag..."
+      "future": "Hvad planlægger du…",
+      "today": "Hvad tænker du på i dag…",
+      "past": "Reflektér over denne dag…"
     },
     "upload": {
-      "failed": "Kunne ikke uploade billede"
+      "failed": "Kunne ikke uploade billedet"
     }
   },
   "date": {
@@ -58,13 +59,13 @@
       "saturday": "lørdag"
     },
     "weekdayShort": {
-      "sunday": "Sol",
+      "sunday": "søn",
       "monday": "man",
       "tuesday": "tir",
       "wednesday": "ons",
       "thursday": "tor",
       "friday": "fre",
-      "saturday": "Lør"
+      "saturday": "lør"
     },
     "month": {
       "january": "januar",
@@ -109,121 +110,126 @@
     "nextMonth": "Næste måned",
     "previousYear": "Forrige år",
     "nextYear": "Næste år",
-    "journalBack": "Journal tilbage",
-    "journalNavigation": "Journalnavigation",
-    "dateNavigation": "Journal dato navigation",
+    "journalBack": "Tilbage",
+    "journalNavigation": "Dagbogsnavigation",
+    "dateNavigation": "Datonavigation i dagbogen",
     "goToYearView": "Gå til årsvisning"
   },
   "aria": {
     "moreOptions": "Flere muligheder",
-    "documentStatistics": "Dokument statistik",
+    "documentStatistics": "Dokumentstatistik",
     "dayContext": "Dagskontekst: opgaver og tidsplan",
-    "scheduleEvents": "Planlæg begivenheder",
+    "scheduleEvents": "Planlagte begivenheder",
     "tasks": "Opgaver",
-    "notesCreatedToday": "{count}-noter oprettet i dag"
+    "notesCreatedToday": "{count} noter oprettet i dag"
   },
   "empty": {
-    "noEntry": "Ingen adgang",
+    "noEntry": "Intet indlæg",
     "noDaysInMonth": "Ingen dage i denne måned",
     "noEventsScheduled": "Ingen planlagte begivenheder",
     "noEventsScheduledToday": "Ingen begivenheder planlagt i dag",
-    "noEventsWereScheduled": "Ingen begivenheder var planlagt",
-    "noTasksDue": "Ingen opgaver pga",
-    "noTasksDueToday": "Ingen opgaver i dag",
-    "noTasksWereDue": "Der var ingen opgaver",
+    "noEventsWereScheduled": "Der var ingen planlagte begivenheder",
+    "noTasksDue": "Ingen opgaver forfalder",
+    "noTasksDueToday": "Ingen opgaver forfalder i dag",
+    "noTasksWereDue": "Ingen opgaver forfaldt",
     "noNotesToday": "Ingen noter oprettet i dag",
     "startDocumenting": "Begynd at dokumentere dine tanker og ideer"
   },
   "ai": {
-    "loading": "Analyserer din post...",
+    "loading": "Analyserer dit indlæg…",
     "empty": {
       "willAppear": "Dine forbindelser vises her",
       "noneYet": "Ingen forbindelser fundet endnu",
-      "moreJournaling": "Efterhånden som du journalfører mere, vil AI finde relaterede poster",
-      "keepWriting": "Bliv ved med at skrive for at finde relaterede poster"
+      "moreJournaling": "Efterhånden som du skriver mere i din dagbog, finder AI relaterede indlæg",
+      "keepWriting": "Bliv ved med at skrive for at finde relaterede indlæg"
     },
     "error": {
-      "loadFailed": "Kunne ikke indlæse forbindelser"
+      "loadFailed": "Kunne ikke indlæse forbindelserne"
     },
-    "connectionAria": "Forbindelse til {label}, {scorePercent}% matcher"
+    "connectionAria": "Forbindelse til {label}, {scorePercent} % match"
   },
   "count": {
-    "note": "bemærk",
+    "note": "note",
     "day": "dag",
     "days": "dage",
     "event": "begivenhed",
     "events": "begivenheder",
     "task": "opgave",
     "todo": "at gøre",
-    "moreConnections": "+ {count} mere forbindelse",
+    "moreConnections": "+ {count} forbindelse mere",
     "moreConnections_plural": "+ {count} flere forbindelser",
-    "moreNotes": "+ {count} mere bemærkning",
+    "moreNotes": "+ {count} note mere",
     "moreNotes_plural": "+ {count} flere noter",
-    "daysWithEntries": "dage med tilmeldinger",
-    "charactersWritten": "skrevet tegn",
+    "daysWithEntries": "dage med indlæg",
+    "charactersWritten": "tegn skrevet",
     "words": "{count} ord",
     "characters": "{count} tegn",
-    "completed": "{count} afsluttet",
-    "overdue": "{count} er forsinket"
+    "completed": "{count} fuldført",
+    "overdue": "{count} forfaldne"
   },
   "stats": {
-    "wordCount": "Ordantal",
+    "wordCount": "Antal ord",
     "characterCount": "Antal tegn",
     "readingTime": "Estimeret læsetid",
     "lastModified": "Sidst ændret",
     "lessThanOneMinute": "< 1 min",
     "minutes": "{minutes} min",
-    "read": "{readingTime} læst",
+    "read": "{readingTime} læsetid",
     "modified": "Ændret {date}"
   },
   "task": {
-    "completed": "Afsluttet",
-    "notCompleted": "Ikke afsluttet",
-    "priority": "{priority} prioritet",
+    "completed": "Fuldført",
+    "notCompleted": "Ikke fuldført",
+    "priority": "Prioritet: {priority}",
     "overdue": "forfalden",
-    "markComplete": "Marker \"{title}\" som afsluttet",
-    "markNotComplete": "Marker \"{title}\" som ikke afsluttet"
+    "markComplete": "Markér »{title}« som fuldført",
+    "markNotComplete": "Markér »{title}« som ikke fuldført"
   },
   "template": {
-    "using": "Brug af \"{templateName}\""
+    "using": "Bruger »{templateName}«"
   },
   "reminder": {
     "hasReminders": "Har påmindelser",
-    "setToRevisit": "Indstil påmindelse om at besøge igen",
+    "setToRevisit": "Angiv en påmindelse om at vende tilbage",
     "tooltip": "Påmindelse: {date}",
-    "tooltipMore": "Påmindelse: {date} (+{count} mere)",
+    "tooltipMore": "Påmindelse: {date} (+{count} flere)",
     "success": {
-      "set": "Påmindelse indstillet for denne journalpost",
-      "deleted": "Påmindelsen er slettet",
-      "dismissed": "Påmindelsen afvist",
-      "snoozed": "Påmindelsen er udsat"
+      "set": "Påmindelse angivet for dette dagbogsindlæg",
+      "deleted": "Påmindelse slettet",
+      "dismissed": "Påmindelse afvist",
+      "snoozed": "Påmindelse udsat",
+      "updated": "Påmindelse opdateret"
     },
     "error": {
-      "set": "Kunne ikke indstille påmindelsen",
+      "set": "Kunne ikke angive påmindelsen",
       "delete": "Kunne ikke slette påmindelsen",
       "dismiss": "Kunne ikke afvise påmindelsen",
-      "snooze": "Kunne ikke udsætte påmindelsen"
+      "snooze": "Kunne ikke udsætte påmindelsen",
+      "update": "Kunne ikke opdatere påmindelsen"
     }
   },
   "toast": {
     "unsavedRetry": "Dit indhold er stadig i hukommelsen. Klik for at prøve at gemme igen.",
-    "noteNotFound": "Bemærk \"{target}\" ikke fundet",
+    "noteNotFound": "Noten »{target}« blev ikke fundet",
+    "createLinkedFailed": "Kunne ikke oprette den linkede note",
     "fileNotFound": "Filen blev ikke fundet: {target}",
-    "openLinkedItemFailed": "Kunne ikke åbne linket element",
-    "errorPrefix": "Fejl:"
+    "openLinkedItemFailed": "Kunne ikke åbne det linkede element",
+    "errorPrefix": "Fejl:",
+    "deleteFailed": "Kunne ikke slette dagbogsindlægget",
+    "bookmarkFailed": "Kunne ikke opdatere bogmærket"
   },
   "export": {
-    "noteTitle": "Journal - {day}. {month} {year}"
+    "noteTitle": "Dagbog – {day}. {month} {year}"
   },
   "note": {
-    "generatedTitle": "Bemærk - {date}",
-    "openAria": "Åbn {title}, oprettet på {time}"
+    "generatedTitle": "Note – {date}",
+    "openAria": "Åbn {title}, oprettet kl. {time}"
   },
   "error": {
-    "title": "Journalfejl",
-    "description": "Journalen stødte på en fejl for {date}. Dine seneste ændringer er muligvis ikke blevet gemt.",
-    "descriptionNoDate": "Journalen stødte på en fejl. Dine seneste ændringer er muligvis ikke blevet gemt.",
-    "unsavedContent": "Ikke-gemt indhold fundet ({length}-tegn)"
+    "title": "Dagbogsfejl",
+    "description": "Der opstod en fejl i dagbogen for {date}. Dine seneste ændringer er muligvis ikke blevet gemt.",
+    "descriptionNoDate": "Der opstod en fejl i dagbogen. Dine seneste ændringer er muligvis ikke blevet gemt.",
+    "unsavedContent": "Ikke-gemt indhold fundet ({length} tegn)"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "Kunne ikke gemme journalpost",
-      "failedToLoadJournalSettings": "Kunne ikke indlæse journalindstillinger",
-      "failedToUpdateSettings": "Indstillingerne kunne ikke opdateres"
+      "failedToSaveJournalEntry": "Kunne ikke gemme dagbogsindlægget",
+      "failedToLoadJournalSettings": "Kunne ikke indlæse indstillingerne for dagbog",
+      "failedToUpdateSettings": "Kunne ikke opdatere indstillingerne"
     }
+  },
+  "deleteConfirm": {
+    "title": "Slet dagbogsindlæg",
+    "description": "Er du sikker på, at du vil slette »{title}«? Denne handling kan ikke fortrydes."
   }
 }

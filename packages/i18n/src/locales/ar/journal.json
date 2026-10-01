@@ -1,7 +1,7 @@
 {
-  "title": "مجلة",
+  "title": "اليوميات",
   "section": {
-    "aiConnections": "اتصالات الذكاء الاصطناعي",
+    "aiConnections": "ارتباطات الذكاء الاصطناعي",
     "todaysNotes": "ملاحظات اليوم",
     "todaysSchedule": "جدول اليوم",
     "todaysTasks": "مهام اليوم",
@@ -9,43 +9,44 @@
     "technicalDetails": "التفاصيل الفنية"
   },
   "action": {
-    "versionHistory": "تاريخ الإصدار",
+    "versionHistory": "سجل الإصدارات",
     "export": "تصدير",
     "fullWidth": "العرض الكامل",
-    "journalSettings": "إعدادات المجلة",
+    "journalSettings": "إعدادات اليوميات",
     "fullMode": "الوضع الكامل",
     "compactMode": "الوضع المضغوط",
     "createNote": "إنشاء ملاحظة",
     "createNewNote": "إنشاء ملاحظة جديدة",
     "showLess": "عرض أقل",
-    "showMoreNotes": "إظهار المزيد من الملاحظات لـ {count}",
-    "showMoreNotes_plural": "عرض المزيد من الملاحظات على {count}",
+    "showMoreNotes": "إظهار المزيد من الملاحظات ({count})",
+    "showMoreNotes_plural": "إظهار المزيد من الملاحظات ({count})",
     "showFewerNotes": "عرض ملاحظات أقل",
-    "startBlank": "ابدأ فارغًا بدلاً من ذلك",
+    "startBlank": "البدء بصفحة فارغة بدلًا من ذلك",
     "changeTemplate": "تغيير القالب",
     "dismissIndicator": "تجاهل المؤشر",
-    "refreshConnections": "تحديث الاتصالات",
-    "reloadJournal": "إعادة تحميل المجلة",
-    "goToToday": "اذهب إلى اليوم",
-    "copyUnsavedContent": "انسخ المحتوى غير المحفوظ إلى الحافظة",
+    "refreshConnections": "تحديث الارتباطات",
+    "reloadJournal": "إعادة تحميل اليوميات",
+    "goToToday": "الانتقال إلى اليوم",
+    "copyUnsavedContent": "نسخ المحتوى غير المحفوظ إلى الحافظة",
     "addBookmark": "إضافة إشارة مرجعية",
-    "removeBookmark": "إزالة الإشارة المرجعية"
+    "removeBookmark": "إزالة الإشارة المرجعية",
+    "deleteEntry": "حذف الإدخال"
   },
   "editor": {
     "placeholder": {
-      "future": "ماذا تخطط...",
-      "today": "ماذا يدور في ذهنك اليوم...",
-      "past": "تأمل في هذا اليوم.."
+      "future": "ما الذي تخطط له…",
+      "today": "ماذا يدور في ذهنك اليوم…",
+      "past": "تأمّل هذا اليوم…"
     },
     "upload": {
-      "failed": "فشل تحميل الصورة"
+      "failed": "تعذّر رفع الصورة"
     }
   },
   "date": {
     "relative": {
       "today": "اليوم",
       "yesterday": "أمس",
-      "tomorrow": "غدا",
+      "tomorrow": "غدًا",
       "future": "المستقبل"
     },
     "weekday": {
@@ -58,13 +59,13 @@
       "saturday": "السبت"
     },
     "weekdayShort": {
-      "sunday": "الشمس",
+      "sunday": "الأحد",
       "monday": "الاثنين",
       "tuesday": "الثلاثاء",
       "wednesday": "الأربعاء",
       "thursday": "الخميس",
       "friday": "الجمعة",
-      "saturday": "جلس"
+      "saturday": "السبت"
     },
     "month": {
       "january": "يناير",
@@ -104,67 +105,67 @@
   },
   "nav": {
     "previousDay": "اليوم السابق",
-    "nextDay": "في اليوم التالي",
+    "nextDay": "اليوم التالي",
     "previousMonth": "الشهر السابق",
     "nextMonth": "الشهر القادم",
     "previousYear": "العام السابق",
     "nextYear": "العام القادم",
-    "journalBack": "مجلة العودة",
-    "journalNavigation": "التنقل في المجلة",
-    "dateNavigation": "الملاحة تاريخ المجلة",
-    "goToYearView": "انتقل إلى عرض السنة"
+    "journalBack": "رجوع",
+    "journalNavigation": "التنقل في اليوميات",
+    "dateNavigation": "التنقل بين تواريخ اليوميات",
+    "goToYearView": "الانتقال إلى عرض السنة"
   },
   "aria": {
     "moreOptions": "المزيد من الخيارات",
-    "documentStatistics": "إحصائيات الوثيقة",
+    "documentStatistics": "إحصائيات المستند",
     "dayContext": "سياق اليوم: المهام والجدول الزمني",
-    "scheduleEvents": "جدولة الأحداث",
+    "scheduleEvents": "أحداث الجدول",
     "tasks": "المهام",
-    "notesCreatedToday": "تم إنشاء ملاحظات {count} اليوم"
+    "notesCreatedToday": "الملاحظات المُنشأة اليوم: {count}"
   },
   "empty": {
-    "noEntry": "لا دخول",
+    "noEntry": "لا يوجد إدخال",
     "noDaysInMonth": "لا توجد أيام في هذا الشهر",
-    "noEventsScheduled": "لم يتم جدولة أي أحداث",
+    "noEventsScheduled": "لا توجد أحداث مجدولة",
     "noEventsScheduledToday": "لا توجد أحداث مجدولة اليوم",
     "noEventsWereScheduled": "لم تتم جدولة أي أحداث",
     "noTasksDue": "لا توجد مهام مستحقة",
     "noTasksDueToday": "لا توجد مهام مستحقة اليوم",
     "noTasksWereDue": "لم تكن هناك مهام مستحقة",
     "noNotesToday": "لم يتم إنشاء أي ملاحظات اليوم",
-    "startDocumenting": "ابدأ بتوثيق أفكارك وأفكارك"
+    "startDocumenting": "ابدأ بتدوين أفكارك وخواطرك"
   },
   "ai": {
-    "loading": "جارٍ تحليل إدخالك...",
+    "loading": "جارٍ تحليل إدخالك…",
     "empty": {
-      "willAppear": "سوف تظهر اتصالاتك هنا",
-      "noneYet": "لم يتم العثور على اتصالات حتى الآن",
-      "moreJournaling": "كلما قمت بتدوين يومياتك أكثر، سيجد الذكاء الاصطناعي الإدخالات ذات الصلة",
+      "willAppear": "ستظهر ارتباطاتك هنا",
+      "noneYet": "لم يُعثر على ارتباطات بعد",
+      "moreJournaling": "كلما كتبت في يومياتك أكثر، سيجد الذكاء الاصطناعي إدخالات ذات صلة",
       "keepWriting": "استمر في الكتابة لاكتشاف الإدخالات ذات الصلة"
     },
     "error": {
-      "loadFailed": "تعذر تحميل الاتصالات"
+      "loadFailed": "تعذّر تحميل الارتباطات"
     },
-    "connectionAria": "الاتصال بـ {label}، تطابق {scorePercent}%"
+    "connectionAria": "ارتباط بـ{label}، تطابق بنسبة {scorePercent}%"
   },
   "count": {
     "note": "ملاحظة",
     "day": "يوم",
     "days": "أيام",
     "event": "حدث",
-    "events": "الأحداث",
+    "events": "أحداث",
     "task": "مهمة",
-    "todo": "للقيام به",
-    "moreConnections": "+ {count} المزيد من الاتصال",
-    "moreConnections_plural": "+ {count} المزيد من الاتصالات",
-    "moreNotes": "+ {count} المزيد من الملاحظة",
-    "moreNotes_plural": "+ {count} المزيد من الملاحظات",
-    "daysWithEntries": "أيام مع الإدخالات",
-    "charactersWritten": "الشخصيات مكتوبة",
-    "words": "كلمات {count}",
-    "characters": "{count} أحرف",
-    "completed": "اكتمل {count}",
-    "overdue": "{count} متأخر"
+    "todo": "للتنفيذ",
+    "moreConnections": "+ {count} ارتباط آخر",
+    "moreConnections_plural": "+ {count} ارتباطات أخرى",
+    "moreNotes": "+ {count} ملاحظة أخرى",
+    "moreNotes_plural": "+ {count} ملاحظات أخرى",
+    "daysWithEntries": "أيام بها إدخالات",
+    "charactersWritten": "الأحرف المكتوبة",
+    "words": "الكلمات: {count}",
+    "characters": "الأحرف: {count}",
+    "completed": "مكتملة: {count}",
+    "overdue": "متأخرة: {count}"
   },
   "stats": {
     "wordCount": "عدد الكلمات",
@@ -172,58 +173,63 @@
     "readingTime": "الوقت المقدر للقراءة",
     "lastModified": "آخر تعديل",
     "lessThanOneMinute": "< 1 دقيقة",
-    "minutes": "{minutes} دقيقة",
-    "read": "قراءة {readingTime}",
-    "modified": "تعديل {date}"
+    "minutes": "{minutes} د",
+    "read": "مدة القراءة: {readingTime}",
+    "modified": "تاريخ التعديل: {date}"
   },
   "task": {
-    "completed": "مكتمل",
-    "notCompleted": "لم يكتمل",
+    "completed": "مكتملة",
+    "notCompleted": "غير مكتملة",
     "priority": "أولوية {priority}",
-    "overdue": "تأخرت",
-    "markComplete": "قم بوضع علامة على \"{title}\" كمكتملة",
-    "markNotComplete": "ضع علامة على \"{title}\" على أنها غير مكتملة"
+    "overdue": "متأخرة",
+    "markComplete": "تحديد «{title}» كمكتملة",
+    "markNotComplete": "تحديد «{title}» كغير مكتملة"
   },
   "template": {
-    "using": "باستخدام \"{templateName}\""
+    "using": "باستخدام «{templateName}»"
   },
   "reminder": {
-    "hasReminders": "لديه تذكيرات",
-    "setToRevisit": "قم بتعيين تذكير لإعادة الزيارة",
+    "hasReminders": "توجد تذكيرات",
+    "setToRevisit": "ضبط تذكير للعودة إليه",
     "tooltip": "تذكير: {date}",
-    "tooltipMore": "تذكير: {date} (+{count} أكثر)",
+    "tooltipMore": "تذكير: {date} (+{count} أخرى)",
     "success": {
-      "set": "تم تعيين تذكير لإدخال دفتر اليومية هذا",
+      "set": "تم ضبط تذكير لإدخال اليوميات هذا",
       "deleted": "تم حذف التذكير",
-      "dismissed": "تم رفض التذكير",
-      "snoozed": "تم تأجيل التذكير"
+      "dismissed": "تم تجاهل التذكير",
+      "snoozed": "تم تأجيل التذكير",
+      "updated": "تم تحديث التذكير"
     },
     "error": {
-      "set": "فشل تعيين التذكير",
-      "delete": "فشل حذف التذكير",
+      "set": "تعذّر ضبط التذكير",
+      "delete": "تعذّر حذف التذكير",
       "dismiss": "تعذّر تجاهل التذكير",
-      "snooze": "فشل تأجيل التذكير"
+      "snooze": "تعذّر تأجيل التذكير",
+      "update": "تعذّر تحديث التذكير"
     }
   },
   "toast": {
-    "unsavedRetry": "المحتوى الخاص بك لا يزال في الذاكرة. انقر لإعادة محاولة الحفظ.",
-    "noteNotFound": "ملاحظة: \"{target}\" لم يتم العثور عليه",
+    "unsavedRetry": "لا يزال محتواك في الذاكرة. انقر لإعادة محاولة الحفظ.",
+    "noteNotFound": "لم يُعثر على الملاحظة «{target}»",
+    "createLinkedFailed": "تعذّر إنشاء الملاحظة المرتبطة",
     "fileNotFound": "لم يتم العثور على الملف: {target}",
-    "openLinkedItemFailed": "فشل في فتح العنصر المرتبط",
-    "errorPrefix": "خطأ:"
+    "openLinkedItemFailed": "تعذّر فتح العنصر المرتبط",
+    "errorPrefix": "خطأ:",
+    "deleteFailed": "تعذّر حذف إدخال اليوميات",
+    "bookmarkFailed": "تعذّر تحديث الإشارة المرجعية"
   },
   "export": {
-    "noteTitle": "مجلة - {month} {day}، {year}"
+    "noteTitle": "اليوميات - {day} {month} {year}"
   },
   "note": {
-    "generatedTitle": "ملاحظة-{date}",
-    "openAria": "افتح {title}، الذي تم إنشاؤه في {time}"
+    "generatedTitle": "ملاحظة - {date}",
+    "openAria": "فتح {title}، أُنشئت في {time}"
   },
   "error": {
-    "title": "خطأ في المجلة",
-    "description": "واجهت المجلة خطأً بالنسبة لـ {date}. ربما لم يتم حفظ تغييراتك الأخيرة.",
-    "descriptionNoDate": "واجهت المجلة خطأ. ربما لم يتم حفظ تغييراتك الأخيرة.",
-    "unsavedContent": "تم اكتشاف محتوى غير محفوظ (أحرف {length})"
+    "title": "خطأ في اليوميات",
+    "description": "حدث خطأ في يوميات {date}. ربما لم تُحفظ تغييراتك الأخيرة.",
+    "descriptionNoDate": "حدث خطأ في اليوميات. ربما لم تُحفظ تغييراتك الأخيرة.",
+    "unsavedContent": "تم اكتشاف محتوى غير محفوظ (الأحرف: {length})"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "فشل في حفظ إدخال دفتر اليومية",
-      "failedToLoadJournalSettings": "فشل تحميل إعدادات دفتر اليومية",
-      "failedToUpdateSettings": "فشل في تحديث الإعدادات"
+      "failedToSaveJournalEntry": "تعذّر حفظ إدخال اليوميات",
+      "failedToLoadJournalSettings": "تعذّر تحميل إعدادات اليوميات",
+      "failedToUpdateSettings": "تعذّر تحديث الإعدادات"
     }
+  },
+  "deleteConfirm": {
+    "title": "حذف إدخال اليوميات",
+    "description": "هل تريد بالتأكيد حذف «{title}»؟ لا يمكن التراجع عن هذا الإجراء."
   }
 }

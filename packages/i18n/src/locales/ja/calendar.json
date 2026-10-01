@@ -3,33 +3,53 @@
     "day": "日",
     "week": "週",
     "month": "月",
-    "year": "年"
+    "monthGridLabel": "月のグリッド",
+    "year": "年",
+    "timeline": "タイムライン"
+  },
+  "undo": {
+    "moveEvent": "予定を移動",
+    "moveTask": "タスクの日程を変更"
   },
   "toolbar": {
-    "create-event": "イベントの作成",
-    "previous-period": "前期",
+    "create-event": "予定を作成",
+    "previous-period": "前の期間",
     "next-period": "次の期間",
     "previous-month": "前月",
-    "next-month": "来月",
+    "next-month": "翌月",
     "today": "今日"
   },
+  "search": {
+    "open": "カレンダーを検索",
+    "close": "検索を閉じる",
+    "placeholder": "予定・タスク・リマインダーを検索…",
+    "no-results": "一致する項目なし"
+  },
   "filter": {
-    "filter-calendars": "カレンダーのフィルタリング",
-    "sources": "情報源",
-    "memry-items": "memrynote アイテム",
+    "filter-calendars": "カレンダーを絞り込み",
+    "sources": "ソース",
+    "memry-items": "memrynote の項目",
     "imported-calendars": "インポートされたカレンダー",
-    "event-types": "イベントの種類",
-    "google-calendars": "Googleカレンダー",
-    "refresh-google-calendars": "Googleカレンダーを更新する"
+    "event-types": "予定の種類",
+    "google-calendars": "Google のカレンダー",
+    "refresh-google-calendars": "Google のカレンダーを更新",
+    "not-syncing": "同期していません · チェックしてオンにする",
+    "enable-source-failed": "このカレンダーをオンにできませんでした。",
+    "provider-calendars": {
+      "ics": "購読カレンダー",
+      "caldav": "CalDAV カレンダー",
+      "apple-eventkit": "この Mac",
+      "other": "その他のカレンダー"
+    }
   },
   "visual-type": {
-    "event": "イベント",
-    "imported-event": "インポートされたイベント",
+    "event": "予定",
+    "imported-event": "インポートした予定",
+    "note": "ノート",
+    "note-date": "日付リマインダー",
     "task": "タスク",
     "reminder": "リマインダー",
-    "snooze": "スヌーズ",
-    "note": "ノート",
-    "note-date": "日付リマインダー"
+    "snooze": "スヌーズ"
   },
   "state": {
     "loading-calendar": "カレンダーを読み込み中…",
@@ -38,112 +58,172 @@
   },
   "empty": {
     "no-imported-calendars-yet": "インポートされたカレンダーはまだありません。",
-    "no-events": "イベントはありません"
+    "no-events": "予定はありません"
   },
   "time": {
-    "all-day": "一日中",
-    "all-day-lower": "一日中",
-    "pick-a-date": "日付を選択してください",
-    "new-event": "新しいイベント",
-    "more-events": "{count, plural, one {# その他のイベント} other {# その他のイベント}}"
+    "all-day": "終日",
+    "all-day-lower": "終日",
+    "pick-a-date": "日付を選択",
+    "new-event": "新しい予定",
+    "more-events": "{count, plural, other {他 # 件の予定}}"
   },
   "form": {
-    "create-calendar-event": "カレンダーイベントを作成する",
-    "edit-calendar-event": "カレンダーイベントを編集する",
-    "quick-create-description": "タイトルを入力して保存すると、選択した時間範囲でイベントが作成されます。",
-    "event-editor-description": "このイベントのタイトル、場所、日付、時刻、メモを更新します。",
-    "new-event-placeholder": "新しいイベント",
-    "notes-url-placeholder": "メモまたは URL を追加する",
-    "start": "スタート",
+    "create-calendar-event": "予定を作成",
+    "edit-calendar-event": "予定を編集",
+    "quick-create-description": "タイトルを入力して保存すると、選択した時間帯に予定が作成されます。",
+    "event-editor-description": "この予定のタイトル、場所、日付、時刻、メモを更新します。",
+    "new-event-placeholder": "新しい予定",
+    "notes-url-placeholder": "メモまたは URL を追加",
+    "start": "開始",
     "end": "終了",
-    "google-calendar": "Googleカレンダー",
-    "target-calendar": "ターゲットカレンダー",
-    "use-default-calendar": "デフォルトのカレンダーを使用する",
-    "use-default-calendar-with-name": "デフォルト ({calendar}) を使用します",
-    "use-memry-calendar-default": "memrynote カレンダーを使用する (デフォルト)",
-    "primary-suffix": "プライマリー"
+    "google-calendar": "Google のカレンダー",
+    "target-calendar": "保存先のカレンダー",
+    "use-default-calendar": "デフォルトのカレンダーを使用",
+    "use-default-calendar-with-name": "デフォルト（{calendar}）を使用",
+    "use-memry-calendar-default": "memrynote カレンダーを使用（デフォルト）",
+    "primary-suffix": "プライマリー",
+    "project": "プロジェクト",
+    "no-project": "プロジェクトなし",
+    "remove-from-project": "{project} から削除",
+    "project-update-failed": "予定のプロジェクトを更新できませんでした",
+    "color": "色",
+    "default-color": "デフォルトの色"
   },
   "delete-dialog": {
-    "title": "イベントを削除しますか?",
+    "title": "予定を削除しますか？",
     "local-description": "「{title}」は完全に削除されます。この操作は元に戻すことができません。",
-    "google-bound-description": "「{title}」はmemrynoteおよびGoogleカレンダーから削除されます。この操作は元に戻すことができません。",
-    "context-menu-delete-label": "イベントの削除",
+    "google-bound-description": "「{title}」は memrynote と Google Calendar から削除されます。この操作は元に戻すことができません。",
+    "context-menu-delete-label": "予定を削除",
     "context-menu-add-to-project": "プロジェクトに追加"
   },
+  "agent-access-dialog": {
+    "aria": "AI に Google Calendar の予定の読み取りを許可するかどうかを選択します",
+    "title": "AI に Google Calendar の予定の読み取りを許可しますか？",
+    "body": "どちらを選んでも、memrynote では引き続き Google の予定が表示されます。ここで決まるのは、予定について質問したときに AI エージェントがそれらを読み取れるかどうかだけです。",
+    "footnote": "この設定は「設定 → 連携 → Google Calendar」でいつでも変更できます。",
+    "allow": "許可",
+    "deny": "許可しない",
+    "save-error": "選択内容を保存できませんでした",
+    "provider": {
+      "aria": "AI に {provider} の予定の読み取りを許可するかどうかを選択します",
+      "title": "AI に {provider} の予定の読み取りを許可しますか？",
+      "body": "どちらを選んでも、memrynote では引き続きこれらの予定が表示されます。ここで決まるのは、予定について質問したときに AI エージェントがそれらを読み取れるかどうかだけです。この設定はカレンダーサービスごとに個別に行います。",
+      "footnote": "この設定は「設定 → カレンダー」でいつでも変更できます。"
+    },
+    "provider-names": {
+      "ics": "購読カレンダー",
+      "caldav": "CalDAV カレンダー",
+      "apple-eventkit": "macOS のカレンダー"
+    }
+  },
   "promote-dialog": {
-    "aria": "外部カレンダーイベントを編集する",
-    "title": "このイベントを memrynote で編集しますか?",
-    "body": "このイベントを編集すると、memrynote にリンクされたコピーが作成されるため、変更は双方向で同期されます。続けますか？",
-    "do-not-ask-again": "二度と聞かないでください",
-    "confirm-label": "memrynote で編集する",
+    "aria": "外部カレンダーの予定を編集",
+    "title": "この予定を memrynote で編集しますか？",
+    "body": "この予定を編集すると memrynote にリンクされたコピーが作成され、変更は双方向で同期されます。続けますか？",
+    "do-not-ask-again": "今後は確認しない",
+    "confirm-label": "memrynote で編集",
     "agent-notice": "Google Calendar への AI のアクセスがオフでも、AI エージェントはこのコピーを読み取れます。元の Google の予定は AI エージェントには見えないままです。"
   },
   "onboarding-dialog": {
-    "aria": "デフォルトの Google カレンダーを選択してください",
-    "title": "新しい memrynote イベントはどのカレンダーに移動する必要がありますか?",
-    "body": "memrynote がデフォルトで使用する Google カレンダーを選択します。イベントごとにオーバーライドすることもできます。",
-    "default-calendar-label": "memrynote 管理のカレンダーを使用する",
+    "aria": "デフォルトで使う Google のカレンダーを選択",
+    "title": "memrynote で作成した新しい予定をどのカレンダーに追加しますか？",
+    "body": "memrynote がデフォルトで使用する Google のカレンダーを選択してください。予定ごとに変更することもできます。",
+    "default-calendar-label": "memrynote が管理するカレンダーを使用",
     "skip": "スキップ",
-    "use-this-calendar": "このカレンダーを使用してください"
+    "use-this-calendar": "このカレンダーを使用"
+  },
+  "connect-prompt": {
+    "pill": "Google に接続",
+    "aria": "Google Calendar に接続",
+    "title": "Google Calendar への接続を完了",
+    "body": "Google アカウントを接続して、カレンダーをもっと活用しましょう：",
+    "bullets": {
+      "events": "Google の予定をノートやタスクの隣に表示",
+      "sync": "予定を作成・編集し、双方向に同期",
+      "schedule": "タスクやノートをカレンダーに予定として配置"
+    },
+    "continue": "Google で続行",
+    "dismiss": "閉じる",
+    "error": "Google Calendar に接続できませんでした。もう一度お試しください。"
   },
   "metadata": {
     "attendees": "出席者",
-    "attendees-count": "出席者 ({count})",
+    "attendees-count": "出席者（{count}）",
     "reminders": "リマインダー",
     "default-reminders": "デフォルトのリマインダー",
-    "visibility": "可視性:",
-    "optional": "オプション",
-    "join-meeting": "ミーティングに参加する",
+    "visibility": "公開設定：",
+    "optional": "任意",
+    "join-meeting": "ミーティングに参加",
+    "video-call": "ビデオ通話",
     "response": {
-      "accepted": "承認されました",
-      "declined": "拒否されました",
-      "tentative": "暫定",
-      "needs-action": "保留中"
+      "accepted": "承諾",
+      "declined": "辞退",
+      "tentative": "未定",
+      "needs-action": "未回答"
     },
     "visibility-value": {
       "private": "プライベート",
-      "public": "公共",
+      "public": "公開",
       "confidential": "機密"
     }
   },
   "phaseF": {
     "componentsCalendarCalendarEventMetadata": {
-      "min": "分・ "
+      "min": "分 · "
     }
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "イベントを保存できませんでした。もう一度試してください。",
-      "couldNotCreateEventTryAgain": "イベントを作成できませんでした。もう一度試してください。",
-      "couldNotSaveDefaultCalendarTryAgain": "デフォルトのカレンダーを保存できませんでした。もう一度試してください。",
-      "failedToLoadCalendarPreferences": "カレンダー設定のロードに失敗しました",
+      "couldNotSaveEventTryAgain": "予定を保存できませんでした。もう一度お試しください。",
+      "couldNotCreateEventTryAgain": "予定を作成できませんでした。もう一度お試しください。",
+      "couldNotSaveDefaultCalendarTryAgain": "デフォルトのカレンダーを保存できませんでした。もう一度お試しください。",
+      "failedToLoadCalendarPreferences": "カレンダーの設定を読み込めませんでした",
       "failedToUpdateCalendarPreferences": "カレンダーの設定を更新できませんでした",
-      "couldNotEditThisEventTryAgain": "このイベントを編集できませんでした。もう一度試してください。",
-      "failedToDeleteEvent": "イベントの削除に失敗しました",
+      "couldNotEditThisEventTryAgain": "この予定を編集できませんでした。もう一度お試しください。",
+      "failedToDeleteEvent": "予定を削除できませんでした",
       "couldNotUnsnoozeInboxItem": "スヌーズを解除できませんでした。",
-      "couldNotRescheduleInboxItem": "再スケジュールできませんでした。"
+      "couldNotRescheduleInboxItem": "日程を変更できませんでした。"
     },
     "inboxSnoozePopover": {
-      "title": "スヌーズされた受信箱アイテム",
-      "openInInbox": "受信箱で開く",
-      "unsnoozeNow": "今すぐスヌーズを解除してください",
-      "reschedule": "スケジュールを変更する"
+      "title": "スヌーズ中のインボックス項目",
+      "openInInbox": "インボックスで開く",
+      "unsnoozeNow": "今すぐスヌーズを解除",
+      "reschedule": "日程を変更"
     }
+  },
+  "chip": {
+    "complete-task": "{title} を完了にする",
+    "task-completed": "タスクを完了しました",
+    "could-not-complete": "タスクを完了できませんでした",
+    "duration-minutes": "{minutes} 分",
+    "duration-hours": "{hours} 時間",
+    "duration-hours-minutes": "{hours} 時間 {minutes} 分"
+  },
+  "event-card": {
+    "kind": "予定",
+    "close": "閉じる"
   },
   "task-popover": {
     "title-fallback": "タスクの詳細",
+    "kind": "タスク",
+    "open": "開く",
+    "complete": "完了",
+    "more-actions": "その他の操作",
+    "move": "移動",
+    "later": "後で",
+    "next-week": "来週",
     "open-task": "タスクを開く",
-    "source-note": "ソースノート",
-    "reschedule": "スケジュールを変更する",
-    "mark-done": "完了マークを付ける",
-    "mark-not-done": "未完了のマークを付ける",
-    "later-today": "今日遅くに",
+    "source-note": "元のノート",
+    "reschedule": "日程を変更",
+    "mark-done": "完了にする",
+    "mark-not-done": "未完了にする",
+    "later-today": "今日の後ほど",
     "tomorrow": "明日",
-    "next-week-mon": "来週・月",
-    "pick-date-time": "日付と時刻を選択してください…",
-    "remove-due-date": "期限を削除する",
+    "next-week-mon": "来週（月）",
+    "pick-date-time": "日時を選択…",
+    "remove-due-date": "期限を削除",
     "subtasks-prefix": "サブタスク",
-    "subtasks-counter": "{total} の {done} が完了しました",
+    "subtasks-counter": "{total} 件中 {done} 件完了",
     "repeats": "繰り返し",
     "repeats-daily": "毎日繰り返す",
     "repeats-weekly": "毎週繰り返す",
@@ -152,47 +232,155 @@
     "errors": {
       "could-not-save": "タスクを保存できませんでした",
       "could-not-reschedule": "タスクを再スケジュールできませんでした",
-      "could-not-remove-due-date": "期日を削除できませんでした",
-      "could-not-open-note": "メモを開けませんでした"
+      "could-not-remove-due-date": "期限を削除できませんでした",
+      "could-not-open-note": "ノートを開けませんでした"
     }
   },
-  "connect-prompt": {
-    "aria": "Google カレンダーに接続",
-    "body": "Google アカウントを接続して、カレンダーをもっと活用しましょう:",
-    "bullets": {
-      "events": "Google の予定をノートやタスクの隣に表示",
-      "schedule": "タスクやノートをカレンダーに予定として配置",
-      "sync": "予定を作成・編集し、双方向に同期"
-    },
-    "continue": "Google で続行",
-    "dismiss": "閉じる",
-    "error": "Google カレンダーに接続できませんでした。もう一度お試しください。",
-    "pill": "Google に接続",
-    "title": "Google カレンダーへの接続を完了"
-  },
   "notePopover": {
-    "couldNotOpen": "ノートを開けませんでした",
     "kind": "ノート",
     "kindDateReminder": "日付リマインダー",
-    "open": "ノートを開く"
+    "open": "ノートを開く",
+    "couldNotOpen": "ノートを開けませんでした"
   },
-  "search": {
-    "close": "検索を閉じる",
-    "no-results": "一致する項目なし",
-    "open": "カレンダーを検索",
-    "placeholder": "予定・タスク・リマインダーを検索…"
+  "timeline": {
+    "label": "スケジュール済みの作業のタイムライン",
+    "tasks-column": "タスク",
+    "span": "{start}〜{end}",
+    "due": "期限：{date}",
+    "starts": "開始：{date}",
+    "starts-short": "{date} →",
+    "no-date": "日付なし",
+    "today": "今日",
+    "overdue": "期限切れ",
+    "untitled": "無題",
+    "days": "{count, plural, other {# 日間}}",
+    "events": "予定",
+    "schedule-hint": "クリックで日付を設定、ドラッグで期間を設定",
+    "empty-title": "このタイムラインには何もありません",
+    "empty-body": "開始日または期限のあるタスクと、終日または複数日にわたる予定がここに表示されます。「表示」で日付のないタスクをオンにすると、ドラッグして日程を設定できます。",
+    "status": {
+      "todo": "未着手",
+      "in_progress": "進行中",
+      "done": "完了"
+    },
+    "priority": {
+      "urgent": "緊急",
+      "high": "高",
+      "medium": "中",
+      "low": "低",
+      "none": "優先度なし"
+    },
+    "zoom": {
+      "label": "ズーム",
+      "weeks": "週",
+      "months": "月",
+      "quarters": "四半期"
+    },
+    "group-by": {
+      "project": "プロジェクト",
+      "status": "ステータス",
+      "priority": "優先度",
+      "none": "グループ化なし"
+    },
+    "group-by-label": "グループ：{group}",
+    "order-by": {
+      "start": "開始日",
+      "due": "期限",
+      "title": "タイトル"
+    },
+    "display": {
+      "button": "表示",
+      "group-by": "グループ化",
+      "order-by": "並べ替え",
+      "show": "表示項目",
+      "show-events": "予定",
+      "show-undated": "日付のないタスク",
+      "show-completed": "完了したタスク",
+      "show-subtasks": "サブタスク"
+    },
+    "bar": {
+      "summary": "{tasks, plural, other {タスク # 件}} · {events, plural, other {予定 # 件}}",
+      "open": "開く",
+      "move": "移動",
+      "resize": "サイズ変更",
+      "actions": "操作",
+      "select": "選択",
+      "today": "今日"
+    },
+    "actions": {
+      "search": "操作を検索…",
+      "search-projects": "プロジェクトを検索…",
+      "empty": "一致する操作はありません",
+      "no-projects": "一致するプロジェクトはありません",
+      "open": "タスクを開く",
+      "open-in-tasks": "タスクで開く",
+      "schedule": "日程を設定",
+      "set-start": "開始日を設定",
+      "set-due": "期限を設定",
+      "move-later": "1 週間後に移動",
+      "move-earlier": "1 週間前に移動",
+      "clear-dates": "日付をクリア",
+      "clear-start": "開始日をクリア",
+      "clear-due": "期限をクリア",
+      "task": "タスク",
+      "complete": "完了にする",
+      "uncomplete": "未完了にする",
+      "change-project": "プロジェクトを変更",
+      "page": {
+        "root": "操作",
+        "start": "開始日",
+        "due": "期限",
+        "project": "プロジェクト"
+      }
+    },
+    "undo": {
+      "reschedule": "「{title}」の日程を変更"
+    }
   },
-  "undo": {
-    "moveEvent": "予定を移動",
-    "moveTask": "タスクを再スケジュール"
+  "calendar-color": {
+    "tomato": "トマト",
+    "flamingo": "フラミンゴ",
+    "tangerine": "ミカン",
+    "banana": "バナナ",
+    "sage": "セージ",
+    "basil": "バジル",
+    "peacock": "ピーコック",
+    "blueberry": "ブルーベリー",
+    "lavender": "ラベンダー",
+    "grape": "ブドウ",
+    "graphite": "グラファイト"
   },
-  "agent-access-dialog": {
-    "allow": "許可",
-    "aria": "AI に Google Calendar の予定の読み取りを許可するかどうかを選択します",
-    "body": "どちらを選んでも、memrynote では引き続き Google の予定が表示されます。ここで決まるのは、予定について質問したときに AI エージェントがそれらを読み取れるかどうかだけです。",
-    "deny": "許可しない",
-    "footnote": "この設定は「設定 → 統合 → Google Calendar」でいつでも変更できます。",
-    "save-error": "選択内容の保存に失敗しました",
-    "title": "AI に Google Calendar の予定の読み取りを許可しますか?"
+  "subscribedEvent": {
+    "kind": "購読カレンダー",
+    "kindAppleEventKit": "この Mac",
+    "close": "閉じる",
+    "detailsFailed": "この予定の出席者とリンクを読み込めませんでした。予定自体は変更されていません。",
+    "showMore": "さらに表示",
+    "showLess": "表示を減らす",
+    "organizer": "主催者",
+    "you": "自分",
+    "phone": "電話で参加",
+    "alert": "{minutes, plural, =0 {開始時に通知} other {# 分前に通知}}",
+    "alertHours": "{hours, plural, other {# 時間前に通知}}",
+    "alertDays": "{days, plural, other {# 日前に通知}}",
+    "recurrence": {
+      "daily": "{count, plural, =1 {毎日繰り返し} other {# 日ごとに繰り返し}}",
+      "weekly": "{count, plural, =1 {毎週繰り返し} other {# 週間ごとに繰り返し}}",
+      "weeklyOn": "{count, plural, =1 {毎週 {days} に繰り返し} other {# 週間ごとの {days} に繰り返し}}",
+      "monthly": "{count, plural, =1 {毎月繰り返し} other {# か月ごとに繰り返し}}",
+      "yearly": "{count, plural, =1 {毎年繰り返し} other {# 年ごとに繰り返し}}",
+      "other": "繰り返し"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "購読カレンダー"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

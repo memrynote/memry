@@ -1,21 +1,21 @@
 {
   "app": {
-    "quit": "Ieșire din MemryNote",
+    "quit": "Ieși din MemryNote",
     "preferences": "Setări…",
     "checkForUpdates": "Caută actualizări…",
-    "exit": "Ieșire",
+    "services": "Servicii",
     "hide": "Ascunde MemryNote",
     "hideOthers": "Ascunde celelalte",
-    "services": "Servicii",
-    "unhide": "Afișează toate"
+    "unhide": "Afișează tot",
+    "exit": "Ieșire"
   },
   "file": {
     "label": "Fișier",
-    "newNote": "Notă nouă",
-    "close": "Închide fereastra",
-    "closeTab": "Închide fila",
+    "newNote": "Notiță nouă",
+    "openQuickly": "Deschide rapid…",
     "exportPdf": "Exportă în PDF…",
-    "openQuickly": "Deschide rapid…"
+    "closeTab": "Închide fila",
+    "close": "Închide fereastra"
   },
   "navigation": {
     "back": "Înapoi",
@@ -23,71 +23,76 @@
   },
   "edit": {
     "label": "Editare",
-    "undo": "Anulare",
-    "redo": "Refacere",
-    "cut": "Decupare",
-    "copy": "Copiere",
-    "paste": "Lipire",
-    "selectAll": "Selectare totală",
-    "find": "Căutare",
+    "undo": "Anulează",
+    "redo": "Refă",
+    "cut": "Taie",
+    "copy": "Copiază",
+    "paste": "Lipește",
+    "selectAll": "Selectează tot",
+    "find": "Caută",
     "speech": "Vorbire",
-    "delete": "Ștergere",
-    "pasteAndMatchStyle": "Lipire și potrivire stil",
-    "startSpeaking": "Începere vorbire",
-    "stopSpeaking": "Oprire vorbire"
+    "pasteAndMatchStyle": "Lipește și potrivește stilul",
+    "delete": "Șterge",
+    "startSpeaking": "Începe vorbirea",
+    "stopSpeaking": "Oprește vorbirea",
+    "addToDictionary": "Adaugă în dicționar",
+    "noSuggestions": "Nicio sugestie"
   },
-  "view": {
-    "label": "Vizualizare",
-    "reload": "Reîncărcare",
-    "toggleDevTools": "Comutare instrumente pentru dezvoltatori",
-    "toggleFullscreen": "Comutare ecran complet",
-    "theme": "Temă",
-    "themeDark": "Întunecată",
-    "themeLight": "Luminoasă",
-    "themeSystem": "Sistem",
-    "themeWhite": "Hârtie",
-    "toggleDayPanel": "Comutare panou zilnic",
-    "toggleSidebar": "Comutare bară laterală",
-    "actualSize": "Dimensiune reală",
-    "zoomIn": "Mărire",
-    "zoomOut": "Micșorare"
+  "insert": {
+    "label": "Inserare",
+    "codeBlock": "Bloc de cod",
+    "table": "Tabel",
+    "bulletList": "Listă cu marcatori",
+    "numberedList": "Listă numerotată",
+    "taskList": "Listă de sarcini",
+    "attachment": "Inserează atașament…"
   },
   "format": {
-    "body": "Corp de text",
-    "bold": "Aldin",
-    "code": "Cod",
+    "label": "Format",
     "heading1": "Titlu 1",
     "heading2": "Titlu 2",
     "heading3": "Titlu 3",
     "heading4": "Titlu 4",
     "heading5": "Titlu 5",
     "heading6": "Titlu 6",
-    "highlight": "Evidențiere",
+    "body": "Corp de text",
+    "bold": "Aldin",
     "italic": "Cursiv",
-    "label": "Format",
+    "code": "Cod",
+    "highlight": "Evidențiere",
     "strikethrough": "Tăiat"
   },
-  "help": {
-    "about": "Despre MemryNote",
-    "documentation": "Documentație",
-    "label": "Ajutor",
-    "shortcuts": "Scurtături de tastatură",
-    "aboutVersion": "Versiunea {version}"
-  },
-  "insert": {
-    "attachment": "Inserează atașament…",
-    "bulletList": "Listă cu marcatori",
-    "codeBlock": "Bloc de cod",
-    "label": "Inserare",
-    "numberedList": "Listă numerotată",
-    "table": "Tabel",
-    "taskList": "Listă de sarcini"
+  "view": {
+    "label": "Vizualizare",
+    "reload": "Reîncarcă",
+    "toggleDevTools": "Afișează/ascunde instrumentele pentru dezvoltatori",
+    "toggleFullscreen": "Activează/dezactivează ecranul complet",
+    "toggleSidebar": "Afișează/ascunde bara laterală",
+    "toggleDayPanel": "Afișează/ascunde panoul zilei",
+    "theme": "Temă",
+    "themeLight": "Luminoasă",
+    "themeDark": "Întunecată",
+    "themeWhite": "Hârtie",
+    "themeSystem": "Sistem",
+    "actualSize": "Dimensiune reală",
+    "zoomIn": "Mărește",
+    "zoomOut": "Micșorează"
   },
   "window": {
     "label": "Fereastră",
-    "close": "Închide",
-    "front": "Adu toate în prim-plan",
-    "minimize": "Minimizare",
-    "zoom": "Mărire"
+    "minimize": "Minimizează",
+    "zoom": "Mărește",
+    "front": "Adu toate în față",
+    "close": "Închide"
+  },
+  "help": {
+    "label": "Ajutor",
+    "documentation": "Documentație",
+    "shortcuts": "Comenzi rapide de la tastatură",
+    "about": "Despre MemryNote",
+    "aboutVersion": "Versiunea {version}"
+  },
+  "tray": {
+    "show": "Afișează MemryNote"
   }
 }

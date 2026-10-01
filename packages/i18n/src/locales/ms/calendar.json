@@ -2,8 +2,14 @@
   "view": {
     "day": "Hari",
     "week": "Minggu",
-    "month": "bulan",
-    "year": "tahun"
+    "month": "Bulan",
+    "monthGridLabel": "Grid bulan",
+    "year": "Tahun",
+    "timeline": "Garis masa"
+  },
+  "undo": {
+    "moveEvent": "Alihkan acara",
+    "moveTask": "Jadualkan semula tugas"
   },
   "toolbar": {
     "create-event": "Buat acara",
@@ -13,23 +19,37 @@
     "next-month": "Bulan depan",
     "today": "Hari ini"
   },
+  "search": {
+    "open": "Cari kalendar",
+    "close": "Tutup carian",
+    "placeholder": "Cari acara, tugas, peringatan…",
+    "no-results": "Tiada padanan"
+  },
   "filter": {
     "filter-calendars": "Tapis kalendar",
     "sources": "Sumber",
     "memry-items": "Item memrynote",
     "imported-calendars": "Kalendar yang diimport",
     "event-types": "Jenis acara",
-    "google-calendars": "kalendar Google",
-    "refresh-google-calendars": "Muat semula kalendar Google"
+    "google-calendars": "Kalendar Google",
+    "refresh-google-calendars": "Muat semula kalendar Google",
+    "not-syncing": "Tidak disegerakkan · tandakan untuk menghidupkan",
+    "enable-source-failed": "Tidak dapat menghidupkan kalendar itu.",
+    "provider-calendars": {
+      "ics": "Kalendar yang dilanggan",
+      "caldav": "Kalendar CalDAV",
+      "apple-eventkit": "Mac ini",
+      "other": "Kalendar lain"
+    }
   },
   "visual-type": {
-    "event": "Peristiwa",
+    "event": "Acara",
     "imported-event": "Acara yang diimport",
-    "task": "Tugasan",
-    "reminder": "Peringatan",
-    "snooze": "Tunda",
     "note": "Nota",
-    "note-date": "Peringatan tarikh"
+    "note-date": "Peringatan tarikh",
+    "task": "Tugas",
+    "reminder": "Peringatan",
+    "snooze": "Tunda"
   },
   "state": {
     "loading-calendar": "Memuatkan kalendar…",
@@ -44,61 +64,102 @@
     "all-day": "Sepanjang hari",
     "all-day-lower": "sepanjang hari",
     "pick-a-date": "Pilih tarikh",
-    "new-event": "Acara Baru",
-    "more-events": "{count, plural, one {# lagi acara} other {# lagi acara}}"
+    "new-event": "Acara baharu",
+    "more-events": "{count, plural, other {# acara lagi}}"
   },
   "form": {
     "create-calendar-event": "Buat acara kalendar",
     "edit-calendar-event": "Edit acara kalendar",
-    "quick-create-description": "Masukkan tajuk dan simpan untuk mencipta acara pada julat masa yang dipilih.",
+    "quick-create-description": "Masukkan tajuk dan simpan untuk membuat acara pada julat masa yang dipilih.",
     "event-editor-description": "Kemas kini tajuk, lokasi, tarikh, masa dan nota untuk acara ini.",
-    "new-event-placeholder": "Acara Baru",
-    "notes-url-placeholder": "Tambahkan nota atau URL",
-    "start": "Mulakan",
-    "end": "tamat",
-    "google-calendar": "kalendar Google",
+    "new-event-placeholder": "Acara baharu",
+    "notes-url-placeholder": "Tambah nota atau URL",
+    "start": "Mula",
+    "end": "Tamat",
+    "google-calendar": "Kalendar Google",
     "target-calendar": "Kalendar sasaran",
     "use-default-calendar": "Gunakan kalendar lalai",
     "use-default-calendar-with-name": "Gunakan lalai ({calendar})",
     "use-memry-calendar-default": "Gunakan kalendar memrynote (lalai)",
-    "primary-suffix": "utama"
+    "primary-suffix": "utama",
+    "project": "Projek",
+    "no-project": "Tiada projek",
+    "remove-from-project": "Alih keluar daripada {project}",
+    "project-update-failed": "Tidak dapat mengemas kini projek acara ini",
+    "color": "Warna",
+    "default-color": "Warna lalai"
   },
   "delete-dialog": {
-    "title": "Padamkan acara?",
-    "local-description": "\"{title}\" akan dipadamkan secara kekal. Tindakan ini tidak boleh dibuat asal.",
-    "google-bound-description": "\"{title}\" akan dialih keluar daripada memrynote dan Kalendar Google. Tindakan ini tidak boleh dibuat asal.",
-    "context-menu-delete-label": "Padamkan acara",
+    "title": "Padam acara?",
+    "local-description": "“{title}” akan dipadam secara kekal. Tindakan ini tidak boleh dibuat asal.",
+    "google-bound-description": "“{title}” akan dialih keluar daripada memrynote dan Google Calendar. Tindakan ini tidak boleh dibuat asal.",
+    "context-menu-delete-label": "Padam acara",
     "context-menu-add-to-project": "Tambah ke projek"
+  },
+  "agent-access-dialog": {
+    "aria": "Pilih sama ada AI boleh membaca acara Google Calendar anda",
+    "title": "Benarkan AI membaca acara Google Calendar anda?",
+    "body": "Anda tetap akan melihat acara Google anda dalam memrynote, walau apa pun pilihan anda. Ini hanya menentukan sama ada ejen AI boleh membacanya apabila anda bertanya kepadanya tentang jadual anda.",
+    "footnote": "Anda boleh menukarnya bila-bila masa dalam Tetapan → Integrasi → Google Calendar.",
+    "allow": "Benarkan",
+    "deny": "Jangan benarkan",
+    "save-error": "Gagal menyimpan pilihan anda",
+    "provider": {
+      "aria": "Pilih sama ada AI boleh membaca acara {provider} anda",
+      "title": "Benarkan AI membaca acara {provider} anda?",
+      "body": "Anda tetap akan melihat acara ini dalam memrynote, walau apa pun pilihan anda. Ini hanya menentukan sama ada ejen AI boleh membacanya apabila anda bertanya kepadanya tentang jadual anda. Setiap perkhidmatan kalendar ditetapkan secara berasingan.",
+      "footnote": "Anda boleh menukarnya bila-bila masa dalam Tetapan → Kalendar."
+    },
+    "provider-names": {
+      "ics": "kalendar yang dilanggan",
+      "caldav": "kalendar CalDAV",
+      "apple-eventkit": "Kalendar macOS"
+    }
   },
   "promote-dialog": {
     "aria": "Edit acara kalendar luaran",
     "title": "Edit acara ini dalam memrynote?",
-    "body": "Mengedit acara ini akan membuat salinan terpaut dalam memrynote supaya perubahan menyegerakkan kedua-dua cara. teruskan?",
+    "body": "Mengedit acara ini akan membuat salinan terpaut dalam memrynote supaya perubahan disegerakkan dua hala. Teruskan?",
     "do-not-ask-again": "Jangan tanya lagi",
     "confirm-label": "Edit dalam memrynote",
     "agent-notice": "Ejen AI boleh membaca salinan ini, walaupun akses AI ke Google Calendar dimatikan. Acara Google asal anda kekal tersembunyi daripadanya."
   },
   "onboarding-dialog": {
     "aria": "Pilih kalendar Google lalai anda",
-    "title": "Kalendar manakah yang patut dilawati oleh acara memrynote baharu?",
-    "body": "Pilih kalendar Google memrynote yang patut digunakan secara lalai. Anda masih boleh menggantikannya setiap acara.",
+    "title": "Ke kalendar manakah acara memrynote baharu patut dimasukkan?",
+    "body": "Pilih kalendar Google yang patut digunakan oleh memrynote secara lalai. Anda masih boleh menukarnya bagi setiap acara.",
     "default-calendar-label": "Gunakan kalendar yang diuruskan memrynote",
     "skip": "Langkau",
     "use-this-calendar": "Gunakan kalendar ini"
   },
+  "connect-prompt": {
+    "pill": "Sambungkan Google",
+    "aria": "Sambungkan Google Calendar",
+    "title": "Selesaikan penyambungan ke Google Calendar",
+    "body": "Sambungkan akaun Google anda untuk melakukan lebih banyak dengan kalendar anda:",
+    "bullets": {
+      "events": "Lihat acara Google anda di sebelah nota dan tugas",
+      "sync": "Buat dan edit acara, disegerakkan dua hala",
+      "schedule": "Jadualkan tugas dan nota pada kalendar anda"
+    },
+    "continue": "Teruskan dengan Google",
+    "dismiss": "Ketepikan",
+    "error": "Tidak dapat menyambungkan Google Calendar. Cuba lagi."
+  },
   "metadata": {
-    "attendees": "Hadirin",
-    "attendees-count": "Hadirin ({count})",
+    "attendees": "Peserta",
+    "attendees-count": "Peserta ({count})",
     "reminders": "Peringatan",
     "default-reminders": "Peringatan lalai",
     "visibility": "Keterlihatan:",
     "optional": "Pilihan",
     "join-meeting": "Sertai mesyuarat",
+    "video-call": "Panggilan video",
     "response": {
       "accepted": "Diterima",
-      "declined": "ditolak",
+      "declined": "Ditolak",
       "tentative": "Tentatif",
-      "needs-action": "Belum selesai"
+      "needs-action": "Belum dijawab"
     },
     "visibility-value": {
       "private": "Persendirian",
@@ -114,34 +175,53 @@
   "phaseI": {
     "errors": {
       "couldNotSaveEventTryAgain": "Tidak dapat menyimpan acara. Cuba lagi.",
-      "couldNotCreateEventTryAgain": "Tidak dapat mencipta acara. Cuba lagi.",
+      "couldNotCreateEventTryAgain": "Tidak dapat membuat acara. Cuba lagi.",
       "couldNotSaveDefaultCalendarTryAgain": "Tidak dapat menyimpan kalendar lalai. Cuba lagi.",
       "failedToLoadCalendarPreferences": "Gagal memuatkan pilihan kalendar",
       "failedToUpdateCalendarPreferences": "Gagal mengemas kini pilihan kalendar",
       "couldNotEditThisEventTryAgain": "Tidak dapat mengedit acara ini. Cuba lagi.",
-      "failedToDeleteEvent": "Gagal memadamkan acara",
+      "failedToDeleteEvent": "Gagal memadam acara",
       "couldNotUnsnoozeInboxItem": "Tidak dapat menyahtunda.",
       "couldNotRescheduleInboxItem": "Tidak dapat menjadualkan semula."
     },
     "inboxSnoozePopover": {
-      "title": "Item peti masuk ditunda",
+      "title": "Item peti masuk yang ditunda",
       "openInInbox": "Buka dalam peti masuk",
       "unsnoozeNow": "Nyahtunda sekarang",
-      "reschedule": "Jadual semula"
+      "reschedule": "Jadualkan semula"
     }
+  },
+  "chip": {
+    "complete-task": "Selesaikan {title}",
+    "task-completed": "Tugas selesai",
+    "could-not-complete": "Tidak dapat menyelesaikan tugas",
+    "duration-minutes": "{minutes} min",
+    "duration-hours": "{hours} j",
+    "duration-hours-minutes": "{hours} j {minutes} min"
+  },
+  "event-card": {
+    "kind": "Acara",
+    "close": "Tutup"
   },
   "task-popover": {
     "title-fallback": "Butiran tugas",
-    "open-task": "Tugas terbuka",
+    "kind": "Tugas",
+    "open": "Buka",
+    "complete": "Selesaikan",
+    "more-actions": "Tindakan lain",
+    "move": "Alihkan",
+    "later": "Kemudian",
+    "next-week": "Minggu depan",
+    "open-task": "Buka tugas",
     "source-note": "Nota sumber",
-    "reschedule": "Jadual semula",
+    "reschedule": "Jadualkan semula",
     "mark-done": "Tandakan selesai",
-    "mark-not-done": "Tandai belum selesai",
-    "later-today": "Nanti hari ini",
+    "mark-not-done": "Tandakan belum selesai",
+    "later-today": "Kemudian hari ini",
     "tomorrow": "Esok",
     "next-week-mon": "Minggu depan · Isn",
     "pick-date-time": "Pilih tarikh & masa…",
-    "remove-due-date": "Alih keluar tarikh tamat tempoh",
+    "remove-due-date": "Alih keluar tarikh akhir",
     "subtasks-prefix": "Subtugas",
     "subtasks-counter": "{done} daripada {total} selesai",
     "repeats": "Berulang",
@@ -150,49 +230,157 @@
     "repeats-monthly": "Berulang setiap bulan",
     "repeats-yearly": "Berulang setiap tahun",
     "errors": {
-      "could-not-save": "Tidak dapat menyimpan tugasan",
+      "could-not-save": "Tidak dapat menyimpan tugas",
       "could-not-reschedule": "Tidak dapat menjadualkan semula tugas",
-      "could-not-remove-due-date": "Tidak dapat mengalih keluar tarikh tamat tempoh",
+      "could-not-remove-due-date": "Tidak dapat mengalih keluar tarikh akhir",
       "could-not-open-note": "Tidak dapat membuka nota"
     }
   },
-  "connect-prompt": {
-    "aria": "Sambung Google Calendar",
-    "body": "Sambungkan akaun Google anda untuk buat lebih banyak dengan kalendar anda:",
-    "bullets": {
-      "events": "Lihat acara Google anda di sisi nota dan tugasan",
-      "schedule": "Jadualkan tugasan dan nota pada kalendar anda",
-      "sync": "Cipta dan edit acara, disegerakkan dua hala"
-    },
-    "continue": "Teruskan dengan Google",
-    "dismiss": "Ketepikan",
-    "error": "Tidak dapat menyambung Google Calendar. Cuba lagi.",
-    "pill": "Sambung Google",
-    "title": "Selesaikan penyambungan ke Google Calendar"
-  },
   "notePopover": {
-    "couldNotOpen": "Tidak dapat membuka nota",
     "kind": "Nota",
     "kindDateReminder": "Peringatan tarikh",
-    "open": "Buka nota"
+    "open": "Buka nota",
+    "couldNotOpen": "Tidak dapat membuka nota"
   },
-  "search": {
-    "close": "Tutup carian",
-    "no-results": "Tiada padanan",
-    "open": "Cari kalendar",
-    "placeholder": "Cari acara, tugasan, peringatan…"
+  "timeline": {
+    "label": "Kerja berjadual pada garis masa",
+    "tasks-column": "Tugas",
+    "span": "{start} – {end}",
+    "due": "Tarikh akhir {date}",
+    "starts": "Bermula {date}",
+    "starts-short": "{date} →",
+    "no-date": "Tiada tarikh",
+    "today": "Hari ini",
+    "overdue": "lewat tempoh",
+    "untitled": "Tanpa tajuk",
+    "days": "{count, plural, other {# hari}}",
+    "events": "Acara",
+    "schedule-hint": "Klik untuk menetapkan tarikh, seret untuk menetapkan julat",
+    "empty-title": "Tiada apa-apa pada garis masa di sini",
+    "empty-body": "Tugas dengan tarikh mula atau tarikh akhir, serta acara sepanjang hari atau berbilang hari, dipaparkan di sini. Hidupkan tugas tanpa tarikh dalam Paparan untuk menjadualkannya dengan menyeret.",
+    "status": {
+      "todo": "Perlu dibuat",
+      "in_progress": "Sedang dibuat",
+      "done": "Selesai"
+    },
+    "priority": {
+      "urgent": "Mendesak",
+      "high": "Tinggi",
+      "medium": "Sederhana",
+      "low": "Rendah",
+      "none": "Tiada keutamaan"
+    },
+    "zoom": {
+      "label": "Zum",
+      "weeks": "Minggu",
+      "months": "Bulan",
+      "quarters": "Suku tahun"
+    },
+    "group-by": {
+      "project": "Projek",
+      "status": "Status",
+      "priority": "Keutamaan",
+      "none": "Tanpa pengumpulan"
+    },
+    "group-by-label": "Mengikut {group}",
+    "order-by": {
+      "start": "Tarikh mula",
+      "due": "Tarikh akhir",
+      "title": "Tajuk"
+    },
+    "display": {
+      "button": "Paparan",
+      "group-by": "Kumpulkan mengikut",
+      "order-by": "Isih mengikut",
+      "show": "Tunjukkan",
+      "show-events": "Acara",
+      "show-undated": "Tugas tanpa tarikh",
+      "show-completed": "Tugas yang selesai",
+      "show-subtasks": "Subtugas"
+    },
+    "bar": {
+      "summary": "{tasks, plural, other {# tugas}} · {events, plural, other {# acara}}",
+      "open": "Buka",
+      "move": "Alihkan",
+      "resize": "Ubah saiz",
+      "actions": "Tindakan",
+      "select": "Pilih",
+      "today": "Hari ini"
+    },
+    "actions": {
+      "search": "Cari tindakan…",
+      "search-projects": "Cari projek…",
+      "empty": "Tiada tindakan yang sepadan",
+      "no-projects": "Tiada projek yang sepadan",
+      "open": "Buka tugas",
+      "open-in-tasks": "Buka dalam Tugas",
+      "schedule": "Jadualkan",
+      "set-start": "Tetapkan tarikh mula",
+      "set-due": "Tetapkan tarikh akhir",
+      "move-later": "Alihkan seminggu kemudian",
+      "move-earlier": "Alihkan seminggu lebih awal",
+      "clear-dates": "Kosongkan tarikh",
+      "clear-start": "Kosongkan tarikh mula",
+      "clear-due": "Kosongkan tarikh akhir",
+      "task": "Tugas",
+      "complete": "Tandakan selesai",
+      "uncomplete": "Tandakan belum selesai",
+      "change-project": "Tukar projek",
+      "page": {
+        "root": "Tindakan",
+        "start": "Tarikh mula",
+        "due": "Tarikh akhir",
+        "project": "Projek"
+      }
+    },
+    "undo": {
+      "reschedule": "Jadualkan semula “{title}”"
+    }
   },
-  "undo": {
-    "moveEvent": "Alih acara",
-    "moveTask": "Jadual semula tugasan"
+  "calendar-color": {
+    "tomato": "Tomato",
+    "flamingo": "Flamingo",
+    "tangerine": "Tangerin",
+    "banana": "Pisang",
+    "sage": "Sage",
+    "basil": "Selasih",
+    "peacock": "Merak",
+    "blueberry": "Beri biru",
+    "lavender": "Lavender",
+    "grape": "Anggur",
+    "graphite": "Grafit"
   },
-  "agent-access-dialog": {
-    "allow": "Benarkan",
-    "aria": "Pilih sama ada AI boleh membaca acara Google Calendar anda",
-    "body": "Anda tetap akan melihat acara Google anda dalam memrynote, walau apa pun pilihan anda. Ini hanya menentukan sama ada ejen AI boleh membacanya apabila anda bertanya kepadanya tentang jadual anda.",
-    "deny": "Jangan Benarkan",
-    "footnote": "Anda boleh menukarnya bila-bila masa dalam Tetapan → Integrasi → Google Calendar.",
-    "save-error": "Gagal menyimpan pilihan anda",
-    "title": "Benarkan AI membaca acara Google Calendar anda?"
+  "subscribedEvent": {
+    "kind": "Kalendar yang dilanggan",
+    "kindAppleEventKit": "Mac ini",
+    "close": "Tutup",
+    "detailsFailed": "Tidak dapat memuatkan peserta dan pautan untuk acara ini. Acara itu sendiri tidak berubah.",
+    "showMore": "Tunjukkan lagi",
+    "showLess": "Tunjukkan lebih sedikit",
+    "organizer": "penganjur",
+    "you": "anda",
+    "phone": "Sertai melalui telefon",
+    "alert": "{minutes, plural, =0 {Makluman pada masa mula} other {Makluman # minit sebelumnya}}",
+    "alertHours": "{hours, plural, other {Makluman # jam sebelumnya}}",
+    "alertDays": "{days, plural, other {Makluman # hari sebelumnya}}",
+    "recurrence": {
+      "daily": "{count, plural, =1 {Berulang setiap hari} other {Berulang setiap # hari}}",
+      "weekly": "{count, plural, =1 {Berulang setiap minggu} other {Berulang setiap # minggu}}",
+      "weeklyOn": "{count, plural, =1 {Berulang setiap minggu pada {days}} other {Berulang setiap # minggu pada {days}}}",
+      "monthly": "{count, plural, =1 {Berulang setiap bulan} other {Berulang setiap # bulan}}",
+      "yearly": "{count, plural, =1 {Berulang setiap tahun} other {Berulang setiap # tahun}}",
+      "other": "Berulang"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Kalendar yang dilanggan"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

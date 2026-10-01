@@ -3,91 +3,96 @@
     "quit": "Завершить",
     "preferences": "Настройки…",
     "checkForUpdates": "Проверить обновления…",
-    "exit": "Выход",
+    "services": "Службы",
     "hide": "Скрыть MemryNote",
     "hideOthers": "Скрыть остальные",
-    "services": "Службы",
-    "unhide": "Показать все"
+    "unhide": "Показать все",
+    "exit": "Выход"
   },
   "file": {
     "label": "Файл",
     "newNote": "Новая заметка",
-    "close": "Закрыть окно",
-    "closeTab": "Закрыть вкладку",
+    "openQuickly": "Быстрое открытие…",
     "exportPdf": "Экспорт в PDF…",
-    "openQuickly": "Быстрое открытие…"
+    "closeTab": "Закрыть вкладку",
+    "close": "Закрыть окно"
   },
   "navigation": {
     "back": "Назад",
-    "forward": "Вперед"
+    "forward": "Вперёд"
   },
   "edit": {
     "label": "Правка",
     "undo": "Отменить",
     "redo": "Повторить",
     "cut": "Вырезать",
-    "copy": "Копировать",
+    "copy": "Скопировать",
     "paste": "Вставить",
     "selectAll": "Выбрать всё",
     "find": "Найти",
     "speech": "Речь",
-    "delete": "Удалить",
     "pasteAndMatchStyle": "Вставить и согласовать стиль",
-    "startSpeaking": "Начать речь",
-    "stopSpeaking": "Остановить речь"
+    "delete": "Удалить",
+    "startSpeaking": "Начать озвучивание",
+    "stopSpeaking": "Остановить озвучивание",
+    "addToDictionary": "Добавить в словарь",
+    "noSuggestions": "Нет вариантов"
   },
-  "view": {
-    "label": "Вид",
-    "reload": "Перезагрузить",
-    "toggleDevTools": "Переключить инструменты разработчика",
-    "toggleFullscreen": "Переключить полноэкранный режим",
-    "theme": "Тема",
-    "themeDark": "Тёмная",
-    "themeLight": "Светлая",
-    "themeSystem": "Системная",
-    "themeWhite": "Бумага",
-    "toggleDayPanel": "Переключить панель дня",
-    "toggleSidebar": "Переключить боковую панель",
-    "actualSize": "Реальный размер",
-    "zoomIn": "Увеличить",
-    "zoomOut": "Уменьшить"
+  "insert": {
+    "label": "Вставка",
+    "codeBlock": "Блок кода",
+    "table": "Таблица",
+    "bulletList": "Маркированный список",
+    "numberedList": "Нумерованный список",
+    "taskList": "Список задач",
+    "attachment": "Вставить вложение…"
   },
   "format": {
-    "body": "Основной текст",
-    "bold": "Полужирный",
-    "code": "Код",
+    "label": "Формат",
     "heading1": "Заголовок 1",
     "heading2": "Заголовок 2",
     "heading3": "Заголовок 3",
     "heading4": "Заголовок 4",
     "heading5": "Заголовок 5",
     "heading6": "Заголовок 6",
-    "highlight": "Выделение",
+    "body": "Основной текст",
+    "bold": "Полужирный",
     "italic": "Курсив",
-    "label": "Формат",
+    "code": "Код",
+    "highlight": "Выделение цветом",
     "strikethrough": "Зачёркнутый"
   },
-  "help": {
-    "about": "О программе MemryNote",
-    "documentation": "Документация",
-    "label": "Справка",
-    "shortcuts": "Горячие клавиши",
-    "aboutVersion": "Версия {version}"
-  },
-  "insert": {
-    "attachment": "Вставить вложение…",
-    "bulletList": "Маркированный список",
-    "codeBlock": "Блок кода",
-    "label": "Вставка",
-    "numberedList": "Нумерованный список",
-    "table": "Таблица",
-    "taskList": "Список задач"
+  "view": {
+    "label": "Вид",
+    "reload": "Перезагрузить",
+    "toggleDevTools": "Показать/скрыть инструменты разработчика",
+    "toggleFullscreen": "Полноэкранный режим",
+    "toggleSidebar": "Показать/скрыть боковую панель",
+    "toggleDayPanel": "Показать/скрыть панель дня",
+    "theme": "Тема",
+    "themeLight": "Светлая",
+    "themeDark": "Тёмная",
+    "themeWhite": "Бумага",
+    "themeSystem": "Системная",
+    "actualSize": "Фактический размер",
+    "zoomIn": "Увеличить",
+    "zoomOut": "Уменьшить"
   },
   "window": {
     "label": "Окно",
-    "close": "Закрыть",
-    "front": "Все окна вперёд",
     "minimize": "Свернуть",
-    "zoom": "Масштабировать"
+    "zoom": "Изменить масштаб",
+    "front": "Все окна — на передний план",
+    "close": "Закрыть"
+  },
+  "help": {
+    "label": "Справка",
+    "documentation": "Документация",
+    "shortcuts": "Сочетания клавиш",
+    "about": "О программе MemryNote",
+    "aboutVersion": "Версия {version}"
+  },
+  "tray": {
+    "show": "Показать MemryNote"
   }
 }

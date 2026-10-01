@@ -3,26 +3,26 @@
     "quit": "Завершити",
     "preferences": "Налаштування…",
     "checkForUpdates": "Перевірити оновлення…",
-    "exit": "Вихід",
+    "services": "Послуги",
     "hide": "Сховати MemryNote",
     "hideOthers": "Сховати інші",
-    "services": "Служби",
-    "unhide": "Показати всі"
+    "unhide": "Показати всі",
+    "exit": "Вихід"
   },
   "file": {
     "label": "Файл",
     "newNote": "Нова нотатка",
-    "close": "Закрити вікно",
-    "closeTab": "Закрити вкладку",
+    "openQuickly": "Швидко відкрити…",
     "exportPdf": "Експортувати в PDF…",
-    "openQuickly": "Швидко відкрити…"
+    "closeTab": "Закрити вкладку",
+    "close": "Закрити вікно"
   },
   "navigation": {
     "back": "Назад",
     "forward": "Вперед"
   },
   "edit": {
-    "label": "Редагувати",
+    "label": "Редагування",
     "undo": "Скасувати",
     "redo": "Повторити",
     "cut": "Вирізати",
@@ -31,63 +31,68 @@
     "selectAll": "Вибрати все",
     "find": "Знайти",
     "speech": "Мовлення",
-    "delete": "Видалити",
     "pasteAndMatchStyle": "Вставити та узгодити стиль",
+    "delete": "Видалити",
     "startSpeaking": "Почати мовлення",
-    "stopSpeaking": "Зупинити мовлення"
+    "stopSpeaking": "Зупинити мовлення",
+    "addToDictionary": "Додати до словника",
+    "noSuggestions": "Немає варіантів"
   },
-  "view": {
-    "label": "Вигляд",
-    "reload": "Перезавантажити",
-    "toggleDevTools": "Перемкнути інструменти розробника",
-    "toggleFullscreen": "Перемкнути повноекранний режим",
-    "theme": "Тема",
-    "themeDark": "Темна",
-    "themeLight": "Світла",
-    "themeSystem": "Системна",
-    "themeWhite": "Паперова",
-    "toggleDayPanel": "Перемкнути панель дня",
-    "toggleSidebar": "Перемкнути бічну панель",
-    "actualSize": "Фактичний розмір",
-    "zoomIn": "Збільшити",
-    "zoomOut": "Зменшити"
+  "insert": {
+    "label": "Вставлення",
+    "codeBlock": "Блок коду",
+    "table": "Таблиця",
+    "bulletList": "Маркований список",
+    "numberedList": "Нумерований список",
+    "taskList": "Список завдань",
+    "attachment": "Вставити вкладення…"
   },
   "format": {
-    "body": "Основний текст",
-    "bold": "Жирний",
-    "code": "Код",
+    "label": "Формат",
     "heading1": "Заголовок 1",
     "heading2": "Заголовок 2",
     "heading3": "Заголовок 3",
     "heading4": "Заголовок 4",
     "heading5": "Заголовок 5",
     "heading6": "Заголовок 6",
-    "highlight": "Виділення",
+    "body": "Основний текст",
+    "bold": "Жирний",
     "italic": "Курсив",
-    "label": "Формат",
+    "code": "Код",
+    "highlight": "Виділення",
     "strikethrough": "Закреслений"
   },
-  "help": {
-    "about": "Про програму MemryNote",
-    "documentation": "Документація",
-    "label": "Довідка",
-    "shortcuts": "Комбінації клавіш",
-    "aboutVersion": "Версія {version}"
-  },
-  "insert": {
-    "attachment": "Вставити вкладення…",
-    "bulletList": "Маркований список",
-    "codeBlock": "Блок коду",
-    "label": "Вставити",
-    "numberedList": "Нумерований список",
-    "table": "Таблиця",
-    "taskList": "Список завдань"
+  "view": {
+    "label": "Вигляд",
+    "reload": "Перезавантажити",
+    "toggleDevTools": "Показати або приховати інструменти розробника",
+    "toggleFullscreen": "Увімкнути або вимкнути повноекранний режим",
+    "toggleSidebar": "Показати або приховати бічну панель",
+    "toggleDayPanel": "Показати або приховати панель дня",
+    "theme": "Тема",
+    "themeLight": "Світла",
+    "themeDark": "Темна",
+    "themeWhite": "Паперова",
+    "themeSystem": "Системна",
+    "actualSize": "Фактичний розмір",
+    "zoomIn": "Збільшити",
+    "zoomOut": "Зменшити"
   },
   "window": {
     "label": "Вікно",
-    "close": "Закрити",
-    "front": "Перемістити все на передній план",
     "minimize": "Згорнути",
-    "zoom": "Масштабувати"
+    "zoom": "Масштабувати",
+    "front": "Перемістити все на передній план",
+    "close": "Закрити"
+  },
+  "help": {
+    "label": "Довідка",
+    "documentation": "Документація",
+    "shortcuts": "Комбінації клавіш",
+    "about": "Про MemryNote",
+    "aboutVersion": "Версія {version}"
+  },
+  "tray": {
+    "show": "Показати MemryNote"
   }
 }

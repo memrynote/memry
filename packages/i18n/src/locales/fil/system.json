@@ -1,20 +1,20 @@
 {
   "dialog": {
     "vault": {
-      "title": "Piliin ang Vault Folder",
-      "button": "Piliin ang Vault"
+      "title": "Pumili ng folder ng vault",
+      "button": "Piliin ang vault"
     },
     "exportPdf": {
       "title": "I-export bilang PDF",
-      "filterName": "PDF na Dokumento"
+      "filterName": "Dokumentong PDF"
     },
     "exportHtml": {
       "title": "I-export bilang HTML",
-      "filterName": "HTML na Dokumento"
+      "filterName": "Dokumentong HTML"
     },
     "import": {
-      "filterSupported": "Mga Sinusuportahang File",
-      "filterAll": "Lahat ng File"
+      "filterSupported": "Mga suportadong file",
+      "filterAll": "Lahat ng file"
     },
     "exportCancelled": "Kinansela ang pag-export",
     "update": {
@@ -27,45 +27,46 @@
       "readyMessage": "Na-download na ang memrynote {version}.",
       "readyDetailFallback": "I-restart ang memrynote para tapusin ang pag-install ng update.",
       "buttonRestartNow": "I-restart ngayon",
-      "releaseNotesLabel": "Mga tala sa paglabas:"
+      "releaseNotesLabel": "Mga pagbabago sa bersyong ito:"
     },
     "pair": {
+      "title": "Ipares ang browser extension",
+      "message": "Payagan ang Memry browser extension na magpadala ng mga naitala sa app na ito?",
       "buttonAllow": "Payagan",
       "buttonDeny": "Tanggihan",
-      "buttonPair": "Ipares",
-      "message": "Payagan ang Memry browser extension na magpadala ng mga capture sa app na ito?",
-      "title": "Ipares ang browser extension"
+      "buttonPair": "Ipares"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "Paalala ng tala",
-      "journal": "Paalala sa journal",
-      "highlight": "I-highlight ang paalala",
-      "fallback": "Nakatakdang paalala",
-      "default": "Paalala",
-      "task": "Paalala sa gawain"
-    },
     "inboxReview": {
-      "body": "May {count, plural, one {# item} other {# na item}} kang dapat suriin.",
-      "testBody": "Isa itong pagsubok — ganito ang magiging hitsura ng iyong mga pang-araw-araw na paalala sa pagsusuri.",
-      "title": "Oras na para suriin ang iyong inbox"
+      "title": "Oras na para suriin ang iyong inbox",
+      "body": "May {count, plural, one {# item} other {# item}} kang dapat suriin.",
+      "testBody": "Isa itong pagsubok — ganito ang magiging hitsura ng iyong mga pang-araw-araw na paalala sa pagsusuri."
+    },
+    "reminder": {
+      "note": "Paalala sa tala",
+      "journal": "Paalala sa talaarawan",
+      "highlight": "Paalala sa highlight",
+      "task": "Paalala sa gawain",
+      "fallback": "Oras na ng paalala",
+      "default": "Paalala"
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "Ang oras ng paalala ay dapat nasa hinaharap",
-    "definitionNotFound": "Hindi natagpuan ang kahulugan",
+    "reminderTimeMustBeFuture": "Dapat nasa hinaharap ang oras ng paalala",
+    "definitionNotFound": "Hindi nahanap ang depinisyon",
     "noteNotFound": "Hindi nakita ang tala",
-    "updateFailed": "Nabigo ang pag-update"
+    "updateFailed": "Nabigo ang pag-update",
+    "updateReadOnlyVolume": "Hindi ma-install ang mga update habang tumatakbo ang memrynote mula sa lokasyong ito. Ilipat ang memrynote sa Applications folder mo at buksan ito ulit."
   },
   "startup": {
-    "failed": {
-      "body": "Nangyayari ito kapag halos wala nang libreng espasyo sa disk, o sa mas lumang graphics driver. Subukang magbakante ng espasyo sa disk, pagkatapos ay buksang muli ang MemryNote. Kung magpatuloy ito, kadalasang naaayos ito ng muling pag-install.",
-      "title": "Hindi natapos ng MemryNote ang pagsisimula"
-    },
     "installingUpdate": {
-      "subtitle": "Awtomatikong magbubukas muli ang MemryNote.",
-      "title": "Ini-install ang update…"
+      "title": "Ini-install ang update…",
+      "subtitle": "Awtomatikong magbubukas muli ang MemryNote."
+    },
+    "failed": {
+      "title": "Hindi natapos ng MemryNote ang pagsisimula",
+      "body": "Nangyayari ito kapag halos wala nang libreng espasyo sa disk, o sa mas lumang graphics driver. Subukang magbakante ng espasyo sa disk, pagkatapos ay buksang muli ang MemryNote. Kung magpatuloy ito, kadalasang naaayos ito ng muling pag-install."
     }
   }
 }

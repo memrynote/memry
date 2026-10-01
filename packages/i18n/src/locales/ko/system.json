@@ -1,7 +1,7 @@
 {
   "dialog": {
     "vault": {
-      "title": "Vault 폴더 선택",
+      "title": "볼트 폴더 선택",
       "button": "볼트 선택"
     },
     "exportPdf": {
@@ -19,53 +19,54 @@
     "exportCancelled": "내보내기가 취소되었습니다.",
     "update": {
       "availableTitle": "업데이트 가능",
-      "availableMessage": "memrynote {version}를 사용할 수 있습니다.",
+      "availableMessage": "memrynote {version} 버전을 사용할 수 있습니다.",
       "availableDetailFallback": "지금 업데이트를 다운로드하시겠습니까?",
       "buttonDownload": "다운로드",
       "buttonLater": "나중에",
       "readyTitle": "업데이트 준비됨",
-      "readyMessage": "memrynote {version}가 다운로드되었습니다.",
+      "readyMessage": "memrynote {version} 버전을 다운로드했습니다.",
       "readyDetailFallback": "memrynote를 다시 시작하여 업데이트 설치를 완료하세요.",
       "buttonRestartNow": "지금 다시 시작",
       "releaseNotesLabel": "릴리스 노트:"
     },
     "pair": {
+      "title": "브라우저 확장 프로그램 연결",
+      "message": "Memry 브라우저 확장 프로그램이 이 앱으로 기록을 보내도록 허용하시겠습니까?",
       "buttonAllow": "허용",
       "buttonDeny": "거부",
-      "buttonPair": "연결",
-      "message": "Memry 브라우저 확장 프로그램이 이 앱으로 수집 항목을 보내도록 허용하시겠습니까?",
-      "title": "브라우저 확장 프로그램 연결"
+      "buttonPair": "연결"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "메모 알림",
-      "journal": "저널 알림",
-      "highlight": "하이라이트 알림",
-      "fallback": "알림 기한",
-      "default": "알림",
-      "task": "작업 리마인더"
-    },
     "inboxReview": {
+      "title": "수신함을 검토할 시간입니다",
       "body": "검토할 {count, plural, other {항목 #개}}가 있습니다.",
-      "testBody": "테스트입니다 — 매일 오는 검토 알림은 이렇게 표시됩니다.",
-      "title": "받은함을 검토할 시간입니다"
+      "testBody": "테스트입니다 — 매일 오는 검토 알림은 이렇게 표시됩니다."
+    },
+    "reminder": {
+      "note": "노트 리마인더",
+      "journal": "저널 리마인더",
+      "highlight": "하이라이트 리마인더",
+      "task": "작업 리마인더",
+      "fallback": "리마인더 시간입니다",
+      "default": "리마인더"
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "알림 시간은 미래여야 합니다.",
+    "reminderTimeMustBeFuture": "리마인더 시간은 현재 이후여야 합니다.",
     "definitionNotFound": "정의를 찾을 수 없습니다",
-    "noteNotFound": "메모를 찾을 수 없습니다.",
-    "updateFailed": "업데이트 실패"
+    "noteNotFound": "노트를 찾을 수 없습니다.",
+    "updateFailed": "업데이트 실패",
+    "updateReadOnlyVolume": "memrynote를 이 위치에서 실행하는 동안에는 업데이트를 설치할 수 없습니다. memrynote를 응용 프로그램 폴더로 옮긴 후 다시 여세요."
   },
   "startup": {
-    "failed": {
-      "body": "디스크 여유 공간이 매우 부족하거나 그래픽 드라이버가 오래된 경우에 발생할 수 있습니다. 디스크 공간을 확보한 다음 MemryNote를 다시 열어 보세요. 계속 발생한다면 대개 재설치로 해결됩니다.",
-      "title": "MemryNote를 시작하지 못했습니다"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote가 자동으로 다시 열립니다.",
-      "title": "업데이트 설치 중…"
+      "title": "업데이트 설치 중…",
+      "subtitle": "MemryNote가 자동으로 다시 열립니다."
+    },
+    "failed": {
+      "title": "MemryNote를 시작하지 못했습니다",
+      "body": "디스크 여유 공간이 매우 부족하거나 그래픽 드라이버가 오래된 경우에 발생할 수 있습니다. 디스크 공간을 확보한 다음 MemryNote를 다시 열어 보세요. 계속 발생한다면 대개 재설치로 해결됩니다."
     }
   }
 }

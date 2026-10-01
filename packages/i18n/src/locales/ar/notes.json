@@ -1,41 +1,79 @@
 {
+  "wikiLinkCreateDialog": {
+    "title": "هل تريد إنشاء الملاحظة؟",
+    "body": "لا توجد ملاحظة بعنوان «{title}». هل تريد إنشاءها؟",
+    "create": "إنشاء"
+  },
+  "wikiLinkPreview": {
+    "notFound": "غير موجودة — انقر لإنشاء «{title}»"
+  },
   "page": {
     "empty": {
       "title": "لم يتم تحديد أي ملاحظة",
       "body": "حدد ملاحظة من الشريط الجانبي لمشاهدتها"
     },
     "error": {
-      "title": "فشل تحميل الملاحظة"
+      "title": "تعذّر تحميل الملاحظة"
     },
     "toast": {
       "cannotSaveDeleted": "لا يمكن الحفظ - تم حذف الملاحظة",
       "cannotRenameDeleted": "لا يمكن إعادة التسمية - تم حذف الملاحظة",
-      "createLinkedFailed": "فشل إنشاء ملاحظة مرتبطة",
-      "openLinkedFailed": "فشل في فتح العنصر المرتبط",
-      "localOnly": "ملاحظة تم ضبطها على المستوى المحلي فقط",
+      "createLinkedFailed": "تعذّر إنشاء الملاحظة المرتبطة",
+      "openLinkedFailed": "تعذّر فتح العنصر المرتبط",
+      "fileNotFound": "لم يُعثر على الملف: {target}",
+      "localOnly": "أصبحت الملاحظة محلية فقط",
       "willSync": "ستتم مزامنة الملاحظة مع السحابة",
-      "renameFailed": "فشلت إعادة تسمية الملاحظة",
-      "toggleLocalOnlyFailed": "فشل التبديل المحلي فقط",
-      "toggleFullWidthFailed": "فشل تبديل العرض الكامل",
-      "copyPathFailed": "فشل نسخ المسار",
-      "deleteFailed": "فشل حذف الملاحظة",
-      "moveFailed": "فشل نقل الملاحظة",
-      "moved": "تم نقل الملاحظة",
-      "openExternalFailed": "فشل فتح الملاحظة",
+      "renameFailed": "تعذّر إعادة تسمية الملاحظة",
+      "titleRequired": "تحتاج الملاحظة إلى عنوان",
+      "toggleLocalOnlyFailed": "تعذّر تغيير إعداد «محلية فقط»",
+      "toggleFullWidthFailed": "تعذّر تشغيل العرض الكامل أو إيقافه",
       "pathCopied": "تم نسخ المسار",
-      "revealFailed": "فشل إظهار الملاحظة"
+      "copyPathFailed": "تعذّر نسخ المسار",
+      "revealFailed": "تعذّر إظهار الملاحظة",
+      "openExternalFailed": "تعذّر فتح الملاحظة",
+      "moved": "تم نقل الملاحظة",
+      "moveFailed": "تعذّر نقل الملاحظة",
+      "deleteFailed": "تعذّر حذف الملاحظة"
     },
-    "deleteDialogTitle": "{count, plural, one {حذف الملاحظة} other {حذف ملاحظات #}}",
+    "deleteDialogTitle": "{count, plural, zero {حذف # ملاحظة} one {حذف الملاحظة} two {حذف ملاحظتين} few {حذف # ملاحظات} many {حذف # ملاحظة} other {حذف # ملاحظة}}",
+    "itemsCount": "{count, plural, zero {لا توجد عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}}",
+    "itemsCountFiltered": "{shown} من {total, plural, zero {# عنصر} one {عنصر واحد} two {عنصرين} few {# عناصر} many {# عنصرًا} other {# عنصر}}",
+    "tagFilterLabel": "الوسم = {tag}",
     "deleteConfirm": {
+      "title": "حذف الملاحظة",
+      "description": "هل تريد بالتأكيد حذف «{title}»؟ لا يمكن التراجع عن هذا الإجراء.",
       "cancel": "إلغاء",
       "confirm": "حذف",
-      "deleting": "جارٍ الحذف...",
-      "description": "هل أنت متأكد أنك تريد حذف \"{title}\"؟ لا يمكن التراجع عن هذا الإجراء.",
-      "title": "حذف الملاحظة"
+      "deleting": "جارٍ الحذف…"
     },
-    "itemsCount": "{count, plural, zero {لا توجد عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصراً} other {# عنصر}}",
-    "itemsCountFiltered": "{shown} من {total, plural, zero {# عنصر} one {عنصر واحد} two {عنصرين} few {# عناصر} many {# عنصراً} other {# عنصر}}",
-    "tagFilterLabel": "العلامة = {tag}"
+    "largeFile": {
+      "title": "هذا الملف أكبر من أن يُفتح كملاحظة",
+      "badge": "للقراءة فقط · غير مزامَن",
+      "reason": {
+        "fileBytes": "حجمه {size}. تظل الملاحظات قابلة للتحرير حتى {limit}.",
+        "blockBytes": "يحتوي على مقطع حجمه {size} بلا أي سطر فارغ. تظل الملاحظات قابلة للتحرير حتى {limit} لكل كتلة."
+      },
+      "explanation": "يتطلب تحريره تحليل الملف كله دفعة واحدة، ما قد يجمّد التطبيق. يبقى الملف على القرص دون تغيير.",
+      "viewer": {
+        "preparing": "جارٍ تجهيز {size} للقراءة…",
+        "preparingHint": "جارٍ فهرسة الأسطر لتتمكن من التمرير فيه دون تحميله كله دفعة واحدة.",
+        "lines": "الأسطر: {count}",
+        "empty": "هذا الملف فارغ.",
+        "failed": "تعذّر تجهيز هذا الملف للقراءة.",
+        "missing": "لم يعد هذا الملف موجودًا على القرص.",
+        "lineTruncated": "سطر طويل مقطوع هنا",
+        "showRestOfLine": "إظهار بقية هذا السطر"
+      },
+      "tooLarge": {
+        "title": "هذا الملف أكبر من أن يُفتح",
+        "reason": "حجمه {size}. يعرض Memry الملفات التي يصل حجمها إلى {limit}.",
+        "explanation": "يبقى الملف على القرص دون تغيير. افتحه في تطبيق مصمَّم لملفات بهذا الحجم."
+      },
+      "find": {
+        "searching": "{count} حتى الآن…",
+        "limited": "{index}/{shown} من {total}"
+      }
+    }
   },
   "tree": {
     "aria": {
@@ -43,77 +81,152 @@
       "openFolderView": "فتح عرض المجلد"
     },
     "empty": {
-      "title": "لا توجد ملاحظات حتى الآن",
-      "body": "قم بإنشاء ملاحظة للبدء",
+      "title": "لا توجد ملاحظات بعد",
+      "body": "أنشئ ملاحظة للبدء",
       "newNote": "ملاحظة جديدة"
     },
-    "loadingError": "فشل تحميل الملاحظات",
+    "syncing": {
+      "body": "جارٍ مزامنة ملاحظاتك — ستظهر هنا فور وصولها"
+    },
+    "loadingError": "تعذّر تحميل الملاحظات",
+    "truncated": {
+      "hidden": "{count, plural, zero {لم تُعرض # ملاحظة أقدم} one {لم تُعرض ملاحظة واحدة أقدم} two {لم تُعرض ملاحظتان أقدم} few {لم تُعرض # ملاحظات أقدم} many {لم تُعرض # ملاحظة أقدم} other {لم تُعرض # ملاحظة أقدم}}",
+      "loadMore": "تحميل المزيد"
+    },
     "actions": {
+      "openInNewTab": "فتح في علامة تبويب جديدة",
+      "openToTheSide": "فتح في جزء جانبي",
       "newNote": "ملاحظة جديدة",
       "newFolder": "مجلد جديد",
+      "expandSubfolders": "توسيع كل المجلدات الفرعية",
+      "collapseSubfolders": "طي كل المجلدات الفرعية",
       "rename": "إعادة تسمية",
+      "applyTemplate": "تطبيق قالب",
+      "saveAsTemplate": "حفظ كقالب",
       "openExternal": "فتح في المحرر الخارجي",
       "setDefaultTemplate": "تعيين القالب الافتراضي",
       "clearDefaultTemplate": "مسح القالب الافتراضي",
       "setIcon": "تعيين أيقونة",
-      "removeIcon": "إزالة الرمز",
-      "deleteSelectedNotes": "حذف ملاحظات {count}",
-      "deleteSelectedItems": "حذف عناصر {count}",
-      "bookmark": "إشارة مرجعية",
+      "removeIcon": "إزالة الأيقونة",
+      "deleteSelectedNotes": "حذف الملاحظات ({count})",
+      "deleteSelectedItems": "حذف العناصر ({count})",
+      "bookmark": "إضافة إشارة مرجعية",
       "removeFromBookmarks": "إزالة من الإشارات المرجعية",
-      "applyTemplate": "تطبيق قالب",
-      "saveAsTemplate": "حفظ كقالب"
+      "journalSettings": "إعدادات اليوميات…"
+    },
+    "nav": {
+      "label": "التنقل",
+      "ariaExpanded": "قسم التنقل، موسَّع",
+      "ariaCollapsed": "قسم التنقل، مطوي",
+      "saveFailed": "تعذّر حفظ حالة قسم التنقل"
+    },
+    "viewOptions": {
+      "label": "خيارات العرض",
+      "notesFirst": "الملاحظات قبل المجلدات",
+      "showFiles": "إظهار الملفات",
+      "saveFailed": "تعذّر حفظ خيارات عرض الشريط الجانبي"
     },
     "deleteDialog": {
       "noteTitle": "حذف الملاحظة",
       "folderTitle": "حذف المجلد",
-      "itemsTitle": "حذف عناصر {count}",
-      "noteBody": "هل أنت متأكد أنك تريد حذف \"{name}\"؟ لا يمكن التراجع عن هذا الإجراء.",
-      "folderBody": "هل أنت متأكد أنك تريد حذف \"{name}\" وجميع الملاحظات الموجودة بداخله؟ لا يمكن التراجع عن هذا الإجراء.",
-      "itemsBody": "هل أنت متأكد أنك تريد حذف عناصر {count}؟ لا يمكن التراجع عن هذا الإجراء.",
-      "folderSuffix": "المجلد",
-      "moreItems": "... و{count} أكثر",
-      "deleting": "جارٍ الحذف...",
+      "itemsTitle": "حذف العناصر ({count})",
+      "noteBody": "هل تريد بالتأكيد حذف «{name}»؟ لا يمكن التراجع عن هذا الإجراء.",
+      "folderBody": "هل تريد بالتأكيد حذف «{name}» وكل الملاحظات الموجودة فيه؟ لا يمكن التراجع عن هذا الإجراء.",
+      "itemsBody": "هل تريد بالتأكيد حذف هذه العناصر ({count})؟ لا يمكن التراجع عن هذا الإجراء.",
+      "folderSuffix": "مجلد",
+      "moreItems": "…و{count} أخرى",
+      "deleting": "جارٍ الحذف…",
       "deleteCount": "حذف {count}"
     }
   },
   "editor": {
+    "bodySyncPending": "جارٍ المزامنة — ربما لم يصل محتوى هذه الملاحظة كاملًا بعد",
+    "taskRemoval": {
+      "title": "{count, plural, zero {تمّت إزالة # مهمة من هذه الملاحظة} one {تمّت إزالة مهمة من هذه الملاحظة} two {تمّت إزالة مهمتين من هذه الملاحظة} few {تمّت إزالة # مهام من هذه الملاحظة} many {تمّت إزالة # مهمة من هذه الملاحظة} other {تمّت إزالة # مهمة من هذه الملاحظة}}",
+      "description": "{count, plural, zero {هل تريد الاحتفاظ بها في المهام أم حذفها من كل مكان؟} one {هل تريد الاحتفاظ بها في المهام أم حذفها من كل مكان؟} two {هل تريد الاحتفاظ بهما في المهام أم حذفهما من كل مكان؟} few {هل تريد الاحتفاظ بها في المهام أم حذفها من كل مكان؟} many {هل تريد الاحتفاظ بها في المهام أم حذفها من كل مكان؟} other {هل تريد الاحتفاظ بها في المهام أم حذفها من كل مكان؟}}",
+      "keep": "الاحتفاظ بها في المهام",
+      "delete": "{count, plural, zero {حذف المهام} one {حذف المهمة} two {حذف المهمتين} few {حذف المهام} many {حذف المهام} other {حذف المهام}}",
+      "deleteFailed": "تعذّر حذف المهام. لا تزال موجودة في المهام."
+    },
     "title": {
       "untitled": "بدون عنوان",
-      "aria": "ملاحظة العنوان"
+      "aria": "عنوان الملاحظة"
     },
     "content": {
-      "placeholder": "ابدأ الكتابة، أو اضغط على \"/\" للأوامر...",
+      "placeholder": "ابدأ الكتابة، أو اضغط «/» لعرض الأوامر…",
       "regionAria": "محرر الملاحظات",
-      "richTextAria": "محرر النص الغني",
+      "richTextAria": "محرر النص المنسق",
       "headingPlaceholder": "العنوان",
       "listPlaceholder": "عنصر القائمة",
-      "todoPlaceholder": "عنصر المهام"
+      "todoPlaceholder": "بند مهمة"
+    },
+    "table": {
+      "keyboardMenuAria": "إجراءات الجدول للصف {row}، العمود {column}",
+      "keyboardMenuTitle": "الصف {row} · العمود {column}"
+    },
+    "list": {
+      "bulleted": "قائمة نقطية",
+      "numbered": "قائمة مرقّمة",
+      "checklist": "قائمة تحقق"
+    },
+    "bulletFold": {
+      "collapse": "طي العناصر المتداخلة",
+      "expand": "توسيع العناصر المتداخلة"
     },
     "toolbar": {
-      "reminderSet": "مجموعة تذكير",
+      "linkToNote": "ربط بملاحظة",
+      "more": "المزيد",
+      "pinToTop": "تثبيت شريط الأدوات في الأعلى",
+      "reminderSet": "تم ضبط التذكير",
       "setReminder": "ضبط التذكير",
       "removeBookmark": "إزالة الإشارة المرجعية",
       "addBookmark": "إضافة إشارة مرجعية",
+      "showMindMap": "إظهار الخريطة الذهنية",
+      "hideMindMap": "إخفاء الخريطة الذهنية",
       "hideLocalGraph": "إخفاء الرسم البياني المحلي",
-      "showLocalGraph": "عرض الرسم البياني المحلي",
-      "versionHistory": "تاريخ الإصدار",
-      "export": "تصدير",
-      "fullWidth": "العرض الكامل",
-      "disableLocalOnly": "تعطيل المحلية فقط",
-      "setLocalOnly": "تعيين محلي فقط",
-      "saveAsTemplate": "حفظ كقالب",
-      "copyPath": "نسخ المسار",
-      "delete": "حذف الملاحظة",
-      "find": "بحث…",
+      "showLocalGraph": "إظهار الرسم البياني المحلي",
       "moreActions": "المزيد من الإجراءات",
-      "moveToFolder": "نقل إلى مجلد…",
+      "find": "بحث…",
+      "versionHistory": "سجل الإصدارات",
+      "export": "تصدير",
+      "saveAsTemplate": "حفظ كقالب",
+      "fullWidth": "العرض الكامل",
       "rename": "إعادة تسمية…",
-      "revealInSidebar": "إظهار في شريط التنقل"
+      "moveToFolder": "نقل إلى مجلد…",
+      "copyPath": "نسخ المسار",
+      "revealInSidebar": "إظهار في شريط التنقل",
+      "attachments": "المرفقات…",
+      "disableLocalOnly": "إلغاء التعيين كمحلية فقط",
+      "setLocalOnly": "تعيين كمحلية فقط",
+      "delete": "حذف الملاحظة"
+    },
+    "attachmentMenu": {
+      "menuLabel": "إجراءات الملف",
+      "storedAs": "مخزَّن باسم {name}",
+      "notSynced": "لم تتم مزامنته مع هذا الجهاز بعد",
+      "revealFailed": "تعذّر إظهار الملف",
+      "openFailed": "تعذّر فتح الملف",
+      "missingTitle": "ملف المرفق مفقود",
+      "missingExpected": "الملف المتوقع: {name}"
+    },
+    "attachmentRename": {
+      "menuItem": "إعادة تسمية…",
+      "title": "إعادة تسمية المرفق",
+      "description": "ستتم إعادة تسمية الملف على القرص وعلى أجهزتك الأخرى. يبقى امتداده كما هو.",
+      "fieldLabel": "اسم المرفق",
+      "confirm": "إعادة تسمية",
+      "renamed": "تمّت إعادة التسمية إلى {name}",
+      "failed": "تعذّر إعادة تسمية المرفق"
+    },
+    "attachmentsDialog": {
+      "title": "المرفقات",
+      "description": "الملفات المخزَّنة مع هذه الملاحظة",
+      "empty": "لا تحتوي هذه الملاحظة على مرفقات.",
+      "loadFailed": "تعذّر تحميل المرفقات"
     },
     "breadcrumb": {
-      "locationAria": "ملاحظة الموقع",
-      "parentFolderAria": "انتقل إلى المجلد الأصل"
+      "locationAria": "موقع الملاحظة",
+      "parentFolderAria": "الانتقال إلى المجلد الأصل"
     },
     "errorBoundary": {
       "title": "خطأ في المحرر",
@@ -123,138 +236,484 @@
       "reload": "إعادة تحميل المحرر"
     },
     "callout": {
-      "title": "وسيلة الشرح",
+      "title": "وسيلة شرح",
       "group": "الكتل الأساسية",
-      "subtext": "تسليط الضوء على المعلومات الهامة",
+      "subtext": "تمييز المعلومات المهمة",
       "changeType": "تغيير نوع وسيلة الشرح",
       "menuLabel": "نوع وسيلة الشرح",
       "info": "معلومات",
       "warning": "تحذير",
       "error": "خطأ",
-      "success": "النجاح"
+      "success": "نجاح"
+    },
+    "diagram": {
+      "title": "رسم تخطيطي",
+      "subtext": "مخطط انسيابي أو مخطط تسلسل أو مخطط جانت من شيفرة Mermaid"
+    },
+    "math": {
+      "title": "معادلة",
+      "group": "الكتل الأساسية",
+      "subtext": "كتابة صيغة بلغة LaTeX",
+      "empty": "إضافة معادلة",
+      "edit": "تحرير المعادلة",
+      "placeholder": "E = mc^2",
+      "sourceLabel": "مصدر LaTeX",
+      "hint": "LaTeX. اضغط Escape عند الانتهاء."
+    },
+    "whiteboard": {
+      "title": "سبورة بيضاء",
+      "group": "الوسائط",
+      "subtext": "الرسم على لوحة داخل هذه الملاحظة",
+      "defaultName": "سبورة بيضاء",
+      "noteName": "سبورة {note}",
+      "untitled": "سبورة بيضاء بدون عنوان",
+      "loading": "جارٍ تحميل السبورة البيضاء…",
+      "openInTab": "فتح في علامة تبويب",
+      "edit": "تحرير",
+      "done": "تم",
+      "surfaceLabel": "رسم: {title}",
+      "createFailed": "تعذّر إنشاء السبورة البيضاء. لم يُضف أي شيء إلى الملاحظة.",
+      "loadFailed": "تعذّر تحميل هذه السبورة البيضاء. لم يتغير الرسم نفسه.",
+      "noCanvas": "لا تحتوي هذه السبورة البيضاء على لوحة. أزِل الكتلة، أو أضف كتلة جديدة باستخدام /whiteboard.",
+      "nested": "افتح هذه السبورة البيضاء في علامة تبويب مستقلة لرؤية الرسم.",
+      "missingTitle": "هذه السبورة البيضاء غير متاحة",
+      "missingBody": "حُذفت لوحتها، أو لم تصل إلى هذا الجهاز بعد. إن كانت لا تزال قيد المزامنة، فستظهر هنا تلقائيًا.",
+      "unreadableTitle": "لا يمكن فتح هذه السبورة البيضاء هنا",
+      "unreadableBody": "ملف لوحتها مفقود من الخزنة أو تتعذّر قراءته على هذا الجهاز. لم يُحذف أي شيء.",
+      "disabledTitle": "ميزة اللوحة معطّلة",
+      "disabledBody": "فعّل ميزة اللوحة من الإعدادات ‹ الميزات لعرض هذه السبورة البيضاء وتحريرها. يُحتفظ بالرسم في كلتا الحالتين."
+    },
+    "viewBlock": {
+      "title": "عرض",
+      "group": "إدراج",
+      "subtext": "قائمة حية بالملاحظات من مجلد أو وسم أو الخزنة كلها",
+      "sourceMenu": "محتوى هذا العرض",
+      "chooseSource": "اختيار ما يُعرض",
+      "sourceVault": "كل الملاحظات",
+      "sourceFolder": "مجلد",
+      "sourceTag": "وسم",
+      "noFolders": "لا توجد مجلدات بعد",
+      "noTags": "لا توجد وسوم بعد",
+      "savedView": "عرض محفوظ",
+      "savedViewMissing": "لم يعد العرض المحفوظ «{name}» موجودًا، لذا يظهر هنا العرض الافتراضي.",
+      "openAsTab": "فتح كعلامة تبويب",
+      "empty": "لا يوجد ما يطابق هذا العرض بعد.",
+      "loadFailed": "تعذّر تحميل هذا العرض. لم تتغير الملاحظات نفسها.",
+      "folderMissing": "لم يعد هذا المجلد موجودًا في الخزنة. اختر مصدرًا آخر.",
+      "invalidJson": "تعريف هذا العرض ليس JSON صالحًا. أصلحه أدناه، أو أزِل الكتلة.",
+      "invalidShape": "لا يحدد تعريف هذا العرض أي مصدر. اختر مصدرًا أعلاه، أو أصلح التعريف أدناه.",
+      "definition": "التعريف"
+    },
+    "slashMenu": {
+      "aria": "الكتل والإجراءات",
+      "groups": {
+        "recent": "الأخيرة",
+        "bestMatch": "أفضل تطابق",
+        "blocks": "الكتل",
+        "headings": "مزيد من العناوين",
+        "insert": "إدراج",
+        "media": "الوسائط",
+        "ai": "الذكاء الاصطناعي"
+      },
+      "secondary": {
+        "asToggleHeading": "قابل للطي",
+        "asLinkedTask": "كمهمة مرتبطة",
+        "asReminder": "كتذكير"
+      },
+      "actions": {
+        "insert": "إدراج",
+        "open": "فتح"
+      },
+      "matchesAlias": "يطابق",
+      "noMatch": "لا توجد كتل تطابق «{query}»",
+      "fallback": {
+        "linkTo": "إضافة رابط إلى",
+        "askAI": "سؤال الذكاء الاصطناعي"
+      },
+      "pdf": {
+        "title": "PDF",
+        "subtext": "إرفاق ملف PDF وقراءته داخل الملاحظة"
+      },
+      "html": {
+        "title": "ملف HTML",
+        "subtext": "تضمين ملف .html والتفاعل معه داخل الملاحظة"
+      },
+      "linkToNote": {
+        "title": "ربط بملاحظة",
+        "subtext": "البحث في الملاحظات — أو اكتب [[ في أي مكان"
+      },
+      "media": {
+        "title": "وسائط",
+        "subtext": "إرفاق صورة أو فيديو أو ملف صوتي"
+      },
+      "insertTemplate": {
+        "title": "إدراج محتوى قالب…",
+        "subtext": "إضافة متن القالب فقط عند المؤشر",
+        "group": "القوالب",
+        "empty": "لا يحتوي هذا القالب على محتوى لإدراجه",
+        "failed": "تعذّر إدراج هذا القالب"
+      }
+    },
+    "filePanel": {
+      "choose": "اختيار ملف…"
+    },
+    "upload": {
+      "failed": "تعذّر إرفاق هذا الملف"
+    },
+    "checkboxTask": {
+      "converted": "تم تحويل خانة الاختيار إلى مهمة",
+      "hint": "تتحول خانة الاختيار الجديدة إلى مهمة. اضغط {undo} لإبقائها خانة اختيار.",
+      "keepAsCheckbox": "الإبقاء كخانة اختيار"
+    },
+    "obsidianTask": {
+      "refused": "يحتوي هذا السطر على معرّف أو تبعية أو رابط كتلة يحتاجه Obsidian في نهاية السطر. أزِله في Obsidian أولًا، ثم حوّله.",
+      "createFailed": "تعذّر إنشاء مهمة لهذا السطر.",
+      "completeFailed": "تم إنشاء المهمة، لكن تعذّر تطبيق تاريخ إكمالها."
+    },
+    "blockMenu": {
+      "turnInto": "تحويل إلى",
+      "turnIntoTypes": {
+        "paragraph": "نص",
+        "heading1": "عنوان 1",
+        "heading2": "عنوان 2",
+        "heading3": "عنوان 3",
+        "bulletList": "قائمة نقطية",
+        "numberedList": "قائمة مرقّمة",
+        "checkbox": "خانة اختيار",
+        "task": "مهمة",
+        "toggleList": "قائمة قابلة للطي",
+        "quote": "اقتباس",
+        "codeBlock": "شيفرة",
+        "callout": "وسيلة شرح"
+      },
+      "turnIntoCheckbox": "تحويل إلى خانة اختيار",
+      "colors": "الألوان",
+      "duplicate": "إنشاء نسخة",
+      "insertTemplate": "إدراج قالب…",
+      "moveTo": "نقل إلى…",
+      "delete": "حذف",
+      "comment": "تعليق",
+      "moveDialog": {
+        "title": "نقل الكتلة إلى ملاحظة",
+        "searchPlaceholder": "البحث في الملاحظات…",
+        "noResults": "لا توجد ملاحظات مطابقة",
+        "moved": "تم نقل الكتلة إلى «{title}»",
+        "failed": "تعذّر نقل الكتلة"
+      }
+    },
+    "attachmentPicker": {
+      "title": {
+        "image": "إضافة صورة",
+        "media": "إضافة وسائط",
+        "pdf": "إضافة ملف PDF",
+        "html": "تضمين ملف HTML",
+        "file": "إضافة ملف"
+      },
+      "placeholder": {
+        "image": "البحث في الصور، أو رفع صورة جديدة…",
+        "media": "البحث في الوسائط، أو رفع ملف جديد…",
+        "pdf": "البحث في ملفات PDF، أو رفع ملف جديد…",
+        "html": "البحث في ملفات HTML، أو رفع ملف جديد…",
+        "file": "البحث في المرفقات، أو رفع ملف جديد…"
+      },
+      "upload": {
+        "image": "رفع صورة…",
+        "media": "رفع وسائط…",
+        "pdf": "رفع ملف PDF…",
+        "html": "رفع ملف HTML…",
+        "file": "رفع ملف…"
+      },
+      "empty": {
+        "image": "لا توجد صور في هذه الخزنة بعد.",
+        "media": "لا توجد وسائط في هذه الخزنة بعد.",
+        "pdf": "لا توجد ملفات PDF في هذه الخزنة بعد.",
+        "html": "لا توجد ملفات HTML في هذه الخزنة بعد.",
+        "file": "لا توجد مرفقات في هذه الخزنة بعد."
+      },
+      "addHeading": "إضافة",
+      "vaultHeading": "في هذه الخزنة",
+      "uploading": "جارٍ الرفع…",
+      "noMatches": "لا يوجد ما يطابق ذلك.",
+      "loadFailed": "تعذّر تحميل مرفقات الخزنة",
+      "insertFailed": "تعذّر إدراج المرفق",
+      "uploadFailed": "تعذّر رفع الملف",
+      "unsupportedVideo": "لا يمكن تشغيل تنسيق الفيديو هذا في Memry. التنسيقات المدعومة: {formats}.",
+      "tooLarge": "حجم هذا الملف {size}، وهو يتجاوز حد المرفقات البالغ {limit}.",
+      "hint": {
+        "navigate": "التنقل",
+        "insert": "إدراج",
+        "close": "إغلاق"
+      }
+    },
+    "codeBlock": {
+      "copy": "نسخ الشيفرة",
+      "copied": "تم النسخ",
+      "language": "اللغة"
     }
+  },
+  "dateMention": {
+    "dateInput": "التاريخ",
+    "time": "الوقت",
+    "includeTime": "تضمين الوقت",
+    "timeFormat": "تنسيق الوقت",
+    "dateFormat": "تنسيق التاريخ",
+    "remind": "تذكير",
+    "clear": "مسح"
   },
   "menus": {
     "wiki": {
-      "aria": "ملاحظة الاقتراحات",
-      "loading": "جارٍ تحميل الملاحظات...",
+      "aria": "اقتراحات الملاحظات",
+      "loading": "جارٍ تحميل الملاحظات…",
       "empty": "لم يتم العثور على أي ملاحظات",
       "create": "إنشاء ملاحظة جديدة",
       "embed": "تضمين",
-      "embedAria": "تضمين {title}",
       "wikiLink": "رابط ويكي",
-      "wikiLinkAria": "رابط ويكي {title}"
+      "embedAria": "تضمين {title}",
+      "wikiLinkAria": "رابط ويكي {title}",
+      "noHeadings": "لا توجد عناوين في {title}",
+      "noMatchingHeadings": "لا توجد عناوين مطابقة في {title}",
+      "displayAs": "عرض الرابط باسم",
+      "aliasHint": "اكتب | لتسمية الرابط"
+    },
+    "mention": {
+      "aria": "اقتراحات التاريخ والملاحظات",
+      "loading": "جارٍ تحميل الملاحظات…",
+      "empty": "لم يتم العثور على ملاحظات",
+      "date": "التاريخ",
+      "now": "الآن",
+      "remindMe": "ذكّرني",
+      "dateHint": "استمر في كتابة تاريخ…",
+      "showMore": "عرض المزيد",
+      "canvases": "اللوحات",
+      "choiceTitle": "إدراج اللوحة على شكل",
+      "choiceMention": "إشارة",
+      "choiceEmbed": "تضمين"
     },
     "tags": {
-      "aria": "اقتراحات العلامات",
-      "loading": "جارٍ تحميل العلامات...",
-      "empty": "اكتب لإنشاء علامة جديدة",
+      "aria": "اقتراحات الوسوم",
+      "loading": "جارٍ تحميل الوسوم…",
+      "empty": "اكتب لإنشاء وسم جديد",
       "create": "إنشاء #{tag}"
     },
     "pasteLink": {
-      "title": "لصق باسم",
+      "title": "لصق على شكل",
       "url": "عنوان URL",
-      "mention": "أذكر",
+      "mention": "إشارة",
       "embedVideo": "تضمين الفيديو",
       "bookmark": "إشارة مرجعية"
     },
     "emoji": {
-      "aria": "الرموز التعبيرية ومنتقي الأيقونات",
+      "aria": "منتقي الرموز التعبيرية والأيقونات",
       "emojiTab": "الرموز التعبيرية",
-      "iconsTab": "أيقونات",
+      "iconsTab": "الأيقونات",
       "searchPlaceholder": "بحث",
       "noIcons": "لم يتم العثور على أي أيقونات",
-      "clearSearch": "مسح البحث"
-    },
-    "mention": {
-      "aria": "اقتراحات التاريخ والملاحظات",
-      "date": "التاريخ",
-      "dateHint": "استمر في كتابة تاريخ…",
-      "empty": "لم يتم العثور على ملاحظات",
-      "loading": "جارٍ تحميل الملاحظات...",
-      "remindMe": "ذكّرني",
-      "showMore": "عرض المزيد"
+      "clearSearch": "مسح البحث",
+      "customTab": "مخصصة",
+      "custom": {
+        "searchPlaceholder": "البحث في أيقوناتك",
+        "dropHint": "أفلِت صورة هنا أو انقر للرفع",
+        "urlPlaceholder": "أو الصق رابط صورة",
+        "urlLabel": "رابط الصورة",
+        "urlSubmit": "تنزيل هذه الصورة",
+        "downloading": "جارٍ التنزيل…",
+        "adding": "جارٍ الإضافة…",
+        "empty": "لا توجد أيقونات مخصصة بعد. أفلِت صورة أو الصق رابطًا لإضافة أيقونة.",
+        "noMatches": "لا توجد أيقونات مخصصة تطابق هذا البحث",
+        "unsupportedFile": "الملف {name} ليس صورة مدعومة",
+        "addFailed": "تعذّر إضافة هذه الأيقونة",
+        "deleteFailed": "تعذّر حذف هذه الأيقونة",
+        "renameFailed": "تعذّر إعادة تسمية هذه الأيقونة",
+        "rename": "إعادة تسمية {name}",
+        "delete": "حذف {name}",
+        "renameLabel": "اسم الأيقونة",
+        "saveName": "حفظ الاسم",
+        "cancelRename": "إلغاء إعادة التسمية",
+        "addUrlFailed": "تعذّر تنزيل هذه الصورة"
+      }
     }
   },
   "outline": {
-    "title": "الخطوط العريضة",
-    "aria": "الخطوط العريضة للوثيقة",
-    "empty": "لا عناوين",
-    "emptyYet": "لا يوجد عناوين بعد",
-    "readTime": "{count} دقيقة قراءة",
-    "words": "كلمات {count}",
-    "created": "تم إنشاؤها",
-    "modified": "معدلة"
+    "title": "المخطط",
+    "aria": "مخطط المستند",
+    "empty": "لا توجد عناوين",
+    "emptyYet": "لا توجد عناوين بعد",
+    "readTime": "مدة القراءة: {count} د",
+    "words": "الكلمات: {count}",
+    "created": "تاريخ الإنشاء",
+    "modified": "تاريخ التعديل"
   },
   "backlinks": {
-    "sortRecent": "الأخيرة",
+    "sortRecent": "الأحدث",
     "sortAlpha": "من الألف إلى الياء",
-    "sortMentions": "معظم الإشارات",
-    "sortBy": "فرز الروابط الخلفية حسب {sort}",
-    "summary": "ملاحظات {notes} · مراجع {references}",
+    "sortMentions": "الأكثر إشارة",
+    "sortBy": "ترتيب الروابط الخلفية حسب {sort}",
+    "summary": "الملاحظات: {notes} · الإحالات: {references}",
     "sectionAria": "الروابط الخلفية",
     "listAria": "قائمة الروابط الخلفية",
     "fromAria": "الروابط الخلفية من {title}",
     "collapse": "طي",
     "expand": "توسيع",
     "collapseSection": "طي قسم الروابط الخلفية",
-    "expandSection": "قم بتوسيع قسم الروابط الخلفية",
-    "showMore": "عرض المزيد من الروابط الخلفية لـ {count}",
-    "more": "{count} أكثر"
+    "expandSection": "توسيع قسم الروابط الخلفية",
+    "showMore": "إظهار المزيد من الروابط الخلفية ({count})",
+    "more": "{count} أخرى",
+    "viaProperty": "{property} ← {title}"
+  },
+  "outgoingLinks": {
+    "summary": "{count, plural, zero {لا توجد روابط صادرة} one {رابط صادر واحد} two {رابطان صادران} few {# روابط صادرة} many {# رابطًا صادرًا} other {# رابط صادر}}",
+    "sectionAria": "الروابط الصادرة",
+    "unresolved": "لم تُنشأ بعد",
+    "showMore": "إظهار المزيد من الروابط الصادرة ({count})",
+    "more": "{count} أخرى"
+  },
+  "canvasLinks": {
+    "connectedOn": "مرتبطة في {canvas}",
+    "untitledCanvas": "لوحة بدون عنوان"
+  },
+  "similarNotes": {
+    "summary": "{count, plural, zero {لا توجد ملاحظات مشابهة} one {ملاحظة مشابهة واحدة} two {ملاحظتان مشابهتان} few {# ملاحظات مشابهة} many {# ملاحظة مشابهة} other {# ملاحظة مشابهة}}",
+    "sectionAria": "الملاحظات المشابهة",
+    "hint": "ملاحظات يشبه محتواها هذه الملاحظة ولم تُربط بها بعد. يُعثر عليها على هذا الجهاز من خلال التضمينات المحلية.",
+    "addLink": "ربط من هذه الملاحظة",
+    "addLinkAria": "ربط {title} من هذه الملاحظة",
+    "linked": "تم ربط {title}",
+    "addToCanvas": "إضافة إلى لوحة",
+    "addToCanvasAria": "إضافة {title} إلى لوحة",
+    "searchCanvases": "البحث في اللوحات…",
+    "canvasLoading": "جارٍ تحميل اللوحات…",
+    "noCanvases": "لا توجد لوحات بعد",
+    "noMatch": "لا توجد لوحة مطابقة",
+    "addedToCanvas": "تمّت إضافة {title} إلى {canvas}",
+    "alreadyOnCanvas": "الملاحظة {title} موجودة بالفعل في {canvas}",
+    "openCanvas": "فتح",
+    "addToCanvasFailed": "تعذّر إضافة الملاحظة إلى اللوحة"
+  },
+  "suggestedTags": {
+    "label": "وسوم مقترحة:",
+    "hint": "وسوم مشتركة بين الملاحظات الأكثر تشابهًا مع هذه الملاحظة. لا يُضاف أي شيء حتى تختار وسمًا.",
+    "acceptAria": "إضافة الوسم {tag}",
+    "support": "{count, plural, zero {مستخدَم في # ملاحظة مشابهة} one {مستخدَم في ملاحظة مشابهة واحدة} two {مستخدَم في ملاحظتين مشابهتين} few {مستخدَم في # ملاحظات مشابهة} many {مستخدَم في # ملاحظة مشابهة} other {مستخدَم في # ملاحظة مشابهة}}",
+    "dismiss": "إخفاء الوسوم المقترحة",
+    "failed": "تعذّر إضافة الوسم"
+  },
+  "comments": {
+    "railAria": "التعليقات",
+    "badgeAria": "{count, plural, zero {لا توجد تعليقات} one {تعليق واحد} two {تعليقان} few {# تعليقات} many {# تعليقًا} other {# تعليق}}",
+    "toolbarComment": "تعليق",
+    "commentPlaceholder": "إضافة تعليق…",
+    "createdTooltip": "أُنشئ في {date} الساعة {time}",
+    "cancel": "إلغاء",
+    "resolve": "حل",
+    "edit": "تحرير التعليق",
+    "delete": "حذف التعليق",
+    "replyPlaceholder": "رد…",
+    "attachAria": "إرفاق ملف",
+    "mentionAria": "الإشارة إلى شخص أو صفحة أو تاريخ",
+    "sendAria": "إرسال التعليق",
+    "formatToolbarAria": "تنسيق النص",
+    "format": {
+      "bold": "غامق",
+      "italic": "مائل",
+      "underline": "تسطير",
+      "strike": "يتوسطه خط",
+      "code": "شيفرة"
+    },
+    "openImageAria": "فتح الصورة {name}",
+    "openAttachmentAria": "فتح المرفق {name}",
+    "kind": {
+      "comment": "تعليق",
+      "addition": "إضافة",
+      "deletion": "حذف",
+      "substitution": "استبدال"
+    }
   },
   "tagsRow": {
-    "aria": "العلامات",
-    "empty": "إضافة العلامات",
-    "add": "إضافة علامة",
-    "removeAria": "إزالة العلامة: {tag}",
-    "inputPlaceholder": "اكتب اسم العلامة...",
+    "aria": "الوسوم",
+    "empty": "إضافة وسوم",
+    "add": "إضافة وسم",
+    "removeAria": "إزالة الوسم: {tag}",
+    "inputPlaceholder": "اسم الوسم…",
     "recent": "الأخيرة",
-    "matching": "مطابقة",
-    "all": "جميع العلامات",
-    "none": "لم يتم العثور على علامات",
-    "createTag": "إنشاء علامة: \"{tag}\"",
+    "matching": "المطابقة",
+    "all": "كل الوسوم",
+    "none": "لم يتم العثور على وسوم",
+    "createTag": "إنشاء وسم: «{tag}»",
     "chooseColor": "اختر اللون:",
     "preview": "معاينة:",
-    "colorAria": "حدد لون {color}",
+    "colorAria": "اختيار اللون {color}",
     "customColor": "لون مخصّص"
   },
   "properties": {
-    "title": "خصائص",
+    "title": "الخصائص",
     "noteAria": "خصائص الملاحظة",
     "workspaceAria": "خصائص مساحة العمل",
     "listAria": "قائمة الخصائص",
-    "add": "أضف خاصية",
+    "add": "إضافة خاصية",
     "addDescription": "أضف خاصية جديدة إلى هذه الملاحظة",
-    "namePlaceholder": "اسم العقار",
-    "nameAria": "اسم العقار",
-    "typeSection": "اكتب",
+    "namePlaceholder": "اسم الخاصية",
+    "nameAria": "اسم الخاصية",
+    "typeSection": "النوع",
     "empty": "فارغ",
-    "dragAria": "اسحب لإعادة ترتيب الخاصية",
+    "dragAria": "سحب لإعادة ترتيب الخاصية",
     "editName": "تعديل اسم الخاصية",
-    "delete": "حذف الممتلكات",
-    "searchOptions": "خيارات البحث...",
+    "delete": "حذف الخاصية",
+    "searchOptions": "البحث في الخيارات…",
     "noOptions": "لا توجد خيارات بعد",
     "optionName": "اسم الخيار",
     "newOption": "خيار جديد",
     "ratingAria": "التقييم",
-    "openUrlAria": "افتح عنوان URL",
+    "openUrlAria": "فتح عنوان URL",
+    "showOnCalendar": "إظهار في التقويم",
+    "showingOnCalendar": "يظهر في التقويم",
+    "relation": {
+      "deleted": "محذوف",
+      "removeAria": "إزالة {title}",
+      "addAria": "إضافة علاقة",
+      "searchPlaceholder": "البحث في الملاحظات والمهام والأحداث واللوحات واليوميات…",
+      "groupNotes": "الملاحظات والملفات",
+      "groupTasks": "المهام",
+      "groupEvents": "الأحداث",
+      "groupCanvases": "اللوحات",
+      "groupJournals": "اليوميات",
+      "empty": "لا توجد نتائج"
+    },
     "types": {
       "text": "نص",
       "number": "رقم",
-      "date": "التاريخ",
-      "checkbox": "خانة الاختيار",
-      "url": "عنوان URL",
+      "date": "تاريخ",
+      "checkbox": "خانة اختيار",
+      "url": "URL",
       "status": "الحالة",
-      "select": "اختر",
-      "multiselect": "تحديد متعدد"
+      "select": "اختيار",
+      "multiselect": "اختيار متعدد",
+      "relation": "علاقة",
+      "project": "مشروع"
     },
-    "showOnCalendar": "إظهار في التقويم",
-    "showingOnCalendar": "يظهر في التقويم",
     "statusCategories": {
-      "done": "مكتمل",
+      "todo": "للتنفيذ",
       "inProgress": "قيد التنفيذ",
-      "todo": "قيد الانتظار"
-    }
+      "done": "مكتملة"
+    },
+    "projectAlreadySet": "لهذه الملاحظة خاصية مشروع بالفعل",
+    "projectPlaceholder": "بلا مشروع",
+    "projectSearch": "البحث في المشاريع",
+    "projectEmpty": "لا توجد مشاريع",
+    "projectRemove": "إزالة من {name}"
+  },
+  "moveNoteTasks": {
+    "title": "هل تريد نقل مهام هذه الملاحظة؟",
+    "description": "{count, plural, zero {# مهمة في هذه الملاحظة تنتمي إلى مشاريع أخرى} one {مهمة واحدة في هذه الملاحظة تنتمي إلى مشروع آخر} two {مهمتان في هذه الملاحظة تنتميان إلى مشاريع أخرى} few {# مهام في هذه الملاحظة تنتمي إلى مشاريع أخرى} many {# مهمة في هذه الملاحظة تنتمي إلى مشاريع أخرى} other {# مهمة في هذه الملاحظة تنتمي إلى مشاريع أخرى}}. هل تريد نقل{count, plural, zero {ها} one {ها} two {هما} few {ها} many {ها} other {ها}} إلى {project}؟",
+    "subtaskNote": "تُنقل المهام الفرعية مع مهمتها الأصل.",
+    "cancel": "الإبقاء كما هي",
+    "confirm": "{count, plural, zero {نقل المهام} one {نقل المهمة} two {نقل المهمتين} few {نقل المهام} many {نقل المهام} other {نقل المهام}}",
+    "success": "{count, plural, zero {تم نقل # مهمة إلى {project}} one {تم نقل مهمة واحدة إلى {project}} two {تم نقل مهمتين إلى {project}} few {تم نقل # مهام إلى {project}} many {تم نقل # مهمة إلى {project}} other {تم نقل # مهمة إلى {project}}}",
+    "failed": "تعذّر نقل مهام الملاحظة"
+  },
+  "deleteNoteTasks": {
+    "label": "{count, plural, zero {حذف المهام الموجودة فيها أيضًا} one {حذف المهمة الموجودة فيها أيضًا} two {حذف المهمتين الموجودتين فيها أيضًا} few {حذف # مهام موجودة فيها أيضًا} many {حذف # مهمة موجودة فيها أيضًا} other {حذف # مهمة موجودة فيها أيضًا}}",
+    "description": "{count, plural, zero {إن تُرك هذا الخيار دون تحديد، تبقى في المهام.} one {إن تُرك هذا الخيار دون تحديد، تبقى في المهام.} two {إن تُرك هذا الخيار دون تحديد، تبقيان في المهام.} few {إن تُرك هذا الخيار دون تحديد، تبقى في المهام.} many {إن تُرك هذا الخيار دون تحديد، تبقى في المهام.} other {إن تُرك هذا الخيار دون تحديد، تبقى في المهام.}}",
+    "failed": "تعذّر حذف المهام. لا تزال موجودة في المهام."
   },
   "cover": {
     "add": "إضافة صورة غلاف",
@@ -262,30 +721,31 @@
     "remove": "إزالة صورة الغلاف",
     "alt": "صورة الغلاف",
     "setFailed": "تعذّر تعيين صورة الغلاف",
-    "removeFailed": "تعذّرت إزالة صورة الغلاف",
+    "removeFailed": "تعذّر إزالة صورة الغلاف",
     "reposition": "تغيير الموضع",
     "repositionHint": "اسحب لتغيير الموضع",
     "repositionSave": "حفظ",
     "repositionCancel": "إلغاء",
-    "credit": "صورة بواسطة {name} على Unsplash",
+    "credit": "تصوير {name} على Unsplash",
     "focusFailed": "تعذّر حفظ موضع صورة الغلاف",
     "picker": {
       "title": "غلاف الملاحظة",
-      "placeholder": "ابحث في الأغلفة",
+      "placeholder": "البحث في الأغلفة",
       "tab": {
         "washes": "درجات لونية",
         "photos": "Unsplash",
         "fromNote": "من الملاحظة",
-        "upload": "رفع"
+        "upload": "رفع",
+        "link": "رابط"
       },
       "photos": {
         "searching": "جارٍ البحث في Unsplash…",
         "noResults": "لا توجد صور مطابقة لهذا البحث",
-        "remaining": "{count} متبقٍ",
+        "remaining": "المتبقي: {count}",
         "tileCredit": "{name} · Unsplash",
         "error": {
           "notConfigured": "صور Unsplash غير متاحة في هذا الإصدار",
-          "offline": "لا يوجد اتصال بـ Unsplash",
+          "offline": "لا يوجد اتصال بـUnsplash",
           "rateLimited": "تم تقييد معدل الطلبات على Unsplash، حاول مرة أخرى بعد قليل",
           "failed": "تعذّر الوصول إلى Unsplash",
           "writeFailed": "تعذّر حفظ هذه الصورة في الخزنة"
@@ -316,61 +776,74 @@
         "bark": "لحائي",
         "mist": "سديمي",
         "plum": "برقوقي"
+      },
+      "link": {
+        "prompt": "الصق رابط صورة",
+        "invalid": "لا يستطيع Memry فتح هذا الرابط",
+        "use": "استخدام هذه الصورة",
+        "saving": "جارٍ حفظ الصورة…",
+        "error": {
+          "notAnImage": "لا يشير هذا الرابط إلى صورة",
+          "tooLarge": "هذه الصورة أكبر من أن تُخزَّن",
+          "offline": "تعذّر الوصول إلى هذا الرابط",
+          "failed": "تعذّر تنزيل هذه الصورة",
+          "writeFailed": "تعذّر حفظ هذه الصورة في الخزنة"
+        }
       }
     }
   },
   "templateSelector": {
-    "title": "اختر قماشك",
+    "title": "اختر نقطة البداية",
     "description": "حدد قالبًا لبدء ملاحظتك",
-    "searchPlaceholder": "قوالب البحث...",
-    "loading": "جارٍ تحميل النماذج...",
+    "searchPlaceholder": "البحث في القوالب…",
+    "loading": "جارٍ تحميل القوالب…",
     "empty": "لم يتم العثور على قوالب",
     "myTemplates": "القوالب الخاصة بي",
-    "essentials": "أساسيات",
-    "setFolderDefault": "تعيين كمجلد افتراضي",
-    "useTemplate": "استخدم القالب",
+    "essentials": "الأساسيات",
+    "setFolderDefault": "تعيين كقالب افتراضي للمجلد",
+    "useTemplate": "استخدام القالب",
     "createNote": "إنشاء ملاحظة",
-    "applyDescription": "استبدال محتوى هذه الملاحظة بقالب",
+    "applyToNote": "تطبيق القالب",
     "applyTitle": "تطبيق قالب",
-    "applyToNote": "تطبيق القالب"
+    "applyDescription": "استبدال محتوى هذه الملاحظة بقالب"
   },
   "exportDialog": {
-    "title": "ملاحظة التصدير",
-    "description": "تصدير \"{title}\" إلى ملف",
+    "title": "تصدير الملاحظة",
+    "description": "تصدير «{title}» إلى ملف",
     "format": "التنسيق",
-    "pdfDescription": "وثيقة جاهزة للطباعة",
+    "pdfDescription": "مستند جاهز للطباعة",
     "htmlDescription": "ملف جاهز للويب",
     "pageSize": "حجم الصفحة",
-    "selectPageSize": "حدد حجم الصفحة",
-    "options": "خيارات",
-    "includeMetadata": "تضمين البيانات الوصفية (العلامات والتواريخ)",
-    "exporting": "جارٍ التصدير...",
-    "exported": "تصدير!",
+    "selectPageSize": "اختيار حجم الصفحة",
+    "options": "الخيارات",
+    "includeMetadata": "تضمين البيانات الوصفية (الوسوم والتواريخ)",
+    "exporting": "جارٍ التصدير…",
+    "exported": "تم التصدير!",
     "export": "تصدير",
     "toast": {
       "failed": "فشل التصدير"
     }
   },
   "versionHistory": {
-    "title": "تاريخ الإصدار",
-    "description": "عرض واستعادة الإصدارات السابقة من \"{title}\"",
+    "title": "سجل الإصدارات",
+    "description": "عرض الإصدارات السابقة من «{title}» واستعادتها",
     "hidePreview": "إخفاء المعاينة",
-    "showPreview": "عرض المعاينة",
-    "empty": "لم يتم حفظ أي إصدارات حتى الآن",
+    "showPreview": "إظهار المعاينة",
+    "empty": "لم تُحفظ أي إصدارات بعد",
     "emptyDescription": "يتم حفظ الإصدارات تلقائيًا عند إجراء تغييرات مهمة",
     "latest": "الأحدث",
     "autoSaved": "تم الحفظ تلقائيًا",
-    "words": "كلمات {count}",
-    "selectPrompt": "حدد نسخة لمعاينتها",
+    "words": "الكلمات: {count}",
+    "selectPrompt": "حدد إصدارًا لمعاينته",
     "restore": "استعادة",
     "deleteTitle": "هل تريد حذف هذا الإصدار؟",
     "deleteDescription": "لا يمكن التراجع عن هذا الإجراء. سيتم حذف هذا الإصدار نهائيًا.",
-    "restoreTitle": "استعادة هذا الإصدار؟",
-    "restoreDescription": "سيؤدي هذا إلى استبدال محتوى الملاحظة الحالية بهذا الإصدار. سيتم حفظ لقطة للحالة الحالية أولاً، حتى تتمكن من التراجع عن هذا الإجراء.",
-    "restoring": "جارٍ الاستعادة...",
+    "restoreTitle": "هل تريد استعادة هذا الإصدار؟",
+    "restoreDescription": "سيؤدي هذا إلى استبدال محتوى الملاحظة الحالي بهذا الإصدار. ستُحفظ لقطة للحالة الحالية أولًا، حتى تتمكن من التراجع عن هذا الإجراء.",
+    "restoring": "جارٍ الاستعادة…",
     "toast": {
-      "loadPreviewFailed": "فشل تحميل معاينة الإصدار",
-      "restored": "تمت استعادة الملاحظة إلى الإصدار السابق",
+      "loadPreviewFailed": "تعذّر تحميل معاينة الإصدار",
+      "restored": "تمّت استعادة الملاحظة إلى الإصدار السابق",
       "deleted": "تم حذف الإصدار"
     }
   },
@@ -390,45 +863,50 @@
     "actions": {
       "create": "إنشاء قالب",
       "update": "تحديث",
-      "duplicateAndEdit": "تكرار وتحرير",
-      "duplicate": "تكرار",
+      "duplicateAndEdit": "إنشاء نسخة وتحريرها",
+      "duplicate": "إنشاء نسخة",
       "delete": "حذف القالب",
       "more": "إجراءات أخرى"
     },
     "toast": {
-      "createFailed": "فشل في إنشاء القالب",
-      "saveFailed": "فشل حفظ القالب"
+      "createFailed": "تعذّر إنشاء القالب",
+      "saveFailed": "تعذّر حفظ القالب"
     }
   },
   "reminders": {
     "summary": "تذكير: {date}",
-    "summaryWithMore": "تذكير: {date} (+{count} أكثر)",
-    "hasReminders": "لديه تذكيرات",
+    "summaryWithMore": "تذكير: {date} (+{count} أخرى)",
+    "hasReminders": "توجد تذكيرات",
     "setReminder": "ضبط التذكير",
     "toast": {
-      "set": "مجموعة تذكير",
-      "setFailed": "فشل تعيين التذكير",
+      "set": "تم ضبط التذكير",
+      "setFailed": "تعذّر ضبط التذكير",
       "deleted": "تم حذف التذكير",
-      "deleteFailed": "فشل حذف التذكير",
-      "dismissed": "تم رفض التذكير",
-      "dismissFailed": "تعذّر تجاهل التذكير"
+      "deleteFailed": "تعذّر حذف التذكير",
+      "dismissed": "تم تجاهل التذكير",
+      "dismissFailed": "تعذّر تجاهل التذكير",
+      "updated": "تم تحديث التذكير",
+      "updateFailed": "تعذّر تحديث التذكير"
     }
   },
   "linkedTasks": {
     "title": "المهام المرتبطة",
-    "loading": "جارٍ تحميل المهام المرتبطة..."
+    "loading": "جارٍ تحميل المهام المرتبطة…"
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "اسحب لإعادة ترتيب العمود",
+      "dragToReorderColumn": "سحب لإعادة ترتيب العمود",
       "editColumnName": "تحرير اسم العمود"
     },
     "componentsFolderViewColumnSelector": {
-      "properties": "خصائص",
-      "searchColumns": "أعمدة البحث...",
-      "noMatchingColumns": "لا توجد أعمدة متطابقة",
+      "properties": "الخصائص",
+      "display": "العرض",
+      "showSummaries": "إظهار الملخصات",
+      "columnBorders": "حدود الأعمدة",
+      "searchColumns": "البحث في الأعمدة…",
+      "noMatchingColumns": "لا توجد أعمدة مطابقة",
       "formulas": "الصيغ",
-      "noFormulasDefined": "لم يتم تحديد أي صيغ",
+      "noFormulasDefined": "لم يتم تعريف أي صيغ",
       "addFormula": "إضافة صيغة",
       "deleteFormula": "حذف الصيغة",
       "cancel": "إلغاء",
@@ -436,165 +914,164 @@
       "none": "لا شيء",
       "edit": "تحرير",
       "delete2": "حذف",
-      "columnBorders": "حدود الأعمدة",
-      "display": "العرض",
-      "showSummaries": "إظهار الملخصات",
-      "deleteFormulaBody": "هل أنت متأكد أنك تريد حذف الصيغة \"{name}\"؟ لا يمكن التراجع عن هذا الإجراء."
+      "deleteFormulaBody": "هل تريد بالتأكيد حذف الصيغة «{name}»؟ لا يمكن التراجع عن هذا الإجراء."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "تصفية",
-      "filters": "المرشحات",
+      "filters": "عوامل التصفية",
       "clearAll": "مسح الكل",
-      "noFiltersApplied": "لم يتم تطبيق أي مرشحات",
-      "addFiltersToNarrowDownYourNotes": "أضف مرشحات لتضييق نطاق ملاحظاتك",
-      "match": "مباراة",
+      "noFiltersApplied": "لم يتم تطبيق أي عوامل تصفية",
+      "addFiltersToNarrowDownYourNotes": "أضف عوامل تصفية لتضييق نطاق ملاحظاتك",
+      "match": "مطابقة",
       "allAnd": "الكل (و)",
       "anyOr": "أي (أو)",
       "ofTheFollowing": "مما يلي:",
-      "match2": "مباراة",
+      "match2": "مطابقة",
       "all": "الكل",
       "any": "أي",
       "of": "من:",
       "addCondition": "إضافة شرط",
-      "addFilter": "إضافة مرشح",
-      "addGroup": "أضف مجموعة",
+      "addFilter": "إضافة عامل تصفية",
+      "addGroup": "إضافة مجموعة",
       "removeGroup": "إزالة المجموعة",
       "lockedConditionHint": "يحدّد هذا الشرط العرض الحالي ولا يمكن إزالته من هنا."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "مدمج",
-      "properties": "خصائص",
-      "placeholderProperty": "الملكية",
-      "placeholderOperator": "المشغل",
+      "properties": "الخصائص",
+      "placeholderProperty": "الخاصية",
+      "placeholderOperator": "عامل التشغيل",
       "placeholderValue": "القيمة",
-      "removeFilter": "إزالة عامل التصفية"
+      "removeFilter": "إزالة عامل التصفية",
+      "tagSuggestions": "اقتراحات الوسوم"
     },
     "componentsFolderViewFolderTableView": {
       "notesTable": "جدول الملاحظات",
       "selectAll": "تحديد كل الملاحظات",
       "selectRow": "تحديد الملاحظة",
       "kind": {
-        "Inbox": "البريد الوارد",
         "Note": "ملاحظة",
-        "Task": "مهمة"
+        "Task": "مهمة",
+        "Inbox": "صندوق الوارد"
       }
     },
     "componentsFolderViewFolderViewToolbar": {
-      "searchNotes": "ملاحظات البحث...",
+      "searchNotes": "البحث في الملاحظات…",
       "clearSearch": "مسح البحث"
     },
     "componentsFolderViewFormulaEditorModal": {
-      "defineAComputedColumnUsingAnExpression": "تحديد عمود محسوب باستخدام تعبير.",
+      "defineAComputedColumnUsingAnExpression": "عرّف عمودًا محسوبًا باستخدام تعبير.",
       "name": "الاسم",
       "expression": "التعبير",
       "available": "متاح: ",
       "preview": "معاينة",
-      "fixExpressionErrorsToSeePreview": "إصلاح أخطاء التعبير لرؤية المعاينة",
+      "fixExpressionErrorsToSeePreview": "أصلح أخطاء التعبير لرؤية المعاينة",
       "usingNote": "باستخدام الملاحظة: \"",
       "cancel": "إلغاء",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
-      "usingNoteTitle": "باستخدام الملاحظة: \"{title}\""
+      "usingNoteTitle": "باستخدام الملاحظة: «{title}»"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "مسح التجميع",
-      "searchProperties": "خصائص البحث...",
+      "searchProperties": "البحث في الخصائص…",
       "builtIn": "مدمج",
-      "properties": "خصائص",
+      "properties": "الخصائص",
       "noGroupablePropertiesFound": "لم يتم العثور على خصائص قابلة للتجميع",
-      "sortDirection": "فرز الاتجاه",
+      "sortDirection": "اتجاه الترتيب",
       "collapseGroupsByDefault": "طي المجموعات بشكل افتراضي",
-      "showGroupSummaries": "عرض ملخصات المجموعة",
+      "showGroupSummaries": "إظهار ملخصات المجموعات",
       "clearGrouping2": "مسح التجميع"
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "جدول الملاحظات المجمعة",
-      "more": "المزيد",
+      "more": "أخرى",
       "selectAll": "تحديد كل الملاحظات",
       "selectRow": "تحديد الملاحظة"
     },
     "componentsFolderViewMoveToFolderDialog": {
-      "searchFolders": "بحث في المجلدات...",
-      "loadingFolders": "جارٍ تحميل المجلدات...",
-      "suggested": "مقترح",
-      "bestMatch": "أفضل مباراة",
+      "searchFolders": "البحث في المجلدات…",
+      "loadingFolders": "جارٍ تحميل المجلدات…",
+      "suggested": "المقترحة",
+      "bestMatch": "أفضل تطابق",
       "current": "الحالي)",
-      "allFolders": "كافة المجلدات",
-      "noFoldersMatch": "لا توجد مجلدات متطابقة \"",
+      "allFolders": "كل المجلدات",
+      "noFoldersMatch": "لا توجد مجلدات تطابق \"",
       "create": "إنشاء \"",
       "cancel": "إلغاء",
-      "createFolderNamed": "إنشاء \"{name}\"",
       "currentFolderBadge": "(الحالي)",
-      "noFoldersMatchQuery": "لا توجد مجلدات تطابق \"{query}\""
+      "noFoldersMatchQuery": "لا توجد مجلدات تطابق «{query}»",
+      "createFolderNamed": "إنشاء «{name}»"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "حذف ",
       "notes": "ملاحظات",
-      "open": "مفتوح",
+      "open": "فتح",
       "openInExternalEditor": "فتح في المحرر الخارجي",
-      "revealInSidebar": "كشف في الشريط الجانبي",
+      "revealInSidebar": "إظهار في الشريط الجانبي",
       "copyLink": "نسخ الرابط",
       "delete2": "حذف"
     },
     "componentsFolderViewSortableColumnHeader": {
-      "dragToReorderColumn": "اسحب لإعادة ترتيب العمود",
+      "dragToReorderColumn": "سحب لإعادة ترتيب العمود",
       "resizeColumn": "تغيير حجم العمود",
       "editColumnName": "تحرير اسم العمود"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "افتراضي",
+      "viewActions": "إجراءات العرض",
       "rename": "إعادة تسمية",
-      "duplicate": "مكررة",
+      "duplicate": "إنشاء نسخة",
       "setAsDefault": "تعيين كافتراضي",
       "delete": "حذف",
       "createNewView": "إنشاء عرض جديد",
       "createNewView2": "إنشاء عرض جديد",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "قم بإنشاء طريقة عرض جديدة باستخدام الأعمدة المخصصة وعوامل التصفية والفرز.",
-      "viewName": "عرض الاسم",
-      "myCustomView": "وجهة نظري المخصصة",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "أنشئ عرضًا جديدًا بأعمدة وعوامل تصفية وترتيب مخصصة.",
+      "viewName": "اسم العرض",
+      "myCustomView": "عرضي المخصص",
       "baseConfiguration": "التكوين الأساسي",
       "copyFromCurrentView": "نسخ من العرض الحالي",
       "startFreshDefaultColumns": "البدء من جديد (الأعمدة الافتراضية)",
       "cancel": "إلغاء",
       "renameView": "إعادة تسمية العرض",
       "enterANewNameForThisView": "أدخل اسمًا جديدًا لطريقة العرض هذه.",
-      "viewName2": "عرض الاسم",
-      "viewName3": "عرض الاسم",
+      "viewName2": "اسم العرض",
+      "viewName3": "اسم العرض",
       "cancel2": "إلغاء",
       "deleteView": "حذف العرض",
-      "areYouSureYouWantToDelete": "هل أنت متأكد أنك تريد حذف \"",
+      "areYouSureYouWantToDelete": "هل تريد بالتأكيد حذف \"",
       "thisActionCannotBeUndone": "لا يمكن التراجع عن هذا الإجراء.",
       "cancel3": "إلغاء",
-      "createView": "إنشاء عرض",
-      "gallery": "معرض",
-      "layout": "التخطيط",
-      "list": "قائمة",
-      "name": "الاسم",
       "newView": "عرض جديد",
-      "save": "حفظ",
+      "name": "الاسم",
+      "layout": "التخطيط",
       "table": "جدول",
-      "viewActions": "إجراءات العرض"
+      "list": "قائمة",
+      "gallery": "معرض",
+      "createView": "إنشاء عرض",
+      "save": "حفظ"
     },
     "componentsNoteContentAreaFileBlock": {
-      "failedToLoadPdf": "فشل تحميل ملف PDF: ",
-      "download": "تحميل",
-      "download2": "تحميل",
+      "failedToLoadPdf": "تعذّر تحميل ملف PDF: ",
+      "download": "تنزيل",
+      "download2": "تنزيل",
       "noFileAttached": "لا يوجد ملف مرفق",
-      "alignCenter": "محاذاة للوسط",
+      "resizePdf": "تغيير حجم PDF",
+      "resizeHtml": "تغيير حجم ملف HTML المضمَّن",
       "alignLeft": "محاذاة لليسار",
+      "alignCenter": "محاذاة للوسط",
       "alignRight": "محاذاة لليمين",
-      "nextPage": "الصفحة التالية",
       "previousPage": "الصفحة السابقة",
-      "resizePdf": "تغيير حجم PDF"
+      "nextPage": "الصفحة التالية"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "فتح في لوحة المهام",
-      "taskName": "اسم المهمة...",
+      "taskName": "اسم المهمة…",
       "taskDeleted": "تم حذف المهمة",
-      "loading": "جار التحميل..."
+      "loading": "جارٍ التحميل…"
     },
     "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
-      "project": "مشروع",
+      "project": "المشروع",
       "priority": "الأولوية",
       "dueDate": "تاريخ الاستحقاق",
       "cancel": "إلغاء"
@@ -603,340 +1080,355 @@
       "noVideoUrl": "لا يوجد عنوان URL للفيديو"
     },
     "componentsNoteExportDialog": {
-      "pdf": "قوات الدفاع الشعبي",
+      "pdf": "PDF",
       "html": "HTML",
       "a4210X297Mm": "A4 (210 × 297 ملم)",
-      "letter85X11In": "حرف (8.5 × 11 بوصة)",
-      "legal85X14In": "قانوني (8.5 × 14 بوصة)"
+      "letter85X11In": "Letter (8.5 × 11 بوصة)",
+      "legal85X14In": "Legal (8.5 × 14 بوصة)"
     },
     "componentsNoteInfoSectionEditorsDateeditor": {
       "ddMmYyyy": "dd.mm.yyyy"
     },
     "componentsNoteNoteHeader": {
-      "synced": "تمت المزامنة"
+      "synced": "تمّت المزامنة"
     },
     "componentsSharedDocumentInfoTab": {
-      "words": "كلمات",
-      "characters": "الشخصيات",
+      "words": "الكلمات",
+      "characters": "الأحرف",
       "readingTime": "وقت القراءة",
-      "created": "تم إنشاؤها",
-      "modified": "معدلة"
+      "created": "تاريخ الإنشاء",
+      "modified": "تاريخ التعديل"
     },
     "componentsSidebarProjectsEmptyState": {
-      "noProjectsYet": "لا توجد مشاريع حتى الآن",
+      "noProjectsYet": "لا توجد مشاريع بعد",
       "createYourFirstProject": "أنشئ مشروعك الأول",
       "createYourFirstProject2": "أنشئ مشروعك الأول"
     },
     "componentsSidebarSidebarBookmarkList": {
-      "loadingBookmarks": "جارٍ تحميل الإشارات المرجعية...",
-      "failedToLoadBookmarks": "فشل تحميل الإشارات المرجعية",
-      "noBookmarksYet": "لا توجد إشارات مرجعية حتى الآن",
+      "loadingBookmarks": "جارٍ تحميل الإشارات المرجعية…",
+      "failedToLoadBookmarks": "تعذّر تحميل الإشارات المرجعية",
+      "noBookmarksYet": "لا توجد إشارات مرجعية بعد",
       "moreOptions": "المزيد من الخيارات",
       "remove": "إزالة"
     },
     "componentsSidebarSidebarItemContextMenu": {
-      "open": "مفتوح",
-      "openToTheSide": "مفتوح على الجانب",
+      "open": "فتح",
+      "openToTheSide": "فتح في جزء جانبي",
       "pinToTabs": "تثبيت على علامات التبويب",
       "edit": "تحرير",
       "delete": "حذف",
       "copyLink": "نسخ الرابط"
     },
     "componentsSidebarSidebarTagList": {
-      "loadingTags": "جارٍ تحميل العلامات...",
-      "failedToLoadTags": "فشل تحميل العلامات",
-      "noTagsYet": "لا توجد علامات حتى الآن",
-      "filterTags": "تصفية العلامات...",
-      "noMatchingTags": "لا توجد علامات مطابقة",
+      "loadingTags": "جارٍ تحميل الوسوم…",
+      "failedToLoadTags": "تعذّر تحميل الوسوم",
+      "noTagsYet": "لا توجد وسوم بعد",
+      "filterTags": "تصفية الوسوم…",
+      "noMatchingTags": "لا توجد وسوم مطابقة",
       "Uncategorized": "غير مصنّفة"
     },
     "componentsSidebarSortableProjectItem": {
-      "dropHere": "أسقط هنا",
+      "dropHere": "أفلِت هنا",
       "editProject": "تحرير المشروع",
       "settings": "الإعدادات"
     },
     "componentsSidebarTagDeleteDialog": {
-      "deleteTag": "حذف العلامة #",
-      "notesWithThisTagWonTBeDeletedJustUntagged": "لن يتم حذف الملاحظات التي تحتوي على هذه العلامة، بل سيتم إلغاء وضع علامة عليها فقط.",
+      "deleteTag": "حذف الوسم #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "لن تُحذف الملاحظات التي تحمل هذا الوسم، بل سيُزال الوسم منها فقط.",
       "cancel": "إلغاء"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "ارجع",
+      "goBack": "رجوع",
       "notes": "ملاحظات",
-      "loadingNotes": "جارٍ تحميل الملاحظات...",
-      "noNotesWithThisTag": "لا توجد ملاحظات مع هذه العلامة",
-      "addThisTagToANoteToSeeItHere": "أضف هذه العلامة إلى ملاحظة لرؤيتها هنا",
-      "pinned": "مثبت",
+      "loadingNotes": "جارٍ تحميل الملاحظات…",
+      "noNotesWithThisTag": "لا توجد ملاحظات بهذا الوسم",
+      "addThisTagToANoteToSeeItHere": "أضف هذا الوسم إلى ملاحظة لرؤيتها هنا",
+      "pinned": "المثبّتة",
       "allNotes": "جميع الملاحظات",
       "allNotesArePinned": "تم تثبيت جميع الملاحظات",
-      "unpinFromTag": "قم بإلغاء التثبيت من العلامة",
-      "unpin": "إزالة التثبيت",
-      "pinToTag": "تثبيت على العلامة",
-      "pin": "دبوس",
-      "tagActions": "إجراءات العلامة",
-      "editTagName": "تحرير اسم العلامة",
+      "tasks": "المهام",
+      "unpinFromTag": "إلغاء التثبيت من الوسم",
+      "unpin": "إلغاء التثبيت",
+      "pinToTag": "تثبيت في الوسم",
+      "pin": "تثبيت",
+      "tagActions": "إجراءات الوسم",
+      "editTagName": "تحرير اسم الوسم",
       "changeColor": "تغيير اللون",
-      "deleteTag": "حذف العلامة",
-      "recent": "الأخيرة",
-      "created": "تم إنشاؤها",
-      "alphabetical": "أبجديا",
-      "tasks": "المهام"
+      "deleteTag": "حذف الوسم",
+      "recent": "الأحدث",
+      "created": "تاريخ الإنشاء",
+      "alphabetical": "أبجديًا"
     },
     "componentsSidebarTagRenameDialog": {
-      "renameTag": "إعادة تسمية العلامة",
+      "renameTag": "إعادة تسمية الوسم",
       "rename": "إعادة تسمية ",
-      "acrossEveryNoteThatUsesIt": "عبر كل ملاحظة يستخدمها.",
+      "acrossEveryNoteThatUsesIt": "في كل ملاحظة تستخدمه.",
       "newName": "اسم جديد",
       "cancel": "إلغاء"
     },
     "componentsViewersAudioPlayer": {
-      "failedToLoadAudio": "فشل تحميل الصوت",
-      "theAudioFileCouldNotBePlayed": "لا يمكن تشغيل الملف الصوتي.",
-      "skipBack10s": "تخطي 10S إلى الوراء",
-      "skipForward10s": "تخطي إلى الأمام 10S"
+      "failedToLoadAudio": "تعذّر تحميل الصوت",
+      "theAudioFileCouldNotBePlayed": "تعذّر تشغيل الملف الصوتي.",
+      "skipBack10s": "الرجوع 10 ثوانٍ",
+      "skipForward10s": "التقدّم 10 ثوانٍ"
     },
     "componentsViewersImageViewer": {
-      "failedToLoadImage": "فشل تحميل الصورة",
-      "theImageCouldNotBeDisplayed": "لا يمكن عرض الصورة.",
+      "failedToLoadImage": "تعذّر تحميل الصورة",
+      "theImageCouldNotBeDisplayed": "تعذّر عرض الصورة.",
       "resetZoom": "إعادة ضبط التكبير",
       "rotate": "تدوير",
-      "dragToPan": "اسحب إلى المقلاة"
+      "dragToPan": "اسحب للتحريك"
     },
     "componentsViewersPdfViewer": {
-      "failedToLoadPdf": "فشل تحميل PDF",
+      "failedToLoadPdf": "تعذّر تحميل ملف PDF",
       "previousPage": "الصفحة السابقة",
       "nextPage": "الصفحة التالية",
       "zoomOut": "تصغير",
       "zoomIn": "تكبير",
-      "fitToWidth": "تناسب العرض",
+      "fitToWidth": "ملاءمة العرض",
       "rotate": "تدوير",
-      "fitToHeight": "Fit to height",
-      "viewOptions": "View options",
-      "fit": "Fit",
-      "pageLayout": "Page layout",
-      "singlePage": "Single page",
-      "twoPageOdd": "Two-page (odd)",
-      "twoPageEven": "Two-page (even)",
-      "adaptToTheme": "Adapt to theme",
-      "goToPage": "Go to page",
-      "showThumbnails": "Show thumbnails",
-      "hideThumbnails": "Hide thumbnails"
+      "fitToHeight": "ملاءمة الارتفاع",
+      "viewOptions": "خيارات العرض",
+      "fit": "ملاءمة",
+      "pageLayout": "تخطيط الصفحة",
+      "singlePage": "صفحة واحدة",
+      "twoPageOdd": "صفحتان (فردية)",
+      "twoPageEven": "صفحتان (زوجية)",
+      "adaptToTheme": "التكيّف مع المظهر",
+      "goToPage": "الانتقال إلى صفحة",
+      "showThumbnails": "إظهار الصور المصغّرة",
+      "hideThumbnails": "إخفاء الصور المصغّرة"
     },
     "componentsViewersVideoPlayer": {
-      "failedToLoadVideo": "فشل تحميل الفيديو",
-      "theVideoFileCouldNotBePlayed": "لا يمكن تشغيل ملف الفيديو."
+      "failedToLoadVideo": "تعذّر تحميل الفيديو",
+      "theVideoFileCouldNotBePlayed": "تعذّر تشغيل ملف الفيديو."
     },
     "pagesFile": {
-      "failedToLoadFile": "فشل تحميل الملف",
-      "tryAgain": "حاول مرة أخرى",
+      "failedToLoadFile": "تعذّر تحميل الملف",
+      "tryAgain": "إعادة المحاولة",
       "noFileSelected": "لم يتم تحديد أي ملف",
       "selectAFileFromTheSidebarToViewIt": "حدد ملفًا من الشريط الجانبي لمشاهدته",
-      "loadingFile": "جارٍ تحميل الملف...",
-      "open": "مفتوح",
-      "reveal": "كشف",
-      "unsupportedFileType": "نوع الملف غير معتمد",
-      "fileActions": "File actions"
+      "loadingFile": "جارٍ تحميل الملف…",
+      "open": "فتح",
+      "reveal": "إظهار",
+      "unsupportedFileType": "نوع الملف غير مدعوم",
+      "fileActions": "إجراءات الملف"
     },
     "pagesFolderView": {
       "createNewNote": "إنشاء ملاحظة جديدة",
-      "viewSettings": "عرض الإعدادات",
+      "viewSettings": "إعدادات العرض",
       "displayDensity": "كثافة العرض",
       "comfortable": "مريح",
-      "compact": "مدمج",
-      "showSummaries": "عرض الملخصات",
+      "compact": "مضغوط",
+      "showSummaries": "إظهار الملخصات",
       "cancel": "إلغاء"
     },
     "componentsFolderViewSortSelector": {
-      "builtIn": "مدمج",
       "clearSort": "مسح الترتيب",
-      "noSortablePropertiesFound": "لم يتم العثور على خصائص قابلة للترتيب",
-      "properties": "الخصائص",
-      "searchProperties": "البحث في الخصائص...",
       "sort": "ترتيب",
+      "searchProperties": "البحث في الخصائص…",
+      "builtIn": "مدمج",
+      "properties": "الخصائص",
+      "noSortablePropertiesFound": "لم يتم العثور على خصائص قابلة للترتيب",
       "sortDirection": "اتجاه الترتيب"
     }
   },
   "phaseI": {
     "errors": {
-      "failedToSaveFormula": "فشل حفظ الصيغة",
-      "failedToOpenInExternalEditor": "فشل الفتح في المحرر الخارجي",
-      "failedToCopyLink": "فشل نسخ الرابط",
-      "failedToCreateView": "فشل إنشاء طريقة العرض",
-      "failedToRenameFolder": "فشلت إعادة تسمية المجلد",
-      "failedToCreateTask": "فشل في إنشاء المهمة",
-      "failedToLoadVersionHistory": "فشل تحميل سجل الإصدارات",
-      "failedToRestoreVersion": "فشل في استعادة الإصدار",
-      "failedToDeleteVersion": "فشل في حذف الإصدار",
-      "failedToCreateNote": "فشل في إنشاء ملاحظة",
-      "failedToLoadMoreBookmarks": "فشل تحميل المزيد من الإشارات المرجعية",
-      "failedToToggleBookmark": "فشل في تبديل الإشارة المرجعية",
-      "failedToRemoveBookmark": "فشل في إزالة الإشارة المرجعية",
-      "failedToReorderBookmarks": "فشل في إعادة ترتيب الإشارات المرجعية",
-      "failedToSave": "فشل الحفظ",
-      "failedToRename": "فشلت إعادة التسمية",
-      "failedToUpdateEmoji": "فشل تحديث الرموز التعبيرية",
-      "failedToUpdateTags": "فشل تحديث العلامات",
-      "failedToSnoozeReminder": "فشل تأجيل التذكير",
-      "failedToCreateFolder": "فشل في إنشاء المجلد",
-      "failedToLoadProperties": "فشل في تحميل الخصائص",
-      "failedToLoadPropertyDefinitions": "فشل تحميل تعريفات الخاصية",
-      "failedToLoadTemplates": "فشل تحميل القوالب"
+      "failedToSaveFormula": "تعذّر حفظ الصيغة",
+      "failedToOpenInExternalEditor": "تعذّر الفتح في المحرر الخارجي",
+      "failedToCopyLink": "تعذّر نسخ الرابط",
+      "failedToCreateView": "تعذّر إنشاء العرض",
+      "failedToRenameFolder": "تعذّر إعادة تسمية المجلد",
+      "failedToCreateTask": "تعذّر إنشاء المهمة",
+      "failedToLoadVersionHistory": "تعذّر تحميل سجل الإصدارات",
+      "failedToRestoreVersion": "تعذّر استعادة الإصدار",
+      "failedToDeleteVersion": "تعذّر حذف الإصدار",
+      "failedToCreateNote": "تعذّر إنشاء الملاحظة",
+      "failedToLoadMoreBookmarks": "تعذّر تحميل المزيد من الإشارات المرجعية",
+      "failedToToggleBookmark": "تعذّر إضافة الإشارة المرجعية أو إزالتها",
+      "failedToRemoveBookmark": "تعذّر إزالة الإشارة المرجعية",
+      "failedToReorderBookmarks": "تعذّر إعادة ترتيب الإشارات المرجعية",
+      "failedToSave": "تعذّر الحفظ",
+      "failedToRename": "تعذّر إعادة التسمية",
+      "failedToUpdateEmoji": "تعذّر تحديث الرمز التعبيري",
+      "failedToUpdateTags": "تعذّر تحديث الوسوم",
+      "failedToSnoozeReminder": "تعذّر تأجيل التذكير",
+      "failedToCreateFolder": "تعذّر إنشاء المجلد",
+      "failedToLoadProperties": "تعذّر تحميل الخصائص",
+      "failedToLoadPropertyDefinitions": "تعذّر تحميل تعريفات الخصائص",
+      "failedToLoadTemplates": "تعذّر تحميل القوالب"
     },
     "toasts": {
       "noteExportedSuccessfully": "تم تصدير الملاحظة بنجاح",
-      "failedToUpdateProperty": "فشل في تحديث الخاصية",
-      "failedToUpdateTags": "فشل تحديث العلامات",
-      "failedToUpdateIcon": "فشل تحديث الأيقونة",
+      "failedToUpdateProperty": "تعذّر تحديث الخاصية",
+      "failedToUpdateTags": "تعذّر تحديث الوسوم",
+      "failedToUpdateIcon": "تعذّر تحديث الأيقونة",
       "reminderSnoozed": "تم تأجيل التذكير",
-      "failedToSnoozeReminder": "فشل تأجيل التذكير",
-      "defaultTemplateSet": "مجموعة القالب الافتراضية",
-      "failedToSetDefaultTemplate": "فشل في تعيين القالب الافتراضي",
+      "failedToSnoozeReminder": "تعذّر تأجيل التذكير",
+      "defaultTemplateSet": "تم تعيين القالب الافتراضي",
+      "failedToSetDefaultTemplate": "تعذّر تعيين القالب الافتراضي",
       "defaultTemplateCleared": "تم مسح القالب الافتراضي",
-      "failedToClearDefaultTemplate": "فشل في مسح القالب الافتراضي",
-      "failedToAddProperty": "فشلت إضافة خاصية",
-      "failedToDeleteProperty": "فشل في حذف الخاصية",
-      "failedToRenameProperty": "فشل في إعادة تسمية الخاصية",
-      "failedToReorderProperties": "فشل في إعادة ترتيب الخصائص",
-      "cannotAddTagThisNoteWasDeleted": "لا يمكن إضافة علامة - تم حذف هذه الملاحظة",
-      "cannotRemoveTagThisNoteWasDeleted": "لا يمكن إزالة العلامة - تم حذف هذه الملاحظة",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "لا يمكن التغيير محليًا فقط — تم حذف هذه الملاحظة"
+      "failedToClearDefaultTemplate": "تعذّر مسح القالب الافتراضي",
+      "failedToAddProperty": "تعذّر إضافة الخاصية",
+      "failedToDeleteProperty": "تعذّر حذف الخاصية",
+      "failedToRenameProperty": "تعذّر إعادة تسمية الخاصية",
+      "failedToReorderProperties": "تعذّر إعادة ترتيب الخصائص",
+      "cannotAddTagThisNoteWasDeleted": "لا يمكن إضافة وسم - تم حذف هذه الملاحظة",
+      "cannotRemoveTagThisNoteWasDeleted": "لا يمكن إزالة الوسم - تم حذف هذه الملاحظة",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "لا يمكن تغيير إعداد «محلية فقط» — تم حذف هذه الملاحظة"
     }
   },
   "bulkActions": {
-    "addTag": "إضافة وسم",
-    "clearAria": "مسح التحديد",
-    "copiedLinks": "تم نسخ {count, plural, zero {# رابط} one {رابط واحد} two {رابطين} few {# روابط} many {# رابطاً} other {# رابط}}",
-    "copyLinks": "نسخ الروابط",
-    "delete": "حذف",
-    "export": "تصدير",
-    "iconUpdated": "{count, plural, zero {تم تحديث الأيقونة في # ملاحظة} one {تم تحديث الأيقونة في ملاحظة واحدة} two {تم تحديث الأيقونة في ملاحظتين} few {تم تحديث الأيقونة في # ملاحظات} many {تم تحديث الأيقونة في # ملاحظة} other {تم تحديث الأيقونة في # ملاحظة}}",
+    "toolbarAria": "إجراءات مجمّعة",
+    "selected": "محددة",
     "move": "نقل",
-    "selected": "محدد",
-    "setIcon": "تعيين أيقونة",
+    "copyLinks": "نسخ الروابط",
+    "addTag": "إضافة وسم",
     "tagNamePlaceholder": "اسم الوسم",
-    "toolbarAria": "إجراءات مجمّعة"
-  },
-  "comments": {
-    "attachAria": "إرفاق ملف",
-    "badgeAria": "{count, plural, zero {لا توجد تعليقات} one {تعليق واحد} two {تعليقان} few {# تعليقات} many {# تعليقاً} other {# تعليق}}",
-    "cancel": "إلغاء",
-    "commentPlaceholder": "أضف تعليقًا...",
-    "createdTooltip": "أُنشئ في {date} الساعة {time}",
-    "delete": "حذف التعليق",
-    "edit": "تحرير التعليق",
-    "kind": {
-      "addition": "إضافة",
-      "comment": "تعليق",
-      "deletion": "حذف",
-      "substitution": "استبدال"
-    },
-    "mentionAria": "أشر إلى شخص أو صفحة أو تاريخ",
-    "railAria": "التعليقات",
-    "replyPlaceholder": "رد...",
-    "resolve": "حل",
-    "sendAria": "إرسال التعليق",
-    "toolbarComment": "تعليق",
-    "openAttachmentAria": "فتح المرفق {name}",
-    "openImageAria": "فتح الصورة {name}"
-  },
-  "dateMention": {
-    "clear": "مسح",
-    "dateFormat": "تنسيق التاريخ",
-    "dateInput": "التاريخ",
-    "includeTime": "تضمين الوقت",
-    "remind": "تذكير",
-    "time": "الوقت",
-    "timeFormat": "تنسيق الوقت"
+    "export": "تصدير",
+    "delete": "حذف",
+    "clearAria": "مسح التحديد",
+    "copiedLinks": "تم نسخ {count, plural, zero {# رابط} one {رابط واحد} two {رابطين} few {# روابط} many {# رابطًا} other {# رابط}}",
+    "setIcon": "تعيين أيقونة",
+    "iconUpdated": "{count, plural, zero {تم تحديث الأيقونة في # ملاحظة} one {تم تحديث الأيقونة في ملاحظة واحدة} two {تم تحديث الأيقونة في ملاحظتين} few {تم تحديث الأيقونة في # ملاحظات} many {تم تحديث الأيقونة في # ملاحظة} other {تم تحديث الأيقونة في # ملاحظة}}"
   },
   "applyTemplateConfirm": {
+    "title": "هل تريد استبدال محتوى الملاحظة؟",
+    "description": "سيؤدي تطبيق «{name}» إلى استبدال المحتوى الحالي لهذه الملاحظة. لا يمكن التراجع عن هذا الإجراء.",
+    "full": "استبدال المحتوى وإضافة تفاصيل القالب",
     "body": "استبدال المحتوى فقط",
     "cancel": "إلغاء",
-    "description": "سيؤدي تطبيق \"{name}\" إلى استبدال المحتوى الحالي لهذه الملاحظة. لا يمكن التراجع عن هذا.",
-    "failed": "فشل تطبيق القالب",
-    "full": "استبدال المحتوى وإضافة تفاصيل القالب",
     "success": "تم تطبيق القالب",
-    "title": "استبدال محتوى الملاحظة؟"
+    "failed": "تعذّر تطبيق القالب"
   },
   "saveNoteAsTemplate": {
     "title": "حفظ الملاحظة كقالب",
     "description": "أنشئ قالبًا قابلًا لإعادة الاستخدام من هذه الملاحظة. تبقى الملاحظة نفسها كما هي.",
     "nameLabel": "اسم القالب",
     "loading": "جارٍ قراءة هذه الملاحظة…",
-    "summary": "يحفظ نص الملاحظة و{tagCount, plural, zero {بدون علامات} one {علامة واحدة} two {علامتين} few {# علامات} many {# علامة} other {# علامة}} و{propertyCount, plural, zero {بدون خصائص} one {خاصية واحدة} two {خاصيتين} few {# خصائص} many {# خاصية} other {# خاصية}}.",
+    "summary": "يحفظ نص الملاحظة و{tagCount, plural, zero {# وسم} one {وسمًا واحدًا} two {وسمين} few {# وسوم} many {# وسمًا} other {# وسم}} و{propertyCount, plural, zero {# خاصية} one {خاصية واحدة} two {خاصيتين} few {# خصائص} many {# خاصية} other {# خاصية}}.",
     "save": "حفظ القالب",
     "cancel": "إلغاء",
     "success": "تم حفظ القالب",
     "edit": "تحرير القالب",
-    "failed": "فشل حفظ القالب",
-    "loadFailed": "تعذّرت قراءة هذه الملاحظة"
+    "failed": "تعذّر حفظ القالب",
+    "loadFailed": "تعذّر قراءة هذه الملاحظة"
   },
   "newNoteFromNote": {
     "action": "ملاحظة جديدة من هذه الملاحظة",
-    "created": "أُنشئت من {source}: {tagCount, plural, =0 {بدون علامات} one {علامة واحدة} two {علامتان} few {# علامات} many {# علامة} other {# علامة}}، {propertyCount, plural, =0 {بدون خصائص} one {خاصية واحدة} two {خاصيتان} few {# خصائص} many {# خاصية} other {# خاصية}}"
+    "created": "أُنشئت من {source}: {tagCount, plural, =0 {بلا وسوم} zero {بلا وسوم} one {وسم واحد} two {وسمان} few {# وسوم} many {# وسمًا} other {# وسم}}، {propertyCount, plural, =0 {بلا خصائص} zero {بلا خصائص} one {خاصية واحدة} two {خاصيتان} few {# خصائص} many {# خاصية} other {# خاصية}}"
+  },
+  "tags": {
+    "hubTitle": "الوسوم",
+    "openHub": "فتح مركز الوسوم"
   },
   "tagView": {
     "moreActions": "المزيد من الإجراءات",
     "pin": {
-      "action": "تثبيت {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} على العلامة",
-      "failed": "فشل تثبيت الملاحظة على العلامة",
-      "success": "تم تثبيت {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} على العلامة"
+      "action": "تثبيت {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} في الوسم",
+      "success": "تم تثبيت {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} في الوسم",
+      "failed": "تعذّر تثبيت الملاحظة في الوسم"
     }
   },
-  "tags": {
-    "hubTitle": "العلامات",
-    "openHub": "فتح مركز العلامات"
-  },
   "tagsHub": {
-    "cancelCreate": "إلغاء",
-    "category": {
-      "delete": "حذف الفئة",
-      "deleteBody": "ستنتقل العلامات إلى “غير مصنّفة”، ولن تُحذف.",
-      "deleteCancel": "إلغاء",
-      "deleteConfirm": "حذف",
-      "deleteTitle": "حذف {name}؟",
-      "dragHandle": "اسحب لإعادة ترتيب الفئة",
-      "emptyHint": "اسحب علامة إلى هنا",
-      "more": "خيارات الفئة",
-      "rename": "إعادة تسمية الفئة"
-    },
-    "categoryNamePlaceholder": "اسم الفئة",
-    "errors": {
-      "createCategoryFailed": "فشل إنشاء الفئة",
-      "createTagCategorizeFailed": "تم إنشاء العلامة، لكن تعذّرت إضافتها إلى الفئة",
-      "createTagFailed": "فشل إنشاء العلامة",
-      "deleteCategoryFailed": "فشل حذف الفئة",
-      "loadFailed": "فشل تحميل فئات العلامات",
-      "renameCategoryFailed": "فشلت إعادة تسمية الفئة",
-      "reorderFailed": "فشلت إعادة ترتيب العلامات"
-    },
-    "loading": "جارٍ تحميل العلامات...",
+    "loading": "جارٍ تحميل الوسوم…",
     "newCategory": "فئة جديدة",
-    "newTag": "علامة جديدة",
+    "newTag": "وسم جديد",
+    "cancelCreate": "إلغاء",
+    "categoryNamePlaceholder": "اسم الفئة",
+    "tagNamePlaceholder": "اسم الوسم",
+    "uncategorized": "غير مصنّفة",
     "search": {
-      "empty": "لا توجد فئات أو علامات تطابق بحثك",
-      "placeholder": "ابحث في الفئات والعلامات"
+      "placeholder": "البحث في الفئات والوسوم",
+      "empty": "لا توجد فئات أو وسوم تطابق بحثك"
     },
-    "tagNamePlaceholder": "اسم العلامة",
-    "uncategorized": "غير مصنّفة"
+    "category": {
+      "more": "خيارات الفئة",
+      "rename": "إعادة تسمية الفئة",
+      "delete": "حذف الفئة",
+      "dragHandle": "سحب لإعادة ترتيب الفئة",
+      "emptyHint": "اسحب وسمًا إلى هنا",
+      "deleteTitle": "هل تريد حذف {name}؟",
+      "deleteBody": "ستنتقل الوسوم إلى «غير مصنّفة»، ولن تُحذف.",
+      "deleteConfirm": "حذف",
+      "deleteCancel": "إلغاء"
+    },
+    "errors": {
+      "loadFailed": "تعذّر تحميل فئات الوسوم",
+      "createCategoryFailed": "تعذّر إنشاء الفئة",
+      "renameCategoryFailed": "تعذّر إعادة تسمية الفئة",
+      "deleteCategoryFailed": "تعذّر حذف الفئة",
+      "createTagFailed": "تعذّر إنشاء الوسم",
+      "createTagCategorizeFailed": "تم إنشاء الوسم، لكن تعذّرت إضافته إلى الفئة",
+      "reorderFailed": "تعذّر إعادة ترتيب الوسوم"
+    }
   },
   "folderView": {
-    "columnHeader": {
-      "doubleClickToEdit": "{name} (انقر نقرًا مزدوجًا للتحرير)",
-      "dragToReorder": "اسحب لإعادة ترتيب العمود: {name}"
-    },
     "columns": {
-      "created": "تاريخ الإنشاء",
-      "folder": "المجلد",
-      "kind": "النوع",
-      "modified": "تاريخ التعديل",
-      "tags": "العلامات",
       "title": "العنوان",
-      "wordCount": "عدد الكلمات"
+      "folder": "المجلد",
+      "tags": "الوسوم",
+      "created": "تاريخ الإنشاء",
+      "modified": "تاريخ التعديل",
+      "wordCount": "عدد الكلمات",
+      "kind": "النوع"
     },
     "defaultViewName": "افتراضي",
+    "selectView": "اختيار العرض",
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (انقر نقرًا مزدوجًا للتحرير)",
+      "dragToReorder": "سحب لإعادة ترتيب العمود: {name}"
+    },
     "groupHeader": {
       "noteCount": "{count, plural, zero {لا توجد ملاحظات} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}"
+    }
+  },
+  "mindMap": {
+    "regionLabel": "الخريطة الذهنية للملاحظة {title}، {count, plural, zero {# عُقدة} one {عُقدة واحدة} two {عقدتان} few {# عُقد} many {# عُقدة} other {# عُقدة}}",
+    "treeLabel": "مخطط الخريطة الذهنية للملاحظة {title}",
+    "emptyHint": "أضف عنوانًا إلى هذه الملاحظة لتتفرع الخريطة.",
+    "linkHint": "رابط إلى صفحة أخرى",
+    "chain": {
+      "separator": "←"
     },
-    "selectView": "تحديد العرض"
+    "more": "{count, plural, zero {+# أخرى} one {+# أخرى} two {+# أخرى} few {+# أخرى} many {+# أخرى} other {+# أخرى}}",
+    "nodeCapNotice": "بلغت هذه الخريطة حدها الأقصى البالغ {count, plural, zero {# عُقدة} one {عُقدة واحدة} two {عقدتين} few {# عُقد} many {# عُقدة} other {# عُقدة}}؛ وطُوي الباقي في أقرب عُقدة فوقه.",
+    "badge": {
+      "table": "{count, plural, zero {لا توجد جداول} one {جدول واحد} two {جدولان} few {# جداول} many {# جدولًا} other {# جدول}}",
+      "code": "{count, plural, zero {لا توجد كتل شيفرة} one {كتلة شيفرة واحدة} two {كتلتا شيفرة} few {# كتل شيفرة} many {# كتلة شيفرة} other {# كتلة شيفرة}}",
+      "image": "{count, plural, zero {لا توجد صور} one {صورة واحدة} two {صورتان} few {# صور} many {# صورة} other {# صورة}}",
+      "quote": "{count, plural, zero {لا توجد اقتباسات} one {اقتباس واحد} two {اقتباسان} few {# اقتباسات} many {# اقتباسًا} other {# اقتباس}}",
+      "embed": "{count, plural, zero {لا توجد عناصر مضمَّنة} one {عنصر مضمَّن واحد} two {عنصران مضمَّنان} few {# عناصر مضمَّنة} many {# عنصرًا مضمَّنًا} other {# عنصر مضمَّن}}",
+      "bookmark": "{count, plural, zero {لا توجد إشارات مرجعية} one {إشارة مرجعية واحدة} two {إشارتان مرجعيتان} few {# إشارات مرجعية} many {# إشارة مرجعية} other {# إشارة مرجعية}}",
+      "file": "{count, plural, zero {لا توجد ملفات} one {ملف واحد} two {ملفان} few {# ملفات} many {# ملفًا} other {# ملف}}"
+    },
+    "toolbar": {
+      "label": "إجراءات الخريطة الذهنية",
+      "fit": "عرض الخريطة كاملة",
+      "copyImage": "نسخ كصورة",
+      "copyVector": "نسخ كرسم متجهي",
+      "imageCopied": "تم نسخ الخريطة كصورة",
+      "vectorCopied": "تم نسخ الخريطة كرسم متجهي",
+      "copyFailed": "تعذّر نسخ الخريطة",
+      "saveCanvas": "حفظ كلوحة",
+      "saved": "تم الحفظ كلوحة باسم «{title}»",
+      "saveFailed": "تعذّر حفظ الخريطة كلوحة",
+      "snapshotOn": "لقطة · {date}"
+    }
+  },
+  "tagAndFilter": {
+    "regionLabel": "عامل تصفية الوسوم النشط",
+    "matchingAll": "مطابقة الكل:",
+    "removeTag": "إزالة {tag} من عامل التصفية",
+    "clearAll": "مسح الكل",
+    "saveSearch": "حفظ البحث",
+    "savedSearches": "عمليات البحث المحفوظة",
+    "deleteSearch": "حذف البحث المحفوظ {name}",
+    "saveDialogTitle": "تسمية هذا البحث",
+    "saveDialogPlaceholder": "مثلًا: اجتماعات العمل",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "addToFilterHint": "انقر على وسم مع الضغط على Ctrl/Cmd لإضافته إلى عامل التصفية"
   }
 }

@@ -12,173 +12,272 @@
         "editing": "Redigering",
         "modules": "Moduler",
         "services": "Tjenester",
-        "data": "Data"
+        "data": "Data",
+        "workspace": "Arbejdsområde",
+        "features": "Funktioner"
       },
       "items": {
         "account": "Konto",
         "general": "Generelt",
         "templates": "Skabeloner",
-        "editor": "Redaktør",
-        "journal": "Journal",
+        "editor": "Editor",
+        "journal": "Dagbog",
         "tasks": "Opgaver",
+        "inbox": "Indbakke",
         "calendar": "Kalender",
         "appearance": "Udseende",
         "shortcuts": "Genveje",
-        "ai": "AI assistent",
+        "commandLine": "Kommandolinje",
+        "ai": "AI-assistent",
         "vault": "Boks",
         "tags": "Tags",
         "properties": "Egenskaber",
-        "commandLine": "Kommandolinje",
-        "features": "Funktioner",
         "import": "Import",
-        "inbox": "Indbakke"
+        "features": "Funktioner",
+        "modules": "Moduler",
+        "aiAgents": "AI og agenter",
+        "tagsProperties": "Tags og egenskaber",
+        "vaultData": "Boks og data"
+      }
+    },
+    "drillIn": {
+      "back": "Tilbage til {section}"
+    },
+    "modules": {
+      "configure": "Konfigurér {module}"
+    },
+    "vaultImport": {
+      "label": "Importér fra en anden app",
+      "description": "Notion, Evernote, Bear, Apple Notes, Todoist og flere",
+      "action": "Importér…"
+    },
+    "search": {
+      "placeholder": "Søg i indstillinger",
+      "count": "{count, plural, one {# indstilling} other {# indstillinger}}",
+      "empty": "Ingen indstillinger matcher",
+      "move": "navigér",
+      "open": "åbn"
+    }
+  },
+  "features": {
+    "header": {
+      "title": "Funktioner",
+      "subtitle": "Slå dele af appen til eller fra. Fra = nedtonet i sidebjælken og deaktiveret overalt."
+    },
+    "items": {
+      "home": {
+        "label": "Hjem",
+        "description": "Startoversigt"
+      },
+      "inbox": {
+        "label": "Indbakke",
+        "description": "Hurtig indfangning og gennemgang"
+      },
+      "journal": {
+        "label": "Dagbog",
+        "description": "Daglige noter"
+      },
+      "tasks": {
+        "label": "Opgaver",
+        "description": "Gøremål og forfaldsdatoer"
+      },
+      "calendar": {
+        "label": "Kalender",
+        "description": "Begivenheder og tidsplan"
+      },
+      "graph": {
+        "label": "Graf",
+        "description": "Noteforbindelser"
+      },
+      "spatialCanvas": {
+        "label": "Lærred",
+        "description": "Visuelle tavler til at arrangere og linke noter"
       }
     }
   },
   "general": {
     "header": {
       "title": "Generelt",
-      "subtitle": "Applikationsstart og faneadfærd",
-      "loading": "Indlæser indstillinger..."
+      "subtitle": "Sprog, opstart, faner og privatliv.",
+      "loading": "Indlæser indstillinger…"
     },
     "groups": {
       "startup": "Opstart",
       "updates": "Opdateringer",
-      "languageRegion": "Sprog & Region",
-      "tabBehavior": "Fane-adfærd",
+      "languageRegion": "Sprog og område",
+      "tabBehavior": "Faneadfærd",
+      "window": "Vinduesadfærd",
       "fileCreation": "Filoprettelse",
-      "privacy": "Privatliv"
+      "privacy": "Privatliv",
+      "startupWindows": "Opstart og vinduer",
+      "newNotes": "Nye noter"
     },
     "startup": {
       "launchAtLogin": {
-        "label": "Start ved login",
+        "label": "Start ved log ind",
         "description": "Start memrynote, når du logger ind",
-        "error": "Kunne ikke opdatere start ved opstart"
+        "error": "Kunne ikke opdatere indstillingen for start ved log ind"
       }
     },
     "updates": {
+      "autoCheck": {
+        "label": "Søg automatisk efter opdateringer",
+        "description": "Søg efter nye versioner ved opstart og løbende, mens appen er åben.",
+        "error": "Kunne ikke opdatere indstillingen for automatisk søgning"
+      },
+      "autoDownload": {
+        "label": "Hent opdateringer automatisk",
+        "description": "Hent og installér nye versioner i baggrunden uden at spørge.",
+        "error": "Kunne ikke opdatere indstillingen for automatisk hentning"
+      },
       "appUpdates": "App-opdateringer",
       "installedVersion": "Installeret version {version}",
       "availableVersion": "Tilgængelig version {version}",
-      "unsupported": "Pakkede builds kan tjekke, downloade og installere opdateringer fra GitHub-udgivelser",
-      "available": "memrynote {version} er tilgængelig til download",
-      "downloadingLatest": "Downloader den seneste udgivelse",
-      "downloadingLatestPercent": "Downloader den seneste udgivelse ({percent}%)",
+      "unsupported": "Pakkede builds kan søge efter, hente og installere opdateringer fra GitHub-udgivelser",
+      "available": "memrynote {version} kan hentes",
+      "downloadingLatest": "Henter den seneste udgivelse",
+      "downloadingLatestPercent": "Henter den seneste udgivelse ({percent} %)",
       "downloaded": "memrynote {version} er klar til installation",
-      "upToDate": "Denne installation er på den seneste offentliggjorte udgivelse",
-      "checking": "Kontrollerer GitHub-udgivelser for en nyere version",
-      "idle": "Se efter nye udgivelser, og installer dem uden at forlade appen",
+      "upToDate": "Denne installation kører den seneste udgivne version",
+      "checking": "Søger efter en nyere version i GitHub-udgivelser",
+      "idle": "Søg efter nye udgivelser, og installér dem uden at forlade appen",
       "unsupportedToast": "Automatiske opdateringer er kun tilgængelige i pakkede udgivelser",
       "upToDateToast": "memrynote {version} er opdateret",
-      "actionFailed": "Opdateringshandling mislykkedes",
+      "actionFailed": "Kunne ikke udføre opdateringen",
       "actions": {
-        "checking": "Tjekker...",
-        "available": "Download opdatering",
-        "downloading": "Downloader...",
-        "downloadingPercent": "Downloader {percent}%",
+        "checking": "Tjekker…",
+        "available": "Hent opdatering",
+        "downloading": "Henter…",
+        "downloadingPercent": "Henter {percent} %",
         "downloaded": "Genstart for at installere",
         "idle": "Se efter opdateringer"
       },
-      "autoCheck": {
-        "description": "Søg efter nye versioner ved opstart og løbende, mens appen er åben.",
-        "error": "Indstillingen for automatisk søgning kunne ikke opdateres",
-        "label": "Søg automatisk efter opdateringer"
+      "label": "Opdateringer",
+      "checkedAgo": "{status} · tjekket {time}",
+      "status": {
+        "unsupported": "Tilgængelig i pakkede udgivelser",
+        "idle": "Ikke tjekket endnu",
+        "checking": "Tjekker…",
+        "upToDate": "Opdateret",
+        "available": "Version {version} er tilgængelig",
+        "downloading": "Henter…",
+        "downloadingPercent": "Henter {percent} %",
+        "downloaded": "Version {version} er klar til installation"
       },
-      "autoDownload": {
-        "description": "Hent og installér nye versioner i baggrunden uden at spørge.",
-        "error": "Indstillingen for automatisk hentning kunne ikke opdateres",
-        "label": "Hent opdateringer automatisk"
+      "mode": {
+        "label": "Opdateringstilstand",
+        "off": "Tjek ikke",
+        "notify": "Giv kun besked",
+        "auto": "Hent automatisk"
       }
     },
     "language": {
       "label": "Sprog",
-      "helper": "Det meste af appen opdateres med det samme. Noget tekst på systemniveau - allerede viste meddelelser, dock-etiket, vinduets titellinje - opdateres efter næste lancering.",
+      "helper": "Det meste af appen opdateres med det samme. Noget tekst på systemniveau – allerede viste notifikationer, Dock-etiketten, vinduets titellinje – opdateres først ved næste start.",
       "changed": "Sproget ændret til {nativeName}",
-      "failed": "Kunne ikke ændre sprog. Prøv venligst igen."
+      "failed": "Kunne ikke ændre sproget. Prøv igen."
     },
     "clockFormat": {
       "label": "Tidsformat",
       "description": "12-timers eller 24-timers ur",
       "options": {
-        "12h": "12 timer",
-        "24h": "24 timer"
+        "12h": "12-timers",
+        "24h": "24-timers"
       },
       "error": "Kunne ikke opdatere tidsformatet"
     },
+    "dateFormat": {
+      "label": "Datoformat",
+      "description": "Hvordan kalenderdatoer vises",
+      "options": {
+        "MM/DD/YYYY": "MM/DD/YYYY (USA)",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
+        "DD.MM.YYYY": "DD.MM.YYYY"
+      },
+      "error": "Kunne ikke opdatere datoformatet"
+    },
     "tabs": {
+      "openPagesInNewTab": {
+        "label": "Åbn sider i en ny fane",
+        "description": "Når du klikker på eller opretter en side – noter, mapper, projekter, lærreder, tags, bogmærker – åbnes den i en ny fane. Når indstillingen er slået fra, genbruges den aktuelle fane, også når du følger links i en note; fastgjorte faner erstattes aldrig. »Åbn i ny fane«, »Åbn ved siden af« og midterklik åbner altid en ny fane."
+      },
       "restoreSession": {
-        "label": "Gendan session ved start",
-        "description": "Genåbn faner fra din sidste session"
+        "label": "Gendan faner ved start",
+        "description": "Genåbn de faner og opdelinger, du havde sidst."
       },
       "closeButton": {
-        "label": "Tabulatorluk-knap",
-        "description": "Hvornår skal lukkeknappen vises",
+        "label": "Lukkeknap på faner",
+        "description": "Hvornår lukkeknappen vises",
         "options": {
           "always": "Altid synlig",
-          "hover": "Vis på hover",
+          "hover": "Når markøren er over",
           "active": "Kun på aktiv fane"
         }
       },
-      "error": "Indstillingen kunne ikke opdateres"
+      "error": "Kunne ikke opdatere indstillingen"
+    },
+    "window": {
+      "minimizeToTray": {
+        "label": "Bliv kørende i menulinjen, når vinduet lukkes",
+        "description": "Når du lukker vinduet, skjules memrynote i systembakken i stedet for at blive lukket. Klik på ikonet i systembakken for at hente appen frem igen. På macOS bliver appen også i Dock; i Linux-skrivebordsmiljøer uden systembakke lukkes vinduet som normalt.",
+        "error": "Kunne ikke opdatere indstillingen for minimering til systembakken"
+      }
     },
     "fileCreation": {
       "createInSelectedFolder": {
         "label": "Opret i den valgte mappe",
-        "description": "Nye noter og mapper oprettes i den aktuelt valgte mappe. Når de er slået fra, oprettes elementer altid ved root."
+        "description": "Nye noter og mapper oprettes i den valgte mappe. Når indstillingen er slået fra, oprettes elementer altid i roden."
       },
       "defaultNoteFolder": {
-        "description": "Tom = boksens rod",
-        "label": "Standardplacering for nye noter",
-        "placeholder": "noter"
+        "label": "Standardplacering",
+        "description": "Bruges, når der ikke er valgt en mappe i sidebjælken.",
+        "placeholder": "noter",
+        "root": "/"
       }
     },
     "privacy": {
       "telemetry": {
         "label": "Del anonyme brugsmålinger",
-        "description": "Det er kun anon-metrikker - intet noteindhold, søgeforespørgsler, filstier, e-mails eller rå-id'er sendes nogensinde.",
-        "error": "Telemetriindstillingen kunne ikke opdateres"
+        "description": "Aldrig noteindhold, titler eller navne. Omfatter maskerede diagnoselogfiler.",
+        "error": "Kunne ikke opdatere telemetriindstillingen"
+      },
+      "autoSendDiagnostics": {
+        "label": "Send fejlrapporter automatisk",
+        "description": "Maskerede logfiler, når der vises en fejlskærm. Er den slået fra, bliver du spurgt hver gang.",
+        "error": "Kunne ikke opdatere indstillingen for fejlrapporter"
       },
       "diagnostics": {
+        "title": "Vil du sende en diagnostikrapport?",
+        "consent": "Vil du sende en enkelt diagnostikrapport? Den indeholder kun maskerede tekniske logfiler – intet noteindhold.",
         "building": "Forbereder rapport…",
-        "consent": "Vil du sende en engangs-diagnostikrapport? Den indeholder kun maskerede tekniske logfiler — intet noteindhold.",
-        "error": "Diagnostikrapporten kunne ikke sendes",
-        "notNow": "Ikke nu",
-        "previewError": "Diagnostikrapporten kunne ikke forberedes",
         "previewLabel": "Se rapportens indhold",
-        "send": "Send",
-        "sendReport": {
-          "button": "Send diagnostikrapport",
-          "description": "Send en engangsrapport med maskerede tekniske logfiler, så vi kan finde årsagen til det problem, du løb ind i.",
-          "label": "Diagnostikrapport"
-        },
-        "sending": "Sender…",
-        "sent": "Rapporten er sendt — reference {incidentId}",
         "snapshotLabel": "Øjebliksbillede af enheden",
-        "title": "Vil du sende en diagnostikrapport?"
-      }
-    },
-    "dateFormat": {
-      "description": "Hvordan kalenderdatoer vises",
-      "error": "Kunne ikke opdatere datoformat",
-      "label": "Datoformat",
-      "options": {
-        "DD.MM.YYYY": "DD.MM.YYYY",
-        "DD/MM/YYYY": "DD/MM/YYYY",
-        "MM/DD/YYYY": "MM/DD/YYYY (US)",
-        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
+        "send": "Send",
+        "sending": "Sender…",
+        "notNow": "Ikke nu",
+        "sent": "Rapport sendt – reference {incidentId}",
+        "previewError": "Kunne ikke forberede diagnostikrapporten",
+        "error": "Kunne ikke sende diagnostikrapporten",
+        "sendReport": {
+          "label": "Diagnostikrapport",
+          "description": "Send en engangsrapport med maskerede tekniske logfiler, så vi kan finde årsagen til det problem, du løb ind i.",
+          "button": "Send rapport…"
+        }
       }
     }
   },
   "appearance": {
     "header": {
       "title": "Udseende",
-      "subtitle": "Tilpas udseendet og følelsen",
-      "loading": "Indlæser indstillinger..."
+      "subtitle": "Tilpas appens udseende",
+      "loading": "Indlæser indstillinger…"
     },
     "groups": {
       "theme": "Tema",
-      "accentColor": "Accent farve",
-      "typography": "Typografi"
+      "accentColor": "Accentfarve",
+      "typography": "Typografi",
+      "zoom": "Zoom"
     },
     "theme": {
       "colorMode": {
@@ -187,12 +286,23 @@
         "aria": "Farvetilstand"
       },
       "options": {
-        "light": "Varm",
+        "light": "Lys",
         "white": "Hvid",
         "dark": "Mørk",
         "system": "System"
       },
-      "error": "Temaet kunne ikke opdateres"
+      "error": "Kunne ikke opdatere temaet"
+    },
+    "colorTheme": {
+      "default": "Memrynote",
+      "themes": "Memrynote-temaer",
+      "warm": "Varm",
+      "error": "Kunne ikke opdatere farvetemaet",
+      "copy": "Kopiér tema",
+      "copied": "Tema kopieret til udklipsholderen",
+      "copyError": "Kunne ikke kopiere temaet",
+      "import": "Importér tema fra udklipsholderen",
+      "importInvalid": "Udklipsholderen indeholder ikke et memrynote-tema"
     },
     "accent": {
       "pick": "Vælg en accentfarve",
@@ -203,25 +313,71 @@
       },
       "presets": {
         "indigo": "Indigo",
-        "amber": "Rav",
-        "emerald": "Smaragd",
+        "amber": "Ravgul",
+        "emerald": "Smaragdgrøn",
         "red": "Rød",
         "violet": "Violet",
         "cyan": "Cyan",
         "pink": "Pink",
         "orange": "Orange"
       },
-      "error": "Accentfarven kunne ikke opdateres"
+      "error": "Kunne ikke opdatere accentfarven",
+      "aria": "Forudindstillet accentfarve",
+      "options": {
+        "theme": "Tema",
+        "custom": "Brugerdefineret"
+      }
+    },
+    "colors": {
+      "background": "Baggrund",
+      "foreground": "Forgrund",
+      "forLight": "Til lys tilstand",
+      "forDark": "Til mørk tilstand",
+      "reset": "Brug temaets farve",
+      "pick": "Vælg en farve"
+    },
+    "advanced": {
+      "title": "Avanceret",
+      "reset": "Nulstil til standard",
+      "error": "Kunne ikke opdatere indstillingen",
+      "fontSizeDescription": "Grundstørrelse for teksten i brugerfladen",
+      "zoomDescription": "Skalering af hele vinduet",
+      "reduceMotion": {
+        "label": "Reducér bevægelse",
+        "description": "Reducér animationer, eller følg systemet",
+        "options": {
+          "system": "System",
+          "on": "Til"
+        }
+      },
+      "pointerCursors": {
+        "label": "Brug håndmarkør",
+        "description": "Vis en hånd, når markøren er over interaktive elementer"
+      },
+      "fontSmoothing": {
+        "label": "Skriftudjævning",
+        "description": "Tyndere tekst med udjævning i gråtoner på macOS"
+      }
+    },
+    "zoom": {
+      "label": "Zoomniveau",
+      "description": "Skalér hele brugerfladen",
+      "decrease": "Zoom ud",
+      "increase": "Zoom ind",
+      "reset": "Nulstil zoom til standard",
+      "error": "Kunne ikke opdatere zoomniveauet"
     },
     "typography": {
       "fontSize": {
         "label": "Skriftstørrelse",
-        "description": "Juster grundtekststørrelsen",
-        "aria": "Skriftstørrelse"
+        "description": "Grundstørrelse for brugerfladens tekst i pixels",
+        "decrease": "Formindsk skriftstørrelse",
+        "increase": "Forøg skriftstørrelse",
+        "reset": "Nulstil skriftstørrelse til standard"
       },
       "fontFamily": {
-        "label": "Fontfamilie",
-        "description": "Primær skrifttype til grænsefladen",
+        "label": "Skrifttype",
+        "description": "Primær skrifttype i brugerfladen",
         "options": {
           "system": "Systemstandard",
           "sansSerif": "Sans-serif",
@@ -230,17 +386,38 @@
           "geist": "Geist",
           "inter": "Inter",
           "monospace": "Monospace"
-        }
+        },
+        "sections": {
+          "builtin": "Indbyggede",
+          "system": "Installeret på denne computer"
+        },
+        "searchPlaceholder": "Søg i skrifttyper…",
+        "empty": "Ingen skrifttyper matcher",
+        "loading": "Læser installerede skrifttyper…",
+        "unavailable": "Installerede skrifttyper er ikke tilgængelige på dette system.",
+        "notInstalled": "Ikke installeret på denne computer – bruger reserveskrifttypen."
       },
       "fontSizeError": "Kunne ikke opdatere skriftstørrelsen",
-      "fontFamilyError": "Kunne ikke opdatere skrifttypefamilien"
+      "fontFamilyError": "Kunne ikke opdatere skrifttypen"
+    },
+    "v2": {
+      "groups": {
+        "text": "Tekst og zoom"
+      },
+      "colorMode": "Farvetilstand",
+      "colorTheme": "Tema",
+      "accent": "Accentfarve",
+      "customColor": "Brugerdefineret farve",
+      "fontFamily": "Skrifttype",
+      "fontSize": "Skriftstørrelse",
+      "zoom": "Zoom"
     }
   },
   "editor": {
     "header": {
-      "title": "Redaktør",
-      "subtitle": "Bemærk editorindstillinger og præferencer",
-      "loading": "Indlæser indstillinger..."
+      "title": "Editor",
+      "subtitle": "Indstillinger for noteeditoren",
+      "loading": "Indlæser indstillinger…"
     },
     "groups": {
       "layout": "Layout",
@@ -248,92 +425,101 @@
       "spelling": "Stavning"
     },
     "width": {
-      "label": "Redaktørbredde",
-      "description": "Maksimal bredde af skriveområdet",
+      "label": "Editorbredde",
+      "description": "Gælder for alle noter og dagbogssider",
       "options": {
-        "narrow": "Smal",
-        "medium": "Medium",
-        "wide": "Bred",
-        "full": "Fuld bredde",
-        "normal": "Normal"
+        "normal": "Normal",
+        "full": "Fuld bredde"
       },
       "error": "Kunne ikke opdatere editorens bredde"
     },
     "toolbarMode": {
-      "label": "Sticky Formateringsværktøjslinje",
+      "label": "Fast formateringslinje",
       "description": "Vis altid værktøjslinjen over editoren",
-      "error": "Kunne ikke opdatere værktøjslinjetilstand"
+      "error": "Kunne ikke opdatere værktøjslinjetilstanden"
     },
     "spellCheck": {
-      "description": "Understreg stavefejl i noter og journaler",
-      "error": "Stavekontrollen kunne ikke opdateres",
-      "label": "Kontrollér stavning"
+      "label": "Kontrollér stavning",
+      "description": "Understreg stavefejl i noter og dagbogsindlæg",
+      "error": "Kunne ikke opdatere stavekontrollen"
+    },
+    "v2": {
+      "width": "Editorbredde",
+      "toolbarMode": "Fast formateringslinje",
+      "spellCheck": "Kontrollér stavning"
     }
   },
   "templates": {
     "header": {
       "title": "Skabeloner",
-      "subtitle": "Administrer noteskabeloner for hurtig oprettelse"
+      "subtitle": "Administrér noteskabeloner til hurtig oprettelse"
     },
     "actions": {
       "new": "Ny skabelon",
-      "edit": "Rediger",
-      "duplicate": "Dublet",
+      "edit": "Redigér",
+      "duplicate": "Duplikér",
       "delete": "Slet"
     },
     "groups": {
       "builtIn": "Indbygget",
       "myTemplates": "Mine skabeloner"
     },
-    "loading": "Indlæser skabeloner...",
+    "loading": "Indlæser skabeloner…",
     "newTemplateTitle": "Ny skabelon",
-    "copySuffix": "{name} (Kopi)",
+    "copySuffix": "{name} (kopi)",
     "empty": {
       "title": "Ingen brugerdefinerede skabeloner endnu",
       "description": "Opret en skabelon for at komme i gang"
     },
+    "preview": {
+      "notFound": "Kunne ikke indlæse denne skabelon."
+    },
     "toasts": {
-      "deleted": "Skabelonen er slettet",
-      "deleteFailed": "Skabelonen kunne ikke slettes",
+      "deleted": "Skabelon slettet",
+      "deleteFailed": "Kunne ikke slette skabelonen",
       "duplicated": "Skabelon duplikeret",
-      "duplicateFailed": "Skabelonen kunne ikke duplikeres"
+      "duplicateFailed": "Kunne ikke duplikere skabelonen"
     },
     "dialogs": {
       "delete": {
         "title": "Slet skabelon",
-        "description": "Er du sikker på, at du vil slette denne skabelon? Denne handling kan ikke fortrydes. Noter oprettet fra denne skabelon vil ikke blive påvirket."
+        "description": "Vil du slette denne skabelon? Det kan ikke fortrydes. Noter, der er oprettet ud fra skabelonen, påvirkes ikke."
       },
       "duplicate": {
-        "title": "Dupliker skabelon",
+        "title": "Duplikér skabelon",
         "description": "Indtast et navn til den nye skabelonkopi.",
         "placeholder": "Skabelonnavn"
       }
     },
-    "preview": {
-      "notFound": "Kunne ikke indlæse denne skabelon."
+    "v2": {
+      "new": "Ny skabelon",
+      "groups": {
+        "mine": "Mine skabeloner"
+      }
     }
   },
   "journal": {
     "header": {
-      "title": "Journal",
-      "subtitle": "Journalindstillinger og præferencer",
-      "loading": "Indlæser indstillinger..."
+      "title": "Dagbog",
+      "subtitle": "Indstillinger for dagbog",
+      "loading": "Indlæser indstillinger…"
     },
     "groups": {
-      "defaultTemplate": "Standard skabelon",
-      "sidebarVisibility": "Sidebar synlighed",
+      "defaultTemplate": "Standardskabelon",
+      "location": "Placering og format",
+      "sidebarVisibility": "Synlighed i sidebjælken",
       "footer": "Sidefod",
-      "location": "Placering og format"
+      "weekdayTemplates": "Skabeloner pr. dag"
     },
     "template": {
       "label": "Skabelon",
-      "description": "Nye poster starter med denne skabelon",
+      "description": "Nye dagbogsindlæg starter med denne skabelon",
       "placeholder": "Vælg en skabelon",
       "unknown": "Ukendt skabelon",
       "none": "Ingen",
       "noneAsk": "Ingen (spørg hver gang)",
-      "updated": "Standardskabelonen er opdateret",
-      "cleared": "Standardskabelonen er ryddet",
+      "updated": "Standardskabelon opdateret",
+      "cleared": "Standardskabelon fjernet",
       "error": "Kunne ikke opdatere standardskabelonen"
     },
     "showSchedule": {
@@ -346,154 +532,210 @@
     },
     "showAIConnections": {
       "label": "Vis AI-forbindelser",
-      "description": "Vis AI-drevne forbindelser til relaterede poster"
+      "description": "Vis AI-drevne forbindelser til relaterede indlæg"
     },
     "showStatsFooter": {
-      "label": "Vis statistisk sidefod",
+      "label": "Vis sidefod med statistik",
       "description": "Ordantal, læsetid, tidsstempler"
     },
-    "updateError": "Indstillingen kunne ikke opdateres",
+    "folder": {
+      "label": "Dagbogsmappe",
+      "description": "Mappe, hvor daglige noter gemmes",
+      "placeholder": "journal"
+    },
     "dateFormat": {
-      "description": "Filnavnsformat for daglige noter (f.eks. YYYY-MM-DD dddd)",
       "label": "Datoformat",
+      "description": "Filnavnsformat for daglige noter (f.eks. YYYY-MM-DD dddd)",
       "placeholder": "YYYY-MM-DD",
-      "renameNote": "Når du ændrer formatet, omdøbes eksisterende journalfiler. En fil, hvis nye navn allerede er i brug, forbliver uændret.",
+      "renameNote": "Når du ændrer formatet, omdøbes eksisterende dagbogsfiler. En fil, hvis nye navn allerede er i brug, forbliver uændret.",
       "tokensHelp": "Hjælp til datoformat",
       "tokensNote": "Andre tegn bevares uændret. Ugedagsnavne er altid på engelsk.",
       "tokensTitle": "Formatkoder"
     },
-    "folder": {
-      "description": "Mappe, hvor daglige noter gemmes",
-      "label": "Journalmappe",
-      "placeholder": "journal"
-    },
     "preview": {
-      "description": "Dagens journalfilsti",
-      "label": "Forhåndsvisning"
+      "label": "Forhåndsvisning",
+      "description": "Sti til dagens dagbogsfil"
+    },
+    "updateError": "Kunne ikke opdatere indstillingen",
+    "weekday": {
+      "toggle": "Brug en anden skabelon for hver dag",
+      "toggleDescription": "Vælg en skabelon til hver af ugens dage",
+      "inherit": "Brug standard",
+      "inheritWith": "Standard · {name}",
+      "inheritNone": "Standard · ingen",
+      "missing": "Slettet skabelon",
+      "clear": "Ryd",
+      "updated": "Skabelon opdateret for {day}",
+      "cleared": "Skabelon fjernet for {day}",
+      "error": "Kunne ikke opdatere skabelonen for {day}",
+      "summary": "{count} af 7 angivet"
+    },
+    "v2": {
+      "groups": {
+        "defaultTemplate": "Standardskabelon",
+        "location": "Placering og format"
+      }
     }
   },
   "tasks": {
     "header": {
       "title": "Opgaver",
-      "subtitle": "Konfigurer opgavestandarder og adfærd",
-      "loading": "Indlæser indstillinger..."
+      "subtitle": "Konfigurér standarder og adfærd for opgaver",
+      "loading": "Indlæser indstillinger…"
     },
     "groups": {
       "defaults": "Standarder",
-      "calendar": "Kalender",
       "inbox": "Indbakke"
     },
     "defaultProject": {
       "label": "Standardprojekt",
-      "description": "Tildelt, når der ikke er valgt noget projekt",
+      "description": "Tildeles, når der ikke er valgt et projekt",
       "placeholder": "Intet standardprojekt",
-      "none": "Ingen standard (brug personlig)",
+      "none": "Ingen standard (brug Personligt)",
       "error": "Kunne ikke opdatere standardprojektet"
     },
     "sortOrder": {
-      "label": "Standard sorteringsrækkefølge",
+      "label": "Standardsortering",
       "description": "Hvordan opgaverne er ordnet i listevisning",
       "options": {
         "manual": "Manuel (træk og slip)",
         "dueDate": "Forfaldsdato",
         "priority": "Prioritet",
-        "createdAt": "Dato oprettet"
+        "createdAt": "Oprettelsesdato"
       },
-      "error": "Sorteringsrækkefølgen kunne ikke opdateres"
-    },
-    "weekStart": {
-      "label": "Ugen starter på",
-      "description": "Ugens første dag i kalendervisninger",
-      "options": {
-        "sunday": "søndag",
-        "monday": "mandag"
-      },
-      "error": "Kunne ikke opdatere ugestart"
+      "error": "Kunne ikke opdatere sorteringen"
     },
     "defaultView": {
       "label": "Standardvisning",
-      "description": "Fanen som opgavesiden åbner på",
+      "description": "Hvilket omfang siden Opgaver åbner med",
       "options": {
         "all": "Alle",
-        "today": "I dag"
+        "today": "I dag",
+        "tomorrow": "I morgen",
+        "next7": "Næste 7 dage"
       },
-      "error": "Kunne ikke opdatere standardvisning"
+      "error": "Kunne ikke opdatere standardvisningen"
     },
     "staleInbox": {
-      "label": "Forældet indbakketærskel",
+      "label": "Grænse for forældede opgaver i indbakken",
       "description": "Opgaver, der er ældre end dette, fremhæves som forældede",
       "unit": "dage",
-      "error": "Kunne ikke opdatere forældet indbakkegrænse"
+      "error": "Kunne ikke opdatere grænsen for forældede opgaver"
+    }
+  },
+  "inbox": {
+    "header": {
+      "title": "Indbakke",
+      "subtitle": "Daglig påmindelse om gennemgang og indstillinger for indbakken.",
+      "loading": "Indlæser…"
+    },
+    "imageFiling": {
+      "group": "Billeder",
+      "error": "Kunne ikke opdatere indstillingen for placering af billeder",
+      "mode": {
+        "label": "Når et billede placeres i en note",
+        "description": "»Indlejr i noten« beholder billedet i noten og uden for sidebjælken. »Placér i sidebjælken« flytter det til den mappe, du vælger, og linker til det.",
+        "embed": "Indlejr i noten",
+        "link": "Placér i sidebjælken"
+      },
+      "ask": {
+        "label": "Spørg hver gang",
+        "description": "Er den slået fra, bruger nye billeder valget ovenfor uden at spørge."
+      }
+    },
+    "reviewReminder": {
+      "group": "Daglig påmindelse om gennemgang",
+      "enabled": {
+        "label": "Påmind mig om at gennemgå min indbakke",
+        "description": "Et venligt dagligt puf, når der ligger noget i din indbakke."
+      },
+      "time": {
+        "label": "Tidspunkt for påmindelse",
+        "description": "Lokal tid, på hver enhed.",
+        "hourLabel": "Time",
+        "minuteLabel": "Minut",
+        "periodLabel": "AM eller PM"
+      },
+      "test": {
+        "label": "Testnotifikation",
+        "description": "Send påmindelsen nu for at tjekke dine systemnotifikationer.",
+        "button": "Send test",
+        "sent": "Testnotifikation sendt.",
+        "sentHint": "Hvis der ikke dukker noget op, skal du tillade notifikationer for MemryNote i dine systemindstillinger.",
+        "unsupported": "Denne enhed kan ikke vise skrivebordsnotifikationer."
+      },
+      "error": "Kunne ikke opdatere påmindelsen."
     }
   },
   "calendar": {
     "header": {
       "title": "Kalender",
-      "subtitle": "Konfigurer dagcelleadfærd i dagpanelet",
-      "loading": "Indlæser indstillinger..."
+      "subtitle": "Konfigurér, hvad der sker, når du klikker på en dag i dagspanelet",
+      "loading": "Indlæser indstillinger…"
     },
     "groups": {
-      "dayCellClick": "Dagcelleklik",
-      "notes": "Noter",
-      "weekStart": "Uge"
+      "weekStart": "Uge",
+      "dayCellClick": "Klik på en dag",
+      "notes": "Noter"
+    },
+    "weekStart": {
+      "label": "Ugen starter på",
+      "description": "Ugens første dag på tværs af alle kalendere",
+      "options": {
+        "sunday": "Søndag",
+        "monday": "Mandag"
+      },
+      "error": "Kunne ikke opdatere ugens første dag"
     },
     "defaultBehavior": {
       "label": "Standardadfærd",
-      "description": "Når du klikker på en dag i dagpanelets kalender fra en hvilken som helst ikke-kalenderfane",
-      "error": "Kunne ikke opdatere dagsklikadfærd"
+      "description": "Når du klikker på en dag i dagspanelets kalender fra en fane, der ikke er kalenderen",
+      "error": "Kunne ikke opdatere adfærden ved klik på en dag"
     },
     "pageOverride": {
       "label": "Tilsidesættelse af kalenderside",
-      "description": "Adfærd, når fanen Kalender er aktiv (standard til Åbn kalender)",
-      "error": "Kunne ikke opdatere tilsidesættelse af kalenderside"
-    },
-    "options": {
-      "openJournal": "Åben Journal",
-      "openCalendar": "Åbn Kalender",
-      "useGlobal": "Brug globale indstillinger"
+      "description": "Adfærd, når fanen Kalender er aktiv (som standard »Åbn kalender«)",
+      "error": "Kunne ikke opdatere tilsidesættelsen af kalendersiden"
     },
     "showNotesOnCalendar": {
-      "description": "Vis hver note på kalenderen som et heldagselement på den dag, den blev oprettet",
-      "error": "Kunne ikke opdatere vis noter på kalender",
-      "label": "Vis noter på kalender"
+      "label": "Vis noter i kalenderen",
+      "description": "Vis alle noter i kalenderen som heldagselementer på den dag, de blev oprettet",
+      "error": "Kunne ikke opdatere indstillingen for noter i kalenderen"
     },
-    "weekStart": {
-      "description": "Ugens første dag på tværs af alle kalendere",
-      "error": "Kunne ikke opdatere ugestart",
-      "label": "Ugen starter på",
-      "options": {
-        "monday": "Mandag",
-        "sunday": "Søndag"
-      }
+    "options": {
+      "openJournal": "Åbn dagbog",
+      "openCalendar": "Åbn kalender",
+      "useGlobal": "Brug den globale indstilling"
     },
     "google": {
-      "name": "Google Kalender",
-      "description": "Tovejssynkronisering til memrynote-begivenheder og importerede Google-kalendere.",
+      "name": "Google Calendar",
+      "description": "Tovejssynkronisering af memrynote-begivenheder og importerede Google-kalendere.",
       "statuses": {
         "connected": "Forbundet",
         "notConnected": "Ikke forbundet",
-        "reconnectRequired": "Genopret forbindelse påkrævet"
+        "reconnectRequired": "Skal forbindes igen"
       },
-      "accountReconnect": "Tilslut Google igen",
+      "accountReconnect": "Forbind Google igen",
+      "addAccount": "Tilføj konto",
       "importedCalendars": "Importerede kalendere",
       "selected": "{count} valgt",
-      "syncNow": "Synkroniser nu",
+      "syncNow": "Synkronisér nu",
       "disconnect": "Afbryd forbindelsen",
-      "reconnect": "Tilslut Google igen",
+      "reconnect": "Forbind Google igen",
       "syncFailed": "Noget gik galt",
-      "connectFailed": "Kunne ikke oprette forbindelse til Google Kalender",
-      "refreshFailed": "Kunne ikke opdatere Google Kalender",
-      "disconnectFailed": "Google Kalender kunne ikke afbrydes",
-      "retryFailed": "Kunne ikke prøve kalendersynkronisering igen",
+      "connectFailed": "Kunne ikke forbinde Google Calendar",
+      "refreshFailed": "Kunne ikke opdatere Google Calendar",
+      "disconnectFailed": "Kunne ikke afbryde forbindelsen til Google Calendar",
+      "retryFailed": "Kunne ikke prøve kalendersynkroniseringen igen",
       "pushToGoogle": {
-        "description": "Slå fra for envejssynkronisering — du ser stadig dine Google-begivenheder i memrynote, men memrynote-begivenheder vises ikke i Google.",
-        "error": "Kunne ikke opdatere synkroniseringsretning",
-        "label": "Vis memrynote-begivenheder i Google Calendar"
+        "label": "Vis memrynote-begivenheder i Google Calendar",
+        "description": "Slå fra for envejssynkronisering – du ser stadig dine Google-begivenheder i memrynote, men memrynote-begivenheder vises ikke i Google.",
+        "error": "Kunne ikke opdatere synkroniseringsretningen"
       },
       "agentAccess": {
+        "label": "Lad AI læse begivenheder i Google Calendar",
         "description": "Slået fra som standard. Slå til, og AI-agenten kan læse dine Google-begivenheder; slå fra, og den får intet tilbage, når den bliver spurgt om dem. Du ser dem stadig i memrynote uanset hvad.",
-        "error": "Kunne ikke opdatere AI-adgang",
-        "label": "Lad AI læse begivenheder i Google Calendar"
+        "error": "Kunne ikke opdatere AI-adgangen"
       },
       "connect": "Forbind",
       "sourcePicker": {
@@ -504,44 +746,306 @@
           "pending": "Afventer",
           "idle": "Inaktiv"
         },
-        "retrying": "Prøver igen...",
+        "retrying": "Prøver igen…",
         "retryNow": "Prøv igen nu"
       }
+    },
+    "subscriptions": {
+      "name": "Abonnerede kalendere",
+      "description": "Tilføj en skrivebeskyttet kalender via dens delingslink (ICS eller webcal), f.eks. en kalender fra Proton, iCloud, Outlook eller Fastmail. Den tjekkes for ændringer ca. én gang i timen.",
+      "urlLabel": "Kalenderlink",
+      "urlPlaceholder": "Kalenderlink med webcal:// eller https://",
+      "subscribe": "Abonnér",
+      "subscribing": "Abonnerer…",
+      "refresh": "Opdatér",
+      "refreshing": "Opdaterer…",
+      "remove": "Fjern",
+      "readOnly": "Skrivebeskyttet",
+      "updatedAt": "Opdateret {time}",
+      "notCheckedYet": "Ikke tjekket endnu",
+      "keptEvents": "Begivenheder, der allerede er i din kalender, bliver liggende, indtil næste opdatering lykkes.",
+      "notEncrypted": "Ikke krypteret",
+      "httpWarning": "Dette link starter med http://, så linket og begivenhederne sendes ukrypteret. Alle på samme netværk kan læse dem. Brug et https://- eller webcal://-link, hvis kalenderen tilbyder et.",
+      "added": "{title} tilføjet.",
+      "addedSummary": "{title} tilføjet: {count, plural, one {# begivenhed} other {# begivenheder}}, {start} til {end}.",
+      "addedEmpty": "{title} tilføjet. Den har endnu ingen begivenheder i de seneste 90 dage eller det kommende år.",
+      "rename": "Omdøb",
+      "renameLabel": "Kalendernavn",
+      "save": "Gem",
+      "cancel": "Annullér",
+      "color": "Kalenderfarve",
+      "colorOption": "Farve: {color}",
+      "help": {
+        "toggle": "Hvor finder jeg linket?",
+        "intro": "Kig efter en delingsindstilling, der hedder offentligt link, hemmelig adresse, udgiv eller iCal. Linket ender på .ics eller starter med webcal://.",
+        "proton": {
+          "name": "Proton Calendar",
+          "steps": "Indstillinger → Kalendere, vælg kalenderen, og opret derefter et link under Del med alle. Vælg fuld visning for at se detaljer om begivenheder.",
+          "readOnly": "Proton-kalendere er bevidst skrivebeskyttede i memrynote. Proton krypterer kalendere end-to-end og tilbyder ikke CalDAV, så der er ingen måde at skrive tilbage på. Foretag ændringer i Proton."
+        },
+        "icloud": {
+          "name": "iCloud",
+          "steps": "Del kalenderen i Kalender på en Mac eller på iCloud.com, slå Offentlig kalender til, og kopiér linket. Hvis du også vil redigere iCloud-begivenheder her, skal du i stedet forbinde iCloud under CalDAV."
+        },
+        "outlook": {
+          "name": "Outlook og Microsoft 365",
+          "steps": "Outlook på internettet → Indstillinger → Kalender → Delte kalendere → Publicer en kalender. Vælg Kan få vist alle detaljer, publicér, og kopiér ICS-linket."
+        },
+        "fastmail": {
+          "name": "Fastmail",
+          "steps": "Indstillinger → Kalendere, åbn kalenderen, slå udgivelse til, og kopiér iCalendar-linket."
+        },
+        "notion": {
+          "name": "Notion Calendar",
+          "steps": "Dens begivenheder ligger i den Google- eller iCloud-konto, du har forbundet den med. Del linket fra den konto."
+        },
+        "public": {
+          "name": "Helligdage, skoler og sport",
+          "steps": "Kig efter Abonnér, Føj til kalender eller iCal på arrangørens websted, og kopiér det link."
+        }
+      },
+      "errors": {
+        "invalid_url": "Det er ikke et kalenderlink. Indsæt en adresse, der starter med webcal://, https:// eller http://.",
+        "unreachable": "Kunne ikke få forbindelse til kalenderen. Tjek linket og din internetforbindelse.",
+        "timeout": "Kalenderen var for længe om at svare. Prøv igen om lidt.",
+        "not_found": "Der blev ikke fundet nogen kalender på dette link. Den er måske blevet slettet, eller dens delingslink er ændret.",
+        "unauthorized": "Kalenderen nægtede adgang. Kopiér et nyt delingslink fra din kalenderapp.",
+        "http_error": "Kalenderserveren returnerede en fejl. Prøv igen senere.",
+        "too_large": "Kalenderen er for stor til at blive tilføjet. Del en mindre kalender i stedet.",
+        "not_a_calendar": "Dette link returnerer ikke en kalender. Kopiér ICS- eller webcal-linket fra delingsindstillingerne i din kalenderapp.",
+        "too_many_redirects": "Dette link bliver ved med at omdirigere og når aldrig frem til en kalender. Kopiér linket igen fra din kalenderapp.",
+        "unsupported_redirect": "Dette link omdirigerer til en adresse, der ikke er et weblink, så memrynote følger det ikke. Kopiér ICS- eller webcal-linket fra din kalenderapp.",
+        "unknown": "Kunne ikke opdatere kalenderen ({code}). Prøv igen senere."
+      }
+    },
+    "providers": {
+      "caldav": {
+        "name": "CalDAV"
+      },
+      "statuses": {
+        "connected": "Forbundet",
+        "notConnected": "Ikke forbundet"
+      },
+      "readOnly": "Skrivebeskyttet",
+      "pollInterval": "Tjekker for ændringer med {minutes} minutters mellemrum. Ændringer foretaget andre steder vises ikke med det samme.",
+      "connect": "Forbind",
+      "connecting": "Forbinder…",
+      "connectFailed": "Kunne ikke forbinde. Tjek oplysningerne, og prøv igen.",
+      "disconnect": "Afbryd forbindelse",
+      "disconnectFailed": "Kunne ikke afbryde forbindelsen. Prøv igen.",
+      "syncNow": "Synkronisér nu",
+      "refreshFailed": "Synkroniseringen mislykkedes. Dine kalendere er uændrede; prøv igen senere.",
+      "addAccount": "Tilføj konto",
+      "accounts": "Konti",
+      "calendars": "Kalendere",
+      "retry": "Prøv igen nu",
+      "reconnectRequired": "Denne enhed har ingen adgangskode til denne konto. Forbind den igen for at synkronisere herfra.",
+      "push": {
+        "label": "Skriv memrynote-begivenheder til denne kalender",
+        "description": "Slå fra for envejssynkronisering: du ser stadig disse begivenheder i memrynote, men memrynote-begivenheder og -opgaver skrives ikke hertil."
+      },
+      "agentAccess": {
+        "label": "Lad AI læse disse begivenheder",
+        "description": "Slået fra, indtil du slår den til. Hver kalendertjeneste indstilles for sig; tilladelse til Google gælder ikke for denne.",
+        "error": "Kunne ikke opdatere AI-adgangen"
+      },
+      "basic": {
+        "serverLabel": "Serveradresse",
+        "serverPlaceholder": "https://dav.example.com",
+        "usernameLabel": "Brugernavn",
+        "passwordLabel": "Appadgangskode"
+      },
+      "compat": {
+        "outdated": "Disse enheder på din konto kører en version af memrynote, der er ældre end {version}:",
+        "unverified": "memrynote kunne ikke tjekke, hvilke versioner dine andre enheder kører.",
+        "unknownVersion": "ukendt version",
+        "consequence": "En ældre version kan kopiere opgaver og begivenheder fra denne kalender til Google Calendar som dubletter eller slet ikke kunne synkronisere dem. Opdatér disse enheder først, eller fortsæt, hvis du accepterer det.",
+        "acknowledge": "Jeg forstår, forbind alligevel"
+      },
+      "reconnect": "Forbind igen",
+      "defaultTarget": {
+        "label": "Standardkalender",
+        "description": "Hvor nye begivenheder, opgaver, påmindelser og udsættelser havner, når du ikke vælger en kalender. Kun én kalendertjeneste kan være standard.",
+        "none": "Ikke standard",
+        "error": "Kunne ikke ændre standardkalenderen"
+      },
+      "appleEventKit": {
+        "name": "Denne Mac",
+        "description": "Viser alle kalendere, som Kalender-appen allerede har på denne Mac: iCloud, Google, Exchange og På min Mac. Kræver ikke log ind, er skrivebeskyttet, og begivenhederne forlader aldrig denne Mac og synkroniseres ikke til dine andre enheder.",
+        "connect": "Tillad adgang til kalendere",
+        "connectHint": "macOS spørger én gang. Du kan ændre det senere i Systemindstillinger.",
+        "otherCalendars": "Andre kalendere",
+        "alreadyConnected": "Allerede forbundet via {provider}, så den er slået fra som udgangspunkt for at undgå dobbelte begivenheder.",
+        "openSystemSettings": "Åbn Systemindstillinger",
+        "checkAgain": "Tjek igen",
+        "errors": {
+          "permission_denied": "Adgang til kalendere er slået fra for memrynote. Slå den til i Systemindstillinger → Anonymitet og sikkerhed → Kalendere, og tjek igen.",
+          "permission_restricted": "Adgang til kalendere er blokeret på denne Mac, som regel af en administrationsprofil. Intet er ændret i memrynote; den, der administrerer denne Mac, kan tillade det.",
+          "permission_write_only": "memrynote kan kun tilføje begivenheder, og det er ikke nok til at vise dem. Skift til Fuld adgang i Systemindstillinger → Anonymitet og sikkerhed → Kalendere.",
+          "permission_not_determined": "memrynote har endnu ikke fået adgang til kalendere. Tillad det for at vise din Macs kalendere.",
+          "unavailable": "macOS-kalenderlæseren kunne ikke starte. Dine kalendere er uændrede; genstart memrynote, og prøv igen.",
+          "sync_failed": "Kunne ikke læse Kalender-appen lige nu. Dine kalendere er uændrede, og memrynote prøver igen, når Kalender-appen ændres."
+        }
+      }
+    },
+    "caldav": {
+      "presetLabel": "Tjeneste",
+      "presets": {
+        "icloud": "Apple iCloud",
+        "fastmail": "Fastmail",
+        "nextcloud": "Nextcloud",
+        "selfHosted": "Radicale eller Baïkal (selvhostet)",
+        "zoho": "Zoho",
+        "yahoo": "Yahoo",
+        "mailboxOrg": "mailbox.org",
+        "posteo": "Posteo",
+        "synology": "Synology",
+        "other": "Anden CalDAV-server"
+      },
+      "hostLabel": "Servernavn",
+      "hostPlaceholder": "cloud.example.com",
+      "appleIdLabel": "Apple-id (e-mail)",
+      "icloudHelp": "Brug en appspecifik adgangskode, ikke adgangskoden til dit Apple-id. Opret en under Log ind og sikkerhed → Appspecifikke adgangskoder.",
+      "appPasswordHelp": "Hvis din tjeneste tilbyder appadgangskoder, så opret en til memrynote, og brug den her.",
+      "createAppPassword": "Opret en appadgangskode",
+      "testConnection": "Test forbindelse",
+      "testing": "Tester…",
+      "chooseCalendars": "Kalendere, der skal vises",
+      "reconnectFor": "Indtast appadgangskoden til {username}.",
+      "errors": {
+        "unauthorizedIcloud": "iCloud accepterede ikke denne adgangskode. iCloud kræver her en appspecifik adgangskode, ikke adgangskoden til dit Apple-id. Opret en på account.apple.com under Log ind og sikkerhed, og prøv igen.",
+        "unauthorized": "Serveren accepterede ikke dette brugernavn og denne adgangskode. Tjek begge, og brug en appadgangskode, hvis din tjeneste har dem.",
+        "unreachable": "Kunne ikke få forbindelse til serveren. Tjek adressen og din internetforbindelse, og prøv igen.",
+        "notCaldav": "Der blev ikke fundet nogen CalDAV-kalendere på denne adresse. Tjek serveradressen; nogle tjenester kræver en sti som /remote.php/dav.",
+        "noCalendars": "Denne konto har ingen kalendere, der indeholder begivenheder.",
+        "invalidUrl": "Det er ikke en serveradresse. Indtast en adresse som https://dav.example.com.",
+        "outdatedDevices": "Nogle af dine enheder kører en ældre version af memrynote. Opdatér dem, eller bekræft nedenfor, at du vil forbinde alligevel.",
+        "unknown": "Kunne ikke forbinde ({code}). Intet blev gemt; prøv igen senere."
+      },
+      "reconnect": {
+        "missing": "Denne enhed har endnu ikke appadgangskoden til denne konto. Kontoens begivenheder kommer stadig fra dine andre enheder; indtast appadgangskoden her for også at synkronisere fra denne enhed.",
+        "icloudRevoked": "iCloud accepterer ikke længere denne appspecifikke adgangskode. Når du nulstiller adgangskoden til dit Apple-id, tilbagekaldes alle appspecifikke adgangskoder. Opret en ny på account.apple.com, og forbind igen.",
+        "rejected": "Serveren accepterer ikke længere denne adgangskode. Hvis du har ændret den eller tilbagekaldt appadgangskoden, så opret en ny, og forbind igen."
+      }
+    },
+    "v2": {
+      "groups": {
+        "layout": "Layout",
+        "connected": "Forbundne kalendere"
+      },
+      "addCalendar": "Tilføj kalender",
+      "calendarCount": "{selected} af {count, plural, one {# kalender} other {# kalendere}}",
+      "defaultPill": "Standard",
+      "subscription": "Abonnement",
+      "subscriptionCount": "{count, plural, =0 {Ingen abonnementer} one {# abonnement} other {# abonnementer}}"
     }
   },
   "account": {
     "header": {
       "title": "Konto",
       "subtitle": "Din konto, synkronisering og sikkerhed",
-      "loading": "Indlæser..."
+      "loading": "Indlæser…"
     },
     "groups": {
       "identity": "Identitet",
-      "sync": "Synkroniser",
-      "storage": "Opbevaring",
-      "devices": "Enheder",
-      "billing": "Fakturering"
+      "sync": "Synkronisering",
+      "billing": "Fakturering",
+      "storage": "Lagerplads",
+      "devices": "Enheder"
     },
     "identity": {
       "unknown": "Ukendt",
-      "encrypted": "Ende-til-ende-krypteret"
+      "encrypted": "End-to-end-krypteret"
     },
     "sync": {
       "lastSynced": "Sidst synkroniseret {time}",
       "pending": "{count, plural, one {# afventer} other {# afventer}}",
+      "attachmentAutoDownload": {
+        "label": "Hent vedhæftede filer automatisk",
+        "description": "Hent vedhæftede filer fra synkroniserede noter i baggrunden. Når indstillingen er slået fra, hentes filer først, når du åbner dem.",
+        "saveFailed": "Kunne ikke gemme indstillingen for hentning af vedhæftede filer"
+      },
       "statuses": {
         "synced": "Synkroniseret",
-        "syncing": "Synkroniserer...",
-        "paused": "Pause",
+        "syncing": "Synkroniserer…",
+        "paused": "På pause",
         "syncError": "Synkroniseringsfejl",
         "offline": "Offline",
-        "connecting": "Opretter forbindelse...",
-        "pushed": "{count, plural, one {# skubbet} other {# skubbet}}",
-        "pulled": "{count, plural, one {# trukket} other {# trukket}}",
+        "connecting": "Forbinder…",
+        "localOnly": "Kun lokalt",
+        "pushed": "{count, plural, one {# sendt} other {# sendt}}",
+        "pulled": "{count, plural, one {# hentet} other {# hentet}}",
         "pushedPulled": "{parts}",
         "changesPending": "{count, plural, one {# ændring afventer} other {# ændringer afventer}}",
         "offlinePending": "Offline ({count, plural, one {# ændring afventer} other {# ændringer afventer}})",
         "never": "Aldrig"
+      },
+      "upsell": {
+        "title": "Dine noter findes kun på denne enhed",
+        "description": "Slå synkronisering til, så følger alle dine noter med dig til dine andre enheder – end-to-end-krypteret, så kun du kan læse dem.",
+        "benefits": {
+          "devices": "Alle enheder fortsætter, hvor du slap",
+          "encrypted": "End-to-end-krypteret – nøglerne bliver altid hos dig",
+          "backup": "En krypteret sikkerhedskopi, hvis denne enhed ikke er ved hånden"
+        },
+        "guarantee": "14 dages pengene-tilbage-garanti. Opsig når som helst."
+      },
+      "activating": {
+        "title": "Afslutter din aktivering",
+        "description": "Dit abonnement er aktivt. Synkroniseringen starter, så snart vi har bekræftet det – som regel hjælper det at opdatere."
+      }
+    },
+    "billing": {
+      "planStatus": "Abonnementsstatus",
+      "checking": "Tjekker faktureringsstatus",
+      "annualSwitch": {
+        "title": "Skift til årlig betaling",
+        "description": "Spar 20 %. Vi beregner resten af denne måned forholdsmæssigt, uden en ekstra opkrævning.",
+        "action": "Skift til årlig",
+        "pricing": "Beregner pris…",
+        "preview": "{amount} forfalder i dag, derefter {recurring} om året",
+        "confirm": "Bekræft skift",
+        "switching": "Skifter…",
+        "success": "Du har nu årlig betaling.",
+        "failed": "Kunne ikke skifte dit abonnement"
+      },
+      "plans": {
+        "free": "Gratisabonnement",
+        "plus": "Plus-abonnement",
+        "pro": "Pro-abonnement",
+        "believer": "Believer-abonnement"
+      },
+      "statuses": {
+        "inactive": "Inaktiv",
+        "active": "Aktiv",
+        "past_due": "Betaling forfalden",
+        "paused": "På pause",
+        "canceled": "Annulleret"
+      },
+      "labels": {
+        "storage": "Lagerplads",
+        "maxFile": "Maks. fil",
+        "vaults": "Bokse",
+        "history": "Historik"
+      },
+      "unlimited": "Ubegrænset",
+      "historyDays": "{days} dage",
+      "activationPendingPrefix": "Aktivering afventer. Paddle kan være et øjeblik om at bekræfte betalingen. Opdatér status, eller skriv til",
+      "actions": {
+        "upgrade": "Opgradér",
+        "unlockSync": "Lås synkronisering op",
+        "opening": "Åbner…",
+        "refresh": "Opdatér status",
+        "manage": "Administrér fakturering"
+      },
+      "toasts": {
+        "loadFailed": "Kunne ikke indlæse faktureringsstatus",
+        "checkoutFailed": "Kunne ikke starte betalingen",
+        "checkoutOpened": "Betaling åbnet i din browser",
+        "refreshFailed": "Kunne ikke opdatere faktureringsstatus",
+        "billingActive": "Fakturering er aktiv",
+        "activationPending": "Aktivering afventer",
+        "portalFailed": "Kunne ikke åbne faktureringsportalen"
       }
     },
     "storage": {
@@ -560,63 +1064,27 @@
         "action": "Log ud"
       }
     },
+    "community": {
+      "prompt": "Elsker du memrynote?",
+      "star": "Giv os en stjerne på GitHub",
+      "and": "og",
+      "feedback": "del feedback"
+    },
     "signOutDialog": {
       "title": "Vil du logge ud af synkronisering?",
-      "description": "Synkronisering stopper, og krypteringsnøgler vil blive fjernet fra denne enhed. Dine noter forbliver på denne enhed. Du skal bruge din gendannelsessætning for at konfigurere synkronisering igen.",
+      "description": "Synkroniseringen stopper, og krypteringsnøglerne fjernes fra denne enhed. Dine noter bliver på denne enhed. Du skal bruge din gendannelsessætning for at konfigurere synkronisering igen.",
       "confirm": "Log ud",
-      "signingOut": "Logger ud..."
+      "signingOut": "Logger ud…"
     },
     "toasts": {
       "signedOut": "Logget ud",
       "signOutFailed": "Kunne ikke logge ud",
-      "deviceLinked": "Enheden blev linket"
+      "deviceLinked": "Enhed tilknyttet"
     },
-    "billing": {
-      "actions": {
-        "manage": "Administrér fakturering",
-        "opening": "Åbner...",
-        "refresh": "Opdatér status",
-        "upgrade": "Opgradér"
-      },
-      "activationPendingPrefix": "Aktivering afventer. Paddle kan være et øjeblik om at bekræfte betalingen. Opdatér status eller e-mail",
-      "checking": "Tjekker faktureringsstatus",
-      "historyDays": "{days} dage",
-      "labels": {
-        "history": "Historik",
-        "maxFile": "Maks. fil",
-        "storage": "Lagring",
-        "vaults": "Bokse"
-      },
-      "planStatus": "Abonnementsstatus",
-      "plans": {
-        "believer": "Believer-abonnement",
-        "free": "Gratis-abonnement",
-        "plus": "Plus-abonnement",
-        "pro": "Pro-abonnement"
-      },
-      "statuses": {
-        "active": "Aktiv",
-        "canceled": "Annulleret",
-        "inactive": "Inaktiv",
-        "past_due": "Forfalden",
-        "paused": "På pause"
-      },
-      "toasts": {
-        "activationPending": "Aktivering afventer",
-        "billingActive": "Fakturering er aktiv",
-        "checkoutFailed": "Kunne ikke starte betaling",
-        "checkoutOpened": "Betaling åbnet i din browser",
-        "loadFailed": "Kunne ikke indlæse faktureringsstatus",
-        "portalFailed": "Kunne ikke åbne faktureringsportal",
-        "refreshFailed": "Kunne ikke opdatere faktureringsstatus"
-      },
-      "unlimited": "Ubegrænset"
-    },
-    "community": {
-      "and": "og",
-      "feedback": "del feedback",
-      "prompt": "Elsker du memrynote?",
-      "star": "Giv os en stjerne på GitHub"
+    "v2": {
+      "stats": {
+        "plan": "Abonnement"
+      }
     }
   },
   "setup": {
@@ -627,21 +1095,21 @@
     },
     "progress": "Trin {current} af {total}: {label}",
     "signIn": {
-      "title": "Konfigurer Sync",
+      "title": "Konfigurér synkronisering",
       "description": "Opret en konto for at synkronisere dine data på tværs af enheder med end-to-end-kryptering.",
       "or": "eller",
+      "paidPlan": "Synkronisering er et betalt abonnement.",
+      "seePlans": "Se abonnementer",
       "errors": {
         "sendCode": "Kunne ikke sende koden",
         "googleStart": "Kunne ikke starte Google-login"
-      },
-      "paidPlan": "Synkronisering er et betalt abonnement.",
-      "seePlans": "Se abonnementer"
+      }
     },
     "email": {
       "label": "E-mailadresse",
-      "placeholder": "Indtast din e-mailadresse...",
-      "invalid": "Indtast venligst en gyldig e-mailadresse",
-      "sending": "Sender kode..."
+      "placeholder": "Indtast din e-mailadresse…",
+      "invalid": "Indtast en gyldig e-mailadresse",
+      "sending": "Sender kode…"
     },
     "oauth": {
       "google": "Fortsæt med Google"
@@ -649,11 +1117,11 @@
     "otp": {
       "title": "Indtast bekræftelseskode",
       "sentTo": "Vi sendte en 6-cifret kode til ",
-      "aria": "6-cifret verifikationskode",
-      "verifying": "Bekræfter...",
-      "resending": "Gensender...",
+      "aria": "6-cifret bekræftelseskode",
+      "verifying": "Bekræfter…",
+      "resending": "Sender igen…",
       "resend": "Send kode igen",
-      "resendIn": "Send igen i {time}",
+      "resendIn": "Send igen om {time}",
       "differentEmail": "Brug en anden e-mail",
       "error": "Bekræftelse mislykkedes",
       "resendError": "Kunne ikke sende igen"
@@ -662,272 +1130,514 @@
       "displayTitle": "Gem din gendannelsessætning",
       "displayDescription": "Dette er den eneste måde at gendanne dine krypterede data på, hvis du mister adgangen til alle dine enheder.",
       "warning": "Skriv dette ned og opbevar det et sikkert sted. Du vil ikke se det igen.",
-      "wordsAria": "Gendannelsessætningsord",
+      "wordsAria": "Ordene i gendannelsessætningen",
       "wordAria": "Ord {index}: {word}",
-      "copyAria": "Kopier gendannelsessætning til udklipsholder",
+      "copyAria": "Kopiér gendannelsessætningen til udklipsholderen",
       "copiedAria": "Gendannelsessætning kopieret",
       "copied": "Kopieret",
       "saved": "Jeg har gemt min gendannelsessætning",
       "confirmTitle": "Bekræft din gendannelsessætning",
-      "confirmDescription": "Indtast de anmodede ord for at bekræfte, at du har gemt det korrekt.",
-      "wordPlaceholder": "Indtast ordet #{index}",
+      "confirmDescription": "Indtast de ønskede ord for at bekræfte, at du har gemt den korrekt.",
+      "wordPlaceholder": "Indtast ord nr. {index}",
       "verify": "Bekræft",
       "mustMatch": "Alle 3 ord skal matche for at fortsætte",
       "inputTitle": "Indtast gendannelsessætning",
       "inputDescription": "Indtast din 24-ords gendannelsessætning for at gendanne adgangen til dine krypterede data.",
       "inputLabel": "Gendannelsessætning",
       "count": "{count} / {total} ord",
-      "inputPlaceholder": "Indtast din 24-ords gendannelsessætning adskilt af mellemrum...",
+      "inputPlaceholder": "Indtast din gendannelsessætning på 24 ord adskilt af mellemrum…",
       "lengthHint": "Indtast alle 24 ord for at aktivere gendannelsesknappen",
       "restore": "Gendan adgang",
       "progress": {
-        "deriving": "Udleder krypteringsnøgler...",
-        "validating": "Validerer gendannelsessætning...",
-        "registering": "Registrerer enhed..."
+        "deriving": "Udleder krypteringsnøgler…",
+        "validating": "Validerer gendannelsessætning…",
+        "registering": "Registrerer enhed…"
       },
       "failed": "Gendannelse mislykkedes",
-      "confirmationFailed": "Bekræftelsen mislykkedes",
+      "confirmationFailed": "Bekræftelse mislykkedes",
       "unavailable": {
-        "description": "Din gendannelsessætning vises kun én gang under opsætningen og kan ikke hentes senere. Start forfra for at generere en ny.",
         "loading": "Indlæser din gendannelsessætning…",
-        "startOver": "Start forfra",
-        "title": "Kunne ikke indlæse din gendannelsessætning"
+        "title": "Kunne ikke indlæse din gendannelsessætning",
+        "description": "Din gendannelsessætning vises kun én gang under opsætningen og kan ikke hentes senere. Start forfra for at generere en ny.",
+        "startOver": "Start forfra"
       }
+    },
+    "startFresh": {
+      "trigger": "Jeg kan ikke få min gendannelsessætning tilbage",
+      "title": "Start forfra på denne enhed",
+      "description": "Gør kun dette, hvis din gendannelsessætning er væk for altid. Det kan ikke fortrydes.",
+      "consequenceSignOut": "Denne enhed logger ud og stopper synkroniseringen.",
+      "consequenceKey": "Krypteringsnøglen på denne enhed slettes. Alt, der allerede er gemt på din konto, forbliver krypteret med den gamle nøgle – uden gendannelsessætningen kan det aldrig læses igen.",
+      "consequenceLocal": "Noter, der allerede er gemt på denne computer, bliver i din boksmappe og fungerer fortsat.",
+      "confirm": "Log ud og start forfra",
+      "cancel": "Gå tilbage"
     },
     "linking": {
       "choiceTitle": "Tilknyt denne enhed",
       "choiceDescription": "Overfør krypteringsnøgler fra en anden enhed, eller gendan fra din gendannelsessætning.",
-      "qrChoice": "Link via QR-kode",
-      "qrChoiceDescription": "Scan koden vist på din anden enhed",
+      "qrChoice": "Tilknyt via QR-kode",
+      "qrChoiceDescription": "Scan koden, der vises på din anden enhed",
       "recoveryChoice": "Gendannelsessætning",
       "recoveryChoiceDescription": "Indtast din 24-ords gendannelsessætning",
-      "codeTitle": "Indtast linkkoden",
-      "codeDescription": "Indsæt linkkoden fra din anden enhed for at overføre dine krypteringsnøgler sikkert.",
-      "codeLabel": "Sammenkædningskode",
+      "codeTitle": "Indtast tilknytningskode",
+      "codeDescription": "Indsæt tilknytningskoden fra din anden enhed for at overføre dine krypteringsnøgler sikkert.",
+      "codeLabel": "Tilknytningskode",
       "valid": "Gyldig",
       "invalid": "Ugyldigt format",
-      "codePlaceholder": "Indsæt koden fra din anden enhed...",
-      "formatHint": "Indsæt JSON-linkkoden fra din anden enhed",
-      "linking": "Linker...",
-      "linkDevice": "Link enhed",
+      "codePlaceholder": "Indsæt koden fra din anden enhed…",
+      "formatHint": "Indsæt JSON-tilknytningskoden fra din anden enhed",
+      "linking": "Tilknytter…",
+      "linkDevice": "Tilknyt enhed",
       "failed": "Tilknytning mislykkedes",
-      "deviceFailed": "Kunne ikke linke enheden",
-      "pendingSuccess": "Enheden blev linket",
+      "deviceFailed": "Kunne ikke tilknytte enheden",
+      "pendingSuccess": "Enhed tilknyttet",
       "goBack": "Gå tilbage",
       "waitingTitle": "Venter på godkendelse",
-      "waitingDescription": "Åbn memrynote på din anden enhed og godkend linkningsanmodningen.",
+      "waitingDescription": "Åbn memrynote på din anden enhed, og godkend tilknytningsanmodningen.",
       "verificationCode": "Bekræftelseskode",
       "confirmCode": "Bekræft, at dette stemmer overens med koden på din anden enhed",
-      "vaultPickerChooseFolder": "Vælg mappe",
-      "vaultPickerConfirm": "Hent valgte",
-      "vaultPickerDescription": "Denne konto har flere bokse. Vælg en mappe og den eller de bokse, der skal føjes til denne enhed.",
-      "vaultPickerDormantHint": "Tilføjet, åbner når du skifter til den",
-      "vaultPickerFolderLabel": "Gem bokse i mappe",
-      "vaultPickerPrimaryHint": "Åbner nu",
       "vaultPickerTitle": "Vælg, hvad der skal hentes",
-      "vaultRow": "Boks — {count} elementer · {date}"
+      "vaultPickerDescription": "Denne konto har flere bokse. Vælg en mappe og den eller de bokse, der skal føjes til denne enhed.",
+      "vaultPickerFolderLabel": "Gem bokse i mappe",
+      "vaultPickerChooseFolder": "Vælg mappe",
+      "vaultRow": "Boks – {count} elementer · {date}",
+      "vaultPickerPrimaryHint": "Åbner nu",
+      "vaultPickerDormantHint": "Tilføjet – åbner, når du skifter til den",
+      "vaultPickerConfirm": "Hent valgte"
     }
   },
   "devices": {
-    "loading": "Indlæser enheder...",
+    "loading": "Indlæser enheder…",
     "loadingAria": "Indlæser enheder",
-    "none": "Ingen enheder knyttet endnu",
-    "linkNew": "Link ny enhed",
+    "none": "Ingen tilknyttede enheder endnu",
+    "linkNew": "Tilknyt ny enhed",
     "thisDevice": "Denne enhed",
-    "lastSeen": "Sidst set {time} siden",
-    "linked": "Linket til {time} siden",
+    "lastSeen": "Sidst set for {time} siden",
+    "linked": "Tilknyttet for {time} siden",
     "renameAria": "Omdøb {name}",
     "rename": "Omdøb",
     "revoke": "Tilbagekald",
     "showLess": "Vis mindre",
-    "showMore": "{count, plural, one {# mere enhed} other {# flere enheder}}",
-    "showMoreAria": "Vis {count, plural, one {# mere enhed} other {# flere enheder}}",
+    "showMore": "{count, plural, one {# enhed mere} other {# enheder mere}}",
+    "showMoreAria": "Vis {count, plural, one {# enhed mere} other {# enheder mere}}",
     "dialogs": {
-      "revokeTitle": "Vil du tilbagekalde \"{name}\"?",
-      "revokeDescription": "Denne enhed mister adgang til dine synkroniserede data. Det skal linkes igen for at gendanne synkroniseringen. Lokale data på denne enhed forbliver.",
+      "revokeTitle": "Vil du tilbagekalde »{name}«?",
+      "revokeDescription": "Denne enhed mister adgang til dine synkroniserede data. Den skal tilknyttes igen for at genoprette synkroniseringen. Lokale data på enheden bliver bevaret.",
       "revokeDevice": "Tilbagekald enhed",
-      "revoking": "Tilbagekalder...",
+      "revoking": "Tilbagekalder…",
       "renameTitle": "Omdøb enheden",
       "renameDescription": "Vælg et navn for at identificere denne enhed.",
       "namePlaceholder": "Enhedens navn",
-      "renaming": "Omdøber..."
+      "renaming": "Omdøber…"
     },
     "toasts": {
       "loadFailed": "Kunne ikke indlæse enheder",
-      "removed": "Fjernet \"{name}\"",
-      "removeFailed": "Enheden kunne ikke fjernes",
-      "renamed": "Omdøbt til \"{name}\"",
+      "removed": "»{name}« fjernet",
+      "removeFailed": "Kunne ikke fjerne enheden",
+      "renamed": "Omdøbt til »{name}«",
       "renameFailed": "Kunne ikke omdøbe enheden"
     },
     "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
-    "title": "Link ny enhed",
-    "description": "Scan denne QR-kode fra den enhed, du vil linke til, for at overføre dine krypteringsnøgler sikkert.",
-    "encrypted": "End-to-end krypteret",
-    "generating": "Genererer linkkode...",
-    "generatingAria": "Generering af linkkode",
-    "generateFailed": "Kunne ikke generere linkkode",
+    "title": "Tilknyt ny enhed",
+    "description": "Scan denne QR-kode fra den enhed, du vil tilknytte, for at overføre dine krypteringsnøgler sikkert.",
+    "encrypted": "End-to-end-krypteret",
+    "generating": "Genererer tilknytningskode…",
+    "generatingAria": "Genererer tilknytningskode",
+    "generateFailed": "Kunne ikke generere tilknytningskoden",
     "tryAgain": "Prøv igen",
     "expired": "Tilknytningskoden er udløbet",
-    "generateNew": "Generer ny kode",
-    "qrAria": "QR-kode til enhedslinkning",
-    "qrImageAria": "Enhed, der forbinder QR-kode",
-    "expiresIn": "Udløber i {time}",
+    "generateNew": "Generér ny kode",
+    "qrAria": "QR-kode til tilknytning af enhed",
+    "qrImageAria": "QR-kode til enhedstilknytning",
+    "expiresIn": "Udløber om {time}",
     "or": "eller",
-    "codeLabel": "Sammenkædningskode",
-    "copyAria": "Kopiér linkkoden",
+    "codeLabel": "Tilknytningskode",
+    "copyAria": "Kopiér tilknytningskoden",
     "copiedAria": "Kopieret",
     "copied": "Kopieret!"
   },
   "linkingApproval": {
-    "title": "Ny enhed ønsker at linke",
+    "title": "Ny enhed anmoder om tilknytning",
     "description": "En enhed anmoder om adgang til dine krypterede data. Godkend kun, hvis du påbegyndte denne anmodning.",
     "unknownDevice": "Ukendt enhed",
     "unknownPlatform": "Ukendt platform",
     "verificationCode": "Bekræftelseskode",
-    "computing": "Beregner...",
+    "computing": "Beregner…",
     "unavailable": "Ikke tilgængelig",
     "confirmCode": "Bekræft, at denne kode stemmer overens med den, der vises på den nye enhed",
     "reject": "Afvis",
     "approve": "Godkend",
-    "approving": "Godkender...",
+    "approving": "Godkender…",
     "approvalFailed": "Godkendelse mislykkedes",
-    "failedToApprove": "Enheden kunne ikke godkendes"
+    "failedToApprove": "Kunne ikke godkende enheden"
   },
   "ai": {
     "header": {
-      "title": "AI assistent",
-      "subtitle": "Indlejringer kører lokalt. Stemmemoer kan bruge Whisper Small eller din OpenAI-nøgle.",
-      "loading": "Indlæser indstillinger..."
+      "title": "AI-assistent",
+      "subtitle": "Indlejringer kører lokalt. Stemmememoer kan bruge Whisper Small eller din OpenAI-nøgle.",
+      "loading": "Indlæser indstillinger…"
     },
     "enable": {
-      "label": "Aktiver AI-funktioner",
-      "description": "Smarte arkiveringsforslag og noteforbindelser",
+      "label": "Aktivér AI-funktioner",
+      "description": "Smarte forslag til placering og noteforbindelser",
       "enabled": "AI-funktioner aktiveret",
       "disabled": "AI-funktioner deaktiveret",
-      "error": "Indstillingen kunne ikke opdateres"
+      "error": "Kunne ikke opdatere indstillingen"
     },
     "unknownError": "Ukendt fejl",
     "groups": {
       "voice": "Stemmetransskription",
       "embeddingModel": "Lokal indlejringsmodel",
       "embeddingIndex": "Indlejringsindeks",
-      "inline": "Inline AI redigering"
+      "inline": "AI-redigering i teksten"
     },
     "voice": {
       "provider": "Udbyder",
-      "providerDescription": "Tale-til-tekst-udbyder til talememoer",
+      "providerDescription": "Tale-til-tekst-udbyder til stemmememoer",
       "providers": {
         "local": "Lokal (standard)",
         "openai": "OpenAI (BYOK)"
       },
-      "localModel": "Lokal model",
-      "localModelDescription": "Whisper Small downloads on demand og forbliver cache lokalt",
-      "status": {
-        "ready": "Klar",
-        "downloading": "Downloader",
-        "downloaded": "Downloadet",
-        "notDownloaded": "Ikke downloadet"
-      },
-      "cacheHint": "Ikke bundtet med appen · Downloadet fra Indstillinger · Cachelagret på denne enhed",
-      "preparing": "Forbereder Whisper Small...",
-      "download": "Hent Whisper Small",
-      "apiKey": "OpenAI API nøgle",
-      "apiKeyDescription": "Gemt i dit OS-nøglering og bruges kun til stemmetransskription",
-      "replaceKey": "Erstat den gemte OpenAI-nøgle",
-      "enterKey": "Indtast OpenAI API-nøgle",
-      "saveKey": "Gem nøgle",
-      "keySaved": "API-nøgle gemt i nøglering",
-      "providerError": "Kunne ikke opdatere taleudbyderen",
-      "downloadedToast": "Whisper Small downloadet",
-      "downloadError": "Kunne ikke downloade Whisper Small",
-      "keySavedToast": "OpenAI-nøglen er gemt",
-      "keySaveError": "Kunne ikke gemme OpenAI-nøglen",
       "memoNameMode": "Memonavne",
       "memoNameModeDescription": "Hvordan stemmememoer navngives efter transskription",
       "naming": {
-        "none": "Omdøb ikke",
+        "transcript": "Transskriptionstitel",
         "timestamp": "Tidsstempel",
-        "transcript": "Transskriptionstitel"
+        "none": "Omdøb ikke"
       },
-      "namingError": "Kunne ikke opdatere navngivning af stemmememo"
+      "namingError": "Kunne ikke opdatere navngivningen af stemmememoer",
+      "localModel": "Lokal model",
+      "localModelDescription": "Whisper Small hentes efter behov og gemmes lokalt i cachen",
+      "status": {
+        "ready": "Klar",
+        "downloading": "Henter",
+        "downloaded": "Hentet",
+        "notDownloaded": "Ikke hentet"
+      },
+      "cacheHint": "Ikke inkluderet i appen · Hentes fra Indstillinger · Cachelagret på denne enhed",
+      "preparing": "Forbereder Whisper Small…",
+      "download": "Hent Whisper Small",
+      "apiKey": "API-nøgle til OpenAI",
+      "apiKeyDescription": "Gemmes i systemets nøglering og bruges kun til stemmetransskription",
+      "replaceKey": "Erstat den gemte OpenAI-nøgle",
+      "enterKey": "Indtast API-nøgle til OpenAI",
+      "saveKey": "Gem nøgle",
+      "keySaved": "API-nøgle gemt i nøgleringen",
+      "providerError": "Kunne ikke opdatere taleudbyderen",
+      "downloadedToast": "Whisper Small hentet",
+      "downloadError": "Kunne ikke hente Whisper Small",
+      "keySavedToast": "OpenAI-nøgle gemt",
+      "keySaveError": "Kunne ikke gemme OpenAI-nøglen"
     },
     "embedding": {
       "loaded": "Indlæst",
       "loading": "Indlæser",
-      "cacheHint": "~23MB · Cachelagret lokalt · Alt på enheden",
+      "cacheHint": "~23 MB · Cachelagret lokalt · Alt på enheden",
       "dimensions": "Dimensioner",
       "embeddings": "Indlejringer",
-      "downloadLoad": "Download og indlæs model",
-      "downloadingModel": "Downloader model...",
-      "loadingModel": "Indlæser model...",
-      "loadSuccess": "Modellen blev indlæst",
-      "loadFailed": "Modellen kunne ikke indlæses",
-      "rebuildIndex": "Genopbygg indeks",
-      "rebuildDescription": "Gendan indlejringer for alle noter",
-      "rebuild": "Genopbygg",
-      "scanning": "Scanner noter...",
-      "generating": "Genererer indlejringer...",
-      "complete": "Fuldstændig!",
+      "downloadLoad": "Hent og indlæs model",
+      "downloadingModel": "Henter model…",
+      "loadingModel": "Indlæser model…",
+      "loadSuccess": "Model indlæst",
+      "loadFailed": "Kunne ikke indlæse modellen",
+      "rebuildIndex": "Genopbyg indeks",
+      "rebuildDescription": "Generér indlejringer igen for alle noter",
+      "rebuild": "Genopbyg",
+      "scanning": "Scanner noter…",
+      "generating": "Genererer indlejringer…",
+      "complete": "Fuldført!",
       "reindexed": "Indlejringer genindekseret: {computed} beregnet, {skipped} sprunget over",
-      "reindexFailed": "Kunne ikke genindeksere indlejringer"
+      "reindexFailed": "Kunne ikke genindeksere indlejringerne"
     },
     "inline": {
-      "loading": "Indlæser...",
-      "title": "Inline AI redigering",
-      "enable": "Aktiver Inline AI",
+      "loading": "Indlæser…",
+      "title": "AI-redigering i teksten",
+      "enable": "Aktivér AI i teksten",
       "enableDescription": "Vis AI-menu, når du redigerer noter",
-      "enabled": "Inline AI-redigering aktiveret",
-      "disabled": "Inline AI-redigering deaktiveret",
+      "enabled": "AI-redigering i teksten aktiveret",
+      "disabled": "AI-redigering i teksten deaktiveret",
       "provider": "Udbyder",
       "providerDescription": "AI-tjeneste til tekstoperationer",
       "providers": {
         "ollama": "Ollama (lokal)",
         "openai": "OpenAI",
-        "anthropic": "Antropisk",
+        "anthropic": "Anthropic",
         "google": "Google Gemini"
       },
       "model": "Model",
       "modelDescription": "Sprogmodel til omskrivning og opsummering",
       "selectModel": "Vælg en model",
-      "apiKey": "API nøgle",
+      "apiKey": "API-nøgle",
       "apiKeyDescription": "Gemt lokalt, sendes kun til udbyderen",
-      "apiKeyPlaceholder": "Indtast {provider} API-nøgle",
+      "apiKeyPlaceholder": "Indtast API-nøgle til {provider}",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradresse",
       "connection": "Forbindelse",
       "activePort": "Aktiv på port {port}",
       "notConnected": "Ikke forbundet",
       "test": "Test",
-      "stopFailed": "Kunne ikke stoppe eksisterende server",
-      "connected": "Forbundet! Server kører på port {port}",
+      "stopFailed": "Kunne ikke stoppe den eksisterende server",
+      "connected": "Forbundet! Serveren kører på port {port}",
       "connectFailed": "Kunne ikke oprette forbindelse",
       "testFailed": "Forbindelsestest mislykkedes",
-      "updateFailed": "Indstillingen kunne ikke opdateres"
+      "updateFailed": "Kunne ikke opdatere indstillingen"
+    },
+    "tabs": {
+      "models": "Modeller",
+      "agents": "Agenter",
+      "connect": "Forbind"
+    },
+    "v2": {
+      "onDevice": {
+        "label": "Modeller på enheden",
+        "hint": "Hentes én gang, kører offline"
+      },
+      "embedding": {
+        "label": "Søgeindlejringer",
+        "hint": "{dimension} dim. · {count, plural, one {# note} other {# noter}} indlejret"
+      },
+      "voiceModel": {
+        "label": "Stemmetransskription"
+      },
+      "download": "Hent",
+      "connected": "Forbundet",
+      "inline": {
+        "group": "Redigering i teksten",
+        "enabled": "Aktiveret"
+      },
+      "voice": {
+        "group": "Stemmememoer",
+        "transcribeWith": "Transskribér med",
+        "local": "Lokal",
+        "openai": "OpenAI",
+        "nameBy": "Navngiv memoer efter",
+        "keySaved": "Gemt",
+        "keyNotSet": "Ikke angivet"
+      }
+    }
+  },
+  "import": {
+    "header": {
+      "title": "Import",
+      "subtitle": "Hent dine noter og opgaver ind fra andre apps"
+    },
+    "intro": "Engangsimporter opretter nye noter i din boks. Dine oprindelige eksportfiler efterlades urørte.",
+    "sources": {
+      "notion": "Importér en HTML-eksport (.zip)",
+      "todoist": "Importér en CSV-eksport af et projekt (.csv)",
+      "ticktick": "Importér en TickTick-sikkerhedskopi (.csv) som projekter, opgaver og påmindelser",
+      "markdown": "Importér .md-filer eller en mappe (frontmatter, tags, vedhæftede filer)",
+      "noteplan": "Importér en NotePlan-mappe – daglige noter bliver til dagbogsindlæg, opgaver bliver til opgaver",
+      "html": "Importér .html-filer med linkede billeder og links mellem sider",
+      "google-keep": "Importér en Google Takeout Keep-eksport (.json eller .zip)",
+      "bear": "Importér et Bear .bear2bk-arkiv (noter, tags, vedhæftede filer)",
+      "evernote": "Importér en eller flere Evernote .enex-eksportfiler",
+      "roam": "Importér en Roam Research-graf (.json) med indlejrede dispositioner",
+      "apple-journal": "Importér en HTML-eksport fra Apple Journal som daterede noter",
+      "csv": "Importér en .csv-fil – én note pr. række, kolonner bliver til egenskaber",
+      "raindrop": "Importér en bogmærkeeksport fra Raindrop.io (.csv) – bogmærker havner i indbakken",
+      "apple-notes": "Importér fra Apple Notes-databasen (NoteStore.sqlite, macOS)",
+      "onenote": "Importér OneNote-notesbøger (kræver en Microsoft-konto)"
+    },
+    "action": "Importér",
+    "select": "Vælg en app at importere fra…",
+    "stats": {
+      "notes": "{count, plural, one {# note} other {# noter}}",
+      "projects": "{count, plural, one {# projekt} other {# projekter}}",
+      "tasks": "{count, plural, one {# opgave} other {# opgaver}}",
+      "subtasks": "{count, plural, one {# delopgave} other {# delopgaver}}",
+      "reminders": "{count, plural, one {# påmindelse} other {# påmindelser}}",
+      "bookmarks": "{count, plural, one {# bogmærke} other {# bogmærker}}",
+      "withTags": "{count} tagget",
+      "withDueDate": "{count} dateret",
+      "comments": "{count, plural, one {# kommentar} other {# kommentarer}}",
+      "skipped": "{count} sprunget over"
+    },
+    "preview": {
+      "warnings": "Advarsler",
+      "confirm": "Importér"
+    },
+    "dialog": {
+      "title": "Importér fra {name}",
+      "choose": "Vælg fil…",
+      "onenote": {
+        "connect": "Log ind med Microsoft",
+        "connecting": "Venter på log ind i browseren…",
+        "connectedAs": "Logget ind som {name} ({email})",
+        "switchAccount": "Skift konto",
+        "loadingNotebooks": "Indlæser notesbøger…",
+        "notebooksEmpty": "Der blev ikke fundet nogen notesbøger på denne konto.",
+        "selectAll": "Vælg alle",
+        "deselectAll": "Ryd markering",
+        "sectionsSelected": "{count, plural, one {# sektion valgt} other {# sektioner valgt}}",
+        "includeIncompatible": "Importér inkompatible vedhæftede filer",
+        "includeIncompatibleHint": "Gem også filtyper, som Memry ikke kan forhåndsvise (præsentationer, medier, arkiver – aldrig eksekverbare filer). De vises som filblokke.",
+        "skipPrevious": "Spring tidligere importerede sider over",
+        "skipPreviousHint": "Sider, der blev importeret ved en tidligere OneNote-import, springes over, så en ny kørsel kun henter det nye."
+      },
+      "appleNotes": {
+        "loadingFolders": "Læser dine mapper…",
+        "foldersError": "Kunne ikke læse dine mapper – hele biblioteket importeres.",
+        "unfiled": "Noter uden mappe",
+        "selectAll": "Vælg alle",
+        "deselectAll": "Ryd markering",
+        "foldersSelected": "{count, plural, one {# mappe valgt} other {# mapper valgt}}",
+        "noteCount": "{count}",
+        "noteCountWithSubfolders": "{count} ({total})"
+      },
+      "chooseFolder": "Vælg Apple Notes-mappe…",
+      "chooseDirectory": "Vælg mappe…",
+      "folderKeepsAssets": "Vælg mappen, når billederne ligger uden for noternes egen mappe – ved eksport ligger medier ofte i én fælles mappe.",
+      "chooseHint": "Vælg {label}",
+      "folderHint": "Klik nedenfor, og vælg mappen »group.com.apple.notes«, når vælgeren åbner (den starter der). Så kan Memry læse dine noter og vedhæftede filer – uden behov for fuld diskadgang.",
+      "noteplanFolderHint": "Vælg din NotePlan-mappe – enten appens datamappe eller en af dens kopier i Backups. Memry læser mapperne Calendar, Notes og @Archive i den.",
+      "selected": "{count, plural, one {# fil valgt} other {# filer valgt}}",
+      "start": "Start importen",
+      "cancel": "Annullér",
+      "close": "Luk",
+      "done": "Færdig",
+      "running": "Importerer…",
+      "progress": "{completed} af {total}",
+      "summary": {
+        "title": "Import fuldført",
+        "imported": "{count, plural, one {# element importeret} other {# elementer importeret}}",
+        "attachments": "{count, plural, one {# vedhæftet fil kopieret} other {# vedhæftede filer kopieret}}",
+        "skipped": "{count} sprunget over",
+        "skippedReason": "{count, plural, one {# element} other {# elementer}}: {reason}",
+        "failed": "{count} mislykkedes"
+      },
+      "error": "Import mislykkedes",
+      "previewError": "Forhåndsvisningen mislykkedes"
+    },
+    "messages": {
+      "readFileFailed": "Kunne ikke læse filen",
+      "appleNotes": {
+        "lockedNote": "{count, plural, one {# låst note blev} other {# låste noter blev}} ikke importeret; Memry kan ikke læse dem uden din adgangskode til Noter."
+      },
+      "csv": {
+        "noHeaders": "CSV-filen har ingen overskrifter",
+        "emptyTitle": "Række med tom titel sprunget over (kolonnen »{column}«)",
+        "columns": "Kolonner: {columns}",
+        "titleColumn": "Titel fra »{column}«; øvrige kolonner er gemt som egenskaber"
+      },
+      "raindrop": {
+        "csvEmpty": "Raindrop-CSV-filen er tom",
+        "headerNotFound": "Overskriftsrækken i Raindrop-CSV-filen (kolonnen »url«) blev ikke fundet",
+        "rowNoUrl": "Række {row} sprunget over: ingen URL"
+      },
+      "ticktick": {
+        "headerNotFound": "Overskriftsrækken i TickTick-CSV-filen (»Folder Name«) blev ikke fundet",
+        "foldersDropped": "TickTick-mapper har ingen tilsvarende i Memry og blev udeladt",
+        "subtaskParentMissing": "Den overordnede opgave til delopgaven »{title}« blev ikke fundet; importeret på øverste niveau",
+        "unknownPriority": "Ukendt TickTick-prioritet {priority} → ingen",
+        "unsupportedRepeat": "Gentagelsesreglen »{rule}« understøttes ikke og blev sprunget over",
+        "reminderNoAnchor": "Påmindelsen »{reminder}« blev sprunget over (intet datoanker)"
+      },
+      "todoist": {
+        "headerNotFound": "Ikke en Todoist-CSV: TYPE-overskriftsrækken mangler",
+        "sectionFlattened": "Sektionen »{section}« blev fladet ud",
+        "orphanComment": "Kommentar uden foregående opgave blev sprunget over",
+        "emptyTitle": "Opgave med tomt indhold importeret som (uden titel)",
+        "unknownPriority": "Ukendt prioritet {priority} → ingen",
+        "unparsedDate": "Kunne ikke tolke datoen »{date}«",
+        "subtaskNoParent": "Delopgaven »{title}« har ingen overordnet opgave ved indrykning {indent}; importeret på øverste niveau"
+      }
+    },
+    "status": {
+      "scanningFiles": "Scanner filer…",
+      "scanningExport": "Scanner eksporten…",
+      "importingItem": "Importerer {title}",
+      "appleNotes": {
+        "copyingDatabase": "Kopierer Apple Notes-databasen…"
+      },
+      "bear": {
+        "scanning": "Scanner Bear-eksporten…"
+      },
+      "csv": {
+        "importing": "Importerer CSV-noter…"
+      },
+      "evernote": {
+        "scanning": "Scanner .enex-filer…"
+      },
+      "html": {
+        "scanning": "Scanner HTML-filer…"
+      },
+      "noteplan": {
+        "scanning": "Scanner NotePlan-mappen…"
+      },
+      "onenote": {
+        "loadingNotebooks": "Indlæser OneNote-notesbøger…",
+        "rateLimited": "OneNote begrænser antallet af forespørgsler; venter, før der prøves igen…",
+        "downloadingAttachment": "Henter vedhæftet fil {name}"
+      },
+      "raindrop": {
+        "importing": "Importerer Raindrop-bogmærker…"
+      },
+      "roam": {
+        "reading": "Læser Roam-eksporten…"
+      },
+      "ticktick": {
+        "importing": "Importerer TickTick-opgaver…"
+      },
+      "todoist": {
+        "importing": "Importerer Todoist-opgaver…"
+      }
+    },
+    "v2": {
+      "searchPlaceholder": "Find en app eller filtype…",
+      "noMatch": "Ingen kilder matcher »{query}«",
+      "formatAccount": "Konto",
+      "showMore": "{count, plural, one {Vis # mere} other {Vis # mere}}",
+      "showLess": "Vis mindre",
+      "groups": {
+        "noteApps": "Noteapps",
+        "tasks": "Opgaver, dagbog og bogmærker",
+        "files": "Filer"
+      }
     }
   },
   "vault": {
     "header": {
       "title": "Boks",
-      "subtitle": "Vault-konfiguration og -lagring"
+      "subtitle": "Konfiguration og lagerplads for boksen"
     },
     "groups": {
-      "storageUsage": "Opbevaringsbrug",
-      "location": "Beliggenhed",
-      "accountVaults": "Bokse på din konto"
+      "storageUsage": "Lagerforbrug",
+      "location": "Placering",
+      "accountVaults": "Bokse på din konto",
+      "largeNotes": "Noter tæt på synkroniseringsgrænsen",
+      "activity": "Aktivitet"
     },
-    "loadingStorage": "Indlæser lageroplysninger...",
+    "loadingStorage": "Indlæser lageroplysninger…",
     "signInStorage": "Log ind for at se lagerforbrug",
     "vaultPath": "Sti til boks",
-    "reveal": "Afsløre",
+    "reveal": "Vis",
+    "accountVaults": {
+      "empty": "Ingen bokse er synkroniseret til din konto endnu.",
+      "cloudOnly": "Ikke på denne enhed",
+      "itemsCount": "{count} elementer",
+      "delete": "Slet",
+      "deleteTitle": "Vil du slette »{name}« fra din konto?",
+      "deleteBody": "Alle synkroniserede data for denne boks fjernes permanent fra Memrys servere. Denne handling kan ikke fortrydes. Dine filer på disken bliver ikke slettet.",
+      "deleteConfirm": "Slet fra konto",
+      "deleteFailed": "Kunne ikke slette boksen",
+      "activeHint": "Skift til en anden boks for at slette denne.",
+      "unsyncedTitle": "Denne boks synkroniseres ikke",
+      "unsyncedBodyOne": "Boksen, der er åben på denne enhed, er ikke på din konto, så synkroniseringen afviser den. Din kontos boks er »{name}« – åbn den her for at begynde at synkronisere igen.",
+      "unsyncedBodyMany": "Boksen, der er åben på denne enhed, er ikke på din konto, så synkroniseringen afviser den. Åbn en af boksene nedenfor for at begynde at synkronisere igen.",
+      "unsyncedOpen": "Åbn kontoens boks",
+      "unsyncedDownload": "Hent kontoens boks",
+      "unsyncedSwitchFailed": "Kunne ikke åbne boksen"
+    },
     "storage": {
-      "title": "Opbevaring",
+      "title": "Lagerplads",
       "used": "{used} af {limit} brugt",
       "ratio": "{used} / {limit}",
-      "refreshAria": "Opdater lagerforbrug",
-      "usageAria": "Lagerbrug: {used} af {limit}",
-      "available": "Tilgængelig {available}",
+      "refreshAria": "Opdatér lagerforbrug",
+      "usageAria": "Lagerforbrug: {used} af {limit}",
+      "available": "Ledig plads: {available}",
       "categories": {
         "notes": "Noter",
         "attachments": "Vedhæftede filer",
@@ -935,136 +1645,253 @@
         "other": "Andet"
       },
       "warningTitle": "Lageret er næsten fyldt",
-      "warningDescription": "Frigør plads eller opgrader din plan for at undgå synkroniseringsproblemer."
+      "warningDescription": "Frigør plads, eller opgradér dit abonnement for at undgå synkroniseringsproblemer."
     },
-    "accountVaults": {
-      "activeHint": "Skift til en anden boks for at slette denne.",
-      "cloudOnly": "Ikke på denne enhed",
-      "delete": "Slet",
-      "deleteBody": "Alle synkroniserede data for denne boks fjernes permanent fra Memrys servere. Denne handling kan ikke fortrydes. Dine filer på disken bliver ikke slettet.",
-      "deleteConfirm": "Slet fra konto",
-      "deleteFailed": "Boksen kunne ikke slettes",
-      "deleteTitle": "Vil du slette “{name}” fra din konto?",
-      "empty": "Ingen bokse er synkroniseret til din konto endnu.",
-      "itemsCount": "{count} elementer"
+    "largeNotes": {
+      "description": "Noter, der er større end {limit}, synkroniseres ikke. Del dem op i mindre noter, så de fortsat synkroniseres.",
+      "over": "Synkroniseres ikke",
+      "approaching": "Nærmer sig grænsen"
+    },
+    "activity": {
+      "description": "Filer, der er tilføjet til eller fjernet fra boksen uden for Memry, importer og alt, der blev sprunget over eller mislykkedes. Gemmes kun på denne enhed.",
+      "retention": {
+        "label": "Boksaktivitet",
+        "days": "{count, plural, one {Behold # dag} other {Behold # dage}}"
+      },
+      "filter": {
+        "all": "Alle",
+        "problems": "Oversprungne og mislykkede"
+      },
+      "reveal": "Vis logfil",
+      "clear": "Ryd",
+      "clearTitle": "Vil du rydde boksaktiviteten?",
+      "clearBody": "Dette fjerner alle poster fra denne enheds aktivitetslog. Dine filer røres ikke.",
+      "clearConfirm": "Ryd aktivitet",
+      "empty": "Intet registreret endnu. Filer, du føjer til boksmappen, importer og alt, hvad Memry springer over, vises her.",
+      "emptyProblems": "Intet blev sprunget over, og intet mislykkedes.",
+      "unavailable": "Åbn en boks for at se dens aktivitet.",
+      "loadFailed": "Kunne ikke indlæse boksaktiviteten",
+      "actionFailed": "Kunne ikke opdatere boksaktiviteten",
+      "showItems": "{count, plural, one {Vis # element} other {Vis # elementer}}",
+      "toastAction": "Detaljer",
+      "entry": {
+        "added": "{path} tilføjet",
+        "removed": "{path} fjernet",
+        "renamed": "{oldPath} omdøbt til {path}",
+        "skipped": "{path} sprunget over",
+        "skippedUnsupported": "Memry åbner ikke filer af typen {ext}, så filen blev ikke ændret.",
+        "readFailed": "Kunne ikke læse {path}",
+        "indexFailed": "Kunne ikke tilføje {path}",
+        "copyFailed": "Kunne ikke kopiere {path} til boksen",
+        "uploadFailed": "Kunne ikke uploade {path}",
+        "uploadFailedHint": "Den bliver på denne enhed, indtil en upload lykkes.",
+        "downloadFailed": "Kunne ikke hente {path}",
+        "fileTooLarge": "{path} er for stor til at blive synkroniseret",
+        "noteTooLarge": "»{title}« er for stor til at blive synkroniseret",
+        "noteTooLargeUnnamed": "En note er for stor til at blive synkroniseret",
+        "importFailed": "Import fra {importer} mislykkedes",
+        "failedGeneric": "Noget gik galt med {path}",
+        "failedGenericUnnamed": "Noget gik galt",
+        "scan": "Fandt ændringer foretaget, mens Memry var lukket",
+        "indexRebuilt": "Søgeindeks opbygget",
+        "import": "Import fra {importer}",
+        "importCanceled": "Import fra {importer}, annulleret",
+        "unknown": "Ukendt aktivitet"
+      },
+      "counts": {
+        "added": "{count, plural, one {# ny fil} other {# nye filer}}",
+        "indexed": "{count, plural, one {# fil indekseret} other {# filer indekseret}}",
+        "imported": "{count, plural, one {# importeret} other {# importeret}}",
+        "attachments": "{count, plural, one {# vedhæftet fil} other {# vedhæftede filer}}",
+        "skipped": "{count, plural, one {# sprunget over} other {# sprunget over}}",
+        "unsupported": "{count, plural, one {# ikke-understøttet fil sprunget over} other {# ikke-understøttede filer sprunget over}}",
+        "failed": "{count, plural, one {# mislykkedes} other {# mislykkedes}}"
+      }
+    },
+    "v2": {
+      "groups": {
+        "thisVault": "Denne boks"
+      },
+      "largeNotesCount": "{count, plural, one {# note} other {# noter}}"
+    },
+    "binding": {
+      "dialog": {
+        "title": "Vil du synkronisere denne boks med din konto?",
+        "description": "Denne boks har noter, der endnu ikke er på din konto. Du kan føje den til din konto eller beholde den på denne enhed. Intet forlader denne enhed, før du beslutter dig.",
+        "descriptionWithVaults": "Denne boks har noter, der endnu ikke er på din konto, og din konto har allerede en boks. Du kan tilføje denne ved siden af, flette de to sammen eller beholde den på denne enhed. Intet forlader denne enhed, før du beslutter dig.",
+        "addAsNew": "Tilføj som separat boks",
+        "merge": "Flet ind i »{name}«",
+        "mergeUnnamed": "Flet ind i din kontos boks",
+        "keepLocal": "Behold på denne enhed",
+        "failed": "Kunne ikke opdatere, hvordan denne boks synkroniseres"
+      },
+      "status": {
+        "localOnly": "Denne boks bliver på denne enhed og synkroniseres ikke.",
+        "foreign": "Denne boks blev synkroniseret af en anden konto, så den synkroniseres ikke med din. Den bliver på denne enhed.",
+        "needsDecision": "Denne boks synkroniseres ikke endnu.",
+        "startSync": "Synkronisér denne boks",
+        "choose": "Vælg…"
+      }
     }
   },
   "tags": {
     "header": {
       "title": "Tags",
-      "subtitle": "Administrer tags på tværs af noter, journaler og opgaver"
+      "subtitle": "Administrér tags på tværs af noter, dagbog og opgaver"
     },
-    "loading": "Indlæser tags...",
+    "loading": "Indlæser tags…",
     "empty": "Ingen tags endnu. Tags vises her, når du føjer dem til noter og opgaver.",
-    "filterPlaceholder": "Filtrer tags...",
-    "noMatch": "Ingen tags matcher \"{query}\"",
+    "filterPlaceholder": "Filtrér tags…",
+    "noMatch": "Ingen tags matcher »{query}«",
     "summary": "{count, plural, one {# tag} other {# tags}} på tværs af noter og opgaver",
     "actions": {
       "rename": "Omdøb",
       "changeColor": "Skift farve",
-      "mergeInto": "Flet ind i...",
+      "changeIcon": "Skift ikon",
+      "mergeInto": "Flet ind i…",
       "merge": "Flet sammen",
-      "delete": "Slet",
-      "changeIcon": "Skift ikon"
+      "delete": "Slet"
     },
     "dialogs": {
       "deleteTitle": "Slet tag",
-      "deleteDescription": "Vil du fjerne \"{name}\" fra {count, plural, one {# vare} other {# varer}}? Dette kan ikke fortrydes.",
+      "deleteDescription": "Vil du fjerne »{name}« fra {count, plural, one {# element} other {# elementer}}? Det kan ikke fortrydes.",
       "mergeTitle": "Flet tag",
-      "mergeDescription": "Alle varer, der er tagget med \"{source}\" vil blive gentagget med target-tagget. Kildetagget vil blive slettet.",
-      "targetPlaceholder": "Vælg måltag...",
-      "colorTitle": "Skift farve for \"{name}\""
+      "mergeDescription": "Alle elementer, der er tagget med »{source}«, bliver tagget med måltagget i stedet. Kildetagget slettes.",
+      "targetPlaceholder": "Vælg måltag…",
+      "colorTitle": "Skift farve for »{name}«"
     },
     "toasts": {
-      "renamed": "Omdøbt \"{oldName}\" til \"{newName}\"",
-      "renameFailed": "Taget kunne ikke omdøbes",
-      "deleteFailed": "Tagget kunne ikke slettes",
-      "deleted": "Slettet \"{name}\" fra {count, plural, one {# vare} other {# varer}}",
-      "mergeFailed": "Tags kunne ikke flettes",
-      "merged": "Flettede \"{source}\" til \"{target}\" ({count, plural, one {# vare} other {# varer}})",
-      "colorUpdated": "Opdateret farve for \"{name}\"",
-      "colorFailed": "Farven kunne ikke opdateres",
-      "iconFailed": "Kunne ikke opdatere ikon"
+      "renamed": "»{oldName}« omdøbt til »{newName}«",
+      "renameFailed": "Kunne ikke omdøbe tagget",
+      "deleteFailed": "Kunne ikke slette tagget",
+      "deleted": "»{name}« slettet fra {count, plural, one {# element} other {# elementer}}",
+      "mergeFailed": "Kunne ikke flette taggene",
+      "merged": "»{source}« flettet ind i »{target}« ({count, plural, one {# element} other {# elementer}})",
+      "colorUpdated": "Farve opdateret for »{name}«",
+      "colorFailed": "Kunne ikke opdatere farven",
+      "iconFailed": "Kunne ikke opdatere ikonet"
+    },
+    "v2": {
+      "actionsAria": "Handlinger for {name}"
     }
   },
   "properties": {
     "header": {
       "title": "Egenskaber",
-      "subtitle": "Administrer egenskabsdefinitioner på tværs af alle noter"
+      "subtitle": "Administrér egenskabsdefinitioner på tværs af alle noter"
     },
-    "loading": "Indlæser egenskaber...",
-    "empty": "Ingen ejendomsdefinitioner endnu. Tilføj en Status-, Select- eller Multiselect-egenskab til enhver note for at komme i gang.",
-    "filterPlaceholder": "Filtrer egenskaber...",
-    "noMatch": "Ingen ejendomme matcher \"{query}\"",
+    "loading": "Indlæser egenskaber…",
+    "empty": "Ingen egenskabsdefinitioner endnu. Tilføj en egenskab af typen Status, Valg eller Flervalg til en note for at komme i gang.",
+    "filterPlaceholder": "Filtrér egenskaber…",
+    "noMatch": "Ingen egenskaber matcher »{query}«",
     "summary": "{count, plural, one {# egenskabsdefinition} other {# egenskabsdefinitioner}}",
-    "optionCount": "{count, plural, one {# option} other {# muligheder}}",
-    "optionNamePlaceholder": "Mulighedens navn",
-    "addOption": "Tilføj mulighed",
+    "optionCount": "{count, plural, one {# valgmulighed} other {# valgmuligheder}}",
+    "optionNamePlaceholder": "Navn på valgmulighed",
+    "addOption": "Tilføj valgmulighed",
     "changeColorTitle": "Skift farve",
     "renameTitle": "Omdøb",
     "removeTitle": "Fjern",
     "actions": {
-      "deleteProperty": "Slet ejendom"
+      "deleteProperty": "Slet egenskab"
     },
     "types": {
       "status": "Status",
-      "select": "Vælg",
+      "select": "Valg",
       "multiselect": "Flervalg",
       "text": "Tekst",
-      "number": "Nummer",
+      "number": "Tal",
       "date": "Dato",
       "checkbox": "Afkrydsningsfelt",
       "url": "URL"
     },
     "dialogs": {
-      "deleteTitle": "Slet ejendom",
-      "deleteDescription": "Vil du fjerne egenskabsdefinitionen \"{name}\"? Noter, der bruger denne egenskab, beholder deres værdier som almindelig tekst.",
-      "colorTitle": "Skift farve for \"{name}\""
+      "deleteTitle": "Slet egenskab",
+      "deleteDescription": "Vil du fjerne egenskabsdefinitionen »{name}«? Noter, der bruger denne egenskab, beholder deres værdier som almindelig tekst.",
+      "colorTitle": "Skift farve for »{name}«"
     },
     "toasts": {
-      "renamed": "Omdøbt \"{oldValue}\" til \"{newValue}\"",
-      "renameFailed": "Valgmuligheden kunne ikke omdøbes",
-      "removed": "Fjernet \"{value}\"",
-      "removeFailed": "Valgmuligheden kunne ikke fjernes",
-      "colorFailed": "Farven kunne ikke opdateres",
-      "deleteFailed": "Ejendommen kunne ikke slettes",
-      "deleted": "Slettet ejendom \"{name}\"",
-      "addFailed": "Muligheden kunne ikke tilføjes"
+      "renamed": "»{oldValue}« omdøbt til »{newValue}«",
+      "renameFailed": "Kunne ikke omdøbe valgmuligheden",
+      "removed": "»{value}« fjernet",
+      "removeFailed": "Kunne ikke fjerne valgmuligheden",
+      "colorFailed": "Kunne ikke opdatere farven",
+      "deleteFailed": "Kunne ikke slette egenskaben",
+      "deleted": "Egenskaben »{name}« slettet",
+      "addFailed": "Kunne ikke tilføje valgmuligheden"
+    },
+    "v2": {
+      "actionsAria": "Handlinger for {name}"
+    }
+  },
+  "commandLine": {
+    "header": {
+      "title": "Kommandolinje",
+      "subtitle": "Opsæt memrynote-kommandoen til din terminal"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "defaultVault": {
+      "label": "Standardboks",
+      "placeholder": "Vælg boks",
+      "none": "Ingen boks valgt",
+      "description": "Vælg den boks, der bruges, når du kører memrynote uden --vault.",
+      "descriptionSelected": "Kommandoer bruger {path}, når --vault udelades."
+    },
+    "command": {
+      "label": "memrynote-kommando",
+      "toggleLabel": "Installér memrynote-kommandoen",
+      "descriptionInstalled": "Installeret i {path}",
+      "descriptionNotInstalled": "Installér memrynote-kommandoen, så du kan bruge din boks fra en hvilken som helst terminal."
+    },
+    "status": {
+      "loading": "Kontrollerer kommandostatus…",
+      "loadFailed": "Kunne ikke indlæse kommandostatus",
+      "installedToast": "memrynote-kommando installeret",
+      "uninstalledToast": "memrynote-kommando fjernet",
+      "defaultVaultUpdatedToast": "Standard-CLI-boks opdateret"
+    },
+    "actions": {
+      "refresh": "Opdatér"
     }
   },
   "shortcuts": {
     "header": {
       "title": "Tastaturgenveje",
-      "subtitle": "Klik på en genvej for at genbinde den",
-      "loading": "Indlæser indstillinger..."
+      "subtitle": "Klik på en genvej for at ændre den",
+      "loading": "Indlæser indstillinger…"
     },
-    "searchPlaceholder": "Søg genveje...",
+    "searchPlaceholder": "Søg i genveje…",
     "resetAll": "Nulstil alle",
     "custom": "Brugerdefineret",
-    "pressShortcut": "Tryk på genvej...",
-    "cancelTitle": "Annuller",
-    "rebindTitle": "Klik for at genbinde",
+    "pressShortcut": "Tryk på en genvej…",
+    "cancelTitle": "Annullér",
+    "rebindTitle": "Klik for at ændre",
+    "editorManagedTitle": "Håndteres af noteeditoren – kan ikke ændres",
     "resetTitle": "Nulstil til standard",
     "clearTitle": "Ryd genvej",
     "clickToSet": "Klik for at indstille",
     "noMatch": "Ingen genveje matcher din søgning",
-    "conflict": "Konflikter med: {labels}",
+    "conflict": "I konflikt med: {labels}",
     "globalCapture": {
-      "title": "Global fangst",
-      "description": "Fang en note fra hvor som helst",
-      "active": "Aktiv"
+      "title": "Global indfangning",
+      "description": "Indfang en note hvor som helst",
+      "active": "Aktiv",
+      "inUse": "{shortcut} bruges af en anden app. Vælg en anden kombination.",
+      "unsupported": "{shortcut} kan ikke bruges som global genvej. Vælg en anden kombination.",
+      "fallbackInUse": "Standardgenvejen {shortcut} bruges af en anden app. Angiv en anden kombination for at bruge global indfangning."
     },
     "toasts": {
-      "saveGlobalFailed": "Den globale genvej til optagelse kunne ikke gemmes",
-      "saveFailed": "Genvejen kunne ikke gemmes",
-      "resetFailed": "Genvejen kunne ikke nulstilles",
-      "resetAllSuccess": "Alle genveje nulstilles til standardindstillingerne",
+      "saveGlobalFailed": "Kunne ikke gemme genvejen til global indfangning",
+      "saveFailed": "Kunne ikke gemme genvejen",
+      "resetFailed": "Kunne ikke nulstille genvejen",
+      "resetAllSuccess": "Alle genveje nulstillet til standard",
       "resetAllFailed": "Kunne ikke nulstille genveje"
     },
     "categories": {
       "navigation": "Navigation",
       "tabs": "Faner",
-      "editor": "Redaktør",
+      "editor": "Editor",
       "view": "Visning"
     },
     "entries": {
@@ -1078,16 +1905,16 @@
           "description": "Opret en ny opgave"
         },
         "inbox": {
-          "label": "Gå til Indbakke",
-          "description": "Naviger til indbakken"
+          "label": "Gå til indbakken",
+          "description": "Navigér til indbakken"
         },
         "notes": {
-          "label": "Gå til Noter",
-          "description": "Naviger til noter"
+          "label": "Gå til noter",
+          "description": "Navigér til noter"
         },
         "tasks": {
-          "label": "Gå til Opgaver",
-          "description": "Naviger til opgaver"
+          "label": "Gå til opgaver",
+          "description": "Navigér til opgaver"
         },
         "search": {
           "label": "Søg",
@@ -1096,19 +1923,31 @@
         "settings": {
           "label": "Åbn Indstillinger",
           "description": "Åbn indstillingspanelet"
+        },
+        "switchVault": {
+          "label": "Skift boks",
+          "description": "Åbn boksvælgeren"
+        },
+        "nextVault": {
+          "label": "Næste boks",
+          "description": "Gå til næste boks i sidebjælken"
+        },
+        "prevVault": {
+          "label": "Forrige boks",
+          "description": "Gå til forrige boks i sidebjælken"
         }
       },
       "tabs": {
         "close": {
-          "label": "Luk fanen",
+          "label": "Luk fane",
           "description": "Luk den aktuelle fane"
         },
         "next": {
-          "label": "Næste faneblad",
-          "description": "Skift til næste faneblad"
+          "label": "Næste fane",
+          "description": "Skift til næste fane"
         },
         "previous": {
-          "label": "Forrige faneblad",
+          "label": "Forrige fane",
           "description": "Skift til den forrige fane"
         },
         "reopen": {
@@ -1116,39 +1955,39 @@
           "description": "Genåbn den senest lukkede fane"
         },
         "navBack": {
-          "label": "Naviger tilbage",
-          "description": "Genaktiver den tidligere aktive fane"
+          "label": "Navigér tilbage",
+          "description": "Aktivér den tidligere aktive fane igen"
         },
         "navForward": {
-          "label": "Naviger frem",
-          "description": "Gentag en tilbagenavigation"
+          "label": "Navigér frem",
+          "description": "Gå frem igen efter at være gået tilbage"
         },
         "newTab": {
           "label": "Ny fane",
-          "description": "Åbn menuen for nyt faneblad"
+          "description": "Åbn menuen for ny fane"
         },
         "closeAll": {
-          "label": "Luk alle faneblade i ruden",
-          "description": "Luk alle faneblade i ruden"
+          "label": "Luk alle faner",
+          "description": "Luk alle faner i den aktuelle rude"
         },
         "pin": {
-          "label": "Fastgør eller frigør faneblad",
-          "description": "Fastgør eller frigør faneblad"
+          "label": "Fastgør fane",
+          "description": "Fastgør eller frigør den aktuelle fane"
         },
         "duplicate": {
-          "label": "Dublér faneblad",
-          "description": "Dublér faneblad"
+          "label": "Duplikér fane",
+          "description": "Åbn en kopi af den aktuelle fane"
         },
         "splitRight": {
           "label": "Opdel til højre",
-          "description": "Opdel til højre"
+          "description": "Opdel den aktuelle rude side om side"
         },
         "splitDown": {
           "label": "Opdel nedad",
-          "description": "Opdel nedad"
+          "description": "Opdel den aktuelle rude i top og bund"
         },
         "closeSplit": {
-          "label": "Luk den opdelte rude",
+          "label": "Luk opdelt rude",
           "description": "Luk den opdelte rude"
         }
       },
@@ -1159,33 +1998,33 @@
         },
         "bold": {
           "label": "Fed",
-          "description": "Skift fed formatering"
+          "description": "Slå fed til/fra"
         },
         "italic": {
           "label": "Kursiv",
-          "description": "Skift kursiv formatering"
+          "description": "Slå kursiv til/fra"
         },
         "underline": {
           "label": "Understreg",
-          "description": "Skift understregningsformatering"
+          "description": "Slå understregning til/fra"
         },
         "strikethrough": {
           "label": "Gennemstregning",
-          "description": "Gennemstregning"
+          "description": "Slå gennemstregning til/fra"
         },
         "code": {
-          "label": "Kode",
-          "description": "Kode"
+          "label": "Inline-kode",
+          "description": "Slå inline-kode til/fra"
         }
       },
       "view": {
         "toggleSidebar": {
-          "label": "Skift sidebjælke",
+          "label": "Vis/skjul sidebjælke",
           "description": "Vis eller skjul sidebjælken"
         },
         "shortcuts": {
           "label": "Hjælp til tastaturgenveje",
-          "description": "Vis tastaturgenvejsreference"
+          "description": "Vis oversigt over tastaturgenveje"
         },
         "zoomIn": {
           "label": "Zoom ind",
@@ -1200,31 +2039,40 @@
           "description": "Nulstil zoom til 100 %"
         }
       }
+    },
+    "v2": {
+      "all": "Alle",
+      "categoryFilter": "Filtrér efter kategori",
+      "systemWide": "Systemdækkende",
+      "globalCapture": "Global indfangning",
+      "recordingHint": "Tryk på taster… esc for at annullere",
+      "reset": "Nulstil",
+      "resetAll": "Nulstil alle til standard"
     }
   },
   "phaseF": {
     "componentsKeyboardChordIndicator": {
-      "pressedWaitingForSecondKey": "trykket - venter på anden tast..."
+      "pressedWaitingForSecondKey": "trykket – venter på anden tast…"
     },
     "componentsKeyboardKeyboardShortcutsDialog": {
       "keyboardShortcuts": "Tastaturgenveje",
       "press": "Tryk på ",
-      "toToggleThisDialog": "for at skifte denne dialog"
+      "toToggleThisDialog": "for at vise/skjule denne dialog"
     },
     "componentsSyncDeviceRevokedDialog": {
       "thisDeviceHasBeenRemoved": "Denne enhed er blevet fjernet",
-      "exporting": "Eksporterer...",
+      "exporting": "Eksporterer…",
       "signOut": "Log ud"
     },
     "componentsSyncSyncHistory": {
       "activity": "Aktivitet",
-      "filterBySyncType": "Filtrer efter synkroniseringstype",
+      "filterBySyncType": "Filtrér efter synkroniseringstype",
       "allTypes": "Alle typer",
-      "pushed": "Skubbet",
-      "pulled": "Træk",
+      "pushed": "Sendt",
+      "pulled": "Hentet",
       "errors": "Fejl",
-      "filterByTimePeriod": "Filtrer efter tidsrum",
-      "allTime": "Hele tiden",
+      "filterByTimePeriod": "Filtrér efter tidsrum",
+      "allTime": "Hele perioden",
       "today": "I dag",
       "last7Days": "Sidste 7 dage",
       "last30Days": "Sidste 30 dage",
@@ -1232,18 +2080,19 @@
       "noSyncActivityYet": "Ingen synkroniseringsaktivitet endnu",
       "loadMore": "Indlæs mere",
       "duration": "· {duration}",
-      "showErrorDetailsAria": "{summary}, vis fejldetaljer",
       "summaryFailed": "Synkronisering mislykkedes",
+      "summaryPushed": "{count, plural, one {# element sendt} other {# elementer sendt}}",
       "summaryPulled": "{count, plural, one {# element hentet} other {# elementer hentet}}",
-      "summaryPushed": "{count, plural, one {# element sendt} other {# elementer sendt}}"
+      "showErrorDetailsAria": "{summary}, vis fejldetaljer"
     },
     "componentsSyncSyncStatus": {
       "lastSynced": "Sidst synkroniseret ",
       "pending": "afventer",
       "localOnly": "kun lokalt",
       "detected": "opdaget",
-      "clockSkewDetected": "Urskævhed registreret",
-      "items": "genstande",
+      "dismissConflicts": "Luk",
+      "clockSkewDetected": "Tidsforskel i uret registreret",
+      "items": "elementer",
       "willSyncWhenBackOnline": "Synkroniseres, når du er online igen",
       "openSyncSettings": "Åbn synkroniseringsindstillinger"
     },
@@ -1253,43 +2102,43 @@
   },
   "phaseI": {
     "errors": {
-      "failedToUpdateTagColor": "Tagfarven kunne ikke opdateres",
+      "failedToUpdateTagColor": "Kunne ikke opdatere tagfarven",
       "googleSignInFailed": "Google-login mislykkedes",
       "failedToSendVerificationCode": "Kunne ikke sende bekræftelseskoden",
       "invalidVerificationCode": "Ugyldig bekræftelseskode",
       "accountSetupFailed": "Kontoopsætning mislykkedes",
       "failedToResendCode": "Kunne ikke sende koden igen",
-      "failedToSetUpDevice": "Enheden kunne ikke konfigureres",
+      "failedToSetUpDevice": "Kunne ikke konfigurere enheden",
       "failedToConfirmRecoveryPhrase": "Kunne ikke bekræfte gendannelsessætningen",
-      "failedToAnalyzeContent": "Kunne ikke analysere indhold",
-      "failedToLoadUpdaterState": "Kunne ikke indlæse opdateringstilstand",
+      "failedToAnalyzeContent": "Kunne ikke analysere indholdet",
+      "failedToLoadUpdaterState": "Kunne ikke indlæse opdateringsstatus",
       "failedToCheckForUpdates": "Kunne ikke søge efter opdateringer",
-      "failedToDownloadUpdate": "Kunne ikke downloade opdatering",
+      "failedToDownloadUpdate": "Kunne ikke hente opdateringen",
       "failedToInstallUpdate": "Kunne ikke installere opdateringen",
-      "failedToLoadEditorSettings": "Kunne ikke indlæse redigeringsindstillinger",
-      "failedToUpdateEditorSettings": "Kunne ikke opdatere redigeringsindstillingerne",
-      "failedToLoadGeneralSettings": "Kunne ikke indlæse generelle indstillinger",
-      "failedToUpdateGeneralSettings": "Kunne ikke opdatere generelle indstillinger",
-      "failedToLoadKeyboardSettings": "Kunne ikke indlæse tastaturindstillinger",
+      "failedToLoadEditorSettings": "Kunne ikke indlæse editorindstillingerne",
+      "failedToUpdateEditorSettings": "Kunne ikke opdatere editorindstillingerne",
+      "failedToLoadGeneralSettings": "Kunne ikke indlæse de generelle indstillinger",
+      "failedToUpdateGeneralSettings": "Kunne ikke opdatere de generelle indstillinger",
+      "failedToLoadKeyboardSettings": "Kunne ikke indlæse tastaturindstillingerne",
       "failedToUpdateKeyboardSettings": "Kunne ikke opdatere tastaturindstillingerne",
-      "failedToResetKeyboardSettings": "Kunne ikke nulstille tastaturindstillinger",
-      "failedToLoadNoteEditorSettings": "Kunne ikke indlæse indstillinger for noteeditor",
-      "failedToUpdateSettings": "Indstillingerne kunne ikke opdateres",
-      "failedToLoadTabSettings": "Faneindstillingerne kunne ikke indlæses",
-      "failedToLoadNotes": "Noterne kunne ikke indlæses",
-      "failedToLoadTags": "Tags kunne ikke indlæses",
-      "failedToLoadVaultStatus": "Vault-status kunne ikke indlæses",
-      "failedToSelectVault": "Kunne ikke vælge boks",
-      "failedToCloseVault": "Kunne ikke lukke boks",
+      "failedToResetKeyboardSettings": "Kunne ikke nulstille tastaturindstillingerne",
+      "failedToLoadNoteEditorSettings": "Kunne ikke indlæse indstillingerne for noteeditoren",
+      "failedToUpdateSettings": "Kunne ikke opdatere indstillingerne",
+      "failedToLoadTabSettings": "Kunne ikke indlæse faneindstillingerne",
+      "failedToLoadNotes": "Kunne ikke indlæse noterne",
+      "failedToLoadTags": "Kunne ikke indlæse taggene",
+      "failedToLoadTasks": "Kunne ikke indlæse opgaverne",
+      "failedToLoadVaultStatus": "Kunne ikke indlæse boksens status",
+      "failedToSelectVault": "Kunne ikke vælge boksen",
+      "failedToCloseVault": "Kunne ikke lukke boksen",
       "failedToSwitchVault": "Kunne ikke skifte boks",
-      "failedToUpdateConfig": "Konfigurationen kunne ikke opdateres",
-      "failedToReindex": "Kunne ikke genindeksere",
-      "failedToLoadTasks": "Opgaverne kunne ikke indlæses"
+      "failedToUpdateConfig": "Kunne ikke opdatere konfigurationen",
+      "failedToReindex": "Kunne ikke genindeksere"
     }
   },
   "agentMcp": {
     "header": {
-      "title": "Agent MCP",
+      "title": "Agent-MCP",
       "subtitle": "Lokal serveradgang for eksterne MCP-klienter."
     },
     "groups": {
@@ -1314,7 +2163,14 @@
     },
     "copyLabel": "Kopiér {label}",
     "notRunning": "Kører ikke",
-    "toolsBadge": "{count, plural, one {# værktøj} other {# værktøjer}}"
+    "toolsBadge": "{count, plural, one {# værktøj} other {# værktøjer}}",
+    "v2": {
+      "hint": "Lokal server til Cursor, Claude Desktop og Zed",
+      "running": "Kører",
+      "tokenHint": "Kun denne opstart",
+      "copy": "Kopiér",
+      "rotate": "Rotér"
+    }
   },
   "agentProviders": {
     "header": {
@@ -1322,8 +2178,45 @@
       "subtitle": "Vælg standardadgang, bekræftelser og lokale udbydere til Agentchat."
     },
     "groups": {
+      "cliAgents": "CLI-agenter",
       "local": "Lokal OpenAI-kompatibel udbyder",
       "actions": "Forbindelsestjek"
+    },
+    "cliAgents": {
+      "claude": {
+        "label": "Claude Code CLI",
+        "description": "Installér Claude Code fra claude.ai/code, og kør derefter `claude login`. MemryNote finder det automatisk."
+      },
+      "codex": {
+        "label": "Codex CLI",
+        "description": "Installér med `npm install -g @openai/codex`, og kør derefter `codex login` for at logge ind på din OpenAI-konto. MemryNote finder det automatisk."
+      },
+      "antigravity": {
+        "label": "Antigravity CLI",
+        "description": "Installér Antigravity CLI fra antigravity.google/docs/cli, og kør derefter `agy` én gang for at logge ind på din Google-konto. MemryNote finder det automatisk."
+      },
+      "status": {
+        "detected": "Fundet · v{version}",
+        "detectedNoVersion": "Fundet",
+        "belowMinimum": "v{version} installeret – kræver {minimum} eller nyere",
+        "notDetected": "Ikke fundet",
+        "runtimeUnavailable": "Ikke tilgængelig – agentens kørselsmiljø startede ikke"
+      }
+    },
+    "permissions": {
+      "group": "Agenttilladelser",
+      "access": {
+        "label": "Standardadgang",
+        "description": "Angiver den adgangstilstand, som nye agentsvar starter i.",
+        "vaultOnly": "Kun boksen",
+        "computerAccess": "Computeradgang"
+      },
+      "confirm": {
+        "label": "Bekræft handlinger",
+        "description": "Vælg, om værktøjskald skal køre automatisk eller vente på godkendelse i chatten.",
+        "alwaysAllow": "Tillad altid",
+        "askBeforeChanges": "Spørg før ændringer"
+      }
     },
     "presets": {
       "ollama": "Ollama",
@@ -1356,257 +2249,45 @@
     "actions": {
       "save": "Gem",
       "models": "Modeller",
-      "test": "Test forbindelsen",
+      "test": "Test forbindelse",
       "probe": "Afprøv værktøjer"
     },
     "status": {
-      "disconnected": "Ikke forbundet",
-      "toolsDisabled": "Værktøjer deaktiveret",
-      "fullTools": "Alle værktøjer aktiveret",
+      "label": "Forbindelse",
       "checking": "Kontrollerer…",
       "connected": "Forbundet",
-      "label": "Forbindelse"
+      "disconnected": "Ikke forbundet",
+      "toolsDisabled": "Værktøjer deaktiveret",
+      "fullTools": "Alle værktøjer aktiveret"
     },
-    "permissions": {
-      "group": "Agenttilladelser",
-      "access": {
-        "label": "Standardadgang",
-        "description": "Angiver den adgangstilstand, som nye agentture starter i.",
-        "vaultOnly": "Kun boksen",
-        "computerAccess": "Computeradgang"
-      },
-      "confirm": {
-        "label": "Bekræft handlinger",
-        "description": "Vælg, om værktøjskald skal køre automatisk eller vente på godkendelse i chatten.",
-        "alwaysAllow": "Tillad altid",
-        "askBeforeChanges": "Spørg før ændringer"
-      }
-    }
-  },
-  "commandLine": {
-    "actions": {
-      "refresh": "Opdatér"
+    "alwaysAllowed": {
+      "group": "Altid tilladt",
+      "description": "Værktøjer, du har givet en varig godkendelse i denne boks. Sletninger kan aldrig få en.",
+      "empty": "Intet er altid tilladt. Du bliver stadig spurgt ved hver ændring.",
+      "revoke": "Tilbagekald",
+      "revokeLabel": "Tilbagekald den varige godkendelse for {tool}",
+      "ignoredInPageReview": "Ignoreret: Redigering af noter og dagbogsindlæg kræver altid godkendelse."
     },
-    "command": {
-      "descriptionInstalled": "Installeret på {path}",
-      "descriptionNotInstalled": "Installér memrynote-kommandoen, så du kan bruge din boks fra en hvilken som helst terminal.",
-      "label": "memrynote-kommando",
-      "toggleLabel": "Installér memrynote-kommandoen"
-    },
-    "defaultVault": {
-      "description": "Vælg den boks, der bruges, når du kører memrynote uden --vault.",
-      "descriptionSelected": "Kommandoer bruger {path}, når --vault udelades.",
-      "label": "Standardboks",
-      "none": "Ingen boks valgt",
-      "placeholder": "Vælg boks"
-    },
-    "groups": {
-      "terminal": "Terminal"
-    },
-    "header": {
-      "subtitle": "Opsæt memrynote-kommandoen til din terminal",
-      "title": "Kommandolinje"
-    },
-    "status": {
-      "defaultVaultUpdatedToast": "Standard-CLI-boks opdateret",
-      "installedToast": "memrynote-kommando installeret",
-      "loadFailed": "Kunne ikke indlæse kommandostatus",
-      "loading": "Kontrollerer kommandostatus...",
-      "uninstalledToast": "memrynote-kommando fjernet"
-    }
-  },
-  "features": {
-    "header": {
-      "subtitle": "Slå dele af appen til eller fra. Fra = nedtonet i sidebjælken og deaktiveret overalt.",
-      "title": "Funktioner"
-    },
-    "items": {
-      "calendar": {
-        "description": "Begivenheder og tidsplan",
-        "label": "Kalender"
+    "v2": {
+      "permissions": {
+        "group": "Tilladelser",
+        "hint": "Gælder for alle agentchats",
+        "access": "Adgang",
+        "changes": "Ændringer"
       },
-      "graph": {
-        "description": "Noteforbindelser",
-        "label": "Graf"
+      "runtimes": {
+        "group": "Kørselsmiljøer for agenter",
+        "hint": "Fundet via PATH"
       },
-      "home": {
-        "description": "Landingsdashboard",
-        "label": "Start"
+      "localModel": {
+        "label": "Lokal model",
+        "hint": "OpenAI-kompatibel server på denne computer",
+        "notChecked": "Ikke tjekket",
+        "optional": "Valgfri",
+        "fetchModels": "Hent modeller"
       },
-      "inbox": {
-        "description": "Hurtig optagelse og triage",
-        "label": "Indbakke"
-      },
-      "journal": {
-        "description": "Daglige noter",
-        "label": "Journal"
-      },
-      "tasks": {
-        "description": "Gøremål og forfaldsdatoer",
-        "label": "Opgaver"
-      },
-      "spatialCanvas": {
-        "description": "Rumlige tavler til at arrangere og forbinde noter",
-        "label": "Canvas"
-      }
-    }
-  },
-  "import": {
-    "action": "Importér",
-    "dialog": {
-      "cancel": "Annullér",
-      "choose": "Vælg fil…",
-      "chooseFolder": "Vælg Apple Notes-mappe…",
-      "chooseHint": "Vælg din {label}",
-      "close": "Luk",
-      "done": "Færdig",
-      "error": "Import mislykkedes",
-      "folderHint": "Klik nedenfor og vælg mappen “group.com.apple.notes”, når vælgeren åbner (den starter der). Dette lader Memry læse dine noter og vedhæftninger — ingen fuld diskadgang nødvendig.",
-      "progress": "{completed} af {total}",
-      "running": "Importerer…",
-      "selected": "{count, plural, one {# fil valgt} other {# filer valgt}}",
-      "start": "Start importen",
-      "summary": {
-        "attachments": "{count, plural, one {# vedhæftning kopieret} other {# vedhæftninger kopieret}}",
-        "failed": "{count} mislykkedes",
-        "imported": "{count, plural, one {# element importeret} other {# elementer importeret}}",
-        "skipped": "{count} sprunget over",
-        "title": "Import fuldført"
-      },
-      "title": "Importér fra {name}",
-      "chooseDirectory": "Vælg mappe…",
-      "folderKeepsAssets": "Vælg mappen, når billederne ligger uden for noternes egen mappe — ved eksport ligger medier ofte i én fælles mappe.",
-      "previewError": "Forhåndsvisningen mislykkedes"
-    },
-    "header": {
-      "subtitle": "Hent dine noter og opgaver ind fra andre apps",
-      "title": "Import"
-    },
-    "intro": "Engangsimporter opretter nye noter i din boks. Dine oprindelige eksportfiler efterlades urørt.",
-    "preview": {
-      "confirm": "Importér",
-      "warnings": "Advarsler"
-    },
-    "select": "Vælg en app at importere fra…",
-    "sources": {
-      "apple-journal": "Importér en Apple Journal-HTML-eksport som daterede noter",
-      "apple-notes": "Importér fra Apple Notes-databasen (NoteStore.sqlite, macOS)",
-      "bear": "Importér et Bear .bear2bk-arkiv (noter, tags, vedhæftninger)",
-      "csv": "Importér en .csv-fil — én note pr. række, kolonner bliver til egenskaber",
-      "evernote": "Importér en eller flere Evernote .enex-eksportfiler",
-      "google-keep": "Importér en Google Takeout Keep-eksport (.json eller .zip)",
-      "html": "Importér .html-filer med tilknyttede billeder og krydslinks mellem sider",
-      "markdown": "Importér .md-filer eller en mappe (frontmatter, tags, vedhæftninger)",
-      "notion": "Importér en HTML-eksport (.zip)",
-      "onenote": "Importér OneNote-notesbøger (kræver en Microsoft-konto)",
-      "raindrop": "Importér en Raindrop.io-bogmærkeeksport (.csv) — bogmærker lander i indbakken",
-      "roam": "Importér en Roam Research-graf (.json) med indlejrede dispositioner",
-      "ticktick": "Importér en TickTick-sikkerhedskopi (.csv) som projekter, opgaver og påmindelser",
-      "todoist": "Importér en projekt-CSV-eksport (.csv)"
-    },
-    "stats": {
-      "bookmarks": "{count, plural, one {# bogmærke} other {# bogmærker}}",
-      "comments": "{count, plural, one {# kommentar} other {# kommentarer}}",
-      "notes": "{count, plural, one {# note} other {# noter}}",
-      "projects": "{count, plural, one {# projekt} other {# projekter}}",
-      "reminders": "{count, plural, one {# påmindelse} other {# påmindelser}}",
-      "skipped": "{count} sprunget over",
-      "subtasks": "{count, plural, one {# delopgave} other {# delopgaver}}",
-      "tasks": "{count, plural, one {# opgave} other {# opgaver}}",
-      "withDueDate": "{count} dateret",
-      "withTags": "{count} tagget"
-    },
-    "messages": {
-      "csv": {
-        "columns": "Kolonner: {columns}",
-        "emptyTitle": "Sprang række med tom titel over (kolonnen “{column}”)",
-        "noHeaders": "CSV-filen har ingen overskrifter",
-        "titleColumn": "Titel fra “{column}”; øvrige kolonner er gemt som egenskaber"
-      },
-      "raindrop": {
-        "csvEmpty": "Raindrop-CSV-filen er tom",
-        "headerNotFound": "Overskriftsrækken i Raindrop-CSV-filen (kolonnen “url”) blev ikke fundet",
-        "rowNoUrl": "Række {row} sprunget over: ingen URL"
-      },
-      "readFileFailed": "Kunne ikke læse filen",
-      "ticktick": {
-        "foldersDropped": "TickTick-mapper har ingen tilsvarende i Memry og blev udeladt",
-        "headerNotFound": "Overskriftsrækken i TickTick-CSV-filen (“Folder Name”) blev ikke fundet",
-        "reminderNoAnchor": "Påmindelsen “{reminder}” blev sprunget over (intet datoanker)",
-        "subtaskParentMissing": "Den overordnede opgave til delopgaven “{title}” blev ikke fundet; importeret på øverste niveau",
-        "unknownPriority": "Ukendt TickTick-prioritet {priority} → ingen",
-        "unsupportedRepeat": "Gentagelsesreglen “{rule}” understøttes ikke og blev sprunget over"
-      },
-      "todoist": {
-        "emptyTitle": "Opgave med tomt indhold importeret som (uden titel)",
-        "headerNotFound": "Ikke en Todoist-CSV: TYPE-overskriftsrækken mangler",
-        "orphanComment": "Kommentar uden foregående opgave blev sprunget over",
-        "sectionFlattened": "Sektionen “{section}” blev fladet ud",
-        "subtaskNoParent": "Delopgaven “{title}” har ingen overordnet opgave ved indrykning {indent}; importeret på øverste niveau",
-        "unknownPriority": "Ukendt prioritet {priority} → ingen",
-        "unparsedDate": "Datoen “{date}” kunne ikke tolkes"
-      }
-    },
-    "status": {
-      "appleNotes": {
-        "copyingDatabase": "Kopierer Apple Notes-databasen…"
-      },
-      "bear": {
-        "scanning": "Scanner Bear-eksporten…"
-      },
-      "csv": {
-        "importing": "Importerer CSV-noter…"
-      },
-      "evernote": {
-        "scanning": "Scanner .enex-filer…"
-      },
-      "html": {
-        "scanning": "Scanner HTML-filer…"
-      },
-      "importingItem": "Importerer {title}",
-      "raindrop": {
-        "importing": "Importerer Raindrop-bogmærker…"
-      },
-      "roam": {
-        "reading": "Læser Roam-eksporten…"
-      },
-      "scanningExport": "Scanner eksporten…",
-      "scanningFiles": "Scanner filer…",
-      "ticktick": {
-        "importing": "Importerer TickTick-opgaver…"
-      },
-      "todoist": {
-        "importing": "Importerer Todoist-opgaver…"
-      }
-    }
-  },
-  "inbox": {
-    "header": {
-      "loading": "Indlæser…",
-      "subtitle": "Daglig påmindelse om gennemgang og indstillinger for indbakken.",
-      "title": "Indbakke"
-    },
-    "reviewReminder": {
-      "enabled": {
-        "description": "Et venligt dagligt puf, når der ligger noget i din indbakke.",
-        "label": "Påmind mig om at gennemgå min indbakke"
-      },
-      "error": "Påmindelsen kunne ikke opdateres.",
-      "group": "Daglig påmindelse om gennemgang",
-      "test": {
-        "button": "Send testen",
-        "description": "Send påmindelsen nu for at tjekke dine systemnotifikationer.",
-        "label": "Testnotifikation",
-        "sent": "Testnotifikationen er sendt.",
-        "sentHint": "Hvis der ikke dukker noget op, skal du tillade notifikationer for MemryNote i dine systemindstillinger.",
-        "unsupported": "Denne enhed kan ikke vise skrivebordsnotifikationer."
-      },
-      "time": {
-        "description": "Lokal tid, på hver enhed.",
-        "hourLabel": "Time",
-        "label": "Tidspunkt for påmindelse",
-        "minuteLabel": "Minut",
-        "periodLabel": "AM eller PM"
+      "alwaysAllowed": {
+        "group": "Altid tilladte værktøjer"
       }
     }
   }

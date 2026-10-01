@@ -1,8 +1,8 @@
 {
   "dialog": {
     "vault": {
-      "title": "Pilih Folder Gudang",
-      "button": "Pilih Gudang"
+      "title": "Pilih folder brankas",
+      "button": "Pilih brankas"
     },
     "exportPdf": {
       "title": "Ekspor sebagai PDF",
@@ -13,8 +13,8 @@
       "filterName": "Dokumen HTML"
     },
     "import": {
-      "filterSupported": "File yang Didukung",
-      "filterAll": "Semua File"
+      "filterSupported": "File yang didukung",
+      "filterAll": "Semua file"
     },
     "exportCancelled": "Ekspor dibatalkan",
     "update": {
@@ -30,42 +30,43 @@
       "releaseNotesLabel": "Catatan rilis:"
     },
     "pair": {
+      "title": "Pasangkan ekstensi peramban",
+      "message": "Izinkan ekstensi peramban Memry mengirim item ke aplikasi ini?",
       "buttonAllow": "Izinkan",
       "buttonDeny": "Tolak",
-      "buttonPair": "Pasangkan",
-      "message": "Izinkan ekstensi peramban Memry mengirim tangkapan ke aplikasi ini?",
-      "title": "Pasangkan ekstensi peramban"
+      "buttonPair": "Pasangkan"
     }
   },
   "notification": {
+    "inboxReview": {
+      "title": "Waktunya meninjau kotak masuk Anda",
+      "body": "Anda memiliki {count, plural, other {# item}} untuk ditinjau.",
+      "testBody": "Ini uji coba — pengingat tinjauan harian Anda akan tampak seperti ini."
+    },
     "reminder": {
       "note": "Pengingat catatan",
       "journal": "Pengingat jurnal",
-      "highlight": "Sorot pengingat",
-      "fallback": "Pengingat jatuh tempo",
-      "default": "Pengingat",
-      "task": "Pengingat tugas"
-    },
-    "inboxReview": {
-      "body": "Anda memiliki {count, plural, other {# item}} untuk ditinjau.",
-      "testBody": "Ini uji coba — pengingat tinjauan harian Anda akan tampak seperti ini.",
-      "title": "Waktunya meninjau kotak masuk Anda"
+      "highlight": "Pengingat sorotan",
+      "task": "Pengingat tugas",
+      "fallback": "Waktunya pengingat",
+      "default": "Pengingat"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "Waktu pengingat harus di masa depan",
     "definitionNotFound": "Definisi tidak ditemukan",
     "noteNotFound": "Catatan tidak ditemukan",
-    "updateFailed": "Pembaruan gagal"
+    "updateFailed": "Pembaruan gagal",
+    "updateReadOnlyVolume": "Pembaruan tidak dapat diinstal saat memrynote dijalankan dari lokasi ini. Pindahkan memrynote ke folder Aplikasi, lalu buka kembali."
   },
   "startup": {
-    "failed": {
-      "body": "Ini bisa terjadi saat ruang kosong disk sangat menipis, atau pada driver grafis versi lama. Coba kosongkan sebagian ruang disk, lalu buka kembali MemryNote. Jika terus terjadi, memasang ulang biasanya mengatasinya.",
-      "title": "MemryNote tidak dapat menyelesaikan proses mulai"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote akan terbuka kembali secara otomatis.",
-      "title": "Memasang pembaruan…"
+      "title": "Menginstal pembaruan…",
+      "subtitle": "MemryNote akan terbuka kembali secara otomatis."
+    },
+    "failed": {
+      "title": "MemryNote tidak dapat dimulai sepenuhnya",
+      "body": "Ini bisa terjadi saat ruang kosong disk sangat menipis, atau pada driver grafis versi lama. Coba kosongkan sebagian ruang disk, lalu buka kembali MemryNote. Jika terus terjadi, menginstal ulang biasanya mengatasinya."
     }
   }
 }

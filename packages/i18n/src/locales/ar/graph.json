@@ -1,34 +1,37 @@
 {
   "page": {
-    "loading": "جارٍ تحميل الرسم البياني...",
-    "load-failed": "فشل تحميل بيانات الرسم البياني",
-    "try-again": "حاول مرة أخرى",
-    "aria-label": "الرسم البياني المعرفي مع {nodeCount, plural, one {عقدة #} other {العقد #}} و{edgeCount, plural, one {اتصال #} other {اتصالات #}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "عقد الرسم البياني",
+    "loading": "جارٍ تحميل الرسم البياني…",
+    "load-failed": "تعذّر تحميل بيانات الرسم البياني",
+    "render-failed": "الرسم البياني غير متاح على هذا الجهاز",
+    "render-failed-description": "تعذّر على هذا الجهاز تشغيل محرك عرض الرسومات. ملاحظاتك آمنة.",
+    "try-again": "إعادة المحاولة",
+    "aria-label": "الرسم البياني المعرفي يضم {nodeCount, plural, zero {# عُقدة} one {عُقدة واحدة} two {عقدتين} few {# عُقد} many {# عُقدة} other {# عُقدة}} و{edgeCount, plural, zero {# ارتباط} one {ارتباطًا واحدًا} two {ارتباطين} few {# ارتباطات} many {# ارتباطًا} other {# ارتباط}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "عُقد الرسم البياني",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
     "title": "الرسم البياني المعرفي الخاص بك",
-    "description": "ستظهر الروابط بين ملاحظاتك ومهامك ومشاريعك هنا كرسم بياني تفاعلي.",
-    "link-title": "ربط الملاحظات الخاصة بك",
-    "link-description": "استخدم [[wikilinks]] لربط الأفكار عبر الملاحظات",
+    "description": "ستظهر الارتباطات بين ملاحظاتك ومهامك ومشاريعك هنا في رسم بياني تفاعلي.",
+    "link-title": "اربط ملاحظاتك",
+    "link-description": "استخدم روابط ويكي [[…]] لربط الأفكار بين الملاحظات",
     "discover-title": "اكتشف الأنماط",
-    "discover-description": "مع نمو الروابط، ستظهر المجموعات والموضوعات بشكل طبيعي"
+    "discover-description": "مع تزايد الارتباطات، ستظهر المجموعات والموضوعات تلقائيًا"
   },
   "entity": {
     "note": "ملاحظة",
     "notes": "ملاحظات",
-    "journal": "مجلة",
-    "journals": "المجلات",
+    "journal": "يومية",
+    "journals": "يوميات",
     "task": "مهمة",
-    "tasks": "المهام",
+    "tasks": "مهام",
     "project": "مشروع",
-    "projects": "المشاريع",
-    "tag": "علامة",
-    "tags": "العلامات",
-    "orphan": "يتيم",
-    "orphans": "الأيتام",
-    "unresolved": "لم يتم حلها"
+    "projects": "مشاريع",
+    "tag": "وسم",
+    "tags": "وسوم",
+    "orphan": "عُقدة معزولة",
+    "orphans": "عُقد معزولة",
+    "unresolved": "غير موجودة",
+    "category": "فئة"
   },
   "summary": {
     "node-type-count": "{count} {label}"
@@ -36,42 +39,99 @@
   "control": {
     "show-settings": "إعدادات الرسم البياني",
     "hide-settings": "إخفاء الإعدادات",
-    "reset-filters": "إعادة تعيين المرشحات",
-    "filters": "المرشحات",
-    "display": "عرض",
+    "reset-filters": "إعادة تعيين عوامل التصفية",
+    "filters": "عوامل التصفية",
+    "display": "العرض",
     "show-labels": "إظهار التسميات",
+    "live-motion": "الحركة الحية",
     "focus-depth": "عمق {depth}",
-    "clear-focus": "مسح العقدة المركزة"
+    "clear-focus": "إلغاء التركيز على العُقدة",
+    "relayout": "إعادة التخطيط",
+    "categories": "فئات الوسوم",
+    "color-by-category": "التلوين حسب الفئة",
+    "no-categories": "جمّع الوسوم في فئات من مركز الوسوم لتلوين الرسم البياني وطيّه حسب الفئة.",
+    "collapse-category": "طي {name}",
+    "expand-category": "توسيع {name}",
+    "uncategorized": "غير مصنّفة"
   },
   "filter": {
-    "notes": "ملاحظات",
-    "journals": "المجلات",
+    "notes": "الملاحظات",
+    "journals": "اليوميات",
     "tasks": "المهام",
     "projects": "المشاريع",
-    "tags": "العلامات",
-    "orphans": "الأيتام",
-    "toggle-entity": "تبديل {label}",
-    "toggle-orphans": "تبديل العقد اليتيمة"
+    "tags": "الوسوم",
+    "orphans": "العُقد المعزولة",
+    "canvas-edges": "ارتباطات اللوحات",
+    "toggle-entity": "إظهار {label} أو إخفاؤها",
+    "toggle-orphans": "إظهار العُقد المعزولة أو إخفاؤها"
   },
   "search": {
-    "placeholder": "عقد البحث...",
-    "clear": "مسح البحث عن الرسم البياني"
+    "placeholder": "البحث في العُقد…",
+    "clear": "مسح البحث في الرسم البياني"
   },
   "context-menu": {
     "untitled": "بدون عنوان",
-    "focus-node": "التركيز على هذه العقدة",
-    "open-new-tab": "افتح في علامة تبويب جديدة",
+    "focus-node": "التركيز على هذه العُقدة",
+    "open-new-tab": "فتح في علامة تبويب جديدة",
     "create-note": "إنشاء ملاحظة",
-    "copy-title": "انسخ العنوان"
+    "copy-title": "نسخ العنوان",
+    "link-to": "ربط بملاحظة…",
+    "add-tag": "إضافة وسم…",
+    "back": "رجوع",
+    "link-search": "البحث في الملاحظات…",
+    "tag-search": "البحث عن وسم أو إنشاؤه…",
+    "no-matches": "لا توجد نتائج مطابقة",
+    "create-tag": "إنشاء #{tag}",
+    "remove-link": "إزالة الرابط إلى {title}",
+    "unpin": "إلغاء التثبيت",
+    "collapse-category": "طي {name}",
+    "expand-category": "توسيع {name}"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {اتصال #} other {اتصالات #}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, zero {لا توجد ارتباطات} one {ارتباط واحد} two {ارتباطان} few {# ارتباطات} many {# ارتباطًا} other {# ارتباط}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, zero {لا توجد عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}}",
+    "click-to-expand": "انقر للتوسيع"
   },
   "local-panel": {
-    "loading": "جارٍ تحميل الرسم البياني...",
-    "empty": "لم يتم العثور على اتصالات",
+    "loading": "جارٍ تحميل الرسم البياني…",
+    "empty": "لم يُعثر على ارتباطات",
     "open-full": "فتح الرسم البياني الكامل",
-    "close": "إغلاق الرسم البياني"
+    "close": "إغلاق الرسم البياني",
+    "pin": "تثبيت على هذه الملاحظة",
+    "unpin": "إلغاء التثبيت ومتابعة الملاحظة المفتوحة",
+    "pinned-to": "مثبّت على: {title}"
+  },
+  "edit": {
+    "linked": "تم ربط {source} بـ{target} في «{property}»",
+    "unlinked": "تمّت إزالة الرابط من {source} إلى {target}",
+    "already-linked": "يوجد رابط بالفعل من {source} إلى {target}",
+    "property-conflict": "الخاصية «{property}» في هذه الملاحظة ليست خاصية علاقة، لذا لم يُضف الرابط",
+    "link-unsupported": "لا يمكن إنشاء الروابط إلا بين الملاحظات",
+    "link-failed": "تعذّر إضافة الرابط",
+    "unlink-failed": "تعذّر إزالة الرابط",
+    "tag-added": "تمّت إضافة #{tag} إلى {note}",
+    "tag-exists": "تحتوي هذه الملاحظة على #{tag} بالفعل",
+    "tag-failed": "تعذّر إضافة الوسم",
+    "undo-failed": "تعذّر التراجع عن التغيير"
+  },
+  "relayout-confirm": {
+    "title": "هل تريد إعادة تخطيط الرسم البياني؟",
+    "description": "سيُلغى تثبيت كل العُقد المثبّتة، ويستقر الرسم البياني على ترتيب جديد. سيُحذف تخطيطك المحفوظ.",
+    "cancel": "إلغاء",
+    "confirm": "إعادة التخطيط"
+  },
+  "views": {
+    "title": "طرق العرض المحفوظة",
+    "unsaved": "عرض غير محفوظ",
+    "edited": "معدَّل",
+    "empty": "لا توجد طرق عرض محفوظة بعد",
+    "save-as": "حفظ كعرض جديد…",
+    "update": "تحديث «{name}»",
+    "delete": "حذف العرض {name}",
+    "save-dialog-title": "حفظ عرض الرسم البياني",
+    "save-dialog-placeholder": "اسم العرض",
+    "cancel": "إلغاء",
+    "save": "حفظ"
   }
 }

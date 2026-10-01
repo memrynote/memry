@@ -1,7 +1,7 @@
 {
-  "title": "期刊",
+  "title": "日誌",
   "section": {
-    "aiConnections": "AI 連接",
+    "aiConnections": "AI 關聯",
     "todaysNotes": "今日筆記",
     "todaysSchedule": "今日行程",
     "todaysTasks": "今日任務",
@@ -9,8 +9,8 @@
     "technicalDetails": "技術細節"
   },
   "action": {
-    "versionHistory": "版本歷史",
-    "export": "出口",
+    "versionHistory": "版本記錄",
+    "export": "匯出",
     "fullWidth": "全寬",
     "journalSettings": "日誌設定",
     "fullMode": "完整模式",
@@ -18,27 +18,28 @@
     "createNote": "建立筆記",
     "createNewNote": "建立新筆記",
     "showLess": "顯示較少",
-    "showMoreNotes": "顯示 {count} 更多筆記",
-    "showMoreNotes_plural": "顯示 {count} 更多筆記",
+    "showMoreNotes": "再顯示 {count} 則筆記",
+    "showMoreNotes_plural": "再顯示 {count} 則筆記",
     "showFewerNotes": "顯示較少筆記",
     "startBlank": "改為從空白開始",
     "changeTemplate": "更改範本",
     "dismissIndicator": "關閉指示器",
-    "refreshConnections": "重新整理連線",
+    "refreshConnections": "重新整理關聯",
     "reloadJournal": "重新載入日誌",
     "goToToday": "前往今天",
     "copyUnsavedContent": "將尚未儲存的內容複製到剪貼簿",
-    "addBookmark": "新增書籤",
-    "removeBookmark": "移除書籤"
+    "addBookmark": "加入書籤",
+    "removeBookmark": "移除書籤",
+    "deleteEntry": "刪除日誌"
   },
   "editor": {
     "placeholder": {
-      "future": "你正在計畫什麼...",
-      "today": "你今天想到了什麼...",
-      "past": "反思今天..."
+      "future": "你在計畫什麼…",
+      "today": "今天在想些什麼…",
+      "past": "回想這一天…"
     },
     "upload": {
-      "failed": "圖片上傳失敗"
+      "failed": "無法上傳圖片"
     }
   },
   "date": {
@@ -83,22 +84,22 @@
     "monthShort": {
       "january": "1月",
       "february": "2月",
-      "march": "三月",
-      "april": "四月",
-      "may": "五月",
-      "june": "六月",
-      "july": "七月",
-      "august": "八月",
-      "september": "九月",
-      "october": "十月",
-      "november": "十一月",
-      "december": "十二月"
+      "march": "3月",
+      "april": "4月",
+      "may": "5月",
+      "june": "6月",
+      "july": "7月",
+      "august": "8月",
+      "september": "9月",
+      "october": "10月",
+      "november": "11月",
+      "december": "12月"
     },
     "greeting": {
       "morning": "早安",
       "afternoon": "午安",
       "evening": "晚安",
-      "night": "晚安（睡前）"
+      "night": "晚安"
     },
     "allDay": "全天"
   },
@@ -109,62 +110,62 @@
     "nextMonth": "下一個月",
     "previousYear": "前一年",
     "nextYear": "下一年",
-    "journalBack": "回到日記",
-    "journalNavigation": "日記導覽",
-    "dateNavigation": "日記日期導覽",
+    "journalBack": "返回日誌",
+    "journalNavigation": "日誌導覽",
+    "dateNavigation": "日誌日期導覽",
     "goToYearView": "前往年份檢視"
   },
   "aria": {
     "moreOptions": "更多選項",
     "documentStatistics": "文件統計",
     "dayContext": "當日情境：任務與行程",
-    "scheduleEvents": "排程事件",
+    "scheduleEvents": "排定的活動",
     "tasks": "任務",
-    "notesCreatedToday": "今天建立的{count}筆記"
+    "notesCreatedToday": "今天建立了 {count} 則筆記"
   },
   "empty": {
-    "noEntry": "無條目",
+    "noEntry": "沒有日誌",
     "noDaysInMonth": "本月沒有日期",
-    "noEventsScheduled": "沒有排程活動",
-    "noEventsScheduledToday": "今天沒有排程活動",
-    "noEventsWereScheduled": "沒有安排活動",
+    "noEventsScheduled": "沒有排定的活動",
+    "noEventsScheduledToday": "今天沒有排定的活動",
+    "noEventsWereScheduled": "當天沒有排定的活動",
     "noTasksDue": "沒有到期任務",
     "noTasksDueToday": "今天沒有到期任務",
-    "noTasksWereDue": "沒有到期任務",
-    "noNotesToday": "今天沒有創建筆記",
+    "noTasksWereDue": "當天沒有到期任務",
+    "noNotesToday": "今天沒有建立筆記",
     "startDocumenting": "開始記錄你的想法和點子"
   },
   "ai": {
-    "loading": "正在分析你的輸入...",
+    "loading": "正在分析日誌…",
     "empty": {
-      "willAppear": "你的連結將顯示在此",
-      "noneYet": "尚未找到連結",
-      "moreJournaling": "隨著你記日記更多，AI 將會找到相關的條目",
-      "keepWriting": "持續書寫以發現相關條目"
+      "willAppear": "關聯會顯示在這裡",
+      "noneYet": "尚未找到關聯",
+      "moreJournaling": "日誌寫得越多，AI 就越能找到相關的日誌",
+      "keepWriting": "持續書寫，就能發現相關的日誌"
     },
     "error": {
-      "loadFailed": "無法加載連結"
+      "loadFailed": "無法載入關聯"
     },
-    "connectionAria": "與 {label} 的連結，{scorePercent}% 匹配"
+    "connectionAria": "與「{label}」的關聯，相符度 {scorePercent}%"
   },
   "count": {
     "note": "筆記",
     "day": "天",
-    "days": "天數",
+    "days": "天",
     "event": "活動",
-    "events": "活動（複數）",
+    "events": "活動",
     "task": "任務",
     "todo": "待辦",
-    "moreConnections": "+ {count} 更多連接",
-    "moreConnections_plural": "+ {count} 更多連接",
-    "moreNotes": "+ {count} 更多筆記",
-    "moreNotes_plural": "+ {count} 更多筆記",
+    "moreConnections": "+ {count} 個關聯",
+    "moreConnections_plural": "+ {count} 個關聯",
+    "moreNotes": "+ {count} 則筆記",
+    "moreNotes_plural": "+ {count} 則筆記",
     "daysWithEntries": "有日誌的天數",
-    "charactersWritten": "已寫字元",
+    "charactersWritten": "已寫字元數",
     "words": "{count} 個字",
     "characters": "{count} 字元",
-    "completed": "{count} 已完成",
-    "overdue": "{count} 過期"
+    "completed": "已完成 {count} 項",
+    "overdue": "{count} 項已逾期"
   },
   "stats": {
     "wordCount": "字數",
@@ -173,57 +174,62 @@
     "lastModified": "最後修改",
     "lessThanOneMinute": "< 1 分鐘",
     "minutes": "{minutes} 分鐘",
-    "read": "{readingTime} 閱讀",
-    "modified": "修改 {date}"
+    "read": "閱讀時間 {readingTime}",
+    "modified": "修改於 {date}"
   },
   "task": {
     "completed": "已完成",
     "notCompleted": "未完成",
-    "priority": "{priority} 優先",
-    "overdue": "過期",
-    "markComplete": "將 \"{title}\" 標記為已完成",
-    "markNotComplete": "將 \"{title}\" 標記為未完成"
+    "priority": "優先順序：{priority}",
+    "overdue": "已逾期",
+    "markComplete": "將「{title}」標記為已完成",
+    "markNotComplete": "將「{title}」標記為未完成"
   },
   "template": {
-    "using": "使用 \"{templateName}\""
+    "using": "使用「{templateName}」"
   },
   "reminder": {
     "hasReminders": "有提醒",
     "setToRevisit": "設定提醒以重新查看",
     "tooltip": "提醒：{date}",
-    "tooltipMore": "提醒：{date}（+{count} 更多）",
+    "tooltipMore": "提醒：{date}（還有 {count} 項）",
     "success": {
-      "set": "此日記條目已設定提醒",
+      "set": "已為這則日誌設定提醒",
       "deleted": "提醒已刪除",
       "dismissed": "提醒已忽略",
-      "snoozed": "提醒已延遲"
+      "snoozed": "提醒已延後",
+      "updated": "提醒已更新"
     },
     "error": {
       "set": "無法設定提醒",
       "delete": "無法刪除提醒",
       "dismiss": "無法忽略提醒",
-      "snooze": "無法延後提醒"
+      "snooze": "無法延後提醒",
+      "update": "無法更新提醒"
     }
   },
   "toast": {
-    "unsavedRetry": "您的內容仍在記憶中。點擊以重試保存。",
-    "noteNotFound": "未找到筆記 \"{target}\"",
-    "fileNotFound": "檔案未找到：{target}",
-    "openLinkedItemFailed": "打開連結項目失敗",
-    "errorPrefix": "錯誤："
+    "unsavedRetry": "內容仍保留在記憶體中。按一下以重試儲存。",
+    "noteNotFound": "找不到筆記「{target}」",
+    "createLinkedFailed": "無法建立連結的筆記",
+    "fileNotFound": "找不到檔案：{target}",
+    "openLinkedItemFailed": "無法開啟連結的項目",
+    "errorPrefix": "錯誤：",
+    "deleteFailed": "無法刪除日誌",
+    "bookmarkFailed": "無法更新書籤"
   },
   "export": {
-    "noteTitle": "日記 - {month} {day}, {year}"
+    "noteTitle": "日誌 - {year} 年{month} {day} 日"
   },
   "note": {
     "generatedTitle": "筆記 - {date}",
-    "openAria": "打開 {title}，建立於 {time}"
+    "openAria": "開啟「{title}」，建立於 {time}"
   },
   "error": {
-    "title": "日記錯誤",
-    "description": "日記在 {date} 發生錯誤。您最近的更改可能未被保存。",
-    "descriptionNoDate": "日記發生錯誤。您最近的更改可能未被保存。",
-    "unsavedContent": "偵測到未保存的內容 ({length} 字元)"
+    "title": "日誌錯誤",
+    "description": "{date} 的日誌發生錯誤。最近的變更可能尚未儲存。",
+    "descriptionNoDate": "日誌發生錯誤。最近的變更可能尚未儲存。",
+    "unsavedContent": "偵測到未儲存的內容（{length} 個字元）"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "無法保存日誌條目",
+      "failedToSaveJournalEntry": "無法儲存日誌",
       "failedToLoadJournalSettings": "無法載入日誌設定",
       "failedToUpdateSettings": "無法更新設定"
     }
+  },
+  "deleteConfirm": {
+    "title": "刪除日誌",
+    "description": "確定要刪除「{title}」嗎？此動作無法復原。"
   }
 }

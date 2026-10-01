@@ -1,7 +1,7 @@
 {
-  "title": "časopis",
+  "title": "Dnevnik",
   "section": {
-    "aiConnections": "Veze AI",
+    "aiConnections": "AI veze",
     "todaysNotes": "Današnje bilješke",
     "todaysSchedule": "Današnji raspored",
     "todaysTasks": "Današnji zadaci",
@@ -10,7 +10,7 @@
   },
   "action": {
     "versionHistory": "Povijest verzija",
-    "export": "Izvoz",
+    "export": "Izvezi",
     "fullWidth": "Puna širina",
     "journalSettings": "Postavke dnevnika",
     "fullMode": "Puni način rada",
@@ -18,24 +18,25 @@
     "createNote": "Stvori bilješku",
     "createNewNote": "Stvori novu bilješku",
     "showLess": "Prikaži manje",
-    "showMoreNotes": "Pokaži {count} više bilješki",
-    "showMoreNotes_plural": "Pokaži {count} više bilješki",
+    "showMoreNotes": "{count, plural, one {Prikaži još # bilješku} few {Prikaži još # bilješke} other {Prikaži još # bilješki}}",
+    "showMoreNotes_plural": "{count, plural, one {Prikaži još # bilješku} few {Prikaži još # bilješke} other {Prikaži još # bilješki}}",
     "showFewerNotes": "Prikaži manje bilješki",
-    "startBlank": "Umjesto toga započnite prazno",
-    "changeTemplate": "Promjena predloška",
-    "dismissIndicator": "Indikator odbacivanja",
+    "startBlank": "Započni bez predloška",
+    "changeTemplate": "Promijeni predložak",
+    "dismissIndicator": "Odbaci indikator",
     "refreshConnections": "Osvježi veze",
     "reloadJournal": "Ponovno učitaj dnevnik",
-    "goToToday": "Idi na Danas",
+    "goToToday": "Idi na danas",
     "copyUnsavedContent": "Kopiraj nespremljeni sadržaj u međuspremnik",
-    "addBookmark": "Dodaj knjižnu oznaku",
-    "removeBookmark": "Ukloni oznaku"
+    "addBookmark": "Dodaj u favorite",
+    "removeBookmark": "Ukloni iz favorita",
+    "deleteEntry": "Izbriši zapis"
   },
   "editor": {
     "placeholder": {
-      "future": "Što planiraš...",
-      "today": "Što vam je danas na umu...",
-      "past": "Osvrnite se na ovaj dan..."
+      "future": "Što planirate…",
+      "today": "Što vam je danas na umu…",
+      "past": "Osvrnite se na ovaj dan…"
     },
     "upload": {
       "failed": "Prijenos slike nije uspio"
@@ -44,9 +45,9 @@
   "date": {
     "relative": {
       "today": "Danas",
-      "yesterday": "jučer",
+      "yesterday": "Jučer",
       "tomorrow": "Sutra",
-      "future": "budućnost"
+      "future": "Budući dan"
     },
     "weekday": {
       "sunday": "nedjelja",
@@ -58,47 +59,47 @@
       "saturday": "subota"
     },
     "weekdayShort": {
-      "sunday": "sunce",
-      "monday": "pon",
-      "tuesday": "uto",
-      "wednesday": "sri",
-      "thursday": "čet",
-      "friday": "pet",
-      "saturday": "sub"
+      "sunday": "ned.",
+      "monday": "pon.",
+      "tuesday": "uto.",
+      "wednesday": "sri.",
+      "thursday": "čet.",
+      "friday": "pet.",
+      "saturday": "sub."
     },
     "month": {
-      "january": "siječnja",
-      "february": "veljače",
-      "march": "ožujka",
-      "april": "travnja",
-      "may": "svibnja",
-      "june": "lipnja",
-      "july": "srpnja",
-      "august": "kolovoza",
-      "september": "rujna",
-      "october": "listopada",
-      "november": "studenog",
-      "december": "prosinca"
+      "january": "siječanj",
+      "february": "veljača",
+      "march": "ožujak",
+      "april": "travanj",
+      "may": "svibanj",
+      "june": "lipanj",
+      "july": "srpanj",
+      "august": "kolovoz",
+      "september": "rujan",
+      "october": "listopad",
+      "november": "studeni",
+      "december": "prosinac"
     },
     "monthShort": {
-      "january": "siječanj",
+      "january": "sij",
       "february": "velj",
-      "march": "ožujak",
+      "march": "ožu",
       "april": "tra",
-      "may": "svibnja",
-      "june": "lipnja",
+      "may": "svi",
+      "june": "lip",
       "july": "srp",
-      "august": "kolovoz",
+      "august": "kol",
       "september": "ruj",
       "october": "lis",
-      "november": "nov",
+      "november": "stu",
       "december": "pro"
     },
     "greeting": {
-      "morning": "dobro jutro",
-      "afternoon": "dobar dan",
-      "evening": "dobra večer",
-      "night": "laku noc"
+      "morning": "Dobro jutro",
+      "afternoon": "Dobar dan",
+      "evening": "Dobra večer",
+      "night": "Dobra večer"
     },
     "allDay": "Cijeli dan"
   },
@@ -108,63 +109,63 @@
     "previousMonth": "Prethodni mjesec",
     "nextMonth": "Sljedeći mjesec",
     "previousYear": "Prethodna godina",
-    "nextYear": "Sljedeće godine",
-    "journalBack": "Dnevnik natrag",
+    "nextYear": "Sljedeća godina",
+    "journalBack": "Natrag",
     "journalNavigation": "Navigacija dnevnika",
     "dateNavigation": "Navigacija po datumu dnevnika",
     "goToYearView": "Idi na prikaz godine"
   },
   "aria": {
     "moreOptions": "Više mogućnosti",
-    "documentStatistics": "Statistika dokumenata",
+    "documentStatistics": "Statistika dokumenta",
     "dayContext": "Kontekst dana: zadaci i raspored",
-    "scheduleEvents": "Zakažite događaje",
+    "scheduleEvents": "Događaji u rasporedu",
     "tasks": "Zadaci",
-    "notesCreatedToday": "{count} bilješke stvorene danas"
+    "notesCreatedToday": "{count, plural, one {Danas je stvorena # bilješka} few {Danas su stvorene # bilješke} other {Danas je stvoreno # bilješki}}"
   },
   "empty": {
-    "noEntry": "Zabranjen ulaz",
+    "noEntry": "Nema zapisa",
     "noDaysInMonth": "Nema dana u ovom mjesecu",
     "noEventsScheduled": "Nema zakazanih događaja",
     "noEventsScheduledToday": "Danas nema zakazanih događaja",
-    "noEventsWereScheduled": "Nema zakazanih događaja",
-    "noTasksDue": "Nema dospjelih zadataka",
-    "noTasksDueToday": "Danas nema zadataka",
-    "noTasksWereDue": "Nije bilo dospjelih zadataka",
+    "noEventsWereScheduled": "Nije bilo zakazanih događaja",
+    "noTasksDue": "Nema zadataka s rokom",
+    "noTasksDueToday": "Danas nema zadataka s rokom",
+    "noTasksWereDue": "Nije bilo zadataka s rokom",
     "noNotesToday": "Danas nije stvorena nijedna bilješka",
     "startDocumenting": "Počnite dokumentirati svoje misli i ideje"
   },
   "ai": {
-    "loading": "Analiziram vaš unos...",
+    "loading": "Analiziranje zapisa…",
     "empty": {
       "willAppear": "Ovdje će se pojaviti vaše veze",
       "noneYet": "Još nisu pronađene veze",
-      "moreJournaling": "Kako više budete vodili dnevnik, AI će pronaći povezane unose",
-      "keepWriting": "Nastavite pisati kako biste otkrili povezane unose"
+      "moreJournaling": "Što više pišete u dnevnik, umjetna inteligencija pronaći će više povezanih zapisa",
+      "keepWriting": "Nastavite pisati da biste otkrili povezane zapise"
     },
     "error": {
       "loadFailed": "Nije moguće učitati veze"
     },
-    "connectionAria": "Povezivanje s {label}, {scorePercent}% odgovara"
+    "connectionAria": "Veza s „{label}”, podudaranje {scorePercent} %"
   },
   "count": {
     "note": "bilješka",
     "day": "dan",
     "days": "dana",
     "event": "događaj",
-    "events": "događanja",
+    "events": "događaja",
     "task": "zadatak",
-    "todo": "učiniti",
-    "moreConnections": "+ {count} više veze",
-    "moreConnections_plural": "+ {count} više veza",
-    "moreNotes": "+ {count} dodatna napomena",
-    "moreNotes_plural": "+ {count} više bilješki",
-    "daysWithEntries": "dana s ulascima",
-    "charactersWritten": "napisani likovi",
-    "words": "{count} riječi",
-    "characters": "{count} znakovi",
-    "completed": "{count} dovršen",
-    "overdue": "{count} kasni"
+    "todo": "otvoreno",
+    "moreConnections": "{count, plural, one {+ još # veza} few {+ još # veze} other {+ još # veza}}",
+    "moreConnections_plural": "{count, plural, one {+ još # veza} few {+ još # veze} other {+ još # veza}}",
+    "moreNotes": "{count, plural, one {+ još # bilješka} few {+ još # bilješke} other {+ još # bilješki}}",
+    "moreNotes_plural": "{count, plural, one {+ još # bilješka} few {+ još # bilješke} other {+ još # bilješki}}",
+    "daysWithEntries": "dana sa zapisima",
+    "charactersWritten": "napisanih znakova",
+    "words": "{count, plural, one {# riječ} few {# riječi} other {# riječi}}",
+    "characters": "{count, plural, one {# znak} few {# znaka} other {# znakova}}",
+    "completed": "Dovršeno: {count}",
+    "overdue": "Zakašnjelo: {count}"
   },
   "stats": {
     "wordCount": "Broj riječi",
@@ -173,57 +174,62 @@
     "lastModified": "Zadnja izmjena",
     "lessThanOneMinute": "< 1 min",
     "minutes": "{minutes} min",
-    "read": "{readingTime} pročitaj",
+    "read": "{readingTime} čitanja",
     "modified": "Izmijenjen {date}"
   },
   "task": {
-    "completed": "Završeno",
+    "completed": "Dovršeno",
     "notCompleted": "Nije dovršeno",
-    "priority": "{priority} prioritet",
-    "overdue": "zakašnjeli",
-    "markComplete": "Označite \"{title}\" kao dovršeno",
-    "markNotComplete": "Označite \"{title}\" kao nedovršeno"
+    "priority": "Prioritet: {priority}",
+    "overdue": "zakašnjelo",
+    "markComplete": "Označi „{title}” kao dovršeno",
+    "markNotComplete": "Označi „{title}” kao nedovršeno"
   },
   "template": {
-    "using": "Korištenje \"{templateName}\""
+    "using": "Koristi se predložak „{templateName}”"
   },
   "reminder": {
     "hasReminders": "Ima podsjetnike",
-    "setToRevisit": "Postavite podsjetnik za ponovni posjet",
+    "setToRevisit": "Postavi podsjetnik za ponovni pregled",
     "tooltip": "Podsjetnik: {date}",
-    "tooltipMore": "Podsjetnik: {date} (+{count} još)",
+    "tooltipMore": "Podsjetnik: {date} (i još {count})",
     "success": {
-      "set": "Podsjetnik postavljen za ovaj unos u dnevnik",
+      "set": "Podsjetnik postavljen za ovaj zapis u dnevniku",
       "deleted": "Podsjetnik izbrisan",
-      "dismissed": "Podsjetnik je odbačen",
-      "snoozed": "Podsjetnik je odgođen"
+      "dismissed": "Podsjetnik odbačen",
+      "snoozed": "Podsjetnik odgođen",
+      "updated": "Podsjetnik ažuriran"
     },
     "error": {
       "set": "Postavljanje podsjetnika nije uspjelo",
       "delete": "Brisanje podsjetnika nije uspjelo",
       "dismiss": "Odbacivanje podsjetnika nije uspjelo",
-      "snooze": "Odgoda podsjetnika nije uspjela"
+      "snooze": "Odgoda podsjetnika nije uspjela",
+      "update": "Ažuriranje podsjetnika nije uspjelo"
     }
   },
   "toast": {
     "unsavedRetry": "Vaš je sadržaj još uvijek u memoriji. Kliknite za ponovni pokušaj spremanja.",
-    "noteNotFound": "Napomena \"{target}\" nije pronađena",
+    "noteNotFound": "Bilješka „{target}” nije pronađena",
+    "createLinkedFailed": "Stvaranje povezane bilješke nije uspjelo",
     "fileNotFound": "Datoteka nije pronađena: {target}",
     "openLinkedItemFailed": "Otvaranje povezane stavke nije uspjelo",
-    "errorPrefix": "Greška:"
+    "errorPrefix": "Greška:",
+    "deleteFailed": "Brisanje zapisa u dnevniku nije uspjelo",
+    "bookmarkFailed": "Ažuriranje favorita nije uspjelo"
   },
   "export": {
-    "noteTitle": "Dnevnik - {month} {day}, {year}"
+    "noteTitle": "Dnevnik – {day}.{month, select, siječanj { siječnja} veljača { veljače} ožujak { ožujka} travanj { travnja} svibanj { svibnja} lipanj { lipnja} srpanj { srpnja} kolovoz { kolovoza} rujan { rujna} listopad { listopada} studeni { studenoga} prosinac { prosinca} other { {month}}} {year}."
   },
   "note": {
-    "generatedTitle": "Napomena - {date}",
-    "openAria": "Otvorite {title}, kreiran na {time}"
+    "generatedTitle": "Bilješka – {date}",
+    "openAria": "Otvori „{title}”, stvoreno u {time}"
   },
   "error": {
     "title": "Pogreška dnevnika",
-    "description": "Dnevnik je naišao na pogrešku za {date}. Vaše nedavne promjene možda nisu spremljene.",
-    "descriptionNoDate": "Dnevnik je naišao na pogrešku. Vaše nedavne promjene možda nisu spremljene.",
-    "unsavedContent": "Otkriven je nespremljeni sadržaj (znakovi {length})"
+    "description": "U dnevniku za {date} došlo je do pogreške. Nedavne promjene možda nisu spremljene.",
+    "descriptionNoDate": "U dnevniku je došlo do pogreške. Nedavne promjene možda nisu spremljene.",
+    "unsavedContent": "Otkriven je nespremljeni sadržaj (broj znakova: {length})"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "Neuspješno spremanje unosa u dnevnik",
-      "failedToLoadJournalSettings": "Neuspješno učitavanje postavki dnevnika",
+      "failedToSaveJournalEntry": "Spremanje zapisa u dnevniku nije uspjelo",
+      "failedToLoadJournalSettings": "Učitavanje postavki dnevnika nije uspjelo",
       "failedToUpdateSettings": "Ažuriranje postavki nije uspjelo"
     }
+  },
+  "deleteConfirm": {
+    "title": "Izbriši zapis u dnevniku",
+    "description": "Jeste li sigurni da želite izbrisati „{title}”? Ova se radnja ne može poništiti."
   }
 }

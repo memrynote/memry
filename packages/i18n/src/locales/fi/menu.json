@@ -3,19 +3,19 @@
     "quit": "Lopeta",
     "preferences": "Asetukset…",
     "checkForUpdates": "Tarkista päivitykset…",
-    "exit": "Lopeta",
+    "services": "Palvelut",
     "hide": "Kätke MemryNote",
     "hideOthers": "Kätke muut",
-    "services": "Palvelut",
-    "unhide": "Näytä kaikki"
+    "unhide": "Näytä kaikki",
+    "exit": "Lopeta"
   },
   "file": {
     "label": "Tiedosto",
     "newNote": "Uusi muistiinpano",
-    "close": "Sulje ikkuna",
+    "openQuickly": "Avaa nopeasti…",
+    "exportPdf": "Vie PDF-tiedostoksi…",
     "closeTab": "Sulje välilehti",
-    "exportPdf": "Vie PDF:ksi…",
-    "openQuickly": "Avaa nopeasti…"
+    "close": "Sulje ikkuna"
   },
   "navigation": {
     "back": "Takaisin",
@@ -31,63 +31,68 @@
     "selectAll": "Valitse kaikki",
     "find": "Etsi",
     "speech": "Puhe",
-    "delete": "Poista",
     "pasteAndMatchStyle": "Liitä ja sovita tyyli",
+    "delete": "Poista",
     "startSpeaking": "Aloita puhuminen",
-    "stopSpeaking": "Lopeta puhuminen"
+    "stopSpeaking": "Lopeta puhuminen",
+    "addToDictionary": "Lisää sanakirjaan",
+    "noSuggestions": "Ei ehdotuksia"
   },
-  "view": {
-    "label": "Näytä",
-    "reload": "Lataa uudelleen",
-    "toggleDevTools": "Näytä/piilota kehittäjätyökalut",
-    "toggleFullscreen": "Koko näyttö päälle/pois",
-    "theme": "Teema",
-    "themeDark": "Tumma",
-    "themeLight": "Vaalea",
-    "themeSystem": "Järjestelmä",
-    "themeWhite": "Paperi",
-    "toggleDayPanel": "Näytä/piilota päiväpaneeli",
-    "toggleSidebar": "Näytä/piilota sivupalkki",
-    "actualSize": "Todellinen koko",
-    "zoomIn": "Lähennä",
-    "zoomOut": "Loitonna"
+  "insert": {
+    "label": "Lisää",
+    "codeBlock": "Koodilohko",
+    "table": "Taulukko",
+    "bulletList": "Luettelomerkkilista",
+    "numberedList": "Numeroitu lista",
+    "taskList": "Tehtävälista",
+    "attachment": "Lisää liite…"
   },
   "format": {
-    "body": "Leipäteksti",
-    "bold": "Lihavointi",
-    "code": "Koodi",
+    "label": "Muoto",
     "heading1": "Otsikko 1",
     "heading2": "Otsikko 2",
     "heading3": "Otsikko 3",
     "heading4": "Otsikko 4",
     "heading5": "Otsikko 5",
     "heading6": "Otsikko 6",
-    "highlight": "Korostus",
+    "body": "Leipäteksti",
+    "bold": "Lihavointi",
     "italic": "Kursivointi",
-    "label": "Muotoile",
+    "code": "Koodi",
+    "highlight": "Korostus",
     "strikethrough": "Yliviivaus"
   },
-  "help": {
-    "about": "Tietoja MemryNotesta",
-    "documentation": "Dokumentaatio",
-    "label": "Ohje",
-    "shortcuts": "Pikanäppäimet",
-    "aboutVersion": "Versio {version}"
-  },
-  "insert": {
-    "attachment": "Lisää liite…",
-    "bulletList": "Luettelomerkkilista",
-    "codeBlock": "Koodilohko",
-    "label": "Lisää",
-    "numberedList": "Numeroitu lista",
-    "table": "Taulukko",
-    "taskList": "Tehtävälista"
+  "view": {
+    "label": "Näytä",
+    "reload": "Lataa uudelleen",
+    "toggleDevTools": "Näytä/piilota kehittäjätyökalut",
+    "toggleFullscreen": "Koko näyttö päälle/pois",
+    "toggleSidebar": "Näytä/piilota sivupalkki",
+    "toggleDayPanel": "Näytä/piilota päiväpaneeli",
+    "theme": "Teema",
+    "themeLight": "Vaalea",
+    "themeDark": "Tumma",
+    "themeWhite": "Paperi",
+    "themeSystem": "Järjestelmä",
+    "actualSize": "Todellinen koko",
+    "zoomIn": "Lähennä",
+    "zoomOut": "Loitonna"
   },
   "window": {
     "label": "Ikkuna",
-    "close": "Sulje",
-    "front": "Tuo kaikki eteen",
     "minimize": "Pienennä",
-    "zoom": "Zoomaa"
+    "zoom": "Zoomaa",
+    "front": "Tuo kaikki eteen",
+    "close": "Sulje"
+  },
+  "help": {
+    "label": "Ohje",
+    "documentation": "Dokumentaatio",
+    "shortcuts": "Pikanäppäimet",
+    "about": "Tietoja MemryNotesta",
+    "aboutVersion": "Versio {version}"
+  },
+  "tray": {
+    "show": "Näytä MemryNote"
   }
 }

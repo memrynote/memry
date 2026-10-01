@@ -1,35 +1,55 @@
 {
   "view": {
-    "day": "päivä",
+    "day": "Päivä",
     "week": "Viikko",
     "month": "Kuukausi",
-    "year": "vuosi"
+    "monthGridLabel": "Kuukausiruudukko",
+    "year": "Vuosi",
+    "timeline": "Aikajana"
+  },
+  "undo": {
+    "moveEvent": "Siirrä tapahtuma",
+    "moveTask": "Ajoita tehtävä uudelleen"
   },
   "toolbar": {
     "create-event": "Luo tapahtuma",
-    "previous-period": "Edellinen kausi",
-    "next-period": "Seuraava kausi",
+    "previous-period": "Edellinen jakso",
+    "next-period": "Seuraava jakso",
     "previous-month": "Edellinen kuukausi",
-    "next-month": "Ensi kuussa",
+    "next-month": "Seuraava kuukausi",
     "today": "Tänään"
+  },
+  "search": {
+    "open": "Hae kalenterista",
+    "close": "Sulje haku",
+    "placeholder": "Hae tapahtumia, tehtäviä, muistutuksia…",
+    "no-results": "Ei osumia"
   },
   "filter": {
     "filter-calendars": "Suodata kalentereita",
     "sources": "Lähteet",
-    "memry-items": "memrynote tuotteet",
+    "memry-items": "memrynote-kohteet",
     "imported-calendars": "Tuodut kalenterit",
     "event-types": "Tapahtumatyypit",
-    "google-calendars": "Google kalenterit",
-    "refresh-google-calendars": "Päivitä Google-kalenterit"
+    "google-calendars": "Google-kalenterit",
+    "refresh-google-calendars": "Päivitä Google-kalenterit",
+    "not-syncing": "Ei synkronoida · ota käyttöön valitsemalla",
+    "enable-source-failed": "Kalenterin ottaminen käyttöön epäonnistui.",
+    "provider-calendars": {
+      "ics": "Tilatut kalenterit",
+      "caldav": "CalDAV-kalenterit",
+      "apple-eventkit": "Tämä Mac",
+      "other": "Muut kalenterit"
+    }
   },
   "visual-type": {
     "event": "Tapahtuma",
     "imported-event": "Tuotu tapahtuma",
+    "note": "Muistiinpano",
+    "note-date": "Päivämäärämuistutus",
     "task": "Tehtävä",
     "reminder": "Muistutus",
-    "snooze": "Torkku",
-    "note": "Muistiinpano",
-    "note-date": "Päivämäärämuistutus"
+    "snooze": "Torkutus"
   },
   "state": {
     "loading-calendar": "Ladataan kalenteria…",
@@ -44,47 +64,87 @@
     "all-day": "Koko päivän",
     "all-day-lower": "koko päivän",
     "pick-a-date": "Valitse päivämäärä",
-    "new-event": "Uusi Tapahtuma",
-    "more-events": "{count, plural, one {# lisää tapahtumaa} other {# lisää tapahtumia}}"
+    "new-event": "Uusi tapahtuma",
+    "more-events": "{count, plural, one {# muu tapahtuma} other {# muuta tapahtumaa}}"
   },
   "form": {
     "create-calendar-event": "Luo kalenteritapahtuma",
     "edit-calendar-event": "Muokkaa kalenteritapahtumaa",
     "quick-create-description": "Kirjoita otsikko ja tallenna luodaksesi tapahtuman valitulla aikavälillä.",
     "event-editor-description": "Päivitä tämän tapahtuman otsikko, sijainti, päivämäärä, aika ja muistiinpanot.",
-    "new-event-placeholder": "Uusi Tapahtuma",
+    "new-event-placeholder": "Uusi tapahtuma",
     "notes-url-placeholder": "Lisää muistiinpanoja tai URL-osoite",
-    "start": "Aloita",
-    "end": "Loppu",
-    "google-calendar": "Google kalenteri",
+    "start": "Alkaa",
+    "end": "Päättyy",
+    "google-calendar": "Google-kalenteri",
     "target-calendar": "Kohdekalenteri",
     "use-default-calendar": "Käytä oletuskalenteria",
-    "use-default-calendar-with-name": "Käytä oletusarvoa ({calendar})",
+    "use-default-calendar-with-name": "Käytä oletuskalenteria ({calendar})",
     "use-memry-calendar-default": "Käytä memrynote-kalenteria (oletus)",
-    "primary-suffix": "ensisijainen"
+    "primary-suffix": "ensisijainen",
+    "project": "Projekti",
+    "no-project": "Ei projektia",
+    "remove-from-project": "Poista projektista {project}",
+    "project-update-failed": "Tapahtuman projektin päivittäminen epäonnistui",
+    "color": "Väri",
+    "default-color": "Oletusväri"
   },
   "delete-dialog": {
     "title": "Poistetaanko tapahtuma?",
-    "local-description": "\"{title}\" poistetaan pysyvästi. Tätä toimintoa ei voi kumota.",
-    "google-bound-description": "\"{title}\" poistetaan memrynote:stä ja Google-kalenterista. Tätä toimintoa ei voi kumota.",
+    "local-description": "”{title}” poistetaan pysyvästi. Tätä ei voi kumota.",
+    "google-bound-description": "”{title}” poistetaan memrynotesta ja Google Calendarista. Tätä ei voi kumota.",
     "context-menu-delete-label": "Poista tapahtuma",
     "context-menu-add-to-project": "Lisää projektiin"
   },
+  "agent-access-dialog": {
+    "aria": "Valitse, saako tekoäly lukea Google Calendar -tapahtumiasi",
+    "title": "Saako tekoäly lukea Google Calendar -tapahtumiasi?",
+    "body": "Näet Google-tapahtumasi memrynotessa joka tapauksessa. Tämä ratkaisee vain sen, saako tekoälyagentti lukea niitä, kun kysyt siltä aikataulustasi.",
+    "footnote": "Voit muuttaa tätä milloin tahansa kohdassa Asetukset → Integraatiot → Google Calendar.",
+    "allow": "Salli",
+    "deny": "Älä salli",
+    "save-error": "Valintasi tallentaminen epäonnistui",
+    "provider": {
+      "aria": "Valitse, saako tekoäly lukea tapahtumia lähteestä {provider}",
+      "title": "Saako tekoäly lukea tapahtumia lähteestä {provider}?",
+      "body": "Näet nämä tapahtumat memrynotessa joka tapauksessa. Tämä ratkaisee vain sen, saako tekoälyagentti lukea niitä, kun kysyt siltä aikataulustasi. Valinta tehdään erikseen kullekin kalenteripalvelulle.",
+      "footnote": "Voit muuttaa tätä milloin tahansa kohdassa Asetukset → Kalenteri."
+    },
+    "provider-names": {
+      "ics": "tilattu kalenteri",
+      "caldav": "CalDAV-kalenteri",
+      "apple-eventkit": "macOS:n Kalenteri"
+    }
+  },
   "promote-dialog": {
     "aria": "Muokkaa ulkoista kalenteritapahtumaa",
-    "title": "Muokkaa tätä tapahtumaa memrynote:ssä?",
-    "body": "Tämän tapahtuman muokkaaminen luo linkitetyn kopion memrynote:ssä, joten muutokset synkronoidaan molempiin suuntiin. Jatketaanko?",
+    "title": "Muokataanko tätä tapahtumaa memrynotessa?",
+    "body": "Tämän tapahtuman muokkaaminen luo linkitetyn kopion memrynoteen, joten muutokset synkronoidaan molempiin suuntiin. Jatketaanko?",
     "do-not-ask-again": "Älä kysy uudelleen",
-    "confirm-label": "Muokkaa memrynote:ssä",
+    "confirm-label": "Muokkaa memrynotessa",
     "agent-notice": "Tekoälyagentti voi lukea tämän kopion, vaikka tekoälyn pääsy Google Calendariin on pois käytöstä. Alkuperäinen Google-tapahtumasi pysyy siltä piilossa."
   },
   "onboarding-dialog": {
-    "aria": "Valitse oletusarvoinen Google-kalenteri",
-    "title": "Mihin kalenteriin uusien memrynote-tapahtumien pitäisi mennä?",
-    "body": "Valitse Google-kalenteri, jota memrynote tulee käyttää oletuksena. Voit silti ohittaa sen tapahtumakohtaisesti.",
-    "default-calendar-label": "Käytä memrynote-hallittua kalenteria",
+    "aria": "Valitse Google-oletuskalenterisi",
+    "title": "Mihin kalenteriin uudet memrynote-tapahtumat lisätään?",
+    "body": "Valitse Google-kalenteri, jota memrynote käyttää oletuksena. Voit silti valita toisen kalenterin tapahtumakohtaisesti.",
+    "default-calendar-label": "Käytä memrynoten hallinnoimaa kalenteria",
     "skip": "Ohita",
     "use-this-calendar": "Käytä tätä kalenteria"
+  },
+  "connect-prompt": {
+    "pill": "Yhdistä Google",
+    "aria": "Yhdistä Google Calendar",
+    "title": "Viimeistele yhteys Google Calendariin",
+    "body": "Yhdistä Google-tilisi, niin voit tehdä kalenterillasi enemmän:",
+    "bullets": {
+      "events": "Näet Google-tapahtumasi muistiinpanojen ja tehtävien rinnalla",
+      "sync": "Luo ja muokkaa tapahtumia, jotka synkronoidaan molempiin suuntiin",
+      "schedule": "Aikatauluta tehtäviä ja muistiinpanoja kalenteriisi"
+    },
+    "continue": "Jatka Googlella",
+    "dismiss": "Sulje",
+    "error": "Google Calendarin yhdistäminen epäonnistui. Yritä uudelleen."
   },
   "metadata": {
     "attendees": "Osallistujat",
@@ -94,6 +154,7 @@
     "visibility": "Näkyvyys:",
     "optional": "Valinnainen",
     "join-meeting": "Liity kokoukseen",
+    "video-call": "Videopuhelu",
     "response": {
       "accepted": "Hyväksytty",
       "declined": "Hylätty",
@@ -113,86 +174,213 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "Tapahtumaa ei voitu tallentaa. Yritä uudelleen.",
-      "couldNotCreateEventTryAgain": "Tapahtumaa ei voitu luoda. Yritä uudelleen.",
-      "couldNotSaveDefaultCalendarTryAgain": "Oletuskalenteria ei voitu tallentaa. Yritä uudelleen.",
+      "couldNotSaveEventTryAgain": "Tapahtuman tallentaminen epäonnistui. Yritä uudelleen.",
+      "couldNotCreateEventTryAgain": "Tapahtuman luominen epäonnistui. Yritä uudelleen.",
+      "couldNotSaveDefaultCalendarTryAgain": "Oletuskalenterin tallentaminen epäonnistui. Yritä uudelleen.",
       "failedToLoadCalendarPreferences": "Kalenteriasetusten lataaminen epäonnistui",
       "failedToUpdateCalendarPreferences": "Kalenteriasetusten päivittäminen epäonnistui",
-      "couldNotEditThisEventTryAgain": "Tätä tapahtumaa ei voitu muokata. Yritä uudelleen.",
+      "couldNotEditThisEventTryAgain": "Tapahtuman muokkaaminen epäonnistui. Yritä uudelleen.",
       "failedToDeleteEvent": "Tapahtuman poistaminen epäonnistui",
-      "couldNotUnsnoozeInboxItem": "Torkkua ei voitu poistaa.",
-      "couldNotRescheduleInboxItem": "Ei voitu ajoittaa uudelleen."
+      "couldNotUnsnoozeInboxItem": "Torkutuksen poistaminen epäonnistui.",
+      "couldNotRescheduleInboxItem": "Ajankohdan muuttaminen epäonnistui."
     },
     "inboxSnoozePopover": {
-      "title": "Torkutettu postilaatikon kohde",
-      "openInInbox": "Avaa postilaatikossa",
-      "unsnoozeNow": "Poista torkku nyt",
-      "reschedule": "Aikatauluta uudelleen"
+      "title": "Torkutettu Saapuneiden kohde",
+      "openInInbox": "Avaa Saapuneissa",
+      "unsnoozeNow": "Lopeta torkutus nyt",
+      "reschedule": "Ajoita uudelleen"
     }
+  },
+  "chip": {
+    "complete-task": "Merkitse tehtävä {title} valmiiksi",
+    "task-completed": "Tehtävä merkitty valmiiksi",
+    "could-not-complete": "Tehtävän merkitseminen valmiiksi epäonnistui",
+    "duration-minutes": "{minutes} min",
+    "duration-hours": "{hours} h",
+    "duration-hours-minutes": "{hours} h {minutes} min"
+  },
+  "event-card": {
+    "kind": "Tapahtuma",
+    "close": "Sulje"
   },
   "task-popover": {
     "title-fallback": "Tehtävän tiedot",
-    "open-task": "Avoin tehtävä",
-    "source-note": "Lähdehuomautus",
-    "reschedule": "Aikatauluta uudelleen",
+    "kind": "Tehtävä",
+    "open": "Avaa",
+    "complete": "Merkitse valmiiksi",
+    "more-actions": "Lisää toimintoja",
+    "move": "Siirrä",
+    "later": "Myöhemmin",
+    "next-week": "Ensi viikolla",
+    "open-task": "Avaa tehtävä",
+    "source-note": "Lähdemuistiinpano",
+    "reschedule": "Ajoita uudelleen",
     "mark-done": "Merkitse valmiiksi",
-    "mark-not-done": "Merkitse tekemättä",
+    "mark-not-done": "Merkitse keskeneräiseksi",
     "later-today": "Myöhemmin tänään",
     "tomorrow": "Huomenna",
-    "next-week-mon": "Ensi viikolla · Ma",
+    "next-week-mon": "Ensi viikolla · ma",
     "pick-date-time": "Valitse päivämäärä ja aika…",
     "remove-due-date": "Poista eräpäivä",
     "subtasks-prefix": "Alitehtävät",
-    "subtasks-counter": "{done}/{total} tehty",
-    "repeats": "Toistaa",
+    "subtasks-counter": "{done}/{total} valmiina",
+    "repeats": "Toistuu",
     "repeats-daily": "Toistuu päivittäin",
     "repeats-weekly": "Toistuu viikoittain",
     "repeats-monthly": "Toistuu kuukausittain",
     "repeats-yearly": "Toistuu vuosittain",
     "errors": {
-      "could-not-save": "Tehtävää ei voitu tallentaa",
-      "could-not-reschedule": "Tehtävää ei voitu ajoittaa uudelleen",
-      "could-not-remove-due-date": "Eräpäivää ei voitu poistaa",
-      "could-not-open-note": "Muistiinpanoa ei voitu avata"
+      "could-not-save": "Tehtävän tallentaminen epäonnistui",
+      "could-not-reschedule": "Tehtävän ajankohdan muuttaminen epäonnistui",
+      "could-not-remove-due-date": "Eräpäivän poistaminen epäonnistui",
+      "could-not-open-note": "Muistiinpanon avaaminen epäonnistui"
     }
   },
-  "connect-prompt": {
-    "aria": "Yhdistä Google Calendar",
-    "body": "Yhdistä Google-tilisi tehdäksesi enemmän kalenterillasi:",
-    "bullets": {
-      "events": "Näe Google-tapahtumasi muistiinpanojen ja tehtävien rinnalla",
-      "schedule": "Aikatauluta tehtäviä ja muistiinpanoja kalenteriisi",
-      "sync": "Luo ja muokkaa tapahtumia, synkronoituna molempiin suuntiin"
-    },
-    "continue": "Jatka Googlella",
-    "dismiss": "Hylkää",
-    "error": "Google Calendarin yhdistäminen epäonnistui. Yritä uudelleen.",
-    "pill": "Yhdistä Google",
-    "title": "Viimeistele yhteys Google Calendariin"
-  },
   "notePopover": {
-    "couldNotOpen": "Muistiinpanon avaus epäonnistui",
     "kind": "Muistiinpano",
     "kindDateReminder": "Päivämäärämuistutus",
-    "open": "Avaa muistiinpano"
+    "open": "Avaa muistiinpano",
+    "couldNotOpen": "Muistiinpanon avaaminen epäonnistui"
   },
-  "search": {
-    "close": "Sulje haku",
-    "no-results": "Ei osumia",
-    "open": "Hae kalenterista",
-    "placeholder": "Hae tapahtumia, tehtäviä, muistutuksia…"
+  "timeline": {
+    "label": "Ajoitettu työ aikajanalla",
+    "tasks-column": "Tehtävät",
+    "span": "{start} – {end}",
+    "due": "Erääntyy {date}",
+    "starts": "Alkaa {date}",
+    "starts-short": "{date} →",
+    "no-date": "Ei päivämäärää",
+    "today": "Tänään",
+    "overdue": "myöhässä",
+    "untitled": "Nimetön",
+    "days": "{count, plural, one {# päivä} other {# päivää}}",
+    "events": "Tapahtumat",
+    "schedule-hint": "Aseta päivämäärä napsauttamalla, aseta aikaväli vetämällä",
+    "empty-title": "Aikajanalla ei ole tässä mitään",
+    "empty-body": "Tässä näkyvät tehtävät, joilla on aloitus- tai eräpäivä, sekä koko päivän ja monipäiväiset tapahtumat. Ota Näkymä-valikosta käyttöön tehtävät ilman päivämäärää, niin voit ajoittaa ne vetämällä.",
+    "status": {
+      "todo": "Tekemättä",
+      "in_progress": "Työn alla",
+      "done": "Valmis"
+    },
+    "priority": {
+      "urgent": "Kiireellinen",
+      "high": "Korkea",
+      "medium": "Keskitaso",
+      "low": "Matala",
+      "none": "Ei prioriteettia"
+    },
+    "zoom": {
+      "label": "Zoomaus",
+      "weeks": "Viikot",
+      "months": "Kuukaudet",
+      "quarters": "Vuosineljännekset"
+    },
+    "group-by": {
+      "project": "Projekti",
+      "status": "Tila",
+      "priority": "Prioriteetti",
+      "none": "Ei ryhmittelyä"
+    },
+    "group-by-label": "Ryhmittely: {group}",
+    "order-by": {
+      "start": "Aloituspäivä",
+      "due": "Eräpäivä",
+      "title": "Otsikko"
+    },
+    "display": {
+      "button": "Näkymä",
+      "group-by": "Ryhmittely",
+      "order-by": "Järjestys",
+      "show": "Näytä",
+      "show-events": "Tapahtumat",
+      "show-undated": "Tehtävät ilman päivämäärää",
+      "show-completed": "Valmiit tehtävät",
+      "show-subtasks": "Alitehtävät"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# tehtävä} other {# tehtävää}} · {events, plural, one {# tapahtuma} other {# tapahtumaa}}",
+      "open": "Avaa",
+      "move": "Siirrä",
+      "resize": "Muuta kokoa",
+      "actions": "Toiminnot",
+      "select": "Valitse",
+      "today": "Tänään"
+    },
+    "actions": {
+      "search": "Hae toimintoja…",
+      "search-projects": "Hae projekteja…",
+      "empty": "Ei vastaavia toimintoja",
+      "no-projects": "Ei vastaavia projekteja",
+      "open": "Avaa tehtävä",
+      "open-in-tasks": "Avaa Tehtävissä",
+      "schedule": "Ajoita",
+      "set-start": "Aseta aloituspäivä",
+      "set-due": "Aseta eräpäivä",
+      "move-later": "Siirrä viikko myöhemmäksi",
+      "move-earlier": "Siirrä viikko aiemmaksi",
+      "clear-dates": "Tyhjennä päivämäärät",
+      "clear-start": "Tyhjennä aloituspäivä",
+      "clear-due": "Tyhjennä eräpäivä",
+      "task": "Tehtävä",
+      "complete": "Merkitse valmiiksi",
+      "uncomplete": "Merkitse keskeneräiseksi",
+      "change-project": "Vaihda projektia",
+      "page": {
+        "root": "Toiminnot",
+        "start": "Aloituspäivä",
+        "due": "Eräpäivä",
+        "project": "Projekti"
+      }
+    },
+    "undo": {
+      "reschedule": "Ajoita uudelleen ”{title}”"
+    }
   },
-  "undo": {
-    "moveEvent": "Siirrä tapahtuma",
-    "moveTask": "Ajoita tehtävä uudelleen"
+  "calendar-color": {
+    "tomato": "Tomaatti",
+    "flamingo": "Flamingo",
+    "tangerine": "Mandariini",
+    "banana": "Banaani",
+    "sage": "Salvia",
+    "basil": "Basilika",
+    "peacock": "Riikinkukko",
+    "blueberry": "Mustikka",
+    "lavender": "Laventeli",
+    "grape": "Viinirypäle",
+    "graphite": "Grafiitti"
   },
-  "agent-access-dialog": {
-    "allow": "Salli",
-    "aria": "Valitse, saako tekoäly lukea Google Calendar -tapahtumiasi",
-    "body": "Näet Google-tapahtumasi memrynote:ssä joka tapauksessa. Tämä ratkaisee vain sen, saako tekoälyagentti lukea niitä, kun kysyt siltä aikataulustasi.",
-    "deny": "Älä salli",
-    "footnote": "Voit muuttaa tätä milloin tahansa kohdassa Asetukset → Integraatiot → Google Calendar.",
-    "save-error": "Valintasi tallentaminen epäonnistui",
-    "title": "Saako tekoäly lukea Google Calendar -tapahtumiasi?"
+  "subscribedEvent": {
+    "kind": "Tilattu kalenteri",
+    "kindAppleEventKit": "Tämä Mac",
+    "close": "Sulje",
+    "detailsFailed": "Tämän tapahtuman osallistujien ja linkkien lataaminen epäonnistui. Itse tapahtuma on ennallaan.",
+    "showMore": "Näytä lisää",
+    "showLess": "Näytä vähemmän",
+    "organizer": "järjestäjä",
+    "you": "sinä",
+    "phone": "Liity puhelimitse",
+    "alert": "{minutes, plural, =0 {Hälytys tapahtuman alkaessa} one {Hälytys # minuutti ennen} other {Hälytys # minuuttia ennen}}",
+    "alertHours": "{hours, plural, one {Hälytys # tunti ennen} other {Hälytys # tuntia ennen}}",
+    "alertDays": "{days, plural, one {Hälytys # päivä ennen} other {Hälytys # päivää ennen}}",
+    "recurrence": {
+      "daily": "{count, plural, one {Toistuu joka päivä} other {Toistuu # päivän välein}}",
+      "weekly": "{count, plural, one {Toistuu joka viikko} other {Toistuu # viikon välein}}",
+      "weeklyOn": "{count, plural, one {Toistuu joka viikko: {days}} other {Toistuu # viikon välein: {days}}}",
+      "monthly": "{count, plural, one {Toistuu joka kuukausi} other {Toistuu # kuukauden välein}}",
+      "yearly": "{count, plural, one {Toistuu joka vuosi} other {Toistuu # vuoden välein}}",
+      "other": "Toistuu"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Tilatut kalenterit"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

@@ -1,77 +1,137 @@
 {
   "page": {
-    "loading": "Učitavanje grafikona...",
-    "load-failed": "Učitavanje podataka grafikona nije uspjelo",
-    "try-again": "Pokušajte ponovno",
-    "aria-label": "Grafikon znanja s {nodeCount, plural, one {# čvor} other {# čvorovi}} i {edgeCount, plural, one {# veza} other {# veze}}{summary, select, none {.} other {: {summary}.}}",
+    "loading": "Učitavanje grafa…",
+    "load-failed": "Učitavanje podataka grafa nije uspjelo",
+    "render-failed": "Graf nije dostupan na ovom uređaju",
+    "render-failed-description": "Na ovom uređaju nije moguće pokrenuti grafički prikaz. Bilješke su sigurne.",
+    "try-again": "Pokušaj ponovno",
+    "aria-label": "Graf znanja s {nodeCount, plural, one {# čvorom} few {# čvora} other {# čvorova}} i {edgeCount, plural, one {# vezom} few {# veze} other {# veza}}{summary, select, none {.} other {: {summary}.}}",
     "nodes-list-label": "Čvorovi grafa",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "Vaš grafikon znanja",
-    "description": "Veze između vaših bilješki, zadataka i projekata pojavit će se ovdje kao interaktivni grafikon.",
+    "title": "Graf znanja",
+    "description": "Veze između bilješki, zadataka i projekata pojavit će se ovdje kao interaktivni graf.",
     "link-title": "Povežite svoje bilješke",
-    "link-description": "Upotrijebite [[wikiveze]] za povezivanje ideja kroz bilješke",
+    "link-description": "Upotrijebite [[wiki poveznice]] za povezivanje ideja u bilješkama",
     "discover-title": "Otkrijte uzorke",
-    "discover-description": "Kako veze rastu, klasteri i teme će se pojaviti prirodno"
+    "discover-description": "Kako bude sve više veza, prirodno će se pojaviti skupine i teme"
   },
   "entity": {
     "note": "bilješka",
     "notes": "bilješke",
-    "journal": "časopis",
-    "journals": "časopisi",
+    "journal": "zapis u dnevniku",
+    "journals": "zapisi u dnevniku",
     "task": "zadatak",
     "tasks": "zadaci",
     "project": "projekt",
-    "projects": "projektima",
+    "projects": "projekti",
     "tag": "oznaka",
     "tags": "oznake",
-    "orphan": "siroče",
-    "orphans": "siročad",
-    "unresolved": "neriješena"
+    "orphan": "nepovezani čvor",
+    "orphans": "nepovezani čvorovi",
+    "unresolved": "nerazriješeno",
+    "category": "kategorija"
   },
   "summary": {
-    "node-type-count": "{count} {label}"
+    "node-type-count": "{label}: {count}"
   },
   "control": {
-    "show-settings": "Postavke grafikona",
+    "show-settings": "Postavke grafa",
     "hide-settings": "Sakrij postavke",
-    "reset-filters": "Resetiraj filtere",
-    "filters": "Filteri",
+    "reset-filters": "Vrati filtre na zadano",
+    "filters": "Filtri",
     "display": "Prikaz",
-    "show-labels": "Prikaži oznake",
+    "show-labels": "Prikaži nazive",
+    "live-motion": "Kretanje uživo",
     "focus-depth": "dubina {depth}",
-    "clear-focus": "Očistite fokusirani čvor"
+    "clear-focus": "Ukloni fokus s čvora",
+    "relayout": "Ponovno rasporedi",
+    "categories": "Kategorije oznaka",
+    "color-by-category": "Oboji prema kategoriji",
+    "no-categories": "Grupirajte oznake u kategorije na stranici oznaka da biste graf bojali i sažimali po kategorijama.",
+    "collapse-category": "Sažmi „{name}”",
+    "expand-category": "Proširi „{name}”",
+    "uncategorized": "Nekategorizirano"
   },
   "filter": {
     "notes": "Bilješke",
-    "journals": "časopisi",
+    "journals": "Dnevnik",
     "tasks": "Zadaci",
     "projects": "Projekti",
-    "tags": "oznake",
-    "orphans": "Siročad",
-    "toggle-entity": "Uključi/isključi {label}",
-    "toggle-orphans": "Uključi/isključi čvorove siroče"
+    "tags": "Oznake",
+    "orphans": "Nepovezano",
+    "canvas-edges": "Veze na platnu",
+    "toggle-entity": "Prikaži/sakrij: {label}",
+    "toggle-orphans": "Prikaži/sakrij nepovezane čvorove"
   },
   "search": {
-    "placeholder": "Pretraži čvorove...",
-    "clear": "Jasno pretraživanje grafikona"
+    "placeholder": "Pretraži čvorove…",
+    "clear": "Očisti pretraživanje grafa"
   },
   "context-menu": {
     "untitled": "Bez naslova",
-    "focus-node": "Usredotočite se na ovaj čvor",
+    "focus-node": "Fokusiraj ovaj čvor",
     "open-new-tab": "Otvori u novoj kartici",
-    "create-note": "Napravi bilješku",
-    "copy-title": "Kopiraj naslov"
+    "create-note": "Stvori bilješku",
+    "copy-title": "Kopiraj naslov",
+    "link-to": "Poveži s…",
+    "add-tag": "Dodaj oznaku…",
+    "back": "Natrag",
+    "link-search": "Pretraži bilješke…",
+    "tag-search": "Pretraži ili stvori oznaku…",
+    "no-matches": "Nema podudaranja",
+    "create-tag": "Stvori #{tag}",
+    "remove-link": "Ukloni poveznicu na „{title}”",
+    "unpin": "Otkvači",
+    "collapse-category": "Sažmi „{name}”",
+    "expand-category": "Proširi „{name}”"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {# veza} other {# veze}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# veza} few {# veze} other {# veza}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# stavka} few {# stavke} other {# stavki}}",
+    "click-to-expand": "Kliknite za proširivanje"
   },
   "local-panel": {
-    "loading": "Učitavanje grafikona...",
+    "loading": "Učitavanje grafa…",
     "empty": "Nema pronađenih veza",
-    "open-full": "Otvori cijeli grafikon",
-    "close": "Zatvori grafikon"
+    "open-full": "Otvori cijeli graf",
+    "close": "Zatvori graf",
+    "pin": "Prikvači uz ovu bilješku",
+    "unpin": "Otkvači i prati otvorenu bilješku",
+    "pinned-to": "Prikvačeno: {title}"
+  },
+  "edit": {
+    "linked": "„{source}” povezano s „{target}” u svojstvu „{property}”",
+    "unlinked": "Uklonjena poveznica iz „{source}” na „{target}”",
+    "already-linked": "„{source}” već sadrži poveznicu na „{target}”",
+    "property-conflict": "Svojstvo „{property}” u ovoj bilješci nije svojstvo relacije pa poveznica nije dodana",
+    "link-unsupported": "Poveznice se mogu stvarati samo između bilješki",
+    "link-failed": "Nije moguće dodati poveznicu",
+    "unlink-failed": "Nije moguće ukloniti poveznicu",
+    "tag-added": "Oznaka #{tag} dodana u „{note}”",
+    "tag-exists": "Ova bilješka već ima oznaku #{tag}",
+    "tag-failed": "Nije moguće dodati oznaku",
+    "undo-failed": "Nije moguće poništiti promjenu"
+  },
+  "relayout-confirm": {
+    "title": "Ponovno rasporediti graf?",
+    "description": "Svi prikvačeni čvorovi bit će otpušteni, a graf će se složiti u novi raspored. Spremljeni raspored bit će odbačen.",
+    "cancel": "Odustani",
+    "confirm": "Ponovno rasporedi"
+  },
+  "views": {
+    "title": "Spremljeni prikazi",
+    "unsaved": "Nespremljeni prikaz",
+    "edited": "Izmijenjeno",
+    "empty": "Još nema spremljenih prikaza",
+    "save-as": "Spremi kao novi prikaz…",
+    "update": "Ažuriraj „{name}”",
+    "delete": "Izbriši prikaz „{name}”",
+    "save-dialog-title": "Spremi prikaz grafa",
+    "save-dialog-placeholder": "Naziv prikaza",
+    "cancel": "Odustani",
+    "save": "Spremi"
   }
 }

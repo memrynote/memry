@@ -3,98 +3,179 @@
     "exportNotImplemented": "La exportación de datos locales aún no está implementada"
   },
   "page": {
-    "title": "Configuración",
+    "title": "Ajustes",
     "backToApp": "Volver a la app",
     "nav": {
       "groups": {
-        "account": "cuenta",
+        "account": "Cuenta",
         "application": "Aplicación",
         "editing": "Edición",
         "modules": "Módulos",
         "services": "Servicios",
-        "data": "Datos"
+        "data": "Datos",
+        "workspace": "Espacio de trabajo",
+        "features": "Funciones"
       },
       "items": {
-        "account": "cuenta",
-        "general": "generales",
+        "account": "Cuenta",
+        "general": "General",
         "templates": "Plantillas",
-        "editor": "Redactor",
+        "editor": "Editor",
         "journal": "Diario",
         "tasks": "Tareas",
+        "inbox": "Bandeja de entrada",
         "calendar": "Calendario",
         "appearance": "Apariencia",
         "shortcuts": "Atajos",
+        "commandLine": "Línea de comandos",
         "ai": "Asistente de IA",
         "vault": "Bóveda",
         "tags": "Etiquetas",
         "properties": "Propiedades",
-        "commandLine": "Línea de comandos",
-        "features": "Funciones",
         "import": "Importar",
-        "inbox": "Bandeja de entrada"
+        "features": "Funciones",
+        "modules": "Módulos",
+        "aiAgents": "IA y agentes",
+        "tagsProperties": "Etiquetas y propiedades",
+        "vaultData": "Bóveda y datos"
+      }
+    },
+    "drillIn": {
+      "back": "Volver a {section}"
+    },
+    "modules": {
+      "configure": "Configurar {module}"
+    },
+    "vaultImport": {
+      "label": "Importar desde otra app",
+      "description": "Notion, Evernote, Bear, Apple Notes, Todoist y más",
+      "action": "Importar…"
+    },
+    "search": {
+      "placeholder": "Buscar ajustes",
+      "count": "{count, plural, one {# ajuste} other {# ajustes}}",
+      "empty": "No hay ajustes que coincidan",
+      "move": "navegar",
+      "open": "abrir"
+    }
+  },
+  "features": {
+    "header": {
+      "title": "Funciones",
+      "subtitle": "Activa o desactiva partes de la aplicación. Si una parte está desactivada, aparece atenuada en la barra lateral y no se puede usar en ningún sitio."
+    },
+    "items": {
+      "home": {
+        "label": "Inicio",
+        "description": "Panel principal"
+      },
+      "inbox": {
+        "label": "Bandeja de entrada",
+        "description": "Captura rápida y procesamiento"
+      },
+      "journal": {
+        "label": "Diario",
+        "description": "Notas diarias"
+      },
+      "tasks": {
+        "label": "Tareas",
+        "description": "Pendientes y fechas de vencimiento"
+      },
+      "calendar": {
+        "label": "Calendario",
+        "description": "Eventos y agenda"
+      },
+      "graph": {
+        "label": "Grafo",
+        "description": "Conexiones entre notas"
+      },
+      "spatialCanvas": {
+        "label": "Lienzo",
+        "description": "Tableros espaciales para organizar y enlazar notas"
       }
     }
   },
   "general": {
     "header": {
-      "title": "generales",
-      "subtitle": "Inicio de la aplicación y comportamiento de las pestañas",
-      "loading": "Cargando configuración..."
+      "title": "General",
+      "subtitle": "Idioma, inicio, pestañas y privacidad.",
+      "loading": "Cargando ajustes…"
     },
     "groups": {
       "startup": "Inicio",
       "updates": "Actualizaciones",
       "languageRegion": "Idioma y región",
-      "tabBehavior": "Comportamiento de la pestaña",
+      "tabBehavior": "Comportamiento de las pestañas",
+      "window": "Comportamiento de la ventana",
       "fileCreation": "Creación de archivos",
-      "privacy": "Privacidad"
+      "privacy": "Privacidad",
+      "startupWindows": "Inicio y ventanas",
+      "newNotes": "Notas nuevas"
     },
     "startup": {
       "launchAtLogin": {
-        "label": "Iniciar sesión",
-        "description": "Inicie memrynote cuando inicie sesión",
-        "error": "No se pudo actualizar el inicio al arrancar"
+        "label": "Abrir al iniciar sesión",
+        "description": "Abre memrynote automáticamente al iniciar sesión",
+        "error": "No se pudo actualizar el inicio automático"
       }
     },
     "updates": {
-      "appUpdates": "Actualizaciones de aplicaciones",
-      "installedVersion": "Versión instalada {version}",
-      "availableVersion": "Versión disponible {version}",
-      "unsupported": "Las compilaciones empaquetadas pueden verificar, descargar e instalar actualizaciones de las versiones de GitHub.",
-      "available": "memrynote {version} está disponible para descargar",
-      "downloadingLatest": "Descargando la última versión",
-      "downloadingLatestPercent": "Descargando la última versión ({percent}%)",
-      "downloaded": "memrynote {version} está listo para instalar",
-      "upToDate": "Esta instalación está en la última versión publicada.",
-      "checking": "Comprobando las versiones de GitHub para obtener una versión más reciente",
-      "idle": "Busque nuevas versiones e instálelas sin salir de la aplicación",
-      "unsupportedToast": "Las actualizaciones automáticas solo están disponibles en versiones empaquetadas",
-      "upToDateToast": "memrynote {version} está actualizado",
-      "actionFailed": "La acción de actualización falló",
-      "actions": {
-        "checking": "Comprobando...",
-        "available": "Descargar actualización",
-        "downloading": "Descargando...",
-        "downloadingPercent": "Descargando {percent}%",
-        "downloaded": "Reiniciar para instalar",
-        "idle": "Buscar actualizaciones"
-      },
       "autoCheck": {
+        "label": "Buscar actualizaciones automáticamente",
         "description": "Busca versiones nuevas al iniciar y cada cierto tiempo mientras la app está abierta.",
-        "error": "No se pudo actualizar la opción de búsqueda automática",
-        "label": "Buscar actualizaciones automáticamente"
+        "error": "No se pudo actualizar la opción de búsqueda automática"
       },
       "autoDownload": {
+        "label": "Descargar actualizaciones automáticamente",
         "description": "Descarga e instala las versiones nuevas en segundo plano, sin preguntar.",
-        "error": "No se pudo actualizar la opción de descarga automática",
-        "label": "Descargar actualizaciones automáticamente"
+        "error": "No se pudo actualizar la opción de descarga automática"
+      },
+      "appUpdates": "Actualizaciones de la app",
+      "installedVersion": "Versión instalada {version}",
+      "availableVersion": "Versión disponible {version}",
+      "unsupported": "Las versiones empaquetadas pueden buscar, descargar e instalar actualizaciones desde GitHub Releases",
+      "available": "memrynote {version} está disponible para descargar",
+      "downloadingLatest": "Descargando la última versión",
+      "downloadingLatestPercent": "Descargando la última versión ({percent} %)",
+      "downloaded": "memrynote {version} está listo para instalar",
+      "upToDate": "Esta instalación tiene la última versión publicada",
+      "checking": "Buscando una versión más reciente en GitHub Releases",
+      "idle": "Busca versiones nuevas e instálalas sin salir de la app",
+      "unsupportedToast": "Las actualizaciones automáticas solo están disponibles en versiones empaquetadas",
+      "upToDateToast": "memrynote {version} está actualizado",
+      "actionFailed": "No se pudo completar la acción de actualización",
+      "actions": {
+        "checking": "Comprobando…",
+        "available": "Descargar actualización",
+        "downloading": "Descargando…",
+        "downloadingPercent": "Descargando {percent} %",
+        "downloaded": "Reiniciar para instalar",
+        "idle": "Buscar ahora"
+      },
+      "label": "Actualizaciones",
+      "checkedAgo": "{status} · comprobado {time}",
+      "status": {
+        "unsupported": "Disponible en las versiones empaquetadas",
+        "idle": "Aún no se ha comprobado",
+        "checking": "Comprobando…",
+        "upToDate": "Actualizado",
+        "available": "Versión {version} disponible",
+        "downloading": "Descargando…",
+        "downloadingPercent": "Descargando {percent} %",
+        "downloaded": "Versión {version} lista para instalar"
+      },
+      "mode": {
+        "label": "Modo de actualización",
+        "off": "No comprobar",
+        "notify": "Solo notificar",
+        "auto": "Descargar automáticamente"
       }
     },
     "language": {
       "label": "Idioma",
-      "helper": "La mayoría de las aplicaciones se actualizan inmediatamente. Parte del texto a nivel del sistema (notificaciones ya mostradas, etiqueta de acoplamiento, barra de título de la ventana) se actualiza después del próximo inicio.",
+      "helper": "Casi toda la app se actualiza al instante. Algunos textos del sistema (notificaciones ya mostradas, etiqueta del Dock, barra de título de la ventana) se actualizan en el próximo inicio.",
       "changed": "Idioma cambiado a {nativeName}",
-      "failed": "No se pudo cambiar el idioma. Por favor inténtalo de nuevo."
+      "failed": "No se pudo cambiar el idioma. Inténtalo de nuevo."
     },
     "clockFormat": {
       "label": "Formato de hora",
@@ -105,67 +186,84 @@
       },
       "error": "No se pudo actualizar el formato de hora"
     },
+    "dateFormat": {
+      "label": "Formato de fecha",
+      "description": "Cómo se muestran las fechas del calendario",
+      "options": {
+        "MM/DD/YYYY": "MM/DD/YYYY (EE. UU.)",
+        "DD/MM/YYYY": "DD/MM/YYYY",
+        "YYYY-MM-DD": "YYYY-MM-DD (ISO)",
+        "DD.MM.YYYY": "DD.MM.YYYY"
+      },
+      "error": "No se pudo actualizar el formato de fecha"
+    },
     "tabs": {
+      "openPagesInNewTab": {
+        "label": "Abrir páginas en una pestaña nueva",
+        "description": "Al hacer clic en una página o crearla (notas, carpetas, proyectos, lienzos, etiquetas, marcadores), se abre en una pestaña nueva. Si está desactivado, se reutiliza la pestaña actual, también al seguir enlaces dentro de una nota; las pestañas fijadas nunca se reemplazan. «Abrir en una pestaña nueva», «Abrir al lado» y el clic central siempre abren una pestaña nueva."
+      },
       "restoreSession": {
-        "label": "Restaurar sesión al iniciar",
-        "description": "Vuelva a abrir pestañas de su última sesión"
+        "label": "Restaurar pestañas al iniciar",
+        "description": "Vuelve a abrir las pestañas y vistas divididas de la última vez."
       },
       "closeButton": {
-        "label": "Botón Cerrar pestaña",
+        "label": "Botón de cerrar pestaña",
         "description": "Cuándo mostrar el botón de cerrar",
         "options": {
           "always": "Siempre visible",
-          "hover": "Mostrar al pasar el mouse",
-          "active": "Sólo en la pestaña activa"
+          "hover": "Al pasar el cursor",
+          "active": "Solo en la pestaña activa"
         }
       },
-      "error": "No se pudo actualizar la configuración"
+      "error": "No se pudo actualizar el ajuste"
+    },
+    "window": {
+      "minimizeToTray": {
+        "label": "Seguir en la barra de menús al cerrar",
+        "description": "Al cerrar la ventana, memrynote se oculta en la bandeja del sistema en lugar de cerrarse. Haz clic en el icono de la bandeja para volver a mostrarlo. En macOS la app también permanece en el Dock; en escritorios Linux sin bandeja del sistema, la ventana se cierra como siempre.",
+        "error": "No se pudo actualizar la opción de minimizar a la bandeja"
+      }
     },
     "fileCreation": {
       "createInSelectedFolder": {
         "label": "Crear en la carpeta seleccionada",
-        "description": "Se crean nuevas notas y carpetas dentro de la carpeta seleccionada actualmente. Cuando está desactivado, los elementos siempre se crean en la raíz."
+        "description": "Las notas y carpetas nuevas se crean dentro de la carpeta seleccionada. Si está desactivado, los elementos se crean siempre en la raíz."
       },
       "defaultNoteFolder": {
-        "description": "Vacío = raíz de la bóveda",
-        "label": "Ubicación predeterminada de las notas nuevas",
-        "placeholder": "notas"
+        "label": "Ubicación predeterminada",
+        "description": "Se usa cuando no hay ninguna carpeta seleccionada en la barra lateral.",
+        "placeholder": "notas",
+        "root": "/"
       }
     },
     "privacy": {
       "telemetry": {
-        "label": "Compartir métricas de uso anónimo",
-        "description": "Son solo métricas anónimas: nunca se envía contenido de notas, consultas de búsqueda, rutas de archivos, correos electrónicos o identificaciones sin procesar.",
-        "error": "No se pudo actualizar la configuración de telemetría"
+        "label": "Compartir métricas de uso anónimas",
+        "description": "Nunca se envía el contenido, los títulos ni los nombres de las notas. Incluye registros de diagnóstico anonimizados.",
+        "error": "No se pudo actualizar el ajuste de telemetría"
+      },
+      "autoSendDiagnostics": {
+        "label": "Enviar informes de errores automáticamente",
+        "description": "Registros anonimizados cuando aparece una pantalla de error. Si está desactivado, se pregunta cada vez.",
+        "error": "No se pudo actualizar el ajuste de informes de errores"
       },
       "diagnostics": {
+        "title": "¿Enviar un informe de diagnóstico?",
+        "consent": "¿Enviar un informe de diagnóstico puntual? Solo contiene registros técnicos anonimizados, sin contenido de tus notas.",
         "building": "Preparando el informe…",
-        "consent": "¿Enviar un informe de diagnóstico puntual? Solo contiene registros técnicos anonimizados — ningún contenido de tus notas.",
-        "error": "No se pudo enviar el informe de diagnóstico",
-        "notNow": "Ahora no",
-        "previewError": "No se pudo preparar el informe de diagnóstico",
         "previewLabel": "Ver el contenido del informe",
-        "send": "Enviar",
-        "sendReport": {
-          "button": "Enviar informe de diagnóstico",
-          "description": "Envía un informe puntual con registros técnicos anonimizados para ayudarnos a resolver un problema que hayas encontrado.",
-          "label": "Informe de diagnóstico"
-        },
-        "sending": "Enviando…",
-        "sent": "Informe enviado — referencia {incidentId}",
         "snapshotLabel": "Instantánea del dispositivo",
-        "title": "¿Enviar un informe de diagnóstico?"
-      }
-    },
-    "dateFormat": {
-      "description": "Cómo se muestran las fechas del calendario",
-      "error": "No se pudo actualizar el formato de fecha",
-      "label": "Formato de fecha",
-      "options": {
-        "DD.MM.YYYY": "DD.MM.YYYY",
-        "DD/MM/YYYY": "DD/MM/YYYY",
-        "MM/DD/YYYY": "MM/DD/YYYY (EE. UU.)",
-        "YYYY-MM-DD": "YYYY-MM-DD (ISO)"
+        "send": "Enviar",
+        "sending": "Enviando…",
+        "notNow": "Ahora no",
+        "sent": "Informe enviado. Referencia: {incidentId}",
+        "previewError": "No se pudo preparar el informe de diagnóstico",
+        "error": "No se pudo enviar el informe de diagnóstico",
+        "sendReport": {
+          "label": "Informe de diagnóstico",
+          "description": "Envía un informe puntual con registros técnicos anonimizados para ayudarnos a resolver un problema que hayas encontrado.",
+          "button": "Enviar informe…"
+        }
       }
     }
   },
@@ -173,12 +271,13 @@
     "header": {
       "title": "Apariencia",
       "subtitle": "Personaliza la apariencia",
-      "loading": "Cargando configuración..."
+      "loading": "Cargando ajustes…"
     },
     "groups": {
       "theme": "Tema",
       "accentColor": "Color de acento",
-      "typography": "tipografía"
+      "typography": "Tipografía",
+      "zoom": "Zoom"
     },
     "theme": {
       "colorMode": {
@@ -187,37 +286,94 @@
         "aria": "Modo de color"
       },
       "options": {
-        "light": "Cálido",
-        "white": "blanco",
-        "dark": "oscuro",
+        "light": "Claro",
+        "white": "Blanco",
+        "dark": "Oscuro",
         "system": "Sistema"
       },
       "error": "No se pudo actualizar el tema"
+    },
+    "colorTheme": {
+      "default": "Memrynote",
+      "themes": "Temas de Memrynote",
+      "warm": "Cálido",
+      "error": "No se pudo actualizar el tema de color",
+      "copy": "Copiar tema",
+      "copied": "Tema copiado en el portapapeles",
+      "copyError": "No se pudo copiar el tema",
+      "import": "Importar tema desde el portapapeles",
+      "importInvalid": "El portapapeles no contiene un tema de memrynote"
     },
     "accent": {
       "pick": "Elige un color de acento",
       "custom": {
         "label": "Color personalizado",
-        "description": "Introduzca un valor hexadecimal",
+        "description": "Introduce un valor hexadecimal",
         "placeholder": "#000000"
       },
       "presets": {
-        "indigo": "índigo",
-        "amber": "ámbar",
+        "indigo": "Índigo",
+        "amber": "Ámbar",
         "emerald": "Esmeralda",
-        "red": "rojo",
-        "violet": "violeta",
-        "cyan": "cian",
-        "pink": "rosa",
-        "orange": "naranja"
+        "red": "Rojo",
+        "violet": "Violeta",
+        "cyan": "Cian",
+        "pink": "Rosa",
+        "orange": "Naranja"
       },
-      "error": "No se pudo actualizar el color de acento"
+      "error": "No se pudo actualizar el color de acento",
+      "aria": "Color de acento predefinido",
+      "options": {
+        "theme": "Tema",
+        "custom": "Personalizado"
+      }
+    },
+    "colors": {
+      "background": "Fondo",
+      "foreground": "Primer plano",
+      "forLight": "Para el modo claro",
+      "forDark": "Para el modo oscuro",
+      "reset": "Usar el color del tema",
+      "pick": "Elegir un color"
+    },
+    "advanced": {
+      "title": "Avanzado",
+      "reset": "Restablecer valor predeterminado",
+      "error": "No se pudo actualizar el ajuste",
+      "fontSizeDescription": "Tamaño base del texto de la interfaz",
+      "zoomDescription": "Escala de toda la ventana",
+      "reduceMotion": {
+        "label": "Reducir movimiento",
+        "description": "Reduce las animaciones o usa el ajuste del sistema",
+        "options": {
+          "system": "Sistema",
+          "on": "Activado"
+        }
+      },
+      "pointerCursors": {
+        "label": "Usar cursor de puntero",
+        "description": "Muestra un puntero al pasar sobre elementos interactivos"
+      },
+      "fontSmoothing": {
+        "label": "Suavizado de fuentes",
+        "description": "Texto más fino con suavizado en escala de grises en macOS"
+      }
+    },
+    "zoom": {
+      "label": "Nivel de zoom",
+      "description": "Escala toda la interfaz",
+      "decrease": "Reducir zoom",
+      "increase": "Aumentar zoom",
+      "reset": "Restablecer el zoom predeterminado",
+      "error": "No se pudo actualizar el nivel de zoom"
     },
     "typography": {
       "fontSize": {
         "label": "Tamaño de fuente",
-        "description": "Ajustar el tamaño del texto base",
-        "aria": "Tamaño de fuente"
+        "description": "Tamaño base del texto de la interfaz, en píxeles",
+        "decrease": "Reducir el tamaño de fuente",
+        "increase": "Aumentar el tamaño de fuente",
+        "reset": "Restablecer el tamaño de fuente predeterminado"
       },
       "fontFamily": {
         "label": "Familia de fuentes",
@@ -225,55 +381,78 @@
         "options": {
           "system": "Valor predeterminado del sistema",
           "sansSerif": "Sans-serif",
-          "serif": "Serif (carmesí Pro)",
+          "serif": "Serif (Crimson Pro)",
           "gelasio": "Gelasio",
           "geist": "Geist",
           "inter": "Inter",
-          "monospace": "monoespacio"
-        }
+          "monospace": "Monoespaciada"
+        },
+        "sections": {
+          "builtin": "Integradas",
+          "system": "Instaladas en este equipo"
+        },
+        "searchPlaceholder": "Buscar fuentes…",
+        "empty": "No hay fuentes que coincidan",
+        "loading": "Leyendo las fuentes instaladas…",
+        "unavailable": "Las fuentes instaladas no están disponibles en este sistema.",
+        "notInstalled": "No está instalada en este equipo; se usa la fuente alternativa."
       },
       "fontSizeError": "No se pudo actualizar el tamaño de fuente",
       "fontFamilyError": "No se pudo actualizar la familia de fuentes"
+    },
+    "v2": {
+      "groups": {
+        "text": "Texto y zoom"
+      },
+      "colorMode": "Modo de color",
+      "colorTheme": "Tema",
+      "accent": "Color de acento",
+      "customColor": "Color personalizado",
+      "fontFamily": "Familia de fuentes",
+      "fontSize": "Tamaño de fuente",
+      "zoom": "Zoom"
     }
   },
   "editor": {
     "header": {
-      "title": "Redactor",
-      "subtitle": "Configuración y preferencias del editor de notas",
-      "loading": "Cargando configuración..."
+      "title": "Editor",
+      "subtitle": "Ajustes y preferencias del editor de notas",
+      "loading": "Cargando ajustes…"
     },
     "groups": {
-      "layout": "Diseño",
+      "layout": "Disposición",
       "toolbar": "Barra de herramientas",
       "spelling": "Ortografía"
     },
     "width": {
       "label": "Ancho del editor",
-      "description": "Ancho máximo del área de escritura.",
+      "description": "Se aplica a todas las notas y páginas del diario",
       "options": {
-        "narrow": "Estrecho",
-        "medium": "Medio",
-        "wide": "ancho",
-        "full": "Ancho completo",
-        "normal": "Normal"
+        "normal": "Normal",
+        "full": "Ancho completo"
       },
       "error": "No se pudo actualizar el ancho del editor"
     },
     "toolbarMode": {
-      "label": "Barra de herramientas de formato fijo",
+      "label": "Barra de herramientas de formato fija",
       "description": "Mostrar siempre la barra de herramientas encima del editor",
       "error": "No se pudo actualizar el modo de la barra de herramientas"
     },
     "spellCheck": {
-      "description": "Subraya las palabras mal escritas en las notas y los diarios",
-      "error": "No se pudo actualizar la corrección ortográfica",
-      "label": "Corrección ortográfica"
+      "label": "Corrección ortográfica",
+      "description": "Subraya las palabras mal escritas en las notas y el diario",
+      "error": "No se pudo actualizar la corrección ortográfica"
+    },
+    "v2": {
+      "width": "Ancho del editor",
+      "toolbarMode": "Barra de herramientas de formato fija",
+      "spellCheck": "Corrección ortográfica"
     }
   },
   "templates": {
     "header": {
       "title": "Plantillas",
-      "subtitle": "Administre plantillas de notas para una creación rápida"
+      "subtitle": "Gestiona las plantillas de notas para crear notas rápidamente"
     },
     "actions": {
       "new": "Nueva plantilla",
@@ -282,15 +461,18 @@
       "delete": "Eliminar"
     },
     "groups": {
-      "builtIn": "Incorporado",
+      "builtIn": "Integradas",
       "myTemplates": "Mis plantillas"
     },
-    "loading": "Cargando plantillas...",
+    "loading": "Cargando plantillas…",
     "newTemplateTitle": "Nueva plantilla",
-    "copySuffix": "{name} (Copia)",
+    "copySuffix": "{name} (copia)",
     "empty": {
       "title": "Aún no hay plantillas personalizadas",
       "description": "Crea una plantilla para comenzar"
+    },
+    "preview": {
+      "notFound": "No se pudo cargar esta plantilla."
     },
     "toasts": {
       "deleted": "Plantilla eliminada",
@@ -301,43 +483,47 @@
     "dialogs": {
       "delete": {
         "title": "Eliminar plantilla",
-        "description": "¿Estás seguro de que deseas eliminar esta plantilla? Esta acción no se puede deshacer. Las notas creadas a partir de esta plantilla no se verán afectadas."
+        "description": "¿Seguro que quieres eliminar esta plantilla? Esta acción no se puede deshacer. Las notas creadas a partir de esta plantilla no se verán afectadas."
       },
       "duplicate": {
-        "title": "Plantilla duplicada",
-        "description": "Ingrese un nombre para la nueva copia de la plantilla.",
+        "title": "Duplicar plantilla",
+        "description": "Introduce un nombre para la nueva copia de la plantilla.",
         "placeholder": "Nombre de la plantilla"
       }
     },
-    "preview": {
-      "notFound": "No se pudo cargar esta plantilla."
+    "v2": {
+      "new": "Nueva plantilla",
+      "groups": {
+        "mine": "Mis plantillas"
+      }
     }
   },
   "journal": {
     "header": {
       "title": "Diario",
-      "subtitle": "Configuración y preferencias del diario",
-      "loading": "Cargando configuración..."
+      "subtitle": "Ajustes y preferencias del diario",
+      "loading": "Cargando ajustes…"
     },
     "groups": {
       "defaultTemplate": "Plantilla predeterminada",
+      "location": "Ubicación y formato",
       "sidebarVisibility": "Visibilidad de la barra lateral",
       "footer": "Pie de página",
-      "location": "Ubicación y formato"
+      "weekdayTemplates": "Plantillas por día"
     },
     "template": {
       "label": "Plantilla",
-      "description": "Las nuevas entradas comienzan con esta plantilla.",
-      "placeholder": "Seleccione una plantilla",
+      "description": "Las entradas nuevas empiezan con esta plantilla",
+      "placeholder": "Seleccionar una plantilla",
       "unknown": "Plantilla desconocida",
-      "none": "Ninguno",
-      "noneAsk": "Ninguno (preguntar cada vez)",
+      "none": "Ninguna",
+      "noneAsk": "Ninguna (preguntar cada vez)",
       "updated": "Plantilla predeterminada actualizada",
-      "cleared": "Plantilla predeterminada borrada",
+      "cleared": "Se ha quitado la plantilla predeterminada",
       "error": "No se pudo actualizar la plantilla predeterminada"
     },
     "showSchedule": {
-      "label": "Mostrar horario",
+      "label": "Mostrar agenda",
       "description": "Mostrar los eventos y el calendario de hoy"
     },
     "showTasks": {
@@ -346,52 +532,70 @@
     },
     "showAIConnections": {
       "label": "Mostrar conexiones de IA",
-      "description": "Mostrar conexiones impulsadas por IA a entradas relacionadas"
+      "description": "Mostrar conexiones con entradas relacionadas sugeridas por IA"
     },
     "showStatsFooter": {
       "label": "Mostrar pie de página de estadísticas",
-      "description": "Recuento de palabras, tiempo de lectura, marcas de tiempo."
+      "description": "Recuento de palabras, tiempo de lectura, marcas de tiempo"
     },
-    "updateError": "No se pudo actualizar la configuración",
+    "folder": {
+      "label": "Carpeta del diario",
+      "description": "Carpeta donde se guardan las notas diarias",
+      "placeholder": "diario"
+    },
     "dateFormat": {
-      "description": "Formato del nombre de archivo de las notas diarias (p. ej. YYYY-MM-DD dddd)",
       "label": "Formato de fecha",
+      "description": "Formato del nombre de archivo de las notas diarias (p. ej. YYYY-MM-DD dddd)",
       "placeholder": "YYYY-MM-DD",
       "renameNote": "Cambiar el formato renombra los archivos de diario existentes. Un archivo cuyo nuevo nombre ya está en uso se deja como está.",
       "tokensHelp": "Ayuda sobre el formato de fecha",
       "tokensNote": "Los demás caracteres se mantienen tal cual. Los nombres de los días siempre están en inglés.",
       "tokensTitle": "Códigos de formato"
     },
-    "folder": {
-      "description": "Carpeta donde se guardan las notas diarias",
-      "label": "Carpeta del diario",
-      "placeholder": "diario"
-    },
     "preview": {
-      "description": "Ruta del archivo del diario de hoy",
-      "label": "Vista previa"
+      "label": "Vista previa",
+      "description": "Ruta del archivo del diario de hoy"
+    },
+    "updateError": "No se pudo actualizar el ajuste",
+    "weekday": {
+      "toggle": "Usar una plantilla distinta para cada día",
+      "toggleDescription": "Elige una plantilla para cada día de la semana",
+      "inherit": "Usar la predeterminada",
+      "inheritWith": "Predeterminada · {name}",
+      "inheritNone": "Predeterminada · ninguna",
+      "missing": "Plantilla eliminada",
+      "clear": "Quitar",
+      "updated": "Plantilla actualizada para el {day}",
+      "cleared": "Plantilla quitada para el {day}",
+      "error": "No se pudo actualizar la plantilla del {day}",
+      "summary": "{count} de 7 configurados"
+    },
+    "v2": {
+      "groups": {
+        "defaultTemplate": "Plantilla predeterminada",
+        "location": "Ubicación y formato"
+      }
     }
   },
   "tasks": {
     "header": {
       "title": "Tareas",
-      "subtitle": "Configurar los valores predeterminados y el comportamiento de las tareas",
-      "loading": "Cargando configuración..."
+      "subtitle": "Configura los valores predeterminados y el comportamiento de las tareas",
+      "loading": "Cargando ajustes…"
     },
     "groups": {
       "defaults": "Valores predeterminados",
-      "calendar": "Calendario",
       "inbox": "Bandeja de entrada"
     },
     "defaultProject": {
       "label": "Proyecto predeterminado",
       "description": "Asignado cuando no se selecciona ningún proyecto",
       "placeholder": "Sin proyecto predeterminado",
-      "none": "Sin valor predeterminado (use Personal)",
+      "none": "Ninguno (usar Personal)",
       "error": "No se pudo actualizar el proyecto predeterminado"
     },
     "sortOrder": {
-      "label": "Orden de clasificación predeterminado",
+      "label": "Orden predeterminado",
       "description": "Cómo se ordenan las tareas en la vista de lista",
       "options": {
         "manual": "Manual (arrastrar y soltar)",
@@ -399,158 +603,458 @@
         "priority": "Prioridad",
         "createdAt": "Fecha de creación"
       },
-      "error": "No se pudo actualizar el orden de clasificación"
-    },
-    "weekStart": {
-      "label": "La semana comienza",
-      "description": "Primer día de la semana en vistas de calendario",
-      "options": {
-        "sunday": "domingo",
-        "monday": "lunes"
-      },
-      "error": "No se pudo actualizar el inicio de la semana"
+      "error": "No se pudo actualizar el orden"
     },
     "defaultView": {
       "label": "Vista predeterminada",
-      "description": "La pestaña en la que se abre la página de tareas",
+      "description": "La vista con la que se abre la página de Tareas",
       "options": {
-        "all": "Todos",
-        "today": "Hoy"
+        "all": "Todas",
+        "today": "Hoy",
+        "tomorrow": "Mañana",
+        "next7": "Próximos 7 días"
       },
       "error": "No se pudo actualizar la vista predeterminada"
     },
     "staleInbox": {
-      "label": "Umbral de bandeja de entrada obsoleta",
-      "description": "Las tareas anteriores a esta se resaltan como obsoletas",
-      "unit": "dias",
-      "error": "No se pudo actualizar el umbral de la bandeja de entrada obsoleta"
+      "label": "Antigüedad de elementos sin procesar",
+      "description": "Las tareas que superan esta antigüedad se resaltan como sin procesar",
+      "unit": "días",
+      "error": "No se pudo actualizar la antigüedad de elementos sin procesar"
+    }
+  },
+  "inbox": {
+    "header": {
+      "title": "Bandeja de entrada",
+      "subtitle": "Recordatorio de revisión diaria y preferencias de la bandeja de entrada.",
+      "loading": "Cargando…"
+    },
+    "imageFiling": {
+      "group": "Imágenes",
+      "error": "No se pudo actualizar la preferencia para clasificar imágenes",
+      "mode": {
+        "label": "Al clasificar una imagen en una nota",
+        "description": "«Insertar en la nota» mantiene la imagen dentro de la nota y fuera de la barra lateral. «Guardar en la barra lateral» la mueve a la carpeta que elijas y la enlaza.",
+        "embed": "Insertar en la nota",
+        "link": "Guardar en la barra lateral"
+      },
+      "ask": {
+        "label": "Preguntar siempre",
+        "description": "Si está desactivado, las imágenes nuevas usan la opción de arriba sin preguntar."
+      }
+    },
+    "reviewReminder": {
+      "group": "Recordatorio de revisión diaria",
+      "enabled": {
+        "label": "Recordarme revisar la bandeja de entrada",
+        "description": "Un aviso suave cada día cuando haya elementos en tu bandeja de entrada."
+      },
+      "time": {
+        "label": "Hora del recordatorio",
+        "description": "Hora local, en cada dispositivo.",
+        "hourLabel": "Hora",
+        "minuteLabel": "Minuto",
+        "periodLabel": "AM o PM"
+      },
+      "test": {
+        "label": "Notificación de prueba",
+        "description": "Lanza el recordatorio ahora para comprobar las notificaciones del sistema.",
+        "button": "Enviar prueba",
+        "sent": "Notificación de prueba enviada.",
+        "sentHint": "Si no aparece nada, permite las notificaciones de MemryNote en los ajustes del sistema.",
+        "unsupported": "Este dispositivo no puede mostrar notificaciones de escritorio."
+      },
+      "error": "No se pudo actualizar el recordatorio."
     }
   },
   "calendar": {
     "header": {
       "title": "Calendario",
-      "subtitle": "Configurar el comportamiento de las celdas del día en el panel Día",
-      "loading": "Cargando configuración..."
+      "subtitle": "Configura el comportamiento de las celdas del día en el panel del día",
+      "loading": "Cargando ajustes…"
     },
     "groups": {
+      "weekStart": "Semana",
       "dayCellClick": "Clic en la celda del día",
-      "notes": "Notas",
-      "weekStart": "Semana"
+      "notes": "Notas"
+    },
+    "weekStart": {
+      "label": "La semana empieza el",
+      "description": "Primer día de la semana en todos los calendarios",
+      "options": {
+        "sunday": "Domingo",
+        "monday": "Lunes"
+      },
+      "error": "No se pudo actualizar el inicio de la semana"
     },
     "defaultBehavior": {
       "label": "Comportamiento predeterminado",
-      "description": "Al hacer clic en un día en el calendario del Panel de días desde cualquier pestaña que no sea del calendario",
+      "description": "Al hacer clic en un día del calendario del panel del día desde cualquier pestaña que no sea el calendario",
       "error": "No se pudo actualizar el comportamiento de clic del día"
     },
     "pageOverride": {
-      "label": "Anulación de página de calendario",
-      "description": "Comportamiento cuando la pestaña Calendario está activa (el valor predeterminado es Abrir Calendario)",
-      "error": "No se pudo actualizar la anulación de la página del calendario"
-    },
-    "options": {
-      "openJournal": "Diario abierto",
-      "openCalendar": "Calendario abierto",
-      "useGlobal": "Usar configuración global"
+      "label": "Excepción en la página del calendario",
+      "description": "Comportamiento cuando la pestaña Calendario está activa (de forma predeterminada, «Abrir calendario»)",
+      "error": "No se pudo actualizar la excepción de la página del calendario"
     },
     "showNotesOnCalendar": {
-      "description": "Mostrar cada nota en el calendario como un elemento de todo el día en el día en que se creó",
-      "error": "No se pudo actualizar la opción de mostrar notas en el calendario",
-      "label": "Mostrar notas en el calendario"
+      "label": "Mostrar notas en el calendario",
+      "description": "Mostrar cada nota en el calendario como un elemento de todo el día, en la fecha en que se creó",
+      "error": "No se pudo actualizar la opción de mostrar notas en el calendario"
     },
-    "weekStart": {
-      "description": "Primer día de la semana en todos los calendarios",
-      "error": "No se pudo actualizar el inicio de la semana",
-      "label": "La semana empieza en",
-      "options": {
-        "monday": "Lunes",
-        "sunday": "Domingo"
-      }
+    "options": {
+      "openJournal": "Abrir diario",
+      "openCalendar": "Abrir calendario",
+      "useGlobal": "Usar ajuste global"
     },
     "google": {
-      "name": "Calendario de Google",
-      "description": "Sincronización bidireccional para eventos memrynote y calendarios de Google importados.",
+      "name": "Google Calendar",
+      "description": "Sincronización bidireccional de los eventos de memrynote y los calendarios de Google importados.",
       "statuses": {
         "connected": "Conectado",
         "notConnected": "No conectado",
-        "reconnectRequired": "Se requiere reconectar"
+        "reconnectRequired": "Reconexión necesaria"
       },
       "accountReconnect": "Volver a conectar Google",
+      "addAccount": "Añadir cuenta",
       "importedCalendars": "Calendarios importados",
-      "selected": "{count} seleccionado",
+      "selected": "{count, plural, one {# seleccionado} other {# seleccionados}}",
       "syncNow": "Sincronizar ahora",
       "disconnect": "Desconectar",
       "reconnect": "Volver a conectar Google",
-      "syncFailed": "algo salió mal",
+      "syncFailed": "Algo salió mal",
       "connectFailed": "No se pudo conectar Google Calendar",
       "refreshFailed": "No se pudo actualizar Google Calendar",
       "disconnectFailed": "No se pudo desconectar Google Calendar",
       "retryFailed": "No se pudo volver a intentar sincronizar el calendario",
       "pushToGoogle": {
+        "label": "Mostrar los eventos de memrynote en Google Calendar",
         "description": "Desactívalo para una sincronización unidireccional: seguirás viendo tus eventos de Google en memrynote, pero los eventos de memrynote no aparecerán en Google.",
-        "error": "No se pudo actualizar la dirección de la sincronización",
-        "label": "Mostrar los eventos de memrynote en Google Calendar"
+        "error": "No se pudo actualizar la dirección de la sincronización"
       },
       "agentAccess": {
+        "label": "Permitir que la IA lea los eventos de Google Calendar",
         "description": "Desactivado de forma predeterminada. Actívalo y el agente de IA podrá leer tus eventos de Google; desactívalo y no obtendrá nada cuando se le pregunte por ellos. De cualquier forma, seguirás viéndolos en memrynote.",
-        "error": "No se pudo actualizar el acceso de la IA",
-        "label": "Permitir que la IA lea los eventos de Google Calendar"
+        "error": "No se pudo actualizar el acceso de la IA"
       },
       "connect": "Conectar",
       "sourcePicker": {
         "empty": "Aún no hay calendarios de Google importados disponibles en este dispositivo.",
         "statuses": {
           "synced": "Sincronizado",
-          "error": "error",
+          "error": "Error",
           "pending": "Pendiente",
-          "idle": "inactivo"
+          "idle": "Inactivo"
         },
         "retrying": "Reintentando…",
         "retryNow": "Reintentar ahora"
       }
+    },
+    "subscriptions": {
+      "name": "Calendarios suscritos",
+      "description": "Añade un calendario de solo lectura con su enlace compartido (ICS o webcal), como un calendario de Proton, iCloud, Outlook o Fastmail. Se comprueba si hay cambios aproximadamente una vez por hora.",
+      "urlLabel": "Enlace del calendario",
+      "urlPlaceholder": "Enlace de calendario webcal:// o https://",
+      "subscribe": "Suscribirse",
+      "subscribing": "Suscribiendo…",
+      "refresh": "Actualizar",
+      "refreshing": "Actualizando…",
+      "remove": "Quitar",
+      "readOnly": "Solo lectura",
+      "updatedAt": "Actualizado {time}",
+      "notCheckedYet": "Aún no se ha comprobado",
+      "keptEvents": "Los eventos que ya están en tu calendario se mantienen hasta la próxima actualización correcta.",
+      "notEncrypted": "Sin cifrar",
+      "httpWarning": "Este enlace empieza por http://, así que el enlace y los eventos viajan sin cifrar. Cualquiera en la misma red puede leerlos. Usa un enlace https:// o webcal:// si el calendario lo ofrece.",
+      "added": "Se ha añadido «{title}».",
+      "addedSummary": "Se ha añadido «{title}»: {count, plural, one {# evento} other {# eventos}}, de {start} a {end}.",
+      "addedEmpty": "Se ha añadido «{title}». Aún no tiene eventos en los últimos 90 días ni en el próximo año.",
+      "rename": "Cambiar nombre",
+      "renameLabel": "Nombre del calendario",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "color": "Color del calendario",
+      "colorOption": "Color: {color}",
+      "help": {
+        "toggle": "¿Dónde encuentro el enlace?",
+        "intro": "Busca una opción para compartir llamada enlace público, dirección secreta, publicar o iCal. El enlace termina en .ics o empieza por webcal://.",
+        "proton": {
+          "name": "Proton Calendar",
+          "steps": "Ajustes → Calendarios, elige el calendario y crea un enlace en «Compartir con cualquiera». Elige la vista completa para ver los detalles de los eventos.",
+          "readOnly": "Los calendarios de Proton son de solo lectura en memrynote por diseño. Proton cifra los calendarios de extremo a extremo y no ofrece CalDAV, así que no hay forma de escribir en ellos. Haz los cambios en Proton."
+        },
+        "icloud": {
+          "name": "iCloud",
+          "steps": "En la app Calendario de un Mac o en iCloud.com, comparte el calendario, activa «Calendario público» y copia el enlace. Para editar también aquí los eventos de iCloud, conecta iCloud mediante CalDAV en su lugar."
+        },
+        "outlook": {
+          "name": "Outlook y Microsoft 365",
+          "steps": "Outlook en la web → Configuración → Calendario → Calendarios compartidos → Publicar un calendario. Elige «Puede ver todos los detalles», publica y copia el enlace ICS."
+        },
+        "fastmail": {
+          "name": "Fastmail",
+          "steps": "Ajustes → Calendarios, abre el calendario, activa la publicación y copia el enlace iCalendar."
+        },
+        "notion": {
+          "name": "Notion Calendar",
+          "steps": "Sus eventos están en la cuenta de Google o iCloud que le conectaste. Comparte el enlace desde esa cuenta."
+        },
+        "public": {
+          "name": "Festivos, colegios y deportes",
+          "steps": "Busca «Suscribirse», «Añadir al calendario» o «iCal» en el sitio web del organizador y copia ese enlace."
+        }
+      },
+      "errors": {
+        "invalid_url": "Eso no es un enlace de calendario. Pega una dirección que empiece por webcal://, https:// o http://.",
+        "unreachable": "No se pudo acceder a este calendario. Comprueba el enlace y tu conexión a internet.",
+        "timeout": "El calendario tardó demasiado en responder. Inténtalo de nuevo en un momento.",
+        "not_found": "No se encontró ningún calendario en este enlace. Puede que se haya eliminado o que haya cambiado su enlace para compartir.",
+        "unauthorized": "El calendario denegó el acceso. Copia un nuevo enlace para compartir desde tu app de calendario.",
+        "http_error": "El servidor del calendario devolvió un error. Inténtalo de nuevo más tarde.",
+        "too_large": "Este calendario es demasiado grande para añadirlo. Comparte un calendario más pequeño.",
+        "not_a_calendar": "Este enlace no devuelve un calendario. Copia el enlace ICS o webcal desde las opciones para compartir de tu app de calendario.",
+        "too_many_redirects": "Este enlace redirige una y otra vez y nunca llega a un calendario. Vuelve a copiar el enlace desde tu app de calendario.",
+        "unsupported_redirect": "Este enlace redirige a una dirección que no es un enlace web, así que memrynote no la sigue. Copia el enlace ICS o webcal desde tu app de calendario.",
+        "unknown": "No se pudo actualizar este calendario ({code}). Inténtalo de nuevo más tarde."
+      }
+    },
+    "providers": {
+      "caldav": {
+        "name": "CalDAV"
+      },
+      "statuses": {
+        "connected": "Conectado",
+        "notConnected": "No conectado"
+      },
+      "readOnly": "Solo lectura",
+      "pollInterval": "Comprueba si hay cambios cada {minutes} minutos. Los cambios hechos en otro sitio no son instantáneos.",
+      "connect": "Conectar",
+      "connecting": "Conectando…",
+      "connectFailed": "No se pudo conectar. Comprueba los datos e inténtalo de nuevo.",
+      "disconnect": "Desconectar",
+      "disconnectFailed": "No se pudo desconectar. Inténtalo de nuevo.",
+      "syncNow": "Sincronizar ahora",
+      "refreshFailed": "No se pudo sincronizar. Tus calendarios se quedan como estaban; inténtalo de nuevo más tarde.",
+      "addAccount": "Añadir cuenta",
+      "accounts": "Cuentas",
+      "calendars": "Calendarios",
+      "retry": "Reintentar ahora",
+      "reconnectRequired": "Este dispositivo no tiene la contraseña de esta cuenta. Vuelve a conectarla para sincronizar desde aquí.",
+      "push": {
+        "label": "Escribir los eventos de memrynote en este calendario",
+        "description": "Desactívalo para una sincronización unidireccional: seguirás viendo estos eventos en memrynote, pero los eventos y las tareas de memrynote no se escribirán aquí."
+      },
+      "agentAccess": {
+        "label": "Permitir que la IA lea estos eventos",
+        "description": "Desactivado hasta que lo actives. Cada servicio de calendario tiene su propio permiso; permitirlo para Google no lo permite para este.",
+        "error": "No se pudo actualizar el acceso de la IA"
+      },
+      "basic": {
+        "serverLabel": "Dirección del servidor",
+        "serverPlaceholder": "https://dav.example.com",
+        "usernameLabel": "Nombre de usuario",
+        "passwordLabel": "Contraseña de app"
+      },
+      "compat": {
+        "outdated": "Estos dispositivos de tu cuenta usan una versión de memrynote anterior a la {version}:",
+        "unverified": "memrynote no pudo comprobar qué versiones usan tus otros dispositivos.",
+        "unknownVersion": "versión desconocida",
+        "consequence": "Una versión anterior puede copiar tareas y eventos de este calendario en Google Calendar como duplicados, o no sincronizarlos. Actualiza primero esos dispositivos, o continúa si lo aceptas.",
+        "acknowledge": "Entendido, conectar igualmente"
+      },
+      "reconnect": "Volver a conectar",
+      "defaultTarget": {
+        "label": "Calendario predeterminado",
+        "description": "Dónde se guardan los eventos, las tareas, los recordatorios y los elementos pospuestos nuevos cuando no eliges un calendario. Solo un servicio de calendario puede tener el predeterminado.",
+        "none": "No es el predeterminado",
+        "error": "No se pudo cambiar el calendario predeterminado"
+      },
+      "appleEventKit": {
+        "name": "Este Mac",
+        "description": "Muestra todos los calendarios que la app Calendario ya tiene en este Mac: iCloud, Google, Exchange y En mi Mac. Sin iniciar sesión, de solo lectura, y los eventos nunca salen de este Mac ni se sincronizan con tus otros dispositivos.",
+        "connect": "Permitir acceso a los calendarios",
+        "connectHint": "macOS lo pregunta una vez. Puedes cambiarlo más tarde en Ajustes del Sistema.",
+        "otherCalendars": "Otros calendarios",
+        "alreadyConnected": "Ya está conectado mediante {provider}, así que empieza desactivado para no mostrar los eventos dos veces.",
+        "openSystemSettings": "Abrir Ajustes del Sistema",
+        "checkAgain": "Volver a comprobar",
+        "errors": {
+          "permission_denied": "El acceso a los calendarios está desactivado para memrynote. Actívalo en Ajustes del Sistema → Privacidad y seguridad → Calendarios y vuelve a comprobarlo.",
+          "permission_restricted": "El acceso a los calendarios está bloqueado en este Mac, normalmente por un perfil de gestión. No ha cambiado nada en memrynote; quien gestione este Mac puede permitirlo.",
+          "permission_write_only": "memrynote solo puede añadir eventos, y eso no basta para mostrarlos. Cámbialo a «Acceso total» en Ajustes del Sistema → Privacidad y seguridad → Calendarios.",
+          "permission_not_determined": "memrynote aún no tiene acceso a los calendarios. Permítelo para mostrar los calendarios de tu Mac.",
+          "unavailable": "No se pudo iniciar el lector de Calendario de macOS. Tus calendarios no han cambiado; reinicia memrynote e inténtalo de nuevo.",
+          "sync_failed": "No se pudo leer la app Calendario en este momento. Tus calendarios se quedan como estaban y memrynote lo volverá a intentar cuando la app Calendario cambie."
+        }
+      }
+    },
+    "caldav": {
+      "presetLabel": "Servicio",
+      "presets": {
+        "icloud": "Apple iCloud",
+        "fastmail": "Fastmail",
+        "nextcloud": "Nextcloud",
+        "selfHosted": "Radicale o Baïkal (autoalojado)",
+        "zoho": "Zoho",
+        "yahoo": "Yahoo",
+        "mailboxOrg": "mailbox.org",
+        "posteo": "Posteo",
+        "synology": "Synology",
+        "other": "Otro servidor CalDAV"
+      },
+      "hostLabel": "Nombre del servidor",
+      "hostPlaceholder": "cloud.example.com",
+      "appleIdLabel": "Apple ID (correo electrónico)",
+      "icloudHelp": "Usa una contraseña específica de app, no la contraseña de tu Apple ID. Crea una en Inicio de sesión y seguridad → Contraseñas específicas de app.",
+      "appPasswordHelp": "Si tu servicio ofrece contraseñas de app, crea una para memrynote y úsala aquí.",
+      "createAppPassword": "Crear una contraseña de app",
+      "testConnection": "Probar conexión",
+      "testing": "Probando…",
+      "chooseCalendars": "Calendarios que mostrar",
+      "reconnectFor": "Introduce la contraseña de app de {username}.",
+      "errors": {
+        "unauthorizedIcloud": "iCloud no aceptó esta contraseña. Aquí iCloud necesita una contraseña específica de app, no la contraseña de tu Apple ID. Crea una en account.apple.com, en Inicio de sesión y seguridad, e inténtalo de nuevo.",
+        "unauthorized": "El servidor no aceptó este nombre de usuario y contraseña. Comprueba ambos y usa una contraseña de app si tu servicio las ofrece.",
+        "unreachable": "No se pudo acceder al servidor. Comprueba la dirección y tu conexión a internet, e inténtalo de nuevo.",
+        "notCaldav": "No se encontraron calendarios CalDAV en esta dirección. Comprueba la dirección del servidor; algunos servicios necesitan una ruta como /remote.php/dav.",
+        "noCalendars": "Esta cuenta no tiene calendarios que admitan eventos.",
+        "invalidUrl": "Eso no es una dirección de servidor. Introduce una dirección como https://dav.example.com.",
+        "outdatedDevices": "Algunos de tus dispositivos usan una versión anterior de memrynote. Actualízalos o confirma abajo que quieres conectar igualmente.",
+        "unknown": "No se pudo conectar ({code}). No se ha guardado nada; inténtalo de nuevo más tarde."
+      },
+      "reconnect": {
+        "missing": "Este dispositivo aún no tiene la contraseña de app de esta cuenta. Sus eventos siguen llegando desde tus otros dispositivos; introduce aquí la contraseña de app para sincronizar también desde este dispositivo.",
+        "icloudRevoked": "iCloud ya no acepta esta contraseña específica de app. Al restablecer la contraseña de tu Apple ID se revocan todas las contraseñas específicas de app. Crea una nueva en account.apple.com y vuelve a conectar.",
+        "rejected": "El servidor ya no acepta esta contraseña. Si la cambiaste o revocaste la contraseña de app, crea una nueva y vuelve a conectar."
+      }
+    },
+    "v2": {
+      "groups": {
+        "layout": "Disposición",
+        "connected": "Calendarios conectados"
+      },
+      "addCalendar": "Añadir calendario",
+      "calendarCount": "{selected} de {count, plural, one {# calendario} other {# calendarios}}",
+      "defaultPill": "Predeterminado",
+      "subscription": "Suscripción",
+      "subscriptionCount": "{count, plural, =0 {Sin suscripciones} one {# suscripción} other {# suscripciones}}"
     }
   },
   "account": {
     "header": {
-      "title": "cuenta",
+      "title": "Cuenta",
       "subtitle": "Tu cuenta, sincronización y seguridad",
-      "loading": "Cargando..."
+      "loading": "Cargando…"
     },
     "groups": {
       "identity": "Identidad",
-      "sync": "Sincronizar",
+      "sync": "Sincronización",
+      "billing": "Facturación",
       "storage": "Almacenamiento",
-      "devices": "Dispositivos",
-      "billing": "Facturación"
+      "devices": "Dispositivos"
     },
     "identity": {
       "unknown": "Desconocido",
       "encrypted": "Cifrado de extremo a extremo"
     },
     "sync": {
-      "lastSynced": "Última sincronización {time}",
-      "pending": "{count, plural, one {# pendiente} other {# pendiente}}",
+      "lastSynced": "Última sincronización: {time}",
+      "pending": "{count, plural, one {# pendiente} other {# pendientes}}",
+      "attachmentAutoDownload": {
+        "label": "Descargar adjuntos automáticamente",
+        "description": "Descarga en segundo plano los adjuntos de las notas sincronizadas. Si está desactivado, los archivos se descargan solo cuando los abres.",
+        "saveFailed": "No se pudo guardar la preferencia de descarga de adjuntos"
+      },
       "statuses": {
         "synced": "Sincronizado",
-        "syncing": "Sincronizando...",
+        "syncing": "Sincronizando…",
         "paused": "En pausa",
         "syncError": "Error de sincronización",
         "offline": "Sin conexión",
-        "connecting": "Conectando...",
-        "pushed": "{count, plural, one {# empujado} other {# empujado}}",
-        "pulled": "{count, plural, one {# retirado} other {# retirado}}",
+        "connecting": "Conectando…",
+        "localOnly": "Solo local",
+        "pushed": "{count, plural, one {# enviado} other {# enviados}}",
+        "pulled": "{count, plural, one {# recibido} other {# recibidos}}",
         "pushedPulled": "{parts}",
-        "changesPending": "{count, plural, one {Cambio # pendiente} other {# cambios pendientes}}",
-        "offlinePending": "Sin conexión ({count, plural, one {Cambio # pendiente} other {# cambios pendientes}})",
-        "never": "nunca"
+        "changesPending": "{count, plural, one {# cambio pendiente} other {# cambios pendientes}}",
+        "offlinePending": "Sin conexión ({count, plural, one {# cambio pendiente} other {# cambios pendientes}})",
+        "never": "Nunca"
+      },
+      "upsell": {
+        "title": "Tus notas solo están en este dispositivo",
+        "description": "Activa la sincronización y todas tus notas te acompañarán en tus otros dispositivos, cifradas de extremo a extremo para que solo tú puedas leerlas.",
+        "benefits": {
+          "devices": "Cada dispositivo sigue donde lo dejaste",
+          "encrypted": "Cifrado de extremo a extremo: las claves nunca salen de tus manos",
+          "backup": "Una copia de seguridad cifrada, por si este dispositivo no está disponible"
+        },
+        "guarantee": "Garantía de devolución de 14 días. Cancela cuando quieras."
+      },
+      "activating": {
+        "title": "Completando la activación",
+        "description": "Tu plan está activo. La sincronización empezará en cuanto lo confirmemos; actualizar el estado suele bastar."
+      }
+    },
+    "billing": {
+      "planStatus": "Estado del plan",
+      "checking": "Comprobando el estado de facturación",
+      "annualSwitch": {
+        "title": "Cambiar a facturación anual",
+        "description": "Ahorra un 20 %. Prorrateamos lo que queda de este mes, sin un segundo cargo.",
+        "action": "Cambiar a anual",
+        "pricing": "Calculando precio…",
+        "preview": "{amount} hoy y después {recurring} al año",
+        "confirm": "Confirmar cambio",
+        "switching": "Cambiando…",
+        "success": "Ya tienes facturación anual.",
+        "failed": "No se pudo cambiar tu plan"
+      },
+      "plans": {
+        "free": "Plan gratuito",
+        "plus": "Plan Plus",
+        "pro": "Plan Pro",
+        "believer": "Plan Believer"
+      },
+      "statuses": {
+        "inactive": "Inactivo",
+        "active": "Activo",
+        "past_due": "Pago vencido",
+        "paused": "Pausado",
+        "canceled": "Cancelado"
+      },
+      "labels": {
+        "storage": "Almacenamiento",
+        "maxFile": "Tamaño máx. de archivo",
+        "vaults": "Bóvedas",
+        "history": "Historial"
+      },
+      "unlimited": "Ilimitado",
+      "historyDays": "{days} días",
+      "activationPendingPrefix": "Activación pendiente. Paddle puede tardar un momento en confirmar el pago. Actualiza el estado o escribe a",
+      "actions": {
+        "upgrade": "Mejorar plan",
+        "unlockSync": "Desbloquear sincronización",
+        "opening": "Abriendo…",
+        "refresh": "Actualizar estado",
+        "manage": "Gestionar facturación"
+      },
+      "toasts": {
+        "loadFailed": "No se pudo cargar el estado de facturación",
+        "checkoutFailed": "No se pudo iniciar el pago",
+        "checkoutOpened": "Se ha abierto el pago en tu navegador",
+        "refreshFailed": "No se pudo actualizar el estado de facturación",
+        "billingActive": "La facturación está activa",
+        "activationPending": "Activación pendiente",
+        "portalFailed": "No se pudo abrir el portal de facturación"
       }
     },
     "storage": {
-      "used": "{used} de {limit} usado",
+      "used": "{used} de {limit} en uso",
       "categories": {
         "notes": "Notas",
         "attachments": "Adjuntos",
         "crdt": "CRDT",
-        "other": "Otro"
+        "other": "Otros"
       }
     },
     "security": {
@@ -560,260 +1064,234 @@
         "action": "Cerrar sesión"
       }
     },
+    "community": {
+      "prompt": "¿Te encanta memrynote?",
+      "star": "Danos una estrella en GitHub",
+      "and": "y",
+      "feedback": "comparte tus comentarios"
+    },
     "signOutDialog": {
-      "title": "¿Cerrar sesión sin sincronización?",
-      "description": "La sincronización se detendrá y las claves de cifrado se eliminarán de este dispositivo. Tus notas permanecerán en este dispositivo. Necesitará su frase de recuperación para configurar la sincronización nuevamente.",
+      "title": "¿Cerrar sesión y detener la sincronización?",
+      "description": "La sincronización se detendrá y las claves de cifrado se eliminarán de este dispositivo. Tus notas permanecerán en este dispositivo. Necesitarás tu frase de recuperación para volver a configurar la sincronización.",
       "confirm": "Cerrar sesión",
-      "signingOut": "Cerrando sesión..."
+      "signingOut": "Cerrando sesión…"
     },
     "toasts": {
-      "signedOut": "Cerró sesión correctamente",
+      "signedOut": "Sesión cerrada correctamente",
       "signOutFailed": "No se pudo cerrar sesión",
       "deviceLinked": "Dispositivo vinculado correctamente"
     },
-    "billing": {
-      "actions": {
-        "manage": "Gestionar facturación",
-        "opening": "Abriendo...",
-        "refresh": "Actualizar estado",
-        "upgrade": "Mejorar"
-      },
-      "activationPendingPrefix": "Activación pendiente. Paddle puede tardar un momento en confirmar el pago. Actualiza el estado o escribe a",
-      "checking": "Comprobando el estado de facturación",
-      "historyDays": "{days} días",
-      "labels": {
-        "history": "Historial",
-        "maxFile": "Archivo máximo",
-        "storage": "Almacenamiento",
-        "vaults": "Bóvedas"
-      },
-      "planStatus": "Estado del plan",
-      "plans": {
-        "believer": "Plan Believer",
-        "free": "Plan Gratis",
-        "plus": "Plan Plus",
-        "pro": "Plan Pro"
-      },
-      "statuses": {
-        "active": "Activo",
-        "canceled": "Cancelado",
-        "inactive": "Inactivo",
-        "past_due": "Vencido",
-        "paused": "Pausado"
-      },
-      "toasts": {
-        "activationPending": "Activación pendiente",
-        "billingActive": "La facturación está activa",
-        "checkoutFailed": "No se pudo iniciar el pago",
-        "checkoutOpened": "Pago abierto en tu navegador",
-        "loadFailed": "No se pudo cargar el estado de facturación",
-        "portalFailed": "No se pudo abrir el portal de facturación",
-        "refreshFailed": "No se pudo actualizar el estado de facturación"
-      },
-      "unlimited": "Ilimitado"
-    },
-    "community": {
-      "and": "y",
-      "feedback": "comparte tu opinión",
-      "prompt": "¿Te encanta memrynote?",
-      "star": "Danos una estrella en GitHub"
+    "v2": {
+      "stats": {
+        "plan": "Plan"
+      }
     }
   },
   "setup": {
     "steps": {
       "signIn": "Iniciar sesión",
-      "verify": "verificar",
-      "link": "Enlace"
+      "verify": "Verificar",
+      "link": "Vincular"
     },
     "progress": "Paso {current} de {total}: {label}",
     "signIn": {
       "title": "Configurar sincronización",
-      "description": "Cree una cuenta para sincronizar sus datos entre dispositivos con cifrado de extremo a extremo.",
+      "description": "Crea una cuenta para sincronizar tus datos entre dispositivos con cifrado de extremo a extremo.",
       "or": "o",
+      "paidPlan": "La sincronización requiere un plan de pago.",
+      "seePlans": "Ver planes",
       "errors": {
         "sendCode": "No se pudo enviar el código",
-        "googleStart": "No se pudo iniciar el inicio de sesión de Google"
-      },
-      "paidPlan": "La sincronización es un plan de pago.",
-      "seePlans": "Ver planes"
+        "googleStart": "No se pudo iniciar sesión con Google"
+      }
     },
     "email": {
       "label": "Dirección de correo electrónico",
-      "placeholder": "Introduce tu dirección de correo electrónico...",
-      "invalid": "Por favor introduce una dirección de correo electrónico válida",
-      "sending": "Enviando código..."
+      "placeholder": "Introducir tu correo electrónico…",
+      "invalid": "Introduce una dirección de correo electrónico válida",
+      "sending": "Enviando código…"
     },
     "oauth": {
       "google": "Continuar con Google"
     },
     "otp": {
-      "title": "Ingrese el código de verificación",
-      "sentTo": "Enviamos un código de 6 dígitos a ",
-      "aria": "código de verificación de 6 dígitos",
-      "verifying": "Verificando...",
-      "resending": "Reenviando...",
+      "title": "Introduce el código de verificación",
+      "sentTo": "Hemos enviado un código de 6 dígitos a ",
+      "aria": "Código de verificación de 6 dígitos",
+      "verifying": "Verificando…",
+      "resending": "Reenviando…",
       "resend": "Reenviar código",
       "resendIn": "Reenviar en {time}",
-      "differentEmail": "Utilice un correo electrónico diferente",
+      "differentEmail": "Usar otro correo electrónico",
       "error": "La verificación falló",
       "resendError": "No se pudo reenviar"
     },
     "recovery": {
       "displayTitle": "Guarda tu frase de recuperación",
-      "displayDescription": "Esta es la única forma de recuperar sus datos cifrados si pierde el acceso a todos sus dispositivos.",
-      "warning": "Anótelo y guárdelo en un lugar seguro. No lo volverás a ver.",
-      "wordsAria": "Palabras de frases de recuperación",
+      "displayDescription": "Es la única forma de recuperar tus datos cifrados si pierdes el acceso a todos tus dispositivos.",
+      "warning": "Anótala y guárdala en un lugar seguro. No volverás a verla.",
+      "wordsAria": "Palabras de la frase de recuperación",
       "wordAria": "Palabra {index}: {word}",
       "copyAria": "Copiar frase de recuperación al portapapeles",
       "copiedAria": "Frase de recuperación copiada",
       "copied": "Copiado",
       "saved": "He guardado mi frase de recuperación",
       "confirmTitle": "Confirma tu frase de recuperación",
-      "confirmDescription": "Ingrese las palabras solicitadas para verificar que las haya guardado correctamente.",
-      "wordPlaceholder": "Introduzca la palabra #{index}",
-      "verify": "verificar",
+      "confirmDescription": "Introduce las palabras solicitadas para comprobar que la has guardado correctamente.",
+      "wordPlaceholder": "Introducir la palabra n.º {index}",
+      "verify": "Verificar",
       "mustMatch": "Las 3 palabras deben coincidir para continuar",
-      "inputTitle": "Introduzca la frase de recuperación",
-      "inputDescription": "Ingrese su frase de recuperación de 24 palabras para restaurar el acceso a sus datos cifrados.",
+      "inputTitle": "Introduce tu frase de recuperación",
+      "inputDescription": "Introduce tu frase de recuperación de 24 palabras para restaurar el acceso a tus datos cifrados.",
       "inputLabel": "Frase de recuperación",
-      "count": "Palabras {count} / {total}",
-      "inputPlaceholder": "Ingresa tu frase de recuperación de 24 palabras separadas por espacios...",
-      "lengthHint": "Ingrese las 24 palabras para habilitar el botón de restauración",
+      "count": "{count} / {total} palabras",
+      "inputPlaceholder": "Introducir tu frase de recuperación de 24 palabras separadas por espacios…",
+      "lengthHint": "Introduce las 24 palabras para activar el botón de restaurar",
       "restore": "Restaurar acceso",
       "progress": {
-        "deriving": "Derivando claves de cifrado...",
-        "validating": "Validando frase de recuperación...",
-        "registering": "Registrando dispositivo..."
+        "deriving": "Derivando claves de cifrado…",
+        "validating": "Validando la frase de recuperación…",
+        "registering": "Registrando el dispositivo…"
       },
       "failed": "La recuperación falló",
       "confirmationFailed": "Error de confirmación",
       "unavailable": {
-        "description": "Tu frase de recuperación se muestra solo una vez durante la configuración y no se puede recuperar después. Empieza de nuevo para generar una nueva.",
         "loading": "Cargando tu frase de recuperación…",
-        "startOver": "Empezar de nuevo",
-        "title": "No se pudo cargar tu frase de recuperación"
+        "title": "No se pudo cargar tu frase de recuperación",
+        "description": "Tu frase de recuperación se muestra solo una vez durante la configuración y no se puede recuperar después. Empieza de nuevo para generar una nueva.",
+        "startOver": "Empezar de nuevo"
       }
+    },
+    "startFresh": {
+      "trigger": "Ya no tengo mi frase de recuperación",
+      "title": "Empezar de cero en este dispositivo",
+      "description": "Haz esto solo si has perdido tu frase de recuperación para siempre. No se puede deshacer.",
+      "consequenceSignOut": "Este dispositivo cerrará sesión y dejará de sincronizarse.",
+      "consequenceKey": "Se eliminará la clave de cifrado guardada en este dispositivo. Todo lo que ya esté almacenado en tu cuenta seguirá cifrado con la clave antigua; sin la frase de recuperación, nadie podrá volver a leerlo.",
+      "consequenceLocal": "Las notas ya guardadas en este equipo se quedan en la carpeta de tu bóveda y siguen funcionando.",
+      "confirm": "Cerrar sesión y empezar de cero",
+      "cancel": "Volver"
     },
     "linking": {
       "choiceTitle": "Vincular este dispositivo",
-      "choiceDescription": "Transfiera claves de cifrado desde otro dispositivo o restaure desde su frase de recuperación.",
-      "qrChoice": "Enlace mediante código QR",
+      "choiceDescription": "Transfiere las claves de cifrado desde otro dispositivo o restaura el acceso con tu frase de recuperación.",
+      "qrChoice": "Vincular mediante código QR",
       "qrChoiceDescription": "Escanea el código que se muestra en tu otro dispositivo",
       "recoveryChoice": "Frase de recuperación",
-      "recoveryChoiceDescription": "Ingrese su frase de recuperación de 24 palabras",
-      "codeTitle": "Introduce el código de enlace",
-      "codeDescription": "Pegue el código de enlace de su otro dispositivo para transferir de forma segura sus claves de cifrado.",
-      "codeLabel": "código de enlace",
+      "recoveryChoiceDescription": "Introduce tu frase de recuperación de 24 palabras",
+      "codeTitle": "Introduce el código de vinculación",
+      "codeDescription": "Pega el código de vinculación de tu otro dispositivo para transferir tus claves de cifrado de forma segura.",
+      "codeLabel": "Código de vinculación",
       "valid": "Válido",
       "invalid": "Formato no válido",
-      "codePlaceholder": "Pega el código de tu otro dispositivo...",
-      "formatHint": "Pega el código de enlace JSON desde tu otro dispositivo",
-      "linking": "Vinculando...",
-      "linkDevice": "Dispositivo de enlace",
+      "codePlaceholder": "Pegar el código de tu otro dispositivo…",
+      "formatHint": "Pega el código de vinculación JSON de tu otro dispositivo",
+      "linking": "Vinculando…",
+      "linkDevice": "Vincular dispositivo",
       "failed": "Error al vincular",
       "deviceFailed": "No se pudo vincular el dispositivo",
       "pendingSuccess": "Dispositivo vinculado correctamente",
-      "goBack": "volver",
+      "goBack": "Volver",
       "waitingTitle": "Esperando aprobación",
-      "waitingDescription": "Abra memrynote en su otro dispositivo y apruebe la solicitud de vinculación.",
+      "waitingDescription": "Abre memrynote en tu otro dispositivo y aprueba la solicitud de vinculación.",
       "verificationCode": "Código de verificación",
       "confirmCode": "Confirma que esto coincide con el código de tu otro dispositivo",
-      "vaultPickerChooseFolder": "Elegir carpeta",
-      "vaultPickerConfirm": "Descargar seleccionadas",
-      "vaultPickerDescription": "Esta cuenta tiene varias bóvedas. Elige una carpeta y las bóvedas que quieres añadir a este dispositivo.",
-      "vaultPickerDormantHint": "Añadida, se abre cuando cambies a ella",
-      "vaultPickerFolderLabel": "Guardar las bóvedas en la carpeta",
-      "vaultPickerPrimaryHint": "Se abre ahora",
       "vaultPickerTitle": "Elige qué descargar",
-      "vaultRow": "Bóveda — {count} elementos · {date}"
+      "vaultPickerDescription": "Esta cuenta tiene varias bóvedas. Elige una carpeta y las bóvedas que quieres añadir a este dispositivo.",
+      "vaultPickerFolderLabel": "Guardar las bóvedas en la carpeta",
+      "vaultPickerChooseFolder": "Elegir carpeta",
+      "vaultRow": "Bóveda: {count} elementos · {date}",
+      "vaultPickerPrimaryHint": "Se abre ahora",
+      "vaultPickerDormantHint": "Añadida, se abre cuando cambies a ella",
+      "vaultPickerConfirm": "Descargar seleccionadas"
     }
   },
   "devices": {
-    "loading": "Cargando dispositivos...",
-    "loadingAria": "Dispositivos de carga",
+    "loading": "Cargando dispositivos…",
+    "loadingAria": "Cargando dispositivos",
     "none": "Aún no hay dispositivos vinculados",
     "linkNew": "Vincular nuevo dispositivo",
-    "thisDevice": "este dispositivo",
+    "thisDevice": "Este dispositivo",
     "lastSeen": "Visto por última vez hace {time}",
     "linked": "Vinculado hace {time}",
     "renameAria": "Cambiar el nombre de {name}",
     "rename": "Cambiar nombre",
     "revoke": "Revocar",
     "showLess": "Mostrar menos",
-    "showMore": "{count, plural, one {# más dispositivo} other {# más dispositivos}}",
-    "showMoreAria": "Mostrar {count, plural, one {# más dispositivo} other {# más dispositivos}}",
+    "showMore": "{count, plural, one {# dispositivo más} other {# dispositivos más}}",
+    "showMoreAria": "Mostrar {count, plural, one {# dispositivo más} other {# dispositivos más}}",
     "dialogs": {
-      "revokeTitle": "¿Revocar \"{name}\"?",
-      "revokeDescription": "Este dispositivo perderá el acceso a sus datos sincronizados. Será necesario vincularlo nuevamente para restaurar la sincronización. Los datos locales en ese dispositivo permanecerán.",
+      "revokeTitle": "¿Revocar «{name}»?",
+      "revokeDescription": "Este dispositivo perderá el acceso a tus datos sincronizados. Tendrás que volver a vincularlo para restaurar la sincronización. Los datos locales de ese dispositivo se conservarán.",
       "revokeDevice": "Revocar dispositivo",
-      "revoking": "Revocando...",
+      "revoking": "Revocando…",
       "renameTitle": "Cambiar nombre del dispositivo",
-      "renameDescription": "Elija un nombre para identificar este dispositivo.",
+      "renameDescription": "Elige un nombre para identificar este dispositivo.",
       "namePlaceholder": "Nombre del dispositivo",
-      "renaming": "Cambiando el nombre..."
+      "renaming": "Cambiando el nombre…"
     },
     "toasts": {
       "loadFailed": "No se pudieron cargar los dispositivos",
-      "removed": "Se eliminó \"{name}\"",
-      "removeFailed": "No se pudo eliminar el dispositivo",
-      "renamed": "Renombrado a \"{name}\"",
+      "removed": "Se ha quitado «{name}»",
+      "removeFailed": "No se pudo quitar el dispositivo",
+      "renamed": "Nombre cambiado a «{name}»",
       "renameFailed": "No se pudo cambiar el nombre del dispositivo"
     },
     "platformMeta": "{platform} · {detail}"
   },
   "qrLinking": {
     "title": "Vincular nuevo dispositivo",
-    "description": "Escanee este código QR desde el dispositivo que desea vincular para transferir sus claves de cifrado de forma segura.",
+    "description": "Escanea este código QR desde el dispositivo que quieres vincular para transferir tus claves de cifrado de forma segura.",
     "encrypted": "Cifrado de extremo a extremo",
-    "generating": "Generando código de enlace...",
-    "generatingAria": "Generando código de enlace",
-    "generateFailed": "No se pudo generar el código de enlace",
+    "generating": "Generando código de vinculación…",
+    "generatingAria": "Generando código de vinculación",
+    "generateFailed": "No se pudo generar el código de vinculación",
     "tryAgain": "Inténtalo de nuevo",
-    "expired": "El código de vinculación expiró",
+    "expired": "El código de vinculación ha caducado",
     "generateNew": "Generar nuevo código",
     "qrAria": "Código QR para vinculación de dispositivos",
-    "qrImageAria": "Dispositivo que vincula el código QR",
+    "qrImageAria": "Código QR para vincular el dispositivo",
     "expiresIn": "Caduca en {time}",
     "or": "o",
-    "codeLabel": "código de enlace",
-    "copyAria": "Copiar código de enlace",
+    "codeLabel": "Código de vinculación",
+    "copyAria": "Copiar código de vinculación",
     "copiedAria": "Copiado",
     "copied": "¡Copiado!"
   },
   "linkingApproval": {
-    "title": "El nuevo dispositivo quiere vincularse",
-    "description": "Un dispositivo solicita acceso a sus datos cifrados. Apruebe solo si usted inició esta solicitud.",
+    "title": "Un dispositivo nuevo quiere vincularse",
+    "description": "Un dispositivo solicita acceso a tus datos cifrados. Apruébalo solo si tú iniciaste esta solicitud.",
     "unknownDevice": "Dispositivo desconocido",
     "unknownPlatform": "Plataforma desconocida",
     "verificationCode": "Código de verificación",
-    "computing": "Computación...",
+    "computing": "Calculando…",
     "unavailable": "No disponible",
-    "confirmCode": "Confirme que este código coincida con el que se muestra en el nuevo dispositivo",
+    "confirmCode": "Confirma que este código coincide con el que se muestra en el nuevo dispositivo",
     "reject": "Rechazar",
     "approve": "Aprobar",
-    "approving": "Aprobando...",
+    "approving": "Aprobando…",
     "approvalFailed": "La aprobación falló",
     "failedToApprove": "No se pudo aprobar el dispositivo"
   },
   "ai": {
     "header": {
       "title": "Asistente de IA",
-      "subtitle": "Las incorporaciones se ejecutan localmente. Las notas de voz pueden usar Whisper Small o su clave OpenAI.",
-      "loading": "Cargando configuración..."
+      "subtitle": "Los embeddings se ejecutan localmente. Las notas de voz pueden usar Whisper Small o tu clave de OpenAI.",
+      "loading": "Cargando ajustes…"
     },
     "enable": {
-      "label": "Habilitar funciones de IA",
-      "description": "Sugerencias de archivo inteligentes y conexiones de notas",
-      "enabled": "Funciones de IA habilitadas",
-      "disabled": "Funciones de IA deshabilitadas",
-      "error": "No se pudo actualizar la configuración"
+      "label": "Activar funciones de IA",
+      "description": "Sugerencias inteligentes de clasificación y conexiones entre notas",
+      "enabled": "Funciones de IA activadas",
+      "disabled": "Funciones de IA desactivadas",
+      "error": "No se pudo actualizar el ajuste"
     },
     "unknownError": "Error desconocido",
     "groups": {
       "voice": "Transcripción de voz",
-      "embeddingModel": "Modelo de incrustación local",
-      "embeddingIndex": "Índice de incrustación",
-      "inline": "Edición de IA en línea"
+      "embeddingModel": "Modelo de embeddings local",
+      "embeddingIndex": "Índice de embeddings",
+      "inline": "Edición con IA en el editor"
     },
     "voice": {
       "provider": "Proveedor",
@@ -822,6 +1300,14 @@
         "local": "Local (predeterminado)",
         "openai": "OpenAI (BYOK)"
       },
+      "memoNameMode": "Nombres de las notas de voz",
+      "memoNameModeDescription": "Cómo se nombran las notas de voz tras la transcripción",
+      "naming": {
+        "transcript": "Título de la transcripción",
+        "timestamp": "Marca de tiempo",
+        "none": "No renombrar"
+      },
+      "namingError": "No se pudo actualizar cómo se nombran las notas de voz",
       "localModel": "Modelo local",
       "localModelDescription": "Whisper Small se descarga bajo demanda y permanece almacenado en caché localmente",
       "status": {
@@ -830,100 +1316,324 @@
         "downloaded": "Descargado",
         "notDownloaded": "No descargado"
       },
-      "cacheHint": "No incluido con la aplicación · Descargado desde Configuración · Almacenado en caché en este dispositivo",
-      "preparing": "Preparando Whisper Pequeño...",
-      "download": "Descargar Susurro Pequeño",
-      "apiKey": "Clave API de OpenAI",
-      "apiKeyDescription": "Almacenado en el llavero de su sistema operativo y usado solo para transcripción de voz",
-      "replaceKey": "Reemplazar la clave OpenAI guardada",
-      "enterKey": "Ingrese la clave API de OpenAI",
+      "cacheHint": "No incluido con la app · Se descarga desde Ajustes · En caché en este dispositivo",
+      "preparing": "Preparando Whisper Small…",
+      "download": "Descargar Whisper Small",
+      "apiKey": "Clave de API de OpenAI",
+      "apiKeyDescription": "Se guarda en el llavero de tu sistema operativo y solo se usa para la transcripción de voz",
+      "replaceKey": "Reemplazar la clave de OpenAI guardada",
+      "enterKey": "Introducir la clave de API de OpenAI",
       "saveKey": "Guardar clave",
-      "keySaved": "Clave API guardada en llavero",
+      "keySaved": "Clave de API guardada en el llavero",
       "providerError": "No se pudo actualizar el proveedor de voz",
       "downloadedToast": "Whisper Small descargado",
       "downloadError": "No se pudo descargar Whisper Small",
-      "keySavedToast": "Clave OpenAI guardada",
-      "keySaveError": "No se pudo guardar la clave OpenAI",
-      "memoNameMode": "Nombres de las notas",
-      "memoNameModeDescription": "Cómo se nombran las notas de voz tras la transcripción",
-      "naming": {
-        "none": "No renombrar",
-        "timestamp": "Marca de tiempo",
-        "transcript": "Título de la transcripción"
-      },
-      "namingError": "No se pudo actualizar el nombrado de las notas de voz"
+      "keySavedToast": "Clave de OpenAI guardada",
+      "keySaveError": "No se pudo guardar la clave de OpenAI"
     },
     "embedding": {
-      "loaded": "cargado",
+      "loaded": "Cargado",
       "loading": "Cargando",
       "cacheHint": "~23 MB · Caché local · Todo en el dispositivo",
       "dimensions": "Dimensiones",
-      "embeddings": "Incrustaciones",
+      "embeddings": "Embeddings",
       "downloadLoad": "Descargar y cargar modelo",
-      "downloadingModel": "Descargando modelo...",
-      "loadingModel": "Cargando modelo...",
-      "loadSuccess": "Modelo cargado exitosamente",
+      "downloadingModel": "Descargando modelo…",
+      "loadingModel": "Cargando modelo…",
+      "loadSuccess": "Modelo cargado correctamente",
       "loadFailed": "No se pudo cargar el modelo",
-      "rebuildIndex": "Índice de reconstrucción",
-      "rebuildDescription": "Regenerar incrustaciones para todas las notas.",
-      "rebuild": "reconstruir",
-      "scanning": "Escaneando notas...",
-      "generating": "Generando incrustaciones...",
-      "complete": "¡Completo!",
-      "reindexed": "Incrustaciones reindexadas: {computed} calculado, {skipped} omitido",
-      "reindexFailed": "No se pudieron reindexar las incrustaciones"
+      "rebuildIndex": "Reconstruir índice",
+      "rebuildDescription": "Regenera los embeddings de todas las notas",
+      "rebuild": "Reconstruir",
+      "scanning": "Escaneando notas…",
+      "generating": "Generando embeddings…",
+      "complete": "Completado",
+      "reindexed": "Embeddings reindexados: {computed} calculados, {skipped} omitidos",
+      "reindexFailed": "No se pudieron reindexar los embeddings"
     },
     "inline": {
-      "loading": "Cargando...",
-      "title": "Edición de IA en línea",
-      "enable": "Habilitar IA en línea",
-      "enableDescription": "Mostrar menú AI al editar notas",
-      "enabled": "Edición de IA en línea habilitada",
-      "disabled": "Edición de IA en línea deshabilitada",
+      "loading": "Cargando…",
+      "title": "Edición con IA en el editor",
+      "enable": "Activar IA en el editor",
+      "enableDescription": "Muestra el menú de IA al editar notas",
+      "enabled": "Edición con IA en el editor activada",
+      "disabled": "Edición con IA en el editor desactivada",
       "provider": "Proveedor",
       "providerDescription": "Servicio de IA para operaciones de texto",
       "providers": {
-        "ollama": "Ollamá (Local)",
-        "openai": "Abierto AI",
-        "anthropic": "antrópico",
+        "ollama": "Ollama (local)",
+        "openai": "OpenAI",
+        "anthropic": "Anthropic",
         "google": "Google Gemini"
       },
-      "model": "modelo",
-      "modelDescription": "Modelo de lenguaje para reescribir y resumir.",
-      "selectModel": "Selecciona un modelo",
-      "apiKey": "Clave API",
-      "apiKeyDescription": "Almacenado localmente, enviado únicamente al proveedor",
-      "apiKeyPlaceholder": "Ingrese la clave API {provider}",
+      "model": "Modelo",
+      "modelDescription": "Modelo de lenguaje para reescribir y resumir",
+      "selectModel": "Seleccionar un modelo",
+      "apiKey": "Clave de API",
+      "apiKeyDescription": "Se guarda localmente y solo se envía al proveedor",
+      "apiKeyPlaceholder": "Introducir la clave de API de {provider}",
       "ollamaUrl": "URL de Ollama",
-      "ollamaUrlDescription": "dirección del servidor local",
+      "ollamaUrlDescription": "Dirección del servidor local",
       "connection": "Conexión",
       "activePort": "Activo en el puerto {port}",
       "notConnected": "No conectado",
-      "test": "prueba",
+      "test": "Probar",
       "stopFailed": "No se pudo detener el servidor existente",
       "connected": "¡Conectado! Servidor ejecutándose en el puerto {port}",
       "connectFailed": "No se pudo conectar",
       "testFailed": "La prueba de conexión falló",
-      "updateFailed": "No se pudo actualizar la configuración"
+      "updateFailed": "No se pudo actualizar el ajuste"
+    },
+    "tabs": {
+      "models": "Modelos",
+      "agents": "Agentes",
+      "connect": "Conectar"
+    },
+    "v2": {
+      "onDevice": {
+        "label": "Modelos en el dispositivo",
+        "hint": "Se descargan una vez y funcionan sin conexión"
+      },
+      "embedding": {
+        "label": "Embeddings de búsqueda",
+        "hint": "{dimension} dimensiones · {count, plural, one {# nota con embeddings} other {# notas con embeddings}}"
+      },
+      "voiceModel": {
+        "label": "Transcripción de voz"
+      },
+      "download": "Descargar",
+      "connected": "Conectado",
+      "inline": {
+        "group": "Edición en el editor",
+        "enabled": "Activada"
+      },
+      "voice": {
+        "group": "Notas de voz",
+        "transcribeWith": "Transcribir con",
+        "local": "Local",
+        "openai": "OpenAI",
+        "nameBy": "Nombrar las notas de voz por",
+        "keySaved": "Guardada",
+        "keyNotSet": "Sin configurar"
+      }
+    }
+  },
+  "import": {
+    "header": {
+      "title": "Importar",
+      "subtitle": "Trae tus notas y tareas desde otras aplicaciones"
+    },
+    "intro": "Las importaciones puntuales crean notas nuevas en tu bóveda. Tus archivos de exportación originales quedan intactos.",
+    "sources": {
+      "notion": "Importa una exportación HTML (.zip)",
+      "todoist": "Importa una exportación CSV de un proyecto (.csv)",
+      "ticktick": "Importa una copia de seguridad de TickTick (.csv) como proyectos, tareas y recordatorios",
+      "markdown": "Importa archivos .md o una carpeta (frontmatter, etiquetas, adjuntos)",
+      "noteplan": "Importa una carpeta de NotePlan: las notas diarias se convierten en entradas del diario y las tareas, en tareas",
+      "html": "Importa archivos .html con imágenes enlazadas y enlaces entre páginas",
+      "google-keep": "Importa una exportación de Google Takeout de Keep (.json o .zip)",
+      "bear": "Importa un archivo .bear2bk de Bear (notas, etiquetas, adjuntos)",
+      "evernote": "Importa uno o más archivos de exportación .enex de Evernote",
+      "roam": "Importa un grafo de Roam Research (.json) con esquemas anidados",
+      "apple-journal": "Importa una exportación HTML de Apple Journal como notas con fecha",
+      "csv": "Importa un archivo .csv: una nota por fila, las columnas se convierten en propiedades",
+      "raindrop": "Importa una exportación de marcadores de Raindrop.io (.csv): los marcadores van a la bandeja de entrada",
+      "apple-notes": "Importa desde la base de datos de Apple Notes (NoteStore.sqlite, macOS)",
+      "onenote": "Importa cuadernos de OneNote (requiere una cuenta de Microsoft)"
+    },
+    "action": "Importar",
+    "select": "Seleccionar una app desde la que importar…",
+    "stats": {
+      "notes": "{count, plural, one {# nota} other {# notas}}",
+      "projects": "{count, plural, one {# proyecto} other {# proyectos}}",
+      "tasks": "{count, plural, one {# tarea} other {# tareas}}",
+      "subtasks": "{count, plural, one {# subtarea} other {# subtareas}}",
+      "reminders": "{count, plural, one {# recordatorio} other {# recordatorios}}",
+      "bookmarks": "{count, plural, one {# marcador} other {# marcadores}}",
+      "withTags": "{count} etiquetados",
+      "withDueDate": "{count} con fecha",
+      "comments": "{count, plural, one {# comentario} other {# comentarios}}",
+      "skipped": "{count} omitidos"
+    },
+    "preview": {
+      "warnings": "Advertencias",
+      "confirm": "Importar"
+    },
+    "dialog": {
+      "title": "Importar desde {name}",
+      "choose": "Elegir archivo…",
+      "onenote": {
+        "connect": "Iniciar sesión con Microsoft",
+        "connecting": "Esperando el inicio de sesión en el navegador…",
+        "connectedAs": "Sesión iniciada como {name} ({email})",
+        "switchAccount": "Cambiar de cuenta",
+        "loadingNotebooks": "Cargando cuadernos…",
+        "notebooksEmpty": "No se encontraron cuadernos en esta cuenta.",
+        "selectAll": "Seleccionar todo",
+        "deselectAll": "Quitar selección",
+        "sectionsSelected": "{count, plural, one {# sección seleccionada} other {# secciones seleccionadas}}",
+        "includeIncompatible": "Importar adjuntos incompatibles",
+        "includeIncompatibleHint": "Guarda también los tipos de archivo que Memry no puede previsualizar (presentaciones, multimedia, archivos comprimidos; nunca ejecutables). Aparecen como bloques de archivo.",
+        "skipPrevious": "Omitir páginas ya importadas",
+        "skipPreviousHint": "Se omiten las páginas importadas en una importación anterior de OneNote, así que al repetirla solo se añade lo nuevo."
+      },
+      "appleNotes": {
+        "loadingFolders": "Leyendo tus carpetas…",
+        "foldersError": "No se pudieron leer tus carpetas; se importará toda la biblioteca.",
+        "unfiled": "Notas sin carpeta",
+        "selectAll": "Seleccionar todo",
+        "deselectAll": "Quitar selección",
+        "foldersSelected": "{count, plural, one {# carpeta seleccionada} other {# carpetas seleccionadas}}",
+        "noteCount": "{count}",
+        "noteCountWithSubfolders": "{count} ({total})"
+      },
+      "chooseFolder": "Seleccionar carpeta de Apple Notes…",
+      "chooseDirectory": "Elegir carpeta…",
+      "folderKeepsAssets": "Elige la carpeta cuando las imágenes estén fuera de la carpeta de las propias notas: las exportaciones suelen guardar los archivos multimedia en una carpeta común.",
+      "chooseHint": "Selecciona tu {label}",
+      "folderHint": "Haz clic abajo y selecciona la carpeta «group.com.apple.notes» cuando se abra el selector (empieza ahí). Así Memry puede leer tus notas y adjuntos, sin necesidad de acceso total al disco.",
+      "noteplanFolderHint": "Elige tu carpeta de NotePlan: la carpeta de datos de la app o una de sus copias en Backups. Memry lee las carpetas Calendar, Notes y @Archive que contiene.",
+      "selected": "{count, plural, one {# archivo seleccionado} other {# archivos seleccionados}}",
+      "start": "Iniciar importación",
+      "cancel": "Cancelar",
+      "close": "Cerrar",
+      "done": "Listo",
+      "running": "Importando…",
+      "progress": "{completed} de {total}",
+      "summary": {
+        "title": "Importación completada",
+        "imported": "{count, plural, one {# elemento importado} other {# elementos importados}}",
+        "attachments": "{count, plural, one {# adjunto copiado} other {# adjuntos copiados}}",
+        "skipped": "{count} omitidos",
+        "skippedReason": "{count, plural, one {# elemento} other {# elementos}}: {reason}",
+        "failed": "{count} con errores"
+      },
+      "error": "La importación falló",
+      "previewError": "La vista previa falló"
+    },
+    "messages": {
+      "readFileFailed": "No se pudo leer el archivo",
+      "appleNotes": {
+        "lockedNote": "{count, plural, one {No se importó # nota bloqueada; Memry no puede leerla sin tu contraseña de Notas.} other {No se importaron # notas bloqueadas; Memry no puede leerlas sin tu contraseña de Notas.}}"
+      },
+      "csv": {
+        "noHeaders": "El archivo CSV no tiene encabezados",
+        "emptyTitle": "Se omitió una fila con el título vacío (columna «{column}»)",
+        "columns": "Columnas: {columns}",
+        "titleColumn": "Título tomado de «{column}»; las demás columnas se guardan como propiedades"
+      },
+      "raindrop": {
+        "csvEmpty": "El CSV de Raindrop está vacío",
+        "headerNotFound": "No se encontró la fila de encabezado del CSV de Raindrop (columna «url»)",
+        "rowNoUrl": "Fila {row} omitida: sin URL"
+      },
+      "ticktick": {
+        "headerNotFound": "No se encontró la fila de encabezado del CSV de TickTick («Folder Name»)",
+        "foldersDropped": "Las carpetas de TickTick no tienen equivalente en Memry y se descartaron",
+        "subtaskParentMissing": "No se encontró la tarea principal de la subtarea «{title}»; se importó al nivel superior",
+        "unknownPriority": "Prioridad de TickTick desconocida {priority} → ninguna",
+        "unsupportedRepeat": "Se omitió la regla de repetición no compatible «{rule}»",
+        "reminderNoAnchor": "Se omitió el recordatorio «{reminder}» (sin fecha de referencia)"
+      },
+      "todoist": {
+        "headerNotFound": "No es un CSV de Todoist: falta la fila de encabezado TYPE",
+        "sectionFlattened": "Se aplanó la sección «{section}»",
+        "orphanComment": "Se omitió un comentario sin tarea previa",
+        "emptyTitle": "La tarea sin contenido se importó como (sin título)",
+        "unknownPriority": "Prioridad desconocida {priority} → ninguna",
+        "unparsedDate": "No se pudo interpretar la fecha «{date}»",
+        "subtaskNoParent": "La subtarea «{title}» no tiene tarea principal en la sangría {indent}; se importó al nivel superior"
+      }
+    },
+    "status": {
+      "scanningFiles": "Analizando los archivos…",
+      "scanningExport": "Analizando la exportación…",
+      "importingItem": "Importando {title}",
+      "appleNotes": {
+        "copyingDatabase": "Copiando la base de datos de Apple Notes…"
+      },
+      "bear": {
+        "scanning": "Analizando la exportación de Bear…"
+      },
+      "csv": {
+        "importing": "Importando las notas del CSV…"
+      },
+      "evernote": {
+        "scanning": "Analizando los archivos .enex…"
+      },
+      "html": {
+        "scanning": "Analizando los archivos HTML…"
+      },
+      "noteplan": {
+        "scanning": "Analizando la carpeta de NotePlan…"
+      },
+      "onenote": {
+        "loadingNotebooks": "Cargando los cuadernos de OneNote…",
+        "rateLimited": "OneNote está limitando las solicitudes; esperando para reintentar…",
+        "downloadingAttachment": "Descargando el adjunto {name}"
+      },
+      "raindrop": {
+        "importing": "Importando los marcadores de Raindrop…"
+      },
+      "roam": {
+        "reading": "Leyendo la exportación de Roam…"
+      },
+      "ticktick": {
+        "importing": "Importando las tareas de TickTick…"
+      },
+      "todoist": {
+        "importing": "Importando las tareas de Todoist…"
+      }
+    },
+    "v2": {
+      "searchPlaceholder": "Buscar una app o un tipo de archivo…",
+      "noMatch": "Ningún origen coincide con «{query}»",
+      "formatAccount": "Cuenta",
+      "showMore": "{count, plural, one {Mostrar # más} other {Mostrar # más}}",
+      "showLess": "Mostrar menos",
+      "groups": {
+        "noteApps": "Apps de notas",
+        "tasks": "Tareas, diario y marcadores",
+        "files": "Archivos"
+      }
     }
   },
   "vault": {
     "header": {
       "title": "Bóveda",
-      "subtitle": "Configuración y almacenamiento de bóveda"
+      "subtitle": "Configuración y almacenamiento de la bóveda"
     },
     "groups": {
       "storageUsage": "Uso de almacenamiento",
       "location": "Ubicación",
-      "accountVaults": "Bóvedas de tu cuenta"
+      "accountVaults": "Bóvedas de tu cuenta",
+      "largeNotes": "Notas cerca del límite de sincronización",
+      "activity": "Actividad"
     },
-    "loadingStorage": "Cargando información de almacenamiento...",
+    "loadingStorage": "Cargando información de almacenamiento…",
     "signInStorage": "Inicia sesión para ver el uso de almacenamiento",
     "vaultPath": "Ruta de la bóveda",
-    "reveal": "revelar",
+    "reveal": "Mostrar",
+    "accountVaults": {
+      "empty": "Aún no hay bóvedas sincronizadas con tu cuenta.",
+      "cloudOnly": "No está en este dispositivo",
+      "itemsCount": "{count} elementos",
+      "delete": "Eliminar",
+      "deleteTitle": "¿Eliminar «{name}» de tu cuenta?",
+      "deleteBody": "Esto elimina de forma permanente todos los datos sincronizados de esta bóveda que hay en los servidores de Memry y no se puede deshacer. Los archivos de tu disco no se eliminan.",
+      "deleteConfirm": "Eliminar de la cuenta",
+      "deleteFailed": "No se pudo eliminar la bóveda",
+      "activeHint": "Cambia a otra bóveda para eliminar esta.",
+      "unsyncedTitle": "Esta bóveda no está sincronizada",
+      "unsyncedBodyOne": "La bóveda abierta en este dispositivo no está en tu cuenta, así que la sincronización la rechaza. La bóveda de tu cuenta es «{name}»: ábrela aquí para volver a sincronizar.",
+      "unsyncedBodyMany": "La bóveda abierta en este dispositivo no está en tu cuenta, así que la sincronización la rechaza. Abre una de las bóvedas de la lista para volver a sincronizar.",
+      "unsyncedOpen": "Abrir la bóveda de la cuenta",
+      "unsyncedDownload": "Descargar la bóveda de la cuenta",
+      "unsyncedSwitchFailed": "No se pudo abrir esa bóveda"
+    },
     "storage": {
       "title": "Almacenamiento",
-      "used": "{used} de {limit} usado",
+      "used": "{used} de {limit} en uso",
       "ratio": "{used} / {limit}",
       "refreshAria": "Actualizar el uso de almacenamiento",
       "usageAria": "Uso de almacenamiento: {used} de {limit}",
@@ -932,75 +1642,153 @@
         "notes": "Notas",
         "attachments": "Adjuntos",
         "crdt": "CRDT",
-        "other": "Otro"
+        "other": "Otros"
       },
       "warningTitle": "Almacenamiento casi lleno",
-      "warningDescription": "Libera espacio o actualiza tu plan para evitar problemas de sincronización."
+      "warningDescription": "Libera espacio o mejora tu plan para evitar problemas de sincronización."
     },
-    "accountVaults": {
-      "activeHint": "Cambia a otra bóveda para eliminar esta.",
-      "cloudOnly": "No está en este dispositivo",
-      "delete": "Eliminar",
-      "deleteBody": "Esto elimina de forma permanente todos los datos sincronizados de esta bóveda que hay en los servidores de Memry y no se puede deshacer. Los archivos de tu disco no se eliminan.",
-      "deleteConfirm": "Eliminar de la cuenta",
-      "deleteFailed": "No se pudo eliminar la bóveda",
-      "deleteTitle": "¿Eliminar “{name}” de tu cuenta?",
-      "empty": "Aún no hay bóvedas sincronizadas con tu cuenta.",
-      "itemsCount": "{count} elementos"
+    "largeNotes": {
+      "description": "Las notas de más de {limit} dejan de sincronizarse. Divídelas en notas más pequeñas para mantenerlas sincronizadas.",
+      "over": "No se sincroniza",
+      "approaching": "Cerca del límite"
+    },
+    "activity": {
+      "description": "Archivos añadidos a la bóveda o eliminados de ella fuera de Memry, importaciones y todo lo que se omitió o falló. Solo se guarda en este dispositivo.",
+      "retention": {
+        "label": "Actividad de la bóveda",
+        "days": "{count, plural, one {Conservar # día} other {Conservar # días}}"
+      },
+      "filter": {
+        "all": "Todo",
+        "problems": "Omitidos y con errores"
+      },
+      "reveal": "Mostrar archivo de registro",
+      "clear": "Borrar",
+      "clearTitle": "¿Borrar la actividad de la bóveda?",
+      "clearBody": "Esto elimina todas las entradas del registro de actividad de este dispositivo. Tus archivos no se modifican.",
+      "clearConfirm": "Borrar actividad",
+      "empty": "Aún no hay nada registrado. Aquí aparecerán los archivos que añadas a la carpeta de la bóveda, las importaciones y todo lo que Memry omita.",
+      "emptyProblems": "No se omitió nada y no hubo errores.",
+      "unavailable": "Abre una bóveda para ver su actividad.",
+      "loadFailed": "No se pudo cargar la actividad de la bóveda",
+      "actionFailed": "No se pudo actualizar la actividad de la bóveda",
+      "showItems": "{count, plural, one {Mostrar # elemento} other {Mostrar # elementos}}",
+      "toastAction": "Detalles",
+      "entry": {
+        "added": "Añadido: {path}",
+        "removed": "Eliminado: {path}",
+        "renamed": "{oldPath} renombrado como {path}",
+        "skipped": "Omitido: {path}",
+        "skippedUnsupported": "Memry no abre archivos {ext}, así que el archivo se dejó como estaba.",
+        "readFailed": "No se pudo leer {path}",
+        "indexFailed": "No se pudo añadir {path}",
+        "copyFailed": "No se pudo copiar {path} a la bóveda",
+        "uploadFailed": "No se pudo subir {path}",
+        "uploadFailedHint": "Se queda en este dispositivo hasta que se suba correctamente.",
+        "downloadFailed": "No se pudo descargar {path}",
+        "fileTooLarge": "{path} es demasiado grande para sincronizarse",
+        "noteTooLarge": "«{title}» es demasiado grande para sincronizarse",
+        "noteTooLargeUnnamed": "Una nota es demasiado grande para sincronizarse",
+        "importFailed": "Error en la importación de {importer}",
+        "failedGeneric": "Algo salió mal con {path}",
+        "failedGenericUnnamed": "Algo salió mal",
+        "scan": "Se encontraron cambios hechos mientras Memry estaba cerrado",
+        "indexRebuilt": "Índice de búsqueda creado",
+        "import": "Importación de {importer}",
+        "importCanceled": "Importación de {importer}, cancelada",
+        "unknown": "Actividad no reconocida"
+      },
+      "counts": {
+        "added": "{count, plural, one {# archivo nuevo} other {# archivos nuevos}}",
+        "indexed": "{count, plural, one {# archivo indexado} other {# archivos indexados}}",
+        "imported": "{count, plural, one {# importado} other {# importados}}",
+        "attachments": "{count, plural, one {# adjunto} other {# adjuntos}}",
+        "skipped": "{count, plural, one {# omitido} other {# omitidos}}",
+        "unsupported": "{count, plural, one {# archivo no compatible omitido} other {# archivos no compatibles omitidos}}",
+        "failed": "{count, plural, one {# con error} other {# con errores}}"
+      }
+    },
+    "v2": {
+      "groups": {
+        "thisVault": "Esta bóveda"
+      },
+      "largeNotesCount": "{count, plural, one {# nota} other {# notas}}"
+    },
+    "binding": {
+      "dialog": {
+        "title": "¿Sincronizar esta bóveda con tu cuenta?",
+        "description": "Esta bóveda tiene notas que aún no están en tu cuenta. Puedes añadirla a tu cuenta o mantenerla en este dispositivo. Nada sale de este dispositivo hasta que lo decidas.",
+        "descriptionWithVaults": "Esta bóveda tiene notas que aún no están en tu cuenta, y tu cuenta ya tiene una bóveda. Puedes añadir esta junto a ella, fusionar las dos o mantenerla en este dispositivo. Nada sale de este dispositivo hasta que lo decidas.",
+        "addAsNew": "Añadir como bóveda independiente",
+        "merge": "Fusionar con «{name}»",
+        "mergeUnnamed": "Fusionar con la bóveda de tu cuenta",
+        "keepLocal": "Mantener en este dispositivo",
+        "failed": "No se pudo actualizar cómo se sincroniza esta bóveda"
+      },
+      "status": {
+        "localOnly": "Esta bóveda se queda en este dispositivo y no se sincroniza.",
+        "foreign": "Esta bóveda la sincronizó otra cuenta, así que no se sincroniza con la tuya. Se queda en este dispositivo.",
+        "needsDecision": "Esta bóveda aún no se sincroniza.",
+        "startSync": "Sincronizar esta bóveda",
+        "choose": "Elegir…"
+      }
     }
   },
   "tags": {
     "header": {
       "title": "Etiquetas",
-      "subtitle": "Administre etiquetas en notas, diarios y tareas"
+      "subtitle": "Gestiona las etiquetas de las notas, el diario y las tareas"
     },
-    "loading": "Cargando etiquetas...",
-    "empty": "Aún no hay etiquetas. Las etiquetas aparecerán aquí a medida que las agregue a notas y tareas.",
-    "filterPlaceholder": "Filtrar etiquetas...",
-    "noMatch": "No hay etiquetas que coincidan con \"{query}\"",
-    "summary": "{count, plural, one {Etiqueta #} other {Etiquetas #}} en notas y tareas",
+    "loading": "Cargando etiquetas…",
+    "empty": "Aún no hay etiquetas. Aparecerán aquí a medida que las añadas a notas y tareas.",
+    "filterPlaceholder": "Filtrar etiquetas…",
+    "noMatch": "No hay etiquetas que coincidan con «{query}»",
+    "summary": "{count, plural, one {# etiqueta} other {# etiquetas}} en notas y tareas",
     "actions": {
       "rename": "Cambiar nombre",
-      "changeColor": "cambiar color",
-      "mergeInto": "Fusionarse en...",
-      "merge": "fusionar",
-      "delete": "Eliminar",
-      "changeIcon": "Cambiar icono"
+      "changeColor": "Cambiar color",
+      "changeIcon": "Cambiar icono",
+      "mergeInto": "Fusionar con…",
+      "merge": "Fusionar",
+      "delete": "Eliminar"
     },
     "dialogs": {
       "deleteTitle": "Eliminar etiqueta",
-      "deleteDescription": "¿Quitar \"{name}\" de {count, plural, one {# artículo} other {Artículos #}}? Esto no se puede deshacer.",
+      "deleteDescription": "¿Quitar «{name}» de {count, plural, one {# elemento} other {# elementos}}? Esto no se puede deshacer.",
       "mergeTitle": "Fusionar etiqueta",
-      "mergeDescription": "Todos los elementos etiquetados con \"{source}\" se volverán a etiquetar con la etiqueta de destino. La etiqueta de origen se eliminará.",
-      "targetPlaceholder": "Seleccionar etiqueta de destino...",
-      "colorTitle": "Cambiar color para \"{name}\""
+      "mergeDescription": "Todos los elementos etiquetados con «{source}» se volverán a etiquetar con la etiqueta de destino. La etiqueta de origen se eliminará.",
+      "targetPlaceholder": "Seleccionar etiqueta de destino…",
+      "colorTitle": "Cambiar el color de «{name}»"
     },
     "toasts": {
-      "renamed": "Renombrado \"{oldName}\" a \"{newName}\"",
+      "renamed": "Se cambió el nombre de «{oldName}» a «{newName}»",
       "renameFailed": "No se pudo cambiar el nombre de la etiqueta",
       "deleteFailed": "No se pudo eliminar la etiqueta",
-      "deleted": "Eliminado \"{name}\" de {count, plural, one {# artículo} other {Artículos #}}",
-      "mergeFailed": "No se pudieron fusionar etiquetas",
-      "merged": "Se fusionó \"{source}\" en \"{target}\" ({count, plural, one {# artículo} other {Artículos #}})",
-      "colorUpdated": "Color actualizado para \"{name}\"",
+      "deleted": "Se eliminó «{name}» de {count, plural, one {# elemento} other {# elementos}}",
+      "mergeFailed": "No se pudieron fusionar las etiquetas",
+      "merged": "Se fusionó «{source}» con «{target}» ({count, plural, one {# elemento} other {# elementos}})",
+      "colorUpdated": "Color de «{name}» actualizado",
       "colorFailed": "No se pudo actualizar el color",
       "iconFailed": "No se pudo actualizar el icono"
+    },
+    "v2": {
+      "actionsAria": "Acciones de {name}"
     }
   },
   "properties": {
     "header": {
       "title": "Propiedades",
-      "subtitle": "Administrar definiciones de propiedades en todas las notas"
+      "subtitle": "Gestiona las definiciones de propiedades de todas las notas"
     },
-    "loading": "Cargando propiedades...",
-    "empty": "Aún no hay definiciones de propiedades. Agregue una propiedad Estado, Selección o Selección múltiple a cualquier nota para comenzar.",
-    "filterPlaceholder": "Propiedades del filtro...",
-    "noMatch": "No hay propiedades que coincidan con \"{query}\"",
-    "summary": "{count, plural, one {Definición de propiedad #} other {Definiciones de propiedades de #}}",
-    "optionCount": "{count, plural, one {Opción #} other {Opciones de #}}",
+    "loading": "Cargando propiedades…",
+    "empty": "Aún no hay definiciones de propiedades. Añade una propiedad de tipo Estado, Selección o Selección múltiple a cualquier nota para empezar.",
+    "filterPlaceholder": "Filtrar propiedades…",
+    "noMatch": "No hay propiedades que coincidan con «{query}»",
+    "summary": "{count, plural, one {# definición de propiedad} other {# definiciones de propiedades}}",
+    "optionCount": "{count, plural, one {# opción} other {# opciones}}",
     "optionNamePlaceholder": "Nombre de la opción",
-    "addOption": "Agregar opción",
-    "changeColorTitle": "cambiar color",
+    "addOption": "Añadir opción",
+    "changeColorTitle": "Cambiar color",
     "renameTitle": "Cambiar nombre",
     "removeTitle": "Quitar",
     "actions": {
@@ -1008,63 +1796,102 @@
     },
     "types": {
       "status": "Estado",
-      "select": "Seleccionar",
+      "select": "Selección",
       "multiselect": "Selección múltiple",
       "text": "Texto",
       "number": "Número",
       "date": "Fecha",
-      "checkbox": "Casilla de verificación",
+      "checkbox": "Casilla",
       "url": "URL"
     },
     "dialogs": {
       "deleteTitle": "Eliminar propiedad",
-      "deleteDescription": "¿Eliminar la definición de propiedad \"{name}\"? Las notas que utilicen esta propiedad mantendrán sus valores como texto sin formato.",
-      "colorTitle": "Cambiar color para \"{name}\""
+      "deleteDescription": "¿Eliminar la definición de la propiedad «{name}»? Las notas que usen esta propiedad conservarán sus valores como texto sin formato.",
+      "colorTitle": "Cambiar el color de «{name}»"
     },
     "toasts": {
-      "renamed": "Renombrado \"{oldValue}\" a \"{newValue}\"",
+      "renamed": "Se cambió el nombre de «{oldValue}» a «{newValue}»",
       "renameFailed": "No se pudo cambiar el nombre de la opción",
-      "removed": "Se eliminó \"{value}\"",
-      "removeFailed": "No se pudo eliminar la opción",
+      "removed": "Se quitó «{value}»",
+      "removeFailed": "No se pudo quitar la opción",
       "colorFailed": "No se pudo actualizar el color",
       "deleteFailed": "No se pudo eliminar la propiedad",
-      "deleted": "Propiedad eliminada \"{name}\"",
-      "addFailed": "No se pudo agregar la opción"
+      "deleted": "Se eliminó la propiedad «{name}»",
+      "addFailed": "No se pudo añadir la opción"
+    },
+    "v2": {
+      "actionsAria": "Acciones de {name}"
+    }
+  },
+  "commandLine": {
+    "header": {
+      "title": "Línea de comandos",
+      "subtitle": "Configura el comando memrynote para tu terminal"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "defaultVault": {
+      "label": "Bóveda predeterminada",
+      "placeholder": "Seleccionar bóveda",
+      "none": "No hay ninguna bóveda seleccionada",
+      "description": "Elige la bóveda que se usa cuando ejecutas memrynote sin --vault.",
+      "descriptionSelected": "Los comandos usan {path} cuando se omite --vault."
+    },
+    "command": {
+      "label": "Comando memrynote",
+      "toggleLabel": "Instalar el comando memrynote",
+      "descriptionInstalled": "Instalado en {path}",
+      "descriptionNotInstalled": "Instala el comando memrynote para poder usar tu bóveda desde cualquier terminal."
+    },
+    "status": {
+      "loading": "Comprobando el estado del comando…",
+      "loadFailed": "No se pudo cargar el estado del comando",
+      "installedToast": "Comando memrynote instalado",
+      "uninstalledToast": "Comando memrynote eliminado",
+      "defaultVaultUpdatedToast": "Bóveda predeterminada de la CLI actualizada"
+    },
+    "actions": {
+      "refresh": "Actualizar"
     }
   },
   "shortcuts": {
     "header": {
       "title": "Atajos de teclado",
-      "subtitle": "Haga clic en cualquier acceso directo para volver a vincularlo",
-      "loading": "Cargando configuración..."
+      "subtitle": "Haz clic en un atajo para reasignarlo",
+      "loading": "Cargando ajustes…"
     },
-    "searchPlaceholder": "Buscar atajos...",
+    "searchPlaceholder": "Buscar atajos…",
     "resetAll": "Restablecer todo",
-    "custom": "personalizado",
-    "pressShortcut": "Presione el acceso directo...",
+    "custom": "Personalizado",
+    "pressShortcut": "Pulsa el atajo…",
     "cancelTitle": "Cancelar",
-    "rebindTitle": "Haga clic para volver a vincular",
-    "resetTitle": "Restablecer los valores predeterminados",
-    "clearTitle": "Borrar acceso directo",
-    "clickToSet": "Haga clic para configurar",
+    "rebindTitle": "Haz clic para reasignar",
+    "editorManagedTitle": "Lo gestiona el editor de notas; no se puede reasignar",
+    "resetTitle": "Restablecer valor predeterminado",
+    "clearTitle": "Quitar atajo",
+    "clickToSet": "Haz clic para asignar",
     "noMatch": "Ningún atajo coincide con tu búsqueda",
     "conflict": "En conflicto con: {labels}",
     "globalCapture": {
       "title": "Captura global",
-      "description": "Capture una nota desde cualquier lugar",
-      "active": "Activo"
+      "description": "Captura una nota desde cualquier lugar",
+      "active": "Activo",
+      "inUse": "Otra app está usando {shortcut}. Elige otra combinación.",
+      "unsupported": "{shortcut} no se puede usar como atajo global. Elige otra combinación.",
+      "fallbackInUse": "Otra app está usando el atajo predeterminado {shortcut}. Configura otra combinación para usar la captura global."
     },
     "toasts": {
-      "saveGlobalFailed": "No se pudo guardar el acceso directo de captura global",
-      "saveFailed": "No se pudo guardar el acceso directo",
-      "resetFailed": "No se pudo restablecer el acceso directo",
-      "resetAllSuccess": "Todos los accesos directos se restablecen a los valores predeterminados",
-      "resetAllFailed": "No se pudieron restablecer los accesos directos"
+      "saveGlobalFailed": "No se pudo guardar el atajo de captura global",
+      "saveFailed": "No se pudo guardar el atajo",
+      "resetFailed": "No se pudo restablecer el atajo",
+      "resetAllSuccess": "Se restablecieron todos los atajos a sus valores predeterminados",
+      "resetAllFailed": "No se pudieron restablecer los atajos"
     },
     "categories": {
       "navigation": "Navegación",
       "tabs": "Pestañas",
-      "editor": "Redactor",
+      "editor": "Editor",
       "view": "Ver"
     },
     "entries": {
@@ -1079,10 +1906,10 @@
         },
         "inbox": {
           "label": "Ir a la bandeja de entrada",
-          "description": "Navega a la bandeja de entrada"
+          "description": "Navegar a la bandeja de entrada"
         },
         "notes": {
-          "label": "Ir a notas",
+          "label": "Ir a Notas",
           "description": "Navegar a notas"
         },
         "tasks": {
@@ -1094,8 +1921,20 @@
           "description": "Abrir búsqueda global"
         },
         "settings": {
-          "label": "Abrir configuración",
-          "description": "Abra el panel de configuración"
+          "label": "Abrir Ajustes",
+          "description": "Abrir el panel de ajustes"
+        },
+        "switchVault": {
+          "label": "Cambiar de bóveda",
+          "description": "Abrir el selector de bóvedas"
+        },
+        "nextVault": {
+          "label": "Bóveda siguiente",
+          "description": "Ir a la siguiente bóveda de la barra lateral"
+        },
+        "prevVault": {
+          "label": "Bóveda anterior",
+          "description": "Ir a la bóveda anterior de la barra lateral"
         }
       },
       "tabs": {
@@ -1113,7 +1952,7 @@
         },
         "reopen": {
           "label": "Reabrir la última pestaña",
-          "description": "Vuelva a abrir la pestaña cerrada más recientemente"
+          "description": "Volver a abrir la última pestaña cerrada"
         },
         "navBack": {
           "label": "Navegar hacia atrás",
@@ -1128,28 +1967,28 @@
           "description": "Abrir el menú de nueva pestaña"
         },
         "closeAll": {
-          "label": "Cerrar todas las pestañas del panel",
+          "label": "Cerrar todas las pestañas",
           "description": "Cerrar todas las pestañas del panel"
         },
         "pin": {
-          "label": "Fijar o dejar de fijar la pestaña",
-          "description": "Fijar o dejar de fijar la pestaña"
+          "label": "Fijar pestaña",
+          "description": "Fijar o dejar de fijar la pestaña actual"
         },
         "duplicate": {
-          "label": "Duplicar la pestaña",
-          "description": "Duplicar la pestaña"
+          "label": "Duplicar pestaña",
+          "description": "Abrir una copia de la pestaña actual"
         },
         "splitRight": {
           "label": "Dividir a la derecha",
-          "description": "Dividir a la derecha"
+          "description": "Dividir el panel actual en dos, uno al lado del otro"
         },
         "splitDown": {
           "label": "Dividir hacia abajo",
-          "description": "Dividir hacia abajo"
+          "description": "Dividir el panel actual en dos, arriba y abajo"
         },
         "closeSplit": {
           "label": "Cerrar el panel dividido",
-          "description": "Cerrar el panel dividido"
+          "description": "Cerrar el panel dividido actual"
         }
       },
       "editor": {
@@ -1159,28 +1998,28 @@
         },
         "bold": {
           "label": "Negrita",
-          "description": "Alternar formato en negrita"
+          "description": "Activar o desactivar la negrita"
         },
         "italic": {
-          "label": "cursiva",
-          "description": "Alternar formato de cursiva"
+          "label": "Cursiva",
+          "description": "Activar o desactivar la cursiva"
         },
         "underline": {
-          "label": "subrayado",
-          "description": "Alternar formato de subrayado"
+          "label": "Subrayado",
+          "description": "Activar o desactivar el subrayado"
         },
         "strikethrough": {
           "label": "Tachado",
-          "description": "Tachado"
+          "description": "Activar o desactivar el tachado"
         },
         "code": {
-          "label": "Código",
-          "description": "Código"
+          "label": "Código en línea",
+          "description": "Activar o desactivar el formato de código en línea"
         }
       },
       "view": {
         "toggleSidebar": {
-          "label": "Alternar barra lateral",
+          "label": "Mostrar u ocultar la barra lateral",
           "description": "Mostrar u ocultar la barra lateral"
         },
         "shortcuts": {
@@ -1200,52 +2039,62 @@
           "description": "Restablecer el zoom al 100 %"
         }
       }
+    },
+    "v2": {
+      "all": "Todos",
+      "categoryFilter": "Filtrar por categoría",
+      "systemWide": "En todo el sistema",
+      "globalCapture": "Captura global",
+      "recordingHint": "Pulsa las teclas… esc para cancelar",
+      "reset": "Restablecer",
+      "resetAll": "Restablecer todo a los valores predeterminados"
     }
   },
   "phaseF": {
     "componentsKeyboardChordIndicator": {
-      "pressedWaitingForSecondKey": "presionado - esperando la segunda tecla..."
+      "pressedWaitingForSecondKey": "pulsado: esperando la segunda tecla…"
     },
     "componentsKeyboardKeyboardShortcutsDialog": {
       "keyboardShortcuts": "Atajos de teclado",
-      "press": "prensa ",
-      "toToggleThisDialog": "para alternar este cuadro de diálogo"
+      "press": "Pulsa ",
+      "toToggleThisDialog": "para abrir o cerrar este cuadro de diálogo"
     },
     "componentsSyncDeviceRevokedDialog": {
-      "thisDeviceHasBeenRemoved": "Este dispositivo ha sido eliminado.",
-      "exporting": "Exportando...",
+      "thisDeviceHasBeenRemoved": "Se ha quitado este dispositivo",
+      "exporting": "Exportando…",
       "signOut": "Cerrar sesión"
     },
     "componentsSyncSyncHistory": {
       "activity": "Actividad",
       "filterBySyncType": "Filtrar por tipo de sincronización",
       "allTypes": "Todos los tipos",
-      "pushed": "Empujado",
-      "pulled": "tirado",
+      "pushed": "Enviados",
+      "pulled": "Recibidos",
       "errors": "Errores",
       "filterByTimePeriod": "Filtrar por período de tiempo",
-      "allTime": "Todo el tiempo",
-      "today": "hoy",
-      "last7Days": "últimos 7 días",
-      "last30Days": "últimos 30 días",
+      "allTime": "Desde siempre",
+      "today": "Hoy",
+      "last7Days": "Últimos 7 días",
+      "last30Days": "Últimos 30 días",
       "loadingSyncHistory": "Cargando historial de sincronización",
       "noSyncActivityYet": "Aún no hay actividad de sincronización",
       "loadMore": "Cargar más",
       "duration": "· {duration}",
-      "showErrorDetailsAria": "{summary}, mostrar los detalles del error",
       "summaryFailed": "Error de sincronización",
+      "summaryPushed": "{count, plural, one {# elemento enviado} many {# elementos enviados} other {# elementos enviados}}",
       "summaryPulled": "{count, plural, one {# elemento recibido} many {# elementos recibidos} other {# elementos recibidos}}",
-      "summaryPushed": "{count, plural, one {# elemento enviado} many {# elementos enviados} other {# elementos enviados}}"
+      "showErrorDetailsAria": "{summary}, mostrar los detalles del error"
     },
     "componentsSyncSyncStatus": {
-      "lastSynced": "Última sincronización ",
+      "lastSynced": "Última sincronización: ",
       "pending": "pendiente",
       "localOnly": "solo local",
       "detected": "detectado",
+      "dismissConflicts": "Descartar",
       "clockSkewDetected": "Desfase del reloj detectado",
-      "items": "artículos",
+      "items": "elementos",
       "willSyncWhenBackOnline": "Se sincronizará cuando vuelva a estar en línea",
-      "openSyncSettings": "Abrir configuración de sincronización"
+      "openSyncSettings": "Abrir ajustes de sincronización"
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -1254,7 +2103,7 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "No se pudo actualizar el color de la etiqueta",
-      "googleSignInFailed": "Error al iniciar sesión en Google",
+      "googleSignInFailed": "No se pudo iniciar sesión con Google",
       "failedToSendVerificationCode": "No se pudo enviar el código de verificación",
       "invalidVerificationCode": "Código de verificación no válido",
       "accountSetupFailed": "Error al configurar la cuenta",
@@ -1263,33 +2112,33 @@
       "failedToConfirmRecoveryPhrase": "No se pudo confirmar la frase de recuperación",
       "failedToAnalyzeContent": "No se pudo analizar el contenido",
       "failedToLoadUpdaterState": "No se pudo cargar el estado del actualizador",
-      "failedToCheckForUpdates": "No se pudo buscar actualizaciones",
+      "failedToCheckForUpdates": "No se pudieron buscar actualizaciones",
       "failedToDownloadUpdate": "No se pudo descargar la actualización",
       "failedToInstallUpdate": "No se pudo instalar la actualización",
-      "failedToLoadEditorSettings": "No se pudo cargar la configuración del editor",
-      "failedToUpdateEditorSettings": "No se pudo actualizar la configuración del editor",
-      "failedToLoadGeneralSettings": "No se pudo cargar la configuración general",
-      "failedToUpdateGeneralSettings": "No se pudo actualizar la configuración general",
-      "failedToLoadKeyboardSettings": "No se pudo cargar la configuración del teclado",
-      "failedToUpdateKeyboardSettings": "No se pudo actualizar la configuración del teclado",
-      "failedToResetKeyboardSettings": "No se pudo restablecer la configuración del teclado",
-      "failedToLoadNoteEditorSettings": "No se pudo cargar la configuración del editor de notas",
-      "failedToUpdateSettings": "No se pudo actualizar la configuración",
-      "failedToLoadTabSettings": "No se pudo cargar la configuración de la pestaña",
+      "failedToLoadEditorSettings": "No se pudieron cargar los ajustes del editor",
+      "failedToUpdateEditorSettings": "No se pudieron actualizar los ajustes del editor",
+      "failedToLoadGeneralSettings": "No se pudieron cargar los ajustes generales",
+      "failedToUpdateGeneralSettings": "No se pudieron actualizar los ajustes generales",
+      "failedToLoadKeyboardSettings": "No se pudieron cargar los ajustes del teclado",
+      "failedToUpdateKeyboardSettings": "No se pudieron actualizar los ajustes del teclado",
+      "failedToResetKeyboardSettings": "No se pudieron restablecer los ajustes del teclado",
+      "failedToLoadNoteEditorSettings": "No se pudieron cargar los ajustes del editor de notas",
+      "failedToUpdateSettings": "No se pudieron actualizar los ajustes",
+      "failedToLoadTabSettings": "No se pudieron cargar los ajustes de las pestañas",
       "failedToLoadNotes": "No se pudieron cargar las notas",
       "failedToLoadTags": "No se pudieron cargar las etiquetas",
+      "failedToLoadTasks": "No se pudieron cargar las tareas",
       "failedToLoadVaultStatus": "No se pudo cargar el estado de la bóveda",
       "failedToSelectVault": "No se pudo seleccionar la bóveda",
       "failedToCloseVault": "No se pudo cerrar la bóveda",
-      "failedToSwitchVault": "No se pudo cambiar la bóveda",
+      "failedToSwitchVault": "No se pudo cambiar de bóveda",
       "failedToUpdateConfig": "No se pudo actualizar la configuración",
-      "failedToReindex": "No se pudo reindexar",
-      "failedToLoadTasks": "No se pudieron cargar las tareas"
+      "failedToReindex": "No se pudo reindexar"
     }
   },
   "agentMcp": {
     "header": {
-      "title": "Agent MCP",
+      "title": "MCP del agente",
       "subtitle": "Acceso al servidor local para clientes MCP externos."
     },
     "groups": {
@@ -1314,16 +2163,60 @@
     },
     "copyLabel": "Copiar {label}",
     "notRunning": "No está en ejecución",
-    "toolsBadge": "{count, plural, one {# herramienta} many {# herramientas} other {# herramientas}}"
+    "toolsBadge": "{count, plural, one {# herramienta} many {# herramientas} other {# herramientas}}",
+    "v2": {
+      "hint": "Servidor local para Cursor, Claude Desktop y Zed",
+      "running": "En ejecución",
+      "tokenHint": "Solo en esta ejecución",
+      "copy": "Copiar",
+      "rotate": "Rotar"
+    }
   },
   "agentProviders": {
     "header": {
       "title": "Permisos del agente",
-      "subtitle": "Elige el acceso predeterminado, las confirmaciones y los proveedores locales de Agent Chat."
+      "subtitle": "Elige el acceso predeterminado, las confirmaciones y los proveedores locales del chat del agente."
     },
     "groups": {
+      "cliAgents": "Agentes de CLI",
       "local": "Proveedor local compatible con OpenAI",
       "actions": "Comprobaciones de conexión"
+    },
+    "cliAgents": {
+      "claude": {
+        "label": "Claude Code CLI",
+        "description": "Instala Claude Code desde claude.ai/code y ejecuta `claude login`. MemryNote lo detecta automáticamente."
+      },
+      "codex": {
+        "label": "Codex CLI",
+        "description": "Instálalo con `npm install -g @openai/codex` y ejecuta `codex login` para iniciar sesión en tu cuenta de OpenAI. MemryNote lo detecta automáticamente."
+      },
+      "antigravity": {
+        "label": "Antigravity CLI",
+        "description": "Instala Antigravity CLI desde antigravity.google/docs/cli y ejecuta `agy` una vez para iniciar sesión en tu cuenta de Google. MemryNote lo detecta automáticamente."
+      },
+      "status": {
+        "detected": "Detectado · v{version}",
+        "detectedNoVersion": "Detectado",
+        "belowMinimum": "v{version} instalada: se necesita la {minimum} o posterior",
+        "notDetected": "No detectado",
+        "runtimeUnavailable": "No disponible: el entorno de ejecución del agente no se inició"
+      }
+    },
+    "permissions": {
+      "group": "Permisos del agente",
+      "access": {
+        "label": "Acceso predeterminado",
+        "description": "Define el modo de acceso inicial de los nuevos turnos del agente.",
+        "vaultOnly": "Solo la bóveda",
+        "computerAccess": "Acceso al equipo"
+      },
+      "confirm": {
+        "label": "Confirmar acciones",
+        "description": "Elige si las llamadas a herramientas se ejecutan automáticamente o esperan aprobación en el chat.",
+        "alwaysAllow": "Permitir siempre",
+        "askBeforeChanges": "Preguntar antes de hacer cambios"
+      }
     },
     "presets": {
       "ollama": "Ollama",
@@ -1348,9 +2241,9 @@
         "description": "Elige uno de los modelos devueltos o escribe uno manualmente."
       },
       "apiKey": {
-        "label": "Clave API",
+        "label": "Clave de API",
         "description": "Credencial opcional guardada en el llavero del sistema operativo.",
-        "configured": "Ya hay una clave API guardada en el llavero del sistema operativo."
+        "configured": "Ya hay una clave de API guardada en el llavero del sistema operativo."
       }
     },
     "actions": {
@@ -1360,253 +2253,41 @@
       "probe": "Detectar herramientas"
     },
     "status": {
-      "disconnected": "Desconectado",
-      "toolsDisabled": "Herramientas desactivadas",
-      "fullTools": "Herramientas completas activadas",
+      "label": "Conexión",
       "checking": "Comprobando…",
       "connected": "Conectado",
-      "label": "Conexión"
+      "disconnected": "Desconectado",
+      "toolsDisabled": "Herramientas desactivadas",
+      "fullTools": "Todas las herramientas activadas"
     },
-    "permissions": {
-      "group": "Permisos del agente",
-      "access": {
-        "label": "Acceso predeterminado",
-        "description": "Define el modo de acceso inicial de los nuevos turnos del agente.",
-        "vaultOnly": "Solo la bóveda",
-        "computerAccess": "Acceso al equipo"
-      },
-      "confirm": {
-        "label": "Confirmar acciones",
-        "description": "Elige si las llamadas a herramientas se ejecutan automáticamente o esperan aprobación en el chat.",
-        "alwaysAllow": "Permitir siempre",
-        "askBeforeChanges": "Preguntar antes de cambiar"
-      }
-    }
-  },
-  "commandLine": {
-    "actions": {
-      "refresh": "Actualizar"
+    "alwaysAllowed": {
+      "group": "Siempre permitidas",
+      "description": "Herramientas a las que diste una aprobación permanente en esta bóveda. Las eliminaciones nunca pueden recibirla.",
+      "empty": "No hay nada siempre permitido. Cada cambio sigue pidiendo aprobación.",
+      "revoke": "Revocar",
+      "revokeLabel": "Revocar la aprobación permanente de {tool}",
+      "ignoredInPageReview": "Ignorado: las ediciones de notas y del diario siempre piden aprobación."
     },
-    "command": {
-      "descriptionInstalled": "Instalado en {path}",
-      "descriptionNotInstalled": "Instala el comando memrynote para poder usar tu bóveda desde cualquier terminal.",
-      "label": "Comando memrynote",
-      "toggleLabel": "Instalar el comando memrynote"
-    },
-    "defaultVault": {
-      "description": "Elige la bóveda que se usa cuando ejecutas memrynote sin --vault.",
-      "descriptionSelected": "Los comandos usan {path} cuando se omite --vault.",
-      "label": "Bóveda predeterminada",
-      "none": "No hay ninguna bóveda seleccionada",
-      "placeholder": "Selecciona una bóveda"
-    },
-    "groups": {
-      "terminal": "Terminal"
-    },
-    "header": {
-      "subtitle": "Configura el comando memrynote para tu terminal",
-      "title": "Línea de comandos"
-    },
-    "status": {
-      "defaultVaultUpdatedToast": "Bóveda predeterminada de la CLI actualizada",
-      "installedToast": "Comando memrynote instalado",
-      "loadFailed": "No se pudo cargar el estado del comando",
-      "loading": "Comprobando el estado del comando...",
-      "uninstalledToast": "Comando memrynote eliminado"
-    }
-  },
-  "features": {
-    "header": {
-      "subtitle": "Activa o desactiva partes de la aplicación. Desactivado = atenuado en la barra lateral y deshabilitado en todas partes.",
-      "title": "Funciones"
-    },
-    "items": {
-      "calendar": {
-        "description": "Eventos y agenda",
-        "label": "Calendario"
+    "v2": {
+      "permissions": {
+        "group": "Permisos",
+        "hint": "Se aplica a todos los chats del agente",
+        "access": "Acceso",
+        "changes": "Cambios"
       },
-      "graph": {
-        "description": "Conexiones entre notas",
-        "label": "Grafo"
+      "runtimes": {
+        "group": "Entornos de ejecución del agente",
+        "hint": "Detectados en el PATH"
       },
-      "home": {
-        "description": "Panel principal",
-        "label": "Inicio"
+      "localModel": {
+        "label": "Modelo local",
+        "hint": "Servidor compatible con OpenAI en este equipo",
+        "notChecked": "Sin comprobar",
+        "optional": "Opcional",
+        "fetchModels": "Obtener modelos"
       },
-      "inbox": {
-        "description": "Captura rápida y triaje",
-        "label": "Bandeja"
-      },
-      "journal": {
-        "description": "Notas diarias",
-        "label": "Diario"
-      },
-      "tasks": {
-        "description": "Pendientes y fechas de vencimiento",
-        "label": "Tareas"
-      },
-      "spatialCanvas": {
-        "description": "Tableros espaciales para organizar y vincular notas",
-        "label": "Lienzo"
-      }
-    }
-  },
-  "import": {
-    "action": "Importar",
-    "dialog": {
-      "cancel": "Cancelar",
-      "choose": "Elegir archivo…",
-      "chooseFolder": "Selecciona la carpeta de Apple Notes…",
-      "chooseHint": "Selecciona tu {label}",
-      "close": "Cerrar",
-      "done": "Hecho",
-      "error": "La importación falló",
-      "folderHint": "Haz clic abajo y selecciona la carpeta “group.com.apple.notes” cuando se abra el selector (empieza ahí). Esto permite a Memry leer tus notas y adjuntos, sin necesidad de acceso a todo el disco.",
-      "progress": "{completed} de {total}",
-      "running": "Importando…",
-      "selected": "{count, plural, one {# archivo seleccionado} other {# archivos seleccionados}}",
-      "start": "Iniciar importación",
-      "summary": {
-        "attachments": "{count, plural, one {# adjunto copiado} other {# adjuntos copiados}}",
-        "failed": "{count} con errores",
-        "imported": "{count, plural, one {# elemento importado} other {# elementos importados}}",
-        "skipped": "{count} omitidos",
-        "title": "Importación completada"
-      },
-      "title": "Importar desde {name}",
-      "chooseDirectory": "Elegir carpeta…",
-      "folderKeepsAssets": "Elige la carpeta cuando las imágenes estén fuera de la carpeta de las propias notas — las exportaciones suelen guardar los archivos multimedia en una carpeta común.",
-      "previewError": "La vista previa falló"
-    },
-    "header": {
-      "subtitle": "Trae tus notas y tareas desde otras aplicaciones",
-      "title": "Importar"
-    },
-    "intro": "Las importaciones puntuales crean notas nuevas en tu bóveda. Tus archivos de exportación originales quedan intactos.",
-    "preview": {
-      "confirm": "Importar",
-      "warnings": "Advertencias"
-    },
-    "select": "Selecciona una aplicación desde la que importar…",
-    "sources": {
-      "apple-journal": "Importa una exportación HTML de Apple Journal como notas con fecha",
-      "apple-notes": "Importa desde la base de datos de Apple Notes (NoteStore.sqlite, macOS)",
-      "bear": "Importa un archivo .bear2bk de Bear (notas, etiquetas, adjuntos)",
-      "csv": "Importa un archivo .csv: una nota por fila, las columnas se convierten en propiedades",
-      "evernote": "Importa uno o más archivos de exportación .enex de Evernote",
-      "google-keep": "Importa una exportación de Google Takeout de Keep (.json o .zip)",
-      "html": "Importa archivos .html con imágenes enlazadas y enlaces entre páginas",
-      "markdown": "Importa archivos .md o una carpeta (frontmatter, etiquetas, adjuntos)",
-      "notion": "Importa una exportación HTML (.zip)",
-      "onenote": "Importa cuadernos de OneNote (requiere una cuenta de Microsoft)",
-      "raindrop": "Importa una exportación de marcadores de Raindrop.io (.csv): los marcadores van a la bandeja",
-      "roam": "Importa un grafo de Roam Research (.json) con esquemas anidados",
-      "ticktick": "Importa una copia de seguridad de TickTick (.csv) como proyectos, tareas y recordatorios",
-      "todoist": "Importa una exportación CSV de un proyecto (.csv)"
-    },
-    "stats": {
-      "bookmarks": "{count, plural, one {# marcador} other {# marcadores}}",
-      "comments": "{count, plural, one {# comentario} other {# comentarios}}",
-      "notes": "{count, plural, one {# nota} other {# notas}}",
-      "projects": "{count, plural, one {# proyecto} other {# proyectos}}",
-      "reminders": "{count, plural, one {# recordatorio} other {# recordatorios}}",
-      "skipped": "{count} omitidos",
-      "subtasks": "{count, plural, one {# subtarea} other {# subtareas}}",
-      "tasks": "{count, plural, one {# tarea} other {# tareas}}",
-      "withDueDate": "{count} con fecha",
-      "withTags": "{count} etiquetados"
-    },
-    "messages": {
-      "csv": {
-        "columns": "Columnas: {columns}",
-        "emptyTitle": "Se omitió una fila con el título vacío (columna \"{column}\")",
-        "noHeaders": "El archivo CSV no tiene encabezados",
-        "titleColumn": "Título tomado de \"{column}\"; las demás columnas se guardan como propiedades"
-      },
-      "raindrop": {
-        "csvEmpty": "El CSV de Raindrop está vacío",
-        "headerNotFound": "No se encontró la fila de encabezado del CSV de Raindrop (columna \"url\")",
-        "rowNoUrl": "Fila {row} omitida: sin URL"
-      },
-      "readFileFailed": "No se pudo leer el archivo",
-      "ticktick": {
-        "foldersDropped": "Las carpetas de TickTick no tienen equivalente en Memry y se descartaron",
-        "headerNotFound": "No se encontró la fila de encabezado del CSV de TickTick (\"Folder Name\")",
-        "reminderNoAnchor": "Se omitió el recordatorio \"{reminder}\" (sin fecha de referencia)",
-        "subtaskParentMissing": "No se encontró la tarea principal de la subtarea \"{title}\"; se importó al nivel superior",
-        "unknownPriority": "Prioridad de TickTick desconocida {priority} → ninguna",
-        "unsupportedRepeat": "Se omitió la regla de repetición no compatible \"{rule}\""
-      },
-      "todoist": {
-        "emptyTitle": "La tarea sin contenido se importó como (sin título)",
-        "headerNotFound": "No es un CSV de Todoist: falta la fila de encabezado TYPE",
-        "orphanComment": "Se omitió un comentario sin tarea previa",
-        "sectionFlattened": "Se aplanó la sección \"{section}\"",
-        "subtaskNoParent": "La subtarea \"{title}\" no tiene tarea principal en la sangría {indent}; se importó al nivel superior",
-        "unknownPriority": "Prioridad desconocida {priority} → ninguna",
-        "unparsedDate": "No se pudo interpretar la fecha \"{date}\""
-      }
-    },
-    "status": {
-      "appleNotes": {
-        "copyingDatabase": "Copiando la base de datos de Apple Notes…"
-      },
-      "bear": {
-        "scanning": "Analizando la exportación de Bear…"
-      },
-      "csv": {
-        "importing": "Importando las notas del CSV…"
-      },
-      "evernote": {
-        "scanning": "Analizando los archivos .enex…"
-      },
-      "html": {
-        "scanning": "Analizando los archivos HTML…"
-      },
-      "importingItem": "Importando {title}",
-      "raindrop": {
-        "importing": "Importando los marcadores de Raindrop…"
-      },
-      "roam": {
-        "reading": "Leyendo la exportación de Roam…"
-      },
-      "scanningExport": "Analizando la exportación…",
-      "scanningFiles": "Analizando los archivos…",
-      "ticktick": {
-        "importing": "Importando las tareas de TickTick…"
-      },
-      "todoist": {
-        "importing": "Importando las tareas de Todoist…"
-      }
-    }
-  },
-  "inbox": {
-    "header": {
-      "loading": "Cargando…",
-      "subtitle": "Recordatorio de revisión diaria y preferencias de la bandeja de entrada.",
-      "title": "Bandeja de entrada"
-    },
-    "reviewReminder": {
-      "enabled": {
-        "description": "Un aviso suave cada día cuando haya elementos en tu bandeja de entrada.",
-        "label": "Recordarme que revise mi bandeja de entrada"
-      },
-      "error": "No se pudo actualizar el recordatorio.",
-      "group": "Recordatorio de revisión diaria",
-      "test": {
-        "button": "Enviar prueba",
-        "description": "Lanza el recordatorio ahora para comprobar las notificaciones del sistema.",
-        "label": "Notificación de prueba",
-        "sent": "Notificación de prueba enviada.",
-        "sentHint": "Si no aparece nada, permite las notificaciones de MemryNote en los ajustes del sistema.",
-        "unsupported": "Este dispositivo no puede mostrar notificaciones de escritorio."
-      },
-      "time": {
-        "description": "Hora local, en cada dispositivo.",
-        "hourLabel": "Hora",
-        "label": "Hora del recordatorio",
-        "minuteLabel": "Minuto",
-        "periodLabel": "AM o PM"
+      "alwaysAllowed": {
+        "group": "Herramientas siempre permitidas"
       }
     }
   }

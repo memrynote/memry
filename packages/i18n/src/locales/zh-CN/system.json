@@ -1,8 +1,8 @@
 {
   "dialog": {
     "vault": {
-      "title": "选择保险库文件夹",
-      "button": "选择保险库"
+      "title": "选择仓库文件夹",
+      "button": "选择仓库"
     },
     "exportPdf": {
       "title": "导出为 PDF",
@@ -19,53 +19,54 @@
     "exportCancelled": "导出已取消",
     "update": {
       "availableTitle": "有可用更新",
-      "availableMessage": "memrynote {version} 可用。",
-      "availableDetailFallback": "现在下载更新？",
+      "availableMessage": "memrynote {version} 已发布。",
+      "availableDetailFallback": "要立即下载更新吗？",
       "buttonDownload": "下载",
       "buttonLater": "稍后",
-      "readyTitle": "更新已准备好",
+      "readyTitle": "更新已就绪",
       "readyMessage": "memrynote {version} 已下载。",
       "readyDetailFallback": "重新启动 memrynote 以完成更新安装。",
       "buttonRestartNow": "立即重启",
       "releaseNotesLabel": "更新说明："
     },
     "pair": {
+      "title": "配对浏览器扩展",
+      "message": "允许 Memry 浏览器扩展向此应用发送收集的内容吗？",
       "buttonAllow": "允许",
       "buttonDeny": "拒绝",
-      "buttonPair": "配对",
-      "message": "允许 Memry 浏览器扩展向此应用发送捕获内容吗？",
-      "title": "配对浏览器扩展"
+      "buttonPair": "配对"
     }
   },
   "notification": {
+    "inboxReview": {
+      "title": "该回顾你的收件箱了",
+      "body": "你有 {count, plural, other {# 项内容}}待回顾。",
+      "testBody": "这是一条测试通知——每日回顾提醒将以这种形式显示。"
+    },
     "reminder": {
-      "note": "便签提醒",
+      "note": "笔记提醒",
       "journal": "日记提醒",
       "highlight": "高亮提醒",
+      "task": "任务提醒",
       "fallback": "提醒到期",
-      "default": "提醒",
-      "task": "任务提醒"
-    },
-    "inboxReview": {
-      "body": "你有 {count, plural, other {# 项内容}}待回顾。",
-      "testBody": "这是一条测试——你的每日回顾提醒就是这样。",
-      "title": "该回顾你的收件箱了"
+      "default": "提醒"
     }
   },
   "error": {
-    "reminderTimeMustBeFuture": "提醒时间必须在将来",
+    "reminderTimeMustBeFuture": "提醒时间必须晚于当前时间",
     "definitionNotFound": "未找到定义",
-    "noteNotFound": "未找到便签",
-    "updateFailed": "更新失败"
+    "noteNotFound": "未找到笔记",
+    "updateFailed": "更新失败",
+    "updateReadOnlyVolume": "memrynote 从当前位置运行时无法安装更新。请将 memrynote 移到“应用程序”文件夹后重新打开。"
   },
   "startup": {
-    "failed": {
-      "body": "当磁盘可用空间非常少，或显卡驱动较旧时，可能会出现这种情况。请尝试释放一些磁盘空间，然后重新打开 MemryNote。如果问题持续出现，重新安装通常可以解决。",
-      "title": "MemryNote 未能完成启动"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote 将自动重新打开。",
-      "title": "正在安装更新…"
+      "title": "正在安装更新…",
+      "subtitle": "MemryNote 将自动重新打开。"
+    },
+    "failed": {
+      "title": "MemryNote 未能完成启动",
+      "body": "当磁盘可用空间非常少，或显卡驱动较旧时，可能会出现这种情况。请尝试释放一些磁盘空间，然后重新打开 MemryNote。如果问题持续出现，重新安装通常可以解决。"
     }
   }
 }

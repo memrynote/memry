@@ -2,34 +2,54 @@
   "view": {
     "day": "Araw",
     "week": "Linggo",
-    "month": "buwan",
-    "year": "taon"
+    "month": "Buwan",
+    "monthGridLabel": "Grid ng buwan",
+    "year": "Taon",
+    "timeline": "Timeline"
+  },
+  "undo": {
+    "moveEvent": "Ilipat ang kaganapan",
+    "moveTask": "I-reschedule ang gawain"
   },
   "toolbar": {
-    "create-event": "Lumikha ng kaganapan",
+    "create-event": "Gumawa ng kaganapan",
     "previous-period": "Nakaraang panahon",
     "next-period": "Susunod na panahon",
     "previous-month": "Nakaraang buwan",
-    "next-month": "Sa susunod na buwan",
+    "next-month": "Susunod na buwan",
     "today": "Ngayong araw"
+  },
+  "search": {
+    "open": "Maghanap sa kalendaryo",
+    "close": "Isara ang paghahanap",
+    "placeholder": "Maghanap ng kaganapan, gawain, paalala…",
+    "no-results": "Walang tugma"
   },
   "filter": {
     "filter-calendars": "I-filter ang mga kalendaryo",
     "sources": "Mga pinagmumulan",
-    "memry-items": "memrynote item",
+    "memry-items": "Mga item ng memrynote",
     "imported-calendars": "Mga na-import na kalendaryo",
     "event-types": "Mga uri ng kaganapan",
     "google-calendars": "Mga kalendaryo ng Google",
-    "refresh-google-calendars": "I-refresh ang mga kalendaryo ng Google"
+    "refresh-google-calendars": "I-refresh ang mga kalendaryo ng Google",
+    "not-syncing": "Hindi naka-sync · lagyan ng check para i-on",
+    "enable-source-failed": "Hindi ma-on ang kalendaryong iyon.",
+    "provider-calendars": {
+      "ics": "Mga naka-subscribe na kalendaryo",
+      "caldav": "Mga kalendaryong CalDAV",
+      "apple-eventkit": "Mac na ito",
+      "other": "Iba pang kalendaryo"
+    }
   },
   "visual-type": {
     "event": "Kaganapan",
     "imported-event": "Na-import na kaganapan",
+    "note": "Tala",
+    "note-date": "Paalala sa petsa",
     "task": "Gawain",
     "reminder": "Paalala",
-    "snooze": "I-snooze",
-    "note": "Tala",
-    "note-date": "Paalala sa petsa"
+    "snooze": "Naka-snooze"
   },
   "state": {
     "loading-calendar": "Nilo-load ang kalendaryo…",
@@ -44,60 +64,101 @@
     "all-day": "Buong araw",
     "all-day-lower": "buong araw",
     "pick-a-date": "Pumili ng petsa",
-    "new-event": "Bagong Kaganapan",
-    "more-events": "{count, plural, one {# pang event} other {# pang event}}"
+    "new-event": "Bagong kaganapan",
+    "more-events": "{count, plural, one {# pang kaganapan} other {# pang kaganapan}}"
   },
   "form": {
-    "create-calendar-event": "Lumikha ng kaganapan sa kalendaryo",
+    "create-calendar-event": "Gumawa ng kaganapan sa kalendaryo",
     "edit-calendar-event": "I-edit ang kaganapan sa kalendaryo",
-    "quick-create-description": "Maglagay ng pamagat at i-save para gumawa ng kaganapan sa napiling hanay ng oras.",
+    "quick-create-description": "Maglagay ng pamagat at i-save para gumawa ng kaganapan sa napiling saklaw ng oras.",
     "event-editor-description": "I-update ang pamagat, lokasyon, petsa, oras, at mga tala para sa kaganapang ito.",
-    "new-event-placeholder": "Bagong Kaganapan",
+    "new-event-placeholder": "Bagong kaganapan",
     "notes-url-placeholder": "Magdagdag ng mga tala o URL",
-    "start": "Magsimula",
-    "end": "Tapusin",
-    "google-calendar": "Google kalendaryo",
+    "start": "Simula",
+    "end": "Katapusan",
+    "google-calendar": "Kalendaryo ng Google",
     "target-calendar": "Target na kalendaryo",
     "use-default-calendar": "Gamitin ang default na kalendaryo",
     "use-default-calendar-with-name": "Gamitin ang default ({calendar})",
     "use-memry-calendar-default": "Gamitin ang memrynote na kalendaryo (default)",
-    "primary-suffix": "pangunahin"
+    "primary-suffix": "pangunahin",
+    "project": "Proyekto",
+    "no-project": "Walang proyekto",
+    "remove-from-project": "Alisin sa {project}",
+    "project-update-failed": "Hindi ma-update ang proyekto ng kaganapan",
+    "color": "Kulay",
+    "default-color": "Default na kulay"
   },
   "delete-dialog": {
     "title": "Tanggalin ang kaganapan?",
-    "local-description": "Ang \"{title}\" ay permanenteng tatanggalin. Ang pagkilos na ito ay hindi maaaring i-undo.",
-    "google-bound-description": "Aalisin ang \"{title}\" sa memrynote at Google Calendar. Ang pagkilos na ito ay hindi maaaring i-undo.",
+    "local-description": "Permanenteng tatanggalin ang “{title}”. Hindi na ito maibabalik.",
+    "google-bound-description": "Aalisin ang “{title}” sa memrynote at Google Calendar. Hindi na ito maibabalik.",
     "context-menu-delete-label": "Tanggalin ang kaganapan",
     "context-menu-add-to-project": "Idagdag sa proyekto"
+  },
+  "agent-access-dialog": {
+    "aria": "Piliin kung mababasa ng AI ang iyong mga kaganapan sa Google Calendar",
+    "title": "Payagan ang AI na basahin ang iyong mga kaganapan sa Google Calendar?",
+    "body": "Makikita mo pa rin ang mga kaganapan mo sa Google sa memrynote alinman ang piliin mo. Ito lang ang magpapasya kung mababasa ng AI agent ang mga ito kapag nagtanong ka tungkol sa iskedyul mo.",
+    "footnote": "Puwede mo itong baguhin anumang oras sa Mga setting → Mga integration → Google Calendar.",
+    "allow": "Payagan",
+    "deny": "Huwag payagan",
+    "save-error": "Hindi ma-save ang pinili mo",
+    "provider": {
+      "aria": "Piliin kung mababasa ng AI ang mga kaganapan mo sa {provider}",
+      "title": "Payagan ang AI na basahin ang mga kaganapan mo sa {provider}?",
+      "body": "Makikita mo pa rin ang mga kaganapang ito sa memrynote alinman ang piliin mo. Ito lang ang magpapasya kung mababasa ng AI agent ang mga ito kapag nagtanong ka tungkol sa iskedyul mo. Hiwalay ang sagot para sa bawat serbisyo ng kalendaryo.",
+      "footnote": "Puwede mo itong baguhin anumang oras sa Mga setting → Kalendaryo."
+    },
+    "provider-names": {
+      "ics": "naka-subscribe na kalendaryo",
+      "caldav": "kalendaryong CalDAV",
+      "apple-eventkit": "macOS Calendar"
+    }
   },
   "promote-dialog": {
     "aria": "I-edit ang panlabas na kaganapan sa kalendaryo",
     "title": "I-edit ang kaganapang ito sa memrynote?",
-    "body": "Ang pag-edit sa kaganapang ito ay lilikha ng naka-link na kopya sa memrynote kaya ang mga pagbabago ay nagsi-sync sa parehong paraan. Magpatuloy?",
-    "do-not-ask-again": "Wag ka nang magtanong ulit",
+    "body": "Kapag in-edit mo ang kaganapang ito, gagawa ng naka-link na kopya sa memrynote para ma-sync ang mga pagbabago sa magkabilang direksyon. Magpatuloy?",
+    "do-not-ask-again": "Huwag nang itanong ulit",
     "confirm-label": "I-edit sa memrynote",
-    "agent-notice": "Mababasa ng ahente ng AI ang kopyang ito, kahit naka-off ang access ng AI sa Google Calendar. Nananatiling nakatago sa ahente ang orihinal mong kaganapan sa Google."
+    "agent-notice": "Mababasa ng AI agent ang kopyang ito, kahit naka-off ang access ng AI sa Google Calendar. Nakatago pa rin sa agent ang orihinal mong kaganapan sa Google."
   },
   "onboarding-dialog": {
     "aria": "Piliin ang iyong default na kalendaryo ng Google",
-    "title": "Aling kalendaryo dapat pumunta sa mga bagong kaganapan sa memrynote?",
-    "body": "Piliin ang Google calendar na dapat gamitin ng memrynote bilang default. Maaari mo pa rin itong i-override sa bawat kaganapan.",
-    "default-calendar-label": "Gamitin ang memrynote na pinamamahalaang kalendaryo",
+    "title": "Saang kalendaryo mapupunta ang mga bagong kaganapan sa memrynote?",
+    "body": "Piliin ang kalendaryo ng Google na gagamitin ng memrynote bilang default. Puwede mo pa rin itong palitan sa bawat kaganapan.",
+    "default-calendar-label": "Gamitin ang kalendaryong pinamamahalaan ng memrynote",
     "skip": "Laktawan",
     "use-this-calendar": "Gamitin ang kalendaryong ito"
   },
+  "connect-prompt": {
+    "pill": "Ikonekta ang Google",
+    "aria": "Ikonekta ang Google Calendar",
+    "title": "Tapusin ang pagkonekta sa Google Calendar",
+    "body": "Ikonekta ang iyong Google account para mas mapakinabangan ang iyong kalendaryo:",
+    "bullets": {
+      "events": "Makita ang iyong mga kaganapan sa Google katabi ng mga tala at gawain",
+      "sync": "Gumawa at mag-edit ng mga kaganapan, naka-sync sa magkabilang direksyon",
+      "schedule": "Mag-iskedyul ng mga gawain at tala sa iyong kalendaryo"
+    },
+    "continue": "Magpatuloy gamit ang Google",
+    "dismiss": "I-dismiss",
+    "error": "Hindi maikonekta ang Google Calendar. Subukan ulit."
+  },
   "metadata": {
     "attendees": "Mga dadalo",
-    "attendees-count": "Mga Dadalo ({count})",
+    "attendees-count": "Mga dadalo ({count})",
     "reminders": "Mga paalala",
     "default-reminders": "Mga default na paalala",
-    "visibility": "Visibility:",
+    "visibility": "Kakayahang makita:",
     "optional": "Opsyonal",
     "join-meeting": "Sumali sa pulong",
+    "video-call": "Video call",
     "response": {
       "accepted": "Tinanggap",
       "declined": "Tinanggihan",
-      "tentative": "Pansamantala",
+      "tentative": "Siguro",
       "needs-action": "Nakabinbin"
     },
     "visibility-value": {
@@ -113,13 +174,13 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "Hindi ma-save ang kaganapan. Subukan muli.",
-      "couldNotCreateEventTryAgain": "Hindi makalikha ng kaganapan. Subukan muli.",
-      "couldNotSaveDefaultCalendarTryAgain": "Hindi ma-save ang default na kalendaryo. Subukan muli.",
-      "failedToLoadCalendarPreferences": "Nabigong i-load ang mga kagustuhan sa kalendaryo",
-      "failedToUpdateCalendarPreferences": "Nabigong i-update ang mga kagustuhan sa kalendaryo",
-      "couldNotEditThisEventTryAgain": "Hindi ma-edit ang kaganapang ito. Subukan muli.",
-      "failedToDeleteEvent": "Nabigong tanggalin ang kaganapan",
+      "couldNotSaveEventTryAgain": "Hindi ma-save ang kaganapan. Subukan ulit.",
+      "couldNotCreateEventTryAgain": "Hindi magawa ang kaganapan. Subukan ulit.",
+      "couldNotSaveDefaultCalendarTryAgain": "Hindi ma-save ang default na kalendaryo. Subukan ulit.",
+      "failedToLoadCalendarPreferences": "Hindi ma-load ang mga kagustuhan sa kalendaryo",
+      "failedToUpdateCalendarPreferences": "Hindi ma-update ang mga kagustuhan sa kalendaryo",
+      "couldNotEditThisEventTryAgain": "Hindi ma-edit ang kaganapang ito. Subukan ulit.",
+      "failedToDeleteEvent": "Hindi matanggal ang kaganapan",
       "couldNotUnsnoozeInboxItem": "Hindi ma-unsnooze.",
       "couldNotRescheduleInboxItem": "Hindi ma-reschedule."
     },
@@ -130,21 +191,40 @@
       "reschedule": "Mag-reschedule"
     }
   },
+  "chip": {
+    "complete-task": "Tapusin ang {title}",
+    "task-completed": "Tapos na ang gawain",
+    "could-not-complete": "Hindi mamarkahang tapos na ang gawain",
+    "duration-minutes": "{minutes}m",
+    "duration-hours": "{hours}h",
+    "duration-hours-minutes": "{hours}h {minutes}m"
+  },
+  "event-card": {
+    "kind": "Kaganapan",
+    "close": "Isara"
+  },
   "task-popover": {
     "title-fallback": "Mga detalye ng gawain",
+    "kind": "Gawain",
+    "open": "Buksan",
+    "complete": "Tapusin",
+    "more-actions": "Iba pang aksyon",
+    "move": "Ilipat",
+    "later": "Mamaya",
+    "next-week": "Sa susunod na linggo",
     "open-task": "Buksan ang gawain",
-    "source-note": "Tala ng pinagmulan",
+    "source-note": "Pinagmulang tala",
     "reschedule": "Mag-reschedule",
-    "mark-done": "Mark tapos na",
-    "mark-not-done": "Hindi pa tapos si Mark",
+    "mark-done": "Markahang tapos na",
+    "mark-not-done": "Markahang hindi pa tapos",
     "later-today": "Mamaya ngayong araw",
     "tomorrow": "Bukas",
     "next-week-mon": "Sa susunod na linggo · Lun",
     "pick-date-time": "Pumili ng petsa at oras…",
     "remove-due-date": "Alisin ang takdang petsa",
     "subtasks-prefix": "Mga subtask",
-    "subtasks-counter": "Tapos na ang {done} ng {total}",
-    "repeats": "Inuulit",
+    "subtasks-counter": "Tapos na ang {done} sa {total}",
+    "repeats": "Umuulit",
     "repeats-daily": "Umuulit araw-araw",
     "repeats-weekly": "Umuulit linggu-linggo",
     "repeats-monthly": "Umuulit buwan-buwan",
@@ -156,43 +236,151 @@
       "could-not-open-note": "Hindi mabuksan ang tala"
     }
   },
-  "connect-prompt": {
-    "aria": "Ikonekta ang Google Calendar",
-    "body": "Ikonekta ang iyong Google account para mas mapakinabangan ang iyong kalendaryo:",
-    "bullets": {
-      "events": "Makita ang iyong mga kaganapan sa Google katabi ng mga tala at gawain",
-      "schedule": "Mag-iskedyul ng mga gawain at tala sa iyong kalendaryo",
-      "sync": "Lumikha at mag-edit ng mga kaganapan, naka-sync sa dalawang direksyon"
-    },
-    "continue": "Magpatuloy gamit ang Google",
-    "dismiss": "I-dismiss",
-    "error": "Hindi maikonekta ang Google Calendar. Subukan muli.",
-    "pill": "Ikonekta ang Google",
-    "title": "Tapusin ang pagkonekta sa Google Calendar"
-  },
   "notePopover": {
-    "couldNotOpen": "Hindi mabuksan ang tala",
     "kind": "Tala",
     "kindDateReminder": "Paalala sa petsa",
-    "open": "Buksan ang tala"
+    "open": "Buksan ang tala",
+    "couldNotOpen": "Hindi mabuksan ang tala"
   },
-  "search": {
-    "close": "Isara ang paghahanap",
-    "no-results": "Walang tugma",
-    "open": "Maghanap sa kalendaryo",
-    "placeholder": "Maghanap ng kaganapan, gawain, paalala…"
+  "timeline": {
+    "label": "Mga nakaiskedyul na gawain sa timeline",
+    "tasks-column": "Mga gawain",
+    "span": "{start} – {end}",
+    "due": "Takda: {date}",
+    "starts": "Simula: {date}",
+    "starts-short": "{date} →",
+    "no-date": "Walang petsa",
+    "today": "Ngayong araw",
+    "overdue": "lampas na sa takdang petsa",
+    "untitled": "Walang pamagat",
+    "days": "{count, plural, one {# araw} other {# araw}}",
+    "events": "Mga kaganapan",
+    "schedule-hint": "I-click para magtakda ng petsa, i-drag para magtakda ng saklaw",
+    "empty-title": "Walang nasa timeline dito",
+    "empty-body": "Lalabas dito ang mga gawaing may petsa ng pagsisimula o takdang petsa, at ang mga buong-araw o maraming-araw na kaganapan. I-on ang mga gawaing walang petsa sa Display para maiskedyul ang mga ito sa pag-drag.",
+    "status": {
+      "todo": "Gagawin",
+      "in_progress": "Ginagawa",
+      "done": "Tapos na"
+    },
+    "priority": {
+      "urgent": "Apurahan",
+      "high": "Mataas",
+      "medium": "Katamtaman",
+      "low": "Mababa",
+      "none": "Walang priyoridad"
+    },
+    "zoom": {
+      "label": "Zoom",
+      "weeks": "Lingguhan",
+      "months": "Buwanan",
+      "quarters": "Kada quarter"
+    },
+    "group-by": {
+      "project": "Proyekto",
+      "status": "Katayuan",
+      "priority": "Priyoridad",
+      "none": "Walang pag-grupo"
+    },
+    "group-by-label": "Ayon sa {group}",
+    "order-by": {
+      "start": "Petsa ng pagsisimula",
+      "due": "Takdang petsa",
+      "title": "Pamagat"
+    },
+    "display": {
+      "button": "Display",
+      "group-by": "I-grupo ayon sa",
+      "order-by": "Ayusin ayon sa",
+      "show": "Ipakita",
+      "show-events": "Mga kaganapan",
+      "show-undated": "Mga gawaing walang petsa",
+      "show-completed": "Mga natapos na gawain",
+      "show-subtasks": "Mga subtask"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# gawain} other {# gawain}} · {events, plural, one {# kaganapan} other {# kaganapan}}",
+      "open": "Buksan",
+      "move": "Ilipat",
+      "resize": "Baguhin ang laki",
+      "actions": "Mga aksyon",
+      "select": "Piliin",
+      "today": "Ngayong araw"
+    },
+    "actions": {
+      "search": "Maghanap ng aksyon…",
+      "search-projects": "Maghanap ng mga proyekto…",
+      "empty": "Walang tumutugmang aksyon",
+      "no-projects": "Walang tumutugmang proyekto",
+      "open": "Buksan ang gawain",
+      "open-in-tasks": "Buksan sa Mga gawain",
+      "schedule": "Iskedyul",
+      "set-start": "Itakda ang petsa ng pagsisimula",
+      "set-due": "Itakda ang takdang petsa",
+      "move-later": "Ilipat nang isang linggong mas huli",
+      "move-earlier": "Ilipat nang isang linggong mas maaga",
+      "clear-dates": "Alisin ang mga petsa",
+      "clear-start": "Alisin ang petsa ng pagsisimula",
+      "clear-due": "Alisin ang takdang petsa",
+      "task": "Gawain",
+      "complete": "Markahang tapos na",
+      "uncomplete": "Markahang hindi pa tapos",
+      "change-project": "Palitan ang proyekto",
+      "page": {
+        "root": "Mga aksyon",
+        "start": "Petsa ng pagsisimula",
+        "due": "Takdang petsa",
+        "project": "Proyekto"
+      }
+    },
+    "undo": {
+      "reschedule": "I-reschedule ang “{title}”"
+    }
   },
-  "undo": {
-    "moveEvent": "Ilipat ang kaganapan",
-    "moveTask": "I-reschedule ang gawain"
+  "calendar-color": {
+    "tomato": "Kamatis",
+    "flamingo": "Flamingo",
+    "tangerine": "Dalanghita",
+    "banana": "Saging",
+    "sage": "Sage",
+    "basil": "Basil",
+    "peacock": "Paboreal",
+    "blueberry": "Blueberry",
+    "lavender": "Lavender",
+    "grape": "Ubas",
+    "graphite": "Graphite"
   },
-  "agent-access-dialog": {
-    "allow": "Payagan",
-    "aria": "Piliin kung mababasa ng AI ang iyong mga kaganapan sa Google Calendar",
-    "body": "Makikita mo pa rin ang iyong mga kaganapan sa Google sa memrynote alinman ang piliin mo. Ito lang ang magpapasya kung mababasa ba ng ahente ng AI ang mga ito kapag nagtanong ka tungkol sa iyong iskedyul.",
-    "deny": "Huwag payagan",
-    "footnote": "Maaari mo itong baguhin anumang oras sa Mga setting → Mga pagsasama → Google Calendar.",
-    "save-error": "Nabigong i-save ang iyong pinili",
-    "title": "Payagan ang AI na basahin ang iyong mga kaganapan sa Google Calendar?"
+  "subscribedEvent": {
+    "kind": "Naka-subscribe na kalendaryo",
+    "kindAppleEventKit": "Mac na ito",
+    "close": "Isara",
+    "detailsFailed": "Hindi ma-load ang mga dadalo at link ng kaganapang ito. Walang nagbago sa mismong kaganapan.",
+    "showMore": "Ipakita ang higit pa",
+    "showLess": "Ipakita ang mas kaunti",
+    "organizer": "organizer",
+    "you": "ikaw",
+    "phone": "Sumali gamit ang telepono",
+    "alert": "{minutes, plural, =0 {Alerto sa oras ng pagsisimula} one {Alerto # minuto bago} other {Alerto # minuto bago}}",
+    "alertHours": "{hours, plural, one {Alerto # oras bago} other {Alerto # oras bago}}",
+    "alertDays": "{days, plural, one {Alerto # araw bago} other {Alerto # araw bago}}",
+    "recurrence": {
+      "daily": "{count, plural, =1 {Umuulit araw-araw} one {Umuulit tuwing # araw} other {Umuulit tuwing # araw}}",
+      "weekly": "{count, plural, =1 {Umuulit linggu-linggo} one {Umuulit tuwing # linggo} other {Umuulit tuwing # linggo}}",
+      "weeklyOn": "{count, plural, =1 {Umuulit linggu-linggo tuwing {days}} one {Umuulit tuwing # linggo, sa {days}} other {Umuulit tuwing # linggo, sa {days}}}",
+      "monthly": "{count, plural, =1 {Umuulit buwan-buwan} one {Umuulit tuwing # buwan} other {Umuulit tuwing # buwan}}",
+      "yearly": "{count, plural, =1 {Umuulit taun-taon} one {Umuulit tuwing # taon} other {Umuulit tuwing # taon}}",
+      "other": "Umuulit"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Mga naka-subscribe na kalendaryo"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

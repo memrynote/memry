@@ -1,4 +1,10 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "التركيز على حقل الالتقاط",
+    "detailHint": "تفاصيل",
+    "submit": "التقاط"
+  },
   "button": {
     "save": "حفظ",
     "cancel": "إلغاء",
@@ -14,6 +20,9 @@
     "copy": "نسخ",
     "create": "إنشاء"
   },
+  "media": {
+    "video": "فيديو"
+  },
   "state": {
     "loading": "جارٍ التحميل…",
     "saving": "جارٍ الحفظ…",
@@ -24,7 +33,7 @@
     "search": "بحث",
     "expand": "توسيع",
     "collapse": "طي",
-    "showMore": "+{count, plural, one {# أكثر} other {# أكثر}}",
+    "showMore": "+{count, plural, zero {# أخرى} one {# أخرى} two {# أخرى} few {# أخرى} many {# أخرى} other {# أخرى}}",
     "showLess": "عرض أقل",
     "undo": "تراجع"
   },
@@ -38,410 +47,134 @@
   "tabs": {
     "pin": "تثبيت علامة التبويب",
     "unpin": "إلغاء تثبيت علامة التبويب",
+    "persistence": {
+      "saveFailed": "لم تعد علامات التبويب المفتوحة تُحفظ",
+      "saveFailedQuota": "هذه الجلسة كبيرة جدًا ولا يمكن تخزينها. أغلق بعض علامات التبويب، وإلا فقد لا تتم استعادتها عند فتح Memry في المرة القادمة.",
+      "saveFailedGeneric": "تعذّر على Memry تخزين هذه الجلسة، لذا قد لا تتم استعادتها عند فتح التطبيق في المرة القادمة.",
+      "lastSessionNotSaved": "لم تُحفظ جلستك الأخيرة عند إغلاق Memry",
+      "lastSessionNotSavedQuota": "كانت مساحة التخزين ممتلئة حينها، لذا فإن علامات التبويب هذه من عملية حفظ سابقة. أغلق بعض علامات التبويب لإفساح المجال.",
+      "lastSessionNotSavedGeneric": "تعذّر على Memry تخزين علامات التبويب عند الخروج، لذا فإن علامات التبويب هذه من عملية حفظ سابقة."
+    },
     "contextMenu": {
       "close": "إغلاق",
       "closeOthers": "إغلاق الأخرى",
-      "closeToRight": "إغلاق إلى اليسار",
+      "closeToRight": "إغلاق علامات التبويب التالية",
       "closeAll": "إغلاق الكل",
-      "duplicate": "تكرار علامة التبويب",
-      "splitRight": "تقسيم لليسار",
-      "splitDown": "تقسيم لأسفل",
+      "duplicate": "إنشاء نسخة من علامة التبويب",
+      "splitRight": "تقسيم جانبي",
+      "splitDown": "تقسيم إلى الأسفل",
       "copyPath": "نسخ المسار",
       "revealInSidebar": "إظهار في الشريط الجانبي"
     }
   },
   "count": {
     "note": "{count, plural, zero {لا توجد ملاحظات} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}",
+    "journal": "{count, plural, zero {لا توجد إدخالات في اليوميات} one {إدخال واحد في اليوميات} two {إدخالان في اليوميات} few {# إدخالات في اليوميات} many {# إدخالًا في اليوميات} other {# إدخال في اليوميات}}",
     "task": "{count, plural, zero {لا توجد مهام} one {مهمة واحدة} two {مهمتان} few {# مهام} many {# مهمة} other {# مهمة}}",
-    "itemDelete": "{count, plural, zero {حذف العناصر} one {حذف عنصر واحد} two {حذف عنصرين} few {حذف # عناصر} many {حذف # عنصراً} other {حذف # عنصر}}",
-    "event": "{count, plural, zero {لا توجد أحداث} one {حدث واحد} two {حدثان} few {# أحداث} many {# حدثاً} other {# حدث}}",
-    "journal": "{count, plural, zero {لا توجد يوميات} one {يومية واحدة} two {يوميتان} few {# يوميات} many {# يومية} other {# يومية}}",
-    "reminder": "{count, plural, zero {لا توجد تذكيرات} one {تذكير واحد} two {تذكيران} few {# تذكيرات} many {# تذكيراً} other {# تذكير}}"
+    "event": "{count, plural, zero {لا توجد أحداث} one {حدث واحد} two {حدثان} few {# أحداث} many {# حدثًا} other {# حدث}}",
+    "reminder": "{count, plural, zero {لا توجد تذكيرات} one {تذكير واحد} two {تذكيران} few {# تذكيرات} many {# تذكيرًا} other {# تذكير}}",
+    "itemDelete": "{count, plural, zero {حذف العناصر} one {حذف عنصر واحد} two {حذف عنصرين} few {حذف # عناصر} many {حذف # عنصرًا} other {حذف # عنصر}}"
   },
   "toast": {
     "actionFailed": "فشل الإجراء",
     "nothingToUndo": "لا يوجد شيء للتراجع عنه",
     "undone": "تم التراجع: {description}",
-    "undoFailed": "فشل التراجع عن الإجراء"
+    "undoFailed": "تعذّر التراجع عن الإجراء",
+    "filesImported": "{count, plural, zero {تم استيراد # ملف} one {تم استيراد ملف واحد} two {تم استيراد ملفين} few {تم استيراد # ملفات} many {تم استيراد # ملفًا} other {تم استيراد # ملف}}",
+    "filesImportFailed": "{count, plural, zero {تعذّر استيراد # ملف} one {تعذّر استيراد ملف واحد} two {تعذّر استيراد ملفين} few {تعذّر استيراد # ملفات} many {تعذّر استيراد # ملفًا} other {تعذّر استيراد # ملف}}",
+    "filesHiddenInSidebar": "الملفات مخفية في الشريط الجانبي. فعّل «إظهار الملفات» في قائمة ترتيب المجموعات لرؤيتها.",
+    "moreRemindersDue": "{count, plural, zero {لا توجد تذكيرات أخرى مستحقة} one {تذكير آخر مستحق} two {تذكيران آخران مستحقان} few {# تذكيرات أخرى مستحقة} many {# تذكيرًا آخر مستحقًا} other {# تذكير آخر مستحق}}",
+    "moreRemindersDueHint": "راجع لوحة التذكيرات للاطلاع على التفاصيل",
+    "searchIndexRepaired": "تم إصلاح فهرس البحث",
+    "searchIndexRepairedHint": "تلف جزء من فهرس البحث، لذا أعاد Memry إنشاءه. لم تتأثر ملاحظاتك."
   },
   "dateRelative": {
     "today": "اليوم",
     "yesterday": "أمس",
-    "daysAgo": "{count, plural, zero {اليوم} one {منذ يوم واحد} two {منذ يومين} few {منذ # أيام} many {منذ # يوماً} other {منذ # يوم}}",
-    "daysLate": "{count, plural, zero {تأخّر # يوم} one {تأخّر يوم واحد} two {تأخّر يومان} few {تأخّر # أيام} many {تأخّر # يومًا} other {تأخّر # يوم}}",
-    "daysOverdue": "{count, plural, zero {متأخّرة بـ# يوم} one {متأخّرة بيوم واحد} two {متأخّرة بيومين} few {متأخّرة بـ# أيام} many {متأخّرة بـ# يومًا} other {متأخّرة بـ# يوم}}",
-    "tomorrow": "غدًا"
+    "daysAgo": "{count, plural, zero {اليوم} one {منذ يوم واحد} two {منذ يومين} few {منذ # أيام} many {منذ # يومًا} other {منذ # يوم}}",
+    "tomorrow": "غدًا",
+    "daysOverdue": "{count, plural, zero {متأخرة بـ# يوم} one {متأخرة بيوم واحد} two {متأخرة بيومين} few {متأخرة بـ# أيام} many {متأخرة بـ# يومًا} other {متأخرة بـ# يوم}}",
+    "daysLate": "{count, plural, zero {متأخرة بـ# يوم} one {متأخرة بيوم} two {متأخرة بيومين} few {متأخرة بـ# أيام} many {متأخرة بـ# يومًا} other {متأخرة بـ# يوم}}",
+    "inDays": "{count, plural, zero {خلال # يوم} one {خلال يوم واحد} two {خلال يومين} few {خلال # أيام} many {خلال # يومًا} other {خلال # يوم}}",
+    "inWeeks": "{count, plural, zero {خلال # أسبوع} one {خلال أسبوع واحد} two {خلال أسبوعين} few {خلال # أسابيع} many {خلال # أسبوعًا} other {خلال # أسبوع}}"
   },
   "recurrence": {
-    "everyNDays": "{count, plural, one {كل يوم} other {كل # أيام}}",
-    "everyNWeeks": "{count, plural, one {كل أسبوع} other {كل أسابيع #}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {كل يوم من أيام الأسبوع} other {كل أسابيع # في أيام الأسبوع}}",
-    "everyNWeeksOnWeekends": "{count, plural, one {في نهاية كل أسبوع} other {كل أسابيع # في عطلات نهاية الأسبوع}}",
-    "everyNWeeksOnDays": "{count, plural, one {كل أسبوع على {days}} other {كل أسابيع # على {days}}}",
-    "everyNMonths": "{count, plural, one {كل شهر} other {كل # أشهر}}",
-    "everyNMonthsOnDay": "{count, plural, one {كل شهر على {day}{suffix}} other {كل # أشهر على {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {كل شهر على {week} {day}} other {كل # أشهر على {week} {day}}}",
-    "everyNYears": "{count, plural, one {كل عام} other {كل # سنة}}",
-    "repeats": "يكرر",
+    "everyNDays": "{count, plural, zero {كل # يوم} one {كل يوم} two {كل يومين} few {كل # أيام} many {كل # يومًا} other {كل # يوم}}",
+    "everyNWeeks": "{count, plural, zero {كل # أسبوع} one {كل أسبوع} two {كل أسبوعين} few {كل # أسابيع} many {كل # أسبوعًا} other {كل # أسبوع}}",
+    "everyNWeeksOnWeekdays": "{count, plural, zero {كل # أسبوع في أيام العمل} one {كل يوم عمل} two {كل أسبوعين في أيام العمل} few {كل # أسابيع في أيام العمل} many {كل # أسبوعًا في أيام العمل} other {كل # أسبوع في أيام العمل}}",
+    "everyNWeeksOnWeekends": "{count, plural, zero {كل # أسبوع في عطلات نهاية الأسبوع} one {كل عطلة نهاية أسبوع} two {كل أسبوعين في عطلات نهاية الأسبوع} few {كل # أسابيع في عطلات نهاية الأسبوع} many {كل # أسبوعًا في عطلات نهاية الأسبوع} other {كل # أسبوع في عطلات نهاية الأسبوع}}",
+    "everyNWeeksOnDays": "{count, plural, zero {كل # أسبوع في {days}} one {كل أسبوع في {days}} two {كل أسبوعين في {days}} few {كل # أسابيع في {days}} many {كل # أسبوعًا في {days}} other {كل # أسبوع في {days}}}",
+    "everyNMonths": "{count, plural, zero {كل # شهر} one {كل شهر} two {كل شهرين} few {كل # أشهر} many {كل # شهرًا} other {كل # شهر}}",
+    "everyNMonthsOnDay": "{count, plural, zero {كل # شهر في اليوم {day}{suffix}} one {كل شهر في اليوم {day}{suffix}} two {كل شهرين في اليوم {day}{suffix}} few {كل # أشهر في اليوم {day}{suffix}} many {كل # شهرًا في اليوم {day}{suffix}} other {كل # شهر في اليوم {day}{suffix}}}",
+    "everyNMonthsOnWeekDay": "{count, plural, zero {كل # شهر في يوم {day} {week}} one {كل شهر في يوم {day} {week}} two {كل شهرين في يوم {day} {week}} few {كل # أشهر في يوم {day} {week}} many {كل # شهرًا في يوم {day} {week}} other {كل # شهر في يوم {day} {week}}}",
+    "everyNYears": "{count, plural, zero {كل # عام} one {كل عام} two {كل عامين} few {كل # أعوام} many {كل # عامًا} other {كل # عام}}",
+    "repeats": "يتكرر",
     "ordinal": {
       "first": "الأول",
-      "fourth": "الرابع",
-      "last": "الأخير",
       "second": "الثاني",
-      "third": "الثالث"
+      "third": "الثالث",
+      "fourth": "الرابع",
+      "last": "الأخير"
     },
     "preset": {
       "everyWeekday": "كل يوم عمل (الاثنين - الجمعة)",
       "everyYearOnDate": "كل عام في {date}"
     }
   },
-  "phaseF": {
-    "componentsAppSidebar": {
-      "collections": "المجموعات",
-      "newNote": "ملاحظة جديدة",
-      "newNote2": "ملاحظة جديدة",
-      "newFolder": "مجلد جديد",
-      "newFolder2": "مجلد جديد",
-      "bookmarks": "الإشارات المرجعية",
-      "tags": "العلامات",
-      "dropFilesToImport": "قم بإسقاط الملفات لاستيرادها",
-      "newNoteN": "ملاحظة جديدة (⌘N)",
-      "new": "جديد",
-      "syncDisabled": "تم تعطيل المزامنة",
-      "syncDisabled2": "تم تعطيل المزامنة",
-      "feedbackButton": "إرسال ملاحظات",
-      "feedbackDescription": "أخبرنا بما يعمل، وما لا يعمل، أو بما تتمنى أن يفعله Memry. نقرأ كل رسالة.",
-      "feedbackEmailHint": "أضف بريدك الإلكتروني إذا كنت ترغب في الحصول على رد.",
-      "feedbackError": "تعذّر إرسال الملاحظات. يرجى المحاولة مرة أخرى.",
-      "feedbackPlaceholder": "ملاحظاتك…",
-      "feedbackSend": "إرسال",
-      "feedbackSending": "جارٍ الإرسال…",
-      "feedbackSuccess": "شكرًا على ملاحظاتك!",
-      "feedbackTitle": "إرسال ملاحظات",
-      "newItemMenu": "إنشاء جديد…",
-      "feedbackPrivacyEmailOptional": "بريدك الإلكتروني — فقط إن أضفته، ولا نستخدمه إلا للرد عليك",
-      "feedbackPrivacyEmailSignedIn": "بريد حسابك ({email})، للرد عليك",
-      "feedbackPrivacyMessage": "رسالتك، تمامًا كما كتبتها",
-      "feedbackPrivacyNote": "لا شيء غير ذلك. تبقى ملاحظاتك على جهازك.",
-      "feedbackPrivacyPlan": "خطتك (free أو Plus أو Pro أو Believer)",
-      "feedbackPrivacyTitle": "ما الذي يُرسَل",
-      "feedbackPrivacyVersion": "إصدار التطبيق ونظام التشغيل",
-      "projects": "المشاريع"
-    },
-    "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "تغيير حجم لوحة اليوم",
-      "dragToResizeDoubleClickToReset": "اسحب لتغيير الحجم · انقر نقرًا مزدوجًا لإعادة التعيين"
-    },
-    "componentsFindBarFindBar": {
-      "findReplaceAsk": "ابحث، استبدل، اسأل..."
-    },
-    "componentsFirstRunOnboarding": {
-      "skipOnboarding": "تخطي الصعود",
-      "welcomeToMemry": "مرحبًا بك في memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "قاعدة المعرفة الشخصية الخاصة بك. لنأخذ دقيقتين للبدء.",
-      "getStarted": "ابدأ ",
-      "createYourFirstNote": "قم بإنشاء ملاحظتك الأولى",
-      "markdownBasedStoredLocallyAsPlainFiles": "يعتمد على Markdown، ويتم تخزينه محليًا كملفات عادية.",
-      "eGMeetingNotesIdeasAnything": "على سبيل المثال ملاحظات الاجتماع والأفكار وأي شيء ...",
-      "skip": "تخطي",
-      "createNote": "إنشاء ملاحظة ",
-      "addYourFirstTask": "أضف مهمتك الأولى",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "ترتبط المهام بملاحظاتك، مع الأولويات وتواريخ الاستحقاق.",
-      "eGReviewProjectProposal": "على سبيل المثال مراجعة مقترح المشروع...",
-      "skip2": "تخطي",
-      "createTask": "إنشاء مهمة ",
-      "syncAcrossDevices": "المزامنة عبر الأجهزة",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "حافظ على مزامنة ملاحظاتك ومهامك عبر جميع أجهزتك. يمكنك دائمًا إعداد هذا لاحقًا.",
-      "skipForNow": "تخطي الآن",
-      "doneLetSGo": "تم - دعنا نذهب! "
-    },
-    "componentsFolderIconButton": {
-      "setFolderIcon": "تعيين رمز المجلد"
-    },
-    "componentsHintOverlayHintIndicator": {
-      "hint": "تلميح"
-    },
-    "componentsIconPicker": {
-      "iconPicker": "منتقي الأيقونات",
-      "selectIcon": "حدد الرمز",
-      "closeIconPicker": "إغلاق منتقي الأيقونات",
-      "searchIcons": "ايقونات البحث...",
-      "all": "الكل",
-      "clearIcon": "أيقونة واضحة",
-      "noIconsFoundFor": "لم يتم العثور على أيقونات لـ \""
-    },
-    "componentsKeyboardShortcutsModal": {
-      "keyboardShortcuts": "اختصارات لوحة المفاتيح",
-      "closeShortcutsHelp": "مساعدة على إغلاق الاختصارات",
-      "press": "اضغط",
-      "toClose": "ليغلق"
-    },
-    "componentsKiboUiTreeIndex": {
-      "setIcon": "تعيين أيقونة",
-      "clearIcon": "أيقونة واضحة"
-    },
-    "componentsNavMain": {
-      "platform": "منصة"
-    },
-    "componentsNavProjects": {
-      "projects": "المشاريع",
-      "more": "المزيد",
-      "viewProject": "عرض المشروع",
-      "shareProject": "شارك المشروع",
-      "deleteProject": "حذف المشروع",
-      "more2": "المزيد"
-    },
-    "componentsNavUser": {
-      "cn": "CN",
-      "cn2": "CN",
-      "upgradeToPro": "الترقية إلى برو",
-      "account": "الحساب",
-      "billing": "الفواتير",
-      "notifications": "الإخطارات",
-      "logOut": "تسجيل الخروج"
-    },
-    "componentsSearchCommandPalette": {
-      "search": "بحث",
-      "searchNotesTasksJournalInbox": "البحث في الملاحظات والمهام والمجلة والبريد الوارد...",
-      "noResultsFor": "لا توجد نتائج ل \"\"",
-      "result": "نتيجة",
-      "noResultsForQuery": "لا توجد نتائج لـ “{query}”",
-      "resultCount": "{count, plural, zero {لا توجد نتائج} one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}}",
-      "indexBuilding": "جارٍ إنشاء فهرس البحث {done}/{total} — قد تكون النتائج غير مكتملة",
-      "indexBuildingUnknown": "جارٍ إنشاء فهرس البحث — قد تكون النتائج غير مكتملة"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "ابحث وانقر فوق العناصر لبناء المسار الخاص بك",
-      "reasons": "الأسباب",
-      "clear": "واضح"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "واضح",
-      "tags": "العلامات",
-      "filterByTag": "التصفية حسب العلامة...",
-      "dateRange": "النطاق الزمني"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "عرض الكل ",
-      "results": "النتائج"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "ص",
-      "fuzzy": "غامض"
-    },
-    "componentsSplitViewEmptyPaneState": {
-      "noTabsOpen": "لا توجد علامات تبويب مفتوحة",
-      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "افتح صفحة من الشريط الجانبي أو أنشئ علامة تبويب جديدة للبدء",
-      "openInbox": "افتح البريد الوارد",
-      "closePane": "إغلاق الجزء"
-    },
-    "componentsSplitViewLayoutPicker": {
-      "layoutPresets": "الإعدادات المسبقة للتخطيط",
-      "layoutPresets2": "الإعدادات المسبقة للتخطيط"
-    },
-    "componentsSplitViewResizeHandle": {
-      "resizePanes": "تغيير حجم الأجزاء"
-    },
-    "componentsSplitViewTabContent": {
-      "taskscontextNotAvailable": "سياق المهام غير متوفر",
-      "searchResults": "نتائج البحث",
-      "unknownTabType": "نوع علامة التبويب غير معروف: "
-    },
-    "componentsTabsAccessibleTab": {
-      "unsavedChanges": "التغييرات غير المحفوظة",
-      "preview": "معاينة"
-    },
-    "componentsTabsNewTabMenu": {
-      "newTab": "علامة تبويب جديدة",
-      "newTab2": "علامة تبويب جديدة",
-      "newNote": "ملاحظة جديدة",
-      "journal": "مجلة",
-      "calendar": "التقويم",
-      "inboxCapture": "التقاط البريد الوارد",
-      "tasks": "المهام",
-      "tags": "العلامات"
-    },
-    "componentsTabsPinnedTab": {
-      "unsavedChanges": "التغييرات غير المحفوظة",
-      "unsaved": "غير محفوظ)"
-    },
-    "componentsTabsRegularTab": {
-      "unsavedChanges": "التغييرات غير المحفوظة"
-    },
-    "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "إغلاق كافة علامات التبويب"
-    },
-    "componentsTabsTabBarWithDrag": {
-      "openTabs": "علامات التبويب المفتوحة",
-      "scrollTabsLeft": "انتقل علامات التبويب إلى اليسار",
-      "scrollTabsRight": "قم بتمرير علامات التبويب إلى اليمين",
-      "dayPanel": "لوحة اليوم"
-    },
-    "componentsTabsTabErrorBoundary": {
-      "somethingWentWrong": "حدث خطأ ما",
-      "anErrorOccurredWhileRenderingThisTabContent": "حدث خطأ أثناء عرض محتوى علامة التبويب هذه.",
-      "tryAgain": "حاول مرة أخرى",
-      "sendReport": "إرسال تقرير تشخيصي"
-    },
-    "componentsTabsTabPreviewCard": {
-      "noteIcon": "أيقونة الملاحظة"
-    },
-    "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "التغييرات غير المحفوظة",
-      "unsavedChangesBody": "يحتوي \"{title}\" على تغييرات غير محفوظة. ماذا تريد أن تفعل؟"
-    },
-    "componentsTeamSwitcher": {
-      "newWorkspace": "مساحة عمل جديدة",
-      "darkMode": "الوضع المظلم",
-      "settings": "الإعدادات",
-      "integrations": "التكامل",
-      "signOut": "تسجيل الخروج",
-      "downloadOnIos": "تحميل على دائرة الرقابة الداخلية"
-    },
-    "componentsTrafficLights": {
-      "closeWindow": "أغلق النافذة",
-      "minimizeWindow": "تصغير النافذة",
-      "maximizeWindow": "تكبير النافذة"
-    },
-    "componentsUiAutocompleteDropdown": {
-      "suggestions": "اقتراحات",
-      "or": "أو",
-      "enter": "أدخل",
-      "toInsert": "لإدراج"
-    },
-    "componentsUiBreadcrumb": {
-      "breadcrumb": "فتات الخبز",
-      "more": "المزيد"
-    },
-    "componentsUiDialog": {
-      "close": "إغلاق"
-    },
-    "componentsUiSheet": {
-      "close": "إغلاق"
-    },
-    "componentsUiSidebar": {
-      "sidebar": "الشريط الجانبي",
-      "displaysTheMobileSidebar": "يعرض الشريط الجانبي للجوال.",
-      "toggleSidebar": "تبديل الشريط الجانبي",
-      "toggleSidebar2": "تبديل الشريط الجانبي",
-      "dragToResizeDoubleClickToReset": "اسحب لتغيير الحجم · انقر نقرًا مزدوجًا لإعادة التعيين"
-    },
-    "componentsVaultOnboarding": {
-      "welcomeToMemry": "مرحبًا بك في memrynote",
-      "yourPersonalKnowledgeManagementSystem": "نظام إدارة المعرفة الشخصية الخاص بك.",
-      "selectAFolderToStoreYourNotesAndTasks": "حدد مجلدًا لتخزين ملاحظاتك ومهامك.",
-      "opening": "الافتتاح...",
-      "selectVaultFolder": "حدد مجلد Vault",
-      "plainMarkdown": "تخفيض السعر عادي",
-      "yourNotesStayPortable": "تظل ملاحظاتك محمولة",
-      "syncAnywhere": "مزامنة في أي مكان",
-      "useDropboxIcloudGit": "استخدم Dropbox، iCloud، Git",
-      "recentVaults": "الخزائن الأخيرة",
-      "notesLastOpened": "ملاحظات · آخر فتح",
-      "brandName": "Memrynote",
-      "preRelease": "تجريبي",
-      "createNewVault": "إنشاء خزانة جديدة",
-      "createNewVaultDesc": "ابدأ خزانة جديدة في مجلد تختاره.",
-      "openExistingVault": "فتح خزانة موجودة",
-      "openExistingVaultDesc": "اختر مجلدًا لملفات Markdown التي تحتفظ بها بالفعل.",
-      "signInToSync": "تسجيل الدخول للمزامنة",
-      "signInToSyncDesc": "خزائن مشفرة من طرف إلى طرف عبر أجهزتك.",
-      "create": "إنشاء",
-      "open": "فتح",
-      "signIn": "تسجيل الدخول",
-      "helpAndDocs": "المساعدة والوثائق",
-      "signInRequiresVault": "افتح أو أنشئ خزانة أولًا لإعداد المزامنة.",
-      "addVault": "إضافة خزانة"
-    },
-    "componentsVaultSwitcher": {
-      "noVaultsYet": "لا يوجد خزائن حتى الآن",
-      "openVault": "قبو مفتوح",
-      "settings": "الإعدادات",
-      "logOut": "تسجيل الخروج",
-      "signInToSync": "قم بتسجيل الدخول للمزامنة",
-      "remove": "إزالة \"",
-      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "ستتم إزالة هذا المخزن من التطبيق، لكن ملفاتك ستبقى على القرص. ويمكنك دائمًا إعادة إضافته لاحقًا.",
-      "cancel": "إلغاء",
-      "remove2": "إزالة",
-      "inYourAccount": "في حسابك",
-      "itemsCount": "{count} عنصر",
-      "untitledVault": "خزنة",
-      "downloadVaultTitle": "تنزيل “{name}”",
-      "downloadLocation": "الموقع",
-      "changeLocation": "تغيير…",
-      "download": "تنزيل",
-      "downloadFailed": "تعذر تنزيل الخزنة",
-      "deleteFromAccount": "حذف من الحساب",
-      "deleteVaultBody": "يزيل هذا نهائيًا كل البيانات المزامَنة لهذه الخزنة من خوادم Memry، ولا يمكن التراجع عنه. لن تُحذف ملفاتك الموجودة على القرص.",
-      "deleteVaultConfirm": "حذف من الحساب",
-      "deleteVaultFailed": "تعذّر حذف الخزنة",
-      "deleteVaultTitle": "حذف “{name}” من حسابك؟",
-      "removeVaultTitle": "إزالة “{name}” من القائمة؟",
-      "missing": "المجلد غير موجود"
-    },
-    "componentsWindowControls": {
-      "searchK": "بحث (⌘K)",
-      "browserBack": "عودة المتصفح",
-      "back": "العودة",
-      "browserForward": "المتصفح إلى الأمام",
-      "forward": "إلى الأمام"
-    }
-  },
-  "phaseI": {
-    "errors": {
-      "failedToImportFiles": "فشل استيراد الملفات",
-      "failedToCreateNote": "فشل في إنشاء ملاحظة",
-      "failedToAccessMicrophone": "فشل الوصول إلى الميكروفون"
-    },
-    "toasts": {
-      "undone": "تم التراجع عنه"
-    }
-  },
   "agentChat": {
-    "title": "دردشة Agent",
-    "loading": "جارٍ تحميل دردشة الوكيل...",
-    "conversationLoading": "جارٍ تحميل المحادثة...",
+    "title": "دردشة الوكيل",
+    "loading": "جارٍ تحميل دردشة الوكيل…",
+    "conversationLoading": "جارٍ تحميل المحادثة…",
+    "historyNotSaved": "لا يمكن لهذا الجهاز فتح قفل الخزنة، لذا لن تُحفظ هذه المحادثة عند إغلاق التطبيق.",
     "newConversation": "محادثة جديدة",
     "history": "سجل المحادثات",
     "openInTab": "فتح المحادثة في علامة تبويب",
-    "stop": "توقف",
-    "thinking": "Agent يفكر",
+    "stop": "إيقاف",
+    "thinking": "الوكيل يفكّر",
     "enable": {
-      "title": "قم بتمكين memrynote Agent",
-      "description": "يستخدم memrynote Agent الوكيل المحلي الذي حددته CLI للدردشة حول خزنتك. يرسل Claude المنعطفات إلى Anthropic؛ يرسل Codex المنعطفات إلى OpenAI.",
-      "remote": "يقوم memrynote بتشفير سجل الدردشة المحلي والمتزامن، لكن استنتاج النموذج يحدث مع الموفر المحدد.",
+      "title": "تفعيل وكيل memrynote",
+      "description": "يستخدم وكيل memrynote أداة CLI للوكيل المحلي الذي اخترته للدردشة حول خزنتك. يرسل Claude رسائل المحادثة إلى Anthropic، ويرسلها Codex إلى OpenAI.",
+      "remote": "يشفّر memrynote سجل الدردشة المحلي والمزامَن، لكن استدلال النموذج يتم لدى المزوّد المحدد.",
       "readTools": "تعمل أدوات القراءة تلقائيًا.",
-      "writeTools": "يتطلب إنشاء الأدوات وتحديثها الموافقة.",
+      "writeTools": "تتطلب أدوات الإنشاء والتحديث موافقتك.",
       "diff": "تعرض أدوات التحديث الفرق أو المعاينة.",
-      "button": "تمكين دردشة Agent"
+      "button": "تفعيل دردشة الوكيل"
     },
     "approval": {
-      "description": "يريد الوكيل الاتصال بـ {name} باستخدام هذه الوسائط.",
-      "applyOnce": "تقدم مرة واحدة",
+      "description": "يريد الوكيل استدعاء {name} باستخدام هذه الوسائط.",
+      "applyOnce": "تطبيق مرة واحدة",
       "allowOnce": "السماح مرة واحدة",
-      "editAndApply": "التعديل والتطبيق",
-      "editAndAllow": "تحرير والسماح",
+      "editAndApply": "تعديل وتطبيق",
+      "editAndAllow": "تعديل وسماح",
       "allowAlways": "السماح دائمًا",
       "applyEdits": "تطبيق التعديلات",
       "deny": "رفض",
-      "invalidJson": "أدخل JSON صالحًا قبل تطبيق التعديلات."
+      "invalidJson": "أدخل JSON صالحًا قبل تطبيق التعديلات.",
+      "thisTool": "هذه الأداة",
+      "alwaysAllowHint": "ينطبق «السماح دائمًا» على {tool} فقط. ستظل كل الأدوات الأخرى تطلب الإذن، وتطلب عمليات الحذف الإذن دائمًا.",
+      "alwaysInChat": "السماح دائمًا في هذه الدردشة",
+      "alwaysInChatHint": "ينتهي بانتهاء المحادثة",
+      "alwaysInVault": "السماح دائمًا في هذه الخزنة",
+      "alwaysInVaultHint": "يمكن إلغاؤه من الإعدادات › الوكيل",
+      "deletesAlwaysAsk": "تطلب عمليات الحذف الإذن دائمًا"
     },
     "diff": {
-      "previewError": "تعذرت معاينة اختلافات الملاحظة",
-      "description": "يريد الوكيل تحديث {title}. قم بمراجعة المحتوى الحالي والمرشح قبل تطبيقه.",
-      "fallbackTitle": "هذه المذكرة",
+      "previewError": "تعذّر معاينة هذا التغيير",
+      "description": "يريد الوكيل تحديث {title}. راجع التغيير قبل تطبيقه.",
+      "fallbackTitle": "هذا العنصر",
       "current": "الحالي",
-      "candidate": "المرشح",
-      "loading": "جاري التحميل...",
+      "candidate": "المقترح",
+      "loading": "جارٍ التحميل…",
       "apply": "تطبيق",
-      "applyEdited": "تطبيق تم التعديل"
+      "applyEdited": "تطبيق النسخة المعدّلة",
+      "editBody": "تعديل قبل التطبيق"
     },
     "inPageReview": {
       "regionLabel": "اقتراح الوكيل",
       "barLabel": "مراجعة اقتراح الوكيل",
-      "loading": "جارٍ تحميل الاقتراح...",
+      "loading": "جارٍ تحميل الاقتراح…",
       "loadingTitle": "اقتراح الوكيل",
-      "title": "{count, plural, =0 {اقتراح الوكيل} one {اقترح الوكيل تغييرًا واحدًا} two {اقترح الوكيل تغييرين} few {اقترح الوكيل # تغييرات} many {اقترح الوكيل # تغييرًا} other {اقترح الوكيل # تغيير}}",
+      "title": "{count, plural, =0 {اقتراح الوكيل} zero {اقتراح الوكيل} one {اقترح الوكيل تغييرًا واحدًا} two {اقترح الوكيل تغييرين} few {اقترح الوكيل # تغييرات} many {اقترح الوكيل # تغييرًا} other {اقترح الوكيل # تغيير}}",
       "editingTitle": "تحرير الاقتراح",
       "pendingHint": "لم يُحفظ بعد. اقبله لتطبيقه.",
       "editingHint": "تبقى تعديلاتك هنا حتى تقبلها.",
@@ -460,55 +193,152 @@
       "openJournal": "فتح اليوميات",
       "fallbackTitle": "هذه الملاحظة"
     },
+    "preview": {
+      "unset": "غير محدد",
+      "yes": "نعم",
+      "no": "لا",
+      "noChange": "لا توجد تغييرات يمكن لهذه المعاينة عرضها.",
+      "willBeLost": "ما سيُفقد",
+      "unchangedLines": "{count, plural, zero {# سطر دون تغيير} one {سطر واحد دون تغيير} two {سطران دون تغيير} few {# أسطر دون تغيير} many {# سطرًا دون تغيير} other {# سطر دون تغيير}}",
+      "item": {
+        "note": "ملاحظة",
+        "folder": "مجلد",
+        "task": "مهمة",
+        "journal": "اليوميات",
+        "inbox": "صندوق الوارد",
+        "project": "مشروع",
+        "status": "حالة",
+        "canvas": "لوحة"
+      },
+      "intent": {
+        "create": "إنشاء",
+        "update": "تحديث",
+        "delete": "حذف",
+        "move": "نقل",
+        "reorder": "إعادة ترتيب"
+      },
+      "field": {
+        "archived": "مؤرشف",
+        "arguments": "الوسائط",
+        "color": "اللون",
+        "completed": "مكتملة",
+        "description": "الوصف",
+        "due": "الاستحقاق",
+        "dueTime": "وقت الاستحقاق",
+        "duplicateOf": "نسخة من",
+        "edits": "التعديلات",
+        "elements": "العناصر",
+        "folder": "المجلد",
+        "icon": "الأيقونة",
+        "isDefault": "افتراضي",
+        "isDone": "حالة الإكمال",
+        "items": "العناصر",
+        "name": "الاسم",
+        "operation": "العملية",
+        "order": "الترتيب",
+        "parent": "الأصل",
+        "path": "المسار",
+        "position": "الموضع",
+        "priority": "الأولوية",
+        "project": "المشروع",
+        "removed": "العنصر المُزال",
+        "repeatFrom": "التكرار من",
+        "snoozeReason": "سبب التأجيل",
+        "snoozedUntil": "مؤجَّل حتى",
+        "start": "البدء",
+        "status": "الحالة",
+        "tags": "الوسوم",
+        "title": "العنوان"
+      },
+      "loss": {
+        "words": "{count, plural, zero {# كلمة} one {كلمة واحدة} two {كلمتان} few {# كلمات} many {# كلمة} other {# كلمة}}",
+        "tags": "{count, plural, zero {# وسم} one {وسم واحد} two {وسمان} few {# وسوم} many {# وسمًا} other {# وسم}}",
+        "notes": "{count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}",
+        "folders": "{count, plural, zero {# مجلد} one {مجلد واحد} two {مجلدان} few {# مجلدات} many {# مجلدًا} other {# مجلد}}",
+        "files": "{count, plural, zero {# ملف} one {ملف واحد} two {ملفان} few {# ملفات} many {# ملفًا} other {# ملف}}",
+        "events": "{count, plural, zero {# حدث} one {حدث واحد} two {حدثان} few {# أحداث} many {# حدثًا} other {# حدث}}",
+        "tasks": "{count, plural, zero {# مهمة} one {مهمة واحدة} two {مهمتان} few {# مهام} many {# مهمة} other {# مهمة}}",
+        "due": "الاستحقاق: {value}"
+      }
+    },
     "composer": {
-      "currentNote": "المذكرة الحالية",
-      "removeAttachment": "قم بإزالة {label}",
-      "placeholder": "اسأل memrynote أي شيء. @ لذكر ملف",
-      "send": "أرسل",
-      "providerLabel": "مزود Agent: {provider}",
+      "currentNote": "الملاحظة الحالية",
+      "removeAttachment": "إزالة {label}",
+      "placeholder": "اطلب أي شيء من memrynote… @ للإشارة إلى الملاحظات والمهام والأحداث",
+      "send": "إرسال",
+      "providerLabel": "مزوّد الوكيل: {provider}",
       "settingsSummary": "{reasoning}",
+      "connectedTools": "الأدوات المتصلة",
+      "connectTool": "توصيل {tool}",
+      "addContext": "إضافة سياق",
+      "addContextWithPermissions": "إضافة سياق ({permissions})",
+      "mentionContext": "الإشارة إلى ملاحظة أو مهمة أو حدث",
+      "voice": {
+        "start": "بدء الإملاء الصوتي",
+        "stop": "إيقاف الإملاء الصوتي",
+        "transcribing": "جارٍ تحويل الإدخال الصوتي إلى نص",
+        "errors": {
+          "permissionDenied": "تم رفض الوصول إلى الميكروفون",
+          "noMicrophone": "لم يُعثر على ميكروفون",
+          "accessFailed": "تعذّر الوصول إلى الميكروفون",
+          "recordingFailed": "تعذّر تسجيل الإدخال الصوتي",
+          "transcriptionFailed": "تعذّر تحويل الإدخال الصوتي إلى نص"
+        }
+      },
+      "modelLabel": "نموذج الوكيل: {provider} {model}",
+      "reasoningLabel": "استدلال الوكيل: {reasoning}",
       "providers": {
+        "label": "المزوّد",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
         "local": "محلي"
-      },
-      "models": {
-        "default": "الافتراضي",
-        "label": "النموذج"
-      },
-      "settings": {
-        "reasoning": "الاستدلال"
-      },
-      "claudeSettings": {
-        "reasoning": {
-          "low": "منخفض",
-          "medium": "متوسطة",
-          "high": "عالية",
-          "extraHigh": "ارتفاع إضافي",
-          "extraHighDefault": "عالي جدًا (افتراضي)",
-          "max": "ماكس"
-        }
-      },
-      "codexSettings": {
-        "reasoning": {
-          "low": "منخفض",
-          "medium": "متوسطة",
-          "mediumDefault": "متوسط (افتراضي)",
-          "high": "عالية",
-          "extraHigh": "ارتفاع إضافي"
-        }
       },
       "access": {
         "vaultOnly": "الخزنة فقط",
         "computerAccess": "الوصول إلى الكمبيوتر"
       },
       "webSearch": {
-        "on": "On",
+        "on": "تشغيل",
         "off": "إيقاف",
         "label": "البحث في الويب"
       },
-      "permissionsLabel": "أذونات الوكيل: {access}، البحث في الويب {webSearch}",
+      "models": {
+        "default": "الافتراضي",
+        "label": "النموذج",
+        "search": "البحث في النماذج…",
+        "useCustom": "استخدام «{query}»",
+        "localEmpty": "لم يُعثر على نماذج — تحقق من الإعدادات",
+        "localSetup": "الضبط في الإعدادات…",
+        "cliSetup": "لم يُكتشف — الضبط في الإعدادات…",
+        "runtimeUnavailable": "الوكيل غير متاح — فتح الإعدادات…"
+      },
+      "settings": {
+        "reasoning": "الاستدلال",
+        "effort": "الجهد"
+      },
+      "includeCurrentNote": "تضمين الملاحظة الحالية",
+      "chooseModel": "اختيار النموذج",
+      "claudeSettings": {
+        "reasoning": {
+          "low": "منخفض",
+          "medium": "متوسط",
+          "high": "عالٍ",
+          "extraHigh": "عالٍ جدًا",
+          "extraHighDefault": "عالٍ جدًا (افتراضي)",
+          "max": "الأقصى"
+        }
+      },
+      "codexSettings": {
+        "reasoning": {
+          "low": "منخفض",
+          "medium": "متوسط",
+          "mediumDefault": "متوسط (افتراضي)",
+          "high": "عالٍ",
+          "extraHigh": "عالٍ جدًا"
+        }
+      },
+      "permissionsLabel": "أذونات الوكيل: {access}، البحث في الويب: {webSearch}",
       "permissions": {
         "label": "الأذونات",
         "access": "الوصول",
@@ -526,191 +356,140 @@
       "editedArgs": "الوسائط المعدلة",
       "parameters": "المعلمات"
     },
+    "toolActivity": {
+      "steps": "{count, plural, zero {# خطوة} one {خطوة واحدة} two {خطوتان} few {# خطوات} many {# خطوة} other {# خطوة}}",
+      "running": "جارٍ التنفيذ",
+      "awaitingApproval": "بانتظار الموافقة",
+      "done": "اكتمل"
+    },
+    "reasoning": {
+      "thinking": "جارٍ التفكير…",
+      "thought": "التفكير",
+      "thoughtFor": "فكّر لمدة {seconds} ث",
+      "toggle": "إظهار الاستدلال أو إخفاؤه"
+    },
     "sidebar": {
-      "label": "الشريط الجانبي الأيمن",
+      "label": "الشريط الجانبي الثانوي",
       "day": "اليوم",
       "agent": "الوكيل",
-      "pendingApproval": "{count, plural, one {# في انتظار الموافقة} other {# الموافقات المعلقة}}",
-      "inProgress": "جارٍ تشغيل Agent",
+      "pendingApproval": "{count, plural, zero {لا توجد موافقات معلقة} one {موافقة واحدة معلقة} two {موافقتان معلقتان} few {# موافقات معلقة} many {# موافقة معلقة} other {# موافقة معلقة}}",
+      "inProgress": "الوكيل يعمل على الرد",
       "close": "إغلاق الوكيل"
     },
     "errors": {
-      "loadConversations": "تعذر تحميل محادثات الوكيل",
-      "loadConversation": "تعذر تحميل محادثة الوكيل",
-      "createConversation": "تعذر إنشاء محادثة الوكيل",
-      "busy": "هناك نافذة أخرى في منتصف هذه المحادثة. انتظر حتى ينتهي أو أوقفه من هناك.",
-      "sendTurn": "تعذر إرسال دور الوكيل",
-      "cancelTurn": "تعذر إلغاء دور الوكيل",
-      "submitApproval": "تعذر إرسال الموافقة على الأداة",
-      "updateTrust": "تعذر تحديث الأدوات الموثوقة",
-      "saveDisclosure": "تعذر حفظ حالة الكشف",
-      "resolveWindow": "تعذر حل نافذة مصدر الوكيل",
-      "detectCli": "تعذر اكتشاف الواجهات الخلفية للوكيل",
-      "loadDisclosure": "تعذر تحميل حالة الكشف"
+      "loadConversations": "تعذّر تحميل محادثات الوكيل",
+      "loadConversation": "تعذّر تحميل محادثة الوكيل",
+      "createConversation": "تعذّر إنشاء محادثة الوكيل",
+      "busy": "نافذة أخرى تعالج ردًا في هذه المحادثة الآن. انتظر حتى ينتهي أو أوقفه من هناك.",
+      "sendTurn": "تعذّر إرسال الرسالة إلى الوكيل",
+      "cancelTurn": "تعذّر إلغاء رد الوكيل",
+      "submitApproval": "تعذّر إرسال الموافقة على الأداة",
+      "updateTrust": "تعذّر تحديث الأدوات الموثوقة",
+      "saveDisclosure": "تعذّر حفظ حالة الإفصاح",
+      "resolveWindow": "تعذّر تحديد نافذة مصدر الوكيل",
+      "detectCli": "تعذّر اكتشاف الواجهات الخلفية للوكيل",
+      "loadDisclosure": "تعذّر تحميل حالة الإفصاح"
+    },
+    "actions": {
+      "copy": "نسخ",
+      "copied": "تم النسخ"
     },
     "sources": {
-      "used": "{count, plural, one {تم استخدام مصدر واحد} other {تم استخدام # مصادر}}"
+      "count": "{count, plural, zero {# مصدر} one {مصدر واحد} two {مصدران} few {# مصادر} many {# مصدرًا} other {# مصدر}}"
     }
-  },
-  "home": {
-    "addWidget": "إضافة أداة",
-    "board": {
-      "defaultName": "الرئيسية",
-      "deleteAria": "حذف التخطيط",
-      "label": "تخطيط الصفحة الرئيسية",
-      "newAria": "لوحة جديدة",
-      "newName": "لوحة جديدة"
-    },
-    "disabled": {
-      "createNote": "إنشاء ملاحظة",
-      "hint": "لا شيء مفتوح. ابدأ ملاحظة."
-    },
-    "done": "تم",
-    "edit": "تحرير",
-    "empty": {
-      "body": "تجمع الأدوات ملاحظاتك ومهامك وإشاراتك المرجعية في مكان هادئ واحد.",
-      "cta": "أضف أداتك الأولى",
-      "title": "لوحتك فارغة"
-    },
-    "greeting": {
-      "afternoon": "نهارك سعيد",
-      "evening": "مساء الخير",
-      "morning": "صباح الخير"
-    },
-    "header": {
-      "events": "{count, plural, zero {لا توجد أحداث} one {حدث واحد} two {حدثان} few {# أحداث} many {# حدثاً} other {# حدث}}",
-      "tasksDue": "{count, plural, zero {لا توجد مهام مستحقة اليوم} one {مهمة واحدة مستحقة اليوم} two {مهمتان مستحقتان اليوم} few {# مهام مستحقة اليوم} many {# مهمة مستحقة اليوم} other {# مهمة مستحقة اليوم}}"
-    },
-    "noBookmarksYet": "لا توجد إشارات مرجعية بعد.",
-    "noEventsYet": "لا توجد أحداث اليوم.",
-    "noJournalEntriesYet": "لا توجد مدخلات يوميات بعد.",
-    "noNotesYet": "لا توجد ملاحظات بعد.",
-    "noTasksYet": "لا توجد مهام بعد.",
-    "widget": {
-      "bookmarks": "الإشارات المرجعية",
-      "calendar": "التقويم",
-      "calendarToday": "اليوم",
-      "configAria": "تكوين الأداة",
-      "configure": "تكوين",
-      "dragAria": "سحب الأداة",
-      "duration": "{count} دقيقة",
-      "filter": {
-        "today": "مستحقة اليوم",
-        "tomorrow": "غدًا",
-        "week": "هذا الأسبوع"
-      },
-      "folder": "مجلد",
-      "folderEmpty": "لا توجد مجلدات بعد",
-      "folderNoSelection": "لم يتم تحديد مجلد",
-      "folderPickPrompt": "اختر مجلدًا",
-      "folderViewSelect": "عرض",
-      "folderView_gallery": "معرض",
-      "folderView_list": "قائمة",
-      "inbox": "البريد الوارد",
-      "inboxAllTypes": "جميع الأنواع",
-      "inboxOlder": "{count, plural, other {# أقدم}}",
-      "inboxOldest": "الأقدم {count, plural, zero {# يوم} one {يوم واحد} two {يومان} few {# أيام} many {# يوماً} other {# يوم}}",
-      "journal": "اليوميات",
-      "journalStreak": "{count, plural, zero {سلسلة # يوم} one {سلسلة يوم واحد} two {سلسلة يومين} few {سلسلة # أيام} many {سلسلة # يوماً} other {سلسلة # يوم}}",
-      "journalToday": "اليوم",
-      "journalYesterday": "أمس",
-      "loadError": "تعذّر التحميل",
-      "menuAria": "خيارات الأداة",
-      "next": "التالي: {title}",
-      "openCalendar": "فتح التقويم",
-      "openInbox": "فتح البريد الوارد",
-      "recentMeta": "حُرِّرت {time}",
-      "recentMetaWithFolder": "{folder} · حُرِّرت {time}",
-      "recentlyEdited": "المحرَّرة مؤخرًا",
-      "remove": "إزالة",
-      "removeAria": "إزالة الأداة",
-      "resize": "الحجم",
-      "resizeAria": "تغيير الحجم إلى {size}",
-      "savedFilterDefault": "اليوم",
-      "savedFilterHint": "ضع نجمة على عوامل التصفية في صفحة المهام لاستخدامها هنا",
-      "savedFilterLabel": "عامل تصفية محفوظ",
-      "startsIn": "يبدأ خلال {count, plural, zero {# دقيقة} one {دقيقة واحدة} two {دقيقتين} few {# دقائق} many {# دقيقة} other {# دقيقة}}",
-      "tasks": "المهام",
-      "unknown": "أداة غير معروفة",
-      "untitled": "بدون عنوان"
-    }
-  },
-  "media": {
-    "video": "فيديو"
-  },
-  "onboarding": {
-    "agentChat": {
-      "body": "انتقل إلى علامة تبويب الوكيل لتسأل مساعد MemryNote عن خزنتك.",
-      "title": "تحدّث مع وكيل الذكاء الاصطناعي"
-    },
-    "collections": {
-      "body": "نظّم الملاحظات في مجلدات، وثبّت الإشارات المرجعية، وتصفّح حسب الوسم — كل ذلك هنا.",
-      "title": "المجموعات والإشارات المرجعية والوسوم"
-    },
-    "dayPanel": {
-      "body": "تُبقي اللوحة الجانبية التقويم وعرض يومك بجوار كل ما تقرؤه.",
-      "title": "يومك، بجانب عملك"
-    },
-    "feedback": {
-      "body": "أرسل ملاحظاتك مباشرة إلى الفريق من هنا.",
-      "title": "أخبرنا برأيك"
-    },
-    "nav": {
-      "body": "البريد الوارد للالتقاط، واليوميات للملاحظات اليومية، والتقويم لجدولك الزمني، والمهام لقوائم المهام، والرسم البياني لترى كيف يترابط كل شيء.",
-      "title": "مساحات عملك"
-    },
-    "newNote": {
-      "body": "ابدأ من هنا. كل ما تكتبه يُخزَّن محليًا أولًا.",
-      "title": "أنشئ ملاحظتك الأولى"
-    },
-    "settings": {
-      "body": "استورد ملاحظاتك من أكثر من 12 تطبيقًا — Obsidian وNotion وApple Notes وEvernote والمزيد — واضبط كل شيء آخر في الإعدادات.",
-      "title": "الإعدادات والاستيراد"
-    },
-    "sync": {
-      "body": "فعّل المزامنة المشفّرة من طرف إلى طرف لإبقاء كل جهاز متزامنًا.",
-      "title": "مزامنة خاصة ومشفّرة"
-    },
-    "welcome": {
-      "body": "مساحتك الخاصة التي تعمل دون اتصال أولاً. الملاحظات مشفّرة تمامًا من طرف إلى طرف — ولا تغادر جهازك أبدًا بدون تشفير.",
-      "title": "مرحبًا بك في MemryNote"
-    },
-    "tour": {
-      "next": "التالي",
-      "previous": "السابق",
-      "progress": "{current} من {total}"
-    }
-  },
-  "capture": {
-    "focusShortcut": "التركيز على حقل الالتقاط",
-    "detailHint": "تفاصيل",
-    "focusHint": "Q",
-    "submit": "التقاط"
   },
   "canvas": {
+    "sectionLabel": "اللوحات",
+    "newCanvas": "لوحة جديدة",
+    "newCanvasFolder": "مجلد لوحات جديد",
+    "untitled": "لوحة بدون عنوان",
+    "empty": "لا توجد لوحات بعد",
+    "loading": "جارٍ تحميل اللوحات…",
+    "loadFailed": "تعذّر تحميل اللوحات",
+    "createFailed": "تعذّر إنشاء اللوحة",
+    "openFailed": "تعذّر فتح اللوحة",
+    "notFound": "تعذّر العثور على هذه اللوحة",
+    "corruptScene": "تعذّرت قراءة هذه اللوحة. تم تعطيل التحرير لتفادي فقدان البيانات.",
+    "unreadableTitle": "لا يمكن فتح هذه اللوحة هنا",
+    "unreadableBody": "مستندها مفقود من الخزنة، أو رُسمت قبل أن تصبح اللوحات ملفات ولم يعد هذا الجهاز يحتفظ بالمفتاح الذي يفتح قفلها. لم يُحذف أي شيء — افتح الخزنة على الجهاز الذي أنشأها، أو استعد مجلد اللوحات.",
+    "tooLargeToSync": "هذه اللوحة أكبر من أن تُزامَن. ستبقى محفوظة على هذا الجهاز، لكنها لن تصل إلى أجهزتك الأخرى حتى يصغر حجمها.",
+    "savedToVault": "تُحفظ كل التغييرات في خزنتك تلقائيًا",
+    "libraryStoreFailed": "تعذّر حفظ مكتبة الأشكال. قد تُفقد التغييرات الأخيرة عليها.",
+    "link": {
+      "itemMissing": "لم يعد العنصر المرتبط موجودًا.",
+      "elementMissing": "يشير هذا الرابط إلى شيء لم يعد موجودًا على هذه اللوحة.",
+      "title": "ربط بعنصر",
+      "placeholder": "البحث في الملاحظات والمهام والأحداث وصندوق الوارد والمشاريع…",
+      "hint": "ابدأ الكتابة للعثور على عنصر لربطه.",
+      "empty": "لا توجد نتائج مطابقة.",
+      "selectOneShape": "حدد شكلًا واحدًا لربطه بعنصر.",
+      "cardsCannotLink": "تفتح البطاقة عنصرها الخاص بالفعل، لذا لا يمكنها حمل رابط ثانٍ.",
+      "linked": "تم الربط.",
+      "groupNotes": "الملاحظات",
+      "groupFiles": "الملفات",
+      "groupTasks": "المهام",
+      "groupEvents": "الأحداث",
+      "groupInbox": "صندوق الوارد",
+      "groupJournals": "اليوميات",
+      "groupProjects": "المشاريع",
+      "groupFolders": "المجلدات",
+      "useUrl": "ربط بـ{url}",
+      "openTarget": "فتح {name}",
+      "shapeTarget": "شكل على هذه اللوحة",
+      "missingTarget": "لم يعد على هذه اللوحة"
+    },
+    "disabledTitle": "ميزة اللوحة غير مفعّلة",
+    "disabledBody": "تنتمي علامة التبويب هذه إلى ميزة غير مفعّلة على هذا الجهاز.",
+    "unreadable": "مستند هذه اللوحة مفقود أو تتعذّر قراءته. أظهِره في مدير الملفات، أو احذف العنصر.",
+    "actionFailed": "تعذّر إكمال إجراء اللوحة هذا",
+    "renameLabel": "اسم اللوحة",
+    "folderNameLabel": "اسم المجلد",
+    "deleteConfirmTitle": "هل تريد حذف هذه اللوحة؟",
+    "deleteConfirmBody": "ستُزال اللوحة «{title}» من memrynote على كل أجهزتك. سينتقل ملفها إلى سلة المهملات في هذا الكمبيوتر، لكن إعادته منها لن تستعيد اللوحة.",
+    "dropToRoot": "أفلِت هنا للنقل خارج المجلد",
+    "filterPlaceholder": "تصفية اللوحات",
+    "filterNoMatches": "لا توجد لوحات تطابق عامل التصفية هذا",
+    "folderCanvasCount": "اللوحات: {count}",
+    "folderEmptyHint": "لا يوجد شيء هنا بعد",
+    "deleteFolderConfirmTitle": "هل تريد حذف مجلد اللوحات هذا؟",
+    "deleteFolderConfirmBody": "سيُزال المجلد «{name}» وكل ما بداخله من memrynote على كل أجهزتك. اللوحات المتأثرة: {count}. سينتقل المجلد إلى سلة المهملات في هذا الكمبيوتر، لكن إعادته منها لن تستعيدها.",
+    "actions": {
+      "rename": "إعادة تسمية",
+      "duplicate": "إنشاء نسخة",
+      "copyLink": "نسخ الرابط",
+      "setIcon": "تعيين أيقونة",
+      "removeIcon": "إزالة الأيقونة",
+      "moveToFolder": "نقل إلى مجلد",
+      "moveToRoot": "الجذر",
+      "openExternal": "فتح في محرر خارجي",
+      "newCanvasHere": "لوحة جديدة هنا",
+      "newFolder": "مجلد جديد",
+      "canvasMenu": "إجراءات اللوحة",
+      "folderMenu": "إجراءات مجلد اللوحات"
+    },
     "card": {
-      "addCard": "إضافة بطاقة",
-      "addCreateNote": "إنشاء ملاحظة \"{query}\"",
-      "addCreateNoteEmpty": "إنشاء ملاحظة جديدة",
-      "addCreatedAt": "أُنشئت في {date}",
-      "addEmpty": "لا توجد نتائج",
-      "addGroupEvents": "الأحداث",
-      "addGroupNotes": "الملاحظات",
-      "addGroupTasks": "المهام",
-      "addOnCanvas": "على اللوحة",
-      "addPlaceholder": "ابحث في الملاحظات والمهام والأحداث…",
-      "allDay": "طوال اليوم",
-      "createNoteFailed": "تعذّر إنشاء الملاحظة",
+      "open": "فتح في علامة تبويب",
+      "openToEdit": "فتح في علامة تبويب للتحرير",
       "deleted": "تم حذف العنصر",
       "loading": "جارٍ التحميل…",
-      "open": "فتح في علامة تبويب",
-      "openToEdit": "افتح في علامة تبويب للتحرير",
       "untitled": "بدون عنوان",
+      "allDay": "طوال اليوم",
+      "createNoteFailed": "تعذّر إنشاء الملاحظة",
+      "addCard": "إضافة بطاقة",
+      "addPlaceholder": "البحث في الملاحظات والملفات والمهام والأحداث والمشاريع…",
+      "addCreateNote": "إنشاء ملاحظة «{query}»",
+      "addCreateNoteEmpty": "إنشاء ملاحظة جديدة",
+      "addEmpty": "لا توجد نتائج",
+      "addGroupNotes": "الملاحظات",
+      "addGroupTasks": "المهام",
+      "addGroupEvents": "الأحداث",
+      "addOnCanvas": "على اللوحة",
+      "addCreatedAt": "أُنشئت في {date}",
       "bulkGroup": "إضافة الكل من",
       "bulkFromTag": "وسم…",
       "bulkFromFolder": "مجلد…",
-      "bulkSearchTags": "ابحث في الوسوم…",
-      "bulkSearchFolders": "ابحث في المجلدات…",
+      "bulkSearchTags": "البحث في الوسوم…",
+      "bulkSearchFolders": "البحث في المجلدات…",
       "bulkTagsHeading": "الوسوم",
       "bulkFoldersHeading": "المجلدات",
       "bulkItemCount": "{count, plural, zero {لا عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}}",
@@ -718,145 +497,760 @@
       "bulkAllItems": "كل العناصر",
       "bulkConfirmTitle": "{count, plural, zero {إضافة بطاقات من {name}؟} one {إضافة بطاقة واحدة من {name}؟} two {إضافة بطاقتين من {name}؟} few {إضافة # بطاقات من {name}؟} many {إضافة # بطاقة من {name}؟} other {إضافة # بطاقة من {name}؟}}",
       "bulkConfirmBody": "تصبح اللوحات الكبيرة أبطأ وقد تتجاوز حد حجم المزامنة.",
-      "bulkConfirmSkipped": "{count, plural, zero {لا توجد عناصر مكررة.} one {عنصر واحد موجود بالفعل على هذه اللوحة وسيتم تخطيه.} two {عنصران موجودان بالفعل على هذه اللوحة وسيتم تخطيهما.} few {# عناصر موجودة بالفعل على هذه اللوحة وسيتم تخطيها.} many {# عنصرًا موجودًا بالفعل على هذه اللوحة وسيتم تخطيها.} other {# عنصر موجود بالفعل على هذه اللوحة وسيتم تخطيها.}}",
+      "bulkConfirmSkipped": "{count, plural, zero {لا توجد عناصر موجودة بالفعل على هذه اللوحة.} one {سيتم تخطي عنصر واحد لأنه موجود بالفعل على هذه اللوحة.} two {سيتم تخطي عنصرين لأنهما موجودان بالفعل على هذه اللوحة.} few {سيتم تخطي # عناصر لأنها موجودة بالفعل على هذه اللوحة.} many {سيتم تخطي # عنصرًا لأنها موجودة بالفعل على هذه اللوحة.} other {سيتم تخطي # عنصر لأنها موجودة بالفعل على هذه اللوحة.}}",
       "bulkConfirmAdd": "{count, plural, zero {إضافة بطاقات} one {إضافة بطاقة واحدة} two {إضافة بطاقتين} few {إضافة # بطاقات} many {إضافة # بطاقة} other {إضافة # بطاقة}}",
       "bulkBack": "رجوع",
       "bulkEmpty": "لا توجد ملاحظات أو ملفات أو مهام لإضافتها",
-      "bulkLoadFailed": "تعذر تحميل العناصر",
+      "bulkLoadFailed": "تعذّر تحميل العناصر",
       "bulkAdded": "{count, plural, zero {لم تتم إضافة بطاقات} one {تمت إضافة بطاقة واحدة} two {تمت إضافة بطاقتين} few {تمت إضافة # بطاقات} many {تمت إضافة # بطاقة} other {تمت إضافة # بطاقة}}",
       "bulkAddedSkipped": "{count, plural, zero {لم تتم إضافة بطاقات} one {تمت إضافة بطاقة واحدة} two {تمت إضافة بطاقتين} few {تمت إضافة # بطاقات} many {تمت إضافة # بطاقة} other {تمت إضافة # بطاقة}} · {skipped} موجودة بالفعل على اللوحة",
-      "bulkAllOnCanvas": "{count, plural, zero {موجود بالفعل على هذه اللوحة} one {موجود بالفعل على هذه اللوحة} two {كلاهما موجود بالفعل على هذه اللوحة} few {كل الـ# موجودة بالفعل على هذه اللوحة} many {كل الـ# موجودة بالفعل على هذه اللوحة} other {كل الـ# موجودة بالفعل على هذه اللوحة}}"
+      "bulkAllOnCanvas": "{count, plural, zero {موجود بالفعل على هذه اللوحة} one {موجود بالفعل على هذه اللوحة} two {كلاهما موجود بالفعل على هذه اللوحة} few {كل العناصر (#) موجودة بالفعل على هذه اللوحة} many {كل العناصر (#) موجودة بالفعل على هذه اللوحة} other {كل العناصر (#) موجودة بالفعل على هذه اللوحة}}"
     },
-    "corruptScene": "تعذّرت قراءة هذه اللوحة. تم تعطيل التحرير لتفادي فقدان البيانات.",
-    "createFailed": "تعذّر إنشاء اللوحة",
-    "disabledBody": "تنتمي علامة التبويب هذه إلى ميزة غير مفعّلة على هذا الجهاز.",
-    "disabledTitle": "ميزة اللوحة غير مفعّلة",
-    "empty": "لا توجد لوحات بعد",
-    "libraryStoreFailed": "تعذّر حفظ مكتبة الأشكال. قد تُفقد التغييرات الأخيرة عليها.",
-    "loadFailed": "تعذّر تحميل اللوحات",
-    "loading": "جارٍ تحميل اللوحات…",
-    "newCanvas": "لوحة جديدة",
-    "notFound": "تعذّر العثور على هذه اللوحة",
-    "openFailed": "تعذّر فتح اللوحة",
-    "savedToVault": "تُحفظ كل التغييرات في خزنتك تلقائيًا",
-    "sectionLabel": "اللوحات",
-    "tooLargeToSync": "هذه اللوحة أكبر من أن تُزامَن. ستبقى محفوظة على هذا الجهاز، لكنها لن تصل إلى أجهزتك الأخرى حتى يصغر حجمها.",
-    "untitled": "لوحة بدون عنوان"
+    "cluster": {
+      "button": "اقتراح مجموعات",
+      "buttonHint": "تجميع بطاقات الملاحظات على هذه اللوحة (أو المحددة منها) حسب التشابه. يعمل على هذا الجهاز.",
+      "loading": "جارٍ التجميع…",
+      "needMoreNotes": "أضف {count} من بطاقات الملاحظات على الأقل لاقتراح مجموعات.",
+      "tooMany": "تحتوي هذه اللوحة على أكثر من {count} من بطاقات الملاحظات. حدد ما يصل إلى {count} منها وحاول مرة أخرى.",
+      "disabled": "فعّل التضمينات المحلية في الإعدادات > الذكاء الاصطناعي لاقتراح مجموعات.",
+      "noGroups": "لم يُعثر على مجموعات واضحة بين هذه الملاحظات.",
+      "missing": "{count, plural, zero {# ملاحظة ليس لها تضمين بعد، لذا استُبعدت.} one {ملاحظة واحدة ليس لها تضمين بعد، لذا استُبعدت.} two {ملاحظتان ليس لهما تضمين بعد، لذا استُبعدتا.} few {# ملاحظات ليس لها تضمين بعد، لذا استُبعدت.} many {# ملاحظة ليس لها تضمين بعد، لذا استُبعدت.} other {# ملاحظة ليس لها تضمين بعد، لذا استُبعدت.}}",
+      "failed": "تعذّر اقتراح مجموعات",
+      "title": "المجموعات المقترحة",
+      "description": "جُمّعت حسب التشابه على هذا الجهاز. لن يتغير شيء على اللوحة حتى تنشئ الإطارات.",
+      "defaultName": "المجموعة {number}",
+      "untitledGroup": "مجموعة",
+      "groupName": "اسم المجموعة",
+      "acceptGroup": "تضمين {name}",
+      "noteCount": "{count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}",
+      "discard": "تجاهل",
+      "create": "{count, plural, zero {إنشاء # إطار} one {إنشاء إطار واحد} two {إنشاء إطارين} few {إنشاء # إطارات} many {إنشاء # إطارًا} other {إنشاء # إطار}}",
+      "created": "{count, plural, zero {تم إنشاء # إطار} one {تم إنشاء إطار واحد} two {تم إنشاء إطارين} few {تم إنشاء # إطارات} many {تم إنشاء # إطارًا} other {تم إنشاء # إطار}}",
+      "cardsGone": "لم تعد هذه البطاقات على اللوحة."
+    },
+    "frame": {
+      "categorize": "تصنيف",
+      "editBinding": "تغيير التصنيف الذي يطبقه هذا القسم",
+      "cardCount": "{count, plural, zero {# بطاقة} one {بطاقة واحدة} two {بطاقتان} few {# بطاقات} many {# بطاقة} other {# بطاقة}}",
+      "bindTitle": "تصنيف هذا القسم",
+      "bindHint": "تحصل البطاقات التي تُفلَت في هذا القسم على هذا الوسم أو قيمة الخاصية هذه.",
+      "bindPlaceholder": "البحث في الوسوم وقيم الخصائص، أو كتابة وسم جديد…",
+      "bindEmpty": "لا توجد وسوم أو قيم خصائص مطابقة.",
+      "groupTags": "الوسوم",
+      "useTag": "استخدام الوسم الجديد #{tag}",
+      "unbind": "إيقاف التصنيف كـ{label}",
+      "current": "الحالي",
+      "applied": "{count, plural, zero {تمت إضافة {label} إلى # بطاقة} one {تمت إضافة {label} إلى بطاقة واحدة} two {تمت إضافة {label} إلى بطاقتين} few {تمت إضافة {label} إلى # بطاقات} many {تمت إضافة {label} إلى # بطاقة} other {تمت إضافة {label} إلى # بطاقة}}",
+      "applyFailed": "تعذّر إضافة {label}",
+      "revertFailed": "تعذّر التراجع عن {label}",
+      "leftFrame": "{count, plural, zero {تم نقل # بطاقة خارج {label}. تحتفظ بتصنيفها.} one {تم نقل بطاقة واحدة خارج {label}. تحتفظ بتصنيفها.} two {تم نقل بطاقتين خارج {label}. تحتفظان بتصنيفهما.} few {تم نقل # بطاقات خارج {label}. تحتفظ بتصنيفها.} many {تم نقل # بطاقة خارج {label}. تحتفظ بتصنيفها.} other {تم نقل # بطاقة خارج {label}. تحتفظ بتصنيفها.}}",
+      "removeCategory": "إزالة {label}",
+      "removed": "{count, plural, zero {تمت إزالة {label} من # بطاقة} one {تمت إزالة {label} من بطاقة واحدة} two {تمت إزالة {label} من بطاقتين} few {تمت إزالة {label} من # بطاقات} many {تمت إزالة {label} من # بطاقة} other {تمت إزالة {label} من # بطاقة}}",
+      "removeFailed": "تعذّر إزالة {label}",
+      "skippedFile": "{count, plural, zero {تُركت # بطاقة ملف كما هي: لا تحتوي الملفات على وسوم أو خصائص.} one {تُركت بطاقة ملف واحدة كما هي: لا تحتوي الملفات على وسوم أو خصائص.} two {تُركت بطاقتا ملف كما هما: لا تحتوي الملفات على وسوم أو خصائص.} few {تُركت # بطاقات ملفات كما هي: لا تحتوي الملفات على وسوم أو خصائص.} many {تُركت # بطاقة ملف كما هي: لا تحتوي الملفات على وسوم أو خصائص.} other {تُركت # بطاقة ملف كما هي: لا تحتوي الملفات على وسوم أو خصائص.}}",
+      "skippedTaskProperty": "{count, plural, zero {تُركت # بطاقة مهمة كما هي: تقبل المهام الوسوم، لا خصائص الملاحظات.} one {تُركت بطاقة مهمة واحدة كما هي: تقبل المهام الوسوم، لا خصائص الملاحظات.} two {تُركت بطاقتا مهمة كما هما: تقبل المهام الوسوم، لا خصائص الملاحظات.} few {تُركت # بطاقات مهام كما هي: تقبل المهام الوسوم، لا خصائص الملاحظات.} many {تُركت # بطاقة مهمة كما هي: تقبل المهام الوسوم، لا خصائص الملاحظات.} other {تُركت # بطاقة مهمة كما هي: تقبل المهام الوسوم، لا خصائص الملاحظات.}}",
+      "skippedUnsupported": "{count, plural, zero {تُركت # بطاقة كما هي: لا يمكن تصنيف الأحداث والمشاريع.} one {تُركت بطاقة واحدة كما هي: لا يمكن تصنيف الأحداث والمشاريع.} two {تُركت بطاقتان كما هما: لا يمكن تصنيف الأحداث والمشاريع.} few {تُركت # بطاقات كما هي: لا يمكن تصنيف الأحداث والمشاريع.} many {تُركت # بطاقة كما هي: لا يمكن تصنيف الأحداث والمشاريع.} other {تُركت # بطاقة كما هي: لا يمكن تصنيف الأحداث والمشاريع.}}",
+      "layoutAction": "توزيع حسب الخاصية",
+      "layoutTitle": "توزيع حسب الخاصية",
+      "layoutHint": "ينشئ قسمًا لكل قيمة ويوزّع الملاحظات الموجودة على هذه اللوحة عليها.",
+      "layoutPlaceholder": "البحث في خصائص الاختيار والاختيار المتعدد والحالة…",
+      "layoutEmpty": "لا توجد خصائص اختيار أو اختيار متعدد أو حالة ذات قيم بعد.",
+      "layoutValueCount": "{count, plural, zero {# قيمة} one {قيمة واحدة} two {قيمتان} few {# قيم} many {# قيمة} other {# قيمة}}",
+      "layoutDone": "{count, plural, zero {تم إنشاء # قسم للخاصية {property}} one {تم إنشاء قسم واحد للخاصية {property}} two {تم إنشاء قسمين للخاصية {property}} few {تم إنشاء # أقسام للخاصية {property}} many {تم إنشاء # قسمًا للخاصية {property}} other {تم إنشاء # قسم للخاصية {property}}}",
+      "layoutFailed": "تعذّر توزيع عناصر اللوحة"
+    }
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "المجموعات",
+      "projects": "المشاريع",
+      "newNote": "ملاحظة جديدة",
+      "newNote2": "ملاحظة جديدة",
+      "newFolder": "مجلد جديد",
+      "newFolder2": "مجلد جديد",
+      "newProject": "مشروع جديد",
+      "bookmarks": "الإشارات المرجعية",
+      "tags": "الوسوم",
+      "reorderSection": "إعادة ترتيب {section}",
+      "dropFilesToImport": "أفلِت الملفات لاستيرادها",
+      "dropFilesIntoVaultRoot": "جذر الخزنة",
+      "newNoteN": "ملاحظة جديدة (⌘N)",
+      "new": "جديد",
+      "newItemMenu": "إنشاء جديد…",
+      "feedbackButton": "إرسال رأيك",
+      "feedbackTitle": "إرسال رأيك",
+      "feedbackDescription": "أخبرنا بما يعمل، وما لا يعمل، أو بما تتمنى أن يفعله MemryNote. نقرأ كل رسالة.",
+      "feedbackPlaceholder": "رأيك…",
+      "feedbackEmailHint": "أضف بريدك الإلكتروني إذا كنت ترغب في الحصول على رد.",
+      "feedbackPrivacyTitle": "ما الذي يُرسَل",
+      "feedbackPrivacyMessage": "رسالتك، تمامًا كما كتبتها",
+      "feedbackPrivacyEmailOptional": "بريدك الإلكتروني — فقط إن أضفته، ولا نستخدمه إلا للرد عليك",
+      "feedbackPrivacyEmailSignedIn": "بريد حسابك ({email})، للرد عليك",
+      "feedbackPrivacyVersion": "إصدار التطبيق ونظام التشغيل",
+      "feedbackPrivacyPlan": "اشتراكك (المجاني أو Plus أو Pro أو Believer)",
+      "feedbackPrivacyNote": "لا شيء غير ذلك. تبقى ملاحظاتك على جهازك.",
+      "feedbackSend": "إرسال",
+      "feedbackSending": "جارٍ الإرسال…",
+      "feedbackSuccess": "شكرًا على رأيك!",
+      "feedbackError": "تعذّر إرسال رأيك. حاول مرة أخرى.",
+      "syncDisabled": "تم تعطيل المزامنة",
+      "syncDisabled2": "تم تعطيل المزامنة",
+      "sortLabel": "ترتيب {section}: {mode}",
+      "sortModeManual": "يدوي",
+      "sortModeNameAsc": "الاسم أ ← ي",
+      "sortModeNameDesc": "الاسم ي ← أ",
+      "sortModeModifiedDesc": "تاريخ التعديل: الأحدث أولًا",
+      "sortModeModifiedAsc": "تاريخ التعديل: الأقدم أولًا",
+      "sortModeCreatedDesc": "تاريخ الإنشاء: الأحدث أولًا",
+      "sortModeCreatedAsc": "تاريخ الإنشاء: الأقدم أولًا",
+      "sortModeCountDesc": "الأكثر استخدامًا",
+      "sortModeCountAsc": "الأقل استخدامًا",
+      "sortSaveFailed": "تعذّر حفظ طريقة الترتيب",
+      "sectionOrderSaveFailed": "تعذّر حفظ ترتيب الشريط الجانبي"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "تغيير حجم لوحة اليوم",
+      "dragToResizeDoubleClickToReset": "اسحب لتغيير الحجم · انقر نقرًا مزدوجًا لإعادة التعيين"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "بحث، استبدال، طرح سؤال…"
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "تخطي الجولة التعريفية",
+      "welcomeToMemry": "مرحبًا بك في memrynote",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "قاعدة المعرفة الشخصية الخاصة بك. لنأخذ دقيقتين للبدء.",
+      "getStarted": "لنبدأ ",
+      "createYourFirstNote": "أنشئ ملاحظتك الأولى",
+      "markdownBasedStoredLocallyAsPlainFiles": "تعتمد الملاحظات على Markdown وتُخزَّن محليًا كملفات عادية.",
+      "eGMeetingNotesIdeasAnything": "مثال: ملاحظات اجتماع، أفكار، أي شيء…",
+      "skip": "تخطي",
+      "createNote": "إنشاء ملاحظة ",
+      "addYourFirstTask": "أضف مهمتك الأولى",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "ترتبط المهام بملاحظاتك، مع الأولويات وتواريخ الاستحقاق.",
+      "eGReviewProjectProposal": "مثال: مراجعة مقترح المشروع…",
+      "skip2": "تخطي",
+      "createTask": "إنشاء مهمة ",
+      "syncAcrossDevices": "المزامنة عبر الأجهزة",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "حافظ على مزامنة ملاحظاتك ومهامك عبر جميع أجهزتك. يمكنك دائمًا إعداد هذا لاحقًا.",
+      "skipForNow": "تخطي حاليًا",
+      "doneLetSGo": "تم — لننطلق! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "تعيين أيقونة المجلد",
+      "expandFolder": "توسيع المجلد",
+      "collapseFolder": "طي المجلد"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "تلميح"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "منتقي الأيقونات",
+      "selectIcon": "اختيار أيقونة",
+      "closeIconPicker": "إغلاق منتقي الأيقونات",
+      "searchIcons": "البحث في الأيقونات…",
+      "all": "الكل",
+      "clearIcon": "مسح الأيقونة",
+      "noIconsFoundFor": "لم يُعثر على أيقونات تطابق \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "اختصارات لوحة المفاتيح",
+      "closeShortcutsHelp": "إغلاق تعليمات الاختصارات",
+      "press": "اضغط",
+      "toClose": "للإغلاق"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "تعيين أيقونة",
+      "clearIcon": "مسح الأيقونة"
+    },
+    "componentsNavMain": {
+      "platform": "المنصة"
+    },
+    "componentsNavProjects": {
+      "projects": "المشاريع",
+      "more": "المزيد",
+      "viewProject": "عرض المشروع",
+      "shareProject": "مشاركة المشروع",
+      "deleteProject": "حذف المشروع",
+      "more2": "المزيد"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "الترقية إلى Pro",
+      "account": "الحساب",
+      "billing": "الفواتير",
+      "notifications": "الإشعارات",
+      "logOut": "تسجيل الخروج"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "بحث",
+      "searchNotesTasksJournalInbox": "البحث في الملاحظات والمهام واليوميات وصندوق الوارد…",
+      "noResultsFor": "لا توجد نتائج تطابق «",
+      "result": "نتيجة",
+      "noResultsForQuery": "لا توجد نتائج تطابق «{query}»",
+      "resultCount": "{count, plural, zero {لا توجد نتائج} one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}}",
+      "indexBuilding": "جارٍ إنشاء فهرس البحث {done}/{total} — قد تكون النتائج غير مكتملة",
+      "indexBuildingUnknown": "جارٍ إنشاء فهرس البحث — قد تكون النتائج غير مكتملة"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "ابحث وانقر فوق العناصر لبناء المسار الخاص بك",
+      "reasons": "الأسباب",
+      "clear": "مسح"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "مسح",
+      "tags": "الوسوم",
+      "filterByTag": "التصفية حسب الوسم…",
+      "dateRange": "النطاق الزمني"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "عرض كل النتائج: ",
+      "results": "إجمالًا"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "تقريبي"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "لا توجد علامات تبويب مفتوحة",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "افتح صفحة من الشريط الجانبي أو أنشئ علامة تبويب جديدة للبدء",
+      "openInbox": "فتح صندوق الوارد",
+      "closePane": "إغلاق الجزء"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "تخطيطات جاهزة",
+      "layoutPresets2": "تخطيطات جاهزة"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "تغيير حجم الأجزاء"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "سياق المهام غير متوفر",
+      "searchResults": "نتائج البحث",
+      "unknownTabType": "نوع علامة التبويب غير معروف: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "التغييرات غير المحفوظة",
+      "preview": "معاينة"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "علامة تبويب جديدة",
+      "newTab2": "علامة تبويب جديدة",
+      "newNote": "ملاحظة جديدة",
+      "journal": "اليوميات",
+      "calendar": "التقويم",
+      "inboxCapture": "التقاط إلى صندوق الوارد",
+      "tasks": "المهام",
+      "tags": "الوسوم"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "التغييرات غير المحفوظة",
+      "unsaved": "غير محفوظ)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "التغييرات غير المحفوظة"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "إغلاق كل علامات التبويب"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "علامات التبويب المفتوحة",
+      "scrollTabsLeft": "تمرير علامات التبويب نحو البداية",
+      "scrollTabsRight": "تمرير علامات التبويب نحو النهاية",
+      "dayPanel": "لوحة اليوم"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "حدث خطأ ما",
+      "anErrorOccurredWhileRenderingThisTabContent": "حدث خطأ أثناء عرض محتوى علامة التبويب هذه.",
+      "tryAgain": "إعادة المحاولة",
+      "sendReport": "إرسال تقرير تشخيصي"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "أيقونة الملاحظة"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "التغييرات غير المحفوظة",
+      "unsavedChangesBody": "توجد تغييرات غير محفوظة في «{title}». ماذا تريد أن تفعل؟"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "مساحة عمل جديدة",
+      "darkMode": "الوضع الداكن",
+      "settings": "الإعدادات",
+      "integrations": "التكاملات",
+      "signOut": "تسجيل الخروج",
+      "downloadOnIos": "التنزيل على iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "إغلاق النافذة",
+      "minimizeWindow": "تصغير النافذة",
+      "maximizeWindow": "تكبير النافذة"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "اقتراحات",
+      "or": "أو",
+      "enter": "Enter",
+      "toInsert": "للإدراج"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "مسار التنقل",
+      "more": "المزيد"
+    },
+    "componentsUiDialog": {
+      "close": "إغلاق"
+    },
+    "componentsUiSheet": {
+      "close": "إغلاق"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "الشريط الجانبي",
+      "displaysTheMobileSidebar": "يعرض الشريط الجانبي للجوال.",
+      "toggleSidebar": "إظهار/إخفاء الشريط الجانبي",
+      "toggleSidebar2": "إظهار/إخفاء الشريط الجانبي",
+      "dragToResizeDoubleClickToReset": "اسحب لتغيير الحجم · انقر نقرًا مزدوجًا لإعادة التعيين"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "مرحبًا بك في memrynote",
+      "yourPersonalKnowledgeManagementSystem": "نظام إدارة المعرفة الشخصية الخاص بك.",
+      "selectAFolderToStoreYourNotesAndTasks": "حدد مجلدًا لتخزين ملاحظاتك ومهامك.",
+      "opening": "جارٍ الفتح…",
+      "selectVaultFolder": "اختيار مجلد الخزنة",
+      "plainMarkdown": "Markdown عادي",
+      "yourNotesStayPortable": "تبقى ملاحظاتك قابلة للنقل",
+      "syncAnywhere": "مزامنة في أي مكان",
+      "useDropboxIcloudGit": "استخدم Dropbox، iCloud، Git",
+      "recentVaults": "الخزائن الأخيرة",
+      "notesLastOpened": "ملاحظات · آخر فتح",
+      "preRelease": "تجريبي",
+      "createNewVault": "إنشاء خزنة جديدة",
+      "createNewVaultDesc": "أنشئ خزنة جديدة في مجلد من اختيارك.",
+      "openExistingVault": "فتح خزنة موجودة",
+      "openExistingVaultDesc": "اختر مجلدًا يضم ملفات Markdown التي تحتفظ بها بالفعل.",
+      "signInToSync": "تسجيل الدخول للمزامنة",
+      "signInToSyncDesc": "خزائن مشفرة من طرف إلى طرف عبر أجهزتك.",
+      "create": "إنشاء",
+      "open": "فتح",
+      "signIn": "تسجيل الدخول",
+      "helpAndDocs": "المساعدة والوثائق",
+      "signInRequiresVault": "افتح خزنة أو أنشئها أولًا لإعداد المزامنة.",
+      "addVault": "إضافة خزنة",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "تُحفظ ملاحظاتك في خزنة، وهي مجلد على هذا الكمبيوتر.",
+        "createDesc": "سمّها واختر مكان حفظها.",
+        "openFolder": "فتح مجلد كخزنة",
+        "openFolderDesc": "استخدم مجلدًا يضم ملفات Markdown التي تحتفظ بها بالفعل.",
+        "openFromSync": "فتح من مزامنة Memrynote",
+        "openFromSyncDesc": "سجّل الدخول ونزّل خزنة من حسابك.",
+        "back": "رجوع",
+        "createTitle": "إنشاء خزنة جديدة",
+        "createSubtitle": "الخزنة مجلد يضم ملفات Markdown. يمكنك نقلها لاحقًا.",
+        "nameLabel": "الاسم",
+        "namePlaceholder": "ملاحظاتي",
+        "locationLabel": "الموقع",
+        "change": "تغيير…",
+        "willBeCreatedAt": "سيتم إنشاؤها في",
+        "errorExists": "يوجد مجلد بهذا الاسم هنا بالفعل.",
+        "openInstead": "فتحه كخزنة بدلًا من ذلك",
+        "errorInvalidName": "لا يمكن أن تبدأ الأسماء بنقطة أو تحتوي على / \\ : * ? \" < > |",
+        "createFailed": "تعذّر إنشاء الخزنة.",
+        "createVault": "إنشاء الخزنة",
+        "creating": "جارٍ الإنشاء…",
+        "cancel": "إلغاء",
+        "chooseTitle": "اختر خزنة",
+        "chooseSubtitle": "سجّلت الدخول باسم {email}. اختر خزنة لفتحها على هذا الكمبيوتر.",
+        "untitledVault": "خزنة بدون عنوان",
+        "items": "{count, plural, zero {# عنصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}}",
+        "onThisComputer": "على هذا الكمبيوتر",
+        "downloadTo": "التنزيل إلى",
+        "otherVaultsHint": "تبقى الخزائن الأخرى في حسابك. يمكنك تنزيلها في أي وقت من مبدّل الخزائن.",
+        "openVault": "فتح الخزنة",
+        "opening": "جارٍ الفتح…",
+        "loadingVaults": "جارٍ تحميل خزائنك…",
+        "loadFailed": "تعذّر تحميل خزائنك.",
+        "retry": "إعادة المحاولة",
+        "noVaultsTitle": "لا توجد خزائن في حسابك بعد",
+        "noVaultsDesc": "أنشئ خزنة على هذا الكمبيوتر، وستتم مزامنتها مع حسابك.",
+        "createCta": "إنشاء خزنة",
+        "openFailed": "تعذّر فتح الخزنة."
+      }
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "لا توجد خزائن بعد",
+      "openVault": "فتح خزنة",
+      "settings": "الإعدادات",
+      "logOut": "تسجيل الخروج",
+      "signInToSync": "تسجيل الدخول للمزامنة",
+      "remove": "إزالة «",
+      "removeVaultTitle": "هل تريد إزالة «{name}» من القائمة؟",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "ستتم إزالة هذه الخزنة من التطبيق، لكن ملفاتك ستبقى على القرص. يمكنك دائمًا إعادة إضافتها لاحقًا.",
+      "cancel": "إلغاء",
+      "remove2": "إزالة",
+      "inYourAccount": "في حسابك",
+      "itemsCount": "العناصر: {count}",
+      "untitledVault": "خزنة",
+      "downloadVaultTitle": "تنزيل «{name}»",
+      "downloadLocation": "الموقع",
+      "changeLocation": "تغيير…",
+      "download": "تنزيل",
+      "downloadFailed": "تعذّر تنزيل الخزنة",
+      "deleteFromAccount": "حذف من الحساب",
+      "deleteVaultTitle": "هل تريد حذف «{name}» من حسابك؟",
+      "deleteVaultBody": "يزيل هذا نهائيًا كل البيانات المزامَنة لهذه الخزنة من خوادم Memry، ولا يمكن التراجع عنه. لن تُحذف ملفاتك الموجودة على القرص.",
+      "deleteVaultConfirm": "حذف من الحساب",
+      "deleteVaultFailed": "تعذّر حذف الخزنة",
+      "missing": "المجلد غير موجود"
+    },
+    "componentsWindowControls": {
+      "searchK": "بحث (⌘K)",
+      "browserBack": "الرجوع للخلف",
+      "back": "العودة",
+      "browserForward": "التقدم للأمام",
+      "forward": "إلى الأمام"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "تعذّر استيراد الملفات",
+      "failedToCreateNote": "تعذّر إنشاء الملاحظة",
+      "failedToAccessMicrophone": "تعذّر الوصول إلى الميكروفون"
+    },
+    "toasts": {
+      "undone": "تم التراجع"
+    }
+  },
+  "home": {
+    "widget": {
+      "removeAria": "إزالة الأداة",
+      "dragAria": "سحب الأداة",
+      "configAria": "تكوين الأداة",
+      "resizeAria": "تغيير الحجم إلى {size}",
+      "menuAria": "خيارات الأداة",
+      "resize": "الحجم",
+      "remove": "إزالة",
+      "filter": {
+        "all": "الكل",
+        "today": "مستحقة اليوم",
+        "tomorrow": "غدًا",
+        "next7": "خلال 7 أيام",
+        "noDueDate": "بلا تاريخ استحقاق"
+      },
+      "recentlyEdited": "المحرَّرة مؤخرًا",
+      "recentlyOpened": "المفتوحة مؤخرًا",
+      "recentMeta": "حُرِّرت {time}",
+      "recentMetaWithFolder": "{folder} · حُرِّرت {time}",
+      "openedMeta": "فُتحت {time}",
+      "openedMetaWithFolder": "{folder} · فُتحت {time}",
+      "noRecentlyOpened": "تظهر هنا الملاحظات التي تفتحها",
+      "bookmarks": "الإشارات المرجعية",
+      "tasks": "المهام",
+      "calendar": "التقويم",
+      "calendarToday": "اليوم",
+      "openCalendar": "فتح التقويم",
+      "next": "التالي: {title}",
+      "startsIn": "يبدأ خلال {count, plural, zero {# دقيقة} one {دقيقة واحدة} two {دقيقتين} few {# دقائق} many {# دقيقة} other {# دقيقة}}",
+      "duration": "{count} د",
+      "inbox": "صندوق الوارد",
+      "inboxAllTypes": "جميع الأنواع",
+      "inboxOlder": "{count, plural, zero {# عنصر أقدم} one {عنصر واحد أقدم} two {عنصران أقدم} few {# عناصر أقدم} many {# عنصرًا أقدم} other {# عنصر أقدم}}",
+      "inboxOldest": "الأقدم: {count, plural, zero {# يوم} one {يوم واحد} two {يومان} few {# أيام} many {# يومًا} other {# يوم}}",
+      "openInbox": "فتح صندوق الوارد",
+      "folder": "مجلد",
+      "untitled": "بدون عنوان",
+      "folderPickPrompt": "اختر مجلدًا",
+      "folderEmpty": "لا توجد مجلدات بعد",
+      "folderNoSelection": "لم يتم تحديد مجلد",
+      "folderView_list": "قائمة",
+      "folderView_gallery": "معرض",
+      "folderViewSelect": "عرض",
+      "project": "مشروع",
+      "projectNoSelection": "لم يتم تحديد مشروع",
+      "projectMissing": "لم يعد هذا المشروع متاحًا",
+      "projectNoTasks": "لا توجد مهام",
+      "journal": "اليوميات",
+      "journalStreak": "{count, plural, zero {سلسلة # يوم} one {سلسلة يوم واحد} two {سلسلة يومين} few {سلسلة # أيام} many {سلسلة # يومًا} other {سلسلة # يوم}}",
+      "journalToday": "اليوم",
+      "journalYesterday": "أمس",
+      "journalTomorrow": "غدًا",
+      "journalUpcoming": "الأيام القادمة",
+      "journalNoEntryYet": "لا يوجد إدخال بعد",
+      "loadError": "تعذّر التحميل",
+      "unknown": "أداة غير معروفة"
+    },
+    "board": {
+      "label": "تخطيط الرئيسية",
+      "deleteAria": "حذف التخطيط",
+      "newAria": "لوحة معلومات جديدة",
+      "newName": "لوحة معلومات جديدة",
+      "defaultName": "الرئيسية",
+      "manage": "إدارة لوحات المعلومات",
+      "manageTitle": "إدارة لوحات المعلومات",
+      "manageDescription": "أعد تسمية لوحات المعلومات في الرئيسية أو رتّبها أو احذفها.",
+      "renameAria": "إعادة تسمية لوحة المعلومات",
+      "reorderAria": "إعادة ترتيب لوحة المعلومات",
+      "nameLabel": "اسم لوحة المعلومات"
+    },
+    "greeting": {
+      "morning": "صباح الخير",
+      "afternoon": "نهارك سعيد",
+      "evening": "مساء الخير"
+    },
+    "header": {
+      "tasksDue": "{count, plural, zero {لا توجد مهام مستحقة اليوم} one {مهمة واحدة مستحقة اليوم} two {مهمتان مستحقتان اليوم} few {# مهام مستحقة اليوم} many {# مهمة مستحقة اليوم} other {# مهمة مستحقة اليوم}}",
+      "events": "{count, plural, zero {لا توجد أحداث} one {حدث واحد} two {حدثان} few {# أحداث} many {# حدثًا} other {# حدث}}"
+    },
+    "edit": "تحرير",
+    "done": "تم",
+    "addWidget": "إضافة أداة",
+    "empty": {
+      "title": "لوحة معلوماتك فارغة",
+      "body": "تجمع الأدوات ملاحظاتك ومهامك وإشاراتك المرجعية في مكان هادئ واحد.",
+      "cta": "إضافة أداتك الأولى"
+    },
+    "noBookmarksYet": "لا توجد إشارات مرجعية بعد.",
+    "noNotesYet": "لا توجد ملاحظات بعد.",
+    "noTasksYet": "لا توجد مهام بعد.",
+    "noEventsYet": "لا توجد أحداث اليوم.",
+    "noJournalEntriesYet": "لا توجد إدخالات في اليوميات بعد.",
+    "disabled": {
+      "createNote": "إنشاء ملاحظة",
+      "hint": "لا شيء مفتوح. ابدأ ملاحظة."
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "مرحبًا بك في MemryNote",
+      "body": "مساحتك الخاصة التي تعمل دون اتصال. الملاحظات مشفّرة من طرف إلى طرف — ولا تغادر جهازك أبدًا دون تشفير."
+    },
+    "newNote": {
+      "title": "أنشئ ملاحظتك الأولى",
+      "body": "ابدأ من هنا. كل ما تكتبه يُخزَّن محليًا أولًا."
+    },
+    "nav": {
+      "title": "مساحات عملك",
+      "body": "صندوق الوارد للالتقاط، واليوميات للملاحظات اليومية، والتقويم لجدولك الزمني، والمهام لقوائم مهامك، والرسم البياني لترى كيف يترابط كل شيء."
+    },
+    "collections": {
+      "title": "المجموعات والإشارات المرجعية والوسوم",
+      "body": "نظّم الملاحظات في مجلدات، وثبّت الإشارات المرجعية، وتصفّح حسب الوسم — كل ذلك هنا."
+    },
+    "dayPanel": {
+      "title": "يومك، بجانب عملك",
+      "body": "تُبقي اللوحة الجانبية التقويم وعرض يومك بجوار كل ما تقرؤه."
+    },
+    "agentChat": {
+      "title": "تحدّث مع وكيل الذكاء الاصطناعي",
+      "body": "انتقل إلى علامة تبويب الوكيل لتسأل مساعد MemryNote عن خزنتك."
+    },
+    "sync": {
+      "title": "مزامنة خاصة ومشفّرة",
+      "body": "فعّل المزامنة المشفّرة من طرف إلى طرف لإبقاء كل جهاز متزامنًا."
+    },
+    "feedback": {
+      "title": "أخبرنا برأيك",
+      "body": "أرسل رأيك مباشرةً إلى الفريق من هنا."
+    },
+    "settings": {
+      "title": "الإعدادات والاستيراد",
+      "body": "استورد ملاحظاتك من أكثر من 12 تطبيقًا — Obsidian وNotion وApple Notes وEvernote والمزيد — واضبط كل شيء آخر في الإعدادات."
+    },
+    "tour": {
+      "next": "التالي",
+      "previous": "السابق",
+      "progress": "{current} من {total}"
+    },
+    "starPrompt": {
+      "title": "اكتملت الجولة التعريفية",
+      "body": "امنحنا نجمة على GitHub — فهذا يساعد الآخرين على العثور على MemryNote.",
+      "action": "منح نجمة على GitHub"
+    }
   },
   "shortcuts": {
-    "combos": {
-      "clickRow": "انقر على الصف",
-      "reset": "إعادة تعيين",
-      "shortcutsTab": "علامة تبويب الاختصارات"
-    },
     "description": "طرق سريعة للتنقل في memrynote والتقاط الأفكار ومعالجة العمل.",
+    "or": "أو",
+    "then": "ثم",
     "groups": {
       "general": {
-        "description": "التنقل والمساعدة على مستوى التطبيق.",
-        "title": "عام"
-      },
-      "inbox": {
-        "description": "عالج العناصر الملتقطة بسرعة.",
-        "title": "البريد الوارد"
-      },
-      "journal": {
-        "description": "تنقّل بين عروض اليوميات وركّز على منطقة الكتابة.",
-        "title": "اليوميات"
-      },
-      "notes": {
-        "description": "اكتب الملاحظات ونسّقها وابحث فيها.",
-        "title": "الملاحظات / المحرر"
-      },
-      "settings": {
-        "description": "افتح الإعدادات وخصّص الاختصارات.",
-        "title": "الإعدادات"
+        "title": "عام",
+        "description": "التنقل والمساعدة على مستوى التطبيق."
       },
       "tabs": {
-        "description": "انتقل بين علامات التبويب والأجزاء.",
-        "title": "علامات التبويب والتقسيمات"
+        "title": "علامات التبويب والتقسيمات",
+        "description": "انتقل بين علامات التبويب والأجزاء."
+      },
+      "inbox": {
+        "title": "صندوق الوارد",
+        "description": "عالج العناصر الملتقطة بسرعة."
+      },
+      "journal": {
+        "title": "اليوميات",
+        "description": "تنقّل بين عروض اليوميات وركّز على منطقة الكتابة."
+      },
+      "notes": {
+        "title": "الملاحظات / المحرر",
+        "description": "اكتب الملاحظات ونسّقها وابحث فيها."
       },
       "tasks": {
-        "description": "صفِّ المهام وحدّدها وأكملها.",
-        "title": "المهام"
+        "title": "المهام",
+        "description": "صفِّ المهام وحدّدها وأكملها."
+      },
+      "settings": {
+        "title": "الإعدادات",
+        "description": "افتح الإعدادات وخصّص الاختصارات."
       }
     },
     "items": {
       "general": {
-        "createNote": "إنشاء ملاحظة",
-        "keyboardShortcuts": "فتح اختصارات لوحة المفاتيح",
-        "openSettings": "فتح الإعدادات",
         "quickSearch": "فتح البحث السريع",
-        "sidebarSection": "الانتقال إلى قسم في الشريط الجانبي",
-        "toggleSidebar": "تبديل الشريط الجانبي",
-        "undoTaskAction": "التراجع عن آخر إجراء على المهام"
+        "createNote": "إنشاء ملاحظة",
+        "openSettings": "فتح الإعدادات",
+        "switchVault": "تغيير الخزنة",
+        "adjacentVault": "الخزنة السابقة أو التالية",
+        "keyboardShortcuts": "فتح اختصارات لوحة المفاتيح",
+        "undoTaskAction": "التراجع عن آخر إجراء على المهام",
+        "toggleSidebar": "إظهار الشريط الجانبي أو إخفاؤه",
+        "sidebarSection": "الانتقال إلى قسم في الشريط الجانبي"
+      },
+      "tabs": {
+        "newTabMenu": "فتح قائمة علامة التبويب الجديدة",
+        "closeTab": "إغلاق علامة التبويب",
+        "closeAllInPane": "إغلاق كل علامات التبويب في الجزء",
+        "reopenClosedTab": "إعادة فتح علامة تبويب مغلقة",
+        "nextTab": "علامة التبويب التالية",
+        "previousTab": "علامة التبويب السابقة",
+        "pinTab": "تثبيت علامة التبويب أو إلغاء تثبيتها",
+        "duplicateTab": "إنشاء نسخة من علامة التبويب",
+        "splitRight": "تقسيم جانبي",
+        "splitDown": "تقسيم إلى الأسفل",
+        "closeSplitPane": "إغلاق الجزء المقسوم",
+        "focusPane": "التركيز على جزء آخر",
+        "moveTabToPane": "نقل علامة التبويب إلى جزء",
+        "maximizePane": "تكبير الجزء الحالي"
       },
       "inbox": {
-        "archiveItem": "أرشفة العنصر المحدد",
-        "chooseQuickFileResult": "اختيار نتيجة الإيداع السريع",
-        "clearSelection": "مسح التحديد أو إغلاق الإيداع السريع",
-        "confirmFiling": "تأكيد لوحة الإيداع",
+        "nextItem": "العنصر التالي",
+        "previousItem": "العنصر السابق",
         "firstOrLastItem": "العنصر الأول أو الأخير",
         "jumpByPage": "الانتقال صفحة بصفحة",
-        "nextItem": "العنصر التالي",
-        "openOriginal": "فتح الرابط الأصلي",
-        "openQuickFile": "فتح الإيداع السريع",
-        "previousItem": "العنصر السابق",
-        "refresh": "تحديث البريد الوارد",
-        "selectAllVisible": "تحديد كل العناصر الظاهرة",
+        "togglePreview": "إظهار لوحة المعاينة أو إخفاؤها",
         "selectItem": "تحديد العنصر",
-        "togglePreview": "تبديل لوحة المعاينة"
+        "selectAllVisible": "تحديد كل العناصر الظاهرة",
+        "clearSelection": "مسح التحديد أو إغلاق النقل السريع",
+        "openQuickFile": "فتح النقل السريع",
+        "chooseQuickFileResult": "اختيار نتيجة في النقل السريع",
+        "archiveItem": "أرشفة العنصر المحدد",
+        "openOriginal": "فتح الرابط الأصلي",
+        "refresh": "تحديث صندوق الوارد",
+        "confirmFiling": "تأكيد لوحة النقل"
       },
       "journal": {
-        "bold": "تغميق النص المحدد",
-        "find": "البحث في اليوميات",
-        "italic": "إمالة النص المحدد",
         "returnFromOverview": "العودة من عرض الشهر أو السنة",
+        "find": "البحث في اليوميات",
+        "bold": "تغميق النص المحدد",
+        "italic": "إمالة النص المحدد",
         "underline": "تسطير النص المحدد"
       },
       "notes": {
-        "bold": "غامق",
-        "closeOverlays": "إغلاق طبقات المحرر",
-        "commandMenu": "فتح قائمة أوامر المحرر",
         "createNote": "إنشاء ملاحظة",
         "find": "البحث في الملاحظة",
+        "bold": "غامق",
         "italic": "مائل",
-        "underline": "تسطير"
-      },
-      "settings": {
-        "cancelRecording": "إلغاء تسجيل الاختصار",
-        "customizeShortcuts": "تخصيص اختصارات لوحة المفاتيح",
-        "openSettings": "فتح الإعدادات",
-        "recordShortcut": "تسجيل اختصار جديد",
-        "resetShortcut": "استعادة الاختصار الافتراضي"
-      },
-      "tabs": {
-        "closeAllInPane": "إغلاق كل علامات التبويب في الجزء",
-        "closeSplitPane": "إغلاق الجزء المقسوم",
-        "closeTab": "إغلاق علامة التبويب",
-        "duplicateTab": "تكرار علامة التبويب",
-        "focusPane": "التركيز على جزء آخر",
-        "maximizePane": "تكبير الجزء الحالي",
-        "moveTabToPane": "نقل علامة التبويب إلى جزء",
-        "newTabMenu": "فتح قائمة علامة التبويب الجديدة",
-        "nextTab": "علامة التبويب التالية",
-        "pinTab": "تثبيت علامة التبويب أو إلغاء تثبيتها",
-        "previousTab": "علامة التبويب السابقة",
-        "reopenClosedTab": "إعادة فتح علامة تبويب مغلقة",
-        "splitDown": "تقسيم إلى الأسفل",
-        "splitRight": "تقسيم إلى اليمين"
+        "underline": "تسطير",
+        "commandMenu": "فتح قائمة أوامر المحرر",
+        "closeOverlays": "إغلاق طبقات المحرر"
       },
       "tasks": {
         "clearFilters": "مسح عوامل التصفية الظاهرة",
+        "selectAllVisible": "تحديد كل المهام الظاهرة",
         "clearSelection": "مسح تحديد المهام",
         "completeSelected": "إكمال المهام المحددة",
-        "configureRepeat": "ضبط التكرار للمهمة المُحدّدة",
         "deleteSelected": "حذف المهام المحددة",
-        "selectAllVisible": "تحديد كل المهام الظاهرة",
-        "skipOccurrence": "تخطي التكرار الحالي",
+        "configureRepeat": "ضبط التكرار للمهمة المحددة",
+        "skipOccurrence": "تخطي هذه المرة من التكرار",
         "stopRepeating": "إيقاف تكرار المهمة"
+      },
+      "settings": {
+        "openSettings": "فتح الإعدادات",
+        "customizeShortcuts": "تخصيص اختصارات لوحة المفاتيح",
+        "recordShortcut": "تسجيل اختصار جديد",
+        "cancelRecording": "إلغاء تسجيل الاختصار",
+        "resetShortcut": "استعادة الاختصار الافتراضي"
       }
     },
-    "or": "أو",
-    "then": "ثم"
+    "combos": {
+      "shortcutsTab": "علامة تبويب الاختصارات",
+      "clickRow": "انقر على الصف",
+      "reset": "إعادة تعيين"
+    }
+  },
+  "update": {
+    "available": "يتوفر تحديث",
+    "downloading": "جارٍ تنزيل {version}",
+    "ready": "التحديث جاهز",
+    "failed": "فشل التحديث",
+    "downloadAction": "تنزيل",
+    "restartAction": "إعادة التشغيل",
+    "detailsAction": "التفاصيل",
+    "popover": {
+      "readyTitle": "MemryNote {version} جاهز",
+      "availableTitle": "يتوفر MemryNote {version}",
+      "readySubtitle": "إصدارك الحالي: {current}",
+      "availableSubtitle": "إصدارك الحالي: {current} · لم يُنزَّل شيء بعد",
+      "allChanges": "كل التغييرات",
+      "restartNow": "إعادة التشغيل الآن",
+      "onNextQuit": "عند الإنهاء التالي",
+      "download": "تنزيل",
+      "notNow": "ليس الآن",
+      "moreOptions": "خيارات تحديث إضافية",
+      "skipVersion": "تخطي {version}",
+      "turnOffAuto": "إيقاف التحديثات التلقائية",
+      "copyVersionInfo": "نسخ معلومات الإصدار",
+      "openSettings": "فتح الإعدادات"
+    },
+    "installing": {
+      "title": "جارٍ تثبيت {version}",
+      "titleUnknownVersion": "جارٍ تثبيت التحديث",
+      "subtitle": "سيُعاد فتح MemryNote بعد لحظات. كل ما كتبته محفوظ على القرص بالفعل."
+    },
+    "installFailed": {
+      "title": "تعذّر على MemryNote إكمال تثبيت {version}",
+      "titleUnknownVersion": "تعذّر على MemryNote إكمال تثبيت التحديث",
+      "body": "لم تتأثر خزنتك إطلاقًا — يُطبَّق التحديث على التطبيق، لا على ملاحظاتك. ما زلت تستخدم الإصدار {current} وكل شيء يعمل كما كان.",
+      "errorLabel": "ما الخطأ الذي حدث",
+      "downloadManually": "تنزيل {version} يدويًا",
+      "downloadManuallyUnknownVersion": "تنزيل MemryNote يدويًا",
+      "tryAgain": "إعادة المحاولة",
+      "copyDetails": "نسخ التفاصيل"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "الخزائن",
+    "position": "{name}، الخزنة {index} من {count}",
+    "openList": "{position}. فتح قائمة الخزائن",
+    "switchTo": "التبديل إلى {name}",
+    "switchingTo": "جارٍ التبديل إلى {name}",
+    "changeIcon": "تغيير الأيقونة…",
+    "resetIcon": "إعادة تعيين الأيقونة",
+    "iconButton": "تغيير أيقونة {name}",
+    "iconFailed": "تعذّر تغيير أيقونة الخزنة"
+  },
+  "sidebarHelp": {
+    "label": "المساعدة والآراء",
+    "reportBug": "الإبلاغ عن خطأ",
+    "requestFeature": "طلب ميزة",
+    "starOnGithub": "منح نجمة على GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "ما الجديد"
+  },
+  "sidebarStar": {
+    "title": "MemryNote مفتوح المصدر",
+    "body": "يُطوَّر بشكل علني. تساعد النجمة الآخرين على العثور عليه.",
+    "star": "منح نجمة",
+    "later": "ليس الآن",
+    "thanks": "شكرًا لك. هذا يعني لنا الكثير."
+  },
+  "sidebar": {
+    "railLabel": "الأقسام",
+    "search": "البحث أو الانتقال إلى…",
+    "vaultMenu": "{name}. فتح قائمة الخزائن"
   }
 }

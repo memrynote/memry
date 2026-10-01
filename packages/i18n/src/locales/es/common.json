@@ -1,10 +1,16 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Enfocar el campo de captura",
+    "detailHint": "detalle",
+    "submit": "Capturar"
+  },
   "button": {
     "save": "Guardar",
     "cancel": "Cancelar",
     "close": "Cerrar",
     "delete": "Eliminar",
-    "done": "hecho",
+    "done": "Listo",
     "dontSave": "No guardar",
     "add": "Añadir",
     "remove": "Quitar",
@@ -12,7 +18,10 @@
     "back": "Atrás",
     "continue": "Continuar",
     "copy": "Copiar",
-    "create": "crear"
+    "create": "Crear"
+  },
+  "media": {
+    "video": "Vídeo"
   },
   "state": {
     "loading": "Cargando…",
@@ -23,7 +32,7 @@
   "action": {
     "search": "Buscar",
     "expand": "Expandir",
-    "collapse": "Colapso",
+    "collapse": "Contraer",
     "showMore": "+{count, plural, one {# más} other {# más}}",
     "showLess": "Mostrar menos",
     "undo": "Deshacer"
@@ -36,384 +45,100 @@
     "revealFailed": "No se pudo mostrar en la carpeta"
   },
   "tabs": {
-    "pin": "Pestaña Fijar",
-    "unpin": "Desanclar pestaña",
+    "pin": "Fijar pestaña",
+    "unpin": "Dejar de fijar pestaña",
+    "persistence": {
+      "saveFailed": "Tus pestañas abiertas ya no se están guardando",
+      "saveFailedQuota": "Esta sesión es demasiado grande para guardarla. Cierra algunas pestañas o puede que no se restaure la próxima vez que abras Memry.",
+      "saveFailedGeneric": "Memry no pudo guardar esta sesión, así que puede que no se restaure la próxima vez que abras la app.",
+      "lastSessionNotSaved": "Tu última sesión no se guardó al cerrar Memry",
+      "lastSessionNotSavedQuota": "El almacenamiento estaba lleno en ese momento, así que estas pestañas son de un guardado anterior. Cierra algunas pestañas para liberar espacio.",
+      "lastSessionNotSavedGeneric": "Memry no pudo guardar tus pestañas al salir, así que estas pestañas son de un guardado anterior."
+    },
     "contextMenu": {
       "close": "Cerrar",
-      "closeOthers": "Cerrar Otros",
-      "closeToRight": "Cerca de la derecha",
-      "closeAll": "Cerrar todo",
+      "closeOthers": "Cerrar las demás",
+      "closeToRight": "Cerrar las de la derecha",
+      "closeAll": "Cerrar todas",
       "duplicate": "Duplicar pestaña",
       "splitRight": "Dividir a la derecha",
       "splitDown": "Dividir hacia abajo",
       "copyPath": "Copiar ruta",
-      "revealInSidebar": "Revelar en la barra lateral"
+      "revealInSidebar": "Mostrar en la barra lateral"
     }
   },
   "count": {
-    "note": "{count, plural, one {Nota #} other {Notas de #}}",
-    "task": "{count, plural, one {Tarea #} other {Tareas de #}}",
-    "itemDelete": "{count, plural, one {Eliminar elemento #} other {Eliminar elementos #}}",
-    "event": "{count, plural, one {# evento} other {# eventos}}",
+    "note": "{count, plural, one {# nota} other {# notas}}",
     "journal": "{count, plural, one {# diario} other {# diarios}}",
-    "reminder": "{count, plural, one {# recordatorio} other {# recordatorios}}"
+    "task": "{count, plural, one {# tarea} other {# tareas}}",
+    "event": "{count, plural, one {# evento} other {# eventos}}",
+    "reminder": "{count, plural, one {# recordatorio} other {# recordatorios}}",
+    "itemDelete": "{count, plural, one {Eliminar # elemento} other {Eliminar # elementos}}"
   },
   "toast": {
     "actionFailed": "La acción falló",
     "nothingToUndo": "Nada que deshacer",
-    "undone": "Deshacer: {description}",
-    "undoFailed": "No se pudo deshacer la acción"
+    "undone": "Deshecho: {description}",
+    "undoFailed": "No se pudo deshacer la acción",
+    "filesImported": "{count, plural, one {Se importó # archivo} other {Se importaron # archivos}}",
+    "filesImportFailed": "{count, plural, one {No se pudo importar # archivo} other {No se pudieron importar # archivos}}",
+    "filesHiddenInSidebar": "Los archivos están ocultos en la barra lateral. Activa «Mostrar archivos» en el menú de ordenación de Colecciones para verlos.",
+    "moreRemindersDue": "{count, plural, one {Vence # recordatorio más} other {Vencen # recordatorios más}}",
+    "moreRemindersDueHint": "Consulta el panel de recordatorios para ver los detalles",
+    "searchIndexRepaired": "Índice de búsqueda reparado",
+    "searchIndexRepairedHint": "Parte del índice de búsqueda estaba dañada, así que Memry lo ha reconstruido. Tus notas están intactas."
   },
   "dateRelative": {
-    "today": "hoy",
-    "yesterday": "ayer",
-    "daysAgo": "{count, plural, one {# hace un día} other {# hace días}}",
-    "daysLate": "{count, plural, one {#d de retraso} many {#d de retraso} other {#d de retraso}}",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "daysAgo": "{count, plural, one {hace # día} other {hace # días}}",
+    "tomorrow": "Mañana",
     "daysOverdue": "{count, plural, one {# día de retraso} many {# días de retraso} other {# días de retraso}}",
-    "tomorrow": "mañana"
+    "daysLate": "{count, plural, one {#d de retraso} many {#d de retraso} other {#d de retraso}}",
+    "inDays": "{count, plural, one {en # día} other {en # días}}",
+    "inWeeks": "{count, plural, one {en # semana} other {en # semanas}}"
   },
   "recurrence": {
-    "everyNDays": "{count, plural, one {todos los dias} other {Cada # días}}",
+    "everyNDays": "{count, plural, one {Todos los días} other {Cada # días}}",
     "everyNWeeks": "{count, plural, one {Cada semana} other {Cada # semanas}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {todos los dias de la semana} other {Cada # semanas de lunes a viernes}}",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Todos los días laborables} other {Cada # semanas de lunes a viernes}}",
     "everyNWeeksOnWeekends": "{count, plural, one {Cada fin de semana} other {Cada # semanas los fines de semana}}",
-    "everyNWeeksOnDays": "{count, plural, one {Cada semana en {days}} other {Cada # semanas en {days}}}",
+    "everyNWeeksOnDays": "{count, plural, one {Cada semana: {days}} other {Cada # semanas: {days}}}",
     "everyNMonths": "{count, plural, one {Cada mes} other {Cada # meses}}",
-    "everyNMonthsOnDay": "{count, plural, one {Cada mes en el {day}{suffix}} other {Cada # meses en {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {Cada mes en el {week} {day}} other {Cada # meses en {week} {day}}}",
+    "everyNMonthsOnDay": "{count, plural, one {Cada mes el día {day}{suffix}} other {Cada # meses el día {day}{suffix}}}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Cada mes el {week} {day}} other {Cada # meses el {week} {day}}}",
     "everyNYears": "{count, plural, one {Cada año} other {Cada # años}}",
     "repeats": "Se repite",
     "ordinal": {
       "first": "primer",
-      "fourth": "cuarto",
-      "last": "último",
       "second": "segundo",
-      "third": "tercer"
+      "third": "tercer",
+      "fourth": "cuarto",
+      "last": "último"
     },
     "preset": {
       "everyWeekday": "Todos los días laborables (lun-vie)",
       "everyYearOnDate": "Cada año el {date}"
     }
   },
-  "phaseF": {
-    "componentsAppSidebar": {
-      "collections": "Colecciones",
-      "newNote": "Nueva nota",
-      "newNote2": "Nueva nota",
-      "newFolder": "Nueva carpeta",
-      "newFolder2": "Nueva carpeta",
-      "bookmarks": "Marcadores",
-      "tags": "Etiquetas",
-      "dropFilesToImport": "Soltar archivos para importar",
-      "newNoteN": "Nueva nota (⌘N)",
-      "new": "Nuevo",
-      "syncDisabled": "Sincronización deshabilitada",
-      "syncDisabled2": "Sincronización deshabilitada",
-      "feedbackButton": "Enviar comentarios",
-      "feedbackDescription": "Cuéntanos qué funciona, qué está roto o qué te gustaría que Memry hiciera. Leemos cada mensaje.",
-      "feedbackEmailHint": "Añade tu correo si quieres una respuesta.",
-      "feedbackError": "No se pudieron enviar los comentarios. Inténtalo de nuevo.",
-      "feedbackPlaceholder": "Tus comentarios…",
-      "feedbackSend": "Enviar",
-      "feedbackSending": "Enviando…",
-      "feedbackSuccess": "¡Gracias por tus comentarios!",
-      "feedbackTitle": "Enviar comentarios",
-      "newItemMenu": "Crear nuevo…",
-      "feedbackPrivacyEmailOptional": "Tu correo — solo si lo añades, y solo para que podamos responderte",
-      "feedbackPrivacyEmailSignedIn": "El correo de tu cuenta ({email}), para que podamos responderte",
-      "feedbackPrivacyMessage": "Tu mensaje, tal y como lo has escrito",
-      "feedbackPrivacyNote": "Nada más. Tus notas se quedan en tu dispositivo.",
-      "feedbackPrivacyPlan": "Tu plan (free, Plus, Pro o Believer)",
-      "feedbackPrivacyTitle": "Qué se envía",
-      "feedbackPrivacyVersion": "Versión de la app y sistema operativo",
-      "projects": "Proyectos"
-    },
-    "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "Cambiar tamaño del panel del día",
-      "dragToResizeDoubleClickToReset": "Arrastre para cambiar el tamaño · Haga doble clic para restablecer"
-    },
-    "componentsFindBarFindBar": {
-      "findReplaceAsk": "Buscar, reemplazar, preguntar..."
-    },
-    "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Saltar incorporación",
-      "welcomeToMemry": "Bienvenido a memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Su base de conocimientos personales. Tomemos 2 minutos para comenzar.",
-      "getStarted": "empezar ",
-      "createYourFirstNote": "Crea tu primera nota",
-      "markdownBasedStoredLocallyAsPlainFiles": "Basado en Markdown, almacenado localmente como archivos sin formato.",
-      "eGMeetingNotesIdeasAnything": "por ej. Notas de reuniones, ideas, cualquier cosa...",
-      "skip": "Saltar",
-      "createNote": "Crear nota ",
-      "addYourFirstTask": "Añade tu primera tarea",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Las tareas se vinculan a sus notas, con prioridades y fechas de vencimiento.",
-      "eGReviewProjectProposal": "por ej. Revisar propuesta de proyecto...",
-      "skip2": "Saltar",
-      "createTask": "Crear tarea ",
-      "syncAcrossDevices": "Sincronización entre dispositivos",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Mantenga sus notas y tareas sincronizadas en todos sus dispositivos. Siempre puedes configurar esto más tarde.",
-      "skipForNow": "Saltar por ahora",
-      "doneLetSGo": "Listo, ¡vamos! "
-    },
-    "componentsFolderIconButton": {
-      "setFolderIcon": "Establecer icono de carpeta"
-    },
-    "componentsHintOverlayHintIndicator": {
-      "hint": "PISTA"
-    },
-    "componentsIconPicker": {
-      "iconPicker": "Selector de iconos",
-      "selectIcon": "Seleccionar icono",
-      "closeIconPicker": "Cerrar selector de iconos",
-      "searchIcons": "Iconos de búsqueda...",
-      "all": "Todos",
-      "clearIcon": "Icono Borrar",
-      "noIconsFoundFor": "No se encontraron iconos para \""
-    },
-    "componentsKeyboardShortcutsModal": {
-      "keyboardShortcuts": "Atajos de teclado",
-      "closeShortcutsHelp": "Ayuda para cerrar atajos",
-      "press": "prensa",
-      "toClose": "cerrar"
-    },
-    "componentsKiboUiTreeIndex": {
-      "setIcon": "Establecer icono",
-      "clearIcon": "Icono Borrar"
-    },
-    "componentsNavMain": {
-      "platform": "Plataforma"
-    },
-    "componentsNavProjects": {
-      "projects": "Proyectos",
-      "more": "Más",
-      "viewProject": "Ver proyecto",
-      "shareProject": "Compartir proyecto",
-      "deleteProject": "Eliminar proyecto",
-      "more2": "Más"
-    },
-    "componentsNavUser": {
-      "cn": "CN",
-      "cn2": "CN",
-      "upgradeToPro": "Actualízate a Pro",
-      "account": "cuenta",
-      "billing": "Facturación",
-      "notifications": "Notificaciones",
-      "logOut": "Cerrar sesión"
-    },
-    "componentsSearchCommandPalette": {
-      "search": "Buscar",
-      "searchNotesTasksJournalInbox": "Busca notas, tareas, diario, bandeja de entrada...",
-      "noResultsFor": "Sin resultados para “",
-      "result": "resultado",
-      "noResultsForQuery": "Sin resultados para “{query}”",
-      "resultCount": "{count, plural, one {# resultado} many {# resultados} other {# resultados}}",
-      "indexBuilding": "Creando índice de búsqueda {done}/{total} — los resultados pueden estar incompletos",
-      "indexBuildingUnknown": "Creando índice de búsqueda — los resultados pueden estar incompletos"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Busque y haga clic en elementos para construir su recorrido",
-      "reasons": "Razones",
-      "clear": "Borrar"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Borrar",
-      "tags": "Etiquetas",
-      "filterByTag": "Filtrar por etiqueta...",
-      "dateRange": "Rango de fechas"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Ver todo ",
-      "results": "resultados"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "pag",
-      "fuzzy": "borroso"
-    },
-    "componentsSplitViewEmptyPaneState": {
-      "noTabsOpen": "No hay pestañas abiertas",
-      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Abra una página desde la barra lateral o cree una nueva pestaña para comenzar",
-      "openInbox": "Abrir bandeja de entrada",
-      "closePane": "Cerrar panel"
-    },
-    "componentsSplitViewLayoutPicker": {
-      "layoutPresets": "Ajustes preestablecidos de diseño",
-      "layoutPresets2": "Ajustes preestablecidos de diseño"
-    },
-    "componentsSplitViewResizeHandle": {
-      "resizePanes": "Cambiar el tamaño de los paneles"
-    },
-    "componentsSplitViewTabContent": {
-      "taskscontextNotAvailable": "Contexto de tareas no disponible",
-      "searchResults": "Resultados de la búsqueda",
-      "unknownTabType": "Tipo de pestaña desconocido: "
-    },
-    "componentsTabsAccessibleTab": {
-      "unsavedChanges": "cambios no guardados",
-      "preview": "vista previa"
-    },
-    "componentsTabsNewTabMenu": {
-      "newTab": "Nueva pestaña",
-      "newTab2": "Nueva pestaña",
-      "newNote": "Nueva nota",
-      "journal": "Diario",
-      "calendar": "Calendario",
-      "inboxCapture": "Captura de bandeja de entrada",
-      "tasks": "Tareas",
-      "tags": "Etiquetas"
-    },
-    "componentsTabsPinnedTab": {
-      "unsavedChanges": "Cambios no guardados",
-      "unsaved": "no guardado)"
-    },
-    "componentsTabsRegularTab": {
-      "unsavedChanges": "Cambios no guardados"
-    },
-    "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "Cerrar todas las pestañas"
-    },
-    "componentsTabsTabBarWithDrag": {
-      "openTabs": "Pestañas abiertas",
-      "scrollTabsLeft": "Desplazarse por las pestañas hacia la izquierda",
-      "scrollTabsRight": "Desplazarse por las pestañas hacia la derecha",
-      "dayPanel": "Panel diurno"
-    },
-    "componentsTabsTabErrorBoundary": {
-      "somethingWentWrong": "algo salió mal",
-      "anErrorOccurredWhileRenderingThisTabContent": "Se produjo un error al representar el contenido de esta pestaña.",
-      "tryAgain": "Inténtalo de nuevo",
-      "sendReport": "Enviar informe de diagnóstico"
-    },
-    "componentsTabsTabPreviewCard": {
-      "noteIcon": "Icono de nota"
-    },
-    "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Cambios no guardados",
-      "unsavedChangesBody": "\"{title}\" tiene cambios sin guardar. ¿Qué te gustaría hacer?"
-    },
-    "componentsTeamSwitcher": {
-      "newWorkspace": "Nuevo espacio de trabajo",
-      "darkMode": "modo oscuro",
-      "settings": "Configuración",
-      "integrations": "Integraciones",
-      "signOut": "Cerrar sesión",
-      "downloadOnIos": "Descargar en iOS"
-    },
-    "componentsTrafficLights": {
-      "closeWindow": "Cerrar ventana",
-      "minimizeWindow": "Minimizar ventana",
-      "maximizeWindow": "Maximizar ventana"
-    },
-    "componentsUiAutocompleteDropdown": {
-      "suggestions": "Sugerencias",
-      "or": "o",
-      "enter": "Entrar",
-      "toInsert": "insertar"
-    },
-    "componentsUiBreadcrumb": {
-      "breadcrumb": "migas de pan",
-      "more": "Más"
-    },
-    "componentsUiDialog": {
-      "close": "Cerrar"
-    },
-    "componentsUiSheet": {
-      "close": "Cerrar"
-    },
-    "componentsUiSidebar": {
-      "sidebar": "Barra lateral",
-      "displaysTheMobileSidebar": "Muestra la barra lateral móvil.",
-      "toggleSidebar": "Alternar barra lateral",
-      "toggleSidebar2": "Alternar barra lateral",
-      "dragToResizeDoubleClickToReset": "Arrastre para cambiar el tamaño · Haga doble clic para restablecer"
-    },
-    "componentsVaultOnboarding": {
-      "welcomeToMemry": "Bienvenido a memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Su sistema personal de gestión del conocimiento.",
-      "selectAFolderToStoreYourNotesAndTasks": "Seleccione una carpeta para almacenar sus notas y tareas.",
-      "opening": "Abriendo...",
-      "selectVaultFolder": "Seleccionar carpeta de almacén",
-      "plainMarkdown": "Rebaja simple",
-      "yourNotesStayPortable": "Tus notas permanecen portátiles",
-      "syncAnywhere": "Sincronizar en cualquier lugar",
-      "useDropboxIcloudGit": "Utilice Dropbox, iCloud, Git",
-      "recentVaults": "Bóvedas recientes",
-      "notesLastOpened": "notas · Última apertura",
-      "brandName": "Memrynote",
-      "preRelease": "Beta",
-      "createNewVault": "Crear nueva bóveda",
-      "createNewVaultDesc": "Inicia una bóveda nueva en una carpeta de tu elección.",
-      "openExistingVault": "Abrir bóveda existente",
-      "openExistingVaultDesc": "Elige una carpeta con archivos Markdown que ya tengas.",
-      "signInToSync": "Iniciar sesión para sincronizar",
-      "signInToSyncDesc": "Bóvedas cifradas de extremo a extremo en tus dispositivos.",
-      "create": "Crear",
-      "open": "Abrir",
-      "signIn": "Iniciar sesión",
-      "helpAndDocs": "Ayuda y documentación",
-      "signInRequiresVault": "Abre o crea una bóveda primero para configurar la sincronización.",
-      "addVault": "Añadir bóveda"
-    },
-    "componentsVaultSwitcher": {
-      "noVaultsYet": "Aún no hay bóvedas",
-      "openVault": "Bóveda abierta",
-      "settings": "Configuración",
-      "logOut": "Cerrar sesión",
-      "signInToSync": "Inicia sesión para sincronizar",
-      "remove": "Quitar “",
-      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Esta bóveda se eliminará de la aplicación, pero sus archivos permanecerán en el disco. Siempre puedes volver a agregarlo más tarde.",
-      "cancel": "Cancelar",
-      "remove2": "Quitar",
-      "inYourAccount": "En tu cuenta",
-      "itemsCount": "{count} elementos",
-      "untitledVault": "Bóveda",
-      "downloadVaultTitle": "Descargar “{name}”",
-      "downloadLocation": "Ubicación",
-      "changeLocation": "Cambiar…",
-      "download": "Descargar",
-      "downloadFailed": "No se pudo descargar la bóveda",
-      "deleteFromAccount": "Eliminar de la cuenta",
-      "deleteVaultBody": "Esto elimina de forma permanente todos los datos sincronizados de esta bóveda que hay en los servidores de Memry y no se puede deshacer. Los archivos de tu disco no se eliminan.",
-      "deleteVaultConfirm": "Eliminar de la cuenta",
-      "deleteVaultFailed": "No se pudo eliminar la bóveda",
-      "deleteVaultTitle": "¿Eliminar “{name}” de tu cuenta?",
-      "removeVaultTitle": "¿Quitar “{name}” de la lista?",
-      "missing": "Carpeta no encontrada"
-    },
-    "componentsWindowControls": {
-      "searchK": "Buscar (⌘K)",
-      "browserBack": "Navegador atrás",
-      "back": "Atrás",
-      "browserForward": "Navegador hacia adelante",
-      "forward": "Adelante"
-    }
-  },
-  "phaseI": {
-    "errors": {
-      "failedToImportFiles": "No se pudieron importar archivos",
-      "failedToCreateNote": "No se pudo crear la nota",
-      "failedToAccessMicrophone": "No se pudo acceder al micrófono"
-    },
-    "toasts": {
-      "undone": "Deshecho"
-    }
-  },
   "agentChat": {
-    "title": "Agent charla",
-    "loading": "Cargando chat de agente...",
-    "conversationLoading": "Cargando conversación...",
+    "title": "Chat del agente",
+    "loading": "Cargando el chat del agente…",
+    "conversationLoading": "Cargando la conversación…",
+    "historyNotSaved": "Este dispositivo no puede desbloquear la bóveda, así que esta conversación no se guardará al cerrar la app.",
     "newConversation": "Nueva conversación",
     "history": "Historial de conversaciones",
     "openInTab": "Abrir conversación en pestaña",
     "stop": "Detener",
-    "thinking": "Agent está pensando",
+    "thinking": "El agente está pensando",
     "enable": {
-      "title": "Habilitar memrynote Agent",
-      "description": "memrynote Agent utiliza su agente local seleccionado CLI para conversar sobre su bóveda. Claude envía giros a Anthropic; Codex envía giros a OpenAI.",
-      "remote": "memrynote cifra su historial de chat local y sincronizado, pero la inferencia del modelo ocurre con el proveedor seleccionado.",
+      "title": "Activar el agente de memrynote",
+      "description": "El agente de memrynote usa la CLI de agente local que elijas para conversar sobre tu bóveda. Claude envía los turnos a Anthropic; Codex los envía a OpenAI.",
+      "remote": "memrynote cifra tu historial de chat local y sincronizado, pero la inferencia del modelo se realiza en el proveedor seleccionado.",
       "readTools": "Las herramientas de lectura se ejecutan automáticamente.",
-      "writeTools": "Crear y actualizar herramientas requieren aprobación.",
-      "diff": "Las herramientas de actualización muestran una diferencia o una vista previa.",
-      "button": "Habilitar chat Agent"
+      "writeTools": "Las herramientas que crean o modifican requieren aprobación.",
+      "diff": "Las herramientas que modifican muestran los cambios o una vista previa.",
+      "button": "Activar el chat del agente"
     },
     "approval": {
       "description": "El agente quiere llamar a {name} con estos argumentos.",
@@ -422,24 +147,32 @@
       "editAndApply": "Editar y aplicar",
       "editAndAllow": "Editar y permitir",
       "allowAlways": "Permitir siempre",
-      "applyEdits": "Aplicar ediciones",
-      "deny": "Negar",
-      "invalidJson": "Ingrese JSON válido antes de aplicar las ediciones."
+      "applyEdits": "Aplicar cambios",
+      "deny": "Rechazar",
+      "invalidJson": "Introduce un JSON válido antes de aplicar los cambios.",
+      "thisTool": "esta herramienta",
+      "alwaysAllowHint": "«Permitir siempre» se aplica a {tool}. Las demás herramientas siguen pidiendo permiso, y las eliminaciones siempre lo piden.",
+      "alwaysInChat": "Permitir siempre en este chat",
+      "alwaysInChatHint": "Termina cuando acaba la conversación",
+      "alwaysInVault": "Permitir siempre en esta bóveda",
+      "alwaysInVaultHint": "Se puede revocar en Ajustes › Agente",
+      "deletesAlwaysAsk": "Las eliminaciones siempre piden permiso"
     },
     "diff": {
-      "previewError": "No se pudo obtener una vista previa de la diferencia de notas",
-      "description": "El agente quiere actualizar {title}. Revise el contenido actual y candidato antes de aplicarlo.",
-      "fallbackTitle": "esta nota",
+      "previewError": "No se pudo mostrar la vista previa de este cambio",
+      "description": "El agente quiere actualizar {title}. Revisa el cambio antes de aplicarlo.",
+      "fallbackTitle": "este elemento",
       "current": "Actual",
-      "candidate": "Candidato",
-      "loading": "Cargando...",
+      "candidate": "Propuesta",
+      "loading": "Cargando…",
       "apply": "Aplicar",
-      "applyEdited": "Aplicar editado"
+      "applyEdited": "Aplicar versión editada",
+      "editBody": "Editar antes de aplicar"
     },
     "inPageReview": {
       "regionLabel": "Sugerencia del agente",
       "barLabel": "Revisar la sugerencia del agente",
-      "loading": "Cargando la sugerencia...",
+      "loading": "Cargando la sugerencia…",
       "loadingTitle": "Sugerencia del agente",
       "title": "{count, plural, =0 {Sugerencia del agente} one {El agente sugirió # cambio} other {El agente sugirió # cambios}}",
       "editingTitle": "Editando la sugerencia",
@@ -460,26 +193,132 @@
       "openJournal": "Abrir diario",
       "fallbackTitle": "esta nota"
     },
+    "preview": {
+      "unset": "sin definir",
+      "yes": "sí",
+      "no": "no",
+      "noChange": "Nada de lo que puede mostrar esta vista previa cambiaría.",
+      "willBeLost": "Se perderá",
+      "unchangedLines": "{count, plural, one {# línea sin cambios} other {# líneas sin cambios}}",
+      "item": {
+        "note": "Nota",
+        "folder": "Carpeta",
+        "task": "Tarea",
+        "journal": "Diario",
+        "inbox": "Bandeja de entrada",
+        "project": "Proyecto",
+        "status": "Estado",
+        "canvas": "Lienzo"
+      },
+      "intent": {
+        "create": "crear",
+        "update": "actualizar",
+        "delete": "eliminar",
+        "move": "mover",
+        "reorder": "reordenar"
+      },
+      "field": {
+        "archived": "Archivado",
+        "arguments": "Argumentos",
+        "color": "Color",
+        "completed": "Completado",
+        "description": "Descripción",
+        "due": "Vencimiento",
+        "dueTime": "Hora de vencimiento",
+        "duplicateOf": "Copia de",
+        "edits": "Cambios",
+        "elements": "Elementos",
+        "folder": "Carpeta",
+        "icon": "Icono",
+        "isDefault": "Predeterminado",
+        "isDone": "Cuenta como hecho",
+        "items": "Elementos",
+        "name": "Nombre",
+        "operation": "Operación",
+        "order": "Orden",
+        "parent": "Superior",
+        "path": "Ruta",
+        "position": "Posición",
+        "priority": "Prioridad",
+        "project": "Proyecto",
+        "removed": "Quitado",
+        "repeatFrom": "Repetir desde",
+        "snoozeReason": "Motivo para posponer",
+        "snoozedUntil": "Pospuesto hasta",
+        "start": "Inicio",
+        "status": "Estado",
+        "tags": "Etiquetas",
+        "title": "Título"
+      },
+      "loss": {
+        "words": "{count, plural, one {# palabra} other {# palabras}}",
+        "tags": "{count, plural, one {# etiqueta} other {# etiquetas}}",
+        "notes": "{count, plural, one {# nota} other {# notas}}",
+        "folders": "{count, plural, one {# carpeta} other {# carpetas}}",
+        "files": "{count, plural, one {# archivo} other {# archivos}}",
+        "events": "{count, plural, one {# evento} other {# eventos}}",
+        "tasks": "{count, plural, one {# tarea} other {# tareas}}",
+        "due": "vence {value}"
+      }
+    },
     "composer": {
       "currentNote": "Nota actual",
-      "removeAttachment": "Eliminar {label}",
-      "placeholder": "Pregunta cualquier cosa a memrynote. @ para mencionar un archivo",
+      "removeAttachment": "Quitar {label}",
+      "placeholder": "Haz cualquier cosa con memrynote… Usa @ para mencionar notas, tareas y eventos",
       "send": "Enviar",
-      "providerLabel": "Proveedor Agent: {provider}",
+      "providerLabel": "Proveedor del agente: {provider}",
       "settingsSummary": "{reasoning}",
+      "connectedTools": "Herramientas conectadas",
+      "connectTool": "Conectar {tool}",
+      "addContext": "Añadir contexto",
+      "addContextWithPermissions": "Añadir contexto ({permissions})",
+      "mentionContext": "Mencionar una nota, tarea o evento",
+      "voice": {
+        "start": "Iniciar dictado por voz",
+        "stop": "Detener dictado por voz",
+        "transcribing": "Transcribiendo la entrada de voz",
+        "errors": {
+          "permissionDenied": "Acceso al micrófono denegado",
+          "noMicrophone": "No se encontró ningún micrófono",
+          "accessFailed": "No se pudo acceder al micrófono",
+          "recordingFailed": "No se pudo grabar la entrada de voz",
+          "transcriptionFailed": "No se pudo transcribir la entrada de voz"
+        }
+      },
+      "modelLabel": "Modelo del agente: {provider} {model}",
+      "reasoningLabel": "Razonamiento del agente: {reasoning}",
       "providers": {
+        "label": "Proveedor",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
-        "local": "Locales"
+        "local": "Local"
+      },
+      "access": {
+        "vaultOnly": "Solo la bóveda",
+        "computerAccess": "Acceso al equipo"
+      },
+      "webSearch": {
+        "on": "Activada",
+        "off": "Desactivada",
+        "label": "Búsqueda web"
       },
       "models": {
         "default": "Predeterminado",
-        "label": "Modelo"
+        "label": "Modelo",
+        "search": "Buscar modelos…",
+        "useCustom": "Usar «{query}»",
+        "localEmpty": "No se encontraron modelos: revisa Ajustes",
+        "localSetup": "Configurar en Ajustes…",
+        "cliSetup": "No detectado: configúralo en Ajustes…",
+        "runtimeUnavailable": "Agente no disponible: abre Ajustes…"
       },
       "settings": {
-        "reasoning": "Razonamiento"
+        "reasoning": "Razonamiento",
+        "effort": "Esfuerzo"
       },
+      "includeCurrentNote": "Incluir la nota actual",
+      "chooseModel": "Elegir modelo",
       "claudeSettings": {
         "reasoning": {
           "low": "Bajo",
@@ -496,17 +335,8 @@
           "medium": "Medio",
           "mediumDefault": "Medio (predeterminado)",
           "high": "Alto",
-          "extraHigh": "Extra Alto"
+          "extraHigh": "Extra alto"
         }
-      },
-      "access": {
-        "vaultOnly": "Solo la bóveda",
-        "computerAccess": "Acceso al equipo"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Desactivada",
-        "label": "Búsqueda web"
       },
       "permissionsLabel": "Permisos del agente: {access}, búsqueda web {webSearch}",
       "permissions": {
@@ -514,7 +344,7 @@
         "access": "Acceso",
         "tools": "Herramientas"
       },
-      "modelSettingsLabel": "Configuración del modelo del agente: {model}, {settings}"
+      "modelSettingsLabel": "Ajustes del modelo del agente: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "No hay coincidencias"
@@ -526,186 +356,135 @@
       "editedArgs": "Argumentos editados",
       "parameters": "Parámetros"
     },
+    "toolActivity": {
+      "steps": "{count, plural, one {# paso} other {# pasos}}",
+      "running": "En ejecución",
+      "awaitingApproval": "Esperando aprobación",
+      "done": "Completado"
+    },
+    "reasoning": {
+      "thinking": "Pensando…",
+      "thought": "Razonamiento",
+      "thoughtFor": "Pensó durante {seconds} s",
+      "toggle": "Mostrar u ocultar el razonamiento"
+    },
     "sidebar": {
       "label": "Barra lateral derecha",
       "day": "Día",
       "agent": "Agente",
-      "pendingApproval": "{count, plural, one {# pendiente de aprobación} other {# aprobaciones pendientes}}",
-      "inProgress": "Agent turno en progreso",
+      "pendingApproval": "{count, plural, one {# aprobación pendiente} other {# aprobaciones pendientes}}",
+      "inProgress": "Turno del agente en curso",
       "close": "Cerrar el agente"
     },
     "errors": {
-      "loadConversations": "No se pudieron cargar las conversaciones de los agentes",
+      "loadConversations": "No se pudieron cargar las conversaciones del agente",
       "loadConversation": "No se pudo cargar la conversación del agente",
       "createConversation": "No se pudo crear una conversación con el agente",
-      "busy": "Otra ventana está a mitad de turno para esta conversación. Espere a que termine o deténgalo desde allí.",
+      "busy": "Otra ventana está a mitad de un turno en esta conversación. Espera a que termine o detenlo desde allí.",
       "sendTurn": "No se pudo enviar el turno del agente",
       "cancelTurn": "No se pudo cancelar el turno del agente",
       "submitApproval": "No se pudo enviar la aprobación de la herramienta",
       "updateTrust": "No se pudieron actualizar las herramientas confiables",
-      "saveDisclosure": "No se pudo guardar el estado de divulgación",
+      "saveDisclosure": "No se pudo guardar el estado del aviso",
       "resolveWindow": "No se pudo resolver la ventana de origen del agente",
       "detectCli": "No se pudieron detectar los backends del agente",
-      "loadDisclosure": "No se pudo cargar el estado de divulgación"
+      "loadDisclosure": "No se pudo cargar el estado del aviso"
+    },
+    "actions": {
+      "copy": "Copiar",
+      "copied": "Copiado"
     },
     "sources": {
-      "used": "{count, plural, one {# fuente usada} other {# fuentes usadas}}"
+      "count": "{count, plural, one {# fuente} other {# fuentes}}"
     }
-  },
-  "home": {
-    "addWidget": "Añadir widget",
-    "board": {
-      "defaultName": "Inicio",
-      "deleteAria": "Eliminar diseño",
-      "label": "Diseño de inicio",
-      "newAria": "Nuevo tablero",
-      "newName": "Nuevo tablero"
-    },
-    "disabled": {
-      "createNote": "Crear nota",
-      "hint": "No hay nada abierto. Empieza una nota."
-    },
-    "done": "Hecho",
-    "edit": "Editar",
-    "empty": {
-      "body": "Los widgets reúnen tus notas, tareas y marcadores en un solo lugar tranquilo.",
-      "cta": "Añade tu primer widget",
-      "title": "Tu tablero está vacío"
-    },
-    "greeting": {
-      "afternoon": "Buenas tardes",
-      "evening": "Buenas noches",
-      "morning": "Buenos días"
-    },
-    "header": {
-      "events": "{count, plural, one {# evento} other {# eventos}}",
-      "tasksDue": "{count, plural, one {# tarea vence hoy} other {# tareas vencen hoy}}"
-    },
-    "noBookmarksYet": "Aún no hay marcadores.",
-    "noEventsYet": "No hay eventos hoy.",
-    "noJournalEntriesYet": "Aún no hay entradas de diario.",
-    "noNotesYet": "Aún no hay notas.",
-    "noTasksYet": "Aún no hay tareas.",
-    "widget": {
-      "bookmarks": "Marcadores",
-      "calendar": "Calendario",
-      "calendarToday": "Hoy",
-      "configAria": "Configurar widget",
-      "configure": "Configurar",
-      "dragAria": "Arrastrar widget",
-      "duration": "{count} min",
-      "filter": {
-        "today": "Vence hoy",
-        "tomorrow": "Mañana",
-        "week": "Esta semana"
-      },
-      "folder": "Carpeta",
-      "folderEmpty": "Aún no hay carpetas",
-      "folderNoSelection": "No hay ninguna carpeta seleccionada",
-      "folderPickPrompt": "Elige una carpeta",
-      "folderViewSelect": "Vista",
-      "folderView_gallery": "Galería",
-      "folderView_list": "Lista",
-      "inbox": "Bandeja",
-      "inboxAllTypes": "Todos los tipos",
-      "inboxOlder": "{count, plural, one {# más antiguo} other {# más antiguos}}",
-      "inboxOldest": "el más antiguo {count, plural, one {# día} other {# días}}",
-      "journal": "Diario",
-      "journalStreak": "{count, plural, one {racha de # día} other {racha de # días}}",
-      "journalToday": "Hoy",
-      "journalYesterday": "Ayer",
-      "loadError": "No se pudo cargar",
-      "menuAria": "Opciones del widget",
-      "next": "Siguiente: {title}",
-      "openCalendar": "Abrir calendario",
-      "openInbox": "Abrir la bandeja",
-      "recentMeta": "editado {time}",
-      "recentMetaWithFolder": "{folder} · editado {time}",
-      "recentlyEdited": "Editado recientemente",
-      "remove": "Quitar",
-      "removeAria": "Quitar widget",
-      "resize": "Tamaño",
-      "resizeAria": "Redimensionar a {size}",
-      "savedFilterDefault": "Hoy",
-      "savedFilterHint": "Marca filtros con estrella en la página de Tareas para usarlos aquí",
-      "savedFilterLabel": "Filtro guardado",
-      "startsIn": "Empieza en {count, plural, one {# min} other {# min}}",
-      "tasks": "Tareas",
-      "unknown": "Widget desconocido",
-      "untitled": "Sin título"
-    }
-  },
-  "media": {
-    "video": "Vídeo"
-  },
-  "onboarding": {
-    "agentChat": {
-      "body": "Cambia a la pestaña Agente para preguntar sobre tu bóveda al asistente de MemryNote.",
-      "title": "Chatea con el agente de IA"
-    },
-    "collections": {
-      "body": "Organiza las notas en carpetas, fija marcadores y explora por etiqueta, todo aquí.",
-      "title": "Colecciones, marcadores y etiquetas"
-    },
-    "dayPanel": {
-      "body": "El panel lateral mantiene un calendario y tu vista del día junto a lo que estés leyendo.",
-      "title": "Tu día, junto a tu trabajo"
-    },
-    "feedback": {
-      "body": "Envía comentarios directamente al equipo desde aquí.",
-      "title": "Cuéntanos qué opinas"
-    },
-    "nav": {
-      "body": "Bandeja para capturar, Diario para las notas diarias, Calendario para tu cronología, Tareas para los pendientes y Grafo para ver cómo se conecta todo.",
-      "title": "Tus espacios de trabajo"
-    },
-    "newNote": {
-      "body": "Empieza aquí. Todo lo que escribes se guarda primero de forma local.",
-      "title": "Crea tu primera nota"
-    },
-    "settings": {
-      "body": "Importa tus notas desde más de 12 aplicaciones — Obsidian, Notion, Apple Notes, Evernote y más — y ajusta todo lo demás en Ajustes.",
-      "title": "Ajustes e importaciones"
-    },
-    "sync": {
-      "body": "Activa la sincronización cifrada de extremo a extremo para mantener todos los dispositivos al día.",
-      "title": "Sincronización privada y cifrada"
-    },
-    "welcome": {
-      "body": "Tu hogar privado y con prioridad sin conexión. Las notas están cifradas de extremo a extremo: nunca salen de tu dispositivo sin cifrar.",
-      "title": "Te damos la bienvenida a MemryNote"
-    },
-    "tour": {
-      "next": "Siguiente",
-      "previous": "Anterior",
-      "progress": "{current} de {total}"
-    }
-  },
-  "capture": {
-    "focusShortcut": "Enfocar el campo de captura",
-    "detailHint": "detalle",
-    "focusHint": "Q",
-    "submit": "Capturar"
   },
   "canvas": {
+    "sectionLabel": "Lienzos",
+    "newCanvas": "Nuevo lienzo",
+    "newCanvasFolder": "Nueva carpeta de lienzos",
+    "untitled": "Lienzo sin título",
+    "empty": "Aún no hay lienzos",
+    "loading": "Cargando lienzos…",
+    "loadFailed": "No se pudieron cargar los lienzos",
+    "createFailed": "No se pudo crear el lienzo",
+    "openFailed": "No se pudo abrir el lienzo",
+    "notFound": "No se pudo encontrar este lienzo",
+    "corruptScene": "No se pudo leer este lienzo. La edición está desactivada para no perder datos.",
+    "unreadableTitle": "Este lienzo no se puede abrir aquí",
+    "unreadableBody": "Su documento no está en la bóveda, o se dibujó antes de que los lienzos fueran archivos y este dispositivo ya no tiene la clave que lo desbloquea. No se ha eliminado nada: abre la bóveda en el dispositivo que lo creó o restaura la carpeta de lienzos.",
+    "tooLargeToSync": "Este lienzo es demasiado grande para sincronizarlo. Está guardado en este dispositivo, pero no llegará a los demás hasta que ocupe menos.",
+    "savedToVault": "Todos los cambios se guardan automáticamente en tu bóveda",
+    "libraryStoreFailed": "No se pudo guardar tu biblioteca de formas. Puede que se pierdan los cambios recientes.",
+    "link": {
+      "itemMissing": "Ese elemento enlazado ya no existe.",
+      "elementMissing": "Ese enlace apunta a algo que ya no está en este lienzo.",
+      "title": "Enlazar a un elemento",
+      "placeholder": "Buscar notas, tareas, eventos, bandeja de entrada, proyectos…",
+      "hint": "Empieza a escribir para buscar un elemento que enlazar.",
+      "empty": "No hay coincidencias.",
+      "selectOneShape": "Selecciona una sola forma para enlazarla a un elemento.",
+      "cardsCannotLink": "Una tarjeta ya abre su propio elemento, así que no puede tener un segundo enlace.",
+      "linked": "Enlazado.",
+      "groupNotes": "Notas",
+      "groupFiles": "Archivos",
+      "groupTasks": "Tareas",
+      "groupEvents": "Eventos",
+      "groupInbox": "Bandeja de entrada",
+      "groupJournals": "Diario",
+      "groupProjects": "Proyectos",
+      "groupFolders": "Carpetas",
+      "useUrl": "Enlazar a {url}",
+      "openTarget": "Abrir {name}",
+      "shapeTarget": "Una forma de este lienzo",
+      "missingTarget": "Ya no está en este lienzo"
+    },
+    "disabledTitle": "El lienzo no está activado",
+    "disabledBody": "Esta pestaña pertenece a una función que no está activada en este dispositivo.",
+    "unreadable": "Falta el documento de este lienzo o no se puede leer. Muéstralo en tu gestor de archivos o elimina la entrada.",
+    "actionFailed": "No se pudo completar esa acción del lienzo",
+    "renameLabel": "Nombre del lienzo",
+    "folderNameLabel": "Nombre de la carpeta",
+    "deleteConfirmTitle": "¿Eliminar este lienzo?",
+    "deleteConfirmBody": "«{title}» se eliminará de memrynote en todos tus dispositivos. Su archivo irá a la papelera de este equipo, pero recuperarlo de ahí no restaurará el lienzo.",
+    "dropToRoot": "Suelta aquí para sacarlo de la carpeta",
+    "filterPlaceholder": "Filtrar lienzos",
+    "filterNoMatches": "Ningún lienzo coincide con ese filtro",
+    "folderCanvasCount": "Lienzos: {count}",
+    "folderEmptyHint": "Aún no hay nada aquí",
+    "deleteFolderConfirmTitle": "¿Eliminar esta carpeta de lienzos?",
+    "deleteFolderConfirmBody": "«{name}» y todo su contenido se eliminarán de memrynote en todos tus dispositivos. Lienzos afectados: {count}. La carpeta irá a la papelera de este equipo, pero recuperarla de ahí no los restaurará.",
+    "actions": {
+      "rename": "Cambiar nombre",
+      "duplicate": "Duplicar",
+      "copyLink": "Copiar enlace",
+      "setIcon": "Establecer icono",
+      "removeIcon": "Quitar icono",
+      "moveToFolder": "Mover a carpeta",
+      "moveToRoot": "Raíz",
+      "openExternal": "Abrir en un editor externo",
+      "newCanvasHere": "Nuevo lienzo aquí",
+      "newFolder": "Nueva carpeta",
+      "canvasMenu": "Acciones del lienzo",
+      "folderMenu": "Acciones de la carpeta de lienzos"
+    },
     "card": {
-      "addCard": "Añadir tarjeta",
-      "addCreateNote": "Crear nota \"{query}\"",
-      "addCreateNoteEmpty": "Crear nota nueva",
-      "addCreatedAt": "Creado el {date}",
-      "addEmpty": "No se encontró nada",
-      "addGroupEvents": "Eventos",
-      "addGroupNotes": "Notas",
-      "addGroupTasks": "Tareas",
-      "addOnCanvas": "En el lienzo",
-      "addPlaceholder": "Buscar notas, tareas y eventos…",
-      "allDay": "Todo el día",
-      "createNoteFailed": "No se pudo crear la nota",
-      "deleted": "Elemento eliminado",
-      "loading": "Cargando…",
       "open": "Abrir en pestaña",
       "openToEdit": "Abrir en pestaña para editar",
+      "deleted": "Elemento eliminado",
+      "loading": "Cargando…",
       "untitled": "Sin título",
+      "allDay": "Todo el día",
+      "createNoteFailed": "No se pudo crear la nota",
+      "addCard": "Añadir tarjeta",
+      "addPlaceholder": "Buscar notas, archivos, tareas, eventos y proyectos…",
+      "addCreateNote": "Crear nota «{query}»",
+      "addCreateNoteEmpty": "Crear nota nueva",
+      "addEmpty": "No se encontró nada",
+      "addGroupNotes": "Notas",
+      "addGroupTasks": "Tareas",
+      "addGroupEvents": "Eventos",
+      "addOnCanvas": "En el lienzo",
+      "addCreatedAt": "Creado el {date}",
       "bulkGroup": "Añadir todo desde",
       "bulkFromTag": "Una etiqueta…",
       "bulkFromFolder": "Una carpeta…",
@@ -717,7 +496,7 @@
       "bulkViewsHeading": "Añadir desde {name}",
       "bulkAllItems": "Todos los elementos",
       "bulkConfirmTitle": "{count, plural, one {¿Añadir # tarjeta desde {name}?} other {¿Añadir # tarjetas desde {name}?}}",
-      "bulkConfirmBody": "Los tableros grandes se vuelven más lentos y pueden superar el límite de tamaño de sincronización.",
+      "bulkConfirmBody": "Los lienzos grandes son más lentos de recorrer y pueden superar el límite de tamaño de sincronización.",
       "bulkConfirmSkipped": "{count, plural, one {# elemento ya está en este lienzo y se omitirá.} other {# elementos ya están en este lienzo y se omitirán.}}",
       "bulkConfirmAdd": "{count, plural, one {Añadir # tarjeta} other {Añadir # tarjetas}}",
       "bulkBack": "Atrás",
@@ -727,136 +506,751 @@
       "bulkAddedSkipped": "{count, plural, one {# tarjeta añadida} other {# tarjetas añadidas}} · {skipped} ya en el lienzo",
       "bulkAllOnCanvas": "{count, plural, one {Ya está en este lienzo} other {Los # ya están en este lienzo}}"
     },
-    "corruptScene": "No se pudo leer este lienzo. La edición está desactivada para no perder datos.",
-    "createFailed": "No se pudo crear el lienzo",
-    "disabledBody": "Esta pestaña pertenece a una función que no está activada en este dispositivo.",
-    "disabledTitle": "El lienzo no está activado",
-    "empty": "Aún no hay lienzos",
-    "libraryStoreFailed": "No se pudo guardar tu biblioteca de formas. Puede que se pierdan los cambios recientes.",
-    "loadFailed": "No se pudieron cargar los lienzos",
-    "loading": "Cargando lienzos…",
-    "newCanvas": "Nuevo lienzo",
-    "notFound": "No se pudo encontrar este lienzo",
-    "openFailed": "No se pudo abrir el lienzo",
-    "savedToVault": "Todos los cambios se guardan automáticamente en tu bóveda",
-    "sectionLabel": "Lienzos",
-    "tooLargeToSync": "Este lienzo es demasiado grande para sincronizarlo. Está guardado en este dispositivo, pero no llegará a los demás hasta que ocupe menos.",
-    "untitled": "Lienzo sin título"
+    "cluster": {
+      "button": "Sugerir grupos",
+      "buttonHint": "Agrupa por similitud las tarjetas de notas de este lienzo (o las seleccionadas). Se ejecuta en este dispositivo.",
+      "loading": "Agrupando…",
+      "needMoreNotes": "Añade al menos {count} tarjetas de notas para sugerir grupos.",
+      "tooMany": "Este lienzo tiene más de {count} tarjetas de notas. Selecciona {count} como máximo e inténtalo de nuevo.",
+      "disabled": "Activa los embeddings locales en Ajustes > IA para sugerir grupos.",
+      "noGroups": "No se encontraron grupos claros entre estas notas.",
+      "missing": "{count, plural, one {# nota aún no tiene embedding y se ha dejado fuera.} other {# notas aún no tienen embedding y se han dejado fuera.}}",
+      "failed": "No se pudieron sugerir grupos",
+      "title": "Grupos sugeridos",
+      "description": "Agrupadas por similitud en este dispositivo. Nada cambia en el lienzo hasta que crees los marcos.",
+      "defaultName": "Grupo {number}",
+      "untitledGroup": "Grupo",
+      "groupName": "Nombre del grupo",
+      "acceptGroup": "Incluir {name}",
+      "noteCount": "{count, plural, one {# nota} other {# notas}}",
+      "discard": "Descartar",
+      "create": "{count, plural, one {Crear # marco} other {Crear # marcos}}",
+      "created": "{count, plural, one {Se creó # marco} other {Se crearon # marcos}}",
+      "cardsGone": "Esas tarjetas ya no están en el lienzo."
+    },
+    "frame": {
+      "categorize": "Categorizar",
+      "editBinding": "Cambiar la categoría que asigna esta sección",
+      "cardCount": "{count, plural, one {# tarjeta} other {# tarjetas}}",
+      "bindTitle": "Categorizar esta sección",
+      "bindHint": "Las tarjetas que sueltes en la sección reciben esta etiqueta o este valor de propiedad.",
+      "bindPlaceholder": "Buscar etiquetas y valores de propiedad, o escribir una etiqueta nueva…",
+      "bindEmpty": "No hay etiquetas ni valores de propiedad que coincidan.",
+      "groupTags": "Etiquetas",
+      "useTag": "Usar la etiqueta nueva #{tag}",
+      "unbind": "Dejar de categorizar como {label}",
+      "current": "Actual",
+      "applied": "{count, plural, one {Se añadió {label} a # tarjeta} other {Se añadió {label} a # tarjetas}}",
+      "applyFailed": "No se pudo añadir {label}",
+      "revertFailed": "No se pudo deshacer {label}",
+      "leftFrame": "{count, plural, one {Se sacó # tarjeta de {label}. Conserva la categoría.} other {Se sacaron # tarjetas de {label}. Conservan la categoría.}}",
+      "removeCategory": "Quitar {label}",
+      "removed": "{count, plural, one {Se quitó {label} de # tarjeta} other {Se quitó {label} de # tarjetas}}",
+      "removeFailed": "No se pudo quitar {label}",
+      "skippedFile": "{count, plural, one {Una tarjeta de archivo se dejó como estaba: los archivos no tienen etiquetas ni propiedades.} other {# tarjetas de archivo se dejaron como estaban: los archivos no tienen etiquetas ni propiedades.}}",
+      "skippedTaskProperty": "{count, plural, one {Una tarjeta de tarea se dejó como estaba: las tareas admiten etiquetas, no propiedades de nota.} other {# tarjetas de tarea se dejaron como estaban: las tareas admiten etiquetas, no propiedades de nota.}}",
+      "skippedUnsupported": "{count, plural, one {Una tarjeta se dejó como estaba: los eventos y los proyectos no se pueden categorizar.} other {# tarjetas se dejaron como estaban: los eventos y los proyectos no se pueden categorizar.}}",
+      "layoutAction": "Organizar por propiedad",
+      "layoutTitle": "Organizar por propiedad",
+      "layoutHint": "Crea una sección por cada valor y reparte en ellas las notas de este lienzo.",
+      "layoutPlaceholder": "Buscar propiedades de selección, selección múltiple y estado…",
+      "layoutEmpty": "Aún no hay propiedades de selección, selección múltiple o estado con valores.",
+      "layoutValueCount": "{count, plural, one {# valor} other {# valores}}",
+      "layoutDone": "{count, plural, one {Se creó # sección para {property}} other {Se crearon # secciones para {property}}}",
+      "layoutFailed": "No se pudo organizar el lienzo"
+    }
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Colecciones",
+      "projects": "Proyectos",
+      "newNote": "Nueva nota",
+      "newNote2": "Nueva nota",
+      "newFolder": "Nueva carpeta",
+      "newFolder2": "Nueva carpeta",
+      "newProject": "Nuevo proyecto",
+      "bookmarks": "Marcadores",
+      "tags": "Etiquetas",
+      "reorderSection": "Reordenar {section}",
+      "dropFilesToImport": "Soltar archivos para importar",
+      "dropFilesIntoVaultRoot": "Raíz de la bóveda",
+      "newNoteN": "Nueva nota (⌘N)",
+      "new": "Nuevo",
+      "newItemMenu": "Crear nuevo…",
+      "feedbackButton": "Enviar comentarios",
+      "feedbackTitle": "Enviar comentarios",
+      "feedbackDescription": "Cuéntanos qué funciona, qué falla o qué te gustaría que hiciera MemryNote. Leemos todos los mensajes.",
+      "feedbackPlaceholder": "Tus comentarios…",
+      "feedbackEmailHint": "Añade tu correo si quieres una respuesta.",
+      "feedbackPrivacyTitle": "Qué se envía",
+      "feedbackPrivacyMessage": "Tu mensaje, tal y como lo has escrito",
+      "feedbackPrivacyEmailOptional": "Tu correo (solo si lo añades, y solo para que podamos responderte)",
+      "feedbackPrivacyEmailSignedIn": "El correo de tu cuenta ({email}), para que podamos responderte",
+      "feedbackPrivacyVersion": "Versión de la app y sistema operativo",
+      "feedbackPrivacyPlan": "Tu plan (gratuito, Plus, Pro o Believer)",
+      "feedbackPrivacyNote": "Nada más. Tus notas se quedan en tu dispositivo.",
+      "feedbackSend": "Enviar",
+      "feedbackSending": "Enviando…",
+      "feedbackSuccess": "¡Gracias por tus comentarios!",
+      "feedbackError": "No se pudieron enviar los comentarios. Inténtalo de nuevo.",
+      "syncDisabled": "Sincronización desactivada",
+      "syncDisabled2": "Sincronización desactivada",
+      "sortLabel": "Ordenar {section}: {mode}",
+      "sortModeManual": "Manual",
+      "sortModeNameAsc": "Nombre A → Z",
+      "sortModeNameDesc": "Nombre Z → A",
+      "sortModeModifiedDesc": "Modificación: más recientes primero",
+      "sortModeModifiedAsc": "Modificación: más antiguos primero",
+      "sortModeCreatedDesc": "Creación: más recientes primero",
+      "sortModeCreatedAsc": "Creación: más antiguos primero",
+      "sortModeCountDesc": "Más usadas",
+      "sortModeCountAsc": "Menos usadas",
+      "sortSaveFailed": "No se pudo guardar el orden",
+      "sectionOrderSaveFailed": "No se pudo guardar el orden de la barra lateral"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Cambiar tamaño del panel del día",
+      "dragToResizeDoubleClickToReset": "Arrastra para cambiar el tamaño · Haz doble clic para restablecer"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Buscar, reemplazar, preguntar…"
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Omitir la introducción",
+      "welcomeToMemry": "Te damos la bienvenida a memrynote",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Tu base de conocimiento personal. En 2 minutos te ayudamos a empezar.",
+      "getStarted": "Empezar ",
+      "createYourFirstNote": "Crea tu primera nota",
+      "markdownBasedStoredLocallyAsPlainFiles": "Basadas en Markdown y guardadas localmente como archivos de texto plano.",
+      "eGMeetingNotesIdeasAnything": "p. ej., notas de reuniones, ideas, lo que quieras…",
+      "skip": "Omitir",
+      "createNote": "Crear nota ",
+      "addYourFirstTask": "Añade tu primera tarea",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Las tareas se enlazan con tus notas, con prioridades y fechas de vencimiento.",
+      "eGReviewProjectProposal": "p. ej., revisar la propuesta del proyecto…",
+      "skip2": "Omitir",
+      "createTask": "Crear tarea ",
+      "syncAcrossDevices": "Sincronización entre dispositivos",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Mantén tus notas y tareas sincronizadas en todos tus dispositivos. Puedes configurarlo más tarde cuando quieras.",
+      "skipForNow": "Omitir por ahora",
+      "doneLetSGo": "Listo, ¡vamos! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Establecer icono de carpeta",
+      "expandFolder": "Expandir carpeta",
+      "collapseFolder": "Contraer carpeta"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "PISTA"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Selector de iconos",
+      "selectIcon": "Seleccionar icono",
+      "closeIconPicker": "Cerrar selector de iconos",
+      "searchIcons": "Buscar iconos…",
+      "all": "Todos",
+      "clearIcon": "Quitar icono",
+      "noIconsFoundFor": "No se encontraron iconos para \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Atajos de teclado",
+      "closeShortcutsHelp": "Cerrar la ayuda de atajos",
+      "press": "Pulsa",
+      "toClose": "para cerrar"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Establecer icono",
+      "clearIcon": "Quitar icono"
+    },
+    "componentsNavMain": {
+      "platform": "Plataforma"
+    },
+    "componentsNavProjects": {
+      "projects": "Proyectos",
+      "more": "Más",
+      "viewProject": "Ver proyecto",
+      "shareProject": "Compartir proyecto",
+      "deleteProject": "Eliminar proyecto",
+      "more2": "Más"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Pasar a Pro",
+      "account": "Cuenta",
+      "billing": "Facturación",
+      "notifications": "Notificaciones",
+      "logOut": "Cerrar sesión"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Buscar",
+      "searchNotesTasksJournalInbox": "Buscar notas, tareas, diario, bandeja de entrada…",
+      "noResultsFor": "Sin resultados para “",
+      "result": "resultado",
+      "noResultsForQuery": "No hay resultados para «{query}»",
+      "resultCount": "{count, plural, one {# resultado} many {# resultados} other {# resultados}}",
+      "indexBuilding": "Creando el índice de búsqueda ({done}/{total}): los resultados pueden estar incompletos",
+      "indexBuildingUnknown": "Creando el índice de búsqueda: los resultados pueden estar incompletos"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Busca y haz clic en elementos para crear tu recorrido",
+      "reasons": "Razones",
+      "clear": "Borrar"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Quitar",
+      "tags": "Etiquetas",
+      "filterByTag": "Filtrar por etiqueta…",
+      "dateRange": "Rango de fechas"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Ver los ",
+      "results": "resultados"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "aproximado"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "No hay pestañas abiertas",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Abre una página desde la barra lateral o crea una pestaña nueva para empezar",
+      "openInbox": "Abrir bandeja de entrada",
+      "closePane": "Cerrar panel"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Disposiciones predefinidas",
+      "layoutPresets2": "Disposiciones predefinidas"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Cambiar el tamaño de los paneles"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "Contexto de tareas no disponible",
+      "searchResults": "Resultados de la búsqueda",
+      "unknownTabType": "Tipo de pestaña desconocido: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "cambios no guardados",
+      "preview": "vista previa"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Nueva pestaña",
+      "newTab2": "Nueva pestaña",
+      "newNote": "Nueva nota",
+      "journal": "Diario",
+      "calendar": "Calendario",
+      "inboxCapture": "Captura en la bandeja de entrada",
+      "tasks": "Tareas",
+      "tags": "Etiquetas"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Cambios no guardados",
+      "unsaved": "sin guardar)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Cambios no guardados"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Cerrar todas las pestañas"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Pestañas abiertas",
+      "scrollTabsLeft": "Desplazarse por las pestañas hacia la izquierda",
+      "scrollTabsRight": "Desplazarse por las pestañas hacia la derecha",
+      "dayPanel": "Panel del día"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Algo salió mal",
+      "anErrorOccurredWhileRenderingThisTabContent": "Se produjo un error al mostrar el contenido de esta pestaña.",
+      "tryAgain": "Inténtalo de nuevo",
+      "sendReport": "Enviar informe de diagnóstico"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Icono de nota"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Cambios no guardados",
+      "unsavedChangesBody": "«{title}» tiene cambios sin guardar. ¿Qué quieres hacer?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Nuevo espacio de trabajo",
+      "darkMode": "Modo oscuro",
+      "settings": "Ajustes",
+      "integrations": "Integraciones",
+      "signOut": "Cerrar sesión",
+      "downloadOnIos": "Descargar en iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Cerrar ventana",
+      "minimizeWindow": "Minimizar ventana",
+      "maximizeWindow": "Maximizar ventana"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Sugerencias",
+      "or": "o",
+      "enter": "Enter",
+      "toInsert": "para insertar"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "migas de pan",
+      "more": "Más"
+    },
+    "componentsUiDialog": {
+      "close": "Cerrar"
+    },
+    "componentsUiSheet": {
+      "close": "Cerrar"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Barra lateral",
+      "displaysTheMobileSidebar": "Muestra la barra lateral móvil.",
+      "toggleSidebar": "Mostrar u ocultar la barra lateral",
+      "toggleSidebar2": "Mostrar u ocultar la barra lateral",
+      "dragToResizeDoubleClickToReset": "Arrastra para cambiar el tamaño · Haz doble clic para restablecer"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Te damos la bienvenida a memrynote",
+      "yourPersonalKnowledgeManagementSystem": "Tu sistema personal de gestión del conocimiento.",
+      "selectAFolderToStoreYourNotesAndTasks": "Selecciona una carpeta para guardar tus notas y tareas.",
+      "opening": "Abriendo…",
+      "selectVaultFolder": "Seleccionar carpeta de la bóveda",
+      "plainMarkdown": "Markdown plano",
+      "yourNotesStayPortable": "Tus notas se pueden llevar a cualquier parte",
+      "syncAnywhere": "Sincronizar en cualquier lugar",
+      "useDropboxIcloudGit": "Usa Dropbox, iCloud o Git",
+      "recentVaults": "Bóvedas recientes",
+      "notesLastOpened": "notas · Última apertura",
+      "preRelease": "Beta",
+      "createNewVault": "Crear nueva bóveda",
+      "createNewVaultDesc": "Crea una bóveda nueva en la carpeta que elijas.",
+      "openExistingVault": "Abrir bóveda existente",
+      "openExistingVaultDesc": "Elige una carpeta con archivos Markdown que ya tengas.",
+      "signInToSync": "Iniciar sesión para sincronizar",
+      "signInToSyncDesc": "Bóvedas cifradas de extremo a extremo en tus dispositivos.",
+      "create": "Crear",
+      "open": "Abrir",
+      "signIn": "Iniciar sesión",
+      "helpAndDocs": "Ayuda y documentación",
+      "signInRequiresVault": "Abre o crea una bóveda primero para configurar la sincronización.",
+      "addVault": "Añadir bóveda",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "Tus notas viven en una bóveda, una carpeta de este equipo.",
+        "createDesc": "Ponle nombre y elige dónde guardarla.",
+        "openFolder": "Abrir carpeta como bóveda",
+        "openFolderDesc": "Usa una carpeta de archivos Markdown que ya tengas.",
+        "openFromSync": "Abrir desde Memrynote Sync",
+        "openFromSyncDesc": "Inicia sesión y descarga una bóveda de tu cuenta.",
+        "back": "Atrás",
+        "createTitle": "Crear una bóveda nueva",
+        "createSubtitle": "Una bóveda es una carpeta de archivos Markdown. Puedes moverla más adelante.",
+        "nameLabel": "Nombre",
+        "namePlaceholder": "Mis notas",
+        "locationLabel": "Ubicación",
+        "change": "Cambiar…",
+        "willBeCreatedAt": "Se creará en",
+        "errorExists": "Ya existe una carpeta con este nombre aquí.",
+        "openInstead": "Abrirla como bóveda",
+        "errorInvalidName": "Los nombres no pueden empezar por un punto ni contener / \\ : * ? \" < > |",
+        "createFailed": "No se pudo crear la bóveda.",
+        "createVault": "Crear bóveda",
+        "creating": "Creando…",
+        "cancel": "Cancelar",
+        "chooseTitle": "Elige una bóveda",
+        "chooseSubtitle": "Has iniciado sesión como {email}. Elige una para abrirla en este equipo.",
+        "untitledVault": "Bóveda sin título",
+        "items": "{count, plural, one {# elemento} other {# elementos}}",
+        "onThisComputer": "En este equipo",
+        "downloadTo": "Descargar en",
+        "otherVaultsHint": "Las demás bóvedas se quedan en tu cuenta. Puedes descargarlas cuando quieras desde el selector de bóvedas.",
+        "openVault": "Abrir bóveda",
+        "opening": "Abriendo…",
+        "loadingVaults": "Cargando tus bóvedas…",
+        "loadFailed": "No se pudieron cargar tus bóvedas.",
+        "retry": "Inténtalo de nuevo",
+        "noVaultsTitle": "Aún no hay bóvedas en tu cuenta",
+        "noVaultsDesc": "Crea una en este equipo. Se sincronizará con tu cuenta.",
+        "createCta": "Crear una bóveda",
+        "openFailed": "No se pudo abrir la bóveda."
+      }
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Aún no hay bóvedas",
+      "openVault": "Abrir bóveda",
+      "settings": "Ajustes",
+      "logOut": "Cerrar sesión",
+      "signInToSync": "Iniciar sesión para sincronizar",
+      "remove": "Quitar “",
+      "removeVaultTitle": "¿Quitar «{name}» de la lista?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Esta bóveda se quitará de la app, pero tus archivos seguirán en el disco. Puedes volver a añadirla cuando quieras.",
+      "cancel": "Cancelar",
+      "remove2": "Quitar",
+      "inYourAccount": "En tu cuenta",
+      "itemsCount": "{count} elementos",
+      "untitledVault": "Bóveda",
+      "downloadVaultTitle": "Descargar «{name}»",
+      "downloadLocation": "Ubicación",
+      "changeLocation": "Cambiar…",
+      "download": "Descargar",
+      "downloadFailed": "No se pudo descargar la bóveda",
+      "deleteFromAccount": "Eliminar de la cuenta",
+      "deleteVaultTitle": "¿Eliminar «{name}» de tu cuenta?",
+      "deleteVaultBody": "Esto elimina de forma permanente todos los datos sincronizados de esta bóveda que hay en los servidores de Memry y no se puede deshacer. Los archivos de tu disco no se eliminan.",
+      "deleteVaultConfirm": "Eliminar de la cuenta",
+      "deleteVaultFailed": "No se pudo eliminar la bóveda",
+      "missing": "Carpeta no encontrada"
+    },
+    "componentsWindowControls": {
+      "searchK": "Buscar (⌘K)",
+      "browserBack": "Ir atrás",
+      "back": "Atrás",
+      "browserForward": "Ir adelante",
+      "forward": "Adelante"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "No se pudieron importar archivos",
+      "failedToCreateNote": "No se pudo crear la nota",
+      "failedToAccessMicrophone": "No se pudo acceder al micrófono"
+    },
+    "toasts": {
+      "undone": "Deshecho"
+    }
+  },
+  "home": {
+    "widget": {
+      "removeAria": "Quitar widget",
+      "dragAria": "Arrastrar widget",
+      "configAria": "Configurar widget",
+      "resizeAria": "Redimensionar a {size}",
+      "menuAria": "Opciones del widget",
+      "resize": "Tamaño",
+      "remove": "Quitar",
+      "filter": {
+        "all": "Todas",
+        "today": "Vence hoy",
+        "tomorrow": "Mañana",
+        "next7": "Próximos 7 días",
+        "noDueDate": "Sin fecha de vencimiento"
+      },
+      "recentlyEdited": "Editado recientemente",
+      "recentlyOpened": "Abierto recientemente",
+      "recentMeta": "editado {time}",
+      "recentMetaWithFolder": "{folder} · editado {time}",
+      "openedMeta": "abierto {time}",
+      "openedMetaWithFolder": "{folder} · abierto {time}",
+      "noRecentlyOpened": "Las notas que abras aparecerán aquí",
+      "bookmarks": "Marcadores",
+      "tasks": "Tareas",
+      "calendar": "Calendario",
+      "calendarToday": "Hoy",
+      "openCalendar": "Abrir calendario",
+      "next": "Siguiente: {title}",
+      "startsIn": "Empieza en {count, plural, one {# min} other {# min}}",
+      "duration": "{count} min",
+      "inbox": "Bandeja de entrada",
+      "inboxAllTypes": "Todos los tipos",
+      "inboxOlder": "{count, plural, one {# más antiguo} other {# más antiguos}}",
+      "inboxOldest": "el más antiguo tiene {count, plural, one {# día} other {# días}}",
+      "openInbox": "Abrir la bandeja de entrada",
+      "folder": "Carpeta",
+      "untitled": "Sin título",
+      "folderPickPrompt": "Elige una carpeta",
+      "folderEmpty": "Aún no hay carpetas",
+      "folderNoSelection": "No hay ninguna carpeta seleccionada",
+      "folderView_list": "Lista",
+      "folderView_gallery": "Galería",
+      "folderViewSelect": "Vista",
+      "project": "Proyecto",
+      "projectNoSelection": "No hay ningún proyecto seleccionado",
+      "projectMissing": "Este proyecto ya no está disponible",
+      "projectNoTasks": "Sin tareas",
+      "journal": "Diario",
+      "journalStreak": "{count, plural, one {racha de # día} other {racha de # días}}",
+      "journalToday": "Hoy",
+      "journalYesterday": "Ayer",
+      "journalTomorrow": "Mañana",
+      "journalUpcoming": "Próximamente",
+      "journalNoEntryYet": "Aún no hay ninguna entrada",
+      "loadError": "No se pudo cargar",
+      "unknown": "Widget desconocido"
+    },
+    "board": {
+      "label": "Tablero de Inicio",
+      "deleteAria": "Eliminar tablero",
+      "newAria": "Nuevo tablero",
+      "newName": "Nuevo tablero",
+      "defaultName": "Inicio",
+      "manage": "Gestionar tableros",
+      "manageTitle": "Gestionar tableros",
+      "manageDescription": "Cambia el nombre, reordena o elimina tus tableros de Inicio.",
+      "renameAria": "Cambiar nombre del tablero",
+      "reorderAria": "Reordenar tablero",
+      "nameLabel": "Nombre del tablero"
+    },
+    "greeting": {
+      "morning": "Buenos días",
+      "afternoon": "Buenas tardes",
+      "evening": "Buenas noches"
+    },
+    "header": {
+      "tasksDue": "{count, plural, one {# tarea vence hoy} other {# tareas vencen hoy}}",
+      "events": "{count, plural, one {# evento} other {# eventos}}"
+    },
+    "edit": "Editar",
+    "done": "Listo",
+    "addWidget": "Añadir widget",
+    "empty": {
+      "title": "Tu tablero está vacío",
+      "body": "Los widgets reúnen tus notas, tareas y marcadores en un solo lugar tranquilo.",
+      "cta": "Añadir el primer widget"
+    },
+    "noBookmarksYet": "Aún no hay marcadores.",
+    "noNotesYet": "Aún no hay notas.",
+    "noTasksYet": "Aún no hay tareas.",
+    "noEventsYet": "No hay eventos hoy.",
+    "noJournalEntriesYet": "Aún no hay entradas de diario.",
+    "disabled": {
+      "createNote": "Crear nota",
+      "hint": "No hay nada abierto. Empieza una nota."
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Te damos la bienvenida a MemryNote",
+      "body": "Tu espacio privado, que funciona sin conexión. Las notas están cifradas de extremo a extremo: nunca salen de tu dispositivo sin cifrar."
+    },
+    "newNote": {
+      "title": "Crea tu primera nota",
+      "body": "Empieza aquí. Todo lo que escribes se guarda primero de forma local."
+    },
+    "nav": {
+      "title": "Tus espacios de trabajo",
+      "body": "Bandeja de entrada para capturar, Diario para las notas diarias, Calendario para tu cronología, Tareas para los pendientes y Grafo para ver cómo se conecta todo."
+    },
+    "collections": {
+      "title": "Colecciones, marcadores y etiquetas",
+      "body": "Organiza las notas en carpetas, fija marcadores y explora por etiqueta, todo aquí."
+    },
+    "dayPanel": {
+      "title": "Tu día, junto a tu trabajo",
+      "body": "El panel lateral mantiene un calendario y tu vista del día junto a lo que estés leyendo."
+    },
+    "agentChat": {
+      "title": "Chatea con el agente de IA",
+      "body": "Cambia a la pestaña Agente para preguntar sobre tu bóveda al asistente de MemryNote."
+    },
+    "sync": {
+      "title": "Sincronización privada y cifrada",
+      "body": "Activa la sincronización cifrada de extremo a extremo para mantener todos los dispositivos al día."
+    },
+    "feedback": {
+      "title": "Cuéntanos qué opinas",
+      "body": "Envía comentarios directamente al equipo desde aquí."
+    },
+    "settings": {
+      "title": "Ajustes e importaciones",
+      "body": "Importa tus notas desde más de 12 apps (Obsidian, Notion, Apple Notes, Evernote y más) y ajusta todo lo demás en Ajustes."
+    },
+    "tour": {
+      "next": "Siguiente",
+      "previous": "Anterior",
+      "progress": "{current} de {total}"
+    },
+    "starPrompt": {
+      "title": "Introducción completada",
+      "body": "Por favor, danos una estrella en GitHub: ayuda a que otras personas encuentren MemryNote.",
+      "action": "Dar una estrella en GitHub"
+    }
   },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Clic en la fila",
-      "reset": "Restablecer",
-      "shortcutsTab": "Pestaña Atajos"
-    },
     "description": "Rutas rápidas para moverte por memrynote, capturar ideas y procesar tu trabajo.",
+    "or": "o",
+    "then": "luego",
     "groups": {
       "general": {
-        "description": "Navegación y ayuda en toda la app.",
-        "title": "General"
-      },
-      "inbox": {
-        "description": "Procesa rápidamente los elementos capturados.",
-        "title": "Bandeja de entrada"
-      },
-      "journal": {
-        "description": "Navega por las vistas del diario y enfoca el área de escritura.",
-        "title": "Diario"
-      },
-      "notes": {
-        "description": "Escribe, da formato y busca notas.",
-        "title": "Notas / Editor"
-      },
-      "settings": {
-        "description": "Abre los ajustes y personaliza los atajos.",
-        "title": "Ajustes"
+        "title": "General",
+        "description": "Navegación y ayuda en toda la app."
       },
       "tabs": {
-        "description": "Muévete entre pestañas y paneles.",
-        "title": "Pestañas y divisiones"
+        "title": "Pestañas y divisiones",
+        "description": "Muévete entre pestañas y paneles."
+      },
+      "inbox": {
+        "title": "Bandeja de entrada",
+        "description": "Procesa rápidamente los elementos capturados."
+      },
+      "journal": {
+        "title": "Diario",
+        "description": "Navega por las vistas del diario y enfoca el área de escritura."
+      },
+      "notes": {
+        "title": "Notas / Editor",
+        "description": "Escribe, da formato y busca notas."
       },
       "tasks": {
-        "description": "Filtra, selecciona y completa tareas.",
-        "title": "Tareas"
+        "title": "Tareas",
+        "description": "Filtra, selecciona y completa tareas."
+      },
+      "settings": {
+        "title": "Ajustes",
+        "description": "Abre los ajustes y personaliza los atajos."
       }
     },
     "items": {
       "general": {
-        "createNote": "Crear una nota",
-        "keyboardShortcuts": "Abrir los atajos de teclado",
-        "openSettings": "Abrir los ajustes",
         "quickSearch": "Abrir la búsqueda rápida",
-        "sidebarSection": "Ir a una sección de la barra lateral",
-        "toggleSidebar": "Alternar la barra lateral",
-        "undoTaskAction": "Deshacer la última acción de tarea"
+        "createNote": "Crear una nota",
+        "openSettings": "Abrir los ajustes",
+        "switchVault": "Cambiar de bóveda",
+        "adjacentVault": "Bóveda anterior o siguiente",
+        "keyboardShortcuts": "Abrir los atajos de teclado",
+        "undoTaskAction": "Deshacer la última acción de tarea",
+        "toggleSidebar": "Mostrar u ocultar la barra lateral",
+        "sidebarSection": "Ir a una sección de la barra lateral"
+      },
+      "tabs": {
+        "newTabMenu": "Abrir el menú de nueva pestaña",
+        "closeTab": "Cerrar la pestaña",
+        "closeAllInPane": "Cerrar todas las pestañas del panel",
+        "reopenClosedTab": "Reabrir la pestaña cerrada",
+        "nextTab": "Pestaña siguiente",
+        "previousTab": "Pestaña anterior",
+        "pinTab": "Fijar o dejar de fijar la pestaña",
+        "duplicateTab": "Duplicar la pestaña",
+        "splitRight": "Dividir a la derecha",
+        "splitDown": "Dividir hacia abajo",
+        "closeSplitPane": "Cerrar el panel dividido",
+        "focusPane": "Enfocar otro panel",
+        "moveTabToPane": "Mover la pestaña a otro panel",
+        "maximizePane": "Maximizar el panel actual"
       },
       "inbox": {
-        "archiveItem": "Archivar el elemento seleccionado",
-        "chooseQuickFileResult": "Elegir un resultado de archivado rápido",
-        "clearSelection": "Borrar la selección o cerrar el archivado rápido",
-        "confirmFiling": "Confirmar el panel de archivado",
+        "nextItem": "Elemento siguiente",
+        "previousItem": "Elemento anterior",
         "firstOrLastItem": "Primer o último elemento",
         "jumpByPage": "Saltar de página en página",
-        "nextItem": "Elemento siguiente",
-        "openOriginal": "Abrir el enlace original",
-        "openQuickFile": "Abrir el archivado rápido",
-        "previousItem": "Elemento anterior",
-        "refresh": "Actualizar la bandeja de entrada",
-        "selectAllVisible": "Seleccionar todos los elementos visibles",
+        "togglePreview": "Mostrar u ocultar el panel de vista previa",
         "selectItem": "Seleccionar elemento",
-        "togglePreview": "Alternar el panel de vista previa"
+        "selectAllVisible": "Seleccionar todos los elementos visibles",
+        "clearSelection": "Anular la selección o cerrar la clasificación rápida",
+        "openQuickFile": "Abrir la clasificación rápida",
+        "chooseQuickFileResult": "Elegir un resultado de la clasificación rápida",
+        "archiveItem": "Archivar el elemento seleccionado",
+        "openOriginal": "Abrir el enlace original",
+        "refresh": "Actualizar la bandeja de entrada",
+        "confirmFiling": "Confirmar el panel de clasificación"
       },
       "journal": {
-        "bold": "Poner en negrita el texto seleccionado",
-        "find": "Buscar en el diario",
-        "italic": "Poner en cursiva el texto seleccionado",
         "returnFromOverview": "Volver desde la vista de mes o de año",
+        "find": "Buscar en el diario",
+        "bold": "Poner en negrita el texto seleccionado",
+        "italic": "Poner en cursiva el texto seleccionado",
         "underline": "Subrayar el texto seleccionado"
       },
       "notes": {
-        "bold": "Negrita",
-        "closeOverlays": "Cerrar las capas del editor",
-        "commandMenu": "Abrir el menú de comandos del editor",
         "createNote": "Crear una nota",
         "find": "Buscar en la nota",
+        "bold": "Negrita",
         "italic": "Cursiva",
-        "underline": "Subrayado"
-      },
-      "settings": {
-        "cancelRecording": "Cancelar la grabación del atajo",
-        "customizeShortcuts": "Personalizar los atajos de teclado",
-        "openSettings": "Abrir los ajustes",
-        "recordShortcut": "Grabar un atajo nuevo",
-        "resetShortcut": "Restaurar un atajo predeterminado"
-      },
-      "tabs": {
-        "closeAllInPane": "Cerrar todas las pestañas del panel",
-        "closeSplitPane": "Cerrar el panel dividido",
-        "closeTab": "Cerrar la pestaña",
-        "duplicateTab": "Duplicar la pestaña",
-        "focusPane": "Enfocar otro panel",
-        "maximizePane": "Maximizar el panel actual",
-        "moveTabToPane": "Mover la pestaña a otro panel",
-        "newTabMenu": "Abrir el menú de nueva pestaña",
-        "nextTab": "Pestaña siguiente",
-        "pinTab": "Fijar o dejar de fijar la pestaña",
-        "previousTab": "Pestaña anterior",
-        "reopenClosedTab": "Reabrir la pestaña cerrada",
-        "splitDown": "Dividir hacia abajo",
-        "splitRight": "Dividir a la derecha"
+        "underline": "Subrayado",
+        "commandMenu": "Abrir el menú de comandos del editor",
+        "closeOverlays": "Cerrar las capas del editor"
       },
       "tasks": {
-        "clearFilters": "Borrar los filtros visibles",
-        "clearSelection": "Borrar la selección de tareas",
-        "completeSelected": "Completar las tareas seleccionadas",
-        "configureRepeat": "Configurar la repetición de la tarea enfocada",
-        "deleteSelected": "Eliminar las tareas seleccionadas",
+        "clearFilters": "Quitar los filtros visibles",
         "selectAllVisible": "Seleccionar todas las tareas visibles",
+        "clearSelection": "Anular la selección de tareas",
+        "completeSelected": "Completar las tareas seleccionadas",
+        "deleteSelected": "Eliminar las tareas seleccionadas",
+        "configureRepeat": "Configurar la repetición de la tarea enfocada",
         "skipOccurrence": "Omitir esta repetición",
         "stopRepeating": "Dejar de repetir la tarea"
+      },
+      "settings": {
+        "openSettings": "Abrir los ajustes",
+        "customizeShortcuts": "Personalizar los atajos de teclado",
+        "recordShortcut": "Grabar un atajo nuevo",
+        "cancelRecording": "Cancelar la grabación del atajo",
+        "resetShortcut": "Restaurar un atajo predeterminado"
       }
     },
-    "or": "o",
-    "then": "luego"
+    "combos": {
+      "shortcutsTab": "Pestaña Atajos",
+      "clickRow": "Clic en la fila",
+      "reset": "Restablecer"
+    }
+  },
+  "update": {
+    "available": "Actualización disponible",
+    "downloading": "Descargando {version}",
+    "ready": "Actualización lista",
+    "failed": "No se pudo actualizar",
+    "downloadAction": "Descargar",
+    "restartAction": "Reiniciar",
+    "detailsAction": "Detalles",
+    "popover": {
+      "readyTitle": "MemryNote {version} está listo",
+      "availableTitle": "MemryNote {version} está disponible",
+      "readySubtitle": "Tienes la versión {current}",
+      "availableSubtitle": "Tienes la versión {current} · aún no se ha descargado nada",
+      "allChanges": "Todos los cambios",
+      "restartNow": "Reiniciar ahora",
+      "onNextQuit": "Al salir de la app",
+      "download": "Descargar",
+      "notNow": "Ahora no",
+      "moreOptions": "Más opciones de actualización",
+      "skipVersion": "Omitir {version}",
+      "turnOffAuto": "Desactivar las actualizaciones automáticas",
+      "copyVersionInfo": "Copiar información de la versión",
+      "openSettings": "Abrir los ajustes"
+    },
+    "installing": {
+      "title": "Instalando {version}",
+      "titleUnknownVersion": "Instalando la actualización",
+      "subtitle": "MemryNote se volverá a abrir en un momento. Todo lo que has escrito ya está guardado en el disco."
+    },
+    "installFailed": {
+      "title": "MemryNote no pudo terminar de instalar {version}",
+      "titleUnknownVersion": "MemryNote no pudo terminar de instalar la actualización",
+      "body": "Tu bóveda no se ha tocado: las actualizaciones se aplican a la app, no a tus notas. Sigues con la versión {current} y todo funciona como antes.",
+      "errorLabel": "Qué ha fallado",
+      "downloadManually": "Descargar {version} manualmente",
+      "downloadManuallyUnknownVersion": "Descargar MemryNote manualmente",
+      "tryAgain": "Inténtalo de nuevo",
+      "copyDetails": "Copiar detalles"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Bóvedas",
+    "position": "{name}, bóveda {index} de {count}",
+    "openList": "{position}. Abrir la lista de bóvedas",
+    "switchTo": "Cambiar a {name}",
+    "switchingTo": "Cambiando a {name}",
+    "changeIcon": "Cambiar icono…",
+    "resetIcon": "Restablecer icono",
+    "iconButton": "Cambiar el icono de {name}",
+    "iconFailed": "No se pudo cambiar el icono de la bóveda"
+  },
+  "sidebarHelp": {
+    "label": "Ayuda y comentarios",
+    "reportBug": "Informar de un error",
+    "requestFeature": "Solicitar una función",
+    "starOnGithub": "Dar una estrella en GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "Novedades"
+  },
+  "sidebarStar": {
+    "title": "MemryNote es de código abierto",
+    "body": "Se desarrolla en abierto. Una estrella ayuda a que otras personas lo encuentren.",
+    "star": "Dar una estrella",
+    "later": "Ahora no",
+    "thanks": "Gracias. Significa mucho."
+  },
+  "sidebar": {
+    "railLabel": "Secciones",
+    "search": "Buscar o ir a…",
+    "vaultMenu": "{name}. Abrir la lista de bóvedas"
   }
 }

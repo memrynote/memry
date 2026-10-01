@@ -1,77 +1,137 @@
 {
   "page": {
-    "loading": "Se încarcă graficul...",
-    "load-failed": "Nu s-au încărcat datele din grafic",
-    "try-again": "Încercați din nou",
-    "aria-label": "Graficul de cunoștințe cu {nodeCount, plural, one {Nodul #} other {nodurile #}} și {edgeCount, plural, one {Conexiune #} other {Conexiuni #}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "Nodurile grafice",
+    "loading": "Se încarcă graful…",
+    "load-failed": "Nu s-au putut încărca datele grafului",
+    "render-failed": "Graful nu este disponibil pe acest dispozitiv",
+    "render-failed-description": "Acest dispozitiv nu a putut porni motorul de randare grafică. Notițele sunt în siguranță.",
+    "try-again": "Reîncearcă",
+    "aria-label": "Graf de cunoștințe cu {nodeCount, plural, one {# nod} few {# noduri} other {# de noduri}} și {edgeCount, plural, one {# conexiune} few {# conexiuni} other {# de conexiuni}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Nodurile grafului",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "Graficul cunoștințelor tale",
-    "description": "Conexiunile dintre notele, sarcinile și proiectele dvs. vor apărea aici ca un grafic interactiv.",
-    "link-title": "Conectați-vă notele",
-    "link-description": "Utilizați [[wikilink-uri]] pentru a conecta ideile între note",
-    "discover-title": "Descoperiți modele",
+    "title": "Graful de cunoștințe",
+    "description": "Conexiunile dintre notițe, sarcini și proiecte vor apărea aici sub forma unui graf interactiv.",
+    "link-title": "Legați notițele între ele",
+    "link-description": "Folosiți [[linkuri wiki]] pentru a conecta ideile din notițe diferite",
+    "discover-title": "Descoperiți tipare",
     "discover-description": "Pe măsură ce conexiunile cresc, grupurile și temele vor apărea în mod natural"
   },
   "entity": {
-    "note": "notă",
-    "notes": "note",
+    "note": "notiță",
+    "notes": "notițe",
     "journal": "jurnal",
     "journals": "jurnale",
-    "task": "sarcina",
+    "task": "sarcină",
     "tasks": "sarcini",
     "project": "proiect",
     "projects": "proiecte",
-    "tag": "eticheta",
+    "tag": "etichetă",
     "tags": "etichete",
     "orphan": "orfan",
-    "orphans": "orfani",
-    "unresolved": "nerezolvată"
+    "orphans": "orfane",
+    "unresolved": "nerezolvată",
+    "category": "categorie"
   },
   "summary": {
     "node-type-count": "{count} {label}"
   },
   "control": {
-    "show-settings": "Setări pentru grafic",
-    "hide-settings": "Ascundeți setările",
-    "reset-filters": "Resetați filtrele",
+    "show-settings": "Setările grafului",
+    "hide-settings": "Ascunde setările",
+    "reset-filters": "Resetează filtrele",
     "filters": "Filtre",
     "display": "Afișare",
-    "show-labels": "Afișați etichetele",
+    "show-labels": "Afișează denumirile",
+    "live-motion": "Mișcare în timp real",
     "focus-depth": "adâncimea {depth}",
-    "clear-focus": "Ștergeți nodul focalizat"
+    "clear-focus": "Anulează focalizarea pe nod",
+    "relayout": "Rearanjează",
+    "categories": "Categorii de etichete",
+    "color-by-category": "Colorează după categorie",
+    "no-categories": "Grupați etichetele în categorii pe pagina etichetelor pentru a colora și restrânge graful după categorie.",
+    "collapse-category": "Restrânge {name}",
+    "expand-category": "Extinde {name}",
+    "uncategorized": "Fără categorie"
   },
   "filter": {
-    "notes": "Note",
-    "journals": "Jurnalele",
+    "notes": "Notițe",
+    "journals": "Jurnale",
     "tasks": "Sarcini",
     "projects": "Proiecte",
     "tags": "Etichete",
-    "orphans": "orfani",
-    "toggle-entity": "Comutați {label}",
-    "toggle-orphans": "Comutați nodurile orfane"
+    "orphans": "Orfane",
+    "canvas-edges": "Conexiuni din canvasuri",
+    "toggle-entity": "Afișează/ascunde {label}",
+    "toggle-orphans": "Afișează/ascunde nodurile orfane"
   },
   "search": {
-    "placeholder": "Căutați noduri...",
-    "clear": "Șterge căutarea grafică"
+    "placeholder": "Caută noduri…",
+    "clear": "Șterge căutarea în graf"
   },
   "context-menu": {
     "untitled": "Fără titlu",
-    "focus-node": "Concentrați-vă pe acest nod",
+    "focus-node": "Focalizează pe acest nod",
     "open-new-tab": "Deschide într-o filă nouă",
-    "create-note": "Creați o notă",
-    "copy-title": "Copiați titlul"
+    "create-note": "Creează notița",
+    "copy-title": "Copiază titlul",
+    "link-to": "Adaugă un link către…",
+    "add-tag": "Adaugă o etichetă…",
+    "back": "Înapoi",
+    "link-search": "Caută notițe…",
+    "tag-search": "Caută sau creează o etichetă…",
+    "no-matches": "Niciun rezultat",
+    "create-tag": "Creează #{tag}",
+    "remove-link": "Elimină linkul către {title}",
+    "unpin": "Anulează fixarea",
+    "collapse-category": "Restrânge {name}",
+    "expand-category": "Extinde {name}"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {Conexiune #} other {Conexiuni #}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# conexiune} few {# conexiuni} other {# de conexiuni}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# element} few {# elemente} other {# de elemente}}",
+    "click-to-expand": "Faceți clic pentru a extinde"
   },
   "local-panel": {
-    "loading": "Se încarcă graficul...",
+    "loading": "Se încarcă graful…",
     "empty": "Nu s-au găsit conexiuni",
-    "open-full": "Deschideți graficul complet",
-    "close": "Închide graficul"
+    "open-full": "Deschide graful complet",
+    "close": "Închide graful",
+    "pin": "Fixează pe această notiță",
+    "unpin": "Anulează fixarea și urmărește notița deschisă",
+    "pinned-to": "Fixat: {title}"
+  },
+  "edit": {
+    "linked": "Link adăugat de la {source} la {target} în „{property}”",
+    "unlinked": "Linkul de la {source} la {target} a fost eliminat",
+    "already-linked": "{source} are deja un link către {target}",
+    "property-conflict": "„{property}” din această notiță nu este o proprietate de tip relație, așa că linkul nu a fost adăugat",
+    "link-unsupported": "Linkurile pot fi create doar între notițe",
+    "link-failed": "Nu s-a putut adăuga linkul",
+    "unlink-failed": "Nu s-a putut elimina linkul",
+    "tag-added": "Eticheta #{tag} adăugată la {note}",
+    "tag-exists": "Această notiță are deja eticheta #{tag}",
+    "tag-failed": "Nu s-a putut adăuga eticheta",
+    "undo-failed": "Nu s-a putut anula modificarea"
+  },
+  "relayout-confirm": {
+    "title": "Rearanjați graful?",
+    "description": "Toate nodurile fixate sunt eliberate, iar graful se așază într-o aranjare nouă. Aspectul salvat se pierde.",
+    "cancel": "Anulează",
+    "confirm": "Rearanjează"
+  },
+  "views": {
+    "title": "Vizualizări salvate",
+    "unsaved": "Vizualizare nesalvată",
+    "edited": "Editată",
+    "empty": "Nicio vizualizare salvată încă",
+    "save-as": "Salvează ca vizualizare nouă…",
+    "update": "Actualizează „{name}”",
+    "delete": "Șterge vizualizarea {name}",
+    "save-dialog-title": "Salvați vizualizarea grafului",
+    "save-dialog-placeholder": "Numele vizualizării",
+    "cancel": "Anulează",
+    "save": "Salvează"
   }
 }

@@ -1,7 +1,7 @@
 {
   "title": "Denník",
   "section": {
-    "aiConnections": "AI Prepojenia",
+    "aiConnections": "AI prepojenia",
     "todaysNotes": "Dnešné poznámky",
     "todaysSchedule": "Dnešný program",
     "todaysTasks": "Dnešné úlohy",
@@ -19,23 +19,24 @@
     "createNewNote": "Vytvoriť novú poznámku",
     "showLess": "Zobraziť menej",
     "showMoreNotes": "Zobraziť ešte {count} poznámku",
-    "showMoreNotes_plural": "Zobraziť ešte {count} poznámok",
+    "showMoreNotes_plural": "Zobraziť ďalšie poznámky: {count}",
     "showFewerNotes": "Zobraziť menej poznámok",
-    "startBlank": "Začať prázdne miesto",
+    "startBlank": "Začať radšej s prázdnou stránkou",
     "changeTemplate": "Zmeniť šablónu",
     "dismissIndicator": "Zavrieť indikátor",
-    "refreshConnections": "Obnoviť pripojenia",
-    "reloadJournal": "Načítať denník znova",
-    "goToToday": "Ísť na dnes",
-    "copyUnsavedContent": "Skopírovať neuložený obsah do schránky",
-    "addBookmark": "Pridať záložku",
-    "removeBookmark": "Odstrániť záložku"
+    "refreshConnections": "Obnoviť prepojenia",
+    "reloadJournal": "Znova načítať denník",
+    "goToToday": "Prejsť na dnešok",
+    "copyUnsavedContent": "Kopírovať neuložený obsah do schránky",
+    "addBookmark": "Pridať do záložiek",
+    "removeBookmark": "Odstrániť zo záložiek",
+    "deleteEntry": "Odstrániť zápis"
   },
   "editor": {
     "placeholder": {
-      "future": "Čo plánujete...",
-      "today": "Na čo myslíte dnes...",
-      "past": "Zamyslite sa nad týmto dňom..."
+      "future": "Čo plánujete…",
+      "today": "Na čo dnes myslíte…",
+      "past": "Zamyslite sa nad týmto dňom…"
     },
     "upload": {
       "failed": "Nepodarilo sa nahrať obrázok"
@@ -90,7 +91,7 @@
       "july": "Júl",
       "august": "Aug",
       "september": "Sep",
-      "october": "Október",
+      "october": "Okt",
       "november": "Nov",
       "december": "Dec"
     },
@@ -120,7 +121,7 @@
     "dayContext": "Denný kontext: úlohy a plán",
     "scheduleEvents": "Plánované udalosti",
     "tasks": "Úlohy",
-    "notesCreatedToday": "{count} poznámky vytvorené dnes"
+    "notesCreatedToday": "Dnes vytvorené poznámky: {count}"
   },
   "empty": {
     "noEntry": "Žiadny zápis",
@@ -128,43 +129,43 @@
     "noEventsScheduled": "Žiadne naplánované udalosti",
     "noEventsScheduledToday": "Dnes nie sú žiadne naplánované udalosti",
     "noEventsWereScheduled": "Neboli naplánované žiadne udalosti",
-    "noTasksDue": "Žiadne úlohy na vykonanie",
-    "noTasksDueToday": "Dnes nie sú žiadne úlohy na vykonanie",
-    "noTasksWereDue": "Žiadne úlohy neboli splatné",
+    "noTasksDue": "Žiadne úlohy s termínom",
+    "noTasksDueToday": "Dnes nemáte žiadne úlohy s termínom",
+    "noTasksWereDue": "Neboli žiadne úlohy s termínom",
     "noNotesToday": "Dnes neboli vytvorené žiadne poznámky",
-    "startDocumenting": "Začnite dokumentovať svoje myšlienky a nápady"
+    "startDocumenting": "Začnite si zapisovať svoje myšlienky a nápady"
   },
   "ai": {
-    "loading": "Analyzujem váš zápis...",
+    "loading": "Analyzuje sa zápis…",
     "empty": {
-      "willAppear": "Tu sa zobrazia vaše spojenia",
-      "noneYet": "Zatiaľ neboli nájdené žiadne spojenia",
-      "moreJournaling": "Ako budete viac zapisovať, AI nájde súvisiace zápisy",
+      "willAppear": "Tu sa zobrazia prepojenia",
+      "noneYet": "Zatiaľ sa nenašli žiadne prepojenia",
+      "moreJournaling": "Čím viac budete písať do denníka, tým viac súvisiacich zápisov AI nájde",
       "keepWriting": "Pokračujte v písaní, aby ste objavili súvisiace zápisy"
     },
     "error": {
-      "loadFailed": "Nepodarilo sa načítať spojenia"
+      "loadFailed": "Nepodarilo sa načítať prepojenia"
     },
-    "connectionAria": "Spojenie s {label}, zhoda {scorePercent}%"
+    "connectionAria": "Prepojenie s „{label}“, zhoda {scorePercent} %"
   },
   "count": {
     "note": "poznámka",
-    "day": "den",
-    "days": "dni",
+    "day": "deň",
+    "days": "dní",
     "event": "udalosť",
     "events": "udalosti",
     "task": "úloha",
-    "todo": "urobiť",
-    "moreConnections": "+ {count} viac spojení",
-    "moreConnections_plural": "+ {count} viac spojení",
-    "moreNotes": "+ {count} viac poznámok",
-    "moreNotes_plural": "+ {count} viac poznámok",
-    "daysWithEntries": "dni s príspevkami",
-    "charactersWritten": "znaky napísané",
-    "words": "{count} slová",
-    "characters": "{count} znakov",
-    "completed": "{count} dokončené",
-    "overdue": "{count} oneskorené"
+    "todo": "na vykonanie",
+    "moreConnections": "+ {count} ďalšie prepojenie",
+    "moreConnections_plural": "+ {count, plural, one {# ďalšie prepojenie} few {# ďalšie prepojenia} other {# ďalších prepojení}}",
+    "moreNotes": "+ {count} ďalšia poznámka",
+    "moreNotes_plural": "+ {count, plural, one {# ďalšia poznámka} few {# ďalšie poznámky} other {# ďalších poznámok}}",
+    "daysWithEntries": "dní so zápismi",
+    "charactersWritten": "napísaných znakov",
+    "words": "{count, plural, one {# slovo} few {# slová} other {# slov}}",
+    "characters": "{count, plural, one {# znak} few {# znaky} other {# znakov}}",
+    "completed": "Dokončené: {count}",
+    "overdue": "Po termíne: {count}"
   },
   "stats": {
     "wordCount": "Počet slov",
@@ -173,57 +174,62 @@
     "lastModified": "Naposledy upravené",
     "lessThanOneMinute": "< 1 min",
     "minutes": "{minutes} min",
-    "read": "{readingTime} prečítané",
+    "read": "{readingTime} čítania",
     "modified": "Upravené {date}"
   },
   "task": {
     "completed": "Dokončené",
     "notCompleted": "Nedokončené",
-    "priority": "{priority} priorita",
-    "overdue": "oneskorené",
-    "markComplete": "Označiť \"{title}\" ako dokončené",
-    "markNotComplete": "Označiť \"{title}\" ako nedokončené"
+    "priority": "Priorita: {priority}",
+    "overdue": "po termíne",
+    "markComplete": "Označiť „{title}“ ako dokončené",
+    "markNotComplete": "Označiť „{title}“ ako nedokončené"
   },
   "template": {
-    "using": "Používajúci \"{templateName}\""
+    "using": "Používa sa šablóna „{templateName}“"
   },
   "reminder": {
     "hasReminders": "Má pripomienky",
-    "setToRevisit": "Nastaviť pripomienku na opätovnú návštevu",
+    "setToRevisit": "Nastaviť pripomienku na návrat k zápisu",
     "tooltip": "Pripomienka: {date}",
-    "tooltipMore": "Pripomienka: {date} (+{count} ďalšie)",
+    "tooltipMore": "Pripomienka: {date} (+{count, plural, one {# ďalšia} few {# ďalšie} other {# ďalších}})",
     "success": {
-      "set": "Pripomienka nastavená pre tento zápis do denníka",
-      "deleted": "Pripomienka vymazaná",
-      "dismissed": "Pripomienka odmietnutá",
-      "snoozed": "Pripomienka odložená"
+      "set": "Pripomienka nastavená pre tento zápis v denníku",
+      "deleted": "Pripomienka odstránená",
+      "dismissed": "Pripomienka zavretá",
+      "snoozed": "Pripomienka odložená",
+      "updated": "Pripomienka aktualizovaná"
     },
     "error": {
       "set": "Nepodarilo sa nastaviť pripomienku",
-      "delete": "Nepodarilo sa vymazať pripomienku",
-      "dismiss": "Nepodarilo sa odmietnuť pripomienku",
-      "snooze": "Nepodarilo sa odložiť pripomienku"
+      "delete": "Nepodarilo sa odstrániť pripomienku",
+      "dismiss": "Nepodarilo sa zavrieť pripomienku",
+      "snooze": "Nepodarilo sa odložiť pripomienku",
+      "update": "Nepodarilo sa aktualizovať pripomienku"
     }
   },
   "toast": {
-    "unsavedRetry": "Váš obsah je stále v pamäti. Kliknite pre opätovné uloženie.",
-    "noteNotFound": "Poznámka \"{target}\" sa nenašla",
+    "unsavedRetry": "Obsah je stále v pamäti. Kliknutím skúsite uložiť znova.",
+    "noteNotFound": "Poznámka „{target}“ sa nenašla",
+    "createLinkedFailed": "Nepodarilo sa vytvoriť prepojenú poznámku",
     "fileNotFound": "Súbor sa nenašiel: {target}",
     "openLinkedItemFailed": "Nepodarilo sa otvoriť prepojenú položku",
-    "errorPrefix": "Chyba:"
+    "errorPrefix": "Chyba:",
+    "deleteFailed": "Nepodarilo sa odstrániť zápis v denníku",
+    "bookmarkFailed": "Nepodarilo sa aktualizovať záložku"
   },
   "export": {
-    "noteTitle": "Denník - {month} {day}, {year}"
+    "noteTitle": "Denník – {day}. {month} {year}"
   },
   "note": {
-    "generatedTitle": "Poznámka - {date}",
-    "openAria": "Otvoriť {title}, vytvorené dňa {time}"
+    "generatedTitle": "Poznámka – {date}",
+    "openAria": "Otvoriť „{title}“, vytvorené o {time}"
   },
   "error": {
     "title": "Chyba denníka",
-    "description": "Denník zaznamenal chybu pre {date}. Vaše posledné zmeny nemusia byť uložené.",
-    "descriptionNoDate": "Denník zaznamenal chybu. Vaše posledné zmeny nemusia byť uložené.",
-    "unsavedContent": "Detekovaný neuložený obsah ({length} znakov)"
+    "description": "V denníku sa vyskytla chyba pre deň {date}. Posledné zmeny sa možno neuložili.",
+    "descriptionNoDate": "V denníku sa vyskytla chyba. Posledné zmeny sa možno neuložili.",
+    "unsavedContent": "Zistil sa neuložený obsah ({length, plural, one {# znak} few {# znaky} other {# znakov}})"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "Nepodarilo sa uložiť zápisník",
-      "failedToLoadJournalSettings": "Nepodarilo sa načítať nastavenia zápisníka",
+      "failedToSaveJournalEntry": "Nepodarilo sa uložiť zápis v denníku",
+      "failedToLoadJournalSettings": "Nepodarilo sa načítať nastavenia denníka",
       "failedToUpdateSettings": "Nepodarilo sa aktualizovať nastavenia"
     }
+  },
+  "deleteConfirm": {
+    "title": "Odstrániť zápis v denníku",
+    "description": "Naozaj chcete odstrániť „{title}“? Túto akciu nemožno vrátiť späť."
   }
 }

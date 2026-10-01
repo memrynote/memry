@@ -3,8 +3,8 @@
   "section": {
     "aiConnections": "Conexiones de IA",
     "todaysNotes": "Notas de hoy",
-    "todaysSchedule": "Horario de hoy",
-    "todaysTasks": "Las tareas de hoy",
+    "todaysSchedule": "Agenda de hoy",
+    "todaysTasks": "Tareas de hoy",
     "tasks": "Tareas",
     "technicalDetails": "Detalles técnicos"
   },
@@ -12,59 +12,60 @@
     "versionHistory": "Historial de versiones",
     "export": "Exportar",
     "fullWidth": "Ancho completo",
-    "journalSettings": "Configuración del diario",
+    "journalSettings": "Ajustes del diario",
     "fullMode": "Modo completo",
     "compactMode": "Modo compacto",
     "createNote": "Crear nota",
     "createNewNote": "Crear nueva nota",
     "showLess": "Mostrar menos",
-    "showMoreNotes": "Mostrar {count} más nota",
-    "showMoreNotes_plural": "Mostrar {count} más notas",
+    "showMoreNotes": "Mostrar {count} nota más",
+    "showMoreNotes_plural": "Mostrar {count} notas más",
     "showFewerNotes": "Mostrar menos notas",
-    "startBlank": "Empezar en blanco en su lugar",
+    "startBlank": "Empezar en blanco",
     "changeTemplate": "Cambiar plantilla",
     "dismissIndicator": "Descartar indicador",
     "refreshConnections": "Actualizar conexiones",
     "reloadJournal": "Recargar diario",
     "goToToday": "Ir a hoy",
     "copyUnsavedContent": "Copiar contenido no guardado al portapapeles",
-    "addBookmark": "Agregar marcador",
-    "removeBookmark": "Quitar marcador"
+    "addBookmark": "Añadir a marcadores",
+    "removeBookmark": "Quitar de marcadores",
+    "deleteEntry": "Eliminar entrada"
   },
   "editor": {
     "placeholder": {
-      "future": "¿Qué estás planeando...?",
-      "today": "¿Qué tienes en mente hoy?...",
-      "past": "Reflexiona sobre este día..."
+      "future": "¿Qué estás planeando…?",
+      "today": "¿Qué tienes en mente hoy…?",
+      "past": "Reflexiona sobre este día…"
     },
     "upload": {
-      "failed": "No se pudo cargar la imagen"
+      "failed": "No se pudo subir la imagen"
     }
   },
   "date": {
     "relative": {
-      "today": "hoy",
-      "yesterday": "ayer",
-      "tomorrow": "mañana",
+      "today": "Hoy",
+      "yesterday": "Ayer",
+      "tomorrow": "Mañana",
       "future": "Futuro"
     },
     "weekday": {
-      "sunday": "domingo",
-      "monday": "lunes",
-      "tuesday": "martes",
-      "wednesday": "miércoles",
-      "thursday": "jueves",
-      "friday": "viernes",
-      "saturday": "sábado"
+      "sunday": "Domingo",
+      "monday": "Lunes",
+      "tuesday": "Martes",
+      "wednesday": "Miércoles",
+      "thursday": "Jueves",
+      "friday": "Viernes",
+      "saturday": "Sábado"
     },
     "weekdayShort": {
-      "sunday": "sol",
+      "sunday": "dom",
       "monday": "lun",
       "tuesday": "mar",
       "wednesday": "mié",
-      "thursday": "jueves",
-      "friday": "viernes",
-      "saturday": "sábado"
+      "thursday": "jue",
+      "friday": "vie",
+      "saturday": "sáb"
     },
     "month": {
       "january": "enero",
@@ -81,46 +82,46 @@
       "december": "diciembre"
     },
     "monthShort": {
-      "january": "enero",
-      "february": "febrero",
+      "january": "ene",
+      "february": "feb",
       "march": "mar",
-      "april": "abril",
-      "may": "mayo",
-      "june": "junio",
-      "july": "julio",
-      "august": "agosto",
-      "september": "septiembre",
-      "october": "octubre",
-      "november": "noviembre",
-      "december": "diciembre"
+      "april": "abr",
+      "may": "may",
+      "june": "jun",
+      "july": "jul",
+      "august": "ago",
+      "september": "sept",
+      "october": "oct",
+      "november": "nov",
+      "december": "dic"
     },
     "greeting": {
-      "morning": "buenos dias",
+      "morning": "Buenos días",
       "afternoon": "Buenas tardes",
       "evening": "Buenas noches",
-      "night": "buenas noches"
+      "night": "Buenas noches"
     },
-    "allDay": "todo el dia"
+    "allDay": "Todo el día"
   },
   "nav": {
-    "previousDay": "dia anterior",
-    "nextDay": "dia siguiente",
+    "previousDay": "Día anterior",
+    "nextDay": "Día siguiente",
     "previousMonth": "Mes anterior",
-    "nextMonth": "El próximo mes",
-    "previousYear": "año anterior",
-    "nextYear": "el año que viene",
-    "journalBack": "Diario de vuelta",
+    "nextMonth": "Mes siguiente",
+    "previousYear": "Año anterior",
+    "nextYear": "Año siguiente",
+    "journalBack": "Volver atrás",
     "journalNavigation": "Navegación del diario",
     "dateNavigation": "Navegación por fecha del diario",
     "goToYearView": "Ir a la vista del año"
   },
   "aria": {
     "moreOptions": "Más opciones",
-    "documentStatistics": "Estadísticas de documentos",
-    "dayContext": "Contexto del día: tareas y cronograma.",
-    "scheduleEvents": "Programar eventos",
+    "documentStatistics": "Estadísticas del documento",
+    "dayContext": "Contexto del día: tareas y agenda",
+    "scheduleEvents": "Eventos de la agenda",
     "tasks": "Tareas",
-    "notesCreatedToday": "Notas {count} creadas hoy"
+    "notesCreatedToday": "{count} notas creadas hoy"
   },
   "empty": {
     "noEntry": "Sin entrada",
@@ -128,102 +129,107 @@
     "noEventsScheduled": "No hay eventos programados",
     "noEventsScheduledToday": "No hay eventos programados para hoy",
     "noEventsWereScheduled": "No se programaron eventos",
-    "noTasksDue": "No hay tareas pendientes",
-    "noTasksDueToday": "No hay tareas pendientes hoy",
-    "noTasksWereDue": "No había tareas pendientes",
-    "noNotesToday": "No se crearon notas hoy",
-    "startDocumenting": "Comience a documentar sus pensamientos e ideas."
+    "noTasksDue": "Ninguna tarea vence",
+    "noTasksDueToday": "Ninguna tarea vence hoy",
+    "noTasksWereDue": "Ninguna tarea vencía",
+    "noNotesToday": "No se han creado notas hoy",
+    "startDocumenting": "Empieza a documentar tus pensamientos e ideas"
   },
   "ai": {
-    "loading": "Analizando tu entrada...",
+    "loading": "Analizando tu entrada…",
     "empty": {
       "willAppear": "Tus conexiones aparecerán aquí",
       "noneYet": "Aún no se han encontrado conexiones",
-      "moreJournaling": "A medida que escriba más en el diario, la IA encontrará entradas relacionadas",
+      "moreJournaling": "A medida que escribas más en el diario, la IA encontrará entradas relacionadas",
       "keepWriting": "Sigue escribiendo para descubrir entradas relacionadas"
     },
     "error": {
       "loadFailed": "No se pudieron cargar las conexiones"
     },
-    "connectionAria": "Conexión a {label}, {scorePercent}% coincide"
+    "connectionAria": "Conexión con {label}, {scorePercent} % de coincidencia"
   },
   "count": {
     "note": "nota",
-    "day": "dia",
-    "days": "dias",
+    "day": "día",
+    "days": "días",
     "event": "evento",
     "events": "eventos",
     "task": "tarea",
-    "todo": "hacer",
-    "moreConnections": "+ {count} más conexión",
-    "moreConnections_plural": "+ {count} más conexiones",
-    "moreNotes": "+ {count} más nota",
-    "moreNotes_plural": "+ {count} más notas",
+    "todo": "por hacer",
+    "moreConnections": "+ {count} conexión más",
+    "moreConnections_plural": "+ {count} conexiones más",
+    "moreNotes": "+ {count} nota más",
+    "moreNotes_plural": "+ {count} notas más",
     "daysWithEntries": "días con entradas",
-    "charactersWritten": "personajes escritos",
+    "charactersWritten": "caracteres escritos",
     "words": "{count} palabras",
-    "characters": "Caracteres {count}",
-    "completed": "{count} completado",
-    "overdue": "{count} vencido"
+    "characters": "{count} caracteres",
+    "completed": "{count} completadas",
+    "overdue": "{count} vencidas"
   },
   "stats": {
-    "wordCount": "recuento de palabras",
+    "wordCount": "Recuento de palabras",
     "characterCount": "Recuento de caracteres",
     "readingTime": "Tiempo estimado de lectura",
     "lastModified": "Última modificación",
     "lessThanOneMinute": "< 1 minuto",
     "minutes": "{minutes} min",
-    "read": "{readingTime} leer",
-    "modified": "{date} modificado"
+    "read": "{readingTime} de lectura",
+    "modified": "Última modificación: {date}"
   },
   "task": {
-    "completed": "Completado",
-    "notCompleted": "No completado",
+    "completed": "Completada",
+    "notCompleted": "No completada",
     "priority": "Prioridad {priority}",
-    "overdue": "vencido",
-    "markComplete": "Marcar \"{title}\" como completado",
-    "markNotComplete": "Marcar \"{title}\" como no completado"
+    "overdue": "vencida",
+    "markComplete": "Marcar «{title}» como completada",
+    "markNotComplete": "Marcar «{title}» como no completada"
   },
   "template": {
-    "using": "Usando \"{templateName}\""
+    "using": "Usando «{templateName}»"
   },
   "reminder": {
     "hasReminders": "Tiene recordatorios",
-    "setToRevisit": "Establecer recordatorio para volver a visitar",
+    "setToRevisit": "Establecer un recordatorio para volver a ella",
     "tooltip": "Recordatorio: {date}",
     "tooltipMore": "Recordatorio: {date} (+{count} más)",
     "success": {
       "set": "Recordatorio configurado para esta entrada del diario",
       "deleted": "Recordatorio eliminado",
       "dismissed": "Recordatorio descartado",
-      "snoozed": "Recordatorio pospuesto"
+      "snoozed": "Recordatorio pospuesto",
+      "updated": "Recordatorio actualizado"
     },
     "error": {
       "set": "No se pudo configurar el recordatorio",
       "delete": "No se pudo eliminar el recordatorio",
       "dismiss": "No se pudo descartar el recordatorio",
-      "snooze": "No se pudo posponer el recordatorio"
+      "snooze": "No se pudo posponer el recordatorio",
+      "update": "No se pudo actualizar el recordatorio"
     }
   },
   "toast": {
-    "unsavedRetry": "Tu contenido todavía está en la memoria. Haga clic para volver a intentar guardar.",
-    "noteNotFound": "Nota \"{target}\" no encontrada",
+    "unsavedRetry": "Tu contenido sigue en la memoria. Haz clic para volver a intentar guardarlo.",
+    "noteNotFound": "No se encontró la nota «{target}»",
+    "createLinkedFailed": "No se pudo crear la nota enlazada",
     "fileNotFound": "Archivo no encontrado: {target}",
-    "openLinkedItemFailed": "No se pudo abrir el elemento vinculado",
-    "errorPrefix": "Error:"
+    "openLinkedItemFailed": "No se pudo abrir el elemento enlazado",
+    "errorPrefix": "Error:",
+    "deleteFailed": "No se pudo eliminar la entrada del diario",
+    "bookmarkFailed": "No se pudo actualizar el marcador"
   },
   "export": {
-    "noteTitle": "Diario - {month} {day}, {year}"
+    "noteTitle": "Diario: {day} de {month} de {year}"
   },
   "note": {
     "generatedTitle": "Nota: {date}",
-    "openAria": "Abra {title}, creado en {time}"
+    "openAria": "Abrir {title}, creada a las {time}"
   },
   "error": {
-    "title": "Error de diario",
-    "description": "El diario encontró un error para {date}. Es posible que sus cambios recientes no se hayan guardado.",
-    "descriptionNoDate": "La revista encontró un error. Es posible que sus cambios recientes no se hayan guardado.",
-    "unsavedContent": "Se detectó contenido no guardado (caracteres {length})"
+    "title": "Error del diario",
+    "description": "Se ha producido un error en el diario del {date}. Es posible que tus cambios recientes no se hayan guardado.",
+    "descriptionNoDate": "Se ha producido un error en el diario. Es posible que tus cambios recientes no se hayan guardado.",
+    "unsavedContent": "Se ha detectado contenido sin guardar ({length} caracteres)"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -233,8 +239,12 @@
   "phaseI": {
     "errors": {
       "failedToSaveJournalEntry": "No se pudo guardar la entrada del diario",
-      "failedToLoadJournalSettings": "No se pudo cargar la configuración del diario",
-      "failedToUpdateSettings": "No se pudo actualizar la configuración"
+      "failedToLoadJournalSettings": "No se pudieron cargar los ajustes del diario",
+      "failedToUpdateSettings": "No se pudieron actualizar los ajustes"
     }
+  },
+  "deleteConfirm": {
+    "title": "Eliminar entrada del diario",
+    "description": "¿Seguro que quieres eliminar «{title}»? Esta acción no se puede deshacer."
   }
 }

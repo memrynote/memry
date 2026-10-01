@@ -1,10 +1,12 @@
 {
   "page": {
-    "loading": "Memuat grafik...",
+    "loading": "Memuat grafik…",
     "load-failed": "Gagal memuat data grafik",
+    "render-failed": "Grafik tidak tersedia di perangkat ini",
+    "render-failed-description": "Perangkat ini tidak dapat memulai perender grafis. Catatan Anda aman.",
     "try-again": "Coba lagi",
-    "aria-label": "Grafik pengetahuan dengan {nodeCount, plural, one {simpul #} other {Node #}} dan {edgeCount, plural, one {Koneksi #} other {Koneksi #}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "Node grafik",
+    "aria-label": "Grafik pengetahuan dengan {nodeCount, plural, other {# simpul}} dan {edgeCount, plural, other {# koneksi}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Simpul grafik",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
@@ -13,7 +15,7 @@
     "link-title": "Tautkan catatan Anda",
     "link-description": "Gunakan [[wikilinks]] untuk menghubungkan ide-ide di seluruh catatan",
     "discover-title": "Temukan pola",
-    "discover-description": "Ketika koneksi tumbuh, kelompok dan tema akan muncul secara alami"
+    "discover-description": "Seiring bertambahnya koneksi, kelompok dan tema akan muncul dengan sendirinya"
   },
   "entity": {
     "note": "catatan",
@@ -24,11 +26,12 @@
     "tasks": "tugas",
     "project": "proyek",
     "projects": "proyek",
-    "tag": "menandai",
+    "tag": "tag",
     "tags": "tag",
-    "orphan": "yatim piatu",
-    "orphans": "anak yatim piatu",
-    "unresolved": "belum terselesaikan"
+    "orphan": "simpul tanpa koneksi",
+    "orphans": "simpul tanpa koneksi",
+    "unresolved": "belum dibuat",
+    "category": "kategori"
   },
   "summary": {
     "node-type-count": "{count} {label}"
@@ -40,8 +43,16 @@
     "filters": "Filter",
     "display": "Tampilan",
     "show-labels": "Tampilkan label",
+    "live-motion": "Gerakan dinamis",
     "focus-depth": "kedalaman {depth}",
-    "clear-focus": "Hapus simpul fokus"
+    "clear-focus": "Hapus fokus simpul",
+    "relayout": "Atur ulang tata letak",
+    "categories": "Kategori tag",
+    "color-by-category": "Warnai menurut kategori",
+    "no-categories": "Kelompokkan tag ke dalam kategori di pusat tag untuk mewarnai dan menciutkan grafik menurut kategori.",
+    "collapse-category": "Ciutkan {name}",
+    "expand-category": "Perluas {name}",
+    "uncategorized": "Tanpa kategori"
   },
   "filter": {
     "notes": "Catatan",
@@ -49,12 +60,13 @@
     "tasks": "Tugas",
     "projects": "Proyek",
     "tags": "Tag",
-    "orphans": "anak yatim",
-    "toggle-entity": "Alihkan {label}",
-    "toggle-orphans": "Alihkan node yatim piatu"
+    "orphans": "Simpul tanpa koneksi",
+    "canvas-edges": "Koneksi kanvas",
+    "toggle-entity": "Tampilkan atau sembunyikan {label}",
+    "toggle-orphans": "Tampilkan atau sembunyikan simpul tanpa koneksi"
   },
   "search": {
-    "placeholder": "Node pencarian...",
+    "placeholder": "Cari simpul…",
     "clear": "Hapus pencarian grafik"
   },
   "context-menu": {
@@ -62,16 +74,64 @@
     "focus-node": "Fokus pada simpul ini",
     "open-new-tab": "Buka di tab baru",
     "create-note": "Buat catatan",
-    "copy-title": "Salin judul"
+    "copy-title": "Salin judul",
+    "link-to": "Tautkan ke…",
+    "add-tag": "Tambahkan tag…",
+    "back": "Kembali",
+    "link-search": "Cari catatan…",
+    "tag-search": "Cari atau buat tag…",
+    "no-matches": "Tidak ada yang cocok",
+    "create-tag": "Buat #{tag}",
+    "remove-link": "Hapus tautan ke {title}",
+    "unpin": "Lepas sematan",
+    "collapse-category": "Ciutkan {name}",
+    "expand-category": "Perluas {name}"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {Koneksi #} other {Koneksi #}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, other {# koneksi}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, other {# item}}",
+    "click-to-expand": "Klik untuk memperluas"
   },
   "local-panel": {
-    "loading": "Memuat grafik...",
+    "loading": "Memuat grafik…",
     "empty": "Tidak ada koneksi yang ditemukan",
     "open-full": "Buka grafik penuh",
-    "close": "Tutup grafik"
+    "close": "Tutup grafik",
+    "pin": "Sematkan ke catatan ini",
+    "unpin": "Lepas sematan dan ikuti catatan yang terbuka",
+    "pinned-to": "Disematkan: {title}"
+  },
+  "edit": {
+    "linked": "{source} ditautkan ke {target} di “{property}”",
+    "unlinked": "Tautan dari {source} ke {target} dihapus",
+    "already-linked": "{source} sudah tertaut ke {target}",
+    "property-conflict": "“{property}” di catatan ini bukan properti relasi, jadi tautan tidak ditambahkan",
+    "link-unsupported": "Tautan hanya dapat dibuat antarcatatan",
+    "link-failed": "Tidak dapat menambahkan tautan",
+    "unlink-failed": "Tidak dapat menghapus tautan",
+    "tag-added": "#{tag} ditambahkan ke {note}",
+    "tag-exists": "Catatan ini sudah memiliki #{tag}",
+    "tag-failed": "Tidak dapat menambahkan tag",
+    "undo-failed": "Tidak dapat mengurungkan perubahan"
+  },
+  "relayout-confirm": {
+    "title": "Atur ulang tata letak grafik?",
+    "description": "Semua simpul yang disematkan akan dilepas dan grafik akan tersusun ulang. Tata letak yang tersimpan akan dibuang.",
+    "cancel": "Batal",
+    "confirm": "Atur ulang tata letak"
+  },
+  "views": {
+    "title": "Tampilan tersimpan",
+    "unsaved": "Tampilan belum disimpan",
+    "edited": "Diedit",
+    "empty": "Belum ada tampilan tersimpan",
+    "save-as": "Simpan sebagai tampilan baru…",
+    "update": "Perbarui “{name}”",
+    "delete": "Hapus tampilan {name}",
+    "save-dialog-title": "Simpan tampilan grafik",
+    "save-dialog-placeholder": "Nama tampilan",
+    "cancel": "Batal",
+    "save": "Simpan"
   }
 }

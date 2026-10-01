@@ -1,30 +1,39 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Prejsť do poľa rýchleho záznamu",
+    "detailHint": "podrobnosti",
+    "submit": "Zaznamenať"
+  },
   "button": {
     "save": "Uložiť",
     "cancel": "Zrušiť",
-    "close": "Koniec",
-    "delete": "Vymazať",
+    "close": "Zavrieť",
+    "delete": "Odstrániť",
     "done": "Hotovo",
-    "dontSave": "Neukladaj",
+    "dontSave": "Neukladať",
     "add": "Pridať",
     "remove": "Odstrániť",
-    "retry": "Skús znova",
+    "retry": "Skúsiť znova",
     "back": "Späť",
     "continue": "Pokračovať",
-    "copy": "Rozumiem",
-    "create": "Tvor"
+    "copy": "Kopírovať",
+    "create": "Vytvoriť"
+  },
+  "media": {
+    "video": "Video"
   },
   "state": {
-    "loading": "Načítavam...",
-    "saving": "Ukladanie...",
-    "deleting": "Vymazávam...",
-    "searching": "Hľadám..."
+    "loading": "Načítava sa…",
+    "saving": "Ukladá sa…",
+    "deleting": "Odstraňuje sa…",
+    "searching": "Hľadá sa…"
   },
   "action": {
-    "search": "Vyhľadávanie",
-    "expand": "Rozšíriť",
-    "collapse": "Kolaps",
-    "showMore": "+{count, plural, one {# viac} other {# viac}}",
+    "search": "Hľadať",
+    "expand": "Rozbaliť",
+    "collapse": "Zbaliť",
+    "showMore": "+{count, plural, one {# ďalšia} few {# ďalšie} other {# ďalších}}",
     "showLess": "Zobraziť menej",
     "undo": "Späť"
   },
@@ -37,126 +46,599 @@
   },
   "tabs": {
     "pin": "Pripnúť kartu",
-    "unpin": "Odpnúť kartu",
+    "unpin": "Odopnúť kartu",
+    "persistence": {
+      "saveFailed": "Otvorené karty sa už neukladajú",
+      "saveFailedQuota": "Táto relácia je príliš veľká na uloženie. Zavrite niektoré karty, inak sa pri ďalšom otvorení aplikácie Memry nemusí obnoviť.",
+      "saveFailedGeneric": "Aplikácii Memry sa nepodarilo uložiť túto reláciu, takže sa pri ďalšom otvorení aplikácie nemusí obnoviť.",
+      "lastSessionNotSaved": "Pri ukončení aplikácie Memry sa posledná relácia neuložila",
+      "lastSessionNotSavedQuota": "Úložisko bolo vtedy plné, preto tieto karty pochádzajú zo staršieho uloženia. Zavrite niektoré karty, aby sa uvoľnilo miesto.",
+      "lastSessionNotSavedGeneric": "Aplikácii Memry sa pri ukončení nepodarilo uložiť karty, preto tieto karty pochádzajú zo staršieho uloženia."
+    },
     "contextMenu": {
-      "close": "Koniec",
+      "close": "Zavrieť",
       "closeOthers": "Zavrieť ostatné",
-      "closeToRight": "Zavrieť napravo",
+      "closeToRight": "Zavrieť karty vpravo",
       "closeAll": "Zavrieť všetko",
       "duplicate": "Duplikovať kartu",
-      "splitRight": "Rozdeliť napravo",
+      "splitRight": "Rozdeliť doprava",
       "splitDown": "Rozdeliť nadol",
       "copyPath": "Kopírovať cestu",
       "revealInSidebar": "Zobraziť v bočnom paneli"
     }
   },
   "count": {
-    "note": "{count, plural, one {# poznámka} other {# poznámky}}",
-    "task": "{count, plural, one {# úloha} other {# úlohy}}",
-    "itemDelete": "{count, plural, one {Odstrániť # položku} other {Odstrániť # položky}}",
-    "event": "{count, plural, one {# udalosť} few {# udalosti} other {# udalostí}}",
+    "note": "{count, plural, one {# poznámka} few {# poznámky} other {# poznámok}}",
     "journal": "{count, plural, one {# denník} few {# denníky} other {# denníkov}}",
-    "reminder": "{count, plural, one {# pripomienka} few {# pripomienky} other {# pripomienok}}"
+    "task": "{count, plural, one {# úloha} few {# úlohy} other {# úloh}}",
+    "event": "{count, plural, one {# udalosť} few {# udalosti} other {# udalostí}}",
+    "reminder": "{count, plural, one {# pripomienka} few {# pripomienky} other {# pripomienok}}",
+    "itemDelete": "{count, plural, one {Odstrániť # položku} few {Odstrániť # položky} other {Odstrániť # položiek}}"
   },
   "toast": {
     "actionFailed": "Akcia zlyhala",
-    "nothingToUndo": "Nič na vrátenie",
+    "nothingToUndo": "Nie je čo vrátiť späť",
     "undone": "Vrátené: {description}",
-    "undoFailed": "Nepodarilo sa vrátiť akciu späť"
+    "undoFailed": "Nepodarilo sa vrátiť akciu späť",
+    "filesImported": "{count, plural, one {Importovaný # súbor} few {Importované # súbory} other {Importovaných # súborov}}",
+    "filesImportFailed": "{count, plural, one {Nepodarilo sa importovať # súbor} few {Nepodarilo sa importovať # súbory} other {Nepodarilo sa importovať # súborov}}",
+    "filesHiddenInSidebar": "Súbory sú v bočnom paneli skryté. Ak ich chcete vidieť, zapnite v ponuke zoradenia Kolekcií možnosť Zobraziť súbory.",
+    "moreRemindersDue": "{count, plural, one {Čas na # ďalšiu pripomienku} few {Čas na # ďalšie pripomienky} other {Čas na # ďalších pripomienok}}",
+    "moreRemindersDueHint": "Podrobnosti nájdete na paneli pripomienok",
+    "searchIndexRepaired": "Index vyhľadávania opravený",
+    "searchIndexRepairedHint": "Časť indexu vyhľadávania bola poškodená, preto ho aplikácia Memry znova vytvorila. Vašich poznámok sa to nedotklo."
   },
   "dateRelative": {
     "today": "Dnes",
     "yesterday": "Včera",
-    "daysAgo": "{count, plural, one {Pred # dňom} other {Pred # dňami}}",
-    "daysLate": "{count, plural, one {# d po termíne} few {# d po termíne} many {# d po termíne} other {# d po termíne}}",
+    "daysAgo": "{count, plural, one {Pred # dňom} few {Pred # dňami} other {Pred # dňami}}",
+    "tomorrow": "Zajtra",
     "daysOverdue": "{count, plural, one {# deň po termíne} few {# dni po termíne} many {# dňa po termíne} other {# dní po termíne}}",
-    "tomorrow": "Zajtra"
+    "daysLate": "{count, plural, one {# d po termíne} few {# d po termíne} many {# d po termíne} other {# d po termíne}}",
+    "inDays": "{count, plural, one {o # deň} few {o # dni} other {o # dní}}",
+    "inWeeks": "{count, plural, one {o # týždeň} few {o # týždne} other {o # týždňov}}"
   },
   "recurrence": {
-    "everyNDays": "{count, plural, one {Každý deň} other {Každých # dní}}",
-    "everyNWeeks": "{count, plural, one {Každý týždeň} other {Každých # týždňov}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {Každý pracovný deň} other {Každých # týždňov v pracovné dni}}",
-    "everyNWeeksOnWeekends": "{count, plural, one {Každý víkend} other {Každých # týždňov cez víkend}}",
-    "everyNWeeksOnDays": "{count, plural, one {Každý týždeň v {days}} other {Každých # týždňov v {days}}}",
-    "everyNMonths": "{count, plural, one {Každý mesiac} other {Každých # mesiacov}}",
-    "everyNMonthsOnDay": "{count, plural, one {Každý mesiac dňa {day}{suffix}} other {Každých # mesiacov dňa {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {Každý mesiac dňa {week} {day}} other {Každých # mesiacov v {week} {day}}}",
-    "everyNYears": "{count, plural, one {Každý rok} other {Každých # rokov}}",
+    "everyNDays": "{count, plural, one {Každý deň} few {Každé # dni} other {Každých # dní}}",
+    "everyNWeeks": "{count, plural, one {Každý týždeň} few {Každé # týždne} other {Každých # týždňov}}",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Každý pracovný deň} few {Každé # týždne v pracovné dni} other {Každých # týždňov v pracovné dni}}",
+    "everyNWeeksOnWeekends": "{count, plural, one {Každý víkend} few {Každé # týždne cez víkend} other {Každých # týždňov cez víkend}}",
+    "everyNWeeksOnDays": "{count, plural, one {Každý týždeň: {days}} few {Každé # týždne: {days}} other {Každých # týždňov: {days}}}",
+    "everyNMonths": "{count, plural, one {Každý mesiac} few {Každé # mesiace} other {Každých # mesiacov}}",
+    "everyNMonthsOnDay": "{count, plural, one {Každý mesiac dňa {day}{suffix}.} few {Každé # mesiace dňa {day}{suffix}.} other {Každých # mesiacov dňa {day}{suffix}.}}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Každý mesiac: {week} {day}} few {Každé # mesiace: {week} {day}} other {Každých # mesiacov: {week} {day}}}",
+    "everyNYears": "{count, plural, one {Každý rok} few {Každé # roky} other {Každých # rokov}}",
     "repeats": "Opakuje sa",
     "ordinal": {
       "first": "prvý",
-      "fourth": "štvrtý",
-      "last": "posledný",
       "second": "druhý",
-      "third": "tretí"
+      "third": "tretí",
+      "fourth": "štvrtý",
+      "last": "posledný"
     },
     "preset": {
-      "everyWeekday": "Každý pracovný deň (po-pi)",
+      "everyWeekday": "Každý pracovný deň (po–pi)",
       "everyYearOnDate": "Každý rok dňa {date}"
+    }
+  },
+  "agentChat": {
+    "title": "Chat s agentom",
+    "loading": "Načítava sa chat s agentom…",
+    "conversationLoading": "Načítava sa konverzácia…",
+    "historyNotSaved": "Toto zariadenie nemôže odomknúť trezor, preto sa táto konverzácia po ukončení aplikácie neuloží.",
+    "newConversation": "Nová konverzácia",
+    "history": "História konverzácií",
+    "openInTab": "Otvoriť konverzáciu na karte",
+    "stop": "Zastaviť",
+    "thinking": "Agent premýšľa",
+    "enable": {
+      "title": "Zapnúť agenta memrynote",
+      "description": "Agent memrynote používa vybrané lokálne CLI agenta na konverzáciu o vašom trezore. Claude posiela správy spoločnosti Anthropic, Codex spoločnosti OpenAI.",
+      "remote": "memrynote šifruje vašu lokálnu aj synchronizovanú históriu chatu, ale spracovanie modelom prebieha u vybraného poskytovateľa.",
+      "readTools": "Nástroje na čítanie sa spúšťajú automaticky.",
+      "writeTools": "Nástroje na vytváranie a aktualizáciu vyžadujú schválenie.",
+      "diff": "Aktualizačné nástroje zobrazujú rozdiel alebo náhľad.",
+      "button": "Zapnúť chat s agentom"
+    },
+    "approval": {
+      "description": "Agent chce volať {name} s týmito argumentmi.",
+      "applyOnce": "Použiť raz",
+      "allowOnce": "Povoliť raz",
+      "editAndApply": "Upraviť a použiť",
+      "editAndAllow": "Upraviť a povoliť",
+      "allowAlways": "Vždy povoliť",
+      "applyEdits": "Použiť úpravy",
+      "deny": "Zamietnuť",
+      "invalidJson": "Pred použitím úprav zadajte platný JSON.",
+      "thisTool": "tento nástroj",
+      "alwaysAllowHint": "Možnosť Vždy povoliť sa vzťahuje na {tool}. Ostatné nástroje sa budú naďalej pýtať a odstraňovanie vždy vyžaduje schválenie.",
+      "alwaysInChat": "Vždy povoliť v tomto chate",
+      "alwaysInChatHint": "Platí do konca konverzácie",
+      "alwaysInVault": "Vždy povoliť v tomto trezore",
+      "alwaysInVaultHint": "Možno odvolať v časti Nastavenia › Agent",
+      "deletesAlwaysAsk": "Odstraňovanie vždy vyžaduje schválenie"
+    },
+    "diff": {
+      "previewError": "Nepodarilo sa zobraziť náhľad tejto zmeny",
+      "description": "Agent chce aktualizovať {title}. Pred použitím zmenu skontrolujte.",
+      "fallbackTitle": "túto položku",
+      "current": "Aktuálne",
+      "candidate": "Navrhovaný obsah",
+      "loading": "Načítava sa…",
+      "apply": "Použiť",
+      "applyEdited": "Použiť upravené",
+      "editBody": "Upraviť pred použitím"
+    },
+    "inPageReview": {
+      "regionLabel": "Návrh agenta",
+      "barLabel": "Skontrolovať návrh agenta",
+      "loading": "Načítava sa návrh…",
+      "loadingTitle": "Návrh agenta",
+      "title": "{count, plural, =0 {Návrh agenta} one {Agent navrhol # zmenu} few {Agent navrhol # zmeny} many {Agent navrhol # zmeny} other {Agent navrhol # zmien}}",
+      "editingTitle": "Úprava návrhu",
+      "pendingHint": "Ešte neuložené. Použijete ho tlačidlom Prijať.",
+      "editingHint": "Vaše úpravy zostanú tu, kým ich neprijmete.",
+      "baseChanged": "Táto poznámka sa zmenila, kým ste upravovali návrh.",
+      "keepDraft": "Ponechať moje úpravy",
+      "restart": "Začať znova od najnovšej verzie",
+      "reject": "Odmietnuť",
+      "edit": "Upraviť",
+      "showDiff": "Zobraziť zmeny",
+      "accept": "Prijať",
+      "acceptEdits": "Prijať úpravy",
+      "waiting": "Na vašu kontrolu čaká {title}.",
+      "notOpen": "{title}: zmeny uvidíte po otvorení alebo ich môžete prijať bez kontroly.",
+      "show": "Zobraziť",
+      "openNote": "Otvoriť poznámku",
+      "openJournal": "Otvoriť denník",
+      "fallbackTitle": "táto poznámka"
+    },
+    "preview": {
+      "unset": "nenastavené",
+      "yes": "áno",
+      "no": "nie",
+      "noChange": "Nič, čo tento náhľad dokáže zobraziť, sa nezmení.",
+      "willBeLost": "Stratí sa",
+      "unchangedLines": "{count, plural, one {# nezmenený riadok} few {# nezmenené riadky} other {# nezmenených riadkov}}",
+      "item": {
+        "note": "Poznámka",
+        "folder": "Priečinok",
+        "task": "Úloha",
+        "journal": "Denník",
+        "inbox": "Prijaté",
+        "project": "Projekt",
+        "status": "Stav",
+        "canvas": "Plátno"
+      },
+      "intent": {
+        "create": "vytvorenie",
+        "update": "úprava",
+        "delete": "odstránenie",
+        "move": "presun",
+        "reorder": "zmena poradia"
+      },
+      "field": {
+        "archived": "Archivované",
+        "arguments": "Argumenty",
+        "color": "Farba",
+        "completed": "Dokončené",
+        "description": "Popis",
+        "due": "Termín",
+        "dueTime": "Čas termínu",
+        "duplicateOf": "Kópia z",
+        "edits": "Úpravy",
+        "elements": "Prvky",
+        "folder": "Priečinok",
+        "icon": "Ikona",
+        "isDefault": "Predvolené",
+        "isDone": "Stav dokončenia",
+        "items": "Položky",
+        "name": "Názov",
+        "operation": "Operácia",
+        "order": "Poradie",
+        "parent": "Nadradená položka",
+        "path": "Cesta",
+        "position": "Pozícia",
+        "priority": "Priorita",
+        "project": "Projekt",
+        "removed": "Odstránené",
+        "repeatFrom": "Opakovať od",
+        "snoozeReason": "Dôvod odloženia",
+        "snoozedUntil": "Odložené do",
+        "start": "Začiatok",
+        "status": "Stav",
+        "tags": "Značky",
+        "title": "Názov"
+      },
+      "loss": {
+        "words": "{count, plural, one {# slovo} few {# slová} other {# slov}}",
+        "tags": "{count, plural, one {# značka} few {# značky} other {# značiek}}",
+        "notes": "{count, plural, one {# poznámka} few {# poznámky} other {# poznámok}}",
+        "folders": "{count, plural, one {# priečinok} few {# priečinky} other {# priečinkov}}",
+        "files": "{count, plural, one {# súbor} few {# súbory} other {# súborov}}",
+        "events": "{count, plural, one {# udalosť} few {# udalosti} other {# udalostí}}",
+        "tasks": "{count, plural, one {# úloha} few {# úlohy} other {# úloh}}",
+        "due": "termín {value}"
+      }
+    },
+    "composer": {
+      "currentNote": "Aktuálna poznámka",
+      "removeAttachment": "Odstrániť {label}",
+      "placeholder": "Požiadajte memrynote o čokoľvek… @ – zmienka o poznámke, úlohe alebo udalosti",
+      "send": "Odoslať",
+      "providerLabel": "Poskytovateľ agenta: {provider}",
+      "settingsSummary": "{reasoning}",
+      "connectedTools": "Pripojené nástroje",
+      "connectTool": "Pripojiť {tool}",
+      "addContext": "Pridať kontext",
+      "addContextWithPermissions": "Pridať kontext ({permissions})",
+      "mentionContext": "Zmieniť sa o poznámke, úlohe alebo udalosti",
+      "voice": {
+        "start": "Spustiť hlasové diktovanie",
+        "stop": "Zastaviť hlasové diktovanie",
+        "transcribing": "Prepisuje sa hlasový vstup",
+        "errors": {
+          "permissionDenied": "Prístup k mikrofónu bol zamietnutý",
+          "noMicrophone": "Nenašiel sa žiadny mikrofón",
+          "accessFailed": "Nepodarilo sa získať prístup k mikrofónu",
+          "recordingFailed": "Nepodarilo sa nahrať hlasový vstup",
+          "transcriptionFailed": "Nepodarilo sa prepísať hlasový vstup"
+        }
+      },
+      "modelLabel": "Model agenta: {provider} {model}",
+      "reasoningLabel": "Uvažovanie agenta: {reasoning}",
+      "providers": {
+        "label": "Poskytovateľ",
+        "claude": "Claude",
+        "codex": "Codex",
+        "antigravity": "Antigravity",
+        "local": "Lokálne"
+      },
+      "access": {
+        "vaultOnly": "Iba trezor",
+        "computerAccess": "Prístup k počítaču"
+      },
+      "webSearch": {
+        "on": "Zapnuté",
+        "off": "Vypnuté",
+        "label": "Webové vyhľadávanie"
+      },
+      "models": {
+        "default": "Predvolené",
+        "label": "Model",
+        "search": "Hľadať modely…",
+        "useCustom": "Použiť „{query}“",
+        "localEmpty": "Nenašli sa žiadne modely – skontrolujte Nastavenia",
+        "localSetup": "Nastaviť v časti Nastavenia…",
+        "cliSetup": "Nezistené – nastaviť v časti Nastavenia…",
+        "runtimeUnavailable": "Agent nie je dostupný – otvoriť Nastavenia…"
+      },
+      "settings": {
+        "reasoning": "Uvažovanie",
+        "effort": "Úsilie"
+      },
+      "includeCurrentNote": "Zahrnúť aktuálnu poznámku",
+      "chooseModel": "Vybrať model",
+      "claudeSettings": {
+        "reasoning": {
+          "low": "Nízka",
+          "medium": "Stredná",
+          "high": "Vysoká",
+          "extraHigh": "Extra vysoká",
+          "extraHighDefault": "Extra vysoká (predvolená)",
+          "max": "Maximálna"
+        }
+      },
+      "codexSettings": {
+        "reasoning": {
+          "low": "Nízka",
+          "medium": "Stredná",
+          "mediumDefault": "Stredná (predvolená)",
+          "high": "Vysoká",
+          "extraHigh": "Extra vysoká"
+        }
+      },
+      "permissionsLabel": "Povolenia agenta: {access}, webové vyhľadávanie: {webSearch}",
+      "permissions": {
+        "label": "Povolenia",
+        "access": "Prístup",
+        "tools": "Nástroje"
+      },
+      "modelSettingsLabel": "Nastavenia modelu agenta: {model}, {settings}"
+    },
+    "refPicker": {
+      "noMatches": "Žiadne zhody"
+    },
+    "toolResult": {
+      "label": "Výsledok nástroja"
+    },
+    "toolCall": {
+      "editedArgs": "Upravené argumenty",
+      "parameters": "Parametre"
+    },
+    "toolActivity": {
+      "steps": "{count, plural, one {# krok} few {# kroky} other {# krokov}}",
+      "running": "Prebieha",
+      "awaitingApproval": "Čaká sa na schválenie",
+      "done": "Dokončené"
+    },
+    "reasoning": {
+      "thinking": "Premýšľa…",
+      "thought": "Premýšľanie",
+      "thoughtFor": "Premýšľanie: {seconds} s",
+      "toggle": "Zobraziť alebo skryť uvažovanie"
+    },
+    "sidebar": {
+      "label": "Pravý bočný panel",
+      "day": "Deň",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# čaká na schválenie} few {# čakajú na schválenie} other {# čaká na schválenie}}",
+      "inProgress": "Agent práve odpovedá",
+      "close": "Zavrieť agenta"
+    },
+    "errors": {
+      "loadConversations": "Nepodarilo sa načítať konverzácie agenta",
+      "loadConversation": "Nepodarilo sa načítať konverzáciu agenta",
+      "createConversation": "Nepodarilo sa vytvoriť konverzáciu agenta",
+      "busy": "V inom okne agent práve odpovedá v tejto konverzácii. Počkajte, kým skončí, alebo ho zastavte v danom okne.",
+      "sendTurn": "Nepodarilo sa odoslať správu agentovi",
+      "cancelTurn": "Nepodarilo sa zrušiť odpoveď agenta",
+      "submitApproval": "Nepodarilo sa odoslať schválenie nástroja",
+      "updateTrust": "Nepodarilo sa aktualizovať dôveryhodné nástroje",
+      "saveDisclosure": "Nepodarilo sa uložiť potvrdenie upozornenia",
+      "resolveWindow": "Nepodarilo sa určiť zdrojové okno agenta",
+      "detectCli": "Nepodarilo sa zistiť backendy agentov",
+      "loadDisclosure": "Nepodarilo sa načítať potvrdenie upozornenia"
+    },
+    "actions": {
+      "copy": "Kopírovať",
+      "copied": "Skopírované"
+    },
+    "sources": {
+      "count": "{count, plural, one {# zdroj} few {# zdroje} other {# zdrojov}}"
+    }
+  },
+  "canvas": {
+    "sectionLabel": "Plátna",
+    "newCanvas": "Nové plátno",
+    "newCanvasFolder": "Nový priečinok pláten",
+    "untitled": "Plátno bez názvu",
+    "empty": "Zatiaľ žiadne plátna",
+    "loading": "Načítavajú sa plátna…",
+    "loadFailed": "Plátna sa nepodarilo načítať",
+    "createFailed": "Plátno sa nepodarilo vytvoriť",
+    "openFailed": "Plátno sa nepodarilo otvoriť",
+    "notFound": "Toto plátno sa nenašlo",
+    "corruptScene": "Toto plátno sa nepodarilo prečítať. Úpravy sú vypnuté, aby ste neprišli o údaje.",
+    "unreadableTitle": "Toto plátno tu nemožno otvoriť",
+    "unreadableBody": "Jeho dokument v trezore chýba alebo bolo plátno nakreslené predtým, ako sa z pláten stali súbory, a toto zariadenie už nemá kľúč, ktorý ho odomyká. Nič sa neodstránilo – otvorte trezor na zariadení, na ktorom plátno vzniklo, alebo obnovte priečinok s plátnami.",
+    "tooLargeToSync": "Toto plátno je príliš veľké na synchronizáciu. Je uložené na tomto zariadení, ale kým sa nezmenší, nedostane sa do vašich ostatných zariadení.",
+    "savedToVault": "Všetky zmeny sa automaticky ukladajú do vášho trezora",
+    "libraryStoreFailed": "Vašu knižnicu tvarov sa nepodarilo uložiť. Posledné zmeny v nej sa môžu stratiť.",
+    "link": {
+      "itemMissing": "Prepojená položka už neexistuje.",
+      "elementMissing": "Tento odkaz smeruje na niečo, čo už na tomto plátne nie je.",
+      "title": "Odkaz na položku",
+      "placeholder": "Hľadať v poznámkach, úlohách, udalostiach, Prijatých, projektoch…",
+      "hint": "Začnite písať a nájdite položku, ktorú chcete prepojiť.",
+      "empty": "Žiadne zhody.",
+      "selectOneShape": "Ak chcete tvar prepojiť s položkou, vyberte jeden tvar.",
+      "cardsCannotLink": "Karta už otvára vlastnú položku, preto nemôže mať ďalší odkaz.",
+      "linked": "Prepojené.",
+      "groupNotes": "Poznámky",
+      "groupFiles": "Súbory",
+      "groupTasks": "Úlohy",
+      "groupEvents": "Udalosti",
+      "groupInbox": "Prijaté",
+      "groupJournals": "Denník",
+      "groupProjects": "Projekty",
+      "groupFolders": "Priečinky",
+      "useUrl": "Odkaz na {url}",
+      "openTarget": "Otvoriť {name}",
+      "shapeTarget": "Tvar na tomto plátne",
+      "missingTarget": "Už nie je na tomto plátne"
+    },
+    "disabledTitle": "Plátno nie je zapnuté",
+    "disabledBody": "Táto karta patrí funkcii, ktorá nie je na tomto zariadení zapnutá.",
+    "unreadable": "Dokument tohto plátna chýba alebo sa nedá prečítať. Zobrazte ho v správcovi súborov alebo položku odstráňte.",
+    "actionFailed": "Túto akciu s plátnom sa nepodarilo dokončiť",
+    "renameLabel": "Názov plátna",
+    "folderNameLabel": "Názov priečinka",
+    "deleteConfirmTitle": "Odstrániť toto plátno?",
+    "deleteConfirmBody": "„{title}“ sa odstráni z aplikácie memrynote na všetkých vašich zariadeniach. Jeho súbor sa presunie do koša tohto počítača, ale jeho vrátením plátno neobnovíte.",
+    "dropToRoot": "Pustením sem ho presuniete z priečinka",
+    "filterPlaceholder": "Filtrovať plátna",
+    "filterNoMatches": "Filtru nezodpovedajú žiadne plátna",
+    "folderCanvasCount": "Plátna v priečinku: {count}",
+    "folderEmptyHint": "Zatiaľ tu nič nie je",
+    "deleteFolderConfirmTitle": "Odstrániť tento priečinok pláten?",
+    "deleteFolderConfirmBody": "„{name}“ a všetko v ňom sa odstránia z aplikácie memrynote na všetkých vašich zariadeniach. Dotknuté plátna: {count}. Priečinok sa presunie do koša tohto počítača, ale jeho vrátením plátna neobnovíte.",
+    "actions": {
+      "rename": "Premenovať",
+      "duplicate": "Duplikovať",
+      "copyLink": "Kopírovať odkaz",
+      "setIcon": "Nastaviť ikonu",
+      "removeIcon": "Odstrániť ikonu",
+      "moveToFolder": "Presunúť do priečinka",
+      "moveToRoot": "Koreňový priečinok",
+      "openExternal": "Otvoriť v externom editore",
+      "newCanvasHere": "Nové plátno tu",
+      "newFolder": "Nový priečinok",
+      "canvasMenu": "Akcie plátna",
+      "folderMenu": "Akcie priečinka pláten"
+    },
+    "card": {
+      "open": "Otvoriť na karte",
+      "openToEdit": "Otvoriť na karte a upraviť",
+      "deleted": "Položka odstránená",
+      "loading": "Načítava sa…",
+      "untitled": "Bez názvu",
+      "allDay": "Celý deň",
+      "createNoteFailed": "Poznámku sa nepodarilo vytvoriť",
+      "addCard": "Pridať kartu",
+      "addPlaceholder": "Hľadať v poznámkach, súboroch, úlohách, udalostiach a projektoch…",
+      "addCreateNote": "Vytvoriť poznámku „{query}“",
+      "addCreateNoteEmpty": "Vytvoriť novú poznámku",
+      "addEmpty": "Nič sa nenašlo",
+      "addGroupNotes": "Poznámky",
+      "addGroupTasks": "Úlohy",
+      "addGroupEvents": "Udalosti",
+      "addOnCanvas": "Na plátne",
+      "addCreatedAt": "Vytvorené {date}",
+      "bulkGroup": "Pridať všetko",
+      "bulkFromTag": "Zo značky…",
+      "bulkFromFolder": "Z priečinka…",
+      "bulkSearchTags": "Hľadať značky…",
+      "bulkSearchFolders": "Hľadať priečinky…",
+      "bulkTagsHeading": "Značky",
+      "bulkFoldersHeading": "Priečinky",
+      "bulkItemCount": "{count, plural, one {# položka} few {# položky} many {# položky} other {# položiek}}",
+      "bulkViewsHeading": "Pridať z {name}",
+      "bulkAllItems": "Všetky položky",
+      "bulkConfirmTitle": "{count, plural, one {Pridať # kartu z {name}?} few {Pridať # karty z {name}?} many {Pridať # karty z {name}?} other {Pridať # kariet z {name}?}}",
+      "bulkConfirmBody": "Veľké plátna sú pri pohybe pomalšie a môžu prekročiť limit veľkosti synchronizácie.",
+      "bulkConfirmSkipped": "{count, plural, one {# položka už je na tomto plátne a bude preskočená.} few {# položky už sú na tomto plátne a budú preskočené.} other {# položiek už je na tomto plátne a bude preskočených.}}",
+      "bulkConfirmAdd": "{count, plural, one {Pridať # kartu} few {Pridať # karty} many {Pridať # karty} other {Pridať # kariet}}",
+      "bulkBack": "Späť",
+      "bulkEmpty": "Žiadne poznámky, súbory ani úlohy na pridanie",
+      "bulkLoadFailed": "Položky sa nepodarilo načítať",
+      "bulkAdded": "{count, plural, one {Pridaná # karta} few {Pridané # karty} many {Pridané # karty} other {Pridaných # kariet}}",
+      "bulkAddedSkipped": "{count, plural, one {Pridaná # karta} few {Pridané # karty} many {Pridané # karty} other {Pridaných # kariet}} · {skipped} už na plátne",
+      "bulkAllOnCanvas": "{count, plural, one {Už je na tomto plátne} few {Všetky # už sú na tomto plátne} many {Všetky # už sú na tomto plátne} other {Všetkých # už je na tomto plátne}}"
+    },
+    "cluster": {
+      "button": "Navrhnúť skupiny",
+      "buttonHint": "Zoskupí karty poznámok na tomto plátne (alebo vybrané karty) podľa podobnosti. Spracúva sa na tomto zariadení.",
+      "loading": "Zoskupuje sa…",
+      "needMoreNotes": "Na návrh skupín potrebujete viac kariet poznámok (minimum: {count}).",
+      "tooMany": "Toto plátno obsahuje príliš veľa kariet poznámok (maximum: {count}). Vyberte najviac {count} a skúste to znova.",
+      "disabled": "Ak chcete navrhovať skupiny, zapnite lokálnu vektorizáciu v časti Nastavenia > AI.",
+      "noGroups": "Medzi týmito poznámkami sa nenašli žiadne jasné skupiny.",
+      "missing": "{count, plural, one {# poznámka ešte nie je vektorizovaná a bola vynechaná.} few {# poznámky ešte nie sú vektorizované a boli vynechané.} other {# poznámok ešte nie je vektorizovaných a bolo vynechaných.}}",
+      "failed": "Nepodarilo sa navrhnúť skupiny",
+      "title": "Navrhované skupiny",
+      "description": "Zoskupené podľa podobnosti na tomto zariadení. Na plátne sa nič nezmení, kým nevytvoríte rámce.",
+      "defaultName": "Skupina {number}",
+      "untitledGroup": "Skupina",
+      "groupName": "Názov skupiny",
+      "acceptGroup": "Zahrnúť {name}",
+      "noteCount": "{count, plural, one {# poznámka} few {# poznámky} other {# poznámok}}",
+      "discard": "Zahodiť",
+      "create": "{count, plural, one {Vytvoriť # rámec} few {Vytvoriť # rámce} other {Vytvoriť # rámcov}}",
+      "created": "{count, plural, one {Vytvorený # rámec} few {Vytvorené # rámce} other {Vytvorených # rámcov}}",
+      "cardsGone": "Tieto karty už na plátne nie sú."
+    },
+    "frame": {
+      "categorize": "Kategorizovať",
+      "editBinding": "Zmeniť kategóriu tejto sekcie",
+      "cardCount": "{count, plural, one {# karta} few {# karty} other {# kariet}}",
+      "bindTitle": "Kategorizovať túto sekciu",
+      "bindHint": "Karty pustené do sekcie dostanú túto značku alebo hodnotu vlastnosti.",
+      "bindPlaceholder": "Hľadajte značky a hodnoty vlastností alebo zadajte novú značku…",
+      "bindEmpty": "Žiadne zhodné značky ani hodnoty vlastností.",
+      "groupTags": "Značky",
+      "useTag": "Použiť novú značku #{tag}",
+      "unbind": "Prestať kategorizovať ako {label}",
+      "current": "Aktuálne",
+      "applied": "{count, plural, one {Pridané na # kartu: {label}} few {Pridané na # karty: {label}} other {Pridané na # kariet: {label}}}",
+      "applyFailed": "Nepodarilo sa pridať {label}",
+      "revertFailed": "Nepodarilo sa vrátiť späť {label}",
+      "leftFrame": "{count, plural, one {# karta bola presunutá zo sekcie {label}. Kategóriu si ponechá.} few {# karty boli presunuté zo sekcie {label}. Kategóriu si ponechajú.} other {# kariet bolo presunutých zo sekcie {label}. Kategóriu si ponechajú.}}",
+      "removeCategory": "Odstrániť {label}",
+      "removed": "{count, plural, one {Odstránené z # karty: {label}} few {Odstránené z # kariet: {label}} other {Odstránené z # kariet: {label}}}",
+      "removeFailed": "Nepodarilo sa odstrániť {label}",
+      "skippedFile": "{count, plural, one {Karta súboru zostala bez zmeny: súbory nemajú značky ani vlastnosti.} few {# karty súborov zostali bez zmeny: súbory nemajú značky ani vlastnosti.} other {# kariet súborov zostalo bez zmeny: súbory nemajú značky ani vlastnosti.}}",
+      "skippedTaskProperty": "{count, plural, one {Karta úlohy zostala bez zmeny: úlohy môžu mať značky, nie vlastnosti poznámok.} few {# karty úloh zostali bez zmeny: úlohy môžu mať značky, nie vlastnosti poznámok.} other {# kariet úloh zostalo bez zmeny: úlohy môžu mať značky, nie vlastnosti poznámok.}}",
+      "skippedUnsupported": "{count, plural, one {Karta zostala bez zmeny: udalosti a projekty nemožno kategorizovať.} few {# karty zostali bez zmeny: udalosti a projekty nemožno kategorizovať.} other {# kariet zostalo bez zmeny: udalosti a projekty nemožno kategorizovať.}}",
+      "layoutAction": "Rozložiť podľa vlastnosti",
+      "layoutTitle": "Rozložiť podľa vlastnosti",
+      "layoutHint": "Vytvorí sekciu pre každú hodnotu a rozdelí do nich poznámky na tomto plátne.",
+      "layoutPlaceholder": "Hľadať vlastnosti typu Výber, Viacnásobný výber a Stav…",
+      "layoutEmpty": "Zatiaľ žiadne vlastnosti typu Výber, Viacnásobný výber ani Stav s hodnotami.",
+      "layoutValueCount": "{count, plural, one {# hodnota} few {# hodnoty} other {# hodnôt}}",
+      "layoutDone": "{count, plural, one {Vytvorená # sekcia pre vlastnosť {property}} few {Vytvorené # sekcie pre vlastnosť {property}} other {Vytvorených # sekcií pre vlastnosť {property}}}",
+      "layoutFailed": "Nepodarilo sa rozložiť plátno"
     }
   },
   "phaseF": {
     "componentsAppSidebar": {
       "collections": "Kolekcie",
+      "projects": "Projekty",
       "newNote": "Nová poznámka",
       "newNote2": "Nová poznámka",
-      "newFolder": "Nová zložka",
-      "newFolder2": "Nová zložka",
+      "newFolder": "Nový priečinok",
+      "newFolder2": "Nový priečinok",
+      "newProject": "Nový projekt",
       "bookmarks": "Záložky",
-      "tags": "Tagy",
+      "tags": "Značky",
+      "reorderSection": "Zmeniť poradie sekcie {section}",
       "dropFilesToImport": "Pretiahnite súbory na import",
+      "dropFilesIntoVaultRoot": "Koreňový priečinok trezora",
       "newNoteN": "Nová poznámka (⌘N)",
       "new": "Nové",
-      "syncDisabled": "Synchronizácia zakázaná",
-      "syncDisabled2": "Synchronizácia zakázaná",
+      "newItemMenu": "Vytvoriť nové…",
       "feedbackButton": "Odoslať spätnú väzbu",
-      "feedbackDescription": "Povedzte nám, čo funguje, čo je pokazené alebo čo by ste chceli, aby Memry vedelo. Čítame každú správu.",
-      "feedbackEmailHint": "Pridajte svoj e-mail, ak chcete odpoveď.",
-      "feedbackError": "Spätnú väzbu sa nepodarilo odoslať. Skúste znova.",
+      "feedbackTitle": "Odoslať spätnú väzbu",
+      "feedbackDescription": "Povedzte nám, čo funguje, čo je pokazené alebo čo by ste chceli, aby aplikácia MemryNote vedela. Čítame každú správu.",
       "feedbackPlaceholder": "Vaša spätná väzba…",
+      "feedbackEmailHint": "Pridajte svoj e-mail, ak chcete odpoveď.",
+      "feedbackPrivacyTitle": "Čo sa odosiela",
+      "feedbackPrivacyMessage": "Vaša správa presne tak, ako ste ju napísali",
+      "feedbackPrivacyEmailOptional": "Váš e-mail – iba ak ho uvediete, a len preto, aby sme mohli odpovedať",
+      "feedbackPrivacyEmailSignedIn": "E-mail vášho účtu ({email}), aby sme mohli odpovedať",
+      "feedbackPrivacyVersion": "Verzia aplikácie a operačný systém",
+      "feedbackPrivacyPlan": "Váš plán (Free, Plus, Pro alebo Believer)",
+      "feedbackPrivacyNote": "Nič iné. Poznámky zostávajú na vašom zariadení.",
       "feedbackSend": "Odoslať",
       "feedbackSending": "Odosiela sa…",
       "feedbackSuccess": "Ďakujeme za spätnú väzbu!",
-      "feedbackTitle": "Odoslať spätnú väzbu",
-      "newItemMenu": "Vytvoriť novú…",
-      "feedbackPrivacyEmailOptional": "Váš e-mail — iba ak ho uvediete a len preto, aby sme mohli odpovedať",
-      "feedbackPrivacyEmailSignedIn": "E-mail vášho účtu ({email}), aby sme mohli odpovedať",
-      "feedbackPrivacyMessage": "Vaša správa presne tak, ako ste ju napísali",
-      "feedbackPrivacyNote": "Nič iné. Poznámky zostávajú na vašom zariadení.",
-      "feedbackPrivacyPlan": "Váš plán (free, Plus, Pro alebo Believer)",
-      "feedbackPrivacyTitle": "Čo sa odosiela",
-      "feedbackPrivacyVersion": "Verzia aplikácie a operačný systém",
-      "projects": "Projekty"
+      "feedbackError": "Spätnú väzbu sa nepodarilo odoslať. Skúste to znova.",
+      "syncDisabled": "Synchronizácia je vypnutá",
+      "syncDisabled2": "Synchronizácia je vypnutá",
+      "sortLabel": "Zoradenie sekcie {section}: {mode}",
+      "sortModeManual": "Ručne",
+      "sortModeNameAsc": "Názov A → Z",
+      "sortModeNameDesc": "Názov Z → A",
+      "sortModeModifiedDesc": "Upravené: od najnovších",
+      "sortModeModifiedAsc": "Upravené: od najstarších",
+      "sortModeCreatedDesc": "Vytvorené: od najnovších",
+      "sortModeCreatedAsc": "Vytvorené: od najstarších",
+      "sortModeCountDesc": "Najpoužívanejšie",
+      "sortModeCountAsc": "Najmenej používané",
+      "sortSaveFailed": "Nepodarilo sa uložiť zoradenie",
+      "sectionOrderSaveFailed": "Nepodarilo sa uložiť poradie v bočnom paneli"
     },
     "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "Zmeniť veľkosť panelu dňa",
+      "resizeDayPanel": "Zmeniť veľkosť panela dňa",
       "dragToResizeDoubleClickToReset": "Potiahnutím zmeniť veľkosť · Dvojklikom obnoviť"
     },
     "componentsFindBarFindBar": {
-      "findReplaceAsk": "Nájsť, nahradiť, opýtať sa..."
+      "findReplaceAsk": "Nájsť, nahradiť, opýtať sa…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Preskočiť úvod",
-      "welcomeToMemry": "Vitajte v memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaša osobná databáza poznatkov. Poďme si vziať 2 minúty, aby sme vás uviedli do chodu.",
-      "getStarted": "Začať",
+      "skipOnboarding": "Preskočiť úvodné nastavenie",
+      "welcomeToMemry": "Vitajte v aplikácii memrynote",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaša osobná znalostná báza. Za 2 minúty vás prevedieme základmi.",
+      "getStarted": "Začať ",
       "createYourFirstNote": "Vytvorte svoju prvú poznámku",
       "markdownBasedStoredLocallyAsPlainFiles": "Na báze Markdown, uložené lokálne ako obyčajné súbory.",
-      "eGMeetingNotesIdeasAnything": "napr. poznámky zo stretnutí, nápady, čokoľvek...",
+      "eGMeetingNotesIdeasAnything": "napr. poznámky zo stretnutí, nápady, čokoľvek…",
       "skip": "Preskočiť",
       "createNote": "Vytvoriť poznámku ",
-      "addYourFirstTask": "Pridať svoju prvú úlohu",
+      "addYourFirstTask": "Pridajte svoju prvú úlohu",
       "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Úlohy sa viažu na vaše poznámky, s prioritami a termínmi.",
-      "eGReviewProjectProposal": "napr. Skontrolovať návrh projektu...",
+      "eGReviewProjectProposal": "napr. Skontrolovať návrh projektu…",
       "skip2": "Preskočiť",
       "createTask": "Vytvoriť úlohu ",
       "syncAcrossDevices": "Synchronizovať medzi zariadeniami",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Majte svoje poznámky a úlohy synchronizované vo všetkých vašich zariadeniach. Toto môžete nastaviť kedykoľvek neskôr.",
-      "skipForNow": "Preskočiť teraz",
-      "doneLetSGo": "Hotovo — poďme na to!"
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Majte poznámky a úlohy synchronizované na všetkých svojich zariadeniach. Nastaviť to môžete aj neskôr.",
+      "skipForNow": "Zatiaľ preskočiť",
+      "doneLetSGo": "Hotovo – poďme na to! "
     },
     "componentsFolderIconButton": {
-      "setFolderIcon": "Nastaviť ikonu priečinka"
+      "setFolderIcon": "Nastaviť ikonu priečinka",
+      "expandFolder": "Rozbaliť priečinok",
+      "collapseFolder": "Zbaliť priečinok"
     },
     "componentsHintOverlayHintIndicator": {
       "hint": "TIP"
@@ -165,20 +647,20 @@
       "iconPicker": "Výber ikony",
       "selectIcon": "Vybrať ikonu",
       "closeIconPicker": "Zavrieť výber ikony",
-      "searchIcons": "Hľadať ikony...",
+      "searchIcons": "Hľadať ikony…",
       "all": "Všetko",
-      "clearIcon": "Vyčistiť ikonu",
+      "clearIcon": "Vymazať ikonu",
       "noIconsFoundFor": "Nenašli sa žiadne ikony pre \""
     },
     "componentsKeyboardShortcutsModal": {
       "keyboardShortcuts": "Klávesové skratky",
       "closeShortcutsHelp": "Zavrieť pomoc so skratkami",
-      "press": "Stlačiť",
-      "toClose": "na zatvorenie"
+      "press": "Stlačením",
+      "toClose": "zavriete"
     },
     "componentsKiboUiTreeIndex": {
       "setIcon": "Nastaviť ikonu",
-      "clearIcon": "Vyčistiť ikonu"
+      "clearIcon": "Vymazať ikonu"
     },
     "componentsNavMain": {
       "platform": "Platforma"
@@ -188,13 +670,13 @@
       "more": "Viac",
       "viewProject": "Zobraziť projekt",
       "shareProject": "Zdieľať projekt",
-      "deleteProject": "Vymazať projekt",
+      "deleteProject": "Odstrániť projekt",
       "more2": "Viac"
     },
     "componentsNavUser": {
       "cn": "CN",
       "cn2": "CN",
-      "upgradeToPro": "Aktualizovať na Pro",
+      "upgradeToPro": "Prejsť na Pro",
       "account": "Účet",
       "billing": "Fakturácia",
       "notifications": "Oznámenia",
@@ -202,64 +684,64 @@
     },
     "componentsSearchCommandPalette": {
       "search": "Vyhľadávanie",
-      "searchNotesTasksJournalInbox": "Hľadať poznámky, úlohy, denník, doručenú poštu...",
-      "noResultsFor": "Žiadne výsledky pre “",
+      "searchNotesTasksJournalInbox": "Hľadať v poznámkach, úlohách, denníku, Prijatých…",
+      "noResultsFor": "Žiadne výsledky pre „",
       "result": "výsledok",
       "noResultsForQuery": "Žiadne výsledky pre „{query}“",
       "resultCount": "{count, plural, one {# výsledok} few {# výsledky} many {# výsledku} other {# výsledkov}}",
-      "indexBuilding": "Vytvára sa vyhľadávací index {done}/{total} — výsledky nemusia byť úplné",
-      "indexBuildingUnknown": "Vytvára sa vyhľadávací index — výsledky nemusia byť úplné"
+      "indexBuilding": "Vytvára sa index vyhľadávania {done}/{total} – výsledky nemusia byť úplné",
+      "indexBuildingUnknown": "Vytvára sa index vyhľadávania – výsledky nemusia byť úplné"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Hľadajte a klikajte na položky, aby ste vytvorili svoju stopu",
       "reasons": "Dôvody",
-      "clear": "Vyčistiť"
+      "clear": "Vymazať"
     },
     "componentsSearchSearchFilters": {
-      "clear": "Vyčistiť",
-      "tags": "Tagy",
-      "filterByTag": "Filtrovať podľa značky...",
+      "clear": "Vymazať",
+      "tags": "Značky",
+      "filterByTag": "Filtrovať podľa značky…",
       "dateRange": "Rozsah dátumov"
     },
     "componentsSearchSearchResultGroup": {
-      "viewAll": "Zobraziť všetky ",
-      "results": "výsledky"
+      "viewAll": "Zobraziť všetko: ",
+      "results": "výsl."
     },
     "componentsSearchSearchResultItem": {
       "p": "P",
-      "fuzzy": "nejasné"
+      "fuzzy": "približná zhoda"
     },
     "componentsSplitViewEmptyPaneState": {
-      "noTabsOpen": "Žiadne otvorené záložky",
-      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Otvorte stránku z postranného panela alebo vytvorte novú záložku, aby ste začali",
-      "openInbox": "Otvoriť doručenú poštu",
-      "closePane": "Zatvoriť panel"
+      "noTabsOpen": "Žiadne otvorené karty",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Začnite otvorením stránky z bočného panela alebo vytvorením novej karty",
+      "openInbox": "Otvoriť Prijaté",
+      "closePane": "Zavrieť tablu"
     },
     "componentsSplitViewLayoutPicker": {
-      "layoutPresets": "Predvolené rozloženie",
+      "layoutPresets": "Predvoľby rozloženia",
       "layoutPresets2": "Predvoľby rozloženia"
     },
     "componentsSplitViewResizeHandle": {
-      "resizePanes": "Zmeniť veľkosť panelov"
+      "resizePanes": "Zmeniť veľkosť tabiel"
     },
     "componentsSplitViewTabContent": {
-      "taskscontextNotAvailable": "Úlohy Kontext nie je dostupný",
+      "taskscontextNotAvailable": "TasksContext nie je k dispozícii",
       "searchResults": "Výsledky vyhľadávania",
-      "unknownTabType": "Neznámy typ záložky:"
+      "unknownTabType": "Neznámy typ karty: "
     },
     "componentsTabsAccessibleTab": {
       "unsavedChanges": "neuložené zmeny",
       "preview": "náhľad"
     },
     "componentsTabsNewTabMenu": {
-      "newTab": "Nová záložka",
-      "newTab2": "Nová záložka",
+      "newTab": "Nová karta",
+      "newTab2": "Nová karta",
       "newNote": "Nová poznámka",
       "journal": "Denník",
       "calendar": "Kalendár",
-      "inboxCapture": "Schránka Doručená pošta",
+      "inboxCapture": "Rýchly záznam do Prijatých",
       "tasks": "Úlohy",
-      "tags": "Tagy"
+      "tags": "Značky"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Neuložené zmeny",
@@ -269,17 +751,17 @@
       "unsavedChanges": "Neuložené zmeny"
     },
     "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "Zatvoriť všetky záložky"
+      "closeAllTabs": "Zavrieť všetky karty"
     },
     "componentsTabsTabBarWithDrag": {
-      "openTabs": "Otvárané záložky",
-      "scrollTabsLeft": "Posunúť záložky doľava",
-      "scrollTabsRight": "Posunúť záložky doprava",
-      "dayPanel": "Denný panel"
+      "openTabs": "Otvorené karty",
+      "scrollTabsLeft": "Posunúť karty doľava",
+      "scrollTabsRight": "Posunúť karty doprava",
+      "dayPanel": "Panel dňa"
     },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Niečo sa pokazilo",
-      "anErrorOccurredWhileRenderingThisTabContent": "Pri vykresľovaní obsahu tejto záložky došlo k chybe.",
+      "anErrorOccurredWhileRenderingThisTabContent": "Pri vykresľovaní obsahu tejto karty došlo k chybe.",
       "tryAgain": "Skúsiť znova",
       "sendReport": "Odoslať diagnostickú správu"
     },
@@ -299,72 +781,112 @@
       "downloadOnIos": "Stiahnuť na iOS"
     },
     "componentsTrafficLights": {
-      "closeWindow": "Zatvoriť okno",
+      "closeWindow": "Zavrieť okno",
       "minimizeWindow": "Minimalizovať okno",
       "maximizeWindow": "Maximalizovať okno"
     },
     "componentsUiAutocompleteDropdown": {
       "suggestions": "Návrhy",
       "or": "alebo",
-      "enter": "Stlačte Enter",
-      "toInsert": "pre vloženie"
+      "enter": "Enter",
+      "toInsert": "na vloženie"
     },
     "componentsUiBreadcrumb": {
-      "breadcrumb": "strúhanku",
+      "breadcrumb": "Navigačná cesta",
       "more": "Viac"
     },
     "componentsUiDialog": {
-      "close": "Koniec"
+      "close": "Zavrieť"
     },
     "componentsUiSheet": {
-      "close": "Koniec"
+      "close": "Zavrieť"
     },
     "componentsUiSidebar": {
       "sidebar": "Bočný panel",
       "displaysTheMobileSidebar": "Zobrazuje mobilný bočný panel.",
-      "toggleSidebar": "Prepínač bočného panela",
-      "toggleSidebar2": "Prepínač bočného panela",
+      "toggleSidebar": "Zobraziť/skryť bočný panel",
+      "toggleSidebar2": "Zobraziť/skryť bočný panel",
       "dragToResizeDoubleClickToReset": "Potiahnutím zmeniť veľkosť · Dvojklikom obnoviť"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Vitajte v memrynote",
+      "welcomeToMemry": "Vitajte v aplikácii memrynote",
       "yourPersonalKnowledgeManagementSystem": "Váš osobný systém správy znalostí.",
-      "selectAFolderToStoreYourNotesAndTasks": "Vyberte priečinok pre uloženie poznámok a úloh.",
-      "opening": "Otváranie...",
-      "selectVaultFolder": "Vybrať priečinok trezoru",
+      "selectAFolderToStoreYourNotesAndTasks": "Vyberte priečinok, do ktorého sa budú ukladať poznámky a úlohy.",
+      "opening": "Otvára sa…",
+      "selectVaultFolder": "Vybrať priečinok trezora",
       "plainMarkdown": "Čistý Markdown",
       "yourNotesStayPortable": "Vaše poznámky zostávajú prenosné",
       "syncAnywhere": "Synchronizovať kdekoľvek",
       "useDropboxIcloudGit": "Použite Dropbox, iCloud, Git",
       "recentVaults": "Posledné trezory",
       "notesLastOpened": "poznámky · Naposledy otvorené",
-      "brandName": "Memrynote",
       "preRelease": "Beta",
       "createNewVault": "Vytvoriť nový trezor",
-      "createNewVaultDesc": "Začnite nový trezor v priečinku podľa svojho výberu.",
+      "createNewVaultDesc": "Založte nový trezor v priečinku podľa vlastného výberu.",
       "openExistingVault": "Otvoriť existujúci trezor",
       "openExistingVaultDesc": "Vyberte priečinok so súbormi Markdown, ktoré už máte.",
       "signInToSync": "Prihlásiť sa na synchronizáciu",
-      "signInToSyncDesc": "Trezory šifrované end-to-end naprieč vašimi zariadeniami.",
+      "signInToSyncDesc": "Trezory šifrované end-to-end na všetkých vašich zariadeniach.",
       "create": "Vytvoriť",
       "open": "Otvoriť",
       "signIn": "Prihlásiť sa",
       "helpAndDocs": "Pomoc a dokumentácia",
       "signInRequiresVault": "Najprv otvorte alebo vytvorte trezor, aby ste nastavili synchronizáciu.",
-      "addVault": "Pridať trezor"
+      "addVault": "Pridať trezor",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "Vaše poznámky sú uložené v trezore – priečinku v tomto počítači.",
+        "createDesc": "Pomenujte ho a vyberte, kde bude uložený.",
+        "openFolder": "Otvoriť priečinok ako trezor",
+        "openFolderDesc": "Použite priečinok so súbormi Markdown, ktoré už máte.",
+        "openFromSync": "Otvoriť zo služby Memrynote Sync",
+        "openFromSyncDesc": "Prihláste sa a stiahnite trezor zo svojho účtu.",
+        "back": "Späť",
+        "createTitle": "Vytvoriť nový trezor",
+        "createSubtitle": "Trezor je priečinok so súbormi Markdown. Neskôr ho môžete presunúť.",
+        "nameLabel": "Názov",
+        "namePlaceholder": "Moje poznámky",
+        "locationLabel": "Umiestnenie",
+        "change": "Zmeniť…",
+        "willBeCreatedAt": "Vytvorí sa v",
+        "errorExists": "Priečinok s týmto názvom tu už existuje.",
+        "openInstead": "Otvoriť ho radšej ako trezor",
+        "errorInvalidName": "Názov nemôže začínať bodkou ani obsahovať / \\ : * ? \" < > |",
+        "createFailed": "Nepodarilo sa vytvoriť trezor.",
+        "createVault": "Vytvoriť trezor",
+        "creating": "Vytvára sa…",
+        "cancel": "Zrušiť",
+        "chooseTitle": "Vyberte trezor",
+        "chooseSubtitle": "Prihlásili ste sa ako {email}. Vyberte trezor, ktorý chcete otvoriť v tomto počítači.",
+        "untitledVault": "Trezor bez názvu",
+        "items": "{count, plural, one {# položka} few {# položky} other {# položiek}}",
+        "onThisComputer": "V tomto počítači",
+        "downloadTo": "Stiahnuť do",
+        "otherVaultsHint": "Ostatné trezory zostanú vo vašom účte. Kedykoľvek si ich môžete stiahnuť cez prepínač trezorov.",
+        "openVault": "Otvoriť trezor",
+        "opening": "Otvára sa…",
+        "loadingVaults": "Načítavajú sa vaše trezory…",
+        "loadFailed": "Nepodarilo sa načítať vaše trezory.",
+        "retry": "Skúsiť znova",
+        "noVaultsTitle": "Vo vašom účte zatiaľ nie sú žiadne trezory",
+        "noVaultsDesc": "Vytvorte trezor v tomto počítači. Bude sa synchronizovať s vaším účtom.",
+        "createCta": "Vytvoriť trezor",
+        "openFailed": "Nepodarilo sa otvoriť trezor."
+      }
     },
     "componentsVaultSwitcher": {
-      "noVaultsYet": "Žiadne trezory zatiaľ",
+      "noVaultsYet": "Zatiaľ žiadne trezory",
       "openVault": "Otvoriť trezor",
       "settings": "Nastavenia",
       "logOut": "Odhlásiť sa",
-      "signInToSync": "Prihláste sa na synchronizáciu",
+      "signInToSync": "Prihlásiť sa na synchronizáciu",
       "remove": "Odstrániť",
+      "removeVaultTitle": "Odstrániť „{name}“ zo zoznamu?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Tento trezor bude odstránený z aplikácie, ale vaše súbory zostanú na disku. Vždy ho môžete neskôr znova pridať.",
       "cancel": "Zrušiť",
       "remove2": "Odstrániť",
       "inYourAccount": "Vo vašom účte",
-      "itemsCount": "{count} položiek",
+      "itemsCount": "{count, plural, one {# položka} few {# položky} other {# položiek}}",
       "untitledVault": "Trezor",
       "downloadVaultTitle": "Stiahnuť „{name}“",
       "downloadLocation": "Umiestnenie",
@@ -372,15 +894,14 @@
       "download": "Stiahnuť",
       "downloadFailed": "Trezor sa nepodarilo stiahnuť",
       "deleteFromAccount": "Odstrániť z účtu",
-      "deleteVaultBody": "Týmto sa natrvalo odstránia všetky synchronizované dáta tohto trezora zo serverov Memry a nedá sa to vrátiť späť. Vaše súbory na disku sa nevymažú.",
+      "deleteVaultTitle": "Odstrániť „{name}“ z vášho účtu?",
+      "deleteVaultBody": "Týmto sa natrvalo odstránia všetky synchronizované údaje tohto trezora zo serverov služby Memry. Túto akciu nemožno vrátiť späť. Vaše súbory na disku sa neodstránia.",
       "deleteVaultConfirm": "Odstrániť z účtu",
       "deleteVaultFailed": "Trezor sa nepodarilo odstrániť",
-      "deleteVaultTitle": "Odstrániť „{name}“ z vášho účtu?",
-      "removeVaultTitle": "Odstrániť „{name}“ zo zoznamu?",
       "missing": "Priečinok sa nenašiel"
     },
     "componentsWindowControls": {
-      "searchK": "Vyhľadávanie (⌘K)",
+      "searchK": "Hľadať (⌘K)",
       "browserBack": "Späť v prehliadači",
       "back": "Späť",
       "browserForward": "Dopredu v prehliadači",
@@ -394,469 +915,342 @@
       "failedToAccessMicrophone": "Nepodarilo sa získať prístup k mikrofónu"
     },
     "toasts": {
-      "undone": "Späť"
-    }
-  },
-  "agentChat": {
-    "title": "Chat Agent",
-    "loading": "Načítava sa chat agenta...",
-    "conversationLoading": "Načítava sa konverzácia...",
-    "newConversation": "Nová konverzácia",
-    "history": "História konverzácií",
-    "openInTab": "Otvoriť konverzáciu na karte",
-    "stop": "Zastaviť",
-    "thinking": "Agent premýšľa",
-    "enable": {
-      "title": "Povoliť memrynote Agent",
-      "description": "memrynote Agent používa vášho vybratého miestneho agenta CLI na rozhovor o vašom trezore. Claude posiela obraty na Anthropic; Codex posiela obraty na OpenAI.",
-      "remote": "memrynote šifruje vašu miestnu a synchronizovanú históriu rozhovorov, ale odvodenie modelu sa deje s vybraným poskytovateľom.",
-      "readTools": "Nástroje na čítanie sa spúšťajú automaticky.",
-      "writeTools": "Nástroje na vytváranie a aktualizáciu vyžadujú schválenie.",
-      "diff": "Aktualizačné nástroje zobrazujú rozdiel alebo náhľad.",
-      "button": "Povoliť chat Agent"
-    },
-    "approval": {
-      "description": "Agent chce volať {name} s týmito argumentmi.",
-      "applyOnce": "Použiť raz",
-      "allowOnce": "Povoliť raz",
-      "editAndApply": "Upraviť a použiť",
-      "editAndAllow": "Upraviť a povoliť",
-      "allowAlways": "Vždy povoliť",
-      "applyEdits": "Použiť úpravy",
-      "deny": "Zamietnuť",
-      "invalidJson": "Pred použitím úprav zadajte platný JSON."
-    },
-    "diff": {
-      "previewError": "Nepodarilo sa zobraziť ukážku rozdielu poznámky",
-      "description": "Agent chce aktualizovať {title}. Pred použitím skontrolujte aktuálny a kandidátsky obsah.",
-      "fallbackTitle": "túto poznámku",
-      "current": "Aktuálne",
-      "candidate": "Kandidát",
-      "loading": "Načítavam...",
-      "apply": "Použiť",
-      "applyEdited": "Použiť upravené"
-    },
-    "inPageReview": {
-      "regionLabel": "Návrh agenta",
-      "barLabel": "Skontrolovať návrh agenta",
-      "loading": "Načítava sa návrh...",
-      "loadingTitle": "Návrh agenta",
-      "title": "{count, plural, =0 {Návrh agenta} one {Agent navrhol # zmenu} few {Agent navrhol # zmeny} many {Agent navrhol # zmeny} other {Agent navrhol # zmien}}",
-      "editingTitle": "Úprava návrhu",
-      "pendingHint": "Ešte neuložené. Prijmite, aby sa použil.",
-      "editingHint": "Vaše úpravy zostanú tu, kým ich neprijmete.",
-      "baseChanged": "Táto poznámka sa zmenila, kým ste upravovali návrh.",
-      "keepDraft": "Ponechať moje úpravy",
-      "restart": "Začať znova od najnovšej verzie",
-      "reject": "Odmietnuť",
-      "edit": "Upraviť",
-      "showDiff": "Zobraziť zmeny",
-      "accept": "Prijať",
-      "acceptEdits": "Prijať úpravy",
-      "waiting": "Čaká na vašu kontrolu v {title}.",
-      "notOpen": "Otvorte {title} a pozrite si zmeny, alebo ich prijmite bez kontroly.",
-      "show": "Zobraziť",
-      "openNote": "Otvoriť poznámku",
-      "openJournal": "Otvoriť denník",
-      "fallbackTitle": "táto poznámka"
-    },
-    "composer": {
-      "currentNote": "Aktuálna poznámka",
-      "removeAttachment": "Odstrániť {label}",
-      "placeholder": "Opýtajte sa memrynote na čokoľvek. @ na zmienku o súbore",
-      "send": "Odoslať",
-      "providerLabel": "Poskytovateľ Agent: {provider}",
-      "settingsSummary": "{reasoning}",
-      "providers": {
-        "claude": "Claude",
-        "codex": "Codex",
-        "antigravity": "Antigravity",
-        "local": "Miestne"
-      },
-      "models": {
-        "default": "Predvolené",
-        "label": "Model"
-      },
-      "settings": {
-        "reasoning": "Zdôvodnenie"
-      },
-      "claudeSettings": {
-        "reasoning": {
-          "low": "Nízka",
-          "medium": "Stredné",
-          "high": "Vysoká",
-          "extraHigh": "Extra vysoká",
-          "extraHighDefault": "Extra vysoká (predvolené)",
-          "max": "Maximálna"
-        }
-      },
-      "codexSettings": {
-        "reasoning": {
-          "low": "Nízka",
-          "medium": "Stredné",
-          "mediumDefault": "Stredné (predvolené)",
-          "high": "Vysoká",
-          "extraHigh": "Extra vysoká"
-        }
-      },
-      "access": {
-        "vaultOnly": "Iba trezor",
-        "computerAccess": "Prístup k počítaču"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Vypnuté",
-        "label": "Webové vyhľadávanie"
-      },
-      "permissionsLabel": "Povolenia agenta: {access}, webové vyhľadávanie {webSearch}",
-      "permissions": {
-        "label": "Povolenia",
-        "access": "Prístup",
-        "tools": "Nástroje"
-      },
-      "modelSettingsLabel": "Nastavenia modelu agenta: {model}, {settings}"
-    },
-    "refPicker": {
-      "noMatches": "Žiadne zhody"
-    },
-    "toolResult": {
-      "label": "Výsledok nástroja"
-    },
-    "toolCall": {
-      "editedArgs": "Upravené argumenty",
-      "parameters": "Parametre"
-    },
-    "sidebar": {
-      "label": "Pravý bočný panel",
-      "day": "Deň",
-      "agent": "Agent",
-      "pendingApproval": "{count, plural, one {# čaká na schválenie} other {# čakajúcich na schválenie}}",
-      "inProgress": "Prebieha ťah Agent",
-      "close": "Zavrieť agenta"
-    },
-    "errors": {
-      "loadConversations": "Nepodarilo sa načítať konverzácie agenta",
-      "loadConversation": "Nepodarilo sa načítať konverzáciu agenta",
-      "createConversation": "Nepodarilo sa vytvoriť konverzáciu agenta",
-      "busy": "Ďalšie okno je v polovici tohto rozhovoru. Počkajte, kým to skončí, alebo to odtiaľ zastavte.",
-      "sendTurn": "Nepodarilo sa odoslať poradu agenta",
-      "cancelTurn": "Nepodarilo sa zrušiť ťah agenta",
-      "submitApproval": "Nepodarilo sa odoslať schválenie nástroja",
-      "updateTrust": "Nepodarilo sa aktualizovať dôveryhodné nástroje",
-      "saveDisclosure": "Stav zverejnenia sa nepodarilo uložiť",
-      "resolveWindow": "Nepodarilo sa vyriešiť okno zdroja agenta",
-      "detectCli": "Nepodarilo sa zistiť backendy agentov",
-      "loadDisclosure": "Nepodarilo sa načítať stav zverejnenia"
-    },
-    "sources": {
-      "used": "{count, plural, one {Použitý # zdroj} few {Použité # zdroje} other {Použitých # zdrojov}}"
+      "undone": "Vrátené späť"
     }
   },
   "home": {
-    "addWidget": "Pridať widget",
-    "board": {
-      "defaultName": "Domov",
-      "deleteAria": "Odstrániť rozloženie",
-      "label": "Rozloženie domovskej stránky",
-      "newAria": "Nová nástenka",
-      "newName": "Nová nástenka"
-    },
-    "disabled": {
-      "createNote": "Vytvoriť poznámku",
-      "hint": "Nič nie je otvorené. Začnite poznámkou."
-    },
-    "done": "Hotovo",
-    "edit": "Upraviť",
-    "empty": {
-      "body": "Widgety spájajú vaše poznámky, úlohy a záložky na jednom pokojnom mieste.",
-      "cta": "Pridajte svoj prvý widget",
-      "title": "Vaša nástenka je prázdna"
-    },
-    "greeting": {
-      "afternoon": "Dobrý deň",
-      "evening": "Dobrý večer",
-      "morning": "Dobré ráno"
-    },
-    "header": {
-      "events": "{count, plural, one {# udalosť} few {# udalosti} other {# udalostí}}",
-      "tasksDue": "{count, plural, one {# úloha s termínom dnes} few {# úlohy s termínom dnes} other {# úloh s termínom dnes}}"
-    },
-    "noBookmarksYet": "Zatiaľ žiadne záložky.",
-    "noEventsYet": "Dnes žiadne udalosti.",
-    "noJournalEntriesYet": "Zatiaľ žiadne záznamy v denníku.",
-    "noNotesYet": "Zatiaľ žiadne poznámky.",
-    "noTasksYet": "Zatiaľ žiadne úlohy.",
     "widget": {
-      "bookmarks": "Záložky",
-      "calendar": "Kalendár",
-      "calendarToday": "Dnes",
-      "configAria": "Konfigurovať widget",
-      "configure": "Konfigurovať",
+      "removeAria": "Odstrániť widget",
       "dragAria": "Presunúť widget",
-      "duration": "{count} min",
+      "configAria": "Konfigurovať widget",
+      "resizeAria": "Zmeniť veľkosť na {size}",
+      "menuAria": "Možnosti widgetu",
+      "resize": "Veľkosť",
+      "remove": "Odstrániť",
       "filter": {
+        "all": "Všetky",
         "today": "Termín dnes",
         "tomorrow": "Zajtra",
-        "week": "Tento týždeň"
+        "next7": "Nasledujúcich 7 dní",
+        "noDueDate": "Bez termínu"
       },
-      "folder": "Priečinok",
-      "folderEmpty": "Zatiaľ žiadne priečinky",
-      "folderNoSelection": "Nevybraný žiadny priečinok",
-      "folderPickPrompt": "Vyberte priečinok",
-      "folderViewSelect": "Zobrazenie",
-      "folderView_gallery": "Galéria",
-      "folderView_list": "Zoznam",
-      "inbox": "Schránka",
+      "recentlyEdited": "Nedávno upravené",
+      "recentlyOpened": "Nedávno otvorené",
+      "recentMeta": "upravené {time}",
+      "recentMetaWithFolder": "{folder} · upravené {time}",
+      "openedMeta": "otvorené {time}",
+      "openedMetaWithFolder": "{folder} · otvorené {time}",
+      "noRecentlyOpened": "Tu sa zobrazia poznámky, ktoré otvoríte",
+      "bookmarks": "Záložky",
+      "tasks": "Úlohy",
+      "calendar": "Kalendár",
+      "calendarToday": "Dnes",
+      "openCalendar": "Otvoriť kalendár",
+      "next": "Ďalšie: {title}",
+      "startsIn": "Začína o {count, plural, one {# min} few {# min} other {# min}}",
+      "duration": "{count} min",
+      "inbox": "Prijaté",
       "inboxAllTypes": "Všetky typy",
       "inboxOlder": "{count, plural, one {# staršia} few {# staršie} other {# starších}}",
-      "inboxOldest": "najstaršia {count, plural, one {# deň} few {# dni} other {# dní}}",
+      "inboxOldest": "najstaršia: {count, plural, one {# deň} few {# dni} other {# dní}}",
+      "openInbox": "Otvoriť Prijaté",
+      "folder": "Priečinok",
+      "untitled": "Bez názvu",
+      "folderPickPrompt": "Vyberte priečinok",
+      "folderEmpty": "Zatiaľ žiadne priečinky",
+      "folderNoSelection": "Nie je vybraný žiadny priečinok",
+      "folderView_list": "Zoznam",
+      "folderView_gallery": "Galéria",
+      "folderViewSelect": "Zobrazenie",
+      "project": "Projekt",
+      "projectNoSelection": "Nie je vybraný žiadny projekt",
+      "projectMissing": "Tento projekt už nie je dostupný",
+      "projectNoTasks": "Žiadne úlohy",
       "journal": "Denník",
       "journalStreak": "{count, plural, one {séria # dňa} few {séria # dní} other {séria # dní}}",
       "journalToday": "Dnes",
       "journalYesterday": "Včera",
+      "journalTomorrow": "Zajtra",
+      "journalUpcoming": "Nadchádzajúce",
+      "journalNoEntryYet": "Zatiaľ bez zápisu",
       "loadError": "Nepodarilo sa načítať",
-      "menuAria": "Možnosti widgetu",
-      "next": "Ďalšie: {title}",
-      "openCalendar": "Otvoriť kalendár",
-      "openInbox": "Otvoriť schránku",
-      "recentMeta": "upravené {time}",
-      "recentMetaWithFolder": "{folder} · upravené {time}",
-      "recentlyEdited": "Nedávno upravené",
-      "remove": "Odstrániť",
-      "removeAria": "Odstrániť widget",
-      "resize": "Veľkosť",
-      "resizeAria": "Zmeniť veľkosť na {size}",
-      "savedFilterDefault": "Dnes",
-      "savedFilterHint": "Označte filtre hviezdičkou na stránke Úlohy, aby ste ich mohli použiť tu",
-      "savedFilterLabel": "Uložený filter",
-      "startsIn": "Začína o {count, plural, one {# min} few {# min} other {# min}}",
-      "tasks": "Úlohy",
-      "unknown": "Neznámy widget",
-      "untitled": "Bez názvu"
+      "unknown": "Neznámy widget"
+    },
+    "board": {
+      "label": "Rozloženie stránky Domov",
+      "deleteAria": "Odstrániť rozloženie",
+      "newAria": "Nová nástenka",
+      "newName": "Nová nástenka",
+      "defaultName": "Domov",
+      "manage": "Spravovať nástenky",
+      "manageTitle": "Spravovať nástenky",
+      "manageDescription": "Premenujte, zmeňte poradie alebo odstráňte svoje nástenky na stránke Domov.",
+      "renameAria": "Premenovať nástenku",
+      "reorderAria": "Zmeniť poradie nástenky",
+      "nameLabel": "Názov nástenky"
+    },
+    "greeting": {
+      "morning": "Dobré ráno",
+      "afternoon": "Dobrý deň",
+      "evening": "Dobrý večer"
+    },
+    "header": {
+      "tasksDue": "{count, plural, one {# úloha s termínom dnes} few {# úlohy s termínom dnes} other {# úloh s termínom dnes}}",
+      "events": "{count, plural, one {# udalosť} few {# udalosti} other {# udalostí}}"
+    },
+    "edit": "Upraviť",
+    "done": "Hotovo",
+    "addWidget": "Pridať widget",
+    "empty": {
+      "title": "Vaša nástenka je prázdna",
+      "body": "Widgety spájajú vaše poznámky, úlohy a záložky na jednom pokojnom mieste.",
+      "cta": "Pridajte svoj prvý widget"
+    },
+    "noBookmarksYet": "Zatiaľ žiadne záložky.",
+    "noNotesYet": "Zatiaľ žiadne poznámky.",
+    "noTasksYet": "Zatiaľ žiadne úlohy.",
+    "noEventsYet": "Dnes žiadne udalosti.",
+    "noJournalEntriesYet": "Zatiaľ žiadne zápisy v denníku.",
+    "disabled": {
+      "createNote": "Vytvoriť poznámku",
+      "hint": "Nič nie je otvorené. Začnite poznámkou."
     }
   },
-  "media": {
-    "video": "Video"
-  },
   "onboarding": {
-    "agentChat": {
-      "body": "Prepnite na kartu Agent a opýtajte sa asistenta MemryNote na svoj trezor.",
-      "title": "Chatujte s AI agentom"
-    },
-    "collections": {
-      "body": "Usporiadajte poznámky do priečinkov, pripnite záložky a prehliadajte podľa značiek — všetko tu.",
-      "title": "Zbierky, záložky a značky"
-    },
-    "dayPanel": {
-      "body": "Bočný panel drží kalendár a vaše zobrazenie dňa vedľa toho, čo práve čítate.",
-      "title": "Váš deň popri vašej práci"
-    },
-    "feedback": {
-      "body": "Odošlite spätnú väzbu priamo tímu odtiaľto.",
-      "title": "Povedzte nám svoj názor"
-    },
-    "nav": {
-      "body": "Schránka na zápis, Denník na denné poznámky, Kalendár pre vašu časovú os, Úlohy pre úlohy a Graf, aby ste videli, ako to všetko súvisí.",
-      "title": "Vaše pracovné priestory"
+    "welcome": {
+      "title": "Vitajte v aplikácii MemryNote",
+      "body": "Váš súkromný priestor, ktorý funguje aj offline. Poznámky sú šifrované end-to-end – vaše zariadenie nikdy neopustia nezašifrované."
     },
     "newNote": {
-      "body": "Začnite tu. Všetko, čo napíšete, sa ukladá najprv lokálne.",
-      "title": "Vytvorte svoju prvú poznámku"
+      "title": "Vytvorte svoju prvú poznámku",
+      "body": "Začnite tu. Všetko, čo napíšete, sa ukladá najprv lokálne."
     },
-    "settings": {
-      "body": "Importujte svoje poznámky z viac ako 12 aplikácií — Obsidian, Notion, Apple Notes, Evernote a ďalších — a všetko ostatné doladíte v Nastaveniach.",
-      "title": "Nastavenia a importy"
+    "nav": {
+      "title": "Vaše pracovné priestory",
+      "body": "Prijaté na rýchle záznamy, Denník na denné poznámky, Kalendár pre vašu časovú os, Úlohy na všetko, čo treba urobiť, a Graf, v ktorom uvidíte, ako všetko súvisí."
+    },
+    "collections": {
+      "title": "Kolekcie, záložky a značky",
+      "body": "Usporiadajte poznámky do priečinkov, pripnite záložky a prehliadajte podľa značiek – všetko tu."
+    },
+    "dayPanel": {
+      "title": "Váš deň popri vašej práci",
+      "body": "Panel dňa zobrazuje kalendár a prehľad vášho dňa vedľa toho, čo práve čítate."
+    },
+    "agentChat": {
+      "title": "Chatujte s AI agentom",
+      "body": "Prepnite na kartu Agent a opýtajte sa asistenta MemryNote na svoj trezor."
     },
     "sync": {
-      "body": "Zapnite šifrovanú synchronizáciu end-to-end, aby ste udržali každé zariadenie v súlade.",
-      "title": "Súkromná, šifrovaná synchronizácia"
+      "title": "Súkromná, šifrovaná synchronizácia",
+      "body": "Zapnite synchronizáciu šifrovanú end-to-end a všetky zariadenia budú mať rovnaký obsah."
     },
-    "welcome": {
-      "body": "Váš súkromný domov s prioritou offline. Poznámky sú šifrované end-to-end — vaše zariadenie nikdy neopustia nezašifrované.",
-      "title": "Vitajte v MemryNote"
+    "feedback": {
+      "title": "Povedzte nám svoj názor",
+      "body": "Spätnú väzbu môžete odtiaľto poslať priamo nášmu tímu."
+    },
+    "settings": {
+      "title": "Nastavenia a importy",
+      "body": "Importujte poznámky z viac ako 12 aplikácií – Obsidian, Notion, Apple Notes, Evernote a ďalších – a všetko ostatné dolaďte v Nastaveniach."
     },
     "tour": {
       "next": "Ďalej",
       "previous": "Späť",
       "progress": "{current} z {total}"
+    },
+    "starPrompt": {
+      "title": "Úvodné nastavenie je dokončené",
+      "body": "Dajte nám, prosím, hviezdičku v službe GitHub – pomôžete tak ďalším ľuďom nájsť aplikáciu MemryNote.",
+      "action": "Dať hviezdičku v službe GitHub"
     }
   },
-  "capture": {
-    "focusShortcut": "Zamerať pole zachytávania",
-    "detailHint": "detail",
-    "focusHint": "Q",
-    "submit": "Zachytiť"
-  },
-  "canvas": {
-    "card": {
-      "addCard": "Pridať kartu",
-      "addCreateNote": "Vytvoriť poznámku „{query}“",
-      "addCreateNoteEmpty": "Vytvoriť novú poznámku",
-      "addCreatedAt": "Vytvorené {date}",
-      "addEmpty": "Nič sa nenašlo",
-      "addGroupEvents": "Udalosti",
-      "addGroupNotes": "Poznámky",
-      "addGroupTasks": "Úlohy",
-      "addOnCanvas": "Na plátne",
-      "addPlaceholder": "Hľadať poznámky, úlohy a udalosti…",
-      "allDay": "Celý deň",
-      "createNoteFailed": "Poznámku sa nepodarilo vytvoriť",
-      "deleted": "Položka odstránená",
-      "loading": "Načítava sa…",
-      "open": "Otvoriť v karte",
-      "openToEdit": "Otvoriť v karte a upraviť",
-      "untitled": "Bez názvu",
-      "bulkGroup": "Pridať všetko z",
-      "bulkFromTag": "Štítku…",
-      "bulkFromFolder": "Priečinka…",
-      "bulkSearchTags": "Hľadať štítky…",
-      "bulkSearchFolders": "Hľadať priečinky…",
-      "bulkTagsHeading": "Štítky",
-      "bulkFoldersHeading": "Priečinky",
-      "bulkItemCount": "{count, plural, one {# položka} few {# položky} many {# položky} other {# položiek}}",
-      "bulkViewsHeading": "Pridať z {name}",
-      "bulkAllItems": "Všetky položky",
-      "bulkConfirmTitle": "{count, plural, one {Pridať # kartu z {name}?} few {Pridať # karty z {name}?} many {Pridať # karty z {name}?} other {Pridať # kariet z {name}?}}",
-      "bulkConfirmBody": "Veľké tabule sa spomaľujú a môžu prekročiť limit veľkosti synchronizácie.",
-      "bulkConfirmSkipped": "{count, plural, one {# položka už je na tomto plátne a bude preskočená.} few {# položky už sú na tomto plátne a budú preskočené.} many {# položky už je na tomto plátne a bude preskočené.} other {# položiek už je na tomto plátne a budú preskočené.}}",
-      "bulkConfirmAdd": "{count, plural, one {Pridať # kartu} few {Pridať # karty} many {Pridať # karty} other {Pridať # kariet}}",
-      "bulkBack": "Späť",
-      "bulkEmpty": "Žiadne poznámky, súbory ani úlohy na pridanie",
-      "bulkLoadFailed": "Položky sa nepodarilo načítať",
-      "bulkAdded": "{count, plural, one {Pridaná # karta} few {Pridané # karty} many {Pridané # karty} other {Pridaných # kariet}}",
-      "bulkAddedSkipped": "{count, plural, one {Pridaná # karta} few {Pridané # karty} many {Pridané # karty} other {Pridaných # kariet}} · {skipped} už na plátne",
-      "bulkAllOnCanvas": "{count, plural, one {Už je na tomto plátne} few {Všetky # už sú na tomto plátne} many {Všetky # už sú na tomto plátne} other {Všetkých # už je na tomto plátne}}"
-    },
-    "corruptScene": "Toto plátno sa nepodarilo prečítať. Úpravy sú vypnuté, aby ste neprišli o dáta.",
-    "createFailed": "Plátno sa nepodarilo vytvoriť",
-    "disabledBody": "Táto karta patrí funkcii, ktorá nie je na tomto zariadení zapnutá.",
-    "disabledTitle": "Plátno nie je zapnuté",
-    "empty": "Zatiaľ žiadne plátna",
-    "libraryStoreFailed": "Vašu knižnicu tvarov sa nepodarilo uložiť. Posledné zmeny v nej sa môžu stratiť.",
-    "loadFailed": "Plátna sa nepodarilo načítať",
-    "loading": "Načítavajú sa plátna…",
-    "newCanvas": "Nové plátno",
-    "notFound": "Toto plátno sa nenašlo",
-    "openFailed": "Plátno sa nepodarilo otvoriť",
-    "savedToVault": "Všetky zmeny sa automaticky ukladajú do vášho trezora",
-    "sectionLabel": "Plátna",
-    "tooLargeToSync": "Toto plátno je príliš veľké na synchronizáciu. Je uložené na tomto zariadení, ale kým sa nezmenší, nedostane sa do vašich ostatných zariadení.",
-    "untitled": "Plátno bez názvu"
-  },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Kliknúť na riadok",
-      "reset": "Obnoviť",
-      "shortcutsTab": "Karta Skratky"
-    },
-    "description": "Rýchle cesty na pohyb v memrynote, zachytávanie myšlienok a spracovanie práce.",
+    "description": "Skratky na rýchly pohyb v aplikácii memrynote, zaznamenávanie myšlienok a spracovanie práce.",
+    "or": "alebo",
+    "then": "potom",
     "groups": {
       "general": {
-        "description": "Navigácia a pomoc v celej aplikácii.",
-        "title": "Všeobecné"
-      },
-      "inbox": {
-        "description": "Rýchlo spracujte zachytené položky.",
-        "title": "Schránka"
-      },
-      "journal": {
-        "description": "Prechádzajte zobrazenia denníka a zamerajte sa na písanie.",
-        "title": "Denník"
-      },
-      "notes": {
-        "description": "Píšte, formátujte a hľadajte v poznámkach.",
-        "title": "Poznámky / Editor"
-      },
-      "settings": {
-        "description": "Otvorte nastavenia a prispôsobte si skratky.",
-        "title": "Nastavenia"
+        "title": "Všeobecné",
+        "description": "Navigácia a pomoc v celej aplikácii."
       },
       "tabs": {
-        "description": "Presúvajte sa medzi kartami a panelmi.",
-        "title": "Karty a rozdelenia"
+        "title": "Karty a rozdelenia",
+        "description": "Presúvajte sa medzi kartami a tablami."
+      },
+      "inbox": {
+        "title": "Prijaté",
+        "description": "Rýchlo spracujte zaznamenané položky."
+      },
+      "journal": {
+        "title": "Denník",
+        "description": "Prechádzajte zobrazenia denníka a presuňte sa do oblasti písania."
+      },
+      "notes": {
+        "title": "Poznámky / Editor",
+        "description": "Píšte, formátujte a hľadajte v poznámkach."
       },
       "tasks": {
-        "description": "Filtrujte, vyberajte a dokončujte úlohy.",
-        "title": "Úlohy"
+        "title": "Úlohy",
+        "description": "Filtrujte, vyberajte a dokončujte úlohy."
+      },
+      "settings": {
+        "title": "Nastavenia",
+        "description": "Otvorte nastavenia a prispôsobte si skratky."
       }
     },
     "items": {
       "general": {
-        "createNote": "Vytvoriť poznámku",
-        "keyboardShortcuts": "Otvoriť klávesové skratky",
-        "openSettings": "Otvoriť nastavenia",
         "quickSearch": "Otvoriť rýchle vyhľadávanie",
-        "sidebarSection": "Prejsť na sekciu bočného panela",
-        "toggleSidebar": "Prepnúť bočný panel",
-        "undoTaskAction": "Vrátiť poslednú akciu úlohy"
+        "createNote": "Vytvoriť poznámku",
+        "openSettings": "Otvoriť nastavenia",
+        "switchVault": "Prepnúť trezor",
+        "adjacentVault": "Predchádzajúci alebo ďalší trezor",
+        "keyboardShortcuts": "Otvoriť klávesové skratky",
+        "undoTaskAction": "Vrátiť späť poslednú akciu s úlohou",
+        "toggleSidebar": "Zobraziť/skryť bočný panel",
+        "sidebarSection": "Prejsť na sekciu bočného panela"
+      },
+      "tabs": {
+        "newTabMenu": "Otvoriť ponuku novej karty",
+        "closeTab": "Zavrieť kartu",
+        "closeAllInPane": "Zavrieť všetky karty v table",
+        "reopenClosedTab": "Znova otvoriť zavretú kartu",
+        "nextTab": "Ďalšia karta",
+        "previousTab": "Predchádzajúca karta",
+        "pinTab": "Pripnúť alebo odopnúť kartu",
+        "duplicateTab": "Duplikovať kartu",
+        "splitRight": "Rozdeliť doprava",
+        "splitDown": "Rozdeliť nadol",
+        "closeSplitPane": "Zavrieť rozdelenú tablu",
+        "focusPane": "Prejsť na inú tablu",
+        "moveTabToPane": "Presunúť kartu do tably",
+        "maximizePane": "Maximalizovať aktuálnu tablu"
       },
       "inbox": {
-        "archiveItem": "Archivovať vybranú položku",
-        "chooseQuickFileResult": "Vybrať výsledok rýchleho zaradenia",
-        "clearSelection": "Zrušiť výber alebo zavrieť rýchle zaradenie",
-        "confirmFiling": "Potvrdiť panel zaraďovania",
+        "nextItem": "Ďalšia položka",
+        "previousItem": "Predchádzajúca položka",
         "firstOrLastItem": "Prvá alebo posledná položka",
         "jumpByPage": "Skočiť o stranu",
-        "nextItem": "Ďalšia položka",
-        "openOriginal": "Otvoriť pôvodný odkaz",
-        "openQuickFile": "Otvoriť rýchle zaradenie",
-        "previousItem": "Predchádzajúca položka",
-        "refresh": "Obnoviť schránku",
-        "selectAllVisible": "Vybrať všetky viditeľné položky",
+        "togglePreview": "Zobraziť/skryť panel náhľadu",
         "selectItem": "Vybrať položku",
-        "togglePreview": "Prepnúť panel náhľadu"
+        "selectAllVisible": "Vybrať všetky viditeľné položky",
+        "clearSelection": "Zrušiť výber alebo zavrieť rýchle zaradenie",
+        "openQuickFile": "Otvoriť rýchle zaradenie",
+        "chooseQuickFileResult": "Vybrať výsledok rýchleho zaradenia",
+        "archiveItem": "Archivovať vybranú položku",
+        "openOriginal": "Otvoriť pôvodný odkaz",
+        "refresh": "Obnoviť Prijaté",
+        "confirmFiling": "Potvrdiť zaradenie"
       },
       "journal": {
-        "bold": "Tučné písmo pre vybraný text",
+        "returnFromOverview": "Vrátiť sa z mesačného alebo ročného zobrazenia",
         "find": "Hľadať v denníku",
+        "bold": "Tučné písmo pre vybraný text",
         "italic": "Kurzíva pre vybraný text",
-        "returnFromOverview": "Návrat z mesačného alebo ročného zobrazenia",
         "underline": "Podčiarknutie pre vybraný text"
       },
       "notes": {
-        "bold": "Tučné",
-        "closeOverlays": "Zavrieť prekrytia editora",
-        "commandMenu": "Otvoriť príkazovú ponuku editora",
         "createNote": "Vytvoriť poznámku",
         "find": "Hľadať v poznámke",
+        "bold": "Tučné",
         "italic": "Kurzíva",
-        "underline": "Podčiarknuté"
-      },
-      "settings": {
-        "cancelRecording": "Zrušiť nahrávanie skratky",
-        "customizeShortcuts": "Prispôsobiť klávesové skratky",
-        "openSettings": "Otvoriť nastavenia",
-        "recordShortcut": "Nahrať novú skratku",
-        "resetShortcut": "Obnoviť predvolenú skratku"
-      },
-      "tabs": {
-        "closeAllInPane": "Zavrieť všetky karty v paneli",
-        "closeSplitPane": "Zavrieť rozdelený panel",
-        "closeTab": "Zavrieť kartu",
-        "duplicateTab": "Duplikovať kartu",
-        "focusPane": "Zamerať iný panel",
-        "maximizePane": "Maximalizovať aktuálny panel",
-        "moveTabToPane": "Presunúť kartu do panela",
-        "newTabMenu": "Otvoriť ponuku novej karty",
-        "nextTab": "Ďalšia karta",
-        "pinTab": "Pripnúť alebo odopnúť kartu",
-        "previousTab": "Predchádzajúca karta",
-        "reopenClosedTab": "Znova otvoriť zatvorenú kartu",
-        "splitDown": "Rozdeliť nadol",
-        "splitRight": "Rozdeliť napravo"
+        "underline": "Podčiarknuté",
+        "commandMenu": "Otvoriť príkazovú ponuku editora",
+        "closeOverlays": "Zavrieť prekrytia editora"
       },
       "tasks": {
         "clearFilters": "Vymazať viditeľné filtre",
+        "selectAllVisible": "Vybrať všetky viditeľné úlohy",
         "clearSelection": "Zrušiť výber úloh",
         "completeSelected": "Dokončiť vybrané úlohy",
-        "configureRepeat": "Nastaviť opakovanie zameranej úlohy",
         "deleteSelected": "Odstrániť vybrané úlohy",
-        "selectAllVisible": "Vybrať všetky viditeľné úlohy",
+        "configureRepeat": "Nastaviť opakovanie aktívnej úlohy",
         "skipOccurrence": "Preskočiť výskyt opakovania",
         "stopRepeating": "Zastaviť opakovanie úlohy"
+      },
+      "settings": {
+        "openSettings": "Otvoriť nastavenia",
+        "customizeShortcuts": "Prispôsobiť klávesové skratky",
+        "recordShortcut": "Nahrať novú skratku",
+        "cancelRecording": "Zrušiť nahrávanie skratky",
+        "resetShortcut": "Obnoviť predvolenú skratku"
       }
     },
-    "or": "alebo",
-    "then": "potom"
+    "combos": {
+      "shortcutsTab": "Karta Skratky",
+      "clickRow": "Kliknúť na riadok",
+      "reset": "Obnoviť"
+    }
+  },
+  "update": {
+    "available": "K dispozícii je aktualizácia",
+    "downloading": "Sťahuje sa {version}",
+    "ready": "Aktualizácia je pripravená",
+    "failed": "Aktualizácia zlyhala",
+    "downloadAction": "Stiahnuť",
+    "restartAction": "Reštartovať",
+    "detailsAction": "Podrobnosti",
+    "popover": {
+      "readyTitle": "Verzia MemryNote {version} je pripravená",
+      "availableTitle": "Verzia MemryNote {version} je k dispozícii",
+      "readySubtitle": "Používate verziu {current}",
+      "availableSubtitle": "Používate verziu {current} · zatiaľ sa nič nestiahlo",
+      "allChanges": "Všetky zmeny",
+      "restartNow": "Reštartovať teraz",
+      "onNextQuit": "Pri ďalšom ukončení",
+      "download": "Stiahnuť",
+      "notNow": "Teraz nie",
+      "moreOptions": "Ďalšie možnosti aktualizácie",
+      "skipVersion": "Preskočiť {version}",
+      "turnOffAuto": "Vypnúť automatické aktualizácie",
+      "copyVersionInfo": "Kopírovať informácie o verzii",
+      "openSettings": "Otvoriť nastavenia"
+    },
+    "installing": {
+      "title": "Inštaluje sa {version}",
+      "titleUnknownVersion": "Inštaluje sa aktualizácia",
+      "subtitle": "Aplikácia MemryNote sa o chvíľu znova otvorí. Všetko, čo ste napísali, je už uložené na disku."
+    },
+    "installFailed": {
+      "title": "Aplikácii MemryNote sa nepodarilo dokončiť inštaláciu verzie {version}",
+      "titleUnknownVersion": "Aplikácii MemryNote sa nepodarilo dokončiť inštaláciu aktualizácie",
+      "body": "Vášho trezora sa to nijako nedotklo – aktualizácia sa týka aplikácie, nie vašich poznámok. Stále používate verziu {current} a všetko funguje ako predtým.",
+      "errorLabel": "Čo sa pokazilo",
+      "downloadManually": "Stiahnuť verziu {version} manuálne",
+      "downloadManuallyUnknownVersion": "Stiahnuť MemryNote manuálne",
+      "tryAgain": "Skúsiť znova",
+      "copyDetails": "Kopírovať podrobnosti"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Trezory",
+    "position": "{name}, trezor {index} z {count}",
+    "openList": "{position}. Otvoriť zoznam trezorov",
+    "switchTo": "Prepnúť na {name}",
+    "switchingTo": "Prepína sa na {name}",
+    "changeIcon": "Zmeniť ikonu…",
+    "resetIcon": "Obnoviť ikonu",
+    "iconButton": "Zmeniť ikonu trezora {name}",
+    "iconFailed": "Nepodarilo sa zmeniť ikonu trezora"
+  },
+  "sidebarHelp": {
+    "label": "Pomocník a spätná väzba",
+    "reportBug": "Nahlásiť chybu",
+    "requestFeature": "Navrhnúť funkciu",
+    "starOnGithub": "Dať hviezdičku v službe GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "Novinky"
+  },
+  "sidebarStar": {
+    "title": "MemryNote má otvorený zdrojový kód",
+    "body": "Vyvíja sa otvorene. Vďaka hviezdičke ho nájdu aj ďalší.",
+    "star": "Dať hviezdičku",
+    "later": "Teraz nie",
+    "thanks": "Ďakujeme. Veľmi si to vážime."
+  },
+  "sidebar": {
+    "railLabel": "Sekcie",
+    "search": "Hľadať alebo prejsť na…",
+    "vaultMenu": "{name}. Otvoriť zoznam trezorov"
   }
 }

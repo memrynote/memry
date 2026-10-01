@@ -3,19 +3,19 @@
     "quit": "ออก",
     "preferences": "การตั้งค่า…",
     "checkForUpdates": "ตรวจสอบการอัปเดต…",
-    "exit": "ออก",
-    "hide": "ซ่อน MemryNote",
-    "hideOthers": "ซ่อนรายการอื่น",
     "services": "บริการ",
-    "unhide": "แสดงทั้งหมด"
+    "hide": "ซ่อน MemryNote",
+    "hideOthers": "ซ่อนแอปอื่น",
+    "unhide": "แสดงทั้งหมด",
+    "exit": "ออก"
   },
   "file": {
     "label": "ไฟล์",
     "newNote": "โน้ตใหม่",
-    "close": "ปิดหน้าต่าง",
-    "closeTab": "ปิดแท็บ",
+    "openQuickly": "เปิดด่วน…",
     "exportPdf": "ส่งออกเป็น PDF…",
-    "openQuickly": "เปิดด่วน…"
+    "closeTab": "ปิดแท็บ",
+    "close": "ปิดหน้าต่าง"
   },
   "navigation": {
     "back": "ย้อนกลับ",
@@ -31,63 +31,68 @@
     "selectAll": "เลือกทั้งหมด",
     "find": "ค้นหา",
     "speech": "การพูด",
-    "delete": "ลบ",
     "pasteAndMatchStyle": "วางและจับคู่ลักษณะ",
+    "delete": "ลบ",
     "startSpeaking": "เริ่มพูด",
-    "stopSpeaking": "หยุดพูด"
+    "stopSpeaking": "หยุดพูด",
+    "addToDictionary": "เพิ่มลงในพจนานุกรม",
+    "noSuggestions": "ไม่มีคำแนะนำ"
   },
-  "view": {
-    "label": "มุมมอง",
-    "reload": "โหลดใหม่",
-    "toggleDevTools": "สลับเครื่องมือสำหรับนักพัฒนา",
-    "toggleFullscreen": "สลับเต็มหน้าจอ",
-    "theme": "ธีม",
-    "themeDark": "มืด",
-    "themeLight": "สว่าง",
-    "themeSystem": "ระบบ",
-    "themeWhite": "กระดาษ",
-    "toggleDayPanel": "สลับแผงวัน",
-    "toggleSidebar": "สลับแถบด้านข้าง",
-    "actualSize": "ขนาดจริง",
-    "zoomIn": "ซูมเข้า",
-    "zoomOut": "ซูมออก"
+  "insert": {
+    "label": "แทรก",
+    "codeBlock": "บล็อกโค้ด",
+    "table": "ตาราง",
+    "bulletList": "รายการหัวข้อย่อย",
+    "numberedList": "รายการลำดับเลข",
+    "taskList": "รายการงาน",
+    "attachment": "แทรกไฟล์แนบ…"
   },
   "format": {
-    "body": "เนื้อความ",
-    "bold": "ตัวหนา",
-    "code": "โค้ด",
+    "label": "จัดรูปแบบ",
     "heading1": "หัวข้อ 1",
     "heading2": "หัวข้อ 2",
     "heading3": "หัวข้อ 3",
     "heading4": "หัวข้อ 4",
     "heading5": "หัวข้อ 5",
     "heading6": "หัวข้อ 6",
-    "highlight": "ไฮไลต์",
+    "body": "เนื้อความ",
+    "bold": "ตัวหนา",
     "italic": "ตัวเอียง",
-    "label": "จัดรูปแบบ",
+    "code": "โค้ด",
+    "highlight": "ไฮไลต์",
     "strikethrough": "ขีดฆ่า"
   },
-  "help": {
-    "about": "เกี่ยวกับ MemryNote",
-    "documentation": "เอกสาร",
-    "label": "ความช่วยเหลือ",
-    "shortcuts": "แป้นพิมพ์ลัด",
-    "aboutVersion": "เวอร์ชัน {version}"
-  },
-  "insert": {
-    "attachment": "แทรกไฟล์แนบ…",
-    "bulletList": "รายการหัวข้อย่อย",
-    "codeBlock": "บล็อกโค้ด",
-    "label": "แทรก",
-    "numberedList": "รายการลำดับเลข",
-    "table": "ตาราง",
-    "taskList": "รายการงาน"
+  "view": {
+    "label": "มุมมอง",
+    "reload": "โหลดใหม่",
+    "toggleDevTools": "แสดง/ซ่อนเครื่องมือสำหรับนักพัฒนา",
+    "toggleFullscreen": "เปิด/ปิดโหมดเต็มหน้าจอ",
+    "toggleSidebar": "แสดง/ซ่อนแถบด้านข้าง",
+    "toggleDayPanel": "แสดง/ซ่อนแผงวัน",
+    "theme": "ธีม",
+    "themeLight": "สว่าง",
+    "themeDark": "มืด",
+    "themeWhite": "กระดาษ",
+    "themeSystem": "ระบบ",
+    "actualSize": "ขนาดจริง",
+    "zoomIn": "ซูมเข้า",
+    "zoomOut": "ซูมออก"
   },
   "window": {
     "label": "หน้าต่าง",
-    "close": "ปิด",
+    "minimize": "ย่อ",
+    "zoom": "ย่อ/ขยาย",
     "front": "นำทั้งหมดมาไว้ด้านหน้า",
-    "minimize": "ย่อขนาด",
-    "zoom": "ซูม"
+    "close": "ปิด"
+  },
+  "help": {
+    "label": "วิธีใช้",
+    "documentation": "เอกสาร",
+    "shortcuts": "แป้นพิมพ์ลัด",
+    "about": "เกี่ยวกับ MemryNote",
+    "aboutVersion": "เวอร์ชัน {version}"
+  },
+  "tray": {
+    "show": "แสดง MemryNote"
   }
 }

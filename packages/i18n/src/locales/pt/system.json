@@ -1,8 +1,8 @@
 {
   "dialog": {
     "vault": {
-      "title": "Selecione a pasta do Vault",
-      "button": "Selecione o cofre"
+      "title": "Selecionar pasta do cofre",
+      "button": "Selecionar cofre"
     },
     "exportPdf": {
       "title": "Exportar como PDF",
@@ -13,59 +13,60 @@
       "filterName": "Documento HTML"
     },
     "import": {
-      "filterSupported": "Arquivos Suportados",
+      "filterSupported": "Arquivos compatíveis",
       "filterAll": "Todos os arquivos"
     },
     "exportCancelled": "Exportação cancelada",
     "update": {
       "availableTitle": "Atualização disponível",
-      "availableMessage": "memrynote {version} está disponível.",
+      "availableMessage": "O memrynote {version} está disponível.",
       "availableDetailFallback": "Baixar a atualização agora?",
       "buttonDownload": "Baixar",
       "buttonLater": "Mais tarde",
       "readyTitle": "Atualização pronta",
-      "readyMessage": "memrynote {version} foi baixado.",
-      "readyDetailFallback": "Reinicie memrynote para concluir a instalação da atualização.",
-      "buttonRestartNow": "Reinicie agora",
+      "readyMessage": "O memrynote {version} foi baixado.",
+      "readyDetailFallback": "Reinicie o memrynote para concluir a instalação da atualização.",
+      "buttonRestartNow": "Reiniciar agora",
       "releaseNotesLabel": "Notas de lançamento:"
     },
     "pair": {
+      "title": "Parear extensão do navegador",
+      "message": "Permitir que a extensão de navegador do Memry envie capturas para este app?",
       "buttonAllow": "Permitir",
       "buttonDeny": "Recusar",
-      "buttonPair": "Emparelhar",
-      "message": "Permitir que a extensão de navegador Memry envie capturas para esta aplicação?",
-      "title": "Emparelhar extensão de navegador"
+      "buttonPair": "Parear"
     }
   },
   "notification": {
+    "inboxReview": {
+      "title": "Hora de revisar sua caixa de entrada",
+      "body": "Você tem {count, plural, one {# item} other {# itens}} para revisar.",
+      "testBody": "Isto é um teste — seus lembretes diários de revisão vão ficar assim."
+    },
     "reminder": {
       "note": "Lembrete de nota",
       "journal": "Lembrete de diário",
       "highlight": "Lembrete de destaque",
-      "fallback": "Lembrete devido",
-      "default": "Lembrete",
-      "task": "Lembrete de tarefa"
-    },
-    "inboxReview": {
-      "body": "Tem {count, plural, one {# item} many {# itens} other {# itens}} para rever.",
-      "testBody": "Isto é um teste — os seus lembretes de revisão diária serão assim.",
-      "title": "Hora de rever a caixa de entrada"
+      "task": "Lembrete de tarefa",
+      "fallback": "Hora do lembrete",
+      "default": "Lembrete"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "A hora do lembrete deve estar no futuro",
     "definitionNotFound": "Definição não encontrada",
     "noteNotFound": "Nota não encontrada",
-    "updateFailed": "Falha na atualização"
+    "updateFailed": "A atualização falhou",
+    "updateReadOnlyVolume": "Não é possível instalar atualizações enquanto o memrynote é executado deste local. Mova o memrynote para a pasta Aplicativos e abra-o novamente."
   },
   "startup": {
-    "failed": {
-      "body": "Isto pode acontecer quando o disco tem muito pouco espaço livre ou com controladores gráficos antigos. Tente libertar algum espaço em disco e volte a abrir o MemryNote. Se continuar a acontecer, reinstalar costuma resolver.",
-      "title": "O MemryNote não conseguiu concluir o arranque"
-    },
     "installingUpdate": {
-      "subtitle": "O MemryNote irá reabrir automaticamente.",
-      "title": "A instalar atualização…"
+      "title": "Instalando atualização…",
+      "subtitle": "O MemryNote irá reabrir automaticamente."
+    },
+    "failed": {
+      "title": "O MemryNote não conseguiu concluir a inicialização",
+      "body": "Isso pode acontecer quando há pouquíssimo espaço livre em disco ou quando os drivers gráficos são antigos. Tente liberar espaço em disco e abra o MemryNote novamente. Se continuar acontecendo, reinstalar costuma resolver."
     }
   }
 }

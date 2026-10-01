@@ -3,334 +3,344 @@
     "tabs": {
       "inbox": "Inbox",
       "archived": "Naka-archive",
-      "insights": "Mga Insight",
+      "insights": "Mga insight",
       "ariaLabel": "Pagpili ng view ng inbox"
     },
-    "triageButton": "Triage",
-    "processInboxTitle": "Iproseso ang inbox (Cmd+P)",
-    "itemCaptured": "Nakuha ang item",
+    "itemCaptured": "Naitala sa inbox",
     "searchArchivedTitle": "Maghanap ng mga naka-archive na item",
-    "searchPlaceholder": "Hanapin...",
+    "searchPlaceholder": "Maghanap…",
     "archivedItemsAria": "Mga naka-archive na item",
     "snoozed": {
       "show": "Ipakita ang mga naka-snooze na item",
       "showWithCount": "Ipakita ang mga naka-snooze na item ({count})",
       "hide": "Itago ang mga naka-snooze na item"
     },
-    "filter": {
-      "button": "Salain",
-      "byType": "I-filter ayon sa uri",
-      "active": "{count, plural, one {Pag-filter ayon sa uri ng #} other {Pag-filter ayon sa mga uri ng #}}",
-      "clearAll": "I-clear lahat"
-    },
-    "jobs": {
-      "running": "{count, plural, one {# background job na tumatakbo} other {# mga trabaho sa background na tumatakbo}}",
-      "failed": "Nabigo ang {count}"
-    },
     "density": {
       "toComfortable": "Komportableng view",
       "toCompact": "Compact na view"
+    },
+    "filter": {
+      "button": "I-filter",
+      "byType": "I-filter ayon sa uri",
+      "active": "{count, plural, one {Naka-filter ayon sa # uri} other {Naka-filter ayon sa # uri}}",
+      "clearAll": "I-clear lahat"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# background job ang tumatakbo} other {# background job ang tumatakbo}}",
+      "failed": "Nabigo ang {count}"
     }
   },
   "type": {
     "link": "Link",
     "links": "Mga link",
-    "note": "Tandaan",
-    "notes": "Mga Tala",
-    "image": "Imahe",
+    "note": "Tala",
+    "notes": "Mga tala",
+    "image": "Larawan",
     "images": "Mga larawan",
     "voice": "Boses",
     "video": "Video",
     "clip": "Clip",
     "clips": "Mga clip",
     "pdf": "PDF",
-    "pdfs": "mga PDF",
-    "social": "Sosyal",
+    "pdfs": "Mga PDF",
+    "social": "Social media",
     "reminder": "Paalala",
     "reminders": "Mga paalala"
   },
   "empty": {
     "successAria": "Tagumpay, walang laman ang inbox",
-    "title": "Walang Laman ang Inbox",
-    "body": "Naproseso na ang lahat. Kumuha ng bago gamit ang input sa itaas, o mag-paste ng link upang makapagsimula.",
-    "filedThisWeek": "{count, plural, one {Na-file ang # ngayong linggo} other {Na-file ang # ngayong linggo}}",
-    "dayStreak": "{count, plural, one {# na sunod-sunod na araw} other {# na sunod-sunod na araw}}",
-    "tipPrefix": "Tip: gamitin",
-    "tipSuffix": "upang mabilis na makuha mula sa clipboard",
+    "title": "Walang laman ang inbox",
+    "body": "Naproseso na ang lahat. Magtala ng bago gamit ang input sa itaas, o mag-paste ng link para makapagsimula.",
+    "filedThisWeek": "{count, plural, one {# ang nailagay ngayong linggo} other {# ang nailagay ngayong linggo}}",
+    "dayStreak": "{count, plural, one {# araw na sunod-sunod} other {# araw na sunod-sunod}}",
+    "tipPrefix": "Tip: pindutin ang",
+    "tipSuffix": "para mabilisang maitala ang laman ng clipboard",
     "archivedNone": "Walang mga naka-archive na item",
     "archivedNoMatches": "Walang tumutugmang mga naka-archive na item",
     "noItemsYet": "Wala pang mga item",
-    "noItemsFiled": "Wala pang na-file na item",
+    "noItemsFiled": "Wala pang nailagay na item",
     "noFolders": "Walang nakitang mga folder",
     "noNotes": "Walang nakitang tala",
-    "allMatchesLinked": "Naka-link na ang lahat ng laban"
+    "allMatchesLinked": "Naka-link na ang lahat ng tugma"
   },
   "list": {
     "ariaLabel": "Mga item sa inbox",
     "section": {
       "today": "Ngayong araw",
       "yesterday": "Kahapon",
-      "older": "Mas matanda"
+      "older": "Mas luma"
     },
     "selectItem": "Piliin ang {title}",
     "itemAria": "{type}: {title}",
     "untitled": "Walang pamagat",
-    "untitledItem": "Walang Pamagat na Item",
-    "transcribing": "Nagsasalin...",
+    "untitledItem": "Item na walang pamagat",
+    "transcribing": "Tina-transcribe…",
     "transcriptionFailed": "Nabigo ang transkripsyon",
-    "retryTranscription": "Subukan muli",
-    "pageCount": "{count, plural, one {# page} other {# na mga pahina}}",
-    "snoozedUntilShort": "naka-snooze hanggang {date}"
+    "retryTranscription": "Subukan ulit",
+    "pageCount": "{count, plural, one {# pahina} other {# pahina}}",
+    "snoozedUntilShort": "naka-snooze hanggang {date}",
+    "rename": "Palitan ang pangalan",
+    "renameLabel": "Palitan ang pangalan ng item"
   },
   "loading": {
-    "inbox": "Nilo-load ang inbox...",
-    "failed": "Nabigong i-load ang inbox",
-    "tryAgain": "Subukan muli",
-    "capturingImage": "Kinukuha ang larawan...",
-    "dropImageTitle": "I-drop ang larawan upang makuha",
+    "inbox": "Nilo-load ang inbox…",
+    "failed": "Hindi ma-load ang inbox",
+    "tryAgain": "Subukan ulit",
+    "capturingImage": "Sine-save ang larawan…",
+    "dropImageTitle": "I-drop ang larawan para maitala",
     "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
     "unsupportedImageType": "Hindi sinusuportahang uri ng larawan: {type}",
     "imageTooLarge": "Masyadong malaki ang larawan (max 50MB)"
   },
   "toast": {
-    "failedArchiveItem": "Nabigong i-archive ang item",
-    "failedArchiveItems": "Nabigong i-archive ang mga item",
-    "failedFile": "Nabigong mag-file",
-    "failedFileItem": "Nabigong mag-file ng item",
-    "failedFileItems": "Nabigong mag-file ng mga item",
-    "failedSnooze": "Nabigong mag-snooze",
-    "failedSnoozeItem": "Nabigong i-snooze ang item",
-    "failedApplyTags": "Nabigong ilapat ang mga tag",
-    "failedCaptureImage": "Nabigong kumuha ng larawan",
+    "failedArchiveItem": "Hindi ma-archive ang item",
+    "failedArchiveItems": "Hindi ma-archive ang mga item",
+    "failedFile": "Hindi mailagay",
+    "failedFileItem": "Hindi mailagay ang item",
+    "failedFileItems": "Hindi mailagay ang mga item",
+    "failedSnooze": "Hindi ma-snooze",
+    "failedSnoozeItem": "Hindi ma-snooze ang item",
+    "failedApplyTags": "Hindi mailapat ang mga tag",
+    "failedCaptureImage": "Hindi maitala ang larawan",
     "linkedToNote": "Naka-link sa tala",
-    "linkedToNotes": "Naka-link sa {count} na tala",
-    "filedTo": "Na-file sa {folder}",
-    "filedItemsTo": "Nag-file ng {count} item sa {folder}",
-    "filedPartial": "Nag-file ng {processed} ng {total} item",
-    "appliedTags": "{tagCount, plural, one {Inilapat ang # tag} other {Inilapat ang mga tag ng #}} hanggang {itemCount, plural, one {# item} other {# item}}",
-    "archivedItems": "{count, plural, one {Naka-archive na # item} other {Naka-archive na # item}}",
-    "snoozedUntil": "Naka-snooze hanggang {time}",
-    "snoozedItemsUntil": "{count, plural, one {Na-snooze ang # item hanggang {time}} other {Na-snooze ang # item hanggang {time}}}"
-  },
-  "triage": {
-    "modeTitle": "Triage Mode",
-    "exitHint": "Esc para lumabas",
-    "exitAria": "Lumabas sa triage mode",
-    "position": "{current} ng {total}",
-    "action": {
-      "discard": "Itapon",
-      "archive": "Archive",
-      "open": "Bukas",
-      "toTask": "Sa Gawain",
-      "toNote": "Upang Tandaan",
-      "file": "file",
-      "snooze": "I-snooze",
-      "cancel": "Kanselahin"
-    },
-    "snoozeUntil": "I-snooze hanggang...",
-    "complete": {
-      "title": "Inbox Zero",
-      "processed": "{count, plural, one {Naproseso ang # item} other {# item na naproseso}}",
-      "streak": "guhit",
-      "streakCount": "{count} streak",
-      "dayProcessingStreak": "{count, plural, one {# araw na sunod-sunod na pagproseso} other {# araw na sunod-sunod na pagproseso}}",
-      "back": "Bumalik sa Inbox",
-      "motivation0": "Ang iyong hinaharap na sarili salamat sa iyo.",
-      "motivation1": "Lahat sa lugar nito.",
-      "motivation2": "Malinaw ang inbox, malinaw ang isip.",
-      "motivation3": "Desisyon ng utang: binayaran nang buo.",
-      "motivation4": "Ang sarap sa pakiramdam, di ba?"
-    }
+    "linkedToNotes": "Naka-link sa {count} tala",
+    "embedFellBackToLink": "Masyadong malaki ang larawan para i-embed — inilagay ito bilang naka-link na file",
+    "filedTo": "Nailagay sa {folder}",
+    "filedItemsTo": "Nailagay ang {count} item sa {folder}",
+    "filedPartial": "Nailagay ang {processed} sa {total} item",
+    "appliedTags": "{tagCount, plural, one {Inilapat ang # tag} other {Inilapat ang # tag}} sa {itemCount, plural, one {# item} other {# item}}",
+    "archivedItems": "{count, plural, one {Na-archive ang # item} other {Na-archive ang # item}}",
+    "snoozedUntil": "Na-snooze hanggang {time}",
+    "snoozedItemsUntil": "{count, plural, one {Na-snooze ang # item hanggang {time}} other {Na-snooze ang # item hanggang {time}}}",
+    "restored": "Naibalik ang “{title}”"
   },
   "bulk": {
     "selected": "{count} ang napili",
     "deselectAll": "Alisin sa pagkakapili ang lahat",
-    "ariaLabel": "Maramihang pagkilos para sa {count} napiling mga item",
-    "file": "file",
-    "tag": "Tag",
+    "ariaLabel": "Maramihang aksyon para sa {count} napiling item",
+    "file": "Ilagay",
+    "tag": "I-tag",
     "snooze": "I-snooze",
     "archive": "I-archive",
     "add": "Idagdag",
     "dismissSuggestion": "I-dismiss ang mungkahi",
     "hint": {
-      "file": "i-file",
+      "file": "ilagay",
       "tag": "i-tag",
       "snooze": "i-snooze",
       "archive": "i-archive",
       "deselect": "alisin sa pagkakapili"
     },
     "archiveDialog": {
-      "title": "{count, plural, one {I-archive ang # item?} other {I-archive ang # na mga item?}}",
-      "description": "I-archive ang mga item na ito. Maaari mong tingnan ang mga naka-archive na item sa ibang pagkakataon.",
-      "confirm": "{count, plural, one {I-archive ang # item} other {I-archive ang # na mga item}}"
+      "title": "{count, plural, one {I-archive ang # item?} other {I-archive ang # item?}}",
+      "description": "Ia-archive ang mga item na ito. Makikita mo pa rin ang mga naka-archive na item mamaya.",
+      "confirm": "{count, plural, one {I-archive ang # item} other {I-archive ang # item}}"
     },
     "filePanel": {
-      "title": "{count, plural, one {File # Item} other {I-file ang # Items}}",
-      "itemsToFile": "Mga bagay na isasampa",
-      "multipleNoteLinksUnavailable": "Tandaan: Ang mga link sa iba pang mga tala ay hindi maaaring idagdag kapag nag-file ng maramihang mga item.",
-      "filing": "Naghahain...",
-      "submit": "{count, plural, one {I-file ang # item} other {Mag-file ng # item}}",
-      "macHint": "⌘⏎ para mag-file · Esc para isara",
-      "ctrlHint": "Ctrl+Enter para mag-file · Esc para isara"
+      "title": "{count, plural, one {Ilagay ang # item} other {Ilagay ang # item}}",
+      "itemsToFile": "Mga item na ilalagay",
+      "multipleNoteLinksUnavailable": "Tandaan: Hindi maidadagdag ang mga link sa ibang tala kapag maraming item ang inilalagay.",
+      "filing": "Inilalagay…",
+      "submit": "{count, plural, one {Ilagay ang # item} other {Ilagay ang # item}}",
+      "macHint": "⌘⏎ para ilagay · Esc para isara",
+      "ctrlHint": "Ctrl+Enter para ilagay · Esc para isara"
     },
     "tagPopover": {
-      "title": "{count, plural, one {I-tag ang # Item} other {I-tag ang # na Mga Item}}",
-      "placeholder": "Mag-type para maghanap ng mga tag...",
-      "applying": "Nag-aaplay...",
-      "apply": "{count, plural, one {Mag-apply sa # item} other {Mag-apply sa # item}}"
+      "title": "{count, plural, one {I-tag ang # item} other {I-tag ang # item}}",
+      "placeholder": "Mag-type para maghanap ng mga tag…",
+      "applying": "Inilalapat…",
+      "apply": "{count, plural, one {Ilapat sa # item} other {Ilapat sa # item}}"
     }
   },
   "quickActions": {
-    "groupAria": "Mabilis na pagkilos",
+    "groupAria": "Mabilisang aksyon",
     "archiveItem": "I-archive ang item",
     "archive": "I-archive"
   },
   "detail": {
     "ariaLabel": "Mga detalye ng item",
+    "resize": "I-resize ang panel",
     "closePanel": "Isara ang panel",
-    "resizeFiling": "Baguhin ang laki ng seksyon ng pag-file",
+    "resizeFiling": "Baguhin ang laki ng seksyon ng paglalagay",
     "restore": "Ibalik",
     "restoreToInbox": "Ibalik sa inbox",
     "delete": "Tanggalin",
-    "deletePermanently": "I-delete nang permanente",
+    "deletePermanently": "Permanenteng tanggalin",
     "archive": "I-archive",
-    "file": "file",
-    "fileToFolder": "I-file sa {folder}",
-    "keyboardHint": "{modifier}⏎ i-file · 1-5 folder · Esc isara",
-    "voiceTitlePlaceholder": "Pangalanan ang voice memo na ito...",
-    "fileTo": "I-file sa",
+    "file": "Ilagay",
+    "fileToFolder": "Ilagay sa {folder}",
+    "keyboardHint": "{modifier}⏎ ilagay · 1-5 folder · Esc isara",
+    "voiceTitlePlaceholder": "Pangalanan ang voice memo na ito…",
+    "titlePlaceholder": "Pangalanan ang item na ito…",
+    "fileTo": "Ilagay sa",
     "ai": "AI",
-    "selectFolder": "Pumili ng folder",
-    "searchOrCreateFolder": "Maghanap o gumawa gamit ang /...",
-    "suggested": "Iminungkahi",
-    "notesRoot": "Mga Tala",
-    "notesRootLabel": "Mga Tala (ugat)",
-    "createFolder": "Lumikha ng \"{name}\"",
-    "addTags": "Magdagdag ng mga tag...",
-    "linkToNote": "Link sa tala",
-    "linkNotesPlaceholder": "I-link ang mga tala...",
-    "searchNotesAria": "Maghanap ng mga tala upang i-link",
-    "linkedNotesAria": "Mga naka-link na tala",
-    "removeLinkTo": "Alisin ang link sa {title}",
-    "notePlaceholder": "Isulat ang iyong tala...",
-    "textPlaceholder": "I-edit ang iyong nakunan na text...",
-    "linkANote": "Mag-link ng tala",
     "match": {
-      "likely": "Malamang na tugma",
       "strong": "Malakas na tugma",
+      "likely": "Malamang na tugma",
       "weak": "Mahinang tugma"
     },
-    "resize": "I-resize ang panel",
-    "suggestedCount": "{count} iminungkahi"
+    "selectFolder": "Pumili ng folder",
+    "searchOrCreateFolder": "Maghanap o gumawa gamit ang /…",
+    "suggested": "Iminungkahi",
+    "notesRoot": "Mga tala",
+    "notesRootLabel": "Mga tala (root)",
+    "createFolder": "Gumawa ng “{name}”",
+    "addTags": "Magdagdag ng mga tag…",
+    "linkToNote": "I-link sa tala",
+    "linkANote": "Mag-link ng tala",
+    "suggestedCount": "{count} iminungkahi",
+    "linkNotesPlaceholder": "Mag-link ng mga tala…",
+    "linkOrCreateNotePlaceholder": "Maghanap o gumawa ng tala…",
+    "createNote": "Gumawa ng “{title}”",
+    "pendingNote": "Bagong tala",
+    "searchNotesAria": "Maghanap ng talang ili-link o gagawin",
+    "imageFilingModeLabel": "Ilalagay ang larawan bilang",
+    "imageFilingModeEmbed": "Naka-embed sa tala",
+    "imageFilingModeLink": "File sa sidebar",
+    "imageFilingModeRemember": "Huwag nang itanong ulit",
+    "linkedNotesAria": "Mga naka-link na tala",
+    "removeLinkTo": "Alisin ang link sa {title}",
+    "notePlaceholder": "Isulat ang iyong tala…",
+    "textPlaceholder": "I-edit ang naitalang text…"
+  },
+  "convert": {
+    "title": "I-convert",
+    "chooseType": "I-convert sa",
+    "note": "Tala",
+    "task": "Gawain",
+    "event": "Kaganapan",
+    "reminder": "Paalala",
+    "create": "Gumawa",
+    "addTask": "Magdagdag ng gawain",
+    "addEvent": "Magdagdag ng kaganapan",
+    "setReminder": "Magtakda ng paalala",
+    "project": "Proyekto",
+    "inboxProject": "Inbox",
+    "dueDate": "Takdang petsa",
+    "dueTime": "Takdang oras",
+    "priority": "Priyoridad",
+    "priorityNone": "Wala",
+    "priorityLow": "Mababa",
+    "priorityMedium": "Katamtaman",
+    "priorityHigh": "Mataas",
+    "priorityUrgent": "Apurahan",
+    "date": "Petsa",
+    "start": "Simula",
+    "end": "Katapusan",
+    "allDay": "Buong araw",
+    "location": "Lokasyon",
+    "remindAt": "Paalalahanan ako sa",
+    "time": "Oras",
+    "success": "Na-convert sa {target}",
+    "failed": "Hindi ma-convert: {error}"
   },
   "content": {
-    "capturedAt": "Nakuha ang {date}",
-    "todayAt": "ngayon sa {time}",
-    "yesterdayAt": "kahapon sa {time}",
+    "capturedAt": "Naitala {date}",
+    "todayAt": "ngayong araw nang {time}",
+    "yesterdayAt": "kahapon nang {time}",
     "dateAt": "{date} nang {time}",
     "words": "{count, plural, one {# salita} other {# salita}}",
     "duration": "Tagal: {duration}",
     "dimensions": "Mga sukat",
     "format": "Format",
-    "size": "Sukat",
-    "voiceMemo": "Memo ng boses",
-    "play": "Maglaro",
+    "size": "Laki",
+    "voiceMemo": "Voice memo",
+    "play": "I-play",
     "pause": "I-pause",
     "audioPosition": "Posisyon ng audio",
     "transcription": "Transkripsyon",
-    "processing": "pagpoproseso",
+    "processing": "pinoproseso",
     "pending": "nakabinbin",
     "failed": "nabigo",
     "copyTranscription": "Kopyahin ang transkripsyon",
-    "transcribingAudio": "Nagsasalin ng audio...",
-    "awaitingTranscription": "Naghihintay ng transkripsyon...",
+    "transcribingAudio": "Tina-transcribe ang audio…",
+    "awaitingTranscription": "Naghihintay ng transkripsyon…",
     "noTranscription": "Walang available na transkripsyon",
-    "failedPlayAudio": "Nabigong mag-play ng audio",
-    "failedLoadAudio": "Nabigong i-load ang audio",
+    "failedPlayAudio": "Hindi ma-play ang audio",
+    "failedLoadAudio": "Hindi ma-load ang audio",
     "video": "Video",
     "unsupportedVideo": "Hindi sinusuportahan ng iyong browser ang video tag."
   },
   "reminder": {
     "dataUnavailable": "Hindi available ang data ng paalala.",
     "triggered": "Na-trigger ang paalala",
-    "noteLabel": "Tala ng Paalala",
+    "noteLabel": "Tala ng paalala",
     "source": "Pinagmulan",
-    "journalTitle": "Journal — {date}",
-    "noteFallback": "Tandaan",
-    "journalFallback": "Journal",
-    "highlighted": "Naka-highlight: \"{text}\"",
+    "journalTitle": "Talaarawan — {date}",
+    "noteFallback": "Tala",
+    "journalFallback": "Talaarawan",
+    "taskFallback": "Gawain",
+    "highlighted": "Naka-highlight: “{text}”",
     "viewed": "Tiningnan",
-    "markViewed": "Markahan bilang tiningnan",
+    "archive": "I-archive",
     "notYetViewed": "Hindi pa tinitingnan",
     "snooze": "I-snooze",
     "presetInOneHour": "1 oras",
     "presetTomorrow": "Bukas",
     "presetNextWeek": "Sa susunod na linggo",
-    "custom": "Custom...",
-    "archive": "I-archive",
-    "panelEmpty": "Walang paparating na paalala.",
-    "panelPast": "Nakaraan",
+    "custom": "Custom…",
     "panelUpcoming": "Paparating",
-    "taskFallback": "Gawain",
+    "panelPast": "Nakaraan",
+    "panelEmpty": "Walang paparating na paalala.",
+    "presets": {
+      "laterToday": {
+        "label": "Mamaya ngayong araw",
+        "description": "Pagkalipas ng {count, plural, one {# oras} other {# oras}}"
+      },
+      "tomorrow": {
+        "label": "Bukas",
+        "description": "Bukas nang 9 AM"
+      },
+      "nextWeek": {
+        "label": "Sa susunod na linggo",
+        "description": "Lunes nang 9 AM"
+      },
+      "inMinutes": {
+        "label": "Pagkalipas ng {count, plural, one {# minuto} other {# minuto}}"
+      },
+      "inHours": {
+        "label": "Pagkalipas ng {count, plural, one {# oras} other {# oras}}"
+      },
+      "inWeeks": {
+        "label": "Pagkalipas ng {count, plural, one {# linggo} other {# linggo}}"
+      },
+      "inMonths": {
+        "label": "Pagkalipas ng {count, plural, one {# buwan} other {# buwan}}"
+      },
+      "inYears": {
+        "label": "Pagkalipas ng {count, plural, one {# taon} other {# taon}}"
+      },
+      "tomorrowMorning": "Bukas ng umaga",
+      "sameDayNextMonth": "Parehong araw sa susunod na buwan",
+      "reviewInAWeek": "Suriin pagkalipas ng isang linggo",
+      "monthlyReflection": "Buwanang pagninilay",
+      "quarterlyReflection": "Pagninilay kada tatlong buwan",
+      "anniversaryReminder": "Paalala sa anibersaryo"
+    },
     "dateTime": {
-      "dateAt": "{date} nang {time}",
-      "dateCompact": "{date}, {time}",
       "todayAt": "Ngayong araw nang {time}",
       "todayCompact": "Ngayong araw, {time}",
       "tomorrowAt": "Bukas nang {time}",
-      "tomorrowCompact": "Bukas, {time}"
-    },
-    "presets": {
-      "anniversaryReminder": "Paalala sa anibersaryo",
-      "inHours": {
-        "label": "Sa loob ng {count, plural, one {# Oras} other {# Oras}}"
-      },
-      "inMinutes": {
-        "label": "Sa loob ng {count, plural, one {# Minuto} other {# Minuto}}"
-      },
-      "inMonths": {
-        "label": "Sa loob ng {count, plural, one {# Buwan} other {# Buwan}}"
-      },
-      "inWeeks": {
-        "label": "Sa loob ng {count, plural, one {# Linggo} other {# Linggo}}"
-      },
-      "inYears": {
-        "label": "Sa loob ng {count, plural, one {# Taon} other {# Taon}}"
-      },
-      "laterToday": {
-        "description": "Sa loob ng {count, plural, one {# oras} other {# oras}}",
-        "label": "Mamaya Ngayong Araw"
-      },
-      "monthlyReflection": "Buwanang pagninilay",
-      "nextWeek": {
-        "description": "Lunes nang 9 AM",
-        "label": "Sa Susunod na Linggo"
-      },
-      "quarterlyReflection": "Pagninilay kada quarter",
-      "reviewInAWeek": "Suriin sa loob ng isang linggo",
-      "sameDayNextMonth": "Parehong araw sa susunod na buwan",
-      "tomorrow": {
-        "description": "Bukas nang 9 AM",
-        "label": "Bukas"
-      },
-      "tomorrowMorning": "Bukas ng Umaga"
+      "tomorrowCompact": "Bukas, {time}",
+      "dateAt": "{date} nang {time}",
+      "dateCompact": "{date}, {time}"
     }
   },
   "insights": {
-    "captureActivity": "Aktibidad sa Pagkuha",
-    "byType": "Ayon sa Uri",
-    "recentFilings": "Mga Kamakailang Pag-file",
-    "captured": "Nakunan",
+    "captureActivity": "Aktibidad ng pagtatala",
+    "byType": "Ayon sa uri",
+    "recentFilings": "Mga kamakailang nailagay",
+    "captured": "Naitala",
     "capturedThisWeek": "+{count} ngayong linggo",
     "processed": "Naproseso",
     "processRate": "{rate}% na rate",
-    "stale": "lipas na",
+    "stale": "Lipas na",
     "needsAttention": "nangangailangan ng atensyon",
     "allClear": "malinaw lahat",
-    "avgTimeToFile": "Karaniwang Oras Bago I-file",
-    "noCapturesYet": "Wala pang kuha",
-    "captures": "{count, plural, one {Pagkuha ng #} other {Mga kinukunan ng #}}",
-    "peak": "Tuktok: {day} {start}–{end}",
+    "avgTimeToFile": "Karaniwang tagal bago mailagay",
+    "noCapturesYet": "Wala pang naitala",
+    "captures": "{count, plural, one {# naitala} other {# naitala}}",
+    "peak": "Pinakaaktibo: {day} {start}–{end}",
     "convertedToTask": "Na-convert sa gawain",
     "now": "ngayon",
     "timeAgoMinutes": "{count}m ang nakalipas",
@@ -339,46 +349,44 @@
   },
   "phaseF": {
     "componentsBulkAiClusterSuggestion": {
-      "aiDetected": "Natukoy ang AI: \"",
+      "aiDetected": "Natukoy ng AI: \"",
       "addToSelection": "Idagdag sa pagpili",
       "dismiss": "I-dismiss"
     },
     "componentsBulkDeleteConfirmationDialog": {
-      "delete": "Tanggalin ",
-      "item": "aytem",
+      "delete": "Tanggalin ang ",
+      "item": "item",
       "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Aalisin ang mga item na ito sa iyong inbox. Maaari mong i-undo ang pagkilos na ito kaagad pagkatapos."
     },
     "componentsCaptureInput": {
-      "captureInput": "Kunin ang input",
+      "captureInput": "Field ng pagtatala",
       "attachFile": "Mag-attach ng file",
-      "attachFileImagesAudioVideoPdf": "Mag-attach ng file (Mga Larawan, Audio, Video, PDF)",
+      "attachFileImagesAudioVideoPdf": "Mag-attach ng file (larawan, audio, video, PDF)",
       "recordVoiceMemo": "Mag-record ng voice memo",
       "recordVoiceMemo2": "Mag-record ng voice memo",
-      "captureAnyway": "Kunin Anyway",
-      "focusShortcut": "I-focus ang capture input",
-      "q": "Q",
-      "captureLink": "Kunin ang link",
-      "captureNote": "Kunin ang tala",
-      "placeholder": "Mabilis na pagkuha — mag-paste ng link, magtala ng ideya…",
-      "duplicateNotice": "Nakunan na: “{title}”"
+      "captureAnyway": "Itala pa rin",
+      "placeholder": "Mabilisang pagtatala — mag-paste ng link, magtala ng ideya…",
+      "captureLink": "Itala ang link",
+      "captureNote": "Itala bilang tala",
+      "duplicateNotice": "Naitala na: “{title}”"
     },
     "componentsFilingFolderSelector": {
       "chooseFolder": "Pumili ng folder",
-      "searchFolders": "Maghanap ng mga folder...",
+      "searchFolders": "Maghanap ng mga folder…",
       "searchFolders2": "Maghanap ng mga folder",
       "searchResults": "Mga resulta ng paghahanap",
-      "create": "Lumikha\"",
+      "create": "Gumawa ng \"",
       "suggested": "Iminungkahi",
       "recent": "Kamakailan",
       "allFolders": "Lahat ng folder",
       "allFolders2": "Lahat ng folder"
     },
     "componentsFilingLinkSearch": {
-      "linkTo": "Link sa",
+      "linkTo": "I-link sa",
       "optional": "opsyonal)",
-      "searchNotesToLink": "Maghanap ng mga tala upang i-link...",
-      "searchNotesToLink2": "Maghanap ng mga tala upang i-link",
-      "searching": "Naghahanap...",
+      "searchNotesToLink": "Maghanap ng talang ili-link…",
+      "searchNotesToLink2": "Maghanap ng talang ili-link",
+      "searching": "Naghahanap…",
       "noNotesFound": "Walang nakitang tala",
       "linkedNotes": "Mga naka-link na tala",
       "noLinksAdded": "Walang naidagdag na mga link"
@@ -386,40 +394,37 @@
     "componentsFilingTagAutocomplete": {
       "suggested": "Iminungkahi",
       "ai": "AI",
-      "create": "Lumikha",
+      "create": "Gumawa",
       "tags": "Mga tag",
       "selectedTags": "Mga napiling tag",
       "addTags": "Magdagdag ng mga tag",
-      "tagSuggestions": "I-tag ang mga mungkahi",
+      "tagSuggestions": "Mga mungkahing tag",
       "removeTag": "Alisin ang {tag}"
     },
     "componentsFilingTagInput": {
       "tags": "Mga tag",
       "optional": "opsyonal)",
-      "addTags": "Magdagdag ng mga tag...",
+      "addTags": "Magdagdag ng mga tag…",
       "addTags2": "Magdagdag ng mga tag",
       "selectedTags": "Mga napiling tag",
       "suggested": "Iminungkahi"
     },
     "componentsInboxInboxCaptureHeatmap": {
-      "captureActivity": "Aktibidad sa Pagkuha"
+      "captureActivity": "Aktibidad ng pagtatala"
     },
     "componentsInboxInboxFilingHistory": {
-      "noItemsFiledYet": "Wala pang na-file na item",
-      "recentlyFiled": "Kamakailang Na-file",
+      "noItemsFiledYet": "Wala pang nailagay na item",
+      "recentlyFiled": "Kamakailang nailagay",
       "latestActionsOnYourInbox": "Mga pinakabagong aksyon sa iyong inbox",
       "linked": "Naka-link"
     },
     "componentsInboxInboxInsightsView": {
-      "loadingInsights": "Naglo-load ng mga insight..."
+      "loadingInsights": "Nilo-load ang mga insight…"
     },
     "componentsInboxInboxTypeDistribution": {
       "noItemTypesToDisplay": "Walang mga uri ng item na ipapakita",
-      "itemTypes": "Mga Uri ng Item",
+      "itemTypes": "Mga uri ng item",
       "distributionOfContentFormats": "Pamamahagi ng mga format ng nilalaman"
-    },
-    "componentsInboxTriageItemCard": {
-      "captured": "Nakunan "
     },
     "componentsInboxDetailContentSection": {
       "x": "x "
@@ -427,30 +432,27 @@
     "componentsInboxDetailInboxContentEditor": {
       "contentEditor": "Editor ng nilalaman"
     },
-    "componentsInboxDetailReminderDetail": {
-      "middot": "middot; "
-    },
     "componentsInboxDetailTweetCard": {
       "tweetUnavailable": "Hindi available ang tweet",
-      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Ang tweet na ito ay maaaring tinanggal o mula sa isang pribadong account.",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Maaaring tinanggal na ang tweet na ito o galing ito sa pribadong account.",
       "openOnXCom": "Buksan sa x.com",
-      "views": "mga pananaw",
+      "views": "view",
       "xCom": "x.com",
       "viewOnX": "Tingnan sa X"
     },
     "componentsInlineQuickFile": {
-      "typeFolderName": "I-type ang pangalan ng folder...",
-      "quickFileFolderSearch": "Mabilis na paghahanap ng folder ng file"
+      "typeFolderName": "I-type ang pangalan ng folder…",
+      "quickFileFolderSearch": "Maghanap ng folder na paglalagyan"
     },
     "componentsQuickCaptureFooter": {
-      "close": "malapit na",
-      "capture": "makunan"
+      "close": "isara",
+      "capture": "itala"
     },
     "componentsQuickCaptureImagePreview": {
       "removeAttachment": "Alisin ang attachment"
     },
     "componentsQuickCaptureInput": {
-      "quickCaptureInput": "Mabilis na pagkuha ng input",
+      "quickCaptureInput": "Field ng mabilisang pagtatala",
       "recordVoiceMemo": "Mag-record ng voice memo",
       "attachFile": "Mag-attach ng file"
     },
@@ -458,120 +460,96 @@
       "link": "LINK"
     },
     "componentsQuickCaptureStates": {
-      "captured": "Nakunan",
+      "captured": "Naitala",
       "dismissError": "I-dismiss ang error",
-      "alreadyCaptured": "Nakunan na",
-      "captureAnyway": "Kunin Anyway",
+      "alreadyCaptured": "Naitala na",
+      "captureAnyway": "Itala pa rin",
       "close": "Isara",
       "duplicateMeta": "“{title}” · {date}"
     },
     "componentsQuickCapture": {
-      "dropToCapture": "I-drop para makuha",
-      "capturing": "Kinukuha..."
+      "dropToCapture": "I-drop para maitala",
+      "capturing": "Itinatala…"
     },
     "componentsQuickFileDropdown": {
       "folderSuggestions": "Mga mungkahi sa folder",
-      "noFoldersMatch": "Walang mga folder na tumutugma \""
+      "noFoldersMatch": "Walang folder na tumutugma sa \""
     },
     "componentsReminderReminderPicker": {
       "remind": "Paalalahanan",
-      "remindMe": "Paalalahanan mo ako",
+      "remindMe": "Paalalahanan ako",
       "pickDateTime": "Pumili ng petsa at oras",
       "addANoteOptional": "Magdagdag ng tala (opsyonal)",
       "backToPresets": "Bumalik sa mga preset",
       "time": "Oras",
-      "noteOptional": "Tandaan (opsyonal)",
+      "noteOptional": "Tala (opsyonal)",
       "whyAreYouSettingThisReminder": "Bakit mo itinatakda ang paalala na ito?",
-      "deleteReminder": "Tanggalin ang paalala",
+      "set": "Itakda",
       "editReminder": "I-edit ang paalala",
+      "deleteReminder": "Tanggalin ang paalala",
       "save": "I-save",
-      "set": "Itakda"
+      "setReminder": "Magtakda ng paalala",
+      "setting": "Itinatakda…"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "I-snooze",
       "snooze2": "I-snooze",
-      "pickDateTime": "Pumili ng Petsa at Oras",
-      "pickDateTime2": "Pumili ng Petsa at Oras",
-      "selectWhenToBeRemindedAboutThisItem": "Piliin kung kailan paalalahanan ang tungkol sa item na ito",
+      "pickDateTime": "Pumili ng petsa at oras",
+      "pickDateTime2": "Pumili ng petsa at oras",
+      "selectWhenToBeRemindedAboutThisItem": "Piliin kung kailan ka paaalalahanan tungkol sa item na ito",
       "snooze3": "I-snooze",
       "snooze4": "I-snooze",
       "snooze5": "I-snooze"
     },
     "componentsSocialCard": {
-      "loadingPost": "Nilo-load ang post...",
-      "failedToLoad": "Nabigong mag-load",
-      "loadingPostContent": "Nilo-load ang nilalaman ng post...",
-      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Nabigong i-load ang nilalaman ng post. Ang post ay maaaring pribado o tinanggal.",
+      "loadingPost": "Nilo-load ang post…",
+      "failedToLoad": "Hindi ma-load",
+      "loadingPostContent": "Nilo-load ang nilalaman ng post…",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Hindi ma-load ang nilalaman ng post. Maaaring pribado o tinanggal na ang post.",
       "viewOn": "Tingnan sa "
     },
     "componentsVoiceRecorder": {
       "startVoiceRecording": "Simulan ang pagre-record ng boses",
-      "requestingMicrophoneAccess": "Humihiling ng access sa mikropono...",
+      "requestingMicrophoneAccess": "Humihiling ng access sa mikropono…",
       "settings": "Mga setting",
-      "processing": "Pinoproseso...",
+      "processing": "Pinoproseso…",
       "cancelRecording": "Kanselahin ang pagre-record",
       "cancel": "Kanselahin",
       "stopRecording": "Itigil ang pagre-record",
-      "stop": "Tumigil ka",
-      "enableMicInSettings": "Paganahin ang access sa mikropono sa mga setting ng iyong system, pagkatapos ay subukan muli.",
-      "failedToStart": "Nabigong simulan ang pag-record",
+      "stop": "Itigil",
+      "recordingError": "Nagkaroon ng error sa pag-record",
       "microphoneAccessDenied": "Tinanggihan ang access sa mikropono",
       "noMicrophoneFound": "Walang nakitang mikropono",
-      "recordingError": "Nagkaroon ng error sa pag-record"
+      "failedToStart": "Hindi masimulan ang pag-record",
+      "enableMicInSettings": "I-on ang access sa mikropono sa mga setting ng system mo, saka subukan ulit."
     }
   },
   "phaseI": {
     "errors": {
-      "failedToCaptureLink": "Nabigong makuha ang link",
-      "failedToCaptureNote": "Nabigong makuha ang tala",
-      "captureFailed": "Nabigo ang pagkuha",
-      "failedToCaptureVoiceMemo": "Nabigong makuha ang voice memo",
-      "voiceCaptureFailed": "Nabigo ang pagkuha ng boses",
-      "failedToCaptureFile": "Nabigong makuha ang file",
-      "fileCaptureFailed": "Nabigo ang pagkuha ng file",
-      "failedToCaptureAudio": "Nabigong makuha ang audio",
-      "failedToCaptureVoice": "Nabigong makuha ang boses",
-      "failedToLoadInboxPreferences": "Nabigong i-load ang mga kagustuhan sa inbox",
-      "failedToUpdateInboxPreferences": "Nabigong i-update ang mga kagustuhan sa inbox"
+      "failedToCaptureLink": "Hindi maitala ang link",
+      "failedToCaptureNote": "Hindi maitala ang tala",
+      "captureFailed": "Nabigo ang pagtatala",
+      "failedToCaptureVoiceMemo": "Hindi maitala ang voice memo",
+      "voiceCaptureFailed": "Nabigo ang pagtatala ng boses",
+      "failedToCaptureFile": "Hindi maitala ang file",
+      "fileCaptureFailed": "Nabigo ang pagtatala ng file",
+      "failedToCaptureAudio": "Hindi maitala ang audio",
+      "failedToCaptureVoice": "Hindi maitala ang boses",
+      "failedToLoadInboxPreferences": "Hindi ma-load ang mga kagustuhan sa inbox",
+      "failedToUpdateInboxPreferences": "Hindi ma-update ang mga kagustuhan sa inbox"
     },
     "toasts": {
       "inboxRefreshed": "Na-refresh ang inbox"
     }
   },
-  "convert": {
-    "addEvent": "Magdagdag ng kaganapan",
-    "addTask": "Magdagdag ng gawain",
-    "allDay": "Buong araw",
-    "chooseType": "I-convert sa",
-    "create": "Lumikha",
-    "date": "Petsa",
-    "dueDate": "Takdang petsa",
-    "dueTime": "Takdang oras",
-    "end": "Wakas",
-    "event": "Kaganapan",
-    "failed": "Hindi ma-convert: {error}",
-    "inboxProject": "Inbox",
-    "location": "Lokasyon",
-    "note": "Tala",
-    "priority": "Priyoridad",
-    "priorityHigh": "Mataas",
-    "priorityLow": "Mababa",
-    "priorityMedium": "Katamtaman",
-    "priorityNone": "Wala",
-    "priorityUrgent": "Kagyat",
-    "project": "Proyekto",
-    "remindAt": "Paalalahanan ako sa",
-    "reminder": "Paalala",
-    "setReminder": "Magtakda ng paalala",
-    "start": "Simula",
-    "success": "Na-convert sa {target}",
-    "task": "Gawain",
-    "time": "Oras",
-    "title": "I-convert"
-  },
   "reviewNudge": {
-    "action": "Buksan ang inbox",
-    "description": "Iproseso ang mga nakuha mo ngayong araw sa isang panatag na pagsusuri.",
-    "title": "{count, plural, one {Oras na para suriin ang # item} other {Oras na para suriin ang # na item}}"
+    "title": "{count, plural, one {Oras na para suriin ang # item} other {Oras na para suriin ang # item}}",
+    "description": "Iproseso ang mga naitala mo ngayong araw sa isang panatag na pagsusuri.",
+    "action": "Buksan ang inbox"
+  },
+  "snoozeDue": {
+    "notificationTitle": "{count, plural, one {# naka-snooze na item} other {# naka-snooze na item}}",
+    "notificationBody": "{count, plural, =1 {Handa nang suriin ang naka-snooze mong item} one {Handa na ang mga naka-snooze mong item} other {Handa na ang mga naka-snooze mong item}}",
+    "toast": "{count, plural, =1 {Bumalik na mula sa snooze ang “{itemTitle}”} one {Bumalik na ang # naka-snooze na item} other {Bumalik na ang # naka-snooze na item}}"
   }
 }

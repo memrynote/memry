@@ -3,19 +3,19 @@
     "quit": "終了",
     "preferences": "設定…",
     "checkForUpdates": "アップデートを確認…",
-    "exit": "終了",
+    "services": "サービス",
     "hide": "MemryNote を隠す",
     "hideOthers": "ほかを隠す",
-    "services": "サービス",
-    "unhide": "すべてを表示"
+    "unhide": "すべてを表示",
+    "exit": "終了"
   },
   "file": {
     "label": "ファイル",
-    "newNote": "新しいメモ",
-    "close": "ウィンドウを閉じる",
-    "closeTab": "タブを閉じる",
+    "newNote": "新規ノート",
+    "openQuickly": "クイックオープン…",
     "exportPdf": "PDF にエクスポート…",
-    "openQuickly": "クイックオープン…"
+    "closeTab": "タブを閉じる",
+    "close": "ウィンドウを閉じる"
   },
   "navigation": {
     "back": "戻る",
@@ -24,70 +24,75 @@
   "edit": {
     "label": "編集",
     "undo": "元に戻す",
-    "redo": "やり直し",
+    "redo": "やり直す",
     "cut": "カット",
     "copy": "コピー",
     "paste": "ペースト",
     "selectAll": "すべて選択",
     "find": "検索",
-    "speech": "読み上げ",
-    "delete": "削除",
+    "speech": "スピーチ",
     "pasteAndMatchStyle": "ペーストしてスタイルを合わせる",
+    "delete": "削除",
     "startSpeaking": "読み上げを開始",
-    "stopSpeaking": "読み上げを停止"
+    "stopSpeaking": "読み上げを停止",
+    "addToDictionary": "辞書に追加",
+    "noSuggestions": "候補なし"
   },
-  "view": {
-    "label": "表示",
-    "reload": "再読み込み",
-    "toggleDevTools": "開発者ツールの切り替え",
-    "toggleFullscreen": "全画面表示の切り替え",
-    "theme": "テーマ",
-    "themeDark": "ダーク",
-    "themeLight": "ライト",
-    "themeSystem": "システム",
-    "themeWhite": "ペーパー",
-    "toggleDayPanel": "デイパネルを切り替え",
-    "toggleSidebar": "サイドバーを切り替え",
-    "actualSize": "実際のサイズ",
-    "zoomIn": "拡大",
-    "zoomOut": "縮小"
+  "insert": {
+    "label": "挿入",
+    "codeBlock": "コードブロック",
+    "table": "テーブル",
+    "bulletList": "箇条書きリスト",
+    "numberedList": "番号付きリスト",
+    "taskList": "タスクリスト",
+    "attachment": "添付ファイルを挿入…"
   },
   "format": {
-    "body": "本文",
-    "bold": "太字",
-    "code": "コード",
+    "label": "書式",
     "heading1": "見出し 1",
     "heading2": "見出し 2",
     "heading3": "見出し 3",
     "heading4": "見出し 4",
     "heading5": "見出し 5",
     "heading6": "見出し 6",
-    "highlight": "ハイライト",
+    "body": "本文",
+    "bold": "太字",
     "italic": "斜体",
-    "label": "書式",
+    "code": "コード",
+    "highlight": "ハイライト",
     "strikethrough": "取り消し線"
   },
-  "help": {
-    "about": "MemryNote について",
-    "documentation": "ドキュメント",
-    "label": "ヘルプ",
-    "shortcuts": "キーボードショートカット",
-    "aboutVersion": "バージョン {version}"
-  },
-  "insert": {
-    "attachment": "添付ファイルを挿入…",
-    "bulletList": "箇条書きリスト",
-    "codeBlock": "コードブロック",
-    "label": "挿入",
-    "numberedList": "番号付きリスト",
-    "table": "テーブル",
-    "taskList": "タスクリスト"
+  "view": {
+    "label": "表示",
+    "reload": "再読み込み",
+    "toggleDevTools": "開発者ツールを切り替え",
+    "toggleFullscreen": "全画面表示を切り替え",
+    "toggleSidebar": "サイドバーを切り替え",
+    "toggleDayPanel": "デイパネルを切り替え",
+    "theme": "テーマ",
+    "themeLight": "ライト",
+    "themeDark": "ダーク",
+    "themeWhite": "ペーパー",
+    "themeSystem": "システム",
+    "actualSize": "実際のサイズ",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小"
   },
   "window": {
     "label": "ウィンドウ",
-    "close": "閉じる",
-    "front": "すべてを手前に移動",
     "minimize": "しまう",
-    "zoom": "拡大/縮小"
+    "zoom": "拡大/縮小",
+    "front": "すべてを手前に移動",
+    "close": "閉じる"
+  },
+  "help": {
+    "label": "ヘルプ",
+    "documentation": "ドキュメント",
+    "shortcuts": "キーボードショートカット",
+    "about": "MemryNote について",
+    "aboutVersion": "バージョン {version}"
+  },
+  "tray": {
+    "show": "MemryNote を表示"
   }
 }

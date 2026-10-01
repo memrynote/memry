@@ -1,77 +1,137 @@
 {
   "page": {
-    "loading": "Ładowanie wykresu...",
-    "load-failed": "Nie udało się załadować danych wykresu",
+    "loading": "Ładowanie grafu…",
+    "load-failed": "Nie udało się załadować danych grafu",
+    "render-failed": "Graf jest niedostępny na tym urządzeniu",
+    "render-failed-description": "Na tym urządzeniu nie udało się uruchomić modułu renderowania grafiki. Notatki są bezpieczne.",
     "try-again": "Spróbuj ponownie",
-    "aria-label": "Wykres wiedzy z {nodeCount, plural, one {Węzeł #} other {Węzły #}} i {edgeCount, plural, one {Połączenie #} other {Połączenia #}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "Węzły wykresu",
+    "aria-label": "Graf wiedzy: {nodeCount, plural, one {# węzeł} few {# węzły} many {# węzłów} other {# węzła}} i {edgeCount, plural, one {# połączenie} few {# połączenia} many {# połączeń} other {# połączenia}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Węzły grafu",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "Wykres Twojej wiedzy",
-    "description": "Połączenia pomiędzy Twoimi notatkami, zadaniami i projektami pojawią się tutaj w postaci interaktywnego wykresu.",
+    "title": "Twój graf wiedzy",
+    "description": "Połączenia między notatkami, zadaniami i projektami pojawią się tutaj w postaci interaktywnego grafu.",
     "link-title": "Połącz swoje notatki",
-    "link-description": "Użyj [[wikilinks]], aby połączyć pomysły w notatkach",
-    "discover-title": "Odkryj wzory",
+    "link-description": "Używaj [[linków wiki]], aby łączyć pomysły z różnych notatek",
+    "discover-title": "Odkrywaj wzorce",
     "discover-description": "W miarę rozwoju powiązań klastry i tematy będą pojawiać się w sposób naturalny"
   },
   "entity": {
-    "note": "uwaga",
+    "note": "notatka",
     "notes": "notatki",
-    "journal": "dziennik",
-    "journals": "czasopisma",
+    "journal": "wpis w dzienniku",
+    "journals": "wpisy w dzienniku",
     "task": "zadanie",
     "tasks": "zadania",
     "project": "projekt",
     "projects": "projekty",
-    "tag": "znacznik",
+    "tag": "tag",
     "tags": "tagi",
-    "orphan": "sierota",
-    "orphans": "sieroty",
-    "unresolved": "nierozwiązany"
+    "orphan": "osierocony",
+    "orphans": "osierocone",
+    "unresolved": "nieistniejąca notatka",
+    "category": "kategoria"
   },
   "summary": {
-    "node-type-count": "{count} {label}"
+    "node-type-count": "{label}: {count}"
   },
   "control": {
-    "show-settings": "Ustawienia wykresu",
+    "show-settings": "Ustawienia grafu",
     "hide-settings": "Ukryj ustawienia",
     "reset-filters": "Zresetuj filtry",
     "filters": "Filtry",
-    "display": "Wyświetlacz",
+    "display": "Wyświetlanie",
     "show-labels": "Pokaż etykiety",
+    "live-motion": "Animacja na żywo",
     "focus-depth": "głębokość {depth}",
-    "clear-focus": "Wyczyść skupiony węzeł"
+    "clear-focus": "Wyłącz skupienie na węźle",
+    "relayout": "Rozmieść ponownie",
+    "categories": "Kategorie tagów",
+    "color-by-category": "Koloruj według kategorii",
+    "no-categories": "Pogrupuj tagi w kategorie w centrum tagów, aby kolorować i zwijać graf według kategorii.",
+    "collapse-category": "Zwiń kategorię „{name}”",
+    "expand-category": "Rozwiń kategorię „{name}”",
+    "uncategorized": "Bez kategorii"
   },
   "filter": {
     "notes": "Notatki",
-    "journals": "Czasopisma",
+    "journals": "Dziennik",
     "tasks": "Zadania",
     "projects": "Projekty",
     "tags": "Tagi",
-    "orphans": "Sieroty",
-    "toggle-entity": "Przełącz {label}",
-    "toggle-orphans": "Przełącz osierocone węzły"
+    "orphans": "Osierocone",
+    "canvas-edges": "Połączenia z kanw",
+    "toggle-entity": "Pokaż/ukryj: {label}",
+    "toggle-orphans": "Pokaż/ukryj osierocone węzły"
   },
   "search": {
-    "placeholder": "Wyszukaj węzły...",
-    "clear": "Wyczyść wyszukiwanie wykresów"
+    "placeholder": "Szukaj węzłów…",
+    "clear": "Wyczyść wyszukiwanie w grafie"
   },
   "context-menu": {
     "untitled": "Bez tytułu",
-    "focus-node": "Skoncentruj się na tym węźle",
+    "focus-node": "Skup się na tym węźle",
     "open-new-tab": "Otwórz w nowej karcie",
     "create-note": "Utwórz notatkę",
-    "copy-title": "Skopiuj tytuł"
+    "copy-title": "Kopiuj tytuł",
+    "link-to": "Dodaj link do…",
+    "add-tag": "Dodaj tag…",
+    "back": "Wstecz",
+    "link-search": "Szukaj notatek…",
+    "tag-search": "Szukaj lub utwórz tag…",
+    "no-matches": "Brak wyników",
+    "create-tag": "Utwórz #{tag}",
+    "remove-link": "Usuń link do notatki „{title}”",
+    "unpin": "Odepnij",
+    "collapse-category": "Zwiń kategorię „{name}”",
+    "expand-category": "Rozwiń kategorię „{name}”"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {Połączenie #} other {Połączenia #}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# połączenie} few {# połączenia} many {# połączeń} other {# połączenia}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# element} few {# elementy} many {# elementów} other {# elementu}}",
+    "click-to-expand": "Kliknij, aby rozwinąć"
   },
   "local-panel": {
-    "loading": "Ładowanie wykresu...",
+    "loading": "Ładowanie grafu…",
     "empty": "Nie znaleziono połączeń",
-    "open-full": "Otwórz pełny wykres",
-    "close": "Zamknij wykres"
+    "open-full": "Otwórz pełny graf",
+    "close": "Zamknij graf",
+    "pin": "Przypnij do tej notatki",
+    "unpin": "Odepnij i podążaj za otwartą notatką",
+    "pinned-to": "Przypięto: {title}"
+  },
+  "edit": {
+    "linked": "Połączono „{source}” z „{target}” we właściwości „{property}”",
+    "unlinked": "Usunięto link z „{source}” do „{target}”",
+    "already-linked": "„{source}” już zawiera link do „{target}”",
+    "property-conflict": "Właściwość „{property}” w tej notatce nie jest relacją, więc nie dodano linku",
+    "link-unsupported": "Linki można tworzyć tylko między notatkami",
+    "link-failed": "Nie udało się dodać linku",
+    "unlink-failed": "Nie udało się usunąć linku",
+    "tag-added": "Dodano #{tag} do notatki „{note}”",
+    "tag-exists": "Ta notatka ma już tag #{tag}",
+    "tag-failed": "Nie udało się dodać tagu",
+    "undo-failed": "Nie udało się cofnąć zmiany"
+  },
+  "relayout-confirm": {
+    "title": "Rozmieścić graf ponownie?",
+    "description": "Wszystkie przypięte węzły zostaną odpięte, a graf ułoży się od nowa. Zapisany układ zostanie odrzucony.",
+    "cancel": "Anuluj",
+    "confirm": "Rozmieść ponownie"
+  },
+  "views": {
+    "title": "Zapisane widoki",
+    "unsaved": "Niezapisany widok",
+    "edited": "Zmieniony",
+    "empty": "Brak zapisanych widoków",
+    "save-as": "Zapisz jako nowy widok…",
+    "update": "Zaktualizuj „{name}”",
+    "delete": "Usuń widok „{name}”",
+    "save-dialog-title": "Zapisz widok grafu",
+    "save-dialog-placeholder": "Nazwa widoku",
+    "cancel": "Anuluj",
+    "save": "Zapisz"
   }
 }

@@ -3,19 +3,19 @@
     "quit": "Ukončit",
     "preferences": "Nastavení…",
     "checkForUpdates": "Zkontrolovat aktualizace…",
-    "exit": "Konec",
+    "services": "Služby",
     "hide": "Skrýt MemryNote",
     "hideOthers": "Skrýt ostatní",
-    "services": "Služby",
-    "unhide": "Zobrazit vše"
+    "unhide": "Zobrazit vše",
+    "exit": "Konec"
   },
   "file": {
     "label": "Soubor",
     "newNote": "Nová poznámka",
-    "close": "Zavřít okno",
-    "closeTab": "Zavřít kartu",
+    "openQuickly": "Rychle otevřít…",
     "exportPdf": "Exportovat do PDF…",
-    "openQuickly": "Rychle otevřít…"
+    "closeTab": "Zavřít kartu",
+    "close": "Zavřít okno"
   },
   "navigation": {
     "back": "Zpět",
@@ -31,63 +31,68 @@
     "selectAll": "Vybrat vše",
     "find": "Najít",
     "speech": "Řeč",
-    "delete": "Smazat",
     "pasteAndMatchStyle": "Vložit a přizpůsobit styl",
+    "delete": "Smazat",
     "startSpeaking": "Spustit předčítání",
-    "stopSpeaking": "Zastavit předčítání"
+    "stopSpeaking": "Zastavit předčítání",
+    "addToDictionary": "Přidat do slovníku",
+    "noSuggestions": "Žádné návrhy"
   },
-  "view": {
-    "label": "Zobrazení",
-    "reload": "Znovu načíst",
-    "toggleDevTools": "Přepnout nástroje pro vývojáře",
-    "toggleFullscreen": "Přepnout na celou obrazovku",
-    "theme": "Motiv",
-    "themeDark": "Tmavý",
-    "themeLight": "Světlý",
-    "themeSystem": "Systémový",
-    "themeWhite": "Papír",
-    "toggleDayPanel": "Přepnout denní panel",
-    "toggleSidebar": "Přepnout postranní panel",
-    "actualSize": "Skutečná velikost",
-    "zoomIn": "Zvětšit",
-    "zoomOut": "Zmenšit"
+  "insert": {
+    "label": "Vložení",
+    "codeBlock": "Blok kódu",
+    "table": "Tabulka",
+    "bulletList": "Odrážkový seznam",
+    "numberedList": "Číslovaný seznam",
+    "taskList": "Seznam úkolů",
+    "attachment": "Vložit přílohu…"
   },
   "format": {
-    "body": "Text",
-    "bold": "Tučné",
-    "code": "Kód",
+    "label": "Formát",
     "heading1": "Nadpis 1",
     "heading2": "Nadpis 2",
     "heading3": "Nadpis 3",
     "heading4": "Nadpis 4",
     "heading5": "Nadpis 5",
     "heading6": "Nadpis 6",
-    "highlight": "Zvýraznění",
+    "body": "Text",
+    "bold": "Tučné",
     "italic": "Kurzíva",
-    "label": "Formát",
+    "code": "Kód",
+    "highlight": "Zvýraznit",
     "strikethrough": "Přeškrtnutí"
   },
-  "help": {
-    "about": "O aplikaci MemryNote",
-    "documentation": "Dokumentace",
-    "label": "Nápověda",
-    "shortcuts": "Klávesové zkratky",
-    "aboutVersion": "Verze {version}"
-  },
-  "insert": {
-    "attachment": "Vložit přílohu…",
-    "bulletList": "Odrážkový seznam",
-    "codeBlock": "Blok kódu",
-    "label": "Vložení",
-    "numberedList": "Číslovaný seznam",
-    "table": "Tabulka",
-    "taskList": "Seznam úkolů"
+  "view": {
+    "label": "Zobrazení",
+    "reload": "Znovu načíst",
+    "toggleDevTools": "Zobrazit/skrýt nástroje pro vývojáře",
+    "toggleFullscreen": "Přepnout na celou obrazovku",
+    "toggleSidebar": "Zobrazit/skrýt boční panel",
+    "toggleDayPanel": "Zobrazit/skrýt Panel dne",
+    "theme": "Motiv",
+    "themeLight": "Světlý",
+    "themeDark": "Tmavý",
+    "themeWhite": "Papír",
+    "themeSystem": "Systémový",
+    "actualSize": "Skutečná velikost",
+    "zoomIn": "Zvětšit",
+    "zoomOut": "Zmenšit"
   },
   "window": {
     "label": "Okno",
-    "close": "Zavřít",
-    "front": "Přenést vše do popředí",
     "minimize": "Minimalizovat",
-    "zoom": "Zvětšit"
+    "zoom": "Zvětšit",
+    "front": "Přenést vše do popředí",
+    "close": "Zavřít"
+  },
+  "help": {
+    "label": "Nápověda",
+    "documentation": "Dokumentace",
+    "shortcuts": "Klávesové zkratky",
+    "about": "O aplikaci MemryNote",
+    "aboutVersion": "Verze {version}"
+  },
+  "tray": {
+    "show": "Zobrazit MemryNote"
   }
 }

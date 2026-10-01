@@ -1,18 +1,27 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Fokus pada medan catatan",
+    "detailHint": "butiran",
+    "submit": "Catat"
+  },
   "button": {
-    "save": "Jimat",
+    "save": "Simpan",
     "cancel": "Batal",
-    "close": "tutup",
+    "close": "Tutup",
     "delete": "Padam",
     "done": "Selesai",
-    "dontSave": "Jangan Simpan",
+    "dontSave": "Jangan simpan",
     "add": "Tambah",
     "remove": "Alih keluar",
     "retry": "Cuba semula",
-    "back": "belakang",
-    "continue": "teruskan",
-    "copy": "salin",
+    "back": "Kembali",
+    "continue": "Teruskan",
+    "copy": "Salin",
     "create": "Buat"
+  },
+  "media": {
+    "video": "Video"
   },
   "state": {
     "loading": "Memuatkan…",
@@ -23,162 +32,635 @@
   "action": {
     "search": "Cari",
     "expand": "Kembangkan",
-    "collapse": "Runtuh",
+    "collapse": "Runtuhkan",
     "showMore": "+{count, plural, one {# lagi} other {# lagi}}",
     "showLess": "Tunjukkan lebih sedikit",
     "undo": "Buat asal"
   },
   "fileActions": {
-    "revealInFinder": "Dedahkan dalam Finder",
+    "revealInFinder": "Tunjukkan dalam Finder",
     "showInExplorer": "Tunjukkan dalam File Explorer",
     "showInFileManager": "Tunjukkan dalam pengurus fail",
     "openInDefaultApp": "Buka dalam apl lalai",
     "revealFailed": "Gagal menunjukkan dalam folder"
   },
   "tabs": {
-    "pin": "Tab Semat",
-    "unpin": "Nyahsemat Tab",
+    "pin": "Semat tab",
+    "unpin": "Nyahsemat tab",
+    "persistence": {
+      "saveFailed": "Tab anda yang terbuka tidak lagi disimpan",
+      "saveFailedQuota": "Sesi ini terlalu besar untuk disimpan. Tutup beberapa tab, atau sesi ini mungkin tidak dipulihkan apabila anda membuka Memry nanti.",
+      "saveFailedGeneric": "Memry tidak dapat menyimpan sesi ini, jadi sesi ini mungkin tidak dipulihkan apabila anda membuka apl nanti.",
+      "lastSessionNotSaved": "Sesi terakhir anda tidak disimpan semasa Memry ditutup",
+      "lastSessionNotSavedQuota": "Storan penuh pada masa itu, jadi tab ini diambil daripada simpanan yang lebih awal. Tutup beberapa tab untuk memberi ruang.",
+      "lastSessionNotSavedGeneric": "Memry tidak dapat menyimpan tab anda semasa keluar, jadi tab ini diambil daripada simpanan yang lebih awal."
+    },
     "contextMenu": {
-      "close": "tutup",
-      "closeOthers": "Tutup Orang Lain",
-      "closeToRight": "Dekat ke Kanan",
-      "closeAll": "Tutup Semua",
-      "duplicate": "Tab Pendua",
-      "splitRight": "Belah Kanan",
-      "splitDown": "Berpisah",
-      "copyPath": "Salin Laluan",
-      "revealInSidebar": "Dedahkan dalam Sidebar"
+      "close": "Tutup",
+      "closeOthers": "Tutup yang lain",
+      "closeToRight": "Tutup tab di sebelah kanan",
+      "closeAll": "Tutup semua",
+      "duplicate": "Pendua tab",
+      "splitRight": "Pisah ke kanan",
+      "splitDown": "Pisah ke bawah",
+      "copyPath": "Salin laluan",
+      "revealInSidebar": "Tunjukkan dalam bar sisi"
     }
   },
   "count": {
-    "note": "{count, plural, one {Nota #} other {Nota #}}",
-    "task": "{count, plural, one {Tugasan #} other {# tugasan}}",
-    "itemDelete": "{count, plural, one {Padamkan item #} other {Padamkan item #}}",
-    "event": "{count, plural, other {# acara}}",
+    "note": "{count, plural, other {# nota}}",
     "journal": "{count, plural, other {# jurnal}}",
-    "reminder": "{count, plural, other {# peringatan}}"
+    "task": "{count, plural, other {# tugas}}",
+    "event": "{count, plural, other {# acara}}",
+    "reminder": "{count, plural, other {# peringatan}}",
+    "itemDelete": "{count, plural, other {Padam # item}}"
   },
   "toast": {
     "actionFailed": "Tindakan gagal",
     "nothingToUndo": "Tiada apa yang perlu dibuat asal",
     "undone": "Dibuat asal: {description}",
-    "undoFailed": "Gagal membuat asal tindakan"
+    "undoFailed": "Gagal membuat asal tindakan",
+    "filesImported": "{count, plural, other {# fail diimport}}",
+    "filesImportFailed": "{count, plural, other {Gagal mengimport # fail}}",
+    "filesHiddenInSidebar": "Fail disembunyikan dalam bar sisi. Hidupkan “Tunjukkan fail” dalam menu isihan Koleksi untuk melihatnya.",
+    "moreRemindersDue": "{count, plural, other {# lagi peringatan telah tiba masanya}}",
+    "moreRemindersDueHint": "Semak panel peringatan untuk butiran",
+    "searchIndexRepaired": "Indeks carian dibaiki",
+    "searchIndexRepairedHint": "Sebahagian indeks carian telah rosak, jadi Memry membinanya semula. Nota anda tidak terjejas."
   },
   "dateRelative": {
     "today": "Hari ini",
     "yesterday": "Semalam",
     "daysAgo": "{count, plural, one {# hari yang lalu} other {# hari yang lalu}}",
+    "tomorrow": "Esok",
+    "daysOverdue": "{count, plural, other {Lewat # hari}}",
     "daysLate": "{count, plural, other {# hari lewat}}",
-    "daysOverdue": "{count, plural, other {# hari lewat tempoh}}",
-    "tomorrow": "Esok"
+    "inDays": "{count, plural, other {Dalam # hari}}",
+    "inWeeks": "{count, plural, other {Dalam # minggu}}"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Setiap hari} other {Setiap # hari}}",
     "everyNWeeks": "{count, plural, one {Setiap minggu} other {Setiap # minggu}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {Setiap hari minggu} other {Setiap # minggu pada hari bekerja}}",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Setiap hari bekerja} other {Setiap # minggu pada hari bekerja}}",
     "everyNWeeksOnWeekends": "{count, plural, one {Setiap hujung minggu} other {Setiap # minggu pada hujung minggu}}",
     "everyNWeeksOnDays": "{count, plural, one {Setiap minggu pada {days}} other {Setiap # minggu pada {days}}}",
     "everyNMonths": "{count, plural, one {Setiap bulan} other {Setiap # bulan}}",
-    "everyNMonthsOnDay": "{count, plural, one {Setiap bulan pada {day}{suffix}} other {Setiap # bulan pada {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {Setiap bulan pada {week} {day}} other {Setiap # bulan pada {week} {day}}}",
+    "everyNMonthsOnDay": "{count, plural, one {Setiap bulan pada hari ke-{day}{suffix}} other {Setiap # bulan pada hari ke-{day}{suffix}}}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Setiap bulan pada {day} {week}} other {Setiap # bulan pada {day} {week}}}",
     "everyNYears": "{count, plural, one {Setiap tahun} other {Setiap # tahun}}",
     "repeats": "Berulang",
     "ordinal": {
       "first": "pertama",
-      "fourth": "keempat",
-      "last": "terakhir",
       "second": "kedua",
-      "third": "ketiga"
+      "third": "ketiga",
+      "fourth": "keempat",
+      "last": "terakhir"
     },
     "preset": {
       "everyWeekday": "Setiap hari bekerja (Isn-Jum)",
       "everyYearOnDate": "Setiap tahun pada {date}"
     }
   },
+  "agentChat": {
+    "title": "Sembang ejen",
+    "loading": "Memuatkan sembang ejen…",
+    "conversationLoading": "Memuatkan perbualan…",
+    "historyNotSaved": "Peranti ini tidak dapat membuka kunci bilik kebal, jadi perbualan ini tidak akan disimpan apabila anda menutup apl.",
+    "newConversation": "Perbualan baharu",
+    "history": "Sejarah perbualan",
+    "openInTab": "Buka perbualan dalam tab",
+    "stop": "Hentikan",
+    "thinking": "Ejen sedang berfikir",
+    "enable": {
+      "title": "Dayakan ejen memrynote",
+      "description": "Ejen memrynote menggunakan CLI ejen setempat pilihan anda untuk bersembang tentang bilik kebal anda. Claude menghantar giliran perbualan kepada Anthropic; Codex menghantarnya kepada OpenAI.",
+      "remote": "memrynote menyulitkan sejarah sembang anda, sama ada setempat atau disegerakkan, tetapi inferens model dijalankan oleh penyedia yang dipilih.",
+      "readTools": "Alat baca berjalan secara automatik.",
+      "writeTools": "Alat untuk membuat dan mengemas kini memerlukan kelulusan.",
+      "diff": "Alat kemas kini menunjukkan perbezaan atau pratonton.",
+      "button": "Dayakan sembang ejen"
+    },
+    "approval": {
+      "description": "Ejen ingin memanggil {name} dengan argumen ini.",
+      "applyOnce": "Gunakan sekali",
+      "allowOnce": "Benarkan sekali",
+      "editAndApply": "Edit dan gunakan",
+      "editAndAllow": "Edit dan benarkan",
+      "allowAlways": "Sentiasa benarkan",
+      "applyEdits": "Gunakan perubahan",
+      "deny": "Tolak",
+      "invalidJson": "Masukkan JSON yang sah sebelum menggunakan perubahan.",
+      "thisTool": "alat ini",
+      "alwaysAllowHint": "“Sentiasa benarkan” hanya meliputi {tool}. Alat lain masih meminta kebenaran, dan pemadaman sentiasa meminta kebenaran.",
+      "alwaysInChat": "Sentiasa benarkan dalam sembang ini",
+      "alwaysInChatHint": "Tamat apabila perbualan tamat",
+      "alwaysInVault": "Sentiasa benarkan dalam bilik kebal ini",
+      "alwaysInVaultHint": "Boleh dibatalkan dalam Tetapan › Ejen",
+      "deletesAlwaysAsk": "Pemadaman sentiasa meminta kebenaran"
+    },
+    "diff": {
+      "previewError": "Tidak dapat memaparkan pratonton perubahan ini",
+      "description": "Ejen ingin mengemas kini {title}. Semak perubahan sebelum menggunakannya.",
+      "fallbackTitle": "item ini",
+      "current": "Semasa",
+      "candidate": "Cadangan",
+      "loading": "Memuatkan…",
+      "apply": "Gunakan",
+      "applyEdited": "Gunakan versi diedit",
+      "editBody": "Edit sebelum menggunakan"
+    },
+    "inPageReview": {
+      "regionLabel": "Cadangan ejen",
+      "barLabel": "Semak cadangan ejen",
+      "loading": "Memuatkan cadangan…",
+      "loadingTitle": "Cadangan ejen",
+      "title": "{count, plural, =0 {Cadangan ejen} other {Ejen mencadangkan # perubahan}}",
+      "editingTitle": "Mengedit cadangan",
+      "pendingHint": "Belum disimpan. Terima untuk menggunakannya.",
+      "editingHint": "Perubahan anda kekal di sini sehingga anda menerimanya.",
+      "baseChanged": "Nota ini berubah semasa anda mengedit cadangan.",
+      "keepDraft": "Kekalkan perubahan saya",
+      "restart": "Mula semula daripada versi terkini",
+      "reject": "Tolak",
+      "edit": "Edit",
+      "showDiff": "Tunjukkan perubahan",
+      "accept": "Terima",
+      "acceptEdits": "Terima perubahan",
+      "waiting": "Menunggu semakan anda dalam {title}.",
+      "notOpen": "Buka {title} untuk melihat perubahan, atau terima tanpa menyemak.",
+      "show": "Tunjukkan",
+      "openNote": "Buka nota",
+      "openJournal": "Buka jurnal",
+      "fallbackTitle": "nota ini"
+    },
+    "preview": {
+      "unset": "tidak ditetapkan",
+      "yes": "ya",
+      "no": "tidak",
+      "noChange": "Tiada perubahan yang dapat dipaparkan dalam pratonton ini.",
+      "willBeLost": "Akan hilang",
+      "unchangedLines": "{count, plural, other {# baris tidak berubah}}",
+      "item": {
+        "note": "Nota",
+        "folder": "Folder",
+        "task": "Tugas",
+        "journal": "Jurnal",
+        "inbox": "Peti masuk",
+        "project": "Projek",
+        "status": "Status",
+        "canvas": "Kanvas"
+      },
+      "intent": {
+        "create": "baharu",
+        "update": "kemas kini",
+        "delete": "padam",
+        "move": "alih",
+        "reorder": "susun semula"
+      },
+      "field": {
+        "archived": "Diarkibkan",
+        "arguments": "Argumen",
+        "color": "Warna",
+        "completed": "Selesai",
+        "description": "Penerangan",
+        "due": "Tarikh akhir",
+        "dueTime": "Masa akhir",
+        "duplicateOf": "Salinan daripada",
+        "edits": "Perubahan",
+        "elements": "Elemen",
+        "folder": "Folder",
+        "icon": "Ikon",
+        "isDefault": "Lalai",
+        "isDone": "Keadaan selesai",
+        "items": "Item",
+        "name": "Nama",
+        "operation": "Operasi",
+        "order": "Susunan",
+        "parent": "Induk",
+        "path": "Laluan",
+        "position": "Kedudukan",
+        "priority": "Keutamaan",
+        "project": "Projek",
+        "removed": "Dialih keluar",
+        "repeatFrom": "Ulang daripada",
+        "snoozeReason": "Sebab ditunda",
+        "snoozedUntil": "Ditunda hingga",
+        "start": "Mula",
+        "status": "Status",
+        "tags": "Teg",
+        "title": "Tajuk"
+      },
+      "loss": {
+        "words": "{count, plural, other {# perkataan}}",
+        "tags": "{count, plural, other {# teg}}",
+        "notes": "{count, plural, other {# nota}}",
+        "folders": "{count, plural, other {# folder}}",
+        "files": "{count, plural, other {# fail}}",
+        "events": "{count, plural, other {# acara}}",
+        "tasks": "{count, plural, other {# tugas}}",
+        "due": "tarikh akhir {value}"
+      }
+    },
+    "composer": {
+      "currentNote": "Nota semasa",
+      "removeAttachment": "Alih keluar {label}",
+      "placeholder": "Lakukan apa-apa sahaja dengan memrynote… @ untuk menyebut nota, tugas dan acara",
+      "send": "Hantar",
+      "providerLabel": "Penyedia ejen: {provider}",
+      "settingsSummary": "{reasoning}",
+      "connectedTools": "Alat yang disambungkan",
+      "connectTool": "Sambungkan {tool}",
+      "addContext": "Tambah konteks",
+      "addContextWithPermissions": "Tambah konteks ({permissions})",
+      "mentionContext": "Sebut nota, tugas atau acara",
+      "voice": {
+        "start": "Mulakan imlak suara",
+        "stop": "Hentikan imlak suara",
+        "transcribing": "Mentranskripsikan input suara",
+        "errors": {
+          "permissionDenied": "Akses mikrofon ditolak",
+          "noMicrophone": "Tiada mikrofon ditemui",
+          "accessFailed": "Tidak dapat mengakses mikrofon",
+          "recordingFailed": "Tidak dapat merakam input suara",
+          "transcriptionFailed": "Tidak dapat mentranskripsikan input suara"
+        }
+      },
+      "modelLabel": "Model ejen: {provider} {model}",
+      "reasoningLabel": "Penaakulan ejen: {reasoning}",
+      "providers": {
+        "label": "Penyedia",
+        "claude": "Claude",
+        "codex": "Codex",
+        "antigravity": "Antigravity",
+        "local": "Setempat"
+      },
+      "access": {
+        "vaultOnly": "Bilik kebal sahaja",
+        "computerAccess": "Akses komputer"
+      },
+      "webSearch": {
+        "on": "Hidup",
+        "off": "Mati",
+        "label": "Carian web"
+      },
+      "models": {
+        "default": "Lalai",
+        "label": "Model",
+        "search": "Cari model…",
+        "useCustom": "Gunakan “{query}”",
+        "localEmpty": "Tiada model ditemui — semak Tetapan",
+        "localSetup": "Sediakan dalam Tetapan…",
+        "cliSetup": "Tidak dikesan — sediakan dalam Tetapan…",
+        "runtimeUnavailable": "Ejen tidak tersedia — buka Tetapan…"
+      },
+      "settings": {
+        "reasoning": "Penaakulan",
+        "effort": "Usaha"
+      },
+      "includeCurrentNote": "Sertakan nota semasa",
+      "chooseModel": "Pilih model",
+      "claudeSettings": {
+        "reasoning": {
+          "low": "Rendah",
+          "medium": "Sederhana",
+          "high": "Tinggi",
+          "extraHigh": "Sangat tinggi",
+          "extraHighDefault": "Sangat tinggi (lalai)",
+          "max": "Maks"
+        }
+      },
+      "codexSettings": {
+        "reasoning": {
+          "low": "Rendah",
+          "medium": "Sederhana",
+          "mediumDefault": "Sederhana (lalai)",
+          "high": "Tinggi",
+          "extraHigh": "Sangat tinggi"
+        }
+      },
+      "permissionsLabel": "Kebenaran ejen: {access}, carian web {webSearch}",
+      "permissions": {
+        "label": "Kebenaran",
+        "access": "Akses",
+        "tools": "Alat"
+      },
+      "modelSettingsLabel": "Tetapan model ejen: {model}, {settings}"
+    },
+    "refPicker": {
+      "noMatches": "Tiada padanan"
+    },
+    "toolResult": {
+      "label": "Hasil alat"
+    },
+    "toolCall": {
+      "editedArgs": "Argumen yang diedit",
+      "parameters": "Parameter"
+    },
+    "toolActivity": {
+      "steps": "{count, plural, other {# langkah}}",
+      "running": "Sedang dijalankan",
+      "awaitingApproval": "Menunggu kelulusan",
+      "done": "Selesai"
+    },
+    "reasoning": {
+      "thinking": "Berfikir…",
+      "thought": "Pemikiran",
+      "thoughtFor": "Berfikir selama {seconds} saat",
+      "toggle": "Tunjukkan atau sembunyikan penaakulan"
+    },
+    "sidebar": {
+      "label": "Bar sisi kanan",
+      "day": "Hari",
+      "agent": "Ejen",
+      "pendingApproval": "{count, plural, other {# menunggu kelulusan}}",
+      "inProgress": "Giliran ejen sedang berlangsung",
+      "close": "Tutup ejen"
+    },
+    "errors": {
+      "loadConversations": "Tidak dapat memuatkan perbualan ejen",
+      "loadConversation": "Tidak dapat memuatkan perbualan ejen",
+      "createConversation": "Tidak dapat membuat perbualan ejen",
+      "busy": "Tetingkap lain sedang menjalankan giliran bagi perbualan ini. Tunggu sehingga ia selesai atau hentikannya dari tetingkap itu.",
+      "sendTurn": "Tidak dapat menghantar giliran ejen",
+      "cancelTurn": "Tidak dapat membatalkan giliran ejen",
+      "submitApproval": "Tidak dapat menyerahkan kelulusan alat",
+      "updateTrust": "Tidak dapat mengemas kini alat yang dipercayai",
+      "saveDisclosure": "Tidak dapat menyimpan keadaan pendedahan",
+      "resolveWindow": "Tidak dapat mengenal pasti tetingkap sumber ejen",
+      "detectCli": "Tidak dapat mengesan hujung belakang ejen",
+      "loadDisclosure": "Tidak dapat memuatkan keadaan pendedahan"
+    },
+    "actions": {
+      "copy": "Salin",
+      "copied": "Disalin"
+    },
+    "sources": {
+      "count": "{count, plural, other {# sumber}}"
+    }
+  },
+  "canvas": {
+    "sectionLabel": "Kanvas",
+    "newCanvas": "Kanvas baharu",
+    "newCanvasFolder": "Folder kanvas baharu",
+    "untitled": "Kanvas tanpa tajuk",
+    "empty": "Tiada kanvas lagi",
+    "loading": "Memuatkan kanvas…",
+    "loadFailed": "Tidak dapat memuatkan kanvas",
+    "createFailed": "Tidak dapat membuat kanvas",
+    "openFailed": "Tidak dapat membuka kanvas",
+    "notFound": "Kanvas ini tidak ditemui",
+    "corruptScene": "Kanvas ini tidak dapat dibaca. Pengeditan dilumpuhkan supaya data anda tidak hilang.",
+    "unreadableTitle": "Kanvas ini tidak dapat dibuka di sini",
+    "unreadableBody": "Dokumennya tiada dalam bilik kebal, atau ia dilukis sebelum kanvas menjadi fail dan peranti ini tidak lagi menyimpan kunci untuk membukanya. Tiada apa-apa yang dipadam — buka bilik kebal pada peranti yang membuatnya, atau pulihkan folder kanvas.",
+    "tooLargeToSync": "Kanvas ini terlalu besar untuk disegerakkan. Ia disimpan pada peranti ini tetapi tidak akan sampai ke peranti anda yang lain sehingga ia menjadi lebih kecil.",
+    "savedToVault": "Semua perubahan disimpan ke bilik kebal anda secara automatik",
+    "libraryStoreFailed": "Pustaka bentuk anda tidak dapat disimpan. Perubahan terbaru mungkin hilang.",
+    "link": {
+      "itemMissing": "Item yang dipautkan itu tidak lagi wujud.",
+      "elementMissing": "Pautan itu menghala ke sesuatu yang tidak lagi ada pada kanvas ini.",
+      "title": "Pautkan ke item",
+      "placeholder": "Cari nota, tugas, acara, peti masuk, projek…",
+      "hint": "Mula menaip untuk mencari item yang hendak dipautkan.",
+      "empty": "Tiada yang sepadan.",
+      "selectOneShape": "Pilih satu bentuk untuk memautkannya ke item.",
+      "cardsCannotLink": "Kad sudah membuka itemnya sendiri, jadi ia tidak boleh membawa pautan kedua.",
+      "linked": "Dipautkan.",
+      "groupNotes": "Nota",
+      "groupFiles": "Fail",
+      "groupTasks": "Tugas",
+      "groupEvents": "Acara",
+      "groupInbox": "Peti masuk",
+      "groupJournals": "Jurnal",
+      "groupProjects": "Projek",
+      "groupFolders": "Folder",
+      "useUrl": "Pautkan ke {url}",
+      "openTarget": "Buka {name}",
+      "shapeTarget": "Bentuk pada kanvas ini",
+      "missingTarget": "Tidak lagi ada pada kanvas ini"
+    },
+    "disabledTitle": "Kanvas tidak didayakan",
+    "disabledBody": "Tab ini tergolong dalam ciri yang tidak didayakan pada peranti ini.",
+    "unreadable": "Dokumen kanvas ini tiada atau tidak dapat dibaca. Tunjukkannya dalam pengurus fail anda, atau padam entri ini.",
+    "actionFailed": "Tindakan kanvas itu tidak dapat diselesaikan",
+    "renameLabel": "Nama kanvas",
+    "folderNameLabel": "Nama folder",
+    "deleteConfirmTitle": "Padam kanvas ini?",
+    "deleteConfirmBody": "“{title}” dialih keluar daripada memrynote pada semua peranti anda. Failnya dihantar ke tong sampah komputer ini, tetapi mengembalikannya tidak akan memulihkan kanvas itu.",
+    "dropToRoot": "Lepaskan di sini untuk mengalihkannya keluar dari folder",
+    "filterPlaceholder": "Tapis kanvas",
+    "filterNoMatches": "Tiada kanvas yang sepadan dengan penapis itu",
+    "folderCanvasCount": "{count} kanvas di dalam",
+    "folderEmptyHint": "Belum ada apa-apa di sini",
+    "deleteFolderConfirmTitle": "Padam folder kanvas ini?",
+    "deleteFolderConfirmBody": "“{name}” dan semua kandungannya dialih keluar daripada memrynote pada semua peranti anda. Kanvas yang terjejas: {count}. Folder ini dihantar ke tong sampah komputer ini, tetapi mengembalikannya tidak akan memulihkan kanvas tersebut.",
+    "actions": {
+      "rename": "Namakan semula",
+      "duplicate": "Pendua",
+      "copyLink": "Salin pautan",
+      "setIcon": "Tetapkan ikon",
+      "removeIcon": "Alih keluar ikon",
+      "moveToFolder": "Alihkan ke folder",
+      "moveToRoot": "Akar",
+      "openExternal": "Buka dalam editor luaran",
+      "newCanvasHere": "Kanvas baharu di sini",
+      "newFolder": "Folder baharu",
+      "canvasMenu": "Tindakan kanvas",
+      "folderMenu": "Tindakan folder kanvas"
+    },
+    "card": {
+      "open": "Buka dalam tab",
+      "openToEdit": "Buka dalam tab untuk mengedit",
+      "deleted": "Item dipadam",
+      "loading": "Memuatkan…",
+      "untitled": "Tanpa tajuk",
+      "allDay": "Sepanjang hari",
+      "createNoteFailed": "Tidak dapat membuat nota",
+      "addCard": "Tambah kad",
+      "addPlaceholder": "Cari nota, fail, tugas, acara dan projek…",
+      "addCreateNote": "Buat nota “{query}”",
+      "addCreateNoteEmpty": "Buat nota baharu",
+      "addEmpty": "Tiada hasil ditemui",
+      "addGroupNotes": "Nota",
+      "addGroupTasks": "Tugas",
+      "addGroupEvents": "Acara",
+      "addOnCanvas": "Pada kanvas",
+      "addCreatedAt": "Dibuat {date}",
+      "bulkGroup": "Tambah semua daripada",
+      "bulkFromTag": "Satu teg…",
+      "bulkFromFolder": "Satu folder…",
+      "bulkSearchTags": "Cari teg…",
+      "bulkSearchFolders": "Cari folder…",
+      "bulkTagsHeading": "Teg",
+      "bulkFoldersHeading": "Folder",
+      "bulkItemCount": "{count, plural, other {# item}}",
+      "bulkViewsHeading": "Tambah daripada {name}",
+      "bulkAllItems": "Semua item",
+      "bulkConfirmTitle": "{count, plural, other {Tambah # kad daripada {name}?}}",
+      "bulkConfirmBody": "Papan besar menjadi lebih perlahan dan boleh melebihi had saiz penyegerakan.",
+      "bulkConfirmSkipped": "{count, plural, other {# item sudah ada pada kanvas ini dan akan dilangkau.}}",
+      "bulkConfirmAdd": "{count, plural, other {Tambah # kad}}",
+      "bulkBack": "Kembali",
+      "bulkEmpty": "Tiada nota, fail atau tugas untuk ditambah",
+      "bulkLoadFailed": "Tidak dapat memuatkan item",
+      "bulkAdded": "{count, plural, other {# kad ditambah}}",
+      "bulkAddedSkipped": "{count, plural, other {# kad ditambah}} · {skipped} sudah ada pada kanvas",
+      "bulkAllOnCanvas": "{count, plural, one {Sudah ada pada kanvas ini} other {Kesemua # sudah ada pada kanvas ini}}"
+    },
+    "cluster": {
+      "button": "Cadangkan kumpulan",
+      "buttonHint": "Kumpulkan kad nota pada papan ini (atau kad yang dipilih) mengikut persamaan. Dijalankan pada peranti ini.",
+      "loading": "Mengumpulkan…",
+      "needMoreNotes": "Tambah sekurang-kurangnya {count} kad nota untuk mencadangkan kumpulan.",
+      "tooMany": "Papan ini mempunyai lebih daripada {count} kad nota. Pilih sehingga {count} kad dan cuba lagi.",
+      "disabled": "Hidupkan embedding setempat dalam Tetapan > AI untuk mencadangkan kumpulan.",
+      "noGroups": "Tiada kumpulan yang jelas ditemui dalam nota ini.",
+      "missing": "{count, plural, other {# nota belum mempunyai embedding dan tidak disertakan.}}",
+      "failed": "Tidak dapat mencadangkan kumpulan",
+      "title": "Kumpulan yang dicadangkan",
+      "description": "Dikumpulkan mengikut persamaan pada peranti ini. Tiada apa-apa pada papan berubah sehingga anda membuat bingkai.",
+      "defaultName": "Kumpulan {number}",
+      "untitledGroup": "Kumpulan",
+      "groupName": "Nama kumpulan",
+      "acceptGroup": "Sertakan {name}",
+      "noteCount": "{count, plural, other {# nota}}",
+      "discard": "Buang",
+      "create": "{count, plural, other {Buat # bingkai}}",
+      "created": "{count, plural, other {# bingkai dibuat}}",
+      "cardsGone": "Kad tersebut tidak lagi ada pada papan."
+    },
+    "frame": {
+      "categorize": "Kategorikan",
+      "editBinding": "Tukar kategori bagi bahagian ini",
+      "cardCount": "{count, plural, other {# kad}}",
+      "bindTitle": "Kategorikan bahagian ini",
+      "bindHint": "Kad yang dilepaskan ke dalam bahagian ini akan menerima teg atau nilai sifat ini.",
+      "bindPlaceholder": "Cari teg dan nilai sifat, atau taip teg baharu…",
+      "bindEmpty": "Tiada teg atau nilai sifat yang sepadan.",
+      "groupTags": "Teg",
+      "useTag": "Gunakan teg baharu #{tag}",
+      "unbind": "Berhenti mengkategorikan sebagai {label}",
+      "current": "Semasa",
+      "applied": "{count, plural, other {{label} ditambah pada # kad}}",
+      "applyFailed": "Tidak dapat menambah {label}",
+      "revertFailed": "Tidak dapat membuat asal {label}",
+      "leftFrame": "{count, plural, other {# kad dialihkan keluar dari {label}. Kategorinya dikekalkan.}}",
+      "removeCategory": "Alih keluar {label}",
+      "removed": "{count, plural, other {{label} dialih keluar daripada # kad}}",
+      "removeFailed": "Tidak dapat mengalih keluar {label}",
+      "skippedFile": "{count, plural, one {Satu kad fail dibiarkan seperti asal: fail tidak mempunyai teg atau sifat.} other {# kad fail dibiarkan seperti asal: fail tidak mempunyai teg atau sifat.}}",
+      "skippedTaskProperty": "{count, plural, one {Satu kad tugas dibiarkan seperti asal: tugas boleh menerima teg, tetapi bukan sifat nota.} other {# kad tugas dibiarkan seperti asal: tugas boleh menerima teg, tetapi bukan sifat nota.}}",
+      "skippedUnsupported": "{count, plural, one {Satu kad dibiarkan seperti asal: acara dan projek tidak boleh dikategorikan.} other {# kad dibiarkan seperti asal: acara dan projek tidak boleh dikategorikan.}}",
+      "layoutAction": "Susun atur mengikut sifat",
+      "layoutTitle": "Susun atur mengikut sifat",
+      "layoutHint": "Membuat satu bahagian bagi setiap nilai dan menyusun nota pada papan ini ke dalamnya.",
+      "layoutPlaceholder": "Cari sifat pilihan, pilihan berbilang dan status…",
+      "layoutEmpty": "Belum ada sifat pilihan, pilihan berbilang atau status yang mempunyai nilai.",
+      "layoutValueCount": "{count, plural, other {# nilai}}",
+      "layoutDone": "{count, plural, other {# bahagian dibuat untuk {property}}}",
+      "layoutFailed": "Tidak dapat menyusun atur papan"
+    }
+  },
   "phaseF": {
     "componentsAppSidebar": {
       "collections": "Koleksi",
+      "projects": "Projek",
       "newNote": "Nota baharu",
       "newNote2": "Nota baharu",
       "newFolder": "Folder baharu",
       "newFolder2": "Folder baharu",
-      "bookmarks": "Penanda buku",
-      "tags": "Tag",
+      "newProject": "Projek baharu",
+      "bookmarks": "Penanda halaman",
+      "tags": "Teg",
+      "reorderSection": "Susun semula {section}",
       "dropFilesToImport": "Lepaskan fail untuk diimport",
+      "dropFilesIntoVaultRoot": "Akar bilik kebal",
       "newNoteN": "Nota baharu (⌘N)",
-      "new": "baru",
-      "syncDisabled": "Penyegerakan dilumpuhkan",
-      "syncDisabled2": "Penyegerakan dilumpuhkan",
+      "new": "Baharu",
+      "newItemMenu": "Buat baharu…",
       "feedbackButton": "Hantar maklum balas",
-      "feedbackDescription": "Beritahu kami apa yang berfungsi, apa yang rosak, atau apa yang anda harap Memry lakukan. Kami membaca setiap mesej.",
-      "feedbackEmailHint": "Tambah e-mel anda jika anda mahu balasan.",
-      "feedbackError": "Tidak dapat menghantar maklum balas. Sila cuba lagi.",
+      "feedbackTitle": "Hantar maklum balas",
+      "feedbackDescription": "Beritahu kami apa yang berfungsi, apa yang rosak, atau apa yang anda harap MemryNote boleh lakukan. Kami membaca setiap mesej.",
       "feedbackPlaceholder": "Maklum balas anda…",
+      "feedbackEmailHint": "Tambah e-mel anda jika anda mahu balasan.",
+      "feedbackPrivacyTitle": "Apa yang dihantar",
+      "feedbackPrivacyMessage": "Mesej anda, tepat seperti yang anda tulis",
+      "feedbackPrivacyEmailOptional": "E-mel anda — hanya jika anda menambahnya, dan hanya supaya kami boleh membalas",
+      "feedbackPrivacyEmailSignedIn": "E-mel akaun anda ({email}), supaya kami boleh membalas",
+      "feedbackPrivacyVersion": "Versi apl dan sistem pengendalian",
+      "feedbackPrivacyPlan": "Pelan anda (Percuma, Plus, Pro atau Believer)",
+      "feedbackPrivacyNote": "Tiada apa-apa lagi. Nota anda kekal pada peranti anda.",
       "feedbackSend": "Hantar",
       "feedbackSending": "Menghantar…",
       "feedbackSuccess": "Terima kasih atas maklum balas!",
-      "feedbackTitle": "Hantar maklum balas",
-      "newItemMenu": "Cipta baharu…",
-      "feedbackPrivacyEmailOptional": "E-mel anda — hanya jika anda menambahnya, dan hanya supaya kami boleh membalas",
-      "feedbackPrivacyEmailSignedIn": "E-mel akaun anda ({email}), supaya kami boleh membalas",
-      "feedbackPrivacyMessage": "Mesej anda, tepat seperti yang anda tulis",
-      "feedbackPrivacyNote": "Tiada apa-apa lagi. Nota anda kekal pada peranti anda.",
-      "feedbackPrivacyPlan": "Pelan anda (free, Plus, Pro atau Believer)",
-      "feedbackPrivacyTitle": "Apa yang dihantar",
-      "feedbackPrivacyVersion": "Versi apl dan sistem pengendalian",
-      "projects": "Projek"
+      "feedbackError": "Tidak dapat menghantar maklum balas. Sila cuba lagi.",
+      "syncDisabled": "Penyegerakan dilumpuhkan",
+      "syncDisabled2": "Penyegerakan dilumpuhkan",
+      "sortLabel": "Isih {section}: {mode}",
+      "sortModeManual": "Manual",
+      "sortModeNameAsc": "Nama A → Z",
+      "sortModeNameDesc": "Nama Z → A",
+      "sortModeModifiedDesc": "Diubah suai: terbaharu dahulu",
+      "sortModeModifiedAsc": "Diubah suai: terlama dahulu",
+      "sortModeCreatedDesc": "Dibuat: terbaharu dahulu",
+      "sortModeCreatedAsc": "Dibuat: terlama dahulu",
+      "sortModeCountDesc": "Paling banyak digunakan",
+      "sortModeCountAsc": "Paling kurang digunakan",
+      "sortSaveFailed": "Tidak dapat menyimpan susunan isihan",
+      "sectionOrderSaveFailed": "Tidak dapat menyimpan susunan bar sisi"
     },
     "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "Saiz semula Panel Hari",
+      "resizeDayPanel": "Ubah saiz panel hari",
       "dragToResizeDoubleClickToReset": "Seret untuk mengubah saiz · Klik dua kali untuk menetapkan semula"
     },
     "componentsFindBarFindBar": {
-      "findReplaceAsk": "Cari, ganti, tanya..."
+      "findReplaceAsk": "Cari, ganti, tanya…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Langkau onboarding",
+      "skipOnboarding": "Langkau pengenalan",
       "welcomeToMemry": "Selamat datang ke memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Pangkalan pengetahuan peribadi anda. Mari luangkan masa 2 minit untuk anda bermula.",
       "getStarted": "Mulakan ",
       "createYourFirstNote": "Buat nota pertama anda",
-      "markdownBasedStoredLocallyAsPlainFiles": "Berasaskan penurunan harga, disimpan secara setempat sebagai fail biasa.",
-      "eGMeetingNotesIdeasAnything": "cth. Nota mesyuarat, idea, apa sahaja...",
+      "markdownBasedStoredLocallyAsPlainFiles": "Berasaskan Markdown, disimpan secara setempat sebagai fail biasa.",
+      "eGMeetingNotesIdeasAnything": "cth. Nota mesyuarat, idea, apa sahaja…",
       "skip": "Langkau",
       "createNote": "Buat nota ",
       "addYourFirstTask": "Tambah tugas pertama anda",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Tugasan dipautkan ke nota anda, dengan keutamaan dan tarikh akhir.",
-      "eGReviewProjectProposal": "cth. Semak cadangan projek...",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Tugas dipautkan ke nota anda, dengan keutamaan dan tarikh akhir.",
+      "eGReviewProjectProposal": "cth. Semak cadangan projek…",
       "skip2": "Langkau",
-      "createTask": "Buat tugasan ",
+      "createTask": "Buat tugas ",
       "syncAcrossDevices": "Segerakkan merentas peranti",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Pastikan nota dan tugasan anda segerak merentas semua peranti anda. Anda sentiasa boleh menyediakannya kemudian.",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Pastikan nota dan tugas anda segerak merentas semua peranti anda. Anda sentiasa boleh menyediakannya kemudian.",
       "skipForNow": "Langkau buat masa ini",
-      "doneLetSGo": "Selesai — mari pergi! "
+      "doneLetSGo": "Selesai — mari bermula! "
     },
     "componentsFolderIconButton": {
-      "setFolderIcon": "Tetapkan ikon folder"
+      "setFolderIcon": "Tetapkan ikon folder",
+      "expandFolder": "Kembangkan folder",
+      "collapseFolder": "Runtuhkan folder"
     },
     "componentsHintOverlayHintIndicator": {
       "hint": "PETUA"
     },
     "componentsIconPicker": {
       "iconPicker": "Pemilih ikon",
-      "selectIcon": "Pilih Ikon",
+      "selectIcon": "Pilih ikon",
       "closeIconPicker": "Tutup pemilih ikon",
-      "searchIcons": "Cari ikon...",
+      "searchIcons": "Cari ikon…",
       "all": "Semua",
-      "clearIcon": "Kosongkan Ikon",
+      "clearIcon": "Kosongkan ikon",
       "noIconsFoundFor": "Tiada ikon ditemui untuk \""
     },
     "componentsKeyboardShortcutsModal": {
-      "keyboardShortcuts": "Pintasan Papan Kekunci",
-      "closeShortcutsHelp": "Tutup pintasan membantu",
+      "keyboardShortcuts": "Pintasan papan kekunci",
+      "closeShortcutsHelp": "Tutup bantuan pintasan",
       "press": "Tekan",
       "toClose": "untuk menutup"
     },
     "componentsKiboUiTreeIndex": {
-      "setIcon": "Set Ikon",
-      "clearIcon": "Kosongkan Ikon"
+      "setIcon": "Tetapkan ikon",
+      "clearIcon": "Kosongkan ikon"
     },
     "componentsNavMain": {
       "platform": "Platform"
@@ -186,9 +668,9 @@
     "componentsNavProjects": {
       "projects": "Projek",
       "more": "Lagi",
-      "viewProject": "Lihat Projek",
-      "shareProject": "Kongsi Projek",
-      "deleteProject": "Padamkan Projek",
+      "viewProject": "Lihat projek",
+      "shareProject": "Kongsi projek",
+      "deleteProject": "Padam projek",
       "more2": "Lagi"
     },
     "componentsNavUser": {
@@ -202,7 +684,7 @@
     },
     "componentsSearchCommandPalette": {
       "search": "Cari",
-      "searchNotesTasksJournalInbox": "Cari nota, tugasan, jurnal, peti masuk...",
+      "searchNotesTasksJournalInbox": "Cari nota, tugas, jurnal, peti masuk…",
       "noResultsFor": "Tiada hasil untuk “",
       "result": "hasil",
       "noResultsForQuery": "Tiada hasil untuk “{query}”",
@@ -212,39 +694,39 @@
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Cari dan klik item untuk membina jejak anda",
-      "reasons": "Sebab-sebab",
-      "clear": "Jelas"
+      "reasons": "Sebab",
+      "clear": "Kosongkan"
     },
     "componentsSearchSearchFilters": {
-      "clear": "Jelas",
-      "tags": "Tag",
-      "filterByTag": "Tapis mengikut teg...",
-      "dateRange": "Julat Tarikh"
+      "clear": "Kosongkan",
+      "tags": "Teg",
+      "filterByTag": "Tapis mengikut teg…",
+      "dateRange": "Julat tarikh"
     },
     "componentsSearchSearchResultGroup": {
       "viewAll": "Lihat semua ",
-      "results": "keputusan"
+      "results": "hasil"
     },
     "componentsSearchSearchResultItem": {
       "p": "P",
-      "fuzzy": "kabur"
+      "fuzzy": "anggaran"
     },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Tiada tab dibuka",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Buka halaman dari bar sisi atau buat tab baharu untuk bermula",
-      "openInbox": "Buka Peti Masuk",
-      "closePane": "Tutup Anak Tetingkap"
+      "openInbox": "Buka peti masuk",
+      "closePane": "Tutup anak tetingkap"
     },
     "componentsSplitViewLayoutPicker": {
       "layoutPresets": "Pratetap susun atur",
-      "layoutPresets2": "Pratetap Reka Letak"
+      "layoutPresets2": "Pratetap susun atur"
     },
     "componentsSplitViewResizeHandle": {
       "resizePanes": "Ubah saiz anak tetingkap"
     },
     "componentsSplitViewTabContent": {
       "taskscontextNotAvailable": "TasksContext tidak tersedia",
-      "searchResults": "Hasil Carian",
+      "searchResults": "Hasil carian",
       "unknownTabType": "Jenis tab tidak diketahui: "
     },
     "componentsTabsAccessibleTab": {
@@ -252,139 +734,178 @@
       "preview": "pratonton"
     },
     "componentsTabsNewTabMenu": {
-      "newTab": "Tab Baharu",
-      "newTab2": "Tab Baharu",
-      "newNote": "Nota Baharu",
+      "newTab": "Tab baharu",
+      "newTab2": "Tab baharu",
+      "newNote": "Nota baharu",
       "journal": "Jurnal",
       "calendar": "Kalendar",
-      "inboxCapture": "Tangkapan Peti Masuk",
-      "tasks": "Tugasan",
-      "tags": "Tag"
+      "inboxCapture": "Catat ke peti masuk",
+      "tasks": "Tugas",
+      "tags": "Teg"
     },
     "componentsTabsPinnedTab": {
-      "unsavedChanges": "Perubahan yang tidak disimpan",
+      "unsavedChanges": "Perubahan yang belum disimpan",
       "unsaved": "belum disimpan)"
     },
     "componentsTabsRegularTab": {
-      "unsavedChanges": "Perubahan yang tidak disimpan"
+      "unsavedChanges": "Perubahan yang belum disimpan"
     },
     "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "Tutup Semua Tab"
+      "closeAllTabs": "Tutup semua tab"
     },
     "componentsTabsTabBarWithDrag": {
-      "openTabs": "Buka tab",
+      "openTabs": "Tab yang dibuka",
       "scrollTabsLeft": "Tatal tab ke kiri",
       "scrollTabsRight": "Tatal tab ke kanan",
-      "dayPanel": "Panel Harian"
+      "dayPanel": "Panel hari"
     },
     "componentsTabsTabErrorBoundary": {
-      "somethingWentWrong": "Sesuatu telah berlaku",
+      "somethingWentWrong": "Ada sesuatu yang tidak kena",
       "anErrorOccurredWhileRenderingThisTabContent": "Ralat berlaku semasa memaparkan kandungan tab ini.",
-      "tryAgain": "Cuba Lagi",
+      "tryAgain": "Cuba lagi",
       "sendReport": "Hantar laporan diagnostik"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Ikon nota"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Perubahan Tidak Disimpan",
-      "unsavedChangesBody": "\"{title}\" mempunyai perubahan yang belum disimpan. Apa yang anda ingin lakukan?"
+      "unsavedChanges": "Perubahan belum disimpan",
+      "unsavedChangesBody": "“{title}” mempunyai perubahan yang belum disimpan. Apa yang anda ingin lakukan?"
     },
     "componentsTeamSwitcher": {
       "newWorkspace": "Ruang kerja baharu",
       "darkMode": "Mod gelap",
-      "settings": "tetapan",
+      "settings": "Tetapan",
       "integrations": "Integrasi",
-      "signOut": "Log Keluar",
+      "signOut": "Log keluar",
       "downloadOnIos": "Muat turun pada iOS"
     },
     "componentsTrafficLights": {
-      "closeWindow": "Tutup tingkap",
+      "closeWindow": "Tutup tetingkap",
       "minimizeWindow": "Minimumkan tetingkap",
       "maximizeWindow": "Maksimumkan tetingkap"
     },
     "componentsUiAutocompleteDropdown": {
       "suggestions": "Cadangan",
       "or": "atau",
-      "enter": "Masuk",
+      "enter": "Enter",
       "toInsert": "untuk memasukkan"
     },
     "componentsUiBreadcrumb": {
-      "breadcrumb": "serbuk roti",
+      "breadcrumb": "laluan navigasi",
       "more": "Lagi"
     },
     "componentsUiDialog": {
-      "close": "tutup"
+      "close": "Tutup"
     },
     "componentsUiSheet": {
-      "close": "tutup"
+      "close": "Tutup"
     },
     "componentsUiSidebar": {
       "sidebar": "Bar sisi",
       "displaysTheMobileSidebar": "Memaparkan bar sisi mudah alih.",
-      "toggleSidebar": "Togol Sidebar",
-      "toggleSidebar2": "Togol Sidebar",
+      "toggleSidebar": "Tunjuk/sembunyi bar sisi",
+      "toggleSidebar2": "Tunjuk/sembunyi bar sisi",
       "dragToResizeDoubleClickToReset": "Seret untuk mengubah saiz · Klik dua kali untuk menetapkan semula"
     },
     "componentsVaultOnboarding": {
       "welcomeToMemry": "Selamat datang ke memrynote",
       "yourPersonalKnowledgeManagementSystem": "Sistem pengurusan pengetahuan peribadi anda.",
-      "selectAFolderToStoreYourNotesAndTasks": "Pilih folder untuk menyimpan nota dan tugasan anda.",
-      "opening": "Membuka...",
-      "selectVaultFolder": "Pilih Folder Bilik Kebal",
-      "plainMarkdown": "Penurunan Harga Biasa",
+      "selectAFolderToStoreYourNotesAndTasks": "Pilih folder untuk menyimpan nota dan tugas anda.",
+      "opening": "Membuka…",
+      "selectVaultFolder": "Pilih folder bilik kebal",
+      "plainMarkdown": "Markdown biasa",
       "yourNotesStayPortable": "Nota anda kekal mudah alih",
-      "syncAnywhere": "Segerakkan Di Mana-mana",
+      "syncAnywhere": "Segerakkan di mana-mana",
       "useDropboxIcloudGit": "Gunakan Dropbox, iCloud, Git",
-      "recentVaults": "Bilik Kebal Terkini",
+      "recentVaults": "Bilik kebal terkini",
       "notesLastOpened": "nota · Terakhir dibuka",
-      "brandName": "Memrynote",
       "preRelease": "Beta",
-      "createNewVault": "Cipta peti baharu",
-      "createNewVaultDesc": "Mulakan peti baharu dalam folder pilihan anda.",
-      "openExistingVault": "Buka peti sedia ada",
+      "createNewVault": "Buat bilik kebal baharu",
+      "createNewVaultDesc": "Mulakan bilik kebal baharu dalam folder pilihan anda.",
+      "openExistingVault": "Buka bilik kebal sedia ada",
       "openExistingVaultDesc": "Pilih folder fail Markdown yang sudah anda simpan.",
-      "signInToSync": "Log masuk untuk menyegerak",
-      "signInToSyncDesc": "Peti disulitkan hujung ke hujung merentas peranti anda.",
-      "create": "Cipta",
+      "signInToSync": "Log masuk untuk menyegerakkan",
+      "signInToSyncDesc": "Bilik kebal yang disulitkan hujung ke hujung merentas peranti anda.",
+      "create": "Buat",
       "open": "Buka",
       "signIn": "Log masuk",
-      "helpAndDocs": "Bantuan & dokumen",
-      "signInRequiresVault": "Buka atau cipta peti dahulu untuk menyediakan penyegerakan.",
-      "addVault": "Tambah peti"
+      "helpAndDocs": "Bantuan & dokumentasi",
+      "signInRequiresVault": "Buka atau buat bilik kebal dahulu untuk menyediakan penyegerakan.",
+      "addVault": "Tambah bilik kebal",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "Nota anda disimpan dalam bilik kebal, iaitu folder pada komputer ini.",
+        "createDesc": "Namakannya dan pilih lokasinya.",
+        "openFolder": "Buka folder sebagai bilik kebal",
+        "openFolderDesc": "Gunakan folder fail Markdown yang sudah anda simpan.",
+        "openFromSync": "Buka daripada Memrynote Sync",
+        "openFromSyncDesc": "Log masuk dan muat turun bilik kebal daripada akaun anda.",
+        "back": "Kembali",
+        "createTitle": "Buat bilik kebal baharu",
+        "createSubtitle": "Bilik kebal ialah folder fail Markdown. Anda boleh mengalihkannya kemudian.",
+        "nameLabel": "Nama",
+        "namePlaceholder": "Nota saya",
+        "locationLabel": "Lokasi",
+        "change": "Tukar…",
+        "willBeCreatedAt": "Akan dibuat di",
+        "errorExists": "Folder dengan nama ini sudah wujud di sini.",
+        "openInstead": "Buka folder itu sebagai bilik kebal",
+        "errorInvalidName": "Nama tidak boleh bermula dengan titik atau mengandungi / \\ : * ? \" < > |",
+        "createFailed": "Tidak dapat membuat bilik kebal.",
+        "createVault": "Buat bilik kebal",
+        "creating": "Membuat…",
+        "cancel": "Batal",
+        "chooseTitle": "Pilih bilik kebal",
+        "chooseSubtitle": "Dilog masuk sebagai {email}. Pilih satu untuk dibuka pada komputer ini.",
+        "untitledVault": "Bilik kebal tanpa tajuk",
+        "items": "{count, plural, other {# item}}",
+        "onThisComputer": "Pada komputer ini",
+        "downloadTo": "Muat turun ke",
+        "otherVaultsHint": "Bilik kebal lain kekal dalam akaun anda. Muat turun bila-bila masa daripada penukar bilik kebal.",
+        "openVault": "Buka bilik kebal",
+        "opening": "Membuka…",
+        "loadingVaults": "Memuatkan bilik kebal anda…",
+        "loadFailed": "Tidak dapat memuatkan bilik kebal anda.",
+        "retry": "Cuba lagi",
+        "noVaultsTitle": "Belum ada bilik kebal dalam akaun anda",
+        "noVaultsDesc": "Buat satu pada komputer ini. Ia akan disegerakkan ke akaun anda.",
+        "createCta": "Buat bilik kebal",
+        "openFailed": "Tidak dapat membuka bilik kebal."
+      }
     },
     "componentsVaultSwitcher": {
-      "noVaultsYet": "Tiada peti besi lagi",
-      "openVault": "Buka peti besi",
-      "settings": "tetapan",
+      "noVaultsYet": "Belum ada bilik kebal",
+      "openVault": "Buka bilik kebal",
+      "settings": "Tetapan",
       "logOut": "Log keluar",
-      "signInToSync": "Log masuk untuk menyegerak",
-      "remove": "Alih keluar \"",
+      "signInToSync": "Log masuk untuk menyegerakkan",
+      "remove": "Alih keluar “",
+      "removeVaultTitle": "Alih keluar “{name}” daripada senarai?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Bilik kebal ini akan dialih keluar daripada apl, tetapi fail anda akan kekal pada cakera. Anda sentiasa boleh menambahkannya semula kemudian.",
       "cancel": "Batal",
       "remove2": "Alih keluar",
       "inYourAccount": "Dalam akaun anda",
       "itemsCount": "{count} item",
-      "untitledVault": "Peti besi",
+      "untitledVault": "Bilik kebal",
       "downloadVaultTitle": "Muat turun “{name}”",
       "downloadLocation": "Lokasi",
       "changeLocation": "Tukar…",
       "download": "Muat turun",
-      "downloadFailed": "Peti besi tidak dapat dimuat turun",
+      "downloadFailed": "Tidak dapat memuat turun bilik kebal",
       "deleteFromAccount": "Padam daripada akaun",
-      "deleteVaultBody": "Semua data yang disegerakkan untuk peti besi ini akan dialih keluar secara kekal daripada pelayan Memry dan tindakan ini tidak boleh dibuat asal. Fail anda pada cakera tidak dipadamkan.",
-      "deleteVaultConfirm": "Padam daripada akaun",
-      "deleteVaultFailed": "Peti besi tidak dapat dipadamkan",
       "deleteVaultTitle": "Padam “{name}” daripada akaun anda?",
-      "removeVaultTitle": "Alih keluar “{name}” daripada senarai?",
+      "deleteVaultBody": "Tindakan ini mengalih keluar semua data yang disegerakkan bagi bilik kebal ini daripada pelayan Memry secara kekal dan tidak boleh dibuat asal. Fail anda pada cakera tidak dipadam.",
+      "deleteVaultConfirm": "Padam daripada akaun",
+      "deleteVaultFailed": "Tidak dapat memadam bilik kebal",
       "missing": "Folder tidak ditemui"
     },
     "componentsWindowControls": {
       "searchK": "Cari (⌘K)",
-      "browserBack": "Pelayar kembali",
-      "back": "belakang",
-      "browserForward": "Penyemak imbas ke hadapan",
-      "forward": "ke hadapan"
+      "browserBack": "Navigasi ke belakang",
+      "back": "Kembali",
+      "browserForward": "Navigasi ke hadapan",
+      "forward": "Ke hadapan"
     }
   },
   "phaseI": {
@@ -397,466 +918,339 @@
       "undone": "Dibuat asal"
     }
   },
-  "agentChat": {
-    "title": "Sembang Agent",
-    "loading": "Memuatkan sembang ejen...",
-    "conversationLoading": "Memuatkan perbualan...",
-    "newConversation": "Perbualan baharu",
-    "history": "Sejarah perbualan",
-    "openInTab": "Buka perbualan dalam tab",
-    "stop": "Berhenti",
-    "thinking": "Agent sedang berfikir",
-    "enable": {
-      "title": "Dayakan memrynote Agent",
-      "description": "memrynote Agent menggunakan ejen tempatan pilihan anda CLI untuk bersembang tentang peti besi anda. Claude menghantar giliran kepada Anthropic; Codex menghantar giliran ke OpenAI.",
-      "remote": "memrynote menyulitkan sejarah sembang setempat dan disegerakkan anda, tetapi inferens model berlaku dengan pembekal yang dipilih.",
-      "readTools": "Alat baca berjalan secara automatik.",
-      "writeTools": "Buat dan kemas kini alatan memerlukan kelulusan.",
-      "diff": "Alat kemas kini menunjukkan perbezaan atau pratonton.",
-      "button": "Dayakan sembang Agent"
-    },
-    "approval": {
-      "description": "Ejen ingin memanggil {name} dengan hujah ini.",
-      "applyOnce": "Mohon sekali",
-      "allowOnce": "Benarkan sekali",
-      "editAndApply": "Edit dan gunakan",
-      "editAndAllow": "Edit dan benarkan",
-      "allowAlways": "Benarkan sentiasa",
-      "applyEdits": "Gunakan pengeditan",
-      "deny": "Nafikan",
-      "invalidJson": "Masukkan JSON yang sah sebelum menggunakan suntingan."
-    },
-    "diff": {
-      "previewError": "Tidak dapat pratonton perbezaan nota",
-      "description": "Ejen ingin mengemas kini {title}. Semak kandungan semasa dan calon sebelum menggunakannya.",
-      "fallbackTitle": "nota ini",
-      "current": "Semasa",
-      "candidate": "Calon",
-      "loading": "Memuatkan...",
-      "apply": "Mohon",
-      "applyEdited": "Guna disunting"
-    },
-    "inPageReview": {
-      "regionLabel": "Cadangan ejen",
-      "barLabel": "Semak cadangan ejen",
-      "loading": "Memuatkan cadangan...",
-      "loadingTitle": "Cadangan ejen",
-      "title": "{count, plural, =0 {Cadangan ejen} other {Ejen mencadangkan # perubahan}}",
-      "editingTitle": "Menyunting cadangan",
-      "pendingHint": "Belum disimpan. Terima untuk menggunakannya.",
-      "editingHint": "Suntingan anda kekal di sini sehingga anda terima.",
-      "baseChanged": "Nota ini berubah semasa anda menyunting cadangan.",
-      "keepDraft": "Kekalkan suntingan saya",
-      "restart": "Mula semula dari versi terkini",
-      "reject": "Tolak",
-      "edit": "Sunting",
-      "showDiff": "Tunjukkan perubahan",
-      "accept": "Terima",
-      "acceptEdits": "Terima suntingan",
-      "waiting": "Menunggu semakan anda dalam {title}.",
-      "notOpen": "Buka {title} untuk melihat perubahan, atau terima tanpa menyemak.",
-      "show": "Tunjukkan",
-      "openNote": "Buka nota",
-      "openJournal": "Buka jurnal",
-      "fallbackTitle": "nota ini"
-    },
-    "composer": {
-      "currentNote": "Nota semasa",
-      "removeAttachment": "Alih keluar {label}",
-      "placeholder": "Tanya memrynote apa-apa sahaja. @ untuk menyebut fail",
-      "send": "Hantar",
-      "providerLabel": "Pembekal Agent: {provider}",
-      "settingsSummary": "{reasoning}",
-      "providers": {
-        "claude": "Claude",
-        "codex": "Codex",
-        "antigravity": "Antigravity",
-        "local": "Setempat"
-      },
-      "models": {
-        "default": "Lalai",
-        "label": "Model"
-      },
-      "settings": {
-        "reasoning": "Penaakulan"
-      },
-      "claudeSettings": {
-        "reasoning": {
-          "low": "Rendah",
-          "medium": "Sederhana",
-          "high": "Tinggi",
-          "extraHigh": "Lebih Tinggi",
-          "extraHighDefault": "Lebih Tinggi (lalai)",
-          "max": "Maks"
-        }
-      },
-      "codexSettings": {
-        "reasoning": {
-          "low": "Rendah",
-          "medium": "Sederhana",
-          "mediumDefault": "Sederhana (lalai)",
-          "high": "Tinggi",
-          "extraHigh": "Lebih Tinggi"
-        }
-      },
-      "access": {
-        "vaultOnly": "Peti besi sahaja",
-        "computerAccess": "Akses komputer"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Mati",
-        "label": "Carian web"
-      },
-      "permissionsLabel": "Kebenaran Agent: {access}, carian web {webSearch}",
-      "permissions": {
-        "label": "Kebenaran",
-        "access": "Akses",
-        "tools": "Alat"
-      },
-      "modelSettingsLabel": "Tetapan model Agent: {model}, {settings}"
-    },
-    "refPicker": {
-      "noMatches": "Tiada padanan"
-    },
-    "toolResult": {
-      "label": "Hasil alat"
-    },
-    "toolCall": {
-      "editedArgs": "Argumen yang disunting",
-      "parameters": "Parameter"
-    },
-    "sidebar": {
-      "label": "Bar sisi kanan",
-      "day": "Hari",
-      "agent": "Ejen",
-      "pendingApproval": "{count, plural, one {# menunggu kelulusan} other {# kelulusan belum selesai}}",
-      "inProgress": "Agent giliran sedang berjalan",
-      "close": "Tutup ejen"
-    },
-    "errors": {
-      "loadConversations": "Tidak dapat memuatkan perbualan ejen",
-      "loadConversation": "Tidak dapat memuatkan perbualan ejen",
-      "createConversation": "Tidak dapat membuat perbualan ejen",
-      "busy": "Satu lagi tetingkap adalah pertengahan pusingan untuk perbualan ini. Tunggu ia selesai atau hentikan dari situ.",
-      "sendTurn": "Tidak dapat menghantar giliran ejen",
-      "cancelTurn": "Tidak dapat membatalkan giliran ejen",
-      "submitApproval": "Tidak dapat menyerahkan kelulusan alat",
-      "updateTrust": "Tidak dapat mengemas kini alat yang dipercayai",
-      "saveDisclosure": "Tidak dapat menyimpan keadaan pendedahan",
-      "resolveWindow": "Tidak dapat menyelesaikan tetingkap sumber ejen",
-      "detectCli": "Tidak dapat mengesan hujung belakang ejen",
-      "loadDisclosure": "Tidak dapat memuatkan keadaan pendedahan"
-    },
-    "sources": {
-      "used": "{count, plural, one {Menggunakan # sumber} other {Menggunakan # sumber}}"
-    }
-  },
   "home": {
-    "addWidget": "Tambah widget",
-    "board": {
-      "defaultName": "Laman Utama",
-      "deleteAria": "Padam susun atur",
-      "label": "Susun atur laman utama",
-      "newAria": "Papan baharu",
-      "newName": "Papan baharu"
-    },
-    "disabled": {
-      "createNote": "Cipta nota",
-      "hint": "Tiada apa terbuka. Mulakan nota."
-    },
-    "done": "Selesai",
-    "edit": "Sunting",
-    "empty": {
-      "body": "Widget menyatukan nota, tugasan dan penanda buku anda di satu tempat yang tenang.",
-      "cta": "Tambah widget pertama anda",
-      "title": "Papan anda kosong"
-    },
-    "greeting": {
-      "afternoon": "Selamat tengah hari",
-      "evening": "Selamat petang",
-      "morning": "Selamat pagi"
-    },
-    "header": {
-      "events": "{count, plural, other {# acara}}",
-      "tasksDue": "{count, plural, other {# tugasan perlu hari ini}}"
-    },
-    "noBookmarksYet": "Belum ada penanda buku.",
-    "noEventsYet": "Tiada acara hari ini.",
-    "noJournalEntriesYet": "Belum ada catatan jurnal.",
-    "noNotesYet": "Belum ada nota.",
-    "noTasksYet": "Belum ada tugasan.",
     "widget": {
-      "bookmarks": "Penanda buku",
+      "removeAria": "Alih keluar widget",
+      "dragAria": "Seret widget",
+      "configAria": "Konfigurasikan widget",
+      "resizeAria": "Ubah saiz kepada {size}",
+      "menuAria": "Pilihan widget",
+      "resize": "Saiz",
+      "remove": "Alih keluar",
+      "filter": {
+        "all": "Semua",
+        "today": "Perlu disiapkan hari ini",
+        "tomorrow": "Esok",
+        "next7": "7 hari akan datang",
+        "noDueDate": "Tiada tarikh akhir"
+      },
+      "recentlyEdited": "Baru diedit",
+      "recentlyOpened": "Baru dibuka",
+      "recentMeta": "diedit {time}",
+      "recentMetaWithFolder": "{folder} · diedit {time}",
+      "openedMeta": "dibuka {time}",
+      "openedMetaWithFolder": "{folder} · dibuka {time}",
+      "noRecentlyOpened": "Nota yang anda buka akan dipaparkan di sini",
+      "bookmarks": "Penanda halaman",
+      "tasks": "Tugas",
       "calendar": "Kalendar",
       "calendarToday": "Hari ini",
-      "configAria": "Konfigur widget",
-      "configure": "Konfigur",
-      "dragAria": "Seret widget",
+      "openCalendar": "Buka kalendar",
+      "next": "Seterusnya: {title}",
+      "startsIn": "Bermula dalam {count, plural, other {# min}}",
       "duration": "{count} min",
-      "filter": {
-        "today": "Perlu Hari Ini",
-        "tomorrow": "Esok",
-        "week": "Minggu Ini"
-      },
-      "folder": "Folder",
-      "folderEmpty": "Belum ada folder",
-      "folderNoSelection": "Tiada folder dipilih",
-      "folderPickPrompt": "Pilih folder",
-      "folderViewSelect": "Lihat",
-      "folderView_gallery": "Galeri",
-      "folderView_list": "Senarai",
-      "inbox": "Peti Masuk",
+      "inbox": "Peti masuk",
       "inboxAllTypes": "Semua jenis",
       "inboxOlder": "{count, plural, other {# lebih lama}}",
       "inboxOldest": "paling lama {count, plural, other {# hari}}",
+      "openInbox": "Buka peti masuk",
+      "folder": "Folder",
+      "untitled": "Tanpa tajuk",
+      "folderPickPrompt": "Pilih folder",
+      "folderEmpty": "Belum ada folder",
+      "folderNoSelection": "Tiada folder dipilih",
+      "folderView_list": "Senarai",
+      "folderView_gallery": "Galeri",
+      "folderViewSelect": "Paparan",
+      "project": "Projek",
+      "projectNoSelection": "Tiada projek dipilih",
+      "projectMissing": "Projek ini tidak lagi tersedia",
+      "projectNoTasks": "Tiada tugas",
       "journal": "Jurnal",
-      "journalStreak": "{count, plural, other {rentetan #-hari}}",
+      "journalStreak": "{count, plural, other {# hari berturut-turut}}",
       "journalToday": "Hari ini",
       "journalYesterday": "Semalam",
+      "journalTomorrow": "Esok",
+      "journalUpcoming": "Akan datang",
+      "journalNoEntryYet": "Belum ada entri",
       "loadError": "Tidak dapat memuatkan",
-      "menuAria": "Pilihan widget",
-      "next": "Seterusnya: {title}",
-      "openCalendar": "Buka Kalendar",
-      "openInbox": "Buka peti masuk",
-      "recentMeta": "disunting {time}",
-      "recentMetaWithFolder": "{folder} · disunting {time}",
-      "recentlyEdited": "Baru disunting",
-      "remove": "Alih keluar",
-      "removeAria": "Alih keluar widget",
-      "resize": "Saiz",
-      "resizeAria": "Ubah saiz kepada {size}",
-      "savedFilterDefault": "Hari ini",
-      "savedFilterHint": "Bintangkan penapis di halaman Tugasan untuk menggunakannya di sini",
-      "savedFilterLabel": "Penapis disimpan",
-      "startsIn": "Bermula dalam {count, plural, other {# min}}",
-      "tasks": "Tugasan",
-      "unknown": "Widget tidak diketahui",
-      "untitled": "Tanpa tajuk"
+      "unknown": "Widget tidak diketahui"
+    },
+    "board": {
+      "label": "Susun atur laman utama",
+      "deleteAria": "Padam susun atur",
+      "newAria": "Papan baharu",
+      "newName": "Papan baharu",
+      "defaultName": "Laman utama",
+      "manage": "Urus papan",
+      "manageTitle": "Urus papan",
+      "manageDescription": "Namakan semula, susun semula atau padam papan laman utama anda.",
+      "renameAria": "Namakan semula papan",
+      "reorderAria": "Susun semula papan",
+      "nameLabel": "Nama papan"
+    },
+    "greeting": {
+      "morning": "Selamat pagi",
+      "afternoon": "Selamat petang",
+      "evening": "Selamat malam"
+    },
+    "header": {
+      "tasksDue": "{count, plural, other {# tugas perlu disiapkan hari ini}}",
+      "events": "{count, plural, other {# acara}}"
+    },
+    "edit": "Edit",
+    "done": "Selesai",
+    "addWidget": "Tambah widget",
+    "empty": {
+      "title": "Papan anda kosong",
+      "body": "Widget menyatukan nota, tugas dan penanda halaman anda di satu tempat yang tenang.",
+      "cta": "Tambah widget pertama anda"
+    },
+    "noBookmarksYet": "Belum ada penanda halaman.",
+    "noNotesYet": "Belum ada nota.",
+    "noTasksYet": "Belum ada tugas.",
+    "noEventsYet": "Tiada acara hari ini.",
+    "noJournalEntriesYet": "Belum ada entri jurnal.",
+    "disabled": {
+      "createNote": "Buat nota",
+      "hint": "Tiada apa-apa yang dibuka. Mulakan nota."
     }
   },
-  "media": {
-    "video": "Video"
-  },
   "onboarding": {
-    "agentChat": {
-      "body": "Tukar ke tab Ejen untuk bertanya kepada pembantu MemryNote tentang bilik kebal anda.",
-      "title": "Bersembang dengan ejen AI"
-    },
-    "collections": {
-      "body": "Susun nota ke dalam folder, sematkan penanda buku dan semak imbas mengikut tag — semuanya di sini.",
-      "title": "Koleksi, penanda buku & tag"
-    },
-    "dayPanel": {
-      "body": "Panel sisi mengekalkan kalendar dan paparan hari anda di sebelah apa sahaja yang anda baca.",
-      "title": "Hari anda, di sisi kerja anda"
-    },
-    "feedback": {
-      "body": "Hantar maklum balas terus ke pasukan dari sini.",
-      "title": "Beritahu kami pendapat anda"
-    },
-    "nav": {
-      "body": "Peti Masuk untuk menangkap, Jurnal untuk nota harian, Kalendar untuk garis masa anda, Tugasan untuk senarai tugas, dan Graf untuk melihat bagaimana semuanya berhubung.",
-      "title": "Ruang kerja anda"
+    "welcome": {
+      "title": "Selamat datang ke MemryNote",
+      "body": "Ruang peribadi anda yang tetap berfungsi di luar talian. Nota disulitkan hujung ke hujung — nota tidak pernah meninggalkan peranti anda tanpa disulitkan."
     },
     "newNote": {
-      "body": "Mula di sini. Semua yang anda tulis disimpan secara tempatan, dahulu.",
-      "title": "Cipta nota pertama anda"
+      "title": "Buat nota pertama anda",
+      "body": "Mula di sini. Semua yang anda tulis disimpan pada peranti anda dahulu."
     },
-    "settings": {
-      "body": "Import nota anda dari 12+ apl — Obsidian, Notion, Apple Notes, Evernote dan banyak lagi — dan laraskan semua yang lain dalam Tetapan.",
-      "title": "Tetapan & import"
+    "nav": {
+      "title": "Ruang kerja anda",
+      "body": "Peti masuk untuk mencatat, Jurnal untuk nota harian, Kalendar untuk garis masa anda, Tugas untuk senarai tugas dan Graf untuk melihat cara semuanya berhubung."
+    },
+    "collections": {
+      "title": "Koleksi, penanda halaman & teg",
+      "body": "Susun nota ke dalam folder, semat penanda halaman dan semak imbas mengikut teg — semuanya di sini."
+    },
+    "dayPanel": {
+      "title": "Hari anda, di sisi kerja anda",
+      "body": "Panel sisi memaparkan kalendar dan paparan hari anda di sebelah apa sahaja yang anda baca."
+    },
+    "agentChat": {
+      "title": "Bersembang dengan ejen AI",
+      "body": "Tukar ke tab Ejen untuk bertanya kepada pembantu MemryNote tentang bilik kebal anda."
     },
     "sync": {
-      "body": "Hidupkan penyegerakan disulitkan hujung ke hujung untuk memastikan setiap peranti selaras.",
-      "title": "Penyegerakan peribadi, disulitkan"
+      "title": "Penyegerakan peribadi yang disulitkan",
+      "body": "Hidupkan penyegerakan disulitkan hujung ke hujung untuk memastikan setiap peranti selaras."
     },
-    "welcome": {
-      "body": "Rumah peribadi anda yang mengutamakan luar talian. Nota disulitkan hujung ke hujung — ia tidak pernah meninggalkan peranti anda tanpa disulitkan.",
-      "title": "Selamat datang ke MemryNote"
+    "feedback": {
+      "title": "Beritahu kami pendapat anda",
+      "body": "Hantar maklum balas terus kepada pasukan dari sini."
+    },
+    "settings": {
+      "title": "Tetapan & import",
+      "body": "Import nota anda daripada lebih 12 apl — Obsidian, Notion, Apple Notes, Evernote dan banyak lagi — dan laraskan semua yang lain dalam Tetapan."
     },
     "tour": {
       "next": "Seterusnya",
       "previous": "Sebelumnya",
       "progress": "{current} daripada {total}"
+    },
+    "starPrompt": {
+      "title": "Pengenalan selesai",
+      "body": "Sila beri bintang kepada kami di GitHub — ia membantu orang lain menemui MemryNote.",
+      "action": "Beri bintang di GitHub"
     }
   },
-  "capture": {
-    "focusShortcut": "Fokus input tangkapan",
-    "detailHint": "butiran",
-    "focusHint": "Q",
-    "submit": "Tangkap"
-  },
-  "canvas": {
-    "card": {
-      "addCard": "Tambah kad",
-      "addCreateNote": "Cipta nota \"{query}\"",
-      "addCreateNoteEmpty": "Cipta nota baharu",
-      "addCreatedAt": "Dicipta {date}",
-      "addEmpty": "Tiada hasil ditemui",
-      "addGroupEvents": "Acara",
-      "addGroupNotes": "Nota",
-      "addGroupTasks": "Tugasan",
-      "addOnCanvas": "Pada kanvas",
-      "addPlaceholder": "Cari nota, tugasan dan acara…",
-      "allDay": "Sepanjang hari",
-      "createNoteFailed": "Nota tidak dapat dicipta",
-      "deleted": "Item dipadamkan",
-      "loading": "Memuatkan…",
-      "open": "Buka dalam tab",
-      "openToEdit": "Buka dalam tab untuk menyunting",
-      "untitled": "Tanpa tajuk",
-      "bulkGroup": "Tambah semua daripada",
-      "bulkFromTag": "Satu tag…",
-      "bulkFromFolder": "Satu folder…",
-      "bulkSearchTags": "Cari tag…",
-      "bulkSearchFolders": "Cari folder…",
-      "bulkTagsHeading": "Tag",
-      "bulkFoldersHeading": "Folder",
-      "bulkItemCount": "{count, plural, other {# item}}",
-      "bulkViewsHeading": "Tambah daripada {name}",
-      "bulkAllItems": "Semua item",
-      "bulkConfirmTitle": "{count, plural, other {Tambah # kad daripada {name}?}}",
-      "bulkConfirmBody": "Papan besar menjadi lebih perlahan dan boleh melebihi had saiz penyegerakan.",
-      "bulkConfirmSkipped": "{count, plural, other {# item sudah ada pada kanvas ini dan akan dilangkau.}}",
-      "bulkConfirmAdd": "{count, plural, other {Tambah # kad}}",
-      "bulkBack": "Kembali",
-      "bulkEmpty": "Tiada nota, fail atau tugasan untuk ditambah",
-      "bulkLoadFailed": "Tidak dapat memuatkan item",
-      "bulkAdded": "{count, plural, other {# kad ditambah}}",
-      "bulkAddedSkipped": "{count, plural, other {# kad ditambah}} · {skipped} sudah ada pada kanvas",
-      "bulkAllOnCanvas": "{count, plural, other {Kesemua # sudah ada pada kanvas ini}}"
-    },
-    "corruptScene": "Kanvas ini tidak dapat dibaca. Penyuntingan dilumpuhkan supaya data anda tidak hilang.",
-    "createFailed": "Kanvas tidak dapat dicipta",
-    "disabledBody": "Tab ini tergolong dalam ciri yang tidak didayakan pada peranti ini.",
-    "disabledTitle": "Kanvas tidak didayakan",
-    "empty": "Tiada kanvas lagi",
-    "libraryStoreFailed": "Pustaka bentuk anda tidak dapat disimpan. Perubahan terbaru mungkin hilang.",
-    "loadFailed": "Kanvas tidak dapat dimuatkan",
-    "loading": "Memuatkan kanvas…",
-    "newCanvas": "Kanvas baharu",
-    "notFound": "Kanvas ini tidak ditemui",
-    "openFailed": "Kanvas tidak dapat dibuka",
-    "savedToVault": "Semua perubahan disimpan ke peti besi anda secara automatik",
-    "sectionLabel": "Kanvas",
-    "tooLargeToSync": "Kanvas ini terlalu besar untuk disegerakkan. Ia disimpan pada peranti ini tetapi tidak akan sampai ke peranti anda yang lain sehingga ia menjadi lebih kecil.",
-    "untitled": "Kanvas tanpa tajuk"
-  },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Klik baris",
-      "reset": "Set semula",
-      "shortcutsTab": "Tab Pintasan"
-    },
-    "description": "Laluan pantas untuk bergerak dalam memrynote, menangkap idea dan memproses kerja.",
+    "description": "Laluan pantas untuk bergerak dalam memrynote, mencatat idea dan menguruskan kerja.",
+    "or": "atau",
+    "then": "kemudian",
     "groups": {
       "general": {
-        "description": "Navigasi dan bantuan seluruh apl.",
-        "title": "Umum"
-      },
-      "inbox": {
-        "description": "Proses item yang ditangkap dengan pantas.",
-        "title": "Peti Masuk"
-      },
-      "journal": {
-        "description": "Navigasi paparan jurnal dan fokus pada ruang menulis.",
-        "title": "Jurnal"
-      },
-      "notes": {
-        "description": "Tulis, formatkan dan cari nota.",
-        "title": "Nota / Editor"
-      },
-      "settings": {
-        "description": "Buka tetapan dan sesuaikan pintasan.",
-        "title": "Tetapan"
+        "title": "Umum",
+        "description": "Navigasi dan bantuan seluruh apl."
       },
       "tabs": {
-        "description": "Bergerak antara tab dan anak tetingkap.",
-        "title": "Tab & Belahan"
+        "title": "Tab & paparan pisah",
+        "description": "Bergerak antara tab dan anak tetingkap."
+      },
+      "inbox": {
+        "title": "Peti masuk",
+        "description": "Uruskan item yang dicatat dengan pantas."
+      },
+      "journal": {
+        "title": "Jurnal",
+        "description": "Navigasi paparan jurnal dan fokus pada ruang menulis."
+      },
+      "notes": {
+        "title": "Nota / Editor",
+        "description": "Tulis, formatkan dan cari nota."
       },
       "tasks": {
-        "description": "Tapis, pilih dan selesaikan tugasan.",
-        "title": "Tugasan"
+        "title": "Tugas",
+        "description": "Tapis, pilih dan selesaikan tugas."
+      },
+      "settings": {
+        "title": "Tetapan",
+        "description": "Buka tetapan dan sesuaikan pintasan."
       }
     },
     "items": {
       "general": {
-        "createNote": "Cipta nota",
-        "keyboardShortcuts": "Buka pintasan papan kekunci",
-        "openSettings": "Buka tetapan",
         "quickSearch": "Buka carian pantas",
-        "sidebarSection": "Pergi ke bahagian bar sisi",
-        "toggleSidebar": "Togol bar sisi",
-        "undoTaskAction": "Buat asal tindakan tugasan terakhir"
-      },
-      "inbox": {
-        "archiveItem": "Arkibkan item yang dipilih",
-        "chooseQuickFileResult": "Pilih hasil fail pantas",
-        "clearSelection": "Kosongkan pilihan atau tutup fail pantas",
-        "confirmFiling": "Sahkan panel pemfailan",
-        "firstOrLastItem": "Item pertama atau terakhir",
-        "jumpByPage": "Lompat mengikut halaman",
-        "nextItem": "Item seterusnya",
-        "openOriginal": "Buka pautan asal",
-        "openQuickFile": "Buka fail pantas",
-        "previousItem": "Item sebelumnya",
-        "refresh": "Muat semula peti masuk",
-        "selectAllVisible": "Pilih semua item yang kelihatan",
-        "selectItem": "Pilih item",
-        "togglePreview": "Togol panel pratonton"
-      },
-      "journal": {
-        "bold": "Tebalkan teks yang dipilih",
-        "find": "Cari dalam jurnal",
-        "italic": "Condongkan teks yang dipilih",
-        "returnFromOverview": "Kembali daripada paparan bulan atau tahun",
-        "underline": "Gariskan bawah teks yang dipilih"
-      },
-      "notes": {
-        "bold": "Tebal",
-        "closeOverlays": "Tutup lapisan tindanan editor",
-        "commandMenu": "Buka menu arahan editor",
-        "createNote": "Cipta nota",
-        "find": "Cari dalam nota",
-        "italic": "Condong",
-        "underline": "Garis bawah"
-      },
-      "settings": {
-        "cancelRecording": "Batalkan rakaman pintasan",
-        "customizeShortcuts": "Sesuaikan pintasan papan kekunci",
+        "createNote": "Buat nota",
         "openSettings": "Buka tetapan",
-        "recordShortcut": "Rakam pintasan baharu",
-        "resetShortcut": "Pulihkan pintasan lalai"
+        "switchVault": "Tukar bilik kebal",
+        "adjacentVault": "Bilik kebal sebelumnya atau seterusnya",
+        "keyboardShortcuts": "Buka pintasan papan kekunci",
+        "undoTaskAction": "Buat asal tindakan tugas terakhir",
+        "toggleSidebar": "Tunjuk/sembunyi bar sisi",
+        "sidebarSection": "Pergi ke bahagian bar sisi"
       },
       "tabs": {
-        "closeAllInPane": "Tutup semua tab dalam anak tetingkap",
-        "closeSplitPane": "Tutup anak tetingkap belahan",
-        "closeTab": "Tutup tab",
-        "duplicateTab": "Gandakan tab",
-        "focusPane": "Fokus pada anak tetingkap lain",
-        "maximizePane": "Maksimumkan anak tetingkap semasa",
-        "moveTabToPane": "Alihkan tab ke anak tetingkap",
         "newTabMenu": "Buka menu tab baharu",
-        "nextTab": "Tab seterusnya",
-        "pinTab": "Semat atau nyahsemat tab",
-        "previousTab": "Tab sebelumnya",
+        "closeTab": "Tutup tab",
+        "closeAllInPane": "Tutup semua tab dalam anak tetingkap",
         "reopenClosedTab": "Buka semula tab yang ditutup",
-        "splitDown": "Belah ke bawah",
-        "splitRight": "Belah ke kanan"
+        "nextTab": "Tab seterusnya",
+        "previousTab": "Tab sebelumnya",
+        "pinTab": "Semat atau nyahsemat tab",
+        "duplicateTab": "Pendua tab",
+        "splitRight": "Pisah ke kanan",
+        "splitDown": "Pisah ke bawah",
+        "closeSplitPane": "Tutup anak tetingkap pisah",
+        "focusPane": "Fokus pada anak tetingkap lain",
+        "moveTabToPane": "Alihkan tab ke anak tetingkap",
+        "maximizePane": "Maksimumkan anak tetingkap semasa"
+      },
+      "inbox": {
+        "nextItem": "Item seterusnya",
+        "previousItem": "Item sebelumnya",
+        "firstOrLastItem": "Item pertama atau terakhir",
+        "jumpByPage": "Lompat mengikut halaman",
+        "togglePreview": "Tunjuk/sembunyi panel pratonton",
+        "selectItem": "Pilih item",
+        "selectAllVisible": "Pilih semua item yang kelihatan",
+        "clearSelection": "Kosongkan pilihan atau tutup pemfailan pantas",
+        "openQuickFile": "Buka pemfailan pantas",
+        "chooseQuickFileResult": "Pilih hasil pemfailan pantas",
+        "archiveItem": "Arkibkan item yang dipilih",
+        "openOriginal": "Buka pautan asal",
+        "refresh": "Muat semula peti masuk",
+        "confirmFiling": "Sahkan panel pemfailan"
+      },
+      "journal": {
+        "returnFromOverview": "Kembali daripada paparan bulan atau tahun",
+        "find": "Cari dalam jurnal",
+        "bold": "Tebalkan teks yang dipilih",
+        "italic": "Condongkan teks yang dipilih",
+        "underline": "Garis bawahi teks yang dipilih"
+      },
+      "notes": {
+        "createNote": "Buat nota",
+        "find": "Cari dalam nota",
+        "bold": "Tebal",
+        "italic": "Condong",
+        "underline": "Garis bawah",
+        "commandMenu": "Buka menu arahan editor",
+        "closeOverlays": "Tutup lapisan tindanan editor"
       },
       "tasks": {
         "clearFilters": "Kosongkan penapis yang kelihatan",
-        "clearSelection": "Kosongkan pilihan tugasan",
-        "completeSelected": "Selesaikan tugasan yang dipilih",
-        "configureRepeat": "Konfigurasikan ulangan pada tugasan yang difokuskan",
-        "deleteSelected": "Padam tugasan yang dipilih",
-        "selectAllVisible": "Pilih semua tugasan yang kelihatan",
-        "skipOccurrence": "Langkau kejadian berulang",
-        "stopRepeating": "Hentikan tugasan berulang"
+        "selectAllVisible": "Pilih semua tugas yang kelihatan",
+        "clearSelection": "Kosongkan pilihan tugas",
+        "completeSelected": "Selesaikan tugas yang dipilih",
+        "deleteSelected": "Padam tugas yang dipilih",
+        "configureRepeat": "Konfigurasikan ulangan pada tugas yang difokuskan",
+        "skipOccurrence": "Langkau ulangan ini",
+        "stopRepeating": "Hentikan ulangan tugas"
+      },
+      "settings": {
+        "openSettings": "Buka tetapan",
+        "customizeShortcuts": "Sesuaikan pintasan papan kekunci",
+        "recordShortcut": "Rakam pintasan baharu",
+        "cancelRecording": "Batalkan rakaman pintasan",
+        "resetShortcut": "Pulihkan pintasan lalai"
       }
     },
-    "or": "atau",
-    "then": "kemudian"
+    "combos": {
+      "shortcutsTab": "Tab pintasan",
+      "clickRow": "Klik baris",
+      "reset": "Tetapkan semula"
+    }
+  },
+  "update": {
+    "available": "Kemas kini tersedia",
+    "downloading": "Memuat turun {version}",
+    "ready": "Kemas kini sedia",
+    "failed": "Kemas kini gagal",
+    "downloadAction": "Muat turun",
+    "restartAction": "Mulakan semula",
+    "detailsAction": "Butiran",
+    "popover": {
+      "readyTitle": "MemryNote {version} sudah sedia",
+      "availableTitle": "MemryNote {version} kini tersedia",
+      "readySubtitle": "Anda menggunakan {current}",
+      "availableSubtitle": "Anda menggunakan {current} · belum ada apa-apa dimuat turun",
+      "allChanges": "Semua perubahan",
+      "restartNow": "Mulakan semula sekarang",
+      "onNextQuit": "Semasa keluar seterusnya",
+      "download": "Muat turun",
+      "notNow": "Bukan sekarang",
+      "moreOptions": "Lagi pilihan kemas kini",
+      "skipVersion": "Langkau {version}",
+      "turnOffAuto": "Matikan kemas kini automatik",
+      "copyVersionInfo": "Salin maklumat versi",
+      "openSettings": "Buka tetapan"
+    },
+    "installing": {
+      "title": "Memasang {version}",
+      "titleUnknownVersion": "Memasang kemas kini",
+      "subtitle": "MemryNote akan dibuka semula sebentar lagi. Semua yang anda tulis sudah disimpan pada cakera."
+    },
+    "installFailed": {
+      "title": "MemryNote tidak dapat menyelesaikan pemasangan {version}",
+      "titleUnknownVersion": "MemryNote tidak dapat menyelesaikan pemasangan kemas kini",
+      "body": "Bilik kebal anda tidak disentuh langsung — kemas kini digunakan pada apl, bukan pada nota anda. Anda masih menggunakan {current} dan semuanya berfungsi seperti biasa.",
+      "errorLabel": "Apa yang tidak kena",
+      "downloadManually": "Muat turun {version} secara manual",
+      "downloadManuallyUnknownVersion": "Muat turun MemryNote secara manual",
+      "tryAgain": "Cuba lagi",
+      "copyDetails": "Salin butiran"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Bilik kebal",
+    "position": "{name}, bilik kebal {index} daripada {count}",
+    "openList": "{position}. Buka senarai bilik kebal",
+    "switchTo": "Tukar ke {name}",
+    "switchingTo": "Menukar ke {name}",
+    "changeIcon": "Tukar ikon…",
+    "resetIcon": "Tetapkan semula ikon",
+    "iconButton": "Tukar ikon {name}",
+    "iconFailed": "Tidak dapat menukar ikon bilik kebal"
+  },
+  "sidebarHelp": {
+    "label": "Bantuan dan maklum balas",
+    "reportBug": "Laporkan pepijat",
+    "requestFeature": "Minta ciri",
+    "starOnGithub": "Beri bintang di GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "Apa yang baharu"
+  },
+  "sidebarStar": {
+    "title": "MemryNote ialah sumber terbuka",
+    "body": "Dibina secara terbuka. Bintang anda membantu orang lain menemuinya.",
+    "star": "Beri bintang",
+    "later": "Bukan sekarang",
+    "thanks": "Terima kasih. Ia amat bermakna."
+  },
+  "sidebar": {
+    "railLabel": "Bahagian",
+    "search": "Cari atau lompat ke…",
+    "vaultMenu": "{name}. Buka senarai bilik kebal"
   }
 }

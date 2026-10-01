@@ -1,7 +1,13 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Invoerveld voor vastleggen activeren",
+    "detailHint": "details",
+    "submit": "Vastleggen"
+  },
   "button": {
     "save": "Opslaan",
-    "cancel": "Annuleer",
+    "cancel": "Annuleren",
     "close": "Sluiten",
     "delete": "Verwijderen",
     "done": "Klaar",
@@ -10,9 +16,12 @@
     "remove": "Verwijderen",
     "retry": "Opnieuw proberen",
     "back": "Terug",
-    "continue": "Ga door",
-    "copy": "Kopieer",
-    "create": "Creëer"
+    "continue": "Doorgaan",
+    "copy": "Kopiëren",
+    "create": "Maken"
+  },
+  "media": {
+    "video": "Video"
   },
   "state": {
     "loading": "Laden…",
@@ -22,14 +31,14 @@
   },
   "action": {
     "search": "Zoeken",
-    "expand": "Uitbreiden",
+    "expand": "Uitvouwen",
     "collapse": "Samenvouwen",
     "showMore": "+{count, plural, one {# meer} other {# meer}}",
-    "showLess": "Laat minder zien",
+    "showLess": "Minder tonen",
     "undo": "Ongedaan maken"
   },
   "fileActions": {
-    "revealInFinder": "Toon in Finder",
+    "revealInFinder": "Tonen in Finder",
     "showInExplorer": "Tonen in Verkenner",
     "showInFileManager": "Tonen in bestandsbeheer",
     "openInDefaultApp": "Openen in standaardapp",
@@ -38,408 +47,132 @@
   "tabs": {
     "pin": "Tabblad vastzetten",
     "unpin": "Tabblad losmaken",
+    "persistence": {
+      "saveFailed": "Je geopende tabbladen worden niet meer opgeslagen",
+      "saveFailedQuota": "Deze sessie is te groot om op te slaan. Sluit een paar tabbladen, anders wordt ze mogelijk niet hersteld wanneer je Memry weer opent.",
+      "saveFailedGeneric": "Memry kon deze sessie niet opslaan, dus wordt ze mogelijk niet hersteld wanneer je de app weer opent.",
+      "lastSessionNotSaved": "Je vorige sessie is niet opgeslagen bij het afsluiten van Memry",
+      "lastSessionNotSavedQuota": "De opslag was op dat moment vol, dus deze tabbladen komen uit een eerder opgeslagen sessie. Sluit een paar tabbladen om ruimte te maken.",
+      "lastSessionNotSavedGeneric": "Memry kon je tabbladen bij het afsluiten niet opslaan, dus deze tabbladen komen uit een eerder opgeslagen sessie."
+    },
     "contextMenu": {
       "close": "Sluiten",
-      "closeOthers": "Sluit overige",
-      "closeToRight": "Dichtbij rechts",
-      "closeAll": "Sluit alles",
-      "duplicate": "Dubbel tabblad",
-      "splitRight": "Rechts splitsen",
-      "splitDown": "Afgesplitst",
-      "copyPath": "Kopieer pad",
-      "revealInSidebar": "Onthullen in zijbalk"
+      "closeOthers": "Andere sluiten",
+      "closeToRight": "Tabbladen rechts sluiten",
+      "closeAll": "Alles sluiten",
+      "duplicate": "Tabblad dupliceren",
+      "splitRight": "Naar rechts splitsen",
+      "splitDown": "Naar beneden splitsen",
+      "copyPath": "Pad kopiëren",
+      "revealInSidebar": "Tonen in zijbalk"
     }
   },
   "count": {
-    "note": "{count, plural, one {#-opmerking} other {#-opmerkingen}}",
-    "task": "{count, plural, one {#-taak} other {#-taken}}",
-    "itemDelete": "{count, plural, one {#-item verwijderen} other {Verwijder #-items}}",
-    "event": "{count, plural, one {# gebeurtenis} other {# gebeurtenissen}}",
-    "journal": "{count, plural, one {# dagboek} other {# dagboeken}}",
-    "reminder": "{count, plural, one {# herinnering} other {# herinneringen}}"
+    "note": "{count, plural, one {# notitie} other {# notities}}",
+    "journal": "{count, plural, one {# dagboeknotitie} other {# dagboeknotities}}",
+    "task": "{count, plural, one {# taak} other {# taken}}",
+    "event": "{count, plural, one {# afspraak} other {# afspraken}}",
+    "reminder": "{count, plural, one {# herinnering} other {# herinneringen}}",
+    "itemDelete": "{count, plural, one {# item verwijderen} other {# items verwijderen}}"
   },
   "toast": {
     "actionFailed": "Actie mislukt",
     "nothingToUndo": "Niets om ongedaan te maken",
     "undone": "Ongedaan gemaakt: {description}",
-    "undoFailed": "Kan actie niet ongedaan maken"
+    "undoFailed": "Kan actie niet ongedaan maken",
+    "filesImported": "{count, plural, one {# bestand geïmporteerd} other {# bestanden geïmporteerd}}",
+    "filesImportFailed": "{count, plural, one {Kan # bestand niet importeren} other {Kan # bestanden niet importeren}}",
+    "filesHiddenInSidebar": "Bestanden zijn verborgen in de zijbalk. Schakel “Bestanden tonen” in via het sorteermenu van Collecties om ze te zien.",
+    "moreRemindersDue": "{count, plural, one {Nog # herinnering} other {Nog # herinneringen}}",
+    "moreRemindersDueHint": "Bekijk het herinneringenpaneel voor details",
+    "searchIndexRepaired": "Zoekindex hersteld",
+    "searchIndexRepairedHint": "Een deel van de zoekindex was beschadigd, dus Memry heeft die opnieuw opgebouwd. Je notities zijn niet gewijzigd."
   },
   "dateRelative": {
     "today": "Vandaag",
     "yesterday": "Gisteren",
     "daysAgo": "{count, plural, one {# dag geleden} other {# dagen geleden}}",
-    "daysLate": "{count, plural, one {#d te laat} other {#d te laat}}",
+    "tomorrow": "Morgen",
     "daysOverdue": "{count, plural, one {# dag te laat} other {# dagen te laat}}",
-    "tomorrow": "Morgen"
+    "daysLate": "{count, plural, one {#d te laat} other {#d te laat}}",
+    "inDays": "{count, plural, one {over # dag} other {over # dagen}}",
+    "inWeeks": "{count, plural, one {over # week} other {over # weken}}"
   },
   "recurrence": {
-    "everyNDays": "{count, plural, one {Elke dag} other {Elke #-dagen}}",
-    "everyNWeeks": "{count, plural, one {Elke week} other {Elke #-weken}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {Elke weekdag} other {Elke #-weken op weekdagen}}",
-    "everyNWeeksOnWeekends": "{count, plural, one {Elk weekend} other {Elke #-weken in het weekend}}",
-    "everyNWeeksOnDays": "{count, plural, one {Elke week op {days}} other {Elke #-weken op {days}}}",
-    "everyNMonths": "{count, plural, one {Elke maand} other {Elke #-maanden}}",
-    "everyNMonthsOnDay": "{count, plural, one {Elke maand op de {day}{suffix}} other {Elke # maanden op de {day}{suffix}}}",
+    "everyNDays": "{count, plural, one {Elke dag} other {Elke # dagen}}",
+    "everyNWeeks": "{count, plural, one {Elke week} other {Elke # weken}}",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Elke weekdag} other {Elke # weken op weekdagen}}",
+    "everyNWeeksOnWeekends": "{count, plural, one {Elk weekend} other {Elke # weken in het weekend}}",
+    "everyNWeeksOnDays": "{count, plural, one {Elke week op {days}} other {Elke # weken op {days}}}",
+    "everyNMonths": "{count, plural, one {Elke maand} other {Elke # maanden}}",
+    "everyNMonthsOnDay": "{count, plural, one {Elke maand op dag {day}{suffix}} other {Elke # maanden op dag {day}{suffix}}}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Elke maand op de {week} {day}} other {Elke # maanden op de {week} {day}}}",
-    "everyNYears": "{count, plural, one {Elk jaar} other {Elke #-jaar}}",
-    "repeats": "Herhalingen",
+    "everyNYears": "{count, plural, one {Elk jaar} other {Elke # jaar}}",
+    "repeats": "Herhaling",
     "ordinal": {
       "first": "eerste",
-      "fourth": "vierde",
-      "last": "laatste",
       "second": "tweede",
-      "third": "derde"
+      "third": "derde",
+      "fourth": "vierde",
+      "last": "laatste"
     },
     "preset": {
       "everyWeekday": "Elke weekdag (ma-vr)",
       "everyYearOnDate": "Elk jaar op {date}"
     }
   },
-  "phaseF": {
-    "componentsAppSidebar": {
-      "collections": "Collecties",
-      "newNote": "Nieuwe notitie",
-      "newNote2": "Nieuwe notitie",
-      "newFolder": "Nieuwe map",
-      "newFolder2": "Nieuwe map",
-      "bookmarks": "Bladwijzers",
-      "tags": "Labels",
-      "dropFilesToImport": "Zet bestanden neer om te importeren",
-      "newNoteN": "Nieuwe notitie (⌘N)",
-      "new": "Nieuw",
-      "syncDisabled": "Synchronisatie uitgeschakeld",
-      "syncDisabled2": "Synchronisatie uitgeschakeld",
-      "feedbackButton": "Feedback verzenden",
-      "feedbackDescription": "Vertel ons wat werkt, wat kapot is of wat je wenst dat Memry deed. We lezen elk bericht.",
-      "feedbackEmailHint": "Voeg je e-mailadres toe als je een antwoord wilt.",
-      "feedbackError": "Kan feedback niet verzenden. Probeer opnieuw.",
-      "feedbackPlaceholder": "Jouw feedback…",
-      "feedbackSend": "Verzenden",
-      "feedbackSending": "Verzenden…",
-      "feedbackSuccess": "Bedankt voor je feedback!",
-      "feedbackTitle": "Feedback verzenden",
-      "newItemMenu": "Nieuw maken…",
-      "feedbackPrivacyEmailOptional": "Je e-mailadres — alleen als je het invult, en alleen zodat we kunnen antwoorden",
-      "feedbackPrivacyEmailSignedIn": "Het e-mailadres van je account ({email}), zodat we kunnen antwoorden",
-      "feedbackPrivacyMessage": "Je bericht, precies zoals je het hebt geschreven",
-      "feedbackPrivacyNote": "Verder niets. Je notities blijven op je apparaat.",
-      "feedbackPrivacyPlan": "Je abonnement (free, Plus, Pro of Believer)",
-      "feedbackPrivacyTitle": "Wat er wordt verstuurd",
-      "feedbackPrivacyVersion": "App-versie en besturingssysteem",
-      "projects": "Projecten"
-    },
-    "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "Formaat van dagpaneel wijzigen",
-      "dragToResizeDoubleClickToReset": "Sleep om het formaat te wijzigen · Dubbelklik om te resetten"
-    },
-    "componentsFindBarFindBar": {
-      "findReplaceAsk": "Vind, vervang, vraag..."
-    },
-    "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Onboarding overslaan",
-      "welcomeToMemry": "Welkom bij memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Jouw persoonlijke kennisbank. Laten we twee minuten de tijd nemen om u op weg te helpen.",
-      "getStarted": "Ga aan de slag ",
-      "createYourFirstNote": "Maak uw eerste notitie",
-      "markdownBasedStoredLocallyAsPlainFiles": "Op basis van markdown, lokaal opgeslagen als gewone bestanden.",
-      "eGMeetingNotesIdeasAnything": "bijv. Notulen, ideeën, wat dan ook...",
-      "skip": "Overslaan",
-      "createNote": "Notitie maken ",
-      "addYourFirstTask": "Voeg uw eerste taak toe",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Taken zijn gekoppeld aan uw aantekeningen, met prioriteiten en vervaldatums.",
-      "eGReviewProjectProposal": "bijv. Projectvoorstel beoordelen...",
-      "skip2": "Overslaan",
-      "createTask": "Taak maken ",
-      "syncAcrossDevices": "Synchroniseer tussen apparaten",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Houd uw notities en taken gesynchroniseerd op al uw apparaten. Je kunt dit altijd later nog instellen.",
-      "skipForNow": "Overslaan voor nu",
-      "doneLetSGo": "Klaar - laten we gaan! "
-    },
-    "componentsFolderIconButton": {
-      "setFolderIcon": "Mappictogram instellen"
-    },
-    "componentsHintOverlayHintIndicator": {
-      "hint": "TIP"
-    },
-    "componentsIconPicker": {
-      "iconPicker": "Pictogramkiezer",
-      "selectIcon": "Selecteer Pictogram",
-      "closeIconPicker": "Pictogramkiezer sluiten",
-      "searchIcons": "Zoekpictogrammen...",
-      "all": "Allemaal",
-      "clearIcon": "Duidelijk pictogram",
-      "noIconsFoundFor": "Geen iconen gevonden voor \""
-    },
-    "componentsKeyboardShortcutsModal": {
-      "keyboardShortcuts": "Sneltoetsen",
-      "closeShortcutsHelp": "Hulp bij snelkoppelingen sluiten",
-      "press": "Druk op",
-      "toClose": "sluiten"
-    },
-    "componentsKiboUiTreeIndex": {
-      "setIcon": "Pictogram instellen",
-      "clearIcon": "Duidelijk pictogram"
-    },
-    "componentsNavMain": {
-      "platform": "Platform"
-    },
-    "componentsNavProjects": {
-      "projects": "Projecten",
-      "more": "Meer",
-      "viewProject": "Bekijk project",
-      "shareProject": "Deel project",
-      "deleteProject": "Project verwijderen",
-      "more2": "Meer"
-    },
-    "componentsNavUser": {
-      "cn": "CN",
-      "cn2": "CN",
-      "upgradeToPro": "Upgrade naar Pro",
-      "account": "Rekening",
-      "billing": "Facturering",
-      "notifications": "Meldingen",
-      "logOut": "Uitloggen"
-    },
-    "componentsSearchCommandPalette": {
-      "search": "Zoeken",
-      "searchNotesTasksJournalInbox": "Zoek naar notities, taken, dagboek, inbox...",
-      "noResultsFor": "Geen resultaat voor “",
-      "result": "resultaat",
-      "noResultsForQuery": "Geen resultaten voor “{query}”",
-      "resultCount": "{count, plural, one {# resultaat} other {# resultaten}}",
-      "indexBuilding": "Zoekindex wordt opgebouwd {done}/{total} — resultaten zijn mogelijk onvolledig",
-      "indexBuildingUnknown": "Zoekindex wordt opgebouwd — resultaten zijn mogelijk onvolledig"
-    },
-    "componentsSearchRecentReasons": {
-      "searchAndClickItemsToBuildYourTrail": "Zoek en klik op items om je parcours te bouwen",
-      "reasons": "Redenen",
-      "clear": "Duidelijk"
-    },
-    "componentsSearchSearchFilters": {
-      "clear": "Duidelijk",
-      "tags": "Labels",
-      "filterByTag": "Filter op tag...",
-      "dateRange": "Datumbereik"
-    },
-    "componentsSearchSearchResultGroup": {
-      "viewAll": "Bekijk alles ",
-      "results": "resultaten"
-    },
-    "componentsSearchSearchResultItem": {
-      "p": "P",
-      "fuzzy": "vaag"
-    },
-    "componentsSplitViewEmptyPaneState": {
-      "noTabsOpen": "Geen tabbladen geopend",
-      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Open een pagina vanuit de zijbalk of maak een nieuw tabblad om aan de slag te gaan",
-      "openInbox": "Open Postvak IN",
-      "closePane": "Sluit venster"
-    },
-    "componentsSplitViewLayoutPicker": {
-      "layoutPresets": "Voorinstellingen voor lay-out",
-      "layoutPresets2": "Lay-outvoorinstellingen"
-    },
-    "componentsSplitViewResizeHandle": {
-      "resizePanes": "Het formaat van deelvensters wijzigen"
-    },
-    "componentsSplitViewTabContent": {
-      "taskscontextNotAvailable": "TakenContext niet beschikbaar",
-      "searchResults": "Zoekresultaten",
-      "unknownTabType": "Onbekend tabbladtype: "
-    },
-    "componentsTabsAccessibleTab": {
-      "unsavedChanges": "niet-opgeslagen wijzigingen",
-      "preview": "voorbeeld"
-    },
-    "componentsTabsNewTabMenu": {
-      "newTab": "Nieuw tabblad",
-      "newTab2": "Nieuw tabblad",
-      "newNote": "Nieuwe notitie",
-      "journal": "Journaal",
-      "calendar": "Kalender",
-      "inboxCapture": "Inbox vastleggen",
-      "tasks": "Taken",
-      "tags": "Tags"
-    },
-    "componentsTabsPinnedTab": {
-      "unsavedChanges": "Niet-opgeslagen wijzigingen",
-      "unsaved": "niet opgeslagen)"
-    },
-    "componentsTabsRegularTab": {
-      "unsavedChanges": "Niet-opgeslagen wijzigingen"
-    },
-    "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "Sluit alle tabbladen"
-    },
-    "componentsTabsTabBarWithDrag": {
-      "openTabs": "Tabbladen openen",
-      "scrollTabsLeft": "Blader door de tabbladen naar links",
-      "scrollTabsRight": "Blader door de tabbladen naar rechts",
-      "dayPanel": "Dagpaneel"
-    },
-    "componentsTabsTabErrorBoundary": {
-      "somethingWentWrong": "Er is iets misgegaan",
-      "anErrorOccurredWhileRenderingThisTabContent": "Er is een fout opgetreden bij het weergeven van de inhoud van dit tabblad.",
-      "tryAgain": "Probeer het opnieuw",
-      "sendReport": "Diagnostisch rapport versturen"
-    },
-    "componentsTabsTabPreviewCard": {
-      "noteIcon": "Notitiepictogram"
-    },
-    "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Niet-opgeslagen wijzigingen",
-      "unsavedChangesBody": "“{title}” heeft niet-opgeslagen wijzigingen. Wat wil je doen?"
-    },
-    "componentsTeamSwitcher": {
-      "newWorkspace": "Nieuwe werkruimte",
-      "darkMode": "Donkere modus",
-      "settings": "Instellingen",
-      "integrations": "Integraties",
-      "signOut": "Uitloggen",
-      "downloadOnIos": "Downloaden op iOS"
-    },
-    "componentsTrafficLights": {
-      "closeWindow": "Sluit venster",
-      "minimizeWindow": "Minimaliseer het venster",
-      "maximizeWindow": "Venster maximaliseren"
-    },
-    "componentsUiAutocompleteDropdown": {
-      "suggestions": "Suggesties",
-      "or": "of",
-      "enter": "Kom binnen",
-      "toInsert": "invoegen"
-    },
-    "componentsUiBreadcrumb": {
-      "breadcrumb": "broodkruimel",
-      "more": "Meer"
-    },
-    "componentsUiDialog": {
-      "close": "Sluiten"
-    },
-    "componentsUiSheet": {
-      "close": "Sluiten"
-    },
-    "componentsUiSidebar": {
-      "sidebar": "Zijbalk",
-      "displaysTheMobileSidebar": "Geeft de mobiele zijbalk weer.",
-      "toggleSidebar": "Schakel zijbalk in",
-      "toggleSidebar2": "Schakel zijbalk in",
-      "dragToResizeDoubleClickToReset": "Sleep om het formaat te wijzigen · Dubbelklik om te resetten"
-    },
-    "componentsVaultOnboarding": {
-      "welcomeToMemry": "Welkom bij memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Uw persoonlijke kennismanagementsysteem.",
-      "selectAFolderToStoreYourNotesAndTasks": "Selecteer een map om uw notities en taken op te slaan.",
-      "opening": "Openen...",
-      "selectVaultFolder": "Selecteer Kluismap",
-      "plainMarkdown": "Gewoon afwaarderen",
-      "yourNotesStayPortable": "Uw aantekeningen blijven draagbaar",
-      "syncAnywhere": "Synchroniseer overal",
-      "useDropboxIcloudGit": "Gebruik Dropbox, iCloud, Git",
-      "recentVaults": "Recente kluizen",
-      "notesLastOpened": "opmerkingen · Laatst geopend",
-      "brandName": "Memrynote",
-      "preRelease": "Beta",
-      "createNewVault": "Nieuwe kluis maken",
-      "createNewVaultDesc": "Start een nieuwe kluis in een map naar keuze.",
-      "openExistingVault": "Bestaande kluis openen",
-      "openExistingVaultDesc": "Kies een map met Markdown-bestanden die je al bewaart.",
-      "signInToSync": "Aanmelden om te synchroniseren",
-      "signInToSyncDesc": "End-to-end versleutelde kluizen op al je apparaten.",
-      "create": "Maken",
-      "open": "Openen",
-      "signIn": "Aanmelden",
-      "helpAndDocs": "Help en documentatie",
-      "signInRequiresVault": "Open of maak eerst een kluis om synchronisatie in te stellen.",
-      "addVault": "Kluis toevoegen"
-    },
-    "componentsVaultSwitcher": {
-      "noVaultsYet": "Nog geen kluizen",
-      "openVault": "Open kluis",
-      "settings": "Instellingen",
-      "logOut": "Uitloggen",
-      "signInToSync": "Log in om te synchroniseren",
-      "remove": "Verwijder “",
-      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Deze kluis wordt uit de app verwijderd, maar uw bestanden blijven op schijf staan. Je kunt het later altijd opnieuw toevoegen.",
-      "cancel": "Annuleer",
-      "remove2": "Verwijderen",
-      "inYourAccount": "In je account",
-      "itemsCount": "{count} items",
-      "untitledVault": "Kluis",
-      "downloadVaultTitle": "“{name}” downloaden",
-      "downloadLocation": "Locatie",
-      "changeLocation": "Wijzigen…",
-      "download": "Downloaden",
-      "downloadFailed": "De kluis kon niet worden gedownload",
-      "deleteFromAccount": "Verwijderen uit account",
-      "deleteVaultBody": "Hiermee worden alle gesynchroniseerde gegevens van deze kluis definitief van de servers van Memry verwijderd; dit kan niet ongedaan worden gemaakt. Je bestanden op schijf worden niet verwijderd.",
-      "deleteVaultConfirm": "Verwijderen uit account",
-      "deleteVaultFailed": "Kan kluis niet verwijderen",
-      "deleteVaultTitle": "“{name}” uit je account verwijderen?",
-      "removeVaultTitle": "“{name}” uit de lijst verwijderen?",
-      "missing": "Map niet gevonden"
-    },
-    "componentsWindowControls": {
-      "searchK": "Zoeken (⌘K)",
-      "browserBack": "Browser terug",
-      "back": "Terug",
-      "browserForward": "Browser vooruit",
-      "forward": "Vooruit"
-    }
-  },
-  "phaseI": {
-    "errors": {
-      "failedToImportFiles": "Kan bestanden niet importeren",
-      "failedToCreateNote": "Kan notitie niet maken",
-      "failedToAccessMicrophone": "Kan geen toegang krijgen tot de microfoon"
-    },
-    "toasts": {
-      "undone": "Ongedaan gemaakt"
-    }
-  },
   "agentChat": {
-    "title": "Agent-chat",
-    "loading": "Agentchat laden...",
-    "conversationLoading": "Gesprek wordt geladen...",
+    "title": "Agentchat",
+    "loading": "Agentchat laden…",
+    "conversationLoading": "Gesprek laden…",
+    "historyNotSaved": "Dit apparaat kan de kluis niet ontgrendelen, dus dit gesprek wordt niet bewaard als je de app sluit.",
     "newConversation": "Nieuw gesprek",
     "history": "Gespreksgeschiedenis",
     "openInTab": "Gesprek openen in tabblad",
     "stop": "Stoppen",
     "thinking": "Agent denkt na",
     "enable": {
-      "title": "Schakel memrynote Agent in",
-      "description": "memrynote Agent gebruikt uw geselecteerde lokale agent CLI om over uw kluis te chatten. Claude stuurt beurten naar Anthropic; Codex stuurt beurten naar OpenAI.",
-      "remote": "memrynote codeert uw lokale en gesynchroniseerde chatgeschiedenis, maar modelinferentie vindt plaats bij de geselecteerde provider.",
+      "title": "memrynote Agent inschakelen",
+      "description": "memrynote Agent gebruikt de lokale agent-CLI die je hebt gekozen om over je kluis te chatten. Claude stuurt beurten naar Anthropic; Codex stuurt beurten naar OpenAI.",
+      "remote": "memrynote versleutelt je lokale en gesynchroniseerde chatgeschiedenis, maar de modelinferentie gebeurt bij de gekozen aanbieder.",
       "readTools": "Leestools worden automatisch uitgevoerd.",
-      "writeTools": "Voor het maken en bijwerken van tools is goedkeuring vereist.",
-      "diff": "Updatetools tonen een verschil of voorbeeld.",
-      "button": "Agent-chat inschakelen"
+      "writeTools": "Tools die iets maken of bijwerken vragen eerst om goedkeuring.",
+      "diff": "Tools die iets bijwerken tonen de verschillen of een voorbeeld.",
+      "button": "Agentchat inschakelen"
     },
     "approval": {
       "description": "De agent wil {name} aanroepen met deze argumenten.",
-      "applyOnce": "Eenmalig aanvragen",
+      "applyOnce": "Eenmalig toepassen",
       "allowOnce": "Eén keer toestaan",
       "editAndApply": "Bewerken en toepassen",
       "editAndAllow": "Bewerken en toestaan",
       "allowAlways": "Altijd toestaan",
       "applyEdits": "Bewerkingen toepassen",
-      "deny": "Weigeren",
-      "invalidJson": "Voer geldige JSON in voordat u bewerkingen toepast."
+      "deny": "Afwijzen",
+      "invalidJson": "Voer geldige JSON in voordat je bewerkingen toepast.",
+      "thisTool": "deze tool",
+      "alwaysAllowHint": "“Altijd toestaan” geldt voor {tool}. Andere tools blijven om toestemming vragen, en voor verwijderen wordt altijd gevraagd.",
+      "alwaysInChat": "Altijd toestaan in deze chat",
+      "alwaysInChatHint": "Stopt wanneer het gesprek eindigt",
+      "alwaysInVault": "Altijd toestaan in deze kluis",
+      "alwaysInVaultHint": "In te trekken via Instellingen › Agent",
+      "deletesAlwaysAsk": "Voor verwijderen wordt altijd gevraagd"
     },
     "diff": {
-      "previewError": "Kan notitieverschil niet bekijken",
-      "description": "De agent wil {title} bijwerken. Controleer de huidige en kandidaat-inhoud voordat u deze toepast.",
-      "fallbackTitle": "deze notitie",
+      "previewError": "Kan geen voorbeeld van deze wijziging tonen",
+      "description": "De agent wil {title} bijwerken. Bekijk de wijziging voordat je die toepast.",
+      "fallbackTitle": "dit item",
       "current": "Huidig",
-      "candidate": "Kandidaat",
-      "loading": "Bezig met laden...",
+      "candidate": "Voorstel",
+      "loading": "Laden…",
       "apply": "Toepassen",
-      "applyEdited": "Bewerkt toepassen"
+      "applyEdited": "Bewerkte versie toepassen",
+      "editBody": "Eerst bewerken"
     },
     "inPageReview": {
       "regionLabel": "Voorstel van de agent",
       "barLabel": "Voorstel van de agent bekijken",
-      "loading": "Voorstel laden...",
+      "loading": "Voorstel laden…",
       "loadingTitle": "Voorstel van de agent",
       "title": "{count, plural, =0 {Voorstel van de agent} one {De agent stelt # wijziging voor} other {De agent stelt # wijzigingen voor}}",
       "editingTitle": "Voorstel bewerken",
@@ -448,7 +181,7 @@
       "baseChanged": "Deze notitie is gewijzigd terwijl je het voorstel bewerkte.",
       "keepDraft": "Mijn bewerkingen behouden",
       "restart": "Opnieuw beginnen vanaf de nieuwste versie",
-      "reject": "Weigeren",
+      "reject": "Afwijzen",
       "edit": "Bewerken",
       "showDiff": "Wijzigingen tonen",
       "accept": "Accepteren",
@@ -460,26 +193,132 @@
       "openJournal": "Dagboek openen",
       "fallbackTitle": "deze notitie"
     },
+    "preview": {
+      "unset": "niet ingesteld",
+      "yes": "ja",
+      "no": "nee",
+      "noChange": "Er verandert niets wat dit voorbeeld kan tonen.",
+      "willBeLost": "Gaat verloren",
+      "unchangedLines": "{count, plural, one {# ongewijzigde regel} other {# ongewijzigde regels}}",
+      "item": {
+        "note": "Notitie",
+        "folder": "Map",
+        "task": "Taak",
+        "journal": "Dagboek",
+        "inbox": "Inbox",
+        "project": "Project",
+        "status": "Status",
+        "canvas": "Canvas"
+      },
+      "intent": {
+        "create": "nieuw",
+        "update": "bijwerken",
+        "delete": "verwijderen",
+        "move": "verplaatsen",
+        "reorder": "volgorde wijzigen"
+      },
+      "field": {
+        "archived": "Gearchiveerd",
+        "arguments": "Argumenten",
+        "color": "Kleur",
+        "completed": "Voltooid",
+        "description": "Beschrijving",
+        "due": "Vervaldatum",
+        "dueTime": "Vervaltijd",
+        "duplicateOf": "Kopie van",
+        "edits": "Wijzigingen",
+        "elements": "Elementen",
+        "folder": "Map",
+        "icon": "Pictogram",
+        "isDefault": "Standaard",
+        "isDone": "Telt als voltooid",
+        "items": "Items",
+        "name": "Naam",
+        "operation": "Bewerking",
+        "order": "Volgorde",
+        "parent": "Bovenliggend",
+        "path": "Pad",
+        "position": "Positie",
+        "priority": "Prioriteit",
+        "project": "Project",
+        "removed": "Verwijderd",
+        "repeatFrom": "Herhalen vanaf",
+        "snoozeReason": "Reden van uitstel",
+        "snoozedUntil": "Uitgesteld tot",
+        "start": "Startdatum",
+        "status": "Status",
+        "tags": "Tags",
+        "title": "Titel"
+      },
+      "loss": {
+        "words": "{count, plural, one {# woord} other {# woorden}}",
+        "tags": "{count, plural, one {# tag} other {# tags}}",
+        "notes": "{count, plural, one {# notitie} other {# notities}}",
+        "folders": "{count, plural, one {# map} other {# mappen}}",
+        "files": "{count, plural, one {# bestand} other {# bestanden}}",
+        "events": "{count, plural, one {# afspraak} other {# afspraken}}",
+        "tasks": "{count, plural, one {# taak} other {# taken}}",
+        "due": "vervaldatum {value}"
+      }
+    },
     "composer": {
-      "currentNote": "Huidige opmerking",
+      "currentNote": "Huidige notitie",
       "removeAttachment": "{label} verwijderen",
-      "placeholder": "Vraag memrynote alles. @ om een bestand te vermelden",
+      "placeholder": "Vraag memrynote alles… @ om notities, taken en afspraken te vermelden",
       "send": "Verzenden",
-      "providerLabel": "Agent-aanbieder: {provider}",
+      "providerLabel": "Agentaanbieder: {provider}",
       "settingsSummary": "{reasoning}",
+      "connectedTools": "Verbonden tools",
+      "connectTool": "{tool} verbinden",
+      "addContext": "Context toevoegen",
+      "addContextWithPermissions": "Context toevoegen ({permissions})",
+      "mentionContext": "Een notitie, taak of afspraak vermelden",
+      "voice": {
+        "start": "Dicteren starten",
+        "stop": "Dicteren stoppen",
+        "transcribing": "Spraakinvoer wordt getranscribeerd",
+        "errors": {
+          "permissionDenied": "Toegang tot microfoon geweigerd",
+          "noMicrophone": "Geen microfoon gevonden",
+          "accessFailed": "Kan geen toegang krijgen tot de microfoon",
+          "recordingFailed": "Kan spraakinvoer niet opnemen",
+          "transcriptionFailed": "Kan spraakinvoer niet transcriberen"
+        }
+      },
+      "modelLabel": "Agentmodel: {provider} {model}",
+      "reasoningLabel": "Redenering van de agent: {reasoning}",
       "providers": {
+        "label": "Aanbieder",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
         "local": "Lokaal"
       },
+      "access": {
+        "vaultOnly": "Alleen kluis",
+        "computerAccess": "Computertoegang"
+      },
+      "webSearch": {
+        "on": "Aan",
+        "off": "Uit",
+        "label": "Zoeken op het web"
+      },
       "models": {
         "default": "Standaard",
-        "label": "Model"
+        "label": "Model",
+        "search": "Modellen zoeken…",
+        "useCustom": "“{query}” gebruiken",
+        "localEmpty": "Geen modellen gevonden – controleer Instellingen",
+        "localSetup": "Configureren in Instellingen…",
+        "cliSetup": "Niet gevonden – configureren in Instellingen…",
+        "runtimeUnavailable": "Agent niet beschikbaar – Instellingen openen…"
       },
       "settings": {
-        "reasoning": "Redenering"
+        "reasoning": "Redenering",
+        "effort": "Inspanning"
       },
+      "includeCurrentNote": "Huidige notitie meenemen",
+      "chooseModel": "Model kiezen",
       "claudeSettings": {
         "reasoning": {
           "low": "Laag",
@@ -499,15 +338,6 @@
           "extraHigh": "Extra hoog"
         }
       },
-      "access": {
-        "vaultOnly": "Alleen kluis",
-        "computerAccess": "Computertoegang"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Uit",
-        "label": "Zoeken op het web"
-      },
       "permissionsLabel": "Agentmachtigingen: {access}, zoeken op het web {webSearch}",
       "permissions": {
         "label": "Machtigingen",
@@ -520,192 +350,141 @@
       "noMatches": "Geen overeenkomsten"
     },
     "toolResult": {
-      "label": "Gereedschapsresultaat"
+      "label": "Toolresultaat"
     },
     "toolCall": {
-      "editedArgs": "Argumenten bewerkt",
+      "editedArgs": "Bewerkte argumenten",
       "parameters": "Parameters"
+    },
+    "toolActivity": {
+      "steps": "{count, plural, one {# stap} other {# stappen}}",
+      "running": "Bezig",
+      "awaitingApproval": "Wacht op goedkeuring",
+      "done": "Voltooid"
+    },
+    "reasoning": {
+      "thinking": "Denkt na…",
+      "thought": "Nagedacht",
+      "thoughtFor": "{seconds} s nagedacht",
+      "toggle": "Redenering tonen of verbergen"
     },
     "sidebar": {
       "label": "Rechterzijbalk",
       "day": "Dag",
       "agent": "Agent",
-      "pendingApproval": "{count, plural, one {# in afwachting van goedkeuring} other {# goedkeuringen in behandeling}}",
-      "inProgress": "Agent beurt bezig",
+      "pendingApproval": "{count, plural, one {# wacht op goedkeuring} other {# wachten op goedkeuring}}",
+      "inProgress": "Agent is bezig",
       "close": "Agent sluiten"
     },
     "errors": {
       "loadConversations": "Kan agentgesprekken niet laden",
       "loadConversation": "Kan agentgesprek niet laden",
-      "createConversation": "Kan agentgesprek niet tot stand brengen",
-      "busy": "Er is nog een venster halverwege dit gesprek. Wacht tot het klaar is of stop het vanaf daar.",
+      "createConversation": "Kan agentgesprek niet starten",
+      "busy": "Een ander venster is nog bezig met een beurt in dit gesprek. Wacht tot die klaar is of stop hem daar.",
       "sendTurn": "Kan agentbeurt niet verzenden",
       "cancelTurn": "Kan agentbeurt niet annuleren",
-      "submitApproval": "Kan gereedschapsgoedkeuring niet verzenden",
-      "updateTrust": "Kan vertrouwde tools niet updaten",
-      "saveDisclosure": "Kan openbaarmakingsstatus niet opslaan",
-      "resolveWindow": "Kan agentbronvenster niet oplossen",
+      "submitApproval": "Kan goedkeuring voor de tool niet verzenden",
+      "updateTrust": "Kan vertrouwde tools niet bijwerken",
+      "saveDisclosure": "Kan je toestemming niet opslaan",
+      "resolveWindow": "Kan het bronvenster van de agent niet bepalen",
       "detectCli": "Kan agent-backends niet detecteren",
-      "loadDisclosure": "Kan openbaarmakingsstatus niet laden"
+      "loadDisclosure": "Kan je toestemming niet laden"
+    },
+    "actions": {
+      "copy": "Kopiëren",
+      "copied": "Gekopieerd"
     },
     "sources": {
-      "used": "{count, plural, one {# bron gebruikt} other {# bronnen gebruikt}}"
+      "count": "{count, plural, one {# bron} other {# bronnen}}"
     }
-  },
-  "home": {
-    "addWidget": "Widget toevoegen",
-    "board": {
-      "defaultName": "Start",
-      "deleteAria": "Lay-out verwijderen",
-      "label": "Startlay-out",
-      "newAria": "Nieuw bord",
-      "newName": "Nieuw bord"
-    },
-    "disabled": {
-      "createNote": "Notitie maken",
-      "hint": "Niets open. Begin een notitie."
-    },
-    "done": "Klaar",
-    "edit": "Bewerken",
-    "empty": {
-      "body": "Widgets brengen je notities, taken en bladwijzers samen op één rustige plek.",
-      "cta": "Voeg je eerste widget toe",
-      "title": "Je bord is leeg"
-    },
-    "greeting": {
-      "afternoon": "Goedemiddag",
-      "evening": "Goedenavond",
-      "morning": "Goedemorgen"
-    },
-    "header": {
-      "events": "{count, plural, one {# gebeurtenis} other {# gebeurtenissen}}",
-      "tasksDue": "{count, plural, one {# taak vervalt vandaag} other {# taken vervallen vandaag}}"
-    },
-    "noBookmarksYet": "Nog geen bladwijzers.",
-    "noEventsYet": "Geen gebeurtenissen vandaag.",
-    "noJournalEntriesYet": "Nog geen dagboekvermeldingen.",
-    "noNotesYet": "Nog geen notities.",
-    "noTasksYet": "Nog geen taken.",
-    "widget": {
-      "bookmarks": "Bladwijzers",
-      "calendar": "Agenda",
-      "calendarToday": "Vandaag",
-      "configAria": "Widget configureren",
-      "configure": "Configureren",
-      "dragAria": "Widget slepen",
-      "duration": "{count} min",
-      "filter": {
-        "today": "Vervalt vandaag",
-        "tomorrow": "Morgen",
-        "week": "Deze week"
-      },
-      "folder": "Map",
-      "folderEmpty": "Nog geen mappen",
-      "folderNoSelection": "Geen map geselecteerd",
-      "folderPickPrompt": "Kies een map",
-      "folderViewSelect": "Weergave",
-      "folderView_gallery": "Galerij",
-      "folderView_list": "Lijst",
-      "inbox": "Inbox",
-      "inboxAllTypes": "Alle typen",
-      "inboxOlder": "{count, plural, one {# ouder} other {# ouder}}",
-      "inboxOldest": "oudste {count, plural, one {# dag} other {# dagen}}",
-      "journal": "Dagboek",
-      "journalStreak": "{count, plural, one {reeks van # dag} other {reeks van # dagen}}",
-      "journalToday": "Vandaag",
-      "journalYesterday": "Gisteren",
-      "loadError": "Kan niet laden",
-      "menuAria": "Widgetopties",
-      "next": "Volgende: {title}",
-      "openCalendar": "Agenda openen",
-      "openInbox": "Inbox openen",
-      "recentMeta": "bewerkt {time}",
-      "recentMetaWithFolder": "{folder} · bewerkt {time}",
-      "recentlyEdited": "Onlangs bewerkt",
-      "remove": "Verwijderen",
-      "removeAria": "Widget verwijderen",
-      "resize": "Grootte",
-      "resizeAria": "Vergroten/verkleinen naar {size}",
-      "savedFilterDefault": "Vandaag",
-      "savedFilterHint": "Markeer filters met een ster op de Taken-pagina om ze hier te gebruiken",
-      "savedFilterLabel": "Opgeslagen filter",
-      "startsIn": "Begint over {count, plural, one {# min} other {# min}}",
-      "tasks": "Taken",
-      "unknown": "Onbekende widget",
-      "untitled": "Naamloos"
-    }
-  },
-  "media": {
-    "video": "Video"
-  },
-  "onboarding": {
-    "agentChat": {
-      "body": "Ga naar het tabblad Agent om de assistent van MemryNote iets over je kluis te vragen.",
-      "title": "Chat met de AI-agent"
-    },
-    "collections": {
-      "body": "Organiseer notities in mappen, zet bladwijzers vast en blader op tag — allemaal hier.",
-      "title": "Verzamelingen, bladwijzers en tags"
-    },
-    "dayPanel": {
-      "body": "Het zijpaneel houdt een agenda en je dagweergave naast wat je ook leest.",
-      "title": "Je dag, naast je werk"
-    },
-    "feedback": {
-      "body": "Stuur feedback rechtstreeks naar het team vanaf hier.",
-      "title": "Vertel ons wat je denkt"
-    },
-    "nav": {
-      "body": "Inbox om vast te leggen, Dagboek voor dagelijkse notities, Agenda voor je tijdlijn, Taken voor to-do's en Graaf om te zien hoe alles samenhangt.",
-      "title": "Je werkruimtes"
-    },
-    "newNote": {
-      "body": "Begin hier. Alles wat je schrijft wordt eerst lokaal opgeslagen.",
-      "title": "Maak je eerste notitie"
-    },
-    "settings": {
-      "body": "Importeer je notities uit 12+ apps — Obsidian, Notion, Apple Notes, Evernote en meer — en stel al het andere af in Instellingen.",
-      "title": "Instellingen en imports"
-    },
-    "sync": {
-      "body": "Schakel end-to-end versleutelde synchronisatie in om elk apparaat gelijk te houden.",
-      "title": "Privé, versleutelde synchronisatie"
-    },
-    "welcome": {
-      "body": "Je privé, offline-first thuis. Notities zijn end-to-end versleuteld — ze verlaten je apparaat nooit onversleuteld.",
-      "title": "Welkom bij MemryNote"
-    },
-    "tour": {
-      "next": "Volgende",
-      "previous": "Vorige",
-      "progress": "{current} van {total}"
-    }
-  },
-  "capture": {
-    "focusShortcut": "Vastlegveld focussen",
-    "detailHint": "details",
-    "focusHint": "Q",
-    "submit": "Vastleggen"
   },
   "canvas": {
+    "sectionLabel": "Canvassen",
+    "newCanvas": "Nieuw canvas",
+    "newCanvasFolder": "Nieuwe canvasmap",
+    "untitled": "Canvas zonder titel",
+    "empty": "Nog geen canvassen",
+    "loading": "Canvassen laden…",
+    "loadFailed": "Kan canvassen niet laden",
+    "createFailed": "Kan canvas niet maken",
+    "openFailed": "Kan canvas niet openen",
+    "notFound": "Dit canvas kon niet worden gevonden",
+    "corruptScene": "Dit canvas kon niet worden gelezen. Bewerken is uitgeschakeld om gegevensverlies te voorkomen.",
+    "unreadableTitle": "Dit canvas kan hier niet worden geopend",
+    "unreadableBody": "Het document ontbreekt in de kluis, of het canvas is getekend voordat canvassen bestanden werden en dit apparaat heeft de sleutel om het te ontgrendelen niet meer. Er is niets verwijderd – open de kluis op het apparaat waarop het canvas is gemaakt, of herstel de map met canvassen.",
+    "tooLargeToSync": "Dit canvas is te groot om te synchroniseren. Het is opgeslagen op dit apparaat, maar bereikt je andere apparaten pas als het kleiner is.",
+    "savedToVault": "Alle wijzigingen worden automatisch in je kluis opgeslagen",
+    "libraryStoreFailed": "Kan je vormenbibliotheek niet opslaan. Recente wijzigingen gaan mogelijk verloren.",
+    "link": {
+      "itemMissing": "Dat gekoppelde item bestaat niet meer.",
+      "elementMissing": "Die link verwijst naar iets dat niet meer op dit canvas staat.",
+      "title": "Link naar item",
+      "placeholder": "Notities, taken, afspraken, inbox, projecten zoeken…",
+      "hint": "Typ om een item te zoeken dat je wilt linken.",
+      "empty": "Geen overeenkomsten.",
+      "selectOneShape": "Selecteer één vorm om die aan een item te linken.",
+      "cardsCannotLink": "Een kaart opent al een eigen item en kan dus geen tweede link hebben.",
+      "linked": "Gelinkt.",
+      "groupNotes": "Notities",
+      "groupFiles": "Bestanden",
+      "groupTasks": "Taken",
+      "groupEvents": "Afspraken",
+      "groupInbox": "Inbox",
+      "groupJournals": "Dagboeknotities",
+      "groupProjects": "Projecten",
+      "groupFolders": "Mappen",
+      "useUrl": "Link naar {url}",
+      "openTarget": "{name} openen",
+      "shapeTarget": "Een vorm op dit canvas",
+      "missingTarget": "Niet meer op dit canvas"
+    },
+    "disabledTitle": "Canvas is niet ingeschakeld",
+    "disabledBody": "Dit tabblad hoort bij een functie die op dit apparaat niet is ingeschakeld.",
+    "unreadable": "Het document van dit canvas ontbreekt of kan niet worden gelezen. Toon het in je bestandsbeheer of verwijder het item.",
+    "actionFailed": "Die canvasactie kan niet worden voltooid",
+    "renameLabel": "Canvasnaam",
+    "folderNameLabel": "Mapnaam",
+    "deleteConfirmTitle": "Dit canvas verwijderen?",
+    "deleteConfirmBody": "“{title}” wordt op al je apparaten uit memrynote verwijderd. Het bestand gaat naar de prullenmand van deze computer, maar als je het terugzet, wordt het canvas niet hersteld.",
+    "dropToRoot": "Zet hier neer om uit een map te halen",
+    "filterPlaceholder": "Canvassen filteren",
+    "filterNoMatches": "Geen canvassen gevonden voor dit filter",
+    "folderCanvasCount": "{count} canvassen in deze map",
+    "folderEmptyHint": "Hier staat nog niets",
+    "deleteFolderConfirmTitle": "Deze canvasmap verwijderen?",
+    "deleteFolderConfirmBody": "“{name}” en alles erin wordt op al je apparaten uit memrynote verwijderd. Betrokken canvassen: {count}. De map gaat naar de prullenmand van deze computer, maar als je die terugzet, worden de canvassen niet hersteld.",
+    "actions": {
+      "rename": "Naam wijzigen",
+      "duplicate": "Dupliceren",
+      "copyLink": "Link kopiëren",
+      "setIcon": "Pictogram instellen",
+      "removeIcon": "Pictogram verwijderen",
+      "moveToFolder": "Verplaatsen naar map",
+      "moveToRoot": "Hoofdniveau",
+      "openExternal": "Openen in externe editor",
+      "newCanvasHere": "Nieuw canvas hier",
+      "newFolder": "Nieuwe map",
+      "canvasMenu": "Canvasacties",
+      "folderMenu": "Acties voor canvasmap"
+    },
     "card": {
-      "addCard": "Kaart toevoegen",
-      "addCreateNote": "Notitie \"{query}\" maken",
-      "addCreateNoteEmpty": "Nieuwe notitie maken",
-      "addCreatedAt": "Gemaakt {date}",
-      "addEmpty": "Niets gevonden",
-      "addGroupEvents": "Evenementen",
-      "addGroupNotes": "Notities",
-      "addGroupTasks": "Taken",
-      "addOnCanvas": "Op canvas",
-      "addPlaceholder": "Zoek notities, taken en evenementen…",
-      "allDay": "De hele dag",
-      "createNoteFailed": "Kan notitie niet maken",
+      "open": "Openen in tabblad",
+      "openToEdit": "Openen in tabblad om te bewerken",
       "deleted": "Item verwijderd",
       "loading": "Laden…",
-      "open": "Openen in tabblad",
-      "openToEdit": "Open in tabblad om te bewerken",
       "untitled": "Zonder titel",
+      "allDay": "Hele dag",
+      "createNoteFailed": "Kan notitie niet maken",
+      "addCard": "Kaart toevoegen",
+      "addPlaceholder": "Notities, bestanden, taken, afspraken en projecten zoeken…",
+      "addCreateNote": "Notitie “{query}” maken",
+      "addCreateNoteEmpty": "Nieuwe notitie maken",
+      "addEmpty": "Niets gevonden",
+      "addGroupNotes": "Notities",
+      "addGroupTasks": "Taken",
+      "addGroupEvents": "Afspraken",
+      "addOnCanvas": "Op canvas",
+      "addCreatedAt": "Gemaakt {date}",
       "bulkGroup": "Alles toevoegen uit",
       "bulkFromTag": "Een tag…",
       "bulkFromFolder": "Een map…",
@@ -722,141 +501,756 @@
       "bulkConfirmAdd": "{count, plural, one {# kaart toevoegen} other {# kaarten toevoegen}}",
       "bulkBack": "Terug",
       "bulkEmpty": "Geen notities, bestanden of taken om toe te voegen",
-      "bulkLoadFailed": "Items konden niet worden geladen",
+      "bulkLoadFailed": "Kan items niet laden",
       "bulkAdded": "{count, plural, one {# kaart toegevoegd} other {# kaarten toegevoegd}}",
       "bulkAddedSkipped": "{count, plural, one {# kaart toegevoegd} other {# kaarten toegevoegd}} · {skipped} al op het canvas",
       "bulkAllOnCanvas": "{count, plural, one {Staat al op dit canvas} other {Alle # staan al op dit canvas}}"
     },
-    "corruptScene": "Dit canvas kon niet worden gelezen. Bewerken is uitgeschakeld om gegevensverlies te voorkomen.",
-    "createFailed": "Kan canvas niet maken",
-    "disabledBody": "Dit tabblad hoort bij een functie die op dit apparaat niet is ingeschakeld.",
-    "disabledTitle": "Canvas is niet ingeschakeld",
-    "empty": "Nog geen canvassen",
-    "libraryStoreFailed": "Kan je vormenbibliotheek niet opslaan. Recente wijzigingen gaan mogelijk verloren.",
-    "loadFailed": "Kan canvassen niet laden",
-    "loading": "Canvassen laden…",
-    "newCanvas": "Nieuw canvas",
-    "notFound": "Dit canvas kon niet worden gevonden",
-    "openFailed": "Kan canvas niet openen",
-    "savedToVault": "Alle wijzigingen worden automatisch in je kluis opgeslagen",
-    "sectionLabel": "Canvassen",
-    "tooLargeToSync": "Dit canvas is te groot om te synchroniseren. Het is opgeslagen op dit apparaat, maar bereikt je andere apparaten pas als het kleiner is.",
-    "untitled": "Canvas zonder titel"
+    "cluster": {
+      "button": "Groepen voorstellen",
+      "buttonHint": "Groepeer de notitiekaarten op dit bord (of de geselecteerde) op overeenkomst. Wordt op dit apparaat uitgevoerd.",
+      "loading": "Groeperen…",
+      "needMoreNotes": "Voeg minstens {count} notitiekaarten toe om groepen voor te stellen.",
+      "tooMany": "Dit bord heeft meer dan {count} notitiekaarten. Selecteer er maximaal {count} en probeer het opnieuw.",
+      "disabled": "Zet lokale embeddings aan in Instellingen > AI om groepen voor te stellen.",
+      "noGroups": "Geen duidelijke groepen gevonden in deze notities.",
+      "missing": "{count, plural, one {# notitie heeft nog geen embedding en is weggelaten.} other {# notities hebben nog geen embedding en zijn weggelaten.}}",
+      "failed": "Kan geen groepen voorstellen",
+      "title": "Voorgestelde groepen",
+      "description": "Op dit apparaat gegroepeerd op overeenkomst. Er verandert niets op het bord totdat je kaders maakt.",
+      "defaultName": "Groep {number}",
+      "untitledGroup": "Groep",
+      "groupName": "Groepsnaam",
+      "acceptGroup": "{name} opnemen",
+      "noteCount": "{count, plural, one {# notitie} other {# notities}}",
+      "discard": "Weggooien",
+      "create": "{count, plural, one {# kader maken} other {# kaders maken}}",
+      "created": "{count, plural, one {# kader gemaakt} other {# kaders gemaakt}}",
+      "cardsGone": "Die kaarten staan niet meer op het bord."
+    },
+    "frame": {
+      "categorize": "Categoriseren",
+      "editBinding": "Categorie van deze sectie wijzigen",
+      "cardCount": "{count, plural, one {# kaart} other {# kaarten}}",
+      "bindTitle": "Deze sectie categoriseren",
+      "bindHint": "Kaarten die je in de sectie neerzet, krijgen deze tag of eigenschapswaarde.",
+      "bindPlaceholder": "Tags en eigenschapswaarden zoeken of een nieuwe tag typen…",
+      "bindEmpty": "Geen tags of eigenschapswaarden gevonden.",
+      "groupTags": "Tags",
+      "useTag": "Nieuwe tag #{tag} gebruiken",
+      "unbind": "Niet meer categoriseren als {label}",
+      "current": "Huidig",
+      "applied": "{count, plural, one {{label} toegevoegd aan # kaart} other {{label} toegevoegd aan # kaarten}}",
+      "applyFailed": "Kan {label} niet toevoegen",
+      "revertFailed": "Kan {label} niet ongedaan maken",
+      "leftFrame": "{count, plural, one {# kaart uit {label} verplaatst. De categorie blijft behouden.} other {# kaarten uit {label} verplaatst. De categorie blijft behouden.}}",
+      "removeCategory": "{label} verwijderen",
+      "removed": "{count, plural, one {{label} verwijderd van # kaart} other {{label} verwijderd van # kaarten}}",
+      "removeFailed": "Kan {label} niet verwijderen",
+      "skippedFile": "{count, plural, one {Een bestandskaart is ongewijzigd gelaten: bestanden hebben geen tags of eigenschappen.} other {# bestandskaarten zijn ongewijzigd gelaten: bestanden hebben geen tags of eigenschappen.}}",
+      "skippedTaskProperty": "{count, plural, one {Een taakkaart is ongewijzigd gelaten: taken kunnen tags krijgen, maar geen notitie-eigenschappen.} other {# taakkaarten zijn ongewijzigd gelaten: taken kunnen tags krijgen, maar geen notitie-eigenschappen.}}",
+      "skippedUnsupported": "{count, plural, one {Een kaart is ongewijzigd gelaten: afspraken en projecten kunnen niet worden gecategoriseerd.} other {# kaarten zijn ongewijzigd gelaten: afspraken en projecten kunnen niet worden gecategoriseerd.}}",
+      "layoutAction": "Indelen op eigenschap",
+      "layoutTitle": "Indelen op eigenschap",
+      "layoutHint": "Maakt een sectie per waarde en sorteert de notities op dit bord daarin.",
+      "layoutPlaceholder": "Eigenschappen van het type Selectie, Meervoudige selectie of Status zoeken…",
+      "layoutEmpty": "Nog geen eigenschappen van het type Selectie, Meervoudige selectie of Status met waarden.",
+      "layoutValueCount": "{count, plural, one {# waarde} other {# waarden}}",
+      "layoutDone": "{count, plural, one {# sectie gemaakt voor {property}} other {# secties gemaakt voor {property}}}",
+      "layoutFailed": "Kan het bord niet indelen"
+    }
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Collecties",
+      "projects": "Projecten",
+      "newNote": "Nieuwe notitie",
+      "newNote2": "Nieuwe notitie",
+      "newFolder": "Nieuwe map",
+      "newFolder2": "Nieuwe map",
+      "newProject": "Nieuw project",
+      "bookmarks": "Bladwijzers",
+      "tags": "Tags",
+      "reorderSection": "Volgorde van {section} wijzigen",
+      "dropFilesToImport": "Zet bestanden neer om te importeren",
+      "dropFilesIntoVaultRoot": "Hoofdmap van de kluis",
+      "newNoteN": "Nieuwe notitie (⌘N)",
+      "new": "Nieuw",
+      "newItemMenu": "Nieuw maken…",
+      "feedbackButton": "Feedback sturen",
+      "feedbackTitle": "Feedback sturen",
+      "feedbackDescription": "Vertel ons wat goed werkt, wat niet werkt of wat je graag in MemryNote zou zien. We lezen elk bericht.",
+      "feedbackPlaceholder": "Je feedback…",
+      "feedbackEmailHint": "Voeg je e-mailadres toe als je een antwoord wilt.",
+      "feedbackPrivacyTitle": "Wat er wordt verstuurd",
+      "feedbackPrivacyMessage": "Je bericht, precies zoals je het hebt geschreven",
+      "feedbackPrivacyEmailOptional": "Je e-mailadres – alleen als je het invult, en alleen zodat we kunnen antwoorden",
+      "feedbackPrivacyEmailSignedIn": "Het e-mailadres van je account ({email}), zodat we kunnen antwoorden",
+      "feedbackPrivacyVersion": "Appversie en besturingssysteem",
+      "feedbackPrivacyPlan": "Je abonnement (gratis, Plus, Pro of Believer)",
+      "feedbackPrivacyNote": "Verder niets. Je notities blijven op je apparaat.",
+      "feedbackSend": "Verzenden",
+      "feedbackSending": "Verzenden…",
+      "feedbackSuccess": "Bedankt voor je feedback!",
+      "feedbackError": "Kan feedback niet verzenden. Probeer het opnieuw.",
+      "syncDisabled": "Synchronisatie uitgeschakeld",
+      "syncDisabled2": "Synchronisatie uitgeschakeld",
+      "sortLabel": "{section} sorteren: {mode}",
+      "sortModeManual": "Handmatig",
+      "sortModeNameAsc": "Naam A → Z",
+      "sortModeNameDesc": "Naam Z → A",
+      "sortModeModifiedDesc": "Gewijzigd: nieuwste eerst",
+      "sortModeModifiedAsc": "Gewijzigd: oudste eerst",
+      "sortModeCreatedDesc": "Gemaakt: nieuwste eerst",
+      "sortModeCreatedAsc": "Gemaakt: oudste eerst",
+      "sortModeCountDesc": "Meest gebruikt",
+      "sortModeCountAsc": "Minst gebruikt",
+      "sortSaveFailed": "Kan de sorteervolgorde niet opslaan",
+      "sectionOrderSaveFailed": "Kan de volgorde van de zijbalk niet opslaan"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Formaat van dagpaneel wijzigen",
+      "dragToResizeDoubleClickToReset": "Sleep om het formaat te wijzigen · Dubbelklik om te resetten"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Zoeken, vervangen, vragen…"
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Introductie overslaan",
+      "welcomeToMemry": "Welkom bij memrynote",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Je persoonlijke kennisbank. We helpen je in twee minuten op weg.",
+      "getStarted": "Aan de slag ",
+      "createYourFirstNote": "Maak je eerste notitie",
+      "markdownBasedStoredLocallyAsPlainFiles": "Op basis van Markdown, lokaal opgeslagen als gewone bestanden.",
+      "eGMeetingNotesIdeasAnything": "bijv. notulen, ideeën, wat dan ook…",
+      "skip": "Overslaan",
+      "createNote": "Notitie maken ",
+      "addYourFirstTask": "Voeg je eerste taak toe",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Taken zijn gekoppeld aan je notities, met prioriteiten en vervaldatums.",
+      "eGReviewProjectProposal": "bijv. projectvoorstel beoordelen…",
+      "skip2": "Overslaan",
+      "createTask": "Taak maken ",
+      "syncAcrossDevices": "Synchroniseer tussen apparaten",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Houd je notities en taken gesynchroniseerd op al je apparaten. Je kunt dit altijd later instellen.",
+      "skipForNow": "Nu overslaan",
+      "doneLetSGo": "Klaar – aan de slag! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Mappictogram instellen",
+      "expandFolder": "Map uitvouwen",
+      "collapseFolder": "Map samenvouwen"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "TIP"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Pictogramkiezer",
+      "selectIcon": "Pictogram kiezen",
+      "closeIconPicker": "Pictogramkiezer sluiten",
+      "searchIcons": "Pictogrammen zoeken…",
+      "all": "Alle",
+      "clearIcon": "Pictogram wissen",
+      "noIconsFoundFor": "Geen pictogrammen gevonden voor \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Sneltoetsen",
+      "closeShortcutsHelp": "Overzicht met sneltoetsen sluiten",
+      "press": "Druk op",
+      "toClose": "om te sluiten"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Pictogram instellen",
+      "clearIcon": "Pictogram wissen"
+    },
+    "componentsNavMain": {
+      "platform": "Platform"
+    },
+    "componentsNavProjects": {
+      "projects": "Projecten",
+      "more": "Meer",
+      "viewProject": "Project bekijken",
+      "shareProject": "Project delen",
+      "deleteProject": "Project verwijderen",
+      "more2": "Meer"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Upgraden naar Pro",
+      "account": "Account",
+      "billing": "Facturering",
+      "notifications": "Meldingen",
+      "logOut": "Uitloggen"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Zoeken",
+      "searchNotesTasksJournalInbox": "Notities, taken, dagboek, inbox zoeken…",
+      "noResultsFor": "Geen resultaten voor “",
+      "result": "resultaat",
+      "noResultsForQuery": "Geen resultaten voor “{query}”",
+      "resultCount": "{count, plural, one {# resultaat} other {# resultaten}}",
+      "indexBuilding": "Zoekindex wordt opgebouwd {done}/{total} – resultaten zijn mogelijk onvolledig",
+      "indexBuildingUnknown": "Zoekindex wordt opgebouwd – resultaten zijn mogelijk onvolledig"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Zoek en klik op items om je spoor op te bouwen",
+      "reasons": "Redenen",
+      "clear": "Wissen"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Wissen",
+      "tags": "Tags",
+      "filterByTag": "Filteren op tag…",
+      "dateRange": "Datumbereik"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Alle ",
+      "results": "resultaten"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "bij benadering"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Geen tabbladen geopend",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Open een pagina vanuit de zijbalk of maak een nieuw tabblad om aan de slag te gaan",
+      "openInbox": "Inbox openen",
+      "closePane": "Deelvenster sluiten"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Voorinstellingen voor indeling",
+      "layoutPresets2": "Voorinstellingen voor indeling"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Formaat van deelvensters wijzigen"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext niet beschikbaar",
+      "searchResults": "Zoekresultaten",
+      "unknownTabType": "Onbekend tabbladtype: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "niet-opgeslagen wijzigingen",
+      "preview": "voorbeeld"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Nieuw tabblad",
+      "newTab2": "Nieuw tabblad",
+      "newNote": "Nieuwe notitie",
+      "journal": "Dagboek",
+      "calendar": "Agenda",
+      "inboxCapture": "Vastleggen in inbox",
+      "tasks": "Taken",
+      "tags": "Tags"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Niet-opgeslagen wijzigingen",
+      "unsaved": "niet opgeslagen)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Niet-opgeslagen wijzigingen"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Alle tabbladen sluiten"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Geopende tabbladen",
+      "scrollTabsLeft": "Tabbladen naar links scrollen",
+      "scrollTabsRight": "Tabbladen naar rechts scrollen",
+      "dayPanel": "Dagpaneel"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Er is iets misgegaan",
+      "anErrorOccurredWhileRenderingThisTabContent": "Er is een fout opgetreden bij het weergeven van de inhoud van dit tabblad.",
+      "tryAgain": "Opnieuw proberen",
+      "sendReport": "Diagnostisch rapport versturen"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Notitiepictogram"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Niet-opgeslagen wijzigingen",
+      "unsavedChangesBody": "“{title}” heeft niet-opgeslagen wijzigingen. Wat wil je doen?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Nieuwe werkruimte",
+      "darkMode": "Donkere modus",
+      "settings": "Instellingen",
+      "integrations": "Integraties",
+      "signOut": "Uitloggen",
+      "downloadOnIos": "Downloaden op iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Venster sluiten",
+      "minimizeWindow": "Venster minimaliseren",
+      "maximizeWindow": "Venster maximaliseren"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Suggesties",
+      "or": "of",
+      "enter": "Enter",
+      "toInsert": "om in te voegen"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "kruimelpad",
+      "more": "Meer"
+    },
+    "componentsUiDialog": {
+      "close": "Sluiten"
+    },
+    "componentsUiSheet": {
+      "close": "Sluiten"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Zijbalk",
+      "displaysTheMobileSidebar": "Geeft de mobiele zijbalk weer.",
+      "toggleSidebar": "Zijbalk tonen/verbergen",
+      "toggleSidebar2": "Zijbalk tonen/verbergen",
+      "dragToResizeDoubleClickToReset": "Sleep om het formaat te wijzigen · Dubbelklik om te resetten"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Welkom bij memrynote",
+      "yourPersonalKnowledgeManagementSystem": "Je persoonlijke kennisbeheersysteem.",
+      "selectAFolderToStoreYourNotesAndTasks": "Kies een map om je notities en taken in op te slaan.",
+      "opening": "Openen…",
+      "selectVaultFolder": "Kluismap kiezen",
+      "plainMarkdown": "Gewoon Markdown",
+      "yourNotesStayPortable": "Je notities blijven overdraagbaar",
+      "syncAnywhere": "Overal synchroniseren",
+      "useDropboxIcloudGit": "Gebruik Dropbox, iCloud, Git",
+      "recentVaults": "Recente kluizen",
+      "notesLastOpened": "notities · Laatst geopend",
+      "preRelease": "Bèta",
+      "createNewVault": "Nieuwe kluis maken",
+      "createNewVaultDesc": "Start een nieuwe kluis in een map naar keuze.",
+      "openExistingVault": "Bestaande kluis openen",
+      "openExistingVaultDesc": "Kies een map met Markdown-bestanden die je al bewaart.",
+      "signInToSync": "Inloggen om te synchroniseren",
+      "signInToSyncDesc": "End-to-end versleutelde kluizen op al je apparaten.",
+      "create": "Maken",
+      "open": "Openen",
+      "signIn": "Inloggen",
+      "helpAndDocs": "Help en documentatie",
+      "signInRequiresVault": "Open of maak eerst een kluis om synchronisatie in te stellen.",
+      "addVault": "Kluis toevoegen",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "Je notities staan in een kluis: een map op deze computer.",
+        "createDesc": "Geef de kluis een naam en kies waar die komt te staan.",
+        "openFolder": "Map openen als kluis",
+        "openFolderDesc": "Gebruik een map met Markdown-bestanden die je al hebt.",
+        "openFromSync": "Openen vanuit Memrynote Sync",
+        "openFromSyncDesc": "Log in en download een kluis uit je account.",
+        "back": "Terug",
+        "createTitle": "Nieuwe kluis maken",
+        "createSubtitle": "Een kluis is een map met Markdown-bestanden. Je kunt die later verplaatsen.",
+        "nameLabel": "Naam",
+        "namePlaceholder": "Mijn notities",
+        "locationLabel": "Locatie",
+        "change": "Wijzigen…",
+        "willBeCreatedAt": "Wordt gemaakt in",
+        "errorExists": "Er bestaat hier al een map met deze naam.",
+        "openInstead": "In plaats daarvan als kluis openen",
+        "errorInvalidName": "Namen mogen niet met een punt beginnen en geen / \\ : * ? \" < > | bevatten",
+        "createFailed": "Kan de kluis niet maken.",
+        "createVault": "Kluis maken",
+        "creating": "Bezig met maken…",
+        "cancel": "Annuleren",
+        "chooseTitle": "Kies een kluis",
+        "chooseSubtitle": "Ingelogd als {email}. Kies er een om op deze computer te openen.",
+        "untitledVault": "Kluis zonder titel",
+        "items": "{count, plural, one {# item} other {# items}}",
+        "onThisComputer": "Op deze computer",
+        "downloadTo": "Downloaden naar",
+        "otherVaultsHint": "Andere kluizen blijven in je account. Je kunt ze altijd downloaden via de kluiswisselaar.",
+        "openVault": "Kluis openen",
+        "opening": "Openen…",
+        "loadingVaults": "Je kluizen laden…",
+        "loadFailed": "Kan je kluizen niet laden.",
+        "retry": "Opnieuw proberen",
+        "noVaultsTitle": "Nog geen kluizen in je account",
+        "noVaultsDesc": "Maak er een op deze computer. Die wordt met je account gesynchroniseerd.",
+        "createCta": "Kluis maken",
+        "openFailed": "Kan de kluis niet openen."
+      }
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Nog geen kluizen",
+      "openVault": "Kluis openen",
+      "settings": "Instellingen",
+      "logOut": "Uitloggen",
+      "signInToSync": "Inloggen om te synchroniseren",
+      "remove": "Verwijder “",
+      "removeVaultTitle": "“{name}” uit de lijst verwijderen?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Deze kluis wordt uit de app verwijderd, maar je bestanden blijven op schijf staan. Je kunt de kluis later altijd opnieuw toevoegen.",
+      "cancel": "Annuleren",
+      "remove2": "Verwijderen",
+      "inYourAccount": "In je account",
+      "itemsCount": "{count} items",
+      "untitledVault": "Kluis",
+      "downloadVaultTitle": "“{name}” downloaden",
+      "downloadLocation": "Locatie",
+      "changeLocation": "Wijzigen…",
+      "download": "Downloaden",
+      "downloadFailed": "Kan de kluis niet downloaden",
+      "deleteFromAccount": "Uit account verwijderen",
+      "deleteVaultTitle": "“{name}” uit je account verwijderen?",
+      "deleteVaultBody": "Hiermee worden alle gesynchroniseerde gegevens van deze kluis definitief van de servers van Memry verwijderd; dit kan niet ongedaan worden gemaakt. Je bestanden op schijf worden niet verwijderd.",
+      "deleteVaultConfirm": "Uit account verwijderen",
+      "deleteVaultFailed": "Kan kluis niet verwijderen",
+      "missing": "Map niet gevonden"
+    },
+    "componentsWindowControls": {
+      "searchK": "Zoeken (⌘K)",
+      "browserBack": "Terug navigeren",
+      "back": "Terug",
+      "browserForward": "Vooruit navigeren",
+      "forward": "Vooruit"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Kan bestanden niet importeren",
+      "failedToCreateNote": "Kan notitie niet maken",
+      "failedToAccessMicrophone": "Kan geen toegang krijgen tot de microfoon"
+    },
+    "toasts": {
+      "undone": "Ongedaan gemaakt"
+    }
+  },
+  "home": {
+    "widget": {
+      "removeAria": "Widget verwijderen",
+      "dragAria": "Widget slepen",
+      "configAria": "Widget configureren",
+      "resizeAria": "Formaat wijzigen naar {size}",
+      "menuAria": "Widgetopties",
+      "resize": "Grootte",
+      "remove": "Verwijderen",
+      "filter": {
+        "all": "Alle",
+        "today": "Vervalt vandaag",
+        "tomorrow": "Morgen",
+        "next7": "Komende 7 dagen",
+        "noDueDate": "Geen vervaldatum"
+      },
+      "recentlyEdited": "Onlangs bewerkt",
+      "recentlyOpened": "Onlangs geopend",
+      "recentMeta": "bewerkt {time}",
+      "recentMetaWithFolder": "{folder} · bewerkt {time}",
+      "openedMeta": "geopend {time}",
+      "openedMetaWithFolder": "{folder} · geopend {time}",
+      "noRecentlyOpened": "Notities die je opent, verschijnen hier",
+      "bookmarks": "Bladwijzers",
+      "tasks": "Taken",
+      "calendar": "Agenda",
+      "calendarToday": "Vandaag",
+      "openCalendar": "Agenda openen",
+      "next": "Volgende: {title}",
+      "startsIn": "Begint over {count, plural, one {# min} other {# min}}",
+      "duration": "{count} min",
+      "inbox": "Inbox",
+      "inboxAllTypes": "Alle typen",
+      "inboxOlder": "{count, plural, one {# ouder item} other {# oudere items}}",
+      "inboxOldest": "oudste {count, plural, one {# dag} other {# dagen}}",
+      "openInbox": "Inbox openen",
+      "folder": "Map",
+      "untitled": "Zonder titel",
+      "folderPickPrompt": "Kies een map",
+      "folderEmpty": "Nog geen mappen",
+      "folderNoSelection": "Geen map geselecteerd",
+      "folderView_list": "Lijst",
+      "folderView_gallery": "Galerij",
+      "folderViewSelect": "Weergave",
+      "project": "Project",
+      "projectNoSelection": "Geen project geselecteerd",
+      "projectMissing": "Dit project is niet meer beschikbaar",
+      "projectNoTasks": "Geen taken",
+      "journal": "Dagboek",
+      "journalStreak": "{count, plural, one {reeks van # dag} other {reeks van # dagen}}",
+      "journalToday": "Vandaag",
+      "journalYesterday": "Gisteren",
+      "journalTomorrow": "Morgen",
+      "journalUpcoming": "Binnenkort",
+      "journalNoEntryYet": "Nog geen notitie",
+      "loadError": "Kan niet laden",
+      "unknown": "Onbekende widget"
+    },
+    "board": {
+      "label": "Startindeling",
+      "deleteAria": "Indeling verwijderen",
+      "newAria": "Nieuw bord",
+      "newName": "Nieuw bord",
+      "defaultName": "Start",
+      "manage": "Borden beheren",
+      "manageTitle": "Borden beheren",
+      "manageDescription": "Wijzig de naam of volgorde van je startborden, of verwijder ze.",
+      "renameAria": "Naam van bord wijzigen",
+      "reorderAria": "Volgorde van bord wijzigen",
+      "nameLabel": "Naam van bord"
+    },
+    "greeting": {
+      "morning": "Goedemorgen",
+      "afternoon": "Goedemiddag",
+      "evening": "Goedenavond"
+    },
+    "header": {
+      "tasksDue": "{count, plural, one {# taak vervalt vandaag} other {# taken vervallen vandaag}}",
+      "events": "{count, plural, one {# afspraak} other {# afspraken}}"
+    },
+    "edit": "Bewerken",
+    "done": "Klaar",
+    "addWidget": "Widget toevoegen",
+    "empty": {
+      "title": "Je bord is leeg",
+      "body": "Widgets brengen je notities, taken en bladwijzers samen op één rustige plek.",
+      "cta": "Je eerste widget toevoegen"
+    },
+    "noBookmarksYet": "Nog geen bladwijzers.",
+    "noNotesYet": "Nog geen notities.",
+    "noTasksYet": "Nog geen taken.",
+    "noEventsYet": "Geen afspraken vandaag.",
+    "noJournalEntriesYet": "Nog geen dagboeknotities.",
+    "disabled": {
+      "createNote": "Notitie maken",
+      "hint": "Niets open. Begin een notitie."
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Welkom bij MemryNote",
+      "body": "Je eigen privéplek, die ook offline werkt. Notities zijn end-to-end versleuteld – ze verlaten je apparaat nooit onversleuteld."
+    },
+    "newNote": {
+      "title": "Maak je eerste notitie",
+      "body": "Begin hier. Alles wat je schrijft wordt eerst lokaal opgeslagen."
+    },
+    "nav": {
+      "title": "Je werkruimtes",
+      "body": "Inbox om vast te leggen, Dagboek voor dagelijkse notities, Agenda voor je tijdlijn, Taken voor to-do’s en Grafiek om te zien hoe alles samenhangt."
+    },
+    "collections": {
+      "title": "Collecties, bladwijzers en tags",
+      "body": "Orden notities in mappen, zet bladwijzers vast en blader per tag – allemaal hier."
+    },
+    "dayPanel": {
+      "title": "Je dag, naast je werk",
+      "body": "Het zijpaneel toont een agenda en je dagoverzicht naast wat je aan het lezen bent."
+    },
+    "agentChat": {
+      "title": "Chat met de AI-agent",
+      "body": "Ga naar het tabblad Agent om de assistent van MemryNote iets over je kluis te vragen."
+    },
+    "sync": {
+      "title": "Privé, versleutelde synchronisatie",
+      "body": "Schakel end-to-end versleutelde synchronisatie in om elk apparaat gelijk te houden."
+    },
+    "feedback": {
+      "title": "Vertel ons wat je denkt",
+      "body": "Stuur vanaf hier rechtstreeks feedback naar het team."
+    },
+    "settings": {
+      "title": "Instellingen en imports",
+      "body": "Importeer je notities uit meer dan 12 apps – Obsidian, Notion, Apple Notes, Evernote en meer – en stel al het andere in via Instellingen."
+    },
+    "tour": {
+      "next": "Volgende",
+      "previous": "Vorige",
+      "progress": "{current} van {total}"
+    },
+    "starPrompt": {
+      "title": "Introductie voltooid",
+      "body": "Geef ons een ster op GitHub – zo vinden anderen MemryNote makkelijker.",
+      "action": "Ster geven op GitHub"
+    }
   },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Klik op rij",
-      "reset": "Herstellen",
-      "shortcutsTab": "Tabblad Sneltoetsen"
-    },
-    "description": "Snelle routes om door memrynote te bewegen, gedachten vast te leggen en werk te verwerken.",
+    "description": "Snelle routes om door memrynote te navigeren, gedachten vast te leggen en werk te verwerken.",
+    "or": "of",
+    "then": "dan",
     "groups": {
       "general": {
-        "description": "Navigatie en hulp in de hele app.",
-        "title": "Algemeen"
-      },
-      "inbox": {
-        "description": "Verwerk vastgelegde items snel.",
-        "title": "Inbox"
-      },
-      "journal": {
-        "description": "Navigeer door journaalweergaven en focus op het schrijfgebied.",
-        "title": "Journaal"
-      },
-      "notes": {
-        "description": "Notities schrijven, opmaken en doorzoeken.",
-        "title": "Notities / Editor"
-      },
-      "settings": {
-        "description": "Instellingen openen en sneltoetsen aanpassen.",
-        "title": "Instellingen"
+        "title": "Algemeen",
+        "description": "Navigatie en hulp in de hele app."
       },
       "tabs": {
-        "description": "Wissel tussen tabbladen en panelen.",
-        "title": "Tabbladen en splitsingen"
+        "title": "Tabbladen en splitsingen",
+        "description": "Wissel tussen tabbladen en deelvensters."
+      },
+      "inbox": {
+        "title": "Inbox",
+        "description": "Verwerk vastgelegde items snel."
+      },
+      "journal": {
+        "title": "Dagboek",
+        "description": "Navigeer door dagboekweergaven en zet de focus op het schrijfgebied."
+      },
+      "notes": {
+        "title": "Notities / Editor",
+        "description": "Notities schrijven, opmaken en doorzoeken."
       },
       "tasks": {
-        "description": "Taken filteren, selecteren en voltooien.",
-        "title": "Taken"
+        "title": "Taken",
+        "description": "Taken filteren, selecteren en voltooien."
+      },
+      "settings": {
+        "title": "Instellingen",
+        "description": "Instellingen openen en sneltoetsen aanpassen."
       }
     },
     "items": {
       "general": {
+        "quickSearch": "Snel zoeken openen",
         "createNote": "Een notitie maken",
-        "keyboardShortcuts": "Sneltoetsen openen",
         "openSettings": "Instellingen openen",
-        "quickSearch": "Snelzoeken openen",
-        "sidebarSection": "Naar een sectie in de zijbalk gaan",
-        "toggleSidebar": "Zijbalk in-/uitschakelen",
-        "undoTaskAction": "Laatste taakactie ongedaan maken"
+        "switchVault": "Van kluis wisselen",
+        "adjacentVault": "Vorige of volgende kluis",
+        "keyboardShortcuts": "Sneltoetsen openen",
+        "undoTaskAction": "Laatste taakactie ongedaan maken",
+        "toggleSidebar": "Zijbalk tonen/verbergen",
+        "sidebarSection": "Naar een sectie in de zijbalk gaan"
+      },
+      "tabs": {
+        "newTabMenu": "Menu voor nieuw tabblad openen",
+        "closeTab": "Tabblad sluiten",
+        "closeAllInPane": "Alle tabbladen in het deelvenster sluiten",
+        "reopenClosedTab": "Gesloten tabblad opnieuw openen",
+        "nextTab": "Volgend tabblad",
+        "previousTab": "Vorig tabblad",
+        "pinTab": "Tabblad vastzetten of losmaken",
+        "duplicateTab": "Tabblad dupliceren",
+        "splitRight": "Naar rechts splitsen",
+        "splitDown": "Naar beneden splitsen",
+        "closeSplitPane": "Gesplitst deelvenster sluiten",
+        "focusPane": "Een ander deelvenster activeren",
+        "moveTabToPane": "Tabblad naar deelvenster verplaatsen",
+        "maximizePane": "Huidig deelvenster maximaliseren"
       },
       "inbox": {
-        "archiveItem": "Geselecteerd item archiveren",
-        "chooseQuickFileResult": "Een resultaat van snel opbergen kiezen",
-        "clearSelection": "Selectie wissen of snel opbergen sluiten",
-        "confirmFiling": "Opbergpaneel bevestigen",
+        "nextItem": "Volgend item",
+        "previousItem": "Vorig item",
         "firstOrLastItem": "Eerste of laatste item",
         "jumpByPage": "Per pagina springen",
-        "nextItem": "Volgend item",
-        "openOriginal": "Oorspronkelijke link openen",
-        "openQuickFile": "Snel opbergen openen",
-        "previousItem": "Vorig item",
-        "refresh": "Inbox vernieuwen",
-        "selectAllVisible": "Alle zichtbare items selecteren",
+        "togglePreview": "Voorbeeldpaneel tonen/verbergen",
         "selectItem": "Item selecteren",
-        "togglePreview": "Voorbeeldpaneel in-/uitschakelen"
+        "selectAllVisible": "Alle zichtbare items selecteren",
+        "clearSelection": "Selectie wissen of snel opbergen sluiten",
+        "openQuickFile": "Snel opbergen openen",
+        "chooseQuickFileResult": "Een resultaat van snel opbergen kiezen",
+        "archiveItem": "Geselecteerd item archiveren",
+        "openOriginal": "Oorspronkelijke link openen",
+        "refresh": "Inbox vernieuwen",
+        "confirmFiling": "Bevestigen in opbergpaneel"
       },
       "journal": {
-        "bold": "Geselecteerde tekst vet maken",
-        "find": "Zoeken in journaal",
-        "italic": "Geselecteerde tekst cursief maken",
         "returnFromOverview": "Terug uit maand- of jaarweergave",
+        "find": "Zoeken in dagboek",
+        "bold": "Geselecteerde tekst vet maken",
+        "italic": "Geselecteerde tekst cursief maken",
         "underline": "Geselecteerde tekst onderstrepen"
       },
       "notes": {
-        "bold": "Vet",
-        "closeOverlays": "Overlays van de editor sluiten",
-        "commandMenu": "Opdrachtmenu van de editor openen",
         "createNote": "Een notitie maken",
         "find": "Zoeken in notitie",
+        "bold": "Vet",
         "italic": "Cursief",
-        "underline": "Onderstrepen"
-      },
-      "settings": {
-        "cancelRecording": "Opnemen van sneltoets annuleren",
-        "customizeShortcuts": "Sneltoetsen aanpassen",
-        "openSettings": "Instellingen openen",
-        "recordShortcut": "Een nieuwe sneltoets opnemen",
-        "resetShortcut": "Standaardsneltoets herstellen"
-      },
-      "tabs": {
-        "closeAllInPane": "Alle tabbladen in het paneel sluiten",
-        "closeSplitPane": "Gesplitst paneel sluiten",
-        "closeTab": "Tabblad sluiten",
-        "duplicateTab": "Tabblad dupliceren",
-        "focusPane": "Een ander paneel activeren",
-        "maximizePane": "Huidig paneel maximaliseren",
-        "moveTabToPane": "Tabblad naar paneel verplaatsen",
-        "newTabMenu": "Menu voor nieuw tabblad openen",
-        "nextTab": "Volgend tabblad",
-        "pinTab": "Tabblad vastzetten of losmaken",
-        "previousTab": "Vorig tabblad",
-        "reopenClosedTab": "Gesloten tabblad opnieuw openen",
-        "splitDown": "Omlaag splitsen",
-        "splitRight": "Naar rechts splitsen"
+        "underline": "Onderstrepen",
+        "commandMenu": "Opdrachtmenu van de editor openen",
+        "closeOverlays": "Overlays van de editor sluiten"
       },
       "tasks": {
         "clearFilters": "Zichtbare filters wissen",
+        "selectAllVisible": "Alle zichtbare taken selecteren",
         "clearSelection": "Taakselectie wissen",
         "completeSelected": "Geselecteerde taken voltooien",
-        "configureRepeat": "Herhaling instellen voor de gefocuste taak",
         "deleteSelected": "Geselecteerde taken verwijderen",
-        "selectAllVisible": "Alle zichtbare taken selecteren",
+        "configureRepeat": "Herhaling instellen voor de gefocuste taak",
         "skipOccurrence": "Herhaling overslaan",
         "stopRepeating": "Stoppen met het herhalen van een taak"
+      },
+      "settings": {
+        "openSettings": "Instellingen openen",
+        "customizeShortcuts": "Sneltoetsen aanpassen",
+        "recordShortcut": "Een nieuwe sneltoets opnemen",
+        "cancelRecording": "Opnemen van sneltoets annuleren",
+        "resetShortcut": "Standaardsneltoets herstellen"
       }
     },
-    "or": "of",
-    "then": "dan"
+    "combos": {
+      "shortcutsTab": "Tabblad Sneltoetsen",
+      "clickRow": "Klik op rij",
+      "reset": "Herstellen"
+    }
+  },
+  "update": {
+    "available": "Update beschikbaar",
+    "downloading": "{version} wordt gedownload",
+    "ready": "Update gereed",
+    "failed": "Update mislukt",
+    "downloadAction": "Downloaden",
+    "restartAction": "Opnieuw starten",
+    "detailsAction": "Details",
+    "popover": {
+      "readyTitle": "MemryNote {version} staat klaar",
+      "availableTitle": "MemryNote {version} is beschikbaar",
+      "readySubtitle": "Je gebruikt {current}",
+      "availableSubtitle": "Je gebruikt {current} · er is nog niets gedownload",
+      "allChanges": "Alle wijzigingen",
+      "restartNow": "Nu opnieuw starten",
+      "onNextQuit": "Bij afsluiten",
+      "download": "Downloaden",
+      "notNow": "Niet nu",
+      "moreOptions": "Meer updateopties",
+      "skipVersion": "{version} overslaan",
+      "turnOffAuto": "Automatische updates uitschakelen",
+      "copyVersionInfo": "Versie-informatie kopiëren",
+      "openSettings": "Instellingen openen"
+    },
+    "installing": {
+      "title": "{version} wordt geïnstalleerd",
+      "titleUnknownVersion": "Update wordt geïnstalleerd",
+      "subtitle": "MemryNote wordt zo opnieuw geopend. Alles wat je hebt geschreven, staat al op schijf."
+    },
+    "installFailed": {
+      "title": "MemryNote kon de installatie van {version} niet voltooien",
+      "titleUnknownVersion": "MemryNote kon de installatie van de update niet voltooien",
+      "body": "Je kluis is niet aangeraakt – een update wordt toegepast op de app, niet op je notities. Je gebruikt nog steeds {current} en alles werkt zoals voorheen.",
+      "errorLabel": "Wat er misging",
+      "downloadManually": "{version} handmatig downloaden",
+      "downloadManuallyUnknownVersion": "MemryNote handmatig downloaden",
+      "tryAgain": "Opnieuw proberen",
+      "copyDetails": "Details kopiëren"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Kluizen",
+    "position": "{name}, kluis {index} van {count}",
+    "openList": "{position}. Lijst met kluizen openen",
+    "switchTo": "Overschakelen naar {name}",
+    "switchingTo": "Bezig met overschakelen naar {name}",
+    "changeIcon": "Pictogram wijzigen…",
+    "resetIcon": "Pictogram herstellen",
+    "iconButton": "Pictogram van {name} wijzigen",
+    "iconFailed": "Kan het kluispictogram niet wijzigen"
+  },
+  "sidebarHelp": {
+    "label": "Help en feedback",
+    "reportBug": "Fout melden",
+    "requestFeature": "Functie aanvragen",
+    "starOnGithub": "Ster geven op GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "Wat is er nieuw"
+  },
+  "sidebarStar": {
+    "title": "MemryNote is open source",
+    "body": "Openlijk ontwikkeld. Met een ster help je anderen het te vinden.",
+    "star": "Ster geven",
+    "later": "Niet nu",
+    "thanks": "Dank je wel. Dat betekent veel voor ons."
+  },
+  "sidebar": {
+    "railLabel": "Secties",
+    "search": "Zoeken of openen…",
+    "vaultMenu": "{name}. Lijst met kluizen openen"
   }
 }

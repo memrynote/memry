@@ -2,43 +2,44 @@
   "title": "저널",
   "section": {
     "aiConnections": "AI 연결",
-    "todaysNotes": "오늘의 메모",
+    "todaysNotes": "오늘의 노트",
     "todaysSchedule": "오늘의 일정",
     "todaysTasks": "오늘의 작업",
     "tasks": "작업",
-    "technicalDetails": "기술적인 세부사항"
+    "technicalDetails": "기술 세부 정보"
   },
   "action": {
     "versionHistory": "버전 기록",
-    "export": "수출",
-    "fullWidth": "전폭",
+    "export": "내보내기",
+    "fullWidth": "전체 너비",
     "journalSettings": "저널 설정",
     "fullMode": "전체 모드",
     "compactMode": "컴팩트 모드",
-    "createNote": "메모 작성",
-    "createNewNote": "새 메모 만들기",
+    "createNote": "노트 만들기",
+    "createNewNote": "새 노트 만들기",
     "showLess": "간략히 보기",
-    "showMoreNotes": "{count} 더 많은 메모 표시",
-    "showMoreNotes_plural": "{count} 메모 더 보기",
-    "showFewerNotes": "메모 간략히 표시",
-    "startBlank": "대신 공백으로 시작하세요",
+    "showMoreNotes": "노트 {count}개 더 보기",
+    "showMoreNotes_plural": "노트 {count}개 더 보기",
+    "showFewerNotes": "노트 간략히 보기",
+    "startBlank": "대신 빈 페이지로 시작",
     "changeTemplate": "템플릿 변경",
-    "dismissIndicator": "표시 해제",
-    "refreshConnections": "연결 새로 고침",
-    "reloadJournal": "저널 다시 로드",
+    "dismissIndicator": "표시기 닫기",
+    "refreshConnections": "연결 새로고침",
+    "reloadJournal": "저널 다시 불러오기",
     "goToToday": "오늘로 이동",
-    "copyUnsavedContent": "저장되지 않은 콘텐츠를 클립보드에 복사",
+    "copyUnsavedContent": "저장되지 않은 내용을 클립보드에 복사",
     "addBookmark": "북마크 추가",
-    "removeBookmark": "북마크 삭제"
+    "removeBookmark": "북마크 제거",
+    "deleteEntry": "항목 삭제"
   },
   "editor": {
     "placeholder": {
-      "future": "무슨 계획을 세우고 있는 거야?",
-      "today": "오늘 무슨 생각이 드시나요...",
-      "past": "이날을 반성해보세요..."
+      "future": "계획 세우기…",
+      "today": "오늘 떠오르는 생각…",
+      "past": "이날 돌아보기…"
     },
     "upload": {
-      "failed": "이미지를 업로드하지 못했습니다."
+      "failed": "이미지를 업로드하지 못했습니다"
     }
   },
   "date": {
@@ -58,13 +59,13 @@
       "saturday": "토요일"
     },
     "weekdayShort": {
-      "sunday": "태양",
+      "sunday": "일",
       "monday": "월",
       "tuesday": "화",
-      "wednesday": "수요일",
+      "wednesday": "수",
       "thursday": "목",
       "friday": "금",
-      "saturday": "토요일"
+      "saturday": "토"
     },
     "month": {
       "january": "1월",
@@ -86,7 +87,7 @@
       "march": "3월",
       "april": "4월",
       "may": "5월",
-      "june": "준",
+      "june": "6월",
       "july": "7월",
       "august": "8월",
       "september": "9월",
@@ -95,146 +96,155 @@
       "december": "12월"
     },
     "greeting": {
-      "morning": "좋은 아침",
-      "afternoon": "안녕하세요",
-      "evening": "안녕하세요",
-      "night": "잘자요"
+      "morning": "좋은 아침입니다",
+      "afternoon": "좋은 오후입니다",
+      "evening": "좋은 저녁입니다",
+      "night": "좋은 밤 되세요"
     },
-    "allDay": "하루 종일"
+    "allDay": "종일"
   },
   "nav": {
     "previousDay": "전날",
-    "nextDay": "다음날",
-    "previousMonth": "지난달",
+    "nextDay": "다음 날",
+    "previousMonth": "이전 달",
     "nextMonth": "다음 달",
-    "previousYear": "전년도",
-    "nextYear": "내년",
-    "journalBack": "저널백",
+    "previousYear": "이전 연도",
+    "nextYear": "다음 연도",
+    "journalBack": "저널 뒤로 가기",
     "journalNavigation": "저널 탐색",
     "dateNavigation": "저널 날짜 탐색",
     "goToYearView": "연도 보기로 이동"
   },
   "aria": {
     "moreOptions": "추가 옵션",
-    "documentStatistics": "문서통계",
-    "dayContext": "일별 맥락: 작업 및 일정",
-    "scheduleEvents": "이벤트 예약",
+    "documentStatistics": "문서 통계",
+    "dayContext": "이날의 작업 및 일정",
+    "scheduleEvents": "일정 목록",
     "tasks": "작업",
-    "notesCreatedToday": "오늘 생성된 {count} 노트"
+    "notesCreatedToday": "오늘 만든 노트 {count}개"
   },
   "empty": {
-    "noEntry": "입장불가",
-    "noDaysInMonth": "이번 달에는 날짜가 없습니다.",
-    "noEventsScheduled": "예정된 이벤트가 없습니다.",
-    "noEventsScheduledToday": "오늘 예정된 이벤트가 없습니다.",
-    "noEventsWereScheduled": "예정된 이벤트가 없습니다.",
-    "noTasksDue": "마감된 작업 없음",
-    "noTasksDueToday": "오늘 마감인 작업이 없습니다.",
-    "noTasksWereDue": "마감된 작업이 없습니다.",
-    "noNotesToday": "오늘 생성된 메모가 없습니다.",
-    "startDocumenting": "당신의 생각과 아이디어를 문서화하기 시작하세요"
+    "noEntry": "항목 없음",
+    "noDaysInMonth": "이번 달에는 날짜가 없습니다",
+    "noEventsScheduled": "예정된 일정이 없습니다",
+    "noEventsScheduledToday": "오늘 예정된 일정이 없습니다",
+    "noEventsWereScheduled": "예정된 일정이 없었습니다",
+    "noTasksDue": "마감인 작업 없음",
+    "noTasksDueToday": "오늘 마감인 작업이 없습니다",
+    "noTasksWereDue": "마감인 작업이 없었습니다",
+    "noNotesToday": "오늘 만든 노트가 없습니다",
+    "startDocumenting": "생각과 아이디어를 적어 보세요"
   },
   "ai": {
-    "loading": "입력 내용을 분석하는 중...",
+    "loading": "항목을 분석하는 중…",
     "empty": {
       "willAppear": "여기에 연결이 표시됩니다",
-      "noneYet": "아직 연결을 찾을 수 없습니다.",
-      "moreJournaling": "일기를 더 많이 쓸수록 AI는 관련 항목을 찾습니다.",
-      "keepWriting": "관련 항목을 찾으려면 계속해서 글을 쓰세요."
+      "noneYet": "아직 찾은 연결이 없습니다",
+      "moreJournaling": "저널을 더 많이 쓸수록 AI가 관련 항목을 찾아 줍니다",
+      "keepWriting": "관련 항목을 찾으려면 계속해서 글을 쓰세요"
     },
     "error": {
-      "loadFailed": "연결을 로드할 수 없습니다."
+      "loadFailed": "연결을 불러오지 못했습니다"
     },
-    "connectionAria": "{label}, {scorePercent}% 일치에 연결"
+    "connectionAria": "연결: {label}, {scorePercent}% 일치"
   },
   "count": {
-    "note": "참고",
+    "note": "노트",
     "day": "일",
     "days": "일",
-    "event": "이벤트",
-    "events": "이벤트",
+    "event": "일정",
+    "events": "일정",
     "task": "작업",
     "todo": "할 일",
-    "moreConnections": "+ {count} 추가 연결",
-    "moreConnections_plural": "+ {count} 추가 연결",
-    "moreNotes": "+ {count} 추가 참고",
-    "moreNotes_plural": "+ {count} 추가 메모",
+    "moreConnections": "+ 연결 {count}개 더",
+    "moreConnections_plural": "+ 연결 {count}개 더",
+    "moreNotes": "+ 노트 {count}개 더",
+    "moreNotes_plural": "+ 노트 {count}개 더",
     "daysWithEntries": "항목이 있는 일수",
-    "charactersWritten": "쓰여진 문자",
-    "words": "{count} 단어",
-    "characters": "{count} 문자",
-    "completed": "{count} 완료",
-    "overdue": "{count} 연체"
+    "charactersWritten": "작성한 글자 수",
+    "words": "단어 {count}개",
+    "characters": "{count}자",
+    "completed": "완료 {count}개",
+    "overdue": "기한 지남 {count}개"
   },
   "stats": {
     "wordCount": "단어 수",
-    "characterCount": "문자수",
-    "readingTime": "예상 독서 시간",
+    "characterCount": "글자 수",
+    "readingTime": "예상 읽기 시간",
     "lastModified": "최종 수정됨",
     "lessThanOneMinute": "< 1분",
     "minutes": "{minutes}분",
-    "read": "{readingTime} 읽기",
-    "modified": "수정된 {date}"
+    "read": "읽는 시간 {readingTime}",
+    "modified": "{date}에 수정됨"
   },
   "task": {
     "completed": "완료됨",
     "notCompleted": "완료되지 않음",
-    "priority": "{priority} 우선순위",
-    "overdue": "기한이 지난",
-    "markComplete": "\"{title}\"를 완료됨으로 표시",
-    "markNotComplete": "\"{title}\"를 완료되지 않은 것으로 표시"
+    "priority": "우선순위: {priority}",
+    "overdue": "기한 지남",
+    "markComplete": "“{title}”을(를) 완료로 표시",
+    "markNotComplete": "“{title}”을(를) 미완료로 표시"
   },
   "template": {
-    "using": "\"{templateName}\" 사용"
+    "using": "“{templateName}” 사용 중"
   },
   "reminder": {
-    "hasReminders": "알림 있음",
-    "setToRevisit": "재방문 알림 설정",
-    "tooltip": "알림: {date}",
-    "tooltipMore": "알림: {date}(+{count} 이상)",
+    "hasReminders": "리마인더 있음",
+    "setToRevisit": "다시 볼 리마인더 설정",
+    "tooltip": "리마인더: {date}",
+    "tooltipMore": "리마인더: {date} 외 {count}개",
     "success": {
-      "set": "이 일지 항목에 대한 알림이 설정되었습니다.",
-      "deleted": "알림이 삭제되었습니다.",
-      "dismissed": "알림이 해제되었습니다.",
-      "snoozed": "알림이 일시중지되었습니다."
+      "set": "이 저널 항목에 리마인더를 설정했습니다",
+      "deleted": "리마인더를 삭제했습니다",
+      "dismissed": "리마인더를 닫았습니다",
+      "snoozed": "리마인더를 다시 알림으로 설정했습니다",
+      "updated": "리마인더를 업데이트했습니다"
     },
     "error": {
-      "set": "알림을 설정하지 못했습니다.",
-      "delete": "알림을 삭제하지 못했습니다.",
-      "dismiss": "알림을 닫지 못했습니다.",
-      "snooze": "알림을 일시중지하지 못했습니다."
+      "set": "리마인더를 설정하지 못했습니다",
+      "delete": "리마인더를 삭제하지 못했습니다",
+      "dismiss": "리마인더를 닫지 못했습니다",
+      "snooze": "리마인더를 다시 알림으로 설정하지 못했습니다",
+      "update": "리마인더를 업데이트하지 못했습니다"
     }
   },
   "toast": {
-    "unsavedRetry": "귀하의 콘텐츠는 아직 메모리에 있습니다. 저장을 다시 시도하려면 클릭하세요.",
-    "noteNotFound": "참고 \"{target}\"를 찾을 수 없습니다.",
+    "unsavedRetry": "내용이 아직 메모리에 있습니다. 클릭하여 다시 저장하세요.",
+    "noteNotFound": "“{target}” 노트를 찾을 수 없습니다",
+    "createLinkedFailed": "링크된 노트를 만들지 못했습니다",
     "fileNotFound": "파일을 찾을 수 없습니다: {target}",
-    "openLinkedItemFailed": "연결된 항목을 열지 못했습니다.",
-    "errorPrefix": "오류:"
+    "openLinkedItemFailed": "링크된 항목을 열지 못했습니다",
+    "errorPrefix": "오류:",
+    "deleteFailed": "저널 항목을 삭제하지 못했습니다",
+    "bookmarkFailed": "북마크를 업데이트하지 못했습니다"
   },
   "export": {
-    "noteTitle": "저널 - {month} {day}, {year}"
+    "noteTitle": "저널 - {year}년 {month} {day}일"
   },
   "note": {
-    "generatedTitle": "참고 - {date}",
-    "openAria": "{time}에서 생성된 {title}를 엽니다."
+    "generatedTitle": "노트 - {date}",
+    "openAria": "{time}에 만든 {title} 열기"
   },
   "error": {
     "title": "저널 오류",
-    "description": "저널에서 {date}에 대한 오류가 발생했습니다. 최근 변경사항이 저장되지 않았을 수 있습니다.",
-    "descriptionNoDate": "저널에 오류가 발생했습니다. 최근 변경사항이 저장되지 않았을 수 있습니다.",
-    "unsavedContent": "저장되지 않은 콘텐츠가 감지되었습니다({length} 문자)."
+    "description": "{date} 저널에 오류가 발생했습니다. 최근 변경 사항이 저장되지 않았을 수 있습니다.",
+    "descriptionNoDate": "저널에 오류가 발생했습니다. 최근 변경 사항이 저장되지 않았을 수 있습니다.",
+    "unsavedContent": "저장되지 않은 내용이 있습니다({length}자)"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
-      "k": "케이"
+      "k": "k"
     }
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "일지 항목을 저장하지 못했습니다.",
-      "failedToLoadJournalSettings": "저널 설정을 로드하지 못했습니다.",
-      "failedToUpdateSettings": "설정을 업데이트하지 못했습니다."
+      "failedToSaveJournalEntry": "저널 항목을 저장하지 못했습니다",
+      "failedToLoadJournalSettings": "저널 설정을 불러오지 못했습니다",
+      "failedToUpdateSettings": "설정을 업데이트하지 못했습니다"
     }
+  },
+  "deleteConfirm": {
+    "title": "저널 항목 삭제",
+    "description": "“{title}”을(를) 삭제하시겠습니까? 되돌릴 수 없습니다."
   }
 }

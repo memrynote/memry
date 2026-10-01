@@ -1,4 +1,10 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Перейти до поля швидкого запису",
+    "detailHint": "деталі",
+    "submit": "Записати"
+  },
   "button": {
     "save": "Зберегти",
     "cancel": "Скасувати",
@@ -7,12 +13,15 @@
     "done": "Готово",
     "dontSave": "Не зберігати",
     "add": "Додати",
-    "remove": "Видалити",
+    "remove": "Прибрати",
     "retry": "Спробувати знову",
     "back": "Назад",
     "continue": "Продовжити",
     "copy": "Копіювати",
     "create": "Створити"
+  },
+  "media": {
+    "video": "Відео"
   },
   "state": {
     "loading": "Завантаження…",
@@ -24,7 +33,7 @@
     "search": "Пошук",
     "expand": "Розгорнути",
     "collapse": "Згорнути",
-    "showMore": "+{count, plural, one {# більше} other {# більше}}",
+    "showMore": "Ще {count, plural, one {#} few {#} many {#} other {#}}",
     "showLess": "Показати менше",
     "undo": "Скасувати"
   },
@@ -32,147 +41,620 @@
     "revealInFinder": "Показати у Finder",
     "showInExplorer": "Показати в Провіднику",
     "showInFileManager": "Показати у файловому менеджері",
-    "openInDefaultApp": "Відкрити у стандартному додатку",
+    "openInDefaultApp": "Відкрити в застосунку за замовчуванням",
     "revealFailed": "Не вдалося показати в папці"
   },
   "tabs": {
     "pin": "Закріпити вкладку",
     "unpin": "Відкріпити вкладку",
+    "persistence": {
+      "saveFailed": "Відкриті вкладки більше не зберігаються",
+      "saveFailedQuota": "Цей сеанс завеликий для збереження. Закрийте кілька вкладок, інакше його може бути не відновлено під час наступного запуску Memry.",
+      "saveFailedGeneric": "Memry не вдалося зберегти цей сеанс, тому його може бути не відновлено під час наступного запуску застосунку.",
+      "lastSessionNotSaved": "Останній сеанс не було збережено під час закриття Memry",
+      "lastSessionNotSavedQuota": "Тоді бракувало місця для збереження, тож ці вкладки взято з попереднього збереження. Закрийте кілька вкладок, щоб звільнити місце.",
+      "lastSessionNotSavedGeneric": "Memry не вдалося зберегти вкладки під час виходу, тож ці вкладки взято з попереднього збереження."
+    },
     "contextMenu": {
       "close": "Закрити",
       "closeOthers": "Закрити інші",
       "closeToRight": "Закрити праворуч",
       "closeAll": "Закрити всі",
       "duplicate": "Дублювати вкладку",
-      "splitRight": "Розділити справа",
-      "splitDown": "Розділити вниз",
+      "splitRight": "Розділити праворуч",
+      "splitDown": "Розділити донизу",
       "copyPath": "Скопіювати шлях",
-      "revealInSidebar": "Показати в боковій панелі"
+      "revealInSidebar": "Показати на бічній панелі"
     }
   },
   "count": {
-    "note": "{count, plural, one {# нотатка} other {# нотатки}}",
-    "task": "{count, plural, one {# завдання} other {# завдання}}",
-    "itemDelete": "{count, plural, one {Видалити # елемент} other {Видалити # елементи}}",
+    "note": "{count, plural, one {# нотатка} few {# нотатки} many {# нотаток} other {# нотатки}}",
+    "journal": "{count, plural, one {# запис щоденника} few {# записи щоденника} many {# записів щоденника} other {# запису щоденника}}",
+    "task": "{count, plural, one {# завдання} few {# завдання} many {# завдань} other {# завдання}}",
     "event": "{count, plural, one {# подія} few {# події} many {# подій} other {# події}}",
-    "journal": "{count, plural, one {# журнал} few {# журнали} many {# журналів} other {# журналу}}",
-    "reminder": "{count, plural, one {# нагадування} few {# нагадування} many {# нагадувань} other {# нагадування}}"
+    "reminder": "{count, plural, one {# нагадування} few {# нагадування} many {# нагадувань} other {# нагадування}}",
+    "itemDelete": "{count, plural, one {Видалити # елемент} few {Видалити # елементи} many {Видалити # елементів} other {Видалити # елемента}}"
   },
   "toast": {
-    "actionFailed": "Дія не вдалася",
-    "nothingToUndo": "Немає що скасовувати",
+    "actionFailed": "Не вдалося виконати дію",
+    "nothingToUndo": "Нічого скасовувати",
     "undone": "Скасовано: {description}",
-    "undoFailed": "Не зміг скасувати дію"
+    "undoFailed": "Не вдалося скасувати дію",
+    "filesImported": "{count, plural, one {Імпортовано # файл} few {Імпортовано # файли} many {Імпортовано # файлів} other {Імпортовано # файлу}}",
+    "filesImportFailed": "{count, plural, one {Не вдалося імпортувати # файл} few {Не вдалося імпортувати # файли} many {Не вдалося імпортувати # файлів} other {Не вдалося імпортувати # файлу}}",
+    "filesHiddenInSidebar": "Файли приховано на бічній панелі. Щоб їх бачити, увімкніть «Показувати файли» в меню сортування колекцій.",
+    "moreRemindersDue": "{count, plural, one {Ще # нагадування} few {Ще # нагадування} many {Ще # нагадувань} other {Ще # нагадування}}",
+    "moreRemindersDueHint": "Подробиці — на панелі нагадувань",
+    "searchIndexRepaired": "Пошуковий індекс відновлено",
+    "searchIndexRepairedHint": "Частину пошукового індексу було пошкоджено, тому його перебудовано. Нотаток це не торкнулося."
   },
   "dateRelative": {
     "today": "Сьогодні",
-    "yesterday": "Вчора",
-    "daysAgo": "{count, plural, one {# день тому} other {# днів тому}}",
-    "daysLate": "{count, plural, one {прострочено #д} few {прострочено #д} many {прострочено #д} other {прострочено #д}}",
+    "yesterday": "Учора",
+    "daysAgo": "{count, plural, one {# день тому} few {# дні тому} many {# днів тому} other {# дня тому}}",
+    "tomorrow": "Завтра",
     "daysOverdue": "{count, plural, one {прострочено на # день} few {прострочено на # дні} many {прострочено на # днів} other {прострочено на # дня}}",
-    "tomorrow": "Завтра"
+    "daysLate": "{count, plural, one {прострочено #д} few {прострочено #д} many {прострочено #д} other {прострочено #д}}",
+    "inDays": "{count, plural, one {через # день} few {через # дні} many {через # днів} other {через # дня}}",
+    "inWeeks": "{count, plural, one {через # тиждень} few {через # тижні} many {через # тижнів} other {через # тижня}}"
   },
   "recurrence": {
-    "everyNDays": "{count, plural, one {Щодня} other {Кожні # дні}}",
-    "everyNWeeks": "{count, plural, one {Щотижня} other {Кожні # тижні}}",
-    "everyNWeeksOnWeekdays": "{count, plural, one {Щодня у будні} other {Кожні # тижня у будні дні}}",
-    "everyNWeeksOnWeekends": "{count, plural, one {Щовихідних} other {Кожні # тижні у вихідні}}",
-    "everyNWeeksOnDays": "{count, plural, one {Щотижня на {days}} other {Кожні # тижні на {days}}}",
-    "everyNMonths": "{count, plural, one {Щомісяця} other {Кожні # місяці}}",
-    "everyNMonthsOnDay": "{count, plural, one {Щомісяця на {day}{suffix}} other {Кожні # місяці на {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {Щомісяця на {week} {day}} other {Що # місяці в {week} {day}}}",
-    "everyNYears": "{count, plural, one {Щороку} other {Що # років}}",
+    "everyNDays": "{count, plural, =1 {Щодня} one {Кожен # день} few {Кожні # дні} many {Кожні # днів} other {Кожні # дня}}",
+    "everyNWeeks": "{count, plural, =1 {Щотижня} one {Кожен # тиждень} few {Кожні # тижні} many {Кожні # тижнів} other {Кожні # тижня}}",
+    "everyNWeeksOnWeekdays": "{count, plural, =1 {Щодня в будні} one {Кожен # тиждень у будні} few {Кожні # тижні в будні} many {Кожні # тижнів у будні} other {Кожні # тижня в будні}}",
+    "everyNWeeksOnWeekends": "{count, plural, =1 {Щотижня у вихідні} one {Кожен # тиждень у вихідні} few {Кожні # тижні у вихідні} many {Кожні # тижнів у вихідні} other {Кожні # тижня у вихідні}}",
+    "everyNWeeksOnDays": "{count, plural, =1 {Щотижня: {days}} one {Кожен # тиждень: {days}} few {Кожні # тижні: {days}} many {Кожні # тижнів: {days}} other {Кожні # тижня: {days}}}",
+    "everyNMonths": "{count, plural, =1 {Щомісяця} one {Кожен # місяць} few {Кожні # місяці} many {Кожні # місяців} other {Кожні # місяця}}",
+    "everyNMonthsOnDay": "{count, plural, =1 {Щомісяця {day}{suffix}-го числа} one {Кожен # місяць {day}{suffix}-го числа} few {Кожні # місяці {day}{suffix}-го числа} many {Кожні # місяців {day}{suffix}-го числа} other {Кожні # місяця {day}{suffix}-го числа}}",
+    "everyNMonthsOnWeekDay": "{count, plural, =1 {Щомісяця: {week} тиждень, {day}} one {Кожен # місяць: {week} тиждень, {day}} few {Кожні # місяці: {week} тиждень, {day}} many {Кожні # місяців: {week} тиждень, {day}} other {Кожні # місяця: {week} тиждень, {day}}}",
+    "everyNYears": "{count, plural, =1 {Щороку} one {Кожен # рік} few {Кожні # роки} many {Кожні # років} other {Кожні # року}}",
     "repeats": "Повторюється",
     "ordinal": {
       "first": "перший",
-      "fourth": "четвертий",
-      "last": "останній",
       "second": "другий",
-      "third": "третій"
+      "third": "третій",
+      "fourth": "четвертий",
+      "last": "останній"
     },
     "preset": {
-      "everyWeekday": "Щодня у будні (Пн-Пт)",
+      "everyWeekday": "Щодня в будні (Пн–Пт)",
       "everyYearOnDate": "Щороку {date}"
+    }
+  },
+  "agentChat": {
+    "title": "Чат з агентом",
+    "loading": "Завантаження чату з агентом…",
+    "conversationLoading": "Завантаження розмови…",
+    "historyNotSaved": "Цей пристрій не може розблокувати сховище, тому цю розмову не буде збережено після закриття застосунку.",
+    "newConversation": "Нова розмова",
+    "history": "Історія розмов",
+    "openInTab": "Відкрити розмову у вкладці",
+    "stop": "Зупинити",
+    "thinking": "Агент думає",
+    "enable": {
+      "title": "Увімкнути агента memrynote",
+      "description": "Агент memrynote використовує вибраний вами локальний CLI агента, щоб спілкуватися про ваше сховище. Claude надсилає повідомлення до Anthropic, а Codex — до OpenAI.",
+      "remote": "memrynote шифрує локальну й синхронізовану історію чату, але модель обробляє запити на боці вибраного постачальника.",
+      "readTools": "Інструменти читання запускаються автоматично.",
+      "writeTools": "Інструменти створення та оновлення потребують схвалення.",
+      "diff": "Інструменти оновлення показують різницю або попередній перегляд.",
+      "button": "Увімкнути чат з агентом"
+    },
+    "approval": {
+      "description": "Агент хоче викликати {name} із цими аргументами.",
+      "applyOnce": "Застосувати один раз",
+      "allowOnce": "Дозволити один раз",
+      "editAndApply": "Редагувати й застосувати",
+      "editAndAllow": "Редагувати та дозволити",
+      "allowAlways": "Дозволяти завжди",
+      "applyEdits": "Застосувати зміни",
+      "deny": "Відхилити",
+      "invalidJson": "Введіть дійсний JSON перед застосуванням змін.",
+      "thisTool": "цього інструмента",
+      "alwaysAllowHint": "«Дозволяти завжди» діє лише для {tool}. Інші інструменти, як і раніше, запитують дозвіл, а видалення потребує його завжди.",
+      "alwaysInChat": "Завжди дозволяти в цьому чаті",
+      "alwaysInChatHint": "Діє до кінця розмови",
+      "alwaysInVault": "Завжди дозволяти в цьому сховищі",
+      "alwaysInVaultHint": "Можна скасувати: Налаштування › Агент",
+      "deletesAlwaysAsk": "Видалення завжди потребує дозволу"
+    },
+    "diff": {
+      "previewError": "Не вдалося показати цю зміну",
+      "description": "Агент хоче оновити {title}. Перегляньте зміну, перш ніж застосувати її.",
+      "fallbackTitle": "цей елемент",
+      "current": "Поточний",
+      "candidate": "Запропонований",
+      "loading": "Завантаження…",
+      "apply": "Застосувати",
+      "applyEdited": "Застосувати з правками",
+      "editBody": "Відредагувати перед застосуванням"
+    },
+    "inPageReview": {
+      "regionLabel": "Пропозиція агента",
+      "barLabel": "Перегляд пропозиції агента",
+      "loading": "Завантаження пропозиції…",
+      "loadingTitle": "Пропозиція агента",
+      "title": "{count, plural, =0 {Пропозиція агента} one {Агент запропонував # зміну} few {Агент запропонував # зміни} many {Агент запропонував # змін} other {Агент запропонував # зміни}}",
+      "editingTitle": "Редагування пропозиції",
+      "pendingHint": "Ще не збережено. Прийміть, щоб застосувати.",
+      "editingHint": "Ваші правки залишаються тут, доки ви не приймете.",
+      "baseChanged": "Ця нотатка змінилася, поки ви редагували пропозицію.",
+      "keepDraft": "Зберегти мої правки",
+      "restart": "Почати знову з останньої версії",
+      "reject": "Відхилити",
+      "edit": "Редагувати",
+      "showDiff": "Показати зміни",
+      "accept": "Прийняти",
+      "acceptEdits": "Прийняти правки",
+      "waiting": "Відкрито {title} — пропозиція очікує вашого перегляду.",
+      "notOpen": "Відкрийте {title}, щоб побачити зміни, або прийміть їх без перегляду.",
+      "show": "Показати",
+      "openNote": "Відкрити нотатку",
+      "openJournal": "Відкрити щоденник",
+      "fallbackTitle": "цю нотатку"
+    },
+    "preview": {
+      "unset": "не задано",
+      "yes": "так",
+      "no": "ні",
+      "noChange": "Ця дія не змінить нічого, що можна тут показати.",
+      "willBeLost": "Буде втрачено",
+      "unchangedLines": "{count, plural, one {# незмінений рядок} few {# незмінені рядки} many {# незмінених рядків} other {# незміненого рядка}}",
+      "item": {
+        "note": "Нотатка",
+        "folder": "Папка",
+        "task": "Завдання",
+        "journal": "Щоденник",
+        "inbox": "Вхідні",
+        "project": "Проєкт",
+        "status": "Статус",
+        "canvas": "Полотно"
+      },
+      "intent": {
+        "create": "створення",
+        "update": "оновлення",
+        "delete": "видалення",
+        "move": "переміщення",
+        "reorder": "зміна порядку"
+      },
+      "field": {
+        "archived": "В архіві",
+        "arguments": "Аргументи",
+        "color": "Колір",
+        "completed": "Виконано",
+        "description": "Опис",
+        "due": "Термін",
+        "dueTime": "Час виконання",
+        "duplicateOf": "Копія",
+        "edits": "Правки",
+        "elements": "Елементи",
+        "folder": "Папка",
+        "icon": "Значок",
+        "isDefault": "За замовчуванням",
+        "isDone": "Статус виконання",
+        "items": "Елементи",
+        "name": "Назва",
+        "operation": "Операція",
+        "order": "Порядок",
+        "parent": "Батьківський елемент",
+        "path": "Шлях",
+        "position": "Позиція",
+        "priority": "Пріоритет",
+        "project": "Проєкт",
+        "removed": "Видалено",
+        "repeatFrom": "Повторювати від",
+        "snoozeReason": "Причина відкладення",
+        "snoozedUntil": "Відкладено до",
+        "start": "Початок",
+        "status": "Статус",
+        "tags": "Теги",
+        "title": "Назва"
+      },
+      "loss": {
+        "words": "{count, plural, one {# слово} few {# слова} many {# слів} other {# слова}}",
+        "tags": "{count, plural, one {# тег} few {# теги} many {# тегів} other {# тегу}}",
+        "notes": "{count, plural, one {# нотатка} few {# нотатки} many {# нотаток} other {# нотатки}}",
+        "folders": "{count, plural, one {# папка} few {# папки} many {# папок} other {# папки}}",
+        "files": "{count, plural, one {# файл} few {# файли} many {# файлів} other {# файлу}}",
+        "events": "{count, plural, one {# подія} few {# події} many {# подій} other {# події}}",
+        "tasks": "{count, plural, one {# завдання} few {# завдання} many {# завдань} other {# завдання}}",
+        "due": "термін: {value}"
+      }
+    },
+    "composer": {
+      "currentNote": "Поточна нотатка",
+      "removeAttachment": "Прибрати {label}",
+      "placeholder": "Робіть що завгодно з memrynote… @, щоб згадати нотатки, завдання й події",
+      "send": "Надіслати",
+      "providerLabel": "Постачальник агента: {provider}",
+      "settingsSummary": "{reasoning}",
+      "connectedTools": "Підключені інструменти",
+      "connectTool": "Підключити {tool}",
+      "addContext": "Додати контекст",
+      "addContextWithPermissions": "Додати контекст ({permissions})",
+      "mentionContext": "Згадати нотатку, завдання чи подію",
+      "voice": {
+        "start": "Почати диктування",
+        "stop": "Зупинити диктування",
+        "transcribing": "Розпізнавання мовлення",
+        "errors": {
+          "permissionDenied": "Доступ до мікрофона заборонено",
+          "noMicrophone": "Мікрофон не знайдено",
+          "accessFailed": "Не вдалося отримати доступ до мікрофона",
+          "recordingFailed": "Не вдалося записати голос",
+          "transcriptionFailed": "Не вдалося розпізнати мовлення"
+        }
+      },
+      "modelLabel": "Модель агента: {provider} {model}",
+      "reasoningLabel": "Міркування агента: {reasoning}",
+      "providers": {
+        "label": "Постачальник",
+        "claude": "Claude",
+        "codex": "Codex",
+        "antigravity": "Antigravity",
+        "local": "Локальний"
+      },
+      "access": {
+        "vaultOnly": "Лише сховище",
+        "computerAccess": "Доступ до комп’ютера"
+      },
+      "webSearch": {
+        "on": "Увімкнено",
+        "off": "Вимкнено",
+        "label": "Пошук в інтернеті"
+      },
+      "models": {
+        "default": "За замовчуванням",
+        "label": "Модель",
+        "search": "Шукати моделі…",
+        "useCustom": "Використати «{query}»",
+        "localEmpty": "Моделей не знайдено — перевірте налаштування",
+        "localSetup": "Перейти до налаштувань…",
+        "cliSetup": "Не виявлено — перейдіть до налаштувань…",
+        "runtimeUnavailable": "Агент недоступний — відкрийте налаштування…"
+      },
+      "settings": {
+        "reasoning": "Міркування",
+        "effort": "Зусилля"
+      },
+      "includeCurrentNote": "Додати поточну нотатку",
+      "chooseModel": "Вибрати модель",
+      "claudeSettings": {
+        "reasoning": {
+          "low": "Низький",
+          "medium": "Середній",
+          "high": "Високий",
+          "extraHigh": "Надвисокий",
+          "extraHighDefault": "Надвисокий (за замовчуванням)",
+          "max": "Максимальний"
+        }
+      },
+      "codexSettings": {
+        "reasoning": {
+          "low": "Низький",
+          "medium": "Середній",
+          "mediumDefault": "Середній (за замовчуванням)",
+          "high": "Високий",
+          "extraHigh": "Надвисокий"
+        }
+      },
+      "permissionsLabel": "Дозволи агента: {access}, пошук в інтернеті: {webSearch}",
+      "permissions": {
+        "label": "Дозволи",
+        "access": "Доступ",
+        "tools": "Інструменти"
+      },
+      "modelSettingsLabel": "Налаштування моделі агента: {model}, {settings}"
+    },
+    "refPicker": {
+      "noMatches": "Немає збігів"
+    },
+    "toolResult": {
+      "label": "Результат інструмента"
+    },
+    "toolCall": {
+      "editedArgs": "Відредаговані аргументи",
+      "parameters": "Параметри"
+    },
+    "toolActivity": {
+      "steps": "{count, plural, one {# крок} few {# кроки} many {# кроків} other {# кроку}}",
+      "running": "Виконується",
+      "awaitingApproval": "Очікує схвалення",
+      "done": "Завершено"
+    },
+    "reasoning": {
+      "thinking": "Думає…",
+      "thought": "Міркування",
+      "thoughtFor": "Міркування: {seconds} с",
+      "toggle": "Показати або приховати міркування"
+    },
+    "sidebar": {
+      "label": "Права бічна панель",
+      "day": "День",
+      "agent": "Агент",
+      "pendingApproval": "{count, plural, one {# запит очікує схвалення} few {# запити очікують схвалення} many {# запитів очікують схвалення} other {# запиту очікують схвалення}}",
+      "inProgress": "Агент відповідає",
+      "close": "Закрити агента"
+    },
+    "errors": {
+      "loadConversations": "Не вдалося завантажити розмови агента",
+      "loadConversation": "Не вдалося завантажити розмову агента",
+      "createConversation": "Не вдалося створити розмову агента",
+      "busy": "Інше вікно зараз обробляє відповідь у цій розмові. Зачекайте, доки вона завершиться, або зупиніть її в тому вікні.",
+      "sendTurn": "Не вдалося надіслати повідомлення агентові",
+      "cancelTurn": "Не вдалося скасувати відповідь агента",
+      "submitApproval": "Не вдалося надіслати схвалення інструмента",
+      "updateTrust": "Не вдалося оновити довірені інструменти",
+      "saveDisclosure": "Не вдалося зберегти стан розгортання",
+      "resolveWindow": "Не вдалося визначити вікно-джерело агента",
+      "detectCli": "Не вдалося виявити доступних агентів",
+      "loadDisclosure": "Не вдалося завантажити стан розгортання"
+    },
+    "actions": {
+      "copy": "Копіювати",
+      "copied": "Скопійовано"
+    },
+    "sources": {
+      "count": "{count, plural, one {# джерело} few {# джерела} many {# джерел} other {# джерела}}"
+    }
+  },
+  "canvas": {
+    "sectionLabel": "Полотна",
+    "newCanvas": "Нове полотно",
+    "newCanvasFolder": "Нова папка полотен",
+    "untitled": "Полотно без назви",
+    "empty": "Полотен ще немає",
+    "loading": "Завантаження полотен…",
+    "loadFailed": "Не вдалося завантажити полотна",
+    "createFailed": "Не вдалося створити полотно",
+    "openFailed": "Не вдалося відкрити полотно",
+    "notFound": "Не вдалося знайти це полотно",
+    "corruptScene": "Не вдалося прочитати це полотно. Редагування вимкнено, щоб не втратити дані.",
+    "unreadableTitle": "Це полотно не можна відкрити тут",
+    "unreadableBody": "Його документа немає в сховищі, або полотно створено ще до того, як полотна стали файлами, і цей пристрій більше не має ключа для його розблокування. Нічого не видалено — відкрийте сховище на пристрої, де полотно створено, або відновіть папку полотен.",
+    "tooLargeToSync": "Це полотно завелике для синхронізації. Воно збережене на цьому пристрої, але не потрапить на інші ваші пристрої, доки не стане меншим.",
+    "savedToVault": "Усі зміни автоматично зберігаються у вашому сховищі",
+    "libraryStoreFailed": "Не вдалося зберегти вашу бібліотеку фігур. Останні зміни в ній можуть бути втрачені.",
+    "link": {
+      "itemMissing": "Пов’язаного елемента більше не існує.",
+      "elementMissing": "Посилання вказує на об’єкт, якого більше немає на цьому полотні.",
+      "title": "Посилання на елемент",
+      "placeholder": "Шукати нотатки, завдання, події, вхідні, проєкти…",
+      "hint": "Почніть вводити, щоб знайти елемент для посилання.",
+      "empty": "Нічого не знайдено.",
+      "selectOneShape": "Виберіть одну фігуру, щоб додати до неї посилання на елемент.",
+      "cardsCannotLink": "Картка вже відкриває свій елемент, тому не може мати другого посилання.",
+      "linked": "Посилання додано.",
+      "groupNotes": "Нотатки",
+      "groupFiles": "Файли",
+      "groupTasks": "Завдання",
+      "groupEvents": "Події",
+      "groupInbox": "Вхідні",
+      "groupJournals": "Записи щоденника",
+      "groupProjects": "Проєкти",
+      "groupFolders": "Папки",
+      "useUrl": "Посилання на {url}",
+      "openTarget": "Відкрити {name}",
+      "shapeTarget": "Фігура на цьому полотні",
+      "missingTarget": "Більше немає на цьому полотні"
+    },
+    "disabledTitle": "Полотно не увімкнено",
+    "disabledBody": "Ця вкладка належить до функції, яку не увімкнено на цьому пристрої.",
+    "unreadable": "Документ цього полотна відсутній або його не вдається прочитати. Покажіть його у файловому менеджері або видаліть запис.",
+    "actionFailed": "Не вдалося виконати дію з полотном",
+    "renameLabel": "Назва полотна",
+    "folderNameLabel": "Назва папки",
+    "deleteConfirmTitle": "Видалити це полотно?",
+    "deleteConfirmBody": "«{title}» буде видалено з memrynote на всіх ваших пристроях. Файл полотна потрапить у кошик цього комп’ютера, але відновлення файлу з кошика не поверне полотно.",
+    "dropToRoot": "Перетягніть сюди, щоб вийняти з папки",
+    "filterPlaceholder": "Фільтрувати полотна",
+    "filterNoMatches": "Немає полотен, що відповідають фільтру",
+    "folderCanvasCount": "Полотен усередині: {count}",
+    "folderEmptyHint": "Тут поки нічого немає",
+    "deleteFolderConfirmTitle": "Видалити цю папку полотен?",
+    "deleteFolderConfirmBody": "«{name}» і весь вміст буде видалено з memrynote на всіх ваших пристроях. Полотен буде видалено: {count}. Папка потрапить у кошик цього комп’ютера, але відновлення з кошика не поверне полотна.",
+    "actions": {
+      "rename": "Перейменувати",
+      "duplicate": "Дублювати",
+      "copyLink": "Копіювати посилання",
+      "setIcon": "Вибрати значок",
+      "removeIcon": "Прибрати значок",
+      "moveToFolder": "Перемістити в папку",
+      "moveToRoot": "Кореневий рівень",
+      "openExternal": "Відкрити в зовнішньому редакторі",
+      "newCanvasHere": "Нове полотно тут",
+      "newFolder": "Нова папка",
+      "canvasMenu": "Дії з полотном",
+      "folderMenu": "Дії з папкою полотен"
+    },
+    "card": {
+      "open": "Відкрити у вкладці",
+      "openToEdit": "Відкрити у вкладці для редагування",
+      "deleted": "Елемент видалено",
+      "loading": "Завантаження…",
+      "untitled": "Без назви",
+      "allDay": "Цілий день",
+      "createNoteFailed": "Не вдалося створити нотатку",
+      "addCard": "Додати картку",
+      "addPlaceholder": "Шукати нотатки, файли, завдання, події та проєкти…",
+      "addCreateNote": "Створити нотатку «{query}»",
+      "addCreateNoteEmpty": "Створити нову нотатку",
+      "addEmpty": "Нічого не знайдено",
+      "addGroupNotes": "Нотатки",
+      "addGroupTasks": "Завдання",
+      "addGroupEvents": "Події",
+      "addOnCanvas": "На полотні",
+      "addCreatedAt": "Створено {date}",
+      "bulkGroup": "Додати все з",
+      "bulkFromTag": "Тегу…",
+      "bulkFromFolder": "Папки…",
+      "bulkSearchTags": "Шукати теги…",
+      "bulkSearchFolders": "Шукати папки…",
+      "bulkTagsHeading": "Теги",
+      "bulkFoldersHeading": "Папки",
+      "bulkItemCount": "{count, plural, one {# елемент} few {# елементи} many {# елементів} other {# елемента}}",
+      "bulkViewsHeading": "Додати з {name}",
+      "bulkAllItems": "Усі елементи",
+      "bulkConfirmTitle": "{count, plural, one {Додати # картку з {name}?} few {Додати # картки з {name}?} many {Додати # карток з {name}?} other {Додати # картки з {name}?}}",
+      "bulkConfirmBody": "Великі дошки працюють повільніше й можуть перевищити ліміт розміру синхронізації.",
+      "bulkConfirmSkipped": "{count, plural, one {# елемент уже на цьому полотні, його буде пропущено.} few {# елементи вже на цьому полотні, їх буде пропущено.} many {# елементів уже на цьому полотні, їх буде пропущено.} other {# елемента вже на цьому полотні, їх буде пропущено.}}",
+      "bulkConfirmAdd": "{count, plural, one {Додати # картку} few {Додати # картки} many {Додати # карток} other {Додати # картки}}",
+      "bulkBack": "Назад",
+      "bulkEmpty": "Немає нотаток, файлів чи завдань для додавання",
+      "bulkLoadFailed": "Не вдалося завантажити елементи",
+      "bulkAdded": "{count, plural, one {Додано # картку} few {Додано # картки} many {Додано # карток} other {Додано # картки}}",
+      "bulkAddedSkipped": "{count, plural, one {Додано # картку} few {Додано # картки} many {Додано # карток} other {Додано # картки}} · {skipped} уже на полотні",
+      "bulkAllOnCanvas": "{count, plural, =1 {Уже на цьому полотні} one {Усі # уже на цьому полотні} few {Усі # уже на цьому полотні} many {Усі # уже на цьому полотні} other {Усі # уже на цьому полотні}}"
+    },
+    "cluster": {
+      "button": "Запропонувати групи",
+      "buttonHint": "Згрупувати картки нотаток на цій дошці (або вибрані) за схожістю. Працює на цьому пристрої.",
+      "loading": "Групування…",
+      "needMoreNotes": "Додайте більше карток нотаток (мінімум: {count}), щоб отримати пропозиції груп.",
+      "tooMany": "На дошці забагато карток нотаток (максимум: {count}). Виберіть не більше ніж {count} і спробуйте ще раз.",
+      "disabled": "Щоб отримати пропозиції груп, увімкніть локальні векторні представлення в розділі Налаштування > ШІ.",
+      "noGroups": "Серед цих нотаток не знайдено чітких груп.",
+      "missing": "{count, plural, one {# нотатка ще не має векторного представлення, тож її пропущено.} few {# нотатки ще не мають векторних представлень, тож їх пропущено.} many {# нотаток ще не мають векторних представлень, тож їх пропущено.} other {# нотатки ще не мають векторних представлень, тож їх пропущено.}}",
+      "failed": "Не вдалося запропонувати групи",
+      "title": "Запропоновані групи",
+      "description": "Згруповано за схожістю на цьому пристрої. Дошка не зміниться, доки ви не створите рамки.",
+      "defaultName": "Група {number}",
+      "untitledGroup": "Група",
+      "groupName": "Назва групи",
+      "acceptGroup": "Включити групу «{name}»",
+      "noteCount": "{count, plural, one {# нотатка} few {# нотатки} many {# нотаток} other {# нотатки}}",
+      "discard": "Відкинути",
+      "create": "{count, plural, one {Створити # рамку} few {Створити # рамки} many {Створити # рамок} other {Створити # рамки}}",
+      "created": "{count, plural, one {Створено # рамку} few {Створено # рамки} many {Створено # рамок} other {Створено # рамки}}",
+      "cardsGone": "Цих карток уже немає на дошці."
+    },
+    "frame": {
+      "categorize": "Призначити категорію",
+      "editBinding": "Змінити категорію цього розділу",
+      "cardCount": "{count, plural, one {# картка} few {# картки} many {# карток} other {# картки}}",
+      "bindTitle": "Призначити категорію розділу",
+      "bindHint": "Картки, перенесені в розділ, отримують цей тег або значення властивості.",
+      "bindPlaceholder": "Шукати теги й значення властивостей або ввести новий тег…",
+      "bindEmpty": "Немає відповідних тегів чи значень властивостей.",
+      "groupTags": "Теги",
+      "useTag": "Використати новий тег #{tag}",
+      "unbind": "Прибрати категорію {label}",
+      "current": "Вибрано",
+      "applied": "{count, plural, one {Додано {label} до # картки} few {Додано {label} до # карток} many {Додано {label} до # карток} other {Додано {label} до # картки}}",
+      "applyFailed": "Не вдалося додати {label}",
+      "revertFailed": "Не вдалося скасувати {label}",
+      "leftFrame": "{count, plural, one {# картку переміщено з розділу {label}. Категорію збережено.} few {# картки переміщено з розділу {label}. Категорію збережено.} many {# карток переміщено з розділу {label}. Категорію збережено.} other {# картки переміщено з розділу {label}. Категорію збережено.}}",
+      "removeCategory": "Прибрати {label}",
+      "removed": "{count, plural, one {Прибрано {label} з # картки} few {Прибрано {label} з # карток} many {Прибрано {label} з # карток} other {Прибрано {label} з # картки}}",
+      "removeFailed": "Не вдалося прибрати {label}",
+      "skippedFile": "{count, plural, =1 {Картку файлу залишено без змін: файли не мають тегів і властивостей.} one {# картку файлу залишено без змін: файли не мають тегів і властивостей.} few {# картки файлів залишено без змін: файли не мають тегів і властивостей.} many {# карток файлів залишено без змін: файли не мають тегів і властивостей.} other {# картки файлів залишено без змін: файли не мають тегів і властивостей.}}",
+      "skippedTaskProperty": "{count, plural, =1 {Картку завдання залишено без змін: завданням можна призначати теги, але не властивості нотаток.} one {# картку завдання залишено без змін: завданням можна призначати теги, але не властивості нотаток.} few {# картки завдань залишено без змін: завданням можна призначати теги, але не властивості нотаток.} many {# карток завдань залишено без змін: завданням можна призначати теги, але не властивості нотаток.} other {# картки завдань залишено без змін: завданням можна призначати теги, але не властивості нотаток.}}",
+      "skippedUnsupported": "{count, plural, =1 {Картку залишено без змін: подіям і проєктам не можна призначати категорії.} one {# картку залишено без змін: подіям і проєктам не можна призначати категорії.} few {# картки залишено без змін: подіям і проєктам не можна призначати категорії.} many {# карток залишено без змін: подіям і проєктам не можна призначати категорії.} other {# картки залишено без змін: подіям і проєктам не можна призначати категорії.}}",
+      "layoutAction": "Упорядкувати за властивістю",
+      "layoutTitle": "Упорядкувати за властивістю",
+      "layoutHint": "Створює розділ для кожного значення й розподіляє нотатки з цієї дошки по цих розділах.",
+      "layoutPlaceholder": "Шукати властивості типу «вибір», «множинний вибір» і «статус»…",
+      "layoutEmpty": "Ще немає властивостей типу «вибір», «множинний вибір» чи «статус» зі значеннями.",
+      "layoutValueCount": "{count, plural, one {# значення} few {# значення} many {# значень} other {# значення}}",
+      "layoutDone": "{count, plural, one {Створено # розділ для властивості {property}} few {Створено # розділи для властивості {property}} many {Створено # розділів для властивості {property}} other {Створено # розділу для властивості {property}}}",
+      "layoutFailed": "Не вдалося впорядкувати дошку"
     }
   },
   "phaseF": {
     "componentsAppSidebar": {
       "collections": "Колекції",
-      "newNote": "Нова замітка",
-      "newNote2": "Нова замітка",
+      "projects": "Проєкти",
+      "newNote": "Нова нотатка",
+      "newNote2": "Нова нотатка",
       "newFolder": "Нова папка",
       "newFolder2": "Нова папка",
+      "newProject": "Новий проєкт",
       "bookmarks": "Закладки",
       "tags": "Теги",
+      "reorderSection": "Змінити порядок: {section}",
       "dropFilesToImport": "Перетягніть файли для імпорту",
-      "newNoteN": "Нова замітка (⌘N)",
+      "dropFilesIntoVaultRoot": "Корінь сховища",
+      "newNoteN": "Нова нотатка (⌘N)",
       "new": "Новий",
-      "syncDisabled": "Синхронізація вимкнена",
-      "syncDisabled2": "Синхронізація вимкнена",
+      "newItemMenu": "Створити нове…",
       "feedbackButton": "Надіслати відгук",
-      "feedbackDescription": "Розкажіть, що працює, що зламано або що ви хотіли б бачити в Memry. Ми читаємо кожне повідомлення.",
-      "feedbackEmailHint": "Додайте свій email, якщо хочете отримати відповідь.",
-      "feedbackError": "Не вдалося надіслати відгук. Спробуйте ще раз.",
+      "feedbackTitle": "Надіслати відгук",
+      "feedbackDescription": "Розкажіть, що працює, що зламалося або чого вам бракує в MemryNote. Ми читаємо кожне повідомлення.",
       "feedbackPlaceholder": "Ваш відгук…",
+      "feedbackEmailHint": "Додайте свою електронну адресу, якщо хочете отримати відповідь.",
+      "feedbackPrivacyTitle": "Що надсилається",
+      "feedbackPrivacyMessage": "Ваше повідомлення — точно так, як ви його написали",
+      "feedbackPrivacyEmailOptional": "Ваша електронна пошта — лише якщо ви її додасте, і лише щоб ми могли відповісти",
+      "feedbackPrivacyEmailSignedIn": "Пошта вашого облікового запису ({email}), щоб ми могли відповісти",
+      "feedbackPrivacyVersion": "Версія застосунку та операційна система",
+      "feedbackPrivacyPlan": "Ваш тарифний план (безкоштовний, Plus, Pro або Believer)",
+      "feedbackPrivacyNote": "Більше нічого. Ваші нотатки залишаються на вашому пристрої.",
       "feedbackSend": "Надіслати",
       "feedbackSending": "Надсилання…",
       "feedbackSuccess": "Дякуємо за відгук!",
-      "feedbackTitle": "Надіслати відгук",
-      "newItemMenu": "Створити нове…",
-      "feedbackPrivacyEmailOptional": "Ваша електронна пошта — лише якщо ви її додасте, і лише щоб ми могли відповісти",
-      "feedbackPrivacyEmailSignedIn": "Пошта вашого облікового запису ({email}), щоб ми могли відповісти",
-      "feedbackPrivacyMessage": "Ваше повідомлення, точно таким, як ви його написали",
-      "feedbackPrivacyNote": "Більше нічого. Ваші нотатки залишаються на вашому пристрої.",
-      "feedbackPrivacyPlan": "Ваш план (free, Plus, Pro або Believer)",
-      "feedbackPrivacyTitle": "Що надсилається",
-      "feedbackPrivacyVersion": "Версія застосунку та операційна система",
-      "projects": "Проєкти"
+      "feedbackError": "Не вдалося надіслати відгук. Спробуйте ще раз.",
+      "syncDisabled": "Синхронізація вимкнена",
+      "syncDisabled2": "Синхронізація вимкнена",
+      "sortLabel": "Сортування ({section}): {mode}",
+      "sortModeManual": "Вручну",
+      "sortModeNameAsc": "Назва: А → Я",
+      "sortModeNameDesc": "Назва: Я → А",
+      "sortModeModifiedDesc": "Змінено: спершу нові",
+      "sortModeModifiedAsc": "Змінено: спершу старі",
+      "sortModeCreatedDesc": "Створено: спершу нові",
+      "sortModeCreatedAsc": "Створено: спершу старі",
+      "sortModeCountDesc": "Найчастіше використовувані",
+      "sortModeCountAsc": "Найрідше використовувані",
+      "sortSaveFailed": "Не вдалося зберегти порядок сортування",
+      "sectionOrderSaveFailed": "Не вдалося зберегти порядок бічної панелі"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Змінити розмір панелі дня",
-      "dragToResizeDoubleClickToReset": "Перетягніть, щоб змінити розмір · Подвійний клік для скидання"
+      "dragToResizeDoubleClickToReset": "Перетягніть, щоб змінити розмір · Двічі клацніть, щоб скинути"
     },
     "componentsFindBarFindBar": {
-      "findReplaceAsk": "Знайти, замінити, запитати..."
+      "findReplaceAsk": "Знайти, замінити, запитати…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Пропустити введення",
+      "skipOnboarding": "Пропустити знайомство",
       "welcomeToMemry": "Ласкаво просимо до memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ваша персональна база знань. Давайте витратимо 2 хвилини, щоб почати.",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ваша особиста база знань. Налаштуймо все за 2 хвилини.",
       "getStarted": "Почати ",
-      "createYourFirstNote": "Створіть свою першу замітку",
-      "markdownBasedStoredLocallyAsPlainFiles": "На основі Markdown, збережена локально у вигляді звичайних файлів.",
-      "eGMeetingNotesIdeasAnything": "Наприклад, нотатки зустрічей, ідеї, що завгодно...",
+      "createYourFirstNote": "Створіть першу нотатку",
+      "markdownBasedStoredLocallyAsPlainFiles": "Нотатки у форматі Markdown зберігаються локально як звичайні файли.",
+      "eGMeetingNotesIdeasAnything": "Напр., нотатки з наради, ідеї, будь-що…",
       "skip": "Пропустити",
       "createNote": "Створити нотатку ",
-      "addYourFirstTask": "Додайте ваше перше завдання",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Завдання пов’язуються з вашими нотатками, з пріоритетами та термінами виконання.",
-      "eGReviewProjectProposal": "Напр. Переглянути пропозицію проекту...",
+      "addYourFirstTask": "Додайте перше завдання",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Завдання пов’язані з нотатками й мають пріоритети та терміни.",
+      "eGReviewProjectProposal": "Напр., переглянути пропозицію щодо проєкту…",
       "skip2": "Пропустити",
       "createTask": "Створити завдання ",
       "syncAcrossDevices": "Синхронізація на всіх пристроях",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Тримайте ваші нотатки та завдання синхронізованими на всіх ваших пристроях. Ви завжди можете налаштувати це пізніше.",
-      "skipForNow": "Пропустити зараз",
-      "doneLetSGo": "Готово — поїхали! "
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Синхронізуйте нотатки й завдання на всіх своїх пристроях. Налаштувати це можна будь-коли пізніше.",
+      "skipForNow": "Поки що пропустити",
+      "doneLetSGo": "Готово — почнімо! "
     },
     "componentsFolderIconButton": {
-      "setFolderIcon": "Встановити значок папки"
+      "setFolderIcon": "Встановити значок папки",
+      "expandFolder": "Розгорнути папку",
+      "collapseFolder": "Згорнути папку"
     },
     "componentsHintOverlayHintIndicator": {
-      "hint": "ПІДКАЗКА"
+      "hint": "Підказка"
     },
     "componentsIconPicker": {
       "iconPicker": "Вибір значка",
       "selectIcon": "Вибрати значок",
       "closeIconPicker": "Закрити вибір значка",
-      "searchIcons": "Пошук значків...",
-      "all": "Всі",
+      "searchIcons": "Шукати значки…",
+      "all": "Усі",
       "clearIcon": "Очистити значок",
-      "noIconsFoundFor": "Не знайдено значків для "
+      "noIconsFoundFor": "Не знайдено значків за запитом \""
     },
     "componentsKeyboardShortcutsModal": {
-      "keyboardShortcuts": "Клавіатурні скорочення",
-      "closeShortcutsHelp": "Закрити довідку по скороченнях",
+      "keyboardShortcuts": "Комбінації клавіш",
+      "closeShortcutsHelp": "Закрити довідку про комбінації клавіш",
       "press": "Натисніть",
       "toClose": "щоб закрити"
     },
@@ -184,17 +666,17 @@
       "platform": "Платформа"
     },
     "componentsNavProjects": {
-      "projects": "Проекти",
+      "projects": "Проєкти",
       "more": "Більше",
-      "viewProject": "Переглянути проект",
-      "shareProject": "Поділитися проектом",
-      "deleteProject": "Видалити проект",
+      "viewProject": "Переглянути проєкт",
+      "shareProject": "Поділитися проєктом",
+      "deleteProject": "Видалити проєкт",
       "more2": "Більше"
     },
     "componentsNavUser": {
       "cn": "CN",
       "cn2": "CN",
-      "upgradeToPro": "Оновити до Pro",
+      "upgradeToPro": "Перейти на Pro",
       "account": "Обліковий запис",
       "billing": "Оплата",
       "notifications": "Сповіщення",
@@ -202,7 +684,7 @@
     },
     "componentsSearchCommandPalette": {
       "search": "Пошук",
-      "searchNotesTasksJournalInbox": "Шукати нотатки, завдання, журнал, вхідні...",
+      "searchNotesTasksJournalInbox": "Шукати нотатки, завдання, щоденник, вхідні…",
       "noResultsFor": "Немає результатів для “",
       "result": "результат",
       "noResultsForQuery": "Немає результатів для «{query}»",
@@ -218,29 +700,29 @@
     "componentsSearchSearchFilters": {
       "clear": "Очистити",
       "tags": "Теги",
-      "filterByTag": "Фільтрувати за тегом...",
+      "filterByTag": "Фільтрувати за тегом…",
       "dateRange": "Діапазон дат"
     },
     "componentsSearchSearchResultGroup": {
       "viewAll": "Переглянути всі ",
-      "results": "результати"
+      "results": "результатів"
     },
     "componentsSearchSearchResultItem": {
       "p": "P",
-      "fuzzy": "розмитий"
+      "fuzzy": "нечіткий"
     },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Вкладок немає",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Відкрийте сторінку з бічної панелі або створіть нову вкладку, щоб почати",
       "openInbox": "Відкрити вхідні",
-      "closePane": "Закрити панель"
+      "closePane": "Закрити область"
     },
     "componentsSplitViewLayoutPicker": {
-      "layoutPresets": "Попередньо встановлені макети",
-      "layoutPresets2": "Попередні налаштування макетів"
+      "layoutPresets": "Готові макети",
+      "layoutPresets2": "Готові макети"
     },
     "componentsSplitViewResizeHandle": {
-      "resizePanes": "Змінити розмір панелей"
+      "resizePanes": "Змінити розмір областей"
     },
     "componentsSplitViewTabContent": {
       "taskscontextNotAvailable": "Контекст завдань недоступний",
@@ -257,13 +739,13 @@
       "newNote": "Нова нотатка",
       "journal": "Щоденник",
       "calendar": "Календар",
-      "inboxCapture": "Вхідні",
+      "inboxCapture": "Запис у вхідні",
       "tasks": "Завдання",
       "tags": "Теги"
     },
     "componentsTabsPinnedTab": {
       "unsavedChanges": "Незбережені зміни",
-      "unsaved": "незбережені)"
+      "unsaved": "не збережено)"
     },
     "componentsTabsRegularTab": {
       "unsavedChanges": "Незбережені зміни"
@@ -275,7 +757,7 @@
       "openTabs": "Відкриті вкладки",
       "scrollTabsLeft": "Прокрутити вкладки вліво",
       "scrollTabsRight": "Прокрутити вкладки вправо",
-      "dayPanel": "Денна панель"
+      "dayPanel": "Панель дня"
     },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Щось пішло не так",
@@ -284,7 +766,7 @@
       "sendReport": "Надіслати діагностичний звіт"
     },
     "componentsTabsTabPreviewCard": {
-      "noteIcon": "Іконка нотатки"
+      "noteIcon": "Значок нотатки"
     },
     "componentsTabsUnsavedChangesDialog": {
       "unsavedChanges": "Незбережені зміни",
@@ -306,11 +788,11 @@
     "componentsUiAutocompleteDropdown": {
       "suggestions": "Пропозиції",
       "or": "або",
-      "enter": "Введіть",
+      "enter": "Enter",
       "toInsert": "щоб вставити"
     },
     "componentsUiBreadcrumb": {
-      "breadcrumb": "хлібні крихти",
+      "breadcrumb": "навігаційний ланцюжок",
       "more": "Більше"
     },
     "componentsUiDialog": {
@@ -322,26 +804,25 @@
     "componentsUiSidebar": {
       "sidebar": "Бічна панель",
       "displaysTheMobileSidebar": "Показує мобільну бічну панель.",
-      "toggleSidebar": "Перемкнути бічну панель",
-      "toggleSidebar2": "Перемкнути бічну панель",
-      "dragToResizeDoubleClickToReset": "Перетягніть, щоб змінити розмір · Подвійний клік для скидання"
+      "toggleSidebar": "Показати або приховати бічну панель",
+      "toggleSidebar2": "Показати або приховати бічну панель",
+      "dragToResizeDoubleClickToReset": "Перетягніть, щоб змінити розмір · Двічі клацніть, щоб скинути"
     },
     "componentsVaultOnboarding": {
       "welcomeToMemry": "Ласкаво просимо до memrynote",
       "yourPersonalKnowledgeManagementSystem": "Ваша персональна система керування знаннями.",
       "selectAFolderToStoreYourNotesAndTasks": "Виберіть папку для збереження нотаток і завдань.",
-      "opening": "Відкривається...",
+      "opening": "Відкриття…",
       "selectVaultFolder": "Вибрати папку сховища",
       "plainMarkdown": "Звичайний Markdown",
-      "yourNotesStayPortable": "Ваші нотатки залишаються портативними",
+      "yourNotesStayPortable": "Нотатки легко перенести куди завгодно",
       "syncAnywhere": "Синхронізація будь-де",
       "useDropboxIcloudGit": "Використовуйте Dropbox, iCloud, Git",
       "recentVaults": "Останні сховища",
       "notesLastOpened": "нотатки · востаннє відкриті",
-      "brandName": "Memrynote",
-      "preRelease": "Beta",
+      "preRelease": "Бета",
       "createNewVault": "Створити нове сховище",
-      "createNewVaultDesc": "Почніть нове сховище у вибраній папці.",
+      "createNewVaultDesc": "Створіть нове сховище у вибраній папці.",
       "openExistingVault": "Відкрити наявне сховище",
       "openExistingVaultDesc": "Виберіть папку з Markdown-файлами, які вже зберігаєте.",
       "signInToSync": "Увійти для синхронізації",
@@ -351,20 +832,61 @@
       "signIn": "Увійти",
       "helpAndDocs": "Довідка та документація",
       "signInRequiresVault": "Спочатку відкрийте або створіть сховище, щоб налаштувати синхронізацію.",
-      "addVault": "Додати сховище"
+      "addVault": "Додати сховище",
+      "brandName": "Memrynote",
+      "flow": {
+        "tagline": "Нотатки зберігаються у сховищі — папці на цьому комп’ютері.",
+        "createDesc": "Назвіть його й виберіть, де воно зберігатиметься.",
+        "openFolder": "Відкрити папку як сховище",
+        "openFolderDesc": "Використати наявну папку з Markdown-файлами.",
+        "openFromSync": "Відкрити з Memrynote Sync",
+        "openFromSyncDesc": "Увійдіть і завантажте сховище зі свого облікового запису.",
+        "back": "Назад",
+        "createTitle": "Створити нове сховище",
+        "createSubtitle": "Сховище — це папка з Markdown-файлами. Її можна перемістити пізніше.",
+        "nameLabel": "Назва",
+        "namePlaceholder": "Мої нотатки",
+        "locationLabel": "Розташування",
+        "change": "Змінити…",
+        "willBeCreatedAt": "Буде створено в",
+        "errorExists": "Тут уже є папка з такою назвою.",
+        "openInstead": "Відкрити її як сховище",
+        "errorInvalidName": "Назва не може починатися з крапки або містити / \\ : * ? \" < > |",
+        "createFailed": "Не вдалося створити сховище.",
+        "createVault": "Створити сховище",
+        "creating": "Створення…",
+        "cancel": "Скасувати",
+        "chooseTitle": "Виберіть сховище",
+        "chooseSubtitle": "Ви ввійшли як {email}. Виберіть сховище, щоб відкрити його на цьому комп’ютері.",
+        "untitledVault": "Сховище без назви",
+        "items": "{count, plural, one {# елемент} few {# елементи} many {# елементів} other {# елемента}}",
+        "onThisComputer": "На цьому комп’ютері",
+        "downloadTo": "Завантажити в",
+        "otherVaultsHint": "Інші сховища залишаться у вашому обліковому записі. Їх можна будь-коли завантажити через перемикач сховищ.",
+        "openVault": "Відкрити сховище",
+        "opening": "Відкриття…",
+        "loadingVaults": "Завантаження сховищ…",
+        "loadFailed": "Не вдалося завантажити сховища.",
+        "retry": "Спробувати ще раз",
+        "noVaultsTitle": "В обліковому записі ще немає сховищ",
+        "noVaultsDesc": "Створіть сховище на цьому комп’ютері. Воно синхронізуватиметься з вашим обліковим записом.",
+        "createCta": "Створити сховище",
+        "openFailed": "Не вдалося відкрити сховище."
+      }
     },
     "componentsVaultSwitcher": {
       "noVaultsYet": "Ще немає сховищ",
       "openVault": "Відкрити сховище",
       "settings": "Налаштування",
       "logOut": "Вийти",
-      "signInToSync": "Увійдіть для синхронізації",
-      "remove": "Видалити ",
-      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Цей сховище буде видалено з додатку, але ваші файли залишаться на диску. Ви завжди можете додати його пізніше.",
+      "signInToSync": "Увійти для синхронізації",
+      "remove": "Прибрати «",
+      "removeVaultTitle": "Прибрати «{name}» зі списку?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Сховище буде прибрано із застосунку, але файли залишаться на диску. Його можна будь-коли додати знову.",
       "cancel": "Скасувати",
-      "remove2": "Видалити",
+      "remove2": "Прибрати",
       "inYourAccount": "У вашому обліковому записі",
-      "itemsCount": "{count} елементів",
+      "itemsCount": "Елементів: {count}",
       "untitledVault": "Сховище",
       "downloadVaultTitle": "Завантажити «{name}»",
       "downloadLocation": "Розташування",
@@ -372,12 +894,11 @@
       "download": "Завантажити",
       "downloadFailed": "Не вдалося завантажити сховище",
       "deleteFromAccount": "Видалити з облікового запису",
+      "deleteVaultTitle": "Видалити «{name}» з вашого облікового запису?",
       "deleteVaultBody": "Це назавжди видалить усі синхронізовані дані цього сховища із серверів Memry, і цю дію неможливо скасувати. Ваші файли на диску не видаляються.",
       "deleteVaultConfirm": "Видалити з облікового запису",
       "deleteVaultFailed": "Не вдалося видалити сховище",
-      "deleteVaultTitle": "Видалити «{name}» з вашого облікового запису?",
-      "removeVaultTitle": "Вилучити «{name}» зі списку?",
-      "missing": "Теку не знайдено"
+      "missing": "Папку не знайдено"
     },
     "componentsWindowControls": {
       "searchK": "Пошук (⌘K)",
@@ -397,466 +918,339 @@
       "undone": "Скасовано"
     }
   },
-  "agentChat": {
-    "title": "Чат Agent",
-    "loading": "Завантаження чату агента...",
-    "conversationLoading": "Розмова завантажується...",
-    "newConversation": "Нова розмова",
-    "history": "Історія розмов",
-    "openInTab": "Відкрити розмову у вкладці",
-    "stop": "Стоп",
-    "thinking": "Agent думає",
-    "enable": {
-      "title": "Увімкнути memrynote Agent",
-      "description": "memrynote Agent використовує вибраного вами місцевого агента CLI для спілкування про ваше сховище. Claude надсилає черги до Anthropic; Codex надсилає черги до OpenAI.",
-      "remote": "memrynote шифрує вашу локальну та синхронізовану історію чату, але вибір моделі відбувається з вибраним постачальником.",
-      "readTools": "Інструменти читання запускаються автоматично.",
-      "writeTools": "Інструменти створення та оновлення потребують схвалення.",
-      "diff": "Інструменти оновлення показують різницю або попередній перегляд.",
-      "button": "Увімкнути чат Agent"
-    },
-    "approval": {
-      "description": "Агент хоче викликати {name} із цими аргументами.",
-      "applyOnce": "Застосувати один раз",
-      "allowOnce": "Дозволити один раз",
-      "editAndApply": "Відредагуйте та застосуйте",
-      "editAndAllow": "Редагувати та дозволити",
-      "allowAlways": "Дозволяти завжди",
-      "applyEdits": "Застосувати зміни",
-      "deny": "Відмовити",
-      "invalidJson": "Введіть дійсний JSON перед застосуванням змін."
-    },
-    "diff": {
-      "previewError": "Не вдалося переглянути різницю приміток",
-      "description": "Агент хоче оновити {title}. Перегляньте поточний і потенційний вміст, перш ніж застосовувати його.",
-      "fallbackTitle": "ця примітка",
-      "current": "Поточний",
-      "candidate": "Канд",
-      "loading": "Завантаження...",
-      "apply": "Застосувати",
-      "applyEdited": "Застосувати відред"
-    },
-    "inPageReview": {
-      "regionLabel": "Пропозиція агента",
-      "barLabel": "Переглянути пропозицію агента",
-      "loading": "Завантаження пропозиції...",
-      "loadingTitle": "Пропозиція агента",
-      "title": "{count, plural, =0 {Пропозиція агента} one {Агент запропонував # зміну} few {Агент запропонував # зміни} many {Агент запропонував # змін} other {Агент запропонував # зміни}}",
-      "editingTitle": "Редагування пропозиції",
-      "pendingHint": "Ще не збережено. Прийміть, щоб застосувати.",
-      "editingHint": "Ваші правки залишаються тут, доки ви не приймете.",
-      "baseChanged": "Ця нотатка змінилася, поки ви редагували пропозицію.",
-      "keepDraft": "Зберегти мої правки",
-      "restart": "Почати знову з останньої версії",
-      "reject": "Відхилити",
-      "edit": "Редагувати",
-      "showDiff": "Показати зміни",
-      "accept": "Прийняти",
-      "acceptEdits": "Прийняти правки",
-      "waiting": "Очікує вашого перегляду в {title}.",
-      "notOpen": "Відкрийте {title}, щоб побачити зміни, або прийміть їх без перегляду.",
-      "show": "Показати",
-      "openNote": "Відкрити нотатку",
-      "openJournal": "Відкрити щоденник",
-      "fallbackTitle": "ця нотатка"
-    },
-    "composer": {
-      "currentNote": "Актуальна примітка",
-      "removeAttachment": "Видалити {label}",
-      "placeholder": "Запитайте memrynote про що завгодно. @, щоб згадати файл",
-      "send": "Надіслати",
-      "providerLabel": "Постачальник Agent: {provider}",
-      "settingsSummary": "{reasoning}",
-      "providers": {
-        "claude": "Claude",
-        "codex": "Codex",
-        "antigravity": "Antigravity",
-        "local": "Місцевий"
-      },
-      "models": {
-        "default": "За замовчуванням",
-        "label": "Модель"
-      },
-      "settings": {
-        "reasoning": "Міркування"
-      },
-      "claudeSettings": {
-        "reasoning": {
-          "low": "Низький",
-          "medium": "Середній",
-          "high": "Високий",
-          "extraHigh": "Надвисокий",
-          "extraHighDefault": "Дуже високий (за замовчуванням)",
-          "max": "Макс"
-        }
-      },
-      "codexSettings": {
-        "reasoning": {
-          "low": "Низький",
-          "medium": "Середній",
-          "mediumDefault": "Середній (за замовчуванням)",
-          "high": "Високий",
-          "extraHigh": "Надвисокий"
-        }
-      },
-      "access": {
-        "vaultOnly": "Лише сховище",
-        "computerAccess": "Доступ до комп'ютера"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Вимкнено",
-        "label": "Пошук в Інтернеті"
-      },
-      "permissionsLabel": "Дозволи агента: {access}, пошук в Інтернеті {webSearch}",
-      "permissions": {
-        "label": "Дозволи",
-        "access": "Доступ",
-        "tools": "Інструменти"
-      },
-      "modelSettingsLabel": "Налаштування моделі агента: {model}, {settings}"
-    },
-    "refPicker": {
-      "noMatches": "Немає збігів"
-    },
-    "toolResult": {
-      "label": "Результат інструменту"
-    },
-    "toolCall": {
-      "editedArgs": "Відредаговані аргументи",
-      "parameters": "Параметри"
-    },
-    "sidebar": {
-      "label": "Права бічна панель",
-      "day": "День",
-      "agent": "Агент",
-      "pendingApproval": "{count, plural, one {# очікує на затвердження} other {# очікують схвалення}}",
-      "inProgress": "Триває поворот Agent",
-      "close": "Закрити агента"
-    },
-    "errors": {
-      "loadConversations": "Не вдалося завантажити розмови агента",
-      "loadConversation": "Не вдалося завантажити розмову агента",
-      "createConversation": "Не вдалося створити розмову агента",
-      "busy": "Інше вікно є середнім для цієї розмови. Зачекайте, поки він закінчиться, або зупиніть його з цього моменту.",
-      "sendTurn": "Не вдалося надіслати чергу агента",
-      "cancelTurn": "Не вдалося скасувати чергу агента",
-      "submitApproval": "Не вдалося надіслати схвалення інструменту",
-      "updateTrust": "Не вдалося оновити довірені інструменти",
-      "saveDisclosure": "Не вдалося зберегти стан розкриття",
-      "resolveWindow": "Не вдалося вирішити вихідне вікно агента",
-      "detectCli": "Не вдалося виявити серверні частини агента",
-      "loadDisclosure": "Не вдалося завантажити стан розкриття"
-    },
-    "sources": {
-      "used": "{count, plural, one {Використано # джерело} few {Використано # джерела} many {Використано # джерел} other {Використано # джерела}}"
-    }
-  },
   "home": {
-    "addWidget": "Додати віджет",
-    "board": {
-      "defaultName": "Головна",
-      "deleteAria": "Видалити розкладку",
-      "label": "Розкладка головної",
-      "newAria": "Нова дошка",
-      "newName": "Нова дошка"
-    },
-    "disabled": {
-      "createNote": "Створити нотатку",
-      "hint": "Нічого не відкрито. Почніть нотатку."
-    },
-    "done": "Готово",
-    "edit": "Редагувати",
-    "empty": {
-      "body": "Віджети збирають ваші нотатки, завдання й закладки в одному спокійному місці.",
-      "cta": "Додайте свій перший віджет",
-      "title": "Ваша дошка порожня"
-    },
-    "greeting": {
-      "afternoon": "Доброго дня",
-      "evening": "Доброго вечора",
-      "morning": "Доброго ранку"
-    },
-    "header": {
-      "events": "{count, plural, one {# подія} few {# події} many {# подій} other {# події}}",
-      "tasksDue": "{count, plural, one {# завдання на сьогодні} few {# завдання на сьогодні} many {# завдань на сьогодні} other {# завдання на сьогодні}}"
-    },
-    "noBookmarksYet": "Ще немає закладок.",
-    "noEventsYet": "Сьогодні немає подій.",
-    "noJournalEntriesYet": "Ще немає записів журналу.",
-    "noNotesYet": "Ще немає нотаток.",
-    "noTasksYet": "Ще немає завдань.",
     "widget": {
+      "removeAria": "Прибрати віджет",
+      "dragAria": "Перетягнути віджет",
+      "configAria": "Налаштувати віджет",
+      "resizeAria": "Змінити розмір до {size}",
+      "menuAria": "Параметри віджета",
+      "resize": "Розмір",
+      "remove": "Прибрати",
+      "filter": {
+        "all": "Усі",
+        "today": "Термін — сьогодні",
+        "tomorrow": "Завтра",
+        "next7": "Наступні 7 днів",
+        "noDueDate": "Без терміну"
+      },
+      "recentlyEdited": "Нещодавно відредаговані",
+      "recentlyOpened": "Нещодавно відкриті",
+      "recentMeta": "відредаговано {time}",
+      "recentMetaWithFolder": "{folder} · відредаговано {time}",
+      "openedMeta": "відкрито {time}",
+      "openedMetaWithFolder": "{folder} · відкрито {time}",
+      "noRecentlyOpened": "Тут з’являтимуться нотатки, які ви відкриваєте",
       "bookmarks": "Закладки",
+      "tasks": "Завдання",
       "calendar": "Календар",
       "calendarToday": "Сьогодні",
-      "configAria": "Налаштувати віджет",
-      "configure": "Налаштувати",
-      "dragAria": "Перетягнути віджет",
+      "openCalendar": "Відкрити календар",
+      "next": "Далі: {title}",
+      "startsIn": "Починається за {count, plural, one {# хв} few {# хв} many {# хв} other {# хв}}",
       "duration": "{count} хв",
-      "filter": {
-        "today": "Термін сьогодні",
-        "tomorrow": "Завтра",
-        "week": "Цього тижня"
-      },
-      "folder": "Папка",
-      "folderEmpty": "Ще немає папок",
-      "folderNoSelection": "Папку не вибрано",
-      "folderPickPrompt": "Виберіть папку",
-      "folderViewSelect": "Вигляд",
-      "folderView_gallery": "Галерея",
-      "folderView_list": "Список",
       "inbox": "Вхідні",
       "inboxAllTypes": "Усі типи",
       "inboxOlder": "{count, plural, one {# старіший} few {# старіші} many {# старіших} other {# старіших}}",
-      "inboxOldest": "найстаріший {count, plural, one {# день} few {# дні} many {# днів} other {# дня}}",
-      "journal": "Журнал",
-      "journalStreak": "{count, plural, one {серія # день} few {серія # дні} many {серія # днів} other {серія # дня}}",
+      "inboxOldest": "найстарішому {count, plural, one {# день} few {# дні} many {# днів} other {# дня}}",
+      "openInbox": "Відкрити вхідні",
+      "folder": "Папка",
+      "untitled": "Без назви",
+      "folderPickPrompt": "Виберіть папку",
+      "folderEmpty": "Ще немає папок",
+      "folderNoSelection": "Папку не вибрано",
+      "folderView_list": "Список",
+      "folderView_gallery": "Галерея",
+      "folderViewSelect": "Вигляд",
+      "project": "Проєкт",
+      "projectNoSelection": "Проєкт не вибрано",
+      "projectMissing": "Цей проєкт більше недоступний",
+      "projectNoTasks": "Немає завдань",
+      "journal": "Щоденник",
+      "journalStreak": "{count, plural, one {# день поспіль} few {# дні поспіль} many {# днів поспіль} other {# дня поспіль}}",
       "journalToday": "Сьогодні",
       "journalYesterday": "Учора",
+      "journalTomorrow": "Завтра",
+      "journalUpcoming": "Найближчі",
+      "journalNoEntryYet": "Запису ще немає",
       "loadError": "Не вдалося завантажити",
-      "menuAria": "Параметри віджета",
-      "next": "Далі: {title}",
-      "openCalendar": "Відкрити календар",
-      "openInbox": "Відкрити вхідні",
-      "recentMeta": "відредаговано {time}",
-      "recentMetaWithFolder": "{folder} · відредаговано {time}",
-      "recentlyEdited": "Нещодавно відредаговані",
-      "remove": "Прибрати",
-      "removeAria": "Прибрати віджет",
-      "resize": "Розмір",
-      "resizeAria": "Змінити розмір до {size}",
-      "savedFilterDefault": "Сьогодні",
-      "savedFilterHint": "Додайте фільтри в зірочки на сторінці Завдання, щоб використовувати їх тут",
-      "savedFilterLabel": "Збережений фільтр",
-      "startsIn": "Починається за {count, plural, one {# хв} few {# хв} many {# хв} other {# хв}}",
-      "tasks": "Завдання",
-      "unknown": "Невідомий віджет",
-      "untitled": "Без назви"
+      "unknown": "Невідомий віджет"
+    },
+    "board": {
+      "label": "Макет головної",
+      "deleteAria": "Видалити макет",
+      "newAria": "Нова дошка",
+      "newName": "Нова дошка",
+      "defaultName": "Головна",
+      "manage": "Керувати дошками",
+      "manageTitle": "Керувати дошками",
+      "manageDescription": "Перейменовуйте, змінюйте порядок або видаляйте дошки головної.",
+      "renameAria": "Перейменувати дошку",
+      "reorderAria": "Перемістити дошку",
+      "nameLabel": "Назва дошки"
+    },
+    "greeting": {
+      "morning": "Доброго ранку",
+      "afternoon": "Доброго дня",
+      "evening": "Доброго вечора"
+    },
+    "header": {
+      "tasksDue": "{count, plural, one {# завдання на сьогодні} few {# завдання на сьогодні} many {# завдань на сьогодні} other {# завдання на сьогодні}}",
+      "events": "{count, plural, one {# подія} few {# події} many {# подій} other {# події}}"
+    },
+    "edit": "Редагувати",
+    "done": "Готово",
+    "addWidget": "Додати віджет",
+    "empty": {
+      "title": "Ваша дошка порожня",
+      "body": "Віджети збирають ваші нотатки, завдання й закладки в одному спокійному місці.",
+      "cta": "Додайте свій перший віджет"
+    },
+    "noBookmarksYet": "Ще немає закладок.",
+    "noNotesYet": "Ще немає нотаток.",
+    "noTasksYet": "Ще немає завдань.",
+    "noEventsYet": "Сьогодні немає подій.",
+    "noJournalEntriesYet": "Ще немає записів щоденника.",
+    "disabled": {
+      "createNote": "Створити нотатку",
+      "hint": "Нічого не відкрито. Створіть нотатку."
     }
   },
-  "media": {
-    "video": "Відео"
-  },
   "onboarding": {
-    "agentChat": {
-      "body": "Перейдіть на вкладку «Агент», щоб запитати помічника MemryNote про ваше сховище.",
-      "title": "Спілкуйтеся з AI-агентом"
-    },
-    "collections": {
-      "body": "Упорядковуйте нотатки в папки, закріплюйте закладки та переглядайте за тегами — усе тут.",
-      "title": "Колекції, закладки й теги"
-    },
-    "dayPanel": {
-      "body": "Бічна панель тримає календар і вигляд дня поруч із тим, що ви читаєте.",
-      "title": "Ваш день поряд із роботою"
-    },
-    "feedback": {
-      "body": "Надсилайте відгук просто команді звідси.",
-      "title": "Розкажіть нам свою думку"
-    },
-    "nav": {
-      "body": "Вхідні для захоплення, Журнал для щоденних нотаток, Календар для вашої стрічки часу, Завдання для справ і Граф, щоб побачити, як усе пов’язано.",
-      "title": "Ваші робочі простори"
+    "welcome": {
+      "title": "Ласкаво просимо до MemryNote",
+      "body": "Ваш приватний простір, що працює без інтернету. Нотатки наскрізно зашифровано — вони ніколи не залишають пристрій у незашифрованому вигляді."
     },
     "newNote": {
-      "body": "Почніть тут. Усе, що ви пишете, спершу зберігається локально.",
-      "title": "Створіть свою першу нотатку"
+      "title": "Створіть свою першу нотатку",
+      "body": "Почніть тут. Усе, що ви пишете, спершу зберігається локально."
     },
-    "settings": {
-      "body": "Імпортуйте нотатки з 12+ застосунків — Obsidian, Notion, Apple Notes, Evernote та інших — і налаштуйте все інше в Налаштуваннях.",
-      "title": "Налаштування та імпорт"
+    "nav": {
+      "title": "Ваші робочі простори",
+      "body": "Вхідні — для швидких записів, Щоденник — для щоденних нотаток, Календар — для хронології, Завдання — для справ, а Граф показує, як усе пов’язано."
+    },
+    "collections": {
+      "title": "Колекції, закладки й теги",
+      "body": "Упорядковуйте нотатки в папки, закріплюйте закладки та переглядайте за тегами — усе тут."
+    },
+    "dayPanel": {
+      "title": "Ваш день поряд із роботою",
+      "body": "Бічна панель показує календар і ваш день поруч із тим, що ви читаєте."
+    },
+    "agentChat": {
+      "title": "Спілкуйтеся з ШІ-агентом",
+      "body": "Перейдіть на вкладку «Агент», щоб запитати помічника MemryNote про ваше сховище."
     },
     "sync": {
-      "body": "Увімкніть наскрізно зашифровану синхронізацію, щоб усі пристрої були узгоджені.",
-      "title": "Приватна зашифрована синхронізація"
+      "title": "Приватна зашифрована синхронізація",
+      "body": "Увімкніть наскрізно зашифровану синхронізацію, щоб на всіх пристроях були актуальні дані."
     },
-    "welcome": {
-      "body": "Ваш приватний офлайн-дім. Нотатки зашифровано наскрізно — вони ніколи не залишають ваш пристрій незашифрованими.",
-      "title": "Ласкаво просимо до MemryNote"
+    "feedback": {
+      "title": "Поділіться думкою",
+      "body": "Надсилайте відгуки безпосередньо команді звідси."
+    },
+    "settings": {
+      "title": "Налаштування та імпорт",
+      "body": "Імпортуйте нотатки з 12+ застосунків — Obsidian, Notion, Apple Notes, Evernote та інших — і налаштуйте все інше в Налаштуваннях."
     },
     "tour": {
       "next": "Далі",
       "previous": "Назад",
       "progress": "{current} з {total}"
+    },
+    "starPrompt": {
+      "title": "Знайомство завершено",
+      "body": "Поставте нам зірку на GitHub — так іншим людям буде легше знайти MemryNote.",
+      "action": "Поставити зірку на GitHub"
     }
   },
-  "capture": {
-    "focusShortcut": "Фокус на полі захоплення",
-    "detailHint": "деталі",
-    "focusHint": "Q",
-    "submit": "Захопити"
-  },
-  "canvas": {
-    "card": {
-      "addCard": "Додати картку",
-      "addCreateNote": "Створити нотатку «{query}»",
-      "addCreateNoteEmpty": "Створити нову нотатку",
-      "addCreatedAt": "Створено {date}",
-      "addEmpty": "Нічого не знайдено",
-      "addGroupEvents": "Події",
-      "addGroupNotes": "Нотатки",
-      "addGroupTasks": "Завдання",
-      "addOnCanvas": "На полотні",
-      "addPlaceholder": "Пошук нотаток, завдань і подій…",
-      "allDay": "Цілий день",
-      "createNoteFailed": "Не вдалося створити нотатку",
-      "deleted": "Елемент видалено",
-      "loading": "Завантаження…",
-      "open": "Відкрити у вкладці",
-      "openToEdit": "Відкрийте у вкладці, щоб редагувати",
-      "untitled": "Без назви",
-      "bulkGroup": "Додати все з",
-      "bulkFromTag": "Тегу…",
-      "bulkFromFolder": "Теки…",
-      "bulkSearchTags": "Пошук тегів…",
-      "bulkSearchFolders": "Пошук тек…",
-      "bulkTagsHeading": "Теги",
-      "bulkFoldersHeading": "Теки",
-      "bulkItemCount": "{count, plural, one {# елемент} few {# елементи} many {# елементів} other {# елемента}}",
-      "bulkViewsHeading": "Додати з {name}",
-      "bulkAllItems": "Усі елементи",
-      "bulkConfirmTitle": "{count, plural, one {Додати # картку з {name}?} few {Додати # картки з {name}?} many {Додати # карток з {name}?} other {Додати # картки з {name}?}}",
-      "bulkConfirmBody": "Великі дошки працюють повільніше й можуть перевищити ліміт розміру синхронізації.",
-      "bulkConfirmSkipped": "{count, plural, one {# елемент уже на цьому полотні, його буде пропущено.} few {# елементи вже на цьому полотні, їх буде пропущено.} many {# елементів уже на цьому полотні, їх буде пропущено.} other {# елемента вже на цьому полотні, їх буде пропущено.}}",
-      "bulkConfirmAdd": "{count, plural, one {Додати # картку} few {Додати # картки} many {Додати # карток} other {Додати # картки}}",
-      "bulkBack": "Назад",
-      "bulkEmpty": "Немає нотаток, файлів чи завдань для додавання",
-      "bulkLoadFailed": "Не вдалося завантажити елементи",
-      "bulkAdded": "{count, plural, one {Додано # картку} few {Додано # картки} many {Додано # карток} other {Додано # картки}}",
-      "bulkAddedSkipped": "{count, plural, one {Додано # картку} few {Додано # картки} many {Додано # карток} other {Додано # картки}} · {skipped} уже на полотні",
-      "bulkAllOnCanvas": "{count, plural, one {Уже на цьому полотні} few {Усі # уже на цьому полотні} many {Усі # уже на цьому полотні} other {Усі # уже на цьому полотні}}"
-    },
-    "corruptScene": "Не вдалося прочитати це полотно. Редагування вимкнено, щоб не втратити дані.",
-    "createFailed": "Не вдалося створити полотно",
-    "disabledBody": "Ця вкладка належить до функції, яку не увімкнено на цьому пристрої.",
-    "disabledTitle": "Полотно не увімкнено",
-    "empty": "Полотен ще немає",
-    "libraryStoreFailed": "Не вдалося зберегти вашу бібліотеку фігур. Останні зміни в ній можуть бути втрачені.",
-    "loadFailed": "Не вдалося завантажити полотна",
-    "loading": "Завантаження полотен…",
-    "newCanvas": "Нове полотно",
-    "notFound": "Не вдалося знайти це полотно",
-    "openFailed": "Не вдалося відкрити полотно",
-    "savedToVault": "Усі зміни автоматично зберігаються у вашому сховищі",
-    "sectionLabel": "Полотна",
-    "tooLargeToSync": "Це полотно завелике для синхронізації. Воно збережене на цьому пристрої, але не потрапить на інші ваші пристрої, доки не стане меншим.",
-    "untitled": "Полотно без назви"
-  },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Клік по рядку",
-      "reset": "Скинути",
-      "shortcutsTab": "Вкладка скорочень"
-    },
-    "description": "Швидкі шляхи, щоб пересуватися memrynote, занотовувати думки й опрацьовувати роботу.",
+    "description": "Швидкі способи переходити між розділами memrynote, записувати думки й розбиратися зі справами.",
+    "or": "або",
+    "then": "потім",
     "groups": {
       "general": {
-        "description": "Навігація застосунком і довідка.",
-        "title": "Загальні"
-      },
-      "inbox": {
-        "description": "Швидко опрацьовуйте захоплені елементи.",
-        "title": "Вхідні"
-      },
-      "journal": {
-        "description": "Переходьте між виглядами журналу й фокусуйтеся на полі письма.",
-        "title": "Журнал"
-      },
-      "notes": {
-        "description": "Пишіть, форматуйте та шукайте нотатки.",
-        "title": "Нотатки / Редактор"
-      },
-      "settings": {
-        "description": "Відкривайте налаштування й змінюйте комбінації клавіш.",
-        "title": "Налаштування"
+        "title": "Загальні",
+        "description": "Навігація застосунком і довідка."
       },
       "tabs": {
-        "description": "Переміщуйтеся між вкладками та панелями.",
-        "title": "Вкладки та панелі"
+        "title": "Вкладки та області",
+        "description": "Переміщуйтеся між вкладками та областями."
+      },
+      "inbox": {
+        "title": "Вхідні",
+        "description": "Швидко розбирайте записані елементи."
+      },
+      "journal": {
+        "title": "Щоденник",
+        "description": "Перемикайте вигляди щоденника й переходьте до поля введення."
+      },
+      "notes": {
+        "title": "Нотатки / Редактор",
+        "description": "Пишіть, форматуйте та шукайте нотатки."
       },
       "tasks": {
-        "description": "Фільтруйте, вибирайте та виконуйте завдання.",
-        "title": "Завдання"
+        "title": "Завдання",
+        "description": "Фільтруйте, вибирайте та виконуйте завдання."
+      },
+      "settings": {
+        "title": "Налаштування",
+        "description": "Відкривайте налаштування й змінюйте комбінації клавіш."
       }
     },
     "items": {
       "general": {
-        "createNote": "Створити нотатку",
-        "keyboardShortcuts": "Відкрити комбінації клавіш",
-        "openSettings": "Відкрити налаштування",
         "quickSearch": "Відкрити швидкий пошук",
-        "sidebarSection": "Перейти до розділу бічної панелі",
-        "toggleSidebar": "Перемкнути бічну панель",
-        "undoTaskAction": "Скасувати останню дію із завданням"
+        "createNote": "Створити нотатку",
+        "openSettings": "Відкрити налаштування",
+        "switchVault": "Перемкнути сховище",
+        "adjacentVault": "Попереднє або наступне сховище",
+        "keyboardShortcuts": "Відкрити комбінації клавіш",
+        "undoTaskAction": "Скасувати останню дію із завданням",
+        "toggleSidebar": "Показати або приховати бічну панель",
+        "sidebarSection": "Перейти до розділу бічної панелі"
+      },
+      "tabs": {
+        "newTabMenu": "Відкрити меню нової вкладки",
+        "closeTab": "Закрити вкладку",
+        "closeAllInPane": "Закрити всі вкладки в області",
+        "reopenClosedTab": "Знову відкрити закриту вкладку",
+        "nextTab": "Наступна вкладка",
+        "previousTab": "Попередня вкладка",
+        "pinTab": "Закріпити або відкріпити вкладку",
+        "duplicateTab": "Дублювати вкладку",
+        "splitRight": "Розділити праворуч",
+        "splitDown": "Розділити донизу",
+        "closeSplitPane": "Закрити розділену область",
+        "focusPane": "Перейти до іншої області",
+        "moveTabToPane": "Перемістити вкладку в іншу область",
+        "maximizePane": "Розгорнути поточну область"
       },
       "inbox": {
-        "archiveItem": "Архівувати вибраний елемент",
-        "chooseQuickFileResult": "Вибрати результат швидкого сортування",
-        "clearSelection": "Зняти вибір або закрити швидке сортування",
-        "confirmFiling": "Підтвердити панель сортування",
+        "nextItem": "Наступний елемент",
+        "previousItem": "Попередній елемент",
         "firstOrLastItem": "Перший або останній елемент",
         "jumpByPage": "Перехід посторінково",
-        "nextItem": "Наступний елемент",
-        "openOriginal": "Відкрити оригінальне посилання",
-        "openQuickFile": "Відкрити швидке сортування",
-        "previousItem": "Попередній елемент",
-        "refresh": "Оновити вхідні",
-        "selectAllVisible": "Вибрати всі видимі елементи",
+        "togglePreview": "Показати або приховати панель перегляду",
         "selectItem": "Вибрати елемент",
-        "togglePreview": "Перемкнути панель попереднього перегляду"
+        "selectAllVisible": "Вибрати всі видимі елементи",
+        "clearSelection": "Зняти вибір або закрити швидке розміщення",
+        "openQuickFile": "Відкрити швидке розміщення",
+        "chooseQuickFileResult": "Вибрати результат швидкого розміщення",
+        "archiveItem": "Архівувати вибраний елемент",
+        "openOriginal": "Відкрити оригінальне посилання",
+        "refresh": "Оновити вхідні",
+        "confirmFiling": "Підтвердити розміщення"
       },
       "journal": {
-        "bold": "Зробити виділений текст жирним",
-        "find": "Знайти в журналі",
-        "italic": "Зробити виділений текст курсивом",
         "returnFromOverview": "Повернутися з вигляду місяця або року",
+        "find": "Знайти в щоденнику",
+        "bold": "Зробити виділений текст жирним",
+        "italic": "Зробити виділений текст курсивом",
         "underline": "Підкреслити виділений текст"
       },
       "notes": {
-        "bold": "Жирний",
-        "closeOverlays": "Закрити накладки редактора",
-        "commandMenu": "Відкрити меню команд редактора",
         "createNote": "Створити нотатку",
         "find": "Знайти в нотатці",
+        "bold": "Жирний",
         "italic": "Курсив",
-        "underline": "Підкреслений"
-      },
-      "settings": {
-        "cancelRecording": "Скасувати запис комбінації",
-        "customizeShortcuts": "Налаштувати комбінації клавіш",
-        "openSettings": "Відкрити налаштування",
-        "recordShortcut": "Записати нову комбінацію",
-        "resetShortcut": "Відновити типову комбінацію"
-      },
-      "tabs": {
-        "closeAllInPane": "Закрити всі вкладки на панелі",
-        "closeSplitPane": "Закрити розділену панель",
-        "closeTab": "Закрити вкладку",
-        "duplicateTab": "Дублювати вкладку",
-        "focusPane": "Перейти до іншої панелі",
-        "maximizePane": "Розгорнути поточну панель",
-        "moveTabToPane": "Перемістити вкладку на панель",
-        "newTabMenu": "Відкрити меню нової вкладки",
-        "nextTab": "Наступна вкладка",
-        "pinTab": "Закріпити або відкріпити вкладку",
-        "previousTab": "Попередня вкладка",
-        "reopenClosedTab": "Знову відкрити закриту вкладку",
-        "splitDown": "Розділити вниз",
-        "splitRight": "Розділити праворуч"
+        "underline": "Підкреслений",
+        "commandMenu": "Відкрити меню команд редактора",
+        "closeOverlays": "Закрити спливні елементи редактора"
       },
       "tasks": {
         "clearFilters": "Очистити видимі фільтри",
+        "selectAllVisible": "Вибрати всі видимі завдання",
         "clearSelection": "Зняти вибір завдань",
         "completeSelected": "Виконати вибрані завдання",
-        "configureRepeat": "Налаштувати повторення активного завдання",
         "deleteSelected": "Видалити вибрані завдання",
-        "selectAllVisible": "Вибрати всі видимі завдання",
+        "configureRepeat": "Налаштувати повторення активного завдання",
         "skipOccurrence": "Пропустити повторення",
         "stopRepeating": "Припинити повторення завдання"
+      },
+      "settings": {
+        "openSettings": "Відкрити налаштування",
+        "customizeShortcuts": "Налаштувати комбінації клавіш",
+        "recordShortcut": "Записати нову комбінацію",
+        "cancelRecording": "Скасувати запис комбінації",
+        "resetShortcut": "Відновити комбінацію за замовчуванням"
       }
     },
-    "or": "або",
-    "then": "потім"
+    "combos": {
+      "shortcutsTab": "Вкладка «Комбінації клавіш»",
+      "clickRow": "Клацання рядка",
+      "reset": "Скинути"
+    }
+  },
+  "update": {
+    "available": "Доступне оновлення",
+    "downloading": "Завантаження {version}",
+    "ready": "Оновлення готове",
+    "failed": "Не вдалося оновити",
+    "downloadAction": "Завантажити",
+    "restartAction": "Перезапустити",
+    "detailsAction": "Докладніше",
+    "popover": {
+      "readyTitle": "Версія MemryNote {version} готова до встановлення",
+      "availableTitle": "Доступна версія MemryNote {version}",
+      "readySubtitle": "Поточна версія: {current}",
+      "availableSubtitle": "Поточна версія: {current} · ще нічого не завантажено",
+      "allChanges": "Усі зміни",
+      "restartNow": "Перезапустити зараз",
+      "onNextQuit": "Під час наступного виходу",
+      "download": "Завантажити",
+      "notNow": "Не зараз",
+      "moreOptions": "Інші параметри оновлення",
+      "skipVersion": "Пропустити {version}",
+      "turnOffAuto": "Вимкнути автоматичні оновлення",
+      "copyVersionInfo": "Копіювати дані про версію",
+      "openSettings": "Відкрити налаштування"
+    },
+    "installing": {
+      "title": "Встановлення {version}",
+      "titleUnknownVersion": "Встановлення оновлення",
+      "subtitle": "MemryNote незабаром знову відкриється. Усе, що ви написали, уже збережено на диску."
+    },
+    "installFailed": {
+      "title": "Не вдалося завершити встановлення MemryNote {version}",
+      "titleUnknownVersion": "Не вдалося завершити встановлення оновлення MemryNote",
+      "body": "Сховища це не торкнулося — оновлення застосовується до застосунку, а не до нотаток. У вас і далі версія {current}, і все працює як раніше.",
+      "errorLabel": "Що пішло не так",
+      "downloadManually": "Завантажити {version} вручну",
+      "downloadManuallyUnknownVersion": "Завантажити MemryNote вручну",
+      "tryAgain": "Спробувати ще раз",
+      "copyDetails": "Копіювати подробиці"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Сховища",
+    "position": "{name}, сховище {index} з {count}",
+    "openList": "{position}. Відкрити список сховищ",
+    "switchTo": "Перемкнутися на {name}",
+    "switchingTo": "Перемикання на {name}",
+    "changeIcon": "Змінити значок…",
+    "resetIcon": "Скинути значок",
+    "iconButton": "Змінити значок сховища {name}",
+    "iconFailed": "Не вдалося змінити значок сховища"
+  },
+  "sidebarHelp": {
+    "label": "Довідка та відгуки",
+    "reportBug": "Повідомити про помилку",
+    "requestFeature": "Запропонувати функцію",
+    "starOnGithub": "Поставити зірку на GitHub",
+    "version": "MemryNote {version}",
+    "whatsNew": "Що нового"
+  },
+  "sidebarStar": {
+    "title": "MemryNote — проєкт із відкритим кодом",
+    "body": "Створюється відкрито. Зірка допомагає іншим знайти проєкт.",
+    "star": "Поставити зірку",
+    "later": "Не зараз",
+    "thanks": "Дякуємо. Це дуже важливо для нас."
+  },
+  "sidebar": {
+    "railLabel": "Розділи",
+    "search": "Шукати або перейти до…",
+    "vaultMenu": "{name}. Відкрити список сховищ"
   }
 }

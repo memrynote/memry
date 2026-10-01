@@ -1,19 +1,21 @@
 {
   "page": {
-    "loading": "正在載入圖表...",
-    "load-failed": "載入圖表資料失敗",
-    "try-again": "請再試一次",
-    "aria-label": "使用 {nodeCount, plural, one {# 節點} other {# 節點}} 和 {edgeCount, plural, one {# 連結} other {# 連結}} {summary, select, none {.} other {: {summary}。}} 的知識圖譜",
+    "loading": "正在載入圖譜…",
+    "load-failed": "無法載入圖譜資料",
+    "render-failed": "這部裝置無法使用圖譜",
+    "render-failed-description": "這部裝置無法啟動圖形轉譯器。筆記安全無虞。",
+    "try-again": "再試一次",
+    "aria-label": "知識圖譜，共 {nodeCount, plural, other {# 個節點}}、{edgeCount, plural, other {# 條連線}}{summary, select, none {。} other {：{summary}。}}",
     "nodes-list-label": "圖譜節點",
     "node-list-item": "{label}（{type}）"
   },
   "empty": {
-    "title": "您的知識圖譜",
-    "description": "您的筆記、任務和項目之間的連接將以互動圖的形式顯示在此處。",
-    "link-title": "連結您的筆記",
+    "title": "知識圖譜",
+    "description": "筆記、任務與專案之間的關聯會以互動式圖譜顯示在這裡。",
+    "link-title": "連結筆記",
     "link-description": "使用 [[wikilinks]] 將不同筆記中的想法連接起來",
     "discover-title": "發現模式",
-    "discover-description": "隨著連接增多，集群和主題將自然浮現"
+    "discover-description": "隨著關聯增加，群集與主題會自然浮現"
   },
   "entity": {
     "note": "筆記",
@@ -21,57 +23,115 @@
     "journal": "日誌",
     "journals": "日誌",
     "task": "任務",
-    "tasks": "任務（複數）",
+    "tasks": "任務",
     "project": "專案",
-    "projects": "項目",
+    "projects": "專案",
     "tag": "標籤",
     "tags": "標籤",
-    "orphan": "孤立的",
-    "orphans": "孤立項",
-    "unresolved": "未解決"
+    "orphan": "孤立節點",
+    "orphans": "孤立節點",
+    "unresolved": "尚未建立",
+    "category": "分類"
   },
   "summary": {
-    "node-type-count": "{count} {label}"
+    "node-type-count": "{label} {count}"
   },
   "control": {
     "show-settings": "圖譜設定",
     "hide-settings": "隱藏設定",
-    "reset-filters": "重置篩選",
-    "filters": "篩選器",
+    "reset-filters": "重設篩選條件",
+    "filters": "篩選條件",
     "display": "顯示",
-    "show-labels": "顯示標籤",
+    "show-labels": "顯示節點名稱",
+    "live-motion": "即時動畫",
     "focus-depth": "深度 {depth}",
-    "clear-focus": "清除焦點節點"
+    "clear-focus": "清除焦點節點",
+    "relayout": "重新配置版面",
+    "categories": "標籤分類",
+    "color-by-category": "依分類著色",
+    "no-categories": "在標籤總覽中將標籤分組到各個分類，即可依分類為圖譜著色及收合。",
+    "collapse-category": "收合「{name}」",
+    "expand-category": "展開「{name}」",
+    "uncategorized": "未分類"
   },
   "filter": {
-    "notes": "備註們",
+    "notes": "筆記",
     "journals": "日誌",
     "tasks": "任務",
     "projects": "專案",
     "tags": "標籤",
     "orphans": "孤立節點",
-    "toggle-entity": "切換 {label}",
-    "toggle-orphans": "切換孤立節點"
+    "canvas-edges": "畫布連線",
+    "toggle-entity": "顯示/隱藏{label}",
+    "toggle-orphans": "顯示/隱藏孤立節點"
   },
   "search": {
-    "placeholder": "搜尋節點...",
-    "clear": "清除圖表搜尋"
+    "placeholder": "搜尋節點…",
+    "clear": "清除圖譜搜尋"
   },
   "context-menu": {
     "untitled": "未命名",
     "focus-node": "聚焦此節點",
     "open-new-tab": "在新分頁開啟",
     "create-note": "建立筆記",
-    "copy-title": "複製標題"
+    "copy-title": "複製標題",
+    "link-to": "連結至…",
+    "add-tag": "新增標籤…",
+    "back": "返回",
+    "link-search": "搜尋筆記…",
+    "tag-search": "搜尋或建立標籤…",
+    "no-matches": "沒有符合的項目",
+    "create-tag": "建立 #{tag}",
+    "remove-link": "移除指向「{title}」的連結",
+    "unpin": "取消釘選",
+    "collapse-category": "收合「{name}」",
+    "expand-category": "展開「{name}」"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {# 連結} other {# 連結}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, other {# 條連線}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, other {# 個項目}}",
+    "click-to-expand": "按一下以展開"
   },
   "local-panel": {
-    "loading": "正在載入圖表...",
-    "empty": "未找到連結",
-    "open-full": "開啟完整圖表",
-    "close": "關閉圖表"
+    "loading": "正在載入圖譜…",
+    "empty": "找不到任何連線",
+    "open-full": "開啟完整圖譜",
+    "close": "關閉圖譜",
+    "pin": "釘選到這則筆記",
+    "unpin": "取消釘選並跟隨開啟的筆記",
+    "pinned-to": "已釘選：{title}"
+  },
+  "edit": {
+    "linked": "已在「{property}」中將「{source}」連結至「{target}」",
+    "unlinked": "已移除從「{source}」到「{target}」的連結",
+    "already-linked": "「{source}」已連結至「{target}」",
+    "property-conflict": "這則筆記的「{property}」不是關聯屬性，因此未新增連結",
+    "link-unsupported": "只能在筆記之間建立連結",
+    "link-failed": "無法新增連結",
+    "unlink-failed": "無法移除連結",
+    "tag-added": "已將 #{tag} 加入「{note}」",
+    "tag-exists": "這則筆記已有 #{tag}",
+    "tag-failed": "無法新增標籤",
+    "undo-failed": "無法復原變更"
+  },
+  "relayout-confirm": {
+    "title": "要重新配置圖譜版面嗎？",
+    "description": "所有已釘選的節點都會取消釘選，圖譜會重新排列。已儲存的版面配置將被捨棄。",
+    "cancel": "取消",
+    "confirm": "重新配置版面"
+  },
+  "views": {
+    "title": "已儲存的檢視",
+    "unsaved": "未儲存的檢視",
+    "edited": "已編輯",
+    "empty": "尚無已儲存的檢視",
+    "save-as": "另存為新檢視…",
+    "update": "更新「{name}」",
+    "delete": "刪除檢視「{name}」",
+    "save-dialog-title": "儲存圖譜檢視",
+    "save-dialog-placeholder": "檢視名稱",
+    "cancel": "取消",
+    "save": "儲存"
   }
 }

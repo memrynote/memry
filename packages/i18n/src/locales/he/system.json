@@ -1,8 +1,8 @@
 {
   "dialog": {
     "vault": {
-      "title": "בחר תיקיית כספת",
-      "button": "בחר בכספת"
+      "title": "בחירת תיקיית כספת",
+      "button": "בחירת כספת"
     },
     "exportPdf": {
       "title": "ייצוא כ-PDF",
@@ -21,51 +21,52 @@
       "availableTitle": "עדכון זמין",
       "availableMessage": "memrynote {version} זמין.",
       "availableDetailFallback": "להוריד את העדכון עכשיו?",
-      "buttonDownload": "הורד",
+      "buttonDownload": "הורדה",
       "buttonLater": "מאוחר יותר",
       "readyTitle": "עדכון מוכן",
       "readyMessage": "memrynote {version} הורד.",
-      "readyDetailFallback": "הפעל מחדש את memrynote כדי לסיים את התקנת העדכון.",
-      "buttonRestartNow": "הפעל מחדש עכשיו",
+      "readyDetailFallback": "כדי לסיים את התקנת העדכון, יש להפעיל מחדש את memrynote.",
+      "buttonRestartNow": "הפעלה מחדש עכשיו",
       "releaseNotesLabel": "הערות שחרור:"
     },
     "pair": {
-      "buttonAllow": "אפשר",
-      "buttonDeny": "אל תאפשר",
-      "buttonPair": "צמד",
-      "message": "לאפשר לתוסף הדפדפן של Memry לשלוח לכידות ליישום הזה?",
-      "title": "צימוד תוסף הדפדפן"
+      "title": "צימוד תוסף הדפדפן",
+      "message": "לאפשר לתוסף הדפדפן של Memry לשלוח פריטים שנלכדו לאפליקציה הזו?",
+      "buttonAllow": "לאפשר",
+      "buttonDeny": "לא לאפשר",
+      "buttonPair": "צימוד"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "תזכורת הערה",
-      "journal": "תזכורת ביומן",
-      "highlight": "הדגש תזכורת",
-      "fallback": "תזכורת בשל",
-      "default": "תזכורת",
-      "task": "תזכורת משימה"
-    },
     "inboxReview": {
-      "body": "{count, plural, one {יש לך # פריט לעבור עליו.} two {יש לך # פריטים לעבור עליהם.} other {יש לך # פריטים לעבור עליהם.}}",
-      "testBody": "זו בדיקה — כך ייראו תזכורות הסקירה היומיות שלך.",
-      "title": "הגיע הזמן לעבור על תיבת הדואר הנכנס"
+      "title": "הגיע הזמן לעבור על תיבת הנכנסים",
+      "body": "{count, plural, one {יש לך פריט אחד לעבור עליו.} other {יש לך # פריטים לעבור עליהם.}}",
+      "testBody": "זו בדיקה — כך ייראו תזכורות הסקירה היומיות שלך."
+    },
+    "reminder": {
+      "note": "תזכורת לפתק",
+      "journal": "תזכורת ליומן",
+      "highlight": "תזכורת לסימון",
+      "task": "תזכורת למשימה",
+      "fallback": "הגיע זמן התזכורת",
+      "default": "תזכורת"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "זמן התזכורת חייב להיות בעתיד",
     "definitionNotFound": "ההגדרה לא נמצאה",
-    "noteNotFound": "הערה לא נמצאה",
-    "updateFailed": "העדכון נכשל"
+    "noteNotFound": "הפתק לא נמצא",
+    "updateFailed": "העדכון נכשל",
+    "updateReadOnlyVolume": "אי אפשר להתקין עדכונים כש-memrynote פועל מהמיקום הזה. יש להעביר את memrynote לתיקיית היישומים ולפתוח אותו שוב."
   },
   "startup": {
-    "failed": {
-      "body": "זה יכול לקרות כשנשאר מעט מאוד מקום פנוי בדיסק, או עם מנהלי התקן גרפיים ישנים. נסה לפנות מקום בדיסק ואז לפתוח מחדש את MemryNote. אם זה ממשיך לקרות, התקנה מחדש בדרך כלל פותרת את זה.",
-      "title": "MemryNote לא הצליח לסיים את ההפעלה"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote ייפתח מחדש אוטומטית.",
-      "title": "מתקין עדכון…"
+      "title": "מתקין עדכון…",
+      "subtitle": "MemryNote ייפתח מחדש אוטומטית."
+    },
+    "failed": {
+      "title": "MemryNote לא הצליח לסיים את ההפעלה",
+      "body": "זה יכול לקרות כשנשאר מעט מאוד מקום פנוי בדיסק, או עם מנהלי התקן גרפיים ישנים. כדאי לפנות מקום בדיסק ואז לפתוח מחדש את MemryNote. אם זה ממשיך לקרות, התקנה מחדש בדרך כלל פותרת את הבעיה."
     }
   }
 }

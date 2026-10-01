@@ -24,7 +24,7 @@ describe('createRendererI18n', () => {
 
   it('translates Turkish tasks namespace strings', async () => {
     const i18n = await createRendererI18n({ locale: 'tr' })
-    expect(i18n.t('tasks:task.add')).toBe('Görev Ekle')
+    expect(i18n.t('tasks:task.add')).toBe('Görev ekle')
   })
 
   it('translates Turkish vault picker strings', async () => {
@@ -45,7 +45,7 @@ describe('createRendererI18n', () => {
 
   it('formats Turkish journal count labels with ICU placeholders', async () => {
     const i18n = await createRendererI18n({ locale: 'tr' })
-    expect(i18n.t('journal:count.overdue', { count: 3 })).toBe('3 vadesi geçmiş')
+    expect(i18n.t('journal:count.overdue', { count: 3 })).toBe('3 gecikmiş')
   })
 
   it('changeLanguage works', async () => {

@@ -3,16 +3,27 @@
     "day": "Gün",
     "week": "Hafta",
     "month": "Ay",
+    "monthGridLabel": "Ay ızgarası",
     "year": "Yıl",
     "timeline": "Zaman çizelgesi"
+  },
+  "undo": {
+    "moveEvent": "Etkinliği taşı",
+    "moveTask": "Görevi yeniden planla"
   },
   "toolbar": {
     "create-event": "Etkinlik oluştur",
     "previous-period": "Önceki dönem",
     "next-period": "Sonraki dönem",
     "previous-month": "Önceki ay",
-    "next-month": "Gelecek ay",
+    "next-month": "Sonraki ay",
     "today": "Bugün"
+  },
+  "search": {
+    "open": "Takvimde ara",
+    "close": "Aramayı kapat",
+    "placeholder": "Etkinlik, görev, hatırlatıcı ara…",
+    "no-results": "Eşleşme yok"
   },
   "filter": {
     "filter-calendars": "Takvimleri filtrele",
@@ -21,16 +32,24 @@
     "imported-calendars": "İçe aktarılan takvimler",
     "event-types": "Etkinlik türleri",
     "google-calendars": "Google takvimleri",
-    "refresh-google-calendars": "Google takvimlerini yenile"
+    "refresh-google-calendars": "Google takvimlerini yenile",
+    "not-syncing": "Eşitlenmiyor · açmak için işaretleyin",
+    "enable-source-failed": "Bu takvim etkinleştirilemedi.",
+    "provider-calendars": {
+      "ics": "Abone olunan takvimler",
+      "caldav": "CalDAV takvimleri",
+      "apple-eventkit": "Bu Mac",
+      "other": "Diğer takvimler"
+    }
   },
   "visual-type": {
     "event": "Etkinlik",
     "imported-event": "İçe aktarılan etkinlik",
-    "task": "Görev",
-    "reminder": "Hatırlatma",
-    "snooze": "Ertele",
     "note": "Not",
-    "note-date": "Tarih hatırlatıcısı"
+    "note-date": "Tarih hatırlatıcısı",
+    "task": "Görev",
+    "reminder": "Hatırlatıcı",
+    "snooze": "Erteleme"
   },
   "state": {
     "loading-calendar": "Takvim yükleniyor…",
@@ -42,10 +61,10 @@
     "no-events": "Etkinlik yok"
   },
   "time": {
-    "all-day": "Bütün gün",
+    "all-day": "Tüm gün",
     "all-day-lower": "tüm gün",
     "pick-a-date": "Bir tarih seçin",
-    "new-event": "Yeni Etkinlik",
+    "new-event": "Yeni etkinlik",
     "more-events": "{count, plural, one {# etkinlik daha} other {# etkinlik daha}}"
   },
   "form": {
@@ -53,9 +72,9 @@
     "edit-calendar-event": "Takvim etkinliğini düzenle",
     "quick-create-description": "Bir başlık girin ve seçilen zaman aralığında etkinlik oluşturmak için kaydedin.",
     "event-editor-description": "Bu etkinliğe ilişkin başlığı, konumu, tarihi, saati ve notları güncelleyin.",
-    "new-event-placeholder": "Yeni Etkinlik",
+    "new-event-placeholder": "Yeni etkinlik",
     "notes-url-placeholder": "Not veya URL ekleyin",
-    "start": "Başlat",
+    "start": "Başlangıç",
     "end": "Bitiş",
     "google-calendar": "Google takvimi",
     "target-calendar": "Hedef takvim",
@@ -66,39 +85,66 @@
     "project": "Proje",
     "no-project": "Proje yok",
     "remove-from-project": "{project} projesinden çıkar",
-    "project-update-failed": "Etkinliğin projesi güncellenemedi"
+    "project-update-failed": "Etkinliğin projesi güncellenemedi",
+    "color": "Renk",
+    "default-color": "Varsayılan renk"
   },
   "delete-dialog": {
     "title": "Etkinlik silinsin mi?",
-    "local-description": "\"{title}\" kalıcı olarak silinecek. Bu işlem geri alınamaz.",
-    "google-bound-description": "\"{title}\" memrynote ve Google Calendar'dan kaldırılacak. Bu eylem geri alınamaz.",
+    "local-description": "“{title}” kalıcı olarak silinecek. Bu işlem geri alınamaz.",
+    "google-bound-description": "“{title}” memrynote'tan ve Google Calendar'dan kaldırılacak. Bu işlem geri alınamaz.",
     "context-menu-delete-label": "Etkinliği sil",
     "context-menu-add-to-project": "Projeye ekle"
   },
   "agent-access-dialog": {
     "aria": "Yapay zekanın Google Calendar etkinliklerinizi okuyup okuyamayacağını seçin",
     "title": "Yapay zeka Google Calendar etkinliklerinizi okusun mu?",
-    "body": "Google etkinliklerinizi her durumda memrynote'ta görmeye devam edersiniz. Bu seçim yalnızca, takviminizi sorduğunuzda yapay zeka asistanının bu etkinlikleri okuyup okuyamayacağını belirler.",
+    "body": "Google etkinliklerinizi her durumda memrynote'ta görmeye devam edersiniz. Bu seçim yalnızca, takviminizi sorduğunuzda yapay zeka ajanının bu etkinlikleri okuyup okuyamayacağını belirler.",
     "footnote": "Bunu istediğiniz zaman Ayarlar → Entegrasyonlar → Google Calendar bölümünden değiştirebilirsiniz.",
     "allow": "İzin ver",
     "deny": "İzin verme",
-    "save-error": "Seçiminiz kaydedilemedi"
+    "save-error": "Seçiminiz kaydedilemedi",
+    "provider": {
+      "aria": "Yapay zekanın {provider} etkinliklerinizi okuyup okuyamayacağını seçin",
+      "title": "Yapay zeka {provider} etkinliklerinizi okusun mu?",
+      "body": "Bu etkinlikleri her durumda memrynote'ta görmeye devam edersiniz. Bu seçim yalnızca, takviminizi sorduğunuzda yapay zeka ajanının bu etkinlikleri okuyup okuyamayacağını belirler. Her takvim hizmeti için ayrı seçim yapılır.",
+      "footnote": "Bunu istediğiniz zaman Ayarlar → Takvim bölümünden değiştirebilirsiniz."
+    },
+    "provider-names": {
+      "ics": "abone olunan takvim",
+      "caldav": "CalDAV takvim",
+      "apple-eventkit": "macOS Takvim"
+    }
   },
   "promote-dialog": {
     "aria": "Harici takvim etkinliğini düzenle",
-    "title": "Bu etkinlik memrynote'te düzenlensin mi?",
-    "body": "Bu etkinliği düzenlemek memrynote'de bağlantılı bir kopya oluşturur; değişiklikler iki yönde de senkronize edilir. Devam edilsin mi?",
+    "title": "Bu etkinlik memrynote'ta düzenlensin mi?",
+    "body": "Bu etkinliği düzenlediğinizde memrynote'ta bağlantılı bir kopya oluşturulur ve değişiklikler iki yönlü eşitlenir. Devam edilsin mi?",
     "do-not-ask-again": "Bir daha sorma",
-    "confirm-label": "memrynote'de düzenle",
-    "agent-notice": "Yapay zeka ajanı bu kopyayı okuyabilir; Google Takvim için yapay zeka erişimi kapalı olsa bile. Google’daki asıl etkinliğiniz ona kapalı kalır."
+    "confirm-label": "memrynote'ta düzenle",
+    "agent-notice": "Google Calendar için yapay zeka erişimi kapalı olsa bile yapay zeka ajanı bu kopyayı okuyabilir. Google'daki asıl etkinliğiniz ona kapalı kalır."
   },
   "onboarding-dialog": {
     "aria": "Varsayılan Google takviminizi seçin",
-    "title": "Yeni memrynote etkinlikleri hangi takvime gitmeli?",
-    "body": "memrynote'nin varsayılan olarak kullanacağı Google takvimini seçin. Bunu etkinlik bazında yine de geçersiz kılabilirsiniz.",
+    "title": "Yeni memrynote etkinlikleri hangi takvime eklensin?",
+    "body": "memrynote'un varsayılan olarak kullanacağı Google takvimini seçin. Yine de her etkinlik için ayrı bir takvim seçebilirsiniz.",
     "default-calendar-label": "memrynote tarafından yönetilen takvimi kullan",
     "skip": "Atla",
     "use-this-calendar": "Bu takvimi kullan"
+  },
+  "connect-prompt": {
+    "pill": "Google'a bağlan",
+    "aria": "Google Calendar'a bağlan",
+    "title": "Google Calendar bağlantısını tamamlayın",
+    "body": "Takviminizle daha fazlasını yapmak için Google hesabınızı bağlayın:",
+    "bullets": {
+      "events": "Google etkinliklerinizi notlar ve görevlerin yanında görün",
+      "sync": "İki yönlü eşitlenen etkinlikler oluşturun ve düzenleyin",
+      "schedule": "Görevleri ve notları takviminizde planlayın"
+    },
+    "continue": "Google ile devam et",
+    "dismiss": "Kapat",
+    "error": "Google Calendar'a bağlanılamadı. Tekrar deneyin."
   },
   "metadata": {
     "attendees": "Katılımcılar",
@@ -108,10 +154,11 @@
     "visibility": "Görünürlük:",
     "optional": "İsteğe bağlı",
     "join-meeting": "Toplantıya katıl",
+    "video-call": "Görüntülü görüşme",
     "response": {
       "accepted": "Kabul edildi",
       "declined": "Reddedildi",
-      "tentative": "Geçici",
+      "tentative": "Belki",
       "needs-action": "Beklemede"
     },
     "visibility-value": {
@@ -127,14 +174,14 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "Etkinlik kaydedilemedi. Lütfen tekrar deneyin.",
-      "couldNotCreateEventTryAgain": "Etkinlik oluşturulamadı. Lütfen tekrar deneyin.",
-      "couldNotSaveDefaultCalendarTryAgain": "Varsayılan takvim kaydedilemedi. Lütfen tekrar deneyin.",
+      "couldNotSaveEventTryAgain": "Etkinlik kaydedilemedi. Tekrar deneyin.",
+      "couldNotCreateEventTryAgain": "Etkinlik oluşturulamadı. Tekrar deneyin.",
+      "couldNotSaveDefaultCalendarTryAgain": "Varsayılan takvim kaydedilemedi. Tekrar deneyin.",
       "failedToLoadCalendarPreferences": "Takvim tercihleri yüklenemedi",
       "failedToUpdateCalendarPreferences": "Takvim tercihleri güncellenemedi",
-      "couldNotEditThisEventTryAgain": "Bu etkinlik düzenlenemedi. Lütfen tekrar deneyin.",
+      "couldNotEditThisEventTryAgain": "Bu etkinlik düzenlenemedi. Tekrar deneyin.",
       "failedToDeleteEvent": "Etkinlik silinemedi",
-      "couldNotUnsnoozeInboxItem": "Başlatma geri alınamadı.",
+      "couldNotUnsnoozeInboxItem": "Erteleme kaldırılamadı.",
       "couldNotRescheduleInboxItem": "Yeniden planlanamadı."
     },
     "inboxSnoozePopover": {
@@ -144,78 +191,73 @@
       "reschedule": "Yeniden planla"
     }
   },
+  "chip": {
+    "complete-task": "Tamamla: {title}",
+    "task-completed": "Görev tamamlandı",
+    "could-not-complete": "Görev tamamlanamadı",
+    "duration-minutes": "{minutes} dk",
+    "duration-hours": "{hours} sa",
+    "duration-hours-minutes": "{hours} sa {minutes} dk"
+  },
+  "event-card": {
+    "kind": "Etkinlik",
+    "close": "Kapat"
+  },
   "task-popover": {
-    "title-fallback": "Görev detayları",
+    "title-fallback": "Görev ayrıntıları",
+    "kind": "Görev",
+    "open": "Aç",
+    "complete": "Tamamla",
+    "more-actions": "Diğer işlemler",
+    "move": "Taşı",
+    "later": "Daha sonra",
+    "next-week": "Gelecek hafta",
     "open-task": "Görevi aç",
     "source-note": "Kaynak not",
     "reschedule": "Yeniden planla",
-    "mark-done": "Tamamlandı olarak işaretle",
+    "mark-done": "Tamamla",
     "mark-not-done": "Tamamlanmadı olarak işaretle",
-    "later-today": "Bugün ilerleyen saatlerde",
+    "later-today": "Bugün daha sonra",
     "tomorrow": "Yarın",
     "next-week-mon": "Gelecek hafta · Pazartesi",
-    "pick-date-time": "Tarih ve saat seç...",
-    "remove-due-date": "Bitiş tarihini kaldır",
+    "pick-date-time": "Tarih ve saat seç…",
+    "remove-due-date": "Son tarihi kaldır",
     "subtasks-prefix": "Alt görevler",
     "subtasks-counter": "{done} / {total} tamamlandı",
-    "repeats": "Tekrarlar",
-    "repeats-daily": "Günlük tekrarlar",
-    "repeats-weekly": "Haftalık tekrarlar",
-    "repeats-monthly": "Aylık tekrarlar",
-    "repeats-yearly": "Yıllık tekrarlar",
+    "repeats": "Tekrarlanır",
+    "repeats-daily": "Her gün tekrarlanır",
+    "repeats-weekly": "Her hafta tekrarlanır",
+    "repeats-monthly": "Her ay tekrarlanır",
+    "repeats-yearly": "Her yıl tekrarlanır",
     "errors": {
       "could-not-save": "Görev kaydedilemedi",
       "could-not-reschedule": "Görev yeniden planlanamadı",
-      "could-not-remove-due-date": "Son teslim tarihi kaldırılamadı",
+      "could-not-remove-due-date": "Son tarih kaldırılamadı",
       "could-not-open-note": "Not açılamadı"
     }
   },
-  "connect-prompt": {
-    "aria": "Google Calendar'a bağlan",
-    "body": "Takviminizle daha fazlasını yapmak için Google hesabınızı bağlayın:",
-    "bullets": {
-      "events": "Google etkinliklerinizi notlar ve görevlerin yanında görün",
-      "schedule": "Görevleri ve notları takviminizde planlayın",
-      "sync": "İki yönlü eşitlenen etkinlikler oluşturun ve düzenleyin"
-    },
-    "continue": "Google ile devam et",
-    "dismiss": "Kapat",
-    "error": "Google Calendar'a bağlanılamadı. Tekrar deneyin.",
-    "pill": "Google'a bağlan",
-    "title": "Google Calendar bağlantısını tamamlayın"
-  },
   "notePopover": {
-    "couldNotOpen": "Not açılamadı",
     "kind": "Not",
     "kindDateReminder": "Tarih hatırlatıcısı",
-    "open": "Notu aç"
-  },
-  "search": {
-    "close": "Aramayı kapat",
-    "no-results": "Eşleşme yok",
-    "open": "Takvimde ara",
-    "placeholder": "Etkinlik, görev, hatırlatıcı ara…"
-  },
-  "undo": {
-    "moveEvent": "Etkinliği taşı",
-    "moveTask": "Görevi yeniden planla"
+    "open": "Notu aç",
+    "couldNotOpen": "Not açılamadı"
   },
   "timeline": {
     "label": "Zaman çizelgesindeki planlı işler",
     "tasks-column": "Görevler",
     "span": "{start} – {end}",
-    "due": "Bitiş {date}",
-    "starts": "Başlangıç {date}",
+    "due": "Son tarih: {date}",
+    "starts": "Başlangıç: {date}",
     "starts-short": "{date} →",
     "no-date": "Tarih yok",
     "today": "Bugün",
     "overdue": "gecikmiş",
-    "untitled": "Adsız",
+    "untitled": "Başlıksız",
     "days": "{count, plural, one {# gün} other {# gün}}",
     "events": "Etkinlikler",
-    "schedule-hint": "Tarih için tıkla, aralık için sürükle",
+    "schedule-hint": "Tarih ayarlamak için tıklayın, aralık için sürükleyin",
     "empty-title": "Zaman çizelgesinde burada bir şey yok",
-    "empty-body": "Başlangıç veya bitiş tarihi olan görevler ile tüm gün ya da birden çok gün süren etkinlikler burada görünür. Tarihsiz görevleri sürükleyerek planlamak için Görünüm'den açın.",
+    "empty-body": "Başlangıç ya da son tarihi olan görevler ile tüm gün ya da birden çok gün süren etkinlikler burada görünür. Tarihsiz görevleri sürükleyerek planlamak için Görünüm menüsünden açın.",
     "status": {
       "todo": "Yapılacak",
       "in_progress": "Devam ediyor",
@@ -240,10 +282,10 @@
       "priority": "Öncelik",
       "none": "Gruplama yok"
     },
-    "group-by-label": "{group} ile",
+    "group-by-label": "Gruplama: {group}",
     "order-by": {
       "start": "Başlangıç tarihi",
-      "due": "Bitiş tarihi",
+      "due": "Son tarih",
       "title": "Başlık"
     },
     "display": {
@@ -271,28 +313,74 @@
       "empty": "Eşleşen eylem yok",
       "no-projects": "Eşleşen proje yok",
       "open": "Görevi aç",
-      "open-in-tasks": "Görevler'de aç",
+      "open-in-tasks": "Görevlerde aç",
       "schedule": "Planla",
       "set-start": "Başlangıç tarihi ayarla",
-      "set-due": "Bitiş tarihi ayarla",
-      "move-later": "Bir hafta ileri al",
-      "move-earlier": "Bir hafta geri al",
+      "set-due": "Son tarih ayarla",
+      "move-later": "Bir hafta sonraya taşı",
+      "move-earlier": "Bir hafta öncesine taşı",
       "clear-dates": "Tarihleri temizle",
       "clear-start": "Başlangıç tarihini temizle",
-      "clear-due": "Bitiş tarihini temizle",
+      "clear-due": "Son tarihi temizle",
       "task": "Görev",
-      "complete": "Tamamlandı olarak işaretle",
+      "complete": "Tamamla",
       "uncomplete": "Tamamlanmadı olarak işaretle",
       "change-project": "Projeyi değiştir",
       "page": {
         "root": "Eylemler",
         "start": "Başlangıç tarihi",
-        "due": "Bitiş tarihi",
+        "due": "Son tarih",
         "project": "Proje"
       }
     },
     "undo": {
-      "reschedule": "\"{title}\" yeniden planla"
+      "reschedule": "“{title}” görevini yeniden planla"
+    }
+  },
+  "calendar-color": {
+    "tomato": "Domates",
+    "flamingo": "Flamingo",
+    "tangerine": "Mandalina",
+    "banana": "Muz",
+    "sage": "Adaçayı",
+    "basil": "Fesleğen",
+    "peacock": "Tavus kuşu",
+    "blueberry": "Yaban mersini",
+    "lavender": "Lavanta",
+    "grape": "Üzüm",
+    "graphite": "Grafit"
+  },
+  "subscribedEvent": {
+    "kind": "Abone olunan takvim",
+    "kindAppleEventKit": "Bu Mac",
+    "close": "Kapat",
+    "detailsFailed": "Bu etkinliğin katılımcıları ve bağlantıları yüklenemedi. Etkinliğin kendisi değişmedi.",
+    "showMore": "Daha fazla göster",
+    "showLess": "Daha az göster",
+    "organizer": "düzenleyen",
+    "you": "siz",
+    "phone": "Telefonla katıl",
+    "alert": "{minutes, plural, =0 {Başlangıç saatinde uyarı} one {# dakika önce uyarı} other {# dakika önce uyarı}}",
+    "alertHours": "{hours, plural, one {# saat önce uyarı} other {# saat önce uyarı}}",
+    "alertDays": "{days, plural, one {# gün önce uyarı} other {# gün önce uyarı}}",
+    "recurrence": {
+      "daily": "{count, plural, one {Her gün tekrarlanır} other {# günde bir tekrarlanır}}",
+      "weekly": "{count, plural, one {Her hafta tekrarlanır} other {# haftada bir tekrarlanır}}",
+      "weeklyOn": "{count, plural, one {Her hafta şu günlerde tekrarlanır: {days}} other {# haftada bir şu günlerde tekrarlanır: {days}}}",
+      "monthly": "{count, plural, one {Her ay tekrarlanır} other {# ayda bir tekrarlanır}}",
+      "yearly": "{count, plural, one {Her yıl tekrarlanır} other {# yılda bir tekrarlanır}}",
+      "other": "Tekrarlanır"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Abone olunan takvimler"
+    },
+    "caldav": {
+      "name": "CalDAV"
     }
   }
 }

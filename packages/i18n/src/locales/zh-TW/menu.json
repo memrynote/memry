@@ -3,19 +3,19 @@
     "quit": "結束",
     "preferences": "設定…",
     "checkForUpdates": "檢查更新…",
-    "exit": "離開",
+    "services": "服務",
     "hide": "隱藏 MemryNote",
     "hideOthers": "隱藏其他",
-    "services": "服務",
-    "unhide": "顯示全部"
+    "unhide": "顯示全部",
+    "exit": "離開"
   },
   "file": {
     "label": "檔案",
-    "newNote": "新筆記",
-    "close": "關閉視窗",
-    "closeTab": "關閉分頁",
+    "newNote": "新增筆記",
+    "openQuickly": "快速開啟…",
     "exportPdf": "匯出為 PDF…",
-    "openQuickly": "快速開啟…"
+    "closeTab": "關閉分頁",
+    "close": "關閉視窗"
   },
   "navigation": {
     "back": "返回",
@@ -31,63 +31,68 @@
     "selectAll": "全選",
     "find": "尋找",
     "speech": "語音",
-    "delete": "刪除",
     "pasteAndMatchStyle": "貼上並符合樣式",
+    "delete": "刪除",
     "startSpeaking": "開始朗讀",
-    "stopSpeaking": "停止朗讀"
+    "stopSpeaking": "停止朗讀",
+    "addToDictionary": "加入字典",
+    "noSuggestions": "沒有建議"
   },
-  "view": {
-    "label": "檢視",
-    "reload": "重新載入",
-    "toggleDevTools": "切換開發人員工具",
-    "toggleFullscreen": "切換全螢幕",
-    "theme": "主題",
-    "themeDark": "深色",
-    "themeLight": "淺色",
-    "themeSystem": "系統",
-    "themeWhite": "紙張",
-    "toggleDayPanel": "切換每日面板",
-    "toggleSidebar": "切換側邊欄",
-    "actualSize": "實際大小",
-    "zoomIn": "放大",
-    "zoomOut": "縮小"
+  "insert": {
+    "label": "插入",
+    "codeBlock": "程式碼區塊",
+    "table": "表格",
+    "bulletList": "項目符號清單",
+    "numberedList": "編號清單",
+    "taskList": "任務清單",
+    "attachment": "插入附件…"
   },
   "format": {
-    "body": "內文",
-    "bold": "粗體",
-    "code": "程式碼",
+    "label": "格式",
     "heading1": "標題 1",
     "heading2": "標題 2",
     "heading3": "標題 3",
     "heading4": "標題 4",
     "heading5": "標題 5",
     "heading6": "標題 6",
-    "highlight": "醒目提示",
+    "body": "內文",
+    "bold": "粗體",
     "italic": "斜體",
-    "label": "格式",
+    "code": "程式碼",
+    "highlight": "醒目提示",
     "strikethrough": "刪除線"
   },
-  "help": {
-    "about": "關於 MemryNote",
-    "documentation": "文件",
-    "label": "說明",
-    "shortcuts": "鍵盤快速鍵",
-    "aboutVersion": "版本 {version}"
-  },
-  "insert": {
-    "attachment": "插入附件…",
-    "bulletList": "項目符號清單",
-    "codeBlock": "程式碼區塊",
-    "label": "插入",
-    "numberedList": "編號清單",
-    "table": "表格",
-    "taskList": "任務清單"
+  "view": {
+    "label": "檢視",
+    "reload": "重新載入",
+    "toggleDevTools": "顯示/隱藏開發人員工具",
+    "toggleFullscreen": "切換全螢幕",
+    "toggleSidebar": "顯示/隱藏側邊欄",
+    "toggleDayPanel": "顯示/隱藏每日面板",
+    "theme": "主題",
+    "themeLight": "淺色",
+    "themeDark": "深色",
+    "themeWhite": "紙張",
+    "themeSystem": "系統",
+    "actualSize": "實際大小",
+    "zoomIn": "放大",
+    "zoomOut": "縮小"
   },
   "window": {
     "label": "視窗",
-    "close": "關閉",
-    "front": "將全部移到最前面",
     "minimize": "縮到最小",
-    "zoom": "縮放"
+    "zoom": "縮放",
+    "front": "將全部移到最前面",
+    "close": "關閉"
+  },
+  "help": {
+    "label": "說明",
+    "documentation": "文件",
+    "shortcuts": "鍵盤快速鍵",
+    "about": "關於 MemryNote",
+    "aboutVersion": "版本 {version}"
+  },
+  "tray": {
+    "show": "顯示 MemryNote"
   }
 }

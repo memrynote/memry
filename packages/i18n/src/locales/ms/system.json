@@ -1,8 +1,8 @@
 {
   "dialog": {
     "vault": {
-      "title": "Pilih Folder Bilik Kebal",
-      "button": "Pilih Bilik Kebal"
+      "title": "Pilih folder bilik kebal",
+      "button": "Pilih bilik kebal"
     },
     "exportPdf": {
       "title": "Eksport sebagai PDF",
@@ -13,8 +13,8 @@
       "filterName": "Dokumen HTML"
     },
     "import": {
-      "filterSupported": "Fail yang Disokong",
-      "filterAll": "Semua Fail"
+      "filterSupported": "Fail yang disokong",
+      "filterAll": "Semua fail"
     },
     "exportCancelled": "Eksport dibatalkan",
     "update": {
@@ -30,42 +30,43 @@
       "releaseNotesLabel": "Nota keluaran:"
     },
     "pair": {
+      "title": "Gandingkan sambungan penyemak imbas",
+      "message": "Benarkan sambungan penyemak imbas Memry menghantar catatan ke apl ini?",
       "buttonAllow": "Benarkan",
       "buttonDeny": "Tolak",
-      "buttonPair": "Gandingkan",
-      "message": "Benarkan sambungan penyemak imbas Memry menghantar tangkapan ke apl ini?",
-      "title": "Gandingkan sambungan penyemak imbas"
+      "buttonPair": "Gandingkan"
     }
   },
   "notification": {
+    "inboxReview": {
+      "title": "Masa untuk menyemak peti masuk anda",
+      "body": "Anda mempunyai {count, plural, other {# item}} untuk disemak.",
+      "testBody": "Ini ujian — peringatan semakan harian anda akan kelihatan begini."
+    },
     "reminder": {
       "note": "Peringatan nota",
       "journal": "Peringatan jurnal",
-      "highlight": "Serlahkan peringatan",
-      "fallback": "Peringatan perlu dibayar",
-      "default": "Peringatan",
-      "task": "Peringatan tugasan"
-    },
-    "inboxReview": {
-      "body": "Anda mempunyai {count, plural, other {# item}} untuk disemak.",
-      "testBody": "Ini ujian — peringatan semakan harian anda akan kelihatan begini.",
-      "title": "Masa untuk menyemak peti masuk anda"
+      "highlight": "Peringatan serlahan",
+      "task": "Peringatan tugas",
+      "fallback": "Masa peringatan",
+      "default": "Peringatan"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "Masa peringatan mestilah pada masa hadapan",
     "definitionNotFound": "Definisi tidak ditemui",
     "noteNotFound": "Nota tidak ditemui",
-    "updateFailed": "Kemas kini gagal"
+    "updateFailed": "Kemas kini gagal",
+    "updateReadOnlyVolume": "Kemas kini tidak dapat dipasang semasa memrynote dijalankan dari lokasi ini. Alihkan memrynote ke folder Aplikasi anda dan bukanya semula."
   },
   "startup": {
-    "failed": {
-      "body": "Ini boleh berlaku apabila cakera hampir kehabisan ruang kosong, atau dengan pemacu grafik yang lama. Cuba kosongkan sedikit ruang cakera, kemudian buka semula MemryNote. Jika ia berterusan, pemasangan semula biasanya menyelesaikannya.",
-      "title": "MemryNote tidak dapat menyelesaikan permulaan"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote akan dibuka semula secara automatik.",
-      "title": "Memasang kemas kini…"
+      "title": "Memasang kemas kini…",
+      "subtitle": "MemryNote akan dibuka semula secara automatik."
+    },
+    "failed": {
+      "title": "MemryNote tidak dapat dimulakan sepenuhnya",
+      "body": "Ini boleh berlaku apabila cakera hampir kehabisan ruang kosong, atau dengan pemacu grafik yang lama. Cuba kosongkan sedikit ruang cakera, kemudian buka semula MemryNote. Jika ia berterusan, pemasangan semula biasanya menyelesaikannya."
     }
   }
 }

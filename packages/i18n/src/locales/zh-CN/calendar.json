@@ -3,102 +3,163 @@
     "day": "日",
     "week": "周",
     "month": "月",
-    "year": "年"
+    "monthGridLabel": "月历网格",
+    "year": "年",
+    "timeline": "时间线"
+  },
+  "undo": {
+    "moveEvent": "移动日程",
+    "moveTask": "重新安排任务"
   },
   "toolbar": {
-    "create-event": "创建事件",
+    "create-event": "创建日程",
     "previous-period": "上一个周期",
     "next-period": "下一个周期",
     "previous-month": "上个月",
     "next-month": "下个月",
     "today": "今天"
   },
+  "search": {
+    "open": "搜索日历",
+    "close": "关闭搜索",
+    "placeholder": "搜索日程、任务、提醒…",
+    "no-results": "无匹配结果"
+  },
   "filter": {
     "filter-calendars": "筛选日历",
     "sources": "来源",
-    "memry-items": "memrynote 项目",
+    "memry-items": "memrynote 条目",
     "imported-calendars": "已导入的日历",
-    "event-types": "事件类型",
-    "google-calendars": "谷歌日历",
-    "refresh-google-calendars": "刷新谷歌日历"
+    "event-types": "日程类型",
+    "google-calendars": "Google 日历",
+    "refresh-google-calendars": "刷新 Google 日历",
+    "not-syncing": "未同步 · 勾选以开启",
+    "enable-source-failed": "无法开启该日历。",
+    "provider-calendars": {
+      "ics": "已订阅的日历",
+      "caldav": "CalDAV 日历",
+      "apple-eventkit": "此 Mac",
+      "other": "其他日历"
+    }
   },
   "visual-type": {
-    "event": "事件",
-    "imported-event": "导入事件",
+    "event": "日程",
+    "imported-event": "导入的日程",
+    "note": "笔记",
+    "note-date": "日期提醒",
     "task": "任务",
     "reminder": "提醒",
-    "snooze": "延迟",
-    "note": "笔记",
-    "note-date": "日期提醒"
+    "snooze": "延后"
   },
   "state": {
     "loading-calendar": "正在加载日历…",
     "loading-calendars": "正在加载日历…",
-    "preparing": "准备中…"
+    "preparing": "正在准备…"
   },
   "empty": {
     "no-imported-calendars-yet": "尚无导入的日历。",
-    "no-events": "无事件"
+    "no-events": "没有日程"
   },
   "time": {
     "all-day": "全天",
     "all-day-lower": "全天",
     "pick-a-date": "选择日期",
-    "new-event": "新事件",
-    "more-events": "{count, plural, one {# 更多事件} other {# 更多事件}}"
+    "new-event": "新建日程",
+    "more-events": "{count, plural, other {还有 # 个日程}}"
   },
   "form": {
-    "create-calendar-event": "创建日历事件",
-    "edit-calendar-event": "编辑日历事件",
-    "quick-create-description": "输入标题并保存以在选定的时间范围内创建事件。",
-    "event-editor-description": "更新此事件的标题、地点、日期、时间和备注。",
-    "new-event-placeholder": "新事件",
-    "notes-url-placeholder": "添加备注或网址",
+    "create-calendar-event": "创建日程",
+    "edit-calendar-event": "编辑日程",
+    "quick-create-description": "输入标题并保存，即可在所选时间段创建日程。",
+    "event-editor-description": "更新此日程的标题、地点、日期、时间和备注。",
+    "new-event-placeholder": "新建日程",
+    "notes-url-placeholder": "添加备注或 URL",
     "start": "开始",
     "end": "结束",
-    "google-calendar": "谷歌日历",
+    "google-calendar": "Google 日历",
     "target-calendar": "目标日历",
     "use-default-calendar": "使用默认日历",
-    "use-default-calendar-with-name": "使用默认 ({calendar})",
+    "use-default-calendar-with-name": "使用默认日历（{calendar}）",
     "use-memry-calendar-default": "使用 memrynote 日历（默认）",
-    "primary-suffix": "主要"
+    "primary-suffix": "主要",
+    "project": "项目",
+    "no-project": "无项目",
+    "remove-from-project": "从 {project} 中移除",
+    "project-update-failed": "无法更新日程所属的项目",
+    "color": "颜色",
+    "default-color": "默认颜色"
   },
   "delete-dialog": {
-    "title": "删除事件？",
+    "title": "删除日程？",
     "local-description": "“{title}”将被永久删除。此操作无法撤销。",
-    "google-bound-description": "\"{title}\" 将从 memrynote 和 Google 日历中移除。此操作无法撤销。  ",
-    "context-menu-delete-label": "  \n删除事件  ",
+    "google-bound-description": "“{title}”将从 memrynote 和 Google 日历中移除。此操作无法撤销。",
+    "context-menu-delete-label": "删除日程",
     "context-menu-add-to-project": "添加到项目"
   },
+  "agent-access-dialog": {
+    "aria": "选择是否允许 AI 读取 Google 日历中的日程",
+    "title": "允许 AI 读取 Google 日历中的日程吗？",
+    "body": "无论怎么选，都会继续在 memrynote 中看到 Google 日程。这里只决定当你向 AI 智能体询问日程安排时，它能否读取这些日程。",
+    "footnote": "可以随时在“设置 → 集成 → Google 日历”中更改。",
+    "allow": "允许",
+    "deny": "不允许",
+    "save-error": "无法保存选择",
+    "provider": {
+      "aria": "选择是否允许 AI 读取“{provider}”中的日程",
+      "title": "允许 AI 读取“{provider}”中的日程吗？",
+      "body": "无论怎么选，都会继续在 memrynote 中看到这些日程。这里只决定当你向 AI 智能体询问日程安排时，它能否读取这些日程。每个日历服务单独设置。",
+      "footnote": "可以随时在“设置 → 日历”中更改。"
+    },
+    "provider-names": {
+      "ics": "已订阅的日历",
+      "caldav": "CalDAV 日历",
+      "apple-eventkit": "macOS 日历"
+    }
+  },
   "promote-dialog": {
-    "aria": "  \n编辑外部日历事件  ",
-    "title": "  \n在 memrynote 中编辑此事件？  ",
-    "body": "  \n编辑此事件将会在 memrynote 中创建一个关联副本，使更改双向同步。继续吗？  ",
-    "do-not-ask-again": "  \n不再提示  ",
-    "confirm-label": "  \n在 memrynote 中编辑  ",
-    "agent-notice": "即使 AI 对 Google Calendar 的访问已关闭，AI 助手仍可以读取这个副本。你原来的 Google 事件对它依然不可见。"
+    "aria": "编辑外部日程",
+    "title": "要在 memrynote 中编辑此日程吗？",
+    "body": "编辑此日程会在 memrynote 中创建一个关联副本，更改将双向同步。要继续吗？",
+    "do-not-ask-again": "不再询问",
+    "confirm-label": "在 memrynote 中编辑",
+    "agent-notice": "即使已关闭 AI 对 Google 日历的访问，AI 智能体仍可以读取这个副本。原始的 Google 日程仍对它隐藏。"
   },
   "onboarding-dialog": {
-    "aria": "  \n选择默认 Google 日历  ",
-    "title": "  \n新 memrynote 事件应放入哪个日历？  ",
-    "body": "  \n选择 memrynote 默认使用的 Google 日历。你仍可以在每个事件中覆盖此设置。  ",
+    "aria": "选择默认 Google 日历",
+    "title": "新的 memrynote 日程应放入哪个日历？",
+    "body": "选择 memrynote 默认使用的 Google 日历。之后仍可为单个日程另行指定。",
     "default-calendar-label": "使用 memrynote 管理的日历",
     "skip": "跳过",
-    "use-this-calendar": "  \n使用此日历  "
+    "use-this-calendar": "使用此日历"
+  },
+  "connect-prompt": {
+    "pill": "连接 Google",
+    "aria": "连接 Google 日历",
+    "title": "完成 Google 日历连接",
+    "body": "连接 Google 账户，让日历发挥更多作用：",
+    "bullets": {
+      "events": "在笔记和任务旁查看 Google 日程",
+      "sync": "创建和编辑日程，双向同步",
+      "schedule": "在日历上安排任务和笔记"
+    },
+    "continue": "使用 Google 继续",
+    "dismiss": "忽略",
+    "error": "无法连接 Google 日历。请重试。"
   },
   "metadata": {
-    "attendees": "  \n与会者  ",
-    "attendees-count": "  \n与会者（{count}）  ",
-    "reminders": "提醒事项",
-    "default-reminders": "  \n默认提醒  ",
-    "visibility": "  \n可见性：  ",
-    "optional": "  \n可选  ",
-    "join-meeting": "  \n加入会议  ",
+    "attendees": "与会者",
+    "attendees-count": "与会者（{count}）",
+    "reminders": "提醒",
+    "default-reminders": "默认提醒",
+    "visibility": "可见性：",
+    "optional": "可选",
+    "join-meeting": "加入会议",
+    "video-call": "视频通话",
     "response": {
-      "accepted": "  \n已接受  ",
-      "declined": "  \n已拒绝",
+      "accepted": "已接受",
+      "declined": "已拒绝",
       "tentative": "暂定",
-      "needs-action": "待定"
+      "needs-action": "待回复"
     },
     "visibility-value": {
       "private": "私人",
@@ -113,29 +174,48 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "无法保存事件。请重试。",
-      "couldNotCreateEventTryAgain": "无法创建事件。请重试。",
+      "couldNotSaveEventTryAgain": "无法保存日程。请重试。",
+      "couldNotCreateEventTryAgain": "无法创建日程。请重试。",
       "couldNotSaveDefaultCalendarTryAgain": "无法保存默认日历。请重试。",
-      "failedToLoadCalendarPreferences": "加载日历偏好设置失败",
-      "failedToUpdateCalendarPreferences": "更新日历偏好设置失败",
-      "couldNotEditThisEventTryAgain": "无法编辑此事件。请重试。",
-      "failedToDeleteEvent": "删除事件失败",
-      "couldNotUnsnoozeInboxItem": "无法解除延迟提醒。",
+      "failedToLoadCalendarPreferences": "无法加载日历偏好设置",
+      "failedToUpdateCalendarPreferences": "无法更新日历偏好设置",
+      "couldNotEditThisEventTryAgain": "无法编辑此日程。请重试。",
+      "failedToDeleteEvent": "无法删除日程",
+      "couldNotUnsnoozeInboxItem": "无法取消延后。",
       "couldNotRescheduleInboxItem": "无法重新安排。"
     },
     "inboxSnoozePopover": {
-      "title": "已延迟提醒的收件箱项目",
+      "title": "已延后的收件箱条目",
       "openInInbox": "在收件箱中打开",
-      "unsnoozeNow": "立即解除延迟提醒",
+      "unsnoozeNow": "立即取消延后",
       "reschedule": "重新安排"
     }
   },
+  "chip": {
+    "complete-task": "完成“{title}”",
+    "task-completed": "任务已完成",
+    "could-not-complete": "无法完成任务",
+    "duration-minutes": "{minutes} 分钟",
+    "duration-hours": "{hours} 小时",
+    "duration-hours-minutes": "{hours} 小时 {minutes} 分钟"
+  },
+  "event-card": {
+    "kind": "日程",
+    "close": "关闭"
+  },
   "task-popover": {
     "title-fallback": "任务详情",
+    "kind": "任务",
+    "open": "打开",
+    "complete": "完成",
+    "more-actions": "更多操作",
+    "move": "移动",
+    "later": "稍后",
+    "next-week": "下周",
     "open-task": "打开任务",
     "source-note": "来源笔记",
     "reschedule": "重新安排",
-    "mark-done": "标记为完成",
+    "mark-done": "标记为已完成",
     "mark-not-done": "标记为未完成",
     "later-today": "今天稍晚",
     "tomorrow": "明天",
@@ -143,7 +223,7 @@
     "pick-date-time": "选择日期和时间…",
     "remove-due-date": "移除截止日期",
     "subtasks-prefix": "子任务",
-    "subtasks-counter": "{done} / {total} 完成",
+    "subtasks-counter": "已完成 {done} / {total}",
     "repeats": "重复",
     "repeats-daily": "每日重复",
     "repeats-weekly": "每周重复",
@@ -156,43 +236,151 @@
       "could-not-open-note": "无法打开笔记"
     }
   },
-  "connect-prompt": {
-    "aria": "连接 Google Calendar",
-    "body": "连接你的 Google 账户，让日历发挥更多作用：",
-    "bullets": {
-      "events": "在笔记和任务旁查看 Google 事件",
-      "schedule": "在日历上安排任务和笔记",
-      "sync": "创建和编辑事件，双向同步"
-    },
-    "continue": "使用 Google 继续",
-    "dismiss": "忽略",
-    "error": "无法连接 Google Calendar。请重试。",
-    "pill": "连接 Google",
-    "title": "完成 Google Calendar 连接"
-  },
   "notePopover": {
-    "couldNotOpen": "无法打开笔记",
     "kind": "笔记",
     "kindDateReminder": "日期提醒",
-    "open": "打开笔记"
+    "open": "打开笔记",
+    "couldNotOpen": "无法打开笔记"
   },
-  "search": {
-    "close": "关闭搜索",
-    "no-results": "无匹配结果",
-    "open": "搜索日历",
-    "placeholder": "搜索事件、任务、提醒…"
+  "timeline": {
+    "label": "时间线上已安排的工作",
+    "tasks-column": "任务",
+    "span": "{start} – {end}",
+    "due": "{date} 截止",
+    "starts": "{date} 开始",
+    "starts-short": "{date} →",
+    "no-date": "无日期",
+    "today": "今天",
+    "overdue": "已逾期",
+    "untitled": "无标题",
+    "days": "{count, plural, other {# 天}}",
+    "events": "日程",
+    "schedule-hint": "点击设置日期，拖动设置时间范围",
+    "empty-title": "此处时间线上没有内容",
+    "empty-body": "设有开始日期或截止日期的任务，以及全天或跨天的日程会显示在这里。在“显示选项”中开启无日期的任务，即可拖动来安排。",
+    "status": {
+      "todo": "待办",
+      "in_progress": "进行中",
+      "done": "已完成"
+    },
+    "priority": {
+      "urgent": "紧急",
+      "high": "高",
+      "medium": "中",
+      "low": "低",
+      "none": "无优先级"
+    },
+    "zoom": {
+      "label": "缩放",
+      "weeks": "周",
+      "months": "月",
+      "quarters": "季度"
+    },
+    "group-by": {
+      "project": "项目",
+      "status": "状态",
+      "priority": "优先级",
+      "none": "不分组"
+    },
+    "group-by-label": "按{group}",
+    "order-by": {
+      "start": "开始日期",
+      "due": "截止日期",
+      "title": "标题"
+    },
+    "display": {
+      "button": "显示选项",
+      "group-by": "分组方式",
+      "order-by": "排序方式",
+      "show": "显示",
+      "show-events": "日程",
+      "show-undated": "无日期的任务",
+      "show-completed": "已完成的任务",
+      "show-subtasks": "子任务"
+    },
+    "bar": {
+      "summary": "{tasks, plural, other {# 个任务}} · {events, plural, other {# 个日程}}",
+      "open": "打开",
+      "move": "移动",
+      "resize": "调整大小",
+      "actions": "操作",
+      "select": "选择",
+      "today": "今天"
+    },
+    "actions": {
+      "search": "搜索操作…",
+      "search-projects": "搜索项目…",
+      "empty": "没有匹配的操作",
+      "no-projects": "没有匹配的项目",
+      "open": "打开任务",
+      "open-in-tasks": "在任务中打开",
+      "schedule": "安排",
+      "set-start": "设置开始日期",
+      "set-due": "设置截止日期",
+      "move-later": "推迟一周",
+      "move-earlier": "提前一周",
+      "clear-dates": "清除日期",
+      "clear-start": "清除开始日期",
+      "clear-due": "清除截止日期",
+      "task": "任务",
+      "complete": "标记为已完成",
+      "uncomplete": "标记为未完成",
+      "change-project": "更改项目",
+      "page": {
+        "root": "操作",
+        "start": "开始日期",
+        "due": "截止日期",
+        "project": "项目"
+      }
+    },
+    "undo": {
+      "reschedule": "重新安排“{title}”"
+    }
   },
-  "undo": {
-    "moveEvent": "移动事件",
-    "moveTask": "重新安排任务"
+  "calendar-color": {
+    "tomato": "番茄红",
+    "flamingo": "火烈鸟粉",
+    "tangerine": "橘黄",
+    "banana": "香蕉黄",
+    "sage": "鼠尾草绿",
+    "basil": "罗勒绿",
+    "peacock": "孔雀蓝",
+    "blueberry": "蓝莓蓝",
+    "lavender": "薰衣草紫",
+    "grape": "葡萄紫",
+    "graphite": "石墨灰"
   },
-  "agent-access-dialog": {
-    "allow": "允许",
-    "aria": "选择是否允许 AI 读取你的 Google Calendar 事件",
-    "body": "无论你怎么选，你都会继续在 memrynote 中看到你的 Google 事件。这里只决定当你向 AI 助手询问日程时，它能否读取这些事件。",
-    "deny": "不允许",
-    "footnote": "你可以随时在设置 → 集成 → Google Calendar 中更改此设置。",
-    "save-error": "保存你的选择失败",
-    "title": "允许 AI 读取你的 Google Calendar 事件吗？"
+  "subscribedEvent": {
+    "kind": "已订阅的日历",
+    "kindAppleEventKit": "此 Mac",
+    "close": "关闭",
+    "detailsFailed": "无法加载此日程的与会者和链接。日程本身未受影响。",
+    "showMore": "显示更多",
+    "showLess": "收起",
+    "organizer": "组织者",
+    "you": "你",
+    "phone": "通过电话加入",
+    "alert": "{minutes, plural, =0 {开始时提醒} other {提前 # 分钟提醒}}",
+    "alertHours": "{hours, plural, other {提前 # 小时提醒}}",
+    "alertDays": "{days, plural, other {提前 # 天提醒}}",
+    "recurrence": {
+      "daily": "{count, plural, =1 {每天重复} other {每 # 天重复}}",
+      "weekly": "{count, plural, =1 {每周重复} other {每 # 周重复}}",
+      "weeklyOn": "{count, plural, =1 {每周的{days}重复} other {每 # 周的{days}重复}}",
+      "monthly": "{count, plural, =1 {每月重复} other {每 # 个月重复}}",
+      "yearly": "{count, plural, =1 {每年重复} other {每 # 年重复}}",
+      "other": "重复"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google 日历"
+    },
+    "ics": {
+      "name": "已订阅的日历"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

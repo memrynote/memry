@@ -3,19 +3,19 @@
     "quit": "Stoppen",
     "preferences": "Instellingen…",
     "checkForUpdates": "Zoeken naar updates…",
-    "exit": "Afsluiten",
-    "hide": "Verberg MemryNote",
-    "hideOthers": "Verberg andere",
-    "services": "Diensten",
-    "unhide": "Toon alles"
+    "services": "Voorzieningen",
+    "hide": "MemryNote verbergen",
+    "hideOthers": "Andere verbergen",
+    "unhide": "Alles tonen",
+    "exit": "Afsluiten"
   },
   "file": {
     "label": "Bestand",
     "newNote": "Nieuwe notitie",
-    "close": "Sluit venster",
-    "closeTab": "Tabblad sluiten",
+    "openQuickly": "Snel openen…",
     "exportPdf": "Exporteren naar PDF…",
-    "openQuickly": "Snel openen…"
+    "closeTab": "Tabblad sluiten",
+    "close": "Venster sluiten"
   },
   "navigation": {
     "back": "Terug",
@@ -26,68 +26,73 @@
     "undo": "Ongedaan maken",
     "redo": "Opnieuw uitvoeren",
     "cut": "Knippen",
-    "copy": "Kopieer",
+    "copy": "Kopiëren",
     "paste": "Plakken",
     "selectAll": "Alles selecteren",
     "find": "Zoeken",
     "speech": "Spraak",
-    "delete": "Verwijder",
-    "pasteAndMatchStyle": "Plak en pas stijl aan",
-    "startSpeaking": "Start voorlezen",
-    "stopSpeaking": "Stop voorlezen"
+    "pasteAndMatchStyle": "Plakken en stijl aanpassen",
+    "delete": "Verwijderen",
+    "startSpeaking": "Voorlezen starten",
+    "stopSpeaking": "Voorlezen stoppen",
+    "addToDictionary": "Toevoegen aan woordenlijst",
+    "noSuggestions": "Geen suggesties"
   },
-  "view": {
-    "label": "Weergave",
-    "reload": "Herladen",
-    "toggleDevTools": "Ontwikkelaarstools in-/uitschakelen",
-    "toggleFullscreen": "Volledig scherm in-/uitschakelen",
-    "theme": "Thema",
-    "themeDark": "Donker",
-    "themeLight": "Licht",
-    "themeSystem": "Systeem",
-    "themeWhite": "Papier",
-    "toggleDayPanel": "Dagpaneel in-/uitschakelen",
-    "toggleSidebar": "Zijbalk in-/uitschakelen",
-    "actualSize": "Werkelijke grootte",
-    "zoomIn": "Zoom in",
-    "zoomOut": "Zoom uit"
+  "insert": {
+    "label": "Invoegen",
+    "codeBlock": "Codeblok",
+    "table": "Tabel",
+    "bulletList": "Opsommingslijst",
+    "numberedList": "Genummerde lijst",
+    "taskList": "Takenlijst",
+    "attachment": "Bijlage invoegen…"
   },
   "format": {
-    "body": "Hoofdtekst",
-    "bold": "Vet",
-    "code": "Code",
+    "label": "Opmaak",
     "heading1": "Kop 1",
     "heading2": "Kop 2",
     "heading3": "Kop 3",
     "heading4": "Kop 4",
     "heading5": "Kop 5",
     "heading6": "Kop 6",
-    "highlight": "Markeren",
+    "body": "Hoofdtekst",
+    "bold": "Vet",
     "italic": "Cursief",
-    "label": "Opmaak",
+    "code": "Code",
+    "highlight": "Markeren",
     "strikethrough": "Doorhalen"
   },
-  "help": {
-    "about": "Over MemryNote",
-    "documentation": "Documentatie",
-    "label": "Help",
-    "shortcuts": "Sneltoetsen",
-    "aboutVersion": "Versie {version}"
-  },
-  "insert": {
-    "attachment": "Bijlage invoegen…",
-    "bulletList": "Opsommingslijst",
-    "codeBlock": "Codeblok",
-    "label": "Invoegen",
-    "numberedList": "Genummerde lijst",
-    "table": "Tabel",
-    "taskList": "Takenlijst"
+  "view": {
+    "label": "Weergave",
+    "reload": "Herladen",
+    "toggleDevTools": "Ontwikkelaarstools tonen/verbergen",
+    "toggleFullscreen": "Volledig scherm in-/uitschakelen",
+    "toggleSidebar": "Zijbalk tonen/verbergen",
+    "toggleDayPanel": "Dagpaneel tonen/verbergen",
+    "theme": "Thema",
+    "themeLight": "Licht",
+    "themeDark": "Donker",
+    "themeWhite": "Papier",
+    "themeSystem": "Systeem",
+    "actualSize": "Werkelijke grootte",
+    "zoomIn": "Inzoomen",
+    "zoomOut": "Uitzoomen"
   },
   "window": {
     "label": "Venster",
-    "close": "Sluiten",
-    "front": "Breng alles naar voren",
-    "minimize": "Minimaliseer",
-    "zoom": "Zoom"
+    "minimize": "Minimaliseren",
+    "zoom": "Zoomen",
+    "front": "Alles naar voren halen",
+    "close": "Sluiten"
+  },
+  "help": {
+    "label": "Help",
+    "documentation": "Documentatie",
+    "shortcuts": "Sneltoetsen",
+    "about": "Over MemryNote",
+    "aboutVersion": "Versie {version}"
+  },
+  "tray": {
+    "show": "MemryNote tonen"
   }
 }

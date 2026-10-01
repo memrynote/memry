@@ -1,16 +1,16 @@
 {
   "dialog": {
     "vault": {
-      "title": "حدد مجلد Vault",
-      "button": "حدد قبو"
+      "title": "اختيار مجلد الخزنة",
+      "button": "اختيار الخزنة"
     },
     "exportPdf": {
-      "title": "تصدير بصيغة PDF",
-      "filterName": "وثيقة PDF"
+      "title": "تصدير بتنسيق PDF",
+      "filterName": "مستند PDF"
     },
     "exportHtml": {
       "title": "تصدير بتنسيق HTML",
-      "filterName": "وثيقة HTML"
+      "filterName": "مستند HTML"
     },
     "import": {
       "filterSupported": "الملفات المدعومة",
@@ -18,54 +18,55 @@
     },
     "exportCancelled": "تم إلغاء التصدير",
     "update": {
-      "availableTitle": "التحديث متاح",
-      "availableMessage": "memrynote {version} متاح.",
-      "availableDetailFallback": "تنزيل التحديث الآن؟",
-      "buttonDownload": "تحميل",
-      "buttonLater": "في وقت لاحق",
+      "availableTitle": "يتوفر تحديث",
+      "availableMessage": "يتوفر memrynote {version}.",
+      "availableDetailFallback": "هل تريد تنزيل التحديث الآن؟",
+      "buttonDownload": "تنزيل",
+      "buttonLater": "لاحقًا",
       "readyTitle": "التحديث جاهز",
       "readyMessage": "تم تنزيل memrynote {version}.",
       "readyDetailFallback": "أعد تشغيل memrynote لإنهاء تثبيت التحديث.",
-      "buttonRestartNow": "أعد التشغيل الآن",
+      "buttonRestartNow": "إعادة التشغيل الآن",
       "releaseNotesLabel": "ملاحظات الإصدار:"
     },
     "pair": {
+      "title": "إقران ملحق المتصفح",
+      "message": "هل تسمح لملحق متصفح Memry بإرسال العناصر الملتقطة إلى هذا التطبيق؟",
       "buttonAllow": "السماح",
       "buttonDeny": "رفض",
-      "buttonPair": "إقران",
-      "message": "هل تسمح لملحق متصفح Memry بإرسال الالتقاطات إلى هذا التطبيق؟",
-      "title": "إقران ملحق المتصفح"
+      "buttonPair": "إقران"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "ملاحظة تذكير",
-      "journal": "تذكير بالمجلة",
-      "highlight": "تسليط الضوء على التذكير",
-      "fallback": "تذكير واجب",
-      "default": "تذكير",
-      "task": "تذكير بمهمة"
-    },
     "inboxReview": {
-      "body": "لديك {count, plural, zero {# عنصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصراً} other {# عنصر}} للمراجعة.",
-      "testBody": "هذا اختبار — هكذا ستبدو تذكيرات المراجعة اليومية.",
-      "title": "حان وقت مراجعة بريدك الوارد"
+      "title": "حان وقت مراجعة صندوق الوارد",
+      "body": "لديك {count, plural, zero {# عنصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}} للمراجعة.",
+      "testBody": "هذا اختبار — هكذا ستبدو تذكيرات المراجعة اليومية."
+    },
+    "reminder": {
+      "note": "تذكير بملاحظة",
+      "journal": "تذكير باليوميات",
+      "highlight": "تذكير بنص مميَّز",
+      "task": "تذكير بمهمة",
+      "fallback": "حان موعد التذكير",
+      "default": "تذكير"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "يجب أن يكون وقت التذكير في المستقبل",
     "definitionNotFound": "لم يتم العثور على التعريف",
-    "noteNotFound": "لم يتم العثور على ملاحظة",
-    "updateFailed": "فشل التحديث"
+    "noteNotFound": "لم يتم العثور على الملاحظة",
+    "updateFailed": "فشل التحديث",
+    "updateReadOnlyVolume": "لا يمكن تثبيت التحديثات أثناء تشغيل memrynote من هذا الموقع. انقل memrynote إلى مجلد التطبيقات وافتحه مرة أخرى."
   },
   "startup": {
-    "failed": {
-      "body": "قد يحدث هذا عندما تكون المساحة الحرة على القرص منخفضة جدًا، أو مع برامج تشغيل رسومات قديمة. حاول تحرير بعض المساحة على القرص، ثم أعد فتح MemryNote. وإذا استمر الأمر، فإن إعادة التثبيت تحل المشكلة عادةً.",
-      "title": "تعذّر على MemryNote إكمال بدء التشغيل"
-    },
     "installingUpdate": {
-      "subtitle": "سيُعاد فتح MemryNote تلقائيًا.",
-      "title": "جارٍ تثبيت التحديث…"
+      "title": "جارٍ تثبيت التحديث…",
+      "subtitle": "سيُعاد فتح MemryNote تلقائيًا."
+    },
+    "failed": {
+      "title": "تعذّر على MemryNote إكمال بدء التشغيل",
+      "body": "قد يحدث هذا عندما تكون المساحة الحرة على القرص منخفضة جدًا، أو مع برامج تشغيل رسومات قديمة. حاول تحرير بعض المساحة على القرص، ثم أعد فتح MemryNote. وإذا استمر الأمر، فإن إعادة التثبيت تحل المشكلة عادةً."
     }
   }
 }

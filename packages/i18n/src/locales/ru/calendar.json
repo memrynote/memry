@@ -1,35 +1,55 @@
 {
   "view": {
     "day": "День",
-    "week": "неделя",
+    "week": "Неделя",
     "month": "Месяц",
-    "year": "Год"
+    "monthGridLabel": "Сетка месяца",
+    "year": "Год",
+    "timeline": "Хронология"
+  },
+  "undo": {
+    "moveEvent": "Переместить событие",
+    "moveTask": "Перенести задачу"
   },
   "toolbar": {
     "create-event": "Создать событие",
     "previous-period": "Предыдущий период",
     "next-period": "Следующий период",
     "previous-month": "Предыдущий месяц",
-    "next-month": "В следующем месяце",
+    "next-month": "Следующий месяц",
     "today": "Сегодня"
+  },
+  "search": {
+    "open": "Поиск по календарю",
+    "close": "Закрыть поиск",
+    "placeholder": "Поиск событий, задач, напоминаний…",
+    "no-results": "Совпадений нет"
   },
   "filter": {
     "filter-calendars": "Фильтровать календари",
     "sources": "Источники",
-    "memry-items": "memrynote элементов",
+    "memry-items": "Элементы memrynote",
     "imported-calendars": "Импортированные календари",
     "event-types": "Типы событий",
-    "google-calendars": "Google календари",
-    "refresh-google-calendars": "Обновите календари Google."
+    "google-calendars": "Календари Google",
+    "refresh-google-calendars": "Обновить календари Google",
+    "not-syncing": "Не синхронизируется · отметьте, чтобы включить",
+    "enable-source-failed": "Не удалось включить этот календарь.",
+    "provider-calendars": {
+      "ics": "Календари по подписке",
+      "caldav": "Календари CalDAV",
+      "apple-eventkit": "Этот Mac",
+      "other": "Другие календари"
+    }
   },
   "visual-type": {
     "event": "Событие",
     "imported-event": "Импортированное событие",
+    "note": "Заметка",
+    "note-date": "Напоминание о дате",
     "task": "Задача",
     "reminder": "Напоминание",
-    "snooze": "Отложить",
-    "note": "Заметка",
-    "note-date": "Напоминание о дате"
+    "snooze": "Отложенные"
   },
   "state": {
     "loading-calendar": "Загрузка календаря…",
@@ -45,46 +65,86 @@
     "all-day-lower": "весь день",
     "pick-a-date": "Выберите дату",
     "new-event": "Новое событие",
-    "more-events": "{count, plural, one {# еще событие} other {# больше событий}}"
+    "more-events": "{count, plural, one {Ещё # событие} few {Ещё # события} many {Ещё # событий} other {Ещё # события}}"
   },
   "form": {
     "create-calendar-event": "Создать событие календаря",
     "edit-calendar-event": "Изменить событие календаря",
-    "quick-create-description": "Введите название и сохраните его, чтобы создать событие в выбранном временном диапазоне.",
-    "event-editor-description": "Обновите название, место, дату, время и примечания для этого события.",
+    "quick-create-description": "Введите название и сохраните, чтобы создать событие в выбранном интервале.",
+    "event-editor-description": "Измените название, место, дату, время и заметки к событию.",
     "new-event-placeholder": "Новое событие",
     "notes-url-placeholder": "Добавить заметки или URL",
-    "start": "Старт",
+    "start": "Начало",
     "end": "Конец",
-    "google-calendar": "Google календарь",
+    "google-calendar": "Календарь Google",
     "target-calendar": "Целевой календарь",
     "use-default-calendar": "Использовать календарь по умолчанию",
     "use-default-calendar-with-name": "Использовать по умолчанию ({calendar})",
     "use-memry-calendar-default": "Использовать календарь memrynote (по умолчанию)",
-    "primary-suffix": "первичный"
+    "primary-suffix": "основной",
+    "project": "Проект",
+    "no-project": "Без проекта",
+    "remove-from-project": "Убрать из проекта «{project}»",
+    "project-update-failed": "Не удалось изменить проект события",
+    "color": "Цвет",
+    "default-color": "Цвет по умолчанию"
   },
   "delete-dialog": {
-    "title": "Удалить мероприятие?",
-    "local-description": "«{title}» будет удален без возможности восстановления. Это действие невозможно отменить.",
-    "google-bound-description": "«{title}» будет удален из memrynote и Календаря Google. Это действие невозможно отменить.",
-    "context-menu-delete-label": "Удалить мероприятие",
+    "title": "Удалить событие?",
+    "local-description": "Событие «{title}» будет удалено без возможности восстановления. Это действие нельзя отменить.",
+    "google-bound-description": "Событие «{title}» будет удалено из memrynote и Google Calendar. Это действие нельзя отменить.",
+    "context-menu-delete-label": "Удалить событие",
     "context-menu-add-to-project": "Добавить в проект"
+  },
+  "agent-access-dialog": {
+    "aria": "Выберите, может ли ИИ читать ваши события из Google Calendar",
+    "title": "Разрешить ИИ читать ваши события из Google Calendar?",
+    "body": "Вы в любом случае будете видеть свои события Google в memrynote. Здесь решается только то, сможет ли ИИ-агент читать их, когда вы спросите его о своём расписании.",
+    "footnote": "Это можно изменить в любой момент в разделе «Настройки» → «Интеграции» → «Google Calendar».",
+    "allow": "Разрешить",
+    "deny": "Запретить",
+    "save-error": "Не удалось сохранить ваш выбор",
+    "provider": {
+      "aria": "Выберите, может ли ИИ читать события из источника «{provider}»",
+      "title": "Разрешить ИИ читать события из источника «{provider}»?",
+      "body": "Эти события в любом случае останутся видны в memrynote. Здесь решается только то, сможет ли ИИ-агент читать их, когда вы спросите его о своём расписании. Для каждого календарного сервиса выбор делается отдельно.",
+      "footnote": "Это можно изменить в любой момент в разделе «Настройки» → «Календарь»."
+    },
+    "provider-names": {
+      "ics": "календарь по подписке",
+      "caldav": "календарь CalDAV",
+      "apple-eventkit": "Календарь macOS"
+    }
   },
   "promote-dialog": {
     "aria": "Изменить событие внешнего календаря",
     "title": "Изменить это событие в memrynote?",
-    "body": "При редактировании этого события будет создана связанная копия в memrynote, поэтому изменения синхронизируются в обоих направлениях. Продолжить?",
-    "do-not-ask-again": "Не спрашивай больше",
-    "confirm-label": "Редактировать в memrynote",
+    "body": "Чтобы изменить это событие, в memrynote будет создана связанная копия, и изменения будут синхронизироваться в обе стороны. Продолжить?",
+    "do-not-ask-again": "Больше не спрашивать",
+    "confirm-label": "Изменить в memrynote",
     "agent-notice": "ИИ-агент может читать эту копию, даже если доступ ИИ к Google Calendar выключен. Ваше исходное событие Google остаётся скрытым от него."
   },
   "onboarding-dialog": {
-    "aria": "Выберите календарь Google по умолчанию.",
-    "title": "В какой календарь следует помещать новые события memrynote?",
-    "body": "Выберите календарь Google, который memrynote должен использовать по умолчанию. Вы все равно можете переопределить его для каждого события.",
-    "default-calendar-label": "Используйте календарь, управляемый memrynote.",
+    "aria": "Выбор календаря Google по умолчанию",
+    "title": "В какой календарь добавлять новые события memrynote?",
+    "body": "Выберите календарь Google, который memrynote будет использовать по умолчанию. Для отдельных событий его можно изменить.",
+    "default-calendar-label": "Использовать календарь, которым управляет memrynote",
     "skip": "Пропустить",
-    "use-this-calendar": "Используйте этот календарь"
+    "use-this-calendar": "Использовать этот календарь"
+  },
+  "connect-prompt": {
+    "pill": "Подключить Google",
+    "aria": "Подключить Google Calendar",
+    "title": "Завершите подключение к Google Calendar",
+    "body": "Подключите аккаунт Google, чтобы расширить возможности календаря:",
+    "bullets": {
+      "events": "Видеть события Google рядом с заметками и задачами",
+      "sync": "Создавать и изменять события с синхронизацией в обе стороны",
+      "schedule": "Планировать задачи и заметки в календаре"
+    },
+    "continue": "Продолжить с Google",
+    "dismiss": "Закрыть",
+    "error": "Не удалось подключить Google Calendar. Попробуйте ещё раз."
   },
   "metadata": {
     "attendees": "Участники",
@@ -94,16 +154,17 @@
     "visibility": "Видимость:",
     "optional": "Необязательно",
     "join-meeting": "Присоединиться к встрече",
+    "video-call": "Видеозвонок",
     "response": {
       "accepted": "Принято",
       "declined": "Отклонено",
-      "tentative": "Предварительный",
-      "needs-action": "Ожидается"
+      "tentative": "Возможно",
+      "needs-action": "Ожидает ответа"
     },
     "visibility-value": {
-      "private": "Частный",
-      "public": "Общественный",
-      "confidential": "Конфиденциально"
+      "private": "Закрытое",
+      "public": "Общедоступное",
+      "confidential": "Конфиденциальное"
     }
   },
   "phaseF": {
@@ -113,38 +174,57 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "Не удалось сохранить мероприятие. Попробуйте еще раз.",
-      "couldNotCreateEventTryAgain": "Не удалось создать мероприятие. Попробуйте еще раз.",
-      "couldNotSaveDefaultCalendarTryAgain": "Не удалось сохранить календарь по умолчанию. Попробуйте еще раз.",
-      "failedToLoadCalendarPreferences": "Не удалось загрузить настройки календаря.",
-      "failedToUpdateCalendarPreferences": "Не удалось обновить настройки календаря.",
-      "couldNotEditThisEventTryAgain": "Не удалось изменить это мероприятие. Попробуйте еще раз.",
-      "failedToDeleteEvent": "Не удалось удалить мероприятие",
-      "couldNotUnsnoozeInboxItem": "Не удалось отложить.",
-      "couldNotRescheduleInboxItem": "Не удалось перенести встречу."
+      "couldNotSaveEventTryAgain": "Не удалось сохранить событие. Попробуйте ещё раз.",
+      "couldNotCreateEventTryAgain": "Не удалось создать событие. Попробуйте ещё раз.",
+      "couldNotSaveDefaultCalendarTryAgain": "Не удалось сохранить календарь по умолчанию. Попробуйте ещё раз.",
+      "failedToLoadCalendarPreferences": "Не удалось загрузить настройки календаря",
+      "failedToUpdateCalendarPreferences": "Не удалось обновить настройки календаря",
+      "couldNotEditThisEventTryAgain": "Не удалось изменить это событие. Попробуйте ещё раз.",
+      "failedToDeleteEvent": "Не удалось удалить событие",
+      "couldNotUnsnoozeInboxItem": "Не удалось вернуть элемент во входящие.",
+      "couldNotRescheduleInboxItem": "Не удалось перенести."
     },
     "inboxSnoozePopover": {
-      "title": "Отложенный элемент входящих сообщений",
+      "title": "Отложенный элемент во входящих",
       "openInInbox": "Открыть во входящих",
-      "unsnoozeNow": "Отменить откладывание сейчас",
+      "unsnoozeNow": "Вернуть сейчас",
       "reschedule": "Перенести"
     }
   },
+  "chip": {
+    "complete-task": "Выполнить «{title}»",
+    "task-completed": "Задача выполнена",
+    "could-not-complete": "Не удалось отметить задачу как выполненную",
+    "duration-minutes": "{minutes} мин",
+    "duration-hours": "{hours} ч",
+    "duration-hours-minutes": "{hours} ч {minutes} мин"
+  },
+  "event-card": {
+    "kind": "Событие",
+    "close": "Закрыть"
+  },
   "task-popover": {
     "title-fallback": "Подробности задачи",
+    "kind": "Задача",
+    "open": "Открыть",
+    "complete": "Выполнить",
+    "more-actions": "Другие действия",
+    "move": "Перенести",
+    "later": "Позже",
+    "next-week": "Следующая неделя",
     "open-task": "Открыть задачу",
-    "source-note": "Исходное примечание",
+    "source-note": "Исходная заметка",
     "reschedule": "Перенести",
-    "mark-done": "Отметить готово",
-    "mark-not-done": "Отметить как не выполнено",
+    "mark-done": "Отметить как выполненную",
+    "mark-not-done": "Отметить как невыполненную",
     "later-today": "Позже сегодня",
     "tomorrow": "Завтра",
     "next-week-mon": "На следующей неделе · Пн",
-    "pick-date-time": "Выберите дату и время…",
-    "remove-due-date": "Удалить срок выполнения",
+    "pick-date-time": "Выбрать дату и время…",
+    "remove-due-date": "Убрать срок",
     "subtasks-prefix": "Подзадачи",
     "subtasks-counter": "{done} из {total} выполнено",
-    "repeats": "Повторы",
+    "repeats": "Повтор",
     "repeats-daily": "Повторяется ежедневно",
     "repeats-weekly": "Повторяется еженедельно",
     "repeats-monthly": "Повторяется ежемесячно",
@@ -152,47 +232,155 @@
     "errors": {
       "could-not-save": "Не удалось сохранить задачу",
       "could-not-reschedule": "Не удалось перенести задачу",
-      "could-not-remove-due-date": "Не удалось удалить дату сдачи.",
+      "could-not-remove-due-date": "Не удалось убрать срок",
       "could-not-open-note": "Не удалось открыть заметку"
     }
   },
-  "connect-prompt": {
-    "aria": "Подключить Google Calendar",
-    "body": "Подключите аккаунт Google, чтобы делать больше с календарём:",
-    "bullets": {
-      "events": "Видеть события Google рядом с заметками и задачами",
-      "schedule": "Планировать задачи и заметки в календаре",
-      "sync": "Создавать и изменять события с синхронизацией в обе стороны"
-    },
-    "continue": "Продолжить с Google",
-    "dismiss": "Закрыть",
-    "error": "Не удалось подключить Google Calendar. Попробуйте снова.",
-    "pill": "Подключить Google",
-    "title": "Завершите подключение к Google Calendar"
-  },
   "notePopover": {
-    "couldNotOpen": "Не удалось открыть заметку",
     "kind": "Заметка",
     "kindDateReminder": "Напоминание о дате",
-    "open": "Открыть заметку"
+    "open": "Открыть заметку",
+    "couldNotOpen": "Не удалось открыть заметку"
   },
-  "search": {
-    "close": "Закрыть поиск",
-    "no-results": "Совпадений нет",
-    "open": "Поиск по календарю",
-    "placeholder": "Поиск событий, задач, напоминаний…"
+  "timeline": {
+    "label": "Хронология запланированных задач и событий",
+    "tasks-column": "Задачи",
+    "span": "{start} – {end}",
+    "due": "Срок: {date}",
+    "starts": "Начало: {date}",
+    "starts-short": "{date} →",
+    "no-date": "Без даты",
+    "today": "Сегодня",
+    "overdue": "просрочено",
+    "untitled": "Без названия",
+    "days": "{count, plural, one {# день} few {# дня} many {# дней} other {# дня}}",
+    "events": "События",
+    "schedule-hint": "Нажмите, чтобы указать дату, или перетащите, чтобы задать период",
+    "empty-title": "На хронологии здесь ничего нет",
+    "empty-body": "Здесь появляются задачи с датой начала или сроком, а также события на весь день и многодневные события. Включите задачи без дат в меню «Отображение», чтобы планировать их перетаскиванием.",
+    "status": {
+      "todo": "К выполнению",
+      "in_progress": "В работе",
+      "done": "Готово"
+    },
+    "priority": {
+      "urgent": "Срочный",
+      "high": "Высокий",
+      "medium": "Средний",
+      "low": "Низкий",
+      "none": "Без приоритета"
+    },
+    "zoom": {
+      "label": "Масштаб",
+      "weeks": "Недели",
+      "months": "Месяцы",
+      "quarters": "Кварталы"
+    },
+    "group-by": {
+      "project": "Проект",
+      "status": "Статус",
+      "priority": "Приоритет",
+      "none": "Без группировки"
+    },
+    "group-by-label": "Группировка: {group}",
+    "order-by": {
+      "start": "Дата начала",
+      "due": "Срок",
+      "title": "Название"
+    },
+    "display": {
+      "button": "Отображение",
+      "group-by": "Группировать по",
+      "order-by": "Сортировать по",
+      "show": "Показывать",
+      "show-events": "События",
+      "show-undated": "Задачи без дат",
+      "show-completed": "Выполненные задачи",
+      "show-subtasks": "Подзадачи"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# задача} few {# задачи} many {# задач} other {# задачи}} · {events, plural, one {# событие} few {# события} many {# событий} other {# события}}",
+      "open": "Открыть",
+      "move": "Переместить",
+      "resize": "Изменить длительность",
+      "actions": "Действия",
+      "select": "Выбрать",
+      "today": "Сегодня"
+    },
+    "actions": {
+      "search": "Поиск действий…",
+      "search-projects": "Поиск проектов…",
+      "empty": "Нет подходящих действий",
+      "no-projects": "Нет подходящих проектов",
+      "open": "Открыть задачу",
+      "open-in-tasks": "Открыть в разделе «Задачи»",
+      "schedule": "Планирование",
+      "set-start": "Установить дату начала",
+      "set-due": "Установить срок",
+      "move-later": "Перенести на неделю позже",
+      "move-earlier": "Перенести на неделю раньше",
+      "clear-dates": "Убрать даты",
+      "clear-start": "Убрать дату начала",
+      "clear-due": "Убрать срок",
+      "task": "Задача",
+      "complete": "Отметить как выполненную",
+      "uncomplete": "Отметить как невыполненную",
+      "change-project": "Изменить проект",
+      "page": {
+        "root": "Действия",
+        "start": "Дата начала",
+        "due": "Срок",
+        "project": "Проект"
+      }
+    },
+    "undo": {
+      "reschedule": "Перенести «{title}»"
+    }
   },
-  "undo": {
-    "moveEvent": "Переместить событие",
-    "moveTask": "Перенести задачу"
+  "calendar-color": {
+    "tomato": "Томат",
+    "flamingo": "Фламинго",
+    "tangerine": "Мандарин",
+    "banana": "Банан",
+    "sage": "Шалфей",
+    "basil": "Базилик",
+    "peacock": "Павлин",
+    "blueberry": "Черника",
+    "lavender": "Лаванда",
+    "grape": "Виноград",
+    "graphite": "Графит"
   },
-  "agent-access-dialog": {
-    "allow": "Разрешить",
-    "aria": "Выберите, может ли ИИ читать ваши события из Google Calendar",
-    "body": "Вы в любом случае будете видеть свои события Google в memrynote. Здесь решается только то, сможет ли ИИ-агент читать их, когда вы спросите его о своём расписании.",
-    "deny": "Запретить",
-    "footnote": "Это можно изменить в любой момент в разделе «Настройки» → «Интеграции» → «Google Calendar».",
-    "save-error": "Не удалось сохранить ваш выбор",
-    "title": "Разрешить ИИ читать ваши события из Google Calendar?"
+  "subscribedEvent": {
+    "kind": "Календарь по подписке",
+    "kindAppleEventKit": "Этот Mac",
+    "close": "Закрыть",
+    "detailsFailed": "Не удалось загрузить участников и ссылки этого события. Само событие не изменилось.",
+    "showMore": "Показать больше",
+    "showLess": "Показать меньше",
+    "organizer": "организатор",
+    "you": "вы",
+    "phone": "Присоединиться по телефону",
+    "alert": "{minutes, plural, =0 {Уведомление в момент начала} one {Уведомление за # минуту} few {Уведомление за # минуты} many {Уведомление за # минут} other {Уведомление за # минуты}}",
+    "alertHours": "{hours, plural, one {Уведомление за # час} few {Уведомление за # часа} many {Уведомление за # часов} other {Уведомление за # часа}}",
+    "alertDays": "{days, plural, one {Уведомление за # день} few {Уведомление за # дня} many {Уведомление за # дней} other {Уведомление за # дня}}",
+    "recurrence": {
+      "daily": "{count, plural, =1 {Повторяется каждый день} one {Повторяется каждый # день} few {Повторяется каждые # дня} many {Повторяется каждые # дней} other {Повторяется каждые # дня}}",
+      "weekly": "{count, plural, =1 {Повторяется каждую неделю} one {Повторяется каждую # неделю} few {Повторяется каждые # недели} many {Повторяется каждые # недель} other {Повторяется каждые # недели}}",
+      "weeklyOn": "{count, plural, =1 {Повторяется каждую неделю: {days}} one {Повторяется каждую # неделю: {days}} few {Повторяется каждые # недели: {days}} many {Повторяется каждые # недель: {days}} other {Повторяется каждые # недели: {days}}}",
+      "monthly": "{count, plural, =1 {Повторяется каждый месяц} one {Повторяется каждый # месяц} few {Повторяется каждые # месяца} many {Повторяется каждые # месяцев} other {Повторяется каждые # месяца}}",
+      "yearly": "{count, plural, =1 {Повторяется каждый год} one {Повторяется каждый # год} few {Повторяется каждые # года} many {Повторяется каждые # лет} other {Повторяется каждые # года}}",
+      "other": "Повторяется"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Календари по подписке"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

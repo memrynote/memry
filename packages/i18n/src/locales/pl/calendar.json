@@ -3,7 +3,13 @@
     "day": "Dzień",
     "week": "Tydzień",
     "month": "Miesiąc",
-    "year": "Rok"
+    "monthGridLabel": "Siatka miesiąca",
+    "year": "Rok",
+    "timeline": "Oś czasu"
+  },
+  "undo": {
+    "moveEvent": "Przenieś wydarzenie",
+    "moveTask": "Zmień termin zadania"
   },
   "toolbar": {
     "create-event": "Utwórz wydarzenie",
@@ -13,6 +19,12 @@
     "next-month": "Następny miesiąc",
     "today": "Dzisiaj"
   },
+  "search": {
+    "open": "Szukaj w kalendarzu",
+    "close": "Zamknij wyszukiwanie",
+    "placeholder": "Szukaj wydarzeń, zadań, przypomnień…",
+    "no-results": "Brak dopasowań"
+  },
   "filter": {
     "filter-calendars": "Filtruj kalendarze",
     "sources": "Źródła",
@@ -20,21 +32,29 @@
     "imported-calendars": "Importowane kalendarze",
     "event-types": "Typy wydarzeń",
     "google-calendars": "Kalendarze Google",
-    "refresh-google-calendars": "Odśwież kalendarze Google"
+    "refresh-google-calendars": "Odśwież kalendarze Google",
+    "not-syncing": "Bez synchronizacji · zaznacz, aby włączyć",
+    "enable-source-failed": "Nie udało się włączyć tego kalendarza.",
+    "provider-calendars": {
+      "ics": "Subskrybowane kalendarze",
+      "caldav": "Kalendarze CalDAV",
+      "apple-eventkit": "Ten Mac",
+      "other": "Inne kalendarze"
+    }
   },
   "visual-type": {
     "event": "Wydarzenie",
     "imported-event": "Zaimportowane wydarzenie",
+    "note": "Notatka",
+    "note-date": "Przypomnienie o dacie",
     "task": "Zadanie",
     "reminder": "Przypomnienie",
-    "snooze": "Odłóż",
-    "note": "Notatka",
-    "note-date": "Przypomnienie o dacie"
+    "snooze": "Odłożone"
   },
   "state": {
     "loading-calendar": "Ładowanie kalendarza…",
     "loading-calendars": "Ładowanie kalendarzy…",
-    "preparing": "Przygotowanie…"
+    "preparing": "Przygotowywanie…"
   },
   "empty": {
     "no-imported-calendars-yet": "Nie zaimportowano jeszcze żadnych kalendarzy.",
@@ -45,7 +65,7 @@
     "all-day-lower": "cały dzień",
     "pick-a-date": "Wybierz datę",
     "new-event": "Nowe wydarzenie",
-    "more-events": "{count, plural, one {# więcej wydarzeń} other {# więcej wydarzeń}}"
+    "more-events": "{count, plural, one {Jeszcze # wydarzenie} few {Jeszcze # wydarzenia} many {Jeszcze # wydarzeń} other {Jeszcze # wydarzenia}}"
   },
   "form": {
     "create-calendar-event": "Utwórz wydarzenie w kalendarzu",
@@ -54,37 +74,77 @@
     "event-editor-description": "Zaktualizuj tytuł, lokalizację, datę, godzinę i notatki dotyczące tego wydarzenia.",
     "new-event-placeholder": "Nowe wydarzenie",
     "notes-url-placeholder": "Dodaj notatki lub adres URL",
-    "start": "Zacznij",
+    "start": "Początek",
     "end": "Koniec",
     "google-calendar": "Kalendarz Google",
     "target-calendar": "Kalendarz docelowy",
     "use-default-calendar": "Użyj domyślnego kalendarza",
     "use-default-calendar-with-name": "Użyj domyślnego ({calendar})",
     "use-memry-calendar-default": "Użyj kalendarza memrynote (domyślnie)",
-    "primary-suffix": "podstawowy"
+    "primary-suffix": "podstawowy",
+    "project": "Projekt",
+    "no-project": "Bez projektu",
+    "remove-from-project": "Usuń z projektu „{project}”",
+    "project-update-failed": "Nie udało się zaktualizować projektu wydarzenia",
+    "color": "Kolor",
+    "default-color": "Kolor domyślny"
   },
   "delete-dialog": {
     "title": "Usunąć wydarzenie?",
-    "local-description": "„{title}” zostanie trwale usunięty. Tej akcji nie można cofnąć.",
-    "google-bound-description": "„{title}” zostanie usunięty z memrynote i Kalendarza Google. Tej akcji nie można cofnąć.",
+    "local-description": "Wydarzenie „{title}” zostanie trwale usunięte. Tej operacji nie można cofnąć.",
+    "google-bound-description": "Wydarzenie „{title}” zostanie usunięte z memrynote i Google Calendar. Tej operacji nie można cofnąć.",
     "context-menu-delete-label": "Usuń wydarzenie",
     "context-menu-add-to-project": "Dodaj do projektu"
+  },
+  "agent-access-dialog": {
+    "aria": "Wybierz, czy AI może odczytywać wydarzenia z Google Calendar",
+    "title": "Zezwolić AI na odczytywanie wydarzeń z Google Calendar?",
+    "body": "Tak czy inaczej nadal będziesz widzieć swoje wydarzenia Google w memrynote. To ustawienie decyduje tylko o tym, czy agent AI może je czytać, gdy zapytasz go o swój harmonogram.",
+    "footnote": "Możesz to zmienić w dowolnej chwili w sekcji Ustawienia → Integracje → Google Calendar.",
+    "allow": "Zezwól",
+    "deny": "Nie zezwalaj",
+    "save-error": "Nie udało się zapisać wyboru",
+    "provider": {
+      "aria": "Wybierz, czy AI może odczytywać wydarzenia z {provider}",
+      "title": "Zezwolić AI na odczytywanie wydarzeń z {provider}?",
+      "body": "Tak czy inaczej nadal będziesz widzieć te wydarzenia w memrynote. To ustawienie decyduje tylko o tym, czy agent AI może je odczytywać, gdy zapytasz go o swój harmonogram. Każda usługa kalendarza ma osobne ustawienie.",
+      "footnote": "Możesz to zmienić w dowolnej chwili w sekcji Ustawienia → Kalendarz."
+    },
+    "provider-names": {
+      "ics": "subskrybowanego kalendarza",
+      "caldav": "kalendarza CalDAV",
+      "apple-eventkit": "Kalendarza macOS"
+    }
   },
   "promote-dialog": {
     "aria": "Edytuj wydarzenie w kalendarzu zewnętrznym",
     "title": "Edytować to wydarzenie w memrynote?",
-    "body": "Edycja tego zdarzenia spowoduje utworzenie połączonej kopii w memrynote, więc zmiany będą synchronizowane w obie strony. Kontynuować?",
+    "body": "Edycja tego wydarzenia utworzy połączoną kopię w memrynote, a zmiany będą synchronizowane w obie strony. Kontynuować?",
     "do-not-ask-again": "Nie pytaj ponownie",
     "confirm-label": "Edytuj w memrynote",
-    "agent-notice": "Agent AI może czytać tę kopię, mimo że dostęp AI do Google Calendar jest wyłączony. Twoje oryginalne wydarzenie Google pozostaje dla niego ukryte."
+    "agent-notice": "Agent AI może czytać tę kopię, mimo że dostęp AI do Google Calendar jest wyłączony. Oryginalne wydarzenie Google pozostaje dla niego ukryte."
   },
   "onboarding-dialog": {
     "aria": "Wybierz domyślny kalendarz Google",
     "title": "Do jakiego kalendarza powinny trafiać nowe wydarzenia memrynote?",
-    "body": "Wybierz kalendarz Google, którego memrynote powinien używać domyślnie. Nadal możesz zastąpić to ustawienie dla każdego zdarzenia.",
-    "default-calendar-label": "Użyj kalendarza zarządzanego za pomocą memrynote",
+    "body": "Wybierz kalendarz Google, którego memrynote ma używać domyślnie. Nadal możesz to zmienić dla poszczególnych wydarzeń.",
+    "default-calendar-label": "Użyj kalendarza zarządzanego przez memrynote",
     "skip": "Pomiń",
-    "use-this-calendar": "Skorzystaj z tego kalendarza"
+    "use-this-calendar": "Użyj tego kalendarza"
+  },
+  "connect-prompt": {
+    "pill": "Połącz Google",
+    "aria": "Połącz Google Calendar",
+    "title": "Dokończ łączenie z Google Calendar",
+    "body": "Połącz konto Google, aby robić więcej z kalendarzem:",
+    "bullets": {
+      "events": "Zobacz wydarzenia Google obok notatek i zadań",
+      "sync": "Twórz i edytuj wydarzenia, synchronizowane w obie strony",
+      "schedule": "Planuj zadania i notatki w kalendarzu"
+    },
+    "continue": "Kontynuuj z Google",
+    "dismiss": "Odrzuć",
+    "error": "Nie udało się połączyć z Google Calendar. Spróbuj ponownie."
   },
   "metadata": {
     "attendees": "Uczestnicy",
@@ -92,16 +152,17 @@
     "reminders": "Przypomnienia",
     "default-reminders": "Domyślne przypomnienia",
     "visibility": "Widoczność:",
-    "optional": "Opcjonalne",
+    "optional": "Opcjonalnie",
     "join-meeting": "Dołącz do spotkania",
+    "video-call": "Rozmowa wideo",
     "response": {
       "accepted": "Zaakceptowano",
       "declined": "Odrzucono",
-      "tentative": "Wstępne",
-      "needs-action": "Oczekujące"
+      "tentative": "Może",
+      "needs-action": "Oczekuje"
     },
     "visibility-value": {
-      "private": "Prywatny",
+      "private": "Prywatne",
       "public": "Publiczne",
       "confidential": "Poufne"
     }
@@ -115,84 +176,211 @@
     "errors": {
       "couldNotSaveEventTryAgain": "Nie udało się zapisać wydarzenia. Spróbuj ponownie.",
       "couldNotCreateEventTryAgain": "Nie udało się utworzyć wydarzenia. Spróbuj ponownie.",
-      "couldNotSaveDefaultCalendarTryAgain": "Nie można zapisać domyślnego kalendarza. Spróbuj ponownie.",
+      "couldNotSaveDefaultCalendarTryAgain": "Nie udało się zapisać domyślnego kalendarza. Spróbuj ponownie.",
       "failedToLoadCalendarPreferences": "Nie udało się załadować preferencji kalendarza",
       "failedToUpdateCalendarPreferences": "Nie udało się zaktualizować preferencji kalendarza",
-      "couldNotEditThisEventTryAgain": "Nie można edytować tego wydarzenia. Spróbuj ponownie.",
+      "couldNotEditThisEventTryAgain": "Nie udało się edytować tego wydarzenia. Spróbuj ponownie.",
       "failedToDeleteEvent": "Nie udało się usunąć wydarzenia",
-      "couldNotUnsnoozeInboxItem": "Nie udało się wyłączyć drzemki.",
-      "couldNotRescheduleInboxItem": "Nie udało się przełożyć terminu."
+      "couldNotUnsnoozeInboxItem": "Nie udało się anulować odłożenia.",
+      "couldNotRescheduleInboxItem": "Nie udało się zmienić terminu."
     },
     "inboxSnoozePopover": {
       "title": "Odłożony element skrzynki odbiorczej",
       "openInInbox": "Otwórz w skrzynce odbiorczej",
-      "unsnoozeNow": "Odłóż teraz",
+      "unsnoozeNow": "Przywróć teraz",
       "reschedule": "Zmień termin"
     }
   },
+  "chip": {
+    "complete-task": "Ukończ „{title}”",
+    "task-completed": "Ukończono zadanie",
+    "could-not-complete": "Nie udało się ukończyć zadania",
+    "duration-minutes": "{minutes} min",
+    "duration-hours": "{hours} godz.",
+    "duration-hours-minutes": "{hours} godz. {minutes} min"
+  },
+  "event-card": {
+    "kind": "Wydarzenie",
+    "close": "Zamknij"
+  },
   "task-popover": {
     "title-fallback": "Szczegóły zadania",
+    "kind": "Zadanie",
+    "open": "Otwórz",
+    "complete": "Ukończ",
+    "more-actions": "Więcej działań",
+    "move": "Przenieś",
+    "later": "Później",
+    "next-week": "Następny tydzień",
     "open-task": "Otwórz zadanie",
     "source-note": "Notatka źródłowa",
     "reschedule": "Zmień termin",
-    "mark-done": "Oznacz gotowe",
-    "mark-not-done": "Oznacz jako nieskończone",
+    "mark-done": "Oznacz jako ukończone",
+    "mark-not-done": "Oznacz jako nieukończone",
     "later-today": "Później dzisiaj",
     "tomorrow": "Jutro",
-    "next-week-mon": "W przyszłym tygodniu · Pon",
+    "next-week-mon": "W przyszłym tygodniu · pon.",
     "pick-date-time": "Wybierz datę i godzinę…",
     "remove-due-date": "Usuń termin",
     "subtasks-prefix": "Podzadania",
-    "subtasks-counter": "Wykonano {done} z {total}",
-    "repeats": "Powtarza",
+    "subtasks-counter": "Ukończono {done} z {total}",
+    "repeats": "Powtarza się",
     "repeats-daily": "Powtarza się codziennie",
     "repeats-weekly": "Powtarza się co tydzień",
     "repeats-monthly": "Powtarza się co miesiąc",
     "repeats-yearly": "Powtarza się co roku",
     "errors": {
       "could-not-save": "Nie udało się zapisać zadania",
-      "could-not-reschedule": "Nie można przełożyć zadania",
-      "could-not-remove-due-date": "Nie można usunąć terminu",
-      "could-not-open-note": "Nie można otworzyć notatki"
+      "could-not-reschedule": "Nie udało się zmienić terminu zadania",
+      "could-not-remove-due-date": "Nie udało się usunąć terminu",
+      "could-not-open-note": "Nie udało się otworzyć notatki"
     }
   },
-  "connect-prompt": {
-    "aria": "Połącz Google Calendar",
-    "body": "Połącz konto Google, aby robić więcej z kalendarzem:",
-    "bullets": {
-      "events": "Zobacz wydarzenia Google obok notatek i zadań",
-      "schedule": "Planuj zadania i notatki w kalendarzu",
-      "sync": "Twórz i edytuj wydarzenia, synchronizowane w obie strony"
-    },
-    "continue": "Kontynuuj z Google",
-    "dismiss": "Odrzuć",
-    "error": "Nie udało się połączyć z Google Calendar. Spróbuj ponownie.",
-    "pill": "Połącz Google",
-    "title": "Dokończ łączenie z Google Calendar"
-  },
   "notePopover": {
-    "couldNotOpen": "Nie udało się otworzyć notatki",
     "kind": "Notatka",
     "kindDateReminder": "Przypomnienie o dacie",
-    "open": "Otwórz notatkę"
+    "open": "Otwórz notatkę",
+    "couldNotOpen": "Nie udało się otworzyć notatki"
   },
-  "search": {
-    "close": "Zamknij wyszukiwanie",
-    "no-results": "Brak dopasowań",
-    "open": "Szukaj w kalendarzu",
-    "placeholder": "Szukaj wydarzeń, zadań, przypomnień…"
+  "timeline": {
+    "label": "Zaplanowana praca na osi czasu",
+    "tasks-column": "Zadania",
+    "span": "{start} – {end}",
+    "due": "Termin: {date}",
+    "starts": "Początek: {date}",
+    "starts-short": "{date} →",
+    "no-date": "Bez daty",
+    "today": "Dzisiaj",
+    "overdue": "po terminie",
+    "untitled": "Bez tytułu",
+    "days": "{count, plural, one {# dzień} few {# dni} many {# dni} other {# dnia}}",
+    "events": "Wydarzenia",
+    "schedule-hint": "Kliknij, aby ustawić datę, lub przeciągnij, aby ustawić zakres",
+    "empty-title": "Na tym odcinku osi czasu nic nie ma",
+    "empty-body": "Tutaj pojawiają się zadania z datą rozpoczęcia lub terminem oraz wydarzenia całodniowe i wielodniowe. Włącz zadania bez dat w menu Wyświetlanie, aby zaplanować je przeciąganiem.",
+    "status": {
+      "todo": "Do zrobienia",
+      "in_progress": "W trakcie",
+      "done": "Ukończone"
+    },
+    "priority": {
+      "urgent": "Pilny",
+      "high": "Wysoki",
+      "medium": "Średni",
+      "low": "Niski",
+      "none": "Bez priorytetu"
+    },
+    "zoom": {
+      "label": "Skala",
+      "weeks": "Tygodnie",
+      "months": "Miesiące",
+      "quarters": "Kwartały"
+    },
+    "group-by": {
+      "project": "Projekt",
+      "status": "Status",
+      "priority": "Priorytet",
+      "none": "Bez grupowania"
+    },
+    "group-by-label": "Grupowanie: {group}",
+    "order-by": {
+      "start": "Data rozpoczęcia",
+      "due": "Termin",
+      "title": "Tytuł"
+    },
+    "display": {
+      "button": "Wyświetlanie",
+      "group-by": "Grupuj według",
+      "order-by": "Sortuj według",
+      "show": "Pokaż",
+      "show-events": "Wydarzenia",
+      "show-undated": "Zadania bez dat",
+      "show-completed": "Ukończone zadania",
+      "show-subtasks": "Podzadania"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# zadanie} few {# zadania} many {# zadań} other {# zadania}} · {events, plural, one {# wydarzenie} few {# wydarzenia} many {# wydarzeń} other {# wydarzenia}}",
+      "open": "Otwórz",
+      "move": "Przenieś",
+      "resize": "Zmień rozmiar",
+      "actions": "Działania",
+      "select": "Zaznacz",
+      "today": "Dzisiaj"
+    },
+    "actions": {
+      "search": "Szukaj działań…",
+      "search-projects": "Szukaj projektów…",
+      "empty": "Brak pasujących działań",
+      "no-projects": "Brak pasujących projektów",
+      "open": "Otwórz zadanie",
+      "open-in-tasks": "Otwórz w Zadaniach",
+      "schedule": "Zaplanuj",
+      "set-start": "Ustaw datę rozpoczęcia",
+      "set-due": "Ustaw termin",
+      "move-later": "Przesuń o tydzień później",
+      "move-earlier": "Przesuń o tydzień wcześniej",
+      "clear-dates": "Wyczyść daty",
+      "clear-start": "Wyczyść datę rozpoczęcia",
+      "clear-due": "Wyczyść termin",
+      "task": "Zadanie",
+      "complete": "Oznacz jako ukończone",
+      "uncomplete": "Oznacz jako nieukończone",
+      "change-project": "Zmień projekt",
+      "page": {
+        "root": "Działania",
+        "start": "Data rozpoczęcia",
+        "due": "Termin",
+        "project": "Projekt"
+      }
+    },
+    "undo": {
+      "reschedule": "Zmień termin zadania „{title}”"
+    }
   },
-  "undo": {
-    "moveEvent": "Przenieś wydarzenie",
-    "moveTask": "Zmień termin zadania"
+  "calendar-color": {
+    "tomato": "Pomidor",
+    "flamingo": "Flaming",
+    "tangerine": "Mandarynka",
+    "banana": "Banan",
+    "sage": "Szałwia",
+    "basil": "Bazylia",
+    "peacock": "Paw",
+    "blueberry": "Borówka",
+    "lavender": "Lawenda",
+    "grape": "Winogrono",
+    "graphite": "Grafit"
   },
-  "agent-access-dialog": {
-    "allow": "Zezwól",
-    "aria": "Wybierz, czy AI może czytać Twoje wydarzenia z Google Calendar",
-    "body": "Tak czy inaczej nadal będziesz widzieć swoje wydarzenia Google w memrynote. To ustawienie decyduje tylko o tym, czy agent AI może je czytać, gdy zapytasz go o swój harmonogram.",
-    "deny": "Nie zezwalaj",
-    "footnote": "Możesz to zmienić w dowolnej chwili w sekcji Ustawienia → Integracje → Google Calendar.",
-    "save-error": "Nie udało się zapisać Twojego wyboru",
-    "title": "Zezwolić AI na czytanie Twoich wydarzeń z Google Calendar?"
+  "subscribedEvent": {
+    "kind": "Subskrybowany kalendarz",
+    "kindAppleEventKit": "Ten Mac",
+    "close": "Zamknij",
+    "detailsFailed": "Nie udało się załadować uczestników i linków tego wydarzenia. Samo wydarzenie pozostaje bez zmian.",
+    "showMore": "Pokaż więcej",
+    "showLess": "Pokaż mniej",
+    "organizer": "organizator",
+    "you": "ty",
+    "phone": "Dołącz telefonicznie",
+    "alert": "{minutes, plural, =0 {Powiadomienie w chwili rozpoczęcia} one {Powiadomienie # minutę wcześniej} few {Powiadomienie # minuty wcześniej} many {Powiadomienie # minut wcześniej} other {Powiadomienie # minuty wcześniej}}",
+    "alertHours": "{hours, plural, one {Powiadomienie # godzinę wcześniej} few {Powiadomienie # godziny wcześniej} many {Powiadomienie # godzin wcześniej} other {Powiadomienie # godziny wcześniej}}",
+    "alertDays": "{days, plural, one {Powiadomienie # dzień wcześniej} few {Powiadomienie # dni wcześniej} many {Powiadomienie # dni wcześniej} other {Powiadomienie # dnia wcześniej}}",
+    "recurrence": {
+      "daily": "{count, plural, one {Powtarza się codziennie} few {Powtarza się co # dni} many {Powtarza się co # dni} other {Powtarza się co # dnia}}",
+      "weekly": "{count, plural, one {Powtarza się co tydzień} few {Powtarza się co # tygodnie} many {Powtarza się co # tygodni} other {Powtarza się co # tygodnia}}",
+      "weeklyOn": "{count, plural, one {Powtarza się co tydzień w: {days}} few {Powtarza się co # tygodnie w: {days}} many {Powtarza się co # tygodni w: {days}} other {Powtarza się co # tygodnia w: {days}}}",
+      "monthly": "{count, plural, one {Powtarza się co miesiąc} few {Powtarza się co # miesiące} many {Powtarza się co # miesięcy} other {Powtarza się co # miesiąca}}",
+      "yearly": "{count, plural, one {Powtarza się co roku} few {Powtarza się co # lata} many {Powtarza się co # lat} other {Powtarza się co # roku}}",
+      "other": "Powtarza się"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Subskrybowane kalendarze"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

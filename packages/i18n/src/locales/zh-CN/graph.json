@@ -1,77 +1,137 @@
 {
   "page": {
-    "loading": "正在加载图表...",
-    "load-failed": "未能加载图表数据",
-    "try-again": "请重试",
-    "aria-label": "用 {nodeCount, plural, one {# 节点} other {# 节点（复数）}} 和 {edgeCount, plural, one {# 连接} other {# 连接（复数）}}{summary, select, none {.} other {: {summary}。}} 构建的知识图谱",
-    "nodes-list-label": "图节点",
-    "node-list-item": "{label} ({type})"
+    "loading": "正在加载图谱…",
+    "load-failed": "无法加载图谱数据",
+    "render-failed": "此设备无法使用图谱",
+    "render-failed-description": "此设备无法启动图形渲染器。笔记是安全的。",
+    "try-again": "重试",
+    "aria-label": "知识图谱，包含 {nodeCount, plural, other {# 个节点}}和 {edgeCount, plural, other {# 条连线}}{summary, select, none {。} other {：{summary}。}}",
+    "nodes-list-label": "图谱节点",
+    "node-list-item": "{label}（{type}）"
   },
   "empty": {
-    "title": "你的知识图谱",
-    "description": "你的笔记、任务和项目之间的连接将以互动图的形式显示在这里。",
-    "link-title": "链接你的笔记",
+    "title": "知识图谱",
+    "description": "笔记、任务和项目之间的关联会以交互式图谱的形式显示在这里。",
+    "link-title": "链接笔记",
     "link-description": "使用 [[wikilinks]] 在笔记之间连接想法",
     "discover-title": "发现模式",
-    "discover-description": "随着连接的增长，聚类和主题将自然出现"
+    "discover-description": "随着关联增多，聚类和主题会自然浮现"
   },
   "entity": {
     "note": "笔记",
     "notes": "笔记",
     "journal": "日记",
-    "journals": "日记本",
+    "journals": "日记",
     "task": "任务",
     "tasks": "任务",
     "project": "项目",
     "projects": "项目",
-    "tag": "标签 ",
+    "tag": "标签",
     "tags": "标签",
-    "orphan": "孤立",
-    "orphans": "孤立项",
-    "unresolved": "未解决"
+    "orphan": "孤立节点",
+    "orphans": "孤立节点",
+    "unresolved": "未解析",
+    "category": "分类"
   },
   "summary": {
-    "node-type-count": "{count} {label}"
+    "node-type-count": "{label} {count}"
   },
   "control": {
-    "show-settings": "图设置",
+    "show-settings": "图谱设置",
     "hide-settings": "隐藏设置",
-    "reset-filters": "重置过滤器",
-    "filters": "筛选器",
+    "reset-filters": "重置筛选条件",
+    "filters": "筛选",
     "display": "显示",
-    "show-labels": "显示标签",
+    "show-labels": "显示节点名称",
+    "live-motion": "动态效果",
     "focus-depth": "深度 {depth}",
-    "clear-focus": "清除聚焦节点"
+    "clear-focus": "清除聚焦节点",
+    "relayout": "重新布局",
+    "categories": "标签分类",
+    "color-by-category": "按分类着色",
+    "no-categories": "在标签主页中将标签归入分类，即可按分类为图谱着色和折叠。",
+    "collapse-category": "折叠“{name}”",
+    "expand-category": "展开“{name}”",
+    "uncategorized": "未分类"
   },
   "filter": {
     "notes": "笔记",
-    "journals": "日志",
+    "journals": "日记",
     "tasks": "任务",
     "projects": "项目",
     "tags": "标签",
     "orphans": "孤立节点",
-    "toggle-entity": "切换 {label}",
-    "toggle-orphans": "切换孤立节点"
+    "canvas-edges": "画布连线",
+    "toggle-entity": "显示/隐藏{label}",
+    "toggle-orphans": "显示/隐藏孤立节点"
   },
   "search": {
-    "placeholder": "搜索节点...",
-    "clear": "清除图搜索"
+    "placeholder": "搜索节点…",
+    "clear": "清除图谱搜索"
   },
   "context-menu": {
-    "untitled": "未命名",
+    "untitled": "无标题",
     "focus-node": "聚焦此节点",
     "open-new-tab": "在新标签页中打开",
     "create-note": "创建笔记",
-    "copy-title": "复制标题"
+    "copy-title": "复制标题",
+    "link-to": "链接到…",
+    "add-tag": "添加标签…",
+    "back": "返回",
+    "link-search": "搜索笔记…",
+    "tag-search": "搜索或创建标签…",
+    "no-matches": "没有匹配项",
+    "create-tag": "创建 #{tag}",
+    "remove-link": "移除指向“{title}”的链接",
+    "unpin": "取消固定",
+    "collapse-category": "折叠“{name}”",
+    "expand-category": "展开“{name}”"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {# 连接} other {# 连接（复数）}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, other {# 条连线}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, other {# 项}}",
+    "click-to-expand": "点击展开"
   },
   "local-panel": {
-    "loading": "正在加载图表...",
-    "empty": "未找到连接",
-    "open-full": "打开完整图",
-    "close": "关闭图"
+    "loading": "正在加载图谱…",
+    "empty": "未找到关联",
+    "open-full": "打开完整图谱",
+    "close": "关闭图谱",
+    "pin": "固定到此笔记",
+    "unpin": "取消固定并跟随当前打开的笔记",
+    "pinned-to": "已固定：{title}"
+  },
+  "edit": {
+    "linked": "已在“{property}”中将 {source} 链接到 {target}",
+    "unlinked": "已移除从 {source} 到 {target} 的链接",
+    "already-linked": "{source} 已链接到 {target}",
+    "property-conflict": "此笔记上的“{property}”不是关联属性，因此未添加链接",
+    "link-unsupported": "只能在笔记之间建立链接",
+    "link-failed": "无法添加链接",
+    "unlink-failed": "无法移除链接",
+    "tag-added": "已为 {note} 添加 #{tag}",
+    "tag-exists": "此笔记已有 #{tag}",
+    "tag-failed": "无法添加标签",
+    "undo-failed": "无法撤销更改"
+  },
+  "relayout-confirm": {
+    "title": "重新布局图谱？",
+    "description": "所有已固定的节点都会取消固定，图谱将重新排列。已保存的布局会被丢弃。",
+    "cancel": "取消",
+    "confirm": "重新布局"
+  },
+  "views": {
+    "title": "已保存的视图",
+    "unsaved": "未保存的视图",
+    "edited": "已编辑",
+    "empty": "还没有已保存的视图",
+    "save-as": "另存为新视图…",
+    "update": "更新“{name}”",
+    "delete": "删除视图“{name}”",
+    "save-dialog-title": "保存图谱视图",
+    "save-dialog-placeholder": "视图名称",
+    "cancel": "取消",
+    "save": "保存"
   }
 }

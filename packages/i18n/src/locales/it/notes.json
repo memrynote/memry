@@ -1,4 +1,12 @@
 {
+  "wikiLinkCreateDialog": {
+    "title": "Creare la nota?",
+    "body": "Nessuna nota intitolata “{title}”. Vuoi crearla?",
+    "create": "Crea"
+  },
+  "wikiLinkPreview": {
+    "notFound": "Non trovata: fai clic per creare “{title}”"
+  },
   "page": {
     "empty": {
       "title": "Nessuna nota selezionata",
@@ -12,142 +20,478 @@
       "cannotRenameDeleted": "Impossibile rinominare: la nota è stata eliminata",
       "createLinkedFailed": "Impossibile creare la nota collegata",
       "openLinkedFailed": "Impossibile aprire l'elemento collegato",
-      "localOnly": "Nota impostata solo su locale",
+      "fileNotFound": "File non trovato: {target}",
+      "localOnly": "La nota resterà solo in locale",
       "willSync": "La nota verrà sincronizzata sul cloud",
       "renameFailed": "Impossibile rinominare la nota",
-      "toggleLocalOnlyFailed": "Impossibile attivare/disattivare solo locale",
-      "toggleFullWidthFailed": "Impossibile attivare/disattivare la larghezza intera",
-      "copyPathFailed": "Impossibile copiare il percorso",
-      "deleteFailed": "Impossibile eliminare la nota",
-      "moveFailed": "Impossibile spostare la nota",
-      "moved": "Nota spostata",
-      "openExternalFailed": "Impossibile aprire la nota",
+      "titleRequired": "Una nota deve avere un titolo",
+      "toggleLocalOnlyFailed": "Impossibile modificare l'opzione “Solo in locale”",
+      "toggleFullWidthFailed": "Impossibile modificare l'opzione “Tutta la larghezza”",
       "pathCopied": "Percorso copiato",
-      "revealFailed": "Impossibile mostrare la nota"
+      "copyPathFailed": "Impossibile copiare il percorso",
+      "revealFailed": "Impossibile mostrare la nota",
+      "openExternalFailed": "Impossibile aprire la nota",
+      "moved": "Nota spostata",
+      "moveFailed": "Impossibile spostare la nota",
+      "deleteFailed": "Impossibile eliminare la nota"
     },
-    "deleteDialogTitle": "{count, plural, one {Elimina nota} other {Elimina le note #}}",
-    "deleteConfirm": {
-      "cancel": "Annulla",
-      "confirm": "Elimina",
-      "deleting": "Eliminazione...",
-      "description": "Vuoi davvero eliminare \"{title}\"? Questa azione non può essere annullata.",
-      "title": "Elimina nota"
-    },
+    "deleteDialogTitle": "{count, plural, one {Elimina nota} other {Elimina # note}}",
     "itemsCount": "{count, plural, one {# elemento} many {# elementi} other {# elementi}}",
     "itemsCountFiltered": "{shown} di {total, plural, one {# elemento} many {# elementi} other {# elementi}}",
-    "tagFilterLabel": "tag = {tag}"
+    "tagFilterLabel": "tag = {tag}",
+    "deleteConfirm": {
+      "title": "Elimina nota",
+      "description": "Vuoi eliminare “{title}”? Questa azione non può essere annullata.",
+      "cancel": "Annulla",
+      "confirm": "Elimina",
+      "deleting": "Eliminazione…"
+    },
+    "largeFile": {
+      "title": "Questo file è troppo grande per essere aperto come nota",
+      "badge": "Sola lettura · non sincronizzato",
+      "reason": {
+        "fileBytes": "Il file pesa {size}. Le note restano modificabili fino a {limit}.",
+        "blockBytes": "Contiene un blocco di {size} senza righe vuote. Le note restano modificabili fino a {limit} per blocco."
+      },
+      "explanation": "Per modificarlo bisognerebbe analizzarlo tutto in una volta, bloccando l'app. Il file sul disco resta intatto.",
+      "viewer": {
+        "preparing": "Preparazione di {size} per la lettura…",
+        "preparingHint": "Indicizzazione delle righe per poterlo scorrere senza caricarlo tutto in una volta.",
+        "lines": "{count} righe",
+        "empty": "Questo file è vuoto.",
+        "failed": "Impossibile preparare questo file per la lettura.",
+        "missing": "Questo file non è più sul disco.",
+        "lineTruncated": "riga lunga troncata qui",
+        "showRestOfLine": "Mostra il resto della riga"
+      },
+      "tooLarge": {
+        "title": "Questo file è troppo grande per essere aperto",
+        "reason": "Il file pesa {size}. Memry può mostrare file fino a {limit}.",
+        "explanation": "Il file sul disco resta intatto. Aprilo con un'app adatta a file di queste dimensioni."
+      },
+      "find": {
+        "searching": "{count} finora…",
+        "limited": "{index}/{shown} di {total}"
+      }
+    }
   },
   "tree": {
     "aria": {
       "tree": "Albero delle note",
-      "openFolderView": "Apri la visualizzazione delle cartelle"
+      "openFolderView": "Apri vista cartella"
     },
     "empty": {
-      "title": "Nessuna nota ancora",
+      "title": "Ancora nessuna nota",
       "body": "Crea una nota per iniziare",
       "newNote": "Nuova nota"
     },
+    "syncing": {
+      "body": "Sincronizzazione delle note in corso: compariranno qui man mano che arrivano"
+    },
     "loadingError": "Impossibile caricare le note",
+    "truncated": {
+      "hidden": "{count, plural, one {# nota meno recente non mostrata} other {# note meno recenti non mostrate}}",
+      "loadMore": "Carica altre"
+    },
     "actions": {
+      "openInNewTab": "Apri in una nuova scheda",
+      "openToTheSide": "Apri a lato",
       "newNote": "Nuova nota",
       "newFolder": "Nuova cartella",
-      "rename": "Rinominare",
+      "expandSubfolders": "Espandi tutte le sottocartelle",
+      "collapseSubfolders": "Comprimi tutte le sottocartelle",
+      "rename": "Rinomina",
+      "applyTemplate": "Applica modello",
+      "saveAsTemplate": "Salva come modello",
       "openExternal": "Apri nell'editor esterno",
       "setDefaultTemplate": "Imposta modello predefinito",
-      "clearDefaultTemplate": "Cancella modello predefinito",
+      "clearDefaultTemplate": "Rimuovi modello predefinito",
       "setIcon": "Imposta icona",
       "removeIcon": "Rimuovi icona",
-      "deleteSelectedNotes": "Elimina le note {count}",
-      "deleteSelectedItems": "Elimina elementi {count}",
-      "bookmark": "Segnalibro",
+      "deleteSelectedNotes": "Elimina {count} note",
+      "deleteSelectedItems": "Elimina {count} elementi",
+      "bookmark": "Aggiungi ai segnalibri",
       "removeFromBookmarks": "Rimuovi dai segnalibri",
-      "applyTemplate": "Applica modello",
-      "saveAsTemplate": "Salva come modello"
+      "journalSettings": "Impostazioni del diario…"
+    },
+    "nav": {
+      "label": "Navigazione",
+      "ariaExpanded": "Sezione di navigazione, espansa",
+      "ariaCollapsed": "Sezione di navigazione, compressa",
+      "saveFailed": "Impossibile salvare lo stato della sezione di navigazione"
+    },
+    "viewOptions": {
+      "label": "Opzioni di visualizzazione",
+      "notesFirst": "Note prima delle cartelle",
+      "showFiles": "Mostra i file",
+      "saveFailed": "Impossibile salvare le opzioni di visualizzazione della barra laterale"
     },
     "deleteDialog": {
       "noteTitle": "Elimina nota",
       "folderTitle": "Elimina cartella",
-      "itemsTitle": "Elimina elementi {count}",
-      "noteBody": "Sei sicuro di voler eliminare \"{name}\"? Questa azione non può essere annullata.",
-      "folderBody": "Sei sicuro di voler eliminare \"{name}\" e tutte le note al suo interno? Questa azione non può essere annullata.",
-      "itemsBody": "Sei sicuro di voler eliminare gli elementi {count}? Questa azione non può essere annullata.",
+      "itemsTitle": "Elimina {count} elementi",
+      "noteBody": "Vuoi eliminare “{name}”? Questa azione non può essere annullata.",
+      "folderBody": "Vuoi eliminare “{name}” e tutte le note che contiene? Questa azione non può essere annullata.",
+      "itemsBody": "Vuoi eliminare {count} elementi? Questa azione non può essere annullata.",
       "folderSuffix": "cartella",
-      "moreItems": "...e {count} altro ancora",
-      "deleting": "Eliminazione...",
+      "moreItems": "…e altri {count}",
+      "deleting": "Eliminazione…",
       "deleteCount": "Elimina {count}"
     }
   },
   "editor": {
+    "bodySyncPending": "Sincronizzazione in corso: il contenuto di questa nota potrebbe non essere ancora arrivato",
+    "taskRemoval": {
+      "title": "{count, plural, one {Attività rimossa da questa nota} other {# attività rimosse da questa nota}}",
+      "description": "{count, plural, one {Vuoi mantenerla in Attività o eliminarla ovunque?} other {Vuoi mantenerle in Attività o eliminarle ovunque?}}",
+      "keep": "Mantieni in Attività",
+      "delete": "{count, plural, one {Elimina attività} other {Elimina attività}}",
+      "deleteFailed": "Impossibile eliminare le attività. Sono ancora nella pagina Attività."
+    },
     "title": {
       "untitled": "Senza titolo",
       "aria": "Titolo della nota"
     },
     "content": {
-      "placeholder": "Inizia a scrivere o premi \"/\" per i comandi...",
-      "regionAria": "Redattore di note",
-      "richTextAria": "Editor di testo ricco",
-      "headingPlaceholder": "Intestazione",
-      "listPlaceholder": "Voce dell'elenco",
-      "todoPlaceholder": "Oggetto da fare"
+      "placeholder": "Inizia a scrivere o premi “/” per i comandi…",
+      "regionAria": "Editor della nota",
+      "richTextAria": "Editor di testo formattato",
+      "headingPlaceholder": "Titolo",
+      "listPlaceholder": "Elemento dell'elenco",
+      "todoPlaceholder": "Cosa da fare"
+    },
+    "table": {
+      "keyboardMenuAria": "Azioni della tabella per la riga {row}, colonna {column}",
+      "keyboardMenuTitle": "Riga {row} · Colonna {column}"
+    },
+    "list": {
+      "bulleted": "Elenco puntato",
+      "numbered": "Elenco numerato",
+      "checklist": "Lista di controllo"
+    },
+    "bulletFold": {
+      "collapse": "Comprimi gli elementi annidati",
+      "expand": "Espandi gli elementi annidati"
     },
     "toolbar": {
-      "reminderSet": "Insieme di promemoria",
+      "linkToNote": "Collega a una nota",
+      "more": "Altro",
+      "pinToTop": "Fissa la barra degli strumenti in alto",
+      "reminderSet": "Promemoria impostato",
       "setReminder": "Imposta promemoria",
       "removeBookmark": "Rimuovi segnalibro",
       "addBookmark": "Aggiungi segnalibro",
-      "hideLocalGraph": "Nascondi il grafico locale",
-      "showLocalGraph": "Mostra il grafico locale",
-      "versionHistory": "Cronologia delle versioni",
-      "export": "Esportazione",
-      "fullWidth": "Tutta la larghezza",
-      "disableLocalOnly": "Disabilita solo locale",
-      "setLocalOnly": "Imposta solo locale",
-      "saveAsTemplate": "Salva come modello",
-      "copyPath": "Copia percorso",
-      "delete": "Elimina nota",
-      "find": "Trova…",
+      "showMindMap": "Mostra mappa mentale",
+      "hideMindMap": "Nascondi mappa mentale",
+      "hideLocalGraph": "Nascondi il grafo locale",
+      "showLocalGraph": "Mostra il grafo locale",
       "moreActions": "Altre azioni",
-      "moveToFolder": "Sposta nella cartella…",
+      "find": "Trova…",
+      "versionHistory": "Cronologia delle versioni",
+      "export": "Esporta",
+      "saveAsTemplate": "Salva come modello",
+      "fullWidth": "Tutta la larghezza",
       "rename": "Rinomina…",
-      "revealInSidebar": "Mostra nella navigazione"
+      "moveToFolder": "Sposta nella cartella…",
+      "copyPath": "Copia percorso",
+      "revealInSidebar": "Mostra nella navigazione",
+      "attachments": "Allegati…",
+      "disableLocalOnly": "Disattiva “Solo in locale”",
+      "setLocalOnly": "Mantieni solo in locale",
+      "delete": "Elimina nota"
+    },
+    "attachmentMenu": {
+      "menuLabel": "Azioni sul file",
+      "storedAs": "Salvato come {name}",
+      "notSynced": "Non ancora sincronizzato su questo dispositivo",
+      "revealFailed": "Impossibile mostrare il file",
+      "openFailed": "Impossibile aprire il file",
+      "missingTitle": "File allegato mancante",
+      "missingExpected": "File previsto: {name}"
+    },
+    "attachmentRename": {
+      "menuItem": "Rinomina…",
+      "title": "Rinomina allegato",
+      "description": "Il file viene rinominato sul disco e sugli altri tuoi dispositivi. L'estensione resta invariata.",
+      "fieldLabel": "Nome dell'allegato",
+      "confirm": "Rinomina",
+      "renamed": "Rinominato in {name}",
+      "failed": "Impossibile rinominare l'allegato"
+    },
+    "attachmentsDialog": {
+      "title": "Allegati",
+      "description": "File salvati con questa nota",
+      "empty": "Questa nota non ha allegati.",
+      "loadFailed": "Impossibile caricare gli allegati"
     },
     "breadcrumb": {
-      "locationAria": "Nota la posizione",
-      "parentFolderAria": "Vai alla cartella principale"
+      "locationAria": "Posizione della nota",
+      "parentFolderAria": "Vai alla cartella superiore"
     },
     "errorBoundary": {
-      "title": "Errore dell'editore",
+      "title": "Errore dell'editor",
       "body": "L'editor ha riscontrato un errore. Il contenuto della tua nota è al sicuro.",
       "technicalDetails": "Dettagli tecnici",
       "reloadAria": "Ricarica l'editor",
       "reload": "Ricarica l'editor"
     },
     "callout": {
-      "title": "Richiamo",
-      "group": "Blocchi fondamentali",
+      "title": "Callout",
+      "group": "Blocchi di base",
       "subtext": "Evidenzia le informazioni importanti",
       "changeType": "Modifica il tipo di callout",
       "menuLabel": "Tipo di callout",
       "info": "Informazioni",
-      "warning": "Avvertimento",
+      "warning": "Avviso",
       "error": "Errore",
       "success": "Successo"
+    },
+    "diagram": {
+      "title": "Diagramma",
+      "subtext": "Diagramma di flusso, di sequenza o di Gantt da codice Mermaid"
+    },
+    "math": {
+      "title": "Equazione",
+      "group": "Blocchi di base",
+      "subtext": "Scrivi una formula in LaTeX",
+      "empty": "Aggiungi un'equazione",
+      "edit": "Modifica equazione",
+      "placeholder": "E = mc^2",
+      "sourceLabel": "Codice LaTeX",
+      "hint": "LaTeX. Premi Escape quando hai finito."
+    },
+    "whiteboard": {
+      "title": "Lavagna",
+      "group": "Contenuti multimediali",
+      "subtext": "Disegna su una lavagna che resta dentro questa nota",
+      "defaultName": "Lavagna",
+      "noteName": "Lavagna di {note}",
+      "untitled": "Lavagna senza titolo",
+      "loading": "Caricamento della lavagna…",
+      "openInTab": "Apri in una scheda",
+      "edit": "Modifica",
+      "done": "Fine",
+      "surfaceLabel": "Disegno: {title}",
+      "createFailed": "Impossibile creare la lavagna. Non è stato aggiunto nulla alla nota.",
+      "loadFailed": "Impossibile caricare questa lavagna. Il disegno in sé è intatto.",
+      "noCanvas": "A questa lavagna manca il file del disegno. Rimuovi il blocco o aggiungine uno nuovo con /whiteboard.",
+      "nested": "Apri questa lavagna in una scheda a parte per vedere il disegno.",
+      "missingTitle": "Questa lavagna non è disponibile",
+      "missingBody": "Il file del disegno è stato eliminato o non è ancora arrivato su questo dispositivo. Se è ancora in sincronizzazione, comparirà qui da solo.",
+      "unreadableTitle": "Questa lavagna non può essere aperta qui",
+      "unreadableBody": "Il file .canvas manca dal vault o non può essere letto su questo dispositivo. Non è stato eliminato nulla.",
+      "disabledTitle": "La lavagna è disattivata",
+      "disabledBody": "Attiva Lavagna in Impostazioni › Funzionalità per vedere e modificare questa lavagna. Il disegno viene conservato in ogni caso."
+    },
+    "viewBlock": {
+      "title": "Vista",
+      "group": "Inserisci",
+      "subtext": "Un elenco dinamico di note da una cartella, da un tag o dall'intero vault",
+      "sourceMenu": "Cosa mostra questa vista",
+      "chooseSource": "Scegli cosa mostrare",
+      "sourceVault": "Tutte le note",
+      "sourceFolder": "Cartella",
+      "sourceTag": "Tag",
+      "noFolders": "Ancora nessuna cartella",
+      "noTags": "Ancora nessun tag",
+      "savedView": "Vista salvata",
+      "savedViewMissing": "La vista salvata “{name}” non esiste più, quindi viene mostrata la vista predefinita.",
+      "openAsTab": "Apri come scheda",
+      "empty": "Per ora nessuna nota corrisponde a questa vista.",
+      "loadFailed": "Impossibile caricare questa vista. Le note in sé sono intatte.",
+      "folderMissing": "Questa cartella non è più nel vault. Scegli un'altra origine.",
+      "invalidJson": "La definizione di questa vista non è un JSON valido. Correggila qui sotto o rimuovi il blocco.",
+      "invalidShape": "La definizione di questa vista non ha un'origine. Sceglila qui sopra o correggi la definizione qui sotto.",
+      "definition": "Definizione"
+    },
+    "slashMenu": {
+      "aria": "Blocchi e azioni",
+      "groups": {
+        "recent": "Recenti",
+        "bestMatch": "Miglior corrispondenza",
+        "blocks": "Blocchi",
+        "headings": "Altri titoli",
+        "insert": "Inserisci",
+        "media": "Contenuti multimediali",
+        "ai": "IA"
+      },
+      "secondary": {
+        "asToggleHeading": "Comprimibile",
+        "asLinkedTask": "Come attività collegata",
+        "asReminder": "Come promemoria"
+      },
+      "actions": {
+        "insert": "Inserisci",
+        "open": "Apri"
+      },
+      "matchesAlias": "corrisponde a",
+      "noMatch": "Nessun blocco corrisponde a “{query}”",
+      "fallback": {
+        "linkTo": "Collega a",
+        "askAI": "Chiedi all'IA"
+      },
+      "pdf": {
+        "title": "PDF",
+        "subtext": "Allega un PDF e leggilo nella nota"
+      },
+      "html": {
+        "title": "File HTML",
+        "subtext": "Incorpora un file .html e usalo direttamente nella nota"
+      },
+      "linkToNote": {
+        "title": "Collega a una nota",
+        "subtext": "Cerca nelle note, oppure digita [[ ovunque"
+      },
+      "media": {
+        "title": "File multimediale",
+        "subtext": "Allega un'immagine, un video o un file audio"
+      },
+      "insertTemplate": {
+        "title": "Inserisci contenuto del modello…",
+        "subtext": "Aggiungi solo il corpo di un modello nella posizione del cursore",
+        "group": "Modelli",
+        "empty": "Quel modello non ha contenuti da inserire",
+        "failed": "Impossibile inserire quel modello"
+      }
+    },
+    "filePanel": {
+      "choose": "Scegli un file…"
+    },
+    "upload": {
+      "failed": "Impossibile allegare il file"
+    },
+    "checkboxTask": {
+      "converted": "Casella di controllo trasformata in attività",
+      "hint": "Una nuova casella di controllo diventa un'attività. Premi {undo} per mantenerla come casella di controllo.",
+      "keepAsCheckbox": "Mantieni come casella di controllo"
+    },
+    "obsidianTask": {
+      "refused": "Questa riga contiene un id, una dipendenza o un link a un blocco che Obsidian richiede alla fine della riga. Rimuovilo prima in Obsidian, poi converti la riga.",
+      "createFailed": "Impossibile creare l'attività per questa riga.",
+      "completeFailed": "L'attività è stata creata, ma non è stato possibile applicare la data di completamento."
+    },
+    "blockMenu": {
+      "turnInto": "Trasforma in",
+      "turnIntoTypes": {
+        "paragraph": "Testo",
+        "heading1": "Titolo 1",
+        "heading2": "Titolo 2",
+        "heading3": "Titolo 3",
+        "bulletList": "Elenco puntato",
+        "numberedList": "Elenco numerato",
+        "checkbox": "Casella di controllo",
+        "task": "Attività",
+        "toggleList": "Elenco comprimibile",
+        "quote": "Citazione",
+        "codeBlock": "Codice",
+        "callout": "Callout"
+      },
+      "turnIntoCheckbox": "Trasforma in casella di controllo",
+      "colors": "Colori",
+      "duplicate": "Duplica",
+      "insertTemplate": "Inserisci modello…",
+      "moveTo": "Sposta in…",
+      "delete": "Elimina",
+      "comment": "Commenta",
+      "moveDialog": {
+        "title": "Sposta il blocco in una nota",
+        "searchPlaceholder": "Cerca note…",
+        "noResults": "Nessuna nota corrispondente",
+        "moved": "Blocco spostato in “{title}”",
+        "failed": "Impossibile spostare il blocco"
+      }
+    },
+    "attachmentPicker": {
+      "title": {
+        "image": "Aggiungi un'immagine",
+        "media": "Aggiungi un file multimediale",
+        "pdf": "Aggiungi un PDF",
+        "html": "Incorpora un file HTML",
+        "file": "Aggiungi un file"
+      },
+      "placeholder": {
+        "image": "Cerca immagini o caricane una nuova…",
+        "media": "Cerca file multimediali o caricane uno nuovo…",
+        "pdf": "Cerca PDF o caricane uno nuovo…",
+        "html": "Cerca file HTML o caricane uno nuovo…",
+        "file": "Cerca allegati o caricane uno nuovo…"
+      },
+      "upload": {
+        "image": "Carica un'immagine…",
+        "media": "Carica un file multimediale…",
+        "pdf": "Carica un PDF…",
+        "html": "Carica un file HTML…",
+        "file": "Carica un file…"
+      },
+      "empty": {
+        "image": "Ancora nessuna immagine in questo vault.",
+        "media": "Ancora nessun file multimediale in questo vault.",
+        "pdf": "Ancora nessun PDF in questo vault.",
+        "html": "Ancora nessun file HTML in questo vault.",
+        "file": "Ancora nessun allegato in questo vault."
+      },
+      "addHeading": "Aggiungi",
+      "vaultHeading": "In questo vault",
+      "uploading": "Caricamento…",
+      "noMatches": "Nessun risultato.",
+      "loadFailed": "Impossibile caricare gli allegati del vault",
+      "insertFailed": "Impossibile inserire l'allegato",
+      "uploadFailed": "Impossibile caricare il file",
+      "unsupportedVideo": "Questo formato video non può essere riprodotto in Memry. Formati supportati: {formats}.",
+      "tooLarge": "Il file pesa {size}, oltre il limite di {limit} per gli allegati.",
+      "hint": {
+        "navigate": "Naviga",
+        "insert": "Inserisci",
+        "close": "Chiudi"
+      }
+    },
+    "codeBlock": {
+      "copy": "Copia codice",
+      "copied": "Copiato",
+      "language": "Linguaggio"
     }
+  },
+  "dateMention": {
+    "dateInput": "Data",
+    "time": "Ora",
+    "includeTime": "Includi l'ora",
+    "timeFormat": "Formato ora",
+    "dateFormat": "Formato data",
+    "remind": "Ricorda",
+    "clear": "Cancella"
   },
   "menus": {
     "wiki": {
-      "aria": "Nota suggerimenti",
-      "loading": "Caricamento note...",
+      "aria": "Suggerimenti di note",
+      "loading": "Caricamento delle note…",
       "empty": "Nessuna nota trovata",
       "create": "Crea nuova nota",
       "embed": "Incorpora",
+      "wikiLink": "Link wiki",
       "embedAria": "Incorpora {title}",
-      "wikiLink": "Collegamento wiki",
-      "wikiLinkAria": "Collegamento wiki {title}"
+      "wikiLinkAria": "Link wiki a {title}",
+      "noHeadings": "{title} non ha intestazioni",
+      "noMatchingHeadings": "Nessuna intestazione di {title} corrisponde",
+      "displayAs": "Mostra come",
+      "aliasHint": "Digita | per dare un nome al link"
+    },
+    "mention": {
+      "aria": "Suggerimenti di date e note",
+      "loading": "Caricamento delle note…",
+      "empty": "Nessuna nota trovata",
+      "date": "Data",
+      "now": "Adesso",
+      "remindMe": "Ricordamelo",
+      "dateHint": "Continua a digitare una data…",
+      "showMore": "Mostra altro",
+      "canvases": "Lavagne",
+      "choiceTitle": "Inserisci la lavagna come",
+      "choiceMention": "Menzione",
+      "choiceEmbed": "Contenuto incorporato"
     },
     "tags": {
       "aria": "Suggerimenti per i tag",
-      "loading": "Caricamento tag...",
+      "loading": "Caricamento dei tag…",
       "empty": "Digita per creare un nuovo tag",
       "create": "Crea #{tag}"
     },
@@ -159,60 +503,142 @@
       "bookmark": "Segnalibro"
     },
     "emoji": {
-      "aria": "Selezionatore di emoji e icone",
+      "aria": "Selettore di emoji e icone",
       "emojiTab": "Emoji",
       "iconsTab": "Icone",
       "searchPlaceholder": "Cerca",
       "noIcons": "Nessuna icona trovata",
-      "clearSearch": "Cancella ricerca"
-    },
-    "mention": {
-      "aria": "Suggerimenti date e note",
-      "date": "Data",
-      "dateHint": "Continua a digitare una data…",
-      "empty": "Nessuna nota trovata",
-      "loading": "Caricamento note...",
-      "remindMe": "Ricordamelo",
-      "showMore": "Mostra altro"
+      "clearSearch": "Cancella ricerca",
+      "customTab": "Personalizzate",
+      "custom": {
+        "searchPlaceholder": "Cerca le tue icone",
+        "dropHint": "Trascina un'immagine o fai clic per caricarla",
+        "urlPlaceholder": "Oppure incolla il link di un'immagine",
+        "urlLabel": "Link dell'immagine",
+        "urlSubmit": "Scarica questa immagine",
+        "downloading": "Download in corso…",
+        "adding": "Aggiunta in corso…",
+        "empty": "Ancora nessuna icona personalizzata. Trascina un'immagine o incolla un link per aggiungerne una.",
+        "noMatches": "Nessuna icona personalizzata corrisponde alla ricerca",
+        "unsupportedFile": "{name} non è un'immagine supportata",
+        "addFailed": "Impossibile aggiungere l'icona",
+        "deleteFailed": "Impossibile eliminare l'icona",
+        "renameFailed": "Impossibile rinominare l'icona",
+        "rename": "Rinomina {name}",
+        "delete": "Elimina {name}",
+        "renameLabel": "Nome dell'icona",
+        "saveName": "Salva nome",
+        "cancelRename": "Annulla la modifica del nome",
+        "addUrlFailed": "Impossibile scaricare l'immagine"
+      }
     }
   },
   "outline": {
-    "title": "Contorno",
-    "aria": "Schema del documento",
+    "title": "Struttura",
+    "aria": "Struttura del documento",
     "empty": "Nessuna intestazione",
     "emptyYet": "Ancora nessuna intestazione",
-    "readTime": "{count} lettura minima",
-    "words": "Parole {count}",
+    "readTime": "{count} min di lettura",
+    "words": "{count} parole",
     "created": "Creato",
     "modified": "Modificato"
   },
   "backlinks": {
-    "sortRecent": "Recente",
+    "sortRecent": "Più recenti",
     "sortAlpha": "A-Z",
-    "sortMentions": "La maggior parte delle menzioni",
-    "sortBy": "Ordina i backlink per {sort}",
-    "summary": "Note {notes} · Riferimenti {references}",
-    "sectionAria": "Backlink",
-    "listAria": "Elenco dei backlink",
-    "fromAria": "Backlink da {title}",
-    "collapse": "Crollo",
+    "sortMentions": "Più menzioni",
+    "sortBy": "Ordina i link in entrata per {sort}",
+    "summary": "{notes} note · {references} riferimenti",
+    "sectionAria": "Link in entrata",
+    "listAria": "Elenco dei link in entrata",
+    "fromAria": "Link in entrata da {title}",
+    "collapse": "Comprimi",
     "expand": "Espandi",
-    "collapseSection": "Comprimi la sezione dei backlink",
-    "expandSection": "Espandi la sezione dei backlink",
-    "showMore": "Mostra a {count} più backlink",
-    "more": "{count} altro"
+    "collapseSection": "Comprimi la sezione dei link in entrata",
+    "expandSection": "Espandi la sezione dei link in entrata",
+    "showMore": "Mostra altri {count} link in entrata",
+    "more": "Altri {count}",
+    "viaProperty": "{property} → {title}"
+  },
+  "outgoingLinks": {
+    "summary": "{count, plural, one {# link in uscita} other {# link in uscita}}",
+    "sectionAria": "Link in uscita",
+    "unresolved": "Non ancora creata",
+    "showMore": "Mostra altri {count} link in uscita",
+    "more": "Altri {count}"
+  },
+  "canvasLinks": {
+    "connectedOn": "Collegata nella lavagna {canvas}",
+    "untitledCanvas": "Lavagna senza titolo"
+  },
+  "similarNotes": {
+    "summary": "{count, plural, one {# nota simile} other {# note simili}}",
+    "sectionAria": "Note simili",
+    "hint": "Note che somigliano a questa e non sono ancora collegate. Trovate su questo dispositivo tramite gli embedding locali.",
+    "addLink": "Aggiungi un link in questa nota",
+    "addLinkAria": "Aggiungi un link a {title} in questa nota",
+    "linked": "Link a {title} aggiunto",
+    "addToCanvas": "Aggiungi alla lavagna",
+    "addToCanvasAria": "Aggiungi {title} a una lavagna",
+    "searchCanvases": "Cerca lavagne…",
+    "canvasLoading": "Caricamento delle lavagne…",
+    "noCanvases": "Ancora nessuna lavagna",
+    "noMatch": "Nessuna lavagna corrispondente",
+    "addedToCanvas": "{title} aggiunta a {canvas}",
+    "alreadyOnCanvas": "{title} è già in {canvas}",
+    "openCanvas": "Apri",
+    "addToCanvasFailed": "Impossibile aggiungere la nota alla lavagna"
+  },
+  "suggestedTags": {
+    "label": "Tag suggeriti:",
+    "hint": "Tag condivisi dalle note più simili a questa. Non viene aggiunto nulla finché non ne scegli uno.",
+    "acceptAria": "Aggiungi il tag {tag}",
+    "support": "{count, plural, one {Usato in # nota simile} other {Usato in # note simili}}",
+    "dismiss": "Nascondi i tag suggeriti",
+    "failed": "Impossibile aggiungere il tag"
+  },
+  "comments": {
+    "railAria": "Commenti",
+    "badgeAria": "{count, plural, one {# commento} other {# commenti}}",
+    "toolbarComment": "Commenta",
+    "commentPlaceholder": "Aggiungi un commento…",
+    "createdTooltip": "Creato il {date} alle {time}",
+    "cancel": "Annulla",
+    "resolve": "Risolvi",
+    "edit": "Modifica commento",
+    "delete": "Elimina commento",
+    "replyPlaceholder": "Rispondi…",
+    "attachAria": "Allega file",
+    "mentionAria": "Menziona una persona, pagina o data",
+    "sendAria": "Invia commento",
+    "formatToolbarAria": "Formattazione del testo",
+    "format": {
+      "bold": "Grassetto",
+      "italic": "Corsivo",
+      "underline": "Sottolineato",
+      "strike": "Barrato",
+      "code": "Codice"
+    },
+    "openImageAria": "Apri l'immagine {name}",
+    "openAttachmentAria": "Apri l'allegato {name}",
+    "kind": {
+      "comment": "Commento",
+      "addition": "Aggiunta",
+      "deletion": "Eliminazione",
+      "substitution": "Sostituzione"
+    }
   },
   "tagsRow": {
     "aria": "Tag",
     "empty": "Aggiungi tag",
-    "add": "Aggiungi etichetta",
-    "removeAria": "Rimuovi etichetta: {tag}",
-    "inputPlaceholder": "Digita il nome del tag...",
-    "recent": "Recente",
-    "matching": "Corrispondenza",
+    "add": "Aggiungi tag",
+    "removeAria": "Rimuovi il tag {tag}",
+    "inputPlaceholder": "Digita il nome del tag…",
+    "recent": "Recenti",
+    "matching": "Corrispondenti",
     "all": "Tutti i tag",
     "none": "Nessun tag trovato",
-    "createTag": "Crea tag: \"{tag}\"",
+    "createTag": "Crea tag: “{tag}”",
     "chooseColor": "Scegli il colore:",
     "preview": "Anteprima:",
     "colorAria": "Seleziona il colore {color}",
@@ -221,23 +647,37 @@
   "properties": {
     "title": "Proprietà",
     "noteAria": "Proprietà della nota",
-    "workspaceAria": "Proprietà dell'area di lavoro",
+    "workspaceAria": "Proprietà dello spazio di lavoro",
     "listAria": "Elenco delle proprietà",
     "add": "Aggiungi proprietà",
     "addDescription": "Aggiungi una nuova proprietà a questa nota",
     "namePlaceholder": "Nome della proprietà",
     "nameAria": "Nome della proprietà",
-    "typeSection": "Digitare",
+    "typeSection": "Tipo",
     "empty": "Vuoto",
     "dragAria": "Trascina per riordinare la proprietà",
     "editName": "Modifica il nome della proprietà",
     "delete": "Elimina proprietà",
-    "searchOptions": "Opzioni di ricerca...",
-    "noOptions": "Nessuna opzione ancora",
+    "searchOptions": "Cerca opzioni…",
+    "noOptions": "Ancora nessuna opzione",
     "optionName": "Nome dell'opzione",
     "newOption": "Nuova opzione",
     "ratingAria": "Valutazione",
     "openUrlAria": "Apri l'URL",
+    "showOnCalendar": "Mostra sul calendario",
+    "showingOnCalendar": "Visibile sul calendario",
+    "relation": {
+      "deleted": "Eliminato",
+      "removeAria": "Rimuovi {title}",
+      "addAria": "Aggiungi relazione",
+      "searchPlaceholder": "Cerca note, attività, eventi, lavagne e diario…",
+      "groupNotes": "Note e file",
+      "groupTasks": "Attività",
+      "groupEvents": "Eventi",
+      "groupCanvases": "Lavagne",
+      "groupJournals": "Diario",
+      "empty": "Nessun risultato"
+    },
     "types": {
       "text": "Testo",
       "number": "Numero",
@@ -245,16 +685,35 @@
       "checkbox": "Casella di controllo",
       "url": "URL",
       "status": "Stato",
-      "select": "Seleziona",
-      "multiselect": "Selezione multipla"
+      "select": "Selezione",
+      "multiselect": "Selezione multipla",
+      "relation": "Relazione",
+      "project": "Progetto"
     },
-    "showOnCalendar": "Mostra sul calendario",
-    "showingOnCalendar": "Visibile sul calendario",
     "statusCategories": {
-      "done": "Completato",
+      "todo": "Da fare",
       "inProgress": "In corso",
-      "todo": "Da fare"
-    }
+      "done": "Completato"
+    },
+    "projectAlreadySet": "Questa nota ha già una proprietà progetto",
+    "projectPlaceholder": "Nessun progetto",
+    "projectSearch": "Cerca progetti",
+    "projectEmpty": "Nessun progetto",
+    "projectRemove": "Rimuovi da {name}"
+  },
+  "moveNoteTasks": {
+    "title": "Spostare le attività di questa nota?",
+    "description": "{count, plural, one {# attività di questa nota appartiene a un altro progetto} other {# attività di questa nota appartengono ad altri progetti}}. Vuoi {count, plural, one {spostarla} other {spostarle}} in {project}?",
+    "subtaskNote": "Le sottoattività si spostano insieme all'attività principale.",
+    "cancel": "Lascia così",
+    "confirm": "{count, plural, one {Sposta attività} other {Sposta attività}}",
+    "success": "{count, plural, one {# attività spostata in {project}} other {# attività spostate in {project}}}",
+    "failed": "Impossibile spostare le attività della nota"
+  },
+  "deleteNoteTasks": {
+    "label": "{count, plural, one {Elimina anche l'attività contenuta} other {Elimina anche le # attività contenute}}",
+    "description": "{count, plural, one {Se lasci la casella deselezionata, resta in Attività.} other {Se lasci la casella deselezionata, restano in Attività.}}",
+    "failed": "Impossibile eliminare le attività. Sono ancora nella pagina Attività."
   },
   "cover": {
     "add": "Aggiungi copertina",
@@ -276,7 +735,8 @@
         "washes": "Tinte",
         "photos": "Unsplash",
         "fromNote": "Dalla nota",
-        "upload": "Carica"
+        "upload": "Carica",
+        "link": "Link"
       },
       "photos": {
         "searching": "Ricerca su Unsplash…",
@@ -288,16 +748,16 @@
           "offline": "Nessuna connessione a Unsplash",
           "rateLimited": "Unsplash ha limitato le richieste, riprova tra poco",
           "failed": "Impossibile raggiungere Unsplash",
-          "writeFailed": "Impossibile salvare quella foto nella volta"
+          "writeFailed": "Impossibile salvare la foto nel vault"
         }
       },
       "upload": "Carica",
       "uploading": "Caricamento…",
       "uploadFailed": "Impossibile caricare l'immagine di copertina",
-      "loadFailed": "Impossibile caricare le immagini della volta",
+      "loadFailed": "Impossibile caricare le immagini del vault",
       "insertFailed": "Impossibile usare quell'immagine come copertina",
       "noMatches": "Nessun risultato",
-      "empty": "Nessuna immagine in questa volta",
+      "empty": "Ancora nessuna immagine in questo vault",
       "hint": {
         "apply": "Applica",
         "applyReposition": "Applica e riposiziona",
@@ -316,58 +776,71 @@
         "bark": "Corteccia",
         "mist": "Foschia",
         "plum": "Prugna"
+      },
+      "link": {
+        "prompt": "Incolla il link di un'immagine",
+        "invalid": "Memry non può aprire questo link",
+        "use": "Usa questa immagine",
+        "saving": "Salvataggio dell'immagine…",
+        "error": {
+          "notAnImage": "Il link non punta a un'immagine",
+          "tooLarge": "L'immagine è troppo grande per essere salvata",
+          "offline": "Impossibile raggiungere il link",
+          "failed": "Impossibile scaricare l'immagine",
+          "writeFailed": "Impossibile salvare l'immagine nel vault"
+        }
       }
     }
   },
   "templateSelector": {
-    "title": "Scegli la tua tela",
+    "title": "Scegli da dove partire",
     "description": "Seleziona un modello per iniziare la nota",
-    "searchPlaceholder": "Cerca modelli...",
-    "loading": "Caricamento modelli...",
+    "searchPlaceholder": "Cerca modelli…",
+    "loading": "Caricamento dei modelli…",
     "empty": "Nessun modello trovato",
     "myTemplates": "I miei modelli",
     "essentials": "Elementi essenziali",
-    "setFolderDefault": "Imposta come cartella predefinita",
+    "setFolderDefault": "Imposta come predefinito per la cartella",
     "useTemplate": "Usa modello",
     "createNote": "Crea nota",
-    "applyDescription": "Sostituisci il contenuto di questa nota con un modello",
+    "applyToNote": "Applica modello",
     "applyTitle": "Applica un modello",
-    "applyToNote": "Applica modello"
+    "applyDescription": "Sostituisci il contenuto di questa nota con un modello"
   },
   "exportDialog": {
-    "title": "Nota sull'esportazione",
-    "description": "Esporta \"{title}\" in un file",
+    "title": "Esporta nota",
+    "description": "Esporta “{title}” in un file",
     "format": "Formato",
     "pdfDescription": "Documento pronto per la stampa",
     "htmlDescription": "File pronto per il Web",
     "pageSize": "Dimensioni della pagina",
-    "selectPageSize": "Seleziona la dimensione della pagina",
+    "selectPageSize": "Seleziona le dimensioni della pagina",
     "options": "Opzioni",
     "includeMetadata": "Includi metadati (tag, date)",
-    "exporting": "Esportazione...",
+    "exporting": "Esportazione…",
     "exported": "Esportato!",
-    "export": "Esportazione",
+    "export": "Esporta",
     "toast": {
       "failed": "Esportazione non riuscita"
     }
   },
   "versionHistory": {
     "title": "Cronologia delle versioni",
-    "description": "Visualizza e ripristina le versioni precedenti di \"{title}\"",
+    "description": "Visualizza e ripristina le versioni precedenti di “{title}”",
     "hidePreview": "Nascondi anteprima",
     "showPreview": "Mostra anteprima",
-    "empty": "Nessuna versione ancora salvata",
+    "empty": "Ancora nessuna versione salvata",
     "emptyDescription": "Le versioni vengono salvate automaticamente quando apporti modifiche significative",
-    "latest": "Ultimi",
+    "latest": "Più recente",
     "autoSaved": "Salvato automaticamente",
-    "words": "Parole {count}",
+    "words": "{count} parole",
     "selectPrompt": "Seleziona una versione da visualizzare in anteprima",
     "restore": "Ripristina",
     "deleteTitle": "Eliminare questa versione?",
     "deleteDescription": "Questa azione non può essere annullata. Questa versione verrà eliminata definitivamente.",
     "restoreTitle": "Ripristinare questa versione?",
-    "restoreDescription": "Ciò sostituirà il contenuto della nota corrente con questa versione. Per prima cosa verrà salvata un'istantanea dello stato corrente, quindi puoi annullare questa azione.",
-    "restoring": "Ripristino...",
+    "restoreDescription": "Il contenuto attuale della nota verrà sostituito con questa versione. Prima verrà salvata un'istantanea dello stato attuale, così potrai annullare l'operazione.",
+    "restoring": "Ripristino…",
     "toast": {
       "loadPreviewFailed": "Impossibile caricare l'anteprima della versione",
       "restored": "Nota ripristinata alla versione precedente",
@@ -375,7 +848,7 @@
     }
   },
   "templateEditor": {
-    "loading": "Caricamento modello…",
+    "loading": "Caricamento del modello…",
     "copySuffix": "{name} (Copia)",
     "title": {
       "new": "Nuovo modello",
@@ -402,21 +875,23 @@
   },
   "reminders": {
     "summary": "Promemoria: {date}",
-    "summaryWithMore": "Promemoria: {date} (+{count} altro)",
-    "hasReminders": "Ha promemoria",
+    "summaryWithMore": "Promemoria: {date} (+{count} altri)",
+    "hasReminders": "Promemoria attivi",
     "setReminder": "Imposta promemoria",
     "toast": {
-      "set": "Insieme di promemoria",
+      "set": "Promemoria impostato",
       "setFailed": "Impossibile impostare il promemoria",
       "deleted": "Promemoria eliminato",
       "deleteFailed": "Impossibile eliminare il promemoria",
-      "dismissed": "Promemoria respinto",
-      "dismissFailed": "Impossibile ignorare il promemoria"
+      "dismissed": "Promemoria ignorato",
+      "dismissFailed": "Impossibile ignorare il promemoria",
+      "updated": "Promemoria aggiornato",
+      "updateFailed": "Impossibile aggiornare il promemoria"
     }
   },
   "linkedTasks": {
     "title": "Attività collegate",
-    "loading": "Caricamento attività collegate..."
+    "loading": "Caricamento delle attività collegate…"
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
@@ -425,7 +900,10 @@
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Proprietà",
-      "searchColumns": "Cerca colonne...",
+      "display": "Visualizzazione",
+      "showSummaries": "Mostra riepiloghi",
+      "columnBorders": "Bordi delle colonne",
+      "searchColumns": "Cerca colonne…",
       "noMatchingColumns": "Nessuna colonna corrispondente",
       "formulas": "FORMULE",
       "noFormulasDefined": "Nessuna formula definita",
@@ -436,25 +914,22 @@
       "none": "Nessuno",
       "edit": "Modifica",
       "delete2": "Elimina",
-      "columnBorders": "Bordi colonna",
-      "display": "Visualizzazione",
-      "showSummaries": "Mostra riepiloghi",
-      "deleteFormulaBody": "Vuoi davvero eliminare la formula \"{name}\"? Questa azione non può essere annullata."
+      "deleteFormulaBody": "Vuoi eliminare la formula “{name}”? Questa azione non può essere annullata."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtra",
       "filters": "Filtri",
-      "clearAll": "Cancella tutto",
+      "clearAll": "Azzera tutto",
       "noFiltersApplied": "Nessun filtro applicato",
       "addFiltersToNarrowDownYourNotes": "Aggiungi filtri per restringere il campo delle note",
-      "match": "Partita",
-      "allAnd": "Tutti (E)",
-      "anyOr": "Qualsiasi (OR)",
-      "ofTheFollowing": "dei seguenti:",
-      "match2": "Partita",
-      "all": "Tutto",
-      "any": "Qualunque",
-      "of": "di:",
+      "match": "Soddisfa",
+      "allAnd": "Tutte (AND)",
+      "anyOr": "Almeno una (OR)",
+      "ofTheFollowing": "le condizioni seguenti:",
+      "match2": "Soddisfa",
+      "all": "Tutte",
+      "any": "Almeno una",
+      "of": "le condizioni:",
       "addCondition": "Aggiungi condizione",
       "addFilter": "Aggiungi filtro",
       "addGroup": "Aggiungi gruppo",
@@ -462,78 +937,79 @@
       "lockedConditionHint": "Questa condizione definisce la vista attuale e non può essere rimossa da qui."
     },
     "componentsFolderViewFilterRow": {
-      "builtIn": "Integrato",
+      "builtIn": "Di sistema",
       "properties": "Proprietà",
       "placeholderProperty": "Proprietà",
       "placeholderOperator": "Operatore",
       "placeholderValue": "Valore",
-      "removeFilter": "Rimuovi filtro"
+      "removeFilter": "Rimuovi filtro",
+      "tagSuggestions": "Suggerimenti di tag"
     },
     "componentsFolderViewFolderTableView": {
       "notesTable": "Tabella delle note",
       "selectAll": "Seleziona tutte le note",
       "selectRow": "Seleziona nota",
       "kind": {
-        "Inbox": "Posta in arrivo",
         "Note": "Nota",
-        "Task": "Attività"
+        "Task": "Attività",
+        "Inbox": "Posta in arrivo"
       }
     },
     "componentsFolderViewFolderViewToolbar": {
-      "searchNotes": "Cerca note...",
+      "searchNotes": "Cerca note…",
       "clearSearch": "Cancella ricerca"
     },
     "componentsFolderViewFormulaEditorModal": {
-      "defineAComputedColumnUsingAnExpression": "Definire una colonna calcolata utilizzando un'espressione.",
+      "defineAComputedColumnUsingAnExpression": "Definisci una colonna calcolata tramite un'espressione.",
       "name": "Nome",
       "expression": "Espressione",
-      "available": "Disponibile: ",
+      "available": "Disponibili: ",
       "preview": "Anteprima",
       "fixExpressionErrorsToSeePreview": "Correggi gli errori di espressione per vedere l'anteprima",
-      "usingNote": "Usando la nota: \"",
+      "usingNote": "Nota utilizzata: “",
       "cancel": "Annulla",
       "namePlaceholder": "giorni_fino_alla_scadenza",
-      "expressionPlaceholder": "dateDiff(data_scadenza, oggi(), \"giorni\")",
-      "usingNoteTitle": "Nota utilizzata: \"{title}\""
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "Nota utilizzata: “{title}”"
     },
     "componentsFolderViewGroupBySelector": {
-      "clearGrouping": "Raggruppamento chiaro",
-      "searchProperties": "Cerca immobili...",
-      "builtIn": "Integrato",
+      "clearGrouping": "Rimuovi raggruppamento",
+      "searchProperties": "Cerca proprietà…",
+      "builtIn": "Di sistema",
       "properties": "Proprietà",
       "noGroupablePropertiesFound": "Nessuna proprietà raggruppabile trovata",
       "sortDirection": "Direzione dell'ordinamento",
       "collapseGroupsByDefault": "Comprimi i gruppi per impostazione predefinita",
-      "showGroupSummaries": "Mostra riepiloghi del gruppo",
-      "clearGrouping2": "Raggruppamento chiaro"
+      "showGroupSummaries": "Mostra i riepiloghi dei gruppi",
+      "clearGrouping2": "Rimuovi raggruppamento"
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Tabella delle note raggruppate",
-      "more": "di più",
+      "more": "altri",
       "selectAll": "Seleziona tutte le note",
       "selectRow": "Seleziona nota"
     },
     "componentsFolderViewMoveToFolderDialog": {
-      "searchFolders": "Cerca cartelle...",
-      "loadingFolders": "Caricamento cartelle...",
-      "suggested": "CONSIGLIATO",
-      "bestMatch": "Migliore abbinamento",
+      "searchFolders": "Cerca cartelle…",
+      "loadingFolders": "Caricamento delle cartelle…",
+      "suggested": "SUGGERITE",
+      "bestMatch": "Miglior corrispondenza",
       "current": "corrente)",
       "allFolders": "TUTTE LE CARTELLE",
-      "noFoldersMatch": "Nessuna cartella corrisponde a \"",
-      "create": "Crea\"",
+      "noFoldersMatch": "Nessuna cartella corrisponde a “",
+      "create": "Crea “",
       "cancel": "Annulla",
-      "createFolderNamed": "Crea \"{name}\"",
       "currentFolderBadge": "(corrente)",
-      "noFoldersMatchQuery": "Nessuna cartella corrisponde a \"{query}\""
+      "noFoldersMatchQuery": "Nessuna cartella corrisponde a “{query}”",
+      "createFolderNamed": "Crea “{name}”"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Elimina ",
-      "notes": "Note",
-      "open": "Aperto",
+      "notes": "note",
+      "open": "Apri",
       "openInExternalEditor": "Apri nell'editor esterno",
-      "revealInSidebar": "Rivela nella barra laterale",
-      "copyLink": "Copia collegamento",
+      "revealInSidebar": "Mostra nella barra laterale",
+      "copyLink": "Copia link",
       "delete2": "Elimina"
     },
     "componentsFolderViewSortableColumnHeader": {
@@ -542,56 +1018,57 @@
       "editColumnName": "Modifica nome colonna"
     },
     "componentsFolderViewViewSwitcher": {
-      "default": "predefinito",
-      "rename": "Rinominare",
-      "duplicate": "Duplicato",
-      "setAsDefault": "Imposta come predefinito",
+      "default": "predefinita",
+      "viewActions": "Azioni della vista",
+      "rename": "Rinomina",
+      "duplicate": "Duplica",
+      "setAsDefault": "Imposta come predefinita",
       "delete": "Elimina",
       "createNewView": "Crea nuova vista",
       "createNewView2": "Crea nuova vista",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Crea una nuova visualizzazione con colonne, filtri e ordinamento personalizzati.",
-      "viewName": "Visualizza nome",
-      "myCustomView": "La mia visualizzazione personalizzata",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "Crea una nuova vista con colonne, filtri e ordinamento personalizzati.",
+      "viewName": "Nome della vista",
+      "myCustomView": "La mia vista personalizzata",
       "baseConfiguration": "Configurazione di base",
       "copyFromCurrentView": "Copia dalla vista corrente",
       "startFreshDefaultColumns": "Inizia da capo (colonne predefinite)",
       "cancel": "Annulla",
       "renameView": "Rinomina vista",
       "enterANewNameForThisView": "Inserisci un nuovo nome per questa vista.",
-      "viewName2": "Visualizza nome",
-      "viewName3": "Visualizza nome",
+      "viewName2": "Nome della vista",
+      "viewName3": "Nome della vista",
       "cancel2": "Annulla",
       "deleteView": "Elimina vista",
-      "areYouSureYouWantToDelete": "Sei sicuro di voler eliminare \"",
+      "areYouSureYouWantToDelete": "Vuoi eliminare \"",
       "thisActionCannotBeUndone": "Questa azione non può essere annullata.",
       "cancel3": "Annulla",
-      "createView": "Crea vista",
-      "gallery": "Galleria",
-      "layout": "Layout",
-      "list": "Elenco",
-      "name": "Nome",
       "newView": "Nuova vista",
-      "save": "Salva",
+      "name": "Nome",
+      "layout": "Layout",
       "table": "Tabella",
-      "viewActions": "Azioni vista"
+      "list": "Elenco",
+      "gallery": "Galleria",
+      "createView": "Crea vista",
+      "save": "Salva"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Impossibile caricare il PDF: ",
       "download": "Scarica",
       "download2": "Scarica",
       "noFileAttached": "Nessun file allegato",
-      "alignCenter": "Allinea al centro",
+      "resizePdf": "Ridimensiona PDF",
+      "resizeHtml": "Ridimensiona il contenuto HTML incorporato",
       "alignLeft": "Allinea a sinistra",
+      "alignCenter": "Allinea al centro",
       "alignRight": "Allinea a destra",
-      "nextPage": "Pagina successiva",
       "previousPage": "Pagina precedente",
-      "resizePdf": "Ridimensiona PDF"
+      "nextPage": "Pagina successiva"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Apri nel pannello delle attività",
-      "taskName": "Nome dell'attività...",
+      "taskName": "Nome dell'attività…",
       "taskDeleted": "Attività eliminata",
-      "loading": "Caricamento..."
+      "loading": "Caricamento…"
     },
     "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
       "project": "Progetto",
@@ -606,8 +1083,8 @@
       "pdf": "PDF",
       "html": "HTML",
       "a4210X297Mm": "A4 (210 x 297 mm)",
-      "letter85X11In": "Lettera (8,5 x 11 pollici)",
-      "legal85X14In": "Legale (8,5 x 14 pollici)"
+      "letter85X11In": "Letter (8,5 x 11 pollici)",
+      "legal85X14In": "Legal (8,5 x 14 pollici)"
     },
     "componentsNoteInfoSectionEditorsDateeditor": {
       "ddMmYyyy": "gg.mm.aaaa"
@@ -617,81 +1094,81 @@
     },
     "componentsSharedDocumentInfoTab": {
       "words": "Parole",
-      "characters": "Personaggi",
+      "characters": "Caratteri",
       "readingTime": "Tempo di lettura",
       "created": "Creato",
       "modified": "Modificato"
     },
     "componentsSidebarProjectsEmptyState": {
-      "noProjectsYet": "Nessun progetto ancora",
+      "noProjectsYet": "Ancora nessun progetto",
       "createYourFirstProject": "Crea il tuo primo progetto",
       "createYourFirstProject2": "Crea il tuo primo progetto"
     },
     "componentsSidebarSidebarBookmarkList": {
-      "loadingBookmarks": "Caricamento segnalibri...",
+      "loadingBookmarks": "Caricamento dei segnalibri…",
       "failedToLoadBookmarks": "Impossibile caricare i segnalibri",
-      "noBookmarksYet": "Nessun segnalibro ancora",
-      "moreOptions": "Più opzioni",
+      "noBookmarksYet": "Ancora nessun segnalibro",
+      "moreOptions": "Altre opzioni",
       "remove": "Rimuovi"
     },
     "componentsSidebarSidebarItemContextMenu": {
-      "open": "Aperto",
-      "openToTheSide": "Aperto lateralmente",
-      "pinToTabs": "Aggiungi alle schede",
+      "open": "Apri",
+      "openToTheSide": "Apri a lato",
+      "pinToTabs": "Fissa nelle schede",
       "edit": "Modifica",
       "delete": "Elimina",
-      "copyLink": "Copia collegamento"
+      "copyLink": "Copia link"
     },
     "componentsSidebarSidebarTagList": {
-      "loadingTags": "Caricamento tag...",
+      "loadingTags": "Caricamento dei tag…",
       "failedToLoadTags": "Impossibile caricare i tag",
-      "noTagsYet": "Nessun tag ancora",
-      "filterTags": "Filtra tag...",
+      "noTagsYet": "Ancora nessun tag",
+      "filterTags": "Filtra tag…",
       "noMatchingTags": "Nessun tag corrispondente",
       "Uncategorized": "Senza categoria"
     },
     "componentsSidebarSortableProjectItem": {
-      "dropHere": "Lasciami qui",
+      "dropHere": "Rilascia qui",
       "editProject": "Modifica progetto",
       "settings": "Impostazioni"
     },
     "componentsSidebarTagDeleteDialog": {
-      "deleteTag": "Elimina il tag #",
-      "notesWithThisTagWonTBeDeletedJustUntagged": "Le note con questo tag non verranno eliminate, ma semplicemente prive di tag.",
+      "deleteTag": "Eliminare il tag #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Le note con questo tag non verranno eliminate: verrà solo rimosso il tag.",
       "cancel": "Annulla"
     },
     "componentsSidebarTagDetailView": {
       "goBack": "Torna indietro",
       "notes": "note",
-      "loadingNotes": "Caricamento note...",
+      "loadingNotes": "Caricamento delle note…",
       "noNotesWithThisTag": "Nessuna nota con questo tag",
       "addThisTagToANoteToSeeItHere": "Aggiungi questo tag a una nota per vederlo qui",
-      "pinned": "APPUNTATO",
+      "pinned": "FISSATE",
       "allNotes": "TUTTE LE NOTE",
-      "allNotesArePinned": "Tutte le note sono appuntate",
-      "unpinFromTag": "Sblocca dal tag",
-      "unpin": "Sblocca",
-      "pinToTag": "Appunta per taggare",
-      "pin": "Perno",
-      "tagActions": "Tagga le azioni",
-      "editTagName": "Modifica il nome dell'etichetta",
+      "allNotesArePinned": "Tutte le note sono fissate",
+      "tasks": "ATTIVITÀ",
+      "unpinFromTag": "Non fissare più al tag",
+      "unpin": "Non fissare più",
+      "pinToTag": "Fissa al tag",
+      "pin": "Fissa",
+      "tagActions": "Azioni del tag",
+      "editTagName": "Modifica il nome del tag",
       "changeColor": "Cambia colore",
-      "deleteTag": "Elimina etichetta",
-      "recent": "Recente",
+      "deleteTag": "Elimina tag",
+      "recent": "Più recenti",
       "created": "Creato",
-      "alphabetical": "Alfabetico",
-      "tasks": "ATTIVITÀ"
+      "alphabetical": "Alfabetico"
     },
     "componentsSidebarTagRenameDialog": {
-      "renameTag": "Rinomina etichetta",
-      "rename": "Rinominare ",
-      "acrossEveryNoteThatUsesIt": "in ogni nota che lo utilizza.",
+      "renameTag": "Rinomina tag",
+      "rename": "Rinomina ",
+      "acrossEveryNoteThatUsesIt": "in tutte le note che lo usano.",
       "newName": "Nuovo nome",
       "cancel": "Annulla"
     },
     "componentsViewersAudioPlayer": {
       "failedToLoadAudio": "Impossibile caricare l'audio",
-      "theAudioFileCouldNotBePlayed": "Non è stato possibile riprodurre il file audio.",
+      "theAudioFileCouldNotBePlayed": "Impossibile riprodurre il file audio.",
       "skipBack10s": "Torna indietro di 10 secondi",
       "skipForward10s": "Salta avanti di 10 secondi"
     },
@@ -700,7 +1177,7 @@
       "theImageCouldNotBeDisplayed": "Impossibile visualizzare l'immagine.",
       "resetZoom": "Reimposta lo zoom",
       "rotate": "Ruota",
-      "dragToPan": "Trascina per eseguire la panoramica"
+      "dragToPan": "Trascina per spostare l'immagine"
     },
     "componentsViewersPdfViewer": {
       "failedToLoadPdf": "Impossibile caricare il PDF",
@@ -710,57 +1187,57 @@
       "zoomIn": "Ingrandisci",
       "fitToWidth": "Adatta alla larghezza",
       "rotate": "Ruota",
-      "fitToHeight": "Fit to height",
-      "viewOptions": "View options",
-      "fit": "Fit",
-      "pageLayout": "Page layout",
-      "singlePage": "Single page",
-      "twoPageOdd": "Two-page (odd)",
-      "twoPageEven": "Two-page (even)",
-      "adaptToTheme": "Adapt to theme",
-      "goToPage": "Go to page",
-      "showThumbnails": "Show thumbnails",
-      "hideThumbnails": "Hide thumbnails"
+      "fitToHeight": "Adatta all'altezza",
+      "viewOptions": "Opzioni di visualizzazione",
+      "fit": "Adatta",
+      "pageLayout": "Layout di pagina",
+      "singlePage": "Pagina singola",
+      "twoPageOdd": "Due pagine (dispari)",
+      "twoPageEven": "Due pagine (pari)",
+      "adaptToTheme": "Adatta al tema",
+      "goToPage": "Vai alla pagina",
+      "showThumbnails": "Mostra miniature",
+      "hideThumbnails": "Nascondi miniature"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Impossibile caricare il video",
-      "theVideoFileCouldNotBePlayed": "Non è stato possibile riprodurre il file video."
+      "theVideoFileCouldNotBePlayed": "Impossibile riprodurre il file video."
     },
     "pagesFile": {
       "failedToLoadFile": "Impossibile caricare il file",
       "tryAgain": "Riprova",
       "noFileSelected": "Nessun file selezionato",
       "selectAFileFromTheSidebarToViewIt": "Seleziona un file dalla barra laterale per visualizzarlo",
-      "loadingFile": "Caricamento file...",
-      "open": "Aperto",
-      "reveal": "Rivela",
+      "loadingFile": "Caricamento del file…",
+      "open": "Apri",
+      "reveal": "Mostra",
       "unsupportedFileType": "Tipo di file non supportato",
-      "fileActions": "File actions"
+      "fileActions": "Azioni sul file"
     },
     "pagesFolderView": {
       "createNewNote": "Crea nuova nota",
-      "viewSettings": "Visualizza le impostazioni",
-      "displayDensity": "Visualizza densità",
-      "comfortable": "Confortevole",
-      "compact": "Compatto",
+      "viewSettings": "Impostazioni della vista",
+      "displayDensity": "Densità di visualizzazione",
+      "comfortable": "Comoda",
+      "compact": "Compatta",
       "showSummaries": "Mostra riepiloghi",
       "cancel": "Annulla"
     },
     "componentsFolderViewSortSelector": {
-      "builtIn": "Integrato",
-      "clearSort": "Cancella ordinamento",
-      "noSortablePropertiesFound": "Nessuna proprietà ordinabile trovata",
-      "properties": "Proprietà",
-      "searchProperties": "Cerca proprietà...",
+      "clearSort": "Rimuovi ordinamento",
       "sort": "Ordina",
-      "sortDirection": "Direzione ordinamento"
+      "searchProperties": "Cerca proprietà…",
+      "builtIn": "Di sistema",
+      "properties": "Proprietà",
+      "noSortablePropertiesFound": "Nessuna proprietà ordinabile trovata",
+      "sortDirection": "Direzione dell'ordinamento"
     }
   },
   "phaseI": {
     "errors": {
       "failedToSaveFormula": "Impossibile salvare la formula",
       "failedToOpenInExternalEditor": "Impossibile aprire nell'editor esterno",
-      "failedToCopyLink": "Impossibile copiare il collegamento",
+      "failedToCopyLink": "Impossibile copiare il link",
       "failedToCreateView": "Impossibile creare la vista",
       "failedToRenameFolder": "Impossibile rinominare la cartella",
       "failedToCreateTask": "Impossibile creare l'attività",
@@ -774,7 +1251,7 @@
       "failedToReorderBookmarks": "Impossibile riordinare i segnalibri",
       "failedToSave": "Impossibile salvare",
       "failedToRename": "Impossibile rinominare",
-      "failedToUpdateEmoji": "Impossibile aggiornare le emoji",
+      "failedToUpdateEmoji": "Impossibile aggiornare l'emoji",
       "failedToUpdateTags": "Impossibile aggiornare i tag",
       "failedToSnoozeReminder": "Impossibile posticipare il promemoria",
       "failedToCreateFolder": "Impossibile creare la cartella",
@@ -786,83 +1263,51 @@
       "noteExportedSuccessfully": "Nota esportata con successo",
       "failedToUpdateProperty": "Impossibile aggiornare la proprietà",
       "failedToUpdateTags": "Impossibile aggiornare i tag",
-      "failedToUpdateIcon": "Aggiornamento dell'icona non riuscito",
+      "failedToUpdateIcon": "Impossibile aggiornare l'icona",
       "reminderSnoozed": "Promemoria posticipato",
       "failedToSnoozeReminder": "Impossibile posticipare il promemoria",
-      "defaultTemplateSet": "Insieme di modelli predefiniti",
+      "defaultTemplateSet": "Modello predefinito impostato",
       "failedToSetDefaultTemplate": "Impossibile impostare il modello predefinito",
-      "defaultTemplateCleared": "Modello predefinito cancellato",
-      "failedToClearDefaultTemplate": "Impossibile cancellare il modello predefinito",
+      "defaultTemplateCleared": "Modello predefinito rimosso",
+      "failedToClearDefaultTemplate": "Impossibile rimuovere il modello predefinito",
       "failedToAddProperty": "Impossibile aggiungere la proprietà",
       "failedToDeleteProperty": "Impossibile eliminare la proprietà",
       "failedToRenameProperty": "Impossibile rinominare la proprietà",
       "failedToReorderProperties": "Impossibile riordinare le proprietà",
       "cannotAddTagThisNoteWasDeleted": "Impossibile aggiungere il tag: questa nota è stata eliminata",
       "cannotRemoveTagThisNoteWasDeleted": "Impossibile rimuovere il tag: questa nota è stata eliminata",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "Impossibile modificare solo in locale: questa nota è stata eliminata"
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Impossibile modificare l'opzione “Solo in locale”: questa nota è stata eliminata"
     }
   },
   "bulkActions": {
-    "addTag": "Aggiungi tag",
-    "clearAria": "Cancella selezione",
-    "copiedLinks": "Copiati {count, plural, one {# collegamento} other {# collegamenti}}",
-    "copyLinks": "Copia collegamenti",
-    "delete": "Elimina",
-    "export": "Esporta",
-    "iconUpdated": "{count, plural, one {Icona aggiornata su # nota} other {Icona aggiornata su # note}}",
-    "move": "Sposta",
+    "toolbarAria": "Azioni in blocco",
     "selected": "selezionate",
-    "setIcon": "Imposta icona",
+    "move": "Sposta",
+    "copyLinks": "Copia link",
+    "addTag": "Aggiungi tag",
     "tagNamePlaceholder": "Nome tag",
-    "toolbarAria": "Azioni in blocco"
-  },
-  "comments": {
-    "attachAria": "Allega file",
-    "badgeAria": "{count, plural, one {# commento} other {# commenti}}",
-    "cancel": "Annulla",
-    "commentPlaceholder": "Aggiungi un commento...",
-    "createdTooltip": "Creato il {date} alle {time}",
-    "delete": "Elimina commento",
-    "edit": "Modifica commento",
-    "kind": {
-      "addition": "Aggiunta",
-      "comment": "Commento",
-      "deletion": "Eliminazione",
-      "substitution": "Sostituzione"
-    },
-    "mentionAria": "Menziona una persona, pagina o data",
-    "railAria": "Commenti",
-    "replyPlaceholder": "Rispondi...",
-    "resolve": "Risolvi",
-    "sendAria": "Invia commento",
-    "toolbarComment": "Commenta",
-    "openAttachmentAria": "Apri l'allegato {name}",
-    "openImageAria": "Apri l'immagine {name}"
-  },
-  "dateMention": {
-    "clear": "Cancella",
-    "dateFormat": "Formato data",
-    "dateInput": "Data",
-    "includeTime": "Includi l'ora",
-    "remind": "Ricorda",
-    "time": "Ora",
-    "timeFormat": "Formato ora"
+    "export": "Esporta",
+    "delete": "Elimina",
+    "clearAria": "Azzera selezione",
+    "copiedLinks": "{count, plural, one {# link copiato} other {# link copiati}}",
+    "setIcon": "Imposta icona",
+    "iconUpdated": "{count, plural, one {Icona aggiornata su # nota} other {Icona aggiornata su # note}}"
   },
   "applyTemplateConfirm": {
+    "title": "Sostituire il contenuto della nota?",
+    "description": "Se applichi “{name}”, il contenuto attuale della nota verrà sostituito. L'operazione non può essere annullata.",
+    "full": "Sostituisci il contenuto e aggiungi i dettagli del modello",
     "body": "Sostituisci solo il contenuto",
     "cancel": "Annulla",
-    "description": "Applicando \"{name}\" il contenuto attuale di questa nota verrà sostituito. L'operazione non può essere annullata.",
-    "failed": "Impossibile applicare il modello",
-    "full": "Sostituisci contenuto e dettagli del modello",
     "success": "Modello applicato",
-    "title": "Sostituire il contenuto della nota?"
+    "failed": "Impossibile applicare il modello"
   },
   "saveNoteAsTemplate": {
     "title": "Salva la nota come modello",
     "description": "Crea un modello riutilizzabile da questa nota. La nota resta invariata.",
     "nameLabel": "Nome del modello",
     "loading": "Lettura della nota…",
-    "summary": "Salva il contenuto della nota, {tagCount, plural, one {# etichetta} other {# etichette}} e {propertyCount, plural, one {# proprietà} other {# proprietà}}.",
+    "summary": "Salva il contenuto della nota, {tagCount, plural, one {# tag} other {# tag}} e {propertyCount, plural, one {# proprietà} other {# proprietà}}.",
     "save": "Salva modello",
     "cancel": "Annulla",
     "success": "Modello salvato",
@@ -872,71 +1317,118 @@
   },
   "newNoteFromNote": {
     "action": "Nuova nota da questa nota",
-    "created": "Creata con {tagCount, plural, =0 {nessuna etichetta} one {# etichetta} other {# etichette}} e {propertyCount, plural, =0 {nessuna proprietà} one {# proprietà} other {# proprietà}} da {source}"
+    "created": "Creata con {tagCount, plural, =0 {nessun tag} one {# tag} other {# tag}} e {propertyCount, plural, =0 {nessuna proprietà} one {# proprietà} other {# proprietà}} da {source}"
+  },
+  "tags": {
+    "hubTitle": "Tag",
+    "openHub": "Apri la pagina dei tag"
   },
   "tagView": {
     "moreActions": "Altre azioni",
     "pin": {
       "action": "Fissa {count, plural, one {# nota} many {# note} other {# note}} al tag",
-      "failed": "Impossibile fissare la nota al tag",
-      "success": "{count, plural, one {# nota fissata} many {# note fissate} other {# note fissate}} al tag"
+      "success": "{count, plural, one {# nota fissata} many {# note fissate} other {# note fissate}} al tag",
+      "failed": "Impossibile fissare la nota al tag"
     }
   },
-  "tags": {
-    "hubTitle": "Tag",
-    "openHub": "Apri l'hub dei tag"
-  },
   "tagsHub": {
-    "cancelCreate": "Annulla",
-    "category": {
-      "delete": "Elimina categoria",
-      "deleteBody": "I tag passeranno a Senza categoria. Non verranno eliminati.",
-      "deleteCancel": "Annulla",
-      "deleteConfirm": "Elimina",
-      "deleteTitle": "Eliminare {name}?",
-      "dragHandle": "Trascina per riordinare la categoria",
-      "emptyHint": "Trascina qui un tag",
-      "more": "Opzioni della categoria",
-      "rename": "Rinomina categoria"
-    },
-    "categoryNamePlaceholder": "Nome della categoria",
-    "errors": {
-      "createCategoryFailed": "Impossibile creare la categoria",
-      "createTagCategorizeFailed": "Tag creato, ma non è stato possibile aggiungerlo alla categoria",
-      "createTagFailed": "Impossibile creare il tag",
-      "deleteCategoryFailed": "Impossibile eliminare la categoria",
-      "loadFailed": "Impossibile caricare le categorie dei tag",
-      "renameCategoryFailed": "Impossibile rinominare la categoria",
-      "reorderFailed": "Impossibile riordinare i tag"
-    },
-    "loading": "Caricamento tag...",
+    "loading": "Caricamento dei tag…",
     "newCategory": "Nuova categoria",
     "newTag": "Nuovo tag",
-    "search": {
-      "empty": "Nessuna categoria o tag corrisponde alla ricerca",
-      "placeholder": "Cerca categorie e tag"
-    },
+    "cancelCreate": "Annulla",
+    "categoryNamePlaceholder": "Nome della categoria",
     "tagNamePlaceholder": "Nome tag",
-    "uncategorized": "Senza categoria"
+    "uncategorized": "Senza categoria",
+    "search": {
+      "placeholder": "Cerca categorie e tag",
+      "empty": "Nessuna categoria o tag corrisponde alla ricerca"
+    },
+    "category": {
+      "more": "Opzioni della categoria",
+      "rename": "Rinomina categoria",
+      "delete": "Elimina categoria",
+      "dragHandle": "Trascina per riordinare la categoria",
+      "emptyHint": "Trascina qui un tag",
+      "deleteTitle": "Eliminare {name}?",
+      "deleteBody": "I tag passeranno a Senza categoria. Non verranno eliminati.",
+      "deleteConfirm": "Elimina",
+      "deleteCancel": "Annulla"
+    },
+    "errors": {
+      "loadFailed": "Impossibile caricare le categorie dei tag",
+      "createCategoryFailed": "Impossibile creare la categoria",
+      "renameCategoryFailed": "Impossibile rinominare la categoria",
+      "deleteCategoryFailed": "Impossibile eliminare la categoria",
+      "createTagFailed": "Impossibile creare il tag",
+      "createTagCategorizeFailed": "Tag creato, ma non è stato possibile aggiungerlo alla categoria",
+      "reorderFailed": "Impossibile riordinare i tag"
+    }
   },
   "folderView": {
+    "columns": {
+      "title": "Titolo",
+      "folder": "Cartella",
+      "tags": "Tag",
+      "created": "Creata",
+      "modified": "Modificata",
+      "wordCount": "Numero di parole",
+      "kind": "Tipo"
+    },
+    "defaultViewName": "Predefinita",
+    "selectView": "Seleziona vista",
     "columnHeader": {
       "doubleClickToEdit": "{name} (doppio clic per modificare)",
       "dragToReorder": "Trascina per riordinare la colonna: {name}"
     },
-    "columns": {
-      "created": "Creata",
-      "folder": "Cartella",
-      "kind": "Tipo",
-      "modified": "Modificata",
-      "tags": "Tag",
-      "title": "Titolo",
-      "wordCount": "Numero di parole"
-    },
-    "defaultViewName": "Predefinita",
     "groupHeader": {
       "noteCount": "{count, plural, one {# nota} many {# note} other {# note}}"
+    }
+  },
+  "mindMap": {
+    "regionLabel": "Mappa mentale di {title}, {count, plural, one {# nodo} other {# nodi}}",
+    "treeLabel": "Struttura della mappa mentale di {title}",
+    "emptyHint": "Aggiungi un'intestazione a questa nota e la mappa si ramificherà.",
+    "linkHint": "link a un'altra pagina",
+    "chain": {
+      "separator": "→"
     },
-    "selectView": "Seleziona vista"
+    "more": "{count, plural, one {+# altro} other {+# altri}}",
+    "nodeCapNotice": "Questa mappa ha raggiunto il limite di {count, plural, one {# nodo} other {# nodi}}; il resto è raccolto nel nodo superiore più vicino.",
+    "badge": {
+      "table": "{count, plural, one {# tabella} other {# tabelle}}",
+      "code": "{count, plural, one {# blocco di codice} other {# blocchi di codice}}",
+      "image": "{count, plural, one {# immagine} other {# immagini}}",
+      "quote": "{count, plural, one {# citazione} other {# citazioni}}",
+      "embed": "{count, plural, one {# contenuto incorporato} other {# contenuti incorporati}}",
+      "bookmark": "{count, plural, one {# segnalibro} other {# segnalibri}}",
+      "file": "{count, plural, one {# file} other {# file}}"
+    },
+    "toolbar": {
+      "label": "Azioni della mappa mentale",
+      "fit": "Adatta alla vista",
+      "copyImage": "Copia come immagine",
+      "copyVector": "Copia come grafica vettoriale",
+      "imageCopied": "Mappa copiata come immagine",
+      "vectorCopied": "Mappa copiata come grafica vettoriale",
+      "copyFailed": "Impossibile copiare la mappa",
+      "saveCanvas": "Salva come lavagna",
+      "saved": "Salvata come lavagna “{title}”",
+      "saveFailed": "Impossibile salvare la mappa come lavagna",
+      "snapshotOn": "Istantanea · {date}"
+    }
+  },
+  "tagAndFilter": {
+    "regionLabel": "Filtro per tag attivo",
+    "matchingAll": "Con tutti i tag:",
+    "removeTag": "Rimuovi {tag} dal filtro",
+    "clearAll": "Azzera tutto",
+    "saveSearch": "Salva ricerca",
+    "savedSearches": "Ricerche salvate",
+    "deleteSearch": "Elimina la ricerca salvata {name}",
+    "saveDialogTitle": "Dai un nome a questa ricerca",
+    "saveDialogPlaceholder": "ad es. Riunioni di lavoro",
+    "cancel": "Annulla",
+    "save": "Salva",
+    "addToFilterHint": "Fai Ctrl/Cmd-clic su un tag per aggiungerlo al filtro"
   }
 }

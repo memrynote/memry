@@ -1,45 +1,83 @@
 {
+  "wikiLinkCreateDialog": {
+    "title": "Vil du oprette noten?",
+    "body": "Der er ingen note med titlen »{title}«. Vil du oprette den?",
+    "create": "Opret"
+  },
+  "wikiLinkPreview": {
+    "notFound": "Ikke fundet – klik for at oprette »{title}«"
+  },
   "page": {
     "empty": {
       "title": "Ingen note valgt",
       "body": "Vælg en note fra sidebjælken for at se den"
     },
     "error": {
-      "title": "Noten kunne ikke indlæses"
+      "title": "Kunne ikke indlæse noten"
     },
     "toast": {
-      "cannotSaveDeleted": "Kan ikke gemme - noten blev slettet",
-      "cannotRenameDeleted": "Kan ikke omdøbe - noten blev slettet",
-      "createLinkedFailed": "Kunne ikke oprette linket note",
-      "openLinkedFailed": "Kunne ikke åbne linket element",
-      "localOnly": "Bemærk indstillet til kun lokalt",
-      "willSync": "Note vil synkronisere til skyen",
-      "renameFailed": "Noten kunne ikke omdøbes",
-      "toggleLocalOnlyFailed": "Kunne ikke skifte lokalt",
-      "toggleFullWidthFailed": "Kunne ikke skifte fuld bredde",
-      "copyPathFailed": "Stien kunne ikke kopieres",
-      "deleteFailed": "Noten kunne ikke slettes",
-      "moveFailed": "Noten kunne ikke flyttes",
-      "moved": "Noten er flyttet",
-      "openExternalFailed": "Noten kunne ikke åbnes",
-      "pathCopied": "Stien er kopieret",
-      "revealFailed": "Noten kunne ikke vises"
+      "cannotSaveDeleted": "Kan ikke gemme – noten blev slettet",
+      "cannotRenameDeleted": "Kan ikke omdøbe – noten blev slettet",
+      "createLinkedFailed": "Kunne ikke oprette den linkede note",
+      "openLinkedFailed": "Kunne ikke åbne det linkede element",
+      "fileNotFound": "Filen blev ikke fundet: {target}",
+      "localOnly": "Noten gemmes nu kun lokalt",
+      "willSync": "Noten synkroniseres nu til skyen",
+      "renameFailed": "Kunne ikke omdøbe noten",
+      "titleRequired": "En note skal have en titel",
+      "toggleLocalOnlyFailed": "Kunne ikke ændre, om noten kun gemmes lokalt",
+      "toggleFullWidthFailed": "Kunne ikke slå fuld bredde til/fra",
+      "pathCopied": "Sti kopieret",
+      "copyPathFailed": "Kunne ikke kopiere stien",
+      "revealFailed": "Kunne ikke vise noten",
+      "openExternalFailed": "Kunne ikke åbne noten",
+      "moved": "Note flyttet",
+      "moveFailed": "Kunne ikke flytte noten",
+      "deleteFailed": "Kunne ikke slette noten"
     },
-    "deleteDialogTitle": "{count, plural, one {Slet note} other {Slet #-noter}}",
-    "deleteConfirm": {
-      "cancel": "Annuller",
-      "confirm": "Slet",
-      "deleting": "Sletter...",
-      "description": "Er du sikker på, at du vil slette \"{title}\"? Denne handling kan ikke fortrydes.",
-      "title": "Slet note"
-    },
+    "deleteDialogTitle": "{count, plural, one {Slet note} other {Slet # noter}}",
     "itemsCount": "{count, plural, one {# element} other {# elementer}}",
     "itemsCountFiltered": "{shown} af {total, plural, one {# element} other {# elementer}}",
-    "tagFilterLabel": "tag = {tag}"
+    "tagFilterLabel": "tag = {tag}",
+    "deleteConfirm": {
+      "title": "Slet note",
+      "description": "Er du sikker på, at du vil slette »{title}«? Denne handling kan ikke fortrydes.",
+      "cancel": "Annullér",
+      "confirm": "Slet",
+      "deleting": "Sletter…"
+    },
+    "largeFile": {
+      "title": "Denne fil er for stor til at blive åbnet som en note",
+      "badge": "Skrivebeskyttet · ikke synkroniseret",
+      "reason": {
+        "fileBytes": "Den fylder {size}. Noter kan redigeres op til {limit}.",
+        "blockBytes": "Den indeholder et stykke på {size} uden en eneste tom linje. Noter kan redigeres op til {limit} pr. blok."
+      },
+      "explanation": "Redigering ville kræve, at hele filen fortolkes på én gang, hvilket ville få appen til at fryse. Filen på disken er uændret.",
+      "viewer": {
+        "preparing": "Forbereder {size} til læsning…",
+        "preparingHint": "Indekserer linjerne, så du kan rulle i filen uden at indlæse det hele på én gang.",
+        "lines": "{count} linjer",
+        "empty": "Denne fil er tom.",
+        "failed": "Kunne ikke forberede filen til læsning.",
+        "missing": "Filen findes ikke længere på disken.",
+        "lineTruncated": "lang linje afkortet her",
+        "showRestOfLine": "Vis resten af linjen"
+      },
+      "tooLarge": {
+        "title": "Denne fil er for stor til at blive åbnet",
+        "reason": "Den fylder {size}. Memry kan vise filer op til {limit}.",
+        "explanation": "Filen på disken er uændret. Åbn den i en app, der er beregnet til filer af denne størrelse."
+      },
+      "find": {
+        "searching": "{count} indtil videre…",
+        "limited": "{index}/{shown} af {total}"
+      }
+    }
   },
   "tree": {
     "aria": {
-      "tree": "Note træ",
+      "tree": "Notetræ",
       "openFolderView": "Åbn mappevisning"
     },
     "empty": {
@@ -47,141 +85,460 @@
       "body": "Opret en note for at komme i gang",
       "newNote": "Ny note"
     },
-    "loadingError": "Noterne kunne ikke indlæses",
+    "syncing": {
+      "body": "Synkroniserer dine noter – de vises her, efterhånden som de ankommer"
+    },
+    "loadingError": "Kunne ikke indlæse noterne",
+    "truncated": {
+      "hidden": "{count, plural, one {# ældre note vises ikke} other {# ældre noter vises ikke}}",
+      "loadMore": "Indlæs flere"
+    },
     "actions": {
+      "openInNewTab": "Åbn i ny fane",
+      "openToTheSide": "Åbn ved siden af",
       "newNote": "Ny note",
       "newFolder": "Ny mappe",
+      "expandSubfolders": "Udvid alle undermapper",
+      "collapseSubfolders": "Skjul alle undermapper",
       "rename": "Omdøb",
-      "openExternal": "Åbn i ekstern editor",
-      "setDefaultTemplate": "Indstil standardskabelon",
-      "clearDefaultTemplate": "Ryd standardskabelon",
-      "setIcon": "Indstil ikon",
-      "removeIcon": "Fjern ikon",
-      "deleteSelectedNotes": "Slet {count}-noter",
-      "deleteSelectedItems": "Slet {count} elementer",
-      "bookmark": "Bogmærk",
-      "removeFromBookmarks": "Fjern fra bogmærker",
       "applyTemplate": "Anvend skabelon",
-      "saveAsTemplate": "Gem som skabelon"
+      "saveAsTemplate": "Gem som skabelon",
+      "openExternal": "Åbn i ekstern editor",
+      "setDefaultTemplate": "Angiv standardskabelon",
+      "clearDefaultTemplate": "Ryd standardskabelon",
+      "setIcon": "Angiv ikon",
+      "removeIcon": "Fjern ikon",
+      "deleteSelectedNotes": "Slet {count} noter",
+      "deleteSelectedItems": "Slet {count} elementer",
+      "bookmark": "Tilføj bogmærke",
+      "removeFromBookmarks": "Fjern fra bogmærker",
+      "journalSettings": "Indstillinger for dagbog…"
+    },
+    "nav": {
+      "label": "Navigation",
+      "ariaExpanded": "Navigationssektion, udvidet",
+      "ariaCollapsed": "Navigationssektion, skjult",
+      "saveFailed": "Kunne ikke gemme navigationssektionens tilstand"
+    },
+    "viewOptions": {
+      "label": "Visningsindstillinger",
+      "notesFirst": "Noter før mapper",
+      "showFiles": "Vis filer",
+      "saveFailed": "Kunne ikke gemme sidebjælkens visningsindstillinger"
     },
     "deleteDialog": {
       "noteTitle": "Slet note",
       "folderTitle": "Slet mappe",
-      "itemsTitle": "Slet {count}-elementer",
-      "noteBody": "Er du sikker på, at du vil slette \"{name}\"? Denne handling kan ikke fortrydes.",
-      "folderBody": "Er du sikker på, at du vil slette \"{name}\" og alle noter i den? Denne handling kan ikke fortrydes.",
-      "itemsBody": "Er du sikker på, at du vil slette {count}-elementer? Denne handling kan ikke fortrydes.",
+      "itemsTitle": "Slet {count} elementer",
+      "noteBody": "Er du sikker på, at du vil slette »{name}«? Denne handling kan ikke fortrydes.",
+      "folderBody": "Er du sikker på, at du vil slette »{name}« og alle noter i den? Denne handling kan ikke fortrydes.",
+      "itemsBody": "Er du sikker på, at du vil slette {count} elementer? Denne handling kan ikke fortrydes.",
       "folderSuffix": "mappe",
-      "moreItems": "...og {count} mere",
-      "deleting": "Sletter...",
+      "moreItems": "…og {count} til",
+      "deleting": "Sletter…",
       "deleteCount": "Slet {count}"
     }
   },
   "editor": {
+    "bodySyncPending": "Synkroniserer – indholdet af denne note er muligvis stadig på vej",
+    "taskRemoval": {
+      "title": "{count, plural, one {Opgave fjernet fra denne note} other {# opgaver fjernet fra denne note}}",
+      "description": "{count, plural, one {Vil du beholde den i Opgaver eller slette den overalt?} other {Vil du beholde dem i Opgaver eller slette dem overalt?}}",
+      "keep": "Behold i Opgaver",
+      "delete": "{count, plural, one {Slet opgave} other {Slet opgaver}}",
+      "deleteFailed": "Kunne ikke slette opgaverne. De er stadig i Opgaver."
+    },
     "title": {
       "untitled": "Uden titel",
-      "aria": "Bemærk titel"
+      "aria": "Notetitel"
     },
     "content": {
-      "placeholder": "Begynd at skrive, eller tryk på '/' for kommandoer...",
+      "placeholder": "Begynd at skrive, eller tryk på »/« for kommandoer…",
       "regionAria": "Noteeditor",
       "richTextAria": "Editor til formateret tekst",
       "headingPlaceholder": "Overskrift",
       "listPlaceholder": "Listeelement",
-      "todoPlaceholder": "Opgaveelement"
+      "todoPlaceholder": "Gøremål"
+    },
+    "table": {
+      "keyboardMenuAria": "Tabelhandlinger for række {row}, kolonne {column}",
+      "keyboardMenuTitle": "Række {row} · Kolonne {column}"
+    },
+    "list": {
+      "bulleted": "Punktopstilling",
+      "numbered": "Nummereret liste",
+      "checklist": "Tjekliste"
+    },
+    "bulletFold": {
+      "collapse": "Skjul indlejrede elementer",
+      "expand": "Udvid indlejrede elementer"
     },
     "toolbar": {
-      "reminderSet": "Påmindelse sat",
-      "setReminder": "Indstil påmindelse",
+      "linkToNote": "Link til note",
+      "more": "Mere",
+      "pinToTop": "Fastgør værktøjslinjen øverst",
+      "reminderSet": "Påmindelse angivet",
+      "setReminder": "Angiv påmindelse",
       "removeBookmark": "Fjern bogmærke",
       "addBookmark": "Tilføj bogmærke",
+      "showMindMap": "Vis tankekort",
+      "hideMindMap": "Skjul tankekort",
       "hideLocalGraph": "Skjul lokal graf",
       "showLocalGraph": "Vis lokal graf",
-      "versionHistory": "Versionshistorik",
-      "export": "Eksporter",
-      "fullWidth": "Fuld bredde",
-      "disableLocalOnly": "Deaktiver kun lokalt",
-      "setLocalOnly": "Indstil kun lokalt",
-      "saveAsTemplate": "Gem som skabelon",
-      "copyPath": "Kopiér sti",
-      "delete": "Slet note",
-      "find": "Find…",
       "moreActions": "Flere handlinger",
-      "moveToFolder": "Flyt til mappe…",
+      "find": "Find…",
+      "versionHistory": "Versionshistorik",
+      "export": "Eksportér",
+      "saveAsTemplate": "Gem som skabelon",
+      "fullWidth": "Fuld bredde",
       "rename": "Omdøb…",
-      "revealInSidebar": "Vis i navigationen"
+      "moveToFolder": "Flyt til mappe…",
+      "copyPath": "Kopiér sti",
+      "revealInSidebar": "Vis i navigationen",
+      "attachments": "Vedhæftede filer…",
+      "disableLocalOnly": "Tillad synkronisering",
+      "setLocalOnly": "Gem kun lokalt",
+      "delete": "Slet note"
+    },
+    "attachmentMenu": {
+      "menuLabel": "Filhandlinger",
+      "storedAs": "Gemt som {name}",
+      "notSynced": "Endnu ikke synkroniseret til denne enhed",
+      "revealFailed": "Kunne ikke vise filen",
+      "openFailed": "Kunne ikke åbne filen",
+      "missingTitle": "Den vedhæftede fil mangler",
+      "missingExpected": "Forventet fil: {name}"
+    },
+    "attachmentRename": {
+      "menuItem": "Omdøb…",
+      "title": "Omdøb vedhæftet fil",
+      "description": "Filen omdøbes på disken og på dine andre enheder. Filtypenavnet forbliver det samme.",
+      "fieldLabel": "Navn på vedhæftet fil",
+      "confirm": "Omdøb",
+      "renamed": "Omdøbt til {name}",
+      "failed": "Kunne ikke omdøbe den vedhæftede fil"
+    },
+    "attachmentsDialog": {
+      "title": "Vedhæftede filer",
+      "description": "Filer, der er gemt med denne note",
+      "empty": "Denne note har ingen vedhæftede filer.",
+      "loadFailed": "Kunne ikke indlæse de vedhæftede filer"
     },
     "breadcrumb": {
-      "locationAria": "Bemærk placering",
+      "locationAria": "Notens placering",
       "parentFolderAria": "Gå til overordnet mappe"
     },
     "errorBoundary": {
-      "title": "Editor fejl",
-      "body": "Redaktøren stødte på en fejl. Dit notatindhold er sikkert.",
+      "title": "Editorfejl",
+      "body": "Editoren stødte på en fejl. Indholdet af din note er i sikkerhed.",
       "technicalDetails": "Tekniske detaljer",
       "reloadAria": "Genindlæs editor",
       "reload": "Genindlæs editor"
     },
     "callout": {
-      "title": "Billedforklaring",
+      "title": "Infoboks",
       "group": "Grundlæggende blokke",
       "subtext": "Fremhæv vigtige oplysninger",
-      "changeType": "Skift infoudvidelsestype",
-      "menuLabel": "Forklaringstype",
+      "changeType": "Skift infoboksens type",
+      "menuLabel": "Infobokstype",
       "info": "Info",
       "warning": "Advarsel",
       "error": "Fejl",
       "success": "Succes"
+    },
+    "diagram": {
+      "title": "Diagram",
+      "subtext": "Rutediagram, sekvens- eller Gantt-diagram fra Mermaid-kildekode"
+    },
+    "math": {
+      "title": "Ligning",
+      "group": "Grundlæggende blokke",
+      "subtext": "Skriv en formel i LaTeX",
+      "empty": "Tilføj en ligning",
+      "edit": "Redigér ligning",
+      "placeholder": "E = mc^2",
+      "sourceLabel": "LaTeX-kildekode",
+      "hint": "LaTeX. Tryk på Escape, når du er færdig."
+    },
+    "whiteboard": {
+      "title": "Whiteboard",
+      "group": "Medier",
+      "subtext": "Tegn på et lærred, der hører til denne note",
+      "defaultName": "Whiteboard",
+      "noteName": "Whiteboard i {note}",
+      "untitled": "Whiteboard uden titel",
+      "loading": "Indlæser whiteboard…",
+      "openInTab": "Åbn i fane",
+      "edit": "Redigér",
+      "done": "Færdig",
+      "surfaceLabel": "Tegning: {title}",
+      "createFailed": "Kunne ikke oprette whiteboardet. Der blev ikke tilføjet noget til noten.",
+      "loadFailed": "Kunne ikke indlæse dette whiteboard. Selve tegningen er uændret.",
+      "noCanvas": "Dette whiteboard har intet lærred. Fjern blokken, eller tilføj en ny med /whiteboard.",
+      "nested": "Åbn dette whiteboard i sin egen fane for at se tegningen.",
+      "missingTitle": "Dette whiteboard er ikke tilgængeligt",
+      "missingBody": "Lærredet er slettet eller er endnu ikke nået frem til denne enhed. Hvis det stadig synkroniseres, vises det her af sig selv.",
+      "unreadableTitle": "Dette whiteboard kan ikke åbnes her",
+      "unreadableBody": "Lærredsfilen mangler i boksen eller kan ikke læses på denne enhed. Intet er blevet slettet.",
+      "disabledTitle": "Lærred er slået fra",
+      "disabledBody": "Slå Lærred til under Indstillinger › Funktioner for at se og redigere dette whiteboard. Tegningen bevares under alle omstændigheder."
+    },
+    "viewBlock": {
+      "title": "Visning",
+      "group": "Indsæt",
+      "subtext": "En dynamisk liste over noter fra en mappe, et tag eller hele boksen",
+      "sourceMenu": "Hvad denne visning viser",
+      "chooseSource": "Vælg, hvad der skal vises",
+      "sourceVault": "Alle noter",
+      "sourceFolder": "Mappe",
+      "sourceTag": "Tag",
+      "noFolders": "Ingen mapper endnu",
+      "noTags": "Ingen tags endnu",
+      "savedView": "Gemt visning",
+      "savedViewMissing": "Den gemte visning »{name}« findes ikke længere, så standardvisningen vises.",
+      "openAsTab": "Åbn som fane",
+      "empty": "Intet matcher denne visning endnu.",
+      "loadFailed": "Kunne ikke indlæse denne visning. Selve noterne er uændrede.",
+      "folderMissing": "Denne mappe findes ikke længere i boksen. Vælg en anden kilde.",
+      "invalidJson": "Denne visnings definition er ikke gyldig JSON. Ret den nedenfor, eller fjern blokken.",
+      "invalidShape": "Denne visnings definition har ingen kilde. Vælg en ovenfor, eller ret den nedenfor.",
+      "definition": "Definition"
+    },
+    "slashMenu": {
+      "aria": "Blokke og handlinger",
+      "groups": {
+        "recent": "Seneste",
+        "bestMatch": "Bedste match",
+        "blocks": "Blokke",
+        "headings": "Flere overskrifter",
+        "insert": "Indsæt",
+        "media": "Medier",
+        "ai": "AI"
+      },
+      "secondary": {
+        "asToggleHeading": "Som foldbar",
+        "asLinkedTask": "Som linket opgave",
+        "asReminder": "Som påmindelse"
+      },
+      "actions": {
+        "insert": "Indsæt",
+        "open": "Åbn"
+      },
+      "matchesAlias": "matcher",
+      "noMatch": "Ingen blokke matcher »{query}«",
+      "fallback": {
+        "linkTo": "Link til",
+        "askAI": "Spørg AI"
+      },
+      "pdf": {
+        "title": "PDF",
+        "subtext": "Vedhæft en PDF, og læs den direkte i noten"
+      },
+      "html": {
+        "title": "HTML-fil",
+        "subtext": "Indlejr en .html-fil, og brug den direkte i noten"
+      },
+      "linkToNote": {
+        "title": "Link til note",
+        "subtext": "Søg i noter – eller skriv [[ hvor som helst"
+      },
+      "media": {
+        "title": "Medier",
+        "subtext": "Vedhæft et billede, en video eller en lydfil"
+      },
+      "insertTemplate": {
+        "title": "Indsæt skabelonindhold…",
+        "subtext": "Indsæt kun en skabelons brødtekst ved markøren",
+        "group": "Skabeloner",
+        "empty": "Skabelonen har intet indhold at indsætte",
+        "failed": "Kunne ikke indsætte skabelonen"
+      }
+    },
+    "filePanel": {
+      "choose": "Vælg en fil…"
+    },
+    "upload": {
+      "failed": "Kunne ikke vedhæfte filen"
+    },
+    "checkboxTask": {
+      "converted": "Afkrydsningsfelt omdannet til opgave",
+      "hint": "Et nyt afkrydsningsfelt bliver til en opgave. Tryk på {undo} for at beholde det som afkrydsningsfelt.",
+      "keepAsCheckbox": "Behold som afkrydsningsfelt"
+    },
+    "obsidianTask": {
+      "refused": "Denne linje indeholder et id, en afhængighed eller et bloklink, som Obsidian skal have i slutningen af linjen. Fjern det i Obsidian først, og konvertér derefter.",
+      "createFailed": "Kunne ikke oprette opgaven for denne linje.",
+      "completeFailed": "Opgaven blev oprettet, men dens fuldførelsesdato kunne ikke anvendes."
+    },
+    "blockMenu": {
+      "turnInto": "Lav om til",
+      "turnIntoTypes": {
+        "paragraph": "Tekst",
+        "heading1": "Overskrift 1",
+        "heading2": "Overskrift 2",
+        "heading3": "Overskrift 3",
+        "bulletList": "Punktopstilling",
+        "numberedList": "Nummereret liste",
+        "checkbox": "Afkrydsningsfelt",
+        "task": "Opgave",
+        "toggleList": "Foldbar liste",
+        "quote": "Citat",
+        "codeBlock": "Kode",
+        "callout": "Infoboks"
+      },
+      "turnIntoCheckbox": "Lav om til afkrydsningsfelt",
+      "colors": "Farver",
+      "duplicate": "Duplikér",
+      "insertTemplate": "Indsæt skabelon…",
+      "moveTo": "Flyt til…",
+      "delete": "Slet",
+      "comment": "Kommentér",
+      "moveDialog": {
+        "title": "Flyt blok til note",
+        "searchPlaceholder": "Søg i noter…",
+        "noResults": "Ingen matchende noter",
+        "moved": "Blok flyttet til »{title}«",
+        "failed": "Kunne ikke flytte blokken"
+      }
+    },
+    "attachmentPicker": {
+      "title": {
+        "image": "Tilføj et billede",
+        "media": "Tilføj medier",
+        "pdf": "Tilføj en PDF",
+        "html": "Indlejr en HTML-fil",
+        "file": "Tilføj en fil"
+      },
+      "placeholder": {
+        "image": "Søg i billeder, eller upload et nyt…",
+        "media": "Søg i medier, eller upload en ny fil…",
+        "pdf": "Søg i PDF’er, eller upload en ny…",
+        "html": "Søg i HTML-filer, eller upload en ny…",
+        "file": "Søg i vedhæftede filer, eller upload en ny…"
+      },
+      "upload": {
+        "image": "Upload et billede…",
+        "media": "Upload medier…",
+        "pdf": "Upload en PDF…",
+        "html": "Upload en HTML-fil…",
+        "file": "Upload en fil…"
+      },
+      "empty": {
+        "image": "Ingen billeder i denne boks endnu.",
+        "media": "Ingen medier i denne boks endnu.",
+        "pdf": "Ingen PDF’er i denne boks endnu.",
+        "html": "Ingen HTML-filer i denne boks endnu.",
+        "file": "Ingen vedhæftede filer i denne boks endnu."
+      },
+      "addHeading": "Tilføj",
+      "vaultHeading": "I denne boks",
+      "uploading": "Uploader…",
+      "noMatches": "Intet matcher.",
+      "loadFailed": "Kunne ikke indlæse boksens vedhæftede filer",
+      "insertFailed": "Kunne ikke indsætte den vedhæftede fil",
+      "uploadFailed": "Kunne ikke uploade filen",
+      "unsupportedVideo": "Det videoformat kan ikke afspilles i Memry. Understøttede formater: {formats}.",
+      "tooLarge": "Filen fylder {size}, hvilket overstiger grænsen for vedhæftede filer på {limit}.",
+      "hint": {
+        "navigate": "Navigér",
+        "insert": "Indsæt",
+        "close": "Luk"
+      }
+    },
+    "codeBlock": {
+      "copy": "Kopiér kode",
+      "copied": "Kopieret",
+      "language": "Sprog"
     }
+  },
+  "dateMention": {
+    "dateInput": "Dato",
+    "time": "Tid",
+    "includeTime": "Inkludér tid",
+    "timeFormat": "Tidsformat",
+    "dateFormat": "Datoformat",
+    "remind": "Påmind",
+    "clear": "Ryd"
   },
   "menus": {
     "wiki": {
-      "aria": "Bemærk forslag",
-      "loading": "Indlæser noter...",
+      "aria": "Noteforslag",
+      "loading": "Indlæser noter…",
       "empty": "Ingen noter fundet",
       "create": "Opret ny note",
       "embed": "Indlejr",
+      "wikiLink": "Wikilink",
       "embedAria": "Indlejr {title}",
-      "wikiLink": "Wiki-link",
-      "wikiLinkAria": "Wiki-link {title}"
+      "wikiLinkAria": "Wikilink til {title}",
+      "noHeadings": "{title} har ingen overskrifter",
+      "noMatchingHeadings": "Ingen overskrifter i {title} matcher",
+      "displayAs": "Vis som",
+      "aliasHint": "Skriv | for at navngive linket"
+    },
+    "mention": {
+      "aria": "Dato- og noteforslag",
+      "loading": "Indlæser noter…",
+      "empty": "Ingen noter fundet",
+      "date": "Dato",
+      "now": "Nu",
+      "remindMe": "Påmind mig",
+      "dateHint": "Fortsæt med at skrive en dato…",
+      "showMore": "Vis mere",
+      "canvases": "Lærreder",
+      "choiceTitle": "Indsæt lærred som",
+      "choiceMention": "Omtale",
+      "choiceEmbed": "Indlejring"
     },
     "tags": {
-      "aria": "Tag forslag",
-      "loading": "Indlæser tags...",
+      "aria": "Tagforslag",
+      "loading": "Indlæser tags…",
       "empty": "Skriv for at oprette et nyt tag",
       "create": "Opret #{tag}"
     },
     "pasteLink": {
-      "title": "Indsæt som",
+      "title": "Sæt ind som",
       "url": "URL",
       "mention": "Omtale",
-      "embedVideo": "Integrer video",
+      "embedVideo": "Indlejr video",
       "bookmark": "Bogmærke"
     },
     "emoji": {
-      "aria": "Emoji og ikonvælger",
+      "aria": "Emoji- og ikonvælger",
       "emojiTab": "Emoji",
       "iconsTab": "Ikoner",
       "searchPlaceholder": "Søg",
       "noIcons": "Ingen ikoner fundet",
-      "clearSearch": "Ryd søgning"
-    },
-    "mention": {
-      "aria": "Dato- og noteforslag",
-      "date": "Dato",
-      "dateHint": "Fortsæt med at skrive en dato…",
-      "empty": "Ingen noter fundet",
-      "loading": "Indlæser noter...",
-      "remindMe": "Påmind mig",
-      "showMore": "Vis mere"
+      "clearSearch": "Ryd søgning",
+      "customTab": "Egne",
+      "custom": {
+        "searchPlaceholder": "Søg i dine ikoner",
+        "dropHint": "Slip et billede her, eller klik for at uploade",
+        "urlPlaceholder": "Eller sæt et billedlink ind",
+        "urlLabel": "Billedlink",
+        "urlSubmit": "Hent dette billede",
+        "downloading": "Henter…",
+        "adding": "Tilføjer…",
+        "empty": "Ingen egne ikoner endnu. Slip et billede her, eller sæt et link ind for at tilføje et.",
+        "noMatches": "Ingen egne ikoner matcher søgningen",
+        "unsupportedFile": "{name} er ikke et understøttet billede",
+        "addFailed": "Kunne ikke tilføje ikonet",
+        "deleteFailed": "Kunne ikke slette ikonet",
+        "renameFailed": "Kunne ikke omdøbe ikonet",
+        "rename": "Omdøb {name}",
+        "delete": "Slet {name}",
+        "renameLabel": "Ikonnavn",
+        "saveName": "Gem navn",
+        "cancelRename": "Annullér omdøbning",
+        "addUrlFailed": "Kunne ikke hente billedet"
+      }
     }
   },
   "outline": {
     "title": "Disposition",
-    "aria": "Dokumentoversigt",
+    "aria": "Dokumentets disposition",
     "empty": "Ingen overskrifter",
     "emptyYet": "Ingen overskrifter endnu",
-    "readTime": "{count} min aflæst",
+    "readTime": "{count} min. læsetid",
     "words": "{count} ord",
     "created": "Oprettet",
     "modified": "Ændret"
@@ -190,93 +547,196 @@
     "sortRecent": "Seneste",
     "sortAlpha": "A-Å",
     "sortMentions": "Flest omtaler",
-    "sortBy": "Sorter backlinks efter {sort}",
+    "sortBy": "Sortér tilbagelinks efter {sort}",
     "summary": "{notes} noter · {references} referencer",
-    "sectionAria": "Backlinks",
-    "listAria": "Backlinks liste",
-    "fromAria": "Backlinks fra {title}",
-    "collapse": "Kollaps",
+    "sectionAria": "Tilbagelinks",
+    "listAria": "Liste over tilbagelinks",
+    "fromAria": "Tilbagelinks fra {title}",
+    "collapse": "Skjul",
     "expand": "Udvid",
-    "collapseSection": "Skjul backlinksektionen",
-    "expandSection": "Udvid sektionen med backlinks",
-    "showMore": "Vis {count} flere backlinks",
-    "more": "{count} mere"
+    "collapseSection": "Skjul sektionen med tilbagelinks",
+    "expandSection": "Udvid sektionen med tilbagelinks",
+    "showMore": "Vis {count} flere tilbagelinks",
+    "more": "{count} flere",
+    "viaProperty": "{property} → {title}"
+  },
+  "outgoingLinks": {
+    "summary": "{count, plural, one {# udgående link} other {# udgående links}}",
+    "sectionAria": "Udgående links",
+    "unresolved": "Ikke oprettet endnu",
+    "showMore": "Vis {count} flere udgående links",
+    "more": "{count} flere"
+  },
+  "canvasLinks": {
+    "connectedOn": "Forbundet på {canvas}",
+    "untitledCanvas": "Lærred uden titel"
+  },
+  "similarNotes": {
+    "summary": "{count, plural, one {# lignende note} other {# lignende noter}}",
+    "sectionAria": "Lignende noter",
+    "hint": "Noter, der minder om denne, og som endnu ikke er linket til den. Fundet på denne enhed ud fra lokale indlejringer.",
+    "addLink": "Link fra denne note",
+    "addLinkAria": "Link til {title} fra denne note",
+    "linked": "Link til {title} tilføjet",
+    "addToCanvas": "Føj til lærred",
+    "addToCanvasAria": "Føj {title} til et lærred",
+    "searchCanvases": "Søg i lærreder…",
+    "canvasLoading": "Indlæser lærreder…",
+    "noCanvases": "Ingen lærreder endnu",
+    "noMatch": "Ingen lærreder matcher",
+    "addedToCanvas": "{title} føjet til {canvas}",
+    "alreadyOnCanvas": "{title} er allerede på {canvas}",
+    "openCanvas": "Åbn",
+    "addToCanvasFailed": "Kunne ikke føje noten til lærredet"
+  },
+  "suggestedTags": {
+    "label": "Foreslåede tags:",
+    "hint": "Tags, som de noter, der minder mest om denne, har til fælles. Intet tilføjes, før du vælger et.",
+    "acceptAria": "Tilføj tagget {tag}",
+    "support": "{count, plural, one {Bruges på # lignende note} other {Bruges på # lignende noter}}",
+    "dismiss": "Skjul foreslåede tags",
+    "failed": "Kunne ikke tilføje tagget"
+  },
+  "comments": {
+    "railAria": "Kommentarer",
+    "badgeAria": "{count, plural, one {# kommentar} other {# kommentarer}}",
+    "toolbarComment": "Kommentér",
+    "commentPlaceholder": "Tilføj en kommentar…",
+    "createdTooltip": "Oprettet {date} kl. {time}",
+    "cancel": "Annullér",
+    "resolve": "Løs",
+    "edit": "Redigér kommentar",
+    "delete": "Slet kommentar",
+    "replyPlaceholder": "Svar…",
+    "attachAria": "Vedhæft fil",
+    "mentionAria": "Nævn en person, side eller dato",
+    "sendAria": "Send kommentar",
+    "formatToolbarAria": "Tekstformatering",
+    "format": {
+      "bold": "Fed",
+      "italic": "Kursiv",
+      "underline": "Understreget",
+      "strike": "Gennemstreget",
+      "code": "Kode"
+    },
+    "openImageAria": "Åbn billedet {name}",
+    "openAttachmentAria": "Åbn den vedhæftede fil {name}",
+    "kind": {
+      "comment": "Kommentar",
+      "addition": "Tilføjelse",
+      "deletion": "Sletning",
+      "substitution": "Erstatning"
+    }
   },
   "tagsRow": {
     "aria": "Tags",
     "empty": "Tilføj tags",
     "add": "Tilføj tag",
     "removeAria": "Fjern tag: {tag}",
-    "inputPlaceholder": "Indtast tagnavn...",
+    "inputPlaceholder": "Indtast tagnavn…",
     "recent": "Seneste",
     "matching": "Matchende",
     "all": "Alle tags",
     "none": "Ingen tags fundet",
-    "createTag": "Opret tag: \"{tag}\"",
+    "createTag": "Opret tag: »{tag}«",
     "chooseColor": "Vælg farve:",
-    "preview": "Eksempel:",
-    "colorAria": "Vælg {color} farve",
+    "preview": "Forhåndsvisning:",
+    "colorAria": "Vælg farven {color}",
     "customColor": "Tilpasset farve"
   },
   "properties": {
     "title": "Egenskaber",
-    "noteAria": "Bemærk egenskaber",
-    "workspaceAria": "Arbejdsrumsegenskaber",
+    "noteAria": "Notens egenskaber",
+    "workspaceAria": "Arbejdsområdets egenskaber",
     "listAria": "Egenskabsliste",
     "add": "Tilføj egenskab",
     "addDescription": "Tilføj en ny egenskab til denne note",
-    "namePlaceholder": "Ejendomsnavn",
-    "nameAria": "Ejendomsnavn",
+    "namePlaceholder": "Egenskabsnavn",
+    "nameAria": "Egenskabsnavn",
     "typeSection": "Type",
     "empty": "Tom",
     "dragAria": "Træk for at omarrangere egenskaben",
-    "editName": "Rediger ejendomsnavn",
-    "delete": "Slet ejendom",
-    "searchOptions": "Søgemuligheder...",
+    "editName": "Redigér egenskabsnavn",
+    "delete": "Slet egenskab",
+    "searchOptions": "Søg i muligheder…",
     "noOptions": "Ingen muligheder endnu",
     "optionName": "Mulighedens navn",
     "newOption": "Ny mulighed",
     "ratingAria": "Bedømmelse",
     "openUrlAria": "Åbn URL",
+    "showOnCalendar": "Vis i kalenderen",
+    "showingOnCalendar": "Vises i kalenderen",
+    "relation": {
+      "deleted": "Slettet",
+      "removeAria": "Fjern {title}",
+      "addAria": "Tilføj relation",
+      "searchPlaceholder": "Søg i noter, opgaver, begivenheder, lærreder og dagbog…",
+      "groupNotes": "Noter og filer",
+      "groupTasks": "Opgaver",
+      "groupEvents": "Begivenheder",
+      "groupCanvases": "Lærreder",
+      "groupJournals": "Dagbog",
+      "empty": "Ingen resultater"
+    },
     "types": {
       "text": "Tekst",
-      "number": "Nummer",
+      "number": "Tal",
       "date": "Dato",
       "checkbox": "Afkrydsningsfelt",
       "url": "URL",
       "status": "Status",
-      "select": "Vælg",
-      "multiselect": "Flervalg"
+      "select": "Valg",
+      "multiselect": "Flervalg",
+      "relation": "Relation",
+      "project": "Projekt"
     },
-    "showOnCalendar": "Vis på kalender",
-    "showingOnCalendar": "Vises på kalender",
     "statusCategories": {
-      "done": "Fuldført",
+      "todo": "At gøre",
       "inProgress": "I gang",
-      "todo": "At gøre"
-    }
+      "done": "Fuldført"
+    },
+    "projectAlreadySet": "Denne note har allerede en projektegenskab",
+    "projectPlaceholder": "Intet projekt",
+    "projectSearch": "Søg i projekter",
+    "projectEmpty": "Ingen projekter",
+    "projectRemove": "Fjern fra {name}"
+  },
+  "moveNoteTasks": {
+    "title": "Vil du flytte notens opgaver?",
+    "description": "{count, plural, one {# opgave i denne note hører til et andet projekt} other {# opgaver i denne note hører til andre projekter}}. Vil du flytte {count, plural, one {den} other {dem}} til {project}?",
+    "subtaskNote": "Delopgaver flyttes med deres overordnede opgave.",
+    "cancel": "Behold uændret",
+    "confirm": "{count, plural, one {Flyt opgave} other {Flyt opgaver}}",
+    "success": "{count, plural, one {# opgave flyttet til {project}} other {# opgaver flyttet til {project}}}",
+    "failed": "Kunne ikke flytte notens opgaver"
+  },
+  "deleteNoteTasks": {
+    "label": "{count, plural, one {Slet også opgaven i noten} other {Slet også de # opgaver i noten}}",
+    "description": "{count, plural, one {Hvis feltet ikke er markeret, forbliver den i Opgaver.} other {Hvis feltet ikke er markeret, forbliver de i Opgaver.}}",
+    "failed": "Kunne ikke slette opgaverne. De er stadig i Opgaver."
   },
   "cover": {
     "add": "Tilføj cover",
     "change": "Skift cover",
     "remove": "Fjern cover",
     "alt": "Coverbillede",
-    "setFailed": "Coverbilledet kunne ikke angives",
-    "removeFailed": "Coverbilledet kunne ikke fjernes",
+    "setFailed": "Kunne ikke angive coverbilledet",
+    "removeFailed": "Kunne ikke fjerne coverbilledet",
     "reposition": "Justér placering",
     "repositionHint": "Træk for at justere placeringen",
     "repositionSave": "gem",
     "repositionCancel": "annullér",
     "credit": "Foto af {name} på Unsplash",
-    "focusFailed": "Coverets placering kunne ikke gemmes",
+    "focusFailed": "Kunne ikke gemme coverets placering",
     "picker": {
       "title": "Notens cover",
-      "placeholder": "Søg covers",
+      "placeholder": "Søg efter covers",
       "tab": {
         "washes": "Nuancer",
         "photos": "Unsplash",
         "fromNote": "Fra noten",
-        "upload": "Upload"
+        "upload": "Upload",
+        "link": "Link"
       },
       "photos": {
         "searching": "Søger på Unsplash…",
@@ -284,18 +744,18 @@
         "remaining": "{count} tilbage",
         "tileCredit": "{name} · Unsplash",
         "error": {
-          "notConfigured": "Unsplash-fotos er ikke tilgængelige i denne build",
+          "notConfigured": "Unsplash-fotos er ikke tilgængelige i dette build",
           "offline": "Ingen forbindelse til Unsplash",
           "rateLimited": "Unsplash er hastighedsbegrænset, prøv igen om lidt",
-          "failed": "Unsplash kunne ikke nås",
-          "writeFailed": "Det foto kunne ikke gemmes i boksen"
+          "failed": "Kunne ikke få forbindelse til Unsplash",
+          "writeFailed": "Kunne ikke gemme fotoet i boksen"
         }
       },
       "upload": "Upload",
       "uploading": "Uploader…",
-      "uploadFailed": "Coverbilledet kunne ikke uploades",
-      "loadFailed": "Billederne i boksen kunne ikke indlæses",
-      "insertFailed": "Billedet kunne ikke bruges som cover",
+      "uploadFailed": "Kunne ikke uploade coverbilledet",
+      "loadFailed": "Kunne ikke indlæse billederne i boksen",
+      "insertFailed": "Kunne ikke bruge billedet som cover",
       "noMatches": "Ingen resultater",
       "empty": "Der er ingen billeder i denne boks endnu",
       "hint": {
@@ -316,44 +776,57 @@
         "bark": "Bark",
         "mist": "Dis",
         "plum": "Blomme"
+      },
+      "link": {
+        "prompt": "Sæt et link til et billede ind",
+        "invalid": "Det er ikke et link, Memry kan åbne",
+        "use": "Brug dette billede",
+        "saving": "Gemmer billedet…",
+        "error": {
+          "notAnImage": "Linket peger ikke på et billede",
+          "tooLarge": "Billedet er for stort til at blive gemt",
+          "offline": "Kunne ikke åbne linket",
+          "failed": "Kunne ikke hente billedet",
+          "writeFailed": "Kunne ikke gemme billedet i boksen"
+        }
       }
     }
   },
   "templateSelector": {
-    "title": "Vælg dit lærred",
+    "title": "Vælg dit udgangspunkt",
     "description": "Vælg en skabelon for at starte din note",
-    "searchPlaceholder": "Søg skabeloner...",
-    "loading": "Indlæser skabeloner...",
+    "searchPlaceholder": "Søg i skabeloner…",
+    "loading": "Indlæser skabeloner…",
     "empty": "Ingen skabeloner fundet",
     "myTemplates": "Mine skabeloner",
     "essentials": "Grundlæggende",
-    "setFolderDefault": "Indstil som mappestandard",
+    "setFolderDefault": "Angiv som standard for mappen",
     "useTemplate": "Brug skabelon",
     "createNote": "Opret note",
-    "applyDescription": "Erstat denne notes indhold med en skabelon",
+    "applyToNote": "Anvend skabelon",
     "applyTitle": "Anvend en skabelon",
-    "applyToNote": "Anvend skabelon"
+    "applyDescription": "Erstat denne notes indhold med en skabelon"
   },
   "exportDialog": {
-    "title": "Eksporter note",
-    "description": "Eksporter \"{title}\" til en fil",
+    "title": "Eksportér note",
+    "description": "Eksportér »{title}« til en fil",
     "format": "Format",
-    "pdfDescription": "Printklar dokument",
-    "htmlDescription": "Web-klar fil",
+    "pdfDescription": "Printklart dokument",
+    "htmlDescription": "Webklar fil",
     "pageSize": "Sidestørrelse",
     "selectPageSize": "Vælg sidestørrelse",
     "options": "Valgmuligheder",
-    "includeMetadata": "Inkluder metadata (tags, datoer)",
-    "exporting": "Eksporterer...",
+    "includeMetadata": "Inkludér metadata (tags, datoer)",
+    "exporting": "Eksporterer…",
     "exported": "Eksporteret!",
-    "export": "Eksporter",
+    "export": "Eksportér",
     "toast": {
       "failed": "Eksporten mislykkedes"
     }
   },
   "versionHistory": {
     "title": "Versionshistorik",
-    "description": "Se og gendan tidligere versioner af \"{title}\"",
+    "description": "Se og gendan tidligere versioner af »{title}«",
     "hidePreview": "Skjul forhåndsvisning",
     "showPreview": "Vis forhåndsvisning",
     "empty": "Ingen versioner gemt endnu",
@@ -366,10 +839,10 @@
     "deleteTitle": "Vil du slette denne version?",
     "deleteDescription": "Denne handling kan ikke fortrydes. Denne version slettes permanent.",
     "restoreTitle": "Vil du gendanne denne version?",
-    "restoreDescription": "Dette vil erstatte det nuværende noteindhold med denne version. Et øjebliksbillede af den aktuelle tilstand gemmes først, så du kan fortryde denne handling.",
-    "restoring": "Gendanner...",
+    "restoreDescription": "Dette erstatter notens nuværende indhold med denne version. Der gemmes først et øjebliksbillede af den aktuelle tilstand, så du kan fortryde handlingen.",
+    "restoring": "Gendanner…",
     "toast": {
-      "loadPreviewFailed": "Forhåndsvisning af version kunne ikke indlæses",
+      "loadPreviewFailed": "Kunne ikke indlæse forhåndsvisningen af versionen",
       "restored": "Note gendannet til tidligere version",
       "deleted": "Version slettet"
     }
@@ -389,34 +862,36 @@
     },
     "actions": {
       "create": "Opret skabelon",
-      "update": "Opdater",
-      "duplicateAndEdit": "Dupliker og rediger",
-      "duplicate": "Dupliker",
+      "update": "Opdatér",
+      "duplicateAndEdit": "Duplikér og redigér",
+      "duplicate": "Duplikér",
       "delete": "Slet skabelon",
       "more": "Flere handlinger"
     },
     "toast": {
-      "createFailed": "Kunne ikke oprette skabelon",
-      "saveFailed": "Skabelonen kunne ikke gemmes"
+      "createFailed": "Kunne ikke oprette skabelonen",
+      "saveFailed": "Kunne ikke gemme skabelonen"
     }
   },
   "reminders": {
     "summary": "Påmindelse: {date}",
-    "summaryWithMore": "Påmindelse: {date} (+{count} mere)",
+    "summaryWithMore": "Påmindelse: {date} (+{count} flere)",
     "hasReminders": "Har påmindelser",
-    "setReminder": "Indstil påmindelse",
+    "setReminder": "Angiv påmindelse",
     "toast": {
-      "set": "Påmindelse sat",
-      "setFailed": "Kunne ikke indstille påmindelsen",
-      "deleted": "Påmindelsen er slettet",
+      "set": "Påmindelse angivet",
+      "setFailed": "Kunne ikke angive påmindelsen",
+      "deleted": "Påmindelse slettet",
       "deleteFailed": "Kunne ikke slette påmindelsen",
-      "dismissed": "Påmindelsen afvist",
-      "dismissFailed": "Kunne ikke afvise påmindelsen"
+      "dismissed": "Påmindelse afvist",
+      "dismissFailed": "Kunne ikke afvise påmindelsen",
+      "updated": "Påmindelse opdateret",
+      "updateFailed": "Kunne ikke opdatere påmindelsen"
     }
   },
   "linkedTasks": {
-    "title": "Sammenkædede opgaver",
-    "loading": "Indlæser linkede opgaver..."
+    "title": "Linkede opgaver",
+    "loading": "Indlæser linkede opgaver…"
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
@@ -425,21 +900,21 @@
     },
     "componentsFolderViewColumnSelector": {
       "properties": "Egenskaber",
-      "searchColumns": "Søg i kolonner...",
+      "display": "Visning",
+      "showSummaries": "Vis opsummeringer",
+      "columnBorders": "Kolonnekanter",
+      "searchColumns": "Søg i kolonner…",
       "noMatchingColumns": "Ingen matchende kolonner",
       "formulas": "FORMLER",
       "noFormulasDefined": "Ingen formler defineret",
       "addFormula": "Tilføj formel",
       "deleteFormula": "Slet formel",
-      "cancel": "Annuller",
+      "cancel": "Annullér",
       "delete": "Slet",
       "none": "Ingen",
-      "edit": "Rediger",
+      "edit": "Redigér",
       "delete2": "Slet",
-      "columnBorders": "Kolonnekanter",
-      "display": "Visning",
-      "showSummaries": "Vis opsummeringer",
-      "deleteFormulaBody": "Er du sikker på, at du vil slette formlen “{name}”? Denne handling kan ikke fortrydes."
+      "deleteFormulaBody": "Er du sikker på, at du vil slette formlen »{name}«? Denne handling kan ikke fortrydes."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
@@ -449,11 +924,11 @@
       "addFiltersToNarrowDownYourNotes": "Tilføj filtre for at indsnævre dine noter",
       "match": "Match",
       "allAnd": "Alle (OG)",
-      "anyOr": "Enhver (ELLER)",
+      "anyOr": "Mindst én (ELLER)",
       "ofTheFollowing": "af følgende:",
       "match2": "Match",
       "all": "Alle",
-      "any": "Enhver",
+      "any": "Mindst én",
       "of": "af:",
       "addCondition": "Tilføj betingelse",
       "addFilter": "Tilføj filter",
@@ -464,75 +939,76 @@
     "componentsFolderViewFilterRow": {
       "builtIn": "Indbygget",
       "properties": "Egenskaber",
-      "placeholderProperty": "Ejendom",
-      "placeholderOperator": "Operatør",
+      "placeholderProperty": "Egenskab",
+      "placeholderOperator": "Operator",
       "placeholderValue": "Værdi",
-      "removeFilter": "Fjern filter"
+      "removeFilter": "Fjern filter",
+      "tagSuggestions": "Tagforslag"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "Note tabel",
+      "notesTable": "Notetabel",
       "selectAll": "Vælg alle noter",
       "selectRow": "Vælg note",
       "kind": {
-        "Inbox": "Indbakke",
         "Note": "Note",
-        "Task": "Opgave"
+        "Task": "Opgave",
+        "Inbox": "Indbakke"
       }
     },
     "componentsFolderViewFolderViewToolbar": {
-      "searchNotes": "Søg i noter...",
+      "searchNotes": "Søg i noter…",
       "clearSearch": "Ryd søgning"
     },
     "componentsFolderViewFormulaEditorModal": {
-      "defineAComputedColumnUsingAnExpression": "Definer en beregnet kolonne ved hjælp af et udtryk.",
+      "defineAComputedColumnUsingAnExpression": "Definér en beregnet kolonne ved hjælp af et udtryk.",
       "name": "Navn",
       "expression": "Udtryk",
-      "available": "Tilgængelig: ",
+      "available": "Tilgængelige: ",
       "preview": "Forhåndsvisning",
       "fixExpressionErrorsToSeePreview": "Ret udtryksfejl for at se forhåndsvisning",
-      "usingNote": "Bruger note: \"",
-      "cancel": "Annuller",
-      "namePlaceholder": "dage_indtil_termin",
-      "expressionPlaceholder": "dateDiff(forfaldsdato, i dag(), \"dage\")",
-      "usingNoteTitle": "Bruger note: “{title}”"
+      "usingNote": "Bruger noten: »",
+      "cancel": "Annullér",
+      "namePlaceholder": "dage_til_forfald",
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "Bruger noten: »{title}«"
     },
     "componentsFolderViewGroupBySelector": {
-      "clearGrouping": "Tydelig gruppering",
-      "searchProperties": "Søg i ejendomme...",
+      "clearGrouping": "Ryd gruppering",
+      "searchProperties": "Søg i egenskaber…",
       "builtIn": "Indbygget",
       "properties": "Egenskaber",
       "noGroupablePropertiesFound": "Der blev ikke fundet nogen grupperbare egenskaber",
-      "sortDirection": "Sorter retning",
+      "sortDirection": "Sorteringsretning",
       "collapseGroupsByDefault": "Skjul grupper som standard",
-      "showGroupSummaries": "Vis grupperesuméer",
-      "clearGrouping2": "Tydelig gruppering"
+      "showGroupSummaries": "Vis gruppeopsummeringer",
+      "clearGrouping2": "Ryd gruppering"
     },
     "componentsFolderViewGroupedTable": {
       "groupedNotesTable": "Grupperet notetabel",
-      "more": "mere",
+      "more": "flere",
       "selectAll": "Vælg alle noter",
       "selectRow": "Vælg note"
     },
     "componentsFolderViewMoveToFolderDialog": {
-      "searchFolders": "Søg i mapper...",
-      "loadingFolders": "Indlæser mapper...",
+      "searchFolders": "Søg i mapper…",
+      "loadingFolders": "Indlæser mapper…",
       "suggested": "FORESLÅET",
       "bestMatch": "Bedste match",
       "current": "nuværende)",
       "allFolders": "ALLE MAPPER",
       "noFoldersMatch": "Ingen mapper matcher \"",
       "create": "Opret \"",
-      "cancel": "Annuller",
-      "createFolderNamed": "Opret “{name}”",
+      "cancel": "Annullér",
       "currentFolderBadge": "(nuværende)",
-      "noFoldersMatchQuery": "Ingen mapper matcher “{query}”"
+      "noFoldersMatchQuery": "Ingen mapper matcher »{query}«",
+      "createFolderNamed": "Opret »{name}«"
     },
     "componentsFolderViewRowContextMenu": {
       "delete": "Slet ",
-      "notes": "Noter",
+      "notes": "noter",
       "open": "Åbn",
       "openInExternalEditor": "Åbn i ekstern editor",
-      "revealInSidebar": "Afsløre i Sidebar",
+      "revealInSidebar": "Vis i sidebjælken",
       "copyLink": "Kopiér link",
       "delete2": "Slet"
     },
@@ -543,61 +1019,62 @@
     },
     "componentsFolderViewViewSwitcher": {
       "default": "standard",
+      "viewActions": "Visningshandlinger",
       "rename": "Omdøb",
-      "duplicate": "Dublet",
-      "setAsDefault": "Indstil som standard",
+      "duplicate": "Duplikér",
+      "setAsDefault": "Angiv som standard",
       "delete": "Slet",
       "createNewView": "Opret ny visning",
       "createNewView2": "Opret ny visning",
       "createANewViewWithCustomColumnsFiltersAndSorting": "Opret en ny visning med tilpassede kolonner, filtre og sortering.",
-      "viewName": "Vis navn",
+      "viewName": "Visningsnavn",
       "myCustomView": "Min brugerdefinerede visning",
       "baseConfiguration": "Basiskonfiguration",
       "copyFromCurrentView": "Kopiér fra den aktuelle visning",
       "startFreshDefaultColumns": "Start forfra (standardkolonner)",
-      "cancel": "Annuller",
+      "cancel": "Annullér",
       "renameView": "Omdøb visning",
       "enterANewNameForThisView": "Indtast et nyt navn til denne visning.",
-      "viewName2": "Vis navn",
-      "viewName3": "Se navn",
-      "cancel2": "Annuller",
+      "viewName2": "Visningsnavn",
+      "viewName3": "Visningsnavn",
+      "cancel2": "Annullér",
       "deleteView": "Slet visning",
       "areYouSureYouWantToDelete": "Er du sikker på, at du vil slette \"",
       "thisActionCannotBeUndone": "Denne handling kan ikke fortrydes.",
-      "cancel3": "Annuller",
-      "createView": "Opret visning",
-      "gallery": "Galleri",
-      "layout": "Layout",
-      "list": "Liste",
-      "name": "Navn",
+      "cancel3": "Annullér",
       "newView": "Ny visning",
-      "save": "Gem",
+      "name": "Navn",
+      "layout": "Layout",
       "table": "Tabel",
-      "viewActions": "Visningshandlinger"
+      "list": "Liste",
+      "gallery": "Galleri",
+      "createView": "Opret visning",
+      "save": "Gem"
     },
     "componentsNoteContentAreaFileBlock": {
-      "failedToLoadPdf": "Kunne ikke indlæse PDF: ",
+      "failedToLoadPdf": "Kunne ikke indlæse PDF’en: ",
       "download": "Hent",
       "download2": "Hent",
       "noFileAttached": "Ingen fil vedhæftet",
-      "alignCenter": "Justér til midten",
+      "resizePdf": "Ændr størrelse på PDF",
+      "resizeHtml": "Ændr størrelse på HTML-indlejring",
       "alignLeft": "Justér til venstre",
+      "alignCenter": "Justér til midten",
       "alignRight": "Justér til højre",
-      "nextPage": "Næste side",
       "previousPage": "Forrige side",
-      "resizePdf": "Ændr størrelse på PDF"
+      "nextPage": "Næste side"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Åbn i opgavepanelet",
-      "taskName": "Opgavenavn...",
+      "taskName": "Opgavenavn…",
       "taskDeleted": "Opgave slettet",
-      "loading": "Indlæser..."
+      "loading": "Indlæser…"
     },
     "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
       "project": "Projekt",
       "priority": "Prioritet",
       "dueDate": "Forfaldsdato",
-      "cancel": "Annuller"
+      "cancel": "Annullér"
     },
     "componentsNoteContentAreaYoutubeEmbedBlock": {
       "noVideoUrl": "Ingen video-URL"
@@ -606,7 +1083,7 @@
       "pdf": "PDF",
       "html": "HTML",
       "a4210X297Mm": "A4 (210 x 297 mm)",
-      "letter85X11In": "Bogstav (8,5 x 11 tommer)",
+      "letter85X11In": "Letter (8,5 x 11 tommer)",
       "legal85X14In": "Legal (8,5 x 14 tommer)"
     },
     "componentsNoteInfoSectionEditorsDateeditor": {
@@ -617,7 +1094,7 @@
     },
     "componentsSharedDocumentInfoTab": {
       "words": "Ord",
-      "characters": "Karakterer",
+      "characters": "Tegn",
       "readingTime": "Læsetid",
       "created": "Oprettet",
       "modified": "Ændret"
@@ -628,234 +1105,202 @@
       "createYourFirstProject2": "Opret dit første projekt"
     },
     "componentsSidebarSidebarBookmarkList": {
-      "loadingBookmarks": "Indlæser bogmærker...",
-      "failedToLoadBookmarks": "Bogmærker kunne ikke indlæses",
+      "loadingBookmarks": "Indlæser bogmærker…",
+      "failedToLoadBookmarks": "Kunne ikke indlæse bogmærkerne",
       "noBookmarksYet": "Ingen bogmærker endnu",
       "moreOptions": "Flere muligheder",
       "remove": "Fjern"
     },
     "componentsSidebarSidebarItemContextMenu": {
       "open": "Åbn",
-      "openToTheSide": "Åbn til siden",
-      "pinToTabs": "Fastgør til faner",
-      "edit": "Rediger",
+      "openToTheSide": "Åbn ved siden af",
+      "pinToTabs": "Fastgør som fane",
+      "edit": "Redigér",
       "delete": "Slet",
       "copyLink": "Kopiér link"
     },
     "componentsSidebarSidebarTagList": {
-      "loadingTags": "Indlæser tags...",
-      "failedToLoadTags": "Tags kunne ikke indlæses",
+      "loadingTags": "Indlæser tags…",
+      "failedToLoadTags": "Kunne ikke indlæse taggene",
       "noTagsYet": "Ingen tags endnu",
-      "filterTags": "Filtrer tags...",
+      "filterTags": "Filtrér tags…",
       "noMatchingTags": "Ingen matchende tags",
       "Uncategorized": "Ukategoriseret"
     },
     "componentsSidebarSortableProjectItem": {
-      "dropHere": "Drop her",
-      "editProject": "Rediger projekt",
+      "dropHere": "Slip her",
+      "editProject": "Redigér projekt",
       "settings": "Indstillinger"
     },
     "componentsSidebarTagDeleteDialog": {
-      "deleteTag": "Slet tag #",
-      "notesWithThisTagWonTBeDeletedJustUntagged": "Noter med dette tag vil ikke blive slettet, bare fjernet.",
-      "cancel": "Annuller"
+      "deleteTag": "Vil du slette tagget #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Noter med dette tag bliver ikke slettet – tagget fjernes bare fra dem.",
+      "cancel": "Annullér"
     },
     "componentsSidebarTagDetailView": {
       "goBack": "Gå tilbage",
       "notes": "noter",
-      "loadingNotes": "Indlæser noter...",
+      "loadingNotes": "Indlæser noter…",
       "noNotesWithThisTag": "Ingen noter med dette tag",
-      "addThisTagToANoteToSeeItHere": "Tilføj dette tag til en note for at se det her",
-      "pinned": "FASTET",
+      "addThisTagToANoteToSeeItHere": "Tilføj tagget til en note for at se den her",
+      "pinned": "FASTGJORT",
       "allNotes": "ALLE NOTER",
       "allNotesArePinned": "Alle noter er fastgjort",
+      "tasks": "OPGAVER",
       "unpinFromTag": "Frigør fra tag",
       "unpin": "Frigør",
       "pinToTag": "Fastgør til tag",
       "pin": "Fastgør",
-      "tagActions": "Tag handlinger",
-      "editTagName": "Rediger tagnavn",
+      "tagActions": "Taghandlinger",
+      "editTagName": "Redigér tagnavn",
       "changeColor": "Skift farve",
       "deleteTag": "Slet tag",
       "recent": "Seneste",
       "created": "Oprettet",
-      "alphabetical": "Alfabetisk",
-      "tasks": "OPGAVER"
+      "alphabetical": "Alfabetisk"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Omdøb tag",
       "rename": "Omdøb ",
-      "acrossEveryNoteThatUsesIt": "på tværs af hver note, der bruger det.",
+      "acrossEveryNoteThatUsesIt": "i alle noter, der bruger det.",
       "newName": "Nyt navn",
-      "cancel": "Annuller"
+      "cancel": "Annullér"
     },
     "componentsViewersAudioPlayer": {
-      "failedToLoadAudio": "Lyden kunne ikke indlæses",
+      "failedToLoadAudio": "Kunne ikke indlæse lyden",
       "theAudioFileCouldNotBePlayed": "Lydfilen kunne ikke afspilles.",
-      "skipBack10s": "Spring 10'erne tilbage",
-      "skipForward10s": "Spring 10'ere frem"
+      "skipBack10s": "Spring 10 sek. tilbage",
+      "skipForward10s": "Spring 10 sek. frem"
     },
     "componentsViewersImageViewer": {
-      "failedToLoadImage": "Billedet kunne ikke indlæses",
+      "failedToLoadImage": "Kunne ikke indlæse billedet",
       "theImageCouldNotBeDisplayed": "Billedet kunne ikke vises.",
       "resetZoom": "Nulstil zoom",
-      "rotate": "Roter",
+      "rotate": "Rotér",
       "dragToPan": "Træk for at panorere"
     },
     "componentsViewersPdfViewer": {
-      "failedToLoadPdf": "Kunne ikke indlæse PDF",
+      "failedToLoadPdf": "Kunne ikke indlæse PDF’en",
       "previousPage": "Forrige side",
       "nextPage": "Næste side",
       "zoomOut": "Zoom ud",
       "zoomIn": "Zoom ind",
       "fitToWidth": "Tilpas til bredden",
-      "rotate": "Roter",
-      "fitToHeight": "Fit to height",
-      "viewOptions": "View options",
-      "fit": "Fit",
-      "pageLayout": "Page layout",
-      "singlePage": "Single page",
-      "twoPageOdd": "Two-page (odd)",
-      "twoPageEven": "Two-page (even)",
-      "adaptToTheme": "Adapt to theme",
-      "goToPage": "Go to page",
-      "showThumbnails": "Show thumbnails",
-      "hideThumbnails": "Hide thumbnails"
+      "rotate": "Rotér",
+      "fitToHeight": "Tilpas til højden",
+      "viewOptions": "Visningsindstillinger",
+      "fit": "Tilpas",
+      "pageLayout": "Sidelayout",
+      "singlePage": "Enkelt side",
+      "twoPageOdd": "To sider (ulige)",
+      "twoPageEven": "To sider (lige)",
+      "adaptToTheme": "Tilpas til tema",
+      "goToPage": "Gå til side",
+      "showThumbnails": "Vis miniaturer",
+      "hideThumbnails": "Skjul miniaturer"
     },
     "componentsViewersVideoPlayer": {
-      "failedToLoadVideo": "Videoen kunne ikke indlæses",
+      "failedToLoadVideo": "Kunne ikke indlæse videoen",
       "theVideoFileCouldNotBePlayed": "Videofilen kunne ikke afspilles."
     },
     "pagesFile": {
-      "failedToLoadFile": "Filen kunne ikke indlæses",
+      "failedToLoadFile": "Kunne ikke indlæse filen",
       "tryAgain": "Prøv igen",
       "noFileSelected": "Ingen fil valgt",
       "selectAFileFromTheSidebarToViewIt": "Vælg en fil fra sidebjælken for at se den",
-      "loadingFile": "Indlæser fil...",
+      "loadingFile": "Indlæser fil…",
       "open": "Åbn",
-      "reveal": "Afsløre",
+      "reveal": "Vis i mappe",
       "unsupportedFileType": "Ikke-understøttet filtype",
-      "fileActions": "File actions"
+      "fileActions": "Filhandlinger"
     },
     "pagesFolderView": {
       "createNewNote": "Opret ny note",
-      "viewSettings": "Se indstillinger",
-      "displayDensity": "Displaytæthed",
+      "viewSettings": "Visningsindstillinger",
+      "displayDensity": "Visningstæthed",
       "comfortable": "Komfortabel",
       "compact": "Kompakt",
-      "showSummaries": "Vis oversigter",
-      "cancel": "Annuller"
+      "showSummaries": "Vis opsummeringer",
+      "cancel": "Annullér"
     },
     "componentsFolderViewSortSelector": {
-      "builtIn": "Indbygget",
       "clearSort": "Ryd sortering",
-      "noSortablePropertiesFound": "Ingen sorterbare egenskaber fundet",
-      "properties": "Egenskaber",
-      "searchProperties": "Søg egenskaber...",
       "sort": "Sortér",
+      "searchProperties": "Søg i egenskaber…",
+      "builtIn": "Indbygget",
+      "properties": "Egenskaber",
+      "noSortablePropertiesFound": "Ingen sorterbare egenskaber fundet",
       "sortDirection": "Sorteringsretning"
     }
   },
   "phaseI": {
     "errors": {
-      "failedToSaveFormula": "Formlen kunne ikke gemmes",
+      "failedToSaveFormula": "Kunne ikke gemme formlen",
       "failedToOpenInExternalEditor": "Kunne ikke åbne i ekstern editor",
-      "failedToCopyLink": "Linket kunne ikke kopieres",
-      "failedToCreateView": "Kunne ikke oprette visning",
-      "failedToRenameFolder": "Mappen kunne ikke omdøbes",
-      "failedToCreateTask": "Opgaven kunne ikke oprettes",
-      "failedToLoadVersionHistory": "Det lykkedes ikke at indlæse versionshistorikken",
-      "failedToRestoreVersion": "Det lykkedes ikke at gendanne versionen",
-      "failedToDeleteVersion": "Det lykkedes ikke at slette versionen",
-      "failedToCreateNote": "Kunne ikke oprette note",
+      "failedToCopyLink": "Kunne ikke kopiere linket",
+      "failedToCreateView": "Kunne ikke oprette visningen",
+      "failedToRenameFolder": "Kunne ikke omdøbe mappen",
+      "failedToCreateTask": "Kunne ikke oprette opgaven",
+      "failedToLoadVersionHistory": "Kunne ikke indlæse versionshistorikken",
+      "failedToRestoreVersion": "Kunne ikke gendanne versionen",
+      "failedToDeleteVersion": "Kunne ikke slette versionen",
+      "failedToCreateNote": "Kunne ikke oprette noten",
       "failedToLoadMoreBookmarks": "Kunne ikke indlæse flere bogmærker",
-      "failedToToggleBookmark": "Bogmærket kunne ikke skiftes",
-      "failedToRemoveBookmark": "Bogmærket kunne ikke fjernes",
-      "failedToReorderBookmarks": "Kunne ikke omarrangere bogmærker",
+      "failedToToggleBookmark": "Kunne ikke tilføje eller fjerne bogmærket",
+      "failedToRemoveBookmark": "Kunne ikke fjerne bogmærket",
+      "failedToReorderBookmarks": "Kunne ikke ændre rækkefølgen af bogmærkerne",
       "failedToSave": "Kunne ikke gemme",
       "failedToRename": "Kunne ikke omdøbe",
-      "failedToUpdateEmoji": "Emoji kunne ikke opdateres",
-      "failedToUpdateTags": "Kunne ikke opdatere tags",
+      "failedToUpdateEmoji": "Kunne ikke opdatere emojien",
+      "failedToUpdateTags": "Kunne ikke opdatere taggene",
       "failedToSnoozeReminder": "Kunne ikke udsætte påmindelsen",
-      "failedToCreateFolder": "Kunne ikke oprette mappe",
-      "failedToLoadProperties": "Egenskaber kunne ikke indlæses",
-      "failedToLoadPropertyDefinitions": "Egenskabsdefinitioner kunne ikke indlæses",
-      "failedToLoadTemplates": "Kunne ikke indlæse skabeloner"
+      "failedToCreateFolder": "Kunne ikke oprette mappen",
+      "failedToLoadProperties": "Kunne ikke indlæse egenskaberne",
+      "failedToLoadPropertyDefinitions": "Kunne ikke indlæse egenskabsdefinitionerne",
+      "failedToLoadTemplates": "Kunne ikke indlæse skabelonerne"
     },
     "toasts": {
-      "noteExportedSuccessfully": "Noten blev eksporteret",
-      "failedToUpdateProperty": "Ejendommen kunne ikke opdateres",
-      "failedToUpdateTags": "Kunne ikke opdatere tags",
+      "noteExportedSuccessfully": "Note eksporteret",
+      "failedToUpdateProperty": "Kunne ikke opdatere egenskaben",
+      "failedToUpdateTags": "Kunne ikke opdatere taggene",
       "failedToUpdateIcon": "Kunne ikke opdatere ikonet",
-      "reminderSnoozed": "Påmindelsen er udsat",
+      "reminderSnoozed": "Påmindelse udsat",
       "failedToSnoozeReminder": "Kunne ikke udsætte påmindelsen",
-      "defaultTemplateSet": "Standard skabelonsæt",
-      "failedToSetDefaultTemplate": "Kunne ikke indstille standardskabelonen",
-      "defaultTemplateCleared": "Standardskabelonen er ryddet",
+      "defaultTemplateSet": "Standardskabelon angivet",
+      "failedToSetDefaultTemplate": "Kunne ikke angive standardskabelonen",
+      "defaultTemplateCleared": "Standardskabelon ryddet",
       "failedToClearDefaultTemplate": "Kunne ikke rydde standardskabelonen",
-      "failedToAddProperty": "Ejendommen kunne ikke tilføjes",
-      "failedToDeleteProperty": "Ejendommen kunne ikke slettes",
-      "failedToRenameProperty": "Ejendommen kunne ikke omdøbes",
-      "failedToReorderProperties": "Egenskaberne kunne ikke omarrangeres",
-      "cannotAddTagThisNoteWasDeleted": "Kan ikke tilføje tag - denne note blev slettet",
-      "cannotRemoveTagThisNoteWasDeleted": "Kan ikke fjerne tag - denne note blev slettet",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan ikke ændre kun lokalt – denne note blev slettet"
+      "failedToAddProperty": "Kunne ikke tilføje egenskaben",
+      "failedToDeleteProperty": "Kunne ikke slette egenskaben",
+      "failedToRenameProperty": "Kunne ikke omdøbe egenskaben",
+      "failedToReorderProperties": "Kunne ikke ændre rækkefølgen af egenskaberne",
+      "cannotAddTagThisNoteWasDeleted": "Kan ikke tilføje tag – denne note blev slettet",
+      "cannotRemoveTagThisNoteWasDeleted": "Kan ikke fjerne tag – denne note blev slettet",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan ikke ændre, om noten kun gemmes lokalt – den blev slettet"
     }
   },
   "bulkActions": {
-    "addTag": "Tilføj tag",
-    "clearAria": "Ryd valg",
-    "copiedLinks": "Kopierede {count, plural, one {# link} other {# links}}",
-    "copyLinks": "Kopiér links",
-    "delete": "Slet",
-    "export": "Eksportér",
-    "iconUpdated": "{count, plural, one {Ikon opdateret på # note} other {Ikon opdateret på # noter}}",
-    "move": "Flyt",
+    "toolbarAria": "Massehandlinger",
     "selected": "valgt",
-    "setIcon": "Indstil ikon",
+    "move": "Flyt",
+    "copyLinks": "Kopiér links",
+    "addTag": "Tilføj tag",
     "tagNamePlaceholder": "Tagnavn",
-    "toolbarAria": "Massehandlinger"
-  },
-  "comments": {
-    "attachAria": "Vedhæft fil",
-    "badgeAria": "{count, plural, one {# kommentar} other {# kommentarer}}",
-    "cancel": "Annullér",
-    "commentPlaceholder": "Tilføj en kommentar...",
-    "createdTooltip": "Oprettet {date} kl. {time}",
-    "delete": "Slet kommentar",
-    "edit": "Redigér kommentar",
-    "kind": {
-      "addition": "Tilføjelse",
-      "comment": "Kommentar",
-      "deletion": "Sletning",
-      "substitution": "Erstatning"
-    },
-    "mentionAria": "Nævn en person, side eller dato",
-    "railAria": "Kommentarer",
-    "replyPlaceholder": "Svar...",
-    "resolve": "Løs",
-    "sendAria": "Send kommentar",
-    "toolbarComment": "Kommentér",
-    "openAttachmentAria": "Åbn den vedhæftede fil {name}",
-    "openImageAria": "Åbn billedet {name}"
-  },
-  "dateMention": {
-    "clear": "Ryd",
-    "dateFormat": "Datoformat",
-    "dateInput": "Dato",
-    "includeTime": "Inkludér tid",
-    "remind": "Påmind",
-    "time": "Tid",
-    "timeFormat": "Tidsformat"
+    "export": "Eksportér",
+    "delete": "Slet",
+    "clearAria": "Ryd valg",
+    "copiedLinks": "{count, plural, one {# link kopieret} other {# links kopieret}}",
+    "setIcon": "Angiv ikon",
+    "iconUpdated": "{count, plural, one {Ikon opdateret på # note} other {Ikon opdateret på # noter}}"
   },
   "applyTemplateConfirm": {
-    "body": "Erstat kun indholdet",
-    "cancel": "Annuller",
-    "description": "Hvis du anvender \"{name}\", erstattes notens nuværende indhold. Det kan ikke fortrydes.",
-    "failed": "Skabelonen kunne ikke anvendes",
+    "title": "Vil du erstatte notens indhold?",
+    "description": "Hvis du anvender »{name}«, erstattes notens nuværende indhold. Det kan ikke fortrydes.",
     "full": "Erstat indhold og tilføj skabelondetaljer",
-    "success": "Skabelonen er anvendt",
-    "title": "Vil du erstatte notens indhold?"
+    "body": "Erstat kun indholdet",
+    "cancel": "Annullér",
+    "success": "Skabelon anvendt",
+    "failed": "Kunne ikke anvende skabelonen"
   },
   "saveNoteAsTemplate": {
     "title": "Gem noten som skabelon",
@@ -864,79 +1309,126 @@
     "loading": "Læser noten…",
     "summary": "Gemmer notens indhold, {tagCount, plural, one {# tag} other {# tags}} og {propertyCount, plural, one {# egenskab} other {# egenskaber}}.",
     "save": "Gem skabelon",
-    "cancel": "Annuller",
-    "success": "Skabelonen er gemt",
-    "edit": "Rediger skabelon",
-    "failed": "Skabelonen kunne ikke gemmes",
-    "loadFailed": "Noten kunne ikke læses"
+    "cancel": "Annullér",
+    "success": "Skabelon gemt",
+    "edit": "Redigér skabelon",
+    "failed": "Kunne ikke gemme skabelonen",
+    "loadFailed": "Kunne ikke læse noten"
   },
   "newNoteFromNote": {
     "action": "Ny note fra denne note",
     "created": "Oprettet med {tagCount, plural, =0 {ingen tags} one {# tag} other {# tags}} og {propertyCount, plural, =0 {ingen egenskaber} one {# egenskab} other {# egenskaber}} fra {source}"
   },
+  "tags": {
+    "hubTitle": "Tags",
+    "openHub": "Åbn tagsiden"
+  },
   "tagView": {
     "moreActions": "Flere handlinger",
     "pin": {
       "action": "Fastgør {count, plural, one {# note} other {# noter}} til tagget",
-      "failed": "Noten kunne ikke fastgøres til tagget",
-      "success": "{count, plural, one {# note er fastgjort til tagget} other {# noter er fastgjort til tagget}}"
+      "success": "{count, plural, one {# note er fastgjort til tagget} other {# noter er fastgjort til tagget}}",
+      "failed": "Kunne ikke fastgøre noten til tagget"
     }
   },
-  "tags": {
-    "hubTitle": "Tags",
-    "openHub": "Åbn tagoversigten"
-  },
   "tagsHub": {
-    "cancelCreate": "Annuller",
-    "category": {
-      "delete": "Slet kategori",
-      "deleteBody": "Tags flyttes til Ukategoriseret. De bliver ikke slettet.",
-      "deleteCancel": "Annuller",
-      "deleteConfirm": "Slet",
-      "deleteTitle": "Vil du slette {name}?",
-      "dragHandle": "Træk for at ændre kategoriens placering",
-      "emptyHint": "Træk et tag hertil",
-      "more": "Kategoriindstillinger",
-      "rename": "Omdøb kategori"
-    },
-    "categoryNamePlaceholder": "Kategorinavn",
-    "errors": {
-      "createCategoryFailed": "Kategorien kunne ikke oprettes",
-      "createTagCategorizeFailed": "Tagget blev oprettet, men kunne ikke føjes til kategorien",
-      "createTagFailed": "Tagget kunne ikke oprettes",
-      "deleteCategoryFailed": "Kategorien kunne ikke slettes",
-      "loadFailed": "Tagkategorierne kunne ikke indlæses",
-      "renameCategoryFailed": "Kategorien kunne ikke omdøbes",
-      "reorderFailed": "Rækkefølgen af tags kunne ikke ændres"
-    },
-    "loading": "Indlæser tags...",
+    "loading": "Indlæser tags…",
     "newCategory": "Ny kategori",
     "newTag": "Nyt tag",
-    "search": {
-      "empty": "Ingen kategorier eller tags matcher din søgning",
-      "placeholder": "Søg i kategorier og tags"
-    },
+    "cancelCreate": "Annullér",
+    "categoryNamePlaceholder": "Kategorinavn",
     "tagNamePlaceholder": "Tagnavn",
-    "uncategorized": "Ukategoriseret"
+    "uncategorized": "Ukategoriseret",
+    "search": {
+      "placeholder": "Søg i kategorier og tags",
+      "empty": "Ingen kategorier eller tags matcher din søgning"
+    },
+    "category": {
+      "more": "Kategoriindstillinger",
+      "rename": "Omdøb kategori",
+      "delete": "Slet kategori",
+      "dragHandle": "Træk for at ændre kategoriens placering",
+      "emptyHint": "Træk et tag hertil",
+      "deleteTitle": "Vil du slette {name}?",
+      "deleteBody": "Taggene flyttes til Ukategoriseret. De bliver ikke slettet.",
+      "deleteConfirm": "Slet",
+      "deleteCancel": "Annullér"
+    },
+    "errors": {
+      "loadFailed": "Kunne ikke indlæse tagkategorierne",
+      "createCategoryFailed": "Kunne ikke oprette kategorien",
+      "renameCategoryFailed": "Kunne ikke omdøbe kategorien",
+      "deleteCategoryFailed": "Kunne ikke slette kategorien",
+      "createTagFailed": "Kunne ikke oprette tagget",
+      "createTagCategorizeFailed": "Tagget blev oprettet, men kunne ikke føjes til kategorien",
+      "reorderFailed": "Kunne ikke ændre rækkefølgen af taggene"
+    }
   },
   "folderView": {
+    "columns": {
+      "title": "Titel",
+      "folder": "Mappe",
+      "tags": "Tags",
+      "created": "Oprettet",
+      "modified": "Ændret",
+      "wordCount": "Antal ord",
+      "kind": "Type"
+    },
+    "defaultViewName": "Standard",
+    "selectView": "Vælg visning",
     "columnHeader": {
       "doubleClickToEdit": "{name} (dobbeltklik for at redigere)",
       "dragToReorder": "Træk for at omarrangere kolonnen: {name}"
     },
-    "columns": {
-      "created": "Oprettet",
-      "folder": "Mappe",
-      "kind": "Type",
-      "modified": "Ændret",
-      "tags": "Tags",
-      "title": "Titel",
-      "wordCount": "Antal ord"
-    },
-    "defaultViewName": "Standard",
     "groupHeader": {
       "noteCount": "{count, plural, one {# note} other {# noter}}"
+    }
+  },
+  "mindMap": {
+    "regionLabel": "Tankekort over {title}, {count, plural, one {# knude} other {# knuder}}",
+    "treeLabel": "Tankekortets disposition for {title}",
+    "emptyHint": "Tilføj en overskrift til denne note, så forgrener kortet sig.",
+    "linkHint": "link til en anden side",
+    "chain": {
+      "separator": "→"
     },
-    "selectView": "Vælg visning"
+    "more": "{count, plural, one {+# til} other {+# til}}",
+    "nodeCapNotice": "Kortet har nået sin grænse på {count, plural, one {# knude} other {# knuder}}; resten er foldet ind i den nærmeste knude ovenover.",
+    "badge": {
+      "table": "{count, plural, one {# tabel} other {# tabeller}}",
+      "code": "{count, plural, one {# kodeblok} other {# kodeblokke}}",
+      "image": "{count, plural, one {# billede} other {# billeder}}",
+      "quote": "{count, plural, one {# citat} other {# citater}}",
+      "embed": "{count, plural, one {# indlejring} other {# indlejringer}}",
+      "bookmark": "{count, plural, one {# bogmærke} other {# bogmærker}}",
+      "file": "{count, plural, one {# fil} other {# filer}}"
+    },
+    "toolbar": {
+      "label": "Handlinger for tankekort",
+      "fit": "Tilpas til visning",
+      "copyImage": "Kopiér som billede",
+      "copyVector": "Kopiér som vektorgrafik",
+      "imageCopied": "Kort kopieret som billede",
+      "vectorCopied": "Kort kopieret som vektorgrafik",
+      "copyFailed": "Kunne ikke kopiere kortet",
+      "saveCanvas": "Gem som lærred",
+      "saved": "Gemt som lærredet »{title}«",
+      "saveFailed": "Kunne ikke gemme kortet som lærred",
+      "snapshotOn": "Øjebliksbillede · {date}"
+    }
+  },
+  "tagAndFilter": {
+    "regionLabel": "Aktivt tagfilter",
+    "matchingAll": "Matcher alle:",
+    "removeTag": "Fjern {tag} fra filteret",
+    "clearAll": "Ryd alle",
+    "saveSearch": "Gem søgning",
+    "savedSearches": "Gemte søgninger",
+    "deleteSearch": "Slet den gemte søgning {name}",
+    "saveDialogTitle": "Navngiv denne søgning",
+    "saveDialogPlaceholder": "f.eks. Arbejdsmøder",
+    "cancel": "Annullér",
+    "save": "Gem",
+    "addToFilterHint": "Ctrl/Cmd-klik på et tag for at føje det til filteret"
   }
 }

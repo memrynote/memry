@@ -1,260 +1,719 @@
 {
+  "wikiLinkCreateDialog": {
+    "title": "ליצור פתק?",
+    "body": "אין פתק בשם \"{title}\". ליצור אותו?",
+    "create": "יצירה"
+  },
+  "wikiLinkPreview": {
+    "notFound": "לא נמצא — יש ללחוץ כדי ליצור את \"{title}\""
+  },
   "page": {
     "empty": {
-      "title": "לא נבחרה הערה",
-      "body": "בחר הערה מהסרגל הצידי כדי להציג אותה"
+      "title": "לא נבחר פתק",
+      "body": "אפשר לבחור פתק מסרגל הצד כדי להציג אותו"
     },
     "error": {
-      "title": "טעינת ההערה נכשלה"
+      "title": "טעינת הפתק נכשלה"
     },
     "toast": {
-      "cannotSaveDeleted": "לא ניתן לשמור - ההערה נמחקה",
-      "cannotRenameDeleted": "לא ניתן לשנות את השם - ההערה נמחקה",
-      "createLinkedFailed": "יצירת הערה מקושרת נכשלה",
+      "cannotSaveDeleted": "לא ניתן לשמור — הפתק נמחק",
+      "cannotRenameDeleted": "לא ניתן לשנות את השם — הפתק נמחק",
+      "createLinkedFailed": "יצירת הפתק המקושר נכשלה",
       "openLinkedFailed": "פתיחת הפריט המקושר נכשלה",
-      "localOnly": "הערה מוגדרת למקומית בלבד",
-      "willSync": "הערה תסתנכרן לענן",
-      "renameFailed": "שינוי שם ההערה נכשל",
-      "toggleLocalOnlyFailed": "החלפת מקומית בלבד נכשלה",
-      "toggleFullWidthFailed": "החלפת הרוחב המלא נכשלה",
-      "copyPathFailed": "העתקת הנתיב נכשלה",
-      "deleteFailed": "מחיקת ההערה נכשלה",
-      "moveFailed": "העברת ההערה נכשלה",
-      "moved": "ההערה הועברה",
-      "openExternalFailed": "פתיחת ההערה נכשלה",
+      "fileNotFound": "הקובץ לא נמצא: {target}",
+      "localOnly": "הפתק הוגדר כמקומי בלבד",
+      "willSync": "הפתק יסונכרן לענן",
+      "renameFailed": "שינוי שם הפתק נכשל",
+      "titleRequired": "לפתק חייבת להיות כותרת",
+      "toggleLocalOnlyFailed": "שינוי מצב מקומי בלבד נכשל",
+      "toggleFullWidthFailed": "שינוי מצב רוחב מלא נכשל",
       "pathCopied": "הנתיב הועתק",
-      "revealFailed": "הצגת ההערה נכשלה"
+      "copyPathFailed": "העתקת הנתיב נכשלה",
+      "revealFailed": "הצגת הפתק נכשלה",
+      "openExternalFailed": "פתיחת הפתק נכשלה",
+      "moved": "הפתק הועבר",
+      "moveFailed": "העברת הפתק נכשלה",
+      "deleteFailed": "מחיקת הפתק נכשלה"
     },
-    "deleteDialogTitle": "{count, plural, one {מחק הערה} other {מחק הערות #}}",
+    "deleteDialogTitle": "{count, plural, one {מחיקת פתק} other {מחיקת # פתקים}}",
+    "itemsCount": "{count, plural, one {פריט אחד} other {# פריטים}}",
+    "itemsCountFiltered": "{shown} מתוך {total, plural, one {פריט אחד} other {# פריטים}}",
+    "tagFilterLabel": "תגית = {tag}",
     "deleteConfirm": {
-      "cancel": "בטל",
-      "confirm": "מחק",
-      "deleting": "מוחק...",
-      "description": "האם אתה בטוח שברצונך למחוק את \"{title}\"? לא ניתן לבטל פעולה זו.",
-      "title": "מחק הערה"
+      "title": "מחיקת פתק",
+      "description": "למחוק את \"{title}\"? אי אפשר לבטל את הפעולה.",
+      "cancel": "ביטול",
+      "confirm": "מחיקה",
+      "deleting": "מוחק…"
     },
-    "itemsCount": "{count, plural, one {# פריט} two {# פריטים} other {# פריטים}}",
-    "itemsCountFiltered": "{shown} מתוך {total, plural, one {# פריט} two {# פריטים} other {# פריטים}}",
-    "tagFilterLabel": "תג = {tag}"
+    "largeFile": {
+      "title": "הקובץ הזה גדול מדי לפתיחה כפתק",
+      "badge": "קריאה בלבד · לא מסונכרן",
+      "reason": {
+        "fileBytes": "גודלו {size}. פתקים ניתנים לעריכה עד {limit}.",
+        "blockBytes": "יש בו רצף של {size} בלי שורה ריקה. פתקים ניתנים לעריכה עד {limit} לכל בלוק."
+      },
+      "explanation": "עריכה שלו תחייב ניתוח של כל התוכן בבת אחת, והאפליקציה תקפא. הקובץ בדיסק נשאר ללא שינוי.",
+      "viewer": {
+        "preparing": "מכין {size} לקריאה…",
+        "preparingHint": "מאנדקס את השורות כדי שאפשר יהיה לגלול בלי לטעון את הכול בבת אחת.",
+        "lines": "{count} שורות",
+        "empty": "הקובץ הזה ריק.",
+        "failed": "לא ניתן היה להכין את הקובץ הזה לקריאה.",
+        "missing": "הקובץ הזה כבר לא נמצא בדיסק.",
+        "lineTruncated": "שורה ארוכה נחתכה כאן",
+        "showRestOfLine": "הצגת המשך השורה"
+      },
+      "tooLarge": {
+        "title": "הקובץ הזה גדול מדי לפתיחה",
+        "reason": "גודלו {size}. אפשר להציג ב-Memry קבצים בגודל של עד {limit}.",
+        "explanation": "הקובץ בדיסק נשאר ללא שינוי. אפשר לפתוח אותו באפליקציה שמתאימה לקבצים בגודל כזה."
+      },
+      "find": {
+        "searching": "{count} עד כה…",
+        "limited": "{index}/{shown} מתוך {total}"
+      }
+    }
   },
   "tree": {
     "aria": {
-      "tree": "עץ הערות",
-      "openFolderView": "פתח את תצוגת התיקיה"
+      "tree": "עץ הפתקים",
+      "openFolderView": "פתיחת תצוגת תיקייה"
     },
     "empty": {
-      "title": "עדיין אין הערות",
-      "body": "צור הערה כדי להתחיל",
-      "newNote": "הערה חדשה"
+      "title": "עדיין אין פתקים",
+      "body": "כדי להתחיל, אפשר ליצור פתק",
+      "newNote": "פתק חדש"
     },
-    "loadingError": "טעינת ההערות נכשלה",
+    "syncing": {
+      "body": "מסנכרן את הפתקים שלך — הם יופיעו כאן כשיגיעו"
+    },
+    "loadingError": "טעינת הפתקים נכשלה",
+    "truncated": {
+      "hidden": "{count, plural, one {פתק אחד ישן יותר לא מוצג} other {# פתקים ישנים יותר לא מוצגים}}",
+      "loadMore": "טעינת פתקים נוספים"
+    },
     "actions": {
-      "newNote": "הערה חדשה",
-      "newFolder": "תיקיה חדשה",
-      "rename": "שנה שם",
-      "openExternal": "פתח בעורך חיצוני",
-      "setDefaultTemplate": "הגדר תבנית ברירת מחדל",
-      "clearDefaultTemplate": "נקה תבנית ברירת מחדל",
-      "setIcon": "הגדר אייקון",
-      "removeIcon": "הסר סמל",
-      "deleteSelectedNotes": "מחק הערות {count}",
-      "deleteSelectedItems": "מחק פריטי {count}",
-      "bookmark": "סימנייה",
-      "removeFromBookmarks": "הסר מהסימניות",
-      "applyTemplate": "החל תבנית",
-      "saveAsTemplate": "שמור כתבנית"
+      "openInNewTab": "פתיחה בכרטיסייה חדשה",
+      "openToTheSide": "פתיחה בצד",
+      "newNote": "פתק חדש",
+      "newFolder": "תיקייה חדשה",
+      "expandSubfolders": "הרחבת כל תת-התיקיות",
+      "collapseSubfolders": "כיווץ כל תת-התיקיות",
+      "rename": "שינוי שם",
+      "applyTemplate": "החלת תבנית",
+      "saveAsTemplate": "שמירה כתבנית",
+      "openExternal": "פתיחה בעורך חיצוני",
+      "setDefaultTemplate": "הגדרת תבנית ברירת מחדל",
+      "clearDefaultTemplate": "ניקוי תבנית ברירת המחדל",
+      "setIcon": "הגדרת סמל",
+      "removeIcon": "הסרת סמל",
+      "deleteSelectedNotes": "מחיקת {count} פתקים",
+      "deleteSelectedItems": "מחיקת {count} פריטים",
+      "bookmark": "הוספה לסימניות",
+      "removeFromBookmarks": "הסרה מהסימניות",
+      "journalSettings": "הגדרות יומן…"
+    },
+    "nav": {
+      "label": "ניווט",
+      "ariaExpanded": "אזור הניווט, מורחב",
+      "ariaCollapsed": "אזור הניווט, מכווץ",
+      "saveFailed": "שמירת מצב אזור הניווט נכשלה"
+    },
+    "viewOptions": {
+      "label": "אפשרויות תצוגה",
+      "notesFirst": "פתקים לפני תיקיות",
+      "showFiles": "הצגת קבצים",
+      "saveFailed": "שמירת אפשרויות התצוגה של סרגל הצד נכשלה"
     },
     "deleteDialog": {
-      "noteTitle": "מחק הערה",
-      "folderTitle": "מחק תיקייה",
-      "itemsTitle": "מחק פריטי {count}",
-      "noteBody": "האם אתה בטוח שברצונך למחוק את \"{name}\"? לא ניתן לבטל פעולה זו.",
-      "folderBody": "האם אתה בטוח שברצונך למחוק את \"{name}\" ואת כל ההערות שבתוכו? לא ניתן לבטל פעולה זו.",
-      "itemsBody": "האם אתה בטוח שברצונך למחוק פריטי {count}? לא ניתן לבטל פעולה זו.",
+      "noteTitle": "מחיקת פתק",
+      "folderTitle": "מחיקת תיקייה",
+      "itemsTitle": "מחיקת {count} פריטים",
+      "noteBody": "למחוק את \"{name}\"? אי אפשר לבטל את הפעולה.",
+      "folderBody": "למחוק את \"{name}\" ואת כל הפתקים שבתוכה? אי אפשר לבטל את הפעולה.",
+      "itemsBody": "למחוק {count} פריטים? אי אפשר לבטל את הפעולה.",
       "folderSuffix": "תיקייה",
-      "moreItems": "...ועוד {count}",
-      "deleting": "מוחק...",
-      "deleteCount": "מחק את {count}"
+      "moreItems": "…ועוד {count}",
+      "deleting": "מוחק…",
+      "deleteCount": "מחיקת {count}"
     }
   },
   "editor": {
+    "bodySyncPending": "מסנכרן — ייתכן שתוכן הפתק עדיין בדרך",
+    "taskRemoval": {
+      "title": "{count, plural, one {משימה הוסרה מהפתק הזה} other {# משימות הוסרו מהפתק הזה}}",
+      "description": "{count, plural, one {להשאיר אותה במשימות, או למחוק אותה מכל מקום?} other {להשאיר אותן במשימות, או למחוק אותן מכל מקום?}}",
+      "keep": "השארה במשימות",
+      "delete": "{count, plural, one {מחיקת המשימה} other {מחיקת המשימות}}",
+      "deleteFailed": "מחיקת המשימות נכשלה. הן עדיין נמצאות בדף המשימות."
+    },
     "title": {
       "untitled": "ללא כותרת",
-      "aria": "הערה כותרת"
+      "aria": "כותרת הפתק"
     },
     "content": {
-      "placeholder": "התחל לכתוב, או לחץ על '/' עבור פקודות...",
-      "regionAria": "עורך הערות",
+      "placeholder": "אפשר להתחיל לכתוב, או להקיש '/' לפקודות…",
+      "regionAria": "עורך הפתק",
       "richTextAria": "עורך טקסט עשיר",
       "headingPlaceholder": "כותרת",
       "listPlaceholder": "פריט רשימה",
-      "todoPlaceholder": "פריט מטלה"
+      "todoPlaceholder": "פריט לביצוע"
+    },
+    "table": {
+      "keyboardMenuAria": "פעולות טבלה לשורה {row}, עמודה {column}",
+      "keyboardMenuTitle": "שורה {row} · עמודה {column}"
+    },
+    "list": {
+      "bulleted": "רשימת תבליטים",
+      "numbered": "רשימה ממוספרת",
+      "checklist": "רשימת סימון"
+    },
+    "bulletFold": {
+      "collapse": "כיווץ פריטים מקוננים",
+      "expand": "הרחבת פריטים מקוננים"
     },
     "toolbar": {
+      "linkToNote": "קישור לפתק",
+      "more": "עוד",
+      "pinToTop": "הצמדת סרגל הכלים למעלה",
       "reminderSet": "תזכורת מוגדרת",
-      "setReminder": "הגדר תזכורת",
-      "removeBookmark": "הסר את הסימניה",
-      "addBookmark": "הוסף סימניה",
-      "hideLocalGraph": "הסתר גרף מקומי",
-      "showLocalGraph": "הצג גרף מקומי",
+      "setReminder": "הגדרת תזכורת",
+      "removeBookmark": "הסרת הסימנייה",
+      "addBookmark": "הוספה לסימניות",
+      "showMindMap": "הצגת מפת חשיבה",
+      "hideMindMap": "הסתרת מפת החשיבה",
+      "hideLocalGraph": "הסתרת הגרף המקומי",
+      "showLocalGraph": "הצגת גרף מקומי",
+      "moreActions": "פעולות נוספות",
+      "find": "חיפוש…",
       "versionHistory": "היסטוריית גרסאות",
       "export": "ייצוא",
+      "saveAsTemplate": "שמירה כתבנית",
       "fullWidth": "רוחב מלא",
-      "disableLocalOnly": "השבת מקומי בלבד",
-      "setLocalOnly": "הגדר מקומי בלבד",
-      "saveAsTemplate": "שמור כתבנית",
-      "copyPath": "העתק נתיב",
-      "delete": "מחק הערה",
-      "find": "מצא…",
-      "moreActions": "פעולות נוספות",
-      "moveToFolder": "העבר לתיקייה…",
-      "rename": "שנה שם…",
-      "revealInSidebar": "הצג בסרגל הניווט"
+      "rename": "שינוי שם…",
+      "moveToFolder": "העברה לתיקייה…",
+      "copyPath": "העתקת נתיב",
+      "revealInSidebar": "הצגה בסרגל הניווט",
+      "attachments": "קבצים מצורפים…",
+      "disableLocalOnly": "ביטול מצב מקומי בלבד",
+      "setLocalOnly": "הגדרה כמקומי בלבד",
+      "delete": "מחיקת פתק"
+    },
+    "attachmentMenu": {
+      "menuLabel": "פעולות קובץ",
+      "storedAs": "מאוחסן בשם {name}",
+      "notSynced": "עדיין לא סונכרן למכשיר הזה",
+      "revealFailed": "הצגת הקובץ נכשלה",
+      "openFailed": "פתיחת הקובץ נכשלה",
+      "missingTitle": "הקובץ המצורף חסר",
+      "missingExpected": "הקובץ הצפוי: {name}"
+    },
+    "attachmentRename": {
+      "menuItem": "שינוי שם…",
+      "title": "שינוי שם הקובץ המצורף",
+      "description": "שם הקובץ ישתנה בדיסק ובשאר המכשירים שלך. הסיומת שלו תישאר ללא שינוי.",
+      "fieldLabel": "שם הקובץ המצורף",
+      "confirm": "שינוי שם",
+      "renamed": "השם שונה ל-{name}",
+      "failed": "שינוי שם הקובץ המצורף נכשל"
+    },
+    "attachmentsDialog": {
+      "title": "קבצים מצורפים",
+      "description": "קבצים שמאוחסנים עם הפתק הזה",
+      "empty": "לפתק הזה אין קבצים מצורפים.",
+      "loadFailed": "טעינת הקבצים המצורפים נכשלה"
     },
     "breadcrumb": {
-      "locationAria": "שימו לב למיקום",
-      "parentFolderAria": "עבור אל תיקיית האב"
+      "locationAria": "מיקום הפתק",
+      "parentFolderAria": "מעבר לתיקיית האב"
     },
     "errorBoundary": {
       "title": "שגיאת עורך",
-      "body": "העורך נתקל בשגיאה. תוכן ההערה שלך בטוח.",
+      "body": "העורך נתקל בשגיאה. תוכן הפתק שלך בטוח.",
       "technicalDetails": "פרטים טכניים",
-      "reloadAria": "טען מחדש את העורך",
-      "reload": "עורך טען מחדש"
+      "reloadAria": "טעינה מחדש של העורך",
+      "reload": "טעינת העורך מחדש"
     },
     "callout": {
-      "title": "הסבר",
+      "title": "תיבת הדגשה",
       "group": "בלוקים בסיסיים",
-      "subtext": "הדגש מידע חשוב",
-      "changeType": "שנה את סוג ההסבר",
-      "menuLabel": "סוג הסבר",
+      "subtext": "הבלטת מידע חשוב",
+      "changeType": "שינוי סוג תיבת ההדגשה",
+      "menuLabel": "סוג תיבת ההדגשה",
       "info": "מידע",
       "warning": "אזהרה",
       "error": "שגיאה",
       "success": "הצלחה"
+    },
+    "diagram": {
+      "title": "תרשים",
+      "subtext": "תרשים זרימה, תרשים רצף או תרשים גאנט מקוד Mermaid"
+    },
+    "math": {
+      "title": "משוואה",
+      "group": "בלוקים בסיסיים",
+      "subtext": "כתיבת נוסחה ב-LaTeX",
+      "empty": "הוספת משוואה",
+      "edit": "עריכת משוואה",
+      "placeholder": "E = mc^2",
+      "sourceLabel": "קוד LaTeX",
+      "hint": "LaTeX. בסיום, יש להקיש Escape."
+    },
+    "whiteboard": {
+      "title": "לוח לבן",
+      "group": "מדיה",
+      "subtext": "ציור על קנבס שנמצא בתוך הפתק",
+      "defaultName": "לוח לבן",
+      "noteName": "לוח לבן של {note}",
+      "untitled": "לוח לבן ללא כותרת",
+      "loading": "טוען לוח לבן…",
+      "openInTab": "פתיחה בכרטיסייה",
+      "edit": "עריכה",
+      "done": "סיום",
+      "surfaceLabel": "ציור: {title}",
+      "createFailed": "יצירת הלוח הלבן נכשלה. שום דבר לא נוסף לפתק.",
+      "loadFailed": "טעינת הלוח הלבן נכשלה. הציור עצמו לא שונה.",
+      "noCanvas": "ללוח הלבן הזה אין קנבס. אפשר להסיר את הבלוק, או להוסיף בלוק חדש עם /whiteboard.",
+      "nested": "כדי לראות את הציור, יש לפתוח את הלוח הלבן בכרטיסייה נפרדת.",
+      "missingTitle": "הלוח הלבן הזה לא זמין",
+      "missingBody": "הקנבס שלו נמחק, או שעדיין לא הגיע למכשיר הזה. אם הוא עדיין מסתנכרן, הוא יופיע כאן מעצמו.",
+      "unreadableTitle": "אי אפשר לפתוח כאן את הלוח הלבן הזה",
+      "unreadableBody": "קובץ הקנבס שלו חסר בכספת, או שאי אפשר לקרוא אותו במכשיר הזה. שום דבר לא נמחק.",
+      "disabledTitle": "קנבס כבוי",
+      "disabledBody": "כדי לראות ולערוך את הלוח הלבן הזה, יש להפעיל את קנבס בהגדרות › תכונות. הציור נשמר בכל מקרה."
+    },
+    "viewBlock": {
+      "title": "תצוגה",
+      "group": "הוספה",
+      "subtext": "רשימה חיה של פתקים מתיקייה, מתגית או מכל הכספת",
+      "sourceMenu": "מה התצוגה הזו מציגה",
+      "chooseSource": "בחירת תוכן להצגה",
+      "sourceVault": "כל הפתקים",
+      "sourceFolder": "תיקייה",
+      "sourceTag": "תגית",
+      "noFolders": "עדיין אין תיקיות",
+      "noTags": "עדיין אין תגיות",
+      "savedView": "תצוגה שמורה",
+      "savedViewMissing": "התצוגה השמורה \"{name}\" כבר לא קיימת, ולכן מוצגת תצוגת ברירת המחדל.",
+      "openAsTab": "פתיחה ככרטיסייה",
+      "empty": "עדיין אין פריטים שתואמים לתצוגה הזו.",
+      "loadFailed": "טעינת התצוגה נכשלה. הפתקים עצמם לא שונו.",
+      "folderMissing": "התיקייה הזו כבר לא נמצאת בכספת. אפשר לבחור מקור אחר.",
+      "invalidJson": "ההגדרה של התצוגה הזו אינה JSON תקין. אפשר לתקן אותה למטה, או להסיר את הבלוק.",
+      "invalidShape": "בהגדרה של התצוגה הזו אין מקור. אפשר לבחור מקור למעלה, או לתקן את ההגדרה למטה.",
+      "definition": "הגדרה"
+    },
+    "slashMenu": {
+      "aria": "בלוקים ופעולות",
+      "groups": {
+        "recent": "אחרונים",
+        "bestMatch": "ההתאמה הטובה ביותר",
+        "blocks": "בלוקים",
+        "headings": "כותרות נוספות",
+        "insert": "הוספה",
+        "media": "מדיה",
+        "ai": "AI"
+      },
+      "secondary": {
+        "asToggleHeading": "כמתקפלת",
+        "asLinkedTask": "כמשימה מקושרת",
+        "asReminder": "כתזכורת"
+      },
+      "actions": {
+        "insert": "הוספה",
+        "open": "פתיחה"
+      },
+      "matchesAlias": "תואם",
+      "noMatch": "אין בלוקים תואמים עבור \"{query}\"",
+      "fallback": {
+        "linkTo": "קישור אל",
+        "askAI": "שאלה ל-AI"
+      },
+      "pdf": {
+        "title": "PDF",
+        "subtext": "צירוף PDF וקריאה שלו בתוך הפתק"
+      },
+      "html": {
+        "title": "קובץ HTML",
+        "subtext": "הטמעת קובץ HTML ועבודה איתו בתוך הפתק"
+      },
+      "linkToNote": {
+        "title": "קישור לפתק",
+        "subtext": "חיפוש בפתקים — או הקלדת [[ בכל מקום"
+      },
+      "media": {
+        "title": "מדיה",
+        "subtext": "צירוף קובץ תמונה, וידאו או אודיו"
+      },
+      "insertTemplate": {
+        "title": "הוספת תוכן מתבנית…",
+        "subtext": "הוספת גוף התבנית בלבד במיקום הסמן",
+        "group": "תבניות",
+        "empty": "אין בתבנית הזו תוכן להוספה",
+        "failed": "הוספת התבנית נכשלה"
+      }
+    },
+    "filePanel": {
+      "choose": "בחירת קובץ…"
+    },
+    "upload": {
+      "failed": "צירוף הקובץ נכשל"
+    },
+    "checkboxTask": {
+      "converted": "תיבת הסימון הפכה למשימה",
+      "hint": "תיבת סימון חדשה הופכת למשימה. כדי להשאיר אותה כתיבת סימון, יש להקיש {undo}.",
+      "keepAsCheckbox": "השארה כתיבת סימון"
+    },
+    "obsidianTask": {
+      "refused": "בשורה הזו יש מזהה, תלות או קישור לבלוק ש-Obsidian צריך בסוף השורה. יש להסיר אותם קודם ב-Obsidian, ואז להמיר.",
+      "createFailed": "יצירת המשימה לשורה הזו נכשלה.",
+      "completeFailed": "המשימה נוצרה, אבל לא ניתן היה להחיל את תאריך ההשלמה שלה."
+    },
+    "blockMenu": {
+      "turnInto": "המרה אל",
+      "turnIntoTypes": {
+        "paragraph": "טקסט",
+        "heading1": "כותרת 1",
+        "heading2": "כותרת 2",
+        "heading3": "כותרת 3",
+        "bulletList": "רשימת תבליטים",
+        "numberedList": "רשימה ממוספרת",
+        "checkbox": "תיבת סימון",
+        "task": "משימה",
+        "toggleList": "רשימה מתקפלת",
+        "quote": "ציטוט",
+        "codeBlock": "קוד",
+        "callout": "תיבת הדגשה"
+      },
+      "turnIntoCheckbox": "המרה לתיבת סימון",
+      "colors": "צבעים",
+      "duplicate": "שכפול",
+      "insertTemplate": "הוספת תבנית…",
+      "moveTo": "העברה אל…",
+      "delete": "מחיקה",
+      "comment": "הוספת הערה",
+      "moveDialog": {
+        "title": "העברת בלוק לפתק",
+        "searchPlaceholder": "חיפוש בפתקים…",
+        "noResults": "אין פתקים תואמים",
+        "moved": "הבלוק הועבר אל \"{title}\"",
+        "failed": "העברת הבלוק נכשלה"
+      }
+    },
+    "attachmentPicker": {
+      "title": {
+        "image": "הוספת תמונה",
+        "media": "הוספת מדיה",
+        "pdf": "הוספת PDF",
+        "html": "הטמעת קובץ HTML",
+        "file": "הוספת קובץ"
+      },
+      "placeholder": {
+        "image": "חיפוש תמונות, או העלאת תמונה חדשה…",
+        "media": "חיפוש מדיה, או העלאת קובץ חדש…",
+        "pdf": "חיפוש קובצי PDF, או העלאת קובץ חדש…",
+        "html": "חיפוש קובצי HTML, או העלאת קובץ חדש…",
+        "file": "חיפוש קבצים מצורפים, או העלאת קובץ חדש…"
+      },
+      "upload": {
+        "image": "העלאת תמונה…",
+        "media": "העלאת מדיה…",
+        "pdf": "העלאת PDF…",
+        "html": "העלאת קובץ HTML…",
+        "file": "העלאת קובץ…"
+      },
+      "empty": {
+        "image": "עדיין אין תמונות בכספת הזו.",
+        "media": "עדיין אין מדיה בכספת הזו.",
+        "pdf": "עדיין אין קובצי PDF בכספת הזו.",
+        "html": "עדיין אין קובצי HTML בכספת הזו.",
+        "file": "עדיין אין קבצים מצורפים בכספת הזו."
+      },
+      "addHeading": "הוספה",
+      "vaultHeading": "בכספת הזו",
+      "uploading": "מעלה…",
+      "noMatches": "אין תוצאות תואמות.",
+      "loadFailed": "טעינת הקבצים המצורפים של הכספת נכשלה",
+      "insertFailed": "הוספת הקובץ המצורף נכשלה",
+      "uploadFailed": "העלאת הקובץ נכשלה",
+      "unsupportedVideo": "אי אפשר להפעיל את פורמט הווידאו הזה ב-Memry. פורמטים נתמכים: {formats}.",
+      "tooLarge": "גודל הקובץ {size}, מעבר למגבלה של {limit} לקובץ מצורף.",
+      "hint": {
+        "navigate": "ניווט",
+        "insert": "הוספה",
+        "close": "סגירה"
+      }
+    },
+    "codeBlock": {
+      "copy": "העתקת הקוד",
+      "copied": "הועתק",
+      "language": "שפה"
     }
+  },
+  "dateMention": {
+    "dateInput": "תאריך",
+    "time": "שעה",
+    "includeTime": "הכללת שעה",
+    "timeFormat": "פורמט שעה",
+    "dateFormat": "פורמט תאריך",
+    "remind": "תזכורת",
+    "clear": "ניקוי"
   },
   "menus": {
     "wiki": {
-      "aria": "שימו לב להצעות",
-      "loading": "טוען הערות...",
-      "empty": "לא נמצאו הערות",
-      "create": "צור הערה חדשה",
-      "embed": "הטמע",
-      "embedAria": "הטמע את {title}",
+      "aria": "הצעות לפתקים",
+      "loading": "טוען פתקים…",
+      "empty": "לא נמצאו פתקים",
+      "create": "יצירת פתק חדש",
+      "embed": "הטמעה",
       "wikiLink": "קישור ויקי",
-      "wikiLinkAria": "קישור ויקי אל {title}"
+      "embedAria": "הטמעת {title}",
+      "wikiLinkAria": "קישור ויקי אל {title}",
+      "noHeadings": "ב-{title} אין כותרות",
+      "noMatchingHeadings": "אין כותרות תואמות ב-{title}",
+      "displayAs": "הצגה בתור",
+      "aliasHint": "אפשר להקליד | כדי לתת שם לקישור"
+    },
+    "mention": {
+      "aria": "הצעות לתאריכים ולפתקים",
+      "loading": "טוען פתקים…",
+      "empty": "לא נמצאו פתקים",
+      "date": "תאריך",
+      "now": "עכשיו",
+      "remindMe": "להזכיר לי",
+      "dateHint": "אפשר להמשיך להקליד תאריך…",
+      "showMore": "הצגת עוד",
+      "canvases": "קנבסים",
+      "choiceTitle": "הוספת קנבס בתור",
+      "choiceMention": "אזכור",
+      "choiceEmbed": "הטמעה"
     },
     "tags": {
-      "aria": "הצעות לתייג",
-      "loading": "טוען תגים...",
-      "empty": "הקלד כדי ליצור תג חדש",
-      "create": "צור #{tag}"
+      "aria": "הצעות לתגיות",
+      "loading": "טוען תגיות…",
+      "empty": "אפשר להקליד כדי ליצור תגית חדשה",
+      "create": "יצירת #{tag}"
     },
     "pasteLink": {
-      "title": "הדבק כמו",
-      "url": "כתובת אתר",
-      "mention": "להזכיר",
+      "title": "הדבקה בתור",
+      "url": "URL",
+      "mention": "אזכור",
       "embedVideo": "הטמעת וידאו",
       "bookmark": "סימנייה"
     },
     "emoji": {
-      "aria": "בוחר אמוג'י וסמלים",
-      "emojiTab": "אימוג'י",
-      "iconsTab": "אייקונים",
-      "searchPlaceholder": "חפש",
-      "noIcons": "לא נמצאו אייקונים",
-      "clearSearch": "נקה חיפוש"
-    },
-    "mention": {
-      "aria": "הצעות תאריך ופתק",
-      "date": "תאריך",
-      "dateHint": "המשך להקליד תאריך…",
-      "empty": "לא נמצאו פתקים",
-      "loading": "טוען פתקים...",
-      "remindMe": "הזכר לי",
-      "showMore": "הצג עוד"
+      "aria": "בחירת אמוג׳י וסמלים",
+      "emojiTab": "אמוג׳י",
+      "iconsTab": "סמלים",
+      "searchPlaceholder": "חיפוש",
+      "noIcons": "לא נמצאו סמלים",
+      "clearSearch": "ניקוי החיפוש",
+      "customTab": "מותאמים אישית",
+      "custom": {
+        "searchPlaceholder": "חיפוש בסמלים שלך",
+        "dropHint": "אפשר לשחרר כאן תמונה או ללחוץ כדי להעלות",
+        "urlPlaceholder": "או הדבקת קישור לתמונה",
+        "urlLabel": "קישור לתמונה",
+        "urlSubmit": "הורדת התמונה הזו",
+        "downloading": "מוריד…",
+        "adding": "מוסיף…",
+        "empty": "עדיין אין סמלים מותאמים אישית. כדי להוסיף סמל, אפשר לשחרר כאן תמונה או להדביק קישור.",
+        "noMatches": "אין סמלים מותאמים אישית שתואמים לחיפוש",
+        "unsupportedFile": "{name} אינו קובץ תמונה נתמך",
+        "addFailed": "הוספת הסמל נכשלה",
+        "deleteFailed": "מחיקת הסמל נכשלה",
+        "renameFailed": "שינוי שם הסמל נכשל",
+        "rename": "שינוי השם של {name}",
+        "delete": "מחיקת {name}",
+        "renameLabel": "שם הסמל",
+        "saveName": "שמירת השם",
+        "cancelRename": "ביטול שינוי השם",
+        "addUrlFailed": "הורדת התמונה נכשלה"
+      }
     }
   },
   "outline": {
     "title": "מתאר",
-    "aria": "מתאר מסמך",
+    "aria": "מתאר המסמך",
     "empty": "אין כותרות",
     "emptyYet": "עדיין אין כותרות",
     "readTime": "{count} דקות קריאה",
-    "words": "מילים {count}",
+    "words": "{count} מילים",
     "created": "נוצר",
     "modified": "שונה"
   },
   "backlinks": {
-    "sortRecent": "לאחרונה",
+    "sortRecent": "אחרונים",
     "sortAlpha": "א-ז",
-    "sortMentions": "רוב האזכורים",
-    "sortBy": "מיין קישורים נכנסים לפי {sort}",
-    "summary": "הערות {notes} · הפניות ל-{references}",
+    "sortMentions": "מספר אזכורים",
+    "sortBy": "מיון הקישורים הנכנסים לפי {sort}",
+    "summary": "{notes} פתקים · {references} הפניות",
     "sectionAria": "קישורים נכנסים",
     "listAria": "רשימת קישורים נכנסים",
     "fromAria": "קישורים נכנסים מ-{title}",
-    "collapse": "התמוטט",
-    "expand": "הרחב",
-    "collapseSection": "כווץ קטע קישורים נכנסים",
-    "expandSection": "הרחב את קטע קישורים נכנסים",
-    "showMore": "הצג {count} קישורים נכנסים נוספים",
-    "more": "{count} יותר"
+    "collapse": "כיווץ",
+    "expand": "הרחבה",
+    "collapseSection": "כיווץ אזור הקישורים הנכנסים",
+    "expandSection": "הרחבת אזור הקישורים הנכנסים",
+    "showMore": "הצגת {count} קישורים נכנסים נוספים",
+    "more": "עוד {count}",
+    "viaProperty": "{property} ← {title}"
+  },
+  "outgoingLinks": {
+    "summary": "{count, plural, one {קישור יוצא אחד} other {# קישורים יוצאים}}",
+    "sectionAria": "קישורים יוצאים",
+    "unresolved": "עדיין לא נוצר",
+    "showMore": "הצגת {count} קישורים יוצאים נוספים",
+    "more": "עוד {count}"
+  },
+  "canvasLinks": {
+    "connectedOn": "מחובר בקנבס {canvas}",
+    "untitledCanvas": "קנבס ללא כותרת"
+  },
+  "similarNotes": {
+    "summary": "{count, plural, one {פתק דומה אחד} other {# פתקים דומים}}",
+    "sectionAria": "פתקים דומים",
+    "hint": "פתקים שדומים לפתק הזה ועדיין לא מקושרים אליו. נמצאו במכשיר הזה באמצעות וקטורי הטמעה מקומיים.",
+    "addLink": "קישור מהפתק הזה",
+    "addLinkAria": "קישור אל {title} מהפתק הזה",
+    "linked": "נוסף קישור אל {title}",
+    "addToCanvas": "הוספה לקנבס",
+    "addToCanvasAria": "הוספת {title} לקנבס",
+    "searchCanvases": "חיפוש קנבסים…",
+    "canvasLoading": "טוען קנבסים…",
+    "noCanvases": "עדיין אין קנבסים",
+    "noMatch": "אין קנבסים תואמים",
+    "addedToCanvas": "{title} נוסף ל-{canvas}",
+    "alreadyOnCanvas": "{title} כבר נמצא ב-{canvas}",
+    "openCanvas": "פתיחה",
+    "addToCanvasFailed": "הוספת הפתק לקנבס נכשלה"
+  },
+  "suggestedTags": {
+    "label": "תגיות מוצעות:",
+    "hint": "תגיות שמשותפות לפתקים הדומים ביותר לפתק הזה. שום תגית לא מתווספת עד שבוחרים אחת.",
+    "acceptAria": "הוספת התגית {tag}",
+    "support": "{count, plural, one {בשימוש בפתק דומה אחד} other {בשימוש ב-# פתקים דומים}}",
+    "dismiss": "הסתרת התגיות המוצעות",
+    "failed": "הוספת התגית נכשלה"
+  },
+  "comments": {
+    "railAria": "הערות",
+    "badgeAria": "{count, plural, one {הערה אחת} other {# הערות}}",
+    "toolbarComment": "הוספת הערה",
+    "commentPlaceholder": "הוספת הערה…",
+    "createdTooltip": "נוצרה ב-{date} בשעה {time}",
+    "cancel": "ביטול",
+    "resolve": "סימון כטופל",
+    "edit": "עריכת הערה",
+    "delete": "מחיקת הערה",
+    "replyPlaceholder": "תשובה…",
+    "attachAria": "צירוף קובץ",
+    "mentionAria": "אזכור של אדם, דף או תאריך",
+    "sendAria": "שליחת הערה",
+    "formatToolbarAria": "עיצוב טקסט",
+    "format": {
+      "bold": "מודגש",
+      "italic": "נטוי",
+      "underline": "קו תחתון",
+      "strike": "קו חוצה",
+      "code": "קוד"
+    },
+    "openImageAria": "פתיחת התמונה {name}",
+    "openAttachmentAria": "פתיחת הקובץ המצורף {name}",
+    "kind": {
+      "comment": "הערה",
+      "addition": "הוספה",
+      "deletion": "מחיקה",
+      "substitution": "החלפה"
+    }
   },
   "tagsRow": {
-    "aria": "תגים",
-    "empty": "הוסף תגים",
-    "add": "הוסף תג",
-    "removeAria": "הסר תג: {tag}",
-    "inputPlaceholder": "הקלד שם תג...",
-    "recent": "לאחרונה",
-    "matching": "התאמה",
-    "all": "כל התגים",
-    "none": "לא נמצאו תגים",
-    "createTag": "צור תג: \"{tag}\"",
-    "chooseColor": "בחר צבע:",
+    "aria": "תגיות",
+    "empty": "הוספת תגיות",
+    "add": "הוספת תגית",
+    "removeAria": "הסרת התגית: {tag}",
+    "inputPlaceholder": "הקלדת שם תגית…",
+    "recent": "אחרונות",
+    "matching": "תואמות",
+    "all": "כל התגיות",
+    "none": "לא נמצאו תגיות",
+    "createTag": "יצירת תגית: \"{tag}\"",
+    "chooseColor": "בחירת צבע:",
     "preview": "תצוגה מקדימה:",
-    "colorAria": "בחר צבע {color}",
+    "colorAria": "בחירת הצבע {color}",
     "customColor": "צבע מותאם אישית"
   },
   "properties": {
-    "title": "נכסים",
-    "noteAria": "שימו לב למאפיינים",
+    "title": "מאפיינים",
+    "noteAria": "מאפייני הפתק",
     "workspaceAria": "מאפייני סביבת עבודה",
-    "listAria": "רשימת נכסים",
-    "add": "הוסף נכס",
-    "addDescription": "הוסף נכס חדש להערה זו",
-    "namePlaceholder": "שם הנכס",
-    "nameAria": "שם הנכס",
-    "typeSection": "הקלד",
+    "listAria": "רשימת מאפיינים",
+    "add": "הוספת מאפיין",
+    "addDescription": "הוספת מאפיין חדש לפתק הזה",
+    "namePlaceholder": "שם המאפיין",
+    "nameAria": "שם המאפיין",
+    "typeSection": "סוג",
     "empty": "ריק",
-    "dragAria": "גרור כדי לסדר מחדש את הנכס",
-    "editName": "ערוך את שם הנכס",
-    "delete": "מחק נכס",
-    "searchOptions": "אפשרויות חיפוש...",
+    "dragAria": "גרירה לשינוי מיקום המאפיין",
+    "editName": "עריכת שם המאפיין",
+    "delete": "מחיקת מאפיין",
+    "searchOptions": "חיפוש אפשרויות…",
     "noOptions": "עדיין אין אפשרויות",
-    "optionName": "שם האופציה",
+    "optionName": "שם האפשרות",
     "newOption": "אפשרות חדשה",
     "ratingAria": "דירוג",
-    "openUrlAria": "פתח את כתובת האתר",
+    "openUrlAria": "פתיחת ה-URL",
+    "showOnCalendar": "הצגה בלוח השנה",
+    "showingOnCalendar": "מוצג בלוח השנה",
+    "relation": {
+      "deleted": "נמחק",
+      "removeAria": "הסרת {title}",
+      "addAria": "הוספת קשר",
+      "searchPlaceholder": "חיפוש בפתקים, משימות, אירועים, קנבסים ויומן…",
+      "groupNotes": "פתקים וקבצים",
+      "groupTasks": "משימות",
+      "groupEvents": "אירועים",
+      "groupCanvases": "קנבסים",
+      "groupJournals": "יומן",
+      "empty": "אין תוצאות"
+    },
     "types": {
       "text": "טקסט",
       "number": "מספר",
       "date": "תאריך",
       "checkbox": "תיבת סימון",
-      "url": "כתובת אתר",
+      "url": "URL",
       "status": "סטטוס",
-      "select": "בחר",
-      "multiselect": "בחירה מרובה"
+      "select": "בחירה",
+      "multiselect": "בחירה מרובה",
+      "relation": "קשר",
+      "project": "פרויקט"
     },
-    "showOnCalendar": "הצג בלוח השנה",
-    "showingOnCalendar": "מוצג בלוח השנה",
     "statusCategories": {
-      "done": "הושלם",
+      "todo": "לביצוע",
       "inProgress": "בתהליך",
-      "todo": "לביצוע"
-    }
+      "done": "הושלם"
+    },
+    "projectAlreadySet": "לפתק הזה כבר יש מאפיין פרויקט",
+    "projectPlaceholder": "ללא פרויקט",
+    "projectSearch": "חיפוש פרויקטים",
+    "projectEmpty": "אין פרויקטים",
+    "projectRemove": "הסרה מ-{name}"
+  },
+  "moveNoteTasks": {
+    "title": "להעביר את המשימות של הפתק הזה?",
+    "description": "{count, plural, one {משימה אחת בפתק הזה שייכת לפרויקט אחר} other {# משימות בפתק הזה שייכות לפרויקטים אחרים}}. להעביר {count, plural, one {אותה} other {אותן}} ל-{project}?",
+    "subtaskNote": "תת-משימות עוברות יחד עם משימת האב שלהן.",
+    "cancel": "השארה ללא שינוי",
+    "confirm": "{count, plural, one {העברת המשימה} other {העברת המשימות}}",
+    "success": "{count, plural, one {משימה אחת הועברה ל-{project}} other {# משימות הועברו ל-{project}}}",
+    "failed": "העברת המשימות של הפתק נכשלה"
+  },
+  "deleteNoteTasks": {
+    "label": "{count, plural, one {למחוק גם את המשימה שבפתק} other {למחוק גם את # המשימות שבפתק}}",
+    "description": "{count, plural, one {אם התיבה לא מסומנת, המשימה נשארת בדף המשימות.} other {אם התיבה לא מסומנת, המשימות נשארות בדף המשימות.}}",
+    "failed": "מחיקת המשימות נכשלה. הן עדיין נמצאות בדף המשימות."
   },
   "cover": {
     "add": "הוספת תמונת שער",
@@ -264,19 +723,20 @@
     "setFailed": "לא ניתן היה להגדיר את תמונת השער",
     "removeFailed": "לא ניתן היה להסיר את תמונת השער",
     "reposition": "מיקום מחדש",
-    "repositionHint": "גררו כדי למקם מחדש",
+    "repositionHint": "אפשר לגרור כדי למקם מחדש",
     "repositionSave": "שמירה",
     "repositionCancel": "ביטול",
-    "credit": "צילום של {name} ב-Unsplash",
+    "credit": "צילום מאת {name} ב-Unsplash",
     "focusFailed": "לא ניתן היה לשמור את מיקום תמונת השער",
     "picker": {
-      "title": "שער ההערה",
+      "title": "תמונת השער של הפתק",
       "placeholder": "חיפוש תמונות שער",
       "tab": {
         "washes": "גוונים",
         "photos": "Unsplash",
-        "fromNote": "מההערה",
-        "upload": "העלאה"
+        "fromNote": "מהפתק",
+        "upload": "העלאה",
+        "link": "קישור"
       },
       "photos": {
         "searching": "מחפש ב-Unsplash…",
@@ -286,7 +746,7 @@
         "error": {
           "notConfigured": "תמונות Unsplash אינן זמינות בגרסה זו",
           "offline": "אין חיבור ל-Unsplash",
-          "rateLimited": "יש הגבלת קצב ב-Unsplash, נסו שוב בקרוב",
+          "rateLimited": "יש הגבלת קצב ב-Unsplash. אפשר לנסות שוב בקרוב.",
           "failed": "לא ניתן היה להתחבר ל-Unsplash",
           "writeFailed": "לא ניתן היה לשמור את התמונה הזו בכספת"
         }
@@ -316,36 +776,49 @@
         "bark": "קליפת עץ",
         "mist": "אובך",
         "plum": "שזיף"
+      },
+      "link": {
+        "prompt": "אפשר להדביק קישור לתמונה",
+        "invalid": "אי אפשר לפתוח את הקישור הזה ב-Memry",
+        "use": "שימוש בתמונה הזו",
+        "saving": "שומר את התמונה…",
+        "error": {
+          "notAnImage": "הקישור הזה לא מוביל לתמונה",
+          "tooLarge": "התמונה הזו גדולה מדי לאחסון",
+          "offline": "לא ניתן היה להגיע לקישור הזה",
+          "failed": "לא ניתן היה להוריד את התמונה הזו",
+          "writeFailed": "לא ניתן היה לשמור את התמונה הזו בכספת"
+        }
       }
     }
   },
   "templateSelector": {
-    "title": "בחר את הקנבס שלך",
-    "description": "בחר תבנית כדי להתחיל את ההערה",
-    "searchPlaceholder": "חפש תבניות...",
-    "loading": "טוען תבניות...",
+    "title": "בחירת תבנית",
+    "description": "אפשר לבחור תבנית כדי להתחיל את הפתק",
+    "searchPlaceholder": "חיפוש תבניות…",
+    "loading": "טוען תבניות…",
     "empty": "לא נמצאו תבניות",
     "myTemplates": "התבניות שלי",
-    "essentials": "יסודות",
-    "setFolderDefault": "הגדר כברירת מחדל של תיקיה",
-    "useTemplate": "השתמש בתבנית",
-    "createNote": "צור הערה",
-    "applyDescription": "החלף את תוכן ההערה הזו בתבנית",
-    "applyTitle": "החל תבנית",
-    "applyToNote": "החל תבנית"
+    "essentials": "תבניות בסיסיות",
+    "setFolderDefault": "הגדרה כברירת המחדל של התיקייה",
+    "useTemplate": "שימוש בתבנית",
+    "createNote": "יצירת פתק",
+    "applyToNote": "החלת תבנית",
+    "applyTitle": "החלת תבנית",
+    "applyDescription": "החלפת התוכן של הפתק הזה בתבנית"
   },
   "exportDialog": {
-    "title": "ייצוא הערה",
-    "description": "ייצא את \"{title}\" לקובץ",
+    "title": "ייצוא פתק",
+    "description": "ייצוא \"{title}\" לקובץ",
     "format": "פורמט",
     "pdfDescription": "מסמך מוכן להדפסה",
     "htmlDescription": "קובץ מוכן לאינטרנט",
     "pageSize": "גודל עמוד",
-    "selectPageSize": "בחר גודל עמוד",
+    "selectPageSize": "בחירת גודל עמוד",
     "options": "אפשרויות",
-    "includeMetadata": "כלול מטא נתונים (תגים, תאריכים)",
-    "exporting": "מייצא...",
-    "exported": "מיוצא!",
+    "includeMetadata": "הכללת מטא-נתונים (תגיות, תאריכים)",
+    "exporting": "מייצא…",
+    "exported": "הייצוא הושלם!",
     "export": "ייצוא",
     "toast": {
       "failed": "הייצוא נכשל"
@@ -353,30 +826,30 @@
   },
   "versionHistory": {
     "title": "היסטוריית גרסאות",
-    "description": "הצג ושחזר גרסאות קודמות של \"{title}\"",
-    "hidePreview": "הסתר תצוגה מקדימה",
-    "showPreview": "הצג תצוגה מקדימה",
+    "description": "הצגה ושחזור של גרסאות קודמות של \"{title}\"",
+    "hidePreview": "הסתרת התצוגה המקדימה",
+    "showPreview": "הצגת תצוגה מקדימה",
     "empty": "עדיין לא נשמרו גרסאות",
-    "emptyDescription": "גרסאות נשמרות באופן אוטומטי כאשר אתה מבצע שינויים משמעותיים",
-    "latest": "אחרון",
-    "autoSaved": "נשמר אוטומטית",
-    "words": "מילים {count}",
-    "selectPrompt": "בחר גרסה לתצוגה מקדימה",
-    "restore": "שחזר",
+    "emptyDescription": "גרסאות נשמרות אוטומטית כשמבצעים שינויים משמעותיים",
+    "latest": "אחרונה",
+    "autoSaved": "נשמרה אוטומטית",
+    "words": "{count} מילים",
+    "selectPrompt": "אפשר לבחור גרסה לתצוגה מקדימה",
+    "restore": "שחזור",
     "deleteTitle": "למחוק את הגרסה הזו?",
     "deleteDescription": "לא ניתן לבטל פעולה זו. גרסה זו תימחק לצמיתות.",
     "restoreTitle": "לשחזר את הגרסה הזו?",
-    "restoreDescription": "זה יחליף את תוכן ההערה הנוכחי בגרסה זו. תמונת מצב של המצב הנוכחי תישמר תחילה, כך שתוכל לבטל פעולה זו.",
-    "restoring": "משחזר...",
+    "restoreDescription": "הפעולה תחליף את תוכן הפתק הנוכחי בגרסה הזו. קודם תישמר תמונת מצב של המצב הנוכחי, כך שאפשר יהיה לבטל את הפעולה.",
+    "restoring": "משחזר…",
     "toast": {
       "loadPreviewFailed": "טעינת התצוגה המקדימה של הגרסה נכשלה",
-      "restored": "הערה שוחזרה לגרסה הקודמת",
+      "restored": "הפתק שוחזר לגרסה הקודמת",
       "deleted": "הגרסה נמחקה"
     }
   },
   "templateEditor": {
     "loading": "טוען תבנית…",
-    "copySuffix": "{name} (העתק)",
+    "copySuffix": "{name} (עותק)",
     "title": {
       "new": "תבנית חדשה",
       "placeholder": "שם התבנית"
@@ -385,14 +858,14 @@
       "label": "סמל התבנית"
     },
     "content": {
-      "placeholder": "תוכן ברירת המחדל לפתקים שנוצרים מתבנית זו. השתמש ב-'{{'title'}}' כדי להוסיף את כותרת הפתק."
+      "placeholder": "תוכן ברירת המחדל לפתקים שנוצרים מהתבנית הזו. אפשר להשתמש ב-'{{'title'}}' כדי להוסיף את כותרת הפתק."
     },
     "actions": {
-      "create": "צור תבנית",
-      "update": "עדכן",
-      "duplicateAndEdit": "שכפל וערוך",
+      "create": "יצירת תבנית",
+      "update": "עדכון",
+      "duplicateAndEdit": "שכפול ועריכה",
       "duplicate": "שכפול",
-      "delete": "מחק תבנית",
+      "delete": "מחיקת תבנית",
       "more": "פעולות נוספות"
     },
     "toast": {
@@ -402,212 +875,216 @@
   },
   "reminders": {
     "summary": "תזכורת: {date}",
-    "summaryWithMore": "תזכורת: {date} (+{count} יותר)",
+    "summaryWithMore": "תזכורת: {date} (+{count} נוספות)",
     "hasReminders": "יש תזכורות",
-    "setReminder": "הגדר תזכורת",
+    "setReminder": "הגדרת תזכורת",
     "toast": {
-      "set": "תזכורת מוגדרת",
+      "set": "התזכורת הוגדרה",
       "setFailed": "הגדרת התזכורת נכשלה",
       "deleted": "התזכורת נמחקה",
       "deleteFailed": "מחיקת התזכורת נכשלה",
-      "dismissed": "התזכורת נדחתה",
-      "dismissFailed": "ביטול התזכורת נכשל"
+      "dismissed": "התזכורת נסגרה",
+      "dismissFailed": "סגירת התזכורת נכשלה",
+      "updated": "התזכורת עודכנה",
+      "updateFailed": "עדכון התזכורת נכשל"
     }
   },
   "linkedTasks": {
     "title": "משימות מקושרות",
-    "loading": "טוען משימות מקושרות..."
+    "loading": "טוען משימות מקושרות…"
   },
   "phaseF": {
     "componentsFolderViewColumnHeader": {
-      "dragToReorderColumn": "גרור כדי לסדר מחדש את העמודה",
-      "editColumnName": "ערוך שם עמודה"
+      "dragToReorderColumn": "גרירה לשינוי מיקום העמודה",
+      "editColumnName": "עריכת שם העמודה"
     },
     "componentsFolderViewColumnSelector": {
-      "properties": "נכסים",
-      "searchColumns": "חפש עמודות...",
+      "properties": "מאפיינים",
+      "display": "תצוגה",
+      "showSummaries": "הצגת סיכומים",
+      "columnBorders": "גבולות עמודות",
+      "searchColumns": "חיפוש עמודות…",
       "noMatchingColumns": "אין עמודות תואמות",
       "formulas": "נוסחאות",
       "noFormulasDefined": "לא הוגדרו נוסחאות",
-      "addFormula": "הוסף נוסחה",
-      "deleteFormula": "מחק את הנוסחה",
-      "cancel": "בטל",
-      "delete": "מחק",
-      "none": "אין",
-      "edit": "ערוך",
-      "delete2": "מחק",
-      "columnBorders": "גבולות עמודות",
-      "display": "תצוגה",
-      "showSummaries": "הצג סיכומים",
+      "addFormula": "הוספת נוסחה",
+      "deleteFormula": "מחיקת הנוסחה",
+      "cancel": "ביטול",
+      "delete": "מחיקה",
+      "none": "ללא",
+      "edit": "עריכה",
+      "delete2": "מחיקה",
       "deleteFormulaBody": "האם למחוק את הנוסחה \"{name}\"? לא ניתן לבטל פעולה זו."
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "מסנן",
       "filters": "מסננים",
-      "clearAll": "נקה הכל",
+      "clearAll": "ניקוי הכול",
       "noFiltersApplied": "לא הוחלו מסננים",
-      "addFiltersToNarrowDownYourNotes": "הוסף מסננים כדי לצמצם את ההערות שלך",
+      "addFiltersToNarrowDownYourNotes": "אפשר להוסיף מסננים כדי לצמצם את רשימת הפתקים",
       "match": "התאמה",
-      "allAnd": "הכל (AND)",
-      "anyOr": "כל (OR)",
-      "ofTheFollowing": "מבין הדברים הבאים:",
+      "allAnd": "הכול (AND)",
+      "anyOr": "אחד לפחות (OR)",
+      "ofTheFollowing": "מהתנאים הבאים:",
       "match2": "התאמה",
-      "all": "הכל",
-      "any": "כל",
-      "of": "של:",
-      "addCondition": "הוסף תנאי",
-      "addFilter": "הוסף מסנן",
-      "addGroup": "הוסף קבוצה",
-      "removeGroup": "הסר קבוצה",
+      "all": "הכול",
+      "any": "אחד לפחות",
+      "of": "מתוך:",
+      "addCondition": "הוספת תנאי",
+      "addFilter": "הוספת מסנן",
+      "addGroup": "הוספת קבוצה",
+      "removeGroup": "הסרת קבוצה",
       "lockedConditionHint": "התנאי הזה מגדיר את התצוגה הנוכחית ולא ניתן להסיר אותו כאן."
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "מובנה",
-      "properties": "נכסים",
-      "placeholderProperty": "רכוש",
-      "placeholderOperator": "מפעיל",
+      "properties": "מאפיינים",
+      "placeholderProperty": "מאפיין",
+      "placeholderOperator": "אופרטור",
       "placeholderValue": "ערך",
-      "removeFilter": "הסר מסנן"
+      "removeFilter": "הסרת מסנן",
+      "tagSuggestions": "הצעות לתגיות"
     },
     "componentsFolderViewFolderTableView": {
-      "notesTable": "טבלת הערות",
-      "selectAll": "בחר את כל הפתקים",
-      "selectRow": "בחר פתק",
+      "notesTable": "טבלת פתקים",
+      "selectAll": "בחירת כל הפתקים",
+      "selectRow": "בחירת פתק",
       "kind": {
-        "Inbox": "תיבת דואר נכנס",
-        "Note": "הערה",
-        "Task": "משימה"
+        "Note": "פתק",
+        "Task": "משימה",
+        "Inbox": "תיבת נכנסים"
       }
     },
     "componentsFolderViewFolderViewToolbar": {
-      "searchNotes": "חפש הערות...",
-      "clearSearch": "נקה חיפוש"
+      "searchNotes": "חיפוש בפתקים…",
+      "clearSearch": "ניקוי החיפוש"
     },
     "componentsFolderViewFormulaEditorModal": {
-      "defineAComputedColumnUsingAnExpression": "הגדר עמודה מחושבת באמצעות ביטוי.",
+      "defineAComputedColumnUsingAnExpression": "הגדרת עמודה מחושבת באמצעות ביטוי.",
       "name": "שם",
       "expression": "ביטוי",
-      "available": "זמין: ",
+      "available": "פונקציות זמינות: ",
       "preview": "תצוגה מקדימה",
-      "fixExpressionErrorsToSeePreview": "תקן שגיאות ביטוי כדי לראות תצוגה מקדימה",
-      "usingNote": "שימוש בהערה: \"",
-      "cancel": "בטל",
-      "namePlaceholder": "ימים_עד_מועד",
-      "expressionPlaceholder": "dateDiff(due_date, today(), \"ימים\")",
-      "usingNoteTitle": "שימוש בהערה: \"{title}\""
+      "fixExpressionErrorsToSeePreview": "כדי לראות תצוגה מקדימה, יש לתקן את השגיאות בביטוי",
+      "usingNote": "שימוש בפתק: \"",
+      "cancel": "ביטול",
+      "namePlaceholder": "days_until_due",
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
+      "usingNoteTitle": "שימוש בפתק: \"{title}\""
     },
     "componentsFolderViewGroupBySelector": {
-      "clearGrouping": "קיבוץ ברור",
-      "searchProperties": "חפש נכסים...",
+      "clearGrouping": "ניקוי הקיבוץ",
+      "searchProperties": "חיפוש מאפיינים…",
       "builtIn": "מובנה",
-      "properties": "נכסים",
-      "noGroupablePropertiesFound": "לא נמצאו נכסים הניתנים לקיבוץ",
+      "properties": "מאפיינים",
+      "noGroupablePropertiesFound": "לא נמצאו מאפיינים שאפשר לקבץ לפיהם",
       "sortDirection": "כיוון מיון",
       "collapseGroupsByDefault": "כיווץ קבוצות כברירת מחדל",
-      "showGroupSummaries": "הצג סיכומים קבוצתיים",
-      "clearGrouping2": "קיבוץ ברור"
+      "showGroupSummaries": "הצגת סיכומי קבוצות",
+      "clearGrouping2": "ניקוי הקיבוץ"
     },
     "componentsFolderViewGroupedTable": {
-      "groupedNotesTable": "טבלת הערות מקובצות",
-      "more": "יותר",
-      "selectAll": "בחר את כל הפתקים",
-      "selectRow": "בחר פתק"
+      "groupedNotesTable": "טבלת פתקים מקובצים",
+      "more": "נוספים",
+      "selectAll": "בחירת כל הפתקים",
+      "selectRow": "בחירת פתק"
     },
     "componentsFolderViewMoveToFolderDialog": {
-      "searchFolders": "חפש תיקיות...",
-      "loadingFolders": "טוען תיקיות...",
-      "suggested": "מוצע",
+      "searchFolders": "חיפוש תיקיות…",
+      "loadingFolders": "טוען תיקיות…",
+      "suggested": "מוצעות",
       "bestMatch": "ההתאמה הטובה ביותר",
-      "current": "נוכחי)",
+      "current": "נוכחית)",
       "allFolders": "כל התיקיות",
-      "noFoldersMatch": "אין תיקיות תואמות \"",
-      "create": "צור \"",
-      "cancel": "בטל",
-      "createFolderNamed": "צור \"{name}\"",
-      "currentFolderBadge": "(נוכחי)",
-      "noFoldersMatchQuery": "אין תיקיות התואמות ל\"{query}\""
+      "noFoldersMatch": "אין תיקיות תואמות עבור \"",
+      "create": "יצירת \"",
+      "cancel": "ביטול",
+      "currentFolderBadge": "(נוכחית)",
+      "noFoldersMatchQuery": "אין תיקיות תואמות עבור \"{query}\"",
+      "createFolderNamed": "יצירת \"{name}\""
     },
     "componentsFolderViewRowContextMenu": {
-      "delete": "מחק ",
-      "notes": "הערות",
-      "open": "פתוח",
-      "openInExternalEditor": "פתח בעורך חיצוני",
-      "revealInSidebar": "חשוף בסרגל הצד",
-      "copyLink": "העתק קישור",
-      "delete2": "מחק"
+      "delete": "מחיקת ",
+      "notes": "פתקים",
+      "open": "פתיחה",
+      "openInExternalEditor": "פתיחה בעורך חיצוני",
+      "revealInSidebar": "הצגה בסרגל הצד",
+      "copyLink": "העתקת קישור",
+      "delete2": "מחיקה"
     },
     "componentsFolderViewSortableColumnHeader": {
-      "dragToReorderColumn": "גרור כדי לסדר מחדש את העמודה",
-      "resizeColumn": "שנה את גודל העמודה",
-      "editColumnName": "ערוך שם עמודה"
+      "dragToReorderColumn": "גרירה לשינוי מיקום העמודה",
+      "resizeColumn": "שינוי גודל העמודה",
+      "editColumnName": "עריכת שם העמודה"
     },
     "componentsFolderViewViewSwitcher": {
       "default": "ברירת מחדל",
-      "rename": "שנה שם",
+      "viewActions": "פעולות תצוגה",
+      "rename": "שינוי שם",
       "duplicate": "שכפול",
-      "setAsDefault": "הגדר כברירת מחדל",
-      "delete": "מחק",
-      "createNewView": "צור תצוגה חדשה",
-      "createNewView2": "צור תצוגה חדשה",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "צור תצוגה חדשה עם עמודות מותאמות אישית, מסננים ומיון.",
-      "viewName": "הצג שם",
+      "setAsDefault": "הגדרה כברירת מחדל",
+      "delete": "מחיקה",
+      "createNewView": "יצירת תצוגה חדשה",
+      "createNewView2": "יצירת תצוגה חדשה",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "יצירת תצוגה חדשה עם עמודות, מסננים ומיון מותאמים אישית.",
+      "viewName": "שם התצוגה",
       "myCustomView": "התצוגה המותאמת אישית שלי",
       "baseConfiguration": "תצורת בסיס",
-      "copyFromCurrentView": "העתק מהתצוגה הנוכחית",
-      "startFreshDefaultColumns": "התחל מחדש (עמודות ברירת מחדל)",
-      "cancel": "בטל",
-      "renameView": "שנה שם תצוגה",
-      "enterANewNameForThisView": "הזן שם חדש לתצוגה זו.",
-      "viewName2": "הצג שם",
-      "viewName3": "הצג שם",
-      "cancel2": "בטל",
-      "deleteView": "מחק תצוגה",
-      "areYouSureYouWantToDelete": "האם אתה בטוח שאתה רוצה למחוק \"",
+      "copyFromCurrentView": "העתקה מהתצוגה הנוכחית",
+      "startFreshDefaultColumns": "התחלה מאפס (עמודות ברירת מחדל)",
+      "cancel": "ביטול",
+      "renameView": "שינוי שם התצוגה",
+      "enterANewNameForThisView": "יש להזין שם חדש לתצוגה הזו.",
+      "viewName2": "שם התצוגה",
+      "viewName3": "שם התצוגה",
+      "cancel2": "ביטול",
+      "deleteView": "מחיקת תצוגה",
+      "areYouSureYouWantToDelete": "למחוק את \"",
       "thisActionCannotBeUndone": "לא ניתן לבטל פעולה זו.",
-      "cancel3": "בטל",
-      "createView": "צור תצוגה",
-      "gallery": "גלריה",
-      "layout": "פריסה",
-      "list": "רשימה",
-      "name": "שם",
+      "cancel3": "ביטול",
       "newView": "תצוגה חדשה",
-      "save": "שמור",
+      "name": "שם",
+      "layout": "פריסה",
       "table": "טבלה",
-      "viewActions": "פעולות תצוגה"
+      "list": "רשימה",
+      "gallery": "גלריה",
+      "createView": "יצירת תצוגה",
+      "save": "שמירה"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "טעינת PDF נכשלה: ",
-      "download": "הורד",
-      "download2": "הורד",
+      "download": "הורדה",
+      "download2": "הורדה",
       "noFileAttached": "לא מצורף קובץ",
-      "alignCenter": "יישור למרכז",
+      "resizePdf": "שינוי גודל ה-PDF",
+      "resizeHtml": "שינוי גודל ה-HTML המוטמע",
       "alignLeft": "יישור לשמאל",
+      "alignCenter": "יישור למרכז",
       "alignRight": "יישור לימין",
-      "nextPage": "העמוד הבא",
       "previousPage": "העמוד הקודם",
-      "resizePdf": "שנה גודל PDF"
+      "nextPage": "העמוד הבא"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
-      "openInTaskPanel": "פתח בלוח המשימות",
-      "taskName": "שם המשימה...",
+      "openInTaskPanel": "פתיחה בחלונית המשימות",
+      "taskName": "שם המשימה…",
       "taskDeleted": "המשימה נמחקה",
-      "loading": "טוען..."
+      "loading": "טוען…"
     },
     "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
       "project": "פרויקט",
       "priority": "עדיפות",
       "dueDate": "תאריך יעד",
-      "cancel": "בטל"
+      "cancel": "ביטול"
     },
     "componentsNoteContentAreaYoutubeEmbedBlock": {
-      "noVideoUrl": "אין כתובת אתר של סרטון"
+      "noVideoUrl": "אין URL לסרטון"
     },
     "componentsNoteExportDialog": {
       "pdf": "PDF",
       "html": "HTML",
-      "a4210X297Mm": "A4 (210 x 297 מ\"מ)",
-      "letter85X11In": "אותיות (8.5 x 11 אינץ')",
-      "legal85X14In": "חוקי (8.5 x 14 אינץ')"
+      "a4210X297Mm": "A4 (210 x 297 מ״מ)",
+      "letter85X11In": "Letter (8.5 x 11 אינץ׳)",
+      "legal85X14In": "Legal (8.5 x 14 אינץ׳)"
     },
     "componentsNoteInfoSectionEditorsDateeditor": {
       "ddMmYyyy": "dd.mm.yyyy"
@@ -617,110 +1094,110 @@
     },
     "componentsSharedDocumentInfoTab": {
       "words": "מילים",
-      "characters": "דמויות",
+      "characters": "תווים",
       "readingTime": "זמן קריאה",
       "created": "נוצר",
       "modified": "שונה"
     },
     "componentsSidebarProjectsEmptyState": {
       "noProjectsYet": "עדיין אין פרויקטים",
-      "createYourFirstProject": "צור את הפרויקט הראשון שלך",
-      "createYourFirstProject2": "צור את הפרויקט הראשון שלך"
+      "createYourFirstProject": "יצירת הפרויקט הראשון שלך",
+      "createYourFirstProject2": "יצירת הפרויקט הראשון שלך"
     },
     "componentsSidebarSidebarBookmarkList": {
-      "loadingBookmarks": "טוען סימניות...",
+      "loadingBookmarks": "טוען סימניות…",
       "failedToLoadBookmarks": "טעינת הסימניות נכשלה",
       "noBookmarksYet": "עדיין אין סימניות",
       "moreOptions": "אפשרויות נוספות",
-      "remove": "הסר"
+      "remove": "הסרה"
     },
     "componentsSidebarSidebarItemContextMenu": {
-      "open": "פתוח",
-      "openToTheSide": "פתוח לצד",
-      "pinToTabs": "הצמד לכרטיסיות",
-      "edit": "ערוך",
-      "delete": "מחק",
-      "copyLink": "העתק קישור"
+      "open": "פתיחה",
+      "openToTheSide": "פתיחה בצד",
+      "pinToTabs": "הצמדה לכרטיסיות",
+      "edit": "עריכה",
+      "delete": "מחיקה",
+      "copyLink": "העתקת קישור"
     },
     "componentsSidebarSidebarTagList": {
-      "loadingTags": "טוען תגים...",
-      "failedToLoadTags": "טעינת התגים נכשלה",
-      "noTagsYet": "עדיין אין תגים",
-      "filterTags": "סינון תגיות...",
-      "noMatchingTags": "אין תגים תואמים",
+      "loadingTags": "טוען תגיות…",
+      "failedToLoadTags": "טעינת התגיות נכשלה",
+      "noTagsYet": "עדיין אין תגיות",
+      "filterTags": "סינון תגיות…",
+      "noMatchingTags": "אין תגיות תואמות",
       "Uncategorized": "ללא קטגוריה"
     },
     "componentsSidebarSortableProjectItem": {
-      "dropHere": "זרוק כאן",
-      "editProject": "ערוך פרויקט",
+      "dropHere": "שחרור כאן",
+      "editProject": "עריכת פרויקט",
       "settings": "הגדרות"
     },
     "componentsSidebarTagDeleteDialog": {
-      "deleteTag": "מחק תג #",
-      "notesWithThisTagWonTBeDeletedJustUntagged": "הערות עם תג זה לא יימחקו, רק יבוטלו.",
-      "cancel": "בטל"
+      "deleteTag": "למחוק את התגית #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "פתקים עם התגית הזו לא יימחקו, רק התגית תוסר מהם.",
+      "cancel": "ביטול"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "תחזור אחורה",
-      "notes": "הערות",
-      "loadingNotes": "טוען הערות...",
-      "noNotesWithThisTag": "אין הערות עם התג הזה",
-      "addThisTagToANoteToSeeItHere": "הוסף את התג הזה להערה כדי לראות אותו כאן",
-      "pinned": "מוצמד",
-      "allNotes": "כל ההערות",
-      "allNotesArePinned": "כל ההערות מוצמדות",
-      "unpinFromTag": "בטל את ההצמדה מהתג",
-      "unpin": "בטל את ההצמדה",
-      "pinToTag": "הצמד כדי לתייג",
-      "pin": "סיכה",
-      "tagActions": "תיוג פעולות",
-      "editTagName": "ערוך את שם התג",
-      "changeColor": "שנה צבע",
-      "deleteTag": "מחק תג",
-      "recent": "לאחרונה",
-      "created": "נוצר",
-      "alphabetical": "אלפביתי",
-      "tasks": "משימות"
+      "goBack": "חזרה",
+      "notes": "פתקים",
+      "loadingNotes": "טוען פתקים…",
+      "noNotesWithThisTag": "אין פתקים עם התגית הזו",
+      "addThisTagToANoteToSeeItHere": "כדי לראות כאן פתק, אפשר להוסיף לו את התגית הזו",
+      "pinned": "מוצמדים",
+      "allNotes": "כל הפתקים",
+      "allNotesArePinned": "כל הפתקים מוצמדים",
+      "tasks": "משימות",
+      "unpinFromTag": "ביטול ההצמדה לתגית",
+      "unpin": "ביטול הצמדה",
+      "pinToTag": "הצמדה לתגית",
+      "pin": "הצמדה",
+      "tagActions": "פעולות תגית",
+      "editTagName": "עריכת שם התגית",
+      "changeColor": "שינוי צבע",
+      "deleteTag": "מחיקת תגית",
+      "recent": "אחרונים",
+      "created": "תאריך יצירה",
+      "alphabetical": "אלפביתי"
     },
     "componentsSidebarTagRenameDialog": {
-      "renameTag": "שנה שם תג",
-      "rename": "שנה שם ",
-      "acrossEveryNoteThatUsesIt": "על פני כל פתק שמשתמש בו.",
+      "renameTag": "שינוי שם תגית",
+      "rename": "שינוי השם של ",
+      "acrossEveryNoteThatUsesIt": "בכל פתק שמשתמש בה.",
       "newName": "שם חדש",
-      "cancel": "בטל"
+      "cancel": "ביטול"
     },
     "componentsViewersAudioPlayer": {
       "failedToLoadAudio": "טעינת האודיו נכשלה",
       "theAudioFileCouldNotBePlayed": "לא ניתן היה להפעיל את קובץ האודיו.",
-      "skipBack10s": "דלג אחורה 10 שניות",
-      "skipForward10s": "דלג קדימה 10 שניות"
+      "skipBack10s": "דילוג 10 שניות אחורה",
+      "skipForward10s": "דילוג 10 שניות קדימה"
     },
     "componentsViewersImageViewer": {
       "failedToLoadImage": "טעינת התמונה נכשלה",
       "theImageCouldNotBeDisplayed": "לא ניתן היה להציג את התמונה.",
-      "resetZoom": "אפס זום",
-      "rotate": "סובב",
-      "dragToPan": "גרור כדי להזיז"
+      "resetZoom": "איפוס הזום",
+      "rotate": "סיבוב",
+      "dragToPan": "גרירה להזזה"
     },
     "componentsViewersPdfViewer": {
       "failedToLoadPdf": "טעינת PDF נכשלה",
       "previousPage": "העמוד הקודם",
       "nextPage": "העמוד הבא",
-      "zoomOut": "זום החוצה",
-      "zoomIn": "התקרב",
+      "zoomOut": "הקטנה",
+      "zoomIn": "הגדלה",
       "fitToWidth": "התאמה לרוחב",
-      "rotate": "סובב",
-      "fitToHeight": "Fit to height",
-      "viewOptions": "View options",
-      "fit": "Fit",
-      "pageLayout": "Page layout",
-      "singlePage": "Single page",
-      "twoPageOdd": "Two-page (odd)",
-      "twoPageEven": "Two-page (even)",
-      "adaptToTheme": "Adapt to theme",
-      "goToPage": "Go to page",
-      "showThumbnails": "Show thumbnails",
-      "hideThumbnails": "Hide thumbnails"
+      "rotate": "סיבוב",
+      "fitToHeight": "התאמה לגובה",
+      "viewOptions": "אפשרויות תצוגה",
+      "fit": "התאמה",
+      "pageLayout": "פריסת עמודים",
+      "singlePage": "עמוד יחיד",
+      "twoPageOdd": "שני עמודים (אי-זוגיים)",
+      "twoPageEven": "שני עמודים (זוגיים)",
+      "adaptToTheme": "התאמה לערכת הנושא",
+      "goToPage": "מעבר לעמוד",
+      "showThumbnails": "הצגת תמונות ממוזערות",
+      "hideThumbnails": "הסתרת התמונות הממוזערות"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "טעינת הסרטון נכשלה",
@@ -728,31 +1205,31 @@
     },
     "pagesFile": {
       "failedToLoadFile": "טעינת הקובץ נכשלה",
-      "tryAgain": "נסה שוב",
+      "tryAgain": "ניסיון חוזר",
       "noFileSelected": "לא נבחר קובץ",
-      "selectAFileFromTheSidebarToViewIt": "בחר קובץ מהסרגל הצידי כדי להציג אותו",
-      "loadingFile": "טוען קובץ...",
-      "open": "פתוח",
-      "reveal": "לחשוף",
+      "selectAFileFromTheSidebarToViewIt": "אפשר לבחור קובץ מסרגל הצד כדי להציג אותו",
+      "loadingFile": "טוען קובץ…",
+      "open": "פתיחה",
+      "reveal": "הצגה בתיקייה",
       "unsupportedFileType": "סוג קובץ לא נתמך",
-      "fileActions": "File actions"
+      "fileActions": "פעולות קובץ"
     },
     "pagesFolderView": {
-      "createNewNote": "צור הערה חדשה",
-      "viewSettings": "הצג הגדרות",
+      "createNewNote": "יצירת פתק חדש",
+      "viewSettings": "הגדרות תצוגה",
       "displayDensity": "צפיפות תצוגה",
-      "comfortable": "נוח",
+      "comfortable": "מרווח",
       "compact": "קומפקטי",
-      "showSummaries": "הצג סיכומים",
-      "cancel": "בטל"
+      "showSummaries": "הצגת סיכומים",
+      "cancel": "ביטול"
     },
     "componentsFolderViewSortSelector": {
+      "clearSort": "ניקוי המיון",
+      "sort": "מיון",
+      "searchProperties": "חיפוש מאפיינים…",
       "builtIn": "מובנה",
-      "clearSort": "נקה מיון",
-      "noSortablePropertiesFound": "לא נמצאו מאפיינים ניתנים למיון",
       "properties": "מאפיינים",
-      "searchProperties": "חפש מאפיינים...",
-      "sort": "מיין",
+      "noSortablePropertiesFound": "לא נמצאו מאפיינים שאפשר למיין לפיהם",
       "sortDirection": "כיוון מיון"
     }
   },
@@ -762,181 +1239,196 @@
       "failedToOpenInExternalEditor": "הפתיחה בעורך חיצוני נכשלה",
       "failedToCopyLink": "העתקת הקישור נכשלה",
       "failedToCreateView": "יצירת התצוגה נכשלה",
-      "failedToRenameFolder": "שינוי שם התיקיה נכשל",
+      "failedToRenameFolder": "שינוי שם התיקייה נכשל",
       "failedToCreateTask": "יצירת המשימה נכשלה",
       "failedToLoadVersionHistory": "טעינת היסטוריית הגרסאות נכשלה",
       "failedToRestoreVersion": "שחזור הגרסה נכשל",
       "failedToDeleteVersion": "מחיקת הגרסה נכשלה",
-      "failedToCreateNote": "יצירת הערה נכשלה",
+      "failedToCreateNote": "יצירת הפתק נכשלה",
       "failedToLoadMoreBookmarks": "טעינת סימניות נוספות נכשלה",
-      "failedToToggleBookmark": "החלפת סימניה נכשלה",
-      "failedToRemoveBookmark": "הסרת הסימניה נכשלה",
-      "failedToReorderBookmarks": "הסדר מחדש של הסימניות נכשל",
+      "failedToToggleBookmark": "עדכון הסימנייה נכשל",
+      "failedToRemoveBookmark": "הסרת הסימנייה נכשלה",
+      "failedToReorderBookmarks": "שינוי סדר הסימניות נכשל",
       "failedToSave": "השמירה נכשלה",
       "failedToRename": "שינוי השם נכשל",
-      "failedToUpdateEmoji": "עדכון האימוג'י נכשל",
-      "failedToUpdateTags": "עדכון התגים נכשל",
+      "failedToUpdateEmoji": "עדכון האמוג׳י נכשל",
+      "failedToUpdateTags": "עדכון התגיות נכשל",
       "failedToSnoozeReminder": "השהיית התזכורת נכשלה",
-      "failedToCreateFolder": "יצירת התיקיה נכשלה",
+      "failedToCreateFolder": "יצירת התיקייה נכשלה",
       "failedToLoadProperties": "טעינת המאפיינים נכשלה",
-      "failedToLoadPropertyDefinitions": "טעינת הגדרות הנכס נכשלה",
+      "failedToLoadPropertyDefinitions": "טעינת הגדרות המאפיינים נכשלה",
       "failedToLoadTemplates": "טעינת התבניות נכשלה"
     },
     "toasts": {
-      "noteExportedSuccessfully": "הערה יצאה בהצלחה",
-      "failedToUpdateProperty": "עדכון הנכס נכשל",
-      "failedToUpdateTags": "עדכון התגים נכשל",
+      "noteExportedSuccessfully": "הפתק יוצא בהצלחה",
+      "failedToUpdateProperty": "עדכון המאפיין נכשל",
+      "failedToUpdateTags": "עדכון התגיות נכשל",
       "failedToUpdateIcon": "עדכון הסמל נכשל",
-      "reminderSnoozed": "התזכורת הושהה",
+      "reminderSnoozed": "התזכורת הושהתה",
       "failedToSnoozeReminder": "השהיית התזכורת נכשלה",
-      "defaultTemplateSet": "ערכת תבנית ברירת מחדל",
+      "defaultTemplateSet": "תבנית ברירת המחדל הוגדרה",
       "failedToSetDefaultTemplate": "הגדרת תבנית ברירת המחדל נכשלה",
       "defaultTemplateCleared": "תבנית ברירת המחדל נוקתה",
-      "failedToClearDefaultTemplate": "נכשל ניקוי תבנית ברירת המחדל",
-      "failedToAddProperty": "הוספת הנכס נכשלה",
-      "failedToDeleteProperty": "מחיקת הנכס נכשלה",
-      "failedToRenameProperty": "שינוי שם הנכס נכשל",
-      "failedToReorderProperties": "הסדר מחדש של המאפיינים נכשל",
-      "cannotAddTagThisNoteWasDeleted": "לא ניתן להוסיף תג - הערה זו נמחקה",
-      "cannotRemoveTagThisNoteWasDeleted": "לא ניתן להסיר תג - הערה זו נמחקה",
-      "cannotChangeLocalOnlyThisNoteWasDeleted": "לא ניתן לשנות רק מקומי - הערה זו נמחקה"
+      "failedToClearDefaultTemplate": "ניקוי תבנית ברירת המחדל נכשל",
+      "failedToAddProperty": "הוספת המאפיין נכשלה",
+      "failedToDeleteProperty": "מחיקת המאפיין נכשלה",
+      "failedToRenameProperty": "שינוי שם המאפיין נכשל",
+      "failedToReorderProperties": "שינוי סדר המאפיינים נכשל",
+      "cannotAddTagThisNoteWasDeleted": "לא ניתן להוסיף תגית — הפתק הזה נמחק",
+      "cannotRemoveTagThisNoteWasDeleted": "לא ניתן להסיר תגית — הפתק הזה נמחק",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "לא ניתן לשנות את מצב מקומי בלבד — הפתק הזה נמחק"
     }
   },
   "bulkActions": {
-    "addTag": "הוסף תגית",
-    "clearAria": "נקה בחירה",
-    "copiedLinks": "הועתקו {count, plural, one {# קישור} other {# קישורים}}",
-    "copyLinks": "העתק קישורים",
-    "delete": "מחק",
-    "export": "ייצא",
-    "iconUpdated": "{count, plural, one {האייקון עודכן ב־# פתק} other {האייקון עודכן ב־# פתקים}}",
-    "move": "העבר",
+    "toolbarAria": "פעולות קבוצתיות",
     "selected": "נבחרו",
-    "setIcon": "הגדר אייקון",
+    "move": "העברה",
+    "copyLinks": "העתקת קישורים",
+    "addTag": "הוספת תגית",
     "tagNamePlaceholder": "שם תגית",
-    "toolbarAria": "פעולות קבוצתיות"
-  },
-  "comments": {
-    "attachAria": "צרף קובץ",
-    "badgeAria": "{count, plural, one {# תגובה} other {# תגובות}}",
-    "cancel": "ביטול",
-    "commentPlaceholder": "הוסף תגובה...",
-    "createdTooltip": "נוצר {date} ב-{time}",
-    "delete": "מחק תגובה",
-    "edit": "ערוך תגובה",
-    "kind": {
-      "addition": "הוספה",
-      "comment": "הערה",
-      "deletion": "מחיקה",
-      "substitution": "החלפה"
-    },
-    "mentionAria": "אזכר אדם, דף או תאריך",
-    "railAria": "תגובות",
-    "replyPlaceholder": "השב...",
-    "resolve": "פתור",
-    "sendAria": "שלח תגובה",
-    "toolbarComment": "הערה",
-    "openAttachmentAria": "פתח את הקובץ המצורף {name}",
-    "openImageAria": "פתח את התמונה {name}"
-  },
-  "dateMention": {
-    "clear": "נקה",
-    "dateFormat": "פורמט תאריך",
-    "dateInput": "תאריך",
-    "includeTime": "כלול שעה",
-    "remind": "הזכר",
-    "time": "שעה",
-    "timeFormat": "פורמט שעה"
+    "export": "ייצוא",
+    "delete": "מחיקה",
+    "clearAria": "ניקוי הבחירה",
+    "copiedLinks": "{count, plural, one {קישור אחד הועתק} other {# קישורים הועתקו}}",
+    "setIcon": "הגדרת סמל",
+    "iconUpdated": "{count, plural, one {הסמל עודכן בפתק אחד} other {הסמל עודכן ב-# פתקים}}"
   },
   "applyTemplateConfirm": {
-    "body": "החלף תוכן בלבד",
-    "cancel": "בטל",
-    "description": "החלת \"{name}\" תחליף את התוכן הנוכחי של ההערה. לא ניתן לבטל פעולה זו.",
-    "failed": "החלת התבנית נכשלה",
-    "full": "החלף תוכן והוסף פרטי תבנית",
+    "title": "להחליף את תוכן הפתק?",
+    "description": "החלת \"{name}\" תחליף את התוכן הנוכחי של הפתק. אי אפשר לבטל את הפעולה.",
+    "full": "החלפת התוכן והוספת פרטי התבנית",
+    "body": "החלפת התוכן בלבד",
+    "cancel": "ביטול",
     "success": "התבנית הוחלה",
-    "title": "להחליף את תוכן ההערה?"
+    "failed": "החלת התבנית נכשלה"
   },
   "saveNoteAsTemplate": {
-    "title": "שמירת ההערה כתבנית",
-    "description": "צור מההערה הזו תבנית לשימוש חוזר. ההערה עצמה נשארת כפי שהיא.",
+    "title": "שמירת הפתק כתבנית",
+    "description": "יצירת תבנית לשימוש חוזר מהפתק הזה. הפתק עצמו נשאר כמו שהוא.",
     "nameLabel": "שם התבנית",
-    "loading": "קורא את ההערה…",
-    "summary": "שומר את תוכן ההערה, {tagCount, plural, one {תג אחד} other {# תגים}} ו-{propertyCount, plural, one {נכס אחד} other {# נכסים}}.",
-    "save": "שמור תבנית",
-    "cancel": "בטל",
+    "loading": "קורא את הפתק…",
+    "summary": "שומר את גוף הפתק, {tagCount, plural, one {תגית אחת} other {# תגיות}} {propertyCount, plural, one {ומאפיין אחד} other {ו-# מאפיינים}}.",
+    "save": "שמירת התבנית",
+    "cancel": "ביטול",
     "success": "התבנית נשמרה",
-    "edit": "ערוך תבנית",
+    "edit": "עריכת התבנית",
     "failed": "שמירת התבנית נכשלה",
-    "loadFailed": "לא ניתן לקרוא את ההערה"
+    "loadFailed": "לא ניתן לקרוא את הפתק"
   },
   "newNoteFromNote": {
-    "action": "הערה חדשה מהערה זו",
-    "created": "נוצרה מתוך {source}: {tagCount, plural, =0 {ללא תגים} one {תג אחד} other {# תגים}}, {propertyCount, plural, =0 {ללא נכסים} one {נכס אחד} other {# נכסים}}"
+    "action": "פתק חדש מהפתק הזה",
+    "created": "נוצר מתוך {source}: {tagCount, plural, =0 {ללא תגיות} one {תגית אחת} other {# תגיות}}, {propertyCount, plural, =0 {ללא מאפיינים} one {מאפיין אחד} other {# מאפיינים}}"
+  },
+  "tags": {
+    "hubTitle": "תגיות",
+    "openHub": "פתיחת מרכז התגיות"
   },
   "tagView": {
     "moreActions": "פעולות נוספות",
     "pin": {
-      "action": "הצמד {count, plural, one {# הערה} two {# הערות} other {# הערות}} לתג",
-      "failed": "הצמדת ההערה לתג נכשלה",
-      "success": "{count, plural, one {# הערה הוצמדה} two {# הערות הוצמדו} other {# הערות הוצמדו}} לתג"
+      "action": "{count, plural, one {הצמדת פתק אחד לתגית} other {הצמדת # פתקים לתגית}}",
+      "success": "{count, plural, one {פתק אחד הוצמד לתגית} other {# פתקים הוצמדו לתגית}}",
+      "failed": "הצמדת הפתק לתגית נכשלה"
     }
   },
-  "tags": {
-    "hubTitle": "תגים",
-    "openHub": "פתח את מרכז התגים"
-  },
   "tagsHub": {
-    "cancelCreate": "בטל",
-    "category": {
-      "delete": "מחק קטגוריה",
-      "deleteBody": "התגים יעברו אל \"ללא קטגוריה\". הם לא יימחקו.",
-      "deleteCancel": "בטל",
-      "deleteConfirm": "מחק",
-      "deleteTitle": "למחוק את {name}?",
-      "dragHandle": "גרור כדי לשנות את סדר הקטגוריות",
-      "emptyHint": "גרור לכאן תג",
-      "more": "אפשרויות קטגוריה",
-      "rename": "שנה שם קטגוריה"
-    },
-    "categoryNamePlaceholder": "שם הקטגוריה",
-    "errors": {
-      "createCategoryFailed": "יצירת הקטגוריה נכשלה",
-      "createTagCategorizeFailed": "התג נוצר אך לא ניתן היה להוסיף אותו לקטגוריה",
-      "createTagFailed": "יצירת התג נכשלה",
-      "deleteCategoryFailed": "מחיקת הקטגוריה נכשלה",
-      "loadFailed": "טעינת קטגוריות התגים נכשלה",
-      "renameCategoryFailed": "שינוי שם הקטגוריה נכשל",
-      "reorderFailed": "שינוי סדר התגים נכשל"
-    },
-    "loading": "טוען תגים...",
+    "loading": "טוען תגיות…",
     "newCategory": "קטגוריה חדשה",
-    "newTag": "תג חדש",
+    "newTag": "תגית חדשה",
+    "cancelCreate": "ביטול",
+    "categoryNamePlaceholder": "שם הקטגוריה",
+    "tagNamePlaceholder": "שם התגית",
+    "uncategorized": "ללא קטגוריה",
     "search": {
-      "empty": "לא נמצאו קטגוריות או תגים שתואמים לחיפוש",
-      "placeholder": "חפש קטגוריות ותגים"
+      "placeholder": "חיפוש קטגוריות ותגיות",
+      "empty": "לא נמצאו קטגוריות או תגיות שתואמות לחיפוש"
     },
-    "tagNamePlaceholder": "שם התג",
-    "uncategorized": "ללא קטגוריה"
+    "category": {
+      "more": "אפשרויות קטגוריה",
+      "rename": "שינוי שם הקטגוריה",
+      "delete": "מחיקת קטגוריה",
+      "dragHandle": "גרירה לשינוי סדר הקטגוריות",
+      "emptyHint": "אפשר לגרור לכאן תגית",
+      "deleteTitle": "למחוק את {name}?",
+      "deleteBody": "התגיות יעברו אל \"ללא קטגוריה\". הן לא יימחקו.",
+      "deleteConfirm": "מחיקה",
+      "deleteCancel": "ביטול"
+    },
+    "errors": {
+      "loadFailed": "טעינת קטגוריות התגיות נכשלה",
+      "createCategoryFailed": "יצירת הקטגוריה נכשלה",
+      "renameCategoryFailed": "שינוי שם הקטגוריה נכשל",
+      "deleteCategoryFailed": "מחיקת הקטגוריה נכשלה",
+      "createTagFailed": "יצירת התגית נכשלה",
+      "createTagCategorizeFailed": "התגית נוצרה, אבל לא ניתן היה להוסיף אותה לקטגוריה",
+      "reorderFailed": "שינוי סדר התגיות נכשל"
+    }
   },
   "folderView": {
-    "columnHeader": {
-      "doubleClickToEdit": "{name} (לחיצה כפולה לעריכה)",
-      "dragToReorder": "גרור כדי לשנות את סדר העמודה: {name}"
-    },
     "columns": {
-      "created": "נוצר",
-      "folder": "תיקייה",
-      "kind": "סוג",
-      "modified": "שונה",
-      "tags": "תגיות",
       "title": "כותרת",
-      "wordCount": "מספר מילים"
+      "folder": "תיקייה",
+      "tags": "תגיות",
+      "created": "נוצר",
+      "modified": "שונה",
+      "wordCount": "מספר מילים",
+      "kind": "סוג"
     },
     "defaultViewName": "ברירת מחדל",
-    "groupHeader": {
-      "noteCount": "{count, plural, one {הערה אחת} two {# הערות} other {# הערות}}"
+    "selectView": "בחירת תצוגה",
+    "columnHeader": {
+      "doubleClickToEdit": "{name} (לחיצה כפולה לעריכה)",
+      "dragToReorder": "גרירה לשינוי מיקום העמודה: {name}"
     },
-    "selectView": "בחר תצוגה"
+    "groupHeader": {
+      "noteCount": "{count, plural, one {פתק אחד} other {# פתקים}}"
+    }
+  },
+  "mindMap": {
+    "regionLabel": "מפת חשיבה של {title}, {count, plural, one {צומת אחד} other {# צמתים}}",
+    "treeLabel": "מתאר מפת החשיבה של {title}",
+    "emptyHint": "אפשר להוסיף כותרת לפתק הזה, והמפה תתפצל.",
+    "linkHint": "קישור לדף אחר",
+    "chain": {
+      "separator": "←"
+    },
+    "more": "{count, plural, one {+# נוסף} other {+# נוספים}}",
+    "nodeCapNotice": "המפה הזו הגיעה למגבלה של {count, plural, one {צומת אחד} other {# צמתים}}; השאר מקופל לתוך הצומת הקרוב ביותר שמעליו.",
+    "badge": {
+      "table": "{count, plural, one {טבלה אחת} other {# טבלאות}}",
+      "code": "{count, plural, one {בלוק קוד אחד} other {# בלוקי קוד}}",
+      "image": "{count, plural, one {תמונה אחת} other {# תמונות}}",
+      "quote": "{count, plural, one {ציטוט אחד} other {# ציטוטים}}",
+      "embed": "{count, plural, one {הטמעה אחת} other {# הטמעות}}",
+      "bookmark": "{count, plural, one {סימנייה אחת} other {# סימניות}}",
+      "file": "{count, plural, one {קובץ אחד} other {# קבצים}}"
+    },
+    "toolbar": {
+      "label": "פעולות מפת חשיבה",
+      "fit": "התאמה לתצוגה",
+      "copyImage": "העתקה כתמונה",
+      "copyVector": "העתקה כווקטור",
+      "imageCopied": "המפה הועתקה כתמונה",
+      "vectorCopied": "המפה הועתקה כגרפיקה וקטורית",
+      "copyFailed": "העתקת המפה נכשלה",
+      "saveCanvas": "שמירה כקנבס",
+      "saved": "נשמרה כקנבס \"{title}\"",
+      "saveFailed": "שמירת המפה כקנבס נכשלה",
+      "snapshotOn": "תמונת מצב · {date}"
+    }
+  },
+  "tagAndFilter": {
+    "regionLabel": "מסנן תגיות פעיל",
+    "matchingAll": "התאמה לכל התגיות:",
+    "removeTag": "הסרת {tag} מהמסנן",
+    "clearAll": "ניקוי הכול",
+    "saveSearch": "שמירת החיפוש",
+    "savedSearches": "חיפושים שמורים",
+    "deleteSearch": "מחיקת החיפוש השמור {name}",
+    "saveDialogTitle": "מתן שם לחיפוש",
+    "saveDialogPlaceholder": "לדוגמה: פגישות עבודה",
+    "cancel": "ביטול",
+    "save": "שמירה",
+    "addToFilterHint": "כדי להוסיף תגית למסנן, אפשר ללחוץ עליה עם Ctrl/Cmd"
   }
 }

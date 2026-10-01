@@ -1,24 +1,26 @@
 {
   "page": {
-    "loading": "그래프 로드 중...",
-    "load-failed": "그래프 데이터를 로드하지 못했습니다.",
-    "try-again": "다시 시도하세요",
-    "aria-label": "{nodeCount, plural, one {# 노드} other {# 노드}} 및 {edgeCount, plural, one {# 연결} other {# 연결}}{summary, select, none {.} other {: {summary}.}}를 사용한 지식 그래프",
+    "loading": "그래프 불러오는 중…",
+    "load-failed": "그래프 데이터를 불러오지 못했습니다",
+    "render-failed": "이 기기에서는 그래프를 사용할 수 없습니다",
+    "render-failed-description": "이 기기에서 그래픽 렌더러를 시작하지 못했습니다. 노트는 안전합니다.",
+    "try-again": "다시 시도",
+    "aria-label": "지식 그래프, 노드 {nodeCount, plural, other {#개}}, 연결 {edgeCount, plural, other {#개}}{summary, select, none {.} other {: {summary}.}}",
     "nodes-list-label": "그래프 노드",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "당신의 지식 그래프",
+    "title": "지식 그래프",
     "description": "노트, 작업, 프로젝트 간의 연결이 여기에 대화형 그래프로 표시됩니다.",
-    "link-title": "노트 연결",
+    "link-title": "노트 링크하기",
     "link-description": "[[wikilinks]]를 사용하여 노트 전반에 걸쳐 아이디어를 연결하세요",
     "discover-title": "패턴 발견",
-    "discover-description": "연결이 증가함에 따라 클러스터와 테마가 자연스럽게 나타납니다."
+    "discover-description": "연결이 늘어나면 클러스터와 주제가 자연스럽게 드러납니다"
   },
   "entity": {
-    "note": "참고",
-    "notes": "메모",
-    "journal": "일지",
+    "note": "노트",
+    "notes": "노트",
+    "journal": "저널",
     "journals": "저널",
     "task": "작업",
     "tasks": "작업",
@@ -26,52 +28,110 @@
     "projects": "프로젝트",
     "tag": "태그",
     "tags": "태그",
-    "orphan": "고아",
-    "orphans": "고아",
-    "unresolved": "해결되지 않은"
+    "orphan": "연결 없는 노드",
+    "orphans": "연결 없는 노드",
+    "unresolved": "해결되지 않은 링크",
+    "category": "카테고리"
   },
   "summary": {
-    "node-type-count": "{count} {label}"
+    "node-type-count": "{label} {count}개"
   },
   "control": {
     "show-settings": "그래프 설정",
     "hide-settings": "설정 숨기기",
     "reset-filters": "필터 재설정",
     "filters": "필터",
-    "display": "디스플레이",
+    "display": "표시",
     "show-labels": "라벨 표시",
+    "live-motion": "실시간 움직임",
     "focus-depth": "깊이 {depth}",
-    "clear-focus": "집중된 노드 지우기"
+    "clear-focus": "노드 중심 보기 해제",
+    "relayout": "다시 배치",
+    "categories": "태그 카테고리",
+    "color-by-category": "카테고리별 색상",
+    "no-categories": "태그 허브에서 태그를 카테고리로 묶으면 카테고리별로 그래프에 색을 입히고 접을 수 있습니다.",
+    "collapse-category": "{name} 접기",
+    "expand-category": "{name} 펼치기",
+    "uncategorized": "미분류"
   },
   "filter": {
-    "notes": "메모",
+    "notes": "노트",
     "journals": "저널",
     "tasks": "작업",
     "projects": "프로젝트",
     "tags": "태그",
-    "orphans": "고아",
-    "toggle-entity": "{label} 전환",
-    "toggle-orphans": "고아 노드 전환"
+    "orphans": "연결 없음",
+    "canvas-edges": "캔버스 연결",
+    "toggle-entity": "{label} 표시/숨기기",
+    "toggle-orphans": "연결 없는 노드 표시/숨기기"
   },
   "search": {
-    "placeholder": "노드 검색...",
+    "placeholder": "노드 검색…",
     "clear": "그래프 검색 지우기"
   },
   "context-menu": {
     "untitled": "제목 없음",
-    "focus-node": "이 노드에 집중하세요",
+    "focus-node": "이 노드 중심으로 보기",
     "open-new-tab": "새 탭에서 열기",
-    "create-note": "메모 만들기",
-    "copy-title": "제목 복사"
+    "create-note": "노트 만들기",
+    "copy-title": "제목 복사",
+    "link-to": "노트에 링크…",
+    "add-tag": "태그 추가…",
+    "back": "뒤로",
+    "link-search": "노트 검색…",
+    "tag-search": "태그 검색 또는 만들기…",
+    "no-matches": "일치하는 항목 없음",
+    "create-tag": "#{tag} 만들기",
+    "remove-link": "{title} 링크 제거",
+    "unpin": "고정 해제",
+    "collapse-category": "{name} 접기",
+    "expand-category": "{name} 펼치기"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {# 연결} other {# 연결}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, other {연결 #개}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, other {항목 #개}}",
+    "click-to-expand": "클릭하여 펼치기"
   },
   "local-panel": {
-    "loading": "그래프 로드 중...",
-    "empty": "연결을 찾을 수 없습니다.",
+    "loading": "그래프 불러오는 중…",
+    "empty": "연결을 찾을 수 없습니다",
     "open-full": "전체 그래프 열기",
-    "close": "그래프 닫기"
+    "close": "그래프 닫기",
+    "pin": "이 노트에 고정",
+    "unpin": "고정 해제하고 열린 노트 따라가기",
+    "pinned-to": "고정됨: {title}"
+  },
+  "edit": {
+    "linked": "{source} → {target} 링크를 “{property}”에 추가했습니다",
+    "unlinked": "{source} → {target} 링크를 제거했습니다",
+    "already-linked": "{source}은(는) 이미 {target}에 링크되어 있습니다",
+    "property-conflict": "이 노트의 “{property}”은(는) 관계 속성이 아니어서 링크를 추가하지 않았습니다",
+    "link-unsupported": "링크는 노트 사이에만 만들 수 있습니다",
+    "link-failed": "링크를 추가하지 못했습니다",
+    "unlink-failed": "링크를 제거하지 못했습니다",
+    "tag-added": "{note}에 #{tag} 태그를 추가했습니다",
+    "tag-exists": "이 노트에는 이미 #{tag} 태그가 있습니다",
+    "tag-failed": "태그를 추가하지 못했습니다",
+    "undo-failed": "변경을 실행 취소하지 못했습니다"
+  },
+  "relayout-confirm": {
+    "title": "그래프를 다시 배치하시겠습니까?",
+    "description": "고정된 노드가 모두 풀리고 그래프가 새로 배치됩니다. 저장된 레이아웃은 사라집니다.",
+    "cancel": "취소",
+    "confirm": "다시 배치"
+  },
+  "views": {
+    "title": "저장된 보기",
+    "unsaved": "저장되지 않은 보기",
+    "edited": "수정됨",
+    "empty": "아직 저장된 보기가 없습니다",
+    "save-as": "새 보기로 저장…",
+    "update": "“{name}” 업데이트",
+    "delete": "{name} 보기 삭제",
+    "save-dialog-title": "그래프 보기 저장",
+    "save-dialog-placeholder": "보기 이름",
+    "cancel": "취소",
+    "save": "저장"
   }
 }

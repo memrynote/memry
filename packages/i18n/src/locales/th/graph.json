@@ -1,77 +1,137 @@
 {
   "page": {
-    "loading": "กำลังโหลดกราฟ...",
-    "load-failed": "ไม่สามารถโหลดข้อมูลกราฟได้",
+    "loading": "กำลังโหลดกราฟ…",
+    "load-failed": "โหลดข้อมูลกราฟไม่สำเร็จ",
+    "render-failed": "กราฟใช้งานในอุปกรณ์นี้ไม่ได้",
+    "render-failed-description": "อุปกรณ์นี้เริ่มตัวเรนเดอร์กราฟิกไม่สำเร็จ โน้ตยังปลอดภัย",
     "try-again": "ลองอีกครั้ง",
-    "aria-label": "  \nกราฟความรู้กับ {nodeCount, plural, one {โหนด #} other {โหนด # หลายตัว}} และ {edgeCount, plural, one {การเชื่อมต่อ #} other {การเชื่อมต่อ # หลายรายการ}}{summary, select, none {.} other {: {summary}.  }}  ",
-    "nodes-list-label": "  \nโหนดกราฟ  ",
-    "node-list-item": "  \n{label} ({type})  "
+    "aria-label": "กราฟความรู้ที่มี{nodeCount, plural, other {โหนด # รายการ}} และ{edgeCount, plural, other {การเชื่อมโยง # รายการ}}{summary, select, none {} other {: {summary}}}",
+    "nodes-list-label": "โหนดของกราฟ",
+    "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "  \nกราฟความรู้ของคุณ  ",
-    "description": "  \nการเชื่อมต่อระหว่างบันทึกของคุณ งาน และโครงการจะแสดงที่นี่ในรูปแบบกราฟแบบโต้ตอบ  ",
-    "link-title": "  \nเชื่อมบันทึกของคุณ  ",
-    "link-description": "  \nใช้ [[wikilinks]] เพื่อเชื่อมแนวคิดระหว่างบันทึก  ",
-    "discover-title": "  \nค้นหารูปแบบ  ",
-    "discover-description": "  \nเมื่อการเชื่อมต่อเพิ่มขึ้น กลุ่มและหัวข้อจะปรากฏขึ้นโดยธรรมชาติ  "
+    "title": "กราฟความรู้",
+    "description": "การเชื่อมโยงระหว่างโน้ต งาน และโปรเจกต์จะแสดงที่นี่เป็นกราฟแบบโต้ตอบ",
+    "link-title": "ลิงก์โน้ตเข้าด้วยกัน",
+    "link-description": "ใช้ [[wikilinks]] เพื่อเชื่อมโยงแนวคิดระหว่างโน้ต",
+    "discover-title": "ค้นพบรูปแบบ",
+    "discover-description": "เมื่อการเชื่อมโยงเพิ่มขึ้น กลุ่มและหัวข้อต่าง ๆ จะปรากฏขึ้นเอง"
   },
   "entity": {
-    "note": "บันทึก",
+    "note": "โน้ต",
     "notes": "โน้ต",
-    "journal": "  \nสมุดบันทึก  ",
-    "journals": "  \nสมุดบันทึกหลายเล่ม  ",
+    "journal": "บันทึกประจำวัน",
+    "journals": "บันทึกประจำวัน",
     "task": "งาน",
     "tasks": "งาน",
-    "project": "โครงการ",
-    "projects": "  \nโครงการ  ",
+    "project": "โปรเจกต์",
+    "projects": "โปรเจกต์",
     "tag": "แท็ก",
-    "tags": "  \nแท็ก  ",
-    "orphan": "  \nกำพร้า  ",
-    "orphans": "  \nกำพร้าหลายรายการ  ",
-    "unresolved": "  \nไม่ได้แก้ไข  "
+    "tags": "แท็ก",
+    "orphan": "โหนดที่ไม่มีลิงก์",
+    "orphans": "โหนดที่ไม่มีลิงก์",
+    "unresolved": "ยังไม่ได้สร้าง",
+    "category": "หมวดหมู่"
   },
   "summary": {
-    "node-type-count": "  \n{count} {label}  "
+    "node-type-count": "{label} {count}"
   },
   "control": {
-    "show-settings": "  \nการตั้งค่ากราฟ  ",
-    "hide-settings": "  \nซ่อนการตั้งค่า  ",
-    "reset-filters": "  \nรีเซ็ตตัวกรอง  ",
+    "show-settings": "การตั้งค่ากราฟ",
+    "hide-settings": "ซ่อนการตั้งค่า",
+    "reset-filters": "รีเซ็ตตัวกรอง",
     "filters": "ตัวกรอง",
-    "display": "  \nการแสดงผล  ",
-    "show-labels": "  \nแสดงป้ายชื่อ",
+    "display": "การแสดงผล",
+    "show-labels": "แสดงป้ายชื่อ",
+    "live-motion": "การเคลื่อนไหวแบบเรียลไทม์",
     "focus-depth": "ความลึก {depth}",
-    "clear-focus": "ล้างโหนดที่โฟกัส"
+    "clear-focus": "ล้างโหนดที่โฟกัส",
+    "relayout": "จัดเค้าโครงใหม่",
+    "categories": "หมวดหมู่แท็ก",
+    "color-by-category": "ใส่สีตามหมวดหมู่",
+    "no-categories": "จัดแท็กเป็นหมวดหมู่ในศูนย์รวมแท็ก เพื่อใส่สีและยุบกราฟตามหมวดหมู่",
+    "collapse-category": "ยุบ {name}",
+    "expand-category": "ขยาย {name}",
+    "uncategorized": "ไม่มีหมวดหมู่"
   },
   "filter": {
-    "notes": "บันทึก",
-    "journals": "สมุดบันทึก",
+    "notes": "โน้ต",
+    "journals": "บันทึกประจำวัน",
     "tasks": "งาน",
-    "projects": "  \nโปรเจกต์  ",
+    "projects": "โปรเจกต์",
     "tags": "แท็ก",
-    "orphans": "เด็กกำพร้า",
-    "toggle-entity": "สลับ {label}",
-    "toggle-orphans": "สลับโหนดเด็กกำพร้า"
+    "orphans": "โหนดที่ไม่มีลิงก์",
+    "canvas-edges": "การเชื่อมโยงในแคนวาส",
+    "toggle-entity": "แสดง/ซ่อน {label}",
+    "toggle-orphans": "แสดง/ซ่อนโหนดที่ไม่มีลิงก์"
   },
   "search": {
-    "placeholder": "ค้นหาโหนด...",
-    "clear": "ล้างการค้นหาแผนภาพ"
+    "placeholder": "ค้นหาโหนด…",
+    "clear": "ล้างการค้นหาในกราฟ"
   },
   "context-menu": {
-    "untitled": "ไม่มีชื่อเรื่อง",
+    "untitled": "ไม่มีชื่อ",
     "focus-node": "โฟกัสที่โหนดนี้",
     "open-new-tab": "เปิดในแท็บใหม่",
-    "create-note": "สร้างบันทึก",
-    "copy-title": "คัดลอกชื่อเรื่อง"
+    "create-note": "สร้างโน้ต",
+    "copy-title": "คัดลอกชื่อเรื่อง",
+    "link-to": "ลิงก์ไปยัง…",
+    "add-tag": "เพิ่มแท็ก…",
+    "back": "ย้อนกลับ",
+    "link-search": "ค้นหาโน้ต…",
+    "tag-search": "ค้นหาหรือสร้างแท็ก…",
+    "no-matches": "ไม่มีรายการที่ตรงกัน",
+    "create-tag": "สร้าง #{tag}",
+    "remove-link": "นำลิงก์ไปยัง {title} ออก",
+    "unpin": "เลิกปักหมุด",
+    "collapse-category": "ยุบ {name}",
+    "expand-category": "ขยาย {name}"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {การเชื่อมต่อ #} other {การเชื่อมต่อ # หลายรายการ}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, other {การเชื่อมโยง # รายการ}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, other {# รายการ}}",
+    "click-to-expand": "คลิกเพื่อขยาย"
   },
   "local-panel": {
-    "loading": "กำลังโหลดกราฟ...",
-    "empty": "ไม่พบการเชื่อมต่อ",
-    "open-full": "เปิดแผนภาพเต็มรูปแบบ",
-    "close": "ปิดแผนภาพ"
+    "loading": "กำลังโหลดกราฟ…",
+    "empty": "ไม่พบการเชื่อมโยง",
+    "open-full": "เปิดกราฟแบบเต็ม",
+    "close": "ปิดกราฟ",
+    "pin": "ปักหมุดไว้กับโน้ตนี้",
+    "unpin": "เลิกปักหมุดและแสดงตามโน้ตที่เปิดอยู่",
+    "pinned-to": "ปักหมุดไว้: {title}"
+  },
+  "edit": {
+    "linked": "ลิงก์ {source} ไปยัง {target} ใน “{property}” แล้ว",
+    "unlinked": "นำลิงก์จาก {source} ไปยัง {target} ออกแล้ว",
+    "already-linked": "{source} ลิงก์ไปยัง {target} อยู่แล้ว",
+    "property-conflict": "“{property}” ในโน้ตนี้ไม่ใช่คุณสมบัติแบบความสัมพันธ์ จึงไม่ได้เพิ่มลิงก์",
+    "link-unsupported": "สร้างลิงก์ได้เฉพาะระหว่างโน้ตเท่านั้น",
+    "link-failed": "เพิ่มลิงก์ไม่สำเร็จ",
+    "unlink-failed": "นำลิงก์ออกไม่สำเร็จ",
+    "tag-added": "เพิ่ม #{tag} ให้ {note} แล้ว",
+    "tag-exists": "โน้ตนี้มี #{tag} อยู่แล้ว",
+    "tag-failed": "เพิ่มแท็กไม่สำเร็จ",
+    "undo-failed": "เลิกทำการเปลี่ยนแปลงไม่สำเร็จ"
+  },
+  "relayout-confirm": {
+    "title": "จัดเค้าโครงกราฟใหม่หรือไม่?",
+    "description": "ระบบจะเลิกปักหมุดโหนดทั้งหมดและจัดเรียงกราฟใหม่ พร้อมละทิ้งเค้าโครงที่บันทึกไว้",
+    "cancel": "ยกเลิก",
+    "confirm": "จัดเค้าโครงใหม่"
+  },
+  "views": {
+    "title": "มุมมองที่บันทึกไว้",
+    "unsaved": "มุมมองที่ยังไม่บันทึก",
+    "edited": "แก้ไขแล้ว",
+    "empty": "ยังไม่มีมุมมองที่บันทึกไว้",
+    "save-as": "บันทึกเป็นมุมมองใหม่…",
+    "update": "อัปเดต “{name}”",
+    "delete": "ลบมุมมอง {name}",
+    "save-dialog-title": "บันทึกมุมมองกราฟ",
+    "save-dialog-placeholder": "ชื่อมุมมอง",
+    "cancel": "ยกเลิก",
+    "save": "บันทึก"
   }
 }

@@ -1,15 +1,15 @@
 {
-  "title": "Tagebuch",
+  "title": "Journal",
   "section": {
     "aiConnections": "KI-Verbindungen",
     "todaysNotes": "Heutige Notizen",
-    "todaysSchedule": "Der heutige Zeitplan",
+    "todaysSchedule": "Heutiger Zeitplan",
     "todaysTasks": "Heutige Aufgaben",
     "tasks": "Aufgaben",
     "technicalDetails": "Technische Details"
   },
   "action": {
-    "versionHistory": "Versionsgeschichte",
+    "versionHistory": "Versionsverlauf",
     "export": "Exportieren",
     "fullWidth": "Volle Breite",
     "journalSettings": "Journaleinstellungen",
@@ -21,21 +21,22 @@
     "showMoreNotes": "{count} weitere Notiz anzeigen",
     "showMoreNotes_plural": "{count} weitere Notizen anzeigen",
     "showFewerNotes": "Weniger Notizen anzeigen",
-    "startBlank": "Beginnen Sie stattdessen leer",
+    "startBlank": "Stattdessen leer beginnen",
     "changeTemplate": "Vorlage ändern",
-    "dismissIndicator": "Indikator verwerfen",
+    "dismissIndicator": "Hinweis schließen",
     "refreshConnections": "Verbindungen aktualisieren",
     "reloadJournal": "Journal neu laden",
-    "goToToday": "Gehen Sie zu Heute",
-    "copyUnsavedContent": "Kopieren Sie nicht gespeicherte Inhalte in die Zwischenablage",
+    "goToToday": "Zu heute wechseln",
+    "copyUnsavedContent": "Nicht gespeicherten Inhalt in die Zwischenablage kopieren",
     "addBookmark": "Lesezeichen hinzufügen",
-    "removeBookmark": "Lesezeichen entfernen"
+    "removeBookmark": "Lesezeichen entfernen",
+    "deleteEntry": "Eintrag löschen"
   },
   "editor": {
     "placeholder": {
-      "future": "Was planen Sie...",
-      "today": "Was beschäftigt Sie heute?",
-      "past": "Denken Sie über diesen Tag nach..."
+      "future": "Was planst du…",
+      "today": "Was beschäftigt dich heute…",
+      "past": "Denk über diesen Tag nach…"
     },
     "upload": {
       "failed": "Bild konnte nicht hochgeladen werden"
@@ -58,7 +59,7 @@
       "saturday": "Samstag"
     },
     "weekdayShort": {
-      "sunday": "Sonne",
+      "sunday": "So",
       "monday": "Mo",
       "tuesday": "Di",
       "wednesday": "Mi",
@@ -82,11 +83,11 @@
     },
     "monthShort": {
       "january": "Jan",
-      "february": "Febr",
+      "february": "Feb",
       "march": "März",
       "april": "Apr",
       "may": "Mai",
-      "june": "Jun",
+      "june": "Juni",
       "july": "Juli",
       "august": "Aug",
       "september": "Sept",
@@ -100,47 +101,47 @@
       "evening": "Guten Abend",
       "night": "Gute Nacht"
     },
-    "allDay": "Den ganzen Tag"
+    "allDay": "Ganztägig"
   },
   "nav": {
     "previousDay": "Vorheriger Tag",
-    "nextDay": "Am nächsten Tag",
+    "nextDay": "Nächster Tag",
     "previousMonth": "Vorheriger Monat",
-    "nextMonth": "Nächsten Monat",
+    "nextMonth": "Nächster Monat",
     "previousYear": "Vorheriges Jahr",
     "nextYear": "Nächstes Jahr",
-    "journalBack": "Tagebuch zurück",
+    "journalBack": "Im Journal zurück",
     "journalNavigation": "Journalnavigation",
-    "dateNavigation": "Navigation nach Journaldatum",
-    "goToYearView": "Gehen Sie zur Jahresansicht"
+    "dateNavigation": "Datumsnavigation im Journal",
+    "goToYearView": "Zur Jahresansicht wechseln"
   },
   "aria": {
     "moreOptions": "Weitere Optionen",
     "documentStatistics": "Dokumentstatistiken",
     "dayContext": "Tageskontext: Aufgaben und Zeitplan",
-    "scheduleEvents": "Planen Sie Veranstaltungen",
+    "scheduleEvents": "Termine im Zeitplan",
     "tasks": "Aufgaben",
-    "notesCreatedToday": "{count}-Notizen wurden heute erstellt"
+    "notesCreatedToday": "Heute {count} Notizen erstellt"
   },
   "empty": {
     "noEntry": "Kein Eintrag",
     "noDaysInMonth": "Keine Tage in diesem Monat",
-    "noEventsScheduled": "Keine Veranstaltungen geplant",
-    "noEventsScheduledToday": "Heute sind keine Veranstaltungen geplant",
-    "noEventsWereScheduled": "Es waren keine Veranstaltungen geplant",
+    "noEventsScheduled": "Keine Termine geplant",
+    "noEventsScheduledToday": "Heute sind keine Termine geplant",
+    "noEventsWereScheduled": "Es waren keine Termine geplant",
     "noTasksDue": "Keine Aufgaben fällig",
     "noTasksDueToday": "Heute sind keine Aufgaben fällig",
     "noTasksWereDue": "Es waren keine Aufgaben fällig",
     "noNotesToday": "Heute wurden keine Notizen erstellt",
-    "startDocumenting": "Beginnen Sie mit der Dokumentation Ihrer Gedanken und Ideen"
+    "startDocumenting": "Halte deine Gedanken und Ideen fest"
   },
   "ai": {
-    "loading": "Analysiere deinen Eintrag...",
+    "loading": "Dein Eintrag wird analysiert…",
     "empty": {
-      "willAppear": "Ihre Verbindungen werden hier angezeigt",
+      "willAppear": "Deine Verbindungen werden hier angezeigt",
       "noneYet": "Noch keine Verbindungen gefunden",
-      "moreJournaling": "Wenn Sie mehr Tagebuch schreiben, findet die KI verwandte Einträge",
-      "keepWriting": "Schreiben Sie weiter, um verwandte Einträge zu entdecken"
+      "moreJournaling": "Je mehr du ins Journal schreibst, desto mehr verwandte Einträge findet die KI",
+      "keepWriting": "Schreib weiter, um verwandte Einträge zu entdecken"
     },
     "error": {
       "loadFailed": "Verbindungen konnten nicht geladen werden"
@@ -148,22 +149,22 @@
     "connectionAria": "Verbindung zu {label}, {scorePercent} % Übereinstimmung"
   },
   "count": {
-    "note": "Hinweis",
+    "note": "Notiz",
     "day": "Tag",
     "days": "Tage",
-    "event": "Ereignis",
-    "events": "Ereignisse",
+    "event": "Termin",
+    "events": "Termine",
     "task": "Aufgabe",
-    "todo": "zu tun",
-    "moreConnections": "+ {count} mehr Verbindung",
-    "moreConnections_plural": "+ {count} mehr Verbindungen",
+    "todo": "zu erledigen",
+    "moreConnections": "+ {count} weitere Verbindung",
+    "moreConnections_plural": "+ {count} weitere Verbindungen",
     "moreNotes": "+ {count} weitere Notiz",
     "moreNotes_plural": "+ {count} weitere Notizen",
     "daysWithEntries": "Tage mit Einträgen",
     "charactersWritten": "Zeichen geschrieben",
     "words": "{count} Wörter",
     "characters": "{count} Zeichen",
-    "completed": "{count} abgeschlossen",
+    "completed": "{count} erledigt",
     "overdue": "{count} überfällig"
   },
   "stats": {
@@ -171,58 +172,63 @@
     "characterCount": "Anzahl der Zeichen",
     "readingTime": "Geschätzte Lesezeit",
     "lastModified": "Zuletzt geändert",
-    "lessThanOneMinute": "< 1 Min",
-    "minutes": "{minutes} Min",
-    "read": "{readingTime} gelesen",
+    "lessThanOneMinute": "< 1 Min.",
+    "minutes": "{minutes} Min.",
+    "read": "{readingTime} Lesezeit",
     "modified": "Geändert {date}"
   },
   "task": {
-    "completed": "Abgeschlossen",
-    "notCompleted": "Nicht abgeschlossen",
-    "priority": "{priority}-Priorität",
+    "completed": "Erledigt",
+    "notCompleted": "Nicht erledigt",
+    "priority": "Priorität: {priority}",
     "overdue": "überfällig",
-    "markComplete": "Markieren Sie „{title}“ als abgeschlossen",
-    "markNotComplete": "Markieren Sie „{title}“ als nicht abgeschlossen"
+    "markComplete": "„{title}“ als erledigt markieren",
+    "markNotComplete": "„{title}“ als nicht erledigt markieren"
   },
   "template": {
-    "using": "Verwendung von „{templateName}“"
+    "using": "Mit Vorlage „{templateName}“"
   },
   "reminder": {
     "hasReminders": "Hat Erinnerungen",
-    "setToRevisit": "Erinnerung für einen erneuten Besuch festlegen",
+    "setToRevisit": "Erinnerung zum erneuten Ansehen festlegen",
     "tooltip": "Erinnerung: {date}",
-    "tooltipMore": "Erinnerung: {date} (+{count} mehr)",
+    "tooltipMore": "Erinnerung: {date} (+{count} weitere)",
     "success": {
       "set": "Für diesen Journaleintrag wurde eine Erinnerung festgelegt",
       "deleted": "Erinnerung gelöscht",
-      "dismissed": "Mahnung abgewiesen",
-      "snoozed": "Erinnerung wurde deaktiviert"
+      "dismissed": "Erinnerung verworfen",
+      "snoozed": "Erinnerung zurückgestellt",
+      "updated": "Erinnerung aktualisiert"
     },
     "error": {
-      "set": "Erinnerung konnte nicht eingerichtet werden",
+      "set": "Erinnerung konnte nicht festgelegt werden",
       "delete": "Erinnerung konnte nicht gelöscht werden",
-      "dismiss": "Die Erinnerung konnte nicht abgewiesen werden",
-      "snooze": "Schlummerfunktion der Erinnerung fehlgeschlagen"
+      "dismiss": "Erinnerung konnte nicht verworfen werden",
+      "snooze": "Erinnerung konnte nicht zurückgestellt werden",
+      "update": "Erinnerung konnte nicht aktualisiert werden"
     }
   },
   "toast": {
-    "unsavedRetry": "Ihre Inhalte sind noch im Gedächtnis. Klicken Sie hier, um den Speichervorgang erneut zu versuchen.",
-    "noteNotFound": "Hinweis „{target}“ nicht gefunden",
+    "unsavedRetry": "Dein Inhalt ist noch im Arbeitsspeicher. Klicke, um das Speichern erneut zu versuchen.",
+    "noteNotFound": "Notiz „{target}“ nicht gefunden",
+    "createLinkedFailed": "Verlinkte Notiz konnte nicht erstellt werden",
     "fileNotFound": "Datei nicht gefunden: {target}",
     "openLinkedItemFailed": "Verlinktes Element konnte nicht geöffnet werden",
-    "errorPrefix": "Fehler:"
+    "errorPrefix": "Fehler:",
+    "deleteFailed": "Journaleintrag konnte nicht gelöscht werden",
+    "bookmarkFailed": "Lesezeichen konnte nicht aktualisiert werden"
   },
   "export": {
-    "noteTitle": "Journal - {day}. {month} {year}"
+    "noteTitle": "Journal – {day}. {month} {year}"
   },
   "note": {
-    "generatedTitle": "Hinweis – {date}",
-    "openAria": "Öffnen Sie {title}, erstellt bei {time}"
+    "generatedTitle": "Notiz – {date}",
+    "openAria": "{title} öffnen, erstellt um {time}"
   },
   "error": {
     "title": "Journalfehler",
-    "description": "Im Journal ist ein Fehler für {date} aufgetreten. Ihre letzten Änderungen wurden möglicherweise nicht gespeichert.",
-    "descriptionNoDate": "Im Journal ist ein Fehler aufgetreten. Ihre letzten Änderungen wurden möglicherweise nicht gespeichert.",
+    "description": "Im Journal für {date} ist ein Fehler aufgetreten. Deine letzten Änderungen wurden möglicherweise nicht gespeichert.",
+    "descriptionNoDate": "Im Journal ist ein Fehler aufgetreten. Deine letzten Änderungen wurden möglicherweise nicht gespeichert.",
     "unsavedContent": "Nicht gespeicherter Inhalt erkannt ({length} Zeichen)"
   },
   "phaseF": {
@@ -236,5 +242,9 @@
       "failedToLoadJournalSettings": "Die Journaleinstellungen konnten nicht geladen werden",
       "failedToUpdateSettings": "Die Einstellungen konnten nicht aktualisiert werden"
     }
+  },
+  "deleteConfirm": {
+    "title": "Journaleintrag löschen",
+    "description": "Möchtest du „{title}“ wirklich löschen? Das lässt sich nicht rückgängig machen."
   }
 }

@@ -1,4 +1,10 @@
 {
+  "capture": {
+    "focusHint": "Q",
+    "focusShortcut": "Hızlı kayıt alanına odaklan",
+    "detailHint": "ayrıntı",
+    "submit": "Ekle"
+  },
   "button": {
     "save": "Kaydet",
     "cancel": "İptal",
@@ -10,9 +16,12 @@
     "remove": "Kaldır",
     "retry": "Yeniden dene",
     "back": "Geri",
-    "continue": "Devam et",
+    "continue": "Devam",
     "copy": "Kopyala",
     "create": "Oluştur"
+  },
+  "media": {
+    "video": "Video"
   },
   "state": {
     "loading": "Yükleniyor…",
@@ -29,15 +38,23 @@
     "undo": "Geri al"
   },
   "fileActions": {
-    "revealInFinder": "Finder'da Göster",
-    "showInExplorer": "Dosya Gezgini'nde Göster",
+    "revealInFinder": "Finder'da göster",
+    "showInExplorer": "Dosya Gezgini'nde göster",
     "showInFileManager": "Dosya yöneticisinde göster",
     "openInDefaultApp": "Varsayılan uygulamada aç",
     "revealFailed": "Klasörde gösterilemedi"
   },
   "tabs": {
     "pin": "Sekmeyi sabitle",
-    "unpin": "Sekme sabitlemesini kaldır",
+    "unpin": "Sekmenin sabitlemesini kaldır",
+    "persistence": {
+      "saveFailed": "Açık sekmeleriniz artık kaydedilmiyor",
+      "saveFailedQuota": "Bu oturum depolanamayacak kadar büyük. Bazı sekmeleri kapatın; aksi hâlde oturum, Memry'yi bir sonraki açışınızda geri yüklenmeyebilir.",
+      "saveFailedGeneric": "Memry bu oturumu depolayamadı; bu nedenle oturum, uygulamayı bir sonraki açışınızda geri yüklenmeyebilir.",
+      "lastSessionNotSaved": "Memry kapanırken son oturumunuz kaydedilmedi",
+      "lastSessionNotSavedQuota": "O sırada depolama alanı doluydu; bu nedenle bu sekmeler daha önceki bir kayıttan geliyor. Yer açmak için bazı sekmeleri kapatın.",
+      "lastSessionNotSavedGeneric": "Memry çıkışta sekmelerinizi depolayamadı; bu nedenle bu sekmeler daha önceki bir kayıttan geliyor."
+    },
     "contextMenu": {
       "close": "Kapat",
       "closeOthers": "Diğerlerini kapat",
@@ -52,149 +69,614 @@
   },
   "count": {
     "note": "{count, plural, one {# not} other {# not}}",
+    "journal": "{count, plural, one {# günlük girdisi} other {# günlük girdisi}}",
     "task": "{count, plural, one {# görev} other {# görev}}",
-    "itemDelete": "{count, plural, one {# öğeyi sil} other {# öğeyi sil}}",
     "event": "{count, plural, one {# etkinlik} other {# etkinlik}}",
-    "journal": "{count, plural, one {# günlük} other {# günlük}}",
-    "reminder": "{count, plural, one {# hatırlatıcı} other {# hatırlatıcı}}"
+    "reminder": "{count, plural, one {# hatırlatıcı} other {# hatırlatıcı}}",
+    "itemDelete": "{count, plural, one {# öğeyi sil} other {# öğeyi sil}}"
   },
   "toast": {
     "actionFailed": "İşlem başarısız oldu",
     "nothingToUndo": "Geri alınacak bir şey yok",
     "undone": "Geri alındı: {description}",
-    "undoFailed": "İşlem geri alınamadı"
+    "undoFailed": "İşlem geri alınamadı",
+    "filesImported": "{count, plural, one {# dosya içe aktarıldı} other {# dosya içe aktarıldı}}",
+    "filesImportFailed": "{count, plural, one {# dosya içe aktarılamadı} other {# dosya içe aktarılamadı}}",
+    "filesHiddenInSidebar": "Dosyalar kenar çubuğunda gizli. Görmek için Koleksiyonlar sıralama menüsünde “Dosyaları göster” seçeneğini açın.",
+    "moreRemindersDue": "{count, plural, one {Zamanı gelen # hatırlatıcı daha var} other {Zamanı gelen # hatırlatıcı daha var}}",
+    "moreRemindersDueHint": "Ayrıntılar için hatırlatıcılar paneline bakın",
+    "searchIndexRepaired": "Arama dizini onarıldı",
+    "searchIndexRepairedHint": "Arama dizininin bir kısmı bozulmuştu, bu yüzden Memry dizini yeniden oluşturdu. Notlarınıza dokunulmadı."
   },
   "dateRelative": {
     "today": "Bugün",
     "yesterday": "Dün",
     "daysAgo": "{count, plural, one {# gün önce} other {# gün önce}}",
-    "daysLate": "{count, plural, one {#g gecikme} other {#g gecikme}}",
-    "daysOverdue": "{count, plural, one {# gün gecikmiş} other {# gün gecikmiş}}",
-    "tomorrow": "Yarın"
+    "tomorrow": "Yarın",
+    "daysOverdue": "{count, plural, one {# gün gecikti} other {# gün gecikti}}",
+    "daysLate": "{count, plural, one {#g gecikti} other {#g gecikti}}",
+    "inDays": "{count, plural, one {# gün sonra} other {# gün sonra}}",
+    "inWeeks": "{count, plural, one {# hafta sonra} other {# hafta sonra}}"
   },
   "recurrence": {
     "everyNDays": "{count, plural, one {Her gün} other {Her # günde bir}}",
     "everyNWeeks": "{count, plural, one {Her hafta} other {Her # haftada bir}}",
     "everyNWeeksOnWeekdays": "{count, plural, one {Her hafta içi} other {Her # haftada bir hafta içi}}",
     "everyNWeeksOnWeekends": "{count, plural, one {Her hafta sonu} other {Her # haftada bir hafta sonu}}",
-    "everyNWeeksOnDays": "{count, plural, one {Her hafta {days}} other {# haftada bir {days}}}",
+    "everyNWeeksOnDays": "{count, plural, one {Her hafta {days}} other {Her # haftada bir {days}}}",
     "everyNMonths": "{count, plural, one {Her ay} other {Her # ayda bir}}",
-    "everyNMonthsOnDay": "{count, plural, one {Her ay {day}{suffix}} other {Her # ayda bir {day}{suffix}}}",
-    "everyNMonthsOnWeekDay": "{count, plural, one {Her ay {week} {day}} other {Her # ayda bir {week} {day}}}",
+    "everyNMonthsOnDay": "{count, plural, one {Her ayın {day}{suffix}. günü} other {Her # ayda bir, ayın {day}{suffix}. günü}}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Her ayın {week} {day} günü} other {Her # ayda bir, ayın {week} {day} günü}}",
     "everyNYears": "{count, plural, one {Her yıl} other {Her # yılda bir}}",
-    "repeats": "Tekrarlar",
+    "repeats": "Tekrarlanır",
     "ordinal": {
       "first": "ilk",
-      "fourth": "dördüncü",
-      "last": "son",
       "second": "ikinci",
-      "third": "üçüncü"
+      "third": "üçüncü",
+      "fourth": "dördüncü",
+      "last": "son"
     },
     "preset": {
       "everyWeekday": "Her hafta içi (Pzt-Cum)",
       "everyYearOnDate": "Her yıl {date} tarihinde"
     }
   },
+  "agentChat": {
+    "title": "Ajan sohbeti",
+    "loading": "Ajan sohbeti yükleniyor…",
+    "conversationLoading": "Sohbet yükleniyor…",
+    "historyNotSaved": "Bu cihaz kasanın kilidini açamıyor; bu nedenle bu sohbet, uygulamayı kapattığınızda kaydedilmeyecek.",
+    "newConversation": "Yeni sohbet",
+    "history": "Sohbet geçmişi",
+    "openInTab": "Sohbeti sekmede aç",
+    "stop": "Durdur",
+    "thinking": "Ajan düşünüyor",
+    "enable": {
+      "title": "memrynote ajanını etkinleştir",
+      "description": "memrynote ajanı, kasanız hakkında sohbet etmek için seçtiğiniz yerel ajan CLI aracını kullanır. Claude mesajları Anthropic'e, Codex mesajları OpenAI'ye gönderir.",
+      "remote": "memrynote yerel ve eşitlenen sohbet geçmişinizi şifreler, ancak model çıkarımı seçilen sağlayıcıda gerçekleşir.",
+      "readTools": "Okuma araçları otomatik olarak çalışır.",
+      "writeTools": "Oluşturma ve güncelleme araçları onay gerektirir.",
+      "diff": "Güncelleme araçları bir fark veya önizleme gösterir.",
+      "button": "Ajan sohbetini etkinleştir"
+    },
+    "approval": {
+      "description": "Ajan, {name} aracını bu argümanlarla çağırmak istiyor.",
+      "applyOnce": "Bir kez uygula",
+      "allowOnce": "Bir kez izin ver",
+      "editAndApply": "Düzenle ve uygula",
+      "editAndAllow": "Düzenle ve izin ver",
+      "allowAlways": "Her zaman izin ver",
+      "applyEdits": "Düzenlemeleri uygula",
+      "deny": "Reddet",
+      "invalidJson": "Düzenlemeleri uygulamadan önce geçerli JSON girin.",
+      "thisTool": "bu araç",
+      "alwaysAllowHint": "“Her zaman izin ver” yalnızca {tool} için geçerlidir. Diğer araçlar yine onay ister; silme işlemleri her zaman onay ister.",
+      "alwaysInChat": "Bu sohbette her zaman izin ver",
+      "alwaysInChatHint": "Sohbet bitince sona erer",
+      "alwaysInVault": "Bu kasada her zaman izin ver",
+      "alwaysInVaultHint": "Ayarlar › Ajan bölümünden geri alınabilir",
+      "deletesAlwaysAsk": "Silme işlemleri her zaman onay ister"
+    },
+    "diff": {
+      "previewError": "Bu değişiklik önizlenemedi",
+      "description": "Ajan, {title} için bir güncelleme yapmak istiyor. Uygulamadan önce değişikliği inceleyin.",
+      "fallbackTitle": "bu öğe",
+      "current": "Mevcut",
+      "candidate": "Önerilen",
+      "loading": "Yükleniyor…",
+      "apply": "Uygula",
+      "applyEdited": "Düzenlenmiş hâliyle uygula",
+      "editBody": "Uygulamadan önce düzenle"
+    },
+    "inPageReview": {
+      "regionLabel": "Ajan önerisi",
+      "barLabel": "Ajanın önerisini inceleyin",
+      "loading": "Öneri yükleniyor…",
+      "loadingTitle": "Ajan önerisi",
+      "title": "{count, plural, =0 {Ajan önerisi} one {Ajan # değişiklik önerdi} other {Ajan # değişiklik önerdi}}",
+      "editingTitle": "Öneri düzenleniyor",
+      "pendingHint": "Henüz kaydedilmedi. Uygulamak için kabul edin.",
+      "editingHint": "Kabul edene kadar düzenlemeleriniz burada kalır.",
+      "baseChanged": "Siz öneriyi düzenlerken bu not değişti.",
+      "keepDraft": "Düzenlemelerimi koru",
+      "restart": "En son sürümden yeniden başla",
+      "reject": "Reddet",
+      "edit": "Düzenle",
+      "showDiff": "Değişiklikleri göster",
+      "accept": "Kabul et",
+      "acceptEdits": "Düzenlemeleri kabul et",
+      "waiting": "İncelemeniz bekleniyor: {title}.",
+      "notOpen": "Değişiklikleri görmek için {title} sayfasını açın ya da incelemeden kabul edin.",
+      "show": "Göster",
+      "openNote": "Notu aç",
+      "openJournal": "Günlüğü aç",
+      "fallbackTitle": "bu not"
+    },
+    "preview": {
+      "unset": "ayarlı değil",
+      "yes": "evet",
+      "no": "hayır",
+      "noChange": "Bu önizlemede gösterilebilecek hiçbir şey değişmeyecek.",
+      "willBeLost": "Kaybolacak",
+      "unchangedLines": "{count, plural, one {# değişmeyen satır} other {# değişmeyen satır}}",
+      "item": {
+        "note": "Not",
+        "folder": "Klasör",
+        "task": "Görev",
+        "journal": "Günlük",
+        "inbox": "Gelen kutusu",
+        "project": "Proje",
+        "status": "Durum",
+        "canvas": "Tuval"
+      },
+      "intent": {
+        "create": "yeni",
+        "update": "güncelleme",
+        "delete": "silme",
+        "move": "taşıma",
+        "reorder": "yeniden sıralama"
+      },
+      "field": {
+        "archived": "Arşivlendi",
+        "arguments": "Argümanlar",
+        "color": "Renk",
+        "completed": "Tamamlandı",
+        "description": "Açıklama",
+        "due": "Son tarih",
+        "dueTime": "Son tarih saati",
+        "duplicateOf": "Şunun kopyası",
+        "edits": "Düzenlemeler",
+        "elements": "Öğeler",
+        "folder": "Klasör",
+        "icon": "Simge",
+        "isDefault": "Varsayılan",
+        "isDone": "Tamamlanma durumu",
+        "items": "Öğeler",
+        "name": "Ad",
+        "operation": "İşlem",
+        "order": "Sıra",
+        "parent": "Üst öğe",
+        "path": "Yol",
+        "position": "Konum",
+        "priority": "Öncelik",
+        "project": "Proje",
+        "removed": "Kaldırıldı",
+        "repeatFrom": "Tekrar ölçütü",
+        "snoozeReason": "Erteleme nedeni",
+        "snoozedUntil": "Erteleme bitişi",
+        "start": "Başlangıç",
+        "status": "Durum",
+        "tags": "Etiketler",
+        "title": "Başlık"
+      },
+      "loss": {
+        "words": "{count, plural, one {# kelime} other {# kelime}}",
+        "tags": "{count, plural, one {# etiket} other {# etiket}}",
+        "notes": "{count, plural, one {# not} other {# not}}",
+        "folders": "{count, plural, one {# klasör} other {# klasör}}",
+        "files": "{count, plural, one {# dosya} other {# dosya}}",
+        "events": "{count, plural, one {# etkinlik} other {# etkinlik}}",
+        "tasks": "{count, plural, one {# görev} other {# görev}}",
+        "due": "son tarih: {value}"
+      }
+    },
+    "composer": {
+      "currentNote": "Geçerli not",
+      "removeAttachment": "Kaldır: {label}",
+      "placeholder": "memrynote ile her şeyi yap… Not, görev ve etkinliklerden bahsetmek için @",
+      "send": "Gönder",
+      "providerLabel": "Ajan sağlayıcısı: {provider}",
+      "settingsSummary": "{reasoning}",
+      "connectedTools": "Bağlı araçlar",
+      "connectTool": "Bağla: {tool}",
+      "addContext": "Bağlam ekle",
+      "addContextWithPermissions": "Bağlam ekle ({permissions})",
+      "mentionContext": "Bir not, görev veya etkinlikten bahset",
+      "voice": {
+        "start": "Sesle yazmayı başlat",
+        "stop": "Sesle yazmayı durdur",
+        "transcribing": "Sesli giriş yazıya dökülüyor",
+        "errors": {
+          "permissionDenied": "Mikrofon erişimi reddedildi",
+          "noMicrophone": "Mikrofon bulunamadı",
+          "accessFailed": "Mikrofona erişilemedi",
+          "recordingFailed": "Sesli giriş kaydedilemedi",
+          "transcriptionFailed": "Sesli giriş yazıya dökülemedi"
+        }
+      },
+      "modelLabel": "Ajan modeli: {provider} {model}",
+      "reasoningLabel": "Ajan akıl yürütmesi: {reasoning}",
+      "providers": {
+        "label": "Sağlayıcı",
+        "claude": "Claude",
+        "codex": "Codex",
+        "antigravity": "Antigravity",
+        "local": "Yerel"
+      },
+      "access": {
+        "vaultOnly": "Yalnızca kasa",
+        "computerAccess": "Bilgisayar erişimi"
+      },
+      "webSearch": {
+        "on": "Açık",
+        "off": "Kapalı",
+        "label": "Web araması"
+      },
+      "models": {
+        "default": "Varsayılan",
+        "label": "Model",
+        "search": "Modellerde ara…",
+        "useCustom": "“{query}” kullan",
+        "localEmpty": "Model bulunamadı — Ayarları kontrol edin",
+        "localSetup": "Ayarlarda kur…",
+        "cliSetup": "Algılanmadı — Ayarlarda kur…",
+        "runtimeUnavailable": "Ajan kullanılamıyor — Ayarları aç…"
+      },
+      "settings": {
+        "reasoning": "Akıl yürütme",
+        "effort": "Çaba"
+      },
+      "includeCurrentNote": "Geçerli notu dahil et",
+      "chooseModel": "Model seç",
+      "claudeSettings": {
+        "reasoning": {
+          "low": "Düşük",
+          "medium": "Orta",
+          "high": "Yüksek",
+          "extraHigh": "Ekstra yüksek",
+          "extraHighDefault": "Ekstra yüksek (varsayılan)",
+          "max": "Maks."
+        }
+      },
+      "codexSettings": {
+        "reasoning": {
+          "low": "Düşük",
+          "medium": "Orta",
+          "mediumDefault": "Orta (varsayılan)",
+          "high": "Yüksek",
+          "extraHigh": "Ekstra yüksek"
+        }
+      },
+      "permissionsLabel": "Ajan izinleri: {access}, web araması: {webSearch}",
+      "permissions": {
+        "label": "İzinler",
+        "access": "Erişim",
+        "tools": "Araçlar"
+      },
+      "modelSettingsLabel": "Ajan model ayarları: {model}, {settings}"
+    },
+    "refPicker": {
+      "noMatches": "Eşleşme yok"
+    },
+    "toolResult": {
+      "label": "Araç sonucu"
+    },
+    "toolCall": {
+      "editedArgs": "Düzenlenen argümanlar",
+      "parameters": "Parametreler"
+    },
+    "toolActivity": {
+      "steps": "{count, plural, one {# adım} other {# adım}}",
+      "running": "Çalışıyor",
+      "awaitingApproval": "Onay bekleniyor",
+      "done": "Tamamlandı"
+    },
+    "reasoning": {
+      "thinking": "Düşünüyor…",
+      "thought": "Düşündü",
+      "thoughtFor": "{seconds} sn düşündü",
+      "toggle": "Akıl yürütmeyi göster veya gizle"
+    },
+    "sidebar": {
+      "label": "Sağ kenar çubuğu",
+      "day": "Gün",
+      "agent": "Ajan",
+      "pendingApproval": "{count, plural, one {# bekleyen onay} other {# bekleyen onay}}",
+      "inProgress": "Ajan yanıt veriyor",
+      "close": "Ajanı kapat"
+    },
+    "errors": {
+      "loadConversations": "Ajan sohbetleri yüklenemedi",
+      "loadConversation": "Ajan sohbeti yüklenemedi",
+      "createConversation": "Ajan sohbeti oluşturulamadı",
+      "busy": "Bu sohbette başka bir pencerede yanıt sürüyor. Bitmesini bekleyin veya oradan durdurun.",
+      "sendTurn": "Ajan isteği gönderilemedi",
+      "cancelTurn": "Ajan isteği iptal edilemedi",
+      "submitApproval": "Araç onayı gönderilemedi",
+      "updateTrust": "Güvenilir araçlar güncellenemedi",
+      "saveDisclosure": "Bilgilendirme onayı kaydedilemedi",
+      "resolveWindow": "Ajan kaynak penceresi belirlenemedi",
+      "detectCli": "Ajan arka uçları algılanamadı",
+      "loadDisclosure": "Bilgilendirme onayı yüklenemedi"
+    },
+    "actions": {
+      "copy": "Kopyala",
+      "copied": "Kopyalandı"
+    },
+    "sources": {
+      "count": "{count, plural, one {# kaynak} other {# kaynak}}"
+    }
+  },
+  "canvas": {
+    "sectionLabel": "Tuvaller",
+    "newCanvas": "Yeni tuval",
+    "newCanvasFolder": "Yeni tuval klasörü",
+    "untitled": "Başlıksız tuval",
+    "empty": "Henüz tuval yok",
+    "loading": "Tuvaller yükleniyor…",
+    "loadFailed": "Tuvaller yüklenemedi",
+    "createFailed": "Tuval oluşturulamadı",
+    "openFailed": "Tuval açılamadı",
+    "notFound": "Bu tuval bulunamadı",
+    "corruptScene": "Bu tuval okunamadı. Veri kaybını önlemek için düzenleme devre dışı bırakıldı.",
+    "unreadableTitle": "Bu tuval burada açılamıyor",
+    "unreadableBody": "Belgesi kasada yok ya da tuvaller dosya hâline gelmeden önce çizilmiş ve bu cihazda artık kilidini açan anahtar bulunmuyor. Hiçbir şey silinmedi — kasayı tuvali oluşturan cihazda açın ya da tuvaller klasörünü geri yükleyin.",
+    "tooLargeToSync": "Bu tuval eşitlenemeyecek kadar büyük. Bu cihazda kayıtlı, ancak küçülene kadar diğer cihazlarınıza ulaşmayacak.",
+    "savedToVault": "Tüm değişiklikler kasanıza otomatik olarak kaydedilir",
+    "libraryStoreFailed": "Şekil kitaplığınız kaydedilemedi. Kitaplıkta yaptığınız son değişiklikler kaybolabilir.",
+    "link": {
+      "itemMissing": "Bağlantılı öğe artık mevcut değil.",
+      "elementMissing": "Bu bağlantı, artık bu tuvalde olmayan bir şeyi gösteriyor.",
+      "title": "Öğeye bağla",
+      "placeholder": "Notlarda, görevlerde, etkinliklerde, gelen kutusunda, projelerde ara…",
+      "hint": "Bağlanacak bir öğe bulmak için yazmaya başlayın.",
+      "empty": "Eşleşen bir şey yok.",
+      "selectOneShape": "Bir öğeye bağlamak için tek bir şekil seçin.",
+      "cardsCannotLink": "Kart zaten kendi öğesini açıyor, bu yüzden ikinci bir bağlantı taşıyamaz.",
+      "linked": "Bağlandı.",
+      "groupNotes": "Notlar",
+      "groupFiles": "Dosyalar",
+      "groupTasks": "Görevler",
+      "groupEvents": "Etkinlikler",
+      "groupInbox": "Gelen kutusu",
+      "groupJournals": "Günlük girdileri",
+      "groupProjects": "Projeler",
+      "groupFolders": "Klasörler",
+      "useUrl": "Şuna bağla: {url}",
+      "openTarget": "Aç: {name}",
+      "shapeTarget": "Bu tuvaldeki bir şekil",
+      "missingTarget": "Artık bu tuvalde değil"
+    },
+    "disabledTitle": "Tuval etkin değil",
+    "disabledBody": "Bu sekme, bu cihazda etkin olmayan bir özelliğe ait.",
+    "unreadable": "Bu tuvalin belgesi eksik ya da okunamıyor. Dosya yöneticinizde gösterin ya da kaydı silin.",
+    "actionFailed": "Bu tuval işlemi tamamlanamadı",
+    "renameLabel": "Tuval adı",
+    "folderNameLabel": "Klasör adı",
+    "deleteConfirmTitle": "Bu tuval silinsin mi?",
+    "deleteConfirmBody": "“{title}” tüm cihazlarınızda memrynote'tan kaldırılır. Dosyası bu bilgisayarın çöp kutusuna taşınır, ancak dosyayı geri koymak tuvali geri getirmez.",
+    "dropToRoot": "Klasörden çıkarmak için buraya bırakın",
+    "filterPlaceholder": "Tuvalleri filtrele",
+    "filterNoMatches": "Bu filtreyle eşleşen tuval yok",
+    "folderCanvasCount": "İçinde {count} tuval var",
+    "folderEmptyHint": "Henüz burada bir şey yok",
+    "deleteFolderConfirmTitle": "Bu tuval klasörü silinsin mi?",
+    "deleteFolderConfirmBody": "“{name}” ve içindeki her şey tüm cihazlarınızda memrynote'tan kaldırılır. Etkilenen tuval sayısı: {count}. Klasör bu bilgisayarın çöp kutusuna taşınır, ancak klasörü geri koymak tuvalleri geri getirmez.",
+    "actions": {
+      "rename": "Yeniden adlandır",
+      "duplicate": "Çoğalt",
+      "copyLink": "Bağlantıyı kopyala",
+      "setIcon": "Simge belirle",
+      "removeIcon": "Simgeyi kaldır",
+      "moveToFolder": "Klasöre taşı",
+      "moveToRoot": "Kök klasör",
+      "openExternal": "Harici düzenleyicide aç",
+      "newCanvasHere": "Buraya yeni tuval",
+      "newFolder": "Yeni klasör",
+      "canvasMenu": "Tuval işlemleri",
+      "folderMenu": "Tuval klasörü işlemleri"
+    },
+    "card": {
+      "open": "Sekmede aç",
+      "openToEdit": "Düzenlemek için sekmede aç",
+      "deleted": "Öğe silindi",
+      "loading": "Yükleniyor…",
+      "untitled": "Başlıksız",
+      "allDay": "Tüm gün",
+      "createNoteFailed": "Not oluşturulamadı",
+      "addCard": "Kart ekle",
+      "addPlaceholder": "Notlarda, dosyalarda, görevlerde, etkinliklerde ve projelerde ara…",
+      "addCreateNote": "“{query}” notunu oluştur",
+      "addCreateNoteEmpty": "Yeni not oluştur",
+      "addEmpty": "Sonuç bulunamadı",
+      "addGroupNotes": "Notlar",
+      "addGroupTasks": "Görevler",
+      "addGroupEvents": "Etkinlikler",
+      "addOnCanvas": "Tuvalde",
+      "addCreatedAt": "Oluşturuldu: {date}",
+      "bulkGroup": "Tümünü şuradan ekle",
+      "bulkFromTag": "Bir etiketten…",
+      "bulkFromFolder": "Bir klasörden…",
+      "bulkSearchTags": "Etiket ara…",
+      "bulkSearchFolders": "Klasör ara…",
+      "bulkTagsHeading": "Etiketler",
+      "bulkFoldersHeading": "Klasörler",
+      "bulkItemCount": "{count, plural, one {# öğe} other {# öğe}}",
+      "bulkViewsHeading": "{name} içinden ekle",
+      "bulkAllItems": "Tüm öğeler",
+      "bulkConfirmTitle": "{count, plural, one {{name} içinden # kart eklensin mi?} other {{name} içinden # kart eklensin mi?}}",
+      "bulkConfirmBody": "Büyük tuvallerde gezinmek yavaşlar ve eşitleme boyut sınırı aşılabilir.",
+      "bulkConfirmSkipped": "{count, plural, one {# öğe zaten bu tuvalde, atlanacak.} other {# öğe zaten bu tuvalde, atlanacak.}}",
+      "bulkConfirmAdd": "{count, plural, one {# kart ekle} other {# kart ekle}}",
+      "bulkBack": "Geri",
+      "bulkEmpty": "Eklenecek not, dosya veya görev yok",
+      "bulkLoadFailed": "Öğeler yüklenemedi",
+      "bulkAdded": "{count, plural, one {# kart eklendi} other {# kart eklendi}}",
+      "bulkAddedSkipped": "{count, plural, one {# kart eklendi} other {# kart eklendi}} · {skipped} tanesi zaten tuvalde",
+      "bulkAllOnCanvas": "{count, plural, one {Zaten bu tuvalde} other {# öğenin tümü zaten bu tuvalde}}"
+    },
+    "cluster": {
+      "button": "Grup öner",
+      "buttonHint": "Bu tuvaldeki not kartlarını (veya seçilenleri) benzerliğe göre gruplandırır. Bu cihazda çalışır.",
+      "loading": "Gruplandırılıyor…",
+      "needMoreNotes": "Grup önerebilmek için en az {count} not kartı ekleyin.",
+      "tooMany": "Bu tuvalde {count} taneden fazla not kartı var. En fazla {count} tane seçip tekrar deneyin.",
+      "disabled": "Grup önerebilmek için Ayarlar > Yapay zeka bölümünde yerel gömmeleri açın.",
+      "noGroups": "Bu notlar arasında belirgin bir grup bulunamadı.",
+      "missing": "{count, plural, one {# notun henüz gömmesi yok, bu yüzden dışarıda bırakıldı.} other {# notun henüz gömmesi yok, bu yüzden dışarıda bırakıldı.}}",
+      "failed": "Grup önerilemedi",
+      "title": "Önerilen gruplar",
+      "description": "Bu cihazda benzerliğe göre gruplandırıldı. Siz çerçeve oluşturana kadar tuvalde hiçbir şey değişmez.",
+      "defaultName": "Grup {number}",
+      "untitledGroup": "Grup",
+      "groupName": "Grup adı",
+      "acceptGroup": "Dahil et: {name}",
+      "noteCount": "{count, plural, one {# not} other {# not}}",
+      "discard": "At",
+      "create": "{count, plural, one {# çerçeve oluştur} other {# çerçeve oluştur}}",
+      "created": "{count, plural, one {# çerçeve oluşturuldu} other {# çerçeve oluşturuldu}}",
+      "cardsGone": "Bu kartlar artık tuvalde değil."
+    },
+    "frame": {
+      "categorize": "Sınıflandır",
+      "editBinding": "Bu bölümün sınıflandırmasını değiştir",
+      "cardCount": "{count, plural, one {# kart} other {# kart}}",
+      "bindTitle": "Bu bölümü sınıflandır",
+      "bindHint": "Bölüme bırakılan kartlar bu etiketi veya özellik değerini alır.",
+      "bindPlaceholder": "Etiketlerde ve özellik değerlerinde ara ya da yeni bir etiket yaz…",
+      "bindEmpty": "Eşleşen etiket veya özellik değeri yok.",
+      "groupTags": "Etiketler",
+      "useTag": "Yeni etiketi kullan: #{tag}",
+      "unbind": "Sınıflandırmayı kaldır: {label}",
+      "current": "Geçerli",
+      "applied": "{count, plural, one {# karta eklendi: {label}} other {# karta eklendi: {label}}}",
+      "applyFailed": "Eklenemedi: {label}",
+      "revertFailed": "Geri alınamadı: {label}",
+      "leftFrame": "{count, plural, one {# kart şu bölümden çıkarıldı: {label}. Kategorisi korunuyor.} other {# kart şu bölümden çıkarıldı: {label}. Kategorileri korunuyor.}}",
+      "removeCategory": "Kaldır: {label}",
+      "removed": "{count, plural, one {# karttan kaldırıldı: {label}} other {# karttan kaldırıldı: {label}}}",
+      "removeFailed": "Kaldırılamadı: {label}",
+      "skippedFile": "{count, plural, one {Bir dosya kartı olduğu gibi bırakıldı: dosyaların etiketi veya özelliği olmaz.} other {# dosya kartı olduğu gibi bırakıldı: dosyaların etiketi veya özelliği olmaz.}}",
+      "skippedTaskProperty": "{count, plural, one {Bir görev kartı olduğu gibi bırakıldı: görevlere etiket eklenebilir, not özellikleri eklenemez.} other {# görev kartı olduğu gibi bırakıldı: görevlere etiket eklenebilir, not özellikleri eklenemez.}}",
+      "skippedUnsupported": "{count, plural, one {Bir kart olduğu gibi bırakıldı: etkinlikler ve projeler sınıflandırılamaz.} other {# kart olduğu gibi bırakıldı: etkinlikler ve projeler sınıflandırılamaz.}}",
+      "layoutAction": "Özelliğe göre yerleştir",
+      "layoutTitle": "Özelliğe göre yerleştir",
+      "layoutHint": "Her değer için bir bölüm oluşturur ve bu tuvaldeki notları bu bölümlere dağıtır.",
+      "layoutPlaceholder": "Seçim, çoklu seçim ve durum özelliklerinde ara…",
+      "layoutEmpty": "Henüz değeri olan seçim, çoklu seçim veya durum özelliği yok.",
+      "layoutValueCount": "{count, plural, one {# değer} other {# değer}}",
+      "layoutDone": "{count, plural, one {{property} için # bölüm oluşturuldu} other {{property} için # bölüm oluşturuldu}}",
+      "layoutFailed": "Tuval yerleşimi uygulanamadı"
+    }
+  },
   "phaseF": {
     "componentsAppSidebar": {
       "collections": "Koleksiyonlar",
+      "projects": "Projeler",
       "newNote": "Yeni not",
       "newNote2": "Yeni not",
       "newFolder": "Yeni klasör",
       "newFolder2": "Yeni klasör",
+      "newProject": "Yeni proje",
       "bookmarks": "Yer imleri",
       "tags": "Etiketler",
+      "reorderSection": "Yeniden sırala: {section}",
       "dropFilesToImport": "İçe aktarılacak dosyaları bırakın",
+      "dropFilesIntoVaultRoot": "Kasa kökü",
       "newNoteN": "Yeni not (⌘N)",
       "new": "Yeni",
-      "syncDisabled": "Senkronizasyon devre dışı",
-      "syncDisabled2": "Senkronizasyon devre dışı",
+      "newItemMenu": "Yeni oluştur…",
       "feedbackButton": "Geri bildirim gönder",
-      "feedbackDescription": "Neyin işe yaradığını, neyin bozuk olduğunu ya da Memry'de ne olmasını istediğinizi bize anlatın. Her mesajı okuyoruz.",
-      "feedbackEmailHint": "Yanıt istiyorsanız e-postanızı ekleyin.",
-      "feedbackError": "Geri bildirim gönderilemedi. Lütfen tekrar deneyin.",
+      "feedbackTitle": "Geri bildirim gönder",
+      "feedbackDescription": "Neyin işe yaradığını, neyin bozuk olduğunu ya da MemryNote'un neler yapmasını istediğinizi bize anlatın. Her mesajı okuyoruz.",
       "feedbackPlaceholder": "Geri bildiriminiz…",
+      "feedbackEmailHint": "Yanıt istiyorsanız e-postanızı ekleyin.",
+      "feedbackPrivacyTitle": "Neler gönderilir",
+      "feedbackPrivacyMessage": "Mesajınız, tam olarak yazdığınız gibi",
+      "feedbackPrivacyEmailOptional": "E-postanız — yalnızca siz eklerseniz, yalnızca size yanıt verebilmemiz için",
+      "feedbackPrivacyEmailSignedIn": "Hesap e-postanız ({email}), yanıt verebilmemiz için",
+      "feedbackPrivacyVersion": "Uygulama sürümü ve işletim sistemi",
+      "feedbackPrivacyPlan": "Planınız (Ücretsiz, Plus, Pro veya Believer)",
+      "feedbackPrivacyNote": "Başka hiçbir şey. Notlarınız cihazınızda kalır.",
       "feedbackSend": "Gönder",
       "feedbackSending": "Gönderiliyor…",
       "feedbackSuccess": "Geri bildiriminiz için teşekkürler!",
-      "feedbackTitle": "Geri bildirim gönder",
-      "newItemMenu": "Yeni oluştur…",
-      "feedbackPrivacyEmailOptional": "E-postanız — yalnızca siz eklerseniz, yalnızca size yanıt verebilmemiz için",
-      "feedbackPrivacyEmailSignedIn": "Hesap e-postanız ({email}), yanıt verebilmemiz için",
-      "feedbackPrivacyMessage": "Mesajınız, tam olarak yazdığınız gibi",
-      "feedbackPrivacyNote": "Başka hiçbir şey. Notlarınız cihazınızda kalır.",
-      "feedbackPrivacyPlan": "Planınız (free, Plus, Pro veya Believer)",
-      "feedbackPrivacyTitle": "Neler gönderilir",
-      "feedbackPrivacyVersion": "Uygulama sürümü ve işletim sistemi",
-      "projects": "Projeler"
+      "feedbackError": "Geri bildirim gönderilemedi. Lütfen tekrar deneyin.",
+      "syncDisabled": "Eşitleme devre dışı",
+      "syncDisabled2": "Eşitleme devre dışı",
+      "sortLabel": "{section} sıralaması: {mode}",
+      "sortModeManual": "El ile",
+      "sortModeNameAsc": "Ad A → Z",
+      "sortModeNameDesc": "Ad Z → A",
+      "sortModeModifiedDesc": "Değiştirilme tarihi: önce en yeni",
+      "sortModeModifiedAsc": "Değiştirilme tarihi: önce en eski",
+      "sortModeCreatedDesc": "Oluşturulma tarihi: önce en yeni",
+      "sortModeCreatedAsc": "Oluşturulma tarihi: önce en eski",
+      "sortModeCountDesc": "En çok kullanılan",
+      "sortModeCountAsc": "En az kullanılan",
+      "sortSaveFailed": "Sıralama düzeni kaydedilemedi",
+      "sectionOrderSaveFailed": "Kenar çubuğu düzeni kaydedilemedi"
     },
     "componentsDayPanelGlobalDayPanel": {
-      "resizeDayPanel": "Gün Panelini Yeniden Boyutlandır",
+      "resizeDayPanel": "Gün panelini yeniden boyutlandır",
       "dragToResizeDoubleClickToReset": "Yeniden boyutlandırmak için sürükleyin · Sıfırlamak için çift tıklayın"
     },
     "componentsFindBarFindBar": {
-      "findReplaceAsk": "Bul, değiştir, sor..."
+      "findReplaceAsk": "Bul, değiştir, sor…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "İlk katılımı atla",
-      "welcomeToMemry": "memrynote'e hoş geldiniz",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Kişisel bilgi tabanınız. Başlamak için 2 dakikanızı ayıralım.",
-      "getStarted": "Başlayın ",
+      "skipOnboarding": "İlk kurulumu atla",
+      "welcomeToMemry": "memrynote'a hoş geldiniz",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Kişisel bilgi tabanınız. Başlamanız için 2 dakika ayıralım.",
+      "getStarted": "Başla ",
       "createYourFirstNote": "İlk notunuzu oluşturun",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown tabanlı, yerel olarak düz dosyalar olarak depolanır.",
-      "eGMeetingNotesIdeasAnything": "örneğin Toplantı notları, fikirler, her şey...",
+      "markdownBasedStoredLocallyAsPlainFiles": "Markdown tabanlıdır, yerel olarak düz dosyalarda saklanır.",
+      "eGMeetingNotesIdeasAnything": "ör. toplantı notları, fikirler, her şey…",
       "skip": "Atla",
       "createNote": "Not oluştur ",
       "addYourFirstTask": "İlk görevinizi ekleyin",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Görevler, öncelikler ve son tarihlerle birlikte notlarınıza bağlantı verir.",
-      "eGReviewProjectProposal": "örneğin Proje teklifini inceleyin...",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Görevler notlarınıza bağlanır; öncelik ve son tarih eklenebilir.",
+      "eGReviewProjectProposal": "ör. Proje teklifini incele…",
       "skip2": "Atla",
       "createTask": "Görev oluştur ",
-      "syncAcrossDevices": "Cihazlar arasında senkronizasyon",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Notlarınızı ve görevlerinizi tüm cihazlarınızda senkronize halde tutun. Bunu daha sonra istediğiniz zaman ayarlayabilirsiniz.",
+      "syncAcrossDevices": "Cihazlar arasında eşitleme",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Notlarınızı ve görevlerinizi tüm cihazlarınızda eşitlenmiş tutun. Bunu daha sonra istediğiniz zaman ayarlayabilirsiniz.",
       "skipForNow": "Şimdilik atla",
-      "doneLetSGo": "Bitti - hadi gidelim! "
+      "doneLetSGo": "Tamam — başlayalım! "
     },
     "componentsFolderIconButton": {
-      "setFolderIcon": "Klasör simgesini ayarla"
+      "setFolderIcon": "Klasör simgesini ayarla",
+      "expandFolder": "Klasörü genişlet",
+      "collapseFolder": "Klasörü daralt"
     },
     "componentsHintOverlayHintIndicator": {
       "hint": "İPUCU"
     },
     "componentsIconPicker": {
       "iconPicker": "Simge seçici",
-      "selectIcon": "Simge Seç",
+      "selectIcon": "Simge seç",
       "closeIconPicker": "Simge seçiciyi kapat",
-      "searchIcons": "Simgeleri ara...",
+      "searchIcons": "Simge ara…",
       "all": "Tümü",
-      "clearIcon": "Simgeyi Temizle",
+      "clearIcon": "Simgeyi kaldır",
       "noIconsFoundFor": "Simge bulunamadı: \""
     },
     "componentsKeyboardShortcutsModal": {
-      "keyboardShortcuts": "Klavye Kısayolları",
-      "closeShortcutsHelp": "Kısayolları kapatma yardımı",
-      "press": "Basın",
-      "toClose": "kapatmak"
+      "keyboardShortcuts": "Klavye kısayolları",
+      "closeShortcutsHelp": "Kısayol yardımını kapat",
+      "press": "Kapatmak için",
+      "toClose": "tuşuna basın"
     },
     "componentsKiboUiTreeIndex": {
-      "setIcon": "Simgeyi Ayarla",
-      "clearIcon": "Simgeyi Temizle"
+      "setIcon": "Simge belirle",
+      "clearIcon": "Simgeyi kaldır"
     },
     "componentsNavMain": {
-      "platform": "platformu"
+      "platform": "Platform"
     },
     "componentsNavProjects": {
       "projects": "Projeler",
       "more": "Daha fazla",
-      "viewProject": "Projeyi Görüntüle",
-      "shareProject": "Projeyi Paylaş",
-      "deleteProject": "Projeyi Sil",
+      "viewProject": "Projeyi görüntüle",
+      "shareProject": "Projeyi paylaş",
+      "deleteProject": "Projeyi sil",
       "more2": "Daha fazla"
     },
     "componentsNavUser": {
       "cn": "CN",
       "cn2": "CN",
-      "upgradeToPro": "Pro'ya yükseltin",
+      "upgradeToPro": "Pro'ya yükselt",
       "account": "Hesap",
       "billing": "Faturalandırma",
       "notifications": "Bildirimler",
@@ -202,7 +684,7 @@
     },
     "componentsSearchCommandPalette": {
       "search": "Ara",
-      "searchNotesTasksJournalInbox": "Notlarda, görevlerde, günlükte, gelen kutusunda arama yapın...",
+      "searchNotesTasksJournalInbox": "Notlarda, görevlerde, günlükte, gelen kutusunda ara…",
       "noResultsFor": "Sonuç bulunamadı: “",
       "result": "sonuç",
       "noResultsForQuery": "“{query}” için sonuç bulunamadı",
@@ -212,39 +694,39 @@
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "İzinizi oluşturmak için öğeleri arayın ve tıklayın",
-      "reasons": "Sebepler",
+      "reasons": "Arama izi",
       "clear": "Temizle"
     },
     "componentsSearchSearchFilters": {
       "clear": "Temizle",
       "tags": "Etiketler",
-      "filterByTag": "Etikete göre filtrele...",
-      "dateRange": "Tarih Aralığı"
+      "filterByTag": "Etikete göre filtrele…",
+      "dateRange": "Tarih aralığı"
     },
     "componentsSearchSearchResultGroup": {
-      "viewAll": "Tümünü görüntüle ",
-      "results": "sonuçlar"
+      "viewAll": "Tümünü görüntüle: ",
+      "results": "sonuç"
     },
     "componentsSearchSearchResultItem": {
       "p": "P",
-      "fuzzy": "bulanık"
+      "fuzzy": "yaklaşık"
     },
     "componentsSplitViewEmptyPaneState": {
       "noTabsOpen": "Açık sekme yok",
       "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Başlamak için kenar çubuğundan bir sayfa açın veya yeni bir sekme oluşturun",
-      "openInbox": "Gelen Kutusunu Aç",
-      "closePane": "Bölmeyi Kapat"
+      "openInbox": "Gelen kutusunu aç",
+      "closePane": "Bölmeyi kapat"
     },
     "componentsSplitViewLayoutPicker": {
       "layoutPresets": "Düzen ön ayarları",
-      "layoutPresets2": "Düzen Ön Ayarları"
+      "layoutPresets2": "Düzen ön ayarları"
     },
     "componentsSplitViewResizeHandle": {
       "resizePanes": "Bölmeleri yeniden boyutlandır"
     },
     "componentsSplitViewTabContent": {
-      "taskscontextNotAvailable": "Görevler Bağlamı mevcut değil",
-      "searchResults": "Arama Sonuçları",
+      "taskscontextNotAvailable": "TasksContext kullanılamıyor",
+      "searchResults": "Arama sonuçları",
       "unknownTabType": "Bilinmeyen sekme türü: "
     },
     "componentsTabsAccessibleTab": {
@@ -252,12 +734,12 @@
       "preview": "önizleme"
     },
     "componentsTabsNewTabMenu": {
-      "newTab": "Yeni Tab",
-      "newTab2": "Yeni Tab",
-      "newNote": "Yeni Not",
+      "newTab": "Yeni sekme",
+      "newTab2": "Yeni sekme",
+      "newNote": "Yeni not",
       "journal": "Günlük",
       "calendar": "Takvim",
-      "inboxCapture": "Gelen Kutusu Yakalama",
+      "inboxCapture": "Gelen kutusuna hızlı kayıt",
       "tasks": "Görevler",
       "tags": "Etiketler"
     },
@@ -269,25 +751,25 @@
       "unsavedChanges": "Kaydedilmemiş değişiklikler"
     },
     "componentsTabsTabBarContextMenu": {
-      "closeAllTabs": "Tüm Tab'leri Kapat"
+      "closeAllTabs": "Tüm sekmeleri kapat"
     },
     "componentsTabsTabBarWithDrag": {
-      "openTabs": "Sekmeleri aç",
+      "openTabs": "Açık sekmeler",
       "scrollTabsLeft": "Sekmeleri sola kaydır",
       "scrollTabsRight": "Sekmeleri sağa kaydır",
-      "dayPanel": "Gün Paneli"
+      "dayPanel": "Gün paneli"
     },
     "componentsTabsTabErrorBoundary": {
-      "somethingWentWrong": "Bir şeyler ters gitti",
+      "somethingWentWrong": "Bir sorun oluştu",
       "anErrorOccurredWhileRenderingThisTabContent": "Bu sekme içeriği oluşturulurken bir hata oluştu.",
-      "tryAgain": "Tekrar Deneyin",
+      "tryAgain": "Tekrar dene",
       "sendReport": "Tanılama raporu gönder"
     },
     "componentsTabsTabPreviewCard": {
       "noteIcon": "Not simgesi"
     },
     "componentsTabsUnsavedChangesDialog": {
-      "unsavedChanges": "Kaydedilmemiş Değişiklikler",
+      "unsavedChanges": "Kaydedilmemiş değişiklikler",
       "unsavedChangesBody": "“{title}” sekmesinde kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?"
     },
     "componentsTeamSwitcher": {
@@ -295,22 +777,22 @@
       "darkMode": "Karanlık mod",
       "settings": "Ayarlar",
       "integrations": "Entegrasyonlar",
-      "signOut": "Oturumu Kapat",
-      "downloadOnIos": "iOS'te indirin"
+      "signOut": "Oturumu kapat",
+      "downloadOnIos": "iOS için indir"
     },
     "componentsTrafficLights": {
       "closeWindow": "Pencereyi kapat",
-      "minimizeWindow": "Pencereyi simge durumuna küçült",
+      "minimizeWindow": "Pencereyi küçült",
       "maximizeWindow": "Pencereyi büyüt"
     },
     "componentsUiAutocompleteDropdown": {
       "suggestions": "Öneriler",
       "or": "veya",
       "enter": "Enter",
-      "toInsert": "eklemek"
+      "toInsert": "ile ekleyin"
     },
     "componentsUiBreadcrumb": {
-      "breadcrumb": "ekmek kırıntısı",
+      "breadcrumb": "Gezinme yolu",
       "more": "Daha fazla"
     },
     "componentsUiDialog": {
@@ -327,34 +809,34 @@
       "dragToResizeDoubleClickToReset": "Yeniden boyutlandırmak için sürükleyin · Sıfırlamak için çift tıklayın"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "memrynote'e hoş geldiniz",
+      "welcomeToMemry": "memrynote'a hoş geldiniz",
       "yourPersonalKnowledgeManagementSystem": "Kişisel bilgi yönetim sisteminiz.",
       "selectAFolderToStoreYourNotesAndTasks": "Notlarınızı ve görevlerinizi saklamak için bir klasör seçin.",
-      "opening": "Açılıyor...",
-      "selectVaultFolder": "Kasa Klasörünü Seçin",
+      "opening": "Açılıyor…",
+      "selectVaultFolder": "Kasa klasörü seç",
       "plainMarkdown": "Düz Markdown",
       "yourNotesStayPortable": "Notlarınız taşınabilir kalır",
-      "syncAnywhere": "Her Yerde Senkronizasyon",
-      "useDropboxIcloudGit": "Dropbox, iCloud, Git'i kullanın",
-      "recentVaults": "Son Kasalar",
-      "notesLastOpened": "notlar · Son açılış",
-      "brandName": "Memrynote",
+      "syncAnywhere": "Her yerde eşitleme",
+      "useDropboxIcloudGit": "Dropbox, iCloud veya Git kullanın",
+      "recentVaults": "Son kasalar",
+      "notesLastOpened": "not · Son açılış",
       "preRelease": "Beta",
       "createNewVault": "Yeni kasa oluştur",
       "createNewVaultDesc": "Seçtiğiniz bir klasörde yeni bir kasa başlatın.",
       "openExistingVault": "Mevcut kasayı aç",
       "openExistingVaultDesc": "Zaten tuttuğunuz Markdown dosyalarının bulunduğu bir klasör seçin.",
-      "signInToSync": "Senkronizasyon için oturum aç",
+      "signInToSync": "Eşitleme için oturum aç",
       "signInToSyncDesc": "Cihazlarınız arasında uçtan uca şifreli kasalar.",
       "create": "Oluştur",
       "open": "Aç",
       "signIn": "Oturum aç",
       "helpAndDocs": "Yardım ve belgeler",
-      "signInRequiresVault": "Senkronizasyonu ayarlamak için önce bir kasa açın veya oluşturun.",
+      "signInRequiresVault": "Eşitlemeyi ayarlamak için önce bir kasa açın veya oluşturun.",
       "addVault": "Kasa ekle",
+      "brandName": "Memrynote",
       "flow": {
         "tagline": "Notlarınız bir kasada, yani bu bilgisayardaki bir klasörde durur.",
-        "createDesc": "Adını verin ve nerede duracağını seçin.",
+        "createDesc": "Bir ad verin ve konumunu seçin.",
         "openFolder": "Klasörü kasa olarak aç",
         "openFolderDesc": "Zaten tuttuğunuz Markdown dosyalarının bulunduğu bir klasörü kullanın.",
         "openFromSync": "Memrynote Sync'ten aç",
@@ -375,7 +857,7 @@
         "creating": "Oluşturuluyor…",
         "cancel": "İptal",
         "chooseTitle": "Bir kasa seçin",
-        "chooseSubtitle": "{email} olarak oturum açıldı. Bu bilgisayarda açmak için birini seçin.",
+        "chooseSubtitle": "Oturum açan: {email}. Bu bilgisayarda açmak için birini seçin.",
         "untitledVault": "Adsız kasa",
         "items": "{count, plural, one {# öğe} other {# öğe}}",
         "onThisComputer": "Bu bilgisayarda",
@@ -387,7 +869,7 @@
         "loadFailed": "Kasalarınız yüklenemedi.",
         "retry": "Tekrar dene",
         "noVaultsTitle": "Hesabınızda henüz kasa yok",
-        "noVaultsDesc": "Bu bilgisayarda bir tane oluşturun. Hesabınızla senkronize olur.",
+        "noVaultsDesc": "Bu bilgisayarda bir tane oluşturun. Hesabınızla eşitlenir.",
         "createCta": "Kasa oluştur",
         "openFailed": "Kasa açılamadı."
       }
@@ -397,8 +879,9 @@
       "openVault": "Kasayı aç",
       "settings": "Ayarlar",
       "logOut": "Oturumu kapat",
-      "signInToSync": "Senkronizasyon için oturum açın",
+      "signInToSync": "Eşitleme için oturum aç",
       "remove": "Kaldır “",
+      "removeVaultTitle": "“{name}” listeden kaldırılsın mı?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Bu kasa uygulamadan kaldırılacak ancak dosyalarınız diskte kalacak. Daha sonra istediğiniz zaman yeniden ekleyebilirsiniz.",
       "cancel": "İptal",
       "remove2": "Kaldır",
@@ -411,11 +894,10 @@
       "download": "İndir",
       "downloadFailed": "Kasa indirilemedi",
       "deleteFromAccount": "Hesaptan sil",
-      "deleteVaultBody": "Bu işlem, bu kasaya ait senkronize edilmiş tüm verileri Memry sunucularından kalıcı olarak siler ve geri alınamaz. Diskteki dosyalarınız silinmez.",
+      "deleteVaultTitle": "“{name}” hesabınızdan silinsin mi?",
+      "deleteVaultBody": "Bu işlem, bu kasaya ait eşitlenmiş tüm verileri Memry sunucularından kalıcı olarak siler ve geri alınamaz. Diskteki dosyalarınız silinmez.",
       "deleteVaultConfirm": "Hesaptan sil",
       "deleteVaultFailed": "Kasa silinemedi",
-      "deleteVaultTitle": "“{name}” hesabınızdan silinsin mi?",
-      "removeVaultTitle": "“{name}” listeden kaldırılsın mı?",
       "missing": "Klasör bulunamadı"
     },
     "componentsWindowControls": {
@@ -436,562 +918,333 @@
       "undone": "Geri alındı"
     }
   },
-  "agentChat": {
-    "title": "Agent sohbeti",
-    "loading": "Agent sohbeti yükleniyor...",
-    "conversationLoading": "Konuşma yükleniyor...",
-    "newConversation": "Yeni görüşme",
-    "history": "Konuşma geçmişi",
-    "openInTab": "Konuşmayı sekmede aç",
-    "stop": "Durdur",
-    "thinking": "Agent düşünüyor",
-    "enable": {
-      "title": "memrynote Agent'i etkinleştir",
-      "description": "memrynote Agent, kasanız hakkında sohbet etmek için seçtiğiniz yerel Agent CLI'ını kullanır. Claude istekleri Anthropic'e; Codex istekleri OpenAI'ye gönderir.",
-      "remote": "memrynote, yerel ve senkronize sohbet geçmişinizi şifreler, ancak model çıkarımı seçilen sağlayıcıyla gerçekleşir.",
-      "readTools": "Okuma araçları otomatik olarak çalışır.",
-      "writeTools": "Oluşturma ve güncelleme araçları onay gerektirir.",
-      "diff": "Güncelleme araçları bir fark veya önizleme gösterir.",
-      "button": "Agent sohbetini etkinleştir"
-    },
-    "approval": {
-      "description": "Agent, bu argümanlarla {name}'yi çağırmak istiyor.",
-      "applyOnce": "Bir kez uygula",
-      "allowOnce": "Bir kez izin ver",
-      "editAndApply": "Düzenle ve uygula",
-      "editAndAllow": "Düzenle ve izin ver",
-      "allowAlways": "Her zaman izin ver",
-      "applyEdits": "Düzenlemeleri uygula",
-      "deny": "Reddet",
-      "invalidJson": "Düzenlemeleri uygulamadan önce geçerli JSON girin.",
-      "thisTool": "bu aracı",
-      "alwaysAllowHint": "Her zaman izin, {tool} için geçerli. Diğer her araç yine sorar, silmeler her zaman sorar.",
-      "alwaysInChat": "Bu sohbette her zaman izin ver",
-      "alwaysInChatHint": "Sohbet bitince sona erer",
-      "alwaysInVault": "Bu kasada her zaman izin ver",
-      "alwaysInVaultHint": "Ayarlar › Agent'tan geri alınabilir",
-      "deletesAlwaysAsk": "Silmeler her zaman sorar"
-    },
-    "diff": {
-      "previewError": "Bu değişikliğin önizlemesi yapılamadı",
-      "description": "Agent {title} öğesini güncellemek istiyor. Uygulamadan önce değişikliği inceleyin.",
-      "fallbackTitle": "bu öğe",
-      "current": "Güncel",
-      "candidate": "Aday",
-      "loading": "Yükleniyor...",
-      "apply": "Uygula",
-      "applyEdited": "Düzenlenenleri uygula",
-      "editBody": "Uygulamadan önce düzenle"
-    },
-    "inPageReview": {
-      "regionLabel": "Agent önerisi",
-      "barLabel": "Agent önerisini incele",
-      "loading": "Öneri yükleniyor...",
-      "loadingTitle": "Agent önerisi",
-      "title": "{count, plural, =0 {Agent önerisi} one {Agent # değişiklik önerdi} other {Agent # değişiklik önerdi}}",
-      "editingTitle": "Öneri düzenleniyor",
-      "pendingHint": "Henüz kaydedilmedi. Uygulamak için kabul et.",
-      "editingHint": "Kabul edene kadar düzenlemelerin burada kalır.",
-      "baseChanged": "Sen öneriyi düzenlerken bu not değişti.",
-      "keepDraft": "Düzenlemelerimi koru",
-      "restart": "En son sürümden yeniden başla",
-      "reject": "Reddet",
-      "edit": "Düzenle",
-      "showDiff": "Değişiklikleri göster",
-      "accept": "Kabul et",
-      "acceptEdits": "Düzenlemeleri kabul et",
-      "waiting": "{title} içinde incelemeni bekliyor.",
-      "notOpen": "Değişiklikleri görmek için {title} notunu aç ya da incelemeden kabul et.",
-      "show": "Göster",
-      "openNote": "Notu aç",
-      "openJournal": "Günlüğü aç",
-      "fallbackTitle": "bu not"
-    },
-    "preview": {
-      "unset": "ayarlı değil",
-      "yes": "evet",
-      "no": "hayır",
-      "noChange": "Bu önizlemenin adlandırabileceği hiçbir şey değişmiyor.",
-      "willBeLost": "Kaybolacak",
-      "unchangedLines": "{count, plural, one {# değişmeyen satır} other {# değişmeyen satır}}",
-      "item": {
-        "note": "Not",
-        "folder": "Klasör",
-        "task": "Görev",
-        "journal": "Günlük",
-        "inbox": "Gelen kutusu",
-        "project": "Proje",
-        "status": "Durum",
-        "canvas": "Kanvas"
-      },
-      "intent": {
-        "create": "yeni",
-        "update": "güncelleme",
-        "delete": "silme",
-        "move": "taşıma",
-        "reorder": "sıralama"
-      },
-      "field": {
-        "archived": "Arşivlendi",
-        "arguments": "Argümanlar",
-        "color": "Renk",
-        "completed": "Tamamlandı",
-        "description": "Açıklama",
-        "due": "Bitiş",
-        "dueTime": "Bitiş saati",
-        "duplicateOf": "Kopyası",
-        "edits": "Düzenlemeler",
-        "elements": "Öğeler",
-        "folder": "Klasör",
-        "icon": "Simge",
-        "isDefault": "Varsayılan",
-        "isDone": "Bitti durumu",
-        "items": "Öğeler",
-        "name": "Ad",
-        "operation": "İşlem",
-        "order": "Sıra",
-        "parent": "Üst öğe",
-        "path": "Yol",
-        "position": "Konum",
-        "priority": "Öncelik",
-        "project": "Proje",
-        "removed": "Kaldırıldı",
-        "repeatFrom": "Yineleme başlangıcı",
-        "snoozeReason": "Erteleme nedeni",
-        "snoozedUntil": "Ertelendi",
-        "start": "Başlangıç",
-        "status": "Durum",
-        "tags": "Etiketler",
-        "title": "Başlık"
-      },
-      "loss": {
-        "words": "{count, plural, one {# kelime} other {# kelime}}",
-        "tags": "{count, plural, one {# etiket} other {# etiket}}",
-        "notes": "{count, plural, one {# not} other {# not}}",
-        "folders": "{count, plural, one {# klasör} other {# klasör}}",
-        "files": "{count, plural, one {# dosya} other {# dosya}}",
-        "events": "{count, plural, one {# etkinlik} other {# etkinlik}}",
-        "tasks": "{count, plural, one {# görev} other {# görev}}",
-        "due": "bitiş {value}"
-      }
-    },
-    "composer": {
-      "currentNote": "Güncel not",
-      "removeAttachment": "{label}'yi kaldır",
-      "placeholder": "memrynote’ye her şeyi sorun. Dosyadan bahsetmek için @ kullanın",
-      "send": "Gönder",
-      "providerLabel": "Agent sağlayıcısı: {provider}",
-      "settingsSummary": "{reasoning}",
-      "providers": {
-        "claude": "Claude",
-        "codex": "Codex",
-        "antigravity": "Antigravity",
-        "local": "Yerel"
-      },
-      "models": {
-        "default": "Varsayılan",
-        "label": "Model"
-      },
-      "settings": {
-        "reasoning": "Akıl yürütme"
-      },
-      "claudeSettings": {
-        "reasoning": {
-          "low": "Düşük",
-          "medium": "Orta",
-          "high": "Yüksek",
-          "extraHigh": "Ekstra Yüksek",
-          "extraHighDefault": "Ekstra Yüksek (varsayılan)",
-          "max": "Maks."
-        }
-      },
-      "codexSettings": {
-        "reasoning": {
-          "low": "Düşük",
-          "medium": "Orta",
-          "mediumDefault": "Orta (varsayılan)",
-          "high": "Yüksek",
-          "extraHigh": "Ekstra Yüksek"
-        }
-      },
-      "access": {
-        "vaultOnly": "Yalnızca kasa",
-        "computerAccess": "Bilgisayar erişimi"
-      },
-      "webSearch": {
-        "on": "On",
-        "off": "Kapalı",
-        "label": "Web araması"
-      },
-      "permissionsLabel": "Agent izinleri: {access}, web araması {webSearch}",
-      "permissions": {
-        "label": "İzinler",
-        "access": "Erişim",
-        "tools": "Araçlar"
-      },
-      "modelSettingsLabel": "Agent model ayarları: {model}, {settings}"
-    },
-    "refPicker": {
-      "noMatches": "Eşleşme yok"
-    },
-    "toolResult": {
-      "label": "Araç sonucu"
-    },
-    "toolCall": {
-      "editedArgs": "Düzenlenen argümanlar",
-      "parameters": "Parametreler"
-    },
-    "sidebar": {
-      "label": "Sağ kenar çubuğu",
-      "day": "Gün",
-      "agent": "Ajan",
-      "pendingApproval": "{count, plural, one {# onay bekleniyor} other {# bekleyen onaylar}}",
-      "inProgress": "Agent dönüşü devam ediyor",
-      "close": "Ajanı kapat"
-    },
-    "errors": {
-      "loadConversations": "Agent konuşmaları yüklenemedi",
-      "loadConversation": "Agent konuşması yüklenemedi",
-      "createConversation": "Agent konuşması oluşturulamadı",
-      "busy": "Bu konuşma için başka bir pencere işlem yapıyor. Bitmesini bekleyin veya oradan durdurun.",
-      "sendTurn": "Agent isteği gönderilemedi",
-      "cancelTurn": "Agent isteği iptal edilemedi",
-      "submitApproval": "Araç onayı gönderilemedi",
-      "updateTrust": "Güvenilir araçlar güncellenemedi",
-      "saveDisclosure": "Açıklama durumu kaydedilemedi",
-      "resolveWindow": "Agent kaynak penceresi çözülemedi",
-      "detectCli": "Agent arka uçları algılanamadı",
-      "loadDisclosure": "Açıklama durumu yüklenemedi"
-    },
-    "sources": {
-      "used": "{count, plural, one {# kaynak kullanıldı} other {# kaynak kullanıldı}}"
-    },
-    "reasoning": {
-      "thinking": "Düşünüyor…",
-      "thought": "Düşündü",
-      "thoughtFor": "{seconds} sn düşündü",
-      "toggle": "Düşünme sürecini göster veya gizle"
-    }
-  },
   "home": {
-    "addWidget": "Widget ekle",
-    "board": {
-      "defaultName": "Ana Sayfa",
-      "deleteAria": "Düzeni sil",
-      "label": "Ana sayfa düzeni",
-      "newAria": "Yeni pano",
-      "newName": "Yeni pano"
-    },
-    "disabled": {
-      "createNote": "Not oluştur",
-      "hint": "Açık bir şey yok. Bir nota başlayın."
-    },
-    "done": "Tamam",
-    "edit": "Düzenle",
-    "empty": {
-      "body": "Widget'lar notlarınızı, görevlerinizi ve yer imlerinizi tek bir sakin yerde bir araya getirir.",
-      "cta": "İlk widget'ınızı ekleyin",
-      "title": "Panonuz boş"
-    },
-    "greeting": {
-      "afternoon": "İyi günler",
-      "evening": "İyi akşamlar",
-      "morning": "Günaydın"
-    },
-    "header": {
-      "events": "{count, plural, one {# etkinlik} other {# etkinlik}}",
-      "tasksDue": "{count, plural, one {bugün # görev var} other {bugün # görev var}}"
-    },
-    "noBookmarksYet": "Henüz yer imi yok.",
-    "noEventsYet": "Bugün etkinlik yok.",
-    "noJournalEntriesYet": "Henüz günlük girdisi yok.",
-    "noNotesYet": "Henüz not yok.",
-    "noTasksYet": "Henüz görev yok.",
     "widget": {
+      "removeAria": "Widget'ı kaldır",
+      "dragAria": "Widget'ı sürükle",
+      "configAria": "Widget'ı yapılandır",
+      "resizeAria": "{size} boyutuna getir",
+      "menuAria": "Widget seçenekleri",
+      "resize": "Boyut",
+      "remove": "Kaldır",
+      "filter": {
+        "all": "Tümü",
+        "today": "Son tarihi bugün",
+        "tomorrow": "Yarın",
+        "next7": "Sonraki 7 gün",
+        "noDueDate": "Son tarih yok"
+      },
+      "recentlyEdited": "Son düzenlenenler",
+      "recentlyOpened": "Son açılanlar",
+      "recentMeta": "{time} düzenlendi",
+      "recentMetaWithFolder": "{folder} · {time} düzenlendi",
+      "openedMeta": "{time} açıldı",
+      "openedMetaWithFolder": "{folder} · {time} açıldı",
+      "noRecentlyOpened": "Açtığınız notlar burada görünür",
       "bookmarks": "Yer imleri",
+      "tasks": "Görevler",
       "calendar": "Takvim",
       "calendarToday": "Bugün",
-      "configAria": "Widget'ı yapılandır",
-      "configure": "Yapılandır",
-      "dragAria": "Widget'ı sürükle",
+      "openCalendar": "Takvimi aç",
+      "next": "Sıradaki: {title}",
+      "startsIn": "{count, plural, one {# dk} other {# dk}} içinde başlıyor",
       "duration": "{count} dk",
-      "filter": {
-        "today": "Bugün Bitecek",
-        "tomorrow": "Yarın",
-        "week": "Bu Hafta"
-      },
+      "inbox": "Gelen kutusu",
+      "inboxAllTypes": "Tüm türler",
+      "inboxOlder": "{count, plural, one {# daha eski kayıt} other {# daha eski kayıt}}",
+      "inboxOldest": "en eskisi {count, plural, one {# günlük} other {# günlük}}",
+      "openInbox": "Gelen kutusunu aç",
       "folder": "Klasör",
+      "untitled": "Başlıksız",
+      "folderPickPrompt": "Bir klasör seçin",
       "folderEmpty": "Henüz klasör yok",
       "folderNoSelection": "Klasör seçilmedi",
-      "folderPickPrompt": "Bir klasör seçin",
-      "folderViewSelect": "Görünüm",
-      "folderView_gallery": "Galeri",
       "folderView_list": "Liste",
-      "inbox": "Gelen Kutusu",
-      "inboxAllTypes": "Tüm türler",
-      "inboxOlder": "{count, plural, one {# daha eski} other {# daha eski}}",
-      "inboxOldest": "en eski {count, plural, one {# gün} other {# gün}}",
+      "folderView_gallery": "Galeri",
+      "folderViewSelect": "Görünüm",
+      "project": "Proje",
+      "projectNoSelection": "Proje seçilmedi",
+      "projectMissing": "Bu proje artık kullanılamıyor",
+      "projectNoTasks": "Görev yok",
       "journal": "Günlük",
       "journalStreak": "{count, plural, one {# günlük seri} other {# günlük seri}}",
       "journalToday": "Bugün",
       "journalYesterday": "Dün",
+      "journalTomorrow": "Yarın",
+      "journalUpcoming": "Yaklaşan",
+      "journalNoEntryYet": "Henüz girdi yok",
       "loadError": "Yüklenemedi",
-      "menuAria": "Widget seçenekleri",
-      "next": "Sıradaki: {title}",
-      "openCalendar": "Takvimi Aç",
-      "openInbox": "Gelen kutusunu aç",
-      "recentMeta": "{time} düzenlendi",
-      "recentMetaWithFolder": "{folder} · {time} düzenlendi",
-      "recentlyEdited": "Son düzenlenen",
-      "remove": "Kaldır",
-      "removeAria": "Widget'ı kaldır",
-      "resize": "Boyut",
-      "resizeAria": "{size} boyutuna getir",
-      "savedFilterDefault": "Bugün",
-      "savedFilterHint": "Burada kullanmak için Görevler sayfasındaki filtreleri yıldızlayın",
-      "savedFilterLabel": "Kayıtlı filtre",
-      "startsIn": "{count, plural, one {# dk} other {# dk}} içinde başlıyor",
-      "tasks": "Görevler",
-      "unknown": "Bilinmeyen widget",
-      "untitled": "Başlıksız"
+      "unknown": "Bilinmeyen widget"
+    },
+    "board": {
+      "label": "Ana sayfa düzeni",
+      "deleteAria": "Düzeni sil",
+      "newAria": "Yeni pano",
+      "newName": "Yeni pano",
+      "defaultName": "Ana sayfa",
+      "manage": "Panoları yönet",
+      "manageTitle": "Panoları yönet",
+      "manageDescription": "Ana sayfa panolarınızı yeniden adlandırın, sıralayın veya silin.",
+      "renameAria": "Panoyu yeniden adlandır",
+      "reorderAria": "Panoyu yeniden sırala",
+      "nameLabel": "Pano adı"
+    },
+    "greeting": {
+      "morning": "Günaydın",
+      "afternoon": "İyi günler",
+      "evening": "İyi akşamlar"
+    },
+    "header": {
+      "tasksDue": "{count, plural, one {# görevin son tarihi bugün} other {# görevin son tarihi bugün}}",
+      "events": "{count, plural, one {# etkinlik} other {# etkinlik}}"
+    },
+    "edit": "Düzenle",
+    "done": "Tamam",
+    "addWidget": "Widget ekle",
+    "empty": {
+      "title": "Panonuz boş",
+      "body": "Widget'lar notlarınızı, görevlerinizi ve yer imlerinizi tek bir sakin yerde bir araya getirir.",
+      "cta": "İlk widget'ınızı ekleyin"
+    },
+    "noBookmarksYet": "Henüz yer imi yok.",
+    "noNotesYet": "Henüz not yok.",
+    "noTasksYet": "Henüz görev yok.",
+    "noEventsYet": "Bugün etkinlik yok.",
+    "noJournalEntriesYet": "Henüz günlük girdisi yok.",
+    "disabled": {
+      "createNote": "Not oluştur",
+      "hint": "Açık bir şey yok. Bir nota başlayın."
     }
   },
-  "media": {
-    "video": "Video"
-  },
   "onboarding": {
-    "agentChat": {
-      "body": "MemryNote asistanına kasanız hakkında soru sormak için Ajan sekmesine geçin.",
-      "title": "Yapay zeka ajanıyla sohbet edin"
-    },
-    "collections": {
-      "body": "Notları klasörlerde düzenleyin, yer imlerini sabitleyin ve etikete göre göz atın — hepsi burada.",
-      "title": "Koleksiyonlar, yer imleri ve etiketler"
-    },
-    "dayPanel": {
-      "body": "Yan panel, okuduğunuz şeyin yanında bir takvim ve gün görünümü tutar.",
-      "title": "Gününüz, çalışmanızın yanında"
-    },
-    "feedback": {
-      "body": "Geri bildiriminizi buradan doğrudan ekibe gönderin.",
-      "title": "Ne düşündüğünüzü söyleyin"
-    },
-    "nav": {
-      "body": "Yakalamak için Gelen Kutusu, günlük notlar için Günlük, zaman çizelgeniz için Takvim, yapılacaklar için Görevler ve her şeyin nasıl bağlandığını görmek için Grafik.",
-      "title": "Çalışma alanlarınız"
+    "welcome": {
+      "title": "MemryNote'a hoş geldiniz",
+      "body": "Size özel, çevrimdışı öncelikli alanınız. Notlar uçtan uca şifrelidir — cihazınızdan asla şifrelenmemiş olarak çıkmaz."
     },
     "newNote": {
-      "body": "Buradan başlayın. Yazdığınız her şey önce yerel olarak depolanır.",
-      "title": "İlk notunuzu oluşturun"
+      "title": "İlk notunuzu oluşturun",
+      "body": "Buradan başlayın. Yazdığınız her şey önce yerel olarak depolanır."
     },
-    "settings": {
-      "body": "Notlarınızı 12'den fazla uygulamadan — Obsidian, Notion, Apple Notes, Evernote ve daha fazlası — içe aktarın ve diğer her şeyi Ayarlar'da ayarlayın.",
-      "title": "Ayarlar ve içe aktarmalar"
+    "nav": {
+      "title": "Çalışma alanlarınız",
+      "body": "Hızlı kayıt için Gelen kutusu, günlük notlar için Günlük, zaman çizelgeniz için Takvim, yapılacaklar için Görevler ve her şeyin nasıl bağlandığını görmek için Grafik."
+    },
+    "collections": {
+      "title": "Koleksiyonlar, yer imleri ve etiketler",
+      "body": "Notları klasörlerde düzenleyin, yer imlerini sabitleyin ve etikete göre göz atın — hepsi burada."
+    },
+    "dayPanel": {
+      "title": "Gününüz, çalışmanızın yanında",
+      "body": "Yan panel, okuduğunuz şeyin yanında bir takvim ve gün görünümü tutar."
+    },
+    "agentChat": {
+      "title": "Yapay zeka ajanıyla sohbet edin",
+      "body": "MemryNote asistanına kasanız hakkında soru sormak için Ajan sekmesine geçin."
     },
     "sync": {
-      "body": "Her cihazı senkron tutmak için uçtan uca şifreli eşitlemeyi açın.",
-      "title": "Özel, şifreli eşitleme"
+      "title": "Özel, şifreli eşitleme",
+      "body": "Tüm cihazlarınızı eşitlenmiş tutmak için uçtan uca şifreli eşitlemeyi açın."
     },
-    "welcome": {
-      "body": "Özel, çevrimdışı öncelikli eviniz. Notlar uçtan uca şifrelidir — cihazınızdan şifrelenmemiş olarak asla ayrılmaz.",
-      "title": "MemryNote'a hoş geldiniz"
+    "feedback": {
+      "title": "Ne düşündüğünüzü söyleyin",
+      "body": "Geri bildiriminizi buradan doğrudan ekibe gönderin."
+    },
+    "settings": {
+      "title": "Ayarlar ve içe aktarmalar",
+      "body": "Notlarınızı Obsidian, Notion, Apple Notes, Evernote ve daha fazlası dahil 12'den fazla uygulamadan içe aktarın; diğer her şeyi Ayarlar bölümünden yapılandırın."
     },
     "tour": {
       "next": "İleri",
-      "previous": "Geri",
+      "previous": "Önceki",
       "progress": "{current} / {total}"
+    },
+    "starPrompt": {
+      "title": "Tanıtım tamamlandı",
+      "body": "Lütfen GitHub'da bize yıldız verin — başkalarının MemryNote'u bulmasına yardımcı olur.",
+      "action": "GitHub'da yıldız ver"
     }
   },
-  "capture": {
-    "focusShortcut": "Yakalama girişine odaklan",
-    "detailHint": "ayrıntı",
-    "focusHint": "Q",
-    "submit": "Yakala"
-  },
-  "canvas": {
-    "card": {
-      "addCard": "Kart ekle",
-      "addCreateNote": "Not oluştur: \"{query}\"",
-      "addCreateNoteEmpty": "Yeni not oluştur",
-      "addCreatedAt": "Oluşturuldu: {date}",
-      "addEmpty": "Sonuç bulunamadı",
-      "addGroupEvents": "Etkinlikler",
-      "addGroupNotes": "Notlar",
-      "addGroupTasks": "Görevler",
-      "addOnCanvas": "Tuvalde",
-      "addPlaceholder": "Not, görev ve etkinlik ara…",
-      "allDay": "Bütün gün",
-      "createNoteFailed": "Not oluşturulamadı",
-      "deleted": "Öğe silindi",
-      "loading": "Yükleniyor…",
-      "open": "Sekmede aç",
-      "openToEdit": "Düzenlemek için sekmede aç",
-      "untitled": "Başlıksız",
-      "bulkGroup": "Tümünü ekle",
-      "bulkFromTag": "Bir etiketten…",
-      "bulkFromFolder": "Bir klasörden…",
-      "bulkSearchTags": "Etiket ara…",
-      "bulkSearchFolders": "Klasör ara…",
-      "bulkTagsHeading": "Etiketler",
-      "bulkFoldersHeading": "Klasörler",
-      "bulkItemCount": "{count, plural, one {# öğe} other {# öğe}}",
-      "bulkViewsHeading": "{name} içinden ekle",
-      "bulkAllItems": "Tüm öğeler",
-      "bulkConfirmTitle": "{count, plural, one {{name} içinden # kart eklensin mi?} other {{name} içinden # kart eklensin mi?}}",
-      "bulkConfirmBody": "Büyük panolarda gezinmek yavaşlar ve senkronizasyon boyut sınırı aşılabilir.",
-      "bulkConfirmSkipped": "{count, plural, one {# öğe zaten bu tuvalde, atlanacak.} other {# öğe zaten bu tuvalde, atlanacak.}}",
-      "bulkConfirmAdd": "{count, plural, one {# kart ekle} other {# kart ekle}}",
-      "bulkBack": "Geri",
-      "bulkEmpty": "Eklenecek not, dosya veya görev yok",
-      "bulkLoadFailed": "Öğeler yüklenemedi",
-      "bulkAdded": "{count, plural, one {# kart eklendi} other {# kart eklendi}}",
-      "bulkAddedSkipped": "{count, plural, one {# kart eklendi} other {# kart eklendi}} · {skipped} tanesi zaten tuvalde",
-      "bulkAllOnCanvas": "{count, plural, one {Zaten bu tuvalde} other {# öğenin tümü zaten bu tuvalde}}"
-    },
-    "corruptScene": "Bu tuval okunamadı. Veri kaybını önlemek için düzenleme devre dışı bırakıldı.",
-    "createFailed": "Tuval oluşturulamadı",
-    "disabledBody": "Bu sekme, bu cihazda etkin olmayan bir özelliğe ait.",
-    "disabledTitle": "Tuval etkin değil",
-    "empty": "Henüz tuval yok",
-    "libraryStoreFailed": "Şekil kitaplığınız kaydedilemedi. Kitaplıkta yaptığınız son değişiklikler kaybolabilir.",
-    "loadFailed": "Tuvaller yüklenemedi",
-    "loading": "Tuvaller yükleniyor…",
-    "newCanvas": "Yeni tuval",
-    "notFound": "Bu tuval bulunamadı",
-    "openFailed": "Tuval açılamadı",
-    "savedToVault": "Tüm değişiklikler kasanıza otomatik olarak kaydedilir",
-    "sectionLabel": "Tuvaller",
-    "tooLargeToSync": "Bu tuval senkronize edilemeyecek kadar büyük. Bu cihazda kayıtlı, ancak küçülene kadar diğer cihazlarınıza ulaşmayacak.",
-    "untitled": "Başlıksız tuval"
-  },
   "shortcuts": {
-    "combos": {
-      "clickRow": "Satıra tıkla",
-      "reset": "Sıfırla",
-      "shortcutsTab": "Kısayollar sekmesi"
-    },
-    "description": "memrynote içinde gezinmek, düşünceleri yakalamak ve işleri işlemek için hızlı yollar.",
+    "description": "memrynote'ta gezinmek, düşünceleri hızlıca kaydetmek ve işleri halletmek için kısa yollar.",
+    "or": "veya",
+    "then": "sonra",
     "groups": {
       "general": {
-        "description": "Uygulama genelinde gezinme ve yardım.",
-        "title": "Genel"
-      },
-      "inbox": {
-        "description": "Yakalanan öğeleri hızlıca işleyin.",
-        "title": "Gelen Kutusu"
-      },
-      "journal": {
-        "description": "Günlük görünümlerinde gezinin ve yazma alanına odaklanın.",
-        "title": "Günlük"
-      },
-      "notes": {
-        "description": "Not yazın, biçimlendirin ve arayın.",
-        "title": "Notlar / Düzenleyici"
-      },
-      "settings": {
-        "description": "Ayarları açın ve kısayolları özelleştirin.",
-        "title": "Ayarlar"
+        "title": "Genel",
+        "description": "Uygulama genelinde gezinme ve yardım."
       },
       "tabs": {
-        "description": "Sekmeler ve bölmeler arasında geçiş yapın.",
-        "title": "Sekmeler ve Bölmeler"
+        "title": "Sekmeler ve bölmeler",
+        "description": "Sekmeler ve bölmeler arasında geçiş yapın."
+      },
+      "inbox": {
+        "title": "Gelen kutusu",
+        "description": "Eklenen kayıtları hızlıca işleyin."
+      },
+      "journal": {
+        "title": "Günlük",
+        "description": "Günlük görünümlerinde gezinin ve yazma alanına odaklanın."
+      },
+      "notes": {
+        "title": "Notlar / Düzenleyici",
+        "description": "Not yazın, biçimlendirin ve arayın."
       },
       "tasks": {
-        "description": "Görevleri filtreleyin, seçin ve tamamlayın.",
-        "title": "Görevler"
+        "title": "Görevler",
+        "description": "Görevleri filtreleyin, seçin ve tamamlayın."
+      },
+      "settings": {
+        "title": "Ayarlar",
+        "description": "Ayarları açın ve kısayolları özelleştirin."
       }
     },
     "items": {
       "general": {
-        "createNote": "Not oluştur",
-        "keyboardShortcuts": "Klavye kısayollarını aç",
-        "openSettings": "Ayarları aç",
         "quickSearch": "Hızlı aramayı aç",
-        "sidebarSection": "Kenar çubuğu bölümüne git",
+        "createNote": "Not oluştur",
+        "openSettings": "Ayarları aç",
+        "switchVault": "Kasa değiştir",
+        "adjacentVault": "Önceki veya sonraki kasa",
+        "keyboardShortcuts": "Klavye kısayollarını aç",
+        "undoTaskAction": "Son görev işlemini geri al",
         "toggleSidebar": "Kenar çubuğunu aç/kapat",
-        "undoTaskAction": "Son görev işlemini geri al"
+        "sidebarSection": "Kenar çubuğu bölümüne git"
+      },
+      "tabs": {
+        "newTabMenu": "Yeni sekme menüsünü aç",
+        "closeTab": "Sekmeyi kapat",
+        "closeAllInPane": "Bölmedeki tüm sekmeleri kapat",
+        "reopenClosedTab": "Kapatılan sekmeyi yeniden aç",
+        "nextTab": "Sonraki sekme",
+        "previousTab": "Önceki sekme",
+        "pinTab": "Sekmeyi sabitle veya sabitlemeyi kaldır",
+        "duplicateTab": "Sekmeyi çoğalt",
+        "splitRight": "Sağa böl",
+        "splitDown": "Aşağı böl",
+        "closeSplitPane": "Bölünmüş bölmeyi kapat",
+        "focusPane": "Başka bir bölmeye odaklan",
+        "moveTabToPane": "Sekmeyi bölmeye taşı",
+        "maximizePane": "Geçerli bölmeyi büyüt"
       },
       "inbox": {
-        "archiveItem": "Seçili öğeyi arşivle",
-        "chooseQuickFileResult": "Hızlı dosyalama sonucunu seç",
-        "clearSelection": "Seçimi temizle veya hızlı dosyalamayı kapat",
-        "confirmFiling": "Dosyalama panelini onayla",
+        "nextItem": "Sonraki öğe",
+        "previousItem": "Önceki öğe",
         "firstOrLastItem": "İlk veya son öğe",
         "jumpByPage": "Sayfa sayfa atla",
-        "nextItem": "Sonraki öğe",
-        "openOriginal": "Orijinal bağlantıyı aç",
-        "openQuickFile": "Hızlı dosyalamayı aç",
-        "previousItem": "Önceki öğe",
-        "refresh": "Gelen kutusunu yenile",
-        "selectAllVisible": "Görünen tüm öğeleri seç",
+        "togglePreview": "Önizleme panelini aç/kapat",
         "selectItem": "Öğeyi seç",
-        "togglePreview": "Önizleme panelini aç/kapat"
+        "selectAllVisible": "Görünen tüm öğeleri seç",
+        "clearSelection": "Seçimi temizle veya hızlı yerleştirmeyi kapat",
+        "openQuickFile": "Hızlı yerleştirmeyi aç",
+        "chooseQuickFileResult": "Hızlı yerleştirme sonucunu seç",
+        "archiveItem": "Seçili öğeyi arşivle",
+        "openOriginal": "Orijinal bağlantıyı aç",
+        "refresh": "Gelen kutusunu yenile",
+        "confirmFiling": "Yerleştirme panelini onayla"
       },
       "journal": {
-        "bold": "Seçili metni kalın yap",
-        "find": "Günlükte bul",
-        "italic": "Seçili metni italik yap",
         "returnFromOverview": "Ay veya yıl görünümünden dön",
+        "find": "Günlükte bul",
+        "bold": "Seçili metni kalın yap",
+        "italic": "Seçili metni italik yap",
         "underline": "Seçili metnin altını çiz"
       },
       "notes": {
-        "bold": "Kalın",
-        "closeOverlays": "Düzenleyici katmanlarını kapat",
-        "commandMenu": "Düzenleyici komut menüsünü aç",
         "createNote": "Not oluştur",
         "find": "Notta bul",
+        "bold": "Kalın",
         "italic": "İtalik",
-        "underline": "Altı çizili"
-      },
-      "settings": {
-        "cancelRecording": "Kısayol kaydını iptal et",
-        "customizeShortcuts": "Klavye kısayollarını özelleştir",
-        "openSettings": "Ayarları aç",
-        "recordShortcut": "Yeni bir kısayol kaydet",
-        "resetShortcut": "Bir kısayolu varsayılana döndür"
-      },
-      "tabs": {
-        "closeAllInPane": "Bölmedeki tüm sekmeleri kapat",
-        "closeSplitPane": "Bölünmüş bölmeyi kapat",
-        "closeTab": "Sekmeyi kapat",
-        "duplicateTab": "Sekmeyi çoğalt",
-        "focusPane": "Başka bir bölmeye odaklan",
-        "maximizePane": "Geçerli bölmeyi büyüt",
-        "moveTabToPane": "Sekmeyi bölmeye taşı",
-        "newTabMenu": "Yeni sekme menüsünü aç",
-        "nextTab": "Sonraki sekme",
-        "pinTab": "Sekmeyi sabitle veya sabitlemeyi kaldır",
-        "previousTab": "Önceki sekme",
-        "reopenClosedTab": "Kapatılan sekmeyi yeniden aç",
-        "splitDown": "Aşağı böl",
-        "splitRight": "Sağa böl"
+        "underline": "Altı çizili",
+        "commandMenu": "Düzenleyici komut menüsünü aç",
+        "closeOverlays": "Düzenleyici katmanlarını kapat"
       },
       "tasks": {
         "clearFilters": "Görünen filtreleri temizle",
+        "selectAllVisible": "Görünen tüm görevleri seç",
         "clearSelection": "Görev seçimini temizle",
         "completeSelected": "Seçili görevleri tamamla",
-        "configureRepeat": "Odaklanılan görevde tekrarı yapılandır",
         "deleteSelected": "Seçili görevleri sil",
-        "selectAllVisible": "Görünen tüm görevleri seç",
-        "skipOccurrence": "Tekrar örneğini atla",
+        "configureRepeat": "Odaklanılan görevde tekrarı yapılandır",
+        "skipOccurrence": "Bu tekrarı atla",
         "stopRepeating": "Görev tekrarını durdur"
+      },
+      "settings": {
+        "openSettings": "Ayarları aç",
+        "customizeShortcuts": "Klavye kısayollarını özelleştir",
+        "recordShortcut": "Yeni bir kısayol kaydet",
+        "cancelRecording": "Kısayol kaydını iptal et",
+        "resetShortcut": "Bir kısayolu varsayılana döndür"
       }
     },
-    "or": "veya",
-    "then": "sonra"
+    "combos": {
+      "shortcutsTab": "Kısayollar sekmesi",
+      "clickRow": "Satıra tıkla",
+      "reset": "Sıfırla"
+    }
+  },
+  "update": {
+    "available": "Güncelleme mevcut",
+    "downloading": "{version} indiriliyor",
+    "ready": "Güncelleme hazır",
+    "failed": "Güncellenemedi",
+    "downloadAction": "İndir",
+    "restartAction": "Yeniden başlat",
+    "detailsAction": "Ayrıntılar",
+    "popover": {
+      "readyTitle": "MemryNote {version} hazır",
+      "availableTitle": "MemryNote {version} kullanıma sunuldu",
+      "readySubtitle": "Şu anki sürümünüz: {current}",
+      "availableSubtitle": "Şu anki sürümünüz: {current} · henüz hiçbir şey indirilmedi",
+      "allChanges": "Tüm değişiklikler",
+      "restartNow": "Şimdi yeniden başlat",
+      "onNextQuit": "Bir sonraki çıkışta",
+      "download": "İndir",
+      "notNow": "Şimdi değil",
+      "moreOptions": "Diğer güncelleme seçenekleri",
+      "skipVersion": "{version} sürümünü atla",
+      "turnOffAuto": "Otomatik güncellemeleri kapat",
+      "copyVersionInfo": "Sürüm bilgisini kopyala",
+      "openSettings": "Ayarları aç"
+    },
+    "installing": {
+      "title": "{version} yükleniyor",
+      "titleUnknownVersion": "Güncelleme yükleniyor",
+      "subtitle": "MemryNote birazdan yeniden açılacak. Yazdığınız her şey zaten diskte."
+    },
+    "installFailed": {
+      "title": "MemryNote, {version} sürümünün yüklenmesini tamamlayamadı",
+      "titleUnknownVersion": "MemryNote, güncellemenin yüklenmesini tamamlayamadı",
+      "body": "Kasanıza hiç dokunulmadı — güncellemeler notlarınızı değil, yalnızca uygulamayı değiştirir. Hâlâ {current} sürümündesiniz ve her şey eskisi gibi çalışıyor.",
+      "errorLabel": "Ne ters gitti",
+      "downloadManually": "{version} sürümünü el ile indir",
+      "downloadManuallyUnknownVersion": "MemryNote'u el ile indir",
+      "tryAgain": "Tekrar dene",
+      "copyDetails": "Ayrıntıları kopyala"
+    }
+  },
+  "vaultSwipe": {
+    "indicatorLabel": "Kasalar",
+    "position": "{name}, {index}. kasa, toplam {count}",
+    "openList": "{position}. Kasa listesini aç",
+    "switchTo": "{name} kasasına geç",
+    "switchingTo": "{name} kasasına geçiliyor",
+    "changeIcon": "Simgeyi değiştir…",
+    "resetIcon": "Simgeyi sıfırla",
+    "iconButton": "{name} kasasının simgesini değiştir",
+    "iconFailed": "Kasa simgesi değiştirilemedi"
   },
   "sidebarHelp": {
     "label": "Yardım ve geri bildirim",
     "reportBug": "Hata bildir",
     "requestFeature": "Özellik iste",
-    "starOnGithub": "GitHub'da yıldızla",
+    "starOnGithub": "GitHub'da yıldız ver",
     "version": "MemryNote {version}",
     "whatsNew": "Yenilikler"
   },
   "sidebarStar": {
     "title": "MemryNote açık kaynak",
-    "body": "Açıkta geliştiriliyor. Bir yıldız, başkalarının onu bulmasına yardım eder.",
-    "star": "Yıldızla",
+    "body": "Açık kaynak olarak geliştiriliyor. Bir yıldız, başkalarının onu bulmasına yardımcı olur.",
+    "star": "Yıldız ver",
     "later": "Şimdi değil",
     "thanks": "Teşekkürler, çok şey ifade ediyor."
   },

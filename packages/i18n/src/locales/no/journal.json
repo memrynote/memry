@@ -1,7 +1,7 @@
 {
-  "title": "Journal",
+  "title": "Dagbok",
   "section": {
-    "aiConnections": "AI-tilkoblinger",
+    "aiConnections": "KI-koblinger",
     "todaysNotes": "Dagens notater",
     "todaysSchedule": "Dagens timeplan",
     "todaysTasks": "Dagens oppgaver",
@@ -9,33 +9,34 @@
     "technicalDetails": "Tekniske detaljer"
   },
   "action": {
-    "versionHistory": "Versjonshistorikk",
+    "versionHistory": "Versjonslogg",
     "export": "Eksporter",
     "fullWidth": "Full bredde",
-    "journalSettings": "Journalinnstillinger",
+    "journalSettings": "Dagbokinnstillinger",
     "fullMode": "Full modus",
     "compactMode": "Kompakt modus",
     "createNote": "Opprett notat",
     "createNewNote": "Opprett et nytt notat",
     "showLess": "Vis mindre",
-    "showMoreNotes": "Vis {count} mer merknad",
+    "showMoreNotes": "Vis {count} notat til",
     "showMoreNotes_plural": "Vis {count} flere notater",
     "showFewerNotes": "Vis færre notater",
-    "startBlank": "Start tomt i stedet",
+    "startBlank": "Start med en tom side i stedet",
     "changeTemplate": "Endre mal",
-    "dismissIndicator": "Avvis indikator",
-    "refreshConnections": "Oppdater tilkoblinger",
-    "reloadJournal": "Last journal på nytt",
+    "dismissIndicator": "Skjul indikatoren",
+    "refreshConnections": "Oppdater koblinger",
+    "reloadJournal": "Last inn dagboken på nytt",
     "goToToday": "Gå til i dag",
     "copyUnsavedContent": "Kopier ulagret innhold til utklippstavlen",
     "addBookmark": "Legg til bokmerke",
-    "removeBookmark": "Fjern bokmerket"
+    "removeBookmark": "Fjern bokmerket",
+    "deleteEntry": "Slett innlegget"
   },
   "editor": {
     "placeholder": {
-      "future": "Hva planlegger du...",
-      "today": "Hva tenker du på i dag...",
-      "past": "Reflekter over denne dagen..."
+      "future": "Hva planlegger du …",
+      "today": "Hva tenker du på i dag …",
+      "past": "Reflekter over denne dagen …"
     },
     "upload": {
       "failed": "Kunne ikke laste opp bildet"
@@ -58,13 +59,13 @@
       "saturday": "lørdag"
     },
     "weekdayShort": {
-      "sunday": "Sol",
+      "sunday": "søn",
       "monday": "man",
-      "tuesday": "tirs",
+      "tuesday": "tir",
       "wednesday": "ons",
       "thursday": "tor",
       "friday": "fre",
-      "saturday": "Lør"
+      "saturday": "lør"
     },
     "month": {
       "january": "januar",
@@ -88,7 +89,7 @@
       "may": "mai",
       "june": "jun",
       "july": "jul",
-      "august": "august",
+      "august": "aug",
       "september": "sep",
       "october": "okt",
       "november": "nov",
@@ -109,62 +110,62 @@
     "nextMonth": "Neste måned",
     "previousYear": "Forrige år",
     "nextYear": "Neste år",
-    "journalBack": "Journal tilbake",
-    "journalNavigation": "Journalnavigasjon",
-    "dateNavigation": "Journaldatonavigering",
+    "journalBack": "Tilbake i dagboken",
+    "journalNavigation": "Dagboknavigasjon",
+    "dateNavigation": "Datonavigering i dagboken",
     "goToYearView": "Gå til årsvisning"
   },
   "aria": {
     "moreOptions": "Flere alternativer",
     "documentStatistics": "Dokumentstatistikk",
-    "dayContext": "Dagskontekst: oppgaver og tidsplan",
-    "scheduleEvents": "Planlegg hendelser",
+    "dayContext": "Dagskontekst: oppgaver og timeplan",
+    "scheduleEvents": "Hendelser i timeplanen",
     "tasks": "Oppgaver",
-    "notesCreatedToday": "{count}-notater opprettet i dag"
+    "notesCreatedToday": "{count} notater opprettet i dag"
   },
   "empty": {
-    "noEntry": "Ingen inngang",
+    "noEntry": "Ingen innlegg",
     "noDaysInMonth": "Ingen dager i denne måneden",
-    "noEventsScheduled": "Ingen arrangementer planlagt",
-    "noEventsScheduledToday": "Ingen arrangementer planlagt i dag",
-    "noEventsWereScheduled": "Ingen arrangementer var planlagt",
-    "noTasksDue": "Ingen oppgaver pga",
+    "noEventsScheduled": "Ingen planlagte hendelser",
+    "noEventsScheduledToday": "Ingen hendelser planlagt i dag",
+    "noEventsWereScheduled": "Ingen hendelser var planlagt",
+    "noTasksDue": "Ingen oppgaver forfaller",
     "noTasksDueToday": "Ingen oppgaver forfaller i dag",
-    "noTasksWereDue": "Ingen oppgaver forelå",
+    "noTasksWereDue": "Ingen oppgaver forfalt",
     "noNotesToday": "Ingen notater opprettet i dag",
-    "startDocumenting": "Begynn å dokumentere dine tanker og ideer"
+    "startDocumenting": "Begynn å skrive ned tankene og ideene dine"
   },
   "ai": {
-    "loading": "Analyserer oppføringen din ...",
+    "loading": "Analyserer innlegget ditt …",
     "empty": {
-      "willAppear": "Tilkoblingene dine vises her",
-      "noneYet": "Ingen tilkoblinger funnet ennå",
-      "moreJournaling": "Etter hvert som du journalfører mer, vil AI finne relaterte oppføringer",
-      "keepWriting": "Fortsett å skrive for å finne relaterte oppføringer"
+      "willAppear": "Koblingene dine vises her",
+      "noneYet": "Ingen koblinger funnet ennå",
+      "moreJournaling": "Jo mer du skriver i dagboken, desto flere relaterte innlegg finner KI",
+      "keepWriting": "Fortsett å skrive for å finne relaterte innlegg"
     },
     "error": {
-      "loadFailed": "Kunne ikke laste tilkoblinger"
+      "loadFailed": "Kunne ikke laste inn koblinger"
     },
-    "connectionAria": "Tilkobling til {label}, {scorePercent} % samsvar"
+    "connectionAria": "Kobling til {label}, {scorePercent} % samsvar"
   },
   "count": {
-    "note": "merk",
+    "note": "notat",
     "day": "dag",
     "days": "dager",
-    "event": "begivenhet",
+    "event": "hendelse",
     "events": "hendelser",
     "task": "oppgave",
     "todo": "å gjøre",
-    "moreConnections": "+ {count} mer tilkobling",
-    "moreConnections_plural": "+ {count} flere tilkoblinger",
-    "moreNotes": "+ {count} mer merknad",
-    "moreNotes_plural": "+ {count} flere notater",
-    "daysWithEntries": "dager med oppføringer",
+    "moreConnections": "+ {count} kobling til",
+    "moreConnections_plural": "+ {count} koblinger til",
+    "moreNotes": "+ {count} notat til",
+    "moreNotes_plural": "+ {count} notater til",
+    "daysWithEntries": "dager med innlegg",
     "charactersWritten": "tegn skrevet",
     "words": "{count} ord",
     "characters": "{count} tegn",
     "completed": "{count} fullført",
-    "overdue": "{count} forsinket"
+    "overdue": "{count} forfalt"
   },
   "stats": {
     "wordCount": "Antall ord",
@@ -173,57 +174,62 @@
     "lastModified": "Sist endret",
     "lessThanOneMinute": "< 1 min",
     "minutes": "{minutes} min",
-    "read": "{readingTime} lest",
-    "modified": "Modifisert {date}"
+    "read": "{readingTime} lesetid",
+    "modified": "Endret {date}"
   },
   "task": {
     "completed": "Fullført",
     "notCompleted": "Ikke fullført",
-    "priority": "{priority} prioritet",
+    "priority": "Prioritet: {priority}",
     "overdue": "forfalt",
-    "markComplete": "Merk \"{title}\" som fullført",
-    "markNotComplete": "Merk \"{title}\" som ikke fullført"
+    "markComplete": "Merk «{title}» som fullført",
+    "markNotComplete": "Merk «{title}» som ikke fullført"
   },
   "template": {
-    "using": "Bruker \"{templateName}\""
+    "using": "Bruker «{templateName}»"
   },
   "reminder": {
     "hasReminders": "Har påminnelser",
-    "setToRevisit": "Still inn påminnelse om å besøke på nytt",
+    "setToRevisit": "Angi påminnelse om å se på dette igjen",
     "tooltip": "Påminnelse: {date}",
-    "tooltipMore": "Påminnelse: {date} (+{count} mer)",
+    "tooltipMore": "Påminnelse: {date} (+{count} til)",
     "success": {
-      "set": "Påminnelse satt for denne journalposten",
+      "set": "Påminnelse angitt for dette dagbokinnlegget",
       "deleted": "Påminnelse slettet",
       "dismissed": "Påminnelse avvist",
-      "snoozed": "Påminnelsen er slumret"
+      "snoozed": "Påminnelsen er slumret",
+      "updated": "Påminnelsen er oppdatert"
     },
     "error": {
       "set": "Kunne ikke angi påminnelse",
       "delete": "Kunne ikke slette påminnelsen",
       "dismiss": "Kunne ikke avvise påminnelsen",
-      "snooze": "Kunne ikke slumre påminnelsen"
+      "snooze": "Kunne ikke slumre påminnelsen",
+      "update": "Kunne ikke oppdatere påminnelsen"
     }
   },
   "toast": {
     "unsavedRetry": "Innholdet ditt er fortsatt i minnet. Klikk for å prøve å lagre på nytt.",
-    "noteNotFound": "Merk at \"{target}\" ikke ble funnet",
+    "noteNotFound": "Fant ikke notatet «{target}»",
+    "createLinkedFailed": "Kunne ikke opprette det lenkede notatet",
     "fileNotFound": "Filen ble ikke funnet: {target}",
-    "openLinkedItemFailed": "Kunne ikke åpne koblet element",
-    "errorPrefix": "Feil:"
+    "openLinkedItemFailed": "Kunne ikke åpne det lenkede elementet",
+    "errorPrefix": "Feil:",
+    "deleteFailed": "Kunne ikke slette dagbokinnlegget",
+    "bookmarkFailed": "Kunne ikke oppdatere bokmerket"
   },
   "export": {
-    "noteTitle": "Journal - {day}. {month} {year}"
+    "noteTitle": "Dagbok – {day}. {month} {year}"
   },
   "note": {
-    "generatedTitle": "Merk - {date}",
-    "openAria": "Åpne {title}, opprettet på {time}"
+    "generatedTitle": "Notat – {date}",
+    "openAria": "Åpne {title}, opprettet kl. {time}"
   },
   "error": {
-    "title": "Journalfeil",
-    "description": "Journalen fant en feil for {date}. De siste endringene dine er kanskje ikke lagret.",
-    "descriptionNoDate": "Journalen fant en feil. De siste endringene dine er kanskje ikke lagret.",
-    "unsavedContent": "Ulagret innhold oppdaget ({length}-tegn)"
+    "title": "Feil i dagboken",
+    "description": "Det oppstod en feil i dagboken for {date}. De siste endringene dine er kanskje ikke lagret.",
+    "descriptionNoDate": "Det oppstod en feil i dagboken. De siste endringene dine er kanskje ikke lagret.",
+    "unsavedContent": "Ulagret innhold oppdaget ({length} tegn)"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
@@ -232,9 +238,13 @@
   },
   "phaseI": {
     "errors": {
-      "failedToSaveJournalEntry": "Kunne ikke lagre journaloppføringen",
-      "failedToLoadJournalSettings": "Kunne ikke laste journalinnstillinger",
+      "failedToSaveJournalEntry": "Kunne ikke lagre dagbokinnlegget",
+      "failedToLoadJournalSettings": "Kunne ikke laste inn dagbokinnstillingene",
       "failedToUpdateSettings": "Kunne ikke oppdatere innstillingene"
     }
+  },
+  "deleteConfirm": {
+    "title": "Slett dagbokinnlegg",
+    "description": "Er du sikker på at du vil slette «{title}»? Denne handlingen kan ikke angres."
   }
 }

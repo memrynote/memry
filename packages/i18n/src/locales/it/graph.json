@@ -1,77 +1,137 @@
 {
   "page": {
-    "loading": "Caricamento grafico...",
-    "load-failed": "Impossibile caricare i dati del grafico",
+    "loading": "Caricamento del grafo…",
+    "load-failed": "Impossibile caricare i dati del grafo",
+    "render-failed": "Il grafo non è disponibile su questo dispositivo",
+    "render-failed-description": "Questo dispositivo non è riuscito ad avviare il motore grafico. Le tue note sono al sicuro.",
     "try-again": "Riprova",
-    "aria-label": "Grafico della conoscenza con {nodeCount, plural, one {Nodo #} other {Nodi #}} e {edgeCount, plural, one {Connessione #} other {Connessioni #}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "Nodi del grafico",
+    "aria-label": "Grafo della conoscenza con {nodeCount, plural, one {# nodo} other {# nodi}} e {edgeCount, plural, one {# connessione} other {# connessioni}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Nodi del grafo",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
-    "title": "Il tuo grafico della conoscenza",
-    "description": "Le connessioni tra note, attività e progetti verranno visualizzate qui come grafico interattivo.",
+    "title": "Il tuo grafo della conoscenza",
+    "description": "Le connessioni tra note, attività e progetti appariranno qui come grafo interattivo.",
     "link-title": "Collega le tue note",
-    "link-description": "Usa [[wikilinks]] per collegare le idee tra le note",
-    "discover-title": "Scopri i modelli",
+    "link-description": "Usa i [[link wiki]] per collegare le idee tra le note",
+    "discover-title": "Scopri schemi ricorrenti",
     "discover-description": "Man mano che le connessioni crescono, cluster e temi emergeranno in modo naturale"
   },
   "entity": {
     "note": "nota",
     "notes": "note",
-    "journal": "diario",
-    "journals": "riviste",
-    "task": "compito",
-    "tasks": "compiti",
+    "journal": "pagina di diario",
+    "journals": "pagine di diario",
+    "task": "attività",
+    "tasks": "attività",
     "project": "progetto",
     "projects": "progetti",
-    "tag": "etichetta",
+    "tag": "tag",
     "tags": "tag",
     "orphan": "orfano",
     "orphans": "orfani",
-    "unresolved": "irrisolto"
+    "unresolved": "irrisolto",
+    "category": "categoria"
   },
   "summary": {
     "node-type-count": "{count} {label}"
   },
   "control": {
-    "show-settings": "Impostazioni del grafico",
+    "show-settings": "Impostazioni del grafo",
     "hide-settings": "Nascondi impostazioni",
     "reset-filters": "Reimposta i filtri",
     "filters": "Filtri",
     "display": "Visualizzazione",
     "show-labels": "Mostra etichette",
+    "live-motion": "Animazione in tempo reale",
     "focus-depth": "profondità {depth}",
-    "clear-focus": "Nodo focalizzato chiaro"
+    "clear-focus": "Esci dal focus sul nodo",
+    "relayout": "Ricalcola il layout",
+    "categories": "Categorie di tag",
+    "color-by-category": "Colora per categoria",
+    "no-categories": "Raggruppa i tag in categorie nella pagina dei tag per colorare e comprimere il grafo per categoria.",
+    "collapse-category": "Comprimi {name}",
+    "expand-category": "Espandi {name}",
+    "uncategorized": "Senza categoria"
   },
   "filter": {
     "notes": "Note",
-    "journals": "Riviste",
-    "tasks": "Compiti",
+    "journals": "Diario",
+    "tasks": "Attività",
     "projects": "Progetti",
     "tags": "Tag",
     "orphans": "Orfani",
-    "toggle-entity": "Attiva/disattiva {label}",
-    "toggle-orphans": "Attiva/disattiva i nodi orfani"
+    "canvas-edges": "Connessioni nelle lavagne",
+    "toggle-entity": "Mostra o nascondi {label}",
+    "toggle-orphans": "Mostra o nascondi i nodi orfani"
   },
   "search": {
-    "placeholder": "Cerca nodi...",
-    "clear": "Cancella ricerca nel grafico"
+    "placeholder": "Cerca nodi…",
+    "clear": "Cancella la ricerca nel grafo"
   },
   "context-menu": {
     "untitled": "Senza titolo",
-    "focus-node": "Concentrati su questo nodo",
+    "focus-node": "Metti a fuoco questo nodo",
     "open-new-tab": "Apri in una nuova scheda",
     "create-note": "Crea nota",
-    "copy-title": "Copia titolo"
+    "copy-title": "Copia titolo",
+    "link-to": "Collega a…",
+    "add-tag": "Aggiungi tag…",
+    "back": "Indietro",
+    "link-search": "Cerca note…",
+    "tag-search": "Cerca o crea un tag…",
+    "no-matches": "Nessun risultato",
+    "create-tag": "Crea #{tag}",
+    "remove-link": "Rimuovi il link a {title}",
+    "unpin": "Non fissare più",
+    "collapse-category": "Comprimi {name}",
+    "expand-category": "Espandi {name}"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {Connessione #} other {Connessioni #}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# connessione} other {# connessioni}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# elemento} other {# elementi}}",
+    "click-to-expand": "Fai clic per espandere"
   },
   "local-panel": {
-    "loading": "Caricamento grafico...",
+    "loading": "Caricamento del grafo…",
     "empty": "Nessuna connessione trovata",
-    "open-full": "Apri il grafico completo",
-    "close": "Chiudi il grafico"
+    "open-full": "Apri il grafo completo",
+    "close": "Chiudi il grafo",
+    "pin": "Fissa a questa nota",
+    "unpin": "Non fissare più e segui la nota aperta",
+    "pinned-to": "Fissato a: {title}"
+  },
+  "edit": {
+    "linked": "{source} collegata a {target} in “{property}”",
+    "unlinked": "Link da {source} a {target} rimosso",
+    "already-linked": "{source} ha già un link a {target}",
+    "property-conflict": "“{property}” in questa nota non è una proprietà di tipo relazione, quindi il link non è stato aggiunto",
+    "link-unsupported": "I link si possono creare solo tra note",
+    "link-failed": "Impossibile aggiungere il link",
+    "unlink-failed": "Impossibile rimuovere il link",
+    "tag-added": "#{tag} aggiunto a {note}",
+    "tag-exists": "Questa nota ha già #{tag}",
+    "tag-failed": "Impossibile aggiungere il tag",
+    "undo-failed": "Impossibile annullare la modifica"
+  },
+  "relayout-confirm": {
+    "title": "Ricalcolare il layout del grafo?",
+    "description": "Tutti i nodi fissati vengono rilasciati e il grafo si riorganizza da capo. Il layout salvato viene scartato.",
+    "cancel": "Annulla",
+    "confirm": "Ricalcola il layout"
+  },
+  "views": {
+    "title": "Viste salvate",
+    "unsaved": "Vista non salvata",
+    "edited": "Modificata",
+    "empty": "Ancora nessuna vista salvata",
+    "save-as": "Salva come nuova vista…",
+    "update": "Aggiorna “{name}”",
+    "delete": "Elimina la vista {name}",
+    "save-dialog-title": "Salva vista del grafo",
+    "save-dialog-placeholder": "Nome della vista",
+    "cancel": "Annulla",
+    "save": "Salva"
   }
 }

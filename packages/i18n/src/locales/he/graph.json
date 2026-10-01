@@ -1,77 +1,137 @@
 {
   "page": {
-    "loading": "טוען גרף...",
-    "load-failed": "טעינת נתוני גרף נכשלה",
-    "try-again": "נסה שוב",
-    "aria-label": "גרף ידע עם {nodeCount, plural, one {צומת #} other {צמתי #}} ו-{edgeCount, plural, one {חיבור #} other {חיבורי #}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "גרף צמתים",
+    "loading": "טוען גרף…",
+    "load-failed": "טעינת נתוני הגרף נכשלה",
+    "render-failed": "הגרף לא זמין במכשיר הזה",
+    "render-failed-description": "לא ניתן היה להפעיל את מנוע הגרפיקה במכשיר הזה. הפתקים שלך בטוחים.",
+    "try-again": "ניסיון חוזר",
+    "aria-label": "גרף ידע עם {nodeCount, plural, one {צומת אחד} other {# צמתים}} {edgeCount, plural, one {וחיבור אחד} other {ו-# חיבורים}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "צמתים בגרף",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
     "title": "גרף הידע שלך",
-    "description": "חיבורים בין ההערות, המשימות והפרויקטים שלך יופיעו כאן כגרף אינטראקטיבי.",
-    "link-title": "קשר את ההערות שלך",
-    "link-description": "השתמש ב-[[wikilinks]] כדי לחבר רעיונות בין הערות",
-    "discover-title": "גלה דפוסים",
-    "discover-description": "ככל שהקשרים יגדלו, אשכולות ונושאים יצוצו באופן טבעי"
+    "description": "חיבורים בין הפתקים, המשימות והפרויקטים שלך יופיעו כאן כגרף אינטראקטיבי.",
+    "link-title": "קישור בין פתקים",
+    "link-description": "אפשר להשתמש ב-[[wikilinks]] כדי לחבר רעיונות בין פתקים",
+    "discover-title": "גילוי דפוסים",
+    "discover-description": "ככל שהחיבורים יתרבו, אשכולות ונושאים יצוצו באופן טבעי"
   },
   "entity": {
-    "note": "הערה",
-    "notes": "הערות",
+    "note": "פתק",
+    "notes": "פתקים",
     "journal": "יומן",
     "journals": "יומנים",
     "task": "משימה",
     "tasks": "משימות",
     "project": "פרויקט",
     "projects": "פרויקטים",
-    "tag": "תג",
-    "tags": "תגים",
+    "tag": "תגית",
+    "tags": "תגיות",
     "orphan": "יתום",
     "orphans": "יתומים",
-    "unresolved": "לא פתורה"
+    "unresolved": "לא נוצר",
+    "category": "קטגוריה"
   },
   "summary": {
     "node-type-count": "{count} {label}"
   },
   "control": {
     "show-settings": "הגדרות גרף",
-    "hide-settings": "הסתר הגדרות",
-    "reset-filters": "אפס מסננים",
+    "hide-settings": "הסתרת ההגדרות",
+    "reset-filters": "איפוס המסננים",
     "filters": "מסננים",
     "display": "תצוגה",
-    "show-labels": "הצג תוויות",
+    "show-labels": "הצגת תוויות",
+    "live-motion": "תנועה חיה",
     "focus-depth": "עומק {depth}",
-    "clear-focus": "נקה צומת ממוקד"
+    "clear-focus": "ניקוי הצומת הממוקד",
+    "relayout": "סידור מחדש",
+    "categories": "קטגוריות תגיות",
+    "color-by-category": "צביעה לפי קטגוריה",
+    "no-categories": "כדי לצבוע ולכווץ את הגרף לפי קטגוריות, אפשר לקבץ תגיות לקטגוריות במרכז התגיות.",
+    "collapse-category": "כיווץ {name}",
+    "expand-category": "הרחבת {name}",
+    "uncategorized": "ללא קטגוריה"
   },
   "filter": {
-    "notes": "הערות",
-    "journals": "כתבי עת",
+    "notes": "פתקים",
+    "journals": "יומנים",
     "tasks": "משימות",
     "projects": "פרויקטים",
-    "tags": "תגים",
+    "tags": "תגיות",
     "orphans": "יתומים",
-    "toggle-entity": "החלף את {label}",
-    "toggle-orphans": "החלף צמתים יתומים"
+    "canvas-edges": "חיבורי קנבס",
+    "toggle-entity": "הצגה או הסתרה של {label}",
+    "toggle-orphans": "הצגה או הסתרה של צמתים יתומים"
   },
   "search": {
-    "placeholder": "חפש צמתים...",
-    "clear": "נקה חיפוש גרפים"
+    "placeholder": "חיפוש צמתים…",
+    "clear": "ניקוי החיפוש בגרף"
   },
   "context-menu": {
     "untitled": "ללא כותרת",
-    "focus-node": "התמקד בצומת זה",
-    "open-new-tab": "פתח בכרטיסייה חדשה",
-    "create-note": "צור הערה",
-    "copy-title": "העתק כותרת"
+    "focus-node": "התמקדות בצומת הזה",
+    "open-new-tab": "פתיחה בכרטיסייה חדשה",
+    "create-note": "יצירת פתק",
+    "copy-title": "העתקת הכותרת",
+    "link-to": "קישור אל…",
+    "add-tag": "הוספת תגית…",
+    "back": "חזרה",
+    "link-search": "חיפוש בפתקים…",
+    "tag-search": "חיפוש או יצירה של תגית…",
+    "no-matches": "אין התאמות",
+    "create-tag": "יצירת #{tag}",
+    "remove-link": "הסרת הקישור אל {title}",
+    "unpin": "ביטול הצמדה",
+    "collapse-category": "כיווץ {name}",
+    "expand-category": "הרחבת {name}"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {חיבור #} other {חיבורי #}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {חיבור אחד} other {# חיבורים}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {פריט אחד} other {# פריטים}}",
+    "click-to-expand": "לחיצה להרחבה"
   },
   "local-panel": {
-    "loading": "טוען גרף...",
-    "empty": "לא נמצאו קשרים",
-    "open-full": "פתח את הגרף המלא",
-    "close": "סגור גרף"
+    "loading": "טוען גרף…",
+    "empty": "לא נמצאו חיבורים",
+    "open-full": "פתיחת הגרף המלא",
+    "close": "סגירת הגרף",
+    "pin": "הצמדה לפתק הזה",
+    "unpin": "ביטול ההצמדה ומעקב אחרי הפתק הפתוח",
+    "pinned-to": "מוצמד: {title}"
+  },
+  "edit": {
+    "linked": "נוסף קישור מ-{source} אל {target} ב-\"{property}\"",
+    "unlinked": "הקישור מ-{source} אל {target} הוסר",
+    "already-linked": "{source} כבר מקושר אל {target}",
+    "property-conflict": "\"{property}\" בפתק הזה אינו מאפיין מסוג קשר, ולכן הקישור לא נוסף",
+    "link-unsupported": "אפשר ליצור קישורים רק בין פתקים",
+    "link-failed": "הוספת הקישור נכשלה",
+    "unlink-failed": "הסרת הקישור נכשלה",
+    "tag-added": "התגית #{tag} נוספה ל-{note}",
+    "tag-exists": "לפתק הזה כבר יש את #{tag}",
+    "tag-failed": "הוספת התגית נכשלה",
+    "undo-failed": "ביטול השינוי נכשל"
+  },
+  "relayout-confirm": {
+    "title": "לסדר מחדש את הגרף?",
+    "description": "כל הצמתים המוצמדים ישוחררו, והגרף יתייצב בסידור חדש. הפריסה השמורה שלך תימחק.",
+    "cancel": "ביטול",
+    "confirm": "סידור מחדש"
+  },
+  "views": {
+    "title": "תצוגות שמורות",
+    "unsaved": "תצוגה שלא נשמרה",
+    "edited": "נערכה",
+    "empty": "עדיין אין תצוגות שמורות",
+    "save-as": "שמירה כתצוגה חדשה…",
+    "update": "עדכון \"{name}\"",
+    "delete": "מחיקת התצוגה {name}",
+    "save-dialog-title": "שמירת תצוגת גרף",
+    "save-dialog-placeholder": "שם התצוגה",
+    "cancel": "ביטול",
+    "save": "שמירה"
   }
 }

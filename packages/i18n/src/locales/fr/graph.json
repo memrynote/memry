@@ -1,77 +1,137 @@
 {
   "page": {
-    "loading": "Chargement du graphique...",
-    "load-failed": "Échec du chargement des données du graphique",
-    "try-again": "Réessayez",
-    "aria-label": "Graphique de connaissances avec {nodeCount, plural, one {Nœud #} other {Nœuds #}} et {edgeCount, plural, one {Connexion #} other {Connexions #}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "Nœuds de graphique",
+    "loading": "Chargement du graphe…",
+    "load-failed": "Impossible de charger les données du graphe",
+    "render-failed": "Le graphe n'est pas disponible sur cet appareil",
+    "render-failed-description": "Cet appareil n'a pas pu démarrer le moteur de rendu graphique. Vos notes sont intactes.",
+    "try-again": "Réessayer",
+    "aria-label": "Graphe de connaissances avec {nodeCount, plural, one {# nœud} other {# nœuds}} et {edgeCount, plural, one {# lien} other {# liens}}{summary, select, none {.} other { : {summary}.}}",
+    "nodes-list-label": "Nœuds du graphe",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
     "title": "Votre graphe de connaissances",
-    "description": "Les connexions entre vos notes, tâches et projets apparaîtront ici sous forme de graphique interactif.",
+    "description": "Les liens entre vos notes, tâches et projets apparaîtront ici sous forme de graphe interactif.",
     "link-title": "Liez vos notes",
-    "link-description": "Utilisez [[wikilinks]] pour relier les idées dans les notes",
-    "discover-title": "Découvrez les modèles",
-    "discover-description": "À mesure que les connexions se développent, des clusters et des thèmes émergeront naturellement"
+    "link-description": "Utilisez des [[liens wiki]] pour relier les idées entre vos notes",
+    "discover-title": "Découvrez des tendances",
+    "discover-description": "À mesure que les liens se multiplient, des regroupements et des thèmes émergent naturellement"
   },
   "entity": {
-    "note": "remarque",
-    "notes": "remarques",
+    "note": "note",
+    "notes": "notes",
     "journal": "journal",
     "journals": "journaux",
     "task": "tâche",
     "tasks": "tâches",
     "project": "projet",
     "projects": "projets",
-    "tag": "étiquette",
-    "tags": "balises",
+    "tag": "tag",
+    "tags": "tags",
     "orphan": "orphelin",
     "orphans": "orphelins",
-    "unresolved": "non résolu"
+    "unresolved": "non résolu",
+    "category": "catégorie"
   },
   "summary": {
     "node-type-count": "{count} {label}"
   },
   "control": {
-    "show-settings": "Paramètres du graphique",
+    "show-settings": "Paramètres du graphe",
     "hide-settings": "Masquer les paramètres",
     "reset-filters": "Réinitialiser les filtres",
     "filters": "Filtres",
     "display": "Affichage",
-    "show-labels": "Afficher les étiquettes",
+    "show-labels": "Afficher les libellés",
+    "live-motion": "Animation en temps réel",
     "focus-depth": "profondeur {depth}",
-    "clear-focus": "Effacer le nœud focalisé"
+    "clear-focus": "Annuler le centrage sur le nœud",
+    "relayout": "Recalculer la disposition",
+    "categories": "Catégories de tags",
+    "color-by-category": "Colorer par catégorie",
+    "no-categories": "Regroupez les tags en catégories dans la page des tags pour colorer et réduire le graphe par catégorie.",
+    "collapse-category": "Réduire « {name} »",
+    "expand-category": "Développer « {name} »",
+    "uncategorized": "Sans catégorie"
   },
   "filter": {
-    "notes": "Remarques",
+    "notes": "Notes",
     "journals": "Journaux",
     "tasks": "Tâches",
     "projects": "Projets",
-    "tags": "Balises",
+    "tags": "Tags",
     "orphans": "Orphelins",
-    "toggle-entity": "Basculer {label}",
-    "toggle-orphans": "Basculer les nœuds orphelins"
+    "canvas-edges": "Liens des canevas",
+    "toggle-entity": "Afficher/Masquer {label}",
+    "toggle-orphans": "Afficher/Masquer les nœuds orphelins"
   },
   "search": {
-    "placeholder": "Rechercher des nœuds...",
-    "clear": "Recherche graphique claire"
+    "placeholder": "Rechercher des nœuds…",
+    "clear": "Effacer la recherche dans le graphe"
   },
   "context-menu": {
     "untitled": "Sans titre",
-    "focus-node": "Focus sur ce nœud",
+    "focus-node": "Centrer sur ce nœud",
     "open-new-tab": "Ouvrir dans un nouvel onglet",
     "create-note": "Créer une note",
-    "copy-title": "Copier le titre"
+    "copy-title": "Copier le titre",
+    "link-to": "Lier à…",
+    "add-tag": "Ajouter un tag…",
+    "back": "Retour",
+    "link-search": "Rechercher des notes…",
+    "tag-search": "Rechercher ou créer un tag…",
+    "no-matches": "Aucun résultat",
+    "create-tag": "Créer #{tag}",
+    "remove-link": "Retirer le lien vers « {title} »",
+    "unpin": "Désépingler",
+    "collapse-category": "Réduire « {name} »",
+    "expand-category": "Développer « {name} »"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {Connexion #} other {Connexions #}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# lien} other {# liens}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# élément} other {# éléments}}",
+    "click-to-expand": "Cliquez pour développer"
   },
   "local-panel": {
-    "loading": "Chargement du graphique...",
-    "empty": "Aucune connexion trouvée",
-    "open-full": "Ouvrir le graphique complet",
-    "close": "Fermer le graphique"
+    "loading": "Chargement du graphe…",
+    "empty": "Aucun lien trouvé",
+    "open-full": "Ouvrir le graphe complet",
+    "close": "Fermer le graphe",
+    "pin": "Épingler à cette note",
+    "unpin": "Désépingler et suivre la note ouverte",
+    "pinned-to": "Épinglé : {title}"
+  },
+  "edit": {
+    "linked": "Lien ajouté de « {source} » vers « {target} » dans « {property} »",
+    "unlinked": "Lien de « {source} » vers « {target} » retiré",
+    "already-linked": "« {source} » contient déjà un lien vers « {target} »",
+    "property-conflict": "« {property} » n'est pas une propriété Relation dans cette note : le lien n'a pas été ajouté",
+    "link-unsupported": "Les liens ne peuvent être créés qu'entre des notes",
+    "link-failed": "Impossible d'ajouter le lien",
+    "unlink-failed": "Impossible de retirer le lien",
+    "tag-added": "Tag #{tag} ajouté à « {note} »",
+    "tag-exists": "Cette note a déjà le tag #{tag}",
+    "tag-failed": "Impossible d'ajouter le tag",
+    "undo-failed": "Impossible d'annuler la modification"
+  },
+  "relayout-confirm": {
+    "title": "Recalculer la disposition du graphe ?",
+    "description": "Tous les nœuds épinglés seront libérés et le graphe adoptera une nouvelle disposition. Votre disposition enregistrée sera perdue.",
+    "cancel": "Annuler",
+    "confirm": "Recalculer"
+  },
+  "views": {
+    "title": "Vues enregistrées",
+    "unsaved": "Vue non enregistrée",
+    "edited": "Modifiée",
+    "empty": "Aucune vue enregistrée pour l'instant",
+    "save-as": "Enregistrer comme nouvelle vue…",
+    "update": "Mettre à jour « {name} »",
+    "delete": "Supprimer la vue « {name} »",
+    "save-dialog-title": "Enregistrer la vue du graphe",
+    "save-dialog-placeholder": "Nom de la vue",
+    "cancel": "Annuler",
+    "save": "Enregistrer"
   }
 }

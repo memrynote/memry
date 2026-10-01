@@ -1,39 +1,59 @@
 {
   "view": {
-    "day": "dan",
-    "week": "tjedan",
-    "month": "mjesec",
-    "year": "godine"
+    "day": "Dan",
+    "week": "Tjedan",
+    "month": "Mjesec",
+    "monthGridLabel": "Mreža mjeseca",
+    "year": "Godina",
+    "timeline": "Vremenska crta"
+  },
+  "undo": {
+    "moveEvent": "Premjesti događaj",
+    "moveTask": "Promijeni rok zadatka"
   },
   "toolbar": {
-    "create-event": "Kreiraj događaj",
+    "create-event": "Stvori događaj",
     "previous-period": "Prethodno razdoblje",
     "next-period": "Sljedeće razdoblje",
     "previous-month": "Prethodni mjesec",
     "next-month": "Sljedeći mjesec",
     "today": "Danas"
   },
+  "search": {
+    "open": "Pretraži kalendar",
+    "close": "Zatvori pretraživanje",
+    "placeholder": "Pretraži događaje, zadatke, podsjetnike…",
+    "no-results": "Nema podudaranja"
+  },
   "filter": {
-    "filter-calendars": "Filtrirajte kalendare",
+    "filter-calendars": "Filtriraj kalendare",
     "sources": "Izvori",
-    "memry-items": "memrynote stavke",
+    "memry-items": "Stavke aplikacije memrynote",
     "imported-calendars": "Uvezeni kalendari",
     "event-types": "Vrste događaja",
     "google-calendars": "Google kalendari",
-    "refresh-google-calendars": "Osvježite Google kalendare"
+    "refresh-google-calendars": "Osvježi Google kalendare",
+    "not-syncing": "Ne sinkronizira se · označite za uključivanje",
+    "enable-source-failed": "Nije moguće uključiti taj kalendar.",
+    "provider-calendars": {
+      "ics": "Pretplaćeni kalendari",
+      "caldav": "CalDAV kalendari",
+      "apple-eventkit": "Ovaj Mac",
+      "other": "Ostali kalendari"
+    }
   },
   "visual-type": {
-    "event": "događaj",
+    "event": "Događaj",
     "imported-event": "Uvezeni događaj",
-    "task": "zadatak",
-    "reminder": "Podsjetnik",
-    "snooze": "Odgoditi",
     "note": "Bilješka",
-    "note-date": "Podsjetnik na datum"
+    "note-date": "Podsjetnik na datum",
+    "task": "Zadatak",
+    "reminder": "Podsjetnik",
+    "snooze": "Odgoda"
   },
   "state": {
     "loading-calendar": "Učitavanje kalendara…",
-    "loading-calendars": "Učitavanje kalendara...",
+    "loading-calendars": "Učitavanje kalendara…",
     "preparing": "Priprema…"
   },
   "empty": {
@@ -45,11 +65,11 @@
     "all-day-lower": "cjelodnevni",
     "pick-a-date": "Odaberite datum",
     "new-event": "Novi događaj",
-    "more-events": "{count, plural, one {# više događaja} other {# više događaja}}"
+    "more-events": "{count, plural, one {Još # događaj} few {Još # događaja} other {Još # događaja}}"
   },
   "form": {
-    "create-calendar-event": "Stvorite događaj u kalendaru",
-    "edit-calendar-event": "Uredite događaj u kalendaru",
+    "create-calendar-event": "Stvori događaj u kalendaru",
+    "edit-calendar-event": "Uredi događaj u kalendaru",
     "quick-create-description": "Unesite naslov i spremite za stvaranje događaja u odabranom vremenskom rasponu.",
     "event-editor-description": "Ažurirajte naslov, lokaciju, datum, vrijeme i bilješke za ovaj događaj.",
     "new-event-placeholder": "Novi događaj",
@@ -60,44 +80,85 @@
     "target-calendar": "Ciljni kalendar",
     "use-default-calendar": "Koristi zadani kalendar",
     "use-default-calendar-with-name": "Koristi zadano ({calendar})",
-    "use-memry-calendar-default": "Koristi memrynote kalendar (zadano)",
-    "primary-suffix": "primarni"
+    "use-memry-calendar-default": "Koristi kalendar aplikacije memrynote (zadano)",
+    "primary-suffix": "primarni",
+    "project": "Projekt",
+    "no-project": "Bez projekta",
+    "remove-from-project": "Ukloni iz projekta „{project}”",
+    "project-update-failed": "Nije moguće ažurirati projekt događaja",
+    "color": "Boja",
+    "default-color": "Zadana boja"
   },
   "delete-dialog": {
     "title": "Izbrisati događaj?",
-    "local-description": "\"{title}\" bit će trajno izbrisan. Ova se radnja ne može poništiti.",
-    "google-bound-description": "\"{title}\" bit će uklonjen iz memrynote i Google kalendara. Ova se radnja ne može poništiti.",
+    "local-description": "Događaj „{title}” bit će trajno izbrisan. Ova se radnja ne može poništiti.",
+    "google-bound-description": "Događaj „{title}” bit će uklonjen iz aplikacije memrynote i usluge Google Calendar. Ova se radnja ne može poništiti.",
     "context-menu-delete-label": "Izbriši događaj",
     "context-menu-add-to-project": "Dodaj u projekt"
   },
+  "agent-access-dialog": {
+    "aria": "Odaberite smije li AI čitati vaše događaje iz usluge Google Calendar",
+    "title": "Dopustiti da AI čita vaše događaje iz usluge Google Calendar?",
+    "body": "Svoje Google događaje i dalje ćete vidjeti u aplikaciji memrynote, bez obzira na odabir. Ovim se odlučuje samo smije li ih AI agent čitati kada ga pitate o svom rasporedu.",
+    "footnote": "Ovo možete promijeniti u bilo kojem trenutku u odjeljku Postavke → Integracije → Google Calendar.",
+    "allow": "Dopusti",
+    "deny": "Nemoj dopustiti",
+    "save-error": "Spremanje vašeg odabira nije uspjelo",
+    "provider": {
+      "aria": "Odaberite smije li AI čitati događaje iz izvora „{provider}”",
+      "title": "Dopustiti da AI čita događaje iz izvora „{provider}”?",
+      "body": "Ove ćete događaje i dalje vidjeti u aplikaciji memrynote, bez obzira na odabir. Ovim se odlučuje samo smije li ih AI agent čitati kada ga pitate o svom rasporedu. Za svaku uslugu kalendara odabir se postavlja zasebno.",
+      "footnote": "Ovo možete promijeniti u bilo kojem trenutku u odjeljku Postavke → Kalendar."
+    },
+    "provider-names": {
+      "ics": "Pretplaćeni kalendar",
+      "caldav": "CalDAV kalendar",
+      "apple-eventkit": "Kalendar za macOS"
+    }
+  },
   "promote-dialog": {
-    "aria": "Uredite događaj vanjskog kalendara",
-    "title": "Urediti ovaj događaj u memrynote?",
-    "body": "Uređivanjem ovog događaja stvorit će se povezana kopija u memrynote tako da se promjene sinkroniziraju u oba smjera. Nastaviti?",
+    "aria": "Uredi događaj vanjskog kalendara",
+    "title": "Urediti ovaj događaj u aplikaciji memrynote?",
+    "body": "Uređivanjem ovog događaja stvorit će se povezana kopija u aplikaciji memrynote kako bi se promjene sinkronizirale u oba smjera. Nastaviti?",
     "do-not-ask-again": "Ne pitaj više",
-    "confirm-label": "Uredite u memrynote",
-    "agent-notice": "AI agent može čitati ovu kopiju iako je AI pristup Google Calendaru isključen. Vaš izvorni Google događaj i dalje mu ostaje skriven."
+    "confirm-label": "Uredi u aplikaciji memrynote",
+    "agent-notice": "AI agent može čitati ovu kopiju iako je AI pristup usluzi Google Calendar isključen. Vaš izvorni Google događaj i dalje mu ostaje skriven."
   },
   "onboarding-dialog": {
     "aria": "Odaberite svoj zadani Google kalendar",
-    "title": "U koji bi kalendar trebali ići novi memrynote događaji?",
-    "body": "Odaberite Google kalendar koji bi memrynote trebao koristiti prema zadanim postavkama. I dalje ga možete nadjačati po događaju.",
-    "default-calendar-label": "Koristite kalendar kojim upravlja memrynote",
+    "title": "U koji kalendar spremati nove događaje iz aplikacije memrynote?",
+    "body": "Odaberite Google kalendar koji će memrynote zadano koristiti. Za pojedini događaj i dalje možete odabrati drugi.",
+    "default-calendar-label": "Koristi kalendar kojim upravlja memrynote",
     "skip": "Preskoči",
-    "use-this-calendar": "Koristite ovaj kalendar"
+    "use-this-calendar": "Koristi ovaj kalendar"
+  },
+  "connect-prompt": {
+    "pill": "Poveži Google",
+    "aria": "Poveži Google Calendar",
+    "title": "Dovršite povezivanje s uslugom Google Calendar",
+    "body": "Povežite svoj Google račun da učinite više sa svojim kalendarom:",
+    "bullets": {
+      "events": "Pregledavajte Google događaje uz bilješke i zadatke",
+      "sync": "Stvarajte i uređujte događaje, sinkronizirane u oba smjera",
+      "schedule": "Rasporedite zadatke i bilješke u kalendaru"
+    },
+    "continue": "Nastavi s Googleom",
+    "dismiss": "Odbaci",
+    "error": "Nije moguće povezati Google Calendar. Pokušajte ponovno."
   },
   "metadata": {
-    "attendees": "Polaznici",
+    "attendees": "Sudionici",
     "attendees-count": "Sudionici ({count})",
     "reminders": "Podsjetnici",
     "default-reminders": "Zadani podsjetnici",
     "visibility": "Vidljivost:",
     "optional": "Neobavezno",
-    "join-meeting": "Pridružite se sastanku",
+    "join-meeting": "Pridruži se sastanku",
+    "video-call": "Videopoziv",
     "response": {
       "accepted": "Prihvaćeno",
       "declined": "Odbijeno",
-      "tentative": "probno",
+      "tentative": "Možda",
       "needs-action": "Na čekanju"
     },
     "visibility-value": {
@@ -116,34 +177,53 @@
       "couldNotSaveEventTryAgain": "Nije moguće spremiti događaj. Pokušajte ponovno.",
       "couldNotCreateEventTryAgain": "Nije moguće stvoriti događaj. Pokušajte ponovno.",
       "couldNotSaveDefaultCalendarTryAgain": "Nije moguće spremiti zadani kalendar. Pokušajte ponovno.",
-      "failedToLoadCalendarPreferences": "Neuspješno učitavanje postavki kalendara",
+      "failedToLoadCalendarPreferences": "Učitavanje postavki kalendara nije uspjelo",
       "failedToUpdateCalendarPreferences": "Ažuriranje postavki kalendara nije uspjelo",
       "couldNotEditThisEventTryAgain": "Nije moguće urediti ovaj događaj. Pokušajte ponovno.",
       "failedToDeleteEvent": "Brisanje događaja nije uspjelo",
       "couldNotUnsnoozeInboxItem": "Nije moguće poništiti odgodu.",
-      "couldNotRescheduleInboxItem": "Nije moguće ponovno zakazati."
+      "couldNotRescheduleInboxItem": "Nije moguće promijeniti termin."
     },
     "inboxSnoozePopover": {
-      "title": "Odgođena stavka pristigle pošte",
-      "openInInbox": "Otvori u inboxu",
-      "unsnoozeNow": "Sada poništi odgodu",
-      "reschedule": "Ponovo rasporedite"
+      "title": "Odgođena stavka u ulaznom pretincu",
+      "openInInbox": "Otvori u ulaznom pretincu",
+      "unsnoozeNow": "Poništi odgodu sada",
+      "reschedule": "Promijeni termin"
     }
+  },
+  "chip": {
+    "complete-task": "Dovrši „{title}”",
+    "task-completed": "Zadatak dovršen",
+    "could-not-complete": "Nije moguće dovršiti zadatak",
+    "duration-minutes": "{minutes} min",
+    "duration-hours": "{hours} h",
+    "duration-hours-minutes": "{hours} h {minutes} min"
+  },
+  "event-card": {
+    "kind": "Događaj",
+    "close": "Zatvori"
   },
   "task-popover": {
     "title-fallback": "Detalji zadatka",
-    "open-task": "Otvoren zadatak",
-    "source-note": "Bilješka o izvoru",
-    "reschedule": "Ponovo rasporedite",
-    "mark-done": "Označi gotovo",
+    "kind": "Zadatak",
+    "open": "Otvori",
+    "complete": "Dovrši",
+    "more-actions": "Više radnji",
+    "move": "Premjesti",
+    "later": "Kasnije",
+    "next-week": "Sljedeći tjedan",
+    "open-task": "Otvori zadatak",
+    "source-note": "Izvorna bilješka",
+    "reschedule": "Promijeni rok",
+    "mark-done": "Označi kao dovršeno",
     "mark-not-done": "Označi kao nedovršeno",
     "later-today": "Kasnije danas",
     "tomorrow": "Sutra",
-    "next-week-mon": "Sljedeći tjedan · Pon",
-    "pick-date-time": "Odaberite datum i vrijeme…",
+    "next-week-mon": "Sljedeći tjedan · pon.",
+    "pick-date-time": "Odaberi datum i vrijeme…",
     "remove-due-date": "Ukloni rok",
     "subtasks-prefix": "Podzadaci",
-    "subtasks-counter": "{done} od {total} gotov",
+    "subtasks-counter": "{done} od {total} dovršeno",
     "repeats": "Ponavlja se",
     "repeats-daily": "Ponavlja se svakodnevno",
     "repeats-weekly": "Ponavlja se tjedno",
@@ -151,48 +231,156 @@
     "repeats-yearly": "Ponavlja se svake godine",
     "errors": {
       "could-not-save": "Nije moguće spremiti zadatak",
-      "could-not-reschedule": "Nije moguće promijeniti raspored zadatka",
+      "could-not-reschedule": "Nije moguće promijeniti rok zadatka",
       "could-not-remove-due-date": "Nije moguće ukloniti rok",
       "could-not-open-note": "Nije moguće otvoriti bilješku"
     }
   },
-  "connect-prompt": {
-    "aria": "Poveži Google Calendar",
-    "body": "Povežite svoj Google račun da učinite više sa svojim kalendarom:",
-    "bullets": {
-      "events": "Vidite Google događaje uz bilješke i zadatke",
-      "schedule": "Rasporedite zadatke i bilješke u kalendaru",
-      "sync": "Stvarajte i uređujte događaje, sinkronizirane u oba smjera"
-    },
-    "continue": "Nastavi s Googleom",
-    "dismiss": "Odbaci",
-    "error": "Nije moguće povezati Google Calendar. Pokušajte ponovno.",
-    "pill": "Poveži Google",
-    "title": "Dovršite povezivanje s Google Calendar"
-  },
   "notePopover": {
-    "couldNotOpen": "Nije moguće otvoriti bilješku",
     "kind": "Bilješka",
     "kindDateReminder": "Podsjetnik na datum",
-    "open": "Otvori bilješku"
+    "open": "Otvori bilješku",
+    "couldNotOpen": "Nije moguće otvoriti bilješku"
   },
-  "search": {
-    "close": "Zatvori pretragu",
-    "no-results": "Nema podudaranja",
-    "open": "Pretraži kalendar",
-    "placeholder": "Pretraži događaje, zadatke, podsjetnike…"
+  "timeline": {
+    "label": "Planirani rad na vremenskoj crti",
+    "tasks-column": "Zadaci",
+    "span": "{start} – {end}",
+    "due": "Rok: {date}",
+    "starts": "Počinje {date}",
+    "starts-short": "{date} →",
+    "no-date": "Bez datuma",
+    "today": "Danas",
+    "overdue": "zakašnjelo",
+    "untitled": "Bez naslova",
+    "days": "{count, plural, one {# dan} few {# dana} other {# dana}}",
+    "events": "Događaji",
+    "schedule-hint": "Kliknite za postavljanje datuma, povucite za postavljanje raspona",
+    "empty-title": "Ovdje na vremenskoj crti nema ničega",
+    "empty-body": "Ovdje se prikazuju zadaci s datumom početka ili rokom te cjelodnevni i višednevni događaji. Uključite zadatke bez datuma u izborniku „Prikaz” kako biste ih rasporedili povlačenjem.",
+    "status": {
+      "todo": "Nije započeto",
+      "in_progress": "U tijeku",
+      "done": "Dovršeno"
+    },
+    "priority": {
+      "urgent": "Hitan",
+      "high": "Visok",
+      "medium": "Srednji",
+      "low": "Nizak",
+      "none": "Bez prioriteta"
+    },
+    "zoom": {
+      "label": "Mjerilo",
+      "weeks": "Tjedni",
+      "months": "Mjeseci",
+      "quarters": "Tromjesečja"
+    },
+    "group-by": {
+      "project": "Projekt",
+      "status": "Status",
+      "priority": "Prioritet",
+      "none": "Bez grupiranja"
+    },
+    "group-by-label": "Grupiranje: {group}",
+    "order-by": {
+      "start": "Datum početka",
+      "due": "Rok",
+      "title": "Naslov"
+    },
+    "display": {
+      "button": "Prikaz",
+      "group-by": "Grupiraj po",
+      "order-by": "Sortiraj po",
+      "show": "Prikaži",
+      "show-events": "Događaji",
+      "show-undated": "Zadaci bez datuma",
+      "show-completed": "Dovršeni zadaci",
+      "show-subtasks": "Podzadaci"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# zadatak} few {# zadatka} other {# zadataka}} · {events, plural, one {# događaj} few {# događaja} other {# događaja}}",
+      "open": "Otvori",
+      "move": "Premjesti",
+      "resize": "Promijeni veličinu",
+      "actions": "Radnje",
+      "select": "Odaberi",
+      "today": "Danas"
+    },
+    "actions": {
+      "search": "Pretraži radnje…",
+      "search-projects": "Pretraži projekte…",
+      "empty": "Nema odgovarajuće radnje",
+      "no-projects": "Nema odgovarajućeg projekta",
+      "open": "Otvori zadatak",
+      "open-in-tasks": "Otvori u Zadacima",
+      "schedule": "Zakaži",
+      "set-start": "Postavi datum početka",
+      "set-due": "Postavi rok",
+      "move-later": "Premjesti tjedan kasnije",
+      "move-earlier": "Premjesti tjedan ranije",
+      "clear-dates": "Očisti datume",
+      "clear-start": "Očisti datum početka",
+      "clear-due": "Očisti rok",
+      "task": "Zadatak",
+      "complete": "Označi kao dovršeno",
+      "uncomplete": "Označi kao nedovršeno",
+      "change-project": "Promijeni projekt",
+      "page": {
+        "root": "Radnje",
+        "start": "Datum početka",
+        "due": "Rok",
+        "project": "Projekt"
+      }
+    },
+    "undo": {
+      "reschedule": "Promijeni rok za „{title}”"
+    }
   },
-  "undo": {
-    "moveEvent": "Premjesti događaj",
-    "moveTask": "Promijeni raspored zadatka"
+  "calendar-color": {
+    "tomato": "Rajčica",
+    "flamingo": "Flamingo",
+    "tangerine": "Mandarina",
+    "banana": "Banana",
+    "sage": "Kadulja",
+    "basil": "Bosiljak",
+    "peacock": "Paun",
+    "blueberry": "Borovnica",
+    "lavender": "Lavanda",
+    "grape": "Grožđe",
+    "graphite": "Grafit"
   },
-  "agent-access-dialog": {
-    "allow": "Dopusti",
-    "aria": "Odaberite smije li AI čitati vaše događaje iz Google Calendara",
-    "body": "Svoje Google događaje i dalje ćete vidjeti u memrynote, bez obzira na odabir. Ovim se odlučuje samo smije li ih AI agent čitati kada ga pitate o svom rasporedu.",
-    "deny": "Nemoj dopustiti",
-    "footnote": "Ovo možete promijeniti u bilo kojem trenutku u odjeljku Postavke → Integracije → Google Calendar.",
-    "save-error": "Spremanje vašeg odabira nije uspjelo",
-    "title": "Dopustiti da AI čita vaše događaje iz Google Calendara?"
+  "subscribedEvent": {
+    "kind": "Pretplaćeni kalendar",
+    "kindAppleEventKit": "Ovaj Mac",
+    "close": "Zatvori",
+    "detailsFailed": "Nije moguće učitati sudionike i poveznice za ovaj događaj. Sam događaj nije promijenjen.",
+    "showMore": "Prikaži više",
+    "showLess": "Prikaži manje",
+    "organizer": "organizator",
+    "you": "vi",
+    "phone": "Pridruži se telefonom",
+    "alert": "{minutes, plural, =0 {Obavijest u vrijeme početka} one {Obavijest # minutu prije} few {Obavijest # minute prije} other {Obavijest # minuta prije}}",
+    "alertHours": "{hours, plural, one {Obavijest # sat prije} few {Obavijest # sata prije} other {Obavijest # sati prije}}",
+    "alertDays": "{days, plural, one {Obavijest # dan prije} few {Obavijest # dana prije} other {Obavijest # dana prije}}",
+    "recurrence": {
+      "daily": "{count, plural, =1 {Ponavlja se svaki dan} one {Ponavlja se svaki # dan} few {Ponavlja se svaka # dana} other {Ponavlja se svakih # dana}}",
+      "weekly": "{count, plural, =1 {Ponavlja se svaki tjedan} one {Ponavlja se svaki # tjedan} few {Ponavlja se svaka # tjedna} other {Ponavlja se svakih # tjedana}}",
+      "weeklyOn": "{count, plural, =1 {Ponavlja se svaki tjedan ({days})} one {Ponavlja se svaki # tjedan ({days})} few {Ponavlja se svaka # tjedna ({days})} other {Ponavlja se svakih # tjedana ({days})}}",
+      "monthly": "{count, plural, =1 {Ponavlja se svaki mjesec} one {Ponavlja se svaki # mjesec} few {Ponavlja se svaka # mjeseca} other {Ponavlja se svakih # mjeseci}}",
+      "yearly": "{count, plural, =1 {Ponavlja se svake godine} one {Ponavlja se svake # godine} few {Ponavlja se svake # godine} other {Ponavlja se svakih # godina}}",
+      "other": "Ponavlja se"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Pretplaćeni kalendari"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

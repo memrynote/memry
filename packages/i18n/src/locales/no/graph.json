@@ -1,34 +1,37 @@
 {
   "page": {
-    "loading": "Laster inn graf...",
+    "loading": "Laster inn graf …",
     "load-failed": "Kunne ikke laste inn grafdata",
+    "render-failed": "Grafen er ikke tilgjengelig på denne enheten",
+    "render-failed-description": "Denne enheten kunne ikke starte grafikkmotoren. Notatene dine er trygge.",
     "try-again": "Prøv igjen",
-    "aria-label": "Kunnskapsgraf med {nodeCount, plural, one {# node} other {# noder}} og {edgeCount, plural, one {#-tilkobling} other {#-tilkoblinger}}{summary, select, none {.} other {: {summary}.}}",
-    "nodes-list-label": "Grafisk noder",
+    "aria-label": "Kunnskapsgraf med {nodeCount, plural, one {# node} other {# noder}} og {edgeCount, plural, one {# kobling} other {# koblinger}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Grafnoder",
     "node-list-item": "{label} ({type})"
   },
   "empty": {
     "title": "Kunnskapsgrafen din",
-    "description": "Forbindelser mellom notatene, oppgavene og prosjektene dine vises her som en interaktiv graf.",
-    "link-title": "Koble til notatene dine",
-    "link-description": "Bruk [[wikilinks]] for å koble ideer på tvers av notater",
+    "description": "Koblinger mellom notatene, oppgavene og prosjektene dine vises her som en interaktiv graf.",
+    "link-title": "Lenk notatene dine sammen",
+    "link-description": "Bruk [[wikilenker]] for å koble sammen ideer på tvers av notater",
     "discover-title": "Oppdag mønstre",
-    "discover-description": "Etter hvert som forbindelser vokser, vil klynger og temaer dukke opp naturlig"
+    "discover-description": "Etter hvert som koblingene blir flere, dukker klynger og temaer opp av seg selv"
   },
   "entity": {
-    "note": "merk",
+    "note": "notat",
     "notes": "notater",
-    "journal": "journal",
-    "journals": "journaler",
+    "journal": "dagbok",
+    "journals": "dagbøker",
     "task": "oppgave",
     "tasks": "oppgaver",
     "project": "prosjekt",
     "projects": "prosjekter",
     "tag": "tagg",
     "tags": "tagger",
-    "orphan": "foreldreløs",
-    "orphans": "foreldreløse barn",
-    "unresolved": "uløst"
+    "orphan": "ukoblet",
+    "orphans": "ukoblede",
+    "unresolved": "ikke opprettet",
+    "category": "kategori"
   },
   "summary": {
     "node-type-count": "{count} {label}"
@@ -38,23 +41,32 @@
     "hide-settings": "Skjul innstillinger",
     "reset-filters": "Tilbakestill filtre",
     "filters": "Filtre",
-    "display": "Skjerm",
+    "display": "Visning",
     "show-labels": "Vis etiketter",
+    "live-motion": "Bevegelse i sanntid",
     "focus-depth": "dybde {depth}",
-    "clear-focus": "Tydelig fokusert node"
+    "clear-focus": "Fjern fokus fra noden",
+    "relayout": "Ordne på nytt",
+    "categories": "Taggkategorier",
+    "color-by-category": "Fargelegg etter kategori",
+    "no-categories": "Grupper tagger i kategorier i taggoversikten for å fargelegge og slå sammen grafen etter kategori.",
+    "collapse-category": "Slå sammen {name}",
+    "expand-category": "Utvid {name}",
+    "uncategorized": "Uten kategori"
   },
   "filter": {
     "notes": "Notater",
-    "journals": "Journaler",
+    "journals": "Dagbøker",
     "tasks": "Oppgaver",
     "projects": "Prosjekter",
     "tags": "Tagger",
-    "orphans": "Foreldreløse",
-    "toggle-entity": "Slå av/på {label}",
-    "toggle-orphans": "Slå på foreldreløse noder"
+    "orphans": "Ukoblede",
+    "canvas-edges": "Lerretskoblinger",
+    "toggle-entity": "Vis/skjul {label}",
+    "toggle-orphans": "Vis/skjul ukoblede noder"
   },
   "search": {
-    "placeholder": "Søk noder...",
+    "placeholder": "Søk i noder …",
     "clear": "Tøm grafsøk"
   },
   "context-menu": {
@@ -62,16 +74,64 @@
     "focus-node": "Fokuser på denne noden",
     "open-new-tab": "Åpne i ny fane",
     "create-note": "Opprett notat",
-    "copy-title": "Kopier tittel"
+    "copy-title": "Kopier tittel",
+    "link-to": "Lenk til …",
+    "add-tag": "Legg til tagg …",
+    "back": "Tilbake",
+    "link-search": "Søk i notater …",
+    "tag-search": "Søk etter eller opprett en tagg …",
+    "no-matches": "Ingen treff",
+    "create-tag": "Opprett #{tag}",
+    "remove-link": "Fjern lenken til {title}",
+    "unpin": "Løsne",
+    "collapse-category": "Slå sammen {name}",
+    "expand-category": "Utvid {name}"
   },
   "tooltip": {
-    "connection-count": "{count, plural, one {#-tilkobling} other {#-tilkoblinger}}",
-    "more-tags": "+{count}"
+    "connection-count": "{count, plural, one {# kobling} other {# koblinger}}",
+    "more-tags": "+{count}",
+    "member-count": "{count, plural, one {# element} other {# elementer}}",
+    "click-to-expand": "Klikk for å utvide"
   },
   "local-panel": {
-    "loading": "Laster inn graf...",
-    "empty": "Ingen tilkoblinger funnet",
+    "loading": "Laster inn graf …",
+    "empty": "Ingen koblinger funnet",
     "open-full": "Åpne hele grafen",
-    "close": "Lukk grafen"
+    "close": "Lukk grafen",
+    "pin": "Fest til dette notatet",
+    "unpin": "Løsne og følg det åpne notatet",
+    "pinned-to": "Festet: {title}"
+  },
+  "edit": {
+    "linked": "Lenket {source} til {target} i «{property}»",
+    "unlinked": "Fjernet lenken fra {source} til {target}",
+    "already-linked": "{source} lenker allerede til {target}",
+    "property-conflict": "«{property}» i dette notatet er ikke en relasjonsegenskap, så lenken ble ikke lagt til",
+    "link-unsupported": "Lenker kan bare opprettes mellom notater",
+    "link-failed": "Kunne ikke legge til lenken",
+    "unlink-failed": "Kunne ikke fjerne lenken",
+    "tag-added": "La til #{tag} i {note}",
+    "tag-exists": "Dette notatet har allerede #{tag}",
+    "tag-failed": "Kunne ikke legge til taggen",
+    "undo-failed": "Kunne ikke angre endringen"
+  },
+  "relayout-confirm": {
+    "title": "Vil du ordne grafen på nytt?",
+    "description": "Alle festede noder løsnes, og grafen finner et nytt oppsett. Det lagrede oppsettet ditt forkastes.",
+    "cancel": "Avbryt",
+    "confirm": "Ordne på nytt"
+  },
+  "views": {
+    "title": "Lagrede visninger",
+    "unsaved": "Ulagret visning",
+    "edited": "Endret",
+    "empty": "Ingen lagrede visninger ennå",
+    "save-as": "Lagre som ny visning …",
+    "update": "Oppdater «{name}»",
+    "delete": "Slett visningen {name}",
+    "save-dialog-title": "Lagre grafvisning",
+    "save-dialog-placeholder": "Visningsnavn",
+    "cancel": "Avbryt",
+    "save": "Lagre"
   }
 }

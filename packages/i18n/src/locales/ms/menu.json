@@ -1,28 +1,28 @@
 {
   "app": {
-    "quit": "Berhenti",
+    "quit": "Keluar",
     "preferences": "Tetapan…",
-    "checkForUpdates": "Semak Kemas Kini…",
-    "exit": "Keluar",
-    "hide": "Sembunyikan MemryNote",
-    "hideOthers": "Sembunyikan Yang Lain",
+    "checkForUpdates": "Semak kemas kini…",
     "services": "Perkhidmatan",
-    "unhide": "Tunjukkan Semua"
+    "hide": "Sembunyikan MemryNote",
+    "hideOthers": "Sembunyikan yang lain",
+    "unhide": "Tunjukkan semua",
+    "exit": "Keluar"
   },
   "file": {
     "label": "Fail",
-    "newNote": "Nota Baharu",
-    "close": "Tutup Tetingkap",
-    "closeTab": "Tutup Tab",
+    "newNote": "Nota baharu",
+    "openQuickly": "Buka pantas…",
     "exportPdf": "Eksport ke PDF…",
-    "openQuickly": "Buka Pantas…"
+    "closeTab": "Tutup tab",
+    "close": "Tutup tetingkap"
   },
   "navigation": {
     "back": "Kembali",
-    "forward": "Ke Hadapan"
+    "forward": "Ke hadapan"
   },
   "edit": {
-    "label": "Sunting",
+    "label": "Edit",
     "undo": "Buat asal",
     "redo": "Buat semula",
     "cut": "Potong",
@@ -31,63 +31,68 @@
     "selectAll": "Pilih semua",
     "find": "Cari",
     "speech": "Pertuturan",
+    "pasteAndMatchStyle": "Tampal dan padankan gaya",
     "delete": "Padam",
-    "pasteAndMatchStyle": "Tampal dan Padankan Gaya",
-    "startSpeaking": "Mula Bertutur",
-    "stopSpeaking": "Berhenti Bertutur"
+    "startSpeaking": "Mula bertutur",
+    "stopSpeaking": "Berhenti bertutur",
+    "addToDictionary": "Tambah ke kamus",
+    "noSuggestions": "Tiada cadangan"
   },
-  "view": {
-    "label": "Lihat",
-    "reload": "Muat semula",
-    "toggleDevTools": "Togol Alat Pembangun",
-    "toggleFullscreen": "Togol Skrin Penuh",
-    "theme": "Tema",
-    "themeDark": "Gelap",
-    "themeLight": "Cerah",
-    "themeSystem": "Sistem",
-    "themeWhite": "Kertas",
-    "toggleDayPanel": "Togol Panel Hari",
-    "toggleSidebar": "Togol Bar Sisi",
-    "actualSize": "Saiz Sebenar",
-    "zoomIn": "Zum Masuk",
-    "zoomOut": "Zum Keluar"
+  "insert": {
+    "label": "Sisip",
+    "codeBlock": "Blok kod",
+    "table": "Jadual",
+    "bulletList": "Senarai berbulet",
+    "numberedList": "Senarai bernombor",
+    "taskList": "Senarai tugas",
+    "attachment": "Sisip lampiran…"
   },
   "format": {
-    "body": "Teks Isi",
-    "bold": "Tebal",
-    "code": "Kod",
+    "label": "Format",
     "heading1": "Tajuk 1",
     "heading2": "Tajuk 2",
     "heading3": "Tajuk 3",
     "heading4": "Tajuk 4",
     "heading5": "Tajuk 5",
     "heading6": "Tajuk 6",
-    "highlight": "Sorot",
+    "body": "Teks isi",
+    "bold": "Tebal",
     "italic": "Condong",
-    "label": "Format",
+    "code": "Kod",
+    "highlight": "Serlahkan",
     "strikethrough": "Coret"
   },
-  "help": {
-    "about": "Perihal MemryNote",
-    "documentation": "Dokumentasi",
-    "label": "Bantuan",
-    "shortcuts": "Pintasan Papan Kekunci",
-    "aboutVersion": "Versi {version}"
-  },
-  "insert": {
-    "attachment": "Sisip Lampiran…",
-    "bulletList": "Senarai Berbulet",
-    "codeBlock": "Blok Kod",
-    "label": "Sisip",
-    "numberedList": "Senarai Bernombor",
-    "table": "Jadual",
-    "taskList": "Senarai Tugasan"
+  "view": {
+    "label": "Lihat",
+    "reload": "Muat semula",
+    "toggleDevTools": "Tunjuk/sembunyi alat pembangun",
+    "toggleFullscreen": "Togol skrin penuh",
+    "toggleSidebar": "Tunjuk/sembunyi bar sisi",
+    "toggleDayPanel": "Tunjuk/sembunyi panel hari",
+    "theme": "Tema",
+    "themeLight": "Cerah",
+    "themeDark": "Gelap",
+    "themeWhite": "Kertas",
+    "themeSystem": "Sistem",
+    "actualSize": "Saiz sebenar",
+    "zoomIn": "Zum masuk",
+    "zoomOut": "Zum keluar"
   },
   "window": {
     "label": "Tetingkap",
-    "close": "Tutup",
-    "front": "Bawa Semua ke Hadapan",
     "minimize": "Minimumkan",
-    "zoom": "Zum"
+    "zoom": "Zum",
+    "front": "Bawa semua ke hadapan",
+    "close": "Tutup"
+  },
+  "help": {
+    "label": "Bantuan",
+    "documentation": "Dokumentasi",
+    "shortcuts": "Pintasan papan kekunci",
+    "about": "Perihal MemryNote",
+    "aboutVersion": "Versi {version}"
+  },
+  "tray": {
+    "show": "Tunjukkan MemryNote"
   }
 }

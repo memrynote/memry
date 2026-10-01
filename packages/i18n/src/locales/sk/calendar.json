@@ -3,7 +3,13 @@
     "day": "Deň",
     "week": "Týždeň",
     "month": "Mesiac",
-    "year": "Rok"
+    "monthGridLabel": "Mriežka mesiaca",
+    "year": "Rok",
+    "timeline": "Časová os"
+  },
+  "undo": {
+    "moveEvent": "Presunúť udalosť",
+    "moveTask": "Preplánovať úlohu"
   },
   "toolbar": {
     "create-event": "Vytvoriť udalosť",
@@ -13,28 +19,42 @@
     "next-month": "Nasledujúci mesiac",
     "today": "Dnes"
   },
+  "search": {
+    "open": "Hľadať v kalendári",
+    "close": "Zavrieť hľadanie",
+    "placeholder": "Hľadať udalosti, úlohy, pripomienky…",
+    "no-results": "Žiadne zhody"
+  },
   "filter": {
     "filter-calendars": "Filtrovať kalendáre",
-    "sources": "Zdroj",
-    "memry-items": "memrynote položky",
+    "sources": "Zdroje",
+    "memry-items": "Položky memrynote",
     "imported-calendars": "Importované kalendáre",
     "event-types": "Typy udalostí",
-    "google-calendars": "Google kalendáre",
-    "refresh-google-calendars": "Obnoviť Google kalendáre"
+    "google-calendars": "Kalendáre Google",
+    "refresh-google-calendars": "Obnoviť kalendáre Google",
+    "not-syncing": "Nesynchronizuje sa · zapnete začiarknutím",
+    "enable-source-failed": "Nepodarilo sa zapnúť tento kalendár.",
+    "provider-calendars": {
+      "ics": "Odoberané kalendáre",
+      "caldav": "Kalendáre CalDAV",
+      "apple-eventkit": "Tento Mac",
+      "other": "Ďalšie kalendáre"
+    }
   },
   "visual-type": {
     "event": "Udalosť",
     "imported-event": "Importovaná udalosť",
+    "note": "Poznámka",
+    "note-date": "Pripomienka dátumu",
     "task": "Úloha",
     "reminder": "Pripomienka",
-    "snooze": "Odložiť",
-    "note": "Poznámka",
-    "note-date": "Pripomienka dátumu"
+    "snooze": "Odložené"
   },
   "state": {
     "loading-calendar": "Načítava sa kalendár…",
     "loading-calendars": "Načítavajú sa kalendáre…",
-    "preparing": "Príprava…"
+    "preparing": "Pripravuje sa…"
   },
   "empty": {
     "no-imported-calendars-yet": "Zatiaľ žiadne importované kalendáre.",
@@ -43,62 +63,103 @@
   "time": {
     "all-day": "Celý deň",
     "all-day-lower": "celý deň",
-    "pick-a-date": "Vyberte dátum",
+    "pick-a-date": "Vybrať dátum",
     "new-event": "Nová udalosť",
-    "more-events": "{count, plural, one {# viac udalostí} other {# viac udalostí}}"
+    "more-events": "{count, plural, one {# ďalšia udalosť} few {# ďalšie udalosti} other {# ďalších udalostí}}"
   },
   "form": {
     "create-calendar-event": "Vytvoriť udalosť v kalendári",
     "edit-calendar-event": "Upraviť udalosť v kalendári",
     "quick-create-description": "Zadajte názov a uložte, aby ste vytvorili udalosť v zvolenom časovom rozsahu.",
-    "event-editor-description": "Aktualizovať názov, miesto, dátum, čas a poznámky pre túto udalosť.",
+    "event-editor-description": "Upravte názov, miesto, dátum, čas a poznámky tejto udalosti.",
     "new-event-placeholder": "Nová udalosť",
     "notes-url-placeholder": "Pridať poznámky alebo URL",
     "start": "Začiatok",
     "end": "Koniec",
-    "google-calendar": "Google kalendár",
+    "google-calendar": "Kalendár Google",
     "target-calendar": "Cieľový kalendár",
     "use-default-calendar": "Použiť predvolený kalendár",
     "use-default-calendar-with-name": "Použiť predvolený ({calendar})",
-    "use-memry-calendar-default": "Použiť kalendár memrynote (predvolené)",
-    "primary-suffix": "primárny"
+    "use-memry-calendar-default": "Použiť kalendár memrynote (predvolený)",
+    "primary-suffix": "primárny",
+    "project": "Projekt",
+    "no-project": "Bez projektu",
+    "remove-from-project": "Odstrániť z projektu {project}",
+    "project-update-failed": "Nepodarilo sa aktualizovať projekt udalosti",
+    "color": "Farba",
+    "default-color": "Predvolená farba"
   },
   "delete-dialog": {
     "title": "Odstrániť udalosť?",
-    "local-description": "\"{title}\" bude trvalo odstránený. Túto akciu nie je možné vrátiť späť.",
-    "google-bound-description": "\"{title}\" bude odstránený z memrynote a Google Kalendára. Túto akciu nie je možné vrátiť späť.  ",
-    "context-menu-delete-label": "  \nOdstrániť udalosť  ",
+    "local-description": "Udalosť „{title}“ bude natrvalo odstránená. Túto akciu nemožno vrátiť späť.",
+    "google-bound-description": "Udalosť „{title}“ bude odstránená z aplikácie memrynote aj z Google Calendar. Túto akciu nemožno vrátiť späť.",
+    "context-menu-delete-label": "Odstrániť udalosť",
     "context-menu-add-to-project": "Pridať do projektu"
   },
+  "agent-access-dialog": {
+    "aria": "Vyberte, či môže AI čítať vaše udalosti z Google Calendar",
+    "title": "Povoliť AI čítať vaše udalosti z Google Calendar?",
+    "body": "Udalosti z Google Calendar budete v aplikácii memrynote vidieť tak či tak. Toto nastavenie rozhoduje len o tom, či ich môže AI agent čítať, keď sa ho spýtate na svoj program.",
+    "footnote": "Kedykoľvek to môžete zmeniť v časti Nastavenia → Integrácie → Google Calendar.",
+    "allow": "Povoliť",
+    "deny": "Nepovoliť",
+    "save-error": "Nepodarilo sa uložiť vašu voľbu",
+    "provider": {
+      "aria": "Vyberte, či môže AI čítať udalosti z {provider}",
+      "title": "Povoliť AI čítať udalosti z {provider}?",
+      "body": "Tieto udalosti budete v aplikácii memrynote vidieť tak či tak. Toto nastavenie rozhoduje len o tom, či ich AI agent môže čítať, keď sa ho spýtate na svoj program. Každá kalendárová služba má vlastné nastavenie.",
+      "footnote": "Kedykoľvek to môžete zmeniť v časti Nastavenia → Kalendár."
+    },
+    "provider-names": {
+      "ics": "odoberaného kalendára",
+      "caldav": "kalendára CalDAV",
+      "apple-eventkit": "aplikácie Kalendár v macOS"
+    }
+  },
   "promote-dialog": {
-    "aria": "  \nUpraviť udalosť v externom kalendári  ",
-    "title": "  \nUpraviť túto udalosť v memrynote?  ",
-    "body": "  \nÚpravou tejto udalosti sa vytvorí prepojená kópia v memrynote, takže zmeny sa synchronizujú obojstranne. Pokračovať?  ",
-    "do-not-ask-again": "  \nNepýtať sa znova  ",
-    "confirm-label": "  \nUpraviť v memrynote  ",
-    "agent-notice": "AI agent môže čítať túto kópiu, aj keď je prístup AI ku Google Calendar vypnutý. Vaša pôvodná Google udalosť pred ním zostáva skrytá."
+    "aria": "Upraviť udalosť z externého kalendára",
+    "title": "Upraviť túto udalosť v aplikácii memrynote?",
+    "body": "Úpravou tejto udalosti sa v aplikácii memrynote vytvorí prepojená kópia a zmeny sa budú synchronizovať oboma smermi. Pokračovať?",
+    "do-not-ask-again": "Už sa nepýtať",
+    "confirm-label": "Upraviť v memrynote",
+    "agent-notice": "AI agent môže čítať túto kópiu, aj keď je prístup AI ku Google Calendar vypnutý. Pôvodná udalosť z Google Calendar pred ním zostáva skrytá."
   },
   "onboarding-dialog": {
-    "aria": "  \nVyberte svoj predvolený Google kalendár  ",
-    "title": "  \nDo ktorého kalendára by mali ísť nové udalosti memrynote?  ",
-    "body": "  \nVyberte Google kalendár, ktorý má memrynote používať ako predvolený. Stále ho môžete pre každý udalosť meniť.  ",
-    "default-calendar-label": "Použiť kalendár spravovaný memrynote",
+    "aria": "Vyberte predvolený kalendár Google",
+    "title": "Do ktorého kalendára sa majú ukladať nové udalosti memrynote?",
+    "body": "Vyberte kalendár Google, ktorý bude memrynote predvolene používať. Pri každej udalosti ho môžete zmeniť.",
+    "default-calendar-label": "Použiť kalendár spravovaný aplikáciou memrynote",
     "skip": "Preskočiť",
-    "use-this-calendar": "  \nPoužiť tento kalendár  "
+    "use-this-calendar": "Použiť tento kalendár"
+  },
+  "connect-prompt": {
+    "pill": "Pripojiť Google",
+    "aria": "Pripojiť Google Calendar",
+    "title": "Dokončite pripojenie ku Google Calendar",
+    "body": "Pripojte svoj účet Google a získajte z kalendára viac:",
+    "bullets": {
+      "events": "Zobrazte si udalosti Google popri poznámkach a úlohách",
+      "sync": "Vytvárajte a upravujte udalosti so synchronizáciou oboma smermi",
+      "schedule": "Plánujte úlohy a poznámky vo svojom kalendári"
+    },
+    "continue": "Pokračovať cez Google",
+    "dismiss": "Zavrieť",
+    "error": "Nepodarilo sa pripojiť Google Calendar. Skúste to znova."
   },
   "metadata": {
-    "attendees": "  \nÚčastníci  ",
-    "attendees-count": "  \nÚčastníci ({count})  ",
+    "attendees": "Účastníci",
+    "attendees-count": "Účastníci ({count})",
     "reminders": "Pripomienky",
-    "default-reminders": "  \nPredvolené pripomienky  ",
-    "visibility": "  \nViditeľnosť:  ",
-    "optional": "  \nNepovinné  ",
-    "join-meeting": "  \nPripojiť sa k stretnutiu  ",
+    "default-reminders": "Predvolené pripomienky",
+    "visibility": "Viditeľnosť:",
+    "optional": "Nepovinné",
+    "join-meeting": "Pripojiť sa k stretnutiu",
+    "video-call": "Videohovor",
     "response": {
-      "accepted": "  \nPrijaté  ",
-      "declined": "  \nOdmietnuté",
-      "tentative": "Navrhované",
-      "needs-action": "Čakajúce"
+      "accepted": "Zúčastní sa",
+      "declined": "Nezúčastní sa",
+      "tentative": "Možno",
+      "needs-action": "Čaká na odpoveď"
     },
     "visibility-value": {
       "private": "Súkromné",
@@ -113,25 +174,44 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotSaveEventTryAgain": "Nepodarilo sa uložiť udalosť. Skúste znova.",
-      "couldNotCreateEventTryAgain": "Nepodarilo sa vytvoriť udalosť. Skúste znova.",
-      "couldNotSaveDefaultCalendarTryAgain": "Nepodarilo sa uložiť predvolený kalendár. Skúste znova.",
+      "couldNotSaveEventTryAgain": "Nepodarilo sa uložiť udalosť. Skúste to znova.",
+      "couldNotCreateEventTryAgain": "Nepodarilo sa vytvoriť udalosť. Skúste to znova.",
+      "couldNotSaveDefaultCalendarTryAgain": "Nepodarilo sa uložiť predvolený kalendár. Skúste to znova.",
       "failedToLoadCalendarPreferences": "Nepodarilo sa načítať nastavenia kalendára",
       "failedToUpdateCalendarPreferences": "Nepodarilo sa aktualizovať nastavenia kalendára",
-      "couldNotEditThisEventTryAgain": "Nepodarilo sa upraviť túto udalosť. Skúste znova.",
-      "failedToDeleteEvent": "Nepodarilo sa vymazať udalosť",
+      "couldNotEditThisEventTryAgain": "Nepodarilo sa upraviť túto udalosť. Skúste to znova.",
+      "failedToDeleteEvent": "Nepodarilo sa odstrániť udalosť",
       "couldNotUnsnoozeInboxItem": "Nepodarilo sa zrušiť odloženie.",
       "couldNotRescheduleInboxItem": "Nepodarilo sa preplánovať."
     },
     "inboxSnoozePopover": {
-      "title": "Odložená položka doručenej pošty",
-      "openInInbox": "Otvoriť v doručenej pošte",
+      "title": "Odložená položka z Prijatých",
+      "openInInbox": "Otvoriť v Prijatých",
       "unsnoozeNow": "Zrušiť odloženie teraz",
       "reschedule": "Preplánovať"
     }
   },
+  "chip": {
+    "complete-task": "Dokončiť úlohu {title}",
+    "task-completed": "Úloha dokončená",
+    "could-not-complete": "Nepodarilo sa dokončiť úlohu",
+    "duration-minutes": "{minutes} min",
+    "duration-hours": "{hours} h",
+    "duration-hours-minutes": "{hours} h {minutes} min"
+  },
+  "event-card": {
+    "kind": "Udalosť",
+    "close": "Zavrieť"
+  },
   "task-popover": {
     "title-fallback": "Podrobnosti úlohy",
+    "kind": "Úloha",
+    "open": "Otvoriť",
+    "complete": "Dokončiť",
+    "more-actions": "Ďalšie akcie",
+    "move": "Presunúť",
+    "later": "Neskôr",
+    "next-week": "Budúci týždeň",
     "open-task": "Otvoriť úlohu",
     "source-note": "Zdrojová poznámka",
     "reschedule": "Preplánovať",
@@ -140,10 +220,10 @@
     "later-today": "Neskôr dnes",
     "tomorrow": "Zajtra",
     "next-week-mon": "Budúci týždeň · Po",
-    "pick-date-time": "Vyberte dátum a čas...",
+    "pick-date-time": "Vybrať dátum a čas…",
     "remove-due-date": "Odstrániť termín",
     "subtasks-prefix": "Podúlohy",
-    "subtasks-counter": "{done} z {total} dokončené",
+    "subtasks-counter": "Hotovo {done} z {total}",
     "repeats": "Opakuje sa",
     "repeats-daily": "Opakuje sa denne",
     "repeats-weekly": "Opakuje sa týždenne",
@@ -156,43 +236,151 @@
       "could-not-open-note": "Nepodarilo sa otvoriť poznámku"
     }
   },
-  "connect-prompt": {
-    "aria": "Pripojiť Google Calendar",
-    "body": "Pripojte svoj Google účet a získajte viac z kalendára:",
-    "bullets": {
-      "events": "Zobrazte svoje Google udalosti popri poznámkach a úlohách",
-      "schedule": "Plánujte úlohy a poznámky vo svojom kalendári",
-      "sync": "Vytvárajte a upravujte udalosti so synchronizáciou oboma smermi"
-    },
-    "continue": "Pokračovať cez Google",
-    "dismiss": "Zavrieť",
-    "error": "Google Calendar sa nepodarilo pripojiť. Skúste znova.",
-    "pill": "Pripojiť Google",
-    "title": "Dokončite pripojenie ku Google Calendar"
-  },
   "notePopover": {
-    "couldNotOpen": "Poznámku sa nepodarilo otvoriť",
     "kind": "Poznámka",
     "kindDateReminder": "Pripomienka dátumu",
-    "open": "Otvoriť poznámku"
+    "open": "Otvoriť poznámku",
+    "couldNotOpen": "Poznámku sa nepodarilo otvoriť"
   },
-  "search": {
-    "close": "Zavrieť hľadanie",
-    "no-results": "Žiadne zhody",
-    "open": "Hľadať v kalendári",
-    "placeholder": "Hľadať udalosti, úlohy, pripomienky…"
+  "timeline": {
+    "label": "Naplánovaná práca na časovej osi",
+    "tasks-column": "Úlohy",
+    "span": "{start} – {end}",
+    "due": "Termín: {date}",
+    "starts": "Začiatok: {date}",
+    "starts-short": "{date} →",
+    "no-date": "Bez dátumu",
+    "today": "Dnes",
+    "overdue": "po termíne",
+    "untitled": "Bez názvu",
+    "days": "{count, plural, one {# deň} few {# dni} other {# dní}}",
+    "events": "Udalosti",
+    "schedule-hint": "Kliknutím nastavíte dátum, potiahnutím rozsah",
+    "empty-title": "Na tejto časti časovej osi nič nie je",
+    "empty-body": "Zobrazujú sa tu úlohy s dátumom začiatku alebo termínom a celodenné či viacdňové udalosti. Ak chcete úlohy bez dátumu naplánovať potiahnutím, zapnite ich v ponuke Zobrazenie.",
+    "status": {
+      "todo": "Na vykonanie",
+      "in_progress": "Prebieha",
+      "done": "Hotovo"
+    },
+    "priority": {
+      "urgent": "Urgentná",
+      "high": "Vysoká",
+      "medium": "Stredná",
+      "low": "Nízka",
+      "none": "Bez priority"
+    },
+    "zoom": {
+      "label": "Mierka",
+      "weeks": "Týždne",
+      "months": "Mesiace",
+      "quarters": "Štvrťroky"
+    },
+    "group-by": {
+      "project": "Projekt",
+      "status": "Stav",
+      "priority": "Priorita",
+      "none": "Bez zoskupenia"
+    },
+    "group-by-label": "Zoskupenie: {group}",
+    "order-by": {
+      "start": "Dátum začiatku",
+      "due": "Termín",
+      "title": "Názov"
+    },
+    "display": {
+      "button": "Zobrazenie",
+      "group-by": "Zoskupiť podľa",
+      "order-by": "Zoradiť podľa",
+      "show": "Zobraziť",
+      "show-events": "Udalosti",
+      "show-undated": "Úlohy bez dátumu",
+      "show-completed": "Dokončené úlohy",
+      "show-subtasks": "Podúlohy"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# úloha} few {# úlohy} other {# úloh}} · {events, plural, one {# udalosť} few {# udalosti} other {# udalostí}}",
+      "open": "Otvoriť",
+      "move": "Presunúť",
+      "resize": "Zmeniť veľkosť",
+      "actions": "Akcie",
+      "select": "Vybrať",
+      "today": "Dnes"
+    },
+    "actions": {
+      "search": "Hľadať akcie…",
+      "search-projects": "Hľadať projekty…",
+      "empty": "Žiadna zodpovedajúca akcia",
+      "no-projects": "Žiadny zodpovedajúci projekt",
+      "open": "Otvoriť úlohu",
+      "open-in-tasks": "Otvoriť v Úlohách",
+      "schedule": "Naplánovať",
+      "set-start": "Nastaviť dátum začiatku",
+      "set-due": "Nastaviť termín",
+      "move-later": "Posunúť o týždeň neskôr",
+      "move-earlier": "Posunúť o týždeň skôr",
+      "clear-dates": "Vymazať dátumy",
+      "clear-start": "Vymazať dátum začiatku",
+      "clear-due": "Vymazať termín",
+      "task": "Úloha",
+      "complete": "Označiť ako dokončené",
+      "uncomplete": "Označiť ako nedokončené",
+      "change-project": "Zmeniť projekt",
+      "page": {
+        "root": "Akcie",
+        "start": "Dátum začiatku",
+        "due": "Termín",
+        "project": "Projekt"
+      }
+    },
+    "undo": {
+      "reschedule": "Preplánovať „{title}“"
+    }
   },
-  "undo": {
-    "moveEvent": "Presunúť udalosť",
-    "moveTask": "Preplánovať úlohu"
+  "calendar-color": {
+    "tomato": "Paradajková",
+    "flamingo": "Plameniaková",
+    "tangerine": "Mandarínková",
+    "banana": "Banánová",
+    "sage": "Šalviová",
+    "basil": "Bazalková",
+    "peacock": "Pávia modrá",
+    "blueberry": "Čučoriedková",
+    "lavender": "Levanduľová",
+    "grape": "Hroznová",
+    "graphite": "Grafitová"
   },
-  "agent-access-dialog": {
-    "allow": "Povoliť",
-    "aria": "Vyberte, či môže AI čítať vaše udalosti z Google Calendar",
-    "body": "Svoje Google udalosti budete v memrynote vidieť tak či tak. Toto rozhoduje len o tom, či ich môže AI agent čítať, keď sa ho opýtate na svoj rozvrh.",
-    "deny": "Nepovoliť",
-    "footnote": "Kedykoľvek to môžete zmeniť v časti Nastavenia → Integrácie → Google Calendar.",
-    "save-error": "Nepodarilo sa uložiť vašu voľbu",
-    "title": "Povoliť AI čítať vaše udalosti z Google Calendar?"
+  "subscribedEvent": {
+    "kind": "Odoberaný kalendár",
+    "kindAppleEventKit": "Tento Mac",
+    "close": "Zavrieť",
+    "detailsFailed": "Nepodarilo sa načítať účastníkov a odkazy tejto udalosti. Samotná udalosť sa nezmenila.",
+    "showMore": "Zobraziť viac",
+    "showLess": "Zobraziť menej",
+    "organizer": "organizátor",
+    "you": "vy",
+    "phone": "Pripojiť sa telefonicky",
+    "alert": "{minutes, plural, =0 {Upozornenie na začiatku} one {Upozornenie # minútu vopred} few {Upozornenie # minúty vopred} other {Upozornenie # minút vopred}}",
+    "alertHours": "{hours, plural, one {Upozornenie # hodinu vopred} few {Upozornenie # hodiny vopred} other {Upozornenie # hodín vopred}}",
+    "alertDays": "{days, plural, one {Upozornenie # deň vopred} few {Upozornenie # dni vopred} other {Upozornenie # dní vopred}}",
+    "recurrence": {
+      "daily": "{count, plural, one {Opakuje sa každý deň} few {Opakuje sa každé # dni} other {Opakuje sa každých # dní}}",
+      "weekly": "{count, plural, one {Opakuje sa každý týždeň} few {Opakuje sa každé # týždne} other {Opakuje sa každých # týždňov}}",
+      "weeklyOn": "{count, plural, one {Opakuje sa každý týždeň: {days}} few {Opakuje sa každé # týždne: {days}} other {Opakuje sa každých # týždňov: {days}}}",
+      "monthly": "{count, plural, one {Opakuje sa každý mesiac} few {Opakuje sa každé # mesiace} other {Opakuje sa každých # mesiacov}}",
+      "yearly": "{count, plural, one {Opakuje sa každý rok} few {Opakuje sa každé # roky} other {Opakuje sa každých # rokov}}",
+      "other": "Opakuje sa"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Odoberané kalendáre"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

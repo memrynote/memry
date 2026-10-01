@@ -3,7 +3,13 @@
     "day": "День",
     "week": "Тиждень",
     "month": "Місяць",
-    "year": "Рік"
+    "monthGridLabel": "Сітка місяця",
+    "year": "Рік",
+    "timeline": "Хронологія"
+  },
+  "undo": {
+    "moveEvent": "Перемістити подію",
+    "moveTask": "Перенести завдання"
   },
   "toolbar": {
     "create-event": "Створити подію",
@@ -13,23 +19,37 @@
     "next-month": "Наступний місяць",
     "today": "Сьогодні"
   },
+  "search": {
+    "open": "Шукати в календарі",
+    "close": "Закрити пошук",
+    "placeholder": "Шукати події, завдання, нагадування…",
+    "no-results": "Немає збігів"
+  },
   "filter": {
     "filter-calendars": "Фільтрувати календарі",
     "sources": "Джерела",
-    "memry-items": "memrynote елементи",
+    "memry-items": "Елементи memrynote",
     "imported-calendars": "Імпортовані календарі",
     "event-types": "Типи подій",
     "google-calendars": "Календарі Google",
-    "refresh-google-calendars": "Оновити календарі Google"
+    "refresh-google-calendars": "Оновити календарі Google",
+    "not-syncing": "Не синхронізується · позначте, щоб увімкнути",
+    "enable-source-failed": "Не вдалося ввімкнути цей календар.",
+    "provider-calendars": {
+      "ics": "Календарі за підпискою",
+      "caldav": "Календарі CalDAV",
+      "apple-eventkit": "Цей Mac",
+      "other": "Інші календарі"
+    }
   },
   "visual-type": {
     "event": "Подія",
     "imported-event": "Імпортована подія",
+    "note": "Нотатка",
+    "note-date": "Нагадування про дату",
     "task": "Завдання",
     "reminder": "Нагадування",
-    "snooze": "Відкласти",
-    "note": "Нотатка",
-    "note-date": "Нагадування про дату"
+    "snooze": "Відкладене"
   },
   "state": {
     "loading-calendar": "Завантаження календаря…",
@@ -42,18 +62,18 @@
   },
   "time": {
     "all-day": "Цілий день",
-    "all-day-lower": "весь день",
+    "all-day-lower": "на цілий день",
     "pick-a-date": "Виберіть дату",
     "new-event": "Нова подія",
-    "more-events": "{count, plural, one {# ще подія} other {# ще події}}"
+    "more-events": "{count, plural, one {ще # подія} few {ще # події} many {ще # подій} other {ще # події}}"
   },
   "form": {
     "create-calendar-event": "Створити подію календаря",
     "edit-calendar-event": "Редагувати подію календаря",
-    "quick-create-description": "Введіть заголовок і збережіть, щоб створити подію на вибраний проміжок часу.",
-    "event-editor-description": "Оновіть заголовок, місце, дату, час і нотатки для цієї події.",
+    "quick-create-description": "Введіть назву й збережіть, щоб створити подію у вибраному проміжку часу.",
+    "event-editor-description": "Змініть назву, місце, дату, час і примітки цієї події.",
     "new-event-placeholder": "Нова подія",
-    "notes-url-placeholder": "Додати нотатки або URL",
+    "notes-url-placeholder": "Додати примітки або URL",
     "start": "Початок",
     "end": "Кінець",
     "google-calendar": "Календар Google",
@@ -61,49 +81,90 @@
     "use-default-calendar": "Використовувати календар за замовчуванням",
     "use-default-calendar-with-name": "Використовувати за замовчуванням ({calendar})",
     "use-memry-calendar-default": "Використовувати календар memrynote (за замовчуванням)",
-    "primary-suffix": "основний"
+    "primary-suffix": "основний",
+    "project": "Проєкт",
+    "no-project": "Без проєкту",
+    "remove-from-project": "Прибрати з «{project}»",
+    "project-update-failed": "Не вдалося оновити проєкт події",
+    "color": "Колір",
+    "default-color": "Колір за замовчуванням"
   },
   "delete-dialog": {
     "title": "Видалити подію?",
-    "local-description": "\"{title}\" буде видалено назавжди. Цю дію неможливо скасувати.",
-    "google-bound-description": "\"{title}\" буде видалено з memrynote та Google Календаря. Цю дію неможливо скасувати.",
+    "local-description": "«{title}» буде видалено назавжди. Цю дію неможливо скасувати.",
+    "google-bound-description": "«{title}» буде видалено з memrynote і Google Calendar. Цю дію неможливо скасувати.",
     "context-menu-delete-label": "Видалити подію",
     "context-menu-add-to-project": "Додати до проєкту"
+  },
+  "agent-access-dialog": {
+    "aria": "Виберіть, чи може ШІ читати ваші події з Google Calendar",
+    "title": "Дозволити ШІ читати ваші події Google Calendar?",
+    "body": "Ви в будь-якому разі бачитимете свої події Google у memrynote. Це лише визначає, чи зможе ШІ-агент читати їх, коли ви запитуєте його про свій розклад.",
+    "footnote": "Це можна будь-коли змінити в розділі Налаштування → Інтеграції → Google Calendar.",
+    "allow": "Дозволити",
+    "deny": "Заборонити",
+    "save-error": "Не вдалося зберегти ваш вибір",
+    "provider": {
+      "aria": "Виберіть, чи може ШІ читати події з джерела «{provider}»",
+      "title": "Дозволити ШІ читати події з джерела «{provider}»?",
+      "body": "Ви в будь-якому разі бачитимете ці події в memrynote. Це лише визначає, чи зможе ШІ-агент читати їх, коли ви запитуєте його про свій розклад. Для кожного календарного сервісу вибір окремий.",
+      "footnote": "Це можна будь-коли змінити в розділі Налаштування → Календар."
+    },
+    "provider-names": {
+      "ics": "календар за підпискою",
+      "caldav": "календар CalDAV",
+      "apple-eventkit": "Календар macOS"
+    }
   },
   "promote-dialog": {
     "aria": "Редагувати подію зовнішнього календаря",
     "title": "Редагувати цю подію в memrynote?",
-    "body": "Редагування цієї події створить пов'язану копію в memrynote, щоб зміни синхронізувалися в обох напрямах. Продовжити?",
+    "body": "Редагування цієї події створить пов’язану копію в memrynote, щоб зміни синхронізувалися в обох напрямах. Продовжити?",
     "do-not-ask-again": "Більше не питати",
     "confirm-label": "Редагувати в memrynote",
-    "agent-notice": "Агент ШІ зможе читати цю копію, навіть якщо доступ ШІ до Google Calendar вимкнено. Ваша початкова подія Google залишиться прихованою від нього."
+    "agent-notice": "ШІ-агент зможе читати цю копію, навіть якщо доступ ШІ до Google Calendar вимкнено. Початкова подія Google залишиться для нього прихованою."
   },
   "onboarding-dialog": {
     "aria": "Виберіть свій календар Google за замовчуванням",
     "title": "У який календар повинні потрапляти нові події memrynote?",
-    "body": "Виберіть календар Google, який memrynote буде використовувати за замовчуванням. Ви все ще можете змінювати його для кожної події.",
+    "body": "Виберіть календар Google, який memrynote використовуватиме за замовчуванням. Для окремих подій його можна змінити.",
     "default-calendar-label": "Використовувати календар, керований memrynote",
     "skip": "Пропустити",
     "use-this-calendar": "Використовувати цей календар"
+  },
+  "connect-prompt": {
+    "pill": "Підключити Google",
+    "aria": "Підключити Google Calendar",
+    "title": "Завершіть підключення до Google Calendar",
+    "body": "Підключіть свій обліковий запис Google, щоб робити більше з календарем:",
+    "bullets": {
+      "events": "Бачити події Google поряд із нотатками та завданнями",
+      "sync": "Створювати та редагувати події із синхронізацією в обидва боки",
+      "schedule": "Планувати завдання й нотатки у своєму календарі"
+    },
+    "continue": "Продовжити з Google",
+    "dismiss": "Закрити",
+    "error": "Не вдалося підключити Google Calendar. Спробуйте ще раз."
   },
   "metadata": {
     "attendees": "Учасники",
     "attendees-count": "Учасники ({count})",
     "reminders": "Нагадування",
-    "default-reminders": "Загальні нагадування",
+    "default-reminders": "Нагадування за замовчуванням",
     "visibility": "Видимість:",
-    "optional": "Необов'язково",
+    "optional": "Необов’язково",
     "join-meeting": "Приєднатися до зустрічі",
+    "video-call": "Відеодзвінок",
     "response": {
       "accepted": "Прийнято",
       "declined": "Відхилено",
-      "tentative": "Попередньо",
+      "tentative": "Можливо",
       "needs-action": "Очікує"
     },
     "visibility-value": {
-      "private": "Приватне",
-      "public": "Публічне",
-      "confidential": "Конфіденційне"
+      "private": "Приватна",
+      "public": "Публічна",
+      "confidential": "Конфіденційна"
     }
   },
   "phaseF": {
@@ -121,7 +182,7 @@
       "couldNotEditThisEventTryAgain": "Не вдалося редагувати цю подію. Спробуйте ще раз.",
       "failedToDeleteEvent": "Не вдалося видалити подію",
       "couldNotUnsnoozeInboxItem": "Не вдалося зняти відкладення.",
-      "couldNotRescheduleInboxItem": "Не вдалося перенести подію."
+      "couldNotRescheduleInboxItem": "Не вдалося перенести."
     },
     "inboxSnoozePopover": {
       "title": "Відкладений елемент вхідних",
@@ -130,19 +191,38 @@
       "reschedule": "Перепланувати"
     }
   },
+  "chip": {
+    "complete-task": "Виконати «{title}»",
+    "task-completed": "Завдання виконано",
+    "could-not-complete": "Не вдалося позначити завдання як виконане",
+    "duration-minutes": "{minutes} хв",
+    "duration-hours": "{hours} год",
+    "duration-hours-minutes": "{hours} год {minutes} хв"
+  },
+  "event-card": {
+    "kind": "Подія",
+    "close": "Закрити"
+  },
   "task-popover": {
     "title-fallback": "Деталі завдання",
+    "kind": "Завдання",
+    "open": "Відкрити",
+    "complete": "Виконати",
+    "more-actions": "Інші дії",
+    "move": "Перенести",
+    "later": "Пізніше",
+    "next-week": "Наступного тижня",
     "open-task": "Відкрити завдання",
-    "source-note": "Джерело нотатки",
+    "source-note": "Нотатка-джерело",
     "reschedule": "Перепланувати",
-    "mark-done": "Позначити як виконано",
-    "mark-not-done": "Позначити як не виконано",
+    "mark-done": "Позначити як виконане",
+    "mark-not-done": "Позначити як невиконане",
     "later-today": "Пізніше сьогодні",
     "tomorrow": "Завтра",
     "next-week-mon": "Наступного тижня · Пн",
-    "pick-date-time": "Виберіть дату та час...",
-    "remove-due-date": "Видалити термін виконання",
-    "subtasks-prefix": "Підзадачі",
+    "pick-date-time": "Вибрати дату й час…",
+    "remove-due-date": "Прибрати термін",
+    "subtasks-prefix": "Підзавдання",
     "subtasks-counter": "{done} з {total} виконано",
     "repeats": "Повторюється",
     "repeats-daily": "Повторюється щодня",
@@ -152,47 +232,155 @@
     "errors": {
       "could-not-save": "Не вдалося зберегти завдання",
       "could-not-reschedule": "Не вдалося перенести завдання",
-      "could-not-remove-due-date": "Не вдалося видалити термін виконання",
-      "could-not-open-note": "Не вдалося відкрити примітку"
+      "could-not-remove-due-date": "Не вдалося прибрати термін",
+      "could-not-open-note": "Не вдалося відкрити нотатку"
     }
   },
-  "connect-prompt": {
-    "aria": "Підключити Google Calendar",
-    "body": "Підключіть свій обліковий запис Google, щоб робити більше з календарем:",
-    "bullets": {
-      "events": "Бачити події Google поряд із нотатками та завданнями",
-      "schedule": "Планувати завдання й нотатки у своєму календарі",
-      "sync": "Створювати та редагувати події із синхронізацією в обидва боки"
-    },
-    "continue": "Продовжити з Google",
-    "dismiss": "Відхилити",
-    "error": "Не вдалося підключити Google Calendar. Спробуйте ще раз.",
-    "pill": "Підключити Google",
-    "title": "Завершіть підключення до Google Calendar"
-  },
   "notePopover": {
-    "couldNotOpen": "Не вдалося відкрити нотатку",
     "kind": "Нотатка",
     "kindDateReminder": "Нагадування про дату",
-    "open": "Відкрити нотатку"
+    "open": "Відкрити нотатку",
+    "couldNotOpen": "Не вдалося відкрити нотатку"
   },
-  "search": {
-    "close": "Закрити пошук",
-    "no-results": "Немає збігів",
-    "open": "Пошук у календарі",
-    "placeholder": "Пошук подій, завдань, нагадувань…"
+  "timeline": {
+    "label": "Заплановані справи на хронології",
+    "tasks-column": "Завдання",
+    "span": "{start} – {end}",
+    "due": "Термін: {date}",
+    "starts": "Початок: {date}",
+    "starts-short": "{date} →",
+    "no-date": "Без дати",
+    "today": "Сьогодні",
+    "overdue": "прострочено",
+    "untitled": "Без назви",
+    "days": "{count, plural, one {# день} few {# дні} many {# днів} other {# дня}}",
+    "events": "Події",
+    "schedule-hint": "Натисніть, щоб установити дату, або перетягніть, щоб задати діапазон",
+    "empty-title": "Тут на хронології нічого немає",
+    "empty-body": "Тут з’являються завдання з датою початку або терміном, а також події на цілий день чи на кілька днів. Увімкніть завдання без дат у меню «Відображення», щоб планувати їх перетягуванням.",
+    "status": {
+      "todo": "До виконання",
+      "in_progress": "У роботі",
+      "done": "Виконано"
+    },
+    "priority": {
+      "urgent": "Терміновий",
+      "high": "Високий",
+      "medium": "Середній",
+      "low": "Низький",
+      "none": "Без пріоритету"
+    },
+    "zoom": {
+      "label": "Масштаб",
+      "weeks": "Тижні",
+      "months": "Місяці",
+      "quarters": "Квартали"
+    },
+    "group-by": {
+      "project": "Проєкт",
+      "status": "Статус",
+      "priority": "Пріоритет",
+      "none": "Без групування"
+    },
+    "group-by-label": "Групування: {group}",
+    "order-by": {
+      "start": "Дата початку",
+      "due": "Термін",
+      "title": "Назва"
+    },
+    "display": {
+      "button": "Відображення",
+      "group-by": "Групувати за",
+      "order-by": "Сортувати за",
+      "show": "Показувати",
+      "show-events": "Події",
+      "show-undated": "Завдання без дат",
+      "show-completed": "Виконані завдання",
+      "show-subtasks": "Підзавдання"
+    },
+    "bar": {
+      "summary": "{tasks, plural, one {# завдання} few {# завдання} many {# завдань} other {# завдання}} · {events, plural, one {# подія} few {# події} many {# подій} other {# події}}",
+      "open": "Відкрити",
+      "move": "Перемістити",
+      "resize": "Змінити розмір",
+      "actions": "Дії",
+      "select": "Вибрати",
+      "today": "Сьогодні"
+    },
+    "actions": {
+      "search": "Шукати дії…",
+      "search-projects": "Шукати проєкти…",
+      "empty": "Немає відповідних дій",
+      "no-projects": "Немає відповідних проєктів",
+      "open": "Відкрити завдання",
+      "open-in-tasks": "Відкрити на сторінці завдань",
+      "schedule": "Запланувати",
+      "set-start": "Установити дату початку",
+      "set-due": "Установити термін",
+      "move-later": "Перенести на тиждень пізніше",
+      "move-earlier": "Перенести на тиждень раніше",
+      "clear-dates": "Очистити дати",
+      "clear-start": "Очистити дату початку",
+      "clear-due": "Очистити термін",
+      "task": "Завдання",
+      "complete": "Позначити як виконане",
+      "uncomplete": "Позначити як невиконане",
+      "change-project": "Змінити проєкт",
+      "page": {
+        "root": "Дії",
+        "start": "Дата початку",
+        "due": "Термін",
+        "project": "Проєкт"
+      }
+    },
+    "undo": {
+      "reschedule": "Перенести «{title}»"
+    }
   },
-  "undo": {
-    "moveEvent": "Перемістити подію",
-    "moveTask": "Перенести завдання"
+  "calendar-color": {
+    "tomato": "Томат",
+    "flamingo": "Фламінго",
+    "tangerine": "Мандарин",
+    "banana": "Банан",
+    "sage": "Шавлія",
+    "basil": "Базилік",
+    "peacock": "Павич",
+    "blueberry": "Чорниця",
+    "lavender": "Лаванда",
+    "grape": "Виноград",
+    "graphite": "Графіт"
   },
-  "agent-access-dialog": {
-    "allow": "Дозволити",
-    "aria": "Виберіть, чи може ШІ читати ваші події з Google Calendar",
-    "body": "Ви в будь-якому разі бачитимете свої події Google у memrynote. Це лише визначає, чи зможе агент ШІ читати їх, коли ви запитуєте його про свій розклад.",
-    "deny": "Заборонити",
-    "footnote": "Це можна будь-коли змінити в розділі Налаштування → Інтеграції → Google Calendar.",
-    "save-error": "Не вдалося зберегти ваш вибір",
-    "title": "Дозволити ШІ читати ваші події Google Calendar?"
+  "subscribedEvent": {
+    "kind": "Календар за підпискою",
+    "kindAppleEventKit": "Цей Mac",
+    "close": "Закрити",
+    "detailsFailed": "Не вдалося завантажити учасників і посилання цієї події. Саму подію не змінено.",
+    "showMore": "Показати більше",
+    "showLess": "Показати менше",
+    "organizer": "організатор",
+    "you": "ви",
+    "phone": "Приєднатися телефоном",
+    "alert": "{minutes, plural, =0 {Сповіщення в момент початку} one {Сповіщення за # хвилину} few {Сповіщення за # хвилини} many {Сповіщення за # хвилин} other {Сповіщення за # хвилини}}",
+    "alertHours": "{hours, plural, one {Сповіщення за # годину} few {Сповіщення за # години} many {Сповіщення за # годин} other {Сповіщення за # години}}",
+    "alertDays": "{days, plural, one {Сповіщення за # день} few {Сповіщення за # дні} many {Сповіщення за # днів} other {Сповіщення за # дня}}",
+    "recurrence": {
+      "daily": "{count, plural, =1 {Повторюється щодня} one {Повторюється кожні # день} few {Повторюється кожні # дні} many {Повторюється кожні # днів} other {Повторюється кожні # дня}}",
+      "weekly": "{count, plural, =1 {Повторюється щотижня} one {Повторюється кожні # тиждень} few {Повторюється кожні # тижні} many {Повторюється кожні # тижнів} other {Повторюється кожні # тижня}}",
+      "weeklyOn": "{count, plural, =1 {Повторюється щотижня: {days}} one {Повторюється кожні # тиждень: {days}} few {Повторюється кожні # тижні: {days}} many {Повторюється кожні # тижнів: {days}} other {Повторюється кожні # тижня: {days}}}",
+      "monthly": "{count, plural, =1 {Повторюється щомісяця} one {Повторюється кожні # місяць} few {Повторюється кожні # місяці} many {Повторюється кожні # місяців} other {Повторюється кожні # місяця}}",
+      "yearly": "{count, plural, =1 {Повторюється щороку} one {Повторюється кожні # рік} few {Повторюється кожні # роки} many {Повторюється кожні # років} other {Повторюється кожні # року}}",
+      "other": "Повторюється"
+    }
+  },
+  "providers": {
+    "google": {
+      "name": "Google Calendar"
+    },
+    "ics": {
+      "name": "Календарі за підпискою"
+    },
+    "caldav": {
+      "name": "CalDAV"
+    }
   }
 }

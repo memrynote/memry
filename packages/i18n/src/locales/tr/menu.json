@@ -3,19 +3,19 @@
     "quit": "Çık",
     "preferences": "Ayarlar…",
     "checkForUpdates": "Güncellemeleri Denetle…",
-    "exit": "Çıkış",
+    "services": "Servisler",
     "hide": "MemryNote'u Gizle",
     "hideOthers": "Diğerlerini Gizle",
-    "services": "Hizmetler",
-    "unhide": "Tümünü Göster"
+    "unhide": "Tümünü Göster",
+    "exit": "Çıkış"
   },
   "file": {
     "label": "Dosya",
     "newNote": "Yeni Not",
-    "close": "Pencereyi Kapat",
+    "openQuickly": "Hızlı Aç…",
+    "exportPdf": "PDF Olarak Dışa Aktar…",
     "closeTab": "Sekmeyi Kapat",
-    "exportPdf": "PDF'e Aktar…",
-    "openQuickly": "Hızlı Aç…"
+    "close": "Pencereyi Kapat"
   },
   "navigation": {
     "back": "Geri",
@@ -31,63 +31,68 @@
     "selectAll": "Tümünü Seç",
     "find": "Bul",
     "speech": "Konuşma",
+    "pasteAndMatchStyle": "Yapıştır ve Stili Eşleştir",
     "delete": "Sil",
-    "pasteAndMatchStyle": "Yapıştır ve Stili Eşle",
     "startSpeaking": "Konuşmayı Başlat",
-    "stopSpeaking": "Konuşmayı Durdur"
+    "stopSpeaking": "Konuşmayı Durdur",
+    "addToDictionary": "Sözlüğe Ekle",
+    "noSuggestions": "Öneri Yok"
   },
-  "view": {
-    "label": "Görünüm",
-    "reload": "Yeniden Yükle",
-    "toggleDevTools": "Geliştirici Araçlarını Aç/Kapat",
-    "toggleFullscreen": "Tam Ekrana Geçiş Yap",
-    "theme": "Tema",
-    "themeDark": "Koyu",
-    "themeLight": "Açık",
-    "themeSystem": "Sistem",
-    "themeWhite": "Kağıt",
-    "toggleDayPanel": "Gün Panelini Aç/Kapat",
-    "toggleSidebar": "Kenar Çubuğunu Aç/Kapat",
-    "actualSize": "Gerçek Boyut",
-    "zoomIn": "Yakınlaştır",
-    "zoomOut": "Uzaklaştır"
+  "insert": {
+    "label": "Ekle",
+    "codeBlock": "Kod Bloğu",
+    "table": "Tablo",
+    "bulletList": "Madde İşaretli Liste",
+    "numberedList": "Numaralı Liste",
+    "taskList": "Görev Listesi",
+    "attachment": "Dosya Ekle…"
   },
   "format": {
-    "body": "Gövde",
-    "bold": "Kalın",
-    "code": "Kod",
+    "label": "Biçim",
     "heading1": "Başlık 1",
     "heading2": "Başlık 2",
     "heading3": "Başlık 3",
     "heading4": "Başlık 4",
     "heading5": "Başlık 5",
     "heading6": "Başlık 6",
-    "highlight": "Vurgu",
+    "body": "Gövde",
+    "bold": "Kalın",
     "italic": "İtalik",
-    "label": "Biçim",
+    "code": "Kod",
+    "highlight": "Vurgula",
     "strikethrough": "Üstü Çizili"
   },
-  "help": {
-    "about": "MemryNote Hakkında",
-    "documentation": "Belgeler",
-    "label": "Yardım",
-    "shortcuts": "Klavye Kısayolları",
-    "aboutVersion": "Sürüm {version}"
-  },
-  "insert": {
-    "attachment": "Ek Ekle…",
-    "bulletList": "Madde İşaretli Liste",
-    "codeBlock": "Kod Bloğu",
-    "label": "Ekle",
-    "numberedList": "Numaralı Liste",
-    "table": "Tablo",
-    "taskList": "Görev Listesi"
+  "view": {
+    "label": "Görünüm",
+    "reload": "Yeniden Yükle",
+    "toggleDevTools": "Geliştirici Araçlarını Aç/Kapat",
+    "toggleFullscreen": "Tam Ekranı Aç/Kapat",
+    "toggleSidebar": "Kenar Çubuğunu Aç/Kapat",
+    "toggleDayPanel": "Gün Panelini Aç/Kapat",
+    "theme": "Tema",
+    "themeLight": "Açık",
+    "themeDark": "Koyu",
+    "themeWhite": "Kâğıt",
+    "themeSystem": "Sistem",
+    "actualSize": "Gerçek Boyut",
+    "zoomIn": "Yakınlaştır",
+    "zoomOut": "Uzaklaştır"
   },
   "window": {
     "label": "Pencere",
-    "close": "Kapat",
-    "front": "Tümünü Öne Getir",
     "minimize": "Küçült",
-    "zoom": "Yakınlaştır"
+    "zoom": "Büyüt",
+    "front": "Tümünü Öne Getir",
+    "close": "Kapat"
+  },
+  "help": {
+    "label": "Yardım",
+    "documentation": "Belgeler",
+    "shortcuts": "Klavye Kısayolları",
+    "about": "MemryNote Hakkında",
+    "aboutVersion": "Sürüm {version}"
+  },
+  "tray": {
+    "show": "MemryNote'u Göster"
   }
 }

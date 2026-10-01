@@ -3,7 +3,10 @@
     "tabs": {
       "label": "タスクビュー",
       "today": "今日",
-      "all": "すべて"
+      "tomorrow": "明日",
+      "next7": "今後 7 日間",
+      "all": "すべて",
+      "archived": "アーカイブ済み"
     },
     "viewMode": {
       "label": "ビューモード",
@@ -13,40 +16,58 @@
     "projectScope": {
       "allProjects": "すべてのプロジェクト",
       "searchProjects": "プロジェクトを検索…",
-      "editProject": "{name} を編集する",
-      "unstarSavedFilter": "{name} のスターを解除します",
-      "openByDefault": "タスクをデフォルトで {name} で開く",
+      "editProject": "{name} を編集",
+      "unstarSavedFilter": "{name} のスターを解除",
+      "openByDefault": "タスクを開いたときに {name} を表示",
       "defaultProject": "デフォルトのプロジェクト",
       "setAsDefault": "デフォルトに設定"
     }
   },
   "task": {
-    "add": "タスクの追加",
+    "add": "タスクを追加",
     "title": "タイトル",
     "titleRequired": "タイトルは必須です",
-    "titlePlaceholder": "何をする必要があるでしょうか?",
+    "titlePlaceholder": "何をしますか？",
     "namePlaceholder": "タスク名",
     "description": "説明",
     "descriptionPlaceholder": "説明を追加…",
     "details": "タスクの詳細",
     "status": "ステータス",
-    "priority": "優先順位",
+    "priority": "優先度",
+    "tags": "タグ",
+    "startDate": "開始日",
+    "changeStartDate": "開始日：{date}。クリックして変更できます。",
     "dueDate": "期限",
     "startsOn": "開始 {date}",
     "dueOn": "期限 {date}",
-    "project": "プロジェクト",
-    "repeat": "リピート",
-    "createAnother": "別のを作成する",
-    "delete": "タスクの削除",
-    "created": "{date}を作成しました",
     "reminder": "リマインダー",
-    "tags": "タグ",
+    "project": "プロジェクト",
+    "repeat": "繰り返し",
+    "createAnother": "続けて作成",
+    "delete": "タスクを削除",
+    "created": "作成日：{date}",
     "priorityLabels": {
-      "high": "高",
+      "none": "優先度なし",
       "low": "低",
       "medium": "中",
-      "none": "優先度なし",
+      "high": "高",
       "urgent": "緊急"
+    },
+    "unarchive": "タスクのアーカイブを解除",
+    "archivedOn": "{date} にアーカイブ"
+  },
+  "reminders": {
+    "summary": "リマインダー：{date}",
+    "summaryWithMore": "リマインダー：{date}（他 {count} 件）",
+    "hasReminders": "リマインダーあり",
+    "setReminder": "リマインダーを設定",
+    "toast": {
+      "set": "リマインダーを設定しました",
+      "setFailed": "リマインダーを設定できませんでした",
+      "updated": "リマインダーを更新しました",
+      "updateFailed": "リマインダーを更新できませんでした",
+      "deleted": "リマインダーを削除しました",
+      "deleteFailed": "リマインダーを削除できませんでした"
     }
   },
   "filters": {
@@ -55,39 +76,55 @@
     "emptyHelp": "フィルターを調整してみるか、",
     "groupBy": "グループ化",
     "groupByOptions": "グループ化オプション",
-    "sortAscending": "昇順に並べ替えます",
+    "sortAscending": "昇順で並べ替え",
     "sortDescending": "降順で並べ替え",
+    "sortDirectionAscending": "昇順",
+    "sortDirectionDescending": "降順",
+    "groupByFields": {
+      "dueDate": "期限",
+      "priority": "優先度",
+      "status": "ステータス",
+      "createdAt": "作成日",
+      "title": "タイトル",
+      "project": "プロジェクト",
+      "completedAt": "完了日",
+      "folder": "フォルダー",
+      "note": "ノート"
+    },
+    "groups": {
+      "vaultRoot": "保管庫のルート",
+      "noNote": "ノートなし"
+    },
     "dueDate": {
       "any": "すべての期限",
-      "custom": "カスタム範囲...",
-      "nextWeek": "来週",
       "none": "期限なし",
-      "overdue": "期限超過",
-      "thisMonth": "今月",
-      "thisWeek": "今週",
+      "overdue": "期限切れ",
       "today": "今日",
-      "tomorrow": "明日"
+      "tomorrow": "明日",
+      "thisWeek": "今週",
+      "nextWeek": "来週",
+      "thisMonth": "今月",
+      "custom": "カスタム範囲…"
     },
     "quickPresets": {
-      "dueThisWeek": "今週が期限",
+      "overdue": "期限切れ",
       "highPriority": "高優先度",
-      "noDueDate": "期限なし",
-      "overdue": "期限超過",
-      "repeating": "繰り返し"
+      "dueThisWeek": "今週が期限",
+      "repeating": "繰り返し",
+      "noDueDate": "期限なし"
     },
-    "repeatTypeOneTime": "単発",
-    "repeatTypeRepeating": "繰り返し"
+    "repeatTypeRepeating": "繰り返し",
+    "repeatTypeOneTime": "単発"
   },
   "quickAdd": {
     "label": "タスクのクイック追加",
-    "focusDescription": "クイック追加入力に焦点を当てる",
-    "placeholder": "タスクを追加…    !today  !!high  #project",
+    "placeholder": "タスクを追加…    @tomorrow  !high  +project  #tag  [[note]]  every monday",
     "presets": {
       "menu": "タスクのオプション",
       "dueDate": "期限 {date}。期限を変更",
       "noDate": "日付なし",
       "linkNote": "ノートをリンク",
-      "openDetails": "すべての詳細を開く",
+      "openDetails": "詳細を開く",
       "back": "戻る",
       "remove": "{name} を削除",
       "noReminder": "リマインダーなし",
@@ -97,318 +134,371 @@
   "inlineProperties": {
     "addProperty": "プロパティを追加",
     "dates": "日付",
-    "datesAria": "日付: {value}",
+    "datesAria": "日付：{value}",
     "start": "開始",
     "due": "期限",
-    "dueDate": "期限日",
+    "dueDate": "期限",
     "remindMe": "リマインド",
     "linkItem": "ノートまたはキャンバスをリンク",
-    "relatedAria": "関連アイテム: {count}",
+    "relatedAria": "関連項目：{count}",
     "shorthandPreview": "短縮記法で設定"
   },
   "drawer": {
     "close": "タスクの詳細を閉じる",
     "openInTasks": "タスクで開く",
-    "subIssues": "サブ問題",
-    "addSubIssue": "サブ問題を追加する",
-    "subIssuePlaceholder": "サブ問題を追加…",
-    "noSubIssues": "サブ問題はまだありません",
-    "linkedNotes": "リンクされたノート",
-    "linkNote": "メモをリンクする",
+    "resize": "パネルのサイズを変更",
+    "subIssues": "サブタスク",
+    "addSubIssue": "サブタスクを追加",
+    "subIssuePlaceholder": "サブタスクを追加…",
+    "noSubIssues": "サブタスクはまだありません",
+    "linkedNotes": "関連",
+    "linkNote": "関連項目を追加",
     "loading": "読み込み中…",
-    "searchNotes": "メモを検索…",
-    "noMatchingNotes": "一致するメモがありません",
-    "noNotesAvailable": "利用可能なメモはありません",
-    "noLinkedNotes": "リンクされたノートはまだありません",
-    "removeLinkTo": "{title} へのリンクを削除",
-    "removeLinkFallback": "メモ",
+    "searchNotes": "関連項目を検索…",
+    "noMatchingNotes": "一致する項目がありません",
+    "noNotesAvailable": "利用可能な項目がありません",
+    "noLinkedNotes": "関連項目はまだありません",
+    "removeLinkTo": "関連項目 {title} を削除",
+    "removeLinkFallback": "項目",
+    "related": "関連",
     "addRelatedItem": "関連項目を追加",
+    "searchRelated": "関連項目を検索…",
     "noMatchingRelated": "一致する項目がありません",
     "noRelatedAvailable": "利用可能な項目がありません",
     "noRelatedItems": "関連項目はまだありません",
-    "related": "関連",
-    "relatedItemFallback": "項目",
     "removeRelatedItem": "関連項目 {title} を削除",
-    "resize": "パネルのサイズを変更",
-    "searchRelated": "関連を検索…"
+    "relatedItemFallback": "項目",
+    "relatedItemMissing": "この関連項目は、この保管庫にはもうありません。",
+    "activity": "アクティビティ",
+    "activityShowAll": "{count} 件をすべて表示",
+    "activityEmpty": "まだ記録はありません。このタスクを編集すると、ここに表示されます。",
+    "activityLoading": "アクティビティを読み込み中…",
+    "activityError": "アクティビティを読み込めませんでした。",
+    "activityMore": "さらに読み込む",
+    "activityTitle": "{title} のアクティビティ",
+    "activityDescription": "このタスクへのすべての変更を新しい順に表示します。",
+    "activityFilter": "変更の種類で絞り込み",
+    "activityFilterAll": "すべての変更",
+    "activityRetention": "{days} 日より前のアクティビティは削除されます。",
+    "activityToday": "今日",
+    "activityYesterday": "昨日",
+    "activityByYou": "自分",
+    "activityBySync": "別のデバイス",
+    "activityByGoogle": "Google Calendar",
+    "activityActionCreated": "作成",
+    "activityActionUpdated": "更新",
+    "activityActionCompleted": "完了",
+    "activityActionUncompleted": "未完了に変更",
+    "activityActionMoved": "移動",
+    "activityActionDeleted": "削除",
+    "activityActionSuperseded": "置き換え",
+    "activitySupersededNote": "別のデバイスでの変更に置き換えられました",
+    "activityCharsAdded": "+{count} 文字",
+    "activityCharsRemoved": "{count} 文字",
+    "activityCharsSame": "表現を変更",
+    "activityEmptyValue": "空",
+    "activityFieldTitle": "タイトル",
+    "activityFieldDescription": "説明",
+    "activityFieldStatusId": "ステータス",
+    "activityFieldPriority": "優先度",
+    "activityFieldDueDate": "期限",
+    "activityFieldDueTime": "期限の時刻",
+    "activityFieldStartDate": "開始日",
+    "activityFieldProjectId": "プロジェクト",
+    "activityFieldParentId": "親タスク",
+    "activityFieldTags": "タグ",
+    "activityFieldLinkedNoteIds": "関連項目",
+    "activityFieldCompletedAt": "完了",
+    "activityFieldArchivedAt": "アーカイブ",
+    "activityFieldRepeatConfig": "繰り返し",
+    "activityFieldSourceNoteId": "元のノート",
+    "activityFrom": "{value} から",
+    "activityTo": "{value} に",
+    "activityValueChanged": "変更あり",
+    "activityUnknownDate": "日付なし",
+    "activityFieldRepeatFrom": "繰り返しの基準",
+    "activityFieldIsRepeating": "繰り返し"
   },
   "kanban": {
     "board": "カンバンボード",
     "empty": {
       "default": {
-        "subtitle": "ここにタスクをドラッグするか、+ をクリックして追加します",
-        "title": "タスクはありません"
+        "title": "タスクはありません",
+        "subtitle": "ここにタスクをドラッグするか、+ をクリックして追加します"
       },
       "done": {
-        "subtitle": "タスクを完了すると、ここに表示されます",
-        "title": "完了したタスクはありません"
+        "title": "完了したタスクはありません",
+        "subtitle": "タスクを完了すると、ここに表示されます"
       },
       "schedule": {
-        "subtitle": "ここにタスクをドラッグすると予定を変更できます",
-        "title": "予定はありません"
+        "title": "日付が設定されたタスクはありません",
+        "subtitle": "タスクをここにドラッグすると日程を変更できます"
       }
     }
   },
   "toasts": {
-    "projectUpdated": "プロジェクトが更新されました",
-    "projectCreated": "プロジェクトが作成されました",
-    "projectSaveError": "プロジェクトの保存に失敗しました",
-    "projectArchived": "プロジェクトがアーカイブされました",
-    "projectArchiveError": "プロジェクトのアーカイブに失敗しました",
-    "projectDeleted": "プロジェクトが削除されました",
-    "projectDeleteError": "プロジェクトの削除に失敗しました",
-    "filtersCleared": "フィルターがクリアされました",
-    "filterSaved": "フィルターが保存されました",
-    "filterDeleted": "フィルタが削除されました",
-    "filterApplied": "「{name}」を適用",
-    "deleted": "タスクが削除されました",
-    "deletedSeries": "シリーズ完結！",
-    "completed": "タスクが完了しました！",
-    "archived": "タスクがアーカイブされました",
-    "undoNotAvailableForDelete": "元に戻すは削除できません",
+    "projectUpdated": "プロジェクトを更新しました",
+    "projectCreated": "プロジェクトを作成しました",
+    "projectSaveError": "プロジェクトを保存できませんでした",
+    "projectArchived": "プロジェクトをアーカイブしました",
+    "projectArchiveError": "プロジェクトをアーカイブできませんでした",
+    "projectDeleted": "プロジェクトを削除しました",
+    "projectDeleteError": "プロジェクトを削除できませんでした",
+    "filtersCleared": "フィルターをクリアしました",
+    "filterSaved": "フィルターを保存しました",
+    "filterDeleted": "フィルターを削除しました",
+    "filterApplied": "「{name}」を適用しました",
+    "deleted": "タスクを削除しました",
+    "deletedSeries": "繰り返しがすべて完了しました",
+    "completed": "タスクを完了しました",
+    "archived": "タスクをアーカイブしました",
+    "undoNotAvailableForDelete": "削除は元に戻せません",
     "alreadyAllComplete": "選択したタスクはすべてすでに完了しています",
     "noCompletedSelected": "完了したタスクが選択されていません",
     "completeFailed": "タスクを完了できませんでした",
-    "deleteFailed": "タスクの削除に失敗しました",
-    "moveFailed": "タスクの移動に失敗しました",
+    "deleteFailed": "タスクを削除できませんでした",
+    "moveFailed": "タスクを移動できませんでした",
     "bulk": {
-      "archived": "{count, plural, other {# 件のタスクをアーカイブしました}}",
       "completed": "{count, plural, other {# 件のタスクを完了しました}}",
-      "deleted": "{count, plural, other {# 件のタスクを削除しました}}",
-      "deletedDescription": "この操作はしばらくの間、元に戻せます。",
-      "dueDateRemoved": "{count, plural, other {# 件のタスクから期限を削除しました}}",
-      "dueDateSet": "{count, plural, other {# 件のタスクに期限を設定しました}}",
-      "movedToProject": "{count, plural, other {# 件のタスクを {project} に移動しました}}",
-      "movedToStatus": "{count, plural, other {# 件のタスクを {status} に移動しました}}",
+      "undoComplete": "{count, plural, other {# 件のタスクを完了}}",
+      "restored": "{count, plural, other {# 件のタスクを復元しました}}",
+      "undoUncomplete": "{count, plural, other {# 件のタスクの完了を取り消す}}",
       "priorityRemoved": "{count, plural, other {# 件のタスクから優先度を削除しました}}",
       "prioritySet": "{count, plural, other {# 件のタスクの優先度を {priority} に設定しました}}",
-      "restored": "{count, plural, other {# 件のタスクを復元しました}}",
-      "undoArchive": "{count, plural, other {# 件のタスクをアーカイブ}}",
-      "undoComplete": "{count, plural, other {# 件のタスクを完了}}",
-      "undoDelete": "{count, plural, other {# 件のタスクを削除}}",
       "undoDueDate": "{count, plural, other {# 件のタスクの期限を変更}}",
+      "dueDateSet": "{count, plural, other {# 件のタスクに期限を設定しました}}",
+      "dueDateRemoved": "{count, plural, other {# 件のタスクから期限を削除しました}}",
       "undoMove": "{count, plural, other {# 件のタスクを移動}}",
+      "movedToProject": "{count, plural, other {# 件のタスクを {project} に移動しました}}",
       "undoStatus": "{count, plural, other {# 件のタスクのステータス → {status}}}",
-      "undoUncomplete": "{count, plural, other {# 件のタスクの完了を取り消す}}"
+      "movedToStatus": "{count, plural, other {# 件のタスクを {status} に移動しました}}",
+      "undoArchive": "{count, plural, other {# 件のタスクをアーカイブ}}",
+      "archived": "{count, plural, other {# 件のタスクをアーカイブしました}}",
+      "undoDelete": "{count, plural, other {# 件のタスクを削除}}",
+      "deleted": "{count, plural, other {# 件のタスクを削除しました}}",
+      "deletedDescription": "この操作はしばらくの間、元に戻せます。",
+      "unarchived": "{count} 件のタスクをアーカイブから復元しました",
+      "undoUnarchive": "{count} 件のタスクのアーカイブを解除"
     },
     "drag": {
-      "archived": "{count, plural, other {# 件のタスクをアーカイブしました}}",
-      "deleted": "{count, plural, other {# 件のタスクを削除しました}}",
-      "moved": "{count, plural, other {# 件のタスクを {target} に移動しました}}",
-      "movedTo": "{target} に移動しました",
-      "prioritySet": "{count, plural, other {# 件のタスクの優先度を {priority} に設定しました}}",
-      "prioritySetTo": "優先度を {priority} に設定しました",
-      "rescheduled": "{count, plural, other {# 件のタスクを {target} に再スケジュールしました}}",
       "rescheduledTo": "{target} に再スケジュールしました",
+      "rescheduled": "{count, plural, other {# 件のタスクを {target} に再スケジュールしました}}",
+      "movedTo": "{target} に移動しました",
+      "moved": "{count, plural, other {# 件のタスクを {target} に移動しました}}",
+      "prioritySetTo": "優先度を {priority} に設定しました",
+      "prioritySet": "{count, plural, other {# 件のタスクの優先度を {priority} に設定しました}}",
+      "deleted": "{count, plural, other {# 件のタスクを削除しました}}",
+      "archived": "{count, plural, other {# 件のタスクをアーカイブしました}}",
       "undoArchive": "{count, plural, other {# 件のタスクをアーカイブしました}}"
     },
     "subtasks": {
       "added": "{count, plural, other {# 件のサブタスクを追加しました}}",
-      "completed": "{count, plural, other {# 件のサブタスクを完了しました}}",
-      "deleted": "{count, plural, other {# 件のサブタスクを削除しました}}",
+      "promoted": "「{title}」をタスクに昇格しました",
       "deletedDescription": "サブタスクを削除しました",
-      "dueDateCleared": "{count, plural, other {# 件のサブタスクの期限をクリアしました}}",
-      "dueDateSet": "{count, plural, other {# 件のサブタスクに期限を設定しました}}",
-      "markedIncomplete": "{count, plural, other {# 件のサブタスクを未完了にしました}}",
-      "movedUnder": "「{title}」の下に移動しました",
-      "parentAndSubtasksCompleted": "タスクとサブタスクを完了しました",
       "parentDeletedKeepSubtasks": "タスクを削除し、サブタスクをタスクに変換しました",
       "parentDeletedWithSubtasks": "タスクとサブタスクを削除しました",
+      "parentAndSubtasksCompleted": "タスクとサブタスクを完了しました",
+      "movedUnder": "「{title}」の下に移動しました",
+      "completed": "{count, plural, other {# 件のサブタスクを完了しました}}",
+      "markedIncomplete": "{count, plural, other {# 件のサブタスクを未完了にしました}}",
+      "dueDateSet": "{count, plural, other {# 件のサブタスクに期限を設定しました}}",
+      "dueDateCleared": "{count, plural, other {# 件のサブタスクの期限をクリアしました}}",
       "prioritySet": "{count, plural, other {# 件のサブタスクに優先度を設定しました}}",
-      "promoted": "「{title}」をタスクに昇格しました"
+      "deleted": "{count, plural, other {# 件のサブタスクを削除しました}}"
     }
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
-      "addSubtask": "サブタスクを追加...",
+      "addSubtask": "サブタスクを追加…",
       "addSubtask2": "サブタスクの追加",
-      "enterToAdd": "追加するには入力してください"
+      "enterToAdd": "Enter で追加"
     },
     "componentsTasksBulkActionsBulkActionDropdown": {
-      "for": "のために ",
-      "task": "タスク"
+      "for": "· タスク ",
+      "task": "件"
     },
     "componentsTasksBulkActionsBulkActionToolbar": {
       "bulkActions": "一括アクション",
-      "selected": "選択された",
+      "selected": "件を選択中",
       "complete": "完了",
-      "priority": "優先順位",
+      "priority": "優先度",
       "dueDate": "期限",
-      "moveTo": "に移動します",
+      "moveTo": "移動",
       "status": "ステータス",
       "archive": "アーカイブ",
       "delete": "削除",
-      "cancelSelection": "選択をキャンセルする",
-      "cancel": "キャンセル"
+      "cancelSelection": "選択を解除",
+      "cancel": "キャンセル",
+      "unarchive": "アーカイブを解除"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
-      "delete": "削除 ",
-      "task": "タスク",
-      "youReAboutToDelete": "削除しようとしています ",
-      "task2": "タスク",
-      "and": "そして ",
-      "moreTask": "さらに多くのタスク",
+      "delete": "タスク ",
+      "task": "件を削除しますか",
+      "youReAboutToDelete": "次の ",
+      "task2": "件のタスクを削除します",
+      "and": "他 ",
+      "moreTask": "件のタスク",
       "thisActionCanBeUndoneForAShortTimeAfterDeletion": "この操作は、削除後しばらくの間は元に戻すことができます。",
       "cancel": "キャンセル",
-      "delete2": "削除 ",
-      "task3": "タスク"
+      "delete2": "タスク ",
+      "task3": "件を削除"
     },
     "componentsTasksBulkActionsBulkDueDatePicker": {
-      "setDueDateFor": "期日を設定する ",
-      "task": "タスク",
-      "selectADateToSetAsTheDueDateForAllSelectedTasks": "選択したすべてのタスクの期日として設定する日付を選択します。",
-      "alsoSetTime": "時間も設定して",
+      "setDueDateFor": "タスク ",
+      "task": "件の期限を設定",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "選択したすべてのタスクに設定する期限を選択してください。",
+      "alsoSetTime": "時刻も設定",
       "cancel": "キャンセル",
-      "setDueDate": "期日を設定する"
+      "setDueDate": "期限を設定"
     },
     "componentsTasksCelebrationProgress": {
       "complete": "完了"
     },
     "componentsTasksColorPicker": {
-      "selectColor": "色を選択してください"
+      "selectColor": "色を選択"
     },
     "componentsTasksCustomRepeatDialog": {
-      "onTheseDays": "この頃は",
-      "repeatOn": "繰り返します",
-      "day": "日",
-      "ofTheMonth": "今月の",
-      "the": "の",
-      "ofTheMonth2": "今月の",
-      "ends": "終わり",
-      "never": "決してしない",
-      "onDate": "デート中",
-      "after": "後",
-      "occurrences": "出来事",
+      "onTheseDays": "繰り返す曜日",
+      "repeatOn": "繰り返す日",
+      "day": "毎月",
+      "ofTheMonth": "日",
+      "the": "毎月",
+      "ofTheMonth2": "に",
+      "ends": "終了",
+      "never": "なし",
+      "onDate": "日付を指定",
+      "after": "繰り返し回数",
+      "occurrences": "回",
       "preview": "プレビュー",
-      "of": "の ",
-      "andMore": "などなど",
-      "frequency": "周波数",
-      "repeatEvery": "毎回繰り返す",
-      "day2": "日",
-      "week": "週",
-      "month": "月",
-      "year": "年",
+      "of": "/ ",
+      "andMore": "以降も続きます",
+      "frequency": "頻度",
+      "repeatEvery": "間隔",
+      "day2": "日ごと",
+      "week": "週ごと",
+      "month": "か月ごと",
+      "year": "年ごと",
       "cancel": "キャンセル",
       "save": "保存",
-      "customRepeat": "カスタムリピート"
+      "customRepeat": "カスタム繰り返し"
     },
     "componentsTasksDatePickerCalendar": {
       "previousMonth": "前月",
-      "nextMonth": "来月",
-      "goToToday": "今日に行く",
+      "nextMonth": "翌月",
+      "goToToday": "今日へ移動",
       "today": "今日",
-      "w": "W",
+      "w": "週",
       "weekNumber": "第 {number} 週"
     },
     "componentsTasksDatePickerContent": {
       "removeDate": "日付を削除",
-      "clearTime": "クリアタイム",
-      "addTime": "時間を追加する",
+      "clearTime": "時刻をクリア",
+      "addTime": "時刻を追加",
       "time": "時刻"
     },
     "componentsTasksDeleteProjectDialog": {
-      "delete": "「を削除」",
-      "thisProjectHas": "このプロジェクトには、 ",
-      "task": "タスク",
-      "whatWouldYouLikeToDoWithThem": "彼らと一緒に何をしたいですか？",
-      "moveTasksToPersonalProject": "タスクを個人プロジェクトに移動する",
-      "deleteAllTasksPermanently": "すべてのタスクを完全に削除します",
+      "delete": "削除 \"",
+      "thisProjectHas": "このプロジェクトには ",
+      "task": "件のタスクがあります",
+      "whatWouldYouLikeToDoWithThem": "これらのタスクをどうしますか？",
+      "moveTasksToPersonalProject": "タスクを個人プロジェクトに移動",
+      "deleteAllTasksPermanently": "すべてのタスクを完全に削除",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "このプロジェクトにはタスクがないため、完全に削除されます。",
+      "notesEventsAndFilesStayNotice": "このプロジェクトのタスクは削除されます。ノート、予定、ファイルは保管庫に残ります。",
       "thisActionCannotBeUndone": "この操作は元に戻すことができません。",
       "cancel": "キャンセル",
-      "deleteProject": "プロジェクトの削除",
-      "notesEventsAndFilesStayNotice": "このプロジェクトのタスクは削除されます。メモ・予定・ファイルは保管庫に残ります。"
+      "deleteProject": "プロジェクトを削除"
     },
     "componentsTasksDeleteTaskDialog": {
-      "deleteTask": "タスクを削除しますか?",
-      "deleteTask2": "タスクの削除",
+      "deleteTask": "タスクを削除しますか？",
+      "deleteTask2": "タスクを削除",
       "deleteConfirmBody": "「{title}」は完全に削除されます。この操作は元に戻すことができません。"
     },
     "componentsTasksDialogsAllSubtasksCompleteDialog": {
-      "allSubtasksComplete": "すべてのサブタスクが完了しました。",
-      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "親タスクも完了としてマークしますか?",
-      "keepTaskOpen": "タスクを開いたままにしておく",
-      "completeTask": "タスクを完了する ✓",
-      "allSubtasksDoneBody": "「{title}」の{count, plural, other {# 件のサブタスク}}がすべて完了しました。"
+      "allSubtasksComplete": "すべてのサブタスクが完了しました",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "親タスクも完了にしますか？",
+      "keepTaskOpen": "未完了のままにする",
+      "completeTask": "タスクを完了 ✓",
+      "allSubtasksDoneBody": "「{title}」の {count, plural, other {# 件のサブタスク}}がすべて完了しました。"
     },
     "componentsTasksDialogsBulkDueDateDialog": {
-      "setDueDateForAllSubtasks": "すべてのサブタスクの期限を設定する",
-      "setDueDateFor": "期日を設定する ",
-      "alsoApplyToCompletedSubtasks": "完了したサブタスクにも適用されます (",
-      "clearDate": "クリア日付",
+      "setDueDateForAllSubtasks": "すべてのサブタスクの期限を設定",
+      "setDueDateFor": "期限を設定 ",
+      "alsoApplyToCompletedSubtasks": "完了したサブタスクにも適用 (",
+      "clearDate": "日付をクリア",
       "cancel": "キャンセル",
-      "apply": "申し込む",
-      "alsoApplyToCompletedSubtasksCount": "完了したサブタスクにも適用（{count}）",
-      "setDueDateForSubtasksIn": "「{title}」内の{count, plural, other {# 件のサブタスク}}に期限を設定"
+      "apply": "適用",
+      "setDueDateForSubtasksIn": "「{title}」内の {count, plural, other {# 件のサブタスク}}に期限を設定",
+      "alsoApplyToCompletedSubtasksCount": "完了したサブタスクにも適用（{count}）"
     },
     "componentsTasksDialogsBulkPriorityDialog": {
-      "setPriorityForAllSubtasks": "すべてのサブタスクの優先度を設定する",
-      "setPriorityFor": "優先順位を設定する ",
-      "alsoApplyToCompletedSubtasks": "完了したサブタスクにも適用されます (",
+      "setPriorityForAllSubtasks": "すべてのサブタスクの優先度を設定",
+      "setPriorityFor": "優先度を設定 ",
+      "alsoApplyToCompletedSubtasks": "完了したサブタスクにも適用 (",
       "cancel": "キャンセル",
-      "apply": "申し込む",
-      "alsoApplyToCompletedSubtasksCount": "完了したサブタスクにも適用（{count}）",
-      "setPriorityForSubtasksIn": "「{title}」内の{count, plural, other {# 件のサブタスク}}に優先度を設定"
+      "apply": "適用",
+      "setPriorityForSubtasksIn": "「{title}」内の {count, plural, other {# 件のサブタスク}}に優先度を設定",
+      "alsoApplyToCompletedSubtasksCount": "完了したサブタスクにも適用（{count}）"
     },
     "componentsTasksDialogsCompleteParentDialog": {
-      "completeTaskWithIncompleteSubtasks": "未完了のサブタスクを含むタスクを完了しますか?",
-      "has": "持っています ",
-      "incompleteSubtask": "不完全なサブタスク",
-      "and": "そして ",
-      "more": "もっと見る",
-      "whatWouldYouLikeToDo": "何をしたいですか?",
-      "completeAllParentSubtasks": "すべて (親タスク + サブタスク) を完了する",
-      "markTheParentAndAllSubtasksAsComplete": "親タスクとすべてのサブタスクを完了としてマークします",
-      "completeParentOnlyKeepSubtasksIncomplete": "親のみを完了し、サブタスクは未完了のままにします",
-      "onlyMarkTheParentTaskAsComplete": "親タスクのみを完了としてマークします",
+      "completeTaskWithIncompleteSubtasks": "未完了のサブタスクがあるタスクを完了しますか？",
+      "has": "には未完了のサブタスクが ",
+      "incompleteSubtask": "件あります",
+      "and": "他 ",
+      "more": "件",
+      "whatWouldYouLikeToDo": "どうしますか？",
+      "completeAllParentSubtasks": "すべて完了（親タスクとサブタスク）",
+      "markTheParentAndAllSubtasksAsComplete": "親タスクとすべてのサブタスクを完了にします",
+      "completeParentOnlyKeepSubtasksIncomplete": "親タスクのみ完了（サブタスクは未完了のまま）",
+      "onlyMarkTheParentTaskAsComplete": "親タスクのみを完了にします",
       "cancel": "キャンセル",
       "complete": "完了"
     },
     "componentsTasksDialogsDeleteAllSubtasksDialog": {
-      "deleteAllSubtasks": "すべてのサブタスクを削除しますか?",
+      "deleteAllSubtasks": "すべてのサブタスクを削除しますか？",
       "thisActionCannotBeUndone": "この操作は元に戻すことができません。",
       "cancel": "キャンセル",
       "deleteAll": "すべて削除",
-      "deleteSubtasksConfirmation": "「{title}」から{count, plural, other {# 件のサブタスク}}を削除します。"
+      "deleteSubtasksConfirmation": "「{title}」から {count, plural, other {# 件のサブタスク}}を削除します。"
     },
     "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "サブタスクを含むタスクを削除しますか?",
-      "has": "持っています ",
-      "subtask": "サブタスク",
-      "whatWouldYouLikeToDo": "何をしたいですか?",
-      "deleteTaskAndAllSubtasks": "タスクとすべてのサブタスクを削除します",
-      "permanentlyRemovesEverything": "すべてを永久に削除します",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "タスクを削除し、サブタスクをスタンドアロン タスクとして保持します",
-      "subtasksBecomeTopLevelTasks": "サブタスクがトップレベルのタスクになる",
+      "deleteTaskWithSubtasks": "サブタスクを含むタスクを削除しますか？",
+      "has": "にはサブタスクが ",
+      "subtask": "件あります",
+      "whatWouldYouLikeToDo": "どうしますか？",
+      "deleteTaskAndAllSubtasks": "タスクとすべてのサブタスクを削除",
+      "permanentlyRemovesEverything": "すべてを完全に削除します",
+      "deleteTaskKeepSubtasksAsStandaloneTasks": "タスクを削除し、サブタスクは独立したタスクとして残す",
+      "subtasksBecomeTopLevelTasks": "サブタスクはトップレベルのタスクになります",
       "cancel": "キャンセル",
       "delete": "削除"
     },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
-      "duplicateTask": "タスクの重複",
-      "createACopyOf": "「」のコピーを作成します。",
-      "alsoDuplicateSubtasks": "サブタスクも重複します (",
+      "duplicateTask": "タスクを複製",
+      "createACopyOf": "次のコピーを作成：“",
+      "alsoDuplicateSubtasks": "サブタスクも複製 (",
       "cancel": "キャンセル",
-      "duplicate": "重複 ",
-      "alsoDuplicateSubtasksCount": "サブタスクも複製（{count}）",
+      "duplicate": "複製 ",
       "createACopyOfTitle": "「{title}」のコピーを作成",
-      "duplicateTaskOnly": "タスクを複製",
-      "duplicateWithItems": "複製（{count, plural, other {# 件}}）"
+      "alsoDuplicateSubtasksCount": "サブタスクも複製（{count}）",
+      "duplicateWithItems": "複製（{count, plural, other {# 件}}）",
+      "duplicateTaskOnly": "タスクを複製"
     },
     "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "サブタスクを作成...",
-      "selectATaskToMake": "作成するタスクを選択してください。",
-      "aSubtaskOf": "のサブタスク。",
-      "searchTasks": "タスクを検索...",
+      "makeSubtaskOf": "サブタスクにする…",
+      "selectATaskToMake": "親タスクを選択：\"",
+      "aSubtaskOf": "をサブタスクにします。",
+      "searchTasks": "タスクを検索…",
       "sameProject": "同じプロジェクト",
       "otherProjects": "その他のプロジェクト"
     },
     "componentsTasksDragDropInsertionIndicator": {
-      "dropToRescheduleTo": "ドロップして再スケジュールする "
+      "dropToRescheduleTo": "ドロップして日程を変更："
     },
     "componentsTasksDragDropMoveMenu": {
       "moveTask": "タスクの移動",
       "move": "移動",
-      "reschedule": "スケジュールを変更する",
+      "reschedule": "日程を変更",
       "today": "今日",
       "tomorrow": "明日",
       "nextWeek": "来週",
@@ -417,40 +507,40 @@
       "current": "現在",
       "changeStatus": "ステータス変更",
       "current2": "現在",
-      "reorder": "再注文"
+      "reorder": "並べ替え"
     },
     "componentsTasksDragDropMultiDragOverlay": {
-      "moreTask": "さらに多くのタスク",
-      "task": "タスク"
+      "moreTask": "件",
+      "task": "件"
     },
     "componentsTasksDragDropSidebarDropZones": {
-      "dropHere": "ここにドロップしてください"
+      "dropHere": "ここにドロップ"
     },
     "componentsTasksDragDropTaskRow": {
-      "priority": "優先度: "
+      "priority": "優先度："
     },
     "componentsTasksDueDatePicker": {
-      "selectDueDate": "期限を選択してください",
-      "overdue": "期限を過ぎました",
-      "setDueDate": "期日を設定する",
-      "suggestions": "提案",
-      "pickADate": "日付を選択してください...",
-      "addTime": "時間を追加する",
-      "time": "時間",
-      "clearDate": "クリア日付",
+      "selectDueDate": "期限を選択",
+      "overdue": "期限切れ",
+      "setDueDate": "期限を設定",
+      "suggestions": "候補",
+      "pickADate": "日付を選択…",
+      "addTime": "時刻を追加",
+      "time": "時刻",
+      "clearDate": "日付をクリア",
       "backToOptions": "オプションに戻る",
-      "nextWeek": "来週",
-      "thisWeekend": "今週末",
       "today": "今日",
-      "tomorrow": "明日"
+      "tomorrow": "明日",
+      "thisWeekend": "今週末",
+      "nextWeek": "来週"
     },
     "componentsTasksEditRepeatingTaskDialog": {
       "editRepeatingTask": "繰り返しタスクの編集",
-      "youReEditingARepeatingTaskApplyChangesTo": "繰り返しタスクを編集しています。変更を以下に適用します。",
-      "onlyThisOccurrence": "この出来事だけは",
+      "youReEditingARepeatingTaskApplyChangesTo": "繰り返しタスクを編集しています。変更の適用先：",
+      "onlyThisOccurrence": "この回のみ",
       "onlyFutureTasksUnchanged": "のみ — 今後のタスクは変更されません",
-      "thisAndAllFutureOccurrences": "これと今後のすべての出来事",
-      "andBeyond": "そしてその先へ",
+      "thisAndAllFutureOccurrences": "この回と今後のすべての回",
+      "andBeyond": "以降",
       "cancel": "キャンセル",
       "continue": "続ける"
     },
@@ -459,51 +549,51 @@
     },
     "componentsTasksEmptyStatesSectionEmptyStates": {
       "noTasksScheduled": "スケジュールされたタスクはありません",
-      "addTaskFor": "タスクを追加 ",
-      "nothingScheduled": "予定はありません",
+      "addTaskFor": "タスクを追加：",
+      "nothingScheduled": "今後のタスクはありません",
       "addTasksWithDueDatesToPlanYourWeek": "期限付きのタスクを追加して、週の計画を立てます。",
-      "addTask": "タスクの追加",
-      "viewCalendar": "カレンダーを見る"
+      "addTask": "タスクを追加",
+      "viewCalendar": "カレンダーを表示"
     },
     "componentsTasksFiltersActiveFiltersBar": {
-      "priorityIs": "優先順位は",
-      "priority": "優先順位",
-      "statusIs": "ステータスは",
-      "status": "ステータス",
-      "projectIs": "プロジェクトは",
-      "project": "プロジェクト",
-      "due": "期限",
-      "dueDate": "期日",
-      "search": "検索",
-      "clearAll": "すべてクリア",
+      "priorityIs": "優先度：",
+      "priority": "優先度",
+      "tagsIs": "タグ：",
       "tags": "タグ",
-      "tagsIs": "タグは"
+      "statusIs": "ステータス：",
+      "status": "ステータス",
+      "projectIs": "プロジェクト：",
+      "project": "プロジェクト",
+      "due": "期限：",
+      "dueDate": "期限",
+      "search": "検索",
+      "clearAll": "すべてクリア"
     },
     "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "期日でフィルタリングする",
+      "filterByDueDate": "期限で絞り込み",
       "customRange": "カスタム範囲",
       "clear": "クリア",
-      "apply": "申し込む"
+      "apply": "適用"
     },
     "componentsTasksFiltersFilterDropdown": {
-      "filterBy": "フィルター条件..."
+      "filterBy": "絞り込み条件…"
     },
     "componentsTasksFiltersFilterEmptyState": {
-      "activeFilters": "アクティブフィルター: ",
+      "activeFilters": "適用中のフィルター：",
       "clearAllFilters": "すべてのフィルターをクリア"
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "期限"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
-      "priority": "優先順位",
-      "is": "です",
-      "search": "検索...",
-      "selected": "選択された"
+      "priority": "優先度",
+      "is": "次のいずれか",
+      "search": "検索…",
+      "selected": "件を選択中"
     },
     "componentsTasksFiltersFilterPanelsProjectPanel": {
       "project": "プロジェクト",
-      "noProject": "プロジェクトがありません"
+      "noProject": "プロジェクトなし"
     },
     "componentsTasksFiltersFilterPanelsStatusPanel": {
       "status": "ステータス"
@@ -512,57 +602,63 @@
       "status": "ステータス",
       "pickAProject": "プロジェクトを選択してください"
     },
+    "componentsTasksFiltersFilterPanelsTagPanel": {
+      "tags": "タグ",
+      "is": "次のいずれか",
+      "search": "検索…",
+      "selected": "件を選択中"
+    },
     "componentsTasksFiltersMoreFiltersDropdown": {
       "moreFilters": "その他のフィルター",
-      "more": "もっと見る",
+      "more": "その他",
       "status": "ステータス",
-      "hasTimeSet": "時間設定あり",
-      "recurringOnly": "定期的のみ",
+      "hasTimeSet": "時刻設定あり",
+      "recurringOnly": "繰り返しのみ",
       "status2": "ステータス"
     },
     "componentsTasksFiltersPriorityFilter": {
-      "filterByPriority": "優先度によるフィルター",
-      "priority": "優先順位"
+      "filterByPriority": "優先度で絞り込み",
+      "priority": "優先度"
     },
     "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "プロジェクトでフィルターする",
+      "filterByProject": "プロジェクトで絞り込み",
       "project": "プロジェクト",
       "allProjects": "すべてのプロジェクト",
       "clear": "クリア"
     },
     "componentsTasksFiltersQuickFilters": {
-      "quickFilters": "クイックフィルター:"
+      "quickFilters": "クイックフィルター："
     },
     "componentsTasksFiltersSaveFilterDialog": {
       "saveFilter": "フィルターの保存",
       "saveYourCurrentFilterSettingsForQuickAccessLater": "後で簡単にアクセスできるように、現在のフィルター設定を保存します。",
       "filterName": "フィルター名",
-      "eGHighPriorityThisWeek": "例: 今週は優先度が高い",
-      "currentFilters": "現在のフィルター:",
+      "eGHighPriorityThisWeek": "例：今週の高優先度",
+      "currentFilters": "現在のフィルター：",
       "noFiltersApplied": "フィルターは適用されていません",
       "cancel": "キャンセル",
-      "saveFilter2": "フィルターの保存",
-      "nameRequired": "このフィルターの名前を入力してください",
-      "summaryDue": "期限: {value}",
-      "summaryDueRange": "期限: {start} - {end}",
-      "summaryPriorities": "優先度: {names}",
-      "summaryProjects": "プロジェクト: {names}",
-      "summaryRepeatOneTime": "繰り返し: 単発のみ",
-      "summaryRepeatRepeating": "繰り返し: 繰り返しのみ",
-      "summarySearch": "検索: 「{query}」",
-      "summaryTimeWith": "時刻: あり",
-      "summaryTimeWithout": "時刻: なし"
+      "saveFilter2": "フィルターを保存",
+      "summarySearch": "検索：「{query}」",
+      "summaryProjects": "プロジェクト：{names}",
+      "summaryPriorities": "優先度：{names}",
+      "summaryDue": "期限：{value}",
+      "summaryDueRange": "期限：{start}〜{end}",
+      "summaryRepeatRepeating": "繰り返し：繰り返しのみ",
+      "summaryRepeatOneTime": "繰り返し：単発のみ",
+      "summaryTimeWith": "時刻：あり",
+      "summaryTimeWithout": "時刻：なし",
+      "nameRequired": "このフィルターの名前を入力してください"
     },
     "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "保存されたフィルター",
-      "saved": "保存されました",
-      "noSavedFiltersYet": "フィルタはまだ保存されていません",
-      "saveCurrentFilters": "現在のフィルターを保存する",
-      "saveCurrentFilters2": "現在のフィルターを保存する"
+      "savedFilters": "保存済みフィルター",
+      "saved": "保存済み",
+      "noSavedFiltersYet": "保存済みフィルターはまだありません",
+      "saveCurrentFilters": "現在のフィルターを保存",
+      "saveCurrentFilters2": "現在のフィルターを保存"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "フィルター名",
-      "saveFilter": "フィルタの保存",
+      "saveFilter": "フィルターを保存",
       "save": "保存"
     },
     "componentsTasksFiltersSearchInput": {
@@ -570,23 +666,23 @@
       "clearSearch": "検索をクリア"
     },
     "componentsTasksKanbanKanbanColumn": {
-      "dropHere": "ここにドロップしてください",
-      "releaseToMoveTaskToThisColumn": "放してタスクをこの列に移動します",
-      "moreCompleted": "さらに完成した",
+      "dropHere": "ここにドロップ",
+      "releaseToMoveTaskToThisColumn": "ドロップするとタスクをこの列に移動します",
+      "moreCompleted": "件の完了済みタスクを表示",
       "showFewer": "表示数を減らす",
-      "taskTitle": "タスクのタイトル..."
+      "taskTitle": "タスクのタイトル…"
     },
     "componentsTasksNaturalDateInput": {
-      "typeADateInNaturalLanguage": "自然言語で日付を入力します",
+      "typeADateInNaturalLanguage": "自然言語で日付を入力",
       "select": "選択"
     },
     "componentsTasksParentTaskRow": {
-      "priority": "優先度: "
+      "priority": "優先度："
     },
     "componentsTasksPrioritySelect": {
-      "selectPriority": "優先順位を選択してください",
-      "navigate": "ナビゲートする",
-      "select": "選択する"
+      "selectPriority": "優先度を選択",
+      "navigate": "移動",
+      "select": "選択"
     },
     "componentsTasksProjectModal": {
       "iconName": "アイコンと名前",
@@ -594,338 +690,316 @@
       "projectName": "プロジェクト名",
       "clickIconToChange": "アイコンをクリックして変更します",
       "color": "色",
-      "descriptionOptional": "説明 (オプション)",
-      "briefDescriptionOfThisProject": "このプロジェクトの簡単な説明...",
+      "descriptionOptional": "説明（任意）",
+      "briefDescriptionOfThisProject": "このプロジェクトの簡単な説明…",
       "statuses": "ステータス",
-      "configureTheWorkflowStagesForThisProject": "このプロジェクトのワークフロー ステージを構成します。",
-      "deleteProject": "プロジェクトの削除",
+      "configureTheWorkflowStagesForThisProject": "このプロジェクトのワークフローの段階を設定します。",
+      "deleteProject": "プロジェクトを削除",
       "cancel": "キャンセル",
       "unsavedChanges": "未保存の変更",
-      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "未保存の変更があります。本当に破棄してもよろしいですか?",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "未保存の変更があります。破棄しますか？",
       "cancel2": "キャンセル",
-      "discard": "廃棄する",
+      "discard": "破棄",
       "defaultProject": "デフォルトのプロジェクト",
-      "openTasksOnThisProject": "タスクはこのプロジェクトで開きます"
+      "openTasksOnThisProject": "タスクを開くとこのプロジェクトが表示されます"
     },
     "componentsTasksProjectSelect": {
       "selectProject": "プロジェクトの選択",
       "selectProject2": "プロジェクトの選択"
     },
     "componentsTasksProjectsProjectSelector": {
-      "editProject": "プロジェクトの編集",
-      "archiveProject": "アーカイブプロジェクト",
-      "deleteProject": "プロジェクトの削除",
+      "editProject": "プロジェクトを編集",
+      "archiveProject": "プロジェクトをアーカイブ",
+      "deleteProject": "プロジェクトを削除",
       "selectProject": "プロジェクトの選択",
       "noProjectsYet": "まだプロジェクトはありません",
-      "createProject": "プロジェクトの作成"
+      "createProject": "プロジェクトを作成"
     },
     "componentsTasksProjectsProjectsTabContent": {
       "noProjectSelected": "プロジェクトが選択されていません",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "ドロップダウンからプロジェクトを選択するか、新しいプロジェクトを作成します",
-      "createYourFirstProject": "最初のプロジェクトを作成する"
+      "selectAProjectFromTheDropdownOrCreateANewOne": "ドロップダウンからプロジェクトを選択するか、新しいプロジェクトを作成してください",
+      "createYourFirstProject": "最初のプロジェクトを作成"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "クイック追加ショートカットのヘルプ",
-      "quickAddShortcuts": "ショートカットを簡単に追加",
-      "exampleBuyMilkTomorrowHighPersonal": "例: 「牛乳を買ってください!明日!!高い#personal」"
+      "quickAddShortcuts": "クイック追加のショートカット",
+      "exampleBuyMilkTomorrowHighPersonal": "例：「牛乳を買う !tomorrow !!high #personal」"
     },
     "componentsTasksQuickAddQuickOptionsBar": {
-      "quickOptions": "クイックオプション:"
-    },
-    "componentsTasksQuickAddInput": {
-      "q": "Q",
-      "q2": "Q"
+      "quickOptions": "クイックオプション："
     },
     "componentsTasksRepeatIndicator": {
-      "of": "の ",
-      "completed": "完了しました"
+      "of": "/ ",
+      "completed": "回完了"
     },
     "componentsTasksRepeatPicker": {
-      "selectRepeatFrequency": "リピート頻度の選択",
+      "selectRepeatFrequency": "繰り返しの頻度を選択",
       "doesNotRepeat": "繰り返さない",
-      "custom": "カスタム..."
+      "custom": "カスタム…"
     },
     "componentsTasksStatusEditor": {
-      "changeStatusColor": "ステータスカラーの変更",
-      "dragToReorder": "ドラッグして並べ替えます",
+      "changeStatusColor": "ステータスの色を変更",
+      "dragToReorder": "ドラッグして並べ替え",
       "statusName": "ステータス名",
-      "addStatus": "ステータスの追加"
+      "addStatus": "ステータスを追加"
     },
     "componentsTasksStatusSelect": {
       "selectStatus": "ステータスの選択",
       "selectStatus2": "ステータスの選択"
     },
     "componentsTasksStopRepeatingDialog": {
-      "stopRepeating": "繰り返しを停止する",
-      "isSetToRepeat": "繰り返すように設定されています ",
-      "whatWouldYouLikeToDo": "何をしたいですか?",
-      "keepThisTaskStopFutureOccurrences": "このタスクを維持し、今後の発生を停止します",
+      "stopRepeating": "繰り返しを停止",
+      "isSetToRepeat": "は繰り返し設定されています：",
+      "whatWouldYouLikeToDo": "どうしますか？",
+      "keepThisTaskStopFutureOccurrences": "このタスクは残し、今後の繰り返しを停止",
       "taskWillBecomeAOneTimeTask": "タスクは 1 回限りのタスクになります",
-      "deleteThisAndAllFutureOccurrences": "これと今後のすべての発生を削除します",
+      "deleteThisAndAllFutureOccurrences": "この回と今後のすべての回を削除",
       "taskWillBeRemovedEntirely": "タスクは完全に削除されます",
       "cancel": "キャンセル",
-      "confirm": "確認する"
+      "confirm": "確定"
     },
     "componentsTasksSubtaskDots": {
-      "of": "の ",
-      "subtasksComplete": "サブタスクが完了しました (",
+      "of": "/ ",
+      "subtasksComplete": "件のサブタスクが完了 (",
       "clickTo": "クリックして ",
-      "of2": "の ",
-      "subtasksComplete2": "サブタスクが完了しました",
+      "of2": "/ ",
+      "subtasksComplete2": "件のサブタスクが完了",
       "clickTo2": "クリックして "
     },
     "componentsTasksSubtaskProgressBadge": {
-      "of": "の ",
-      "subtasksComplete": "サブタスクが完了しました (",
+      "of": "/ ",
+      "subtasksComplete": "件のサブタスクが完了 (",
       "clickTo": "クリックして "
     },
     "componentsTasksTaskBadges": {
-      "priority": "優先順位",
-      "repeatingTask": "繰り返しのタスク",
-      "d": "d"
+      "priority": "優先度",
+      "repeatingTask": "繰り返しタスク",
+      "d": "日"
     },
     "componentsTasksTaskEmptyState": {
-      "addTask": "タスクの追加",
-      "allDescription": "最初のタスクを作成して始めましょう",
+      "addTask": "タスクを追加",
       "allTitle": "まだタスクはありません",
-      "completedDescription": "完了したタスクはここに表示されます",
+      "allDescription": "最初のタスクを作成して始めましょう",
+      "todayTitle": "今日が期限のタスクはありません",
+      "todayDescription": "すべて片づきました",
       "completedTitle": "完了したタスクはありません",
-      "projectDescription": "タスクを追加して始めましょう",
+      "completedDescription": "完了したタスクはここに表示されます",
       "projectTitle": "このプロジェクトにタスクはありません",
-      "projectTitleNamed": "{name} にタスクはありません",
-      "todayDescription": "すべて片づきました！",
-      "todayTitle": "今日が期限のタスクはありません"
+      "projectDescription": "タスクを追加して始めましょう",
+      "projectTitleNamed": "{name} にタスクはありません"
     },
     "componentsTasksTaskIcons": {
-      "noPriority": "優先順位なし"
+      "noPriority": "優先度なし"
     },
     "componentsTasksTaskRepeatSection": {
-      "repeat": "リピート",
-      "addRepeat": "リピートを追加する",
+      "repeat": "繰り返し",
+      "addRepeat": "繰り返しを追加",
       "edit": "編集",
       "edit2": "編集",
-      "stopRepeating": "繰り返しをやめる",
-      "stopRepeating2": "繰り返しをやめる"
+      "stopRepeating": "繰り返しを停止",
+      "stopRepeating2": "繰り返しを停止"
     },
     "componentsTasksTaskSection": {
-      "addTask": "タスクの追加"
+      "addTask": "タスクを追加"
     },
     "componentsTasksTimePicker": {
-      "selectTime": "時間を選択してください",
-      "selectTime2": "時間を選択してください",
-      "clearTime": "クリアタイム"
+      "selectTime": "時刻を選択",
+      "selectTime2": "時刻を選択",
+      "clearTime": "時刻をクリア"
     },
     "componentsTasksTodayEmptyState": {
-      "nothingScheduledForToday": "今日は何も予定がありません",
-      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "上記の期限を過ぎたタスクがあります。今日のタスクを追加したり、今後のリストを確認したりできます。",
+      "nothingScheduledForToday": "今日のタスクはありません",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "上に期限切れのタスクがあります。今日のタスクを追加するか、今後のリストを確認してください。",
       "addTaskForToday": "今日のタスクを追加",
-      "allCaughtUpForToday": "今日は全員が追いついた",
-      "youHaveNothingScheduledEnjoyTheClarity": "何も予定がありません。透明感をお楽しみください。",
+      "allCaughtUpForToday": "今日の分はすべて片づきました",
+      "youHaveNothingScheduledEnjoyTheClarity": "タスクは何もありません。すっきりとした時間をお過ごしください。",
       "addTaskForToday2": "今日のタスクを追加"
     },
     "componentsTasksUpcomingEmptyState": {
-      "nothingScheduledForTheNext7Days": "今後 7 日間は何も予定されていません",
-      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "上記の期限を過ぎたタスクがあります。来週のタスクを追加して、事前に計画を立てます。",
-      "addTask": "タスクの追加",
+      "nothingScheduledForTheNext7Days": "今後 7 日間のタスクはありません",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "上に期限切れのタスクがあります。今後 1 週間のタスクを追加して、先の計画を立てましょう。",
+      "addTask": "タスクを追加",
       "noUpcomingTasks": "今後のタスクはありません",
-      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "今後 7 日以内に期限が切れるタスクがここに表示されます。いくつかのタスクを追加して、週の計画を立てます。",
-      "addTask2": "タスクの追加"
-    },
-    "componentsTasksFiltersFilterPanelsTagPanel": {
-      "is": "です",
-      "search": "検索...",
-      "selected": "選択中",
-      "tags": "タグ"
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "今後 7 日以内が期限のタスクがここに表示されます。タスクを追加して、1 週間の計画を立てましょう。",
+      "addTask2": "タスクを追加"
     }
   },
   "phaseI": {
     "toasts": {
-      "changesUndone": "変更が元に戻されました",
+      "changesUndone": "変更を元に戻しました",
       "projectNotFound": "プロジェクトが見つかりません",
-      "failedToArchiveTasks": "タスクのアーカイブに失敗しました",
-      "tasksRestoredFromArchive": "アーカイブから復元されたタスク",
-      "subtaskAdded": "サブタスクが追加されました",
-      "subtaskDeleted": "サブタスクが削除されました",
-      "taskCompleted": "タスクが完了しました",
-      "allSubtasksCompleteTaskMarkedAsDone": "🎉 すべてのサブタスクが完了しました!完了としてマークされたタスク。",
-      "taskReopened": "タスクが再開されました",
-      "taskKeptOpen": "タスクは開いたままになります",
-      "taskMarkedAsDone": "🎉 タスクが完了としてマークされました!"
+      "failedToArchiveTasks": "タスクをアーカイブできませんでした",
+      "tasksRestoredFromArchive": "タスクをアーカイブから復元しました",
+      "subtaskAdded": "サブタスクを追加しました",
+      "subtaskDeleted": "サブタスクを削除しました",
+      "taskCompleted": "タスクを完了しました",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 すべてのサブタスクが完了しました。タスクを完了にしました。",
+      "taskReopened": "タスクを未完了に戻しました",
+      "taskKeptOpen": "タスクを未完了のままにしました",
+      "taskMarkedAsDone": "🎉 タスクを完了にしました"
     },
     "errors": {
-      "failedToArchiveTasks": "タスクのアーカイブに失敗しました",
-      "failedToAddSubtask": "サブタスクの追加に失敗しました",
-      "failedToAddSubtasks": "サブタスクの追加に失敗しました",
-      "failedToReorderSubtasks": "サブタスクの並べ替えに失敗しました",
-      "failedToPromoteSubtask": "サブタスクの昇格に失敗しました",
-      "failedToDeleteSubtask": "サブタスクの削除に失敗しました",
-      "failedToDeleteTask": "タスクの削除に失敗しました",
+      "failedToArchiveTasks": "タスクをアーカイブできませんでした",
+      "failedToAddSubtask": "サブタスクを追加できませんでした",
+      "failedToAddSubtasks": "サブタスクを追加できませんでした",
+      "failedToReorderSubtasks": "サブタスクを並べ替えられませんでした",
+      "failedToPromoteSubtask": "サブタスクを昇格できませんでした",
+      "failedToDeleteSubtask": "サブタスクを削除できませんでした",
+      "failedToDeleteTask": "タスクを削除できませんでした",
       "failedToCompleteTask": "タスクを完了できませんでした",
-      "failedToMakeSubtask": "サブタスクの作成に失敗しました",
+      "failedToMakeSubtask": "サブタスクにできませんでした",
       "failedToCompleteSubtasks": "サブタスクを完了できませんでした",
-      "failedToMarkSubtasksIncomplete": "サブタスクを未完了としてマークできませんでした",
-      "failedToSetDueDate": "期日の設定に失敗しました",
-      "failedToSetPriority": "優先順位の設定に失敗しました",
-      "failedToDeleteSubtasks": "サブタスクの削除に失敗しました",
-      "failedToLoadTaskPreferences": "タスク設定のロードに失敗しました",
-      "failedToUpdateTaskPreferences": "タスク設定の更新に失敗しました",
-      "failedToLoadLinkedTasks": "リンクされたタスクのロードに失敗しました"
-    }
-  },
-  "reminders": {
-    "hasReminders": "リマインダーあり",
-    "setReminder": "リマインダーを設定",
-    "summary": "リマインダー: {date}",
-    "summaryWithMore": "リマインダー: {date}（他 +{count} 件）",
-    "toast": {
-      "deleteFailed": "リマインダーの削除に失敗しました",
-      "deleted": "リマインダーを削除しました",
-      "set": "リマインダーを設定しました",
-      "setFailed": "リマインダーの設定に失敗しました",
-      "updateFailed": "リマインダーの更新に失敗しました",
-      "updated": "リマインダーを更新しました"
+      "failedToMarkSubtasksIncomplete": "サブタスクを未完了にできませんでした",
+      "failedToSetDueDate": "期限を設定できませんでした",
+      "failedToSetPriority": "優先度を設定できませんでした",
+      "failedToDeleteSubtasks": "サブタスクを削除できませんでした",
+      "failedToLoadTaskPreferences": "タスクの設定を読み込めませんでした",
+      "failedToUpdateTaskPreferences": "タスクの設定を更新できませんでした",
+      "failedToLoadLinkedTasks": "リンクされたタスクを読み込めませんでした"
     }
   },
   "addToProject": {
-    "dialogTitle": "プロジェクトに追加",
-    "loading": "プロジェクトを読み込んでいます…",
     "menuLabel": "プロジェクトに追加",
+    "dialogTitle": "プロジェクトに追加",
     "noProjects": "まだプロジェクトはありません",
-    "toastError": "プロジェクトに追加できませんでした",
-    "toastSuccess": "{name} に追加しました"
-  },
-  "itemProjects": {
-    "openProject": "プロジェクト {name} を開く"
+    "loading": "プロジェクトを読み込み中…",
+    "toastSuccess": "{name} に追加しました",
+    "toastError": "プロジェクトに追加できませんでした"
   },
   "projectHome": {
-    "emptyBody": "サイドバーからプロジェクトを選ぶと、そのホームが開きます。",
     "emptyTitle": "プロジェクトが選択されていません",
+    "emptyBody": "サイドバーからプロジェクトを選ぶと、そのホームが開きます。",
     "loadError": "プロジェクトの詳細を読み込めませんでした",
     "overview": {
+      "sectionTitle": "概要",
+      "create": "概要ノートを作成",
       "clear": "概要をクリア",
-      "clearError": "概要メモをクリアできませんでした",
-      "create": "概要メモを作成",
-      "createError": "概要メモを作成できませんでした",
       "defaultTitle": "概要",
-      "loadError": "概要メモを読み込めませんでした",
       "placeholder": "このプロジェクトの概要を書く…",
-      "saveError": "概要メモを保存できませんでした",
-      "sectionTitle": "概要"
+      "createError": "概要ノートを作成できませんでした",
+      "clearError": "概要ノートをクリアできませんでした",
+      "loadError": "概要ノートを読み込めませんでした",
+      "saveError": "概要ノートを保存できませんでした"
     }
+  },
+  "itemProjects": {
+    "openProject": "プロジェクト {name} を開く",
+    "removeFromProject": "{name} から削除",
+    "removeFailed": "この項目をプロジェクトから削除できませんでした"
   },
   "projectHub": {
-    "capture": {
-      "attach": "ファイルを添付",
-      "fileError": "{name} をリンクできませんでした",
-      "fileErrorGeneric": "ファイルをインポートできませんでした",
-      "filesAdded": "{count, plural, other {#件のファイルをプロジェクトに追加しました}}",
-      "label": "{name} に追加",
-      "linkAdded": "リンクをプロジェクトに追加しました",
-      "linkError": "リンクを保存できませんでした",
-      "placeholder": "{name} に追加 — タスクを入力、メモを書く、リンクを貼る…"
-    },
-    "groups": {
-      "older": "それ以前",
-      "past": "過去",
-      "today": "今日",
-      "tomorrow": "明日",
-      "upcoming": "今後",
-      "yesterday": "昨日"
-    },
     "header": {
-      "archiveProject": "プロジェクトをアーカイブ",
-      "editProject": "プロジェクトを編集",
+      "toggleRail": "プロジェクトの詳細を切り替え",
       "menu": "プロジェクトの操作",
-      "toggleRail": "プロジェクトの詳細を切り替え"
-    },
-    "rail": {
-      "addNote": "メモを追加",
-      "created": "作成日",
-      "details": "詳細",
-      "doneOf": "{total} 件中 {done} 件完了",
-      "linked": "リンク済み",
-      "linkedSummary": "{notes, plural, other {#件のメモ}} · {files, plural, other {#件のファイル}} · {events, plural, other {#件の予定}}",
-      "overdue": "期限切れ",
-      "overview": "概要",
-      "pinError": "メモを概要に追加できませんでした",
-      "progress": "進捗",
-      "unpinError": "メモを概要から外せませんでした",
-      "unpinNote": "{title} を概要から外す",
-      "updated": "更新日"
-    },
-    "rows": {
-      "openEvent": "予定 {title} を開く",
-      "openFile": "ファイル {title} を開く",
-      "openNote": "メモ {title} を開く",
-      "openTask": "タスク {title} を開く",
-      "setNoteIcon": "{title} のアイコンを設定"
-    },
-    "sections": {
-      "add": "{title} に追加",
-      "emptyEvents": "リンクされた予定はまだありません。",
-      "emptyFiles": "リンクされたファイルはまだありません。",
-      "emptyNotes": "リンクされたメモはまだありません。",
-      "emptyTasks": "タスクはまだありません。",
-      "newNoteError": "メモを追加できませんでした",
-      "newNoteTitle": "無題のメモ",
-      "viewAll": "すべて見る"
+      "editProject": "プロジェクトを編集",
+      "archiveProject": "プロジェクトをアーカイブ"
     },
     "tabs": {
-      "events": "予定",
-      "files": "ファイル",
       "label": "プロジェクトのビュー",
-      "notes": "メモ",
       "overview": "概要",
-      "tasks": "タスク"
+      "tasks": "タスク",
+      "notes": "ノート",
+      "files": "ファイル",
+      "events": "予定"
+    },
+    "groups": {
+      "today": "今日",
+      "yesterday": "昨日",
+      "older": "それ以前",
+      "tomorrow": "明日",
+      "upcoming": "今後",
+      "past": "過去"
+    },
+    "sections": {
+      "viewAll": "すべて見る",
+      "add": "{title} に追加",
+      "emptyTasks": "タスクはまだありません。",
+      "emptyNotes": "リンクされたノートはまだありません。",
+      "emptyFiles": "リンクされたファイルはまだありません。",
+      "emptyEvents": "リンクされた予定はまだありません。",
+      "newNoteTitle": "無題のノート",
+      "newNoteError": "ノートを追加できませんでした"
+    },
+    "rows": {
+      "openTask": "タスク {title} を開く",
+      "openNote": "ノート {title} を開く",
+      "openFile": "ファイル {title} を開く",
+      "openEvent": "予定 {title} を開く",
+      "setNoteIcon": "{title} のアイコンを設定"
+    },
+    "rail": {
+      "overview": "概要",
+      "progress": "進捗",
+      "details": "詳細",
+      "doneOf": "{total} 件中 {done} 件完了",
+      "overdue": "期限切れ",
+      "created": "作成日",
+      "updated": "更新日",
+      "linked": "リンク済み",
+      "linkedSummary": "{notes, plural, other {ノート # 件}} · {files, plural, other {ファイル # 件}} · {events, plural, other {予定 # 件}}",
+      "addNote": "ノートを追加",
+      "unpinNote": "{title} を概要から外す",
+      "pinError": "ノートを概要に追加できませんでした",
+      "unpinError": "ノートを概要から外せませんでした"
+    },
+    "capture": {
+      "placeholder": "{name} に追加：タスクやノートを入力、またはリンクを貼り付け…",
+      "attach": "ファイルを添付",
+      "linkAdded": "リンクをプロジェクトに追加しました",
+      "linkError": "リンクを保存できませんでした",
+      "filesAdded": "{count, plural, other {# 件のファイルをプロジェクトに追加しました}}",
+      "fileError": "{name} をリンクできませんでした",
+      "fileErrorGeneric": "ファイルをインポートできませんでした",
+      "label": "{name} に追加"
     }
-  },
-  "priorityInline": {
-    "high": "高",
-    "low": "低",
-    "medium": "中",
-    "urgent": "緊急"
-  },
-  "priorityLabels": {
-    "high": "高",
-    "low": "低",
-    "medium": "中",
-    "none": "優先度なし",
-    "urgent": "緊急"
   },
   "project": {
-    "statusTypes": {
-      "done": "完了",
-      "inProgress": "進行中",
-      "todo": "未着手"
-    },
     "validation": {
-      "minStatuses": "プロジェクトには少なくとも 2 つのステータスが必要です",
       "nameRequired": "プロジェクト名を入力してください",
       "nameTooLong": "プロジェクト名は 50 文字以内で入力してください",
-      "needsDoneStatus": "プロジェクトには「完了」ステータスが少なくとも 1 つ必要です",
-      "needsDoneStatusForCompletedTasks": "完了したタスクのために、プロジェクトには「完了」ステータスが少なくとも 1 つ必要です",
-      "needsTodoStatus": "プロジェクトには「未着手」ステータスが少なくとも 1 つ必要です",
+      "minStatuses": "プロジェクトには少なくとも 2 つのステータスが必要です",
       "needsTodoStatusForNewTasks": "新しいタスクのために、プロジェクトには「未着手」ステータスが少なくとも 1 つ必要です",
+      "needsDoneStatusForCompletedTasks": "完了したタスクのために、プロジェクトには「完了」ステータスが少なくとも 1 つ必要です",
       "statusNameRequired": "すべてのステータスに名前が必要です",
       "statusNamesUnique": "ステータス名は重複できません",
+      "needsTodoStatus": "プロジェクトには「未着手」ステータスが少なくとも 1 つ必要です",
+      "needsDoneStatus": "プロジェクトには「完了」ステータスが少なくとも 1 つ必要です",
       "statusNotFound": "ステータスが見つかりません"
+    },
+    "statusTypes": {
+      "todo": "未着手",
+      "inProgress": "進行中",
+      "done": "完了"
     }
   },
+  "priorityLabels": {
+    "none": "優先度なし",
+    "low": "低",
+    "medium": "中",
+    "high": "高",
+    "urgent": "緊急"
+  },
+  "priorityInline": {
+    "low": "低",
+    "medium": "中",
+    "high": "高",
+    "urgent": "緊急"
+  },
   "statusLabels": {
-    "done": "完了",
+    "todo": "未着手",
     "inProgress": "進行中",
-    "todo": "未着手"
+    "done": "完了"
   },
   "colors": {
-    "blue": "青",
     "gray": "グレー",
-    "green": "緑",
-    "indigo": "インディゴ",
-    "orange": "オレンジ",
-    "pink": "ピンク",
-    "purple": "紫",
     "red": "赤",
+    "orange": "オレンジ",
+    "yellow": "黄色",
+    "green": "緑",
     "teal": "ティール",
-    "yellow": "黄色"
+    "blue": "青",
+    "indigo": "インディゴ",
+    "purple": "紫",
+    "pink": "ピンク"
   }
 }

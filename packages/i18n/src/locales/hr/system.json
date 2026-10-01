@@ -2,7 +2,7 @@
   "dialog": {
     "vault": {
       "title": "Odaberite mapu trezora",
-      "button": "Odaberite Trezor"
+      "button": "Odaberi trezor"
     },
     "exportPdf": {
       "title": "Izvezi kao PDF",
@@ -21,51 +21,52 @@
       "availableTitle": "Ažuriranje dostupno",
       "availableMessage": "memrynote {version} je dostupan.",
       "availableDetailFallback": "Želite li sada preuzeti ažuriranje?",
-      "buttonDownload": "preuzimanje",
-      "buttonLater": "kasnije",
+      "buttonDownload": "Preuzmi",
+      "buttonLater": "Kasnije",
       "readyTitle": "Ažuriranje spremno",
       "readyMessage": "memrynote {version} je preuzet.",
       "readyDetailFallback": "Ponovno pokrenite memrynote kako biste dovršili instalaciju ažuriranja.",
-      "buttonRestartNow": "Ponovno pokrenite sada",
+      "buttonRestartNow": "Ponovno pokreni sada",
       "releaseNotesLabel": "Napomene o izdanju:"
     },
     "pair": {
+      "title": "Uparivanje proširenja preglednika",
+      "message": "Dopustiti proširenju preglednika Memry da šalje zapise ovoj aplikaciji?",
       "buttonAllow": "Dopusti",
       "buttonDeny": "Odbij",
-      "buttonPair": "Upari",
-      "message": "Dopustiti proširenju preglednika Memry da šalje zabilježene stavke ovoj aplikaciji?",
-      "title": "Uparivanje proširenja preglednika"
+      "buttonPair": "Upari"
     }
   },
   "notification": {
-    "reminder": {
-      "note": "Napomena podsjetnik",
-      "journal": "Dnevnik podsjetnik",
-      "highlight": "Označite podsjetnik",
-      "fallback": "Rok za opomenu",
-      "default": "Podsjetnik",
-      "task": "Podsjetnik na zadatak"
-    },
     "inboxReview": {
+      "title": "Vrijeme je za pregled ulaznog pretinca",
       "body": "Imate {count, plural, one {# stavku} few {# stavke} other {# stavki}} za pregled.",
-      "testBody": "Ovo je test — vaši dnevni podsjetnici na pregled izgledat će ovako.",
-      "title": "Vrijeme je za pregled pristigle pošte"
+      "testBody": "Ovo je test – ovako će izgledati vaši dnevni podsjetnici na pregled."
+    },
+    "reminder": {
+      "note": "Podsjetnik za bilješku",
+      "journal": "Podsjetnik za dnevnik",
+      "highlight": "Podsjetnik za istaknuti tekst",
+      "task": "Podsjetnik za zadatak",
+      "fallback": "Vrijeme za podsjetnik",
+      "default": "Podsjetnik"
     }
   },
   "error": {
     "reminderTimeMustBeFuture": "Vrijeme podsjetnika mora biti u budućnosti",
     "definitionNotFound": "Definicija nije pronađena",
-    "noteNotFound": "Napomena nije pronađena",
-    "updateFailed": "Ažuriranje nije uspjelo"
+    "noteNotFound": "Bilješka nije pronađena",
+    "updateFailed": "Ažuriranje nije uspjelo",
+    "updateReadOnlyVolume": "Ažuriranja se ne mogu instalirati dok se aplikacija memrynote pokreće s ove lokacije. Premjestite aplikaciju memrynote u mapu Aplikacije i ponovno je otvorite."
   },
   "startup": {
-    "failed": {
-      "body": "To se može dogoditi kada na disku ima vrlo malo slobodnog prostora ili sa starijim grafičkim upravljačkim programima. Pokušajte osloboditi nešto prostora na disku, a zatim ponovno otvorite MemryNote. Ako se nastavi ponavljati, ponovna instalacija to obično riješi.",
-      "title": "MemryNote nije uspio dovršiti pokretanje"
-    },
     "installingUpdate": {
-      "subtitle": "MemryNote će se automatski ponovno otvoriti.",
-      "title": "Instaliranje ažuriranja…"
+      "title": "Instaliranje ažuriranja…",
+      "subtitle": "MemryNote će se automatski ponovno otvoriti."
+    },
+    "failed": {
+      "title": "MemryNote nije uspio dovršiti pokretanje",
+      "body": "To se može dogoditi kada na disku ima vrlo malo slobodnog prostora ili sa starijim grafičkim upravljačkim programima. Pokušajte osloboditi nešto prostora na disku, a zatim ponovno otvorite MemryNote. Ako se nastavi ponavljati, ponovna instalacija to obično riješi."
     }
   }
 }
