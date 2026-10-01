@@ -180,6 +180,32 @@ instead of broad text that can still appear in the chat transcript or tool argum
 Vault unit tests import the vault index with narrow Electron mocks. Keep Agent runtime startup behind
 vault open/close service functions so note and database tests do not need to load Agent IPC handlers.
 
+### Agent Live-App Sandbox
+
+`apps/desktop/scripts/agent-app.mjs` lets a coding agent drive the built app the way a person
+would, without writing a Playwright spec first. It is for exploring, debugging and verifying a
+change; E2E specs stay the regression gate.
+
+```bash
+pnpm --filter @memry/desktop exec electron-vite build   # after code changes
+node apps/desktop/scripts/agent-app.mjs start             # CDP :9222, inspector :9229
+node apps/desktop/scripts/agent-app.mjs eval "__memryDebug.query('SELECT title FROM tasks')"
+node apps/desktop/scripts/agent-app.mjs stop
+```
+
+`start` uses the same isolation as E2E fixtures: a copy of the E2E test vault, a temp user-data
+dir, `NODE_ENV=test`, and an `e2e-agent-<uuid>` device, so real profiles, vaults and keychain
+accounts are never opened. `stop` removes the temp dirs and the run's keychain items. It refuses
+to start when native modules are built for Node instead of Electron.
+
+The renderer is driven by the official Playwright MCP (`playwright-memry` in `.pi/mcp.json`,
+connected with `--cdp-endpoint`). The main process is read with `eval`, which runs an expression
+over the Node inspector. Under `NODE_ENV=test`, `globalThis.__memryDebug` exposes read-only SQL on
+`data.db` (`query`) and `index.db` (`indexQuery`), plus `syncEngine()`, `crdt()` and `store`.
+SQL is read-only because a raw write skips vector clocks, sync enqueueing and renderer
+broadcasts; seed through the UI or `__memryTestHooks` instead. Single instance only, so flows that
+need two synced devices still belong in E2E.
+
 ### Virtualized UI Tests
 
 `@tanstack/react-virtual` doesn't render any items inside jsdom (heights are zero, virtualization sees no scrollable area). Cover virtualized calendar / week / list UIs at the **Playwright** layer only.
