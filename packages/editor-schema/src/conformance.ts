@@ -483,6 +483,15 @@ const blockMarkerCases: RoundtripCase[] = [
     name: 'youtube embed marker',
     markdown: '![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)'
   },
+  {
+    // Obsidian's form: claimed as a youtube embed, the empty alt kept.
+    name: 'youtube embed with an empty alt',
+    markdown: '![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)'
+  },
+  {
+    name: 'youtube embed with a foreign alt',
+    markdown: '![Embedded YouTube video](https://www.youtube.com/embed/dQw4w9WgXcQ)'
+  },
   { name: 'bookmark marker', markdown: '![bookmark](https://example.com/a)' },
   {
     name: 'file marker',

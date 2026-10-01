@@ -1041,13 +1041,17 @@
     {
       "name": "youtubeEmbed",
       "pins": "the video url survives so a shell can offer to open it",
-      "updateHex": "0107f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030c796f7574756265456d6265642800f2da95eb060207766964656f49640177002800f2da95eb060208766964656f55726c01772b68747470733a2f2f7777772e796f75747562652e636f6d2f77617463683f763d64517734773957675863512800f2da95eb0602057469746c650177002800f2da95eb060102696401770e796f7574756265656d6265642d3000",
+      "updateHex": "0108f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb0601030c796f7574756265456d6265642800f2da95eb060207766964656f49640177002800f2da95eb060208766964656f55726c01772b68747470733a2f2f7777772e796f75747562652e636f6d2f77617463683f763d64517734773957675863512800f2da95eb0602057469746c650177002800f2da95eb060203616c74017705656d6265642800f2da95eb060102696401770e796f7574756265656d6265642d3000",
       "expectedBlocks": [
         {
           "id": "youtubeembed-0",
           "kind": "youtubeEmbed",
           "depth": 0,
           "props": [
+            {
+              "name": "alt",
+              "value": "embed"
+            },
             {
               "name": "title",
               "value": ""
@@ -1064,7 +1068,7 @@
           "inline": []
         }
       ],
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"youtubeembed-0\"\n2 element youtubeEmbed title=\"\" videoId=\"\" videoUrl=\"https://www.youtube.com/watch?v=dQw4w9WgXcQ\""
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"youtubeembed-0\"\n2 element youtubeEmbed alt=\"embed\" title=\"\" videoId=\"\" videoUrl=\"https://www.youtube.com/watch?v=dQw4w9WgXcQ\""
     },
     {
       "name": "diagram",

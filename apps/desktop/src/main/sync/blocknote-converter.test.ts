@@ -1818,11 +1818,20 @@ const BLOCK_CASES = [
   },
   {
     type: 'youtubeEmbed',
-    markdown: serializeYoutubeEmbed('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+    // Another app's alt text, not Memry's `embed`: it must reach the file as
+    // it was read (`embed` itself is in the conformance corpus).
+    markdown: serializeYoutubeEmbed(
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      'Embedded YouTube video'
+    ),
     block: {
       id: 'blk',
       type: 'youtubeEmbed',
-      props: { videoId: 'dQw4w9WgXcQ', videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+      props: {
+        videoId: 'dQw4w9WgXcQ',
+        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        alt: 'Embedded YouTube video'
+      },
       children: []
     }
   },

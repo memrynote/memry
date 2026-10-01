@@ -13,6 +13,7 @@ import { normalizeHashTags, extractInlineTags } from '../hash-tag'
 import { normalizeNoteBlocks } from '../normalize-note-blocks'
 import { normalizeInlineCheckboxes } from '../inline-checkbox-utils'
 import { normalizeDateMentions } from '../date-mention-utils'
+import { normalizeYoutubeImages } from '../youtube-image-utils'
 import {
   parseMarkdownPreservingBlanks,
   sanitizeBlockIds,
@@ -228,6 +229,21 @@ function promoteDateMentionsInSharedDoc(editor: any): void {
  */
 function promoteLinkMentionsInSharedDoc(editor: any): void {
   const normalized = normalizeLinkMentions(editor.document as Block[])
+  if (!normalized.didChange) return
+
+  editor.replaceBlocks(editor.document, normalized.blocks)
+}
+
+/**
+ * Turn image blocks pointing at a YouTube video into embeds, on open.
+ *
+ * Older builds parsed another app's `![alt](youtube-url)` line as an image,
+ * which renders broken, and the shared doc kept that block. Byte-neutral and
+ * idempotent: the embed writes the same line, and a second open finds no
+ * image to convert. See `normalizeYoutubeImages`.
+ */
+function promoteYoutubeImagesInSharedDoc(editor: any): void {
+  const normalized = normalizeYoutubeImages(editor.document as Block[])
   if (!normalized.didChange) return
 
   editor.replaceBlocks(editor.document, normalized.blocks)
@@ -473,6 +489,7 @@ export function useEditorSync({
       promoteLinkMentionsInSharedDoc(editor)
       promoteInlineCheckboxesInSharedDoc(editor)
       promoteDateMentionsInSharedDoc(editor)
+      promoteYoutubeImagesInSharedDoc(editor)
       if (noteTags?.length && tagColorMap) {
         promoteHashTagsInSharedDoc(editor, noteTags, tagColorMap, tagIconMap)
         lastNormalizedTagsRef.current = noteTags.slice().sort().join(',')

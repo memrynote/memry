@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 126,
+    "exportedCaseCount": 128,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 136,
+    "caseCount": 138,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -532,6 +532,20 @@
       "canonical": null,
       "pending": null,
       "sha256": "f1f6557065adc95c6f6828b463a70a81c242a6161a9611f152453b7d0f190ab3"
+    },
+    {
+      "name": "youtube embed with an empty alt",
+      "markdown": "![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d47e849ea00aa4735ace8d40c7e9c7db96b16f2be278ca60965fe4f0127885a9"
+    },
+    {
+      "name": "youtube embed with a foreign alt",
+      "markdown": "![Embedded YouTube video](https://www.youtube.com/embed/dQw4w9WgXcQ)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "a45d067132bed681e8005b1f81327587e04bbab489619774b120945068992acc"
     },
     {
       "name": "bookmark marker",
