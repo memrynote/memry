@@ -45,6 +45,7 @@ const mocks = vi.hoisted(() => ({
     tagsChanged: [] as EmptyHandler[],
     folderConfigUpdated: [] as EmptyHandler[],
     indexProgress: [] as ((progress: number) => void)[],
+    journal: [] as EmptyHandler[],
     canvas: [] as EmptyHandler[]
   }
 }))
@@ -95,6 +96,18 @@ vi.mock('@/services/canvas-service', () => {
     return vi.fn()
   }
   return { onCanvasCreated: subscribe, onCanvasUpdated: subscribe, onCanvasDeleted: subscribe }
+})
+
+vi.mock('@/services/journal-service', () => {
+  const subscribe = (callback: EmptyHandler) => {
+    mocks.handlers.journal.push(callback)
+    return vi.fn()
+  }
+  return {
+    onJournalEntryCreated: subscribe,
+    onJournalEntryUpdated: subscribe,
+    onJournalEntryDeleted: subscribe
+  }
 })
 
 vi.mock('@/services/vault-service', () => ({
@@ -207,6 +220,26 @@ describe('use-notes-query', () => {
 
     await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(6))
     expect(result.current.notes[0]?.title).toBe('Second')
+  })
+
+  it('refetches a list that includes journal entries on journal events, and only that one', async () => {
+    renderHook(() => useNotesList({ fields: 'tree' }), { wrapper })
+    await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(1))
+    // A list without journal entries does not listen to the Journal at all.
+    expect(mocks.handlers.journal).toHaveLength(0)
+
+    renderHook(() => useNotesList({ fields: 'tree', includeJournals: true }), { wrapper })
+    await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(2))
+    expect(mocks.notesService.list).toHaveBeenLastCalledWith({
+      fields: 'tree',
+      includeJournals: true
+    })
+    expect(mocks.handlers.journal).toHaveLength(3)
+
+    await act(async () => {
+      mocks.handlers.journal[0]()
+    })
+    await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(4))
   })
 
   it('#1832: refetches lists on background index-build progress, throttled, always at completion', async () => {
