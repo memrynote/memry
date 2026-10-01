@@ -13,7 +13,8 @@
     "./notes": "./src/notes.ts",
     "./inbox": "./src/inbox.ts",
     "./settings": "./src/settings.ts",
-    "./unsplash": "./src/unsplash.ts"
+    "./unsplash": "./src/unsplash.ts",
+    "./writing-tools": "./src/writing-tools.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

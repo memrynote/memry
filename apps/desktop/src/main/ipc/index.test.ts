@@ -70,6 +70,8 @@ const hoisted = vi.hoisted(() => ({
   unregisterDiagnosticsHandlers: vi.fn(),
   registerUnsplashHandlers: vi.fn(),
   unregisterUnsplashHandlers: vi.fn(),
+  registerWritingToolsHandlers: vi.fn(),
+  unregisterWritingToolsHandlers: vi.fn(),
   registerAgentMcpHandlers: vi.fn(),
   unregisterAgentMcpHandlers: vi.fn(),
   registerImportHandlers: vi.fn(),
@@ -203,6 +205,10 @@ vi.mock('./diagnostics-handlers', () => ({
 vi.mock('./unsplash-handlers', () => ({
   registerUnsplashHandlers: hoisted.registerUnsplashHandlers,
   unregisterUnsplashHandlers: hoisted.unregisterUnsplashHandlers
+}))
+vi.mock('./writing-tools-handlers', () => ({
+  registerWritingToolsHandlers: hoisted.registerWritingToolsHandlers,
+  unregisterWritingToolsHandlers: hoisted.unregisterWritingToolsHandlers
 }))
 vi.mock('./agent-mcp-handlers', () => ({
   registerAgentMcpHandlers: hoisted.registerAgentMcpHandlers,

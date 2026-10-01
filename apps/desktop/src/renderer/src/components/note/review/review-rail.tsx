@@ -4,20 +4,19 @@ import { useT } from '@memry/i18n/renderer'
 import { CommentComposer } from './comment-composer'
 import { ReviewCard } from './review-card'
 import { syncInlineHoverClass } from './inline-hover'
+import {
+  RAIL_ITEM_GAP,
+  areNumberRecordsEqual,
+  layoutRailItems,
+  type RailLayoutItem
+} from './rail-layout'
 
 interface ReviewRailProps {
   review: CriticMarkupReviewController
   targetId?: string
 }
 
-const REVIEW_RAIL_ITEM_GAP = 10
 const REVIEW_RAIL_DRAFT_ID = '__review-draft__'
-
-interface RailItem {
-  id: string
-  desiredTop: number
-  order: number
-}
 
 export function ReviewRail({ review, targetId }: ReviewRailProps) {
   const { t } = useT('notes')
@@ -42,7 +41,7 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
     })
   }
   const railItemPositions = useMemo(() => {
-    const items: RailItem[] = []
+    const items: RailLayoutItem[] = []
     if (review.activeDraft) {
       items.push({
         id: REVIEW_RAIL_DRAFT_ID,
@@ -55,22 +54,12 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
       const measuredTop = review.markPositions[mark.id]
       items.push({
         id: mark.id,
-        desiredTop:
-          measuredTop !== undefined ? measuredTop - originOffset : index * REVIEW_RAIL_ITEM_GAP,
+        desiredTop: measuredTop !== undefined ? measuredTop - originOffset : index * RAIL_ITEM_GAP,
         order: index
       })
     })
 
-    items.sort((a, b) => a.desiredTop - b.desiredTop || a.order - b.order)
-
-    const positions: Record<string, number> = {}
-    let previousBottom = 0
-    items.forEach((item, index) => {
-      const top = Math.max(item.desiredTop, index === 0 ? 0 : previousBottom + REVIEW_RAIL_ITEM_GAP)
-      positions[item.id] = top
-      previousBottom = top + (itemHeights[item.id] ?? 0)
-    })
-    return positions
+    return layoutRailItems(items, itemHeights)
   }, [itemHeights, originOffset, review.activeDraft, review.markPositions, review.marks])
   const positionedMarks = useMemo(
     () =>
@@ -155,16 +144,5 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
         ))}
       </div>
     </aside>
-  )
-}
-
-function areNumberRecordsEqual(
-  previous: Record<string, number>,
-  next: Record<string, number>
-): boolean {
-  const previousKeys = Object.keys(previous)
-  const nextKeys = Object.keys(next)
-  return (
-    previousKeys.length === nextKeys.length && nextKeys.every((key) => previous[key] === next[key])
   )
 }

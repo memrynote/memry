@@ -14,7 +14,8 @@ import {
   settingsRpc,
   tasksRpc,
   telemetryRpc,
-  unsplashRpc
+  unsplashRpc,
+  writingToolsRpc
 } from './index.ts'
 
 const DOMAINS_WITHOUT_EVENTS = new Set(['telemetry', 'feedback', 'diagnostics', 'unsplash'])
@@ -38,12 +39,13 @@ describe('@memry/rpc public surface', () => {
     expect(feedbackRpc.name).toBe('feedback')
     expect(diagnosticsRpc.name).toBe('diagnostics')
     expect(unsplashRpc.name).toBe('unsplash')
+    expect(writingToolsRpc.name).toBe('writingTools')
   })
 })
 
 describe('rpcDomains aggregate', () => {
-  it('contains exactly the eleven known domains in declaration order', () => {
-    expect(rpcDomains).toHaveLength(11)
+  it('contains exactly the twelve known domains in declaration order', () => {
+    expect(rpcDomains).toHaveLength(12)
     expect(rpcDomains.map((d) => d.name)).toEqual([
       'notes',
       'tasks',
@@ -55,7 +57,8 @@ describe('rpcDomains aggregate', () => {
       'telemetry',
       'feedback',
       'diagnostics',
-      'unsplash'
+      'unsplash',
+      'writingTools'
     ])
   })
 

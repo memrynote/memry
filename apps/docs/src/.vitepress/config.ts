@@ -75,7 +75,8 @@ function unifiedSidebar() {
             { text: 'Bookmarks & Reminders', link: '/user-guide/notes/bookmarks-reminders' },
             { text: 'Find in Page', link: '/user-guide/notes/find-in-page' },
             { text: 'Mind Map', link: '/user-guide/notes/mind-map' },
-            { text: 'Version History', link: '/user-guide/notes/version-history' }
+            { text: 'Version History', link: '/user-guide/notes/version-history' },
+            { text: 'Writing Tools', link: '/user-guide/notes/writing-tools' }
           ]
         },
         {

@@ -41,6 +41,10 @@ import { registerTelemetryHandlers, unregisterTelemetryHandlers } from './teleme
 import { registerFeedbackHandlers, unregisterFeedbackHandlers } from './feedback-handlers'
 import { registerDiagnosticsHandlers, unregisterDiagnosticsHandlers } from './diagnostics-handlers'
 import { registerUnsplashHandlers, unregisterUnsplashHandlers } from './unsplash-handlers'
+import {
+  registerWritingToolsHandlers,
+  unregisterWritingToolsHandlers
+} from './writing-tools-handlers'
 import { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 import { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
 import { registerImportHandlers, unregisterImportHandlers } from './import-handlers'
@@ -181,6 +185,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register Unsplash cover source handlers
   registerUnsplashHandlers()
 
+  // Writing tools: one-shot inline AI and the editor context-menu hand-off
+  registerWritingToolsHandlers()
+
   // Register Agent MCP settings/status handlers
   registerAgentMcpHandlers()
 
@@ -233,6 +240,7 @@ export function unregisterAllHandlers(): void {
   unregisterFeedbackHandlers()
   unregisterDiagnosticsHandlers()
   unregisterUnsplashHandlers()
+  unregisterWritingToolsHandlers()
   unregisterAgentMcpHandlers()
   unregisterImportHandlers()
   unregisterHomePageHandlers()

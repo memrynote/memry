@@ -550,8 +550,9 @@ root added by a newer app version is unknown outright. Because the compaction ou
 replaces both the pushed snapshot and local persistence, copying only the recognised roots
 would delete the rest on every device on the account. Compaction refuses instead: an
 unrecognised root aborts it and the doc stays large until the root is typed. The note's
-seven known roots — the ProseMirror fragment, `meta`, `tags`, `criticMarkupMarks`,
-`markdownSource`, `linkReferenceDefinitions`, `linkReferenceUsages` — are typed when the
+ten known roots — the ProseMirror fragment, `meta`, `tags`, `criticMarkupMarks`,
+`markdownSource`, `linkReferenceDefinitions`, `linkReferenceUsages`, and the writing-tools
+arrays `writingAlternatives`, `writingGhosts`, `writingOverflow` — are typed when the
 doc is created, before any persisted update is applied, so the ordinary note never trips
 this and an editor-less doc still compacts.
 
@@ -1560,3 +1561,21 @@ apps/desktop/src/renderer/src/sync/
 ├─ yjs-ipc-provider.ts      # renderer-side Y.Doc proxy
 └─ use-yjs-collaboration.ts # editor hook
 ```
+
+## Writing-tools side data
+
+Alternatives, ghosted ranges and the overflow list live in three top-level `Y.Array`s on the
+note doc (`writingAlternatives`, `writingGhosts`, `writingOverflow`), not as editor marks.
+The main process builds its own ProseMirror schema, and y-prosemirror deletes marks a schema
+cannot build, so a new mark would be lost the first time main or an older build wrote the
+fragment. Side arrays sync through the normal CRDT pipeline and older builds ignore them.
+
+Ranges are stored as `Y.RelativePosition` pairs against the fragment: the start on the first
+character, the end on the last character with `assoc: -1`. Deleting the whole range collapses
+it and the record stops resolving instead of attaching to neighbouring text. Records are
+normalized on read, and a rewrite overlays known fields onto the stored object, so fields
+added by a newer build survive.
+
+None of this is written to the markdown file. A doc re-seeded from the file (an external
+edit) or compacted gets new item ids; ghosts are then lost, and an alternative re-attaches
+only when its text occurs exactly once in the note.

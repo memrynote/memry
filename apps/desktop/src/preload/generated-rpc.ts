@@ -45,7 +45,8 @@ const eventChannels = {
   "onCanvasTooLarge": "canvas:too-large",
   "onCanvasFolderCreated": "canvasFolder:created",
   "onCanvasFolderUpdated": "canvasFolder:updated",
-  "onCanvasFolderDeleted": "canvasFolder:deleted"
+  "onCanvasFolderDeleted": "canvasFolder:deleted",
+  "onEditorContextMenu": "editor-context-menu:open"
 } as const
 
 export interface GeneratedRpcDeps {
@@ -410,6 +411,11 @@ export function createGeneratedRpcApi({
     "unsplash": {
       "search": ((input) => invoke("unsplash:search", input)) as GeneratedRpcApi["unsplash"]["search"],
       "download": ((input) => invoke("unsplash:download", input)) as GeneratedRpcApi["unsplash"]["download"],
+    },
+    "writingTools": {
+      "generateAssist": ((input) => invoke("ai:generateWritingAssist", input)) as GeneratedRpcApi["writingTools"]["generateAssist"],
+      "claimEditorContextMenu": (() => invokeSync("editor-context-menu:claim")) as GeneratedRpcApi["writingTools"]["claimEditorContextMenu"],
+      "addWordToDictionary": ((word) => invoke("spellcheck:addWord", word)) as GeneratedRpcApi["writingTools"]["addWordToDictionary"],
     },
   }
 

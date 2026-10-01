@@ -57,7 +57,8 @@ function getDbOrNull() {
   }
 }
 
-function readSettings(): AIInlineSettings {
+/** The stored inline-AI settings, API key included. Main-process only. */
+export function readAIInlineSettings(): AIInlineSettings {
   const db = getDbOrNull()
   if (!db) return { ...AI_INLINE_SETTINGS_DEFAULTS }
 
@@ -78,7 +79,7 @@ function maskApiKey(settings: AIInlineSettings): AIInlineSettings {
 
 export function registerAIInlineHandlers(): void {
   ipcMain.handle(AIInlineChannels.invoke.GET_SETTINGS, () => {
-    return maskApiKey(readSettings())
+    return maskApiKey(readAIInlineSettings())
   })
 
   ipcMain.handle(
@@ -87,7 +88,7 @@ export function registerAIInlineHandlers(): void {
       const db = getDbOrNull()
       if (!db) return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
 
-      const current = readSettings()
+      const current = readAIInlineSettings()
 
       if (updates.apiKey === MASKED_KEY) {
         delete updates.apiKey
@@ -113,7 +114,7 @@ export function registerAIInlineHandlers(): void {
   ipcMain.handle(
     AIInlineChannels.invoke.START_SERVER,
     withErrorHandler(async () => {
-      const settings = readSettings()
+      const settings = readAIInlineSettings()
       if (!settings.enabled) {
         return { success: false, error: getMainI18n().t('errors:ai.inlineDisabled') }
       }
@@ -131,7 +132,7 @@ export function registerAIInlineHandlers(): void {
   ipcMain.handle(
     AIInlineChannels.invoke.LIST_OLLAMA_MODELS,
     withErrorHandler(async () => {
-      const { baseUrl } = readSettings()
+      const { baseUrl } = readAIInlineSettings()
       const url = `${(baseUrl || 'http://localhost:11434/v1').replace(/\/$/, '')}/models`
       let res: Response
       try {
