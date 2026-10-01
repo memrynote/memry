@@ -69,6 +69,12 @@ describe('TableSizePicker', () => {
     expect(onPick).toHaveBeenCalledWith({ rows: 6, columns: 2 })
   })
 
+  it('renders nothing while closed', () => {
+    render(<TableSizePicker anchorRect={null} onPick={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.queryByRole('application')).not.toBeInTheDocument()
+  })
+
   it('closes without picking on Escape', () => {
     const { onPick, onClose, grid } = renderPicker()
 

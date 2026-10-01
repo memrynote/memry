@@ -6,8 +6,11 @@ import type { TableSize } from './slash-menu-utils'
 import { TABLE_PICKER_DEFAULT, TABLE_PICKER_MAX, moveTableSize } from './table-size-picker-model'
 
 interface TableSizePickerProps {
-  /** Where the caret was when `/table` was picked; the grid opens under it. */
-  anchorRect: DOMRect
+  /**
+   * Where the caret was when `/table` was picked; the grid opens under it.
+   * Null while the grid is closed.
+   */
+  anchorRect: DOMRect | null
   onPick: (size: TableSize) => void
   onClose: () => void
 }
@@ -20,7 +23,17 @@ interface TableSizePickerProps {
  * the grid with nothing inserted. The grid itself is the one focus stop: its
  * cells are paint, and the size they show is announced from the label.
  */
-export function TableSizePicker({ anchorRect, onPick, onClose }: TableSizePickerProps) {
+export function TableSizePicker({ anchorRect, ...props }: TableSizePickerProps) {
+  if (!anchorRect) return null
+  // Mounted only while open, so every opening starts from the default size.
+  return <OpenTableSizePicker anchorRect={anchorRect} {...props} />
+}
+
+function OpenTableSizePicker({
+  anchorRect,
+  onPick,
+  onClose
+}: TableSizePickerProps & { anchorRect: DOMRect }) {
   const { t } = useT('notes')
   const [size, setSize] = useState<TableSize>(TABLE_PICKER_DEFAULT)
   const gridRef = useRef<HTMLDivElement>(null)

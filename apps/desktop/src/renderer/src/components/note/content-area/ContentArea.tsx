@@ -2467,13 +2467,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               }}
             />
           )}
-          {tablePickerAnchor && (
-            <TableSizePicker
-              anchorRect={tablePickerAnchor}
-              onPick={insertTableOfSize}
-              onClose={closeTableSizePicker}
-            />
-          )}
+          <TableSizePicker
+            anchorRect={tablePickerAnchor}
+            onPick={insertTableOfSize}
+            onClose={closeTableSizePicker}
+          />
           {attachmentPicker && noteId && (
             <AttachmentPickerDialog
               open
