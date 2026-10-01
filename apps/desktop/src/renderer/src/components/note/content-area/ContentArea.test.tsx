@@ -1635,6 +1635,37 @@ describe('ContentArea', () => {
     expect(screen.queryByRole('application', { name: /table size/i })).not.toBeInTheDocument()
   })
 
+  it('closes the /table size grid on Escape with nothing inserted', async () => {
+    vi.mocked(getDefaultReactSlashMenuItems).mockReturnValueOnce([
+      { key: 'table', title: 'Table', group: 'Basic blocks', onItemClick: vi.fn() }
+    ] as never)
+    contentAreaMocks.editor.focus = vi.fn()
+    const tiptap = contentAreaMocks.editor._tiptapEditor as Record<string, unknown>
+    const caretView = {
+      state: { selection: { from: 1 } },
+      coordsAtPos: vi.fn(() => ({ left: 10, right: 10, top: 20, bottom: 36 })),
+      domAtPos: vi.fn(() => ({ node: document.body, offset: 0 }))
+    }
+    tiptap.editorView = caretView
+    tiptap.view = caretView
+
+    render(<ContentArea noteId="note-1" />)
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+    const [tableItem] = await slashController.getItems('table')
+    act(() => tableItem.onItemClick())
+    const grid = await screen.findByRole('application', { name: /table size/i })
+
+    fireEvent.keyDown(grid, { key: 'Escape' })
+
+    await waitFor(() =>
+      expect(screen.queryByRole('application', { name: /table size/i })).not.toBeInTheDocument()
+    )
+    expect(contentAreaMocks.editor.focus).toHaveBeenCalled()
+    expect(contentAreaMocks.editor.updateBlock).not.toHaveBeenCalled()
+  })
+
   it('offers the diagram row under /mermaid, in Memry’s words', async () => {
     // #given the row comes from `@blocknote/diagram-block`, which carries the
     // aliases (mermaid, flowchart, chart, graph) and the insert; only the two

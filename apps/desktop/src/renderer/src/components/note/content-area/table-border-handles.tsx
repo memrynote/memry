@@ -26,14 +26,7 @@ import { useT } from '@memry/i18n/renderer'
 
 import { getLiveProseMirrorView } from './live-prosemirror-view'
 import { isTableMenuShortcut } from './table-keyboard-menu'
-import {
-  deleteTableLines,
-  insertTableLines,
-  tableLineCount,
-  tableLineRange,
-  type TableAxis,
-  type TableInsertSide
-} from './table-bulk-edit'
+import { TableLineActions } from './table-line-actions'
 
 /**
  * Table row/column/cell handles that sit ON the table's own border lines.
@@ -361,80 +354,6 @@ const DragDots: FC = () => (
     <path d="M6.25 4a1.25 1.25 0 1 0 2.5 0 1.25 1.25 0 0 0-2.5 0m5 0a1.25 1.25 0 1 0 2.5 0 1.25 1.25 0 0 0-2.5 0m1.25 7.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5M6.25 10a1.25 1.25 0 1 0 2.5 0 1.25 1.25 0 0 0-2.5 0m6.25 7.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5M6.25 16a1.25 1.25 0 1 0 2.5 0 1.25 1.25 0 0 0-2.5 0" />
   </svg>
 )
-
-/**
- * Delete and insert rows or columns, as many at once as the selection spans
- * (#2568).
- *
- * BlockNote's own `AddButton` / `DeleteButton` act on one row or column, so
- * growing a table by ten rows took ten trips through the menu. These act on
- * every row (or column) a cell selection covers when it covers `cell`, and on
- * `cell`'s own row or column otherwise, so with a single cell selected they do
- * exactly what the stock items did.
- */
-const TableLineActions: FC<{ cell: HTMLTableCellElement; axis: TableAxis }> = ({ cell, axis }) => {
-  const editor = useBlockNoteEditor()
-  const Components = useComponentsContext()
-  const { t } = useT('notes')
-  const view = getLiveProseMirrorView(editor)
-  if (!Components || !view || !cell.isConnected) return null
-
-  const cellPos = view.posAtDOM(cell, 0)
-  const range = tableLineRange(view.state, cellPos, axis)
-  if (!range) return null
-  const count = tableLineCount(range, axis)
-  const total = axis === 'row' ? range.map.height : range.map.width
-
-  const insert = (side: TableInsertSide): void => {
-    editor.exec((state, dispatch) => {
-      const tr = insertTableLines(state, cellPos, axis, side)
-      if (!tr) return false
-      dispatch?.(tr)
-      return true
-    })
-  }
-  const remove = (): void => {
-    editor.exec((state, dispatch) => {
-      const tr = deleteTableLines(state, cellPos, axis)
-      if (!tr) return false
-      dispatch?.(tr)
-      return true
-    })
-  }
-
-  const { Item } = Components.Generic.Menu
-  if (axis === 'row') {
-    return (
-      <>
-        {count < total && (
-          <Item onClick={remove}>{t('editor.table.lines.deleteRows', { count })}</Item>
-        )}
-        <Item onClick={() => insert('before')}>
-          {t('editor.table.lines.addRowsAbove', { count })}
-        </Item>
-        <Item onClick={() => insert('after')}>
-          {t('editor.table.lines.addRowsBelow', { count })}
-        </Item>
-      </>
-    )
-  }
-
-  // `before` is the column's inline-start side, which is the right in RTL.
-  const rtl = getComputedStyle(cell).direction === 'rtl'
-  return (
-    <>
-      {count < total && (
-        <Item onClick={remove}>{t('editor.table.lines.deleteColumns', { count })}</Item>
-      )}
-      <Item onClick={() => insert(rtl ? 'after' : 'before')}>
-        {t('editor.table.lines.addColumnsLeft', { count })}
-      </Item>
-      <Item onClick={() => insert(rtl ? 'before' : 'after')}>
-        {t('editor.table.lines.addColumnsRight', { count })}
-      </Item>
-    </>
-  )
-}
 
 interface TableBorderHandlesProps {
   /** The `.bn-container` the editor renders into. */
