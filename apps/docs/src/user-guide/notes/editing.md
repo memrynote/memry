@@ -621,6 +621,8 @@ Markdown has no syntax for underline, text color or highlight, so those are writ
 
 Color and underline are kept on separate nested spans, so an older version of MemryNote opening the same vault still reads the color.
 
+Note snippets (search results, note lists) and journal previews show the colored or underlined text without the span tags.
+
 Formatting applied in MemryNote round-trips. Underline written any other way — Obsidian's `<u>` tags, for example — is not read back, and is dropped the next time MemryNote saves the note.
 
 ### Text alignment
