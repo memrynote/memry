@@ -40,7 +40,7 @@ import {
   propagateProjectRename,
   propagateProjectDelete
 } from '../tasks/project-name-propagation'
-import { createNote, importFiles, getNoteByPath } from '../vault/notes-crud'
+import { createNote, importFiles, getIndexedIdByImportedPath } from '../vault/notes-crud'
 import { fetchUrlMetadata } from '../inbox/metadata'
 import { createTasksPublisher } from '../tasks/publisher'
 import { trackMainEvent } from '../telemetry/track'
@@ -337,7 +337,7 @@ export function registerTasksHandlers(): void {
               const result = await importFiles({ sourcePaths })
               return { importedFiles: result.importedFiles, errors: result.errors }
             },
-            getIdByPath: async (destPath) => (await getNoteByPath(destPath))?.id ?? null,
+            getIdByPath: async (destPath) => getIndexedIdByImportedPath(destPath),
             linkToProject: async (projectId, fileId) => {
               const linked = await linkProjectItem(db, domain, {
                 projectId,

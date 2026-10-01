@@ -1026,3 +1026,14 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
     importedFiles
   }
 }
+
+/**
+ * The indexed id of a file `importFiles` just copied, or null until the watcher
+ * has indexed it. `importedFiles[].destPath` is absolute while the index keys
+ * vault-relative paths, so the path must be relativized before the lookup.
+ * Cache-only on purpose: `getNoteByPath`'s read-and-parse fallback would index
+ * a PDF or image as a markdown note.
+ */
+export function getIndexedIdByImportedPath(destPath: string): string | null {
+  return getNoteCacheByPath(getIndexDatabase(), toRelativePath(destPath))?.id ?? null
+}
