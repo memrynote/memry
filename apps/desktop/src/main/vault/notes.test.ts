@@ -1911,6 +1911,30 @@ describe('notes operations', () => {
       expect(result.importedFiles[0].destPath).toBe(path.join(tempVault.path, 'notes', 'loose.pdf'))
     })
 
+    it('resolves an imported file to its indexed id from the absolute destPath (#1998)', async () => {
+      // #given — a PDF imported and then indexed the way the watcher keys it: vault-relative
+      const sourcePath = path.join(tempVault.path, 'brief.pdf')
+      fs.writeFileSync(sourcePath, Buffer.from([0x25, 0x50, 0x44, 0x46]))
+      const result = await notes.importFiles({ sourcePaths: [sourcePath] })
+      const { destPath } = result.importedFiles[0]
+      expect(path.isAbsolute(destPath)).toBe(true)
+
+      expect(notes.getIndexedIdByImportedPath(destPath)).toBeNull()
+
+      const { insertNoteCache } = await import('@main/database/queries/notes')
+      insertNoteCache(testDb.db, {
+        id: 'imported-pdf-1',
+        path: 'notes/brief.pdf',
+        title: 'brief',
+        fileType: 'pdf',
+        createdAt: '2026-01-15T12:00:00.000Z',
+        modifiedAt: '2026-01-15T12:00:00.000Z'
+      })
+
+      // #then — the absolute path the import returned finds the vault-relative row
+      expect(notes.getIndexedIdByImportedPath(destPath)).toBe('imported-pdf-1')
+    })
+
     it('rejects imports when no vault is open', async () => {
       vi.spyOn(vaultIndex, 'getStatus').mockReturnValueOnce({
         isOpen: false,
