@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useEffect, useState } from 'react'
 import {
   DropdownMenu,
@@ -163,12 +164,17 @@ export function EditorContextMenu({
         if (!next) onClose()
       }}
     >
-      <DropdownMenuTrigger asChild>
-        <span
-          aria-hidden="true"
-          style={{ position: 'fixed', top: y, left: x, width: 0, height: 0 }}
-        />
-      </DropdownMenuTrigger>
+      {/* The anchor is portaled to the body: the note canvas carries a transform
+          (rail shift), which would make `position: fixed` relative to it. */}
+      {createPortal(
+        <DropdownMenuTrigger asChild>
+          <span
+            aria-hidden="true"
+            style={{ position: 'fixed', top: y, left: x, width: 0, height: 0 }}
+          />
+        </DropdownMenuTrigger>,
+        document.body
+      )}
       <DropdownMenuContent
         align="start"
         aria-label={t('writingTools.menu.aria')}

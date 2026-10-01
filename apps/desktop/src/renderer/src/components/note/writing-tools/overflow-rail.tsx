@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import type { WritingOverflowItem } from '@memry/shared'
@@ -13,8 +13,9 @@ interface OverflowRailProps {
 
 /**
  * The note's overflow list: lines kept with the note but out of its text.
- * Items drag into the editor as plain text (ProseMirror's own drop handling
- * inserts them at the drop point).
+ * Stashed items keep their formatting: they render through the editor schema
+ * and drag or copy as the editor's clipboard HTML, which ProseMirror's own drop
+ * and paste handling turns back into the same nodes and marks.
  */
 export function OverflowRail({ session, snapshot }: OverflowRailProps) {
   const { t } = useT('notes')
@@ -51,6 +52,7 @@ export function OverflowRail({ session, snapshot }: OverflowRailProps) {
               <OverflowRow
                 key={item.id}
                 item={item}
+                render={() => session.renderOverflow(item)}
                 onDelete={() => session.removeOverflow(item.id)}
               />
             ))}
@@ -61,12 +63,40 @@ export function OverflowRail({ session, snapshot }: OverflowRailProps) {
   )
 }
 
-function OverflowRow({ item, onDelete }: { item: WritingOverflowItem; onDelete: () => void }) {
+interface OverflowRowProps {
+  item: WritingOverflowItem
+  /** The item through the editor schema; null for plain-text items */
+  render: () => HTMLElement | DocumentFragment | null
+  onDelete: () => void
+}
+
+function OverflowRow({ item, render, onDelete }: OverflowRowProps) {
   const { t } = useT('notes')
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [formatted, setFormatted] = useState(false)
+
+  useLayoutEffect(() => {
+    const element = contentRef.current
+    if (!element) return
+    const fragment = render()
+    element.replaceChildren(...(fragment ? [fragment] : []))
+    setFormatted(fragment !== null)
+    // `render` is a fresh closure every snapshot; the item's HTML is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.html])
 
   const copy = async (): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(item.text)
+      if (item.html) {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([item.html], { type: 'text/html' }),
+            'text/plain': new Blob([item.text], { type: 'text/plain' })
+          })
+        ])
+      } else {
+        await navigator.clipboard.writeText(item.text)
+      }
       toast.success(t('writingTools.overflow.copied'))
     } catch (error) {
       toast.error(extractErrorMessage(error, t('writingTools.menu.clipboardFailed')))
@@ -78,6 +108,7 @@ function OverflowRow({ item, onDelete }: { item: WritingOverflowItem; onDelete: 
       draggable
       onDragStart={(event) => {
         event.dataTransfer.setData('text/plain', item.text)
+        if (item.html) event.dataTransfer.setData('text/html', item.html)
         event.dataTransfer.effectAllowed = 'copy'
       }}
       className="writing-overflow-item group/item"
@@ -89,7 +120,12 @@ function OverflowRow({ item, onDelete }: { item: WritingOverflowItem; onDelete: 
       />
       <div className="min-w-0 flex-1">
         {item.label && <p className="text-xs text-text-tertiary">{item.label}</p>}
-        <p className="whitespace-pre-wrap break-words text-sm">{item.text}</p>
+        <div
+          ref={contentRef}
+          className="writing-overflow-content break-words text-sm"
+          hidden={!formatted}
+        />
+        {!formatted && <p className="whitespace-pre-wrap break-words text-sm">{item.text}</p>}
       </div>
       <div className="flex shrink-0 items-start gap-0.5 opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100 motion-reduce:transition-none">
         <button

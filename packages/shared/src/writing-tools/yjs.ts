@@ -66,10 +66,20 @@ export interface WritingGhost {
 
 export interface WritingOverflowItem {
   id: string
+  /** Plain text: the fallback every build can show and insert */
   text: string
+  /**
+   * The stashed selection as ProseMirror clipboard HTML, so formatting, links
+   * and inline content survive the trip out of the note and back. Optional:
+   * typed items and items from older builds have text only.
+   */
+  html?: string
   label?: string
   createdAt: number
 }
+
+/** Upper bound on a stored overflow item's HTML; larger values are dropped to text. */
+export const WRITING_OVERFLOW_HTML_MAX = 200_000
 
 interface YArrayLike {
   length: number
@@ -367,9 +377,16 @@ export function normalizeWritingOverflowItem(value: unknown): WritingOverflowIte
   if (!id) return null
   if (typeof raw.text !== 'string' || raw.text.length === 0) return null
   if (!isFiniteNumber(raw.createdAt)) return null
+  const html =
+    typeof raw.html === 'string' &&
+    raw.html.length > 0 &&
+    raw.html.length <= WRITING_OVERFLOW_HTML_MAX
+      ? raw.html
+      : undefined
   return {
     id,
     text: raw.text,
+    ...(html ? { html } : {}),
     ...(typeof raw.label === 'string' && raw.label.length > 0 ? { label: raw.label } : {}),
     createdAt: raw.createdAt
   }

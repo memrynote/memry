@@ -3,6 +3,8 @@ import {
   WRITING_ALTERNATIVES_ARRAY,
   WRITING_GHOSTS_ARRAY,
   WRITING_OVERFLOW_ARRAY,
+  WRITING_OVERFLOW_HTML_MAX,
+  normalizeWritingOverflowItem,
   readWritingAlternativesFromYDoc,
   readWritingGhostsFromYDoc,
   readWritingOverflowFromYDoc,
@@ -229,5 +231,18 @@ describe('writing tools Yjs helpers', () => {
     writeWritingAlternativesToYDoc(doc, [alternative({ variants: [] })])
 
     expect(doc.getArray(WRITING_ALTERNATIVES_ARRAY).values).toEqual([])
+  })
+})
+
+describe('overflow html', () => {
+  it('keeps stashed HTML and drops empty or oversized values', () => {
+    const base = { id: 'o1', text: 'hi', createdAt: 1 }
+    expect(normalizeWritingOverflowItem({ ...base, html: '<strong>hi</strong>' })?.html).toBe(
+      '<strong>hi</strong>'
+    )
+    expect(normalizeWritingOverflowItem({ ...base, html: '' })).toEqual(base)
+    expect(
+      normalizeWritingOverflowItem({ ...base, html: 'x'.repeat(WRITING_OVERFLOW_HTML_MAX + 1) })
+    ).toEqual(base)
   })
 })

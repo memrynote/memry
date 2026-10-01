@@ -31,6 +31,7 @@ vi.mock('@/lib/url-metadata', () => ({
   fetchLinkPreview: vi.fn().mockResolvedValue({ domain: '', title: '', favicon: '' })
 }))
 
+import { DOMParser as ProseMirrorDOMParser } from '@tiptap/pm/model'
 import { editorSchema } from '../content-area/editor-schema'
 import { withCollaborationIfLive } from '../content-area/collaboration-options'
 import { WritingToolsSession, type GenerateWritingAssist } from './writing-tools-session'
@@ -339,14 +340,62 @@ describe('WritingToolsSession (live Y.Doc binding)', () => {
     expect(readWritingAlternativesFromYDoc(ctx.doc)).toEqual([])
   })
 
-  it('refuses to stash a selection holding a non-text leaf', () => {
-    const ctx = setup('one\ntwo')
-    const blocks = collectTextBlocks(ctx.view.state.doc).filter((block) => block.text)
-    const from = blocks[0].from
-    const to = from + blocks[0].text.length
+  it('keeps formatting and inline nodes through stash, render and paste back', () => {
+    const ctx = setup('placeholder')
+    ctx.editor.replaceBlocks(ctx.editor.document, [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'Keep. ', styles: {} },
+          { type: 'text', text: 'Bold words', styles: { bold: true } },
+          { type: 'text', text: ' and ', styles: {} },
+          { type: 'wikiLink', props: { target: 'Roadmap', alias: '' } }
+        ]
+      } as never
+    ])
+    const start = ctx.rangeOf('Bold words').from
+    const end = ctx.view.state.doc.child(0).nodeSize - 3
 
-    expect(ctx.session.stash(from, to)).toBe(false)
-    expect(ctx.bodyText()).toContain('two')
-    expect(readWritingOverflowFromYDoc(ctx.doc)).toEqual([])
+    expect(ctx.session.stash(start, end)).toBe(true)
+    const [item] = readWritingOverflowFromYDoc(ctx.doc)
+    expect(item.html).toContain('<strong')
+
+    const preview = ctx.session.renderOverflow(item)
+    const holder = document.createElement('div')
+    holder.append(preview as Node)
+    expect(holder.querySelector('strong')?.textContent).toBe('Bold words')
+    expect(holder.querySelector('.wiki-link')?.textContent).toBe('Roadmap')
+    expect(holder.textContent).not.toContain('[[')
+
+    // What a drop or paste does with the HTML: parse it through the schema.
+    // (jsdom has no ClipboardEvent, so view.pasteHTML cannot run here.)
+    const template = document.createElement('template')
+    template.innerHTML = item.html as string
+    const slice = ProseMirrorDOMParser.fromSchema(ctx.view.state.schema).parseSlice(
+      template.content
+    )
+    const marks: string[] = []
+    const inline: string[] = []
+    slice.content.descendants((node) => {
+      if (node.isText) marks.push(...node.marks.map((mark) => mark.type.name))
+      else if (node.isInline) inline.push(node.type.name)
+    })
+    expect(marks).toContain('bold')
+    expect(inline).toContain('wikiLink')
+  })
+
+  it('renders only what the editor schema knows from stored overflow HTML', () => {
+    const ctx = setup('Body')
+    const fragment = ctx.session.renderOverflow({
+      id: 'o1',
+      text: 'hi',
+      html: '<p>hi <img src=x onerror="alert(1)"><script>alert(2)</script><strong>there</strong></p>',
+      createdAt: 1
+    })
+    const holder = document.createElement('div')
+    holder.append(fragment as Node)
+    expect(holder.querySelector('script')).toBeNull()
+    expect(holder.innerHTML).not.toContain('onerror')
+    expect(holder.querySelector('strong')?.textContent).toBe('there')
   })
 })

@@ -1,9 +1,13 @@
 # Writing Tools
 
 Tools for drafting in a note: try other wordings in place, fade text out without deleting it,
-keep leftovers beside the note, and ask the AI to check or trim your writing. The note chrome has
-three toggles, **Alternatives**, **Overflow** and **Lab**, that open the matching panel in the rail
-beside the note. One is open at a time; click the active one again to close it.
+keep leftovers beside the note, and ask the AI to check or trim your writing.
+
+All of them sit behind one **Writing tools** button (the pen) in the note chrome, left of the
+reminder bell. Its menu opens the rail beside the note on **Alternatives**, **Overflow** or **Lab**,
+with a count next to each, and turns the word count on or off. Pick the open one again to close the
+rail. Inside the rail, tabs switch between the three. Most of the time you won't need the button:
+adding an alternative or stashing text opens the rail on the right tab by itself.
 
 ## Alternatives
 
@@ -11,9 +15,9 @@ Select a word, sentence or paragraph and choose **Add alternative** from the rig
 press <kbd>⌥</kbd>+<kbd>⌘</kbd>+<kbd>A</kbd>. Its card opens in the rail: type another version and
 press <kbd>Enter</kbd>.
 
-Text with alternatives gets a dashed underline and three small dots. With the caret in or next to
+Text with alternatives gets a dashed underline and one small dot per version, the original first. With the caret in or next to
 it and the pointer over it, <kbd>↑</kbd> / <kbd>↓</kbd> swap the versions in place so you read each
-one in context. A filled middle dot means a version other than the original is showing. "a" and
+one in context. The filled dot marks the version that is showing; past five versions the dots stop growing and the hint above the text shows the exact position. "a" and
 "an" in front of the text follow the new first letter.
 
 In the card, the original is always listed. Click a row to show it, hover a row to remove it.
@@ -33,8 +37,9 @@ word count.
 ## Overflow
 
 A scratch list for the note: spare paragraphs, words you like, an outline. **Stash in overflow**
-moves the selected text there. Drag an item back into the note, copy it, or delete it. Selections
-with mentions, images or embeds can't be stashed, and bold and links are kept as plain text.
+moves the selected text there with its formatting: bold, links, wiki links and mentions show in the
+list as they did in the note, and come back the same way when you drag the item into the note or
+copy and paste it. Text you type into the list directly is plain.
 
 ## Lab
 
@@ -47,8 +52,8 @@ Needs AI to be turned on. Lab never rewrites your text.
 
 ## Word count
 
-The **Word count** button in the note chrome turns on a live count. The setting is kept on this
-device.
+**Show word count** in the Writing tools menu turns on a live count, shown as plain text next to
+the button. The setting is kept on this device.
 
 ## Right-click menu
 

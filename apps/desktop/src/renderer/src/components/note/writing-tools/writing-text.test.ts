@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { alternativeDots } from './writing-tools-plugin'
 import {
   articleFixBefore,
   countWords,
@@ -120,5 +121,21 @@ describe('word count', () => {
   it('keeps positions aligned past astral characters', () => {
     // "😀" is two UTF-16 units, so "end" starts at position 6, not 5.
     expect(countWordsExcluding([{ from: 0, text: 'go 😀 end' }], [{ from: 6, to: 9 }])).toBe(1)
+  })
+})
+
+describe('alternativeDots', () => {
+  it('draws one dot per version and fills the shown one', () => {
+    expect(alternativeDots(1, 2)).toEqual({ count: 2, filled: 0 })
+    expect(alternativeDots(2, 2)).toEqual({ count: 2, filled: 1 })
+    expect(alternativeDots(4, 5)).toEqual({ count: 5, filled: 3 })
+  })
+
+  it('caps at five dots and slides the window past that', () => {
+    expect(alternativeDots(1, 7)).toEqual({ count: 5, filled: 0 })
+    expect(alternativeDots(3, 7)).toEqual({ count: 5, filled: 2 })
+    expect(alternativeDots(4, 7)).toEqual({ count: 5, filled: 2 })
+    expect(alternativeDots(6, 7)).toEqual({ count: 5, filled: 3 })
+    expect(alternativeDots(7, 7)).toEqual({ count: 5, filled: 4 })
   })
 })

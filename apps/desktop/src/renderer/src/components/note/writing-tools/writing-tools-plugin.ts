@@ -184,19 +184,12 @@ export function isAlternativeRange(view: EditorView, from: number, to: number): 
 }
 
 /**
- * A selection Stash can move without losing anything but formatting: some
- * text, and no non-text leaves (mentions, pills, images, embeds, breaks),
- * which the overflow list, being plain text, could not keep.
+ * A selection Stash can move: any range with some text. The overflow item
+ * keeps the selection as clipboard HTML, so formatting, links and inline
+ * nodes (wiki links, mentions, breaks) come back with it.
  */
 export function isStashableRange(doc: ProseMirrorNode, from: number, to: number): boolean {
-  if (to <= from || !doc.textBetween(from, to, '\n', '').trim()) return false
-  let hasLeaf = false
-  doc.nodesBetween(from, to, (node) => {
-    if (hasLeaf) return false
-    if (node.isLeaf && !node.isText) hasLeaf = true
-    return !hasLeaf
-  })
-  return !hasLeaf
+  return to > from && doc.textBetween(from, to, '\n', '').trim().length > 0
 }
 
 /**
@@ -279,13 +272,38 @@ function mapRanges(ranges: WritingRange[], tr: Transaction): WritingRange[] {
   })
 }
 
-function dotsWidget(id: string, active: boolean): HTMLElement {
+const MAX_DOTS = 5
+
+/**
+ * One dot per version (original first), capped at five. Past five the dots are
+ * a sliding window that keeps the shown version's dot in the middle until the
+ * ends; the hover hint carries the exact "N of M".
+ */
+export function alternativeDots(
+  position: number,
+  total: number
+): { count: number; filled: number } {
+  const count = Math.min(Math.max(total, 1), MAX_DOTS)
+  const index = Math.min(Math.max(position, 1), Math.max(total, 1)) - 1
+  if (total <= MAX_DOTS) return { count, filled: index }
+  const middle = Math.floor(MAX_DOTS / 2)
+  if (index <= middle) return { count, filled: index }
+  if (index >= total - 1 - middle) return { count, filled: MAX_DOTS - (total - index) }
+  return { count, filled: middle }
+}
+
+function dotsWidget(id: string, position: number, total: number): HTMLElement {
   const span = document.createElement('span')
-  span.className = active ? 'writing-alt-dots is-active' : 'writing-alt-dots'
+  span.className = 'writing-alt-dots'
   span.setAttribute('contenteditable', 'false')
   span.setAttribute('aria-hidden', 'true')
   span.dataset.writingAltId = id
-  for (let index = 0; index < 3; index++) span.appendChild(document.createElement('span'))
+  const { count, filled } = alternativeDots(position, total)
+  for (let index = 0; index < count; index++) {
+    const dot = document.createElement('span')
+    if (index === filled) dot.className = 'is-filled'
+    span.appendChild(dot)
+  }
   return span
 }
 
@@ -381,11 +399,15 @@ export function createWritingToolsPlugin(options: WritingToolsPluginOptions): Pl
               class: 'writing-alt',
               'data-writing-alt-id': alternative.id
             }),
-            Decoration.widget(alternative.to, () => dotsWidget(alternative.id, display.active), {
-              side: 1,
-              key: `writing-alt-dots:${alternative.id}:${display.active ? 1 : 0}`,
-              ignoreSelection: true
-            })
+            Decoration.widget(
+              alternative.to,
+              () => dotsWidget(alternative.id, display.position, display.total),
+              {
+                side: 1,
+                key: `writing-alt-dots:${alternative.id}:${display.position}:${display.total}`,
+                ignoreSelection: true
+              }
+            )
           )
           if (pluginState.hoveredAlternativeId === alternative.id) {
             const hint = options.formatHint(display.position, display.total)

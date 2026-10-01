@@ -1538,9 +1538,9 @@
       "alternatives": "Alternatives",
       "overflow": "Overflow",
       "lab": "Lab",
-      "wordCount": "Word count",
-      "words": "{count, plural, one {# word} other {# words}}",
-      "hideWordCount": "Hide word count"
+      "menu": "Writing tools",
+      "showWordCount": "Show word count",
+      "words": "{count, plural, one {# word} other {# words}}"
     },
     "menu": {
       "aria": "Editor actions",

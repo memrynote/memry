@@ -47,6 +47,7 @@ import {
   type WritingToolsMeta,
   type WritingToolsPluginState
 } from './writing-tools-plugin'
+import { newOverflowItem, renderOverflowHtml, stashHtml } from './overflow-html'
 import { articleFixBefore, countWordsExcluding, cutSpacing, findQuoteRanges } from './writing-text'
 
 export type WritingRailMode = 'alternatives' | 'overflow' | 'lab'
@@ -389,10 +390,6 @@ export class WritingToolsSession {
     this.scheduleMeasure()
   }
 
-  toggleMode(mode: WritingRailMode): void {
-    this.setMode(this.snapshot.mode === mode ? null : mode)
-  }
-
   // -------------------------------------------------------------------------
   // Alternatives
   // -------------------------------------------------------------------------
@@ -717,13 +714,14 @@ export class WritingToolsSession {
   // Overflow
   // -------------------------------------------------------------------------
 
-  addOverflow(rawText: string, label?: string): void {
-    const text = rawText.trim()
-    if (!this.doc || !text) return
-    writeWritingOverflowToYDoc(this.doc, [
-      ...this.overflowRecords,
-      { id: newId('overflow'), text, ...(label ? { label } : {}), createdAt: Date.now() }
-    ])
+  addOverflow(rawText: string, label?: string, html?: string): void {
+    const item = newOverflowItem(newId('overflow'), rawText, html, label)
+    if (this.doc && item) writeWritingOverflowToYDoc(this.doc, [...this.overflowRecords, item])
+  }
+
+  /** An overflow item rendered for the rail; see `renderOverflowHtml`. */
+  renderOverflow(item: WritingOverflowItem): HTMLElement | DocumentFragment | null {
+    return this.view && item.html ? renderOverflowHtml(this.view.state.schema, item.html) : null
   }
 
   removeOverflow(id: string): void {
@@ -739,8 +737,10 @@ export class WritingToolsSession {
     const view = this.view
     if (!view || !this.doc || !isStashableRange(view.state.doc, from, to)) return false
     const text = view.state.doc.textBetween(from, to, '\n', '')
+    const html = stashHtml(view, from, to)
     view.dispatch(view.state.tr.delete(from, to).scrollIntoView())
-    this.addOverflow(text)
+    this.addOverflow(text, undefined, html)
+    this.setMode('overflow')
     return true
   }
 

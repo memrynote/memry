@@ -1460,7 +1460,7 @@
   border-radius: 9999px;
 }
 
-.writing-alt-dots.is-active > span:nth-child(2) {
+.writing-alt-dots > span.is-filled {
   background-color: var(--text-tertiary);
 }
 
@@ -1569,6 +1569,31 @@
 
 .writing-overflow-item:active {
   cursor: grabbing;
+}
+
+/* A stashed selection rendered through the editor schema: keep its marks and
+   links, drop block spacing so it reads as a compact snippet. */
+.writing-overflow-content :is(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre) {
+  margin: 0;
+}
+
+.writing-overflow-content :is(h1, h2, h3, h4, h5, h6) {
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.writing-overflow-content a {
+  color: var(--tint);
+  text-decoration: underline;
+}
+
+.writing-overflow-content code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.writing-overflow-content > * + * {
+  margin-block-start: 4px;
 }
 
 /* Inline badge fallback when the review rail is hidden (narrow windows). */

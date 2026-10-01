@@ -1548,8 +1548,10 @@ export function NotePage({ noteId }: NotePageProps) {
       {!isLargeFile && (
         <WritingChrome
           mode={writingMode}
-          onToggleMode={(mode) => writingTools.toggleMode(mode)}
+          onSelectMode={(mode) => writingTools.setMode(mode)}
           aiEnabled={aiEnabled}
+          alternativeCount={writingSnapshot.alternatives.length}
+          overflowCount={writingSnapshot.overflow.length}
           wordCountVisible={wordCountVisible}
           wordCount={writingSnapshot.wordCount}
           onToggleWordCount={toggleWordCount}
@@ -1808,7 +1810,12 @@ export function NotePage({ noteId }: NotePageProps) {
       contentWidth={noteContentWidth ?? undefined}
       sideRail={
         writingMode && !isLargeFile && !agentReview ? (
-          <WritingRail mode={writingMode} session={writingTools} snapshot={writingSnapshot} />
+          <WritingRail
+            mode={writingMode}
+            session={writingTools}
+            snapshot={writingSnapshot}
+            aiEnabled={aiEnabled}
+          />
         ) : hasReviewContent ? (
           <ReviewRail review={review} targetId={noteId} />
         ) : undefined
