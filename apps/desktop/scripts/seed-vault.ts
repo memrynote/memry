@@ -5,12 +5,19 @@
  *
  * Default target: ~/MemryDemoVault. Override with --vault=<path>.
  * Always wipes and re-seeds.
+ *
+ * The writing tools demo note also gets its CRDT doc written into one dev
+ * profile's store (see seed-vault/profile-store-path.ts): --profile=<deviceId>
+ * (`A` for `dev:a`; default: the profile `pnpm dev` uses for this checkout),
+ * or --user-data-dir=<path> for an explicit userData directory.
  */
 
 import { writeFileSync } from 'fs'
-import { resolve } from 'path'
+import { dirname, resolve } from 'path'
+import { fileURLToPath } from 'url'
 import { homedir } from 'os'
 import matter from 'gray-matter'
+import { loadConfigFromFile, runnerImport } from 'vite'
 
 import { wipeVault } from './seed-vault/wipe'
 import { writeNoteFiles } from './seed-vault/file-writer'
@@ -36,6 +43,12 @@ import {
   insertTaskTags,
   openDataDb
 } from './seed-vault/db-writer'
+import {
+  defaultDevProfile,
+  devProfileUserData,
+  vaultCrdtStoreDir
+} from './seed-vault/profile-store-path'
+import type { storeWritingDraftsDoc } from './seed-vault/writing-drafts-store'
 import { generateId } from '../src/main/lib/id'
 import {
   allocateCanvasPath,
@@ -59,16 +72,29 @@ import {
   IOS_PARITY_NOTE,
   writeIosParityAttachments
 } from './seed-data/ios-parity'
+import { WRITING_DRAFTS_METADATA, WRITING_DRAFTS_NOTE } from './seed-data/writing-drafts'
+
+const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url))
 
 interface CliArgs {
   vaultPath: string
+  /** Electron userData whose CRDT store gets the writing tools demo doc. */
+  userDataDir: string
+  profileLabel: string
 }
 
 function parseArgs(argv: string[]): CliArgs {
   const args: Partial<CliArgs> = {}
+  let profile: string | undefined
   for (const raw of argv) {
     if (raw.startsWith('--vault=')) {
       args.vaultPath = resolve(raw.slice('--vault='.length))
+    }
+    if (raw.startsWith('--profile=')) {
+      profile = raw.slice('--profile='.length)
+    }
+    if (raw.startsWith('--user-data-dir=')) {
+      args.userDataDir = resolve(raw.slice('--user-data-dir='.length))
     }
     if (raw.startsWith('--device=')) {
       // Accepted and ignored: canvases used to be encrypted under a per-device
@@ -77,8 +103,11 @@ function parseArgs(argv: string[]): CliArgs {
       console.warn('--device is no longer needed; canvases are plain files in the vault.')
     }
   }
+  const deviceId = profile ?? defaultDevProfile()
   return {
-    vaultPath: args.vaultPath ?? resolve(homedir(), 'MemryDemoVault')
+    vaultPath: args.vaultPath ?? resolve(homedir(), 'MemryDemoVault'),
+    userDataDir: args.userDataDir ?? devProfileUserData(deviceId),
+    profileLabel: args.userDataDir ? 'custom userData' : `profile ${deviceId}`
   }
 }
 
@@ -118,8 +147,48 @@ function writeMinimalConfig(vaultPath: string): void {
   }
 }
 
+/**
+ * `storeWritingDraftsDoc`, loaded through Vite's module runner with the
+ * vitest config's aliases, which is how the seed-data tests load the same
+ * code. Why it cannot be a plain import: seed-vault/writing-drafts-store.ts.
+ */
+async function loadWritingDraftsStore(): Promise<typeof storeWritingDraftsDoc> {
+  const configPath = resolve(SCRIPTS_DIR, '..', 'config', 'vitest.config.ts')
+  const loaded = await loadConfigFromFile(
+    { command: 'serve', mode: 'development' },
+    configPath,
+    undefined,
+    'silent'
+  )
+  // Main modules on the converter's import graph name Electron APIs they never
+  // call on this path. Run as node, `electron` is a CJS module exporting a
+  // path string, which the runner refuses to link named imports against, so it
+  // is aliased to an empty stub. Vitest's looser CJS interop is what lets the
+  // seed-data tests import the same graph without one.
+  const alias = Object.entries(loaded?.config.resolve?.alias ?? {}).map(([find, replacement]) => ({
+    find,
+    replacement: String(replacement)
+  }))
+  const { module } = await runnerImport<{ storeWritingDraftsDoc: typeof storeWritingDraftsDoc }>(
+    resolve(SCRIPTS_DIR, 'seed-vault', 'writing-drafts-store.ts'),
+    {
+      resolve: {
+        alias: [
+          {
+            find: /^electron$/,
+            replacement: resolve(SCRIPTS_DIR, 'seed-vault', 'electron-stub.ts')
+          },
+          ...alias
+        ]
+      },
+      logLevel: 'warn'
+    }
+  )
+  return module.storeWritingDraftsDoc
+}
+
 async function main(): Promise<void> {
-  const { vaultPath } = parseArgs(process.argv.slice(2))
+  const { vaultPath, userDataDir, profileLabel } = parseArgs(process.argv.slice(2))
 
   console.log(`Seeding demo vault at: ${vaultPath}`)
 
@@ -135,6 +204,7 @@ async function main(): Promise<void> {
   const dataDbPath = resolve(vaultPath, '.memry', 'data.db')
   console.log(`  → Opening + migrating data.db at ${dataDbPath}`)
   const { db, close } = openDataDb(dataDbPath)
+  let vaultId: string
 
   try {
     const tagCategoryCount = insertTagCategories(db, TAG_CATEGORIES)
@@ -154,7 +224,8 @@ async function main(): Promise<void> {
     const noteMetaCount = insertNoteMetadata(db, [
       ...NOTE_METADATA,
       ...JOURNAL_METADATA,
-      IOS_PARITY_METADATA
+      IOS_PARITY_METADATA,
+      WRITING_DRAFTS_METADATA
     ])
     console.log(`  → note_metadata: ${noteMetaCount}`)
 
@@ -200,7 +271,7 @@ async function main(): Promise<void> {
     // app's own writer so the seed can never drift from the real format. No key
     // material, no keychain, no device binding: a seeded vault opens in any
     // profile and survives being copied elsewhere.
-    const vaultId = ensureVaultMetadata(db)
+    vaultId = ensureVaultMetadata(db)
     const claimed = new Set<string>()
     const canvasCount = insertCanvases(
       db,
@@ -221,8 +292,16 @@ async function main(): Promise<void> {
     close()
   }
 
-  console.log(`  → Writing ${NOTES.length + 1} note files`)
-  const notesWritten = writeNoteFiles(vaultPath, [...NOTES, IOS_PARITY_NOTE])
+  console.log(`  → Writing ${NOTES.length + 2} note files`)
+  const notesWritten = writeNoteFiles(vaultPath, [...NOTES, IOS_PARITY_NOTE, WRITING_DRAFTS_NOTE])
+
+  const storeDir = vaultCrdtStoreDir(userDataDir, vaultId)
+  const storeDoc = await loadWritingDraftsStore()
+  await storeDoc(vaultPath, WRITING_DRAFTS_METADATA.id, storeDir)
+  console.log(`  → Writing tools demo doc stored for ${profileLabel}: ${storeDir}`)
+  console.warn(
+    `    Other profiles open "${WRITING_DRAFTS_METADATA.title}" without its alternatives, ghosts and overflow.`
+  )
 
   const attachmentsWritten = writeIosParityAttachments(vaultPath)
   console.log(`  → iOS Parity Test attachments: ${attachmentsWritten}`)

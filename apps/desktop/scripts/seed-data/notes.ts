@@ -101,7 +101,9 @@ export const NOTE_IDS = {
   bookShoeDog: generateNoteId(),
   movieTheBear: generateNoteId(),
   // Kitchen-sink note (./ios-parity): every block, inline node and style
-  iosParityTest: generateNoteId()
+  iosParityTest: generateNoteId(),
+  // Writing tools demo (./writing-drafts): alternatives, ghosts and overflow
+  writingDrafts: generateNoteId()
 } as const
 
 export const FOLDER_CONFIGS: Array<{ path: string; icon: string }> = [
