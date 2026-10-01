@@ -11,7 +11,11 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { coverWashForSeed, coverWashGradient } from '@memry/shared/cover-image'
+import {
+  DEFAULT_COVER_FRAMING,
+  coverWashForSeed,
+  coverWashGradient
+} from '@memry/shared/cover-image'
 
 const VAULT_PATH = vi.hoisted(() => '/Users/kaan/Vault')
 
@@ -29,22 +33,22 @@ const EXPECTED_SRC = `memry-file://local${VAULT_PATH}/attachments/${NOTE_ID}/abc
 function renderCover(overrides: Partial<NoteCoverProps> = {}) {
   const onChange = vi.fn()
   const onRemove = vi.fn()
-  const onFocusChange = vi.fn()
+  const onFramingChange = vi.fn()
   const onRepositioningChange = vi.fn()
   const result = render(
     <NoteCover
       cover={{ kind: 'image', ref: COVER_REF }}
       noteId={NOTE_ID}
       notePath={NOTE_PATH}
-      focus={50}
+      framing={DEFAULT_COVER_FRAMING}
       onChange={onChange}
       onRemove={onRemove}
-      onFocusChange={onFocusChange}
+      onFramingChange={onFramingChange}
       onRepositioningChange={onRepositioningChange}
       {...overrides}
     />
   )
-  return { ...result, onChange, onRemove, onFocusChange, onRepositioningChange }
+  return { ...result, onChange, onRemove, onFramingChange, onRepositioningChange }
 }
 
 const changeButton = () => screen.getByRole('button', { name: 'Change cover' })
@@ -66,9 +70,37 @@ describe('NoteCover image covers', () => {
   })
 
   it('positions the image at the stored focus', () => {
-    renderCover({ focus: 18 })
+    renderCover({ framing: { ...DEFAULT_COVER_FRAMING, focusY: 18 } })
 
     expect(screen.getByRole('img')).toHaveStyle({ objectPosition: '50% 18%' })
+  })
+
+  it('renders a note without framing keys exactly as before: centred, unzoomed, 200px', () => {
+    renderCover()
+
+    expect(band()).toHaveStyle({ height: '200px' })
+    expect(screen.getByRole('img')).toHaveStyle({ objectPosition: '50% 50%' })
+    expect(screen.getByRole('img').style.transform).toBe('')
+  })
+
+  it('applies the stored focal point, zoom and height', () => {
+    renderCover({ framing: { focusX: 70, focusY: 30, zoom: 1.5, height: 320 } })
+
+    expect(band()).toHaveStyle({ height: '320px' })
+    expect(screen.getByRole('img')).toHaveStyle({
+      objectPosition: '70% 30%',
+      transform: 'scale(1.5)',
+      transformOrigin: '70% 30%'
+    })
+  })
+
+  it('keeps the stored height on a wash', () => {
+    renderCover({
+      cover: { kind: 'wash', id: 'sage' },
+      framing: { ...DEFAULT_COVER_FRAMING, height: 260 }
+    })
+
+    expect(band()).toHaveStyle({ height: '260px' })
   })
 
   it('keeps the raw ref out of the DOM entirely', () => {
@@ -167,10 +199,10 @@ describe('NoteCover wash covers', () => {
         cover={{ kind: 'image', ref: 'https://cdn.example.com/other.webp' }}
         noteId={NOTE_ID}
         notePath={NOTE_PATH}
-        focus={50}
+        framing={DEFAULT_COVER_FRAMING}
         onChange={vi.fn()}
         onRemove={vi.fn()}
-        onFocusChange={vi.fn()}
+        onFramingChange={vi.fn()}
       />
     )
     expect(screen.getByRole('img')).toHaveAttribute('src', 'https://cdn.example.com/other.webp')
@@ -193,11 +225,11 @@ describe('NoteCover credit', () => {
         cover={{ kind: 'image', ref: COVER_REF }}
         noteId={NOTE_ID}
         notePath={NOTE_PATH}
-        focus={50}
+        framing={DEFAULT_COVER_FRAMING}
         credit="Ana Ruiz"
         onChange={vi.fn()}
         onRemove={vi.fn()}
-        onFocusChange={vi.fn()}
+        onFramingChange={vi.fn()}
       />
     )
     expect(screen.queryByTestId('note-cover-credit')).not.toBeInTheDocument()
@@ -206,7 +238,10 @@ describe('NoteCover credit', () => {
 
 describe('NoteCover reposition', () => {
   it('swaps the toolbar for the drag hint and nudges the focus by two', () => {
-    const { onFocusChange, onRepositioningChange } = renderCover({ repositioning: true, focus: 50 })
+    const { onFramingChange, onRepositioningChange } = renderCover({
+      repositioning: true,
+      framing: { ...DEFAULT_COVER_FRAMING, focusY: 50 }
+    })
 
     expect(screen.getByTestId('note-cover-reposition-hint')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Change cover' })).not.toBeInTheDocument()
@@ -218,53 +253,152 @@ describe('NoteCover reposition', () => {
     expect(screen.getByRole('img')).toHaveStyle({ objectPosition: '50% 52%' })
 
     fireEvent.keyDown(band(), { key: 'Enter' })
-    expect(onFocusChange).toHaveBeenCalledWith(52)
+    expect(onFramingChange).toHaveBeenCalledWith({ focusY: 52 })
     expect(onRepositioningChange).toHaveBeenCalledWith(false)
   })
 
   it('drops the drag on escape without writing the note', () => {
-    const { onFocusChange, onRepositioningChange } = renderCover({ repositioning: true, focus: 30 })
+    const { onFramingChange, onRepositioningChange } = renderCover({
+      repositioning: true,
+      framing: { ...DEFAULT_COVER_FRAMING, focusY: 30 }
+    })
 
     fireEvent.keyDown(band(), { key: 'ArrowDown' })
     expect(screen.getByRole('img')).toHaveStyle({ objectPosition: '50% 32%' })
 
     fireEvent.keyDown(band(), { key: 'Escape' })
-    expect(onFocusChange).not.toHaveBeenCalled()
+    expect(onFramingChange).not.toHaveBeenCalled()
     expect(onRepositioningChange).toHaveBeenCalledWith(false)
   })
 
   it('saves and cancels from the pill, not the keyboard alone', () => {
-    const saved = renderCover({ repositioning: true, focus: 40 })
+    const saved = renderCover({
+      repositioning: true,
+      framing: { ...DEFAULT_COVER_FRAMING, focusY: 40 }
+    })
     fireEvent.keyDown(band(), { key: 'ArrowDown' })
     fireEvent.click(screen.getByTestId('note-cover-reposition-save'))
-    expect(saved.onFocusChange).toHaveBeenCalledWith(42)
+    expect(saved.onFramingChange).toHaveBeenCalledWith({ focusY: 42 })
     expect(saved.onRepositioningChange).toHaveBeenCalledWith(false)
 
     cleanup()
 
-    const dropped = renderCover({ repositioning: true, focus: 40 })
+    const dropped = renderCover({
+      repositioning: true,
+      framing: { ...DEFAULT_COVER_FRAMING, focusY: 40 }
+    })
     fireEvent.keyDown(band(), { key: 'ArrowDown' })
     fireEvent.click(screen.getByTestId('note-cover-reposition-cancel'))
-    expect(dropped.onFocusChange).not.toHaveBeenCalled()
+    expect(dropped.onFramingChange).not.toHaveBeenCalled()
     expect(dropped.onRepositioningChange).toHaveBeenCalledWith(false)
   })
 
   it('saves and leaves reposition when focus moves off the band', () => {
-    const { onFocusChange, onRepositioningChange } = renderCover({ repositioning: true, focus: 40 })
+    const { onFramingChange, onRepositioningChange } = renderCover({
+      repositioning: true,
+      framing: { ...DEFAULT_COVER_FRAMING, focusY: 40 }
+    })
 
     fireEvent.keyDown(band(), { key: 'ArrowDown' })
     fireEvent.blur(band(), { relatedTarget: document.body })
 
-    expect(onFocusChange).toHaveBeenCalledWith(42)
+    expect(onFramingChange).toHaveBeenCalledWith({ focusY: 42 })
     expect(onRepositioningChange).toHaveBeenCalledWith(false)
   })
 
   it('stays in reposition while focus moves inside the band', () => {
-    const { onRepositioningChange } = renderCover({ repositioning: true, focus: 40 })
+    const { onRepositioningChange } = renderCover({
+      repositioning: true,
+      framing: { ...DEFAULT_COVER_FRAMING, focusY: 40 }
+    })
 
     fireEvent.blur(band(), { relatedTarget: screen.getByRole('img') })
 
     expect(onRepositioningChange).not.toHaveBeenCalled()
+  })
+
+  it('pans horizontally with left and right', () => {
+    const { onFramingChange } = renderCover({ repositioning: true })
+
+    fireEvent.keyDown(band(), { key: 'ArrowLeft' })
+    fireEvent.keyDown(band(), { key: 'ArrowLeft' })
+    fireEvent.keyDown(band(), { key: 'ArrowRight' })
+    expect(screen.getByRole('img')).toHaveStyle({ objectPosition: '48% 50%' })
+
+    fireEvent.keyDown(band(), { key: 'Enter' })
+    expect(onFramingChange).toHaveBeenCalledWith({ focusX: 48 })
+  })
+
+  it('zooms around the focal point from the pill and the keyboard, within 1..3', () => {
+    const { onFramingChange } = renderCover({
+      repositioning: true,
+      framing: { ...DEFAULT_COVER_FRAMING, focusX: 30, focusY: 60 }
+    })
+
+    expect(screen.getByRole('button', { name: 'Zoom out' })).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }))
+    expect(screen.getByRole('img').style.transform).toBe('')
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }))
+    fireEvent.keyDown(band(), { key: '+' })
+    fireEvent.keyDown(band(), { key: '=' })
+    fireEvent.keyDown(band(), { key: '-' })
+    expect(screen.getByRole('img')).toHaveStyle({
+      transform: 'scale(1.2)',
+      transformOrigin: '30% 60%'
+    })
+    expect(screen.getByRole('button', { name: 'Zoom out' })).toHaveAttribute(
+      'aria-disabled',
+      'false'
+    )
+
+    fireEvent.click(screen.getByTestId('note-cover-reposition-save'))
+    expect(onFramingChange).toHaveBeenCalledWith({ zoom: 1.2 })
+  })
+
+  it('resizes the band with shift and the arrows, within its bounds', () => {
+    const { onFramingChange } = renderCover({
+      repositioning: true,
+      framing: { ...DEFAULT_COVER_FRAMING, height: 128 }
+    })
+
+    fireEvent.keyDown(band(), { key: 'ArrowUp', shiftKey: true })
+    fireEvent.keyDown(band(), { key: 'ArrowUp', shiftKey: true })
+    expect(band()).toHaveStyle({ height: '120px' })
+    fireEvent.keyDown(band(), { key: 'ArrowDown', shiftKey: true })
+    expect(band()).toHaveStyle({ height: '128px' })
+    // Shift moved the edge, not the focal point.
+    expect(screen.getByRole('img')).toHaveStyle({ objectPosition: '50% 50%' })
+
+    fireEvent.keyDown(band(), { key: 'ArrowDown', shiftKey: true })
+    fireEvent.keyDown(band(), { key: 'Enter' })
+    expect(onFramingChange).toHaveBeenCalledWith({ height: 136 })
+  })
+
+  it('sets the height from the dragged bottom edge without moving the focal point', () => {
+    renderCover({ repositioning: true })
+    const handle = screen.getByTestId('note-cover-resize-handle')
+    vi.spyOn(band(), 'getBoundingClientRect').mockReturnValue(
+      DOMRect.fromRect({ x: 0, y: 100, width: 800, height: 200 })
+    )
+    handle.setPointerCapture = vi.fn()
+    handle.hasPointerCapture = vi.fn(() => true)
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 300 })
+    fireEvent.pointerMove(handle, { pointerId: 1, clientY: 420 })
+
+    expect(band()).toHaveStyle({ height: '320px' })
+    expect(handle).toHaveAttribute('aria-valuenow', '320')
+    expect(screen.getByRole('img')).toHaveStyle({ objectPosition: '50% 50%' })
+  })
+
+  it('offers no zoom or resize outside reposition', () => {
+    renderCover()
+
+    expect(screen.queryByRole('button', { name: 'Zoom in' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('note-cover-resize-handle')).not.toBeInTheDocument()
   })
 
   it('never enters reposition for a wash', () => {

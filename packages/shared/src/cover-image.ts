@@ -1,5 +1,8 @@
 export const COVER_FRONTMATTER_KEY = 'cover'
 export const COVER_FOCUS_FRONTMATTER_KEY = 'coverFocus'
+export const COVER_FOCUS_X_FRONTMATTER_KEY = 'coverFocusX'
+export const COVER_ZOOM_FRONTMATTER_KEY = 'coverZoom'
+export const COVER_HEIGHT_FRONTMATTER_KEY = 'coverHeight'
 export const COVER_CREDIT_FRONTMATTER_KEY = 'coverCredit'
 export const COVER_CREDIT_URL_FRONTMATTER_KEY = 'coverCreditUrl'
 
@@ -121,7 +124,91 @@ export function isCoverCreditUrlValue(value: unknown): value is string {
   return typeof value === 'string' && /^https?:\/\//i.test(value)
 }
 
-/** Read `coverFocus` off frontmatter, falling back to the centre. */
+/** Read `coverFocus` or `coverFocusX` off frontmatter, falling back to the centre. */
 export function parseCoverFocus(value: unknown): number {
   return isCoverFocusValue(value) ? clampCoverFocus(value) : DEFAULT_COVER_FOCUS
+}
+
+export const DEFAULT_COVER_ZOOM = 1
+export const MIN_COVER_ZOOM = 1
+export const MAX_COVER_ZOOM = 3
+
+/** Clamp a zoom factor onto 1..3, rounded to two decimals so YAML stays short. */
+export function clampCoverZoom(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_COVER_ZOOM
+  return Math.min(MAX_COVER_ZOOM, Math.max(MIN_COVER_ZOOM, Math.round(value * 100) / 100))
+}
+
+/** Value gate for `coverZoom`: a number in 1..3. */
+export function isCoverZoomValue(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    value >= MIN_COVER_ZOOM &&
+    value <= MAX_COVER_ZOOM
+  )
+}
+
+/** Read `coverZoom` off frontmatter, falling back to no zoom. */
+export function parseCoverZoom(value: unknown): number {
+  return isCoverZoomValue(value) ? clampCoverZoom(value) : DEFAULT_COVER_ZOOM
+}
+
+/** The band height, in CSS pixels, of a note that never set one. */
+export const DEFAULT_COVER_HEIGHT = 200
+export const MIN_COVER_HEIGHT = 120
+export const MAX_COVER_HEIGHT = 480
+
+/** Clamp a band height onto 120..480 px, rounded to a whole pixel. */
+export function clampCoverHeight(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_COVER_HEIGHT
+  return Math.min(MAX_COVER_HEIGHT, Math.max(MIN_COVER_HEIGHT, Math.round(value)))
+}
+
+/** Value gate for `coverHeight`: a number of pixels in 120..480. */
+export function isCoverHeightValue(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    value >= MIN_COVER_HEIGHT &&
+    value <= MAX_COVER_HEIGHT
+  )
+}
+
+/** Read `coverHeight` off frontmatter, falling back to the default band. */
+export function parseCoverHeight(value: unknown): number {
+  return isCoverHeightValue(value) ? clampCoverHeight(value) : DEFAULT_COVER_HEIGHT
+}
+
+/**
+ * How an image cover sits in its band. Every field is optional on disk; a
+ * missing key reads as its default, which is exactly the framing a note had
+ * before the key existed: centred, unzoomed, 200px tall.
+ */
+export interface CoverFraming {
+  /** Horizontal focal point, 0 (left) to 100 (right). `coverFocusX`. */
+  focusX: number
+  /** Vertical focal point, 0 (top) to 100 (bottom). `coverFocus`. */
+  focusY: number
+  /** Scale applied around the focal point, 1..3. `coverZoom`. */
+  zoom: number
+  /** Band height in CSS pixels, 120..480. `coverHeight`. */
+  height: number
+}
+
+export const DEFAULT_COVER_FRAMING: CoverFraming = {
+  focusX: DEFAULT_COVER_FOCUS,
+  focusY: DEFAULT_COVER_FOCUS,
+  zoom: DEFAULT_COVER_ZOOM,
+  height: DEFAULT_COVER_HEIGHT
+}
+
+/** Read the framing keys off frontmatter; anything unreadable is its default. */
+export function parseCoverFraming(frontmatter: Readonly<Record<string, unknown>>): CoverFraming {
+  return {
+    focusX: parseCoverFocus(frontmatter[COVER_FOCUS_X_FRONTMATTER_KEY]),
+    focusY: parseCoverFocus(frontmatter[COVER_FOCUS_FRONTMATTER_KEY]),
+    zoom: parseCoverZoom(frontmatter[COVER_ZOOM_FRONTMATTER_KEY]),
+    height: parseCoverHeight(frontmatter[COVER_HEIGHT_FRONTMATTER_KEY])
+  }
 }

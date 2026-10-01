@@ -139,7 +139,7 @@ import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
 import {
   isCoverCreditUrlValue,
   isCoverCreditValue,
-  parseCoverFocus,
+  parseCoverFraming,
   parseCoverValue
 } from '@memry/shared/cover-image'
 import { FindBar } from '@/components/find-bar/find-bar'
@@ -1119,9 +1119,13 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, isDeleted, refetchNote, queryClient, t]
   )
 
-  const { setCover, setCoverFocus, removeCover } = useNoteCover(noteId ?? null, refetchNote)
+  const { setCover, setCoverFraming, removeCover } = useNoteCover(
+    noteId ?? null,
+    note?.frontmatter ?? null,
+    refetchNote
+  )
   const cover = note ? parseCoverValue(note.frontmatter.cover) : null
-  const coverFocus = parseCoverFocus(note?.frontmatter.coverFocus)
+  const coverFraming = parseCoverFraming(note?.frontmatter ?? {})
   const coverCredit = isCoverCreditValue(note?.frontmatter.coverCredit)
     ? note.frontmatter.coverCredit
     : null
@@ -1808,12 +1812,12 @@ export function NotePage({ noteId }: NotePageProps) {
             cover={cover}
             noteId={noteId}
             notePath={note.path}
-            focus={coverFocus}
+            framing={coverFraming}
             credit={coverCredit}
             creditUrl={coverCreditUrl}
             onChange={(event) => setCoverPickerAnchor(coverPickerAnchorFrom(event))}
             onRemove={() => void removeCover()}
-            onFocusChange={(next) => void setCoverFocus(next)}
+            onFramingChange={(changes) => void setCoverFraming(changes)}
             repositioning={isRepositioningCover}
             onRepositioningChange={setIsRepositioningCover}
             disabled={isDeleted}

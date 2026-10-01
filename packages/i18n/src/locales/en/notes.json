@@ -803,6 +803,9 @@
     "repositionHint": "Drag to reposition",
     "repositionSave": "save",
     "repositionCancel": "cancel",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "resize": "Drag to resize the cover",
     "credit": "Photo by {name} on Unsplash",
     "focusFailed": "Could not save the cover position",
     "picker": {

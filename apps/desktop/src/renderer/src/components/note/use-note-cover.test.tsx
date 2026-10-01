@@ -41,9 +41,12 @@ beforeEach(() => {
   mocks.update.mockResolvedValue({ success: true })
 })
 
-function renderUseNoteCover(noteId: string | null = NOTE_ID) {
+function renderUseNoteCover(
+  noteId: string | null = NOTE_ID,
+  frontmatter: Record<string, unknown> = {}
+) {
   const onSaved = vi.fn()
-  const { result } = renderHook(() => useNoteCover(noteId, onSaved))
+  const { result } = renderHook(() => useNoteCover(noteId, frontmatter, onSaved))
   return { result, onSaved }
 }
 
@@ -107,9 +110,57 @@ describe('useNoteCover', () => {
   it('clamps the focus before it reaches the vault', async () => {
     const { result } = renderUseNoteCover()
 
-    await act(() => result.current.setCoverFocus(140.6))
+    await act(() => result.current.setCoverFraming({ focusY: 140.6 }))
 
     expect(mocks.update).toHaveBeenCalledWith({ id: NOTE_ID, frontmatter: { coverFocus: 100 } })
+  })
+
+  it('writes only the framing fields that changed, clamped', async () => {
+    const { result, onSaved } = renderUseNoteCover()
+
+    await act(() => result.current.setCoverFraming({ focusX: 70.4, zoom: 9, height: 321.6 }))
+
+    expect(mocks.update).toHaveBeenCalledWith({
+      id: NOTE_ID,
+      frontmatter: { coverFocusX: 70, coverZoom: 3, coverHeight: 322 }
+    })
+    expect(onSaved).toHaveBeenCalledTimes(1)
+  })
+
+  it('deletes a later framing key set back to its default, so the file reads as never framed', async () => {
+    const { result } = renderUseNoteCover()
+
+    await act(() => result.current.setCoverFraming({ focusX: 50, zoom: 1, height: 200 }))
+
+    expect(mocks.update).toHaveBeenCalledWith({
+      id: NOTE_ID,
+      frontmatter: { coverFocusX: null, coverZoom: null, coverHeight: null }
+    })
+  })
+
+  it('clears stored framing keys on set and remove, but never a user property of the same name', async () => {
+    const framed = renderUseNoteCover(NOTE_ID, {
+      cover: COVER_REF,
+      coverFocusX: 70,
+      coverZoom: 1.5,
+      coverHeight: 320
+    })
+    await act(() => framed.result.current.removeCover())
+    expect(mocks.update).toHaveBeenLastCalledWith({
+      id: NOTE_ID,
+      frontmatter: {
+        cover: null,
+        ...CLEARED,
+        coverFocusX: null,
+        coverZoom: null,
+        coverHeight: null
+      }
+    })
+
+    const prose = renderUseNoteCover(NOTE_ID, { cover: COVER_REF, coverHeight: 'tall' })
+    await act(() => prose.result.current.setCover({ kind: 'wash', id: 'sage' }))
+    const [payload] = mocks.update.mock.calls[1] as [{ frontmatter: Record<string, unknown> }]
+    expect('coverHeight' in payload.frontmatter).toBe(false)
   })
 
   it('removes with the null delete sentinel rather than undefined', async () => {
@@ -152,7 +203,7 @@ describe('useNoteCover', () => {
     const { result, onSaved } = renderUseNoteCover(null)
 
     await act(() => result.current.setCover(IMAGE_COVER))
-    await act(() => result.current.setCoverFocus(20))
+    await act(() => result.current.setCoverFraming({ focusY: 20 }))
     await act(() => result.current.removeCover())
 
     expect(mocks.update).not.toHaveBeenCalled()
