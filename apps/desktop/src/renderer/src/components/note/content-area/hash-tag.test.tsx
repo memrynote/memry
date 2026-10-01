@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   createHashTagInlineContent,
   extractInlineTags,
@@ -168,5 +168,43 @@ describe('hash tag inline content', () => {
     ] as any)
 
     expect(tags.sort()).toEqual(['Nested', 'Personal', 'Work'])
+  })
+})
+
+describe('hash tag with an uploaded icon', () => {
+  const host = window as unknown as { api?: unknown }
+  const previousApi = host.api
+
+  beforeAll(() => {
+    host.api = {
+      customIcons: {
+        list: vi.fn(async () => [
+          {
+            id: 'star',
+            name: 'Star',
+            ext: 'png',
+            path: '/vault/.memry/icons/star.png',
+            createdAt: '2026-09-30T00:00:00.000Z'
+          }
+        ])
+      }
+    }
+  })
+
+  afterAll(() => {
+    host.api = previousApi
+  })
+
+  it('draws a custom:<id> tag icon as its image, never as the reference text', async () => {
+    const render = renderInlineSpec('hashTag', HashTag, {
+      props: { tag: 'books', color: 'blue', icon: 'custom:star' }
+    })
+
+    expect(render.dom.textContent).toBe('#books')
+    await vi.waitFor(() =>
+      expect(render.dom.querySelector('img')?.getAttribute('src')).toBe(
+        'memry-file://local/vault/.memry/icons/star.png'
+      )
+    )
   })
 })

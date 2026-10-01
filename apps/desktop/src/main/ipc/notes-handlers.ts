@@ -106,6 +106,7 @@ import {
   syncFolderConfigDelete
 } from '../notes/folder-config-effects'
 import { renderNoteAsHtml, sanitizeFilename } from '../lib/export-utils'
+import { getCustomIcon } from '../icons/store'
 import { getMainI18n } from '../lib/main-i18n'
 import { SetFolderConfigSchema } from '@memry/contracts/templates-api'
 import {
@@ -232,7 +233,7 @@ async function renderNoteForExport(note: Note, includeMetadata: boolean): Promis
       created: note.created,
       modified: note.modified
     },
-    { includeMetadata }
+    { includeMetadata, findCustomIcon: (id) => getCustomIcon(getDatabase(), id) }
   )
   return inlineExportImages(html, { notePath: note.path, vaultPath: getVaultStatus().path })
 }

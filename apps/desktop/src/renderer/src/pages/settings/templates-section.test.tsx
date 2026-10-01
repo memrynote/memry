@@ -177,6 +177,16 @@ describe('TemplatesSettings', () => {
     expect(within(builtIn).queryByRole('button', { name: /templates.v2.new/ })).toBeNull()
   })
 
+  it.each(['custom:i4D0i_NKqVZr0a9eb-6B3', 'icon:StarIcon'])(
+    'draws a %s template icon as an icon, not as literal text',
+    (icon) => {
+      templatesState = [{ id: 'custom', name: 'Meeting Notes', icon, isBuiltIn: false }]
+      render(<TemplatesSettings />)
+
+      expect(screen.getByRole('button', { name: 'Meeting Notes' }).textContent).not.toContain(icon)
+    }
+  )
+
   it('opens create and edit tabs', async () => {
     const user = userEvent.setup()
     render(<TemplatesSettings />)

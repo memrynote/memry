@@ -33,6 +33,7 @@ let entries: CustomIconEntry[] = EMPTY
 let byId: Map<string, CustomIconEntry> = new Map()
 const listeners = new Set<() => void>()
 let started = false
+let firstLoad: Promise<void> = Promise.resolve()
 
 function publish(next: CustomIcon[]): void {
   entries = next.map((icon) => ({
@@ -58,7 +59,7 @@ async function load(): Promise<void> {
 function start(): void {
   if (started) return
   started = true
-  void load()
+  firstLoad = load()
   // App-lifetime subscription: the library is global, so there is no unmount
   // edge at which dropping it would be correct.
   window.api?.onCustomIconsUpdated?.(() => {
@@ -81,6 +82,19 @@ function getSnapshot(): CustomIconEntry[] {
 /** Re-read the library after a local add/rename/delete. */
 export async function refreshCustomIcons(): Promise<void> {
   await load()
+}
+
+/**
+ * One read of an icon for DOM built outside React (the editor's inline `#tag`
+ * chip), resolved once the library's first load is in. There is no
+ * subscription to tear down: BlockNote also renders the chip for serialization,
+ * where nothing would ever release one. A chip keeps the image it got until
+ * the editor draws it again.
+ */
+export async function readCustomIcon(id: string): Promise<CustomIconEntry | undefined> {
+  start()
+  await firstLoad
+  return byId.get(id)
 }
 
 export function useCustomIcons(): CustomIconEntry[] {

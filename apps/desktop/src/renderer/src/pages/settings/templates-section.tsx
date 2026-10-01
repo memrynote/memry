@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { FileText, Plus, MoreHorizontal, Pencil, Copy, Trash2, Lock } from '@/lib/icons'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { useTemplates } from '@/hooks/use-templates'
 import { useTabs } from '@/contexts/tabs'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
@@ -267,7 +268,15 @@ function TemplateRow({ template, onSelect, onEdit, onDuplicate, onDelete }: Temp
     >
       <div className="flex items-center gap-2.5 min-w-0">
         <span className="flex items-center justify-center size-4 shrink-0 text-xs/4 text-muted-foreground">
-          {template.icon || <FileText className="size-3.5" />}
+          {template.icon ? (
+            <NoteIconDisplay
+              value={template.icon}
+              className="size-3.5"
+              customIconClassName="size-3.5"
+            />
+          ) : (
+            <FileText className="size-3.5" />
+          )}
         </span>
         <span className="max-w-1/2 shrink-0 truncate text-[13px]/4 text-foreground">
           {template.name}

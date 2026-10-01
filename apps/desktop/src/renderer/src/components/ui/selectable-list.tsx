@@ -8,6 +8,7 @@
 import { useState, useMemo, createContext, useContext } from 'react'
 import { Check, ChevronRight, FileText } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 
 // ============================================================================
 // Context for selection state
@@ -118,12 +119,25 @@ export interface SelectableListItemProps {
   label: string
   /** Optional description text */
   description?: string
-  /** Optional icon (emoji string or React node) */
+  /**
+   * Optional icon: a stored icon value (emoji, `icon:<Name>` or `custom:<id>`)
+   * or a React node.
+   */
   icon?: string | React.ReactNode
   /** Optional badge element (e.g., lock icon for built-in) */
   badge?: React.ReactNode
   /** Additional class names */
   className?: string
+}
+
+/**
+ * A string is a stored icon value, not display text: a library or uploaded icon
+ * is a reference that prints as `custom:<id>` if rendered as-is.
+ */
+function ItemIcon({ icon }: { icon: SelectableListItemProps['icon'] }): React.JSX.Element {
+  if (!icon) return <FileText className="w-4 h-4 text-muted-foreground/50" />
+  if (typeof icon === 'string') return <NoteIconDisplay value={icon} className="size-5" />
+  return <>{icon}</>
 }
 
 export function SelectableListItem({
@@ -179,13 +193,7 @@ export function SelectableListItem({
           'group-hover:bg-muted dark:group-hover:bg-muted/60'
         )}
       >
-        {typeof icon === 'string' ? (
-          icon
-        ) : icon ? (
-          icon
-        ) : (
-          <FileText className="w-4 h-4 text-muted-foreground/50" />
-        )}
+        <ItemIcon icon={icon} />
       </div>
 
       {/* Content */}
@@ -262,13 +270,7 @@ export function StandaloneSelectableItem({
           'group-hover:bg-muted dark:group-hover:bg-muted/60'
         )}
       >
-        {typeof icon === 'string' ? (
-          icon
-        ) : icon ? (
-          icon
-        ) : (
-          <FileText className="w-4 h-4 text-muted-foreground/50" />
-        )}
+        <ItemIcon icon={icon} />
       </div>
 
       {/* Content */}
