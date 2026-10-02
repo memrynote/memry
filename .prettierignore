@@ -35,3 +35,6 @@ packages/contracts/test-vectors/markdown-roundtrip/*.json
 # Generated minified bundle (scripts/generate-ios-article-extract.mjs); Prettier
 # reflows 1.2 MB of minified JS into 27k lines with trailing whitespace.
 apps/ios/Memry/Resources/article-extract.js
+
+# Vendored KaTeX and mermaid, copied as-is by apps/ios/scripts/generate-block-render.mjs.
+apps/ios/Memry/Resources/BlockRender.bundle/vendor/
