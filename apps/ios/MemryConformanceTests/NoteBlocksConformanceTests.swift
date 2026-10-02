@@ -132,6 +132,30 @@ struct NoteBlocksConformanceTests {
         #expect(content.rows.flatMap(\.cells).allSatisfy { $0.blockId == nil })
     }
 
+    @Test("an inserted table is desktop's empty 3 by 3 grid, and cell 0,0 takes text")
+    func insertedTableTakesCellText() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("mb3-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let vault = try Vault.open(vaultId: "conformance", directory: directory.path)
+        let writer = try vault.notesWriter(store: ConformanceKeychain())
+        let note = try writer.create(title: "MB3 table", folderPath: nil)
+        _ = try writer.editBlock(
+            noteId: note, edit: .insertBlock(kind: "table", afterBlockId: nil, text: "", newBlockId: "t1")
+        )
+        _ = try writer.editBlock(
+            noteId: note, edit: .setCellText(tableId: "t1", row: 0, column: 0, text: "Name")
+        )
+
+        let table = try #require(try vault.notes().table(id: note, blockId: "t1"))
+        #expect(table.headerRows == 1)
+        #expect(table.rows.map { $0.cells.map(\.isHeader) } == [
+            [true, true, true], [false, false, false], [false, false, false],
+        ])
+        #expect(table.rows.map { $0.cells.map { $0.content.flatMap(\.inline).map(\.text).joined() } } == [
+            ["Name", "", ""], ["", "", ""], ["", "", ""],
+        ])
+    }
+
     @Test("a task block carries its text as a prop, not as inline content")
     func taskBlockCarriesItsTitle() throws {
         let block = try #require(try blocks(of: "taskBlock").first)

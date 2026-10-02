@@ -309,7 +309,7 @@ struct InsertGridTests {
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
             "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
             "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
-            "link_to_note", "date", "remind",
+            "link_to_note", "date", "remind", "table",
             "image",
         ]
         #expect(grid == expected)
@@ -339,6 +339,13 @@ struct InsertGridTests {
     /// `didChange`. The session holds its field and model weakly, so the test
     /// holds them.
     private func choose(_ id: String, in target: Block, changes: Int = 1) async throws -> [BlockEdit] {
+        try await chooseFocusing(id, in: target, changes: changes).edits
+    }
+
+    /// `focus`: the block the caret is sent to once the row has acted.
+    private func chooseFocusing(
+        _ id: String, in target: Block, changes: Int = 1
+    ) async throws -> (edits: [BlockEdit], focus: String?) {
         let editor = ScriptedToolbarEditor()
         let model = NoteEditorViewModel(noteId: "n1", editor: editor)
         let session = model.session
@@ -354,7 +361,26 @@ struct InsertGridTests {
             session.chooseFromGrid(row)
         }
         withExtendedLifetime((field, model)) {}
-        return editor.all
+        return (editor.all, session.pendingFocus)
+    }
+
+    @Test func aTableOnAnEmptyLineTurnsItIntoATableThatTakesTheCaret() async throws {
+        let chosen = try await chooseFocusing("table", in: block("a"), changes: 2)
+        #expect(chosen.edits == [.turnInto(blockId: "a", kind: "table")])
+        #expect(chosen.focus == "a")
+    }
+
+    @Test func aTableAfterTextIsInsertedAfterItAndTakesTheCaret() async throws {
+        let text = InlineRun(text: "hi", marks: [], markAttrs: [:], target: nil)
+        let chosen = try await chooseFocusing("table", in: block("a", inline: [text]))
+        guard case let .insertBlock(kind, after, _, newId) = chosen.edits.first else {
+            Issue.record("expected an insert, got \(chosen.edits)")
+            return
+        }
+        #expect(kind == "table")
+        #expect(after == "a")
+        #expect(chosen.edits.count == 1)
+        #expect(chosen.focus == newId)
     }
 
     @Test func aToggleHeadingTurnsAnEmptyLineIntoATogglableHeading() async throws {
