@@ -30,6 +30,7 @@
  */
 
 import { scanTaskCheckboxStates } from '@memry/shared/task-block'
+import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { NoteUpdatedEvent } from '@memry/contracts/notes-api'
 import { createLogger } from '../lib/logger'
@@ -157,7 +158,7 @@ async function rewriteSourceNote(taskId: string, noteId: string): Promise<void> 
   }
   emitNoteEvent(NotesChannels.events.UPDATED, event)
 
-  await feedExternalEditToCrdt(noteId, parsed.content)
+  await feedExternalEditToCrdt(noteId, parsed.content, writingFrontmatterOf(parsed.frontmatter))
 
   log.info('Removed a deleted task line from its source note', { taskId, noteId })
 }

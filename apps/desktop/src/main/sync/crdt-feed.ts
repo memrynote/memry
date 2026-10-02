@@ -11,6 +11,7 @@ import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { getIndexDatabase } from '../database'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { createLogger } from '../lib/logger'
+import type { WritingFrontmatter } from '@memry/shared'
 
 const log = createLogger('CrdtFeed')
 
@@ -32,8 +33,15 @@ function noteCachePath(noteId: string): string | undefined {
  * No-op (returns false) when the doc is not open, the markdown is large-file
  * class, or the markdown is unparseable.
  * Lossy re: Yjs history, but round-tripping through markdown discards it anyway.
+ *
+ * `writing` is the file's `writing` frontmatter, when the caller read the whole
+ * file; without it the doc keeps its own alternative versions and overflow.
  */
-export async function replaceNoteBodyInCrdt(noteId: string, markdown: string): Promise<boolean> {
+export async function replaceNoteBodyInCrdt(
+  noteId: string,
+  markdown: string,
+  writing?: WritingFrontmatter
+): Promise<boolean> {
   const provider = getCrdtProvider()
   const doc = provider.getDoc(noteId)
   if (!doc) return false
@@ -61,7 +69,7 @@ export async function replaceNoteBodyInCrdt(noteId: string, markdown: string): P
   // leaving the previous body's copies in place (#1959).
   const { prepareFragmentSeed, applyFragmentSeed, recordMarkdownSourceInYDoc } =
     await loadBlockNoteConverter()
-  const prepared = await prepareFragmentSeed(markdown, noteCachePath(noteId))
+  const prepared = await prepareFragmentSeed(markdown, noteCachePath(noteId), writing)
   if (!prepared) return false
 
   const fragment = doc.getXmlFragment('prosemirror')
@@ -72,7 +80,9 @@ export async function replaceNoteBodyInCrdt(noteId: string, markdown: string): P
 
   // The file's new bytes are the source from here on: whatever the write-back
   // does not change comes back spelled the way this edit spelled it (#1915).
-  await recordMarkdownSourceInYDoc(doc, markdown, 'prosemirror')
+  // Without the markers: a source still holding them would put a deleted
+  // range's comments back on the next write.
+  await recordMarkdownSourceInYDoc(doc, prepared.plainText, 'prosemirror')
 
   return true
 }

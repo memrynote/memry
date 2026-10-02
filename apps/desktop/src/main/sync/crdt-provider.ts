@@ -52,7 +52,8 @@ import {
   MARKDOWN_SOURCE_MAP,
   WRITING_ALTERNATIVES_ARRAY,
   WRITING_GHOSTS_ARRAY,
-  WRITING_OVERFLOW_ARRAY
+  WRITING_OVERFLOW_ARRAY,
+  writingFrontmatterOf
 } from '@memry/shared'
 
 const log = createLogger('CrdtProvider')
@@ -1615,7 +1616,12 @@ export class CrdtProvider {
     // Pass the note's path so embed targets are written relative to it — this
     // fragment is what gets serialized back to the vault file.
     const { markdownToYFragment } = await loadBlockNoteConverter()
-    const ok = await markdownToYFragment(parsed.content, fragment, cached.path)
+    const ok = await markdownToYFragment(
+      parsed.content,
+      fragment,
+      cached.path,
+      writingFrontmatterOf(parsed.frontmatter)
+    )
 
     // Record what this doc was built from, so the write-back's external-edit
     // guard has something to compare against (#1909).

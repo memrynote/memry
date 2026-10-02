@@ -62,6 +62,7 @@ import { isWritebackIgnored } from '../sync/crdt-writeback'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { flushProjectionEvents } from '../projections'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
 import { enqueueJournalDelete } from '../journal/runtime-effects'
 import {
@@ -725,7 +726,11 @@ export class VaultWatcher {
       },
       source: 'external'
     })
-    feedExternalEditToCrdt(cached.id, parsed.content).catch((err) => {
+    feedExternalEditToCrdt(
+      cached.id,
+      parsed.content,
+      writingFrontmatterOf(parsed.frontmatter)
+    ).catch((err) => {
       logger.warn('Failed to feed external edit to CRDT', { noteId: cached.id, error: err })
     })
 

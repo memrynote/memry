@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type tls from 'node:tls'
-import { DEFAULT_SYNC_CERT_HOSTNAME, PINNED_CERTIFICATE_HASHES_BY_HOST } from '@memry/sync-client/certificate-pins'
+import {
+  DEFAULT_SYNC_CERT_HOSTNAME,
+  PINNED_CERTIFICATE_HASHES_BY_HOST
+} from '@memry/sync-client/certificate-pins'
 
 const mockApp = vi.hoisted(() => ({ isPackaged: false }))
 

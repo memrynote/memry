@@ -2165,7 +2165,12 @@ describe('CrdtProvider', () => {
     await provider.seedFromMarkdownPublic('big-but-fine')
 
     // #then — the guard must not cost the app notes it can genuinely handle
-    expect(mocks.markdownToYFragment).toHaveBeenCalledWith(body, expect.anything(), 'notes/big.md')
+    expect(mocks.markdownToYFragment).toHaveBeenCalledWith(
+      body,
+      expect.anything(),
+      'notes/big.md',
+      { alternatives: {}, overflow: [] }
+    )
   })
 
   it('ignores closing docs and unavailable windows while applying updates', async () => {

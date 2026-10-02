@@ -17,6 +17,7 @@ import {
   WRITING_ALTERNATIVES_ARRAY,
   WRITING_GHOSTS_ARRAY,
   WRITING_OVERFLOW_ARRAY,
+  newWritingAlternativeId,
   readWritingAlternativesFromYDoc,
   readWritingGhostsFromYDoc,
   readWritingOverflowFromYDoc,
@@ -593,7 +594,7 @@ export class WritingToolsSession {
     const text = singleLine(rawText)
     if (!draft || !text || text === draft.original) return
     const record: WritingAlternative = {
-      id: newId('alt'),
+      id: newWritingAlternativeId(),
       anchorStart: draft.anchorStart,
       anchorEnd: draft.anchorEnd,
       original: draft.original,
@@ -667,7 +668,7 @@ export class WritingToolsSession {
       this.patch({ focusAlternativeId: latest.id })
     } else if (anchors) {
       const record: WritingAlternative = {
-        id: newId('alt'),
+        id: newWritingAlternativeId(),
         ...anchors,
         original,
         variants: added,

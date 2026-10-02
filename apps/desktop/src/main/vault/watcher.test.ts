@@ -942,7 +942,8 @@ describe('vault watcher', () => {
     // #then the new body reaches the CRDT rather than being dropped…
     expect(replaceNoteBodyInCrdt).toHaveBeenCalledWith(
       cached!.id,
-      expect.stringContaining('[[Somewhere]]')
+      expect.stringContaining('[[Somewhere]]'),
+      { alternatives: {}, overflow: [] }
     )
     // …and the doc is handed back, since no editor asked for it
     expect(crdtProvider.closeIfInactive).toHaveBeenCalledWith(cached!.id)

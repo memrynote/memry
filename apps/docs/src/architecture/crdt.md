@@ -1576,6 +1576,40 @@ it and the record stops resolving instead of attaching to neighbouring text. Rec
 normalized on read, and a rewrite overlays known fields onto the stored object, so fields
 added by a newer build survive.
 
-None of this is written to the markdown file. A doc re-seeded from the file (an external
-edit) or compacted gets new item ids; ghosts are then lost, and an alternative re-attaches
-only when its text occurs exactly once in the note.
+The arrays are the live copy; the markdown file is the source of truth. The write-back
+puts each range into the body as a pair of comments around its text, and the rest into the
+`writing` frontmatter key:
+
+```markdown
+---
+writing:
+  alternatives:
+    k3x9q2xm:
+      original: ayaz # only while a variant is on show
+      versions: [soguk, { text: keskin, ai: true }]
+  overflow:
+    - label: Spare
+      text: Belki de en iyisi hic yazmamakti.
+---
+
+Sabah <!--alt:k3x9q2xm-->keskin<!--/alt:k3x9q2xm--> bir ruzgar esiyordu.
+Kahve dukkani <!--ghost-->biraz fazla<!--/ghost--> kalabalikti.
+```
+
+The text between the markers is always the version on show, so the file reads as plain
+prose anywhere. Markers never reach the markdown parser: `prepareFragmentSeed` swaps each
+pair for private-use sentinel characters, which ride the parse into the fragment's text,
+where `applyWritingSeed` reads them off as anchors and deletes them. The write-back does the
+reverse on a detached snapshot (`insertWritingSentinels`), so a range lands on whatever
+markdown character its anchor became. Format and codec: `packages/shared/src/writing-tools/
+markdown.ts`; Yjs side: `apps/desktop/src/main/sync/writing-markdown.ts`.
+
+- Every markdown → fragment door re-seeds the records: first open, an external edit, a
+  version restore, a rename rewrite. Callers that read the whole file pass its `writing`
+  frontmatter; one with only a body (template apply, an agent edit) keeps the versions and
+  overflow the doc already has.
+- A marker with no partner is dropped and its text kept. A range that cuts into a
+  CriticMarkup range is widened to cover it, so no comment ends up inside `{++…++}`.
+- A doc with alternatives or ghosts writes house style, as one with CriticMarkup does.
+- The file holds overflow items as plain text. An item whose text is unchanged keeps the
+  formatted copy (`html`) the doc has for it; one edited in the file comes back as text.

@@ -23,6 +23,7 @@
  */
 
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import type { WritingFrontmatter } from '@memry/shared'
 import { getCrdtProvider } from './crdt-provider'
 import { replaceNoteBodyInCrdt } from './crdt-feed'
 import { wasRecentNetworkUpdate } from './crdt-writeback'
@@ -34,7 +35,8 @@ import { broadcastToAllWindows } from '../lib/window-broadcast'
 // Resolves true when the markdown is now the doc's body.
 export async function feedExternalEditToCrdt(
   noteId: string,
-  markdownContent: string
+  markdownContent: string,
+  writing?: WritingFrontmatter
 ): Promise<boolean> {
   const provider = getCrdtProvider()
 
@@ -43,7 +45,7 @@ export async function feedExternalEditToCrdt(
       broadcastToAllWindows('sync:concurrent-edit', { noteId })
     }
 
-    return replaceNoteBodyInCrdt(noteId, markdownContent)
+    return replaceNoteBodyInCrdt(noteId, markdownContent, writing)
   }
 
   if (provider.getDoc(noteId)) {

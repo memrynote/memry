@@ -63,5 +63,15 @@ All**, **Undo**, **Redo**, then the writing tools above.
 ## Sync and files
 
 Alternatives, ghosts and overflow sync with the note and are end-to-end encrypted like the rest of
-it. They are not saved in the note's markdown file, so they don't appear in exports, and if the
-note is rebuilt from its file after an outside edit, ghosts are lost.
+it. They are also saved in the note's markdown file, so they survive an edit in another app and
+go wherever the file goes:
+
+- Each alternative and ghost is a pair of HTML comments around its text, such as
+  `<!--ghost-->biraz fazla<!--/ghost-->`. Most markdown apps hide them, so the file reads as the
+  version you are showing.
+- The versions you are not showing, and the overflow list, are under `writing` in the note's
+  frontmatter.
+
+If you edit the file elsewhere and delete one of a pair of comments, that range is dropped and its
+text stays. Overflow is saved as plain text, so an item you edit outside memrynote loses its
+formatting.

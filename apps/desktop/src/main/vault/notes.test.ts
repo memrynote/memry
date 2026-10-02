@@ -2079,7 +2079,8 @@ describe('notes operations', () => {
 
         expect(crdtMocks.feedExternalEditToCrdt).toHaveBeenCalledWith(
           created.id,
-          'Original content.\n'
+          'Original content.\n',
+          { alternatives: {}, overflow: [] }
         )
       })
     })

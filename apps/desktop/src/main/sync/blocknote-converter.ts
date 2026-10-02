@@ -25,9 +25,17 @@ import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-s
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import {
+  decodeWritingMarkers,
+  encodeWritingBody,
   parseCriticMarkup,
   readCriticMarkupMarksFromYDoc,
-  writeCriticMarkupMarksToYDoc
+  readWritingAlternativesFromYDoc,
+  readWritingGhostsFromYDoc,
+  withoutWritingSentinels,
+  writeCriticMarkupMarksToYDoc,
+  type CriticMarkupMark,
+  type WritingFrontmatter,
+  type WritingSentinelMap
 } from '@memry/shared'
 import {
   normalizeTaskBlocks,
@@ -84,6 +92,11 @@ import {
 import { NOTE_SYNC_MAX_BYTES } from '@memry/sync-client/note-size'
 import { createLogger } from '../lib/logger'
 import { resolveVaultEmbeds } from '../vault/resolve-embed'
+import {
+  applyWritingSeed,
+  insertWritingSentinels,
+  type EncodedWritingRanges
+} from './writing-markdown'
 
 const log = createLogger('BlockNoteConverter')
 
@@ -142,7 +155,13 @@ function getEditor(): ServerBlockNoteEditor {
  * from a note that never had a record.
  */
 export type SourceRestoreOutcome =
-  'no-record' | 'critic-marks' | 'source' | 'merged' | 'house-style-fallback' | 'house-style-threw'
+  | 'no-record'
+  | 'critic-marks'
+  | 'writing-marks'
+  | 'source'
+  | 'merged'
+  | 'house-style-fallback'
+  | 'house-style-threw'
 
 export interface YDocToMarkdownOptions {
   /**
@@ -211,6 +230,39 @@ export async function yDocToMarkdown(
 }
 
 /**
+ * The file body of a doc that holds alternatives or ghosts: house style with
+ * the writing tools markers in place and `criticMarks` applied around them.
+ * House style, as with CriticMarkup: the markers are placed by the
+ * serializer, and restoring the author's spelling around them is not
+ * something the merge can prove. Resolves undefined when no range resolves
+ * any more (the caller serializes as usual), null when conversion failed.
+ */
+export async function yDocToMarkdownWithWritingRanges(
+  doc: Y.Doc,
+  fragmentName: string,
+  criticMarks: CriticMarkupMark[],
+  options: YDocToMarkdownOptions = {}
+): Promise<
+  { markdown: string; alternatives: EncodedWritingRanges['alternatives'] } | null | undefined
+> {
+  const alternatives = readWritingAlternativesFromYDoc(doc)
+  const ghosts = readWritingGhostsFromYDoc(doc)
+  if (alternatives.length === 0 && ghosts.length === 0) return undefined
+  let encoded: EncodedWritingRanges | null = null
+  const text = await serializeCanonical(doc, fragmentName, (snapshot) => {
+    encoded = insertWritingSentinels(snapshot, fragmentName, alternatives, ghosts)
+  })
+  if (text === null) return null
+  const ranges = encoded as EncodedWritingRanges | null
+  if (!ranges || ranges.sentinels.size === 0) return undefined
+  options.onSourceRestore?.('writing-marks')
+  return {
+    markdown: encodeWritingBody(text, ranges.sentinels, criticMarks),
+    alternatives: ranges.alternatives
+  }
+}
+
+/**
  * The markdown a body canonicalizes to: what a document seeded from it would
  * serialize to with no source record. The proof oracle for the merge above.
  */
@@ -231,7 +283,11 @@ export async function yDocToCanonicalMarkdown(
   return serializeCanonical(doc, fragmentName)
 }
 
-async function serializeCanonical(doc: Y.Doc, fragmentName: string): Promise<string | null> {
+async function serializeCanonical(
+  doc: Y.Doc,
+  fragmentName: string,
+  prepareSnapshot?: (snapshot: Y.Doc) => void
+): Promise<string | null> {
   try {
     // y-prosemirror's `createNodeFromYElement` DELETES any element it cannot
     // build (dist/y-prosemirror.cjs:878-885) — a repair heuristic that, run on
@@ -239,6 +295,7 @@ async function serializeCanonical(doc: Y.Doc, fragmentName: string): Promise<str
     // from a detached copy so this path can only ever read.
     const snapshot = new Y.Doc()
     Y.applyUpdate(snapshot, Y.encodeStateAsUpdate(doc))
+    prepareSnapshot?.(snapshot)
     const editor = getEditor()
     const blocks = editor.yXmlFragmentToBlocks(snapshot.getXmlFragment(fragmentName))
     if (blocks.length === 0) {
@@ -411,12 +468,18 @@ export function blocksToYFragment(blocks: Block[], fragment: Y.XmlFragment): boo
 
 export { repairEmptyBlockIds } from './repair-block-ids'
 
+/**
+ * `writing` is the note's `writing` frontmatter. Pass it whenever the whole
+ * file is at hand (an empty value when the key is absent); undefined means
+ * only the body is known, and versions and overflow stay as the doc has them.
+ */
 export async function markdownToYFragment(
   markdown: string,
   fragment: Y.XmlFragment,
-  notePath?: string
+  notePath?: string,
+  writing?: WritingFrontmatter
 ): Promise<boolean> {
-  return seedFragment(markdown, fragment, notePath, { recordSource: true })
+  return seedFragment(markdown, fragment, notePath, { recordSource: true, writing })
 }
 
 export interface PreparedFragmentSeed {
@@ -424,7 +487,11 @@ export interface PreparedFragmentSeed {
   marks: ReturnType<typeof parseCriticMarkup>['marks']
   definitions: ReturnType<typeof stripLinkReferenceDefinitions>['definitions']
   usages: ReturnType<typeof stripLinkReferenceDefinitions>['usages']
+  /** The body with CriticMarkup and writing tools markers removed. */
   plainText: string
+  /** Writing tools markers, as the sentinels the blocks now carry. */
+  writingSentinels: WritingSentinelMap
+  writing: WritingFrontmatter | undefined
 }
 
 /**
@@ -436,9 +503,15 @@ export interface PreparedFragmentSeed {
  */
 export async function prepareFragmentSeed(
   markdown: string,
-  notePath: string | undefined
+  notePath: string | undefined,
+  writing?: WritingFrontmatter
 ): Promise<PreparedFragmentSeed | null> {
-  const parsed = parseCriticMarkup(markdown)
+  // Writing tools markers first, as sentinels that ride the parse into the
+  // blocks (see sync/writing-markdown.ts). CriticMarkup offsets are then
+  // moved off them, onto the text every CriticMarkup reader counts in.
+  const decoded = decodeWritingMarkers(markdown)
+  const parsed = parseCriticMarkup(decoded.text)
+  const critic = withoutWritingSentinels(parsed, decoded.sentinels)
   // Reference definitions ride beside the document in two Y.Arrays: the editor
   // has no block for one, so the definition is dropped and the destination
   // inlined at every use site, and the arrays are what puts both back (#1909).
@@ -463,10 +536,12 @@ export async function prepareFragmentSeed(
   const normalized = normalizePlainCheckboxes(normalizeTaskBlocks(blocks, source).blocks).blocks
   return {
     blocks: normalized,
-    marks: parsed.marks,
+    marks: critic.marks,
     definitions: references.definitions,
     usages: references.usages,
-    plainText: parsed.plainText
+    plainText: critic.plainText,
+    writingSentinels: decoded.sentinels,
+    writing
   }
 }
 
@@ -484,6 +559,7 @@ export function applyFragmentSeed(
   if (ok && fragment.doc) {
     writeCriticMarkupMarksToYDoc(fragment.doc, prepared.marks)
     writeLinkReferencesToYDoc(fragment.doc, prepared.definitions, prepared.usages)
+    applyWritingSeed(fragment, prepared.writingSentinels, prepared.writing)
   }
   return ok
 }
@@ -492,9 +568,9 @@ async function seedFragment(
   markdown: string,
   fragment: Y.XmlFragment,
   notePath: string | undefined,
-  options: { recordSource: boolean }
+  options: { recordSource: boolean; writing?: WritingFrontmatter }
 ): Promise<boolean> {
-  const prepared = await prepareFragmentSeed(markdown, notePath)
+  const prepared = await prepareFragmentSeed(markdown, notePath, options.writing)
   if (!prepared) return false
   const ok = applyFragmentSeed(prepared, fragment)
   if (ok && fragment.doc && options.recordSource) {

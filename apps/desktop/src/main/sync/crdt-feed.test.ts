@@ -79,7 +79,7 @@ describe('replaceNoteBodyInCrdt', () => {
   it('clears the fragment then rebuilds it once when a doc is open', async () => {
     const doc = makeDoc()
     getDoc.mockReturnValue(doc)
-    const prepared = { blocks: [{ type: 'paragraph' }] }
+    const prepared = { blocks: [{ type: 'paragraph' }], plainText: '# hi' }
     prepareFragmentSeed.mockResolvedValue(prepared)
     applyFragmentSeed.mockReturnValue(true)
     const ok = await replaceNoteBodyInCrdt('n1', '# hi')

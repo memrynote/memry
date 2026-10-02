@@ -5,10 +5,16 @@ import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
 import { feedExternalEditToCrdt } from './crdt-external-feed'
 import type { SourceRestoreOutcome } from './blocknote-converter'
+import { serializeNoteBody, type NoteBody } from './writing-markdown'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
-import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
-import { readCriticMarkupMarksFromYDoc, serializeCriticMarkup } from '@memry/shared'
+import {
+  isWritingFrontmatterValue,
+  writingFrontmatterOf,
+  toWritingFrontmatterValue,
+  WRITING_FRONTMATTER_KEY,
+  type WritingFrontmatter
+} from '@memry/shared'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { utcNow } from '@memry/shared/utc'
 import { atomicWrite, safeRead, ensureDirectory } from '../vault/file-ops'
@@ -33,6 +39,7 @@ import { deleteFile } from '../vault/file-ops'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import path from 'path'
+import { isDeepStrictEqual } from 'node:util'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,
@@ -497,7 +504,7 @@ async function performWriteback(
   // Loaded before the note row is read, so the row below is as fresh as it
   // was before the converter became lazy: past this line nothing awaits until
   // the serialization itself.
-  const { findUnrepresentableNodes, yDocToMarkdown } = await loadBlockNoteConverter()
+  const converter = await loadBlockNoteConverter()
   // A doc with no note row is never turned into a note. Its record may not
   // have arrived yet, or it may be a tombstone this device has not pulled (a
   // packed body applied before the first record pull), and both look the
@@ -518,7 +525,7 @@ async function performWriteback(
   // would push it to every other device. Keeping the file costs the user a
   // stale body until a build that knows the type runs; writing costs them the
   // content. Checked before serializing, since the answer decides nothing else.
-  const unrepresentable = findUnrepresentableNodes(doc)
+  const unrepresentable = converter.findUnrepresentableNodes(doc)
   if (unrepresentable.length > 0) {
     updateDebugState(noteId, {
       pending: false,
@@ -538,21 +545,22 @@ async function performWriteback(
     return
   }
 
-  const plainMarkdown = await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, {
-    notePath: cached.path,
-    onSourceRestore: (sourceRestore) => updateDebugState(noteId, { sourceRestore })
-  })
-  const markdown =
-    plainMarkdown === null
-      ? null
-      : serializeCriticMarkup(plainMarkdown, readCriticMarkupMarksFromYDoc(doc))
+  const body = await serializeNoteBody(
+    doc,
+    {
+      notePath: cached.path,
+      onSourceRestore: (sourceRestore) => updateDebugState(noteId, { sourceRestore })
+    },
+    converter
+  )
+  const markdown = body?.markdown ?? null
   updateDebugState(noteId, {
     pending: false,
     performedCount: (debugState.get(noteId)?.performedCount ?? 0) + 1,
     lastMarkdown: markdown,
     lastError: null
   })
-  if (markdown === null) {
+  if (body === null || markdown === null) {
     log.warn('Conversion returned null, keeping stale file', { noteId })
     // Silent editor/file divergence — a serializer regression must show on
     // dashboards. Throttled: fires per debounce while the user keeps typing.
@@ -580,9 +588,9 @@ async function performWriteback(
 
   const modifiedAt = writebackModifiedAt(cached.modifiedAt, local, remoteEditedAtMs)
   if (isJournalId(noteId)) {
-    await writebackJournal(noteId, doc, markdown, cached, indexDb, modifiedAt)
+    await writebackJournal(noteId, doc, body, cached, indexDb, modifiedAt)
   } else {
-    await writebackExisting(noteId, cached, doc, markdown, indexDb, isLargeFileBody, modifiedAt)
+    await writebackExisting(noteId, cached, doc, body, indexDb, isLargeFileBody, modifiedAt)
     // The reminders a body's date pills derive belong to every device that
     // holds the body, and each derives its own. Only this device's edit may
     // stamp and push them. A row derived from a remote body stays unclocked,
@@ -624,11 +632,12 @@ async function writebackExisting(
   noteId: string,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
   doc: Y.Doc,
-  markdown: string,
+  body: NoteBody,
   indexDb: ReturnType<typeof getIndexDatabase>,
   isLargeFileBody: boolean,
   modifiedAt: string
 ): Promise<void> {
+  const { markdown } = body
   const relativePath = cached.path
   const absolutePath = toAbsolutePath(relativePath)
 
@@ -637,7 +646,8 @@ async function writebackExisting(
 
   const { frontmatter: mergedFrontmatter, changed: frontmatterEdited } = mergeFrontmatter(
     parsed?.frontmatter ?? null,
-    doc
+    doc,
+    body.writing
   )
   const fileContent = parsed
     ? serializeParsedNote({ ...parsed, frontmatter: mergedFrontmatter }, markdown, {
@@ -694,7 +704,11 @@ async function writebackExisting(
     }
     const onDisk = cached.contentHash ? generateContentHash(existingRaw) : null
     if (onDisk !== null && onDisk !== cached.contentHash && parsed) {
-      const ingested = await feedExternalEditToCrdt(noteId, parsed.content)
+      const ingested = await feedExternalEditToCrdt(
+        noteId,
+        parsed.content,
+        writingFrontmatterOf(parsed.frontmatter)
+      )
       // The index row moves to the new bytes only once the doc holds them.
       // Moved first, the next pass would write a doc that never saw them.
       if (ingested) {
@@ -790,11 +804,12 @@ async function writebackExisting(
 async function writebackJournal(
   noteId: string,
   doc: Y.Doc,
-  markdown: string,
+  body: NoteBody,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
   indexDb: ReturnType<typeof getIndexDatabase>,
   modifiedAt: string
 ): Promise<void> {
+  const { markdown } = body
   const date = journalIdToDate(noteId)
 
   await ensureDirectory(path.dirname(getJournalPath(date)))
@@ -806,7 +821,8 @@ async function writebackJournal(
   const { frontmatter: mergedFrontmatter, changed: frontmatterEdited } = mergeJournalFrontmatter(
     date,
     parsed?.frontmatter ?? null,
-    doc
+    doc,
+    body.writing
   )
   const fileContent = parsed
     ? serializeParsedNote({ ...parsed, frontmatter: mergedFrontmatter }, markdown, {
@@ -916,10 +932,14 @@ interface MergedFrontmatter {
  * win when present. No Memry keys are ever injected. `changed` stays false
  * when the CRDT state matches the file, so the raw block survives verbatim.
  */
-function mergeFrontmatter(existing: NoteFrontmatter | null, doc: Y.Doc): MergedFrontmatter {
+function mergeFrontmatter(
+  existing: NoteFrontmatter | null,
+  doc: Y.Doc,
+  writing: WritingFrontmatter
+): MergedFrontmatter {
   const yjsTags = getYjsTags(doc)
   const merged: NoteFrontmatter = { ...(existing ?? {}) }
-  let changed = false
+  let changed = mergeWritingFrontmatter(merged, writing)
   if (yjsTags.length > 0 && !sameTags(existing?.tags, yjsTags)) {
     merged.tags = yjsTags
     changed = true
@@ -930,16 +950,36 @@ function mergeFrontmatter(existing: NoteFrontmatter | null, doc: Y.Doc): MergedF
 function mergeJournalFrontmatter(
   date: string,
   existing: NoteFrontmatter | null,
-  doc: Y.Doc
+  doc: Y.Doc,
+  writing: WritingFrontmatter
 ): MergedFrontmatter {
   const yjsTags = getYjsTags(doc)
   const merged: NoteFrontmatter = { ...(existing ?? {}), date }
   let changed = normalizeDateValue(existing?.date) !== date
+  if (mergeWritingFrontmatter(merged, writing)) changed = true
   if (yjsTags.length > 0 && !sameTags(existing?.tags, yjsTags)) {
     merged.tags = yjsTags
     changed = true
   }
   return { frontmatter: merged, changed }
+}
+
+/**
+ * The doc's writing tools data onto `frontmatter.writing`; true when that
+ * changed it. A `writing` key that is not writing tools data is the author's
+ * property and is left alone, at the cost of not writing ours.
+ */
+function mergeWritingFrontmatter(
+  frontmatter: NoteFrontmatter,
+  writing: WritingFrontmatter
+): boolean {
+  const current = frontmatter[WRITING_FRONTMATTER_KEY]
+  if (current !== undefined && !isWritingFrontmatterValue(current)) return false
+  const next = toWritingFrontmatterValue(writing)
+  if (isDeepStrictEqual(current, next)) return false
+  if (next === undefined) delete frontmatter[WRITING_FRONTMATTER_KEY]
+  else frontmatter[WRITING_FRONTMATTER_KEY] = next
+  return true
 }
 
 function sameTags(existing: unknown, next: string[]): boolean {
