@@ -37,7 +37,8 @@ enum BlockCatalog {
             case linkToNote
             /// Today, or desktop's reminder default, worked out when chosen.
             case date(remind: Bool)
-            case picture
+            /// Opens a picker; the upload lands as desktop's image or file block.
+            case attach(EditorAttachmentSource)
         }
 
         let id: String
@@ -59,8 +60,8 @@ enum BlockCatalog {
 
     /// Every row, in desktop's catalog order. Rows desktop offers that this
     /// build cannot make yet (task, table, math, diagram, whiteboard, view,
-    /// files) join here one row each as they land; emoji, templates and AI
-    /// stay desktop-only.
+    /// pdf, media, html) join here one row each as they land; emoji,
+    /// templates and AI stay desktop-only.
     static let rows: [Row] = [
         block("paragraph", "Paragraph", "text.alignleft", ["p", "paragraph"], .basic, kind: "paragraph"),
         block("heading", "Heading 1", "textformat.size.larger", ["h", "heading1", "h1"], .basic, kind: "heading", level: 1),
@@ -100,21 +101,36 @@ enum BlockCatalog {
         Row(
             id: "image", title: "Image", symbol: "photo",
             aliases: ["image", "imageUpload", "upload", "img", "picture", "media", "url", "photo"],
-            section: .media, action: .picture
+            section: .media, action: .attach(.photos)
+        ),
+        Row(
+            id: "video", title: "Video", symbol: "film",
+            aliases: ["video", "videoUpload", "upload", "mp4", "film", "media", "url"],
+            section: .media, action: .attach(.videos)
+        ),
+        Row(
+            id: "audio", title: "Audio", symbol: "waveform",
+            aliases: ["audio", "audioUpload", "upload", "mp3", "sound", "media", "url"],
+            section: .media, action: .attach(.audio)
+        ),
+        Row(
+            id: "file", title: "File", symbol: "doc",
+            aliases: ["file", "upload", "embed", "media", "url", "attachment"],
+            section: .media, action: .attach(.files)
         ),
     ]
 
-    /// The rows a surface offers. `picture` is false where no picker is
-    /// wired, which hides the image row rather than offering an upload that
+    /// The rows a surface offers. `attach` is false where no picker is
+    /// wired, which hides the media rows rather than offering an upload that
     /// cannot happen.
-    static func rows(picture: Bool) -> [Row] {
-        picture ? rows : rows.filter { $0.action != .picture }
+    static func rows(attach: Bool) -> [Row] {
+        attach ? rows : rows.filter { if case .attach = $0.action { false } else { true } }
     }
 
-    /// `rows(picture:)` under their section titles, empty sections left out:
+    /// `rows(attach:)` under their section titles, empty sections left out:
     /// the `+` grid and the insert menu.
-    static func sections(picture: Bool) -> [(section: Section, rows: [Row])] {
-        let rows = rows(picture: picture)
+    static func sections(attach: Bool) -> [(section: Section, rows: [Row])] {
+        let rows = rows(attach: attach)
         return Section.allCases.compactMap { section in
             let inSection = rows.filter { $0.section == section }
             return inSection.isEmpty ? nil : (section, inSection)
@@ -159,8 +175,8 @@ enum BlockCatalog {
 
 @MainActor
 enum SlashMenu {
-    static func suggestions(query: String, picture: Bool, now: Date = .now) -> [EditorSuggestion] {
-        BlockCatalog.filter(BlockCatalog.rows(picture: picture), query: query).map { row in
+    static func suggestions(query: String, attach: Bool, now: Date = .now) -> [EditorSuggestion] {
+        BlockCatalog.filter(BlockCatalog.rows(attach: attach), query: query).map { row in
             let subtitle: String? = switch row.action {
             case .linkToNote: "[["
             case .date(remind: true): BlockCatalog.mention(remind: true, now: now)?.subtitle
@@ -176,7 +192,7 @@ extension EditorSession {
     /// desktop opens no menu.
     func slashSuggestions(query: String) -> [EditorSuggestion] {
         guard field?.block.kind != "codeBlock" else { return [] }
-        return SlashMenu.suggestions(query: query, picture: pickImage != nil)
+        return SlashMenu.suggestions(query: query, attach: attach != nil)
     }
 
     /// A slash row chosen: `/query` goes, then the row acts.
@@ -216,8 +232,8 @@ extension EditorSession {
             insertOrTurn(field, kind: kind, level: level, props: props)
         case .linkToNote:
             startWikiLink()
-        case .picture:
-            pickImage?()
+        case let .attach(source):
+            attach?(source)
         case .date:
             break
         }

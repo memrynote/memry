@@ -60,9 +60,9 @@ struct BlockInsertMenu: View {
 
     var body: some View {
         Menu {
-            // No image row: the picture affordance is the adjacent toolbar
-            // item (N214).
-            ForEach(BlockCatalog.sections(picture: false), id: \.section) { group in
+            // No media rows: attachments go through the keyboard toolbar
+            // (N214).
+            ForEach(BlockCatalog.sections(attach: false), id: \.section) { group in
                 Section(group.section.title) {
                     ForEach(group.rows) { row in
                         Button {

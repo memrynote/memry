@@ -108,7 +108,7 @@ struct SlashMenuTests {
     }
 
     @Test func a_query_filters_and_lifts_the_best_match() {
-        let items = BlockCatalog.rows(picture: false)
+        let items = BlockCatalog.rows(attach: false)
         // "list" is in four titles, none at the start: catalog order stands.
         #expect(BlockCatalog.filter(items, query: "list").prefix(4).map(\.id) == ["bullet_list", "numbered_list", "check_list", "toggle_list"])
         // "quote" is a title prefix, ahead of every alias match.
