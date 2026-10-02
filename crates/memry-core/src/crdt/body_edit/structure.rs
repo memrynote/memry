@@ -100,6 +100,9 @@ pub(super) fn build_block(
     for prop in &defaults {
         block.insert_attribute(txn, prop.name, prop.value.to_any());
     }
+    if kind == "table" {
+        build_empty_grid(txn, &block);
+    }
 
     if !text.is_empty() {
         if node_shapes::holds_inline(kind) {
