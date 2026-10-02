@@ -514,7 +514,6 @@ struct EditorPanelView: View {
         }
     }
 
-    /// Tiles of title and symbol; `pick` gets the tapped tile's index.
     private func grid(
         _ tiles: [(title: String, symbol: String)], checked: String?, pick: @escaping (Int) -> Void
     ) -> some View {

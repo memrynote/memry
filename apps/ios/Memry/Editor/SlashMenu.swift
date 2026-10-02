@@ -15,7 +15,6 @@ import MemryCore
 import UIKit
 
 enum BlockCatalog {
-    /// Desktop's slash menu groups, in their order.
     enum Section: CaseIterable, Sendable {
         case basic, headings, insert, media
 
@@ -29,7 +28,7 @@ enum BlockCatalog {
         }
     }
 
-    /// One row. `id` is desktop's row id.
+    /// `id` is desktop's row id.
     struct Row: Identifiable, Equatable, Sendable {
         enum Action: Equatable, Sendable {
             /// The block becomes (or a new block after it is) `kind`.
