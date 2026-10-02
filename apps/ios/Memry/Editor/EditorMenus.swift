@@ -53,34 +53,6 @@ struct InsertableBlock: Identifiable, Sendable {
     }
 }
 
-/// The note page's insert menu: `BlockCatalog` by section, for a note with
-/// no caret in it.
-struct BlockInsertMenu: View {
-    let choose: (BlockCatalog.Row) -> Void
-
-    var body: some View {
-        Menu {
-            // No image row: the picture affordance is the adjacent toolbar
-            // item (N214).
-            ForEach(BlockCatalog.sections(picture: false), id: \.section) { group in
-                Section(group.section.title) {
-                    ForEach(group.rows) { row in
-                        Button {
-                            choose(row)
-                        } label: {
-                            Label(row.title, systemImage: row.symbol)
-                        }
-                    }
-                }
-            }
-        } label: {
-            Label("Insert", systemImage: "plus")
-                .labelStyle(.iconOnly)
-        }
-        .accessibilityLabel("Insert a block")
-    }
-}
-
 /// Turn into, duplicate, move, colour and delete.
 struct BlockActionsMenu: View {
     let turnInto: (InsertableBlock) -> Void

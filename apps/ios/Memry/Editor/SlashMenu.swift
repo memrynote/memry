@@ -1,9 +1,8 @@
 //
 //  SlashMenu.swift
-//  The block catalog every insert surface reads: the `/` menu, the keyboard
-//  toolbar's `+` grid and the note page's insert menu. Desktop's slash menu
-//  rows this build can act on, in desktop's order, filtered as desktop
-//  filters them.
+//  The block catalog every insert surface reads: the `/` menu and the
+//  keyboard toolbar's `+` grid. Desktop's slash menu rows this build can act
+//  on, in desktop's order, filtered as desktop filters them.
 //
 //  Desktop references: `slash-menu-model.ts` (catalog order, groups and
 //  scoring), `ContentArea.tsx` (the rows Memry adds), BlockNote's `en.ts`
@@ -112,7 +111,7 @@ enum BlockCatalog {
     }
 
     /// `rows(picture:)` under their section titles, empty sections left out:
-    /// the `+` grid and the insert menu.
+    /// the `+` grid.
     static func sections(picture: Bool) -> [(section: Section, rows: [Row])] {
         let rows = rows(picture: picture)
         return Section.allCases.compactMap { section in
