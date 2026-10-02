@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src data:"
+    />
+    <link rel="stylesheet" href="vendor/katex.min.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+      }
+      #stage {
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      .item {
+        display: block;
+        width: max-content;
+        padding: 4px;
+      }
+      .item .katex-display {
+        margin: 0;
+      }
+    </style>
+    <script src="vendor/katex.min.js"></script>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <script>
+      // Each item is typeset into its own box, stacked down the stage, and the
+      // boxes' rects go back to the app, which takes one snapshot and crops.
+      // `throwOnError` and the default `trust: false` match desktop's math block.
+      const stage = document.getElementById('stage')
+
+      async function settle(boxes) {
+        await document.fonts.ready
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+        return boxes.map((box) => {
+          if (box.error !== undefined) return { error: box.error }
+          const rect = box.node.getBoundingClientRect()
+          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        })
+      }
+
+      function place(item) {
+        const node = document.createElement('div')
+        node.className = 'item'
+        node.style.color = item.ink
+        node.style.fontSize = item.size + 'px'
+        return node
+      }
+
+      window.renderMath = async function (items) {
+        stage.replaceChildren()
+        const boxes = items.map((item) => {
+          const node = place(item)
+          try {
+            katex.render(item.source, node, { displayMode: true, throwOnError: true })
+          } catch (error) {
+            return { error: String((error && error.message) || error) }
+          }
+          stage.appendChild(node)
+          return { node }
+        })
+        return settle(boxes)
+      }
+
+      let mermaidReady = null
+      function loadMermaid() {
+        mermaidReady ??= new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+          script.src = 'vendor/mermaid.min.js'
+          script.onload = resolve
+          script.onerror = reject
+          document.head.appendChild(script)
+        })
+        return mermaidReady
+      }
+
+      window.renderDiagram = async function (items) {
+        await loadMermaid()
+        stage.replaceChildren()
+        const boxes = []
+        for (const [index, item] of items.entries()) {
+          const node = place(item)
+          try {
+            mermaid.initialize({
+              startOnLoad: false,
+              securityLevel: 'strict',
+              theme: item.dark ? 'dark' : 'default'
+            })
+            const { svg } = await mermaid.render('diagram' + index, item.source)
+            node.innerHTML = svg
+            stage.appendChild(node)
+            boxes.push({ node })
+          } catch (error) {
+            boxes.push({ error: String((error && error.message) || error) })
+          }
+        }
+        return settle(boxes)
+      }
+    </script>
+  </body>
+</html>
