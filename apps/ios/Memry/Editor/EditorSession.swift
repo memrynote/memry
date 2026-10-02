@@ -79,6 +79,7 @@ final class EditorSession {
     private(set) var dateEdit: DateMentionEditRequest?
     /// The block that chip is in, which need not have the caret.
     @ObservationIgnored private weak var dateEditField: BlockField?
+    private(set) var linkRequest: LinkBlockRequest?
     let history = EditorUndoStack()
 
     @ObservationIgnored weak var field: BlockField?
@@ -613,6 +614,33 @@ final class EditorSession {
         }
     }
 
+    /// The link sheet for a Bookmark or YouTube row, for a block after the
+    /// caret's. The keyboard goes first, so the block's typing is committed.
+    func requestLink(_ kind: LinkBlock.Kind) {
+        linkRequest = LinkBlockRequest(kind: kind, after: field?.blockId)
+        if let field { commit(field) }
+        dismissKeyboard()
+    }
+
+    func cancelLink() {
+        linkRequest = nil
+    }
+
+    func insertLink(_ block: LinkBlock) {
+        guard let request = linkRequest else { return }
+        linkRequest = nil
+        enqueue { [weak self] in
+            guard let self, let model = self.model,
+                  let newId = await model.insert(block.kind, after: request.after) else { return }
+            let edits = block.edits(newId: newId, after: request.after)
+            for edit in edits.dropFirst() { await model.apply(edit) }
+            self.history.record(EditorUndoStep(
+                name: "Insert block", backward: .delete(blockId: newId), forward: edits[0], followUp: Array(edits.dropFirst())
+            ))
+            await self.didChange()
+        }
+    }
+
     /// An uploaded attachment's block, after the caret's block (or at the end
     /// of the body when none has had the caret). Not recorded for undo: redo
     /// would replay a bare insert without the url.
@@ -711,14 +739,15 @@ final class EditorSession {
             return
         }
         guard let step = history.popRedo() else { return }
-        replay(step.forward)
+        replay(step.forward, then: step.followUp)
     }
 
-    private func replay(_ edit: BlockEdit) {
+    private func replay(_ edit: BlockEdit, then followUp: [BlockEdit] = []) {
         if let field { field.dirty = false }
         enqueue { [weak self] in
             guard let self, let model = self.model else { return }
             await model.apply(edit)
+            for next in followUp { await model.apply(next) }
             await self.didChange()
         }
     }

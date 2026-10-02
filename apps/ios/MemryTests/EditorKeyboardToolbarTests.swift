@@ -309,7 +309,7 @@ struct InsertGridTests {
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
             "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
             "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
-            "link_to_note", "date", "remind",
+            "link_to_note", "date", "remind", "bookmark", "youtube",
             "image",
         ]
         #expect(grid == expected)

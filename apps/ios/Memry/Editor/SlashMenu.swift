@@ -38,6 +38,7 @@ enum BlockCatalog {
             /// Today, or desktop's reminder default, worked out when chosen.
             case date(remind: Bool)
             case picture
+            case link(LinkBlock.Kind)
         }
 
         let id: String
@@ -97,6 +98,9 @@ enum BlockCatalog {
         Row(id: "link_to_note", title: "Link to note", symbol: "link", aliases: ["link", "wiki", "wikilink", "note", "backlink"], section: .insert, action: .linkToNote),
         Row(id: "date", title: "Today", symbol: "calendar", aliases: dateAliases, section: .insert, action: .date(remind: false)),
         Row(id: "remind", title: "Remind me", symbol: "alarm", aliases: dateAliases, section: .insert, action: .date(remind: true)),
+        // Mobile's own rows: desktop makes these from a pasted link instead.
+        Row(id: "bookmark", title: "Bookmark", symbol: "bookmark", aliases: ["bookmark", "link", "url", "web"], section: .insert, action: .link(.bookmark)),
+        Row(id: "youtube", title: "YouTube video", symbol: "play.rectangle", aliases: ["youtube", "video", "embed", "yt"], section: .insert, action: .link(.youtube)),
         Row(
             id: "image", title: "Image", symbol: "photo",
             aliases: ["image", "imageUpload", "upload", "img", "picture", "media", "url", "photo"],
@@ -218,6 +222,8 @@ extension EditorSession {
             startWikiLink()
         case .picture:
             pickImage?()
+        case let .link(kind):
+            requestLink(kind)
         case .date:
             break
         }

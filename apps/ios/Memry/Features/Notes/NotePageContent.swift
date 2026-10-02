@@ -138,6 +138,12 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
             )) { request in
                 DateMentionEditSheet(value: request.value) { editorModel.session.applyDateEdit($0) }
             }
+            .sheet(item: Binding(
+                get: { editorModel.session.linkRequest },
+                set: { if $0 == nil { editorModel.session.cancelLink() } }
+            )) { request in
+                LinkBlockSheet(kind: request.kind) { editorModel.session.insertLink($0) }
+            }
         }
         if let tapBelowBody {
             Color.clear

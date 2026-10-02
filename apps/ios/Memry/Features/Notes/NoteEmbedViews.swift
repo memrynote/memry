@@ -25,7 +25,7 @@ struct YouTubeCard: View {
     /// YouTube's own still for the video. `hqdefault` exists for every
     /// public video, which the larger sizes do not.
     private var thumbnail: URL? {
-        let id = (videoId?.isEmpty == false ? videoId : nil) ?? Self.id(from: videoUrl)
+        let id = (videoId?.isEmpty == false ? videoId : nil) ?? videoUrl.flatMap(YouTubeLink.videoId)
         return id.flatMap { URL(string: "https://img.youtube.com/vi/\($0)/hqdefault.jpg") }
     }
 
@@ -66,22 +66,6 @@ struct YouTubeCard: View {
         .aspectRatio(16 / 9, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .clipShape(.rect(cornerRadius: Tokens.Radius.card))
-    }
-
-    /// The id in `watch?v=`, `youtu.be/` and `/embed/` addresses.
-    static func id(from address: String?) -> String? {
-        guard let address, let components = URLComponents(string: address) else { return nil }
-        if let watched = components.queryItems?.first(where: { $0.name == "v" })?.value,
-           !watched.isEmpty {
-            return watched
-        }
-        let segments = components.path.split(separator: "/").map(String.init)
-        if components.host?.contains("youtu.be") == true { return segments.first }
-        if let index = segments.firstIndex(where: { $0 == "embed" || $0 == "shorts" }),
-           index + 1 < segments.count {
-            return segments[index + 1]
-        }
-        return nil
     }
 }
 
