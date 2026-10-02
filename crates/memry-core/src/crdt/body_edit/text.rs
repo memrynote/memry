@@ -403,9 +403,9 @@ pub(super) fn typed_prop(kind: &str, name: &str, value: &str) -> Any {
 /// The inline content is **moved, not re-typed**: its runs keep their marks
 /// and its inline nodes (a tag, a wiki link, a date) stay nodes, in order.
 /// Rebuilding it from `get_string` wrote marks as literal `<bold>` text and
-/// dropped every node. A code block takes plain text only, because its schema
-/// holds no marks and no nodes and a node y-prosemirror cannot build is
-/// deleted (§12.5.0); a task block keeps its text in a prop.
+/// dropped every node. A code block or a diagram takes plain text only,
+/// because its schema holds no marks and no nodes and a node y-prosemirror
+/// cannot build is deleted (§12.5.0); a task block keeps its text in a prop.
 ///
 /// **The container and its id survive**, so every reference to this block —
 /// a caret, a selection, a nested `blockGroup` of children — still resolves.
@@ -428,7 +428,8 @@ pub(super) fn turn_into(
         Some(name) => attribute(txn, &block, name).unwrap_or_default(),
         None => carried.plain_text(),
     };
-    let rich = node_shapes::text_prop(source.as_ref()).is_none() && kind != "codeBlock";
+    let rich =
+        node_shapes::text_prop(source.as_ref()).is_none() && !node_shapes::holds_plain_text(kind);
 
     // The old block, and only it: a `blockGroup` of children is a sibling of
     // the block inside the container and must outlive the change, or turning
