@@ -204,6 +204,9 @@ pub fn defaults_for(kind: &str) -> Option<Vec<PropDefault>> {
             text("videoId", ""),
             text("videoUrl", ""),
         ],
+        "mathBlock" => vec![text("latex", "")],
+        "diagram" => Vec::new(),
+        "whiteboard" => vec![text("canvasId", "")],
         _ => return None,
     };
     Some(props)
@@ -237,11 +240,19 @@ pub fn holds_inline(kind: &str) -> bool {
             | "quote"
             | "callout"
             | "codeBlock"
+            | "diagram"
             | "bulletListItem"
             | "numberedListItem"
             | "checkListItem"
             | "toggleListItem"
     )
+}
+
+/// Whether a block's inline content is plain text, with no marks and no
+/// inline nodes (BlockNote's `content: 'plain'`). Carrying a bold run or a
+/// wiki link into one builds a node y-prosemirror deletes.
+pub fn holds_plain_text(kind: &str) -> bool {
+    matches!(kind, "codeBlock" | "diagram")
 }
 
 /// The prop a caller means when they say "the text of this block", for the
@@ -257,7 +268,8 @@ pub fn text_prop(kind: &str) -> Option<&'static str> {
 mod tests {
     use super::*;
 
-    /// The 18 block types of the FR-040 registry, minus the two that are not
+    /// BlockNote's defaults plus all nine `MEMRY_BLOCK_TYPES`
+    /// (`editor-schema/src/blocks/configs.ts`), minus the two that are not
     /// independently insertable.
     #[test]
     fn every_registry_block_type_has_a_shape() {
@@ -268,10 +280,12 @@ mod tests {
             "callout",
             "checkListItem",
             "codeBlock",
+            "diagram",
             "divider",
             "file",
             "heading",
             "image",
+            "mathBlock",
             "numberedListItem",
             "paragraph",
             "quote",
@@ -279,6 +293,7 @@ mod tests {
             "taskBlock",
             "toggleListItem",
             "video",
+            "whiteboard",
             "youtubeEmbed",
         ] {
             assert!(
@@ -349,5 +364,39 @@ mod tests {
         assert!(holds_inline("paragraph"));
         // A divider has nothing to say.
         assert!(!holds_inline("divider"));
+    }
+
+    fn declared(kind: &str) -> Vec<(&'static str, PropValue)> {
+        defaults_for(kind)
+            .expect("a shape")
+            .into_iter()
+            .map(|prop| (prop.name, prop.value))
+            .collect()
+    }
+
+    #[test]
+    fn a_math_block_is_its_latex_source_and_holds_no_inline_content() {
+        assert_eq!(declared("mathBlock"), vec![("latex", PropValue::Text(""))]);
+        assert!(!holds_inline("mathBlock"));
+        assert_eq!(text_prop("mathBlock"), None);
+    }
+
+    #[test]
+    fn a_diagram_has_no_props_and_holds_plain_text_like_a_code_block() {
+        assert_eq!(declared("diagram"), vec![]);
+        assert!(holds_inline("diagram"));
+        assert!(holds_plain_text("diagram"));
+        assert!(holds_plain_text("codeBlock"));
+        assert!(!holds_plain_text("paragraph"));
+    }
+
+    #[test]
+    fn a_whiteboard_is_a_canvas_reference_and_holds_no_inline_content() {
+        assert_eq!(
+            declared("whiteboard"),
+            vec![("canvasId", PropValue::Text(""))]
+        );
+        assert!(!holds_inline("whiteboard"));
+        assert_eq!(text_prop("whiteboard"), None);
     }
 }
