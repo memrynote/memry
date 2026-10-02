@@ -80,6 +80,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "calendar_push_queue",
         sql: include_str!("migrations/data/0008_calendar_push_queue.sql"),
     },
+    Migration {
+        version: 9,
+        name: "bookmarks",
+        sql: include_str!("migrations/data/0009_bookmarks.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -201,7 +206,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 8);
+        assert_eq!(version, 9);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -309,7 +314,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 8);
+        assert_eq!(version, 9);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {
@@ -331,6 +336,7 @@ mod tests {
         // 0004's tombstone-clock table (#2409).
         assert!(table_names(&db).iter().any(|n| n == "notes"));
         assert!(table_names(&db).iter().any(|n| n == "saved_filters"));
+        assert!(table_names(&db).iter().any(|n| n == "bookmarks"));
         assert!(
             table_names(&db)
                 .iter()

@@ -11,6 +11,7 @@
 
 pub mod attachments;
 pub mod body_write;
+pub mod bookmarks;
 pub mod calendar;
 pub mod calendar_items;
 pub mod folders;

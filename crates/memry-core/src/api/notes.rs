@@ -12,6 +12,7 @@ use crate::crdt::blocks::{Block, TableContent};
 use crate::crdt::comments::ReviewComment;
 use crate::crdt::errors::CrdtError;
 use crate::domain::attachments::{self, BlockAttachment, CachedAttachment};
+use crate::domain::bookmarks::{self, BookmarkEntry};
 use crate::domain::note_meta::{self, NoteMetadata};
 use crate::domain::reads::{
     self, FolderSummary, LinkedTask, NoteDetail, NoteSummary, ReminderSummary, TagSummary,
@@ -91,6 +92,13 @@ impl Notes {
     /// a stable tie-break so two reads of an unchanged vault agree.
     pub fn tags(&self) -> Result<Vec<TagSummary>, StorageError> {
         self.db.call_blocking(|conn| reads::tags(conn))
+    }
+
+    /// The sidebar's bookmarks that resolve to something this vault holds,
+    /// in the user's order. Read-only: the phone shows desktop's bookmarks
+    /// and does not write them.
+    pub fn bookmarks(&self) -> Result<Vec<BookmarkEntry>, StorageError> {
+        self.db.call_blocking(|conn| bookmarks::list(conn))
     }
 
     /// The live notes carrying one tag (N600).

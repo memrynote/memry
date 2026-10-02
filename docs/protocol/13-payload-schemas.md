@@ -7,28 +7,30 @@ The payload is the plaintext inside the record envelope of chapter 04: UTF-8
 JSON. This chapter specifies what it contains per type, and — more importantly —
 how a client is required to store it.
 
-## 13.1 The nineteen subscribed types
+## 13.1 The twenty subscribed types
 
-**Normative.** This feature's client declares exactly these nineteen in
+**Normative.** This feature's client declares exactly these twenty in
 `X-Memry-Sync-Types` (chapter 05 §5.3), in this order:
 
 `note`, `journal`, `folder_config`, `custom_icon`, `tag_definition`,
 `tag_category`, `property_definition`, `template`, `task`, `project`,
 `task_activity`, `reminder`, `settings`, `filter`, `inbox`, `calendar_source`,
-`calendar_event`, `calendar_external_event`, `calendar_binding`.
+`calendar_event`, `calendar_external_event`, `calendar_binding`, `bookmark`.
 
 `filter` (saved task filters, §13.7.14) was added by spec 004 TP022 and is
 appended last, so the first thirteen keep their order. `inbox` (captures,
 §13.7.15) was added by spec 006 IB012 and is appended after it. The four
 calendar types (§13.7.16–§13.7.19) were added by spec 007 CL010 and are appended
 last, in chapter 05's apply order (source, event, external event, binding).
+`bookmark` (the sidebar's bookmarks, §13.7.20) was added for the phone's
+Notes root and is appended after them.
 
-Six more **record types** are served by the server and **not** subscribed to
+Five more **record types** are served by the server and **not** subscribed to
 here: `agent_conversation`, `agent_message`, `canvas`, `canvas_folder`,
-`bookmark`, `home_page`. **A conforming client omits them from
+`home_page`. **A conforming client omits them from
 the header and never sees them** (chapter 05 §5.3.1).
 
-Nineteen plus six is the **twenty-five record types**, which is the set
+Twenty plus five is the **twenty-five record types**, which is the set
 chapter 05 §5.3 calls recognised. `attachment` is the twenty-sixth member of
 `SYNC_ITEM_TYPES` and is **not** one of them: it never travels as a record at
 all (§13.8), so it is neither subscribed nor declarable.
@@ -576,6 +578,21 @@ Insert defaults: `event`, `sourceId` = item id, `google`, `primary`,
 an item (by `createdAt`, then id) decides which provider writes it**
 (`provider/write-routing.ts`); a promote writes one `provider_managed` /
 `time_and_text` binding beside the new event.
+
+### 13.7.20 `bookmark` — `:138-144`
+
+`itemType`, `itemId`, `position`, `clock`, `createdAt`. No `modifiedAt` and
+no `fieldClocks`: `bookmark` takes the document-level resolver (§13.9).
+Desktop's push is its whole `bookmarks` row serialised
+(`packages/sync-client/src/item-handlers/bookmark-handler.ts`), so `id` and
+`syncedAt` also arrive as unmodelled keys and are preserved. The id is
+`bmk_<itemType>_<itemId>` (`packages/contracts/src/bookmark-types.ts`).
+
+`itemType` names what is bookmarked (`note`, `journal`, `task`, `folder`,
+`tag`, and file types). A reader resolves `note`, `journal` and `task` by id
+to a live row, `folder` by path and `tag` by name, and hides anything else,
+as desktop's sidebar does (`resolveBookmarkItem`). This client reads
+bookmarks and does not write them.
 
 ## 13.8 `attachment` is not a record type
 

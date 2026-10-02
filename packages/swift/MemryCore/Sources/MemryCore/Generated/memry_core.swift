@@ -5237,6 +5237,13 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func blocks(id: String) throws  -> [Block]?
     
     /**
+     * The sidebar's bookmarks that resolve to something this vault holds,
+     * in the user's order. Read-only: the phone shows desktop's bookmarks
+     * and does not write them.
+     */
+    func bookmarks() throws  -> [BookmarkEntry]
+    
+    /**
      * Every review comment and suggestion on one note (N604).
      *
      * **Read only, and normatively so.** §12.5.1 forbids a non-editor client
@@ -5500,6 +5507,20 @@ open func blocks(id: String)throws  -> [Block]?  {
     uniffi_memry_core_fn_method_notes_blocks(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The sidebar's bookmarks that resolve to something this vault holds,
+     * in the user's order. Read-only: the phone shows desktop's bookmarks
+     * and does not write them.
+     */
+open func bookmarks()throws  -> [BookmarkEntry]  {
+    return try  FfiConverterSequenceTypeBookmarkEntry.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_bookmarks(
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -13841,6 +13862,119 @@ public func FfiConverterTypeBodyFetchSummary_lift(_ buf: RustBuffer) throws -> B
 #endif
 public func FfiConverterTypeBodyFetchSummary_lower(_ value: BodyFetchSummary) -> RustBuffer {
     return FfiConverterTypeBodyFetchSummary.lower(value)
+}
+
+
+/**
+ * One bookmark and what it points at.
+ */
+public struct BookmarkEntry: Equatable, Hashable {
+    /**
+     * The bookmark's own id (`bmk_<type>_<id>` from current desktops).
+     */
+    public var id: String
+    /**
+     * `note`, `journal`, `task`, `folder` or `tag`.
+     */
+    public var itemType: String
+    /**
+     * The bookmarked item: a note, journal or task id, a folder path, or a
+     * tag name.
+     */
+    public var itemId: String
+    /**
+     * The note's or task's title, the folder's last path segment, or the tag
+     * name. `None` for a journal day, which the shell names by its date.
+     */
+    public var title: String?
+    public var emoji: String?
+    /**
+     * A journal day's `YYYY-MM-DD`: the key the journal is addressed by,
+     * since days written by older desktops carry other ids.
+     */
+    public var journalDate: String?
+    public var position: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The bookmark's own id (`bmk_<type>_<id>` from current desktops).
+         */id: String, 
+        /**
+         * `note`, `journal`, `task`, `folder` or `tag`.
+         */itemType: String, 
+        /**
+         * The bookmarked item: a note, journal or task id, a folder path, or a
+         * tag name.
+         */itemId: String, 
+        /**
+         * The note's or task's title, the folder's last path segment, or the tag
+         * name. `None` for a journal day, which the shell names by its date.
+         */title: String?, emoji: String?, 
+        /**
+         * A journal day's `YYYY-MM-DD`: the key the journal is addressed by,
+         * since days written by older desktops carry other ids.
+         */journalDate: String?, position: Int64) {
+        self.id = id
+        self.itemType = itemType
+        self.itemId = itemId
+        self.title = title
+        self.emoji = emoji
+        self.journalDate = journalDate
+        self.position = position
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BookmarkEntry: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBookmarkEntry: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BookmarkEntry {
+        return
+            try BookmarkEntry(
+                id: FfiConverterString.read(from: &buf), 
+                itemType: FfiConverterString.read(from: &buf), 
+                itemId: FfiConverterString.read(from: &buf), 
+                title: FfiConverterOptionString.read(from: &buf), 
+                emoji: FfiConverterOptionString.read(from: &buf), 
+                journalDate: FfiConverterOptionString.read(from: &buf), 
+                position: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BookmarkEntry, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.itemType, into: &buf)
+        FfiConverterString.write(value.itemId, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.emoji, into: &buf)
+        FfiConverterOptionString.write(value.journalDate, into: &buf)
+        FfiConverterInt64.write(value.position, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBookmarkEntry_lift(_ buf: RustBuffer) throws -> BookmarkEntry {
+    return try FfiConverterTypeBookmarkEntry.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBookmarkEntry_lower(_ value: BookmarkEntry) -> RustBuffer {
+    return FfiConverterTypeBookmarkEntry.lower(value)
 }
 
 
@@ -29425,6 +29559,31 @@ fileprivate struct FfiConverterSequenceTypeBlockProp: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeBookmarkEntry: FfiConverterRustBuffer {
+    typealias SwiftType = [BookmarkEntry]
+
+    public static func write(_ value: [BookmarkEntry], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBookmarkEntry.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [BookmarkEntry] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [BookmarkEntry]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBookmarkEntry.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeCachedAttachment: FfiConverterRustBuffer {
     typealias SwiftType = [CachedAttachment]
 
@@ -32079,6 +32238,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_blocks() != 22042) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_bookmarks() != 6925) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_comments() != 23328) {

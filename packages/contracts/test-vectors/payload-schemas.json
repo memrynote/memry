@@ -25,10 +25,11 @@
       "calendar_source",
       "calendar_event",
       "calendar_external_event",
-      "calendar_binding"
+      "calendar_binding",
+      "bookmark"
     ],
     "obligation": "a payload schema is a READER over a preserved string, never the storage shape (FR-033)",
-    "caseCount": 76
+    "caseCount": 80
   },
   "groups": [
     {
@@ -2347,6 +2348,81 @@
           "name": "calendar_binding: verbatim round trip of the unknown-field instance",
           "storedPayloadJson": "{\"sourceType\":\"event\",\"sourceId\":\"evt-1\",\"provider\":\"google\",\"remoteCalendarId\":\"work@group.calendar.google.com\",\"remoteEventId\":\"g-1\",\"ownershipMode\":\"provider_managed\",\"writebackMode\":\"time_and_text\",\"remoteVersion\":\"\\\"etag-1\\\"\",\"lastLocalSnapshot\":null,\"archivedAt\":null,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
           "expectedPushedPayloadJson": "{\"sourceType\":\"event\",\"sourceId\":\"evt-1\",\"provider\":\"google\",\"remoteCalendarId\":\"work@group.calendar.google.com\",\"remoteEventId\":\"g-1\",\"ownershipMode\":\"provider_managed\",\"writebackMode\":\"time_and_text\",\"remoteVersion\":\"\\\"etag-1\\\"\",\"lastLocalSnapshot\":null,\"archivedAt\":null,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
+        }
+      ]
+    },
+    {
+      "type": "bookmark",
+      "cases": [
+        {
+          "name": "bookmark: valid, every modelled field populated",
+          "payload": {
+            "itemType": "note",
+            "itemId": "note-1",
+            "position": 2,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z"
+          },
+          "expectedParsed": {
+            "itemType": "note",
+            "itemId": "note-1",
+            "position": 2,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z"
+          },
+          "pins": "the projector's field list against the payload's"
+        },
+        {
+          "name": "bookmark: boundary — empty strings, empty arrays, optionals absent",
+          "payload": {
+            "itemType": "",
+            "itemId": "",
+            "position": 0,
+            "clock": {}
+          },
+          "expectedParsed": {
+            "itemType": "",
+            "itemId": "",
+            "position": 0,
+            "clock": {}
+          },
+          "pins": "absent and empty stay distinct across the round trip"
+        },
+        {
+          "name": "bookmark: an unknown field a newer client wrote",
+          "payload": {
+            "itemType": "note",
+            "itemId": "note-1",
+            "position": 2,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "syncedAt": "2026-04-16T00:00:01.000Z"
+          },
+          "expectedParsed": {
+            "itemType": "note",
+            "itemId": "note-1",
+            "position": 2,
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z"
+          },
+          "strippedByParse": [
+            "syncedAt"
+          ],
+          "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
+        },
+        {
+          "name": "bookmark: verbatim round trip of the unknown-field instance",
+          "storedPayloadJson": "{\"itemType\":\"note\",\"itemId\":\"note-1\",\"position\":2,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "expectedPushedPayloadJson": "{\"itemType\":\"note\",\"itemId\":\"note-1\",\"position\":2,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
           "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
         }
       ]

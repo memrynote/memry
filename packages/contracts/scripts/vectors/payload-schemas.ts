@@ -16,6 +16,7 @@ import type { ZodType } from 'zod'
 
 import { SettingsSyncPayloadSchema } from '../../src/settings-sync'
 import {
+  BookmarkSyncPayloadSchema,
   CalendarBindingSyncPayloadSchema,
   CalendarEventSyncPayloadSchema,
   CalendarExternalEventSyncPayloadSchema,
@@ -488,6 +489,22 @@ const SPECS: TypeSpec[] = [
       modifiedAt: '2026-04-16T00:00:00.000Z'
     },
     boundary: { sourceId: '', remoteVersion: null, lastLocalSnapshot: null, clock: {} },
+    unknownKey: 'syncedAt',
+    unknownValue: '2026-04-16T00:00:01.000Z'
+  },
+  {
+    // The sidebar's bookmarks, read by the phone's Notes root. Desktop pushes
+    // its whole `bookmarks` row, so `id` and `syncedAt` ride along unmodelled.
+    type: 'bookmark',
+    schema: BookmarkSyncPayloadSchema,
+    valid: {
+      itemType: 'note',
+      itemId: 'note-1',
+      position: 2,
+      clock: CLOCK,
+      createdAt: '2026-04-16T00:00:00.000Z'
+    },
+    boundary: { itemType: '', itemId: '', position: 0, clock: {} },
     unknownKey: 'syncedAt',
     unknownValue: '2026-04-16T00:00:01.000Z'
   }
