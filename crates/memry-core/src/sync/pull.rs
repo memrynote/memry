@@ -90,6 +90,8 @@ pub struct PullLoop {
     /// Set when the feed pull declares `note_body` (chapter 07 §7.17).
     bodies: Option<Arc<dyn CrdtCipher>>,
     vault_id: Option<String>,
+    /// This device's clock id, which a canvas conflict copy is clocked under.
+    clock_device: Option<String>,
 }
 
 impl PullLoop {
@@ -106,6 +108,7 @@ impl PullLoop {
             cipher,
             bodies: None,
             vault_id: None,
+            clock_device: None,
         }
     }
 
@@ -124,6 +127,13 @@ impl PullLoop {
     /// `/sync/changes` itself and must not build a second client.
     pub fn http(&self) -> &HttpClient {
         &self.http
+    }
+
+    /// This device's clock id (chapter 01 §1.5), so a diverged canvas can keep
+    /// the local drawing as a conflict copy instead of being recorded corrupt.
+    pub fn with_clock_device(mut self, device_id: &str) -> Self {
+        self.clock_device = Some(device_id.to_owned());
+        self
     }
 
     /// The `X-Memry-Vault-Id` header's value, when a vault is selected (§5.2).
@@ -536,6 +546,7 @@ impl PullLoop {
         owe_bodies: bool,
     ) -> Result<ApplyTotals, PullError> {
         let now = now_ms();
+        let clock_device = self.clock_device.clone();
         Ok(self
             .db
             .call(move |conn| {
@@ -544,7 +555,8 @@ impl PullLoop {
                 } else {
                     Vec::new()
                 };
-                let totals = apply::apply_page(conn, pending, untyped, now)?;
+                let totals =
+                    apply::apply_page(conn, pending, untyped, now, clock_device.as_deref())?;
                 for doc_id in &owed_here {
                     if !totals.applied_documents.contains(doc_id) {
                         body_debt::settle(conn, doc_id)?;
