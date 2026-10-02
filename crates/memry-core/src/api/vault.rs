@@ -40,6 +40,7 @@ use std::sync::Arc;
 
 use crate::api::auth::AuthSession;
 use crate::api::calendar::VaultCalendar;
+use crate::api::canvas::Canvases;
 use crate::api::errors::{AuthError, StorageError};
 use crate::api::inbox::Inbox;
 use crate::api::journal::Journal;
@@ -176,6 +177,17 @@ impl Vault {
     /// keychain for the same reason [`Vault::tasks`] does.
     pub fn calendar(&self, store: Arc<dyn SecureStore>) -> Result<Arc<VaultCalendar>, AuthError> {
         Ok(Arc::new(VaultCalendar::over(self.db.clone(), &store)?))
+    }
+
+    /// Every whiteboard read and write over this vault. Needs the keychain for
+    /// the same reason [`Vault::tasks`] does, and carries this vault's id,
+    /// which every canvas payload states.
+    pub fn canvases(&self, store: Arc<dyn SecureStore>) -> Result<Arc<Canvases>, AuthError> {
+        Ok(Arc::new(Canvases::over(
+            self.db.clone(),
+            self.id.clone(),
+            &store,
+        )?))
     }
 
     /// Every inbox read and write over this vault (spec 006). Needs the
