@@ -23,6 +23,20 @@ private final class ScriptedToolbarEditor: BlockEditing, @unchecked Sendable {
     var all: [BlockEdit] { edits.withLock { $0 } }
 }
 
+/// `#tag` typed as text reads as a tag where desktop's `HASH_TAG_PATTERN`
+/// does: after whitespace or at the start, and nowhere inside a word.
+struct HashTagTextTests {
+    @Test func aTagAfterSpaceOrAtTheStartIsFound() {
+        let found = HashTagText.matches(in: "#movie and #movies/sci-fi.")
+        #expect(found.map(\.tag) == ["movie", "movies/sci-fi"])
+        #expect(found.first?.range == NSRange(location: 0, length: 6))
+    }
+
+    @Test func aHashInsideAWordOrBeforeNoTagCharacterIsNot() {
+        #expect(HashTagText.matches(in: "c#sharp issue#4 # heading #-x").isEmpty)
+    }
+}
+
 struct HashTagTriggerTests {
     @Test func aHashAtAWordStartOpensTheMenu() {
         #expect(HashTagTrigger.active(in: "#", caret: 1) == HashTagTrigger(range: NSRange(location: 0, length: 1), query: ""))

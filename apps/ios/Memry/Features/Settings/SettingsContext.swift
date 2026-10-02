@@ -1,6 +1,7 @@
 import Foundation
 import MemryCore
 import Observation
+import SwiftUI
 
 // Spec 006. Everything a Settings screen reads, gathered once per opened vault
 // and handed down the Settings stack through the environment.
@@ -63,6 +64,13 @@ final class SettingsContext {
             return .failure(ErrorMapping.userFacing(error))
         }
     }
+}
+
+extension EnvironmentValues {
+    /// The opened vault's Settings context, for screens outside Settings
+    /// that run the same content calls (a tag's page renames and deletes the
+    /// tag through it). `nil` until the vault's settings open.
+    @Entry var settingsContext: SettingsContext?
 }
 
 /// So a Settings call can hand back `Result<T, UserFacingError>`: the error a

@@ -48,6 +48,9 @@ final class EditorSession {
     @ObservationIgnored var blocks: () -> [Block] = { [] }
     /// Points a moved task line's task at its new note: task id, target note.
     @ObservationIgnored var relinkTask: ((String, String) async -> Void)?
+    /// Opens a tag's notes, for a tap on a `#tag` in a block. `nil` leaves the
+    /// tap to place the caret, as on a page with no stack to push onto.
+    @ObservationIgnored var openTag: ((String) -> Void)?
 
     // MARK: State the toolbar draws
 

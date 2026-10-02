@@ -56,12 +56,18 @@ struct EditableBlockView: UIViewRepresentable {
 
     func updateUIView(_ view: BlockTextView, context: Context) {
         let field = context.coordinator
+        let nextInk = ink ?? Self.primaryInk
+        // Inks compare resolved: every update builds a new dynamic `UIColor`,
+        // and a dynamic colour equals only itself, so comparing the colours
+        // themselves re-renders on every update. That re-render moves the
+        // caret, which reopens the `#` menu, which updates the view again.
+        let traits = view.traitCollection
         let changed = field.block != block || field.style.font != Self.font(for: role) || field.alignment != alignment
-            || field.style.ink != (ink ?? Self.primaryInk)
+            || field.style.ink.resolvedColor(with: traits) != nextInk.resolvedColor(with: traits)
         field.block = block
         field.session = session
         field.alignment = alignment
-        field.style = BlockText.Style(font: Self.font(for: role), ink: ink ?? Self.primaryInk, titleExists: session.titleExists)
+        field.style = BlockText.Style(font: Self.font(for: role), ink: nextInk, titleExists: session.titleExists)
         // **Only when it differs, and never over unsaved typing.** Re-rendering
         // resets the text storage, which would move a caret mid-word or drop
         // what the user typed since the last commit.
@@ -111,7 +117,7 @@ final class BlockTextView: UITextView {}
 
 /// One block's editing state, and the text view's delegate.
 @MainActor
-final class BlockField: NSObject, UITextViewDelegate {
+final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegate {
     var block: Block
     weak var session: EditorSession?
     var style: BlockText.Style
@@ -127,15 +133,57 @@ final class BlockField: NSObject, UITextViewDelegate {
     var base = ""
     /// Where the caret goes after the next render (a mark, a chosen link).
     var pendingSelection: NSRange?
+    /// Inside `render`, whose `attributedText` puts the caret at the end before
+    /// the old selection goes back: the session sees only where it lands.
+    private var rendering = false
 
     init(block: Block, session: EditorSession, style: BlockText.Style, alignment: NSTextAlignment) {
         self.block = block
         self.session = session
         self.style = style
         self.alignment = alignment
+        super.init()
+        let tap = UITapGestureRecognizer(target: self, action: #selector(openTappedTag(_:)))
+        tap.delegate = self
+        textView.addGestureRecognizer(tap)
     }
 
     var blockId: String { block.id ?? "" }
+
+    // MARK: Tapping a tag
+
+    /// A tap on a `#tag` opens its notes, as a click on desktop's chip does,
+    /// instead of putting the caret in it. Begins only over a tag, so every
+    /// other tap is the text view's own.
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        session?.openTag != nil && tag(at: gestureRecognizer.location(in: textView)) != nil
+    }
+
+    /// The text view's own taps wait for this one to fail, so a tap that
+    /// opens a tag does not also move the caret.
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        otherGestureRecognizer is UITapGestureRecognizer
+            && otherGestureRecognizer.view?.isDescendant(of: textView) == true
+    }
+
+    @objc private func openTappedTag(_ gesture: UITapGestureRecognizer) {
+        guard let tag = tag(at: gesture.location(in: textView)) else { return }
+        session?.openTag?(tag)
+    }
+
+    /// The tag drawn under `point`, if the point is on its glyphs.
+    private func tag(at point: CGPoint) -> String? {
+        guard let range = textView.characterRange(at: point) else { return nil }
+        let offset = textView.offset(from: textView.beginningOfDocument, to: range.start)
+        guard offset >= 0, offset < textView.textStorage.length,
+              let tag = textView.textStorage.attribute(.memryTag, at: offset, effectiveRange: nil) as? String,
+              textView.firstRect(for: range).insetBy(dx: -4, dy: -4).contains(point)
+        else { return nil }
+        return tag
+    }
 
     func value(_ name: String) -> String? {
         block.props.first { $0.name == name }?.value
@@ -144,7 +192,13 @@ final class BlockField: NSObject, UITextViewDelegate {
     func render() {
         let selection = pendingSelection ?? textView.selectedRange
         pendingSelection = nil
+        rendering = true
+        defer {
+            rendering = false
+            if textView.isFirstResponder { session?.selectionChanged(in: self) }
+        }
         let text = NSMutableAttributedString(attributedString: BlockText.attributed(block.inline, style: style))
+        if block.kind != "codeBlock" { BlockText.markTags(in: text) }
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = alignment
         text.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: text.length))
@@ -211,8 +265,13 @@ final class BlockField: NSObject, UITextViewDelegate {
         // bytes, or every offset after it would be wrong.
         if textView.typingAttributes[.memryNodeBytes] != nil || textView.typingAttributes[.attachment] != nil {
             textView.typingAttributes = BlockText.baseAttributes(style)
+        } else if textView.typingAttributes[.memryTag] != nil {
+            // Typed after a `#tag` drawn as one: ordinary text until the next
+            // render reads it again.
+            textView.typingAttributes[.memryTag] = nil
+            textView.typingAttributes[.foregroundColor] = style.ink
         }
-        session?.selectionChanged(in: self)
+        if !rendering { session?.selectionChanged(in: self) }
     }
 
     func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {

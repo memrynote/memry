@@ -105,6 +105,15 @@ protocol NotesReading: Sendable {
     /// filename. Four answers, because a remote image is ordinary content and
     /// an ambiguous name is refused rather than guessed.
     func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment
+    /// Desktop's sidebar bookmarks that resolve to something this vault
+    /// holds, in the user's order. Read only: the phone does not write them.
+    func bookmarks() async throws -> [BookmarkEntry]
+}
+
+extension NotesReading {
+    /// Readers that are not the vault's own (the journal bridge, test
+    /// doubles) hold no bookmarks.
+    func bookmarks() async throws -> [BookmarkEntry] { [] }
 }
 
 /// The production reader: the core's own `Notes`, over the shell's one serial
@@ -211,6 +220,11 @@ struct CoreNotesReader: NotesReading {
         let vault = vault
         return try await executor.run { try vault.notes().resolveWikiTarget(target: target) }
     }
+
+    func bookmarks() async throws -> [BookmarkEntry] {
+        let vault = vault
+        return try await executor.run { try vault.notes().bookmarks() }
+    }
 }
 
 @MainActor
@@ -274,6 +288,11 @@ final class VaultBrowseViewModel {
     /// from ``phase`` because a failed write leaves the vault readable: the
     /// outline is still true, only the write did not happen.
     var writeFailure: UserFacingError?
+
+    /// The root's Bookmarks and Tags sections. Secondary to the outline: a
+    /// failed read leaves them as they were rather than failing the screen.
+    private(set) var bookmarks: [BookmarkEntry] = []
+    private(set) var tags: [TagSummary] = []
 
     private var hasLoaded = false
 
@@ -350,6 +369,16 @@ final class VaultBrowseViewModel {
         guard case .ready = phase else { return }
         guard let folders = try? await reader.folders(), let notes = try? await reader.list() else { return }
         phase = folders.isEmpty && notes.isEmpty ? .empty : .ready(.build(folders: folders, notes: notes))
+        await loadShortcuts()
+    }
+
+    private func loadShortcuts() async {
+        do {
+            bookmarks = try await reader.bookmarks()
+            tags = try await reader.tags()
+        } catch {
+            Log.storage.error("this vault's bookmarks or tags could not be read", .code(ErrorMapping.userFacing(error).code))
+        }
     }
 
     private func load() async {
@@ -375,5 +404,6 @@ final class VaultBrowseViewModel {
             return
         }
         phase = .ready(.build(folders: folders, notes: notes))
+        await loadShortcuts()
     }
 }

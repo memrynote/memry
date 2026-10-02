@@ -18,6 +18,8 @@ extension NSAttributedString.Key {
     static let memryMarks = NSAttributedString.Key("memry.marks")
     /// On a U+FFFC: the bytes its node occupies in the core's offsets.
     static let memryNodeBytes = NSAttributedString.Key("memry.nodeBytes")
+    /// On a `hashTag` chip or a `#tag` typed as text: the tag a tap opens.
+    static let memryTag = NSAttributedString.Key("memry.tag")
 }
 
 @MainActor
@@ -113,6 +115,28 @@ enum BlockText {
         return out
     }
 
+    /// Draws each `#tag` typed as text as a tag and marks it for a tap
+    /// (`HashTagText`). Display only: the text, its marks and its core
+    /// offsets stay as they are. Not over code or a link, whose text is
+    /// literal; the caller skips a code block.
+    static func markTags(in text: NSMutableAttributedString) {
+        for match in HashTagText.matches(in: text.string) {
+            var literal = false
+            text.enumerateAttribute(.memryMarks, in: match.range) { value, _, stop in
+                let marks = value as? [String] ?? []
+                if marks.contains("code") || marks.contains("link") || marks.contains("href") {
+                    literal = true
+                    stop.pointee = true
+                }
+            }
+            guard !literal else { continue }
+            text.addAttributes(
+                [.foregroundColor: UIColor(Tokens.Text.tint.color), .memryTag: match.tag],
+                range: match.range
+            )
+        }
+    }
+
     /// What a character typed with nothing to its left carries.
     static func baseAttributes(_ style: Style) -> [NSAttributedString.Key: Any] {
         [.font: style.font, .foregroundColor: style.ink, .memryMarks: [String]()]
@@ -187,6 +211,9 @@ enum BlockText {
             [.font: style.font, .memryNodeBytes: segment.coreBytes, .memryMarks: [String]()],
             range: NSRange(location: 0, length: out.length)
         )
+        if run.marks.contains("hashTag") {
+            out.addAttribute(.memryTag, value: NoteInline.tagName(of: run), range: NSRange(location: 0, length: out.length))
+        }
         return out
     }
 }

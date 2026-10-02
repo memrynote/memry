@@ -130,8 +130,22 @@ enum NoteInline {
         if let font = style.font {
             style.piece.font = font
         }
+        // `#tag` typed as text is a tag to desktop, so it reads and opens as
+        // one here. Not inside code or a link, whose text is literal.
+        if run.marks.allSatisfy(Self.textOnlyMarks.contains) {
+            for match in HashTagText.matches(in: String(style.piece.characters)) {
+                guard let range = Range(match.range, in: style.piece) else { continue }
+                style.piece[range].foregroundColor = Tokens.Text.tint.color
+                style.piece[range].link = tagURL(for: match.tag)
+            }
+        }
         return style.piece
     }
+
+    /// The marks that leave a run's text plain text.
+    private static let textOnlyMarks: Set<String> = [
+        "bold", "italic", "underline", "strike", "textColor", "backgroundColor",
+    ]
 
     /// The words a run shows. Desktop's pill spelling for a date: `@` before
     /// it, and an alarm after one that reminds, with a text presentation

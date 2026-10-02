@@ -303,7 +303,7 @@ struct NoteRowLabel: View {
 /// level, a 16pt chevron slot, a 20pt icon slot and 6pt before the name.
 /// `disclosure` is `nil` for a row with nothing to open, which keeps an empty
 /// chevron slot so every icon in a level lines up.
-private struct TreeRowLabel<Trailing: View>: View {
+struct TreeRowLabel<Trailing: View>: View {
     let depth: Int
     let disclosure: Bool?
     /// Drawn instead of `symbol` when present. `icon:` and `custom:` values

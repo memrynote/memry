@@ -86,7 +86,8 @@ struct NotesListView: View {
                 selectedFolder: $selectedFolder,
                 sort: sort,
                 openFolder: { path.append(FolderRoute(path: $0)) },
-                openNote: { path.append(NoteRoute(id: $0)) }
+                openNote: { path.append(NoteRoute(id: $0)) },
+                openTag: { path.append(TagRoute(name: $0)) }
             )
                 .navigationDestination(for: FolderRoute.self) { route in
                     FolderScreen(
@@ -130,11 +131,13 @@ struct NotesListView: View {
                 // above are: a `#tag` tapped deep in a note, and a restored
                 // path pointing at a tag, both resolve here.
                 .navigationDestination(for: TagRoute.self) { route in
-                    TaggedNotesView(
-                        tag: route.name,
-                        reader: model.reader,
-                        open: { path.append($0) }
-                    )
+                    TaggedNotesView(tag: route.name, browse: model, open: { path.append($0) })
+                }
+                .navigationDestination(for: TagListRoute.self) { _ in
+                    TagListView(browse: model)
+                }
+                .navigationDestination(for: BookmarkListRoute.self) { _ in
+                    BookmarkListView(browse: model)
                 }
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -245,6 +248,7 @@ private struct VaultBrowseScreen: View {
     let sort: BrowseSort
     let openFolder: (String) -> Void
     let openNote: (String) -> Void
+    let openTag: (String) -> Void
 
     var body: some View {
         Group {
@@ -274,7 +278,8 @@ private struct VaultBrowseScreen: View {
                     sort: sort,
                     model: model,
                     openFolder: openFolder,
-                    openNote: openNote
+                    openNote: openNote,
+                    openTag: openTag
                 )
             }
         }
@@ -294,21 +299,25 @@ private struct VaultOutlineList: View {
     let model: VaultBrowseViewModel
     let openFolder: (String) -> Void
     let openNote: (String) -> Void
+    let openTag: (String) -> Void
+    /// Folded from its title, like Bookmarks and Tags. Only foldable when
+    /// those exist: alone, the tree has no title to tap.
+    @AppStorage("notes.section.collections.collapsed") private var collectionsCollapsed = false
+
+    private var hasShortcuts: Bool { !model.bookmarks.isEmpty || !model.tags.isEmpty }
 
     var body: some View {
         List {
-            ForEach(outline.browseRows(expanded: expanded, sort: sort)) { row in
-                BrowseRowView(
-                    row: row,
-                    toggle: toggle,
-                    model: model,
-                    selectedFolder: selectedFolder,
-                    openFolder: openFolder,
-                    openNote: openNote,
-                    setExpanded: setExpanded
-                )
+            // Named only beside the sections under it, as desktop's sidebar
+            // names Collections beside Bookmarks and Tags. A vault with
+            // neither keeps the tree unlabelled.
+            if hasShortcuts {
+                ShortcutsTitleRow(title: "Collections", isCollapsed: $collectionsCollapsed)
             }
-            if !outline.unplacedNotes.isEmpty {
+            if !hasShortcuts || !collectionsCollapsed {
+                treeRows
+            }
+            if !outline.unplacedNotes.isEmpty, !hasShortcuts || !collectionsCollapsed {
                 // Kaan's spec-defect 124 decision, named on screen rather
                 // than papered over. These notes are real; their folder
                 // carries no `folder_config` row, so the tree above cannot
@@ -323,12 +332,28 @@ private struct VaultOutlineList: View {
                     Text("These notes are in folders this vault has no folder record for.")
                 }
             }
+            BookmarksSection(bookmarks: model.bookmarks)
+            TagsSection(tags: model.tags, openTag: openTag)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .restoresScroll("notes.root")
         .environment(\.defaultMinListRowHeight, Tokens.Size.minimumHitArea)
         .calmAnimation(.fast, value: expanded)
+    }
+
+    private var treeRows: some View {
+        ForEach(outline.browseRows(expanded: expanded, sort: sort)) { row in
+            BrowseRowView(
+                row: row,
+                toggle: toggle,
+                model: model,
+                selectedFolder: selectedFolder,
+                openFolder: openFolder,
+                openNote: openNote,
+                setExpanded: setExpanded
+            )
+        }
     }
 
     private func toggle(_ path: String) {

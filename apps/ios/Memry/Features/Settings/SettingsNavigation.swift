@@ -98,7 +98,7 @@ private extension View {
         }
         .navigationDestination(for: TagRoute.self) { route in
             if let browse {
-                TaggedNotesView(tag: route.name, reader: browse.reader, open: { path.wrappedValue.append($0) })
+                TaggedNotesView(tag: route.name, browse: browse, open: { path.wrappedValue.append($0) })
             }
         }
     }

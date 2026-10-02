@@ -10,6 +10,27 @@
 
 import Foundation
 
+/// `#tag` written as plain text: what desktop reads as a tag
+/// (`hash-tag.tsx`, `HASH_TAG_PATTERN` and `extractInlineTags`) and turns
+/// back into a chip when it opens the note. Desktop writes that chip; this
+/// client does not write on read, so it only draws and opens it.
+enum HashTagText {
+    // A `#` at the start or after whitespace, then desktop's tag characters.
+    private static let pattern = try? NSRegularExpression(
+        pattern: #"(?<!\S)#([a-zA-Z0-9][a-zA-Z0-9_-]*(?:/[a-zA-Z0-9][a-zA-Z0-9_-]*)*)"#
+    )
+
+    /// Each `#tag` in `text`: the range it covers, `#` included, and the
+    /// tag's name.
+    static func matches(in text: String) -> [(range: NSRange, tag: String)] {
+        guard let pattern, text.contains("#") else { return [] }
+        let string = text as NSString
+        return pattern.matches(in: text, range: NSRange(location: 0, length: string.length)).map {
+            ($0.range, string.substring(with: $0.range(at: 1)))
+        }
+    }
+}
+
 /// An open `#` menu: `range` covers `#query`.
 struct HashTagTrigger: Equatable {
     let range: NSRange

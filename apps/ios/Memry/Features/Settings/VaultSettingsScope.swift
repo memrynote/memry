@@ -19,6 +19,7 @@ struct VaultSettingsScope<Content: View>: View {
         content(context, browse)
             // The shell's search sheet reads the same browse surface.
             .environment(\.vaultBrowse, browse)
+            .environment(\.settingsContext, context)
             .environment(\.quickCapture, capture)
             .memryAppearance()
             .task(id: tasks?.vaultId) { await make() }

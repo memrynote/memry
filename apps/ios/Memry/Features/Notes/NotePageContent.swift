@@ -52,6 +52,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         session.tags = model.vaultTagNames
         session.tagColors = model.tagColors
         session.blocks = { model.blocks }
+        session.openTag = openTag
         let noteId = detail.summary.id
         session.relinkTask = taskBridge.relink.map { relink in
             { taskId, target in await relink(taskId, noteId, target) }

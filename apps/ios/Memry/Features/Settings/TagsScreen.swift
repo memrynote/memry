@@ -153,7 +153,7 @@ private struct TagRow: View {
 }
 
 /// Artboard 27: pick the tag to merge into, with a filter.
-private struct TagMergeSheet: View {
+struct TagMergeSheet: View {
     let source: TagItem
     let count: Int
     let tags: [TagItem]
@@ -193,7 +193,7 @@ private struct TagMergeSheet: View {
 }
 
 /// Artboard 27b: colour and icon.
-private struct TagStyleSheet: View {
+struct TagStyleSheet: View {
     let tag: TagItem
     let save: (String?, String?) -> Void
     @Environment(\.dismiss) private var dismiss
