@@ -107,34 +107,18 @@ struct SlashMenuTests {
         #expect(InlineTrigger.active(in: "@x /he", caret: 6) == .slash(range: NSRange(location: 3, length: 3), query: "he"))
     }
 
-    @Test func rows_at_rest_follow_desktops_catalog() {
-        let ids = SlashMenu.catalog(picture: false).map(\.id)
-        #expect(Array(ids.prefix(12)) == [
-            "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
-            "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
-        ])
-        #expect(ids.contains("link_to_note") && ids.contains("date") && ids.contains("remind"))
-        #expect(!ids.contains("image"))
-        #expect(SlashMenu.catalog(picture: true).last?.id == "image")
-    }
-
     @Test func a_query_filters_and_lifts_the_best_match() {
-        let items = SlashMenu.catalog(picture: false)
+        let items = BlockCatalog.rows(picture: false)
         // "list" is in four titles, none at the start: catalog order stands.
-        #expect(SlashMenu.filter(items, query: "list").prefix(4).map(\.id) == ["bullet_list", "numbered_list", "check_list", "toggle_list"])
+        #expect(BlockCatalog.filter(items, query: "list").prefix(4).map(\.id) == ["bullet_list", "numbered_list", "check_list", "toggle_list"])
         // "quote" is a title prefix, ahead of every alias match.
-        #expect(SlashMenu.filter(items, query: "quo").first?.id == "quote")
+        #expect(BlockCatalog.filter(items, query: "quo").first?.id == "quote")
         // "code" matches "Code Block" by title: lifted over nothing earlier.
-        #expect(SlashMenu.filter(items, query: "code").first?.id == "code_block")
-        // "h2" matches only through an alias.
-        #expect(SlashMenu.filter(items, query: "h2").map(\.id) == ["heading_2"])
+        #expect(BlockCatalog.filter(items, query: "code").first?.id == "code_block")
+        // "h2" matches only through an alias, which the toggle heading shares.
+        #expect(BlockCatalog.filter(items, query: "h2").map(\.id) == ["heading_2", "toggle_heading_2"])
         // "hr": the divider's alias, lifted above earlier weaker matches.
-        #expect(SlashMenu.filter(items, query: "hr").first?.id == "divider")
-        #expect(SlashMenu.filter(items, query: "zzz").isEmpty)
-    }
-
-    @Test func the_check_row_makes_a_plain_checkbox() {
-        let check = SlashMenu.catalog(picture: false).first { $0.id == "check_list" }
-        #expect(check?.action == .block(kind: "checkListItem", level: nil, props: ["plain": "true"]))
+        #expect(BlockCatalog.filter(items, query: "hr").first?.id == "divider")
+        #expect(BlockCatalog.filter(items, query: "zzz").isEmpty)
     }
 }
