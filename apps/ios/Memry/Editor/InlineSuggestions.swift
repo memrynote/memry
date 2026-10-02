@@ -212,7 +212,7 @@ struct EditorSuggestion: Identifiable, Equatable {
         case create(title: String, alias: String)
         case date(DateMentionValue)
         /// A slash menu row.
-        case slash(SlashMenuItem)
+        case slash(BlockCatalog.Row)
     }
 
     let id: String
