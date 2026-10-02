@@ -882,7 +882,7 @@ fn payload_schemas_subscribed_types() {
     // The negative control: a record type the server serves and this client
     // deliberately does not ask for is not silently acceptable.
     assert_eq!(
-        declaration.classify("canvas"),
+        declaration.classify("canvas_folder"),
         types::ArrivingItemType::Undeclared
     );
 }
