@@ -32,6 +32,15 @@ A tag's saved views (columns, sort, group, filters) are scoped to that tag — a
 saved on `work` doesn't show up on `personal` — and sync to your other devices along with the
 tag itself. See [Saved Views](/user-guide/folder-view#saved-views).
 
+### Tags on iPhone
+
+The **Notes** tab lists your ten most-used tags as colored chips under **Bookmarks**; **Show
+all** opens every tag with a search field. Collections, Bookmarks and Tags each fold away when
+you tap their title. Tap a tag — there, or a `#tag` in a note — to open its page: its notes,
+with the same sort and date grouping as a folder. The `+` button makes a new note carrying the
+tag, and the `#` menu renames, recolors, merges or deletes the tag. A `#tag` typed as plain text
+shows and opens as a tag on iPhone too.
+
 ### Renaming or Deleting Tags
 
 Manage tags globally from [Settings → Tags](/user-guide/settings#tags), or open a tag's own

@@ -14,6 +14,13 @@ Toggle a bookmark from the note toolbar. Bookmarked notes:
 
 A bookmark is a flag on the note; toggling it doesn't move the note or change its content.
 
+### On iPhone
+
+The **Notes** tab shows your bookmarks under **Collections**, in the order you set on desktop.
+Tap one to open it: notes, folders and tags open in Notes, journal days in Journal, and tasks
+in Tasks. The first ten show; **Show all** opens a page that lists every bookmark with a search
+field. The iPhone shows bookmarks but doesn't add, remove or reorder them — do that on desktop.
+
 ## Reminders
 
 Open the reminder picker from the note toolbar. Pick a date and time:
