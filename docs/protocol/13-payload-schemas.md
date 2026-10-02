@@ -7,15 +7,16 @@ The payload is the plaintext inside the record envelope of chapter 04: UTF-8
 JSON. This chapter specifies what it contains per type, and — more importantly —
 how a client is required to store it.
 
-## 13.1 The twenty subscribed types
+## 13.1 The twenty-one subscribed types
 
-**Normative.** This feature's client declares exactly these twenty in
+**Normative.** This feature's client declares exactly these twenty-one in
 `X-Memry-Sync-Types` (chapter 05 §5.3), in this order:
 
 `note`, `journal`, `folder_config`, `custom_icon`, `tag_definition`,
 `tag_category`, `property_definition`, `template`, `task`, `project`,
 `task_activity`, `reminder`, `settings`, `filter`, `inbox`, `calendar_source`,
-`calendar_event`, `calendar_external_event`, `calendar_binding`, `bookmark`.
+`calendar_event`, `calendar_external_event`, `calendar_binding`, `bookmark`,
+`canvas`.
 
 `filter` (saved task filters, §13.7.14) was added by spec 004 TP022 and is
 appended last, so the first thirteen keep their order. `inbox` (captures,
@@ -23,14 +24,14 @@ appended last, so the first thirteen keep their order. `inbox` (captures,
 calendar types (§13.7.16–§13.7.19) were added by spec 007 CL010 and are appended
 last, in chapter 05's apply order (source, event, external event, binding).
 `bookmark` (the sidebar's bookmarks, §13.7.20) was added for the phone's
-Notes root and is appended after them.
+Notes root and is appended after them. `canvas` (whiteboards, §13.7.21) was
+added for the phone's whiteboard block and is appended last.
 
-Five more **record types** are served by the server and **not** subscribed to
-here: `agent_conversation`, `agent_message`, `canvas`, `canvas_folder`,
-`home_page`. **A conforming client omits them from
+Four more **record types** are served by the server and **not** subscribed to
+here: `agent_conversation`, `agent_message`, `canvas_folder`, `home_page`. **A conforming client omits them from
 the header and never sees them** (chapter 05 §5.3.1).
 
-Twenty plus five is the **twenty-five record types**, which is the set
+Twenty-one plus four is the **twenty-five record types**, which is the set
 chapter 05 §5.3 calls recognised. `attachment` is the twenty-sixth member of
 `SYNC_ITEM_TYPES` and is **not** one of them: it never travels as a record at
 all (§13.8), so it is neither subscribed nor declarable.
@@ -594,6 +595,52 @@ to a live row, `folder` by path and `tag` by name, and hides anything else,
 as desktop's sidebar does (`resolveBookmarkItem`). This client reads
 bookmarks and does not write them.
 
+### 13.7.21 `canvas` — `:182-202`
+
+`id`, `vaultId`, `title`, `scene`, `folder`, `icon`, `ownerNoteId`, `clock`,
+`deletedAt`, every one optional on the wire. Desktop's push states all nine,
+`ownerNoteId: null` included
+(`apps/desktop/src/main/sync/item-handlers/canvas-handler.ts:404-442`),
+and a client that writes a canvas MUST do the same: an absent key is read as
+"not stated" by every receiver.
+
+`scene` is Excalidraw JSON **text**, and its form is normative because desktop
+compares scenes as text to decide a conflict. It is desktop's canonical form
+(`apps/desktop/src/main/canvas/scene-file.ts:167-201`): `type`,
+`version`, `source`, `elements`, `appState`, `files` first, in that order, each
+defaulted when missing or `null` (`"excalidraw"`, `2`, `"memry"`, `[]`, `{}`,
+`{}`); the file sidecar `memry` dropped; every other top-level key after them in
+UTF-16 code-unit order; compact `JSON.stringify`, nested key order as given. An
+empty board is
+`{"type":"excalidraw","version":2,"source":"memry","elements":[],"appState":{},"files":{}}`.
+A writer that emits any other text for the same drawing makes every concurrent
+edit look like a divergence.
+
+`vaultId` is the account vault's uuid, the value of `X-Memry-Vault-Id`
+(chapter 05 §5.2). Desktop skips a create without it and lists canvases by it.
+`ownerNoteId` names the note whose whiteboard block embeds the canvas.
+
+**Normative**, the apply rule (`canvas-handler.ts:148-345`, `:479-571`). It is the
+document-level resolver (§13.9) with five additions:
+
+1. a payload with no string `scene` is skipped and changes nothing;
+2. a create (no local row) with no `vaultId` is skipped;
+3. on a **concurrent** clock, when the local row is live and its scene text
+   differs from the remote's, the client first writes the local scene as a new
+   canvas: a fresh nanoid, title `<local title, or "Canvas"> (conflict copy)`,
+   the local `vaultId`, `folder` and `ownerNoteId`, `icon: null`, a clock of
+   `{<this device>: 1}`, queued for push. The remote then applies under the
+   merged clock. Identical scene text merges the clocks and creates nothing;
+4. `title`, `folder`, `icon` and `ownerNoteId` absent from the remote keep the
+   local value, and `null` clears it. `vaultId` keeps the local value;
+5. the copy and the overwrite are one transaction.
+
+A delete follows chapter 05 §5.8 unchanged: a canvas survives a tombstone only
+when its local clock is strictly after the tombstone's (#2198,
+`canvas-handler.ts:347-397`). The conflict
+copy is the one push an apply writes, and it does not contradict §6.5.2 P3: it
+is a new item, not a re-push of the merged one.
+
 ## 13.8 `attachment` is not a record type
 
 **Normative.** `attachment` is in `SYNC_ITEM_TYPES`
@@ -605,13 +652,14 @@ bookmarks and does not write them.
 
 **Normative** (the enumeration is chapter 06 §6.8):
 
-| Type                        | Algorithm                | Carries `fieldClocks`                              |
-| --------------------------- | ------------------------ | -------------------------------------------------- |
-| `task`                      | field-level              | yes (`packages/contracts/src/sync-payloads.ts:45`) |
-| `project`                   | field-level              | yes (`:247`)                                       |
-| `calendar_event`            | field-level              | yes (`:405`)                                       |
-| `settings`                  | dotted-path field clocks | yes, its own key space                             |
-| every other subscribed type | document-level resolver  | no                                                 |
+| Type                        | Algorithm                                                | Carries `fieldClocks`                              |
+| --------------------------- | -------------------------------------------------------- | -------------------------------------------------- |
+| `task`                      | field-level                                              | yes (`packages/contracts/src/sync-payloads.ts:45`) |
+| `project`                   | field-level                                              | yes (`:247`)                                       |
+| `calendar_event`            | field-level                                              | yes (`:405`)                                       |
+| `settings`                  | dotted-path field clocks                                 | yes, its own key space                             |
+| `canvas`                    | document-level resolver, plus a conflict copy (§13.7.21) | no                                                 |
+| every other subscribed type | document-level resolver                                  | no                                                 |
 
 `settings` is also the one record type **exempt from the clock requirement**
 (chapter 00 §0.7, `packages/contracts/src/sync-api.ts:64-89`).
