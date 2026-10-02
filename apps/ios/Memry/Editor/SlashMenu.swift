@@ -1,85 +1,137 @@
 //
 //  SlashMenu.swift
-//  The `/` menu: desktop's slash menu rows this build can act on, filtered
-//  as desktop filters them, shown in the `[[` / `@` suggestion list.
+//  The block catalog every insert surface reads: the `/` menu, the keyboard
+//  toolbar's `+` grid and the note page's insert menu. Desktop's slash menu
+//  rows this build can act on, in desktop's order, filtered as desktop
+//  filters them.
 //
-//  Desktop references: `slash-menu-model.ts` (catalog order and scoring),
-//  `ContentArea.tsx` (the rows Memry adds), BlockNote's `en.ts` dictionary
-//  (titles and aliases).
+//  Desktop references: `slash-menu-model.ts` (catalog order, groups and
+//  scoring), `ContentArea.tsx` (the rows Memry adds), BlockNote's `en.ts`
+//  dictionary and `getDefaultSlashMenuItems.ts` (titles, aliases, props).
 //
 
 import Foundation
 import MemryCore
 import UIKit
 
-/// One row of the `/` menu. `id` is desktop's row id.
-struct SlashMenuItem: Equatable, Sendable {
-    enum Action: Equatable, Sendable {
-        /// The block becomes (or a new block after it is) `kind`.
-        case block(kind: String, level: Int?, props: [String: String])
-        /// Types `[[`, which opens the wiki-link menu.
-        case linkToNote
-        case date(DateMentionValue)
-        case picture
+enum BlockCatalog {
+    /// Desktop's slash menu groups, in their order.
+    enum Section: CaseIterable, Sendable {
+        case basic, headings, insert, media
+
+        var title: String {
+            switch self {
+            case .basic: "Basic"
+            case .headings: "Headings"
+            case .insert: "Insert"
+            case .media: "Media"
+            }
+        }
     }
 
-    let id: String
-    let title: String
-    var subtitle: String?
-    let symbol: String
-    let aliases: [String]
-    let action: Action
-}
+    /// One row. `id` is desktop's row id.
+    struct Row: Identifiable, Equatable, Sendable {
+        enum Action: Equatable, Sendable {
+            /// The block becomes (or a new block after it is) `kind`.
+            case block(kind: String, level: Int?, props: [String: String])
+            /// Types `[[`, which opens the wiki-link menu.
+            case linkToNote
+            /// Today, or desktop's reminder default, worked out when chosen.
+            case date(remind: Bool)
+            case picture
+        }
 
-@MainActor
-enum SlashMenu {
-    /// Every row at rest, in desktop's catalog order: blocks, more headings,
-    /// insert, media. Rows desktop offers that this build cannot make (table,
-    /// math, diagram, whiteboard, view, task, emoji, templates, toggle
-    /// headings, AI, files) are left out rather than shown and refused.
-    static func catalog(now: Date = .now, calendar: Calendar = .current, picture: Bool) -> [SlashMenuItem] {
-        func block(_ id: String, _ title: String, _ symbol: String, _ aliases: [String], kind: String, level: Int? = nil, props: [String: String] = [:]) -> SlashMenuItem {
-            SlashMenuItem(id: id, title: title, symbol: symbol, aliases: aliases, action: .block(kind: kind, level: level, props: props))
+        let id: String
+        let title: String
+        let symbol: String
+        let aliases: [String]
+        let section: Section
+        let action: Action
+    }
+
+    private static func block(
+        _ id: String, _ title: String, _ symbol: String, _ aliases: [String], _ section: Section,
+        kind: String, level: Int? = nil, props: [String: String] = [:]
+    ) -> Row {
+        Row(id: id, title: title, symbol: symbol, aliases: aliases, section: section, action: .block(kind: kind, level: level, props: props))
+    }
+
+    private static let dateAliases = ["date", "remind", "reminder", "when"]
+
+    /// Every row, in desktop's catalog order. Rows desktop offers that this
+    /// build cannot make yet (task, table, math, diagram, whiteboard, view,
+    /// files) join here one row each as they land; emoji, templates and AI
+    /// stay desktop-only.
+    static let rows: [Row] = [
+        block("paragraph", "Paragraph", "text.alignleft", ["p", "paragraph"], .basic, kind: "paragraph"),
+        block("heading", "Heading 1", "textformat.size.larger", ["h", "heading1", "h1"], .basic, kind: "heading", level: 1),
+        block("heading_2", "Heading 2", "textformat.size", ["h2", "heading2", "subheading"], .basic, kind: "heading", level: 2),
+        block("heading_3", "Heading 3", "textformat.size.smaller", ["h3", "heading3", "subheading"], .basic, kind: "heading", level: 3),
+        block("bullet_list", "Bullet List", "list.bullet", ["ul", "li", "list", "bulletlist", "bullet list"], .basic, kind: "bulletListItem"),
+        block("numbered_list", "Numbered List", "list.number", ["ol", "li", "list", "numberedlist", "numbered list"], .basic, kind: "numberedListItem"),
+        // Desktop's `/check` makes a plain checkbox; `[] ` is the way to a task.
+        block(
+            "check_list", "Check List", "checklist",
+            ["ul", "li", "list", "checklist", "check list", "checked list", "checkbox"], .basic,
+            kind: "checkListItem", props: ["plain": "true"]
+        ),
+        block("toggle_list", "Toggle List", "chevron.right.circle", ["li", "list", "toggleList", "toggle list", "collapsable list"], .basic, kind: "toggleListItem"),
+        block("quote", "Quote", "quote.opening", ["quotation", "blockquote", "bq"], .basic, kind: "quote"),
+        block("callout", "Callout", "exclamationmark.bubble", ["callout", "admonition", "alert", "notice", "tip"], .basic, kind: "callout"),
+        block("code_block", "Code Block", "curlybraces", ["code", "pre"], .basic, kind: "codeBlock"),
+        block("divider", "Divider", "minus", ["divider", "hr", "line", "horizontal rule"], .basic, kind: "divider"),
+        block("heading_4", "Heading 4", "textformat", ["h4", "heading4", "subheading4"], .headings, kind: "heading", level: 4),
+        block("heading_5", "Heading 5", "textformat", ["h5", "heading5", "subheading5"], .headings, kind: "heading", level: 5),
+        block("heading_6", "Heading 6", "textformat", ["h6", "heading6", "subheading6"], .headings, kind: "heading", level: 6),
+        block(
+            "toggle_heading", "Toggle Heading 1", "chevron.right.square", ["h", "heading1", "h1", "collapsable"], .headings,
+            kind: "heading", level: 1, props: ["isToggleable": "true"]
+        ),
+        block(
+            "toggle_heading_2", "Toggle Heading 2", "chevron.right.square", ["h2", "heading2", "subheading", "collapsable"], .headings,
+            kind: "heading", level: 2, props: ["isToggleable": "true"]
+        ),
+        block(
+            "toggle_heading_3", "Toggle Heading 3", "chevron.right.square", ["h3", "heading3", "subheading", "collapsable"], .headings,
+            kind: "heading", level: 3, props: ["isToggleable": "true"]
+        ),
+        Row(id: "link_to_note", title: "Link to note", symbol: "link", aliases: ["link", "wiki", "wikilink", "note", "backlink"], section: .insert, action: .linkToNote),
+        Row(id: "date", title: "Today", symbol: "calendar", aliases: dateAliases, section: .insert, action: .date(remind: false)),
+        Row(id: "remind", title: "Remind me", symbol: "alarm", aliases: dateAliases, section: .insert, action: .date(remind: true)),
+        Row(
+            id: "image", title: "Image", symbol: "photo",
+            aliases: ["image", "imageUpload", "upload", "img", "picture", "media", "url", "photo"],
+            section: .media, action: .picture
+        ),
+    ]
+
+    /// The rows a surface offers. `picture` is false where no picker is
+    /// wired, which hides the image row rather than offering an upload that
+    /// cannot happen.
+    static func rows(picture: Bool) -> [Row] {
+        picture ? rows : rows.filter { $0.action != .picture }
+    }
+
+    /// `rows(picture:)` under their section titles, empty sections left out:
+    /// the `+` grid and the insert menu.
+    static func sections(picture: Bool) -> [(section: Section, rows: [Row])] {
+        let rows = rows(picture: picture)
+        return Section.allCases.compactMap { section in
+            let inSection = rows.filter { $0.section == section }
+            return inSection.isEmpty ? nil : (section, inSection)
         }
-        var items: [SlashMenuItem] = [
-            block("paragraph", "Paragraph", "text.alignleft", ["p", "paragraph"], kind: "paragraph"),
-            block("heading", "Heading 1", "textformat.size.larger", ["h", "heading1", "h1"], kind: "heading", level: 1),
-            block("heading_2", "Heading 2", "textformat.size", ["h2", "heading2", "subheading"], kind: "heading", level: 2),
-            block("heading_3", "Heading 3", "textformat.size.smaller", ["h3", "heading3", "subheading"], kind: "heading", level: 3),
-            block("bullet_list", "Bullet List", "list.bullet", ["ul", "li", "list", "bulletlist", "bullet list"], kind: "bulletListItem"),
-            block("numbered_list", "Numbered List", "list.number", ["ol", "li", "list", "numberedlist", "numbered list"], kind: "numberedListItem"),
-            // Desktop's `/check` makes a plain checkbox; `[] ` is the way to a task.
-            block("check_list", "Check List", "checklist", ["ul", "li", "list", "checklist", "check list", "checked list", "checkbox"], kind: "checkListItem", props: ["plain": "true"]),
-            block("toggle_list", "Toggle List", "chevron.right.circle", ["li", "list", "toggleList", "toggle list", "collapsable list"], kind: "toggleListItem"),
-            block("quote", "Quote", "quote.opening", ["quotation", "blockquote", "bq"], kind: "quote"),
-            block("callout", "Callout", "exclamationmark.bubble", ["callout", "admonition", "alert", "notice", "tip"], kind: "callout"),
-            block("code_block", "Code Block", "curlybraces", ["code", "pre"], kind: "codeBlock"),
-            block("divider", "Divider", "minus", ["divider", "hr", "line", "horizontal rule"], kind: "divider"),
-            block("heading_4", "Heading 4", "textformat", ["h4", "heading4", "subheading4"], kind: "heading", level: 4),
-            block("heading_5", "Heading 5", "textformat", ["h5", "heading5", "subheading5"], kind: "heading", level: 5),
-            block("heading_6", "Heading 6", "textformat", ["h6", "heading6", "subheading6"], kind: "heading", level: 6),
-            SlashMenuItem(id: "link_to_note", title: "Link to note", subtitle: "[[", symbol: "link", aliases: ["link", "wiki", "wikilink", "note", "backlink"], action: .linkToNote),
-        ]
-        // Desktop's two date rows: today, and a reminder, sharing aliases.
-        let dates = EditorSuggestions.mention(query: "", titles: [], now: now, calendar: calendar)
-        let dateAliases = ["date", "remind", "reminder", "when"]
-        for row in dates {
-            guard case let .date(value) = row.kind else { continue }
-            let remind = value.remind == "at"
-            items.append(SlashMenuItem(
-                id: remind ? "remind" : "date", title: row.title, subtitle: row.subtitle,
-                symbol: row.symbol, aliases: dateAliases, action: .date(value)
-            ))
-        }
-        if picture {
-            items.append(SlashMenuItem(id: "image", title: "Image", symbol: "photo", aliases: ["image", "imageUpload", "upload", "img", "picture", "media", "url", "photo"], action: .picture))
-        }
-        return items
+    }
+
+    /// The date a date row inserts, and what its subtitle says, as of `now`:
+    /// the `@` menu's own rows for an empty query.
+    static func mention(remind: Bool, now: Date = .now, calendar: Calendar = .current) -> EditorSuggestion? {
+        EditorSuggestions.mention(query: "", titles: [], now: now, calendar: calendar)
+            .first { $0.id == (remind ? "remind" : "date") }
     }
 
     /// Desktop's `buildSlashMenuItems` without groups or recents: every match
     /// in catalog order, with the single best match lifted to the top.
-    static func filter(_ items: [SlashMenuItem], query: String) -> [SlashMenuItem] {
+    static func filter(_ items: [Row], query: String) -> [Row] {
         let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !needle.isEmpty else { return items }
         let matches = items.compactMap { item in score(item, needle).map { (item, $0) } }
@@ -92,7 +144,7 @@ enum SlashMenu {
 
     /// Title prefix, then a title word, then anywhere in the title, then an
     /// alias prefix, then anywhere in an alias (`scoreItem`).
-    private static func score(_ item: SlashMenuItem, _ needle: String) -> Int? {
+    private static func score(_ item: Row, _ needle: String) -> Int? {
         let title = item.title.lowercased()
         if let range = title.range(of: needle) {
             if range.lowerBound == title.startIndex { return 0 }
@@ -104,10 +156,18 @@ enum SlashMenu {
         if item.aliases.contains(where: { $0.lowercased().contains(needle) }) { return 4 }
         return nil
     }
+}
 
+@MainActor
+enum SlashMenu {
     static func suggestions(query: String, picture: Bool, now: Date = .now) -> [EditorSuggestion] {
-        filter(catalog(now: now, picture: picture), query: query).map {
-            EditorSuggestion(id: "slash:\($0.id)", title: $0.title, subtitle: $0.subtitle, symbol: $0.symbol, kind: .slash($0))
+        BlockCatalog.filter(BlockCatalog.rows(picture: picture), query: query).map { row in
+            let subtitle: String? = switch row.action {
+            case .linkToNote: "[["
+            case .date(remind: true): BlockCatalog.mention(remind: true, now: now)?.subtitle
+            default: nil
+            }
+            return EditorSuggestion(id: "slash:\(row.id)", title: row.title, subtitle: subtitle, symbol: row.symbol, kind: .slash(row))
         }
     }
 }
@@ -120,24 +180,39 @@ extension EditorSession {
         return SlashMenu.suggestions(query: query, picture: pickImage != nil)
     }
 
-    /// A slash row chosen: `/query` goes, then the row acts. An empty block
-    /// changes type; a block with text keeps it and gets the new block after
-    /// (BlockNote's `insertOrUpdateBlockForSlashMenu`).
-    func chooseSlash(_ item: SlashMenuItem) {
+    /// A slash row chosen: `/query` goes, then the row acts.
+    func chooseSlash(_ row: BlockCatalog.Row) {
         guard let field, let trigger, case .slash = trigger else { return }
-        let textView = field.textView
-        if case let .date(value) = item.action {
+        if case let .date(remind) = row.action {
             // The date node replaces `/query` through the `@` path.
-            choose(EditorSuggestion(id: item.id, title: item.title, symbol: item.symbol, kind: .date(value)))
+            if let mention = BlockCatalog.mention(remind: remind) { choose(mention) }
             return
         }
+        let textView = field.textView
         textView.textStorage.replaceCharacters(in: trigger.range, with: "")
         textView.selectedRange = NSRange(location: trigger.range.location, length: 0)
         field.dirty = true
         textView.invalidateIntrinsicContentSize()
         selectionChanged(in: field)
+        run(row, in: field)
+    }
 
-        switch item.action {
+    /// A `+` grid row chosen: the grid closes, then the row acts at the caret
+    /// as the same slash row would.
+    func chooseFromGrid(_ row: BlockCatalog.Row) {
+        guard let field else { return }
+        show(.none)
+        if case let .date(remind) = row.action {
+            if let mention = BlockCatalog.mention(remind: remind) {
+                insertInline(mention.kind, replacing: field.textView.selectedRange)
+            }
+            return
+        }
+        run(row, in: field)
+    }
+
+    private func run(_ row: BlockCatalog.Row, in field: BlockField) {
+        switch row.action {
         case let .block(kind, level, props):
             insertOrTurn(field, kind: kind, level: level, props: props)
         case .linkToNote:
@@ -149,6 +224,8 @@ extension EditorSession {
         }
     }
 
+    /// An empty block changes type; a block with text keeps it and gets the
+    /// new block after (BlockNote's `insertOrUpdateBlockForSlashMenu`).
     private func insertOrTurn(_ field: BlockField, kind: String, level: Int?, props: [String: String]) {
         let blockId = field.blockId
         let empty = field.textView.text.isEmpty

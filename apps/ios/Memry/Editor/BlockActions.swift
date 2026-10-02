@@ -237,7 +237,7 @@ struct BlockActionMenuItems: View {
     var body: some View {
         if target.canTurnInto {
             Menu {
-                ForEach(InsertableBlock.convertible) { choice in
+                ForEach(InsertableBlock.all) { choice in
                     Button {
                         runner.turnInto(choice)
                     } label: {
