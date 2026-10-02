@@ -8,3 +8,6 @@ packages/swift/MemryCore/Sources/MemryCore/Generated/** -diff linguist-generated
 # (scripts/generate-ios-article-extract.mjs). Its template literals carry
 # trailing spaces that are code, not whitespace errors.
 apps/ios/Memry/Resources/article-extract.js -diff -merge -whitespace linguist-generated
+# Vendored KaTeX and mermaid for the iOS block renderer, copied byte for byte
+# by apps/ios/scripts/generate-block-render.mjs.
+apps/ios/Memry/Resources/BlockRender.bundle/vendor/** -diff -merge -whitespace linguist-vendored
