@@ -243,6 +243,7 @@ struct NoteBlockView: View {
                 url: value("url"),
                 name: value("name"),
                 size: value("size"),
+                mimeType: value("mimeType"),
                 caption: value("caption"),
                 resolve: attachment,
                 remove: removeAttachment
