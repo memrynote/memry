@@ -31,3 +31,6 @@ packages/editor-web/dist/
 # into a permanently red gate. The bytes are the contract, not the layout.
 packages/contracts/test-vectors/*.json
 packages/contracts/test-vectors/markdown-roundtrip/*.json
+
+# Vendored KaTeX and mermaid, copied as-is by apps/ios/scripts/generate-block-render.mjs.
+apps/ios/Memry/Resources/BlockRender.bundle/vendor/

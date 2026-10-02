@@ -38,6 +38,9 @@ enum BlockCatalog {
             /// Today, or desktop's reminder default, worked out when chosen.
             case date(remind: Bool)
             case picture
+            /// A block drawn from source (`mathBlock`), made empty, with its
+            /// source sheet open.
+            case source(kind: String)
         }
 
         let id: String
@@ -58,9 +61,9 @@ enum BlockCatalog {
     private static let dateAliases = ["date", "remind", "reminder", "when"]
 
     /// Every row, in desktop's catalog order. Rows desktop offers that this
-    /// build cannot make yet (task, table, math, diagram, whiteboard, view,
-    /// files) join here one row each as they land; emoji, templates and AI
-    /// stay desktop-only.
+    /// build cannot make yet (task, table, diagram, whiteboard, view, files)
+    /// join here one row each as they land; emoji, templates and AI stay
+    /// desktop-only.
     static let rows: [Row] = [
         block("paragraph", "Paragraph", "text.alignleft", ["p", "paragraph"], .basic, kind: "paragraph"),
         block("heading", "Heading 1", "textformat.size.larger", ["h", "heading1", "h1"], .basic, kind: "heading", level: 1),
@@ -97,6 +100,11 @@ enum BlockCatalog {
         Row(id: "link_to_note", title: "Link to note", symbol: "link", aliases: ["link", "wiki", "wikilink", "note", "backlink"], section: .insert, action: .linkToNote),
         Row(id: "date", title: "Today", symbol: "calendar", aliases: dateAliases, section: .insert, action: .date(remind: false)),
         Row(id: "remind", title: "Remind me", symbol: "alarm", aliases: dateAliases, section: .insert, action: .date(remind: true)),
+        Row(
+            id: "math", title: "Equation", symbol: "sum",
+            aliases: ["math", "equation", "formula", "latex", "katex", "tex"],
+            section: .insert, action: .source(kind: "mathBlock")
+        ),
         Row(
             id: "image", title: "Image", symbol: "photo",
             aliases: ["image", "imageUpload", "upload", "img", "picture", "media", "url", "photo"],
@@ -218,8 +226,28 @@ extension EditorSession {
             startWikiLink()
         case .picture:
             pickImage?()
+        case let .source(kind):
+            insertSource(field, kind: kind)
         case .date:
             break
+        }
+    }
+
+    /// Desktop's `/math` turns the caret's block into an empty math block. A
+    /// block holding text keeps it here and the new block goes after, as
+    /// every other row does. Either way the source sheet opens on it.
+    private func insertSource(_ field: BlockField, kind: String) {
+        let blockId = field.blockId
+        if field.textView.text.isEmpty {
+            turnInto(InsertableBlock(id: kind, name: "", symbol: ""))
+            editSource(BlockSourceRequest(blockId: blockId, source: ""))
+            return
+        }
+        commit(field) { [weak self] in
+            guard let self, let model = self.model else { return }
+            guard let newId = await model.insert(kind, after: blockId) else { return }
+            self.history.record(.insert(blockId: newId, after: blockId, kind: kind, text: ""))
+            self.editSource(BlockSourceRequest(blockId: newId, source: ""))
         }
     }
 

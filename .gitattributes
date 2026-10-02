@@ -4,3 +4,6 @@
 packages/editor-web/dist/** -diff -merge linguist-generated
 apps/mobile/src/editor/generated/** -diff -merge linguist-generated
 packages/swift/MemryCore/Sources/MemryCore/Generated/** -diff linguist-generated
+# Vendored KaTeX and mermaid for the iOS block renderer, copied byte for byte
+# by apps/ios/scripts/generate-block-render.mjs.
+apps/ios/Memry/Resources/BlockRender.bundle/vendor/** -diff -merge -whitespace linguist-vendored
