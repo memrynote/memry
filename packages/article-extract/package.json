@@ -18,6 +18,8 @@
     "linkedom": "^0.18.12"
   },
   "devDependencies": {
-    "@memry/typescript-config": "workspace:*"
+    "@memry/typescript-config": "workspace:*",
+    "esbuild": "0.28.1",
+    "whatwg-url-minimum": "0.1.2"
   }
 }

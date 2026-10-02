@@ -77,6 +77,11 @@ pub enum SeedKind {
         language: Option<String>,
     },
     Divider,
+    /// Only [`append_markdown_in`] builds one, from a line that is just an
+    /// image; [`plan`] keeps such a line as literal text.
+    Image {
+        url: String,
+    },
 }
 
 /// One piece of inline content.
@@ -195,6 +200,52 @@ pub fn seed_document(document: &Document, markdown: &str) -> Result<SeedPlan, Cr
     Ok(plan)
 }
 
+/// Appends the blocks `markdown` makes after whatever the body already holds,
+/// inside the caller's transaction: a filed inbox article under its link
+/// mention (desktop's `generateNoteContent`, read by its editor).
+///
+/// Unlike [`seed_document`] the body need not be empty, and a line that is
+/// only an image (`![alt](https://…)`, or one wrapped in a link) becomes an
+/// image block, as desktop's editor reads it, rather than literal text.
+pub(crate) fn append_markdown_in(
+    txn: &mut yrs::TransactionMut,
+    markdown: &str,
+) -> Result<SeedPlan, CrdtError> {
+    let mut plan = plan(markdown);
+    for block in &mut plan.blocks {
+        if let Some(url) = image_line(block) {
+            *block = SeedBlock::new(SeedKind::Image { url }, Vec::new());
+        }
+    }
+    let group = crate::crdt::body_edit::top_block_group(txn)?;
+    write::write_group(txn, &group, &plan.blocks, &mut random_block_id);
+    Ok(plan)
+}
+
+/// The image address of a literal paragraph that is only `![alt](url)` or
+/// `[![alt](url)](href)`, with an http(s) address.
+fn image_line(block: &SeedBlock) -> Option<String> {
+    if block.kind != SeedKind::Paragraph || !block.children.is_empty() {
+        return None;
+    }
+    let [SeedInline::Text { text, marks }] = block.content.as_slice() else {
+        return None;
+    };
+    if *marks != SeedMarks::default() {
+        return None;
+    }
+    let line = text.trim();
+    let image = match line.strip_prefix('[') {
+        Some(rest) if rest.starts_with("![") => rest.get(..rest.rfind("](")?)?,
+        _ => line,
+    };
+    let rest = image.strip_prefix("![")?;
+    let (alt, target) = rest.split_once("](")?;
+    let url = target.strip_suffix(')')?.split_whitespace().next()?;
+    let web = url.starts_with("https://") || url.starts_with("http://");
+    (web && !alt.contains(']') && !url.contains(')')).then(|| url.to_owned())
+}
+
 /// Whether a document's body fragment holds nothing at all: the condition
 /// desktop seeds from markdown under (`crdt-provider.ts`, empty fragment).
 pub fn body_is_empty(document: &Document) -> Result<bool, CrdtError> {
@@ -266,6 +317,25 @@ mod tests {
         assert_eq!(plan.fallbacks[0].reason, "toggle");
         assert_eq!(plan.blocks.len(), 4);
         assert_eq!(plan.blocks[0], SeedBlock::literal("# Title"));
+    }
+
+    #[test]
+    fn an_image_line_is_an_image_only_when_appended() {
+        let literal = |line: &str| image_line(&SeedBlock::literal(line));
+        assert_eq!(
+            literal("![A chart](https://example.com/a.png)").as_deref(),
+            Some("https://example.com/a.png")
+        );
+        assert_eq!(
+            literal("[![](https://example.com/a.png)](https://example.com/post)").as_deref(),
+            Some("https://example.com/a.png")
+        );
+        assert_eq!(literal("![x](y.png)"), None);
+        assert_eq!(literal("see ![x](https://example.com/a.png)"), None);
+        assert_eq!(
+            plan("![x](https://example.com/a.png)").blocks[0].kind,
+            SeedKind::Paragraph
+        );
     }
 
     #[test]

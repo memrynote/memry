@@ -4,3 +4,7 @@
 packages/editor-web/dist/** -diff -merge linguist-generated
 apps/mobile/src/editor/generated/** -diff -merge linguist-generated
 packages/swift/MemryCore/Sources/MemryCore/Generated/** -diff linguist-generated
+# The iOS article extractor, ~1.2 MB of minified bundle
+# (scripts/generate-ios-article-extract.mjs). Its template literals carry
+# trailing spaces that are code, not whitespace errors.
+apps/ios/Memry/Resources/article-extract.js -diff -merge -whitespace linguist-generated

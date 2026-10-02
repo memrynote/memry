@@ -10,6 +10,11 @@
 //! desktop's markdown becomes. The note's `content` stays `""`, the phone's
 //! convention for every note it creates (`NotesWriter::create`).
 //!
+//! A link's extracted article is the exception: it is a whole page of
+//! markdown, so it goes through the markdown seed
+//! ([`crate::crdt::markdown_seed`]), which builds what desktop's editor reads
+//! from the same text, and is appended between the mention and the filed line.
+//!
 //! Binary captures (image, voice, PDF, video) are filed by the shell, which
 //! holds the file: it uploads it into the note created here
 //! ([`create_filed_note`]) and then marks the capture filed.
@@ -157,8 +162,26 @@ fn filed_line(now: &LocalStamp) -> Vec<BlockSpec> {
     ]
 }
 
-/// `generateNoteContent`, as blocks.
-pub fn note_blocks(item: &InboxItem, now: &LocalStamp) -> Vec<BlockSpec> {
+/// The readable article markdown a link capture carries
+/// (`extractionStatus` `full` or `partial`), which desktop files as the note
+/// body in place of the quoted description.
+pub fn article_markdown(item: &InboxItem) -> Option<&str> {
+    let extracted = item
+        .metadata
+        .as_ref()
+        .and_then(|m| m.get("extractionStatus"))
+        .and_then(Value::as_str)
+        .is_some_and(|status| matches!(status, "full" | "partial"));
+    (item.item_type == "link" && extracted)
+        .then_some(item.content.as_deref())
+        .flatten()
+        .filter(|content| !content.is_empty())
+}
+
+/// `generateNoteContent`, as blocks, up to the "Filed from Inbox" line. A link
+/// with an [`article_markdown`] stops after its mention: the article is
+/// written from its markdown ([`create_filed_note`]).
+pub fn note_blocks(item: &InboxItem) -> Vec<BlockSpec> {
     let mut out = Vec::new();
     let meta = item.metadata.as_ref();
     let meta_text = |key: &str| {
@@ -195,13 +218,7 @@ pub fn note_blocks(item: &InboxItem, now: &LocalStamp) -> Vec<BlockSpec> {
                 out.push(block);
             }
             let description = item.content.clone().unwrap_or_default();
-            let article = matches!(
-                meta_text("extractionStatus").as_deref(),
-                Some("full" | "partial")
-            );
-            if article && !description.is_empty() {
-                out.extend(text_blocks(&description));
-            } else {
+            if article_markdown(item).is_none() {
                 if !description.is_empty() {
                     out.push(BlockSpec::new("quote", description));
                 }
@@ -252,7 +269,6 @@ pub fn note_blocks(item: &InboxItem, now: &LocalStamp) -> Vec<BlockSpec> {
             }
         }
     }
-    out.extend(filed_line(now));
     out
 }
 
@@ -421,7 +437,15 @@ pub fn create_filed_note(
     )?
     .acknowledge();
     if with_body {
-        write_blocks(conn, &id, &note_blocks(item, now), device_id, now_ms)?;
+        write_blocks(conn, &id, &note_blocks(item), device_id, now_ms)?;
+        if let Some(article) = article_markdown(item) {
+            body_write::append_markdown(conn, &id, article, device_id, now_ms).map_err(
+                |error| StorageError::Failed {
+                    what: format!("the filed note's article: {error}"),
+                },
+            )?;
+        }
+        write_blocks(conn, &id, &filed_line(now), device_id, now_ms)?;
     }
     Ok((id, note_path(folder, &title)))
 }

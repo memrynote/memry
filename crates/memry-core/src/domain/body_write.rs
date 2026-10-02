@@ -28,7 +28,7 @@ use crate::api::errors::StorageError;
 use crate::crdt::body_edit::{self, BlockEdit};
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::UpdateSink;
-use crate::crdt::{DocumentRegistry, update_log};
+use crate::crdt::{DocumentRegistry, markdown_seed, update_log};
 use crate::domain::notes::ITEM_TYPE;
 use crate::domain::reads;
 use crate::sync::outbox;
@@ -100,6 +100,31 @@ pub fn append_snapshot(
     }
     let Some(update) = author_with(conn, note_id, device_id, |document| {
         body_edit::append_snapshot(document, snapshot)
+    })?
+    else {
+        return Ok(true);
+    };
+    let tx = conn.unchecked_transaction().map_err(storage_failed)?;
+    append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
+    tx.commit().map_err(storage_failed)?;
+    Ok(true)
+}
+
+/// Appends the blocks `markdown` makes to the end of a note's body
+/// ([`crate::crdt::markdown_seed::append_markdown_in`]): a filed inbox
+/// article. Answers as [`append_snapshot`] does.
+pub fn append_markdown(
+    conn: &Connection,
+    note_id: &str,
+    markdown: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, CrdtError> {
+    if !reads::note_exists(conn, note_id) {
+        return Ok(false);
+    }
+    let Some(update) = author_with(conn, note_id, device_id, |document| {
+        document.write(|txn| markdown_seed::append_markdown_in(txn, markdown).map(|_| ()))?
     })?
     else {
         return Ok(true);

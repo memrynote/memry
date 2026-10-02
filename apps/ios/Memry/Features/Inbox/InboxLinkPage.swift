@@ -12,10 +12,9 @@ struct InboxLinkPage: Equatable {
     var siteName: String?
     var favicon: String?
 
-    /// The page's head, or nil when it cannot be read (quiet, as on desktop).
-    static func fetch(_ url: URL) async -> InboxLinkPage? {
-        guard let head = await PageHeadFetch.html(url) else { return nil }
-        let page = parse(head.html, base: head.url)
+    /// `parse`, or nil when the page names none of these facts.
+    static func read(_ html: String, base: URL) -> InboxLinkPage? {
+        let page = parse(String(html.prefix(PageHeadFetch.readLimit)), base: base)
         return page == InboxLinkPage() ? nil : page
     }
 

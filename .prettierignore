@@ -31,3 +31,7 @@ packages/editor-web/dist/
 # into a permanently red gate. The bytes are the contract, not the layout.
 packages/contracts/test-vectors/*.json
 packages/contracts/test-vectors/markdown-roundtrip/*.json
+
+# Generated minified bundle (scripts/generate-ios-article-extract.mjs); Prettier
+# reflows 1.2 MB of minified JS into 27k lines with trailing whitespace.
+apps/ios/Memry/Resources/article-extract.js
