@@ -51,8 +51,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                 model.vaultNotes.compactMap { note in ProjectIconValue.emoji(note.emoji).map { (note.title.lowercased(), $0) } },
                 uniquingKeysWith: { first, _ in first }
             ),
-            titleExists: model.titleExists,
-            pickImage: composer.canUpload ? { attaching = .photos } : nil
+            titleExists: model.titleExists
         ) { await model.reload() }
         let session = bridge.session
         session.tags = model.vaultTagNames

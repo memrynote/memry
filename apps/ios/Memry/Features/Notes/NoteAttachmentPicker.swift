@@ -139,10 +139,10 @@ final class NoteAttachmentComposer {
     /// Timestamped rather than random: two pictures taken a minute apart sort
     /// the way the user took them, and the manifest's filename is what binds a
     /// block to an attachment (§Q4), so a readable name is worth keeping.
-    nonisolated static func capturedName(at date: Date = .now, extension ext: String = "jpg") -> String {
+    nonisolated static func capturedName(_ kind: String = "photo", at date: Date = .now, extension ext: String = "jpg") -> String {
         let stamp = ISO8601DateFormatter()
         stamp.formatOptions = [.withYear, .withMonth, .withDay, .withTime]
-        return "photo-\(stamp.string(from: date).replacingOccurrences(of: ":", with: "-")).\(ext)"
+        return "\(kind)-\(stamp.string(from: date).replacingOccurrences(of: ":", with: "-")).\(ext)"
     }
 }
 
