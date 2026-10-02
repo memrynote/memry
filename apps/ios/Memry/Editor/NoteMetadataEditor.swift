@@ -28,6 +28,10 @@ protocol NoteMetadataWriting: Sendable {
     /// Renames one property on this note only, keeping its value; the old key
     /// is dropped rather than nulled (desktop `properties:rename`).
     func renameProperty(id: String, from: String, to: String) async throws
+    /// Reorders this note's properties: `names` first in that order, the rest
+    /// after (desktop `reorderProperties`). The order is the payload's key
+    /// order, so it reaches desktop and comes back from it.
+    func reorderProperties(id: String, names: [String]) async throws
     /// Creates the vault-wide definition for a new status, select or
     /// multiselect property when there is none (desktop
     /// `notes:create-property-definition`). An existing one is untouched.
@@ -40,6 +44,10 @@ struct NoteMetadataWriteUnsupported: Error {}
 
 extension NoteMetadataWriting {
     func renameProperty(id: String, from: String, to: String) async throws {
+        throw NoteMetadataWriteUnsupported()
+    }
+
+    func reorderProperties(id: String, names: [String]) async throws {
         throw NoteMetadataWriteUnsupported()
     }
 
@@ -102,6 +110,12 @@ struct CoreNoteMetadataWriter: NoteMetadataWriting {
     func renameProperty(id: String, from: String, to: String) async throws {
         try await executor.run {
             try writer().renameProperty(id: id, from: from, to: to)
+        }
+    }
+
+    func reorderProperties(id: String, names: [String]) async throws {
+        try await executor.run {
+            try writer().reorderProperties(id: id, names: names)
         }
     }
 
@@ -590,7 +604,7 @@ final class NoteMetadataViewModel {
     /// Tags are a **field of the note payload** (§13.7.1), not a property.
     /// The tag rows one layer down are a projection of this array, so this is
     /// what makes a tag exist.
-    private func setTags(_ tags: [String]) async {
+    func setTags(_ tags: [String]) async {
         guard let writer else { return }
         await run { try await writer.setTags(id: noteId, tags: tags) }
     }
@@ -670,6 +684,13 @@ final class NoteMetadataViewModel {
         }
         await run { try await writer.renameProperty(id: noteId, from: name, to: next) }
         return status == .idle ? next : name
+    }
+
+    /// Reorders the note's properties (desktop `reorderProperties`). An
+    /// unchanged order writes nothing.
+    func reorderProperties(_ names: [String], current: [String]) async {
+        guard let writer, names != current else { return }
+        await run { try await writer.reorderProperties(id: noteId, names: names) }
     }
 
     /// Adds a property with desktop's default value for its type, creating

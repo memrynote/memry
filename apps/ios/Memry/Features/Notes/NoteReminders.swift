@@ -37,6 +37,9 @@ enum NoteInstants {
 final class NoteRemindersViewModel {
     private(set) var reminders: [ReminderSummary] = []
     private(set) var failure: UserFacingError?
+    /// The add sheet, raised from the section or the page menu (the section
+    /// is hidden while the note has no reminder).
+    var adding = false
 
     private let noteId: String
     private let reader: any NotesReading
@@ -103,13 +106,22 @@ final class NoteRemindersViewModel {
 }
 
 struct NoteRemindersSection: View {
-    let model: NoteRemindersViewModel
+    @Bindable var model: NoteRemindersViewModel
 
-    @State private var adding = false
     @State private var when = Date()
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            // Nothing at all until there is a reminder to show.
+            if !model.live.isEmpty { content }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .task { await model.load() }
+        .sheet(isPresented: $model.adding) { addSheet }
+    }
+
+    @ViewBuilder
+    private var content: some View {
             HStack {
                 Text("Reminders")
                     .font(Tokens.Typography.heading.font)
@@ -117,7 +129,7 @@ struct NoteRemindersSection: View {
                 Spacer()
                 if model.canWrite {
                     Button {
-                        adding = true
+                        model.adding = true
                     } label: {
                         Image(systemName: "plus")
                     }
@@ -125,11 +137,6 @@ struct NoteRemindersSection: View {
                 }
             }
 
-            if model.live.isEmpty {
-                Text("Nothing is set to remind you about this note.")
-                    .font(Tokens.Typography.supporting.font)
-                    .foregroundStyle(Tokens.Text.secondary.color)
-            } else {
                 ForEach(model.live, id: \.id) { reminder in
                     HStack {
                         VStack(alignment: .leading, spacing: Tokens.Space.tight) {
@@ -157,11 +164,9 @@ struct NoteRemindersSection: View {
                     }
                     .accessibilityElement(children: .combine)
                 }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .task { await model.load() }
-        .sheet(isPresented: $adding) {
+    }
+
+    private var addSheet: some View {
             NavigationStack {
                 Form {
                     DatePicker("Remind me at", selection: $when)
@@ -169,16 +174,15 @@ struct NoteRemindersSection: View {
                 .navigationTitle("Add a reminder")
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button("Cancel") { adding = false }
+                        Button("Cancel") { model.adding = false }
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Add") {
-                            adding = false
+                            model.adding = false
                             Task { await model.add(at: when, title: nil) }
                         }
                     }
                 }
             }
-        }
     }
 }

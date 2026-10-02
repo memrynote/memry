@@ -3,7 +3,7 @@ import SwiftUI
 
 // TP043, redesigned (RD08, RD10). A task's detail (Paper artboard 08): the
 // status circle (tap completes or reopens) beside a large editable title;
-// pills for the properties that are set, and a dashed "+" for the rest
+// one labelled row per property, as in desktop's drawer
 // (`TaskDetailPills`); the notes; the subtasks with their progress and an
 // inline Add subtask; Linked, only when something is; and one footer line
 // (created, edited) that opens the activity. The "…" in the bar holds
@@ -100,7 +100,9 @@ struct TaskDetailContent: View {
                     ))
                 TaskDetailPills(task: task, store: store)
                     .listRowSeparator(.hidden)
-                    .listRowInsets(TaskDetailLayout.bodyInsets(top: Tokens.Space.small))
+                    .listRowInsets(EdgeInsets(
+                        top: Tokens.Space.small, leading: TaskLayout.edge, bottom: Tokens.Space.small, trailing: TaskLayout.edge
+                    ))
                 TaskDescriptionSection(task: task, store: store)
                 SubtasksSection(parent: task, store: store)
                 TaskRelatedSection(task: task, store: store, linked: linked)

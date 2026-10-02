@@ -261,3 +261,87 @@ struct EditorCommitBaseTests {
         #expect(field.textView.text == "[[x]]")
     }
 }
+
+@Suite("Date mention editing")
+@MainActor
+struct DateMentionEditTests {
+    private let anchor = "dm_1"
+
+    /// "on <date> ok", the date a reminder.
+    private func block() -> Block {
+        let date = InlineRun(
+            text: "", marks: ["dateMention"],
+            markAttrs: [
+                "dateMention.anchorId": anchor,
+                "dateMention.dateISO": "2099-03-04T09:00:00.000Z",
+                "dateMention.hasTime": "false",
+                "dateMention.remind": "at",
+            ],
+            target: nil
+        )
+        return Block(
+            id: "b", kind: "paragraph", depth: 0, props: [],
+            inline: [InlineRun(text: "on ", marks: [], markAttrs: [:], target: nil), date,
+                     InlineRun(text: " ok", marks: [], markAttrs: [:], target: nil)]
+        )
+    }
+
+    private func open(_ edit: DateMentionEdit) async -> RecordingEditor {
+        let editor = RecordingEditor()
+        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        let session = model.session
+        session.model = model
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let field = BlockField(block: block(), session: session, style: style, alignment: .natural)
+        field.render()
+        guard let range = field.dateChipRange(anchorId: anchor),
+              let chip = field.textView.textStorage.attribute(.memryDate, at: range.location, effectiveRange: nil)
+                as? DateMentionChip
+        else {
+            Issue.record("the chip carries no date")
+            return editor
+        }
+        session.requestDateEdit(chip, in: field)
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.applyDateEdit(edit)
+        }
+        #expect(session.dateEdit == nil)
+        return editor
+    }
+
+    @Test func a_reminder_turned_into_a_plain_date_keeps_its_anchor() async {
+        var value = DateMentionValue(dateISO: "2099-03-05T14:30:00.000Z", hasTime: true)
+        value.remind = "none"
+        let editor = await open(.update(value))
+        #expect(editor.all == [
+            .replaceText(blockId: "b", text: "on   ok", base: "on \u{FFFC} ok"),
+            .insertInline(
+                blockId: "b", start: 3, end: 4, kind: "dateMention", text: "",
+                attrs: value.attrs(anchorId: anchor)
+            ),
+        ])
+    }
+
+    @Test func converting_leaves_the_absolute_date_as_text() async {
+        let editor = await open(.convertToText)
+        guard case let .replaceText(_, text, _) = editor.all.first else {
+            Issue.record("no text write")
+            return
+        }
+        #expect(text.hasPrefix("on 4 Mar"))
+        #expect(text.hasSuffix(", 2099 ok"))
+        #expect(editor.all.count == 1)
+    }
+
+    @Test func removing_drops_the_node() async {
+        let editor = await open(.remove)
+        #expect(editor.all == [.replaceText(blockId: "b", text: "on  ok", base: "on \u{FFFC} ok")])
+    }
+
+    @Test func toggling_the_time_falls_back_to_at_for_an_offset_the_new_list_lacks() {
+        #expect(DateMentionRemind.afterToggle("15m", hasTime: false) == "at")
+        #expect(DateMentionRemind.afterToggle("1d", hasTime: false) == "1d")
+        #expect(DateMentionRemind.afterToggle("none", hasTime: true) == "none")
+    }
+}

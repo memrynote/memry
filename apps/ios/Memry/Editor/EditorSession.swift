@@ -75,6 +75,10 @@ final class EditorSession {
     private(set) var moveRequest: BlockMoveRequest?
     /// Why the last Move to did not land, for the page's alert.
     var moveFailure: UserFacingError?
+    /// A tapped date chip whose editor is open.
+    private(set) var dateEdit: DateMentionEditRequest?
+    /// The block that chip is in, which need not have the caret.
+    @ObservationIgnored private weak var dateEditField: BlockField?
     let history = EditorUndoStack()
 
     @ObservationIgnored weak var field: BlockField?
@@ -546,6 +550,52 @@ final class EditorSession {
 
     func cancelMoveToNote() {
         moveRequest = nil
+    }
+
+    // MARK: Dates
+
+    /// Opens the editor for a tapped date or reminder chip.
+    func requestDateEdit(_ chip: DateMentionChip, in field: BlockField) {
+        dismissKeyboard()
+        dateEditField = field
+        dateEdit = DateMentionEditRequest(blockId: field.blockId, anchorId: chip.anchorId, value: chip.value)
+    }
+
+    func cancelDateEdit() {
+        dateEdit = nil
+        dateEditField = nil
+    }
+
+    /// Rewrites the open chip. The chip's character is swapped in the text
+    /// view and committed like typing (a space for an update, the date's
+    /// words for a conversion, nothing for a removal); an update then puts
+    /// the node back over that space under the same anchor, the path a typed
+    /// `[[link]]` takes. The space keeps the insert inside a text run even
+    /// when the chip was the block's only content.
+    func applyDateEdit(_ edit: DateMentionEdit) {
+        guard let request = dateEdit, let field = dateEditField, field.blockId == request.blockId,
+              let range = field.dateChipRange(anchorId: request.anchorId)
+        else { return cancelDateEdit() }
+        cancelDateEdit()
+        let replacement = switch edit {
+        case .update: " "
+        case .convertToText: DateMentionRemind.plainText(request.value)
+        case .remove: ""
+        }
+        let attributes = BlockText.baseAttributes(field.style)
+        field.textView.textStorage.replaceCharacters(
+            in: range, with: NSAttributedString(string: replacement, attributes: attributes)
+        )
+        field.dirty = true
+        guard case let .update(value) = edit else { return commit(field) }
+        let attributed = field.textView.attributedText ?? NSAttributedString()
+        let start = BlockText.coreOffset(in: attributed, utf16: range.location)
+        let blockId = field.blockId
+        commit(field) { [weak self] in
+            await self?.model?.insertDateMention(
+                in: blockId, from: start, to: start + 1, value: value, anchorId: request.anchorId
+            )
+        }
     }
 
     /// Moves the requested block to the end of `targetId`'s body, after every

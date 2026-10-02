@@ -22,80 +22,100 @@ struct NoteReadToolbar: ViewModifier {
     @Binding var renaming: Bool
     @Binding var moving: Bool
     @Binding var confirmingDelete: Bool
+    @Binding var choosingCover: Bool
+    @Binding var repositioningCover: Bool
+    /// Raises the reminders section's add sheet; `nil` when read-only.
+    let addReminder: (() -> Void)?
     let applyHistory: (BlockEdit?) async -> Void
     /// The note as text, for the share sheet (N802).
     let export: NoteExport
+    /// The notes linking here, for the Backlinks sheet (N800).
+    let backlinks: BacklinksViewModel
+    /// Shows the find bar (N801).
+    @Binding var finding: Bool
+    /// Pushes a note: a backlink, or the copy Duplicate made.
+    let open: ((NoteRoute) -> Void)?
 
-    /// The page menu's link and date sheets, which insert at the end of the
-    /// last block (the keyboard toolbar inserts at the caret).
-    @State private var linking = false
-    @State private var dating = false
+    @Environment(\.requestVaultSync) private var requestVaultSync
+    @State private var showingBacklinks = false
+    @State private var choosingIcon = false
 
     func body(content: Content) -> some View {
         content
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NoteAttachmentPicker(composer: composer) { _ in
-                        // The reference list changed, so the bindings have to be
-                        // read again: that is what makes the new picture appear
-                        // in place rather than on the next note open.
-                        Task { await model.refreshAttachments() }
-                    }
-                }
-                // The editing affordances, absent entirely on a read-only note
-                // rather than present and refusing.
-                if editorModel.canEdit {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        BlockInsertMenu(
-                            insert: { block in
-                                Task {
-                                    let id = await editorModel.insert(
-                                        block.id, after: model.blocks.last?.id
-                                    )
-                                    if let id, let level = block.level {
-                                        await editorModel.setProp(id, "level", String(level))
-                                    }
-                                    await model.reload()
-                                }
-                            }
-                            // No `insertPicture`: the picture affordance is the
-                            // adjacent toolbar item (N214).
-                        )
-                    }
-                }
+                // Attachments and block inserts live in the keyboard toolbar,
+                // so the top bar carries only the page menu.
                 // Everything the bottom bar used to hold lives here now: the
                 // keyboard toolbar owns editing at the caret, and one bottom
                 // surface fewer leaves the page to the writing.
                 ToolbarItem(placement: .topBarTrailing) {
                     NotePageMenu(
-                        canWrite: actions.canWrite,
-                        folderPath: model.folderPath,
-                        rename: { renaming = true },
-                        move: { moving = true },
-                        delete: { confirmingDelete = true },
+                        items: menuItems,
                         editing: editorModel.canEdit ? editingItems : nil
                     )
                 }
             }
-            .sheet(isPresented: $linking) {
-                WikiLinkSheet(
-                    titles: model.vaultNotes.map(\.title),
-                    insert: { kind in
-                        linking = false
-                        append(kind)
-                    },
-                    cancel: { linking = false }
-                )
+            .task { await actions.loadFavorite() }
+            .sheet(isPresented: $showingBacklinks) {
+                NoteBacklinksSheet(model: backlinks) { route in
+                    showingBacklinks = false
+                    open?(route)
+                }
             }
-            .sheet(isPresented: $dating) {
-                DateMentionSheet(
-                    insert: { value in
-                        dating = false
-                        append(.date(value))
-                    },
-                    cancel: { dating = false }
-                )
+            .sheet(isPresented: $choosingIcon) {
+                EmojiPickerSheet(current: model.metadata?.icon) { chosen in
+                    choosingIcon = false
+                    Task {
+                        await metadataModel.setIcon(chosen)
+                        await model.reload()
+                    }
+                }
             }
+    }
+
+    private var menuItems: NotePageMenuItems {
+        var items = NotePageMenuItems(
+            folderPath: model.folderPath,
+            export: export,
+            find: { finding = true },
+            backlinks: { showingBacklinks = true }
+        )
+        items.isFavorite = actions.isFavorite
+        items.addReminder = addReminder
+        if actions.canWrite {
+            items.toggleFavorite = toggleFavorite
+            items.rename = { renaming = true }
+            items.duplicate = duplicate
+            items.move = { moving = true }
+            items.delete = { confirmingDelete = true }
+        }
+        if metadataModel.canEdit {
+            items.changeIcon = { choosingIcon = true }
+            items.changeCover = { choosingCover = true }
+            if case .image = NoteCoverValue.of(model.metadata?.coverJson)?.kind {
+                items.repositionCover = { repositioningCover = true }
+            }
+        }
+        return items
+    }
+
+    private func toggleFavorite() {
+        Task {
+            await actions.toggleFavorite()
+            requestVaultSync?()
+        }
+    }
+
+    /// Copies the note, then opens the copy, as desktop's canvas Duplicate
+    /// leaves the user on what it made.
+    private func duplicate() {
+        let title = model.displayTitle.isEmpty ? "Untitled" : model.displayTitle
+        Task {
+            if let id = await actions.duplicate(title: "\(title) copy") {
+                requestVaultSync?()
+                open?(NoteRoute(id: id))
+            }
+        }
     }
 
     private var editingItems: NotePageEditingItems {
@@ -104,14 +124,7 @@ struct NoteReadToolbar: ViewModifier {
             canUndo: session.history.canUndo,
             canRedo: session.history.canRedo,
             undo: { session.undo() },
-            redo: { session.redo() },
-            linkToNote: { linking = true },
-            mentionDate: { dating = true }
+            redo: { session.redo() }
         )
-    }
-
-    private func append(_ kind: EditorSuggestion.Kind) {
-        guard let last = model.blocks.last(where: { $0.id != nil }) else { return }
-        editorModel.session.append(kind, to: last)
     }
 }

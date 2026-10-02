@@ -106,7 +106,9 @@ struct JournalDayScreen: View {
                 store: store,
                 date: date,
                 exportText: pages.model(for: date)?.read.exportText ?? "",
-                find: { pages.model(for: date)?.finding = true }
+                find: { pages.model(for: date)?.finding = true },
+                backlinks: pages.model(for: date)?.backlinks,
+                open: open
             )
         }
         GlobalSearchToolbarItem()

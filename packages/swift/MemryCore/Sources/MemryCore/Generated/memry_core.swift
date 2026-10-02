@@ -4336,6 +4336,12 @@ public protocol JournalProtocol: AnyObject, Sendable {
      */
     func daysWithEntries(from: String, to: String) throws  -> [String]
     
+    /**
+     * Deletes the day's entry (desktop's `journal:deleteEntry`). `false`
+     * when the day has none.
+     */
+    func deleteDay(date: String) throws  -> Bool
+    
     func deleteReminder(id: String) throws 
     
     func dismissReminder(id: String) throws 
@@ -4543,6 +4549,20 @@ open func daysWithEntries(from: String, to: String)throws  -> [String]  {
             self.uniffiCloneHandle(),
         FfiConverterString.lower(from),
         FfiConverterString.lower(to),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Deletes the day's entry (desktop's `journal:deleteEntry`). `false`
+     * when the day has none.
+     */
+open func deleteDay(date: String)throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_delete_day(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),uniffiCallStatus
     )
 })
 }
@@ -5238,8 +5258,8 @@ public protocol NotesProtocol: AnyObject, Sendable {
     
     /**
      * The sidebar's bookmarks that resolve to something this vault holds,
-     * in the user's order. Read-only: the phone shows desktop's bookmarks
-     * and does not write them.
+     * in the user's order. Written through
+     * [`crate::api::notes_write::NotesWriter::toggle_bookmark`].
      */
     func bookmarks() throws  -> [BookmarkEntry]
     
@@ -5260,6 +5280,12 @@ public protocol NotesProtocol: AnyObject, Sendable {
      * Every live folder, parent before child.
      */
     func folders() throws  -> [FolderSummary]
+    
+    /**
+     * Whether a live bookmark names `(item_type, item_id)`: the page menu's
+     * "Add to favorites" / "Remove from favorites".
+     */
+    func isBookmarked(itemType: String, itemId: String) throws  -> Bool
     
     /**
      * The tasks linked to one note (N807).
@@ -5513,8 +5539,8 @@ open func blocks(id: String)throws  -> [Block]?  {
     
     /**
      * The sidebar's bookmarks that resolve to something this vault holds,
-     * in the user's order. Read-only: the phone shows desktop's bookmarks
-     * and does not write them.
+     * in the user's order. Written through
+     * [`crate::api::notes_write::NotesWriter::toggle_bookmark`].
      */
 open func bookmarks()throws  -> [BookmarkEntry]  {
     return try  FfiConverterSequenceTypeBookmarkEntry.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -5554,6 +5580,21 @@ open func folders()throws  -> [FolderSummary]  {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_notes_folders(
             self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Whether a live bookmark names `(item_type, item_id)`: the page menu's
+     * "Add to favorites" / "Remove from favorites".
+     */
+open func isBookmarked(itemType: String, itemId: String)throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_is_bookmarked(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(itemType),
+        FfiConverterString.lower(itemId),uniffiCallStatus
     )
 })
 }
@@ -5922,6 +5963,13 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func dismissReminder(id: String) throws 
     
     /**
+     * Copies a note into a new one titled `title`, beside it (same folder),
+     * with its icon, cover, tags, properties and body. Returns the new id,
+     * or `nil` when this vault holds no live note `source_id`.
+     */
+    func duplicate(sourceId: String, title: String) throws  -> String?
+    
+    /**
      * Applies one block edit to a note's body.
      *
      * - Returns: `false` when this vault holds no live note by that id — an
@@ -5968,6 +6016,15 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
      * carries is `Invalid`. The vault-wide definition is not renamed.
      */
     func renameProperty(id: String, from: String, to: String) throws 
+    
+    /**
+     * Reorders a note's properties, desktop's `reorderProperties`: the named
+     * properties first in the given order, the rest after in their current
+     * order. The order travels as the payload's `properties` key order, which
+     * is what desktop reads, so it syncs both ways. An unchanged order writes
+     * nothing.
+     */
+    func reorderProperties(id: String, names: [String]) throws 
     
     /**
      * Replaces a note's aliases (N706).
@@ -6044,6 +6101,13 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func setTags(id: String, tags: [String]) throws 
     
     func snoozeReminder(id: String, until: String) throws 
+    
+    /**
+     * Desktop's `bookmarks:toggle`: bookmarks the item, or removes its
+     * bookmark. `item_type` is `note` or `journal` (a journal record id).
+     * Returns whether the item is bookmarked afterwards.
+     */
+    func toggleBookmark(itemType: String, itemId: String) throws  -> Bool
     
 }
 /**
@@ -6307,6 +6371,22 @@ open func dismissReminder(id: String)throws   {try rustCallWithError(FfiConverte
 }
     
     /**
+     * Copies a note into a new one titled `title`, beside it (same folder),
+     * with its icon, cover, tags, properties and body. Returns the new id,
+     * or `nil` when this vault holds no live note `source_id`.
+     */
+open func duplicate(sourceId: String, title: String)throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_duplicate(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(sourceId),
+        FfiConverterString.lower(title),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * Applies one block edit to a note's body.
      *
      * - Returns: `false` when this vault holds no live note by that id — an
@@ -6402,6 +6482,23 @@ open func renameProperty(id: String, from: String, to: String)throws   {try rust
         FfiConverterString.lower(id),
         FfiConverterString.lower(from),
         FfiConverterString.lower(to),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Reorders a note's properties, desktop's `reorderProperties`: the named
+     * properties first in the given order, the rest after in their current
+     * order. The order travels as the payload's `properties` key order, which
+     * is what desktop reads, so it syncs both ways. An unchanged order writes
+     * nothing.
+     */
+open func reorderProperties(id: String, names: [String])throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_reorder_properties(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterSequenceString.lower(names),uniffiCallStatus
     )
 }
 }
@@ -6538,6 +6635,22 @@ open func snoozeReminder(id: String, until: String)throws   {try rustCallWithErr
         FfiConverterString.lower(until),uniffiCallStatus
     )
 }
+}
+    
+    /**
+     * Desktop's `bookmarks:toggle`: bookmarks the item, or removes its
+     * bookmark. `item_type` is `note` or `journal` (a journal record id).
+     * Returns whether the item is bookmarked afterwards.
+     */
+open func toggleBookmark(itemType: String, itemId: String)throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_toggle_bookmark(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(itemType),
+        FfiConverterString.lower(itemId),uniffiCallStatus
+    )
+})
 }
     
 
@@ -32138,6 +32251,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_journal_days_with_entries() != 63288) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_journal_delete_day() != 41894) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_journal_delete_reminder() != 12422) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -32240,13 +32356,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_blocks() != 22042) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_notes_bookmarks() != 6925) {
+    if (uniffi_memry_core_checksum_method_notes_bookmarks() != 18357) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_comments() != 23328) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_folders() != 56251) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_is_bookmarked() != 3350) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_linked_tasks() != 59020) {
@@ -32315,6 +32434,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_noteswriter_dismiss_reminder() != 37906) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_noteswriter_duplicate() != 18542) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_noteswriter_edit_block() != 62445) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -32331,6 +32453,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_rename_property() != 37723) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_reorder_properties() != 62220) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_set_aliases() != 27902) {
@@ -32352,6 +32477,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_snooze_reminder() != 55988) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_toggle_bookmark() != 46044) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_runtimehost_on_background() != 23225) {

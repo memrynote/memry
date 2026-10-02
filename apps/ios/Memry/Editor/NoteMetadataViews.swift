@@ -10,6 +10,7 @@ import MemryCore
 import PhotosUI
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 /// A note's cover image (N208).
 ///
@@ -83,55 +84,93 @@ struct NoteTitleEditor: View {
     let canEdit: Bool
     let rename: (String) -> Void
     let setIcon: (String?) -> Void
+    /// Return in the title moves the caret into the body, as on desktop.
+    var returnToBody: (() -> Void)?
 
     @State private var draft: String = ""
     @State private var editing = false
     @State private var pickingIcon = false
+    @FocusState private var focused: Bool
+
+    private func commit() {
+        guard editing else { return }
+        editing = false
+        // Unchanged titles are filtered by the model, so tapping in and out
+        // does not enqueue a push.
+        rename(draft)
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
+        )
+    }
+
+    private func commitAndContinue() {
+        guard editing else { return }
+        commit()
+        returnToBody?()
+    }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.small) {
-            Button {
-                pickingIcon = true
-            } label: {
-                // No icon draws a quiet "add" glyph rather than a stray dot,
-                // which read as a rendering fault next to the title.
-                if let icon, !icon.isEmpty {
+            // No icon draws nothing, as on desktop; the page menu's
+            // "Change icon" adds one.
+            if let icon, !icon.isEmpty {
+                Button {
+                    pickingIcon = true
+                } label: {
                     Text(icon)
                         .font(Tokens.Typography.sectionTitle.font)
-                } else {
-                    Image(systemName: "face.smiling")
-                        .font(Tokens.Typography.body.font)
-                        .foregroundStyle(Tokens.Text.tertiary.color)
                 }
+                .disabled(!canEdit)
+                .accessibilityLabel("Icon, \(icon)")
             }
-            .disabled(!canEdit)
-            .accessibilityLabel(icon.map { "Icon, \($0)" } ?? "Add an icon")
 
             if canEdit {
                 TextField(
-                    "Untitled",
+                    "",
                     text: Binding(
                         get: { editing ? draft : title },
-                        set: { draft = $0 }
-                    )
+                        set: { value in
+                            // A vertical field takes Return as a newline
+                            // rather than a submit; a title is one line, so
+                            // Return commits it.
+                            if value.contains("\n") {
+                                draft = value.replacingOccurrences(of: "\n", with: "")
+                                commitAndContinue()
+                            } else {
+                                draft = value
+                            }
+                        }
+                    ),
+                    // Wraps rather than truncating a long title.
+                    axis: .vertical
                 )
+                .lineLimit(1...)
+                .submitLabel(.done)
                 .font(Tokens.Typography.screenTitle.font)
                 .foregroundStyle(Tokens.Text.primary.color)
-                .onSubmit {
-                    editing = false
-                    // Unchanged titles are filtered by the model, so tapping
-                    // in and out does not enqueue a push.
-                    rename(draft)
+                .focused($focused)
+                .onSubmit(commitAndContinue)
+                .onChange(of: focused) { _, isFocused in
+                    if isFocused {
+                        if !editing {
+                            draft = title
+                            editing = true
+                        }
+                    } else {
+                        commit()
+                    }
                 }
-                .onTapGesture {
-                    draft = title
-                    editing = true
+                // A note with no title (a new one) opens with the caret in
+                // its title, as desktop does.
+                .onAppear {
+                    if title.isEmpty { focused = true }
                 }
                 .accessibilityLabel("Title")
             } else {
                 Text(title)
                     .font(Tokens.Typography.screenTitle.font)
                     .foregroundStyle(Tokens.Text.primary.color)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .sheet(isPresented: $pickingIcon) {
@@ -157,6 +196,10 @@ struct NoteTagEditor: View {
     var colors: [String: String] = [:]
     let add: (String) -> Void
     let remove: (String) -> Void
+    /// Focus the field on appear, for when it was opened from a compact `+ Tag`.
+    var startsFocused = false
+    /// Called when the field loses focus with nothing typed.
+    var onIdle: () -> Void = {}
 
     @State private var draft = ""
     @FocusState private var focused: Bool
@@ -225,6 +268,10 @@ struct NoteTagEditor: View {
                     }
                 }
             }
+        }
+        .onAppear { if startsFocused { focused = true } }
+        .onChange(of: focused) { _, isFocused in
+            if !isFocused, draft.isEmpty { onIdle() }
         }
     }
 
@@ -762,8 +809,14 @@ struct NoteMetadataEditors: View {
 
     @State private var showsProperties = true
     @State private var addingProperty = false
+    /// The tag field is open on a note without tags.
+    @State private var editingTags = false
     /// Types chosen in this session, for values that cannot carry theirs.
     @State private var chosenKinds: [String: NotePropertyKind] = [:]
+    /// The order shown while a drag is moving rows, before it is written.
+    @State private var dragOrder: [String]?
+    @State private var draggedName: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var names: [String] { metadata.properties.map(\.name) }
 
@@ -774,26 +827,23 @@ struct NoteMetadataEditors: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-            NoteTagEditor(
-                tags: metadata.tags,
-                suggestions: tagSuggestions,
-                colors: tagColors,
-                add: { tag in
-                    Task {
-                        _ = await model.addTag(tag, to: metadata.tags)
-                        await reload()
+            // An empty note gets one quiet row instead of two open fields.
+            if metadata.tags.isEmpty, !editingTags {
+                HStack(spacing: Tokens.Space.medium) {
+                    compactAddButton("Tag", accessibility: "Add a tag") { editingTags = true }
+                    if metadata.properties.isEmpty {
+                        compactAddButton("Property", accessibility: "Add a property") {
+                            addingProperty = true
+                        }
                     }
-                },
-                remove: { tag in
-                    Task {
-                        _ = await model.removeTag(tag, from: metadata.tags)
-                        await reload()
-                    }
+                    Spacer(minLength: 0)
                 }
-            )
+            } else {
+                tagEditor
+            }
 
             if metadata.properties.isEmpty {
-                addPropertyButton
+                if !metadata.tags.isEmpty || editingTags { addPropertyButton }
             } else {
                 Button {
                     showsProperties.toggle()
@@ -815,8 +865,30 @@ struct NoteMetadataEditors: View {
 
                 if showsProperties {
                     Divider()
-                    ForEach(metadata.properties, id: \.name) { property in
-                        propertyRow(property)
+                    VStack(alignment: .leading, spacing: Tokens.Space.medium) {
+                        ForEach(orderedProperties, id: \.name) { property in
+                            propertyRow(property)
+                                .onDrag {
+                                    draggedName = property.name
+                                    dragOrder = names
+                                    return NSItemProvider(object: property.name as NSString)
+                                }
+                                .onDrop(
+                                    of: [.plainText],
+                                    delegate: PropertyRowDrop(
+                                        target: property.name,
+                                        reduceMotion: reduceMotion,
+                                        dragged: $draggedName,
+                                        order: $dragOrder,
+                                        commit: commitDragOrder
+                                    )
+                                )
+                                .accessibilityActions { moveActions(property.name) }
+                        }
+                    }
+                    .onDrop(of: [.plainText], isTargeted: nil) { _ in
+                        commitDragOrder()
+                        return true
                     }
                     addPropertyButton
                 }
@@ -848,6 +920,44 @@ struct NoteMetadataEditors: View {
         }
     }
 
+    private var tagEditor: some View {
+        NoteTagEditor(
+            tags: metadata.tags,
+            suggestions: tagSuggestions,
+            colors: tagColors,
+            add: { tag in
+                Task {
+                    _ = await model.addTag(tag, to: metadata.tags)
+                    await reload()
+                }
+            },
+            remove: { tag in
+                Task {
+                    _ = await model.removeTag(tag, from: metadata.tags)
+                    await reload()
+                }
+            },
+            startsFocused: editingTags,
+            onIdle: { editingTags = false }
+        )
+    }
+
+    private func compactAddButton(
+        _ title: String,
+        accessibility: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: "plus")
+                .font(Tokens.Typography.caption.font)
+                .foregroundStyle(Tokens.Text.tertiary.color)
+                .frame(minHeight: Tokens.Size.minimumHitArea)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibility)
+    }
+
     private var addPropertyButton: some View {
         Button {
             addingProperty = true
@@ -859,6 +969,52 @@ struct NoteMetadataEditors: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
+    }
+
+    /// The note's properties in the payload's order, or in the order a drag
+    /// in progress is showing.
+    private var orderedProperties: [NoteProperty] {
+        guard let dragOrder else { return metadata.properties }
+        let byName = Dictionary(metadata.properties.map { ($0.name, $0) }, uniquingKeysWith: { a, _ in a })
+        let shown = dragOrder.compactMap { byName[$0] }
+        // A property that arrived mid-drag keeps its place at the end.
+        return shown + metadata.properties.filter { !dragOrder.contains($0.name) }
+    }
+
+    private func commitDragOrder() {
+        guard let order = dragOrder else { return }
+        draggedName = nil
+        reorder(to: order)
+    }
+
+    private func reorder(to order: [String]) {
+        let current = names
+        Task {
+            await model.reorderProperties(order, current: current)
+            await reload()
+            dragOrder = nil
+        }
+    }
+
+    /// VoiceOver's way to reorder, since a drag is not reachable there.
+    @ViewBuilder
+    private func moveActions(_ name: String) -> some View {
+        if let index = names.firstIndex(of: name) {
+            if index > 0 {
+                Button("Move \(name) up") {
+                    var next = names
+                    next.swapAt(index, index - 1)
+                    reorder(to: next)
+                }
+            }
+            if index < names.count - 1 {
+                Button("Move \(name) down") {
+                    var next = names
+                    next.swapAt(index, index + 1)
+                    reorder(to: next)
+                }
+            }
+        }
     }
 
     private func propertyRow(_ property: NoteProperty) -> some View {
@@ -903,6 +1059,34 @@ struct NoteMetadataEditors: View {
             noteTitle: noteTitle,
             noteIcon: noteIcon
         )
+    }
+}
+
+/// Moves the dragged property row over the one under the finger, and writes
+/// the order when the row is dropped (desktop `PropertyRow` drag reorder).
+private struct PropertyRowDrop: DropDelegate {
+    let target: String
+    let reduceMotion: Bool
+    @Binding var dragged: String?
+    @Binding var order: [String]?
+    let commit: () -> Void
+
+    func dropEntered(info: DropInfo) {
+        guard let dragged, dragged != target, var next = order,
+            let from = next.firstIndex(of: dragged),
+            let to = next.firstIndex(of: target)
+        else { return }
+        next.move(fromOffsets: IndexSet(integer: from), toOffset: to > from ? to + 1 : to)
+        withAnimation(reduceMotion ? nil : .snappy) { order = next }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        commit()
+        return true
     }
 }
 

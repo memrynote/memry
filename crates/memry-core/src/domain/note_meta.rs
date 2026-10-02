@@ -97,7 +97,7 @@ pub fn metadata(conn: &Connection, id: &str) -> Result<Option<NoteMetadata>, Sto
     let values = properties::values(conn, notes::ITEM_TYPE, id)?;
     let definitions = properties::definitions(conn)?;
 
-    let mut properties: Vec<NoteProperty> = values
+    let properties: Vec<NoteProperty> = values
         .into_iter()
         .map(|(name, value)| {
             let definition = definitions.iter().find(|it| it.name == name);
@@ -110,11 +110,8 @@ pub fn metadata(conn: &Connection, id: &str) -> Result<Option<NoteMetadata>, Sto
             }
         })
         .collect();
-    // A stable order the shell does not have to invent. `serde_json::Map` is
-    // insertion-ordered by payload, and a payload rewritten by another device
-    // can reorder it — a property table that reshuffles between syncs is a
-    // table the reader has to re-scan every time.
-    properties.sort_by(|a, b| a.name.cmp(&b.name));
+    // The payload's key order is the property order the user set, on desktop
+    // or here (`properties::reorder`), so it is kept rather than sorted.
 
     let payload = note_payload(conn, id)?;
     Ok(Some(NoteMetadata {

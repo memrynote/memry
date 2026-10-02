@@ -49,9 +49,11 @@ use crate::sync::outbox::{self, Durable};
 use crate::sync::store;
 
 mod attachments;
+mod duplicate;
 mod metadata;
 
 pub use attachments::*;
+pub use duplicate::duplicate;
 pub use metadata::*;
 
 /// The `(type, _)` half of every key this module writes.

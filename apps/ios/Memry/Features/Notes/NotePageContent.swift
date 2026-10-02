@@ -29,9 +29,15 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     /// What the page says when it has no blocks to draw.
     @ViewBuilder let emptyBody: (NoteBodyPreview) -> EmptyBody
     @ViewBuilder let afterBacklinks: () -> AfterBacklinks
+    /// A tap in the space under the body puts the caret at its end. `nil`
+    /// leaves no such space (a read-only page, the journal day).
+    var tapBelowBody: (() -> Void)?
 
     /// The keyboard toolbar's paperclip source being shown (N214's upload path).
     @State private var attaching: EditorAttachmentSource?
+    /// The body's tags as last seen. `nil` until the note is first drawn:
+    /// opening a note seeds it and writes nothing (desktop's #1454).
+    @State private var inlineTags: (noteId: String, tags: [String])?
 
     /// The editing bridge, or `nil` on a read-only page.
     private var editing: NoteEditingBridge? {
@@ -126,9 +132,25 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
             )
             .modifier(EditorAttachmentSources(source: $attaching, composer: composer, session: editorModel.session))
             .modifier(MoveBlockPresenter(session: editorModel.session, notes: model.vaultNotes, currentNoteId: detail.summary.id))
+            .sheet(item: Binding(
+                get: { editorModel.session.dateEdit },
+                set: { if $0 == nil { editorModel.session.cancelDateEdit() } }
+            )) { request in
+                DateMentionEditSheet(value: request.value) { editorModel.session.applyDateEdit($0) }
+            }
+        }
+        if let tapBelowBody {
+            Color.clear
+                .frame(maxWidth: .infinity, minHeight: Tokens.Size.coverHeight)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: tapBelowBody)
+                .accessibilityHidden(true)
         }
         // Read only (N604): §12.5.1 forbids writing them.
         ReviewCommentsSection(comments: model.comments)
+            // On a view that is always present, so the first block typed
+            // into an empty note is seen too.
+            .onChange(of: model.blocks, initial: true) { syncInlineTags() }
         // Under the body, where desktop puts it and where a reader looks
         // after finishing the note (N800).
         if let open {
@@ -136,6 +158,25 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         }
         afterBacklinks()
         LinkedTasksSection(model: linkedTasks, open: taskBridge.open)
+    }
+
+    /// A `#tag` typed into the body becomes one of the note's tags, and one
+    /// deleted from it stops being one, as on desktop.
+    private func syncInlineTags() {
+        let current = InlineTagSync.tags(in: model.blocks)
+        let noteId = detail.summary.id
+        guard let seen = inlineTags, seen.noteId == noteId, let tags = model.metadata?.tags,
+              editorModel.canEdit, metadataModel.canEdit
+        else {
+            if model.metadata != nil { inlineTags = (noteId, current) }
+            return
+        }
+        inlineTags = (noteId, current)
+        guard let next = InlineTagSync.next(noteTags: tags, previous: seen.tags, current: current) else { return }
+        Task {
+            await metadataModel.setTags(next)
+            await model.reload()
+        }
     }
 }
 

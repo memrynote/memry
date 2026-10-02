@@ -38,11 +38,15 @@ struct NoteCoverSection: View {
     /// The host's inline padding, which the band reaches past so it spans the
     /// screen as desktop's spans the window.
     var bleed: CGFloat = 0
+    /// How far the band reaches above its slot: the host's top padding plus
+    /// the navigation bar, so the cover runs under the back and menu buttons.
+    var topBleed: CGFloat = 0
+    /// The picker, raised from the page menu's "Change cover".
+    @Binding var picking: Bool
+    /// The reposition sheet, raised from the page menu.
+    @Binding var repositioning: Bool
 
     @Environment(\.requestVaultSync) private var requestVaultSync
-
-    @State private var picking = false
-    @State private var repositioning = false
 
     private var cover: NoteCoverValue? { NoteCoverValue.of(coverJson) }
 
@@ -53,13 +57,13 @@ struct NoteCoverSection: View {
                 noteId: noteId,
                 reader: reader,
                 filler: filler,
-                reachability: reachability
+                reachability: reachability,
+                topBleed: topBleed
             )
-            .overlay(alignment: .bottomTrailing) {
-                if metadataModel.canEdit { menu(for: cover) }
-            }
             .overlay(alignment: .bottomLeading) { credit(for: cover) }
             .padding(.horizontal, -bleed)
+            .padding(.top, -topBleed)
+            .padding(.bottom, Tokens.Space.section)
             .sheet(isPresented: $picking) { picker(current: cover) }
             .sheet(isPresented: $repositioning) {
                 NoteCoverRepositionSheet(
@@ -79,50 +83,12 @@ struct NoteCoverSection: View {
                 )
             }
         } else if metadataModel.canEdit {
-            Button {
-                picking = true
-            } label: {
-                Label("Add cover", systemImage: "photo")
-                    .font(Tokens.Typography.caption.font)
-                    .foregroundStyle(Tokens.Text.tertiary.color)
-                    .frame(minHeight: Tokens.Size.minimumHitArea)
-                    .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .sheet(isPresented: $picking) { picker(current: nil) }
+            // No inline affordance: a note without a cover adds one from the
+            // page menu, which raises this sheet.
+            Color.clear
+                .frame(height: 0)
+                .sheet(isPresented: $picking) { picker(current: nil) }
         }
-    }
-
-    private func menu(for cover: NoteCoverValue) -> some View {
-        Menu {
-            Button {
-                picking = true
-            } label: {
-                Label("Change cover", systemImage: "photo")
-            }
-            if case .image = cover.kind {
-                Button {
-                    repositioning = true
-                } label: {
-                    Label("Reposition", systemImage: "arrow.up.and.down")
-                }
-            }
-            Divider()
-            Button(role: .destructive) {
-                write(ref: nil, focus: cover.focus)
-            } label: {
-                Label("Remove cover", systemImage: "trash")
-            }
-        } label: {
-            Image(systemName: "ellipsis")
-                .font(Tokens.Typography.body.font.weight(.semibold))
-                .foregroundStyle(Tokens.Text.primary.color)
-                .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
-                .background(.regularMaterial, in: .circle)
-                .contentShape(.circle)
-        }
-        .padding(Tokens.Space.small)
-        .accessibilityLabel("Cover options")
     }
 
     @ViewBuilder
@@ -176,8 +142,16 @@ struct NoteCoverBand: View {
     let reachability: (any Reachability)?
     /// Overrides the stored focus while repositioning.
     var focus: Int?
+    /// Extra height above the band's own, drawn under the navigation bar.
+    var topBleed: CGFloat = 0
 
     @State private var picture: NoteCoverPicture = .pending
+
+    /// On the page the band already reaches under the navigation bar, so its
+    /// own slot is half the token; the reposition sheet keeps the full band.
+    private var ownHeight: CGFloat {
+        topBleed > 0 ? Tokens.Size.coverHeight / 2 : Tokens.Size.coverHeight
+    }
 
     var body: some View {
         ZStack {
@@ -199,7 +173,7 @@ struct NoteCoverBand: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: Tokens.Size.coverHeight)
+        .frame(height: ownHeight + topBleed)
         .clipped()
         .accessibilityElement()
         .accessibilityLabel(accessibilityLabel)

@@ -117,8 +117,26 @@ struct BacklinksSection: View {
         .accessibilityLabel("Order backlinks")
     }
 
+    /// The section shows only once there is something to say: a link, or a
+    /// failure to read them. Loading and empty draw nothing.
+    private var hasContent: Bool {
+        switch model.phase {
+        case .loading: false
+        case let .ready(backlinks): !backlinks.isEmpty
+        case .failed: true
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            if hasContent { content }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .task { await model.loadIfNeeded() }
+    }
+
+    @ViewBuilder
+    private var content: some View {
             // One row, stacked when the title and the order do not fit (AX
             // sizes) rather than hyphenating either.
             ViewThatFits(in: .horizontal) {
@@ -135,32 +153,24 @@ struct BacklinksSection: View {
 
             switch model.phase {
             case .loading:
-                ProgressView()
-                    .progressViewStyle(.circular)
+                EmptyView()
             case let .ready(backlinks):
-                if backlinks.isEmpty {
-                    Text("No note links here yet.")
-                        .font(Tokens.Typography.supporting.font)
-                        .foregroundStyle(Tokens.Text.secondary.color)
-                } else {
-                    ForEach(backlinks) { backlink in
-                        BacklinkRowButton(backlink: backlink, open: open)
-                    }
+                ForEach(backlinks) { backlink in
+                    BacklinkRowButton(backlink: backlink, open: open)
                 }
             case let .failed(error):
                 ErrorNotice(error: error, code: nil)
             }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .task { await model.loadIfNeeded() }
     }
 }
 
 /// One backlink: a note pushes its page, a journal day opens in the Journal
 /// tab.
-private struct BacklinkRowButton: View {
+struct BacklinkRowButton: View {
     let backlink: BacklinkEntry
     let open: (NoteRoute) -> Void
+    /// Runs before a journal day opens, so a sheet listing this row closes.
+    var leaving: (() -> Void)?
 
     @Environment(\.openJournalDay) private var openJournalDay
 
@@ -193,7 +203,50 @@ private struct BacklinkRowButton: View {
     private func tap() {
         switch backlink.destination {
         case let .note(route): open(route)
-        case let .journalDay(date): openJournalDay?(date)
+        case let .journalDay(date):
+            leaving?()
+            openJournalDay?(date)
         }
+    }
+}
+
+/// The page menu's Backlinks: every note and day linking here, with an empty
+/// state the inline section does not draw.
+struct NoteBacklinksSheet: View {
+    let model: BacklinksViewModel
+    let open: (NoteRoute) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                switch model.phase {
+                case .loading:
+                    ProgressView()
+                case let .ready(backlinks) where backlinks.isEmpty:
+                    ContentUnavailableView(
+                        "No backlinks",
+                        systemImage: "arrow.down.left",
+                        description: Text("No note or journal day links here yet.")
+                    )
+                case let .ready(backlinks):
+                    ForEach(backlinks) { backlink in
+                        BacklinkRowButton(backlink: backlink, open: open) { dismiss() }
+                    }
+                case let .failed(error):
+                    ErrorNotice(error: error, code: nil)
+                }
+            }
+            .navigationTitle("Backlinks")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .task { await model.loadIfNeeded() }
     }
 }

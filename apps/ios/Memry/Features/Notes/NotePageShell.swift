@@ -99,6 +99,36 @@ struct NoteFindView: View {
     }
 }
 
+/// The find bar pinned over a page, with its close button: the note page's
+/// and the journal day's "Find".
+struct NoteFindPanel: View {
+    let blocks: [Block]
+    let close: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            HStack {
+                Spacer()
+                Button(action: close) {
+                    Image(systemName: "xmark")
+                        .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
+                        .contentShape(.rect)
+                }
+                .accessibilityLabel("Close find")
+            }
+            NoteFindView(blocks: blocks)
+        }
+        .padding(.horizontal, Tokens.Space.screenInline)
+        .padding(.bottom, Tokens.Space.small)
+        .background(Tokens.Canvas.background.color)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Tokens.Line.border.color)
+                .frame(height: Tokens.Size.hairline)
+        }
+    }
+}
+
 // MARK: - N805, the attachments on a note
 
 /// Everything this vault knows one note references.
@@ -171,23 +201,16 @@ struct NoteAttachmentsList: View {
 
 // MARK: - N808, the page overflow menu
 
-/// The note page's overflow menu.
+/// The note page's overflow menu, in groups: editing, looking around the
+/// note, organising it, how it looks, taking it elsewhere, and delete last.
 ///
-/// **Two of the six the task names are not this client's to offer.**
-/// `bookmark` is one of the twelve record types §5.3.1 says a conforming
-/// client omits from its subscription header and never sees, so a bookmark
-/// action here would be acting on a record this client is specified not to
-/// hold. And "local-only" is a desktop cache flag rather than a synced field
-/// — there is nothing in the note payload to write. Both are left out rather
-/// than faked; `research.md` records why.
+/// Every write is optional and absent rather than disabled when this device
+/// cannot make it (no signing identity, a read-only note), so the menu never
+/// offers something that would fail.
 struct NotePageMenu: View {
-    let canWrite: Bool
-    let folderPath: String?
-    let rename: () -> Void
-    let move: () -> Void
-    let delete: () -> Void
-    /// Undo, redo and the two inline inserts, which used to be the page's
-    /// bottom bar. `nil` on a read-only note.
+    let items: NotePageMenuItems
+    /// Undo and redo, which used to be the page's bottom bar. Links and
+    /// date mentions are inserted from the editor. `nil` on a read-only note.
     var editing: NotePageEditingItems?
 
     var body: some View {
@@ -203,42 +226,42 @@ struct NotePageMenu: View {
                     }
                     .disabled(!editing.canRedo)
                 }
+            }
+            Section {
+                Button(action: items.find) {
+                    Label("Find in note", systemImage: "magnifyingglass")
+                }
+                Button(action: items.backlinks) {
+                    Label("Backlinks", systemImage: "arrow.down.left")
+                }
+            }
+            organise
+            appearance
+            Section {
+                ShareLink(item: items.export.contents, subject: Text(items.export.title)) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+                ShareLink(
+                    item: NoteExportFile(export: items.export),
+                    preview: SharePreview(items.export.filename)
+                ) {
+                    Label("Export", systemImage: "arrow.down.doc")
+                }
+                .accessibilityLabel("Export this note as a text file")
+                Button {
+                    // The vault-relative path, which is what a user would paste
+                    // somewhere else. The root is a note with no folder.
+                    UIPasteboard.general.string = items.folderPath ?? ""
+                } label: {
+                    Label("Copy path", systemImage: "doc.on.doc")
+                }
+                .disabled(items.folderPath == nil)
+            }
+            if let delete = items.delete {
                 Section {
-                    Button(action: editing.linkToNote) {
-                        Label("Link to a note", systemImage: "link")
+                    Button(role: .destructive, action: delete) {
+                        Label("Delete", systemImage: "trash")
                     }
-                    Button(action: editing.mentionDate) {
-                        Label("Mention a date", systemImage: "calendar")
-                    }
-                }
-            }
-            if canWrite {
-                Button {
-                    rename()
-                } label: {
-                    Label("Rename", systemImage: "pencil")
-                }
-                Button {
-                    move()
-                } label: {
-                    Label("Move to folder", systemImage: "folder")
-                }
-            }
-            Button {
-                // The vault-relative path, which is what a user would paste
-                // somewhere else. The root is a note with no folder.
-                UIPasteboard.general.string = folderPath ?? ""
-            } label: {
-                Label("Copy path", systemImage: "doc.on.doc")
-            }
-            .disabled(folderPath == nil)
-
-            if canWrite {
-                Divider()
-                Button(role: .destructive) {
-                    delete()
-                } label: {
-                    Label("Delete", systemImage: "trash")
                 }
             }
         } label: {
@@ -247,6 +270,83 @@ struct NotePageMenu: View {
         }
         .accessibilityLabel("More actions for this note")
     }
+
+    @ViewBuilder
+    private var organise: some View {
+        Section {
+            if let toggleFavorite = items.toggleFavorite {
+                Button(action: toggleFavorite) {
+                    if items.isFavorite {
+                        Label("Remove from favorites", systemImage: "star.slash")
+                    } else {
+                        Label("Add to favorites", systemImage: "star")
+                    }
+                }
+            }
+            if let addReminder = items.addReminder {
+                Button(action: addReminder) {
+                    Label("Reminder", systemImage: "bell")
+                }
+            }
+            if let rename = items.rename {
+                Button(action: rename) {
+                    Label("Rename", systemImage: "pencil")
+                }
+            }
+            if let duplicate = items.duplicate {
+                Button(action: duplicate) {
+                    Label("Duplicate", systemImage: "plus.square.on.square")
+                }
+            }
+            if let move = items.move {
+                Button(action: move) {
+                    Label("Move to", systemImage: "folder")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var appearance: some View {
+        if items.changeIcon != nil || items.changeCover != nil {
+            Section {
+                if let changeIcon = items.changeIcon {
+                    Button(action: changeIcon) {
+                        Label("Change icon", systemImage: "face.smiling")
+                    }
+                }
+                if let changeCover = items.changeCover {
+                    Button(action: changeCover) {
+                        Label("Change cover", systemImage: "photo")
+                    }
+                }
+                if let repositionCover = items.repositionCover {
+                    Button(action: repositionCover) {
+                        Label("Reposition cover", systemImage: "arrow.up.and.down")
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// What the page menu offers. A `nil` action is one this device cannot take
+/// on this note, and its row is left out.
+struct NotePageMenuItems {
+    let folderPath: String?
+    let export: NoteExport
+    let find: () -> Void
+    let backlinks: () -> Void
+    var isFavorite = false
+    var toggleFavorite: (() -> Void)?
+    var addReminder: (() -> Void)?
+    var rename: (() -> Void)?
+    var duplicate: (() -> Void)?
+    var move: (() -> Void)?
+    var changeIcon: (() -> Void)?
+    var changeCover: (() -> Void)?
+    var repositionCover: (() -> Void)?
+    var delete: (() -> Void)?
 }
 
 /// The editing entries of the page menu.
@@ -255,11 +355,9 @@ struct NotePageEditingItems {
     let canRedo: Bool
     let undo: () -> Void
     let redo: () -> Void
-    let linkToNote: () -> Void
-    let mentionDate: () -> Void
 }
 
-/// The page menu's three write actions (N808).
+/// The page menu's write actions (N808).
 ///
 /// Its own model rather than more state on the read view, which is already
 /// the longest file in the feature: rename, move and delete each need a
@@ -278,6 +376,8 @@ final class NotePageActions {
     private let writer: (any NotesWriting)?
 
     private(set) var status: Status = .idle
+    /// Whether the note is in the sidebar's bookmarks (desktop's favorites).
+    private(set) var isFavorite = false
     /// `true` once the note is gone, so the caller can leave the screen
     /// rather than showing a note that no longer exists.
     private(set) var deleted = false
@@ -305,6 +405,24 @@ final class NotePageActions {
         guard let writer else { return }
         await run { try await writer.delete(id: noteId) }
         if status == .idle { deleted = true }
+    }
+
+    func loadFavorite() async {
+        guard let writer else { return }
+        isFavorite = (try? await writer.isBookmarked(itemType: "note", itemId: noteId)) ?? false
+    }
+
+    func toggleFavorite() async {
+        guard let writer else { return }
+        await run { isFavorite = try await writer.toggleBookmark(itemType: "note", itemId: noteId) }
+    }
+
+    /// Copies the note beside itself and returns the copy's id.
+    func duplicate(title: String) async -> String? {
+        guard let writer else { return nil }
+        var copy: String?
+        await run { copy = try await writer.duplicate(id: noteId, title: title) }
+        return copy
     }
 
     func dismissFailure() { status = .idle }

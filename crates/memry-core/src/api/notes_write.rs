@@ -32,6 +32,7 @@ use crate::crdt::registry::UpdateSink;
 use crate::crdt::{DocumentRegistry, update_log};
 use crate::crypto::{keys, sodium};
 use crate::domain::body_write;
+use crate::domain::bookmarks;
 use crate::domain::calendar::LocalDateTime;
 use crate::domain::folders;
 use crate::domain::note_tasks;
@@ -437,6 +438,19 @@ impl NotesWriter {
         })
     }
 
+    /// Reorders a note's properties, desktop's `reorderProperties`: the named
+    /// properties first in the given order, the rest after in their current
+    /// order. The order travels as the payload's `properties` key order, which
+    /// is what desktop reads, so it syncs both ways. An unchanged order writes
+    /// nothing.
+    pub fn reorder_properties(&self, id: String, names: Vec<String>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            properties::reorder(conn, notes::ITEM_TYPE, &id, &names, &device_id, now_ms())
+                .map(|_| ())
+        })
+    }
+
     /// Creates a note from a template (N803).
     ///
     /// The template's content, tags and properties seed the new note, which
@@ -580,6 +594,43 @@ impl NotesWriter {
         let device_id = self.device_id.clone();
         self.db.call_blocking(move |conn| {
             Ok(folders::delete(conn, &path, &device_id, now_ms())?.folders)
+        })
+    }
+
+    /// Copies a note into a new one titled `title`, beside it (same folder),
+    /// with its icon, cover, tags, properties and body. Returns the new id,
+    /// or `nil` when this vault holds no live note `source_id`.
+    pub fn duplicate(&self, source_id: String, title: String) -> Result<Option<String>, CrdtError> {
+        let id = Self::new_id();
+        let device_id = self.device_id.clone();
+        let minted = id.clone();
+        let copied = self
+            .db
+            .call_blocking(move |conn| {
+                Ok(notes::duplicate(
+                    conn,
+                    &source_id,
+                    &minted,
+                    &title,
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(CrdtError::from)??;
+        Ok(copied.then_some(id))
+    }
+
+    /// Desktop's `bookmarks:toggle`: bookmarks the item, or removes its
+    /// bookmark. `item_type` is `note` or `journal` (a journal record id).
+    /// Returns whether the item is bookmarked afterwards.
+    pub fn toggle_bookmark(
+        &self,
+        item_type: String,
+        item_id: String,
+    ) -> Result<bool, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            bookmarks::toggle(conn, &item_type, &item_id, &device_id, now_ms())
         })
     }
 

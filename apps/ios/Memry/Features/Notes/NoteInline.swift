@@ -105,6 +105,14 @@ enum NoteInline {
         return text.hasPrefix("#") ? String(text.dropFirst()) : text
     }
 
+    /// A tag node's colour: the one it carries, else the vault's, else the
+    /// colour its name hashes to (desktop's `getTagColors`).
+    static func tagColor(of run: InlineRun, colors: [String: String] = [:]) -> Color {
+        let name = tagName(of: run)
+        let own = run.markAttrs["hashTag.color"].flatMap { $0.isEmpty ? nil : $0 }
+        return Tokens.Palette.color(own ?? colors[name.lowercased()], tag: name)
+    }
+
     /// One run as attributed text.
     ///
     /// **A run sets a font or an ink only when one of its marks says so.**
@@ -135,7 +143,9 @@ enum NoteInline {
         if run.marks.allSatisfy(Self.textOnlyMarks.contains) {
             for match in HashTagText.matches(in: String(style.piece.characters)) {
                 guard let range = Range(match.range, in: style.piece) else { continue }
-                style.piece[range].foregroundColor = Tokens.Text.tint.color
+                let ink = Tokens.Palette.color(nil, tag: match.tag)
+                style.piece[range].foregroundColor = ink
+                style.piece[range].backgroundColor = ink.opacity(Tokens.Palette.chipFillAlpha)
                 style.piece[range].link = tagURL(for: match.tag)
             }
         }
@@ -213,7 +223,9 @@ private struct RunStyle {
             piece.underlineStyle = .single
             piece.link = run.target.flatMap(URL.init(string:))
         case "hashTag":
-            piece.foregroundColor = Tokens.Text.tint.color
+            let ink = NoteInline.tagColor(of: run)
+            piece.foregroundColor = ink
+            piece.backgroundColor = ink.opacity(Tokens.Palette.chipFillAlpha)
             piece.link = NoteInline.tagURL(for: NoteInline.tagName(of: run))
         case "dateMention":
             // Not linked: this build has no calendar to open. Muted like

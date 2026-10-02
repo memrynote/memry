@@ -1,13 +1,12 @@
 import MemryCore
 import SwiftUI
 
-// RD08 / RD09. The detail's property pills (Paper "Property pills"): status,
-// priority (when set), When (the due date, with repeat and bell marks inside
-// it), project, start date and parent (when set), and one pill per tag, then
-// a dashed "+" (artboard 09) that offers what is not set: priority, date,
-// tag, start date, parent task, a linked note or file, a reminder. Each pill
-// is a native menu: a property is one tap to open and one to choose; the
-// When sheet is the one deeper level.
+// RD08 / RD09. The detail's properties, one labelled row each, after
+// desktop's task detail drawer: Status, Priority, Start date, Due date (When,
+// with repeat and bell marks inside it), Reminder, Project, Parent task,
+// Tags, Linked. A set value is a pill, an unset one a quiet "Empty". Each
+// value is a native menu or opens a sheet: a property is one tap to open and
+// one to choose; the When sheet is the one deeper level.
 
 struct TaskDetailPills: View {
     let task: TaskItem
@@ -25,15 +24,66 @@ struct TaskDetailPills: View {
     }
 
     var body: some View {
-        TaskFlowLayout(horizontal: Tokens.Space.small, vertical: 0) {
-            statusPill
-            if task.priority > 0 { priorityPill }
-            if task.dueDate != nil || task.isRepeating { whenPill }
-            projectPill
-            if task.startDate != nil { startPill }
-            if task.parentId != nil { parentPill }
-            ForEach(task.tags, id: \.self) { tagPill($0) }
-            addPill
+        VStack(alignment: .leading, spacing: 0) {
+            TaskPropertyRow(TasksCopy.fieldStatus, symbol: "circle.dashed") { statusPill }
+            TaskPropertyRow(TasksCopy.fieldPriority, symbol: "cellularbars") {
+                if task.priority > 0 {
+                    priorityPill
+                } else {
+                    Menu { priorityPicker } label: { TaskPropertyEmpty() }
+                        .accessibilityLabel(TasksCopy.rowPriority(0))
+                        .accessibilityIdentifier("tasks.detail.priority")
+                }
+            }
+            TaskPropertyRow(TasksCopy.fieldStartDate, symbol: "calendar.badge.clock") {
+                if task.startDate != nil {
+                    startPill
+                } else {
+                    Button { sheet = .start } label: { TaskPropertyEmpty() }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(TasksCopy.fieldStartDate)
+                        .accessibilityIdentifier("tasks.detail.startDate")
+                }
+            }
+            TaskPropertyRow(TasksCopy.fieldDueDate, symbol: "calendar") {
+                if task.dueDate != nil || task.isRepeating {
+                    whenPill
+                } else {
+                    Menu { TaskWhenMenu(store: store, actions: whenActions) } label: { TaskPropertyEmpty() }
+                        .accessibilityLabel(TasksCopy.fieldDueDate)
+                        .accessibilityIdentifier("tasks.detail.dueDate")
+                }
+            }
+            TaskPropertyRow(TasksCopy.composerReminder, symbol: "bell") { reminderValue }
+            TaskPropertyRow(TasksCopy.fieldProject, symbol: "folder") { projectPill }
+            if task.parentId != nil || store.rowCanBecomeSubtask(task) {
+                TaskPropertyRow(TasksCopy.fieldParent, symbol: "arrow.turn.down.right") {
+                    if task.parentId != nil {
+                        parentPill
+                    } else {
+                        Button { sheet = .parent } label: { TaskPropertyEmpty() }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(TasksCopy.detailParentLabel(nil))
+                            .accessibilityIdentifier("tasks.detail.parent")
+                    }
+                }
+            }
+            TaskPropertyRow(TasksCopy.fieldTags, symbol: "number") {
+                TaskFlowLayout(horizontal: Tokens.Space.small, vertical: 0) {
+                    ForEach(task.tags, id: \.self) { tagPill($0) }
+                    Button { sheet = .tags } label: {
+                        if task.tags.isEmpty { TaskPropertyEmpty() } else { TaskAddPill() }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(TasksCopy.detailAddTag)
+                    .accessibilityIdentifier("tasks.detail.addTag")
+                }
+            }
+            TaskPropertyRow(TasksCopy.detailLinked, symbol: "link") {
+                Button { sheet = .related } label: { TaskPropertyEmpty(text: TasksCopy.detailLinkItem) }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("tasks.detail.link")
+            }
         }
         .accessibilityElement(children: .contain)
         .task(id: ReminderKey(task: task, version: reminderVersion)) {
@@ -201,31 +251,18 @@ struct TaskDetailPills: View {
         .accessibilityIdentifier("tasks.detail.tag.\(tag)")
     }
 
-    /// The dashed "+" (artboard 09): what the task has not set.
-    private var addPill: some View {
-        Menu {
-            if task.priority == 0 {
-                Menu { priorityPicker } label: { Label(TasksCopy.fieldPriority, systemImage: "cellularbars") }
+    /// The active reminders' count, or Empty; either opens Add reminder.
+    private var reminderValue: some View {
+        Button { sheet = .reminder } label: {
+            if reminderCount > 0 {
+                TaskPillLabel(text: TasksCopy.whenReminderCount(reminderCount)) { TaskPillSymbol(name: "bell") }
+            } else {
+                TaskPropertyEmpty()
             }
-            if task.dueDate == nil {
-                Menu { TaskWhenMenu(store: store, actions: whenActions) } label: {
-                    Label(TasksCopy.composerDate, systemImage: "calendar")
-                }
-            }
-            Button(TasksCopy.detailAddTag, systemImage: "number") { sheet = .tags }
-            if task.startDate == nil {
-                Button(TasksCopy.fieldStartDate, systemImage: "calendar.badge.clock") { sheet = .start }
-            }
-            if task.parentId == nil, store.rowCanBecomeSubtask(task) {
-                Button(TasksCopy.fieldParent, systemImage: "arrow.turn.down.right") { sheet = .parent }
-            }
-            Button(TasksCopy.detailLinkItem, systemImage: "link") { sheet = .related }
-            Button(TasksCopy.composerReminder, systemImage: "bell") { sheet = .reminder }
-        } label: {
-            TaskAddPill()
         }
-        .accessibilityLabel(TasksCopy.detailAddProperty)
-        .accessibilityIdentifier("tasks.detail.addProperty")
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(TasksCopy.composerReminder): \(TasksCopy.whenReminderCount(reminderCount))")
+        .accessibilityIdentifier("tasks.detail.reminder")
     }
 
     // MARK: Sheets
@@ -306,7 +343,8 @@ extension TasksStore {
 }
 
 extension TasksCopy {
-    static let detailAddProperty = "Add a property"
+    static let detailEmpty = "Empty"
+    static let detailLinked = "Linked"
     static let detailAddTag = "Tag"
     static let detailLinkItem = "Link note or file"
     static let detailChangeStart = "Change start date"
@@ -322,5 +360,54 @@ extension TasksCopy {
         if repeats, due != nil { parts.append(rowRepeats) }
         if reminders > 0 { parts.append(whenReminderCount(reminders)) }
         return parts.joined(separator: ", ")
+    }
+}
+
+/// One property row (desktop's `PropertyRow`): a fixed-width label column
+/// with its glyph, then the value.
+struct TaskPropertyRow<Value: View>: View {
+    let title: String
+    let symbol: String
+    @ViewBuilder var value: () -> Value
+
+    /// Grows with Dynamic Type so long labels keep one column.
+    @ScaledMetric(relativeTo: .subheadline) private var labelWidth: CGFloat = 112
+
+    init(_ title: String, symbol: String, @ViewBuilder value: @escaping () -> Value) {
+        self.title = title
+        self.symbol = symbol
+        self.value = value
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: Tokens.Space.small) {
+            Label {
+                Text(title).lineLimit(2)
+            } icon: {
+                Image(systemName: symbol).foregroundStyle(Tokens.Text.tertiary.color)
+            }
+            .font(Tokens.Typography.supporting.font)
+            .foregroundStyle(Tokens.Text.secondary.color)
+            .frame(width: labelWidth, alignment: .leading)
+            .accessibilityHidden(true)
+            value()
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(minHeight: Tokens.Size.minimumHitArea)
+    }
+}
+
+/// An unset property's value: quiet text where the pill would sit.
+struct TaskPropertyEmpty: View {
+    var text = TasksCopy.detailEmpty
+
+    var body: some View {
+        Text(text)
+            .font(Tokens.Typography.supporting.font)
+            .foregroundStyle(Tokens.Text.tertiary.color)
+            .lineLimit(1)
+            .padding(.horizontal, Tokens.Space.medium)
+            .frame(minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
+            .contentShape(.rect)
     }
 }

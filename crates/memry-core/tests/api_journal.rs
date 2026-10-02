@@ -356,3 +356,28 @@ fn settings_round_trip_per_weekday() {
     assert_eq!(cleared.weekday_templates[6], None);
     assert!(journal.set_weekday_template(7, None).is_err());
 }
+
+#[test]
+fn deleting_a_day_tombstones_it_and_an_edit_revives_it() {
+    let (dir, _vault, journal) = open("delete-day");
+    assert!(!journal.delete_day(TODAY.into()).expect("no entry"));
+    journal
+        .edit_day(TODAY.into(), paragraph("Walked to the lake.", "b1"))
+        .expect("edit");
+
+    assert!(journal.delete_day(TODAY.into()).expect("delete"));
+    assert_eq!(journal.day(TODAY.into()).expect("day"), None);
+    assert_eq!(
+        count(
+            &behind(&dir),
+            "SELECT COUNT(*) FROM outbox WHERE op = 'delete' AND item_type = 'journal'"
+        ),
+        1
+    );
+
+    let edit = journal
+        .edit_day(TODAY.into(), paragraph("Back again.", "b2"))
+        .expect("edit");
+    assert!(edit.changed);
+    assert!(journal.day(TODAY.into()).expect("day").is_some());
+}

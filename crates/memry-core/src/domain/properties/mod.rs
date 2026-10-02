@@ -200,7 +200,9 @@ pub fn remove(
 ) -> Result<Map<String, Value>, StorageError> {
     let payload = require(conn, item_type, item_id)?;
     let mut values = read_values(payload.object(), item_type, item_id)?;
-    if values.remove(name).is_none() {
+    // `shift_remove`, not `remove`: the map keeps desktop's key order, which
+    // is the property order (§13.7.1), and `remove` swaps the last key in.
+    if values.shift_remove(name).is_none() {
         return Ok(values);
     }
     write(
@@ -230,7 +232,7 @@ pub fn rename(
         });
     }
     let payload = require(conn, item_type, item_id)?;
-    let mut values = read_values(payload.object(), item_type, item_id)?;
+    let values = read_values(payload.object(), item_type, item_id)?;
     if !values.contains_key(from) {
         return Err(StorageError::NotFound {
             what: format!("{item_type}/{item_id} has no property `{from}`"),
@@ -244,12 +246,66 @@ pub fn rename(
             what: format!("{item_type}/{item_id} already has a property `{to}`"),
         });
     }
-    if let Some(value) = values.remove(from) {
-        values.insert(to.to_owned(), value);
-    }
+    let values = renamed_in_place(values, from, to);
     write(
         conn, item_type, item_id, &payload, values, device_id, now_ms,
     )
+}
+
+/// `values` with `from` renamed to `to` at the same position, as desktop's
+/// rename rebuilds the record in order.
+pub fn renamed_in_place(values: Map<String, Value>, from: &str, to: &str) -> Map<String, Value> {
+    values
+        .into_iter()
+        .map(|(name, value)| {
+            if name == from {
+                (to.to_owned(), value)
+            } else {
+                (name, value)
+            }
+        })
+        .collect()
+}
+
+/// Reorders one item's properties, desktop's `reorderProperties`
+/// (`use-properties.ts`): the named properties first, in the order given, then
+/// every property not named, in its current order. A name the item does not
+/// carry is skipped. An unchanged order writes nothing.
+///
+/// The order travels as the key order of the `properties` object, which is
+/// how desktop stores it (frontmatter and index rows follow the payload's key
+/// order). `note` merges document-level, so the reordered object wins or loses
+/// as a whole like any other property edit.
+pub fn reorder(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+    ordered: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Map<String, Value>, StorageError> {
+    let payload = require(conn, item_type, item_id)?;
+    let values = read_values(payload.object(), item_type, item_id)?;
+    let next = reordered(&values, ordered);
+    if next.keys().eq(values.keys()) {
+        return Ok(values);
+    }
+    write(conn, item_type, item_id, &payload, next, device_id, now_ms)
+}
+
+fn reordered(values: &Map<String, Value>, ordered: &[String]) -> Map<String, Value> {
+    let mut next = Map::new();
+    for name in ordered {
+        if let Some(value) = values.get(name) {
+            next.entry(name.clone()).or_insert_with(|| value.clone());
+        }
+    }
+    for (name, value) in values {
+        if !next.contains_key(name) {
+            next.insert(name.clone(), value.clone());
+        }
+    }
+    next
 }
 
 /// The rule FR-048 names. See the module comment for what is exempt and why.
@@ -481,6 +537,15 @@ mod tests {
             assert_eq!(values["Effort"], json!(3));
             let payload = pushed(conn);
             assert_eq!(payload["properties"], json!({"area":"Work","Effort":3}));
+            assert_eq!(
+                payload["properties"]
+                    .as_object()
+                    .expect("object")
+                    .keys()
+                    .collect::<Vec<_>>(),
+                vec!["area", "Effort"],
+                "a rename keeps the property's place"
+            );
             assert_eq!(payload["coverImage"], json!({"url": "memry://cover/1"}));
             Ok(())
         })
@@ -514,6 +579,74 @@ mod tests {
             Ok(())
         })
         .expect("refused");
+    }
+
+    fn pushed_order(conn: &Connection) -> Vec<String> {
+        pushed(conn)["properties"]
+            .as_object()
+            .expect("properties")
+            .keys()
+            .cloned()
+            .collect()
+    }
+
+    fn queued(conn: &Connection) -> i64 {
+        conn.query_row("SELECT COUNT(*) FROM outbox", [], |row| row.get(0))
+            .expect("outbox")
+    }
+
+    #[test]
+    fn the_payload_key_order_is_the_property_order_and_survives_edits() {
+        let (db, _dir) = open(
+            "props-order",
+            r#"{"title":"t","properties":{"zeta":1,"alpha":"a","mid":true},"clock":{"device-a":1}}"#,
+        );
+        db.call_blocking(|conn| {
+            let order: Vec<String> = values(conn, "note", "note-1")?.keys().cloned().collect();
+            assert_eq!(
+                order,
+                vec!["zeta", "alpha", "mid"],
+                "desktop's order is read as stored"
+            );
+
+            set(conn, "note", "note-1", "alpha", json!("b"), DEVICE, NOW + 1).expect("set");
+            assert_eq!(pushed_order(conn), vec!["zeta", "alpha", "mid"]);
+
+            remove(conn, "note", "note-1", "zeta", DEVICE, NOW + 2)?;
+            assert_eq!(pushed_order(conn), vec!["alpha", "mid"]);
+            Ok(())
+        })
+        .expect("order");
+    }
+
+    #[test]
+    fn a_reorder_puts_the_named_properties_first_and_keeps_the_rest() {
+        let (db, _dir) = open(
+            "props-reorder",
+            r#"{"title":"t","properties":{"a":1,"b":2,"c":3,"d":4},"clock":{"device-a":1}}"#,
+        );
+        db.call_blocking(|conn| {
+            let names = |list: &[&str]| list.iter().map(|it| (*it).to_owned()).collect::<Vec<_>>();
+
+            // Same order: nothing written.
+            reorder(conn, "note", "note-1", &names(&["a", "b"]), DEVICE, NOW + 1)?;
+            assert_eq!(queued(conn), 0);
+
+            let values = reorder(
+                conn,
+                "note",
+                "note-1",
+                &names(&["c", "ghost", "a"]),
+                DEVICE,
+                NOW + 2,
+            )?;
+            assert_eq!(values.keys().collect::<Vec<_>>(), vec!["c", "a", "b", "d"]);
+            assert_eq!(pushed_order(conn), vec!["c", "a", "b", "d"]);
+            assert_eq!(pushed(conn)["clock"], json!({"device-a": 1, "device-b": 1}));
+            assert_eq!(queued(conn), 1);
+            Ok(())
+        })
+        .expect("reorder");
     }
 
     #[test]

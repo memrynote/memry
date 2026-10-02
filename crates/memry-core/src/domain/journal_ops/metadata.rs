@@ -16,8 +16,8 @@
 //! returned here never contain it. A stored `date` property written by desktop
 //! is kept in the payload untouched.
 //!
-//! Property order is not written: the core's payload map is sorted by key
-//! (`storage/repositories/payload.rs`), so a reorder has no representation.
+//! Property order is the payload's key order and every write keeps it
+//! (`storage/repositories/payload.rs`). No journal reorder is offered yet.
 
 use rusqlite::Connection;
 use serde_json::{Map, Value};
@@ -126,7 +126,7 @@ pub fn rename_property(
     refuse_reserved(from)?;
     refuse_reserved(to)?;
     write_day(conn, date, false, device_id, now_ms, |object| {
-        let mut values = properties::read_values(object, ITEM_TYPE, date)?;
+        let values = properties::read_values(object, ITEM_TYPE, date)?;
         if !values.contains_key(from) {
             return Err(StorageError::NotFound {
                 what: format!("journal {date} has no property `{from}`"),
@@ -140,9 +140,7 @@ pub fn rename_property(
                 what: format!("journal {date} already has a property `{to}`"),
             });
         }
-        if let Some(value) = values.remove(from) {
-            values.insert(to.to_owned(), value);
-        }
+        let values = properties::renamed_in_place(values, from, to);
         Ok((properties_change(&values), visible(values)))
     })
 }

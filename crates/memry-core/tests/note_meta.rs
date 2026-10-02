@@ -127,22 +127,22 @@ fn tags_and_properties_come_back_with_the_note() {
     // Spelled as written: `Café` and `CAFÉ` are two rows one layer down, and
     // only matching folds case.
     assert_eq!(read.tags, vec!["scifi".to_string(), "Café".to_string()]);
-    // Ordered by name, so two reads of an unchanged note render identically.
+    // In the payload's key order, which is the order desktop shows them in.
     assert_eq!(
         read.properties
             .iter()
             .map(|p| p.name.as_str())
             .collect::<Vec<_>>(),
-        vec!["Pages", "Status"]
+        vec!["Status", "Pages"]
     );
-    let status = &read.properties[1];
+    let status = &read.properties[0];
     assert_eq!(status.value_json, "\"Reading\"");
     assert_eq!(status.type_name.as_deref(), Some("select"));
     assert_eq!(status.color.as_deref(), Some("#f97316"));
     // Undeclared, and still returned: a property written before its definition
     // arrived is legal, and dropping it would lose what the payload holds.
-    assert_eq!(read.properties[0].type_name, None);
-    assert_eq!(read.properties[0].value_json, "431");
+    assert_eq!(read.properties[1].type_name, None);
+    assert_eq!(read.properties[1].value_json, "431");
 }
 
 #[test]

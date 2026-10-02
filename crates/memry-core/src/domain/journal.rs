@@ -265,6 +265,30 @@ fn days_in_month(year: u32, month: u32) -> u32 {
     }
 }
 
+/// Desktop's `journal:deleteEntry`: tombstones the day's entry.
+///
+/// - Returns: `false` when the day has no live entry. Writing the day again
+///   revives the record ([`open_day_in`]), as it does after a delete that
+///   arrived from another device.
+pub fn delete_day(
+    conn: &Connection,
+    date: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let Some(id) = live_entry(conn, date)? else {
+        return Ok(false);
+    };
+    outbox::commit(
+        conn,
+        &outbox::Change::delete(ITEM_TYPE, &id),
+        now_ms,
+        |tx| super::notes::tombstone_local(tx, ITEM_TYPE, &id, device_id, now_ms),
+    )?
+    .acknowledge();
+    Ok(true)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -20,6 +20,8 @@ extension NSAttributedString.Key {
     static let memryNodeBytes = NSAttributedString.Key("memry.nodeBytes")
     /// On a `hashTag` chip or a `#tag` typed as text: the tag a tap opens.
     static let memryTag = NSAttributedString.Key("memry.tag")
+    /// On a `dateMention` chip: the `DateMentionChip` a tap edits.
+    static let memryDate = NSAttributedString.Key("memry.date")
 }
 
 @MainActor
@@ -101,6 +103,9 @@ enum BlockText {
         var font: UIFont
         var ink: UIColor
         var titleExists: ((String) -> Bool)?
+        /// The vault's tag colours by lowercased name, for a tag whose node
+        /// carries none.
+        var tagColors: [String: String] = [:]
     }
 
     static func attributed(_ runs: [InlineRun], style: Style) -> NSAttributedString {
@@ -119,7 +124,7 @@ enum BlockText {
     /// (`HashTagText`). Display only: the text, its marks and its core
     /// offsets stay as they are. Not over code or a link, whose text is
     /// literal; the caller skips a code block.
-    static func markTags(in text: NSMutableAttributedString) {
+    static func markTags(in text: NSMutableAttributedString, colors: [String: String] = [:]) {
         for match in HashTagText.matches(in: text.string) {
             var literal = false
             text.enumerateAttribute(.memryMarks, in: match.range) { value, _, stop in
@@ -130,12 +135,29 @@ enum BlockText {
                 }
             }
             guard !literal else { continue }
+            let ink = UIColor(Tokens.Palette.color(colors[match.tag.lowercased()], tag: match.tag))
+            let size = (text.attribute(.font, at: match.range.location, effectiveRange: nil) as? UIFont)?.pointSize
+                ?? UIFont.preferredFont(forTextStyle: .body).pointSize
+            // The fill is drawn rounded by `TagPillLayoutManager`; the kerns
+            // around the tag make room for its padding.
             text.addAttributes(
-                [.foregroundColor: UIColor(Tokens.Text.tint.color), .memryTag: match.tag],
+                [
+                    .foregroundColor: ink,
+                    .backgroundColor: ink.withAlphaComponent(Tokens.Palette.chipFillAlpha),
+                    .font: UIFont.systemFont(ofSize: size * 0.9, weight: .medium),
+                    .memryTag: match.tag,
+                ],
                 range: match.range
             )
+            if match.range.location > 0 {
+                text.addAttribute(.kern, value: tagPillPadding, range: NSRange(location: match.range.location - 1, length: 1))
+            }
+            text.addAttribute(.kern, value: tagPillPadding, range: NSRange(location: NSMaxRange(match.range) - 1, length: 1))
         }
     }
+
+    /// The room on each side of a typed `#tag`'s fill.
+    nonisolated static let tagPillPadding: CGFloat = 6
 
     /// What a character typed with nothing to its left carries.
     static func baseAttributes(_ style: Style) -> [NSAttributedString.Key: Any] {
@@ -181,6 +203,7 @@ enum BlockText {
     /// One inline node, drawn as the chip its label reads as.
     private static func chip(_ segment: Segment, style: Style) -> NSAttributedString {
         let run = segment.run
+        if run.marks.contains("hashTag") { return tagPill(segment, style: style) }
         let label = NoteInlineLabel.text(of: run)
         var ink = UIColor(Tokens.Text.tint.color)
         var font = style.font
@@ -211,9 +234,40 @@ enum BlockText {
             [.font: style.font, .memryNodeBytes: segment.coreBytes, .memryMarks: [String]()],
             range: NSRange(location: 0, length: out.length)
         )
-        if run.marks.contains("hashTag") {
-            out.addAttribute(.memryTag, value: NoteInline.tagName(of: run), range: NSRange(location: 0, length: out.length))
+        if run.marks.contains("dateMention"), let date = DateMentionChip.from(run) {
+            out.addAttribute(.memryDate, value: date, range: NSRange(location: 0, length: out.length))
         }
+        return out
+    }
+
+    /// Desktop's `inline-hash-tag`: `#tag` at 0.9em medium in the tag's
+    /// colour, on a 12% fill of it, 8pt across and fully rounded.
+    private static func tagPill(_ segment: Segment, style: Style) -> NSAttributedString {
+        let run = segment.run
+        let name = NoteInline.tagName(of: run)
+        let ink = UIColor(NoteInline.tagColor(of: run, colors: style.tagColors))
+        let shown = "#" + name
+        let font = UIFont.systemFont(ofSize: style.font.pointSize * 0.9, weight: .medium)
+        let text = NSAttributedString(string: shown, attributes: [.font: font, .foregroundColor: ink])
+        let textSize = text.size()
+        let padX: CGFloat = 8
+        let padY: CGFloat = 1
+        let size = CGSize(width: ceil(textSize.width + padX * 2), height: ceil(textSize.height + padY * 2))
+        let image = UIGraphicsImageRenderer(size: size).image { _ in
+            ink.withAlphaComponent(Tokens.Palette.chipFillAlpha).setFill()
+            UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: min(10, size.height / 2)).fill()
+            text.draw(at: CGPoint(x: padX, y: padY))
+        }
+        let attachment = NSTextAttachment(image: image)
+        // Centre the pill on the line's x-height, as desktop's inline box sits.
+        let y = (style.font.capHeight - size.height) / 2
+        attachment.bounds = CGRect(x: 0, y: y, width: size.width, height: size.height)
+        attachment.accessibilityLabel = shown
+        let out = NSMutableAttributedString(attachment: attachment)
+        out.addAttributes(
+            [.font: style.font, .memryNodeBytes: segment.coreBytes, .memryMarks: [String](), .memryTag: name],
+            range: NSRange(location: 0, length: out.length)
+        )
         return out
     }
 }

@@ -95,10 +95,17 @@ impl Notes {
     }
 
     /// The sidebar's bookmarks that resolve to something this vault holds,
-    /// in the user's order. Read-only: the phone shows desktop's bookmarks
-    /// and does not write them.
+    /// in the user's order. Written through
+    /// [`crate::api::notes_write::NotesWriter::toggle_bookmark`].
     pub fn bookmarks(&self) -> Result<Vec<BookmarkEntry>, StorageError> {
         self.db.call_blocking(|conn| bookmarks::list(conn))
+    }
+
+    /// Whether a live bookmark names `(item_type, item_id)`: the page menu's
+    /// "Add to favorites" / "Remove from favorites".
+    pub fn is_bookmarked(&self, item_type: String, item_id: String) -> Result<bool, StorageError> {
+        self.db
+            .call_blocking(move |conn| bookmarks::is_bookmarked(conn, &item_type, &item_id))
     }
 
     /// The live notes carrying one tag (N600).

@@ -55,6 +55,14 @@ protocol NotesWriting: Sendable {
     /// Tombstones a folder's configs. The core refuses a subtree that still
     /// holds a live note, so the notes go first.
     func deleteFolder(path: String) async throws
+    /// Copies a note beside itself (icon, cover, tags, properties, body) and
+    /// returns the copy's id; `nil` when the source is gone.
+    func duplicate(id: String, title: String) async throws -> String?
+    /// Whether the item is in the sidebar's bookmarks, desktop's favorites.
+    /// `itemType` is `note` or `journal`.
+    func isBookmarked(itemType: String, itemId: String) async throws -> Bool
+    /// Adds or removes the item's bookmark; answers the new state.
+    func toggleBookmark(itemType: String, itemId: String) async throws -> Bool
 }
 
 /// The production writer: the core's own `NotesWriter`, over the shell's one
@@ -81,7 +89,25 @@ struct CoreNotesWriter: NotesWriting {
     }
 
     func create(title: String, folderPath: String?) async throws -> String {
-        try await executor.run { try writer().create(title: title, folderPath: folderPath) }
+        try await executor.run {
+            let writer = try writer()
+            let id = try writer.create(title: title, folderPath: folderPath)
+            // A new note opens on one empty paragraph, as desktop's does, so
+            // the page shows an editor rather than the "text is not on this
+            // phone" state a body-less note reads as. The note already
+            // exists, so a failed seed is logged rather than thrown.
+            do {
+                _ = try writer.editBlock(
+                    noteId: id,
+                    edit: .insertParagraph(
+                        afterBlockId: nil, text: "", newBlockId: UUID().uuidString.lowercased()
+                    )
+                )
+            } catch {
+                Log.storage.error("a new note's first paragraph did not land")
+            }
+            return id
+        }
     }
 
     func rename(id: String, title: String) async throws {
@@ -138,6 +164,18 @@ struct CoreNotesWriter: NotesWriting {
 
     func deleteFolder(path: String) async throws {
         _ = try await executor.run { try writer().deleteFolder(path: path) }
+    }
+
+    func duplicate(id: String, title: String) async throws -> String? {
+        try await executor.run { try writer().duplicate(sourceId: id, title: title) }
+    }
+
+    func isBookmarked(itemType: String, itemId: String) async throws -> Bool {
+        try await executor.run { try vault.notes().isBookmarked(itemType: itemType, itemId: itemId) }
+    }
+
+    func toggleBookmark(itemType: String, itemId: String) async throws -> Bool {
+        try await executor.run { try writer().toggleBookmark(itemType: itemType, itemId: itemId) }
     }
 }
 

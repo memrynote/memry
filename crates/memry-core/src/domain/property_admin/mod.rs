@@ -433,7 +433,8 @@ mod tests {
             vec!["Work", "Home"]
         );
         let status = find(&db, "status");
-        assert_eq!(status.options[0].category.as_deref(), Some("done"));
+        // Categories come out in the stored order, as desktop lists them.
+        assert_eq!(status.options[0].category.as_deref(), Some("todo"));
     }
 
     #[test]
@@ -496,8 +497,7 @@ mod tests {
         .expect("ensure");
         let stage = find(&db, "Stage");
         assert_eq!(stage.type_name, "status");
-        // `list` reads categories through a parsed (key-sorted) map; the
-        // stored text below is what keeps desktop's order.
+        // The stored text below is what pins desktop's order.
         let mut values: Vec<_> = stage.options.iter().map(|o| o.value.as_str()).collect();
         values.sort_unstable();
         assert_eq!(

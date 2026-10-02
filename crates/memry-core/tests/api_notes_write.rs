@@ -13,6 +13,8 @@
 //! | a delete tombstones rather than vanishing         | chapter 07 §7.15                      |
 //! | a device with no signing key cannot write         | no borrowed identity                  |
 //! | a locked keychain is not a missing key            | `SecureStoreError::Locked` crosses    |
+//! | a duplicate copies metadata and body               | note page "Duplicate"                 |
+//! | a bookmark toggles on, off and back on             | desktop `bookmarks:toggle`            |
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -21,6 +23,7 @@ use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::{AuthError, SecureStoreError, StorageError};
 use memry_core::api::vault::Vault;
+use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
@@ -707,5 +710,137 @@ fn a_task_card_reads_its_project_and_state() {
     assert_eq!(
         vault.notes().task("gone".to_string()).expect("the read"),
         None
+    );
+}
+
+#[test]
+fn a_duplicate_copies_metadata_and_body() {
+    let (dir, vault) = vault("duplicate");
+    let writer = vault
+        .notes_writer(MemoryStore::registered())
+        .expect("writer");
+    let id = writer
+        .create("Kitchen".to_string(), Some("Home".to_string()))
+        .expect("create");
+    writer
+        .set_icon(id.clone(), Some("x".to_string()))
+        .expect("icon");
+    writer
+        .set_aliases(id.clone(), vec!["Cooking".to_string()])
+        .expect("aliases");
+    for (text, block, after) in [("First line", "a", None), ("Second line", "b", Some("a"))] {
+        writer
+            .edit_block(
+                id.clone(),
+                BlockEdit::InsertParagraph {
+                    after_block_id: after.map(str::to_owned),
+                    text: text.to_owned(),
+                    new_block_id: block.to_owned(),
+                },
+            )
+            .expect("edit");
+    }
+    let before = count(&behind(&dir), "SELECT COUNT(*) FROM outbox");
+
+    let copy = writer
+        .duplicate(id.clone(), "Kitchen copy".to_string())
+        .expect("duplicate")
+        .expect("a copy");
+
+    assert_ne!(copy, id);
+    let read = vault
+        .notes()
+        .read(copy.clone())
+        .expect("read")
+        .expect("live");
+    assert_eq!(read.summary.title, "Kitchen copy");
+    assert_eq!(read.summary.folder_path.as_deref(), Some("Home"));
+    assert_eq!(read.summary.emoji.as_deref(), Some("x"));
+    assert!(read.body.text.contains("First line"));
+    assert!(read.body.text.contains("Second line"));
+    assert!(
+        read.body.text.find("First").unwrap_or(usize::MAX)
+            < read.body.text.find("Second").unwrap_or(0)
+    );
+    // An alias on both would make the wiki link ambiguous.
+    let meta = vault
+        .notes()
+        .metadata(copy.clone())
+        .expect("meta")
+        .expect("some");
+    assert!(meta.aliases.is_empty());
+    // The record and its body, queued together.
+    assert_eq!(
+        count(&behind(&dir), "SELECT COUNT(*) FROM outbox"),
+        before + 2
+    );
+    // The original is untouched.
+    let original = vault.notes().read(id).expect("read").expect("live");
+    assert_eq!(original.summary.title, "Kitchen");
+
+    assert_eq!(
+        writer
+            .duplicate("missing".to_string(), "x".to_string())
+            .expect("an answer"),
+        None
+    );
+}
+
+#[test]
+fn a_bookmark_toggles_on_off_and_back_on() {
+    let (dir, vault) = vault("bookmark");
+    let writer = vault
+        .notes_writer(MemoryStore::registered())
+        .expect("writer");
+    let id = writer.create("Starred".to_string(), None).expect("create");
+    let notes = vault.notes();
+
+    assert!(
+        !notes
+            .is_bookmarked("note".into(), id.clone())
+            .expect("read")
+    );
+    assert!(
+        writer
+            .toggle_bookmark("note".into(), id.clone())
+            .expect("on")
+    );
+    assert!(
+        notes
+            .is_bookmarked("note".into(), id.clone())
+            .expect("read")
+    );
+    let listed = notes.bookmarks().expect("list");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].id, format!("bmk_note_{id}"));
+
+    assert!(
+        !writer
+            .toggle_bookmark("note".into(), id.clone())
+            .expect("off")
+    );
+    assert!(notes.bookmarks().expect("list").is_empty());
+    assert_eq!(
+        count(
+            &behind(&dir),
+            "SELECT COUNT(*) FROM sync_items WHERE item_type = 'bookmark' AND deleted_at IS NOT NULL"
+        ),
+        1
+    );
+
+    // The tombstone under the same id is revived, not refused.
+    assert!(
+        writer
+            .toggle_bookmark("note".into(), id.clone())
+            .expect("on again")
+    );
+    assert_eq!(notes.bookmarks().expect("list").len(), 1);
+    assert_eq!(
+        scalar(
+            &behind(&dir),
+            &format!("SELECT payload FROM sync_items WHERE item_id = 'bmk_note_{id}'")
+        )
+        .map(|payload| payload.contains("\"itemType\":\"note\"")),
+        Some(true)
     );
 }

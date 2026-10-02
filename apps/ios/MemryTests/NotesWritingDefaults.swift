@@ -29,4 +29,14 @@ extension NotesWriting {
 
     func dismissReminder(id: String) async throws {}
     func snoozeReminder(id: String, until: String) async throws {}
+
+    func duplicate(id: String, title: String) async throws -> String? {
+        throw SyncError.Locked
+    }
+
+    func isBookmarked(itemType: String, itemId: String) async throws -> Bool { false }
+
+    func toggleBookmark(itemType: String, itemId: String) async throws -> Bool {
+        throw SyncError.Locked
+    }
 }

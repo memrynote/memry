@@ -15,12 +15,14 @@
 //!
 //! ## Key order
 //!
-//! `serde_json`'s object is a `BTreeMap`, so a merged payload comes out with
-//! its keys sorted by code point. That is exactly the canonical form chapter 06
-//! §6.4.2 mandates for value comparison (decision #2185), so a reordering is
-//! not a difference to any conforming peer — and no key is added, dropped or
-//! rewritten by it. The unedited path returns the received bytes untouched, so
-//! the byte-for-byte round trip the vectors pin does not go anywhere near this.
+//! `serde_json` is built with `preserve_order`, so a merged payload keeps the
+//! received key order and appends a new key at the end. Order is data here:
+//! desktop reads the order of `properties` as the order the note shows its
+//! properties in, and a sorted rewrite would reshuffle them on every device
+//! after any edit made on this one. Value comparison is unaffected: chapter 06
+//! §6.4.2's canonical form sorts keys itself (`sync/field_merge.rs`). The
+//! unedited path returns the received bytes untouched, so the byte-for-byte
+//! round trip the vectors pin does not go anywhere near this.
 
 use serde_json::{Map, Value};
 
@@ -78,7 +80,7 @@ impl StoredPayload {
                     merged.insert((*key).to_owned(), value.clone());
                 }
                 Change::Remove => {
-                    merged.remove(*key);
+                    merged.shift_remove(*key);
                 }
             }
         }

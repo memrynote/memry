@@ -16,6 +16,9 @@ struct InboxFileSheet: View {
     @State private var search = ""
     @State private var folder: String?
     @State private var folders: [String] = []
+    @State private var folderIcons: [String: String] = [:]
+    @State private var tagColors: [String: String] = [:]
+    @State private var noteEmoji: [String: String] = [:]
     @State private var tags: [String] = []
     @State private var tagSuggestions: [String] = []
     @State private var newTag = ""
@@ -150,8 +153,16 @@ struct InboxFileSheet: View {
             folder = path
         } label: {
             HStack {
-                Label(InboxFolderName.display(path), systemImage: "folder")
-                    .foregroundStyle(Tokens.Text.primary.color)
+                Label {
+                    Text(InboxFolderName.display(path))
+                } icon: {
+                    if let emoji = ProjectIconValue.emoji(folderIcons[path]) {
+                        Text(emoji)
+                    } else {
+                        Image(systemName: "folder")
+                    }
+                }
+                .foregroundStyle(Tokens.Text.primary.color)
                 Spacer()
                 if folder == path {
                     Image(systemName: "checkmark")
@@ -190,12 +201,12 @@ struct InboxFileSheet: View {
                         Label("#\(tag)", systemImage: "xmark")
                             .labelStyle(InboxTrailingIconLabel())
                     }
-                    .buttonStyle(InboxChipStyle(selected: true))
+                    .buttonStyle(InboxTagPillStyle(color: color(of: tag), selected: true))
                     .accessibilityLabel(InboxCopy.removeTag(tag))
                 }
                 ForEach(tagSuggestions.filter { !tags.contains($0) }.prefix(3), id: \.self) { tag in
                     Button("+ #\(tag)") { addTag(tag) }
-                        .buttonStyle(InboxChipStyle(selected: false))
+                        .buttonStyle(InboxTagPillStyle(color: color(of: tag), selected: false))
                 }
             }
         }
@@ -207,7 +218,11 @@ struct InboxFileSheet: View {
         Section {
             ForEach(links, id: \.self) { link in
                 HStack {
-                    Label(link.title, systemImage: link.noteId == nil ? "doc.badge.plus" : "doc")
+                    Label {
+                        Text(link.title)
+                    } icon: {
+                        noteIcon(link.noteId.flatMap { noteEmoji[$0] }, fallback: link.noteId == nil ? "doc.badge.plus" : "doc.text")
+                    }
                     Spacer()
                     Button(InboxCopy.close, systemImage: "xmark") { links.removeAll { $0 == link } }
                         .labelStyle(.iconOnly)
@@ -219,9 +234,17 @@ struct InboxFileSheet: View {
             let query = noteQuery.trimmingCharacters(in: .whitespaces)
             if !query.isEmpty {
                 ForEach(noteResults.prefix(6), id: \.id) { note in
-                    Button(note.title) {
+                    Button {
+                        if let emoji = ProjectIconValue.emoji(note.emoji) { noteEmoji[note.id] = emoji }
                         links.append(InboxLinkChoice(noteId: note.id, title: note.title))
                         noteQuery = ""
+                    } label: {
+                        Label {
+                            Text(note.title)
+                                .foregroundStyle(Tokens.Text.primary.color)
+                        } icon: {
+                            noteIcon(ProjectIconValue.emoji(note.emoji), fallback: "doc.text")
+                        }
                     }
                 }
                 Button(InboxCopy.createNote(query)) {
@@ -238,6 +261,21 @@ struct InboxFileSheet: View {
             // ask again" has hidden them.
             if isImage, imageMode == .embed, links.isEmpty { Text(InboxCopy.embedNeedsNote) }
         }
+    }
+
+    private func noteIcon(_ emoji: String?, fallback: String) -> some View {
+        Group {
+            if let emoji {
+                Text(emoji)
+            } else {
+                Image(systemName: fallback).foregroundStyle(Tokens.Text.secondary.color)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func color(of tag: String) -> Color {
+        Tokens.Palette.color(tagColors[tag.lowercased()], tag: tag)
     }
 
     private var imageSection: some View {
@@ -258,6 +296,14 @@ struct InboxFileSheet: View {
         guard let notes = store.notes else { return }
         let loaded = try? await store.executorRun { (try notes.folders(), try notes.tags()) }
         folders = loaded?.0.map(\.path).sorted() ?? []
+        folderIcons = Dictionary(
+            (loaded?.0 ?? []).compactMap { f in f.icon.map { (f.path, $0) } },
+            uniquingKeysWith: { first, _ in first }
+        )
+        tagColors = Dictionary(
+            (loaded?.1 ?? []).compactMap { t in t.color.map { (t.name.lowercased(), $0) } },
+            uniquingKeysWith: { first, _ in first }
+        )
         tagSuggestions = loaded?.1.sorted { $0.noteCount > $1.noteCount }.map(\.name) ?? []
     }
 
@@ -319,6 +365,27 @@ struct InboxChipStyle: ButtonStyle {
             .frame(minHeight: Tokens.Size.pill)
             .background(selected ? Tokens.Canvas.surfaceActive.color : .clear, in: .capsule)
             .overlay { if !selected { Capsule().strokeBorder(Tokens.Line.border.color, lineWidth: Tokens.Size.hairline) } }
+            .frame(minHeight: Tokens.Size.minimumHitArea)
+            .opacity(configuration.isPressed ? 0.6 : 1)
+    }
+}
+
+/// A tag pill in the tag's own colour: chosen = tinted fill, suggestion =
+/// tinted outline (desktop's tag badge).
+struct InboxTagPillStyle: ButtonStyle {
+    let color: Color
+    let selected: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(Tokens.Typography.supporting.font.weight(.medium))
+            .foregroundStyle(color)
+            .padding(.horizontal, Tokens.Space.medium)
+            .frame(minHeight: Tokens.Size.pill)
+            .background(color.opacity(selected ? Tokens.Palette.chipFillAlpha : 0), in: .capsule)
+            .overlay {
+                Capsule().strokeBorder(color.opacity(selected ? 0 : 0.5), lineWidth: Tokens.Size.hairline)
+            }
             .frame(minHeight: Tokens.Size.minimumHitArea)
             .opacity(configuration.isPressed ? 0.6 : 1)
     }

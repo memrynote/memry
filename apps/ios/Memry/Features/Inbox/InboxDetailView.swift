@@ -134,7 +134,7 @@ struct InboxDetailView: View {
                     barButton(InboxCopy.convert, "arrow.left.arrow.right") { sheets.convert = InboxConvertRequest(item: item) }
                         .accessibilityIdentifier("inbox.detail.convert")
                 }
-                primaryButton(InboxCopy.fileEllipsis, "folder") { sheets.file = InboxFileRequest(ids: [item.id]) }
+                fileButton { sheets.file = InboxFileRequest(ids: [item.id]) }
                     .accessibilityIdentifier("inbox.detail.file")
             }
             .padding(Tokens.Space.tight)
@@ -168,6 +168,18 @@ struct InboxDetailView: View {
         .buttonStyle(.glassProminent)
         .tint(Tokens.Tint.base.color)
         .accessibilityShowsLargeContentViewer { Label(label, systemImage: symbol) }
+    }
+
+    /// File stays in the default glass, not the tinted prominent style: it opens a picker, it does not commit.
+    private func fileButton(action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(InboxCopy.fileEllipsis, systemImage: "folder")
+                .font(Tokens.Typography.body.font.weight(.semibold))
+                .foregroundStyle(Tokens.Text.primary.color)
+                .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea + Tokens.Space.tight)
+        }
+        .buttonStyle(.glass)
+        .accessibilityShowsLargeContentViewer { Label(InboxCopy.fileEllipsis, systemImage: "folder") }
     }
 
     private func menu(_ item: InboxItemRecord) -> some View {

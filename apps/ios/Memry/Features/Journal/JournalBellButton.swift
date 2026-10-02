@@ -36,19 +36,8 @@ struct JournalBellButton: View {
         }
         .task(id: date) { await store.loadReminders(date) }
         .sheet(item: $sheet) { sheet in
-            switch sheet {
-            case .pick:
-                JournalReminderPickSheet(
-                    title: JournalCopy.remindMe,
-                    initial: JournalReminderPresets.inDays(1, from: store.clock.instant()),
-                    initialNote: "",
-                    now: store.clock.instant()
-                ) { instant, note in
-                    self.sheet = nil
-                    Task { await store.setReminder(on: date, at: instant, note: note, tasks: tasks) }
-                }
-            case .manage:
-                JournalReminderSheet(store: store, date: date, tasks: tasks)
+            JournalBellSheetContent(sheet: sheet, store: store, date: date, tasks: tasks) {
+                self.sheet = nil
             }
         }
     }
@@ -115,7 +104,40 @@ struct JournalBellButton: View {
     }
 }
 
-private enum JournalBellSheet: String, Identifiable {
+/// The bell's two sheets, also raised by the More menu's Reminder.
+enum JournalBellSheet: String, Identifiable {
     case pick, manage
     var id: String { rawValue }
+
+    /// Pick a time when the day has no active reminder, manage them when it
+    /// has some: what a tap on the bell opens.
+    @MainActor static func forDay(_ store: JournalStore, _ date: String) -> JournalBellSheet {
+        store.activeReminders(date).isEmpty ? .pick : .manage
+    }
+}
+
+/// One of the bell's sheets.
+struct JournalBellSheetContent: View {
+    let sheet: JournalBellSheet
+    let store: JournalStore
+    let date: String
+    let tasks: TasksStore?
+    let close: () -> Void
+
+    var body: some View {
+        switch sheet {
+        case .pick:
+            JournalReminderPickSheet(
+                title: JournalCopy.remindMe,
+                initial: JournalReminderPresets.inDays(1, from: store.clock.instant()),
+                initialNote: "",
+                now: store.clock.instant()
+            ) { instant, note in
+                close()
+                Task { await store.setReminder(on: date, at: instant, note: note, tasks: tasks) }
+            }
+        case .manage:
+            JournalReminderSheet(store: store, date: date, tasks: tasks)
+        }
+    }
 }

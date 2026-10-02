@@ -388,6 +388,44 @@ pub fn append_snapshot(document: &Document, snapshot: &str) -> Result<(), CrdtEr
     document.write(|txn| snapshot::append_block(txn, snapshot))?
 }
 
+/// [`append_snapshot`] inside a caller's transaction, so several appends
+/// author one update.
+pub(crate) fn append_snapshot_in(
+    txn: &mut TransactionMut,
+    snapshot: &str,
+) -> Result<(), CrdtError> {
+    snapshot::append_block(txn, snapshot)
+}
+
+/// The ids of the body's top-level blocks, in order: what a whole-body copy
+/// snapshots one by one (note "Duplicate"). Authors no update; an empty body
+/// answers an empty list.
+pub fn top_level_block_ids(document: &Document) -> Result<Vec<String>, CrdtError> {
+    document.write(|txn| {
+        let mut ids = Vec::new();
+        let Some(fragment) = txn.get_xml_fragment(BODY_FRAGMENT) else {
+            return Ok(ids);
+        };
+        for child in fragment.children(txn) {
+            let XmlOut::Element(group) = child else {
+                continue;
+            };
+            if group.tag().as_ref() != "blockGroup" {
+                continue;
+            }
+            for inner in group.children(txn) {
+                if let XmlOut::Element(container) = inner
+                    && container.tag().as_ref() == "blockContainer"
+                    && let Some(id) = attribute(txn, &container, "id")
+                {
+                    ids.push(id);
+                }
+            }
+        }
+        Ok(ids)
+    })?
+}
+
 /// The `blockContainer` carrying `id`, and the block element inside it.
 ///
 /// Returns both because an edit needs one or the other: a prop and text belong

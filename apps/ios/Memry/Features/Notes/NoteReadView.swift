@@ -191,6 +191,12 @@ struct NoteReadView: View {
     @State private var renameDraft = ""
     @State private var moving = false
     @State private var confirmingDelete = false
+    /// The cover picker, raised by the page menu's "Change cover".
+    @State private var choosingCover = false
+    /// The reposition sheet, raised by the page menu's "Reposition cover".
+    @State private var repositioningCover = false
+    /// The navigation bar's height, which a cover reaches under.
+    @State private var topInset: CGFloat = 0
     /// Find in note (N801), shown on demand rather than always.
     @State private var finding = false
 
@@ -204,6 +210,31 @@ struct NoteReadView: View {
         guard let edit else { return }
         await editorModel.apply(edit)
         await model.reload()
+    }
+
+    /// Puts the caret in the body: its first block (Return in the title) or
+    /// its end (a tap under it). A body with nowhere to type gets a new empty
+    /// paragraph, as desktop does.
+    private func focusBody(atEnd: Bool) async {
+        let blocks = model.blocks
+        let target = atEnd ? blocks.last : blocks.first
+        let typable = target.map { block in
+            atEnd
+                ? block.kind == "paragraph" && block.inline.allSatisfy(\.text.isEmpty)
+                : ["paragraph", "heading", "bulletListItem", "numberedListItem", "checkListItem", "quote"]
+                    .contains(block.kind)
+        } ?? false
+        if typable, let id = target?.id {
+            editorModel.session.pendingFocus = id
+        } else if let id = await editorModel.insertParagraph(after: blocks.last?.id) {
+            editorModel.session.pendingFocus = id
+        }
+        await model.reload()
+    }
+
+    private var hasCover: Bool {
+        guard case .ready = model.phase else { return false }
+        return NoteCoverValue.of(model.metadata?.coverJson) != nil
     }
 
     var body: some View {
@@ -225,6 +256,9 @@ struct NoteReadView: View {
                         .memrySecondaryAction()
                 case let .ready(detail):
                     // The cover sits above everything, as desktop puts it.
+                    // Spacing 0: the band brings its own gap, so a note
+                    // without a cover gets no empty section above its title.
+                    VStack(alignment: .leading, spacing: 0) {
                     NoteCoverSection(
                         noteId: model.route.id,
                         coverJson: model.metadata?.coverJson,
@@ -234,11 +268,14 @@ struct NoteReadView: View {
                         metadataModel: metadataModel,
                         composer: composer,
                         reload: { await model.reload() },
-                        bleed: Tokens.Space.screenInline
+                        bleed: Tokens.Space.screenInline,
+                        topBleed: Tokens.Space.screenBlock + topInset,
+                        picking: $choosingCover,
+                        repositioning: $repositioningCover
                     )
                     if metadataModel.canEdit {
                         NoteTitleEditor(
-                            title: model.displayTitle,
+                            title: detail.summary.title,
                             icon: model.metadata?.icon,
                             canEdit: true,
                             rename: { title in
@@ -254,10 +291,13 @@ struct NoteReadView: View {
                                     await metadataModel.setIcon(icon)
                                     await model.reload()
                                 }
-                            }
+                            },
+                            returnToBody: editorModel.canEdit
+                                ? { Task { await focusBody(atEnd: false) } } : nil
                         )
                     } else {
                         NoteHeader(title: model.displayTitle, summary: detail.summary)
+                    }
                     }
                     NotePageContent(
                         model: model,
@@ -272,17 +312,25 @@ struct NoteReadView: View {
                         openTag: openTag,
                         brokenLink: $brokenLink,
                         emptyBody: { preview in
+                            // An empty body on an editable page is the
+                            // editor's space, not a notice.
+                            if case .empty = preview, editorModel.canEdit {
+                                EmptyView()
+                            } else {
                             NoteBodyView(
                                 preview: preview,
                                 fetch: model.fetch,
                                 download: model.canFetchBody ? { Task { await model.fetchBody() } } : nil
                             )
+                            }
                         },
                         afterBacklinks: {
                             // N804, under the backlinks: both are about the
                             // note rather than in it.
                             NoteRemindersSection(model: reminders)
-                        }
+                        },
+                        tapBelowBody: editorModel.canEdit && model.preview != .notPulled
+                            ? { Task { await focusBody(atEnd: true) } } : nil
                     )
                 }
             }
@@ -291,6 +339,14 @@ struct NoteReadView: View {
             .padding(.vertical, Tokens.Space.screenBlock)
         }
         .restoresScroll(scrollKey)
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
+        // A cover runs under the navigation bar; the edge blur would smear it.
+        .scrollEdgeEffectHidden(hasCover, for: .top)
+        .safeAreaInset(edge: .top) {
+            if finding {
+                NoteFindPanel(blocks: model.blocks) { finding = false }
+            }
+        }
         // The keyboard accessory is floating glass: paint the page colour under
         // it and drop the bottom edge blur, or the strip behind the toolbar reads
         // as a black band with a shadow over it.
@@ -316,11 +372,17 @@ struct NoteReadView: View {
                 renaming: $renaming,
                 moving: $moving,
                 confirmingDelete: $confirmingDelete,
+                choosingCover: $choosingCover,
+                repositioningCover: $repositioningCover,
+                addReminder: reminders.canWrite ? { reminders.adding = true } : nil,
                 applyHistory: applyHistory,
                 export: NoteExport(
                     title: model.displayTitle,
                     text: model.exportText
-                )
+                ),
+                backlinks: backlinks,
+                finding: $finding,
+                open: openRoute
             )
         )
         .modifier(

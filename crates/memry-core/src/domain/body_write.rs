@@ -110,6 +110,25 @@ pub fn append_snapshot(
     Ok(true)
 }
 
+/// Authors the update that appends `snapshots`, in order, to `doc_id`'s
+/// body, **without writing anything**: the body half of note "Duplicate",
+/// which stores it in the same transaction as the new note's record.
+pub(crate) fn author_appends(
+    conn: &Connection,
+    doc_id: &str,
+    snapshots: &[String],
+    device_id: &str,
+) -> Result<Option<Vec<u8>>, CrdtError> {
+    author_with(conn, doc_id, device_id, |document| {
+        document.write(|txn| {
+            for snapshot in snapshots {
+                body_edit::append_snapshot_in(txn, snapshot)?;
+            }
+            Ok(())
+        })?
+    })
+}
+
 /// [`author`] for any write against the replayed document.
 fn author_with(
     conn: &Connection,

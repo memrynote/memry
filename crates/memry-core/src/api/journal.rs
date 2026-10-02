@@ -182,6 +182,15 @@ impl Journal {
             .map_err(CrdtError::from)?
     }
 
+    /// Deletes the day's entry (desktop's `journal:deleteEntry`). `false`
+    /// when the day has none.
+    pub fn delete_day(&self, date: String) -> Result<bool, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            crate::domain::journal::delete_day(conn, &date, &device_id, now_ms())
+        })
+    }
+
     // MARK: - Tags and properties (D5: `content: null` on update)
 
     /// Replaces the day's tags, creating the day when absent and the list is

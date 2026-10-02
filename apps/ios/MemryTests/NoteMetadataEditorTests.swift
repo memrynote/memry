@@ -21,6 +21,7 @@ private final class ScriptedMetadataWriter: NoteMetadataWriting, @unchecked Send
         case property(String, String)
         case clear(String)
         case renameProperty(String, String)
+        case reorder([String])
         case definition(String, String)
     }
 
@@ -49,6 +50,9 @@ private final class ScriptedMetadataWriter: NoteMetadataWriting, @unchecked Send
     func clearProperty(id: String, name: String) async throws { try record(.clear(name)) }
     func renameProperty(id: String, from: String, to: String) async throws {
         try record(.renameProperty(from, to))
+    }
+    func reorderProperties(id: String, names: [String]) async throws {
+        try record(.reorder(names))
     }
     func ensurePropertyDefinition(name: String, typeName: String) async throws {
         try record(.definition(name, typeName))
@@ -411,6 +415,18 @@ struct NotePropertyEditingTests {
         await model.renameProperty("area", to: "area", existing: ["area"])
 
         #expect(writer.all.isEmpty)
+        #expect(model.status == .idle)
+    }
+
+    /// Desktop `reorderProperties`: a moved order is written, an unchanged one is not.
+    @Test func a_new_order_is_written_and_an_unchanged_one_is_not() async {
+        let writer = ScriptedMetadataWriter()
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: writer)
+
+        await model.reorderProperties(["area", "effort"], current: ["area", "effort"])
+        await model.reorderProperties(["effort", "area"], current: ["area", "effort"])
+
+        #expect(writer.all == [.reorder(["effort", "area"])])
         #expect(model.status == .idle)
     }
 

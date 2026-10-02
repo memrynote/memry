@@ -8,6 +8,7 @@
 import MemryCore
 import Observation
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - N802, export
 
@@ -40,6 +41,19 @@ struct NoteExport: Equatable, Sendable {
     /// The whole file: the title, then the body.
     var contents: String {
         title.isEmpty ? text : "\(title)\n\n\(text)"
+    }
+}
+
+/// A note as a `.txt` file for the share sheet's "Save to Files" and
+/// friends: the page menu's Export, where Share hands over the text itself.
+struct NoteExportFile: Transferable {
+    let export: NoteExport
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .plainText) { file in
+            Data(file.export.contents.utf8)
+        }
+        .suggestedFileName { $0.export.filename }
     }
 }
 

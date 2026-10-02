@@ -416,12 +416,14 @@ final class NoteEditorViewModel {
     /// Desktop's `dateMention` is an atom whose props are `anchorId`,
     /// `dateISO`, `hasTime`, `dateFormat`, `remind` and `timeFormat`
     /// (`packages/editor-schema/src/inline/date-mention.ts`), minted by
-    /// `insertDatePill` with a `dm_<uuid>` anchor.
+    /// `insertDatePill` with a `dm_<uuid>` anchor. An edited date keeps its
+    /// `anchorId`, as desktop's `updateDateMention` does.
     func insertDateMention(
         in blockId: String,
         from start: Int,
         to end: Int,
-        value: DateMentionValue
+        value: DateMentionValue,
+        anchorId: String? = nil
     ) async {
         await insertInline(
             blockId,
@@ -429,7 +431,7 @@ final class NoteEditorViewModel {
             to: end,
             kind: "dateMention",
             text: "",
-            attrs: value.attrs(anchorId: DateMentionValue.mintAnchorId())
+            attrs: value.attrs(anchorId: anchorId ?? DateMentionValue.mintAnchorId())
         )
     }
 

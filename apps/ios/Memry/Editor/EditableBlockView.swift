@@ -67,7 +67,7 @@ struct EditableBlockView: UIViewRepresentable {
         field.block = block
         field.session = session
         field.alignment = alignment
-        field.style = BlockText.Style(font: Self.font(for: role), ink: nextInk, titleExists: session.titleExists)
+        field.style = BlockText.Style(font: Self.font(for: role), ink: nextInk, titleExists: session.titleExists, tagColors: session.tagColors)
         // **Only when it differs, and never over unsaved typing.** Re-rendering
         // resets the text storage, which would move a caret mid-word or drop
         // what the user typed since the last commit.
@@ -87,7 +87,7 @@ struct EditableBlockView: UIViewRepresentable {
     }
 
     func makeCoordinator() -> BlockField {
-        BlockField(block: block, session: session, style: BlockText.Style(font: Self.font(for: role), ink: ink ?? Self.primaryInk, titleExists: session.titleExists), alignment: alignment)
+        BlockField(block: block, session: session, style: BlockText.Style(font: Self.font(for: role), ink: ink ?? Self.primaryInk, titleExists: session.titleExists, tagColors: session.tagColors), alignment: alignment)
     }
 
     static var primaryInk: UIColor { UIColor(Tokens.Text.primary.color) }
@@ -113,7 +113,61 @@ struct EditableBlockView: UIViewRepresentable {
 }
 
 /// The text view a block edits in.
-final class BlockTextView: UITextView {}
+/// TextKit 1, so a typed `#tag`'s fill can be drawn as desktop's pill.
+final class BlockTextView: UITextView {
+    /// A layout manager holds its storage weakly; this keeps it alive.
+    private let storage: NSTextStorage
+
+    init() {
+        let storage = NSTextStorage()
+        let layout = TagPillLayoutManager()
+        let container = NSTextContainer(size: CGSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
+        container.widthTracksTextView = true
+        layout.addTextContainer(container)
+        storage.addLayoutManager(layout)
+        self.storage = storage
+        super.init(frame: .zero, textContainer: container)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+}
+
+/// Draws the fill under a typed `#tag` (`BlockText.markTags`) as a rounded
+/// pill, padded into the kern around it. Other fills draw as usual.
+final class TagPillLayoutManager: NSLayoutManager {
+    override func fillBackgroundRectArray(
+        _ rectArray: UnsafePointer<CGRect>,
+        count rectCount: Int,
+        forCharacterRange charRange: NSRange,
+        color: UIColor
+    ) {
+        guard let storage = textStorage, charRange.location < storage.length,
+              storage.attribute(.memryTag, at: charRange.location, effectiveRange: nil) != nil,
+              let context = UIGraphicsGetCurrentContext()
+        else {
+            super.fillBackgroundRectArray(rectArray, count: rectCount, forCharacterRange: charRange, color: color)
+            return
+        }
+        let font = storage.attribute(.font, at: charRange.location, effectiveRange: nil) as? UIFont
+        let height = (font?.lineHeight ?? 16) + 2
+        context.saveGState()
+        color.setFill()
+        for index in 0..<rectCount {
+            let rect = rectArray[index]
+            // The tag's own glyphs, without the trailing kern, padded evenly.
+            let width = rect.width - BlockText.tagPillPadding + BlockText.tagPillPadding * 2
+            let pill = CGRect(
+                x: rect.minX - BlockText.tagPillPadding,
+                y: rect.midY - height / 2,
+                width: width,
+                height: min(height, rect.height)
+            )
+            UIBezierPath(roundedRect: pill, cornerRadius: min(10, pill.height / 2)).fill()
+        }
+        context.restoreGState()
+    }
+}
 
 /// One block's editing state, and the text view's delegate.
 @MainActor
@@ -150,13 +204,16 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
 
     var blockId: String { block.id ?? "" }
 
-    // MARK: Tapping a tag
+    // MARK: Tapping a tag or a date
 
     /// A tap on a `#tag` opens its notes, as a click on desktop's chip does,
-    /// instead of putting the caret in it. Begins only over a tag, so every
-    /// other tap is the text view's own.
+    /// and a tap on a date or reminder opens its editor, as a click on
+    /// desktop's pill does, instead of putting the caret in it. Begins only
+    /// over one of them, so every other tap is the text view's own.
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        session?.openTag != nil && tag(at: gestureRecognizer.location(in: textView)) != nil
+        let point = gestureRecognizer.location(in: textView)
+        if date(at: point) != nil { return true }
+        return session?.openTag != nil && tag(at: point) != nil
     }
 
     /// The text view's own taps wait for this one to fail, so a tap that
@@ -170,19 +227,44 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     }
 
     @objc private func openTappedTag(_ gesture: UITapGestureRecognizer) {
-        guard let tag = tag(at: gesture.location(in: textView)) else { return }
-        session?.openTag?(tag)
+        let point = gesture.location(in: textView)
+        if let date = date(at: point) {
+            session?.requestDateEdit(date, in: self)
+        } else if let tag = tag(at: point) {
+            session?.openTag?(tag)
+        }
     }
 
-    /// The tag drawn under `point`, if the point is on its glyphs.
     private func tag(at point: CGPoint) -> String? {
+        attribute(.memryTag, at: point)
+    }
+
+    private func date(at point: CGPoint) -> DateMentionChip? {
+        attribute(.memryDate, at: point)
+    }
+
+    /// The `key` value drawn under `point`, if the point is on its glyphs.
+    private func attribute<Value>(_ key: NSAttributedString.Key, at point: CGPoint) -> Value? {
         guard let range = textView.characterRange(at: point) else { return nil }
         let offset = textView.offset(from: textView.beginningOfDocument, to: range.start)
         guard offset >= 0, offset < textView.textStorage.length,
-              let tag = textView.textStorage.attribute(.memryTag, at: offset, effectiveRange: nil) as? String,
+              let value = textView.textStorage.attribute(key, at: offset, effectiveRange: nil) as? Value,
               textView.firstRect(for: range).insetBy(dx: -4, dy: -4).contains(point)
         else { return nil }
-        return tag
+        return value
+    }
+
+    /// Where the chip with `anchorId` is drawn now, in the text view's units.
+    func dateChipRange(anchorId: String) -> NSRange? {
+        var found: NSRange?
+        let storage = textView.textStorage
+        storage.enumerateAttribute(.memryDate, in: NSRange(location: 0, length: storage.length)) { value, range, stop in
+            if (value as? DateMentionChip)?.anchorId == anchorId {
+                found = range
+                stop.pointee = true
+            }
+        }
+        return found
     }
 
     func value(_ name: String) -> String? {
@@ -198,7 +280,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             if textView.isFirstResponder { session?.selectionChanged(in: self) }
         }
         let text = NSMutableAttributedString(attributedString: BlockText.attributed(block.inline, style: style))
-        if block.kind != "codeBlock" { BlockText.markTags(in: text) }
+        if block.kind != "codeBlock" { BlockText.markTags(in: text, colors: style.tagColors) }
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = alignment
         text.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: text.length))

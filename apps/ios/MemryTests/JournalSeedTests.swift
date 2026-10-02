@@ -30,6 +30,7 @@ final class ScriptedSeedJournal: JournalProtocol, @unchecked Sendable {
     func clearProperty(date: String, name: String) throws { try base.clearProperty(date: date, name: name) }
     func day(date: String) throws -> JournalDayRecord? { try base.day(date: date) }
     func daysWithEntries(from: String, to: String) throws -> [String] { try base.daysWithEntries(from: from, to: to) }
+    func deleteDay(date: String) throws -> Bool { try base.deleteDay(date: date) }
     func deleteReminder(id: String) throws { try base.deleteReminder(id: id) }
     func dismissReminder(id: String) throws { try base.dismissReminder(id: id) }
     func editDay(date: String, edit: BlockEdit) throws -> JournalEditResult { try base.editDay(date: date, edit: edit) }
