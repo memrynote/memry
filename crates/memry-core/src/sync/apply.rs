@@ -82,6 +82,17 @@ impl Pending {
     }
 }
 
+/// §5.13's `PULL_APPLY_ORDER`. **Everything unlisted is rank 1.**
+pub fn apply_rank(item_type: &str) -> u8 {
+    match item_type {
+        "project" | "folder_config" | "tag_definition" | "filter" | "settings"
+        | "calendar_source" | "agent_conversation" => 0,
+        "task" | "agent_message" | "calendar_event" | "calendar_external_event" => 2,
+        "calendar_binding" => 3,
+        _ => 1,
+    }
+}
+
 /// What one page's apply step did, in the five outcomes the pull reports.
 #[derive(Default)]
 pub(crate) struct ApplyTotals {
@@ -471,6 +482,15 @@ fn refuse(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_apply_order_ranks_the_four_tiers_and_defaults_to_one() {
+        assert_eq!(apply_rank("project"), 0);
+        assert_eq!(apply_rank("note"), 1);
+        assert_eq!(apply_rank("hologram"), 1);
+        assert_eq!(apply_rank("task"), 2);
+        assert_eq!(apply_rank("calendar_binding"), 3);
+    }
 
     #[test]
     fn the_two_field_merged_types_are_the_two_chapter_06_names() {

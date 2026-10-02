@@ -267,7 +267,7 @@ impl PullLoop {
 
         // §5.13: rank, then a **stable** sort, so two items of the same rank
         // keep the order the server sent them in. `sort_by_key` is stable.
-        pending.sort_by_key(|item| apply_rank(item.item_type()));
+        pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
 
         // §5.12.1: an id in `deleted` with no ref row, and for which the pull
         // returned no typed item either, has no type on the wire. It is not an
@@ -340,7 +340,7 @@ impl PullLoop {
             }
         }
 
-        pending.sort_by_key(|item| apply_rank(item.item_type()));
+        pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
         let outcomes = self.apply_all(pending, Vec::new(), false).await?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
@@ -568,17 +568,6 @@ impl PullLoop {
     }
 }
 
-/// §5.13's `PULL_APPLY_ORDER`. **Everything unlisted is rank 1.**
-pub fn apply_rank(item_type: &str) -> u8 {
-    match item_type {
-        "project" | "folder_config" | "tag_definition" | "filter" | "settings"
-        | "calendar_source" | "agent_conversation" => 0,
-        "task" | "agent_message" | "calendar_event" | "calendar_external_event" => 2,
-        "calendar_binding" => 3,
-        _ => 1,
-    }
-}
-
 fn typed_covers(pending: &[Pending], id: &str) -> bool {
     pending.iter().any(|item| item.item_id() == id)
 }
@@ -592,18 +581,4 @@ fn now_ms() -> i64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis() as i64)
         .unwrap_or_default()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_apply_order_ranks_the_four_tiers_and_defaults_to_one() {
-        assert_eq!(apply_rank("project"), 0);
-        assert_eq!(apply_rank("note"), 1);
-        assert_eq!(apply_rank("hologram"), 1);
-        assert_eq!(apply_rank("task"), 2);
-        assert_eq!(apply_rank("calendar_binding"), 3);
-    }
 }
