@@ -21,6 +21,7 @@ import {
   CalendarEventSyncPayloadSchema,
   CalendarExternalEventSyncPayloadSchema,
   CalendarSourceSyncPayloadSchema,
+  CanvasSyncPayloadSchema,
   CustomIconSyncPayloadSchema,
   FilterSyncPayloadSchema,
   FolderConfigSyncPayloadSchema,
@@ -58,7 +59,8 @@ const SCHEMAS: Record<string, ZodType> = {
   calendar_event: CalendarEventSyncPayloadSchema,
   calendar_external_event: CalendarExternalEventSyncPayloadSchema,
   calendar_binding: CalendarBindingSyncPayloadSchema,
-  bookmark: BookmarkSyncPayloadSchema
+  bookmark: BookmarkSyncPayloadSchema,
+  canvas: CanvasSyncPayloadSchema
 }
 
 interface Case {
@@ -97,11 +99,11 @@ describe('payload-schemas vectors', () => {
   it('carries the recorded case count, four per subscribed type', () => {
     const total = vectors.groups.reduce((n, g) => n + g.cases.length, 0)
     expect(total).toBe(vectors.meta.caseCount)
-    expect(vectors.groups).toHaveLength(20)
+    expect(vectors.groups).toHaveLength(21)
     for (const group of vectors.groups) expect(group.cases).toHaveLength(4)
   })
 
-  it('covers exactly the twenty subscribed types', () => {
+  it('covers exactly the twenty-one subscribed types', () => {
     expect(vectors.groups.map((g) => g.type).sort()).toEqual(
       [...vectors.meta.subscribedTypes].sort()
     )

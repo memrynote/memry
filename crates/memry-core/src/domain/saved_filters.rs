@@ -384,7 +384,7 @@ fn valid_config(config: &Value) -> Result<&Value, StorageError> {
 
 /// A nanoid: 21 symbols of the URL-safe alphabet. 64 divides 256, so masking
 /// a random byte to six bits is unbiased.
-fn mint_id() -> String {
+pub(crate) fn mint_id() -> String {
     sodium::random_bytes(ID_LEN)
         .into_iter()
         .map(|byte| char::from(ID_ALPHABET[usize::from(byte & 63)]))
