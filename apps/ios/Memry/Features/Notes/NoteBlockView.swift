@@ -90,7 +90,7 @@ struct NoteBlockView: View {
     /// cells, a task's menu, a checklist item's task menu, and code whose
     /// text is selectable. The block menu would shadow or fight them.
     private static let ownLongPressKinds: Set<String> = [
-        "table", "taskBlock", "checkListItem", "codeBlock", "diagram", "mathBlock",
+        "table", "taskBlock", "checkListItem", "codeBlock", "diagram",
     ]
 
     private var actionRunner: BlockActionRunner? {
@@ -222,9 +222,11 @@ struct NoteBlockView: View {
             // whole of the block, so it is shown rather than a blank.
             CodeRow(language: "mermaid", text: plainText)
         case "mathBlock":
-            // `content: none`: the formula is the `latex` prop. Shown as its
-            // source for the same reason, since KaTeX is not in this build.
-            CodeRow(language: "LaTeX", text: value("latex") ?? "")
+            // `content: none`: the formula is the `latex` prop.
+            let latex = value("latex") ?? ""
+            MathBlockView(latex: latex, edit: editing.flatMap { editing in
+                block.id.map { id in { editing.session.editSource(BlockSourceRequest(blockId: id, source: latex)) } }
+            })
         case "divider":
             Divider().overlay(Tokens.Line.border.color)
         case "toggleListItem":
