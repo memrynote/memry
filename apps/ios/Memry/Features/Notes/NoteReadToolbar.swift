@@ -46,21 +46,7 @@ struct NoteReadToolbar: ViewModifier {
                 // rather than present and refusing.
                 if editorModel.canEdit {
                     ToolbarItem(placement: .topBarTrailing) {
-                        BlockInsertMenu(
-                            insert: { block in
-                                Task {
-                                    let id = await editorModel.insert(
-                                        block.id, after: model.blocks.last?.id
-                                    )
-                                    if let id, let level = block.level {
-                                        await editorModel.setProp(id, "level", String(level))
-                                    }
-                                    await model.reload()
-                                }
-                            }
-                            // No `insertPicture`: the picture affordance is the
-                            // adjacent toolbar item (N214).
-                        )
+                        BlockInsertMenu(choose: choose)
                     }
                 }
                 // Everything the bottom bar used to hold lives here now: the
@@ -108,6 +94,28 @@ struct NoteReadToolbar: ViewModifier {
             linkToNote: { linking = true },
             mentionDate: { dating = true }
         )
+    }
+
+    /// A catalog row at the end of the note: a block after the last one, or
+    /// the link and date sheets' paths.
+    private func choose(_ row: BlockCatalog.Row) {
+        switch row.action {
+        case let .block(kind, level, props):
+            Task {
+                guard let id = await editorModel.insert(kind, after: model.blocks.last?.id) else { return }
+                if let level { await editorModel.setProp(id, "level", String(level)) }
+                for (name, value) in props.sorted(by: { $0.key < $1.key }) {
+                    await editorModel.setProp(id, name, value)
+                }
+                await model.reload()
+            }
+        case .linkToNote:
+            linking = true
+        case let .date(remind):
+            if let mention = BlockCatalog.mention(remind: remind) { append(mention.kind) }
+        case .picture:
+            break
+        }
     }
 
     private func append(_ kind: EditorSuggestion.Kind) {

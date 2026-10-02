@@ -18,7 +18,7 @@ import UIKit
 final class EditorSession {
     enum Panel: Equatable {
         case none
-        /// The `+` grid: every block type, desktop's slash menu.
+        /// The `+` grid: `BlockCatalog`, desktop's slash menu.
         case insert
         /// The block chip: turn into, and the block's own colours.
         case block
@@ -289,24 +289,6 @@ final class EditorSession {
     }
 
     // MARK: Blocks
-
-    func insert(_ block: InsertableBlock) {
-        guard let field else { return }
-        let emptyLine = field.textView.text.isEmpty && field.block.kind == "paragraph"
-        show(.none)
-        withFocused { [weak self] model, blockId in
-            guard let self else { return }
-            if emptyLine, block.id != "divider" {
-                await self.turn(model, blockId, into: block)
-                self.pendingFocus = blockId
-                return
-            }
-            guard let newId = await model.insert(block.id, after: blockId) else { return }
-            if let level = block.level { await model.setProp(newId, "level", String(level)) }
-            self.history.record(.insert(blockId: newId, after: blockId, kind: block.id, text: ""))
-            self.pendingFocus = newId
-        }
-    }
 
     func turnInto(_ block: InsertableBlock) {
         withFocused { [weak self] model, blockId in
@@ -598,10 +580,16 @@ final class EditorSession {
     /// Replaces the open `[[` / `@` text with the chosen node and a space,
     /// as desktop's menus insert it.
     func choose(_ suggestion: EditorSuggestion) {
-        if case let .slash(item) = suggestion.kind { return chooseSlash(item) }
-        guard let field, let trigger else { return }
+        if case let .slash(row) = suggestion.kind { return chooseSlash(row) }
+        guard let trigger else { return }
+        insertInline(suggestion.kind, replacing: trigger.range)
+    }
+
+    /// `range` of the focused block replaced with a link or date node and a
+    /// space.
+    func insertInline(_ kind: EditorSuggestion.Kind, replacing range: NSRange) {
+        guard let field else { return }
         let textView = field.textView
-        let range = trigger.range
         // The trailing space goes in as text first, so the node lands before it.
         let after = NSMaxRange(range)
         let string = textView.text as NSString
@@ -618,7 +606,7 @@ final class EditorSession {
         self.trigger = nil
         suggestions = []
         withFocused { model, blockId in
-            switch suggestion.kind {
+            switch kind {
             case let .note(title, alias), let .create(title, alias):
                 await model.insertWikiLink(in: blockId, from: start, to: end, title: title, alias: alias)
             case let .date(value):
