@@ -370,7 +370,7 @@ struct InsertGridTests {
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
             "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
             "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
-            "link_to_note", "date", "remind", "table",
+            "link_to_note", "date", "remind", "table", "bookmark", "youtube",
             "image", "video", "audio", "file",
         ]
         #expect(grid == expected)
@@ -387,13 +387,13 @@ struct InsertGridTests {
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
             "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
             "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
-            "table",
+            "table", "bookmark", "youtube",
         ])
         #expect(session.gridSections.map(\.section.title) == ["Basic", "Headings", "Insert"])
 
         let text = block("p")
         let paragraph = focused(text, in: [text], session: session)
-        #expect(session.gridSections.flatMap(\.rows).map(\.id).suffix(4) == ["link_to_note", "date", "remind", "table"])
+        #expect(session.gridSections.flatMap(\.rows).map(\.id).suffix(6) == ["link_to_note", "date", "remind", "table", "bookmark", "youtube"])
         withExtendedLifetime((field, paragraph)) {}
     }
 
@@ -436,7 +436,7 @@ struct InsertGridTests {
         let rows = BlockCatalog.rows(attach: true)
         #expect(BlockCatalog.filter(rows, query: "mp3").map(\.id) == ["audio"])
         #expect(BlockCatalog.filter(rows, query: "attachment").map(\.id) == ["file"])
-        #expect(BlockCatalog.filter(rows, query: "vid").map(\.id) == ["video", "divider"])
+        #expect(BlockCatalog.filter(rows, query: "vid").map(\.id) == ["video", "divider", "youtube"])
     }
 
     /// `changes`: how many queued writes the row makes, each ending in a
