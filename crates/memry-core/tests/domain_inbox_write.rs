@@ -8,6 +8,7 @@
 //! | snooze, unsnooze, archive, unarchive push explicit null| `snooze.ts`, `crud.ts`              |
 //! | a delete tombstones and queues a delete                | `handleDeletePermanent`             |
 //! | filing to a folder makes a bodied note and files it    | `fileToFolder`, `markItemAsFiled`   |
+//! | an extracted article files from its markdown            | `ingestArticleCapture`, `generateNoteContent` |
 //! | convert to task and to reminder                        | `convertToTask`, `convertToReminder`|
 //! | linking appends under Inbox Captures                   | `linkToNotes`                       |
 //! | bulk counts partial failures                           | `BulkResponse`                      |
@@ -398,6 +399,71 @@ fn a_link_files_as_a_link_mention_and_the_description() {
         Ok(())
     })
     .expect("file link");
+}
+
+#[test]
+fn an_extracted_article_files_as_the_note_body_from_its_markdown() {
+    let db = open("file-article");
+    db.call_blocking(|conn| {
+        let link = created(write::capture_link(
+            conn,
+            "https://example.com/agent/article",
+            None,
+            false,
+            DEVICE,
+            NOW,
+        )?);
+        write::complete_link(
+            conn,
+            &link.id,
+            Some("Agent article"),
+            Some("Short description."),
+            json!({ "author": "Kaan", "fetchStatus": "complete" })
+                .as_object()
+                .expect("o"),
+            DEVICE,
+            NOW,
+        )?
+        .acknowledge();
+        let markdown = "## Section\n\nSome **bold** and a [link](https://example.com/x).\n\n![Chart](https://example.com/chart.png)\n\n- one\n- two";
+        let enriched = write::complete_article(
+            conn,
+            &link.id,
+            markdown,
+            json!({ "extractionStatus": "partial", "excerpt": "Some bold", "properties": { "title": "Agent article", "source": "https://example.com/agent/article" } })
+                .as_object()
+                .expect("o"),
+            DEVICE,
+            NOW,
+        )?
+        .acknowledge();
+        assert_eq!(enriched.content.as_deref(), Some(markdown));
+        assert_eq!(enriched.metadata_text("extractionStatus"), Some("partial"));
+        assert_eq!(enriched.metadata_text("author"), Some("Kaan"));
+
+        let (note_id, _) =
+            filing::file_text(conn, &link.id, None, &[], "folder", &now(), DEVICE, NOW)?;
+        let blocks = reads::note_blocks(conn, &note_id)
+            .expect("blocks")
+            .expect("note");
+        let kinds: Vec<&str> = blocks.iter().map(|b| b.kind.as_str()).collect();
+        assert_eq!(
+            kinds,
+            ["paragraph", "heading", "paragraph", "image", "bulletListItem", "bulletListItem", "divider", "paragraph"]
+        );
+        assert!(blocks[0].inline.iter().any(|r| r.marks.iter().any(|m| m == "linkMention")));
+        assert!(blocks[2].inline.iter().any(|r| r.text == "bold" && r.marks.iter().any(|m| m == "bold")));
+        assert!(blocks[2].inline.iter().any(|r| r.text == "link" && r.marks.iter().any(|m| m == "link")));
+        assert!(blocks[3].props.iter().any(|p| p.name == "url" && p.value == "https://example.com/chart.png"));
+        let properties: Value = conn.query_row(
+            "SELECT properties FROM notes WHERE id = ?1",
+            [&note_id],
+            |r| r.get::<_, String>(0),
+        ).map(|text| serde_json::from_str(&text).expect("json")).unwrap_or(Value::Null);
+        assert_eq!(properties["source"], "https://example.com/agent/article");
+        Ok(())
+    })
+    .expect("file article");
 }
 
 #[test]

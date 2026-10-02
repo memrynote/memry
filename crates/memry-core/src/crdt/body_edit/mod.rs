@@ -397,6 +397,13 @@ pub(crate) fn append_snapshot_in(
     snapshot::append_block(txn, snapshot)
 }
 
+/// The body's top-level `blockGroup`, created when the body is empty and
+/// refused for a layout no BlockNote writer produces (§12.5.0): where a
+/// writer outside this module appends top-level blocks.
+pub(crate) fn top_block_group(txn: &mut TransactionMut) -> Result<XmlElementRef, CrdtError> {
+    structure::block_group(txn)
+}
+
 /// The ids of the body's top-level blocks, in order: what a whole-body copy
 /// snapshots one by one (note "Duplicate"). Authors no update; an empty body
 /// answers an empty list.

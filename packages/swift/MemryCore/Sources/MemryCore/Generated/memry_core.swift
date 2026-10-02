@@ -3492,6 +3492,22 @@ public protocol InboxProtocol: AnyObject, Sendable {
      */
     func typeCounts() throws  -> [InboxTypeCount]
     
+    /**
+     * The on-device article extraction's result: `content_markdown` becomes
+     * the capture's content and `metadata_json` (`excerpt`,
+     * `extractionStatus`, `properties`, …) overwrites those keys, as desktop's
+     * article job does.
+     */
+    func completeArticle(id: String, contentMarkdown: String, metadataJson: String) throws  -> InboxItemRecord
+    
+    /**
+     * The on-device link preview's result (D3): never overwrites a richer
+     * value a peer wrote.
+     */
+    func completeLink(id: String, title: String?, description: String?, metadataJson: String) throws  -> InboxItemRecord
+    
+    func setTranscription(id: String, transcription: String?, status: String) throws  -> InboxItemRecord
+    
     func reviewSettings() throws  -> InboxReviewSettings
     
     /**
@@ -3540,12 +3556,6 @@ public protocol InboxProtocol: AnyObject, Sendable {
      * gives (unsupported type, empty, over 50 MB).
      */
     func checkFile(mimeType: String, size: UInt64) throws  -> String
-    
-    /**
-     * The on-device link preview's result (D3): never overwrites a richer
-     * value a peer wrote.
-     */
-    func completeLink(id: String, title: String?, description: String?, metadataJson: String) throws  -> InboxItemRecord
     
     /**
      * Convert → Note: a note at the vault root.
@@ -3603,8 +3613,6 @@ public protocol InboxProtocol: AnyObject, Sendable {
      * A note capture's body; `nil` clears it (an explicit `null`).
      */
     func setContent(id: String, content: String?) throws  -> InboxItemRecord
-    
-    func setTranscription(id: String, transcription: String?, status: String) throws  -> InboxItemRecord
     
     func snooze(id: String, untilMs: Int64, reason: String?) throws  -> InboxItemRecord
     
@@ -3830,6 +3838,53 @@ open func typeCounts()throws  -> [InboxTypeCount]  {
 })
 }
     
+    /**
+     * The on-device article extraction's result: `content_markdown` becomes
+     * the capture's content and `metadata_json` (`excerpt`,
+     * `extractionStatus`, `properties`, …) overwrites those keys, as desktop's
+     * article job does.
+     */
+open func completeArticle(id: String, contentMarkdown: String, metadataJson: String)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_complete_article(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(contentMarkdown),
+        FfiConverterString.lower(metadataJson),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The on-device link preview's result (D3): never overwrites a richer
+     * value a peer wrote.
+     */
+open func completeLink(id: String, title: String?, description: String?, metadataJson: String)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_complete_link(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(title),
+        FfiConverterOptionString.lower(description),
+        FfiConverterString.lower(metadataJson),uniffiCallStatus
+    )
+})
+}
+    
+open func setTranscription(id: String, transcription: String?, status: String)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_set_transcription(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(transcription),
+        FfiConverterString.lower(status),uniffiCallStatus
+    )
+})
+}
+    
 open func reviewSettings()throws  -> InboxReviewSettings  {
     return try  FfiConverterTypeInboxReviewSettings_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
@@ -4003,23 +4058,6 @@ open func checkFile(mimeType: String, size: UInt64)throws  -> String  {
             self.uniffiCloneHandle(),
         FfiConverterString.lower(mimeType),
         FfiConverterUInt64.lower(size),uniffiCallStatus
-    )
-})
-}
-    
-    /**
-     * The on-device link preview's result (D3): never overwrites a richer
-     * value a peer wrote.
-     */
-open func completeLink(id: String, title: String?, description: String?, metadataJson: String)throws  -> InboxItemRecord  {
-    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_inbox_complete_link(
-            self.uniffiCloneHandle(),
-        FfiConverterString.lower(id),
-        FfiConverterOptionString.lower(title),
-        FfiConverterOptionString.lower(description),
-        FfiConverterString.lower(metadataJson),uniffiCallStatus
     )
 })
 }
@@ -4208,18 +4246,6 @@ open func setContent(id: String, content: String?)throws  -> InboxItemRecord  {
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),
         FfiConverterOptionString.lower(content),uniffiCallStatus
-    )
-})
-}
-    
-open func setTranscription(id: String, transcription: String?, status: String)throws  -> InboxItemRecord  {
-    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_inbox_set_transcription(
-            self.uniffiCloneHandle(),
-        FfiConverterString.lower(id),
-        FfiConverterOptionString.lower(transcription),
-        FfiConverterString.lower(status),uniffiCallStatus
     )
 })
 }
@@ -32143,6 +32169,15 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_inbox_type_counts() != 46362) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_inbox_complete_article() != 3231) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_complete_link() != 63386) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_set_transcription() != 53737) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_inbox_review_settings() != 48359) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -32180,9 +32215,6 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_check_file() != 43407) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_memry_core_checksum_method_inbox_complete_link() != 9937) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_convert_to_note() != 24326) {
@@ -32225,9 +32257,6 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_set_content() != 36456) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_memry_core_checksum_method_inbox_set_transcription() != 24120) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_snooze() != 14037) {

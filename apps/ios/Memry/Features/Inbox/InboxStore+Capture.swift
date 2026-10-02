@@ -40,17 +40,19 @@ extension InboxStore {
     /// D3: link metadata fetched on this device, the fields desktop's link job
     /// writes (title from `LPMetadataProvider`, description / hero image /
     /// site name / favicon from the page's tags), merged by the core without
-    /// overwriting a richer value a peer wrote. A failure stays quiet, as on
-    /// desktop.
+    /// overwriting a richer value a peer wrote. Then, as desktop's article job
+    /// does, the page's readable article replaces the description as the
+    /// capture's content. A failure stays quiet, as on desktop.
     func enrich(_ item: InboxItemRecord) {
         guard let link = item.sourceUrl, let url = URL(string: link) else { return }
         let id = item.id
         Task { [weak self] in
-            async let page = InboxLinkPage.fetch(url)
+            async let html = PageHeadFetch.html(url, limit: PageHeadFetch.articleLimit)
             let provider = LPMetadataProvider()
             provider.shouldFetchSubresources = false
             let fetched = try? await provider.startFetchingMetadata(for: url)
-            let found = await page
+            let page = await html
+            let found = page.flatMap { InboxLinkPage.read($0.html, base: $0.url) }
             var patch: [String: Any] = ["url": link, "fetchStatus": fetched == nil && found == nil ? "failed" : "complete"]
             let host = url.host().map { $0.hasPrefix("www.") ? String($0.dropFirst(4)) : $0 }
             patch["siteName"] = found?.siteName ?? host
@@ -61,6 +63,10 @@ extension InboxStore {
             let title = fetched?.title ?? found?.title
             let description = found?.description
             await self?.write { try $0.completeLink(id: id, title: title, description: description, metadataJson: json) }
+            guard let page, let article = await InboxArticle.extract(html: page.html, url: url) else { return }
+            await self?.write {
+                try $0.completeArticle(id: id, contentMarkdown: article.markdown, metadataJson: article.metadataJson)
+            }
         }
     }
 

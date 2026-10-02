@@ -156,6 +156,30 @@ struct InboxFormattingTests {
         #expect(page.favicon == "https://linear.app/favicon.ico")
         #expect(InboxLinkPage.parse("<p>no head</p>", base: base) == InboxLinkPage())
     }
+
+    /// The bundled Defuddle script runs in this app's JavaScriptCore: the
+    /// shims it needs are there and relative addresses resolve.
+    @Test func a_page_gives_its_article_as_markdown() async throws {
+        let paragraph = "<p>Small teams ship in short cycles and write down what they learn as they go.</p>"
+        let html = """
+        <html><head><title>How we build</title><meta name="author" content="Kaan"></head><body>
+        <nav><a href="/">Home</a></nav>
+        <article><h1>How we build</h1><h2>Cycles</h2>
+        \(String(repeating: paragraph, count: 12))
+        <p><img src="/chart.png" alt="Chart"></p></article></body></html>
+        """
+        let url = try #require(URL(string: "https://linear.app/method"))
+        let article = try #require(await InboxArticle.extract(html: html, url: url))
+        #expect(article.markdown.contains("## Cycles"))
+        #expect(article.markdown.contains("https://linear.app/chart.png"))
+        #expect(!article.markdown.contains("Home"))
+        let metadata = try #require(
+            try JSONSerialization.jsonObject(with: Data(article.metadataJson.utf8)) as? [String: Any]
+        )
+        #expect(metadata["extractionStatus"] as? String == "full")
+        #expect((metadata["properties"] as? [String: Any])?["source"] as? String == url.absoluteString)
+        #expect(await InboxArticle.extract(html: "<html><body></body></html>", url: url) == nil)
+    }
 }
 
 @MainActor

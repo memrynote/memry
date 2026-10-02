@@ -1068,6 +1068,12 @@ importers:
       '@memry/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      esbuild:
+        specifier: '>=0.28.1'
+        version: 0.28.1
+      whatwg-url-minimum:
+        specifier: 0.1.2
+        version: 0.1.2
 
   packages/contracts:
     dependencies:
@@ -30678,8 +30684,7 @@ snapshots:
 
   whatwg-mimetype@5.0.0: {}
 
-  whatwg-url-minimum@0.1.2:
-    optional: true
+  whatwg-url-minimum@0.1.2: {}
 
   whatwg-url@14.2.0:
     dependencies:

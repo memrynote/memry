@@ -28,7 +28,7 @@ pub(super) fn write_blocks(
     write_group(txn, &group, blocks, mint);
 }
 
-fn write_group(
+pub(super) fn write_group(
     txn: &mut TransactionMut,
     group: &XmlElementRef,
     blocks: &[SeedBlock],
@@ -55,6 +55,7 @@ fn kind_name(kind: &SeedKind) -> &'static str {
         SeedKind::Quote => "quote",
         SeedKind::CodeBlock { .. } => "codeBlock",
         SeedKind::Divider => "divider",
+        SeedKind::Image { .. } => "image",
     }
 }
 
@@ -72,6 +73,7 @@ fn prop_value(kind: &SeedKind, name: &str, default: &PropValue) -> Any {
             },
             "language",
         ) => Any::String(language.as_str().into()),
+        (SeedKind::Image { url }, "url") => Any::String(url.as_str().into()),
         _ => default.to_any(),
     }
 }

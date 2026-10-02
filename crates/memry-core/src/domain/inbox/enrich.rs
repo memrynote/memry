@@ -93,6 +93,38 @@ pub fn complete_link(
     edit(conn, item_id, changes, device_id, now_ms)
 }
 
+/// The readable article for a link (`ingestArticleCapture`, enrich path): the
+/// markdown replaces `content`, and `patch` (`url`, `excerpt`,
+/// `extractionStatus`, `properties`) overwrites those keys, as desktop's job
+/// does. Other metadata keys a peer wrote stay.
+pub fn complete_article(
+    conn: &Connection,
+    item_id: &str,
+    content_markdown: &str,
+    patch: &Map<String, Value>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Durable<InboxItem>, StorageError> {
+    let item = require_live(conn, item_id)?;
+    let mut metadata = match item.metadata {
+        Some(Value::Object(map)) => map,
+        _ => Map::new(),
+    };
+    for (key, value) in patch {
+        metadata.insert(key.clone(), value.clone());
+    }
+    edit(
+        conn,
+        item_id,
+        vec![
+            ("content", Change::set(content_markdown)),
+            ("metadata", Change::Set(Value::Object(metadata))),
+        ],
+        device_id,
+        now_ms,
+    )
+}
+
 /// A voice memo's transcript and status (`pending`, `complete`, `failed`).
 /// The first sentence becomes the title while it is still the default one.
 pub fn set_transcription(

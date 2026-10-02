@@ -79,7 +79,7 @@ fn stamp(local_now: &str) -> Result<LocalStamp, StorageError> {
     })
 }
 
-fn metadata_object(json_text: Option<&str>) -> Result<Map<String, Value>, StorageError> {
+pub(crate) fn metadata_object(json_text: Option<&str>) -> Result<Map<String, Value>, StorageError> {
     match json_text.map(serde_json::from_str::<Value>) {
         None => Ok(Map::new()),
         Some(Ok(Value::Object(map))) => Ok(map),
@@ -100,7 +100,7 @@ impl Inbox {
             .call_blocking(move |conn| f(conn, &device, now_ms()))
     }
 
-    fn item<F>(&self, f: F) -> Result<InboxItemRecord, StorageError>
+    pub(crate) fn item<F>(&self, f: F) -> Result<InboxItemRecord, StorageError>
     where
         F: FnOnce(
                 &rusqlite::Connection,
@@ -272,40 +272,6 @@ impl Inbox {
     ) -> Result<InboxItemRecord, StorageError> {
         self.item(move |conn, device, now| {
             write::update(conn, &id, None, Some(content.as_deref()), device, now)
-        })
-    }
-
-    /// The on-device link preview's result (D3): never overwrites a richer
-    /// value a peer wrote.
-    pub fn complete_link(
-        &self,
-        id: String,
-        title: Option<String>,
-        description: Option<String>,
-        metadata_json: String,
-    ) -> Result<InboxItemRecord, StorageError> {
-        let patch = metadata_object(Some(&metadata_json))?;
-        self.item(move |conn, device, now| {
-            write::complete_link(
-                conn,
-                &id,
-                title.as_deref(),
-                description.as_deref(),
-                &patch,
-                device,
-                now,
-            )
-        })
-    }
-
-    pub fn set_transcription(
-        &self,
-        id: String,
-        transcription: Option<String>,
-        status: String,
-    ) -> Result<InboxItemRecord, StorageError> {
-        self.item(move |conn, device, now| {
-            write::set_transcription(conn, &id, transcription.as_deref(), &status, device, now)
         })
     }
 
