@@ -370,7 +370,7 @@ struct InsertGridTests {
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
             "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
             "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
-            "link_to_note", "date", "remind", "table", "bookmark", "youtube",
+            "link_to_note", "date", "remind", "table", "math", "bookmark", "youtube",
             "image", "video", "audio", "file",
         ]
         #expect(grid == expected)
@@ -476,6 +476,22 @@ struct InsertGridTests {
             .setProp(blockId: "a", name: "level", value: "2"),
             .setProp(blockId: "a", name: "isToggleable", value: "true"),
         ])
+    }
+
+    @Test func equationTurnsAnEmptyLineIntoAMathBlockAndOpensItsSource() async throws {
+        let editor = ScriptedToolbarEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        let row = try #require(BlockCatalog.rows.first { $0.id == "math" })
+        let field = focused(block("a"), in: [block("a")], session: session)
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.chooseFromGrid(row)
+        }
+        withExtendedLifetime((field, model)) {}
+        #expect(editor.all == [.turnInto(blockId: "a", kind: "mathBlock")])
+        #expect(session.sourceEdit == BlockSourceRequest(blockId: "a", source: ""))
     }
 
     @Test func aCheckListAfterTextIsAPlainCheckbox() async throws {

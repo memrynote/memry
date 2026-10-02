@@ -143,6 +143,12 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
             )) { request in
                 LinkBlockSheet(kind: request.kind) { editorModel.session.insertLink($0) }
             }
+            .sheet(item: Binding(
+                get: { editorModel.session.sourceEdit },
+                set: { if $0 == nil { editorModel.session.cancelSourceEdit() } }
+            )) { request in
+                BlockSourceSheet(request: request) { editorModel.session.saveSource($0) }
+            }
         }
         if let tapBelowBody {
             Color.clear
