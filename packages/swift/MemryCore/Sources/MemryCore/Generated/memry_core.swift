@@ -1874,6 +1874,177 @@ public func FfiConverterTypeBackgroundExec_lower(_ value: BackgroundExec) -> UIn
 
 
 
+/**
+ * The canvas surface over one opened vault.
+ */
+public protocol CanvasesProtocol: AnyObject, Sendable {
+    
+    /**
+     * One live canvas, or `nil` when it is deleted or has not synced yet.
+     */
+    func canvas(id: String) throws  -> CanvasRecord?
+    
+    /**
+     * Creates a canvas and returns it. `scene` is Excalidraw JSON, or `nil`
+     * for an empty board; it is stored in desktop's canonical form.
+     */
+    func create(title: String?, ownerNoteId: String?, scene: String?) throws  -> CanvasRecord
+    
+    /**
+     * Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
+     */
+    func setScene(id: String, scene: String) throws  -> CanvasRecord
+    
+}
+/**
+ * The canvas surface over one opened vault.
+ */
+open class Canvases: CanvasesProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_canvases(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_canvases(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * One live canvas, or `nil` when it is deleted or has not synced yet.
+     */
+open func canvas(id: String)throws  -> CanvasRecord?  {
+    return try  FfiConverterOptionTypeCanvasRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_canvases_canvas(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Creates a canvas and returns it. `scene` is Excalidraw JSON, or `nil`
+     * for an empty board; it is stored in desktop's canonical form.
+     */
+open func create(title: String?, ownerNoteId: String?, scene: String?)throws  -> CanvasRecord  {
+    return try  FfiConverterTypeCanvasRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_canvases_create(
+            self.uniffiCloneHandle(),
+        FfiConverterOptionString.lower(title),
+        FfiConverterOptionString.lower(ownerNoteId),
+        FfiConverterOptionString.lower(scene),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
+     */
+open func setScene(id: String, scene: String)throws  -> CanvasRecord  {
+    return try  FfiConverterTypeCanvasRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_canvases_set_scene(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(scene),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCanvases: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Canvases
+
+    public static func lift(_ handle: UInt64) throws -> Canvases {
+        return Canvases(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Canvases) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Canvases {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Canvases, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCanvases_lift(_ handle: UInt64) throws -> Canvases {
+    return try FfiConverterTypeCanvases.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCanvases_lower(_ value: Canvases) -> UInt64 {
+    return FfiConverterTypeCanvases.lower(value)
+}
+
+
+
+
+
+
 public protocol CodeCapture: AnyObject, Sendable {
     
     func permission() async  -> CapturePermission
@@ -11300,6 +11471,13 @@ public protocol VaultProtocol: AnyObject, Sendable {
     func calendar(store: SecureStore) throws  -> VaultCalendar
     
     /**
+     * Every whiteboard read and write over this vault. Needs the keychain for
+     * the same reason [`Vault::tasks`] does, and carries this vault's id,
+     * which every canvas payload states.
+     */
+    func canvases(store: SecureStore) throws  -> Canvases
+    
+    /**
      * The id this vault was opened under, so a handle passed around the shell
      * says which vault it is rather than relying on the caller to remember.
      */
@@ -11470,6 +11648,21 @@ open func calendar(store: SecureStore)throws  -> VaultCalendar  {
     return try  FfiConverterTypeVaultCalendar_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vault_calendar(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeSecureStore_lower(store),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Every whiteboard read and write over this vault. Needs the keychain for
+     * the same reason [`Vault::tasks`] does, and carries this vault's id,
+     * which every canvas payload states.
+     */
+open func canvases(store: SecureStore)throws  -> Canvases  {
+    return try  FfiConverterTypeCanvases_lift(try rustCallWithError(FfiConverterTypeAuthError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_canvases(
             self.uniffiCloneHandle(),
         FfiConverterTypeSecureStore_lower(store),uniffiCallStatus
     )
@@ -16208,6 +16401,83 @@ public func FfiConverterTypeCalendarZoneTransition_lift(_ buf: RustBuffer) throw
 #endif
 public func FfiConverterTypeCalendarZoneTransition_lower(_ value: CalendarZoneTransition) -> RustBuffer {
     return FfiConverterTypeCalendarZoneTransition.lower(value)
+}
+
+
+/**
+ * One live canvas.
+ */
+public struct CanvasRecord: Equatable, Hashable {
+    public var id: String
+    public var title: String?
+    /**
+     * The note whose whiteboard block embeds this canvas.
+     */
+    public var ownerNoteId: String?
+    /**
+     * Excalidraw JSON in desktop's canonical form.
+     */
+    public var scene: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, title: String?, 
+        /**
+         * The note whose whiteboard block embeds this canvas.
+         */ownerNoteId: String?, 
+        /**
+         * Excalidraw JSON in desktop's canonical form.
+         */scene: String) {
+        self.id = id
+        self.title = title
+        self.ownerNoteId = ownerNoteId
+        self.scene = scene
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CanvasRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCanvasRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CanvasRecord {
+        return
+            try CanvasRecord(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterOptionString.read(from: &buf), 
+                ownerNoteId: FfiConverterOptionString.read(from: &buf), 
+                scene: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CanvasRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.ownerNoteId, into: &buf)
+        FfiConverterString.write(value.scene, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCanvasRecord_lift(_ buf: RustBuffer) throws -> CanvasRecord {
+    return try FfiConverterTypeCanvasRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCanvasRecord_lower(_ value: CanvasRecord) -> RustBuffer {
+    return FfiConverterTypeCanvasRecord.lower(value)
 }
 
 
@@ -29014,6 +29284,30 @@ fileprivate struct FfiConverterOptionTypeCalendarItemBinding: FfiConverterRustBu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeCanvasRecord: FfiConverterRustBuffer {
+    typealias SwiftType = CanvasRecord?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCanvasRecord.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCanvasRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeInboxItemRecord: FfiConverterRustBuffer {
     typealias SwiftType = InboxItemRecord?
 
@@ -32107,6 +32401,15 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultcalendar_feeds_due() != 47367) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_canvases_canvas() != 7099) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_canvases_create() != 12599) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_canvases_set_scene() != 42908) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_inbox_archived() != 44138) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -32846,6 +33149,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_calendar() != 13188) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_canvases() != 3488) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_id() != 63291) {

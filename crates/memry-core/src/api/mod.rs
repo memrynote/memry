@@ -8,6 +8,7 @@ pub mod calendar_ical_conformance;
 pub mod calendar_provider_sync;
 pub mod calendar_providers;
 pub mod calendar_records;
+pub mod canvas;
 pub mod conformance;
 pub mod content_admin;
 pub mod crypto;
