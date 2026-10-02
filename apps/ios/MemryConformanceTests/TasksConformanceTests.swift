@@ -212,7 +212,7 @@ struct TaskFilteringConformanceTests {
 }
 
 /// A keychain holding only a device signing key, for the scratch vault.
-private final class ConformanceKeychain: SecureStore, @unchecked Sendable {
+final class ConformanceKeychain: SecureStore, @unchecked Sendable {
     private let lock = NSLock()
     private var entries: [SecureStoreKey: Data] = [.deviceSigningKey: Data((0 ..< 64).map { UInt8($0) })]
 
