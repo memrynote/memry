@@ -38,6 +38,7 @@ enum BlockCatalog {
             case date(remind: Bool)
             /// Opens a picker; the upload lands as desktop's image or file block.
             case attach(EditorAttachmentSource)
+            case link(LinkBlock.Kind)
         }
 
         let id: String
@@ -51,7 +52,7 @@ enum BlockCatalog {
         var isInline: Bool {
             switch action {
             case .linkToNote, .date: true
-            case .block, .attach: false
+            case .block, .attach, .link: false
             }
         }
     }
@@ -106,6 +107,9 @@ enum BlockCatalog {
         Row(id: "date", title: "Today", symbol: "calendar", aliases: dateAliases, section: .insert, action: .date(remind: false)),
         Row(id: "remind", title: "Remind me", symbol: "alarm", aliases: dateAliases, section: .insert, action: .date(remind: true)),
         block("table", "Table", "tablecells", ["table"], .insert, kind: "table"),
+        // Mobile's own rows: desktop makes these from a pasted link instead.
+        Row(id: "bookmark", title: "Bookmark", symbol: "bookmark", aliases: ["bookmark", "link", "url", "web"], section: .insert, action: .link(.bookmark)),
+        Row(id: "youtube", title: "YouTube video", symbol: "play.rectangle", aliases: ["youtube", "video", "embed", "yt"], section: .insert, action: .link(.youtube)),
         Row(
             id: "image", title: "Image", symbol: "photo",
             aliases: ["image", "imageUpload", "upload", "img", "picture", "media", "url", "photo"],
@@ -248,6 +252,8 @@ extension EditorSession {
             startWikiLink()
         case let .attach(source):
             openAttachment(source)
+        case let .link(kind):
+            requestLink(kind)
         case .date:
             break
         }
