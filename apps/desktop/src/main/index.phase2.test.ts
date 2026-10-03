@@ -293,6 +293,11 @@ vi.mock('./sync/runtime', () => ({
   stopSyncRuntime: stopSyncRuntimeMock
 }))
 
+// Registers at import under NODE_ENV=test and reads the real sync runtime.
+vi.mock('./agent-debug', () => ({
+  registerAgentDebugHandles: vi.fn()
+}))
+
 vi.mock('./database/client', () => ({
   getIndexDatabase: vi.fn(() => ({})),
   closeAllDatabases: closeAllDatabasesMock
