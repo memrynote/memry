@@ -69,8 +69,10 @@ pub(crate) enum Gate {
     Skip,
     /// §6.3.1 row 3 (`concurrent`): `merged_clock` is `merge(local, remote)`.
     Merge {
-        local: StoredPayload,
-        remote: StoredPayload,
+        // Boxed: two inline payloads make every `Gate` ~216 bytes for the
+        // two variants that carry nothing (clippy::large_enum_variant).
+        local: Box<StoredPayload>,
+        remote: Box<StoredPayload>,
         merged_clock: VectorClock,
     },
 }
@@ -118,8 +120,8 @@ pub(crate) fn document_gate(
             DocumentResolution::Apply => Gate::Wholesale,
             DocumentResolution::Skip => Gate::Skip,
             DocumentResolution::Merge { merged_clock } => Gate::Merge {
-                local,
-                remote,
+                local: Box::new(local),
+                remote: Box::new(remote),
                 merged_clock,
             },
         },

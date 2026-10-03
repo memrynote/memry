@@ -5877,15 +5877,6 @@ public func FfiConverterTypeNotes_lower(_ value: Notes) -> UInt64 {
 public protocol NotesWriterProtocol: AnyObject, Sendable {
     
     /**
-     * Sets a reminder on a note and returns its id.
-     *
-     * `remind_at` is an ISO **instant**, unlike a date mention's calendar
-     * day: a reminder fires at a moment, and the moment is the same
-     * everywhere.
-     */
-    func addReminder(noteId: String, remindAt: String, title: String?) throws  -> String
-    
-    /**
      * Appends a block read with [`Self::block_snapshot`] (from any note) to
      * the end of `note_id`'s body, with its children, marks and inline
      * nodes: the target half of desktop's block menu "Move to".
@@ -5936,15 +5927,6 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func create(title: String, folderPath: String?) throws  -> String
     
     /**
-     * Creates a `folder_config` at `path`.
-     *
-     * The whole folder domain existed and nothing could reach it, which is
-     * what N806 records: the core could create, rename, move and delete a
-     * folder, and no API method said so.
-     */
-    func createFolder(path: String, icon: String?) throws 
-    
-    /**
      * Creates a note from a template (N803).
      *
      * The template's content, tags and properties seed the new note, which
@@ -5963,30 +5945,11 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func delete(id: String) throws 
     
     /**
-     * Tombstones a folder and every `folder_config` under it.
-     *
-     * **Throws when the subtree still holds a live note**, rather than
-     * cascading. No chapter defines a cascading folder delete and a note
-     * tombstone travels to every device in the vault: refusing costs a step
-     * in the shell's flow, guessing costs the user their notes.
-     *
-     * - Returns: the paths that were tombstoned.
-     */
-    func deleteFolder(path: String) throws  -> [String]
-    
-    /**
      * The device identity these writes are recorded under. Exposed for the
      * wiring tests, which is the only way to assert that the production graph
      * derives it rather than accepting one.
      */
     func deviceId()  -> String
-    
-    /**
-     * Dismisses a reminder. A status change, never a delete: a dismissal has
-     * to reach the other devices, and a row that vanished has nothing left
-     * to send.
-     */
-    func dismissReminder(id: String) throws 
     
     /**
      * Copies a note into a new one titled `title`, beside it (same folder),
@@ -6010,11 +5973,6 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func editBlock(noteId: String, edit: BlockEdit) throws  -> Bool
     
     /**
-     * Moves a folder under `new_parent`, or to the vault root with `nil`.
-     */
-    func moveFolder(path: String, newParent: String?) throws  -> [String]
-    
-    /**
      * Moves a note to a folder, or to the vault root with `nil`.
      */
     func moveToFolder(id: String, folderPath: String?) throws 
@@ -6026,14 +5984,6 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
      * to the same note's body elsewhere do not collide (chapter 06 §6.1).
      */
     func rename(id: String, title: String) throws 
-    
-    /**
-     * Renames a folder in place, keeping its parent.
-     *
-     * - Returns: the ids of the notes whose `folderPath` was rewritten, so a
-     * shell can refresh exactly those rather than reloading the vault.
-     */
-    func renameFolder(path: String, newName: String) throws  -> [String]
     
     /**
      * Renames one property on this note, keeping its value, as desktop's
@@ -6077,14 +6027,6 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func setCover(id: String, url: String?, offsetY: Double) throws 
     
     /**
-     * Sets or clears a folder's icon. `nil` writes an explicit null.
-     *
-     * A folder that only exists because notes are in it gets its
-     * `folder_config` created with the icon, as desktop does.
-     */
-    func setFolderIcon(path: String, icon: String?) throws 
-    
-    /**
      * Sets or clears a note's icon (N701).
      *
      * The payload spells it `emoji` (§13.7.1); it is `icon` here because that
@@ -6126,14 +6068,72 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
      */
     func setTags(id: String, tags: [String]) throws 
     
-    func snoozeReminder(id: String, until: String) throws 
-    
     /**
      * Desktop's `bookmarks:toggle`: bookmarks the item, or removes its
      * bookmark. `item_type` is `note` or `journal` (a journal record id).
      * Returns whether the item is bookmarked afterwards.
      */
     func toggleBookmark(itemType: String, itemId: String) throws  -> Bool
+    
+    /**
+     * Sets a reminder on a note and returns its id.
+     *
+     * `remind_at` is an ISO **instant**, unlike a date mention's calendar
+     * day: a reminder fires at a moment, and the moment is the same
+     * everywhere.
+     */
+    func addReminder(noteId: String, remindAt: String, title: String?) throws  -> String
+    
+    /**
+     * Creates a `folder_config` at `path`.
+     *
+     * The whole folder domain existed and nothing could reach it, which is
+     * what N806 records: the core could create, rename, move and delete a
+     * folder, and no API method said so.
+     */
+    func createFolder(path: String, icon: String?) throws 
+    
+    /**
+     * Tombstones a folder and every `folder_config` under it.
+     *
+     * **Throws when the subtree still holds a live note**, rather than
+     * cascading. No chapter defines a cascading folder delete and a note
+     * tombstone travels to every device in the vault: refusing costs a step
+     * in the shell's flow, guessing costs the user their notes.
+     *
+     * - Returns: the paths that were tombstoned.
+     */
+    func deleteFolder(path: String) throws  -> [String]
+    
+    /**
+     * Dismisses a reminder. A status change, never a delete: a dismissal has
+     * to reach the other devices, and a row that vanished has nothing left
+     * to send.
+     */
+    func dismissReminder(id: String) throws 
+    
+    /**
+     * Moves a folder under `new_parent`, or to the vault root with `nil`.
+     */
+    func moveFolder(path: String, newParent: String?) throws  -> [String]
+    
+    /**
+     * Renames a folder in place, keeping its parent.
+     *
+     * - Returns: the ids of the notes whose `folderPath` was rewritten, so a
+     * shell can refresh exactly those rather than reloading the vault.
+     */
+    func renameFolder(path: String, newName: String) throws  -> [String]
+    
+    /**
+     * Sets or clears a folder's icon. `nil` writes an explicit null.
+     *
+     * A folder that only exists because notes are in it gets its
+     * `folder_config` created with the icon, as desktop does.
+     */
+    func setFolderIcon(path: String, icon: String?) throws 
+    
+    func snoozeReminder(id: String, until: String) throws 
     
 }
 /**
@@ -6191,25 +6191,6 @@ open class NotesWriter: NotesWriterProtocol, @unchecked Sendable {
 
     
 
-    
-    /**
-     * Sets a reminder on a note and returns its id.
-     *
-     * `remind_at` is an ISO **instant**, unlike a date mention's calendar
-     * day: a reminder fires at a moment, and the moment is the same
-     * everywhere.
-     */
-open func addReminder(noteId: String, remindAt: String, title: String?)throws  -> String  {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_noteswriter_add_reminder(
-            self.uniffiCloneHandle(),
-        FfiConverterString.lower(noteId),
-        FfiConverterString.lower(remindAt),
-        FfiConverterOptionString.lower(title),uniffiCallStatus
-    )
-})
-}
     
     /**
      * Appends a block read with [`Self::block_snapshot`] (from any note) to
@@ -6297,23 +6278,6 @@ open func create(title: String, folderPath: String?)throws  -> String  {
 }
     
     /**
-     * Creates a `folder_config` at `path`.
-     *
-     * The whole folder domain existed and nothing could reach it, which is
-     * what N806 records: the core could create, rename, move and delete a
-     * folder, and no API method said so.
-     */
-open func createFolder(path: String, icon: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_noteswriter_create_folder(
-            self.uniffiCloneHandle(),
-        FfiConverterString.lower(path),
-        FfiConverterOptionString.lower(icon),uniffiCallStatus
-    )
-}
-}
-    
-    /**
      * Creates a note from a template (N803).
      *
      * The template's content, tags and properties seed the new note, which
@@ -6349,26 +6313,6 @@ open func delete(id: String)throws   {try rustCallWithError(FfiConverterTypeStor
 }
     
     /**
-     * Tombstones a folder and every `folder_config` under it.
-     *
-     * **Throws when the subtree still holds a live note**, rather than
-     * cascading. No chapter defines a cascading folder delete and a note
-     * tombstone travels to every device in the vault: refusing costs a step
-     * in the shell's flow, guessing costs the user their notes.
-     *
-     * - Returns: the paths that were tombstoned.
-     */
-open func deleteFolder(path: String)throws  -> [String]  {
-    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_noteswriter_delete_folder(
-            self.uniffiCloneHandle(),
-        FfiConverterString.lower(path),uniffiCallStatus
-    )
-})
-}
-    
-    /**
      * The device identity these writes are recorded under. Exposed for the
      * wiring tests, which is the only way to assert that the production graph
      * derives it rather than accepting one.
@@ -6380,20 +6324,6 @@ open func deviceId() -> String  {
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
-}
-    
-    /**
-     * Dismisses a reminder. A status change, never a delete: a dismissal has
-     * to reach the other devices, and a row that vanished has nothing left
-     * to send.
-     */
-open func dismissReminder(id: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_noteswriter_dismiss_reminder(
-            self.uniffiCloneHandle(),
-        FfiConverterString.lower(id),uniffiCallStatus
-    )
-}
 }
     
     /**
@@ -6436,20 +6366,6 @@ open func editBlock(noteId: String, edit: BlockEdit)throws  -> Bool  {
 }
     
     /**
-     * Moves a folder under `new_parent`, or to the vault root with `nil`.
-     */
-open func moveFolder(path: String, newParent: String?)throws  -> [String]  {
-    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_noteswriter_move_folder(
-            self.uniffiCloneHandle(),
-        FfiConverterString.lower(path),
-        FfiConverterOptionString.lower(newParent),uniffiCallStatus
-    )
-})
-}
-    
-    /**
      * Moves a note to a folder, or to the vault root with `nil`.
      */
 open func moveToFolder(id: String, folderPath: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -6476,23 +6392,6 @@ open func rename(id: String, title: String)throws   {try rustCallWithError(FfiCo
         FfiConverterString.lower(title),uniffiCallStatus
     )
 }
-}
-    
-    /**
-     * Renames a folder in place, keeping its parent.
-     *
-     * - Returns: the ids of the notes whose `folderPath` was rewritten, so a
-     * shell can refresh exactly those rather than reloading the vault.
-     */
-open func renameFolder(path: String, newName: String)throws  -> [String]  {
-    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_noteswriter_rename_folder(
-            self.uniffiCloneHandle(),
-        FfiConverterString.lower(path),
-        FfiConverterString.lower(newName),uniffiCallStatus
-    )
-})
 }
     
     /**
@@ -6571,22 +6470,6 @@ open func setCover(id: String, url: String?, offsetY: Double)throws   {try rustC
 }
     
     /**
-     * Sets or clears a folder's icon. `nil` writes an explicit null.
-     *
-     * A folder that only exists because notes are in it gets its
-     * `folder_config` created with the icon, as desktop does.
-     */
-open func setFolderIcon(path: String, icon: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_noteswriter_set_folder_icon(
-            self.uniffiCloneHandle(),
-        FfiConverterString.lower(path),
-        FfiConverterOptionString.lower(icon),uniffiCallStatus
-    )
-}
-}
-    
-    /**
      * Sets or clears a note's icon (N701).
      *
      * The payload spells it `emoji` (§13.7.1); it is `icon` here because that
@@ -6653,16 +6536,6 @@ open func setTags(id: String, tags: [String])throws   {try rustCallWithError(Ffi
 }
 }
     
-open func snoozeReminder(id: String, until: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_noteswriter_snooze_reminder(
-            self.uniffiCloneHandle(),
-        FfiConverterString.lower(id),
-        FfiConverterString.lower(until),uniffiCallStatus
-    )
-}
-}
-    
     /**
      * Desktop's `bookmarks:toggle`: bookmarks the item, or removes its
      * bookmark. `item_type` is `note` or `journal` (a journal record id).
@@ -6677,6 +6550,133 @@ open func toggleBookmark(itemType: String, itemId: String)throws  -> Bool  {
         FfiConverterString.lower(itemId),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * Sets a reminder on a note and returns its id.
+     *
+     * `remind_at` is an ISO **instant**, unlike a date mention's calendar
+     * day: a reminder fires at a moment, and the moment is the same
+     * everywhere.
+     */
+open func addReminder(noteId: String, remindAt: String, title: String?)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_add_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(noteId),
+        FfiConverterString.lower(remindAt),
+        FfiConverterOptionString.lower(title),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Creates a `folder_config` at `path`.
+     *
+     * The whole folder domain existed and nothing could reach it, which is
+     * what N806 records: the core could create, rename, move and delete a
+     * folder, and no API method said so.
+     */
+open func createFolder(path: String, icon: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_create_folder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),
+        FfiConverterOptionString.lower(icon),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Tombstones a folder and every `folder_config` under it.
+     *
+     * **Throws when the subtree still holds a live note**, rather than
+     * cascading. No chapter defines a cascading folder delete and a note
+     * tombstone travels to every device in the vault: refusing costs a step
+     * in the shell's flow, guessing costs the user their notes.
+     *
+     * - Returns: the paths that were tombstoned.
+     */
+open func deleteFolder(path: String)throws  -> [String]  {
+    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_delete_folder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Dismisses a reminder. A status change, never a delete: a dismissal has
+     * to reach the other devices, and a row that vanished has nothing left
+     * to send.
+     */
+open func dismissReminder(id: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_dismiss_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Moves a folder under `new_parent`, or to the vault root with `nil`.
+     */
+open func moveFolder(path: String, newParent: String?)throws  -> [String]  {
+    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_move_folder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),
+        FfiConverterOptionString.lower(newParent),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Renames a folder in place, keeping its parent.
+     *
+     * - Returns: the ids of the notes whose `folderPath` was rewritten, so a
+     * shell can refresh exactly those rather than reloading the vault.
+     */
+open func renameFolder(path: String, newName: String)throws  -> [String]  {
+    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_rename_folder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),
+        FfiConverterString.lower(newName),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Sets or clears a folder's icon. `nil` writes an explicit null.
+     *
+     * A folder that only exists because notes are in it gets its
+     * `folder_config` created with the icon, as desktop does.
+     */
+open func setFolderIcon(path: String, icon: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_set_folder_icon(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(path),
+        FfiConverterOptionString.lower(icon),uniffiCallStatus
+    )
+}
+}
+    
+open func snoozeReminder(id: String, until: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_snooze_reminder(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(until),uniffiCallStatus
+    )
+}
 }
     
 
@@ -32430,9 +32430,6 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_templates() != 53193) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_noteswriter_add_reminder() != 21568) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_memry_core_checksum_method_noteswriter_append_block_snapshot() != 42475) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -32445,22 +32442,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_noteswriter_create() != 1507) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_noteswriter_create_folder() != 34413) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_memry_core_checksum_method_noteswriter_create_from_template() != 26040) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_delete() != 64986) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_noteswriter_delete_folder() != 4754) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_memry_core_checksum_method_noteswriter_device_id() != 15214) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_memry_core_checksum_method_noteswriter_dismiss_reminder() != 37906) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_duplicate() != 18542) {
@@ -32469,16 +32457,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_noteswriter_edit_block() != 62445) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_noteswriter_move_folder() != 48003) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_memry_core_checksum_method_noteswriter_move_to_folder() != 52953) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_rename() != 25883) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_memry_core_checksum_method_noteswriter_rename_folder() != 54465) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_rename_property() != 37723) {
@@ -32493,9 +32475,6 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_noteswriter_set_cover() != 22061) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_noteswriter_set_folder_icon() != 36082) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_memry_core_checksum_method_noteswriter_set_icon() != 32942) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -32505,10 +32484,31 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_noteswriter_set_tags() != 3241) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_noteswriter_snooze_reminder() != 55988) {
+    if (uniffi_memry_core_checksum_method_noteswriter_toggle_bookmark() != 46044) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_noteswriter_toggle_bookmark() != 46044) {
+    if (uniffi_memry_core_checksum_method_noteswriter_add_reminder() != 48545) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_create_folder() != 16834) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_delete_folder() != 31907) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_dismiss_reminder() != 45530) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_move_folder() != 53741) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_rename_folder() != 3698) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_set_folder_icon() != 57214) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_snooze_reminder() != 4913) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_runtimehost_on_background() != 23225) {
