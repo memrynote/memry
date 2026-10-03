@@ -124,7 +124,9 @@ struct NoteTableView: View {
     /// cell, as desktop's `/table` does.
     private func takePendingFocus() {
         guard let editing, let tableId, editing.takeFocus(tableId) else { return }
-        focusedCell = NoteTableCellAddress(row: 0, column: 0)
+        // On the next turn: the text field is not in the window yet when the
+        // grid first appears, and focus asked for before then is dropped.
+        DispatchQueue.main.async { focusedCell = NoteTableCellAddress(row: 0, column: 0) }
     }
 
     /// The minimum width for one column, from its share of the declared
