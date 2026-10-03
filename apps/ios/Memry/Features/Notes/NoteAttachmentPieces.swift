@@ -45,7 +45,7 @@ struct AudioCard: View {
 
     var body: some View {
         HStack(spacing: Tokens.Space.medium) {
-            Button(playing ? "Pause" : "Play", systemImage: playing ? "pause.fill" : "play.fill", action: toggle)
+            Button(playing ? "Pause \(label)" : "Play \(label)", systemImage: playing ? "pause.fill" : "play.fill", action: toggle)
                 .labelStyle(.iconOnly)
                 .font(Tokens.Typography.body.font)
                 .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
