@@ -93,7 +93,9 @@ struct NoteTableView: View {
             }
             .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
             .onAppear(perform: takePendingFocus)
-            .onChange(of: table) { takePendingFocus() }
+            // Never while a cell has the caret: a request that outlived its
+            // grid would pull the caret out of the cell being typed in.
+            .onChange(of: table) { if focusedCell == nil { takePendingFocus() } }
         } else {
             // The block is here and its structure is not. Naming that beats a
             // gap in the middle of a note, and it is what a note synced from
