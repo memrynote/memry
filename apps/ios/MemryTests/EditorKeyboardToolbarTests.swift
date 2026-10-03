@@ -326,12 +326,13 @@ struct InsertGridTests {
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
             "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
             "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
+            "table",
         ])
-        #expect(session.gridSections.map(\.section.title) == ["Basic", "Headings"])
+        #expect(session.gridSections.map(\.section.title) == ["Basic", "Headings", "Insert"])
 
         let text = block("p")
         let paragraph = focused(text, in: [text], session: session)
-        #expect(session.gridSections.flatMap(\.rows).map(\.id).suffix(3) == ["link_to_note", "date", "remind"])
+        #expect(session.gridSections.flatMap(\.rows).map(\.id).suffix(4) == ["link_to_note", "date", "remind", "table"])
         withExtendedLifetime((field, paragraph)) {}
     }
 
