@@ -12,7 +12,6 @@
 
 import MemryCore
 import SwiftUI
-import UIKit
 
 /// Desktop's `extractYouTubeVideoId`, on Foundation's URL parser.
 enum YouTubeLink {
@@ -60,6 +59,11 @@ struct LinkBlock: Equatable {
         }
     }
 
+    /// The first pasted text, trimmed; `nil` when the paste held none.
+    static func pasted(_ strings: [String]) -> String? {
+        strings.lazy.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.first { !$0.isEmpty }
+    }
+
     func edits(newId: String, after: String?) -> [BlockEdit] {
         [.insertBlock(kind: kind, afterBlockId: after, text: "", newBlockId: newId)]
             + props.sorted { $0.key < $1.key }.map { .setProp(blockId: newId, name: $0.key, value: $0.value) }
@@ -101,16 +105,26 @@ struct LinkBlockSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("https://", text: $address)
-                        .keyboardType(.URL)
-                        .textContentType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .submitLabel(.done)
-                        .focused($focused)
-                        .onSubmit(submit)
-                        .accessibilityLabel("Link")
-                        .accessibilityIdentifier("linkBlock.address")
+                    HStack {
+                        TextField("https://", text: $address)
+                            .keyboardType(.URL)
+                            .textContentType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .submitLabel(.done)
+                            .focused($focused)
+                            .onSubmit(submit)
+                            .accessibilityLabel("Link")
+                            .accessibilityIdentifier("linkBlock.address")
+                        // The system button reads the pasteboard only on the
+                        // user's tap, so the sheet never raises the paste prompt.
+                        PasteButton(payloadType: String.self) { strings in
+                            if let pasted = LinkBlock.pasted(strings) { address = pasted }
+                        }
+                        .labelStyle(.iconOnly)
+                        .buttonBorderShape(.capsule)
+                        .accessibilityIdentifier("linkBlock.paste")
+                    }
                 } footer: {
                     if !address.isEmpty, block == nil {
                         Text(hint)
@@ -132,29 +146,12 @@ struct LinkBlockSheet: View {
             }
         }
         .presentationDetents([.medium])
-        .task {
-            focused = true
-            await prefill()
-        }
+        .task { focused = true }
     }
 
     private func submit() {
         guard let block else { return }
         add(block)
         dismiss()
-    }
-
-    /// The clipboard's link, read only once pattern detection finds one, so
-    /// a clipboard holding anything else never raises the paste prompt.
-    private func prefill() async {
-        let pasteboard = UIPasteboard.general
-        guard address.isEmpty, pasteboard.hasURLs || pasteboard.hasStrings,
-              let found = try? await pasteboard.detectedPatterns(for: [\.probableWebURL]),
-              found.contains(\.probableWebURL),
-              let link = pasteboard.url?.absoluteString ?? pasteboard.string else { return }
-        let trimmed = link.trimmingCharacters(in: .whitespacesAndNewlines)
-        if address.isEmpty, LinkBlock.make(.bookmark, from: trimmed) != nil {
-            address = trimmed
-        }
     }
 }
