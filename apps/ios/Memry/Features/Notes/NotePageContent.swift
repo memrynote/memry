@@ -38,6 +38,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     /// The body's tags as last seen. `nil` until the note is first drawn:
     /// opening a note seeds it and writes nothing (desktop's #1454).
     @State private var inlineTags: (noteId: String, tags: [String])?
+    @Environment(\.requestVaultSync) private var requestVaultSync
 
     /// The editing bridge, or `nil` on a read-only page.
     private var editing: NoteEditingBridge? {
@@ -58,6 +59,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         session.tagColors = model.tagColors
         session.blocks = { model.blocks }
         session.openTag = openTag
+        session.requestSync = requestVaultSync
         let noteId = detail.summary.id
         session.relinkTask = taskBridge.relink.map { relink in
             { taskId, target in await relink(taskId, noteId, target) }
