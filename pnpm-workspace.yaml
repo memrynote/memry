@@ -62,7 +62,7 @@ overrides:
   prosemirror-model: '1.25.11'
   prosemirror-view: '1.42.4'
   prosemirror-transform: '1.12.1'
-  qs: '>=6.15.2'
+  qs: '>=6.16.0'
   protobufjs: '>=7.6.5 <8'
   serialize-javascript: 7.0.5
   '@xmldom/xmldom': 0.8.13
