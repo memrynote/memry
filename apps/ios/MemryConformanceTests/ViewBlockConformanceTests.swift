@@ -117,6 +117,19 @@ struct ViewBlockConformanceTests {
         #expect(rows.map(\.id) == ["a", "b"])
     }
 
+    @Test("a folder source exists when configured or holding a note, and a gone one shows desktop's folderMissing copy")
+    func folderMissing() {
+        let configured = [FolderSummary(path: "projects", parentPath: nil, name: "projects", icon: nil)]
+        let notes = [note("a", folder: "books/fiction")]
+
+        #expect(ViewBlockQuery.folderExists("", configured: [], notes: []))
+        #expect(ViewBlockQuery.folderExists("projects", configured: configured, notes: notes))
+        #expect(ViewBlockQuery.folderExists("books", configured: configured, notes: notes))
+        #expect(!ViewBlockQuery.folderExists("archive", configured: configured, notes: notes))
+        #expect(!ViewBlockQuery.folderExists("book", configured: configured, notes: notes))
+        #expect(ViewBlockCopy.folderMissing == "This folder is not in the vault any more. Pick another source.")
+    }
+
     @Test("order sorts empties last in either direction, then the limit applies")
     func orderAndLimit() {
         let notes = [
