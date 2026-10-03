@@ -1,5 +1,4 @@
 import MemryCore
-import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -81,34 +80,6 @@ final class NoteAttachmentComposer {
             state = .failed(mapped)
             return nil
         }
-    }
-
-    /// Reads a picked file and uploads it.
-    ///
-    /// The security-scoped dance is not optional for a `fileImporter` result:
-    /// a url from outside the sandbox is unreadable without it, and the stop
-    /// must happen even when the read throws.
-    @discardableResult
-    func upload(contentsOf url: URL) async -> String? {
-        state = .reading
-        let scoped = url.startAccessingSecurityScopedResource()
-        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-
-        let data: Data
-        do {
-            data = try Data(contentsOf: url)
-        } catch {
-            let mapped = ErrorMapping.userFacing(error)
-            Log.sync.error("a picked file could not be read", .code(mapped.code))
-            state = .failed(mapped)
-            return nil
-        }
-
-        return await upload(
-            filename: url.lastPathComponent,
-            mimeType: Self.mimeType(for: url),
-            bytes: data
-        )
     }
 
     /// Detaches an attachment and releases its bytes.
