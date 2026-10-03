@@ -91,17 +91,16 @@ struct BookmarkCard: View {
     }
 
     private func load() async {
-        guard let url, let address = URL(string: url), address.scheme?.hasPrefix("http") == true
+        // Rows are keyed by position, so after a block above is removed this
+        // card can be handed another block's url while holding its preview.
+        metadata = url.flatMap { LinkMetadataCache.shared.object(forKey: $0 as NSString) }
+        guard metadata == nil, let url, let address = URL(string: url), address.scheme?.hasPrefix("http") == true
         else { return }
-        if let cached = LinkMetadataCache.shared.object(forKey: url as NSString) {
-            metadata = cached
-            return
-        }
         let provider = LPMetadataProvider()
         provider.shouldFetchSubresources = true
         guard let fetched = try? await provider.startFetchingMetadata(for: address) else { return }
         LinkMetadataCache.shared.setObject(fetched, forKey: url as NSString)
-        metadata = fetched
+        if !Task.isCancelled { metadata = fetched }
     }
 }
 
