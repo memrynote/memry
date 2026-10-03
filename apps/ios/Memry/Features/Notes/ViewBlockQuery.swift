@@ -155,6 +155,12 @@ struct ViewBlockRow: Identifiable, Equatable {
     let emoji: String?
     let created: Date?
     let modified: Date?
+
+    /// The note a tap opens, by id: titles repeat and can be empty. `nil` for
+    /// a task row.
+    var noteRoute: NoteRoute? {
+        kind == .note ? NoteRoute(id: id) : nil
+    }
 }
 
 extension ViewBlockRow {
