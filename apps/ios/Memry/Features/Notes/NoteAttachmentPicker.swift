@@ -127,6 +127,14 @@ final class NoteAttachmentComposer {
 
     func dismissFailure() { state = .idle }
 
+    /// Bytes still coming off a picker, which for a long video takes a while
+    /// before the upload itself starts.
+    func beginReading() { state = .reading }
+
+    func endReading() {
+        if state == .reading { state = .idle }
+    }
+
     /// The platform's own answer, falling back to the one type that promises
     /// nothing rather than guessing from the extension.
     nonisolated static func mimeType(for url: URL) -> String {
@@ -143,85 +151,5 @@ final class NoteAttachmentComposer {
         let stamp = ISO8601DateFormatter()
         stamp.formatOptions = [.withYear, .withMonth, .withDay, .withTime]
         return "\(kind)-\(stamp.string(from: date).replacingOccurrences(of: ":", with: "-")).\(ext)"
-    }
-}
-
-/// The add-attachment affordance for the note screen.
-struct NoteAttachmentPicker: View {
-    @Bindable var composer: NoteAttachmentComposer
-    /// Called with the new attachment id so the note re-resolves in place.
-    var onUploaded: (String) -> Void
-
-    @State private var photo: PhotosPickerItem?
-    @State private var showingFiles = false
-
-    var body: some View {
-        if composer.canUpload {
-            Menu {
-                PhotosPicker(selection: $photo, matching: .any(of: [.images, .videos])) {
-                    Label("Photo library", systemImage: "photo.on.rectangle")
-                }
-                Button {
-                    showingFiles = true
-                } label: {
-                    Label("Files", systemImage: "folder")
-                }
-            } label: {
-                Label("Add attachment", systemImage: "paperclip")
-            }
-            .disabled(composer.isBusy)
-            .fileImporter(isPresented: $showingFiles, allowedContentTypes: [.item]) { result in
-                guard case let .success(url) = result else { return }
-                Task {
-                    if let id = await composer.upload(contentsOf: url) { onUploaded(id) }
-                }
-            }
-            .onChange(of: photo) { _, picked in
-                guard let picked else { return }
-                Task { await load(picked) }
-            }
-            .overlay(alignment: .trailing) { busy }
-            .alert(
-                failureTitle,
-                isPresented: Binding(
-                    get: { if case .failed = composer.state { true } else { false } },
-                    set: { if !$0 { composer.dismissFailure() } }
-                )
-            ) {
-                Button("OK", role: .cancel) { composer.dismissFailure() }
-            } message: {
-                if case let .failed(error) = composer.state { Text(error.guidance ?? "") }
-            }
-        }
-    }
-
-    /// Indeterminate on purpose: the core's upload reports no per-chunk
-    /// progress, and a bar that moved on a timer would be a claim about where
-    /// the bytes are.
-    @ViewBuilder
-    private var busy: some View {
-        if composer.isBusy {
-            ProgressView()
-                .controlSize(.small)
-                .accessibilityLabel("Uploading")
-        }
-    }
-
-    private var failureTitle: String {
-        if case let .failed(error) = composer.state { return error.title ?? "" }
-        return ""
-    }
-
-    private func load(_ item: PhotosPickerItem) async {
-        guard let data = try? await item.loadTransferable(type: Data.self) else { return }
-        let name = item.supportedContentTypes.first?.preferredFilenameExtension
-            .map { NoteAttachmentComposer.capturedName(extension: $0) }
-            ?? NoteAttachmentComposer.capturedName()
-        let mime = item.supportedContentTypes.first?.preferredMIMEType
-            ?? "application/octet-stream"
-        if let id = await composer.upload(filename: name, mimeType: mime, bytes: data) {
-            onUploaded(id)
-        }
-        photo = nil
     }
 }

@@ -612,6 +612,15 @@ final class EditorSession {
         }
     }
 
+    /// Opens an attachment picker once the open block's typing is written.
+    /// That write ends in a page reload, which would tear down a picker
+    /// already on screen.
+    func openAttachment(_ source: EditorAttachmentSource) {
+        guard let attach else { return }
+        if let field { commit(field) }
+        enqueue { attach(source) }
+    }
+
     /// An uploaded attachment's block, after the caret's block (or at the end
     /// of the body when none has had the caret). Undo removes the block and
     /// keeps the upload, as desktop's undo does.

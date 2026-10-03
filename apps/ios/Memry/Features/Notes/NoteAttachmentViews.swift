@@ -3,6 +3,7 @@ import MemryCore
 import PDFKit
 import QuickLook
 import SwiftUI
+import UniformTypeIdentifiers
 
 // Attachments in a note body: pictures with their real bytes, and files,
 // audio and video that open.
@@ -113,13 +114,15 @@ struct NoteAttachmentView: View {
     @ViewBuilder
     private var content: some View {
         switch NoteAttachmentBinding.of(url, resolve) {
-        case let .file(path, _, _):
+        case let .file(path, filename, _):
             if let media {
-                // A real player, because a recording in a note is meant to be
-                // listened to in place. Video keeps its aspect ratio rather
-                // than a fixed box, so a portrait clip is not letterboxed.
-                MediaPlayer(url: path, isAudio: media == "audio")
-                    .accessibilityLabel(spoken(media))
+                let type = mimeType ?? UTType(filenameExtension: (filename as NSString).pathExtension)?.preferredMIMEType
+                if media == "audio" {
+                    AudioCard(url: path, mimeType: type, label: label, detail: measured)
+                } else {
+                    MediaPlayer(url: path, mimeType: type)
+                        .accessibilityLabel(spoken(media))
+                }
             } else if isPDF(path) {
                 // Read in place, as desktop shows it: a PDF in a note is
                 // there to be read, and a card that only opens it hides the
