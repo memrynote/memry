@@ -65,7 +65,7 @@ overrides:
   qs: '>=6.15.2'
   protobufjs: '>=7.6.5 <8'
   serialize-javascript: 7.0.5
-  '@xmldom/xmldom': 0.8.13
+  '@xmldom/xmldom': 0.8.15
   # Dependabot security alerts — pinned patched transitive versions
   shell-quote: '>=1.8.4'
   # Stay on the 5.x line: markdown-it 14 declares linkify-it ^5.0.0.
