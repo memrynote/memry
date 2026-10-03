@@ -45,6 +45,9 @@ struct NoteTableCellView: View {
             NoteTableCellField(
                 text: Self.plainText(of: cell), commit: setText, focus: focus, address: address, next: next
             )
+            // A text field fills the column, so the frame alignment below
+            // cannot place its text; the field has to align it itself.
+            .multilineTextAlignment(Self.alignment(of: cell))
             .accessibilityLabel(label)
         } else {
             NoteBlocksView(
@@ -96,11 +99,20 @@ struct NoteTableCellView: View {
         return cell.isHeader ? Tokens.Canvas.surface.color : .clear
     }
 
-    private var frameAlignment: Alignment {
+    /// The cell's `textAlignment` as SwiftUI spells it.
+    static func alignment(of cell: TableCell) -> TextAlignment {
         switch cell.textAlignment {
         case "center": .center
         case "right": .trailing
         default: .leading
+        }
+    }
+
+    private var frameAlignment: Alignment {
+        switch Self.alignment(of: cell) {
+        case .center: .center
+        case .trailing: .trailing
+        case .leading: .leading
         }
     }
 
