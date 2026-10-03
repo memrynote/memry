@@ -5,9 +5,8 @@ import SwiftUI
 /// when this build cannot answer the definition or has no vault to read.
 struct ViewBlockView: View {
     let text: String
-    /// Opens a note by title, as a wiki link does.
-    var openTarget: ((String) -> Void)?
 
+    @Environment(\.openNote) private var openNote
     @Environment(\.vaultBrowse) private var browse
     @Environment(\.settingsContext) private var settings
     @Environment(\.noteTasks) private var taskActions
@@ -69,9 +68,10 @@ struct ViewBlockView: View {
 
     private func rowButton(_ row: ViewBlockRow) -> some View {
         Button {
-            switch row.kind {
-            case .note: openTarget?(row.title)
-            case .task: taskActions?.open?(row.id)
+            if let route = row.noteRoute {
+                openNote?(route)
+            } else {
+                taskActions?.open?(row.id)
             }
         } label: {
             HStack(spacing: Tokens.Space.small) {
@@ -148,6 +148,12 @@ struct ViewBlockView: View {
             return .failed
         }
     }
+}
+
+extension EnvironmentValues {
+    /// Pushes a note by id onto the note screen's stack; `nil` where there is
+    /// no stack to push onto.
+    @Entry var openNote: ((NoteRoute) -> Void)?
 }
 
 /// Desktop's `notes.json` `editor.viewBlock.*`.

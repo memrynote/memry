@@ -215,7 +215,7 @@ struct NoteBlockView: View {
         case "callout":
             CalloutRow(type: value("type") ?? "info", text: inline)
         case "codeBlock" where value("language") == ViewBlockFence.language:
-            ViewBlockView(text: plainText, openTarget: openTarget)
+            ViewBlockView(text: plainText)
         case "codeBlock":
             CodeRow(language: value("language"), text: plainText)
         case "diagram":
