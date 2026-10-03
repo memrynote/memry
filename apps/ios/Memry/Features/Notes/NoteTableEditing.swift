@@ -3,7 +3,7 @@ import SwiftUI
 /// What a table needs to be editable (N505).
 ///
 /// Closures rather than the editor model, so this view stays in the read
-/// feature and depends on four functions instead of on a type.
+/// feature and depends on functions instead of on a type.
 /// Every closure takes the table's own block id first, because one note can
 /// hold several tables and a cell knows its row and column but not which grid
 /// it belongs to.
