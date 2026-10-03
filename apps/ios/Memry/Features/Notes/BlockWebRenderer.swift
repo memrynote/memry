@@ -166,6 +166,9 @@ final class BlockWebRenderer: NSObject {
             frame: CGRect(origin: CGPoint(x: -Self.viewport.width * 4, y: 0), size: Self.viewport),
             configuration: configuration
         )
+        // Without this the page sits under the window's safe-area inset, and
+        // every rect the page reports is off by it.
+        view.scrollView.contentInsetAdjustmentBehavior = .never
         view.isOpaque = false
         view.backgroundColor = .clear
         view.scrollView.backgroundColor = .clear
