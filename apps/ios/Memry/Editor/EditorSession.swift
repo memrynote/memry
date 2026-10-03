@@ -50,6 +50,9 @@ final class EditorSession {
     /// Opens a tag's notes, for a tap on a `#tag` in a block. `nil` leaves the
     /// tap to place the caret, as on a page with no stack to push onto.
     @ObservationIgnored var openTag: ((String) -> Void)?
+    /// Schedules a vault sync pass (`requestVaultSync`), so a write reaches
+    /// other devices without waiting for the next foreground or launch.
+    @ObservationIgnored var requestSync: (@MainActor () -> Void)?
 
     // MARK: State the toolbar draws
 
@@ -605,6 +608,7 @@ final class EditorSession {
             self?.history.record(.prop(
                 blockId: request.blockId, name: "latex", from: request.source, to: text, label: "Equation"
             ))
+            self?.requestSync?()
         }
     }
 
