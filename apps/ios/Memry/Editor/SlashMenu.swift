@@ -65,7 +65,7 @@ enum BlockCatalog {
     private static let dateAliases = ["date", "remind", "reminder", "when"]
 
     /// Every row, in desktop's catalog order. Rows desktop offers that this
-    /// build cannot make yet (task, table, math, diagram, whiteboard, view,
+    /// build cannot make yet (task, math, diagram, whiteboard, view,
     /// files) join here one row each as they land; emoji, templates and AI
     /// stay desktop-only.
     static let rows: [Row] = [
@@ -104,6 +104,7 @@ enum BlockCatalog {
         Row(id: "link_to_note", title: "Link to note", symbol: "link", aliases: ["link", "wiki", "wikilink", "note", "backlink"], section: .insert, action: .linkToNote),
         Row(id: "date", title: "Today", symbol: "calendar", aliases: dateAliases, section: .insert, action: .date(remind: false)),
         Row(id: "remind", title: "Remind me", symbol: "alarm", aliases: dateAliases, section: .insert, action: .date(remind: true)),
+        block("table", "Table", "tablecells", ["table"], .insert, kind: "table"),
         Row(
             id: "image", title: "Image", symbol: "photo",
             aliases: ["image", "imageUpload", "upload", "img", "picture", "media", "url", "photo"],
@@ -242,13 +243,16 @@ extension EditorSession {
         let blockId = field.blockId
         let empty = field.textView.text.isEmpty
         if empty, kind != "divider" {
+            // A table draws in the reload the turn itself triggers, so it
+            // asks for the caret before that write rather than after it.
+            if kind == "table" { pendingFocus = blockId }
             turnInto(InsertableBlock(id: kind, name: "", symbol: "", level: level))
             commit(field) { [weak self] in
                 guard let self, let model = self.model else { return }
                 for (name, value) in props.sorted(by: { $0.key < $1.key }) {
                     await model.setProp(blockId, name, value)
                 }
-                self.pendingFocus = blockId
+                if kind != "table" { self.pendingFocus = blockId }
             }
             return
         }
