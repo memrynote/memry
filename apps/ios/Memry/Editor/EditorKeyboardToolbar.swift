@@ -439,8 +439,10 @@ private struct EditorSuggestionList: View {
 /// What replaces the keyboard: the insert grid, or turn-into and colours.
 struct EditorPanelView: View {
     let session: EditorSession
+    /// Grows with Dynamic Type, so a tile's title wraps rather than truncates.
+    @ScaledMetric(relativeTo: .caption) private var tileWidth: CGFloat = 96
 
-    private let columns = [GridItem(.adaptive(minimum: 96), spacing: Tokens.Space.small)]
+    private var columns: [GridItem] { [GridItem(.adaptive(minimum: tileWidth), spacing: Tokens.Space.small)] }
     private let swatchColumns = [GridItem(.adaptive(minimum: Tokens.Size.minimumHitArea), spacing: Tokens.Space.small)]
 
     var body: some View {
@@ -448,10 +450,12 @@ struct EditorPanelView: View {
             VStack(alignment: .leading, spacing: Tokens.Space.medium) {
                 switch session.panel {
                 case .insert:
-                    section("Blocks") { grid(InsertableBlock.all, checked: nil) { session.insert($0) } }
+                    insertGrid
                 case .block:
                     section("Turn into") {
-                        grid(InsertableBlock.convertible, checked: currentBlock) { session.turnInto($0) }
+                        grid(InsertableBlock.all.map { ($0.name, $0.symbol) }, checked: currentBlock) {
+                            session.turnInto(InsertableBlock.all[$0])
+                        }
                     }
                     colours(prop: "textColor", title: "Text colour", fill: false) { session.setBlockColor("textColor", $0) }
                     colours(prop: "backgroundColor", title: "Background", fill: true) { session.setBlockColor("backgroundColor", $0) }
@@ -464,6 +468,38 @@ struct EditorPanelView: View {
         .foregroundStyle(Tokens.Text.primary.color)
     }
 
+    /// `BlockCatalog` by section, the slash menu's rows in its order, under a
+    /// filter that hands over to the slash menu: the grid replaces the
+    /// keyboard, so the query is typed after a `/` at the caret.
+    @ViewBuilder private var insertGrid: some View {
+        if session.focusedKind != "codeBlock" {
+            Button {
+                session.startTrigger("/")
+            } label: {
+                HStack(spacing: Tokens.Space.small) {
+                    Image(systemName: "magnifyingglass")
+                    Text("Filter blocks")
+                    Spacer()
+                }
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .padding(.horizontal, Tokens.Space.medium)
+                .frame(minHeight: Tokens.Size.minimumHitArea)
+                .background(Tokens.Canvas.surface.color, in: .capsule)
+                .contentShape(.capsule)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Filter blocks")
+            .accessibilityHint("Opens the keyboard with the slash menu")
+        }
+        ForEach(session.gridSections, id: \.section) { group in
+            section(group.section.title) {
+                grid(group.rows.map { ($0.title, $0.symbol) }, checked: nil) {
+                    session.chooseFromGrid(group.rows[$0])
+                }
+            }
+        }
+    }
+
     private var currentBlock: String? {
         InsertableBlock.all.first { $0.id == session.focusedKind && ($0.level == nil || $0.level == session.focusedLevel) }?.name
     }
@@ -473,27 +509,32 @@ struct EditorPanelView: View {
             Text(title)
                 .font(Tokens.Typography.caption.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
+                .accessibilityAddTraits(.isHeader)
             content()
         }
     }
 
-    private func grid(_ blocks: [InsertableBlock], checked: String?, pick: @escaping (InsertableBlock) -> Void) -> some View {
+    private func grid(
+        _ tiles: [(title: String, symbol: String)], checked: String?, pick: @escaping (Int) -> Void
+    ) -> some View {
         LazyVGrid(columns: columns, spacing: Tokens.Space.small) {
-            ForEach(blocks, id: \.name) { block in
+            ForEach(tiles.indices, id: \.self) { index in
+                let tile = tiles[index]
                 Button {
-                    pick(block)
+                    pick(index)
                 } label: {
                     VStack(spacing: Tokens.Space.tight) {
-                        Image(systemName: block.symbol)
-                        Text(block.name)
+                        Image(systemName: tile.symbol)
+                        Text(tile.title)
                             .font(Tokens.Typography.caption.font)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    .padding(Tokens.Space.tight)
                     .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea * 1.5)
                     .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.control))
                     .overlay(alignment: .topTrailing) {
-                        if block.name == checked {
+                        if tile.title == checked {
                             Image(systemName: "checkmark")
                                 .font(Tokens.Typography.caption.font)
                                 .foregroundStyle(Tokens.Text.tint.color)
@@ -503,8 +544,8 @@ struct EditorPanelView: View {
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(block.name)
-                .accessibilityAddTraits(block.name == checked ? [.isSelected] : [])
+                .accessibilityLabel(tile.title)
+                .accessibilityAddTraits(tile.title == checked ? [.isSelected] : [])
             }
         }
     }

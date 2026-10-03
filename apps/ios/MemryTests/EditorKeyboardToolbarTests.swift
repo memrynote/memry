@@ -2,7 +2,8 @@
 //  EditorKeyboardToolbarTests.swift
 //  The keyboard toolbar's decisions: the `#` menu, the hashTag node, the
 //  block an uploaded attachment becomes, the row's order, the format slide,
-//  the focused block's indent and moves, and Move to.
+//  the focused block's indent and moves, Move to, and the `+` grid that
+//  shares the slash menu's catalog.
 //
 
 import Foundation
@@ -296,6 +297,85 @@ struct EditorToolbarFocusTests {
     @Test func aMovedTaskLinksToItsNewNoteOnly() {
         #expect(NoteTaskLinks.relinked(["n1", "x"], unlink: "n1", link: "n2") == ["x", "n2"])
         #expect(NoteTaskLinks.relinked(["n2"], unlink: "n1", link: "n2") == ["n2"])
+    }
+}
+
+@MainActor
+struct InsertGridTests {
+    @Test func theGridListsTheSlashMenusRowsInItsOrder() {
+        let grid = BlockCatalog.sections(picture: true, inline: true).flatMap(\.rows).map(\.id)
+        let slash = SlashMenu.suggestions(query: "", picture: true).map(\.id)
+        let expected = [
+            "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
+            "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
+            "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
+            "link_to_note", "date", "remind",
+            "image",
+        ]
+        #expect(grid == expected)
+        #expect(slash == expected.map { "slash:\($0)" })
+        #expect(BlockCatalog.sections(picture: true, inline: true).map(\.section.title) == ["Basic", "Headings", "Insert", "Media"])
+        #expect(BlockCatalog.sections(picture: false, inline: true).map(\.section.title) == ["Basic", "Headings", "Insert"])
+    }
+
+    @Test func aCodeBlockGridOffersBlocksButNoInlineRows() {
+        let session = EditorSession()
+        let code = block("c", kind: "codeBlock")
+        let field = focused(code, in: [code], session: session)
+        #expect(session.gridSections.flatMap(\.rows).map(\.id) == [
+            "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
+            "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
+            "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
+        ])
+        #expect(session.gridSections.map(\.section.title) == ["Basic", "Headings"])
+
+        let text = block("p")
+        let paragraph = focused(text, in: [text], session: session)
+        #expect(session.gridSections.flatMap(\.rows).map(\.id).suffix(3) == ["link_to_note", "date", "remind"])
+        withExtendedLifetime((field, paragraph)) {}
+    }
+
+    /// `changes`: how many queued writes the row makes, each ending in a
+    /// `didChange`. The session holds its field and model weakly, so the test
+    /// holds them.
+    private func choose(_ id: String, in target: Block, changes: Int = 1) async throws -> [BlockEdit] {
+        let editor = ScriptedToolbarEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        let row = try #require(BlockCatalog.rows.first { $0.id == id })
+        let field = focused(target, in: [target], session: session)
+        var seen = 0
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = {
+                seen += 1
+                if seen == changes { done.resume() }
+            }
+            session.chooseFromGrid(row)
+        }
+        withExtendedLifetime((field, model)) {}
+        return editor.all
+    }
+
+    @Test func aToggleHeadingTurnsAnEmptyLineIntoATogglableHeading() async throws {
+        let edits = try await choose("toggle_heading_2", in: block("a"), changes: 2)
+        #expect(edits == [
+            .turnInto(blockId: "a", kind: "heading"),
+            .setProp(blockId: "a", name: "level", value: "2"),
+            .setProp(blockId: "a", name: "isToggleable", value: "true"),
+        ])
+    }
+
+    @Test func aCheckListAfterTextIsAPlainCheckbox() async throws {
+        let text = InlineRun(text: "hi", marks: [], markAttrs: [:], target: nil)
+        let edits = try await choose("check_list", in: block("a", inline: [text]))
+        guard case let .insertBlock(kind, after, _, newId) = edits.first else {
+            Issue.record("expected an insert first, got \(edits)")
+            return
+        }
+        #expect(kind == "checkListItem")
+        #expect(after == "a")
+        #expect(Array(edits.dropFirst()) == [.setProp(blockId: newId, name: "plain", value: "true")])
     }
 }
 

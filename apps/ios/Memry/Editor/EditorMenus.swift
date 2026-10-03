@@ -11,13 +11,11 @@
 import MemryCore
 import SwiftUI
 
-/// Every block type a user can insert, as the menu presents them.
+/// The block types a block can be turned into, named as desktop's block menu
+/// names them (`TURN_INTO_TARGETS` in `block-side-menu.tsx`).
 ///
-/// **Driven by a list rather than by the registry**, because the registry
-/// includes types a user cannot meaningfully insert from a menu: a `table`
-/// needs rows, an `image` needs bytes, and a `taskBlock` belongs to the task
-/// surface. Those arrive through their own affordances (N214 for a picture),
-/// not through this list.
+/// **Not the insert list.** Desktop keeps turn-into apart from the slash
+/// menu, with its own names; the insert surfaces read `BlockCatalog`.
 struct InsertableBlock: Identifiable, Sendable {
     let id: String
     let name: String
@@ -37,17 +35,7 @@ struct InsertableBlock: Identifiable, Sendable {
         .init(id: "quote", name: "Quote", symbol: "quote.opening"),
         .init(id: "codeBlock", name: "Code", symbol: "curlybraces"),
         .init(id: "callout", name: "Callout", symbol: "exclamationmark.bubble"),
-        .init(id: "divider", name: "Divider", symbol: "minus"),
     ]
-
-    /// The subset a block can be turned into: everything that holds text.
-    ///
-    /// A divider is missing on purpose — turning a paragraph into one would
-    /// throw the text away, and a menu item that silently deletes what you
-    /// wrote is not a menu item.
-    static var convertible: [InsertableBlock] {
-        all.filter { $0.id != "divider" }
-    }
 
     /// The keyboard toolbar's short name for the caret's block: `H1`, `Text`.
     static func chip(kind: String?, level: Int?) -> String {
@@ -65,42 +53,6 @@ struct InsertableBlock: Identifiable, Sendable {
     }
 }
 
-/// The insert menu, desktop's slash menu.
-///
-/// **Reachable from the keyboard accessory, not only by typing `/`.** A
-/// discoverable affordance matters more on a phone, where there is no
-/// hovering and no tooltip to teach the shortcut.
-struct BlockInsertMenu: View {
-    let insert: (InsertableBlock) -> Void
-    /// `nil` hides the picture entry rather than offering an upload that
-    /// cannot happen.
-    var insertPicture: (() -> Void)?
-
-    var body: some View {
-        Menu {
-            ForEach(InsertableBlock.all) { block in
-                Button {
-                    insert(block)
-                } label: {
-                    Label(block.name, systemImage: block.symbol)
-                }
-            }
-            if let insertPicture {
-                Divider()
-                Button {
-                    insertPicture()
-                } label: {
-                    Label("Picture", systemImage: "photo")
-                }
-            }
-        } label: {
-            Label("Insert", systemImage: "plus")
-                .labelStyle(.iconOnly)
-        }
-        .accessibilityLabel("Insert a block")
-    }
-}
-
 /// Turn into, duplicate, move, colour and delete.
 struct BlockActionsMenu: View {
     let turnInto: (InsertableBlock) -> Void
@@ -113,7 +65,7 @@ struct BlockActionsMenu: View {
     var body: some View {
         Menu {
             Menu {
-                ForEach(InsertableBlock.convertible) { block in
+                ForEach(InsertableBlock.all) { block in
                     Button {
                         turnInto(block)
                     } label: {
