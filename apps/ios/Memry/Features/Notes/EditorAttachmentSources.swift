@@ -101,7 +101,7 @@ struct EditorAttachmentSources: ViewModifier {
     }
 
     private var failureTitle: String {
-        if case let .failed(error) = composer.state { return error.title ?? "" }
+        if case let .failed(error) = composer.state { return error.title }
         return ""
     }
 
