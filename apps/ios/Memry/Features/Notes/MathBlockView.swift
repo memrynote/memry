@@ -21,8 +21,10 @@ struct MathBlockView: View {
     }
 
     private var content: some View {
+        // Leading, as desktop draws it: its block's button shrinks to the
+        // formula, so `justify-center` never moves it off the start.
         MathFormulaView(latex: latex)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Equation")
