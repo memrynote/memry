@@ -63,6 +63,7 @@ struct BlockWebRendererTests {
         }
         #expect(image.size.width > 10, "a fraction has width")
         #expect(image.size.height > image.size.width / 2, "and is about as tall as it is wide")
+        #expect(inkedPixels(image) > 50, "the glyphs are painted, not a transparent box")
         guard case let .invalid(message) = await broken else {
             Issue.record("expected KaTeX's message, got \(await broken)")
             return
@@ -70,4 +71,24 @@ struct BlockWebRendererTests {
         #expect(message.hasPrefix("KaTeX parse error"))
         #expect(BlockWebRenderer.shared.cached(request("\\frac{a}{b}")) == .image(image))
     }
+}
+
+/// Pixels with any coverage: a picture taken before KaTeX's fonts loaded is
+/// the right size and fully transparent.
+private func inkedPixels(_ image: UIImage) -> Int {
+    guard let cgImage = image.cgImage else { return 0 }
+    let width = cgImage.width
+    let height = cgImage.height
+    var pixels = [UInt8](repeating: 0, count: width * height * 4)
+    let drawn = pixels.withUnsafeMutableBytes { buffer in
+        CGContext(
+            data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ).map { context in
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        } ?? false
+    }
+    guard drawn else { return 0 }
+    return stride(from: 3, to: pixels.count, by: 4).filter { pixels[$0] > 0 }.count
 }
