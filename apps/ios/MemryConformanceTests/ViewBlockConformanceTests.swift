@@ -87,6 +87,21 @@ struct ViewBlockConformanceTests {
         #expect(rows.map(\.kind) == [.note, .task(done: true)])
     }
 
+    @Test("a note row opens its note by id, so twin and empty titles open the right note; a task row opens no note")
+    func noteRowsOpenById() {
+        let query = ViewBlockQuery(source: .tag("work", andTags: []))
+        let notes = [
+            NoteSummary(id: "n-1", title: "Plan", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil),
+            NoteSummary(id: "n-2", title: "Plan", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil),
+            NoteSummary(id: "n-3", title: "", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil),
+        ]
+        let noteTags = ["n-1": ["work"], "n-2": ["work"], "n-3": ["work"]]
+
+        let rows = query.rows(notes: notes, noteTags: noteTags, tasks: [task("t-1", tags: ["work"])])
+
+        #expect(rows.map(\.noteRoute) == [NoteRoute(id: "n-1"), NoteRoute(id: "n-2"), NoteRoute(id: "n-3"), nil])
+    }
+
     @Test("a folder holds its subfolders' notes, oldest change first when the fence names no order")
     func folderRows() {
         let query = ViewBlockQuery(source: .folder("projects"))
