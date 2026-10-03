@@ -1,7 +1,7 @@
 import SwiftUI
 
 // Desktop's math block (`math-block.tsx`): the `latex` prop typeset with
-// KaTeX, centred, or "Add an equation" when it is empty. KaTeX's own message
+// KaTeX, leading-aligned, or "Add an equation" when it is empty. KaTeX's own message
 // replaces a formula it refuses; here the source stays in view with the
 // message under it, so the block never looks rendered when it is not.
 
