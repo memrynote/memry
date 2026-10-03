@@ -131,6 +131,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                     ? NoteTableEditing(editor: editorModel) { await model.reload() }
                     : nil
             )
+            .environment(\.openNote, open)
             .modifier(EditorAttachmentSources(source: $attaching, composer: composer, session: editorModel.session))
             .modifier(MoveBlockPresenter(session: editorModel.session, notes: model.vaultNotes, currentNoteId: detail.summary.id))
             .sheet(item: Binding(
