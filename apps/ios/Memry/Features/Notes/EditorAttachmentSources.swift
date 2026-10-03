@@ -27,8 +27,12 @@ struct EditorAttachmentSources: ViewModifier {
             .onChange(of: photo) { _, picked in
                 guard let picked else { return }
                 photo = nil
+                composer.beginReading()
                 Task {
-                    guard let data = try? await picked.loadTransferable(type: Data.self) else { return }
+                    guard let data = try? await picked.loadTransferable(type: Data.self) else {
+                        composer.endReading()
+                        return
+                    }
                     let type = picked.supportedContentTypes.first
                     await upload(type?.conforms(to: .movie) == true
                         ? AttachmentPayload.video(data, type: type)
@@ -59,6 +63,46 @@ struct EditorAttachmentSources: ViewModifier {
                 }
                 .ignoresSafeArea()
             }
+            .safeAreaInset(edge: .top) { progress }
+            .alert(
+                failureTitle,
+                isPresented: Binding(
+                    get: { if case .failed = composer.state { true } else { false } },
+                    set: { if !$0 { composer.dismissFailure() } }
+                )
+            ) {
+                Button("OK", role: .cancel) { composer.dismissFailure() }
+            } message: {
+                if case let .failed(error) = composer.state { Text(error.guidance ?? "") }
+            }
+    }
+
+    /// Indeterminate on purpose: the core's upload reports no per-chunk
+    /// progress, and a bar that moved on a timer would be a claim about where
+    /// the bytes are.
+    @ViewBuilder
+    private var progress: some View {
+        let text: String? = switch composer.state {
+        case .reading: "Reading the file"
+        case let .uploading(name): "Adding \(name)"
+        default: nil
+        }
+        if let text {
+            HStack(spacing: Tokens.Space.small) {
+                ProgressView().controlSize(.small)
+                Text(text)
+                    .font(Tokens.Typography.caption.font)
+                    .foregroundStyle(Tokens.Text.secondary.color)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private var failureTitle: String {
+        if case let .failed(error) = composer.state { return error.title ?? "" }
+        return ""
     }
 
     private func showing(_ which: EditorAttachmentSource...) -> Binding<Bool> {
@@ -81,10 +125,12 @@ struct EditorAttachmentSources: ViewModifier {
     }
 
     private func upload(contentsOf url: URL) async {
+        composer.beginReading()
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         guard let data = await Task.detached(operation: { try? Data(contentsOf: url) }).value else {
             Log.sync.error("a picked file could not be read")
+            composer.endReading()
             return
         }
         await upload(AttachmentPayload(
