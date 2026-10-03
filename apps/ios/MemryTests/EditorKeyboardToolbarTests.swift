@@ -303,7 +303,7 @@ struct EditorToolbarFocusTests {
 @MainActor
 struct InsertGridTests {
     @Test func theGridListsTheSlashMenusRowsInItsOrder() {
-        let grid = BlockCatalog.sections(picture: true).flatMap(\.rows).map(\.id)
+        let grid = BlockCatalog.sections(picture: true, inline: true).flatMap(\.rows).map(\.id)
         let slash = SlashMenu.suggestions(query: "", picture: true).map(\.id)
         let expected = [
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
@@ -314,8 +314,25 @@ struct InsertGridTests {
         ]
         #expect(grid == expected)
         #expect(slash == expected.map { "slash:\($0)" })
-        #expect(BlockCatalog.sections(picture: true).map(\.section.title) == ["Basic", "Headings", "Insert", "Media"])
-        #expect(BlockCatalog.sections(picture: false).map(\.section.title) == ["Basic", "Headings", "Insert"])
+        #expect(BlockCatalog.sections(picture: true, inline: true).map(\.section.title) == ["Basic", "Headings", "Insert", "Media"])
+        #expect(BlockCatalog.sections(picture: false, inline: true).map(\.section.title) == ["Basic", "Headings", "Insert"])
+    }
+
+    @Test func aCodeBlockGridOffersBlocksButNoInlineRows() {
+        let session = EditorSession()
+        let code = block("c", kind: "codeBlock")
+        let field = focused(code, in: [code], session: session)
+        #expect(session.gridSections.flatMap(\.rows).map(\.id) == [
+            "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
+            "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
+            "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
+        ])
+        #expect(session.gridSections.map(\.section.title) == ["Basic", "Headings"])
+
+        let text = block("p")
+        let paragraph = focused(text, in: [text], session: session)
+        #expect(session.gridSections.flatMap(\.rows).map(\.id).suffix(3) == ["link_to_note", "date", "remind"])
+        withExtendedLifetime((field, paragraph)) {}
     }
 
     /// `changes`: how many queued writes the row makes, each ending in a
