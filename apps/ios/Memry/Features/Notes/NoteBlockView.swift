@@ -136,7 +136,7 @@ struct NoteBlockView: View {
     /// file, and editing under it moves the words out from under the
     /// comment), and a cell's inline images and checkboxes.
     private func editableField(_ editing: NoteEditingBridge) -> EditableBlockView? {
-        guard block.id != nil, Self.editableKinds.contains(block.kind),
+        guard block.id != nil, Self.editableKinds.contains(block.kind), !isAnsweredView,
               !block.inline.contains(where: { $0.marks.contains("inlineImage") || $0.marks.contains("inlineCheckbox") }),
               !reviewMarks.contains(where: { plainText.contains($0.visibleText) })
         else { return nil }
@@ -214,6 +214,8 @@ struct NoteBlockView: View {
             QuoteRow(text: inline)
         case "callout":
             CalloutRow(type: value("type") ?? "info", text: inline)
+        case "codeBlock" where value("language") == ViewBlockFence.language:
+            ViewBlockView(text: plainText)
         case "codeBlock":
             CodeRow(language: value("language"), text: plainText)
         case "diagram":
@@ -319,6 +321,14 @@ struct NoteBlockView: View {
                     .multilineTextAlignment(alignment)
             }
         }
+    }
+
+    /// A view block this build draws as rows. It stays out of the text editor
+    /// so its fence is never rewritten here; one it cannot answer is edited as
+    /// the code it shows.
+    private var isAnsweredView: Bool {
+        block.kind == "codeBlock" && value("language") == ViewBlockFence.language
+            && ViewBlockFence(text: plainText) != .code
     }
 
     /// The block's runs as one attributed string, marks applied.
