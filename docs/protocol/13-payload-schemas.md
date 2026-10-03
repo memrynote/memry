@@ -28,8 +28,9 @@ Notes root and is appended after them. `canvas` (whiteboards, §13.7.21) was
 added for the phone's whiteboard block and is appended last.
 
 Four more **record types** are served by the server and **not** subscribed to
-here: `agent_conversation`, `agent_message`, `canvas_folder`, `home_page`. **A conforming client omits them from
-the header and never sees them** (chapter 05 §5.3.1).
+here: `agent_conversation`, `agent_message`, `canvas_folder`, `home_page`.
+**A conforming client omits them from the header and never sees them**
+(chapter 05 §5.3.1).
 
 Twenty-one plus four is the **twenty-five record types**, which is the set
 chapter 05 §5.3 calls recognised. `attachment` is the twenty-sixth member of
