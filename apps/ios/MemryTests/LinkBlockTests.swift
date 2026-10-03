@@ -80,6 +80,12 @@ struct LinkBlockMakeTests {
         #expect(LinkBlock.make(.bookmark, from: address) == nil)
     }
 
+    @Test func thePasteButtonFillsTheFieldWithTheFirstPastedText() {
+        #expect(LinkBlock.pasted(["  https://youtu.be/dQw4w9WgXcQ\n", "https://example.com"]) == "https://youtu.be/dQw4w9WgXcQ")
+        #expect(LinkBlock.pasted(["", " ", "https://example.com"]) == "https://example.com")
+        #expect(LinkBlock.pasted([]) == nil)
+    }
+
     @Test func aVideoLinkInTheBookmarkSheetStaysABookmark() {
         #expect(LinkBlock.make(.bookmark, from: "https://youtu.be/dQw4w9WgXcQ")?.kind == "bookmark")
     }
