@@ -59,7 +59,6 @@ struct LinkBlock: Equatable {
         }
     }
 
-    /// The first pasted text, trimmed; `nil` when the paste held none.
     static func pasted(_ strings: [String]) -> String? {
         strings.lazy.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.first { !$0.isEmpty }
     }
