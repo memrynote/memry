@@ -172,7 +172,7 @@ extension ViewBlockRow {
     init(task: TaskItem) {
         self.init(
             id: task.id,
-            kind: .task(done: task.isDone),
+            kind: .task(done: task.completedAt != nil),
             title: task.title,
             emoji: nil,
             created: task.createdAt.flatMap(Self.instant),
