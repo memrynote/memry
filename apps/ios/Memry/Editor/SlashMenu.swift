@@ -233,7 +233,7 @@ extension EditorSession {
         case .linkToNote:
             startWikiLink()
         case let .attach(source):
-            attach?(source)
+            openAttachment(source)
         case .date:
             break
         }

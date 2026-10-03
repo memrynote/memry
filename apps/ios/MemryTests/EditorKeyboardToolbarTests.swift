@@ -379,17 +379,39 @@ struct InsertGridTests {
         #expect(BlockCatalog.sections(attach: false).map(\.section.title) == ["Basic", "Headings", "Insert"])
     }
 
-    @Test func eachMediaRowOpensItsPicker() throws {
+    @Test func eachMediaRowOpensItsPicker() async throws {
         let model = NoteEditorViewModel(noteId: "n1", editor: ScriptedToolbarEditor())
         let session = model.session
         var opened: [EditorAttachmentSource] = []
-        session.attach = { opened.append($0) }
         let field = focused(block("a"), in: [block("a")], session: session)
-        for id in ["image", "video", "audio", "file"] {
-            session.chooseFromGrid(try #require(BlockCatalog.rows.first { $0.id == id }))
+        let rows = try ["image", "video", "audio", "file"].map { id in
+            try #require(BlockCatalog.rows.first { $0.id == id })
+        }
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.attach = { source in
+                opened.append(source)
+                if opened.count == rows.count { done.resume() }
+            }
+            for row in rows { session.chooseFromGrid(row) }
         }
         withExtendedLifetime(field) {}
         #expect(opened == [.photos, .videos, .audio, .files])
+    }
+
+    @Test func aPickerOpensOnlyAfterTheOpenBlocksTypingIsWritten() async throws {
+        let editor = ScriptedToolbarEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        let field = focused(block("a"), in: [block("a")], session: session)
+        field.textView.text = "typed"
+        field.dirty = true
+        let writtenBeforeOpen = await withCheckedContinuation { (done: CheckedContinuation<[BlockEdit], Never>) in
+            session.attach = { _ in done.resume(returning: editor.all) }
+            session.openAttachment(.files)
+        }
+        withExtendedLifetime(field) {}
+        #expect(writtenBeforeOpen == [.setText(blockId: "a", text: "typed")])
     }
 
     @Test func mediaWordsFindTheMediaRows() {
