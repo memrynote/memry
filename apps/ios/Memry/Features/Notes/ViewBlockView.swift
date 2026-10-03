@@ -15,6 +15,7 @@ struct ViewBlockView: View {
     private enum Read: Equatable {
         case loading
         case ready(notes: [NoteSummary], noteTags: [String: [String]])
+        case folderMissing
         case failed
     }
 
@@ -33,13 +34,16 @@ struct ViewBlockView: View {
         }
     }
 
+    /// Lazy so a long view draws only the rows on screen when its note opens.
     private func rowsFrame(_ query: ViewBlockQuery) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        LazyVStack(alignment: .leading, spacing: 0) {
             switch read {
             case .loading:
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding(Tokens.Space.inset)
+            case .folderMissing:
+                notice(ViewBlockCopy.folderMissing)
             case .failed:
                 notice(ViewBlockCopy.loadFailed)
             case let .ready(notes, noteTags):
@@ -127,8 +131,17 @@ struct ViewBlockView: View {
     /// note carries which.
     private static func load(_ query: ViewBlockQuery, reader: any NotesReading) async -> Read {
         do {
-            guard case .tag = query.source else {
+            switch query.source {
+            case .vault:
                 return .ready(notes: try await reader.list(), noteTags: [:])
+            case let .folder(path):
+                let notes = try await reader.list()
+                guard ViewBlockQuery.folderExists(path, configured: try await reader.folders(), notes: notes) else {
+                    return .folderMissing
+                }
+                return .ready(notes: notes, noteTags: [:])
+            case .tag:
+                break
             }
             let needles = query.tagNeedles
             let names = try await reader.tags().map(\.name).filter { name in
@@ -156,10 +169,12 @@ extension EnvironmentValues {
     @Entry var openNote: ((NoteRoute) -> Void)?
 }
 
-/// Desktop's `notes.json` `editor.viewBlock.*`.
+/// Desktop's `notes.json` `editor.viewBlock.*`, except `untitled`, which is
+/// its `editor.title.untitled`.
 enum ViewBlockCopy {
     static let allNotes = "All notes"
     static let empty = "Nothing matches this view yet."
+    static let folderMissing = "This folder is not in the vault any more. Pick another source."
     static let loadFailed = "Could not load this view. The notes themselves are untouched."
     static let untitled = "Untitled"
 }
