@@ -34,15 +34,33 @@ struct BlockSourceSheetTests {
         #expect(session.history.popUndo()?.backward == .setProp(blockId: "m", name: "latex", value: ""))
     }
 
+    @Test func doneSchedulesASyncPassAfterTheWrite() async {
+        let editor = RecordingSourceEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        var editsAtSync: [[BlockEdit]] = []
+        session.requestSync = { editsAtSync.append(editor.all) }
+        session.editSource(BlockSourceRequest(blockId: "m", source: ""))
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.saveSource("x^2")
+        }
+        #expect(editsAtSync == [[.setProp(blockId: "m", name: "latex", value: "x^2")]])
+    }
+
     @Test func doneWithTheSourceUnchangedWritesNothing() {
         let editor = RecordingSourceEditor()
         let model = NoteEditorViewModel(noteId: "n1", editor: editor)
         let session = model.session
         session.model = model
+        var syncs = 0
+        session.requestSync = { syncs += 1 }
         session.editSource(BlockSourceRequest(blockId: "m", source: "x^2"))
         session.saveSource("x^2")
         #expect(session.sourceEdit == nil)
         #expect(!session.history.canUndo)
+        #expect(syncs == 0)
     }
 }
 
