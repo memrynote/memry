@@ -435,46 +435,6 @@ fn a_scene_edit_is_canonicalized_and_ticks_the_clock() {
     .expect("set scene");
 }
 
-/// The 50 ms budget for one canvas apply: the costliest path (a diverged
-/// concurrent edit, so a conflict copy plus the overwrite) on 500 elements.
-/// `cargo test --release -p memry-core canvas_apply_timing -- --ignored --nocapture`.
-#[test]
-#[ignore = "perf probe, run by hand"]
-fn canvas_apply_timing() {
-    let scene = |tag: &str| {
-        let elements: Vec<Value> = (0..500)
-            .map(|i| {
-                json!({ "id": format!("el-{tag}-{i}"), "type": "rectangle", "x": i * 10,
-                        "y": i * 7, "width": 120.5, "height": 80.25, "angle": 0,
-                        "strokeColor": "#1e1e1e", "seed": 1_000_000 + i, "version": 3 })
-            })
-            .collect();
-        json!({ "type": "excalidraw", "version": 2, "source": "memry",
-                "elements": elements, "appState": {}, "files": {} })
-        .to_string()
-    };
-    let (local, remote) = (scene("local"), scene("remote"));
-    for run in 0..10 {
-        let (db, _dir) = open("canvas-perf");
-        let millis = db
-            .call_blocking(|conn| {
-                seed(conn, "c1", &local, json!({ "A": 2 }), json!({}));
-                let record = inbound(
-                    "c1",
-                    json!({ "id": "c1", "vaultId": VAULT_ID, "scene": remote, "clock": { "B": 3 } }),
-                );
-                let started = std::time::Instant::now();
-                apply_inbound_on(conn, &record, NOW, Some(LOCAL_DEVICE))?;
-                Ok(started.elapsed().as_secs_f64() * 1000.0)
-            })
-            .expect("timed apply");
-        println!(
-            "canvas_apply_ms\t{run}\t{millis:.3}\t{} bytes",
-            remote.len()
-        );
-    }
-}
-
 #[test]
 fn a_blank_scene_is_desktops_empty_board() {
     assert_eq!(canonical_scene("").expect("blank"), EMPTY_SCENE);
