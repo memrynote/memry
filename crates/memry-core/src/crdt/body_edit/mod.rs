@@ -536,3 +536,6 @@ fn delete(txn: &mut TransactionMut, block_id: &str) -> Result<(), CrdtError> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;
