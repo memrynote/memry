@@ -136,8 +136,8 @@ private struct EditorMainRow: View {
         case .tag:
             ToolbarText(text: "#", label: "Add a tag") { session.startTrigger("#") }
         case .attach:
-            if let attach = session.attach {
-                AttachmentMenu(attach: attach)
+            if session.attach != nil {
+                AttachmentMenu(attach: session.openAttachment)
             }
         case .turnInto:
             TurnIntoButton(session: session)

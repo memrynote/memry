@@ -6,24 +6,86 @@ import SwiftUI
 
 // The pieces the attachment views are built from, split from `NoteAttachmentViews.swift`.
 
-/// A video or a recording, playable in place.
+/// A video, playable in place.
 ///
 /// The player is held in state: built in `body`, it was rebuilt on every
 /// re-render, and a note that re-read itself mid-playback stopped the clip.
 struct MediaPlayer: View {
     let url: URL
-    let isAudio: Bool
+    let mimeType: String?
     @State private var player: AVPlayer?
 
     var body: some View {
         VideoPlayer(player: player)
-            .aspectRatio(isAudio ? nil : 16 / 9, contentMode: .fit)
-            .frame(height: isAudio ? 64 : nil)
+            .aspectRatio(16 / 9, contentMode: .fit)
             .clipShape(.rect(cornerRadius: Tokens.Radius.card))
             .onAppear {
-                if player == nil { player = AVPlayer(url: url) }
+                if player == nil { player = Self.player(url, mimeType: mimeType) }
             }
             .onDisappear { player?.pause() }
+    }
+
+    /// The bytes sit under a content hash with no extension, so AVFoundation
+    /// is told the format rather than left to read it from the path.
+    static func player(_ url: URL, mimeType: String?) -> AVPlayer {
+        let options = mimeType.map { [AVURLAssetOverrideMIMETypeKey: $0] } ?? [:]
+        return AVPlayer(playerItem: AVPlayerItem(asset: AVURLAsset(url: url, options: options)))
+    }
+}
+
+/// A recording: its name and a play button, as desktop's audio row shows
+/// them. A video player's inline controls do not fit an audio-sized row.
+struct AudioCard: View {
+    let url: URL
+    let mimeType: String?
+    let label: String
+    let detail: String?
+    @State private var player: AVPlayer?
+    @State private var playing = false
+
+    var body: some View {
+        HStack(spacing: Tokens.Space.medium) {
+            Button(playing ? "Pause" : "Play", systemImage: playing ? "pause.fill" : "play.fill", action: toggle)
+                .labelStyle(.iconOnly)
+                .font(Tokens.Typography.body.font)
+                .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
+                .contentShape(.rect)
+            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                Text(label)
+                    .font(Tokens.Typography.supporting.font)
+                    .foregroundStyle(Tokens.Text.primary.color)
+                    .lineLimit(2)
+                if let detail {
+                    Text(detail)
+                        .font(Tokens.Typography.caption.font)
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            Spacer(minLength: 0)
+        }
+        .padding(Tokens.Space.inset)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(
+            RoundedRectangle(cornerRadius: Tokens.Radius.card)
+                .stroke(Tokens.Line.border.color, lineWidth: Tokens.Size.hairline)
+        )
+        .onReceive(NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification)) { note in
+            guard let item = player?.currentItem, note.object as? AVPlayerItem === item else { return }
+            playing = false
+            item.seek(to: .zero, completionHandler: nil)
+        }
+        .onDisappear {
+            player?.pause()
+            playing = false
+        }
+    }
+
+    private func toggle() {
+        let player = player ?? MediaPlayer.player(url, mimeType: mimeType)
+        self.player = player
+        if playing { player.pause() } else { player.play() }
+        playing.toggle()
     }
 }
 
