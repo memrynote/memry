@@ -93,7 +93,7 @@ struct AttachmentBlockTests {
         ])
     }
 
-    @Test func anythingElseIsAFileBlock() {
+    @Test func aPdfIsAFileBlock() {
         let block = AttachmentBlock.make(noteId: "n1", filename: "scan.pdf", mimeType: "application/pdf", size: 42)
         #expect(block.kind == "file")
         #expect(block.props == [
@@ -102,6 +102,40 @@ struct AttachmentBlockTests {
             .init(name: "size", value: "42"),
             .init(name: "mimeType", value: "application/pdf"),
         ])
+    }
+
+    @Test func aRecordingIsAFileBlockThatPlays() {
+        let block = AttachmentBlock.make(noteId: "n1", filename: "ab12cd-memo.m4a", mimeType: "audio/x-m4a", size: 2048)
+        #expect(block.kind == "file")
+        #expect(block.props == [
+            .init(name: "url", value: "attachments/n1/ab12cd-memo.m4a"),
+            .init(name: "name", value: "ab12cd-memo.m4a"),
+            .init(name: "size", value: "2048"),
+            .init(name: "mimeType", value: "audio/x-m4a"),
+        ])
+        #expect(AttachmentBlock.media(kind: "file", mimeType: "audio/x-m4a") == "audio")
+    }
+
+    @Test func aVideoIsAFileBlockThatPlays() {
+        let block = AttachmentBlock.make(noteId: "n1", filename: "ab12cd-clip.mp4", mimeType: "video/mp4", size: 1_048_576)
+        #expect(block.kind == "file")
+        #expect(block.props == [
+            .init(name: "url", value: "attachments/n1/ab12cd-clip.mp4"),
+            .init(name: "name", value: "ab12cd-clip.mp4"),
+            .init(name: "size", value: "1048576"),
+            .init(name: "mimeType", value: "video/mp4"),
+        ])
+        #expect(AttachmentBlock.media(kind: "file", mimeType: "video/mp4") == "video")
+        #expect(AttachmentBlock.media(kind: "file", mimeType: "application/pdf") == nil)
+        #expect(AttachmentBlock.media(kind: "video", mimeType: nil) == "video")
+    }
+
+    @Test func aLibraryVideoIsNamedAsACapture() {
+        let date = Date(timeIntervalSince1970: 0)
+        let payload = AttachmentPayload.video(Data([1]), type: .mpeg4Movie, at: date)
+        #expect(payload.filename == "video-19700101T000000.mp4")
+        #expect(payload.mimeType == "video/mp4")
+        #expect(AttachmentPayload.video(Data([1]), type: .quickTimeMovie, at: date).mimeType == "video/quicktime")
     }
 
     @Test func aPictureDesktopDrawsKeepsItsBytes() {
@@ -131,6 +165,33 @@ struct AttachmentBlockTests {
         #expect(kind == "image")
         #expect(after == nil)
         #expect(edits.dropFirst().first == .setProp(blockId: newId, name: "url", value: "attachments/n1/a.jpg"))
+    }
+
+    @MainActor
+    @Test func anInsertedAttachmentUndoesAndRedoesWithItsProps() async throws {
+        let editor = ScriptedToolbarEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.insertAttachment(AttachmentBlock.make(noteId: "n1", filename: "a.pdf", mimeType: "application/pdf", size: 3))
+        }
+        guard case let .insertBlock(_, _, _, newId) = editor.all.first else {
+            Issue.record("expected an insert first")
+            return
+        }
+        let inserted = editor.all
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.undo()
+        }
+        #expect(editor.all.last == .delete(blockId: newId))
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.redo()
+        }
+        #expect(Array(editor.all.suffix(5)) == inserted)
     }
 
     @Test func anUploadIsNamedAsDesktopNamesIt() {
@@ -303,19 +364,19 @@ struct EditorToolbarFocusTests {
 @MainActor
 struct InsertGridTests {
     @Test func theGridListsTheSlashMenusRowsInItsOrder() {
-        let grid = BlockCatalog.sections(picture: true, inline: true).flatMap(\.rows).map(\.id)
-        let slash = SlashMenu.suggestions(query: "", picture: true).map(\.id)
+        let grid = BlockCatalog.sections(attach: true, inline: true).flatMap(\.rows).map(\.id)
+        let slash = SlashMenu.suggestions(query: "", attach: true).map(\.id)
         let expected = [
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
             "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
             "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
             "link_to_note", "date", "remind", "table",
-            "image",
+            "image", "video", "audio", "file",
         ]
         #expect(grid == expected)
         #expect(slash == expected.map { "slash:\($0)" })
-        #expect(BlockCatalog.sections(picture: true, inline: true).map(\.section.title) == ["Basic", "Headings", "Insert", "Media"])
-        #expect(BlockCatalog.sections(picture: false, inline: true).map(\.section.title) == ["Basic", "Headings", "Insert"])
+        #expect(BlockCatalog.sections(attach: true, inline: true).map(\.section.title) == ["Basic", "Headings", "Insert", "Media"])
+        #expect(BlockCatalog.sections(attach: false, inline: true).map(\.section.title) == ["Basic", "Headings", "Insert"])
     }
 
     @Test func aCodeBlockGridOffersBlocksButNoInlineRows() {
@@ -334,6 +395,48 @@ struct InsertGridTests {
         let paragraph = focused(text, in: [text], session: session)
         #expect(session.gridSections.flatMap(\.rows).map(\.id).suffix(4) == ["link_to_note", "date", "remind", "table"])
         withExtendedLifetime((field, paragraph)) {}
+    }
+
+    @Test func eachMediaRowOpensItsPicker() async throws {
+        let model = NoteEditorViewModel(noteId: "n1", editor: ScriptedToolbarEditor())
+        let session = model.session
+        var opened: [EditorAttachmentSource] = []
+        let field = focused(block("a"), in: [block("a")], session: session)
+        let rows = try ["image", "video", "audio", "file"].map { id in
+            try #require(BlockCatalog.rows.first { $0.id == id })
+        }
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.attach = { source in
+                opened.append(source)
+                if opened.count == rows.count { done.resume() }
+            }
+            for row in rows { session.chooseFromGrid(row) }
+        }
+        withExtendedLifetime(field) {}
+        #expect(opened == [.photos, .videos, .audio, .files])
+    }
+
+    @Test func aPickerOpensOnlyAfterTheOpenBlocksTypingIsWritten() async throws {
+        let editor = ScriptedToolbarEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        let field = focused(block("a"), in: [block("a")], session: session)
+        field.textView.text = "typed"
+        field.dirty = true
+        let writtenBeforeOpen = await withCheckedContinuation { (done: CheckedContinuation<[BlockEdit], Never>) in
+            session.attach = { _ in done.resume(returning: editor.all) }
+            session.openAttachment(.files)
+        }
+        withExtendedLifetime(field) {}
+        #expect(writtenBeforeOpen == [.setText(blockId: "a", text: "typed")])
+    }
+
+    @Test func mediaWordsFindTheMediaRows() {
+        let rows = BlockCatalog.rows(attach: true)
+        #expect(BlockCatalog.filter(rows, query: "mp3").map(\.id) == ["audio"])
+        #expect(BlockCatalog.filter(rows, query: "attachment").map(\.id) == ["file"])
+        #expect(BlockCatalog.filter(rows, query: "vid").map(\.id) == ["video", "divider"])
     }
 
     /// `changes`: how many queued writes the row makes, each ending in a
