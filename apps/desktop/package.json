@@ -289,7 +289,7 @@
     "pako": "^2.1.0",
     "pdfjs-dist": "5.4.296",
     "postcss": "^8.5.15",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.9",
     "qrcode.react": "^4.2.0",
     "react": "^19.3.0",
     "react-complex-tree": "^2.6.1",

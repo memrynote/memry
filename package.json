@@ -87,7 +87,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",
     "oxlint": "1.78.0",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.9",
     "react-doctor": "^0.9.0",
     "turbo": "^2.9.16",
     "typescript": "^5.9.3"
