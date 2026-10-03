@@ -30,7 +30,7 @@ allowBuilds:
 overrides:
   tar: '>=7.5.21'
   rollup: '>=4.59.0'
-  hono: '>=4.12.34'
+  hono: '>=4.13.12'
   # @modelcontextprotocol/sdk >=1.30 accepts '^1.19.9 || ^2.0.5';
   # 1.x has no patch.
   '@hono/node-server': '>=2.0.5 <3'
