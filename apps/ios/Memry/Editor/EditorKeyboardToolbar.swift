@@ -491,7 +491,7 @@ struct EditorPanelView: View {
             .accessibilityLabel("Filter blocks")
             .accessibilityHint("Opens the keyboard with the slash menu")
         }
-        ForEach(BlockCatalog.sections(picture: session.pickImage != nil), id: \.section) { group in
+        ForEach(session.gridSections, id: \.section) { group in
             section(group.section.title) {
                 grid(group.rows.map { ($0.title, $0.symbol) }, checked: nil) {
                     session.chooseFromGrid(group.rows[$0])

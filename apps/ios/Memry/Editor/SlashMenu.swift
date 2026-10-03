@@ -45,6 +45,14 @@ enum BlockCatalog {
         let aliases: [String]
         let section: Section
         let action: Action
+
+        /// Writes an inline node or `[[` into the block rather than a block.
+        var isInline: Bool {
+            switch action {
+            case .linkToNote, .date: true
+            case .block, .picture: false
+            }
+        }
     }
 
     private static func block(
@@ -111,9 +119,9 @@ enum BlockCatalog {
     }
 
     /// `rows(picture:)` under their section titles, empty sections left out:
-    /// the `+` grid.
-    static func sections(picture: Bool) -> [(section: Section, rows: [Row])] {
-        let rows = rows(picture: picture)
+    /// the `+` grid. `inline` false drops the inline rows.
+    static func sections(picture: Bool, inline: Bool) -> [(section: Section, rows: [Row])] {
+        let rows = rows(picture: picture).filter { inline || !$0.isInline }
         return Section.allCases.compactMap { section in
             let inSection = rows.filter { $0.section == section }
             return inSection.isEmpty ? nil : (section, inSection)
@@ -176,6 +184,12 @@ extension EditorSession {
     func slashSuggestions(query: String) -> [EditorSuggestion] {
         guard field?.block.kind != "codeBlock" else { return [] }
         return SlashMenu.suggestions(query: query, picture: pickImage != nil)
+    }
+
+    /// The `+` grid's rows. A code block holds plain text on desktop, so
+    /// there the grid offers blocks only, no inline node and no `[[`.
+    var gridSections: [(section: BlockCatalog.Section, rows: [BlockCatalog.Row])] {
+        BlockCatalog.sections(picture: pickImage != nil, inline: focusedKind != "codeBlock")
     }
 
     /// A slash row chosen: `/query` goes, then the row acts.
