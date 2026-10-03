@@ -20,7 +20,7 @@ private func task(_ id: String, tags: [String], done: Bool = false) -> TaskItem 
         priority: 0, position: 0, dueDate: nil, dueTime: nil, startDate: nil,
         repeat: nil, isRepeating: false, repeatFrom: nil, sourceNoteId: nil,
         completedAt: done ? "2099-01-01T00:00:00.000Z" : nil, archivedAt: nil, tags: tags,
-        linkedNoteIds: [], linkedCanvasIds: [], createdAt: nil, modifiedAt: nil, statusType: nil, isDone: done
+        linkedNoteIds: [], linkedCanvasIds: [], createdAt: nil, modifiedAt: nil, statusType: nil, isDone: false
     )
 }
 
@@ -70,7 +70,7 @@ struct ViewBlockConformanceTests {
         #expect(ViewBlockFence(text: text) == .code)
     }
 
-    @Test("a tag lists its family's notes, then its tasks, narrowed by every ANDed tag")
+    @Test("a tag lists its family's notes, then its tasks, narrowed by every ANDed tag; a task is done once completed, whatever its status")
     func tagRows() {
         let query = ViewBlockQuery(source: .tag("Work", andTags: ["urgent"]))
         let notes = [note("plan"), note("shop"), note("memo")]
