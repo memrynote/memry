@@ -10,6 +10,7 @@ import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 const attachmentMocks = vi.hoisted(() => ({
   sent: [] as Array<{ channel: string; payload: unknown }>,
   stat: vi.fn(),
+  existsSync: vi.fn(),
   service: {
     uploadAttachment: vi.fn(),
     downloadAttachment: vi.fn(),
@@ -25,6 +26,7 @@ const attachmentMocks = vi.hoisted(() => ({
 
 vi.mock('node:fs', () => ({
   default: {
+    existsSync: attachmentMocks.existsSync,
     promises: {
       stat: attachmentMocks.stat
     }
@@ -96,6 +98,8 @@ vi.mock('../sync/attachment-outbox', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../sync/attachment-outbox')>()
   return {
     ...actual,
+    clearUpload: vi.fn(actual.clearUpload),
+    markUploadFailed: vi.fn(actual.markUploadFailed),
     registerOutboxUploader: (...args: Parameters<typeof actual.registerOutboxUploader>): void => {
       outboxUploaders.push(args[0])
       actual.registerOutboxUploader(...args)
@@ -193,7 +197,7 @@ import {
 } from './sync-attachment-handlers'
 import { getStatus as getVaultStatus } from '../vault/index'
 import { getNetworkMonitor } from '../sync/runtime'
-import { resetAttachmentQueue } from '../sync/attachment-outbox'
+import { clearUpload, markUploadFailed, resetAttachmentQueue } from '../sync/attachment-outbox'
 import { UploadQueue } from '../sync/upload-queue'
 import type { NetworkMonitor } from '../sync/network'
 import { getValidAccessToken } from '../sync/token-manager'
@@ -222,6 +226,9 @@ describe('sync-attachment-handlers', () => {
     attachmentMocks.service.getDownloadProgress.mockReset()
     attachmentMocks.service.setProgressCallback.mockReset()
     attachmentMocks.stat.mockReset().mockResolvedValue({ size: 1234 })
+    attachmentMocks.existsSync.mockReset().mockReturnValue(true)
+    vi.mocked(clearUpload).mockClear()
+    vi.mocked(markUploadFailed).mockClear()
     attachmentMocks.queue.enqueue
       .mockReset()
       .mockResolvedValue({ attachmentId: 'attachment-1', sessionId: 'session-1' })
@@ -725,6 +732,32 @@ describe('sync-attachment-handlers', () => {
     await new Promise((resolve) => setTimeout(resolve, 20))
 
     expect(attachmentMocks.queue.enqueue).not.toHaveBeenCalled()
+  })
+
+  // A file saved offline and deleted before reconnect must stay deleted: no
+  // failure to show, and no row left to retry (#2651).
+  it('drops the job of a saved file deleted before its upload ran', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    attachmentMocks.queue.enqueue.mockImplementationOnce(async () => {
+      attachmentMocks.existsSync.mockReturnValue(false)
+      throw Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' })
+    })
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+
+    onSaved({ noteId: 'note-1', diskPath: '/vault/sources/deleted.txt' })
+
+    await vi.waitFor(() =>
+      expect(clearUpload).toHaveBeenCalledWith(undefined, 'note-1', '/vault/sources/deleted.txt')
+    )
+    expect(markUploadFailed).not.toHaveBeenCalled()
+    expect(
+      attachmentMocks.sent.filter((e) => e.channel === SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED)
+    ).toEqual([])
   })
 
   it('maps download progress and uploads saved attachments from event callbacks', async () => {

@@ -83,6 +83,23 @@ describe('attachment outbox', () => {
     expect(upload.mock.calls).toEqual([['note-1', first]])
   })
 
+  it('drops a row whose file is deleted while its upload waits, recording no failure', async () => {
+    const deleted = path.join(tempDir, 'deleted.png')
+    fs.writeFileSync(deleted, 'a')
+    enqueueUpload(db, 'note-1', deleted)
+    const upload = vi.fn(async () => {
+      fs.rmSync(deleted)
+      throw Object.assign(new Error(`ENOENT: no such file, stat '${deleted}'`), { code: 'ENOENT' })
+    })
+
+    await expect(drainOutboxWith({ db, upload })).resolves.toEqual({
+      uploaded: 0,
+      failed: 0,
+      dropped: 1
+    })
+    expect(listPendingUploads(db)).toEqual([])
+  })
+
   it('leaves a row alone, attempts unchanged, when its upload belongs to the save path', async () => {
     const owned = path.join(tempDir, 'owned.png')
     fs.writeFileSync(owned, 'a')
