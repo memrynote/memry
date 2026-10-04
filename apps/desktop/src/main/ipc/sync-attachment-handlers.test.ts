@@ -631,6 +631,47 @@ describe('sync-attachment-handlers', () => {
     expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
   })
 
+  it('joins a save-time upload that is still waiting for its access token', async () => {
+    // #given a saved file whose upload has not got its token yet
+    let grantToken: (token: string) => void = () => {}
+    vi.mocked(getValidAccessToken).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          grantToken = resolve
+        })
+    )
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/waiting.png' })
+
+    // #when the outbox re-drive reaches the same row during that wait
+    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const drained = uploader('note-1', '/vault/attachments/waiting.png')
+    grantToken('token-1')
+
+    // #then one upload ran and the drain reports its attachment
+    await expect(drained).resolves.toEqual({ attachmentId: 'attachment-1' })
+    expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
+  })
+
+  it('uploads the row itself when the save-time attempt had no token', async () => {
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/signed-out.png' })
+
+    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    await expect(uploader('note-1', '/vault/attachments/signed-out.png')).resolves.toEqual({
+      attachmentId: 'attachment-1'
+    })
+    expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
+  })
+
   it('maps download progress and uploads saved attachments from event callbacks', async () => {
     vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
     attachmentMocks.service.getDownloadProgress.mockReturnValue({

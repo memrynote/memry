@@ -6,7 +6,12 @@ import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { upsertNoteMetadata } from '@memry/storage-data'
 import { runMigrations } from '../database/migrate'
-import { backfillUnsyncedAttachmentsWith, referencedVaultFiles } from './attachment-backfill'
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
+import {
+  backfillUnsyncedAttachmentsWith,
+  queueEmbeddedVaultFilesWith,
+  referencedVaultFiles
+} from './attachment-backfill'
 import { listPendingUploads } from './attachment-outbox'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -172,6 +177,47 @@ describe('attachment backfill', () => {
 
     expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(1)
     expect(listPendingUploads(db).map((row) => row.diskPath)).toEqual([picture])
+  })
+
+  describe('when a body is written (#2651)', () => {
+    const saved: Array<{ noteId: string; diskPath: string }> = []
+    const onSaved = (event: { noteId: string; diskPath: string }): void => {
+      saved.push(event)
+    }
+
+    beforeEach(() => {
+      saved.length = 0
+      attachmentEvents.onSaved(onSaved)
+    })
+
+    afterEach(() => {
+      attachmentEvents.removeAllListeners('saved')
+    })
+
+    it('queues and announces each embedded vault file once', () => {
+      addNote('note-w')
+      const picture = writeVaultFile('notes/images/written.png')
+      const body = '![a](images/written.png)\n\n![gone](images/gone.png)'
+
+      expect(queueEmbeddedVaultFilesWith({ db, vaultPath }, 'note-w', body)).toBe(1)
+      expect(queueEmbeddedVaultFilesWith({ db, vaultPath }, 'note-w', body)).toBe(0)
+
+      expect(saved).toEqual([{ noteId: 'note-w', diskPath: picture }])
+      expect(listPendingUploads(db).map((row) => row.diskPath)).toEqual([picture])
+    })
+
+    it('leaves alone a note with references, a local-only note and an unknown note', () => {
+      addNote('note-r', { attachmentReferences: ['already-uploaded'] })
+      addNote('note-l', { localOnly: true })
+      writeVaultFile('notes/images/held.png')
+      const body = '![a](images/held.png)'
+
+      expect(queueEmbeddedVaultFilesWith({ db, vaultPath }, 'note-r', body)).toBe(0)
+      expect(queueEmbeddedVaultFilesWith({ db, vaultPath }, 'note-l', body)).toBe(0)
+      expect(queueEmbeddedVaultFilesWith({ db, vaultPath }, 'note-missing', body)).toBe(0)
+      expect(saved).toEqual([])
+      expect(listPendingUploads(db)).toEqual([])
+    })
   })
 
   it('does not scan the body of a note that already has references', () => {
