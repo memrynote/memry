@@ -455,6 +455,64 @@ describe('FileTextRunner', () => {
     expect(fs.existsSync(path.join(attachments, 'shot.png'))).toBe(true)
   })
 
+  it('compares the files of more changed notes than SQLite binds in one statement', async () => {
+    const notePath = path.join(vaultDir, 'plan.md')
+    fs.mkdirSync(path.join(vaultDir, 'attachments', 'md-1'), { recursive: true })
+    fs.writeFileSync(path.join(vaultDir, 'attachments', 'md-1', 'shot.png'), 'png bytes')
+    fs.writeFileSync(notePath, '![](attachments/md-1/shot.png)\n')
+    harness.db.run(sql`
+      INSERT INTO note_cache (id, path, title, created_at, modified_at)
+      VALUES ('md-1', 'plan.md', 'Plan', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+    `)
+    harness.imageText = 'Pasted screenshot text'
+    const runner = start()
+    await vi.waitFor(() =>
+      expect(getExtractedText(harness.db, 'md-1')).toBe('Pasted screenshot text')
+    )
+
+    fs.writeFileSync(notePath, 'The screenshot is gone.\n')
+    seedFile(harness, 'img-1', 'scan.png', 'image')
+    harness.imageText = 'Filed scan text'
+    for (let i = 0; i < 40_000; i++) runner.noteChanged(`note-${i}`)
+    runner.noteChanged('md-1')
+    runner.noteChanged('img-1')
+    await vi.waitFor(() => expect(jobOf(harness.db, 'img-1')?.status).toBe('done'), {
+      timeout: 5_000
+    })
+
+    expect(getExtractedText(harness.db, 'img-1')).toBe('Filed scan text')
+    expect(getExtractedText(harness.db, 'md-1')).toBe('')
+  })
+
+  it('compares a changed note again on the next pass when its pass fails', async () => {
+    let failNextRead = false
+    let failedReads = 0
+    seedFile(harness, 'img-1', 'first.png', 'image')
+    harness.imageText = 'Whiteboard text'
+    const runner = start({
+      getDb: () => {
+        if (failNextRead) {
+          failNextRead = false
+          failedReads++
+          throw new Error('Index database not initialized')
+        }
+        return harness.db
+      }
+    })
+    await settled(harness.db, 'img-1', 'done')
+
+    seedFile(harness, 'img-2', 'second.png', 'image')
+    failNextRead = true
+    runner.noteChanged('img-2')
+    await vi.waitFor(() => expect(failedReads).toBe(1))
+    seedFile(harness, 'img-3', 'third.png', 'image')
+    runner.noteChanged('img-3')
+    await settled(harness.db, 'img-3', 'done')
+    await settled(harness.db, 'img-2', 'done')
+
+    expect(getExtractedText(harness.db, 'img-2')).toBe('Whiteboard text')
+  })
+
   it('pages a long text out in chunks a reader can continue from', async () => {
     seedFile(harness, 'pdf-1', 'long.pdf', 'pdf')
     harness.pages = [
