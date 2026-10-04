@@ -283,6 +283,32 @@ describe('queued agent messages', () => {
     expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
   })
 
+  it('does not cancel a message re-sent after a Stop that met a refused send', async () => {
+    await startTurn()
+    await send('second')
+    let answer: (value: { ok: false; error: string }) => void = () => {}
+    vi.mocked(window.api.agent.sendTurn).mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    )
+    endTurn()
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1))
+    await act(async () => answer({ ok: false, error: 'Model is not installed' }))
+    await screen.findByText('Not sent. Edit to send again, or remove it.')
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit queued message' })[0])
+    await userEvent.type(screen.getByRole('textbox', { name: 'Queued message text' }), '{Enter}')
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second', 'second']))
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    })
+    expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
+  })
+
   it('sends the next queued message after Stop', async () => {
     await startTurn()
     await send('after stop')
