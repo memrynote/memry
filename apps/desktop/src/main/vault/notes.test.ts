@@ -48,12 +48,7 @@ vi.mock('../inbox/suggestions', () => ({
 // serializes the stale refs straight back over the file the move just corrected
 // — and persists them.
 const crdtMocks = vi.hoisted(() => ({
-  replaceNoteBodyInCrdt: vi.fn(async () => false),
-  feedExternalEditToCrdt: vi.fn(async () => {})
-}))
-vi.mock('../sync/crdt-feed', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../sync/crdt-feed')>()),
-  replaceNoteBodyInCrdt: crdtMocks.replaceNoteBodyInCrdt
+  feedExternalEditToCrdt: vi.fn(async () => false)
 }))
 vi.mock('../sync/crdt-external-feed', () => ({
   feedExternalEditToCrdt: crdtMocks.feedExternalEditToCrdt
@@ -1071,7 +1066,7 @@ describe('notes operations', () => {
     })
 
     it('hands the rewritten body to the note Y.Doc, not just to the file', async () => {
-      crdtMocks.replaceNoteBodyInCrdt.mockClear()
+      crdtMocks.feedExternalEditToCrdt.mockClear()
       const created = await notes.createNote({
         title: 'Crdt Push On Move',
         content: '![shot](../attachments/n1/shot.png)'
@@ -1079,15 +1074,15 @@ describe('notes operations', () => {
 
       await notes.moveNote(created.id, 'notes/archive/2026')
 
-      expect(crdtMocks.replaceNoteBodyInCrdt).toHaveBeenCalledTimes(1)
-      const [noteId, body] = crdtMocks.replaceNoteBodyInCrdt.mock.calls[0]
+      expect(crdtMocks.feedExternalEditToCrdt).toHaveBeenCalledTimes(1)
+      const [noteId, body] = crdtMocks.feedExternalEditToCrdt.mock.calls[0]
       expect(noteId).toBe(created.id)
       // The corrected ref, not the one that was on disk before the move.
       expect(body).toContain('../../../attachments/n1/shot.png')
     })
 
     it('leaves the Y.Doc alone when the move rewrote nothing', async () => {
-      crdtMocks.replaceNoteBodyInCrdt.mockClear()
+      crdtMocks.feedExternalEditToCrdt.mockClear()
       const created = await notes.createNote({
         title: 'No Crdt Push On Move',
         content: '![shot](../attachments/n1/shot.png)'
@@ -1095,7 +1090,7 @@ describe('notes operations', () => {
 
       await notes.moveNote(created.id, 'sibling')
 
-      expect(crdtMocks.replaceNoteBodyInCrdt).not.toHaveBeenCalled()
+      expect(crdtMocks.feedExternalEditToCrdt).not.toHaveBeenCalled()
     })
 
     it('preserves binary content on move (no frontmatter injection)', async () => {

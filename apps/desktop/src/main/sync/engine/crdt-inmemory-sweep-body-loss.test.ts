@@ -1,4 +1,6 @@
 import * as Y from 'yjs'
+import fs from 'node:fs'
+import path from 'node:path'
 import sodium from 'libsodium-wrappers-sumo'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
@@ -18,7 +20,9 @@ const h = vi.hoisted(() => ({
     updates: Array<{ sequenceNum: number; data: string; signerDeviceId: string; createdAt: number }>
   },
   contentHash: (_raw: string): string => '',
-  db: {} as unknown
+  db: {} as unknown,
+  versions: [] as string[],
+  persistence: null as unknown
 }))
 
 vi.mock('electron', () => ({
@@ -84,7 +88,8 @@ vi.mock('../../crypto/index', () => ({ secureCleanup: vi.fn() }))
 vi.mock('../../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
 vi.mock('../../telemetry/track', () => ({ trackMainEvent: vi.fn() }))
 
-vi.mock('../crdt-persistence', () => ({ openCrdtPersistence: async () => null }))
+vi.mock('../crdt-persistence', () => ({ openCrdtPersistence: async () => h.persistence }))
+vi.mock('../crdt-store-epoch', () => ({ reconcileCrdtStoreEpoch: async () => {} }))
 vi.mock('../crdt-store-path', () => ({
   prepareVaultCrdtStore: async () => ({ storagePath: '/tmp/crdt', vaultUuid: 'vault-1' })
 }))
@@ -104,7 +109,11 @@ vi.mock('@memry/storage-data', () => ({ getNoteMetadataById: () => undefined }))
 vi.mock('../../vault/notes', () => ({
   getVaultRoot: () => '/vault',
   toAbsolutePath: (relative: string) => `/vault/${relative}`,
-  maybeCreateSignificantSnapshot: () => null
+  maybeCreateSignificantSnapshot: () => null,
+  createSnapshot: (_noteId: string, fileContent: string) => {
+    h.versions.push(fileContent)
+    return null
+  }
 }))
 vi.mock('../../vault/file-ops', () => ({
   safeRead: async (absolute: string) => h.files.get(absolute) ?? null,
@@ -139,6 +148,7 @@ import { getCrdtProvider, resetCrdtProvider, type SnapshotPushFn } from '../crdt
 import type { NoteBodyOutbox } from '../note-body-outbox'
 import { hasPendingWriteback } from '../crdt-writeback'
 import { feedExternalEditToCrdt } from '../crdt-external-feed'
+import { owesFileBody } from '../crdt-owed-file-body'
 import { readMergedFullState } from '../full-state-read'
 import { markdownToYFragment, yDocToMarkdown } from '../blocknote-converter'
 import { generateContentHash } from '../../vault/frontmatter'
@@ -170,12 +180,32 @@ function findText(fragment: Y.XmlFragment, needle: string): Y.XmlText {
 
 const toBase64 = (bytes: Uint8Array): string => Buffer.from(bytes).toString('base64')
 
+/** Every live text node holding `needle`: two block groups both count, rendered or not. */
+function countTexts(fragment: Y.XmlFragment, needle: string): number {
+  let count = 0
+  const stack: Array<Y.XmlElement | Y.XmlFragment | Y.XmlText> = [fragment]
+  while (stack.length > 0) {
+    const node = stack.pop()!
+    if (node instanceof Y.XmlText) {
+      if (node.toString().includes(needle)) count++
+      continue
+    }
+    stack.push(...(node.toArray() as Array<Y.XmlElement | Y.XmlText>))
+  }
+  return count
+}
+
+const OWED_FILE_BODIES_SQL = fs.readFileSync(
+  path.join(__dirname, '../../database/drizzle-data/0065_crdt_owed_file_bodies.sql'),
+  'utf8'
+)
+
 beforeEach(() => {
   const sqlite = new Database(':memory:')
-  sqlite.exec(
-    'CREATE TABLE crdt_owed_file_bodies (note_id text PRIMARY KEY NOT NULL, created_at integer NOT NULL)'
-  )
+  sqlite.exec(OWED_FILE_BODIES_SQL)
   h.db = drizzle(sqlite)
+  h.versions = []
+  h.persistence = null
 })
 
 describe('CRDT sweep in in-memory mode (#2511)', () => {
@@ -322,6 +352,34 @@ describe('CrdtProvider with no store (#2536)', () => {
     }
     putNoteInVault(ORIGINAL)
     return peer
+  }
+
+  /** `peer` with everything the server holds merged in. */
+  async function syncedPeer(peer: Y.Doc): Promise<Y.Doc> {
+    await bodyAfterPull(peer)
+    return peer
+  }
+
+  /** A CRDT store with nothing in it, for the cases that run with one. */
+  function fakeStore(): unknown {
+    const updates = new Map<string, Uint8Array[]>()
+    return {
+      getYDoc: async (noteId: string) => {
+        const doc = new Y.Doc()
+        for (const update of updates.get(noteId) ?? []) Y.applyUpdate(doc, update)
+        return doc
+      },
+      storeUpdate: async (noteId: string, update: Uint8Array) => {
+        updates.set(noteId, [...(updates.get(noteId) ?? []), update])
+      },
+      flushDocument: async () => {},
+      clearDocument: async (noteId: string) => {
+        updates.delete(noteId)
+      },
+      destroy: () => {},
+      getMeta: async () => undefined,
+      setMeta: async () => {}
+    }
   }
 
   /** The body a device shows once it merges everything the server holds. */
@@ -591,7 +649,126 @@ describe('CrdtProvider with no store (#2536)', () => {
         EDITED_BODY
       )
     })
+
+    it('keeps the server body as a version when a lagging file wins over a peer edit', async () => {
+      await serveNoteWithPeerEdit()
+      const { flushFullStates } = await startRuntime()
+      const LAGGING_EDIT = `${ORIGINAL}\n\nAgent line.`
+      putNoteInVault(LAGGING_EDIT)
+      await feedExternalEditToCrdt(NOTE, LAGGING_EDIT)
+
+      await flushFullStates()
+
+      expect({ server: await bodyAfterPull(), versions: h.versions }).toEqual({
+        server: LAGGING_EDIT,
+        versions: [`---\nid: ${NOTE}\ntitle: Trip\n---\n${EXPECTED_BODY}\n`]
+      })
+    })
+
+    it('carries the file tags into the doc with the body', async () => {
+      const peer = await serveNoteWithPeerEdit()
+      const tagged = new Y.Doc()
+      Y.applyUpdate(tagged, h.server!.snapshot!.bytes)
+      tagged.getArray('tags').push(['trip'])
+      h.server!.snapshot!.bytes = Y.encodeStateAsUpdate(tagged)
+      Y.applyUpdate(peer, h.server!.snapshot!.bytes)
+      putNoteInVault(EXPECTED_BODY)
+      const { coordinator, flushFullStates } = await startRuntime()
+      const file = `---\nid: ${NOTE}\ntitle: Trip\ntags:\n  - trip\n  - meeting\n---\n${EDITED_BODY}`
+      h.files.set(FILE, file)
+      h.row = { ...h.row!, contentHash: generateContentHash(file) }
+      await feedExternalEditToCrdt(NOTE, EDITED_BODY)
+
+      await flushFullStates()
+      await coordinator.pullCrdtForNotes([NOTE])
+      await fileBodyAfterWriteback()
+
+      expect({
+        file: h.files.get(FILE),
+        peerTags: (await syncedPeer(peer)).getArray('tags').toArray()
+      }).toEqual({
+        file,
+        peerTags: ['trip', 'meeting']
+      })
+    })
+
+    it('a second edit while the flush waits on the server merge leaves one copy of the body', async () => {
+      await serveNoteWithPeerEdit()
+      putNoteInVault(EXPECTED_BODY)
+      const { provider, coordinator, pushUpdate } = await startRuntime()
+      putNoteInVault(EDITED_BODY)
+      await feedExternalEditToCrdt(NOTE, EDITED_BODY)
+      const SECOND = `${EDITED_BODY}\n\nSecond agent line.`
+
+      const state = await readMergedFullState(
+        provider,
+        NOTE,
+        async (id) => {
+          putNoteInVault(SECOND)
+          await feedExternalEditToCrdt(NOTE, SECOND)
+          return coordinator.pullCrdtForNote(id)
+        },
+        () => false
+      )
+      if (state) pushUpdate(state)
+
+      const server = new Y.Doc()
+      const body = await bodyAfterPull(server)
+      expect({
+        body,
+        copies: countTexts(server.getXmlFragment(CRDT_FRAGMENT_NAME), 'Pack for the')
+      }).toEqual({ body: SECOND, copies: 1 })
+    })
+
+    it('a file the doc refuses at the flush is kept as a version, and the note takes the server body', async () => {
+      const { coordinator, flushFullStates } = await editClosedNote()
+      const LARGE_BODY = `${EXPECTED_BODY}\n\n${'x'.repeat(140 * 1024)}`
+      putNoteInVault(LARGE_BODY)
+      await feedExternalEditToCrdt(NOTE, LARGE_BODY)
+
+      await flushFullStates()
+      const afterFlush = { owed: owesFileBody(NOTE), versions: h.versions }
+      await coordinator.pullCrdtForNotes([NOTE])
+
+      expect({
+        ...afterFlush,
+        server: await bodyAfterPull(),
+        file: await fileBodyAfterWriteback()
+      }).toEqual({
+        owed: false,
+        versions: [`---\nid: ${NOTE}\ntitle: Trip\n---\n${LARGE_BODY}`],
+        server: EXPECTED_BODY,
+        file: EXPECTED_BODY
+      })
+    })
   })
+
+  it.each([
+    { case: 'no store', large: false, expected: { owed: true, fullStates: [NOTE] } },
+    { case: 'no store, large-file body', large: true, expected: { owed: false, fullStates: [] } },
+    { case: 'a store', large: false, expected: { owed: false, fullStates: [] } }
+  ])(
+    'an edit to a closed note whose doc is empty, with $case, owes the file body: $expected.owed',
+    async ({ case: setup, large, expected }) => {
+      h.persistence = setup === 'a store' ? fakeStore() : null
+      h.server = { snapshot: null, updates: [] }
+      putNoteInVault(ORIGINAL)
+      const fullStates: string[] = []
+      const outbox = {
+        enqueue: () => {},
+        enqueueFullState: (noteId: string) => fullStates.push(noteId),
+        dropNote: () => {}
+      } as unknown as NoteBodyOutbox
+      await getCrdtProvider().init(outbox, async () => {})
+
+      await feedExternalEditToCrdt(
+        NOTE,
+        large ? `${EXPECTED_BODY}\n\n${'x'.repeat(140 * 1024)}` : EXPECTED_BODY
+      )
+
+      expect({ owed: owesFileBody(NOTE), fullStates }).toEqual(expected)
+    }
+  )
 
   it('a note the server has never seen reaches it through its first edit', async () => {
     h.server = { snapshot: null, updates: [] }

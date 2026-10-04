@@ -194,7 +194,8 @@ describe('notes domain adapter', () => {
   })
 
   // `updateNote` moves the index hash to the new bytes, so nothing else feeds
-  // the body to the note's CRDT doc (#2646).
+  // the body to the note's CRDT doc (#2646). The file's `writing` frontmatter
+  // is not passed, so an open doc keeps its own alternatives.
   it("feeds a body edit, and only a body edit, to the note's CRDT doc", async () => {
     const note = {
       id: 'note-1',
@@ -208,9 +209,20 @@ describe('notes domain adapter', () => {
     await updateNoteCommand({ id: 'note-1', tags: ['focus'] })
     await updateNoteCommand({ id: 'note-1', content: 'new content' })
 
-    expect(vi.mocked(feedExternalEditToCrdt).mock.calls).toEqual([
-      ['note-1', 'new content', { alternatives: {}, overflow: [{ text: 'Cut line.' }] }]
-    ])
+    expect(vi.mocked(feedExternalEditToCrdt).mock.calls).toEqual([['note-1', 'new content']])
+  })
+
+  it('saves the note and pushes its metadata when the CRDT feed throws', async () => {
+    const note = { id: 'note-1', title: 'Renamed' }
+    vi.mocked(noteVault.updateNote).mockResolvedValue(
+      note as Awaited<ReturnType<typeof noteVault.updateNote>>
+    )
+    vi.mocked(feedExternalEditToCrdt).mockRejectedValueOnce(new Error('converter failed'))
+
+    const saved = await updateNoteCommand({ id: 'note-1', title: 'Renamed', content: 'body' })
+
+    expect(saved).toEqual({ id: 'note-1', title: 'Renamed' })
+    expect(vi.mocked(runtimeEffects.syncNoteUpdate).mock.calls).toEqual([['note-1', 'Renamed']])
   })
 
   it('propagates vault error from createNoteCommand without calling syncNoteCreate', async () => {

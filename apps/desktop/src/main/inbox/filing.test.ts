@@ -96,6 +96,13 @@ vi.mock('../notes/runtime-effects', () => ({
   cleanupProjectLinksForDeletedNote: vi.fn()
 }))
 
+// The note command hands a body edit to the note's CRDT doc (#2646); with no
+// doc in these tests that is only observable as the call.
+const mockFeedExternalEditToCrdt = vi.fn(async (..._args: unknown[]) => false)
+vi.mock('../sync/crdt-external-feed', () => ({
+  feedExternalEditToCrdt: (...args: unknown[]) => mockFeedExternalEditToCrdt(...args)
+}))
+
 const mockCreateNote = vi.fn()
 const mockGetNoteById = vi.fn()
 const mockUpdateNote = vi.fn()
@@ -1311,6 +1318,29 @@ describe('Inbox Filing Operations', () => {
           content: expect.stringContaining('## Inbox Captures')
         })
       )
+    })
+
+    // `updateNote` moves the index hash with the appended bytes, so without the
+    // feed the next write-back puts the doc's older body back over them.
+    it("hands the appended capture to the target note's CRDT doc", async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'item-1',
+        type: 'note',
+        title: 'Test Item',
+        content: 'Some content'
+      })
+      mockGetNoteById.mockResolvedValue({
+        id: 'target-note',
+        content: '# Target Note',
+        path: 'notes/target.md'
+      })
+      mockFeedExternalEditToCrdt.mockClear()
+
+      await linkToNote(itemId, 'target-note')
+
+      const written = mockUpdateNote.mock.calls[0][0] as { id: string; content: string }
+      expect(written.content).toMatch(/^# Target Note\n\n## Inbox Captures\n\n/)
+      expect(mockFeedExternalEditToCrdt.mock.calls).toEqual([['target-note', written.content]])
     })
 
     it('should fail when target note does not exist', async () => {
