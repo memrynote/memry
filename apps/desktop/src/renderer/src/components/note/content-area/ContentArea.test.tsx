@@ -202,17 +202,18 @@ vi.mock('@blocknote/shadcn', () => ({
       >
         change
       </button>
-      <div data-content-type="checkListItem" data-id="standalone">
-        checklist target
+      {/* BlockNote's shape: the id is on the block, the type on its content. */}
+      <div data-id="standalone">
+        <div data-content-type="checkListItem">checklist target</div>
       </div>
-      <div data-content-type="checkListItem" data-id="obsidian-check">
-        obsidian checklist target
+      <div data-id="obsidian-check">
+        <div data-content-type="checkListItem">obsidian checklist target</div>
       </div>
-      <div data-content-type="checkListItem" data-id="blocked-check">
-        blocked checklist target
+      <div data-id="blocked-check">
+        <div data-content-type="checkListItem">blocked checklist target</div>
       </div>
-      <div data-content-type="checkListItem" data-id="long-tag-check">
-        long tag checklist target
+      <div data-id="long-tag-check">
+        <div data-content-type="checkListItem">long tag checklist target</div>
       </div>
       <div data-id="task-prev">
         <button type="button" data-task-title-trigger="">

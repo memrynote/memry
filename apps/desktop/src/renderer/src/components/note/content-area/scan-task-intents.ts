@@ -127,10 +127,8 @@ export interface TaskIntentOptions {
    */
   openedBlockIds?: ReadonlySet<string>
   /**
-   * The editor setting `convertChecklistsToTasks`. False keeps a checkbox that
-   * is not under a task a checkbox: no standalone candidate and no draft for an
-   * empty one. A checkbox under a task still becomes its subtask. Defaults to
-   * true.
+   * The editor setting `convertChecklistsToTasks`, default true. False offers
+   * no checkbox outside a task block; one under a task still becomes its subtask.
    */
   convertChecklists?: boolean
 }
