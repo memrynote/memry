@@ -23,6 +23,7 @@ import { getNoteCacheById, getNoteProperties } from '../notes/store'
 import { getIndexDatabase } from '../database'
 import { setEntityProperties } from '../notes/entity-properties'
 import { getMainI18n } from '../lib/main-i18n'
+import { flushProjectionEvents } from '../projections'
 
 // ============================================================================
 // Handler Registration
@@ -58,6 +59,9 @@ export function registerPropertiesHandlers(): void {
         const before = getNoteProperties(db, input.entityId)
         const result = await setEntityProperties(input.entityId, input.properties)
         if (!result.success) return result
+        // note_properties is written by the projection lane, which a sync pull
+        // or reindex can hold busy; read it only once the set has landed there.
+        await flushProjectionEvents()
         const stored = Object.fromEntries(
           getNoteProperties(db, input.entityId).map((p) => [p.name, p.value])
         )

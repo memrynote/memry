@@ -259,7 +259,7 @@ describe('properties IPC handlers', () => {
 
   it('replies with the record the projection stored, not the one it held before', async () => {
     registerPropertiesHandlers()
-    let indexed = [
+    let indexed: { name: string; value: unknown; type: string }[] = [
       { name: 'Status', value: 'Draft', type: 'text' },
       { name: 'Owner', value: 'Kaan', type: 'text' }
     ]

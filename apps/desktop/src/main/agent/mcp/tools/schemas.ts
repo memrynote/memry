@@ -435,7 +435,8 @@ const LOOSE_TOOL_SCHEMAS = {
     }),
     description:
       'Update note body. Replies with the note as stored: title, folder_path, tags, ' +
-      'properties, body_bytes and body_sha256 (UTF-8), plus tags_added and tags_removed when ' +
+      'properties, body_bytes and body_sha256 (UTF-8 body as the file stores it, which ends ' +
+      'with a newline), plus tags_added and tags_removed when ' +
       'inline #tags in the body changed the tag set. Requires user approval with diff preview.'
   },
   vault_add_html_artifact: {

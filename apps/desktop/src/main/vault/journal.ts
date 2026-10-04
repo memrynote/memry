@@ -228,6 +228,13 @@ export function extractJournalProperties(
 // File Operations
 // ============================================================================
 
+/** The entry file's body after its frontmatter, byte for byte, or null if there is no file. */
+export async function readJournalFileBody(date: string): Promise<string | null> {
+  const store = getContentStore()
+  const rawContent = await store.read(store.getJournalRelativePath(date))
+  return rawContent === null ? null : matter(rawContent).content
+}
+
 /**
  * Read a journal entry from the file system.
  * @param date - Date in YYYY-MM-DD format

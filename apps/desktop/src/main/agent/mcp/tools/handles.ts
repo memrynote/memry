@@ -44,7 +44,7 @@ export interface StoredNote {
   icon?: string
 }
 
-/** A journal entry as a read returns it right after a write; the body as in `StoredNote`. */
+/** A journal entry right after a write; the body is the file's bytes after its frontmatter. */
 export interface StoredJournalEntry {
   id: string
   date: string

@@ -584,11 +584,13 @@ argument it does not take with a `VALIDATION` error before the approval prompt.
 - Note writes (`vault_create_note`, `vault_rename_note`, `vault_update_note`,
   `vault_add_html_artifact`, `vault_move_to_folder`, and `vault_add_tag` / `vault_remove_tag` on a
   note) reply with `id`, `title`, `folder_path`, `tags`, `properties`, `body_bytes` and
-  `body_sha256`. The last two cover the body's UTF-8 bytes, so an agent can check the stored body
-  against the one it sent without reading it back. Both are `null` for a note too large to read.
-  `vault_update_note` also reports `tags_added` and `tags_removed`, because inline `#tags` in the
-  new body change the note's tag set.
+  `body_sha256`. Both are `null` for a note too large to read. `vault_update_note` also reports
+  `tags_added` and `tags_removed`, because inline `#tags` in the new body change the note's tag set.
 - Journal writes reply with `id`, `date`, `tags`, `properties`, `body_bytes` and `body_sha256`.
+- `body_bytes` and `body_sha256` cover the body exactly as the file stores it after its frontmatter,
+  in UTF-8. The file writer ends the body with a newline, so a body sent without a final newline is
+  stored with one. To check a write, hash what you sent with a final `\n` added when it has none and
+  compare. Any other difference means the stored body is not the one you sent.
 - Task, project, status and inbox writes reply with the stored task, project, status or inbox item.
   Reorders reply with the ids and the stored records in order. Deletes reply with what they deleted.
 

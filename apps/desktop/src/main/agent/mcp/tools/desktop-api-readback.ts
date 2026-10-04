@@ -143,8 +143,18 @@ export async function writeAndReadBack(
   const data = await invoke(request)
   const readback = desktopWriteReadback(request)
   if (!readback || isFailedReply(data)) return data
-  const stored = readback.select(await invoke(readback.request))
-  return data && typeof data === 'object' && !Array.isArray(data)
-    ? { ...data, stored }
-    : { result: data, stored }
+  const reply = data && typeof data === 'object' && !Array.isArray(data) ? data : { result: data }
+  try {
+    return { ...reply, stored: readback.select(await invoke(readback.request)) }
+  } catch (error) {
+    // The write has landed; reporting it as failed would invite a retry.
+    const reason = error instanceof Error ? error.message : String(error)
+    return {
+      ...reply,
+      warnings: [
+        `The write landed, but reading it back failed (${reason}). ` +
+          'Read the record to see what was stored.'
+      ]
+    }
+  }
 }

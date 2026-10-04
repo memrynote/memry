@@ -10,7 +10,12 @@ import {
 import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
 import { createDesktopInboxDomain } from '../../../inbox/domain'
 import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
-import { deleteJournalEntryFile, readJournalEntry, writeJournalEntry } from '../../../vault/journal'
+import {
+  deleteJournalEntryFile,
+  readJournalEntry,
+  readJournalFileBody,
+  writeJournalEntry
+} from '../../../vault/journal'
 import {
   createNoteCommand,
   deleteNoteCommand,
@@ -720,14 +725,14 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         return { date, deleted: await deleteJournalEntryFile(date) }
       },
       async stored(date) {
-        const entry = await readJournalEntry(date)
-        if (!entry) return null
+        const [entry, body] = await Promise.all([readJournalEntry(date), readJournalFileBody(date)])
+        if (!entry || body === null) return null
         return {
           id: entry.id,
           date: entry.date,
           tags: entry.tags,
           properties: entry.properties ?? {},
-          ...bodyDigest(entry.content)
+          ...bodyDigest(body)
         }
       }
     },
