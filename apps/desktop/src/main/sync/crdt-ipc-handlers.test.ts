@@ -42,6 +42,7 @@ vi.mock('../agent/storage/vault-id', () => ({
   getOrCreateVaultUuid: () => 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
 }))
 
+const storeState = vi.hoisted(() => ({ inMemorySessions: 0 }))
 vi.mock('../store', () => ({
   getLegacyCrdtStoreClaim: () => 'someone-else',
   recordLegacyCrdtStoreClaim: vi.fn(),
@@ -50,7 +51,7 @@ vi.mock('../store', () => ({
   clearLegacyCrdtStorePartitionPending: vi.fn(),
   getPendingCrdtStoreRename: () => undefined,
   clearPendingCrdtStoreRename: vi.fn(),
-  getCrdtInMemorySessions: () => 0,
+  getCrdtInMemorySessions: () => storeState.inMemorySessions,
   recordCrdtPersistenceOutcome: vi.fn(() => 0)
 }))
 
@@ -122,6 +123,7 @@ import { _resetCrdtIpcHandlersForTests, registerCrdtIpcHandlers } from '../ipc/c
 describe('CRDT IPC handlers — lifecycle resilience', () => {
   beforeEach(() => {
     preflight.gate = null
+    storeState.inMemorySessions = 0
     syncEngine.current = null
     resetIpcMocks()
     mockIpcMain._clearHandlers()
@@ -294,6 +296,46 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       // #then
       expect(result.success).toBe(false)
       expect(vi.mocked(runCrdtPreflight)).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('crdt:get-health', () => {
+    it('answers from the previous launches before this launch has a verdict', async () => {
+      storeState.inMemorySessions = 3
+
+      await expect(invokeHandler(CRDT_CHANNELS.GET_HEALTH)).resolves.toEqual({
+        persistent: false,
+        inMemorySessions: 3
+      })
+    })
+
+    it('waits for a store init in flight and answers with its verdict', async () => {
+      storeState.inMemorySessions = 3
+      let releasePreflight = (): void => {}
+      preflight.gate = new Promise<void>((resolve) => {
+        releasePreflight = () => resolve()
+      })
+      const init = getCrdtProvider().initPersistence()
+
+      const health = invokeHandler(CRDT_CHANNELS.GET_HEALTH)
+      releasePreflight()
+      await init
+
+      await expect(health).resolves.toEqual({ persistent: true, inMemorySessions: 3 })
+    })
+
+    it('reports no store for a launch whose preflight failed', async () => {
+      vi.mocked(runCrdtPreflight).mockResolvedValueOnce({
+        ok: false,
+        reason: 'binding aborted',
+        stage: 'binding'
+      })
+      await getCrdtProvider().initPersistence()
+
+      await expect(invokeHandler(CRDT_CHANNELS.GET_HEALTH)).resolves.toEqual({
+        persistent: false,
+        inMemorySessions: 0
+      })
     })
   })
 

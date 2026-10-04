@@ -34,7 +34,8 @@ const mocks = vi.hoisted(() => ({
   snapshotCurrentNoteFromWindow: vi.fn(),
   invokeDesktopApiFromWindow: vi.fn(),
   replaceNoteTagsInCrdt: vi.fn(),
-  settleWriteback: vi.fn()
+  settleWriteback: vi.fn(),
+  isPersistent: vi.fn()
 }))
 
 vi.mock('../../../database/queries/search', () => ({
@@ -123,10 +124,11 @@ vi.mock('../../../sync/crdt-writeback', () => ({
 }))
 
 vi.mock('../../../sync/crdt-provider', () => ({
-  getCrdtProvider: () => ({ isPersistent: async () => true })
+  getCrdtProvider: () => ({ isPersistent: mocks.isPersistent })
 }))
 
 import { createVaultServiceHandles } from './handles-adapter'
+import { buildWriteTools } from './write-tools'
 
 const deps = {
   dataDb: {} as never,
@@ -167,6 +169,7 @@ describe('createVaultServiceHandles', () => {
     vi.clearAllMocks()
 
     mocks.getConfig.mockReturnValue({ defaultNoteFolder: 'notes' })
+    mocks.isPersistent.mockResolvedValue(true)
     // Every note write returns the note the command produced; the adapter reads
     // its tags back to keep a live Y.Doc's tag array in step.
     mocks.updateNoteCommand.mockImplementation(async (input: { id: string; tags?: string[] }) => ({
@@ -635,6 +638,27 @@ describe('createVaultServiceHandles', () => {
       await expect(
         handles.journal.update({ date: '2026-05-10', content_markdown: 'Again  ' })
       ).resolves.toEqual({ id: 'j2026-05-10', body: { sent: 'Again  ', stored: 'Again\n' } })
+      await expect(
+        handles.journal.update({ date: '2026-05-10', tags: ['daily'] })
+      ).resolves.toEqual({ id: 'j2026-05-10' })
+    })
+  })
+
+  it('says on a write reply that this launch runs without its CRDT store', async () => {
+    const createTask = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+      approved: true
+    })).find((tool) => tool.name === 'vault_create_task')!
+    const run = () =>
+      createTask.handler({ title: 'Task' }, { writeGrant: 'turn-grant-1', windowId: 'w1' })
+
+    await expect(run()).resolves.toEqual({ id: 'task-created' })
+    mocks.isPersistent.mockResolvedValue(false)
+    await expect(run()).resolves.toEqual({
+      id: 'task-created',
+      warnings: [
+        'The CRDT store is unavailable on this device, so note edits sync without merge ' +
+          'history this session. Read changed notes back to check what was stored.'
+      ]
     })
   })
 

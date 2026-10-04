@@ -702,4 +702,17 @@ describe('what a write reply says about what was stored (#2615)', () => {
       id: 'created-task'
     })
   })
+
+  it('wraps a reply whose own warnings are not sentences instead of mixing them', async () => {
+    const imported = { imported: 1, warnings: [{ code: 'skipped', message: 'a.pdf' }] }
+    const storeDown: VaultServiceHandles = {
+      ...handles,
+      desktop: { ...handles.desktop, write: async () => imported },
+      sync: { crdtStoreAvailable: async () => false }
+    }
+
+    await expect(
+      run(storeDown, 'vault_desktop_write', { operation: 'notes.importFiles', args: [] })
+    ).resolves.toEqual({ result: imported, warnings: [STORE_WARNING] })
+  })
 })
