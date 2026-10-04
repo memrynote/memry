@@ -15,7 +15,10 @@ export type PendingToolApproval = Extract<AgentEvent, { kind: 'tool_call_pending
  * A message typed while a turn runs. It is captured whole at queue time, so it
  * goes out with the model, permissions and context the user saw when sending.
  * `sending` is the head the provider is handing to main; `failed` holds the
- * queue until the user edits or removes it.
+ * queue until the user edits or removes it. `endedTurnIds` collects turn ends
+ * that arrive while the head is sending: a turn that fails at once reports its
+ * end before main answers the send, so the answer alone cannot say whether
+ * the turn is still running.
  */
 export interface QueuedTurn {
   id: string
@@ -26,6 +29,7 @@ export interface QueuedTurn {
   backendOptions: AgentBackendOptions
   permissions?: AgentTurnPermissions
   status: 'queued' | 'sending' | 'failed'
+  endedTurnIds?: string[]
 }
 
 export interface AgentState {
@@ -73,7 +77,13 @@ export type AgentAction =
   | { type: 'edit_queued_turn'; conversationId: string; id: string; text: string }
   | { type: 'remove_queued_turn'; conversationId: string; id: string }
   | { type: 'start_queued_turn'; conversationId: string; id: string }
-  | { type: 'settle_queued_turn'; conversationId: string; id: string; sent: true }
+  | {
+      type: 'settle_queued_turn'
+      conversationId: string
+      id: string
+      sent: true
+      turnId?: string
+    }
   | {
       type: 'settle_queued_turn'
       conversationId: string
@@ -587,11 +597,18 @@ function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
       }
     case 'settle_queued_turn':
       if (action.sent) {
-        // The stopped turn's own late `turn_error` may have cleared the flag
-        // while this one waited for main's lock; main has now started it.
+        const turn = state.queuedTurns[action.conversationId]?.find(
+          (queued) => queued.id === action.id
+        )
+        // A stopped turn's late `turn_error` may have cleared the flag while
+        // this one waited for main's lock, so it is set again here unless this
+        // turn already ended or the user stopped it.
+        const running =
+          turn?.status === 'sending' &&
+          !(action.turnId && turn.endedTurnIds?.includes(action.turnId))
         return {
           ...state,
-          inFlight: { ...state.inFlight, [action.conversationId]: true },
+          inFlight: running ? { ...state.inFlight, [action.conversationId]: true } : state.inFlight,
           queuedTurns: updateQueue(state, action.conversationId, (queue) =>
             patchQueuedTurn(queue, action.id, () => null)
           )
@@ -730,7 +747,18 @@ function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
         return {
           ...state,
           inFlight: withoutInFlight(state, event.conversationId),
-          error: event.kind === 'turn_error' ? event.message : state.error
+          error: event.kind === 'turn_error' ? event.message : state.error,
+          queuedTurns: updateQueue(state, event.conversationId, (queue) =>
+            queue[0]?.status === 'sending'
+              ? [
+                  {
+                    ...queue[0],
+                    endedTurnIds: [...(queue[0].endedTurnIds ?? []), event.turnId]
+                  },
+                  ...queue.slice(1)
+                ]
+              : queue
+          )
         }
       }
       return state

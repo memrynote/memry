@@ -299,6 +299,9 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const turnInFlight =
     agent && conversationId ? isConversationBusy(agent.state, conversationId) : false
   const queuedTurns = (conversationId && agent?.state.queuedTurns?.[conversationId]) || []
+  // Anything still queued, even a message that was not sent, keeps new
+  // messages behind it so the queue goes out in order.
+  const queueing = turnInFlight || queuedTurns.length > 0
   // A CLI backend needs a positive detection, not merely the absence of a
   // negative one. `!== false` also passed while backendStatuses was still
   // undefined, so send stayed live through the bootstrap window and the turn
@@ -535,7 +538,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       ...editorValue.attachments,
       ...(includeCurrentNote && currentNoteAttachment ? [currentNoteAttachment] : [])
     ])
-    if (turnInFlight && conversationId) {
+    if (queueing && conversationId) {
       agent.dispatch({
         type: 'queue_turn',
         turn: {
@@ -713,7 +716,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 <Button
                   type="button"
                   aria-label={
-                    turnInFlight
+                    queueing
                       ? t('agentChat.composer.queue.queueMessage')
                       : t('agentChat.composer.send')
                   }

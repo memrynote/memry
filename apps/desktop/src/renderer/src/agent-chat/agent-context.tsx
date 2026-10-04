@@ -114,7 +114,8 @@ const AgentContext = createContext<AgentContextValue | null>(null)
  * Main broadcasts the end of a turn before it releases the conversation's turn
  * lock (it still cleans up the backend and awaits the title), and Stop clears
  * the renderer flag before the child has exited. A queued message sent at that
- * moment is answered "busy", so it is retried until the lock frees.
+ * moment is refused with `turn_in_flight`, so only that refusal is retried
+ * until the lock frees.
  */
 const QUEUED_SEND_RETRY_MS = 500
 const QUEUED_SEND_ATTEMPTS = 60
@@ -280,10 +281,20 @@ export function AgentProvider({
     [t]
   )
 
+  const queuedTurnsRef = useRef(state.queuedTurns)
+  useEffect(() => {
+    queuedTurnsRef.current = state.queuedTurns
+  }, [state.queuedTurns])
+  // Written by Stop before React re-renders, so a send already on its way to
+  // main sees the Stop the moment main answers.
+  const stoppedQueuedTurnIdsRef = useRef(new Set<string>())
+
   const cancelTurn = useCallback(
     async (conversationId: string) => {
       try {
         await getAgentApi().cancelTurn({ conversationId })
+        const sending = queuedTurnsRef.current[conversationId]?.[0]
+        if (sending?.status === 'sending') stoppedQueuedTurnIdsRef.current.add(sending.id)
         dispatch({ type: 'set_in_flight', conversationId, inFlight: false })
         dispatch({ type: 'hold_sending_turn', conversationId })
       } catch (error) {
@@ -297,16 +308,9 @@ export function AgentProvider({
     [t]
   )
 
-  const queuedTurnsRef = useRef(state.queuedTurns)
-  useEffect(() => {
-    queuedTurnsRef.current = state.queuedTurns
-  }, [state.queuedTurns])
-
   const sendQueuedTurn = useCallback(
     async (turn: QueuedTurn) => {
-      const stillSending = (): boolean =>
-        queuedTurnsRef.current[turn.conversationId]?.[0]?.id === turn.id &&
-        queuedTurnsRef.current[turn.conversationId]?.[0]?.status === 'sending'
+      const stopped = (): boolean => stoppedQueuedTurnIdsRef.current.delete(turn.id)
       for (let attempt = 1; ; attempt += 1) {
         let result: SendTurnResponse
         try {
@@ -334,11 +338,13 @@ export function AgentProvider({
             type: 'settle_queued_turn',
             conversationId: turn.conversationId,
             id: turn.id,
-            sent: true
+            sent: true,
+            turnId: result.turnId
           })
+          if (stopped()) await getAgentApi().cancelTurn({ conversationId: turn.conversationId })
           return
         }
-        if (attempt >= QUEUED_SEND_ATTEMPTS) {
+        if (result.reason !== 'turn_in_flight' || attempt >= QUEUED_SEND_ATTEMPTS) {
           dispatch({
             type: 'settle_queued_turn',
             conversationId: turn.conversationId,
@@ -349,7 +355,7 @@ export function AgentProvider({
           return
         }
         await new Promise((resolve) => setTimeout(resolve, QUEUED_SEND_RETRY_MS))
-        if (!stillSending()) return
+        if (stopped()) return
       }
     },
     [t]

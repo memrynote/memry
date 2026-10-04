@@ -13,7 +13,8 @@ import {
   type BackendStatusesResponse,
   type Conversation,
   type Message,
-  type PreviewDiffResponse
+  type PreviewDiffResponse,
+  type SendTurnResponse
 } from '@memry/contracts/ipc-agent'
 
 import { CLI_MODEL_OPTIONS } from '../agent/cli-model-options'
@@ -69,10 +70,7 @@ export function registerLazyAgentHandlers(): void {
   )
   ipcMain.handle(
     AgentChannels.invoke.SEND_TURN,
-    async (
-      _event,
-      _payload: unknown
-    ): Promise<{ ok: boolean; error: string } | { ok: boolean; error?: undefined }> => {
+    async (_event, _payload: unknown): Promise<SendTurnResponse> => {
       await ensureLazyAgentServicesStarted()
       // Envelope, not a rejection: the renderer displays `error` verbatim and
       // never matches it, so this side stays pre-translated.
