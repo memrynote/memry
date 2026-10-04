@@ -461,6 +461,24 @@ describe('agent IPC schemas', () => {
     ).toBe(true)
   })
 
+  it('reads the tools-off reason from new messages and tolerates old and unknown ones', () => {
+    const parse = (toolsUnavailable: unknown): unknown =>
+      MessageContentSchema.parse({ role: 'assistant', data: { text: 'hi', toolsUnavailable } })
+
+    expect(parse({ reason: 'no_tool_call', detail: null })).toEqual({
+      role: 'assistant',
+      data: { text: 'hi', toolsUnavailable: { reason: 'no_tool_call', detail: null } }
+    })
+    expect(parse({ detail: 'HTTP 400' })).toEqual({
+      role: 'assistant',
+      data: { text: 'hi', toolsUnavailable: { detail: 'HTTP 400' } }
+    })
+    expect(parse({ reason: 'some_future_reason', detail: null })).toEqual({
+      role: 'assistant',
+      data: { text: 'hi', toolsUnavailable: { reason: undefined, detail: null } }
+    })
+  })
+
   it('type-checks all renderer event variants', () => {
     const events: AgentEvent[] = [
       {

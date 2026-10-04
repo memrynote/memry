@@ -1,5 +1,5 @@
 import type { Message } from '@memry/contracts/ipc-agent'
-import type { AgentSourceRef } from '@memry/contracts/ipc-agent'
+import type { AgentSourceRef, AgentToolsOffReason } from '@memry/contracts/ipc-agent'
 import { WrenchIcon } from 'lucide-react'
 import { useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
@@ -18,6 +18,13 @@ import { ThinkingIndicator } from './thinking-indicator'
 
 /** Stable identity: a new `components` object would defeat the renderer's own memoisation. */
 const markdownComponents = { a: CitedMemryLink }
+
+const TOOLS_OFF_KEYS = {
+  tools_rejected: 'agentChat.toolsOff.toolsRejected',
+  no_tool_call: 'agentChat.toolsOff.noToolCall',
+  tool_result_rejected: 'agentChat.toolsOff.toolResultRejected',
+  streaming_unsupported: 'agentChat.toolsOff.streamingUnsupported'
+} as const satisfies Record<AgentToolsOffReason, string>
 
 type AssistantMessageModel = Message & {
   content: Extract<Message['content'], { role: 'assistant' }>
@@ -42,16 +49,7 @@ function AssistantMessageContent({
   const reasoning = message.content.data.reasoning ?? ''
   const hasReasoning = reasoning.trim().length > 0
   const toolsUnavailable = message.content.data.toolsUnavailable
-  const toolsNotice = toolsUnavailable && (
-    <p className="flex items-start gap-1.5 px-3 text-xs text-muted-foreground">
-      <WrenchIcon aria-hidden className="mt-0.5 size-3 shrink-0" />
-      <span>
-        {toolsUnavailable.detail
-          ? t('agentChat.toolsUnavailableWithDetail', { detail: toolsUnavailable.detail })
-          : t('agentChat.toolsUnavailable')}
-      </span>
-    </p>
-  )
+  const toolsNotice = toolsUnavailable && <ToolsOffNotice notice={toolsUnavailable} />
 
   if (streaming && !answerStarted && !hasReasoning) {
     return (
@@ -109,6 +107,29 @@ function AssistantMessageContent({
         )}
       </MessageContent>
     </AIMessage>
+  )
+}
+
+function ToolsOffNotice({
+  notice
+}: {
+  notice: NonNullable<AssistantMessageModel['content']['data']['toolsUnavailable']>
+}): React.JSX.Element {
+  const { t } = useT('common')
+  const { reason, detail } = notice
+  const sentence = reason
+    ? t(TOOLS_OFF_KEYS[reason])
+    : detail
+      ? t('agentChat.toolsUnavailableWithDetail', { detail })
+      : t('agentChat.toolsUnavailable')
+  return (
+    <p className="flex items-start gap-1.5 px-3 text-xs text-muted-foreground">
+      <WrenchIcon aria-hidden className="mt-0.5 size-3 shrink-0" />
+      <span>
+        {sentence}
+        {reason && detail && ` ${t('agentChat.toolsOff.providerSaid', { detail })}`}
+      </span>
+    </p>
   )
 }
 

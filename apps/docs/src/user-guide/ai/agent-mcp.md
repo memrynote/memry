@@ -262,13 +262,22 @@ Local model support uses OpenAI-compatible HTTP APIs. memrynote ships presets fo
 llama.cpp server, plus a Custom endpoint. Local tool access is gated by a capability probe. If the
 model can emit tool calls and continue after a tool result, memrynote enables the full vault tool set. If
 the probe fails, local chat can still answer from attached context, but vault tool calls stay
-disabled. The reply then starts with a note that vault tools are off for this model, with the probe's
-reason, and the model is told not to write tool calls as text.
+disabled. The reply then starts with a note that vault tools are off for this model and why, in plain
+words: the provider refused requests with tools, the model answered without calling the test tool, the
+model failed after getting the tool result back, or the provider did not stream. When the provider sent
+its own error message, the note quotes it. The model is told not to write tool calls as text.
 
-Hosted OpenAI-compatible APIs work through the Custom preset. The probe first asks the model to call a
-named tool, and retries without naming one when the provider rejects that, as DeepSeek does in
-thinking mode. Reasoning models that return `reasoning_content` (DeepSeek, and reasoning models behind
-LM Studio or llama.cpp) get it sent back between tool steps, and their reasoning shows in the reply.
+Models call tools in different ways, and memrynote adapts to each provider configuration instead of
+asking you to. Hosted OpenAI-compatible APIs work through the Custom preset. The probe records what
+worked and every chat turn repeats it:
+
+- The probe first asks the model to call a named tool, and retries without naming one when the
+  provider rejects that, as DeepSeek does in thinking mode. The chat then sends no tool choice either.
+- Reasoning models that return `reasoning_content` (DeepSeek, and reasoning models behind LM Studio or
+  llama.cpp) get it sent back between tool steps, and their reasoning shows in the reply.
+- Some servers return a model's tool call as plain reply text, as `<tool_call>{...}</tool_call>`.
+  memrynote reads these calls out of the text and runs them like any other tool call. Only the names
+  of the vault tools count, so a model that quotes the syntax for another name keeps it as text.
 
 The probe costs a couple of model generations, so memrynote runs it once and reuses the verdict for
 up to ten minutes instead of repeating it on every message. Changing the preset, base URL, model, or
