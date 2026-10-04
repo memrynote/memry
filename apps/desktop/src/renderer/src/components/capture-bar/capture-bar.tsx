@@ -143,6 +143,30 @@ export interface CaptureBarProps {
 }
 
 /** 60% opacity for a 6-digit hex; anything else is used as-is. */
+/**
+ * Focus state whose blur lands 150 ms late, so clicks on the dropdown and the
+ * detail hint land first. A refocus inside the delay cancels the pending blur.
+ */
+function useDelayedFocus(scheduleTimeout: (callback: () => void, delayMs: number) => void): {
+  isFocused: boolean
+  onFocus: () => void
+  onBlur: () => void
+} {
+  const [isFocused, setIsFocused] = useState(false)
+  const generationRef = useRef(0)
+  const onFocus = useCallback((): void => {
+    generationRef.current += 1
+    setIsFocused(true)
+  }, [])
+  const onBlur = useCallback((): void => {
+    const generation = generationRef.current
+    scheduleTimeout(() => {
+      if (generationRef.current === generation) setIsFocused(false)
+    }, 150)
+  }, [scheduleTimeout])
+  return { isFocused, onFocus, onBlur }
+}
+
 function withFocusAlpha(color: string): string {
   return /^#[0-9a-f]{6}$/i.test(color) ? `${color}99` : color
 }
@@ -182,7 +206,13 @@ export const CaptureBar = ({
 }: CaptureBarProps): React.JSX.Element => {
   const { t } = useT('common')
   const [value, setValue] = useState('')
-  const [isFocused, setIsFocused] = useState(false)
+  // The delayed blur below must not fire after the bar is gone.
+  const scheduleTimeout = useTrackedTimeout()
+  const {
+    isFocused,
+    onFocus: handleFieldFocus,
+    onBlur: handleFieldBlur
+  } = useDelayedFocus(scheduleTimeout)
   const [caretAtEnd, setCaretAtEnd] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
   const [isRecorderMounted, setIsRecorderMounted] = useState(false)
@@ -192,10 +222,6 @@ export const CaptureBar = ({
   const recorderDismissTimerRef = useRef<number | null>(null)
   // Guards the attach button's pointerdown/click pair (see the button below).
   const attachFiredByPointerRef = useRef(false)
-  // The delayed blur below must not fire after the bar is gone.
-  const scheduleTimeout = useTrackedTimeout()
-  // Bumped on every focus, so a blur timer from before a refocus is ignored.
-  const focusGenerationRef = useRef(0)
 
   const disabled = isBusy
   const trimmed = value.trim()
@@ -634,18 +660,8 @@ export const CaptureBar = ({
                   overlayRef.current.scrollTop = fieldRef.current.scrollTop
                 }
               }}
-              onFocus={() => {
-                focusGenerationRef.current += 1
-                setIsFocused(true)
-              }}
-              // Delayed so clicks on the dropdown and the detail hint land first.
-              // A refocus inside the delay cancels it.
-              onBlur={() => {
-                const generation = focusGenerationRef.current
-                scheduleTimeout(() => {
-                  if (focusGenerationRef.current === generation) setIsFocused(false)
-                }, 150)
-              }}
+              onFocus={handleFieldFocus}
+              onBlur={handleFieldBlur}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               disabled={disabled}
