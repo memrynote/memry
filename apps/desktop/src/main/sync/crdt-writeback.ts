@@ -25,7 +25,14 @@ import {
   serializeParsedNote,
   type NoteFrontmatter
 } from '../vault/frontmatter'
-import { getVaultRoot, toAbsolutePath, maybeCreateSignificantSnapshot } from '../vault/notes'
+import { splitFrontmatterBlock } from '@memry/shared/frontmatter-split'
+import {
+  getVaultRoot,
+  toAbsolutePath,
+  createSnapshot,
+  maybeCreateSignificantSnapshot
+} from '../vault/notes'
+import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { getJournalPath } from '../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
 import { reconcileRenamedAttachments } from '../vault/attachment-rename-reconcile'
@@ -109,6 +116,8 @@ const pendingTimers = new Map<string, PendingWriteback>()
 const inFlightWritebacks = new Set<string>()
 const ignoredWrites = new Map<string, number>()
 const lastNetworkUpdateMs = new Map<string, number>()
+/** Note id to the content hash of the file bytes this module last wrote for it. */
+const lastWrittenHash = new Map<string, string>()
 
 /**
  * True while this note's on-disk markdown is known to be behind the live doc —
@@ -391,6 +400,7 @@ export function cancelWriteback(noteId: string): void {
     pendingTimers.delete(noteId)
   }
   lastWritebackCost.delete(noteId)
+  lastWrittenHash.delete(noteId)
   debugState.delete(noteId)
 }
 
@@ -430,11 +440,13 @@ export function cancelPendingWritebacks(): void {
 export function getWritebackStateSizes(): {
   ignoredWrites: number
   networkUpdates: number
+  lastWrittenHashes: number
   debugState: number
 } {
   return {
     ignoredWrites: ignoredWrites.size,
     networkUpdates: lastNetworkUpdateMs.size,
+    lastWrittenHashes: lastWrittenHash.size,
     debugState: debugState.size
   }
 }
@@ -450,6 +462,7 @@ export function resetWritebackState(): void {
   lastWritebackCost.clear()
   ignoredWrites.clear()
   lastNetworkUpdateMs.clear()
+  lastWrittenHash.clear()
   debugState.clear()
   ignoredWritesSweptAt = 0
   networkUpdatesSweptAt = 0
@@ -628,6 +641,40 @@ function applyAttachmentRenames(
   }
 }
 
+/**
+ * Keep a version of the file a pass is about to replace, when the pass changes
+ * its body.
+ *
+ * Bytes this module wrote on its last pass came from this doc, so replacing
+ * them loses nothing the doc lacks, and typing on any device keeps the 10-word
+ * rule instead of adding a version per pass. Any other bytes (an agent edit
+ * through `updateNote`, a file from an earlier session) may hold text the doc
+ * never took in, so they keep a version whatever the word count (#2646).
+ *
+ * The bodies compared are the ones in the files, so a frontmatter-only change
+ * or the serializer's EOL and final-newline handling keeps none. Never throws:
+ * a version that cannot be saved must not block the write.
+ */
+function keepVersionBeforeWriteback(
+  noteId: string,
+  existingRaw: string,
+  fileContent: string,
+  title: string
+): void {
+  const oldBody = splitFrontmatterBlock(existingRaw).body
+  const newBody = splitFrontmatterBlock(fileContent).body
+  if (oldBody === newBody) return
+  try {
+    const snap =
+      lastWrittenHash.get(noteId) === generateContentHash(existingRaw)
+        ? maybeCreateSignificantSnapshot(noteId, existingRaw, oldBody, newBody, title)
+        : createSnapshot(noteId, existingRaw, title, SnapshotReasons.SIGNIFICANT)
+    if (snap) log.info('Version kept before write-back', { noteId, snapshotId: snap.id })
+  } catch (err) {
+    log.error('Keeping a version before write-back failed', { noteId, error: err })
+  }
+}
+
 async function writebackExisting(
   noteId: string,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
@@ -740,23 +787,12 @@ async function writebackExisting(
     }
   }
 
-  if (existingRaw !== null && parsed) {
-    try {
-      const snap = maybeCreateSignificantSnapshot(
-        noteId,
-        existingRaw,
-        parsed.content,
-        markdown,
-        cached.title
-      )
-      if (snap) log.info('Snapshot created during writeback', { noteId, snapshotId: snap.id })
-    } catch (err) {
-      log.error('Snapshot creation failed during writeback', { noteId, error: err })
-    }
-  }
+  if (existingRaw !== null)
+    keepVersionBeforeWriteback(noteId, existingRaw, fileContent, cached.title)
 
   rememberIgnoredWrite(absolutePath)
   await atomicWrite(absolutePath, fileContent)
+  lastWrittenHash.set(noteId, generateContentHash(fileContent))
 
   // An attachment rename that arrived in this body (#1714): the file is still
   // on this device under its old name — the blob is never re-uploaded, so the
@@ -836,24 +872,12 @@ async function writebackJournal(
     return
   }
 
-  if (existingRaw !== null && parsed) {
-    try {
-      const snap = maybeCreateSignificantSnapshot(
-        noteId,
-        existingRaw,
-        parsed.content,
-        markdown,
-        cached.title
-      )
-      if (snap)
-        log.info('Journal snapshot created during writeback', { noteId, snapshotId: snap.id })
-    } catch (err) {
-      log.error('Journal snapshot creation failed during writeback', { noteId, error: err })
-    }
-  }
+  if (existingRaw !== null)
+    keepVersionBeforeWriteback(noteId, existingRaw, fileContent, cached.title)
 
   rememberIgnoredWrite(absolutePath)
   await atomicWrite(absolutePath, fileContent)
+  lastWrittenHash.set(noteId, generateContentHash(fileContent))
 
   // Journals hold file/image blocks like any other note — see the note path.
   applyAttachmentRenames(noteId, existingRaw, fileContent)

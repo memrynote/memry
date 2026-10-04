@@ -226,6 +226,21 @@ the next time you open it.
 Earlier builds could show such a page as plain, unclickable text until you typed into the
 note or reopened it a few times. Opening the note is now enough.
 
+## Link Syntax in Code
+
+Link syntax written inside inline code or a fenced code block is text, not a link. A note
+that documents the syntax, such as `` `[[Example]]` `` or a code block of sample markdown,
+adds no backlink, no outgoing link and no graph node for it. This holds for files saved with
+Windows line endings too.
+
+A link inside an HTML comment still counts: `<!-- [[Topic]] -->` is a hidden link, and it
+shows in backlinks and the graph like any other.
+
+Earlier builds counted link syntax in code as real links, which left unresolved nodes on the
+graph. The first time a vault opens after the update, memrynote refreshes the links of the
+notes that have link syntax inside code, once, in the background. The note files are not
+changed.
+
 ## Backlinks Panel
 
 The collapsible **Backlinks** section at the bottom of every note lists every other note that links to it — including notes that point to it through a `[[wiki link]]` or through a

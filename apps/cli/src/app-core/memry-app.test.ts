@@ -915,3 +915,31 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
 
   app.close()
 })
+
+test('exports tasks without their ids unless the caller keeps them', async () => {
+  const vaultPath = await makeVault()
+  const app = await createMemryApp({ vaultPath })
+  const note = await app.notes.create({
+    title: 'Checklist',
+    content: '- [ ] Pack bags {task:t1}\n- [x] Book train {task:t2}'
+  })
+  const htmlPath = path.join(vaultPath, 'checklist.html')
+  const pdfPath = path.join(vaultPath, 'checklist.pdf')
+
+  await app.exportHtml(note.id, htmlPath)
+  const html = await fs.readFile(htmlPath, 'utf-8')
+  assert.match(html, /<li><input disabled="" type="checkbox"> Pack bags<\/li>/)
+  assert.doesNotMatch(html, /\{task:/)
+
+  await app.exportPdf(note.id, pdfPath)
+  const pdf = await fs.readFile(pdfPath, 'utf-8')
+  assert.match(pdf, /\(- \[ \] Pack bags\) Tj/)
+  assert.doesNotMatch(pdf, /\{task:/)
+
+  await app.exportHtml(note.id, htmlPath, { includeTaskMarkers: true })
+  assert.match(await fs.readFile(htmlPath, 'utf-8'), /Pack bags \{task:t1\}<\/li>/)
+  await app.exportPdf(note.id, pdfPath, { includeTaskMarkers: true })
+  assert.match(await fs.readFile(pdfPath, 'utf-8'), /\(- \[ \] Pack bags \{task:t1\}\) Tj/)
+
+  app.close()
+})

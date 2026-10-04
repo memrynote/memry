@@ -94,6 +94,7 @@ import {
 import { promoteSpatialCanvas } from '../settings/promote-spatial-canvas'
 import { flipOpenPagesInNewTabDefault } from '../settings/flip-open-pages-in-new-tab'
 import { migrateTemplateFilesToDb } from './templates-migration'
+import { reindexCodeLinks } from './code-link-reindex'
 import { reconcileCanvasFiles } from '../canvas/reconcile'
 import { configureLazyAgentServices } from '../agent/lazy-services'
 import { registerLazyAgentHandlers, unregisterLazyAgentHandlers } from '../ipc/agent-lazy-handlers'
@@ -536,6 +537,10 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
     logger.error('Project frontmatter backfill failed:', error)
     trackMainError('vault', 'project_frontmatter_backfill', error)
   }
+
+  if (isStale()) return
+
+  await reindexCodeLinks({ dataDb, getIndexDb: getIndexDatabase, vaultPath, shouldStop: isStale })
 
   if (isStale()) return
 
