@@ -59,8 +59,7 @@ function folderPathFromNotePath(notePath: string): string | null {
   // `dirname` reports '.' for a note sitting directly in the vault root, which
   // is reachable now that folder paths are vault-relative (#1204).
   const parent = path.posix.dirname(notePath)
-  const dir = toolPathFromVaultRelativePath(parent === '.' ? '' : parent)
-  return dir === '/' ? null : dir
+  return normalizeFolderPath(parent === '.' ? '' : parent) || null
 }
 
 function mergeContent(
@@ -78,17 +77,13 @@ function sameTagList(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((tag, index) => tag === b[index])
 }
 
-function normalizeFolderPath(value: string | undefined): string {
-  return (value ?? '').replace(/^\/+|\/+$/g, '')
-}
-
-// Tool paths are vault-relative with a leading slash ("/projects/active").
+// Tool paths are vault-relative with no leading slash ("projects/active"), the
+// form the renderer uses for folder links. Inputs may still carry one (#2622).
 // `defaultNoteFolder` is not part of this mapping: it names where a new note
 // goes, not where folders live, so an agent must see the same tree the sidebar
 // does (#1204).
-function toolPathFromVaultRelativePath(vaultRelativePath: string): string {
-  const stripped = normalizeFolderPath(vaultRelativePath)
-  return stripped ? `/${stripped}` : '/'
+function normalizeFolderPath(value: string | undefined): string {
+  return (value ?? '').replace(/^\/+|\/+$/g, '')
 }
 
 function internalFolderFromToolPath(toolPath: string | undefined): string | undefined {
@@ -111,12 +106,11 @@ function isDirectChild(basePath: string, candidatePath: string): boolean {
 }
 
 function toFolderEntry(folderPath: string): FolderEntry {
-  const toolPath = `/${normalizeFolderPath(folderPath)}`
   return {
     kind: 'folder',
-    id: toolPath,
+    id: folderPath,
     name: path.posix.basename(folderPath),
-    path: toolPath
+    path: folderPath
   }
 }
 
@@ -338,20 +332,27 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       }
     },
     folders: {
-      async list({ path: folderPath, recursive }) {
-        const basePath = internalFolderFromToolPath(folderPath) ?? ''
-        const folders = await getFolders()
-        const folderEntries = folders
+      async list({ path: folderPath, id, recursive }) {
+        const basePath = normalizeFolderPath(folderPath ?? id)
+        const folders = (await getFolders())
           .map((folder) => normalizeFolderPath(folder.path))
+          .filter(Boolean)
+        if (basePath && !folders.includes(basePath)) {
+          throw new AgentToolError(
+            'NOT_FOUND',
+            `Folder not found: ${basePath}. List the vault root (omit path) to see the folders that exist.`,
+            { path: basePath }
+          )
+        }
+        const folderEntries = folders
           .filter((folder) => {
-            if (!folder) return false
             if (!basePath) return recursive ? true : isDirectChild('', folder)
             return recursive ? folder.startsWith(`${basePath}/`) : isDirectChild(basePath, folder)
           })
           .map(toFolderEntry)
 
         const notes = listNotes({
-          folder: internalFolderFromToolPath(folderPath),
+          folder: basePath || undefined,
           limit: 1000,
           offset: 0
         }).notes.filter((note) => {
@@ -363,7 +364,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           kind: 'note',
           id: note.id,
           name: note.title,
-          path: toolPathFromVaultRelativePath(note.path),
+          path: normalizeFolderPath(note.path),
           ...(note.emoji ? { icon: note.emoji } : {})
         }))
 
@@ -373,20 +374,20 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         const internal = internalFolderFromToolPath(folderPath) ?? ''
         await createFolder(internal)
         syncFolderConfigCreate(internal)
-        return { path: folderPath }
+        return { path: internal }
       },
       async rename({ old_path, new_path }) {
         const oldInternal = internalFolderFromToolPath(old_path) ?? ''
         const newInternal = internalFolderFromToolPath(new_path) ?? ''
         await renameFolderCommand(oldInternal, newInternal)
         syncFolderConfigRename(oldInternal, newInternal)
-        return { path: new_path }
+        return { path: newInternal }
       },
       async delete(folderPath) {
         const internal = internalFolderFromToolPath(folderPath) ?? ''
         await deleteFolder(internal)
         syncFolderConfigDelete(internal)
-        return { path: folderPath }
+        return { path: internal }
       }
     },
     tasks: {

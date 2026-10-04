@@ -127,7 +127,9 @@ export const TOOL_SCHEMAS = {
     }),
     description:
       'List the sub-folders and notes in a folder, addressed by path (as returned in ' +
-      'folder_path/path fields); omit path for the vault root. recursive includes every ' +
+      'folder_path/path fields); omit path for the vault root. Paths are vault-relative ' +
+      'with no leading slash ("projects/active"); a leading slash is also accepted. A ' +
+      'folder that does not exist fails with NOT_FOUND. recursive includes every ' +
       'nested level instead of direct children only. Returns at most 1000 notes.'
   },
   vault_get_current_note: {
