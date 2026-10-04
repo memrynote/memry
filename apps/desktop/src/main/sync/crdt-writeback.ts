@@ -25,7 +25,14 @@ import {
   serializeParsedNote,
   type NoteFrontmatter
 } from '../vault/frontmatter'
-import { getVaultRoot, toAbsolutePath, maybeCreateSignificantSnapshot } from '../vault/notes'
+import {
+  getVaultRoot,
+  toAbsolutePath,
+  createSnapshot,
+  maybeCreateSignificantSnapshot,
+  type SnapshotListItem
+} from '../vault/notes'
+import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { getJournalPath } from '../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
 import { reconcileRenamedAttachments } from '../vault/attachment-rename-reconcile'
@@ -588,9 +595,9 @@ async function performWriteback(
 
   const modifiedAt = writebackModifiedAt(cached.modifiedAt, local, remoteEditedAtMs)
   if (isJournalId(noteId)) {
-    await writebackJournal(noteId, doc, body, cached, indexDb, modifiedAt)
+    await writebackJournal(noteId, doc, body, cached, indexDb, modifiedAt, local)
   } else {
-    await writebackExisting(noteId, cached, doc, body, indexDb, isLargeFileBody, modifiedAt)
+    await writebackExisting(noteId, cached, doc, body, indexDb, isLargeFileBody, modifiedAt, local)
     // The reminders a body's date pills derive belong to every device that
     // holds the body, and each derives its own. Only this device's edit may
     // stamp and push them. A row derived from a remote body stays unclocked,
@@ -628,6 +635,26 @@ function applyAttachmentRenames(
   }
 }
 
+/**
+ * A remote pass replaces bytes the user may never see again, so any body
+ * change keeps a version of them (#2646). A local pass is the user's own
+ * typing and keeps the word-count rule, or every keystroke pass would add one.
+ */
+function keepVersionBeforeWriteback(
+  noteId: string,
+  existingRaw: string,
+  oldContent: string,
+  newContent: string,
+  title: string,
+  local: boolean
+): SnapshotListItem | null {
+  if (local) {
+    return maybeCreateSignificantSnapshot(noteId, existingRaw, oldContent, newContent, title)
+  }
+  if (oldContent === newContent) return null
+  return createSnapshot(noteId, existingRaw, title, SnapshotReasons.SIGNIFICANT)
+}
+
 async function writebackExisting(
   noteId: string,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
@@ -635,7 +662,8 @@ async function writebackExisting(
   body: NoteBody,
   indexDb: ReturnType<typeof getIndexDatabase>,
   isLargeFileBody: boolean,
-  modifiedAt: string
+  modifiedAt: string,
+  local: boolean
 ): Promise<void> {
   const { markdown } = body
   const relativePath = cached.path
@@ -742,12 +770,13 @@ async function writebackExisting(
 
   if (existingRaw !== null && parsed) {
     try {
-      const snap = maybeCreateSignificantSnapshot(
+      const snap = keepVersionBeforeWriteback(
         noteId,
         existingRaw,
         parsed.content,
         markdown,
-        cached.title
+        cached.title,
+        local
       )
       if (snap) log.info('Snapshot created during writeback', { noteId, snapshotId: snap.id })
     } catch (err) {
@@ -807,7 +836,8 @@ async function writebackJournal(
   body: NoteBody,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
   indexDb: ReturnType<typeof getIndexDatabase>,
-  modifiedAt: string
+  modifiedAt: string,
+  local: boolean
 ): Promise<void> {
   const { markdown } = body
   const date = journalIdToDate(noteId)
@@ -838,12 +868,13 @@ async function writebackJournal(
 
   if (existingRaw !== null && parsed) {
     try {
-      const snap = maybeCreateSignificantSnapshot(
+      const snap = keepVersionBeforeWriteback(
         noteId,
         existingRaw,
         parsed.content,
         markdown,
-        cached.title
+        cached.title,
+        local
       )
       if (snap)
         log.info('Journal snapshot created during writeback', { noteId, snapshotId: snap.id })

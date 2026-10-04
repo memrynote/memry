@@ -254,12 +254,11 @@ describe('crdt writeback', () => {
     await vi.advanceTimersByTimeAsync(500)
 
     expect(mocks.yDocToMarkdown).toHaveBeenCalledTimes(1)
-    expect(mocks.maybeCreateSignificantSnapshot).toHaveBeenCalledWith(
+    expect(mocks.createSnapshot).toHaveBeenCalledWith(
       'note-1',
-      expect.any(String),
-      'old markdown',
-      'updated markdown',
-      'Existing'
+      '---\ntitle: Existing\n---\nold markdown',
+      'Existing',
+      'significant'
     )
     expect(mocks.atomicWrite).toHaveBeenCalledWith(
       '/vault/notes/Existing.md',
