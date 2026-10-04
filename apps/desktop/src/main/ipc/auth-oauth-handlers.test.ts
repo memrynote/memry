@@ -51,8 +51,10 @@ vi.mock('../store', () => ({
 }))
 
 const mockPersistKeysAndRegisterDevice = vi.fn()
+const mockSignInKnownDevice = vi.fn()
 vi.mock('../sync/device-registration', () => ({
-  persistKeysAndRegisterDevice: (...args: unknown[]) => mockPersistKeysAndRegisterDevice(...args)
+  persistKeysAndRegisterDevice: (...args: unknown[]) => mockPersistKeysAndRegisterDevice(...args),
+  signInKnownDevice: (...args: unknown[]) => mockSignInKnownDevice(...args)
 }))
 
 const mockGetSyncEngine = vi.fn().mockReturnValue(null)
@@ -396,6 +398,33 @@ describe('auth-oauth handlers', () => {
 
       // #then
       expect(result).toEqual({ success: true, needsRecoverySetup: true, needsRecoveryInput: true })
+    })
+
+    it('signs a known device back in without the recovery phrase (#2612)', async () => {
+      registerAuthOAuthHandlers()
+      seedOAuthSession('test-state-known', 'http://127.0.0.1:9999/callback')
+      mockPostToServer.mockResolvedValue({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        knownDevice: true,
+        setupToken: 'token'
+      })
+      mockSignInKnownDevice.mockResolvedValue('device-1')
+
+      const result = await invokeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE, {
+        oauthToken: 'google-code',
+        provider: 'google',
+        state: 'test-state-known'
+      })
+
+      expect(mockSignInKnownDevice).toHaveBeenCalledWith('token')
+      expect(result).toEqual({
+        success: true,
+        needsRecoverySetup: false,
+        needsRecoveryInput: false,
+        deviceId: 'device-1'
+      })
     })
 
     it('does not activate sync engine during first device setup', async () => {

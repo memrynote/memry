@@ -59,8 +59,10 @@ vi.mock('../store', () => ({
 }))
 
 const mockPersistKeysAndRegisterDevice = vi.fn()
+const mockSignInKnownDevice = vi.fn()
 vi.mock('../sync/device-registration', () => ({
-  persistKeysAndRegisterDevice: (...args: unknown[]) => mockPersistKeysAndRegisterDevice(...args)
+  persistKeysAndRegisterDevice: (...args: unknown[]) => mockPersistKeysAndRegisterDevice(...args),
+  signInKnownDevice: (...args: unknown[]) => mockSignInKnownDevice(...args)
 }))
 
 const mockApproveDeviceLinking = vi.fn().mockResolvedValue({ success: true })
@@ -293,6 +295,75 @@ describe('auth-device handlers', () => {
         needsSetup: false,
         needsRecoveryInput: true
       })
+    })
+
+    // #2612: the account still lists this device and the device still holds
+    // its keys, so the email code alone signs it back in.
+    it('signs a known device back in without the recovery phrase', async () => {
+      registerAuthDeviceHandlers()
+      mockPostToServer.mockResolvedValue({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        knownDevice: true,
+        setupToken: 'setup-token-123'
+      })
+      mockSignInKnownDevice.mockResolvedValue('device-1')
+
+      const result = await invokeHandler(SYNC_CHANNELS.AUTH_VERIFY_OTP, {
+        email: 'user@example.com',
+        code: '123456'
+      })
+
+      expect(mockSignInKnownDevice).toHaveBeenCalledWith('setup-token-123')
+      expect(result).toEqual({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        needsRecoveryInput: false,
+        deviceId: 'device-1'
+      })
+    })
+
+    it('asks for the recovery phrase when a known device cannot sign back in', async () => {
+      registerAuthDeviceHandlers()
+      mockPostToServer.mockResolvedValue({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        knownDevice: true,
+        setupToken: 'setup-token-123'
+      })
+      mockSignInKnownDevice.mockResolvedValue(null)
+
+      const result = await invokeHandler(SYNC_CHANNELS.AUTH_VERIFY_OTP, {
+        email: 'user@example.com',
+        code: '123456'
+      })
+
+      expect(result).toEqual({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        needsRecoveryInput: true
+      })
+    })
+
+    it('never skips the recovery phrase for a device the server does not list', async () => {
+      registerAuthDeviceHandlers()
+      mockPostToServer.mockResolvedValue({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        setupToken: 'setup-token-123'
+      })
+
+      await invokeHandler(SYNC_CHANNELS.AUTH_VERIFY_OTP, {
+        email: 'user@example.com',
+        code: '123456'
+      })
+
+      expect(mockSignInKnownDevice).not.toHaveBeenCalled()
     })
 
     it('returns status for new user requiring setup', async () => {

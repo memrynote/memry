@@ -298,6 +298,34 @@ describe('AuthProvider', () => {
     })
   })
 
+  it('signs a known device back in from the email code alone (#2612)', async () => {
+    serviceMocks.authService.verifyOtp.mockResolvedValue({
+      success: true,
+      needsSetup: false,
+      needsRecoveryInput: false,
+      deviceId: 'current-device'
+    })
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
+    await act(async () => {
+      await result.current.requestOtp('kaan@example.com')
+    })
+
+    let otpResult: unknown
+    await act(async () => {
+      otpResult = await result.current.verifyOtp('123456')
+    })
+
+    expect(otpResult).toEqual({
+      deviceId: 'current-device',
+      needsRecoverySetup: false,
+      needsRecoveryInput: false
+    })
+    expect(result.current.state.status).toBe('authenticated')
+    expect(result.current.state.deviceId).toBe('current-device')
+    expect(result.current.state.wizardStep).toBe('idle')
+  })
+
   it('keeps existing devices in recovery setup when recovery confirmation is pending', async () => {
     serviceMocks.deviceService.getDevices.mockResolvedValue({
       email: 'kaan@example.com',

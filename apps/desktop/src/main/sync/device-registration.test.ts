@@ -38,6 +38,8 @@ const mocks = vi.hoisted(() => ({
   bindLocalVaultToMasterKey: vi.fn(),
   retrieveKey: vi.fn(),
   secureCleanup: vi.fn(),
+  getFromServer: vi.fn(),
+  generateKeyVerifier: vi.fn(),
   getStoredDeviceId: vi.fn(),
   setStoredDeviceId: vi.fn(),
   dbDelete: vi.fn(),
@@ -74,6 +76,9 @@ vi.mock('@memry/contracts/crypto', () => ({
 vi.mock('@memry/contracts/auth-api', () => ({
   DeviceRegisterResponseSchema: {
     parse: (...args: unknown[]) => mocks.parseDeviceResponse(...args)
+  },
+  RecoveryDataResponseSchema: {
+    parse: (value: unknown) => value
   }
 }))
 
@@ -83,7 +88,9 @@ vi.mock('../crypto', () => ({
   getDevicePublicKey: (...args: unknown[]) => mocks.getDevicePublicKey(...args),
   bindLocalVaultToMasterKey: (...args: unknown[]) => mocks.bindLocalVaultToMasterKey(...args),
   retrieveKey: (...args: unknown[]) => mocks.retrieveKey(...args),
-  secureCleanup: (...args: unknown[]) => mocks.secureCleanup(...args)
+  secureCleanup: (...args: unknown[]) => mocks.secureCleanup(...args),
+  generateKeyVerifier: (...args: unknown[]) => mocks.generateKeyVerifier(...args),
+  validateKeyVerifier: (derived: string, server: string) => derived === server
 }))
 
 vi.mock('../store', () => ({
@@ -110,6 +117,7 @@ vi.mock('./vault-adoption', () => ({
 
 vi.mock('./http-client', () => ({
   postToServer: (...args: unknown[]) => mocks.postToServer(...args),
+  getFromServer: (...args: unknown[]) => mocks.getFromServer(...args),
   deleteFromServer: (...args: unknown[]) => mocks.deleteFromServer(...args)
 }))
 
@@ -400,6 +408,79 @@ describe('device registration', () => {
     expect(mocks.deleteKey).toHaveBeenCalledWith(keychainEntries.DEVICE_SIGNING_KEY)
     expect(mocks.activate).not.toHaveBeenCalled()
     expect(mocks.startSyncRuntime).not.toHaveBeenCalled()
+  })
+
+  // #2612: a device that still holds its keys and is still on the account's
+  // device list signs back in with the email code alone.
+  describe('signInKnownDevice', () => {
+    const masterKey = new Uint8Array([5])
+    const signingKey = new Uint8Array([6])
+
+    beforeEach(() => {
+      mocks.retrieveKey.mockImplementation((entry: { account: string }) => {
+        if (entry.account === 'master-key') return Promise.resolve(masterKey)
+        if (entry.account === 'device-signing-key') return Promise.resolve(signingKey)
+        return Promise.resolve(null)
+      })
+      mocks.getFromServer.mockResolvedValue({ kdfSalt: 'salt', keyVerifier: 'account-verifier' })
+      mocks.generateKeyVerifier.mockResolvedValue('account-verifier')
+    })
+
+    it('signs in with the keys this device already holds and keeps its sync state', async () => {
+      const { signInKnownDevice } = await importModule()
+
+      await expect(signInKnownDevice('setup-token')).resolves.toBe('device-1')
+
+      expect(mocks.getFromServer).toHaveBeenCalledWith('/auth/recovery-info', 'setup-token')
+      expect(mocks.postToServer).toHaveBeenCalledWith(
+        '/auth/devices',
+        expect.objectContaining({ authPublicKey: 'b64-1-2-3', vaultId: 'vault-1' }),
+        'setup-token'
+      )
+      expect(mocks.getDevicePublicKey).toHaveBeenCalledWith(signingKey)
+      expect(mocks.storeToken).toHaveBeenCalledWith(keychainEntries.ACCESS_TOKEN, 'access')
+      expect(mocks.storeToken).toHaveBeenCalledWith(keychainEntries.REFRESH_TOKEN, 'refresh')
+      expect(mocks.activate).toHaveBeenCalled()
+      expect(mocks.postToServer).not.toHaveBeenCalledWith(
+        '/auth/setup',
+        expect.anything(),
+        expect.anything()
+      )
+      expect(mocks.storeKey).not.toHaveBeenCalled()
+      expect(mocks.dbDelete).not.toHaveBeenCalled()
+      expect(mocks.dbInsert).not.toHaveBeenCalled()
+    })
+
+    it('asks for the recovery phrase when the vault key is not the account key', async () => {
+      mocks.generateKeyVerifier.mockResolvedValue('other-verifier')
+      const { signInKnownDevice } = await importModule()
+
+      await expect(signInKnownDevice('setup-token')).resolves.toBeNull()
+
+      expect(mocks.postToServer).not.toHaveBeenCalled()
+    })
+
+    it('asks for the recovery phrase when the vault key is gone', async () => {
+      mocks.retrieveKey.mockImplementation((entry: { account: string }) =>
+        Promise.resolve(entry.account === 'device-signing-key' ? signingKey : null)
+      )
+      const { signInKnownDevice } = await importModule()
+
+      await expect(signInKnownDevice('setup-token')).resolves.toBeNull()
+
+      expect(mocks.getFromServer).not.toHaveBeenCalled()
+      expect(mocks.postToServer).not.toHaveBeenCalled()
+    })
+
+    it('keeps the device keys when the server cannot be reached', async () => {
+      mocks.postToServer.mockRejectedValueOnce(new Error('Unable to connect to sync server.'))
+      const { signInKnownDevice } = await importModule()
+
+      await expect(signInKnownDevice('setup-token')).resolves.toBeNull()
+
+      expect(mocks.deleteKey).not.toHaveBeenCalled()
+      expect(mocks.deleteFromServer).not.toHaveBeenCalled()
+    })
   })
 })
 
