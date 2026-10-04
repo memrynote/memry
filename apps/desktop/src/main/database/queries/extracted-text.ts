@@ -11,7 +11,7 @@ import type { IndexDb } from '../types'
 
 /** File types the background extractor reads text from. */
 export const TEXT_BEARING_FILE_TYPES = ['pdf', 'image'] as const
-export type TextBearingFileType = (typeof TEXT_BEARING_FILE_TYPES)[number]
+type TextBearingFileType = (typeof TEXT_BEARING_FILE_TYPES)[number]
 
 export interface FileTextCandidate {
   id: string
@@ -19,7 +19,7 @@ export interface FileTextCandidate {
   fileType: TextBearingFileType
 }
 
-export interface ExtractedPage {
+interface ExtractedPage {
   page: number
   text: string
 }

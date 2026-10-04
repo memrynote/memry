@@ -36,7 +36,7 @@ import type { PdfDocument } from './pdf-host'
 const logger = createLogger('FileText')
 
 /** About 300 DPI for a Letter page, which is what Tesseract is tuned for. */
-export const OCR_RENDER_MAX_EDGE = 3300
+const OCR_RENDER_MAX_EDGE = 3300
 const MAX_CONSECUTIVE_FAILURES = 3
 const ERROR_BACKOFF_MS = 5_000
 const FILE_SETTLE_MS = 1_000
@@ -69,7 +69,7 @@ async function fileSignature(
 }
 
 /** Collapse layout whitespace; keep line and paragraph breaks. */
-export function normalizeExtractedText(text: string): string {
+function normalizeExtractedText(text: string): string {
   return text
     .replace(/[^\S\n]+/g, ' ')
     .replace(/ ?\n ?/g, '\n')
