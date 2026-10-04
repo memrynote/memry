@@ -184,7 +184,7 @@ for (const platform of ['win32', 'linux']) {
   })
 }
 
-test('keeps only the Node LSTM builds of tesseract.js-core', async () => {
+test('keeps only the tesseract.js-core builds that tesseract.js loads under Node', async () => {
   const appOutDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-prune-tesseract-'))
   try {
     const coreDir = path.join(
@@ -217,12 +217,12 @@ test('keeps only the Node LSTM builds of tesseract.js-core', async () => {
     assert.deepEqual(fs.readdirSync(coreDir).sort(), [
       'index.js',
       'package.json',
-      'tesseract-core-lstm.js',
-      'tesseract-core-lstm.wasm',
-      'tesseract-core-relaxedsimd-lstm.js',
-      'tesseract-core-relaxedsimd-lstm.wasm',
-      'tesseract-core-simd-lstm.js',
-      'tesseract-core-simd-lstm.wasm'
+      'tesseract-core-relaxedsimd.js',
+      'tesseract-core-relaxedsimd.wasm',
+      'tesseract-core-simd.js',
+      'tesseract-core-simd.wasm',
+      'tesseract-core.js',
+      'tesseract-core.wasm'
     ])
   } finally {
     fs.rmSync(appOutDir, { force: true, recursive: true })

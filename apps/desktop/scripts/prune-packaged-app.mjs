@@ -108,10 +108,13 @@ function pruneBetterSqliteBuildArtifacts(nodeModulesDir) {
   removePath(join(betterSqliteRoot, 'build', 'Release', 'test_extension.node'))
 }
 
-// tesseract.js-core ships every build for browsers and Node, about 45 MB. The
-// OCR worker (src/main/file-text/ocr-worker.ts) runs LSTM only under Node,
-// which loads a tesseract-core*-lstm.js loader and the .wasm next to it.
-const TESSERACT_CORE_KEPT = /^tesseract-core(-simd|-relaxedsimd)?-lstm\.(js|wasm)$/
+// tesseract.js-core ships every build for browsers and Node, about 45 MB. Under
+// Node, tesseract.js 7.0.0 loads the full (legacy + LSTM) builds even for an
+// LSTM-only worker: its worker script hands getCore a boolean where getCore
+// expects an OEM number. So the kept set is tesseract-core.js, -simd.js and
+// -relaxedsimd.js with the .wasm next to each. check-packaged-runtime-deps.js
+// runs OCR through the packaged tree and fails if this set goes stale.
+const TESSERACT_CORE_KEPT = /^tesseract-core(-simd|-relaxedsimd)?\.(js|wasm)$/
 
 function pruneTesseractCore(nodeModulesDir) {
   const roots = [join(nodeModulesDir, 'tesseract.js-core')]

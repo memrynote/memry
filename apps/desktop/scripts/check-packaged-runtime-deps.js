@@ -133,11 +133,41 @@ function assertPackagedPath(moduleName, resolvedPath, resourcesPath) {
   }
 }
 
-function runElectronNativeSmoke(resourcesPath) {
+/**
+ * tesseract.js loads its core inside a worker thread, and a packaged app built
+ * under apps/desktop/dist sits inside the repo: a core file the prune removed
+ * is then found in the repo's own node_modules and the smoke passes anyway.
+ * This worker script refuses any module resolved outside the packaged app.
+ */
+function writeOcrWorkerGuard(tempDir, resourcesPath, tesseractEntry) {
+  const guardPath = path.join(tempDir, 'ocr-worker-guard.cjs')
+  const workerScript = path.join(path.dirname(tesseractEntry), 'worker-script', 'node', 'index.js')
+  fs.writeFileSync(
+    guardPath,
+    `
+const Module = require('node:module')
+const path = require('node:path')
+const appRoot = ${JSON.stringify(fs.realpathSync(resourcesPath).toLowerCase())}
+const resolveFilename = Module._resolveFilename
+Module._resolveFilename = function (request, ...rest) {
+  const resolved = resolveFilename.call(this, request, ...rest)
+  if (path.isAbsolute(resolved) && !resolved.toLowerCase().startsWith(appRoot)) {
+    throw new Error(\`OCR resolved \${request} outside the packaged app: \${resolved}\`)
+  }
+  return resolved
+}
+require(${JSON.stringify(workerScript)})
+`.trimStart()
+  )
+  return guardPath
+}
+
+function runElectronNativeSmoke(resourcesPath, tesseractEntry) {
   const electronExecutable = getPackagedElectronExecutable(resourcesPath)
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-packaged-native-smoke-'))
   const smokeScriptPath = path.join(tempDir, 'smoke.cjs')
   const appMainPath = path.join(resourcesPath, 'app.asar', 'out', 'main', 'index.js')
+  const ocrWorkerPath = writeOcrWorkerGuard(tempDir, resourcesPath, tesseractEntry)
 
   fs.writeFileSync(
     smokeScriptPath,
@@ -166,7 +196,7 @@ const levelDbPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-store-smok
 const PROBE_DOC = '__memry_packaged_smoke__'
 
 const timer = setTimeout(() => {
-  console.error('CRDT store smoke timed out — native binding hangs under packaged Electron')
+  console.error('Packaged smoke timed out: the CRDT store binding or OCR hangs under packaged Electron')
   process.exit(1)
 }, 30000)
 
@@ -186,9 +216,26 @@ const timer = setTimeout(() => {
 
   await persistence.clearDocument(PROBE_DOC)
   await persistence.destroy()
-  clearTimeout(timer)
   fs.rmSync(levelDbPath, { force: true, recursive: true })
-  console.log(\`Electron native runtime ABI \${process.versions.modules}\`)
+
+  // OCR from the packaged tree: tesseract.js loose in node_modules, the core
+  // builds the afterPack prune kept, and the English data unpacked from app.asar.
+  const { createWorker, OEM } = require(packagedRequire.resolve('tesseract.js'))
+  const ocr = await createWorker('eng', OEM.LSTM_ONLY, {
+    workerPath: process.env.MEMRY_OCR_WORKER,
+    langPath: process.env.MEMRY_PACKAGED_TESSDATA,
+    cacheMethod: 'none',
+    gzip: true,
+    errorHandler: () => {}
+  })
+  const { data } = await ocr.recognize(fs.readFileSync(process.env.MEMRY_OCR_FIXTURE))
+  await ocr.terminate()
+  if (data.text.trim() !== 'Heron count at dawn') {
+    throw new Error(\`Packaged OCR read \${JSON.stringify(data.text)} from the fixture\`)
+  }
+
+  clearTimeout(timer)
+  console.log(\`Electron native runtime ABI \${process.versions.modules}, packaged OCR reads text\`)
 })().catch((error) => {
   console.error(error)
   process.exit(1)
@@ -202,7 +249,16 @@ const timer = setTimeout(() => {
       env: {
         ...process.env,
         ELECTRON_RUN_AS_NODE: '1',
-        MEMRY_PACKAGED_MAIN: appMainPath
+        MEMRY_PACKAGED_MAIN: appMainPath,
+        MEMRY_PACKAGED_TESSDATA: path.join(
+          resourcesPath,
+          'app.asar.unpacked',
+          'out',
+          'main',
+          'tessdata'
+        ),
+        MEMRY_OCR_FIXTURE: path.join(appRoot, 'src', 'main', 'file-text', 'ocr-reader.fixture.png'),
+        MEMRY_OCR_WORKER: ocrWorkerPath
       }
     })
 
@@ -211,6 +267,7 @@ const timer = setTimeout(() => {
       fail(`Packaged native modules do not load under Electron:\n${output}`)
       return
     }
+    console.log(result.stdout.trim())
   } finally {
     fs.rmSync(tempDir, { force: true, recursive: true })
   }
@@ -345,13 +402,18 @@ function checkResources(resourcesPath, expectedArch) {
 
   assertCrdtClassicLevelBuiltFromSource(resolvedModules.get('y-leveldb'))
 
+  const tessdata = path.join(resourcesPath, 'app.asar.unpacked', 'out', 'main', 'tessdata')
+  if (!fs.existsSync(path.join(tessdata, 'eng.traineddata.gz'))) {
+    fail(`Missing OCR language data outside app.asar: ${tessdata}`)
+  }
+
   const directElectronPath = path.join(externalNodeModulesPath, 'electron')
   if (fs.existsSync(directElectronPath)) {
     fail(`Packaged external node_modules should not include Electron: ${directElectronPath}`)
   }
 
   if (expectedArch === process.arch) {
-    runElectronNativeSmoke(resourcesPath)
+    runElectronNativeSmoke(resourcesPath, resolvedModules.get('tesseract.js'))
   } else {
     console.log(
       `Skipping Electron native smoke for ${resourcesPath}; expected arch ${expectedArch} differs from host ${process.arch}`
