@@ -712,7 +712,9 @@ export class CrdtProvider {
    * the seed, which is the behavior before this change.
    *
    * A note that owes its file body (#2646) takes the file on top of the
-   * merged server body (`takeFileAfterMerge`).
+   * merged server body (`takeFileAfterMerge`), and only after a merge that
+   * completed. A failed or late merge leaves the file and the marker to the
+   * note's full-state flush.
    */
   async openForEditor(
     noteId: string,
@@ -723,17 +725,15 @@ export class CrdtProvider {
     if (this.persistence || !mergeRemote) return this.open(noteId, windowId)
 
     const doc = await this.open(noteId, windowId, { skipSeed: true })
-    if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) {
-      await this.takeFileAfterMerge(noteId, doc, owesFileBody(noteId))
-      return doc
-    }
+    if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return doc
 
     let timer: ReturnType<typeof setTimeout> | undefined
+    let merged = false
     try {
-      await Promise.race([
+      merged = await Promise.race([
         mergeRemote(noteId),
-        new Promise<void>((resolve) => {
-          timer = setTimeout(resolve, timeoutMs)
+        new Promise<boolean>((resolve) => {
+          timer = setTimeout(() => resolve(false), timeoutMs)
         })
       ])
     } catch (err) {
@@ -746,24 +746,26 @@ export class CrdtProvider {
     }
 
     // The window may have closed the doc while the merge ran.
-    if (this.docs.get(noteId)?.doc === doc) {
-      await this.takeFileAfterMerge(noteId, doc, owesFileBody(noteId))
+    if (this.docs.get(noteId)?.doc !== doc) return doc
+    if (merged) await this.takeFileAfterMerge(noteId, doc)
+    else if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
+      await this.seedFromMarkdown(noteId, doc)
     }
     return doc
   }
 
   /**
-   * Finish a doc the server body was just merged into: a doc still empty seeds
-   * from the vault file, and a note that owes its file body (#2646) takes the
-   * file on top of the merged body. `owed` is `owesFileBody(noteId)`, read by
-   * the caller.
+   * Finish a doc the server body was just completely merged into: a doc still
+   * empty seeds from the vault file, and a note that owes its file body
+   * (#2646) takes the file on top of the merged body. The only place the file
+   * is taken. Every other pass leaves it alone while the marker stands.
    */
-  async takeFileAfterMerge(noteId: string, doc: Y.Doc, owed: boolean): Promise<void> {
+  async takeFileAfterMerge(noteId: string, doc: Y.Doc): Promise<void> {
     try {
       if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
         return await this.seedFromMarkdown(noteId, doc)
       }
-      if (!owed || this.docs.get(noteId)?.doc !== doc) return
+      if (this.docs.get(noteId)?.doc !== doc || !owesFileBody(noteId)) return
       const cached = getNoteCacheById(getIndexDatabase(), noteId)
       const raw = cached ? await safeRead(toAbsolutePath(cached.path)) : null
       if (cached && raw !== null) {

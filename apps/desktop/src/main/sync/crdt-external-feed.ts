@@ -104,9 +104,10 @@ export async function feedExternalEditToCrdt(
  * note converges instead of staying apart; the write-back that then replaces
  * the file keeps it as a version, as it does for any bytes it did not write.
  *
- * Callers pass only the provider's live doc of the note. No other doc's
- * updates reach the outbox, so the marker would be cleared for an edit that
- * nothing pushes, and the next pull would write the server body over it.
+ * Called only by `CrdtProvider.takeFileAfterMerge`, after a complete server
+ * merge into the provider's live doc. No other doc's updates reach the outbox,
+ * and a partial merge would make a peer edit the doc has not seen yet vanish
+ * under the replace without a version.
  */
 export async function takeOwedFile(
   noteId: string,

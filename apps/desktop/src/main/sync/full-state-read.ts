@@ -33,7 +33,7 @@ export async function readMergedFullState(
   const doc = await provider.open(noteId, undefined, { skipSeed: true })
   try {
     await merge()
-    await provider.takeFileAfterMerge(noteId, doc, true)
+    await provider.takeFileAfterMerge(noteId, doc)
     return await provider.readSyncableState(noteId)
   } finally {
     if (!wasOpen) await provider.closeIfInactive(noteId)

@@ -3,7 +3,7 @@ import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
-import { feedExternalEditToCrdt, takeOwedFile } from './crdt-external-feed'
+import { feedExternalEditToCrdt } from './crdt-external-feed'
 import { owesFileBody } from './crdt-owed-file-body'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import { serializeNoteBody, type NoteBody } from './writing-markdown'
@@ -533,6 +533,19 @@ async function performWriteback(
     return
   }
 
+  // A note that owes its file body (#2646) holds bytes the app wrote and the
+  // doc has not taken; the index hash moved with them, so only the marker
+  // tells. The file is taken only after a complete server merge into the live
+  // doc (`CrdtProvider.takeFileAfterMerge`), never by a pass that may run in
+  // the middle of one. The full-state row is owed again so the marker always
+  // has a flush to resolve it.
+  if (owesFileBody(noteId)) {
+    updateDebugState(noteId, { pending: false })
+    getCrdtProvider().recordOwedFullState(noteId)
+    log.debug('Write-back skipped: the note owes its file body', { noteId })
+    return
+  }
+
   // Fail closed. If the doc holds a node type this build has no schema spec
   // for, every serialization of it is missing that node — writing the result
   // would make the loss the file's permanent content, and the next index pass
@@ -737,18 +750,6 @@ async function writebackExisting(
   // Seeding a doc fills the column in (`CrdtProvider.seedFromMarkdown`), so
   // this refuses the write only while it is genuinely true that nothing here
   // has read the file. Opening the note is what makes it false.
-  //
-  // A note that owes its file body (#2646) takes the same branch. The app
-  // wrote those bytes itself and moved the hash with them, so only the marker
-  // tells that the doc has not taken them. Its ingest is `takeOwedFile`, which
-  // keeps the server body as a version. A file the doc refuses leaves the
-  // marker cleared and falls through, so the server body is written.
-  //
-  // Only the live doc can take it. With no store, a pull of a closed note
-  // merges into a doc it closes before this pass runs, and that doc's updates
-  // reach no outbox: taking the file there would clear the marker for an edit
-  // nothing pushes. The pass writes nothing then, and the full-state flush
-  // still owed by the note takes the file into a doc it holds open.
   if (existingRaw !== null) {
     // A row that is not in the index at all is a different situation and not
     // this guard's: `cached` then came from canonical metadata, which means the
@@ -763,26 +764,12 @@ async function writebackExisting(
       return
     }
     const onDisk = cached.contentHash ? generateContentHash(existingRaw) : null
-    const owed = owesFileBody(noteId)
-    if (owed && getCrdtProvider().getDoc(noteId) !== doc) {
-      log.debug('Write-back skipped: the note owes its file body to a doc that is not live', {
-        noteId
-      })
-      return
-    }
-    const fileAhead = (onDisk !== null && onDisk !== cached.contentHash) || owed
-    if (fileAhead && parsed) {
-      const ingested = owed
-        ? await takeOwedFile(noteId, doc, {
-            path: relativePath,
-            raw: existingRaw,
-            title: cached.title
-          })
-        : await feedExternalEditToCrdt(
-            noteId,
-            parsed.content,
-            writingFrontmatterOf(parsed.frontmatter)
-          )
+    if (onDisk !== null && onDisk !== cached.contentHash && parsed) {
+      const ingested = await feedExternalEditToCrdt(
+        noteId,
+        parsed.content,
+        writingFrontmatterOf(parsed.frontmatter)
+      )
       // The index row moves to the new bytes only once the doc holds them.
       // Moved first, the next pass would write a doc that never saw them.
       if (ingested) {
@@ -804,15 +791,13 @@ async function writebackExisting(
         )
         void flushProjectionEvents()
       }
-      if (ingested || !owed) {
-        log.warn(
-          ingested
-            ? 'Write-back deferred: ingested the file that changed outside the app'
-            : 'Write-back skipped: the file changed outside the app',
-          { noteId, path: relativePath }
-        )
-        return
-      }
+      log.warn(
+        ingested
+          ? 'Write-back deferred: ingested the file that changed outside the app'
+          : 'Write-back skipped: the file changed outside the app',
+        { noteId, path: relativePath }
+      )
+      return
     }
   }
 
