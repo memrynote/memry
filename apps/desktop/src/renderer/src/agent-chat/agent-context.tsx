@@ -310,7 +310,7 @@ export function AgentProvider({
 
   const sendQueuedTurn = useCallback(
     async (turn: QueuedTurn) => {
-      const stopped = (): boolean => stoppedQueuedTurnIdsRef.current.delete(turn.id)
+      const stopped = (): boolean => stoppedQueuedTurnIdsRef.current.has(turn.id)
       for (let attempt = 1; ; attempt += 1) {
         let result: SendTurnResponse
         try {
@@ -368,7 +368,9 @@ export function AgentProvider({
       const head = queue[0]
       if (!head || head.status !== 'queued' || state.inFlight[conversationId] === true) continue
       dispatch({ type: 'start_queued_turn', conversationId, id: head.id })
-      void sendQueuedTurn(head)
+      // A Stop marks one send attempt only; a re-send after an edit starts clean.
+      stoppedQueuedTurnIdsRef.current.delete(head.id)
+      void sendQueuedTurn(head).finally(() => stoppedQueuedTurnIdsRef.current.delete(head.id))
     }
   }, [state.queuedTurns, state.inFlight, sendQueuedTurn])
 
