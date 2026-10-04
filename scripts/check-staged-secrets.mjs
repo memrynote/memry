@@ -7,7 +7,10 @@ const ignoredPathPatterns = [
   /^node_modules\//,
   /\/node_modules\//,
   /^pnpm-lock\.yaml$/,
-  /(^|\/)(dist|out|coverage|build)\//
+  /(^|\/)(dist|out|coverage|build)\//,
+  // Excalidraw minified by apps/ios/scripts/generate-whiteboard.mjs: its
+  // embedded base64 trips the key patterns, and no secret is ever written there.
+  /^apps\/ios\/Memry\/Resources\/Whiteboard\.bundle\//
 ]
 
 const binaryPathPattern =

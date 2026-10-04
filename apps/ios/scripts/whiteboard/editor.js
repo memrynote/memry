@@ -89,7 +89,12 @@ window.memryBoard = {
     }
     createRoot(document.getElementById('root')).render(
       createElement(Excalidraw, {
-        initialData: { elements: elements ?? [], appState: appState ?? {}, files, scrollToContent: true },
+        initialData: {
+          elements: elements ?? [],
+          appState: appState ?? {},
+          files,
+          scrollToContent: true
+        },
         excalidrawAPI: (value) => (api = value),
         theme: dark ? 'dark' : 'light',
         // The vault is the only store, as on desktop. The image tool is off:
@@ -103,6 +108,11 @@ window.memryBoard = {
           if (!api || api.getAppState().isLoading) return
           if (baseline === null) {
             baseline = serialize()
+            // The whole board in view, as desktop frames an embedded one;
+            // `scrollToContent` alone centres it at 100% and crops it.
+            if (api.getSceneElements().length > 0) {
+              api.scrollToContent(undefined, { fitToContent: true, animate: false })
+            }
             post({ kind: 'ready' })
             return
           }
