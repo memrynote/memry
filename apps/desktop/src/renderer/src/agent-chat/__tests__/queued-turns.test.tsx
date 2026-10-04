@@ -155,7 +155,11 @@ describe('queued agent messages', () => {
     await startTurn()
     await send('second')
     vi.mocked(window.api.agent.sendTurn)
-      .mockResolvedValueOnce({ ok: false, error: 'There is already a turn in flight' })
+      .mockResolvedValueOnce({
+        ok: false,
+        error: 'There is already a turn in flight',
+        reason: 'turn_in_flight'
+      })
       .mockResolvedValueOnce({ ok: true })
 
     endTurn()
@@ -184,6 +188,99 @@ describe('queued agent messages', () => {
 
     await waitFor(() => expect(sentTexts()).toEqual(['first', 'second', 'second']))
     await waitFor(() => expect(queuedTexts()).toEqual(['third']))
+  })
+
+  it('queues a new message behind one that was not sent', async () => {
+    await startTurn()
+    await send('second')
+    vi.mocked(window.api.agent.sendTurn).mockRejectedValueOnce(new Error('IPC closed'))
+    endTurn()
+    await screen.findByText('Not sent. Edit to send again, or remove it.')
+
+    await send('newer')
+
+    expect(sentTexts()).toEqual(['first', 'second'])
+    expect(queuedTexts()).toEqual(['second', 'newer'])
+  })
+
+  it('does not retry a refusal that is not a running turn', async () => {
+    await startTurn()
+    await send('second')
+    vi.mocked(window.api.agent.sendTurn).mockResolvedValueOnce({
+      ok: false,
+      error: 'Model is not installed'
+    })
+
+    endTurn()
+
+    await screen.findByText('Not sent. Edit to send again, or remove it.')
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 700))
+    })
+    expect(sentTexts()).toEqual(['first', 'second'])
+  })
+
+  it('ends a queued turn that failed before main answered the send', async () => {
+    await startTurn()
+    await send('second')
+    let answer: (value: { ok: true; turnId: string }) => void = () => {}
+    vi.mocked(window.api.agent.sendTurn).mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    )
+    endTurn()
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+
+    act(() =>
+      emit({ kind: 'turn_error', conversationId: CONVERSATION_ID, turnId: 'turn-b', message: 'x' })
+    )
+    await act(async () => answer({ ok: true, turnId: 'turn-b' }))
+
+    await waitFor(() => expect(queuedTexts()).toEqual([]))
+    expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
+  })
+
+  it('keeps a queued turn running when only the stopped turn reports its end late', async () => {
+    await startTurn()
+    await send('second')
+    let answer: (value: { ok: true; turnId: string }) => void = () => {}
+    vi.mocked(window.api.agent.sendTurn).mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    )
+    endTurn()
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+
+    act(() =>
+      emit({ kind: 'turn_error', conversationId: CONVERSATION_ID, turnId: 'turn-a', message: 'x' })
+    )
+    await act(async () => answer({ ok: true, turnId: 'turn-b' }))
+
+    await waitFor(() => expect(queuedTexts()).toEqual([]))
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
+  })
+
+  it('stops a queued turn that main started after Stop was pressed', async () => {
+    await startTurn()
+    await send('second')
+    let answer: (value: { ok: true; turnId: string }) => void = () => {}
+    vi.mocked(window.api.agent.sendTurn).mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    )
+    endTurn()
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1))
+    await act(async () => answer({ ok: true, turnId: 'turn-b' }))
+
+    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(queuedTexts()).toEqual([]))
+    expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
   })
 
   it('sends the next queued message after Stop', async () => {

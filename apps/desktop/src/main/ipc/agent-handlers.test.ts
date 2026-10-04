@@ -320,7 +320,10 @@ describe('agent IPC handlers', () => {
       backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
     })
 
-    expect(result).toEqual({ ok: true })
+    const [, runInput] = mocks.runTurn.mock.calls[0] as unknown as [unknown, { turnId?: string }]
+    const turnId = runInput.turnId
+    expect(turnId).toEqual(expect.any(String))
+    expect(result).toEqual({ ok: true, turnId })
     expect(mocks.snapshotAttachments).toHaveBeenCalledWith([
       { kind: 'current_note', ref_id: 'current', label: 'Current note' }
     ])
@@ -383,7 +386,8 @@ describe('agent IPC handlers', () => {
 
     expect(result).toEqual({
       ok: false,
-      error: 'There is already a turn in flight for conversation conversation-1'
+      error: 'There is already a turn in flight for conversation conversation-1',
+      reason: 'turn_in_flight'
     })
     expect(mocks.snapshotAttachments).not.toHaveBeenCalled()
     expect(mocks.runTurn).not.toHaveBeenCalled()
@@ -416,6 +420,28 @@ describe('agent IPC handlers', () => {
     expect(runtime.acquireTurnLock).not.toHaveBeenCalled()
     expect(mocks.snapshotAttachments).not.toHaveBeenCalled()
     expect(mocks.runTurn).not.toHaveBeenCalled()
+  })
+
+  it('reports a turn that fails before streaming under the turn id it answered with', async () => {
+    mocks.runTurn.mockRejectedValueOnce(new Error('spawn failed'))
+    const viewer = new mockElectron.BrowserWindow()
+    mockElectron.BrowserWindow.getAllWindows.mockReturnValue([viewer] as never)
+    registerAgentHandlers(deps)
+
+    const result = (await findHandler(AgentChannels.invoke.SEND_TURN)(null, {
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'hi',
+      attachments: []
+    })) as { ok: boolean; turnId?: string }
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(result.turnId).toEqual(expect.any(String))
+    expect(viewer.webContents.send).toHaveBeenCalledWith(
+      AgentChannels.events.AGENT_EVENT,
+      expect.objectContaining({ kind: 'turn_error', turnId: result.turnId })
+    )
   })
 
   it('releases the conversation lock after the turn settles', async () => {
