@@ -4,6 +4,7 @@ import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
 import { feedExternalEditToCrdt } from './crdt-external-feed'
+import { owesFileBody } from './crdt-owed-file-body'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import { serializeNoteBody, type NoteBody } from './writing-markdown'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
@@ -525,7 +526,8 @@ async function performWriteback(
   // writes this body over it (`CrdtProvider.materialize`, or the walk the
   // record's body debt runs).
   const indexDb = getIndexDatabase()
-  const cached = getNoteCacheById(indexDb, noteId) ?? resolveFromCanonicalMetadata(noteId)
+  const indexed = getNoteCacheById(indexDb, noteId)
+  const cached = indexed ?? resolveFromCanonicalMetadata(noteId)
   if (!cached) {
     updateDebugState(noteId, { pending: false })
     log.debug('Write-back skipped: no note row', { noteId })
@@ -580,6 +582,20 @@ async function performWriteback(
     if (shouldEmitThrottled(`writeback_conversion_null:${noteId}`)) {
       trackMainLog('error', { scope: 'CrdtWriteback', action: 'conversion_null' })
     }
+    return
+  }
+
+  // A note that owes its file body (#2646) holds bytes the app wrote and the
+  // doc has not taken; the index hash moved with them, so only the marker
+  // tells. The file is taken only after a complete server merge into the live
+  // doc (`CrdtProvider.takeFileAfterMerge`), never by a pass that may run in
+  // the middle of one. The full-state row is owed again so the marker has a
+  // flush to resolve it. Not for a doc the take refuses (the two fail-closed
+  // returns above) or a note with no index row the take can read: each flush
+  // would queue the next one.
+  if (owesFileBody(noteId)) {
+    if (indexed) getCrdtProvider().recordOwedFullState(noteId)
+    log.debug('Write-back skipped: the note owes its file body', { noteId })
     return
   }
 

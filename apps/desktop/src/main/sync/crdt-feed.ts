@@ -5,6 +5,7 @@
  * @module sync/crdt-feed
  */
 
+import type * as Y from 'yjs'
 import { getCrdtProvider, ORIGIN_LOCAL } from './crdt-provider'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
@@ -42,10 +43,17 @@ export async function replaceNoteBodyInCrdt(
   markdown: string,
   writing?: WritingFrontmatter
 ): Promise<boolean> {
-  const provider = getCrdtProvider()
-  const doc = provider.getDoc(noteId)
-  if (!doc) return false
+  const doc = getCrdtProvider().getDoc(noteId)
+  return doc ? replaceDocBody(doc, noteId, markdown, writing) : false
+}
 
+/** `replaceNoteBodyInCrdt` for a doc the caller holds. */
+export async function replaceDocBody(
+  doc: Y.Doc,
+  noteId: string,
+  markdown: string,
+  writing?: WritingFrontmatter
+): Promise<boolean> {
   // The other markdown → Y.Doc door, alongside the seed in `crdt-provider`, and
   // the one a receiver walks through: an oversized note arriving over sync gets
   // written back to disk, the watcher sees that write and feeds the file
@@ -94,15 +102,17 @@ export async function replaceNoteBodyInCrdt(
  * the Y.Doc tag array as authoritative) doesn't revert file tags.
  */
 export function replaceNoteTagsInCrdt(noteId: string, tags: string[]): boolean {
-  const provider = getCrdtProvider()
-  const doc = provider.getDoc(noteId)
+  const doc = getCrdtProvider().getDoc(noteId)
   if (!doc) return false
+  replaceDocTags(doc, tags)
+  return true
+}
 
+/** `replaceNoteTagsInCrdt` for a doc the caller holds. */
+export function replaceDocTags(doc: Y.Doc, tags: string[]): void {
   const tagArray = doc.getArray('tags')
   doc.transact(() => {
     tagArray.delete(0, tagArray.length)
     if (tags.length > 0) tagArray.push(tags)
   }, ORIGIN_LOCAL)
-
-  return true
 }

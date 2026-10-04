@@ -33,7 +33,6 @@ const mocks = vi.hoisted(() => ({
   generateId: vi.fn(),
   snapshotCurrentNoteFromWindow: vi.fn(),
   invokeDesktopApiFromWindow: vi.fn(),
-  feedExternalEditToCrdt: vi.fn(),
   replaceNoteTagsInCrdt: vi.fn()
 }))
 
@@ -114,10 +113,6 @@ vi.mock('./desktop-api', () => ({
   invokeDesktopApiFromWindow: mocks.invokeDesktopApiFromWindow
 }))
 
-vi.mock('../../../sync/crdt-external-feed', () => ({
-  feedExternalEditToCrdt: mocks.feedExternalEditToCrdt
-}))
-
 vi.mock('../../../sync/crdt-feed', () => ({
   replaceNoteTagsInCrdt: mocks.replaceNoteTagsInCrdt
 }))
@@ -169,7 +164,6 @@ describe('createVaultServiceHandles', () => {
       id: input.id,
       tags: input.tags ?? []
     }))
-    mocks.feedExternalEditToCrdt.mockResolvedValue(undefined)
     mocks.searchAll.mockReturnValue({ groups: [] })
     mocks.getFolders.mockResolvedValue([])
     mocks.listNotes.mockReturnValue({ notes: [] })
@@ -470,19 +464,14 @@ describe('createVaultServiceHandles', () => {
       handles.notes.update({ id: 'file-1', mode: 'replace', content_markdown: 'Body' })
     ).rejects.toMatchObject({ code: 'VALIDATION', details: { id: 'file-1', file_type: 'pdf' } })
     expect(mocks.updateNoteCommand).not.toHaveBeenCalled()
-    expect(mocks.feedExternalEditToCrdt).not.toHaveBeenCalled()
   })
 
   /**
-   * The file write alone is not the edit. `updateNote` refreshes the index
-   * row's content hash before the watcher reaches the file, so the watcher
-   * dedupes and never feeds the CRDT — an open note's Y.Doc would keep the old
-   * body and the next write-back would put it back on disk, which is exactly
-   * the "the agent said it wrote it and nothing changed" report.
+   * The file write alone is not the edit: the note command also feeds the body
+   * to the note's CRDT doc, so the adapter hands it the merged body.
    */
-  it('feeds the merged body into the CRDT after the note command, in that order', async () => {
+  it('hands the merged body to the note command', async () => {
     const handles = createVaultServiceHandles(deps)
-    const order: string[] = []
 
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
@@ -498,18 +487,13 @@ describe('createVaultServiceHandles', () => {
       path: 'work/alpha.md',
       frontmatter: {}
     })
-    mocks.updateNoteCommand.mockImplementation(async () => {
-      order.push('updateNoteCommand')
-      return { id: 'note-1', tags: ['team'] }
-    })
-    mocks.feedExternalEditToCrdt.mockImplementation(async () => {
-      order.push('feedExternalEditToCrdt')
-    })
+    mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: ['team'] })
 
     await handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: 'Next' })
 
-    expect(order).toEqual(['updateNoteCommand', 'feedExternalEditToCrdt'])
-    expect(mocks.feedExternalEditToCrdt).toHaveBeenCalledWith('note-1', 'Current\n\nNext')
+    expect(mocks.updateNoteCommand.mock.calls).toEqual([
+      [{ id: 'note-1', content: 'Current\n\nNext' }]
+    ])
     // The tag set did not move, so the live tag array is left alone.
     expect(mocks.replaceNoteTagsInCrdt).not.toHaveBeenCalled()
   })

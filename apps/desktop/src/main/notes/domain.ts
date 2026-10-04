@@ -11,6 +11,8 @@ import {
   type NoteUpdateInput
 } from '../vault/notes'
 import { extractTags } from '../vault/frontmatter'
+import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import { NoteError, NoteErrorCode } from '../lib/errors'
@@ -23,6 +25,8 @@ import {
   unlinkTasksFromDeletedNote
 } from './runtime-effects'
 
+const log = createLogger('NotesDomain')
+
 export async function createNoteCommand(input: NoteCreateInput): Promise<Note> {
   const note = await createNote(input)
   // Frontmatter tags only. `note.tags` merges the body's `#hashtag`s in for the
@@ -34,6 +38,17 @@ export async function createNoteCommand(input: NoteCreateInput): Promise<Note> {
 
 export async function updateNoteCommand(input: NoteUpdateInput): Promise<Note> {
   const note = await updateNote(input)
+  // `updateNote` moves the index hash to the new bytes, so the watcher never
+  // feeds this edit, and the next write-back would put the doc's older body
+  // back over it (#2646). No `writing`: the doc keeps its own alternatives.
+  // The file is already written, so a failed feed must not fail the save.
+  if (input.content !== undefined) {
+    try {
+      await feedExternalEditToCrdt(input.id, input.content)
+    } catch (err) {
+      log.error('Could not feed the saved body to the note CRDT doc', { noteId: input.id, err })
+    }
+  }
   const hasMetadataChanges =
     input.title !== undefined ||
     input.tags !== undefined ||

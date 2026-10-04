@@ -26,7 +26,7 @@ import {
 } from './file-ops'
 import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import { rewriteInboundWikiLinksForRename } from './rename-link-rewrite'
-import { replaceNoteBodyInCrdt } from '../sync/crdt-feed'
+import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import {
@@ -253,7 +253,7 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       // undo the loss. The cache row already points at the new path, so the
       // embed resolution inside this call reads the note from where it now
       // lives. Same order `applyTemplateToNote` uses: file first, then the doc.
-      await replaceNoteBodyInCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter))
+      await feedExternalEditToCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter))
     }
   }
 

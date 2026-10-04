@@ -13,7 +13,7 @@ import { existsSync } from 'fs'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getDatabase, requireDatabase, getIndexDatabase } from '../database'
-import { getNoteById, updateNote, createFolder, getFolders } from '../vault/notes'
+import { getNoteById, createFolder, getFolders } from '../vault/notes'
 // Filing creates notes the user expects on every device, so it goes through the
 // notes domain command rather than the raw vault write. `createNoteCommand` is
 // what enqueues the note's own sync push and seeds its CRDT doc; without it the
@@ -21,7 +21,7 @@ import { getNoteById, updateNote, createFolder, getFolders } from '../vault/note
 // on this device — the peer hides the item and never draws the note. Nothing
 // rescues it in-session either: `seedUnclockedNotes` runs only from a full sync,
 // and the vault watcher enqueues creates for binaries, not markdown.
-import { createNoteCommand } from '../notes/domain'
+import { createNoteCommand, updateNoteCommand } from '../notes/domain'
 import { setNoteTags } from '../database/queries/notes'
 import { indexBinaryFile } from '../vault/indexer'
 import { getFileType } from '@memry/shared/file-types'
@@ -1202,7 +1202,7 @@ async function embedImageInNotes(
       ? targetNote.content.replace(/^(## Inbox Captures)$/m, `$1\n\n${entry}`)
       : `${targetNote.content.trimEnd()}\n\n## Inbox Captures\n\n${entry}`
 
-    await updateNote({ id: targetNote.id, content: updatedContent })
+    await updateNoteCommand({ id: targetNote.id, content: updatedContent })
   }
 
   // Uploads the blob and records the reference on the owner note, so peers get
@@ -1339,7 +1339,7 @@ async function linkBinaryToNotes(
       }
 
       // Update target note
-      await updateNote({
+      await updateNoteCommand({
         id: targetNote.id,
         content: updatedContent
       })
@@ -1483,7 +1483,7 @@ export async function linkToNotes(
       }
 
       // Update target note
-      await updateNote({
+      await updateNoteCommand({
         id: targetNote.id,
         content: updatedContent
       })

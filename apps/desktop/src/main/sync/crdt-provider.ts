@@ -37,6 +37,8 @@ import {
 import { recordCrdtPersistenceOutcome } from '../store'
 import { prepareVaultCrdtStore } from './crdt-store-path'
 import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
+import { clearOwedFileBody, owesFileBody } from './crdt-owed-file-body'
+import { takeOwedFile } from './crdt-external-feed'
 import { getVaultRoot, toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
@@ -211,6 +213,12 @@ interface ActiveDoc {
    */
   localOnly: boolean
   closing?: boolean
+  /**
+   * Opened unseeded with no store, and neither a remote update, a seed nor
+   * `takeFileAfterMerge` has reached it yet. A body fed into such a doc shares
+   * no Yjs items with the server body (#2536, #2646).
+   */
+  awaitingMerge: boolean
 }
 
 export class CrdtProvider {
@@ -702,6 +710,11 @@ export class CrdtProvider {
    * a doc that is still empty. The pull seeds on its own when the server holds
    * nothing. A merge that fails or outlasts the timeout (offline) falls back to
    * the seed, which is the behavior before this change.
+   *
+   * A note that owes its file body (#2646) takes the file on top of the
+   * merged server body (`takeFileAfterMerge`), and only after a merge that
+   * completed. A failed or late merge leaves the file and the marker to the
+   * note's full-state flush.
    */
   async openForEditor(
     noteId: string,
@@ -715,11 +728,12 @@ export class CrdtProvider {
     if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return doc
 
     let timer: ReturnType<typeof setTimeout> | undefined
+    let merged = false
     try {
-      await Promise.race([
+      merged = await Promise.race([
         mergeRemote(noteId),
-        new Promise<void>((resolve) => {
-          timer = setTimeout(resolve, timeoutMs)
+        new Promise<boolean>((resolve) => {
+          timer = setTimeout(() => resolve(false), timeoutMs)
         })
       ])
     } catch (err) {
@@ -732,8 +746,40 @@ export class CrdtProvider {
     }
 
     // The window may have closed the doc while the merge ran.
-    if (this.docs.get(noteId)?.doc === doc) await this.seedFromMarkdown(noteId, doc)
+    if (this.docs.get(noteId)?.doc !== doc) return doc
+    if (merged) await this.takeFileAfterMerge(noteId, doc)
+    else if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
+      await this.seedFromMarkdown(noteId, doc)
+    }
     return doc
+  }
+
+  /**
+   * Finish a doc the server body was just completely merged into: a doc still
+   * empty seeds from the vault file, and a note that owes its file body
+   * (#2646) takes the file on top of the merged body. The only place the file
+   * is taken. Every other pass leaves it alone while the marker stands. A
+   * file that no longer exists leaves nothing to owe, so its marker is cleared.
+   */
+  async takeFileAfterMerge(noteId: string, doc: Y.Doc): Promise<void> {
+    try {
+      if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
+        return await this.seedFromMarkdown(noteId, doc)
+      }
+      if (this.docs.get(noteId)?.doc !== doc || !owesFileBody(noteId)) return
+      const cached = getNoteCacheById(getIndexDatabase(), noteId)
+      if (!cached) return
+      const raw = await safeRead(toAbsolutePath(cached.path))
+      if (raw === null) {
+        clearOwedFileBody(noteId)
+        log.warn('The vault file a note owes does not exist; nothing is left to take', { noteId })
+        return
+      }
+      await takeOwedFile(noteId, doc, { path: cached.path, raw, title: cached.title })
+    } finally {
+      const entry = this.docs.get(noteId)
+      if (entry?.doc === doc) entry.awaitingMerge = false
+    }
   }
 
   private async doOpen(
@@ -790,7 +836,8 @@ export class CrdtProvider {
       lastEncodedSize: 0,
       lastSizeCheckAt: 0,
       lastTouchedAt: this.now(),
-      localOnly: this.isNoteLocalOnly(noteId)
+      localOnly: this.isNoteLocalOnly(noteId),
+      awaitingMerge: !this.persistence && options?.skipSeed === true
     }
     this.docs.set(noteId, entry)
 
@@ -1019,6 +1066,7 @@ export class CrdtProvider {
   async purge(noteId: string): Promise<void> {
     cancelWriteback(noteId)
     this.dropOwedBody(noteId)
+    clearOwedFileBody(noteId)
 
     const entry = this.docs.get(noteId)
     if (entry) entry.pendingSnapshotBytes = 0
@@ -1031,6 +1079,11 @@ export class CrdtProvider {
 
   getDoc(noteId: string): Y.Doc | undefined {
     return this.docs.get(noteId)?.doc
+  }
+
+  /** See `ActiveDoc.awaitingMerge`. False for a note with no open doc. */
+  isAwaitingMerge(noteId: string): boolean {
+    return this.docs.get(noteId)?.awaitingMerge === true
   }
 
   /**
@@ -1080,6 +1133,7 @@ export class CrdtProvider {
     } finally {
       this.applyingRemoteEditedAtMs = undefined
     }
+    entry.awaitingMerge = false
     return true
   }
 
@@ -1584,7 +1638,7 @@ export class CrdtProvider {
       // first keystroke into an empty foreign note reach the file — without it
       // the write-back's never-read guard would refuse that save forever,
       // since nothing else fills the column in (#1909).
-      if (raw === '') this.recordSeedContentHash(indexDb, noteId, cached.contentHash, raw)
+      if (raw === '') this.recordSeedRead(indexDb, noteId, cached.contentHash, raw)
       return
     }
 
@@ -1609,7 +1663,7 @@ export class CrdtProvider {
       // Frontmatter-only or whitespace-only: nothing to seed, but the bytes
       // WERE read and the empty doc represents the empty body faithfully, so
       // the same recording applies as for an empty file above.
-      this.recordSeedContentHash(indexDb, noteId, cached.contentHash, raw)
+      this.recordSeedRead(indexDb, noteId, cached.contentHash, raw)
       return
     }
 
@@ -1634,7 +1688,7 @@ export class CrdtProvider {
     // row. The bytes ARE read here, and the doc is built from them, so this is
     // the honest place to say so.
     if (ok) {
-      this.recordSeedContentHash(indexDb, noteId, cached.contentHash, raw)
+      this.recordSeedRead(indexDb, noteId, cached.contentHash, raw)
     }
 
     if (ok && this.persistence) {
@@ -1644,14 +1698,18 @@ export class CrdtProvider {
     }
   }
 
-  // A hash the indexer already measured is left alone; this only ever fills a
-  // hole, and only with the hash of bytes the seed genuinely read.
-  private recordSeedContentHash(
+  // The doc now represents the file: a note that owed its file body owes it no
+  // longer (#2646). A hash the indexer already measured is left alone; this
+  // only ever fills a hole, and only with the hash of bytes the seed read.
+  private recordSeedRead(
     indexDb: ReturnType<typeof getIndexDatabase>,
     noteId: string,
     existingHash: string | null | undefined,
     raw: string
   ): void {
+    clearOwedFileBody(noteId)
+    const entry = this.docs.get(noteId)
+    if (entry) entry.awaitingMerge = false
     if (existingHash) return
     try {
       updateNoteCache(indexDb, noteId, { contentHash: generateContentHash(raw) })
@@ -1829,7 +1887,8 @@ export class CrdtProvider {
     log.debug('Recorded a local CRDT edit made with no outbox', { noteId })
   }
 
-  private recordOwedFullState(noteId: string): void {
+  /** Owe the server this note's whole doc state: one full-state outbox row, pushed after a merge. */
+  recordOwedFullState(noteId: string): void {
     if (this.updateQueue) return this.updateQueue.enqueueFullState(noteId)
     this.writeWithoutRuntime(noteId, (queue) =>
       queue.enqueueNoteBody(noteId, NOTE_BODY_FULL_STATE_PAYLOAD)

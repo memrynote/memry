@@ -8,26 +8,45 @@
  * file afterwards — reopening the note would show the body from before the
  * edit while the vault file on disk holds the new one, and that stale body is
  * what syncs to every other device. So when no editor holds the note, the
- * persisted doc is opened (`skipSeed`, because an empty fragment means the
- * note has no CRDT body at all and its next open will seed from the file —
- * minting a doc for it now would push a body nothing asked for), fed, and
- * closed again.
+ * persisted doc is opened (`skipSeed`), fed, and closed again.
  *
- * Used by the vault watcher for out-of-app edits and by the rename-time
- * wiki-link rewrite (`vault/rename-link-rewrite.ts`); both are main-originated
- * edits to a file the renderer may or may not have open. Lives apart from
- * `crdt-feed.ts` so `replaceNoteBodyInCrdt` stays a cross-module call the
- * watcher tests can observe.
+ * An empty closed doc is not fed. With a store, it means the note has no CRDT
+ * body yet and its next open seeds from the file. With no store, every closed
+ * doc opens empty, and an open one awaits its merge until the server body, a
+ * seed, or `takeFileAfterMerge` reaches it (`CrdtProvider.isAwaitingMerge`).
+ * A body fed into either shares no Yjs items with the server body and pushes a
+ * second copy (#2536). The note then owes its file body (#2646): a marker, and
+ * a full-state outbox row whose flush merges the server body and applies the
+ * file on top of it (`takeOwedFile`). A large-file-class body is never owed,
+ * since no doc can take it.
+ *
+ * Used by every main-process body writer: the note command (the agent note
+ * tool, `notes.update`, template apply, inbox filing), version restore,
+ * appended blocks, task-line removal, a rename's link and embed rewrites, the
+ * vault watcher for out-of-app edits, and the write-back's ingest of a changed
+ * file. Lives apart from `crdt-feed.ts` so `replaceNoteBodyInCrdt` stays a
+ * cross-module call the watcher tests can observe.
  *
  * @module sync/crdt-external-feed
  */
 
+import type * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import type { WritingFrontmatter } from '@memry/shared'
+import { writingFrontmatterOf, type WritingFrontmatter } from '@memry/shared'
+import { classifyMarkdownContent } from '@memry/shared/markdown-class'
+import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { getCrdtProvider } from './crdt-provider'
-import { replaceNoteBodyInCrdt } from './crdt-feed'
+import { replaceDocBody, replaceDocTags, replaceNoteBodyInCrdt } from './crdt-feed'
 import { wasRecentNetworkUpdate } from './crdt-writeback'
+import { clearOwedFileBody, recordOwedFileBody } from './crdt-owed-file-body'
+import { serializeNoteBody } from './writing-markdown'
+import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
+import { createLogger } from '../lib/logger'
+import { createSnapshot } from '../vault/notes'
+import { extractTags, parseNote, serializeNote } from '../vault/frontmatter'
+
+const log = createLogger('CrdtExternalFeed')
 
 // Full fragment replace: lossy re Yjs history, but these edits round-trip
 // through markdown, which destroys that history anyway.
@@ -39,27 +58,127 @@ export async function feedExternalEditToCrdt(
   writing?: WritingFrontmatter
 ): Promise<boolean> {
   const provider = getCrdtProvider()
+  const mergesServerFirst = !provider.hasPersistence() && !provider.isNoteLocalOnly(noteId)
 
   const feed = async (): Promise<boolean> => {
     if (wasRecentNetworkUpdate(noteId)) {
       broadcastToAllWindows('sync:concurrent-edit', { noteId })
     }
 
-    return replaceNoteBodyInCrdt(noteId, markdownContent, writing)
+    const fed = await replaceNoteBodyInCrdt(noteId, markdownContent, writing)
+    if (fed) clearOwedFileBody(noteId)
+    return fed
   }
 
-  if (provider.getDoc(noteId)) {
+  const held = provider.getDoc(noteId)
+  if (held && !(mergesServerFirst && provider.isAwaitingMerge(noteId))) {
     return feed()
   }
 
-  const doc = await provider.open(noteId, undefined, { skipSeed: true })
+  const doc = held ?? (await provider.open(noteId, undefined, { skipSeed: true }))
   try {
-    if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) return false
+    if (!held && doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return await feed()
 
-    return await feed()
+    if (mergesServerFirst && classifyMarkdownContent(markdownContent).sizeClass !== 'large-file') {
+      recordOwedFileBody(noteId)
+      provider.recordOwedFullState(noteId)
+    }
+    return false
   } finally {
     // Only if it is still editor-less: the renderer may have opened the note
     // while the replace was in flight, and that doc belongs to the editor now.
-    await provider.closeIfInactive(noteId)
+    if (!held) await provider.closeIfInactive(noteId)
   }
+}
+
+/**
+ * Apply the vault file of a note that owes it (#2646) to a doc that has merged
+ * the server body, then clear the marker. Resolves true when the doc took the
+ * file.
+ *
+ * There is no base to merge from, so the file wins whole, tags included. The
+ * loser is never silent. The server body is kept as a version whenever it
+ * differs from the file, which is every take of an edited note, since no base
+ * tells a peer's edit from the text the file replaced. The version is written
+ * before the replace, and a version that cannot be written leaves the doc and
+ * the marker to the next flush.
+ *
+ * A server body this build cannot serialize (a node type it has no schema for,
+ * or a conversion that fails) is not taken over: the replace would delete the
+ * part no version can hold. The doc and the marker stay, and the write-back
+ * keeps the file, as it does for any doc it cannot serialize. The take runs
+ * again once a pull brings a body this build can serialize, or on a build that
+ * knows the type.
+ *
+ * A file the doc refuses (large-file class, unparseable) leaves the server body
+ * in the doc, so the note converges instead of staying apart; the write-back
+ * that then replaces the file keeps it as a version, as it does for any bytes
+ * it did not write.
+ *
+ * Called only by `CrdtProvider.takeFileAfterMerge`, after a complete server
+ * merge into the provider's live doc. No other doc's updates reach the outbox,
+ * and a partial merge would make a peer edit the doc has not seen yet vanish
+ * under the replace without a version.
+ */
+export async function takeOwedFile(
+  noteId: string,
+  doc: Y.Doc,
+  file: { path: string; raw: string; title: string }
+): Promise<boolean> {
+  const converter = await loadBlockNoteConverter()
+  const unrepresentable = converter.findUnrepresentableNodes(doc)
+  const server =
+    unrepresentable.length > 0
+      ? null
+      : await serializeNoteBody(doc, { notePath: file.path }, converter)
+  if (server === null) {
+    log.warn('The server body does not serialize in this build; the file stays owed', {
+      noteId,
+      reason: unrepresentable.length > 0 ? 'unrepresentable nodes' : 'conversion returned null',
+      nodes: unrepresentable
+    })
+    return false
+  }
+
+  const parsed = parseNote(file.raw, file.path)
+  const serverBody = server.markdown
+  const keepsVersion =
+    classifyMarkdownContent(parsed.content).sizeClass !== 'large-file' &&
+    serverBody.trim() !== '' &&
+    serverBody.trim() !== parsed.content.trim()
+  if (keepsVersion) {
+    try {
+      createSnapshot(
+        noteId,
+        serializeNote(parsed.frontmatter, serverBody),
+        file.title,
+        SnapshotReasons.SIGNIFICANT
+      )
+    } catch (err) {
+      log.error('Could not keep a version of the server body; the file stays owed', {
+        noteId,
+        error: err
+      })
+      return false
+    }
+  }
+
+  const took = await replaceDocBody(
+    doc,
+    noteId,
+    parsed.content,
+    writingFrontmatterOf(parsed.frontmatter)
+  )
+  clearOwedFileBody(noteId)
+
+  if (!took) {
+    log.warn('The doc refused the vault file it was owed; the server body stays', { noteId })
+    return false
+  }
+
+  replaceDocTags(doc, extractTags(parsed.frontmatter))
+  if (keepsVersion) {
+    log.info('Applied the vault file over the server body; kept that as a version', { noteId })
+  }
+  return true
 }

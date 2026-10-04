@@ -98,6 +98,7 @@ import {
   NoteBodyOutbox,
   importLegacyPendingCrdtNotes
 } from './note-body-outbox'
+import { readMergedFullState } from './full-state-read'
 import { CrdtSnapshotScheduler } from '@memry/sync-client/crdt-snapshot-scheduler'
 import { planCrdtUpdatePush } from '@memry/sync-client/crdt-payload'
 import { recoverDirtyItems } from './dirty-recovery'
@@ -939,11 +940,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           engine.clearCrdtUnmergedForDroppedNote(noteId)
           return null
         }
-        if (!(await engine.mergeRemoteCrdtForNote(noteId))) {
-          throw new Error('Server CRDT state did not merge')
-        }
-        if (runtimeAbort.signal.aborted) throw new Error('Sync runtime stopped')
-        return crdtProvider.readSyncableState(noteId)
+        return readMergedFullState(
+          crdtProvider,
+          noteId,
+          (id) => engine.mergeRemoteCrdtForNote(id),
+          () => runtimeAbort.signal.aborted
+        )
       })
 
       trackMainEvent('sync_enabled', { surface: 'sync', action: 'enabled', result: 'success' })
