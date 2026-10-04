@@ -443,7 +443,8 @@ async function runNotes(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
           {
             includeMetadata: hasFlag(parsed.flags, 'no-metadata')
               ? false
-              : (parseBooleanFlag(parsed.flags, 'include-metadata') ?? true)
+              : (parseBooleanFlag(parsed.flags, 'include-metadata') ?? true),
+            includeTaskMarkers: hasFlag(parsed.flags, 'include-task-markers')
           }
         )
       )
@@ -459,6 +460,7 @@ async function runNotes(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
             includeMetadata: hasFlag(parsed.flags, 'no-metadata')
               ? false
               : (parseBooleanFlag(parsed.flags, 'include-metadata') ?? true),
+            includeTaskMarkers: hasFlag(parsed.flags, 'include-task-markers'),
             pageSize: getFlag(parsed.flags, 'page-size') as PdfExportOptions['pageSize']
           }
         )

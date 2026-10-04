@@ -7,6 +7,7 @@
  */
 
 import { marked } from 'marked'
+import { stripTaskBlockSuffixes } from '@memry/shared/task-block'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import type { CustomIconRow } from '@memry/db-schema/schema/custom-icons'
 import { sanitizeSvgBytes } from '../icons/sanitize-svg'
@@ -36,6 +37,8 @@ export interface RenderOptions {
    * Without it, or when the icon is gone, the header shows no icon.
    */
   findCustomIcon?: (id: string) => ExportCustomIcon | undefined
+  /** Keep each task's `{task:<id>}` suffix. Off by default: a reader has no use for it. */
+  includeTaskMarkers?: boolean
 }
 
 /** The parts of a stored custom icon an export needs. */
@@ -410,9 +413,11 @@ export function getEmbeddedStyles(): string {
  * Used for both HTML export and PDF generation (via print-to-PDF).
  */
 export function renderNoteAsHtml(note: NoteExportData, options: RenderOptions = {}): string {
-  const { includeMetadata = true } = options
+  const { includeMetadata = true, includeTaskMarkers = false } = options
 
-  const contentHtml = markdownToHtml(note.content)
+  const contentHtml = markdownToHtml(
+    includeTaskMarkers ? note.content : stripTaskBlockSuffixes(note.content)
+  )
 
   const metadataSection = includeMetadata
     ? `

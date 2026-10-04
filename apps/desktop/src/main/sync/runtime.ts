@@ -93,6 +93,7 @@ import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { pushFinalSnapshots, type StopSyncRuntimeOptions } from './final-snapshot-push'
 import {
+  NoteBodyCredentialsMissingError,
   NoteBodyFlushDeferredError,
   NoteBodyOutbox,
   importLegacyPendingCrdtNotes
@@ -561,9 +562,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           if (vaultKey) secureCleanup(vaultKey)
           if (signingSecretKey) secureCleanup(signingSecretKey)
           // Throwing keeps the rows queued; returning would ack them. The
-          // condition is transient: ~14 minutes into an outage the access
-          // token cannot be refreshed and getValidAccessToken returns null.
-          throw new Error('Missing credentials for CRDT update push')
+          // outbox pauses on this error until a token refresh or sign-in:
+          // ~14 minutes into an outage, or once the session is dead, the
+          // access token cannot be refreshed and getValidAccessToken returns null.
+          throw new NoteBodyCredentialsMissingError('Missing credentials for CRDT update push')
         }
 
         try {

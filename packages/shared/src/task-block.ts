@@ -13,8 +13,8 @@
  * Obsidian. See `parseTaskBlockSuffix`.
  */
 
-import { createFenceTracker } from './markdown-fences'
-import { parseObsidianTaskFields } from './obsidian-tasks'
+import { createFenceTracker } from './markdown-fences.ts'
+import { parseObsidianTaskFields } from './obsidian-tasks.ts'
 
 const TASK_BLOCK_SUFFIX_OPEN = '{task:'
 
