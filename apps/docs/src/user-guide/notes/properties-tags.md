@@ -126,6 +126,7 @@ number, checkbox, URL, date, select, multi-select and status. A definition that 
 desktop API creates or edits is in that file as soon as the call returns. Older versions kept
 non-select definitions only in the app's database; the first time a vault opens after the update,
 they are copied into the file once, and entries the file already has are left as they are.
+Saving a note that uses a property never clears that property's options, default or color.
 
 ### Adding a Property to a Note
 
