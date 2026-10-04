@@ -535,7 +535,7 @@ A desktop API call on a filed PDF, image, audio file, or video, such as `notes.g
 sentence that names how to read the content. Images are read through the vision tool and PDFs
 through their extracted text. Audio and video return metadata only. A reply longer than 100 KB of
 JSON text comes back as `{ truncated: true, totalChars, message, partial }`, where `partial` holds
-the first 100 KB.
+the start of the JSON reply, cut so the whole reply stays within 100 KB.
 
 `notes.resolveWikiTarget` follows a wiki link the way the editor does: `Meeting#Decisions` resolves
 to the note `Meeting` and reports `heading: "Decisions"`, while a note genuinely titled `Sprint #4`
