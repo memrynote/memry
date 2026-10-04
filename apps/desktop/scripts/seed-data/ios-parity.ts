@@ -154,6 +154,21 @@ Deepest body.
 
 </details>
 
+Columns, written as an Obsidian Multi-Column Markdown region:
+
+--- start-multi-column: parity
+\`\`\`column-settings
+Number of Columns: 2
+\`\`\`
+
+Left column
+
+--- end-column ---
+
+Right column
+
+--- end-multi-column
+
 ## 7. Quote and callouts
 
 > A plain quote block.
