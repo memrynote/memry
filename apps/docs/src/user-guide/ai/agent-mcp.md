@@ -350,10 +350,17 @@ Filing a PDF, image, audio file, or video into the vault indexes it alongside yo
 so it can turn up in `vault_search_notes`. Every search hit therefore carries a `file_type`:
 
 - `markdown` — a real note. `vault_read_note` returns its content.
-- `pdf`, `image`, `audio`, `video` — a filed file. There is no markdown to read, so
-  `vault_read_note` refuses it with a `VALIDATION` error naming the file type instead of returning
-  bytes for the client to treat as text. `vault_update_note` refuses it the same way, so an agent
-  cannot overwrite a filed document with markdown.
+- `pdf`, `image` — a filed file whose text Memry reads on this device: the PDF's own text layer, or
+  OCR for scanned pages and images (see [Text in PDFs and images](/user-guide/search#text-in-pdfs-and-images)).
+  `vault_search_notes` matches on that text, and `vault_read_note` returns it as `extracted_text`
+  instead of markdown: one `{ page, text }` entry per page, a `status` of `extracting`, `done`, or
+  `failed`, `page_count`, and `pages_read`. A reply stops at about 100 KB on a page boundary and
+  names `next_page`; pass it back as `from_page` to read on.
+- `audio`, `video` — a filed file with no text. `vault_read_note` refuses it with a `VALIDATION`
+  error naming the file type instead of returning bytes for the client to treat as text.
+
+`vault_update_note` refuses every filed file, so an agent cannot overwrite a filed document with
+markdown.
 
 `vault_add_html_artifact` lets an agent put a diagram, chart, or small interactive explanation in a
 note. The HTML is saved as an attachment of that note and appended as a file block, which renders

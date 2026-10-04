@@ -248,6 +248,41 @@ unknown version reads as "no layout", and the graph falls back to a fresh arrang
 renderer writes the row when the simulation comes to rest and immediately on pin or unpin,
 through one serialized queue, so an older write never lands after a newer one.
 
+### Extracted Text
+
+Text read out of filed PDFs and images lives in index.db, so every device reads its own files
+and nothing here syncs.
+
+- `extracted_text` (`note_id`, `part`, `method`, `text`) holds one row per page, keyed by
+  `(note_id, part)`. A PDF's `part` is its 1-based page; an image is part 1. `method` is
+  `pdf-text` (the page's text layer), `ocr`, or `unreadable` (failed twice; kept so a resumed job
+  skips it).
+- `file_text_jobs` (`note_id`, `signature`, `status`, `page_count`, `error`) holds the job state.
+  `signature` is the size and mtime of the bytes the rows came from; a file whose signature moves
+  starts over, a rename does not.
+
+Both reference `note_cache` with `ON DELETE CASCADE`. The rows are keyed by the note they make
+searchable, not by the file they came from, so text from a note's HTML blocks can sit under that
+note in the same table.
+
+`src/main/file-text/runner.ts` is the only writer. It starts after the open-time index pass and
+works through one file and one page at a time. A PDF page with a text layer is read with
+pdfjs-dist; a page without one, and every image, goes through tesseract.js. Each page is stored as
+it finishes, so a restart resumes after the last stored page. The runner publishes
+`note.text-extracted` at pages 1, 2, 4, 8, … and at the end. The search projector then writes the
+file's text into `fts_notes`, and the embedding projector embeds its opening.
+
+Two helper processes do the heavy work, both at low OS priority and closed after a minute idle:
+
+- **OCR.** A utility process (`ocr-worker.ts`) runs one Tesseract worker with the English data in
+  `out/main/tessdata/`, unpacked from `app.asar`.
+- **PDF pages.** Node has no canvas, so `pdf-host.ts` loads `pdf-host.html` into a
+  `WebContentsView` that belongs to no window. It never shows, stays out of
+  `BrowserWindow.getAllWindows()`, and reads the file in byte ranges over `memry-file://`. It
+  renders with the `print` intent, because the display intent waits for animation frames a hidden
+  view never gets. `openPdfDocument(path, size)` and `renderPage(page, maxEdge)` are the page
+  renderer for any feature that needs a PDF page as an image.
+
 ## Migrations
 
 ```bash

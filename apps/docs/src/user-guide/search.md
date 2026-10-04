@@ -19,6 +19,7 @@ Press <kbd>⌘</kbd>+<kbd>F</kbd> for global search and command execution from a
 Type to search across:
 
 - **Notes** — title and body
+- **PDFs and images** filed in the vault, by the text inside them (see [Text in PDFs and images](#text-in-pdfs-and-images))
 - **Journal entries** — title and body
 - **Tasks** — title, description, project name
 - **Inbox items** — title, source URL, captured text
@@ -79,6 +80,19 @@ For each result row:
 - <kbd>⌘</kbd>+<kbd>Enter</kbd> — open in new tab
 - <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>Enter</kbd> — open in split pane
 - <kbd>→</kbd> — preview without opening
+
+## Text in PDFs and images
+
+Memry reads the text inside the PDFs and images you file in the vault, so search finds a scan by what is written on it. The snippet under the result shows the matching text.
+
+- A PDF page that already carries text (a document saved or exported as PDF) is read from that text.
+- A scanned page, a photo, or a screenshot goes through OCR. OCR runs on your device with English language data that ships with the app. Nothing is downloaded and nothing leaves the machine.
+- The work runs in the background after the vault opens, one file and one page at a time, at low priority. A long scan becomes searchable while it is read, and a restart continues after the last page it finished.
+- A file whose contents change is read again. Renaming or moving it is not.
+
+The text lives in the index on this device and does not sync. Each device reads its own copy of the files, and rebuilding the index reads them again. Images inside a note's attachments folder are not read; file them as separate files to make them searchable.
+
+Agents read the same text through `vault_read_note` (see [Agent MCP](/user-guide/ai/agent-mcp#notes-and-filed-files)), and similar-notes suggestions use it too.
 
 ## Performance
 
