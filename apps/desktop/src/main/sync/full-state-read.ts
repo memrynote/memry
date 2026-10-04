@@ -2,10 +2,11 @@
  * The note-body outbox's full-state read: merge the server's state into the
  * note's doc, then read the whole doc for the push.
  *
- * A note that owes its file body (#2646) keeps its doc open from before the
- * merge to after the read. With no store, the merge closes a doc it opened
- * itself, so the file would be fed into a fresh empty doc and never meet the
- * server body.
+ * A note that owes its file body (#2646) holds its doc from before the merge
+ * to after the read (`CrdtProvider.holdDoc`). With no store, a doc closed in
+ * between drops the merged server body, and the file would never meet it. A
+ * doc closed anyway, as by an editor closing its tab, fails the read, and the
+ * outbox keeps the row for its next flush.
  *
  * @module sync/full-state-read
  */
@@ -29,13 +30,15 @@ export async function readMergedFullState(
     return provider.readSyncableState(noteId)
   }
 
-  const wasOpen = provider.getDoc(noteId) !== undefined
-  const doc = await provider.open(noteId, undefined, { skipSeed: true })
+  const release = provider.holdDoc(noteId)
   try {
+    const doc = await provider.open(noteId, undefined, { skipSeed: true })
     await merge()
-    await provider.takeFileAfterMerge(noteId, doc)
+    if (!(await provider.takeFileAfterMerge(noteId, doc))) {
+      throw new Error('Full-state doc was closed during the merge')
+    }
     return await provider.readSyncableState(noteId)
   } finally {
-    if (!wasOpen) await provider.closeIfInactive(noteId)
+    await release()
   }
 }
