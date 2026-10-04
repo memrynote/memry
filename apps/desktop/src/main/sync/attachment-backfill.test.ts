@@ -109,8 +109,9 @@ describe('attachment backfill', () => {
     addNote('note-e')
     addFile('note-e', 'once.png')
 
-    backfillUnsyncedAttachmentsWith({ db, vaultPath })
-    backfillUnsyncedAttachmentsWith({ db, vaultPath })
+    expect(backfillUnsyncedAttachmentsWith({ db, vaultPath })).toEqual({ scanned: 1, queued: 1 })
+    // The file already has a row: nothing new is queued, so nothing is logged.
+    expect(backfillUnsyncedAttachmentsWith({ db, vaultPath })).toEqual({ scanned: 0, queued: 0 })
 
     expect(listPendingUploads(db)).toHaveLength(1)
   })
