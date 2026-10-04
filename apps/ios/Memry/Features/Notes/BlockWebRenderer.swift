@@ -74,6 +74,10 @@ final class BlockWebRenderer: NSObject {
 
     /// The web view's size, which bounds one batch's snapshot.
     private static let viewport = CGSize(width: 2048, height: 4096)
+    /// The tallest snapshot that comes back painted: at 3x a taller one
+    /// passes WebKit's texture size and is blank. `render.html` scales a
+    /// diagram to fit under it.
+    private static let snapshotHeight: CGFloat = 2600
     private static let batchLimit = 24
 
     private let cache = NSCache<NSString, CachedOutput>()
@@ -139,7 +143,8 @@ final class BlockWebRenderer: NSObject {
     }
 
     /// One output per request; `nil` for a picture that did not fit in this
-    /// batch's snapshot, which is drawn again in a batch of its own.
+    /// batch's snapshot, which is drawn again in a batch of its own. Alone,
+    /// a picture that still does not fit is `.unavailable`, never `nil`.
     private func draw(_ batch: [Request]) async -> [Output?] {
         guard let web = await loadedWebView() else { return batch.map { _ in .unavailable } }
         let items = batch.map {
@@ -154,18 +159,22 @@ final class BlockWebRenderer: NSObject {
         }
         let rects = boxes.map(Self.rect)
         let alone = batch.count == 1
-        let fitting = rects.compactMap { $0 }.filter { alone || $0.maxY <= Self.viewport.height }
+        let fitting = rects.compactMap { $0 }.filter { $0.maxY <= Self.snapshotHeight }
         guard let union = fitting.reduce(nil, { ($0 ?? $1).union($1) }) else {
-            return boxes.map { box in (box["error"] as? String).map(Output.invalid) }
+            return boxes.map { box in
+                (box["error"] as? String).map(Output.invalid) ?? (alone ? .unavailable : nil)
+            }
         }
         let configuration = WKSnapshotConfiguration()
         configuration.rect = CGRect(x: 0, y: 0, width: union.maxX, height: union.maxY)
-            .intersection(CGRect(origin: .zero, size: Self.viewport))
+            .intersection(CGRect(x: 0, y: 0, width: Self.viewport.width, height: Self.snapshotHeight))
         configuration.afterScreenUpdates = true
         let snapshot = try? await web.takeSnapshot(configuration: configuration)
         return zip(boxes, rects).map { box, rect in
             if let error = box["error"] as? String { return .invalid(error) }
-            guard let rect, alone || rect.maxY <= Self.viewport.height else { return nil }
+            // Alone and still unmeasured or off the page: drawing it again
+            // would loop forever, so it falls back to its source.
+            guard let rect, rect.maxY <= Self.snapshotHeight else { return alone ? .unavailable : nil }
             guard let snapshot, let image = Self.crop(snapshot, to: rect) else { return .unavailable }
             return .image(image)
         }

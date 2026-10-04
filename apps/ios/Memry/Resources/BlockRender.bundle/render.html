@@ -84,6 +84,11 @@
         return mermaidReady
       }
 
+      // Inside the app's viewport, less padding, and short enough that a
+      // 3x snapshot stays under WebKit's texture size: taller ones come back blank.
+      const MAX_WIDTH = 2000
+      const MAX_HEIGHT = 2400
+
       window.renderDiagram = async function (items) {
         await loadMermaid()
         stage.replaceChildren()
@@ -103,8 +108,12 @@
             const drawn = node.querySelector('svg')
             const box = drawn && drawn.viewBox && drawn.viewBox.baseVal
             if (box && box.width > 0 && box.height > 0) {
-              drawn.setAttribute('width', String(box.width))
-              drawn.setAttribute('height', String(box.height))
+              // The app snapshots one 2048x4096 view, and WebKit paints
+              // nothing outside it: a bigger diagram is scaled down to fit,
+              // which loses nothing because it is vector. Pinch zooms it.
+              const fit = Math.min(1, MAX_WIDTH / box.width, MAX_HEIGHT / box.height)
+              drawn.setAttribute('width', String(box.width * fit))
+              drawn.setAttribute('height', String(box.height * fit))
               drawn.style.maxWidth = 'none'
             }
             stage.appendChild(node)

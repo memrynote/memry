@@ -142,6 +142,17 @@ struct BlockWebRendererDiagramTests {
             return
         }
     }
+
+    @Test func aSixtyNodeGraphIsPaintedTopToBottom() async {
+        let edges = (0..<59).map { "N\($0)-->N\($0 + 1)" }.joined(separator: "; ")
+        let output = await BlockWebRenderer.shared.render(.diagram("graph TD; " + edges, dark: false))
+        guard case let .image(image) = output else {
+            Issue.record("expected a picture, got \(output)")
+            return
+        }
+        #expect(image.size.height > image.size.width, "a top-down chain is tall")
+        #expect(inkedPixels(image) > 2000, "its nodes are painted, not a blank box")
+    }
 }
 
 /// Pixels with any coverage: a picture taken before KaTeX's fonts loaded is
