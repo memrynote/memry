@@ -53,10 +53,11 @@ export interface RunTurnInput {
   backendOptions: AgentBackendOptions
   permissions?: AgentTurnPermissions
   attachments: MessageAttachment[]
+  turnId?: string
 }
 
 export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ turnId: string }> {
-  const turnId = randomUUID()
+  const turnId = input.turnId ?? randomUUID()
   // Listing the transcript is the expensive part of a turn: every row costs two
   // AEAD opens, two JSON.parses and a zod parse. It is listed once here and
   // threaded through the rest of the turn, so the cost stays O(history) per

@@ -201,6 +201,22 @@ first — see [Voice Transcription](/user-guide/ai/voice-transcription). Audio r
 transcribed and discarded; it does not create an inbox item. If the microphone is blocked at the
 operating-system level, memrynote points you at the relevant privacy settings.
 
+### Queueing a message while the agent works
+
+The prompt box stays editable while a turn runs. Press Enter, or the arrow button next to Stop, and
+the message waits in a **Queued messages** list above the prompt box instead of interrupting the
+turn. When the turn ends, the oldest queued message goes out as its own turn, then the next one when
+that turn ends. Nothing is added to a turn that is already running. Stopping a turn also counts as
+its end, so the next queued message goes out after Stop.
+
+Each queued message keeps the model, permissions and context it was sent with. Use the pencil to
+change its text or the cross to remove it before it goes out. While the next message's editor is
+open, the queue waits for you to save or cancel. If memrynote cannot send a queued
+message, it stays in the list marked **Not sent** and holds the messages behind it, including new
+ones you send; edit it to send it again, or remove it to let the rest go out. Pressing Stop while a
+queued message is on its way stops that message's turn too. The queue lives in the window it was typed in and is
+not saved, so reloading the window clears it.
+
 ### Connected tools
 
 While Google Calendar is not linked, a tray peeks out below the prompt box offering it. Clicking the

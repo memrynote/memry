@@ -21,7 +21,8 @@ import {
   type AgentPreferencesUpdate,
   type BackendStatusesResponse,
   type PreviewDiffResponse,
-  SendTurnRequestSchema
+  SendTurnRequestSchema,
+  type SendTurnResponse
 } from '@memry/contracts/ipc-agent'
 
 import { CLI_MODEL_OPTIONS } from '../agent/cli-model-options'
@@ -121,123 +122,129 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
     return { conversation, messages }
   })
 
-  ipcMain.handle(AgentChannels.invoke.SEND_TURN, async (_event, payload: unknown) => {
-    // A malformed payload used to throw a raw ZodError out of this bare handler:
-    // the composer only saw an opaque rejection, and main telemetry never named
-    // the channel (#2525). Answer with the response envelope the composer already
-    // renders, and report the rejection against this channel.
-    const parsed = SendTurnRequestSchema.safeParse(payload)
-    if (!parsed.success) {
-      logger.error('agent:sendTurn rejected a malformed payload', parsed.error.issues)
-      trackMainError('ipc', AgentChannels.invoke.SEND_TURN, parsed.error)
-      return { ok: false, error: getMainI18n().t('errors:generic.somethingWentWrong') }
-    }
-    const request = parsed.data
-    try {
-      deps.runtime.acquireTurnLock(request.conversationId)
-    } catch (error) {
-      return {
-        ok: false,
-        error: extractErrorMessage(error, getMainI18n().t('errors:agent.conversationBusy'))
+  ipcMain.handle(
+    AgentChannels.invoke.SEND_TURN,
+    async (_event, payload: unknown): Promise<SendTurnResponse> => {
+      // A malformed payload used to throw a raw ZodError out of this bare handler:
+      // the composer only saw an opaque rejection, and main telemetry never named
+      // the channel (#2525). Answer with the response envelope the composer already
+      // renders, and report the rejection against this channel.
+      const parsed = SendTurnRequestSchema.safeParse(payload)
+      if (!parsed.success) {
+        logger.error('agent:sendTurn rejected a malformed payload', parsed.error.issues)
+        trackMainError('ipc', AgentChannels.invoke.SEND_TURN, parsed.error)
+        return { ok: false, error: getMainI18n().t('errors:generic.somethingWentWrong') }
       }
-    }
+      const request = parsed.data
+      try {
+        deps.runtime.acquireTurnLock(request.conversationId)
+      } catch (error) {
+        return {
+          ok: false,
+          error: extractErrorMessage(error, getMainI18n().t('errors:agent.conversationBusy')),
+          reason: 'turn_in_flight'
+        }
+      }
 
-    const attachments = await snapshotAttachments(request.attachments)
-    const conversation = deps.conversations.getById(request.conversationId)
-    const backendModel = await backendModelFromOptions(request.backendOptions, deps)
-    if (
-      conversation &&
-      (conversation.backend !== request.backendOptions.backend ||
-        conversation.backendModel !== backendModel)
-    ) {
-      const messages = deps.messages.listByConversation(request.conversationId)
-      const changedFields =
-        conversation.backend !== request.backendOptions.backend
-          ? (['backend', 'backendModel'] as const)
-          : (['backendModel'] as const)
-      const updated = deps.conversations.update(
-        request.conversationId,
-        { backend: request.backendOptions.backend, backendModel },
-        [...changedFields]
-      )
-      if (messages.length > 0) {
-        const systemMessage = deps.messages.append({
-          conversationId: request.conversationId,
-          role: 'system',
-          content: {
+      const attachments = await snapshotAttachments(request.attachments)
+      const conversation = deps.conversations.getById(request.conversationId)
+      const backendModel = await backendModelFromOptions(request.backendOptions, deps)
+      if (
+        conversation &&
+        (conversation.backend !== request.backendOptions.backend ||
+          conversation.backendModel !== backendModel)
+      ) {
+        const messages = deps.messages.listByConversation(request.conversationId)
+        const changedFields =
+          conversation.backend !== request.backendOptions.backend
+            ? (['backend', 'backendModel'] as const)
+            : (['backendModel'] as const)
+        const updated = deps.conversations.update(
+          request.conversationId,
+          { backend: request.backendOptions.backend, backendModel },
+          [...changedFields]
+        )
+        if (messages.length > 0) {
+          const systemMessage = deps.messages.append({
+            conversationId: request.conversationId,
             role: 'system',
-            data: {
-              kind: 'backend_changed',
-              payload: {
-                from: conversation.backend,
-                to: request.backendOptions.backend,
-                model: backendModel
+            content: {
+              role: 'system',
+              data: {
+                kind: 'backend_changed',
+                payload: {
+                  from: conversation.backend,
+                  to: request.backendOptions.backend,
+                  model: backendModel
+                }
               }
-            }
-          },
-          attachments: [],
-          status: 'completed'
-        })
-        broadcastMessage(systemMessage)
+            },
+            attachments: [],
+            status: 'completed'
+          })
+          broadcastMessage(systemMessage)
+        }
+        broadcastConversation(updated)
       }
-      broadcastConversation(updated)
-    }
 
-    const turn = runTurn(
-      {
-        conversations: deps.conversations,
-        messages: deps.messages,
-        backends: deps.backends,
-        trackRunHandle: (conversationId, subprocess) => {
-          deps.runtime.trackSubprocess(conversationId, subprocess)
-          return {
-            ...subprocess,
-            cleanup: async () => {
-              try {
-                await subprocess.cleanup()
-              } finally {
-                deps.runtime.untrackSubprocess(subprocess.pid)
+      const turnId = randomUUID()
+      const turn = runTurn(
+        {
+          conversations: deps.conversations,
+          messages: deps.messages,
+          backends: deps.backends,
+          trackRunHandle: (conversationId, subprocess) => {
+            deps.runtime.trackSubprocess(conversationId, subprocess)
+            return {
+              ...subprocess,
+              cleanup: async () => {
+                try {
+                  await subprocess.cleanup()
+                } finally {
+                  deps.runtime.untrackSubprocess(subprocess.pid)
+                }
               }
             }
           }
-        }
-      },
-      {
-        conversationId: request.conversationId,
-        sourceWindowId: request.sourceWindowId,
-        text: request.text,
-        backendOptions: request.backendOptions,
-        permissions: request.permissions,
-        attachments
-      }
-    )
-      .catch((error) => {
-        logger.error('Agent turn failed', error)
-        // Failures before the subprocess streams (missing CLI binary, MCP
-        // server not running, spawn throw) never reach runTurn's own
-        // turn_error broadcast or its turn_completed telemetry.
-        trackMainError('agent', 'turn_start', error)
-        trackMainEvent('ai_action_completed', {
-          surface: 'ai',
-          action: 'turn_completed',
-          source: request.backendOptions.backend,
-          result: 'failed'
-        })
-        broadcastAgentEvent({
-          kind: 'turn_error',
+        },
+        {
           conversationId: request.conversationId,
-          turnId: randomUUID(),
-          message: extractErrorMessage(error, 'Agent turn failed')
+          sourceWindowId: request.sourceWindowId,
+          text: request.text,
+          backendOptions: request.backendOptions,
+          permissions: request.permissions,
+          attachments,
+          turnId
+        }
+      )
+        .catch((error) => {
+          logger.error('Agent turn failed', error)
+          // Failures before the subprocess streams (missing CLI binary, MCP
+          // server not running, spawn throw) never reach runTurn's own
+          // turn_error broadcast or its turn_completed telemetry.
+          trackMainError('agent', 'turn_start', error)
+          trackMainEvent('ai_action_completed', {
+            surface: 'ai',
+            action: 'turn_completed',
+            source: request.backendOptions.backend,
+            result: 'failed'
+          })
+          broadcastAgentEvent({
+            kind: 'turn_error',
+            conversationId: request.conversationId,
+            turnId,
+            message: extractErrorMessage(error, 'Agent turn failed')
+          })
         })
-      })
-      .finally(() => {
-        deps.runtime.releaseTurnLock(request.conversationId)
-      })
-    deps.runtime.trackTurn(request.conversationId, turn)
-    void turn
+        .finally(() => {
+          deps.runtime.releaseTurnLock(request.conversationId)
+        })
+      deps.runtime.trackTurn(request.conversationId, turn)
+      void turn
 
-    return { ok: true }
-  })
+      return { ok: true, turnId }
+    }
+  )
 
   ipcMain.handle(AgentChannels.invoke.CANCEL_TURN, async (_event, payload: unknown) => {
     const { conversationId } = payload as { conversationId: string }
