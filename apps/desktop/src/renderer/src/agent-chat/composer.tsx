@@ -723,12 +723,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                     void submit()
                   }}
                   onClick={() => void submit()}
-                  className={
-                    turnInFlight
-                      ? 'size-7 rounded-md p-0'
-                      : 'size-7 rounded-md bg-tint p-0 text-tint-foreground hover:bg-tint-hover disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground'
-                  }
-                  variant={turnInFlight ? 'secondary' : 'default'}
+                  className="size-7 rounded-md bg-tint p-0 text-tint-foreground hover:bg-tint-hover disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                 >
                   <ArrowUp className="size-3.5" aria-hidden="true" />
                 </Button>

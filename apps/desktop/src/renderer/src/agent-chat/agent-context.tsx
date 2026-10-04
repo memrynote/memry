@@ -298,7 +298,9 @@ export function AgentProvider({
   )
 
   const queuedTurnsRef = useRef(state.queuedTurns)
-  queuedTurnsRef.current = state.queuedTurns
+  useEffect(() => {
+    queuedTurnsRef.current = state.queuedTurns
+  }, [state.queuedTurns])
 
   const sendQueuedTurn = useCallback(
     async (turn: QueuedTurn) => {
