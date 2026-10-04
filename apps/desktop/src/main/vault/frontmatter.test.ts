@@ -222,6 +222,11 @@ describe('frontmatter utilities', () => {
     expect(extractWikiLinks(content)).toEqual(['Before', 'After'])
   })
 
+  it('extractWikiLinks skips fenced code in a note with CRLF line endings', () => {
+    const content = ['[[Before]]', '```', '[[In Fence]]', '```', '[[After]]'].join('\r\n')
+    expect(extractWikiLinks(content)).toEqual(['Before', 'After'])
+  })
+
   it('extractWikiLinks keeps links hidden in HTML comments', () => {
     const content = [
       'Text <!-- [[Inline Hidden]] --> more',

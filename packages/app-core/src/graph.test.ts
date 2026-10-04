@@ -54,3 +54,13 @@ test('graph: link syntax inside code draws no node, links in comments still do',
     ['ghost:Hidden Target', 'n2', 'ghost:Missing']
   )
 })
+
+test('graph: fenced code in a CRLF note draws no node', async () => {
+  const content = ['```', '[[Fenced Example]]', '```', 'See [[Missing]].'].join('\r\n')
+  const data = await graphOf([note('n1', 'Docs', content)]).data()
+
+  assert.deepEqual(
+    data.nodes.filter((node) => node.isUnresolved).map((node) => node.label),
+    ['Missing']
+  )
+})

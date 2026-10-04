@@ -73,6 +73,16 @@ describe('reindexCodeLinks', () => {
     expect(linksOf('nte_docs')).toEqual([['Example', null]])
   })
 
+  it('rewrites a CRLF note whose link syntax sits in a fenced block', async () => {
+    writeFileSync(
+      path.join(vaultPath, 'notes/Docs.md'),
+      ['---', 'id: nte_docs', '---', '```', '[[Example]]', '```', 'See [[Guide]].', ''].join('\r\n')
+    )
+
+    expect(await run()).toBe(1)
+    expect(linksOf('nte_docs')).toEqual([['Guide', 'nte_guide']])
+  })
+
   it('leaves the marker unset when stopped, so the next open resumes', async () => {
     expect(await run(() => true)).toBeNull()
 
