@@ -84,8 +84,8 @@ async function renderPage(
     const natural = page.getViewport({ scale: 1 })
     const scale = Math.min(MAX_SCALE, maxEdge / Math.max(natural.width, natural.height))
     const viewport = page.getViewport({ scale })
-    canvas.width = Math.ceil(viewport.width)
-    canvas.height = Math.ceil(viewport.height)
+    canvas.width = Math.round(viewport.width)
+    canvas.height = Math.round(viewport.height)
     // 'print': the display intent paces itself on requestAnimationFrame, and a
     // view that is never shown never gets a frame.
     await page.render({ canvas, viewport, intent: 'print' }).promise
