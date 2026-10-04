@@ -300,6 +300,27 @@ describe('FileTextRunner', () => {
     expect(secondReads).toBe(1)
   })
 
+  it('reads a failed file again once a day has passed since it failed', async () => {
+    seedFile(harness, 'img-1', 'scan.png', 'image')
+    const first = start({
+      recognize: async () => {
+        throw new Error('OCR worker exited before it was ready (code 1)')
+      }
+    })
+    await settled(harness.db, 'img-1', 'failed')
+    await first.stop()
+
+    harness.db.run(sql`
+      UPDATE file_text_jobs SET updated_at = ${new Date(Date.now() - 2 * 86_400_000).toISOString()}
+      WHERE note_id = 'img-1'
+    `)
+    harness.imageText = 'read at last'
+    start()
+    await settled(harness.db, 'img-1', 'done')
+
+    expect(pagesOf(harness.db, 'img-1')).toEqual([{ part: 1, method: 'ocr', text: 'read at last' }])
+  })
+
   it('pages a long text out in chunks a reader can continue from', async () => {
     seedFile(harness, 'pdf-1', 'long.pdf', 'pdf')
     harness.pages = [
