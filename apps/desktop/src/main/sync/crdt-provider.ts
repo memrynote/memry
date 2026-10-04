@@ -223,6 +223,8 @@ interface ActiveDoc {
 
 export class CrdtProvider {
   private docs = new Map<string, ActiveDoc>()
+  /** See `holdDoc`. Keyed by note, so a hold taken before `open` covers the doc it opens. */
+  private holds = new Map<string, number>()
   /**
    * Server time (ms) of the remote update `applyRemoteUpdate` is merging, for
    * the write-back its synchronous `update` event arms (#2515).
@@ -760,22 +762,30 @@ export class CrdtProvider {
    * (#2646) takes the file on top of the merged body. The only place the file
    * is taken. Every other pass leaves it alone while the marker stands. A
    * file that no longer exists leaves nothing to owe, so its marker is cleared.
+   *
+   * Resolves false, touching neither the doc nor the marker, when `doc` is no
+   * longer the note's live doc: the merge landed in a doc that was closed
+   * under it, and a seed there would clear the marker with nothing pushed.
    */
-  async takeFileAfterMerge(noteId: string, doc: Y.Doc): Promise<void> {
+  async takeFileAfterMerge(noteId: string, doc: Y.Doc): Promise<boolean> {
+    const live = this.docs.get(noteId)
+    if (live?.doc !== doc || live.closing) return false
     try {
       if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
-        return await this.seedFromMarkdown(noteId, doc)
+        await this.seedFromMarkdown(noteId, doc)
+        return true
       }
-      if (this.docs.get(noteId)?.doc !== doc || !owesFileBody(noteId)) return
+      if (!owesFileBody(noteId)) return true
       const cached = getNoteCacheById(getIndexDatabase(), noteId)
-      if (!cached) return
+      if (!cached) return true
       const raw = await safeRead(toAbsolutePath(cached.path))
       if (raw === null) {
         clearOwedFileBody(noteId)
         log.warn('The vault file a note owes does not exist; nothing is left to take', { noteId })
-        return
+        return true
       }
       await takeOwedFile(noteId, doc, { path: cached.path, raw, title: cached.title })
+      return true
     } finally {
       const entry = this.docs.get(noteId)
       if (entry?.doc === doc) entry.awaitingMerge = false
@@ -982,16 +992,38 @@ export class CrdtProvider {
 
   /**
    * Close a doc this code opened for itself, unless a window has bound to it
-   * since. Paths that open a doc only to read or push it must close through
-   * here, never `close(noteId)`: an editor that opened the note in between
-   * would lose its doc, and every edit after it (#2448).
+   * since or a `holdDoc` holds it. Paths that open a doc only to read or push
+   * it must close through here, never `close(noteId)`: an editor that opened
+   * the note in between would lose its doc, and every edit after it (#2448).
    */
   async closeIfInactive(noteId: string, options: { evicting?: boolean } = {}): Promise<boolean> {
     const entry = this.docs.get(noteId)
-    if (!entry || entry.closing || entry.windowIds.size > 0) return false
+    if (!entry || entry.closing || entry.windowIds.size > 0 || this.holds.has(noteId)) return false
 
     await this.close(noteId, undefined, options)
     return !this.docs.has(noteId)
+  }
+
+  /**
+   * Keep the note's doc open across a merge, a take and a read that must all
+   * reach the same doc. Take the hold before `open`: neither `closeIfInactive`
+   * nor the LRU closes a held doc. The returned release drops the hold, and the
+   * last release closes the doc unless a window holds it.
+   */
+  holdDoc(noteId: string): () => Promise<void> {
+    this.holds.set(noteId, (this.holds.get(noteId) ?? 0) + 1)
+    let released = false
+    return async () => {
+      if (released) return
+      released = true
+      const left = (this.holds.get(noteId) ?? 1) - 1
+      if (left > 0) {
+        this.holds.set(noteId, left)
+        return
+      }
+      this.holds.delete(noteId)
+      await this.closeIfInactive(noteId)
+    }
   }
 
   /**
@@ -2027,7 +2059,7 @@ export class CrdtProvider {
 
   private async evictInactiveDocsIfNeeded(): Promise<void> {
     const inactiveDocs = Array.from(this.docs.entries()).filter(
-      ([, entry]) => entry.windowIds.size === 0 && !entry.closing
+      ([noteId, entry]) => entry.windowIds.size === 0 && !entry.closing && !this.holds.has(noteId)
     )
     const overflow = inactiveDocs.length - this.inactiveDocCapacity
     if (overflow <= 0) return

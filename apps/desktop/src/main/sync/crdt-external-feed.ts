@@ -76,18 +76,22 @@ export async function feedExternalEditToCrdt(
   }
 
   const doc = held ?? (await provider.open(noteId, undefined, { skipSeed: true }))
+  let owesRow = false
   try {
     if (!held && doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return await feed()
 
     if (mergesServerFirst && classifyMarkdownContent(markdownContent).sizeClass !== 'large-file') {
       recordOwedFileBody(noteId)
-      provider.recordOwedFullState(noteId)
+      owesRow = true
     }
     return false
   } finally {
     // Only if it is still editor-less: the renderer may have opened the note
     // while the replace was in flight, and that doc belongs to the editor now.
     if (!held) await provider.closeIfInactive(noteId)
+    // After the close: the outbox may flush the row at once, and that flush
+    // must open its own doc rather than borrow this one.
+    if (owesRow) provider.recordOwedFullState(noteId)
   }
 }
 
