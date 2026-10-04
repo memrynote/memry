@@ -154,6 +154,7 @@ import {
   recordNetworkUpdate,
   resetWritebackState,
   scheduleWriteback,
+  settleWriteback,
   wasRecentNetworkUpdate,
   writebackNow
 } from './crdt-writeback'
@@ -719,6 +720,38 @@ describe('crdt writeback', () => {
       'Write-back failed during shutdown flush',
       expect.objectContaining({ noteId: 'note-1' })
     )
+  })
+
+  it('settleWriteback runs an armed pass at once and leaves an unarmed note alone', async () => {
+    await settleWriteback('note-1')
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+
+    scheduleWriteback('note-1', makeDoc('Pending title'), 'local')
+    await settleWriteback('note-1')
+
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/Existing.md',
+      expect.stringContaining('updated markdown')
+    )
+    expect(hasPendingWriteback('note-1')).toBe(false)
+  })
+
+  it('settleWriteback reports a failed pass the way a timed pass does', async () => {
+    const failure = new Error('disk full')
+    mocks.atomicWrite.mockRejectedValueOnce(failure)
+    scheduleWriteback('note-1', makeDoc('Pending title'), 'local')
+
+    await expect(settleWriteback('note-1')).resolves.toBeUndefined()
+
+    expect(getWritebackDebugState('note-1')).toMatchObject({
+      pending: false,
+      lastError: 'disk full'
+    })
+    expect(mocks.trackMainError).toHaveBeenCalledWith('notes', 'note_writeback', failure)
+    expect(mocks.sent).toContainEqual({
+      channel: 'sync:write-back-failed',
+      payload: { noteId: 'note-1' }
+    })
   })
 
   /**

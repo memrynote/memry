@@ -8,7 +8,8 @@ const h = vi.hoisted(() => ({
   files: new Map<string, string>(),
   rows: new Map<string, Record<string, unknown>>(),
   indexDb: null as unknown,
-  contentHash: (_raw: string): string => ''
+  contentHash: (_raw: string): string => '',
+  failNextRead: false
 }))
 
 vi.mock('electron', () => ({
@@ -48,7 +49,13 @@ vi.mock('../vault/notes', async () => {
   }
 })
 vi.mock('../vault/file-ops', () => ({
-  safeRead: async (absolute: string) => h.files.get(absolute) ?? null,
+  safeRead: async (absolute: string) => {
+    if (h.failNextRead) {
+      h.failNextRead = false
+      throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' })
+    }
+    return h.files.get(absolute) ?? null
+  },
   atomicWrite: async (absolute: string, content: string) => {
     h.files.set(absolute, content)
   },
@@ -151,6 +158,7 @@ beforeEach(() => {
   h.contentHash = generateContentHash
   h.files.clear()
   h.rows.clear()
+  h.failNextRead = false
   resetWritebackState()
 })
 
@@ -299,6 +307,16 @@ describe('the spelling a write-back keeps when the source record no longer resto
     expect(h.files.get(NOTE_FILE)).toBe(
       '---\nid: x\n---\nTitle\n=====\n\nText:\n* One\n* Two\n\nEdited.\n'
     )
+  })
+
+  it('keeps the file when the file it would restore from cannot be read', async () => {
+    const raw = `---\nid: x\n---\n${FOREIGN}`
+    writtenElsewhere(NOTE, raw)
+    h.failNextRead = true
+
+    await pass(NOTE, await docWithStaleRecord(FOREIGN.replace('_em_ here.', 'Edited.')), 'local')
+
+    expect(h.files.get(NOTE_FILE)).toBe(raw)
   })
 
   it('does not bring back CriticMarkup the doc no longer holds', async () => {
