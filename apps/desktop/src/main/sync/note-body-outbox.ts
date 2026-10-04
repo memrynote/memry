@@ -271,6 +271,11 @@ export class NoteBodyOutbox {
       log.warn('CRDT body flush deferred; backing the note off', { noteId, backoffMs })
       return
     }
+    if (err instanceof NoteBodyCredentialsMissingError) {
+      if (!this.paused) log.warn('No sync credentials for CRDT body push', { noteId })
+      this.pause()
+      return
+    }
     if (err instanceof RateLimitError) {
       this.rateLimitedUntil = Math.max(this.rateLimitedUntil, Date.now() + err.retryAfterMs)
       log.warn('429 received, holding CRDT body flushes until Retry-After', {

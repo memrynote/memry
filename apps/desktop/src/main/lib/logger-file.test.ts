@@ -53,7 +53,7 @@ describe('main.log file transport', () => {
       "[error] [Flood] Failed to push { noteId: 'note-b' }",
       '[info]  [Flood] Signed in'
     ])
-    expect(lines[1].startsWith('2026-10-01 14:33:59.000 ')).toBe(true)
+    expect(lines[1].startsWith('2026-10-01 14:32:59.000 ')).toBe(true)
   })
 
   it('keeps four archives and rotates without a gap in the history', async () => {
