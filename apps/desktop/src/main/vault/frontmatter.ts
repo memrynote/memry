@@ -258,10 +258,9 @@ export function validateNoteId(id: string): boolean {
  */
 export function extractWikiLinks(content: string): string[] {
   const linkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g
+  const text = blankMarkdownCode(content)
   const links = new Set<string>()
   let match
-
-  const text = blankMarkdownCode(content)
 
   while ((match = linkPattern.exec(text)) !== null) {
     const { note, heading } = splitWikiTarget(match[1])

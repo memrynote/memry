@@ -51,8 +51,7 @@ export async function reindexCodeLinks(input: CodeLinkReindexInput): Promise<num
     const rewritten = await rewriteCodeLinks(input)
     if (rewritten === null) return null
     setSetting(input.dataDb, CODE_LINK_REINDEX_KEY, DONE)
-    if (rewritten > 0)
-      logger.info('Refreshed links of notes with link syntax in code', { rewritten })
+    logger.info('Refreshed links of notes with link syntax in code', { rewritten })
     return rewritten
   } catch (error) {
     logger.error('Code link reindex failed:', error)
