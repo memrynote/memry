@@ -715,10 +715,11 @@ document to its vault `.md` file and re-indexes it for search.
   and then the restore cannot be proven. Before writing house style, the pass restores from
   the note's file instead, read without CriticMarkup and writing tools markers (#2615). A doc
   that says what the file says leaves the file as it is, and an edit lands in the file's
-  spelling. `yDocToMarkdown` reports these as `file` and `file-merged`. A file that cannot
-  be read or parsed is `file-unreadable`: the conversion resolves null and the pass keeps the
-  file as it is, the way it keeps it for a failed conversion. House style is written only
-  when the file was read and cannot be restored either, or when the record restore throws.
+  spelling. `yDocToMarkdown` reports these as `file` and `file-merged`. A restore that throws
+  (`restore-threw`) and a file that cannot be read or parsed (`file-unreadable`) resolve the
+  conversion to null. The pass keeps the file as it is and fails the way a failed read does,
+  with `sync:write-back-failed` and a `note_writeback` error, so the next update retries.
+  House style is written only when the file was read and cannot be restored either.
   The merge aligns lines on a key that erases each spelling. A rule or a setext underline
   erases to nothing, the key of a blank line, so it keeps a key of its own. Paired with a
   blank line, the underline of an untouched setext heading joined the heading to the region
