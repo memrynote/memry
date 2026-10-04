@@ -1037,6 +1037,27 @@ describe('CrdtProvider', () => {
     await cappedProvider.destroy()
   })
 
+  it('keeps a held doc open through closeIfInactive and eviction, and closes it on release', async () => {
+    let now = 1_000
+    const cappedProvider = new CrdtProvider({ inactiveDocLimit: 1, now: () => now++ })
+    await cappedProvider.init(queue as any, pushSnapshot)
+
+    const release = cappedProvider.holdDoc('held-note')
+    await cappedProvider.open('held-note', undefined, { skipSeed: true })
+    await cappedProvider.open('inactive-a', undefined, { skipSeed: true })
+    await cappedProvider.open('inactive-b', undefined, { skipSeed: true })
+    const closed = await cappedProvider.closeIfInactive('held-note')
+    const openWhileHeld = cappedProvider.getOpenNoteIds()
+    await release()
+
+    expect({ closed, openWhileHeld, openAfterRelease: cappedProvider.getOpenNoteIds() }).toEqual({
+      closed: false,
+      openWhileHeld: ['held-note', 'inactive-b'],
+      openAfterRelease: ['inactive-b']
+    })
+    await cappedProvider.destroy()
+  })
+
   describe('snapshot of a doc the LRU evicts', () => {
     let now = 1_000
     let cappedProvider: CrdtProvider

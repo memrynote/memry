@@ -42,6 +42,8 @@ vi.mock('../../lib/logger', () => ({
 }))
 
 vi.mock('../http-client', () => ({
+  RateLimitError: class extends Error {},
+  SyncServerError: class extends Error {},
   fetchCrdtSnapshot: async () => {
     const snapshot = h.server?.snapshot
     if (!snapshot) return null
@@ -155,7 +157,10 @@ vi.mock('../local-mutations', () => ({
 
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { getCrdtProvider, resetCrdtProvider, type SnapshotPushFn } from '../crdt-provider'
-import type { NoteBodyOutbox } from '../note-body-outbox'
+import { NoteBodyOutbox } from '../note-body-outbox'
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
+import { createTestDataDb } from '@tests/utils/test-db'
 import { hasPendingWriteback } from '../crdt-writeback'
 import { feedExternalEditToCrdt } from '../crdt-external-feed'
 import { owesFileBody } from '../crdt-owed-file-body'
@@ -758,6 +763,82 @@ describe('CrdtProvider with no store (#2536)', () => {
         })
       }
     )
+
+    it('reaches the server and stays in the file when the outbox flushes its row at once', async () => {
+      await serveNoteWithPeerEdit()
+      putNoteInVault(EXPECTED_BODY)
+      const testDb = createTestDataDb()
+      h.db = testDb.db
+      const { provider, coordinator, pushUpdate } = await startRuntime()
+      const outbox = new NoteBodyOutbox({
+        queue: new SyncQueueManager(testDb.db as unknown as DrizzleDb),
+        push: async (_noteId, updates) => updates.forEach(pushUpdate)
+      })
+      outbox.start()
+      outbox.enableFullStateFlush((noteId) =>
+        readMergedFullState(
+          provider,
+          noteId,
+          (id) => coordinator.pullCrdtForNote(id),
+          () => false
+        )
+      )
+      await provider.init(outbox)
+
+      putNoteInVault(EDITED_BODY)
+      await feedExternalEditToCrdt(NOTE, EDITED_BODY)
+      await vi.waitFor(() => expect(outbox.getOutstandingCount()).toBe(0), { timeout: 5000 })
+      const afterFlush = { owed: owesFileBody(NOTE), versions: [...h.versions] }
+      await coordinator.pullCrdtForNotes([NOTE])
+      const file = await fileBodyAfterWriteback()
+      outbox.stop()
+
+      expect({ afterFlush, server: await bodyAfterPull(), file }).toEqual({
+        afterFlush: { owed: false, versions: [PEER_VERSION] },
+        server: EDITED_BODY,
+        file: EDITED_BODY
+      })
+    })
+
+    it('a pass that closes the doc during the flush merge leaves it open for the take', async () => {
+      await serveNoteWithPeerEdit()
+      const { provider, coordinator, pushUpdate } = await startRuntime()
+      putNoteInVault(LAGGING_EDIT)
+      await feedExternalEditToCrdt(NOTE, LAGGING_EDIT)
+
+      const state = await readMergedFullState(
+        provider,
+        NOTE,
+        async (id) => {
+          await provider.closeIfInactive(id)
+          return coordinator.pullCrdtForNote(id)
+        },
+        () => false
+      )
+      if (state) pushUpdate(state)
+
+      expect({ server: await bodyAfterPull(), versions: h.versions }).toEqual({
+        server: LAGGING_EDIT,
+        versions: [PEER_VERSION]
+      })
+    })
+
+    it('a merge that lands after its doc closed leaves the marker and the closed doc alone', async () => {
+      await serveNoteWithPeerEdit()
+      const { provider } = await startRuntime()
+      putNoteInVault(LAGGING_EDIT)
+      await feedExternalEditToCrdt(NOTE, LAGGING_EDIT)
+      const closed = await provider.open(NOTE, undefined, { skipSeed: true })
+      await provider.closeIfInactive(NOTE)
+
+      const took = await provider.takeFileAfterMerge(NOTE, closed)
+
+      expect({
+        took,
+        owed: owesFileBody(NOTE),
+        blocks: closed.getXmlFragment(CRDT_FRAGMENT_NAME).length
+      }).toEqual({ took: false, owed: true, blocks: 0 })
+    })
 
     it('an editor open whose server merge outlasts its timeout leaves the file to the flush', async () => {
       await serveNoteWithPeerEdit()
