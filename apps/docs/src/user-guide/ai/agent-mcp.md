@@ -534,9 +534,10 @@ A desktop API call on a filed PDF, image, audio file, or video, such as `notes.g
 `notes.rename`, returns the file's metadata in place of the note: `id`, `path`, `title`, `fileType`,
 `mimeType`, `fileSize`, `created`, `modified`, `contentOmitted: true`, and `contentAccess`, a
 sentence that names how to read the content. Images are read through the vision tool and PDFs
-through their extracted text. Audio and video return metadata only. A reply longer than 100 KB of
-JSON text comes back as `{ truncated: true, totalChars, message, partial }`, where `partial` holds
-the start of the JSON reply, cut so the whole reply stays within 100 KB.
+through their extracted text. Audio and video return metadata only. A reply whose JSON is longer
+than 100 KB in UTF-8 bytes comes back as `{ truncated: true, totalBytes, message, partial }`.
+`partial` holds the start of the JSON reply, cut on a character boundary so the whole reply stays
+within 100 KB. It is not valid JSON on its own.
 
 `notes.resolveWikiTarget` follows a wiki link the way the editor does: `Meeting#Decisions` resolves
 to the note `Meeting` and reports `heading: "Decisions"`, while a note genuinely titled `Sprint #4`

@@ -1,7 +1,7 @@
 import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
 import type { NoteFileType } from '@memry/contracts/search-api'
 
-const DESKTOP_API_REPLY_MAX_CHARS = 100 * 1024
+const DESKTOP_API_REPLY_MAX_BYTES = 100 * 1024
 
 type FiledFileType = Exclude<NoteFileType, 'markdown'>
 
@@ -27,7 +27,7 @@ interface FiledFileMetadata {
 
 interface TruncatedDesktopApiReply {
   truncated: true
-  totalChars: number
+  totalBytes: number
   message: string
   partial: string
 }
@@ -77,15 +77,21 @@ function withoutFileBodies(
   )
 }
 
-function truncatedReply(text: string, end: number): TruncatedDesktopApiReply {
+function utf8Bytes(value: string): number {
+  return Buffer.byteLength(value, 'utf8')
+}
+
+function truncatedReply(text: string, totalBytes: number, end: number): TruncatedDesktopApiReply {
+  const partial = text.slice(0, /[\uD800-\uDBFF]/.test(text.charAt(end - 1)) ? end - 1 : end)
   return {
     truncated: true,
-    totalChars: text.length,
+    totalBytes,
     message:
-      `Reply cut at ${end} of ${text.length} characters. ` +
-      'partial holds the start of the JSON reply. The rest is not returned. Call an operation ' +
-      'that returns less, such as a list with a smaller limit, or vault_read_note for a note body.',
-    partial: text.slice(0, end)
+      `Reply cut at ${utf8Bytes(partial)} of ${totalBytes} bytes. ` +
+      'partial holds the start of the JSON reply and is not valid JSON on its own. ' +
+      'The rest is not returned. Call an operation that returns less, such as a list with a ' +
+      'smaller limit, or vault_read_note for a note body.',
+    partial
   }
 }
 
@@ -95,17 +101,18 @@ export function shapeDesktopApiReply(
 ): unknown {
   const shaped = withoutFileBodies(data, fileRowOf)
   const text = JSON.stringify(shaped) ?? ''
-  if (text.length <= DESKTOP_API_REPLY_MAX_CHARS) return shaped
+  const totalBytes = utf8Bytes(text)
+  if (totalBytes <= DESKTOP_API_REPLY_MAX_BYTES) return shaped
 
   // `partial` is escaped again when the reply is serialized, so the cut point
   // shrinks until the whole serialized reply fits.
-  let end = DESKTOP_API_REPLY_MAX_CHARS
-  let reply = truncatedReply(text, end)
-  let replyChars = JSON.stringify(reply).length
-  while (replyChars > DESKTOP_API_REPLY_MAX_CHARS) {
-    end = Math.min(end - 1, Math.floor((end * DESKTOP_API_REPLY_MAX_CHARS) / replyChars))
-    reply = truncatedReply(text, end)
-    replyChars = JSON.stringify(reply).length
+  let end = Math.min(text.length, DESKTOP_API_REPLY_MAX_BYTES)
+  let reply = truncatedReply(text, totalBytes, end)
+  let replyBytes = utf8Bytes(JSON.stringify(reply))
+  while (replyBytes > DESKTOP_API_REPLY_MAX_BYTES) {
+    end = Math.min(end - 1, Math.floor((end * DESKTOP_API_REPLY_MAX_BYTES) / replyBytes))
+    reply = truncatedReply(text, totalBytes, end)
+    replyBytes = utf8Bytes(JSON.stringify(reply))
   }
   return reply
 }

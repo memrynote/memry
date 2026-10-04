@@ -224,7 +224,8 @@ export const TOOL_SCHEMAS = {
       'Run an allowlisted read-only desktop API operation through the memrynote window. ' +
       'A note in the reply that is a filed pdf/image/audio/video file comes back as its ' +
       'metadata with contentOmitted: true and contentAccess naming how to read it. A reply ' +
-      'over 100 KB of JSON text comes back as { truncated, totalChars, message, partial }. ' +
+      'whose JSON is over 100 KB in UTF-8 bytes comes back as ' +
+      '{ truncated, totalBytes, message, partial }. ' +
       'Calendar examples: calendar.listEvents with args [{}], calendar.getRange with args ' +
       '[{"startAt":"2026-05-14T00:00:00.000Z","endAt":"2026-06-15T00:00:00.000Z"}].'
   },
