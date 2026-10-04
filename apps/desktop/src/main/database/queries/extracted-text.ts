@@ -64,17 +64,29 @@ export function listFiledTextFiles(db: IndexDb, ids?: readonly string[]): FiledT
     .all() as FiledTextFile[]
 }
 
-/** The markdown notes among `ids`: the ones that can own an attachments folder. */
+/** Ids per query, well under SQLite's bound-parameter limit. */
+const ID_BATCH = 500
+
+/**
+ * The markdown notes among `ids`: the ones that can own an attachments folder.
+ * `ids` can be every folder name under `attachments/`, so it is looked up in batches.
+ */
 export function listMarkdownNotes(
   db: IndexDb,
   ids: readonly string[]
 ): Array<{ id: string; path: string }> {
-  if (ids.length === 0) return []
-  return db
-    .select({ id: noteCache.id, path: noteCache.path })
-    .from(noteCache)
-    .where(and(inArray(noteCache.id, [...ids]), eq(noteCache.fileType, 'markdown')))
-    .all()
+  const notes: Array<{ id: string; path: string }> = []
+  for (let start = 0; start < ids.length; start += ID_BATCH) {
+    const batch = ids.slice(start, start + ID_BATCH)
+    notes.push(
+      ...db
+        .select({ id: noteCache.id, path: noteCache.path })
+        .from(noteCache)
+        .where(and(inArray(noteCache.id, batch), eq(noteCache.fileType, 'markdown')))
+        .all()
+    )
+  }
+  return notes
 }
 
 /** Attachment jobs of the given notes, or of every note. */
