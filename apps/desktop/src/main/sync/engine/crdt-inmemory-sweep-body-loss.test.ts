@@ -823,6 +823,36 @@ describe('CrdtProvider with no store (#2536)', () => {
       })
     })
 
+    it('an editor that closes its tab during the flush merge fails that flush, and the next one takes the file', async () => {
+      await serveNoteWithPeerEdit()
+      const { provider, coordinator, flushFullStates } = await startRuntime()
+      putNoteInVault(LAGGING_EDIT)
+      await feedExternalEditToCrdt(NOTE, LAGGING_EDIT)
+      await provider.open(NOTE, EDITOR_WINDOW, { skipSeed: true })
+
+      const failed = await readMergedFullState(
+        provider,
+        NOTE,
+        async (id) => {
+          await provider.close(id, EDITOR_WINDOW)
+          return coordinator.pullCrdtForNote(id)
+        },
+        () => false
+      ).catch((err: Error) => err.message)
+      const afterFailedFlush = { failed, owed: owesFileBody(NOTE), server: await bodyAfterPull() }
+      await flushFullStates()
+
+      expect({ afterFailedFlush, server: await bodyAfterPull(), versions: h.versions }).toEqual({
+        afterFailedFlush: {
+          failed: 'Full-state doc was closed during the merge',
+          owed: true,
+          server: EXPECTED_BODY
+        },
+        server: LAGGING_EDIT,
+        versions: [PEER_VERSION]
+      })
+    })
+
     it('a merge that lands after its doc closed leaves the marker and the closed doc alone', async () => {
       await serveNoteWithPeerEdit()
       const { provider } = await startRuntime()
