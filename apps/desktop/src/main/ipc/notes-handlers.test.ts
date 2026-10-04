@@ -117,8 +117,6 @@ vi.mock('@memry/storage-data', () => ({
 }))
 
 vi.mock('../vault/property-definition-store', () => ({
-  createPropertyDefinitionRecord: vi.fn(),
-  updatePropertyDefinitionRecord: vi.fn(),
   deletePropertyDefinitionRecord: vi.fn()
 }))
 
@@ -133,7 +131,6 @@ import * as folderConfigEffects from '../notes/folder-config-effects'
 import * as noteQueries from '@main/database/queries/notes'
 import * as positionQueries from '@main/database/queries/note-positions'
 import * as storageData from '@memry/storage-data'
-import * as propertyDefinitionStore from '../vault/property-definition-store'
 
 describe('notes-handlers', () => {
   let mockDb: { run: Mock; get: Mock; all: Mock }
@@ -853,18 +850,6 @@ describe('notes-handlers', () => {
       const result = await invokeHandler(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS)
 
       expect(result).toEqual(mockDefs)
-    })
-
-    it('CREATE_PROPERTY_DEFINITION should create a definition', async () => {
-      const mockDef = { name: 'due', type: 'date' }
-      ;(propertyDefinitionStore.createPropertyDefinitionRecord as Mock).mockReturnValue(mockDef)
-
-      const result = await invokeHandler(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, {
-        name: 'due',
-        type: 'date'
-      })
-
-      expect(result).toEqual({ success: true, definition: mockDef })
     })
   })
 

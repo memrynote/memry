@@ -104,6 +104,24 @@ describe('property definitions reach .memry/properties.md', () => {
     expect(fileProperties()).toEqual({ Stage: { type: 'select', options } })
   })
 
+  it('updates a definition that note indexing wrote only to the database', async () => {
+    state
+      .dataDb!.db.insert(propertyDefinitions)
+      .values({ name: 'area', type: 'text', options: null, defaultValue: null, color: null })
+      .run()
+
+    const result = await invoke(NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION, {
+      name: 'area',
+      type: 'select',
+      options: [{ value: 'Work', color: 'blue' }]
+    })
+
+    expect(result).toMatchObject({ success: true, definition: { name: 'area', type: 'select' } })
+    expect(fileProperties()).toEqual({
+      area: { type: 'select', options: [{ value: 'Work', color: 'blue' }] }
+    })
+  })
+
   it('backfills database-only definitions once without touching file entries', async () => {
     writeFileSync(
       filePath,
@@ -119,11 +137,19 @@ describe('property definitions reach .memry/properties.md', () => {
       ])
       .run()
 
-    await PropertyDefinitionsService.get().reload({ includeUnclocked: true })
+    await PropertyDefinitionsService.get().reloadOnOpen()
 
     expect(fileProperties()).toEqual({
       Stage: { type: 'select', options: [{ value: 'Draft', color: 'gray' }] },
       Rating: { type: 'number', options: [] }
     })
+
+    state
+      .dataDb!.db.insert(propertyDefinitions)
+      .values({ name: 'Mood', type: 'text', options: null, defaultValue: null, color: null })
+      .run()
+    await PropertyDefinitionsService.get().reloadOnOpen()
+
+    expect(Object.keys(fileProperties() as object)).toEqual(['Stage', 'Rating'])
   })
 })

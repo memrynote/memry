@@ -4,6 +4,7 @@ import { createLogger } from '../lib/logger'
 import { atomicWrite, safeRead } from './file-ops'
 import { getMemryDir } from './init'
 import { getDatabase, getIndexDatabase, type DataDb, type IndexDb } from '../database'
+import { getSetting, setSetting } from '../database/queries/settings'
 import {
   PropertyDefinitionsFileSchema,
   type PropertyDefinition,
@@ -21,11 +22,13 @@ import {
   enqueuePropertyDefinitionUpsert,
   readPropertyDefinitionRow
 } from './property-definition-sync-effects'
-import { isNotNull } from 'drizzle-orm'
+import { eq, isNotNull } from 'drizzle-orm'
 
 const logger = createLogger('PropertyDefinitions')
 
 const PROPERTIES_FILE = 'properties.md'
+
+const FILE_BACKFILL_SETTING = 'propertyDefinitionsFileBackfillV1'
 
 type WriteTask = () => Promise<void>
 
@@ -63,17 +66,41 @@ export class PropertyDefinitionsService {
     return path.join(getMemryDir(this.vaultPath), PROPERTIES_FILE)
   }
 
-  async reload(): Promise<void> {
+  /**
+   * The vault-open reload. The first one after an update also writes every
+   * definition that exists only in the data DB to the file, once per vault.
+   * It retries on the next open while the file cannot be parsed.
+   */
+  async reloadOnOpen(): Promise<void> {
+    const db = getDatabase()
+    if (getSetting(db, FILE_BACKFILL_SETTING) === 'done') {
+      await this.reload()
+      return
+    }
+    if (await this.reload({ includeUnclocked: true })) setSetting(db, FILE_BACKFILL_SETTING, 'done')
+  }
+
+  /**
+   * Resolves true once the file's state is applied, false when the file could
+   * not be parsed and the cache was left as it was.
+   *
+   * `includeUnclocked` also folds in rows that never synced. Older builds
+   * wrote non-select definitions to the data DB only, and the rebuild below
+   * deletes any row the cache lacks, so this has to run in the reload itself.
+   */
+  async reload({
+    includeUnclocked = false
+  }: { includeUnclocked?: boolean } = {}): Promise<boolean> {
     const raw = await safeRead(this.filePath)
     if (!raw) {
       // No file yet is the normal state of a device that has just been linked,
       // and its first pull can land definitions before anything writes one.
       // Clearing the cache without the union would delete them again.
       this.cache.clear()
-      const gained = this.mergeSyncedDefinitions()
+      const gained = this.mergeDatabaseDefinitions(includeUnclocked)
       this.rebuildDbCache()
       if (gained) await this.persistToFile()
-      return
+      return true
     }
 
     try {
@@ -82,36 +109,38 @@ export class PropertyDefinitionsService {
 
       if (!parsed.success) {
         logger.warn('Invalid properties.md format, keeping last-known-good cache:', parsed.error)
-        return
+        return false
       }
 
       this.applyParsedData(parsed.data)
-      const gained = this.mergeSyncedDefinitions()
+      const gained = this.mergeDatabaseDefinitions(includeUnclocked)
       this.rebuildDbCache()
       // A definition that arrived over sync exists only as a data DB row until
       // this write. `applyParsedData` above clears the cache from the file, so
       // without the union plus this persist the very next pull would rebuild
       // the DB from the file alone and delete the row that just landed.
       if (gained || healed) await this.persistToFile()
+      return true
     } catch (err) {
       logger.warn('Failed to parse properties.md, keeping last-known-good cache:', err)
+      return false
     }
   }
 
   /**
-   * Fold the clocked data DB rows into the cache, and report whether the file
-   * is now out of date.
+   * Fold the clocked data DB rows, or every row when `includeUnclocked`, into
+   * the cache, and report whether the file is now out of date.
    *
    * Union only. The file wins for any name it already covers — it is what a
    * human edits, and the pull path has already resolved that name's clock.
    */
-  private mergeSyncedDefinitions(): boolean {
+  private mergeDatabaseDefinitions(includeUnclocked: boolean): boolean {
     let gained = false
     try {
       const rows = getDatabase()
         .select()
         .from(propertyDefinitionsTable)
-        .where(isNotNull(propertyDefinitionsTable.clock))
+        .where(includeUnclocked ? undefined : isNotNull(propertyDefinitionsTable.clock))
         .all()
       for (const row of rows) {
         if (this.cache.has(row.name)) continue
@@ -152,6 +181,22 @@ export class PropertyDefinitionsService {
 
   get(name: string): PropertyDefinition | undefined {
     return this.cache.get(name)
+  }
+
+  /**
+   * The cached definition, or the data DB row the cache has not taken in yet.
+   * Note indexing writes inferred rows straight to the DB, and the list call
+   * shows them, so an update by that name must find them.
+   */
+  find(name: string): PropertyDefinition | undefined {
+    const cached = this.cache.get(name)
+    if (cached) return cached
+    const row = getDatabase()
+      .select()
+      .from(propertyDefinitionsTable)
+      .where(eq(propertyDefinitionsTable.name, name))
+      .get()
+    return row ? (definitionFromRow(row) ?? undefined) : undefined
   }
 
   async upsert(definition: PropertyDefinition): Promise<void> {

@@ -65,16 +65,16 @@ const mocks = vi.hoisted(() => {
     syncFolderConfigRename: vi.fn(),
     syncFolderConfigDelete: vi.fn(),
     setNoteLocalOnlyCommand: vi.fn(),
-    createPropertyDefinitionRecord: vi.fn(),
-    updatePropertyDefinitionRecord: vi.fn(),
     deletePropertyDefinitionRecord: vi.fn(),
     countLocalOnlyNoteMetadata: vi.fn(),
+    getPropertyDefinition: vi.fn(),
     listPropertyDefinitions: vi.fn(),
     emitNoteAttachmentSaved: vi.fn(),
     getVaultStatus: vi.fn(() => ({ path: null }) as { path: string | null }),
     renderNoteAsHtml: vi.fn(() => '<html><body>note</body></html>'),
     service: {
       get: vi.fn(),
+      find: vi.fn(),
       upsert: vi.fn(),
       addOption: vi.fn(),
       addStatusOption: vi.fn(),
@@ -174,8 +174,6 @@ vi.mock('../notes/folder-config-effects', () => ({
 }))
 
 vi.mock('../vault/property-definition-store', () => ({
-  createPropertyDefinitionRecord: mocks.createPropertyDefinitionRecord,
-  updatePropertyDefinitionRecord: mocks.updatePropertyDefinitionRecord,
   deletePropertyDefinitionRecord: mocks.deletePropertyDefinitionRecord
 }))
 
@@ -217,6 +215,7 @@ vi.mock('../telemetry/track', () => ({
 
 vi.mock('@memry/storage-data', () => ({
   countLocalOnlyNoteMetadata: mocks.countLocalOnlyNoteMetadata,
+  getPropertyDefinition: mocks.getPropertyDefinition,
   listPropertyDefinitions: mocks.listPropertyDefinitions
 }))
 
@@ -391,7 +390,7 @@ describe('notes-handlers extra coverage', () => {
   })
 
   it('handles property definition and option mutation branches', async () => {
-    mocks.createPropertyDefinitionRecord.mockReturnValue({ name: 'Rating', type: 'number' })
+    mocks.getPropertyDefinition.mockReturnValueOnce({ name: 'Rating', type: 'number' })
 
     expect(
       successful(
@@ -403,15 +402,13 @@ describe('notes-handlers extra coverage', () => {
         })
       )
     ).toEqual({ success: true, definition: { name: 'Rating', type: 'number' } })
-    expect(mocks.createPropertyDefinitionRecord).toHaveBeenCalledWith({
+    expect(mocks.service.upsert).toHaveBeenCalledWith({
       name: 'Rating',
       type: PropertyTypes.NUMBER,
-      options: null,
-      defaultValue: '5',
-      color: 'blue'
+      options: undefined,
+      defaultValue: '5'
     })
 
-    mocks.service.get.mockReturnValueOnce({ name: 'Status', type: 'status' })
     await invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, {
       name: 'Status',
       type: PropertyTypes.STATUS,
@@ -424,7 +421,7 @@ describe('notes-handlers extra coverage', () => {
       defaultValue: 'true'
     })
 
-    mocks.service.get.mockReturnValueOnce(null)
+    mocks.service.find.mockReturnValueOnce(undefined)
     expect(
       await invoke(NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION, {
         name: 'Missing',
@@ -436,7 +433,7 @@ describe('notes-handlers extra coverage', () => {
       error: 'system:error.definitionNotFound'
     })
 
-    mocks.service.get.mockReturnValueOnce({ name: 'Status', type: 'status', options: [] })
+    mocks.service.find.mockReturnValueOnce({ name: 'Status', type: 'status', options: [] })
     await invoke(NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION, {
       name: 'Status',
       type: PropertyTypes.STATUS,

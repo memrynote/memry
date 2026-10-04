@@ -119,14 +119,14 @@ import {
 } from '../notes/store'
 import { getIndexDatabase, getDatabase } from '../database'
 import { resolveWikiTarget } from '@memry/shared/wiki-target'
-import { countLocalOnlyNoteMetadata, listPropertyDefinitions } from '@memry/storage-data'
+import {
+  countLocalOnlyNoteMetadata,
+  getPropertyDefinition,
+  listPropertyDefinitions
+} from '@memry/storage-data'
 import { getNotesInFolder, reorderNotesInFolder, getAllNotePositions } from '../notes/store'
 import { emitNoteAttachmentSaved } from '../notes/runtime-effects'
-import {
-  createPropertyDefinitionRecord,
-  deletePropertyDefinitionRecord,
-  updatePropertyDefinitionRecord
-} from '../vault/property-definition-store'
+import { deletePropertyDefinitionRecord } from '../vault/property-definition-store'
 import { trackMainEvent } from '../telemetry/track'
 import { trackMainError } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
@@ -646,30 +646,18 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.CREATE_PROPERTY_DEFINITION,
     CreatePropertyDefinitionSchema,
     async (input) => {
-      const isSelectType =
-        input.type === 'status' || input.type === 'select' || input.type === 'multiselect'
-
-      if (isSelectType) {
-        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-        const service = PropertyDefinitionsService.get()
-        await service.upsert({
-          name: input.name,
-          type: input.type,
-          options: input.type !== 'status' ? input.options : undefined,
-          defaultValue:
-            input.defaultValue != null ? stringifyDefaultValue(input.defaultValue) : undefined
-        })
-        return { success: true as const, definition: service.get(input.name) }
-      }
-
-      const definition = createPropertyDefinitionRecord({
+      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+      await PropertyDefinitionsService.get().upsert({
         name: input.name,
         type: input.type,
-        options: input.options ? JSON.stringify(input.options) : null,
-        defaultValue: input.defaultValue ? JSON.stringify(input.defaultValue) : null,
-        color: input.color ?? null
+        options: input.type !== 'status' ? input.options : undefined,
+        defaultValue:
+          input.defaultValue != null ? stringifyDefaultValue(input.defaultValue) : undefined
       })
-      return { success: true as const, definition }
+      return {
+        success: true as const,
+        definition: getPropertyDefinition(getDatabase(), input.name) ?? null
+      }
     },
     'errors:property.createDefinitionFailed'
   )
@@ -679,41 +667,29 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION,
     UpdatePropertyDefinitionSchema,
     async (input) => {
-      const isSelectType =
-        input.type === 'status' || input.type === 'select' || input.type === 'multiselect'
+      const { PropertyDefinitionsService } = await import('../vault/property-definitions')
+      const service = PropertyDefinitionsService.get()
+      const existing = service.find(input.name)
+      if (!existing)
+        return {
+          success: false as const,
+          definition: null,
+          error: getMainI18n().t('system:error.definitionNotFound')
+        }
 
-      if (isSelectType) {
-        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
-        const service = PropertyDefinitionsService.get()
-        const existing = service.get(input.name)
-        if (!existing)
-          return {
-            success: false as const,
-            definition: null,
-            error: getMainI18n().t('system:error.definitionNotFound')
-          }
-
-        await service.upsert({
-          ...existing,
-          name: input.name,
-          type: input.type ?? existing.type,
-          options: input.options ?? existing.options,
-          defaultValue:
-            input.defaultValue != null
-              ? stringifyDefaultValue(input.defaultValue)
-              : existing.defaultValue
-        })
-        return { success: true as const, definition: service.get(input.name) }
-      }
-
-      const { name, ...updates } = input
-      const definition = updatePropertyDefinitionRecord(name, {
-        type: updates.type,
-        options: updates.options ? JSON.stringify(updates.options) : undefined,
-        defaultValue: updates.defaultValue ? JSON.stringify(updates.defaultValue) : undefined,
-        color: updates.color
+      await service.upsert({
+        ...existing,
+        type: input.type ?? existing.type,
+        options: input.options ?? existing.options,
+        defaultValue:
+          input.defaultValue != null
+            ? stringifyDefaultValue(input.defaultValue)
+            : existing.defaultValue
       })
-      return { success: true as const, definition }
+      return {
+        success: true as const,
+        definition: getPropertyDefinition(getDatabase(), input.name) ?? null
+      }
     },
     'errors:property.updateDefinitionFailed'
   )

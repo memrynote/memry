@@ -264,7 +264,7 @@ vi.mock('../projections/projectors/inbox-stats-projector', () => ({
 vi.mock('./property-definitions', () => ({
   PropertyDefinitionsService: {
     init: vi.fn(() => ({
-      reload: (...args: unknown[]) => mocks.reloadPropertyDefinitions(...args)
+      reloadOnOpen: (...args: unknown[]) => mocks.reloadPropertyDefinitions(...args)
     })),
     destroy: (...args: unknown[]) => mocks.destroyPropertyDefinitions(...args)
   }
