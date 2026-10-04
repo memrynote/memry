@@ -25,7 +25,7 @@ import {
   TaskReorderSchema,
   TaskUpdateSchema
 } from '@memry/contracts/tasks-api'
-import { requireDatabase, type DataDb } from '../database'
+import { getIndexDatabase, requireDatabase, type DataDb } from '../database'
 import { createLogger } from '../lib/logger'
 import { generateId } from '../lib/id'
 import { createHandler, createStringHandler, createValidatedHandler, withDb } from './validate'
@@ -33,6 +33,7 @@ import { createDesktopTasksDomain } from '../tasks/domain'
 import { getTaskActivity } from '../tasks/activity-history'
 import { captureUrlToProject } from '../tasks/capture-url'
 import { importFilesToProject } from '../tasks/import-files-to-project'
+import { withoutMissingVaultItems } from '../tasks/project-contents'
 import { linkProjectItem, unlinkProjectItem } from '../tasks/project-item-links'
 import {
   captureProjectName,
@@ -366,7 +367,12 @@ export function registerTasksHandlers(): void {
 
   ipcMain.handle(
     TasksChannels.invoke.PROJECT_LIST_CONTENTS,
-    createStringHandler(async (id) => createTaskDomain(requireDatabase()).listProjectContents(id))
+    createStringHandler(async (id) =>
+      withoutMissingVaultItems(
+        getIndexDatabase(),
+        createTaskDomain(requireDatabase()).listProjectContents(id)
+      )
+    )
   )
 
   ipcMain.handle(
