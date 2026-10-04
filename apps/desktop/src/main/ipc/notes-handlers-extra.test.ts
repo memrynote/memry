@@ -72,6 +72,7 @@ const mocks = vi.hoisted(() => {
     emitNoteAttachmentSaved: vi.fn(),
     getVaultStatus: vi.fn(() => ({ path: null }) as { path: string | null }),
     renderNoteAsHtml: vi.fn(() => '<html><body>note</body></html>'),
+    getCustomIcon: vi.fn(),
     service: {
       get: vi.fn(),
       find: vi.fn(),
@@ -187,6 +188,8 @@ vi.mock('../vault/property-definitions', () => ({
     get: () => mocks.service
   }
 }))
+
+vi.mock('../icons/store', () => ({ getCustomIcon: mocks.getCustomIcon }))
 
 vi.mock('../lib/export-utils', () => ({
   renderNoteAsHtml: mocks.renderNoteAsHtml,
@@ -660,6 +663,68 @@ describe('notes-handlers extra coverage', () => {
       '/tmp/Daily_note.html',
       `<html><body><img src="data:image/png;base64,${PNG_BASE64}"></body></html>`,
       'utf-8'
+    )
+  })
+
+  it('exports tasks without their ids unless the caller keeps them', async () => {
+    const actual =
+      await vi.importActual<typeof import('../lib/export-utils')>('../lib/export-utils')
+    mocks.renderNoteAsHtml.mockImplementation(actual.renderNoteAsHtml)
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-a',
+      path: 'Note.md',
+      title: 'Daily note',
+      content: '- [ ] Pack bags {task:t1}',
+      emoji: null,
+      tags: [],
+      created: new Date('2026-05-10T00:00:00.000Z'),
+      modified: new Date('2026-05-10T00:00:00.000Z')
+    })
+    mocks.getVaultStatus.mockReturnValue({ path: vaultPath })
+    const exportedHtml = async (input: Record<string, unknown>): Promise<string> => {
+      mocks.fsWriteFile.mockClear()
+      await invoke(NotesChannels.invoke.EXPORT_HTML, {
+        noteId: 'note-a',
+        outputPath: '/tmp/Daily_note.html',
+        ...input
+      })
+      return mocks.fsWriteFile.mock.calls.at(-1)?.[1] as string
+    }
+
+    const plain = await exportedHtml({})
+    expect(plain).toContain('<li><input disabled="" type="checkbox"> Pack bags</li>')
+    expect(plain).not.toContain('{task:')
+
+    expect(await exportedHtml({ includeTaskMarkers: true })).toContain(
+      '<li><input disabled="" type="checkbox"> Pack bags {task:t1}</li>'
+    )
+  })
+
+  it("carries the note's uploaded icon into the export", async () => {
+    const actual =
+      await vi.importActual<typeof import('../lib/export-utils')>('../lib/export-utils')
+    mocks.renderNoteAsHtml.mockImplementation(actual.renderNoteAsHtml)
+    mocks.getCustomIcon.mockReturnValue({ ext: 'png', data: PNG_BASE64 })
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-a',
+      path: 'Note.md',
+      title: 'Daily note',
+      content: '# Today',
+      emoji: 'custom:icon-1',
+      tags: [],
+      created: new Date('2026-05-10T00:00:00.000Z'),
+      modified: new Date('2026-05-10T00:00:00.000Z')
+    })
+    mocks.getVaultStatus.mockReturnValue({ path: vaultPath })
+
+    await invoke(NotesChannels.invoke.EXPORT_HTML, {
+      noteId: 'note-a',
+      outputPath: '/tmp/Daily_note.html'
+    })
+
+    expect(mocks.getCustomIcon).toHaveBeenCalledWith({ id: 'data-db' }, 'icon-1')
+    expect(mocks.fsWriteFile.mock.calls.at(-1)?.[1]).toContain(
+      `<img class="note-emoji" src="data:image/png;base64,${PNG_BASE64}" alt="">`
     )
   })
 
