@@ -103,11 +103,12 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function mountEditor(initialContent?: PartialBlock[]): BlockNoteEditor {
+function mountEditor(initialContent?: PartialBlock[], schema?: any): BlockNoteEditor {
   const editor = BlockNoteEditor.create({
     pasteHandler: handleEditorPaste,
+    ...(schema ? { schema } : {}),
     ...(initialContent ? { initialContent: initialContent as any } : {})
-  })
+  }) as BlockNoteEditor
   const el = document.createElement('div')
   document.body.appendChild(el)
   editor.mount(el)
@@ -194,7 +195,7 @@ describe('buildBlockClipboard', () => {
     expect(data.markdown).toBe(['Intro', '', '- Clothes', '  - Socks', '', 'Outro'].join('\n'))
   })
 
-  it('writes a task as its plain checkbox and keeps the task on the paste-back flavour', async () => {
+  it('writes a task as its plain checkbox and pastes it back as the same task', async () => {
     const schema = BlockNoteSchema.create({
       blockSpecs: {
         ...defaultBlockSpecs,
@@ -207,25 +208,17 @@ describe('buildBlockClipboard', () => {
         })()
       }
     })
-    const editor = BlockNoteEditor.create({
-      schema,
-      initialContent: [
-        {
-          id: 'task',
-          type: 'taskBlock',
-          props: { taskId: 't1', title: 'Pack bags', checked: true }
-        }
-      ]
-    })
-    const el = document.createElement('div')
-    document.body.appendChild(el)
-    editor.mount(el)
-    mounted.push({ editor: editor as any, el })
+    const task = { taskId: 't1', title: 'Pack bags', checked: true, parentTaskId: '' }
+    const source = mountEditor([{ id: 'task', type: 'taskBlock', props: task } as any], schema)
+    const target = mountEditor(undefined, schema)
 
-    const data = await clipboardFor(editor as any, ['task'])
+    const data = await clipboardFor(source, ['task'])
+    pasteInto(target, data)
 
     expect(data.markdown).toBe('- [x] Pack bags')
-    expect(data.blocknoteHTML).toContain('data-task-id="t1"')
+    expect(target.document.map((block: any) => [block.type, block.props])).toEqual([
+      ['taskBlock', task]
+    ])
   })
 
   it('returns null when no id resolves', async () => {

@@ -7,7 +7,9 @@
  *   nodes. Pasting back into a Memry editor reads this first, so the blocks
  *   come back as they were: colours, toggles, callouts, task blocks.
  * - `text/html`: BlockNote's external HTML, for rich paste into other apps.
- * - `text/plain`: the blocks as Memry writes them to the note file.
+ * - `text/plain`: the blocks as Memry writes them to the note file, minus
+ *   each task's `{task:<id>}`. The id means nothing outside Memry, and the
+ *   paste back keeps the task through `blocknote/html`.
  *
  * `blocknote/html` matters for the paste back. Without it BlockNote's paste
  * handler sniffs `text/plain`, finds markdown and parses that instead of the
@@ -21,6 +23,7 @@
 
 import { getNodeById, type Block } from '@blocknote/core'
 import { Fragment, Slice, type Node as ProseMirrorNode } from '@tiptap/pm/model'
+import { stripTaskBlockSuffixes } from '@memry/shared/task-block'
 import { createLogger } from '@/lib/logger'
 import { serializeBlocksPreservingBlanks } from './markdown-utils'
 import { getBlockSelection } from './marquee-block-registry'
@@ -79,7 +82,9 @@ export async function buildBlockClipboard(
   const slice = new Slice(Fragment.fromArray(nodes), 0, 0)
   const blocknoteHTML = view.serializeForClipboard(slice).dom.innerHTML
   const html: string = editor.blocksToHTMLLossy(blocks)
-  const markdown = (await serializeBlocksPreservingBlanks(editor, blocks)).trim()
+  const markdown = stripTaskBlockSuffixes(
+    (await serializeBlocksPreservingBlanks(editor, blocks)).trim()
+  )
 
   return { blocknoteHTML, html, markdown }
 }

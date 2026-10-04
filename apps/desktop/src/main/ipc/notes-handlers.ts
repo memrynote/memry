@@ -212,6 +212,7 @@ const ExportNoteSchema = z.object({
   noteId: z.string().min(1),
   includeMetadata: z.boolean().default(true),
   pageSize: z.enum(['A4', 'Letter', 'Legal']).default('A4'),
+  includeTaskMarkers: z.boolean().default(false),
   // Headless export target — when provided, skip the save dialog (Agent MCP).
   outputPath: z.string().min(1).optional()
 })
@@ -223,7 +224,10 @@ const ExportNoteSchema = z.object({
  * no base URL to resolve a relative `<img src>` against, and an exported
  * `.html` only kept its images while it sat next to the attachments (#1935).
  */
-async function renderNoteForExport(note: Note, includeMetadata: boolean): Promise<string> {
+async function renderNoteForExport(
+  note: Note,
+  { includeMetadata, includeTaskMarkers }: { includeMetadata: boolean; includeTaskMarkers: boolean }
+): Promise<string> {
   const html = renderNoteAsHtml(
     {
       id: note.id,
@@ -234,7 +238,11 @@ async function renderNoteForExport(note: Note, includeMetadata: boolean): Promis
       created: note.created,
       modified: note.modified
     },
-    { includeMetadata, findCustomIcon: (id) => getCustomIcon(getDatabase(), id) }
+    {
+      includeMetadata,
+      includeTaskMarkers,
+      findCustomIcon: (id) => getCustomIcon(getDatabase(), id)
+    }
   )
   return inlineExportImages(html, { notePath: note.path, vaultPath: getVaultStatus().path })
 }
@@ -1026,7 +1034,7 @@ export function registerNotesHandlers(): void {
         targetPath = result.filePath
       }
 
-      const html = await renderNoteForExport(note, input.includeMetadata)
+      const html = await renderNoteForExport(note, input)
 
       const win = new BrowserWindow({
         show: false,
@@ -1114,7 +1122,7 @@ export function registerNotesHandlers(): void {
         targetPath = result.filePath
       }
 
-      const html = await renderNoteForExport(note, input.includeMetadata)
+      const html = await renderNoteForExport(note, input)
 
       await fs.writeFile(targetPath, html, 'utf-8')
 
