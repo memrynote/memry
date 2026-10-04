@@ -246,6 +246,17 @@
       "error": "Erro",
       "success": "Sucesso"
     },
+    "columns": {
+      "group": "Blocos básicos",
+      "two": {
+        "title": "Duas colunas",
+        "subtext": "Coloque blocos lado a lado em duas colunas"
+      },
+      "three": {
+        "title": "Três colunas",
+        "subtext": "Coloque blocos lado a lado em três colunas"
+      }
+    },
     "diagram": {
       "title": "Diagrama",
       "subtext": "Fluxograma, diagrama de sequência ou de Gantt a partir de código Mermaid"

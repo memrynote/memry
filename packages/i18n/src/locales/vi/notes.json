@@ -246,6 +246,17 @@
       "error": "Lỗi",
       "success": "Thành công"
     },
+    "columns": {
+      "group": "Khối cơ bản",
+      "two": {
+        "title": "Hai cột",
+        "subtext": "Đặt các khối cạnh nhau trong hai cột"
+      },
+      "three": {
+        "title": "Ba cột",
+        "subtext": "Đặt các khối cạnh nhau trong ba cột"
+      }
+    },
     "diagram": {
       "title": "Sơ đồ",
       "subtext": "Lưu đồ, sơ đồ tuần tự hoặc biểu đồ Gantt từ mã Mermaid"

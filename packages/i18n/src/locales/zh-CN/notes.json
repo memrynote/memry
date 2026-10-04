@@ -246,6 +246,17 @@
       "error": "错误",
       "success": "成功"
     },
+    "columns": {
+      "group": "基本块",
+      "two": {
+        "title": "两列",
+        "subtext": "将块并排放在两列中"
+      },
+      "three": {
+        "title": "三列",
+        "subtext": "将块并排放在三列中"
+      }
+    },
     "diagram": {
       "title": "图表",
       "subtext": "用 Mermaid 源码绘制流程图、时序图或甘特图"

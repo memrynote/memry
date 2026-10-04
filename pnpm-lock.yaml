@@ -212,6 +212,9 @@ importers:
       '@blocknote/xl-ai':
         specifier: ^0.54.2
         version: 0.54.2(@floating-ui/dom@1.8.0)(@tiptap/pm@3.31.3)(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(y-prosemirror@1.3.7(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)(zod@4.3.6)
+      '@blocknote/xl-multi-column':
+        specifier: ^0.54.2
+        version: 0.54.2(@floating-ui/dom@1.8.0)(@tiptap/pm@3.31.3)(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(y-prosemirror@1.3.7(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -1173,6 +1176,9 @@ importers:
       '@memry/shared':
         specifier: workspace:*
         version: link:../shared
+      '@tiptap/core':
+        specifier: ^3.31.3
+        version: 3.31.3(@tiptap/pm@3.31.3)
     devDependencies:
       '@blocknote/server-util':
         specifier: 0.54.2
@@ -2213,6 +2219,12 @@ packages:
 
   '@blocknote/xl-ai@0.54.2':
     resolution: {integrity: sha512-e1z5owT5P6eCE9IF6Rw/KKZcjk2Vnj3xOsxLy9WTkQbcyPfRZf0NgLcynY6y0UxPEr6OS/DH+eufLrYlQo8ecQ==}
+    peerDependencies:
+      react: ^18.0 || ^19.0 || >= 19.0.0-rc
+      react-dom: ^18.0 || ^19.0 || >= 19.0.0-rc
+
+  '@blocknote/xl-multi-column@0.54.2':
+    resolution: {integrity: sha512-pgizzc7dnvPypEP+OR4DJH6Jph3zdrC/75qccJsc/1TmOjP90XnUOzdGtbZ+EIHDZ2vd/++7bIllE3ytPYUcTA==}
     peerDependencies:
       react: ^18.0 || ^19.0 || >= 19.0.0-rc
       react-dom: ^18.0 || ^19.0 || >= 19.0.0-rc
@@ -16141,6 +16153,35 @@ snapshots:
       - y-protocols
       - yjs
       - zod
+
+  '@blocknote/xl-multi-column@0.54.2(@floating-ui/dom@1.8.0)(@tiptap/pm@3.31.3)(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(y-prosemirror@1.3.7(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)':
+    dependencies:
+      '@blocknote/core': 0.54.2(@types/hast@3.0.5)(y-prosemirror@1.3.7(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)
+      '@blocknote/react': 0.54.2(@floating-ui/dom@1.8.0)(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(y-prosemirror@1.3.7(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)
+      '@tiptap/core': 3.31.3(@tiptap/pm@3.31.3)
+      prosemirror-model: 1.25.11
+      prosemirror-state: 1.4.4
+      prosemirror-view: 1.42.4
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+    transitivePeerDependencies:
+      - '@floating-ui/dom'
+      - '@lezer/common'
+      - '@lezer/highlight'
+      - '@tiptap/pm'
+      - '@types/hast'
+      - '@types/react'
+      - '@types/react-dom'
+      - '@y/prosemirror'
+      - '@y/protocols'
+      - '@y/y'
+      - highlight.js
+      - lowlight
+      - refractor
+      - sugar-high
+      - y-prosemirror
+      - y-protocols
+      - yjs
 
   '@braintree/sanitize-url@6.0.2': {}
 

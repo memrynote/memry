@@ -51,31 +51,14 @@ struct NoteBlocksView: View {
     @State private var flipped: Set<Int> = []
 
     var body: some View {
+        // A column list inserted here waits for this redraw to learn the id
+        // of the block the caret goes to.
+        let _ = editing?.session.resolveColumnFocus(in: blocks)
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-            ForEach(NoteBlockList.rows(of: blocks, flipped: flipped), id: \.id) { row in
-                NoteBlockView(
-                    block: row.block,
-                    marker: row.marker,
-                    isOpen: row.isOpen,
-                    toggle: {
-                        if flipped.contains(row.id) {
-                            flipped.remove(row.id)
-                        } else {
-                            flipped.insert(row.id)
-                        }
-                    },
-                    openTarget: openTarget,
-                    tableContent: tableContent,
-                    attachment: attachment,
-                    removeAttachment: removeAttachment,
-                    editing: editing,
-                    tableEditing: tableEditing,
-                    checkboxBase: checkboxBase.map { base in
-                        base + NoteBlockList.checkboxesBefore(row.id, in: blocks)
-                    },
-                    siblings: editing == nil ? nil : BlockSiblings.of(row.id, in: blocks)
-                )
-            }
+            NoteBlockItemsView(
+                items: NoteColumns.layout(NoteBlockList.rows(of: blocks, flipped: flipped)),
+                row: blockView
+            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .modifier(BlockInk(color: inheritsInk ? nil : Tokens.Text.primary.color))
@@ -102,5 +85,31 @@ struct NoteBlocksView: View {
             openTarget(target)
             return .handled
         })
+    }
+
+    private func blockView(_ row: NoteBlockList.Row) -> NoteBlockView {
+        NoteBlockView(
+            block: row.block,
+            marker: row.marker,
+            isOpen: row.isOpen,
+            toggle: {
+                if flipped.contains(row.id) {
+                    flipped.remove(row.id)
+                } else {
+                    flipped.insert(row.id)
+                }
+            },
+            openTarget: openTarget,
+            tableContent: tableContent,
+            attachment: attachment,
+            removeAttachment: removeAttachment,
+            editing: editing,
+            tableEditing: tableEditing,
+            checkboxBase: checkboxBase.map { base in
+                base + NoteBlockList.checkboxesBefore(row.id, in: blocks)
+            },
+            siblings: editing == nil ? nil : BlockSiblings.of(row.id, in: blocks),
+            indent: row.indent
+        )
     }
 }

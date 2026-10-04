@@ -55,6 +55,7 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Quote, callout
 - Equation (a LaTeX formula on its own line)
 - Toggle list (collapsible section — nest text, images, even other toggles inside it)
+- Two columns, three columns (blocks side by side)
 - Code block (language picker: 50 languages, alphabetical)
 - Diagram (Mermaid)
 - Whiteboard (an inline canvas you draw on)
@@ -434,6 +435,39 @@ Two shapes are deliberately left alone rather than adopted:
   is not closed for you. Its `<details>` and `<summary>` lines stay in the note as
   literal text, so nothing is lost; close the block by hand and it becomes a real toggle
   on the next open.
+
+## Columns
+
+`/Two columns` or `/Three columns` puts blocks side by side. You can also drag a block by
+its handle onto the left or right edge of another block: the two become columns. Drag the
+line between two columns to resize them. Removing the last block from a column removes
+that column; when only one column is left, its blocks go back to being ordinary page
+blocks.
+
+On disk a column layout uses the syntax of Obsidian's Multi-Column Markdown plugin, so a
+vault shared with Obsidian shows the same columns there:
+
+````md
+--- start-multi-column: a1b2c3
+```column-settings
+Number of Columns: 2
+Column Size: [30%, 70%]
+```
+
+Left column
+
+--- end-column ---
+
+Right column
+
+--- end-multi-column
+````
+
+Every spelling the plugin accepts opens as columns, including its older `===` markers and
+Pandoc's `::: columns` fenced divs. Settings Memry does not draw, such as `Border` or
+`Alignment`, are kept as written; only the column count and sizes are rewritten after
+you add, remove or resize a column. A region that is never closed, or has only one
+column, stays plain text. On iPhone columns are shown one under another.
 
 ## Equations
 

@@ -2,6 +2,8 @@ import Foundation
 import MemryCore
 import Testing
 
+@testable import Memry
+
 // The `note-blocks` class, on device, through the real FFI (N106).
 //
 // **Why iOS is held to this and not only Rust.** The class exists because a
@@ -154,6 +156,31 @@ struct NoteBlocksConformanceTests {
         #expect(table.rows.map { $0.cells.map { $0.content.flatMap(\.inline).map(\.text).joined() } } == [
             ["Name", "", ""], ["", "", ""], ["", "", ""],
         ])
+    }
+
+    @Test("a column list reaches the shell as two layout rows deep, and draws as one group")
+    func columnListLaysOutAsColumns() throws {
+        let blocks = try blocks(of: "columnList")
+        #expect(blocks.map(\.kind) == ["columnList", "column", "paragraph", "column", "bulletListItem"])
+        #expect(blocks.map(\.depth) == [0, 1, 2, 1, 2])
+        // Neither layout row sits in a blockContainer: no block id, so the
+        // shell never sends an edit addressed to one.
+        #expect(blocks.filter { NoteColumns.isStructural($0.kind) }.allSatisfy { $0.id == nil })
+
+        let items = NoteColumns.layout(NoteBlockList.rows(of: blocks))
+        #expect(items.count == 1, "one group, not five loose rows")
+        guard case let .columns(group) = items.first else {
+            Issue.record("the column list did not lay out as a group")
+            return
+        }
+        #expect(group.columns.map(\.weight) == [0.5, 1.5])
+        let ids = group.columns.map { column in
+            column.items.compactMap { item -> String? in
+                if case let .row(row) = item { row.block.id } else { nil }
+            }
+        }
+        #expect(ids == [["columnlist-0-0-0"], ["columnlist-0-1-0"]])
+        #expect(NoteColumns.firstBlockId(inColumnList: "columnlist-0", in: blocks) == "columnlist-0-0-0")
     }
 
     @Test("a task block carries its text as a prop, not as inline content")

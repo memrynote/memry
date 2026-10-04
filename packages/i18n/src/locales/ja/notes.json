@@ -246,6 +246,17 @@
       "error": "エラー",
       "success": "成功"
     },
+    "columns": {
+      "group": "基本ブロック",
+      "two": {
+        "title": "2列",
+        "subtext": "ブロックを2列に並べて配置"
+      },
+      "three": {
+        "title": "3列",
+        "subtext": "ブロックを3列に並べて配置"
+      }
+    },
     "diagram": {
       "title": "ダイアグラム",
       "subtext": "Mermaid のソースから作るフローチャート、シーケンス図、ガントチャート"
