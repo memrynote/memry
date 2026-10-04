@@ -15,6 +15,7 @@ const handles: VaultServiceHandles = {
     rename: async ({ id }) => ({ id }),
     delete: async (id) => ({ id }),
     update: async ({ content_markdown }) => ({ sent: content_markdown, stored: content_markdown }),
+    storedBody: async (_id, sent) => ({ sent, stored: sent }),
     addTag: async () => {},
     removeTag: async () => {},
     saveHtmlAttachment: async () => ({ marker: '<!-- file:{} -->', url: 'a.html' }),
@@ -686,6 +687,49 @@ describe('what a write reply says about what was stored (#2615)', () => {
       ]
     })
   })
+
+  it.each([
+    [
+      'notes.update',
+      [{ id: 'note-1', content: 'A\nB' }],
+      { success: true, note: { id: 'note-1', title: 'A', content: 'A\nB' } },
+      { sent: 'A\nB', stored: 'A\r\nB\r\n' },
+      'Sent 3 bytes, stored 6 bytes.'
+    ],
+    [
+      'notes.create',
+      [{ title: 'New', content: '* One' }],
+      { success: true, note: { id: 'note-2', title: 'New', content: '* One' } },
+      { sent: '* One', stored: '- One\n- Two' },
+      'Sent 5 bytes, stored 11 bytes.'
+    ]
+  ])(
+    'a desktop API %s reply gives both byte counts and the stored body',
+    async (operation, args, written, body, counts) => {
+      const asked: Array<[string, string]> = []
+      const local: VaultServiceHandles = {
+        ...handles,
+        notes: {
+          ...handles.notes,
+          storedBody: async (id, sent) => {
+            asked.push([id, sent])
+            return body
+          }
+        },
+        desktop: { ...handles.desktop, write: async () => written }
+      }
+
+      await expect(run(local, 'vault_desktop_write', { operation, args })).resolves.toEqual({
+        warnings: [
+          `The stored body is not the body this write sent. ${counts} ` +
+            'Read it back to see what was stored.'
+        ],
+        success: true,
+        note: { ...written.note, content: body.stored }
+      })
+      expect(asked).toEqual([[written.note.id, body.sent]])
+    }
+  )
 
   it('says nothing when only the final newline differs', async () => {
     const local: VaultServiceHandles = {

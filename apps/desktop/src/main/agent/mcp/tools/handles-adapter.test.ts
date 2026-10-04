@@ -605,6 +605,52 @@ describe('createVaultServiceHandles', () => {
       ).resolves.toEqual({ id: 'note-2', body: { sent: '* One', stored: '- One' } })
     })
 
+    it('reads a note back for a write the desktop API made', async () => {
+      const handles = createVaultServiceHandles(deps)
+      file = '* One'
+
+      await expect(handles.notes.storedBody('note-1', '* One')).resolves.toEqual({
+        sent: '* One',
+        stored: '- One'
+      })
+    })
+
+    it('reports no stored body instead of failing a landed write whose read-back throws', async () => {
+      const handles = createVaultServiceHandles(deps)
+      const note = { id: 'note-1', tags: [], path: 'work/alpha.md', frontmatter: {} }
+      mocks.getNoteById
+        .mockResolvedValueOnce({ ...note, content: 'Current' })
+        .mockRejectedValueOnce(new Error('EBUSY: resource busy or locked'))
+
+      await expect(
+        handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: 'Next' })
+      ).resolves.toEqual({ sent: 'Current\n\nNext', stored: null })
+      expect(mocks.updateNoteCommand).toHaveBeenCalledTimes(1)
+    })
+
+    it('reads a journal entry back once its armed write-back has run', async () => {
+      const handles = createVaultServiceHandles(deps)
+      let journal: string | null = null
+      mocks.readJournalEntry.mockImplementation(async (date: string) =>
+        journal === null ? null : { id: `j${date}`, date, content: journal, tags: [] }
+      )
+      mocks.writeJournalEntry.mockImplementation(async (date: string, content: string) => {
+        journal = content
+        return { id: `j${date}` }
+      })
+      mocks.settleWriteback.mockImplementation(async (id: string) => {
+        if (id === 'j2026-05-11' && journal !== null) journal = journal.replace('* One', '- One')
+      })
+
+      await expect(
+        handles.journal.createIfMissing({ date: '2026-05-11', content_markdown: '* One' })
+      ).resolves.toEqual({
+        id: 'j2026-05-11',
+        created: true,
+        body: { sent: '* One', stored: '- One' }
+      })
+    })
+
     it('reports no stored body for a note too large to read back', async () => {
       const handles = createVaultServiceHandles(deps)
       const note = { id: 'note-1', tags: [], path: 'work/alpha.md', frontmatter: {} }

@@ -4,6 +4,21 @@ import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
+const restoreThrows = vi.hoisted(() => ({ next: false }))
+vi.mock('@memry/shared/markdown-source', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@memry/shared/markdown-source')>()
+  return {
+    ...actual,
+    restoreMarkdownSource: (...args: Parameters<typeof actual.restoreMarkdownSource>) => {
+      if (restoreThrows.next) {
+        restoreThrows.next = false
+        throw new Error('restore blew up')
+      }
+      return actual.restoreMarkdownSource(...args)
+    }
+  }
+})
+
 const h = vi.hoisted(() => ({
   files: new Map<string, string>(),
   rows: new Map<string, Record<string, unknown>>(),
@@ -88,11 +103,15 @@ vi.mock('./local-mutations', () => ({
 import {
   cancelPendingWritebacks,
   cancelWriteback,
+  getWritebackDebugState,
   getWritebackStateSizes,
   resetWritebackState,
   scheduleWriteback,
+  settleWriteback,
   writebackNow
 } from './crdt-writeback'
+import { trackMainError } from '../telemetry/diagnostics'
+import { resetTelemetryThrottle } from '../telemetry/throttle'
 import type { Block } from '@blocknote/core'
 import { blocksToYFragment, markdownToYFragment, yFragmentToBlocks } from './blocknote-converter'
 import { generateContentHash } from '../vault/frontmatter'
@@ -160,6 +179,9 @@ beforeEach(() => {
   h.files.clear()
   h.rows.clear()
   h.failNextRead = false
+  restoreThrows.next = false
+  vi.mocked(trackMainError).mockClear()
+  resetTelemetryThrottle()
   resetWritebackState()
 })
 
@@ -310,14 +332,24 @@ describe('the spelling a write-back keeps when the source record no longer resto
     )
   })
 
-  it('keeps the file when the file it would restore from cannot be read', async () => {
+  it.each([
+    ['the file it would restore from cannot be read', () => (h.failNextRead = true)],
+    ['the spelling restore throws', () => (restoreThrows.next = true)]
+  ])('keeps the file and reports a failed pass when %s', async (_case, fail) => {
     const raw = `---\nid: x\n---\n${FOREIGN}`
     writtenElsewhere(NOTE, raw)
-    h.failNextRead = true
+    fail()
 
-    await pass(NOTE, await docWithStaleRecord(FOREIGN.replace('_em_ here.', 'Edited.')), 'local')
+    scheduleWriteback(
+      NOTE,
+      await docWithStaleRecord(FOREIGN.replace('_em_ here.', 'Edited.')),
+      'local'
+    )
+    await settleWriteback(NOTE)
 
     expect(h.files.get(NOTE_FILE)).toBe(raw)
+    expect(getWritebackDebugState(NOTE)?.lastError).toMatch(/kept the file/)
+    expect(trackMainError).toHaveBeenCalledWith('notes', 'note_writeback', expect.any(Error))
   })
 
   it('does not bring back CriticMarkup the doc no longer holds', async () => {
