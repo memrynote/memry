@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { AgentToolError } from '../errors'
 import { startAgentMcpServer, type AgentMcpServerHandle } from '../server'
+import { TOOL_SCHEMAS } from '../tools/schemas'
 
 describe('Agent MCP HTTP server', () => {
   let handle: AgentMcpServerHandle
@@ -88,6 +89,42 @@ describe('Agent MCP server tool round-trip', () => {
       expect(r.status).toBe(200)
       const text = await r.text()
       expect(text).toContain('"echoed":"hi"')
+    } finally {
+      await handle.stop()
+    }
+  })
+
+  it('names an unknown argument in the error an external MCP client gets', async () => {
+    const handler = vi.fn(async () => ({ ok: true }))
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        {
+          name: 'vault_update_task',
+          description: 'update a task',
+          inputSchema: TOOL_SCHEMAS.vault_update_task.input,
+          handler
+        }
+      ]
+    })
+
+    try {
+      const r = await fetch(`${handle.url}/mcp`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${handle.token}`,
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream'
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'vault_update_task', arguments: { id: 't1', colour: 'red' } }
+        })
+      })
+
+      expect(await r.text()).toContain('Unknown argument: colour.')
+      expect(handler).not.toHaveBeenCalled()
     } finally {
       await handle.stop()
     }
