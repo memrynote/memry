@@ -29,7 +29,7 @@ import {
   markKeyMaterialActivity,
   persistAccountKeyVerifier
 } from './key-verification'
-import { getSyncEngine, startSyncRuntime } from './runtime'
+import { getNoteBodyOutbox, getSyncEngine, startSyncRuntime } from './runtime'
 import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import { adoptAccountVaultIfAbsent } from './vault-adoption'
@@ -241,6 +241,9 @@ export const persistKeysAndRegisterDevice = async (
   if (!skipActivation && db) {
     const engine = getSyncEngine()
     if (engine) {
+      // A runtime that outlived its session paused the body outbox for want
+      // of credentials; the new tokens are here now, not at the next refresh.
+      getNoteBodyOutbox()?.resume()
       void engine.activate()
       void import('./vault-directory')
         .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))

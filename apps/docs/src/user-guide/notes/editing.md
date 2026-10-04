@@ -494,7 +494,7 @@ The **⋯ button** in the top-right of a note (the _More actions_ menu) collects
 - **Local graph** — show or hide the note's local link graph
 - **Find…** — open in-note search (also <kbd>⌘</kbd>+<kbd>F</kbd>)
 - **Version history** — browse and restore past versions
-- **Export** — export the note to PDF or HTML. Both formats embed the note's images in the exported file itself, so the PDF prints them and an exported `.html` keeps them after you move or send it
+- **Export** — export the note to PDF or HTML. Both formats embed the note's images in the exported file itself, so the PDF prints them and an exported `.html` keeps them after you move or send it. A task prints as its checkbox and title, without the `{task:<id>}` that ties the line to the task in the note file
 - **Insert template…** — insert a template's body at the cursor, leaving the rest of the note untouched
 - **Save as template** — create a new custom template from this note's body, tags, and properties (see [Templates](/user-guide/templates#saving-a-note-as-a-template))
 - **New note from this note** — create a note in the same folder with this note's icon, tags, and properties (see [New note from this note](#new-note-from-this-note))
@@ -534,16 +534,16 @@ selected text block at once, and **Copy** copies every selected block in documen
 order. Tables, files, tasks and other blocks without text of their own keep their
 type under **Turn into**.
 
-| Action                          | What it does                                                                                                                                                                  |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Turn into**                   | Converts the block to another text type — text, heading 1–3, bulleted or numbered list, checkbox, task, toggle list, quote, code, callout. Indented children come along.      |
-| **Turn into checkbox**          | On a task: puts its line back as a plain checkbox, then asks whether the task stays in Tasks. Not offered on a task with subtasks.                                            |
-| **Colors**                      | Sets the block's text and background colour.                                                                                                                                  |
-| **Copy**                        | Copies the block and its indented children. Pasting into a note brings back the same blocks, colours included; other apps get the Markdown the note file holds, or rich text. |
-| **Duplicate** (`⌘D` / `Ctrl+D`) | Copies the block and its indented children directly below.                                                                                                                    |
-| **Move to…**                    | Search for another note and move the block to the end of it.                                                                                                                  |
-| **Delete**                      | Removes the block.                                                                                                                                                            |
-| **Comment**                     | Opens a comment on the block, in the same review sidebar as a comment on selected text.                                                                                       |
+| Action                          | What it does                                                                                                                                                                                             |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Turn into**                   | Converts the block to another text type — text, heading 1–3, bulleted or numbered list, checkbox, task, toggle list, quote, code, callout. Indented children come along.                                 |
+| **Turn into checkbox**          | On a task: puts its line back as a plain checkbox, then asks whether the task stays in Tasks. Not offered on a task with subtasks.                                                                       |
+| **Colors**                      | Sets the block's text and background colour.                                                                                                                                                             |
+| **Copy**                        | Copies the block and its indented children. Pasting into a note brings back the same blocks, colours and tasks included; other apps get the Markdown the note file holds without task ids, or rich text. |
+| **Duplicate** (`⌘D` / `Ctrl+D`) | Copies the block and its indented children directly below.                                                                                                                                               |
+| **Move to…**                    | Search for another note and move the block to the end of it.                                                                                                                                             |
+| **Delete**                      | Removes the block.                                                                                                                                                                                       |
+| **Comment**                     | Opens a comment on the block, in the same review sidebar as a comment on selected text.                                                                                                                  |
 
 Some entries are hidden when they do not apply. **Turn into** and **Comment** do not
 appear on blocks with no text of their own — files, images, embeds, bookmarks, tasks,

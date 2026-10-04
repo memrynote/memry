@@ -15,7 +15,14 @@ log.error('pull failed', err)
 ```
 
 - **Never** use `console.*`. A pre-commit hook flags it.
-- Logs land in the OS-standard log directory and rotate automatically.
+- Logs land in the OS-standard log directory. A file rotates at 5 MB into `main.1.log` (newest)
+  through `main.4.log`, so five files are kept. If the rename fails, for example on a locked
+  Windows file, electron-log's own fallback (`main.old.log`, or a crop) runs instead. A
+  `main.old.log` from an older build stays where it is.
+- A line identical to the one before it (same level, scope and data) is not written again. When a
+  different line arrives, one `Previous line repeated N more times, the last at this time` line is
+  written first, stamped with the last repeat's time. One fault cannot fill the file and push the
+  days before it out of the archives.
 - Renderer and main process logs are separate files.
 - Dev runs log at `debug`; packaged installs are lowered to `info` (file) / `warn` (console) at
   startup based on `app.isPackaged`, since `NODE_ENV` is undefined at runtime in packaged builds.
