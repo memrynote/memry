@@ -368,6 +368,17 @@ counts only matching rows. Omit `file_types` to search every file type.
 Notes indexed by older memrynote versions have no recorded file type; those are always treated as
 markdown, so upgrading never hides existing notes.
 
+### Folder paths
+
+Every tool names a folder by its path from the vault root, with no leading slash: `projects/active`.
+That form appears in `folder_path` on notes and in `path` on `vault_list_folder` entries. Tools that
+take a folder path also accept the form with a leading slash, so `/projects/active` still works.
+A note directly in the vault root has a `folder_path` of `null`.
+
+`vault_list_folder` fails with a `NOT_FOUND` error that names the path when the folder does not
+exist, so a stale or misspelled folder name no longer looks like an empty folder. An empty folder
+that exists returns an empty list. Omit `path` to list the vault root and find the right name.
+
 Create, update, delete, archive, move, and reorder tools require Agent Chat context. They pause for
 inline approval unless you set the Agent Permissions confirmation to **Always allow**:
 
