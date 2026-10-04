@@ -979,8 +979,18 @@ across devices:
 - **Durable upload outbox** — the upload intent is persisted in the data DB
   (`attachment_upload_queue`, migration 0039) before the transfer starts and
   cleared only after the server accepts the file. Failed or quit-interrupted
-  uploads are retried on every sync runtime start instead of being lost with
-  the in-memory queue. Recording the reference enqueues a note push so peers
+  uploads are retried instead of being lost with the in-memory queue. The
+  runtime re-drives the outbox (`attachment-upload-redriver`) when it starts,
+  every five minutes and whenever the connection comes back, and skips a pass
+  while offline or without an access token. Each pass runs the attachment
+  backfill first, which queues files on disk that no save event ever offered
+  (a file copied into `attachments/<noteId>/`, or a vault file a body embeds),
+  then drains the outbox: rows upload once, rows whose file is gone are
+  dropped, failures keep their row for the next pass. A drain that reaches a
+  file the save path is still uploading joins that upload rather than sending
+  the file twice under two attachment ids. The backfill skips a note with no
+  embeds whose mtime and size are unchanged since it last read the body.
+  Recording the reference enqueues a note push so peers
   learn the blob exists; if that lands while the runtime is down — an upload
   finishing during quit, a vault switch, re-auth — the note is marked for
   [recovery](#recovering-pushes-that-never-landed) instead, so the push happens
