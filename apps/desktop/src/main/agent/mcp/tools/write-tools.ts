@@ -55,10 +55,14 @@ const CRDT_STORE_UNAVAILABLE =
   'this session. Read changed notes back to check what was stored.'
 
 function comparableBody(body: string): string {
-  return body.replace(/\r\n/g, '\n').replace(/\n+$/, '')
+  return body.replace(/(\r?\n)+$/, '')
 }
 
-/** Says so when the stored body is not the one sent (#2615); line endings do not count. */
+/**
+ * Says so when the stored body is not the one sent (#2615). Line endings count,
+ * so an LF body stored in a CRLF file is reported; only the final newline the
+ * file adds does not.
+ */
 function bodyWarnings(body: WrittenBody | undefined): string[] {
   if (!body || body.stored === null) return []
   if (comparableBody(body.sent) === comparableBody(body.stored)) return []
