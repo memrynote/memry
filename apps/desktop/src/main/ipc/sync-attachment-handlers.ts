@@ -83,10 +83,11 @@ let attachmentService: AttachmentSyncService | null = null
 let uploadQueue: UploadQueue | null = null
 let downloadQueue: DownloadQueue | null = null
 
-// Save-time uploads still running, by note and path. An outbox re-drive that
-// reaches the same row joins the running upload: a second one would put the
-// same file on the server twice under two attachment ids.
-const savedUploads = new Map<string, Promise<UploadResult>>()
+// Save-time uploads still running, by note and path, null when the attempt
+// ended without one. An outbox re-drive that reaches the same row joins the
+// running upload: a second one would put the same file on the server twice
+// under two attachment ids.
+const savedUploads = new Map<string, Promise<UploadResult | null>>()
 const savedUploadKey = (noteId: string, diskPath: string): string => `${noteId}\0${diskPath}`
 
 const getOrCreateUploadQueue = (): UploadQueue | null => {
@@ -415,8 +416,8 @@ export function registerAttachmentHandlers(): void {
 
   registerOutboxUploader(
     async (noteId, diskPath) => {
-      const running = savedUploads.get(savedUploadKey(noteId, diskPath))
-      if (running) return { attachmentId: (await running).attachmentId }
+      const joined = await savedUploads.get(savedUploadKey(noteId, diskPath))
+      if (joined) return { attachmentId: joined.attachmentId }
       const queue = getOrCreateUploadQueue()
       if (!queue) throw new Error('Sync not initialized')
       const result = await queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
@@ -439,16 +440,17 @@ export function registerAttachmentHandlers(): void {
         }
       }
 
-      const token = await getValidAccessToken()
-      if (!token) return
-
-      const queue = getOrCreateUploadQueue()
-      if (!queue) return
+      // Registered before the token wait, so a re-drive in that window joins it.
       const key = savedUploadKey(noteId, diskPath)
-      const upload = queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
+      const upload = (async (): Promise<UploadResult | null> => {
+        if (!(await getValidAccessToken())) return null
+        const queue = getOrCreateUploadQueue()
+        return queue ? queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster()) : null
+      })()
       savedUploads.set(key, upload)
       try {
         const result = await upload
+        if (!result) return
         if (isDatabaseInitialized()) {
           recordUploadedAttachment(noteId, result.attachmentId)
           // Outbox cleanup must never turn a successful upload into a failure.

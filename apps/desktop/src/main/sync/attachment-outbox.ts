@@ -35,6 +35,18 @@ export function enqueueUpload(db: DrizzleDb, noteId: string, diskPath: string): 
     .run()
 }
 
+export function hasPendingUpload(db: DrizzleDb, noteId: string, diskPath: string): boolean {
+  return (
+    db
+      .select({ id: attachmentUploadQueue.id })
+      .from(attachmentUploadQueue)
+      .where(
+        and(eq(attachmentUploadQueue.noteId, noteId), eq(attachmentUploadQueue.diskPath, diskPath))
+      )
+      .get() !== undefined
+  )
+}
+
 export function clearUpload(db: DrizzleDb, noteId: string, diskPath: string): void {
   db.delete(attachmentUploadQueue)
     .where(

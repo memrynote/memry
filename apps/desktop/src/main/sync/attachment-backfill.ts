@@ -2,10 +2,11 @@ import fs from 'fs'
 import path from 'path'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { noteMetadata } from '@memry/db-schema/data-schema'
-import { getDatabase } from '../database'
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
+import { getDatabase, isDatabaseInitialized } from '../database'
 import { createLogger } from '../lib/logger'
 import { getCurrentVaultPath } from '../store'
-import { enqueueUpload } from './attachment-outbox'
+import { enqueueUpload, hasPendingUpload } from './attachment-outbox'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('AttachmentBackfill')
@@ -164,6 +165,23 @@ export function referencedVaultFiles(
 }
 
 /**
+ * The folder scan owns a note's own `attachments/<noteId>/` folder; queuing
+ * those files from the body too is harmless (an upsert) but says the same
+ * thing twice.
+ */
+function embeddedFilesOutsideOwnFolder(
+  markdown: string,
+  vaultPath: string,
+  notePath: string,
+  noteId: string
+): string[] {
+  const ownFolder = path.join(path.resolve(vaultPath), 'attachments', noteId) + path.sep
+  return referencedVaultFiles(markdown, vaultPath, notePath, noteId).filter(
+    (file) => !file.startsWith(ownFolder)
+  )
+}
+
+/**
  * Notes whose body embeds no vault file outside their own folder, by absolute
  * path, with the mtime and size they had when read. Such a note gains an embed
  * only by changing, so the re-drive every five minutes stats it instead of
@@ -198,7 +216,6 @@ function backfillReferencedFilesWith(deps: AttachmentBackfillDeps): {
     return { scanned, queued }
   }
 
-  const ownFolderRoot = path.join(path.resolve(deps.vaultPath), 'attachments')
   for (const note of notes) {
     if (note.localOnly) continue
     if ((note.attachmentReferences ?? []).length > 0) continue
@@ -215,11 +232,7 @@ function backfillReferencedFilesWith(deps: AttachmentBackfillDeps): {
     } catch {
       continue
     }
-    const files = referencedVaultFiles(markdown, deps.vaultPath, note.path, note.id).filter(
-      // The folder scan owns this note's own folder; queuing it twice is
-      // harmless (an upsert) but says the same thing twice.
-      (file) => !file.startsWith(path.join(ownFolderRoot, note.id) + path.sep)
-    )
+    const files = embeddedFilesOutsideOwnFolder(markdown, deps.vaultPath, note.path, note.id)
     if (files.length === 0) {
       notesWithoutEmbeds.set(notePath, version)
       continue
@@ -241,6 +254,45 @@ function backfillReferencedFilesWith(deps: AttachmentBackfillDeps): {
     }
   }
   return { scanned, queued }
+}
+
+/**
+ * Offer the vault files a note body embeds when the body is written or indexed
+ * (#2651), instead of at the next backfill pass. Same rules as the
+ * referenced-file backfill. A file that already has an outbox row is on its
+ * way; the rest get a row and the save event, which uploads at once.
+ */
+export function queueEmbeddedVaultFilesWith(
+  deps: AttachmentBackfillDeps,
+  noteId: string,
+  markdown: string
+): number {
+  const note = getNoteMetadataById(deps.db, noteId)
+  if (!note || note.localOnly || (note.attachmentReferences ?? []).length > 0) return 0
+  let queued = 0
+  for (const file of embeddedFilesOutsideOwnFolder(markdown, deps.vaultPath, note.path, noteId)) {
+    try {
+      if (!fs.statSync(file).isFile()) continue
+    } catch {
+      continue
+    }
+    if (hasPendingUpload(deps.db, noteId, file)) continue
+    enqueueUpload(deps.db, noteId, file)
+    attachmentEvents.emitSaved({ noteId, diskPath: file })
+    queued++
+  }
+  return queued
+}
+
+/** Never throws: the body is already written, and an upload can wait for the re-drive. */
+export function queueEmbeddedVaultFiles(noteId: string, markdown: string): void {
+  try {
+    const vaultPath = getCurrentVaultPath()
+    if (!vaultPath || !isDatabaseInitialized()) return
+    queueEmbeddedVaultFilesWith({ db: getDatabase(), vaultPath }, noteId, markdown)
+  } catch (error) {
+    log.warn('Failed to queue the files a note embeds', { noteId, error })
+  }
 }
 
 /** The sync runtime's entry point: resolve this vault, then scan it. */
