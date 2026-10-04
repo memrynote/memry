@@ -11,12 +11,16 @@ vi.mock('@/contexts/tabs', () => ({
 }))
 
 import { SettingsModalProvider } from '@/contexts/settings-modal-context'
-import { AgentProvider } from '../agent-context'
+import { AgentProvider, useAgent } from '../agent-context'
 import { Composer } from '../composer'
 
 const CONVERSATION_ID = 'conversation-1'
 
 let emit: (event: AgentEvent) => void = () => {}
+
+function ErrorBanner(): React.JSX.Element {
+  return <p data-testid="agent-error">{useAgent().state.error}</p>
+}
 
 function renderChat(): void {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -25,6 +29,7 @@ function renderChat(): void {
       <SettingsModalProvider>
         <AgentProvider>
           <Composer conversationId={CONVERSATION_ID} sourceWindowId="window-1" />
+          <ErrorBanner />
         </AgentProvider>
       </SettingsModalProvider>
     </QueryClientProvider>
@@ -350,6 +355,41 @@ describe('queued agent messages', () => {
     await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(2))
     expect(sentTexts()).toEqual(['first', 'second'])
     expect(queuedTexts()).toEqual([])
+  })
+
+  it.each([
+    ['saving an edit', 'save'],
+    ['cancelling an edit', 'cancel'],
+    ['pressing Escape in the editor', 'escape'],
+    ['removing a queued message', 'remove']
+  ] as const)('returns focus to the prompt after %s', async (_label, action) => {
+    await startTurn()
+    await send('queued')
+    const prompt = screen.getByRole('textbox', { name: /do anything/i })
+
+    if (action === 'remove') {
+      await userEvent.click(screen.getByRole('button', { name: 'Remove queued message' }))
+    } else {
+      fireEvent.click(screen.getByRole('button', { name: 'Edit queued message' }))
+      const editor = screen.getByRole('textbox', { name: 'Queued message text' })
+      if (action === 'save') await userEvent.type(editor, ' more{Enter}')
+      if (action === 'escape') await userEvent.type(editor, '{Escape}')
+      if (action === 'cancel') await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    }
+
+    await waitFor(() => expect(document.activeElement).toBe(prompt))
+  })
+
+  it('clears the previous turn error when a queued message goes out', async () => {
+    await startTurn()
+    await send('second')
+
+    act(() =>
+      emit({ kind: 'turn_error', conversationId: CONVERSATION_ID, turnId: 'turn', message: 'boom' })
+    )
+
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+    await waitFor(() => expect(screen.getByTestId('agent-error')).toBeEmptyDOMElement())
   })
 
   it('sends the next queued message after Stop', async () => {
