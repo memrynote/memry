@@ -424,6 +424,21 @@ export async function writebackNow(noteId: string, doc: Y.Doc): Promise<void> {
   }
 }
 
+/**
+ * Run this note's armed pass now, if one is armed, so a caller that reads the
+ * file back right after a write reports what the file keeps (#2615). A failed
+ * pass is logged, not thrown: the file then holds what the write left.
+ */
+export async function settleWriteback(noteId: string): Promise<void> {
+  const pending = pendingTimers.get(noteId)
+  if (!pending) return
+  try {
+    await writebackNow(noteId, pending.doc)
+  } catch (err) {
+    log.warn('Write-back failed while settling', { noteId, error: err })
+  }
+}
+
 export function cancelPendingWritebacks(): void {
   for (const { timer } of pendingTimers.values()) {
     clearTimeout(timer)
@@ -564,6 +579,10 @@ async function performWriteback(
     doc,
     {
       notePath: cached.path,
+      readFileBody: async () => {
+        const raw = await safeRead(toAbsolutePath(cached.path))
+        return raw === null ? null : splitFrontmatterBlock(raw).body
+      },
       onSourceRestore: (sourceRestore) => updateDebugState(noteId, { sourceRestore })
     },
     converter

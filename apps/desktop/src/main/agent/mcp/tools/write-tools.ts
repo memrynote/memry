@@ -2,7 +2,7 @@ import type { ZodTypeAny } from 'zod'
 
 import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
-import type { VaultServiceHandles } from './handles'
+import type { VaultServiceHandles, WrittenBody } from './handles'
 import { TOOL_SCHEMAS, WRITE_TOOL_NAMES, type ToolName } from './schemas'
 import type { AgentMcpDesktopWriteOperation } from '@memry/contracts/agent-mcp-channels'
 import type { CanvasDrawElement, CanvasElementEdit } from '@memry/contracts/canvas-draw'
@@ -49,6 +49,40 @@ async function gateOrDeny(gate: WriteToolGate | null, ctx: GateContext): Promise
   return decision.args ?? ctx.parsedArgs
 }
 
+const CRDT_STORE_UNAVAILABLE =
+  'The CRDT store is unavailable on this device, so note edits sync without merge history ' +
+  'this session. Read changed notes back to check what was stored.'
+
+function comparableBody(body: string): string {
+  return body.replace(/\r\n/g, '\n').replace(/\n+$/, '')
+}
+
+/** Says so when the stored body is not the one sent (#2615); line endings do not count. */
+function bodyWarnings(body: WrittenBody | undefined): string[] {
+  if (!body || body.stored === null) return []
+  if (comparableBody(body.sent) === comparableBody(body.stored)) return []
+  return [
+    'The stored body is not the body this write sent. ' +
+      `Sent ${Buffer.byteLength(body.sent)} bytes, stored ${Buffer.byteLength(body.stored)} bytes. ` +
+      'Read it back to see what was stored.'
+  ]
+}
+
+/**
+ * `result` with `warnings` appended. A result that is not a plain object, or
+ * whose `warnings` is not a list of strings, is wrapped as `{ result, warnings }`.
+ */
+function withWarnings(result: unknown, warnings: string[]): unknown {
+  if (warnings.length === 0) return result
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return { result, warnings }
+  const existing = (result as { warnings?: unknown }).warnings
+  if (existing === undefined) return { ...result, warnings }
+  if (Array.isArray(existing) && existing.every((w) => typeof w === 'string')) {
+    return { ...result, warnings: [...existing, ...warnings] }
+  }
+  return { result, warnings }
+}
+
 async function approvedArgs<T>(
   gate: WriteToolGate | null,
   toolName: ToolName,
@@ -85,7 +119,8 @@ export function buildWriteTools(
           toolName: 'vault_create_note',
           parsedArgs: parsed
         })) as typeof parsed
-        return handles.notes.create(args)
+        const { id, body } = await handles.notes.create(args)
+        return withWarnings({ id }, bodyWarnings(body))
       }
     },
     vault_rename_note: {
@@ -395,7 +430,8 @@ export function buildWriteTools(
           toolName: 'vault_create_journal_entry',
           parsedArgs: parsed
         })) as typeof parsed
-        return handles.journal.createIfMissing(args)
+        const { body, ...entry } = await handles.journal.createIfMissing(args)
+        return withWarnings(entry, bodyWarnings(body))
       }
     },
     vault_update_journal_entry: {
@@ -408,7 +444,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_update_journal_entry', parsed, ctx)
-        return handles.journal.update(args)
+        const { body, ...entry } = await handles.journal.update(args)
+        return withWarnings(entry, bodyWarnings(body))
       }
     },
     vault_delete_journal_entry: {
@@ -537,8 +574,8 @@ export function buildWriteTools(
           toolName: 'vault_update_note',
           parsedArgs: parsed
         })) as typeof parsed
-        await handles.notes.update(args)
-        return { id: args.id }
+        const body = await handles.notes.update(args)
+        return withWarnings({ id: args.id }, bodyWarnings(body))
       }
     },
     vault_add_html_artifact: {
@@ -555,8 +592,12 @@ export function buildWriteTools(
         // an unreferenced file, which is harmless; the reverse order would leave
         // a block pointing at nothing.
         const { marker, url } = await handles.notes.saveHtmlAttachment(args)
-        await handles.notes.update({ id: args.id, mode: 'append', content_markdown: marker })
-        return { id: args.id, url }
+        const body = await handles.notes.update({
+          id: args.id,
+          mode: 'append',
+          content_markdown: marker
+        })
+        return withWarnings({ id: args.id, url }, bodyWarnings(body))
       }
     },
     vault_update_task: {
@@ -735,5 +776,16 @@ export function buildWriteTools(
     }
   }
 
-  return WRITE_TOOL_NAMES.map((name) => factories[name])
+  return WRITE_TOOL_NAMES.map((name) => {
+    const tool = factories[name]
+    return {
+      ...tool,
+      handler: async (input, ctx) => {
+        const result = await tool.handler(input, ctx)
+        // The write has landed: a failed status read must not report it as failed.
+        const storeUp = await handles.sync.crdtStoreAvailable().catch(() => true)
+        return withWarnings(result, storeUp ? [] : [CRDT_STORE_UNAVAILABLE])
+      }
+    }
+  })
 }

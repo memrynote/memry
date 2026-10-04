@@ -15,6 +15,8 @@ import {
   updateNoteCommand
 } from '../../../notes/domain'
 import { replaceNoteTagsInCrdt } from '../../../sync/crdt-feed'
+import { getCrdtProvider } from '../../../sync/crdt-provider'
+import { settleWriteback } from '../../../sync/crdt-writeback'
 import { createDesktopTasksDomain } from '../../../tasks/domain'
 import { createTasksPublisher } from '../../../tasks/publisher'
 import {
@@ -46,7 +48,8 @@ import type {
   NoteSummary,
   ProjectSummary,
   TaskSummary,
-  VaultServiceHandles
+  VaultServiceHandles,
+  WrittenBody
 } from './handles'
 
 export interface AdapterDeps {
@@ -70,6 +73,17 @@ function mergeContent(
   if (!current) return next
   if (!next) return current
   return mode === 'append' ? `${current}\n\n${next}` : `${next}\n\n${current}`
+}
+
+/** The body a read of the note returns once its armed write-back has run. */
+async function storedNoteBody(id: string, sent: string): Promise<WrittenBody> {
+  await settleWriteback(id)
+  const note = await getNoteById(id)
+  return { sent, stored: note && !note.contentOmitted ? note.content : null }
+}
+
+async function storedJournalBody(date: string, sent: string): Promise<WrittenBody> {
+  return { sent, stored: (await readJournalEntry(date))?.content ?? null }
 }
 
 function sameTagList(a: string[], b: string[]): boolean {
@@ -238,7 +252,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           folder: internalFolderFromToolPath(input.folder_path),
           tags: input.tags
         })
-        return { id: note.id }
+        return { id: note.id, body: await storedNoteBody(note.id, input.content_markdown) }
       },
       async rename({ id, title }) {
         await renameNoteCommand(id, title)
@@ -276,6 +290,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         if (!sameTagList(note.tags, updated.tags)) {
           replaceNoteTagsInCrdt(input.id, updated.tags)
         }
+        return storedNoteBody(input.id, nextContent)
       },
       async saveHtmlAttachment({ id, title, html }) {
         const fileType = getNoteCacheById(indexDb, id)?.fileType ?? 'markdown'
@@ -665,7 +680,11 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         if (existing) return { id: existing.id, created: false }
 
         const created = await writeJournalEntry(date, content_markdown)
-        return { id: created.id, created: true }
+        return {
+          id: created.id,
+          created: true,
+          body: await storedJournalBody(date, content_markdown)
+        }
       },
       async update({ date, content_markdown, tags, properties }) {
         const existing = await readJournalEntry(date)
@@ -675,7 +694,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           tags ?? existing?.tags,
           properties ?? existing?.properties
         )
-        return { id: updated.id }
+        if (content_markdown === undefined) return { id: updated.id }
+        return { id: updated.id, body: await storedJournalBody(date, content_markdown) }
       },
       async delete(date) {
         return { date, deleted: await deleteJournalEntryFile(date) }
@@ -789,6 +809,11 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
     windows: {
       async snapshotCurrentNote(windowId) {
         return snapshotCurrentNoteFromWindow(windowId)
+      }
+    },
+    sync: {
+      async crdtStoreAvailable() {
+        return getCrdtProvider().isPersistent()
       }
     }
   }

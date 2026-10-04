@@ -34,7 +34,7 @@ import {
   SNAPSHOT_WATERMARK_META_KEY,
   type CrdtSnapshotWatermark
 } from '@memry/sync-client/crdt-snapshot-watermark'
-import { recordCrdtPersistenceOutcome } from '../store'
+import { getCrdtInMemorySessions, recordCrdtPersistenceOutcome } from '../store'
 import { prepareVaultCrdtStore } from './crdt-store-path'
 import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
 import { clearOwedFileBody, owesFileBody } from './crdt-owed-file-body'
@@ -566,6 +566,17 @@ export class CrdtProvider {
    */
   hasPersistence(): boolean {
     return this.persistence !== null
+  }
+
+  /**
+   * `hasPersistence` for a caller that may ask before init settles. Joins an
+   * init in flight, never starts one, so the caller is not what decides which
+   * vault the store belongs to. Before this launch's verdict exists, the
+   * persisted streak answers: it is what the previous launches decided.
+   */
+  async isPersistent(): Promise<boolean> {
+    if (!this.persistenceReady) await this.awaitPendingInit()
+    return this.persistenceReady ? this.persistence !== null : getCrdtInMemorySessions() === 0
   }
 
   /**

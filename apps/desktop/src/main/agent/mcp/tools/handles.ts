@@ -104,6 +104,16 @@ export interface TagCount {
   sort_order: number
 }
 
+/**
+ * The body a note or journal write sent, and the body a read of it returns
+ * once the write has settled (#2615). `stored` is null when no read returns
+ * one, such as a note too large to read.
+ */
+export interface WrittenBody {
+  sent: string
+  stored: string | null
+}
+
 export interface CurrentNoteSnapshot {
   id: string
   title: string
@@ -198,14 +208,14 @@ export interface VaultServiceHandles {
       content_markdown: string
       folder_path?: string
       tags?: string[]
-    }): Promise<{ id: string }>
+    }): Promise<{ id: string; body: WrittenBody }>
     rename(input: { id: string; title: string }): Promise<{ id: string }>
     delete(id: string): Promise<{ id: string }>
     update(input: {
       id: string
       mode: 'append' | 'prepend' | 'replace'
       content_markdown: string
-    }): Promise<void>
+    }): Promise<WrittenBody>
     addTag(input: { id: string; tag: string }): Promise<void>
     removeTag(input: { id: string; tag: string }): Promise<void>
     /**
@@ -351,16 +361,18 @@ export interface VaultServiceHandles {
   journal: {
     getByDate(date: string): Promise<JournalEntry | null>
     listInRange(input: { from: string; to: string }): Promise<JournalSummary[]>
+    /** `body` only when the call created the entry. */
     createIfMissing(input: {
       date: string
       content_markdown: string
-    }): Promise<{ id: string; created: boolean }>
+    }): Promise<{ id: string; created: boolean; body?: WrittenBody }>
+    /** `body` only when the call sent `content_markdown`. */
     update(input: {
       date: string
       content_markdown?: string
       tags?: string[]
       properties?: Record<string, unknown>
-    }): Promise<{ id: string }>
+    }): Promise<{ id: string; body?: WrittenBody }>
     delete(date: string): Promise<{ date: string; deleted: boolean }>
   }
   inbox: {
@@ -411,5 +423,9 @@ export interface VaultServiceHandles {
   }
   windows: {
     snapshotCurrentNote(windowId: string): Promise<CurrentNoteSnapshot | null>
+  }
+  sync: {
+    /** False while this device runs without its CRDT store (#2519). */
+    crdtStoreAvailable(): Promise<boolean>
   }
 }
