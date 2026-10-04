@@ -16,9 +16,12 @@ const MAX_SCALE = 300 / 72
 
 /**
  * Reads the file in byte ranges through memry-file://, so a scan of several
- * hundred megabytes is never held in memory whole.
+ * hundred megabytes is never held in memory whole. A range that cannot be read
+ * fails the whole document, so the caller gets an error instead of a wait.
  */
 class MemryFileRangeTransport extends PDFDataRangeTransport {
+  onFailure: () => void = () => {}
+
   constructor(
     private readonly url: string,
     length: number
@@ -28,8 +31,11 @@ class MemryFileRangeTransport extends PDFDataRangeTransport {
 
   override requestDataRange(begin: number, end: number): void {
     void fetch(this.url, { headers: { Range: `bytes=${begin}-${end - 1}` } })
-      .then((response) => response.arrayBuffer())
-      .then((buffer) => this.onDataRange(begin, new Uint8Array(buffer)))
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`memry-file answered ${response.status}`)
+        this.onDataRange(begin, new Uint8Array(await response.arrayBuffer()))
+      })
+      .catch(() => this.onFailure())
   }
 }
 
@@ -42,12 +48,15 @@ function documentFor(id: string): PDFDocumentProxy {
 }
 
 async function open(id: string, url: string, length: number): Promise<number> {
-  const pdf = await getDocument({
-    range: new MemryFileRangeTransport(url, length),
+  const range = new MemryFileRangeTransport(url, length)
+  const task = getDocument({
+    range,
     rangeChunkSize: RANGE_CHUNK_BYTES,
     disableAutoFetch: true,
     isEvalSupported: false
-  }).promise
+  })
+  range.onFailure = () => void task.destroy()
+  const pdf = await task.promise
   documents.set(id, pdf)
   return pdf.numPages
 }
