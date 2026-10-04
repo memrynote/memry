@@ -93,7 +93,8 @@ import {
   scheduleWriteback,
   writebackNow
 } from './crdt-writeback'
-import { markdownToYFragment } from './blocknote-converter'
+import type { Block } from '@blocknote/core'
+import { blocksToYFragment, markdownToYFragment, yFragmentToBlocks } from './blocknote-converter'
 import { generateContentHash } from '../vault/frontmatter'
 
 const NOTE = 'note-1'
@@ -325,5 +326,81 @@ describe('the spelling a write-back keeps when the source record no longer resto
     await pass(NOTE, await docWithStaleRecord('Keep this word.\n\n* One\n'), 'remote')
 
     expect(h.files.get(NOTE_FILE)).toBe('---\nid: x\n---\nKeep this word.\n\n* One\n')
+  })
+})
+
+describe('a CRLF note edited in the editor (#2615)', () => {
+  const BROAD = [
+    'Broad Title',
+    '===========',
+    '',
+    'Intro with __bold__ and *em* text.   ',
+    'Second line after a hard break.',
+    '',
+    '',
+    '',
+    '* star one',
+    '* star two',
+    '    * nested star',
+    '',
+    '+ plus one',
+    '+ plus two',
+    '',
+    '***',
+    '',
+    'Middle paragraph to edit.',
+    '',
+    'Sub Heading',
+    '-----------',
+    '',
+    '<div align="center">',
+    '<b>html block</b>',
+    '</div>',
+    '',
+    '| a | b |',
+    '|---|---|',
+    '| 1 | 2 |',
+    '',
+    '',
+    '    indented code line 1',
+    '    indented code line 2',
+    '',
+    'Tail paragraph with a break.  ',
+    'Final line.',
+    ''
+  ].join('\n')
+
+  /** The doc an editor open seeds from the file body, with one paragraph retyped. */
+  async function editedDoc(body: string, from: string, to: string): Promise<Y.Doc> {
+    const doc = await docWith(body)
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const blocks = (await yFragmentToBlocks(fragment)) as Block[]
+    const target = blocks.find((block) => (JSON.stringify(block.content) ?? '').includes(from))
+    if (!target) throw new Error(`no block holds ${from}`)
+    ;(target as unknown as { content: unknown }).content = [{ type: 'text', text: to, styles: {} }]
+    doc.transact(() => {
+      fragment.delete(0, fragment.length)
+      blocksToYFragment(blocks, fragment)
+    })
+    return doc
+  }
+
+  it.each([
+    ['LF', '\n'],
+    ['CRLF', '\r\n']
+  ])('changes only the edited line of a %s note', async (_eol, eol) => {
+    const body = BROAD.replace(/\n/g, eol)
+    const raw = `---${eol}id: x${eol}---${eol}${body}`
+    writtenElsewhere(NOTE, raw)
+
+    await pass(
+      NOTE,
+      await editedDoc(body, 'Middle paragraph to edit.', 'Middle paragraph, edited.'),
+      'local'
+    )
+
+    expect(h.files.get(NOTE_FILE)).toBe(
+      raw.replace('Middle paragraph to edit.', 'Middle paragraph, edited.')
+    )
   })
 })
