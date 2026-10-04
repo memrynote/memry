@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   createDesktopInboxCrudHandlers: vi.fn(),
   deleteJournalEntryFile: vi.fn(),
   readJournalEntry: vi.fn(),
-  readJournalFileBody: vi.fn(),
+  readJournalFile: vi.fn(),
   writeJournalEntry: vi.fn(),
   createNoteCommand: vi.fn(),
   deleteNoteCommand: vi.fn(),
@@ -61,7 +61,7 @@ vi.mock('../../../inbox/domain', () => ({
 vi.mock('../../../vault/journal', () => ({
   deleteJournalEntryFile: mocks.deleteJournalEntryFile,
   readJournalEntry: mocks.readJournalEntry,
-  readJournalFileBody: mocks.readJournalFileBody,
+  readJournalFile: mocks.readJournalFile,
   writeJournalEntry: mocks.writeJournalEntry
 }))
 
@@ -690,7 +690,15 @@ describe('createVaultServiceHandles', () => {
       properties: { mood: 'calm' }
     }
     mocks.readJournalEntry.mockResolvedValue(entry)
-    mocks.readJournalFileBody.mockResolvedValue('Stored caf\u00e9\n')
+    mocks.readJournalFile
+      .mockResolvedValueOnce({
+        frontmatter: { date: '2026-10-04', id: 'legacy', created: '2025-01-01', mood: 'calm' },
+        body: 'Old\n'
+      })
+      .mockResolvedValue({
+        frontmatter: { date: '2026-10-04', mood: 'calm' },
+        body: 'Stored caf\u00e9\n'
+      })
     mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-1' })
     const storedEntry = {
       id: 'journal-1',
@@ -702,7 +710,7 @@ describe('createVaultServiceHandles', () => {
     }
     await expect(
       call('vault_update_journal_entry', { date: '2026-10-04', content_markdown: 'Sent' })
-    ).resolves.toEqual(storedEntry)
+    ).resolves.toEqual({ ...storedEntry, frontmatter_removed: ['id', 'created'] })
     await expect(
       call('vault_create_journal_entry', { date: '2026-10-04', content_markdown: 'Sent' })
     ).resolves.toEqual({ ...storedEntry, created: false })
@@ -749,13 +757,23 @@ describe('createVaultServiceHandles', () => {
 
   it('keeps legacy id, title, created and modified keys an agent leaves out, and drops one it nulls', async () => {
     const handles = createVaultServiceHandles(deps)
+    mocks.getNoteCacheById.mockReturnValue({ id: 'note-1', date: null, fileType: 'markdown' })
     mocks.getNotePropertiesAsRecord.mockReturnValue({
       id: 'legacy-id',
       title: 'Legacy',
-      created: '2025-01-01',
-      modified: '2025-01-02',
-      status: 'draft',
-      owner: 'kaan'
+      created: '"2025-01-01T00:00:00.000Z"',
+      status: 'draft'
+    })
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-1',
+      frontmatter: {
+        id: 'legacy-id',
+        title: 'Legacy',
+        created: new Date('2025-01-01T00:00:00.000Z'),
+        modified: new Date('2025-01-02T00:00:00.000Z'),
+        status: 'draft',
+        owner: 'kaan'
+      }
     })
     mocks.invokeDesktopApiFromWindow.mockResolvedValue({
       success: true,
@@ -770,7 +788,15 @@ describe('createVaultServiceHandles', () => {
 
     expect(mocks.invokeDesktopApiFromWindow).toHaveBeenCalledWith('w1', {
       operation: 'properties.set',
-      args: ['note-1', { status: 'done', id: 'legacy-id', title: 'Legacy', created: '2025-01-01' }]
+      args: [
+        'note-1',
+        {
+          status: 'done',
+          id: 'legacy-id',
+          title: 'Legacy',
+          created: new Date('2025-01-01T00:00:00.000Z')
+        }
+      ]
     })
   })
 
@@ -788,6 +814,31 @@ describe('createVaultServiceHandles', () => {
       operation: 'inbox.get',
       args: ['inbox-1']
     })
+  })
+
+  it('reads a tag or category back from the shapes the tag handlers return', async () => {
+    const handles = createVaultServiceHandles(deps)
+    const tag = { name: 'work', color: 'red', icon: null, count: 2 }
+    mocks.invokeDesktopApiFromWindow
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ tags: [{ name: 'home', color: 'blue', count: 1 }, tag] })
+    await expect(
+      handles.desktop.write(
+        { operation: 'tags.updateTagColor', args: [{ tag: 'work', color: 'red' }] },
+        'w1'
+      )
+    ).resolves.toEqual({ success: true, stored: tag })
+
+    const category = { id: 'c1', name: 'Areas' }
+    mocks.invokeDesktopApiFromWindow
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ success: true, categories: [category] })
+    await expect(
+      handles.desktop.write(
+        { operation: 'tags.renameCategory', args: [{ id: 'c1', name: 'Areas' }] },
+        'w1'
+      )
+    ).resolves.toEqual({ success: true, stored: category })
   })
 
   it('keeps the reply of a landed desktop write when the read-back fails', async () => {
