@@ -260,6 +260,35 @@ describe('attachment backfill', () => {
     })
   })
 
+  // Another note's folder belongs to that note; its file is already that
+  // note's attachment, and queuing it here would upload a second copy.
+  it("leaves out a file from another note's attachments folder that a body embeds", () => {
+    addNote('note-owner')
+    const shared = addFile('note-owner', 'kkkkkk-shared.png')
+    addNote('note-embedder', { attachmentReferences: ['att-e'] })
+    recordAttachmentFile(
+      db,
+      vaultPath,
+      'note-embedder',
+      addFile('note-embedder', 'llllll-own.png'),
+      'att-e'
+    )
+    writeNote('note-embedder', '![shared](../attachments/note-owner/kkkkkk-shared.png)')
+    addNote('note-fresh')
+    writeNote('note-fresh', '![shared](../attachments/note-owner/kkkkkk-shared.png)')
+
+    backfillUnsyncedAttachmentsWith({ db, vaultPath })
+    queueEmbeddedVaultFilesWith(
+      { db, vaultPath },
+      'note-embedder',
+      '![shared](../attachments/note-owner/kkkkkk-shared.png)'
+    )
+
+    expect(listPendingUploads(db)).toEqual([
+      { noteId: 'note-owner', diskPath: shared, attempts: 0 }
+    ])
+  })
+
   describe('when a body is written (#2651)', () => {
     const saved: Array<{ noteId: string; diskPath: string }> = []
     const onSaved = (event: { noteId: string; diskPath: string }): void => {

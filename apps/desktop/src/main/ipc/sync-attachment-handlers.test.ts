@@ -703,6 +703,23 @@ describe('sync-attachment-handlers', () => {
     expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
   })
 
+  // A vault the binding gate holds (kept local, or another account's) has no
+  // sync runtime, and nothing of it may leave the device (#2651).
+  it('keeps a saved file on the device while no sync runtime runs for the vault', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(getNetworkMonitor).mockReturnValue(null)
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/note-1/held.png' })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(attachmentMocks.queue.enqueue).not.toHaveBeenCalled()
+  })
+
   it('maps download progress and uploads saved attachments from event callbacks', async () => {
     vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
     attachmentMocks.service.getDownloadProgress.mockReturnValue({
