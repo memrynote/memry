@@ -1,13 +1,64 @@
-import log from 'electron-log'
-import { existsSync, mkdirSync, readdirSync, realpathSync, renameSync, rmdirSync } from 'node:fs'
-import { basename, dirname, join } from 'node:path'
+import log, { type LogMessage } from 'electron-log'
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  realpathSync,
+  renameSync,
+  rmdirSync,
+  rmSync
+} from 'node:fs'
+import { basename, dirname, join, parse } from 'node:path'
 import { homedir } from 'node:os'
+import { inspect } from 'node:util'
 
 const isDev = process.env.NODE_ENV !== 'production'
+
+// The live file plus four archives (main.1.log is the newest), so one burst
+// cannot erase the days before it.
+const LOG_FILES_KEPT = 5
 
 log.transports.file.level = isDev ? 'debug' : 'info'
 log.transports.file.maxSize = 5 * 1024 * 1024
 log.transports.file.format = '{y}-{m}-{d} {h}:{i}:{s}.{ms} [{level}] [{scope}] {text}'
+
+const archiveToOldLog = log.transports.file.archiveLogFn
+log.transports.file.archiveLogFn = (file) => {
+  const { dir, name, ext } = parse(file.path)
+  const archive = (n: number): string => join(dir, `${name}.${n}${ext}`)
+  try {
+    rmSync(archive(LOG_FILES_KEPT - 1), { force: true })
+    for (let n = LOG_FILES_KEPT - 2; n >= 1; n--) {
+      if (existsSync(archive(n))) renameSync(archive(n), archive(n + 1))
+    }
+    renameSync(file.path, archive(1))
+  } catch {
+    archiveToOldLog(file)
+  }
+}
+
+let repeatRun: { key: string; message: LogMessage; repeats: number } | null = null
+
+// A line identical to the one before it is counted, not written. The count
+// lands as one line, stamped with the last repeat's time, before the next
+// different line.
+log.hooks.push((message, transport, transportName) => {
+  if (transportName !== 'file' || !transport) return message
+  const key = `${message.level}|${message.scope ?? ''}|${inspect(message.data, { depth: 5 })}`
+  if (repeatRun?.key === key) {
+    repeatRun.repeats += 1
+    repeatRun.message = message
+    return false
+  }
+  if (repeatRun && repeatRun.repeats > 0) {
+    transport({
+      ...repeatRun.message,
+      data: [`Previous line repeated ${repeatRun.repeats} more times, the last at this time`]
+    })
+  }
+  repeatRun = { key, message, repeats: 0 }
+  return message
+})
 
 // electron-log names the log directory after the app name. The main process
 // adopts the `memrynote` identity at startup (see app-identity.ts), but

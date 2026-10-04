@@ -38,6 +38,13 @@ const DEFERRED_BACKOFF_MAX_MS = 60_000
  */
 export class NoteBodyFlushDeferredError extends Error {}
 
+/**
+ * The push fn has no access token, vault key or signing key. Every note would
+ * fail the same way, so the outbox pauses until a token refresh or sign-in
+ * resumes it, as it does on a 401.
+ */
+export class NoteBodyCredentialsMissingError extends Error {}
+
 export type NoteBodyPushFn = (noteId: string, updates: Uint8Array[]) => Promise<void>
 
 /**
@@ -262,6 +269,11 @@ export class NoteBodyOutbox {
       )
       this.deferredFlushes.set(noteId, { deferrals, until: Date.now() + backoffMs })
       log.warn('CRDT body flush deferred; backing the note off', { noteId, backoffMs })
+      return
+    }
+    if (err instanceof NoteBodyCredentialsMissingError) {
+      if (!this.paused) log.warn('No sync credentials for CRDT body push', { noteId })
+      this.pause()
       return
     }
     if (err instanceof RateLimitError) {

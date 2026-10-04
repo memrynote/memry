@@ -309,6 +309,7 @@ vi.mock('./websocket', () => ({ WebSocketManager: runtimeMocks.WebSocketManager 
 vi.mock('./engine', () => ({ SyncEngine: runtimeMocks.SyncEngine }))
 vi.mock('./worker-bridge', () => ({ SyncWorkerBridge: runtimeMocks.SyncWorkerBridge }))
 vi.mock('./note-body-outbox', () => ({
+  NoteBodyCredentialsMissingError: class NoteBodyCredentialsMissingError extends Error {},
   NoteBodyFlushDeferredError: class NoteBodyFlushDeferredError extends Error {},
   NoteBodyOutbox: runtimeMocks.NoteBodyOutbox,
   importLegacyPendingCrdtNotes: runtimeMocks.importLegacyPendingCrdtNotes
