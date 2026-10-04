@@ -4,6 +4,7 @@ import { and, eq } from 'drizzle-orm'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { attachmentFiles } from '@memry/db-schema/data-schema'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { STORED_PREFIX_RE } from '../vault/attachment-heal'
 
 /**
  * Which note-attachment files this device knows the server has (#2651).
@@ -16,7 +17,6 @@ import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
  * note before.
  */
 
-const STORED_PREFIX_RE = /^[0-9a-z]{6}-/
 /** The `path` of the row that marks a note counted while it had no file on disk. */
 const COUNTED_EMPTY = ''
 
