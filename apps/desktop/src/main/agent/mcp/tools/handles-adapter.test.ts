@@ -1221,6 +1221,168 @@ describe('createVaultServiceHandles', () => {
     })
   })
 
+  describe('checkbox lines an agent writes', () => {
+    const findings = '## Findings\n\n- [ ] Check the log\n- [x] Read the sync table\n- [ ]'
+
+    beforeEach(() => {
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Review',
+        path: 'review.md',
+        fileType: 'markdown'
+      })
+      mocks.createNoteCommand.mockResolvedValue({ id: 'note-1' })
+    })
+
+    it('stores a new note with every checkbox line kept a plain checkbox', async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      await handles.notes.create({ title: 'Review', content_markdown: findings })
+
+      expect(mocks.createNoteCommand.mock.calls[0][0].content).toBe(
+        '## Findings\n\n- [ ] Check the log {check}\n- [x] Read the sync table {check}\n- [ ] {check}'
+      )
+      expect(taskDomain.createTask).not.toHaveBeenCalled()
+    })
+
+    it('leaves task lines, plain lines and checkboxes in code fences alone', async () => {
+      const handles = createVaultServiceHandles(deps)
+      const body = [
+        '- [ ] Ship it {task:task-1}',
+        '- [ ] Passport {check}',
+        '```',
+        '- [ ] example',
+        '```',
+        '1. [ ] numbered'
+      ].join('\n')
+
+      await handles.notes.create({ title: 'Review', content_markdown: body })
+
+      expect(mocks.createNoteCommand.mock.calls[0][0].content).toBe(body)
+    })
+
+    it('marks only the appended checkbox lines on an update', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Review',
+        content: '- [ ] Owner item',
+        tags: [],
+        path: 'review.md',
+        frontmatter: {}
+      })
+
+      await handles.notes.update({
+        id: 'note-1',
+        mode: 'append',
+        content_markdown: '- [ ] Agent item'
+      })
+
+      expect(mocks.updateNoteCommand.mock.calls).toEqual([
+        [{ id: 'note-1', content: '- [ ] Owner item\n\n- [ ] Agent item {check}' }]
+      ])
+    })
+
+    it("keeps the owner's own checkbox lines byte for byte on a replace", async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Review',
+        content: '- [ ] Owner item\n- [ ] Owner item',
+        tags: [],
+        path: 'review.md',
+        frontmatter: {}
+      })
+
+      await handles.notes.update({
+        id: 'note-1',
+        mode: 'replace',
+        content_markdown: '- [ ] Owner item\n- [ ] Owner item\n- [ ] Owner item'
+      })
+
+      expect(mocks.updateNoteCommand.mock.calls).toEqual([
+        [
+          {
+            id: 'note-1',
+            content: '- [ ] Owner item\n- [ ] Owner item\n- [ ] Owner item {check}'
+          }
+        ]
+      ])
+    })
+
+    it('keeps checkbox lines plain in journal writes', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.readJournalEntry.mockResolvedValueOnce(null)
+      mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-1' })
+      await handles.journal.createIfMissing({ date: '2026-10-01', content_markdown: '- [ ] A' })
+
+      mocks.readJournalEntry.mockResolvedValueOnce({
+        id: 'journal-1',
+        content: '- [ ] Owner',
+        tags: [],
+        properties: {}
+      })
+      await handles.journal.update({ date: '2026-10-01', content_markdown: '- [ ] Owner\n- [ ] B' })
+
+      expect(mocks.writeJournalEntry.mock.calls.map((call) => call[1])).toEqual([
+        '- [ ] A {check}',
+        '- [ ] Owner\n- [ ] B {check}'
+      ])
+    })
+
+    it('keeps checkbox lines plain in desktop API note and journal writes', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Review',
+        content: '- [ ] Owner',
+        tags: [],
+        path: 'review.md',
+        frontmatter: {}
+      })
+      mocks.readJournalEntry.mockResolvedValue(null)
+      mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true })
+
+      await handles.desktop.write(
+        { operation: 'notes.create', args: [{ title: 'Review', content: '- [ ] A' }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'notes.update', args: [{ id: 'note-1', content: '- [ ] Owner\n- [ ] B' }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'journal.createEntry', args: [{ date: '2026-10-01', content: '- [ ] C' }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'journal.updateEntry', args: [{ date: '2026-10-01', content: '- [ ] D' }] },
+        'window-1'
+      )
+      await handles.desktop.write(
+        { operation: 'notes.update', args: [{ id: 'note-1', title: 'Renamed' }] },
+        'window-1'
+      )
+
+      expect(mocks.invokeDesktopApiFromWindow.mock.calls.map((call) => call[1])).toEqual([
+        { operation: 'notes.create', args: [{ title: 'Review', content: '- [ ] A {check}' }] },
+        {
+          operation: 'notes.update',
+          args: [{ id: 'note-1', content: '- [ ] Owner\n- [ ] B {check}' }]
+        },
+        {
+          operation: 'journal.createEntry',
+          args: [{ date: '2026-10-01', content: '- [ ] C {check}' }]
+        },
+        {
+          operation: 'journal.updateEntry',
+          args: [{ date: '2026-10-01', content: '- [ ] D {check}' }]
+        },
+        { operation: 'notes.update', args: [{ id: 'note-1', title: 'Renamed' }] }
+      ])
+    })
+  })
+
   it('tags.listAll keeps category, color, icon and sort order', async () => {
     const handles = createVaultServiceHandles(deps)
 
