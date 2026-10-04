@@ -309,6 +309,16 @@ the oversized-update fallback still seed, because for a note the server has
 never seen, the vault file is the only copy of the body. An editor open still
 seeds too, which is the open fork in #2544.
 
+A main-process body edit (the agent note tool, `notes.update`, a version
+restore, appended blocks, a template, a rename's link rewrite) reaches a closed
+note's document through `feedExternalEditToCrdt`. In-memory mode opens that
+document empty, so it cannot take the edit. The note is then marked in the
+`crdt_owed_file_bodies` table and given a full-state outbox row (#2646). The
+marker means the vault file is ahead of the document. The full-state flush and
+an editor open merge the server body first and apply the file on top of it, and
+the write-back ingests the file of a marked note instead of writing over it. A
+feed or a seed that the document takes clears the marker, and so does a purge.
+
 Losing a watermark costs one extra request. Keeping a stale one costs a note
 body, so every unknown — no record, an unreadable record, a store written by a
 build that predates the key — resolves to "download the baseline".
