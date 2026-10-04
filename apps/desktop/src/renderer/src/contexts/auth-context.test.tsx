@@ -276,13 +276,31 @@ describe('AuthProvider', () => {
       expect(result.current.state.email).toBe('kaan@example.com')
     })
 
-    it('leaves the signed-out state when a sync succeeds', async () => {
+    it('stays signed out on a sync after the server ended the session', async () => {
       serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
       const { result } = renderHook(() => useAuth(), { wrapper })
       await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
       act(() => {
         sessionExpiredCallback?.({ reason: 'refresh_rejected' })
       })
+
+      act(() => {
+        syncStatusCallback?.({ status: 'idle', lastSyncAt: Date.now() })
+      })
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(serviceMocks.deviceService.getDevices).toHaveBeenCalledTimes(1)
+      expect(result.current.state.status).toBe('unauthenticated')
+    })
+
+    it('leaves the signed-out state when a sync succeeds', async () => {
+      serviceMocks.deviceService.getDevices
+        .mockRejectedValueOnce(new Error('device lookup failed'))
+        .mockResolvedValue(signedInDevices)
+      const { result } = renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
 
       act(() => {
         syncStatusCallback?.({ status: 'idle', lastSyncAt: Date.now() - 60_000 })

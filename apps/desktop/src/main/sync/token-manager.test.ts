@@ -464,6 +464,22 @@ describe('token-manager', () => {
       expect(hasSessionEnded()).toBe(true)
     })
 
+    it('keeps the session when the keychain read fails', async () => {
+      const win = { isDestroyed: () => false, webContents: { send: vi.fn() } }
+      mockGetAllWindows.mockReturnValue([win])
+      mockRetrieveKey.mockRejectedValue(new Error('Failed to retrieve key from keychain'))
+
+      const refresh = refreshAccessToken()
+      await vi.advanceTimersByTimeAsync(5_000)
+
+      await expect(refresh).resolves.toBe(false)
+      expect(hasSessionEnded()).toBe(false)
+      expect(win.webContents.send).not.toHaveBeenCalledWith(
+        'auth:session-expired',
+        expect.anything()
+      )
+    })
+
     it('reports a network failure as a live session', async () => {
       mockRetrieveKey.mockResolvedValue(new TextEncoder().encode('refresh-tok'))
       mockPostToServer.mockRejectedValue(new Error('Unable to connect to sync server.'))

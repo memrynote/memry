@@ -599,13 +599,14 @@ describe('SyncProvider', () => {
       const { result } = renderHook(() => useSync(), { wrapper })
       await vi.waitFor(() => expect(sessionExpiredListeners.length).toBeGreaterThan(0))
 
+      // #2612: an advisory keeps the session, so nothing may tell the user to
+      // sign in again.
       act(() => {
         for (const cb of sessionExpiredListeners) cb({ reason: 'token_expired' })
       })
-      expect(toastMock.error).toHaveBeenCalledWith(
-        'Your session has expired. Sign in again to continue syncing.',
-        { duration: 8000 }
-      )
+      expect(toastMock.error).not.toHaveBeenCalled()
+      expect(result.current.state.sessionExpired).toBe(false)
+      expect(screen.queryByText('Your session has ended')).toBeNull()
 
       act(() => {
         for (const cb of deviceRevokedListeners) cb({ unsyncedCount: 2 })
