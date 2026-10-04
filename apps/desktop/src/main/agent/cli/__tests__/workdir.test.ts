@@ -114,6 +114,33 @@ describe('clearAgentMemory', () => {
     expect(await readdir(path.join(claudeConfigDir, 'projects'))).toEqual([hashedKey])
   })
 
+  it.each(['..', '../..', 'a/b', '/etc', '.'])(
+    'keeps a vault id of %j inside agent-workdirs and deletes nothing outside it',
+    async (vaultId) => {
+      const userDataDir = path.join(root, 'user-data')
+      const claudeConfigDir = path.join(root, 'claude')
+      await mkdir(userDataDir, { recursive: true })
+      await writeFile(path.join(userDataDir, 'memry-data.db'), 'notes')
+
+      const dir = await ensureAgentWorkdir(userDataDir, vaultId)
+      await clearAgentMemory({ userDataDir, vaultId, claudeConfigDir })
+
+      expect(path.dirname(dir)).toBe(path.join(userDataDir, 'agent-workdirs'))
+      expect((await readdir(userDataDir)).sort()).toEqual(['agent-workdirs', 'memry-data.db'])
+    }
+  )
+
+  it('maps two casings of one vault uuid to one folder', async () => {
+    const userDataDir = path.join(root, 'user-data')
+
+    expect(await ensureAgentWorkdir(userDataDir, '35401A5E-46CE-49CE-A18F-88A6F58D2678')).toBe(
+      path.join(userDataDir, 'agent-workdirs', '35401a5e-46ce-49ce-a18f-88a6f58d2678')
+    )
+    expect(await ensureAgentWorkdir(userDataDir, '35401a5e-46ce-49ce-a18f-88a6f58d2678')).toBe(
+      path.join(userDataDir, 'agent-workdirs', '35401a5e-46ce-49ce-a18f-88a6f58d2678')
+    )
+  })
+
   it('succeeds when the vault has no agent memory yet', async () => {
     await expect(
       clearAgentMemory({
