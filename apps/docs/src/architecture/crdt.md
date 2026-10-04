@@ -723,6 +723,10 @@ document to its vault `.md` file and re-indexes it for search.
   erases to nothing, the key of a blank line, so it keeps a key of its own. Paired with a
   blank line, the underline of an untouched setext heading joined the heading to the region
   of an edit in the next paragraph, and the heading came back as an ATX heading.
+  Every markdown body is given LF line endings before the parse (`prepareFragmentSeed`, and
+  the file restore), because the parse reads a `\r` as a space. Seeded as it was, a CRLF note
+  had a trailing space on every line of the doc, so its first edit wrote the whole note in
+  house style. The pass puts the file's own line endings back when it writes.
 
 - **A doc with no note row is never turned into a note** — the pass skips it. A body that
   arrives before its record may belong to a note this device has not seen yet, or to one
