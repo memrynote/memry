@@ -30,7 +30,8 @@ export function blankMarkdownCode(markdown: string): string {
         const end = close + 3
         return line.slice(0, end) + blankLine(line.slice(end))
       }
-      if (fence.consume(line)) return ''
+      // The fence pattern cannot match past a CRLF note's trailing `\r`.
+      if (fence.consume(line.endsWith('\r') ? line.slice(0, -1) : line)) return ''
       return blankLine(line)
     })
     .join('\n')
