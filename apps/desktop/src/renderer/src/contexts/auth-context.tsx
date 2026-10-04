@@ -261,6 +261,9 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element => {
   const [state, dispatch] = useReducer(authReducer, initialState)
   const oauthStateRef = useRef<string | null>(null)
+  // Set while the server has ended the session: refresh stays blocked, so a
+  // sync that still lands proves nothing about a session the user can keep.
+  const sessionEndedRef = useRef(false)
 
   useEffect(() => {
     const checkAuth = async (): Promise<void> => {
@@ -287,6 +290,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
           // keeps the tokens and refreshes again once the server answers.
           const refreshResult = await authService.refreshToken()
           if (!refreshResult.success && refreshResult.sessionEnded) {
+            sessionEndedRef.current = true
             dispatch({ type: 'RESET_AUTH' })
           }
         } else {
@@ -301,7 +305,9 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
 
   useEffect(() => {
     const unsubscribe = window.api.onSessionExpired(({ reason }) => {
-      if (isSessionEndedReason(reason)) dispatch({ type: 'RESET_AUTH' })
+      if (!isSessionEndedReason(reason)) return
+      sessionEndedRef.current = true
+      dispatch({ type: 'RESET_AUTH' })
     })
     return unsubscribe
   }, [])
@@ -309,6 +315,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   // A fresh token or a sync that finished after this window showed the user
   // as signed out proves main still holds a live session.
   useEffect(() => {
+    if (state.status === 'authenticated') sessionEndedRef.current = false
     if (state.status !== 'unauthenticated') return
     let cancelled = false
     const signedOutAt = Date.now()
@@ -325,6 +332,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     }
     const unsubscribeToken = window.api.onTokenRefreshed(recheck)
     const unsubscribeStatus = window.api.onSyncStatusChanged(({ status, lastSyncAt }) => {
+      if (sessionEndedRef.current) return
       if (status === 'idle' && lastSyncAt !== undefined && lastSyncAt >= signedOutAt) recheck()
     })
     return () => {

@@ -162,14 +162,17 @@ const handleRefreshRejected = (error: SyncServerError): void => {
 
 const doRefreshAccessToken = async (): Promise<boolean> => {
   for (let attempt = 0; attempt < REFRESH_MAX_RETRIES; attempt++) {
-    const currentRefreshToken = await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN)
-    if (!currentRefreshToken) {
-      credentialsMissing = true
-      emitSessionExpired('credentials_missing')
-      return false
-    }
-
     try {
+      // A keychain read that throws (a wedged Windows Credential Manager) is
+      // retried like a network failure; only a token that is truly absent
+      // ends the session.
+      const currentRefreshToken = await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN)
+      if (!currentRefreshToken) {
+        credentialsMissing = true
+        emitSessionExpired('credentials_missing')
+        return false
+      }
+
       const raw = await postToServer<unknown>('/auth/refresh', {
         refreshToken: currentRefreshToken
       })

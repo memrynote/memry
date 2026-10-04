@@ -5,7 +5,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode
 } from 'react'
@@ -352,10 +351,6 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const [reauthRequired, setReauthRequired] = useState(false)
   const [vaultBinding, setVaultBinding] = useState<VaultBindingState>(NEUTRAL_BINDING)
   const [bindingPromptDismissed, setBindingPromptDismissed] = useState(false)
-  const sessionExpiredRef = useRef(state.sessionExpired)
-  useEffect(() => {
-    sessionExpiredRef.current = state.sessionExpired
-  }, [state.sessionExpired])
 
   useEffect(() => {
     if (authState.status !== 'authenticated') {
@@ -500,14 +495,12 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
 
     cleanups.push(
       window.api.onSessionExpired((event) => {
-        if (cancelled) return
-        // A rejected refresh token can never recover — the toast is too easy to
-        // miss for a session that is over, so escalate to a blocking prompt.
-        if (isSessionEndedReason(event.reason)) {
-          setReauthRequired(true)
-        } else if (!sessionExpiredRef.current) {
-          toast.error(t('sync.authExpired'), { duration: 8000 })
-        }
+        // An advisory keeps the session and retries on its own, so it must
+        // not send the user into a sign-in they do not need (#2612).
+        if (cancelled || !isSessionEndedReason(event.reason)) return
+        // A session that is over escalates to a blocking prompt; a toast is
+        // too easy to miss.
+        setReauthRequired(true)
         dispatch({ type: 'SESSION_EXPIRED', error: t('sync.authExpired') })
       })
     )
