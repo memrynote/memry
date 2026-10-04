@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS `file_text_jobs` (
 	`status` text NOT NULL,
 	`page_count` integer,
 	`error` text,
+	`app_version` text NOT NULL,
 	`updated_at` text NOT NULL,
 	FOREIGN KEY (`note_id`) REFERENCES `note_cache`(`id`) ON UPDATE no action ON DELETE cascade
 );

@@ -437,8 +437,8 @@ describe('createVaultServiceHandles', () => {
           '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
       `)
       index.db.run(sql`
-        INSERT INTO file_text_jobs (note_id, signature, status, page_count, updated_at)
-        VALUES ('file-1', '10:1', 'pending', 3, '2026-01-01T00:00:00.000Z')
+        INSERT INTO file_text_jobs (note_id, signature, status, page_count, app_version, updated_at)
+        VALUES ('file-1', '10:1', 'pending', 3, '1.0.0', '2026-01-01T00:00:00.000Z')
       `)
       index.db.run(sql`
         INSERT INTO extracted_text (note_id, part, method, text)

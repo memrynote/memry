@@ -9,6 +9,7 @@ const index = vi.hoisted(() => ({ db: null as unknown }))
 const published = vi.hoisted(() => [] as unknown[])
 const helpers = vi.hoisted(() => ({ ocrStopped: 0, hostClosed: 0 }))
 
+vi.mock('electron', () => ({ app: { getVersion: () => '1.0.0' } }))
 vi.mock('../database', () => ({ getIndexDatabase: () => index.db }))
 vi.mock('../projections', () => ({
   publishProjectionEvent: (event: unknown) => published.push(event)

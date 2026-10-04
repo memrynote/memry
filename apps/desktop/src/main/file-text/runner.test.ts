@@ -39,6 +39,7 @@ function createHarness(index: TestDatabaseResult, vaultDir: string): Harness {
     runner: (overrides) =>
       new FileTextRunner({
         vaultPath: vaultDir,
+        appVersion: '1.0.0',
         getDb: () => db,
         recognize: async (source: OcrImageSource) => {
           if (source.kind === 'file') return harness.imageText
@@ -319,6 +320,37 @@ describe('FileTextRunner', () => {
     await settled(harness.db, 'img-1', 'done')
 
     expect(pagesOf(harness.db, 'img-1')).toEqual([{ part: 1, method: 'ocr', text: 'read at last' }])
+  })
+
+  it('reads a failed file again under a new app version, keeping the pages it did read', async () => {
+    seedFile(harness, 'pdf-1', 'scan.pdf', 'pdf')
+    harness.pages = [{ layer: 'cover' }, { fails: true }, { fails: true }, { fails: true }]
+    const first = start()
+    await settled(harness.db, 'pdf-1', 'failed')
+    await first.stop()
+
+    harness.pages = [
+      { layer: 'read again' },
+      { scanned: 'two' },
+      { scanned: 'three' },
+      { scanned: 'four' }
+    ]
+    const sameVersion = start()
+    seedFile(harness, 'img-1', 'later.png', 'image')
+    sameVersion.noteChanged('img-1')
+    await settled(harness.db, 'img-1', 'done')
+    expect(getFileTextJob(harness.db, 'pdf-1')?.status).toBe('failed')
+    await sameVersion.stop()
+
+    start({ appVersion: '1.0.1' })
+    await settled(harness.db, 'pdf-1', 'done')
+
+    expect(pagesOf(harness.db, 'pdf-1').map((page) => page.text)).toEqual([
+      'cover',
+      'two',
+      'three',
+      'four'
+    ])
   })
 
   it('pages a long text out in chunks a reader can continue from', async () => {

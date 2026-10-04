@@ -34,6 +34,8 @@ export type FileTextJobStatus = (typeof FILE_TEXT_JOB_STATUSES)[number]
  * Background extraction state for one filed PDF or image. `signature` is the
  * size and mtime of the bytes the `extracted_text` rows came from; a file whose
  * signature moves starts over. A `pending` job resumes after its last stored part.
+ * `app_version` is the build that last worked on it, so a newer build retries
+ * what an older one failed.
  */
 export const fileTextJobs = sqliteTable('file_text_jobs', {
   noteId: text('note_id')
@@ -43,6 +45,7 @@ export const fileTextJobs = sqliteTable('file_text_jobs', {
   status: text('status').$type<FileTextJobStatus>().notNull(),
   pageCount: integer('page_count'),
   error: text('error'),
+  appVersion: text('app_version').notNull(),
   updatedAt: text('updated_at').notNull()
 })
 

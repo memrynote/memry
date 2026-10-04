@@ -9,6 +9,7 @@
  *   (no job) or signature moved -> pending -> done
  *                                          -> failed (unopenable, missing, or
  *                                             MAX_CONSECUTIVE_FAILURES pages in a row)
+ *   failed, under another app version or a day old -> pending again
  *
  * This loop is the only writer of `file_text_jobs` and `extracted_text`. Search
  * and embeddings pick the text up from the `note.text-extracted` events it
@@ -23,12 +24,13 @@ import {
   listFileTextCandidates,
   nextExtractedPart,
   nextPendingFileTextJob,
+  retryFileTextJob,
   saveExtractedPart,
   setFileTextPageCount,
   startFileTextJob,
   type FileTextCandidate
 } from '../database/queries/extracted-text'
-import type { ExtractedTextMethod } from '@memry/db-schema/schema/extracted-text'
+import type { ExtractedTextMethod, FileTextJobRow } from '@memry/db-schema/schema/extracted-text'
 import { createLogger } from '../lib/logger'
 import type { OcrImageSource } from './ocr-protocol'
 import type { PdfDocument } from './pdf-host'
@@ -40,9 +42,13 @@ const OCR_RENDER_MAX_EDGE = 3300
 const MAX_CONSECUTIVE_FAILURES = 3
 const ERROR_BACKOFF_MS = 5_000
 const FILE_SETTLE_MS = 1_000
+/** A failure may be a helper that could not start; give the file another go later. */
+const RETRY_FAILED_AFTER_MS = 24 * 60 * 60 * 1000
 
 export interface FileTextDeps {
   vaultPath: string
+  /** A job that failed under another version is read again. */
+  appVersion: string
   getDb: () => IndexDb
   recognize: (source: OcrImageSource) => Promise<string>
   openPdf: (absolutePath: string, size: number) => Promise<PdfDocument>
@@ -155,10 +161,22 @@ export class FileTextRunner {
       if (!current) continue
       const db = this.deps.getDb()
       const job = getFileTextJob(db, file.id)
-      if (job?.signature === current.signature) continue
-      startFileTextJob(db, file.id, current.signature)
+      if (job?.signature === current.signature) {
+        if (job.status === 'failed' && this.isDueForRetry(job)) {
+          retryFileTextJob(db, file.id, this.deps.appVersion)
+        }
+        continue
+      }
+      startFileTextJob(db, file.id, current.signature, this.deps.appVersion)
       if (job) this.deps.textChanged(file.id)
     }
+  }
+
+  private isDueForRetry(job: FileTextJobRow): boolean {
+    return (
+      job.appVersion !== this.deps.appVersion ||
+      Date.now() - Date.parse(job.updatedAt) >= RETRY_FAILED_AFTER_MS
+    )
   }
 
   private async extract(job: FileTextCandidate & { signature: string }): Promise<void> {

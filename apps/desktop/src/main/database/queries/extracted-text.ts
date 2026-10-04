@@ -62,16 +62,41 @@ export function nextPendingFileTextJob(
  * `signature` describes. One transaction, so a crash never leaves text from
  * the old bytes under the new signature.
  */
-export function startFileTextJob(db: IndexDb, noteId: string, signature: string): void {
-  const updatedAt = new Date().toISOString()
+export function startFileTextJob(
+  db: IndexDb,
+  noteId: string,
+  signature: string,
+  appVersion: string
+): void {
+  const job = {
+    signature,
+    status: 'pending' as const,
+    pageCount: null,
+    error: null,
+    appVersion,
+    updatedAt: new Date().toISOString()
+  }
   db.transaction((tx) => {
     tx.delete(extractedText).where(eq(extractedText.noteId, noteId)).run()
     tx.insert(fileTextJobs)
-      .values({ noteId, signature, status: 'pending', pageCount: null, error: null, updatedAt })
-      .onConflictDoUpdate({
-        target: fileTextJobs.noteId,
-        set: { signature, status: 'pending', pageCount: null, error: null, updatedAt }
-      })
+      .values({ noteId, ...job })
+      .onConflictDoUpdate({ target: fileTextJobs.noteId, set: job })
+      .run()
+  })
+}
+
+/**
+ * Queue a failed job again. Its unreadable parts go, so the job resumes at the
+ * first of them; the text it did read stays.
+ */
+export function retryFileTextJob(db: IndexDb, noteId: string, appVersion: string): void {
+  db.transaction((tx) => {
+    tx.delete(extractedText)
+      .where(and(eq(extractedText.noteId, noteId), eq(extractedText.method, 'unreadable')))
+      .run()
+    tx.update(fileTextJobs)
+      .set({ status: 'pending', error: null, appVersion, updatedAt: new Date().toISOString() })
+      .where(eq(fileTextJobs.noteId, noteId))
       .run()
   })
 }

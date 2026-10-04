@@ -1,3 +1,4 @@
+import { app } from 'electron'
 import { getIndexDatabase } from '../database'
 import { publishProjectionEvent } from '../projections'
 import { recognizeText, stopOcr } from './ocr-engine'
@@ -14,6 +15,7 @@ export function startFileTextExtraction(vaultPath: string): void {
   void runner?.stop()
   runner = new FileTextRunner({
     vaultPath,
+    appVersion: app.getVersion(),
     getDb: getIndexDatabase,
     recognize: recognizeText,
     openPdf: openPdfDocument,
