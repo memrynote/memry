@@ -375,22 +375,12 @@ export class PushCoordinator {
               const rejection = response.value.rejected.find((r) => r.id === pushItem.id)
               const reason = rejection?.reason ?? 'Unknown rejection'
               if (reason === 'SYNC_REPLAY_DETECTED') {
-                // The row goes either way: resending the same clock is refused
-                // identically. Re-queued after the ack, so the ack cannot delete
-                // the new row.
+                log.info('Push: replay detected, server already has this or newer', {
+                  queueId: queueId.slice(0, 8),
+                  itemId: pushItem.id.slice(0, 8)
+                })
                 this.ctx.deps.queue.markSuccess(queueId, payloadAtDequeue.get(queueId))
-                if (this.requeueUnsentChanges(pushItem.id, pushItem.type)) {
-                  log.info('Push: replay of unsent changes, re-queued under a new clock', {
-                    itemId: pushItem.id.slice(0, 8),
-                    type: pushItem.type
-                  })
-                } else {
-                  log.info('Push: replay detected, server already has this or newer', {
-                    queueId: queueId.slice(0, 8),
-                    itemId: pushItem.id.slice(0, 8)
-                  })
-                  this.markItemSynced(pushItem.id, pushItem.type)
-                }
+                this.markItemSynced(pushItem.id, pushItem.type)
               } else if (reason === 'SYNC_DELETE_WINS') {
                 // The server holds a tombstone that outranks this upsert and
                 // wrote nothing, so a retry is refused identically every time.
@@ -657,20 +647,6 @@ export class PushCoordinator {
       getHandler(type)?.markPushSynced?.(this.ctx.deps.db, itemId)
     } catch (err) {
       log.warn('Failed to mark item syncedAt after push', { itemId, type, error: err })
-    }
-  }
-
-  /**
-   * A replay of a row whose changes the server never took must not stamp it
-   * synced: that erases the only record that they never left the device
-   * (#2646). On a failure the row is left unstamped for the startup sweep.
-   */
-  private requeueUnsentChanges(itemId: string, type: SyncItemType): boolean {
-    try {
-      return getHandler(type)?.requeueUnsentChanges?.(this.ctx.deps.db, itemId) ?? false
-    } catch (err) {
-      log.warn('Failed to re-queue unsent changes after a replay', { itemId, type, error: err })
-      return true
     }
   }
 

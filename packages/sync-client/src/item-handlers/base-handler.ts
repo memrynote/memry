@@ -39,8 +39,6 @@ export abstract class BaseItemHandler<T> implements SyncItemHandler<T> {
 
   markPushSynced?(db: DrizzleDb, itemId: string): void
 
-  requeueUnsentChanges?(db: DrizzleDb, itemId: string): boolean
-
   protected resolveClock(
     localClock: VectorClock | null | undefined,
     remoteClock: VectorClock
@@ -52,13 +50,8 @@ export abstract class BaseItemHandler<T> implements SyncItemHandler<T> {
    * `resolveClock` for an incoming upsert. An EQUAL clock whose payload is
    * identical to the local row skips (#2294, protocol 06 §6.5.2 P4) and reports
    * `identical`, so a handler can still restore local-only state (missing
-   * files) that the skipped apply would have fetched.
-   *
-   * Equal with different content applies, unless the local row holds changes
-   * the server never acknowledged: then the server copy is the older state, so
-   * the row is kept, re-queued under a new clock and reported `requeued`.
-   * Applying it would overwrite those changes and stamp the row synced, which
-   * erased every trace of them (#2646).
+   * files) that the skipped apply would have fetched. Equal with different
+   * content applies.
    */
   protected resolveUpsertClock(
     ctx: ApplyContext,
@@ -66,22 +59,16 @@ export abstract class BaseItemHandler<T> implements SyncItemHandler<T> {
     localClock: VectorClock | null | undefined,
     remoteClock: VectorClock,
     remote: T
-  ): ClockResolution & { identical: boolean; requeued: boolean } {
-    let equal = false
+  ): ClockResolution & { identical: boolean } {
     let identical = false
-    const resolution = resolveClockConflict(localClock, remoteClock, () => {
-      equal = true
-      identical = this.matchesLocalPayload(ctx.db, itemId, remote)
-      return identical
-    })
-    if (identical) {
-      this.markSyncedIfDirty(ctx.db, itemId)
-      return { ...resolution, identical, requeued: false }
-    }
-    if (equal && this.requeueUnsentChanges?.(ctx.db, itemId)) {
-      return { action: 'skip', mergedClock: remoteClock, identical, requeued: true }
-    }
-    return { ...resolution, identical, requeued: false }
+    const resolution = resolveClockConflict(
+      localClock,
+      remoteClock,
+      () => (identical = this.matchesLocalPayload(ctx.db, itemId, remote))
+    )
+    identical &&= resolution.action === 'skip'
+    if (identical) this.markSyncedIfDirty(ctx.db, itemId)
+    return { ...resolution, identical }
   }
 
   /**

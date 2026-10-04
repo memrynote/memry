@@ -113,8 +113,6 @@ describe('note and journal rows that share an id', () => {
         title: 'Untitled',
         fileType: 'markdown',
         clock: { 'device-9821': 1 },
-        // In step with the server: an unsent note keeps its row at an equal clock.
-        syncedAt: '2026-09-26T15:09:05.000Z',
         createdAt: '2026-09-26T15:09:05.000Z',
         modifiedAt: '2026-09-26T15:09:05.000Z'
       })

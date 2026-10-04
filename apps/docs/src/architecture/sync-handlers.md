@@ -539,11 +539,7 @@ by `DIRTY_RECOVERY`: one entry per record sync item type, either a sweep (select
 service) or an exemption naming why the type has no usable dirty marker. Clock-less rows are left to
 `seedUnclocked`. A never-synced row goes out as a create; a modified one as a recovered update at its
 stored clock. Both rebind `_offline` ticks first through `recoverPendingChange`, so the placeholder
-device id never reaches the wire. A note's predicate lives in `main/sync/note-unsent-changes.ts`,
-because two more places consult it through `noteHandler.requeueUnsentChanges`: an equal-clock pull
-with a different payload, and a `SYNC_REPLAY_DETECTED` answer to a push. For a dirty note both
-re-queue it through the local-update path, which advances the clock, instead of applying the server
-copy or stamping the row synced (#2646). Exempt types (settings, tag definitions and categories, folder
+device id never reaches the wire. Exempt types (settings, tag definitions and categories, folder
 configs, property definitions, the calendar types, canvases) are not on the sync-intent path yet and
 wait for its per-type rollout (#2301); agent chat has no local push path.
 

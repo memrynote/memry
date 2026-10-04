@@ -29,7 +29,6 @@ import { getTaskActivitySyncService } from '@memry/sync-client/task-activity-syn
 import { taskActivityRetentionCutoff } from '@memry/sync-client/task-activity-retention'
 import { getJournalSyncService } from './journal-sync'
 import { getNoteSyncService } from './note-sync'
-import { hasUnsentRecordChanges } from './note-unsent-changes'
 import { getProjectSyncService } from '@memry/sync-client/project-sync'
 import { getTaskSyncService } from '@memry/sync-client/task-sync'
 import { flushPendingLocalDeletes } from './local-mutations'
@@ -147,15 +146,13 @@ const recoverDirtyProjects: DirtySweep = {
  * stale title forever (notes created as 'Untitled' and renamed inside the push
  * window). Re-enqueueing here is what heals installs that already diverged.
  *
- * Scope is deliberately narrow: `hasUnsentRecordChanges`, the same predicate an
- * equal-clock pull and a replay rejection consult. Clock-less notes belong to
+ * Scope is deliberately narrow: only notes the server already knows (`clock`
+ * set) and that are not local-only. Clock-less notes belong to
  * `seedUnclockedNotes`, journals to `recoverDirtyJournals` below — they are a
  * different sync service with a different payload builder, so they stay a
  * separate query rather than a branch in this one. The recovered enqueue reuses
- * the stored clock instead of bumping it. A content-only edit moves
- * `modifiedAt` without a clock bump, so the server can refuse that push as a
- * replay; `noteHandler.requeueUnsentChanges` then re-pushes the note under a
- * new clock instead of stamping it synced (#2646).
+ * the stored clock instead of bumping it, so a note that is actually in step is
+ * simply replay-detected by the server and stamped clean.
  */
 const recoverDirtyNotes: DirtySweep = {
   kind: 'sweep',
@@ -164,7 +161,20 @@ const recoverDirtyNotes: DirtySweep = {
     db
       .select({ id: noteMetadata.id, syncedAt: noteMetadata.syncedAt })
       .from(noteMetadata)
-      .where(and(isNull(noteMetadata.journalDate), hasUnsentRecordChanges()))
+      .where(
+        and(
+          isNotNull(noteMetadata.clock),
+          isNull(noteMetadata.journalDate),
+          sql`${noteMetadata.localOnly} IS NOT 1`,
+          or(
+            isNull(noteMetadata.syncedAt),
+            and(
+              isNotNull(noteMetadata.syncedAt),
+              gt(noteMetadata.modifiedAt, noteMetadata.syncedAt)
+            )
+          )
+        )
+      )
       .all(),
   enqueue: (noteSync, note) => {
     if (!noteSync.enqueueRecoveredUpdate) return false
@@ -265,7 +275,20 @@ const recoverDirtyJournals: DirtySweep = {
         journalDate: noteMetadata.journalDate
       })
       .from(noteMetadata)
-      .where(and(isNotNull(noteMetadata.journalDate), hasUnsentRecordChanges()))
+      .where(
+        and(
+          isNotNull(noteMetadata.clock),
+          isNotNull(noteMetadata.journalDate),
+          sql`${noteMetadata.localOnly} IS NOT 1`,
+          or(
+            isNull(noteMetadata.syncedAt),
+            and(
+              isNotNull(noteMetadata.syncedAt),
+              gt(noteMetadata.modifiedAt, noteMetadata.syncedAt)
+            )
+          )
+        )
+      )
       .all(),
   enqueue: (journalSync, journal) => {
     // Unreachable given the `isNotNull` above, but the date is what keeps the
