@@ -448,11 +448,16 @@
       "width": "Larghezza dell'editor",
       "toolbarMode": "Barra degli strumenti di formattazione fissa",
       "spellCheck": "Controllo ortografico",
-      "convertChecklists": "Trasforma gli elementi della checklist in attività"
+      "convertChecklists": "Trasforma gli elementi della checklist in attività",
+      "convertAgentChecklists": "Trasforma in attività gli elementi della checklist scritti da un agente"
     },
     "convertChecklists": {
       "description": "Ogni nuovo elemento della checklist diventa un’attività. Disattivato, le checklist restano semplici caselle; fai clic destro su una per renderla un’attività.",
       "error": "Impossibile aggiornare la conversione delle checklist"
+    },
+    "convertAgentChecklists": {
+      "description": "Disattivato, ogni casella che un agente scrive resta una semplice casella. Gli agenti creano attività con gli strumenti delle attività.",
+      "error": "Impossibile aggiornare la conversione delle checklist degli agenti"
     }
   },
   "templates": {

@@ -187,6 +187,11 @@ export interface CanvasElementsDetail {
   truncated: boolean
 }
 
+/** Present only when a body write turned checkbox lines into tasks. */
+export interface CreatedTasksReply {
+  created_tasks?: Array<{ id: string; title: string }>
+}
+
 export interface VaultServiceHandles {
   notes: {
     search(input: {
@@ -201,14 +206,14 @@ export interface VaultServiceHandles {
       content_markdown: string
       folder_path?: string
       tags?: string[]
-    }): Promise<{ id: string }>
+    }): Promise<{ id: string } & CreatedTasksReply>
     rename(input: { id: string; title: string }): Promise<{ id: string }>
     delete(id: string): Promise<{ id: string }>
     update(input: {
       id: string
       mode: 'append' | 'prepend' | 'replace'
       content_markdown: string
-    }): Promise<void>
+    }): Promise<CreatedTasksReply>
     addTag(input: { id: string; tag: string }): Promise<void>
     removeTag(input: { id: string; tag: string }): Promise<void>
     /**
@@ -357,13 +362,13 @@ export interface VaultServiceHandles {
     createIfMissing(input: {
       date: string
       content_markdown: string
-    }): Promise<{ id: string; created: boolean }>
+    }): Promise<{ id: string; created: boolean } & CreatedTasksReply>
     update(input: {
       date: string
       content_markdown?: string
       tags?: string[]
       properties?: Record<string, unknown>
-    }): Promise<{ id: string }>
+    }): Promise<{ id: string } & CreatedTasksReply>
     delete(date: string): Promise<{ date: string; deleted: boolean }>
   }
   inbox: {

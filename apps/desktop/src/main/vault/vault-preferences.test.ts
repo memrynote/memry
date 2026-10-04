@@ -25,7 +25,7 @@ describe('editor checklist conversion preference', () => {
     if (vaultPath) fs.rmSync(vaultPath, { recursive: true, force: true })
   })
 
-  it('#given config.json written by an older version #then conversion reads as on', () => {
+  it('#given config.json written by an older version #then conversion reads as on, and off for agents', () => {
     vaultPath = createTempVault()
     fs.writeFileSync(
       path.join(vaultPath, MEMRY_DIR, 'config.json'),
@@ -39,7 +39,8 @@ describe('editor checklist conversion preference', () => {
       toolbarMode: 'floating',
       spellCheck: true,
       pdfAdaptToTheme: false,
-      convertChecklistsToTasks: true
+      convertChecklistsToTasks: true,
+      convertAgentChecklistsToTasks: false
     })
   })
 
@@ -167,7 +168,8 @@ describe('VaultPreferencesSchema', () => {
         toolbarMode: 'sticky' as const,
         pdfAdaptToTheme: false,
         spellCheck: false,
-        convertChecklistsToTasks: false
+        convertChecklistsToTasks: false,
+        convertAgentChecklistsToTasks: true
       }
     }
 
@@ -184,7 +186,8 @@ describe('VaultPreferencesSchema', () => {
           toolbarMode: 'floating' as const,
           spellCheck: false,
           pdfAdaptToTheme: false,
-          convertChecklistsToTasks: true
+          convertChecklistsToTasks: true,
+          convertAgentChecklistsToTasks: false
         }
       }
       const result = VaultPreferencesSchema.parse(input)

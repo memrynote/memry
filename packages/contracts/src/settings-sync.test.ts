@@ -120,6 +120,12 @@ describe('SyncedSettingsSchema', () => {
     })
   })
 
+  it('keeps editor.convertAgentChecklistsToTasks', () => {
+    expect(
+      SyncedSettingsSchema.parse({ editor: { convertAgentChecklistsToTasks: true } }).editor
+    ).toEqual({ convertAgentChecklistsToTasks: true })
+  })
+
   it('accepts a notes group', () => {
     const result = SyncedSettingsSchema.safeParse({
       notes: {

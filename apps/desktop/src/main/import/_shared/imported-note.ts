@@ -91,19 +91,29 @@ function parentIdFor(
   return getTaskById(db, item.parentTaskId) ? item.parentTaskId : null
 }
 
+export interface CreatedChecklistTask {
+  id: string
+  title: string
+}
+
 interface ConvertedChecklist {
   markdown: string
   /** Every task row this call created, parents before their children. */
-  createdIds: string[]
+  created: CreatedChecklistTask[]
 }
 
-async function convertChecklistsToTasks(
+/**
+ * `keepLine` names lines to leave as they are. A kept line's nested
+ * checkboxes become top-level tasks, as they would under a failed create.
+ */
+export async function convertChecklistsToTasks(
   noteId: string,
-  markdown: string
+  markdown: string,
+  keepLine: (lineIndex: number) => boolean = () => false
 ): Promise<ConvertedChecklist> {
-  const unchanged: ConvertedChecklist = { markdown, createdIds: [] }
+  const unchanged: ConvertedChecklist = { markdown, created: [] }
   const planned = planChecklistTasks(markdown, new Date())
-  if (planned.length === 0) return unchanged
+  if (planned.every((item) => keepLine(item.lineIndex))) return unchanged
 
   const target = resolveImportTarget()
   if (!target) {
@@ -119,8 +129,13 @@ async function convertChecklistsToTasks(
   const lines = markdown.split('\n')
   /** Per planned item, the created task id — null when its create failed. */
   const createdIds: (string | null)[] = []
+  const created: CreatedChecklistTask[] = []
 
   for (const item of planned) {
+    if (keepLine(item.lineIndex)) {
+      createdIds.push(null)
+      continue
+    }
     const parentId = parentIdFor(item, createdIds, db)
     try {
       const result = await domain.createTask({
@@ -159,6 +174,7 @@ async function convertChecklistsToTasks(
 
       lines[item.lineIndex] = taskLine(item, result.task.id, checked, lines[item.lineIndex])
       createdIds.push(result.task.id)
+      created.push({ id: result.task.id, title: item.title })
     } catch (error) {
       // One bad line must not cost the note its import.
       logger.warn('Failed to create a task for an imported checklist line', { noteId, error })
@@ -166,20 +182,20 @@ async function convertChecklistsToTasks(
     }
   }
 
-  return {
-    markdown: lines.join('\n'),
-    createdIds: createdIds.filter((id): id is string => id !== null)
-  }
+  return { markdown: lines.join('\n'), created }
 }
 
 /**
- * Undo the rows a note's checklist created. Reached only when `createNote`
+ * Undo the rows a note's checklist created. Reached only when the note write
  * fails after they exist: the importer reports the note failed, and tasks
  * linked to a note that was never written would be unreachable clutter.
  * Children first — `deleteTask` does not cascade to subtasks.
  */
-async function deleteImportedTasks(noteId: string, createdIds: string[]): Promise<void> {
-  if (createdIds.length === 0) return
+export async function deleteImportedTasks(
+  noteId: string,
+  created: CreatedChecklistTask[]
+): Promise<void> {
+  if (created.length === 0) return
   let db: DataDb
   try {
     db = getDatabase()
@@ -188,7 +204,7 @@ async function deleteImportedTasks(noteId: string, createdIds: string[]): Promis
   }
 
   const domain = createDesktopTasksDomain(db, createTasksPublisher(), generateId)
-  for (const id of [...createdIds].reverse()) {
+  for (const { id } of [...created].reverse()) {
     try {
       await domain.deleteTask(id)
     } catch (error) {
@@ -214,7 +230,7 @@ export async function createImportedNote(input: NoteCreateInput): Promise<Note> 
     // The rows exist but the note does not, and the importer is about to report
     // this item failed. Leaving them behind would file tasks into the user's
     // project pointing at a note they can never open.
-    await deleteImportedTasks(id, converted.createdIds)
+    await deleteImportedTasks(id, converted.created)
     throw error
   }
 }

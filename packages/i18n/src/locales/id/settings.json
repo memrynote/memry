@@ -448,11 +448,16 @@
       "width": "Lebar editor",
       "toolbarMode": "Bilah alat pemformatan tetap",
       "spellCheck": "Periksa ejaan",
-      "convertChecklists": "Ubah item daftar periksa menjadi tugas"
+      "convertChecklists": "Ubah item daftar periksa menjadi tugas",
+      "convertAgentChecklists": "Ubah item daftar periksa dari agen menjadi tugas"
     },
     "convertChecklists": {
       "description": "Setiap item daftar periksa baru menjadi tugas. Jika nonaktif, daftar tetap berupa kotak centang biasa; klik kanan item untuk menjadikannya tugas.",
       "error": "Gagal memperbarui konversi daftar periksa"
+    },
+    "convertAgentChecklists": {
+      "description": "Jika nonaktif, setiap kotak centang yang ditulis agen tetap kotak centang biasa. Agen membuat tugas dengan alat tugas.",
+      "error": "Gagal memperbarui konversi daftar periksa agen"
     }
   },
   "templates": {

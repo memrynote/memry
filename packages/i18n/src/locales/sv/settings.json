@@ -448,11 +448,16 @@
       "width": "Redigerarens bredd",
       "toolbarMode": "Fast formateringsverktygsfält",
       "spellCheck": "Kontrollera stavning",
-      "convertChecklists": "Gör checklistpunkter till uppgifter"
+      "convertChecklists": "Gör checklistpunkter till uppgifter",
+      "convertAgentChecklists": "Gör checklistpunkter från agenter till uppgifter"
     },
     "convertChecklists": {
       "description": "Varje ny checklistpunkt blir en uppgift. Avstängt förblir checklistor vanliga kryssrutor; högerklicka på en för att göra den till en uppgift.",
       "error": "Det gick inte att uppdatera konverteringen av checklistor"
+    },
+    "convertAgentChecklists": {
+      "description": "Av behåller varje kryssruta som en agent skriver som en vanlig kryssruta. Agenter skapar uppgifter med uppgiftsverktygen.",
+      "error": "Det gick inte att uppdatera konverteringen av checklistor från agenter"
     }
   },
   "templates": {

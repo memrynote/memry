@@ -33,7 +33,9 @@ const mocks = vi.hoisted(() => ({
   generateId: vi.fn(),
   snapshotCurrentNoteFromWindow: vi.fn(),
   invokeDesktopApiFromWindow: vi.fn(),
-  replaceNoteTagsInCrdt: vi.fn()
+  replaceNoteTagsInCrdt: vi.fn(),
+  getEditorSettings: vi.fn(),
+  listProjects: vi.fn()
 }))
 
 vi.mock('../../../database/queries/search', () => ({
@@ -47,7 +49,20 @@ vi.mock('../../../database/queries/notes', () => ({
 
 vi.mock('../../../database/queries/projects', () => ({
   getInboxProject: mocks.getInboxProject,
-  getProjectLinkCounts: mocks.getProjectLinkCounts
+  getProjectLinkCounts: mocks.getProjectLinkCounts,
+  listProjects: mocks.listProjects
+}))
+
+vi.mock('../../../database', () => ({
+  getDatabase: () => ({})
+}))
+
+vi.mock('../../../settings/editor-settings', () => ({
+  getEditorSettings: mocks.getEditorSettings
+}))
+
+vi.mock('../../../settings/task-settings', () => ({
+  getTaskSettings: () => ({ defaultProjectId: null })
 }))
 
 vi.mock('../../../inbox/domain', () => ({
@@ -102,7 +117,8 @@ vi.mock('../../../tags/store', () => ({
 }))
 
 vi.mock('../../../lib/id', () => ({
-  generateId: mocks.generateId
+  generateId: mocks.generateId,
+  generateNoteId: () => 'note-1'
 }))
 
 vi.mock('./current-note', () => ({
@@ -158,6 +174,8 @@ describe('createVaultServiceHandles', () => {
     vi.clearAllMocks()
 
     mocks.getConfig.mockReturnValue({ defaultNoteFolder: 'notes' })
+    mocks.getEditorSettings.mockReturnValue({ convertAgentChecklistsToTasks: false })
+    mocks.listProjects.mockReturnValue([{ id: 'inbox-project', isInbox: true }])
     // Every note write returns the note the command produced; the adapter reads
     // its tags back to keep a live Y.Doc's tag array in step.
     mocks.updateNoteCommand.mockImplementation(async (input: { id: string; tags?: string[] }) => ({
@@ -315,6 +333,7 @@ describe('createVaultServiceHandles', () => {
       })
     ).resolves.toEqual({ id: 'note-created' })
     expect(mocks.createNoteCommand).toHaveBeenCalledWith({
+      id: 'note-1',
       title: 'New',
       content: 'Body',
       folder: 'work',
@@ -1380,6 +1399,88 @@ describe('createVaultServiceHandles', () => {
         },
         { operation: 'notes.update', args: [{ id: 'note-1', title: 'Renamed' }] }
       ])
+    })
+  })
+
+  describe('checkbox lines an agent writes, with agent conversion on', () => {
+    beforeEach(() => {
+      mocks.getEditorSettings.mockReturnValue({ convertAgentChecklistsToTasks: true })
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Review',
+        path: 'review.md',
+        fileType: 'markdown'
+      })
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Review',
+        content: '- [ ] Owner item',
+        tags: [],
+        path: 'review.md',
+        frontmatter: {}
+      })
+    })
+
+    it('turns the lines into tasks and names each task in the reply', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.createNoteCommand.mockResolvedValue({ id: 'note-1' })
+
+      await expect(
+        handles.notes.create({ title: 'Review', content_markdown: '- [ ] Check the log' })
+      ).resolves.toEqual({
+        id: 'note-1',
+        created_tasks: [{ id: 'task-created', title: 'Check the log' }]
+      })
+      expect(taskDomain.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: 'inbox-project',
+          title: 'Check the log',
+          linkedNoteIds: ['note-1']
+        })
+      )
+      expect(mocks.createNoteCommand.mock.calls[0][0].content).toBe(
+        '- [ ] Check the log {task:task-created}'
+      )
+    })
+
+    it("leaves the owner's own lines unconverted on a replace", async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      await expect(
+        handles.notes.update({
+          id: 'note-1',
+          mode: 'replace',
+          content_markdown: '- [ ] Owner item\n- [ ] Agent item'
+        })
+      ).resolves.toEqual({ created_tasks: [{ id: 'task-created', title: 'Agent item' }] })
+      expect(taskDomain.createTask).toHaveBeenCalledTimes(1)
+      expect(mocks.updateNoteCommand.mock.calls).toEqual([
+        [{ id: 'note-1', content: '- [ ] Owner item\n- [ ] Agent item {task:task-created}' }]
+      ])
+    })
+
+    it('deletes the tasks again when the note write fails', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.createNoteCommand.mockRejectedValue(new Error('disk full'))
+
+      await expect(
+        handles.notes.create({ title: 'Review', content_markdown: '- [ ] Check the log' })
+      ).rejects.toThrow('disk full')
+      expect(taskDomain.deleteTask.mock.calls).toEqual([['task-created']])
+    })
+
+    it('leaves desktop API bodies for the editor to convert', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.invokeDesktopApiFromWindow.mockResolvedValue({ success: true })
+      const request = {
+        operation: 'notes.create' as const,
+        args: [{ title: 'Review', content: '- [ ] A' }]
+      }
+
+      await handles.desktop.write(request, 'window-1')
+
+      expect(mocks.invokeDesktopApiFromWindow).toHaveBeenCalledWith('window-1', request)
+      expect(taskDomain.createTask).not.toHaveBeenCalled()
     })
   })
 
