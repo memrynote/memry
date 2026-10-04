@@ -50,7 +50,17 @@ const MCM_END_REGEX = /^(?:---|===)\s*(?:end-multi-column|multi-column-end)$/i
 const SETTINGS_OPEN_REGEX = /^```\s*(?:column-settings|multi-column-settings|settings)\s*$/i
 const SETTINGS_CLOSE_REGEX = /^```\s*$/
 
-const PANDOC_FENCE_REGEX = /^:{3,}\s*(.*?)\s*$/
+/**
+ * The descriptor after a Pandoc `:::` fence (`''` for a bare closing fence),
+ * or null when the line is not one. A function rather than `/^:{3,}\s*(.*?)\s*$/`:
+ * that pattern is quadratic on a long run of whitespace, and note content is
+ * attacker-reachable through sync.
+ */
+function pandocFence(line: string): string | null {
+  let colons = 0
+  while (line[colons] === ':') colons++
+  return colons >= 3 ? line.slice(colons).trim() : null
+}
 const PANDOC_COLUMNS_CLASS_REGEX =
   /^(?:columns|(?:two|three|four|five|six|seven|eight|nine|ten)-?columns)$/i
 const PANDOC_COLUMN_BREAK_REGEX = /^\{?\s*\.?columnbreak\s*\}?$/i
@@ -172,9 +182,9 @@ function readColumnRegion(lines: readonly string[], start: number): ColumnRegion
   const mcm = lines[start].match(MCM_START_REGEX)
   if (mcm) return readMcmRegion(lines, start, (mcm[1] ?? '').trim())
 
-  const pandoc = lines[start].match(PANDOC_FENCE_REGEX)
-  if (pandoc && pandoc[1]) {
-    const attributes = parsePandocAttributes(pandoc[1])
+  const pandoc = pandocFence(lines[start])
+  if (pandoc) {
+    const attributes = parsePandocAttributes(pandoc)
     if (attributes) return readPandocRegion(lines, start, attributes)
   }
   return null
@@ -277,9 +287,9 @@ function readPandocRegion(
 
   for (let i = start + 1; i < lines.length; i++) {
     const line = lines[i]
-    const div = fence.consume(line) ? null : line.match(PANDOC_FENCE_REGEX)
+    const div = fence.consume(line) ? null : pandocFence(line)
 
-    if (div && div[1] === '') {
+    if (div === '') {
       const closed = openDivs.pop()
       if (closed === undefined) {
         columns.push(current.join('\n').trim())
@@ -296,7 +306,7 @@ function readPandocRegion(
         continue
       }
     } else if (div) {
-      if (PANDOC_COLUMN_BREAK_REGEX.test(div[1])) {
+      if (PANDOC_COLUMN_BREAK_REGEX.test(div)) {
         openDivs.push('break')
         continue
       }
@@ -311,9 +321,14 @@ function readPandocRegion(
 function settingsEntries(settings: string): { key: string; value: string; line: string }[] {
   const inner = settings.split('\n').slice(1, -1)
   return inner.map((line) => {
-    const pair = line.match(/^\s*([^:]+?)\s*:\s*(.*?)\s*$/)
-    return pair
-      ? { key: pair[1].toLowerCase(), value: pair[2], line }
+    // indexOf + trim, not a lazy-group regex: same quadratic hazard as above.
+    const colon = line.indexOf(':')
+    return colon > 0
+      ? {
+          key: line.slice(0, colon).trim().toLowerCase(),
+          value: line.slice(colon + 1).trim(),
+          line
+        }
       : { key: '', value: '', line }
   })
 }
