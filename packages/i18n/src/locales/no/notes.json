@@ -246,6 +246,17 @@
       "error": "Feil",
       "success": "Suksess"
     },
+    "columns": {
+      "group": "Grunnblokker",
+      "two": {
+        "title": "To kolonner",
+        "subtext": "Plasser blokker side om side i to kolonner"
+      },
+      "three": {
+        "title": "Tre kolonner",
+        "subtext": "Plasser blokker side om side i tre kolonner"
+      }
+    },
     "diagram": {
       "title": "Diagram",
       "subtext": "Flytskjema, sekvensdiagram eller Gantt-diagram fra Mermaid-kilde"

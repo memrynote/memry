@@ -246,6 +246,17 @@
       "error": "Error",
       "success": "Éxito"
     },
+    "columns": {
+      "group": "Bloques básicos",
+      "two": {
+        "title": "Dos columnas",
+        "subtext": "Coloca bloques uno al lado del otro en dos columnas"
+      },
+      "three": {
+        "title": "Tres columnas",
+        "subtext": "Coloca bloques uno al lado del otro en tres columnas"
+      }
+    },
     "diagram": {
       "title": "Diagrama",
       "subtext": "Diagrama de flujo, de secuencia o de Gantt a partir de código Mermaid"

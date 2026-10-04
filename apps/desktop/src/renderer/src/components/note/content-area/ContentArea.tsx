@@ -27,6 +27,8 @@ import { AttachmentRenameFlow } from './attachment-rename-dialog'
 import { useTheme } from 'next-themes'
 import { AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
 import { getDiagramSlashMenuItems } from '@blocknote/diagram-block'
+import { multiColumnDropCursor } from '@blocknote/xl-multi-column'
+import { getColumnSlashMenuItems } from './columns-slash-menu'
 import { CustomAIMenu } from './ai-menu'
 import { aiSuggestionMarksExtension } from './ai-suggestion-marks'
 import { en as aiEn } from '@blocknote/xl-ai/locales'
@@ -641,6 +643,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         checkListItem: t('editor.content.todoPlaceholder')
       },
       dictionary: { ...coreEn, ai: aiEn } as any,
+      // Dropping a block on another block's left or right edge puts the two
+      // side by side, the way Notion does; anywhere else is BlockNote's own
+      // drop cursor.
+      dropCursor: multiColumnDropCursor,
       pasteHandler: handleEditorPaste
     })
   )
@@ -3011,6 +3017,21 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         title: t('editor.diagram.title'),
                         subtext: t('editor.diagram.subtext')
                       }))
+                  // A column list is a block, so not in a table cell, for the
+                  // reason the diagram gives above.
+                  const columnItems = inCell
+                    ? []
+                    : getColumnSlashMenuItems(editor, {
+                        group: t('editor.columns.group'),
+                        two: {
+                          title: t('editor.columns.two.title'),
+                          subtext: t('editor.columns.two.subtext')
+                        },
+                        three: {
+                          title: t('editor.columns.three.title'),
+                          subtext: t('editor.columns.three.subtext')
+                        }
+                      })
                   const calloutItem = getCalloutSlashMenuItem(editor, {
                     title: t('editor.callout.title'),
                     group: t('editor.callout.group'),
@@ -3142,6 +3163,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                       id: index === 0 ? 'diagram' : `diagram_${index}`
                     })),
                     { ...calloutItem, id: 'callout' },
+                    ...columnItems.map((item) => ({ ...item, id: item.key })),
                     { ...mathItem, id: 'math' },
                     ...(whiteboardItem ? [{ ...whiteboardItem, id: 'whiteboard' }] : []),
                     ...(viewItem ? [{ ...viewItem, id: 'view' }] : []),

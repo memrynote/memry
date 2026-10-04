@@ -246,6 +246,17 @@
       "error": "Greška",
       "success": "Uspjeh"
     },
+    "columns": {
+      "group": "Osnovni blokovi",
+      "two": {
+        "title": "Dva stupca",
+        "subtext": "Postavi blokove jedan uz drugi u dva stupca"
+      },
+      "three": {
+        "title": "Tri stupca",
+        "subtext": "Postavi blokove jedan uz drugi u tri stupca"
+      }
+    },
     "diagram": {
       "title": "Dijagram",
       "subtext": "Dijagram toka, dijagram slijeda ili Ganttov grafikon iz koda Mermaid"

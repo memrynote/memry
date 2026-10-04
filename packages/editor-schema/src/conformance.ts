@@ -23,6 +23,7 @@ import {
   serializeToggleBlock,
   serializeWhiteboard
 } from './blocks/markdown'
+import { serializeColumnRegion } from './blocks/columns'
 import { serializeDateMentionToken, type DateMentionData } from '@memry/shared/date-mention'
 
 export interface RoundtripCase {
@@ -748,6 +749,50 @@ const inlineImageCases: RoundtripCase[] = [
   }
 ]
 
+const columnSettings = (...lines: string[]): string =>
+  ['```column-settings', ...lines, '```'].join('\n')
+
+const columnCases: RoundtripCase[] = [
+  {
+    name: 'two column region',
+    markdown: serializeColumnRegion('r1', columnSettings('Number of Columns: 2'), ['Left', 'Right'])
+  },
+  {
+    name: 'column region keeps Obsidian settings it does not draw',
+    markdown: serializeColumnRegion(
+      'ExampleRegion1',
+      columnSettings('number of columns: 3', 'Border: off', 'Column Size: [20%, 30%, 50%]'),
+      ['One', 'Two', 'Three']
+    )
+  },
+  {
+    name: 'columns holding lists, headings, a toggle and blank lines',
+    markdown: [
+      'Above',
+      '',
+      serializeColumnRegion('r2', columnSettings('Number of Columns: 2'), [
+        '## Pros\n\n- fast\n- offline',
+        `Para one\n\n\nPara two\n\n${serializeToggleBlock('Summary', 'Body')}`
+      ]),
+      '',
+      'Below'
+    ].join('\n')
+  },
+  {
+    name: 'empty column',
+    markdown: serializeColumnRegion('r3', columnSettings('Number of Columns: 2'), ['', 'Right'])
+  },
+  {
+    name: 'column region spelled the old way is rewritten once',
+    markdown: '--- multi-column-start: old\nA\n--- column-break ---\nB\n--- multi-column-end',
+    canonical: serializeColumnRegion('old', columnSettings('Number of Columns: 2'), ['A', 'B'])
+  },
+  {
+    name: 'single column region stays text',
+    markdown: '--- start-multi-column: solo\n\nOnly\n\n--- end-multi-column'
+  }
+]
+
 export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...mentionCases,
   ...dateCases,
@@ -763,7 +808,8 @@ export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...whiteboardCases,
   ...viewBlockCases,
   ...foreignSpellingCases,
-  ...inlineImageCases
+  ...inlineImageCases,
+  ...columnCases
 ]
 
 // ---------------------------------------------------------------------------
@@ -1116,6 +1162,28 @@ export const NOTE_BLOCK_CASES: readonly NoteBlockCase[] = [
     name: 'whiteboard',
     pins: 'a whiteboard is `content: none` and holds only the `canvasId` PROP — the drawing lives in its own canvas file, never in the note',
     blocks: [{ type: 'whiteboard', props: { canvasId: WHITEBOARD_ID } }]
+  },
+  {
+    name: 'columnList',
+    pins: 'a column list is a block with no content whose columns are blocks one depth deeper, each holding its own blocks a further depth down; `width` and the MCM `regionId` are props',
+    blocks: [
+      {
+        type: 'columnList',
+        props: { regionId: 'r1' },
+        children: [
+          {
+            type: 'column',
+            props: { width: 0.5 },
+            children: [{ type: 'paragraph', content: 'Left' }]
+          },
+          {
+            type: 'column',
+            props: { width: 1.5 },
+            children: [{ type: 'bulletListItem', content: 'Right' }]
+          }
+        ]
+      }
+    ]
   },
   {
     name: 'table',

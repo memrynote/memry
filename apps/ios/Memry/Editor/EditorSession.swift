@@ -89,6 +89,10 @@ final class EditorSession {
     @ObservationIgnored weak var field: BlockField?
     /// A block to put the caret in once it is drawn.
     @ObservationIgnored var pendingFocus: String?
+    /// A column list just inserted, by its `id` prop: the caret goes to its
+    /// first block once a redraw shows the ids the core minted for it
+    /// (`resolveColumnFocus`).
+    @ObservationIgnored var pendingColumnFocus: String?
     @ObservationIgnored var keyboardHeight: CGFloat = 300
     @ObservationIgnored private var tail: Task<Void, Never>?
     // `nonisolated(unsafe)`: written once in `init`, read only by `deinit`,
@@ -459,8 +463,17 @@ final class EditorSession {
     /// The core nests any block under its previous sibling, and refuses the
     /// first block of its parent (`indent` in `structure.rs`).
     var canIndent: Bool { focusedSiblings.previous != nil }
-    /// The core lifts any nested block, and refuses a top-level one.
-    var canOutdent: Bool { (focusedBlock?.depth ?? 0) > 0 }
+    /// The core lifts any nested block, and refuses a top-level one and a
+    /// column's own block (`outdent` in `structure.rs`), as desktop's
+    /// `liftItem` does nothing there.
+    var canOutdent: Bool {
+        let blocks = blocks()
+        guard let focusedBlockId, let index = blocks.firstIndex(where: { $0.id == focusedBlockId }),
+              blocks[index].depth > 0
+        else { return false }
+        guard let parent = NoteColumns.parentIndex(of: index, in: blocks) else { return true }
+        return blocks[parent].kind != "column"
+    }
 
     /// The block menu's actions for the focused block.
     var focusedRunner: BlockActionRunner? {

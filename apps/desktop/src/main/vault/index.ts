@@ -719,7 +719,7 @@ async function openVault(vaultPath: string): Promise<void> {
 
     // Reload property definitions into DB cache before indexing
     // so getPropertyType() finds correct types during note sync
-    await propDefService.reload()
+    await propDefService.reloadOnOpen()
 
     const migrationState = getSetting(dataDb, ROOT_PROPERTIES_MIGRATION_KEY)
     if (migrationState !== ROOT_PROPERTIES_MIGRATION_DONE) {

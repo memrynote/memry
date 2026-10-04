@@ -193,6 +193,27 @@ describe('AssistantMessage', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
   })
 
+  it('says when the model runs without vault tools, while thinking and after the answer', async () => {
+    const withoutTools = (text: string, status: Message['status']): Message => ({
+      ...assistantMessage(text),
+      status,
+      content: {
+        role: 'assistant',
+        data: { text, toolsUnavailable: { detail: 'HTTP 400' } }
+      }
+    })
+    const notice =
+      'Vault tools are off for this model. It failed the tool check, so it can only chat. HTTP 400'
+    const { rerender } = render(<AssistantMessage message={withoutTools('', 'streaming')} />)
+
+    expect(screen.getByText(notice)).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Agent is thinking' })).toBeInTheDocument()
+
+    rerender(<AssistantMessage message={withoutTools('Plain answer', 'completed')} />)
+    expect(screen.getByText(notice)).toBeInTheDocument()
+    expect(await screen.findByText('Plain answer')).toBeInTheDocument()
+  })
+
   it('types in text that arrives mid-stream and keeps the caret until it catches up', async () => {
     const streaming = (text: string): Message => ({
       ...assistantMessage(text),

@@ -19,6 +19,9 @@ import {
   serializeQuoteBlock,
   serializeToggleBlock,
   splitMarkdownByToggles,
+  splitMarkdownByColumnRegions,
+  buildColumnListBlock,
+  serializeColumnListBlock,
   type ToggleBlockSegment
 } from '@memry/editor-schema/blocks'
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
@@ -892,6 +895,37 @@ async function markdownToBlocksPreserving(
  */
 async function parseMaskedMarkdown(
   editor: ServerBlockNoteEditor,
+  markdown: string,
+  insideColumn = false
+): Promise<Block[]> {
+  // Column regions come off before toggles: a column holds toggles, blank
+  // lines and fences of its own. A column cannot hold another column list,
+  // and MCM does not nest regions either, so a column body is read without
+  // this step. Twin of the renderer's `parseMaskedMarkdown`.
+  if (insideColumn) return parseMarkdownWithToggles(editor, markdown)
+
+  const blocks: Block[] = []
+  for (const segment of splitMarkdownByColumnRegions(markdown)) {
+    if (segment.kind === 'columns') {
+      blocks.push(
+        await buildColumnListBlock<Block>(
+          segment,
+          (body) => parseMaskedMarkdown(editor, body, true),
+          createEmptyParagraph,
+          () => crypto.randomUUID()
+        )
+      )
+    } else if (segment.kind === 'gap') {
+      for (let i = 0; i < segment.extraLines; i++) blocks.push(createEmptyParagraph())
+    } else {
+      blocks.push(...(await parseMarkdownWithToggles(editor, segment.text)))
+    }
+  }
+  return blocks
+}
+
+async function parseMarkdownWithToggles(
+  editor: ServerBlockNoteEditor,
   markdown: string
 ): Promise<Block[]> {
   const blocks: Block[] = []
@@ -1307,6 +1341,15 @@ async function blocksToMarkdownPreserving(
       await flushContentGroup()
       flushGap()
       segments.push({ type: 'content', text: await serializeToggle(editor, block) })
+    } else if ((block.type as string) === 'columnList') {
+      await flushContentGroup()
+      flushGap()
+      segments.push({
+        type: 'content',
+        text: await serializeColumnListBlock<Block>(block, (children) =>
+          blocksToMarkdownPreserving(editor, children)
+        )
+      })
     } else if (isStructuredQuote(block)) {
       await flushContentGroup()
       flushGap()

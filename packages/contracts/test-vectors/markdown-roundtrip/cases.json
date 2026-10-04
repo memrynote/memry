@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 129,
+    "exportedCaseCount": 135,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 139,
+    "caseCount": 145,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -932,6 +932,48 @@
       "canonical": "## [logo.png](https://example.com/home)\n\n![logo.png](attachments/logo.png)",
       "pending": null,
       "sha256": "76bda9a912c970ca372668fb84abfb3dbea969e3c198f9e829146e89f937e1db"
+    },
+    {
+      "name": "two column region",
+      "markdown": "--- start-multi-column: r1\n```column-settings\nNumber of Columns: 2\n```\n\nLeft\n\n--- end-column ---\n\nRight\n\n--- end-multi-column",
+      "canonical": null,
+      "pending": null,
+      "sha256": "48e9db60023a14e620c2d78663658c8eb81d07bed35d464d94d87359e2066172"
+    },
+    {
+      "name": "column region keeps Obsidian settings it does not draw",
+      "markdown": "--- start-multi-column: ExampleRegion1\n```column-settings\nnumber of columns: 3\nBorder: off\nColumn Size: [20%, 30%, 50%]\n```\n\nOne\n\n--- end-column ---\n\nTwo\n\n--- end-column ---\n\nThree\n\n--- end-multi-column",
+      "canonical": null,
+      "pending": null,
+      "sha256": "81bb659cfe5ca03f11ff17eb68108283ef4a1db8318996efdbd5d3d8bcc2f005"
+    },
+    {
+      "name": "columns holding lists, headings, a toggle and blank lines",
+      "markdown": "Above\n\n--- start-multi-column: r2\n```column-settings\nNumber of Columns: 2\n```\n\n## Pros\n\n- fast\n- offline\n\n--- end-column ---\n\nPara one\n\n\nPara two\n\n<details data-memry-toggle>\n<summary>Summary</summary>\n\nBody\n\n</details>\n\n--- end-multi-column\n\nBelow",
+      "canonical": null,
+      "pending": null,
+      "sha256": "afa26b757777ee73ecaec9dc213289c32cafb5b5c189c86ca1035a373f643cc2"
+    },
+    {
+      "name": "empty column",
+      "markdown": "--- start-multi-column: r3\n```column-settings\nNumber of Columns: 2\n```\n\n--- end-column ---\n\nRight\n\n--- end-multi-column",
+      "canonical": null,
+      "pending": null,
+      "sha256": "08a5facf9c36230afe73c9aa184232037f0ca00ed5a85949b5f185fc0f9b2d56"
+    },
+    {
+      "name": "column region spelled the old way is rewritten once",
+      "markdown": "--- multi-column-start: old\nA\n--- column-break ---\nB\n--- multi-column-end",
+      "canonical": "--- start-multi-column: old\n```column-settings\nNumber of Columns: 2\n```\n\nA\n\n--- end-column ---\n\nB\n\n--- end-multi-column",
+      "pending": null,
+      "sha256": "5270af3ad6975793ed45750de831f4088e044660cc3d4e6922fea649e51c2eda"
+    },
+    {
+      "name": "single column region stays text",
+      "markdown": "--- start-multi-column: solo\n\nOnly\n\n--- end-multi-column",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ad357b9522b8ceadc7bdcd42839c32f3ed5c1def37bbccf54620d27032acc690"
     }
   ],
   "storageCases": [

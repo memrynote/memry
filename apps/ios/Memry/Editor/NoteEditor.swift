@@ -306,6 +306,29 @@ final class NoteEditorViewModel {
         }
     }
 
+    /// A column list of `columns` columns after `blockId`, each column
+    /// holding one empty paragraph (desktop's `insertColumnList`). Returns
+    /// the list's own id.
+    ///
+    /// Only the list's id is minted here: the core shapes the columns and
+    /// their paragraphs and mints their ids, so the caller reads them back.
+    func insertColumnList(after blockId: String?, columns: Int) async -> String? {
+        guard let editor else { return nil }
+        let newId = UUID().uuidString.lowercased()
+        status = .saving
+        do {
+            _ = try await editor.edit(
+                noteId: noteId,
+                .insertColumnList(afterBlockId: blockId, columns: UInt32(max(0, columns)), newBlockId: newId)
+            )
+            status = .idle
+            return newId
+        } catch {
+            status = .failed(ErrorMapping.userFacing(error))
+            return nil
+        }
+    }
+
     func duplicate(_ blockId: String) async -> String? {
         guard let editor else { return nil }
         let newId = UUID().uuidString.lowercased()

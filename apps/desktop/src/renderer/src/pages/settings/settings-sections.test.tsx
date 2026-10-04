@@ -1234,6 +1234,30 @@ describe('settings section coverage', () => {
     expect(await screen.findByText('agentProviders.alwaysAllowed.empty')).toBeInTheDocument()
   })
 
+  it('clears agent memory and says so', async () => {
+    window.api.agent.clearMemory = vi.fn().mockResolvedValue({ ok: true })
+    render(<AgentProvidersSection />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'agentProviders.memory.clear' }))
+    expect(window.api.agent.clearMemory).not.toHaveBeenCalled()
+    expect(await screen.findByText('agentProviders.memory.confirmTitle')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('agentProviders.memory.clear', { selector: 'button' }))
+
+    expect(await screen.findByText('agentProviders.memory.cleared')).toBeInTheDocument()
+    expect(window.api.agent.clearMemory).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows why agent memory could not be cleared', async () => {
+    window.api.agent.clearMemory = vi.fn().mockRejectedValue(new Error('EACCES: permission denied'))
+    render(<AgentProvidersSection />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'agentProviders.memory.clear' }))
+    expect(await screen.findByText('agentProviders.memory.confirmTitle')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('agentProviders.memory.clear', { selector: 'button' }))
+
+    expect(await screen.findByText('EACCES: permission denied')).toBeInTheDocument()
+  })
+
   it('installs the terminal command from command line settings', async () => {
     render(<CommandLineSettings />)
 

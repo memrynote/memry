@@ -43,7 +43,9 @@ const CATALOG: ReadonlyArray<readonly [SlashMenuGroupId, readonly string[]]> = [
       'quote',
       'callout',
       'code_block',
-      'divider'
+      'divider',
+      'two_columns',
+      'three_columns'
     ]
   ],
   [

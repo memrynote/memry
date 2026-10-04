@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   setWriteGate: vi.fn(),
-  createOpenAI: vi.fn(() => ({
-    chat: vi.fn((model: string) => ({ provider: 'openai-compatible', model }))
+  createOpenAICompatible: vi.fn(() => ({
+    chatModel: vi.fn((model: string) => ({ provider: 'openai-compatible', model }))
   })),
   streamText: vi.fn()
 }))
@@ -12,8 +12,8 @@ vi.mock('../../mcp/lifecycle', () => ({
   setWriteGate: mocks.setWriteGate
 }))
 
-vi.mock('@ai-sdk/openai', () => ({
-  createOpenAI: mocks.createOpenAI
+vi.mock('@ai-sdk/openai-compatible', () => ({
+  createOpenAICompatible: mocks.createOpenAICompatible
 }))
 
 vi.mock('ollama-ai-provider-v2', () => ({

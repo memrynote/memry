@@ -164,6 +164,55 @@ describe('PullCoordinator', () => {
     })
   })
 
+  // #2616
+  describe('#given a page whose items apply, skip and conflict #when the page is processed', () => {
+    it('#then the page summary counts each outcome once', async () => {
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      const logger = createLogger('test') as unknown as { info: ReturnType<typeof vi.fn> }
+      const ids = ['task-applied', 'task-skipped', 'task-conflict']
+      vi.spyOn(await import('../http-client'), 'getFromServer').mockResolvedValue({
+        items: ids.map((id) => ({ id, type: 'task', version: 1, modifiedAt: 1000, size: 10 })),
+        deleted: [],
+        hasMore: false,
+        nextCursor: 5
+      })
+      vi.spyOn(await import('../http-client'), 'postToServer').mockResolvedValue({
+        items: ids.map((id) => ({
+          id,
+          type: 'task',
+          operation: 'update',
+          cryptoVersion: 1,
+          blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+          signature: 'sig',
+          signerDeviceId: 'device-2',
+          clock: { 'device-2': 1 }
+        }))
+      })
+      vi.spyOn(await import('../decrypt'), 'decryptItemFromPull').mockReturnValue({
+        content: new TextEncoder().encode(JSON.stringify({ title: 'remote' })),
+        verified: true
+      })
+      vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation(({ itemId }) =>
+        itemId === 'task-skipped' ? 'skipped' : itemId === 'task-conflict' ? 'conflict' : 'applied'
+      )
+      logger.info.mockClear()
+
+      await engine.pull()
+
+      expect(logger.info).toHaveBeenCalledWith('Pull page processed', {
+        total: 3,
+        applied: 1,
+        skipped: 1,
+        failed: 0,
+        conflicts: 1
+      })
+
+      await engine.stop({ skipFinalPush: true })
+      vi.restoreAllMocks()
+    })
+  })
+
   // #2280
   describe('#given a live change with a commit time #when the pull applies it', () => {
     it('#then reports commit-to-apply latency keyed by the item server cursor', async () => {

@@ -327,7 +327,13 @@ and every other pass leaves the file alone while the marker stands. The
 full-state flush and an editor open merge the server body first and then
 apply the file over it (`CrdtProvider.takeFileAfterMerge`). Only the provider's
 live document of the note takes the file, because only its updates reach the
-outbox. An editor open whose merge fails or outlasts its timeout keeps what the
+outbox. A take into a document that was closed during the merge does nothing,
+not even a seed, so the marker stays. The flush then fails and keeps its row.
+So the flush holds the document from before the merge to after the read
+(`CrdtProvider.holdDoc`). Neither another pass's `closeIfInactive` nor the LRU
+closes a held document, and the last release closes it. The feed queues the
+row only after it closes the document it opened, so a flush that starts at once
+opens its own document. An editor open whose merge fails or outlasts its timeout keeps what the
 document holds, or seeds it when it is empty, and leaves the take to the flush.
 The write-back of a marked note or journal writes nothing, even while a merge
 holds the document, and owes the note a full-state row again so the marker

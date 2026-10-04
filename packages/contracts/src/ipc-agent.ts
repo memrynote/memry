@@ -20,6 +20,7 @@ export const AgentChannels = {
     PREVIEW_DIFF: 'agent:previewDiff',
     EDIT_TRUST_LIST: 'agent:editTrustList',
     GET_TOOL_GRANTS: 'agent:getToolGrants',
+    CLEAR_MEMORY: 'agent:clearMemory',
     GET_BACKEND_STATUSES: 'agent:getBackendStatuses',
     LIST_BACKEND_MODELS: 'agent:listBackendModels',
     GET_LOCAL_PROVIDER_SETTINGS: 'agent:getLocalProviderSettings',
@@ -308,7 +309,13 @@ export const AssistantContentSchema = z.object({
    */
   reasoning: z.string().optional(),
   /** Turn start to the last reasoning token, for the "Thought for Ns" summary. */
-  reasoningDurationMs: z.number().int().nonnegative().optional()
+  reasoningDurationMs: z.number().int().nonnegative().optional(),
+  /**
+   * Set when the local provider failed the tool probe and the turn ran without tools.
+   * `detail` is the probe's reason. Optional so older messages parse, and older apps
+   * strip it. Display only; never fed back into a prompt.
+   */
+  toolsUnavailable: z.object({ detail: z.string().nullable() }).optional()
 })
 export const ToolCallStatusSchema = z.enum([
   'pending',

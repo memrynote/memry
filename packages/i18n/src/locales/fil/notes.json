@@ -246,6 +246,17 @@
       "error": "Error",
       "success": "Tagumpay"
     },
+    "columns": {
+      "group": "Mga pangunahing block",
+      "two": {
+        "title": "Dalawang column",
+        "subtext": "Ilagay ang mga block nang magkatabi sa dalawang column"
+      },
+      "three": {
+        "title": "Tatlong column",
+        "subtext": "Ilagay ang mga block nang magkatabi sa tatlong column"
+      }
+    },
     "diagram": {
       "title": "Diagram",
       "subtext": "Flowchart, sequence diagram o Gantt chart mula sa Mermaid"

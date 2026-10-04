@@ -37,8 +37,9 @@ enum MarkdownShortcut {
     }
 
     /// The block rule `before` completes in a block of `kind`, or `nil`.
+    /// Never on a column list or column, which hold no text.
     static func block(_ before: String, in kind: String) -> BlockRule? {
-        guard kind != "codeBlock", !before.contains("\u{FFFC}") else { return nil }
+        guard kind != "codeBlock", !NoteColumns.isStructural(kind), !before.contains("\u{FFFC}") else { return nil }
         let length = (before as NSString).length
         func matches(_ pattern: String) -> [String]? {
             guard let regex = try? NSRegularExpression(pattern: pattern),
@@ -105,9 +106,9 @@ enum MarkdownShortcut {
     }
 
     /// The mark rule `before` completes, or `nil`. Outside a code block only,
-    /// where ProseMirror runs no input rules.
+    /// where ProseMirror runs no input rules, and never on a layout row.
     static func mark(_ before: String, in kind: String) -> MarkRule? {
-        guard kind != "codeBlock" else { return nil }
+        guard kind != "codeBlock", !NoteColumns.isStructural(kind) else { return nil }
         let range = NSRange(location: 0, length: (before as NSString).length)
         for rule in markRules {
             guard let regex = try? NSRegularExpression(pattern: rule.pattern),

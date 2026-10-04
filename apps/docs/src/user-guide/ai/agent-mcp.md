@@ -177,6 +177,18 @@ search for an earlier query is discarded rather than shown.
 The prompt box uses the operating-system text editing menu, so Cut, Copy, Paste, Select All, and
 native right-click editing work like other text fields.
 
+### Agent memory
+
+Claude, Codex and Antigravity turns run in one folder per vault, kept in the app's data folder and
+outside the vault: `agent-workdirs/<vault id>`. A vault id that is not a plain uuid is hashed into
+the folder name. Claude Code keeps its project memory for that
+folder, so what the agent saves about the vault in one turn is still there in the next turn and in
+the next conversation. Nothing in this folder syncs.
+
+Settings -> AI Assistant -> Agent Permissions -> **Clear agent memory** asks first, then deletes the
+folder and the project memory Claude Code keeps for it. This cannot be undone. Notes and chat
+history stay. The next turn starts with an empty folder.
+
 ### Dictating a prompt
 
 The microphone in the prompt bar records a prompt and types it for you. Click it once to start
@@ -234,7 +246,13 @@ Local model support uses OpenAI-compatible HTTP APIs. memrynote ships presets fo
 llama.cpp server, plus a Custom endpoint. Local tool access is gated by a capability probe. If the
 model can emit tool calls and continue after a tool result, memrynote enables the full vault tool set. If
 the probe fails, local chat can still answer from attached context, but vault tool calls stay
-disabled.
+disabled. The reply then starts with a note that vault tools are off for this model, with the probe's
+reason, and the model is told not to write tool calls as text.
+
+Hosted OpenAI-compatible APIs work through the Custom preset. The probe first asks the model to call a
+named tool, and retries without naming one when the provider rejects that, as DeepSeek does in
+thinking mode. Reasoning models that return `reasoning_content` (DeepSeek, and reasoning models behind
+LM Studio or llama.cpp) get it sent back between tool steps, and their reasoning shows in the reply.
 
 The probe costs a couple of model generations, so memrynote runs it once and reuses the verdict for
 up to ten minutes instead of repeating it on every message. Changing the preset, base URL, model, or
