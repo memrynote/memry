@@ -438,6 +438,7 @@ const createMockApi = () => ({
     loadConversation: vi.fn().mockResolvedValue({ conversation: null, messages: [] }),
     sendTurn: vi.fn().mockResolvedValue({ ok: true }),
     cancelTurn: vi.fn().mockResolvedValue({ ok: true }),
+    clearMemory: vi.fn().mockResolvedValue({ ok: true }),
     approveTool: vi.fn().mockResolvedValue({ ok: true }),
     previewDiff: vi.fn().mockResolvedValue({ title: '', current: '', candidate: '' }),
     editTrustList: vi.fn().mockResolvedValue(null),

@@ -115,6 +115,10 @@ const mocks = vi.hoisted(() => ({
     toolsEnabled: false,
     detail: null
   })),
+  ensureAgentWorkdir: vi.fn(async (userDataDir: string, vaultId: string) =>
+    [userDataDir, 'agent-workdirs', vaultId].join('/')
+  ),
+  clearAgentMemory: vi.fn(async () => {}),
   runtimeInstall: vi.fn(),
   runtimeKillAll: vi.fn(async () => {})
 }))
@@ -144,6 +148,11 @@ vi.mock('./mcp/tools/handles-adapter', () => ({
 vi.mock('./cli/claude-binary', () => ({ detectClaudeBinary: mocks.detectClaudeBinary }))
 vi.mock('./cli/codex-binary', () => ({ detectCodexBinary: mocks.detectCodexBinary }))
 vi.mock('./cli/spawn', () => ({ spawnClaudeTurn: mocks.spawnClaudeTurn }))
+vi.mock('electron', () => ({ app: { getPath: () => '/user-data' } }))
+vi.mock('./cli/workdir', () => ({
+  ensureAgentWorkdir: mocks.ensureAgentWorkdir,
+  clearAgentMemory: mocks.clearAgentMemory
+}))
 vi.mock('./cli/codex-spawn', () => ({ spawnCodexTurn: mocks.spawnCodexTurn }))
 vi.mock('./cli/agy-binary', () => ({ detectAgyBinary: mocks.detectAgyBinary }))
 vi.mock('./cli/agy-spawn', () => ({
@@ -256,6 +265,7 @@ describe('startAgent', () => {
     expect(mocks.spawnClaudeTurn).toHaveBeenCalledWith(
       expect.objectContaining({
         binaryPath: 'claude',
+        cwd: '/user-data/agent-workdirs/vault-1',
         mcp: {
           serverUrl: 'http://127.0.0.1:54321',
           authorizationValue: 'local-auth-value',
@@ -268,6 +278,45 @@ describe('startAgent', () => {
         prompt: 'hello'
       })
     )
+  })
+
+  it('runs Codex and Antigravity turns in the vault agent folder too', async () => {
+    await startAgent()
+    const deps = mocks.registerAgentHandlers.mock.calls[0][0]
+
+    await deps.backends.get('codex_cli').runTurn({
+      prompt: 'hello',
+      conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
+      windowId: 'window-1',
+      options: { backend: 'codex_cli', reasoningEffort: 'high' }
+    })
+    await deps.backends.get('antigravity_cli').runTurn({
+      prompt: 'hello',
+      conversationId: 'conversation-1',
+      writeGrant: TEST_GRANT,
+      windowId: 'window-1',
+      options: { backend: 'antigravity_cli' }
+    })
+
+    expect(mocks.spawnCodexTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: '/user-data/agent-workdirs/vault-1' })
+    )
+    expect(mocks.spawnAgyTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: '/user-data/agent-workdirs/vault-1' })
+    )
+  })
+
+  it('clears the memory of the open vault', async () => {
+    await startAgent()
+    const deps = mocks.registerAgentHandlers.mock.calls[0][0]
+
+    await deps.clearMemory()
+
+    expect(mocks.clearAgentMemory).toHaveBeenCalledWith({
+      userDataDir: '/user-data',
+      vaultId: 'vault-1'
+    })
   })
 
   it('adapts Claude subprocess spawn with native MCP only for normal turns', async () => {

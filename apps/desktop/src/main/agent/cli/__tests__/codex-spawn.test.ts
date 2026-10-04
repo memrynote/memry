@@ -1,15 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('node:fs/promises', () => ({
-  mkdtemp: vi.fn(async () => '/tmp/memry-codex-test'),
-  rm: vi.fn(async () => {})
-}))
 vi.mock('node:child_process', () => ({ spawn: vi.fn() }))
 
 import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 
 import { spawnCodexTurn } from '../codex-spawn'
+
+const WORKDIR = '/user-data/agent-workdirs/vault-1'
 
 describe('spawnCodexTurn', () => {
   it('passes ephemeral MCP config through CLI overrides and env vars', async () => {
@@ -18,6 +16,7 @@ describe('spawnCodexTurn', () => {
 
     await spawnCodexTurn({
       binaryPath: '/opt/homebrew/bin/codex',
+      cwd: WORKDIR,
       prompt: 'hello',
       reasoningEffort: 'high',
       mcp: {
@@ -38,8 +37,7 @@ describe('spawnCodexTurn', () => {
     expect(args).toContain('--ignore-user-config')
     expect(args).toContain('--ignore-rules')
     expect(args).toContain('--skip-git-repo-check')
-    expect(args).toContain('-C')
-    expect(args).toContain('/tmp/memry-codex-test')
+    expect(args[args.indexOf('-C') + 1]).toBe(WORKDIR)
     expect(args).toContain('model_reasoning_effort="high"')
     expect(args).toContain('mcp_servers.memry.url="http://127.0.0.1:54321/mcp"')
     expect(args).toContain('mcp_servers.memry.bearer_token_env_var="MEMRY_AGENT_TOKEN"')
@@ -53,7 +51,7 @@ describe('spawnCodexTurn', () => {
       env: NodeJS.ProcessEnv
       stdio: string[]
     }
-    expect(options.cwd).toBe('/tmp/memry-codex-test')
+    expect(options.cwd).toBe(WORKDIR)
     expect(options.stdio).toEqual(['ignore', 'pipe', 'pipe'])
     expect(options.env.MEMRY_AGENT_TOKEN).toBe('test-token')
     expect(options.env.MEMRY_AGENT_TURN).toBe('turn-grant-1')
@@ -66,6 +64,7 @@ describe('spawnCodexTurn', () => {
 
     await spawnCodexTurn({
       binaryPath: '/opt/homebrew/bin/codex',
+      cwd: WORKDIR,
       prompt: 'search for this',
       reasoningEffort: 'medium',
       permissions: { accessMode: 'vault_only', webSearchEnabled: true }
@@ -84,6 +83,7 @@ describe('spawnCodexTurn', () => {
 
     await spawnCodexTurn({
       binaryPath: '/opt/homebrew/bin/codex',
+      cwd: WORKDIR,
       prompt: 'inspect files',
       reasoningEffort: 'medium',
       permissions: { accessMode: 'computer_access', webSearchEnabled: false }
@@ -101,6 +101,7 @@ describe('spawnCodexTurn', () => {
 
     await spawnCodexTurn({
       binaryPath: 'codex',
+      cwd: WORKDIR,
       reasoningEffort: 'medium',
       prompt: 'PROMPT BODY'
     })
@@ -116,6 +117,7 @@ describe('spawnCodexTurn', () => {
 
     await spawnCodexTurn({
       binaryPath: 'codex',
+      cwd: WORKDIR,
       reasoningEffort: 'medium',
       model: 'gpt-5.5',
       prompt: 'PROMPT BODY'
@@ -132,6 +134,7 @@ describe('spawnCodexTurn', () => {
 
     await spawnCodexTurn({
       binaryPath: 'codex',
+      cwd: WORKDIR,
       reasoningEffort: 'medium',
       prompt: 'Title this'
     })

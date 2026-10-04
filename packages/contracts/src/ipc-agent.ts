@@ -20,6 +20,7 @@ export const AgentChannels = {
     PREVIEW_DIFF: 'agent:previewDiff',
     EDIT_TRUST_LIST: 'agent:editTrustList',
     GET_TOOL_GRANTS: 'agent:getToolGrants',
+    CLEAR_MEMORY: 'agent:clearMemory',
     GET_BACKEND_STATUSES: 'agent:getBackendStatuses',
     LIST_BACKEND_MODELS: 'agent:listBackendModels',
     GET_LOCAL_PROVIDER_SETTINGS: 'agent:getLocalProviderSettings',

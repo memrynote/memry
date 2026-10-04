@@ -2273,6 +2273,15 @@
       "revokeLabel": "Revoke the standing approval for {tool}",
       "ignoredInPageReview": "Ignored: note and journal edits always ask."
     },
+    "memory": {
+      "group": "Memory",
+      "description": "Agents run in a folder kept for this vault, outside the vault, so what they save there carries over to the next conversation.",
+      "clear": "Clear agent memory",
+      "clearDescription": "Deletes what agents saved about this vault. Notes and chat history stay.",
+      "clearAction": "Clear",
+      "cleared": "Agent memory cleared.",
+      "failed": "Could not clear agent memory."
+    },
     "v2": {
       "permissions": {
         "group": "Permissions",

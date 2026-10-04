@@ -78,6 +78,7 @@ interface AgentHandlerDeps {
     get: () => AgentPreferences
     set: (input: AgentPreferencesUpdate) => AgentPreferences
   }
+  clearMemory: () => Promise<void>
   vaultId: string
 }
 
@@ -294,6 +295,11 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
     return deps.conversations.getById(conversationId)
   })
 
+  ipcMain.handle(AgentChannels.invoke.CLEAR_MEMORY, async () => {
+    await deps.clearMemory()
+    return { ok: true }
+  })
+
   ipcMain.handle(AgentChannels.invoke.GET_BACKEND_STATUSES, () => getBackendStatuses(deps))
   ipcMain.handle(AgentChannels.invoke.LIST_BACKEND_MODELS, async (_event, payload: unknown) => {
     const request = AgentBackendModelListRequestSchema.parse(payload)
@@ -345,6 +351,7 @@ export function registerUnavailableAgentHandlers(reason: string): void {
   registerUnavailableHandler(AgentChannels.invoke.PREVIEW_DIFF, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.EDIT_TRUST_LIST, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.GET_TOOL_GRANTS, async () => ({ tools: [] }))
+  registerUnavailableHandler(AgentChannels.invoke.CLEAR_MEMORY, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.GET_BACKEND_STATUSES, async () => ({
     claude_cli: {
       backend: 'claude_cli',

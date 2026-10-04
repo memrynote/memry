@@ -1856,6 +1856,7 @@ interface AgentClientAPI {
     scope?: AlwaysAllowScope
   }) => Promise<Conversation | null>
   getToolGrants: () => Promise<AgentToolGrants>
+  clearMemory: () => Promise<{ ok: boolean }>
   getBackendStatuses: () => Promise<BackendStatusesResponse>
   listBackendModels: (input: AgentBackendModelListRequest) => Promise<AgentBackendModelList>
   getLocalProviderSettings: () => Promise<AgentLocalProviderSettings>

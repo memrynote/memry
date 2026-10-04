@@ -1,5 +1,5 @@
 import type { ChildProcess } from 'node:child_process'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { spawnAgyTurn } from '../agy-spawn'
 import { spawnCodexTurn } from '../codex-spawn'
 import { spawnClaudeTurn } from '../spawn'
+import { clearAgentMemory, ensureAgentWorkdir } from '../workdir'
 
 let root: string
 let workdir: string
@@ -73,5 +74,40 @@ describe.skipIf(process.platform === 'win32')('agent working folder', () => {
 
     expect(await runTurn(await spawnTurn())).toBe('1')
     expect(await runTurn(await spawnTurn())).toBe('2')
+  })
+})
+
+describe('clearAgentMemory', () => {
+  it("deletes one vault's agent folder and its Claude project memory, and nothing else", async () => {
+    const userDataDir = path.join(root, 'user-data')
+    const claudeConfigDir = path.join(root, 'claude')
+    const ownDir = await ensureAgentWorkdir(userDataDir, 'vault-a')
+    const otherDir = await ensureAgentWorkdir(userDataDir, 'vault-b')
+    expect(ownDir).toBe(path.join(userDataDir, 'agent-workdirs', 'vault-a'))
+    const claudeProjectDir = async (dir: string): Promise<string> =>
+      path.join(claudeConfigDir, 'projects', (await realpath(dir)).replace(/[^a-zA-Z0-9]/g, '-'))
+    for (const dir of [ownDir, otherDir]) {
+      await writeFile(path.join(dir, 'CLAUDE.md'), 'remembered')
+      const memoryDir = path.join(await claudeProjectDir(dir), 'memory')
+      await mkdir(memoryDir, { recursive: true })
+      await writeFile(path.join(memoryDir, 'MEMORY.md'), 'remembered')
+    }
+
+    await clearAgentMemory({ userDataDir, vaultId: 'vault-a', claudeConfigDir })
+
+    expect(await readdir(path.join(userDataDir, 'agent-workdirs'))).toEqual(['vault-b'])
+    expect(await readdir(path.join(claudeConfigDir, 'projects'))).toEqual([
+      path.basename(await claudeProjectDir(otherDir))
+    ])
+  })
+
+  it('succeeds when the vault has no agent memory yet', async () => {
+    await expect(
+      clearAgentMemory({
+        userDataDir: path.join(root, 'user-data'),
+        vaultId: 'vault-a',
+        claudeConfigDir: path.join(root, 'claude')
+      })
+    ).resolves.toBeUndefined()
   })
 })

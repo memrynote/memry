@@ -24,6 +24,7 @@ import {
   SettingRow
 } from '@/components/settings/settings-primitives'
 import { ChevronRight } from '@/lib/icons'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackTelemetry } from '@/lib/telemetry'
 import { cn } from '@/lib/utils'
 
@@ -79,6 +80,9 @@ export function AgentProvidersSection({
   const [busy, setBusy] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   const [alwaysAllowed, setAlwaysAllowed] = useState<string[]>([])
+  const [memoryStatus, setMemoryStatus] = useState<
+    { state: 'idle' | 'clearing' | 'cleared' } | { state: 'failed'; message: string }
+  >({ state: 'idle' })
 
   useEffect(() => {
     let cancelled = false
@@ -200,6 +204,24 @@ export function AgentProvidersSection({
       objectType: 'agent_tool_grant_revoked'
     })
   }, [])
+
+  const clearMemory = useCallback(async () => {
+    setMemoryStatus({ state: 'clearing' })
+    try {
+      await invokeWhenAgentReady(() => window.api.agent.clearMemory())
+      setMemoryStatus({ state: 'cleared' })
+      void trackTelemetry('setting_changed', {
+        surface: 'settings',
+        action: 'changed',
+        objectType: 'agent_memory_cleared'
+      })
+    } catch (error) {
+      setMemoryStatus({
+        state: 'failed',
+        message: extractErrorMessage(error, t('agentProviders.memory.failed'))
+      })
+    }
+  }, [t])
 
   const changeAccessMode = useCallback(async (accessMode: AgentAccessMode) => {
     setPreferences((current) => (current ? { ...current, accessMode } : current))
@@ -505,6 +527,31 @@ export function AgentProvidersSection({
             </div>
           ))
         )}
+      </SettingsGroup>
+
+      <SettingsGroup
+        label={t('agentProviders.memory.group')}
+        description={t('agentProviders.memory.description')}
+      >
+        <SettingRow
+          label={t('agentProviders.memory.clear')}
+          description={
+            memoryStatus.state === 'failed'
+              ? memoryStatus.message
+              : memoryStatus.state === 'cleared'
+                ? t('agentProviders.memory.cleared')
+                : t('agentProviders.memory.clearDescription')
+          }
+        >
+          <button
+            type="button"
+            className={QUIET_ACTION}
+            onClick={() => void clearMemory()}
+            disabled={memoryStatus.state === 'clearing'}
+          >
+            {t('agentProviders.memory.clearAction')}
+          </button>
+        </SettingRow>
       </SettingsGroup>
     </div>
   )
