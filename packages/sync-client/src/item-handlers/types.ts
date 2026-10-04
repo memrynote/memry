@@ -29,6 +29,14 @@ export interface SyncItemHandler<T = unknown> {
     vaultKey?: Uint8Array
   ): string | null
   markPushSynced?(db: DrizzleDb, itemId: string): void
+  /**
+   * Queue the local row again under a new clock when it holds changes the
+   * server has not acknowledged, and report whether it did. Consulted at an
+   * equal-clock pull and at a `SYNC_REPLAY_DETECTED` rejection, the two places
+   * that would otherwise mark the row synced (#2646). A type without a
+   * reliable unsent-changes marker leaves this out.
+   */
+  requeueUnsentChanges?(db: DrizzleDb, itemId: string): boolean
 }
 
 /**
@@ -60,7 +68,8 @@ export interface ClockResolution {
  * already carries the remote payload (a device pulling back its own push).
  * Equal with different content MUST apply: that is how two devices whose merge
  * re-pushes collided converge (protocol 06 §6.5.2 P4, #2294). Without the
- * predicate an equal clock applies.
+ * predicate an equal clock applies. `BaseItemHandler.resolveUpsertClock` keeps
+ * a local row with unsent changes instead (#2646).
  */
 export function resolveClockConflict(
   localClock: VectorClock | null | undefined,

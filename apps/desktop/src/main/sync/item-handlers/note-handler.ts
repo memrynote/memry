@@ -15,6 +15,8 @@ import { NotesChannels, ReminderChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { extractFolderFromPath } from '../note-sync'
+import { enqueueLocalSyncUpdate } from '../local-mutations'
+import { noteHasUnsentRecordChanges } from '../note-unsent-changes'
 import { markWritebackIgnored } from '../crdt-writeback'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
@@ -226,7 +228,11 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             data.modifiedAt
           )
         }
-        log.info('Skipping remote note update, local is newer', { itemId })
+        if (resolution.requeued) {
+          log.info('Equal-clock pull kept unsent local note changes, re-pushing them', { itemId })
+        } else {
+          log.info('Skipping remote note update, local is newer', { itemId })
+        }
         return 'skipped'
       }
       if (resolution.action === 'merge') {
@@ -793,6 +799,16 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     operation: string
   ): string | null {
     return buildNotePushPayload(itemId, operation)
+  }
+
+  /**
+   * Through the local-update path, so the clock advances past the server's and
+   * the next push is accepted rather than refused as a replay.
+   */
+  requeueUnsentChanges(db: DrizzleDb, itemId: string): boolean {
+    if (!noteHasUnsentRecordChanges(db, itemId)) return false
+    enqueueLocalSyncUpdate('note', itemId)
+    return true
   }
 
   seedUnclocked(_db: DrizzleDb, deviceId: string, queue: SyncQueueManager): number {
