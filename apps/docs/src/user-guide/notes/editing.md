@@ -456,7 +456,11 @@ Column Size: [30%, 70%]
 
 Left column
 
---- end-column ---
+---
+
+```
+end-column ---
+```
 
 Right column
 
@@ -900,6 +904,12 @@ nested list keeps its indent. Only the parts you edited are written in memrynote
 only when the result still says exactly what the editor shows. Opening a note and closing it
 again writes nothing at all. Very large notes, roughly half a megabyte of markdown and up, are
 written in memrynote's own style throughout so that they keep syncing between your devices.
+
+memrynote keeps a copy of the author's spelling beside the note for this. When that copy no
+longer matches the note, for example after another device changed it, the note's file stands in
+for it. A save that changes nothing leaves the file exactly as it is, and an edit is written into
+the file's own spelling. Only when neither can be kept is the whole note written in memrynote's
+own style.
 
 Inside an edited region the two are not always byte-for-byte the same. What is guaranteed there
 is that nothing is _lost_ on the way through:

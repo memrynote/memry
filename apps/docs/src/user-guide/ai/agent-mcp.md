@@ -402,6 +402,18 @@ counts only matching rows. Omit `file_types` to search every file type.
 Notes indexed by older memrynote versions have no recorded file type; those are always treated as
 markdown, so upgrading never hides existing notes.
 
+### Write replies
+
+A write reply can carry a `warnings` list of plain sentences:
+
+- A note or journal write whose stored body is not the body it sent says so with both byte
+  counts. The note is read back once any save it was waiting on has run. Line endings and the
+  final newline do not count as a difference.
+- While this device runs without its CRDT store, every write reply says so. Note edits are
+  still saved to the vault and synced, but without merge history for that session.
+
+A reply that is not a plain object comes back as `{ result, warnings }`.
+
 ### Folder paths
 
 Every tool names a folder by its path from the vault root, with no leading slash: `projects/active`.

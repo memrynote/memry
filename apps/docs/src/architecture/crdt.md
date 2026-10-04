@@ -708,6 +708,16 @@ document to its vault `.md` file and re-indexes it for search.
   without this the emptied file would be written and replicated. The pass keeps the file
   instead, and reports it the way it reports a failed conversion.
 
+- **The author's spelling outlives a stale record.** A doc seeded from a file spelled
+  differently keeps that source in `markdownSource`, and the pass restores the author's
+  spelling from it for every region the doc has not changed (#1915). The record is replaced
+  only when a markdown body is fed in, so it can describe an older body than the doc holds,
+  and then the restore cannot be proven. Before writing house style, the pass restores from
+  the note's file instead, read without CriticMarkup and writing tools markers (#2615). A doc
+  that says what the file says leaves the file as it is, and an edit lands in the file's
+  spelling. `yDocToMarkdown` reports these as `file` and `file-merged`. House style is
+  written only when the file cannot be restored either, or when the record restore throws.
+
 - **A doc with no note row is never turned into a note** — the pass skips it. A body that
   arrives before its record may belong to a note this device has not seen yet, or to one
   whose tombstone it has not pulled, and the two look the same from the doc. The record is
