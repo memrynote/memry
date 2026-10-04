@@ -986,7 +986,9 @@ across devices:
   backfill first, which queues files on disk that no save event ever offered
   (a file copied into `attachments/<noteId>/`, or a vault file a body embeds),
   then drains the outbox: rows upload once, rows whose file is gone are
-  dropped, failures keep their row for the next pass. Each row is re-read just
+  dropped, failures keep their row. A failed row waits one minute before its
+  next try, doubling with each failure up to six hours, as failed downloads
+  do, and a re-queue by the backfill leaves that window alone. Each row is re-read just
   before its upload, so a row a save-time upload finished meanwhile is
   skipped. A drain that reaches a file the save path is still uploading joins
   that upload and leaves its outcome to the save path, rather than sending the
