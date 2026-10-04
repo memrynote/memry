@@ -246,6 +246,17 @@
       "error": "Errore",
       "success": "Successo"
     },
+    "columns": {
+      "group": "Blocchi di base",
+      "two": {
+        "title": "Due colonne",
+        "subtext": "Affianca i blocchi su due colonne"
+      },
+      "three": {
+        "title": "Tre colonne",
+        "subtext": "Affianca i blocchi su tre colonne"
+      }
+    },
     "diagram": {
       "title": "Diagramma",
       "subtext": "Diagramma di flusso, di sequenza o di Gantt da codice Mermaid"

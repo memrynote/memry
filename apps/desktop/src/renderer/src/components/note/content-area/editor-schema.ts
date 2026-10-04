@@ -1,6 +1,7 @@
 import { createMemrySchema, WikiLink } from '@memry/editor-schema'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
 import { createReactDiagramBlockSpec } from '@blocknote/diagram-block'
+import { ColumnBlock } from '@blocknote/xl-multi-column'
 import { createFileBlock } from './file-block'
 import { createCalloutBlock } from './callout-block'
 import { createMathBlock } from './math-block'
@@ -57,7 +58,11 @@ export const editorSchema = createMemrySchema({
     // for those two, and the parity gate in `editor-schema.test.ts` compares
     // the two configs field by field, so an upstream prop added here and
     // missing there fails the suite instead of being stripped on write-back.
-    diagram: createReactDiagramBlockSpec()
+    diagram: createReactDiagramBlockSpec(),
+    // Upstream's column, for its resize handles and its drag-to-the-edge drop
+    // handler. Same node as the factory's headless one (blocks/column-specs.ts);
+    // `columnList` stays the factory's, which carries the MCM id and settings.
+    column: ColumnBlock
   },
   inline: {
     // The editor flavour of wikiLink: same node as main's, plus the `parse`

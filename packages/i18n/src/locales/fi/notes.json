@@ -246,6 +246,17 @@
       "error": "Virhe",
       "success": "Onnistuminen"
     },
+    "columns": {
+      "group": "Peruslohkot",
+      "two": {
+        "title": "Kaksi saraketta",
+        "subtext": "Aseta lohkot vierekkäin kahteen sarakkeeseen"
+      },
+      "three": {
+        "title": "Kolme saraketta",
+        "subtext": "Aseta lohkot vierekkäin kolmeen sarakkeeseen"
+      }
+    },
     "diagram": {
       "title": "Kaavio",
       "subtext": "Vuokaavio, sekvenssikaavio tai Gantt-kaavio Mermaid-lähdekoodista"

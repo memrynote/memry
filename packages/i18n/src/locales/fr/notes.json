@@ -246,6 +246,17 @@
       "error": "Erreur",
       "success": "Succès"
     },
+    "columns": {
+      "group": "Blocs de base",
+      "two": {
+        "title": "Deux colonnes",
+        "subtext": "Placer des blocs côte à côte sur deux colonnes"
+      },
+      "three": {
+        "title": "Trois colonnes",
+        "subtext": "Placer des blocs côte à côte sur trois colonnes"
+      }
+    },
     "diagram": {
       "title": "Diagramme",
       "subtext": "Organigramme, diagramme de séquence ou de Gantt à partir d'un code Mermaid"

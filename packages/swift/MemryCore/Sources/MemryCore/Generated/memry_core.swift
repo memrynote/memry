@@ -25283,6 +25283,10 @@ public enum BlockEdit: Equatable, Hashable {
     )
     /**
      * Lifts a block out to its parent's level (N406).
+     *
+     * A block directly in a column is refused as a column layout edit:
+     * there is no level inside the column to lift it to, and desktop leaves
+     * it where it is.
      */
     case outdent(blockId: String
     )
@@ -25345,12 +25349,31 @@ public enum BlockEdit: Equatable, Hashable {
      * props, marks and inline nodes it had; the blocks nested under it are
      * left as they are. When it is gone, the whole container returns after
      * the sibling it followed, else first in the block it was nested in, else
-     * first in the body.
+     * first in the column it sat in, else where that column's list stood
+     * (its column rebuilt when the list is still there), else first in the
+     * body.
      *
      * `snapshot` is opaque and belongs to the shell's undo stack only: it is
      * never stored or synced.
      */
     case restoreBlock(snapshot: String
+    )
+    /**
+     * Inserts a side-by-side column layout (chapter 12 §12.9):
+     * `columnList > column(width 1) > blockContainer > paragraph`, one empty
+     * paragraph per column.
+     *
+     * Lands after `after_block_id`, or at the start of the body when it is
+     * `None`. An anchor inside a column (or nested under another block) lands
+     * the list after the top-level row that holds it, because a column list
+     * never nests. `columns` outside 2..=3 is refused.
+     *
+     * `new_block_id` becomes the `columnList`'s own `id`; the core mints the
+     * ids of each column and of each column's paragraph container.
+     *
+     * Last in the enum so the variants before it keep their FFI indices.
+     */
+    case insertColumnList(afterBlockId: String?, columns: UInt32, newBlockId: String
     )
 
 
@@ -25437,6 +25460,9 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         )
         
         case 22: return .restoreBlock(snapshot: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 23: return .insertColumnList(afterBlockId: try FfiConverterOptionString.read(from: &buf), columns: try FfiConverterUInt32.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -25595,6 +25621,13 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         case let .restoreBlock(snapshot):
             writeInt(&buf, Int32(22))
             FfiConverterString.write(snapshot, into: &buf)
+            
+        
+        case let .insertColumnList(afterBlockId,columns,newBlockId):
+            writeInt(&buf, Int32(23))
+            FfiConverterOptionString.write(afterBlockId, into: &buf)
+            FfiConverterUInt32.write(columns, into: &buf)
+            FfiConverterString.write(newBlockId, into: &buf)
             
         }
     }

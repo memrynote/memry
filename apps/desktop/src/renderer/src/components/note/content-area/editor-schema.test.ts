@@ -29,7 +29,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { defaultBlockSpecs } from '@blocknote/core'
 import { createMemrySchema, MEMRY_INLINE_CONTENT_TYPES } from '@memry/editor-schema'
-import { MEMRY_BLOCK_TYPES } from '@memry/editor-schema/blocks'
+import { ColumnNode, MEMRY_BLOCK_TYPES } from '@memry/editor-schema/blocks'
+import { ColumnBlock } from '@blocknote/xl-multi-column'
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 
 // The file block's PDF preview pulls pdf.js, which touches `DOMMatrix` at
@@ -126,5 +127,24 @@ describe('renderer and main agree on every node config', () => {
     expect(editorSchema.blockSchema.codeBlock).not.toEqual(plain)
     expect(serverSchema.blockSchema.codeBlock).not.toEqual(plain)
     expect(editorSchema.blockSchema.codeBlock).toEqual(serverSchema.blockSchema.codeBlock)
+  })
+
+  it('the renderer column is the same ProseMirror node as the headless one', () => {
+    // The block config check above sees only type, content and propSchema.
+    // y-prosemirror builds from the NODE, so a group, content expression or
+    // attribute default that drifted between upstream's column and ours would
+    // pass that check and still lose columns on one side.
+    const node = (spec: { config: Record<string, unknown> }) => {
+      const { group, content, priority, defining } = spec.config
+      return { group, content, priority, defining }
+    }
+    const upstream = ColumnBlock.implementation.node as unknown as {
+      config: Record<string, unknown>
+      name: string
+    }
+    expect(upstream.name).toBe(ColumnNode.name)
+    expect(node(upstream)).toEqual(
+      node(ColumnNode as unknown as { config: Record<string, unknown> })
+    )
   })
 })

@@ -10,12 +10,12 @@
     "fragmentName": "prosemirror",
     "authoredBy": "@blocknote/server-util blocksToYXmlFragment, the path desktop main calls",
     "registry": {
-      "blocks": 21,
+      "blocks": 23,
       "inline": 8,
       "styles": 7
     },
     "notClaimed": "this is not markdown and not a rendering; it is the block list a shell draws from",
-    "caseCount": 33
+    "caseCount": 34
   },
   "cases": [
     {
@@ -1131,6 +1131,120 @@
         }
       ],
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"whiteboard-0\"\n2 element whiteboard canvasId=\"V1StGXR8_Z5jdHi6B-myT\""
+    },
+    {
+      "name": "columnList",
+      "pins": "a column list is a block with no content whose columns are blocks one depth deeper, each holding its own blocks a further depth down; `width` and the MCM `regionId` are props",
+      "updateHex": "011bf2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030a636f6c756d6e4c6973740700f2da95eb06010306636f6c756d6e0700f2da95eb0602030e626c6f636b436f6e7461696e65720700f2da95eb060303097061726167726170680700f2da95eb0604060400f2da95eb0605044c6566742800f2da95eb06040f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06040974657874436f6c6f7201770764656661756c742800f2da95eb06040d74657874416c69676e6d656e740177046c6566742800f2da95eb0603026964017710636f6c756d6e6c6973742d302d302d302800f2da95eb060202696401770e636f6c756d6e6c6973742d302d302800f2da95eb0602057769647468017c3f00000087f2da95eb06020306636f6c756d6e0700f2da95eb0610030e626c6f636b436f6e7461696e65720700f2da95eb0611030e62756c6c65744c6973744974656d0700f2da95eb0612060400f2da95eb06130552696768742800f2da95eb06120f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06120974657874436f6c6f7201770764656661756c742800f2da95eb06120d74657874416c69676e6d656e740177046c6566742800f2da95eb0611026964017710636f6c756d6e6c6973742d302d312d302800f2da95eb061002696401770e636f6c756d6e6c6973742d302d312800f2da95eb0610057769647468017c3fc000002800f2da95eb060102696401770c636f6c756d6e6c6973742d302800f2da95eb060108726567696f6e496401770272312800f2da95eb06010873657474696e677301770000",
+      "expectedBlocks": [
+        {
+          "id": null,
+          "kind": "columnList",
+          "depth": 0,
+          "props": [
+            {
+              "name": "id",
+              "value": "columnlist-0"
+            },
+            {
+              "name": "regionId",
+              "value": "r1"
+            },
+            {
+              "name": "settings",
+              "value": ""
+            }
+          ],
+          "inline": []
+        },
+        {
+          "id": null,
+          "kind": "column",
+          "depth": 1,
+          "props": [
+            {
+              "name": "id",
+              "value": "columnlist-0-0"
+            },
+            {
+              "name": "width",
+              "value": "0.5"
+            }
+          ],
+          "inline": []
+        },
+        {
+          "id": "columnlist-0-0-0",
+          "kind": "paragraph",
+          "depth": 2,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Left",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        },
+        {
+          "id": null,
+          "kind": "column",
+          "depth": 1,
+          "props": [
+            {
+              "name": "id",
+              "value": "columnlist-0-1"
+            },
+            {
+              "name": "width",
+              "value": "1.5"
+            }
+          ],
+          "inline": []
+        },
+        {
+          "id": "columnlist-0-1-0",
+          "kind": "bulletListItem",
+          "depth": 2,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Right",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element columnList id=\"columnlist-0\" regionId=\"r1\" settings=\"\"\n2 element column id=\"columnlist-0-0\" width=0.5\n3 element blockContainer id=\"columnlist-0-0-0\"\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"Left\"\n2 element column id=\"columnlist-0-1\" width=1.5\n3 element blockContainer id=\"columnlist-0-1-0\"\n4 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"Right\""
     },
     {
       "name": "table",

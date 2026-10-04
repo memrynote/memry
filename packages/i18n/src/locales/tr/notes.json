@@ -246,6 +246,17 @@
       "error": "Hata",
       "success": "Başarılı"
     },
+    "columns": {
+      "group": "Temel bloklar",
+      "two": {
+        "title": "İki sütun",
+        "subtext": "Blokları iki sütunda yan yana yerleştir"
+      },
+      "three": {
+        "title": "Üç sütun",
+        "subtext": "Blokları üç sütunda yan yana yerleştir"
+      }
+    },
     "diagram": {
       "title": "Diyagram",
       "subtext": "Mermaid kaynağından akış şeması, sıralama diyagramı veya Gantt şeması"

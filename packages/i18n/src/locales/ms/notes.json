@@ -246,6 +246,17 @@
       "error": "Ralat",
       "success": "Berjaya"
     },
+    "columns": {
+      "group": "Blok asas",
+      "two": {
+        "title": "Dua lajur",
+        "subtext": "Letakkan blok bersebelahan dalam dua lajur"
+      },
+      "three": {
+        "title": "Tiga lajur",
+        "subtext": "Letakkan blok bersebelahan dalam tiga lajur"
+      }
+    },
     "diagram": {
       "title": "Rajah",
       "subtext": "Carta alir, rajah jujukan atau carta Gantt daripada sumber Mermaid"

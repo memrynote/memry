@@ -4027,3 +4027,49 @@ describe('image width through the vault file', () => {
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 })
+
+describe('blocknote-converter multi-column regions', () => {
+  const region = [
+    '--- start-multi-column: r1',
+    '```column-settings',
+    'Number of Columns: 2',
+    'Column Size: [25%, 75%]',
+    'Border: off',
+    '```',
+    '',
+    '## Pros',
+    '',
+    '--- end-column ---',
+    '',
+    '- fast',
+    '',
+    '--- end-multi-column'
+  ].join('\n')
+
+  it('reads an Obsidian MCM region as a column list with sized columns', async () => {
+    const [list] = (await markdownToBlocks(region)) as unknown as {
+      type: string
+      props: { regionId: string; settings: string }
+      children: { type: string; props: { width: number }; children: { type: string }[] }[]
+    }[]
+
+    expect(list.type).toBe('columnList')
+    expect(list.props.regionId).toBe('r1')
+    expect(list.props.settings).toContain('Border: off')
+    expect(list.children.map((column) => column.type)).toEqual(['column', 'column'])
+    expect(list.children.map((column) => column.props.width)).toEqual([0.5, 1.5])
+    expect(list.children.map((column) => column.children[0].type)).toEqual([
+      'heading',
+      'bulletListItem'
+    ])
+  })
+
+  it('keeps the columns through the Y.Doc and writes the region back unchanged', async () => {
+    const doc = new Y.Doc()
+    await markdownToYFragment(region, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    expect(findUnrepresentableNodes(doc)).toEqual([])
+    writeMarkdownSourceToYDoc(doc, null)
+    expect(await yDocToMarkdown(doc)).toBe(region)
+  })
+})

@@ -246,6 +246,17 @@
       "error": "Eroare",
       "success": "Succes"
     },
+    "columns": {
+      "group": "Blocuri de bază",
+      "two": {
+        "title": "Două coloane",
+        "subtext": "Așază blocurile alăturat în două coloane"
+      },
+      "three": {
+        "title": "Trei coloane",
+        "subtext": "Așază blocurile alăturat în trei coloane"
+      }
+    },
     "diagram": {
       "title": "Diagramă",
       "subtext": "Diagramă de flux, de secvență sau Gantt din cod Mermaid"

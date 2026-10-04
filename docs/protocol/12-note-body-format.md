@@ -716,16 +716,16 @@ in-fragment, not a root.
 
 ## 12.9 The type registry FR-040 enumerates
 
-**Normative.** `createMemrySchema` produces exactly **36** types
+**Normative.** `createMemrySchema` produces exactly **38** types
 (`packages/editor-schema/src/schema.ts:52-77`), checked in as
 `packages/editor-schema/src/registry-manifest.json` and asserted in both
 directions by `packages/editor-schema/src/__tests__/registry-parity.test.ts`.
 
-| Group          | Count | Types                                                                                                                                                                                                                                                                  |
-| -------------- | ----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| blocks         |    21 | `audio`, `bookmark`, `bulletListItem`, `callout`, `checkListItem`, `codeBlock`, `diagram`, `divider`, `file`, `heading`, `image`, `mathBlock`, `numberedListItem`, `paragraph`, `quote`, `table`, `taskBlock`, `toggleListItem`, `video`, `whiteboard`, `youtubeEmbed` |
-| inline content |     8 | `dateMention`, `hashTag`, `inlineCheckbox`, `inlineImage`, `link`, `linkMention`, `text`, `wikiLink`                                                                                                                                                                   |
-| styles         |     7 | `backgroundColor`, `bold`, `code`, `italic`, `strike`, `textColor`, `underline`                                                                                                                                                                                        |
+| Group          | Count | Types                                                                                                                                                                                                                                                                                          |
+| -------------- | ----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| blocks         |    23 | `audio`, `bookmark`, `bulletListItem`, `callout`, `checkListItem`, `codeBlock`, `column`, `columnList`, `diagram`, `divider`, `file`, `heading`, `image`, `mathBlock`, `numberedListItem`, `paragraph`, `quote`, `table`, `taskBlock`, `toggleListItem`, `video`, `whiteboard`, `youtubeEmbed` |
+| inline content |     8 | `dateMention`, `hashTag`, `inlineCheckbox`, `inlineImage`, `link`, `linkMention`, `text`, `wikiLink`                                                                                                                                                                                           |
+| styles         |     7 | `backgroundColor`, `bold`, `code`, `italic`, `strike`, `textColor`, `underline`                                                                                                                                                                                                                |
 
 `file` and `toggleListItem` are Memry specifications overriding BlockNote
 defaults of the same name
@@ -773,6 +773,47 @@ its schema cannot build, and the delete replicates) and MUST write back the
 §12.6 marker unchanged; the
 mobile WebView draws a labelled card and nothing else
 (`packages/editor-web/src/blocks.ts`).
+
+`columnList` and `column` lay blocks out side by side. A `columnList` holds two
+or more `column`s and nothing else; a `column` holds blocks and carries `width`
+(number, default `1`, a flex-grow weight). The node names, groups, content
+expressions and `width` are `@blocknote/xl-multi-column`'s, restated headless in
+`packages/editor-schema/src/blocks/column-specs.ts` so the main process and the
+mobile WebView build them without React; the desktop renderer swaps in the
+package's `column` spec for resize and drag-to-column. `columnList` adds
+`regionId` and `settings` (strings, default `''`).
+
+**On disk a column list is a Multi-Column Markdown region**, the syntax of
+Obsidian's Multi-Column Markdown plugin
+(`packages/editor-schema/src/blocks/columns.ts`):
+
+````
+--- start-multi-column: <regionId>
+```column-settings
+Number of Columns: 2
+Column Size: [25%, 75%]
+```
+
+<column 1 blocks>
+
+--- end-column ---
+
+<column 2 blocks>
+
+--- end-multi-column
+````
+
+A reader MUST accept every spelling the plugin accepts (`multi-column-start`,
+`column-end` / `column-break` / `break-column`, `multi-column-end`, the `===`
+forms, the `settings` and `multi-column-settings` fence names) and Pandoc
+fenced divs (`::: columns` … `::: columnbreak` / `:::` … `:::`). Writers emit
+the form above only. `settings` holds the fence verbatim and is written back
+byte-for-byte while its column count and sizes still match the columns; a
+resize or a column added or removed rewrites those two lines and keeps every
+other. A region with no id is given one derived from the block id on first
+write. A region that is unterminated or has a single column stays markdown.
+A client built before these types DELETES them on load (§12.1), so their
+introduction is paired with a write-version floor (chapter 11).
 
 **The registration invariant**: every spec is registered under its own
 `config.type`, enforced at construction for blocks and inline content alike
