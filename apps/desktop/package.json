@@ -107,7 +107,6 @@
     "seed:small": "bash scripts/ensure-native.sh electron && ELECTRON_RUN_AS_NODE=1 electron --import tsx scripts/seed-small-vault.ts"
   },
   "dependencies": {
-    "@ai-sdk/openai-compatible": "^2.0.81",
     "@huggingface/transformers": "^3.8.1",
     "@mixmark-io/domino": "^2.2.0",
     "better-sqlite3": "^12.11.1",
@@ -125,6 +124,7 @@
     "@ai-sdk/anthropic": "^3.0.107",
     "@ai-sdk/google": "^3.0.124",
     "@ai-sdk/openai": "^3.0.91",
+    "@ai-sdk/openai-compatible": "^2.0.81",
     "@blocknote/code-block": "^0.54.2",
     "@blocknote/core": "^0.54.2",
     "@blocknote/diagram-block": "^0.54.2",
