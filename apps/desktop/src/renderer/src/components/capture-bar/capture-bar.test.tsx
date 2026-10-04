@@ -1115,7 +1115,7 @@ describe('CaptureBar — presets', () => {
     await user.click(await screen.findByRole('button', { name: 'Remove date' }))
     await user.click(field())
 
-    expect(screen.getByRole('button', { name: /^Due No date/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Due No date/ })).toBeInTheDocument()
     await user.keyboard('{Enter}')
     expect(onSubmit).toHaveBeenCalledWith('Someday', expect.objectContaining({ dueDate: null }))
   })
