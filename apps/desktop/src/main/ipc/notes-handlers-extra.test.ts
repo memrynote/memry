@@ -666,6 +666,40 @@ describe('notes-handlers extra coverage', () => {
     )
   })
 
+  it('exports tasks without their ids unless the caller keeps them', async () => {
+    const actual =
+      await vi.importActual<typeof import('../lib/export-utils')>('../lib/export-utils')
+    mocks.renderNoteAsHtml.mockImplementation(actual.renderNoteAsHtml)
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-a',
+      path: 'Note.md',
+      title: 'Daily note',
+      content: '- [ ] Pack bags {task:t1}',
+      emoji: null,
+      tags: [],
+      created: new Date('2026-05-10T00:00:00.000Z'),
+      modified: new Date('2026-05-10T00:00:00.000Z')
+    })
+    mocks.getVaultStatus.mockReturnValue({ path: vaultPath })
+    const exportedHtml = async (input: Record<string, unknown>): Promise<string> => {
+      mocks.fsWriteFile.mockClear()
+      await invoke(NotesChannels.invoke.EXPORT_HTML, {
+        noteId: 'note-a',
+        outputPath: '/tmp/Daily_note.html',
+        ...input
+      })
+      return mocks.fsWriteFile.mock.calls.at(-1)?.[1] as string
+    }
+
+    const plain = await exportedHtml({})
+    expect(plain).toContain('<li><input disabled="" type="checkbox"> Pack bags</li>')
+    expect(plain).not.toContain('{task:')
+
+    expect(await exportedHtml({ includeTaskMarkers: true })).toContain(
+      '<li><input disabled="" type="checkbox"> Pack bags {task:t1}</li>'
+    )
+  })
+
   it('leaves an image it cannot read as written', async () => {
     mocks.getNoteById.mockResolvedValue({
       id: 'note-a',

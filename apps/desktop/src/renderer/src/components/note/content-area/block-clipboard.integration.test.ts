@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BlockNoteEditor, type PartialBlock } from '@blocknote/core'
+import {
+  BlockNoteEditor,
+  BlockNoteSchema,
+  createBlockSpec,
+  defaultBlockSpecs,
+  type PartialBlock
+} from '@blocknote/core'
+import { taskBlockConfig } from '@memry/editor-schema/blocks'
 import { TextSelection } from '@tiptap/pm/state'
 import {
   blockIdsToCopy,
@@ -185,6 +192,40 @@ describe('buildBlockClipboard', () => {
     const data = await clipboardFor(editor, ['intro', 'parent', 'outro'])
 
     expect(data.markdown).toBe(['Intro', '', '- Clothes', '  - Socks', '', 'Outro'].join('\n'))
+  })
+
+  it('writes a task as its plain checkbox and keeps the task on the paste-back flavour', async () => {
+    const schema = BlockNoteSchema.create({
+      blockSpecs: {
+        ...defaultBlockSpecs,
+        taskBlock: createBlockSpec(taskBlockConfig, {
+          render: (block) => {
+            const dom = document.createElement('div')
+            dom.textContent = block.props.title
+            return { dom }
+          }
+        })()
+      }
+    })
+    const editor = BlockNoteEditor.create({
+      schema,
+      initialContent: [
+        {
+          id: 'task',
+          type: 'taskBlock',
+          props: { taskId: 't1', title: 'Pack bags', checked: true }
+        }
+      ]
+    })
+    const el = document.createElement('div')
+    document.body.appendChild(el)
+    editor.mount(el)
+    mounted.push({ editor: editor as any, el })
+
+    const data = await clipboardFor(editor as any, ['task'])
+
+    expect(data.markdown).toBe('- [x] Pack bags')
+    expect(data.blocknoteHTML).toContain('data-task-id="t1"')
   })
 
   it('returns null when no id resolves', async () => {
