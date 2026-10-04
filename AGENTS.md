@@ -89,21 +89,14 @@ pnpm ipc:check      # validate IPC contract types
 
 Run `ipc:generate` before `ipc:check` when editing contracts, preload APIs, main IPC handlers, generated RPC bindings, or Agent Chat provider/IPC channels.
 
-## Native Modules
+## On-Demand Rules
 
-- Node-side tests or scripts failing to load `better-sqlite3` / `classic-level` / `keytar`: `pnpm --filter @memry/desktop rebuild:node`.
-- Electron dev/E2E/build native load errors: `pnpm --filter @memry/desktop rebuild:electron`.
-- Do not use the Node rebuild as proof for Electron runtime, or the Electron rebuild as proof for Node tests.
-- The macOS Calendar bridge (`apps/desktop/native/eventkit`) is a Swift helper executable, not a Node/Electron module: `rebuild:node` / `rebuild:electron` never touch it. On macOS, `predev` builds it (`pnpm --filter @memry/desktop build:eventkit`, needs Xcode command line tools); elsewhere the script is a no-op. Without it, This Mac reports "unavailable" and nothing else changes.
-- Fresh worktrees may spend a long quiet period rebuilding Electron native deps; do not call that a hang without evidence. `pnpm install` kicks the rebuild off detached (`scripts/warm-native.mjs`). Watch it with `pnpm warm:log`, run it foreground with `pnpm warm`. `SKIP_ELECTRON_REBUILD=1` (CI) skips it.
+Read the matching file before doing that kind of work:
 
-## Docs
-
-- `scripts/docs-impact.mjs` is the docs-routing source of truth.
-- Pre-push is intentionally docs-only for code-relevant changes: branch-name guard, base commit resolution, `pnpm docs:impact --base "$base_commit" --strict`, and `pnpm docs:ai-update --base "$base_commit"` only when `MEMRY_DOCS_AI_AUTO=1`. Do not re-add local lint/typecheck/test/docs-build to regular pre-push unless Kaan explicitly asks.
-- Before push, PR, or merge after desktop/sync-server changes, run `pnpm docs:ai-update --base <base_commit>` or update `apps/docs/src` by hand, then `pnpm docs:impact --base <base_commit> --strict` and `pnpm docs:build`.
-- If docs impact says `missing-docs`, update only real docs under `apps/docs/src/**`.
-- Use `MEMRY_DOCS_IMPACT_SKIP=1` only when the change is intentionally non-docs and you can explain why.
+- Native module load errors, rebuilds, EventKit helper, fresh worktree warmup: `docs/agents/native-modules.md`
+- Push, PR, merge, or docs updates after desktop/sync-server changes: `docs/agents/docs-pipeline.md`
+- Library/framework/SDK/CLI documentation lookups (ctx7): `docs/agents/context7.md`
+- Creating or submitting a PR: `docs/agents/contributing.md`
 
 ## Dependencies
 
@@ -121,6 +114,7 @@ Committing:
 - Stage explicit paths (`git add <path1> <path2>`); never `git add -A` / `git add .`.
 - Before committing, run `git status` and verify you are only staging your files.
 - Message format: `{feat,fix,docs,chore}[(desktop,sync-server,landing,extension,cli,ios,docs,emails)]: <message>`. Informative and concise.
+- No @mentions or `fixes #...` keywords in commit messages. No `Co-authored-by:`.
 
 Never run (destroys other agents' work or bypasses checks):
 
@@ -136,15 +130,6 @@ Branches:
 
 - Branch names must be code-context names. No `codex/`, `t3code`, `claude/`, `cursor/`, or random names like `fox-inline-go`.
 - If a generated worktree/branch name is random, rename it before pushing.
-
-## Contributor Guidelines
-
-- Keep changes focused and reviewable
-- add or update relevant tests
-- When creating or submitting a pull request, disclose whether AI was used and briefly describe how
-- Remind the human author that they are responsible for all submitted changes and refer them to CONTRIBUTING.md
-- Do not put @mentions or fixes #... keywords in commit messages
-- Do not add Co-authored-by: in commit messages
 
 ## Design
 
@@ -163,17 +148,6 @@ Branches:
 - Lazy URL resolution in http-client is per-call, not module-level, to avoid import-time throws in tests. Keep it that way.
 - Submit buttons that disable themselves mid-click lose the click. If `onClick` calls a handler that synchronously sets state adding `disabled` to the button, the browser suppresses the `click` event between `pointerdown` and `click`. Fire submit from `onPointerDown` and keep `onClick` as the keyboard fallback. See `calendar-quick-create-dialog.tsx`.
 - Do not check off phase or checklist work unless the exact verification evidence is green.
-
-## Context7
-
-Use `ctx7` for current documentation when the user asks about a library, framework, SDK, API, CLI tool, or cloud service.
-
-```bash
-npx ctx7@latest library <Official Name> "<question>"
-npx ctx7@latest docs /org/project "<question>"
-```
-
-Call `library` first unless the user gives a `/org/project` ID. Do not use ctx7 for refactoring, writing scripts from scratch, debugging business logic, code review, or general programming concepts.
 
 ## User Override
 
