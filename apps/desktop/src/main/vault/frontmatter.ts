@@ -16,6 +16,7 @@ import {
 import { generateNoteId, isValidNoteId } from '../lib/id'
 import { isRelationValue } from '@memry/contracts/relation-uri'
 import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
+import { blankMarkdownCode } from '@memry/shared/markdown-code'
 import { replaceWikiLinks, splitWikiTarget } from '@memry/shared/wiki-target'
 import {
   isWritingFrontmatterValue,
@@ -249,6 +250,9 @@ export function validateNoteId(id: string): boolean {
  * Existing vaults keep their old rows until each note is next projected; no
  * reindex is forced for a backlink row.
  *
+ * Link syntax inside inline code or a fenced code block is not a link, so code
+ * is blanked before the scan. Links inside HTML comments still count.
+ *
  * @param content - Markdown content
  * @returns Array of link targets
  */
@@ -257,7 +261,9 @@ export function extractWikiLinks(content: string): string[] {
   const links = new Set<string>()
   let match
 
-  while ((match = linkPattern.exec(content)) !== null) {
+  const text = blankMarkdownCode(content)
+
+  while ((match = linkPattern.exec(text)) !== null) {
     const { note, heading } = splitWikiTarget(match[1])
     // `[[#Heading]]` addresses the note it sits in — a self-link, not an edge.
     if (heading !== null && !note) continue
