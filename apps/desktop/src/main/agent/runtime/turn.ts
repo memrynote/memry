@@ -20,9 +20,11 @@ import { COMPACTION_THRESHOLD, estimateTokens } from './token-estimator'
 import { persistToolActivity } from './tool-activity'
 import { extractAgentSourceRefs } from '../source-refs'
 import { mintTurnWriteGrant, revokeTurnWriteGrantsFor } from '../turn-grants'
-import type { AgentSourceRef } from '@memry/contracts/ipc-agent'
+import type { AgentSourceRef, AgentToolsOffReason } from '@memry/contracts/ipc-agent'
 
 const logger = createLogger('AgentRuntime:Turn')
+
+type ToolsUnavailable = { detail: string | null; reason: AgentToolsOffReason }
 
 export interface TurnDeps {
   conversations: ConversationStore
@@ -51,10 +53,11 @@ export interface RunTurnInput {
   backendOptions: AgentBackendOptions
   permissions?: AgentTurnPermissions
   attachments: MessageAttachment[]
+  turnId?: string
 }
 
 export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ turnId: string }> {
-  const turnId = randomUUID()
+  const turnId = input.turnId ?? randomUUID()
   // Listing the transcript is the expensive part of a turn: every row costs two
   // AEAD opens, two JSON.parses and a zod parse. It is listed once here and
   // threaded through the rest of the turn, so the cost stays O(history) per
@@ -220,11 +223,11 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   // Measured from the backend's first chance to think, not from turn start:
   // context compaction before the spawn is not the model thinking.
   const reasoningClockStart = Date.now()
-  let toolsUnavailable: { detail: string | null } | null = null
+  let toolsUnavailable: ToolsUnavailable | null = null
   const displayData = (): {
     reasoning?: string
     reasoningDurationMs?: number
-    toolsUnavailable?: { detail: string | null }
+    toolsUnavailable?: ToolsUnavailable
   } => ({
     ...(reasoning.trim() ? { reasoning, reasoningDurationMs } : {}),
     ...(toolsUnavailable ? { toolsUnavailable } : {})
@@ -244,7 +247,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         continue
       }
       if (event.kind === 'tools_unavailable') {
-        toolsUnavailable = { detail: event.detail }
+        toolsUnavailable = { detail: event.detail, reason: event.reason }
         const updated = deps.messages.updateStreaming(assistant.id, {
           content: { role: 'assistant', data: { text: buffered, ...displayData() } }
         })

@@ -1,3 +1,5 @@
+import type { AgentToolsOffReason } from '@memry/contracts/ipc-agent'
+
 export type BackendEvent =
   | { kind: 'assistant_delta'; text: string }
   /**
@@ -16,7 +18,7 @@ export type BackendEvent =
     }
   | { kind: 'error'; message: string }
   /** The provider failed the tool probe, so this turn runs without tool schemas. */
-  | { kind: 'tools_unavailable'; detail: string | null }
+  | { kind: 'tools_unavailable'; reason: AgentToolsOffReason; detail: string | null }
   | { kind: 'message_stop' }
   | { kind: 'noop' }
   | { kind: 'unknown'; raw: unknown }

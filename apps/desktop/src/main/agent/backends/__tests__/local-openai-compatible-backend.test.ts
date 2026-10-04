@@ -20,6 +20,7 @@ vi.mock('ollama-ai-provider-v2', () => ({
 vi.mock('ai', () => ({
   streamText: mocks.streamText,
   stepCountIs: mocks.stepCountIs,
+  wrapLanguageModel: ({ model }: { model: unknown }) => model,
   tool: (definition: unknown) => definition
 }))
 
@@ -400,7 +401,8 @@ describe('LocalOpenAICompatibleBackend', () => {
     expect(events).toEqual([
       {
         kind: 'tools_unavailable',
-        detail: 'Model did not emit the synthetic memry_probe_echo tool call.'
+        reason: 'no_tool_call',
+        detail: null
       },
       { kind: 'assistant_delta', text: 'Chat only' }
     ])

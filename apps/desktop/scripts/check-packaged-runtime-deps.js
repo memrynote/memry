@@ -8,6 +8,7 @@ const path = require('node:path')
 const {
   archListIncludes,
   findPackagedMacApps,
+  findSymlinks,
   inferExpectedMacArch
 } = require('./check-packaged-runtime-deps-utils.cjs')
 
@@ -363,6 +364,19 @@ function checkResources(resourcesPath, expectedArch) {
 
   if (!fs.existsSync(externalNodeModulesPath)) {
     fail(`Missing external production node_modules: ${externalNodeModulesPath}`)
+  }
+
+  // Installers copy junctions as plain directories, so a linked tree that
+  // resolves correctly here breaks on users' machines (#2519). Only a link-free
+  // tree is tested as shipped.
+  if (process.platform === 'win32') {
+    const links = findSymlinks(externalNodeModulesPath)
+    if (links.length > 0) {
+      fail(
+        `Windows node_modules must not contain symlinks or junctions (installers flatten them, #2519). ` +
+          `Found ${links.length}, e.g.:\n${links.slice(0, 10).join('\n')}`
+      )
+    }
   }
 
   if (process.exitCode) {

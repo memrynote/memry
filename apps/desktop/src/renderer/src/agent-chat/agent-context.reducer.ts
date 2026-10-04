@@ -1,5 +1,8 @@
 import type {
+  AgentBackendOptions,
   AgentEvent,
+  AgentTurnPermissions,
+  AttachmentInput,
   BackendStatusesResponse,
   Conversation,
   Message,
@@ -7,6 +10,29 @@ import type {
 } from '@memry/contracts/ipc-agent'
 
 export type PendingToolApproval = Extract<AgentEvent, { kind: 'tool_call_pending_approval' }>
+
+/**
+ * A message typed while a turn runs. It is captured whole at queue time, so it
+ * goes out with the model, permissions and context the user saw when sending.
+ * `sending` is the head the provider is handing to main; `failed` holds the
+ * queue until the user edits or removes it. `endedTurnIds` collects turn ends
+ * that arrive while the head is sending: a turn that fails at once reports its
+ * end before main answers the send, so the answer alone cannot say whether
+ * the turn is still running. `editing` holds the drain while the user has the
+ * row's editor open, so a half-made edit never loses to the original text.
+ */
+export interface QueuedTurn {
+  id: string
+  conversationId: string
+  sourceWindowId: string
+  text: string
+  attachments: AttachmentInput[]
+  backendOptions: AgentBackendOptions
+  permissions?: AgentTurnPermissions
+  status: 'queued' | 'sending' | 'failed'
+  endedTurnIds?: string[]
+  editing?: boolean
+}
 
 export interface AgentState {
   backendStatuses: BackendStatusesResponse | null
@@ -23,6 +49,8 @@ export interface AgentState {
   hydratedConversationIds: string[]
   pendingApprovals: PendingToolApproval[]
   inFlight: Record<string, boolean>
+  /** Messages waiting for the running turn to end, oldest first, per conversation. */
+  queuedTurns: Record<string, QueuedTurn[]>
   /** Derived: any message in any conversation is still streaming. Kept here so
    * subscribers read a scalar instead of rescanning every transcript. */
   hasStreamingMessage: boolean
@@ -47,6 +75,26 @@ export type AgentAction =
   | { type: 'clear_active_conversation' }
   | { type: 'set_in_flight'; conversationId: string; inFlight: boolean }
   | { type: 'set_error'; error: string | null }
+  | { type: 'queue_turn'; turn: QueuedTurn }
+  | { type: 'edit_queued_turn'; conversationId: string; id: string; text: string }
+  | { type: 'set_queued_turn_editing'; conversationId: string; id: string; editing: boolean }
+  | { type: 'remove_queued_turn'; conversationId: string; id: string }
+  | { type: 'start_queued_turn'; conversationId: string; id: string }
+  | {
+      type: 'settle_queued_turn'
+      conversationId: string
+      id: string
+      sent: true
+      turnId?: string
+      stopped: boolean
+    }
+  | {
+      type: 'settle_queued_turn'
+      conversationId: string
+      id: string
+      sent: false
+      error: string | null
+    }
   | { type: 'event'; event: AgentEvent }
   | {
       type: 'clear_pending'
@@ -78,8 +126,51 @@ export const initialAgentState: AgentState = {
   hydratedConversationIds: [],
   pendingApprovals: [],
   inFlight: {},
+  queuedTurns: {},
   hasStreamingMessage: false,
   error: null
+}
+
+/**
+ * A conversation counts as busy while a turn runs and while a queued message is
+ * still being handed to main. Main holds its turn lock a little past the end
+ * of a turn, so the queued head can sit in `sending` with `inFlight` already
+ * cleared; anything typed then must queue behind it, not race it.
+ */
+export function isConversationBusy(state: AgentState, conversationId: string): boolean {
+  return (
+    state.inFlight[conversationId] === true ||
+    state.queuedTurns?.[conversationId]?.[0]?.status === 'sending'
+  )
+}
+
+function updateQueue(
+  state: AgentState,
+  conversationId: string,
+  update: (queue: QueuedTurn[]) => QueuedTurn[]
+): AgentState['queuedTurns'] {
+  const current = state.queuedTurns[conversationId] ?? []
+  const next = update(current)
+  if (next === current) return state.queuedTurns
+  if (next.length === 0) {
+    const { [conversationId]: _removed, ...rest } = state.queuedTurns
+    return rest
+  }
+  return { ...state.queuedTurns, [conversationId]: next }
+}
+
+function patchQueuedTurn(
+  queue: QueuedTurn[],
+  id: string,
+  patch: (turn: QueuedTurn) => QueuedTurn | null
+): QueuedTurn[] {
+  const index = queue.findIndex((turn) => turn.id === id)
+  if (index === -1) return queue
+  const patched = patch(queue[index])
+  if (patched === queue[index]) return queue
+  return patched
+    ? queue.map((turn, position) => (position === index ? patched : turn))
+    : queue.filter((_turn, position) => position !== index)
 }
 
 /**
@@ -475,6 +566,78 @@ function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
       }
     case 'set_error':
       return { ...state, error: action.error }
+    case 'queue_turn':
+      return {
+        ...state,
+        queuedTurns: updateQueue(state, action.turn.conversationId, (queue) => [
+          ...queue,
+          action.turn
+        ])
+      }
+    case 'edit_queued_turn':
+      return {
+        ...state,
+        queuedTurns: updateQueue(state, action.conversationId, (queue) =>
+          patchQueuedTurn(queue, action.id, (turn) =>
+            turn.status === 'sending'
+              ? turn
+              : { ...turn, text: action.text, status: 'queued', editing: false }
+          )
+        )
+      }
+    case 'set_queued_turn_editing':
+      return {
+        ...state,
+        queuedTurns: updateQueue(state, action.conversationId, (queue) =>
+          patchQueuedTurn(queue, action.id, (turn) =>
+            turn.status === 'sending' ? turn : { ...turn, editing: action.editing }
+          )
+        )
+      }
+    case 'remove_queued_turn':
+      return {
+        ...state,
+        queuedTurns: updateQueue(state, action.conversationId, (queue) =>
+          patchQueuedTurn(queue, action.id, (turn) => (turn.status === 'sending' ? turn : null))
+        )
+      }
+    case 'start_queued_turn':
+      return {
+        ...state,
+        error: null,
+        inFlight: { ...state.inFlight, [action.conversationId]: true },
+        queuedTurns: updateQueue(state, action.conversationId, (queue) =>
+          patchQueuedTurn(queue, action.id, (turn) => ({ ...turn, status: 'sending' }))
+        )
+      }
+    case 'settle_queued_turn':
+      if (action.sent) {
+        const turn = state.queuedTurns[action.conversationId]?.find(
+          (queued) => queued.id === action.id
+        )
+        // A stopped turn's late `turn_error` may have cleared the flag while
+        // this one waited for main's lock, so it is set again here unless this
+        // turn already ended or the user stopped it.
+        const running =
+          !action.stopped &&
+          turn?.status === 'sending' &&
+          !(action.turnId && turn.endedTurnIds?.includes(action.turnId))
+        return {
+          ...state,
+          inFlight: running ? { ...state.inFlight, [action.conversationId]: true } : state.inFlight,
+          queuedTurns: updateQueue(state, action.conversationId, (queue) =>
+            patchQueuedTurn(queue, action.id, () => null)
+          )
+        }
+      }
+      return {
+        ...state,
+        inFlight: withoutInFlight(state, action.conversationId),
+        error: action.error ?? state.error,
+        queuedTurns: updateQueue(state, action.conversationId, (queue) =>
+          patchQueuedTurn(queue, action.id, (turn) => ({ ...turn, status: 'failed' }))
+        )
+      }
     case 'clear_pending':
       return {
         ...state,
@@ -591,7 +754,18 @@ function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
         return {
           ...state,
           inFlight: withoutInFlight(state, event.conversationId),
-          error: event.kind === 'turn_error' ? event.message : state.error
+          error: event.kind === 'turn_error' ? event.message : state.error,
+          queuedTurns: updateQueue(state, event.conversationId, (queue) =>
+            queue[0]?.status === 'sending'
+              ? [
+                  {
+                    ...queue[0],
+                    endedTurnIds: [...(queue[0].endedTurnIds ?? []), event.turnId]
+                  },
+                  ...queue.slice(1)
+                ]
+              : queue
+          )
         }
       }
       return state
