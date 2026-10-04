@@ -715,8 +715,10 @@ document to its vault `.md` file and re-indexes it for search.
   and then the restore cannot be proven. Before writing house style, the pass restores from
   the note's file instead, read without CriticMarkup and writing tools markers (#2615). A doc
   that says what the file says leaves the file as it is, and an edit lands in the file's
-  spelling. `yDocToMarkdown` reports these as `file` and `file-merged`. House style is
-  written only when the file cannot be restored either, or when the record restore throws.
+  spelling. `yDocToMarkdown` reports these as `file` and `file-merged`. A file that cannot
+  be read or parsed is `file-unreadable`: the conversion resolves null and the pass keeps the
+  file as it is, the way it keeps it for a failed conversion. House style is written only
+  when the file was read and cannot be restored either, or when the record restore throws.
 
 - **A doc with no note row is never turned into a note** — the pass skips it. A body that
   arrives before its record may belong to a note this device has not seen yet, or to one

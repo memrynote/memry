@@ -447,6 +447,7 @@ blocks.
 On disk a column layout uses the syntax of Obsidian's Multi-Column Markdown plugin, so a
 vault shared with Obsidian shows the same columns there:
 
+<!-- prettier-ignore -->
 ````md
 --- start-multi-column: a1b2c3
 ```column-settings
@@ -456,11 +457,7 @@ Column Size: [30%, 70%]
 
 Left column
 
----
-
-```
-end-column ---
-```
+--- end-column ---
 
 Right column
 
@@ -908,7 +905,8 @@ written in memrynote's own style throughout so that they keep syncing between yo
 memrynote keeps a copy of the author's spelling beside the note for this. When that copy no
 longer matches the note, for example after another device changed it, the note's file stands in
 for it. A save that changes nothing leaves the file exactly as it is, and an edit is written into
-the file's own spelling. Only when neither can be kept is the whole note written in memrynote's
+the file's own spelling. A file that cannot be read at that moment is left as it is. Only
+when the file was read and neither copy can be kept is the whole note written in memrynote's
 own style.
 
 Inside an edited region the two are not always byte-for-byte the same. What is guaranteed there
