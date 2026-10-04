@@ -989,7 +989,11 @@ across devices:
   its disposer through `attachment-outbox`, which is already the seam between
   the sync runtime and this singleton, so no import cycle is introduced.
   Uploads pending at dispose are rejected rather than carried over — the outbox
-  below is what makes that safe.
+  below is what makes that safe. The queue starts no upload while the monitor
+  reports offline: an upload reads and encrypts the file before its first
+  request and holds those bytes through the offline wait, so a file deleted
+  before reconnect would still go out. A save-time upload or a drained row that
+  fails because its file is gone drops its outbox row and reports no failure.
 - **Durable upload outbox** — the upload intent is persisted in the data DB
   (`attachment_upload_queue`, migration 0039) before the transfer starts and
   cleared only after the server accepts the file. Failed or quit-interrupted
