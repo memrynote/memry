@@ -1,9 +1,11 @@
 /**
  * Notes whose vault file holds a body their CRDT doc has not taken (#2646).
  *
- * Written when a main-process edit reaches a note whose doc could not take it
- * (no store, no editor). Deleted when the doc takes the file: a feed of the
- * file, a seed from it, or a purge of the note.
+ * Written when a main-process edit reaches a note whose doc cannot take it
+ * with no store: a closed note, or an open one whose server merge has not
+ * landed. Deleted when the doc takes the file (a feed of the file, a seed from
+ * it, or `takeOwedFile`), when `takeOwedFile` finds the doc refuses the file,
+ * and on a purge of the note.
  *
  * @module db/schema/crdt-owed-file-bodies
  */

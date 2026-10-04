@@ -312,24 +312,33 @@ seeds too, which is the open fork in #2544.
 A main-process body edit (the agent note tool, `notes.update`, inbox filing, a
 version restore, appended blocks, a template, a rename's link and embed
 rewrites) reaches the note's document through `feedExternalEditToCrdt`. In
-in-memory mode a closed note's document opens empty, and so does an open one
-whose server merge has not landed, so neither takes the edit: a body fed into
-it would share no Yjs items with the server body. The note is then marked in
-the `crdt_owed_file_bodies` table and given a full-state outbox row (#2646).
-The marker means the vault file is ahead of the document. It is never written
-with a store, and never for a large-file-class body.
+in-memory mode a closed note's document opens empty, so it does not take the
+edit: a body fed into it would share no Yjs items with the server body. An open
+document opened without a seed waits for its merge the same way, until a remote
+update, a seed, or the editor open's merge step reaches it. An open document
+that has merged takes the edit live, even when its body is empty. A note whose
+document cannot take the edit is marked in the `crdt_owed_file_bodies` table
+and given a full-state outbox row (#2646). The marker means the vault file is
+ahead of the document. It is never written with a store, and never for a
+large-file-class body.
 
 The full-state flush and an editor open merge the server body first and then
 apply the file over it (`takeOwedFile`). The write-back of a marked note applies
 it over the merged body the document holds instead of writing over the file.
+Only the provider's live document of the note takes the file, because only its
+updates reach the outbox. A pull of a closed note merges into a document it
+closes before the write-back runs, so that write-back writes nothing and leaves
+the marker for the full-state flush.
+
 There is no base to merge from, so the file wins whole, tags included, and the
 loser is kept as a version:
 
-- When the merged server body differs from the file, for instance a peer edit
-  the file never saw, it is saved as a version with the file's frontmatter, a
-  warning is logged and `sync:concurrent-edit` is broadcast.
-- When the document refuses the file (large-file class, unparseable), the file
-  is saved as a version and the server body stays, so the note converges on it.
+- The merged server body is saved as a version with the file's frontmatter
+  whenever it differs from the file. With no base, that is every take of an
+  edited note, not only one that lost a peer edit. The take is logged at info.
+- When the document refuses the file (large-file class, unparseable), the server
+  body stays, so the note converges on it. The write-back that then replaces the
+  file keeps the file as a version, as it does for any bytes it did not write.
 
 A feed or a seed the document takes clears the marker, as do both outcomes
 above and a purge.

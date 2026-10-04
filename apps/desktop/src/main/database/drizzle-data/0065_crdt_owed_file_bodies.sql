@@ -1,8 +1,9 @@
 -- Notes whose vault file holds a body their CRDT doc has not taken (#2646).
 -- One row per CRDT document id.
 --
--- Written when a main-process edit reaches a note whose doc could not take it
--- (no store, no editor). Deleted when the doc takes the file.
+-- Written when a main-process edit reaches a note whose doc cannot take it
+-- with no store: a closed note, or an open one whose server merge has not
+-- landed. Deleted when the doc takes the file or refuses it, and on a purge.
 --
 -- Additive only. One new table, no ALTER, no backfill, no DELETE. Existing
 -- installs upgrade by gaining an empty table; every existing row is untouched.
