@@ -98,6 +98,15 @@
             })
             const { svg } = await mermaid.render('diagram' + index, item.source)
             node.innerHTML = svg
+            // Mermaid draws `width="100%"` with a `max-width`, which has no
+            // size inside this shrink-to-fit box. Its viewBox is its real size.
+            const drawn = node.querySelector('svg')
+            const box = drawn && drawn.viewBox && drawn.viewBox.baseVal
+            if (box && box.width > 0 && box.height > 0) {
+              drawn.setAttribute('width', String(box.width))
+              drawn.setAttribute('height', String(box.height))
+              drawn.style.maxWidth = 'none'
+            }
             stage.appendChild(node)
             boxes.push({ node })
           } catch (error) {
