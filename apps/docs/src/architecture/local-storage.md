@@ -266,7 +266,7 @@ searchable, not by the file they came from, so text from a note's HTML blocks ca
 note in the same table.
 
 `src/main/file-text/runner.ts` is the only writer. It starts after the open-time index pass and
-works through one file and one page at a time. A PDF page with a text layer is read with
+works through one file and one page at a time, oldest job first. A PDF page with a text layer is read with
 pdfjs-dist; a page without one, and every image, goes through tesseract.js. Each page is stored as
 it finishes, so a restart resumes after the last stored page. The runner publishes
 `note.text-extracted` at pages 1, 2, 4, 8, … and at the end. The search projector then writes the
@@ -275,10 +275,13 @@ file's text into `fts_notes`, and the embedding projector embeds its opening.
 Two helper processes do the heavy work, both at low OS priority and closed after a minute idle:
 
 - **OCR.** A utility process (`ocr-worker.ts`) runs one Tesseract worker with the English data in
-  `out/main/tessdata/`, unpacked from `app.asar`.
+  `out/main/tessdata/`, unpacked from `app.asar`. `ocr-reader.ts` turns each image upright, grey
+  and on white, doubles a small one (under 1600 px) and caps a large one at 4000 px before
+  Tesseract reads it.
 - **PDF pages.** Node has no canvas, so `pdf-host.ts` loads `pdf-host.html` into a
   `WebContentsView` that belongs to no window. It never shows, stays out of
-  `BrowserWindow.getAllWindows()`, and reads the file in byte ranges over `memry-file://`. It
+  `BrowserWindow.getAllWindows()`, and reads the file in byte ranges over `memry-file://`. A range
+  that cannot be read fails the whole document, so a deleted file errors instead of stalling. It
   renders with the `print` intent, because the display intent waits for animation frames a hidden
   view never gets. `openPdfDocument(path, size)` and `renderPage(page, maxEdge)` are the page
   renderer for any feature that needs a PDF page as an image.
