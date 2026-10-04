@@ -1,3 +1,4 @@
+import { blankMarkdownCode } from '@memry/shared/markdown-code'
 import type { NotesService } from './service-types.ts'
 import type { TasksService } from './tasks.ts'
 
@@ -40,7 +41,7 @@ const COLORS: Record<GraphNode['type'], string> = {
 }
 
 function wikilinks(content: string): string[] {
-  const matches = content.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g)
+  const matches = blankMarkdownCode(content).matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g)
   return [...matches].map((match) => match[1]?.trim()).filter((title): title is string => !!title)
 }
 
