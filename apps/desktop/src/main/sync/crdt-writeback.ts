@@ -741,8 +741,14 @@ async function writebackExisting(
   // A note that owes its file body (#2646) takes the same branch. The app
   // wrote those bytes itself and moved the hash with them, so only the marker
   // tells that the doc has not taken them. Its ingest is `takeOwedFile`, which
-  // keeps whichever body loses as a version. A file the doc refuses leaves the
+  // keeps the server body as a version. A file the doc refuses leaves the
   // marker cleared and falls through, so the server body is written.
+  //
+  // Only the live doc can take it. With no store, a pull of a closed note
+  // merges into a doc it closes before this pass runs, and that doc's updates
+  // reach no outbox: taking the file there would clear the marker for an edit
+  // nothing pushes. The pass writes nothing then, and the full-state flush
+  // still owed by the note takes the file into a doc it holds open.
   if (existingRaw !== null) {
     // A row that is not in the index at all is a different situation and not
     // this guard's: `cached` then came from canonical metadata, which means the
@@ -758,6 +764,12 @@ async function writebackExisting(
     }
     const onDisk = cached.contentHash ? generateContentHash(existingRaw) : null
     const owed = owesFileBody(noteId)
+    if (owed && getCrdtProvider().getDoc(noteId) !== doc) {
+      log.debug('Write-back skipped: the note owes its file body to a doc that is not live', {
+        noteId
+      })
+      return
+    }
     const fileAhead = (onDisk !== null && onDisk !== cached.contentHash) || owed
     if (fileAhead && parsed) {
       const ingested = owed

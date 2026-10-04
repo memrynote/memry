@@ -213,6 +213,12 @@ interface ActiveDoc {
    */
   localOnly: boolean
   closing?: boolean
+  /**
+   * Opened unseeded with no store, and neither a remote update, a seed nor
+   * `takeFileAfterMerge` has reached it yet. A body fed into such a doc shares
+   * no Yjs items with the server body (#2536, #2646).
+   */
+  awaitingMerge: boolean
 }
 
 export class CrdtProvider {
@@ -753,14 +759,19 @@ export class CrdtProvider {
    * the caller.
    */
   async takeFileAfterMerge(noteId: string, doc: Y.Doc, owed: boolean): Promise<void> {
-    if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
-      return this.seedFromMarkdown(noteId, doc)
-    }
-    if (!owed) return
-    const cached = getNoteCacheById(getIndexDatabase(), noteId)
-    const raw = cached ? await safeRead(toAbsolutePath(cached.path)) : null
-    if (cached && raw !== null) {
-      await takeOwedFile(noteId, doc, { path: cached.path, raw, title: cached.title })
+    try {
+      if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
+        return await this.seedFromMarkdown(noteId, doc)
+      }
+      if (!owed || this.docs.get(noteId)?.doc !== doc) return
+      const cached = getNoteCacheById(getIndexDatabase(), noteId)
+      const raw = cached ? await safeRead(toAbsolutePath(cached.path)) : null
+      if (cached && raw !== null) {
+        await takeOwedFile(noteId, doc, { path: cached.path, raw, title: cached.title })
+      }
+    } finally {
+      const entry = this.docs.get(noteId)
+      if (entry?.doc === doc) entry.awaitingMerge = false
     }
   }
 
@@ -818,7 +829,8 @@ export class CrdtProvider {
       lastEncodedSize: 0,
       lastSizeCheckAt: 0,
       lastTouchedAt: this.now(),
-      localOnly: this.isNoteLocalOnly(noteId)
+      localOnly: this.isNoteLocalOnly(noteId),
+      awaitingMerge: !this.persistence && options?.skipSeed === true
     }
     this.docs.set(noteId, entry)
 
@@ -1062,6 +1074,11 @@ export class CrdtProvider {
     return this.docs.get(noteId)?.doc
   }
 
+  /** See `ActiveDoc.awaitingMerge`. False for a note with no open doc. */
+  isAwaitingMerge(noteId: string): boolean {
+    return this.docs.get(noteId)?.awaitingMerge === true
+  }
+
   /**
    * `false` when the update was dropped (no open doc, or one closing): the
    * caller must not record it as merged (#2297 round 2 b-M3). An update
@@ -1109,6 +1126,7 @@ export class CrdtProvider {
     } finally {
       this.applyingRemoteEditedAtMs = undefined
     }
+    entry.awaitingMerge = false
     return true
   }
 
@@ -1683,6 +1701,8 @@ export class CrdtProvider {
     raw: string
   ): void {
     clearOwedFileBody(noteId)
+    const entry = this.docs.get(noteId)
+    if (entry) entry.awaitingMerge = false
     if (existingHash) return
     try {
       updateNoteCache(indexDb, noteId, { contentHash: generateContentHash(raw) })

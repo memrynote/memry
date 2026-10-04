@@ -10,10 +10,11 @@
  * what syncs to every other device. So when no editor holds the note, the
  * persisted doc is opened (`skipSeed`), fed, and closed again.
  *
- * An empty doc is not fed. With a store, it means the note has no CRDT body
- * yet and its next open seeds from the file. With no store, every closed doc
- * opens empty, and so does an open one whose server merge has not landed yet;
- * a body fed into it shares no Yjs items with the server body and pushes a
+ * An empty closed doc is not fed. With a store, it means the note has no CRDT
+ * body yet and its next open seeds from the file. With no store, every closed
+ * doc opens empty, and an open one awaits its merge until the server body, a
+ * seed, or `takeFileAfterMerge` reaches it (`CrdtProvider.isAwaitingMerge`).
+ * A body fed into either shares no Yjs items with the server body and pushes a
  * second copy (#2536). The note then owes its file body (#2646): a marker, and
  * a full-state outbox row whose flush merges the server body and applies the
  * file on top of it (`takeOwedFile`). A large-file-class body is never owed,
@@ -58,7 +59,6 @@ export async function feedExternalEditToCrdt(
 ): Promise<boolean> {
   const provider = getCrdtProvider()
   const mergesServerFirst = !provider.hasPersistence() && !provider.isNoteLocalOnly(noteId)
-  const isEmpty = (doc: Y.Doc): boolean => doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0
 
   const feed = async (): Promise<boolean> => {
     if (wasRecentNetworkUpdate(noteId)) {
@@ -71,13 +71,13 @@ export async function feedExternalEditToCrdt(
   }
 
   const held = provider.getDoc(noteId)
-  if (held && !(mergesServerFirst && isEmpty(held))) {
+  if (held && !(mergesServerFirst && provider.isAwaitingMerge(noteId))) {
     return feed()
   }
 
   const doc = held ?? (await provider.open(noteId, undefined, { skipSeed: true }))
   try {
-    if (!isEmpty(doc)) return await feed()
+    if (!held && doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return await feed()
 
     if (mergesServerFirst && classifyMarkdownContent(markdownContent).sizeClass !== 'large-file') {
       recordOwedFileBody(noteId)
@@ -97,10 +97,16 @@ export async function feedExternalEditToCrdt(
  * file.
  *
  * There is no base to merge from, so the file wins whole, tags included. The
- * loser is never silent. A server body the file does not match, a peer's edit
- * the file never saw for instance, is kept as a version. A file the doc
- * refuses (large-file class, unparseable) is kept as a version and the server
- * body stays, so the note converges instead of staying apart.
+ * loser is never silent. The server body is kept as a version whenever it
+ * differs from the file, which is every take of an edited note, since no base
+ * tells a peer's edit from the text the file replaced. A file the doc refuses
+ * (large-file class, unparseable) leaves the server body in the doc, so the
+ * note converges instead of staying apart; the write-back that then replaces
+ * the file keeps it as a version, as it does for any bytes it did not write.
+ *
+ * Callers pass only the provider's live doc of the note. No other doc's
+ * updates reach the outbox, so the marker would be cleared for an edit that
+ * nothing pushes, and the next pull would write the server body over it.
  */
 export async function takeOwedFile(
   noteId: string,
@@ -120,26 +126,23 @@ export async function takeOwedFile(
   clearOwedFileBody(noteId)
 
   if (!took) {
-    keepVersion(noteId, file.raw, file.title)
-    log.warn('The doc refused the vault file it was owed; kept the file as a version', { noteId })
+    log.warn('The doc refused the vault file it was owed; the server body stays', { noteId })
     return false
   }
 
   replaceDocTags(doc, extractTags(parsed.frontmatter))
   if (serverBody.trim() !== '' && serverBody.trim() !== parsed.content.trim()) {
-    keepVersion(noteId, serializeNote(parsed.frontmatter, serverBody), file.title)
-    log.warn('Applied the vault file over a server body it did not match; kept that as a version', {
-      noteId
-    })
-    broadcastToAllWindows('sync:concurrent-edit', { noteId })
+    try {
+      createSnapshot(
+        noteId,
+        serializeNote(parsed.frontmatter, serverBody),
+        file.title,
+        SnapshotReasons.SIGNIFICANT
+      )
+      log.info('Applied the vault file over the server body; kept that as a version', { noteId })
+    } catch (err) {
+      log.error('Could not keep a version of the replaced server body', { noteId, error: err })
+    }
   }
   return true
-}
-
-function keepVersion(noteId: string, fileContent: string, title: string): void {
-  try {
-    createSnapshot(noteId, fileContent, title, SnapshotReasons.SIGNIFICANT)
-  } catch (err) {
-    log.error('Could not keep a version of the replaced body', { noteId, error: err })
-  }
 }
