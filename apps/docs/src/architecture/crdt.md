@@ -1388,8 +1388,10 @@ record push never sees them.
   server's `crdt_push` bucket is per device.
 - **Failures.** A 401 or a storage-quota 413 pauses the outbox until a token refresh or reconnect
   resumes it; network errors and 5xx keep the rows for the next window; any other 4xx drops the
-  rows it sent. The push function rejects rather than returns when a credential is momentarily
-  missing, because returning would ack the rows.
+  rows it sent. A missing access token, vault key or signing key also pauses it, with one warning:
+  the push function rejects with `NoteBodyCredentialsMissingError` rather than returns, because
+  returning would ack the rows. A token refresh, a reconnect, or a sign-in that reuses the running
+  runtime resumes it.
 
 ## BlockNote Compatibility
 
