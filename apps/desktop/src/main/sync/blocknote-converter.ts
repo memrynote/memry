@@ -282,7 +282,7 @@ async function restoreFileSpelling(
   try {
     const body = await readFileBody()
     if (body === null) return null
-    const decoded = decodeWritingMarkers(body)
+    const decoded = decodeWritingMarkers(withLfLineEndings(body))
     const file = withoutWritingSentinels(
       parseCriticMarkup(decoded.text),
       decoded.sentinels
@@ -548,6 +548,16 @@ export async function markdownToYFragment(
   return seedFragment(markdown, fragment, notePath, { recordSource: true, writing })
 }
 
+/**
+ * The parse reads a `\r` as a space, so a CRLF file seeded as it is puts a
+ * trailing space on every line of the doc. Every line then differs from the
+ * source, and the first edit writes the whole note in house style (#2615).
+ * The write-back puts the file's own line endings back (`serializeParsedNote`).
+ */
+function withLfLineEndings(markdown: string): string {
+  return markdown.replace(/\r\n?/g, '\n')
+}
+
 export interface PreparedFragmentSeed {
   blocks: Block[]
   marks: ReturnType<typeof parseCriticMarkup>['marks']
@@ -575,7 +585,7 @@ export async function prepareFragmentSeed(
   // Writing tools markers first, as sentinels that ride the parse into the
   // blocks (see sync/writing-markdown.ts). CriticMarkup offsets are then
   // moved off them, onto the text every CriticMarkup reader counts in.
-  const decoded = decodeWritingMarkers(markdown)
+  const decoded = decodeWritingMarkers(withLfLineEndings(markdown))
   const parsed = parseCriticMarkup(decoded.text)
   const critic = withoutWritingSentinels(parsed, decoded.sentinels)
   // Reference definitions ride beside the document in two Y.Arrays: the editor
