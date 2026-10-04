@@ -196,6 +196,52 @@ describe('frontmatter utilities', () => {
     expect(links).toEqual(['Other'])
   })
 
+  it('extractWikiLinks skips link syntax inside inline code', () => {
+    const links = extractWikiLinks(
+      'Write `[[Example]]` or ``[[Other `x` one]]`` to link, see [[Real]]'
+    )
+    expect(links).toEqual(['Real'])
+  })
+
+  it('extractWikiLinks skips link syntax inside fenced code blocks', () => {
+    const content = [
+      '[[Before]]',
+      '```md',
+      '[[In Backtick Fence]]',
+      '```',
+      '~~~',
+      '[[In Tilde Fence]]',
+      '~~~',
+      '````',
+      '```',
+      '[[In Nested Fence]]',
+      '```',
+      '````',
+      '[[After]]'
+    ].join('\n')
+    expect(extractWikiLinks(content)).toEqual(['Before', 'After'])
+  })
+
+  it('extractWikiLinks keeps links hidden in HTML comments', () => {
+    const content = [
+      'Text <!-- [[Inline Hidden]] --> more',
+      '<!--',
+      '[[Block Hidden]] uses a ` backtick',
+      '-->',
+      'A <!-- [[Ticked]] ` --> then [[Visible]] and a ` stray tick'
+    ].join('\n')
+    expect(extractWikiLinks(content)).toEqual([
+      'Inline Hidden',
+      'Block Hidden',
+      'Ticked',
+      'Visible'
+    ])
+  })
+
+  it('extractWikiLinks reads a link after an unclosed backtick', () => {
+    expect(extractWikiLinks('A lone ` tick then [[Linked]]')).toEqual(['Linked'])
+  })
+
   it('extractTags trims and preserves case', () => {
     const frontmatter: NoteFrontmatter = {
       id: 'abc123def456',
