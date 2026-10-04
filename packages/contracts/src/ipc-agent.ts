@@ -490,7 +490,11 @@ export type AgentStreamTargetRequest = z.infer<typeof AgentStreamTargetRequestSc
 
 export const SendTurnResponseSchema = z.object({
   ok: z.boolean(),
-  error: z.string().optional()
+  error: z.string().optional(),
+  /** The id the started turn's events carry. Absent from older main builds. */
+  turnId: z.string().optional(),
+  /** Set when the refusal is another turn still holding the conversation. */
+  reason: z.literal('turn_in_flight').optional()
 })
 export type SendTurnResponse = z.infer<typeof SendTurnResponseSchema>
 
