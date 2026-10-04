@@ -59,6 +59,7 @@ export {
   resolveNoteByTitle,
   resolveNotesByTitles,
   getInboundLinkSourceIds,
+  listLinkSourceIds,
   type IncomingReference
 } from './link-queries'
 

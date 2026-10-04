@@ -172,3 +172,12 @@ export function getInboundLinkSourceIds(
     .all()
     .map((row) => row.sourceId)
 }
+
+/** Every note that has at least one outgoing wiki-link row. */
+export function listLinkSourceIds(db: IndexDb): string[] {
+  return db
+    .selectDistinct({ sourceId: noteLinks.sourceId })
+    .from(noteLinks)
+    .all()
+    .map((row) => row.sourceId)
+}
