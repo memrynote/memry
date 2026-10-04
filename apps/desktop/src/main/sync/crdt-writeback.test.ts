@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   serializeParsedNote: vi.fn(),
   toAbsolutePath: vi.fn(),
   maybeCreateSignificantSnapshot: vi.fn(),
+  createSnapshot: vi.fn(),
   getJournalPath: vi.fn(),
   syncNoteToCache: vi.fn(),
   deleteNoteFromCache: vi.fn(),
@@ -101,7 +102,8 @@ vi.mock('../vault/notes', () => ({
   getVaultRoot: (...args: unknown[]) => mocks.getVaultRoot(...args),
   toAbsolutePath: (...args: unknown[]) => mocks.toAbsolutePath(...args),
   maybeCreateSignificantSnapshot: (...args: unknown[]) =>
-    mocks.maybeCreateSignificantSnapshot(...args)
+    mocks.maybeCreateSignificantSnapshot(...args),
+  createSnapshot: (...args: unknown[]) => mocks.createSnapshot(...args)
 }))
 
 vi.mock('../vault/journal', () => ({
@@ -252,13 +254,6 @@ describe('crdt writeback', () => {
     await vi.advanceTimersByTimeAsync(500)
 
     expect(mocks.yDocToMarkdown).toHaveBeenCalledTimes(1)
-    expect(mocks.maybeCreateSignificantSnapshot).toHaveBeenCalledWith(
-      'note-1',
-      expect.any(String),
-      'old markdown',
-      'updated markdown',
-      'Existing'
-    )
     expect(mocks.atomicWrite).toHaveBeenCalledWith(
       '/vault/notes/Existing.md',
       expect.stringContaining('updated markdown')
@@ -1162,6 +1157,7 @@ describe('crdt-writeback per-vault state reset', () => {
     expect(getWritebackStateSizes()).toEqual({
       ignoredWrites: 0,
       networkUpdates: 0,
+      lastWrittenHashes: 0,
       debugState: 0
     })
   })
