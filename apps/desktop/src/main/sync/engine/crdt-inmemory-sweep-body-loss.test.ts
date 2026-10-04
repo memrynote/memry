@@ -135,6 +135,7 @@ import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { getCrdtProvider, resetCrdtProvider, type SnapshotPushFn } from '../crdt-provider'
 import type { NoteBodyOutbox } from '../note-body-outbox'
 import { hasPendingWriteback } from '../crdt-writeback'
+import { feedExternalEditToCrdt } from '../crdt-external-feed'
 import { markdownToYFragment, yDocToMarkdown } from '../blocknote-converter'
 import { generateContentHash } from '../../vault/frontmatter'
 
@@ -481,6 +482,69 @@ describe('CrdtProvider with no store (#2536)', () => {
     await provider.pushSnapshotsForNotes([NOTE], { concurrency: 1 })
 
     expect(await bodyAfterPull()).toBe(ORIGINAL)
+  })
+
+  describe('a main-process edit to a note no editor holds (#2646)', () => {
+    const EDITED_BODY = `${EXPECTED_BODY}\n\nAgent line.`
+
+    async function editClosedNote(): Promise<{
+      provider: ReturnType<typeof getCrdtProvider>
+      coordinator: CrdtSyncCoordinator
+      peer: Y.Doc
+    }> {
+      const peer = await serveNoteWithPeerEdit()
+      putNoteInVault(EXPECTED_BODY)
+      const runtime = await startRuntime()
+
+      // What `updateNote` leaves behind: the new bytes on disk and the index
+      // hash moved to them.
+      putNoteInVault(EDITED_BODY)
+      await feedExternalEditToCrdt(NOTE, EDITED_BODY)
+      return { ...runtime, peer }
+    }
+
+    async function fileBodyAfterWriteback(): Promise<string | undefined> {
+      await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+      return h.files.get(FILE)?.split('---\n')[2]
+    }
+
+    it('reaches the server', async () => {
+      const { peer } = await editClosedNote()
+
+      expect([await bodyAfterPull(), await bodyAfterPull(peer)]).toEqual([EDITED_BODY, EDITED_BODY])
+    })
+
+    it('survives the next pull of the note', async () => {
+      const { coordinator } = await editClosedNote()
+
+      await coordinator.pullCrdtForNotes([NOTE])
+
+      expect(await fileBodyAfterWriteback()).toBe(EDITED_BODY)
+    })
+
+    it('survives a restart and the launch sweep', async () => {
+      await editClosedNote()
+      await getCrdtProvider().destroy()
+      resetCrdtProvider()
+      const { coordinator } = await startRuntime()
+
+      await coordinator.pullCrdtForNotes([NOTE])
+
+      expect(await fileBodyAfterWriteback()).toBe(EDITED_BODY)
+    })
+
+    it('survives opening the note in the editor', async () => {
+      const { provider, coordinator } = await editClosedNote()
+
+      const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+        coordinator.pullCrdtForNote(id)
+      )
+
+      expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+        EDITED_BODY
+      )
+      expect(await fileBodyAfterWriteback()).toBe(EDITED_BODY)
+    })
   })
 
   it('a note the server has never seen reaches it through its first edit', async () => {
