@@ -7,6 +7,7 @@ import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { NOTE_BODY_FULL_STATE_PAYLOAD, SyncQueueManager } from '@memry/sync-client/queue'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import {
+  NoteBodyCredentialsMissingError,
   NoteBodyFlushDeferredError,
   NoteBodyOutbox,
   importLegacyPendingCrdtNotes,
@@ -288,6 +289,31 @@ describe('NoteBodyOutbox', () => {
     outbox.enqueue('note-a', updates[0])
     await flushPromises()
 
+    expect(queue.countNoteBodyRows()).toBe(0)
+  })
+
+  // AF-014: with no session every queued note retried once a second.
+  it('stops pushing once credentials are missing and pushes the kept rows on resume', async () => {
+    const { updates } = recordEdits(['a', 'b'])
+    push.mockRejectedValue(new NoteBodyCredentialsMissingError('no session'))
+    const outbox = createOutbox()
+    outbox.start()
+    outbox.enqueue('note-a', updates[0])
+    outbox.enqueue('note-b', updates[1])
+    await flushPromises()
+
+    for (let second = 0; second < 60; second++) {
+      vi.advanceTimersByTime(1000)
+      await flushPromises()
+    }
+    expect(push.mock.calls.map(([noteId]) => noteId)).toEqual(['note-a', 'note-b'])
+    expect(queue.countNoteBodyRows()).toBe(2)
+
+    push.mockReset()
+    push.mockResolvedValue(undefined)
+    outbox.resume()
+    await flushPromises()
+    expect(push.mock.calls.map(([noteId]) => noteId).sort()).toEqual(['note-a', 'note-b'])
     expect(queue.countNoteBodyRows()).toBe(0)
   })
 

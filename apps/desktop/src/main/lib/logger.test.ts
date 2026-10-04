@@ -21,9 +21,10 @@ vi.mock('electron-log', () => {
   return {
     default: {
       transports: {
-        file: { level: null, maxSize: 0, format: '' },
+        file: { level: null, maxSize: 0, format: '', archiveLogFn: vi.fn() },
         console: { level: null, format: '' }
       },
+      hooks: [],
       errorHandler: { startCatching: mockStartCatching },
       scope: mockScope,
       info: vi.fn(),
