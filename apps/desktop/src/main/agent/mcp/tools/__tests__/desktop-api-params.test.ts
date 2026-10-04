@@ -5,6 +5,7 @@ import {
 } from '@memry/contracts/agent-mcp-channels'
 
 vi.mock('electron', () => ({
+  ipcMain: { handle: vi.fn() },
   ipcRenderer: {
     invoke: vi.fn(),
     send: vi.fn(),
@@ -24,6 +25,10 @@ import { remindersApi } from '../../../../../preload/api/reminders'
 import { graphApi, searchApi } from '../../../../../preload/api/search'
 import { tagsApi } from '../../../../../preload/api/tags'
 import { vaultApi } from '../../../../../preload/api/vault'
+import { ipcMain } from 'electron'
+import { NotesChannels } from '@memry/contracts/ipc-channels'
+import { createValidatedHandler, recordIpcInputSchemas } from '../../../../ipc/validate'
+import { CreatePropertyDefinitionSchema } from '../../../../ipc/notes-schemas'
 import { assertDesktopApiArgs, desktopOperationParams } from '../desktop-api-params'
 import { desktopWriteReadback } from '../desktop-api-readback'
 
@@ -89,5 +94,25 @@ describe('desktop API parameter lists', () => {
       const readback = desktopWriteReadback({ operation, args })
       if (readback) expect(() => assertDesktopApiArgs(readback.request), operation).not.toThrow()
     }
+  })
+
+  it('refuse a key inside an input object that the IPC handler would drop', () => {
+    recordIpcInputSchemas()
+    ipcMain.handle(
+      NotesChannels.invoke.CREATE_PROPERTY_DEFINITION,
+      createValidatedHandler(CreatePropertyDefinitionSchema, async () => ({ success: true }))
+    )
+    const define = (input: unknown) =>
+      assertDesktopApiArgs({ operation: 'notes.createPropertyDefinition', args: [input] })
+
+    expect(() => define({ name: 'mood', type: 'select', optionz: [] })).toThrow(
+      'notes.createPropertyDefinition does not take optionz. Nothing was run.'
+    )
+    expect(() =>
+      define({ name: 'mood', type: 'select', options: [{ value: 'Calm', color: 'sky', tint: 1 }] })
+    ).toThrow('notes.createPropertyDefinition does not take options.0.tint. Nothing was run.')
+    expect(() =>
+      define({ name: 'mood', type: 'select', options: [{ value: 'Calm', color: 'sky' }] })
+    ).not.toThrow()
   })
 })
