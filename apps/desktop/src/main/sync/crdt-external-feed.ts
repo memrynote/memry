@@ -99,10 +99,21 @@ export async function feedExternalEditToCrdt(
  * There is no base to merge from, so the file wins whole, tags included. The
  * loser is never silent. The server body is kept as a version whenever it
  * differs from the file, which is every take of an edited note, since no base
- * tells a peer's edit from the text the file replaced. A file the doc refuses
- * (large-file class, unparseable) leaves the server body in the doc, so the
- * note converges instead of staying apart; the write-back that then replaces
- * the file keeps it as a version, as it does for any bytes it did not write.
+ * tells a peer's edit from the text the file replaced. The version is written
+ * before the replace, and a version that cannot be written leaves the doc and
+ * the marker to the next flush.
+ *
+ * A server body this build cannot serialize (a node type it has no schema for,
+ * or a conversion that fails) is not taken over: the replace would delete the
+ * part no version can hold. The doc and the marker stay, and the write-back
+ * keeps the file, as it does for any doc it cannot serialize. The take runs
+ * again once a pull brings a body this build can serialize, or on a build that
+ * knows the type.
+ *
+ * A file the doc refuses (large-file class, unparseable) leaves the server body
+ * in the doc, so the note converges instead of staying apart; the write-back
+ * that then replaces the file keeps it as a version, as it does for any bytes
+ * it did not write.
  *
  * Called only by `CrdtProvider.takeFileAfterMerge`, after a complete server
  * merge into the provider's live doc. No other doc's updates reach the outbox,
@@ -114,10 +125,44 @@ export async function takeOwedFile(
   doc: Y.Doc,
   file: { path: string; raw: string; title: string }
 ): Promise<boolean> {
-  const parsed = parseNote(file.raw, file.path)
   const converter = await loadBlockNoteConverter()
-  const serverBody =
-    (await serializeNoteBody(doc, { notePath: file.path }, converter))?.markdown ?? ''
+  const unrepresentable = converter.findUnrepresentableNodes(doc)
+  const server =
+    unrepresentable.length > 0
+      ? null
+      : await serializeNoteBody(doc, { notePath: file.path }, converter)
+  if (server === null) {
+    log.warn('The server body does not serialize in this build; the file stays owed', {
+      noteId,
+      reason: unrepresentable.length > 0 ? 'unrepresentable nodes' : 'conversion returned null',
+      nodes: unrepresentable
+    })
+    return false
+  }
+
+  const parsed = parseNote(file.raw, file.path)
+  const serverBody = server.markdown
+  const keepsVersion =
+    classifyMarkdownContent(parsed.content).sizeClass !== 'large-file' &&
+    serverBody.trim() !== '' &&
+    serverBody.trim() !== parsed.content.trim()
+  if (keepsVersion) {
+    try {
+      createSnapshot(
+        noteId,
+        serializeNote(parsed.frontmatter, serverBody),
+        file.title,
+        SnapshotReasons.SIGNIFICANT
+      )
+    } catch (err) {
+      log.error('Could not keep a version of the server body; the file stays owed', {
+        noteId,
+        error: err
+      })
+      return false
+    }
+  }
+
   const took = await replaceDocBody(
     doc,
     noteId,
@@ -132,18 +177,8 @@ export async function takeOwedFile(
   }
 
   replaceDocTags(doc, extractTags(parsed.frontmatter))
-  if (serverBody.trim() !== '' && serverBody.trim() !== parsed.content.trim()) {
-    try {
-      createSnapshot(
-        noteId,
-        serializeNote(parsed.frontmatter, serverBody),
-        file.title,
-        SnapshotReasons.SIGNIFICANT
-      )
-      log.info('Applied the vault file over the server body; kept that as a version', { noteId })
-    } catch (err) {
-      log.error('Could not keep a version of the replaced server body', { noteId, error: err })
-    }
+  if (keepsVersion) {
+    log.info('Applied the vault file over the server body; kept that as a version', { noteId })
   }
   return true
 }

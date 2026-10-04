@@ -10,7 +10,8 @@
  * edit may wait for the server across restarts. Never written with a store.
  *
  * Cleared when the doc takes the file (a feed, a seed, or `takeOwedFile`), when
- * `takeOwedFile` finds the doc refuses it, and on a purge.
+ * `takeOwedFile` finds the doc refuses it, when the take finds no file, and on
+ * a purge.
  *
  * Never throws: a database that cannot be read or written reads as "not owed".
  *

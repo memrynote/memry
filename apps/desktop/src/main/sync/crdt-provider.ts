@@ -758,7 +758,8 @@ export class CrdtProvider {
    * Finish a doc the server body was just completely merged into: a doc still
    * empty seeds from the vault file, and a note that owes its file body
    * (#2646) takes the file on top of the merged body. The only place the file
-   * is taken. Every other pass leaves it alone while the marker stands.
+   * is taken. Every other pass leaves it alone while the marker stands. A
+   * file that no longer exists leaves nothing to owe, so its marker is cleared.
    */
   async takeFileAfterMerge(noteId: string, doc: Y.Doc): Promise<void> {
     try {
@@ -767,10 +768,14 @@ export class CrdtProvider {
       }
       if (this.docs.get(noteId)?.doc !== doc || !owesFileBody(noteId)) return
       const cached = getNoteCacheById(getIndexDatabase(), noteId)
-      const raw = cached ? await safeRead(toAbsolutePath(cached.path)) : null
-      if (cached && raw !== null) {
-        await takeOwedFile(noteId, doc, { path: cached.path, raw, title: cached.title })
+      if (!cached) return
+      const raw = await safeRead(toAbsolutePath(cached.path))
+      if (raw === null) {
+        clearOwedFileBody(noteId)
+        log.warn('The vault file a note owes does not exist; nothing is left to take', { noteId })
+        return
       }
+      await takeOwedFile(noteId, doc, { path: cached.path, raw, title: cached.title })
     } finally {
       const entry = this.docs.get(noteId)
       if (entry?.doc === doc) entry.awaitingMerge = false
