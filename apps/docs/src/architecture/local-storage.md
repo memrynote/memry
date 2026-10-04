@@ -266,12 +266,13 @@ one shipped exception).
 
 Sync bookkeeping tables added this way, each additive and ignored by older builds:
 
-| Migration                    | Table                   | Holds                                                                                                                   |
-| ---------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `0059_sync_intents`          | `sync_intents`          | local changes that still owe their clock bump and queue row (#2301)                                                     |
-| `0060_crdt_body_debts`       | `crdt_body_debts`       | notes and journals whose server CRDT body this device has not merged (#2297); see [CRDT](/architecture/crdt)            |
-| `0062_crdt_body_withheld`    | `crdt_body_withheld`    | ids whose change-feed body was dropped because no row existed yet (#2421); see [CRDT](/architecture/crdt)               |
-| `0065_crdt_owed_file_bodies` | `crdt_owed_file_bodies` | notes whose vault file holds a body their CRDT doc has not taken, with no store (#2646); see [CRDT](/architecture/crdt) |
+| Migration                    | Table                   | Holds                                                                                                                                                     |
+| ---------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0059_sync_intents`          | `sync_intents`          | local changes that still owe their clock bump and queue row (#2301)                                                                                       |
+| `0060_crdt_body_debts`       | `crdt_body_debts`       | notes and journals whose server CRDT body this device has not merged (#2297); see [CRDT](/architecture/crdt)                                              |
+| `0062_crdt_body_withheld`    | `crdt_body_withheld`    | ids whose change-feed body was dropped because no row existed yet (#2421); see [CRDT](/architecture/crdt)                                                 |
+| `0065_crdt_owed_file_bodies` | `crdt_owed_file_bodies` | notes whose vault file holds a body their CRDT doc has not taken, with no store (#2646); see [CRDT](/architecture/crdt)                                   |
+| `0066_attachment_files`      | `attachment_files`      | note-attachment files this device knows the server has, by vault-relative path (#2651); see [Sync protocol](/architecture/sync-protocol#note-attachments) |
 
 ## Vault Markdown Files
 

@@ -995,9 +995,17 @@ across devices:
   same embed rule also runs when a body is written through the notes domain,
   when the watcher indexes an external edit and when ingest reads a new file:
   each embedded vault file without an outbox row, the note's own folder
-  included, gets one and uploads at once. A note that already records an
-  attachment reference is skipped on both paths: attachment ids are random, so
-  nothing tells a new file from one already uploaded.
+  included, gets one and uploads at once. Rows whose file is gone are dropped
+  before the online and token gate, so that happens offline too.
+- **Attachment file record** — attachment ids are random per upload, so a note
+  that holds references cannot say by itself whether a file on disk is one of
+  them. Uploads and downloads record each file by vault-relative path
+  (`attachment_files`, migration 0066), and the backfill and the write-time
+  hook queue only a file no record knows. A note seen with references and no
+  record yet is from before the table: its files are counted as known instead
+  of uploaded again, and a note with no file on disk gets a marker row so a
+  later file still reads as new. A file renamed inside the note's own folder
+  keeps its row through its stored prefix. Older builds ignore the table.
   Recording the reference enqueues a note push so peers
   learn the blob exists; if that lands while the runtime is down — an upload
   finishing during quit, a vault switch, re-auth — the note is marked for
