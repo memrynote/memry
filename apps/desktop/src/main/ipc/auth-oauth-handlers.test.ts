@@ -69,10 +69,12 @@ vi.mock('../sync/session-teardown', () => ({
 
 const mockStoreToken = vi.fn()
 const mockRefreshAccessToken = vi.fn()
+const mockHasSessionEnded = vi.fn(() => false)
 vi.mock('../sync/token-manager', () => ({
   storeToken: (...args: unknown[]) => mockStoreToken(...args),
   retrieveToken: vi.fn(),
-  refreshAccessToken: (...args: unknown[]) => mockRefreshAccessToken(...args)
+  refreshAccessToken: (...args: unknown[]) => mockRefreshAccessToken(...args),
+  hasSessionEnded: () => mockHasSessionEnded()
 }))
 
 const mockStartGoogleRunner = vi.fn()
@@ -654,6 +656,15 @@ describe('auth-oauth handlers', () => {
 
       await expect(invokeHandler(SYNC_CHANNELS.AUTH_REFRESH_TOKEN)).resolves.toEqual({
         success: false,
+        sessionEnded: false,
+        error: 'Token refresh failed'
+      })
+
+      mockRefreshAccessToken.mockResolvedValueOnce(false)
+      mockHasSessionEnded.mockReturnValueOnce(true)
+      await expect(invokeHandler(SYNC_CHANNELS.AUTH_REFRESH_TOKEN)).resolves.toEqual({
+        success: false,
+        sessionEnded: true,
         error: 'Token refresh failed'
       })
 
