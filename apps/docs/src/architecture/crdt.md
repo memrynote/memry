@@ -309,15 +309,30 @@ the oversized-update fallback still seed, because for a note the server has
 never seen, the vault file is the only copy of the body. An editor open still
 seeds too, which is the open fork in #2544.
 
-A main-process body edit (the agent note tool, `notes.update`, a version
-restore, appended blocks, a template, a rename's link rewrite) reaches a closed
-note's document through `feedExternalEditToCrdt`. In-memory mode opens that
-document empty, so it cannot take the edit. The note is then marked in the
-`crdt_owed_file_bodies` table and given a full-state outbox row (#2646). The
-marker means the vault file is ahead of the document. The full-state flush and
-an editor open merge the server body first and apply the file on top of it, and
-the write-back ingests the file of a marked note instead of writing over it. A
-feed or a seed that the document takes clears the marker, and so does a purge.
+A main-process body edit (the agent note tool, `notes.update`, inbox filing, a
+version restore, appended blocks, a template, a rename's link and embed
+rewrites) reaches the note's document through `feedExternalEditToCrdt`. In
+in-memory mode a closed note's document opens empty, and so does an open one
+whose server merge has not landed, so neither takes the edit: a body fed into
+it would share no Yjs items with the server body. The note is then marked in
+the `crdt_owed_file_bodies` table and given a full-state outbox row (#2646).
+The marker means the vault file is ahead of the document. It is never written
+with a store, and never for a large-file-class body.
+
+The full-state flush and an editor open merge the server body first and then
+apply the file over it (`takeOwedFile`). The write-back of a marked note applies
+it over the merged body the document holds instead of writing over the file.
+There is no base to merge from, so the file wins whole, tags included, and the
+loser is kept as a version:
+
+- When the merged server body differs from the file, for instance a peer edit
+  the file never saw, it is saved as a version with the file's frontmatter, a
+  warning is logged and `sync:concurrent-edit` is broadcast.
+- When the document refuses the file (large-file class, unparseable), the file
+  is saved as a version and the server body stays, so the note converges on it.
+
+A feed or a seed the document takes clears the marker, as do both outcomes
+above and a purge.
 
 Losing a watermark costs one extra request. Keeping a stale one costs a note
 body, so every unknown — no record, an unreadable record, a store written by a
