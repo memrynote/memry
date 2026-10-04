@@ -394,7 +394,7 @@ export interface VaultServiceHandles {
       content_markdown?: string
       tags?: string[]
       properties?: Record<string, unknown>
-    }): Promise<{ id: string }>
+    }): Promise<{ id: string; frontmatter_removed?: string[] }>
     delete(date: string): Promise<{ date: string; deleted: boolean }>
     stored(date: string): Promise<StoredJournalEntry | null>
   }

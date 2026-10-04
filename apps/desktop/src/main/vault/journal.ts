@@ -228,11 +228,19 @@ export function extractJournalProperties(
 // File Operations
 // ============================================================================
 
-/** The entry file's body after its frontmatter, byte for byte, or null if there is no file. */
-export async function readJournalFileBody(date: string): Promise<string | null> {
+/**
+ * The entry file's frontmatter as parsed and its body after the frontmatter,
+ * byte for byte, or null if there is no file.
+ */
+export async function readJournalFile(
+  date: string
+): Promise<{ frontmatter: Record<string, unknown>; body: string } | null> {
   const store = getContentStore()
   const rawContent = await store.read(store.getJournalRelativePath(date))
-  return rawContent === null ? null : matter(rawContent).content
+  if (rawContent === null) return null
+  // `{}` bypasses gray-matter's content-keyed cache, as parseNote does.
+  const { data, content } = matter(rawContent, {})
+  return { frontmatter: data, body: content }
 }
 
 /**

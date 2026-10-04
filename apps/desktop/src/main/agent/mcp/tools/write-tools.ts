@@ -451,8 +451,9 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_update_journal_entry', parsed, ctx)
-        const { id } = await handles.journal.update(args)
-        return (await handles.journal.stored(args.date)) ?? { id }
+        const { id, frontmatter_removed } = await handles.journal.update(args)
+        const stored = (await handles.journal.stored(args.date)) ?? { id }
+        return frontmatter_removed ? { ...stored, frontmatter_removed } : stored
       }
     },
     vault_delete_journal_entry: {

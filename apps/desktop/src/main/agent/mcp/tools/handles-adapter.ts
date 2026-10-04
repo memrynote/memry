@@ -2,18 +2,14 @@ import { createHash } from 'node:crypto'
 import path from 'node:path'
 
 import { searchAll } from '../../../database/queries/search'
-import {
-  getNoteCacheById,
-  getNotePropertiesAsRecord,
-  listJournalEntriesInRange
-} from '../../../database/queries/notes'
+import { getNoteCacheById, listJournalEntriesInRange } from '../../../database/queries/notes'
 import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
 import { createDesktopInboxDomain } from '../../../inbox/domain'
 import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
 import {
   deleteJournalEntryFile,
   readJournalEntry,
-  readJournalFileBody,
+  readJournalFile,
   writeJournalEntry
 } from '../../../vault/journal'
 import {
@@ -712,6 +708,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         return { id: created.id, created: true }
       },
       async update({ date, content_markdown, tags, properties }) {
+        const before = await readJournalFile(date)
         const existing = await readJournalEntry(date)
         const updated = await writeJournalEntry(
           date,
@@ -719,20 +716,26 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           tags ?? existing?.tags,
           properties ?? existing?.properties
         )
-        return { id: updated.id }
+        // The journal writer keeps user keys only, so a legacy `id`, `created` or
+        // `modified` in an older file is dropped on rewrite. Say so.
+        const after = await readJournalFile(date)
+        const dropped = Object.keys(before?.frontmatter ?? {}).filter(
+          (key) => !Object.hasOwn(after?.frontmatter ?? {}, key)
+        )
+        return { id: updated.id, ...(dropped.length > 0 ? { frontmatter_removed: dropped } : {}) }
       },
       async delete(date) {
         return { date, deleted: await deleteJournalEntryFile(date) }
       },
       async stored(date) {
-        const [entry, body] = await Promise.all([readJournalEntry(date), readJournalFileBody(date)])
-        if (!entry || body === null) return null
+        const [entry, file] = await Promise.all([readJournalEntry(date), readJournalFile(date)])
+        if (!entry || !file) return null
         return {
           id: entry.id,
           date: entry.date,
           tags: entry.tags,
           properties: entry.properties ?? {},
-          ...bodyDigest(body)
+          ...bodyDigest(file.body)
         }
       }
     },
@@ -842,7 +845,13 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           input,
           async (request) =>
             withoutFileBodies(await invokeDesktopApiFromWindow(windowId, request), fileRowOf),
-          (entityId) => getNotePropertiesAsRecord(indexDb, entityId)
+          async (entityId) => {
+            // Taken from the file, not the index: the index keeps a YAML date as a
+            // JSON string, and writing that back would turn the date into text.
+            const cached = getNoteCacheById(indexDb, entityId)
+            if (!cached || cached.date || (cached.fileType ?? 'markdown') !== 'markdown') return {}
+            return (await getNoteById(entityId))?.frontmatter ?? {}
+          }
         )
       }
     },

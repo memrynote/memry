@@ -21,15 +21,25 @@ function read(operation: AgentMcpDesktopReadOperation, args: unknown[] = []): Re
   return { request: { operation, args }, select: whole }
 }
 
-function findIn(operation: AgentMcpDesktopReadOperation, key: string, value: unknown): Readback {
+/** Read a list and pick one entry; `listKey` names the field holding the list, if any. */
+function findIn(
+  operation: AgentMcpDesktopReadOperation,
+  listKey: string | null,
+  key: string,
+  value: unknown
+): Readback {
   return {
     request: { operation, args: [] },
-    select: (data) =>
-      (Array.isArray(data) ? data : []).find((entry) => field(entry, key) === value) ?? null
+    select: (data) => {
+      const list = listKey === null ? data : field(data, listKey)
+      return (Array.isArray(list) ? list : []).find((entry) => field(entry, key) === value) ?? null
+    }
   }
 }
 
-const propertyDefinition = (args: Args) => findIn('notes.getPropertyDefinitions', 'name', args[0])
+const propertyDefinition = (args: Args) =>
+  findIn('notes.getPropertyDefinitions', null, 'name', args[0])
+const tag = (name: unknown) => findIn('tags.getAllWithCounts', 'tags', 'name', name)
 const inboxItem = (args: Args) => read('inbox.get', [args[0]])
 const settings = (operation: AgentMcpDesktopReadOperation) => () => read(operation)
 
@@ -68,10 +78,11 @@ const READBACKS: Partial<Record<AgentMcpDesktopWriteOperation, (args: Args) => R
   'inbox.retryMetadata': inboxItem,
   'inbox.snooze': (args) => read('inbox.get', [field(args[0], 'itemId')]),
   'inbox.setStaleThreshold': () => read('inbox.getStaleThreshold'),
-  'tags.updateTagColor': (args) => findIn('tags.getAllWithCounts', 'name', field(args[0], 'tag')),
-  'tags.updateTagIcon': (args) => findIn('tags.getAllWithCounts', 'name', field(args[0], 'tag')),
-  'tags.renameTag': (args) => findIn('tags.getAllWithCounts', 'name', field(args[0], 'newName')),
-  'tags.renameCategory': (args) => findIn('tags.listCategories', 'id', field(args[0], 'id')),
+  'tags.updateTagColor': (args) => tag(field(args[0], 'tag')),
+  'tags.updateTagIcon': (args) => tag(field(args[0], 'tag')),
+  'tags.renameTag': (args) => tag(field(args[0], 'newName')),
+  'tags.renameCategory': (args) =>
+    findIn('tags.listCategories', 'categories', 'id', field(args[0], 'id')),
   'settings.set': (args) => read('settings.get', [args[0]]),
   'settings.setJournalSettings': settings('settings.getJournalSettings'),
   'settings.setAISettings': settings('settings.getAISettings'),
@@ -106,15 +117,15 @@ export function desktopWriteReadback(input: {
  */
 const LEGACY_PROPERTY_KEYS = ['id', 'title', 'created', 'modified'] as const
 
-export function keepLegacyPropertyKeys(
+export async function keepLegacyPropertyKeys(
   args: Args,
-  readCurrent: (entityId: string) => Record<string, unknown>
-): Args {
+  readCurrent: (entityId: string) => Promise<Record<string, unknown>>
+): Promise<Args> {
   const [entityId, next, ...rest] = args
   if (typeof entityId !== 'string' || !next || typeof next !== 'object' || Array.isArray(next)) {
     return args
   }
-  const current = readCurrent(entityId)
+  const current = await readCurrent(entityId)
   const merged: Record<string, unknown> = { ...next }
   for (const key of LEGACY_PROPERTY_KEYS) {
     if (!Object.hasOwn(merged, key)) {
@@ -134,11 +145,11 @@ function isFailedReply(data: unknown): boolean {
 export async function writeAndReadBack(
   input: { operation: AgentMcpDesktopWriteOperation; args: unknown[] },
   invoke: (request: AgentMcpDesktopApiRequest) => Promise<unknown>,
-  currentProperties: (entityId: string) => Record<string, unknown>
+  currentProperties: (entityId: string) => Promise<Record<string, unknown>>
 ): Promise<unknown> {
   const request =
     input.operation === 'properties.set'
-      ? { ...input, args: keepLegacyPropertyKeys(input.args, currentProperties) }
+      ? { ...input, args: await keepLegacyPropertyKeys(input.args, currentProperties) }
       : input
   const data = await invoke(request)
   const readback = desktopWriteReadback(request)
