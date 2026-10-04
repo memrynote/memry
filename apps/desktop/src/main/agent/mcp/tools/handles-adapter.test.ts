@@ -1349,6 +1349,24 @@ describe('createVaultServiceHandles', () => {
       ])
     })
 
+    it('rewrites the stored journal body as it was on a tags-only update', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.readJournalEntry.mockResolvedValueOnce({
+        id: 'journal-1',
+        content: '- [ ] Owner',
+        tags: [],
+        properties: {}
+      })
+      mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-1' })
+
+      await expect(
+        handles.journal.update({ date: '2026-10-01', tags: ['review'] })
+      ).resolves.toEqual({ id: 'journal-1' })
+      expect(mocks.writeJournalEntry.mock.calls).toEqual([
+        ['2026-10-01', '- [ ] Owner', ['review'], {}]
+      ])
+    })
+
     it('keeps checkbox lines plain in desktop API note and journal writes', async () => {
       const handles = createVaultServiceHandles(deps)
       mocks.getNoteById.mockResolvedValue({
