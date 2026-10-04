@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
     Promise.resolve(localVaultUuid)
   ),
   getSyncEngine: vi.fn(),
+  getNoteBodyOutbox: vi.fn(),
   startSyncRuntime: vi.fn(),
   markKeyMaterialActivity: vi.fn(),
   clearKeyMaterialActivity: vi.fn(),
@@ -115,6 +116,7 @@ vi.mock('./http-client', () => ({
 
 vi.mock('./runtime', () => ({
   getSyncEngine: (...args: unknown[]) => mocks.getSyncEngine(...args),
+  getNoteBodyOutbox: (...args: unknown[]) => mocks.getNoteBodyOutbox(...args),
   startSyncRuntime: (...args: unknown[]) => mocks.startSyncRuntime(...args)
 }))
 
@@ -289,6 +291,30 @@ describe('device registration', () => {
     expect(mocks.clearKeyMaterialActivity.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.activate.mock.invocationCallOrder[0]
     )
+  })
+
+  // AF-014: a runtime that outlived a dead session paused its body outbox for
+  // missing credentials; signing in again must not leave it paused until the
+  // next scheduled token refresh.
+  it('resumes the live runtime body outbox once the new session is stored', async () => {
+    const outbox = {
+      paused: true,
+      resume(): void {
+        this.paused = false
+      }
+    }
+    mocks.getNoteBodyOutbox.mockReturnValue(outbox)
+    const { persistKeysAndRegisterDevice } = await importModule()
+
+    await persistKeysAndRegisterDevice(
+      new Uint8Array([5]),
+      new Uint8Array([6]),
+      'setup-token',
+      'salt',
+      'verifier'
+    )
+
+    expect(outbox.paused).toBe(false)
   })
 
   // First-run onboarding signs in before any vault exists. Registration must

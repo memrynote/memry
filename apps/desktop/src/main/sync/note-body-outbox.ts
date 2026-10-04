@@ -38,6 +38,13 @@ const DEFERRED_BACKOFF_MAX_MS = 60_000
  */
 export class NoteBodyFlushDeferredError extends Error {}
 
+/**
+ * The push fn has no access token, vault key or signing key. Every note would
+ * fail the same way, so the outbox pauses until a token refresh or sign-in
+ * resumes it, as it does on a 401.
+ */
+export class NoteBodyCredentialsMissingError extends Error {}
+
 export type NoteBodyPushFn = (noteId: string, updates: Uint8Array[]) => Promise<void>
 
 /**
