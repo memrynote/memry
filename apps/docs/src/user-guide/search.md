@@ -92,7 +92,7 @@ Memry reads the text inside the PDFs and images you file in the vault, and insid
 - A scanned page, a photo, or a screenshot goes through OCR. OCR runs on your device with English language data that ships with the app. Nothing is downloaded and nothing leaves the machine.
 - The work runs in the background after the vault opens, one file and one page at a time, at low priority. A long scan becomes searchable while it is read, and a restart continues with the pages it has not finished.
 - A file whose contents change is read again. Renaming or moving a filed file is not.
-- A file that could not be read is tried again after an app update, or a day later.
+- A file that could not be read, or a page in it that could not be read, is tried again after an app update, or a day later.
 
 The text lives in the index on this device and does not sync. Each device reads its own copy of the files, and rebuilding the index reads them again.
 

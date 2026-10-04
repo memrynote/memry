@@ -262,10 +262,10 @@ and a PDF or image in a markdown note's `attachments/<note-id>/` folder that the
 - `file_text_jobs` (`note_id`, `source`, `signature`, `status`, `page_count`, `error`,
   `app_version`) holds the job state per file. `signature` is the size and mtime of the bytes the
   rows came from; a file whose signature moves starts over. Renaming or moving a filed file keeps
-  its job; renaming an attachment is a new `source` and is read again. A `failed` job runs again
-  when another app version opens the vault or a day after it failed. Its `unreadable` rows go
-  first and the job reads every page it has no row for, so a gap before a good page is read again
-  and the text it already read stays.
+  its job; renaming an attachment is a new `source` and is read again. A `failed` job, or a `done`
+  job with `unreadable` rows, runs again when another app version opens the vault or a day after
+  it last ran. Its `unreadable` rows go first and the job reads every page it has no row for, so a
+  gap before a good page is read again and the text it already read stays.
 
 Both reference `note_cache` with `ON DELETE CASCADE`. The rows are keyed by the note they make
 searchable: an attachment's text sits under the markdown note that owns the folder, so a search
@@ -291,7 +291,9 @@ Two helper processes do the heavy work, both at low OS priority and closed after
   Tesseract reads it. Under Node, tesseract.js 7.0.0 loads the full `tesseract-core*.js` builds
   even for LSTM-only work, so the afterPack prune keeps those and drops the LSTM and browser
   builds. `check-packaged-runtime-deps.js` reads a fixture image through the packaged tree and
-  fails when a module resolves outside the packaged app.
+  fails when a module resolves outside the packaged app. Without `eng.traineddata.gz` Tesseract
+  waits instead of failing, so `ocr-engine.ts` checks for it first: every OCR request fails at
+  once, and the error is logged once per run.
 - **PDF pages.** Node has no canvas, so `pdf-host.ts` loads `pdf-host.html` into a
   `WebContentsView` that belongs to no window. It never shows, stays out of
   `BrowserWindow.getAllWindows()`, and reads the file in byte ranges over `memry-file://`. A range
