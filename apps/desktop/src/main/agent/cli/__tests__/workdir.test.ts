@@ -101,6 +101,19 @@ describe('clearAgentMemory', () => {
     ])
   })
 
+  it('leaves Claude project folders alone when the agent folder path is past the CLI key limit', async () => {
+    const userDataDir = path.join(root, 'a'.repeat(120), 'b'.repeat(120))
+    const claudeConfigDir = path.join(root, 'claude')
+    const dir = await ensureAgentWorkdir(userDataDir, 'vault-a')
+    const hashedKey = `${(await realpath(dir)).replace(/[^a-zA-Z0-9]/g, '-').slice(0, 200)}-1x2y3z`
+    await mkdir(path.join(claudeConfigDir, 'projects', hashedKey), { recursive: true })
+
+    await clearAgentMemory({ userDataDir, vaultId: 'vault-a', claudeConfigDir })
+
+    expect(await readdir(path.join(userDataDir, 'agent-workdirs'))).toEqual([])
+    expect(await readdir(path.join(claudeConfigDir, 'projects'))).toEqual([hashedKey])
+  })
+
   it('succeeds when the vault has no agent memory yet', async () => {
     await expect(
       clearAgentMemory({

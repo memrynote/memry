@@ -80,9 +80,6 @@ export function AgentProvidersSection({
   const [busy, setBusy] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   const [alwaysAllowed, setAlwaysAllowed] = useState<string[]>([])
-  const [memoryStatus, setMemoryStatus] = useState<
-    { state: 'idle' | 'clearing' | 'cleared' } | { state: 'failed'; message: string }
-  >({ state: 'idle' })
 
   useEffect(() => {
     let cancelled = false
@@ -204,24 +201,6 @@ export function AgentProvidersSection({
       objectType: 'agent_tool_grant_revoked'
     })
   }, [])
-
-  const clearMemory = useCallback(async () => {
-    setMemoryStatus({ state: 'clearing' })
-    try {
-      await invokeWhenAgentReady(() => window.api.agent.clearMemory())
-      setMemoryStatus({ state: 'cleared' })
-      void trackTelemetry('setting_changed', {
-        surface: 'settings',
-        action: 'changed',
-        objectType: 'agent_memory_cleared'
-      })
-    } catch (error) {
-      setMemoryStatus({
-        state: 'failed',
-        message: extractErrorMessage(error, t('agentProviders.memory.failed'))
-      })
-    }
-  }, [t])
 
   const changeAccessMode = useCallback(async (accessMode: AgentAccessMode) => {
     setPreferences((current) => (current ? { ...current, accessMode } : current))
@@ -529,31 +508,59 @@ export function AgentProvidersSection({
         )}
       </SettingsGroup>
 
-      <SettingsGroup
-        label={t('agentProviders.memory.group')}
-        description={t('agentProviders.memory.description')}
-      >
-        <SettingRow
-          label={t('agentProviders.memory.clear')}
-          description={
-            memoryStatus.state === 'failed'
-              ? memoryStatus.message
-              : memoryStatus.state === 'cleared'
-                ? t('agentProviders.memory.cleared')
-                : t('agentProviders.memory.clearDescription')
-          }
-        >
-          <button
-            type="button"
-            className={QUIET_ACTION}
-            onClick={() => void clearMemory()}
-            disabled={memoryStatus.state === 'clearing'}
-          >
-            {t('agentProviders.memory.clearAction')}
-          </button>
-        </SettingRow>
-      </SettingsGroup>
+      <AgentMemoryGroup />
     </div>
+  )
+}
+
+type MemoryStatus =
+  { state: 'idle' | 'clearing' | 'cleared' } | { state: 'failed'; message: string }
+
+function AgentMemoryGroup(): React.JSX.Element {
+  const { t } = useT('settings')
+  const [status, setStatus] = useState<MemoryStatus>({ state: 'idle' })
+
+  const clearMemory = async (): Promise<void> => {
+    setStatus({ state: 'clearing' })
+    try {
+      await invokeWhenAgentReady(() => window.api.agent.clearMemory())
+      setStatus({ state: 'cleared' })
+      void trackTelemetry('setting_changed', {
+        surface: 'settings',
+        action: 'changed',
+        objectType: 'agent_memory_cleared'
+      })
+    } catch (error) {
+      setStatus({
+        state: 'failed',
+        message: extractErrorMessage(error, t('agentProviders.memory.failed'))
+      })
+    }
+  }
+
+  const description =
+    status.state === 'failed'
+      ? status.message
+      : status.state === 'cleared'
+        ? t('agentProviders.memory.cleared')
+        : t('agentProviders.memory.clearDescription')
+
+  return (
+    <SettingsGroup
+      label={t('agentProviders.memory.group')}
+      description={t('agentProviders.memory.description')}
+    >
+      <SettingRow label={t('agentProviders.memory.clear')} description={description}>
+        <button
+          type="button"
+          className={QUIET_ACTION}
+          onClick={() => void clearMemory()}
+          disabled={status.state === 'clearing'}
+        >
+          {t('agentProviders.memory.clearAction')}
+        </button>
+      </SettingRow>
+    </SettingsGroup>
   )
 }
 
