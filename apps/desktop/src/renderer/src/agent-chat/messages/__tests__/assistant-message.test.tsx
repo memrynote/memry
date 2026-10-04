@@ -193,6 +193,68 @@ describe('AssistantMessage', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
   })
 
+  it('says when the model runs without vault tools, while thinking and after the answer', async () => {
+    const withoutTools = (text: string, status: Message['status']): Message => ({
+      ...assistantMessage(text),
+      status,
+      content: {
+        role: 'assistant',
+        data: { text, toolsUnavailable: { detail: 'HTTP 400' } }
+      }
+    })
+    const notice =
+      'Vault tools are off for this model. It failed the tool check, so it can only chat. HTTP 400'
+    const { rerender } = render(<AssistantMessage message={withoutTools('', 'streaming')} />)
+
+    expect(screen.getByText(notice)).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Agent is thinking' })).toBeInTheDocument()
+
+    rerender(<AssistantMessage message={withoutTools('Plain answer', 'completed')} />)
+    expect(screen.getByText(notice)).toBeInTheDocument()
+    expect(await screen.findByText('Plain answer')).toBeInTheDocument()
+  })
+
+  it.each([
+    {
+      reason: 'tools_rejected' as const,
+      detail: '/v1/chat/completions returned HTTP 400: this model does not support tools',
+      notice:
+        'Vault tools are off for this model. The provider refused a test request that included tools, so the model can only chat. The provider said: /v1/chat/completions returned HTTP 400: this model does not support tools'
+    },
+    {
+      reason: 'no_tool_call' as const,
+      detail: null,
+      notice:
+        'Vault tools are off for this model. It answered a test request without calling the tool, so it can only chat.'
+    },
+    {
+      reason: 'tool_result_rejected' as const,
+      detail: null,
+      notice:
+        'Vault tools are off for this model. It called a test tool but failed after getting the result back, so it can only chat.'
+    },
+    {
+      reason: 'streaming_unsupported' as const,
+      detail: null,
+      notice:
+        'Vault tools are off for this model. The provider did not stream a test reply, so the model can only chat.'
+    }
+  ])('explains in plain words why tools are off: $reason', ({ reason, detail, notice }) => {
+    render(
+      <AssistantMessage
+        message={{
+          ...assistantMessage('Plain answer'),
+          content: {
+            role: 'assistant',
+            data: { text: 'Plain answer', toolsUnavailable: { reason, detail } }
+          }
+        }}
+      />
+    )
+
+    expect(screen.getByText(notice)).toBeInTheDocument()
+  })
+
   it('types in text that arrives mid-stream and keeps the caret until it catches up', async () => {
     const streaming = (text: string): Message => ({
       ...assistantMessage(text),

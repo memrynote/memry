@@ -246,6 +246,17 @@
       "error": "Fehler",
       "success": "Erfolg"
     },
+    "columns": {
+      "group": "Grundblöcke",
+      "two": {
+        "title": "Zwei Spalten",
+        "subtext": "Blöcke in zwei Spalten nebeneinander anordnen"
+      },
+      "three": {
+        "title": "Drei Spalten",
+        "subtext": "Blöcke in drei Spalten nebeneinander anordnen"
+      }
+    },
     "diagram": {
       "title": "Diagramm",
       "subtext": "Fluss-, Sequenz- oder Gantt-Diagramm aus Mermaid-Quelltext"

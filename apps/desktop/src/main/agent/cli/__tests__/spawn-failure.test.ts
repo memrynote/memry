@@ -69,7 +69,7 @@ async function writeFixtureBinary(name: string, body: string, mode: number): Pro
 describe('CLI spawn failure', () => {
   it('rejects spawnClaudeTurn with the real spawn reason instead of crashing main', async () => {
     await expect(
-      spawnClaudeTurn({ binaryPath: missingBinary, effort: 'low', prompt: 'hi' })
+      spawnClaudeTurn({ binaryPath: missingBinary, cwd: fixtureDir, effort: 'low', prompt: 'hi' })
     ).rejects.toThrow(`Claude CLI failed to start: spawn ${missingBinary} ENOENT`)
 
     await settleUncaught()
@@ -78,7 +78,12 @@ describe('CLI spawn failure', () => {
 
   it('rejects spawnCodexTurn with the real spawn reason instead of crashing main', async () => {
     await expect(
-      spawnCodexTurn({ binaryPath: missingBinary, reasoningEffort: 'low', prompt: 'hi' })
+      spawnCodexTurn({
+        binaryPath: missingBinary,
+        cwd: fixtureDir,
+        reasoningEffort: 'low',
+        prompt: 'hi'
+      })
     ).rejects.toThrow(`Codex CLI failed to start: spawn ${missingBinary} ENOENT`)
 
     await settleUncaught()
@@ -89,6 +94,7 @@ describe('CLI spawn failure', () => {
     await expect(
       spawnAgyTurn({
         binaryPath: missingBinary,
+        cwd: fixtureDir,
         prompt: 'hi',
         bridge: { command: '/Apps/MemryNote', scriptPath: '/Apps/out/main/agy-mcp-bridge.js' },
         // Never the user's real ~/.gemini: the config writer runs for real here.
@@ -105,6 +111,7 @@ describe('CLI spawn failure', () => {
       await expect(
         spawnClaudeTurn({
           binaryPath: missingBinary,
+          cwd: fixtureDir,
           mcp: {
             serverUrl: 'http://127.0.0.1:54321',
             authorizationValue: 'secret-bearer-token',
@@ -123,16 +130,6 @@ describe('CLI spawn failure', () => {
     expect(await readdir(fixtureDir)).toEqual([])
   })
 
-  it('removes the temp dir when the Codex spawn fails', async () => {
-    await withTempRoot(fixtureDir, async () => {
-      await expect(
-        spawnCodexTurn({ binaryPath: missingBinary, reasoningEffort: 'low', prompt: 'hi' })
-      ).rejects.toThrow(/Codex CLI failed to start/)
-    })
-
-    expect(await readdir(fixtureDir)).toEqual([])
-  })
-
   it.skipIf(process.platform === 'win32')(
     'does not crash main when the CLI dies before reading the prompt (stdin EPIPE)',
     async () => {
@@ -140,6 +137,7 @@ describe('CLI spawn failure', () => {
 
       const sub = await spawnClaudeTurn({
         binaryPath: dyingBinary,
+        cwd: fixtureDir,
         effort: 'low',
         // Larger than the pipe buffer, so the write is still in flight when the
         // child is already gone.
@@ -158,7 +156,12 @@ describe('CLI spawn failure', () => {
     async () => {
       const sleeper = await writeFixtureBinary('sleeping-cli', '#!/bin/sh\nsleep 5\n', 0o755)
 
-      const sub = await spawnClaudeTurn({ binaryPath: sleeper, effort: 'low', prompt: 'hi' })
+      const sub = await spawnClaudeTurn({
+        binaryPath: sleeper,
+        cwd: fixtureDir,
+        effort: 'low',
+        prompt: 'hi'
+      })
       // What node emits when subprocess.kill() fails — cancelTurn/killAll both
       // kill children, and the gate's own listener is long gone by then.
       sub.proc.emit('error', Object.assign(new Error('kill ESRCH'), { code: 'ESRCH' }))
@@ -180,7 +183,7 @@ describe('CLI spawn failure', () => {
       )
 
       await expect(
-        spawnClaudeTurn({ binaryPath: notExecutable, effort: 'low', prompt: 'hi' })
+        spawnClaudeTurn({ binaryPath: notExecutable, cwd: fixtureDir, effort: 'low', prompt: 'hi' })
       ).rejects.toThrow(`Claude CLI failed to start: spawn ${notExecutable} EACCES`)
 
       await settleUncaught()

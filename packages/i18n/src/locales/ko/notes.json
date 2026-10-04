@@ -246,6 +246,17 @@
       "error": "오류",
       "success": "성공"
     },
+    "columns": {
+      "group": "기본 블록",
+      "two": {
+        "title": "2열",
+        "subtext": "블록을 2열로 나란히 배치"
+      },
+      "three": {
+        "title": "3열",
+        "subtext": "블록을 3열로 나란히 배치"
+      }
+    },
     "diagram": {
       "title": "다이어그램",
       "subtext": "Mermaid 소스로 만드는 순서도, 시퀀스 다이어그램 또는 간트 차트"

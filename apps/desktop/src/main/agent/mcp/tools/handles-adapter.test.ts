@@ -602,7 +602,14 @@ describe('createVaultServiceHandles', () => {
 
     const workChildren = [
       { kind: 'folder', id: 'work/client', name: 'client', path: 'work/client' },
-      { kind: 'note', id: 'note-1', name: 'Client', path: 'work/client.md', icon: '💼' }
+      {
+        kind: 'note',
+        id: 'note-1',
+        name: 'Client',
+        path: 'work/client.md',
+        file_type: 'markdown',
+        icon: '💼'
+      }
     ]
     await expect(handles.folders.list({ path: '/work', recursive: false })).resolves.toEqual(
       workChildren
@@ -625,8 +632,21 @@ describe('createVaultServiceHandles', () => {
         path: 'work/client/archive'
       },
       { kind: 'folder', id: 'personal', name: 'personal', path: 'personal' },
-      { kind: 'note', id: 'note-1', name: 'Client', path: 'work/client.md', icon: '💼' },
-      { kind: 'note', id: 'note-2', name: 'Deep', path: 'work/client/deep.md' }
+      {
+        kind: 'note',
+        id: 'note-1',
+        name: 'Client',
+        path: 'work/client.md',
+        file_type: 'markdown',
+        icon: '💼'
+      },
+      {
+        kind: 'note',
+        id: 'note-2',
+        name: 'Deep',
+        path: 'work/client/deep.md',
+        file_type: 'markdown'
+      }
     ])
 
     await expect(handles.folders.list({ path: '/', recursive: false })).resolves.toEqual([
@@ -1104,6 +1124,130 @@ describe('createVaultServiceHandles', () => {
     expect(mocks.invokeDesktopApiFromWindow).toHaveBeenLastCalledWith('window-1', {
       operation: 'templates.create',
       args: [{ name: 'Template' }]
+    })
+  })
+
+  it('lists a filed file with its file type instead of as a note', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getFolders.mockResolvedValue([{ path: 'media' }])
+    mocks.listNotes.mockReturnValue({
+      notes: [
+        { id: 'note-1', title: 'Caption', path: 'media/caption.md', fileType: 'markdown' },
+        { id: 'file-1', title: 'Screenshot', path: 'media/screenshot.png', fileType: 'image' }
+      ]
+    })
+
+    await expect(handles.folders.list({ path: 'media' })).resolves.toEqual([
+      {
+        kind: 'note',
+        id: 'note-1',
+        name: 'Caption',
+        path: 'media/caption.md',
+        file_type: 'markdown'
+      },
+      {
+        kind: 'file',
+        id: 'file-1',
+        name: 'Screenshot',
+        path: 'media/screenshot.png',
+        file_type: 'image'
+      }
+    ])
+  })
+
+  describe('desktop API replies', () => {
+    const screenshotRow = {
+      id: 'file-1',
+      title: 'Screenshot',
+      path: 'media/screenshot.png',
+      fileType: 'image',
+      mimeType: 'image/png',
+      fileSize: 198189,
+      createdAt: '2026-10-01T08:00:00.000Z',
+      modifiedAt: '2026-10-01T09:00:00.000Z'
+    }
+    const screenshotMetadata = {
+      id: 'file-1',
+      path: 'media/screenshot.png',
+      title: 'Screenshot',
+      fileType: 'image',
+      mimeType: 'image/png',
+      fileSize: 198189,
+      created: '2026-10-01T08:00:00.000Z',
+      modified: '2026-10-01T09:00:00.000Z',
+      contentOmitted: true,
+      contentAccess:
+        'The desktop API returns metadata only for image files. Viewing an image is not available yet.'
+    }
+    const decodedBytes = '\uFFFDPNG\r\n\u001A\n\uFFFD\uFFFDIHDR'
+
+    beforeEach(() => {
+      mocks.getNoteCacheById.mockImplementation((_db: unknown, id: string) =>
+        id === 'file-1' ? screenshotRow : undefined
+      )
+    })
+
+    it('returns metadata only when notes.get reads a filed image', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({
+        id: 'file-1',
+        path: 'media/screenshot.png',
+        title: 'Screenshot',
+        content: decodedBytes,
+        frontmatter: {},
+        tags: []
+      })
+
+      await expect(
+        handles.desktop.read({ operation: 'notes.get', args: ['file-1'] }, 'window-1')
+      ).resolves.toEqual(screenshotMetadata)
+    })
+
+    it('returns metadata only for the note in a notes.rename reply on a filed image', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({
+        success: true,
+        note: { id: 'file-1', title: 'Screenshot', content: decodedBytes }
+      })
+
+      await expect(
+        handles.desktop.write(
+          { operation: 'notes.rename', args: [{ id: 'file-1', newTitle: 'Screenshot' }] },
+          'window-1'
+        )
+      ).resolves.toEqual({ success: true, note: screenshotMetadata })
+    })
+
+    it('names the content route for each filed file type', async () => {
+      const handles = createVaultServiceHandles(deps)
+      const routes: Record<string, string> = {}
+      for (const fileType of ['pdf', 'audio', 'video']) {
+        mocks.getNoteCacheById.mockReturnValue({ ...screenshotRow, fileType })
+        mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({ id: 'file-1', content: 'x' })
+        const reply = (await handles.desktop.read(
+          { operation: 'notes.get', args: ['file-1'] },
+          'window-1'
+        )) as { contentAccess: string }
+        routes[fileType] = reply.contentAccess
+      }
+
+      expect(routes).toEqual({
+        pdf: 'The desktop API returns metadata only for PDF files. Reading PDF text is not available yet.',
+        audio: 'The desktop API returns metadata only for audio files.',
+        video: 'The desktop API returns metadata only for video files.'
+      })
+    })
+
+    it('keeps a markdown note body in the reply', async () => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getNoteCacheById.mockReturnValue({ ...screenshotRow, id: 'note-1', fileType: null })
+      const note = { id: 'note-1', title: 'Plan', content: '# Plan\n\nShip it.' }
+      mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce(note)
+
+      await expect(
+        handles.desktop.read({ operation: 'notes.get', args: ['note-1'] }, 'window-1')
+      ).resolves.toEqual(note)
     })
   })
 

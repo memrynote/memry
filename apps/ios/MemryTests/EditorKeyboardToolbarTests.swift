@@ -312,6 +312,24 @@ struct EditorToolbarFocusTests {
         #expect(session.focusedSiblings == BlockSiblings(previous: "a", next: nil))
     }
 
+    @Test func aColumnsOwnBlockCannotOutdentButOneNestedInsideItCan() {
+        let blocks = [
+            Block(id: nil, kind: "columnList", depth: 0, props: [BlockProp(name: "id", value: "cl")], inline: []),
+            Block(id: nil, kind: "column", depth: 1, props: [BlockProp(name: "id", value: "c1")], inline: []),
+            block("a1", depth: 2),
+            block("a2", depth: 3),
+            Block(id: nil, kind: "column", depth: 1, props: [BlockProp(name: "id", value: "c2")], inline: []),
+            block("b1", depth: 2),
+        ]
+        let session = session()
+        _ = focused(blocks[2], in: blocks, session: session)
+        #expect(!session.canOutdent, "the core refuses a column's own block, as desktop's liftItem does nothing")
+        _ = focused(blocks[5], in: blocks, session: session)
+        #expect(!session.canOutdent)
+        _ = focused(blocks[3], in: blocks, session: session)
+        #expect(session.canOutdent, "a block nested inside a column lifts within it")
+    }
+
     @Test func aSelectionSlidesTheFormatRowInAndCollapsingItSlidesItOut() {
         let target = block("a", inline: [InlineRun(text: "hello", marks: [], markAttrs: [:], target: nil)])
         let session = session()
@@ -369,8 +387,8 @@ struct InsertGridTests {
         let expected = [
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
             "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
-            "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
-            "link_to_note", "date", "remind", "table", "math", "bookmark", "youtube",
+            "two_columns", "three_columns", "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
+            "link_to_note", "date", "remind", "table", "math", "diagram", "view", "bookmark", "youtube",
             "image", "video", "audio", "file",
         ]
         #expect(grid == expected)
@@ -386,14 +404,14 @@ struct InsertGridTests {
         #expect(session.gridSections.flatMap(\.rows).map(\.id) == [
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
             "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
-            "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
-            "table", "math", "bookmark", "youtube",
+            "two_columns", "three_columns", "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
+            "table", "math", "diagram", "view", "bookmark", "youtube",
         ])
         #expect(session.gridSections.map(\.section.title) == ["Basic", "Headings", "Insert"])
 
         let text = block("p")
         let paragraph = focused(text, in: [text], session: session)
-        #expect(session.gridSections.flatMap(\.rows).map(\.id).suffix(7) == ["link_to_note", "date", "remind", "table", "math", "bookmark", "youtube"])
+        #expect(session.gridSections.flatMap(\.rows).map(\.id).suffix(9) == ["link_to_note", "date", "remind", "table", "math", "diagram", "view", "bookmark", "youtube"])
         withExtendedLifetime((field, paragraph)) {}
     }
 
@@ -487,6 +505,77 @@ struct InsertGridTests {
         #expect(chosen.focus == newId)
     }
 
+    @Test func twoColumnsReplaceAnEmptyLineAndTheCaretWaitsForTheFirstColumn() async throws {
+        let editor = ScriptedToolbarEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        let row = try #require(BlockCatalog.rows.first { $0.id == "two_columns" })
+        let field = focused(block("a"), in: [block("a")], session: session)
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.chooseFromGrid(row)
+        }
+        withExtendedLifetime((field, model)) {}
+        guard case let .insertColumnList(after, columns, listId) = editor.all.first else {
+            Issue.record("expected a column list insert first, got \(editor.all)")
+            return
+        }
+        #expect(after == "a")
+        #expect(columns == 2)
+        // Desktop replaces an empty paragraph with the list.
+        #expect(Array(editor.all.dropFirst()) == [.delete(blockId: "a")])
+        #expect(session.pendingColumnFocus == listId)
+
+        // The redraw that shows the list hands the caret to column one.
+        session.resolveColumnFocus(in: [
+            Block(id: nil, kind: "columnList", depth: 0, props: [BlockProp(name: "id", value: listId)], inline: []),
+            Block(id: nil, kind: "column", depth: 1, props: [BlockProp(name: "width", value: "1")], inline: []),
+            block("p1", depth: 2),
+        ])
+        #expect(session.pendingFocus == "p1")
+        #expect(session.pendingColumnFocus == nil)
+    }
+
+    @Test func threeColumnsAfterTextKeepTheLine() async throws {
+        let text = InlineRun(text: "hi", marks: [], markAttrs: [:], target: nil)
+        let edits = try await choose("three_columns", in: block("a", inline: [text]))
+        guard case let .insertColumnList(after, columns, _) = edits.first else {
+            Issue.record("expected a column list insert, got \(edits)")
+            return
+        }
+        #expect(after == "a")
+        #expect(columns == 3)
+        #expect(edits.count == 1)
+    }
+
+    @Test func columnsChosenInsideAColumnKeepTheEmptyLine() async throws {
+        // The core lands the new list after the one holding the caret, so
+        // the caret's line is not the one the list replaces.
+        let editor = ScriptedToolbarEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        let row = try #require(BlockCatalog.rows.first { $0.id == "two_columns" })
+        let inColumn = block("x", depth: 2)
+        let blocks = [
+            Block(id: nil, kind: "columnList", depth: 0, props: [BlockProp(name: "id", value: "cl")], inline: []),
+            Block(id: nil, kind: "column", depth: 1, props: [], inline: []),
+            inColumn,
+        ]
+        let field = focused(inColumn, in: blocks, session: session)
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.chooseFromGrid(row)
+        }
+        withExtendedLifetime((field, model)) {}
+        #expect(editor.all.count == 1)
+        guard case .insertColumnList(afterBlockId: "x"?, columns: 2, newBlockId: _) = editor.all.first else {
+            Issue.record("expected only the insert, got \(editor.all)")
+            return
+        }
+    }
+
     @Test func aToggleHeadingTurnsAnEmptyLineIntoATogglableHeading() async throws {
         let edits = try await choose("toggle_heading_2", in: block("a"), changes: 2)
         #expect(edits == [
@@ -510,6 +599,22 @@ struct InsertGridTests {
         withExtendedLifetime((field, model)) {}
         #expect(editor.all == [.turnInto(blockId: "a", kind: "mathBlock")])
         #expect(session.sourceEdit == BlockSourceRequest(blockId: "a", source: ""))
+    }
+
+    @Test func diagramTurnsAnEmptyLineIntoADiagramAndOpensItsSource() async throws {
+        let editor = ScriptedToolbarEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        let row = try #require(BlockCatalog.rows.first { $0.id == "diagram" })
+        let field = focused(block("a"), in: [block("a")], session: session)
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.chooseFromGrid(row)
+        }
+        withExtendedLifetime((field, model)) {}
+        #expect(editor.all == [.turnInto(blockId: "a", kind: "diagram")])
+        #expect(session.sourceEdit == BlockSourceRequest(blockId: "a", source: "", kind: .diagram))
     }
 
     @Test func aCheckListAfterTextIsAPlainCheckbox() async throws {

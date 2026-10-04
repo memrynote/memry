@@ -45,6 +45,9 @@ struct NoteBlockView: View {
     /// Where this block sits among its siblings, for the block menu's Move
     /// up and Move down. `nil` offers no block menu (a table cell's blocks).
     var siblings: BlockSiblings?
+    /// Indentation steps: the block's depth, or within a column the depth
+    /// counted from the column (`NoteColumns.layout`).
+    var indent: UInt32?
 
     /// Whether a wiki link's title names a note here, so a broken one can be
     /// drawn as broken. `nil` until the vault's notes are read, which draws
@@ -71,7 +74,7 @@ struct NoteBlockView: View {
             // Indentation carries nesting, exactly as it does in the browse
             // list: the block list is flat and depth is the only thing saying
             // a list item sits inside another.
-            .padding(.leading, CGFloat(block.depth) * Tokens.Space.inset)
+            .padding(.leading, CGFloat(indent ?? block.depth) * Tokens.Space.inset)
             .frame(maxWidth: .infinity, alignment: frameAlignment)
             // After the frame, so the handle sits in the page margin whatever
             // the block's depth or alignment.
@@ -94,7 +97,7 @@ struct NoteBlockView: View {
     ]
 
     private var actionRunner: BlockActionRunner? {
-        guard let editing, let siblings, block.id != nil else { return nil }
+        guard let editing, let siblings, block.id != nil, !NoteColumns.isStructural(block.kind) else { return nil }
         if editableField(editing) == nil, Self.ownLongPressKinds.contains(block.kind) { return nil }
         return BlockActionRunner(
             session: editing.session, target: BlockActionTarget(block: block, siblings: siblings)
@@ -215,14 +218,20 @@ struct NoteBlockView: View {
         case "callout":
             CalloutRow(type: value("type") ?? "info", text: inline)
         case "codeBlock" where value("language") == ViewBlockFence.language:
-            ViewBlockView(text: plainText)
+            let text = plainText
+            ViewBlockView(text: text, edit: editing.flatMap { editing in
+                block.id.map { id in { editing.session.editView(blockId: id, text: text) } }
+            })
         case "codeBlock":
             CodeRow(language: value("language"), text: plainText)
         case "diagram":
-            // A Mermaid diagram's source. Desktop renders the picture with
-            // mermaid, which this build does not carry; the source is the
-            // whole of the block, so it is shown rather than a blank.
-            CodeRow(language: "mermaid", text: plainText)
+            // `content: plain`: the Mermaid source is the block's text.
+            let source = plainText
+            DiagramBlockView(source: source, edit: editing.flatMap { editing in
+                block.id.map { id in
+                    { editing.session.editSource(BlockSourceRequest(blockId: id, source: source, kind: .diagram)) }
+                }
+            })
         case "mathBlock":
             // `content: none`: the formula is the `latex` prop.
             let latex = value("latex") ?? ""
@@ -231,6 +240,10 @@ struct NoteBlockView: View {
             })
         case "divider":
             Divider().overlay(Tokens.Line.border.color)
+        case "columnList", "column":
+            // Layout only: `NoteColumns.layout` draws their blocks, and they
+            // have no words of their own.
+            EmptyView()
         case "toggleListItem":
             // The children already arrive as their own blocks one level
             // deeper, so this draws the summary and the state — it does not

@@ -1,8 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { once } from 'node:events'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
 
 import type { AgentTurnPermissions, CodexReasoningEffort } from '@memry/contracts/ipc-agent'
 
@@ -16,6 +13,7 @@ const DEFAULT_TURN_PERMISSIONS: AgentTurnPermissions = {
 
 export interface CodexSpawnOptions {
   binaryPath: string
+  cwd: string
   prompt: string
   reasoningEffort: CodexReasoningEffort
   model?: string
@@ -35,7 +33,6 @@ export interface CodexSubprocess {
 }
 
 export async function spawnCodexTurn(opts: CodexSpawnOptions): Promise<CodexSubprocess> {
-  const dir = await mkdtemp(path.join(tmpdir(), 'memry-codex-'))
   const permissions = opts.permissions ?? DEFAULT_TURN_PERMISSIONS
   const args = ['--ask-for-approval', 'never']
   if (permissions.webSearchEnabled) {
@@ -54,7 +51,7 @@ export async function spawnCodexTurn(opts: CodexSpawnOptions): Promise<CodexSubp
     '--ignore-rules',
     '--skip-git-repo-check',
     '-C',
-    dir,
+    opts.cwd,
     '-c',
     `model_reasoning_effort="${opts.reasoningEffort}"`
   )
@@ -78,7 +75,7 @@ export async function spawnCodexTurn(opts: CodexSpawnOptions): Promise<CodexSubp
 
   logger.info('Spawning codex with ephemeral MCP config')
   const proc = spawn(opts.binaryPath, args, {
-    cwd: dir,
+    cwd: opts.cwd,
     stdio: ['ignore', 'pipe', 'pipe'],
     env: {
       ...process.env,
@@ -103,10 +100,6 @@ export async function spawnCodexTurn(opts: CodexSpawnOptions): Promise<CodexSubp
   try {
     await once(proc, 'spawn')
   } catch (error) {
-    // No handle reaches the caller, so nothing else would clean the temp dir up.
-    await rm(dir, { recursive: true, force: true }).catch((cleanupError: unknown) => {
-      logger.warn('Failed to clean Codex temp directory', cleanupError)
-    })
     throw new Error(
       `Codex CLI failed to start: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error }
@@ -116,12 +109,6 @@ export async function spawnCodexTurn(opts: CodexSpawnOptions): Promise<CodexSubp
   return {
     pid: proc.pid ?? -1,
     proc,
-    cleanup: async () => {
-      try {
-        await rm(dir, { recursive: true, force: true })
-      } catch (error) {
-        logger.warn('Failed to clean Codex temp directory', error)
-      }
-    }
+    cleanup: async () => {}
   }
 }

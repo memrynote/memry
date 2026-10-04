@@ -62,7 +62,8 @@ const mocks = vi.hoisted(() => ({
     settings: {
       width: 'normal',
       toolbarMode: 'floating',
-      spellCheck: false
+      spellCheck: false,
+      convertChecklistsToTasks: true
     },
     isLoading: false,
     updateSettings: vi.fn()
@@ -1032,6 +1033,13 @@ describe('settings section coverage', () => {
       expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({ spellCheck: true })
     )
 
+    fireEvent.click(screen.getByLabelText('editor.v2.convertChecklists'))
+    await waitFor(() =>
+      expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({
+        convertChecklistsToTasks: false
+      })
+    )
+
     fireEvent.click(screen.getByText('Daily template'))
     await waitFor(() =>
       expect(mocks.journalSettings.setDefaultTemplate).toHaveBeenCalledWith('daily')
@@ -1045,8 +1053,8 @@ describe('settings section coverage', () => {
     expect(screen.queryByText('journal.showTasks.label')).toBeNull()
     expect(screen.queryByText('journal.showAIConnections.label')).toBeNull()
 
-    // [3] is "Show in sidebar" in the location group; the footer switch follows.
-    fireEvent.click(screen.getAllByRole('switch')[4])
+    // [4] is "Show in sidebar" in the location group; the footer switch follows.
+    fireEvent.click(screen.getAllByRole('switch')[5])
     await waitFor(() =>
       expect(mocks.journalSettings.updateSettings).toHaveBeenCalledWith({
         showStatsFooter: false
@@ -1232,6 +1240,30 @@ describe('settings section coverage', () => {
       })
     )
     expect(await screen.findByText('agentProviders.alwaysAllowed.empty')).toBeInTheDocument()
+  })
+
+  it('clears agent memory and says so', async () => {
+    window.api.agent.clearMemory = vi.fn().mockResolvedValue({ ok: true })
+    render(<AgentProvidersSection />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'agentProviders.memory.clear' }))
+    expect(window.api.agent.clearMemory).not.toHaveBeenCalled()
+    expect(await screen.findByText('agentProviders.memory.confirmTitle')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('agentProviders.memory.clear', { selector: 'button' }))
+
+    expect(await screen.findByText('agentProviders.memory.cleared')).toBeInTheDocument()
+    expect(window.api.agent.clearMemory).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows why agent memory could not be cleared', async () => {
+    window.api.agent.clearMemory = vi.fn().mockRejectedValue(new Error('EACCES: permission denied'))
+    render(<AgentProvidersSection />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'agentProviders.memory.clear' }))
+    expect(await screen.findByText('agentProviders.memory.confirmTitle')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('agentProviders.memory.clear', { selector: 'button' }))
+
+    expect(await screen.findByText('EACCES: permission denied')).toBeInTheDocument()
   })
 
   it('installs the terminal command from command line settings', async () => {

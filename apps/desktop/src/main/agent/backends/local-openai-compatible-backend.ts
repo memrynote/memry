@@ -1,14 +1,20 @@
-import { createOpenAI } from '@ai-sdk/openai'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { createOllama } from 'ollama-ai-provider-v2'
 import {
   type AgentBackendStatus,
   type AgentLocalProviderProbeResult,
-  type AgentLocalProviderSettings
+  type AgentLocalProviderSettings,
+  type AgentToolsOffReason
 } from '@memry/contracts/ipc-agent'
-import { stepCountIs, streamText } from 'ai'
+import { stepCountIs, streamText, wrapLanguageModel } from 'ai'
 
 import type { BackendEvent } from '../cli/types'
 import { AgentToolBridge, createAiSdkToolSet } from './tool-bridge'
+import {
+  TextToolCallSplitter,
+  toolCallProfileMiddleware,
+  type ToolCallProfile
+} from './tool-call-profile'
 import type { TurnWriteGrant } from '../turn-grants'
 import type {
   AgentBackend,
@@ -34,6 +40,39 @@ const PROBE_TTL_MS = 10 * 60_000
 // the tool step looks identical, so it expires fast.
 const PROBE_DEGRADED_TTL_MS = 60_000
 
+// The assembled prompt names the vault tools, so a model that was sent no tool schemas
+// writes its tool calls out as plain text unless it is told they are gone.
+const TOOLS_UNAVAILABLE_SYSTEM =
+  'No tools are available in this conversation. Do not write tool calls or tool syntax. ' +
+  'Answer in plain text, and if the request needs vault access, say that vault tools are off for this model.'
+
+const PROBE_TOOL_NAME = 'memry_probe_echo'
+const PROBE_USER_MESSAGE = { role: 'user', content: 'Call the echo tool with text "ok".' }
+
+/**
+ * What the probe decided about tools for one provider configuration. `detail` on `off`
+ * is the provider's own error text and stays null when Memry only observed the model.
+ */
+type ToolAccess =
+  | { kind: 'on'; profile: ToolCallProfile }
+  | { kind: 'off'; reason: AgentToolsOffReason; detail: string | null }
+  | { kind: 'unreachable' }
+
+interface LocalProbe {
+  result: AgentLocalProviderProbeResult
+  tools: ToolAccess
+}
+
+type ToolProbe =
+  | { ok: true; profile: ToolCallProfile }
+  | {
+      ok: false
+      reason: Exclude<AgentToolsOffReason, 'streaming_unsupported'>
+      called: boolean
+      detail: string
+      providerDetail: string | null
+    }
+
 // Ollama's native API (the only endpoint that accepts num_ctx) lives at /api, while
 // the stored ollama preset baseUrl points at the /v1 OpenAI-compat path.
 function toOllamaApiBaseUrl(baseUrl: string): string {
@@ -50,13 +89,13 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
   private probeCache: {
     settingsKey: string
     apiKey: string | null
-    result: AgentLocalProviderProbeResult
+    probe: LocalProbe
     expiresAt: number
   } | null = null
   private probeInFlight: {
     settingsKey: string
     apiKey: string | null
-    promise: Promise<AgentLocalProviderProbeResult>
+    promise: Promise<LocalProbe>
   } | null = null
 
   constructor(
@@ -97,14 +136,14 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     const apiKey = await this.deps.getApiKey()
     // The settings screen asks for this on demand, so it must be live and it doubles as
     // the manual way to clear a stale verdict.
-    return this.resolveProbe(settings, apiKey, { force: true })
+    return (await this.resolveProbe(settings, apiKey, { force: true })).result
   }
 
   private async resolveProbe(
     settings: AgentLocalProviderSettings,
     apiKey: string | null,
     options: { force?: boolean } = {}
-  ): Promise<AgentLocalProviderProbeResult> {
+  ): Promise<LocalProbe> {
     const settingsKey = probeSettingsKey(settings)
     if (!options.force) {
       const cached = this.probeCache
@@ -113,7 +152,7 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
         cached.apiKey === apiKey &&
         cached.expiresAt > Date.now()
       ) {
-        return cached.result
+        return cached.probe
       }
       // Two turns starting at once must share one probe rather than racing.
       const pending = this.probeInFlight
@@ -133,11 +172,11 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     settingsKey: string,
     settings: AgentLocalProviderSettings,
     apiKey: string | null
-  ): Promise<AgentLocalProviderProbeResult> {
-    const result = await probeLocalProvider(settings, this.deps.fetch ?? fetch, apiKey)
-    const ttl = probeCacheTtlMs(result)
-    this.probeCache = ttl > 0 ? { settingsKey, apiKey, result, expiresAt: Date.now() + ttl } : null
-    return result
+  ): Promise<LocalProbe> {
+    const probe = await probeLocalProvider(settings, this.deps.fetch ?? fetch, apiKey)
+    const ttl = probeCacheTtlMs(probe.result)
+    this.probeCache = ttl > 0 ? { settingsKey, apiKey, probe, expiresAt: Date.now() + ttl } : null
+    return probe
   }
 
   private async run(
@@ -154,24 +193,35 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
           baseURL: toOllamaApiBaseUrl(settings.baseUrl),
           ...(apiKey ? { headers: { Authorization: `Bearer ${apiKey}` } } : {})
         })(modelName)
-      : createOpenAI({
+      : // The OpenAI provider drops `reasoning_content`, and thinking-mode providers
+        // such as DeepSeek reject a tool loop that does not send it back (#2609).
+        createOpenAICompatible({
+          name: 'local-openai-compatible',
           baseURL: settings.baseUrl,
-          apiKey: apiKey || 'local'
-        }).chat(modelName)
+          ...(apiKey ? { apiKey } : {})
+        }).chatModel(modelName)
     const controller = new AbortController()
-    const toolsEnabled =
-      allowTools &&
-      (options?.toolsEnabled ?? true) &&
-      (await this.resolveProbe(settings, apiKey)).toolsEnabled
+    const tools =
+      allowTools && (options?.toolsEnabled ?? true) && input.writeGrant
+        ? (await this.resolveProbe(settings, apiKey)).tools
+        : null
+    const toolsUnavailable: BackendEvent[] =
+      tools?.kind === 'off'
+        ? [{ kind: 'tools_unavailable', reason: tools.reason, detail: tools.detail }]
+        : []
     const result = streamText({
-      model,
+      model:
+        tools?.kind === 'on'
+          ? wrapLanguageModel({ model, middleware: toolCallProfileMiddleware(tools.profile) })
+          : model,
       prompt: input.prompt,
+      ...(toolsUnavailable.length > 0 ? { system: TOOLS_UNAVAILABLE_SYSTEM } : {}),
       abortSignal: controller.signal,
       stopWhen: stepCountIs(8),
       ...(isOllama
         ? { providerOptions: { ollama: { options: { num_ctx: OLLAMA_NUM_CTX } } } }
         : {}),
-      ...(toolsEnabled && input.writeGrant
+      ...(tools?.kind === 'on' && input.writeGrant
         ? {
             tools: createAiSdkToolSet(this.deps.toolBridge, {
               writeGrant: input.writeGrant,
@@ -184,7 +234,7 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     let stderr = ''
 
     return {
-      events: mapAiSdkEvents(result.fullStream, (error) => {
+      events: mapAiSdkEvents(toolsUnavailable, result.fullStream, (error) => {
         exitCode = 1
         stderr = errorMessage(error)
       }),
@@ -198,9 +248,11 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
 }
 
 async function* mapAiSdkEvents(
+  leading: BackendEvent[],
   stream: AsyncIterable<unknown>,
   onError: (error: unknown) => void
 ): AsyncIterable<BackendEvent> {
+  yield* leading
   try {
     for await (const part of stream) {
       const event = partToBackendEvent(part)
@@ -300,28 +352,44 @@ async function probeLocalProvider(
   settings: AgentLocalProviderSettings,
   fetchImpl: typeof fetch,
   apiKey: string | null
-): Promise<AgentLocalProviderProbeResult> {
+): Promise<LocalProbe> {
   const connection = await testOpenAiCompatibleConnection(settings, fetchImpl, apiKey)
-  if (!connection.connected || !connection.modelAvailable) return connection
+  if (!connection.connected || !connection.modelAvailable) {
+    return { result: connection, tools: { kind: 'unreachable' } }
+  }
 
   const streaming = await probeStreaming(settings, fetchImpl, apiKey)
   if (!streaming.streamingSupported) {
     return {
-      ...connection,
-      ...streaming,
-      toolsEnabled: false
+      result: { ...connection, ...streaming, toolsEnabled: false },
+      tools: { kind: 'off', reason: 'streaming_unsupported', detail: null }
     }
   }
 
   const toolProbe = await probeToolCalling(settings, fetchImpl, apiKey)
+  if (toolProbe.ok) {
+    return {
+      result: {
+        ...connection,
+        ...streaming,
+        toolCallingSupported: true,
+        toolContinuationSupported: true,
+        toolsEnabled: true,
+        detail: null
+      },
+      tools: { kind: 'on', profile: toolProbe.profile }
+    }
+  }
   return {
-    ...connection,
-    ...streaming,
-    ...toolProbe,
-    toolsEnabled:
-      streaming.streamingSupported &&
-      toolProbe.toolCallingSupported &&
-      toolProbe.toolContinuationSupported
+    result: {
+      ...connection,
+      ...streaming,
+      toolCallingSupported: toolProbe.called,
+      toolContinuationSupported: false,
+      toolsEnabled: false,
+      detail: toolProbe.detail
+    },
+    tools: { kind: 'off', reason: toolProbe.reason, detail: toolProbe.providerDetail }
   }
 }
 
@@ -393,67 +461,134 @@ async function probeToolCalling(
   settings: AgentLocalProviderSettings,
   fetchImpl: typeof fetch,
   apiKey: string | null
-): Promise<
-  Pick<
-    AgentLocalProviderProbeResult,
-    'toolCallingSupported' | 'toolContinuationSupported' | 'detail'
-  >
-> {
-  try {
-    const first = await postChatCompletion(settings, fetchImpl, apiKey, {
-      model: settings.model,
-      messages: [{ role: 'user', content: 'Call the echo tool with text "ok".' }],
-      tools: [
-        {
-          type: 'function',
-          function: {
-            name: 'memry_probe_echo',
-            description: 'Echo a probe string.',
-            parameters: {
-              type: 'object',
-              properties: { text: { type: 'string' } },
-              required: ['text'],
-              additionalProperties: false
-            }
+): Promise<ToolProbe> {
+  const request = {
+    model: settings.model,
+    messages: [PROBE_USER_MESSAGE],
+    tools: [
+      {
+        type: 'function',
+        function: {
+          name: PROBE_TOOL_NAME,
+          description: 'Echo a probe string.',
+          parameters: {
+            type: 'object',
+            properties: { text: { type: 'string' } },
+            required: ['text'],
+            additionalProperties: false
           }
         }
-      ],
-      tool_choice: { type: 'function', function: { name: 'memry_probe_echo' } }
-    })
-    const assistant = first.choices?.[0]?.message
-    const toolCall = assistant?.tool_calls?.[0]
-    if (!toolCall?.id) {
-      return {
-        toolCallingSupported: false,
-        toolContinuationSupported: false,
-        detail: 'Model did not emit the synthetic memry_probe_echo tool call.'
       }
-    }
+    ]
+  }
 
+  let first: ChatCompletion
+  let toolChoice: ToolCallProfile['toolChoice'] = 'auto'
+  try {
+    first = await postChatCompletion(settings, fetchImpl, apiKey, {
+      ...request,
+      tool_choice: { type: 'function', function: { name: PROBE_TOOL_NAME } }
+    })
+  } catch {
+    // DeepSeek in thinking mode answers a named tool_choice with HTTP 400 although it
+    // calls tools fine without one (#2609). The chat then sends no tool_choice either.
+    toolChoice = 'omit'
+    try {
+      first = await postChatCompletion(settings, fetchImpl, apiKey, request)
+    } catch (error) {
+      const detail = errorMessage(error)
+      return { ok: false, reason: 'tools_rejected', called: false, detail, providerDetail: detail }
+    }
+  }
+
+  const assistant = first.choices?.[0]?.message
+  const nativeCall = assistant?.tool_calls?.[0]
+  const replay = nativeCall?.id ? { assistant, callId: nativeCall.id } : textCallReplay(assistant)
+  if (!replay) {
+    return {
+      ok: false,
+      reason: 'no_tool_call',
+      called: false,
+      detail: `Model did not emit the synthetic ${PROBE_TOOL_NAME} tool call.`,
+      providerDetail: null
+    }
+  }
+
+  try {
     const second = await postChatCompletion(settings, fetchImpl, apiKey, {
       model: settings.model,
       messages: [
-        { role: 'user', content: 'Call the echo tool with text "ok".' },
-        assistant,
+        PROBE_USER_MESSAGE,
+        replay.assistant,
         {
           role: 'tool',
-          tool_call_id: toolCall.id,
+          tool_call_id: replay.callId,
           content: JSON.stringify({ ok: true, data: { text: 'ok' } })
         }
       ]
     })
-    return {
-      toolCallingSupported: true,
-      toolContinuationSupported: Boolean(second.choices?.[0]?.message),
-      detail: null
+    if (!second.choices?.[0]?.message) {
+      return {
+        ok: false,
+        reason: 'tool_result_rejected',
+        called: true,
+        detail: 'Model returned no message after the tool result.',
+        providerDetail: null
+      }
     }
   } catch (error) {
+    const detail = errorMessage(error)
     return {
-      toolCallingSupported: false,
-      toolContinuationSupported: false,
-      detail: errorMessage(error)
+      ok: false,
+      reason: 'tool_result_rejected',
+      called: true,
+      detail,
+      providerDetail: detail
     }
   }
+  return { ok: true, profile: { toolChoice, toolCalls: nativeCall?.id ? 'native' : 'text' } }
+}
+
+/**
+ * A model whose server leaves its tool call in the reply text gets that call back as a
+ * structured `tool_calls` entry, which is what the chat sends after the text is parsed.
+ */
+function textCallReplay(
+  assistant: ChatCompletionMessage | undefined
+): { assistant: ChatCompletionMessage; callId: string } | null {
+  if (typeof assistant?.content !== 'string') return null
+  const splitter = new TextToolCallSplitter(new Set([PROBE_TOOL_NAME]))
+  const segments = [...splitter.push(assistant.content), ...splitter.flush()]
+  const call = segments.find((segment) => segment.kind === 'call')?.call
+  if (!call) return null
+  const text = segments
+    .flatMap((segment) => (segment.kind === 'text' ? [segment.text] : []))
+    .join('')
+  const callId = 'probe-text-call'
+  return {
+    callId,
+    assistant: {
+      ...assistant,
+      content: text.trim() ? text : null,
+      tool_calls: [
+        { id: callId, type: 'function', function: { name: call.toolName, arguments: call.input } }
+      ]
+    }
+  }
+}
+
+interface ChatCompletionMessage {
+  role?: string
+  content?: string | null
+  tool_calls?: Array<{
+    id?: string
+    type?: string
+    function?: { name?: string; arguments?: string }
+  }>
+}
+
+interface ChatCompletion {
+  choices?: Array<{ message?: ChatCompletionMessage }>
 }
 
 async function postChatCompletion(
@@ -461,19 +596,7 @@ async function postChatCompletion(
   fetchImpl: typeof fetch,
   apiKey: string | null,
   body: unknown
-): Promise<{
-  choices?: Array<{
-    message?: {
-      role?: string
-      content?: string | null
-      tool_calls?: Array<{
-        id?: string
-        type?: string
-        function?: { name?: string; arguments?: string }
-      }>
-    }
-  }>
-}> {
+): Promise<ChatCompletion> {
   const response = await fetchImpl(
     new URL('chat/completions', ensureTrailingSlash(settings.baseUrl)),
     {
@@ -485,8 +608,24 @@ async function postChatCompletion(
       body: JSON.stringify(body)
     }
   )
-  if (!response.ok) throw new Error(`/v1/chat/completions returned HTTP ${response.status}`)
+  if (!response.ok) {
+    throw new Error(
+      `/v1/chat/completions returned HTTP ${response.status}${await providerErrorSuffix(response)}`
+    )
+  }
   return response.json()
+}
+
+// OpenAI-style error bodies carry the provider's own reason, which the chat shows when
+// it turns tools off. Anything else (HTML, plain text) is dropped.
+async function providerErrorSuffix(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as { error?: { message?: unknown } | string }
+    const message = typeof body.error === 'string' ? body.error : body.error?.message
+    return typeof message === 'string' && message.trim() ? `: ${message.trim()}` : ''
+  } catch {
+    return ''
+  }
 }
 
 function authHeaders(apiKey: string | null): Record<string, string> {

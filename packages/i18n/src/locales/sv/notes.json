@@ -246,6 +246,17 @@
       "error": "Fel",
       "success": "Lyckat"
     },
+    "columns": {
+      "group": "Grundläggande block",
+      "two": {
+        "title": "Två kolumner",
+        "subtext": "Placera block sida vid sida i två kolumner"
+      },
+      "three": {
+        "title": "Tre kolumner",
+        "subtext": "Placera block sida vid sida i tre kolumner"
+      }
+    },
     "diagram": {
       "title": "Diagram",
       "subtext": "Flödesschema, sekvensdiagram eller Gantt-schema från Mermaid-källkod"

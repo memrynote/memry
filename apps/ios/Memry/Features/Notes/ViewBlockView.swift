@@ -5,6 +5,8 @@ import SwiftUI
 /// when this build cannot answer the definition or has no vault to read.
 struct ViewBlockView: View {
     let text: String
+    /// Opens the query sheet. `nil` on a read-only page.
+    var edit: (() -> Void)?
 
     @Environment(\.openNote) private var openNote
     @Environment(\.vaultBrowse) private var browse
@@ -22,10 +24,23 @@ struct ViewBlockView: View {
     var body: some View {
         if case let .rows(query) = ViewBlockFence(text: text), let reader = browse?.reader {
             VStack(alignment: .leading, spacing: Tokens.Space.small) {
-                Text(Self.sourceLabel(query.source))
-                    .font(Tokens.Typography.caption.font)
-                    .foregroundStyle(Tokens.Text.secondary.color)
-                    .accessibilityAddTraits(.isHeader)
+                HStack(spacing: Tokens.Space.small) {
+                    Text(Self.sourceLabel(query.source))
+                        .font(Tokens.Typography.caption.font)
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: 0)
+                    if let edit {
+                        Button(action: edit) {
+                            Image(systemName: "slider.horizontal.3")
+                                .foregroundStyle(Tokens.Text.secondary.color)
+                                .frame(minWidth: Tokens.Size.minimumHitArea, minHeight: Tokens.Size.minimumHitArea)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Edit view")
+                    }
+                }
                 rowsFrame(query)
             }
             .task(id: query) { read = await Self.load(query, reader: reader) }

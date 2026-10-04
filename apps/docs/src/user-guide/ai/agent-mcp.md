@@ -177,6 +177,18 @@ search for an earlier query is discarded rather than shown.
 The prompt box uses the operating-system text editing menu, so Cut, Copy, Paste, Select All, and
 native right-click editing work like other text fields.
 
+### Agent memory
+
+Claude, Codex and Antigravity turns run in one folder per vault, kept in the app's data folder and
+outside the vault: `agent-workdirs/<vault id>`. A vault id that is not a plain uuid is hashed into
+the folder name. Claude Code keeps its project memory for that
+folder, so what the agent saves about the vault in one turn is still there in the next turn and in
+the next conversation. Nothing in this folder syncs.
+
+Settings -> AI Assistant -> Agent Permissions -> **Clear agent memory** asks first, then deletes the
+folder and the project memory Claude Code keeps for it. This cannot be undone. Notes and chat
+history stay. The next turn starts with an empty folder.
+
 ### Dictating a prompt
 
 The microphone in the prompt bar records a prompt and types it for you. Click it once to start
@@ -188,6 +200,22 @@ Dictation uses the same engine as inbox voice memos, so it needs a transcription
 first — see [Voice Transcription](/user-guide/ai/voice-transcription). Audio recorded here is
 transcribed and discarded; it does not create an inbox item. If the microphone is blocked at the
 operating-system level, memrynote points you at the relevant privacy settings.
+
+### Queueing a message while the agent works
+
+The prompt box stays editable while a turn runs. Press Enter, or the arrow button next to Stop, and
+the message waits in a **Queued messages** list above the prompt box instead of interrupting the
+turn. When the turn ends, the oldest queued message goes out as its own turn, then the next one when
+that turn ends. Nothing is added to a turn that is already running. Stopping a turn also counts as
+its end, so the next queued message goes out after Stop.
+
+Each queued message keeps the model, permissions and context it was sent with. Use the pencil to
+change its text or the cross to remove it before it goes out. While the next message's editor is
+open, the queue waits for you to save or cancel. If memrynote cannot send a queued
+message, it stays in the list marked **Not sent** and holds the messages behind it, including new
+ones you send; edit it to send it again, or remove it to let the rest go out. Pressing Stop while a
+queued message is on its way stops that message's turn too. The queue lives in the window it was typed in and is
+not saved, so reloading the window clears it.
 
 ### Connected tools
 
@@ -234,7 +262,22 @@ Local model support uses OpenAI-compatible HTTP APIs. memrynote ships presets fo
 llama.cpp server, plus a Custom endpoint. Local tool access is gated by a capability probe. If the
 model can emit tool calls and continue after a tool result, memrynote enables the full vault tool set. If
 the probe fails, local chat can still answer from attached context, but vault tool calls stay
-disabled.
+disabled. The reply then starts with a note that vault tools are off for this model and why, in plain
+words: the provider refused requests with tools, the model answered without calling the test tool, the
+model failed after getting the tool result back, or the provider did not stream. When the provider sent
+its own error message, the note quotes it. The model is told not to write tool calls as text.
+
+Models call tools in different ways, and memrynote adapts to each provider configuration instead of
+asking you to. Hosted OpenAI-compatible APIs work through the Custom preset. The probe records what
+worked and every chat turn repeats it:
+
+- The probe first asks the model to call a named tool, and retries without naming one when the
+  provider rejects that, as DeepSeek does in thinking mode. The chat then sends no tool choice either.
+- Reasoning models that return `reasoning_content` (DeepSeek, and reasoning models behind LM Studio or
+  llama.cpp) get it sent back between tool steps, and their reasoning shows in the reply.
+- Some servers return a model's tool call as plain reply text, as `<tool_call>{...}</tool_call>`.
+  memrynote reads these calls out of the text and runs them like any other tool call. Only the names
+  of the vault tools count, so a model that quotes the syntax for another name keeps it as text.
 
 The probe costs a couple of model generations, so memrynote runs it once and reuses the verdict for
 up to ten minutes instead of repeating it on every message. Changing the preset, base URL, model, or
@@ -354,6 +397,10 @@ so it can turn up in `vault_search_notes`. Every search hit therefore carries a 
   `vault_read_note` refuses it with a `VALIDATION` error naming the file type instead of returning
   bytes for the client to treat as text. `vault_update_note` refuses it the same way, so an agent
   cannot overwrite a filed document with markdown.
+
+`vault_list_folder` lists a filed file as `kind: "file"` with its `file_type`, and a note as
+`kind: "note"` with `file_type: "markdown"`. The approval for `vault_delete_folder` counts the filed
+files it would delete apart from the notes.
 
 `vault_add_html_artifact` lets an agent put a diagram, chart, or small interactive explanation in a
 note. The HTML is saved as an attachment of that note and appended as a file block, which renders
@@ -507,6 +554,17 @@ allowlist, including account/auth flows, provider connect/disconnect/refresh act
 actions, external open/reveal actions, import dialogs, OS settings panes, telemetry, feedback and
 diagnostics reporting, and raw secret writes. Unsupported or unavailable desktop API operations
 return a structured MCP error instead of falling back to an arbitrary desktop call.
+
+A desktop API call on a filed PDF, image, audio file, or video, such as `notes.get` or
+`notes.rename`, returns the file's metadata in place of the note: `id`, `path`, `title`, `fileType`,
+`mimeType`, `fileSize`, `created`, `modified`, `contentOmitted: true`, and `contentAccess`, a
+sentence that says how the content can be read. Today every filed file returns metadata only.
+Viewing images and reading PDF text are not available through the desktop API yet.
+
+A desktop API reply whose JSON is longer than 100 KB in UTF-8 bytes, counted after source links are
+added, comes back as `{ truncated: true, totalBytes, message, partial }`. `partial` holds the start
+of the JSON reply, cut on a character boundary so the whole reply stays within 100 KB. It is not
+valid JSON on its own.
 
 `notes.resolveWikiTarget` follows a wiki link the way the editor does: `Meeting#Decisions` resolves
 to the note `Meeting` and reports `heading: "Decisions"`, while a note genuinely titled `Sprint #4`

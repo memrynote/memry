@@ -42,6 +42,11 @@ enum BlockCatalog {
             /// A block drawn from source (`mathBlock`), made empty, with its
             /// source sheet open.
             case source(kind: String)
+            /// Opens the query sheet; Done inserts a `memry-view` code block.
+            case view
+            /// A column list of `count` columns, each holding an empty
+            /// paragraph (desktop's `insertColumnList`).
+            case columns(count: Int)
         }
 
         let id: String
@@ -55,7 +60,7 @@ enum BlockCatalog {
         var isInline: Bool {
             switch action {
             case .linkToNote, .date: true
-            case .block, .attach, .link, .source: false
+            case .block, .attach, .link, .source, .columns, .view: false
             }
         }
     }
@@ -70,9 +75,8 @@ enum BlockCatalog {
     private static let dateAliases = ["date", "remind", "reminder", "when"]
 
     /// Every row, in desktop's catalog order. Rows desktop offers that this
-    /// build cannot make yet (task, diagram, whiteboard, view, pdf, media,
-    /// html) join here one row each as they land; emoji, templates and AI
-    /// stay desktop-only.
+    /// build cannot make yet (task, whiteboard, pdf, media, html) join here
+    /// one row each as they land; emoji, templates and AI stay desktop-only.
     static let rows: [Row] = [
         block("paragraph", "Paragraph", "text.alignleft", ["p", "paragraph"], .basic, kind: "paragraph"),
         block("heading", "Heading 1", "textformat.size.larger", ["h", "heading1", "h1"], .basic, kind: "heading", level: 1),
@@ -91,6 +95,17 @@ enum BlockCatalog {
         block("callout", "Callout", "exclamationmark.bubble", ["callout", "admonition", "alert", "notice", "tip"], .basic, kind: "callout"),
         block("code_block", "Code Block", "curlybraces", ["code", "pre"], .basic, kind: "codeBlock"),
         block("divider", "Divider", "minus", ["divider", "hr", "line", "horizontal rule"], .basic, kind: "divider"),
+        // Desktop's `columns-slash-menu.ts`, in the place its catalog gives them.
+        Row(
+            id: "two_columns", title: "Two columns", symbol: "rectangle.split.2x1",
+            aliases: ["columns", "column", "2 columns", "two columns", "side by side", "split", "layout"],
+            section: .basic, action: .columns(count: 2)
+        ),
+        Row(
+            id: "three_columns", title: "Three columns", symbol: "rectangle.split.3x1",
+            aliases: ["columns", "column", "3 columns", "three columns", "side by side", "layout"],
+            section: .basic, action: .columns(count: 3)
+        ),
         block("heading_4", "Heading 4", "textformat", ["h4", "heading4", "subheading4"], .headings, kind: "heading", level: 4),
         block("heading_5", "Heading 5", "textformat", ["h5", "heading5", "subheading5"], .headings, kind: "heading", level: 5),
         block("heading_6", "Heading 6", "textformat", ["h6", "heading6", "subheading6"], .headings, kind: "heading", level: 6),
@@ -114,6 +129,18 @@ enum BlockCatalog {
             id: "math", title: "Equation", symbol: "sum",
             aliases: ["math", "equation", "formula", "latex", "katex", "tex"],
             section: .insert, action: .source(kind: "mathBlock")
+        ),
+        // Desktop's `/diagram` (`@blocknote/diagram-block`'s English strings).
+        Row(
+            id: "diagram", title: "Diagram", symbol: "point.3.connected.trianglepath.dotted",
+            aliases: ["mermaid", "diagram", "flowchart", "chart", "graph"],
+            section: .insert, action: .source(kind: "diagram")
+        ),
+        // Desktop's `/view` (`getViewSlashMenuItem`).
+        Row(
+            id: "view", title: "View", symbol: "list.bullet.rectangle",
+            aliases: ["view", "query", "base", "database", "saved view", "embed view"],
+            section: .insert, action: .view
         ),
         // Mobile's own rows: desktop makes these from a pasted link instead.
         Row(id: "bookmark", title: "Bookmark", symbol: "bookmark", aliases: ["bookmark", "link", "url", "web"], section: .insert, action: .link(.bookmark)),
@@ -209,9 +236,9 @@ enum SlashMenu {
 
 extension EditorSession {
     /// The slash menu rows for `query`, empty inside a code block, where
-    /// desktop opens no menu.
+    /// desktop opens no menu, and on a layout row, which has no text.
     func slashSuggestions(query: String) -> [EditorSuggestion] {
-        guard field?.block.kind != "codeBlock" else { return [] }
+        guard let kind = field?.block.kind, kind != "codeBlock", !NoteColumns.isStructural(kind) else { return [] }
         return SlashMenu.suggestions(query: query, attach: attach != nil)
     }
 
@@ -219,6 +246,16 @@ extension EditorSession {
     /// there the grid offers blocks only, no inline node and no `[[`.
     var gridSections: [(section: BlockCatalog.Section, rows: [BlockCatalog.Row])] {
         BlockCatalog.sections(attach: attach != nil, inline: focusedKind != "codeBlock")
+    }
+
+    /// Hands the caret to the first block of the column list just inserted,
+    /// once `blocks` holds it. Called as the body draws.
+    func resolveColumnFocus(in blocks: [Block]) {
+        guard let listId = pendingColumnFocus,
+              let target = NoteColumns.firstBlockId(inColumnList: listId, in: blocks)
+        else { return }
+        pendingColumnFocus = nil
+        pendingFocus = target
     }
 
     /// A slash row chosen: `/query` goes, then the row acts.
@@ -264,26 +301,62 @@ extension EditorSession {
             requestLink(kind)
         case let .source(kind):
             insertSource(field, kind: kind)
+        case .view:
+            requestView()
+        case let .columns(count):
+            insertColumns(field, count: count)
         case .date:
             break
         }
     }
 
-    /// Desktop's `/math` turns the caret's block into an empty math block. A
-    /// block holding text keeps it here and the new block goes after, as
-    /// every other row does. Either way the source sheet opens on it.
+    /// Desktop's `/math` and `/diagram` turn the caret's block into an empty
+    /// one. A block holding text keeps it here and the new block goes after,
+    /// as every other row does. Either way the source sheet opens on it.
     private func insertSource(_ field: BlockField, kind: String) {
         let blockId = field.blockId
+        let sourceKind: BlockSourceRequest.Kind = kind == "diagram" ? .diagram : .math
         if field.textView.text.isEmpty {
             turnInto(InsertableBlock(id: kind, name: "", symbol: ""))
-            editSource(BlockSourceRequest(blockId: blockId, source: ""))
+            editSource(BlockSourceRequest(blockId: blockId, source: "", kind: sourceKind))
             return
         }
         commit(field) { [weak self] in
             guard let self, let model = self.model else { return }
             guard let newId = await model.insert(kind, after: blockId) else { return }
             self.history.record(.insert(blockId: newId, after: blockId, kind: kind, text: ""))
-            self.editSource(BlockSourceRequest(blockId: newId, source: ""))
+            self.editSource(BlockSourceRequest(blockId: newId, source: "", kind: sourceKind))
+        }
+    }
+
+    /// Desktop's `insertColumnList`: the column list replaces an empty
+    /// paragraph with nothing nested under it, and goes after any other
+    /// block. The caret goes to column one's paragraph once the redraw
+    /// shows its id.
+    ///
+    /// The insert itself is not on the undo stack: undoing it means an edit
+    /// addressed to the column list, which this surface never sends
+    /// (`NoteColumns`). Removing the empty paragraph is, so undo brings that
+    /// line back.
+    private func insertColumns(_ field: BlockField, count: Int) {
+        let blockId = field.blockId
+        let blocks = blocks()
+        let index = blocks.firstIndex { $0.id == blockId }
+        let hasChildren = index.map { index in
+            index + 1 < blocks.count && blocks[index + 1].depth > blocks[index].depth
+        } ?? false
+        // Inside a column the core lands the list after the column list
+        // that holds the caret, as desktop does, so the line stays.
+        let insideColumn = index.map { NoteColumns.isInsideColumn($0, in: blocks) } ?? false
+        let replaces = field.textView.text.isEmpty && field.block.kind == "paragraph" && !hasChildren && !insideColumn
+        commit(field) { [weak self] in
+            guard let self, let model = self.model,
+                  let listId = await model.insertColumnList(after: blockId, columns: count) else { return }
+            self.pendingColumnFocus = listId
+            guard replaces else { return }
+            let snapshot = await model.snapshot(blockId)
+            await model.delete(blockId)
+            if let snapshot { self.history.record(.delete(blockId: blockId, snapshot: snapshot)) }
         }
     }
 

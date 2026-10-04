@@ -127,7 +127,8 @@ pub(super) fn insert_block(
     let prelim = XmlElementPrelim::empty("blockContainer");
     let (parent, index) = match after_block_id {
         Some(id) => {
-            let (container, _) = locate(txn, id).ok_or_else(|| missing(id))?;
+            // A block or a `columnList`; a block after a list is its sibling.
+            let container = locate_row(txn, id).ok_or_else(|| missing(id))?;
             let parent = container
                 .parent()
                 .and_then(|parent| match parent {
@@ -230,18 +231,35 @@ pub(super) fn move_block(
         return Ok(());
     }
 
-    let (container, _) = locate(txn, block_id).ok_or_else(|| missing(block_id))?;
+    // A block, or a whole `columnList`.
+    let container = locate_row(txn, block_id).ok_or_else(|| missing(block_id))?;
     let snapshot = snapshot_subtree(txn, &container);
 
     let (target_parent, target_index) = match after_block_id {
         Some(id) => {
-            let (anchor, _) = locate(txn, id).ok_or_else(|| missing(id))?;
+            let anchor = locate_row(txn, id).ok_or_else(|| missing(id))?;
             let parent = parent_of(&anchor).ok_or_else(|| missing(id))?;
             let index = child_index(txn, &parent, &anchor).ok_or_else(|| missing(id))?;
             (parent, index + 1)
         }
         None => (block_group(txn)?, 0),
     };
+    // Landing inside itself would rebuild it into the subtree its own removal
+    // just deleted: the block, and everything under it, would be gone.
+    if is_within(&target_parent, &container) {
+        return Err(CrdtError::Undecodable {
+            doc_id: block_id.to_owned(),
+            what: "a block cannot be moved inside itself".to_owned(),
+        });
+    }
+    // A column holds blocks only, and desktop writes a column region only at
+    // the top level of a note, so a column list moves among top-level rows.
+    if container.tag().as_ref() == COLUMN_LIST && !is_top_level_group(&target_parent) {
+        return Err(column_layout_refusal(
+            block_id,
+            "a column list moves only among the body's top-level blocks",
+        ));
+    }
 
     // Removed first, so the insert index is computed against the document the
     // block will actually land in.
@@ -255,7 +273,7 @@ pub(super) fn move_block(
     };
     source_parent.remove_range(txn, source_index, 1);
     restore_subtree(txn, &target_parent, adjusted, &snapshot);
-    drop_if_empty(txn, &source_parent);
+    settle_after_removal(txn, &source_parent);
     Ok(())
 }
 
@@ -275,6 +293,14 @@ pub(super) fn indent(txn: &mut TransactionMut, block_id: &str) -> Result<(), Crd
         Some(XmlOut::Element(element)) => element,
         _ => return Err(missing(block_id)),
     };
+    // A column list holds columns only; a blockGroup pushed into it is a
+    // node y-prosemirror deletes, with every column.
+    if previous.tag().as_ref() != "blockContainer" {
+        return Err(column_layout_refusal(
+            block_id,
+            "a block cannot be indented under a column list",
+        ));
+    }
     // The sibling's own block is its first non-group child; the group of its
     // children is where this block goes.
     let group = child_block_group(txn, &previous)
@@ -290,6 +316,15 @@ pub(super) fn indent(txn: &mut TransactionMut, block_id: &str) -> Result<(), Crd
 pub(super) fn outdent(txn: &mut TransactionMut, block_id: &str) -> Result<(), CrdtError> {
     let (container, _) = locate(txn, block_id).ok_or_else(|| missing(block_id))?;
     let group = parent_of(&container).ok_or_else(|| missing(block_id))?;
+    // A column's own blocks are not nested in a container, so there is no
+    // level to lift them to. Desktop's `liftItem` is a no-op there; lifting
+    // past the column list instead would move the block out of its column.
+    if group.tag().as_ref() == COLUMN {
+        return Err(column_layout_refusal(
+            block_id,
+            "a column's top-level block cannot be outdented",
+        ));
+    }
     // The group's parent is the container this block is nested inside. A block
     // already at the top has the fragment's own group as its parent, whose
     // parent is not a container, so there is nothing to lift to.
@@ -307,7 +342,7 @@ pub(super) fn outdent(txn: &mut TransactionMut, block_id: &str) -> Result<(), Cr
     let snapshot = snapshot_subtree(txn, &container);
     group.remove_range(txn, index, 1);
     restore_subtree(txn, &outer, anchor + 1, &snapshot);
-    drop_if_empty(txn, &group);
+    settle_after_removal(txn, &group);
     Ok(())
 }
 
@@ -368,10 +403,10 @@ impl Subtree {
         }
     }
 
-    /// Mints a fresh id for each `blockContainer` in this subtree whose id is
-    /// in `taken`.
+    /// Mints a fresh id for each `blockContainer`, `columnList` and `column`
+    /// in this subtree whose id is in `taken`.
     pub(super) fn mint_taken_container_ids(&mut self, taken: &std::collections::HashSet<String>) {
-        if self.tag == "blockContainer" {
+        if matches!(self.tag.as_str(), "blockContainer" | COLUMN_LIST | COLUMN) {
             let id = self.props.iter().find_map(|(name, value)| match value {
                 Any::String(id) if name == "id" => Some(id.to_string()),
                 _ => None,

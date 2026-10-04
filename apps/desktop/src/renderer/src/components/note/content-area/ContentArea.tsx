@@ -27,6 +27,8 @@ import { AttachmentRenameFlow } from './attachment-rename-dialog'
 import { useTheme } from 'next-themes'
 import { AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
 import { getDiagramSlashMenuItems } from '@blocknote/diagram-block'
+import { multiColumnDropCursor } from '@blocknote/xl-multi-column'
+import { getColumnSlashMenuItems } from './columns-slash-menu'
 import { CustomAIMenu } from './ai-menu'
 import { aiSuggestionMarksExtension } from './ai-suggestion-marks'
 import { en as aiEn } from '@blocknote/xl-ai/locales'
@@ -158,6 +160,7 @@ import { createInlineCheckboxPlugin } from './inline-checkbox-plugin'
 import { createInlineCheckboxContent } from '@memry/editor-schema/inline'
 import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-date-pills'
 import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
+import { useEditorSettings } from '@/hooks/use-editor-settings'
 import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
 import { CanvasChoiceMenu, MentionMenu, type MentionSuggestionItem } from './mention-menu'
 import { toast } from 'sonner'
@@ -414,6 +417,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
   const { clockFormat: dateMentionClockFormat } = useDateMentionPrefs()
+  const { settings: editorSettings, isLoading: editorSettingsLoading } = useEditorSettings()
+  // Off until the setting is read. The note's first scan runs before the read
+  // returns, and the default there would convert checkboxes the owner turned off.
+  const convertChecklists = !editorSettingsLoading && editorSettings.convertChecklistsToTasks
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
   const { openSidebarItem } = useSidebarNavigation()
@@ -641,6 +648,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         checkListItem: t('editor.content.todoPlaceholder')
       },
       dictionary: { ...coreEn, ai: aiEn } as any,
+      // Dropping a block on another block's left or right edge puts the two
+      // side by side, the way Notion does; anywhere else is BlockNote's own
+      // drop cursor.
+      dropCursor: multiColumnDropCursor,
       pasteHandler: handleEditorPaste
     })
   )
@@ -2325,7 +2336,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
       const checkListBlock = target.closest('[data-content-type="checkListItem"]')
       if (checkListBlock) {
-        const blockId = checkListBlock.getAttribute('data-id')
+        const blockId = checkListBlock.closest('[data-id]')?.getAttribute('data-id')
         if (!blockId) return
 
         const block = editor.getBlock(blockId)
@@ -2459,7 +2470,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     for (const change of changes ?? []) remoteAuthoredBlocksRef.current.delete(change.block.id)
 
     const intents = analyzeTaskIntents(editor.document as any[], taskIntentExclusions(), {
-      openedBlockIds: openedBlockIdsRef.current
+      openedBlockIds: openedBlockIdsRef.current,
+      convertChecklists
     })
 
     // Both paths convert in the same change that produced the checkbox, so a
@@ -2674,6 +2686,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => {
     scanOpenedContent()
   }, [editor])
+
+  // Conversion turning on, once the setting is read or when the owner switches
+  // it on, converts what the note already holds, as opening it would have.
+  const scanWithConversion = useEffectEvent(() => applyTaskIntents())
+  useEffect(() => {
+    if (convertChecklists) scanWithConversion()
+  }, [convertChecklists])
 
   // What the `/` menu offers when nothing matches: the query is handed on
   // rather than thrown away.
@@ -3011,6 +3030,21 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         title: t('editor.diagram.title'),
                         subtext: t('editor.diagram.subtext')
                       }))
+                  // A column list is a block, so not in a table cell, for the
+                  // reason the diagram gives above.
+                  const columnItems = inCell
+                    ? []
+                    : getColumnSlashMenuItems(editor, {
+                        group: t('editor.columns.group'),
+                        two: {
+                          title: t('editor.columns.two.title'),
+                          subtext: t('editor.columns.two.subtext')
+                        },
+                        three: {
+                          title: t('editor.columns.three.title'),
+                          subtext: t('editor.columns.three.subtext')
+                        }
+                      })
                   const calloutItem = getCalloutSlashMenuItem(editor, {
                     title: t('editor.callout.title'),
                     group: t('editor.callout.group'),
@@ -3142,6 +3176,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                       id: index === 0 ? 'diagram' : `diagram_${index}`
                     })),
                     { ...calloutItem, id: 'callout' },
+                    ...columnItems.map((item) => ({ ...item, id: item.key })),
                     { ...mathItem, id: 'math' },
                     ...(whiteboardItem ? [{ ...whiteboardItem, id: 'whiteboard' }] : []),
                     ...(viewItem ? [{ ...viewItem, id: 'view' }] : []),

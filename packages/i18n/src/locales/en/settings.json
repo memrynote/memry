@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Layout",
       "toolbar": "Toolbar",
-      "spelling": "Spelling"
+      "spelling": "Spelling",
+      "checklists": "Checklists"
     },
     "width": {
       "label": "Editor Width",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Editor width",
       "toolbarMode": "Sticky formatting toolbar",
-      "spellCheck": "Check spelling"
+      "spellCheck": "Check spelling",
+      "convertChecklists": "Turn checklist items into tasks"
+    },
+    "convertChecklists": {
+      "description": "Each new checklist item becomes a task. Off keeps checklists as plain checkboxes; right-click one to make it a task.",
+      "error": "Failed to update checklist conversion"
     }
   },
   "templates": {
@@ -2272,6 +2278,17 @@
       "revoke": "Revoke",
       "revokeLabel": "Revoke the standing approval for {tool}",
       "ignoredInPageReview": "Ignored: note and journal edits always ask."
+    },
+    "memory": {
+      "group": "Memory",
+      "description": "Agents run in a folder kept for this vault, outside the vault, so what they save there carries over to the next conversation.",
+      "clear": "Clear agent memory",
+      "clearDescription": "Deletes what agents saved about this vault. Notes and chat history stay.",
+      "clearAction": "Clear",
+      "cleared": "Agent memory cleared.",
+      "failed": "Could not clear agent memory.",
+      "confirmTitle": "Clear agent memory?",
+      "confirmDescription": "Agents lose what they saved about this vault, including Claude Code's project memory for it. This cannot be undone. Notes and chat history stay."
     },
     "v2": {
       "permissions": {

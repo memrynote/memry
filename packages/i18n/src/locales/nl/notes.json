@@ -246,6 +246,17 @@
       "error": "Fout",
       "success": "Succes"
     },
+    "columns": {
+      "group": "Basisblokken",
+      "two": {
+        "title": "Twee kolommen",
+        "subtext": "Zet blokken naast elkaar in twee kolommen"
+      },
+      "three": {
+        "title": "Drie kolommen",
+        "subtext": "Zet blokken naast elkaar in drie kolommen"
+      }
+    },
     "diagram": {
       "title": "Diagram",
       "subtext": "Stroomdiagram, sequentiediagram of Gantt-diagram vanuit Mermaid-broncode"

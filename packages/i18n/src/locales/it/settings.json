@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Layout",
       "toolbar": "Barra degli strumenti",
-      "spelling": "Ortografia"
+      "spelling": "Ortografia",
+      "checklists": "Checklist"
     },
     "width": {
       "label": "Larghezza dell'editor",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Larghezza dell'editor",
       "toolbarMode": "Barra degli strumenti di formattazione fissa",
-      "spellCheck": "Controllo ortografico"
+      "spellCheck": "Controllo ortografico",
+      "convertChecklists": "Trasforma gli elementi della checklist in attività"
+    },
+    "convertChecklists": {
+      "description": "Ogni nuovo elemento della checklist diventa un’attività. Disattivato, le checklist restano semplici caselle; fai clic destro su una per renderla un’attività.",
+      "error": "Impossibile aggiornare la conversione delle checklist"
     }
   },
   "templates": {

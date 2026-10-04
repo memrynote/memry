@@ -246,6 +246,17 @@
       "error": "Hiba",
       "success": "Siker"
     },
+    "columns": {
+      "group": "Alapblokkok",
+      "two": {
+        "title": "Két oszlop",
+        "subtext": "Blokkok egymás mellé két oszlopban"
+      },
+      "three": {
+        "title": "Három oszlop",
+        "subtext": "Blokkok egymás mellé három oszlopban"
+      }
+    },
     "diagram": {
       "title": "Diagram",
       "subtext": "Folyamatábra, szekvenciadiagram vagy Gantt-diagram Mermaid-forráskódból"

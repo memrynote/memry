@@ -246,6 +246,17 @@
       "error": "Chyba",
       "success": "Úspěch"
     },
+    "columns": {
+      "group": "Základní bloky",
+      "two": {
+        "title": "Dva sloupce",
+        "subtext": "Umístit bloky vedle sebe do dvou sloupců"
+      },
+      "three": {
+        "title": "Tři sloupce",
+        "subtext": "Umístit bloky vedle sebe do tří sloupců"
+      }
+    },
     "diagram": {
       "title": "Diagram",
       "subtext": "Vývojový, sekvenční nebo Ganttův diagram ze zdrojového kódu Mermaid"

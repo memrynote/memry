@@ -707,6 +707,20 @@ from 0 anyway and records `done` without a reset.
 The server fix has to be live before a desktop build runs the repair: a repair pull that races a
 peer push on an old Worker can skip the range again and still record `done`.
 
+Each pulled page logs one `Pull page processed` line on the desktop. Every row in the page lands in
+exactly one count (#2616):
+
+| Count       | Rows                                                                               |
+| ----------- | ---------------------------------------------------------------------------------- |
+| `applied`   | The handler wrote the remote version                                               |
+| `skipped`   | Already applied this run, quarantined, or the handler kept the newer local version |
+| `conflicts` | The handler merged a concurrent edit and queued the merge for push                 |
+| `failed`    | Decrypt, signature, parse, schema or apply failure                                 |
+
+Before #2616 a row the handler skipped counted as `applied`, so a page could log `skipped 0` beside a
+`local is newer` line for each row it kept. The sync history entry and the first-sync progress still
+count every row the handler took, skipped and conflicting rows included.
+
 ### Note bodies on the same cursor
 
 `crdt_updates` and `crdt_snapshots` rows also take a `server_cursor` from the same per-user sequence,

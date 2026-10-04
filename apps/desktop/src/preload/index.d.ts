@@ -1346,6 +1346,7 @@ export interface EditorSettingsDTO {
   toolbarMode: 'floating' | 'sticky'
   spellCheck: boolean
   pdfAdaptToTheme: boolean
+  convertChecklistsToTasks: boolean
 }
 
 export interface TaskSettingsDTO {
@@ -1858,6 +1859,7 @@ interface AgentClientAPI {
     scope?: AlwaysAllowScope
   }) => Promise<Conversation | null>
   getToolGrants: () => Promise<AgentToolGrants>
+  clearMemory: () => Promise<{ ok: boolean }>
   getBackendStatuses: () => Promise<BackendStatusesResponse>
   listBackendModels: (input: AgentBackendModelListRequest) => Promise<AgentBackendModelList>
   getLocalProviderSettings: () => Promise<AgentLocalProviderSettings>

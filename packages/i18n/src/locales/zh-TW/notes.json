@@ -246,6 +246,17 @@
       "error": "錯誤",
       "success": "成功"
     },
+    "columns": {
+      "group": "基本區塊",
+      "two": {
+        "title": "兩欄",
+        "subtext": "將區塊並排放在兩欄中"
+      },
+      "three": {
+        "title": "三欄",
+        "subtext": "將區塊並排放在三欄中"
+      }
+    },
     "diagram": {
       "title": "圖表",
       "subtext": "從 Mermaid 原始碼產生流程圖、循序圖或甘特圖"

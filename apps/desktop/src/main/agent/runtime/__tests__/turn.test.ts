@@ -758,6 +758,56 @@ describe('runTurn against a stub backend', () => {
     ])
   })
 
+  it('shows and persists that the turn ran without tools', async () => {
+    vi.mocked(broadcastAgentEvent).mockClear()
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+    const backend = createFakeBackend({
+      turn: [
+        {
+          kind: 'tools_unavailable',
+          reason: 'tools_rejected',
+          detail: '/v1/chat/completions returned HTTP 400'
+        },
+        { kind: 'assistant_delta', text: 'Answer' },
+        { kind: 'message_stop' }
+      ]
+    })
+
+    await runTurn(
+      { conversations, messages, backends: createFakeRegistry(backend) },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'hi',
+        attachments: [],
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+      }
+    )
+
+    const assistant = messages.listByConversation('conversation-1')[1]
+    const notice = { reason: 'tools_rejected', detail: '/v1/chat/completions returned HTTP 400' }
+    expect(assistant.content).toEqual({
+      role: 'assistant',
+      data: { text: 'Answer', toolsUnavailable: notice }
+    })
+    const assistantEvents = vi
+      .mocked(broadcastAgentEvent)
+      .mock.calls.map(([event]) => event)
+      .flatMap((event) =>
+        (event.kind === 'message_upserted' && event.message.id === assistant.id) ||
+        (event.kind === 'assistant_text_delta' && event.messageId === assistant.id)
+          ? [event.kind]
+          : []
+      )
+    expect(assistantEvents).toEqual([
+      'message_upserted',
+      'message_upserted',
+      'assistant_text_delta',
+      'message_upserted'
+    ])
+  })
+
   it('broadcasts failed tool results and ignores unknown backend events', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore({ title: 'Existing conversation' })

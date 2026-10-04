@@ -246,6 +246,17 @@
       "error": "Kesalahan",
       "success": "Sukses"
     },
+    "columns": {
+      "group": "Blok dasar",
+      "two": {
+        "title": "Dua kolom",
+        "subtext": "Letakkan blok berdampingan dalam dua kolom"
+      },
+      "three": {
+        "title": "Tiga kolom",
+        "subtext": "Letakkan blok berdampingan dalam tiga kolom"
+      }
+    },
     "diagram": {
       "title": "Diagram",
       "subtext": "Diagram alir, diagram urutan, atau bagan Gantt dari kode Mermaid"

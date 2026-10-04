@@ -246,6 +246,17 @@
       "error": "Fejl",
       "success": "Succes"
     },
+    "columns": {
+      "group": "Grundlæggende blokke",
+      "two": {
+        "title": "To kolonner",
+        "subtext": "Placer blokke side om side i to kolonner"
+      },
+      "three": {
+        "title": "Tre kolonner",
+        "subtext": "Placer blokke side om side i tre kolonner"
+      }
+    },
     "diagram": {
       "title": "Diagram",
       "subtext": "Rutediagram, sekvens- eller Gantt-diagram fra Mermaid-kildekode"

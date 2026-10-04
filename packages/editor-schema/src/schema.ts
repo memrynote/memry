@@ -8,6 +8,7 @@ import {
 import { createMemryInlineContentSpecs, type MemryInlineSpecs } from './inline'
 import { withImageWidthInAlt } from './blocks/image-width'
 import { withPlainCheckbox } from './blocks/plain-checkbox'
+import { createColumnBlockSpec, createColumnListBlockSpec } from './blocks/column-specs'
 import { assertSpecKeysMatchNodeTypes, type SpecKeysMatchNodeTypes } from './spec-keys'
 
 /**
@@ -145,6 +146,12 @@ export function createMemrySchema<Blocks extends BlockSpecs>(impl: {
     // The checkbox the user keeps as a checkbox. Here for the same reason as
     // the image: a surface without the prop writes the flag away.
     checkListItem: withPlainCheckbox(defaultBlockSpecs.checkListItem),
+    // Side-by-side columns, here so no surface can lack them (y-prosemirror
+    // deletes what it cannot build). The desktop renderer overrides `column`
+    // with `@blocknote/xl-multi-column`'s, which adds resize and
+    // drag-to-column on the same node; see blocks/column-specs.ts.
+    column: createColumnBlockSpec(),
+    columnList: createColumnListBlockSpec(),
     ...impl.blocks
   }
   const memryInlineSpecs = createMemryInlineContentSpecs(impl.inline)
