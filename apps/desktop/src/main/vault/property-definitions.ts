@@ -568,14 +568,25 @@ function addOptionToDefinition(def: PropertyDefinition, option: SelectOption): P
 }
 
 /**
+ * The definition as the file will hold it, so the DB rows rebuilt from the
+ * cache list the same options the file does.
+ *
  * A `status` definition with no categories cannot be serialized, so a write
  * carrying one threw and left the cache holding a definition that every later
  * status write skipped. The cache never holds one.
  */
 function normalizeDefinition(definition: PropertyDefinition): PropertyDefinition {
-  if (definition.type !== 'status' || definition.categories) return definition
-
-  return { ...definition, categories: DEFAULT_STATUS_CATEGORIES }
+  switch (definition.type) {
+    case 'status':
+      return definition.categories
+        ? definition
+        : { ...definition, categories: DEFAULT_STATUS_CATEGORIES }
+    case 'date':
+    case 'project':
+      return definition.options ? { ...definition, options: undefined } : definition
+    default:
+      return definition.options ? definition : { ...definition, options: [] }
+  }
 }
 
 export { DEFAULT_STATUS_DEFINITION }

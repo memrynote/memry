@@ -80,6 +80,14 @@ describe('property definitions reach .memry/properties.md', () => {
       Source: { type: 'text', options: [] },
       Due: { type: 'date', showOnCalendar: false }
     })
+    const listed = (await invoke(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS)) as Array<{
+      name: string
+      options: string | null
+    }>
+    expect(listed.map(({ name, options }) => ({ name, options }))).toEqual([
+      { name: 'Due', options: null },
+      { name: 'Source', options: '[]' }
+    ])
   })
 
   it('lists the options the file holds after an update that names no type', async () => {
