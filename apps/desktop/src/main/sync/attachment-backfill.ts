@@ -9,11 +9,10 @@ import { getCurrentVaultPath } from '../store'
 import { enqueueUpload, hasPendingUpload } from './attachment-outbox'
 import {
   countNoteFiles,
-  embeddedFilesOutsideOwnFolder,
+  embeddedFilesOutsideNoteFolders,
   existingFiles,
   notesWithRecords,
   ownFolderFiles,
-  referencedVaultFiles,
   unrecordedFiles
 } from './attachment-files'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
@@ -79,7 +78,7 @@ export function backfillUnsyncedAttachmentsWith(deps: AttachmentBackfillDeps): {
     if (note.localOnly) continue
     const files = [
       ...(folders.has(note.id) ? ownFolderFiles(deps.vaultPath, note.id) : []),
-      ...embeddedFilesOf(deps.vaultPath, note)
+      ...embeddedFilesOf(deps.db, deps.vaultPath, note)
     ]
     if (files.length === 0) {
       if ((note.attachmentReferences ?? []).length > 0 && !counted.has(note.id)) {
@@ -121,7 +120,11 @@ export function backfillUnsyncedAttachmentsWith(deps: AttachmentBackfillDeps): {
 const notesWithoutEmbeds = new Map<string, string>()
 
 /** The vault files outside its own folder that a note's body embeds and that are on disk. */
-function embeddedFilesOf(vaultPath: string, note: typeof noteMetadata.$inferSelect): string[] {
+function embeddedFilesOf(
+  db: DrizzleDb,
+  vaultPath: string,
+  note: typeof noteMetadata.$inferSelect
+): string[] {
   // A binary note's file IS the attachment; it has no body to scan.
   if (!note.path.endsWith('.md')) return []
   const notePath = path.join(vaultPath, note.path)
@@ -135,7 +138,7 @@ function embeddedFilesOf(vaultPath: string, note: typeof noteMetadata.$inferSele
   } catch {
     return []
   }
-  const files = embeddedFilesOutsideOwnFolder(markdown, vaultPath, note.path, note.id)
+  const files = embeddedFilesOutsideNoteFolders(db, markdown, vaultPath, note.path, note.id)
   if (files.length === 0) notesWithoutEmbeds.set(notePath, version)
   return existingFiles(files)
 }
@@ -153,12 +156,12 @@ export function queueEmbeddedVaultFilesWith(
 ): number {
   const note = getNoteMetadataById(deps.db, noteId)
   if (!note || note.localOnly) return 0
-  const files = existingFiles([
-    ...new Set([
-      ...ownFolderFiles(deps.vaultPath, noteId),
-      ...referencedVaultFiles(markdown, deps.vaultPath, note.path, noteId)
-    ])
-  ])
+  const files = [
+    ...ownFolderFiles(deps.vaultPath, noteId),
+    ...existingFiles(
+      embeddedFilesOutsideNoteFolders(deps.db, markdown, deps.vaultPath, note.path, noteId)
+    )
+  ]
   let queued = 0
   for (const file of unrecordedFiles(deps.db, deps.vaultPath, note, files)) {
     if (hasPendingUpload(deps.db, noteId, file)) continue

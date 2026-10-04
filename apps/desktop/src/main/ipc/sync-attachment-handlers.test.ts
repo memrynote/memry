@@ -227,7 +227,12 @@ describe('sync-attachment-handlers', () => {
       .mockResolvedValue({ attachmentId: 'attachment-1', sessionId: 'session-1' })
     attachmentMocks.queue.dispose.mockReset()
     vi.mocked(UploadQueue).mockClear()
-    vi.mocked(getNetworkMonitor).mockReturnValue(null)
+    // A sync runtime is up unless a test says otherwise; saves upload only then.
+    vi.mocked(getNetworkMonitor).mockReturnValue({
+      online: true,
+      on: vi.fn(),
+      removeListener: vi.fn()
+    } as unknown as NetworkMonitor)
     outboxUploaders.length = 0
     mockOnSaved.mockClear()
     mockOnDownloadNeeded.mockClear()
@@ -396,6 +401,7 @@ describe('sync-attachment-handlers', () => {
   })
 
   it('downloads only inside the vault attachments directory with a per-transfer progress callback', async () => {
+    vi.mocked(getNetworkMonitor).mockReturnValue(null)
     vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
     vi.mocked(getVaultStatus).mockReturnValue({ path: '/vault' } as any)
     registerAttachmentHandlers()
@@ -542,6 +548,7 @@ describe('sync-attachment-handlers', () => {
   })
 
   it('hands canvas asset uploads a fresh broadcaster and sends downloads straight to the service', async () => {
+    vi.mocked(getNetworkMonitor).mockReturnValue(null)
     // #given the canvas asset IO bound over the shared singletons
     const io = getCanvasAssetIO()
     expect(io).not.toBeNull()
@@ -818,7 +825,7 @@ describe('sync-attachment-handlers', () => {
       expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalledWith(
         'attachment-1',
         '/vault/attachments/file.pdf',
-        { pace: expect.any(Function) }
+        expect.objectContaining({ pace: expect.any(Function) })
       )
     )
     expect(markWritebackIgnored).toHaveBeenCalledWith('/vault/attachments/file.pdf')

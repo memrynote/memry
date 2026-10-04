@@ -81,19 +81,25 @@ export function referencedVaultFiles(
 }
 
 /**
- * The folder scan owns a note's own `attachments/<noteId>/` folder; queuing
- * those files from the body too says the same thing twice.
+ * The vault files a body embeds outside every note's attachments folder. The
+ * folder scan owns this note's own folder, and a file in another note's folder
+ * is that note's attachment already: queuing it here would upload a second copy
+ * under a second id. Folders under `attachments/` that are not named for a note
+ * hold ordinary vault files and stay in.
  */
-export function embeddedFilesOutsideOwnFolder(
+export function embeddedFilesOutsideNoteFolders(
+  db: DrizzleDb,
   markdown: string,
   vaultPath: string,
   notePath: string,
   noteId: string
 ): string[] {
-  const ownFolder = ownFolderOf(vaultPath, noteId) + path.sep
-  return referencedVaultFiles(markdown, vaultPath, notePath, noteId).filter(
-    (file) => !file.startsWith(ownFolder)
-  )
+  const attachmentsRoot = path.join(path.resolve(vaultPath), 'attachments') + path.sep
+  return referencedVaultFiles(markdown, vaultPath, notePath, noteId).filter((file) => {
+    if (!file.startsWith(attachmentsRoot)) return true
+    const folder = file.slice(attachmentsRoot.length).split(path.sep)[0]
+    return folder !== noteId && !getNoteMetadataById(db, folder)
+  })
 }
 
 function ownFolderOf(vaultPath: string, noteId: string): string {
@@ -124,14 +130,14 @@ export function existingFiles(files: string[]): string[] {
 }
 
 /** Every file a note owns or embeds that is on this disk. */
-function noteFilesOnDisk(vaultPath: string, note: AttachmentNote): string[] {
+function noteFilesOnDisk(db: DrizzleDb, vaultPath: string, note: AttachmentNote): string[] {
   const files = ownFolderFiles(vaultPath, note.id)
   if (!note.path.endsWith('.md')) return files
   try {
     const markdown = fs.readFileSync(path.join(vaultPath, note.path), 'utf8')
     return [
       ...files,
-      ...existingFiles(embeddedFilesOutsideOwnFolder(markdown, vaultPath, note.path, note.id))
+      ...existingFiles(embeddedFilesOutsideNoteFolders(db, markdown, vaultPath, note.path, note.id))
     ]
   } catch {
     return files
@@ -270,7 +276,7 @@ export function recordAttachmentFile(
     const note = getNoteMetadataById(db, noteId)
     const others = (note?.attachmentReferences ?? []).filter((id) => id !== attachmentId)
     if (note && others.length > 0) {
-      countNoteFiles(db, vaultPath, noteId, noteFilesOnDisk(vaultPath, note))
+      countNoteFiles(db, vaultPath, noteId, noteFilesOnDisk(db, vaultPath, note))
     }
   }
   insertRecord(db, noteId, recordPath, attachmentId)

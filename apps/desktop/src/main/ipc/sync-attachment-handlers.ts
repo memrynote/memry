@@ -464,6 +464,9 @@ export function registerAttachmentHandlers(): void {
       // Registered before the token wait, so a re-drive in that window joins it.
       const key = savedUploadKey(noteId, diskPath)
       const upload = (async (): Promise<UploadResult | null> => {
+        // No sync runtime: the vault is held (kept local, another account's)
+        // or sync has not started. The row waits for the runtime's re-drive.
+        if (!getNetworkMonitor()) return null
         if (!(await getValidAccessToken())) return null
         const queue = getOrCreateUploadQueue()
         return queue ? queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster()) : null
