@@ -3,7 +3,8 @@ import { noteCache } from './notes-cache.ts'
 
 /**
  * How a part's text was read. `unreadable` keeps the part's slot so a resumed
- * job does not retry a page that already failed twice.
+ * job does not retry a page that already failed twice; a retry of the whole
+ * job, under a new app version or a day later, drops it and reads it again.
  */
 export const EXTRACTED_TEXT_METHODS = ['pdf-text', 'ocr', 'unreadable'] as const
 export type ExtractedTextMethod = (typeof EXTRACTED_TEXT_METHODS)[number]

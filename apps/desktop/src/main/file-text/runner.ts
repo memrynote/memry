@@ -11,7 +11,8 @@
  *   (no job) or signature moved -> pending -> done
  *                                          -> failed (unopenable, missing, or
  *                                             MAX_CONSECUTIVE_FAILURES pages in a row)
- *   failed, under another app version or a day old -> pending again
+ *   failed, or done with unreadable pages,
+ *     under another app version or a day old -> pending again (unreadable pages only)
  *   attachment file gone -> job and text deleted
  *
  * This loop is the only writer of `file_text_jobs` and `extracted_text`. Search
@@ -26,6 +27,7 @@ import {
   deleteTextSource,
   finishFileTextJob,
   getFileTextJob,
+  hasUnreadableParts,
   listAttachmentJobs,
   listFiledTextFiles,
   listMarkdownNotes,
@@ -265,9 +267,7 @@ export class FileTextRunner {
       const db = this.deps.getDb()
       const job = getFileTextJob(db, file)
       if (job?.signature === current.signature) {
-        if (job.status === 'failed' && this.isDueForRetry(job)) {
-          retryFileTextJob(db, file, this.deps.appVersion)
-        }
+        if (this.isDueForRetry(db, job, file)) retryFileTextJob(db, file, this.deps.appVersion)
         continue
       }
       startFileTextJob(db, file, current.signature, this.deps.appVersion)
@@ -275,11 +275,16 @@ export class FileTextRunner {
     }
   }
 
-  private isDueForRetry(job: FileTextJobRow): boolean {
-    return (
+  /**
+   * A failed job, or a finished one with pages it could not read, under
+   * another app version or a day after it last ran.
+   */
+  private isDueForRetry(db: IndexDb, job: FileTextJobRow, file: TextSourceRef): boolean {
+    if (job.status === 'pending') return false
+    const due =
       job.appVersion !== this.deps.appVersion ||
       Date.now() - Date.parse(job.updatedAt) >= RETRY_FAILED_AFTER_MS
-    )
+    return due && (job.status === 'failed' || hasUnreadableParts(db, file))
   }
 
   private async extract(file: TextFile, signature: string): Promise<void> {

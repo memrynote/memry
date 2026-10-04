@@ -4,6 +4,7 @@
  * English data ships in out/main/tessdata; nothing is fetched.
  */
 import { utilityProcess, type UtilityProcess } from 'electron'
+import { existsSync } from 'fs'
 import path from 'path'
 import { createLogger } from '../lib/logger'
 import { getLogShip } from '../telemetry/log-ship'
@@ -27,10 +28,24 @@ let child: UtilityProcess | null = null
 const pending = new Map<number, Pending>()
 let nextRequestId = 1
 let idleTimer: ReturnType<typeof setTimeout> | null = null
+let reportedMissingData = false
 
 /** asar-unpacked in a packaged build: Tesseract's own thread reads it with plain fs. */
 function languageDataDir(): string {
   return path.join(__dirname, 'tessdata').replace('app.asar', 'app.asar.unpacked')
+}
+
+/**
+ * Without its language data Tesseract does not fail; the request waits out
+ * RECOGNIZE_TIMEOUT_MS. Fail at once instead, and log it once per run.
+ */
+function assertLanguageData(): void {
+  if (existsSync(path.join(languageDataDir(), 'eng.traineddata.gz'))) return
+  if (!reportedMissingData) {
+    reportedMissingData = true
+    logger.error('OCR language data is missing; scanned pages and images stay unread')
+  }
+  throw new Error('OCR language data is missing')
 }
 
 function clearIdleTimer(): void {
@@ -111,6 +126,7 @@ function startWorker(): Promise<UtilityProcess> {
 
 /** The text Tesseract reads in `source`. One request at a time is the expected use. */
 export async function recognizeText(source: OcrImageSource): Promise<string> {
+  assertLanguageData()
   clearIdleTimer()
   worker ??= startWorker().catch((error: unknown) => {
     worker = null

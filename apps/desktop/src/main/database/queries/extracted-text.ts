@@ -146,9 +146,9 @@ export function startFileTextJob(
 }
 
 /**
- * Queue a failed job again. Its unreadable parts go and the job reads every
- * part it has no row for, so a gap before a good page is read too; the text it
- * did read stays.
+ * Queue a failed job, or a finished one with unreadable parts, again. Its
+ * unreadable parts go and the job reads every part it has no row for, so a gap
+ * before a good page is read too; the text it did read stays.
  */
 export function retryFileTextJob(db: IndexDb, ref: TextSourceRef, appVersion: string): void {
   db.transaction((tx) => {
@@ -211,6 +211,17 @@ export function storedExtractedParts(db: IndexDb, ref: TextSourceRef): Set<numbe
       .where(isSource(ref))
       .all()
       .map((row) => row.part)
+  )
+}
+
+export function hasUnreadableParts(db: IndexDb, ref: TextSourceRef): boolean {
+  return (
+    db
+      .select({ part: extractedText.part })
+      .from(extractedText)
+      .where(and(isSource(ref), eq(extractedText.method, 'unreadable')))
+      .limit(1)
+      .get() !== undefined
   )
 }
 

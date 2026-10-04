@@ -127,12 +127,25 @@ async function call<T>(script: string): Promise<T> {
           inFlight.delete(fail)
           resolve(value)
         },
-        (error: unknown) => fail(error instanceof Error ? error : new Error(String(error)))
+        (error: unknown) => fail(toError(error))
       )
     } catch (error) {
-      fail(error instanceof Error ? error : new Error(String(error)))
+      fail(toError(error))
     }
   })
+}
+
+/**
+ * pdfjs exceptions are not real Errors, so a rejection crosses from the page as
+ * a plain `{ name, message }` object. Keep its message.
+ */
+function toError(error: unknown): Error {
+  if (error instanceof Error) return error
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const { message } = error
+    if (typeof message === 'string' && message) return new Error(message)
+  }
+  return new Error(String(error))
 }
 
 /** `toMemryFileUrl` leaves these raw, and the protocol handler reads them as URL syntax. */
