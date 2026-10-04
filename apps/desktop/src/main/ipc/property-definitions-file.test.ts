@@ -31,6 +31,8 @@ vi.mock('../database', () => ({
   getIndexDatabase: () => state.indexDb!.db
 }))
 
+vi.mock('../projections', () => ({ publishProjectionEvent: vi.fn() }))
+
 vi.mock('../vault/property-definition-sync-effects', () => ({
   enqueuePropertyDefinitionUpsert: vi.fn(),
   enqueuePropertyDefinitionDelete: vi.fn(),
@@ -39,6 +41,7 @@ vi.mock('../vault/property-definition-sync-effects', () => ({
 
 import { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
 import { PropertyDefinitionsService } from '../vault/property-definitions'
+import { syncNoteToCache } from '../vault/note-sync'
 
 const invoke = (channel: string, input?: unknown): Promise<unknown> => {
   const handler = state.handlers.get(channel)
@@ -110,6 +113,38 @@ describe('property definitions reach .memry/properties.md', () => {
       { name: 'Stage', options: JSON.stringify(options) }
     ])
     expect(fileProperties()).toEqual({ Stage: { type: 'select', options } })
+  })
+
+  it('keeps the listed options after a note that uses the property is saved', async () => {
+    const options = [{ value: 'Draft', color: 'gray' }]
+    await invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, {
+      name: 'Stage',
+      type: 'select',
+      options
+    })
+    const content = '---\nStage: Draft\n---\nbody\n'
+    syncNoteToCache(
+      state.indexDb!.db as never,
+      {
+        id: 'note-1',
+        path: 'note-1.md',
+        fileContent: content,
+        parsedContent: 'body\n',
+        frontmatter: { Stage: 'Draft' },
+        title: 'note-1',
+        createdAt: '2026-01-15T12:00:00.000Z',
+        modifiedAt: '2026-01-15T12:00:00.000Z'
+      },
+      { isNew: true }
+    )
+
+    const listed = (await invoke(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS)) as Array<{
+      name: string
+      options: string | null
+    }>
+    expect(listed.map(({ name, options }) => ({ name, options }))).toEqual([
+      { name: 'Stage', options: JSON.stringify(options) }
+    ])
   })
 
   it('updates a definition that note indexing wrote only to the database', async () => {
