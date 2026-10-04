@@ -194,6 +194,8 @@ export const CaptureBar = ({
   const attachFiredByPointerRef = useRef(false)
   // The delayed blur below must not fire after the bar is gone.
   const scheduleTimeout = useTrackedTimeout()
+  // Bumped on every focus, so a blur timer from before a refocus is ignored.
+  const focusGenerationRef = useRef(0)
 
   const disabled = isBusy
   const trimmed = value.trim()
@@ -632,9 +634,18 @@ export const CaptureBar = ({
                   overlayRef.current.scrollTop = fieldRef.current.scrollTop
                 }
               }}
-              onFocus={() => setIsFocused(true)}
+              onFocus={() => {
+                focusGenerationRef.current += 1
+                setIsFocused(true)
+              }}
               // Delayed so clicks on the dropdown and the detail hint land first.
-              onBlur={() => scheduleTimeout(() => setIsFocused(false), 150)}
+              // A refocus inside the delay cancels it.
+              onBlur={() => {
+                const generation = focusGenerationRef.current
+                scheduleTimeout(() => {
+                  if (focusGenerationRef.current === generation) setIsFocused(false)
+                }, 150)
+              }}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               disabled={disabled}

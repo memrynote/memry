@@ -1120,6 +1120,19 @@ describe('CaptureBar — presets', () => {
     expect(onSubmit).toHaveBeenCalledWith('Someday', expect.objectContaining({ dueDate: null }))
   })
 
+  it('stays focused when the field is refocused inside the blur delay', async () => {
+    const user = userEvent.setup()
+    renderBar(<CaptureBar {...presetProps} onSubmit={vi.fn()} />)
+
+    await user.type(field(), 'Someday')
+    field().blur()
+    field().focus()
+    // Past the 150 ms blur delay: the stale blur must not drop the chip.
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
+    expect(screen.getByRole('button', { name: /^Due Today/ })).toBeInTheDocument()
+  })
+
   it('does not render without the presets prop', async () => {
     const user = userEvent.setup()
     renderBar(
