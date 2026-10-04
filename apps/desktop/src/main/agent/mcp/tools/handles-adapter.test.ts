@@ -254,7 +254,7 @@ describe('createVaultServiceHandles', () => {
         id: 'note-1',
         title: 'Alpha',
         snippet: '',
-        folder_path: '/work',
+        folder_path: 'work',
         file_type: 'markdown',
         icon: '🎬'
       },
@@ -262,7 +262,7 @@ describe('createVaultServiceHandles', () => {
         id: 'file-1',
         title: 'Scan',
         snippet: 'scan snippet',
-        folder_path: '/work',
+        folder_path: 'work',
         file_type: 'pdf'
       },
       {
@@ -299,7 +299,7 @@ describe('createVaultServiceHandles', () => {
       title: 'Alpha',
       content_markdown: 'Current',
       tags: ['Team'],
-      folder_path: '/work',
+      folder_path: 'work',
       frontmatter: { owner: 'Kaan' },
       file_type: 'markdown',
       icon: '📚'
@@ -418,7 +418,7 @@ describe('createVaultServiceHandles', () => {
     await expect(handles.notes.read('file-1')).resolves.toMatchObject({
       id: 'file-1',
       title: 'Scan',
-      folder_path: '/work',
+      folder_path: 'work',
       file_type: 'pdf'
     })
     expect(mocks.getNoteById).not.toHaveBeenCalled()
@@ -570,10 +570,15 @@ describe('createVaultServiceHandles', () => {
       ]
     })
 
-    await expect(handles.folders.list({ path: '/work', recursive: false })).resolves.toEqual([
-      { kind: 'folder', id: '/work/client', name: 'client', path: '/work/client' },
-      { kind: 'note', id: 'note-1', name: 'Client', path: '/work/client.md', icon: '💼' }
-    ])
+    const workChildren = [
+      { kind: 'folder', id: 'work/client', name: 'client', path: 'work/client' },
+      { kind: 'note', id: 'note-1', name: 'Client', path: 'work/client.md', icon: '💼' }
+    ]
+    await expect(handles.folders.list({ path: '/work', recursive: false })).resolves.toEqual(
+      workChildren
+    )
+    await expect(handles.folders.list({ path: 'work/' })).resolves.toEqual(workChildren)
+    await expect(handles.folders.list({ id: 'work' })).resolves.toEqual(workChildren)
     expect(mocks.listNotes).toHaveBeenCalledWith({
       folder: 'work',
       limit: 1000,
@@ -581,38 +586,57 @@ describe('createVaultServiceHandles', () => {
     })
 
     await expect(handles.folders.list({ path: '/', recursive: true })).resolves.toEqual([
-      { kind: 'folder', id: '/work', name: 'work', path: '/work' },
-      { kind: 'folder', id: '/work/client', name: 'client', path: '/work/client' },
+      { kind: 'folder', id: 'work', name: 'work', path: 'work' },
+      { kind: 'folder', id: 'work/client', name: 'client', path: 'work/client' },
       {
         kind: 'folder',
-        id: '/work/client/archive',
+        id: 'work/client/archive',
         name: 'archive',
-        path: '/work/client/archive'
+        path: 'work/client/archive'
       },
-      { kind: 'folder', id: '/personal', name: 'personal', path: '/personal' },
-      { kind: 'note', id: 'note-1', name: 'Client', path: '/work/client.md', icon: '💼' },
-      { kind: 'note', id: 'note-2', name: 'Deep', path: '/work/client/deep.md' }
+      { kind: 'folder', id: 'personal', name: 'personal', path: 'personal' },
+      { kind: 'note', id: 'note-1', name: 'Client', path: 'work/client.md', icon: '💼' },
+      { kind: 'note', id: 'note-2', name: 'Deep', path: 'work/client/deep.md' }
     ])
 
     await expect(handles.folders.list({ path: '/', recursive: false })).resolves.toEqual([
-      { kind: 'folder', id: '/work', name: 'work', path: '/work' },
-      { kind: 'folder', id: '/personal', name: 'personal', path: '/personal' }
+      { kind: 'folder', id: 'work', name: 'work', path: 'work' },
+      { kind: 'folder', id: 'personal', name: 'personal', path: 'personal' }
     ])
 
-    await expect(handles.folders.create('/planning')).resolves.toEqual({ path: '/planning' })
+    await expect(handles.folders.create('/planning')).resolves.toEqual({ path: 'planning' })
     expect(mocks.createFolder).toHaveBeenCalledWith('planning')
 
     await expect(
       handles.folders.rename({ old_path: '/planning', new_path: '/archive/planning' })
-    ).resolves.toEqual({ path: '/archive/planning' })
+    ).resolves.toEqual({ path: 'archive/planning' })
     expect(mocks.renameFolderCommand).toHaveBeenCalledWith('planning', 'archive/planning')
     expect(mocks.syncFolderConfigRename).toHaveBeenCalledWith('planning', 'archive/planning')
 
     await expect(handles.folders.delete('/archive/planning')).resolves.toEqual({
-      path: '/archive/planning'
+      path: 'archive/planning'
     })
     expect(mocks.deleteFolder).toHaveBeenCalledWith('archive/planning')
     expect(mocks.syncFolderConfigDelete).toHaveBeenCalledWith('archive/planning')
+  })
+
+  it('rejects a folder that does not exist and names its path, but lists an empty one', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getFolders.mockResolvedValue([{ path: 'projects' }, { path: 'projects/empty' }])
+    mocks.listNotes.mockReturnValue({ notes: [] })
+
+    await expect(handles.folders.list({ path: '/projects/old-name' })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      message:
+        'Folder not found: projects/old-name. List the vault root (omit path) to see the folders that exist.',
+      details: { path: 'projects/old-name' }
+    })
+    await expect(handles.folders.list({ id: 'archive' })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      details: { path: 'archive' }
+    })
+    await expect(handles.folders.list({ path: 'projects/empty' })).resolves.toEqual([])
   })
 
   it('maps task and project handles through the task domain', async () => {

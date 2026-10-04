@@ -50,6 +50,9 @@ final class EditorSession {
     /// Opens a tag's notes, for a tap on a `#tag` in a block. `nil` leaves the
     /// tap to place the caret, as on a page with no stack to push onto.
     @ObservationIgnored var openTag: ((String) -> Void)?
+    /// Schedules a vault sync pass (`requestVaultSync`), so a write reaches
+    /// other devices without waiting for the next foreground or launch.
+    @ObservationIgnored var requestSync: (@MainActor () -> Void)?
 
     // MARK: State the toolbar draws
 
@@ -79,6 +82,8 @@ final class EditorSession {
     /// The block that chip is in, which need not have the caret.
     @ObservationIgnored private weak var dateEditField: BlockField?
     private(set) var linkRequest: LinkBlockRequest?
+    /// A block whose source sheet is open (`BlockSourceSheet`).
+    private(set) var sourceEdit: BlockSourceRequest?
     let history = EditorUndoStack()
 
     @ObservationIgnored weak var field: BlockField?
@@ -577,6 +582,33 @@ final class EditorSession {
             await self?.model?.insertDateMention(
                 in: blockId, from: start, to: start + 1, value: value, anchorId: request.anchorId
             )
+        }
+    }
+
+    // MARK: Source blocks
+
+    /// Opens the source sheet for a math block.
+    func editSource(_ request: BlockSourceRequest) {
+        dismissKeyboard()
+        sourceEdit = request
+    }
+
+    func cancelSourceEdit() {
+        sourceEdit = nil
+    }
+
+    /// The sheet's Done: the source is written once, as desktop writes it
+    /// when its popover closes, and only when it changed.
+    func saveSource(_ text: String) {
+        guard let request = sourceEdit else { return }
+        sourceEdit = nil
+        guard text != request.source else { return }
+        runBlockAction { [weak self] model in
+            await model.setProp(request.blockId, "latex", text)
+            self?.history.record(.prop(
+                blockId: request.blockId, name: "latex", from: request.source, to: text, label: "Equation"
+            ))
+            self?.requestSync?()
         }
     }
 
