@@ -118,6 +118,7 @@ vi.mock('../../../sync/crdt-feed', () => ({
 }))
 
 import { createVaultServiceHandles } from './handles-adapter'
+import { buildWriteTools } from './write-tools'
 
 const deps = {
   dataDb: {} as never,
@@ -543,6 +544,53 @@ describe('createVaultServiceHandles', () => {
 
     await handles.notes.removeTag({ id: 'note-1', tag: 'TEAM' })
     expect(mocks.replaceNoteTagsInCrdt).toHaveBeenLastCalledWith('note-1', [])
+  })
+
+  it('answers every note write with the note as stored', async () => {
+    const tools = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+      approved: true
+    }))
+    const call = (name: string, input: unknown) =>
+      tools.find((tool) => tool.name === name)!.handler(input, { writeGrant: 'g', windowId: null })
+
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      title: 'Alpha',
+      path: 'work/alpha.md',
+      fileType: 'markdown'
+    })
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-1',
+      title: 'Alpha',
+      content: 'Stored café',
+      tags: ['team'],
+      path: 'work/alpha.md',
+      frontmatter: { status: 'draft' },
+      properties: { status: 'draft' }
+    })
+    mocks.createNoteCommand.mockResolvedValue({ id: 'note-1' })
+    mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: ['team'] })
+
+    const stored = {
+      id: 'note-1',
+      title: 'Alpha',
+      folder_path: 'work',
+      tags: ['team'],
+      properties: { status: 'draft' },
+      body_bytes: 12,
+      body_sha256: '58edf4ff6da83112bfbc527a1cd7eac61548c7a68670feffb2463e9f94f64b40'
+    }
+    const writes: [string, unknown][] = [
+      ['vault_create_note', { title: 'Alpha', content_markdown: 'Sent café' }],
+      ['vault_rename_note', { id: 'note-1', title: 'Alpha' }],
+      ['vault_update_note', { id: 'note-1', mode: 'replace', content_markdown: 'Sent café' }],
+      ['vault_add_tag', { id: 'note-1', kind: 'note', tag: 'team' }],
+      ['vault_remove_tag', { id: 'note-1', kind: 'note', tag: 'other' }],
+      ['vault_move_to_folder', { id: 'note-1', folder_path: 'work' }]
+    ]
+    for (const [name, input] of writes) {
+      await expect(call(name, input), name).resolves.toEqual(stored)
+    }
   })
 
   it('returns null when the note cache has no row for the id', async () => {

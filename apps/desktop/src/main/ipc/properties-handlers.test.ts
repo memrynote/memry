@@ -139,12 +139,18 @@ describe('properties IPC handlers', () => {
     ])
     expect(mocks.getNoteProperties).toHaveBeenCalledWith({ id: 'index-db' }, 'note-1')
 
+    mocks.getNoteProperties
+      .mockReturnValueOnce([
+        { name: 'Status', value: 'Draft', type: 'text' },
+        { name: 'Owner', value: 'Kaan', type: 'text' }
+      ])
+      .mockReturnValueOnce([{ name: 'Status', value: 'Done', type: 'text' }])
     await expect(
       invoke(PropertiesChannels.invoke.SET, {
         entityId: 'note-1',
         properties: { Status: 'Done' }
       })
-    ).resolves.toEqual({ success: true })
+    ).resolves.toEqual({ success: true, properties: { Status: 'Done' }, removed: ['Owner'] })
 
     expect(mocks.updateNote).toHaveBeenCalledWith({
       id: 'note-1',

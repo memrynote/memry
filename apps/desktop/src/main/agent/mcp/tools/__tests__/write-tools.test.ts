@@ -198,6 +198,26 @@ describe('Write tools — P1 deny-by-default', () => {
     ).rejects.toMatchObject({ code: 'VALIDATION' })
   })
 
+  it('rejects a desktop call with more arguments than the operation takes, before the gate', async () => {
+    const gate = vi.fn<WriteToolGate>(async () => ({ approved: true }))
+    const t = buildWriteTools(handles, gate).find((x) => x.name === 'vault_desktop_write')!
+    await expect(
+      t.handler(
+        {
+          operation: 'notes.createPropertyDefinition',
+          args: [{ name: 'mood', type: 'select' }, null, { options: [{ value: 'Calm' }] }]
+        },
+        { writeGrant: 'turn-grant-1', windowId: 'w1' }
+      )
+    ).rejects.toMatchObject({
+      code: 'VALIDATION',
+      message:
+        'notes.createPropertyDefinition takes 1 argument (input), but this call passed 3. ' +
+        'Nothing was run.'
+    })
+    expect(gate).not.toHaveBeenCalled()
+  })
+
   it('forwards to handles when a gate approves', async () => {
     const gate: WriteToolGate = async () => ({ approved: true, args: undefined })
     const withGate = buildWriteTools(handles, gate)
