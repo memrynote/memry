@@ -79,6 +79,8 @@ vi.mock('./local-mutations', () => ({
 
 import {
   cancelPendingWritebacks,
+  cancelWriteback,
+  getWritebackStateSizes,
   resetWritebackState,
   scheduleWriteback,
   writebackNow
@@ -246,5 +248,19 @@ describe('the version a write-back keeps of the bytes it replaces (#2646)', () =
     await pass(noteId, await docWith('The slow red fox'), 'remote')
 
     expect(h.files.get(fileOf(noteId))).toBe(after)
+  })
+
+  it('forgets the bytes it wrote for a note once the note is purged or the vault closes', async () => {
+    writtenElsewhere(NOTE, '---\nid: x\n---\nThe quick brown fox\n')
+    writtenElsewhere(JOURNAL, '---\nid: x\n---\nThe quick brown fox\n')
+    await pass(NOTE, await docWith('The slow red fox'), 'remote')
+    await pass(JOURNAL, await docWith('The slow red fox'), 'remote')
+    expect(getWritebackStateSizes().lastWrittenHashes).toBe(2)
+
+    cancelWriteback(NOTE)
+    expect(getWritebackStateSizes().lastWrittenHashes).toBe(1)
+
+    resetWritebackState()
+    expect(getWritebackStateSizes().lastWrittenHashes).toBe(0)
   })
 })

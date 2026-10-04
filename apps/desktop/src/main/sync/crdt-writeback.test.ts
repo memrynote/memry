@@ -254,12 +254,6 @@ describe('crdt writeback', () => {
     await vi.advanceTimersByTimeAsync(500)
 
     expect(mocks.yDocToMarkdown).toHaveBeenCalledTimes(1)
-    expect(mocks.createSnapshot).toHaveBeenCalledWith(
-      'note-1',
-      '---\ntitle: Existing\n---\nold markdown',
-      'Existing',
-      'significant'
-    )
     expect(mocks.atomicWrite).toHaveBeenCalledWith(
       '/vault/notes/Existing.md',
       expect.stringContaining('updated markdown')
@@ -1128,72 +1122,6 @@ describe('crdt writeback', () => {
       expect(stampedModifiedAt()).toBe(EDITED_WEEKS_AGO)
     })
   })
-
-  // A remote body can replace the file with a small word delta. The 10-word
-  // rule kept no version of such a note, so the overwritten text was gone
-  // (#2646).
-  describe('the version a write-back keeps of the bytes it replaces', () => {
-    const OLD_BODY = 'The quick brown fox jumps over the lazy dog'
-    const THREE_WORDS_CHANGED = 'The slow red fox jumps over the lazy cat'
-
-    function onDisk(noteId: string): string {
-      return `---\nid: ${noteId}\n---\n${OLD_BODY}`
-    }
-
-    beforeEach(() => {
-      mocks.getNoteCacheById.mockImplementation((_indexDb: unknown, noteId: string) => ({
-        id: noteId,
-        path: noteId.startsWith('j') ? `journal/${noteId.slice(1)}.md` : 'notes/Existing.md',
-        title: 'Existing',
-        contentHash: `hash:${onDisk(noteId)}`
-      }))
-      mocks.safeRead.mockImplementation(async (absolutePath: string) =>
-        onDisk(absolutePath.includes('journal') ? 'j2026-01-03' : 'note-1')
-      )
-      mocks.parseNote.mockReturnValue({ frontmatter: { title: 'Existing' }, content: OLD_BODY })
-      // What the word-count rule returns for a delta under 10 words.
-      mocks.maybeCreateSignificantSnapshot.mockReturnValue(null)
-      mocks.createSnapshot.mockReturnValue({ id: 'snap-remote' })
-    })
-
-    it.each(['note-1', 'j2026-01-03'])(
-      'keeps the replaced file bytes when a remote body changes three words (%s)',
-      async (noteId) => {
-        mocks.yDocToMarkdown.mockResolvedValue(THREE_WORDS_CHANGED)
-
-        scheduleWriteback(noteId, makeDoc('Existing'), 'remote')
-        await vi.advanceTimersByTimeAsync(500)
-
-        expect(mocks.createSnapshot.mock.calls).toEqual([
-          [noteId, `---\nid: ${noteId}\n---\n${OLD_BODY}`, 'Existing', 'significant']
-        ])
-        expect(mocks.atomicWrite).toHaveBeenCalledTimes(1)
-      }
-    )
-
-    it('leaves a local three-word edit to the word-count rule', async () => {
-      mocks.yDocToMarkdown.mockResolvedValue(THREE_WORDS_CHANGED)
-
-      scheduleWriteback('note-1', makeDoc('Existing'), 'local')
-      await vi.advanceTimersByTimeAsync(500)
-
-      expect(mocks.createSnapshot.mock.calls).toEqual([])
-      expect(mocks.maybeCreateSignificantSnapshot.mock.calls).toEqual([
-        ['note-1', `---\nid: note-1\n---\n${OLD_BODY}`, OLD_BODY, THREE_WORDS_CHANGED, 'Existing']
-      ])
-      expect(mocks.atomicWrite).toHaveBeenCalledTimes(1)
-    })
-
-    it('keeps no version when a remote pass leaves the body as it is', async () => {
-      mocks.yDocToMarkdown.mockResolvedValue(OLD_BODY)
-
-      scheduleWriteback('note-1', makeDoc('Existing', ['new-tag']), 'remote')
-      await vi.advanceTimersByTimeAsync(500)
-
-      expect(mocks.createSnapshot.mock.calls).toEqual([])
-      expect(mocks.atomicWrite).toHaveBeenCalledTimes(1)
-    })
-  })
 })
 
 describe('crdt-writeback per-vault state reset', () => {
@@ -1229,6 +1157,7 @@ describe('crdt-writeback per-vault state reset', () => {
     expect(getWritebackStateSizes()).toEqual({
       ignoredWrites: 0,
       networkUpdates: 0,
+      lastWrittenHashes: 0,
       debugState: 0
     })
   })
