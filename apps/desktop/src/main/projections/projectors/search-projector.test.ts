@@ -668,4 +668,32 @@ describe('search projector', () => {
     await projector.project({ type: 'note.text-extracted', noteId: 'pdf-1' })
     expect(searchHeron()).toEqual([])
   })
+
+  it('finds a note by the text read out of an image in its attachments folder', async () => {
+    seedMarkdownNote('note-1', 'notes/searchable.md', 'Body about the meeting', ['alpha'])
+    indexDb.db.run(sql`
+      INSERT INTO extracted_text (note_id, source, part, method, text)
+      VALUES ('note-1', 'whiteboard.png', 1, 'ocr', 'zephyr milestone ships in June')
+    `)
+    const projector = createSearchProjector(() => vaultDir)
+    const search = (text: string): string[] =>
+      searchAll(indexDb.db as never, dataDb.db as never, {
+        text,
+        types: ['note'],
+        tags: [],
+        dateRange: null,
+        projectId: null,
+        folderPath: null,
+        limit: 10,
+        offset: 0
+      }).groups.flatMap((group) => group.results.map((result) => result.id))
+
+    await projector.project({ type: 'note.text-extracted', noteId: 'note-1' })
+
+    expect(search('zephyr')).toEqual(['note-1'])
+    expect(search('meeting')).toEqual(['note-1'])
+
+    await projector.rebuild()
+    expect(search('zephyr')).toEqual(['note-1'])
+  })
 })

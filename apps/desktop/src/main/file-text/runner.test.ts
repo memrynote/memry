@@ -353,6 +353,63 @@ describe('FileTextRunner', () => {
     ])
   })
 
+  it('re-reads every unreadable page of a retried PDF, including one before a good page', async () => {
+    seedFile(harness, 'pdf-1', 'scan.pdf', 'pdf')
+    harness.pages = [
+      { layer: 'one' },
+      { fails: true },
+      { layer: 'three' },
+      { fails: true },
+      { fails: true },
+      { fails: true }
+    ]
+    const first = start()
+    await settled(harness.db, 'pdf-1', 'failed')
+    await first.stop()
+
+    harness.pages = [
+      { layer: 'not read again' },
+      { scanned: 'two' },
+      { layer: 'not read again' },
+      { scanned: 'four' },
+      { scanned: 'five' },
+      { scanned: 'six' }
+    ]
+    start({ appVersion: '1.0.1' })
+    await settled(harness.db, 'pdf-1', 'done')
+
+    expect(pagesOf(harness.db, 'pdf-1').map((page) => page.text)).toEqual([
+      'one',
+      'two',
+      'three',
+      'four',
+      'five',
+      'six'
+    ])
+  })
+
+  it('reads the images and PDFs in a note attachments folder into that note', async () => {
+    harness.db.run(sql`
+      INSERT INTO note_cache (id, path, title, created_at, modified_at)
+      VALUES ('md-1', 'notes/plan.md', 'Plan', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+    `)
+    const attachments = path.join(vaultDir, 'attachments', 'md-1')
+    fs.mkdirSync(attachments, { recursive: true })
+    fs.writeFileSync(path.join(attachments, 'shot.png'), 'png bytes')
+    fs.writeFileSync(path.join(attachments, 'notes.txt'), 'not an image')
+    harness.imageText = 'Pasted screenshot text'
+
+    const runner = start()
+    await vi.waitFor(() =>
+      expect(getExtractedText(harness.db, 'md-1')).toBe('Pasted screenshot text')
+    )
+    expect(harness.changed).toContain('md-1')
+
+    fs.rmSync(path.join(attachments, 'shot.png'))
+    runner.noteChanged('md-1')
+    await vi.waitFor(() => expect(getExtractedText(harness.db, 'md-1')).toBe(''))
+  })
+
   it('pages a long text out in chunks a reader can continue from', async () => {
     seedFile(harness, 'pdf-1', 'long.pdf', 'pdf')
     harness.pages = [
