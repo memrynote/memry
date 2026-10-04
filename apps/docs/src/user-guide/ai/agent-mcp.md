@@ -569,7 +569,8 @@ valid JSON on its own.
 `args` are the operation's positional arguments. A call that passes more arguments than the
 operation takes fails with a `VALIDATION` error that names the parameters, before the approval
 prompt, and nothing runs. Options go inside the operation's input object, never in an extra
-argument. A desktop write whose reply carries no record (adding an inbox tag, changing a setting, a
+argument. A key inside an input object that the operation does not take fails the same way and is
+named in the error, for example `notes.createPropertyDefinition does not take optionz`. A desktop write whose reply carries no record (adding an inbox tag, changing a setting, a
 property option, a tag color) gets a `stored` field with the record read back after the write.
 
 `properties.set(entityId, properties)` replaces the entity's whole property record. It does not

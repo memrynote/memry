@@ -27,7 +27,8 @@ import { tagsApi } from '../../../../../preload/api/tags'
 import { vaultApi } from '../../../../../preload/api/vault'
 import { ipcMain } from 'electron'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
-import { createValidatedHandler, recordIpcInputSchemas } from '../../../../ipc/validate'
+import { createValidatedHandler } from '../../../../ipc/validate'
+import { installIpcChannelLabels } from '../../../../ipc/lib/ipc-channel-labels'
 import { CreatePropertyDefinitionSchema } from '../../../../ipc/notes-schemas'
 import { assertDesktopApiArgs, desktopOperationParams } from '../desktop-api-params'
 import { desktopWriteReadback } from '../desktop-api-readback'
@@ -97,7 +98,7 @@ describe('desktop API parameter lists', () => {
   })
 
   it('refuse a key inside an input object that the IPC handler would drop', () => {
-    recordIpcInputSchemas()
+    installIpcChannelLabels()
     ipcMain.handle(
       NotesChannels.invoke.CREATE_PROPERTY_DEFINITION,
       createValidatedHandler(CreatePropertyDefinitionSchema, async () => ({ success: true }))

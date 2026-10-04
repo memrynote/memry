@@ -61,6 +61,17 @@ export const setIpcHandlerChannel = (listener: unknown, channel: unknown): void 
   if (typeof listener !== 'function') return
   if (typeof channel !== 'string' || channel.length === 0) return
   channelByListener.set(listener, channel)
+  const schema = listenerSchemas.get(listener)
+  if (schema) channelSchemas.set(channel, schema)
+}
+
+// Every validated handler's input schema by channel, so the agent desktop API
+// can refuse a key the handler would silently drop before the call runs.
+const listenerSchemas = new WeakMap<object, z.ZodType>()
+const channelSchemas = new Map<string, z.ZodType>()
+
+export function ipcInputSchema(channel: string): z.ZodType | undefined {
+  return channelSchemas.get(channel)
 }
 
 // Channel first, then the inner handler's own name (named handlers already
@@ -147,6 +158,7 @@ export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
       throw error instanceof Error ? new Error(error.message) : new Error('Something went wrong')
     }
   }
+  listenerSchemas.set(listener, schema)
   return listener
 }
 
