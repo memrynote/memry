@@ -222,10 +222,13 @@ struct NoteBlockView: View {
         case "codeBlock":
             CodeRow(language: value("language"), text: plainText)
         case "diagram":
-            // A Mermaid diagram's source. Desktop renders the picture with
-            // mermaid, which this build does not carry; the source is the
-            // whole of the block, so it is shown rather than a blank.
-            CodeRow(language: "mermaid", text: plainText)
+            // `content: plain`: the Mermaid source is the block's text.
+            let source = plainText
+            DiagramBlockView(source: source, edit: editing.flatMap { editing in
+                block.id.map { id in
+                    { editing.session.editSource(BlockSourceRequest(blockId: id, source: source, kind: .diagram)) }
+                }
+            })
         case "mathBlock":
             // `content: none`: the formula is the `latex` prop.
             let latex = value("latex") ?? ""
