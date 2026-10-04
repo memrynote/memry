@@ -123,7 +123,8 @@ import { createVaultServiceHandles } from './handles-adapter'
 
 const deps = {
   dataDb: {} as never,
-  indexDb: {} as never
+  // Real tables, empty: reading a markdown note looks up its attachment text.
+  indexDb: createTestIndexDb().db as never
 }
 
 describe('createVaultServiceHandles', () => {
@@ -499,6 +500,50 @@ describe('createVaultServiceHandles', () => {
       content_markdown: 'Body',
       file_type: 'markdown'
     })
+  })
+
+  it('adds the text read from the attachments a markdown note embeds', async () => {
+    const index = createTestIndexDb()
+    try {
+      index.db.run(sql`
+        INSERT INTO note_cache (id, path, title, created_at, modified_at)
+        VALUES ('note-1', 'trip.md', 'Trip', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+      `)
+      index.db.run(sql`
+        INSERT INTO extracted_text (note_id, source, part, method, text) VALUES
+          ('note-1', 'ab12cd-ticket.png', 1, 'ocr', 'Ferry 7:40'),
+          ('note-1', 'ef34gh-map.pdf', 1, 'pdf-text', 'Estuary map'),
+          ('note-1', 'ef34gh-map.pdf', 2, 'ocr', 'Legend')
+      `)
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Trip',
+        path: 'trip.md',
+        fileType: 'markdown'
+      })
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Trip',
+        content: 'Packing list',
+        tags: [],
+        path: 'trip.md',
+        frontmatter: {},
+        emoji: null
+      })
+      const handles = createVaultServiceHandles({ ...deps, indexDb: index.db as never })
+
+      const note = await handles.notes.read('note-1')
+      expect(note).toMatchObject({
+        content_markdown: 'Packing list',
+        attachment_text: [
+          { file: 'ab12cd-ticket.png', text: 'Ferry 7:40' },
+          { file: 'ef34gh-map.pdf', text: 'Estuary map\n\nLegend' }
+        ]
+      })
+      expect(note).not.toHaveProperty('attachment_text_truncated')
+    } finally {
+      index.close()
+    }
   })
 
   it('refuses to overwrite a filed binary with markdown', async () => {

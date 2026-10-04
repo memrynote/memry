@@ -63,6 +63,36 @@ function syncExtractedTextEntry(indexDb: IndexDb, noteId: string, title: string)
   }
 }
 
+/** A markdown note's searchable body: its text, then the text read from its attachments. */
+function withAttachmentText(indexDb: IndexDb, noteId: string, content: string): string {
+  const extracted = getExtractedText(indexDb, noteId)
+  return extracted ? `${content}\n\n${extracted}` : content
+}
+
+function noteTags(indexDb: IndexDb, noteId: string): string[] {
+  return indexDb
+    .all<{ tag: string }>(sql`SELECT tag FROM note_tags WHERE note_id = ${noteId}`)
+    .map((row) => row.tag)
+}
+
+/** Text read from a markdown note's attachments changed: index the note again. */
+async function reindexMarkdownNote(
+  indexDb: IndexDb,
+  vaultPath: string | null,
+  note: { id: string; path: string; title: string }
+): Promise<void> {
+  if (!vaultPath) return
+  let raw: string
+  try {
+    raw = await fs.readFile(path.join(vaultPath, note.path), 'utf-8')
+  } catch (error) {
+    logger.warn('Failed to read note for attachment text', { noteId: note.id, error })
+    return
+  }
+  const content = withAttachmentText(indexDb, note.id, parseNote(raw, note.path).content)
+  insertFtsNote(indexDb, note.id, note.title, content, noteTags(indexDb, note.id))
+}
+
 function upsertTask(taskId: string): void {
   const dataDb = getDatabase()
   const task = dataDb.get<{ id: string; title: string; description: string | null }>(sql`
@@ -156,7 +186,7 @@ async function rebuildNotes(getVaultPath: () => string | null): Promise<number> 
         indexDb,
         row.id,
         row.title,
-        parsed.content,
+        withAttachmentText(indexDb, row.id, parsed.content),
         tagsByNote.get(row.id) ?? []
       )
       indexed++
@@ -370,18 +400,16 @@ async function reconcileNotes(
         break
       }
 
-      const parsed = parseNote(raw, row.path)
-      const tags = indexDb
-        .all<{ tag: string }>(sql`SELECT tag FROM note_tags WHERE note_id = ${row.id}`)
-        .map((tagRow) => tagRow.tag)
+      const content = withAttachmentText(indexDb, row.id, parseNote(raw, row.path).content)
+      const tags = noteTags(indexDb, row.id)
 
       // `indexedIds` was taken after the dedupe and orphan sweeps and nothing
       // else writes this table during the pass, so it is authoritative: absent
       // means absent, and skipping the scan keeps a cold-index backfill linear.
       if (indexedIds.has(row.id)) {
-        insertFtsNote(indexDb, row.id, row.title, parsed.content, tags)
+        insertFtsNote(indexDb, row.id, row.title, content, tags)
       } else {
-        insertFtsNoteUnchecked(indexDb, row.id, row.title, parsed.content, tags)
+        insertFtsNoteUnchecked(indexDb, row.id, row.title, content, tags)
       }
       indexed++
     } catch (error) {
@@ -527,11 +555,12 @@ export function createSearchProjector(getVaultPath: () => string | null): Projec
             return
           }
 
+          const indexDb = getIndexDatabase()
           insertFtsNote(
-            getIndexDatabase(),
+            indexDb,
             event.note.noteId,
             event.note.title,
-            event.note.parsedContent,
+            withAttachmentText(indexDb, event.note.noteId, event.note.parsedContent),
             event.note.tags
           )
           return
@@ -542,7 +571,10 @@ export function createSearchProjector(getVaultPath: () => string | null): Projec
         case 'note.text-extracted': {
           const indexDb = getIndexDatabase()
           const note = getNoteCacheById(indexDb, event.noteId)
-          if (note && note.fileType !== 'markdown') {
+          if (!note) return
+          if (note.fileType === 'markdown') {
+            await reindexMarkdownNote(indexDb, getVaultPath(), note)
+          } else {
             syncExtractedTextEntry(indexDb, note.id, note.title)
           }
           return

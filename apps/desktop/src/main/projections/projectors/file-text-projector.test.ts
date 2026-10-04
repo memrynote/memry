@@ -20,7 +20,7 @@ function fileEvent(noteId: string, fileType: FileNoteProjection['fileType']) {
 }
 
 describe('file text projector', () => {
-  it('passes on filed PDFs and images, and no other file type', async () => {
+  it('passes on filed PDFs and images, markdown notes, and no other file type', async () => {
     const changed: string[] = []
     const projector = createFileTextProjector((noteId) => changed.push(noteId))
 
@@ -32,9 +32,13 @@ describe('file text projector', () => {
     ]) {
       await projector.project(event)
     }
+    await projector.project({
+      type: 'note.upserted',
+      note: { ...fileEvent('plan', 'pdf').note, kind: 'markdown', fileType: 'markdown' } as never
+    })
     await projector.project({ type: 'note.deleted', noteId: 'scan' })
 
-    expect(changed).toEqual(['scan', 'photo'])
+    expect(changed).toEqual(['scan', 'photo', 'plan'])
     expect(projector.handles({ type: 'note.deleted', noteId: 'scan' })).toBe(false)
     expect(projector.handles(fileEvent('scan', 'pdf'))).toBe(true)
   })

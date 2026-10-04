@@ -5,7 +5,7 @@ import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { getDatabase, getIndexDatabase, getRawIndexDatabase } from '../../database'
 import { getSetting, setSetting } from '@main/database/queries/settings'
 import { getNoteCacheById } from '@main/database/queries/notes'
-import { readExtractedPages } from '@main/database/queries/extracted-text'
+import { readExtractedOpening } from '@main/database/queries/extracted-text'
 import { parseNote } from '../../vault/frontmatter'
 import {
   generateEmbedding as generateLocalEmbedding,
@@ -79,18 +79,27 @@ const EMBEDDABLE_NOTES = sql`
 `
 
 /** The opening of a file's extracted text: all the embedding input ever reads. */
-function readExtractedOpening(noteId: string): string {
-  return readExtractedPages(getIndexDatabase(), noteId, 1, MAX_EMBEDDING_INPUT_LENGTH)
-    .pages.map((page) => page.text)
-    .join('\n\n')
+function readFileTextOpening(noteId: string): string {
+  return readExtractedOpening(getIndexDatabase(), noteId, MAX_EMBEDDING_INPUT_LENGTH)
+}
+
+/**
+ * A markdown note's body, then the opening of the text read from its
+ * attachments, so a note that is mostly a pasted screenshot still has a vector.
+ */
+function withAttachmentText(noteId: string, content: string): string {
+  const room = MAX_EMBEDDING_INPUT_LENGTH - content.length
+  if (room <= 0) return content
+  const extracted = readExtractedOpening(getIndexDatabase(), noteId, room)
+  return extracted ? `${content}\n\n${extracted}` : content
 }
 
 async function readEmbeddableContent(vaultPath: string, note: EmbeddableNote): Promise<string> {
   if (note.fileType && note.fileType !== 'markdown') {
-    return readExtractedOpening(note.id)
+    return readFileTextOpening(note.id)
   }
   const raw = await fs.readFile(path.join(vaultPath, note.path), 'utf-8')
-  return parseNote(raw, note.path).content
+  return withAttachmentText(note.id, parseNote(raw, note.path).content)
 }
 
 async function updateEmbedding(noteId: string, content: string): Promise<boolean> {
@@ -223,7 +232,7 @@ export function createEmbeddingProjector(
   }
 
   const embedFileText = async (noteId: string, title: string): Promise<void> => {
-    const content = readExtractedOpening(noteId)
+    const content = readFileTextOpening(noteId)
     if (!content) {
       deleteNoteEmbedding(noteId)
       pendingEmbedding.delete(noteId)
@@ -261,8 +270,22 @@ export function createEmbeddingProjector(
 
       if (event.type === 'note.text-extracted') {
         const note = getNoteCacheById(getIndexDatabase(), event.noteId)
-        if (note && note.fileType !== 'markdown') {
+        if (!note) return
+        if (note.fileType !== 'markdown') {
           await embedFileText(note.id, note.title)
+          return
+        }
+        // Text read from the note's attachments changed.
+        const vaultPath = getVaultPath()
+        if (isIndexing()) {
+          pendingEmbedding.add(note.id)
+        } else if (vaultPath) {
+          try {
+            const content = await readEmbeddableContent(vaultPath, note)
+            await updateEmbedding(note.id, buildEmbeddingInput({ title: note.title, content }))
+          } catch (error) {
+            logger.warn('Failed to embed attachment text', { noteId: note.id, error })
+          }
         }
         return
       }
@@ -297,7 +320,10 @@ export function createEmbeddingProjector(
 
       await updateEmbedding(
         note.noteId,
-        buildEmbeddingInput({ title: note.title, content: note.parsedContent })
+        buildEmbeddingInput({
+          title: note.title,
+          content: withAttachmentText(note.noteId, note.parsedContent)
+        })
       )
     },
 

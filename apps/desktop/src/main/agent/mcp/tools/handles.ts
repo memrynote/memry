@@ -54,6 +54,13 @@ export interface NoteFull {
   icon?: string | null
   /** Set for a filed PDF or image instead of `content_markdown`. */
   extracted_text?: ExtractedTextReply
+  /**
+   * Text read on this device from the PDFs and images in a markdown note's
+   * attachments folder that the note embeds, one entry per file, about 100 KB
+   * at most.
+   */
+  attachment_text?: Array<{ file: string; text: string }>
+  attachment_text_truncated?: true
 }
 
 export interface FolderEntry {

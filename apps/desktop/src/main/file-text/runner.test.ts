@@ -94,8 +94,13 @@ function pagesOf(db: IndexDb, id: string): Array<{ part: number; method: string;
   )
 }
 
+/** The job of a filed file's own text. */
+function jobOf(db: IndexDb, id: string): ReturnType<typeof getFileTextJob> {
+  return getFileTextJob(db, { noteId: id, source: '' })
+}
+
 async function settled(db: IndexDb, id: string, status: 'done' | 'failed'): Promise<void> {
-  await vi.waitFor(() => expect(getFileTextJob(db, id)?.status).toBe(status))
+  await vi.waitFor(() => expect(jobOf(db, id)?.status).toBe(status))
 }
 
 describe('FileTextRunner', () => {
@@ -138,7 +143,7 @@ describe('FileTextRunner', () => {
     expect(getExtractedText(harness.db, 'pdf-1')).toBe(
       'Lighthouse keepers\n\nlog\n\nHeron migration'
     )
-    expect(getFileTextJob(harness.db, 'pdf-1')?.pageCount).toBe(2)
+    expect(jobOf(harness.db, 'pdf-1')?.pageCount).toBe(2)
     expect(harness.changed.at(-1)).toBe('pdf-1')
   })
 
@@ -152,7 +157,7 @@ describe('FileTextRunner', () => {
     expect(pagesOf(harness.db, 'img-1')).toEqual([
       { part: 1, method: 'ocr', text: 'Quarterly plan' }
     ])
-    expect(getFileTextJob(harness.db, 'img-1')?.pageCount).toBe(1)
+    expect(jobOf(harness.db, 'img-1')?.pageCount).toBe(1)
   })
 
   it('leaves audio files alone', async () => {
@@ -163,7 +168,7 @@ describe('FileTextRunner', () => {
     start()
     await settled(harness.db, 'img-1', 'done')
 
-    expect(getFileTextJob(harness.db, 'audio-1')).toBeUndefined()
+    expect(jobOf(harness.db, 'audio-1')).toBeUndefined()
   })
 
   it('resumes after the last stored page when stopped mid-file', async () => {
@@ -176,7 +181,7 @@ describe('FileTextRunner', () => {
     await first.stop()
 
     expect(pagesOf(harness.db, 'pdf-1').map((page) => page.part)).toEqual([1])
-    expect(getFileTextJob(harness.db, 'pdf-1')?.status).toBe('pending')
+    expect(jobOf(harness.db, 'pdf-1')?.status).toBe('pending')
 
     harness.pages = [{ layer: 'read again' }, { layer: 'chapter two' }, { layer: 'chapter three' }]
     start()
@@ -237,7 +242,7 @@ describe('FileTextRunner', () => {
       'unreadable',
       'unreadable'
     ])
-    expect(getFileTextJob(harness.db, 'pdf-1')?.error).toBe('Pages up to 3 could not be read')
+    expect(jobOf(harness.db, 'pdf-1')?.error).toBe('Pages up to 3 could not be read')
   })
 
   it('fails a PDF that cannot be opened and moves on to the next file', async () => {
@@ -252,7 +257,7 @@ describe('FileTextRunner', () => {
     })
     await settled(harness.db, 'img-1', 'done')
 
-    expect(getFileTextJob(harness.db, 'pdf-1')).toMatchObject({
+    expect(jobOf(harness.db, 'pdf-1')).toMatchObject({
       status: 'failed',
       error: 'Password required'
     })
@@ -270,7 +275,7 @@ describe('FileTextRunner', () => {
     })
     await settled(harness.db, 'b-img', 'failed')
 
-    expect(getFileTextJob(harness.db, 'b-img')?.error).toBe('File not found')
+    expect(jobOf(harness.db, 'b-img')?.error).toBe('File not found')
     expect(getExtractedText(harness.db, 'a-img')).toBe('first file')
   })
 
@@ -289,7 +294,7 @@ describe('FileTextRunner', () => {
         return 'new words'
       }
     })
-    await vi.waitFor(() => expect(getFileTextJob(harness.db, 'b-img')?.status).toBe('done'), {
+    await vi.waitFor(() => expect(jobOf(harness.db, 'b-img')?.status).toBe('done'), {
       timeout: 5_000
     })
     seedFile(harness, 'c-img', 'third.png', 'image')
@@ -339,7 +344,7 @@ describe('FileTextRunner', () => {
     seedFile(harness, 'img-1', 'later.png', 'image')
     sameVersion.noteChanged('img-1')
     await settled(harness.db, 'img-1', 'done')
-    expect(getFileTextJob(harness.db, 'pdf-1')?.status).toBe('failed')
+    expect(jobOf(harness.db, 'pdf-1')?.status).toBe('failed')
     await sameVersion.stop()
 
     start({ appVersion: '1.0.1' })
@@ -388,26 +393,40 @@ describe('FileTextRunner', () => {
     ])
   })
 
-  it('reads the images and PDFs in a note attachments folder into that note', async () => {
+  it('reads the PDFs and images a note embeds from its attachments folder into that note', async () => {
+    const attachments = path.join(vaultDir, 'attachments', 'md-1')
+    fs.mkdirSync(attachments, { recursive: true })
+    fs.writeFileSync(path.join(attachments, 'shot.png'), 'png bytes')
+    fs.writeFileSync(path.join(attachments, 'scan.pdf'), 'pdf bytes')
+    fs.writeFileSync(path.join(attachments, 'removed.png'), 'png bytes')
+    fs.writeFileSync(path.join(attachments, 'notes.txt'), 'not read')
+    const notePath = path.join(vaultDir, 'notes', 'plan.md')
+    fs.mkdirSync(path.dirname(notePath), { recursive: true })
+    fs.writeFileSync(
+      notePath,
+      '![](../attachments/md-1/shot.png)\n\n<!-- file:{"url":"../attachments/md-1/scan.pdf"} -->\n'
+    )
     harness.db.run(sql`
       INSERT INTO note_cache (id, path, title, created_at, modified_at)
       VALUES ('md-1', 'notes/plan.md', 'Plan', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
     `)
-    const attachments = path.join(vaultDir, 'attachments', 'md-1')
-    fs.mkdirSync(attachments, { recursive: true })
-    fs.writeFileSync(path.join(attachments, 'shot.png'), 'png bytes')
-    fs.writeFileSync(path.join(attachments, 'notes.txt'), 'not an image')
     harness.imageText = 'Pasted screenshot text'
+    harness.pages = [{ scanned: 'Scanned receipt' }]
 
     const runner = start()
     await vi.waitFor(() =>
-      expect(getExtractedText(harness.db, 'md-1')).toBe('Pasted screenshot text')
+      expect(getExtractedText(harness.db, 'md-1')).toBe('Scanned receipt\n\nPasted screenshot text')
     )
     expect(harness.changed).toContain('md-1')
+    expect(
+      harness.db.all(sql`SELECT source FROM file_text_jobs WHERE note_id = 'md-1' ORDER BY source`)
+    ).toEqual([{ source: 'scan.pdf' }, { source: 'shot.png' }])
 
-    fs.rmSync(path.join(attachments, 'shot.png'))
+    // The image block is gone from the note; its file stays on disk.
+    fs.writeFileSync(notePath, '<!-- file:{"url":"../attachments/md-1/scan.pdf"} -->\n')
     runner.noteChanged('md-1')
-    await vi.waitFor(() => expect(getExtractedText(harness.db, 'md-1')).toBe(''))
+    await vi.waitFor(() => expect(getExtractedText(harness.db, 'md-1')).toBe('Scanned receipt'))
+    expect(fs.existsSync(path.join(attachments, 'shot.png'))).toBe(true)
   })
 
   it('pages a long text out in chunks a reader can continue from', async () => {

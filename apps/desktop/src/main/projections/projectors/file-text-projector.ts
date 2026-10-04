@@ -1,12 +1,14 @@
 import type { ProjectionEvent, ProjectionProjector } from '../types'
 
 /**
- * Tells text extraction that a filed PDF or image was indexed, so it compares
- * the file's bytes with the ones its stored text came from. A deleted note
- * needs no message: its extracted rows go with its `note_cache` row.
+ * Tells text extraction that a note was indexed, so it compares that note's
+ * files with the bytes its stored text came from: a filed PDF's or image's own
+ * file, or the PDFs and images a markdown note embeds from its attachments
+ * folder. A deleted note needs no message: its extracted rows go with its
+ * `note_cache` row.
  */
 export function createFileTextProjector(
-  fileChanged: (noteId: string) => void
+  noteChanged: (noteId: string) => void
 ): ProjectionProjector {
   return {
     name: 'file-text',
@@ -16,9 +18,10 @@ export function createFileTextProjector(
     },
 
     project(event: ProjectionEvent): void {
-      if (event.type !== 'note.upserted' || event.note.kind !== 'file') return
-      if (event.note.fileType === 'pdf' || event.note.fileType === 'image') {
-        fileChanged(event.note.noteId)
+      if (event.type !== 'note.upserted') return
+      const { note } = event
+      if (note.kind === 'markdown' || note.fileType === 'pdf' || note.fileType === 'image') {
+        noteChanged(note.noteId)
       }
     },
 

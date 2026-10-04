@@ -1,34 +1,43 @@
 /**
- * Background text extraction for filed PDFs and images.
+ * Background text extraction for PDFs and images: filed ones, and the ones in a
+ * note's attachments folder, whose text is searchable under that note.
  *
  * One loop, one file at a time, one page at a time. A PDF page with a text
  * layer is read from it; a page without one, and every image, goes through OCR.
- * Every page is stored as it finishes, so a restart resumes after the last
- * stored page. Each file's job lives in `file_text_jobs`:
+ * Every page is stored as it finishes, and a job reads only the pages it has no
+ * row for, so a restart resumes where it stopped. Each file's job lives in
+ * `file_text_jobs`:
  *
  *   (no job) or signature moved -> pending -> done
  *                                          -> failed (unopenable, missing, or
  *                                             MAX_CONSECUTIVE_FAILURES pages in a row)
  *   failed, under another app version or a day old -> pending again
+ *   attachment file gone -> job and text deleted
  *
  * This loop is the only writer of `file_text_jobs` and `extracted_text`. Search
  * and embeddings pick the text up from the `note.text-extracted` events it
  * publishes.
  */
-import { stat } from 'fs/promises'
+import { readdir, readFile, stat } from 'fs/promises'
 import path from 'path'
+import { getExtension, getFileType } from '@memry/shared/file-types'
 import type { IndexDb } from '../database/types'
 import {
+  deleteTextSource,
   finishFileTextJob,
   getFileTextJob,
-  listFileTextCandidates,
-  nextExtractedPart,
-  nextPendingFileTextJob,
+  listAttachmentJobs,
+  listFiledTextFiles,
+  listMarkdownNotes,
+  nextPendingTextJob,
+  OWN_FILE,
   retryFileTextJob,
   saveExtractedPart,
   setFileTextPageCount,
   startFileTextJob,
-  type FileTextCandidate
+  storedExtractedParts,
+  type TextBearingFileType,
+  type TextSourceRef
 } from '../database/queries/extracted-text'
 import type { ExtractedTextMethod, FileTextJobRow } from '@memry/db-schema/schema/extracted-text'
 import { createLogger } from '../lib/logger'
@@ -44,6 +53,8 @@ const ERROR_BACKOFF_MS = 5_000
 const FILE_SETTLE_MS = 1_000
 /** A failure may be a helper that could not start; give the file another go later. */
 const RETRY_FAILED_AFTER_MS = 24 * 60 * 60 * 1000
+/** Where a note's attachments live: `attachments/<noteId>/` (vault/attachments.ts). */
+const ATTACHMENTS_DIR = 'attachments'
 
 export interface FileTextDeps {
   vaultPath: string
@@ -55,6 +66,12 @@ export interface FileTextDeps {
   /** Tear down the OCR process and PDF host so in-flight calls fail now. */
   release: () => void
   textChanged: (noteId: string) => void
+}
+
+/** A file to read, and the note its text is searchable under. */
+interface TextFile extends TextSourceRef {
+  path: string
+  fileType: TextBearingFileType
 }
 
 interface PageText {
@@ -72,6 +89,11 @@ async function fileSignature(
   } catch {
     return null
   }
+}
+
+function textBearingType(fileName: string): TextBearingFileType | null {
+  const type = getFileType(getExtension(fileName))
+  return type === 'pdf' || type === 'image' ? type : null
 }
 
 /** Collapse layout whitespace; keep line and paragraph breaks. */
@@ -104,7 +126,10 @@ export class FileTextRunner {
     this.loop ??= this.run()
   }
 
-  /** A filed note was added, moved, or rewritten; compare its bytes again. */
+  /**
+   * A note was indexed: a filed file that may have new bytes, or a note whose
+   * attachments may have changed. Compare its files again.
+   */
   noteChanged(noteId: string): void {
     this.changed.add(noteId)
     this.wake?.()
@@ -121,9 +146,9 @@ export class FileTextRunner {
     while (!this.stopped) {
       try {
         await this.queueChangedFiles()
-        const job = nextPendingFileTextJob(this.deps.getDb())
+        const job = nextPendingTextJob(this.deps.getDb())
         if (job) {
-          await this.extract(job)
+          await this.extract(this.fileOf(job), job.signature)
           continue
         }
         if (this.changed.size > 0 || this.stopped) continue
@@ -148,27 +173,105 @@ export class FileTextRunner {
     this.wake = null
   }
 
-  /** Queue every file whose bytes differ from the ones its stored text came from. */
+  private fileOf(job: {
+    noteId: string
+    source: string
+    notePath: string
+    noteFileType: string
+  }): TextFile {
+    if (job.source === OWN_FILE) {
+      return { ...job, path: job.notePath, fileType: job.noteFileType as TextBearingFileType }
+    }
+    return {
+      noteId: job.noteId,
+      source: job.source,
+      path: path.join(ATTACHMENTS_DIR, job.noteId, job.source),
+      fileType: textBearingType(job.source) ?? 'image'
+    }
+  }
+
+  /**
+   * PDFs and images in the attachments folders of the given notes, or of every
+   * note, that the note's body still embeds. A file the note no longer points
+   * at stays on disk (only an explicit delete removes it) but is not searchable
+   * under the note any more. `unread` lists the notes whose body could not be
+   * read: their stored text is left alone.
+   */
+  private async attachmentFiles(
+    ids: readonly string[] | undefined
+  ): Promise<{ files: TextFile[]; unread: Set<string> }> {
+    const root = path.join(this.deps.vaultPath, ATTACHMENTS_DIR)
+    const folders = ids ?? (await readdir(root).catch(() => []))
+    const files: TextFile[] = []
+    const unread = new Set<string>()
+    for (const note of listMarkdownNotes(this.deps.getDb(), folders)) {
+      const entries = await readdir(path.join(root, note.id), { withFileTypes: true }).catch(
+        () => []
+      )
+      const candidates = entries.filter(
+        (entry) => entry.isFile() && !entry.name.startsWith('.') && textBearingType(entry.name)
+      )
+      if (candidates.length === 0) continue
+      let body: string
+      try {
+        body = await readFile(path.join(this.deps.vaultPath, note.path), 'utf8')
+      } catch {
+        unread.add(note.id)
+        continue
+      }
+      for (const entry of candidates) {
+        // Every link shape a note uses for its attachments contains this run
+        // (vault/attachment-reference-scan.ts).
+        if (!body.includes(`${ATTACHMENTS_DIR}/${note.id}/${entry.name}`)) continue
+        files.push({
+          noteId: note.id,
+          source: entry.name,
+          path: path.join(ATTACHMENTS_DIR, note.id, entry.name),
+          fileType: textBearingType(entry.name) ?? 'image'
+        })
+      }
+    }
+    return { files, unread }
+  }
+
+  /**
+   * Queue every file whose bytes differ from the ones its stored text came
+   * from, and forget attachments the note no longer has.
+   */
   private async queueChangedFiles(): Promise<void> {
     if (!this.rescanAll && this.changed.size === 0) return
     const ids = this.rescanAll ? undefined : [...this.changed]
     this.rescanAll = false
     this.changed.clear()
 
-    for (const file of listFileTextCandidates(this.deps.getDb(), ids)) {
+    const filed: TextFile[] = listFiledTextFiles(this.deps.getDb(), ids).map((file) => ({
+      ...file,
+      source: OWN_FILE
+    }))
+    const attachments = await this.attachmentFiles(ids)
+    if (this.stopped) return
+
+    const kept = new Set(attachments.files.map((file) => `${file.noteId}/${file.source}`))
+    for (const job of listAttachmentJobs(this.deps.getDb(), ids)) {
+      if (attachments.unread.has(job.noteId) || kept.has(`${job.noteId}/${job.source}`)) continue
+      deleteTextSource(this.deps.getDb(), job)
+      this.deps.textChanged(job.noteId)
+    }
+
+    for (const file of [...filed, ...attachments.files]) {
       if (this.stopped) return
       const current = await fileSignature(path.join(this.deps.vaultPath, file.path))
       if (!current) continue
       const db = this.deps.getDb()
-      const job = getFileTextJob(db, file.id)
+      const job = getFileTextJob(db, file)
       if (job?.signature === current.signature) {
         if (job.status === 'failed' && this.isDueForRetry(job)) {
-          retryFileTextJob(db, file.id, this.deps.appVersion)
+          retryFileTextJob(db, file, this.deps.appVersion)
         }
         continue
       }
-      startFileTextJob(db, file.id, current.signature, this.deps.appVersion)
-      if (job) this.deps.textChanged(file.id)
+      startFileTextJob(db, file, current.signature, this.deps.appVersion)
+      if (job) this.deps.textChanged(file.noteId)
     }
   }
 
@@ -179,37 +282,42 @@ export class FileTextRunner {
     )
   }
 
-  private async extract(job: FileTextCandidate & { signature: string }): Promise<void> {
+  private async extract(file: TextFile, signature: string): Promise<void> {
     const db = this.deps.getDb()
-    const absolutePath = path.join(this.deps.vaultPath, job.path)
+    const absolutePath = path.join(this.deps.vaultPath, file.path)
     const current = await fileSignature(absolutePath)
     if (!current) {
-      finishFileTextJob(db, job.id, 'failed', 'File not found')
+      finishFileTextJob(db, file, 'failed', 'File not found')
       return
     }
-    if (current.signature !== job.signature) {
-      this.changed.add(job.id)
+    if (current.signature !== signature) {
+      this.changed.add(file.noteId)
       // Still being written, most likely: let the copy settle before reading.
       await this.sleep(FILE_SETTLE_MS)
       return
     }
-    logger.debug('Reading text', { noteId: job.id, fileType: job.fileType })
+    logger.debug('Reading text', {
+      noteId: file.noteId,
+      attachment: file.source !== OWN_FILE,
+      fileType: file.fileType
+    })
 
-    if (job.fileType === 'image') {
+    if (file.fileType === 'image') {
       const result = await this.readTwice(() => this.ocr({ kind: 'file', path: absolutePath }))
-      if (!this.owns(job)) return
-      setFileTextPageCount(db, job.id, 1)
-      saveExtractedPart(db, job.id, 1, result.method, result.text)
-      finishFileTextJob(db, job.id, result.method === 'unreadable' ? 'failed' : 'done')
-      this.deps.textChanged(job.id)
+      if (!this.owns(file, signature)) return
+      setFileTextPageCount(db, file, 1)
+      saveExtractedPart(db, file, 1, result.method, result.text)
+      finishFileTextJob(db, file, result.method === 'unreadable' ? 'failed' : 'done')
+      this.deps.textChanged(file.noteId)
       return
     }
 
-    await this.extractPdf(job, absolutePath, current.size)
+    await this.extractPdf(file, signature, absolutePath, current.size)
   }
 
   private async extractPdf(
-    job: FileTextCandidate & { signature: string },
+    file: TextFile,
+    signature: string,
     absolutePath: string,
     size: number
   ): Promise<void> {
@@ -218,20 +326,22 @@ export class FileTextRunner {
     try {
       pdf = await this.deps.openPdf(absolutePath, size)
     } catch (error) {
-      if (this.stopped || !this.owns(job)) return
+      if (this.stopped || !this.owns(file, signature)) return
       logger.warn('Could not open PDF for text extraction', {
-        noteId: job.id,
+        noteId: file.noteId,
         error: errorText(error)
       })
-      finishFileTextJob(db, job.id, 'failed', errorText(error))
+      finishFileTextJob(db, file, 'failed', errorText(error))
       return
     }
 
     try {
-      setFileTextPageCount(db, job.id, pdf.pageCount)
+      setFileTextPageCount(db, file, pdf.pageCount)
+      const stored = storedExtractedParts(db, file)
       let failuresInARow = 0
-      for (let page = nextExtractedPart(db, job.id); page <= pdf.pageCount; page++) {
-        if (this.stopped || this.changed.has(job.id)) return
+      for (let page = 1; page <= pdf.pageCount; page++) {
+        if (stored.has(page)) continue
+        if (this.stopped || (await this.rewrittenSince(file, signature, absolutePath))) return
         const result = await this.readTwice(
           () => this.readPdfPage(pdf, page),
           async () => {
@@ -239,22 +349,35 @@ export class FileTextRunner {
             pdf = await this.deps.openPdf(absolutePath, size)
           }
         )
-        if (!this.owns(job)) return
-        saveExtractedPart(db, job.id, page, result.method, result.text)
+        if (!this.owns(file, signature)) return
+        saveExtractedPart(db, file, page, result.method, result.text)
 
         failuresInARow = result.method === 'unreadable' ? failuresInARow + 1 : 0
         if (failuresInARow >= MAX_CONSECUTIVE_FAILURES) {
-          finishFileTextJob(db, job.id, 'failed', `Pages up to ${page} could not be read`)
-          this.deps.textChanged(job.id)
+          finishFileTextJob(db, file, 'failed', `Pages up to ${page} could not be read`)
+          this.deps.textChanged(file.noteId)
           return
         }
-        if (isFlushPoint(page)) this.deps.textChanged(job.id)
+        if (isFlushPoint(page)) this.deps.textChanged(file.noteId)
       }
-      finishFileTextJob(db, job.id, 'done')
-      this.deps.textChanged(job.id)
+      finishFileTextJob(db, file, 'done')
+      this.deps.textChanged(file.noteId)
     } finally {
       await pdf.close().catch(() => {})
     }
+  }
+
+  /**
+   * Checked between pages only once the note was flagged, which for an
+   * attachment is every edit of its note: only new bytes stop the read.
+   */
+  private async rewrittenSince(
+    file: TextFile,
+    signature: string,
+    absolutePath: string
+  ): Promise<boolean> {
+    if (!this.changed.has(file.noteId)) return false
+    return (await fileSignature(absolutePath))?.signature !== signature
   }
 
   private async readPdfPage(pdf: PdfDocument, page: number): Promise<PageText> {
@@ -296,9 +419,9 @@ export class FileTextRunner {
    * The job still exists with the bytes it started from. False after a stop,
    * after the index was rebuilt under us, or once the file changed.
    */
-  private owns(job: { id: string; signature: string }): boolean {
+  private owns(file: TextSourceRef, signature: string): boolean {
     if (this.stopped) return false
-    return getFileTextJob(this.deps.getDb(), job.id)?.signature === job.signature
+    return getFileTextJob(this.deps.getDb(), file)?.signature === signature
   }
 }
 
