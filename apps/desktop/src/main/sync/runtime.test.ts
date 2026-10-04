@@ -1756,6 +1756,18 @@ describe('sync runtime', () => {
       await vi.waitFor(() => expect(upload).toHaveBeenCalledWith('note-1', midSession))
     })
 
+    it('drops a row whose file is gone even while offline', async () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+      const { outbox, upload, queueFile } = await startWithQueuedFile()
+      runtimeMocks.NetworkMonitor.instances[0].online = false
+      fs.rmSync(queueFile('deleted-offline.png'))
+
+      vi.advanceTimersByTime(FIVE_MINUTES_MS)
+
+      await vi.waitFor(() => expect(outbox.listPendingUploads(outboxDb)).toEqual([]))
+      expect(upload).toHaveBeenCalledTimes(1)
+    })
+
     it('stops re-driving once the runtime stops', async () => {
       vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
       const { runtime, upload, queueFile } = await startWithQueuedFile()

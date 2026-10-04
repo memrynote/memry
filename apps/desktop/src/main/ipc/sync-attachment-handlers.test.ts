@@ -164,6 +164,11 @@ vi.mock('../sync/note-attachment-metadata', () => ({
   recordUploadedAttachment: vi.fn()
 }))
 
+const mockRecordAttachmentFile = vi.hoisted(() => vi.fn())
+vi.mock('../sync/attachment-files', () => ({
+  recordAttachmentFile: (...args: unknown[]) => mockRecordAttachmentFile(...args)
+}))
+
 vi.mock('../sync/runtime', () => ({
   getNetworkMonitor: vi.fn().mockReturnValue(null)
 }))
@@ -801,6 +806,45 @@ describe('sync-attachment-handlers', () => {
     )
     expect(markWritebackIgnored).toHaveBeenCalledWith('/vault/attachments/file.pdf')
     await vi.waitFor(() => expect(recordDownloadedFileSize).toHaveBeenCalledWith('note-1', 1234))
+  })
+
+  // The record is what lets the backfill tell a new file on a note with
+  // references from one that already went up or came down (#2651).
+  it('records the file of every upload and every embedded download', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    vi.mocked(getVaultStatus).mockReturnValue({ path: '/vault' } as any)
+    mockRecordAttachmentFile.mockClear()
+    registerAttachmentHandlers()
+
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/note-1/aaaaaa-saved.png' })
+    await vi.waitFor(() => expect(mockRecordAttachmentFile).toHaveBeenCalledTimes(1))
+
+    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    await uploader('note-1', '/vault/attachments/note-1/bbbbbb-drained.png')
+    const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
+      noteId: string
+      attachmentId: string
+      diskPath: string
+      intoDir?: boolean
+    }) => void
+    onDownloadNeeded({
+      noteId: 'note-1',
+      attachmentId: 'attachment-9',
+      diskPath: '/vault/attachments/note-1',
+      intoDir: true
+    })
+    await vi.waitFor(() => expect(mockRecordAttachmentFile).toHaveBeenCalledTimes(3))
+
+    expect(mockRecordAttachmentFile.mock.calls.map((call) => call.slice(1))).toEqual([
+      ['/vault', 'note-1', '/vault/attachments/note-1/aaaaaa-saved.png', 'attachment-1'],
+      ['/vault', 'note-1', '/vault/attachments/note-1/bbbbbb-drained.png', 'attachment-1'],
+      ['/vault', 'note-1', '/tmp/file.pdf', 'attachment-9']
+    ])
   })
 
   it('renames a downloaded embedded attachment to the name the note body carries', async () => {

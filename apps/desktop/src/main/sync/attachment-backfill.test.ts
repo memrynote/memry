@@ -12,7 +12,8 @@ import {
   queueEmbeddedVaultFilesWith,
   referencedVaultFiles
 } from './attachment-backfill'
-import { listPendingUploads } from './attachment-outbox'
+import { clearUpload, listPendingUploads } from './attachment-outbox'
+import { recordAttachmentFile } from './attachment-files'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 describe('attachment backfill', () => {
@@ -179,6 +180,90 @@ describe('attachment backfill', () => {
     expect(listPendingUploads(db).map((row) => row.diskPath)).toEqual([picture])
   })
 
+  // A note that already holds an attachment reference used to be skipped
+  // whole, so a file added to it without a save event never left the device.
+  // The record of which files went up or came down is what tells them apart.
+  describe('notes that already hold attachment references (#2651)', () => {
+    const queuedPaths = (): string[] =>
+      listPendingUploads(db)
+        .map((row) => row.diskPath)
+        .sort()
+
+    it('queues only the file the record does not know', () => {
+      addNote('note-k', { attachmentReferences: ['att-1'] })
+      const uploaded = addFile('note-k', 'aaaaaa-first.png')
+      recordAttachmentFile(db, vaultPath, 'note-k', uploaded, 'att-1')
+      const added = addFile('note-k', 'bbbbbb-added.png')
+
+      expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(1)
+      expect(queuedPaths()).toEqual([added])
+    })
+
+    it('counts the files of a note from before the record and queues what comes after', () => {
+      addNote('note-old', { attachmentReferences: ['att-old'] })
+      addFile('note-old', 'cccccc-old.png')
+      writeVaultFile('notes/images/old-embed.png')
+      writeNote('note-old', '![old](images/old-embed.png)')
+
+      expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
+
+      const added = addFile('note-old', 'dddddd-new.png')
+      expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(1)
+      expect(queuedPaths()).toEqual([added])
+    })
+
+    it('counts a note from before the record even when it had no file on disk yet', () => {
+      addNote('note-empty', { attachmentReferences: ['att-remote'] })
+      expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
+
+      const added = addFile('note-empty', 'eeeeee-later.png')
+      expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(1)
+      expect(queuedPaths()).toEqual([added])
+    })
+
+    it('counts the other files of an older note when its first new upload is recorded', () => {
+      addNote('note-first', { attachmentReferences: ['att-before', 'att-new'] })
+      addFile('note-first', 'ffffff-before.png')
+      const fresh = addFile('note-first', 'gggggg-fresh.png')
+
+      recordAttachmentFile(db, vaultPath, 'note-first', fresh, 'att-new')
+
+      expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
+    })
+
+    it('treats a renamed file that keeps its stored prefix as the same file', () => {
+      addNote('note-rn', { attachmentReferences: ['att-rn'] })
+      const original = addFile('note-rn', 'hhhhhh-draft.png')
+      recordAttachmentFile(db, vaultPath, 'note-rn', original, 'att-rn')
+      fs.renameSync(original, path.join(path.dirname(original), 'hhhhhh-final.png'))
+
+      expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
+      expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
+    })
+
+    it('does not queue a file again once its upload is recorded', () => {
+      addNote('note-up')
+      const file = addFile('note-up', 'iiiiii-up.png')
+      expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(1)
+      clearUpload(db, 'note-up', file)
+      recordAttachmentFile(db, vaultPath, 'note-up', file, 'att-up')
+
+      expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
+    })
+
+    it('queues a file a written body embeds on a note with a recorded upload', () => {
+      addNote('note-wb', { attachmentReferences: ['att-wb'] })
+      const first = addFile('note-wb', 'jjjjjj-first.png')
+      recordAttachmentFile(db, vaultPath, 'note-wb', first, 'att-wb')
+      const picture = writeVaultFile('notes/images/wb.png')
+
+      expect(
+        queueEmbeddedVaultFilesWith({ db, vaultPath }, 'note-wb', '![wb](images/wb.png)')
+      ).toBe(1)
+      expect(queuedPaths()).toEqual([picture])
+    })
+  })
+
   describe('when a body is written (#2651)', () => {
     const saved: Array<{ noteId: string; diskPath: string }> = []
     const onSaved = (event: { noteId: string; diskPath: string }): void => {
@@ -215,7 +300,7 @@ describe('attachment backfill', () => {
       expect(saved).toEqual([{ noteId: 'note-o', diskPath: artifact }])
     })
 
-    it('leaves alone a note with references, a local-only note and an unknown note', () => {
+    it('leaves alone an older note with references, a local-only note and an unknown note', () => {
       addNote('note-r', { attachmentReferences: ['already-uploaded'] })
       addNote('note-l', { localOnly: true })
       writeVaultFile('notes/images/held.png')
