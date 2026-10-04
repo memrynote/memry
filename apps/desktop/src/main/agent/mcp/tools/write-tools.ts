@@ -1,4 +1,4 @@
-import { z, type ZodTypeAny } from 'zod'
+import type { ZodTypeAny } from 'zod'
 
 import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
@@ -67,18 +67,6 @@ function tagChanges(before: string[], after: string[]) {
     tags_added: after.filter((tag) => !before.includes(tag)),
     tags_removed: before.filter((tag) => !after.includes(tag))
   }
-}
-
-/** Zod drops keys a schema does not name, so a misspelled option would vanish without an error. */
-function assertKnownArguments(toolName: string, schema: ZodTypeAny, input: unknown): void {
-  if (!(schema instanceof z.ZodObject) || !input || typeof input !== 'object') return
-  const unknown = Object.keys(input).filter((key) => !Object.hasOwn(schema.shape, key))
-  if (unknown.length === 0) return
-  throw new AgentToolError(
-    'VALIDATION',
-    `${toolName} does not take ${unknown.join(', ')}. Nothing was run.`,
-    { unknown, accepted: Object.keys(schema.shape) }
-  )
 }
 
 async function approvedArgs<T>(
@@ -807,14 +795,5 @@ export function buildWriteTools(
     }
   }
 
-  return WRITE_TOOL_NAMES.map((name) => {
-    const tool = factories[name]
-    return {
-      ...tool,
-      handler: async (input, ctx) => {
-        assertKnownArguments(name, tool.inputSchema, input)
-        return tool.handler(input, ctx)
-      }
-    }
-  })
+  return WRITE_TOOL_NAMES.map((name) => factories[name])
 }

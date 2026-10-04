@@ -99,7 +99,7 @@ const desktopWriteSchema = z.object({
   args: z.array(z.unknown()).default([])
 })
 
-export const TOOL_SCHEMAS = {
+const LOOSE_TOOL_SCHEMAS = {
   vault_search_notes: {
     input: z.object({
       query: z.string().min(1),
@@ -555,6 +555,19 @@ export const TOOL_SCHEMAS = {
       '`removed`. Requires user approval.'
   }
 } as const
+
+/**
+ * Zod drops keys an object schema does not name, so an invented or misspelled
+ * argument would vanish and the call would succeed without it. The MCP server
+ * and the AI SDK both validate against these inputs, so a strict object makes
+ * either refuse the call and name the key.
+ */
+export const TOOL_SCHEMAS = Object.fromEntries(
+  Object.entries(LOOSE_TOOL_SCHEMAS).map(([name, schema]) => [
+    name,
+    schema.input instanceof z.ZodObject ? { ...schema, input: schema.input.strict() } : schema
+  ])
+) as unknown as typeof LOOSE_TOOL_SCHEMAS
 
 export type ToolName = keyof typeof TOOL_SCHEMAS
 

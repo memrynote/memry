@@ -240,7 +240,9 @@ describe('Write tools — P1 deny-by-default', () => {
       )
     ).rejects.toMatchObject({
       code: 'VALIDATION',
-      message: 'vault_update_task does not take colour. Nothing was run.'
+      details: {
+        issues: [expect.objectContaining({ code: 'unrecognized_keys', keys: ['colour'] })]
+      }
     })
     expect(gate).not.toHaveBeenCalled()
   })
