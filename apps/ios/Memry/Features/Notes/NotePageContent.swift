@@ -39,6 +39,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     /// opening a note seeds it and writes nothing (desktop's #1454).
     @State private var inlineTags: (noteId: String, tags: [String])?
     @Environment(\.requestVaultSync) private var requestVaultSync
+    @Environment(\.whiteboards) private var whiteboards
 
     /// The editing bridge, or `nil` on a read-only page.
     private var editing: NoteEditingBridge? {
@@ -60,6 +61,9 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         session.blocks = { model.blocks }
         session.openTag = openTag
         session.requestSync = requestVaultSync
+        session.whiteboards = whiteboards
+        let noteTitle = detail.summary.title
+        session.noteTitle = { noteTitle }
         let noteId = detail.summary.id
         session.relinkTask = taskBridge.relink.map { relink in
             { taskId, target in await relink(taskId, noteId, target) }
@@ -157,6 +161,14 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                 set: { if $0 == nil { editorModel.session.cancelViewEdit() } }
             )) { request in
                 ViewQuerySheet(request: request) { editorModel.session.saveView($0) }
+            }
+            .fullScreenCover(item: Binding(
+                get: { whiteboards == nil ? nil : editorModel.session.whiteboardEdit },
+                set: { if $0 == nil { editorModel.session.finishWhiteboard() } }
+            )) { request in
+                if let whiteboards {
+                    WhiteboardEditor(request: request, boards: whiteboards)
+                }
             }
         }
         if let tapBelowBody {

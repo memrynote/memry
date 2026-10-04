@@ -232,6 +232,12 @@ struct NoteBlockView: View {
                     { editing.session.editSource(BlockSourceRequest(blockId: id, source: source, kind: .diagram)) }
                 }
             })
+        case "whiteboard":
+            WhiteboardBlockView(
+                canvasId: value("canvasId") ?? "",
+                edit: editing.map { editing in { editing.session.editWhiteboard(canvasId: $0, title: $1) } },
+                revision: editing?.session.whiteboardRevision ?? 0
+            )
         case "mathBlock":
             // `content: none`: the formula is the `latex` prop.
             let latex = value("latex") ?? ""

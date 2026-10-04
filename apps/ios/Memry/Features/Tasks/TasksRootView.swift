@@ -151,6 +151,7 @@ struct VaultTasksScope<Content: View>: View {
         content(store, failure)
             .environment(\.requestVaultSync, syncRequest)
             .environment(\.vaultSyncPasses, store?.syncPasses ?? 0)
+            .environment(\.whiteboards, secureStore.map { CoreWhiteboardBoards(vault: vault, store: $0, executor: .shared) })
             // Pull and push on every return to the foreground, whichever tab
             // shows: a tab's own views miss scene changes while hidden. The
             // pass for the vault opening runs from `make()`, because the
