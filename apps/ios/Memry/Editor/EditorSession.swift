@@ -600,7 +600,7 @@ final class EditorSession {
 
     // MARK: Source blocks
 
-    /// Opens the source sheet for a math block.
+    /// Opens the source sheet for a math or diagram block.
     func editSource(_ request: BlockSourceRequest) {
         dismissKeyboard()
         sourceEdit = request
@@ -617,10 +617,18 @@ final class EditorSession {
         sourceEdit = nil
         guard text != request.source else { return }
         runBlockAction { [weak self] model in
-            await model.setProp(request.blockId, "latex", text)
-            self?.history.record(.prop(
-                blockId: request.blockId, name: "latex", from: request.source, to: text, label: "Equation"
-            ))
+            switch request.kind {
+            case .math:
+                await model.setProp(request.blockId, "latex", text)
+                self?.history.record(.prop(
+                    blockId: request.blockId, name: "latex", from: request.source, to: text, label: "Equation"
+                ))
+            case .diagram:
+                // A diagram's source is its plain content: `ReplaceText`
+                // edits it in place, so a peer's concurrent edit survives.
+                await model.commit(text, for: request.blockId, current: request.source, formatted: true)
+                self?.history.record(.replaceText(blockId: request.blockId, from: request.source, to: text))
+            }
             self?.requestSync?()
         }
     }

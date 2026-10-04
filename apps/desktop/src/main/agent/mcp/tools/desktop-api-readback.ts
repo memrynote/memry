@@ -1,4 +1,5 @@
 import type {
+  AgentMcpDesktopApiRequest,
   AgentMcpDesktopReadOperation,
   AgentMcpDesktopWriteOperation
 } from '@memry/contracts/agent-mcp-channels'
@@ -123,4 +124,27 @@ export function keepLegacyPropertyKeys(
     }
   }
   return [entityId, merged, ...rest]
+}
+
+function isFailedReply(data: unknown): boolean {
+  return Boolean(data && typeof data === 'object' && 'success' in data && data.success === false)
+}
+
+/** Run a desktop write and add the record a read returns after it, when the reply has none. */
+export async function writeAndReadBack(
+  input: { operation: AgentMcpDesktopWriteOperation; args: unknown[] },
+  invoke: (request: AgentMcpDesktopApiRequest) => Promise<unknown>,
+  currentProperties: (entityId: string) => Record<string, unknown>
+): Promise<unknown> {
+  const request =
+    input.operation === 'properties.set'
+      ? { ...input, args: keepLegacyPropertyKeys(input.args, currentProperties) }
+      : input
+  const data = await invoke(request)
+  const readback = desktopWriteReadback(request)
+  if (!readback || isFailedReply(data)) return data
+  const stored = readback.select(await invoke(readback.request))
+  return data && typeof data === 'object' && !Array.isArray(data)
+    ? { ...data, stored }
+    : { result: data, stored }
 }

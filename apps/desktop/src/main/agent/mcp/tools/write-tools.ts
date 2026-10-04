@@ -3,6 +3,7 @@ import type { ZodTypeAny } from 'zod'
 import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
 import { assertDesktopApiArgs } from './desktop-api-params'
+import { DESKTOP_API_REPLY_MAX_BYTES } from './desktop-api-reply'
 import type { StoredNote, VaultServiceHandles } from './handles'
 import { TOOL_SCHEMAS, WRITE_TOOL_NAMES, type ToolName } from './schemas'
 import type { AgentMcpDesktopWriteOperation } from '@memry/contracts/agent-mcp-channels'
@@ -783,6 +784,7 @@ export function buildWriteTools(
       name: 'vault_desktop_write',
       description: TOOL_SCHEMAS.vault_desktop_write.description,
       inputSchema: TOOL_SCHEMAS.vault_desktop_write.input,
+      maxReplyBytes: DESKTOP_API_REPLY_MAX_BYTES,
       handler: async (input, ctx) => {
         const parsed = parse<{ operation: AgentMcpDesktopWriteOperation; args: unknown[] }>(
           TOOL_SCHEMAS.vault_desktop_write.input,
