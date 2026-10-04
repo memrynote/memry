@@ -153,11 +153,11 @@ function getEditor(): ServerBlockNoteEditor {
 /**
  * What became of the author's bytes on one serialization. `no-record` is by
  * design: the file was already in house style, or predates the record. The
- * `house-style` outcomes with a record present are the degraded cases and
- * are logged as such, so a lookup that silently misses can be told apart
- * from a note that never had a record. `file` and `file-merged` are the
- * record failing and the note's file standing in for it (#2615);
- * `file-unreadable` is that file failing to read or parse, and writes nothing.
+ * `house-style` outcome with a record present is the degraded case and is
+ * logged as such, so a lookup that silently misses can be told apart from a
+ * note that never had a record. `file` and `file-merged` are the record
+ * failing and the note's file standing in for it (#2615). `restore-threw` and
+ * `file-unreadable` resolve the call to null: the caller keeps the file.
  */
 export type SourceRestoreOutcome =
   | 'no-record'
@@ -169,7 +169,7 @@ export type SourceRestoreOutcome =
   | 'file-merged'
   | 'file-unreadable'
   | 'house-style-fallback'
-  | 'house-style-threw'
+  | 'restore-threw'
 
 export interface YDocToMarkdownOptions {
   /**
@@ -256,8 +256,9 @@ export async function yDocToMarkdown(
     })
     return report('house-style-fallback')
   } catch (err) {
-    log.error('Restoring the source spelling failed, writing house style', err)
-    return report('house-style-threw')
+    log.error('Restoring the source spelling failed, keeping the file', err)
+    options.onSourceRestore?.('restore-threw')
+    return null
   }
 }
 

@@ -231,6 +231,8 @@ export interface VaultServiceHandles {
       html: string
     }): Promise<{ marker: string; url: string }>
     moveToFolder(input: { id: string; folder_path: string }): Promise<void>
+    /** What a read of note `id` returns once its armed write-back has run. */
+    storedBody(id: string, sent: string): Promise<WrittenBody>
   }
   folders: {
     list(input: { path?: string; id?: string; recursive?: boolean }): Promise<FolderEntry[]>

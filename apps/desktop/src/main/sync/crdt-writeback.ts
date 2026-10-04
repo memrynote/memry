@@ -574,6 +574,7 @@ async function performWriteback(
     return
   }
 
+  const restore: { outcome: SourceRestoreOutcome | null } = { outcome: null }
   const body = await serializeNoteBody(
     doc,
     {
@@ -582,10 +583,20 @@ async function performWriteback(
         const raw = await safeRead(toAbsolutePath(cached.path))
         return raw === null ? null : splitFrontmatterBlock(raw).body
       },
-      onSourceRestore: (sourceRestore) => updateDebugState(noteId, { sourceRestore })
+      onSourceRestore: (sourceRestore) => {
+        restore.outcome = sourceRestore
+        updateDebugState(noteId, { sourceRestore })
+      }
     },
     converter
   )
+  // The file is kept, and the pass fails the way a failed read does, so the
+  // user and the failure telemetry hear of it and the next update retries.
+  if (restore.outcome === 'restore-threw' || restore.outcome === 'file-unreadable') {
+    throw new Error(
+      `The author's spelling could not be restored (${restore.outcome}); kept the file`
+    )
+  }
   const markdown = body?.markdown ?? null
   updateDebugState(noteId, {
     pending: false,

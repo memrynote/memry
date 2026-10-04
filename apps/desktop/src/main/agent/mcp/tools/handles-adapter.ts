@@ -37,6 +37,8 @@ import type { RepeatConfig } from '@memry/domain-tasks'
 import type { DataDb, IndexDb } from '../../../database'
 import { AgentToolError } from '../errors'
 import { saveAttachment } from '../../../vault/attachments'
+import { generateJournalId } from '@memry/contracts/journal-api'
+import { createLogger } from '../../../lib/logger'
 import { serializeFileBlockMarker } from '../../../import/_shared/attachment-markdown'
 import { snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
@@ -76,15 +78,40 @@ function mergeContent(
   return mode === 'append' ? `${current}\n\n${next}` : `${next}\n\n${current}`
 }
 
-/** The body a read of the note returns once its armed write-back has run. */
-async function storedNoteBody(id: string, sent: string): Promise<WrittenBody> {
+const log = createLogger('AgentVaultHandles')
+
+/**
+ * The body a read returns once the armed write-back has run. The write has
+ * landed by now, so a failed read reports no stored body instead of failing
+ * the call, which an agent would retry and so append twice.
+ */
+async function storedBody(
+  id: string,
+  sent: string,
+  read: () => Promise<string | null>
+): Promise<WrittenBody> {
   await settleWriteback(id)
-  const note = await getNoteById(id)
-  return { sent, stored: note && !note.contentOmitted ? note.content : null }
+  try {
+    return { sent, stored: await read() }
+  } catch (err) {
+    log.warn('Could not read back the body a write stored', { id, error: err })
+    return { sent, stored: null }
+  }
 }
 
-async function storedJournalBody(date: string, sent: string): Promise<WrittenBody> {
-  return { sent, stored: (await readJournalEntry(date))?.content ?? null }
+function storedNoteBody(id: string, sent: string): Promise<WrittenBody> {
+  return storedBody(id, sent, async () => {
+    const note = await getNoteById(id)
+    return note && !note.contentOmitted ? note.content : null
+  })
+}
+
+function storedJournalBody(date: string, sent: string): Promise<WrittenBody> {
+  return storedBody(
+    generateJournalId(date),
+    sent,
+    async () => (await readJournalEntry(date))?.content ?? null
+  )
 }
 
 function sameTagList(a: string[], b: string[]): boolean {
@@ -335,7 +362,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       },
       async moveToFolder({ id, folder_path }) {
         await moveNoteCommand(id, internalFolderFromToolPath(folder_path) ?? '')
-      }
+      },
+      storedBody: storedNoteBody
     },
     folders: {
       async list({ path: folderPath, id, recursive }) {

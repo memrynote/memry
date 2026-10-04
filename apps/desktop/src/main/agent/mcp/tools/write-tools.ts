@@ -73,6 +73,37 @@ function bodyWarnings(body: WrittenBody | undefined): string[] {
   ]
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+/**
+ * The note and body a desktop API note write sent, when it sent one:
+ * `notes.update` names the note in its input, `notes.create` in its reply.
+ */
+function desktopNoteWrite(
+  operation: AgentMcpDesktopWriteOperation,
+  args: unknown[],
+  result: unknown
+): { id: string; sent: string } | null {
+  const input = args[0]
+  if (!isRecord(input) || typeof input.content !== 'string') return null
+  if (operation === 'notes.update' && typeof input.id === 'string') {
+    return { id: input.id, sent: input.content }
+  }
+  const note = isRecord(result) ? result.note : undefined
+  if (operation === 'notes.create' && isRecord(note) && typeof note.id === 'string') {
+    return { id: note.id, sent: input.content }
+  }
+  return null
+}
+
+/** A desktop API note reply whose `note.content` is what was stored, not what was sent. */
+function withStoredNoteContent(result: unknown, stored: string | null): unknown {
+  if (stored === null || !isRecord(result) || !isRecord(result.note)) return result
+  return { ...result, note: { ...result.note, content: stored } }
+}
+
 /**
  * `result` with `warnings` added as its first key, so a reply the size cap cuts
  * still starts with them. A result that is not a plain object, or whose
@@ -80,8 +111,8 @@ function bodyWarnings(body: WrittenBody | undefined): string[] {
  */
 function withWarnings(result: unknown, warnings: string[]): unknown {
   if (warnings.length === 0) return result
-  if (!result || typeof result !== 'object' || Array.isArray(result)) return { warnings, result }
-  const { warnings: existing, ...rest } = result as { warnings?: unknown }
+  if (!isRecord(result)) return { warnings, result }
+  const { warnings: existing, ...rest } = result
   if (existing === undefined) return { warnings, ...rest }
   if (Array.isArray(existing) && existing.every((w) => typeof w === 'string')) {
     return { warnings: [...existing, ...warnings], ...rest }
@@ -778,7 +809,11 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_desktop_write', parsed, ctx)
-        return handles.desktop.write(args, ctx.windowId)
+        const result = await handles.desktop.write(args, ctx.windowId)
+        const write = desktopNoteWrite(args.operation, args.args, result)
+        if (!write) return result
+        const body = await handles.notes.storedBody(write.id, write.sent)
+        return withWarnings(withStoredNoteContent(result, body.stored), bodyWarnings(body))
       }
     }
   }
