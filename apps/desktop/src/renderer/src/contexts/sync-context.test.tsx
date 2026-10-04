@@ -630,6 +630,28 @@ describe('SyncProvider', () => {
       )
     })
 
+    // #2612: signing out here deleted the vault key and signing key, so the
+    // next sign-in always asked for the recovery phrase.
+    it('#then signs in again from the re-auth prompt without deleting the device keys', async () => {
+      renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(sessionExpiredListeners.length).toBeGreaterThan(0))
+      const opened = vi.fn()
+      const unsubscribe = onOpenSettingsRequested(opened)
+
+      act(() => {
+        for (const cb of sessionExpiredListeners) cb({ reason: 'refresh_rejected' })
+      })
+      const signIn = await screen.findByRole('button', { name: 'Sign in again' })
+      act(() => {
+        signIn.click()
+      })
+
+      expect(logoutMock).not.toHaveBeenCalled()
+      expect(opened).toHaveBeenCalledWith('account')
+      await vi.waitFor(() => expect(screen.queryByText('Your session has ended')).toBeNull())
+      unsubscribe()
+    })
+
     it('#then records conflicts, queue clears, item activity, and initial sync progress', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
       await vi.waitFor(() => expect(conflictDetectedListeners.length).toBeGreaterThan(0))
