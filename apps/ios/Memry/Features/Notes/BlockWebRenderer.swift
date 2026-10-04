@@ -25,16 +25,48 @@ final class BlockWebRenderer: NSObject {
 
     /// One picture to draw: the source and the ink and size it is drawn in.
     struct Request: Hashable, Sendable {
+        enum Kind: String, Hashable, Sendable {
+            /// LaTeX through KaTeX.
+            case math
+            /// Mermaid source.
+            case diagram
+        }
+
         let source: String
-        /// A CSS colour.
+        /// A CSS colour. Math only: a diagram takes its colours from the theme.
         let ink: String
-        /// The base font size in points.
+        /// The base font size in points. Math only.
         let size: Double
+        let kind: Kind
+        /// Mermaid's dark theme. Diagram only.
+        let dark: Bool
+
+        init(source: String, ink: String, size: Double, kind: Kind = .math, dark: Bool = false) {
+            self.source = source
+            self.ink = ink
+            self.size = size
+            self.kind = kind
+            self.dark = dark
+        }
+
+        static func diagram(_ source: String, dark: Bool) -> Request {
+            Request(source: source, ink: "", size: 0, kind: .diagram, dark: dark)
+        }
+
+        /// What the cache knows a picture by: only the fields that change
+        /// what is drawn. A diagram ignores ink and size, so they stay out
+        /// of its key.
+        var cacheKey: String {
+            switch kind {
+            case .math: "math|\(ink)|\(size)|\(source)"
+            case .diagram: "diagram|\(dark ? "dark" : "light")|\(source)"
+            }
+        }
     }
 
     enum Output: Equatable {
         case image(UIImage)
-        /// KaTeX refused the source, with its message.
+        /// KaTeX or mermaid refused the source, with its message.
         case invalid(String)
         /// No web view could be loaded. Not cached, so the next ask tries again.
         case unavailable
@@ -42,6 +74,10 @@ final class BlockWebRenderer: NSObject {
 
     /// The web view's size, which bounds one batch's snapshot.
     private static let viewport = CGSize(width: 2048, height: 4096)
+    /// The tallest snapshot that comes back painted: at 3x a taller one
+    /// passes WebKit's texture size and is blank. `render.html` scales a
+    /// diagram to fit under it.
+    private static let snapshotHeight: CGFloat = 2600
     private static let batchLimit = 24
 
     private let cache = NSCache<NSString, CachedOutput>()
@@ -75,7 +111,7 @@ final class BlockWebRenderer: NSObject {
     }
 
     private static func key(_ request: Request) -> NSString {
-        "\(request.ink)|\(request.size)|\(request.source)" as NSString
+        request.cacheKey as NSString
     }
 
     private func flushSoon() {
@@ -85,8 +121,11 @@ final class BlockWebRenderer: NSObject {
             // Lets the rest of this layout pass queue its formulas first.
             await Task.yield()
             while !queue.isEmpty {
-                let batch = Array(queue.prefix(Self.batchLimit))
-                queue.removeFirst(batch.count)
+                // One page function per call, so a batch holds one kind.
+                let kind = queue[0].kind
+                let batch = Array(queue.filter { $0.kind == kind }.prefix(Self.batchLimit))
+                let taken = Set(batch)
+                queue.removeAll { taken.contains($0) }
                 let outputs = await draw(batch)
                 for (request, output) in zip(batch, outputs) {
                     guard let output else {
@@ -104,30 +143,38 @@ final class BlockWebRenderer: NSObject {
     }
 
     /// One output per request; `nil` for a picture that did not fit in this
-    /// batch's snapshot, which is drawn again in a batch of its own.
+    /// batch's snapshot, which is drawn again in a batch of its own. Alone,
+    /// a picture that still does not fit is `.unavailable`, never `nil`.
     private func draw(_ batch: [Request]) async -> [Output?] {
         guard let web = await loadedWebView() else { return batch.map { _ in .unavailable } }
-        let items = batch.map { ["source": $0.source, "ink": $0.ink, "size": $0.size] as [String: Any] }
+        let items = batch.map {
+            ["source": $0.source, "ink": $0.ink, "size": $0.size, "dark": $0.dark] as [String: Any]
+        }
+        let function = batch.first?.kind == .diagram ? "renderDiagram" : "renderMath"
         let answer = try? await web.callAsyncJavaScript(
-            "return await renderMath(items)", arguments: ["items": items], in: nil, contentWorld: .page
+            "return await \(function)(items)", arguments: ["items": items], in: nil, contentWorld: .page
         )
         guard let boxes = answer as? [[String: Any]], boxes.count == batch.count else {
             return batch.map { _ in .unavailable }
         }
         let rects = boxes.map(Self.rect)
         let alone = batch.count == 1
-        let fitting = rects.compactMap { $0 }.filter { alone || $0.maxY <= Self.viewport.height }
+        let fitting = rects.compactMap { $0 }.filter { $0.maxY <= Self.snapshotHeight }
         guard let union = fitting.reduce(nil, { ($0 ?? $1).union($1) }) else {
-            return boxes.map { box in (box["error"] as? String).map(Output.invalid) }
+            return boxes.map { box in
+                (box["error"] as? String).map(Output.invalid) ?? (alone ? .unavailable : nil)
+            }
         }
         let configuration = WKSnapshotConfiguration()
         configuration.rect = CGRect(x: 0, y: 0, width: union.maxX, height: union.maxY)
-            .intersection(CGRect(origin: .zero, size: Self.viewport))
+            .intersection(CGRect(x: 0, y: 0, width: Self.viewport.width, height: Self.snapshotHeight))
         configuration.afterScreenUpdates = true
         let snapshot = try? await web.takeSnapshot(configuration: configuration)
         return zip(boxes, rects).map { box, rect in
             if let error = box["error"] as? String { return .invalid(error) }
-            guard let rect, alone || rect.maxY <= Self.viewport.height else { return nil }
+            // Alone and still unmeasured or off the page: drawing it again
+            // would loop forever, so it falls back to its source.
+            guard let rect, rect.maxY <= Self.snapshotHeight else { return alone ? .unavailable : nil }
             guard let snapshot, let image = Self.crop(snapshot, to: rect) else { return .unavailable }
             return .image(image)
         }

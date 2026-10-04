@@ -39,13 +39,16 @@ export interface NoteFull {
   icon?: string | null
 }
 
-export interface FolderEntry {
-  kind: 'folder' | 'note'
-  id: string
-  name: string
-  path: string
-  icon?: string | null
-}
+export type FolderEntry =
+  | { kind: 'folder'; id: string; name: string; path: string }
+  | {
+      kind: 'note' | 'file'
+      id: string
+      name: string
+      path: string
+      file_type: NoteFileType
+      icon?: string | null
+    }
 
 export interface TaskSummary {
   id: string

@@ -73,7 +73,7 @@ enum BlockCatalog {
     private static let dateAliases = ["date", "remind", "reminder", "when"]
 
     /// Every row, in desktop's catalog order. Rows desktop offers that this
-    /// build cannot make yet (task, diagram, whiteboard, view, pdf, media,
+    /// build cannot make yet (task, whiteboard, view, pdf, media,
     /// html) join here one row each as they land; emoji, templates and AI
     /// stay desktop-only.
     static let rows: [Row] = [
@@ -128,6 +128,12 @@ enum BlockCatalog {
             id: "math", title: "Equation", symbol: "sum",
             aliases: ["math", "equation", "formula", "latex", "katex", "tex"],
             section: .insert, action: .source(kind: "mathBlock")
+        ),
+        // Desktop's `/diagram` (`@blocknote/diagram-block`'s English strings).
+        Row(
+            id: "diagram", title: "Diagram", symbol: "point.3.connected.trianglepath.dotted",
+            aliases: ["mermaid", "diagram", "flowchart", "chart", "graph"],
+            section: .insert, action: .source(kind: "diagram")
         ),
         // Mobile's own rows: desktop makes these from a pasted link instead.
         Row(id: "bookmark", title: "Bookmark", symbol: "bookmark", aliases: ["bookmark", "link", "url", "web"], section: .insert, action: .link(.bookmark)),
@@ -295,21 +301,22 @@ extension EditorSession {
         }
     }
 
-    /// Desktop's `/math` turns the caret's block into an empty math block. A
-    /// block holding text keeps it here and the new block goes after, as
-    /// every other row does. Either way the source sheet opens on it.
+    /// Desktop's `/math` and `/diagram` turn the caret's block into an empty
+    /// one. A block holding text keeps it here and the new block goes after,
+    /// as every other row does. Either way the source sheet opens on it.
     private func insertSource(_ field: BlockField, kind: String) {
         let blockId = field.blockId
+        let sourceKind: BlockSourceRequest.Kind = kind == "diagram" ? .diagram : .math
         if field.textView.text.isEmpty {
             turnInto(InsertableBlock(id: kind, name: "", symbol: ""))
-            editSource(BlockSourceRequest(blockId: blockId, source: ""))
+            editSource(BlockSourceRequest(blockId: blockId, source: "", kind: sourceKind))
             return
         }
         commit(field) { [weak self] in
             guard let self, let model = self.model else { return }
             guard let newId = await model.insert(kind, after: blockId) else { return }
             self.history.record(.insert(blockId: newId, after: blockId, kind: kind, text: ""))
-            self.editSource(BlockSourceRequest(blockId: newId, source: ""))
+            self.editSource(BlockSourceRequest(blockId: newId, source: "", kind: sourceKind))
         }
     }
 

@@ -42,6 +42,7 @@ import { snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { createCanvasHandles } from './canvas-handles'
 import { invokeDesktopApiFromWindow } from './desktop-api'
+import { withoutFileBodies } from './desktop-api-reply'
 import type {
   FolderEntry,
   InboxSummary,
@@ -176,6 +177,7 @@ function inboxVisualType(item: {
 }
 
 export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): VaultServiceHandles {
+  const fileRowOf = (id: string) => getNoteCacheById(indexDb, id)
   return {
     notes: {
       async search({ query, limit = 10, folderId, fileTypes }) {
@@ -364,13 +366,17 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           return recursive || isDirectChild(basePath, toolPath)
         })
 
-        const noteEntries: FolderEntry[] = notes.map((note) => ({
-          kind: 'note',
-          id: note.id,
-          name: note.title,
-          path: normalizeFolderPath(note.path),
-          ...(note.emoji ? { icon: note.emoji } : {})
-        }))
+        const noteEntries: FolderEntry[] = notes.map((note) => {
+          const fileType = note.fileType ?? 'markdown'
+          return {
+            kind: fileType === 'markdown' ? 'note' : 'file',
+            id: note.id,
+            name: note.title,
+            path: normalizeFolderPath(note.path),
+            file_type: fileType,
+            ...(note.emoji ? { icon: note.emoji } : {})
+          }
+        })
 
         return [...folderEntries, ...noteEntries]
       },
@@ -799,11 +805,11 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         // The escape hatch must honour the same flag as the dedicated canvas
         // tools, or an agent could reach canvas.* with the feature off.
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
-        return invokeDesktopApiFromWindow(windowId, input)
+        return withoutFileBodies(await invokeDesktopApiFromWindow(windowId, input), fileRowOf)
       },
       async write(input, windowId) {
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
-        return invokeDesktopApiFromWindow(windowId, input)
+        return withoutFileBodies(await invokeDesktopApiFromWindow(windowId, input), fileRowOf)
       }
     },
     windows: {
