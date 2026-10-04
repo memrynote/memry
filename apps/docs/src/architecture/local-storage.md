@@ -250,29 +250,38 @@ through one serialized queue, so an older write never lands after a newer one.
 
 ### Extracted Text
 
-Text read out of filed PDFs and images lives in index.db, so every device reads its own files
-and nothing here syncs.
+Text read out of PDFs and images lives in index.db, so every device reads its own files and
+nothing here syncs. Two kinds of file are read: a filed PDF or image (its own `note_cache` row),
+and a PDF or image in a markdown note's `attachments/<note-id>/` folder that the note still embeds.
 
-- `extracted_text` (`note_id`, `part`, `method`, `text`) holds one row per page, keyed by
-  `(note_id, part)`. A PDF's `part` is its 1-based page; an image is part 1. `method` is
+- `extracted_text` (`note_id`, `source`, `part`, `method`, `text`) holds one row per page, keyed
+  by `(note_id, source, part)`. `source` is empty for a filed file's own text and is the stored
+  file name for an attachment. A PDF's `part` is its 1-based page; an image is part 1. `method` is
   `pdf-text` (the page's text layer), `ocr`, or `unreadable` (failed twice; kept so a resumed job
   skips it).
-- `file_text_jobs` (`note_id`, `signature`, `status`, `page_count`, `error`, `app_version`) holds
-  the job state. `signature` is the size and mtime of the bytes the rows came from; a file whose
-  signature moves starts over, a rename does not. A `failed` job runs again when another app
-  version opens the vault or a day after it failed. Its `unreadable` rows go first, so it resumes
-  at them and keeps the text it already read.
+- `file_text_jobs` (`note_id`, `source`, `signature`, `status`, `page_count`, `error`,
+  `app_version`) holds the job state per file. `signature` is the size and mtime of the bytes the
+  rows came from; a file whose signature moves starts over. Renaming or moving a filed file keeps
+  its job; renaming an attachment is a new `source` and is read again. A `failed` job runs again
+  when another app version opens the vault or a day after it failed. Its `unreadable` rows go
+  first and the job reads every page it has no row for, so a gap before a good page is read again
+  and the text it already read stays.
 
 Both reference `note_cache` with `ON DELETE CASCADE`. The rows are keyed by the note they make
-searchable, not by the file they came from, so text from a note's HTML blocks can sit under that
-note in the same table.
+searchable: an attachment's text sits under the markdown note that owns the folder, so a search
+hit opens that note. Text from a note's HTML blocks can sit under the note the same way.
 
 `src/main/file-text/runner.ts` is the only writer. It starts after the open-time index pass and
-works through one file and one page at a time, oldest job first. A PDF page with a text layer is read with
-pdfjs-dist; a page without one, and every image, goes through tesseract.js. Each page is stored as
-it finishes, so a restart resumes after the last stored page. The runner publishes
-`note.text-extracted` at pages 1, 2, 4, 8, … and at the end. The search projector then writes the
-file's text into `fts_notes`, and the embedding projector embeds its opening.
+works through one file and one page at a time, oldest job first. Every `note.upserted` for a
+filed PDF or image, or for a markdown note, makes it compare that note's files again; a finished
+attachment download does the same. An attachment the note no longer embeds loses its rows, even
+though its file stays on disk. A PDF page with a text layer is read with pdfjs-dist; a page
+without one, and every image, goes through tesseract.js. Each page is stored as it finishes, and
+a job reads only the pages it has no row for, so a restart resumes where it stopped. The runner
+publishes `note.text-extracted` at pages 1, 2, 4, 8, … and at the end. The search projector then
+writes the text into `fts_notes`: a filed file's text as its row, an attachment's text after the
+owning note's body. The embedding projector embeds a filed file's opening, and appends the opening
+of a note's attachment text to the note's body when the body leaves room.
 
 Two helper processes do the heavy work, both at low OS priority and closed after a minute idle:
 

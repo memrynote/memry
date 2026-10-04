@@ -367,7 +367,10 @@ Read tools are available to Agent Chat and external MCP clients:
 Filing a PDF, image, audio file, or video into the vault indexes it alongside your markdown notes,
 so it can turn up in `vault_search_notes`. Every search hit therefore carries a `file_type`:
 
-- `markdown` — a real note. `vault_read_note` returns its content.
+- `markdown` — a real note. `vault_read_note` returns its content. When the note embeds PDFs or
+  images from its attachments folder, the reply adds `attachment_text`: one `{ file, text }` entry
+  per file with the text read from it, about 100 KB at most (`attachment_text_truncated` says when
+  it was cut). `vault_search_notes` matches the note on that text too.
 - `pdf`, `image` — a filed file whose text Memry reads on this device: the PDF's own text layer, or
   OCR for scanned pages and images (see [Text in PDFs and images](/user-guide/search#text-in-pdfs-and-images)).
   `vault_search_notes` matches on that text, and `vault_read_note` returns it as `extracted_text`
