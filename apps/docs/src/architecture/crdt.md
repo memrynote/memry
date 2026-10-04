@@ -322,13 +322,22 @@ and given a full-state outbox row (#2646). The marker means the vault file is
 ahead of the document. It is never written with a store, and never for a
 large-file-class body.
 
-The full-state flush and an editor open merge the server body first and then
-apply the file over it (`takeOwedFile`). The write-back of a marked note applies
-it over the merged body the document holds instead of writing over the file.
-Only the provider's live document of the note takes the file, because only its
-updates reach the outbox. A pull of a closed note merges into a document it
-closes before the write-back runs, so that write-back writes nothing and leaves
-the marker for the full-state flush.
+The file is taken only after a complete server merge into the live document,
+and every other pass leaves the file alone while the marker stands. The
+full-state flush and an editor open merge the server body first and then
+apply the file over it (`CrdtProvider.takeFileAfterMerge`). Only the provider's
+live document of the note takes the file, because only its updates reach the
+outbox. An editor open whose merge fails or outlasts its timeout keeps what the
+document holds, or seeds it when it is empty, and leaves the take to the flush.
+The write-back of a marked note or journal writes nothing, even while a merge
+holds the document, and owes the note a full-state row again so the marker
+always has a flush to resolve it.
+
+A complete merge walks the whole server state. In in-memory mode a document
+reopened empty holds none of what an earlier pull's watermark counts, so the
+single-note pull drops that watermark and downloads from the snapshot, as the
+batch pull does. Without that, the merge before the take would miss peer
+updates below the watermark, and the take would delete them with no version.
 
 There is no base to merge from, so the file wins whole, tags included, and the
 loser is kept as a version:
