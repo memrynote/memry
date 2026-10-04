@@ -374,7 +374,8 @@ so it can turn up in `vault_search_notes`. Every search hit therefore carries a 
   cannot overwrite a filed document with markdown.
 
 `vault_list_folder` lists a filed file as `kind: "file"` with its `file_type`, and a note as
-`kind: "note"` with `file_type: "markdown"`.
+`kind: "note"` with `file_type: "markdown"`. The approval for `vault_delete_folder` counts the filed
+files it would delete apart from the notes.
 
 `vault_add_html_artifact` lets an agent put a diagram, chart, or small interactive explanation in a
 note. The HTML is saved as an attachment of that note and appended as a file block, which renders
