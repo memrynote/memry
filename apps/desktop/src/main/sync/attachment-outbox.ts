@@ -101,7 +101,8 @@ export function listPendingUploads(
 
 export interface OutboxDrainDeps {
   db: DrizzleDb
-  upload: (noteId: string, diskPath: string) => Promise<{ attachmentId: string }>
+  /** Null: another path owns this upload and records its outcome; the row is left alone. */
+  upload: (noteId: string, diskPath: string) => Promise<{ attachmentId: string } | null>
   onUploaded?: (noteId: string, attachmentId: string) => void
 }
 
@@ -121,6 +122,10 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
   let dropped = 0
 
   for (const row of pending) {
+    // The list is read once and each upload takes a while: a save-time upload
+    // may have finished this row in the meantime, and uploading it again would
+    // give the file a second attachment id.
+    if (!hasPendingUpload(deps.db, row.noteId, row.diskPath)) continue
     if (!fs.existsSync(row.diskPath)) {
       clearUpload(deps.db, row.noteId, row.diskPath)
       dropped++
@@ -128,6 +133,7 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
     }
     try {
       const result = await deps.upload(row.noteId, row.diskPath)
+      if (!result) continue
       clearUpload(deps.db, row.noteId, row.diskPath)
       deps.onUploaded?.(row.noteId, result.attachmentId)
       uploaded++
@@ -169,7 +175,7 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
 // drainAttachmentOutbox() is safe to call any time (no-ops until registered).
 // ============================================================================
 
-type RegisteredUploader = (noteId: string, diskPath: string) => Promise<{ attachmentId: string }>
+type RegisteredUploader = OutboxDrainDeps['upload']
 
 let registeredUploader: RegisteredUploader | null = null
 let getDbForDrain: (() => DrizzleDb) | null = null

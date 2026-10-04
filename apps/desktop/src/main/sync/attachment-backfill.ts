@@ -270,7 +270,8 @@ export function queueEmbeddedVaultFilesWith(
   const note = getNoteMetadataById(deps.db, noteId)
   if (!note || note.localOnly || (note.attachmentReferences ?? []).length > 0) return 0
   let queued = 0
-  for (const file of embeddedFilesOutsideOwnFolder(markdown, deps.vaultPath, note.path, noteId)) {
+  // The note's own folder too: unlike the backfill, no folder scan runs here.
+  for (const file of referencedVaultFiles(markdown, deps.vaultPath, note.path, noteId)) {
     try {
       if (!fs.statSync(file).isFile()) continue
     } catch {

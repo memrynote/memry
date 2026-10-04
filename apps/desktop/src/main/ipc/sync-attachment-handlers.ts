@@ -416,8 +416,13 @@ export function registerAttachmentHandlers(): void {
 
   registerOutboxUploader(
     async (noteId, diskPath) => {
-      const joined = await savedUploads.get(savedUploadKey(noteId, diskPath))
-      if (joined) return { attachmentId: joined.attachmentId }
+      const running = savedUploads.get(savedUploadKey(noteId, diskPath))
+      if (running) {
+        // The save path records success and failure alike. Null from it means
+        // it never uploaded (no token), so the drain does.
+        const joined = await running.catch(() => undefined)
+        if (joined !== null) return null
+      }
       const queue = getOrCreateUploadQueue()
       if (!queue) throw new Error('Sync not initialized')
       const result = await queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
