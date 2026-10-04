@@ -152,9 +152,9 @@ function listDueUploads(
 
 /**
  * Try every pending upload whose retry window is open, once. Rows whose file no
- * longer exists on disk are dropped (the attachment was deleted locally); rows
- * that fail again stay queued with an incremented attempt count and a longer
- * window.
+ * longer exists on disk, before or after the attempt, are dropped (the
+ * attachment was deleted locally); rows that fail again stay queued with an
+ * incremented attempt count and a longer window.
  */
 export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
   uploaded: number
@@ -183,6 +183,11 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
       deps.onUploaded?.(row.noteId, result.attachmentId)
       uploaded++
     } catch (err) {
+      if (!fs.existsSync(row.diskPath)) {
+        clearUpload(deps.db, row.noteId, row.diskPath)
+        dropped++
+        continue
+      }
       markUploadFailed(
         deps.db,
         row.noteId,

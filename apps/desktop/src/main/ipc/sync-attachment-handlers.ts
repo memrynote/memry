@@ -486,6 +486,19 @@ export function registerAttachmentHandlers(): void {
           }
         }
       } catch (err) {
+        // Deleted while the upload waited: drop the job, there is nothing to
+        // retry and no failure to show.
+        if (!fs.existsSync(diskPath)) {
+          logger.info('Dropped the upload of a deleted attachment', { noteId })
+          if (isDatabaseInitialized()) {
+            try {
+              clearUpload(getDatabase(), noteId, diskPath)
+            } catch (outboxErr) {
+              logger.warn('Failed to clear attachment upload intent', { noteId, err: outboxErr })
+            }
+          }
+          return
+        }
         const message = err instanceof Error ? err.message : 'Unknown error'
         // Classify here: this is the only path that raises the plan preflight's
         // AttachmentTooLargeError, and nothing else on it ever calls
