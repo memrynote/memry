@@ -13,6 +13,7 @@ import { extractErrorMessage, getIpcErrorCode, IpcFailureError } from '@/lib/ipc
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { deviceService, setupService } from '@/services/device-service'
 import { getI18n } from 'react-i18next'
+import { isSessionEndedReason } from '@memry/contracts/ipc-events'
 
 type AuthStatus =
   'idle' | 'checking' | 'unauthenticated' | 'authenticating' | 'authenticated' | 'error'
@@ -282,8 +283,10 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
             deviceId,
             email: result.email
           })
+          // Offline at launch or right after a wake is not a sign-out: main
+          // keeps the tokens and refreshes again once the server answers.
           const refreshResult = await authService.refreshToken()
-          if (!refreshResult.success) {
+          if (!refreshResult.success && refreshResult.sessionEnded) {
             dispatch({ type: 'RESET_AUTH' })
           }
         } else {
@@ -297,11 +300,39 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.api.onSessionExpired(() => {
-      dispatch({ type: 'RESET_AUTH' })
+    const unsubscribe = window.api.onSessionExpired(({ reason }) => {
+      if (isSessionEndedReason(reason)) dispatch({ type: 'RESET_AUTH' })
     })
     return unsubscribe
   }, [])
+
+  // A fresh token or a sync that finished after this window showed the user
+  // as signed out proves main still holds a live session.
+  useEffect(() => {
+    if (state.status !== 'unauthenticated') return
+    let cancelled = false
+    const signedOutAt = Date.now()
+    const recheck = (): void => {
+      deviceService
+        .getDevices()
+        .then((result) => {
+          if (cancelled || result.needsRecoveryConfirmation) return
+          const device = result.devices.find((d) => d.isCurrentDevice) ?? result.devices[0]
+          if (!device) return
+          dispatch({ type: 'CHECK_AUTHENTICATED', deviceId: device.id, email: result.email })
+        })
+        .catch(() => {})
+    }
+    const unsubscribeToken = window.api.onTokenRefreshed(recheck)
+    const unsubscribeStatus = window.api.onSyncStatusChanged(({ status, lastSyncAt }) => {
+      if (status === 'idle' && lastSyncAt !== undefined && lastSyncAt >= signedOutAt) recheck()
+    })
+    return () => {
+      cancelled = true
+      unsubscribeToken()
+      unsubscribeStatus()
+    }
+  }, [state.status])
 
   useEffect(() => {
     const unsubscribe = window.api.onOAuthError(({ error }) => {

@@ -42,7 +42,7 @@ export interface MainIpcInvokeHandlers {
   "ai-inline:stop-server": (...args: []) => Awaited<Promise<{ success: boolean; }>>
   "ai:generateWritingAssist": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/writing-tools-api").WritingAssistResponse>>
   "auth:init-oauth": (...args: [{ provider: "google"; }]) => Awaited<Promise<{ state: string; }> | { success: false; error: string }>
-  "auth:refresh-token": (...args: []) => Awaited<Promise<{ success: boolean; error: string | undefined; }>>
+  "auth:refresh-token": (...args: []) => Awaited<Promise<{ success: boolean; sessionEnded: boolean; error: string | undefined; }>>
   "auth:request-otp": (...args: [{ email: string; }]) => Awaited<Promise<unknown> | { success: false; error: string }>
   "auth:resend-otp": (...args: [{ email: string; }]) => Awaited<Promise<unknown> | { success: false; error: string }>
   "auth:verify-otp": (...args: [{ email: string; code: string; }]) => Awaited<Promise<{ success: boolean; isNewUser: boolean; needsSetup: boolean; needsRecoveryInput: boolean; }> | { success: false; error: string }>

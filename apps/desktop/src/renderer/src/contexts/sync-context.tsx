@@ -18,10 +18,11 @@ import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
 import { VaultRecoveryDialog } from '@/components/sync/vault-recovery-dialog'
 import { VaultBindingDialog } from '@/components/sync/vault-binding-dialog'
 import { SessionExpiredDialog } from '@/components/sync/session-expired-dialog'
-import type {
-  InitialSyncPhase,
-  LinkingRequestEvent,
-  VaultRecoveryNeededEvent
+import {
+  isSessionEndedReason,
+  type InitialSyncPhase,
+  type LinkingRequestEvent,
+  type VaultRecoveryNeededEvent
 } from '@memry/contracts/ipc-events'
 import type { VaultBindingChoice, VaultBindingState } from '@memry/contracts/ipc-sync-ops'
 import { useT } from '@memry/i18n/renderer'
@@ -502,7 +503,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         if (cancelled) return
         // A rejected refresh token can never recover — the toast is too easy to
         // miss for a session that is over, so escalate to a blocking prompt.
-        if (event.reason === 'refresh_rejected') {
+        if (isSessionEndedReason(event.reason)) {
           setReauthRequired(true)
         } else if (!sessionExpiredRef.current) {
           toast.error(t('sync.authExpired'), { duration: 8000 })

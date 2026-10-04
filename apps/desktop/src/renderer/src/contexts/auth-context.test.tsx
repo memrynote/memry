@@ -285,12 +285,13 @@ describe('AuthProvider', () => {
       })
 
       act(() => {
-        syncStatusCallback?.({ status: 'syncing' })
+        syncStatusCallback?.({ status: 'idle', lastSyncAt: Date.now() - 60_000 })
       })
+      expect(serviceMocks.deviceService.getDevices).toHaveBeenCalledTimes(1)
       expect(result.current.state.status).toBe('unauthenticated')
 
       act(() => {
-        syncStatusCallback?.({ status: 'idle', lastSyncAt: 1_700_000_000_000 })
+        syncStatusCallback?.({ status: 'idle', lastSyncAt: Date.now() })
       })
 
       await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
