@@ -1,6 +1,7 @@
 import * as Y from 'yjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const h = vi.hoisted(() => ({
@@ -144,22 +145,22 @@ function versionsKept(noteId: string): string[] {
   ).map((row) => row.content)
 }
 
+beforeEach(() => {
+  index = createTestIndexDb()
+  h.indexDb = index.db
+  h.contentHash = generateContentHash
+  h.files.clear()
+  h.rows.clear()
+  resetWritebackState()
+})
+
+afterEach(() => {
+  cancelPendingWritebacks()
+  resetWritebackState()
+  index.close()
+})
+
 describe('the version a write-back keeps of the bytes it replaces (#2646)', () => {
-  beforeEach(() => {
-    index = createTestIndexDb()
-    h.indexDb = index.db
-    h.contentHash = generateContentHash
-    h.files.clear()
-    h.rows.clear()
-    resetWritebackState()
-  })
-
-  afterEach(() => {
-    cancelPendingWritebacks()
-    resetWritebackState()
-    index.close()
-  })
-
   it('keeps one version while a peer types into the note for 60 passes', async () => {
     const first = '---\nid: note-1\n---\nThe fox\n'
     writtenElsewhere(NOTE, first)
@@ -262,5 +263,49 @@ describe('the version a write-back keeps of the bytes it replaces (#2646)', () =
 
     resetWritebackState()
     expect(getWritebackStateSizes().lastWrittenHashes).toBe(0)
+  })
+})
+
+describe('the spelling a write-back keeps when the source record no longer restores (#2615)', () => {
+  const FOREIGN = 'Title\n=====\n\nText:\n* One\n* Two\n\n_em_ here.\n'
+
+  /** A doc that says `body` and carries the record of an older body. */
+  async function docWithStaleRecord(body: string): Promise<Y.Doc> {
+    const doc = await docWith(body)
+    writeMarkdownSourceToYDoc(doc, 'Draft\n=====\n\n* Alpha\n* Beta\n\n__old__ words.\n')
+    return doc
+  }
+
+  it.each([NOTE, JOURNAL])(
+    'leaves the file as written when it already says what the doc says (%s)',
+    async (noteId) => {
+      const head =
+        noteId === JOURNAL ? "---\nid: x\ndate: '2026-01-03'\n---\n" : '---\nid: x\n---\n'
+      const raw = `${head}${FOREIGN}`
+      writtenElsewhere(noteId, raw)
+
+      await pass(noteId, await docWithStaleRecord(FOREIGN), 'remote')
+
+      expect(h.files.get(fileOf(noteId))).toBe(raw)
+      expect(versionsKept(noteId)).toEqual([])
+    }
+  )
+
+  it('merges an edit into the spelling the file holds', async () => {
+    writtenElsewhere(NOTE, `---\nid: x\n---\n${FOREIGN}`)
+
+    await pass(NOTE, await docWithStaleRecord(FOREIGN.replace('_em_ here.', 'Edited.')), 'local')
+
+    expect(h.files.get(NOTE_FILE)).toBe(
+      '---\nid: x\n---\nTitle\n=====\n\nText:\n* One\n* Two\n\nEdited.\n'
+    )
+  })
+
+  it('does not bring back CriticMarkup the doc no longer holds', async () => {
+    writtenElsewhere(NOTE, '---\nid: x\n---\nKeep {--this--} word.\n\n* One\n')
+
+    await pass(NOTE, await docWithStaleRecord('Keep this word.\n\n* One\n'), 'remote')
+
+    expect(h.files.get(NOTE_FILE)).toBe('---\nid: x\n---\nKeep this word.\n\n* One\n')
   })
 })
