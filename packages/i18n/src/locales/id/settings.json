@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Tata letak",
       "toolbar": "Bilah alat",
-      "spelling": "Ejaan"
+      "spelling": "Ejaan",
+      "checklists": "Daftar periksa"
     },
     "width": {
       "label": "Lebar editor",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Lebar editor",
       "toolbarMode": "Bilah alat pemformatan tetap",
-      "spellCheck": "Periksa ejaan"
+      "spellCheck": "Periksa ejaan",
+      "convertChecklists": "Ubah item daftar periksa menjadi tugas"
+    },
+    "convertChecklists": {
+      "description": "Setiap item daftar periksa baru menjadi tugas. Jika nonaktif, daftar tetap berupa kotak centang biasa; klik kanan item untuk menjadikannya tugas.",
+      "error": "Gagal memperbarui konversi daftar periksa"
     }
   },
   "templates": {

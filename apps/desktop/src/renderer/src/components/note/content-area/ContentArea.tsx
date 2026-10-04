@@ -160,6 +160,7 @@ import { createInlineCheckboxPlugin } from './inline-checkbox-plugin'
 import { createInlineCheckboxContent } from '@memry/editor-schema/inline'
 import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-date-pills'
 import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
+import { useEditorSettings } from '@/hooks/use-editor-settings'
 import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
 import { CanvasChoiceMenu, MentionMenu, type MentionSuggestionItem } from './mention-menu'
 import { toast } from 'sonner'
@@ -416,6 +417,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
   const { clockFormat: dateMentionClockFormat } = useDateMentionPrefs()
+  const { settings: editorSettings, isLoading: editorSettingsLoading } = useEditorSettings()
+  // Off until the setting is read. The note's first scan runs before the read
+  // returns, and the default there would convert checkboxes the owner turned off.
+  const convertChecklists = !editorSettingsLoading && editorSettings.convertChecklistsToTasks
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
   const { openSidebarItem } = useSidebarNavigation()
@@ -2465,7 +2470,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     for (const change of changes ?? []) remoteAuthoredBlocksRef.current.delete(change.block.id)
 
     const intents = analyzeTaskIntents(editor.document as any[], taskIntentExclusions(), {
-      openedBlockIds: openedBlockIdsRef.current
+      openedBlockIds: openedBlockIdsRef.current,
+      convertChecklists
     })
 
     // Both paths convert in the same change that produced the checkbox, so a
@@ -2680,6 +2686,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => {
     scanOpenedContent()
   }, [editor])
+
+  // Conversion turning on, once the setting is read or when the owner switches
+  // it on, converts what the note already holds, as opening it would have.
+  const scanWithConversion = useEffectEvent(() => applyTaskIntents())
+  useEffect(() => {
+    if (convertChecklists) scanWithConversion()
+  }, [convertChecklists])
 
   // What the `/` menu offers when nothing matches: the query is handed on
   // rather than thrown away.

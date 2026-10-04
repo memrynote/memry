@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Layout",
       "toolbar": "Verktygsfält",
-      "spelling": "Stavning"
+      "spelling": "Stavning",
+      "checklists": "Checklistor"
     },
     "width": {
       "label": "Redigerarens bredd",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Redigerarens bredd",
       "toolbarMode": "Fast formateringsverktygsfält",
-      "spellCheck": "Kontrollera stavning"
+      "spellCheck": "Kontrollera stavning",
+      "convertChecklists": "Gör checklistpunkter till uppgifter"
+    },
+    "convertChecklists": {
+      "description": "Varje ny checklistpunkt blir en uppgift. Avstängt förblir checklistor vanliga kryssrutor; högerklicka på en för att göra den till en uppgift.",
+      "error": "Det gick inte att uppdatera konverteringen av checklistor"
     }
   },
   "templates": {

@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Layout",
       "toolbar": "Barra de ferramentas",
-      "spelling": "Ortografia"
+      "spelling": "Ortografia",
+      "checklists": "Listas de verificação"
     },
     "width": {
       "label": "Largura do editor",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Largura do editor",
       "toolbarMode": "Barra de ferramentas de formatação fixa",
-      "spellCheck": "Verificar ortografia"
+      "spellCheck": "Verificar ortografia",
+      "convertChecklists": "Transformar itens da lista em tarefas"
+    },
+    "convertChecklists": {
+      "description": "Cada novo item da lista vira uma tarefa. Desativado, as listas ficam como caixas de seleção simples; clique com o botão direito em uma para torná-la tarefa.",
+      "error": "Não foi possível atualizar a conversão de listas de verificação"
     }
   },
   "templates": {

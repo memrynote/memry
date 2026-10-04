@@ -422,7 +422,8 @@
     "groups": {
       "layout": "布局",
       "toolbar": "工具栏",
-      "spelling": "拼写"
+      "spelling": "拼写",
+      "checklists": "清单"
     },
     "width": {
       "label": "编辑器宽度",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "编辑器宽度",
       "toolbarMode": "常驻格式工具栏",
-      "spellCheck": "拼写检查"
+      "spellCheck": "拼写检查",
+      "convertChecklists": "将清单项转为任务"
+    },
+    "convertChecklists": {
+      "description": "每个新的清单项都会成为任务。关闭后清单保持为普通复选框；右键单击某一项可将其转为任务。",
+      "error": "无法更新清单转换设置"
     }
   },
   "templates": {

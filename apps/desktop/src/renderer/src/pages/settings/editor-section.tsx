@@ -41,6 +41,14 @@ export function EditorSettings() {
     [t, updateSettings]
   )
 
+  const handleConvertChecklistsChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateSettings({ convertChecklistsToTasks: enabled })
+      if (!success) toast.error(t('editor.convertChecklists.error'))
+    },
+    [t, updateSettings]
+  )
+
   if (isLoading) {
     return (
       <div className="flex flex-col">
@@ -95,6 +103,20 @@ export function EditorSettings() {
             checked={settings.spellCheck}
             onCheckedChange={(...args) => void handleSpellCheckChange(...args)}
             aria-label={t('editor.v2.spellCheck')}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('editor.groups.checklists')}>
+        <SettingRow
+          label={t('editor.v2.convertChecklists')}
+          description={t('editor.convertChecklists.description')}
+        >
+          <Switch
+            checked={settings.convertChecklistsToTasks}
+            onCheckedChange={(...args) => void handleConvertChecklistsChange(...args)}
+            aria-label={t('editor.v2.convertChecklists')}
             className={ACCENT_SWITCH}
           />
         </SettingRow>

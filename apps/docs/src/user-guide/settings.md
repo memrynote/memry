@@ -223,6 +223,10 @@ Clicking a row — built-in or custom — opens it in the [template editor](/use
 
 **Check Spelling** underlines misspelled words in notes and journals. It is **off by default**; turn it on to see squiggles as you write. Correcting a flagged word happens from the editor's context menu — see [Spell Check](/user-guide/notes/editing#spell-check).
 
+### Checklists
+
+**Turn checklist items into tasks** is **on by default**: a checklist item you type, or one a note opens with, becomes a task. Turn it off to keep every checklist item a plain checkbox. You can still make one a task by right-clicking its checkbox or with **Turn into > Task** from the block menu, and a checkbox indented under a task still becomes its subtask. Turning it off changes no task you already have. The setting syncs to your other devices; a device on an older version of memrynote keeps turning checkboxes into tasks. See [Keeping a Checkbox a Checkbox](/user-guide/tasks/capturing#keeping-a-checkbox-a-checkbox).
+
 ---
 
 ## Journal
@@ -548,7 +552,7 @@ Create, rename, recolor, and reorder property options.
 Settings persist via Zod schemas in `packages/contracts/settings-schemas.ts`. Notable keys:
 
 - General: `theme`, `fontSize`, `fontFamily`, `accentColor`, `colorTheme`, `useThemeAccent`, `backgroundLight`, `foregroundLight`, `backgroundDark`, `foregroundDark`, `reduceMotion`, `pointerCursors`, `fontSmoothing`, `startOnBoot`, `language`, `clockFormat`, `dateFormat`, `createInSelectedFolder`, `openPagesInNewTab`
-- Editor: `width`, `toolbarMode`, `spellCheck`
+- Editor: `width`, `toolbarMode`, `spellCheck`, `convertChecklistsToTasks`
 - Tasks: `defaultProjectId`, `defaultSortOrder`, `staleInboxDays`
 - Calendar: `dayCellClickBehavior`, `calendarPageClickOverride`, `weekStartDay`
 - AI: `enabled`, `provider`, `model`

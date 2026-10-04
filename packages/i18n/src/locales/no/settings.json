@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Oppsett",
       "toolbar": "Verktøylinje",
-      "spelling": "Staving"
+      "spelling": "Staving",
+      "checklists": "Sjekklister"
     },
     "width": {
       "label": "Redigeringsbredde",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Redigeringsbredde",
       "toolbarMode": "Fast formateringsverktøylinje",
-      "spellCheck": "Stavekontroll"
+      "spellCheck": "Stavekontroll",
+      "convertChecklists": "Gjør sjekklistepunkter til oppgaver"
+    },
+    "convertChecklists": {
+      "description": "Hvert nye sjekklistepunkt blir en oppgave. Av beholder sjekklister som vanlige avkrysningsbokser; høyreklikk på en for å gjøre den til en oppgave.",
+      "error": "Kunne ikke oppdatere konvertering av sjekklister"
     }
   },
   "templates": {

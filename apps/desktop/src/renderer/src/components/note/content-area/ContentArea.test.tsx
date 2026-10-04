@@ -19,6 +19,10 @@ const contentAreaMocks = vi.hoisted(() => ({
   retryAI: vi.fn(),
   openSidebarItem: vi.fn(),
   analyzeTaskIntents: vi.fn(),
+  editorSettings: {
+    isLoading: true,
+    settings: { convertChecklistsToTasks: true }
+  },
   tasksService: {
     listProjects: vi.fn(),
     listForItem: vi.fn(),
@@ -301,6 +305,12 @@ vi.mock('./scan-task-intents', () => ({
   analyzeTaskIntents: contentAreaMocks.analyzeTaskIntents
 }))
 
+// Unread by default: a read setting that is on rescans the note once, and that
+// extra analyzer call would take the intents a test queues for its own changes.
+vi.mock('@/hooks/use-editor-settings', () => ({
+  useEditorSettings: () => contentAreaMocks.editorSettings
+}))
+
 vi.mock('./hooks', () => ({
   useBlockNoteSetup: vi.fn(() => ({ aiReady: true })),
   useEditorSync: vi.fn(() => ({
@@ -403,6 +413,7 @@ vi.mock('./ai-menu', () => ({
 vi.mock('./editor-schema', () => ({ editorSchema: {} }))
 
 import { ContentArea } from './ContentArea'
+import type * as ScanTaskIntents from './scan-task-intents'
 import { markTaskRemovalsHandled } from './task-removal'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 
@@ -577,6 +588,10 @@ describe('ContentArea', () => {
     contentAreaMocks.blockNoteOptions = null
     contentAreaMocks.useSyncState = { status: 'error' }
     contentAreaMocks.editorChanges = []
+    contentAreaMocks.editorSettings = {
+      isLoading: true,
+      settings: { convertChecklistsToTasks: true }
+    }
     contentAreaMocks.yjsState = {
       fragment: undefined,
       doc: null,
@@ -2113,6 +2128,66 @@ describe('ContentArea', () => {
       { type: 'text', text: BLOCKED_LINE, styles: {} }
     ])
     expect(contentAreaMocks.toastError).toHaveBeenCalled()
+  })
+
+  describe('with checklist conversion switched off', () => {
+    beforeEach(async () => {
+      const actual = await vi.importActual<typeof ScanTaskIntents>('./scan-task-intents')
+      contentAreaMocks.analyzeTaskIntents.mockReset().mockImplementation(actual.analyzeTaskIntents)
+      setDocument([contentAreaMocks.blocks.get('standalone')])
+      contentAreaMocks.editorSettings = {
+        isLoading: false,
+        settings: { convertChecklistsToTasks: false }
+      }
+    })
+
+    it('keeps a checklist item a checkbox, and converts it once the setting is on', async () => {
+      const { rerender } = render(<ContentArea noteId="note-1" />)
+      fireEvent.click(screen.getByText('change'))
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(contentAreaMocks.blocks.get('standalone').type).toBe('checkListItem')
+      expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+
+      contentAreaMocks.editorSettings = {
+        isLoading: false,
+        settings: { convertChecklistsToTasks: true }
+      }
+      rerender(<ContentArea noteId="note-1" />)
+
+      await waitFor(() =>
+        expect(contentAreaMocks.blocks.get('standalone').props.taskId).toBe('created-task')
+      )
+      expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Standalone', tags: ['urgent'] })
+      )
+    })
+
+    it('does not convert before the setting is read', async () => {
+      contentAreaMocks.editorSettings = {
+        isLoading: true,
+        settings: { convertChecklistsToTasks: true }
+      }
+      render(<ContentArea noteId="note-1" />)
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(contentAreaMocks.blocks.get('standalone').type).toBe('checkListItem')
+      expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    })
+
+    it('still converts a checkbox by right-click', async () => {
+      render(<ContentArea noteId="note-1" />)
+
+      fireEvent.contextMenu(screen.getByText('checklist target'))
+
+      await waitFor(() =>
+        expect(contentAreaMocks.blocks.get('standalone').props.taskId).toBe('created-task')
+      )
+    })
   })
 
   // The template editor mounts this way (#2331): a checkbox in a template is

@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Asettelu",
       "toolbar": "Työkalupalkki",
-      "spelling": "Oikeinkirjoitus"
+      "spelling": "Oikeinkirjoitus",
+      "checklists": "Tarkistuslistat"
     },
     "width": {
       "label": "Editorin leveys",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Editorin leveys",
       "toolbarMode": "Kiinnitetty muotoilupalkki",
-      "spellCheck": "Tarkista oikeinkirjoitus"
+      "spellCheck": "Tarkista oikeinkirjoitus",
+      "convertChecklists": "Muuta tarkistuslistan kohdat tehtäviksi"
+    },
+    "convertChecklists": {
+      "description": "Jokaisesta uudesta tarkistuslistan kohdasta tulee tehtävä. Pois päältä listat pysyvät tavallisina valintaruutuina; tee kohdasta tehtävä napsauttamalla sitä hiiren oikealla.",
+      "error": "Tarkistuslistojen muunnoksen päivitys epäonnistui"
     }
   },
   "templates": {
