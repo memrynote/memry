@@ -83,7 +83,8 @@ function truncatedReply(text: string, end: number): TruncatedDesktopApiReply {
     totalChars: text.length,
     message:
       `Reply cut at ${end} of ${text.length} characters. ` +
-      'partial holds the start of the JSON reply. Narrow the request to get the rest.',
+      'partial holds the start of the JSON reply. The rest is not returned. Call an operation ' +
+      'that returns less, such as a list with a smaller limit, or vault_read_note for a note body.',
     partial: text.slice(0, end)
   }
 }

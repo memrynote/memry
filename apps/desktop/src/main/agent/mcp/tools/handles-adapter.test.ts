@@ -1236,7 +1236,7 @@ describe('createVaultServiceHandles', () => {
       expect(replyChars).toBeLessThanOrEqual(102_400)
       expect(replyChars).toBeGreaterThan(101_000)
       expect(reply.message).toBe(
-        `Reply cut at ${reply.partial.length} of 300028 characters. partial holds the start of the JSON reply. Narrow the request to get the rest.`
+        `Reply cut at ${reply.partial.length} of 300028 characters. partial holds the start of the JSON reply. The rest is not returned. Call an operation that returns less, such as a list with a smaller limit, or vault_read_note for a note body.`
       )
       expect(JSON.stringify({ id: 'note-1', content: body }).startsWith(reply.partial)).toBe(true)
     })
