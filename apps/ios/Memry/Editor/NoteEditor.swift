@@ -513,7 +513,7 @@ final class NoteEditorViewModel {
 /// What a block view needs to become editable.
 ///
 /// Built by the page (`NotePageContent`) each render, so the session always
-/// has the page's current reload, note titles and picture picker.
+/// has the page's current reload and note titles.
 struct NoteEditingBridge {
     let session: EditorSession
 
@@ -523,7 +523,6 @@ struct NoteEditingBridge {
         titles: [String] = [],
         icons: [String: String] = [:],
         titleExists: ((String) -> Bool)? = nil,
-        pickImage: (() -> Void)? = nil,
         didChange: @escaping () async -> Void
     ) {
         session = model.session
@@ -532,6 +531,5 @@ struct NoteEditingBridge {
         session.titles = titles
         session.icons = icons
         session.titleExists = titleExists
-        if (session.pickImage == nil) != (pickImage == nil) { session.pickImage = pickImage }
     }
 }

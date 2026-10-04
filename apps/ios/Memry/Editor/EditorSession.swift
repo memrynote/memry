@@ -33,13 +33,12 @@ final class EditorSession {
     /// Each note's emoji by lowercased title, for the `[[` / `@` rows.
     @ObservationIgnored var icons: [String: String] = [:]
     @ObservationIgnored var titleExists: ((String) -> Bool)?
-    /// Opens the picture picker; `nil` hides the toolbar's picture button.
-    var pickImage: (() -> Void)?
     /// Every vault tag, most used first, for the `#` menu.
     @ObservationIgnored var tags: [String] = []
     /// Each tag's chosen colour by lowercased name, for the `hashTag` node.
     @ObservationIgnored var tagColors: [String: String] = [:]
-    /// Opens a paperclip source; `nil` hides the paperclip menu.
+    /// Opens an attachment picker; `nil` hides the paperclip menu and the
+    /// catalog's media rows.
     var attach: ((EditorAttachmentSource) -> Void)?
     /// The page's blocks, flat with `depth`, as the page draws them: what the
     /// toolbar's indent and move buttons read the focused block's place from.
@@ -613,16 +612,29 @@ final class EditorSession {
         }
     }
 
+    /// Opens an attachment picker once the open block's typing is written.
+    /// That write ends in a page reload, which would tear down a picker
+    /// already on screen.
+    func openAttachment(_ source: EditorAttachmentSource) {
+        guard let attach else { return }
+        if let field { commit(field) }
+        enqueue { attach(source) }
+    }
+
     /// An uploaded attachment's block, after the caret's block (or at the end
-    /// of the body when none has had the caret). Not recorded for undo: redo
-    /// would replay a bare insert without the url.
+    /// of the body when none has had the caret). Undo removes the block and
+    /// keeps the upload, as desktop's undo does.
     func insertAttachment(_ block: AttachmentBlock) {
         let after = field?.blockId
         if let field { commit(field) }
         enqueue { [weak self] in
             guard let self, let model = self.model else { return }
             guard let newId = await model.insert(block.kind, after: after) else { return }
-            for prop in block.props { await model.setProp(newId, prop.name, prop.value) }
+            let props = block.props.map { BlockEdit.setProp(blockId: newId, name: $0.name, value: $0.value) }
+            for prop in props { await model.apply(prop) }
+            var step = EditorUndoStep.insert(blockId: newId, after: after, kind: block.kind, text: "")
+            step.forwardProps = props
+            self.history.record(step)
             await self.didChange()
         }
     }
@@ -702,7 +714,7 @@ final class EditorSession {
             return
         }
         guard let step = history.popUndo() else { return }
-        replay(step.backward)
+        replay([step.backward])
     }
 
     func redo() {
@@ -711,14 +723,14 @@ final class EditorSession {
             return
         }
         guard let step = history.popRedo() else { return }
-        replay(step.forward)
+        replay([step.forward] + step.forwardProps)
     }
 
-    private func replay(_ edit: BlockEdit) {
+    private func replay(_ edits: [BlockEdit]) {
         if let field { field.dirty = false }
         enqueue { [weak self] in
             guard let self, let model = self.model else { return }
-            await model.apply(edit)
+            for edit in edits { await model.apply(edit) }
             await self.didChange()
         }
     }
