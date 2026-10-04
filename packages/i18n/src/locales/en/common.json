@@ -131,6 +131,8 @@
     "openInTab": "Open conversation in tab",
     "stop": "Stop",
     "thinking": "Agent is thinking",
+    "toolsUnavailable": "Vault tools are off for this model. It failed the tool check, so it can only chat.",
+    "toolsUnavailableWithDetail": "Vault tools are off for this model. It failed the tool check, so it can only chat. {detail}",
     "enable": {
       "title": "Enable memrynote Agent",
       "description": "memrynote Agent uses your selected local agent CLI to chat about your vault. Claude sends turns to Anthropic; Codex sends turns to OpenAI.",

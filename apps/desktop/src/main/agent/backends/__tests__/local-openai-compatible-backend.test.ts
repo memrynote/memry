@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  createOpenAI: vi.fn(() => ({
-    chat: vi.fn((model: string) => ({ provider: 'openai-compatible', model }))
+  createOpenAICompatible: vi.fn(() => ({
+    chatModel: vi.fn((model: string) => ({ provider: 'openai-compatible', model }))
   })),
   createOllama: vi.fn(() => vi.fn((model: string) => ({ provider: 'ollama', model }))),
   streamText: vi.fn(),
   stepCountIs: vi.fn((count: number) => ({ type: 'step-count', count }))
 }))
 
-vi.mock('@ai-sdk/openai', () => ({
-  createOpenAI: mocks.createOpenAI
+vi.mock('@ai-sdk/openai-compatible', () => ({
+  createOpenAICompatible: mocks.createOpenAICompatible
 }))
 
 vi.mock('ollama-ai-provider-v2', () => ({
@@ -365,7 +365,7 @@ describe('LocalOpenAICompatibleBackend', () => {
     })
   })
 
-  it('omits tool schemas when the live capability probe fails tool calling', async () => {
+  it('tells the chat and the model when the live capability probe fails tool calling', async () => {
     mocks.streamText.mockReturnValueOnce({
       fullStream: (async function* () {
         yield { type: 'text-delta', text: 'Chat only' }
@@ -387,19 +387,51 @@ describe('LocalOpenAICompatibleBackend', () => {
       fetch: createProbeFetch({ toolCall: false })
     })
 
-    await backend.runTurn({
+    const run = await backend.runTurn({
       conversationId: 'conversation-1',
       writeGrant: TEST_GRANT,
       windowId: 'window-1',
       prompt: 'User: create a task',
       options: { backend: 'local_openai_compatible', model: 'llama3.2', toolsEnabled: true }
     })
+    const events = []
+    for await (const event of run.events) events.push(event)
 
+    expect(events).toEqual([
+      {
+        kind: 'tools_unavailable',
+        detail: 'Model did not emit the synthetic memry_probe_echo tool call.'
+      },
+      { kind: 'assistant_delta', text: 'Chat only' }
+    ])
     expect(mocks.streamText).toHaveBeenCalledWith(
       expect.not.objectContaining({
         tools: expect.anything()
       })
     )
+    expect(mocks.streamText.mock.calls[0][0].system).toMatch(/^No tools are available/)
+  })
+
+  it('retries the tool probe without tool_choice when the named choice is rejected', async () => {
+    const fetchImpl = createProbeFetch({ rejectNamedToolChoice: true })
+    const backend = new LocalOpenAICompatibleBackend({
+      getSettings: async () => ({
+        preset: 'custom',
+        baseUrl: 'https://api.example.test/v1',
+        model: 'llama3.2',
+        apiKeyConfigured: true,
+        allowNonLoopback: true
+      }),
+      getApiKey: async () => 'secret',
+      toolBridge: { execute: vi.fn() } as never,
+      fetch: fetchImpl
+    })
+
+    await expect(backend.probeCapabilities()).resolves.toMatchObject({
+      toolCallingSupported: true,
+      toolContinuationSupported: true,
+      toolsEnabled: true
+    })
   })
 
   it('ollama preset uses the native /api endpoint with num_ctx 8192', async () => {
@@ -433,7 +465,7 @@ describe('LocalOpenAICompatibleBackend', () => {
     expect(mocks.createOllama).toHaveBeenCalledWith(
       expect.objectContaining({ baseURL: 'http://localhost:11434/api' })
     )
-    expect(mocks.createOpenAI).not.toHaveBeenCalled()
+    expect(mocks.createOpenAICompatible).not.toHaveBeenCalled()
     const streamArgs = mocks.streamText.mock.calls[0][0]
     expect(streamArgs.providerOptions).toEqual({ ollama: { options: { num_ctx: 8192 } } })
   })
@@ -641,7 +673,7 @@ describe('LocalOpenAICompatibleBackend', () => {
       options: { backend: 'local_openai_compatible' }
     })
 
-    expect(mocks.createOpenAI).toHaveBeenCalled()
+    expect(mocks.createOpenAICompatible).toHaveBeenCalled()
     expect(mocks.createOllama).not.toHaveBeenCalled()
     expect(mocks.streamText.mock.calls[0][0].providerOptions).toBeUndefined()
   })
@@ -651,6 +683,7 @@ function createProbeFetch(
   input: {
     toolCall?: boolean
     toolProbeStatus?: number
+    rejectNamedToolChoice?: boolean
     streamBody?: boolean
     models?: string[]
   } = {}
@@ -664,6 +697,7 @@ function createProbeFetch(
     const body = JSON.parse(String(init?.body ?? '{}')) as {
       stream?: boolean
       tools?: unknown[]
+      tool_choice?: unknown
     }
     if (body.stream)
       return input.streamBody === false
@@ -672,6 +706,8 @@ function createProbeFetch(
     if (body.tools) {
       if (input.toolProbeStatus)
         return new Response('probe failed', { status: input.toolProbeStatus })
+      if (input.rejectNamedToolChoice && body.tool_choice)
+        return new Response('tool_choice not supported', { status: 400 })
       return jsonResponse({
         choices: [
           {

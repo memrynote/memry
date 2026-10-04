@@ -220,8 +220,15 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   // Measured from the backend's first chance to think, not from turn start:
   // context compaction before the spawn is not the model thinking.
   const reasoningClockStart = Date.now()
-  const reasoningData = (): { reasoning?: string; reasoningDurationMs?: number } =>
-    reasoning.trim() ? { reasoning, reasoningDurationMs } : {}
+  let toolsUnavailable: { detail: string | null } | null = null
+  const displayData = (): {
+    reasoning?: string
+    reasoningDurationMs?: number
+    toolsUnavailable?: { detail: string | null }
+  } => ({
+    ...(reasoning.trim() ? { reasoning, reasoningDurationMs } : {}),
+    ...(toolsUnavailable ? { toolsUnavailable } : {})
+  })
   let backendError: string | null = null
   let exitObserved = false
   let unknownEventCount = 0
@@ -234,6 +241,14 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     for await (const event of sub.events) {
       if (event.kind === 'error') {
         backendError ??= event.message
+        continue
+      }
+      if (event.kind === 'tools_unavailable') {
+        toolsUnavailable = { detail: event.detail }
+        const updated = deps.messages.updateStreaming(assistant.id, {
+          content: { role: 'assistant', data: { text: buffered, ...displayData() } }
+        })
+        broadcastAgentEvent({ kind: 'message_upserted', message: updated })
         continue
       }
       await handleBackendEvent(event, {
@@ -324,7 +339,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         backendError
       })
       const errored = deps.messages.markTerminal(assistant.id, 'error', {
-        content: { role: 'assistant', data: { text: message, ...reasoningData() } }
+        content: { role: 'assistant', data: { text: message, ...displayData() } }
       })
       broadcastAgentEvent({
         kind: 'message_upserted',
@@ -346,7 +361,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         data: {
           text: buffered,
           ...(sourceRefs.size > 0 && { sources: [...sourceRefs.values()] }),
-          ...reasoningData()
+          ...displayData()
         }
       }
     })

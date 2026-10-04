@@ -1,4 +1,4 @@
-import { createOpenAI } from '@ai-sdk/openai'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { createOllama } from 'ollama-ai-provider-v2'
 import {
   type AgentBackendStatus,
@@ -33,6 +33,12 @@ const PROBE_TTL_MS = 10 * 60_000
 // A "no tools" verdict is usually a model property, but a transient provider error at
 // the tool step looks identical, so it expires fast.
 const PROBE_DEGRADED_TTL_MS = 60_000
+
+// The assembled prompt names the vault tools, so a model that was sent no tool schemas
+// writes its tool calls out as plain text unless it is told they are gone.
+const TOOLS_UNAVAILABLE_SYSTEM =
+  'No tools are available in this conversation. Do not write tool calls or tool syntax. ' +
+  'Answer in plain text, and if the request needs vault access, say that vault tools are off for this model.'
 
 // Ollama's native API (the only endpoint that accepts num_ctx) lives at /api, while
 // the stored ollama preset baseUrl points at the /v1 OpenAI-compat path.
@@ -154,24 +160,32 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
           baseURL: toOllamaApiBaseUrl(settings.baseUrl),
           ...(apiKey ? { headers: { Authorization: `Bearer ${apiKey}` } } : {})
         })(modelName)
-      : createOpenAI({
+      : // The OpenAI provider drops `reasoning_content`, and thinking-mode providers
+        // such as DeepSeek reject a tool loop that does not send it back (#2609).
+        createOpenAICompatible({
+          name: 'local-openai-compatible',
           baseURL: settings.baseUrl,
-          apiKey: apiKey || 'local'
-        }).chat(modelName)
+          ...(apiKey ? { apiKey } : {})
+        }).chatModel(modelName)
     const controller = new AbortController()
-    const toolsEnabled =
-      allowTools &&
-      (options?.toolsEnabled ?? true) &&
-      (await this.resolveProbe(settings, apiKey)).toolsEnabled
+    const probe =
+      allowTools && (options?.toolsEnabled ?? true) && input.writeGrant
+        ? await this.resolveProbe(settings, apiKey)
+        : null
+    const toolsUnavailable =
+      probe?.connected && probe.modelAvailable && !probe.toolsEnabled
+        ? [{ kind: 'tools_unavailable' as const, detail: probe.detail }]
+        : []
     const result = streamText({
       model,
       prompt: input.prompt,
+      ...(toolsUnavailable.length > 0 ? { system: TOOLS_UNAVAILABLE_SYSTEM } : {}),
       abortSignal: controller.signal,
       stopWhen: stepCountIs(8),
       ...(isOllama
         ? { providerOptions: { ollama: { options: { num_ctx: OLLAMA_NUM_CTX } } } }
         : {}),
-      ...(toolsEnabled && input.writeGrant
+      ...(probe?.toolsEnabled && input.writeGrant
         ? {
             tools: createAiSdkToolSet(this.deps.toolBridge, {
               writeGrant: input.writeGrant,
@@ -184,7 +198,7 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     let stderr = ''
 
     return {
-      events: mapAiSdkEvents(result.fullStream, (error) => {
+      events: mapAiSdkEvents(toolsUnavailable, result.fullStream, (error) => {
         exitCode = 1
         stderr = errorMessage(error)
       }),
@@ -198,9 +212,11 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
 }
 
 async function* mapAiSdkEvents(
+  leading: BackendEvent[],
   stream: AsyncIterable<unknown>,
   onError: (error: unknown) => void
 ): AsyncIterable<BackendEvent> {
+  yield* leading
   try {
     for await (const part of stream) {
       const event = partToBackendEvent(part)
@@ -400,7 +416,7 @@ async function probeToolCalling(
   >
 > {
   try {
-    const first = await postChatCompletion(settings, fetchImpl, apiKey, {
+    const request = {
       model: settings.model,
       messages: [{ role: 'user', content: 'Call the echo tool with text "ok".' }],
       tools: [
@@ -417,9 +433,14 @@ async function probeToolCalling(
             }
           }
         }
-      ],
+      ]
+    }
+    // DeepSeek in thinking mode answers a named tool_choice with HTTP 400 although it
+    // calls tools fine without one (#2609).
+    const first = await postChatCompletion(settings, fetchImpl, apiKey, {
+      ...request,
       tool_choice: { type: 'function', function: { name: 'memry_probe_echo' } }
-    })
+    }).catch(() => postChatCompletion(settings, fetchImpl, apiKey, request))
     const assistant = first.choices?.[0]?.message
     const toolCall = assistant?.tool_calls?.[0]
     if (!toolCall?.id) {
