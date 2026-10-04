@@ -120,6 +120,42 @@ describe('export-utils', () => {
     expect(html).not.toContain('<div class="note-tags">')
   })
 
+  describe('task markers', () => {
+    const note: NoteExportData = {
+      id: 'note789',
+      title: 'Checklist',
+      content: '- [ ] Pack bags {task:t1}\n- [x] Book train {task:t2}\n  - [ ] Seat {task:}',
+      tags: [],
+      created: new Date(2026, 0, 2),
+      modified: new Date(2026, 0, 3)
+    }
+
+    it('prints each task as its checkbox and title', () => {
+      const html = renderNoteAsHtml(note)
+
+      expect(html).toContain(
+        [
+          '<ul>',
+          '<li><input disabled="" type="checkbox"> Pack bags</li>',
+          '<li><input checked="" disabled="" type="checkbox"> Book train<ul>',
+          '<li><input disabled="" type="checkbox"> Seat</li>',
+          '</ul>',
+          '</li>',
+          '</ul>'
+        ].join('\n')
+      )
+      expect(html).not.toContain('{task:')
+    })
+
+    it('keeps the markers when asked to', () => {
+      const html = renderNoteAsHtml(note, { includeTaskMarkers: true })
+
+      expect(html).toContain('Pack bags {task:t1}</li>')
+      expect(html).toContain('Book train {task:t2}<ul>')
+      expect(html).toContain('Seat {task:}</li>')
+    })
+  })
+
   it('sanitizeFilename removes invalid characters and limits length', () => {
     expect(sanitizeFilename('  in<va>lid: file/name?.md  ')).toBe('invalid filename.md')
     expect(sanitizeFilename('a'.repeat(250))).toHaveLength(200)

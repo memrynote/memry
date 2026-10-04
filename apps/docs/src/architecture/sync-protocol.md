@@ -230,7 +230,9 @@ cursor write. A crash before the cursor commits pulls the whole page again; the 
 committed come back with an equal clock and an identical payload and are skipped without a row write
 or a renderer event (a still-dirty `syncedAt` is stamped, and missing canvas assets and note
 attachments are requested again). An equal clock with a different payload still applies, because
-that is how two devices whose merge re-pushes collided converge (protocol 06 §6.5.2 P4). Renderer
+that is how two devices whose merge re-pushes collided converge (protocol 06 §6.5.2 P4). A note
+record apply, at any clock outcome, keeps the later of the local and incoming `modifiedAt`, compared
+as instants, because a body edit moves `modifiedAt` without advancing the note's clock (#2616). Renderer
 events raised while a slice applies are held until its transaction commits and dropped if the slice
 or the item rolls back, so no window is told about rows that never landed.
 
