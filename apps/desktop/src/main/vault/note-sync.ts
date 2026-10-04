@@ -58,8 +58,16 @@ function syncCanonicalMetadata(
         existing?.type as PropertyType | undefined,
         inferPropertyType
       )
-      if (isPersistableDefinitionType(type)) {
-        saveCanonicalPropertyDefinition(dataDb, { name, type })
+      // A note save only learns a type. Re-saving a known definition with bare
+      // fields would null the options, default and color the user set.
+      if (isPersistableDefinitionType(type) && existing?.type !== type) {
+        saveCanonicalPropertyDefinition(dataDb, {
+          name,
+          type,
+          options: existing?.options,
+          defaultValue: existing?.defaultValue,
+          color: existing?.color
+        })
       }
     }
   }
