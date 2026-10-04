@@ -9,7 +9,7 @@
  */
 
 /** Max characters fed to the model (~its effective context window). */
-const MAX_EMBEDDING_INPUT_LENGTH = 2000
+export const MAX_EMBEDDING_INPUT_LENGTH = 2000
 
 /**
  * Build the text fed to the embedding model.

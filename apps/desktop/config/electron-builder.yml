@@ -28,6 +28,8 @@ files:
   - '!node_modules/**/{coverage,doc,docs,example,examples,test,tests,__tests__}/**'
 asarUnpack:
   - resources/**
+  # OCR language data: Tesseract's worker thread reads it with plain fs.
+  - out/main/tessdata/**
 afterPack: scripts/prune-packaged-app.mjs
 extraResources:
   # ponytail: shipped as app-config (no .env token) so Defender's .env credential

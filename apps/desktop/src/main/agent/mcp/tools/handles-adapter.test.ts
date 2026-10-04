@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { sql } from 'drizzle-orm'
+import { createTestIndexDb } from '@tests/utils/test-db'
 
 const mocks = vi.hoisted(() => ({
   searchAll: vi.fn(),
@@ -121,7 +123,8 @@ import { createVaultServiceHandles } from './handles-adapter'
 
 const deps = {
   dataDb: {} as never,
-  indexDb: {} as never
+  // Real tables, empty: reading a markdown note looks up its attachment text.
+  indexDb: createTestIndexDb().db as never
 }
 
 describe('createVaultServiceHandles', () => {
@@ -410,18 +413,67 @@ describe('createVaultServiceHandles', () => {
 
     mocks.getNoteCacheById.mockReturnValue({
       id: 'file-1',
-      title: 'Scan',
-      path: 'work/scan.pdf',
-      fileType: 'pdf'
+      title: 'Memo',
+      path: 'work/memo.mp3',
+      fileType: 'audio'
     })
 
-    await expect(handles.notes.read('file-1')).resolves.toMatchObject({
+    const note = await handles.notes.read('file-1')
+    expect(note).toMatchObject({
       id: 'file-1',
-      title: 'Scan',
+      title: 'Memo',
       folder_path: 'work',
-      file_type: 'pdf'
+      file_type: 'audio'
     })
+    expect(note).not.toHaveProperty('extracted_text')
     expect(mocks.getNoteById).not.toHaveBeenCalled()
+  })
+
+  it('reads a filed PDF as the text extracted from it, from the page asked for', async () => {
+    const index = createTestIndexDb()
+    try {
+      index.db.run(sql`
+        INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+        VALUES ('file-1', 'work/scan.pdf', 'Scan', 'pdf',
+          '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+      `)
+      index.db.run(sql`
+        INSERT INTO file_text_jobs (note_id, signature, status, page_count, app_version, updated_at)
+        VALUES ('file-1', '10:1', 'pending', 3, '1.0.0', '2026-01-01T00:00:00.000Z')
+      `)
+      index.db.run(sql`
+        INSERT INTO extracted_text (note_id, part, method, text)
+        VALUES ('file-1', 1, 'pdf-text', 'Cover page'), ('file-1', 2, 'ocr', 'Heron count')
+      `)
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'file-1',
+        title: 'Scan',
+        path: 'work/scan.pdf',
+        fileType: 'pdf'
+      })
+      const handles = createVaultServiceHandles({ ...deps, indexDb: index.db as never })
+
+      await expect(handles.notes.read('file-1')).resolves.toMatchObject({
+        file_type: 'pdf',
+        content_markdown: '',
+        extracted_text: {
+          status: 'extracting',
+          page_count: 3,
+          pages_read: 2,
+          pages: [
+            { page: 1, text: 'Cover page' },
+            { page: 2, text: 'Heron count' }
+          ],
+          next_page: null
+        }
+      })
+      await expect(handles.notes.read('file-1', { fromPage: 2 })).resolves.toMatchObject({
+        extracted_text: { pages: [{ page: 2, text: 'Heron count' }] }
+      })
+      expect(mocks.getNoteById).not.toHaveBeenCalled()
+    } finally {
+      index.close()
+    }
   })
 
   it('treats a note cache row with no file type as markdown', async () => {
@@ -448,6 +500,50 @@ describe('createVaultServiceHandles', () => {
       content_markdown: 'Body',
       file_type: 'markdown'
     })
+  })
+
+  it('adds the text read from the attachments a markdown note embeds', async () => {
+    const index = createTestIndexDb()
+    try {
+      index.db.run(sql`
+        INSERT INTO note_cache (id, path, title, created_at, modified_at)
+        VALUES ('note-1', 'trip.md', 'Trip', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+      `)
+      index.db.run(sql`
+        INSERT INTO extracted_text (note_id, source, part, method, text) VALUES
+          ('note-1', 'ab12cd-ticket.png', 1, 'ocr', 'Ferry 7:40'),
+          ('note-1', 'ef34gh-map.pdf', 1, 'pdf-text', 'Estuary map'),
+          ('note-1', 'ef34gh-map.pdf', 2, 'ocr', 'Legend')
+      `)
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Trip',
+        path: 'trip.md',
+        fileType: 'markdown'
+      })
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Trip',
+        content: 'Packing list',
+        tags: [],
+        path: 'trip.md',
+        frontmatter: {},
+        emoji: null
+      })
+      const handles = createVaultServiceHandles({ ...deps, indexDb: index.db as never })
+
+      const note = await handles.notes.read('note-1')
+      expect(note).toMatchObject({
+        content_markdown: 'Packing list',
+        attachment_text: [
+          { file: 'ab12cd-ticket.png', text: 'Ferry 7:40' },
+          { file: 'ef34gh-map.pdf', text: 'Estuary map\n\nLegend' }
+        ]
+      })
+      expect(note).not.toHaveProperty('attachment_text_truncated')
+    } finally {
+      index.close()
+    }
   })
 
   it('refuses to overwrite a filed binary with markdown', async () => {
@@ -1148,7 +1244,7 @@ describe('createVaultServiceHandles', () => {
       modified: '2026-10-01T09:00:00.000Z',
       contentOmitted: true,
       contentAccess:
-        'The desktop API returns metadata only for image files. Viewing an image is not available yet.'
+        'The desktop API returns metadata only for image files. vault_read_note with this id returns the text read from the image (OCR). Viewing an image is not available yet.'
     }
     const decodedBytes = '\uFFFDPNG\r\n\u001A\n\uFFFD\uFFFDIHDR'
 
@@ -1189,10 +1285,10 @@ describe('createVaultServiceHandles', () => {
       ).resolves.toEqual({ success: true, note: screenshotMetadata })
     })
 
-    it('names the content route for each filed file type', async () => {
+    it('names the content route for each filed file type, vault_read_note for PDF and image text', async () => {
       const handles = createVaultServiceHandles(deps)
       const routes: Record<string, string> = {}
-      for (const fileType of ['pdf', 'audio', 'video']) {
+      for (const fileType of ['image', 'pdf', 'audio', 'video']) {
         mocks.getNoteCacheById.mockReturnValue({ ...screenshotRow, fileType })
         mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({ id: 'file-1', content: 'x' })
         const reply = (await handles.desktop.read(
@@ -1203,7 +1299,8 @@ describe('createVaultServiceHandles', () => {
       }
 
       expect(routes).toEqual({
-        pdf: 'The desktop API returns metadata only for PDF files. Reading PDF text is not available yet.',
+        image: screenshotMetadata.contentAccess,
+        pdf: 'The desktop API returns metadata only for PDF files. vault_read_note with this id returns the text read from the PDF, page by page.',
         audio: 'The desktop API returns metadata only for audio files.',
         video: 'The desktop API returns metadata only for video files.'
       })

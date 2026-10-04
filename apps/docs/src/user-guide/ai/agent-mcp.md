@@ -392,11 +392,21 @@ Read tools are available to Agent Chat and external MCP clients:
 Filing a PDF, image, audio file, or video into the vault indexes it alongside your markdown notes,
 so it can turn up in `vault_search_notes`. Every search hit therefore carries a `file_type`:
 
-- `markdown` — a real note. `vault_read_note` returns its content.
-- `pdf`, `image`, `audio`, `video` — a filed file. There is no markdown to read, so
-  `vault_read_note` refuses it with a `VALIDATION` error naming the file type instead of returning
-  bytes for the client to treat as text. `vault_update_note` refuses it the same way, so an agent
-  cannot overwrite a filed document with markdown.
+- `markdown` — a real note. `vault_read_note` returns its content. When the note embeds PDFs or
+  images from its attachments folder, the reply adds `attachment_text`: one `{ file, text }` entry
+  per file with the text read from it, about 100 KB at most (`attachment_text_truncated` says when
+  it was cut). `vault_search_notes` matches the note on that text too.
+- `pdf`, `image` — a filed file whose text Memry reads on this device: the PDF's own text layer, or
+  OCR for scanned pages and images (see [Text in PDFs and images](/user-guide/search#text-in-pdfs-and-images)).
+  `vault_search_notes` matches on that text, and `vault_read_note` returns it as `extracted_text`
+  instead of markdown: one `{ page, text }` entry per page, a `status` of `extracting`, `done`, or
+  `failed`, `page_count`, and `pages_read`. A reply stops at about 100 KB on a page boundary and
+  names `next_page`; pass it back as `from_page` to read on.
+- `audio`, `video` — a filed file with no text. `vault_read_note` refuses it with a `VALIDATION`
+  error naming the file type instead of returning bytes for the client to treat as text.
+
+`vault_update_note` refuses every filed file, so an agent cannot overwrite a filed document with
+markdown.
 
 `vault_list_folder` lists a filed file as `kind: "file"` with its `file_type`, and a note as
 `kind: "note"` with `file_type: "markdown"`. The approval for `vault_delete_folder` counts the filed
@@ -558,8 +568,9 @@ return a structured MCP error instead of falling back to an arbitrary desktop ca
 A desktop API call on a filed PDF, image, audio file, or video, such as `notes.get` or
 `notes.rename`, returns the file's metadata in place of the note: `id`, `path`, `title`, `fileType`,
 `mimeType`, `fileSize`, `created`, `modified`, `contentOmitted: true`, and `contentAccess`, a
-sentence that says how the content can be read. Today every filed file returns metadata only.
-Viewing images and reading PDF text are not available through the desktop API yet.
+sentence that says how the content can be read. For a PDF or an image it names `vault_read_note`,
+which returns the text read from the file (see [Notes and filed files](#notes-and-filed-files)).
+Viewing images is not available through the desktop API yet.
 
 A desktop API reply whose JSON is longer than 100 KB in UTF-8 bytes, counted after source links are
 added, comes back as `{ truncated: true, totalBytes, message, partial }`. `partial` holds the start

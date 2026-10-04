@@ -17,7 +17,8 @@ import type { NoteFileType } from '@memry/contracts/search-api'
  * `file_type` is always populated: index rows written before filed binaries
  * existed carry no file type, and those are always markdown (#800, #919). A
  * binary value means the row is a filed file, not a note — `vault_read_note`
- * rejects it rather than handing an agent bytes to read as markdown.
+ * returns a PDF's or image's extracted text instead of its bytes, and rejects
+ * audio and video.
  */
 export interface NoteSummary {
   id: string
@@ -26,6 +27,20 @@ export interface NoteSummary {
   folder_path: string | null
   file_type: NoteFileType
   icon?: string | null
+}
+
+/**
+ * Text read on this device out of a filed PDF (text layer, else OCR) or an
+ * image (OCR), one entry per page. `extracting` covers a file still waiting in
+ * the queue. Pages are cut to about 100 KB per reply; `next_page` continues.
+ */
+export interface ExtractedTextReply {
+  status: 'extracting' | 'done' | 'failed'
+  page_count: number | null
+  pages_read: number
+  pages: Array<{ page: number; text: string }>
+  next_page: number | null
+  error?: string
 }
 
 export interface NoteFull {
@@ -37,6 +52,15 @@ export interface NoteFull {
   frontmatter: Record<string, unknown>
   file_type: NoteFileType
   icon?: string | null
+  /** Set for a filed PDF or image instead of `content_markdown`. */
+  extracted_text?: ExtractedTextReply
+  /**
+   * Text read on this device from the PDFs and images in a markdown note's
+   * attachments folder that the note embeds, one entry per file, about 100 KB
+   * at most.
+   */
+  attachment_text?: Array<{ file: string; text: string }>
+  attachment_text_truncated?: true
 }
 
 export type FolderEntry =
@@ -195,7 +219,7 @@ export interface VaultServiceHandles {
       folderId?: string
       fileTypes?: NoteFileType[]
     }): Promise<NoteSummary[]>
-    read(id: string): Promise<NoteFull | null>
+    read(id: string, options?: { fromPage?: number }): Promise<NoteFull | null>
     create(input: {
       title: string
       content_markdown: string

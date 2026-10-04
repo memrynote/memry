@@ -183,3 +183,48 @@ for (const platform of ['win32', 'linux']) {
     }
   })
 }
+
+test('keeps only the tesseract.js-core builds that tesseract.js loads under Node', async () => {
+  const appOutDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-prune-tesseract-'))
+  try {
+    const coreDir = path.join(
+      appOutDir,
+      'resources',
+      'node_modules',
+      '.pnpm',
+      'tesseract.js-core@7.0.0',
+      'node_modules',
+      'tesseract.js-core'
+    )
+    fs.mkdirSync(coreDir, { recursive: true })
+    for (const variant of [
+      '',
+      '-simd',
+      '-relaxedsimd',
+      '-lstm',
+      '-simd-lstm',
+      '-relaxedsimd-lstm'
+    ]) {
+      for (const extension of ['.js', '.wasm', '.wasm.js']) {
+        fs.writeFileSync(path.join(coreDir, `tesseract-core${variant}${extension}`), '')
+      }
+    }
+    fs.writeFileSync(path.join(coreDir, 'index.js'), '')
+    fs.writeFileSync(path.join(coreDir, 'package.json'), '{}')
+
+    await prunePackagedApp(createContext(appOutDir, 'linux', 'x64'))
+
+    assert.deepEqual(fs.readdirSync(coreDir).sort(), [
+      'index.js',
+      'package.json',
+      'tesseract-core-relaxedsimd.js',
+      'tesseract-core-relaxedsimd.wasm',
+      'tesseract-core-simd.js',
+      'tesseract-core-simd.wasm',
+      'tesseract-core.js',
+      'tesseract-core.wasm'
+    ])
+  } finally {
+    fs.rmSync(appOutDir, { force: true, recursive: true })
+  }
+})
