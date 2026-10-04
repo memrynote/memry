@@ -137,7 +137,7 @@ describe('LocalOpenAICompatibleBackend against a DeepSeek-style provider', () =>
     const events: BackendEvent[] = []
     for await (const event of run.events) events.push(event)
     const stderr: string[] = []
-    for await (const piece of run.stderr) stderr.push(piece.toString())
+    for await (const piece of run.stderr ?? []) stderr.push(piece.toString())
 
     expect(stderr).toEqual([])
     expect(await run.waitExit()).toBe(0)
