@@ -229,6 +229,21 @@ describe('Write tools — P1 deny-by-default', () => {
     expect(gate).not.toHaveBeenCalled()
   })
 
+  it('rejects an argument the tool does not take, before the gate', async () => {
+    const gate = vi.fn<WriteToolGate>(async () => ({ approved: true }))
+    const t = buildWriteTools(handles, gate).find((x) => x.name === 'vault_update_task')!
+    await expect(
+      t.handler(
+        { id: 'task-1', title: 'Renamed', colour: 'red' },
+        { writeGrant: 'turn-grant-1', windowId: 'w1' }
+      )
+    ).rejects.toMatchObject({
+      code: 'VALIDATION',
+      message: 'vault_update_task does not take colour. Nothing was run.'
+    })
+    expect(gate).not.toHaveBeenCalled()
+  })
+
   it('forwards to handles when a gate approves', async () => {
     const gate: WriteToolGate = async () => ({ approved: true, args: undefined })
     const withGate = buildWriteTools(handles, gate)

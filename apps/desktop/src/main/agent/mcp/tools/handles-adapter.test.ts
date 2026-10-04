@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   searchAll: vi.fn(),
   listJournalEntriesInRange: vi.fn(),
   getNoteCacheById: vi.fn(),
+  getNotePropertiesAsRecord: vi.fn(),
   getInboxProject: vi.fn(),
   getProjectLinkCounts: vi.fn(),
   createDesktopInboxDomain: vi.fn(),
@@ -42,7 +43,8 @@ vi.mock('../../../database/queries/search', () => ({
 
 vi.mock('../../../database/queries/notes', () => ({
   listJournalEntriesInRange: mocks.listJournalEntriesInRange,
-  getNoteCacheById: mocks.getNoteCacheById
+  getNoteCacheById: mocks.getNoteCacheById,
+  getNotePropertiesAsRecord: mocks.getNotePropertiesAsRecord
 }))
 
 vi.mock('../../../database/queries/projects', () => ({
@@ -603,6 +605,184 @@ describe('createVaultServiceHandles', () => {
       id: 'file-1'
     })
     expect(mocks.getNoteById).not.toHaveBeenCalled()
+  })
+
+  it('answers task, project, status, inbox and journal writes with the record as stored', async () => {
+    const tools = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+      approved: true
+    }))
+    const call = (name: string, input: unknown) =>
+      tools.find((tool) => tool.name === name)!.handler(input, { writeGrant: 'g', windowId: null })
+
+    const storedTask = { id: 'task-1', title: 'Stored task', tags: ['work'], projectId: 'p1' }
+    taskDomain.getTask.mockReturnValue(storedTask)
+    taskDomain.createTask.mockResolvedValue({ success: true, task: { id: 'task-1' } })
+    const storedProject = { id: 'project-1', name: 'Stored project', statuses: [] }
+    taskDomain.getProject.mockReturnValue(storedProject)
+    taskDomain.createProject.mockResolvedValue({ success: true, project: { id: 'project-1' } })
+    const storedStatus = { id: 'status-1', projectId: 'project-1', name: 'Blocked', isDone: false }
+    taskDomain.createStatus.mockResolvedValue({ success: true, status: storedStatus })
+    taskDomain.updateStatus.mockResolvedValue({ success: true, status: storedStatus })
+    const storedItem = { id: 'inbox-1', title: 'Stored item', tags: ['later'] }
+    mocks.createDesktopInboxCrudHandlers.mockReturnValue({
+      handleGet: vi.fn().mockResolvedValue(storedItem),
+      handleUpdate: vi.fn().mockResolvedValue({ success: true }),
+      handleArchive: vi.fn().mockResolvedValue({ success: true }),
+      handleUnarchive: vi.fn().mockResolvedValue({ success: true }),
+      handleAddTag: vi.fn().mockResolvedValue({ success: true }),
+      handleRemoveTag: vi.fn().mockResolvedValue({ success: true })
+    })
+    mocks.createDesktopInboxDomain.mockReturnValue({
+      captureText: vi.fn().mockResolvedValue({ success: true, item: { id: 'inbox-1' } }),
+      snooze: vi.fn().mockResolvedValue({ success: true })
+    })
+
+    const taskWrites: [string, unknown][] = [
+      ['vault_create_task', { title: 'Stored task' }],
+      ['vault_update_task', { id: 'task-1', title: 'Stored task' }],
+      ['vault_complete_task', { id: 'task-1' }],
+      ['vault_uncomplete_task', { id: 'task-1' }],
+      ['vault_archive_task', { id: 'task-1' }],
+      ['vault_unarchive_task', { id: 'task-1' }],
+      ['vault_move_task', { task_id: 'task-1', target_project_id: 'p1', position: 0 }],
+      ['vault_convert_task_to_subtask', { task_id: 'task-1', parent_id: 'task-0' }],
+      ['vault_convert_subtask_to_task', { id: 'task-1' }],
+      ['vault_add_tag', { id: 'task-1', kind: 'task', tag: 'work' }],
+      ['vault_remove_tag', { id: 'task-1', kind: 'task', tag: 'old' }]
+    ]
+    for (const [name, input] of taskWrites) {
+      await expect(call(name, input), name).resolves.toEqual(storedTask)
+    }
+    for (const [name, input] of [
+      ['vault_create_project', { name: 'Stored project' }],
+      ['vault_update_project', { id: 'project-1', name: 'Stored project' }],
+      ['vault_archive_project', { id: 'project-1' }]
+    ] as [string, unknown][]) {
+      await expect(call(name, input), name).resolves.toEqual(storedProject)
+    }
+    await expect(
+      call('vault_create_status', { project_id: 'project-1', name: 'Blocked' })
+    ).resolves.toEqual(storedStatus)
+    await expect(call('vault_update_status', { id: 'status-1', name: 'Blocked' })).resolves.toEqual(
+      storedStatus
+    )
+    for (const [name, input] of [
+      ['vault_add_to_inbox', { source: 'agent', title: 'Stored item', content: 'Body' }],
+      ['vault_update_inbox_item', { id: 'inbox-1', title: 'Stored item' }],
+      ['vault_snooze_inbox_item', { id: 'inbox-1', snooze_until: '2026-10-05T00:00:00.000Z' }],
+      ['vault_archive_inbox_item', { id: 'inbox-1' }],
+      ['vault_unarchive_inbox_item', { id: 'inbox-1' }],
+      ['vault_add_inbox_tag', { id: 'inbox-1', tag: 'later' }],
+      ['vault_remove_inbox_tag', { id: 'inbox-1', tag: 'old' }]
+    ] as [string, unknown][]) {
+      await expect(call(name, input), name).resolves.toEqual(storedItem)
+    }
+
+    const entry = {
+      id: 'journal-1',
+      date: '2026-10-04',
+      content: 'Stored caf\u00e9',
+      tags: ['daily'],
+      properties: { mood: 'calm' }
+    }
+    mocks.readJournalEntry.mockResolvedValue(entry)
+    mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-1' })
+    const storedEntry = {
+      id: 'journal-1',
+      date: '2026-10-04',
+      tags: ['daily'],
+      properties: { mood: 'calm' },
+      body_bytes: 12,
+      body_sha256: '58edf4ff6da83112bfbc527a1cd7eac61548c7a68670feffb2463e9f94f64b40'
+    }
+    await expect(
+      call('vault_update_journal_entry', { date: '2026-10-04', content_markdown: 'Sent' })
+    ).resolves.toEqual(storedEntry)
+    await expect(
+      call('vault_create_journal_entry', { date: '2026-10-04', content_markdown: 'Sent' })
+    ).resolves.toEqual({ ...storedEntry, created: false })
+  })
+
+  it('says which tags an update body added or removed', async () => {
+    const tools = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+      approved: true
+    }))
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      title: 'Alpha',
+      path: 'work/alpha.md',
+      fileType: 'markdown'
+    })
+    const note = (tags: string[]) => ({
+      id: 'note-1',
+      title: 'Alpha',
+      content: 'Body',
+      tags,
+      path: 'work/alpha.md',
+      frontmatter: {},
+      properties: {}
+    })
+    mocks.getNoteById
+      .mockResolvedValueOnce(note(['team', 'old']))
+      .mockResolvedValueOnce(note(['team', 'old']))
+      .mockResolvedValueOnce(note(['team', 'planning']))
+    mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: ['team', 'planning'] })
+
+    await expect(
+      tools
+        .find((tool) => tool.name === 'vault_update_note')!
+        .handler(
+          { id: 'note-1', mode: 'replace', content_markdown: '#team #planning' },
+          { writeGrant: 'g', windowId: null }
+        )
+    ).resolves.toMatchObject({
+      tags: ['team', 'planning'],
+      tags_added: ['planning'],
+      tags_removed: ['old']
+    })
+  })
+
+  it('keeps legacy id, title, created and modified keys an agent leaves out, and drops one it nulls', async () => {
+    const handles = createVaultServiceHandles(deps)
+    mocks.getNotePropertiesAsRecord.mockReturnValue({
+      id: 'legacy-id',
+      title: 'Legacy',
+      created: '2025-01-01',
+      modified: '2025-01-02',
+      status: 'draft',
+      owner: 'kaan'
+    })
+    mocks.invokeDesktopApiFromWindow.mockResolvedValue({
+      success: true,
+      properties: {},
+      removed: ['owner']
+    })
+
+    await handles.desktop.write(
+      { operation: 'properties.set', args: ['note-1', { status: 'done', modified: null }] },
+      'w1'
+    )
+
+    expect(mocks.invokeDesktopApiFromWindow).toHaveBeenCalledWith('w1', {
+      operation: 'properties.set',
+      args: ['note-1', { status: 'done', id: 'legacy-id', title: 'Legacy', created: '2025-01-01' }]
+    })
+  })
+
+  it('adds the stored record to a desktop write whose reply carries none', async () => {
+    const handles = createVaultServiceHandles(deps)
+    const item = { id: 'inbox-1', title: 'Stored item', tags: ['later'] }
+    mocks.invokeDesktopApiFromWindow
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce(item)
+
+    await expect(
+      handles.desktop.write({ operation: 'inbox.addTag', args: ['inbox-1', 'later'] }, 'w1')
+    ).resolves.toEqual({ success: true, stored: item })
+    expect(mocks.invokeDesktopApiFromWindow).toHaveBeenLastCalledWith('w1', {
+      operation: 'inbox.get',
+      args: ['inbox-1']
+    })
   })
 
   it('returns null when the note cache has no row for the id', async () => {
