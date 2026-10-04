@@ -1244,7 +1244,7 @@ describe('createVaultServiceHandles', () => {
       modified: '2026-10-01T09:00:00.000Z',
       contentOmitted: true,
       contentAccess:
-        'The desktop API returns metadata only for image files. Viewing an image is not available yet.'
+        'The desktop API returns metadata only for image files. vault_read_note with this id returns the text read from the image (OCR). Viewing an image is not available yet.'
     }
     const decodedBytes = '\uFFFDPNG\r\n\u001A\n\uFFFD\uFFFDIHDR'
 
@@ -1285,10 +1285,10 @@ describe('createVaultServiceHandles', () => {
       ).resolves.toEqual({ success: true, note: screenshotMetadata })
     })
 
-    it('names the content route for each filed file type', async () => {
+    it('names the content route for each filed file type, vault_read_note for PDF and image text', async () => {
       const handles = createVaultServiceHandles(deps)
       const routes: Record<string, string> = {}
-      for (const fileType of ['pdf', 'audio', 'video']) {
+      for (const fileType of ['image', 'pdf', 'audio', 'video']) {
         mocks.getNoteCacheById.mockReturnValue({ ...screenshotRow, fileType })
         mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({ id: 'file-1', content: 'x' })
         const reply = (await handles.desktop.read(
@@ -1299,7 +1299,8 @@ describe('createVaultServiceHandles', () => {
       }
 
       expect(routes).toEqual({
-        pdf: 'The desktop API returns metadata only for PDF files. Reading PDF text is not available yet.',
+        image: screenshotMetadata.contentAccess,
+        pdf: 'The desktop API returns metadata only for PDF files. vault_read_note with this id returns the text read from the PDF, page by page.',
         audio: 'The desktop API returns metadata only for audio files.',
         video: 'The desktop API returns metadata only for video files.'
       })
