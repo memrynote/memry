@@ -41,14 +41,17 @@ export function enqueueUpload(db: DrizzleDb, noteId: string, diskPath: string): 
 
 /**
  * Queue a file the backfill or a body write found, unless it already has a
- * row: a failed row keeps its attempts and its retry window.
+ * row: a failed row keeps its attempts and its retry window. True when a row
+ * was added.
  */
-export function queueUploadIfAbsent(db: DrizzleDb, noteId: string, diskPath: string): void {
+export function queueUploadIfAbsent(db: DrizzleDb, noteId: string, diskPath: string): boolean {
   const now = Date.now()
-  db.insert(attachmentUploadQueue)
+  const result = db
+    .insert(attachmentUploadQueue)
     .values({ id: crypto.randomUUID(), noteId, diskPath, createdAt: now, updatedAt: now })
     .onConflictDoNothing()
     .run()
+  return result.changes > 0
 }
 
 export function hasPendingUpload(db: DrizzleDb, noteId: string, diskPath: string): boolean {

@@ -6,7 +6,7 @@ import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { getDatabase, isDatabaseInitialized } from '../database'
 import { createLogger } from '../lib/logger'
 import { getCurrentVaultPath } from '../store'
-import { hasPendingUpload, queueUploadIfAbsent } from './attachment-outbox'
+import { queueUploadIfAbsent } from './attachment-outbox'
 import {
   countNoteFiles,
   embeddedFilesOutsideNoteFolders,
@@ -93,16 +93,19 @@ export function backfillUnsyncedAttachmentsWith(deps: AttachmentBackfillDeps): {
       log.warn('Attachment record unreadable during backfill', { noteId: note.id, error })
       continue
     }
-    if (unknown.length === 0) continue
-    scanned++
+    let added = 0
     for (const file of unknown) {
       try {
-        queueUploadIfAbsent(deps.db, note.id, file)
-        queued++
+        if (queueUploadIfAbsent(deps.db, note.id, file)) added++
       } catch (error) {
         log.warn('Failed to queue backfilled attachment', { noteId: note.id, error })
       }
     }
+    // A file with a row already (pending, or failed and waiting out its retry
+    // window) is not news; counting it would log this every pass.
+    if (added === 0) continue
+    scanned++
+    queued += added
   }
 
   if (queued > 0) {
@@ -164,8 +167,7 @@ export function queueEmbeddedVaultFilesWith(
   ]
   let queued = 0
   for (const file of unrecordedFiles(deps.db, deps.vaultPath, note, files)) {
-    if (hasPendingUpload(deps.db, noteId, file)) continue
-    queueUploadIfAbsent(deps.db, noteId, file)
+    if (!queueUploadIfAbsent(deps.db, noteId, file)) continue
     attachmentEvents.emitSaved({ noteId, diskPath: file })
     queued++
   }
