@@ -148,3 +148,60 @@ struct ViewBlockConformanceTests {
         #expect(oldest.rows(notes: notes, noteTags: [:], tasks: []).map(\.id) == ["N1", "n10", "n2"])
     }
 }
+
+/// Desktop's `/view` starter fence.
+private let starterFence = "{\n  \"source\": {\n    \"kind\": \"vault\"\n  },\n  \"layout\": \"list\",\n  \"order\": [\n    {\n      \"property\": \"modified\",\n      \"direction\": \"desc\"\n    }\n  ],\n  \"limit\": 10\n}"
+
+/// The starter, then one change, as desktop patches it.
+private func edited(_ change: (inout ViewQueryDraft) -> Void) -> ViewQueryDraft {
+    var draft = ViewQueryDraft.starter
+    change(&draft)
+    return draft
+}
+
+/// The query sheet writes what desktop's view builder writes for the same
+/// picks: `/view`'s starter, then `updateViewBlockDefinition` with the
+/// source menu's or a header control's patch. Literals printed by
+/// `serializeViewBlockDefinition` / `updateViewBlockDefinition`.
+@Suite("view query sheet conformance")
+struct ViewQuerySheetConformanceTests {
+    @Test("each pick writes desktop's fence bytes", arguments: [
+        (ViewQueryDraft.starter, starterFence),
+        (edited { $0.sourceKind = .tag; $0.tag = "mb-live" },
+         "{\n  \"source\": {\n    \"kind\": \"tag\",\n    \"tag\": \"mb-live\"\n  },\n  \"layout\": \"list\",\n  \"order\": [\n    {\n      \"property\": \"modified\",\n      \"direction\": \"desc\"\n    }\n  ],\n  \"limit\": 10\n}"),
+        (edited { $0.sourceKind = .folder; $0.folder = "projects/web" },
+         "{\n  \"source\": {\n    \"kind\": \"folder\",\n    \"path\": \"projects/web\"\n  },\n  \"layout\": \"list\",\n  \"order\": [\n    {\n      \"property\": \"modified\",\n      \"direction\": \"desc\"\n    }\n  ],\n  \"limit\": 10\n}"),
+        (edited { $0.sourceKind = .tag; $0.tag = "work"; $0.andTags = ["urgent", "q4"] },
+         "{\n  \"source\": {\n    \"kind\": \"tag\",\n    \"tag\": \"work\",\n    \"andTags\": [\n      \"urgent\",\n      \"q4\"\n    ]\n  },\n  \"layout\": \"list\",\n  \"order\": [\n    {\n      \"property\": \"modified\",\n      \"direction\": \"desc\"\n    }\n  ],\n  \"limit\": 10\n}"),
+        (edited { $0.layout = .table; $0.sort = .title; $0.descending = false },
+         "{\n  \"source\": {\n    \"kind\": \"vault\"\n  },\n  \"layout\": \"table\",\n  \"order\": [\n    {\n      \"property\": \"title\",\n      \"direction\": \"asc\"\n    }\n  ],\n  \"limit\": 10\n}"),
+        (edited { $0.layout = .grid; $0.sort = nil; $0.limit = nil },
+         "{\n  \"source\": {\n    \"kind\": \"vault\"\n  },\n  \"layout\": \"grid\"\n}"),
+        (edited { $0.sourceKind = .tag; $0.tag = "a\"b\\c/d é\u{01}" },
+         "{\n  \"source\": {\n    \"kind\": \"tag\",\n    \"tag\": \"a\\\"b\\\\c/d é\\u0001\"\n  },\n  \"layout\": \"list\",\n  \"order\": [\n    {\n      \"property\": \"modified\",\n      \"direction\": \"desc\"\n    }\n  ],\n  \"limit\": 10\n}"),
+    ])
+    func picks(_ draft: ViewQueryDraft, _ fence: String) {
+        #expect(draft.fenceText == fence)
+        #expect(ViewBlockFence(text: fence) != .code, "a view made on this device draws as rows here")
+    }
+
+    @Test("an edit keeps the fence's own key order and appends new keys, as desktop's update does")
+    func editKeepsKeyOrder() throws {
+        let limitOnly = "{\n  \"source\": {\n    \"kind\": \"vault\"\n  },\n  \"limit\": 5\n}"
+        var draft = try #require(ViewQueryDraft(fence: limitOnly))
+        #expect(draft.fenceText == limitOnly, "an untouched edit writes the same bytes")
+        draft.layout = .grid
+        #expect(draft.fenceText == "{\n  \"source\": {\n    \"kind\": \"vault\"\n  },\n  \"limit\": 5,\n  \"layout\": \"grid\"\n}")
+    }
+
+    @Test("a fence drawn as code opens no sheet, so no key of it is dropped")
+    func codeFenceIsNotEditable() {
+        #expect(ViewQueryDraft(fence: #"{"source":{"kind":"vault"},"filters":"title contains \"a\""}"#) == nil)
+    }
+
+    @Test("a folder or tag source without a pick writes nothing")
+    func incompleteSource() {
+        #expect(edited { $0.sourceKind = .folder }.fenceText == nil)
+        #expect(edited { $0.sourceKind = .tag; $0.tag = " " }.fenceText == nil)
+    }
+}

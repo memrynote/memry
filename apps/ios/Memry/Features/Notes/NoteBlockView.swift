@@ -218,7 +218,10 @@ struct NoteBlockView: View {
         case "callout":
             CalloutRow(type: value("type") ?? "info", text: inline)
         case "codeBlock" where value("language") == ViewBlockFence.language:
-            ViewBlockView(text: plainText)
+            let text = plainText
+            ViewBlockView(text: text, edit: editing.flatMap { editing in
+                block.id.map { id in { editing.session.editView(blockId: id, text: text) } }
+            })
         case "codeBlock":
             CodeRow(language: value("language"), text: plainText)
         case "diagram":
