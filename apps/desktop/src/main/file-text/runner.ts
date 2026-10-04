@@ -237,15 +237,29 @@ export class FileTextRunner {
   }
 
   /**
-   * Queue every file whose bytes differ from the ones its stored text came
-   * from, and forget attachments the note no longer has.
+   * Take the pending changes and compare their files. A pass that throws hands
+   * its notes back, so the next pass compares them again.
    */
   private async queueChangedFiles(): Promise<void> {
     if (!this.rescanAll && this.changed.size === 0) return
     const ids = this.rescanAll ? undefined : [...this.changed]
     this.rescanAll = false
     this.changed.clear()
+    try {
+      await this.queueFiles(ids)
+    } catch (error) {
+      if (ids) for (const id of ids) this.changed.add(id)
+      else this.rescanAll = true
+      throw error
+    }
+  }
 
+  /**
+   * Queue every file of the given notes, or of every note, whose bytes differ
+   * from the ones its stored text came from, and forget attachments the note no
+   * longer has.
+   */
+  private async queueFiles(ids: readonly string[] | undefined): Promise<void> {
     const filed: TextFile[] = listFiledTextFiles(this.deps.getDb(), ids).map((file) => ({
       ...file,
       source: OWN_FILE

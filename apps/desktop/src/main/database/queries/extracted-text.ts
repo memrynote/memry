@@ -54,49 +54,62 @@ export function getFileTextJob(db: IndexDb, ref: TextSourceRef): FileTextJobRow 
   return db.select().from(fileTextJobs).where(isJob(ref)).get()
 }
 
-/** Every filed PDF and image in the index, or the ones among `ids`. */
-export function listFiledTextFiles(db: IndexDb, ids?: readonly string[]): FiledTextFile[] {
-  const byType = inArray(noteCache.fileType, [...TEXT_BEARING_FILE_TYPES])
-  return db
-    .select({ noteId: noteCache.id, path: noteCache.path, fileType: noteCache.fileType })
-    .from(noteCache)
-    .where(ids ? and(byType, inArray(noteCache.id, [...ids])) : byType)
-    .all() as FiledTextFile[]
-}
-
 /** Ids per query, well under SQLite's bound-parameter limit. */
 const ID_BATCH = 500
 
-/**
- * The markdown notes among `ids`: the ones that can own an attachments folder.
- * `ids` can be every folder name under `attachments/`, so it is looked up in batches.
- */
+/** `ids` can be every note in the vault, more than SQLite binds in one statement. */
+function inIdBatches<T>(ids: readonly string[], query: (batch: string[]) => T[]): T[] {
+  const rows: T[] = []
+  for (let start = 0; start < ids.length; start += ID_BATCH) {
+    rows.push(...query(ids.slice(start, start + ID_BATCH)))
+  }
+  return rows
+}
+
+/** Every filed PDF and image in the index, or the ones among `ids`. */
+export function listFiledTextFiles(db: IndexDb, ids?: readonly string[]): FiledTextFile[] {
+  const query = (batch?: string[]) =>
+    db
+      .select({ noteId: noteCache.id, path: noteCache.path, fileType: noteCache.fileType })
+      .from(noteCache)
+      .where(
+        and(
+          inArray(noteCache.fileType, [...TEXT_BEARING_FILE_TYPES]),
+          batch ? inArray(noteCache.id, batch) : undefined
+        )
+      )
+      .all() as FiledTextFile[]
+  return ids ? inIdBatches(ids, query) : query()
+}
+
+/** The markdown notes among `ids`: the ones that can own an attachments folder. */
 export function listMarkdownNotes(
   db: IndexDb,
   ids: readonly string[]
 ): Array<{ id: string; path: string }> {
-  const notes: Array<{ id: string; path: string }> = []
-  for (let start = 0; start < ids.length; start += ID_BATCH) {
-    const batch = ids.slice(start, start + ID_BATCH)
-    notes.push(
-      ...db
-        .select({ id: noteCache.id, path: noteCache.path })
-        .from(noteCache)
-        .where(and(inArray(noteCache.id, batch), eq(noteCache.fileType, 'markdown')))
-        .all()
-    )
-  }
-  return notes
+  return inIdBatches(ids, (batch) =>
+    db
+      .select({ id: noteCache.id, path: noteCache.path })
+      .from(noteCache)
+      .where(and(inArray(noteCache.id, batch), eq(noteCache.fileType, 'markdown')))
+      .all()
+  )
 }
 
 /** Attachment jobs of the given notes, or of every note. */
 export function listAttachmentJobs(db: IndexDb, noteIds?: readonly string[]): TextSourceRef[] {
-  const attachment = ne(fileTextJobs.source, OWN_FILE)
-  return db
-    .select({ noteId: fileTextJobs.noteId, source: fileTextJobs.source })
-    .from(fileTextJobs)
-    .where(noteIds ? and(attachment, inArray(fileTextJobs.noteId, [...noteIds])) : attachment)
-    .all()
+  const query = (batch?: string[]) =>
+    db
+      .select({ noteId: fileTextJobs.noteId, source: fileTextJobs.source })
+      .from(fileTextJobs)
+      .where(
+        and(
+          ne(fileTextJobs.source, OWN_FILE),
+          batch ? inArray(fileTextJobs.noteId, batch) : undefined
+        )
+      )
+      .all()
+  return noteIds ? inIdBatches(noteIds, query) : query()
 }
 
 /** The oldest job still owed work. */
