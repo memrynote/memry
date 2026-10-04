@@ -1220,24 +1220,25 @@ describe('createVaultServiceHandles', () => {
       ).resolves.toEqual(note)
     })
 
-    it('cuts a reply over 100 KB of text and says so', async () => {
+    it('cuts a reply so that it stays within 100 KB of text and says so', async () => {
       const handles = createVaultServiceHandles(deps)
-      const body = 'a'.repeat(150_000)
+      const body = '"'.repeat(150_000)
       mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({ id: 'note-1', content: body })
 
       const reply = (await handles.desktop.read(
         { operation: 'notes.get', args: ['note-1'] },
         'window-1'
       )) as { truncated: boolean; totalChars: number; message: string; partial: string }
+      const replyChars = JSON.stringify(reply).length
 
-      expect({ ...reply, partial: reply.partial.length }).toEqual({
-        truncated: true,
-        totalChars: 150_028,
-        message:
-          'Reply cut at 102400 of 150028 characters. partial holds the start of the JSON reply. Narrow the request to get the rest.',
-        partial: 102_400
-      })
-      expect(reply.partial.startsWith('{"id":"note-1","content":"aaa')).toBe(true)
+      expect(reply.truncated).toBe(true)
+      expect(reply.totalChars).toBe(300_028)
+      expect(replyChars).toBeLessThanOrEqual(102_400)
+      expect(replyChars).toBeGreaterThan(101_000)
+      expect(reply.message).toBe(
+        `Reply cut at ${reply.partial.length} of 300028 characters. partial holds the start of the JSON reply. Narrow the request to get the rest.`
+      )
+      expect(JSON.stringify({ id: 'note-1', content: body }).startsWith(reply.partial)).toBe(true)
     })
   })
 

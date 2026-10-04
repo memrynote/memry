@@ -77,6 +77,17 @@ function withoutFileBodies(
   )
 }
 
+function truncatedReply(text: string, end: number): TruncatedDesktopApiReply {
+  return {
+    truncated: true,
+    totalChars: text.length,
+    message:
+      `Reply cut at ${end} of ${text.length} characters. ` +
+      'partial holds the start of the JSON reply. Narrow the request to get the rest.',
+    partial: text.slice(0, end)
+  }
+}
+
 export function shapeDesktopApiReply(
   data: unknown,
   fileRowOf: (id: string) => FileRow | undefined
@@ -85,13 +96,15 @@ export function shapeDesktopApiReply(
   const text = JSON.stringify(shaped) ?? ''
   if (text.length <= DESKTOP_API_REPLY_MAX_CHARS) return shaped
 
-  const reply: TruncatedDesktopApiReply = {
-    truncated: true,
-    totalChars: text.length,
-    message:
-      `Reply cut at ${DESKTOP_API_REPLY_MAX_CHARS} of ${text.length} characters. ` +
-      'partial holds the start of the JSON reply. Narrow the request to get the rest.',
-    partial: text.slice(0, DESKTOP_API_REPLY_MAX_CHARS)
+  // `partial` is escaped again when the reply is serialized, so the cut point
+  // shrinks until the whole serialized reply fits.
+  let end = DESKTOP_API_REPLY_MAX_CHARS
+  let reply = truncatedReply(text, end)
+  let replyChars = JSON.stringify(reply).length
+  while (replyChars > DESKTOP_API_REPLY_MAX_CHARS) {
+    end = Math.min(end - 1, Math.floor((end * DESKTOP_API_REPLY_MAX_CHARS) / replyChars))
+    reply = truncatedReply(text, end)
+    replyChars = JSON.stringify(reply).length
   }
   return reply
 }
