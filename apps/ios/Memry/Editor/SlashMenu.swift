@@ -42,6 +42,8 @@ enum BlockCatalog {
             /// A block drawn from source (`mathBlock`), made empty, with its
             /// source sheet open.
             case source(kind: String)
+            /// Opens the query sheet; Done inserts a `memry-view` code block.
+            case view
             /// A column list of `count` columns, each holding an empty
             /// paragraph (desktop's `insertColumnList`).
             case columns(count: Int)
@@ -58,7 +60,7 @@ enum BlockCatalog {
         var isInline: Bool {
             switch action {
             case .linkToNote, .date: true
-            case .block, .attach, .link, .source, .columns: false
+            case .block, .attach, .link, .source, .columns, .view: false
             }
         }
     }
@@ -73,9 +75,8 @@ enum BlockCatalog {
     private static let dateAliases = ["date", "remind", "reminder", "when"]
 
     /// Every row, in desktop's catalog order. Rows desktop offers that this
-    /// build cannot make yet (task, whiteboard, view, pdf, media,
-    /// html) join here one row each as they land; emoji, templates and AI
-    /// stay desktop-only.
+    /// build cannot make yet (task, whiteboard, pdf, media, html) join here
+    /// one row each as they land; emoji, templates and AI stay desktop-only.
     static let rows: [Row] = [
         block("paragraph", "Paragraph", "text.alignleft", ["p", "paragraph"], .basic, kind: "paragraph"),
         block("heading", "Heading 1", "textformat.size.larger", ["h", "heading1", "h1"], .basic, kind: "heading", level: 1),
@@ -134,6 +135,12 @@ enum BlockCatalog {
             id: "diagram", title: "Diagram", symbol: "point.3.connected.trianglepath.dotted",
             aliases: ["mermaid", "diagram", "flowchart", "chart", "graph"],
             section: .insert, action: .source(kind: "diagram")
+        ),
+        // Desktop's `/view` (`getViewSlashMenuItem`).
+        Row(
+            id: "view", title: "View", symbol: "list.bullet.rectangle",
+            aliases: ["view", "query", "base", "database", "saved view", "embed view"],
+            section: .insert, action: .view
         ),
         // Mobile's own rows: desktop makes these from a pasted link instead.
         Row(id: "bookmark", title: "Bookmark", symbol: "bookmark", aliases: ["bookmark", "link", "url", "web"], section: .insert, action: .link(.bookmark)),
@@ -294,6 +301,8 @@ extension EditorSession {
             requestLink(kind)
         case let .source(kind):
             insertSource(field, kind: kind)
+        case .view:
+            requestView()
         case let .columns(count):
             insertColumns(field, count: count)
         case .date:

@@ -5,8 +5,9 @@ import MemryCore
 // `memry-view` and whose text is a JSON definition
 // (`packages/shared/src/view-block.ts`). This build draws the rows for the
 // definitions it can answer from the local index and shows every other one
-// as the code it is. It never writes the fence: the bytes belong to whichever
-// build wrote them, and a newer one may carry keys this one cannot read.
+// as the code it is. Only `ViewQuerySheet` writes a fence, and only one this
+// build answers in full: any other belongs to whichever build wrote it, and a
+// newer one may carry keys this one cannot read.
 
 /// What a `memry-view` fence becomes on this device.
 enum ViewBlockFence: Equatable {
