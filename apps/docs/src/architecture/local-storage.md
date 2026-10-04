@@ -257,9 +257,11 @@ and nothing here syncs.
   `(note_id, part)`. A PDF's `part` is its 1-based page; an image is part 1. `method` is
   `pdf-text` (the page's text layer), `ocr`, or `unreadable` (failed twice; kept so a resumed job
   skips it).
-- `file_text_jobs` (`note_id`, `signature`, `status`, `page_count`, `error`) holds the job state.
-  `signature` is the size and mtime of the bytes the rows came from; a file whose signature moves
-  starts over, a rename does not.
+- `file_text_jobs` (`note_id`, `signature`, `status`, `page_count`, `error`, `app_version`) holds
+  the job state. `signature` is the size and mtime of the bytes the rows came from; a file whose
+  signature moves starts over, a rename does not. A `failed` job runs again when another app
+  version opens the vault or a day after it failed. Its `unreadable` rows go first, so it resumes
+  at them and keeps the text it already read.
 
 Both reference `note_cache` with `ON DELETE CASCADE`. The rows are keyed by the note they make
 searchable, not by the file they came from, so text from a note's HTML blocks can sit under that
@@ -277,7 +279,10 @@ Two helper processes do the heavy work, both at low OS priority and closed after
 - **OCR.** A utility process (`ocr-worker.ts`) runs one Tesseract worker with the English data in
   `out/main/tessdata/`, unpacked from `app.asar`. `ocr-reader.ts` turns each image upright, grey
   and on white, doubles a small one (under 1600 px) and caps a large one at 4000 px before
-  Tesseract reads it.
+  Tesseract reads it. Under Node, tesseract.js 7.0.0 loads the full `tesseract-core*.js` builds
+  even for LSTM-only work, so the afterPack prune keeps those and drops the LSTM and browser
+  builds. `check-packaged-runtime-deps.js` reads a fixture image through the packaged tree and
+  fails when a module resolves outside the packaged app.
 - **PDF pages.** Node has no canvas, so `pdf-host.ts` loads `pdf-host.html` into a
   `WebContentsView` that belongs to no window. It never shows, stays out of
   `BrowserWindow.getAllWindows()`, and reads the file in byte ranges over `memry-file://`. A range
