@@ -23,7 +23,9 @@ const h = vi.hoisted(() => ({
   db: {} as unknown,
   versions: [] as string[],
   persistence: null as unknown,
-  updatesDelayMs: 0
+  updatesDelayMs: 0,
+  versionsThrow: false,
+  canonical: null as null | Record<string, unknown>
 }))
 
 vi.mock('electron', () => ({
@@ -106,13 +108,17 @@ vi.mock('@main/database/queries/notes', () => ({
   getNoteCacheById: (_db: unknown, noteId: string) => (h.row?.id === noteId ? h.row : undefined),
   updateNoteCache: vi.fn()
 }))
-vi.mock('@memry/storage-data', () => ({ getNoteMetadataById: () => undefined }))
+vi.mock('@memry/storage-data', () => ({
+  getNoteMetadataById: (_db: unknown, noteId: string) =>
+    h.canonical?.id === noteId ? h.canonical : undefined
+}))
 
 vi.mock('../../vault/notes', () => ({
   getVaultRoot: () => '/vault',
   toAbsolutePath: (relative: string) => `/vault/${relative}`,
   maybeCreateSignificantSnapshot: () => null,
   createSnapshot: (_noteId: string, fileContent: string) => {
+    if (h.versionsThrow) throw new Error('disk full')
     h.versions.push(fileContent)
     return null
   }
@@ -211,6 +217,8 @@ beforeEach(() => {
   h.versions = []
   h.persistence = null
   h.updatesDelayMs = 0
+  h.versionsThrow = false
+  h.canonical = null
 })
 
 describe('CRDT sweep in in-memory mode (#2511)', () => {
@@ -781,6 +789,139 @@ describe('CrdtProvider with no store (#2536)', () => {
         versions: [PEER_VERSION]
       })
     })
+
+    it('a version that cannot be written leaves the server body and the marker to the next flush', async () => {
+      await serveNoteWithPeerEdit()
+      const { flushFullStates } = await startRuntime()
+      putNoteInVault(LAGGING_EDIT)
+      await feedExternalEditToCrdt(NOTE, LAGGING_EDIT)
+      h.versionsThrow = true
+
+      await flushFullStates()
+      const afterFailedFlush = {
+        server: await bodyAfterPull(),
+        file: await fileBodyAfterWriteback(),
+        owed: owesFileBody(NOTE)
+      }
+      h.versionsThrow = false
+      await flushFullStates()
+
+      expect({
+        afterFailedFlush,
+        server: await bodyAfterPull(),
+        versions: h.versions
+      }).toEqual({
+        afterFailedFlush: { server: EXPECTED_BODY, file: LAGGING_EDIT, owed: true },
+        server: LAGGING_EDIT,
+        versions: [PEER_VERSION]
+      })
+    })
+
+    const FUTURE_TEXT = 'Future secret'
+
+    /** A block of a type this build has no schema for, as a peer on a newer build writes it. */
+    function pushFutureBlock(group: Y.XmlElement): void {
+      const container = new Y.XmlElement('blockContainer')
+      group.push([container])
+      const widget = new Y.XmlElement('futureWidget')
+      container.push([widget])
+      widget.push([new Y.XmlText(FUTURE_TEXT)])
+    }
+
+    async function serveNoteWithFutureBlock(): Promise<void> {
+      const peer = await serveNoteWithPeerEdit()
+      const before = Y.encodeStateVector(peer)
+      pushFutureBlock(peer.getXmlFragment(CRDT_FRAGMENT_NAME).get(0) as Y.XmlElement)
+      h.server!.updates.push({
+        sequenceNum: 7,
+        data: toBase64(Y.encodeStateAsUpdate(peer, before)),
+        signerDeviceId: 'device-b',
+        createdAt: 9
+      })
+    }
+
+    async function serveOnlyFutureBlock(): Promise<void> {
+      const author = new Y.Doc()
+      author.clientID = AUTHOR_CLIENT
+      const group = new Y.XmlElement('blockGroup')
+      author.getXmlFragment(CRDT_FRAGMENT_NAME).push([group])
+      pushFutureBlock(group)
+      h.server = {
+        snapshot: { bytes: Y.encodeStateAsUpdate(author), sequenceNum: 5, revision: 'rev-1' },
+        updates: []
+      }
+      putNoteInVault(ORIGINAL)
+    }
+
+    it.each([
+      { case: 'beside known blocks', serve: serveNoteWithFutureBlock },
+      { case: 'alone, so the body does not serialize', serve: serveOnlyFutureBlock }
+    ])(
+      'a server body with a block type this build lacks, $case, is not replaced by the file',
+      async ({ serve }) => {
+        await serve()
+        const { coordinator, flushFullStates } = await startRuntime()
+        putNoteInVault(LAGGING_EDIT)
+        await feedExternalEditToCrdt(NOTE, LAGGING_EDIT)
+
+        await flushFullStates()
+        await coordinator.pullCrdtForNotes([NOTE])
+        const file = await fileBodyAfterWriteback()
+        const server = new Y.Doc()
+        await bodyAfterPull(server)
+
+        expect({
+          futureBlocks: countTexts(server.getXmlFragment(CRDT_FRAGMENT_NAME), FUTURE_TEXT),
+          file,
+          owed: owesFileBody(NOTE),
+          queuedAgain: [...owedFullStates],
+          versions: h.versions
+        }).toEqual({
+          futureBlocks: 1,
+          file: LAGGING_EDIT,
+          owed: true,
+          queuedAgain: [],
+          versions: []
+        })
+      }
+    )
+
+    it.each([
+      {
+        missing: 'its file',
+        remove: (): void => void h.files.delete(FILE),
+        expected: { pushes: 1, queuedAgain: [], owed: false }
+      },
+      {
+        missing: 'its index row',
+        remove: (): void => {
+          h.canonical = h.row
+          h.row = null
+        },
+        expected: { pushes: 0, queuedAgain: [], owed: true }
+      }
+    ])(
+      'an owed note missing $missing is not queued again by its flush',
+      async ({ remove, expected }) => {
+        await serveNoteWithPeerEdit()
+        const { flushFullStates } = await startRuntime()
+        putNoteInVault(LAGGING_EDIT)
+        await feedExternalEditToCrdt(NOTE, LAGGING_EDIT)
+        remove()
+        const before = h.server!.updates.length
+
+        for (let pass = 0; pass < 3; pass++) {
+          await flushFullStates()
+          await fileBodyAfterWriteback()
+        }
+
+        expect({
+          pushes: h.server!.updates.length - before,
+          queuedAgain: [...owedFullStates],
+          owed: owesFileBody(NOTE)
+        }).toEqual(expected)
+      }
+    )
 
     it('carries the file tags into the doc with the body', async () => {
       const peer = await serveNoteWithPeerEdit()
