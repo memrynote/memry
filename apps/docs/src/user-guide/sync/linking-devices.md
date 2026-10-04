@@ -95,6 +95,20 @@ If your account holds several vaults, this path picks the largest one. Use the v
 Creating an additional vault stays a deliberate action from the vault switcher — signing in never
 creates one.
 
+## Signing In Again on the Same Device
+
+A device that was already linked signs in again with **just the email code** (or Google), with no
+recovery phrase and no linking code. memrynote checks that the device still holds its keys, that
+the vault key on it still matches your account, and that your account still lists the device. The
+device keeps its place in the device list and picks up sync where it left off.
+
+If any of that does not hold, for example after you revoked the device from another machine or
+after the app's data was wiped, memrynote asks for the recovery phrase or a linking code as before.
+
+Losing the network does not sign you out. After sleep, on a flight or while DNS is still waking up,
+memrynote keeps you signed in and retries once the sync server can be reached. A keychain read that fails for a moment, or a refusal the server may still take back, is retried the same way and never asks you to sign in. You are signed out
+only when the server rejects the device's session for good.
+
 ## Initial Sync Progress
 
 After approval, the new device shows a sync progress screen:

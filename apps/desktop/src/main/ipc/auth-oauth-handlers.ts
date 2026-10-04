@@ -18,8 +18,9 @@ import { postToServer } from '../sync/http-client'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
+import { signInKnownDevice } from '../sync/device-registration'
 import { teardownSession } from '../sync/session-teardown'
-import { refreshAccessToken, storeToken } from '../sync/token-manager'
+import { hasSessionEnded, refreshAccessToken, storeToken } from '../sync/token-manager'
 import { getSetupDevicePublicKey } from '../sync/setup-token'
 import { createLogger } from '../lib/logger'
 import { registerCommand } from './lib/register-command'
@@ -220,7 +221,11 @@ export function registerAuthOAuthHandlers(): void {
 
   ipcMain.handle(SYNC_CHANNELS.AUTH_REFRESH_TOKEN, async () => {
     const success = await refreshAccessToken()
-    return { success, error: success ? undefined : 'Token refresh failed' }
+    return {
+      success,
+      sessionEnded: !success && hasSessionEnded(),
+      error: success ? undefined : 'Token refresh failed'
+    }
   })
 
   // --- First Device Setup via OAuth (T057) ---
@@ -255,6 +260,13 @@ export function registerAuthOAuthHandlers(): void {
           needsRecoverySetup: true,
           deviceId
         }
+      }
+
+      const deviceId = serverResponse.knownDevice
+        ? await signInKnownDevice(serverResponse.setupToken)
+        : null
+      if (deviceId) {
+        return { success: true, needsRecoverySetup: false, needsRecoveryInput: false, deviceId }
       }
 
       return { success: true, needsRecoverySetup: true, needsRecoveryInput: true }

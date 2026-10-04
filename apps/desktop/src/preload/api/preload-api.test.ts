@@ -1064,6 +1064,7 @@ describe('preload api wrappers', () => {
     expectSubscribe(() => syncEvents.onSyncPaused(callback), SYNC_EVENTS.PAUSED)
     expectSubscribe(() => syncEvents.onSyncResumed(callback), SYNC_EVENTS.RESUMED)
     expectSubscribe(() => syncEvents.onSessionExpired(callback), SYNC_EVENTS.SESSION_EXPIRED)
+    expectSubscribe(() => syncEvents.onTokenRefreshed(callback), SYNC_EVENTS.TOKEN_REFRESHED)
     expectSubscribe(() => syncEvents.onDeviceRevoked(callback), SYNC_EVENTS.DEVICE_REMOVED)
     expectSubscribe(() => syncEvents.onOtpDetected(callback), SYNC_EVENTS.OTP_DETECTED)
     expectSubscribe(() => syncEvents.onOAuthCallback(callback), SYNC_EVENTS.OAUTH_CALLBACK)

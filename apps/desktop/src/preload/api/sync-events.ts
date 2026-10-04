@@ -77,6 +77,9 @@ export const syncEvents = {
   onSessionExpired: (callback: (event: SessionExpiredEvent) => void): (() => void) =>
     subscribe<SessionExpiredEvent>(SYNC_EVENTS.SESSION_EXPIRED, callback),
 
+  onTokenRefreshed: (callback: () => void): (() => void) =>
+    subscribe(SYNC_EVENTS.TOKEN_REFRESHED, callback),
+
   onDeviceRevoked: (callback: (event: DeviceRevokedEvent) => void): (() => void) =>
     subscribe<DeviceRevokedEvent>(SYNC_EVENTS.DEVICE_REMOVED, callback),
 

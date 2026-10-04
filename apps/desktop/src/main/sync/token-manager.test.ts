@@ -52,7 +52,8 @@ import {
   cancelTokenRefresh,
   refreshAccessToken,
   resetTokenManagerState,
-  setOnTokenRefreshed
+  setOnTokenRefreshed,
+  hasSessionEnded
 } from './token-manager'
 
 function encodeToken(payload: Record<string, unknown>): string {
@@ -322,6 +323,7 @@ describe('token-manager', () => {
       expect(win.webContents.send).toHaveBeenCalledWith('auth:session-expired', {
         reason: 'refresh_rejected'
       })
+      expect(hasSessionEnded()).toBe(true)
 
       // #and the latch is permanent — no further requests, ever
       await vi.advanceTimersByTimeAsync(60 * 60_000)
@@ -390,6 +392,103 @@ describe('token-manager', () => {
       await vi.advanceTimersByTimeAsync(61_000)
       await refreshAccessToken()
       expect(mockPostToServer).toHaveBeenCalledTimes(4)
+    })
+  })
+
+  describe('network failures', () => {
+    it('keeps the session through a wake with DNS down for 30 seconds', async () => {
+      // #given a long sleep: the access token expired, so no fallback retry fits
+      const expiredToken = encodeToken({ exp: nowSeconds() - 100 })
+      const freshToken = encodeToken({ exp: nowSeconds() + 900 })
+      let accessToken = expiredToken
+      mockRetrieveKey.mockImplementation((entry) => {
+        if (entry.account === 'access-token') {
+          return Promise.resolve(new TextEncoder().encode(accessToken))
+        }
+        if (entry.account === 'refresh-token') {
+          return Promise.resolve(new TextEncoder().encode('refresh-tok'))
+        }
+        return Promise.resolve(null)
+      })
+      mockStoreKey.mockImplementation((entry, value: Uint8Array) => {
+        if (entry.account === 'access-token') accessToken = new TextDecoder().decode(value)
+        return Promise.resolve()
+      })
+      mockDecodeJwt.mockImplementation((token: string) => ({
+        exp: token === freshToken ? nowSeconds() + 900 : nowSeconds() - 100
+      }))
+      const win = { isDestroyed: () => false, webContents: { send: vi.fn() } }
+      mockGetAllWindows.mockReturnValue([win])
+      mockPostToServer.mockRejectedValue(
+        new Error('Unable to connect to sync server. Please check your internet connection.')
+      )
+
+      // #when the wake-up sync pass asks for a token while DNS is down
+      const duringOutage = getValidAccessToken()
+      await vi.advanceTimersByTimeAsync(5_000)
+      await expect(duringOutage).resolves.toBeNull()
+
+      // #then nothing told the renderer the session ended
+      expect(win.webContents.send).not.toHaveBeenCalledWith(
+        'auth:session-expired',
+        expect.anything()
+      )
+
+      // #when the network is back 30 seconds later and the next pass asks again
+      await vi.advanceTimersByTimeAsync(25_000)
+      mockPostToServer.mockResolvedValue({
+        accessToken: freshToken,
+        refreshToken: 'new-refresh',
+        expiresIn: 900
+      })
+
+      // #then the same refresh token still works and the renderer hears about it
+      await expect(getValidAccessToken()).resolves.toBe(freshToken)
+      expect(win.webContents.send).not.toHaveBeenCalledWith(
+        'auth:session-expired',
+        expect.anything()
+      )
+      expect(win.webContents.send).toHaveBeenCalledWith('auth:token-refreshed', {})
+    })
+
+    it('ends the session when the refresh token is gone from the keychain', async () => {
+      const win = { isDestroyed: () => false, webContents: { send: vi.fn() } }
+      mockGetAllWindows.mockReturnValue([win])
+      mockRetrieveKey.mockResolvedValue(null)
+
+      await expect(refreshAccessToken()).resolves.toBe(false)
+
+      expect(win.webContents.send).toHaveBeenCalledWith('auth:session-expired', {
+        reason: 'credentials_missing'
+      })
+      expect(hasSessionEnded()).toBe(true)
+    })
+
+    it('keeps the session when the keychain read fails', async () => {
+      const win = { isDestroyed: () => false, webContents: { send: vi.fn() } }
+      mockGetAllWindows.mockReturnValue([win])
+      mockRetrieveKey.mockRejectedValue(new Error('Failed to retrieve key from keychain'))
+
+      const refresh = refreshAccessToken()
+      await vi.advanceTimersByTimeAsync(5_000)
+
+      await expect(refresh).resolves.toBe(false)
+      expect(hasSessionEnded()).toBe(false)
+      expect(win.webContents.send).not.toHaveBeenCalledWith(
+        'auth:session-expired',
+        expect.anything()
+      )
+    })
+
+    it('reports a network failure as a live session', async () => {
+      mockRetrieveKey.mockResolvedValue(new TextEncoder().encode('refresh-tok'))
+      mockPostToServer.mockRejectedValue(new Error('Unable to connect to sync server.'))
+
+      const refresh = refreshAccessToken()
+      await vi.advanceTimersByTimeAsync(5_000)
+
+      await expect(refresh).resolves.toBe(false)
+      expect(hasSessionEnded()).toBe(false)
     })
   })
 

@@ -41,7 +41,7 @@ import {
   postToServer,
   SyncServerError
 } from '../sync/http-client'
-import { persistKeysAndRegisterDevice } from '../sync/device-registration'
+import { persistKeysAndRegisterDevice, signInKnownDevice } from '../sync/device-registration'
 import {
   approveDeviceLinking,
   completeLinkingQr,
@@ -326,11 +326,18 @@ export function registerAuthDeviceHandlers(): void {
         await storeToken(KEYCHAIN_ENTRIES.SETUP_TOKEN, serverResponse.setupToken)
       }
 
+      const needsSetup = serverResponse.needsSetup ?? false
+      const deviceId =
+        !needsSetup && serverResponse.knownDevice && serverResponse.setupToken
+          ? await signInKnownDevice(serverResponse.setupToken)
+          : null
+
       return {
         success: true,
         isNewUser: serverResponse.isNewUser ?? false,
-        needsSetup: serverResponse.needsSetup ?? false,
-        needsRecoveryInput: !(serverResponse.needsSetup ?? false)
+        needsSetup,
+        needsRecoveryInput: !needsSetup && !deviceId,
+        ...(deviceId && { deviceId })
       }
     },
     'errors:auth.verifyOtpFailed'

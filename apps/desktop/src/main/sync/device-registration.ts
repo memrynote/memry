@@ -8,22 +8,25 @@ import { syncState } from '@memry/db-schema/schema/sync-state'
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import {
   DeviceRegisterResponseSchema,
+  RecoveryDataResponseSchema,
   type DeviceRegisterResponse
 } from '@memry/contracts/auth-api'
 
 import {
   bindLocalVaultToMasterKey,
   deleteKey,
+  generateKeyVerifier,
   getDevicePublicKey,
   retrieveKey,
   secureCleanup,
-  storeKey
+  storeKey,
+  validateKeyVerifier
 } from '../crypto'
 import { getStoredDeviceId, setStoredDeviceId } from '../store'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
-import { deleteFromServer, postToServer } from './http-client'
+import { deleteFromServer, getFromServer, postToServer } from './http-client'
 import {
   clearKeyMaterialActivity,
   markKeyMaterialActivity,
@@ -49,11 +52,13 @@ export const PLATFORM_MAP: Record<string, string> = {
   linux: 'linux'
 }
 
+type RegisteredDevice = DeviceRegisterResponse & { deviceId: string; accessToken: string }
+
 const registerDevice = async (
   setupToken: string,
   signingSecretKey: Uint8Array,
   vaultId: string | undefined
-): Promise<DeviceRegisterResponse> => {
+): Promise<RegisteredDevice> => {
   await sodium.ready
 
   const publicKey = getDevicePublicKey(signingSecretKey)
@@ -90,7 +95,7 @@ const registerDevice = async (
   await storeToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN, response.refreshToken)
   scheduleTokenRefresh(ACCESS_TOKEN_EXPIRY_SECONDS)
 
-  return response
+  return { ...response, deviceId: response.deviceId, accessToken: response.accessToken }
 }
 
 /**
@@ -124,10 +129,9 @@ export const persistKeysAndRegisterDevice = async (
   const db = isDatabaseInitialized() ? getDatabase() : null
   const localVaultUuid = db ? getOrCreateVaultUuid(db) : undefined
 
-  let deviceResponse: DeviceRegisterResponse & { deviceId: string; accessToken: string }
+  let deviceResponse: RegisteredDevice
   try {
-    const raw = await registerDevice(setupToken, signingSecretKey, localVaultUuid)
-    deviceResponse = raw as DeviceRegisterResponse & { deviceId: string; accessToken: string }
+    deviceResponse = await registerDevice(setupToken, signingSecretKey, localVaultUuid)
   } catch (err) {
     await deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => {})
     throw err
@@ -238,25 +242,69 @@ export const persistKeysAndRegisterDevice = async (
 
   // Vault-less registration has nothing to activate yet: opening the chosen
   // vault starts the sync runtime.
-  if (!skipActivation && db) {
-    const engine = getSyncEngine()
-    if (engine) {
-      // A runtime that outlived its session paused the body outbox for want
-      // of credentials; the new tokens are here now, not at the next refresh.
-      getNoteBodyOutbox()?.resume()
-      void engine.activate()
-      void import('./vault-directory')
-        .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))
-        .catch(() => {})
-    } else {
-      void startSyncRuntime()
-    }
-    void startGoogleCalendarSyncRunner().catch(() => {
-      // Runner self-logs on failure; sign-in should succeed regardless.
-    })
-  }
+  if (!skipActivation && db) activateSyncAfterSignIn()
 
   return deviceResponse.deviceId
+}
+
+const activateSyncAfterSignIn = (): void => {
+  const engine = getSyncEngine()
+  if (engine) {
+    // A runtime that outlived its session paused the body outbox for want
+    // of credentials; the new tokens are here now, not at the next refresh.
+    getNoteBodyOutbox()?.resume()
+    void engine.activate()
+    void import('./vault-directory')
+      .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))
+      .catch(() => {})
+  } else {
+    void startSyncRuntime()
+  }
+  void startGoogleCalendarSyncRunner().catch(() => {
+    // Runner self-logs on failure; sign-in should succeed regardless.
+  })
+}
+
+/**
+ * Signs a device back in with the email code alone (#2612). The server has
+ * already confirmed that the account still lists this device's signing key;
+ * here the vault key must also still be the account's. The device keeps its
+ * keychain, device row and sync cursor, and only gets new tokens. Returns null
+ * whenever that is not proven, and the caller asks for the recovery phrase.
+ */
+export const signInKnownDevice = async (setupToken: string): Promise<string | null> => {
+  const masterKey = await retrieveKey(KEYCHAIN_ENTRIES.MASTER_KEY).catch(() => null)
+  const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => null)
+  try {
+    if (!masterKey || !signingSecretKey) {
+      logger.info('Recovery phrase needed: this device no longer holds its keys')
+      return null
+    }
+
+    const recoveryInfo = RecoveryDataResponseSchema.parse(
+      await getFromServer<unknown>('/auth/recovery-info', setupToken)
+    )
+    if (!validateKeyVerifier(await generateKeyVerifier(masterKey), recoveryInfo.keyVerifier)) {
+      logger.info('Recovery phrase needed: the vault key on this device is not the account key')
+      return null
+    }
+
+    const db = isDatabaseInitialized() ? getDatabase() : null
+    const { deviceId } = await registerDevice(
+      setupToken,
+      signingSecretKey,
+      db ? getOrCreateVaultUuid(db) : undefined
+    )
+    if (db) activateSyncAfterSignIn()
+    logger.info('Signed a known device back in with the email code', { deviceId })
+    return deviceId
+  } catch (err) {
+    logger.warn('Email-code sign-in failed, asking for the recovery phrase', err)
+    return null
+  } finally {
+    if (masterKey) secureCleanup(masterKey)
+    if (signingSecretKey) secureCleanup(signingSecretKey)
+  }
 }
 
 /**

@@ -1528,6 +1528,8 @@ interface SyncAuthClientAPI {
   }>
   refreshToken /* auth action */: () => Promise<{
     success: boolean
+    /** True only when the session can no longer refresh and needs a new sign-in. */
+    sessionEnded?: boolean
     error?: string
   }>
   logout: () => Promise<{
@@ -2023,6 +2025,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onSyncPaused: (callback: (event: SyncPausedEvent) => void) => () => void
   onSyncResumed: (callback: (event: SyncResumedEvent) => void) => () => void
   onSessionExpired: (callback: (event: SessionExpiredEvent) => void) => () => void
+  onTokenRefreshed: (callback: () => void) => () => void
   onDeviceRevoked: (callback: (event: DeviceRevokedEvent) => void) => () => void
   onOtpDetected: (callback: (event: OtpDetectedEvent) => void) => () => void
   onOAuthCallback: (callback: (event: OAuthCallbackEvent) => void) => () => void
