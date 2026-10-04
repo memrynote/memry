@@ -70,18 +70,19 @@ function bodyWarnings(body: WrittenBody | undefined): string[] {
 }
 
 /**
- * `result` with `warnings` appended. A result that is not a plain object, or
- * whose `warnings` is not a list of strings, is wrapped as `{ result, warnings }`.
+ * `result` with `warnings` added as its first key, so a reply the size cap cuts
+ * still starts with them. A result that is not a plain object, or whose
+ * `warnings` is not a list of strings, is wrapped as `{ warnings, result }`.
  */
 function withWarnings(result: unknown, warnings: string[]): unknown {
   if (warnings.length === 0) return result
-  if (!result || typeof result !== 'object' || Array.isArray(result)) return { result, warnings }
-  const existing = (result as { warnings?: unknown }).warnings
-  if (existing === undefined) return { ...result, warnings }
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return { warnings, result }
+  const { warnings: existing, ...rest } = result as { warnings?: unknown }
+  if (existing === undefined) return { warnings, ...rest }
   if (Array.isArray(existing) && existing.every((w) => typeof w === 'string')) {
-    return { ...result, warnings: [...existing, ...warnings] }
+    return { warnings: [...existing, ...warnings], ...rest }
   }
-  return { result, warnings }
+  return { warnings, result }
 }
 
 async function approvedArgs<T>(

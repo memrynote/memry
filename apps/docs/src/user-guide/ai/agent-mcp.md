@@ -428,7 +428,8 @@ A write reply can carry a `warnings` list of plain sentences:
 - While this device runs without its CRDT store, every write reply says so. Note edits are
   still saved to the vault and synced, but without merge history for that session.
 
-A reply that is not a plain object comes back as `{ result, warnings }`.
+`warnings` is the first key of the reply, so a reply cut at the size limit still starts with
+it. A reply that is not a plain object comes back as `{ warnings, result }`.
 
 ### Folder paths
 
