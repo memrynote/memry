@@ -82,4 +82,67 @@ test.describe('Attachment upload re-drive', () => {
       })
       .toBeGreaterThan(0)
   })
+
+  test('uploads a vault file at once when a note body written through the API embeds it', async ({
+    electronAppA,
+    pageA,
+    vaultPathA,
+    syncBootstrap
+  }) => {
+    test.setTimeout(300_000)
+
+    const noteId = await pageA.evaluate(async () => {
+      const created = await window.api.notes.create({ title: 'embeds a file', content: 'body' })
+      if (!created.success || !created.note) throw new Error(created.error ?? 'create failed')
+      return created.note.id
+    })
+
+    await bootstrapSyncDevice(electronAppA, syncBootstrap.deviceA)
+    await pageA.reload()
+    await pageA.waitForLoadState('domcontentloaded')
+    await waitForAppReady(pageA)
+    await expect
+      .poll(() => pageA.evaluate(() => window.api.syncOps.triggerSync().then((r) => r.success)), {
+        timeout: 60_000
+      })
+      .toBe(true)
+    await electronAppA.evaluate((_context, vaultPath) => {
+      const debug = (
+        globalThis as typeof globalThis & {
+          __memryDebug?: { store: { set(key: string, value: unknown): void } }
+        }
+      ).__memryDebug
+      if (!debug) throw new Error('Memry debug handles are not registered')
+      debug.store.set('currentVault', vaultPath)
+    }, vaultPathA)
+
+    const db = await syncBootstrap.server.getD1()
+    const uploadedChunks = async (): Promise<number> => {
+      const row = await db
+        .prepare(
+          `SELECT COUNT(*) AS c FROM blob_chunks
+             WHERE user_id = (SELECT id FROM users WHERE email = ?)`
+        )
+        .bind(syncBootstrap.email)
+        .first<{ c: number }>()
+      return row?.c ?? 0
+    }
+
+    fs.mkdirSync(path.join(vaultPathA, 'sources'), { recursive: true })
+    fs.writeFileSync(path.join(vaultPathA, 'sources', 'shot.txt'), 'a file placed beside the note')
+    expect(await uploadedChunks()).toBe(0)
+
+    const updated = await pageA.evaluate(
+      (id) => window.api.notes.update({ id, content: '![shot](sources/shot.txt)' }),
+      noteId
+    )
+    expect(updated.success, updated.error ?? 'update failed').toBe(true)
+
+    await expect
+      .poll(uploadedChunks, {
+        message: 'the write uploads the embedded file without a reconnect',
+        timeout: 60_000
+      })
+      .toBeGreaterThan(0)
+  })
 })
