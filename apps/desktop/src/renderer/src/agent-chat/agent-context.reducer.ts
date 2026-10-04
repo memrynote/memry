@@ -604,6 +604,7 @@ function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
     case 'start_queued_turn':
       return {
         ...state,
+        error: null,
         inFlight: { ...state.inFlight, [action.conversationId]: true },
         queuedTurns: updateQueue(state, action.conversationId, (queue) =>
           patchQueuedTurn(queue, action.id, (turn) => ({ ...turn, status: 'sending' }))

@@ -627,6 +627,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
             agent?.dispatch({ type: 'edit_queued_turn', conversationId, id, text })
           }
           onRemove={(id) => agent?.dispatch({ type: 'remove_queued_turn', conversationId, id })}
+          onSettled={() => promptEditorRef.current?.focus()}
         />
       )}
       <div className="relative flex flex-col">

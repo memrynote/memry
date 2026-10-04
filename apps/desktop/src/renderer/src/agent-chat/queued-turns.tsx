@@ -13,6 +13,8 @@ interface QueuedTurnsProps {
   onEditingChange: (id: string, editing: boolean) => void
   onEdit: (id: string, text: string) => void
   onRemove: (id: string) => void
+  /** Called after an action that unmounts the focused control, so focus has somewhere to go. */
+  onSettled: () => void
 }
 
 const iconButtonClassName =
@@ -22,7 +24,8 @@ export function QueuedTurns({
   turns,
   onEditingChange,
   onEdit,
-  onRemove
+  onRemove,
+  onSettled
 }: QueuedTurnsProps): React.JSX.Element | null {
   const { t } = useT('common')
   const [drafts, setDrafts] = useState<Record<string, string>>({})
@@ -36,10 +39,12 @@ export function QueuedTurns({
     if (!text?.trim()) return
     onEdit(id, text)
     setDraft(id, null)
+    onSettled()
   }
   const cancelEdit = (id: string): void => {
     onEditingChange(id, false)
     setDraft(id, null)
+    onSettled()
   }
 
   return (
@@ -134,7 +139,10 @@ export function QueuedTurns({
                       <button
                         type="button"
                         aria-label={t('agentChat.composer.queue.remove')}
-                        onClick={() => onRemove(turn.id)}
+                        onClick={() => {
+                          onRemove(turn.id)
+                          onSettled()
+                        }}
                         className={iconButtonClassName}
                       >
                         <X className="size-3.5" aria-hidden="true" />
