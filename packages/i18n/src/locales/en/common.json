@@ -344,7 +344,18 @@
         "access": "Access",
         "tools": "Tools"
       },
-      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}",
+      "queue": {
+        "label": "Queued messages",
+        "queueMessage": "Queue message",
+        "edit": "Edit queued message",
+        "editLabel": "Queued message text",
+        "remove": "Remove queued message",
+        "save": "Save",
+        "cancel": "Cancel",
+        "sending": "Sending…",
+        "notSent": "Not sent. Edit to send again, or remove it."
+      }
     },
     "refPicker": {
       "noMatches": "No matches"

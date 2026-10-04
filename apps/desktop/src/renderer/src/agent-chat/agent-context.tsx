@@ -32,7 +32,8 @@ import {
   agentReducer,
   initialAgentState,
   type AgentAction,
-  type AgentState
+  type AgentState,
+  type QueuedTurn
 } from './agent-context.reducer'
 
 interface DisclosureState {
@@ -108,6 +109,15 @@ interface AgentContextValue {
 }
 
 const AgentContext = createContext<AgentContextValue | null>(null)
+
+/**
+ * Main broadcasts the end of a turn before it releases the conversation's turn
+ * lock (it still cleans up the backend and awaits the title), and Stop clears
+ * the renderer flag before the child has exited. A queued message sent at that
+ * moment is answered "busy", so it is retried until the lock frees.
+ */
+const QUEUED_SEND_RETRY_MS = 500
+const QUEUED_SEND_ATTEMPTS = 60
 
 type AssistantStreamDelta = Extract<
   AgentEvent,
@@ -275,6 +285,7 @@ export function AgentProvider({
       try {
         await getAgentApi().cancelTurn({ conversationId })
         dispatch({ type: 'set_in_flight', conversationId, inFlight: false })
+        dispatch({ type: 'hold_sending_turn', conversationId })
       } catch (error) {
         trackRendererError('agent_cancel_turn', error)
         dispatch({
@@ -285,6 +296,73 @@ export function AgentProvider({
     },
     [t]
   )
+
+  const queuedTurnsRef = useRef(state.queuedTurns)
+  queuedTurnsRef.current = state.queuedTurns
+
+  const sendQueuedTurn = useCallback(
+    async (turn: QueuedTurn) => {
+      const stillSending = (): boolean =>
+        queuedTurnsRef.current[turn.conversationId]?.[0]?.id === turn.id &&
+        queuedTurnsRef.current[turn.conversationId]?.[0]?.status === 'sending'
+      for (let attempt = 1; ; attempt += 1) {
+        let result: SendTurnResponse
+        try {
+          result = await getAgentApi().sendTurn({
+            conversationId: turn.conversationId,
+            sourceWindowId: turn.sourceWindowId,
+            text: turn.text,
+            backendOptions: turn.backendOptions,
+            permissions: turn.permissions,
+            attachments: turn.attachments
+          })
+        } catch (error) {
+          trackRendererError('agent_send_queued_turn', error)
+          dispatch({
+            type: 'settle_queued_turn',
+            conversationId: turn.conversationId,
+            id: turn.id,
+            sent: false,
+            error: extractErrorMessage(error, t('agentChat.errors.sendTurn'))
+          })
+          return
+        }
+        if (result.ok) {
+          dispatch({
+            type: 'settle_queued_turn',
+            conversationId: turn.conversationId,
+            id: turn.id,
+            sent: true
+          })
+          return
+        }
+        if (attempt >= QUEUED_SEND_ATTEMPTS) {
+          dispatch({
+            type: 'settle_queued_turn',
+            conversationId: turn.conversationId,
+            id: turn.id,
+            sent: false,
+            error: result.error ?? t('agentChat.errors.busy')
+          })
+          return
+        }
+        await new Promise((resolve) => setTimeout(resolve, QUEUED_SEND_RETRY_MS))
+        if (!stillSending()) return
+      }
+    },
+    [t]
+  )
+
+  // One drain for the whole window, so a queue keeps going out after its
+  // conversation is no longer on screen. Each message is its own turn.
+  useEffect(() => {
+    for (const [conversationId, queue] of Object.entries(state.queuedTurns)) {
+      const head = queue[0]
+      if (!head || head.status !== 'queued' || state.inFlight[conversationId] === true) continue
+      dispatch({ type: 'start_queued_turn', conversationId, id: head.id })
+      void sendQueuedTurn(head)
+    }
+  }, [state.queuedTurns, state.inFlight, sendQueuedTurn])
 
   const approveTool = useCallback(
     async (input: ApproveToolRequest) => {

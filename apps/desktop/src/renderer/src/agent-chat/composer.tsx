@@ -32,7 +32,9 @@ import {
   type AgentPromptValue
 } from './agent-prompt-editor'
 import { useAgentOptional } from './agent-context'
+import { isConversationBusy } from './agent-context.reducer'
 import type { MentionAttachment } from './mention-icons'
+import { QueuedTurns } from './queued-turns'
 import { RefPicker } from './ref-picker'
 import {
   type AgentProvider,
@@ -294,8 +296,9 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     antigravity: antigravityAvailable,
     runtimeUnavailable: agentRuntimeUnavailable
   } = cliAvailability(backendStatuses)
-  const turnInFlight = conversationId ? agent?.state.inFlight?.[conversationId] === true : false
-  const busy = turnInFlight || submitting
+  const turnInFlight =
+    agent && conversationId ? isConversationBusy(agent.state, conversationId) : false
+  const queuedTurns = (conversationId && agent?.state.queuedTurns?.[conversationId]) || []
   // A CLI backend needs a positive detection, not merely the absence of a
   // negative one. `!== false` also passed while backendStatuses was still
   // undefined, so send stayed live through the bootstrap window and the turn
@@ -308,7 +311,8 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     ? backendStatuses?.[selectedProvider]?.available === true
     : true
   const hasText = promptValue.text.trim().length > 0
-  const canSend = Boolean(agent) && Boolean(sourceWindowId) && hasText && !busy && providerReady
+  const canSend =
+    Boolean(agent) && Boolean(sourceWindowId) && hasText && !submitting && providerReady
   const pickerQuery = pickerOpen ? (mentionQuery ?? '') : ''
   const localProviderLabel = t('agentChat.composer.providers.local')
   const selectedBackendModel = isCliProvider(selectedProvider)
@@ -526,11 +530,30 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   async function submit(): Promise<void> {
     const editorValue = promptEditorRef.current?.getValue() ?? promptValue
     const currentText = editorValue.text.trimEnd()
-    if (!agent || !sourceWindowId || !currentText.trim() || busy) return
+    if (!agent || !sourceWindowId || !currentText.trim() || submitting) return
     const currentAttachments = dedupeAttachments([
       ...editorValue.attachments,
       ...(includeCurrentNote && currentNoteAttachment ? [currentNoteAttachment] : [])
     ])
+    if (turnInFlight && conversationId) {
+      agent.dispatch({
+        type: 'queue_turn',
+        turn: {
+          id: crypto.randomUUID(),
+          conversationId,
+          sourceWindowId,
+          text: currentText,
+          attachments: currentAttachments,
+          backendOptions: backendOptions(),
+          permissions: turnPermissions(),
+          status: 'queued'
+        }
+      })
+      promptEditorRef.current?.clear()
+      setPromptValue({ text: '', attachments: [], formatRanges: [] })
+      closePicker()
+      return
+    }
     setSubmitting(true)
     try {
       const selectedTurnModel = isCliProvider(selectedProvider)
@@ -591,6 +614,15 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
           onClose={closePicker}
         />
       )}
+      {conversationId && (
+        <QueuedTurns
+          turns={queuedTurns}
+          onEdit={(id, text) =>
+            agent?.dispatch({ type: 'edit_queued_turn', conversationId, id, text })
+          }
+          onRemove={(id) => agent?.dispatch({ type: 'remove_queued_turn', conversationId, id })}
+        />
+      )}
       <div className="relative flex flex-col">
         <ConnectedToolsTray />
         <div
@@ -613,7 +645,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
           >
             <AgentPromptEditor
               ref={promptEditorRef}
-              disabled={busy || !agent}
+              disabled={submitting || !agent}
               editorClassName="!min-h-9 max-h-[180px] p-1 text-[13px] leading-[18px] [&_.is-editor-empty:first-child::before]:text-[13px]"
               placeholder={t('agentChat.composer.placeholder')}
               onEscape={closePicker}
@@ -671,13 +703,43 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
               <button
                 type="button"
                 aria-label={t('agentChat.composer.mentionContext')}
-                disabled={busy || !agent}
+                disabled={submitting || !agent}
                 onClick={triggerMention}
                 className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <AtSign className="size-3.5" aria-hidden="true" />
               </button>
-              {turnInFlight ? (
+              {hasText && !dictationBusy ? (
+                <Button
+                  type="button"
+                  aria-label={
+                    turnInFlight
+                      ? t('agentChat.composer.queue.queueMessage')
+                      : t('agentChat.composer.send')
+                  }
+                  disabled={!canSend}
+                  onPointerDown={(event) => {
+                    event.preventDefault()
+                    void submit()
+                  }}
+                  onClick={() => void submit()}
+                  className={
+                    turnInFlight
+                      ? 'size-7 rounded-md p-0'
+                      : 'size-7 rounded-md bg-tint p-0 text-tint-foreground hover:bg-tint-hover disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground'
+                  }
+                  variant={turnInFlight ? 'secondary' : 'default'}
+                >
+                  <ArrowUp className="size-3.5" aria-hidden="true" />
+                </Button>
+              ) : (
+                <VoiceDictationButton
+                  disabled={submitting || !agent}
+                  onTranscript={insertTranscript}
+                  onBusyChange={setDictationBusy}
+                />
+              )}
+              {turnInFlight && (
                 <Button
                   type="button"
                   aria-label={t('agentChat.stop')}
@@ -687,26 +749,6 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 >
                   <Square className="size-3" aria-hidden="true" />
                 </Button>
-              ) : hasText && !dictationBusy ? (
-                <Button
-                  type="button"
-                  aria-label={t('agentChat.composer.send')}
-                  disabled={!canSend}
-                  onPointerDown={(event) => {
-                    event.preventDefault()
-                    void submit()
-                  }}
-                  onClick={() => void submit()}
-                  className="size-7 rounded-md bg-tint p-0 text-tint-foreground hover:bg-tint-hover disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-                >
-                  <ArrowUp className="size-3.5" aria-hidden="true" />
-                </Button>
-              ) : (
-                <VoiceDictationButton
-                  disabled={busy || !agent}
-                  onTranscript={insertTranscript}
-                  onBusyChange={setDictationBusy}
-                />
               )}
             </div>
           </div>

@@ -1,0 +1,198 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import type { AgentEvent } from '@memry/contracts/ipc-agent'
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabActionsOptional: () => null,
+  useActiveTab: () => null
+}))
+
+import { SettingsModalProvider } from '@/contexts/settings-modal-context'
+import { AgentProvider } from '../agent-context'
+import { Composer } from '../composer'
+
+const CONVERSATION_ID = 'conversation-1'
+
+let emit: (event: AgentEvent) => void = () => {}
+
+function renderChat(): void {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <SettingsModalProvider>
+        <AgentProvider>
+          <Composer conversationId={CONVERSATION_ID} sourceWindowId="window-1" />
+        </AgentProvider>
+      </SettingsModalProvider>
+    </QueryClientProvider>
+  )
+}
+
+async function send(text: string): Promise<void> {
+  const textbox = screen.getByRole('textbox', { name: /do anything/i })
+  await userEvent.click(textbox)
+  await userEvent.type(textbox, text)
+  await act(async () => {
+    await userEvent.keyboard('{Enter}')
+  })
+}
+
+function endTurn(): void {
+  act(() => emit({ kind: 'turn_completed', conversationId: CONVERSATION_ID, turnId: 'turn' }))
+}
+
+function sentTexts(): string[] {
+  return vi.mocked(window.api.agent.sendTurn).mock.calls.map(([input]) => input.text)
+}
+
+function queuedTexts(): string[] {
+  const queue = screen.queryByRole('region', { name: 'Queued messages' })
+  if (!queue) return []
+  return within(queue)
+    .queryAllByRole('listitem')
+    .map((item) => item.querySelector('p')?.textContent ?? '')
+}
+
+async function startTurn(): Promise<void> {
+  renderChat()
+  await waitFor(() => expect(screen.getByRole('textbox', { name: /do anything/i })).toBeVisible())
+  await send('first')
+  await screen.findByRole('button', { name: 'Stop' })
+}
+
+describe('queued agent messages', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.mocked(window.api.agent.sendTurn).mockReset()
+    vi.mocked(window.api.agent.sendTurn).mockResolvedValue({ ok: true })
+    vi.mocked(window.api.agent.cancelTurn).mockReset()
+    vi.mocked(window.api.agent.cancelTurn).mockResolvedValue({ ok: true })
+    vi.mocked(window.api.agent.getWindowId).mockResolvedValue({ windowId: 'window-1' })
+    vi.mocked(window.api.agent.getBackendStatuses).mockResolvedValue({
+      claude_cli: {
+        backend: 'claude_cli',
+        available: true,
+        reason: null,
+        detail: null,
+        version: '2.1.0',
+        minimumRequired: '2.1.0'
+      },
+      codex_cli: {
+        backend: 'codex_cli',
+        available: false,
+        reason: 'missing_binary',
+        detail: null,
+        version: null,
+        minimumRequired: '0.130.0'
+      },
+      antigravity_cli: {
+        backend: 'antigravity_cli',
+        available: false,
+        reason: 'missing_binary',
+        detail: null,
+        version: null,
+        minimumRequired: '1.2.7'
+      },
+      local_openai_compatible: {
+        backend: 'local_openai_compatible',
+        available: true,
+        reason: null,
+        detail: null
+      }
+    })
+    vi.mocked(window.api.agent.onEvent).mockImplementation((callback) => {
+      emit = callback
+      return () => {}
+    })
+  })
+
+  it('keeps the prompt editable during a turn and sends queued messages in order as turns end', async () => {
+    await startTurn()
+
+    expect(screen.getByRole('textbox', { name: /do anything/i })).toHaveAttribute(
+      'contenteditable',
+      'true'
+    )
+    await send('second')
+    await send('third')
+
+    expect(queuedTexts()).toEqual(['second', 'third'])
+    expect(sentTexts()).toEqual(['first'])
+
+    endTurn()
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+    await waitFor(() => expect(queuedTexts()).toEqual(['third']))
+
+    endTurn()
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second', 'third']))
+    await waitFor(() => expect(queuedTexts()).toEqual([]))
+  })
+
+  it('sends the edited text and skips a removed message', async () => {
+    await startTurn()
+    await send('draft one')
+    await send('draft two')
+
+    const [firstRow, secondRow] = within(
+      screen.getByRole('region', { name: 'Queued messages' })
+    ).getAllByRole('listitem')
+    fireEvent.click(within(firstRow).getByRole('button', { name: 'Edit queued message' }))
+    const editor = screen.getByRole('textbox', { name: 'Queued message text' })
+    await userEvent.clear(editor)
+    await userEvent.type(editor, 'final one{Enter}')
+    fireEvent.click(within(secondRow).getByRole('button', { name: 'Remove queued message' }))
+
+    expect(queuedTexts()).toEqual(['final one'])
+
+    endTurn()
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'final one']))
+  })
+
+  it('retries a queued message while main still holds the finished turn', async () => {
+    await startTurn()
+    await send('second')
+    vi.mocked(window.api.agent.sendTurn)
+      .mockResolvedValueOnce({ ok: false, error: 'There is already a turn in flight' })
+      .mockResolvedValueOnce({ ok: true })
+
+    endTurn()
+
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second', 'second']), {
+      timeout: 2000
+    })
+    await waitFor(() => expect(queuedTexts()).toEqual([]))
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
+  })
+
+  it('holds the queue on a message main rejects until the user edits it', async () => {
+    await startTurn()
+    await send('second')
+    await send('third')
+    vi.mocked(window.api.agent.sendTurn).mockRejectedValueOnce(new Error('IPC closed'))
+
+    endTurn()
+
+    await screen.findByText('Not sent. Edit to send again, or remove it.')
+    expect(sentTexts()).toEqual(['first', 'second'])
+    expect(queuedTexts()).toEqual(['second', 'third'])
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit queued message' })[0])
+    await userEvent.type(screen.getByRole('textbox', { name: 'Queued message text' }), '{Enter}')
+
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second', 'second']))
+    await waitFor(() => expect(queuedTexts()).toEqual(['third']))
+  })
+
+  it('sends the next queued message after Stop', async () => {
+    await startTurn()
+    await send('after stop')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'after stop']))
+    expect(window.api.agent.cancelTurn).toHaveBeenCalledWith({ conversationId: CONVERSATION_ID })
+  })
+})
