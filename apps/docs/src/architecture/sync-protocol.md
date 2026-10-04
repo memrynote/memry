@@ -989,7 +989,10 @@ across devices:
   dropped, failures keep their row for the next pass. A drain that reaches a
   file the save path is still uploading joins that upload rather than sending
   the file twice under two attachment ids. The backfill skips a note with no
-  embeds whose mtime and size are unchanged since it last read the body.
+  embeds whose mtime and size are unchanged since it last read the body. The
+  same embed rule also runs when a body is written through the notes domain,
+  when the watcher indexes an external edit and when ingest reads a new file:
+  each embedded vault file without an outbox row gets one and uploads at once.
   Recording the reference enqueues a note push so peers
   learn the blob exists; if that lands while the runtime is down — an upload
   finishing during quit, a vault switch, re-auth — the note is marked for
