@@ -309,6 +309,49 @@ describe('queued agent messages', () => {
     expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
   })
 
+  it('holds the queue while its next message is being edited and sends the saved text', async () => {
+    await startTurn()
+    await send('original')
+    fireEvent.click(screen.getByRole('button', { name: 'Edit queued message' }))
+    const editor = screen.getByRole('textbox', { name: 'Queued message text' })
+    await userEvent.clear(editor)
+    await userEvent.type(editor, 'half typed edit')
+
+    endTurn()
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    })
+    expect(sentTexts()).toEqual(['first'])
+    expect(screen.getByRole('textbox', { name: 'Queued message text' })).toHaveValue(
+      'half typed edit'
+    )
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Queued message text' }), '{Enter}')
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'half typed edit']))
+  })
+
+  it('keeps Stop on a queued send that main answers late, without a second version', async () => {
+    await startTurn()
+    await send('second')
+    let answer: (value: { ok: true; turnId: string }) => void = () => {}
+    vi.mocked(window.api.agent.sendTurn).mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    )
+    endTurn()
+    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1))
+
+    expect(screen.queryByRole('button', { name: 'Edit queued message' })).not.toBeInTheDocument()
+
+    await act(async () => answer({ ok: true, turnId: 'turn-b' }))
+    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(2))
+    expect(sentTexts()).toEqual(['first', 'second'])
+    expect(queuedTexts()).toEqual([])
+  })
+
   it('sends the next queued message after Stop', async () => {
     await startTurn()
     await send('after stop')
