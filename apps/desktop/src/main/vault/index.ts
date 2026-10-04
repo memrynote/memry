@@ -76,6 +76,8 @@ import { createSearchProjector } from '../projections/projectors/search-projecto
 import { createEmbeddingProjector } from '../projections/projectors/embedding-projector'
 import { createInboxStatsProjector } from '../projections/projectors/inbox-stats-projector'
 import { createNoteProjectLinksProjector } from '../projections/projectors/note-project-links-projector'
+import { createFileTextProjector } from '../projections/projectors/file-text-projector'
+import { fileTextNoteChanged, startFileTextExtraction, stopFileTextExtraction } from '../file-text'
 import { PropertyDefinitionsService } from './property-definitions'
 import { getSetting, setSetting } from '../database/queries/settings'
 import { migrateSettingsToConfig } from './settings-cache'
@@ -554,6 +556,9 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   // afterwards needs most of those pages hot.
   releaseDatabaseMemory()
 
+  // After the walk, so reading PDFs and images never competes with it.
+  startFileTextExtraction(vaultPath)
+
   void reconcileProjections()
     .then((results) => reportAndRepairReconcileFailures(vaultPath, results))
     .catch((error) => {
@@ -670,7 +675,8 @@ async function openVault(vaultPath: string): Promise<void> {
       () => currentStatus.isIndexing
     ),
     createInboxStatsProjector(),
-    createNoteProjectLinksProjector()
+    createNoteProjectLinksProjector(),
+    createFileTextProjector(fileTextNoteChanged)
   ])
 
   // Set the vault path before indexing so getConfig() (and the journal-config
@@ -1073,6 +1079,9 @@ async function closeOpenVault(): Promise<void> {
   const timer = createPhaseTimer()
   await stopBackgroundIndexBuild()
   timer.mark('indexBuild')
+
+  await stopFileTextExtraction()
+  timer.mark('fileText')
 
   await stopVaultAgentServices()
   timer.mark('agent')

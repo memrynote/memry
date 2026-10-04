@@ -298,6 +298,12 @@ vi.mock('./templates-migration', () => ({
   migrateTemplateFilesToDb: (...args: unknown[]) => mocks.migrateTemplateFilesToDb(...args)
 }))
 
+vi.mock('../file-text', () => ({
+  startFileTextExtraction: vi.fn(),
+  stopFileTextExtraction: vi.fn(async () => {}),
+  fileTextNoteChanged: vi.fn()
+}))
+
 vi.mock('../agent/mcp/lifecycle', () => ({
   startAgentMcpLifecycle: (...args: unknown[]) => mocks.startAgentMcpLifecycle(...args),
   stopAgentMcpLifecycle: (...args: unknown[]) => mocks.stopAgentMcpLifecycle(...args)

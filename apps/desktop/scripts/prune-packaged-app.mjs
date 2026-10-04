@@ -108,6 +108,32 @@ function pruneBetterSqliteBuildArtifacts(nodeModulesDir) {
   removePath(join(betterSqliteRoot, 'build', 'Release', 'test_extension.node'))
 }
 
+// tesseract.js-core ships every build for browsers and Node, about 45 MB. The
+// OCR worker (src/main/file-text/ocr-worker.ts) runs LSTM only under Node,
+// which loads a tesseract-core*-lstm.js loader and the .wasm next to it.
+const TESSERACT_CORE_KEPT = /^tesseract-core(-simd|-relaxedsimd)?-lstm\.(js|wasm)$/
+
+function pruneTesseractCore(nodeModulesDir) {
+  const roots = [join(nodeModulesDir, 'tesseract.js-core')]
+  const storeDir = join(nodeModulesDir, '.pnpm')
+  if (existsSync(storeDir)) {
+    for (const entry of readdirSync(storeDir)) {
+      if (entry.startsWith('tesseract.js-core@')) {
+        roots.push(join(storeDir, entry, 'node_modules', 'tesseract.js-core'))
+      }
+    }
+  }
+
+  for (const root of roots) {
+    if (!existsSync(root) || lstatSync(root).isSymbolicLink()) continue
+    for (const entry of readdirSync(root)) {
+      if (entry.startsWith('tesseract-core') && !TESSERACT_CORE_KEPT.test(entry)) {
+        removePath(join(root, entry))
+      }
+    }
+  }
+}
+
 function relativizeInternalSymlinks(rootPath) {
   for (const entry of readdirSync(rootPath, { withFileTypes: true })) {
     const entryPath = join(rootPath, entry.name)
@@ -238,5 +264,6 @@ export default async function prunePackagedApp(context) {
     pruneOnnxRuntime(nodeModulesDir, context.electronPlatformName, archName)
     pruneVelopackNative(nodeModulesDir, context.electronPlatformName, archName)
     pruneBetterSqliteBuildArtifacts(nodeModulesDir)
+    pruneTesseractCore(nodeModulesDir)
   }
 }

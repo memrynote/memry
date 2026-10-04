@@ -29,6 +29,7 @@ const requiredModules = [
   'libsodium-wrappers-sumo',
   'sharp',
   'sqlite-vec',
+  'tesseract.js',
   'velopack',
   'y-leveldb',
   'yjs'
