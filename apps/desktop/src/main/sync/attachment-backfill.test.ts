@@ -8,7 +8,7 @@ import { upsertNoteMetadata } from '@memry/storage-data'
 import { runMigrations } from '../database/migrate'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { backfillUnsyncedAttachmentsWith, queueEmbeddedVaultFilesWith } from './attachment-backfill'
-import { clearUpload, listPendingUploads } from './attachment-outbox'
+import { clearUpload, listPendingUploads, markUploadFailed } from './attachment-outbox'
 import { recordAttachmentFile, referencedVaultFiles } from './attachment-files'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -287,6 +287,19 @@ describe('attachment backfill', () => {
     expect(listPendingUploads(db)).toEqual([
       { noteId: 'note-owner', diskPath: shared, attempts: 0 }
     ])
+  })
+
+  it("leaves a failed row's retry window alone when it finds the file again", () => {
+    addNote('note-retry')
+    const file = addFile('note-retry', 'mmmmmm-retry.png')
+    markUploadFailed(db, 'note-retry', file, 'server said no')
+    sqlite.prepare('UPDATE attachment_upload_queue SET updated_at = 5').run()
+
+    backfillUnsyncedAttachmentsWith({ db, vaultPath })
+
+    expect(
+      sqlite.prepare('SELECT attempts, updated_at FROM attachment_upload_queue').all()
+    ).toEqual([{ attempts: 1, updated_at: 5 }])
   })
 
   describe('when a body is written (#2651)', () => {
