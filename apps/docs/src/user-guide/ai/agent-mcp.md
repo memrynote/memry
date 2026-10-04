@@ -199,8 +199,9 @@ its end, so the next queued message goes out after Stop.
 
 Each queued message keeps the model, permissions and context it was sent with. Use the pencil to
 change its text or the cross to remove it before it goes out. If memrynote cannot send a queued
-message, it stays in the list marked **Not sent** and holds the messages behind it; edit it to send
-it again, or remove it to let the rest go out. The queue lives in the window it was typed in and is
+message, it stays in the list marked **Not sent** and holds the messages behind it, including new
+ones you send; edit it to send it again, or remove it to let the rest go out. Pressing Stop while a
+queued message is on its way stops that message's turn too. The queue lives in the window it was typed in and is
 not saved, so reloading the window clears it.
 
 ### Connected tools
