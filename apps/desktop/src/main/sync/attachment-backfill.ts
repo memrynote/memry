@@ -6,7 +6,7 @@ import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { getDatabase, isDatabaseInitialized } from '../database'
 import { createLogger } from '../lib/logger'
 import { getCurrentVaultPath } from '../store'
-import { enqueueUpload, hasPendingUpload } from './attachment-outbox'
+import { hasPendingUpload, queueUploadIfAbsent } from './attachment-outbox'
 import {
   countNoteFiles,
   embeddedFilesOutsideNoteFolders,
@@ -40,8 +40,8 @@ export interface AttachmentBackfillDeps {
  * attachment record does not know it; see `attachment-files` for how a note
  * from before the record is counted rather than uploaded again.
  *
- * Idempotent: a queued file is recorded once it uploads, and re-enqueuing an
- * already-queued row is an upsert.
+ * Idempotent: a queued file is recorded once it uploads, and a file that
+ * already has a row keeps it untouched, retry window included.
  */
 export function backfillUnsyncedAttachmentsWith(deps: AttachmentBackfillDeps): {
   scanned: number
@@ -97,7 +97,7 @@ export function backfillUnsyncedAttachmentsWith(deps: AttachmentBackfillDeps): {
     scanned++
     for (const file of unknown) {
       try {
-        enqueueUpload(deps.db, note.id, file)
+        queueUploadIfAbsent(deps.db, note.id, file)
         queued++
       } catch (error) {
         log.warn('Failed to queue backfilled attachment', { noteId: note.id, error })
@@ -165,7 +165,7 @@ export function queueEmbeddedVaultFilesWith(
   let queued = 0
   for (const file of unrecordedFiles(deps.db, deps.vaultPath, note, files)) {
     if (hasPendingUpload(deps.db, noteId, file)) continue
-    enqueueUpload(deps.db, noteId, file)
+    queueUploadIfAbsent(deps.db, noteId, file)
     attachmentEvents.emitSaved({ noteId, diskPath: file })
     queued++
   }

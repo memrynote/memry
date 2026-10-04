@@ -12,6 +12,10 @@ const DRAIN_BATCH_LIMIT = 50
 // only trackMainError long scrolled past (it fired on the first live attempt).
 // Crossing this many attempts flags the row as stuck, exactly once.
 const STUCK_UPLOAD_ATTEMPTS = 5
+// A failed row waits before its next try, like a failed download: one minute
+// after the first failure, doubling with each one, at most six hours.
+const RETRY_BASE_MS = 60 * 1000
+const RETRY_MAX_MS = 6 * 60 * 60 * 1000
 
 /**
  * Durable outbox for note-attachment uploads.
@@ -32,6 +36,18 @@ export function enqueueUpload(db: DrizzleDb, noteId: string, diskPath: string): 
       target: [attachmentUploadQueue.noteId, attachmentUploadQueue.diskPath],
       set: { updatedAt: now }
     })
+    .run()
+}
+
+/**
+ * Queue a file the backfill or a body write found, unless it already has a
+ * row: a failed row keeps its attempts and its retry window.
+ */
+export function queueUploadIfAbsent(db: DrizzleDb, noteId: string, diskPath: string): void {
+  const now = Date.now()
+  db.insert(attachmentUploadQueue)
+    .values({ id: crypto.randomUUID(), noteId, diskPath, createdAt: now, updatedAt: now })
+    .onConflictDoNothing()
     .run()
 }
 
@@ -104,19 +120,45 @@ export interface OutboxDrainDeps {
   /** Null: another path owns this upload and records its outcome; the row is left alone. */
   upload: (noteId: string, diskPath: string) => Promise<{ attachmentId: string } | null>
   onUploaded?: (noteId: string, attachmentId: string) => void
+  now?: number
+}
+
+function retryOpensAt(row: { attempts: number; updatedAt: number }): number {
+  if (row.attempts === 0) return 0
+  return row.updatedAt + Math.min(RETRY_BASE_MS * 2 ** (row.attempts - 1), RETRY_MAX_MS)
+}
+
+/** The oldest rows whose retry window is open. */
+function listDueUploads(
+  db: DrizzleDb,
+  now: number
+): Array<{ noteId: string; diskPath: string; attempts: number }> {
+  return db
+    .select({
+      noteId: attachmentUploadQueue.noteId,
+      diskPath: attachmentUploadQueue.diskPath,
+      attempts: attachmentUploadQueue.attempts,
+      updatedAt: attachmentUploadQueue.updatedAt
+    })
+    .from(attachmentUploadQueue)
+    .orderBy(asc(attachmentUploadQueue.updatedAt))
+    .all()
+    .filter((row) => retryOpensAt(row) <= now)
+    .slice(0, DRAIN_BATCH_LIMIT)
 }
 
 /**
- * Retry every pending upload once. Rows whose file no longer exists on disk
- * are dropped (the attachment was deleted locally); rows that fail again stay
- * queued with an incremented attempt count for the next drain.
+ * Try every pending upload whose retry window is open, once. Rows whose file no
+ * longer exists on disk are dropped (the attachment was deleted locally); rows
+ * that fail again stay queued with an incremented attempt count and a longer
+ * window.
  */
 export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
   uploaded: number
   failed: number
   dropped: number
 }> {
-  const pending = listPendingUploads(deps.db)
+  const pending = listDueUploads(deps.db, deps.now ?? Date.now())
   let uploaded = 0
   let failed = 0
   let dropped = 0
