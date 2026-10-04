@@ -285,6 +285,36 @@ describe('embedding projector', () => {
     expect(run).not.toHaveBeenCalledWith('pdf-1', expect.anything())
   })
 
+  it('defers a filed PDF while the vault is indexing, then embeds it from its text in a rebuild', async () => {
+    const run = vi.fn()
+    getRawIndexDatabase.mockReturnValue({ prepare: vi.fn(() => ({ run })) })
+    getIndexDatabase.mockReturnValue({
+      all: vi.fn(() => [
+        { id: 'pdf-1', path: 'files/logbook.pdf', title: 'Logbook', fileType: 'pdf' }
+      ])
+    })
+    readExtractedPages.mockReturnValue({
+      pages: [{ page: 1, text: 'The heron left the marsh at dawn' }],
+      nextPage: null
+    })
+    let indexing = true
+    const projector = createEmbeddingProjector(
+      () => '/vault',
+      () => indexing
+    )
+
+    await projector.project({
+      type: 'note.upserted',
+      note: { kind: 'file', noteId: 'pdf-1', title: 'Logbook' }
+    } as never)
+    expect(generateEmbedding).not.toHaveBeenCalled()
+
+    indexing = false
+    await expect(projector.rebuild()).resolves.toEqual({ success: true, computed: 1, skipped: 0 })
+    expect(generateEmbedding).toHaveBeenCalledWith('Logbook\n\nThe heron left the marsh at dawn')
+    expect(readFile).not.toHaveBeenCalled()
+  })
+
   it('deletes stale embeddings when AI is disabled, content is short, or generation fails', async () => {
     const run = vi.fn()
     getRawIndexDatabase.mockReturnValue({ prepare: vi.fn(() => ({ run })) })

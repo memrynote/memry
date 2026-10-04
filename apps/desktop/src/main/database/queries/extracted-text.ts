@@ -52,7 +52,7 @@ export function nextPendingFileTextJob(
     .from(fileTextJobs)
     .innerJoin(noteCache, eq(noteCache.id, fileTextJobs.noteId))
     .where(eq(fileTextJobs.status, 'pending'))
-    .orderBy(asc(fileTextJobs.updatedAt))
+    .orderBy(asc(fileTextJobs.updatedAt), asc(fileTextJobs.noteId))
     .limit(1)
     .get() as (FileTextCandidate & { signature: string }) | undefined
 }

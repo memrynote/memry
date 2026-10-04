@@ -257,6 +257,49 @@ describe('FileTextRunner', () => {
     })
   })
 
+  it('fails a file that is gone by its turn instead of retrying it forever', async () => {
+    seedFile(harness, 'a-img', 'first.png', 'image')
+    seedFile(harness, 'b-img', 'second.png', 'image')
+
+    start({
+      recognize: async () => {
+        fs.rmSync(path.join(vaultDir, 'second.png'), { force: true })
+        return 'first file'
+      }
+    })
+    await settled(harness.db, 'b-img', 'failed')
+
+    expect(getFileTextJob(harness.db, 'b-img')?.error).toBe('File not found')
+    expect(getExtractedText(harness.db, 'a-img')).toBe('first file')
+  })
+
+  it('reads a file rewritten before its turn once, under the bytes it ended with', async () => {
+    seedFile(harness, 'a-img', 'first.png', 'image')
+    seedFile(harness, 'b-img', 'second.png', 'image')
+    let secondReads = 0
+
+    const runner = start({
+      recognize: async (source) => {
+        if (source.kind === 'file' && source.path.endsWith('first.png')) {
+          fs.writeFileSync(path.join(vaultDir, 'second.png'), 'rewritten with more bytes')
+          return 'first file'
+        }
+        if (source.kind === 'file' && source.path.endsWith('second.png')) secondReads++
+        return 'new words'
+      }
+    })
+    await vi.waitFor(() => expect(getFileTextJob(harness.db, 'b-img')?.status).toBe('done'), {
+      timeout: 5_000
+    })
+    seedFile(harness, 'c-img', 'third.png', 'image')
+    runner.noteChanged('b-img')
+    runner.noteChanged('c-img')
+    await settled(harness.db, 'c-img', 'done')
+
+    expect(getExtractedText(harness.db, 'b-img')).toBe('new words')
+    expect(secondReads).toBe(1)
+  })
+
   it('pages a long text out in chunks a reader can continue from', async () => {
     seedFile(harness, 'pdf-1', 'long.pdf', 'pdf')
     harness.pages = [

@@ -617,7 +617,7 @@ describe('search projector', () => {
     expect(getFtsInboxCount(dataDb.db as never)).toBe(1)
   })
 
-  it('finds a filed PDF by its extracted text, through reconcile and a full rebuild', async () => {
+  it('finds a filed PDF by its extracted text, through reconcile, a rename and a full rebuild', async () => {
     indexDb.db.run(sql`
       INSERT INTO note_cache (id, path, title, file_type, mime_type, created_at, modified_at)
       VALUES ('pdf-1', 'files/logbook.pdf', 'Logbook', 'pdf', 'application/pdf',
@@ -640,12 +640,25 @@ describe('search projector', () => {
         offset: 0
       }).groups.flatMap((group) => group.results.map(({ id, snippet }) => ({ id, snippet })))
 
-    await projector.project({ type: 'note.text-extracted', noteId: 'pdf-1' })
+    await projector.reconcile()
     expect(searchHeron()).toEqual([
       { id: 'pdf-1', snippet: 'The <mark>heron</mark> left the marsh at dawn' }
     ])
 
-    await projector.reconcile()
+    await projector.project({
+      type: 'note.upserted',
+      note: {
+        kind: 'file',
+        noteId: 'pdf-1',
+        path: 'files/renamed.pdf',
+        title: 'Renamed',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileSize: 1,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        modifiedAt: '2026-01-01T00:00:00.000Z'
+      }
+    })
     expect(searchHeron().map((hit) => hit.id)).toEqual(['pdf-1'])
 
     await projector.rebuild()
