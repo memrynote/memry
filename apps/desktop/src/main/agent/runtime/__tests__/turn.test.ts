@@ -764,7 +764,11 @@ describe('runTurn against a stub backend', () => {
     const conversations = createFakeConversationStore({ title: 'Existing conversation' })
     const backend = createFakeBackend({
       turn: [
-        { kind: 'tools_unavailable', detail: '/v1/chat/completions returned HTTP 400' },
+        {
+          kind: 'tools_unavailable',
+          reason: 'tools_rejected',
+          detail: '/v1/chat/completions returned HTTP 400'
+        },
         { kind: 'assistant_delta', text: 'Answer' },
         { kind: 'message_stop' }
       ]
@@ -782,7 +786,7 @@ describe('runTurn against a stub backend', () => {
     )
 
     const assistant = messages.listByConversation('conversation-1')[1]
-    const notice = { detail: '/v1/chat/completions returned HTTP 400' }
+    const notice = { reason: 'tools_rejected', detail: '/v1/chat/completions returned HTTP 400' }
     expect(assistant.content).toEqual({
       role: 'assistant',
       data: { text: 'Answer', toolsUnavailable: notice }
