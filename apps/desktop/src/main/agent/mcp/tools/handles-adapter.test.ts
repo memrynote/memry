@@ -1148,7 +1148,7 @@ describe('createVaultServiceHandles', () => {
       modified: '2026-10-01T09:00:00.000Z',
       contentOmitted: true,
       contentAccess:
-        'The desktop API returns metadata only for image files. Look at an image with the vision tool.'
+        'The desktop API returns metadata only for image files. Viewing an image is not available yet.'
     }
     const decodedBytes = '\uFFFDPNG\r\n\u001A\n\uFFFD\uFFFDIHDR'
 
@@ -1203,7 +1203,7 @@ describe('createVaultServiceHandles', () => {
       }
 
       expect(routes).toEqual({
-        pdf: 'The desktop API returns metadata only for PDF files. Read a PDF through its extracted text.',
+        pdf: 'The desktop API returns metadata only for PDF files. Reading PDF text is not available yet.',
         audio: 'The desktop API returns metadata only for audio files.',
         video: 'The desktop API returns metadata only for video files.'
       })
@@ -1218,44 +1218,6 @@ describe('createVaultServiceHandles', () => {
       await expect(
         handles.desktop.read({ operation: 'notes.get', args: ['note-1'] }, 'window-1')
       ).resolves.toEqual(note)
-    })
-
-    const cutNotice = (kept: number, total: number) =>
-      `Reply cut at ${kept} of ${total} bytes. partial holds the start of the JSON reply and is not valid JSON on its own. The rest is not returned. Call an operation that returns less, such as a list with a smaller limit, or vault_read_note for a note body.`
-
-    async function readCut(body: string) {
-      mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({ id: 'note-1', content: body })
-      return (await createVaultServiceHandles(deps).desktop.read(
-        { operation: 'notes.get', args: ['note-1'] },
-        'window-1'
-      )) as { truncated: boolean; totalBytes: number; message: string; partial: string }
-    }
-
-    it('cuts a reply so that it stays within 100 KB and says so', async () => {
-      const body = '"'.repeat(150_000)
-      const reply = await readCut(body)
-      const replyBytes = Buffer.byteLength(JSON.stringify(reply))
-
-      expect(reply.truncated).toBe(true)
-      expect(reply.totalBytes).toBe(300_028)
-      expect(replyBytes).toBeLessThanOrEqual(102_400)
-      expect(replyBytes).toBeGreaterThan(101_000)
-      expect(reply.message).toBe(cutNotice(Buffer.byteLength(reply.partial), 300_028))
-      expect(JSON.stringify({ id: 'note-1', content: body }).startsWith(reply.partial)).toBe(true)
-    })
-
-    it('measures the cap in UTF-8 bytes and cuts on a character boundary', async () => {
-      const body = '\u6f22\u{1F600}'.repeat(20_000)
-      const reply = await readCut(body)
-      const replyBytes = Buffer.byteLength(JSON.stringify(reply))
-
-      expect(JSON.stringify({ id: 'note-1', content: body }).length).toBeLessThan(102_400)
-      expect(reply.truncated).toBe(true)
-      expect(reply.totalBytes).toBe(140_028)
-      expect(replyBytes).toBeLessThanOrEqual(102_400)
-      expect(replyBytes).toBeGreaterThan(101_000)
-      expect(/[\uD800-\uDBFF]$/.test(reply.partial)).toBe(false)
-      expect(JSON.stringify({ id: 'note-1', content: body }).startsWith(reply.partial)).toBe(true)
     })
   })
 

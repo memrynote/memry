@@ -10,6 +10,7 @@ import { trackMainError, trackMainLog } from '../../telemetry/diagnostics'
 import { getMainRedactOptions } from '../../telemetry/redact-options'
 import { decorateToolResultWithAgentSources } from '../source-refs'
 import { AgentToolError, toMcpToolErrorContent } from './errors'
+import { capReply } from './reply-cap'
 import { createMcpSession } from './session'
 
 const logger = createLogger('AgentMcpServer')
@@ -22,6 +23,8 @@ export interface ToolRegistration {
   name: string
   description: string
   inputSchema: ZodTypeAny
+  /** Caps the serialized reply the agent receives, source refs included. */
+  maxReplyBytes?: number
   handler: (
     input: unknown,
     ctx: { writeGrant: string | null; windowId: string | null }
@@ -69,9 +72,10 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
           try {
             const result = await reg.handler(input, ctx)
             const decorated = decorateToolResultWithAgentSources(reg.name, input, result)
+            const delivered = reg.maxReplyBytes ? capReply(decorated, reg.maxReplyBytes) : decorated
             return {
-              content: [{ type: 'text', text: JSON.stringify(decorated) }],
-              structuredContent: toStructuredContent(decorated)
+              content: [{ type: 'text', text: JSON.stringify(delivered) }],
+              structuredContent: toStructuredContent(delivered)
             }
           } catch (err) {
             logger.error(`Tool ${reg.name} failed`, err)

@@ -2,6 +2,7 @@ import type { ZodTypeAny } from 'zod'
 
 import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
+import { DESKTOP_API_REPLY_MAX_BYTES } from './desktop-api-reply'
 import type { VaultServiceHandles } from './handles'
 import { TOOL_SCHEMAS, READ_TOOL_NAMES } from './schemas'
 import type { AgentMcpDesktopReadOperation } from '@memry/contracts/agent-mcp-channels'
@@ -204,6 +205,7 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
       name: 'vault_desktop_read',
       description: TOOL_SCHEMAS.vault_desktop_read.description,
       inputSchema: TOOL_SCHEMAS.vault_desktop_read.input,
+      maxReplyBytes: DESKTOP_API_REPLY_MAX_BYTES,
       handler: async (input, ctx) => {
         const a = parse<{ operation: AgentMcpDesktopReadOperation; args: unknown[] }>(
           TOOL_SCHEMAS.vault_desktop_read.input,

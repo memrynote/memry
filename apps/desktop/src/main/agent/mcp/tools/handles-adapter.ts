@@ -40,7 +40,7 @@ import { snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { createCanvasHandles } from './canvas-handles'
 import { invokeDesktopApiFromWindow } from './desktop-api'
-import { shapeDesktopApiReply } from './desktop-api-reply'
+import { withoutFileBodies } from './desktop-api-reply'
 import type {
   FolderEntry,
   InboxSummary,
@@ -785,11 +785,11 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         // The escape hatch must honour the same flag as the dedicated canvas
         // tools, or an agent could reach canvas.* with the feature off.
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
-        return shapeDesktopApiReply(await invokeDesktopApiFromWindow(windowId, input), fileRowOf)
+        return withoutFileBodies(await invokeDesktopApiFromWindow(windowId, input), fileRowOf)
       },
       async write(input, windowId) {
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
-        return shapeDesktopApiReply(await invokeDesktopApiFromWindow(windowId, input), fileRowOf)
+        return withoutFileBodies(await invokeDesktopApiFromWindow(windowId, input), fileRowOf)
       }
     },
     windows: {

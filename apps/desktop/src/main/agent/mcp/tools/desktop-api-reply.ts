@@ -1,7 +1,7 @@
 import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
 import type { NoteFileType } from '@memry/contracts/search-api'
 
-const DESKTOP_API_REPLY_MAX_BYTES = 100 * 1024
+export const DESKTOP_API_REPLY_MAX_BYTES = 100 * 1024
 
 type FiledFileType = Exclude<NoteFileType, 'markdown'>
 
@@ -25,17 +25,12 @@ interface FiledFileMetadata {
   contentAccess: string
 }
 
-interface TruncatedDesktopApiReply {
-  truncated: true
-  totalBytes: number
-  message: string
-  partial: string
-}
-
+// FB-002 (#2605) and FB-001 (#2604) change the image and pdf rows to name
+// their tools once those tools ship.
 const CONTENT_ACCESS: Record<FiledFileType, string> = {
   image:
-    'The desktop API returns metadata only for image files. Look at an image with the vision tool.',
-  pdf: 'The desktop API returns metadata only for PDF files. Read a PDF through its extracted text.',
+    'The desktop API returns metadata only for image files. Viewing an image is not available yet.',
+  pdf: 'The desktop API returns metadata only for PDF files. Reading PDF text is not available yet.',
   audio: 'The desktop API returns metadata only for audio files.',
   video: 'The desktop API returns metadata only for video files.'
 }
@@ -59,7 +54,7 @@ function filedFileMetadata(row: FileRow, fileType: FiledFileType): FiledFileMeta
   }
 }
 
-function withoutFileBodies(
+export function withoutFileBodies(
   value: unknown,
   fileRowOf: (id: string) => FileRow | undefined
 ): unknown {
@@ -75,44 +70,4 @@ function withoutFileBodies(
   return Object.fromEntries(
     Object.entries(value).map(([key, entry]) => [key, withoutFileBodies(entry, fileRowOf)])
   )
-}
-
-function utf8Bytes(value: string): number {
-  return Buffer.byteLength(value, 'utf8')
-}
-
-function truncatedReply(text: string, totalBytes: number, end: number): TruncatedDesktopApiReply {
-  const partial = text.slice(0, /[\uD800-\uDBFF]/.test(text.charAt(end - 1)) ? end - 1 : end)
-  return {
-    truncated: true,
-    totalBytes,
-    message:
-      `Reply cut at ${utf8Bytes(partial)} of ${totalBytes} bytes. ` +
-      'partial holds the start of the JSON reply and is not valid JSON on its own. ' +
-      'The rest is not returned. Call an operation that returns less, such as a list with a ' +
-      'smaller limit, or vault_read_note for a note body.',
-    partial
-  }
-}
-
-export function shapeDesktopApiReply(
-  data: unknown,
-  fileRowOf: (id: string) => FileRow | undefined
-): unknown {
-  const shaped = withoutFileBodies(data, fileRowOf)
-  const text = JSON.stringify(shaped) ?? ''
-  const totalBytes = utf8Bytes(text)
-  if (totalBytes <= DESKTOP_API_REPLY_MAX_BYTES) return shaped
-
-  // `partial` is escaped again when the reply is serialized, so the cut point
-  // shrinks until the whole serialized reply fits.
-  let end = Math.min(text.length, DESKTOP_API_REPLY_MAX_BYTES)
-  let reply = truncatedReply(text, totalBytes, end)
-  let replyBytes = utf8Bytes(JSON.stringify(reply))
-  while (replyBytes > DESKTOP_API_REPLY_MAX_BYTES) {
-    end = Math.min(end - 1, Math.floor((end * DESKTOP_API_REPLY_MAX_BYTES) / replyBytes))
-    reply = truncatedReply(text, totalBytes, end)
-    replyBytes = utf8Bytes(JSON.stringify(reply))
-  }
-  return reply
 }
