@@ -10,6 +10,7 @@ import type { QueuedTurn } from './agent-context.reducer'
 
 interface QueuedTurnsProps {
   turns: QueuedTurn[]
+  onEditingChange: (id: string, editing: boolean) => void
   onEdit: (id: string, text: string) => void
   onRemove: (id: string) => void
 }
@@ -19,18 +20,26 @@ const iconButtonClassName =
 
 export function QueuedTurns({
   turns,
+  onEditingChange,
   onEdit,
   onRemove
 }: QueuedTurnsProps): React.JSX.Element | null {
   const { t } = useT('common')
-  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
 
   if (turns.length === 0) return null
 
-  const saveEdit = (): void => {
-    if (!editing || !editing.text.trim()) return
-    onEdit(editing.id, editing.text.trimEnd())
-    setEditing(null)
+  const setDraft = (id: string, text: string | null): void =>
+    setDrafts(({ [id]: _previous, ...rest }) => (text === null ? rest : { ...rest, [id]: text }))
+  const saveEdit = (id: string): void => {
+    const text = drafts[id]?.trimEnd()
+    if (!text?.trim()) return
+    onEdit(id, text)
+    setDraft(id, null)
+  }
+  const cancelEdit = (id: string): void => {
+    onEditingChange(id, false)
+    setDraft(id, null)
   }
 
   return (
@@ -38,7 +47,8 @@ export function QueuedTurns({
       <p className="ps-1 text-xs text-muted-foreground">{t('agentChat.composer.queue.label')}</p>
       <ol className="flex flex-col gap-1">
         {turns.map((turn) => {
-          const isEditing = editing?.id === turn.id && turn.status !== 'sending'
+          const draft = drafts[turn.id] ?? turn.text
+          const isEditing = turn.editing === true && turn.status !== 'sending'
           return (
             <li
               key={turn.id}
@@ -49,8 +59,8 @@ export function QueuedTurns({
                   <Textarea
                     autoFocus
                     aria-label={t('agentChat.composer.queue.editLabel')}
-                    value={editing.text}
-                    onChange={(event) => setEditing({ id: turn.id, text: event.target.value })}
+                    value={draft}
+                    onChange={(event) => setDraft(turn.id, event.target.value)}
                     onKeyDown={(event) => {
                       if (
                         event.key === 'Enter' &&
@@ -58,12 +68,12 @@ export function QueuedTurns({
                         !event.nativeEvent.isComposing
                       ) {
                         event.preventDefault()
-                        saveEdit()
+                        saveEdit(turn.id)
                       }
                       if (event.key === 'Escape') {
                         event.preventDefault()
                         event.stopPropagation()
-                        setEditing(null)
+                        cancelEdit(turn.id)
                       }
                     }}
                     className="min-h-[54px] resize-none text-[13px] leading-[18px] md:text-[13px]"
@@ -73,7 +83,7 @@ export function QueuedTurns({
                       type="button"
                       size="sm"
                       variant="ghost"
-                      onClick={() => setEditing(null)}
+                      onClick={() => cancelEdit(turn.id)}
                     >
                       {t('agentChat.composer.queue.cancel')}
                     </Button>
@@ -81,8 +91,8 @@ export function QueuedTurns({
                       type="button"
                       size="sm"
                       variant="secondary"
-                      disabled={!editing.text.trim()}
-                      onClick={saveEdit}
+                      disabled={!draft.trim()}
+                      onClick={() => saveEdit(turn.id)}
                     >
                       {t('agentChat.composer.queue.save')}
                     </Button>
@@ -113,7 +123,10 @@ export function QueuedTurns({
                       <button
                         type="button"
                         aria-label={t('agentChat.composer.queue.edit')}
-                        onClick={() => setEditing({ id: turn.id, text: turn.text })}
+                        onClick={() => {
+                          setDraft(turn.id, turn.text)
+                          onEditingChange(turn.id, true)
+                        }}
                         className={iconButtonClassName}
                       >
                         <Pencil className="size-3.5" aria-hidden="true" />

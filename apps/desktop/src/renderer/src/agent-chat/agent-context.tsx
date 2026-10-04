@@ -281,22 +281,18 @@ export function AgentProvider({
     [t]
   )
 
-  const queuedTurnsRef = useRef(state.queuedTurns)
-  useEffect(() => {
-    queuedTurnsRef.current = state.queuedTurns
-  }, [state.queuedTurns])
-  // Written by Stop before React re-renders, so a send already on its way to
-  // main sees the Stop the moment main answers.
-  const stoppedQueuedTurnIdsRef = useRef(new Set<string>())
+  // The queued send each conversation has on its way to main. Stop flags the
+  // attempt itself, so a late answer to a stopped attempt is always cancelled
+  // and a later attempt for the same message never is.
+  const queuedSendAttemptsRef = useRef(new Map<string, { stopped: boolean }>())
 
   const cancelTurn = useCallback(
     async (conversationId: string) => {
       try {
         await getAgentApi().cancelTurn({ conversationId })
-        const sending = queuedTurnsRef.current[conversationId]?.[0]
-        if (sending?.status === 'sending') stoppedQueuedTurnIdsRef.current.add(sending.id)
+        const attempt = queuedSendAttemptsRef.current.get(conversationId)
+        if (attempt) attempt.stopped = true
         dispatch({ type: 'set_in_flight', conversationId, inFlight: false })
-        dispatch({ type: 'hold_sending_turn', conversationId })
       } catch (error) {
         trackRendererError('agent_cancel_turn', error)
         dispatch({
@@ -309,9 +305,8 @@ export function AgentProvider({
   )
 
   const sendQueuedTurn = useCallback(
-    async (turn: QueuedTurn) => {
-      const stopped = (): boolean => stoppedQueuedTurnIdsRef.current.has(turn.id)
-      for (let attempt = 1; ; attempt += 1) {
+    async (turn: QueuedTurn, attempt: { stopped: boolean }) => {
+      for (let tries = 1; ; tries += 1) {
         let result: SendTurnResponse
         try {
           result = await getAgentApi().sendTurn({
@@ -339,12 +334,15 @@ export function AgentProvider({
             conversationId: turn.conversationId,
             id: turn.id,
             sent: true,
-            turnId: result.turnId
+            turnId: result.turnId,
+            stopped: attempt.stopped
           })
-          if (stopped()) await getAgentApi().cancelTurn({ conversationId: turn.conversationId })
+          if (attempt.stopped) {
+            await getAgentApi().cancelTurn({ conversationId: turn.conversationId })
+          }
           return
         }
-        if (result.reason !== 'turn_in_flight' || attempt >= QUEUED_SEND_ATTEMPTS) {
+        if (result.reason !== 'turn_in_flight' || tries >= QUEUED_SEND_ATTEMPTS) {
           dispatch({
             type: 'settle_queued_turn',
             conversationId: turn.conversationId,
@@ -355,7 +353,16 @@ export function AgentProvider({
           return
         }
         await new Promise((resolve) => setTimeout(resolve, QUEUED_SEND_RETRY_MS))
-        if (stopped()) return
+        if (attempt.stopped) {
+          dispatch({
+            type: 'settle_queued_turn',
+            conversationId: turn.conversationId,
+            id: turn.id,
+            sent: false,
+            error: null
+          })
+          return
+        }
       }
     },
     [t]
@@ -366,11 +373,22 @@ export function AgentProvider({
   useEffect(() => {
     for (const [conversationId, queue] of Object.entries(state.queuedTurns)) {
       const head = queue[0]
-      if (!head || head.status !== 'queued' || state.inFlight[conversationId] === true) continue
+      if (
+        !head ||
+        head.status !== 'queued' ||
+        head.editing ||
+        state.inFlight[conversationId] === true
+      ) {
+        continue
+      }
       dispatch({ type: 'start_queued_turn', conversationId, id: head.id })
-      // A Stop marks one send attempt only; a re-send after an edit starts clean.
-      stoppedQueuedTurnIdsRef.current.delete(head.id)
-      void sendQueuedTurn(head).finally(() => stoppedQueuedTurnIdsRef.current.delete(head.id))
+      const attempt = { stopped: false }
+      queuedSendAttemptsRef.current.set(conversationId, attempt)
+      void sendQueuedTurn(head, attempt).finally(() => {
+        if (queuedSendAttemptsRef.current.get(conversationId) === attempt) {
+          queuedSendAttemptsRef.current.delete(conversationId)
+        }
+      })
     }
   }, [state.queuedTurns, state.inFlight, sendQueuedTurn])
 

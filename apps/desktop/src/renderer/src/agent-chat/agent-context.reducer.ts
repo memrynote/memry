@@ -18,7 +18,8 @@ export type PendingToolApproval = Extract<AgentEvent, { kind: 'tool_call_pending
  * queue until the user edits or removes it. `endedTurnIds` collects turn ends
  * that arrive while the head is sending: a turn that fails at once reports its
  * end before main answers the send, so the answer alone cannot say whether
- * the turn is still running.
+ * the turn is still running. `editing` holds the drain while the user has the
+ * row's editor open, so a half-made edit never loses to the original text.
  */
 export interface QueuedTurn {
   id: string
@@ -30,6 +31,7 @@ export interface QueuedTurn {
   permissions?: AgentTurnPermissions
   status: 'queued' | 'sending' | 'failed'
   endedTurnIds?: string[]
+  editing?: boolean
 }
 
 export interface AgentState {
@@ -75,6 +77,7 @@ export type AgentAction =
   | { type: 'set_error'; error: string | null }
   | { type: 'queue_turn'; turn: QueuedTurn }
   | { type: 'edit_queued_turn'; conversationId: string; id: string; text: string }
+  | { type: 'set_queued_turn_editing'; conversationId: string; id: string; editing: boolean }
   | { type: 'remove_queued_turn'; conversationId: string; id: string }
   | { type: 'start_queued_turn'; conversationId: string; id: string }
   | {
@@ -83,6 +86,7 @@ export type AgentAction =
       id: string
       sent: true
       turnId?: string
+      stopped: boolean
     }
   | {
       type: 'settle_queued_turn'
@@ -91,7 +95,6 @@ export type AgentAction =
       sent: false
       error: string | null
     }
-  | { type: 'hold_sending_turn'; conversationId: string }
   | { type: 'event'; event: AgentEvent }
   | {
       type: 'clear_pending'
@@ -576,7 +579,18 @@ function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
         ...state,
         queuedTurns: updateQueue(state, action.conversationId, (queue) =>
           patchQueuedTurn(queue, action.id, (turn) =>
-            turn.status === 'sending' ? turn : { ...turn, text: action.text, status: 'queued' }
+            turn.status === 'sending'
+              ? turn
+              : { ...turn, text: action.text, status: 'queued', editing: false }
+          )
+        )
+      }
+    case 'set_queued_turn_editing':
+      return {
+        ...state,
+        queuedTurns: updateQueue(state, action.conversationId, (queue) =>
+          patchQueuedTurn(queue, action.id, (turn) =>
+            turn.status === 'sending' ? turn : { ...turn, editing: action.editing }
           )
         )
       }
@@ -604,6 +618,7 @@ function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
         // this one waited for main's lock, so it is set again here unless this
         // turn already ended or the user stopped it.
         const running =
+          !action.stopped &&
           turn?.status === 'sending' &&
           !(action.turnId && turn.endedTurnIds?.includes(action.turnId))
         return {
@@ -620,15 +635,6 @@ function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
         error: action.error ?? state.error,
         queuedTurns: updateQueue(state, action.conversationId, (queue) =>
           patchQueuedTurn(queue, action.id, (turn) => ({ ...turn, status: 'failed' }))
-        )
-      }
-    case 'hold_sending_turn':
-      return {
-        ...state,
-        queuedTurns: updateQueue(state, action.conversationId, (queue) =>
-          queue[0]?.status === 'sending'
-            ? [{ ...queue[0], status: 'failed' }, ...queue.slice(1)]
-            : queue
         )
       }
     case 'clear_pending':

@@ -620,6 +620,9 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       {conversationId && (
         <QueuedTurns
           turns={queuedTurns}
+          onEditingChange={(id, editing) =>
+            agent?.dispatch({ type: 'set_queued_turn_editing', conversationId, id, editing })
+          }
           onEdit={(id, text) =>
             agent?.dispatch({ type: 'edit_queued_turn', conversationId, id, text })
           }
