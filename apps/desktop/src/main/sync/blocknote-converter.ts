@@ -262,22 +262,13 @@ async function restoreFileSpelling(
   readFileBody: (() => Promise<string | null>) | undefined,
   canonicalize: (markdown: string) => Promise<string | null>
 ): Promise<{ markdown: string; outcome: 'file' | 'file-merged' } | null> {
-  if (!readFileBody) return null
-  try {
-    const body = await readFileBody()
-    if (body === null) return null
-    const decoded = decodeWritingMarkers(body)
-    const file = withoutWritingSentinels(
-      parseCriticMarkup(decoded.text),
-      decoded.sentinels
-    ).plainText
-    const restored = await restoreMarkdownSource(canonical, file, canonicalize)
-    if (restored === canonical) return null
-    return { markdown: restored, outcome: restored === file ? 'file' : 'file-merged' }
-  } catch (err) {
-    log.warn('Restoring the spelling of the file failed', err)
-    return null
-  }
+  const body = readFileBody ? await readFileBody() : null
+  if (body === null) return null
+  const decoded = decodeWritingMarkers(body)
+  const file = withoutWritingSentinels(parseCriticMarkup(decoded.text), decoded.sentinels).plainText
+  const restored = await restoreMarkdownSource(canonical, file, canonicalize)
+  if (restored === canonical) return null
+  return { markdown: restored, outcome: restored === file ? 'file' : 'file-merged' }
 }
 
 /**
