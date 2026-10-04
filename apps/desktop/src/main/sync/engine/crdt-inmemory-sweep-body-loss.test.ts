@@ -22,7 +22,8 @@ const h = vi.hoisted(() => ({
   contentHash: (_raw: string): string => '',
   db: {} as unknown,
   versions: [] as string[],
-  persistence: null as unknown
+  persistence: null as unknown,
+  updatesDelayMs: 0
 }))
 
 vi.mock('electron', () => ({
@@ -50,6 +51,7 @@ vi.mock('../http-client', () => ({
     }
   },
   getFromServer: async (path: string) => {
+    if (h.updatesDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, h.updatesDelayMs))
     const since = Number(new URL(path, 'http://server').searchParams.get('since'))
     return {
       updates: (h.server?.updates ?? []).filter((u) => u.sequenceNum > since),
@@ -123,7 +125,9 @@ vi.mock('../../vault/file-ops', () => ({
   ensureDirectory: vi.fn(),
   deleteFile: vi.fn()
 }))
-vi.mock('../../vault/journal', () => ({ getJournalPath: vi.fn() }))
+vi.mock('../../vault/journal', () => ({
+  getJournalPath: (date: string) => `/vault/journal/${date}.md`
+}))
 vi.mock('../../vault/note-sync', () => ({
   syncNoteToCache: (_db: unknown, input: { fileContent: string }) => {
     if (h.row) h.row = { ...h.row, contentHash: h.contentHash(input.fileContent) }
@@ -206,6 +210,7 @@ beforeEach(() => {
   h.db = drizzle(sqlite)
   h.versions = []
   h.persistence = null
+  h.updatesDelayMs = 0
 })
 
 describe('CRDT sweep in in-memory mode (#2511)', () => {
@@ -496,6 +501,22 @@ describe('CrdtProvider with no store (#2536)', () => {
     )
   })
 
+  it('an editor open after a sweep of the closed note shows every peer edit', async () => {
+    await serveNoteWithPeerEdit()
+    putNoteInVault(EXPECTED_BODY)
+    const { provider, coordinator } = await startRuntime()
+    await coordinator.pullCrdtForNotes([NOTE])
+    await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+
+    const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+      coordinator.pullCrdtForNote(id)
+    )
+
+    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+      EXPECTED_BODY
+    )
+  })
+
   it('hazard 1: a note typed into and closed after an editor open keeps the server body', async () => {
     const peer = await serveNoteWithPeerEdit()
     const { provider, coordinator } = await startRuntime()
@@ -627,12 +648,17 @@ describe('CrdtProvider with no store (#2536)', () => {
     })
 
     const FUELED_BODY = EDITED_BODY.replace('Tent packed.', 'Tent packed. Fuel bought.')
+    /** The server body the file wins over once a peer adds a line the file lacks. */
+    const STOVE_VERSION = `---\nid: ${NOTE}\ntitle: Trip\n---\n${EXPECTED_BODY.replace('Tent packed.', 'Tent packed. Stove packed.')}\n`
+    /** The edited file, kept when a later peer edit is written over bytes no write-back wrote. */
+    const EDITED_VERSION = `---\nid: ${NOTE}\ntitle: Trip\n---\n${EDITED_BODY}`
 
-    it('survives the next pull of the note, the flush after it, and a peer edit', async () => {
+    it('survives the next pull of the note, the flush after it, and peer edits', async () => {
       const { coordinator, flushFullStates, peer } = await editClosedNote()
 
       await coordinator.pullCrdtForNotes([NOTE])
       const fileAfterPull = await fileBodyAfterWriteback()
+      await pushPeerEdit(peer, ' Stove packed.')
       await flushFullStates()
       await pushPeerEdit(peer, ' Fuel bought.')
       await coordinator.pullCrdtForNotes([NOTE])
@@ -640,14 +666,21 @@ describe('CrdtProvider with no store (#2536)', () => {
       expect({
         fileAfterPull,
         server: await bodyAfterPull(),
-        file: await fileBodyAfterWriteback()
-      }).toEqual({ fileAfterPull: EDITED_BODY, server: FUELED_BODY, file: FUELED_BODY })
+        file: await fileBodyAfterWriteback(),
+        versions: h.versions
+      }).toEqual({
+        fileAfterPull: EDITED_BODY,
+        server: FUELED_BODY,
+        file: FUELED_BODY,
+        versions: [STOVE_VERSION, EDITED_VERSION]
+      })
     })
 
-    it('survives a restart, the launch sweep, the flush after it, and a peer edit', async () => {
+    it('survives a restart, a peer edit while closed, the launch sweep, and the flush after it', async () => {
       const { peer } = await editClosedNote()
       await getCrdtProvider().destroy()
       resetCrdtProvider()
+      await pushPeerEdit(peer, ' Stove packed.')
       const { coordinator, flushFullStates } = await startRuntime()
 
       await coordinator.pullCrdtForNotes([NOTE])
@@ -659,8 +692,14 @@ describe('CrdtProvider with no store (#2536)', () => {
       expect({
         fileAfterSweep,
         server: await bodyAfterPull(),
-        file: await fileBodyAfterWriteback()
-      }).toEqual({ fileAfterSweep: EDITED_BODY, server: FUELED_BODY, file: FUELED_BODY })
+        file: await fileBodyAfterWriteback(),
+        versions: h.versions
+      }).toEqual({
+        fileAfterSweep: EDITED_BODY,
+        server: FUELED_BODY,
+        file: FUELED_BODY,
+        versions: [STOVE_VERSION, EDITED_VERSION]
+      })
     })
 
     it('survives opening the note in the editor', async () => {
@@ -676,30 +715,70 @@ describe('CrdtProvider with no store (#2536)', () => {
       expect(await fileBodyAfterWriteback()).toBe(EDITED_BODY)
     })
 
-    it('is fed into the doc an editor holds when the server body merges into it', async () => {
-      const { provider, coordinator } = await editClosedNote()
+    it('is taken into the doc an editor holds by the flush after the server body merges', async () => {
+      const { provider, coordinator, flushFullStates } = await editClosedNote()
       const doc = await provider.open(NOTE, EDITOR_WINDOW, { skipSeed: true })
 
       await coordinator.pullCrdtForNote(NOTE)
+      const fileAfterPull = await fileBodyAfterWriteback()
+      await flushFullStates()
 
-      expect(await fileBodyAfterWriteback()).toBe(EDITED_BODY)
+      expect([fileAfterPull, await fileBodyAfterWriteback()]).toEqual([EDITED_BODY, EDITED_BODY])
       expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
         EDITED_BODY
       )
     })
 
-    it('keeps the server body as a version when a lagging file wins over a peer edit', async () => {
+    const LAGGING_EDIT = `${ORIGINAL}\n\nAgent line.`
+    const PEER_VERSION = `---\nid: ${NOTE}\ntitle: Trip\n---\n${EXPECTED_BODY}\n`
+
+    // A delay past the write-back debounce lets a pass run while the merge holds the doc.
+    it.each([0, 1000])(
+      'keeps the server body as a version when a lagging file wins over a peer edit, updates fetched after %i ms',
+      async (delayMs) => {
+        await serveNoteWithPeerEdit()
+        const { flushFullStates } = await startRuntime()
+        putNoteInVault(LAGGING_EDIT)
+        await feedExternalEditToCrdt(NOTE, LAGGING_EDIT)
+        h.updatesDelayMs = delayMs
+
+        await flushFullStates()
+
+        expect({ server: await bodyAfterPull(), versions: h.versions }).toEqual({
+          server: LAGGING_EDIT,
+          versions: [PEER_VERSION]
+        })
+      }
+    )
+
+    it('an editor open whose server merge outlasts its timeout leaves the file to the flush', async () => {
       await serveNoteWithPeerEdit()
-      const { flushFullStates } = await startRuntime()
-      const LAGGING_EDIT = `${ORIGINAL}\n\nAgent line.`
+      const { provider, coordinator, flushFullStates } = await startRuntime()
       putNoteInVault(LAGGING_EDIT)
       await feedExternalEditToCrdt(NOTE, LAGGING_EDIT)
+      h.updatesDelayMs = 1000
+      let merging: Promise<boolean> | undefined
 
+      const doc = await provider.openForEditor(
+        NOTE,
+        EDITOR_WINDOW,
+        (id) => (merging = coordinator.pullCrdtForNote(id)),
+        200
+      )
+      await merging
+      const fileAfterMerge = await fileBodyAfterWriteback()
       await flushFullStates()
 
-      expect({ server: await bodyAfterPull(), versions: h.versions }).toEqual({
+      expect({
+        fileAfterMerge,
+        editor: await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH }),
+        server: await bodyAfterPull(),
+        versions: h.versions
+      }).toEqual({
+        fileAfterMerge: LAGGING_EDIT,
+        editor: LAGGING_EDIT,
         server: LAGGING_EDIT,
-        versions: [`---\nid: ${NOTE}\ntitle: Trip\n---\n${EXPECTED_BODY}\n`]
+        versions: [PEER_VERSION]
       })
     })
 
@@ -807,6 +886,28 @@ describe('CrdtProvider with no store (#2536)', () => {
       expect({ owed: owesFileBody(NOTE), fullStates }).toEqual(expected)
     }
   )
+
+  it('a journal edited while closed keeps the edit through the next pull, and the flush pushes it', async () => {
+    const JOURNAL = 'j2026-01-01'
+    const body = `${EXPECTED_BODY}\n\nAgent line.`
+    const file = `---\nid: ${JOURNAL}\ndate: 2026-01-01\n---\n${body}`
+    await serveNoteWithPeerEdit()
+    const { coordinator, flushFullStates } = await startRuntime()
+    h.files.set('/vault/journal/2026-01-01.md', file)
+    h.row = { ...h.row!, id: JOURNAL, path: 'journal/2026-01-01.md', title: '2026-01-01' }
+    h.row.contentHash = generateContentHash(file)
+    await feedExternalEditToCrdt(JOURNAL, body)
+
+    await coordinator.pullCrdtForNotes([JOURNAL])
+    await vi.waitFor(() => expect(hasPendingWriteback(JOURNAL)).toBe(false), { timeout: 5000 })
+    const fileAfterPull = h.files.get('/vault/journal/2026-01-01.md')
+    await flushFullStates()
+
+    expect({ fileAfterPull, server: await bodyAfterPull() }).toEqual({
+      fileAfterPull: file,
+      server: body
+    })
+  })
 
   it('an empty note open in the editor takes an agent edit live', async () => {
     h.server = { snapshot: null, updates: [] }
