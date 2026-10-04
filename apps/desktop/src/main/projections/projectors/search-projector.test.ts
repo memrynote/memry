@@ -41,6 +41,7 @@ vi.mock('electron', () => ({
 }))
 
 import { createSearchProjector } from './search-projector'
+import { searchAll } from '../../database/queries/search'
 
 describe('search projector', () => {
   let dataDb: TestDatabaseResult
@@ -614,5 +615,44 @@ describe('search projector', () => {
       dataDb.db.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM fts_tasks`)?.count
     ).toBe(1)
     expect(getFtsInboxCount(dataDb.db as never)).toBe(1)
+  })
+
+  it('finds a filed PDF by its extracted text, through reconcile and a full rebuild', async () => {
+    indexDb.db.run(sql`
+      INSERT INTO note_cache (id, path, title, file_type, mime_type, created_at, modified_at)
+      VALUES ('pdf-1', 'files/logbook.pdf', 'Logbook', 'pdf', 'application/pdf',
+        '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+    `)
+    indexDb.db.run(sql`
+      INSERT INTO extracted_text (note_id, part, method, text)
+      VALUES ('pdf-1', 1, 'ocr', 'The heron left the marsh at dawn')
+    `)
+    const projector = createSearchProjector(() => vaultDir)
+    const searchHeron = (): Array<{ id: string; snippet?: string }> =>
+      searchAll(indexDb.db as never, dataDb.db as never, {
+        text: 'heron',
+        types: ['note'],
+        tags: [],
+        dateRange: null,
+        projectId: null,
+        folderPath: null,
+        limit: 10,
+        offset: 0
+      }).groups.flatMap((group) => group.results.map(({ id, snippet }) => ({ id, snippet })))
+
+    await projector.project({ type: 'note.text-extracted', noteId: 'pdf-1' })
+    expect(searchHeron()).toEqual([
+      { id: 'pdf-1', snippet: 'The <mark>heron</mark> left the marsh at dawn' }
+    ])
+
+    await projector.reconcile()
+    expect(searchHeron().map((hit) => hit.id)).toEqual(['pdf-1'])
+
+    await projector.rebuild()
+    expect(searchHeron().map((hit) => hit.id)).toEqual(['pdf-1'])
+
+    indexDb.db.run(sql`DELETE FROM extracted_text WHERE note_id = 'pdf-1'`)
+    await projector.project({ type: 'note.text-extracted', noteId: 'pdf-1' })
+    expect(searchHeron()).toEqual([])
   })
 })

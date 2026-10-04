@@ -11,6 +11,8 @@ const isModelLoaded = vi.hoisted(() => vi.fn())
 const getAllWindows = vi.hoisted(() => vi.fn())
 const readFile = vi.hoisted(() => vi.fn())
 const parseNote = vi.hoisted(() => vi.fn())
+const readExtractedPages = vi.hoisted(() => vi.fn())
+const getNoteCacheById = vi.hoisted(() => vi.fn())
 
 vi.mock('../../database', () => ({
   getDatabase,
@@ -26,6 +28,14 @@ vi.mock('fs/promises', () => ({
 vi.mock('@main/database/queries/settings', () => ({
   getSetting,
   setSetting
+}))
+
+vi.mock('@main/database/queries/extracted-text', () => ({
+  readExtractedPages
+}))
+
+vi.mock('@main/database/queries/notes', () => ({
+  getNoteCacheById
 }))
 
 vi.mock('../../vault/frontmatter', () => ({
@@ -68,6 +78,7 @@ describe('embedding projector', () => {
     isModelLoaded.mockReturnValue(true)
     initEmbeddingModel.mockResolvedValue(true)
     generateEmbedding.mockResolvedValue(new Float32Array([0.1, 0.2]))
+    readExtractedPages.mockReturnValue({ pages: [], nextPage: null })
   })
 
   it('rebuild returns a disabled result when AI embeddings are turned off', async () => {
@@ -249,6 +260,29 @@ describe('embedding projector', () => {
 
     expect(run).toHaveBeenCalledWith('note-2')
     expect(run).toHaveBeenCalledWith('note-3')
+  })
+
+  it('embeds a filed PDF from its extracted text and drops the vector once the text is gone', async () => {
+    const run = vi.fn()
+    getRawIndexDatabase.mockReturnValue({ prepare: vi.fn(() => ({ run })) })
+    getNoteCacheById.mockReturnValue({ id: 'pdf-1', title: 'Logbook', fileType: 'pdf' })
+    readExtractedPages.mockReturnValue({
+      pages: [{ page: 1, text: 'The heron left the marsh at dawn' }],
+      nextPage: null
+    })
+
+    const projector = createEmbeddingProjector(() => '/vault')
+    await projector.project({ type: 'note.text-extracted', noteId: 'pdf-1' })
+
+    expect(generateEmbedding).toHaveBeenCalledWith('Logbook\n\nThe heron left the marsh at dawn')
+    expect(run).toHaveBeenCalledWith('pdf-1', new Float32Array([0.1, 0.2]))
+
+    readExtractedPages.mockReturnValue({ pages: [], nextPage: null })
+    run.mockClear()
+    await projector.project({ type: 'note.text-extracted', noteId: 'pdf-1' })
+
+    expect(run).toHaveBeenCalledWith('pdf-1')
+    expect(run).not.toHaveBeenCalledWith('pdf-1', expect.anything())
   })
 
   it('deletes stale embeddings when AI is disabled, content is short, or generation fails', async () => {

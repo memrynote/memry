@@ -4,13 +4,19 @@ import { sql } from 'drizzle-orm'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { getDatabase, getIndexDatabase, getRawIndexDatabase } from '../../database'
 import { getSetting, setSetting } from '@main/database/queries/settings'
+import { getNoteCacheById } from '@main/database/queries/notes'
+import { readExtractedPages } from '@main/database/queries/extracted-text'
 import { parseNote } from '../../vault/frontmatter'
 import {
   generateEmbedding as generateLocalEmbedding,
   initEmbeddingModel,
   isModelLoaded
 } from '../../lib/embeddings'
-import { buildEmbeddingInput, EMBEDDING_INPUT_VERSION } from '../../lib/embedding-input'
+import {
+  buildEmbeddingInput,
+  EMBEDDING_INPUT_VERSION,
+  MAX_EMBEDDING_INPUT_LENGTH
+} from '../../lib/embedding-input'
 import { createLogger } from '../../lib/logger'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import type { ProjectionEvent, ProjectionProjector } from '../types'
@@ -54,6 +60,39 @@ function deleteNoteEmbedding(noteId: string): void {
   }
 }
 
+interface EmbeddableNote {
+  id: string
+  path: string
+  title: string | null
+  fileType: string | null
+}
+
+/**
+ * Markdown notes, plus filed PDFs and images once text has been read out of
+ * them. A file's vector comes from its extracted text, never from its bytes.
+ */
+const EMBEDDABLE_NOTES = sql`
+  SELECT id, path, title, file_type as fileType
+  FROM note_cache
+  WHERE COALESCE(file_type, 'markdown') = 'markdown'
+    OR id IN (SELECT note_id FROM extracted_text WHERE text != '')
+`
+
+/** The opening of a file's extracted text: all the embedding input ever reads. */
+function readExtractedOpening(noteId: string): string {
+  return readExtractedPages(getIndexDatabase(), noteId, 1, MAX_EMBEDDING_INPUT_LENGTH)
+    .pages.map((page) => page.text)
+    .join('\n\n')
+}
+
+async function readEmbeddableContent(vaultPath: string, note: EmbeddableNote): Promise<string> {
+  if (note.fileType && note.fileType !== 'markdown') {
+    return readExtractedOpening(note.id)
+  }
+  const raw = await fs.readFile(path.join(vaultPath, note.path), 'utf-8')
+  return parseNote(raw, note.path).content
+}
+
 async function updateEmbedding(noteId: string, content: string): Promise<boolean> {
   if (!isAIEnabled() || content.length < MIN_CONTENT_LENGTH) {
     deleteNoteEmbedding(noteId)
@@ -85,11 +124,12 @@ export function createEmbeddingProjector(
   // backgrounded reconcile drains it after the vault is open (#803).
   const pendingEmbedding = new Set<string>()
 
-  // Embed a list of markdown notes from disk. Shared by the full rebuild and the
-  // reconcile backfill; assumes the model is already loaded and vaultPath is set.
+  // Embed a list of notes: markdown from disk, filed PDFs and images from their
+  // extracted text. Shared by the full rebuild and the reconcile backfill;
+  // assumes the model is already loaded and vaultPath is set.
   const embedNotes = async (
     vaultPath: string,
-    notes: Array<{ id: string; path: string; title: string | null }>,
+    notes: EmbeddableNote[],
     signal?: AbortSignal
   ): Promise<{ computed: number; skipped: number }> => {
     let computed = 0
@@ -105,11 +145,8 @@ export function createEmbeddingProjector(
 
       const note = notes[i]
       try {
-        const absolutePath = path.join(vaultPath, note.path)
-        const raw = await fs.readFile(absolutePath, 'utf-8')
-        const parsed = parseNote(raw, note.path)
-
-        const input = buildEmbeddingInput({ title: note.title, content: parsed.content })
+        const content = await readEmbeddableContent(vaultPath, note)
+        const input = buildEmbeddingInput({ title: note.title, content })
         if (!(await updateEmbedding(note.id, input))) {
           skipped++
         } else {
@@ -151,16 +188,7 @@ export function createEmbeddingProjector(
     // case on every app open until the first note exists (and every E2E launch).
     const indexDb = getIndexDatabase()
     const rawDb = getRawIndexDatabase()
-    const notes = indexDb.all<{
-      id: string
-      path: string
-      title: string | null
-      fileType: string | null
-    }>(sql`
-      SELECT id, path, title, file_type as fileType
-      FROM note_cache
-      WHERE COALESCE(file_type, 'markdown') = 'markdown'
-    `)
+    const notes = indexDb.all<EmbeddableNote>(EMBEDDABLE_NOTES)
 
     if (notes.length === 0) {
       rawDb.prepare('DELETE FROM vec_notes').run()
@@ -194,6 +222,20 @@ export function createEmbeddingProjector(
     return { success: true, computed, skipped }
   }
 
+  const embedFileText = async (noteId: string, title: string): Promise<void> => {
+    const content = readExtractedOpening(noteId)
+    if (!content) {
+      deleteNoteEmbedding(noteId)
+      pendingEmbedding.delete(noteId)
+      return
+    }
+    if (isIndexing()) {
+      pendingEmbedding.add(noteId)
+      return
+    }
+    await updateEmbedding(noteId, buildEmbeddingInput({ title, content }))
+  }
+
   return {
     name: 'embedding',
 
@@ -203,13 +245,25 @@ export function createEmbeddingProjector(
     background: true,
 
     handles(event: ProjectionEvent): boolean {
-      return event.type === 'note.upserted' || event.type === 'note.deleted'
+      return (
+        event.type === 'note.upserted' ||
+        event.type === 'note.deleted' ||
+        event.type === 'note.text-extracted'
+      )
     },
 
     async project(event: ProjectionEvent): Promise<void> {
       if (event.type === 'note.deleted') {
         deleteNoteEmbedding(event.noteId)
         pendingEmbedding.delete(event.noteId)
+        return
+      }
+
+      if (event.type === 'note.text-extracted') {
+        const note = getNoteCacheById(getIndexDatabase(), event.noteId)
+        if (note && note.fileType !== 'markdown') {
+          await embedFileText(note.id, note.title)
+        }
         return
       }
 
@@ -220,8 +274,7 @@ export function createEmbeddingProjector(
       const note = event.note
 
       if (note.kind !== 'markdown') {
-        deleteNoteEmbedding(note.noteId)
-        pendingEmbedding.delete(note.noteId)
+        await embedFileText(note.noteId, note.title)
         return
       }
 
@@ -293,7 +346,7 @@ export function createEmbeddingProjector(
       const rawDb = getRawIndexDatabase()
       const indexDb = getIndexDatabase()
 
-      // Prune vectors for notes that no longer exist.
+      // Prune vectors for notes that no longer exist, or no longer have text.
       rawDb
         .prepare(
           `
@@ -302,30 +355,23 @@ export function createEmbeddingProjector(
             SELECT id
             FROM note_cache
             WHERE COALESCE(file_type, 'markdown') = 'markdown'
+              OR id IN (SELECT note_id FROM extracted_text WHERE text != '')
           )
           `
         )
         .run()
 
-      const markdownNotes = indexDb.all<{
-        id: string
-        path: string
-        title: string | null
-      }>(sql`
-        SELECT id, path, title
-        FROM note_cache
-        WHERE COALESCE(file_type, 'markdown') = 'markdown'
-      `)
+      const embeddableNotes = indexDb.all<EmbeddableNote>(EMBEDDABLE_NOTES)
 
       const vaultPath = getVaultPath()
       if (!isAIEnabled() || !vaultPath) {
         // Deferred ids are left intact — nothing was embedded, so a later
         // reconcile (or a full rebuild once AI is enabled) can still pick them up.
-        emitProgress(markdownNotes.length, markdownNotes.length, 'complete')
+        emitProgress(embeddableNotes.length, embeddableNotes.length, 'complete')
         return
       }
 
-      // Backfill: embed markdown notes with no vector yet (freshly imported notes
+      // Backfill: embed notes with no vector yet (freshly imported notes
       // whose inline embedding was deferred during indexing) plus any deferred /
       // edited notes tracked this session. Runs in the background after isOpen, so
       // a slow or failed model load never blocks vault-open (#803). Loading the
@@ -335,13 +381,13 @@ export function createEmbeddingProjector(
           (row) => row.note_id
         )
       )
-      const workList = markdownNotes.filter(
+      const workList = embeddableNotes.filter(
         (note) => !embeddedIds.has(note.id) || pendingEmbedding.has(note.id)
       )
 
       if (workList.length === 0) {
         pendingEmbedding.clear()
-        emitProgress(markdownNotes.length, markdownNotes.length, 'complete')
+        emitProgress(embeddableNotes.length, embeddableNotes.length, 'complete')
         return
       }
 
@@ -351,7 +397,7 @@ export function createEmbeddingProjector(
           // Keep the deferred ids: dropping them here would let an edited note
           // (which still has a stale vector, so the missing-vector filter above
           // won't re-catch it) keep that stale embedding after a failed load.
-          emitProgress(markdownNotes.length, markdownNotes.length, 'complete')
+          emitProgress(embeddableNotes.length, embeddableNotes.length, 'complete')
           return
         }
       }

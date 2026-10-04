@@ -2,7 +2,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { sql } from 'drizzle-orm'
 import { SearchChannels } from '@memry/contracts/ipc-channels'
-import { getDatabase, getIndexDatabase } from '../../database'
+import { getDatabase, getIndexDatabase, type IndexDb } from '../../database'
 import {
   dedupeFtsNotes,
   deleteFtsNote,
@@ -23,6 +23,8 @@ import {
   resetFtsInboxTable
 } from '../../database/fts-inbox'
 import { getSetting, setSetting } from '../../database/queries/settings'
+import { getExtractedText, listFilesWithExtractedText } from '../../database/queries/extracted-text'
+import { getNoteCacheById } from '@main/database/queries/notes'
 import { parseNote } from '../../vault/frontmatter'
 import { createLogger } from '../../lib/logger'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
@@ -45,6 +47,20 @@ function getTaskTags(taskId: string): string[] {
   return dataDb
     .all<{ tag: string }>(sql`SELECT tag FROM task_tags WHERE task_id = ${taskId}`)
     .map((row) => row.tag)
+}
+
+/**
+ * A filed PDF or image is searchable by the text read out of it. With none
+ * (audio, video, or a file still waiting on extraction) it has no FTS row and is
+ * found by title through the fuzzy fallback, as before.
+ */
+function syncExtractedTextEntry(indexDb: IndexDb, noteId: string, title: string): void {
+  const text = getExtractedText(indexDb, noteId)
+  if (text) {
+    insertFtsNote(indexDb, noteId, title, text, [])
+  } else {
+    deleteFtsNote(indexDb, noteId)
+  }
 }
 
 function upsertTask(taskId: string): void {
@@ -155,6 +171,11 @@ async function rebuildNotes(getVaultPath: () => string | null): Promise<number> 
         total: rows.length
       } satisfies RebuildProgress)
     }
+  }
+
+  for (const file of listFilesWithExtractedText(indexDb)) {
+    insertFtsNoteUnchecked(indexDb, file.id, file.title, getExtractedText(indexDb, file.id), [])
+    indexed++
   }
 
   return indexed
@@ -310,11 +331,18 @@ async function reconcileNotes(
       FROM note_cache
       WHERE COALESCE(file_type, 'markdown') = 'markdown'
     )
+    AND id NOT IN (SELECT note_id FROM extracted_text WHERE text != '')
   `)
 
   const indexedIds = new Set(
     indexDb.all<{ id: string }>(sql`SELECT id FROM fts_notes`).map((row) => row.id)
   )
+
+  for (const file of listFilesWithExtractedText(indexDb)) {
+    if (!indexedIds.has(file.id)) {
+      insertFtsNoteUnchecked(indexDb, file.id, file.title, getExtractedText(indexDb, file.id), [])
+    }
+  }
 
   const rows = indexDb.all<NoteRow>(sql`
     SELECT id, title, path, indexed_at as indexedAt
@@ -476,6 +504,7 @@ export function createSearchProjector(getVaultPath: () => string | null): Projec
       return (
         event.type === 'note.upserted' ||
         event.type === 'note.deleted' ||
+        event.type === 'note.text-extracted' ||
         event.type === 'task.upserted' ||
         event.type === 'task.deleted' ||
         event.type === 'inbox.upserted' ||
@@ -487,7 +516,7 @@ export function createSearchProjector(getVaultPath: () => string | null): Projec
       switch (event.type) {
         case 'note.upserted': {
           if (event.note.kind !== 'markdown') {
-            deleteFtsNote(getIndexDatabase(), event.note.noteId)
+            syncExtractedTextEntry(getIndexDatabase(), event.note.noteId, event.note.title)
             return
           }
 
@@ -510,6 +539,14 @@ export function createSearchProjector(getVaultPath: () => string | null): Projec
         case 'note.deleted':
           deleteFtsNote(getIndexDatabase(), event.noteId)
           return
+        case 'note.text-extracted': {
+          const indexDb = getIndexDatabase()
+          const note = getNoteCacheById(indexDb, event.noteId)
+          if (note && note.fileType !== 'markdown') {
+            syncExtractedTextEntry(indexDb, note.id, note.title)
+          }
+          return
+        }
         case 'task.upserted':
           upsertTask(event.taskId)
           return
