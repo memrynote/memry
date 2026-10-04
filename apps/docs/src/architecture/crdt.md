@@ -331,7 +331,11 @@ outbox. An editor open whose merge fails or outlasts its timeout keeps what the
 document holds, or seeds it when it is empty, and leaves the take to the flush.
 The write-back of a marked note or journal writes nothing, even while a merge
 holds the document, and owes the note a full-state row again so the marker
-always has a flush to resolve it.
+has a flush to resolve it. It does not owe the row when the take would refuse
+the document (see below) or when the note has no index row yet, because each
+flush would then queue the next one. A later edit queues the row again, and
+so does the next pull once the note has its index row and a document the take
+accepts.
 
 A complete merge walks the whole server state. In in-memory mode a document
 reopened empty holds none of what an earlier pull's watermark counts, so the
@@ -345,12 +349,23 @@ loser is kept as a version:
 - The merged server body is saved as a version with the file's frontmatter
   whenever it differs from the file. With no base, that is every take of an
   edited note, not only one that lost a peer edit. The take is logged at info.
+- The version is written before the replace. When it cannot be written, the
+  document and the marker stay, an error is logged, and the next flush tries
+  again.
+- When the merged server body holds a node type this build cannot serialize,
+  or its conversion returns nothing, the take refuses it. The document and the
+  marker stay, and a warning names the reason. The write-back fails closed on
+  the same document and keeps the file, so the file keeps the edit and the
+  server keeps the unknown block. The take runs again once a pull brings a body
+  this build can serialize, or on a build that knows the type.
 - When the document refuses the file (large-file class, unparseable), the server
   body stays, so the note converges on it. The write-back that then replaces the
   file keeps the file as a version, as it does for any bytes it did not write.
+- When the note has an index row but its file no longer exists, there is no
+  file body to owe. The marker is cleared and a warning is logged.
 
-A feed or a seed the document takes clears the marker, as do both outcomes
-above and a purge.
+A feed or a seed the document takes clears the marker, as do a take, a file
+the document refuses, a missing file, and a purge.
 
 Losing a watermark costs one extra request. Keeping a stale one costs a note
 body, so every unknown — no record, an unreadable record, a store written by a
