@@ -1,4 +1,4 @@
-import type { ZodTypeAny } from 'zod'
+import { z, type ZodTypeAny } from 'zod'
 
 import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
@@ -57,6 +57,30 @@ async function storedNoteReply(
   return (await handles.notes.stored(id)) ?? { id }
 }
 
+/** The record a read returns after the write, or only the id when none reads back. */
+async function storedOrId(read: Promise<unknown>, id: string): Promise<unknown> {
+  return (await read) ?? { id }
+}
+
+function tagChanges(before: string[], after: string[]) {
+  return {
+    tags_added: after.filter((tag) => !before.includes(tag)),
+    tags_removed: before.filter((tag) => !after.includes(tag))
+  }
+}
+
+/** Zod drops keys a schema does not name, so a misspelled option would vanish without an error. */
+function assertKnownArguments(toolName: string, schema: ZodTypeAny, input: unknown): void {
+  if (!(schema instanceof z.ZodObject) || !input || typeof input !== 'object') return
+  const unknown = Object.keys(input).filter((key) => !Object.hasOwn(schema.shape, key))
+  if (unknown.length === 0) return
+  throw new AgentToolError(
+    'VALIDATION',
+    `${toolName} does not take ${unknown.join(', ')}. Nothing was run.`,
+    { unknown, accepted: Object.keys(schema.shape) }
+  )
+}
+
 async function approvedArgs<T>(
   gate: WriteToolGate | null,
   toolName: ToolName,
@@ -75,6 +99,10 @@ export function buildWriteTools(
   handles: VaultServiceHandles,
   gate: WriteToolGate | null
 ): ToolRegistration[] {
+  const storedTask = (id: string) => storedOrId(handles.tasks.get(id), id)
+  const storedProject = (id: string) => storedOrId(handles.projects.get(id), id)
+  const storedInboxItem = (id: string) => storedOrId(handles.inbox.get(id), id)
+
   const factories: Record<(typeof WRITE_TOOL_NAMES)[number], ToolRegistration> = {
     vault_create_note: {
       name: 'vault_create_note',
@@ -164,7 +192,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_create_task', parsed, ctx)
-        return handles.tasks.create(args)
+        const { id } = await handles.tasks.create(args)
+        return storedTask(id)
       }
     },
     vault_delete_task: {
@@ -187,7 +216,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_complete_task', parsed, ctx)
-        return handles.tasks.complete(args)
+        await handles.tasks.complete(args)
+        return storedTask(args.id)
       }
     },
     vault_uncomplete_task: {
@@ -197,7 +227,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_uncomplete_task.input, input)
         const args = await approvedArgs(gate, 'vault_uncomplete_task', parsed, ctx)
-        return handles.tasks.uncomplete(args.id)
+        await handles.tasks.uncomplete(args.id)
+        return storedTask(args.id)
       }
     },
     vault_archive_task: {
@@ -207,7 +238,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_archive_task.input, input)
         const args = await approvedArgs(gate, 'vault_archive_task', parsed, ctx)
-        return handles.tasks.archive(args.id)
+        await handles.tasks.archive(args.id)
+        return storedTask(args.id)
       }
     },
     vault_unarchive_task: {
@@ -217,7 +249,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_unarchive_task.input, input)
         const args = await approvedArgs(gate, 'vault_unarchive_task', parsed, ctx)
-        return handles.tasks.unarchive(args.id)
+        await handles.tasks.unarchive(args.id)
+        return storedTask(args.id)
       }
     },
     vault_move_task: {
@@ -230,7 +263,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_move_task', parsed, ctx)
-        return handles.tasks.move(args)
+        await handles.tasks.move(args)
+        return storedTask(args.task_id)
       }
     },
     vault_reorder_tasks: {
@@ -243,7 +277,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_reorder_tasks', parsed, ctx)
-        return handles.tasks.reorder(args)
+        const { ids } = await handles.tasks.reorder(args)
+        return { ids, tasks: await Promise.all(ids.map(storedTask)) }
       }
     },
     vault_duplicate_task: {
@@ -253,7 +288,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_duplicate_task.input, input)
         const args = await approvedArgs(gate, 'vault_duplicate_task', parsed, ctx)
-        return handles.tasks.duplicate(args.id)
+        const { id } = await handles.tasks.duplicate(args.id)
+        return storedTask(id)
       }
     },
     vault_convert_task_to_subtask: {
@@ -266,7 +302,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_convert_task_to_subtask', parsed, ctx)
-        return handles.tasks.convertToSubtask(args)
+        await handles.tasks.convertToSubtask(args)
+        return storedTask(args.task_id)
       }
     },
     vault_convert_subtask_to_task: {
@@ -279,7 +316,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_convert_subtask_to_task', parsed, ctx)
-        return handles.tasks.convertToTask(args.id)
+        await handles.tasks.convertToTask(args.id)
+        return storedTask(args.id)
       }
     },
     vault_create_project: {
@@ -292,7 +330,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_create_project', parsed, ctx)
-        return handles.projects.create(args)
+        const { id } = await handles.projects.create(args)
+        return storedProject(id)
       }
     },
     vault_update_project: {
@@ -305,7 +344,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_update_project', parsed, ctx)
-        return handles.projects.update(args)
+        await handles.projects.update(args)
+        return storedProject(args.id)
       }
     },
     vault_delete_project: {
@@ -325,7 +365,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_archive_project.input, input)
         const args = await approvedArgs(gate, 'vault_archive_project', parsed, ctx)
-        return handles.projects.archive(args.id)
+        await handles.projects.archive(args.id)
+        return storedProject(args.id)
       }
     },
     vault_reorder_projects: {
@@ -338,7 +379,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_reorder_projects', parsed, ctx)
-        return handles.projects.reorder(args)
+        const { ids } = await handles.projects.reorder(args)
+        return { ids, projects: await Promise.all(ids.map(storedProject)) }
       }
     },
     vault_create_status: {
@@ -405,7 +447,9 @@ export function buildWriteTools(
           toolName: 'vault_create_journal_entry',
           parsedArgs: parsed
         })) as typeof parsed
-        return handles.journal.createIfMissing(args)
+        const { id, created } = await handles.journal.createIfMissing(args)
+        const stored = await handles.journal.stored(args.date)
+        return stored ? { ...stored, created } : { id, created }
       }
     },
     vault_update_journal_entry: {
@@ -418,7 +462,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_update_journal_entry', parsed, ctx)
-        return handles.journal.update(args)
+        const { id } = await handles.journal.update(args)
+        return (await handles.journal.stored(args.date)) ?? { id }
       }
     },
     vault_delete_journal_entry: {
@@ -446,7 +491,8 @@ export function buildWriteTools(
           toolName: 'vault_add_to_inbox',
           parsedArgs: parsed
         })) as typeof parsed
-        return handles.inbox.add(args)
+        const { id } = await handles.inbox.add(args)
+        return storedInboxItem(id)
       }
     },
     vault_update_inbox_item: {
@@ -459,7 +505,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_update_inbox_item', parsed, ctx)
-        return handles.inbox.update(args)
+        await handles.inbox.update(args)
+        return storedInboxItem(args.id)
       }
     },
     vault_snooze_inbox_item: {
@@ -472,7 +519,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_snooze_inbox_item', parsed, ctx)
-        return handles.inbox.snooze(args)
+        await handles.inbox.snooze(args)
+        return storedInboxItem(args.id)
       }
     },
     vault_archive_inbox_item: {
@@ -482,7 +530,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_archive_inbox_item.input, input)
         const args = await approvedArgs(gate, 'vault_archive_inbox_item', parsed, ctx)
-        return handles.inbox.archive(args.id)
+        await handles.inbox.archive(args.id)
+        return storedInboxItem(args.id)
       }
     },
     vault_unarchive_inbox_item: {
@@ -492,7 +541,8 @@ export function buildWriteTools(
       handler: async (input, ctx) => {
         const parsed = parse<{ id: string }>(TOOL_SCHEMAS.vault_unarchive_inbox_item.input, input)
         const args = await approvedArgs(gate, 'vault_unarchive_inbox_item', parsed, ctx)
-        return handles.inbox.unarchive(args.id)
+        await handles.inbox.unarchive(args.id)
+        return storedInboxItem(args.id)
       }
     },
     vault_delete_inbox_item: {
@@ -515,7 +565,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_add_inbox_tag', parsed, ctx)
-        return handles.inbox.addTag(args)
+        await handles.inbox.addTag(args)
+        return storedInboxItem(args.id)
       }
     },
     vault_remove_inbox_tag: {
@@ -528,7 +579,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_remove_inbox_tag', parsed, ctx)
-        return handles.inbox.removeTag(args)
+        await handles.inbox.removeTag(args)
+        return storedInboxItem(args.id)
       }
     },
     vault_update_note: {
@@ -547,8 +599,11 @@ export function buildWriteTools(
           toolName: 'vault_update_note',
           parsedArgs: parsed
         })) as typeof parsed
+        const before = await handles.notes.stored(args.id)
         await handles.notes.update(args)
-        return storedNoteReply(handles, args.id)
+        const after = await handles.notes.stored(args.id)
+        if (!after) return { id: args.id }
+        return before ? { ...after, ...tagChanges(before.tags, after.tags) } : after
       }
     },
     vault_add_html_artifact: {
@@ -580,7 +635,7 @@ export function buildWriteTools(
         const args = await approvedArgs(gate, 'vault_update_task', parsed, ctx)
         const { id, ...patch } = args
         await handles.tasks.update(id, patch)
-        return { id }
+        return storedTask(id)
       }
     },
     vault_add_tag: {
@@ -600,7 +655,7 @@ export function buildWriteTools(
         })) as typeof parsed
         if (args.kind === 'task') {
           await handles.tasks.addTag({ id: args.id, tag: args.tag })
-          return { id: args.id }
+          return storedTask(args.id)
         }
         await handles.notes.addTag({ id: args.id, tag: args.tag })
         return storedNoteReply(handles, args.id)
@@ -623,7 +678,7 @@ export function buildWriteTools(
         })) as typeof parsed
         if (args.kind === 'task') {
           await handles.tasks.removeTag({ id: args.id, tag: args.tag })
-          return { id: args.id }
+          return storedTask(args.id)
         }
         await handles.notes.removeTag({ id: args.id, tag: args.tag })
         return storedNoteReply(handles, args.id)
@@ -752,5 +807,14 @@ export function buildWriteTools(
     }
   }
 
-  return WRITE_TOOL_NAMES.map((name) => factories[name])
+  return WRITE_TOOL_NAMES.map((name) => {
+    const tool = factories[name]
+    return {
+      ...tool,
+      handler: async (input, ctx) => {
+        assertKnownArguments(name, tool.inputSchema, input)
+        return tool.handler(input, ctx)
+      }
+    }
+  })
 }

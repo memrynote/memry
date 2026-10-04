@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { AgentMcpDesktopOperations } from '@memry/contracts/agent-mcp-channels'
+import {
+  AgentMcpDesktopOperations,
+  AgentMcpDesktopWriteOperations
+} from '@memry/contracts/agent-mcp-channels'
 
 vi.mock('electron', () => ({
   ipcRenderer: {
@@ -22,6 +25,7 @@ import { graphApi, searchApi } from '../../../../../preload/api/search'
 import { tagsApi } from '../../../../../preload/api/tags'
 import { vaultApi } from '../../../../../preload/api/vault'
 import { assertDesktopApiArgs, desktopOperationParams } from '../desktop-api-params'
+import { desktopWriteReadback } from '../desktop-api-readback'
 
 const handWrittenApis: Record<string, Record<string, unknown>> = {
   bookmarks: bookmarksApi,
@@ -77,5 +81,13 @@ describe('desktop API parameter lists', () => {
     ).toThrow(
       'properties.set takes 2 arguments (entityId, properties), but this call passed 3. Nothing was run.'
     )
+  })
+
+  it('read back every write with a call the read operation accepts', () => {
+    const args = [{ projectId: 'p1', itemId: 'i1', tag: 't', newName: 'n', id: 'c1' }, 'b', 'c']
+    for (const operation of AgentMcpDesktopWriteOperations) {
+      const readback = desktopWriteReadback({ operation, args })
+      if (readback) expect(() => assertDesktopApiArgs(readback.request), operation).not.toThrow()
+    }
   })
 })

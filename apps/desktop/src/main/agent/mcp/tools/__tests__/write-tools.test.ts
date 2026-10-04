@@ -72,7 +72,8 @@ const handles: VaultServiceHandles = {
     listInRange: async () => [],
     createIfMissing: async () => ({ id: 'jrnl', created: true }),
     update: async () => ({ id: 'jrnl' }),
-    delete: async (date) => ({ date, deleted: true })
+    delete: async (date) => ({ date, deleted: true }),
+    stored: async () => null
   },
   inbox: {
     list: async () => [],
@@ -392,7 +393,8 @@ describe('Write tools — P1 deny-by-default', () => {
     await expect(
       run('vault_reorder_tasks', { task_ids: ['task-1'], positions: [0] })
     ).resolves.toEqual({
-      ids: ['task-1']
+      ids: ['task-1'],
+      tasks: [{ id: 'task-1' }]
     })
     await expect(run('vault_duplicate_task', { id: 'task-1' })).resolves.toEqual({
       id: 'duplicated-task'
@@ -420,7 +422,8 @@ describe('Write tools — P1 deny-by-default', () => {
     await expect(
       run('vault_reorder_projects', { project_ids: ['project-1'], positions: [0] })
     ).resolves.toEqual({
-      ids: ['project-1']
+      ids: ['project-1'],
+      projects: [{ id: 'project-1' }]
     })
     await expect(
       run('vault_create_status', { project_id: 'project-1', name: 'Doing' })
@@ -476,7 +479,7 @@ describe('Write tools — P1 deny-by-default', () => {
     })
     await expect(
       run('vault_update_note', { id: 'note-1', mode: 'append', content_markdown: 'More' })
-    ).resolves.toEqual(storedNote('note-1'))
+    ).resolves.toEqual({ ...storedNote('note-1'), tags_added: [], tags_removed: [] })
     await expect(run('vault_update_task', { id: 'task-1', title: 'Updated' })).resolves.toEqual({
       id: 'task-1'
     })

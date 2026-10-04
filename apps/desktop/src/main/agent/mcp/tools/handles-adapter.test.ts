@@ -591,7 +591,9 @@ describe('createVaultServiceHandles', () => {
       ['vault_move_to_folder', { id: 'note-1', folder_path: 'work' }]
     ]
     for (const [name, input] of writes) {
-      await expect(call(name, input), name).resolves.toEqual(stored)
+      const expected =
+        name === 'vault_update_note' ? { ...stored, tags_added: [], tags_removed: [] } : stored
+      await expect(call(name, input), name).resolves.toEqual(expected)
     }
 
     mocks.getNoteCacheById.mockReturnValue({

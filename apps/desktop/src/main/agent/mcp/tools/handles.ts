@@ -44,6 +44,19 @@ export interface StoredNote {
   icon?: string
 }
 
+/** A journal entry as a read returns it right after a write; the body as in `StoredNote`. */
+export interface StoredJournalEntry {
+  id: string
+  date: string
+  tags: string[]
+  properties: Record<string, unknown>
+  body_bytes: number
+  body_sha256: string
+}
+
+/** A status record as the task domain stored it. */
+export type StoredStatus = { id: string } & Record<string, unknown>
+
 export interface NoteFull {
   id: string
   title: string
@@ -354,7 +367,7 @@ export interface VaultServiceHandles {
       name: string
       color?: string
       is_done?: boolean
-    }): Promise<{ id: string }>
+    }): Promise<StoredStatus>
     update(input: {
       id: string
       name?: string
@@ -362,7 +375,7 @@ export interface VaultServiceHandles {
       position?: number
       is_default?: boolean
       is_done?: boolean
-    }): Promise<{ id: string }>
+    }): Promise<StoredStatus>
     delete(id: string): Promise<{ id: string }>
     reorder(input: { status_ids: string[]; positions: number[] }): Promise<{ ids: string[] }>
   }
@@ -380,6 +393,7 @@ export interface VaultServiceHandles {
       properties?: Record<string, unknown>
     }): Promise<{ id: string }>
     delete(date: string): Promise<{ date: string; deleted: boolean }>
+    stored(date: string): Promise<StoredJournalEntry | null>
   }
   inbox: {
     list(input: { unread_only?: boolean }): Promise<InboxSummary[]>

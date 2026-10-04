@@ -554,16 +554,28 @@ return a structured MCP error instead of falling back to an arbitrary desktop ca
 `args` are the operation's positional arguments. A call that passes more arguments than the
 operation takes fails with a `VALIDATION` error that names the parameters, before the approval
 prompt, and nothing runs. Options go inside the operation's input object, never in an extra
-argument. `properties.set(entityId, properties)` replaces the entity's whole property record: a
-property the call leaves out is deleted. Its reply lists the stored `properties` and the names it
-`removed`.
+argument. A desktop write whose reply carries no record (adding an inbox tag, changing a setting, a
+property option, a tag color) gets a `stored` field with the record read back after the write.
 
-The note write tools (`vault_create_note`, `vault_rename_note`, `vault_update_note`,
-`vault_add_html_artifact`, `vault_move_to_folder`, and `vault_add_tag` / `vault_remove_tag` on a
-note) reply with the note as a read returns it after the write: `id`, `title`, `folder_path`,
-`tags`, `properties`, `body_bytes` and `body_sha256`. The last two cover the body's UTF-8 bytes, so
-an agent can check the stored body against the one it sent without reading it back. Both are `null`
-for a note too large to read.
+`properties.set(entityId, properties)` replaces the entity's whole property record. It does not
+merge: a property the call leaves out is deleted. The legacy `id`, `title`, `created` and `modified`
+keys that older notes carry in their frontmatter are the exception for agents: they are kept when
+the call leaves them out, and a call deletes one only by passing it as `null`. The reply lists the
+stored `properties` and the names it `removed`.
+
+Every named write tool answers with the record as a read returns it after the write, and rejects an
+argument it does not take with a `VALIDATION` error before the approval prompt.
+
+- Note writes (`vault_create_note`, `vault_rename_note`, `vault_update_note`,
+  `vault_add_html_artifact`, `vault_move_to_folder`, and `vault_add_tag` / `vault_remove_tag` on a
+  note) reply with `id`, `title`, `folder_path`, `tags`, `properties`, `body_bytes` and
+  `body_sha256`. The last two cover the body's UTF-8 bytes, so an agent can check the stored body
+  against the one it sent without reading it back. Both are `null` for a note too large to read.
+  `vault_update_note` also reports `tags_added` and `tags_removed`, because inline `#tags` in the
+  new body change the note's tag set.
+- Journal writes reply with `id`, `date`, `tags`, `properties`, `body_bytes` and `body_sha256`.
+- Task, project, status and inbox writes reply with the stored task, project, status or inbox item.
+  Reorders reply with the ids and the stored records in order. Deletes reply with what they deleted.
 
 `notes.resolveWikiTarget` follows a wiki link the way the editor does: `Meeting#Decisions` resolves
 to the note `Meeting` and reports `heading: "Decisions"`, while a note genuinely titled `Sprint #4`

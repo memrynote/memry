@@ -2,7 +2,11 @@ import { createHash } from 'node:crypto'
 import path from 'node:path'
 
 import { searchAll } from '../../../database/queries/search'
-import { getNoteCacheById, listJournalEntriesInRange } from '../../../database/queries/notes'
+import {
+  getNoteCacheById,
+  getNotePropertiesAsRecord,
+  listJournalEntriesInRange
+} from '../../../database/queries/notes'
 import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
 import { createDesktopInboxDomain } from '../../../inbox/domain'
 import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
@@ -41,6 +45,7 @@ import { snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { createCanvasHandles } from './canvas-handles'
 import { invokeDesktopApiFromWindow } from './desktop-api'
+import { desktopWriteReadback, keepLegacyPropertyKeys } from './desktop-api-readback'
 import type {
   FolderEntry,
   InboxSummary,
@@ -71,6 +76,18 @@ function mergeContent(
   if (!current) return next
   if (!next) return current
   return mode === 'append' ? `${current}\n\n${next}` : `${next}\n\n${current}`
+}
+
+function bodyDigest(content: string): { body_bytes: number; body_sha256: string } {
+  const bytes = Buffer.from(content, 'utf8')
+  return {
+    body_bytes: bytes.byteLength,
+    body_sha256: createHash('sha256').update(bytes).digest('hex')
+  }
+}
+
+function isFailedReply(data: unknown): boolean {
+  return Boolean(data && typeof data === 'object' && 'success' in data && data.success === false)
 }
 
 function noteIcon(note: { emoji?: string | null; frontmatter: Record<string, unknown> }) {
@@ -326,7 +343,6 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         const fileType = getNoteCacheById(indexDb, id)?.fileType ?? 'markdown'
         const note = fileType === 'markdown' ? await getNoteById(id) : null
         if (!note) return null
-        const body = note.contentOmitted ? null : Buffer.from(note.content, 'utf8')
         const icon = noteIcon(note)
         return {
           id: note.id,
@@ -334,8 +350,9 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           folder_path: folderPathFromNotePath(note.path),
           tags: note.tags,
           properties: note.properties,
-          body_bytes: body ? body.byteLength : null,
-          body_sha256: body ? createHash('sha256').update(body).digest('hex') : null,
+          ...(note.contentOmitted
+            ? { body_bytes: null, body_sha256: null }
+            : bodyDigest(note.content)),
           ...(icon ? { icon } : {})
         }
       }
@@ -638,7 +655,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           isDone: input.is_done
         })
         assertSuccess(result, 'Failed to create status')
-        return { id: result.status?.id ?? '' }
+        return { ...result.status, id: result.status?.id ?? '' }
       },
       async update(input) {
         const result = await createTaskDomain(dataDb).updateStatus({
@@ -650,7 +667,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           isDone: input.is_done
         })
         assertSuccess(result, 'Failed to update status')
-        return { id: input.id }
+        return { ...result.status, id: input.id }
       },
       async delete(id) {
         const result = await createTaskDomain(dataDb).deleteStatus(id)
@@ -699,6 +716,17 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       },
       async delete(date) {
         return { date, deleted: await deleteJournalEntryFile(date) }
+      },
+      async stored(date) {
+        const entry = await readJournalEntry(date)
+        if (!entry) return null
+        return {
+          id: entry.id,
+          date: entry.date,
+          tags: entry.tags,
+          properties: entry.properties ?? {},
+          ...bodyDigest(entry.content)
+        }
       }
     },
     inbox: {
@@ -803,7 +831,22 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       },
       async write(input, windowId) {
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
-        return invokeDesktopApiFromWindow(windowId, input)
+        const request =
+          input.operation === 'properties.set'
+            ? {
+                ...input,
+                args: keepLegacyPropertyKeys(input.args, (entityId) =>
+                  getNotePropertiesAsRecord(indexDb, entityId)
+                )
+              }
+            : input
+        const data = await invokeDesktopApiFromWindow(windowId, request)
+        const readback = desktopWriteReadback(request)
+        if (!readback || isFailedReply(data)) return data
+        const stored = readback.select(await invokeDesktopApiFromWindow(windowId, readback.request))
+        return data && typeof data === 'object' && !Array.isArray(data)
+          ? { ...data, stored }
+          : { result: data, stored }
       }
     },
     windows: {

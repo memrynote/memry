@@ -429,7 +429,8 @@ export const TOOL_SCHEMAS = {
     }),
     description:
       'Update note body. Replies with the note as stored: title, folder_path, tags, ' +
-      'properties, body_bytes and body_sha256 (UTF-8). Requires user approval with diff preview.'
+      'properties, body_bytes and body_sha256 (UTF-8), plus tags_added and tags_removed when ' +
+      'inline #tags in the body changed the tag set. Requires user approval with diff preview.'
   },
   vault_add_html_artifact: {
     input: z.object({
@@ -546,9 +547,12 @@ export const TOOL_SCHEMAS = {
     description:
       'Run an allowlisted desktop CRUD mutation. `args` are the positional arguments of the ' +
       'operation; a call with more arguments than the operation takes is refused, so put ' +
-      'options inside its input object. properties.set(entityId, properties) replaces the ' +
-      "entity's whole property record: a property left out is deleted, and the reply lists " +
-      'the stored `properties` and the names it `removed`. Requires user approval.'
+      'options inside its input object. A write whose reply carries no record gets a ' +
+      '`stored` field read back after the write. properties.set(entityId, properties) ' +
+      "replaces the entity's whole property record: a property left out is deleted, except " +
+      'the legacy id, title, created and modified keys, which are kept unless the call names ' +
+      'them (null deletes one). The reply lists the stored `properties` and the names it ' +
+      '`removed`. Requires user approval.'
   }
 } as const
 
