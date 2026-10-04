@@ -121,6 +121,12 @@ other desktop and your phone with its type and its option colors intact, so the 
 the same colored chip everywhere. A value that no longer matches any option — an option renamed on
 another device before this note synced — still renders, in gray, rather than disappearing.
 
+Every definition lives in `.memry/properties.md` inside the vault, whatever its type: text,
+number, checkbox, URL, date, select, multi-select and status. A definition that an agent or the
+desktop API creates or edits is in that file as soon as the call returns. Older versions kept
+non-select definitions only in the app's database; the first time a vault opens after the update,
+they are copied into the file once, and entries the file already has are left as they are.
+
 ### Adding a Property to a Note
 
 In the property panel, click **Add property** and pick from the list. Set the value inline.
