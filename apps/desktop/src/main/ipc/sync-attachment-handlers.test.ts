@@ -134,6 +134,11 @@ vi.mock('../vault/index', () => ({
   getStatus: vi.fn().mockReturnValue({ path: null })
 }))
 
+const mockFileTextNoteChanged = vi.hoisted(() => vi.fn())
+vi.mock('../file-text', () => ({
+  fileTextNoteChanged: (...args: unknown[]) => mockFileTextNoteChanged(...args)
+}))
+
 vi.mock('../crypto', () => ({
   getDevicePublicKey: vi.fn(() => new Uint8Array(32)),
   getOrInitializeLocalVaultKey: vi.fn().mockResolvedValue(new Uint8Array(32)),
@@ -732,6 +737,32 @@ describe('sync-attachment-handlers', () => {
     // #then the file on THIS device ends up under the body's current name
     await vi.waitFor(() =>
       expect(mockApplyDownloadedAttachmentName).toHaveBeenCalledWith('note-1', '/tmp/file.pdf')
+    )
+  })
+
+  it('has text search read a downloaded attachment once it is on disk', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    mockFileTextNoteChanged.mockClear()
+    mockApplyDownloadedAttachmentName.mockClear()
+    registerAttachmentHandlers()
+
+    const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
+      noteId: string
+      attachmentId: string
+      diskPath: string
+      intoDir?: boolean
+    }) => void
+    onDownloadNeeded({
+      noteId: 'note-1',
+      attachmentId: 'attachment-1',
+      diskPath: '/vault/attachments/note-1',
+      intoDir: true
+    })
+
+    await vi.waitFor(() => expect(mockFileTextNoteChanged).toHaveBeenCalledWith('note-1'))
+    expect(mockApplyDownloadedAttachmentName.mock.invocationCallOrder[0]).toBeLessThan(
+      mockFileTextNoteChanged.mock.invocationCallOrder[0]
     )
   })
 

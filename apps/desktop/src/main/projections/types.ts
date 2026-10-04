@@ -60,6 +60,11 @@ export type ProjectionEvent =
       path?: string
     }
   | {
+      /** The note's `extracted_text` rows changed; search and embeddings re-read them. */
+      type: 'note.text-extracted'
+      noteId: string
+    }
+  | {
       type: 'task.upserted'
       taskId: string
     }

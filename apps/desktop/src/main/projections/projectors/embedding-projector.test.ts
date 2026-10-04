@@ -11,6 +11,8 @@ const isModelLoaded = vi.hoisted(() => vi.fn())
 const getAllWindows = vi.hoisted(() => vi.fn())
 const readFile = vi.hoisted(() => vi.fn())
 const parseNote = vi.hoisted(() => vi.fn())
+const readExtractedOpening = vi.hoisted(() => vi.fn())
+const getNoteCacheById = vi.hoisted(() => vi.fn())
 
 vi.mock('../../database', () => ({
   getDatabase,
@@ -26,6 +28,14 @@ vi.mock('fs/promises', () => ({
 vi.mock('@main/database/queries/settings', () => ({
   getSetting,
   setSetting
+}))
+
+vi.mock('@main/database/queries/extracted-text', () => ({
+  readExtractedOpening
+}))
+
+vi.mock('@main/database/queries/notes', () => ({
+  getNoteCacheById
 }))
 
 vi.mock('../../vault/frontmatter', () => ({
@@ -68,6 +78,7 @@ describe('embedding projector', () => {
     isModelLoaded.mockReturnValue(true)
     initEmbeddingModel.mockResolvedValue(true)
     generateEmbedding.mockResolvedValue(new Float32Array([0.1, 0.2]))
+    readExtractedOpening.mockReturnValue('')
   })
 
   it('rebuild returns a disabled result when AI embeddings are turned off', async () => {
@@ -249,6 +260,75 @@ describe('embedding projector', () => {
 
     expect(run).toHaveBeenCalledWith('note-2')
     expect(run).toHaveBeenCalledWith('note-3')
+  })
+
+  it('embeds a filed PDF from its extracted text and drops the vector once the text is gone', async () => {
+    const run = vi.fn()
+    getRawIndexDatabase.mockReturnValue({ prepare: vi.fn(() => ({ run })) })
+    getNoteCacheById.mockReturnValue({ id: 'pdf-1', title: 'Logbook', fileType: 'pdf' })
+    readExtractedOpening.mockReturnValue('The heron left the marsh at dawn')
+
+    const projector = createEmbeddingProjector(() => '/vault')
+    await projector.project({ type: 'note.text-extracted', noteId: 'pdf-1' })
+
+    expect(generateEmbedding).toHaveBeenCalledWith('Logbook\n\nThe heron left the marsh at dawn')
+    expect(run).toHaveBeenCalledWith('pdf-1', new Float32Array([0.1, 0.2]))
+
+    readExtractedOpening.mockReturnValue('')
+    run.mockClear()
+    await projector.project({ type: 'note.text-extracted', noteId: 'pdf-1' })
+
+    expect(run).toHaveBeenCalledWith('pdf-1')
+    expect(run).not.toHaveBeenCalledWith('pdf-1', expect.anything())
+  })
+
+  it('embeds a markdown note with the text read from its attachments after its body', async () => {
+    const run = vi.fn()
+    getRawIndexDatabase.mockReturnValue({ prepare: vi.fn(() => ({ run })) })
+    getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      path: 'notes/trip.md',
+      title: 'Trip',
+      fileType: 'markdown'
+    })
+    readFile.mockResolvedValue('raw note')
+    parseNote.mockReturnValue({ content: 'Packing list for the coast' })
+    readExtractedOpening.mockReturnValue('Ferry ticket 7:40 to the estuary')
+
+    const projector = createEmbeddingProjector(() => '/vault')
+    await projector.project({ type: 'note.text-extracted', noteId: 'note-1' })
+
+    expect(generateEmbedding).toHaveBeenCalledWith(
+      'Trip\n\nPacking list for the coast\n\nFerry ticket 7:40 to the estuary'
+    )
+    expect(run).toHaveBeenCalledWith('note-1', new Float32Array([0.1, 0.2]))
+  })
+
+  it('defers a filed PDF while the vault is indexing, then embeds it from its text in a rebuild', async () => {
+    const run = vi.fn()
+    getRawIndexDatabase.mockReturnValue({ prepare: vi.fn(() => ({ run })) })
+    getIndexDatabase.mockReturnValue({
+      all: vi.fn(() => [
+        { id: 'pdf-1', path: 'files/logbook.pdf', title: 'Logbook', fileType: 'pdf' }
+      ])
+    })
+    readExtractedOpening.mockReturnValue('The heron left the marsh at dawn')
+    let indexing = true
+    const projector = createEmbeddingProjector(
+      () => '/vault',
+      () => indexing
+    )
+
+    await projector.project({
+      type: 'note.upserted',
+      note: { kind: 'file', noteId: 'pdf-1', title: 'Logbook' }
+    } as never)
+    expect(generateEmbedding).not.toHaveBeenCalled()
+
+    indexing = false
+    await expect(projector.rebuild()).resolves.toEqual({ success: true, computed: 1, skipped: 0 })
+    expect(generateEmbedding).toHaveBeenCalledWith('Logbook\n\nThe heron left the marsh at dawn')
+    expect(readFile).not.toHaveBeenCalled()
   })
 
   it('deletes stale embeddings when AI is disabled, content is short, or generation fails', async () => {

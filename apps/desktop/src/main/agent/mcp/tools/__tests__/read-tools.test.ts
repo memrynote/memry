@@ -38,12 +38,30 @@ function fake(): VaultServiceHandles {
         if (id === 'f1') {
           return {
             id: 'f1',
+            title: 'Memo',
+            content_markdown: '',
+            tags: [],
+            folder_path: '/Inbox',
+            frontmatter: {},
+            file_type: 'audio'
+          }
+        }
+        if (id === 'p1') {
+          return {
+            id: 'p1',
             title: 'Scan',
             content_markdown: '',
             tags: [],
             folder_path: '/Inbox',
             frontmatter: {},
-            file_type: 'pdf'
+            file_type: 'pdf',
+            extracted_text: {
+              status: 'done',
+              page_count: 1,
+              pages_read: 1,
+              pages: [{ page: 1, text: 'Heron count' }],
+              next_page: null
+            }
           }
         }
         return null
@@ -270,12 +288,22 @@ describe('Read tools', () => {
     expect(lastSearchInput?.fileTypes).toBeUndefined()
   })
 
-  it('vault_read_note rejects a filed binary instead of returning it as markdown', async () => {
+  it('vault_read_note rejects a filed audio file instead of returning it as markdown', async () => {
     await expect(
       tools
         .find((t) => t.name === 'vault_read_note')!
         .handler({ id: 'f1' }, { conversationId: null, windowId: null })
-    ).rejects.toMatchObject({ code: 'VALIDATION', details: { id: 'f1', file_type: 'pdf' } })
+    ).rejects.toMatchObject({ code: 'VALIDATION', details: { id: 'f1', file_type: 'audio' } })
+  })
+
+  it('vault_read_note returns the text extracted from a filed PDF', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_read_note')!
+      .handler({ id: 'p1', from_page: 1 }, { conversationId: null, windowId: null })
+    expect(out).toMatchObject({
+      file_type: 'pdf',
+      extracted_text: { status: 'done', pages: [{ page: 1, text: 'Heron count' }] }
+    })
   })
 
   it('vault_read_note throws NOT_FOUND for missing note', async () => {

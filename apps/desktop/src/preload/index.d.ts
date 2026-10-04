@@ -1350,6 +1350,7 @@ export interface EditorSettingsDTO {
   toolbarMode: 'floating' | 'sticky'
   spellCheck: boolean
   pdfAdaptToTheme: boolean
+  convertChecklistsToTasks: boolean
 }
 
 export interface TaskSettingsDTO {

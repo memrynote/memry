@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Raspored",
       "toolbar": "Alatna traka",
-      "spelling": "Pravopis"
+      "spelling": "Pravopis",
+      "checklists": "Kontrolni popisi"
     },
     "width": {
       "label": "Širina uređivača",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Širina uređivača",
       "toolbarMode": "Fiksna alatna traka za oblikovanje",
-      "spellCheck": "Provjera pravopisa"
+      "spellCheck": "Provjera pravopisa",
+      "convertChecklists": "Pretvaraj stavke popisa u zadatke"
+    },
+    "convertChecklists": {
+      "description": "Svaka nova stavka kontrolnog popisa postaje zadatak. Kad je isključeno, popisi ostaju obični potvrdni okviri; desnim klikom stavku pretvarate u zadatak.",
+      "error": "Pretvorbu kontrolnih popisa nije moguće ažurirati"
     }
   },
   "templates": {

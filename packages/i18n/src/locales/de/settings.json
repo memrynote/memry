@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Layout",
       "toolbar": "Symbolleiste",
-      "spelling": "Rechtschreibung"
+      "spelling": "Rechtschreibung",
+      "checklists": "Checklisten"
     },
     "width": {
       "label": "Editorbreite",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Editorbreite",
       "toolbarMode": "Fixierte Formatierungsleiste",
-      "spellCheck": "Rechtschreibung prüfen"
+      "spellCheck": "Rechtschreibung prüfen",
+      "convertChecklists": "Checklistenpunkte in Aufgaben umwandeln"
+    },
+    "convertChecklists": {
+      "description": "Jeder neue Checklistenpunkt wird zu einer Aufgabe. Aus lässt Checklisten als einfache Kontrollkästchen; per Rechtsklick wird ein Punkt zur Aufgabe.",
+      "error": "Die Checklisten-Umwandlung konnte nicht aktualisiert werden"
     }
   },
   "templates": {

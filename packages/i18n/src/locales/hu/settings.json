@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Elrendezés",
       "toolbar": "Eszköztár",
-      "spelling": "Helyesírás"
+      "spelling": "Helyesírás",
+      "checklists": "Ellenőrzőlisták"
     },
     "width": {
       "label": "Szerkesztő szélessége",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Szerkesztő szélessége",
       "toolbarMode": "Állandó formázási eszköztár",
-      "spellCheck": "Helyesírás-ellenőrzés"
+      "spellCheck": "Helyesírás-ellenőrzés",
+      "convertChecklists": "Ellenőrzőlista-elemek feladattá alakítása"
+    },
+    "convertChecklists": {
+      "description": "Minden új ellenőrzőlista-elem feladat lesz. Kikapcsolva a listák egyszerű jelölőnégyzetek maradnak; jobb kattintással egy elemből feladat lesz.",
+      "error": "Nem sikerült frissíteni az ellenőrzőlisták átalakítását"
     }
   },
   "templates": {

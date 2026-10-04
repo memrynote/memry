@@ -1,9 +1,16 @@
-import { createHash } from 'node:crypto'
 import path from 'node:path'
 
 import { searchAll } from '../../../database/queries/search'
 import { getNoteCacheById, listJournalEntriesInRange } from '../../../database/queries/notes'
 import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
+import {
+  countExtractedParts,
+  getFileTextJob,
+  OWN_FILE,
+  readAttachmentText,
+  readExtractedPages,
+  TEXT_BEARING_FILE_TYPES
+} from '../../../database/queries/extracted-text'
 import { createDesktopInboxDomain } from '../../../inbox/domain'
 import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
 import {
@@ -47,8 +54,16 @@ import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { createCanvasHandles } from './canvas-handles'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { writeAndReadBack } from './desktop-api-readback'
+import {
+  droppedFrontmatterKeys,
+  noteFileFrontmatter,
+  noteIcon,
+  readStoredJournalEntry,
+  readStoredNote
+} from './stored-records'
 import { withoutFileBodies } from './desktop-api-reply'
 import type {
+  ExtractedTextReply,
   FolderEntry,
   InboxSummary,
   NoteSummary,
@@ -60,6 +75,27 @@ import type {
 export interface AdapterDeps {
   dataDb: DataDb
   indexDb: IndexDb
+}
+
+/** Same ceiling as an oversized desktop API reply (AF-013). */
+const EXTRACTED_TEXT_REPLY_CHARS = 100_000
+
+function extractedTextReply(indexDb: IndexDb, id: string, fromPage: number): ExtractedTextReply {
+  const ref = { noteId: id, source: OWN_FILE }
+  const job = getFileTextJob(indexDb, ref)
+  const { pages, nextPage } = readExtractedPages(indexDb, id, fromPage, EXTRACTED_TEXT_REPLY_CHARS)
+  return {
+    status: job?.status === 'done' || job?.status === 'failed' ? job.status : 'extracting',
+    page_count: job?.pageCount ?? null,
+    pages_read: countExtractedParts(indexDb, ref),
+    pages,
+    next_page: nextPage,
+    ...(job?.error ? { error: job.error } : {})
+  }
+}
+
+function isTextBearing(fileType: string): boolean {
+  return (TEXT_BEARING_FILE_TYPES as readonly string[]).includes(fileType)
 }
 
 function folderPathFromNotePath(notePath: string): string | null {
@@ -78,19 +114,6 @@ function mergeContent(
   if (!current) return next
   if (!next) return current
   return mode === 'append' ? `${current}\n\n${next}` : `${next}\n\n${current}`
-}
-
-function bodyDigest(content: string): { body_bytes: number; body_sha256: string } {
-  const bytes = Buffer.from(content, 'utf8')
-  return {
-    body_bytes: bytes.byteLength,
-    body_sha256: createHash('sha256').update(bytes).digest('hex')
-  }
-}
-
-function noteIcon(note: { emoji?: string | null; frontmatter: Record<string, unknown> }) {
-  if (typeof note.emoji === 'string') return note.emoji
-  return typeof note.frontmatter.emoji === 'string' ? note.frontmatter.emoji : null
 }
 
 function sameTagList(a: string[], b: string[]): boolean {
@@ -213,15 +236,16 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           }
         })
       },
-      async read(id) {
+      async read(id, options) {
         const cached = getNoteCacheById(indexDb, id)
         if (!cached) return null
 
         const fileType = cached.fileType ?? 'markdown'
         if (fileType !== 'markdown') {
           // Filed binary (#800): reading it off disk would only hand `parseNote`
-          // bytes to mangle. Return identity + file type so the tool layer can
-          // refuse it — the empty body never reaches an agent (#919).
+          // bytes to mangle. A PDF or image carries the text extracted from it;
+          // audio and video carry identity + file type only, so the tool layer
+          // can refuse them — the empty body never reaches an agent (#919).
           return {
             id: cached.id,
             title: cached.title,
@@ -230,13 +254,17 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
             folder_path: folderPathFromNotePath(cached.path),
             frontmatter: {},
             file_type: fileType,
-            ...(cached.emoji ? { icon: cached.emoji } : {})
+            ...(cached.emoji ? { icon: cached.emoji } : {}),
+            ...(isTextBearing(fileType)
+              ? { extracted_text: extractedTextReply(indexDb, id, options?.fromPage ?? 1) }
+              : {})
           }
         }
 
         const note = await getNoteById(id)
         if (!note) return null
         const icon = noteIcon(note)
+        const attachments = readAttachmentText(indexDb, id, EXTRACTED_TEXT_REPLY_CHARS)
         return {
           id: note.id,
           title: note.title,
@@ -245,7 +273,13 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           folder_path: folderPathFromNotePath(note.path),
           frontmatter: note.frontmatter,
           file_type: 'markdown',
-          ...(icon ? { icon } : {})
+          ...(icon ? { icon } : {}),
+          ...(attachments.files.length > 0
+            ? {
+                attachment_text: attachments.files,
+                ...(attachments.truncated ? { attachment_text_truncated: true } : {})
+              }
+            : {})
         }
       },
       async create(input) {
@@ -337,23 +371,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         await moveNoteCommand(id, internalFolderFromToolPath(folder_path) ?? '')
       },
       async stored(id) {
-        // A filed binary has no markdown body to report, and a note moved into
-        // a journal date path is re-created by the watcher under a new item.
-        const fileType = getNoteCacheById(indexDb, id)?.fileType ?? 'markdown'
-        const note = fileType === 'markdown' ? await getNoteById(id) : null
-        if (!note) return null
-        const icon = noteIcon(note)
-        return {
-          id: note.id,
-          title: note.title,
-          folder_path: folderPathFromNotePath(note.path),
-          tags: note.tags,
-          properties: note.properties,
-          ...(note.contentOmitted
-            ? { body_bytes: null, body_sha256: null }
-            : bodyDigest(note.content)),
-          ...(icon ? { icon } : {})
-        }
+        return readStoredNote(indexDb, id, folderPathFromNotePath)
       }
     },
     folders: {
@@ -718,25 +736,14 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         )
         // The journal writer keeps user keys only, so a legacy `id`, `created` or
         // `modified` in an older file is dropped on rewrite. Say so.
-        const after = await readJournalFile(date)
-        const dropped = Object.keys(before?.frontmatter ?? {}).filter(
-          (key) => !Object.hasOwn(after?.frontmatter ?? {}, key)
-        )
+        const dropped = droppedFrontmatterKeys(before, await readJournalFile(date))
         return { id: updated.id, ...(dropped.length > 0 ? { frontmatter_removed: dropped } : {}) }
       },
       async delete(date) {
         return { date, deleted: await deleteJournalEntryFile(date) }
       },
       async stored(date) {
-        const [entry, file] = await Promise.all([readJournalEntry(date), readJournalFile(date)])
-        if (!entry || !file) return null
-        return {
-          id: entry.id,
-          date: entry.date,
-          tags: entry.tags,
-          properties: entry.properties ?? {},
-          ...bodyDigest(file.body)
-        }
+        return readStoredJournalEntry(date)
       }
     },
     inbox: {
@@ -845,13 +852,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           input,
           async (request) =>
             withoutFileBodies(await invokeDesktopApiFromWindow(windowId, request), fileRowOf),
-          async (entityId) => {
-            // Taken from the file, not the index: the index keeps a YAML date as a
-            // JSON string, and writing that back would turn the date into text.
-            const cached = getNoteCacheById(indexDb, entityId)
-            if (!cached || cached.date || (cached.fileType ?? 'markdown') !== 'markdown') return {}
-            return (await getNoteById(entityId))?.frontmatter ?? {}
-          }
+          (entityId) => noteFileFrontmatter(indexDb, entityId)
         )
       }
     },

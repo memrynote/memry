@@ -14,3 +14,4 @@
 
 export * from './schema/notes-cache.ts'
 export * from './schema/graph-layouts.ts'
+export * from './schema/extracted-text.ts'

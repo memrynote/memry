@@ -48,6 +48,7 @@ import {
 } from '../sync/attachment-outbox'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
+import { fileTextNoteChanged } from '../file-text'
 import { getStatus as getVaultStatus } from '../vault/index'
 import {
   recordAttachmentDownloadFailure,
@@ -559,6 +560,9 @@ export function registerAttachmentHandlers(): void {
               recordDownloadedFileSize(noteId, stats.size)
             }
           }
+          // The note was indexed before its file existed; text search reads a
+          // PDF or image only once it is on disk.
+          fileTextNoteChanged(noteId)
         } catch (err) {
           if (err instanceof DownloadQueueClearedError) {
             // Queue torn down (vault switch / runtime restart) before the item

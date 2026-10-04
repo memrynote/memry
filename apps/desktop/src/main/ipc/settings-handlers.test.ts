@@ -702,7 +702,9 @@ describe('settings-handlers', () => {
 
     const settings = await invokeHandler(SettingsChannels.invoke.GET_EDITOR_SETTINGS)
 
-    expect(settings).toEqual(expect.objectContaining({ width: 'full', spellCheck: false }))
+    expect(settings).toEqual(
+      expect.objectContaining({ width: 'full', spellCheck: false, convertChecklistsToTasks: true })
+    )
   })
 
   it('recovers corrupted group settings and covers group setters', async () => {
@@ -853,6 +855,17 @@ describe('settings-handlers', () => {
   })
 
   describe('cross-device settings sync', () => {
+    it('#when checklist conversion is switched off #then syncs it and not the per-device editor fields', async () => {
+      registerSettingsHandlers()
+
+      await invokeHandler(SettingsChannels.invoke.SET_EDITOR_SETTINGS, {
+        convertChecklistsToTasks: false,
+        spellCheck: true
+      })
+
+      expect(mockUpdateField.mock.calls).toEqual([['editor.convertChecklistsToTasks', false]])
+    })
+
     it('#given sync manager exists #when accentColor is set #then syncs via updateField', async () => {
       registerSettingsHandlers()
 

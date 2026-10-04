@@ -171,6 +171,10 @@ const INBOX_SYNCABLE_FIELDS: (keyof InboxSettings)[] = [
   'reviewReminderTime'
 ]
 
+// Only checklist conversion is pushed: it decides what a note's checkboxes
+// become, and two devices that disagree would convert the same note differently.
+const EDITOR_SYNCABLE_FIELDS: (keyof EditorSettings)[] = ['convertChecklistsToTasks']
+
 const SETTINGS_KEYS = {
   JOURNAL_DEFAULT_TEMPLATE: JOURNAL_DEFAULT_TEMPLATE_KEY,
   JOURNAL_WEEKDAY_TEMPLATES: JOURNAL_WEEKDAY_TEMPLATES_KEY,
@@ -1228,7 +1232,9 @@ export function registerSettingsHandlers(): void {
     SettingsChannels.invoke.SET_EDITOR_SETTINGS,
     (_event, updates: Partial<EditorSettings>) => {
       writeEditorToConfig(updates)
-      return writeGroupSettings('editor', EDITOR_SETTINGS_DEFAULTS, updates)
+      const result = writeGroupSettings('editor', EDITOR_SETTINGS_DEFAULTS, updates)
+      if (result.success) syncSettingsUpdates('editor', updates, EDITOR_SYNCABLE_FIELDS)
+      return result
     }
   )
 

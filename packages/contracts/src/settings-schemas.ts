@@ -149,7 +149,15 @@ export const EditorSettingsSchema = z.object({
    * rather than a property of any one file, so it lives with the settings the
    * vault carries instead of in a tab's view state.
    */
-  pdfAdaptToTheme: z.boolean()
+  pdfAdaptToTheme: z.boolean(),
+  /**
+   * Whether a checklist item typed in, or opened with, a note becomes a task
+   * on its own. Off keeps it a checkbox; right-click and the block menu still
+   * convert one by hand, and a checkbox nested under a task still becomes its
+   * subtask. Settings written before this key existed lack it and read as the
+   * default.
+   */
+  convertChecklistsToTasks: z.boolean()
 })
 
 export type EditorSettings = z.infer<typeof EditorSettingsSchema>
@@ -162,7 +170,10 @@ export const EDITOR_SETTINGS_DEFAULTS: EditorSettings = {
   spellCheck: false,
   // Off by default: inverting turns coloured charts and photographs into
   // negatives, so it has to be the user's choice rather than a surprise.
-  pdfAdaptToTheme: false
+  pdfAdaptToTheme: false,
+  // On by default: every checklist item became a task before this setting
+  // existed, and existing installs keep that.
+  convertChecklistsToTasks: true
 }
 
 // ============================================================================

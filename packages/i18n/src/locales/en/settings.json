@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Layout",
       "toolbar": "Toolbar",
-      "spelling": "Spelling"
+      "spelling": "Spelling",
+      "checklists": "Checklists"
     },
     "width": {
       "label": "Editor Width",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Editor width",
       "toolbarMode": "Sticky formatting toolbar",
-      "spellCheck": "Check spelling"
+      "spellCheck": "Check spelling",
+      "convertChecklists": "Turn checklist items into tasks"
+    },
+    "convertChecklists": {
+      "description": "Each new checklist item becomes a task. Off keeps checklists as plain checkboxes; right-click one to make it a task.",
+      "error": "Failed to update checklist conversion"
     }
   },
   "templates": {

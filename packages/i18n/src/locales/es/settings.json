@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Disposición",
       "toolbar": "Barra de herramientas",
-      "spelling": "Ortografía"
+      "spelling": "Ortografía",
+      "checklists": "Listas de verificación"
     },
     "width": {
       "label": "Ancho del editor",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Ancho del editor",
       "toolbarMode": "Barra de herramientas de formato fija",
-      "spellCheck": "Corrección ortográfica"
+      "spellCheck": "Corrección ortográfica",
+      "convertChecklists": "Convertir elementos de lista en tareas"
+    },
+    "convertChecklists": {
+      "description": "Cada nuevo elemento de la lista se convierte en una tarea. Desactivado, las listas quedan como casillas simples; haz clic derecho en una para convertirla en tarea.",
+      "error": "No se pudo actualizar la conversión de listas de verificación"
     }
   },
   "templates": {
