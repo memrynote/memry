@@ -11,6 +11,8 @@ import {
   type NoteUpdateInput
 } from '../vault/notes'
 import { extractTags } from '../vault/frontmatter'
+import { writingFrontmatterOf } from '@memry/shared'
+import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { getIndexDatabase } from '../database'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import { NoteError, NoteErrorCode } from '../lib/errors'
@@ -34,6 +36,12 @@ export async function createNoteCommand(input: NoteCreateInput): Promise<Note> {
 
 export async function updateNoteCommand(input: NoteUpdateInput): Promise<Note> {
   const note = await updateNote(input)
+  // `updateNote` moves the index hash to the new bytes, so the watcher never
+  // feeds this edit, and the next write-back would put the doc's older body
+  // back over it (#2646).
+  if (input.content !== undefined) {
+    await feedExternalEditToCrdt(input.id, input.content, writingFrontmatterOf(note.frontmatter))
+  }
   const hasMetadataChanges =
     input.title !== undefined ||
     input.tags !== undefined ||

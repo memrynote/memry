@@ -4,6 +4,7 @@ import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
 import { feedExternalEditToCrdt } from './crdt-external-feed'
+import { owesFileBody } from './crdt-owed-file-body'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import { serializeNoteBody, type NoteBody } from './writing-markdown'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
@@ -689,6 +690,10 @@ async function writebackExisting(
   // Seeding a doc fills the column in (`CrdtProvider.seedFromMarkdown`), so
   // this refuses the write only while it is genuinely true that nothing here
   // has read the file. Opening the note is what makes it false.
+  //
+  // A note that owes its file body (#2646) takes the same branch. The app
+  // wrote those bytes itself and moved the hash with them, so only the marker
+  // tells that the doc has not taken them.
   if (existingRaw !== null) {
     // A row that is not in the index at all is a different situation and not
     // this guard's: `cached` then came from canonical metadata, which means the
@@ -703,7 +708,8 @@ async function writebackExisting(
       return
     }
     const onDisk = cached.contentHash ? generateContentHash(existingRaw) : null
-    if (onDisk !== null && onDisk !== cached.contentHash && parsed) {
+    const fileAhead = (onDisk !== null && onDisk !== cached.contentHash) || owesFileBody(noteId)
+    if (fileAhead && parsed) {
       const ingested = await feedExternalEditToCrdt(
         noteId,
         parsed.content,

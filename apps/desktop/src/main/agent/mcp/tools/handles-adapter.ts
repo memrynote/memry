@@ -15,7 +15,6 @@ import {
   updateNoteCommand
 } from '../../../notes/domain'
 import { replaceNoteTagsInCrdt } from '../../../sync/crdt-feed'
-import { feedExternalEditToCrdt } from '../../../sync/crdt-external-feed'
 import { createDesktopTasksDomain } from '../../../tasks/domain'
 import { createTasksPublisher } from '../../../tasks/publisher'
 import {
@@ -274,18 +273,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           throw new Error(`Note not found: ${input.id}`)
         }
         const nextContent = mergeContent(note.content, input.mode, input.content_markdown)
+        // `updateNoteCommand` feeds the new body to the note's CRDT doc.
         const updated = await updateNoteCommand({ id: input.id, content: nextContent })
-
-        // Step 5 of the main-originated write order `vault/append-blocks.ts`
-        // documents, and it is not optional here either. `updateNote` refreshes
-        // the index row's content hash before the watcher reaches the file, so
-        // the watcher's dedupe returns early and never feeds the CRDT itself —
-        // leaving the note's Y.Doc on the pre-edit body. An open editor then
-        // shows nothing (the editor ignores `initialContent` while
-        // collaboration owns the document) and the next write-back rewrites the
-        // file from that stale doc, so an approved agent edit reports success
-        // and then silently disappears.
-        await feedExternalEditToCrdt(input.id, nextContent)
 
         // Inline `#hashtag`s in the new body change the note's tag set, and
         // write-back treats the Y.Doc tag array as authoritative — without this

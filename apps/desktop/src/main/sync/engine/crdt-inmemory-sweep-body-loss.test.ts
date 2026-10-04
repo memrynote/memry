@@ -1,6 +1,8 @@
 import * as Y from 'yjs'
 import sodium from 'libsodium-wrappers-sumo'
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import type { SyncContext } from './sync-context'
 import type { CrdtSnapshotMeta } from '../http-client'
@@ -15,7 +17,8 @@ const h = vi.hoisted(() => ({
     snapshot: { bytes: Uint8Array; sequenceNum: number; revision: string } | null
     updates: Array<{ sequenceNum: number; data: string; signerDeviceId: string; createdAt: number }>
   },
-  contentHash: (_raw: string): string => ''
+  contentHash: (_raw: string): string => '',
+  db: {} as unknown
 }))
 
 vi.mock('electron', () => ({
@@ -88,7 +91,7 @@ vi.mock('../crdt-store-path', () => ({
 vi.mock('../../store', () => ({ recordCrdtPersistenceOutcome: () => 0 }))
 vi.mock('../../agent/storage/vault-id', () => ({ getOrCreateVaultUuid: () => 'vault-1' }))
 vi.mock('../../database/client', () => ({
-  getDatabase: () => ({}),
+  getDatabase: () => h.db,
   getIndexDatabase: () => ({}),
   isDatabaseInitialized: () => true
 }))
@@ -136,6 +139,7 @@ import { getCrdtProvider, resetCrdtProvider, type SnapshotPushFn } from '../crdt
 import type { NoteBodyOutbox } from '../note-body-outbox'
 import { hasPendingWriteback } from '../crdt-writeback'
 import { feedExternalEditToCrdt } from '../crdt-external-feed'
+import { readMergedFullState } from '../full-state-read'
 import { markdownToYFragment, yDocToMarkdown } from '../blocknote-converter'
 import { generateContentHash } from '../../vault/frontmatter'
 
@@ -165,6 +169,14 @@ function findText(fragment: Y.XmlFragment, needle: string): Y.XmlText {
 }
 
 const toBase64 = (bytes: Uint8Array): string => Buffer.from(bytes).toString('base64')
+
+beforeEach(() => {
+  const sqlite = new Database(':memory:')
+  sqlite.exec(
+    'CREATE TABLE crdt_owed_file_bodies (note_id text PRIMARY KEY NOT NULL, created_at integer NOT NULL)'
+  )
+  h.db = drizzle(sqlite)
+})
 
 describe('CRDT sweep in in-memory mode (#2511)', () => {
   beforeAll(async () => {
@@ -325,12 +337,14 @@ describe('CrdtProvider with no store (#2536)', () => {
    * to `/sync/crdt/updates`, and a snapshot push takes the snapshot route
    * unless the note is flagged. That route replaces the stored snapshot and
    * prunes every update at or below its watermark, the newest update when
-   * there was no snapshot.
+   * there was no snapshot. A full-state row is pushed when the test flushes
+   * it, through the reader the runtime's outbox uses.
    */
   async function startRuntime(): Promise<{
     provider: ReturnType<typeof getCrdtProvider>
     coordinator: CrdtSyncCoordinator
     pushUpdate: (state: Uint8Array) => void
+    flushFullStates: () => Promise<void>
   }> {
     const provider = getCrdtProvider()
     const ctx = {
@@ -356,9 +370,22 @@ describe('CrdtProvider with no store (#2536)', () => {
         createdAt: 3
       })
     }
+    const owedFullStates = new Set<string>()
+    const flushFullStates = async (): Promise<void> => {
+      for (const noteId of owedFullStates) {
+        const state = await readMergedFullState(
+          provider,
+          noteId,
+          (id) => coordinator.pullCrdtForNote(id),
+          () => false
+        )
+        if (state) pushUpdate(state)
+      }
+      owedFullStates.clear()
+    }
     const outbox = {
       enqueue: (_noteId: string, update: Uint8Array) => pushUpdate(update),
-      enqueueFullState: () => {},
+      enqueueFullState: (noteId: string) => owedFullStates.add(noteId),
       dropNote: () => {}
     } as unknown as NoteBodyOutbox
     const pushSnapshot: SnapshotPushFn = async (noteId, state, coverage) => {
@@ -374,7 +401,7 @@ describe('CrdtProvider with no store (#2536)', () => {
     }
     await provider.init(outbox, pushSnapshot)
     expect(provider.storeId).toBeNull()
-    return { provider, coordinator, pushUpdate }
+    return { provider, coordinator, pushUpdate, flushFullStates }
   }
 
   it('hazard 1: a sweep over a note open in the editor shows the server body (#2544)', async () => {
@@ -452,8 +479,12 @@ describe('CrdtProvider with no store (#2536)', () => {
     const peer = await serveNoteWithPeerEdit()
     const { provider, coordinator, pushUpdate } = await startRuntime()
 
-    expect(await coordinator.pullCrdtForNote(NOTE)).toBe(true)
-    const state = await provider.readSyncableState(NOTE)
+    const state = await readMergedFullState(
+      provider,
+      NOTE,
+      (id) => coordinator.pullCrdtForNote(id),
+      () => false
+    )
     if (state) pushUpdate(state)
 
     expect([await bodyAfterPull(), await bodyAfterPull(peer)]).toEqual([
@@ -490,6 +521,7 @@ describe('CrdtProvider with no store (#2536)', () => {
     async function editClosedNote(): Promise<{
       provider: ReturnType<typeof getCrdtProvider>
       coordinator: CrdtSyncCoordinator
+      flushFullStates: () => Promise<void>
       peer: Y.Doc
     }> {
       const peer = await serveNoteWithPeerEdit()
@@ -509,7 +541,9 @@ describe('CrdtProvider with no store (#2536)', () => {
     }
 
     it('reaches the server', async () => {
-      const { peer } = await editClosedNote()
+      const { peer, flushFullStates } = await editClosedNote()
+
+      await flushFullStates()
 
       expect([await bodyAfterPull(), await bodyAfterPull(peer)]).toEqual([EDITED_BODY, EDITED_BODY])
     })
@@ -544,6 +578,18 @@ describe('CrdtProvider with no store (#2536)', () => {
         EDITED_BODY
       )
       expect(await fileBodyAfterWriteback()).toBe(EDITED_BODY)
+    })
+
+    it('is fed into the doc an editor holds when the server body merges into it', async () => {
+      const { provider, coordinator } = await editClosedNote()
+      const doc = await provider.open(NOTE, EDITOR_WINDOW, { skipSeed: true })
+
+      await coordinator.pullCrdtForNote(NOTE)
+
+      expect(await fileBodyAfterWriteback()).toBe(EDITED_BODY)
+      expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+        EDITED_BODY
+      )
     })
   })
 

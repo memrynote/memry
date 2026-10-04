@@ -11,7 +11,6 @@ vi.mock('./domain', () => ({
   updateNoteCommand: vi.fn()
 }))
 vi.mock('../sync/crdt-feed', () => ({
-  replaceNoteBodyInCrdt: vi.fn(),
   replaceNoteTagsInCrdt: vi.fn()
 }))
 
@@ -19,7 +18,7 @@ import { buildTemplateApplyUpdate, applyTemplateToNote } from './apply-template'
 import { getNoteById } from '../vault/notes'
 import { getTemplate } from '../vault/templates'
 import { updateNoteCommand } from './domain'
-import { replaceNoteBodyInCrdt, replaceNoteTagsInCrdt } from '../sync/crdt-feed'
+import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
 import { NoteError, VaultError } from '../lib/errors'
 import type { Template } from '@memry/contracts/templates-api'
 
@@ -134,7 +133,7 @@ describe('applyTemplateToNote', () => {
     expect(updateNoteCommand).not.toHaveBeenCalled()
   })
 
-  it('full mode: persists the merged update and feeds both body and tags to the open editor', async () => {
+  it('full mode: persists the merged update and feeds the tags to the open editor', async () => {
     vi.mocked(getNoteById).mockResolvedValue(note)
     vi.mocked(getTemplate).mockResolvedValue(template)
     vi.mocked(updateNoteCommand).mockResolvedValue(note)
@@ -145,7 +144,6 @@ describe('applyTemplateToNote', () => {
     const update = vi.mocked(updateNoteCommand).mock.calls[0][0]
     expect(update.id).toBe('n1')
     expect(new Set(update.tags)).toEqual(new Set(['work', 'daily', 'meeting']))
-    expect(replaceNoteBodyInCrdt).toHaveBeenCalledWith('n1', update.content)
     expect(replaceNoteTagsInCrdt).toHaveBeenCalledWith('n1', update.tags)
   })
 
@@ -156,7 +154,10 @@ describe('applyTemplateToNote', () => {
 
     await applyTemplateToNote({ noteId: 'n1', templateId: 't1', mode: 'body' })
 
-    expect(replaceNoteBodyInCrdt).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(updateNoteCommand).mock.calls[0][0]).toEqual({
+      id: 'n1',
+      content: '# Standup\n\n## Notes\n'
+    })
     expect(replaceNoteTagsInCrdt).not.toHaveBeenCalled()
   })
 })
