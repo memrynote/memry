@@ -274,7 +274,9 @@ hit opens that note. Text from a note's HTML blocks can sit under the note the s
 `src/main/file-text/runner.ts` is the only writer. It starts after the open-time index pass and
 works through one file and one page at a time, oldest job first. Every `note.upserted` for a
 filed PDF or image, or for a markdown note, makes it compare that note's files again; a finished
-attachment download does the same. An attachment the note no longer embeds loses its rows, even
+attachment download does the same. It looks the changed notes up 500 ids at a time, since a large
+sync or reindex can change more notes than SQLite binds in one statement, and a pass that throws
+keeps its notes for the next pass. An attachment the note no longer embeds loses its rows, even
 though its file stays on disk. A PDF page with a text layer is read with pdfjs-dist; a page
 without one, and every image, goes through tesseract.js. Each page is stored as it finishes, and
 a job reads only the pages it has no row for, so a restart resumes where it stopped. The runner
