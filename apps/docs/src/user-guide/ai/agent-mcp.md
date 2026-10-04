@@ -398,6 +398,10 @@ so it can turn up in `vault_search_notes`. Every search hit therefore carries a 
   bytes for the client to treat as text. `vault_update_note` refuses it the same way, so an agent
   cannot overwrite a filed document with markdown.
 
+`vault_list_folder` lists a filed file as `kind: "file"` with its `file_type`, and a note as
+`kind: "note"` with `file_type: "markdown"`. The approval for `vault_delete_folder` counts the filed
+files it would delete apart from the notes.
+
 `vault_add_html_artifact` lets an agent put a diagram, chart, or small interactive explanation in a
 note. The HTML is saved as an attachment of that note and appended as a file block, which renders
 it inline in the same sandbox as an `.html` file you attach yourself: scripts run, `https:`
@@ -550,6 +554,17 @@ allowlist, including account/auth flows, provider connect/disconnect/refresh act
 actions, external open/reveal actions, import dialogs, OS settings panes, telemetry, feedback and
 diagnostics reporting, and raw secret writes. Unsupported or unavailable desktop API operations
 return a structured MCP error instead of falling back to an arbitrary desktop call.
+
+A desktop API call on a filed PDF, image, audio file, or video, such as `notes.get` or
+`notes.rename`, returns the file's metadata in place of the note: `id`, `path`, `title`, `fileType`,
+`mimeType`, `fileSize`, `created`, `modified`, `contentOmitted: true`, and `contentAccess`, a
+sentence that says how the content can be read. Today every filed file returns metadata only.
+Viewing images and reading PDF text are not available through the desktop API yet.
+
+A desktop API reply whose JSON is longer than 100 KB in UTF-8 bytes, counted after source links are
+added, comes back as `{ truncated: true, totalBytes, message, partial }`. `partial` holds the start
+of the JSON reply, cut on a character boundary so the whole reply stays within 100 KB. It is not
+valid JSON on its own.
 
 `notes.resolveWikiTarget` follows a wiki link the way the editor does: `Meeting#Decisions` resolves
 to the note `Meeting` and reports `heading: "Decisions"`, while a note genuinely titled `Sprint #4`
