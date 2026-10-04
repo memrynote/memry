@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Bố cục",
       "toolbar": "Thanh công cụ",
-      "spelling": "Chính tả"
+      "spelling": "Chính tả",
+      "checklists": "Danh sách kiểm tra"
     },
     "width": {
       "label": "Chiều rộng trình soạn thảo",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Chiều rộng trình soạn thảo",
       "toolbarMode": "Thanh công cụ định dạng cố định",
-      "spellCheck": "Kiểm tra chính tả"
+      "spellCheck": "Kiểm tra chính tả",
+      "convertChecklists": "Chuyển mục danh sách kiểm tra thành công việc"
+    },
+    "convertChecklists": {
+      "description": "Mỗi mục danh sách kiểm tra mới sẽ thành một công việc. Khi tắt, danh sách giữ nguyên là ô đánh dấu thường; nhấp chuột phải vào một mục để biến nó thành công việc.",
+      "error": "Không thể cập nhật việc chuyển đổi danh sách kiểm tra"
     }
   },
   "templates": {

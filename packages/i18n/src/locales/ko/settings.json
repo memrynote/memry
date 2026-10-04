@@ -422,7 +422,8 @@
     "groups": {
       "layout": "레이아웃",
       "toolbar": "도구 모음",
-      "spelling": "맞춤법"
+      "spelling": "맞춤법",
+      "checklists": "체크리스트"
     },
     "width": {
       "label": "편집기 너비",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "편집기 너비",
       "toolbarMode": "고정 서식 도구 모음",
-      "spellCheck": "맞춤법 검사"
+      "spellCheck": "맞춤법 검사",
+      "convertChecklists": "체크리스트 항목을 작업으로 전환"
+    },
+    "convertChecklists": {
+      "description": "새 체크리스트 항목은 각각 작업이 됩니다. 끄면 체크리스트는 일반 체크박스로 남으며, 항목을 마우스 오른쪽 버튼으로 클릭해 작업으로 만들 수 있습니다.",
+      "error": "체크리스트 전환 설정을 업데이트하지 못했습니다"
     }
   },
   "templates": {

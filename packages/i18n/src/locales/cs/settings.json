@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Rozložení",
       "toolbar": "Panel nástrojů",
-      "spelling": "Pravopis"
+      "spelling": "Pravopis",
+      "checklists": "Kontrolní seznamy"
     },
     "width": {
       "label": "Šířka editoru",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Šířka editoru",
       "toolbarMode": "Připnutý panel formátování",
-      "spellCheck": "Kontrolovat pravopis"
+      "spellCheck": "Kontrolovat pravopis",
+      "convertChecklists": "Měnit položky kontrolního seznamu na úkoly"
+    },
+    "convertChecklists": {
+      "description": "Každá nová položka kontrolního seznamu se stane úkolem. Když je vypnuto, seznamy zůstanou obyčejnými zaškrtávacími políčky; úkol z položky uděláte kliknutím pravým tlačítkem.",
+      "error": "Převod kontrolních seznamů se nepodařilo aktualizovat"
     }
   },
   "templates": {

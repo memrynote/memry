@@ -422,7 +422,8 @@
     "groups": {
       "layout": "レイアウト",
       "toolbar": "ツールバー",
-      "spelling": "スペルチェック"
+      "spelling": "スペルチェック",
+      "checklists": "チェックリスト"
     },
     "width": {
       "label": "エディターの幅",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "エディターの幅",
       "toolbarMode": "書式ツールバーを常に表示",
-      "spellCheck": "スペルをチェック"
+      "spellCheck": "スペルをチェック",
+      "convertChecklists": "チェックリスト項目をタスクにする"
+    },
+    "convertChecklists": {
+      "description": "新しいチェックリスト項目はそれぞれタスクになります。オフにするとチェックリストは普通のチェックボックスのままです。右クリックで個別にタスクにできます。",
+      "error": "チェックリストの変換設定を更新できませんでした"
     }
   },
   "templates": {

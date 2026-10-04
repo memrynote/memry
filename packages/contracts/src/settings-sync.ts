@@ -45,7 +45,10 @@ export const SyncedSettingsSchema = z.object({
       // Accept legacy widths from older devices; new devices only emit normal/full.
       width: z.enum(['normal', 'full', 'narrow', 'medium', 'wide']).optional(),
       toolbarMode: z.enum(['floating', 'sticky']).optional(),
-      pdfAdaptToTheme: z.boolean().optional()
+      pdfAdaptToTheme: z.boolean().optional(),
+      // Absent in every payload a build older than this toggle writes, and
+      // that build's schema drops it on parse instead of rejecting the payload.
+      convertChecklistsToTasks: z.boolean().optional()
     })
     .optional(),
   tasks: z

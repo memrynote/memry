@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Aspect",
       "toolbar": "Bara de instrumente",
-      "spelling": "Ortografie"
+      "spelling": "Ortografie",
+      "checklists": "Liste de verificare"
     },
     "width": {
       "label": "Lățimea editorului",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Lățimea editorului",
       "toolbarMode": "Bară de formatare fixă",
-      "spellCheck": "Verifică ortografia"
+      "spellCheck": "Verifică ortografia",
+      "convertChecklists": "Transformă elementele listei în sarcini"
+    },
+    "convertChecklists": {
+      "description": "Fiecare element nou din listă devine o sarcină. Dezactivat, listele rămân casete de bifat simple; faceți clic dreapta pe unul pentru a-l transforma în sarcină.",
+      "error": "Conversia listelor de verificare nu a putut fi actualizată"
     }
   },
   "templates": {

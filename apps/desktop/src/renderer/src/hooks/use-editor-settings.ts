@@ -8,7 +8,8 @@ const DEFAULTS: EditorSettingsDTO = {
   width: 'normal',
   toolbarMode: 'floating',
   spellCheck: false,
-  pdfAdaptToTheme: false
+  pdfAdaptToTheme: false,
+  convertChecklistsToTasks: true
 }
 
 /** Reading-column width applied when editor width is 'normal' (notes + journal). */

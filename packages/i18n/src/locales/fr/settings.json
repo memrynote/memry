@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Disposition",
       "toolbar": "Barre d'outils",
-      "spelling": "Orthographe"
+      "spelling": "Orthographe",
+      "checklists": "Listes de contrôle"
     },
     "width": {
       "label": "Largeur de l'éditeur",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Largeur de l'éditeur",
       "toolbarMode": "Barre de mise en forme fixe",
-      "spellCheck": "Vérifier l'orthographe"
+      "spellCheck": "Vérifier l'orthographe",
+      "convertChecklists": "Transformer les éléments de liste en tâches"
+    },
+    "convertChecklists": {
+      "description": "Chaque nouvel élément de liste de contrôle devient une tâche. Désactivé, les listes restent de simples cases à cocher ; faites un clic droit sur l’une pour en faire une tâche.",
+      "error": "Impossible de mettre à jour la conversion des listes de contrôle"
     }
   },
   "templates": {
