@@ -131,16 +131,28 @@ pub fn apply_remote(
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<ApplyOutcome, StorageError> {
+    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let outcome = apply_remote_in(&transaction, record, now_ms)?;
+    transaction.commit().map_err(failed)?;
+    Ok(outcome)
+}
+
+/// [`apply_remote`] inside a transaction the caller holds, so an apply that
+/// writes a second row (a canvas conflict copy) commits both as one unit.
+pub fn apply_remote_in(
+    transaction: &Connection,
+    record: &InboundRecord,
+    now_ms: i64,
+) -> Result<ApplyOutcome, StorageError> {
     let prepared = StoredPayload::parse(&record.payload_json).and_then(|payload| {
         let view = projectors::read(&record.item_type, payload.object())?;
         Ok((payload, view))
     });
 
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
     let outcome = match prepared {
         Err(error) => {
             let reason = error.to_string();
-            write_payload(&transaction, record, None, Some(&reason), now_ms)?;
+            write_payload(transaction, record, None, Some(&reason), now_ms)?;
             ApplyOutcome::Corrupt { reason }
         }
         Ok((_, view)) => {
@@ -152,9 +164,9 @@ pub fn apply_remote(
             {
                 return Ok(ApplyOutcome::Expired);
             }
-            write_payload(&transaction, record, Some(&view), None, now_ms)?;
+            write_payload(transaction, record, Some(&view), None, now_ms)?;
             projectors::project(
-                &transaction,
+                transaction,
                 &record.item_type,
                 ItemContext {
                     item_id: &record.item_id,
@@ -166,7 +178,6 @@ pub fn apply_remote(
             ApplyOutcome::Applied
         }
     };
-    transaction.commit().map_err(failed)?;
     Ok(outcome)
 }
 
