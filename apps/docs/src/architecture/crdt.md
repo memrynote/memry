@@ -669,6 +669,12 @@ document to its vault `.md` file and re-indexes it for search.
   doc holds them. Later passes then write as usual. If the feed cannot land (a large-file
   body, or a doc that opens empty with no store) the pass keeps skipping and the file stays
   as it is.
+- **A remote pass keeps a version of the bytes it replaces** — before a pass armed only by
+  remote state writes a body that differs from the file's body, it saves the file's bytes
+  as a version, whatever the word count (#2646). A pass armed by a local edit keeps the
+  older rule and saves a version only when the word count moves by 10 or more, so typing
+  does not add one per pass. A change to frontmatter alone saves none. A failed save never
+  blocks the write. Versions are pruned to the newest 50 per note.
 
 While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search
