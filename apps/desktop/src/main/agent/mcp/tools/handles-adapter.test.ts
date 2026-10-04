@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { sql } from 'drizzle-orm'
+import { createTestIndexDb } from '@tests/utils/test-db'
 
 const mocks = vi.hoisted(() => ({
   searchAll: vi.fn(),
@@ -410,18 +412,67 @@ describe('createVaultServiceHandles', () => {
 
     mocks.getNoteCacheById.mockReturnValue({
       id: 'file-1',
-      title: 'Scan',
-      path: 'work/scan.pdf',
-      fileType: 'pdf'
+      title: 'Memo',
+      path: 'work/memo.mp3',
+      fileType: 'audio'
     })
 
-    await expect(handles.notes.read('file-1')).resolves.toMatchObject({
+    const note = await handles.notes.read('file-1')
+    expect(note).toMatchObject({
       id: 'file-1',
-      title: 'Scan',
+      title: 'Memo',
       folder_path: 'work',
-      file_type: 'pdf'
+      file_type: 'audio'
     })
+    expect(note).not.toHaveProperty('extracted_text')
     expect(mocks.getNoteById).not.toHaveBeenCalled()
+  })
+
+  it('reads a filed PDF as the text extracted from it, from the page asked for', async () => {
+    const index = createTestIndexDb()
+    try {
+      index.db.run(sql`
+        INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
+        VALUES ('file-1', 'work/scan.pdf', 'Scan', 'pdf',
+          '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+      `)
+      index.db.run(sql`
+        INSERT INTO file_text_jobs (note_id, signature, status, page_count, updated_at)
+        VALUES ('file-1', '10:1', 'pending', 3, '2026-01-01T00:00:00.000Z')
+      `)
+      index.db.run(sql`
+        INSERT INTO extracted_text (note_id, part, method, text)
+        VALUES ('file-1', 1, 'pdf-text', 'Cover page'), ('file-1', 2, 'ocr', 'Heron count')
+      `)
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'file-1',
+        title: 'Scan',
+        path: 'work/scan.pdf',
+        fileType: 'pdf'
+      })
+      const handles = createVaultServiceHandles({ ...deps, indexDb: index.db as never })
+
+      await expect(handles.notes.read('file-1')).resolves.toMatchObject({
+        file_type: 'pdf',
+        content_markdown: '',
+        extracted_text: {
+          status: 'extracting',
+          page_count: 3,
+          pages_read: 2,
+          pages: [
+            { page: 1, text: 'Cover page' },
+            { page: 2, text: 'Heron count' }
+          ],
+          next_page: null
+        }
+      })
+      await expect(handles.notes.read('file-1', { fromPage: 2 })).resolves.toMatchObject({
+        extracted_text: { pages: [{ page: 2, text: 'Heron count' }] }
+      })
+      expect(mocks.getNoteById).not.toHaveBeenCalled()
+    } finally {
+      index.close()
+    }
   })
 
   it('treats a note cache row with no file type as markdown', async () => {

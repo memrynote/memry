@@ -110,14 +110,21 @@ export const TOOL_SCHEMAS = {
     description:
       'Full-text search across notes and filed files; returns id, title, snippet, folder_path, ' +
       'file_type. A file_type other than "markdown" (pdf/image/audio/video) is a filed file, not ' +
-      'a note — vault_read_note rejects those. Pass file_types to restrict the search, e.g. ' +
-      '["markdown"] for notes only; omitted returns every file type.'
+      'a note. PDFs and images match on the text read out of them on this device. Pass ' +
+      'file_types to restrict the search, e.g. ["markdown"] for notes only; omitted returns ' +
+      'every file type.'
   },
   vault_read_note: {
-    input: z.object({ id: idSchema }),
+    input: z.object({
+      id: idSchema,
+      from_page: z.number().int().positive().optional()
+    }),
     description:
-      'Read a markdown note by id; returns full markdown content + metadata. Errors with ' +
-      'VALIDATION when the id belongs to a filed pdf/image/audio/video file.'
+      'Read a markdown note by id; returns full markdown content + metadata. For a filed pdf ' +
+      'or image, returns extracted_text instead: the text read on this device (the PDF text ' +
+      'layer, else OCR), one entry per page, with status "extracting" | "done" | "failed", ' +
+      'page_count and pages_read. Pages come in chunks of about 100 KB; pass next_page as ' +
+      'from_page to continue. Errors with VALIDATION for a filed audio or video file.'
   },
   vault_list_folder: {
     input: z.object({
