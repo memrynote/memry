@@ -55,6 +55,7 @@ import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-download-state'
 import { resetAttachmentQueue } from './attachment-outbox'
 import { stopAttachmentDownloadRedriver } from './attachment-download-redriver'
+import { attachmentUploadRedriver } from './attachment-upload-redriver'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import {
   initTagDefinitionSyncService,
@@ -291,8 +292,9 @@ function resetSyncServiceSingletons(): void {
   // `online` flag frozen) and would upload vault A's leftovers under vault B.
   // The DownloadQueue is disposed by the same registered reset.
   resetAttachmentQueue()
-  // The failure re-driver only makes sense while a runtime is up to serve it.
+  // The re-drivers only make sense while a runtime is up to serve them.
   stopAttachmentDownloadRedriver()
+  attachmentUploadRedriver.stop()
 }
 
 async function getOptionalRuntimeVaultKey(db: DataDb, context: string): Promise<Uint8Array | null> {
@@ -744,6 +746,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const onNetworkStatusChanged = ({ online }: { online: boolean }): void => {
         if (online) {
           noteBodyOutbox.resume()
+          void attachmentUploadRedriver.redrive()
           // Reconnect is the moment transiently-failed attachment downloads
           // become worth retrying; the re-driver is re-entrant-safe and gated
           // by each row's own backoff window.
@@ -888,6 +891,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       await engine.start()
       log.info('Sync runtime started')
+      attachmentUploadRedriver.start(() => network.online)
 
       void import('./vault-directory')
         .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))
@@ -903,18 +907,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         .catch((error: unknown) => log.warn('Folder config backfill skipped', { error }))
 
       // Retry attachment uploads that failed or were interrupted in earlier
-      // sessions — the durable outbox holds them across restarts. The backfill
-      // runs first and in the same chain: it puts rows in that outbox for files
-      // whose save-time emit never fired, and those rows are only picked up by
-      // the drain that follows them.
+      // sessions — the durable outbox holds them across restarts. The interval
+      // started above and every reconnect repeat this while the runtime is up.
       void (async () => {
-        await import('./attachment-backfill')
-          .then(({ backfillUnsyncedAttachments }) => backfillUnsyncedAttachments())
-          // A backfill that cannot run must never keep the drain from retrying
-          // the rows already pending — those are the older problem.
-          .catch((error: unknown) => log.warn('Attachment backfill skipped', { error }))
-        const { drainAttachmentOutbox } = await import('./attachment-outbox')
-        await drainAttachmentOutbox()
+        await attachmentUploadRedriver.redrive()
         // Download side of the same promise: failed attachment downloads are
         // persisted in attachment_download_failures, and this is what retries
         // them without waiting for the note to be re-applied from a pull. The

@@ -24,7 +24,8 @@ export interface AttachmentBackfillDeps {
  * downstream ever learned the file existed. Fixing the emit only helps the next
  * attachment; the ones already written stay on the single device that made
  * them, referenced by a note that every other device can see. This closes that
- * gap on startup so those files are not lost to a window of bad builds.
+ * gap with every upload re-drive so those files are not lost to a window of bad
+ * builds.
  *
  * Only notes with NO recorded attachment references are considered. An
  * attachment id is minted randomly per upload, not derived from the bytes, so
@@ -163,6 +164,14 @@ export function referencedVaultFiles(
 }
 
 /**
+ * Notes whose body embeds no vault file outside their own folder, by absolute
+ * path, with the mtime and size they had when read. Such a note gains an embed
+ * only by changing, so the re-drive every five minutes stats it instead of
+ * reading every note body in the vault again.
+ */
+const notesWithoutEmbeds = new Map<string, string>()
+
+/**
  * Queue the files a note's body embeds from anywhere in the vault.
  *
  * The folder scan above only sees `attachments/<noteId>/`, which is where
@@ -195,9 +204,14 @@ function backfillReferencedFilesWith(deps: AttachmentBackfillDeps): {
     if ((note.attachmentReferences ?? []).length > 0) continue
     // A binary note's file IS the attachment; it has no body to scan.
     if (!note.path.endsWith('.md')) continue
+    const notePath = path.join(deps.vaultPath, note.path)
     let markdown: string
+    let version: string
     try {
-      markdown = fs.readFileSync(path.join(deps.vaultPath, note.path), 'utf8')
+      const stats = fs.statSync(notePath)
+      version = `${stats.mtimeMs}:${stats.size}`
+      if (notesWithoutEmbeds.get(notePath) === version) continue
+      markdown = fs.readFileSync(notePath, 'utf8')
     } catch {
       continue
     }
@@ -206,7 +220,10 @@ function backfillReferencedFilesWith(deps: AttachmentBackfillDeps): {
       // harmless (an upsert) but says the same thing twice.
       (file) => !file.startsWith(path.join(ownFolderRoot, note.id) + path.sep)
     )
-    if (files.length === 0) continue
+    if (files.length === 0) {
+      notesWithoutEmbeds.set(notePath, version)
+      continue
+    }
     scanned++
     for (const file of files) {
       try {

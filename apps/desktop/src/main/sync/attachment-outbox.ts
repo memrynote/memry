@@ -20,7 +20,8 @@ const STUCK_UPLOAD_ATTEMPTS = 5
  * be logged and lost forever, leaving the note referencing a file that exists
  * on exactly one machine. Rows here are written before the upload is attempted
  * and deleted only once the server accepts the file, so pending uploads
- * survive restarts and are retried whenever the sync runtime starts.
+ * survive restarts. The sync runtime retries them when it starts, every five
+ * minutes, and on reconnect.
  */
 
 export function enqueueUpload(db: DrizzleDb, noteId: string, diskPath: string): void {

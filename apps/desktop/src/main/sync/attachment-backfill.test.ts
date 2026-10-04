@@ -151,6 +151,29 @@ describe('attachment backfill', () => {
     ).toEqual([picture, pdf].sort())
   })
 
+  it('queues an embed added to a note that a previous pass found without one', () => {
+    addNote('note-h')
+    writeNote('note-h', 'plain text, nothing embedded')
+    expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
+
+    const picture = writeVaultFile('notes/images/added-later.png')
+    writeNote('note-h', 'plain text, now with ![a picture](images/added-later.png)')
+
+    expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(1)
+    expect(listPendingUploads(db).map((row) => row.diskPath)).toEqual([picture])
+  })
+
+  it('queues an embedded file that reaches the disk after the note that embeds it', () => {
+    addNote('note-i')
+    writeNote('note-i', '![copied in later](images/late.png)')
+    expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(0)
+
+    const picture = writeVaultFile('notes/images/late.png')
+
+    expect(backfillUnsyncedAttachmentsWith({ db, vaultPath }).queued).toBe(1)
+    expect(listPendingUploads(db).map((row) => row.diskPath)).toEqual([picture])
+  })
+
   it('does not scan the body of a note that already has references', () => {
     addNote('note-g', { attachmentReferences: ['already-uploaded'] })
     writeVaultFile('notes/images/other.png')

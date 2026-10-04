@@ -83,6 +83,12 @@ let attachmentService: AttachmentSyncService | null = null
 let uploadQueue: UploadQueue | null = null
 let downloadQueue: DownloadQueue | null = null
 
+// Save-time uploads still running, by note and path. An outbox re-drive that
+// reaches the same row joins the running upload: a second one would put the
+// same file on the server twice under two attachment ids.
+const savedUploads = new Map<string, Promise<UploadResult>>()
+const savedUploadKey = (noteId: string, diskPath: string): string => `${noteId}\0${diskPath}`
+
 const getOrCreateUploadQueue = (): UploadQueue | null => {
   if (uploadQueue) return uploadQueue
   const service = getOrCreateAttachmentService()
@@ -262,7 +268,7 @@ export function getCanvasAssetIO(): {
  * Pending uploads are rejected by `dispose()` rather than carried over. That is
  * deliberate and safe for note attachments: the intent row is persisted to the
  * attachment outbox BEFORE the upload is attempted, the rejection is recorded by
- * `markUploadFailed`, and the next `startSyncRuntime()` re-drives it via
+ * `markUploadFailed`, and the next sync runtime re-drives it via
  * `drainAttachmentOutbox()`. Carrying items across would be the actual data bug.
  *
  * Idempotent — the runtime teardown and session teardown both call it.
@@ -409,6 +415,8 @@ export function registerAttachmentHandlers(): void {
 
   registerOutboxUploader(
     async (noteId, diskPath) => {
+      const running = savedUploads.get(savedUploadKey(noteId, diskPath))
+      if (running) return { attachmentId: (await running).attachmentId }
       const queue = getOrCreateUploadQueue()
       if (!queue) throw new Error('Sync not initialized')
       const result = await queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
@@ -421,7 +429,7 @@ export function registerAttachmentHandlers(): void {
   attachmentEvents.onSaved(({ noteId, diskPath }) => {
     void (async () => {
       // Persist intent BEFORE attempting: if the upload fails or the app quits
-      // mid-transfer, the outbox row survives and the next sync runtime start
+      // mid-transfer, the outbox row survives and the sync runtime's re-drive
       // retries it — previously a failed upload was logged and lost forever.
       if (isDatabaseInitialized()) {
         try {
@@ -436,8 +444,11 @@ export function registerAttachmentHandlers(): void {
 
       const queue = getOrCreateUploadQueue()
       if (!queue) return
+      const key = savedUploadKey(noteId, diskPath)
+      const upload = queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
+      savedUploads.set(key, upload)
       try {
-        const result = await queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
+        const result = await upload
         if (isDatabaseInitialized()) {
           recordUploadedAttachment(noteId, result.attachmentId)
           // Outbox cleanup must never turn a successful upload into a failure.
@@ -496,6 +507,8 @@ export function registerAttachmentHandlers(): void {
           error: message,
           errorCategory: category
         })
+      } finally {
+        if (savedUploads.get(key) === upload) savedUploads.delete(key)
       }
     })()
   })
