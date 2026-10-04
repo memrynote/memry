@@ -130,7 +130,9 @@ export const TOOL_SCHEMAS = {
       'folder_path/path fields); omit path for the vault root. Paths are vault-relative ' +
       'with no leading slash ("projects/active"); a leading slash is also accepted. A ' +
       'folder that does not exist fails with NOT_FOUND. recursive includes every ' +
-      'nested level instead of direct children only. Returns at most 1000 notes.'
+      'nested level instead of direct children only. Returns at most 1000 notes. Each note ' +
+      'entry carries file_type; a filed pdf/image/audio/video file lists as kind "file", ' +
+      'not "note".'
   },
   vault_get_current_note: {
     input: z.object({}).default({}),
@@ -220,6 +222,9 @@ export const TOOL_SCHEMAS = {
     input: desktopReadSchema,
     description:
       'Run an allowlisted read-only desktop API operation through the memrynote window. ' +
+      'A note in the reply that is a filed pdf/image/audio/video file comes back as its ' +
+      'metadata with contentOmitted: true and contentAccess naming how to read it. A reply ' +
+      'over 100 KB of JSON text comes back as { truncated, totalChars, message, partial }. ' +
       'Calendar examples: calendar.listEvents with args [{}], calendar.getRange with args ' +
       '[{"startAt":"2026-05-14T00:00:00.000Z","endAt":"2026-06-15T00:00:00.000Z"}].'
   },
@@ -541,7 +546,9 @@ export const TOOL_SCHEMAS = {
   },
   vault_desktop_write: {
     input: desktopWriteSchema,
-    description: 'Run an allowlisted desktop CRUD mutation. Requires user approval.'
+    description:
+      'Run an allowlisted desktop CRUD mutation. Requires user approval. Replies follow ' +
+      'the vault_desktop_read rules for filed files and replies over 100 KB.'
   }
 } as const
 
