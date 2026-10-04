@@ -1,5 +1,5 @@
 import type { Message } from '@memry/contracts/ipc-agent'
-import type { AgentSourceRef } from '@memry/contracts/ipc-agent'
+import type { AgentSourceRef, AgentToolsOffReason } from '@memry/contracts/ipc-agent'
 import { WrenchIcon } from 'lucide-react'
 import { useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
@@ -18,6 +18,13 @@ import { ThinkingIndicator } from './thinking-indicator'
 
 /** Stable identity: a new `components` object would defeat the renderer's own memoisation. */
 const markdownComponents = { a: CitedMemryLink }
+
+const TOOLS_OFF_KEYS = {
+  tools_rejected: 'agentChat.toolsOff.toolsRejected',
+  no_tool_call: 'agentChat.toolsOff.noToolCall',
+  tool_result_rejected: 'agentChat.toolsOff.toolResultRejected',
+  streaming_unsupported: 'agentChat.toolsOff.streamingUnsupported'
+} as const satisfies Record<AgentToolsOffReason, string>
 
 type AssistantMessageModel = Message & {
   content: Extract<Message['content'], { role: 'assistant' }>
@@ -46,9 +53,14 @@ function AssistantMessageContent({
     <p className="flex items-start gap-1.5 px-3 text-xs text-muted-foreground">
       <WrenchIcon aria-hidden className="mt-0.5 size-3 shrink-0" />
       <span>
-        {toolsUnavailable.detail
-          ? t('agentChat.toolsUnavailableWithDetail', { detail: toolsUnavailable.detail })
-          : t('agentChat.toolsUnavailable')}
+        {toolsUnavailable.reason
+          ? t(TOOLS_OFF_KEYS[toolsUnavailable.reason])
+          : toolsUnavailable.detail
+            ? t('agentChat.toolsUnavailableWithDetail', { detail: toolsUnavailable.detail })
+            : t('agentChat.toolsUnavailable')}
+        {toolsUnavailable.reason &&
+          toolsUnavailable.detail &&
+          ` ${t('agentChat.toolsOff.providerSaid', { detail: toolsUnavailable.detail })}`}
       </span>
     </p>
   )

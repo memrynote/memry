@@ -299,6 +299,15 @@ export const AgentSourceRefSchema = z
   .strict()
 export type AgentSourceRef = z.infer<typeof AgentSourceRefSchema>
 
+/** Why the local tool probe turned vault tools off, in terms the chat can explain. */
+export const AgentToolsOffReasonSchema = z.enum([
+  'tools_rejected',
+  'no_tool_call',
+  'tool_result_rejected',
+  'streaming_unsupported'
+])
+export type AgentToolsOffReason = z.infer<typeof AgentToolsOffReasonSchema>
+
 export const AssistantContentSchema = z.object({
   text: z.string(),
   sources: z.array(AgentSourceRefSchema).optional(),
@@ -312,10 +321,17 @@ export const AssistantContentSchema = z.object({
   reasoningDurationMs: z.number().int().nonnegative().optional(),
   /**
    * Set when the local provider failed the tool probe and the turn ran without tools.
-   * `detail` is the probe's reason. Optional so older messages parse, and older apps
-   * strip it. Display only; never fed back into a prompt.
+   * `detail` is the provider's own error text, if any. `reason` is absent on messages
+   * written before it existed, and a value this app does not know reads as absent.
+   * Optional so older messages parse, and older apps strip it. Display only; never fed
+   * back into a prompt.
    */
-  toolsUnavailable: z.object({ detail: z.string().nullable() }).optional()
+  toolsUnavailable: z
+    .object({
+      detail: z.string().nullable(),
+      reason: AgentToolsOffReasonSchema.optional().catch(undefined)
+    })
+    .optional()
 })
 export const ToolCallStatusSchema = z.enum([
   'pending',

@@ -133,6 +133,13 @@
     "thinking": "Agent is thinking",
     "toolsUnavailable": "Vault tools are off for this model. It failed the tool check, so it can only chat.",
     "toolsUnavailableWithDetail": "Vault tools are off for this model. It failed the tool check, so it can only chat. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Vault tools are off for this model. The provider refused a test request that included tools, so the model can only chat.",
+      "noToolCall": "Vault tools are off for this model. It answered a test request without calling the tool, so it can only chat.",
+      "toolResultRejected": "Vault tools are off for this model. It called a test tool but failed after getting the result back, so it can only chat.",
+      "streamingUnsupported": "Vault tools are off for this model. The provider did not stream a test reply, so the model can only chat.",
+      "providerSaid": "The provider said: {detail}"
+    },
     "enable": {
       "title": "Enable memrynote Agent",
       "description": "memrynote Agent uses your selected local agent CLI to chat about your vault. Claude sends turns to Anthropic; Codex sends turns to OpenAI.",
