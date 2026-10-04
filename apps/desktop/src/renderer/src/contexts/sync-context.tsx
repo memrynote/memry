@@ -753,6 +753,19 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     void logout()
   }, [logout])
 
+  // A session that comes back (sign-in, or main proving it was alive all
+  // along) leaves nothing to prompt for.
+  useEffect(() => {
+    if (authState.status === 'authenticated') setReauthRequired(false)
+  }, [authState.status])
+
+  // Keeps the device keys: a device the account still lists signs back in
+  // with the email code alone (#2612).
+  const handleSessionEndedSignIn = useCallback(() => {
+    setReauthRequired(false)
+    requestOpenSettings('account')
+  }, [])
+
   const handleVaultRecovered = useCallback(() => {
     setVaultRecovery(null)
     toast.success(t('sync.vaultRecovered'), { duration: 6000 })
@@ -774,7 +787,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         onDismiss={clearVaultRecovery}
         onSignOut={handleDeviceRevokedSignOut}
       />
-      <SessionExpiredDialog open={reauthRequired} onSignOut={handleDeviceRevokedSignOut} />
+      <SessionExpiredDialog open={reauthRequired} onSignIn={handleSessionEndedSignIn} />
       <VaultBindingDialog
         state={
           vaultBinding.status === 'needs-decision' && !bindingPromptDismissed ? vaultBinding : null

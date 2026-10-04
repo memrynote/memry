@@ -11,7 +11,7 @@ import { AlertTriangle } from '@/lib/icons'
 
 interface SessionExpiredDialogProps {
   open: boolean
-  onSignOut: () => void
+  onSignIn: () => void
 }
 
 /**
@@ -19,13 +19,13 @@ interface SessionExpiredDialogProps {
  * amount of retrying can revive the session. Without this the app sits in a
  * zombie signed-in state: the UI looks connected while sync is dead.
  *
- * Signing out is deliberately the user's click — the session is dead on the
- * server either way, but clearing local key material is not something to do
- * behind their back on the strength of an HTTP status.
+ * Signing in again keeps the device keys, so a device the account still lists
+ * needs only the email code (#2612). Clearing local key material is never done
+ * on the strength of an HTTP status.
  */
 export function SessionExpiredDialog({
   open,
-  onSignOut
+  onSignIn
 }: SessionExpiredDialogProps): React.JSX.Element {
   return (
     <AlertDialog open={open}>
@@ -49,7 +49,7 @@ export function SessionExpiredDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <Button onClick={onSignOut}>{'Sign in again'}</Button>
+          <Button onClick={onSignIn}>{'Sign in again'}</Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
