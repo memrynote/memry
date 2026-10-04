@@ -1005,7 +1005,13 @@ across devices:
   record yet is from before the table: its files are counted as known instead
   of uploaded again, and a note with no file on disk gets a marker row so a
   later file still reads as new. A file renamed inside the note's own folder
-  keeps its row through its stored prefix. Older builds ignore the table.
+  keeps its row through its stored prefix. A file in another note's
+  attachments folder is that note's attachment and is never queued for the
+  note that embeds it. Older builds ignore the table; a file such a build
+  transferred has no row, so after a re-upgrade it uploads once more.
+- **Held vaults** — a save event uploads only while the sync runtime runs for
+  the open vault. A vault the account binding holds (kept local, or another
+  account's) never starts one, so its rows stay queued on the device.
   Recording the reference enqueues a note push so peers
   learn the blob exists; if that lands while the runtime is down — an upload
   finishing during quit, a vault switch, re-auth — the note is marked for
