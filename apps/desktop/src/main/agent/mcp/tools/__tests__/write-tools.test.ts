@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { buildWriteTools, type WriteToolGate } from '../write-tools'
+import { capReply } from '../../reply-cap'
 import { WRITE_TOOL_NAMES } from '../schemas'
 import type { VaultServiceHandles } from '../handles'
 
@@ -701,6 +702,27 @@ describe('what a write reply says about what was stored (#2615)', () => {
     await expect(run(handles, 'vault_create_task', { title: 'Task' })).resolves.toEqual({
       id: 'created-task'
     })
+  })
+
+  it('keeps the store warning in a desktop write reply the size cap cuts', async () => {
+    const storeDown: VaultServiceHandles = {
+      ...handles,
+      desktop: {
+        ...handles.desktop,
+        write: async () => ({ success: true, note: { id: 'n1', content: 'x'.repeat(200_000) } })
+      },
+      sync: { crdtStoreAvailable: async () => false }
+    }
+    const tool = buildWriteTools(storeDown, approve).find((t) => t.name === 'vault_desktop_write')!
+
+    const reply = await tool.handler(
+      { operation: 'notes.update', args: [{ id: 'n1' }] },
+      { writeGrant: 'turn-grant-1', windowId: 'w1' }
+    )
+    const delivered = capReply(reply, tool.maxReplyBytes!) as { truncated: true; partial: string }
+
+    expect(delivered.truncated).toBe(true)
+    expect(delivered.partial).toContain(STORE_WARNING)
   })
 
   it('wraps a reply whose own warnings are not sentences instead of mixing them', async () => {
