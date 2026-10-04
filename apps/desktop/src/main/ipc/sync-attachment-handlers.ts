@@ -29,6 +29,7 @@ import {
 } from '../billing/entitlement-cache'
 import { trackMainError } from '../telemetry/diagnostics'
 import { UploadQueue } from '../sync/upload-queue'
+import { recordAttachmentFile } from '../sync/attachment-files'
 import { DownloadQueue, DownloadQueueClearedError } from '../sync/download-queue'
 import { onBootstrapElevationChange } from '../sync/bootstrap-session'
 import { getBootstrapElevationFactor } from '../sync/bootstrap-session-state'
@@ -89,6 +90,20 @@ let downloadQueue: DownloadQueue | null = null
 // under two attachment ids.
 const savedUploads = new Map<string, Promise<UploadResult | null>>()
 const savedUploadKey = (noteId: string, diskPath: string): string => `${noteId}\0${diskPath}`
+
+/**
+ * The attachment record tells the backfill which files the server already has
+ * (#2651). Never throws: the transfer it records already succeeded.
+ */
+function recordFile(noteId: string, diskPath: string, attachmentId: string): void {
+  const vaultPath = getVaultStatus().path
+  if (!vaultPath || !isDatabaseInitialized()) return
+  try {
+    recordAttachmentFile(getDatabase(), vaultPath, noteId, diskPath, attachmentId)
+  } catch (err) {
+    logger.warn('Failed to record an attachment file', { noteId, err })
+  }
+}
 
 const getOrCreateUploadQueue = (): UploadQueue | null => {
   if (uploadQueue) return uploadQueue
@@ -426,6 +441,7 @@ export function registerAttachmentHandlers(): void {
       const queue = getOrCreateUploadQueue()
       if (!queue) throw new Error('Sync not initialized')
       const result = await queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
+      recordFile(noteId, diskPath, result.attachmentId)
       return { attachmentId: result.attachmentId }
     },
     () => getDatabase(),
@@ -458,6 +474,7 @@ export function registerAttachmentHandlers(): void {
         if (!result) return
         if (isDatabaseInitialized()) {
           recordUploadedAttachment(noteId, result.attachmentId)
+          recordFile(noteId, diskPath, result.attachmentId)
           // Outbox cleanup must never turn a successful upload into a failure.
           try {
             clearUpload(getDatabase(), noteId, diskPath)
@@ -564,6 +581,7 @@ export function registerAttachmentHandlers(): void {
           // The note body is the authority — rename to what it asks for before
           // anything is told the file exists.
           if (intoDir && isDatabaseInitialized()) {
+            recordFile(noteId, result.filePath, attachmentId)
             await applyDownloadedAttachmentName(noteId, result.filePath)
           }
           // The bytes are on disk now, but a note that is already open resolved

@@ -7,6 +7,15 @@ import { getDatabase, isDatabaseInitialized } from '../database'
 import { createLogger } from '../lib/logger'
 import { getCurrentVaultPath } from '../store'
 import { enqueueUpload, hasPendingUpload } from './attachment-outbox'
+import {
+  countNoteFiles,
+  embeddedFilesOutsideOwnFolder,
+  existingFiles,
+  notesWithRecords,
+  ownFolderFiles,
+  referencedVaultFiles,
+  unrecordedFiles
+} from './attachment-files'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('AttachmentBackfill')
@@ -20,165 +29,87 @@ export interface AttachmentBackfillDeps {
  * Queue attachments that are on disk but were never offered to the server.
  *
  * The upload path is event-driven: saving an attachment emits, the emit writes
- * an outbox row, the outbox uploads. When the emit itself failed — it did, for
- * every attachment written from the editor between #1606 and this fix — nothing
- * downstream ever learned the file existed. Fixing the emit only helps the next
- * attachment; the ones already written stay on the single device that made
- * them, referenced by a note that every other device can see. This closes that
- * gap with every upload re-drive so those files are not lost to a window of bad
- * builds.
+ * an outbox row, the outbox uploads. When the emit never fired (an editor bug
+ * between #1606 and its fix, a file copied into a note's folder, a vault file a
+ * body embeds), nothing downstream learned the file existed, and it stayed on
+ * the single device that had it. Every upload re-drive runs this to close
+ * that gap.
  *
- * Only notes with NO recorded attachment references are considered. An
- * attachment id is minted randomly per upload, not derived from the bytes, so
- * there is no way to ask "is this particular file already up there?" — a note
- * that has some references would have to re-upload all of its files to be sure,
- * duplicating in R2 whatever was already there. Skipping those notes trades a
- * partial mixed-era note (rare: it needs attachments from both sides of a
- * two-day window) for never wasting a user's storage.
+ * Two places hold such files: a note's own `attachments/<noteId>/` folder,
+ * where desktop's editor stores them, and any vault file the note's body embeds
+ * (an imported note pointing at `images/photo.png`). A file is queued when the
+ * attachment record does not know it; see `attachment-files` for how a note
+ * from before the record is counted rather than uploaded again.
  *
- * Idempotent by construction: once a queued file uploads, the note gains a
- * reference and is skipped from then on. Re-enqueuing an already-queued row is
- * an upsert, so a repeated run before a successful drain costs nothing.
+ * Idempotent: a queued file is recorded once it uploads, and re-enqueuing an
+ * already-queued row is an upsert.
  */
 export function backfillUnsyncedAttachmentsWith(deps: AttachmentBackfillDeps): {
   scanned: number
   queued: number
 } {
-  const attachmentsRoot = path.join(deps.vaultPath, 'attachments')
-  let scanned = 0
-  let queued = 0
-
-  let entries: fs.Dirent[] = []
+  let notes: Array<typeof noteMetadata.$inferSelect>
   try {
-    entries = fs.readdirSync(attachmentsRoot, { withFileTypes: true })
+    notes = deps.db.select().from(noteMetadata).all()
+  } catch (error) {
+    log.warn('Note metadata unreadable during backfill', { error })
+    return { scanned: 0, queued: 0 }
+  }
+
+  let folders: Set<string>
+  try {
+    folders = new Set(
+      fs
+        .readdirSync(path.join(deps.vaultPath, 'attachments'), { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
+    )
   } catch {
     // No attachments folder yet is the normal state of a fresh vault. The
     // bodies can still embed files from elsewhere, so the scan goes on.
+    folders = new Set()
   }
+  const counted = notesWithRecords(deps.db)
 
-  for (const entry of entries) {
-    // Each subdirectory is named for the note that owns it. `inbox`, `images`
-    // and other non-note folders live here too; they fail the metadata lookup
-    // below and drop out on their own.
-    if (!entry.isDirectory()) continue
-
-    const noteId = entry.name
-    let metadata: ReturnType<typeof getNoteMetadataById>
-    try {
-      metadata = getNoteMetadataById(deps.db, noteId)
-    } catch (error) {
-      log.warn('Note metadata lookup failed during backfill', { noteId, error })
-      continue
-    }
-    if (!metadata) continue
+  let scanned = 0
+  let queued = 0
+  for (const note of notes) {
     // A local-only note is deliberately not on the server; uploading its
     // attachments would leak exactly what the flag exists to hold back.
-    if (metadata.localOnly) continue
-    if ((metadata.attachmentReferences ?? []).length > 0) continue
-
-    scanned++
-
-    const noteDir = path.join(attachmentsRoot, noteId)
-    let files: fs.Dirent[]
-    try {
-      files = fs.readdirSync(noteDir, { withFileTypes: true })
-    } catch (error) {
-      log.warn('Attachment folder unreadable during backfill', { noteId, error })
+    if (note.localOnly) continue
+    const files = [
+      ...(folders.has(note.id) ? ownFolderFiles(deps.vaultPath, note.id) : []),
+      ...embeddedFilesOf(deps.vaultPath, note)
+    ]
+    if (files.length === 0) {
+      if ((note.attachmentReferences ?? []).length > 0 && !counted.has(note.id)) {
+        countNoteFiles(deps.db, deps.vaultPath, note.id, [])
+      }
       continue
     }
-
-    for (const file of files) {
-      if (!file.isFile()) continue
-      // .DS_Store and friends are not the user's attachments.
-      if (file.name.startsWith('.')) continue
+    let unknown: string[]
+    try {
+      unknown = unrecordedFiles(deps.db, deps.vaultPath, note, files)
+    } catch (error) {
+      log.warn('Attachment record unreadable during backfill', { noteId: note.id, error })
+      continue
+    }
+    if (unknown.length === 0) continue
+    scanned++
+    for (const file of unknown) {
       try {
-        enqueueUpload(deps.db, noteId, path.join(noteDir, file.name))
+        enqueueUpload(deps.db, note.id, file)
         queued++
       } catch (error) {
-        log.warn('Failed to queue backfilled attachment', { noteId, error })
+        log.warn('Failed to queue backfilled attachment', { noteId: note.id, error })
       }
     }
   }
-
-  const referenced = backfillReferencedFilesWith(deps)
-  scanned += referenced.scanned
-  queued += referenced.queued
 
   if (queued > 0) {
     log.info('Queued attachments that never reached the server', { notes: scanned, files: queued })
   }
   return { scanned, queued }
-}
-
-/** `![alt](url)` — an image or media embed. */
-const EMBED_RE = /!\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g
-/** `<!-- file:{"url":…} -->` — the file block marker. */
-const FILE_MARKER_RE = /<!--\s*file:(\{.*?\})\s*-->/g
-/** `http:`, `data:`, `memry-file:` — anything with a scheme is not a vault path. */
-const HAS_SCHEME = /^[a-z][a-z0-9+.-]*:/i
-
-/**
- * The vault-relative files a note body embeds, as absolute paths.
- *
- * The same two url shapes `resolveAttachment` reads: note-relative, and the
- * root-relative `attachments/<noteId>/…` form. A url with a scheme or a leading
- * slash is not a vault file, and a path that climbs out of the vault is dropped
- * rather than resolved.
- */
-export function referencedVaultFiles(
-  markdown: string,
-  vaultPath: string,
-  notePath: string,
-  noteId: string
-): string[] {
-  const urls: string[] = []
-  for (const match of markdown.matchAll(EMBED_RE)) urls.push(match[1])
-  for (const match of markdown.matchAll(FILE_MARKER_RE)) {
-    try {
-      const marker = JSON.parse(match[1]) as { url?: unknown }
-      if (typeof marker.url === 'string') urls.push(marker.url)
-    } catch {
-      // A marker that is not JSON is not a file block; leave it alone.
-    }
-  }
-
-  const root = path.resolve(vaultPath)
-  const noteDir = path.dirname(notePath)
-  const found = new Set<string>()
-  for (const raw of urls) {
-    if (HAS_SCHEME.test(raw) || raw.startsWith('/') || raw.startsWith('\\')) continue
-    let decoded = raw
-    try {
-      decoded = decodeURIComponent(raw)
-    } catch {
-      // Not percent-encoded after all; the raw spelling is the path.
-    }
-    const normalized = decoded.replace(/\\/g, '/')
-    const rootRelative =
-      normalized === `attachments/${noteId}` || normalized.startsWith(`attachments/${noteId}/`)
-    const absolute = path.resolve(root, rootRelative ? '' : noteDir, normalized)
-    const relative = path.relative(root, absolute)
-    if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) continue
-    found.add(absolute)
-  }
-  return [...found]
-}
-
-/**
- * The folder scan owns a note's own `attachments/<noteId>/` folder; queuing
- * those files from the body too is harmless (an upsert) but says the same
- * thing twice.
- */
-function embeddedFilesOutsideOwnFolder(
-  markdown: string,
-  vaultPath: string,
-  notePath: string,
-  noteId: string
-): string[] {
-  const ownFolder = path.join(path.resolve(vaultPath), 'attachments', noteId) + path.sep
-  return referencedVaultFiles(markdown, vaultPath, notePath, noteId).filter(
-    (file) => !file.startsWith(ownFolder)
-  )
 }
 
 /**
@@ -189,77 +120,30 @@ function embeddedFilesOutsideOwnFolder(
  */
 const notesWithoutEmbeds = new Map<string, string>()
 
-/**
- * Queue the files a note's body embeds from anywhere in the vault.
- *
- * The folder scan above only sees `attachments/<noteId>/`, which is where
- * desktop's own editor stores a file. A note written elsewhere — imported from
- * another app, or a markdown file that points at `images/photo.png` — embeds
- * files that live anywhere, and none of them was ever offered to the server,
- * so every other device drew a placeholder for a picture it could never
- * fetch. Same rule as the folder scan and for the same reason: only a note
- * with no recorded references is considered, because an attachment id is
- * random per upload and there is no asking whether a given file is already
- * up there.
- */
-function backfillReferencedFilesWith(deps: AttachmentBackfillDeps): {
-  scanned: number
-  queued: number
-} {
-  let scanned = 0
-  let queued = 0
-  let notes: Array<typeof noteMetadata.$inferSelect>
+/** The vault files outside its own folder that a note's body embeds and that are on disk. */
+function embeddedFilesOf(vaultPath: string, note: typeof noteMetadata.$inferSelect): string[] {
+  // A binary note's file IS the attachment; it has no body to scan.
+  if (!note.path.endsWith('.md')) return []
+  const notePath = path.join(vaultPath, note.path)
+  let markdown: string
+  let version: string
   try {
-    notes = deps.db.select().from(noteMetadata).all()
-  } catch (error) {
-    log.warn('Note metadata unreadable during referenced-file backfill', { error })
-    return { scanned, queued }
+    const stats = fs.statSync(notePath)
+    version = `${stats.mtimeMs}:${stats.size}`
+    if (notesWithoutEmbeds.get(notePath) === version) return []
+    markdown = fs.readFileSync(notePath, 'utf8')
+  } catch {
+    return []
   }
-
-  for (const note of notes) {
-    if (note.localOnly) continue
-    if ((note.attachmentReferences ?? []).length > 0) continue
-    // A binary note's file IS the attachment; it has no body to scan.
-    if (!note.path.endsWith('.md')) continue
-    const notePath = path.join(deps.vaultPath, note.path)
-    let markdown: string
-    let version: string
-    try {
-      const stats = fs.statSync(notePath)
-      version = `${stats.mtimeMs}:${stats.size}`
-      if (notesWithoutEmbeds.get(notePath) === version) continue
-      markdown = fs.readFileSync(notePath, 'utf8')
-    } catch {
-      continue
-    }
-    const files = embeddedFilesOutsideOwnFolder(markdown, deps.vaultPath, note.path, note.id)
-    if (files.length === 0) {
-      notesWithoutEmbeds.set(notePath, version)
-      continue
-    }
-    scanned++
-    for (const file of files) {
-      try {
-        if (!fs.statSync(file).isFile()) continue
-      } catch {
-        // Referenced and not on this device: nothing to upload.
-        continue
-      }
-      try {
-        enqueueUpload(deps.db, note.id, file)
-        queued++
-      } catch (error) {
-        log.warn('Failed to queue a referenced file', { noteId: note.id, error })
-      }
-    }
-  }
-  return { scanned, queued }
+  const files = embeddedFilesOutsideOwnFolder(markdown, vaultPath, note.path, note.id)
+  if (files.length === 0) notesWithoutEmbeds.set(notePath, version)
+  return existingFiles(files)
 }
 
 /**
- * Offer the vault files a note body embeds when the body is written or indexed
- * (#2651), instead of at the next backfill pass. Same rules as the
- * referenced-file backfill. A file that already has an outbox row is on its
+ * Offer the files of a note whose body was just written or indexed (#2651),
+ * instead of waiting for the next backfill pass: its own folder and what the
+ * body embeds, by the same record rule. A file with an outbox row is on its
  * way; the rest get a row and the save event, which uploads at once.
  */
 export function queueEmbeddedVaultFilesWith(
@@ -268,15 +152,15 @@ export function queueEmbeddedVaultFilesWith(
   markdown: string
 ): number {
   const note = getNoteMetadataById(deps.db, noteId)
-  if (!note || note.localOnly || (note.attachmentReferences ?? []).length > 0) return 0
+  if (!note || note.localOnly) return 0
+  const files = existingFiles([
+    ...new Set([
+      ...ownFolderFiles(deps.vaultPath, noteId),
+      ...referencedVaultFiles(markdown, deps.vaultPath, note.path, noteId)
+    ])
+  ])
   let queued = 0
-  // The note's own folder too: unlike the backfill, no folder scan runs here.
-  for (const file of referencedVaultFiles(markdown, deps.vaultPath, note.path, noteId)) {
-    try {
-      if (!fs.statSync(file).isFile()) continue
-    } catch {
-      continue
-    }
+  for (const file of unrecordedFiles(deps.db, deps.vaultPath, note, files)) {
     if (hasPendingUpload(deps.db, noteId, file)) continue
     enqueueUpload(deps.db, noteId, file)
     attachmentEvents.emitSaved({ noteId, diskPath: file })

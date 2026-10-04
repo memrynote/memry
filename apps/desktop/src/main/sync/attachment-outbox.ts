@@ -211,6 +211,26 @@ export function resetAttachmentQueue(): void {
   registeredQueueReset?.()
 }
 
+/**
+ * Drop rows whose file is gone: they can never upload. Needs no network or
+ * token, so the re-drive runs it before its online gate.
+ */
+export function dropUploadsWithoutFile(): void {
+  if (!getDbForDrain) return
+  try {
+    const db = getDbForDrain()
+    const rows = db
+      .select({ noteId: attachmentUploadQueue.noteId, diskPath: attachmentUploadQueue.diskPath })
+      .from(attachmentUploadQueue)
+      .all()
+    for (const row of rows) {
+      if (!fs.existsSync(row.diskPath)) clearUpload(db, row.noteId, row.diskPath)
+    }
+  } catch (err) {
+    log.warn('Dropping attachment uploads without a file failed', { error: err })
+  }
+}
+
 export async function drainAttachmentOutbox(): Promise<void> {
   if (draining) return
   if (!registeredUploader || !getDbForDrain) {

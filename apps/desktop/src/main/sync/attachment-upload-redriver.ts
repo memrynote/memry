@@ -1,6 +1,6 @@
 import { createLogger } from '../lib/logger'
 import { backfillUnsyncedAttachments } from './attachment-backfill'
-import { drainAttachmentOutbox } from './attachment-outbox'
+import { drainAttachmentOutbox, dropUploadsWithoutFile } from './attachment-outbox'
 import { getValidAccessToken } from './token-manager'
 
 const log = createLogger('AttachmentUploadRedriver')
@@ -17,14 +17,17 @@ let isOnline: (() => boolean) | null = null
  *
  * The backfill puts rows in the outbox for files whose save-time emit never
  * fired, and only the drain that follows picks them up, so the two always run
- * together and in this order. The drain uploads each pending row once, drops
- * rows whose file is gone, and keeps failed rows for the next pass.
+ * together and in this order. The drain uploads each pending row once and
+ * keeps failed rows for the next pass. Rows whose file is gone are dropped
+ * first, offline or signed out too.
  */
 async function redrive(): Promise<void> {
+  if (!isOnline) return
+  dropUploadsWithoutFile()
   try {
     // Same gate as the body outbox's pause: offline or without a token every
     // upload fails, and each failure would count an attempt against its row.
-    if (!isOnline?.() || !(await getValidAccessToken())) return
+    if (!isOnline() || !(await getValidAccessToken())) return
     try {
       backfillUnsyncedAttachments()
     } catch (error) {

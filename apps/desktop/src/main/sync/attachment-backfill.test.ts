@@ -7,13 +7,9 @@ import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { upsertNoteMetadata } from '@memry/storage-data'
 import { runMigrations } from '../database/migrate'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
-import {
-  backfillUnsyncedAttachmentsWith,
-  queueEmbeddedVaultFilesWith,
-  referencedVaultFiles
-} from './attachment-backfill'
+import { backfillUnsyncedAttachmentsWith, queueEmbeddedVaultFilesWith } from './attachment-backfill'
 import { clearUpload, listPendingUploads } from './attachment-outbox'
-import { recordAttachmentFile } from './attachment-files'
+import { recordAttachmentFile, referencedVaultFiles } from './attachment-files'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 describe('attachment backfill', () => {
