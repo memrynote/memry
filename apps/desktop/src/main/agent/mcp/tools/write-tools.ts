@@ -2,7 +2,8 @@ import type { ZodTypeAny } from 'zod'
 
 import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
-import type { VaultServiceHandles } from './handles'
+import { assertDesktopApiArgs } from './desktop-api-params'
+import type { StoredNote, VaultServiceHandles } from './handles'
 import { TOOL_SCHEMAS, WRITE_TOOL_NAMES, type ToolName } from './schemas'
 import type { AgentMcpDesktopWriteOperation } from '@memry/contracts/agent-mcp-channels'
 import type { CanvasDrawElement, CanvasElementEdit } from '@memry/contracts/canvas-draw'
@@ -49,6 +50,13 @@ async function gateOrDeny(gate: WriteToolGate | null, ctx: GateContext): Promise
   return decision.args ?? ctx.parsedArgs
 }
 
+async function storedNoteReply(
+  handles: VaultServiceHandles,
+  id: string
+): Promise<StoredNote | { id: string }> {
+  return (await handles.notes.stored(id)) ?? { id }
+}
+
 async function approvedArgs<T>(
   gate: WriteToolGate | null,
   toolName: ToolName,
@@ -85,7 +93,8 @@ export function buildWriteTools(
           toolName: 'vault_create_note',
           parsedArgs: parsed
         })) as typeof parsed
-        return handles.notes.create(args)
+        const { id } = await handles.notes.create(args)
+        return storedNoteReply(handles, id)
       }
     },
     vault_rename_note: {
@@ -98,7 +107,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_rename_note', parsed, ctx)
-        return handles.notes.rename(args)
+        await handles.notes.rename(args)
+        return storedNoteReply(handles, args.id)
       }
     },
     vault_delete_note: {
@@ -538,7 +548,7 @@ export function buildWriteTools(
           parsedArgs: parsed
         })) as typeof parsed
         await handles.notes.update(args)
-        return { id: args.id }
+        return storedNoteReply(handles, args.id)
       }
     },
     vault_add_html_artifact: {
@@ -556,7 +566,7 @@ export function buildWriteTools(
         // a block pointing at nothing.
         const { marker, url } = await handles.notes.saveHtmlAttachment(args)
         await handles.notes.update({ id: args.id, mode: 'append', content_markdown: marker })
-        return { id: args.id, url }
+        return { ...(await storedNoteReply(handles, args.id)), url }
       }
     },
     vault_update_task: {
@@ -588,9 +598,12 @@ export function buildWriteTools(
           toolName: 'vault_add_tag',
           parsedArgs: parsed
         })) as typeof parsed
-        if (args.kind === 'note') await handles.notes.addTag({ id: args.id, tag: args.tag })
-        else await handles.tasks.addTag({ id: args.id, tag: args.tag })
-        return { id: args.id }
+        if (args.kind === 'task') {
+          await handles.tasks.addTag({ id: args.id, tag: args.tag })
+          return { id: args.id }
+        }
+        await handles.notes.addTag({ id: args.id, tag: args.tag })
+        return storedNoteReply(handles, args.id)
       }
     },
     vault_remove_tag: {
@@ -608,9 +621,12 @@ export function buildWriteTools(
           toolName: 'vault_remove_tag',
           parsedArgs: parsed
         })) as typeof parsed
-        if (args.kind === 'note') await handles.notes.removeTag({ id: args.id, tag: args.tag })
-        else await handles.tasks.removeTag({ id: args.id, tag: args.tag })
-        return { id: args.id }
+        if (args.kind === 'task') {
+          await handles.tasks.removeTag({ id: args.id, tag: args.tag })
+          return { id: args.id }
+        }
+        await handles.notes.removeTag({ id: args.id, tag: args.tag })
+        return storedNoteReply(handles, args.id)
       }
     },
     vault_move_to_folder: {
@@ -629,7 +645,7 @@ export function buildWriteTools(
           parsedArgs: parsed
         })) as typeof parsed
         await handles.notes.moveToFolder(args)
-        return { id: args.id }
+        return storedNoteReply(handles, args.id)
       }
     },
     vault_add_canvas_item: {
@@ -729,6 +745,7 @@ export function buildWriteTools(
           TOOL_SCHEMAS.vault_desktop_write.input,
           input
         )
+        assertDesktopApiArgs(parsed)
         const args = await approvedArgs(gate, 'vault_desktop_write', parsed, ctx)
         return handles.desktop.write(args, ctx.windowId)
       }

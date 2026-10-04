@@ -551,6 +551,20 @@ actions, external open/reveal actions, import dialogs, OS settings panes, teleme
 diagnostics reporting, and raw secret writes. Unsupported or unavailable desktop API operations
 return a structured MCP error instead of falling back to an arbitrary desktop call.
 
+`args` are the operation's positional arguments. A call that passes more arguments than the
+operation takes fails with a `VALIDATION` error that names the parameters, before the approval
+prompt, and nothing runs. Options go inside the operation's input object, never in an extra
+argument. `properties.set(entityId, properties)` replaces the entity's whole property record: a
+property the call leaves out is deleted. Its reply lists the stored `properties` and the names it
+`removed`.
+
+The note write tools (`vault_create_note`, `vault_rename_note`, `vault_update_note`,
+`vault_add_html_artifact`, `vault_move_to_folder`, and `vault_add_tag` / `vault_remove_tag` on a
+note) reply with the note as a read returns it after the write: `id`, `title`, `folder_path`,
+`tags`, `properties`, `body_bytes` and `body_sha256`. The last two cover the body's UTF-8 bytes, so
+an agent can check the stored body against the one it sent without reading it back. Both are `null`
+for a note too large to read.
+
 `notes.resolveWikiTarget` follows a wiki link the way the editor does: `Meeting#Decisions` resolves
 to the note `Meeting` and reports `heading: "Decisions"`, while a note genuinely titled `Sprint #4`
 still resolves to itself. `notes.resolveByTitle` stays a plain title lookup and returns nothing for a

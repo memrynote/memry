@@ -427,7 +427,9 @@ export const TOOL_SCHEMAS = {
       mode: z.enum(['append', 'prepend', 'replace']),
       content_markdown: z.string()
     }),
-    description: 'Update note body. Requires user approval with diff preview.'
+    description:
+      'Update note body. Replies with the note as stored: title, folder_path, tags, ' +
+      'properties, body_bytes and body_sha256 (UTF-8). Requires user approval with diff preview.'
   },
   vault_add_html_artifact: {
     input: z.object({
@@ -541,7 +543,12 @@ export const TOOL_SCHEMAS = {
   },
   vault_desktop_write: {
     input: desktopWriteSchema,
-    description: 'Run an allowlisted desktop CRUD mutation. Requires user approval.'
+    description:
+      'Run an allowlisted desktop CRUD mutation. `args` are the positional arguments of the ' +
+      'operation; a call with more arguments than the operation takes is refused, so put ' +
+      'options inside its input object. properties.set(entityId, properties) replaces the ' +
+      "entity's whole property record: a property left out is deleted, and the reply lists " +
+      'the stored `properties` and the names it `removed`. Requires user approval.'
   }
 } as const
 

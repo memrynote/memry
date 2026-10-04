@@ -1,7 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { buildWriteTools, type WriteToolGate } from '../write-tools'
 import { WRITE_TOOL_NAMES } from '../schemas'
-import type { VaultServiceHandles } from '../handles'
+import type { StoredNote, VaultServiceHandles } from '../handles'
+
+const storedNote = (id: string): StoredNote => ({
+  id,
+  title: 'Stored',
+  folder_path: null,
+  tags: [],
+  properties: {},
+  body_bytes: 0,
+  body_sha256: null
+})
 
 const handles: VaultServiceHandles = {
   notes: {
@@ -14,7 +24,8 @@ const handles: VaultServiceHandles = {
     addTag: async () => {},
     removeTag: async () => {},
     saveHtmlAttachment: async () => ({ marker: '<!-- file:{} -->', url: 'a.html' }),
-    moveToFolder: async () => {}
+    moveToFolder: async () => {},
+    stored: async (id) => storedNote(id)
   },
   folders: {
     list: async () => [],
@@ -226,7 +237,7 @@ describe('Write tools — P1 deny-by-default', () => {
       { title: 'x', content_markdown: 'y' },
       { writeGrant: 'turn-grant-1', windowId: 'w1' }
     )
-    expect(out).toEqual({ id: 'created-note' })
+    expect(out).toEqual(storedNote('created-note'))
   })
 
   it('lets the gate edit args before forwarding', async () => {
@@ -331,9 +342,9 @@ describe('Write tools — P1 deny-by-default', () => {
     await expect(
       run('vault_add_to_inbox', { source: 'agent', title: 'Inbox', content: 'Body' })
     ).resolves.toEqual({ id: 'inbox-created' })
-    await expect(run('vault_rename_note', { id: 'note-1', title: 'Renamed' })).resolves.toEqual({
-      id: 'note-1'
-    })
+    await expect(run('vault_rename_note', { id: 'note-1', title: 'Renamed' })).resolves.toEqual(
+      storedNote('note-1')
+    )
     await expect(run('vault_delete_note', { id: 'note-1' })).resolves.toEqual({ id: 'note-1' })
     await expect(run('vault_create_folder', { path: '/Projects' })).resolves.toEqual({
       path: '/Projects'
@@ -450,7 +461,7 @@ describe('Write tools — P1 deny-by-default', () => {
     })
     await expect(
       run('vault_update_note', { id: 'note-1', mode: 'append', content_markdown: 'More' })
-    ).resolves.toEqual({ id: 'note-1' })
+    ).resolves.toEqual(storedNote('note-1'))
     await expect(run('vault_update_task', { id: 'task-1', title: 'Updated' })).resolves.toEqual({
       id: 'task-1'
     })
@@ -459,16 +470,16 @@ describe('Write tools — P1 deny-by-default', () => {
     ).resolves.toEqual({ id: 'task-1' })
     await expect(
       run('vault_add_tag', { id: 'note-1', kind: 'note', tag: 'work' })
-    ).resolves.toEqual({ id: 'note-1' })
+    ).resolves.toEqual(storedNote('note-1'))
     await expect(
       run('vault_remove_tag', { id: 'task-1', kind: 'task', tag: 'work' })
     ).resolves.toEqual({ id: 'task-1' })
     await expect(
       run('vault_remove_tag', { id: 'note-1', kind: 'note', tag: 'work' })
-    ).resolves.toEqual({ id: 'note-1' })
+    ).resolves.toEqual(storedNote('note-1'))
     await expect(
       run('vault_move_to_folder', { id: 'note-1', folder_path: '/Projects' })
-    ).resolves.toEqual({ id: 'note-1' })
+    ).resolves.toEqual(storedNote('note-1'))
     await expect(
       run('vault_add_canvas_item', {
         canvas_id: 'canvas-1',
@@ -579,7 +590,7 @@ describe('Write tools — P1 deny-by-default', () => {
         { id: 'note-1', title: 'Diagram', html: '<svg></svg>' },
         { writeGrant: 'g', windowId: 'w1' }
       )
-    ).resolves.toEqual({ id: 'note-1', url: 'a.html' })
+    ).resolves.toEqual({ ...storedNote('note-1'), url: 'a.html' })
     expect(calls).toEqual(['save', 'update'])
     expect(local.notes.saveHtmlAttachment).toHaveBeenCalledWith({
       id: 'note-1',

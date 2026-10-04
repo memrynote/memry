@@ -28,6 +28,22 @@ export interface NoteSummary {
   icon?: string | null
 }
 
+/**
+ * A note as a read returns it right after a write. The body is not echoed:
+ * `body_bytes` and `body_sha256` cover its UTF-8 bytes, and both are null for
+ * a note too large to read.
+ */
+export interface StoredNote {
+  id: string
+  title: string
+  folder_path: string | null
+  tags: string[]
+  properties: Record<string, unknown>
+  body_bytes: number | null
+  body_sha256: string | null
+  icon?: string
+}
+
 export interface NoteFull {
   id: string
   title: string
@@ -218,6 +234,8 @@ export interface VaultServiceHandles {
       html: string
     }): Promise<{ marker: string; url: string }>
     moveToFolder(input: { id: string; folder_path: string }): Promise<void>
+    /** Null when no markdown note reads back under `id`. */
+    stored(id: string): Promise<StoredNote | null>
   }
   folders: {
     list(input: { path?: string; id?: string; recursive?: boolean }): Promise<FolderEntry[]>

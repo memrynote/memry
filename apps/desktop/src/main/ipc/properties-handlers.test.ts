@@ -166,13 +166,19 @@ describe('properties IPC handlers', () => {
       date: '2026-05-10',
       path: 'Journal/2026-05-10.md'
     })
+    mocks.getNoteProperties
+      .mockReturnValueOnce([
+        { name: 'Status', value: 'Draft', type: 'text' },
+        { name: 'Owner', value: 'Kaan', type: 'text' }
+      ])
+      .mockReturnValueOnce([{ name: 'Status', value: 'Draft', type: 'text' }])
 
     await expect(
       invoke(PropertiesChannels.invoke.SET, {
         entityId: 'journal-cache-id',
         properties: { Status: 'Draft' }
       })
-    ).resolves.toEqual({ success: true })
+    ).resolves.toEqual({ success: true, properties: { Status: 'Draft' }, removed: ['Owner'] })
 
     expect(mocks.writeJournalEntryWithContent).toHaveBeenCalledWith(
       '2026-05-10',

@@ -52,7 +52,20 @@ export function registerPropertiesHandlers(): void {
     createValidatedHandler(
       SetPropertiesSchema,
       withErrorHandler(async (input): Promise<SetPropertiesResponse> => {
-        return setEntityProperties(input.entityId, input.properties)
+        // The set replaces the whole record, so a name left out is deleted.
+        // The reply says which, and what the entity holds now.
+        const db = getIndexDatabase()
+        const before = getNoteProperties(db, input.entityId)
+        const result = await setEntityProperties(input.entityId, input.properties)
+        if (!result.success) return result
+        const stored = Object.fromEntries(
+          getNoteProperties(db, input.entityId).map((p) => [p.name, p.value])
+        )
+        return {
+          success: true,
+          properties: stored,
+          removed: before.map((p) => p.name).filter((name) => !Object.hasOwn(stored, name))
+        }
       }, 'errors:property.setFailed')
     )
   )

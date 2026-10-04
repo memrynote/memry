@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import path from 'node:path'
 
 import { searchAll } from '../../../database/queries/search'
@@ -70,6 +71,11 @@ function mergeContent(
   if (!current) return next
   if (!next) return current
   return mode === 'append' ? `${current}\n\n${next}` : `${next}\n\n${current}`
+}
+
+function noteIcon(note: { emoji?: string | null; frontmatter: Record<string, unknown> }) {
+  if (typeof note.emoji === 'string') return note.emoji
+  return typeof note.frontmatter.emoji === 'string' ? note.frontmatter.emoji : null
 }
 
 function sameTagList(a: string[], b: string[]): boolean {
@@ -214,12 +220,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
 
         const note = await getNoteById(id)
         if (!note) return null
-        const icon =
-          typeof note.emoji === 'string'
-            ? note.emoji
-            : typeof note.frontmatter.emoji === 'string'
-              ? note.frontmatter.emoji
-              : null
+        const icon = noteIcon(note)
         return {
           id: note.id,
           title: note.title,
@@ -318,6 +319,25 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       },
       async moveToFolder({ id, folder_path }) {
         await moveNoteCommand(id, internalFolderFromToolPath(folder_path) ?? '')
+      },
+      async stored(id) {
+        // A filed binary has no markdown body to report, and a note moved into
+        // a journal date path is re-created by the watcher under a new item.
+        const fileType = getNoteCacheById(indexDb, id)?.fileType ?? 'markdown'
+        const note = fileType === 'markdown' ? await getNoteById(id) : null
+        if (!note) return null
+        const body = note.contentOmitted ? null : Buffer.from(note.content, 'utf8')
+        const icon = noteIcon(note)
+        return {
+          id: note.id,
+          title: note.title,
+          folder_path: folderPathFromNotePath(note.path),
+          tags: note.tags,
+          properties: note.properties,
+          body_bytes: body ? body.byteLength : null,
+          body_sha256: body ? createHash('sha256').update(body).digest('hex') : null,
+          ...(icon ? { icon } : {})
+        }
       }
     },
     folders: {

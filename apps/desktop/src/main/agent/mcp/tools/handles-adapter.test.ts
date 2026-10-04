@@ -591,6 +591,18 @@ describe('createVaultServiceHandles', () => {
     for (const [name, input] of writes) {
       await expect(call(name, input), name).resolves.toEqual(stored)
     }
+
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'file-1',
+      title: 'Scan',
+      path: 'work/scan.pdf',
+      fileType: 'pdf'
+    })
+    mocks.getNoteById.mockClear()
+    await expect(call('vault_rename_note', { id: 'file-1', title: 'Scan 2' })).resolves.toEqual({
+      id: 'file-1'
+    })
+    expect(mocks.getNoteById).not.toHaveBeenCalled()
   })
 
   it('returns null when the note cache has no row for the id', async () => {
