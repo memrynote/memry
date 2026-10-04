@@ -37,8 +37,20 @@ function archListIncludes(archs, expectedArch) {
   return archs.map(normalizeMachOArch).includes(normalizeMachOArch(expectedArch))
 }
 
+/** Every symlink or junction under rootPath; links are reported, not followed. */
+function findSymlinks(rootPath) {
+  const links = []
+  for (const entry of fs.readdirSync(rootPath, { withFileTypes: true })) {
+    const entryPath = path.join(rootPath, entry.name)
+    if (entry.isSymbolicLink()) links.push(entryPath)
+    else if (entry.isDirectory()) links.push(...findSymlinks(entryPath))
+  }
+  return links
+}
+
 module.exports = {
   findPackagedMacApps,
+  findSymlinks,
   inferExpectedMacArch,
   normalizeMachOArch,
   archListIncludes
