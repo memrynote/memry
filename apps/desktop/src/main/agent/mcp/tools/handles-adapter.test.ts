@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   createDesktopInboxCrudHandlers: vi.fn(),
   deleteJournalEntryFile: vi.fn(),
   readJournalEntry: vi.fn(),
+  readJournalFileBody: vi.fn(),
   writeJournalEntry: vi.fn(),
   createNoteCommand: vi.fn(),
   deleteNoteCommand: vi.fn(),
@@ -60,6 +61,7 @@ vi.mock('../../../inbox/domain', () => ({
 vi.mock('../../../vault/journal', () => ({
   deleteJournalEntryFile: mocks.deleteJournalEntryFile,
   readJournalEntry: mocks.readJournalEntry,
+  readJournalFileBody: mocks.readJournalFileBody,
   writeJournalEntry: mocks.writeJournalEntry
 }))
 
@@ -688,14 +690,15 @@ describe('createVaultServiceHandles', () => {
       properties: { mood: 'calm' }
     }
     mocks.readJournalEntry.mockResolvedValue(entry)
+    mocks.readJournalFileBody.mockResolvedValue('Stored caf\u00e9\n')
     mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-1' })
     const storedEntry = {
       id: 'journal-1',
       date: '2026-10-04',
       tags: ['daily'],
       properties: { mood: 'calm' },
-      body_bytes: 12,
-      body_sha256: '58edf4ff6da83112bfbc527a1cd7eac61548c7a68670feffb2463e9f94f64b40'
+      body_bytes: 13,
+      body_sha256: 'be59dd033a2ec17b8ab0bc7731223ff5b08d386f55aa34bd906fbbf0cbcafb75'
     }
     await expect(
       call('vault_update_journal_entry', { date: '2026-10-04', content_markdown: 'Sent' })
@@ -784,6 +787,23 @@ describe('createVaultServiceHandles', () => {
     expect(mocks.invokeDesktopApiFromWindow).toHaveBeenLastCalledWith('w1', {
       operation: 'inbox.get',
       args: ['inbox-1']
+    })
+  })
+
+  it('keeps the reply of a landed desktop write when the read-back fails', async () => {
+    const handles = createVaultServiceHandles(deps)
+    mocks.invokeDesktopApiFromWindow
+      .mockResolvedValueOnce({ success: true })
+      .mockRejectedValueOnce(new Error('Desktop API operation timed out or returned no result.'))
+
+    await expect(
+      handles.desktop.write({ operation: 'inbox.addTag', args: ['inbox-1', 'later'] }, 'w1')
+    ).resolves.toEqual({
+      success: true,
+      warnings: [
+        'The write landed, but reading it back failed (Desktop API operation timed out or ' +
+          'returned no result.). Read the record to see what was stored.'
+      ]
     })
   })
 

@@ -75,6 +75,12 @@ vi.mock('../lib/logger', () => ({
 }))
 
 import { registerPropertiesHandlers, unregisterPropertiesHandlers } from './properties-handlers'
+import {
+  publishProjectionEvent,
+  startProjectionRuntime,
+  stopProjectionRuntime,
+  type ProjectionEvent
+} from '../projections'
 
 async function invoke(channel: string, input?: unknown) {
   const handler = mocks.handlers.get(channel)
@@ -249,5 +255,51 @@ describe('properties IPC handlers', () => {
       })
     ).resolves.toEqual({ success: true })
     expect(mocks.enqueueJournalUpdate).toHaveBeenLastCalledWith('journal-cache-id', '2026-05-10')
+  })
+
+  it('replies with the record the projection stored, not the one it held before', async () => {
+    registerPropertiesHandlers()
+    let indexed = [
+      { name: 'Status', value: 'Draft', type: 'text' },
+      { name: 'Owner', value: 'Kaan', type: 'text' }
+    ]
+    mocks.getNoteProperties.mockImplementation(() => indexed)
+    startProjectionRuntime([
+      {
+        name: 'note-properties',
+        handles: () => true,
+        project: async (event) => {
+          await new Promise((resolve) => setTimeout(resolve, 5))
+          const properties = (event as { note: { properties: Record<string, unknown> } }).note
+            .properties
+          indexed = Object.entries(properties).map(([name, value]) => ({
+            name,
+            value,
+            type: 'text'
+          }))
+        },
+        rebuild: () => undefined,
+        reconcile: () => undefined
+      }
+    ])
+    mocks.updateNote.mockImplementation(
+      async (input: { id: string; properties: Record<string, unknown> }) => {
+        publishProjectionEvent({
+          type: 'note.upserted',
+          note: { noteId: input.id, properties: input.properties }
+        } as unknown as ProjectionEvent)
+      }
+    )
+
+    try {
+      await expect(
+        invoke(PropertiesChannels.invoke.SET, {
+          entityId: 'note-1',
+          properties: { Status: 'Done' }
+        })
+      ).resolves.toEqual({ success: true, properties: { Status: 'Done' }, removed: ['Owner'] })
+    } finally {
+      await stopProjectionRuntime({ drain: false })
+    }
   })
 })
