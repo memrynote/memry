@@ -92,7 +92,10 @@ const crdtProvider = vi.hoisted(() => ({
   open: vi.fn<
     (noteId: string, windowId?: number, options?: { skipSeed?: boolean }) => Promise<unknown>
   >(async () => ({ getXmlFragment: () => ({ length: 0 }) })),
-  closeIfInactive: vi.fn(async () => true)
+  closeIfInactive: vi.fn(async () => true),
+  // A store: these tests read a persisted doc back.
+  hasPersistence: vi.fn(() => true),
+  isNoteLocalOnly: vi.fn(() => false)
 }))
 
 const replaceNoteBodyInCrdt = vi.hoisted(() => vi.fn(async () => true))

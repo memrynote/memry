@@ -1,11 +1,16 @@
 /**
  * "This note's vault file holds a body its CRDT doc has not taken" (#2646).
  *
- * With no CRDT store, a main-process edit to a note no editor holds finds an
- * empty doc and cannot be fed. The marker remembers that the file is ahead of
- * the doc, so the next merge of the server body applies the file on top of it
- * instead of writing the server body over the file. Durable, because the edit
- * may wait for the server across restarts.
+ * With no CRDT store, a main-process edit finds an empty doc whenever the
+ * note's server body has not been merged into it, which is every closed note,
+ * and cannot be fed (`feedExternalEditToCrdt`). The marker remembers that the
+ * file is ahead of the doc, so the next merge of the server body applies the
+ * file on top of it (`takeOwedFile`) instead of writing the server body over
+ * the file. Durable, because the edit may wait for the server across restarts.
+ * Never written with a store.
+ *
+ * Cleared when the doc takes the file (a feed, a seed, or `takeOwedFile`), when
+ * `takeOwedFile` finds the doc refuses it, and on a purge.
  *
  * Never throws: a database that cannot be read or written reads as "not owed".
  *

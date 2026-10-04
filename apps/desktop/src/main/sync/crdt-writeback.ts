@@ -3,7 +3,7 @@ import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
-import { feedExternalEditToCrdt } from './crdt-external-feed'
+import { feedExternalEditToCrdt, takeOwedFile } from './crdt-external-feed'
 import { owesFileBody } from './crdt-owed-file-body'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import { serializeNoteBody, type NoteBody } from './writing-markdown'
@@ -693,7 +693,9 @@ async function writebackExisting(
   //
   // A note that owes its file body (#2646) takes the same branch. The app
   // wrote those bytes itself and moved the hash with them, so only the marker
-  // tells that the doc has not taken them.
+  // tells that the doc has not taken them. Its ingest is `takeOwedFile`, which
+  // keeps whichever body loses as a version. A file the doc refuses leaves the
+  // marker cleared and falls through, so the server body is written.
   if (existingRaw !== null) {
     // A row that is not in the index at all is a different situation and not
     // this guard's: `cached` then came from canonical metadata, which means the
@@ -708,13 +710,20 @@ async function writebackExisting(
       return
     }
     const onDisk = cached.contentHash ? generateContentHash(existingRaw) : null
-    const fileAhead = (onDisk !== null && onDisk !== cached.contentHash) || owesFileBody(noteId)
+    const owed = owesFileBody(noteId)
+    const fileAhead = (onDisk !== null && onDisk !== cached.contentHash) || owed
     if (fileAhead && parsed) {
-      const ingested = await feedExternalEditToCrdt(
-        noteId,
-        parsed.content,
-        writingFrontmatterOf(parsed.frontmatter)
-      )
+      const ingested = owed
+        ? await takeOwedFile(noteId, doc, {
+            path: relativePath,
+            raw: existingRaw,
+            title: cached.title
+          })
+        : await feedExternalEditToCrdt(
+            noteId,
+            parsed.content,
+            writingFrontmatterOf(parsed.frontmatter)
+          )
       // The index row moves to the new bytes only once the doc holds them.
       // Moved first, the next pass would write a doc that never saw them.
       if (ingested) {
@@ -736,13 +745,15 @@ async function writebackExisting(
         )
         void flushProjectionEvents()
       }
-      log.warn(
-        ingested
-          ? 'Write-back deferred: ingested the file that changed outside the app'
-          : 'Write-back skipped: the file changed outside the app',
-        { noteId, path: relativePath }
-      )
-      return
+      if (ingested || !owed) {
+        log.warn(
+          ingested
+            ? 'Write-back deferred: ingested the file that changed outside the app'
+            : 'Write-back skipped: the file changed outside the app',
+          { noteId, path: relativePath }
+        )
+        return
+      }
     }
   }
 

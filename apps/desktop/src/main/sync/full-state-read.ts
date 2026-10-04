@@ -10,9 +10,7 @@
  * @module sync/full-state-read
  */
 
-import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import type { CrdtProvider } from './crdt-provider'
-import { feedOwedFileBody } from './crdt-external-feed'
 import { owesFileBody } from './crdt-owed-file-body'
 
 export async function readMergedFullState(
@@ -35,8 +33,7 @@ export async function readMergedFullState(
   const doc = await provider.open(noteId, undefined, { skipSeed: true })
   try {
     await merge()
-    if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) await feedOwedFileBody(noteId)
-    else await provider.seedFromMarkdownPublic(noteId)
+    await provider.takeFileAfterMerge(noteId, doc, true)
     return await provider.readSyncableState(noteId)
   } finally {
     if (!wasOpen) await provider.closeIfInactive(noteId)
