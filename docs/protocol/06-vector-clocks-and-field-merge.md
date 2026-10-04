@@ -505,6 +505,7 @@ a client uses when a row has a document clock but no field clocks yet
 | `project`                       | field-level merge over `PROJECT_SYNCABLE_FIELDS`                                           |
 | `calendar_event`                | field-level merge over the fourteen `CALENDAR_EVENT_SYNCABLE_FIELDS` (chapter 13 §13.7.17) |
 | `settings`                      | dotted-path field clocks, §6.9                                                             |
+| `canvas`                        | the document-level resolver of §6.3.1, plus a conflict copy (chapter 13 §13.7.21)          |
 | **every other subscribed type** | the document-level resolver of §6.3.1                                                      |
 
 The field-level path exists only where a payload carries `fieldClocks`
