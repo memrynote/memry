@@ -459,8 +459,8 @@ machine-local and are not synced between devices.
 - **Always allowed** — tools you granted a standing approval for in this vault, each with a
   **Revoke**. Grants are made from an approval card and never cover deletes. Note and journal
   edits always ask, so an older grant for them is listed as ignored
-- **Clear agent memory** — deletes what agents saved about this vault in its agent folder,
-  including Claude Code's project memory for that folder. Notes and chat history stay
+- **Clear agent memory** — after a confirmation, deletes what agents saved about this vault in its
+  agent folder, including Claude Code's project memory for that folder. Notes and chat history stay
 - **Preset** — Ollama, LM Studio, llama.cpp, or Custom
 - **Base URL** — OpenAI-compatible endpoint, such as `http://localhost:11434/v1`
 - **Model** — choose from `/v1/models` when available or type a model manually

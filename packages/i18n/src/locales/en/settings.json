@@ -2280,7 +2280,9 @@
       "clearDescription": "Deletes what agents saved about this vault. Notes and chat history stay.",
       "clearAction": "Clear",
       "cleared": "Agent memory cleared.",
-      "failed": "Could not clear agent memory."
+      "failed": "Could not clear agent memory.",
+      "confirmTitle": "Clear agent memory?",
+      "confirmDescription": "Agents lose what they saved about this vault, including Claude Code's project memory for it. This cannot be undone. Notes and chat history stay."
     },
     "v2": {
       "permissions": {

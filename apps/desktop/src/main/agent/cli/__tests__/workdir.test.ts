@@ -10,6 +10,9 @@ import { spawnCodexTurn } from '../codex-spawn'
 import { spawnClaudeTurn } from '../spawn'
 import { clearAgentMemory, ensureAgentWorkdir } from '../workdir'
 
+const VAULT_A = '35401a5e-46ce-49ce-a18f-88a6f58d2678'
+const VAULT_B = '0b7c2f4e-1d2a-4c3b-9e8f-7a6b5c4d3e2f'
+
 let root: string
 let workdir: string
 let rememberingCli: string
@@ -81,9 +84,9 @@ describe('clearAgentMemory', () => {
   it("deletes one vault's agent folder and its Claude project memory, and nothing else", async () => {
     const userDataDir = path.join(root, 'user-data')
     const claudeConfigDir = path.join(root, 'claude')
-    const ownDir = await ensureAgentWorkdir(userDataDir, 'vault-a')
-    const otherDir = await ensureAgentWorkdir(userDataDir, 'vault-b')
-    expect(ownDir).toBe(path.join(userDataDir, 'agent-workdirs', 'vault-a'))
+    const ownDir = await ensureAgentWorkdir(userDataDir, VAULT_A)
+    const otherDir = await ensureAgentWorkdir(userDataDir, VAULT_B)
+    expect(ownDir).toBe(path.join(userDataDir, 'agent-workdirs', VAULT_A))
     const claudeProjectDir = async (dir: string): Promise<string> =>
       path.join(claudeConfigDir, 'projects', (await realpath(dir)).replace(/[^a-zA-Z0-9]/g, '-'))
     for (const dir of [ownDir, otherDir]) {
@@ -93,9 +96,9 @@ describe('clearAgentMemory', () => {
       await writeFile(path.join(memoryDir, 'MEMORY.md'), 'remembered')
     }
 
-    await clearAgentMemory({ userDataDir, vaultId: 'vault-a', claudeConfigDir })
+    await clearAgentMemory({ userDataDir, vaultId: VAULT_A, claudeConfigDir })
 
-    expect(await readdir(path.join(userDataDir, 'agent-workdirs'))).toEqual(['vault-b'])
+    expect(await readdir(path.join(userDataDir, 'agent-workdirs'))).toEqual([VAULT_B])
     expect(await readdir(path.join(claudeConfigDir, 'projects'))).toEqual([
       path.basename(await claudeProjectDir(otherDir))
     ])

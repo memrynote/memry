@@ -3,6 +3,7 @@ import { homedir } from 'node:os'
 import path from 'node:path'
 
 import { createLogger } from '../../lib/logger'
+import { vaultDirName } from '../../lib/vault-dir-name'
 
 const logger = createLogger('AgentCli:Workdir')
 
@@ -28,7 +29,11 @@ const CLAUDE_PROJECT_KEY_MAX_LENGTH = 200
  * to itself never sync or show up as vault files.
  */
 export function agentWorkdirPath(userDataDir: string, vaultId: string): string {
-  return path.join(userDataDir, 'agent-workdirs', vaultId)
+  const root = path.join(userDataDir, 'agent-workdirs')
+  const dir = path.join(root, vaultDirName(vaultId))
+  // Clear deletes this folder recursively, so it must never resolve outside its root.
+  if (path.dirname(dir) !== root) throw new Error('Agent folder resolves outside agent-workdirs')
+  return dir
 }
 
 export async function ensureAgentWorkdir(userDataDir: string, vaultId: string): Promise<string> {

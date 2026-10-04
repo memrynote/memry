@@ -14,6 +14,16 @@ import { isInPageReviewTool } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
 import { invokeWhenAgentReady } from '@/agent-chat/agent-runtime-ready'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -518,9 +528,12 @@ type MemoryStatus =
 
 function AgentMemoryGroup(): React.JSX.Element {
   const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const [status, setStatus] = useState<MemoryStatus>({ state: 'idle' })
+  const [confirming, setConfirming] = useState(false)
 
   const clearMemory = async (): Promise<void> => {
+    setConfirming(false)
     setStatus({ state: 'clearing' })
     try {
       await invokeWhenAgentReady(() => window.api.agent.clearMemory())
@@ -553,13 +566,33 @@ function AgentMemoryGroup(): React.JSX.Element {
       <SettingRow label={t('agentProviders.memory.clear')} description={description}>
         <button
           type="button"
-          className={QUIET_ACTION}
-          onClick={() => void clearMemory()}
+          className={cn(QUIET_ACTION, 'text-destructive hover:text-destructive')}
+          aria-label={t('agentProviders.memory.clear')}
+          onClick={() => setConfirming(true)}
           disabled={status.state === 'clearing'}
         >
           {t('agentProviders.memory.clearAction')}
         </button>
       </SettingRow>
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('agentProviders.memory.confirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('agentProviders.memory.confirmDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void clearMemory()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('agentProviders.memory.clear')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SettingsGroup>
   )
 }

@@ -1,8 +1,8 @@
 import path from 'path'
-import { createHash } from 'crypto'
 import { existsSync, mkdirSync } from 'fs'
 import { app } from 'electron'
 import { createLogger } from '../lib/logger'
+import { vaultDirName } from '../lib/vault-dir-name'
 import { moveStoreDir } from './crdt-store-move'
 import { setAsideAmbiguousLegacyDocs } from './crdt-legacy-partition'
 import {
@@ -26,8 +26,6 @@ const LEGACY_STORE_DIRNAME = 'crdt-store'
 /** Parent directory holding one store per vault. */
 const STORE_ROOT_DIRNAME = 'crdt-stores'
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
-
 export interface VaultCrdtStore {
   vaultUuid: string
   storagePath: string
@@ -37,25 +35,9 @@ export function legacyCrdtStorePath(): string {
   return path.join(app.getPath('userData'), LEGACY_STORE_DIRNAME)
 }
 
-/**
- * Filesystem-safe directory name for a vault uuid.
- *
- * The uuid is minted by `randomUUID()` locally, but a linked device adopts the
- * *server's* value, so this must not assume the shape. A canonical uuid is used
- * verbatim (readable in logs and support sessions); anything else is hashed, so
- * a separator, a path traversal or a case-only difference can never resolve to
- * another vault's directory. Lower-cased first because macOS and Windows
- * filesystems are case-insensitive: two casings of one uuid must be one store.
- */
-function storeDirName(vaultUuid: string): string {
-  const normalized = vaultUuid.trim().toLowerCase()
-  if (UUID_PATTERN.test(normalized)) return normalized
-  return createHash('sha256').update(vaultUuid).digest('hex').slice(0, 32)
-}
-
 /** Where the store for `vaultUuid` lives, whether or not any vault holds it now. */
 export function vaultCrdtStorePath(vaultUuid: string): string {
-  return path.join(app.getPath('userData'), STORE_ROOT_DIRNAME, storeDirName(vaultUuid))
+  return path.join(app.getPath('userData'), STORE_ROOT_DIRNAME, vaultDirName(vaultUuid))
 }
 
 /**

@@ -180,13 +180,14 @@ native right-click editing work like other text fields.
 ### Agent memory
 
 Claude, Codex and Antigravity turns run in one folder per vault, kept in the app's data folder and
-outside the vault: `agent-workdirs/<vault id>`. Claude Code keeps its project memory for that
+outside the vault: `agent-workdirs/<vault id>`. A vault id that is not a plain uuid is hashed into
+the folder name. Claude Code keeps its project memory for that
 folder, so what the agent saves about the vault in one turn is still there in the next turn and in
 the next conversation. Nothing in this folder syncs.
 
-Settings -> AI Assistant -> Agent Permissions -> **Clear agent memory** deletes the folder and the
-project memory Claude Code keeps for it. Notes and chat history stay. The next turn starts with an
-empty folder.
+Settings -> AI Assistant -> Agent Permissions -> **Clear agent memory** asks first, then deletes the
+folder and the project memory Claude Code keeps for it. This cannot be undone. Notes and chat
+history stay. The next turn starts with an empty folder.
 
 ### Dictating a prompt
 
