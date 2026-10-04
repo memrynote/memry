@@ -669,12 +669,18 @@ document to its vault `.md` file and re-indexes it for search.
   doc holds them. Later passes then write as usual. If the feed cannot land (a large-file
   body, or a doc that opens empty with no store) the pass keeps skipping and the file stays
   as it is.
-- **A remote pass keeps a version of the bytes it replaces** — before a pass armed only by
-  remote state writes a body that differs from the file's body, it saves the file's bytes
-  as a version, whatever the word count (#2646). A pass armed by a local edit keeps the
-  older rule and saves a version only when the word count moves by 10 or more, so typing
-  does not add one per pass. A change to frontmatter alone saves none. A failed save never
-  blocks the write. Versions are pruned to the newest 50 per note.
+- **A pass keeps a version of bytes it did not write** — the module records, per note, the
+  content hash of the file bytes its last successful pass wrote this session. Before a pass
+  writes a body that differs from the file's body, it compares the file's hash with that
+  record. When they differ, the bytes came from another writer (`updateNote`, an agent
+  edit, an earlier session), so the pass saves them as a version whatever the word count
+  (#2646). When they match, the bytes came from this doc, and the pass keeps the 10-word
+  rule, so typing on this device or on a peer does not add a version per pass. Whether the
+  pass was armed by a local or a remote update does not matter. The bodies compared are
+  the ones in the two files, so a frontmatter-only change or the serializer's EOL and
+  final-newline handling saves none. The record is dropped when the note is purged or the
+  vault closes. A failed save never blocks the write. Versions are pruned to the newest 50
+  per note.
 
 While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search
