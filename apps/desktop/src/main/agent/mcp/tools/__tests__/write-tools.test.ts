@@ -670,10 +670,27 @@ describe('what a write reply says about what was stored (#2615)', () => {
     }
   )
 
-  it('says nothing when the bodies differ only in line endings and the final newline', async () => {
+  it('gives both byte counts when a CRLF note stores the LF body it was sent', async () => {
     const local: VaultServiceHandles = {
       ...handles,
       notes: { ...handles.notes, update: async () => ({ sent: 'A\nB', stored: 'A\r\nB\r\n' }) }
+    }
+
+    await expect(
+      run(local, 'vault_update_note', { id: 'note-1', mode: 'replace', content_markdown: 'A\nB' })
+    ).resolves.toEqual({
+      id: 'note-1',
+      warnings: [
+        'The stored body is not the body this write sent. Sent 3 bytes, stored 6 bytes. ' +
+          'Read it back to see what was stored.'
+      ]
+    })
+  })
+
+  it('says nothing when only the final newline differs', async () => {
+    const local: VaultServiceHandles = {
+      ...handles,
+      notes: { ...handles.notes, update: async () => ({ sent: 'A\nB', stored: 'A\nB\n' }) }
     }
 
     await expect(
