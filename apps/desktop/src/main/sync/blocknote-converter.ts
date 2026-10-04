@@ -156,7 +156,8 @@ function getEditor(): ServerBlockNoteEditor {
  * `house-style` outcomes with a record present are the degraded cases and
  * are logged as such, so a lookup that silently misses can be told apart
  * from a note that never had a record. `file` and `file-merged` are the
- * record failing and the note's file standing in for it (#2615).
+ * record failing and the note's file standing in for it (#2615);
+ * `file-unreadable` is that file failing to read or parse, and writes nothing.
  */
 export type SourceRestoreOutcome =
   | 'no-record'
@@ -166,6 +167,7 @@ export type SourceRestoreOutcome =
   | 'merged'
   | 'file'
   | 'file-merged'
+  | 'file-unreadable'
   | 'house-style-fallback'
   | 'house-style-threw'
 
@@ -178,7 +180,9 @@ export interface YDocToMarkdownOptions {
   notePath?: string
   /**
    * The body the note's file holds now. Read only when the record cannot be
-   * restored, to restore the author's spelling from the file instead.
+   * restored, to restore the author's spelling from the file instead. A read
+   * or parse that throws resolves the call to null, so the caller keeps the
+   * file rather than writing house style over bytes it could not read.
    */
   readFileBody?: () => Promise<string | null>
   /** Reported once per call, after the outcome is known. */
@@ -226,6 +230,14 @@ export async function yDocToMarkdown(
       return restored
     }
     const fromFile = await restoreFileSpelling(canonical, options.readFileBody, canonicalize)
+    if (fromFile?.outcome === 'file-unreadable') {
+      log.error('Source record not restorable and the file could not be read, keeping it', {
+        notePath: options.notePath,
+        error: fromFile.error
+      })
+      options.onSourceRestore?.('file-unreadable')
+      return null
+    }
     if (fromFile) {
       log.info('Source record not restorable, kept the spelling of the file', {
         notePath: options.notePath,
@@ -261,14 +273,26 @@ async function restoreFileSpelling(
   canonical: string,
   readFileBody: (() => Promise<string | null>) | undefined,
   canonicalize: (markdown: string) => Promise<string | null>
-): Promise<{ markdown: string; outcome: 'file' | 'file-merged' } | null> {
-  const body = readFileBody ? await readFileBody() : null
-  if (body === null) return null
-  const decoded = decodeWritingMarkers(body)
-  const file = withoutWritingSentinels(parseCriticMarkup(decoded.text), decoded.sentinels).plainText
-  const restored = await restoreMarkdownSource(canonical, file, canonicalize)
-  if (restored === canonical) return null
-  return { markdown: restored, outcome: restored === file ? 'file' : 'file-merged' }
+): Promise<
+  | { outcome: 'file' | 'file-merged'; markdown: string }
+  | { outcome: 'file-unreadable'; error: unknown }
+  | null
+> {
+  if (!readFileBody) return null
+  try {
+    const body = await readFileBody()
+    if (body === null) return null
+    const decoded = decodeWritingMarkers(body)
+    const file = withoutWritingSentinels(
+      parseCriticMarkup(decoded.text),
+      decoded.sentinels
+    ).plainText
+    const restored = await restoreMarkdownSource(canonical, file, canonicalize)
+    if (restored === canonical) return null
+    return { markdown: restored, outcome: restored === file ? 'file' : 'file-merged' }
+  } catch (error) {
+    return { outcome: 'file-unreadable', error }
+  }
 }
 
 /**

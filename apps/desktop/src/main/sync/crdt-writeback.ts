@@ -366,25 +366,27 @@ export function scheduleWriteback(
     pendingTimers.delete(noteId)
     inFlightWritebacks.add(noteId)
     runWriteback(noteId, doc, local, pendingRemoteEditedAtMs)
-      .catch((err) => {
-        updateDebugState(noteId, {
-          pending: false,
-          lastError: err instanceof Error ? err.message : String(err)
-        })
-        log.error('Write-back failed', { noteId, error: err })
-        // A failed write-back means typed content was NOT persisted to disk.
-        // Throttled: a persistent disk fault would otherwise fire per debounce.
-        if (shouldEmitThrottled(`note_writeback_error:${noteId}`)) {
-          trackMainError('notes', 'note_writeback', err)
-        }
-        emitToRenderer('sync:write-back-failed', { noteId })
-      })
+      .catch((err) => reportWritebackFailure(noteId, err))
       .finally(() => {
         inFlightWritebacks.delete(noteId)
       })
   }, writebackDelayMs(noteId))
 
   pendingTimers.set(noteId, { timer, doc, local, remoteEditedAtMs: pendingRemoteEditedAtMs })
+}
+
+function reportWritebackFailure(noteId: string, err: unknown): void {
+  updateDebugState(noteId, {
+    pending: false,
+    lastError: err instanceof Error ? err.message : String(err)
+  })
+  log.error('Write-back failed', { noteId, error: err })
+  // A failed write-back means typed content was NOT persisted to disk.
+  // Throttled: a persistent disk fault would otherwise fire per debounce.
+  if (shouldEmitThrottled(`note_writeback_error:${noteId}`)) {
+    trackMainError('notes', 'note_writeback', err)
+  }
+  emitToRenderer('sync:write-back-failed', { noteId })
 }
 
 /**
@@ -427,16 +429,13 @@ export async function writebackNow(noteId: string, doc: Y.Doc): Promise<void> {
 /**
  * Run this note's armed pass now, if one is armed, so a caller that reads the
  * file back right after a write reports what the file keeps (#2615). A failed
- * pass is logged, not thrown: the file then holds what the write left.
+ * pass is reported as a timed one is, not thrown: the file then holds what the
+ * write left.
  */
 export async function settleWriteback(noteId: string): Promise<void> {
   const pending = pendingTimers.get(noteId)
   if (!pending) return
-  try {
-    await writebackNow(noteId, pending.doc)
-  } catch (err) {
-    log.warn('Write-back failed while settling', { noteId, error: err })
-  }
+  await writebackNow(noteId, pending.doc).catch((err) => reportWritebackFailure(noteId, err))
 }
 
 export function cancelPendingWritebacks(): void {
