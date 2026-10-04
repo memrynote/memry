@@ -230,7 +230,11 @@ cursor write. A crash before the cursor commits pulls the whole page again; the 
 committed come back with an equal clock and an identical payload and are skipped without a row write
 or a renderer event (a still-dirty `syncedAt` is stamped, and missing canvas assets and note
 attachments are requested again). An equal clock with a different payload still applies, because
-that is how two devices whose merge re-pushes collided converge (protocol 06 §6.5.2 P4). Renderer
+that is how two devices whose merge re-pushes collided converge (protocol 06 §6.5.2 P4). The
+exception is a note whose row holds record changes the server never acknowledged (the dirty-recovery
+predicate: `syncedAt` unset, or `modifiedAt` past it). The server copy is then the older state, so
+the note keeps its row, is not stamped synced, and is re-queued under a new clock; its push then
+wins on every device. Renderer
 events raised while a slice applies are held until its transaction commits and dropped if the slice
 or the item rolls back, so no window is told about rows that never landed.
 
@@ -517,7 +521,11 @@ re-queued on the next full sync for tasks, projects, notes and journals alike.
 
 Recovery re-sends the item's **stored** clock rather than bumping it. An item that is genuinely in
 step is then replay-detected by the server, costs one round trip, and is stamped clean; only an item
-that really is ahead of the server changes anything. Scope is limited to items the server already
+that really is ahead of the server changes anything. Notes are the exception to the stamp: a content
+edit moves a note's `modifiedAt` without advancing its clock, so a replay can refuse changes the
+server never took. A replayed note that still looks dirty is re-queued under a new clock instead of
+stamped, and that push is accepted. Journals keep the stamp, because a journal push never advances
+`syncedAt` and their dirty marker cannot tell a sent journal from an unsent one. Scope is limited to items the server already
 knows: clock-less rows belong to the initial seed.
 
 Notes and journals share a table but not a sync service, so they are swept separately and each

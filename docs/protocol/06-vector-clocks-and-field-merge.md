@@ -272,6 +272,14 @@ and a client that breaks any of them reintroduces divergence.**
   type but `settings`. It compares the stored `sync_items` payload, which is
   the payload it pushes (P2), and a local row that is deleted or flagged
   corrupt applies (#2304).
+  **A second exception is a row with unsent changes** (#2646): a client MAY
+  keep a local row at an EQUAL clock with a different payload when that row
+  holds changes the server never acknowledged, provided it re-queues the row
+  under an advanced clock instead of marking it synced. The same holds for a
+  replay refusal of such a row. The re-push dominates the server row, so every
+  device still converges, on the kept row. Desktop does this for notes only
+  (`noteHandler.requeueUnsentChanges`), because a note's content edit moves its
+  `modifiedAt` without advancing its clock.
 
 In the ordinary interleavings P1 to P3 leave **at most one device running
 `mergeFields` on a given concurrent pair**; the other sees its own row (`equal` →
