@@ -271,7 +271,10 @@ and a client that breaks any of them reintroduces divergence.**
   by `document_gate` (`crates/memry-core/src/domain/task_merge.rs`) for every
   type but `settings`. It compares the stored `sync_items` payload, which is
   the payload it pushes (P2), and a local row that is deleted or flagged
-  corrupt applies (#2304).
+  corrupt applies (#2304). Whatever the clock outcome, a desktop note apply
+  keeps the later of the local and incoming `modifiedAt`, compared as
+  instants, because a note body edit moves `modifiedAt` without advancing the
+  record clock (#2616).
 
 In the ordinary interleavings P1 to P3 leave **at most one device running
 `mergeFields` on a given concurrent pair**; the other sees its own row (`equal` →

@@ -195,6 +195,19 @@ function deriveRemoteProjectLinks(itemId: string, properties: Record<string, unk
   }
 }
 
+/**
+ * A body edit moves `modifiedAt` without a clock bump, so a record at an equal
+ * or later clock can carry an older edit time than this row. Taking it moved
+ * modified times back to creation times (AF-002). Compared as instants, because
+ * peers write ISO strings in different shapes; the later side keeps its string.
+ */
+function laterModifiedAt(local: string, remote: string): string {
+  const localMs = Date.parse(local)
+  const remoteMs = Date.parse(remote)
+  if (!Number.isFinite(localMs)) return remote
+  return Number.isFinite(remoteMs) && remoteMs > localMs ? remote : local
+}
+
 class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
   readonly type = 'note' as const
   readonly schema = NoteSyncPayloadSchema
@@ -232,6 +245,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       if (resolution.action === 'merge') {
         log.warn('Concurrent note edit, applying (CRDT handles merge)', { itemId })
       }
+      const modifiedAt = laterModifiedAt(existing.modifiedAt, data.modifiedAt ?? now)
 
       if (existing.fileType && isBinaryFileType(existing.fileType)) {
         const newTitle = data.title ?? existing.title
@@ -247,7 +261,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           emoji: resolvedEmoji,
           clock: resolution.mergedClock,
           syncedAt: now,
-          modifiedAt: data.modifiedAt ?? now
+          modifiedAt
         }
 
         if (needsPathUpdate) {
@@ -314,7 +328,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           attachmentId: data.attachmentId ?? existing.attachmentId,
           clock: resolution.mergedClock,
           syncedAt: now,
-          modifiedAt: data.modifiedAt ?? now
+          modifiedAt
         })
         // Binary/file branch: only sidecar metadata moved, never file bytes.
         emitNoteUpdated(ctx.emit, {
@@ -359,7 +373,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         emoji: resolvedEmoji,
         clock: resolution.mergedClock,
         syncedAt: now,
-        modifiedAt: data.modifiedAt ?? now
+        modifiedAt
       }
 
       if (needsPathUpdate) {
@@ -535,7 +549,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         emoji: resolvedEmoji,
         clock: resolution.mergedClock,
         syncedAt: now,
-        modifiedAt: data.modifiedAt ?? now,
+        modifiedAt,
         ...(prunedAttachmentRefs ? { attachmentReferences: prunedAttachmentRefs } : {}),
         propertyDefinitionNames:
           remoteProperties && Object.keys(remoteProperties).length > 0
