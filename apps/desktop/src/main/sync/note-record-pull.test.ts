@@ -29,6 +29,8 @@ import { eq } from 'drizzle-orm'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { NoteSyncPayloadSchema, type NoteSyncPayload } from '@memry/contracts/sync-payloads'
 import { noteMetadata } from '@memry/db-schema/data-schema'
+import { noteCache } from '@memry/db-schema/schema/notes-cache'
+import { getNoteCacheById } from '@main/database/queries/notes'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import {
   asSyncDb,
@@ -54,7 +56,9 @@ const NOW = '2024-04-01T12:00:00.000Z'
 let dataDb: TestDatabaseResult
 let indexDb: TestDatabaseResult
 
-function seedNote(timestamps: { syncedAt: string; modifiedAt: string }): void {
+function seedNote(
+  row: { syncedAt: string; modifiedAt: string } & Partial<typeof noteMetadata.$inferInsert>
+): void {
   dataDb.db
     .insert(noteMetadata)
     .values({
@@ -64,7 +68,7 @@ function seedNote(timestamps: { syncedAt: string; modifiedAt: string }): void {
       fileType: 'markdown',
       clock: CLOCK,
       createdAt: '2024-02-01T10:00:00.000Z',
-      ...timestamps
+      ...row
     })
     .run()
 }
@@ -133,5 +137,105 @@ describe('equal-clock pull of a note', () => {
     expect(result).toBe('applied')
     expect(readNote()).toMatchObject({ modifiedAt: REMOTE_EDIT, syncedAt: NOW, clock: CLOCK })
     expect(queuedClocks()).toEqual([])
+  })
+})
+
+// A body edit moves `modifiedAt` without a clock bump, so a record pull can
+// carry an older edit time than the row. Applying it moved modified times back
+// to creation times (AF-002, #2616).
+describe('record pull of a note never moves modifiedAt backwards', () => {
+  it.each([
+    {
+      name: 'an older remote time at an equal clock',
+      clock: CLOCK,
+      local: '2024-03-02T10:00:00.000Z',
+      remote: '2024-03-01T10:00:00.000Z',
+      kept: '2024-03-02T10:00:00.000Z'
+    },
+    {
+      name: 'an older remote time from a dominating clock',
+      clock: { [DEVICE]: 1, [PEER]: 4 },
+      local: '2024-03-02T10:00:00.000Z',
+      remote: '2024-03-01T10:00:00.000Z',
+      kept: '2024-03-02T10:00:00.000Z'
+    },
+    {
+      name: 'an older remote time from a concurrent clock',
+      clock: { [PEER]: 4 },
+      local: '2024-03-02T10:00:00.000Z',
+      remote: '2024-03-01T10:00:00.000Z',
+      kept: '2024-03-02T10:00:00.000Z'
+    },
+    {
+      name: 'a remote time without millis that is earlier',
+      clock: CLOCK,
+      local: '2024-03-02T10:00:05.123Z',
+      remote: '2024-03-02T10:00:05Z',
+      kept: '2024-03-02T10:00:05.123Z'
+    },
+    {
+      name: 'a remote time with millis that is later',
+      clock: CLOCK,
+      local: '2024-03-02T10:00:05Z',
+      remote: '2024-03-02T10:00:05.123Z',
+      kept: '2024-03-02T10:00:05.123Z'
+    },
+    {
+      name: 'a remote offset time that is earlier',
+      clock: CLOCK,
+      local: '2024-03-02T10:00:00.000Z',
+      remote: '2024-03-02T11:00:00+02:00',
+      kept: '2024-03-02T10:00:00.000Z'
+    },
+    {
+      name: 'a remote offset time that is later',
+      clock: CLOCK,
+      local: '2024-03-02T10:00:00.000Z',
+      remote: '2024-03-02T13:00:00+02:00',
+      kept: '2024-03-02T13:00:00+02:00'
+    }
+  ])('$name keeps $kept and applies the other fields', ({ clock, local, remote, kept }) => {
+    seedNote({ syncedAt: SYNCED_AT, modifiedAt: local })
+    indexDb.db
+      .insert(noteCache)
+      .values({
+        id: NOTE_ID,
+        path: NOTE_PATH,
+        title: 'pulled',
+        createdAt: '2024-02-01T10:00:00.000Z',
+        modifiedAt: local
+      })
+      .run()
+    const payload = { ...localPayload(), modifiedAt: remote, properties: { status: 'done' } }
+    const ctx = { db: asSyncDb(dataDb.db), emit: vi.fn() }
+
+    noteHandler.applyUpsert(ctx, NOTE_ID, { ...payload, clock }, clock)
+
+    expect(readNote()?.modifiedAt).toBe(kept)
+    expect(getNoteCacheById(indexDb.db, NOTE_ID)?.modifiedAt).toBe(kept)
+    expect(readNote()?.syncedAt).toBe(NOW)
+    expect(fs.readFileSync(path.join(vaultRoot, NOTE_PATH), 'utf-8')).toBe(
+      '---\ntags:\n  - draft\nstatus: done\n---\nLocal body\n'
+    )
+  })
+
+  it('keeps the later local time of a binary note and applies the other fields', () => {
+    seedNote({
+      path: 'scan.png',
+      fileType: 'image',
+      mimeType: 'image/png',
+      syncedAt: SYNCED_AT,
+      modifiedAt: LOCAL_EDIT
+    })
+    const payload = { ...localPayload(), modifiedAt: SYNCED_AT, attachmentId: 'blob-2' }
+
+    const result = pullAtEqualClock(payload)
+
+    expect(result).toBe('applied')
+    expect(readNote()).toMatchObject({
+      attachmentId: 'blob-2',
+      modifiedAt: LOCAL_EDIT,
+      syncedAt: NOW
+    })
   })
 })
