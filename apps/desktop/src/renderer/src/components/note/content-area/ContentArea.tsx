@@ -2336,7 +2336,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
       const checkListBlock = target.closest('[data-content-type="checkListItem"]')
       if (checkListBlock) {
-        const blockId = checkListBlock.getAttribute('data-id')
+        const blockId = checkListBlock.closest('[data-id]')?.getAttribute('data-id')
         if (!blockId) return
 
         const block = editor.getBlock(blockId)
