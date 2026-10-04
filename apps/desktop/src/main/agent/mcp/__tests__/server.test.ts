@@ -453,6 +453,49 @@ describe('Agent MCP server shutdown', () => {
   })
 })
 
+describe('Agent MCP server reply cap', () => {
+  it('cuts a desktop reply after source refs are added, so the agent gets at most 100 KB', async () => {
+    const events = Array.from({ length: 450 }, (_, i) => ({
+      id: `event-${i}`,
+      title: `Synthetic event ${i}`,
+      startAt: '2026-10-05T09:00:00.000Z',
+      endAt: '2026-10-05T10:00:00.000Z',
+      description: 'x'.repeat(40)
+    }))
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        {
+          name: 'vault_desktop_read',
+          description: 'desktop read',
+          inputSchema: z.object({ operation: z.string(), args: z.array(z.unknown()) }),
+          maxReplyBytes: 100 * 1024,
+          handler: async () => ({ events })
+        }
+      ]
+    })
+
+    try {
+      const r = await callTool(handle, 'vault_desktop_read', {
+        operation: 'calendar.listEvents',
+        args: [{}]
+      })
+      const body = await r.text()
+      const dataLine = body.split('\n').find((line) => line.startsWith('data: '))
+      const rpc = JSON.parse(dataLine ? dataLine.slice('data: '.length) : body)
+      const text = rpc.result.content[0].text as string
+      const reply = JSON.parse(text)
+
+      expect(Buffer.byteLength(text)).toBeLessThanOrEqual(102_400)
+      expect(reply.truncated).toBe(true)
+      expect(reply.totalBytes).toBeGreaterThan(200_000)
+      expect(reply.partial.startsWith('{"events":[{"id":"event-0"')).toBe(true)
+      expect(rpc.result.structuredContent).toEqual(reply)
+    } finally {
+      await handle.stop()
+    }
+  })
+})
+
 function buildTool(
   name: string,
   handler: (
