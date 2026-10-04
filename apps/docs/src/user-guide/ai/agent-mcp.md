@@ -177,6 +177,17 @@ search for an earlier query is discarded rather than shown.
 The prompt box uses the operating-system text editing menu, so Cut, Copy, Paste, Select All, and
 native right-click editing work like other text fields.
 
+### Agent memory
+
+Claude, Codex and Antigravity turns run in one folder per vault, kept in the app's data folder and
+outside the vault: `agent-workdirs/<vault id>`. Claude Code keeps its project memory for that
+folder, so what the agent saves about the vault in one turn is still there in the next turn and in
+the next conversation. Nothing in this folder syncs.
+
+Settings -> AI Assistant -> Agent Permissions -> **Clear agent memory** deletes the folder and the
+project memory Claude Code keeps for it. Notes and chat history stay. The next turn starts with an
+empty folder.
+
 ### Dictating a prompt
 
 The microphone in the prompt bar records a prompt and types it for you. Click it once to start
