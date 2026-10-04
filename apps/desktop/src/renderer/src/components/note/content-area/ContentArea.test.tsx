@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders as render } from '@tests/utils/render'
+import { useSyncExternalStore } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
 import { getDefaultReactSlashMenuItems } from '@blocknote/react'
@@ -23,6 +24,7 @@ const contentAreaMocks = vi.hoisted(() => ({
     isLoading: true,
     settings: { convertChecklistsToTasks: true }
   },
+  editorSettingsListeners: new Set<() => void>(),
   tasksService: {
     listProjects: vi.fn(),
     listForItem: vi.fn(),
@@ -309,7 +311,14 @@ vi.mock('./scan-task-intents', () => ({
 // Unread by default: a read setting that is on rescans the note once, and that
 // extra analyzer call would take the intents a test queues for its own changes.
 vi.mock('@/hooks/use-editor-settings', () => ({
-  useEditorSettings: () => contentAreaMocks.editorSettings
+  useEditorSettings: () =>
+    useSyncExternalStore(
+      (listener) => {
+        contentAreaMocks.editorSettingsListeners.add(listener)
+        return () => contentAreaMocks.editorSettingsListeners.delete(listener)
+      },
+      () => contentAreaMocks.editorSettings
+    )
 }))
 
 vi.mock('./hooks', () => ({
@@ -2143,7 +2152,7 @@ describe('ContentArea', () => {
     })
 
     it('keeps a checklist item a checkbox, and converts it once the setting is on', async () => {
-      const { rerender } = render(<ContentArea noteId="note-1" />)
+      render(<ContentArea noteId="note-1" />)
       fireEvent.click(screen.getByText('change'))
       await act(async () => {
         await Promise.resolve()
@@ -2152,11 +2161,13 @@ describe('ContentArea', () => {
       expect(contentAreaMocks.blocks.get('standalone').type).toBe('checkListItem')
       expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
 
-      contentAreaMocks.editorSettings = {
-        isLoading: false,
-        settings: { convertChecklistsToTasks: true }
-      }
-      rerender(<ContentArea noteId="note-1" />)
+      act(() => {
+        contentAreaMocks.editorSettings = {
+          isLoading: false,
+          settings: { convertChecklistsToTasks: true }
+        }
+        for (const listener of contentAreaMocks.editorSettingsListeners) listener()
+      })
 
       await waitFor(() =>
         expect(contentAreaMocks.blocks.get('standalone').props.taskId).toBe('created-task')
