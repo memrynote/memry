@@ -303,9 +303,13 @@ describe('CrdtProvider with no store (#2536)', () => {
     h.contentHash = generateContentHash
   })
 
+  /** The full-state rows queued in the note-body outbox. Durable, so a restart keeps them. */
+  const owedFullStates = new Set<string>()
+
   afterEach(async () => {
     await getCrdtProvider().destroy()
     resetCrdtProvider()
+    owedFullStates.clear()
   })
 
   function putNoteInVault(body: string): void {
@@ -358,6 +362,23 @@ describe('CrdtProvider with no store (#2536)', () => {
   async function syncedPeer(peer: Y.Doc): Promise<Y.Doc> {
     await bodyAfterPull(peer)
     return peer
+  }
+
+  /** `peer` merges the server, appends `typed` to the line it edited, and pushes the change. */
+  async function pushPeerEdit(peer: Y.Doc, typed: string): Promise<void> {
+    await syncedPeer(peer)
+    const before = Y.encodeStateVector(peer)
+    const text = findText(peer.getXmlFragment(CRDT_FRAGMENT_NAME), 'Pack for the')
+    text.insert(text.length, typed)
+    const server = h.server!
+    server.updates.push({
+      sequenceNum:
+        Math.max(server.snapshot?.sequenceNum ?? 0, ...server.updates.map((u) => u.sequenceNum)) +
+        1,
+      data: toBase64(Y.encodeStateAsUpdate(peer, before)),
+      signerDeviceId: 'device-b',
+      createdAt: 9
+    })
   }
 
   /** A CRDT store with nothing in it, for the cases that run with one. */
@@ -428,7 +449,6 @@ describe('CrdtProvider with no store (#2536)', () => {
         createdAt: 3
       })
     }
-    const owedFullStates = new Set<string>()
     const flushFullStates = async (): Promise<void> => {
       for (const noteId of owedFullStates) {
         const state = await readMergedFullState(
@@ -606,23 +626,41 @@ describe('CrdtProvider with no store (#2536)', () => {
       expect([await bodyAfterPull(), await bodyAfterPull(peer)]).toEqual([EDITED_BODY, EDITED_BODY])
     })
 
-    it('survives the next pull of the note', async () => {
-      const { coordinator } = await editClosedNote()
+    const FUELED_BODY = EDITED_BODY.replace('Tent packed.', 'Tent packed. Fuel bought.')
+
+    it('survives the next pull of the note, the flush after it, and a peer edit', async () => {
+      const { coordinator, flushFullStates, peer } = await editClosedNote()
 
       await coordinator.pullCrdtForNotes([NOTE])
+      const fileAfterPull = await fileBodyAfterWriteback()
+      await flushFullStates()
+      await pushPeerEdit(peer, ' Fuel bought.')
+      await coordinator.pullCrdtForNotes([NOTE])
 
-      expect(await fileBodyAfterWriteback()).toBe(EDITED_BODY)
+      expect({
+        fileAfterPull,
+        server: await bodyAfterPull(),
+        file: await fileBodyAfterWriteback()
+      }).toEqual({ fileAfterPull: EDITED_BODY, server: FUELED_BODY, file: FUELED_BODY })
     })
 
-    it('survives a restart and the launch sweep', async () => {
-      await editClosedNote()
+    it('survives a restart, the launch sweep, the flush after it, and a peer edit', async () => {
+      const { peer } = await editClosedNote()
       await getCrdtProvider().destroy()
       resetCrdtProvider()
-      const { coordinator } = await startRuntime()
+      const { coordinator, flushFullStates } = await startRuntime()
 
       await coordinator.pullCrdtForNotes([NOTE])
+      const fileAfterSweep = await fileBodyAfterWriteback()
+      await flushFullStates()
+      await pushPeerEdit(peer, ' Fuel bought.')
+      await coordinator.pullCrdtForNotes([NOTE])
 
-      expect(await fileBodyAfterWriteback()).toBe(EDITED_BODY)
+      expect({
+        fileAfterSweep,
+        server: await bodyAfterPull(),
+        file: await fileBodyAfterWriteback()
+      }).toEqual({ fileAfterSweep: EDITED_BODY, server: FUELED_BODY, file: FUELED_BODY })
     })
 
     it('survives opening the note in the editor', async () => {
@@ -769,6 +807,23 @@ describe('CrdtProvider with no store (#2536)', () => {
       expect({ owed: owesFileBody(NOTE), fullStates }).toEqual(expected)
     }
   )
+
+  it('an empty note open in the editor takes an agent edit live', async () => {
+    h.server = { snapshot: null, updates: [] }
+    putNoteInVault('')
+    const { provider, coordinator } = await startRuntime()
+    const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+      coordinator.pullCrdtForNote(id)
+    )
+
+    putNoteInVault('Agent wrote this.')
+    await feedExternalEditToCrdt(NOTE, 'Agent wrote this.')
+
+    expect({
+      editor: await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH }),
+      owed: owesFileBody(NOTE)
+    }).toEqual({ editor: 'Agent wrote this.', owed: false })
+  })
 
   it('a note the server has never seen reaches it through its first edit', async () => {
     h.server = { snapshot: null, updates: [] }
