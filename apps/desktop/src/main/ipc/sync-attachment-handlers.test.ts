@@ -603,6 +603,34 @@ describe('sync-attachment-handlers', () => {
     ])
   })
 
+  it('joins a save-time upload of the same file instead of uploading it a second time', async () => {
+    // #given a saved file whose upload is still waiting in the queue
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    let finishSavedUpload: (result: { attachmentId: string; sessionId: string }) => void = () => {}
+    attachmentMocks.queue.enqueue.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishSavedUpload = resolve
+        })
+    )
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/saved.png' })
+    await vi.waitFor(() => expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1))
+
+    // #when the outbox re-drive reaches the same row before that upload ends
+    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const drained = uploader('note-1', '/vault/attachments/saved.png')
+    finishSavedUpload({ attachmentId: 'attachment-saved', sessionId: 'session-saved' })
+
+    // #then one upload ran and the drain reports its attachment
+    await expect(drained).resolves.toEqual({ attachmentId: 'attachment-saved' })
+    expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
+  })
+
   it('maps download progress and uploads saved attachments from event callbacks', async () => {
     vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
     attachmentMocks.service.getDownloadProgress.mockReturnValue({

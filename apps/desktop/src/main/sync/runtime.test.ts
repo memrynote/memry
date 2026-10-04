@@ -1,6 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SNAPSHOT_BATCH_WINDOW_MS } from '@memry/sync-client/crdt-snapshot-scheduler'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { isKeychainUnreadableError } from '../crypto/vault-key-error'
+import { runMigrations } from '../database/migrate'
 
 const runtimeMocks = vi.hoisted(() => {
   class SyncServerError extends Error {
@@ -1647,6 +1654,118 @@ describe('sync runtime', () => {
       // re-authenticate, and sync would stop with no error surfaced.
       expect(secondQueue.resume).toHaveBeenCalledTimes(1)
       expect(secondWs.refreshAuth).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  // A file queued after the start-time drain used to wait for the next launch.
+  describe('attachment upload re-drive (#2651)', () => {
+    const FIVE_MINUTES_MS = 5 * 60 * 1000
+    let tempDir: string
+    let sqlite: Database.Database
+    let outboxDb: DrizzleDb
+
+    beforeEach(() => {
+      tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-upload-redrive-'))
+      const dbPath = path.join(tempDir, 'data.db')
+      runMigrations(dbPath)
+      sqlite = new Database(dbPath)
+      outboxDb = drizzle(sqlite) as unknown as DrizzleDb
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+      sqlite.close()
+      fs.rmSync(tempDir, { recursive: true, force: true })
+    })
+
+    const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 50))
+
+    async function startWithQueuedFile() {
+      const runtime = await loadRuntime()
+      const outbox = await import('./attachment-outbox')
+      const upload = vi.fn(async () => ({ attachmentId: 'attachment-1' }))
+      outbox.registerOutboxUploader(upload, () => outboxDb, null)
+      const queueFile = (name: string): string => {
+        const diskPath = path.join(tempDir, name)
+        fs.writeFileSync(diskPath, name)
+        outbox.enqueueUpload(outboxDb, 'note-1', diskPath)
+        return diskPath
+      }
+
+      const beforeStart = queueFile('before-start.png')
+      await runtime.startSyncRuntime()
+      await vi.waitFor(() => expect(upload).toHaveBeenCalledWith('note-1', beforeStart))
+
+      return { runtime, outbox, upload, queueFile }
+    }
+
+    it('uploads a file queued mid-session when the connection comes back', async () => {
+      const { outbox, upload, queueFile } = await startWithQueuedFile()
+      const midSession = queueFile('mid-session.png')
+
+      runtimeMocks.NetworkMonitor.instances[0].listeners.get('status-changed')?.({ online: true })
+
+      await vi.waitFor(() => expect(upload).toHaveBeenCalledWith('note-1', midSession))
+      expect(outbox.listPendingUploads(outboxDb)).toEqual([])
+    })
+
+    it('uploads a file queued mid-session on the five-minute re-drive', async () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+      const { outbox, upload, queueFile } = await startWithQueuedFile()
+      const midSession = queueFile('mid-session.png')
+
+      vi.advanceTimersByTime(FIVE_MINUTES_MS)
+
+      await vi.waitFor(() => expect(upload).toHaveBeenCalledWith('note-1', midSession))
+      expect(outbox.listPendingUploads(outboxDb)).toEqual([])
+    })
+
+    it('drops a queued row whose file is gone on the next re-drive', async () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+      const { outbox, upload, queueFile } = await startWithQueuedFile()
+      fs.rmSync(queueFile('deleted.png'))
+
+      vi.advanceTimersByTime(FIVE_MINUTES_MS)
+
+      await vi.waitFor(() => expect(outbox.listPendingUploads(outboxDb)).toEqual([]))
+      expect(upload).toHaveBeenCalledTimes(1)
+    })
+
+    it('leaves the outbox alone while offline or signed out, then drains once both return', async () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+      const { outbox, upload, queueFile } = await startWithQueuedFile()
+      const midSession = queueFile('mid-session.png')
+      const network = runtimeMocks.NetworkMonitor.instances[0]
+
+      network.online = false
+      vi.advanceTimersByTime(FIVE_MINUTES_MS)
+      await settle()
+      network.online = true
+      runtimeMocks.getValidAccessToken.mockResolvedValue(null)
+      vi.advanceTimersByTime(FIVE_MINUTES_MS)
+      await settle()
+
+      expect(upload).toHaveBeenCalledTimes(1)
+      expect(outbox.listPendingUploads(outboxDb)).toEqual([
+        { noteId: 'note-1', diskPath: midSession, attempts: 0 }
+      ])
+
+      runtimeMocks.getValidAccessToken.mockResolvedValue('access-token')
+      vi.advanceTimersByTime(FIVE_MINUTES_MS)
+
+      await vi.waitFor(() => expect(upload).toHaveBeenCalledWith('note-1', midSession))
+    })
+
+    it('stops re-driving once the runtime stops', async () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+      const { runtime, upload, queueFile } = await startWithQueuedFile()
+      await runtime.stopSyncRuntime({ skipFinalSync: true })
+      queueFile('after-stop.png')
+
+      vi.advanceTimersByTime(FIVE_MINUTES_MS)
+      await settle()
+
+      expect(upload).toHaveBeenCalledTimes(1)
     })
   })
 })
