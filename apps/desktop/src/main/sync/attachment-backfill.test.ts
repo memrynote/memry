@@ -206,6 +206,15 @@ describe('attachment backfill', () => {
       expect(listPendingUploads(db).map((row) => row.diskPath)).toEqual([picture])
     })
 
+    it("queues a file in the note's own folder that no save event announced", () => {
+      addNote('note-o')
+      const artifact = addFile('note-o', 'artifact.html')
+      const body = '<!-- file:{"url":"attachments/note-o/artifact.html","name":"artifact.html"} -->'
+
+      expect(queueEmbeddedVaultFilesWith({ db, vaultPath }, 'note-o', body)).toBe(1)
+      expect(saved).toEqual([{ noteId: 'note-o', diskPath: artifact }])
+    })
+
     it('leaves alone a note with references, a local-only note and an unknown note', () => {
       addNote('note-r', { attachmentReferences: ['already-uploaded'] })
       addNote('note-l', { localOnly: true })

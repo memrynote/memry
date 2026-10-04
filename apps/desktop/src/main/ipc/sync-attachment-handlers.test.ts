@@ -626,8 +626,8 @@ describe('sync-attachment-handlers', () => {
     const drained = uploader('note-1', '/vault/attachments/saved.png')
     finishSavedUpload({ attachmentId: 'attachment-saved', sessionId: 'session-saved' })
 
-    // #then one upload ran and the drain reports its attachment
-    await expect(drained).resolves.toEqual({ attachmentId: 'attachment-saved' })
+    // #then one upload ran, and the save path, not the drain, records it
+    await expect(drained).resolves.toBeNull()
     expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
   })
 
@@ -652,8 +652,34 @@ describe('sync-attachment-handlers', () => {
     const drained = uploader('note-1', '/vault/attachments/waiting.png')
     grantToken('token-1')
 
-    // #then one upload ran and the drain reports its attachment
-    await expect(drained).resolves.toEqual({ attachmentId: 'attachment-1' })
+    // #then one upload ran, and the save path, not the drain, records it
+    await expect(drained).resolves.toBeNull()
+    expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves the failure of a joined save-time upload to the save path', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    let failSavedUpload: (error: Error) => void = () => {}
+    attachmentMocks.queue.enqueue.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          failSavedUpload = reject
+        })
+    )
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/failing.png' })
+    await vi.waitFor(() => expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1))
+
+    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const drained = uploader('note-1', '/vault/attachments/failing.png')
+    failSavedUpload(new Error('server said no'))
+
+    // Resolving null keeps the drain from counting the same failure again.
+    await expect(drained).resolves.toBeNull()
     expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
   })
 

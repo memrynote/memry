@@ -61,6 +61,42 @@ describe('attachment outbox', () => {
     expect(pending[0].attempts).toBe(2)
   })
 
+  it('skips a row that another upload cleared while the drain was busy (#2651)', async () => {
+    const first = path.join(tempDir, 'first.png')
+    const second = path.join(tempDir, 'second.png')
+    fs.writeFileSync(first, 'a')
+    fs.writeFileSync(second, 'b')
+    enqueueUpload(db, 'note-1', first)
+    enqueueUpload(db, 'note-1', second)
+    const upload = vi.fn(async (_noteId: string, diskPath: string) => {
+      // The save path finishes the second file and clears its row meanwhile.
+      if (diskPath === first) clearUpload(db, 'note-1', second)
+      return { attachmentId: `id-${path.basename(diskPath)}` }
+    })
+
+    await expect(drainOutboxWith({ db, upload })).resolves.toEqual({
+      uploaded: 1,
+      failed: 0,
+      dropped: 0
+    })
+    expect(upload.mock.calls).toEqual([['note-1', first]])
+  })
+
+  it('leaves a row alone, attempts unchanged, when its upload belongs to the save path', async () => {
+    const owned = path.join(tempDir, 'owned.png')
+    fs.writeFileSync(owned, 'a')
+    enqueueUpload(db, 'note-1', owned)
+    const onUploaded = vi.fn()
+
+    await expect(drainOutboxWith({ db, upload: async () => null, onUploaded })).resolves.toEqual({
+      uploaded: 0,
+      failed: 0,
+      dropped: 0
+    })
+    expect(onUploaded).not.toHaveBeenCalled()
+    expect(listPendingUploads(db)).toEqual([{ noteId: 'note-1', diskPath: owned, attempts: 0 }])
+  })
+
   it('drainOutboxWith retries pending rows: success clears, failure stays, missing file drops', () => {
     const okPath = path.join(tempDir, 'ok.pdf')
     const failPath = path.join(tempDir, 'fail.pdf')
