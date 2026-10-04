@@ -200,6 +200,7 @@ describe('agent IPC handlers', () => {
         ...input
       }))
     },
+    clearMemory: vi.fn(async () => {}),
     vaultId: 'vault-1'
   } as never
 
@@ -294,6 +295,21 @@ describe('agent IPC handlers', () => {
         { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' }
       ]
     })
+  })
+
+  it('clears agent memory through the runtime', async () => {
+    registerAgentHandlers(deps)
+    await expect(findHandler(AgentChannels.invoke.CLEAR_MEMORY)(null)).resolves.toEqual({
+      ok: true
+    })
+    expect(deps.clearMemory).toHaveBeenCalledTimes(1)
+  })
+
+  it('refuses to clear agent memory while the runtime is unavailable', async () => {
+    registerUnavailableAgentHandlers('missing key')
+    await expect(findHandler(AgentChannels.invoke.CLEAR_MEMORY)(null)).rejects.toThrow(
+      'Agent runtime unavailable: missing key'
+    )
   })
 
   it('gets and sets agent preferences', async () => {

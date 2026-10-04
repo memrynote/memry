@@ -14,6 +14,16 @@ import { isInPageReviewTool } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
 import { invokeWhenAgentReady } from '@/agent-chat/agent-runtime-ready'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -24,6 +34,7 @@ import {
   SettingRow
 } from '@/components/settings/settings-primitives'
 import { ChevronRight } from '@/lib/icons'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackTelemetry } from '@/lib/telemetry'
 import { cn } from '@/lib/utils'
 
@@ -506,7 +517,83 @@ export function AgentProvidersSection({
           ))
         )}
       </SettingsGroup>
+
+      <AgentMemoryGroup />
     </div>
+  )
+}
+
+type MemoryStatus =
+  { state: 'idle' | 'clearing' | 'cleared' } | { state: 'failed'; message: string }
+
+function AgentMemoryGroup(): React.JSX.Element {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
+  const [status, setStatus] = useState<MemoryStatus>({ state: 'idle' })
+  const [confirming, setConfirming] = useState(false)
+
+  const clearMemory = async (): Promise<void> => {
+    setConfirming(false)
+    setStatus({ state: 'clearing' })
+    try {
+      await invokeWhenAgentReady(() => window.api.agent.clearMemory())
+      setStatus({ state: 'cleared' })
+      void trackTelemetry('setting_changed', {
+        surface: 'settings',
+        action: 'changed',
+        objectType: 'agent_memory_cleared'
+      })
+    } catch (error) {
+      setStatus({
+        state: 'failed',
+        message: extractErrorMessage(error, t('agentProviders.memory.failed'))
+      })
+    }
+  }
+
+  const description =
+    status.state === 'failed'
+      ? status.message
+      : status.state === 'cleared'
+        ? t('agentProviders.memory.cleared')
+        : t('agentProviders.memory.clearDescription')
+
+  return (
+    <SettingsGroup
+      label={t('agentProviders.memory.group')}
+      description={t('agentProviders.memory.description')}
+    >
+      <SettingRow label={t('agentProviders.memory.clear')} description={description}>
+        <button
+          type="button"
+          className={cn(QUIET_ACTION, 'text-destructive hover:text-destructive')}
+          aria-label={t('agentProviders.memory.clear')}
+          onClick={() => setConfirming(true)}
+          disabled={status.state === 'clearing'}
+        >
+          {t('agentProviders.memory.clearAction')}
+        </button>
+      </SettingRow>
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('agentProviders.memory.confirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('agentProviders.memory.confirmDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void clearMemory()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('agentProviders.memory.clear')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </SettingsGroup>
   )
 }
 

@@ -111,6 +111,10 @@ export function registerLazyAgentHandlers(): void {
     await ensureLazyAgentServicesStarted()
     throw new Error(AGENT_RUNTIME_STARTING_CODE)
   })
+  ipcMain.handle(AgentChannels.invoke.CLEAR_MEMORY, async (): Promise<{ ok: boolean }> => {
+    await ensureLazyAgentServicesStarted()
+    throw new Error(AGENT_RUNTIME_STARTING_CODE)
+  })
   ipcMain.handle(
     AgentChannels.invoke.GET_BACKEND_STATUSES,
     async (): Promise<BackendStatusesResponse> => {

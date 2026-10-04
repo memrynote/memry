@@ -91,6 +91,7 @@ describe('lazy agent IPC handlers', () => {
       AgentChannels.invoke.APPROVE_TOOL,
       AgentChannels.invoke.PREVIEW_DIFF,
       AgentChannels.invoke.EDIT_TRUST_LIST,
+      AgentChannels.invoke.CLEAR_MEMORY,
       AgentChannels.invoke.GET_BACKEND_STATUSES,
       AgentChannels.invoke.LIST_LOCAL_MODELS,
       AgentChannels.invoke.TEST_LOCAL_PROVIDER,
