@@ -463,6 +463,11 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
           return otpResult
         }
 
+        if (result.deviceId && !result.needsRecoveryInput) {
+          dispatch({ type: 'OTP_VERIFIED', deviceId: result.deviceId, needsRecoverySetup: false })
+          return { deviceId: result.deviceId, needsRecoverySetup: false, needsRecoveryInput: false }
+        }
+
         const otpResult: VerifyOtpResult = {
           deviceId: '',
           needsRecoverySetup: true,

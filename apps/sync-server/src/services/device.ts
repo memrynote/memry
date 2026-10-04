@@ -26,6 +26,26 @@ export const listDevices = async (db: D1Database, userId: string): Promise<Devic
   return result.results
 }
 
+/**
+ * Whether the account still lists an unrevoked device with this signing key.
+ * A device that passes signs back in with the email code alone (#2612); a
+ * revoked one has to bring the recovery phrase again.
+ */
+export const isActiveDeviceKey = async (
+  db: D1Database,
+  userId: string,
+  authPublicKey: string | undefined
+): Promise<boolean> => {
+  if (!authPublicKey) return false
+  const row = await db
+    .prepare(
+      'SELECT 1 AS found FROM devices WHERE user_id = ? AND auth_public_key = ? AND revoked_at IS NULL'
+    )
+    .bind(userId, authPublicKey)
+    .first<{ found: number }>()
+  return row !== null
+}
+
 export type DeviceSigningKeyRow = Pick<
   Device,
   'id' | 'name' | 'platform' | 'auth_public_key' | 'revoked_at'

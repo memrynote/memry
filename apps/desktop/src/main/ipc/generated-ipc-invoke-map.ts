@@ -45,7 +45,7 @@ export interface MainIpcInvokeHandlers {
   "auth:refresh-token": (...args: []) => Awaited<Promise<{ success: boolean; sessionEnded: boolean; error: string | undefined; }>>
   "auth:request-otp": (...args: [{ email: string; }]) => Awaited<Promise<unknown> | { success: false; error: string }>
   "auth:resend-otp": (...args: [{ email: string; }]) => Awaited<Promise<unknown> | { success: false; error: string }>
-  "auth:verify-otp": (...args: [{ email: string; code: string; }]) => Awaited<Promise<{ success: boolean; isNewUser: boolean; needsSetup: boolean; needsRecoveryInput: boolean; }> | { success: false; error: string }>
+  "auth:verify-otp": (...args: [{ email: string; code: string; }]) => Awaited<Promise<{ deviceId?: string | undefined; success: boolean; isNewUser: boolean; needsSetup: boolean; needsRecoveryInput: boolean; }> | { success: false; error: string }>
   "bookmarks:bulk-create": (...args: [{ items: { itemType: string; itemId: string; }[]; }]) => Awaited<Promise<{ success: boolean; createdCount: number; }>>
   "bookmarks:bulk-delete": (...args: [{ bookmarkIds: string[]; }]) => Awaited<Promise<{ success: boolean; deletedCount: number; }>>
   "bookmarks:create": (...args: [{ itemType: string; itemId: string; }]) => Awaited<Promise<{ success: boolean; bookmark: null; error: string; } | { success: boolean; bookmark: { id: string; createdAt: string; clock: import("../../../../../packages/contracts/src/sync-api").VectorClock | null; syncedAt: string | null; position: number; itemType: string; itemId: string; }; error?: undefined; }>>
@@ -418,7 +418,7 @@ export interface MainIpcInvokeHandlers {
   "sync:rename-device": (...args: [{ deviceId: string; newName: string; }]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }> | { success: false; error: string }>
   "sync:resolve-vault-binding": (...args: [{ choice: "sync" | "merge" | "local"; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-sync-ops").ResolveVaultBindingResult> | { success: false; error: string }>
   "sync:resume": (...args: []) => Awaited<{ success: boolean; pendingCount: number; }>
-  "sync:setup-first-device": (...args: [{ oauthToken: string; provider: "google"; state: string; }]) => Awaited<Promise<{ success: boolean; needsRecoverySetup: boolean; deviceId: string; needsRecoveryInput?: undefined; } | { success: boolean; needsRecoverySetup: boolean; needsRecoveryInput: boolean; deviceId?: undefined; }> | { success: false; error: string }>
+  "sync:setup-first-device": (...args: [{ oauthToken: string; provider: "google"; state: string; }]) => Awaited<Promise<{ success: boolean; needsRecoverySetup: boolean; deviceId: string; needsRecoveryInput?: undefined; } | { success: boolean; needsRecoverySetup: boolean; needsRecoveryInput: boolean; deviceId: string; } | { success: boolean; needsRecoverySetup: boolean; needsRecoveryInput: boolean; deviceId?: undefined; }> | { success: false; error: string }>
   "sync:setup-new-account": (...args: []) => Awaited<Promise<{ success: boolean; error: string; deviceId?: undefined; } | { success: boolean; deviceId: string; error?: undefined; }>>
   "sync:trigger-sync": (...args: []) => Awaited<Promise<{ success: boolean; } | { success: boolean; error: string; }>>
   "sync:update-synced-setting": (...args: [{ fieldPath: string; value: unknown; }]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; } | { success: false; error: string }>
