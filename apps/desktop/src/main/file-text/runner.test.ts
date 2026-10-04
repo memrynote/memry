@@ -358,6 +358,32 @@ describe('FileTextRunner', () => {
     ])
   })
 
+  it('reads the unreadable pages of a finished PDF again under a new app version', async () => {
+    seedFile(harness, 'pdf-1', 'scan.pdf', 'pdf')
+    harness.pages = [{ fails: true }, { fails: true }, { layer: 'three' }]
+    const first = start()
+    await settled(harness.db, 'pdf-1', 'done')
+    await first.stop()
+
+    harness.pages = [{ scanned: 'one' }, { scanned: 'two' }, { layer: 'not read again' }]
+    const sameVersion = start()
+    seedFile(harness, 'img-1', 'later.png', 'image')
+    sameVersion.noteChanged('img-1')
+    await settled(harness.db, 'img-1', 'done')
+    expect(pagesOf(harness.db, 'pdf-1').map((page) => page.method)).toEqual([
+      'unreadable',
+      'unreadable',
+      'pdf-text'
+    ])
+    await sameVersion.stop()
+
+    start({ appVersion: '1.0.1' })
+    await vi.waitFor(() =>
+      expect(pagesOf(harness.db, 'pdf-1').map((page) => page.text)).toEqual(['one', 'two', 'three'])
+    )
+    expect(jobOf(harness.db, 'pdf-1')?.status).toBe('done')
+  })
+
   it('re-reads every unreadable page of a retried PDF, including one before a good page', async () => {
     seedFile(harness, 'pdf-1', 'scan.pdf', 'pdf')
     harness.pages = [

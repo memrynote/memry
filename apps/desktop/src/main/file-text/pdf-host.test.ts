@@ -88,6 +88,16 @@ describe('PDF host', () => {
     })
   })
 
+  it('fails with the message the page threw when it throws a plain object', async () => {
+    const opening = openPdfDocument('/vault/broken.pdf', 10)
+    await vi.waitFor(() => expect(views).toHaveLength(1))
+    // pdfjs exceptions are not real Errors, so they cross the bridge as plain objects.
+    views[0].webContents.host.open = () =>
+      Promise.reject({ name: 'InvalidPDFException', message: 'Invalid PDF structure.' })
+
+    await expect(opening).rejects.toThrow('Invalid PDF structure.')
+  })
+
   it('closes the view a minute after the last document closes', async () => {
     vi.useFakeTimers()
     const first = await openPdfDocument('/vault/a.pdf', 1)

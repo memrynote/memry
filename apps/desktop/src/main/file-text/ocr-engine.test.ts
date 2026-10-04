@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events'
+import * as fs from 'fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { OcrMainToWorkerMessage, OcrWorkerToMainMessage } from './ocr-protocol'
 
@@ -44,6 +45,14 @@ vi.mock('electron', () => ({
   }
 }))
 
+const log = vi.hoisted(() => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }))
+vi.mock('../lib/logger', () => ({ createLogger: () => log }))
+
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof fs>()
+  return { ...actual, existsSync: vi.fn(actual.existsSync) }
+})
+
 import { recognizeText, stopOcr } from './ocr-engine'
 
 const source = { kind: 'file', path: '/vault/scan.png' } as const
@@ -64,6 +73,16 @@ describe('OCR engine', () => {
 
     expect(workers).toHaveLength(1)
     expect(forkOptions[0].env?.MEMRY_OCR_LANG_PATH).toMatch(/tessdata$/)
+  })
+
+  it('fails at once, and says so once, when the language data is missing', async () => {
+    vi.mocked(fs.existsSync).mockReturnValueOnce(false).mockReturnValueOnce(false)
+
+    await expect(recognizeText(source)).rejects.toThrow('OCR language data is missing')
+    await expect(recognizeText(source)).rejects.toThrow('OCR language data is missing')
+
+    expect(workers).toHaveLength(0)
+    expect(log.error).toHaveBeenCalledTimes(1)
   })
 
   it('fails the request when the worker reports an error', async () => {
