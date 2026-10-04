@@ -568,8 +568,9 @@ return a structured MCP error instead of falling back to an arbitrary desktop ca
 A desktop API call on a filed PDF, image, audio file, or video, such as `notes.get` or
 `notes.rename`, returns the file's metadata in place of the note: `id`, `path`, `title`, `fileType`,
 `mimeType`, `fileSize`, `created`, `modified`, `contentOmitted: true`, and `contentAccess`, a
-sentence that says how the content can be read. Today every filed file returns metadata only.
-Viewing images and reading PDF text are not available through the desktop API yet.
+sentence that says how the content can be read. For a PDF or an image it names `vault_read_note`,
+which returns the text read from the file (see [Notes and filed files](#notes-and-filed-files)).
+Viewing images is not available through the desktop API yet.
 
 A desktop API reply whose JSON is longer than 100 KB in UTF-8 bytes, counted after source links are
 added, comes back as `{ truncated: true, totalBytes, message, partial }`. `partial` holds the start

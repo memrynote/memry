@@ -25,12 +25,12 @@ interface FiledFileMetadata {
   contentAccess: string
 }
 
-// FB-002 (#2605) and FB-001 (#2604) change the image and pdf rows to name
-// their tools once those tools ship.
+// The one place that tells an agent where a filed file's content can be read.
+// FB-002 (#2605) changes the image row to name its viewing tool once it ships.
 const CONTENT_ACCESS: Record<FiledFileType, string> = {
   image:
-    'The desktop API returns metadata only for image files. Viewing an image is not available yet.',
-  pdf: 'The desktop API returns metadata only for PDF files. Reading PDF text is not available yet.',
+    'The desktop API returns metadata only for image files. vault_read_note with this id returns the text read from the image (OCR). Viewing an image is not available yet.',
+  pdf: 'The desktop API returns metadata only for PDF files. vault_read_note with this id returns the text read from the PDF, page by page.',
   audio: 'The desktop API returns metadata only for audio files.',
   video: 'The desktop API returns metadata only for video files.'
 }
