@@ -139,6 +139,7 @@ mod tests {
                 vec![remote_delete("journal", &opened.id, tombstone.clone())],
                 vec![],
                 NOW + 1,
+                None,
             )?;
             assert_eq!(totals.deleted, 1);
 
@@ -165,6 +166,7 @@ mod tests {
                 vec![remote_delete("folder_config", "Notes", tombstone.clone())],
                 vec![],
                 NOW + 1,
+                None,
             )?;
 
             folders::create(conn, "Notes", None, "device-a", NOW + 2)?.acknowledge();
@@ -189,6 +191,7 @@ mod tests {
                 vec![remote_delete("tag_definition", "work", tombstone.clone())],
                 vec![],
                 NOW + 1,
+                None,
             )?;
 
             tag_admin::set_color(conn, "Work", "sky", "device-a", NOW + 2)?;
