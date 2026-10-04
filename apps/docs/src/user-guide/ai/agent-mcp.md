@@ -423,8 +423,8 @@ A write reply can carry a `warnings` list of plain sentences:
   counts. For `vault_update_note` in `append` or `prepend` mode, and for
   `vault_add_html_artifact`, the body sent is the whole body the call asked the note to hold:
   the current body joined with the new text, not the new text alone. The note is read back
-  once any save it was waiting on has run. Line endings and the final newline do not count as
-  a difference.
+  once any save it was waiting on has run. Line endings count, so an LF body saved into a CRLF
+  note is reported. Only the final newline at the end of the body does not count.
 - While this device runs without its CRDT store, every write reply says so. Note edits are
   still saved to the vault and synced, but without merge history for that session.
 
