@@ -255,6 +255,14 @@
       "three": {
         "title": "Ba cột",
         "subtext": "Đặt các khối cạnh nhau trong ba cột"
+      },
+      "four": {
+        "title": "Bốn cột",
+        "subtext": "Đặt các khối cạnh nhau trong bốn cột"
+      },
+      "five": {
+        "title": "Năm cột",
+        "subtext": "Đặt các khối cạnh nhau trong năm cột"
       }
     },
     "diagram": {

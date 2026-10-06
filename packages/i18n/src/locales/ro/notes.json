@@ -255,6 +255,14 @@
       "three": {
         "title": "Trei coloane",
         "subtext": "Așază blocurile alăturat în trei coloane"
+      },
+      "four": {
+        "title": "Patru coloane",
+        "subtext": "Așază blocurile alăturat în patru coloane"
+      },
+      "five": {
+        "title": "Cinci coloane",
+        "subtext": "Așază blocurile alăturat în cinci coloane"
       }
     },
     "diagram": {

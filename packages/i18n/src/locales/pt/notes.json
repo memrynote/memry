@@ -255,6 +255,14 @@
       "three": {
         "title": "Três colunas",
         "subtext": "Coloque blocos lado a lado em três colunas"
+      },
+      "four": {
+        "title": "Quatro colunas",
+        "subtext": "Coloque blocos lado a lado em quatro colunas"
+      },
+      "five": {
+        "title": "Cinco colunas",
+        "subtext": "Coloque blocos lado a lado em cinco colunas"
       }
     },
     "diagram": {

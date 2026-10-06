@@ -255,6 +255,14 @@
       "three": {
         "title": "Tatlong column",
         "subtext": "Ilagay ang mga block nang magkatabi sa tatlong column"
+      },
+      "four": {
+        "title": "Apat na column",
+        "subtext": "Ilagay ang mga block nang magkatabi sa apat na column"
+      },
+      "five": {
+        "title": "Limang column",
+        "subtext": "Ilagay ang mga block nang magkatabi sa limang column"
       }
     },
     "diagram": {

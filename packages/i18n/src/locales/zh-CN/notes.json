@@ -255,6 +255,14 @@
       "three": {
         "title": "三列",
         "subtext": "将块并排放在三列中"
+      },
+      "four": {
+        "title": "四列",
+        "subtext": "将块并排放在四列中"
+      },
+      "five": {
+        "title": "五列",
+        "subtext": "将块并排放在五列中"
       }
     },
     "diagram": {

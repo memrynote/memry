@@ -255,6 +255,14 @@
       "three": {
         "title": "Tiga lajur",
         "subtext": "Letakkan blok bersebelahan dalam tiga lajur"
+      },
+      "four": {
+        "title": "Empat lajur",
+        "subtext": "Letakkan blok bersebelahan dalam empat lajur"
+      },
+      "five": {
+        "title": "Lima lajur",
+        "subtext": "Letakkan blok bersebelahan dalam lima lajur"
       }
     },
     "diagram": {

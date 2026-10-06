@@ -255,6 +255,14 @@
       "three": {
         "title": "Három oszlop",
         "subtext": "Blokkok egymás mellé három oszlopban"
+      },
+      "four": {
+        "title": "Négy oszlop",
+        "subtext": "Blokkok egymás mellé négy oszlopban"
+      },
+      "five": {
+        "title": "Öt oszlop",
+        "subtext": "Blokkok egymás mellé öt oszlopban"
       }
     },
     "diagram": {

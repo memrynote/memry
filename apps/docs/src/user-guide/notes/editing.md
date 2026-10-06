@@ -55,7 +55,7 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Quote, callout
 - Equation (a LaTeX formula on its own line)
 - Toggle list (collapsible section — nest text, images, even other toggles inside it)
-- Two columns, three columns (blocks side by side)
+- Two, three, four or five columns (blocks side by side)
 - Code block (language picker: 50 languages, alphabetical)
 - Diagram (Mermaid)
 - Whiteboard (an inline canvas you draw on)
@@ -438,7 +438,7 @@ Two shapes are deliberately left alone rather than adopted:
 
 ## Columns
 
-`/Two columns` or `/Three columns` puts blocks side by side. You can also drag a block by
+`/Two columns` through `/Five columns` puts blocks side by side. You can also drag a block by
 its handle onto the left or right edge of another block: the two become columns. Drag the
 line between two columns to resize them. Removing the last block from a column removes
 that column; when only one column is left, its blocks go back to being ordinary page
@@ -456,7 +456,11 @@ Column Size: [30%, 70%]
 
 Left column
 
---- end-column ---
+---
+
+```
+end-column ---
+```
 
 Right column
 

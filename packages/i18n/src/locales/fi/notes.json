@@ -255,6 +255,14 @@
       "three": {
         "title": "Kolme saraketta",
         "subtext": "Aseta lohkot vierekkäin kolmeen sarakkeeseen"
+      },
+      "four": {
+        "title": "Neljä saraketta",
+        "subtext": "Aseta lohkot vierekkäin neljään sarakkeeseen"
+      },
+      "five": {
+        "title": "Viisi saraketta",
+        "subtext": "Aseta lohkot vierekkäin viiteen sarakkeeseen"
       }
     },
     "diagram": {

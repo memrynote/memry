@@ -255,6 +255,14 @@
       "three": {
         "title": "Tre kolumner",
         "subtext": "Placera block sida vid sida i tre kolumner"
+      },
+      "four": {
+        "title": "Fyra kolumner",
+        "subtext": "Placera block sida vid sida i fyra kolumner"
+      },
+      "five": {
+        "title": "Fem kolumner",
+        "subtext": "Placera block sida vid sida i fem kolumner"
       }
     },
     "diagram": {

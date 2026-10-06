@@ -255,6 +255,14 @@
       "three": {
         "title": "Trzy kolumny",
         "subtext": "Umieść bloki obok siebie w trzech kolumnach"
+      },
+      "four": {
+        "title": "Cztery kolumny",
+        "subtext": "Umieść bloki obok siebie w czterech kolumnach"
+      },
+      "five": {
+        "title": "Pięć kolumn",
+        "subtext": "Umieść bloki obok siebie w pięciu kolumnach"
       }
     },
     "diagram": {

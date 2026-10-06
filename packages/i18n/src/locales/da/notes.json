@@ -255,6 +255,14 @@
       "three": {
         "title": "Tre kolonner",
         "subtext": "Placer blokke side om side i tre kolonner"
+      },
+      "four": {
+        "title": "Fire kolonner",
+        "subtext": "Placer blokke side om side i fire kolonner"
+      },
+      "five": {
+        "title": "Fem kolonner",
+        "subtext": "Placer blokke side om side i fem kolonner"
       }
     },
     "diagram": {

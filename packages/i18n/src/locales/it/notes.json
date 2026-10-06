@@ -255,6 +255,14 @@
       "three": {
         "title": "Tre colonne",
         "subtext": "Affianca i blocchi su tre colonne"
+      },
+      "four": {
+        "title": "Quattro colonne",
+        "subtext": "Affianca i blocchi su quattro colonne"
+      },
+      "five": {
+        "title": "Cinque colonne",
+        "subtext": "Affianca i blocchi su cinque colonne"
       }
     },
     "diagram": {

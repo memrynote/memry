@@ -255,6 +255,14 @@
       "three": {
         "title": "Tri stĺpce",
         "subtext": "Umiestniť bloky vedľa seba do troch stĺpcov"
+      },
+      "four": {
+        "title": "Štyri stĺpce",
+        "subtext": "Umiestniť bloky vedľa seba do štyroch stĺpcov"
+      },
+      "five": {
+        "title": "Päť stĺpcov",
+        "subtext": "Umiestniť bloky vedľa seba do piatich stĺpcov"
       }
     },
     "diagram": {

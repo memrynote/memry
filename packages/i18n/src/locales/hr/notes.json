@@ -255,6 +255,14 @@
       "three": {
         "title": "Tri stupca",
         "subtext": "Postavi blokove jedan uz drugi u tri stupca"
+      },
+      "four": {
+        "title": "Četiri stupca",
+        "subtext": "Postavi blokove jedan uz drugi u četiri stupca"
+      },
+      "five": {
+        "title": "Pet stupaca",
+        "subtext": "Postavi blokove jedan uz drugi u pet stupaca"
       }
     },
     "diagram": {

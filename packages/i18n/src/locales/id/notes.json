@@ -255,6 +255,14 @@
       "three": {
         "title": "Tiga kolom",
         "subtext": "Letakkan blok berdampingan dalam tiga kolom"
+      },
+      "four": {
+        "title": "Empat kolom",
+        "subtext": "Letakkan blok berdampingan dalam empat kolom"
+      },
+      "five": {
+        "title": "Lima kolom",
+        "subtext": "Letakkan blok berdampingan dalam lima kolom"
       }
     },
     "diagram": {

@@ -255,6 +255,14 @@
       "three": {
         "title": "Drei Spalten",
         "subtext": "Blöcke in drei Spalten nebeneinander anordnen"
+      },
+      "four": {
+        "title": "Vier Spalten",
+        "subtext": "Blöcke in vier Spalten nebeneinander anordnen"
+      },
+      "five": {
+        "title": "Fünf Spalten",
+        "subtext": "Blöcke in fünf Spalten nebeneinander anordnen"
       }
     },
     "diagram": {

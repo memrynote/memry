@@ -255,6 +255,14 @@
       "three": {
         "title": "Üç sütun",
         "subtext": "Blokları üç sütunda yan yana yerleştir"
+      },
+      "four": {
+        "title": "Dört sütun",
+        "subtext": "Blokları dört sütunda yan yana yerleştir"
+      },
+      "five": {
+        "title": "Beş sütun",
+        "subtext": "Blokları beş sütunda yan yana yerleştir"
       }
     },
     "diagram": {

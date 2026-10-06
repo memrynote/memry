@@ -255,6 +255,14 @@
       "three": {
         "title": "Drie kolommen",
         "subtext": "Zet blokken naast elkaar in drie kolommen"
+      },
+      "four": {
+        "title": "Vier kolommen",
+        "subtext": "Zet blokken naast elkaar in vier kolommen"
+      },
+      "five": {
+        "title": "Vijf kolommen",
+        "subtext": "Zet blokken naast elkaar in vijf kolommen"
       }
     },
     "diagram": {

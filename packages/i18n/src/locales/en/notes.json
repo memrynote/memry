@@ -275,6 +275,14 @@
       "three": {
         "title": "Three columns",
         "subtext": "Place blocks side by side in three columns"
+      },
+      "four": {
+        "title": "Four columns",
+        "subtext": "Place blocks side by side in four columns"
+      },
+      "five": {
+        "title": "Five columns",
+        "subtext": "Place blocks side by side in five columns"
       }
     },
     "diagram": {
