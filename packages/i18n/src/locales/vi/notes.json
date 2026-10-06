@@ -249,19 +249,19 @@
     "columns": {
       "group": "Khối cơ bản",
       "two": {
-        "title": "Hai cột",
+        "title": "2 cột",
         "subtext": "Đặt các khối cạnh nhau trong hai cột"
       },
       "three": {
-        "title": "Ba cột",
+        "title": "3 cột",
         "subtext": "Đặt các khối cạnh nhau trong ba cột"
       },
       "four": {
-        "title": "Bốn cột",
+        "title": "4 cột",
         "subtext": "Đặt các khối cạnh nhau trong bốn cột"
       },
       "five": {
-        "title": "Năm cột",
+        "title": "5 cột",
         "subtext": "Đặt các khối cạnh nhau trong năm cột"
       }
     },

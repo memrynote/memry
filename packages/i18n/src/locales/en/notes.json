@@ -269,19 +269,19 @@
     "columns": {
       "group": "Basic blocks",
       "two": {
-        "title": "Two columns",
+        "title": "2 columns",
         "subtext": "Place blocks side by side in two columns"
       },
       "three": {
-        "title": "Three columns",
+        "title": "3 columns",
         "subtext": "Place blocks side by side in three columns"
       },
       "four": {
-        "title": "Four columns",
+        "title": "4 columns",
         "subtext": "Place blocks side by side in four columns"
       },
       "five": {
-        "title": "Five columns",
+        "title": "5 columns",
         "subtext": "Place blocks side by side in five columns"
       }
     },

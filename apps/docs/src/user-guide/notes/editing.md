@@ -438,7 +438,7 @@ Two shapes are deliberately left alone rather than adopted:
 
 ## Columns
 
-`/Two columns` through `/Five columns` puts blocks side by side. You can also drag a block by
+`/2 columns` through `/5 columns` puts blocks side by side. You can also drag a block by
 its handle onto the left or right edge of another block: the two become columns. Drag the
 line between two columns to resize them. Removing the last block from a column removes
 that column; when only one column is left, its blocks go back to being ordinary page

@@ -249,19 +249,19 @@
     "columns": {
       "group": "Blocs de base",
       "two": {
-        "title": "Deux colonnes",
+        "title": "2 colonnes",
         "subtext": "Placer des blocs côte à côte sur deux colonnes"
       },
       "three": {
-        "title": "Trois colonnes",
+        "title": "3 colonnes",
         "subtext": "Placer des blocs côte à côte sur trois colonnes"
       },
       "four": {
-        "title": "Quatre colonnes",
+        "title": "4 colonnes",
         "subtext": "Placer des blocs côte à côte sur quatre colonnes"
       },
       "five": {
-        "title": "Cinq colonnes",
+        "title": "5 colonnes",
         "subtext": "Placer des blocs côte à côte sur cinq colonnes"
       }
     },

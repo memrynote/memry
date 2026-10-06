@@ -249,19 +249,19 @@
     "columns": {
       "group": "Základní bloky",
       "two": {
-        "title": "Dva sloupce",
+        "title": "2 sloupce",
         "subtext": "Umístit bloky vedle sebe do dvou sloupců"
       },
       "three": {
-        "title": "Tři sloupce",
+        "title": "3 sloupce",
         "subtext": "Umístit bloky vedle sebe do tří sloupců"
       },
       "four": {
-        "title": "Čtyři sloupce",
+        "title": "4 sloupce",
         "subtext": "Umístit bloky vedle sebe do čtyř sloupců"
       },
       "five": {
-        "title": "Pět sloupců",
+        "title": "5 sloupců",
         "subtext": "Umístit bloky vedle sebe do pěti sloupců"
       }
     },

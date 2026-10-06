@@ -249,19 +249,19 @@
     "columns": {
       "group": "Alapblokkok",
       "two": {
-        "title": "Két oszlop",
+        "title": "2 oszlop",
         "subtext": "Blokkok egymás mellé két oszlopban"
       },
       "three": {
-        "title": "Három oszlop",
+        "title": "3 oszlop",
         "subtext": "Blokkok egymás mellé három oszlopban"
       },
       "four": {
-        "title": "Négy oszlop",
+        "title": "4 oszlop",
         "subtext": "Blokkok egymás mellé négy oszlopban"
       },
       "five": {
-        "title": "Öt oszlop",
+        "title": "5 oszlop",
         "subtext": "Blokkok egymás mellé öt oszlopban"
       }
     },

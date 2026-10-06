@@ -249,19 +249,19 @@
     "columns": {
       "group": "Blok dasar",
       "two": {
-        "title": "Dua kolom",
+        "title": "2 kolom",
         "subtext": "Letakkan blok berdampingan dalam dua kolom"
       },
       "three": {
-        "title": "Tiga kolom",
+        "title": "3 kolom",
         "subtext": "Letakkan blok berdampingan dalam tiga kolom"
       },
       "four": {
-        "title": "Empat kolom",
+        "title": "4 kolom",
         "subtext": "Letakkan blok berdampingan dalam empat kolom"
       },
       "five": {
-        "title": "Lima kolom",
+        "title": "5 kolom",
         "subtext": "Letakkan blok berdampingan dalam lima kolom"
       }
     },

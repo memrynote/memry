@@ -249,19 +249,19 @@
     "columns": {
       "group": "Blok asas",
       "two": {
-        "title": "Dua lajur",
+        "title": "2 lajur",
         "subtext": "Letakkan blok bersebelahan dalam dua lajur"
       },
       "three": {
-        "title": "Tiga lajur",
+        "title": "3 lajur",
         "subtext": "Letakkan blok bersebelahan dalam tiga lajur"
       },
       "four": {
-        "title": "Empat lajur",
+        "title": "4 lajur",
         "subtext": "Letakkan blok bersebelahan dalam empat lajur"
       },
       "five": {
-        "title": "Lima lajur",
+        "title": "5 lajur",
         "subtext": "Letakkan blok bersebelahan dalam lima lajur"
       }
     },

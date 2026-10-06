@@ -249,19 +249,19 @@
     "columns": {
       "group": "Basisblokken",
       "two": {
-        "title": "Twee kolommen",
+        "title": "2 kolommen",
         "subtext": "Zet blokken naast elkaar in twee kolommen"
       },
       "three": {
-        "title": "Drie kolommen",
+        "title": "3 kolommen",
         "subtext": "Zet blokken naast elkaar in drie kolommen"
       },
       "four": {
-        "title": "Vier kolommen",
+        "title": "4 kolommen",
         "subtext": "Zet blokken naast elkaar in vier kolommen"
       },
       "five": {
-        "title": "Vijf kolommen",
+        "title": "5 kolommen",
         "subtext": "Zet blokken naast elkaar in vijf kolommen"
       }
     },

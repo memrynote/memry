@@ -249,19 +249,19 @@
     "columns": {
       "group": "Temel bloklar",
       "two": {
-        "title": "İki sütun",
+        "title": "2 sütun",
         "subtext": "Blokları iki sütunda yan yana yerleştir"
       },
       "three": {
-        "title": "Üç sütun",
+        "title": "3 sütun",
         "subtext": "Blokları üç sütunda yan yana yerleştir"
       },
       "four": {
-        "title": "Dört sütun",
+        "title": "4 sütun",
         "subtext": "Blokları dört sütunda yan yana yerleştir"
       },
       "five": {
-        "title": "Beş sütun",
+        "title": "5 sütun",
         "subtext": "Blokları beş sütunda yan yana yerleştir"
       }
     },

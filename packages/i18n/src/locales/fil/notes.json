@@ -249,19 +249,19 @@
     "columns": {
       "group": "Mga pangunahing block",
       "two": {
-        "title": "Dalawang column",
+        "title": "2 column",
         "subtext": "Ilagay ang mga block nang magkatabi sa dalawang column"
       },
       "three": {
-        "title": "Tatlong column",
+        "title": "3 column",
         "subtext": "Ilagay ang mga block nang magkatabi sa tatlong column"
       },
       "four": {
-        "title": "Apat na column",
+        "title": "4 column",
         "subtext": "Ilagay ang mga block nang magkatabi sa apat na column"
       },
       "five": {
-        "title": "Limang column",
+        "title": "5 column",
         "subtext": "Ilagay ang mga block nang magkatabi sa limang column"
       }
     },

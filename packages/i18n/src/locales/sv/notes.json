@@ -249,19 +249,19 @@
     "columns": {
       "group": "Grundläggande block",
       "two": {
-        "title": "Två kolumner",
+        "title": "2 kolumner",
         "subtext": "Placera block sida vid sida i två kolumner"
       },
       "three": {
-        "title": "Tre kolumner",
+        "title": "3 kolumner",
         "subtext": "Placera block sida vid sida i tre kolumner"
       },
       "four": {
-        "title": "Fyra kolumner",
+        "title": "4 kolumner",
         "subtext": "Placera block sida vid sida i fyra kolumner"
       },
       "five": {
-        "title": "Fem kolumner",
+        "title": "5 kolumner",
         "subtext": "Placera block sida vid sida i fem kolumner"
       }
     },

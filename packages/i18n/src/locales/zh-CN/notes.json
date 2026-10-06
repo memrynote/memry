@@ -249,19 +249,19 @@
     "columns": {
       "group": "基本块",
       "two": {
-        "title": "两列",
+        "title": "2 列",
         "subtext": "将块并排放在两列中"
       },
       "three": {
-        "title": "三列",
+        "title": "3 列",
         "subtext": "将块并排放在三列中"
       },
       "four": {
-        "title": "四列",
+        "title": "4 列",
         "subtext": "将块并排放在四列中"
       },
       "five": {
-        "title": "五列",
+        "title": "5 列",
         "subtext": "将块并排放在五列中"
       }
     },
