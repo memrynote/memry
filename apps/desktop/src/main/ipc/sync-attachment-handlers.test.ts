@@ -170,8 +170,10 @@ vi.mock('../sync/note-attachment-metadata', () => ({
 }))
 
 const mockRecordAttachmentFile = vi.hoisted(() => vi.fn())
+const mockRecordedFileOf = vi.hoisted(() => vi.fn((): string | null => null))
 vi.mock('../sync/attachment-files', () => ({
-  recordAttachmentFile: (...args: unknown[]) => mockRecordAttachmentFile(...args)
+  recordAttachmentFile: (...args: unknown[]) => mockRecordAttachmentFile(...args),
+  recordedFileOf: (...args: unknown[]) => mockRecordedFileOf(...args)
 }))
 
 vi.mock('../sync/runtime', () => ({
@@ -925,6 +927,35 @@ describe('sync-attachment-handlers', () => {
       ['/vault', 'note-1', '/vault/attachments/note-1/bbbbbb-drained.png', 'attachment-1'],
       ['/vault', 'note-1', '/tmp/file.pdf', 'attachment-9']
     ])
+  })
+
+  it('does not download an embedded attachment this device already holds at its recorded path', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    vi.mocked(getVaultStatus).mockReturnValue({ path: '/vault' } as any)
+    mockRecordedFileOf.mockReturnValue('/vault/sources/x.txt')
+    try {
+      registerAttachmentHandlers()
+      const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
+        noteId: string
+        attachmentId: string
+        diskPath: string
+        intoDir?: boolean
+      }) => void
+
+      onDownloadNeeded({
+        noteId: 'note-1',
+        attachmentId: 'attachment-src',
+        diskPath: '/vault/attachments/note-1',
+        intoDir: true
+      })
+      await vi.waitFor(() => expect(mockRecordedFileOf).toHaveBeenCalled())
+      await new Promise((r) => setTimeout(r, 10))
+
+      expect(attachmentMocks.service.downloadAttachment).not.toHaveBeenCalled()
+    } finally {
+      mockRecordedFileOf.mockReturnValue(null)
+    }
   })
 
   it('renames a downloaded embedded attachment to the name the note body carries', async () => {

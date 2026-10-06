@@ -9,7 +9,7 @@ import { runMigrations } from '../database/migrate'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { backfillUnsyncedAttachmentsWith, queueEmbeddedVaultFilesWith } from './attachment-backfill'
 import { clearUpload, listPendingUploads, markUploadFailed } from './attachment-outbox'
-import { recordAttachmentFile, referencedVaultFiles } from './attachment-files'
+import { recordAttachmentFile, recordedFileOf, referencedVaultFiles } from './attachment-files'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 describe('attachment backfill', () => {
@@ -185,6 +185,19 @@ describe('attachment backfill', () => {
       listPendingUploads(db)
         .map((row) => row.diskPath)
         .sort()
+
+    it('finds the file this device recorded for an attachment, wherever it lives', () => {
+      addNote('note-src', { attachmentReferences: ['att-src'] })
+      const outside = path.join(vaultPath, 'sources', 'x.txt')
+      fs.mkdirSync(path.dirname(outside), { recursive: true })
+      fs.writeFileSync(outside, 'bytes')
+      recordAttachmentFile(db, vaultPath, 'note-src', outside, 'att-src')
+
+      expect(recordedFileOf(db, vaultPath, 'note-src', 'att-src')).toBe(outside)
+      expect(recordedFileOf(db, vaultPath, 'note-src', 'att-other')).toBeNull()
+      fs.rmSync(outside)
+      expect(recordedFileOf(db, vaultPath, 'note-src', 'att-src')).toBeNull()
+    })
 
     it('queues only the file the record does not know', () => {
       addNote('note-k', { attachmentReferences: ['att-1'] })
