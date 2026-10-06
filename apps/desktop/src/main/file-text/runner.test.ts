@@ -455,6 +455,47 @@ describe('FileTextRunner', () => {
     expect(fs.existsSync(path.join(attachments, 'shot.png'))).toBe(true)
   })
 
+  it('reads the visible text of an HTML block a note embeds into that note', async () => {
+    const attachments = path.join(vaultDir, 'attachments', 'md-1')
+    fs.mkdirSync(attachments, { recursive: true })
+    const html =
+      '<!doctype html><html><head><title>Head title</title><style>.tide { color: red }</style></head>' +
+      '<body><h1>Tidal&nbsp;chart</h1><p>Spring <b>tides</b> peak</p>' +
+      '<script>const label = "</div>never indexed"</script>' +
+      '<div>See [[Harbor Log]]</div><!-- hidden remark --></body></html>'
+    fs.writeFileSync(path.join(attachments, 'chart.html'), html)
+    fs.writeFileSync(path.join(attachments, 'unused.html'), '<p>Not embedded</p>')
+    const notePath = path.join(vaultDir, 'plan.md')
+    fs.writeFileSync(
+      notePath,
+      '<!-- file:{"url":"../attachments/md-1/chart.html","mimeType":"text/html"} -->\n'
+    )
+    harness.db.run(sql`
+      INSERT INTO note_cache (id, path, title, created_at, modified_at)
+      VALUES ('md-1', 'plan.md', 'Plan', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+    `)
+    const recognize = vi.fn(async () => 'never called')
+
+    const runner = start({ recognize })
+    await vi.waitFor(() =>
+      expect(getExtractedText(harness.db, 'md-1')).toBe(
+        'Tidal chart\n\nSpring tides peak\n\nSee [[Harbor Log]]'
+      )
+    )
+    expect(
+      harness.db.all(sql`SELECT source, part, method FROM extracted_text WHERE note_id = 'md-1'`)
+    ).toEqual([{ source: 'chart.html', part: 1, method: 'html' }])
+    expect(recognize).not.toHaveBeenCalled()
+    expect(harness.changed).toContain('md-1')
+    expect(fs.readFileSync(path.join(attachments, 'chart.html'), 'utf8')).toBe(html)
+
+    // The block's file gets new bytes: its text is read again.
+    fs.writeFileSync(path.join(attachments, 'chart.html'), '<p>Neap tides</p>')
+    fs.utimesSync(path.join(attachments, 'chart.html'), new Date(), new Date(Date.now() + 5_000))
+    runner.noteChanged('md-1')
+    await vi.waitFor(() => expect(getExtractedText(harness.db, 'md-1')).toBe('Neap tides'))
+  })
+
   it('compares the files of more changed notes than SQLite binds in one statement', async () => {
     const notePath = path.join(vaultDir, 'plan.md')
     fs.mkdirSync(path.join(vaultDir, 'attachments', 'md-1'), { recursive: true })

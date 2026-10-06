@@ -262,6 +262,98 @@ describe('note derived state projector', () => {
     expect(links).toEqual([])
   })
 
+  function seedExtractedText(noteId: string, source: string, method: string, text: string): void {
+    indexDb.db.run(sql`
+      INSERT INTO extracted_text (note_id, source, part, method, text)
+      VALUES (${noteId}, ${source}, 1, ${method}, ${text})
+    `)
+  }
+
+  function outboundLinks(noteId: string): Array<{ targetId: string | null; targetTitle: string }> {
+    return indexDb.db
+      .select({ targetId: noteLinks.targetId, targetTitle: noteLinks.targetTitle })
+      .from(noteLinks)
+      .where(eq(noteLinks.sourceId, noteId))
+      .orderBy(noteLinks.targetTitle)
+      .all()
+  }
+
+  function upsertMarkdown(noteId: string, relativePath: string, wikiLinks: string[]) {
+    return {
+      type: 'note.upserted' as const,
+      note: {
+        kind: 'markdown' as const,
+        noteId,
+        path: relativePath,
+        title: 'Source',
+        fileType: 'markdown' as const,
+        localOnly: false,
+        contentHash: 'hash',
+        wordCount: 1,
+        characterCount: 1,
+        snippet: '',
+        date: null,
+        emoji: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        modifiedAt: '2026-01-02T00:00:00.000Z',
+        parsedContent: wikiLinks.map((title) => `[[${title}]]`).join(' '),
+        tags: [],
+        properties: {},
+        wikiLinks
+      }
+    }
+  }
+
+  it('project adds the wiki links inside the note HTML blocks to its outbound links', async () => {
+    seedCachedNote('source-note', 'notes/source.md')
+    seedCachedNote('harbor-note', 'notes/harbor.md')
+    indexDb.db.run(sql`UPDATE note_cache SET title = 'Harbor Log' WHERE id = 'harbor-note'`)
+    seedExtractedText('source-note', 'chart.html', 'html', 'See [[Harbor Log]] and [[Plan]]')
+    seedExtractedText('source-note', 'shot.png', 'ocr', 'A screenshot of [[Not A Link]]')
+
+    const projector = createNoteDerivedStateProjector(() => vaultDir)
+    await projector.project(upsertMarkdown('source-note', 'notes/source.md', ['Plan']))
+
+    expect(outboundLinks('source-note')).toEqual([
+      { targetId: 'harbor-note', targetTitle: 'Harbor Log' },
+      { targetId: null, targetTitle: 'Plan' }
+    ])
+  })
+
+  it('project refreshes outbound links from the note file when its HTML block text changes', async () => {
+    const relativePath = 'notes/source.md'
+    fs.mkdirSync(path.join(vaultDir, 'notes'), { recursive: true })
+    fs.writeFileSync(path.join(vaultDir, relativePath), '---\ntitle: Source\n---\nSee [[Plan]]\n')
+    seedCachedNote('source-note', relativePath)
+    const projector = createNoteDerivedStateProjector(() => vaultDir)
+    await projector.project(upsertMarkdown('source-note', relativePath, ['Plan']))
+
+    seedExtractedText('source-note', 'chart.html', 'html', 'Tide table for [[Harbor Log]]')
+    expect(projector.handles({ type: 'note.text-extracted', noteId: 'source-note' })).toBe(true)
+    await projector.project({ type: 'note.text-extracted', noteId: 'source-note' })
+    expect(outboundLinks('source-note')).toEqual([
+      { targetId: null, targetTitle: 'Harbor Log' },
+      { targetId: null, targetTitle: 'Plan' }
+    ])
+
+    indexDb.db.run(sql`DELETE FROM extracted_text WHERE note_id = 'source-note'`)
+    await projector.project({ type: 'note.text-extracted', noteId: 'source-note' })
+    expect(outboundLinks('source-note')).toEqual([{ targetId: null, targetTitle: 'Plan' }])
+  })
+
+  it('project keeps outbound links when the note file cannot be read after its HTML text changes', async () => {
+    seedCachedNote('source-note', 'notes/missing.md')
+    indexDb.db.run(sql`
+      INSERT INTO note_links (source_id, target_id, target_title)
+      VALUES (${'source-note'}, NULL, ${'Plan'})
+    `)
+
+    const projector = createNoteDerivedStateProjector(() => vaultDir)
+    await projector.project({ type: 'note.text-extracted', noteId: 'source-note' })
+
+    expect(outboundLinks('source-note')).toEqual([{ targetId: null, targetTitle: 'Plan' }])
+  })
+
   it('project backfills a backlink retroactively when the linked note is created later (#2209)', async () => {
     // The master note was saved first, while "New Note" did not exist yet:
     // an unresolved outbound link, target_id null.
