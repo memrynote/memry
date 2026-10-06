@@ -1,6 +1,7 @@
 /**
  * Background text extraction for PDFs and images: filed ones, and the ones in a
- * note's attachments folder, whose text is searchable under that note.
+ * note's attachments folder, whose text is searchable under that note. An HTML
+ * block's file in that folder is read too, as one part of visible text.
  *
  * One loop, one file at a time, one page at a time. A PDF page with a text
  * layer is read from it; a page without one, and every image, goes through OCR.
@@ -32,17 +33,19 @@ import {
   listFiledTextFiles,
   listMarkdownNotes,
   nextPendingTextJob,
+  normalizeExtractedText,
   OWN_FILE,
   retryFileTextJob,
   saveExtractedPart,
   setFileTextPageCount,
   startFileTextJob,
   storedExtractedParts,
-  type TextBearingFileType,
+  type TextFileKind,
   type TextSourceRef
 } from '../database/queries/extracted-text'
 import type { ExtractedTextMethod, FileTextJobRow } from '@memry/db-schema/schema/extracted-text'
 import { createLogger } from '../lib/logger'
+import { readHtmlText } from './html-text'
 import type { OcrImageSource } from './ocr-protocol'
 import type { PdfDocument } from './pdf-host'
 
@@ -57,6 +60,8 @@ const FILE_SETTLE_MS = 1_000
 const RETRY_FAILED_AFTER_MS = 24 * 60 * 60 * 1000
 /** Where a note's attachments live: `attachments/<noteId>/` (vault/attachments.ts). */
 const ATTACHMENTS_DIR = 'attachments'
+/** The HTML block's file types (ALLOWED_HTML_EXTENSIONS in vault/attachments.ts). */
+const HTML_EXTENSIONS = ['html', 'htm']
 
 export interface FileTextDeps {
   vaultPath: string
@@ -73,7 +78,7 @@ export interface FileTextDeps {
 /** A file to read, and the note its text is searchable under. */
 interface TextFile extends TextSourceRef {
   path: string
-  fileType: TextBearingFileType
+  fileType: TextFileKind
 }
 
 interface PageText {
@@ -93,18 +98,11 @@ async function fileSignature(
   }
 }
 
-function textBearingType(fileName: string): TextBearingFileType | null {
-  const type = getFileType(getExtension(fileName))
+function attachmentKind(fileName: string): TextFileKind | null {
+  const extension = getExtension(fileName)
+  if (HTML_EXTENSIONS.includes(extension.toLowerCase())) return 'html'
+  const type = getFileType(extension)
   return type === 'pdf' || type === 'image' ? type : null
-}
-
-/** Collapse layout whitespace; keep line and paragraph breaks. */
-function normalizeExtractedText(text: string): string {
-  return text
-    .replace(/[^\S\n]+/g, ' ')
-    .replace(/ ?\n ?/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
 }
 
 /**
@@ -182,21 +180,21 @@ export class FileTextRunner {
     noteFileType: string
   }): TextFile {
     if (job.source === OWN_FILE) {
-      return { ...job, path: job.notePath, fileType: job.noteFileType as TextBearingFileType }
+      return { ...job, path: job.notePath, fileType: job.noteFileType as TextFileKind }
     }
     return {
       noteId: job.noteId,
       source: job.source,
       path: path.join(ATTACHMENTS_DIR, job.noteId, job.source),
-      fileType: textBearingType(job.source) ?? 'image'
+      fileType: attachmentKind(job.source) ?? 'image'
     }
   }
 
   /**
-   * PDFs and images in the attachments folders of the given notes, or of every
-   * note, that the note's body still embeds. A file the note no longer points
-   * at stays on disk (only an explicit delete removes it) but is not searchable
-   * under the note any more. `unread` lists the notes whose body could not be
+   * PDFs, images and HTML files in the attachments folders of the given notes,
+   * or of every note, that the note's body still embeds. A file the note no
+   * longer points at stays on disk (only an explicit delete removes it) but is
+   * not searchable under the note any more. `unread` lists the notes whose body could not be
    * read: their stored text is left alone.
    */
   private async attachmentFiles(
@@ -211,7 +209,7 @@ export class FileTextRunner {
         () => []
       )
       const candidates = entries.filter(
-        (entry) => entry.isFile() && !entry.name.startsWith('.') && textBearingType(entry.name)
+        (entry) => entry.isFile() && !entry.name.startsWith('.') && attachmentKind(entry.name)
       )
       if (candidates.length === 0) continue
       let body: string
@@ -229,7 +227,7 @@ export class FileTextRunner {
           noteId: note.id,
           source: entry.name,
           path: path.join(ATTACHMENTS_DIR, note.id, entry.name),
-          fileType: textBearingType(entry.name) ?? 'image'
+          fileType: attachmentKind(entry.name) ?? 'image'
         })
       }
     }
@@ -320,6 +318,19 @@ export class FileTextRunner {
       attachment: file.source !== OWN_FILE,
       fileType: file.fileType
     })
+
+    if (file.fileType === 'html') {
+      const result = await this.readTwice(async () => ({
+        method: 'html',
+        text: await readHtmlText(await readFile(absolutePath, 'utf8'))
+      }))
+      if (!this.owns(file, signature)) return
+      setFileTextPageCount(db, file, 1)
+      saveExtractedPart(db, file, 1, result.method, result.text)
+      finishFileTextJob(db, file, result.method === 'unreadable' ? 'failed' : 'done')
+      this.deps.textChanged(file.noteId)
+      return
+    }
 
     if (file.fileType === 'image') {
       const result = await this.readTwice(() => this.ocr({ kind: 'file', path: absolutePath }))
