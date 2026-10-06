@@ -61,12 +61,17 @@ async function refreshMarkdownNoteLinks(vaultPath: string | null, noteId: string
   if (!vaultPath || !note || note.fileType !== 'markdown') return
   const absolutePath = path.join(vaultPath, note.path)
   let raw: string
+  // One handle for the size check and the read, so both see the same file.
+  let file: fs.promises.FileHandle | null = null
   try {
-    if (classifyMarkdownStat((await fs.promises.stat(absolutePath)).size)) return
-    raw = await fs.promises.readFile(absolutePath, 'utf-8')
+    file = await fs.promises.open(absolutePath, 'r')
+    if (classifyMarkdownStat((await file.stat()).size)) return
+    raw = await file.readFile('utf-8')
   } catch (error) {
     logger.warn('Keeping note links: file unreadable', { noteId, error })
     return
+  } finally {
+    await file?.close().catch(() => {})
   }
   if (classifyMarkdownContent(raw).sizeClass === 'large-file') return
   if (!isCurrentIndexDatabase(db) || getNoteCacheById(db, noteId)?.path !== note.path) return
