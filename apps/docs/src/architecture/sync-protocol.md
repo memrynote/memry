@@ -1039,6 +1039,8 @@ across devices:
 - **Held vaults** — a save event uploads only while the sync runtime runs for
   the open vault. A vault the account binding holds (kept local, or another
   account's) never starts one, so its rows stay queued on the device.
+  A local-only note's rows stay queued the same way: neither the save path nor
+  the drain uploads them, and they go out only if the flag is cleared.
 - **Durable download verdicts** — a download that does not succeed is recorded
   in the data DB (`attachment_download_failures`, migration 0051), keyed by
   (note, attachment). Only the outcome writes here: the request itself no longer

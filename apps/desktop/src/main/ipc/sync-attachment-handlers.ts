@@ -43,6 +43,7 @@ import {
 import {
   enqueueUpload,
   clearUpload,
+  isLocalOnlyNote,
   markUploadFailed,
   registerAttachmentQueueReset,
   registerOutboxUploader
@@ -467,6 +468,8 @@ export function registerAttachmentHandlers(): void {
         // No sync runtime: the vault is held (kept local, another account's)
         // or sync has not started. The row waits for the runtime's re-drive.
         if (!getNetworkMonitor()) return null
+        // A local-only note keeps its files on the device; the row stays queued.
+        if (isDatabaseInitialized() && isLocalOnlyNote(getDatabase(), noteId)) return null
         if (!(await getValidAccessToken())) return null
         const queue = getOrCreateUploadQueue()
         return queue ? queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster()) : null

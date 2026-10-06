@@ -1,6 +1,7 @@
 import fs from 'fs'
 import { asc, and, eq, sql } from 'drizzle-orm'
 import { attachmentUploadQueue } from '@memry/db-schema/data-schema'
+import { getNoteMetadataById } from '@memry/storage-data'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
@@ -151,6 +152,14 @@ function listDueUploads(
 }
 
 /**
+ * A local-only note is deliberately kept off the server, so its rows stay
+ * queued on the device and upload only if the flag is cleared.
+ */
+export function isLocalOnlyNote(db: DrizzleDb, noteId: string): boolean {
+  return getNoteMetadataById(db, noteId)?.localOnly === true
+}
+
+/**
  * Try every pending upload whose retry window is open, once. Rows whose file no
  * longer exists on disk, before or after the attempt, are dropped (the
  * attachment was deleted locally); rows that fail again stay queued with an
@@ -171,6 +180,7 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
     // may have finished this row in the meantime, and uploading it again would
     // give the file a second attachment id.
     if (!hasPendingUpload(deps.db, row.noteId, row.diskPath)) continue
+    if (isLocalOnlyNote(deps.db, row.noteId)) continue
     if (!fs.existsSync(row.diskPath)) {
       clearUpload(deps.db, row.noteId, row.diskPath)
       dropped++
