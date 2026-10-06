@@ -22,7 +22,8 @@ import {
   syncNoteDelete,
   setNoteLocalOnlyState,
   cleanupProjectLinksForDeletedNote,
-  unlinkTasksFromDeletedNote
+  unlinkTasksFromDeletedNote,
+  queueEmbeddedVaultFiles
 } from './runtime-effects'
 
 const log = createLogger('NotesDomain')
@@ -33,6 +34,7 @@ export async function createNoteCommand(input: NoteCreateInput): Promise<Note> {
   // index, and the CRDT tag array they would land in is what write-back writes
   // back into the file's `tags:` block (#1454).
   syncNoteCreate(note.id, note.title, extractTags(note.frontmatter))
+  queueEmbeddedVaultFiles(note.id, note.content)
   return note
 }
 
@@ -48,6 +50,7 @@ export async function updateNoteCommand(input: NoteUpdateInput): Promise<Note> {
     } catch (err) {
       log.error('Could not feed the saved body to the note CRDT doc', { noteId: input.id, err })
     }
+    queueEmbeddedVaultFiles(input.id, input.content)
   }
   const hasMetadataChanges =
     input.title !== undefined ||

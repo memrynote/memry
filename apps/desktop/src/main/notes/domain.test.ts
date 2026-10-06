@@ -22,7 +22,8 @@ vi.mock('./runtime-effects', () => ({
   syncNoteDelete: vi.fn(),
   setNoteLocalOnlyState: vi.fn(),
   cleanupProjectLinksForDeletedNote: vi.fn(),
-  unlinkTasksFromDeletedNote: vi.fn()
+  unlinkTasksFromDeletedNote: vi.fn(),
+  queueEmbeddedVaultFiles: vi.fn()
 }))
 
 vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn() }))
@@ -210,6 +211,30 @@ describe('notes domain adapter', () => {
     await updateNoteCommand({ id: 'note-1', content: 'new content' })
 
     expect(vi.mocked(feedExternalEditToCrdt).mock.calls).toEqual([['note-1', 'new content']])
+  })
+
+  // A body that embeds a vault file is the moment that file needs to reach the
+  // server; waiting for the next backfill pass left it on this device (#2651).
+  it('offers the files a written body embeds for upload, on create and on a body edit', async () => {
+    vi.mocked(noteVault.createNote).mockResolvedValue({
+      id: 'note-1',
+      title: 'Title',
+      content: '![shot](images/shot.png)',
+      frontmatter: {}
+    } as unknown as Awaited<ReturnType<typeof noteVault.createNote>>)
+    vi.mocked(noteVault.updateNote).mockResolvedValue({
+      id: 'note-1',
+      title: 'Title'
+    } as Awaited<ReturnType<typeof noteVault.updateNote>>)
+
+    await createNoteCommand({ title: 'Title', content: '![shot](images/shot.png)' })
+    await updateNoteCommand({ id: 'note-1', tags: ['focus'] })
+    await updateNoteCommand({ id: 'note-1', content: 'now ![other](images/other.png)' })
+
+    expect(vi.mocked(runtimeEffects.queueEmbeddedVaultFiles).mock.calls).toEqual([
+      ['note-1', '![shot](images/shot.png)'],
+      ['note-1', 'now ![other](images/other.png)']
+    ])
   })
 
   it('saves the note and pushes its metadata when the CRDT feed throws', async () => {

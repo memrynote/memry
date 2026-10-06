@@ -23,7 +23,7 @@ import { readdirSync } from 'fs'
 import path from 'path'
 
 /** The `{6-char nanoid}-` prefix `generateUniqueFilename` puts on every file. */
-const STORED_PREFIX_RE = /^[0-9a-z]{6}-/
+export const STORED_PREFIX_RE = /^[0-9a-z]{6}-/
 
 /**
  * The unique prefix/suffix match for a missing file among its siblings, or
