@@ -249,12 +249,20 @@
     "columns": {
       "group": "Bloques básicos",
       "two": {
-        "title": "Dos columnas",
+        "title": "2 columnas",
         "subtext": "Coloca bloques uno al lado del otro en dos columnas"
       },
       "three": {
-        "title": "Tres columnas",
+        "title": "3 columnas",
         "subtext": "Coloca bloques uno al lado del otro en tres columnas"
+      },
+      "four": {
+        "title": "4 columnas",
+        "subtext": "Coloca bloques uno al lado del otro en cuatro columnas"
+      },
+      "five": {
+        "title": "5 columnas",
+        "subtext": "Coloca bloques uno al lado del otro en cinco columnas"
       }
     },
     "diagram": {

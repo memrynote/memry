@@ -249,12 +249,20 @@
     "columns": {
       "group": "Blocuri de bază",
       "two": {
-        "title": "Două coloane",
+        "title": "2 coloane",
         "subtext": "Așază blocurile alăturat în două coloane"
       },
       "three": {
-        "title": "Trei coloane",
+        "title": "3 coloane",
         "subtext": "Așază blocurile alăturat în trei coloane"
+      },
+      "four": {
+        "title": "4 coloane",
+        "subtext": "Așază blocurile alăturat în patru coloane"
+      },
+      "five": {
+        "title": "5 coloane",
+        "subtext": "Așază blocurile alăturat în cinci coloane"
       }
     },
     "diagram": {
