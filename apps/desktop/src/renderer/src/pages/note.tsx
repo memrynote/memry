@@ -1993,7 +1993,7 @@ export function NotePage({ noteId }: NotePageProps) {
             onAddCover={
               cover ? undefined : (event) => setCoverPickerAnchor(coverPickerAnchorFrom(event))
             }
-            disabled={isDeleted}
+            disabled={isDeleted || isLocked}
           />
         </div>
 
