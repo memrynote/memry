@@ -17,8 +17,10 @@ import {
   updateNoteCache,
   type NoteCacheFileRow
 } from '@main/database/queries/notes'
+import { classifyMarkdownContent, classifyMarkdownStat } from '@memry/shared/markdown-class'
 import { getIndexDatabase, type IndexDb } from '../../database'
-import { inferPropertyType } from '../../vault/frontmatter'
+import { listHtmlBlockText } from '../../database/queries/extracted-text'
+import { extractWikiLinks, inferPropertyType, parseNote } from '../../vault/frontmatter'
 import type { NoteProjectionRecord, ProjectionEvent, ProjectionProjector } from '../types'
 
 const logger = createLogger('Projections:NoteState')
@@ -29,6 +31,47 @@ const logger = createLogger('Projections:NoteState')
 // every vault open.
 const RECONCILE_PAGE_SIZE = 500
 const RECONCILE_STAT_CONCURRENCY = 8
+
+/**
+ * A note's outbound links: the ones in its markdown, then the ones in the
+ * visible text of the HTML blocks it embeds, which the file-text runner keeps
+ * in `extracted_text`.
+ */
+function setMarkdownNoteLinks(db: IndexDb, noteId: string, markdownLinks: string[]): void {
+  const titles = new Set(markdownLinks)
+  for (const text of listHtmlBlockText(db, noteId)) {
+    for (const title of extractWikiLinks(text)) titles.add(title)
+  }
+  const resolvedTitles = resolveNotesByTitles(db, [...titles])
+  setNoteLinks(
+    db,
+    noteId,
+    [...titles].map((title) => ({ targetTitle: title, targetId: resolvedTitles.get(title)?.id }))
+  )
+}
+
+/**
+ * The text of the note's HTML blocks changed: rebuild its links from the file
+ * on disk plus the new text. A file that cannot be read keeps its links, and
+ * a large file keeps none, as at indexing (note-sync.ts `syncLargeFileBodyToCache`).
+ */
+async function refreshMarkdownNoteLinks(vaultPath: string | null, noteId: string): Promise<void> {
+  const db = getIndexDatabase()
+  const note = getNoteCacheById(db, noteId)
+  if (!vaultPath || !note || note.fileType !== 'markdown') return
+  const absolutePath = path.join(vaultPath, note.path)
+  let raw: string
+  try {
+    if (classifyMarkdownStat((await fs.promises.stat(absolutePath)).size)) return
+    raw = await fs.promises.readFile(absolutePath, 'utf-8')
+  } catch (error) {
+    logger.warn('Keeping note links: file unreadable', { noteId, error })
+    return
+  }
+  if (classifyMarkdownContent(raw).sizeClass === 'large-file') return
+  if (!isCurrentIndexDatabase(db) || getNoteCacheById(db, noteId)?.path !== note.path) return
+  setMarkdownNoteLinks(db, noteId, extractWikiLinks(parseNote(raw, note.path).content))
+}
 
 function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdown' }>): void {
   const db = getIndexDatabase()
@@ -88,12 +131,12 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
     getPropertyType(db, name, value, inferPropertyType)
   )
 
-  const resolvedTitles = resolveNotesByTitles(db, note.wikiLinks)
-  const links = note.wikiLinks.map((title) => {
-    const resolved = resolvedTitles.get(title)
-    return { targetTitle: title, targetId: resolved?.id }
-  })
-  setNoteLinks(db, note.noteId, links)
+  // Null properties after a body read mark the large-file tier, which keeps no links.
+  if (note.properties === null) {
+    setNoteLinks(db, note.noteId, [])
+    return
+  }
+  setMarkdownNoteLinks(db, note.noteId, note.wikiLinks)
 }
 
 function persistFileNote(note: Extract<NoteProjectionRecord, { kind: 'file' }>): void {
@@ -236,12 +279,21 @@ export function createNoteDerivedStateProjector(
   return {
     name: 'note-derived-state',
     handles(event: ProjectionEvent): boolean {
-      return event.type === 'note.upserted' || event.type === 'note.deleted'
+      return (
+        event.type === 'note.upserted' ||
+        event.type === 'note.deleted' ||
+        event.type === 'note.text-extracted'
+      )
     },
 
     async project(event: ProjectionEvent): Promise<void> {
       if (event.type === 'note.deleted') {
         deleteNote(getIndexDatabase(), event.noteId)
+        return
+      }
+
+      if (event.type === 'note.text-extracted') {
+        await refreshMarkdownNoteLinks(getVaultPath(), event.noteId)
         return
       }
 
