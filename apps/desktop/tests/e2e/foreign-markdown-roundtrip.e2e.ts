@@ -105,6 +105,52 @@ const FOREIGN_SPELLING_BODY = [
   'Below'
 ].join('\n')
 
+/**
+ * A Windows note in every spelling Memry does not write, with CRLF line
+ * endings. The parse used to read each `\r` as a space, so one edited
+ * paragraph wrote the whole file in house style (#2615).
+ */
+const CRLF_EDIT_LINE = 'Middle paragraph to edit.'
+const CRLF_FOREIGN_BODY = [
+  'Broad Title',
+  '===========',
+  '',
+  `Intro with __bold__ and *em* text.${'   '}`,
+  'Second line after a hard break.',
+  '',
+  '',
+  '',
+  '* star one',
+  '* star two',
+  '    * nested star',
+  '',
+  '+ plus one',
+  '+ plus two',
+  '',
+  '***',
+  '',
+  CRLF_EDIT_LINE,
+  '',
+  'Sub Heading',
+  '-----------',
+  '',
+  '<div align="center">',
+  '<b>html block</b>',
+  '</div>',
+  '',
+  '| a | b |',
+  '|---|---|',
+  '| 1 | 2 |',
+  '',
+  '',
+  '    indented code line 1',
+  '    indented code line 2',
+  '',
+  `Tail paragraph with a break.${'  '}`,
+  'Final line.',
+  ''
+].join('\r\n')
+
 const FENCE_LINE = /^ {0,3}(?:`{3,}|~{3,})(.*)$/
 
 /** The info string on the first opening fence, `''` when it carries none. */
@@ -486,5 +532,57 @@ test.describe('Foreign markdown round-trip', () => {
     expect(fs.readFileSync(absPath, 'utf8'), 'closing the note wrote nothing further').toBe(
       baseline.bytes
     )
+  })
+
+  test('editing one paragraph of a CRLF note changes only that line (#2615)', async ({
+    pageA,
+    electronAppA,
+    vaultPathA,
+    bootstrappedSyncPair
+  }) => {
+    void bootstrappedSyncPair
+    await waitForSyncOnline(pageA)
+
+    const title = `Foreign CRLF ${Date.now()}`
+    const absPath = seedVaultFile(vaultPathA, title, CRLF_FOREIGN_BODY)
+    const baseline = await indexedBaseline(pageA, title, absPath)
+    expect(baseline.bytes, 'the indexer left the CRLF body alone').toContain(CRLF_FOREIGN_BODY)
+
+    await openInEditor(pageA, title)
+    await pageA.evaluate((line) => {
+      const editor = (window as any).__memryEditor
+      if (!editor) throw new Error('window.__memryEditor not exposed')
+      const target = (editor.document as any[]).find((block) =>
+        JSON.stringify(block.content ?? '').includes(line)
+      )
+      if (!target) throw new Error(`no block holds ${line}`)
+      editor.updateBlock(target.id, {
+        content: [{ type: 'text', text: `${line} EDITED`, styles: {} }]
+      })
+    }, CRLF_EDIT_LINE)
+    await waitForWritebackToSettle(electronAppA, baseline.id)
+
+    await expect
+      .poll(
+        async () => {
+          const doc = await getCrdtDocBodyById(electronAppA, baseline.id)
+          const debug = await getWritebackDebugById(electronAppA, baseline.id)
+          return {
+            file: fs.readFileSync(absPath, 'utf8'),
+            docHasCarriageReturn: doc?.includes('\r') ?? null,
+            lastError: debug?.lastError
+          }
+        },
+        { timeout: 30_000 }
+      )
+      .toEqual({
+        file: baseline.bytes.replace(CRLF_EDIT_LINE, `${CRLF_EDIT_LINE} EDITED`),
+        docHasCarriageReturn: false,
+        lastError: null
+      })
+
+    const settled = fs.readFileSync(absPath, 'utf8')
+    await closeNote(pageA, electronAppA, title, baseline.id)
+    await expect.poll(() => fs.readFileSync(absPath, 'utf8'), { timeout: 20_000 }).toBe(settled)
   })
 })
