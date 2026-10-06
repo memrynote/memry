@@ -997,7 +997,12 @@ across devices:
 - **Durable upload outbox** — the upload intent is persisted in the data DB
   (`attachment_upload_queue`, migration 0039) before the transfer starts and
   cleared only after the server accepts the file. Failed or quit-interrupted
-  uploads are retried instead of being lost with the in-memory queue. The
+  uploads are retried instead of being lost with the in-memory queue.
+  Recording the reference enqueues a note push so peers learn the blob exists;
+  if that lands while the runtime is down — an upload finishing during quit, a
+  vault switch, re-auth — the note is marked for
+  [recovery](#recovering-pushes-that-never-landed) instead, so the push happens
+  at the next runtime start rather than waiting for an unrelated later edit. The
   runtime re-drives the outbox (`attachment-upload-redriver`) when it starts,
   every five minutes and whenever the connection comes back, and skips a pass
   while offline or without an access token. Each pass runs the attachment
@@ -1034,11 +1039,6 @@ across devices:
 - **Held vaults** — a save event uploads only while the sync runtime runs for
   the open vault. A vault the account binding holds (kept local, or another
   account's) never starts one, so its rows stay queued on the device.
-  Recording the reference enqueues a note push so peers
-  learn the blob exists; if that lands while the runtime is down — an upload
-  finishing during quit, a vault switch, re-auth — the note is marked for
-  [recovery](#recovering-pushes-that-never-landed) instead, so the push happens
-  at the next runtime start rather than waiting for an unrelated later edit.
 - **Durable download verdicts** — a download that does not succeed is recorded
   in the data DB (`attachment_download_failures`, migration 0051), keyed by
   (note, attachment). Only the outcome writes here: the request itself no longer
