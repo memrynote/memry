@@ -5485,6 +5485,13 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func isBookmarked(itemType: String, itemId: String) throws  -> Bool
     
     /**
+     * The live journal days carrying one tag, each titled by its
+     * `YYYY-MM-DD` date. A tag view block lists them beside the notes, as
+     * desktop does; [`Notes::notes_tagged`] holds notes only.
+     */
+    func journalsTagged(tag: String) throws  -> [NoteSummary]
+    
+    /**
      * The tasks linked to one note (N807).
      *
      * Both relationships in one list: a task carries `source_note_id` for the
@@ -5792,6 +5799,21 @@ open func isBookmarked(itemType: String, itemId: String)throws  -> Bool  {
             self.uniffiCloneHandle(),
         FfiConverterString.lower(itemType),
         FfiConverterString.lower(itemId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The live journal days carrying one tag, each titled by its
+     * `YYYY-MM-DD` date. A tag view block lists them beside the notes, as
+     * desktop does; [`Notes::notes_tagged`] holds notes only.
+     */
+open func journalsTagged(tag: String)throws  -> [NoteSummary]  {
+    return try  FfiConverterSequenceTypeNoteSummary.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_journals_tagged(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(tag),uniffiCallStatus
     )
 })
 }
@@ -32731,6 +32753,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_is_bookmarked() != 3350) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_journals_tagged() != 30574) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_linked_tasks() != 59020) {

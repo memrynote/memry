@@ -16,7 +16,7 @@ struct ViewBlockView: View {
 
     private enum Read: Equatable {
         case loading
-        case ready(notes: [NoteSummary], noteTags: [String: [String]])
+        case ready(notes: [NoteSummary], noteTags: [String: [String]], journals: [NoteSummary] = [])
         case folderMissing
         case failed
     }
@@ -61,8 +61,10 @@ struct ViewBlockView: View {
                 notice(ViewBlockCopy.folderMissing)
             case .failed:
                 notice(ViewBlockCopy.loadFailed)
-            case let .ready(notes, noteTags):
-                let rows = query.rows(notes: notes, noteTags: noteTags, tasks: settings?.tasks.ordered ?? [])
+            case let .ready(notes, noteTags, journals):
+                let rows = query.rows(
+                    notes: notes, noteTags: noteTags, journals: journals, tasks: settings?.tasks.ordered ?? []
+                )
                 if rows.isEmpty {
                     notice(ViewBlockCopy.empty)
                 } else {
@@ -115,7 +117,7 @@ struct ViewBlockView: View {
     @ViewBuilder
     private func icon(_ row: ViewBlockRow) -> some View {
         switch row.kind {
-        case .note:
+        case .note, .journal:
             if let emoji = row.emoji, !emoji.isEmpty {
                 Text(emoji)
             } else {
@@ -128,7 +130,7 @@ struct ViewBlockView: View {
 
     private static func accessibilityValue(_ kind: ViewBlockRow.Kind) -> String {
         switch kind {
-        case .note: ""
+        case .note, .journal: ""
         case let .task(done): done ? TasksCopy.taskDone : TasksCopy.taskNotDone
         }
     }
@@ -163,14 +165,19 @@ struct ViewBlockView: View {
                 needles.contains { ViewBlockQuery.tags([name], match: $0) }
             }
             var notes: [NoteSummary] = []
+            var journals: [NoteSummary] = []
             var noteTags: [String: [String]] = [:]
             for name in names {
                 for note in try await reader.notesTagged(name) {
                     if noteTags[note.id] == nil { notes.append(note) }
                     noteTags[note.id, default: []].append(name)
                 }
+                for day in try await reader.journalsTagged(name) {
+                    if noteTags[day.id] == nil { journals.append(day) }
+                    noteTags[day.id, default: []].append(name)
+                }
             }
-            return .ready(notes: notes, noteTags: noteTags)
+            return .ready(notes: notes, noteTags: noteTags, journals: journals)
         } catch {
             Log.interface.error("a view block's notes did not read")
             return .failed

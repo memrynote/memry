@@ -98,6 +98,9 @@ protocol NotesReading: Sendable {
     /// The live notes carrying one tag (N600). Matched case-insensitively by
     /// the column's own collation, which is ASCII-only and matches desktop.
     func notesTagged(_ tag: String) async throws -> [NoteSummary]
+    /// The live journal days carrying one tag, titled by their date, for a
+    /// tag view block. Same collation as ``notesTagged(_:)``.
+    func journalsTagged(_ tag: String) async throws -> [NoteSummary]
     /// What one body block's `url` points at.
     ///
     /// A block carries a vault-relative path rather than an attachment id, so
@@ -114,6 +117,9 @@ extension NotesReading {
     /// Readers that are not the vault's own (the journal bridge, test
     /// doubles) hold no bookmarks.
     func bookmarks() async throws -> [BookmarkEntry] { [] }
+
+    /// Test doubles hold no journal.
+    func journalsTagged(_ tag: String) async throws -> [NoteSummary] { [] }
 }
 
 /// The production reader: the core's own `Notes`, over the shell's one serial
@@ -199,6 +205,11 @@ struct CoreNotesReader: NotesReading {
     func notesTagged(_ tag: String) async throws -> [NoteSummary] {
         let vault = vault
         return try await executor.run { try vault.notes().notesTagged(tag: tag) }
+    }
+
+    func journalsTagged(_ tag: String) async throws -> [NoteSummary] {
+        let vault = vault
+        return try await executor.run { try vault.notes().journalsTagged(tag: tag) }
     }
 
     func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment {
