@@ -16,12 +16,14 @@ export interface TaskNoteInfo {
   title: string
   /** Vault-relative folder of the note. `''` is the vault root. */
   folderPath: string
+  /** The note's icon (emoji, library icon or custom image), if set. */
+  icon: string | null
 }
 
 export type TaskNoteIndex = Map<string, TaskNoteInfo>
 
 export const buildTaskNoteIndex = (
-  notes: Pick<NoteListItem, 'id' | 'path' | 'title'>[]
+  notes: Pick<NoteListItem, 'id' | 'path' | 'title' | 'emoji'>[]
 ): TaskNoteIndex =>
   new Map(
     notes.map((note) => [
@@ -29,7 +31,8 @@ export const buildTaskNoteIndex = (
       {
         id: note.id,
         title: note.title?.trim() || getDisplayName(note.path),
-        folderPath: extractFolderFromPath(note.path)
+        folderPath: extractFolderFromPath(note.path),
+        icon: note.emoji ?? null
       }
     ])
   )

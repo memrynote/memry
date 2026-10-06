@@ -6,6 +6,8 @@ import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import type { Task } from '@/data/task-model'
 import type { TaskNoteIndex } from '@/lib/task-note-index'
 import { buildTaskLocationOptions } from '@/lib/task-location-options'
+import { useNoteFoldersQuery } from '@/hooks/use-notes-query'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { BackButton } from './priority-panel'
 import { useT } from '@memry/i18n/renderer'
 
@@ -83,6 +85,16 @@ export function LocationPanel({
   )
   const isSearching = searchQuery.trim() !== ''
 
+  // The icons the sidebar tree shows. Same query and cache entry as the tree.
+  const { folders } = useNoteFoldersQuery()
+  const folderIcons = useMemo(
+    () =>
+      new Map(
+        folders.flatMap((folder) => (folder.icon ? [[folder.path, folder.icon] as const] : []))
+      ),
+    [folders]
+  )
+
   return (
     <>
       <div className="flex items-center py-2 px-3 gap-1.5 border-b border-border">
@@ -98,13 +110,15 @@ export function LocationPanel({
         placeholder={t('phaseF.componentsTasksFiltersFilterPanelsLocationPanel.search')}
         className="py-1.5"
       />
-      <div className="flex flex-col p-1">
+      {/* Scrolls on its own so the header and search stay put in a large vault. */}
+      <div className="flex max-h-[min(360px,calc(100vh-220px))] flex-col overflow-y-auto p-1">
         {noteIndex && options.length === 0 && (
           <span className="px-2 py-1.5 text-[12px] text-text-tertiary leading-4">
             {t('phaseF.componentsTasksFiltersFilterPanelsLocationPanel.empty')}
           </span>
         )}
         {options.map((option) => {
+          const customIcon = option.kind === 'note' ? option.icon : folderIcons.get(option.value)
           const checked =
             option.kind === 'folder'
               ? selectedFolderPaths.includes(option.value)
@@ -123,7 +137,19 @@ export function LocationPanel({
                 checked ? 'bg-accent' : 'hover:bg-accent'
               )}
             >
-              {option.kind === 'folder' ? <LocationIcon size={12} /> : <NoteIcon />}
+              {customIcon ? (
+                <span className="flex size-3.5 shrink-0 items-center justify-center">
+                  <NoteIconDisplay
+                    value={customIcon}
+                    className="text-[12px] leading-none"
+                    customIconClassName="size-3.5"
+                  />
+                </span>
+              ) : option.kind === 'note' ? (
+                <NoteIcon />
+              ) : (
+                <LocationIcon size={12} />
+              )}
               <span className="flex min-w-0 flex-col items-start">
                 <span
                   className={cn(

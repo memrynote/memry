@@ -13,6 +13,8 @@ export interface TaskLocationOption {
   depth: number
   /** Top-level tasks the row would select. */
   count: number
+  /** A note's own icon, if set. Folder icons come from the folder config. */
+  icon?: string | null
 }
 
 const taskNoteIds = (task: Task): string[] =>
@@ -95,6 +97,7 @@ export const buildTaskLocationOptions = (
       context: info.folderPath,
       depth: info.folderPath ? info.folderPath.split('/').length : 0,
       count: noteTasks.get(noteId)?.size ?? 0,
+      icon: info.icon,
       sortKey: noteSortKey(info.folderPath, info.title)
     })
   }
