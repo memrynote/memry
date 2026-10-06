@@ -4,6 +4,7 @@ import os from 'os'
 import path from 'path'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { upsertNoteMetadata } from '@memry/storage-data'
 import { runMigrations } from '../database/migrate'
 import {
   enqueueUpload,
@@ -11,7 +12,8 @@ import {
   markUploadFailed,
   listPendingUploads,
   drainOutboxWith,
-  queueUploadIfAbsent
+  queueUploadIfAbsent,
+  isLocalOnlyNote
 } from './attachment-outbox'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -60,6 +62,29 @@ describe('attachment outbox', () => {
     const pending = listPendingUploads(db)
     expect(pending).toHaveLength(1)
     expect(pending[0].attempts).toBe(2)
+  })
+
+  it('keeps the row of a local-only note on the device and never uploads it', async () => {
+    upsertNoteMetadata(db, {
+      id: 'note-local',
+      path: 'notes/note-local.md',
+      title: 'note-local',
+      createdAt: '2026-08-21T00:00:00.000Z',
+      modifiedAt: '2026-08-21T00:00:00.000Z',
+      localOnly: true,
+      attachmentReferences: null
+    })
+    const file = path.join(tempDir, 'artifact.html')
+    fs.writeFileSync(file, '<p>x</p>')
+    enqueueUpload(db, 'note-local', file)
+    const upload = vi.fn(async () => ({ attachmentId: 'id' }))
+
+    await drainOutboxWith({ db, upload })
+
+    expect(upload).not.toHaveBeenCalled()
+    expect(listPendingUploads(db)).toHaveLength(1)
+    expect(isLocalOnlyNote(db, 'note-local')).toBe(true)
+    expect(isLocalOnlyNote(db, 'note-missing')).toBe(false)
   })
 
   it('skips a row that another upload cleared while the drain was busy (#2651)', async () => {

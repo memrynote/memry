@@ -99,6 +99,7 @@ vi.mock('../sync/attachment-outbox', async (importOriginal) => {
   return {
     ...actual,
     clearUpload: vi.fn(actual.clearUpload),
+    isLocalOnlyNote: vi.fn(() => false),
     markUploadFailed: vi.fn(actual.markUploadFailed),
     registerOutboxUploader: (...args: Parameters<typeof actual.registerOutboxUploader>): void => {
       outboxUploaders.push(args[0])
@@ -197,7 +198,12 @@ import {
 } from './sync-attachment-handlers'
 import { getStatus as getVaultStatus } from '../vault/index'
 import { getNetworkMonitor } from '../sync/runtime'
-import { clearUpload, markUploadFailed, resetAttachmentQueue } from '../sync/attachment-outbox'
+import {
+  clearUpload,
+  isLocalOnlyNote,
+  markUploadFailed,
+  resetAttachmentQueue
+} from '../sync/attachment-outbox'
 import { UploadQueue } from '../sync/upload-queue'
 import type { NetworkMonitor } from '../sync/network'
 import { getValidAccessToken } from '../sync/token-manager'
@@ -620,6 +626,23 @@ describe('sync-attachment-handlers', () => {
         payload: { attachmentId: 'attachment-1', sessionId: '', progress: 50, status: 'uploading' }
       }
     ])
+  })
+
+  it('does not upload a file saved into a local-only note', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    vi.mocked(isLocalOnlyNote).mockReturnValue(true)
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+
+    onSaved({ noteId: 'note-local', diskPath: '/vault/attachments/note-local/a.html' })
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(attachmentMocks.queue.enqueue).not.toHaveBeenCalled()
+    vi.mocked(isLocalOnlyNote).mockReturnValue(false)
   })
 
   it('joins a save-time upload of the same file instead of uploading it a second time', async () => {
