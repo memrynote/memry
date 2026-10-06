@@ -255,6 +255,57 @@ describe('AgentToolBridge', () => {
     expect(mocks.clientClose).toHaveBeenCalled()
   })
 
+  it('keeps the image parts of an MCP result beside its data', async () => {
+    mocks.clientCallTool.mockResolvedValueOnce({
+      isError: false,
+      content: [
+        { type: 'text', text: '{"id":"file-1"}' },
+        { type: 'image', data: 'iVBORw0KGgo=', mimeType: 'image/png' }
+      ],
+      structuredContent: { id: 'file-1' }
+    })
+    const bridge = new AgentToolBridge()
+
+    await expect(
+      bridge.execute({
+        writeGrant: TEST_GRANT,
+        windowId: 'window-1',
+        name: 'vault_view_file',
+        args: { id: 'file-1' }
+      })
+    ).resolves.toEqual({
+      ok: true,
+      data: { id: 'file-1' },
+      images: [{ type: 'image', data: 'iVBORw0KGgo=', mimeType: 'image/png' }]
+    })
+  })
+
+  it('hands the model an image result as text plus image-data, and other results as JSON', async () => {
+    const bridge = new AgentToolBridge({ callTool: vi.fn() })
+    const tools = createAiSdkToolSet(bridge, { writeGrant: TEST_GRANT, windowId: 'window-1' })
+    const toModelOutput = tools.vault_view_file.toModelOutput!
+
+    const imageOutput = {
+      ok: true,
+      data: { id: 'file-1' },
+      images: [{ type: 'image', data: 'iVBORw0KGgo=', mimeType: 'image/png' }]
+    }
+    expect(
+      await toModelOutput({ toolCallId: 'call-1', input: { id: 'file-1' }, output: imageOutput })
+    ).toEqual({
+      type: 'content',
+      value: [
+        { type: 'text', text: JSON.stringify({ ok: true, data: { id: 'file-1' } }) },
+        { type: 'image-data', data: 'iVBORw0KGgo=', mediaType: 'image/png' }
+      ]
+    })
+
+    const plain = { ok: true, data: { id: 'task-1' } }
+    expect(
+      await tools.vault_get_task.toModelOutput!({ toolCallId: 'call-2', input: {}, output: plain })
+    ).toEqual({ type: 'json', value: plain })
+  })
+
   it('wraps transport failures as tool-call errors and still closes the client', async () => {
     mocks.clientCallTool.mockRejectedValueOnce(new Error('network down'))
     const bridge = new AgentToolBridge()

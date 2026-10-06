@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { AgentToolError } from '../errors'
 import { startAgentMcpServer, type AgentMcpServerHandle } from '../server'
+import { ImageToolResult } from '../tool-image'
 
 describe('Agent MCP HTTP server', () => {
   let handle: AgentMcpServerHandle
@@ -490,6 +491,42 @@ describe('Agent MCP server reply cap', () => {
       expect(reply.totalBytes).toBeGreaterThan(200_000)
       expect(reply.partial.startsWith('{"events":[{"id":"event-0"')).toBe(true)
       expect(rpc.result.structuredContent).toEqual(reply)
+    } finally {
+      await handle.stop()
+    }
+  })
+})
+
+describe('Agent MCP server image replies', () => {
+  it('sends an ImageToolResult as a text part with the reply and an image part', async () => {
+    const reply = { id: 'file-1', title: 'Login screen', width: 4, height: 2 }
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        {
+          name: 'vault_view_file',
+          description: 'view a file',
+          inputSchema: z.object({ id: z.string() }),
+          handler: async () =>
+            new ImageToolResult(reply, { data: 'iVBORw0KGgo=', mimeType: 'image/png' })
+        }
+      ]
+    })
+
+    try {
+      const r = await callTool(handle, 'vault_view_file', { id: 'file-1' })
+      const body = await r.text()
+      const dataLine = body.split('\n').find((line) => line.startsWith('data: '))
+      const rpc = JSON.parse(dataLine ? dataLine.slice('data: '.length) : body)
+      const [text, image, ...rest] = rpc.result.content
+
+      expect(rest).toEqual([])
+      expect(text.type).toBe('text')
+      expect(JSON.parse(text.text)).toMatchObject({
+        ...reply,
+        href: 'memry://note/file-1'
+      })
+      expect(image).toEqual({ type: 'image', data: 'iVBORw0KGgo=', mimeType: 'image/png' })
+      expect(rpc.result.structuredContent).toEqual(JSON.parse(text.text))
     } finally {
       await handle.stop()
     }

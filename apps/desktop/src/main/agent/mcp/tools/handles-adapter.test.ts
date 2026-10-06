@@ -1274,7 +1274,7 @@ describe('createVaultServiceHandles', () => {
       modified: '2026-10-01T09:00:00.000Z',
       contentOmitted: true,
       contentAccess:
-        'The desktop API returns metadata only for image files. vault_read_note with this id returns the text read from the image (OCR). Viewing an image is not available yet.'
+        'The desktop API returns metadata only for image files. vault_view_file with this id shows the image itself. vault_read_note with this id returns the text read from the image (OCR).'
     }
     const decodedBytes = '\uFFFDPNG\r\n\u001A\n\uFFFD\uFFFDIHDR'
 
@@ -1315,7 +1315,7 @@ describe('createVaultServiceHandles', () => {
       ).resolves.toEqual({ success: true, note: screenshotMetadata })
     })
 
-    it('names the content route for each filed file type, vault_read_note for PDF and image text', async () => {
+    it('names the content route for each filed file type: vault_view_file and vault_read_note for PDFs and images', async () => {
       const handles = createVaultServiceHandles(deps)
       const routes: Record<string, string> = {}
       for (const fileType of ['image', 'pdf', 'audio', 'video']) {
@@ -1330,7 +1330,7 @@ describe('createVaultServiceHandles', () => {
 
       expect(routes).toEqual({
         image: screenshotMetadata.contentAccess,
-        pdf: 'The desktop API returns metadata only for PDF files. vault_read_note with this id returns the text read from the PDF, page by page.',
+        pdf: 'The desktop API returns metadata only for PDF files. vault_read_note with this id returns the text read from the PDF, page by page. vault_view_file with this id and a page number shows that page as an image.',
         audio: 'The desktop API returns metadata only for audio files.',
         video: 'The desktop API returns metadata only for video files.'
       })
