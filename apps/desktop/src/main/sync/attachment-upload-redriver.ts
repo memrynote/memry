@@ -9,6 +9,7 @@ const REDRIVE_INTERVAL_MS = 5 * 60 * 1000
 
 let redriveTimer: NodeJS.Timeout | null = null
 let isOnline: (() => boolean) | null = null
+let generation = 0
 
 /**
  * Upload side of the attachment re-drive (#2651), the counterpart of the
@@ -23,11 +24,15 @@ let isOnline: (() => boolean) | null = null
  */
 async function redrive(): Promise<void> {
   if (!isOnline) return
+  const startedFor = generation
   dropUploadsWithoutFile()
   try {
     // Same gate as the body outbox's pause: offline or without a token every
     // upload fails, and each failure would count an attempt against its row.
     if (!isOnline() || !(await getValidAccessToken())) return
+    // The runtime may have stopped or moved to another vault during the token
+    // wait; this pass must not back-fill or drain that vault's outbox.
+    if (startedFor !== generation) return
     try {
       backfillUnsyncedAttachments()
     } catch (error) {
@@ -43,6 +48,7 @@ async function redrive(): Promise<void> {
 
 function start(online: () => boolean): void {
   stop()
+  generation++
   isOnline = online
   redriveTimer = setInterval(() => void redrive(), REDRIVE_INTERVAL_MS)
   redriveTimer.unref?.()
@@ -53,6 +59,7 @@ function stop(): void {
     clearInterval(redriveTimer)
     redriveTimer = null
   }
+  generation++
   isOnline = null
 }
 
