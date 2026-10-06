@@ -71,6 +71,7 @@ function unifiedSidebar() {
             { text: 'Properties & Tags', link: '/user-guide/notes/properties-tags' },
             { text: 'Attachments', link: '/user-guide/notes/attachments' },
             { text: 'Custom Icons', link: '/user-guide/notes/custom-icons' },
+            { text: 'Read-Only Locks', link: '/user-guide/notes/read-only-locks' },
             { text: 'Cover Image', link: '/user-guide/notes/cover-image' },
             { text: 'Bookmarks & Reminders', link: '/user-guide/notes/bookmarks-reminders' },
             { text: 'Find in Page', link: '/user-guide/notes/find-in-page' },

@@ -352,6 +352,10 @@ holding the endpoint token, or a stale capability from a turn that has already f
 with `PERMISSION_DENIED` and the reason that writes need a running memrynote Agent turn. A conversation
 id is not a credential: knowing one, even a real one, does not let a client write.
 
+A note or folder the owner [locked](../notes/read-only-locks) refuses every write tool, approved or
+not, with `PERMISSION_DENIED` and the message "The owner made this note read-only." (or "folder").
+The agent can still read it.
+
 External clients still see the write tools listed. They are advertised to every client because
 memrynote's own Claude CLI, Codex CLI, Antigravity CLI, and local-model backends discover their
 tools from that same list. Calling one without an active turn fails rather than writes.
