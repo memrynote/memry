@@ -216,6 +216,25 @@ pub fn notes_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, St
     rows.collect::<Result<Vec<_>, _>>().map_err(failed)
 }
 
+/// The live journal days carrying one tag, as summaries titled by their date.
+///
+/// A day's tags sit in `note_tags` under the day's record id, beside the
+/// notes' own, so [`notes_tagged`] never sees them: it joins `notes`. Desktop
+/// lists a tagged day in a tag view as one more row titled `YYYY-MM-DD`,
+/// which is what this gives a view block. Matched with the same collation.
+pub fn journals_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT j.id, j.date, NULL, NULL, j.created_at, j.modified_at \
+             FROM journal_entries j JOIN note_tags t ON t.note_id = j.id \
+             WHERE j.deleted_at IS NULL AND t.deleted_at IS NULL AND t.tag = ?1 \
+             ORDER BY COALESCE(j.modified_at, j.created_at, 0) DESC, j.id",
+        )
+        .map_err(failed)?;
+    let rows = statement.query_map([tag], read_summary).map_err(failed)?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(failed)
+}
+
 /// One template a note can be made from (N803).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct TemplateSummary {
