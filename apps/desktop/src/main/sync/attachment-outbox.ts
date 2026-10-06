@@ -132,7 +132,10 @@ function retryOpensAt(row: { attempts: number; updatedAt: number }): number {
   return row.updatedAt + Math.min(RETRY_BASE_MS * 2 ** (row.attempts - 1), RETRY_MAX_MS)
 }
 
-/** The oldest rows whose retry window is open. */
+/**
+ * The oldest rows whose retry window is open. Rows of a local-only note never
+ * count toward the batch, so they cannot hold back the rows behind them.
+ */
 function listDueUploads(
   db: DrizzleDb,
   now: number
@@ -147,7 +150,7 @@ function listDueUploads(
     .from(attachmentUploadQueue)
     .orderBy(asc(attachmentUploadQueue.updatedAt))
     .all()
-    .filter((row) => retryOpensAt(row) <= now)
+    .filter((row) => retryOpensAt(row) <= now && !isLocalOnlyNote(db, row.noteId))
     .slice(0, DRAIN_BATCH_LIMIT)
 }
 
@@ -180,7 +183,6 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
     // may have finished this row in the meantime, and uploading it again would
     // give the file a second attachment id.
     if (!hasPendingUpload(deps.db, row.noteId, row.diskPath)) continue
-    if (isLocalOnlyNote(deps.db, row.noteId)) continue
     if (!fs.existsSync(row.diskPath)) {
       clearUpload(deps.db, row.noteId, row.diskPath)
       dropped++
