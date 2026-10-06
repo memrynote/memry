@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 import { searchAll } from '../../../database/queries/search'
-import { getNoteCacheById, listJournalEntriesInRange } from '../../../database/queries/notes'
+import { getNoteCacheById } from '../../../database/queries/notes'
 import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
 import {
   countExtractedParts,
@@ -13,7 +13,6 @@ import {
 } from '../../../database/queries/extracted-text'
 import { createDesktopInboxDomain } from '../../../inbox/domain'
 import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
-import { deleteJournalEntryFile, readJournalEntry, writeJournalEntry } from '../../../vault/journal'
 import {
   createNoteCommand,
   deleteNoteCommand,
@@ -34,7 +33,6 @@ import {
 } from '../../../vault/notes'
 import { getAllTagsWithCounts, listTagCategories } from '../../../tags/store'
 import { generateId, generateNoteId } from '../../../lib/id'
-import { generateJournalId } from '@memry/contracts/journal-api'
 import {
   syncFolderConfigCreate,
   syncFolderConfigDelete,
@@ -49,6 +47,7 @@ import { serializeFileBlockMarker } from '../../../import/_shared/attachment-mar
 import { snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { createCanvasHandles } from './canvas-handles'
+import { createJournalHandles } from './journal-handles'
 import { createdTasksReply, withAgentChecklists, writeAgentBody } from './agent-checklists'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { withoutFileBodies } from './desktop-api-reply'
@@ -712,60 +711,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         return { ids: status_ids }
       }
     },
-    journal: {
-      async getByDate(date) {
-        const entry = await readJournalEntry(date)
-        if (!entry) return null
-        return {
-          id: entry.id,
-          date: entry.date,
-          content_markdown: entry.content
-        }
-      },
-      async listInRange({ from, to }) {
-        return listJournalEntriesInRange(indexDb, from, to).map((entry) => ({
-          id: entry.id,
-          date: entry.date ?? '',
-          title: entry.title
-        }))
-      },
-      async createIfMissing({ date, content_markdown }) {
-        const existing = await readJournalEntry(date)
-        if (existing) return { id: existing.id, created: false }
-
-        const { result: created, createdTasks } = await writeAgentBody(
-          generateJournalId(date),
-          content_markdown,
-          '',
-          (content) => writeJournalEntry(date, content)
-        )
-        return { id: created.id, created: true, ...createdTasksReply(createdTasks) }
-      },
-      async update({ date, content_markdown, tags, properties }) {
-        const existing = await readJournalEntry(date)
-        const write = (content: string): ReturnType<typeof writeJournalEntry> =>
-          writeJournalEntry(
-            date,
-            content,
-            tags ?? existing?.tags,
-            properties ?? existing?.properties
-          )
-        if (content_markdown === undefined) {
-          const updated = await write(existing?.content ?? '')
-          return { id: updated.id }
-        }
-        const { result: updated, createdTasks } = await writeAgentBody(
-          generateJournalId(date),
-          content_markdown,
-          existing?.content ?? '',
-          write
-        )
-        return { id: updated.id, ...createdTasksReply(createdTasks) }
-      },
-      async delete(date) {
-        return { date, deleted: await deleteJournalEntryFile(date) }
-      }
-    },
+    journal: createJournalHandles(indexDb),
     inbox: {
       async list({ unread_only }) {
         const result = await createDesktopInboxDomain().list({
