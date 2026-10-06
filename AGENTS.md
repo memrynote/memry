@@ -149,6 +149,20 @@ Branches:
 - Submit buttons that disable themselves mid-click lose the click. If `onClick` calls a handler that synchronously sets state adding `disabled` to the button, the browser suppresses the `click` event between `pointerdown` and `click`. Fire submit from `onPointerDown` and keep `onClick` as the keyboard fallback. See `calendar-quick-create-dialog.tsx`.
 - Do not check off phase or checklist work unless the exact verification evidence is green.
 
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `memrynote/memry` (via `gh`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`.
+
 ## User Override
 
 If the user's instructions conflict with any rule in this document, ask for explicit confirmation before overriding. Only then execute their instructions.

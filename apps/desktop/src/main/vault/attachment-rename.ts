@@ -33,11 +33,9 @@ import { resolveAttachment } from './attachment-actions'
 import { reconcileDownloadedAttachmentName } from './attachment-rename-reconcile'
 import { getAttachmentRef, getNoteAttachmentsDir } from './attachments'
 import { getVaultRoot } from './notes-io'
+import { STORED_PREFIX_RE } from './attachment-heal'
 
 const logger = createLogger('AttachmentRename')
-
-/** The `{6-char nanoid}-` prefix `generateUniqueFilename` puts on every file. */
-const STORED_PREFIX_RE = /^[0-9a-z]{6}-/
 
 /** How many `-2`, `-3`… suffixes a collision may walk before giving up. */
 const MAX_COLLISION_ATTEMPTS = 100

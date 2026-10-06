@@ -83,6 +83,7 @@ import {
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
+import { ShowTasksMenuItem } from '@/components/sidebar/show-tasks-menu-item'
 import { noteTabData, folderTabData } from '@/lib/sidebar-tab-data'
 import { useOpenTarget } from '@/hooks/use-open-target'
 import {
@@ -455,6 +456,9 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               {!isPartOfSelection && (
                 <>
                   <OpenTargetMenuItems tab={noteTabData(note)} />
+                  {(note.fileType ?? 'markdown') === 'markdown' && (
+                    <ShowTasksMenuItem location={{ noteId: note.id }} />
+                  )}
                   <ContextMenuSeparator />
                   <ContextMenuItem onClick={() => actions.handleRenameClick(note)}>
                     <Pencil className="me-2 h-4 w-4" />
@@ -610,6 +614,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           contextMenuContent={
             <>
               <OpenTargetMenuItems tab={folderTabData(folder.path, folder.icon)} />
+              <ShowTasksMenuItem location={{ folderPath: folder.path }} />
               <ContextMenuSeparator />
               <ContextMenuItem onClick={() => void actions.handleCreateNoteInFolder(folder.path)}>
                 <FilePlus className="me-2 h-4 w-4" />

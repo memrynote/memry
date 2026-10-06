@@ -38,3 +38,7 @@ apps/ios/Memry/Resources/article-extract.js
 
 # Vendored KaTeX and mermaid, copied as-is by apps/ios/scripts/generate-block-render.mjs.
 apps/ios/Memry/Resources/BlockRender.bundle/vendor/
+
+# Excalidraw bundled by apps/ios/scripts/generate-whiteboard.mjs; Prettier would
+# reflow 8 MB of minified JS into 240k lines.
+apps/ios/Memry/Resources/Whiteboard.bundle/

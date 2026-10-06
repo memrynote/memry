@@ -18,6 +18,8 @@ import { trackMainError } from '../telemetry/diagnostics'
 
 const logger = createLogger('NoteRuntimeEffects')
 
+export { queueEmbeddedVaultFiles } from '../sync/attachment-backfill'
+
 export interface SyncNoteCreateOptions {
   /**
    * Defaults to note class, which is every caller that does not classify.

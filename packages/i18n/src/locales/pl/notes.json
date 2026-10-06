@@ -249,12 +249,20 @@
     "columns": {
       "group": "Podstawowe bloki",
       "two": {
-        "title": "Dwie kolumny",
+        "title": "2 kolumny",
         "subtext": "Umieść bloki obok siebie w dwóch kolumnach"
       },
       "three": {
-        "title": "Trzy kolumny",
+        "title": "3 kolumny",
         "subtext": "Umieść bloki obok siebie w trzech kolumnach"
+      },
+      "four": {
+        "title": "4 kolumny",
+        "subtext": "Umieść bloki obok siebie w czterech kolumnach"
+      },
+      "five": {
+        "title": "5 kolumn",
+        "subtext": "Umieść bloki obok siebie w pięciu kolumnach"
       }
     },
     "diagram": {

@@ -118,6 +118,14 @@ impl Notes {
             .call_blocking(move |conn| reads::notes_tagged(conn, &tag))
     }
 
+    /// The live journal days carrying one tag, each titled by its
+    /// `YYYY-MM-DD` date. A tag view block lists them beside the notes, as
+    /// desktop does; [`Notes::notes_tagged`] holds notes only.
+    pub fn journals_tagged(&self, tag: String) -> Result<Vec<NoteSummary>, StorageError> {
+        self.db
+            .call_blocking(move |conn| reads::journals_tagged(conn, &tag))
+    }
+
     /// One note's tags, typed properties and aliases.
     ///
     /// `nil` is "no such note", the same answer [`Notes::read`] gives. A note

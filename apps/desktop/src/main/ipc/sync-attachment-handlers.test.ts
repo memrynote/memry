@@ -10,6 +10,7 @@ import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 const attachmentMocks = vi.hoisted(() => ({
   sent: [] as Array<{ channel: string; payload: unknown }>,
   stat: vi.fn(),
+  existsSync: vi.fn(),
   service: {
     uploadAttachment: vi.fn(),
     downloadAttachment: vi.fn(),
@@ -25,6 +26,7 @@ const attachmentMocks = vi.hoisted(() => ({
 
 vi.mock('node:fs', () => ({
   default: {
+    existsSync: attachmentMocks.existsSync,
     promises: {
       stat: attachmentMocks.stat
     }
@@ -96,6 +98,9 @@ vi.mock('../sync/attachment-outbox', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../sync/attachment-outbox')>()
   return {
     ...actual,
+    clearUpload: vi.fn(actual.clearUpload),
+    isLocalOnlyNote: vi.fn(() => false),
+    markUploadFailed: vi.fn(actual.markUploadFailed),
     registerOutboxUploader: (...args: Parameters<typeof actual.registerOutboxUploader>): void => {
       outboxUploaders.push(args[0])
       actual.registerOutboxUploader(...args)
@@ -169,6 +174,13 @@ vi.mock('../sync/note-attachment-metadata', () => ({
   recordUploadedAttachment: vi.fn()
 }))
 
+const mockRecordAttachmentFile = vi.hoisted(() => vi.fn())
+const mockRecordedFileOf = vi.hoisted(() => vi.fn((): string | null => null))
+vi.mock('../sync/attachment-files', () => ({
+  recordAttachmentFile: (...args: unknown[]) => mockRecordAttachmentFile(...args),
+  recordedFileOf: (...args: unknown[]) => mockRecordedFileOf(...args)
+}))
+
 vi.mock('../sync/runtime', () => ({
   getNetworkMonitor: vi.fn().mockReturnValue(null)
 }))
@@ -193,7 +205,12 @@ import {
 } from './sync-attachment-handlers'
 import { getStatus as getVaultStatus } from '../vault/index'
 import { getNetworkMonitor } from '../sync/runtime'
-import { resetAttachmentQueue } from '../sync/attachment-outbox'
+import {
+  clearUpload,
+  isLocalOnlyNote,
+  markUploadFailed,
+  resetAttachmentQueue
+} from '../sync/attachment-outbox'
 import { UploadQueue } from '../sync/upload-queue'
 import type { NetworkMonitor } from '../sync/network'
 import { getValidAccessToken } from '../sync/token-manager'
@@ -222,12 +239,20 @@ describe('sync-attachment-handlers', () => {
     attachmentMocks.service.getDownloadProgress.mockReset()
     attachmentMocks.service.setProgressCallback.mockReset()
     attachmentMocks.stat.mockReset().mockResolvedValue({ size: 1234 })
+    attachmentMocks.existsSync.mockReset().mockReturnValue(true)
+    vi.mocked(clearUpload).mockClear()
+    vi.mocked(markUploadFailed).mockClear()
     attachmentMocks.queue.enqueue
       .mockReset()
       .mockResolvedValue({ attachmentId: 'attachment-1', sessionId: 'session-1' })
     attachmentMocks.queue.dispose.mockReset()
     vi.mocked(UploadQueue).mockClear()
-    vi.mocked(getNetworkMonitor).mockReturnValue(null)
+    // A sync runtime is up unless a test says otherwise; saves upload only then.
+    vi.mocked(getNetworkMonitor).mockReturnValue({
+      online: true,
+      on: vi.fn(),
+      removeListener: vi.fn()
+    } as unknown as NetworkMonitor)
     outboxUploaders.length = 0
     mockOnSaved.mockClear()
     mockOnDownloadNeeded.mockClear()
@@ -396,6 +421,7 @@ describe('sync-attachment-handlers', () => {
   })
 
   it('downloads only inside the vault attachments directory with a per-transfer progress callback', async () => {
+    vi.mocked(getNetworkMonitor).mockReturnValue(null)
     vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
     vi.mocked(getVaultStatus).mockReturnValue({ path: '/vault' } as any)
     registerAttachmentHandlers()
@@ -542,6 +568,7 @@ describe('sync-attachment-handlers', () => {
   })
 
   it('hands canvas asset uploads a fresh broadcaster and sends downloads straight to the service', async () => {
+    vi.mocked(getNetworkMonitor).mockReturnValue(null)
     // #given the canvas asset IO bound over the shared singletons
     const io = getCanvasAssetIO()
     expect(io).not.toBeNull()
@@ -606,6 +633,161 @@ describe('sync-attachment-handlers', () => {
         payload: { attachmentId: 'attachment-1', sessionId: '', progress: 50, status: 'uploading' }
       }
     ])
+  })
+
+  it('does not upload a file saved into a local-only note', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    vi.mocked(isLocalOnlyNote).mockReturnValue(true)
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+
+    onSaved({ noteId: 'note-local', diskPath: '/vault/attachments/note-local/a.html' })
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(attachmentMocks.queue.enqueue).not.toHaveBeenCalled()
+    vi.mocked(isLocalOnlyNote).mockReturnValue(false)
+  })
+
+  it('joins a save-time upload of the same file instead of uploading it a second time', async () => {
+    // #given a saved file whose upload is still waiting in the queue
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    let finishSavedUpload: (result: { attachmentId: string; sessionId: string }) => void = () => {}
+    attachmentMocks.queue.enqueue.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishSavedUpload = resolve
+        })
+    )
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/saved.png' })
+    await vi.waitFor(() => expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1))
+
+    // #when the outbox re-drive reaches the same row before that upload ends
+    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const drained = uploader('note-1', '/vault/attachments/saved.png')
+    finishSavedUpload({ attachmentId: 'attachment-saved', sessionId: 'session-saved' })
+
+    // #then one upload ran, and the save path, not the drain, records it
+    await expect(drained).resolves.toBeNull()
+    expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
+  })
+
+  it('joins a save-time upload that is still waiting for its access token', async () => {
+    // #given a saved file whose upload has not got its token yet
+    let grantToken: (token: string) => void = () => {}
+    vi.mocked(getValidAccessToken).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          grantToken = resolve
+        })
+    )
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/waiting.png' })
+
+    // #when the outbox re-drive reaches the same row during that wait
+    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const drained = uploader('note-1', '/vault/attachments/waiting.png')
+    grantToken('token-1')
+
+    // #then one upload ran, and the save path, not the drain, records it
+    await expect(drained).resolves.toBeNull()
+    expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves the failure of a joined save-time upload to the save path', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    let failSavedUpload: (error: Error) => void = () => {}
+    attachmentMocks.queue.enqueue.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          failSavedUpload = reject
+        })
+    )
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/failing.png' })
+    await vi.waitFor(() => expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1))
+
+    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const drained = uploader('note-1', '/vault/attachments/failing.png')
+    failSavedUpload(new Error('server said no'))
+
+    // Resolving null keeps the drain from counting the same failure again.
+    await expect(drained).resolves.toBeNull()
+    expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
+  })
+
+  it('uploads the row itself when the save-time attempt had no token', async () => {
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/signed-out.png' })
+
+    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    await expect(uploader('note-1', '/vault/attachments/signed-out.png')).resolves.toEqual({
+      attachmentId: 'attachment-1'
+    })
+    expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
+  })
+
+  // A vault the binding gate holds (kept local, or another account's) has no
+  // sync runtime, and nothing of it may leave the device (#2651).
+  it('keeps a saved file on the device while no sync runtime runs for the vault', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(getNetworkMonitor).mockReturnValue(null)
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/note-1/held.png' })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(attachmentMocks.queue.enqueue).not.toHaveBeenCalled()
+  })
+
+  // A file saved offline and deleted before reconnect must stay deleted: no
+  // failure to show, and no row left to retry (#2651).
+  it('drops the job of a saved file deleted before its upload ran', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    attachmentMocks.queue.enqueue.mockImplementationOnce(async () => {
+      attachmentMocks.existsSync.mockReturnValue(false)
+      throw Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' })
+    })
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+
+    onSaved({ noteId: 'note-1', diskPath: '/vault/sources/deleted.txt' })
+
+    await vi.waitFor(() =>
+      expect(clearUpload).toHaveBeenCalledWith(undefined, 'note-1', '/vault/sources/deleted.txt')
+    )
+    expect(markUploadFailed).not.toHaveBeenCalled()
+    expect(
+      attachmentMocks.sent.filter((e) => e.channel === SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED)
+    ).toEqual([])
   })
 
   it('maps download progress and uploads saved attachments from event callbacks', async () => {
@@ -706,11 +888,79 @@ describe('sync-attachment-handlers', () => {
       expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalledWith(
         'attachment-1',
         '/vault/attachments/file.pdf',
-        { pace: expect.any(Function) }
+        expect.objectContaining({ pace: expect.any(Function) })
       )
     )
     expect(markWritebackIgnored).toHaveBeenCalledWith('/vault/attachments/file.pdf')
     await vi.waitFor(() => expect(recordDownloadedFileSize).toHaveBeenCalledWith('note-1', 1234))
+  })
+
+  // The record is what lets the backfill tell a new file on a note with
+  // references from one that already went up or came down (#2651).
+  it('records the file of every upload and every embedded download', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    vi.mocked(getVaultStatus).mockReturnValue({ path: '/vault' } as any)
+    mockRecordAttachmentFile.mockClear()
+    registerAttachmentHandlers()
+
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/note-1/aaaaaa-saved.png' })
+    await vi.waitFor(() => expect(mockRecordAttachmentFile).toHaveBeenCalledTimes(1))
+
+    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    await uploader('note-1', '/vault/attachments/note-1/bbbbbb-drained.png')
+    const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
+      noteId: string
+      attachmentId: string
+      diskPath: string
+      intoDir?: boolean
+    }) => void
+    onDownloadNeeded({
+      noteId: 'note-1',
+      attachmentId: 'attachment-9',
+      diskPath: '/vault/attachments/note-1',
+      intoDir: true
+    })
+    await vi.waitFor(() => expect(mockRecordAttachmentFile).toHaveBeenCalledTimes(3))
+
+    expect(mockRecordAttachmentFile.mock.calls.map((call) => call.slice(1))).toEqual([
+      ['/vault', 'note-1', '/vault/attachments/note-1/aaaaaa-saved.png', 'attachment-1'],
+      ['/vault', 'note-1', '/vault/attachments/note-1/bbbbbb-drained.png', 'attachment-1'],
+      ['/vault', 'note-1', '/tmp/file.pdf', 'attachment-9']
+    ])
+  })
+
+  it('does not download an embedded attachment this device already holds at its recorded path', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    vi.mocked(getVaultStatus).mockReturnValue({ path: '/vault' } as any)
+    mockRecordedFileOf.mockReturnValue('/vault/sources/x.txt')
+    try {
+      registerAttachmentHandlers()
+      const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
+        noteId: string
+        attachmentId: string
+        diskPath: string
+        intoDir?: boolean
+      }) => void
+
+      onDownloadNeeded({
+        noteId: 'note-1',
+        attachmentId: 'attachment-src',
+        diskPath: '/vault/attachments/note-1',
+        intoDir: true
+      })
+      await vi.waitFor(() => expect(mockRecordedFileOf).toHaveBeenCalled())
+      await new Promise((r) => setTimeout(r, 10))
+
+      expect(attachmentMocks.service.downloadAttachment).not.toHaveBeenCalled()
+    } finally {
+      mockRecordedFileOf.mockReturnValue(null)
+    }
   })
 
   it('renames a downloaded embedded attachment to the name the note body carries', async () => {

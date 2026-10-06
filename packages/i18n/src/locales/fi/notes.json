@@ -249,12 +249,20 @@
     "columns": {
       "group": "Peruslohkot",
       "two": {
-        "title": "Kaksi saraketta",
+        "title": "2 saraketta",
         "subtext": "Aseta lohkot vierekkäin kahteen sarakkeeseen"
       },
       "three": {
-        "title": "Kolme saraketta",
+        "title": "3 saraketta",
         "subtext": "Aseta lohkot vierekkäin kolmeen sarakkeeseen"
+      },
+      "four": {
+        "title": "4 saraketta",
+        "subtext": "Aseta lohkot vierekkäin neljään sarakkeeseen"
+      },
+      "five": {
+        "title": "5 saraketta",
+        "subtext": "Aseta lohkot vierekkäin viiteen sarakkeeseen"
       }
     },
     "diagram": {

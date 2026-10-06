@@ -1,5 +1,3 @@
 {
-  "allowedSubs": [
-    "anthropic"
-  ]
+  "allowedSubs": ["anthropic", "llamacpp"]
 }
