@@ -69,6 +69,7 @@ import { trackMainEvent } from '../telemetry/track'
 import { toAbsolutePath } from '../vault/notes'
 import { parseNote, serializeParsedNote } from '../vault/frontmatter'
 import { atomicWrite } from '../vault/file-ops'
+import { assertNoteWritable, isNoteLocked } from '../vault-locks/registry'
 import {
   syncMergedTagDefinitions,
   syncTaggedNote,
@@ -157,6 +158,11 @@ async function updateNoteFrontmatterTag(
 ): Promise<void> {
   const cached = getNoteCacheById(indexDb, noteId)
   if (!cached) return
+  // A vault-wide tag rename, merge or delete leaves a locked note's file as it is.
+  if (isNoteLocked(noteId, cached.path)) {
+    log.info('Left the tags of a locked note unchanged', { noteId })
+    return
+  }
 
   const absolutePath = toAbsolutePath(cached.path)
   const raw = await readFile(absolutePath, 'utf-8')
@@ -427,6 +433,7 @@ export function registerTagsHandlers(): void {
       RemoveTagFromNoteSchema,
       withErrorHandler(async (input) => {
         const db = requireIndexDatabase()
+        assertNoteWritable(input.noteId)
         removeTagFromNote(db, input.noteId, input.tag)
 
         const normalizedTag = input.tag.toLowerCase().trim()

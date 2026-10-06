@@ -53,6 +53,8 @@ import { releaseDatabaseMemory } from '../database/client'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
+import { installVaultLockFileGuard } from '../vault-locks/files'
+import { checkLockedFilesAtOpen } from '../vault-locks/service'
 import { renameJournalsForFormatChange } from './journal-format-migration'
 import { flushPendingWritebacks } from '../sync/crdt-writeback'
 import { DEFAULT_JOURNAL_DATE_FORMAT } from '@memry/storage-vault'
@@ -762,6 +764,7 @@ async function openVault(vaultPath: string): Promise<void> {
   // vault must not be missed. Watcher, sync apply and the walker all upsert the
   // cache keyed by path (the walker skips paths already cached), so the three
   // can interleave without duplicating entries.
+  installVaultLockFileGuard()
   await startWatcher(vaultPath)
   timer.mark('watcher')
 
@@ -784,6 +787,12 @@ async function openVault(vaultPath: string): Promise<void> {
   })
   timer.mark('statusOpen')
   logger.info('Vault open timing', timer.summary())
+
+  // Locked files edited or removed while the app was closed get their locked
+  // text back, and every lock is re-applied on disk (#2606).
+  void checkLockedFilesAtOpen().catch((err) =>
+    logger.warn('Checking locked files at vault open failed', err)
+  )
 
   // Kick the file walk after isOpen so its tail (backfill, reconcile) runs
   // against an open vault, exactly like the old post-open reconcile call did.

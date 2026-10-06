@@ -16,6 +16,7 @@ import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import { NoteError, NoteErrorCode } from '../lib/errors'
+import { assertNoteWritable } from '../vault-locks/registry'
 import {
   syncNoteCreate,
   syncNoteUpdate,
@@ -102,6 +103,8 @@ export async function renameFolderCommand(oldPath: string, newPath: string): Pro
 }
 
 export async function deleteNoteCommand(id: string): Promise<void> {
+  // Before the sync delete is queued: a refused delete must not reach peers.
+  assertNoteWritable(id)
   // Enqueue sync delete BEFORE cache removal — enqueue reads cache for vector clock
   syncNoteDelete(id)
   await deleteNote(id)

@@ -62,6 +62,8 @@ import { isWritebackIgnored } from '../sync/crdt-writeback'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { flushProjectionEvents } from '../projections'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { isNoteLocked } from '../vault-locks/registry'
+import { restoreLockedNoteFile } from '../vault-locks/service'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
 import { enqueueJournalDelete } from '../journal/runtime-effects'
@@ -688,6 +690,15 @@ export class VaultWatcher {
       return
     }
 
+    // A locked note's outside edit is kept as a version and its locked text
+    // written back; it never reaches the index, the CRDT or the peers (#2606).
+    if (
+      isNoteLocked(cached.id, relativePath) &&
+      (await restoreLockedNoteFile(cached.id, content))
+    ) {
+      return
+    }
+
     const syncResult = syncNoteToCache(
       db,
       {
@@ -851,6 +862,14 @@ export class VaultWatcher {
         cached.contentHash ?? '',
         relativePath,
         async () => {
+          // A locked note removed outside the app gets its locked text back
+          // instead of a delete that would reach every device (#2606).
+          if (
+            isNoteLocked(cached.id, relativePath) &&
+            (await restoreLockedNoteFile(cached.id, null))
+          ) {
+            return
+          }
           // Enqueue sync delete BEFORE cache removal (enqueue reads cache for vector clock)
           if (isJournal && journalDate) {
             enqueueJournalDelete(cached.id, journalDate)

@@ -72,6 +72,12 @@ import { getStatus, getConfig } from './index'
 import { followJournalFolderMove } from './journal-folder-follow'
 import { createTreeFolderFilter } from './folder-visibility'
 import {
+  assertFolderTreeWritable,
+  assertFolderWritable,
+  assertNoteWritable,
+  assertParentFolderWritable
+} from '../vault-locks/registry'
+import {
   emitNoteEvent,
   getDefaultNoteDir,
   getVaultRoot,
@@ -244,6 +250,7 @@ export interface ImportFilesResult {
 // ============================================================================
 
 export async function createNote(input: NoteCreateInput): Promise<Note> {
+  assertFolderWritable(input.folder)
   // `input.folder` is vault-relative, so a note created inside a folder lands
   // in that folder. Only an unplaced note falls back to `defaultNoteFolder`.
   const notesDir = input.folder ? getVaultRoot() : getDefaultNoteDir()
@@ -623,6 +630,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   if (!existing) {
     throw new NoteError(`Note not found: ${input.id}`, NoteErrorCode.NOT_FOUND, input.id)
   }
+  assertNoteWritable(input.id, existing.path)
 
   const newTitle = input.title ?? existing.title
   const newContent = input.content ?? existing.content
@@ -812,6 +820,7 @@ export async function deleteNote(id: string): Promise<void> {
   if (!cached) {
     throw new NoteError(`Note not found: ${id}`, NoteErrorCode.NOT_FOUND, id)
   }
+  assertNoteWritable(id, cached.path)
 
   const absolutePath = toAbsolutePath(cached.path)
   await deleteFile(absolutePath)
@@ -863,6 +872,7 @@ export async function getFolders(): Promise<FolderInfo[]> {
 }
 
 export async function createFolder(folderPath: string): Promise<void> {
+  assertParentFolderWritable(folderPath)
   const notesDir = getVaultRoot()
   const absolutePath = path.join(notesDir, folderPath)
   await ensureDirectory(absolutePath)
@@ -871,6 +881,8 @@ export async function createFolder(folderPath: string): Promise<void> {
 }
 
 export async function renameFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
+  assertFolderTreeWritable(oldPath)
+  assertParentFolderWritable(newPath)
   const notesDir = getVaultRoot()
   const oldAbsPath = path.join(notesDir, oldPath)
   const newAbsPath = path.join(notesDir, newPath)
@@ -900,6 +912,7 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<Fo
 }
 
 export async function deleteFolder(folderPath: string): Promise<void> {
+  assertFolderTreeWritable(folderPath)
   const notesDir = getVaultRoot()
   const absPath = path.join(notesDir, folderPath)
 

@@ -6,7 +6,7 @@ import {
 } from '@memry/contracts/agent-mcp-channels'
 
 import { mainToRendererInvoke } from '../../../lib/window-rpc'
-import { AgentToolError } from '../errors'
+import { AgentToolError, isVaultLockRefusalMessage } from '../errors'
 
 export async function invokeDesktopApiFromWindow(
   windowId: string | null,
@@ -48,6 +48,11 @@ export async function invokeDesktopApiFromWindow(
   }
 
   if (!response.ok) {
+    if (isVaultLockRefusalMessage(response.error.message)) {
+      throw new AgentToolError('PERMISSION_DENIED', response.error.message, {
+        operation: request.operation
+      })
+    }
     throw new AgentToolError('INTERNAL', response.error.message, {
       operation: request.operation,
       code: response.error.code

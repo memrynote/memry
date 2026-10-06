@@ -14,6 +14,7 @@ import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { templates } from '@memry/db-schema/schema/templates'
 import { homePages } from '@memry/db-schema/schema/home-pages'
 import { customIcons } from '@memry/db-schema/schema/custom-icons'
+import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { taskActivity } from '@memry/db-schema/schema/task-activity'
@@ -35,6 +36,10 @@ import {
   initCustomIconSyncService,
   resetCustomIconSyncService
 } from '@memry/sync-client/custom-icon-sync'
+import {
+  initVaultLockSyncService,
+  resetVaultLockSyncService
+} from '@memry/sync-client/vault-lock-sync'
 import { initReminderSyncService, resetReminderSyncService } from '@memry/sync-client/reminder-sync'
 import {
   initCanvasFolderSyncService,
@@ -988,6 +993,27 @@ describe('dirty-recovery', () => {
             .run(),
         tracksModification: true,
         readClock: (id) => db.select().from(customIcons).where(eq(customIcons.id, id)).get()?.clock
+      },
+      {
+        type: 'vault_lock',
+        init: () => initVaultLockSyncService(deps()),
+        reset: resetVaultLockSyncService,
+        insert: (id, { clock, syncedAt, modifiedAt }) =>
+          db
+            .insert(vaultLocks)
+            .values({
+              id,
+              targetKind: 'note',
+              target: id,
+              locked: true,
+              clock,
+              syncedAt,
+              createdAt: modifiedAt,
+              updatedAt: modifiedAt
+            })
+            .run(),
+        tracksModification: true,
+        readClock: (id) => db.select().from(vaultLocks).where(eq(vaultLocks.id, id)).get()?.clock
       },
       {
         type: 'reminder',

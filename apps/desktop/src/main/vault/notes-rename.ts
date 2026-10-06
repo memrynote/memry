@@ -42,6 +42,7 @@ import { updateNoteMetadata } from '@memry/storage-data'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath, toRelativePath } from './notes-io'
 import { getNoteById } from './notes-crud'
 import type { Note } from './notes-crud'
+import { assertFolderWritable, assertNoteWritable } from '../vault-locks/registry'
 
 // ============================================================================
 // Rename
@@ -66,6 +67,7 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
   if (!existing) {
     throw new NoteError(`Note not found: ${id}`, NoteErrorCode.NOT_FOUND, id)
   }
+  assertNoteWritable(id, existing.path)
 
   const cached = getNoteCacheById(db, id)
   const isBinary = cached?.fileType ? isBinaryFileType(cached.fileType) : false
@@ -172,6 +174,8 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
   if (!existing) {
     throw new NoteError(`Note not found: ${id}`, NoteErrorCode.NOT_FOUND, id)
   }
+  assertNoteWritable(id, existing.path)
+  assertFolderWritable(newFolder)
 
   const cached = getNoteCacheById(db, id)
   const isBinary = cached?.fileType ? isBinaryFileType(cached.fileType) : false

@@ -24,6 +24,7 @@ type SyncDomain =
   | 'templates'
   | 'home'
   | 'icons'
+  | 'locks'
 
 const logger = createLogger('SyncTelemetry')
 
@@ -80,6 +81,8 @@ const toSyncDomain = (itemType: SyncItemType): SyncDomain => {
       return 'home'
     case 'custom_icon':
       return 'icons'
+    case 'vault_lock':
+      return 'locks'
   }
 }
 

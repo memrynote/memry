@@ -103,7 +103,8 @@ import {
   PanelLeft,
   ExternalLink,
   Paperclip,
-  Trash2
+  Trash2,
+  Lock
 } from '@/lib/icons'
 import { PageGraphIcon } from '@/lib/icons/page-icons'
 import { Button } from '@/components/ui/button'
@@ -131,6 +132,7 @@ import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { setVaultLock, useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
 import { createLogger } from '@/lib/logger'
 import { markLaunchNoteReadable } from '@/lib/launch-restore'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
@@ -218,6 +220,10 @@ export function NotePage({ noteId }: NotePageProps) {
   const fileActions = useFileActionLabels()
   // TanStack Query hooks for data fetching with caching
   const { note, isLoading, error: noteError, refetch: refetchNote } = useNote(noteId ?? null)
+  // The owner locked this note or a folder above it (#2606): read-only here
+  // and for every agent write path.
+  const isLocked = useIsNoteLocked(noteId ?? null, note?.path ?? null)
+  const hasOwnLock = useHasOwnNoteLock(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote, moveNote } = useNoteMutations()
   const {
     incoming: rawBacklinks,
@@ -376,7 +382,7 @@ export function NotePage({ noteId }: NotePageProps) {
     handlePropertyOrderChange
   } = usePropertySection({
     entityId: noteId ?? null,
-    canEdit: () => !isDeleted,
+    canEdit: () => !isDeleted && !isLocked,
     onBlocked: handlePropertyBlocked,
     includeExplicitType: true
   })
@@ -1138,6 +1144,15 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, isDeleted, refetchNote, queryClient, t]
   )
 
+  const handleToggleLock = useCallback(async () => {
+    if (!noteId) return
+    try {
+      await setVaultLock('note', noteId, !hasOwnLock)
+    } catch (err) {
+      toast.error(extractErrorMessage(err, t('vaultLock.toggleFailed')))
+    }
+  }, [noteId, hasOwnLock, t])
+
   const { setCover, setCoverFraming, removeCover } = useNoteCover(
     noteId ?? null,
     note?.frontmatter ?? null,
@@ -1658,6 +1673,7 @@ export function NotePage({ noteId }: NotePageProps) {
           if (action === 'delete') setIsDeleteConfirmOpen(true)
           if (action === 'local-only')
             void handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))
+          if (action === 'lock') void handleToggleLock()
         }}
         open={moreMenuOpen}
         onOpenChange={setMoreMenuOpen}
@@ -1786,6 +1802,13 @@ export function NotePage({ noteId }: NotePageProps) {
               }
               icon={<Monitor className="size-4" />}
             />
+            {(hasOwnLock || !isLocked) && (
+              <Picker.Item
+                value="lock"
+                label={hasOwnLock ? t('vaultLock.unlockNote') : t('vaultLock.lockNote')}
+                icon={<Lock className="size-4" />}
+              />
+            )}
             <Picker.Separator />
             <Picker.Item
               value="delete"
@@ -1897,7 +1920,17 @@ export function NotePage({ noteId }: NotePageProps) {
           data-testid="note-metadata"
           data-marquee-ignore
         >
+          {isLocked && (
+            <div
+              className="flex items-center gap-1.5 text-xs text-muted-foreground"
+              data-testid="note-locked-indicator"
+            >
+              <Lock className="size-3.5" aria-hidden />
+              <span>{t('vaultLock.readOnlyIndicator')}</span>
+            </div>
+          )}
           <NoteTitle
+            disabled={isLocked}
             emoji={note.emoji ?? null}
             title={note.title}
             onTitleChange={(...args) => void handleTitleChange(...args)}
@@ -1925,6 +1958,7 @@ export function NotePage({ noteId }: NotePageProps) {
             }
             hideWhenEmpty
             hideAddButton
+            disabled={isLocked}
           />
 
           <NoteSuggestedTags noteId={noteId} tags={note.tags} disabled={isDeleted} />
@@ -2017,6 +2051,7 @@ export function NotePage({ noteId }: NotePageProps) {
                 <ContentArea
                   key={noteId}
                   noteId={noteId}
+                  editable={!isLocked}
                   notePath={note.path}
                   initialContent={review.editorInitialContent}
                   contentType="markdown"

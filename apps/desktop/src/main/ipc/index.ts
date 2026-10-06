@@ -50,6 +50,7 @@ import { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mc
 import { registerImportHandlers, unregisterImportHandlers } from './import-handlers'
 import { registerHomePageHandlers, unregisterHomePageHandlers } from './home-page-handlers'
 import { registerCustomIconHandlers, unregisterCustomIconHandlers } from './custom-icon-handlers'
+import { registerVaultLockHandlers, unregisterVaultLockHandlers } from './vault-lock-handlers'
 import { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'
 import { installIpcChannelLabels } from './lib/ipc-channel-labels'
 import type { I18nInstance } from '@memry/i18n/main'
@@ -197,6 +198,7 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register home page handlers
   registerHomePageHandlers()
   registerCustomIconHandlers()
+  registerVaultLockHandlers()
 
   handlersRegistered = true
 }
@@ -245,6 +247,7 @@ export function unregisterAllHandlers(): void {
   unregisterImportHandlers()
   unregisterHomePageHandlers()
   unregisterCustomIconHandlers()
+  unregisterVaultLockHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')

@@ -1079,6 +1079,30 @@ export type CustomIconsEventChannel =
   (typeof CustomIconsChannels.events)[keyof typeof CustomIconsChannels.events]
 
 // ============================================================================
+// Vault Locks Channels
+// ============================================================================
+
+export const VaultLocksChannels = {
+  invoke: {
+    /** Every locked note id and folder path in the open vault */
+    LIST: 'vault-locks:list',
+    /** Lock or unlock one note or folder */
+    SET: 'vault-locks:set'
+  },
+  events: {
+    /** The set of locked notes and folders changed (locally or from a peer) */
+    CHANGED: 'vault-locks:changed',
+    /** A locked file changed outside the app and the locked text was written back */
+    EXTERNAL_EDIT_RESTORED: 'vault-locks:external-edit-restored'
+  }
+} as const
+
+export type VaultLocksInvokeChannel =
+  (typeof VaultLocksChannels.invoke)[keyof typeof VaultLocksChannels.invoke]
+export type VaultLocksEventChannel =
+  (typeof VaultLocksChannels.events)[keyof typeof VaultLocksChannels.events]
+
+// ============================================================================
 // Telemetry Channels
 // ============================================================================
 

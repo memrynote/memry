@@ -14,6 +14,7 @@ import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { templates } from '@memry/db-schema/schema/templates'
 import { homePages } from '@memry/db-schema/schema/home-pages'
 import { customIcons } from '@memry/db-schema/schema/custom-icons'
+import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
@@ -295,6 +296,7 @@ const REUPLOADABLE_TYPES = [
   'template',
   'home_page',
   'custom_icon',
+  'vault_lock',
   'bookmark',
   'reminder',
   'canvas',
@@ -486,6 +488,15 @@ function getLocalSyncableRefs(db: DrizzleDb): LocalSyncableRef[] {
     addLocalRef({ id: icon.id, type: 'custom_icon' })
   }
 
+  const syncedVaultLocks = db
+    .select({ id: vaultLocks.id })
+    .from(vaultLocks)
+    .where(isNotNull(vaultLocks.clock))
+    .all()
+  for (const lock of syncedVaultLocks) {
+    addLocalRef({ id: lock.id, type: 'vault_lock' })
+  }
+
   const syncedBookmarks = db
     .select({ id: bookmarks.id })
     .from(bookmarks)
@@ -615,6 +626,10 @@ function buildRefPayload(db: DrizzleDb, ref: LocalSyncableRef): string | null {
     }
     case 'custom_icon': {
       const row = db.select().from(customIcons).where(eq(customIcons.id, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    case 'vault_lock': {
+      const row = db.select().from(vaultLocks).where(eq(vaultLocks.id, ref.id)).get()
       return row ? JSON.stringify(row) : null
     }
     case 'bookmark': {

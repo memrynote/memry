@@ -91,6 +91,11 @@ import type {
   CustomIconAddFromUrlInput,
   CustomIconRenameInput
 } from '@memry/contracts/custom-icons-api'
+import type {
+  VaultLockExternalEditRestoredEvent,
+  VaultLockSetInput,
+  VaultLockState
+} from '@memry/contracts/vault-locks-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -636,6 +641,11 @@ export interface HomePage {
   icon?: string
   position: number
   widgets: WidgetInstance[]
+}
+
+export interface VaultLocksClientAPI {
+  list(): Promise<VaultLockState>
+  set(input: VaultLockSetInput): Promise<VaultLockState>
 }
 
 export interface CustomIconsClientAPI {
@@ -1919,6 +1929,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   syncAttachments: SyncAttachmentsClientAPI
   homePages: HomePagesClientAPI
   customIcons: CustomIconsClientAPI
+  vaultLocks: VaultLocksClientAPI
   agentMcp: AgentMcpClientAPI
   agent: AgentClientAPI
   import: {
@@ -1980,6 +1991,10 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onHomePageCreated: (callback: (event: { id: string }) => void) => () => void
   onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void
   onCustomIconsUpdated: (callback: (event: { id: string }) => void) => () => void
+  onVaultLocksChanged: (callback: (state: VaultLockState) => void) => () => void
+  onVaultLockExternalEditRestored: (
+    callback: (event: VaultLockExternalEditRestoredEvent) => void
+  ) => () => void
   onHomePageDeleted: (callback: (event: { id: string }) => void) => () => void
   // Journal event subscriptions
   onJournalEntryCreated: (callback: (event: JournalEntryCreatedEvent) => void) => () => void

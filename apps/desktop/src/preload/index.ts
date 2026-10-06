@@ -49,6 +49,7 @@ import { agentApi } from './api/agent'
 import { importApi, importEvents } from './api/import'
 import { homePagesApi, homePagesEvents } from './api/home-pages'
 import { customIconsApi, customIconsEvents } from './api/custom-icons'
+import { vaultLocksApi, vaultLocksEvents } from './api/vault-locks'
 
 const logger = createLogger('Preload')
 const MAIN_INVOKE_CHANNEL = 'main:invoke'
@@ -133,6 +134,7 @@ export const api = {
   ...contentEvents,
   ...homePagesEvents,
   ...customIconsEvents,
+  ...vaultLocksEvents,
   ...journalEvents,
   ...bookmarkEvents,
   ...searchEvents,
@@ -157,6 +159,7 @@ export const api = {
   import: importApi,
   homePages: homePagesApi,
   customIcons: customIconsApi,
+  vaultLocks: vaultLocksApi,
 
   onCrdtStateChanged,
   onCrdtProviderReset,

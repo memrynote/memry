@@ -50,6 +50,7 @@ import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { createCanvasHandles } from './canvas-handles'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { withoutFileBodies } from './desktop-api-reply'
+import { assertNoteWritable } from '../../../vault-locks/registry'
 import type {
   ExtractedTextReply,
   FolderEntry,
@@ -322,6 +323,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         }
       },
       async saveHtmlAttachment({ id, title, html }) {
+        assertNoteWritable(id)
         const fileType = getNoteCacheById(indexDb, id)?.fileType ?? 'markdown'
         if (fileType !== 'markdown') {
           throw new AgentToolError(

@@ -27,13 +27,14 @@ last, in chapter 05's apply order (source, event, external event, binding).
 Notes root and is appended after them. `canvas` (whiteboards, §13.7.21) was
 added for the phone's whiteboard block and is appended last.
 
-Four more **record types** are served by the server and **not** subscribed to
-here: `agent_conversation`, `agent_message`, `canvas_folder`, `home_page`.
+Five more **record types** are served by the server and **not** subscribed to
+here: `agent_conversation`, `agent_message`, `canvas_folder`, `home_page`,
+`vault_lock` (desktop read-only locks, #2606).
 **A conforming client omits them from the header and never sees them**
 (chapter 05 §5.3.1).
 
-Twenty-one plus four is the **twenty-five record types**, which is the set
-chapter 05 §5.3 calls recognised. `attachment` is the twenty-sixth member of
+Twenty-one plus five is the **twenty-six record types**, which is the set
+chapter 05 §5.3 calls recognised. `attachment` is the twenty-seventh member of
 `SYNC_ITEM_TYPES` and is **not** one of them: it never travels as a record at
 all (§13.8), so it is neither subscribed nor declarable.
 
