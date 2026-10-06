@@ -1034,7 +1034,9 @@ across devices:
   later file still reads as new. A file renamed inside the note's own folder
   keeps its row through its stored prefix. A file in another note's
   attachments folder is that note's attachment and is never queued for the
-  note that embeds it. Older builds ignore the table; a file such a build
+  note that embeds it. A download of an attachment whose recorded file is
+  still on disk is skipped, so an embed uploaded from outside the note's folder
+  does not come back as a second copy in it. Older builds ignore the table; a file such a build
   transferred has no row, so after a re-upgrade it uploads once more.
 - **Held vaults** — a save event uploads only while the sync runtime runs for
   the open vault. A vault the account binding holds (kept local, or another

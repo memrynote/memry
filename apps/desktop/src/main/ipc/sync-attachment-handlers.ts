@@ -29,7 +29,7 @@ import {
 } from '../billing/entitlement-cache'
 import { trackMainError } from '../telemetry/diagnostics'
 import { UploadQueue } from '../sync/upload-queue'
-import { recordAttachmentFile } from '../sync/attachment-files'
+import { recordAttachmentFile, recordedFileOf } from '../sync/attachment-files'
 import { DownloadQueue, DownloadQueueClearedError } from '../sync/download-queue'
 import { onBootstrapElevationChange } from '../sync/bootstrap-session'
 import { getBootstrapElevationFactor } from '../sync/bootstrap-session-state'
@@ -103,6 +103,17 @@ function recordFile(noteId: string, diskPath: string, attachmentId: string): voi
     recordAttachmentFile(getDatabase(), vaultPath, noteId, diskPath, attachmentId)
   } catch (err) {
     logger.warn('Failed to record an attachment file', { noteId, err })
+  }
+}
+
+function heldAtRecordedPath(noteId: string, attachmentId: string): boolean {
+  const vaultPath = getVaultStatus().path
+  if (!vaultPath || !isDatabaseInitialized()) return false
+  try {
+    return recordedFileOf(getDatabase(), vaultPath, noteId, attachmentId) !== null
+  } catch (err) {
+    logger.warn('Failed to read the recorded attachment file', { noteId, err })
+    return false
   }
 }
 
@@ -572,6 +583,12 @@ export function registerAttachmentHandlers(): void {
         // the toggle flips back or an explicit IPC download asks for it.
         if (isDatabaseInitialized() && !isAttachmentAutoDownloadEnabled(getDatabase())) {
           return releaseDownloadAttempt(noteId, attachmentId)
+        }
+
+        // This device uploaded the file from where it lives (an embed from
+        // outside the note's folder): a download would only duplicate it.
+        if (intoDir && heldAtRecordedPath(noteId, attachmentId)) {
+          return markDownloadSucceeded(getDatabase(), noteId, attachmentId)
         }
 
         const queue = getOrCreateDownloadQueue()

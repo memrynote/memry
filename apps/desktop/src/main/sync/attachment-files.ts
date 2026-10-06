@@ -259,6 +259,27 @@ export function unrecordedFiles(
 }
 
 /**
+ * The file this device recorded for an attachment of a note, if it is still on
+ * disk. An embed from outside the note's folder was uploaded from where it
+ * lives, so a download into the note's folder would put a second copy there.
+ */
+export function recordedFileOf(
+  db: DrizzleDb,
+  vaultPath: string,
+  noteId: string,
+  attachmentId: string
+): string | null {
+  const row = db
+    .select({ path: attachmentFiles.path })
+    .from(attachmentFiles)
+    .where(and(eq(attachmentFiles.noteId, noteId), eq(attachmentFiles.attachmentId, attachmentId)))
+    .get()
+  if (!row?.path) return null
+  const file = path.join(vaultPath, ...row.path.split('/'))
+  return fs.existsSync(file) ? file : null
+}
+
+/**
  * Record a file the server has: an upload of it succeeded or a download put it
  * here. The first record of an older note counts its other files first, or the
  * next backfill would read every one of them as new.
