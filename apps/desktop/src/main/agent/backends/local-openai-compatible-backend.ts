@@ -15,6 +15,7 @@ import {
   toolCallProfileMiddleware,
   type ToolCallProfile
 } from './tool-call-profile'
+import { toolImageMiddleware } from './tool-images'
 import type { TurnWriteGrant } from '../turn-grants'
 import type {
   AgentBackend,
@@ -47,6 +48,9 @@ const TOOLS_UNAVAILABLE_SYSTEM =
   'Answer in plain text, and if the request needs vault access, say that vault tools are off for this model.'
 
 const PROBE_TOOL_NAME = 'memry_probe_echo'
+// One white pixel: enough for a text-only model or server to refuse image input.
+const PROBE_IMAGE_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
 const PROBE_USER_MESSAGE = { role: 'user', content: 'Call the echo tool with text "ok".' }
 
 /**
@@ -96,6 +100,15 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     settingsKey: string
     apiKey: string | null
     promise: Promise<LocalProbe>
+  } | null = null
+  // Whether the chat model takes image input, learned the first time a tool returns an
+  // image (FB-002). Same single slot as the tool probe; the model is part of the key
+  // because a chat can pick a model other than the configured one.
+  private imageInputCache: {
+    key: string
+    apiKey: string | null
+    accepts: boolean
+    expiresAt: number
   } | null = null
 
   constructor(
@@ -179,6 +192,22 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     return probe
   }
 
+  private async acceptsImages(
+    settings: AgentLocalProviderSettings,
+    modelName: string,
+    apiKey: string | null
+  ): Promise<boolean> {
+    const key = JSON.stringify([probeSettingsKey(settings), modelName])
+    const cached = this.imageInputCache
+    if (cached?.key === key && cached.apiKey === apiKey && cached.expiresAt > Date.now()) {
+      return cached.accepts
+    }
+    const accepts = await probeImageInput(settings, modelName, this.deps.fetch ?? fetch, apiKey)
+    const ttl = accepts ? PROBE_TTL_MS : PROBE_DEGRADED_TTL_MS
+    this.imageInputCache = { key, apiKey, accepts, expiresAt: Date.now() + ttl }
+    return accepts
+  }
+
   private async run(
     input: AgentBackendRunInput & { writeGrant?: TurnWriteGrant },
     allowTools: boolean
@@ -212,7 +241,13 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     const result = streamText({
       model:
         tools?.kind === 'on'
-          ? wrapLanguageModel({ model, middleware: toolCallProfileMiddleware(tools.profile) })
+          ? wrapLanguageModel({
+              model,
+              middleware: [
+                toolCallProfileMiddleware(tools.profile),
+                toolImageMiddleware(() => this.acceptsImages(settings, modelName, apiKey))
+              ]
+            })
           : model,
       prompt: input.prompt,
       ...(toolsUnavailable.length > 0 ? { system: TOOLS_UNAVAILABLE_SYSTEM } : {}),
@@ -547,6 +582,32 @@ async function probeToolCalling(
     }
   }
   return { ok: true, profile: { toolChoice, toolCalls: nativeCall?.id ? 'native' : 'text' } }
+}
+
+/** True when the server answers a request that carries an image; any error is a no. */
+async function probeImageInput(
+  settings: AgentLocalProviderSettings,
+  model: string,
+  fetchImpl: typeof fetch,
+  apiKey: string | null
+): Promise<boolean> {
+  try {
+    await postChatCompletion(settings, fetchImpl, apiKey, {
+      model,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Reply with ok.' },
+            { type: 'image_url', image_url: { url: PROBE_IMAGE_URL } }
+          ]
+        }
+      ]
+    })
+    return true
+  } catch {
+    return false
+  }
 }
 
 /**
