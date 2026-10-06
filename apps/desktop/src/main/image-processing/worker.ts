@@ -1,6 +1,6 @@
 import { createLogger } from '../lib/logger'
 import { installWorkerLogForwarding } from '../lib/log-forward'
-import { generateThumbnailInWorker, processInboxImageFile } from './operations'
+import { generateThumbnailInWorker, prepareViewImage, processInboxImageFile } from './operations'
 import type {
   ImageProcessingMainToWorkerMessage,
   ImageProcessingWorkerToMainMessage
@@ -55,6 +55,26 @@ async function handleProcessInboxImage(
   }
 }
 
+async function handlePrepareViewImage(
+  message: Extract<ImageProcessingMainToWorkerMessage, { type: 'prepare-view-image' }>
+): Promise<void> {
+  try {
+    const result = await prepareViewImage(message.source, message.maxEdge)
+    parentPort.postMessage({
+      type: 'view-image-result',
+      requestId: message.requestId,
+      result
+    } satisfies ImageProcessingWorkerToMainMessage)
+  } catch (error) {
+    const failure = error instanceof Error ? error.message : String(error)
+    parentPort.postMessage({
+      type: 'error',
+      requestId: message.requestId,
+      error: failure
+    } satisfies ImageProcessingWorkerToMainMessage)
+  }
+}
+
 parentPort.on('message', (event) => {
   const message = event.data as ImageProcessingMainToWorkerMessage
 
@@ -64,6 +84,9 @@ parentPort.on('message', (event) => {
       break
     case 'process-inbox-image':
       void handleProcessInboxImage(message)
+      break
+    case 'prepare-view-image':
+      void handlePrepareViewImage(message)
       break
     case 'shutdown':
       process.exit(0)
