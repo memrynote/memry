@@ -31,7 +31,8 @@ sidebar does include those — see [Properties & Tags](/user-guide/notes/propert
 ### Filtering by Folder or Note
 
 **Location** lists the folders and notes in your vault that hold tasks, as a tree, with the
-number of tasks under each. Type to search by name.
+number of tasks under each. Folders and notes show the icon you gave them in the sidebar. A
+long list scrolls while the search box stays at the top. Type to search by name.
 
 - Picking a folder shows tasks from every note in it, subfolders included.
 - Picking a note shows the tasks written in it and the tasks linked to it.
