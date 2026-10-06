@@ -87,6 +87,37 @@ describe('attachment outbox', () => {
     expect(isLocalOnlyNote(db, 'note-missing')).toBe(false)
   })
 
+  it('still drains other rows when more than a batch of local-only rows waits', async () => {
+    upsertNoteMetadata(db, {
+      id: 'note-local',
+      path: 'notes/note-local.md',
+      title: 'note-local',
+      createdAt: '2026-08-21T00:00:00.000Z',
+      modifiedAt: '2026-08-21T00:00:00.000Z',
+      localOnly: true,
+      attachmentReferences: null
+    })
+    for (let i = 0; i < 60; i++) {
+      const file = path.join(tempDir, `local-${i}.png`)
+      fs.writeFileSync(file, 'x')
+      enqueueUpload(db, 'note-local', file)
+    }
+    const synced = path.join(tempDir, 'synced.png')
+    fs.writeFileSync(synced, 'y')
+    enqueueUpload(db, 'note-synced', synced)
+    const upload = vi.fn(async () => ({ attachmentId: 'id-synced' }))
+
+    await expect(drainOutboxWith({ db, upload })).resolves.toEqual({
+      uploaded: 1,
+      failed: 0,
+      dropped: 0
+    })
+    expect(upload).toHaveBeenCalledWith('note-synced', synced)
+    expect(sqlite.prepare('SELECT COUNT(*) AS n FROM attachment_upload_queue').get()).toEqual({
+      n: 60
+    })
+  })
+
   it('skips a row that another upload cleared while the drain was busy (#2651)', async () => {
     const first = path.join(tempDir, 'first.png')
     const second = path.join(tempDir, 'second.png')
