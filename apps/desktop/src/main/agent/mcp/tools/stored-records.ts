@@ -55,13 +55,20 @@ export async function readStoredJournalEntry(date: string): Promise<StoredJourna
   }
 }
 
-export function droppedFrontmatterKeys(
-  before: { frontmatter: Record<string, unknown> } | null,
-  after: { frontmatter: Record<string, unknown> } | null
-): string[] {
-  return Object.keys(before?.frontmatter ?? {}).filter(
-    (key) => !Object.hasOwn(after?.frontmatter ?? {}, key)
-  )
+/**
+ * Run a journal rewrite and name the frontmatter keys it dropped. The writer
+ * keeps user keys and legacy id/created/modified, but drops any other key
+ * Memry reserves, such as a legacy `emoji`.
+ */
+export async function withDroppedJournalKeys(
+  date: string,
+  rewrite: () => Promise<{ id: string }>
+): Promise<{ id: string; frontmatter_removed?: string[] }> {
+  const before = (await readJournalFile(date))?.frontmatter ?? {}
+  const { id } = await rewrite()
+  const after = (await readJournalFile(date))?.frontmatter ?? {}
+  const dropped = Object.keys(before).filter((key) => !Object.hasOwn(after, key))
+  return { id, ...(dropped.length > 0 ? { frontmatter_removed: dropped } : {}) }
 }
 
 /**

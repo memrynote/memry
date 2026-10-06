@@ -13,12 +13,7 @@ import {
 } from '../../../database/queries/extracted-text'
 import { createDesktopInboxDomain } from '../../../inbox/domain'
 import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
-import {
-  deleteJournalEntryFile,
-  readJournalEntry,
-  readJournalFile,
-  writeJournalEntry
-} from '../../../vault/journal'
+import { deleteJournalEntryFile, readJournalEntry, writeJournalEntry } from '../../../vault/journal'
 import {
   createNoteCommand,
   deleteNoteCommand,
@@ -56,11 +51,11 @@ import { createCanvasHandles } from './canvas-handles'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { writeAndReadBack } from './desktop-api-readback'
 import {
-  droppedFrontmatterKeys,
   noteFileFrontmatter,
   noteIcon,
   readStoredJournalEntry,
-  readStoredNote
+  readStoredNote,
+  withDroppedJournalKeys
 } from './stored-records'
 import { withoutFileBodies } from './desktop-api-reply'
 import type {
@@ -728,18 +723,15 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         return { id: created.id, created: true }
       },
       async update({ date, content_markdown, tags, properties }) {
-        const before = await readJournalFile(date)
         const existing = await readJournalEntry(date)
-        const updated = await writeJournalEntry(
-          date,
-          content_markdown ?? existing?.content ?? '',
-          tags ?? existing?.tags,
-          properties ?? existing?.properties
+        return withDroppedJournalKeys(date, () =>
+          writeJournalEntry(
+            date,
+            content_markdown ?? existing?.content ?? '',
+            tags ?? existing?.tags,
+            properties ?? existing?.properties
+          )
         )
-        // The journal writer keeps user keys only, so a legacy `id`, `created` or
-        // `modified` in an older file is dropped on rewrite. Say so.
-        const dropped = droppedFrontmatterKeys(before, await readJournalFile(date))
-        return { id: updated.id, ...(dropped.length > 0 ? { frontmatter_removed: dropped } : {}) }
       },
       async delete(date) {
         return { date, deleted: await deleteJournalEntryFile(date) }
