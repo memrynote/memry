@@ -3,7 +3,17 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 vi.mock('electron', () => ({ app: { getVersion: () => '0.0.0' } }))
 
 let vaultOpen = true
-vi.mock('../database', () => ({ isDatabaseInitialized: () => vaultOpen }))
+vi.mock('../database', () => ({
+  isDatabaseInitialized: () => vaultOpen,
+  getDatabase: () => ({}),
+  getIndexDatabase: () => ({})
+}))
+vi.mock('../database/queries/tags', () => ({
+  getAllTagsWithCounts: () => [
+    { name: 'rare', count: 1 },
+    { name: 'reading', count: 12 }
+  ]
+}))
 
 // Mirrors the real ingest: requireDatabase() throws while no vault is open.
 const ingestSpy = vi.fn(async () => {
@@ -160,6 +170,33 @@ describe('capture server', () => {
     })
     expect(cap.status).toBe(503)
     expect(await cap.json()).toEqual({ error: 'vault-closed' })
+  })
+
+  describe('GET /tags', () => {
+    const authed = {
+      Authorization: `Bearer ${TOKEN}`,
+      Origin: 'chrome-extension://abc',
+      'X-Memry-Capture': '1'
+    }
+
+    it('returns tag names, most used first, to a paired extension', async () => {
+      origins.add('chrome-extension://abc')
+      const r = await req(port, '/tags', { method: 'GET', headers: authed })
+      expect(r.status).toBe(200)
+      expect(await r.json()).toEqual({ tags: ['reading', 'rare'] })
+    })
+
+    it('rejects an unpaired origin', async () => {
+      const r = await req(port, '/tags', { method: 'GET', headers: authed })
+      expect(r.status).toBe(401)
+    })
+
+    it('answers 503 vault-closed with no vault open', async () => {
+      origins.add('chrome-extension://abc')
+      vaultOpen = false
+      const r = await req(port, '/tags', { method: 'GET', headers: authed })
+      expect(r.status).toBe(503)
+    })
   })
 
   it('reports a declined pairing consent to the claiming extension', async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import type { ArticleCapture } from '@memry/article-extract'
 import type {
   CaptureResponse,
@@ -43,13 +43,20 @@ const STATUS: Record<ConnectionState, { tone: string; label: string }> = {
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const phase = selectPhase(state)
+  // Held in memory only: vault tag names are never persisted in browser storage.
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
 
   useEffect(() => {
     browser.runtime
       .sendMessage({ type: 'GET_STATUS' })
-      .then((r: StatusResponse) =>
+      .then((r: StatusResponse) => {
         dispatch({ type: 'STATUS', connection: r.connection, port: r.port })
-      )
+        if (r.connection !== 'ready') return
+        browser.runtime
+          .sendMessage({ type: 'GET_TAGS' })
+          .then((tags: string[]) => setTagSuggestions(Array.isArray(tags) ? tags : []))
+          .catch(() => {})
+      })
       .catch(() => dispatch({ type: 'STATUS', connection: 'app-closed', port: null }))
 
     browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
@@ -288,6 +295,7 @@ export default function App() {
 
                 <TagEditor
                   tags={draft.tags ?? []}
+                  suggestions={tagSuggestions}
                   disabled={!editable}
                   onChange={(tags) => setDraft({ ...draft, tags })}
                 />

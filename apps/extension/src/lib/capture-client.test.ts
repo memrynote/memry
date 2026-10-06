@@ -4,6 +4,7 @@ import {
   PROBE_PORTS,
   captureHeaders,
   claimToken,
+  getTags,
   pairRequestUrl,
   parsePing,
   pingUrl,
@@ -115,6 +116,23 @@ describe('postCapture', () => {
       ok: false,
       error: 'invalid-capture'
     })
+  })
+})
+
+describe('getTags', () => {
+  test('returns the string tags from /tags', async () => {
+    const fetchFn = vi.fn(async () => ok({ tags: ['reading', 3, 'ai'] }))
+    expect(await getTags(7849, 't', fetchFn as unknown as typeof fetch)).toEqual(['reading', 'ai'])
+  })
+  test('falls back to no suggestions on an older desktop, closed vault, or closed app', async () => {
+    const notFound = vi.fn(async () => new Response('{}', { status: 404 }))
+    const vaultClosed = vi.fn(async () => new Response('{}', { status: 503 }))
+    const down = vi.fn(async () => {
+      throw new TypeError('fetch failed')
+    })
+    for (const fetchFn of [notFound, vaultClosed, down]) {
+      expect(await getTags(7849, 't', fetchFn as unknown as typeof fetch)).toEqual([])
+    }
   })
 })
 
