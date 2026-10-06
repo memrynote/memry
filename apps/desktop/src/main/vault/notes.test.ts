@@ -599,7 +599,7 @@ describe('notes operations', () => {
         expect(raw).toContain('\nstatus: done\n')
       })
 
-      it('keeps their lines byte for byte when the write carries the file values', async () => {
+      it('keeps their lines byte for byte when an update echoes the note properties', async () => {
         const { id, filePath } = await writeLegacyNote()
         const before = await notes.getNoteById(id)
 

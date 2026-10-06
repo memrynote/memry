@@ -788,7 +788,7 @@ describe('createVaultServiceHandles', () => {
     mocks.readJournalEntry.mockResolvedValue(entry)
     mocks.readJournalFile
       .mockResolvedValueOnce({
-        frontmatter: { date: '2026-10-04', id: 'legacy', created: '2025-01-01', mood: 'calm' },
+        frontmatter: { date: '2026-10-04', emoji: 'sun', mood: 'calm' },
         body: 'Old\n'
       })
       .mockResolvedValue({
@@ -806,7 +806,7 @@ describe('createVaultServiceHandles', () => {
     }
     await expect(
       call('vault_update_journal_entry', { date: '2026-10-04', content_markdown: 'Sent' })
-    ).resolves.toEqual({ ...storedEntry, frontmatter_removed: ['id', 'created'] })
+    ).resolves.toEqual({ ...storedEntry, frontmatter_removed: ['emoji'] })
     await expect(
       call('vault_create_journal_entry', { date: '2026-10-04', content_markdown: 'Sent' })
     ).resolves.toEqual({ ...storedEntry, created: false })

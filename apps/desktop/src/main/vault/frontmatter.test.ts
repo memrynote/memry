@@ -23,6 +23,7 @@ import {
   deserializePropertyValue,
   createSnippet,
   cleanCachedSnippet,
+  keepRawFrontmatterLines,
   type NoteFrontmatter
 } from './frontmatter'
 
@@ -769,5 +770,33 @@ Body text
       coverCreditUrl: 'https://unsplash.com/@ana',
       status: 'done'
     })
+  })
+})
+
+describe('keepRawFrontmatterLines', () => {
+  it('puts back the previous line of a named key, keeping the CRLF endings', () => {
+    const previous = '---\r\ncreated: 2024-03-05 # first draft\r\nstatus: draft\r\n---\r\nBody\r\n'
+    const next =
+      '---\r\ncreated: 2024-03-05T00:00:00.000Z\r\nstatus: done\r\n---\r\ncreated: body line\r\n'
+
+    expect(keepRawFrontmatterLines(next, previous, ['created'])).toBe(
+      '---\r\ncreated: 2024-03-05 # first draft\r\nstatus: done\r\n---\r\ncreated: body line\r\n'
+    )
+  })
+
+  it('replaces a continued entry whole and leaves a multi-line previous entry alone', () => {
+    const previous = '---\ntitle: Short\nid:\n  - a\n---\n'
+    const next = '---\ntitle: >-\n  Short\nid:\n  - a\n---\n'
+
+    expect(keepRawFrontmatterLines(next, previous, ['title', 'id'])).toBe(
+      '---\ntitle: Short\nid:\n  - a\n---\n'
+    )
+  })
+
+  it('leaves a key the previous file does not have', () => {
+    const next = '---\nid: x\n---\nBody\n'
+
+    expect(keepRawFrontmatterLines(next, '---\nstatus: a\n---\n', ['id'])).toBe(next)
+    expect(keepRawFrontmatterLines(next, 'No frontmatter\n', ['id'])).toBe(next)
   })
 })

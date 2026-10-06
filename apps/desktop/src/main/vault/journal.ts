@@ -14,7 +14,11 @@ import matter from 'gray-matter'
 import { createNoteContentStore } from '@memry/storage-vault'
 import { extractJournalPreview } from '@memry/domain-notes/journal'
 import { getStatus, getConfig } from './index'
-import { normalizePropertiesToRoot, writePropertiesToRoot } from './frontmatter'
+import {
+  keepRawFrontmatterLines,
+  normalizePropertiesToRoot,
+  writePropertiesToRoot
+} from './frontmatter'
 import { ensureDirectory } from './file-ops'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import {
@@ -176,8 +180,16 @@ export function createJournalFrontmatter(date: string, tags?: string[]): Journal
 // ============================================================================
 
 /**
+ * Memry keys an entry written before the frontmatter diet (#697) carries. They
+ * are reserved, so the writer would drop them; it keeps them instead. A legacy
+ * `title` is a plain property here and survives as one.
+ */
+const LEGACY_JOURNAL_KEYS = ['id', 'created', 'modified'] as const
+
+/**
  * Reserved frontmatter keys that are NOT custom properties.
  */
+
 const RESERVED_JOURNAL_KEYS = new Set([
   'id',
   'date',
@@ -288,8 +300,10 @@ export async function writeJournalEntryWithContent(
 ): Promise<JournalWriteResult> {
   const store = getContentStore()
   await ensureDirectory(getJournalDir())
-  const existing = existingEntry ?? (await readJournalEntry(date))
-  const result = composeJournalEntry(date, content, tags, existing, properties)
+  const previousFile = await store.read(store.getJournalRelativePath(date))
+  const existing =
+    existingEntry ?? (previousFile ? toJournalEntry(parseJournalEntry(previousFile, date)) : null)
+  const result = composeJournalEntry(date, content, tags, existing, properties, previousFile)
   await store.write(store.getJournalRelativePath(date), result.fileContent)
   return result
 }
@@ -311,14 +325,19 @@ export function buildJournalEntryWrite(
   properties?: Record<string, unknown>
 ): JournalWriteResult & { absolutePath: string } {
   const absolutePath = getJournalPath(date)
-  let existing: JournalEntry | null = null
+  let previousFile: string | null = null
   try {
-    existing = toJournalEntry(parseJournalEntry(fs.readFileSync(absolutePath, 'utf-8'), date))
+    previousFile = fs.readFileSync(absolutePath, 'utf-8')
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
+  const existing =
+    previousFile === null ? null : toJournalEntry(parseJournalEntry(previousFile, date))
   const body = content ? content : (existing?.content ?? '')
-  return { absolutePath, ...composeJournalEntry(date, body, tags, existing, properties) }
+  return {
+    absolutePath,
+    ...composeJournalEntry(date, body, tags, existing, properties, previousFile)
+  }
 }
 
 function composeJournalEntry(
@@ -326,13 +345,21 @@ function composeJournalEntry(
   content: string,
   tags: string[] | undefined,
   existing: JournalEntry | null,
-  properties: Record<string, unknown> | undefined
+  properties: Record<string, unknown> | undefined,
+  previousFile: string | null
 ): JournalWriteResult {
   let frontmatter: JournalFrontmatter
+  let keptLegacyKeys: string[] = []
 
   if (existing) {
-    // Update existing entry — user keys only
+    // Update existing entry — user keys, plus the legacy Memry keys an older
+    // file already carries: they are the user's bytes, so a rewrite keeps them.
+    const previousFrontmatter = previousFile
+      ? (matter(previousFile, {}).data as Record<string, unknown>)
+      : {}
+    keptLegacyKeys = LEGACY_JOURNAL_KEYS.filter((key) => Object.hasOwn(previousFrontmatter, key))
     frontmatter = { date }
+    for (const key of keptLegacyKeys) frontmatter[key] = previousFrontmatter[key]
     const mergedTags = tags ?? existing.tags
     if (mergedTags.length > 0) {
       frontmatter.tags = mergedTags
@@ -359,7 +386,10 @@ function composeJournalEntry(
     }
   }
 
-  const fileContent = serializeJournalEntry(frontmatter, content)
+  const serialized = serializeJournalEntry(frontmatter, content)
+  const fileContent = previousFile
+    ? keepRawFrontmatterLines(serialized, previousFile, keptLegacyKeys)
+    : serialized
   const parsed = parseJournalEntry(fileContent, date)
   const written = toJournalEntry(parsed)
   return {

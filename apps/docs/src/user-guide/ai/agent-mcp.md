@@ -587,10 +587,10 @@ property option, a tag color) gets a `stored` field with the record read back af
 `properties.set(entityId, properties)` replaces the entity's whole property record. It does not
 merge: a property the call leaves out is deleted. The legacy `id`, `title`, `created` and `modified`
 keys that older notes carry in their frontmatter are the exception for agents: they are kept when
-the call leaves them out, and a call deletes one only by passing it as `null`. Their values are taken
-from the file's own frontmatter, so a date stays a date. A date-only value such as `2024-03-05` is
-written back as a full timestamp, as any frontmatter edit does. The reply lists the stored
-`properties` and the names it `removed`.
+the call leaves them out, and a call deletes one only by passing it as `null`. A legacy key the call
+does not change keeps its line in the file byte for byte, so `created: 2024-03-05` stays exactly that.
+A value passed back as a read returned it is written as the file holds it, so a date stays a date.
+The reply lists the stored `properties` and the names it `removed`.
 
 Every named write tool answers with the record as a read returns it after the write. Every tool
 rejects an argument it does not take, at any depth (inside a list of statuses or canvas items too),
@@ -602,9 +602,9 @@ before the approval prompt. The error names the key: `Unknown argument: colour`.
   `body_sha256`. Both are `null` for a note too large to read. `vault_update_note` also reports
   `tags_added` and `tags_removed`, because inline `#tags` in the new body change the note's tag set.
 - Journal writes reply with `id`, `date`, `tags`, `properties`, `body_bytes` and `body_sha256`. The
-  journal writer keeps user keys only, so rewriting an older entry drops a legacy `id`, `created` or
-  `modified` from its frontmatter. `vault_update_journal_entry` lists those keys in
-  `frontmatter_removed`.
+  journal writer keeps the user's keys and the legacy `id`, `created` and `modified` an older entry
+  carries, byte for byte. It drops any other key Memry reserves, such as a legacy `emoji`, and
+  `vault_update_journal_entry` lists what it dropped in `frontmatter_removed`.
 - `body_bytes` and `body_sha256` cover the body exactly as the file stores it after its frontmatter,
   in UTF-8. The file writer ends the body with a newline, so a body sent without a final newline is
   stored with one. To check a write, hash what you sent with a final `\n` added when it has none and
