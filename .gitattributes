@@ -11,3 +11,6 @@ apps/ios/Memry/Resources/article-extract.js -diff -merge -whitespace linguist-ge
 # Vendored KaTeX and mermaid for the iOS block renderer, copied byte for byte
 # by apps/ios/scripts/generate-block-render.mjs.
 apps/ios/Memry/Resources/BlockRender.bundle/vendor/** -diff -merge -whitespace linguist-vendored
+# The iOS whiteboard editor, desktop's Excalidraw bundled with its fonts
+# (apps/ios/scripts/generate-whiteboard.mjs). Rebuilt, never hand-merged.
+apps/ios/Memry/Resources/Whiteboard.bundle/** -diff -merge -whitespace linguist-generated
