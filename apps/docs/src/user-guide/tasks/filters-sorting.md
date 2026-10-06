@@ -12,6 +12,7 @@ Above every task view. Filters available:
 - **Priority** — High / Medium / Low / None
 - **Project** — multi-select
 - **Due date** — overdue, today, this week, no date, custom range
+- **Location** — folders and notes, multi-select
 - **Tags** — multi-select
 - **Assignee** (where applicable)
 
@@ -26,6 +27,24 @@ behaviour as the Status, Priority, and Project filters.
 Tag matching ignores case, so `MIT` and `mit` are one tag. The filter matches tags exactly:
 filtering on `work` will not pull in tasks tagged `work/urgent`. (The tag view in the
 sidebar does include those — see [Properties & Tags](/user-guide/notes/properties-tags).)
+
+### Filtering by Folder or Note
+
+**Location** lists the folders and notes in your vault that hold tasks, as a tree, with the
+number of tasks under each. Type to search by name.
+
+- Picking a folder shows tasks from every note in it, subfolders included.
+- Picking a note shows the tasks written in it and the tasks linked to it.
+- Several picks combine as **any of these**, like the other filters. Location and Project
+  are separate: a task in a note under `House/` that belongs to the Garden project shows up
+  when you filter by `House`.
+
+The same filter is one click away from the sidebar: right-click a folder or note and choose
+**Show Tasks**. Tasks opens on **All** projects with only that location set. From there you
+can add filters, or save the result as a filter.
+
+A saved Location filter keeps the folder's path. Rename or move the folder and the saved
+filter stops matching; pick the folder again and re-save.
 
 ### Finding Tasks With No Due Date
 

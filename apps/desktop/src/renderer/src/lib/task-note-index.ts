@@ -2,6 +2,7 @@ import type { NoteListItem } from '@memry/rpc/notes'
 
 import { extractFolderFromPath, getDisplayName } from '@/components/notes-tree-utils'
 import type { Task } from '@/data/task-model'
+import type { TaskFilters } from '@/data/tasks-data'
 
 /**
  * What grouping by folder or note needs to know about one note.
@@ -43,3 +44,7 @@ export const buildTaskNoteIndex = (
  */
 export const getTaskNoteId = (task: Task): string | null =>
   task.sourceNoteId ?? task.linkedNoteIds[0] ?? null
+
+/** Whether a filter narrows by folder or note, and so needs the note index. */
+export const hasLocationFilter = (filters: Pick<TaskFilters, 'folderPaths' | 'noteIds'>): boolean =>
+  (filters.folderPaths?.length ?? 0) > 0 || (filters.noteIds?.length ?? 0) > 0
