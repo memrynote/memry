@@ -38,6 +38,13 @@ export interface TaskFilters {
   completion: CompletionFilterType
   repeatType: RepeatFilterType
   hasTime: HasTimeFilterType
+  /**
+   * Vault-relative folders whose notes' tasks match, subfolders included.
+   * Optional: saved filters written before it existed have no key.
+   */
+  folderPaths?: string[]
+  /** Notes whose tasks match. Optional for the same reason as `folderPaths`. */
+  noteIds?: string[]
 }
 
 /**

@@ -3,6 +3,14 @@ import path from 'node:path'
 import { searchAll } from '../../../database/queries/search'
 import { getNoteCacheById, listJournalEntriesInRange } from '../../../database/queries/notes'
 import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
+import {
+  countExtractedParts,
+  getFileTextJob,
+  OWN_FILE,
+  readAttachmentText,
+  readExtractedPages,
+  TEXT_BEARING_FILE_TYPES
+} from '../../../database/queries/extracted-text'
 import { createDesktopInboxDomain } from '../../../inbox/domain'
 import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
 import { deleteJournalEntryFile, readJournalEntry, writeJournalEntry } from '../../../vault/journal'
@@ -36,6 +44,7 @@ import type { RepeatConfig } from '@memry/domain-tasks'
 import type { DataDb, IndexDb } from '../../../database'
 import { AgentToolError } from '../errors'
 import { saveAttachment } from '../../../vault/attachments'
+import { emitNoteAttachmentSaved } from '../../../notes/runtime-effects'
 import { serializeFileBlockMarker } from '../../../import/_shared/attachment-markdown'
 import { snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
@@ -44,6 +53,7 @@ import { createdTasksReply, withAgentChecklists, writeAgentBody } from './agent-
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { withoutFileBodies } from './desktop-api-reply'
 import type {
+  ExtractedTextReply,
   FolderEntry,
   InboxSummary,
   NoteSummary,
@@ -55,6 +65,27 @@ import type {
 export interface AdapterDeps {
   dataDb: DataDb
   indexDb: IndexDb
+}
+
+/** Same ceiling as an oversized desktop API reply (AF-013). */
+const EXTRACTED_TEXT_REPLY_CHARS = 100_000
+
+function extractedTextReply(indexDb: IndexDb, id: string, fromPage: number): ExtractedTextReply {
+  const ref = { noteId: id, source: OWN_FILE }
+  const job = getFileTextJob(indexDb, ref)
+  const { pages, nextPage } = readExtractedPages(indexDb, id, fromPage, EXTRACTED_TEXT_REPLY_CHARS)
+  return {
+    status: job?.status === 'done' || job?.status === 'failed' ? job.status : 'extracting',
+    page_count: job?.pageCount ?? null,
+    pages_read: countExtractedParts(indexDb, ref),
+    pages,
+    next_page: nextPage,
+    ...(job?.error ? { error: job.error } : {})
+  }
+}
+
+function isTextBearing(fileType: string): boolean {
+  return (TEXT_BEARING_FILE_TYPES as readonly string[]).includes(fileType)
 }
 
 function folderPathFromNotePath(notePath: string): string | null {
@@ -195,15 +226,16 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           }
         })
       },
-      async read(id) {
+      async read(id, options) {
         const cached = getNoteCacheById(indexDb, id)
         if (!cached) return null
 
         const fileType = cached.fileType ?? 'markdown'
         if (fileType !== 'markdown') {
           // Filed binary (#800): reading it off disk would only hand `parseNote`
-          // bytes to mangle. Return identity + file type so the tool layer can
-          // refuse it — the empty body never reaches an agent (#919).
+          // bytes to mangle. A PDF or image carries the text extracted from it;
+          // audio and video carry identity + file type only, so the tool layer
+          // can refuse them — the empty body never reaches an agent (#919).
           return {
             id: cached.id,
             title: cached.title,
@@ -212,7 +244,10 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
             folder_path: folderPathFromNotePath(cached.path),
             frontmatter: {},
             file_type: fileType,
-            ...(cached.emoji ? { icon: cached.emoji } : {})
+            ...(cached.emoji ? { icon: cached.emoji } : {}),
+            ...(isTextBearing(fileType)
+              ? { extracted_text: extractedTextReply(indexDb, id, options?.fromPage ?? 1) }
+              : {})
           }
         }
 
@@ -224,6 +259,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
             : typeof note.frontmatter.emoji === 'string'
               ? note.frontmatter.emoji
               : null
+        const attachments = readAttachmentText(indexDb, id, EXTRACTED_TEXT_REPLY_CHARS)
         return {
           id: note.id,
           title: note.title,
@@ -232,7 +268,13 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           folder_path: folderPathFromNotePath(note.path),
           frontmatter: note.frontmatter,
           file_type: 'markdown',
-          ...(icon ? { icon } : {})
+          ...(icon ? { icon } : {}),
+          ...(attachments.files.length > 0
+            ? {
+                attachment_text: attachments.files,
+                ...(attachments.truncated ? { attachment_text_truncated: true } : {})
+              }
+            : {})
         }
       },
       async create(input) {
@@ -312,6 +354,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         if (!result.success || !result.path) {
           throw new Error(result.error ?? 'Failed to save HTML artifact')
         }
+        if (result.diskPath) emitNoteAttachmentSaved(id, result.diskPath)
         return { marker: serializeFileBlockMarker(result), url: result.path }
       },
       async addTag({ id, tag }) {

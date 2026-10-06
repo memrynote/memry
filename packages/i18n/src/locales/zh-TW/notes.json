@@ -249,12 +249,20 @@
     "columns": {
       "group": "基本區塊",
       "two": {
-        "title": "兩欄",
+        "title": "2 欄",
         "subtext": "將區塊並排放在兩欄中"
       },
       "three": {
-        "title": "三欄",
+        "title": "3 欄",
         "subtext": "將區塊並排放在三欄中"
+      },
+      "four": {
+        "title": "4 欄",
+        "subtext": "將區塊並排放在四欄中"
+      },
+      "five": {
+        "title": "5 欄",
+        "subtext": "將區塊並排放在五欄中"
       }
     },
     "diagram": {

@@ -249,12 +249,20 @@
     "columns": {
       "group": "Osnovni blokovi",
       "two": {
-        "title": "Dva stupca",
+        "title": "2 stupca",
         "subtext": "Postavi blokove jedan uz drugi u dva stupca"
       },
       "three": {
-        "title": "Tri stupca",
+        "title": "3 stupca",
         "subtext": "Postavi blokove jedan uz drugi u tri stupca"
+      },
+      "four": {
+        "title": "4 stupca",
+        "subtext": "Postavi blokove jedan uz drugi u četiri stupca"
+      },
+      "five": {
+        "title": "5 stupaca",
+        "subtext": "Postavi blokove jedan uz drugi u pet stupaca"
       }
     },
     "diagram": {

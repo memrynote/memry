@@ -42,17 +42,21 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
       description: TOOL_SCHEMAS.vault_read_note.description,
       inputSchema: TOOL_SCHEMAS.vault_read_note.input,
       handler: async (input) => {
-        const a = parse<{ id: string }>(TOOL_SCHEMAS.vault_read_note.input, input)
-        const note = await handles.notes.read(a.id)
+        const a = parse<{ id: string; from_page?: number }>(
+          TOOL_SCHEMAS.vault_read_note.input,
+          input
+        )
+        const note = await handles.notes.read(a.id, { fromPage: a.from_page })
         if (!note) throw new AgentToolError('NOT_FOUND', `Note ${a.id} not found`, { id: a.id })
         // A filed pdf/image/audio/video indexes as a "note" row (#800). Handing
-        // its body to an agent would be binary garbage dressed as markdown, so
-        // refuse loudly instead of letting it read or edit one. See #919.
-        if (note.file_type !== 'markdown') {
+        // its body to an agent would be binary garbage dressed as markdown
+        // (#919). A PDF or image answers with the text extracted from it;
+        // audio and video have none, so refuse those loudly.
+        if (note.file_type !== 'markdown' && !note.extracted_text) {
           throw new AgentToolError(
             'VALIDATION',
             `Note ${a.id} is a filed ${note.file_type} file, not a markdown note. ` +
-              'vault_read_note returns markdown only.',
+              'vault_read_note returns markdown notes and the text of filed PDFs and images.',
             { id: a.id, file_type: note.file_type }
           )
         }

@@ -736,7 +736,9 @@ describe('useFilteredAndSortedTasks', () => {
       mockTasks,
       expect.objectContaining({ search: '' }),
       defaultSort,
-      mockProjects
+      mockProjects,
+      expect.any(Date),
+      undefined
     )
 
     rerender({ filters: { ...defaultFilters, search: 'query' } })
@@ -755,7 +757,9 @@ describe('useFilteredAndSortedTasks', () => {
       mockTasks,
       expect.objectContaining({ search: 'query' }),
       defaultSort,
-      mockProjects
+      mockProjects,
+      expect.any(Date),
+      undefined
     )
   })
 
@@ -1110,6 +1114,25 @@ describe('saved-filter tags round-trip', () => {
     const dbFilter = createDbSavedFilter()
     const result = dbToFrontendFilter(dbFilter)
     expect(result.filters.tags).toEqual([])
+  })
+})
+
+describe('saved-filter location round-trip', () => {
+  it('round-trips folders and notes through the mappers and the write-path schema', () => {
+    const filters = { ...defaultFilters, folderPaths: ['Infra/House'], noteIds: ['n1'] }
+    const config = frontendToDbConfig(filters)
+    // The main process parses create/update requests with this schema; a key it
+    // does not declare is stripped before the row is written.
+    const written = { ...config, filters: TaskFiltersSchema.parse(config.filters) }
+    const read = dbToFrontendFilter({ id: 'f1', name: 'n', config: written }).filters
+    expect(read.folderPaths).toEqual(['Infra/House'])
+    expect(read.noteIds).toEqual(['n1'])
+  })
+
+  it('reads a row written before the location filter existed as no location', () => {
+    const result = dbToFrontendFilter(createDbSavedFilter())
+    expect(result.filters.folderPaths).toEqual([])
+    expect(result.filters.noteIds).toEqual([])
   })
 })
 

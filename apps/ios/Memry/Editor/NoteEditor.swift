@@ -26,7 +26,7 @@ final class NoteEditorViewModel {
         case failed(UserFacingError)
     }
 
-    private let noteId: String
+    let noteId: String
     private let editor: (any BlockEditing)?
 
     private(set) var status: Status = .idle

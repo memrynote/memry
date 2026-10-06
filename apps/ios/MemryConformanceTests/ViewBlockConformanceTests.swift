@@ -102,6 +102,20 @@ struct ViewBlockConformanceTests {
         #expect(rows.map(\.noteRoute) == [NoteRoute(id: "n-1"), NoteRoute(id: "n-2"), NoteRoute(id: "n-3"), nil])
     }
 
+    @Test("a tagged journal day is a row as on desktop: it ranks by its own change time, and opens its day even under an older id")
+    func journalRows() {
+        let query = ViewBlockQuery(source: .tag("fitness", andTags: []), order: [.init(key: .modified, descending: true)], limit: 2)
+        let notes = [note("deload", modified: 2_000), note("weigh-in", modified: 1_000)]
+        let days = [NoteSummary(id: "legacy-day", title: "2026-10-04", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: 3_000)]
+        let noteTags = ["deload": ["fitness"], "weigh-in": ["fitness"], "legacy-day": ["daily", "fitness"]]
+
+        let rows = query.rows(notes: notes, noteTags: noteTags, journals: days, tasks: [])
+
+        #expect(rows.map(\.id) == ["legacy-day", "deload"])
+        #expect(rows.map(\.kind) == [.journal, .note])
+        #expect(rows.first?.noteRoute == NoteRoute(id: "j2026-10-04"))
+    }
+
     @Test("a folder holds its subfolders' notes, oldest change first when the fence names no order")
     func folderRows() {
         let query = ViewBlockQuery(source: .folder("projects"))

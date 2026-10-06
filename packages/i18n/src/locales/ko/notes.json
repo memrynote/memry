@@ -255,6 +255,14 @@
       "three": {
         "title": "3열",
         "subtext": "블록을 3열로 나란히 배치"
+      },
+      "four": {
+        "title": "4열",
+        "subtext": "블록을 4열로 나란히 배치"
+      },
+      "five": {
+        "title": "5열",
+        "subtext": "블록을 5열로 나란히 배치"
       }
     },
     "diagram": {
