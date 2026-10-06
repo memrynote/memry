@@ -28,15 +28,15 @@ struct MoveBlockPresenter: ViewModifier {
                 }
             }
             .alert(
-                session.moveFailure?.title ?? "",
+                session.failure?.title ?? "",
                 isPresented: Binding(
-                    get: { session.moveFailure != nil },
-                    set: { if !$0 { session.moveFailure = nil } }
+                    get: { session.failure != nil },
+                    set: { if !$0 { session.failure = nil } }
                 )
             ) {
-                Button("OK", role: .cancel) { session.moveFailure = nil }
+                Button("OK", role: .cancel) { session.failure = nil }
             } message: {
-                Text(session.moveFailure?.guidance ?? "")
+                Text(session.failure?.guidance ?? "")
             }
     }
 }

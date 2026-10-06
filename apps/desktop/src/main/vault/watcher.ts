@@ -69,6 +69,7 @@ import {
   syncNoteCreate,
   syncNoteDelete,
   syncNoteUpdate,
+  queueEmbeddedVaultFiles,
   unlinkTasksFromDeletedNote
 } from '../notes/runtime-effects'
 import { normalizeRelativePath } from '../lib/paths'
@@ -704,6 +705,7 @@ export class VaultWatcher {
       { isNew: false }
     )
     void flushProjectionEvents()
+    queueEmbeddedVaultFiles(cached.id, parsed.content)
 
     const tags = syncResult.tags
     const properties = extractProperties(parsed.frontmatter)

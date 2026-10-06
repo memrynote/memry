@@ -3043,6 +3043,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         three: {
                           title: t('editor.columns.three.title'),
                           subtext: t('editor.columns.three.subtext')
+                        },
+                        four: {
+                          title: t('editor.columns.four.title'),
+                          subtext: t('editor.columns.four.subtext')
+                        },
+                        five: {
+                          title: t('editor.columns.five.title'),
+                          subtext: t('editor.columns.five.subtext')
                         }
                       })
                   const calloutItem = getCalloutSlashMenuItem(editor, {

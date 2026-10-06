@@ -1,21 +1,12 @@
 {
+  "compaction": {
+    "reserveTokens": 700000
+  },
   "subagents": {
     "modelScope": {
       "enforce": true,
       "strict": true,
       "allow": ["anthropic/*", "llamacpp/tiel-coder-35b-a3b"]
     }
-  },
-  "observational-memory": {
-    "model": {
-      "provider": "anthropic",
-      "id": "claude-sonnet-5",
-      "thinking": "low"
-    },
-    "compactAfterTokensMode": "ratio",
-    "compactAfterTokensRatio": 0.68,
-    "showWorkerNotifications": true,
-    "passive": false,
-    "debugLog": false
   }
 }

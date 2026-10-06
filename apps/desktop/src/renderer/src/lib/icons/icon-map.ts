@@ -1,3 +1,4 @@
+import type { IconSvgElement } from '@hugeicons/react'
 import {
   // Direct matches
   AlertCircleIcon,
@@ -290,6 +291,36 @@ import {
 } from './hugeicons-subset'
 import { createIcon } from './create-icon'
 
+/**
+ * Hugeicons ships layout icons for two and three columns only. This draws the
+ * same rounded frame as LayoutTwoColumnIcon split into `count` equal columns.
+ */
+function layoutColumnsIcon(count: number): IconSvgElement {
+  const frame =
+    'M3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5C16.4783 2.5 18.7175 2.5 20.1088 3.89124C21.5 5.28249 21.5 7.52166 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124Z'
+  const dividers = Array.from({ length: count - 1 }, (_, i) => {
+    const x = +(2.5 + (19 * (i + 1)) / count).toFixed(2)
+    return [
+      'path',
+      { d: `M${x} 2.5V21.5`, stroke: 'currentColor', strokeWidth: '1.5', key: String(i + 1) }
+    ] as const
+  })
+  return [
+    [
+      'path',
+      {
+        d: frame,
+        stroke: 'currentColor',
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        strokeWidth: '1.5',
+        key: '0'
+      }
+    ],
+    ...dividers
+  ]
+}
+
 // ── Files & Documents ───────────────────────────────
 export const File = createIcon(File01Icon)
 export const FileText = createIcon(File02Icon)
@@ -458,6 +489,8 @@ export const LayoutGrid = createIcon(LayoutGridIcon)
 export const LayoutTemplate = createIcon(Layout03Icon)
 export const Columns2 = createIcon(LayoutTwoColumnIcon)
 export const Columns3 = createIcon(LayoutThreeColumnIcon)
+export const Columns4 = createIcon(layoutColumnsIcon(4))
+export const Columns5 = createIcon(layoutColumnsIcon(5))
 export const Rows2 = createIcon(LayoutTwoRowIcon)
 export const Maximize = createIcon(Maximize01Icon)
 export const Maximize2 = createIcon(Maximize02Icon)

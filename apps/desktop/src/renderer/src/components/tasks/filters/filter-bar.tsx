@@ -1,10 +1,12 @@
 import { ActiveFiltersBar } from './active-filters-bar'
 import type { TaskFilters, Project } from '@/data/tasks-data'
 import { hasActiveFilters } from '@/lib/task-utils'
+import type { TaskNoteIndex } from '@/lib/task-note-index'
 
 interface FilterBarProps {
   filters: TaskFilters
   projects: Project[]
+  noteIndex?: TaskNoteIndex
   onUpdateFilters: (updates: Partial<TaskFilters>) => void
   onClearFilters: () => void
   onSaveFilter?: () => void
@@ -15,6 +17,7 @@ interface FilterBarProps {
 export const FilterBar = ({
   filters,
   projects,
+  noteIndex,
   onUpdateFilters,
   onClearFilters,
   onSaveFilter,
@@ -29,6 +32,7 @@ export const FilterBar = ({
     <ActiveFiltersBar
       filters={filters}
       projects={projects}
+      noteIndex={noteIndex}
       onUpdateFilters={onUpdateFilters}
       onClearAll={onClearFilters}
       onSaveFilter={onSaveFilter}

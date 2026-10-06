@@ -93,7 +93,8 @@ vi.mock('../notes/runtime-effects', () => ({
   syncNoteUpdate: vi.fn(),
   syncNoteDelete: vi.fn(),
   setNoteLocalOnlyState: vi.fn(),
-  cleanupProjectLinksForDeletedNote: vi.fn()
+  cleanupProjectLinksForDeletedNote: vi.fn(),
+  queueEmbeddedVaultFiles: vi.fn()
 }))
 
 // The note command hands a body edit to the note's CRDT doc (#2646); with no

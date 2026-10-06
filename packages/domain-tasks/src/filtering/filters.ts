@@ -26,6 +26,7 @@ import type {
   HasTimeFilterType,
   RepeatFilterType,
   TaskFilters,
+  TaskNoteIndex,
   TaskSort
 } from './types.ts'
 
@@ -62,6 +63,43 @@ export const filterByTags = <T extends FilterTask>(tasks: T[], tags: string[]): 
   if (tags.length === 0) return tasks
   const selected = new Set(tags.map((t) => t.toLowerCase()))
   return tasks.filter((task) => task.tags.some((tag) => selected.has(tag.toLowerCase())))
+}
+
+const hasLocation = (filters: TaskFilters): boolean =>
+  (filters.folderPaths?.length ?? 0) > 0 || (filters.noteIds?.length ?? 0) > 0
+
+/**
+ * Tasks filed under the selected folders (subfolders included) or notes.
+ *
+ * A task counts for every note it touches: the one its line lives in and every
+ * linked note. "Show tasks" on a note should list the tasks attached to it, not
+ * only the ones typed there. A note the index does not know matches nothing,
+ * and with no index at all nothing matches: the caller passes one whenever the
+ * location filter is set, and an unfiltered list would be the wrong answer.
+ */
+export const filterByLocation = <T extends FilterTask>(
+  tasks: T[],
+  folderPaths: readonly string[],
+  noteIds: readonly string[],
+  noteIndex: TaskNoteIndex | undefined
+): T[] => {
+  if (folderPaths.length === 0 && noteIds.length === 0) return tasks
+  if (!noteIndex) return []
+
+  const selectedNotes = new Set(noteIds)
+  const inSelectedFolder = (folderPath: string): boolean =>
+    folderPaths.some((path) => folderPath === path || folderPath.startsWith(`${path}/`))
+
+  return tasks.filter((task) => {
+    const taskNoteIds = task.sourceNoteId
+      ? [task.sourceNoteId, ...task.linkedNoteIds]
+      : task.linkedNoteIds
+    return taskNoteIds.some((noteId) => {
+      if (selectedNotes.has(noteId)) return true
+      const info = noteIndex.get(noteId)
+      return info !== undefined && inSelectedFolder(info.folderPath)
+    })
+  })
 }
 
 export const filterByDueDateRange = <T extends FilterTask>(
@@ -298,7 +336,9 @@ export const applyFiltersAndSort = <T extends FilterTask>(
   sort: TaskSort,
   projects: readonly FilterProject[],
   now: Date,
-  weekStartsOn: 0 | 1
+  weekStartsOn: 0 | 1,
+  /** Required for `folderPaths`/`noteIds` to match anything; see `filterByLocation`. */
+  noteIndex?: TaskNoteIndex
 ): T[] => {
   const topLevel = tasks.filter((t) => t.parentId === null)
   const subtasks = tasks.filter((t) => t.parentId !== null)
@@ -319,6 +359,15 @@ export const applyFiltersAndSort = <T extends FilterTask>(
 
   if (filters.tags.length > 0) {
     result = filterByTags(result, filters.tags)
+  }
+
+  if (hasLocation(filters)) {
+    result = filterByLocation(
+      result,
+      filters.folderPaths ?? [],
+      filters.noteIds ?? [],
+      noteIndex
+    )
   }
 
   result = filterByDueDateRange(result, filters.dueDate, now, weekStartsOn)
@@ -351,7 +400,8 @@ export const hasActiveFilters = (filters: TaskFilters): boolean => {
     filters.statusIds.length > 0 ||
     filters.completion !== 'active' ||
     filters.repeatType !== 'all' ||
-    filters.hasTime !== 'all'
+    filters.hasTime !== 'all' ||
+    hasLocation(filters)
   )
 }
 
@@ -366,5 +416,6 @@ export const countActiveFilters = (filters: TaskFilters): number => {
   if (filters.completion !== 'active') count++
   if (filters.repeatType !== 'all') count++
   if (filters.hasTime !== 'all') count++
+  if (hasLocation(filters)) count++
   return count
 }

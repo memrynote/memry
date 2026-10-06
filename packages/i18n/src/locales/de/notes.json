@@ -249,12 +249,20 @@
     "columns": {
       "group": "Grundblöcke",
       "two": {
-        "title": "Zwei Spalten",
+        "title": "2 Spalten",
         "subtext": "Blöcke in zwei Spalten nebeneinander anordnen"
       },
       "three": {
-        "title": "Drei Spalten",
+        "title": "3 Spalten",
         "subtext": "Blöcke in drei Spalten nebeneinander anordnen"
+      },
+      "four": {
+        "title": "4 Spalten",
+        "subtext": "Blöcke in vier Spalten nebeneinander anordnen"
+      },
+      "five": {
+        "title": "5 Spalten",
+        "subtext": "Blöcke in fünf Spalten nebeneinander anordnen"
       }
     },
     "diagram": {

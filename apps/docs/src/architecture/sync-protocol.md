@@ -989,16 +989,60 @@ across devices:
   its disposer through `attachment-outbox`, which is already the seam between
   the sync runtime and this singleton, so no import cycle is introduced.
   Uploads pending at dispose are rejected rather than carried over — the outbox
-  below is what makes that safe.
+  below is what makes that safe. The queue starts no upload while the monitor
+  reports offline: an upload reads and encrypts the file before its first
+  request and holds those bytes through the offline wait, so a file deleted
+  before reconnect would still go out. A save-time upload or a drained row that
+  fails because its file is gone drops its outbox row and reports no failure.
 - **Durable upload outbox** — the upload intent is persisted in the data DB
   (`attachment_upload_queue`, migration 0039) before the transfer starts and
   cleared only after the server accepts the file. Failed or quit-interrupted
-  uploads are retried on every sync runtime start instead of being lost with
-  the in-memory queue. Recording the reference enqueues a note push so peers
-  learn the blob exists; if that lands while the runtime is down — an upload
-  finishing during quit, a vault switch, re-auth — the note is marked for
+  uploads are retried instead of being lost with the in-memory queue.
+  Recording the reference enqueues a note push so peers learn the blob exists;
+  if that lands while the runtime is down — an upload finishing during quit, a
+  vault switch, re-auth — the note is marked for
   [recovery](#recovering-pushes-that-never-landed) instead, so the push happens
-  at the next runtime start rather than waiting for an unrelated later edit.
+  at the next runtime start rather than waiting for an unrelated later edit. The
+  runtime re-drives the outbox (`attachment-upload-redriver`) when it starts,
+  every five minutes and whenever the connection comes back, and skips a pass
+  while offline or without an access token. Each pass runs the attachment
+  backfill first, which queues files on disk that no save event ever offered
+  (a file copied into `attachments/<noteId>/`, or a vault file a body embeds),
+  then drains the outbox: rows upload once, rows whose file is gone are
+  dropped, failures keep their row. A failed row waits one minute before its
+  next try, doubling with each failure up to six hours, as failed downloads
+  do, and a re-queue by the backfill leaves that window alone. The backfill
+  counts and logs only files it newly queues, so a failed row waiting out its
+  window is not logged again on every pass. Each row is re-read just
+  before its upload, so a row a save-time upload finished meanwhile is
+  skipped. A drain that reaches a file the save path is still uploading joins
+  that upload and leaves its outcome to the save path, rather than sending the
+  file twice under two attachment ids. The backfill skips a note with no
+  embeds whose mtime and size are unchanged since it last read the body. The
+  same embed rule also runs when a body is written through the notes domain,
+  when the watcher indexes an external edit and when ingest reads a new file:
+  each embedded vault file without an outbox row, the note's own folder
+  included, gets one and uploads at once. Rows whose file is gone are dropped
+  before the online and token gate, so that happens offline too.
+- **Attachment file record** — attachment ids are random per upload, so a note
+  that holds references cannot say by itself whether a file on disk is one of
+  them. Uploads and downloads record each file by vault-relative path
+  (`attachment_files`, migration 0066), and the backfill and the write-time
+  hook queue only a file no record knows. A note seen with references and no
+  record yet is from before the table: its files are counted as known instead
+  of uploaded again, and a note with no file on disk gets a marker row so a
+  later file still reads as new. A file renamed inside the note's own folder
+  keeps its row through its stored prefix. A file in another note's
+  attachments folder is that note's attachment and is never queued for the
+  note that embeds it. A download of an attachment whose recorded file is
+  still on disk is skipped, so an embed uploaded from outside the note's folder
+  does not come back as a second copy in it. Older builds ignore the table; a file such a build
+  transferred has no row, so after a re-upgrade it uploads once more.
+- **Held vaults** — a save event uploads only while the sync runtime runs for
+  the open vault. A vault the account binding holds (kept local, or another
+  account's) never starts one, so its rows stay queued on the device.
+  A local-only note's rows stay queued the same way: neither the save path nor
+  the drain uploads them, and they go out only if the flag is cleared.
 - **Durable download verdicts** — a download that does not succeed is recorded
   in the data DB (`attachment_download_failures`, migration 0051), keyed by
   (note, attachment). Only the outcome writes here: the request itself no longer

@@ -48,6 +48,7 @@ import type { RepeatConfig } from '@memry/domain-tasks'
 import type { DataDb, IndexDb } from '../../../database'
 import { AgentToolError } from '../errors'
 import { saveAttachment } from '../../../vault/attachments'
+import { emitNoteAttachmentSaved } from '../../../notes/runtime-effects'
 import { serializeFileBlockMarker } from '../../../import/_shared/attachment-markdown'
 import { snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
@@ -341,6 +342,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         if (!result.success || !result.path) {
           throw new Error(result.error ?? 'Failed to save HTML artifact')
         }
+        if (result.diskPath) emitNoteAttachmentSaved(id, result.diskPath)
         return { marker: serializeFileBlockMarker(result), url: result.path }
       },
       async addTag({ id, tag }) {

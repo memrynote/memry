@@ -37,7 +37,9 @@ const mocks = vi.hoisted(() => ({
   generateId: vi.fn(),
   snapshotCurrentNoteFromWindow: vi.fn(),
   invokeDesktopApiFromWindow: vi.fn(),
-  replaceNoteTagsInCrdt: vi.fn()
+  replaceNoteTagsInCrdt: vi.fn(),
+  saveAttachment: vi.fn(),
+  emitNoteAttachmentSaved: vi.fn()
 }))
 
 vi.mock('../../../database/queries/search', () => ({
@@ -121,6 +123,13 @@ vi.mock('./desktop-api', () => ({
 
 vi.mock('../../../sync/crdt-feed', () => ({
   replaceNoteTagsInCrdt: mocks.replaceNoteTagsInCrdt
+}))
+
+vi.mock('../../../vault/attachments', () => ({
+  saveAttachment: mocks.saveAttachment
+}))
+vi.mock('../../../notes/runtime-effects', () => ({
+  emitNoteAttachmentSaved: mocks.emitNoteAttachmentSaved
 }))
 
 import { createVaultServiceHandles } from './handles-adapter'
@@ -222,6 +231,27 @@ describe('createVaultServiceHandles', () => {
       reorderStatuses: vi.fn().mockResolvedValue({ success: true })
     }
     mocks.createDesktopTasksDomain.mockReturnValue(taskDomain)
+  })
+
+  // The file lands in the note's attachments folder, which the watcher never
+  // sees, so the save event is the only thing that uploads it (#2651).
+  it('announces a saved HTML artifact for upload', async () => {
+    mocks.getNoteCacheById.mockReturnValue({ fileType: 'markdown' })
+    mocks.saveAttachment.mockResolvedValue({
+      success: true,
+      path: 'attachments/note-1/page.html',
+      diskPath: '/vault/attachments/note-1/page.html',
+      name: 'page.html',
+      size: 7,
+      mimeType: 'text/html'
+    })
+    const handles = createVaultServiceHandles(deps)
+
+    await handles.notes.saveHtmlAttachment({ id: 'note-1', title: 'page', html: '<p>x</p>' })
+
+    expect(mocks.emitNoteAttachmentSaved.mock.calls).toEqual([
+      ['note-1', '/vault/attachments/note-1/page.html']
+    ])
   })
 
   it('maps note search, read, create, update, tag, and move handles', async () => {

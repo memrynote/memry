@@ -29,6 +29,7 @@ import {
 } from '../billing/entitlement-cache'
 import { trackMainError } from '../telemetry/diagnostics'
 import { UploadQueue } from '../sync/upload-queue'
+import { recordAttachmentFile, recordedFileOf } from '../sync/attachment-files'
 import { DownloadQueue, DownloadQueueClearedError } from '../sync/download-queue'
 import { onBootstrapElevationChange } from '../sync/bootstrap-session'
 import { getBootstrapElevationFactor } from '../sync/bootstrap-session-state'
@@ -42,6 +43,7 @@ import {
 import {
   enqueueUpload,
   clearUpload,
+  isLocalOnlyNote,
   markUploadFailed,
   registerAttachmentQueueReset,
   registerOutboxUploader
@@ -83,6 +85,38 @@ const logger = createLogger('IPC:Sync:Attachments')
 let attachmentService: AttachmentSyncService | null = null
 let uploadQueue: UploadQueue | null = null
 let downloadQueue: DownloadQueue | null = null
+
+// Save-time uploads still running, by note and path, null when the attempt
+// ended without one. An outbox re-drive that reaches the same row joins the
+// running upload: a second one would put the same file on the server twice
+// under two attachment ids.
+const savedUploads = new Map<string, Promise<UploadResult | null>>()
+const savedUploadKey = (noteId: string, diskPath: string): string => `${noteId}\0${diskPath}`
+
+/**
+ * The attachment record tells the backfill which files the server already has
+ * (#2651). Never throws: the transfer it records already succeeded.
+ */
+function recordFile(noteId: string, diskPath: string, attachmentId: string): void {
+  const vaultPath = getVaultStatus().path
+  if (!vaultPath || !isDatabaseInitialized()) return
+  try {
+    recordAttachmentFile(getDatabase(), vaultPath, noteId, diskPath, attachmentId)
+  } catch (err) {
+    logger.warn('Failed to record an attachment file', { noteId, err })
+  }
+}
+
+function heldAtRecordedPath(noteId: string, attachmentId: string): boolean {
+  const vaultPath = getVaultStatus().path
+  if (!vaultPath || !isDatabaseInitialized()) return false
+  try {
+    return recordedFileOf(getDatabase(), vaultPath, noteId, attachmentId) !== null
+  } catch (err) {
+    logger.warn('Failed to read the recorded attachment file', { noteId, err })
+    return false
+  }
+}
 
 const getOrCreateUploadQueue = (): UploadQueue | null => {
   if (uploadQueue) return uploadQueue
@@ -263,7 +297,7 @@ export function getCanvasAssetIO(): {
  * Pending uploads are rejected by `dispose()` rather than carried over. That is
  * deliberate and safe for note attachments: the intent row is persisted to the
  * attachment outbox BEFORE the upload is attempted, the rejection is recorded by
- * `markUploadFailed`, and the next `startSyncRuntime()` re-drives it via
+ * `markUploadFailed`, and the next sync runtime re-drives it via
  * `drainAttachmentOutbox()`. Carrying items across would be the actual data bug.
  *
  * Idempotent — the runtime teardown and session teardown both call it.
@@ -410,9 +444,17 @@ export function registerAttachmentHandlers(): void {
 
   registerOutboxUploader(
     async (noteId, diskPath) => {
+      const running = savedUploads.get(savedUploadKey(noteId, diskPath))
+      if (running) {
+        // The save path records success and failure alike. Null from it means
+        // it never uploaded (no token), so the drain does.
+        const joined = await running.catch(() => undefined)
+        if (joined !== null) return null
+      }
       const queue = getOrCreateUploadQueue()
       if (!queue) throw new Error('Sync not initialized')
       const result = await queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
+      recordFile(noteId, diskPath, result.attachmentId)
       return { attachmentId: result.attachmentId }
     },
     () => getDatabase(),
@@ -422,7 +464,7 @@ export function registerAttachmentHandlers(): void {
   attachmentEvents.onSaved(({ noteId, diskPath }) => {
     void (async () => {
       // Persist intent BEFORE attempting: if the upload fails or the app quits
-      // mid-transfer, the outbox row survives and the next sync runtime start
+      // mid-transfer, the outbox row survives and the sync runtime's re-drive
       // retries it — previously a failed upload was logged and lost forever.
       if (isDatabaseInitialized()) {
         try {
@@ -432,15 +474,25 @@ export function registerAttachmentHandlers(): void {
         }
       }
 
-      const token = await getValidAccessToken()
-      if (!token) return
-
-      const queue = getOrCreateUploadQueue()
-      if (!queue) return
+      // Registered before the token wait, so a re-drive in that window joins it.
+      const key = savedUploadKey(noteId, diskPath)
+      const upload = (async (): Promise<UploadResult | null> => {
+        // No sync runtime: the vault is held (kept local, another account's)
+        // or sync has not started. The row waits for the runtime's re-drive.
+        if (!getNetworkMonitor()) return null
+        // A local-only note keeps its files on the device; the row stays queued.
+        if (isDatabaseInitialized() && isLocalOnlyNote(getDatabase(), noteId)) return null
+        if (!(await getValidAccessToken())) return null
+        const queue = getOrCreateUploadQueue()
+        return queue ? queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster()) : null
+      })()
+      savedUploads.set(key, upload)
       try {
-        const result = await queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
+        const result = await upload
+        if (!result) return
         if (isDatabaseInitialized()) {
           recordUploadedAttachment(noteId, result.attachmentId)
+          recordFile(noteId, diskPath, result.attachmentId)
           // Outbox cleanup must never turn a successful upload into a failure.
           try {
             clearUpload(getDatabase(), noteId, diskPath)
@@ -449,6 +501,19 @@ export function registerAttachmentHandlers(): void {
           }
         }
       } catch (err) {
+        // Deleted while the upload waited: drop the job, there is nothing to
+        // retry and no failure to show.
+        if (!fs.existsSync(diskPath)) {
+          logger.info('Dropped the upload of a deleted attachment', { noteId })
+          if (isDatabaseInitialized()) {
+            try {
+              clearUpload(getDatabase(), noteId, diskPath)
+            } catch (outboxErr) {
+              logger.warn('Failed to clear attachment upload intent', { noteId, err: outboxErr })
+            }
+          }
+          return
+        }
         const message = err instanceof Error ? err.message : 'Unknown error'
         // Classify here: this is the only path that raises the plan preflight's
         // AttachmentTooLargeError, and nothing else on it ever calls
@@ -497,6 +562,8 @@ export function registerAttachmentHandlers(): void {
           error: message,
           errorCategory: category
         })
+      } finally {
+        if (savedUploads.get(key) === upload) savedUploads.delete(key)
       }
     })()
   })
@@ -517,6 +584,12 @@ export function registerAttachmentHandlers(): void {
         // the toggle flips back or an explicit IPC download asks for it.
         if (isDatabaseInitialized() && !isAttachmentAutoDownloadEnabled(getDatabase())) {
           return releaseDownloadAttempt(noteId, attachmentId)
+        }
+
+        // This device uploaded the file from where it lives (an embed from
+        // outside the note's folder): a download would only duplicate it.
+        if (intoDir && heldAtRecordedPath(noteId, attachmentId)) {
+          return markDownloadSucceeded(getDatabase(), noteId, attachmentId)
         }
 
         const queue = getOrCreateDownloadQueue()
@@ -545,6 +618,7 @@ export function registerAttachmentHandlers(): void {
           // The note body is the authority — rename to what it asks for before
           // anything is told the file exists.
           if (intoDir && isDatabaseInitialized()) {
+            recordFile(noteId, result.filePath, attachmentId)
             await applyDownloadedAttachmentName(noteId, result.filePath)
           }
           // The bytes are on disk now, but a note that is already open resolved

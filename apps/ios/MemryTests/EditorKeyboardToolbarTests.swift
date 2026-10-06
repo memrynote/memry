@@ -388,7 +388,7 @@ struct InsertGridTests {
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
             "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
             "two_columns", "three_columns", "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
-            "link_to_note", "date", "remind", "table", "math", "diagram", "view", "bookmark", "youtube",
+            "link_to_note", "date", "remind", "table", "math", "diagram", "whiteboard", "view", "bookmark", "youtube",
             "image", "video", "audio", "file",
         ]
         #expect(grid == expected)
@@ -405,13 +405,13 @@ struct InsertGridTests {
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
             "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
             "two_columns", "three_columns", "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
-            "table", "math", "diagram", "view", "bookmark", "youtube",
+            "table", "math", "diagram", "whiteboard", "view", "bookmark", "youtube",
         ])
         #expect(session.gridSections.map(\.section.title) == ["Basic", "Headings", "Insert"])
 
         let text = block("p")
         let paragraph = focused(text, in: [text], session: session)
-        #expect(session.gridSections.flatMap(\.rows).map(\.id).suffix(9) == ["link_to_note", "date", "remind", "table", "math", "diagram", "view", "bookmark", "youtube"])
+        #expect(session.gridSections.flatMap(\.rows).map(\.id).suffix(10) == ["link_to_note", "date", "remind", "table", "math", "diagram", "whiteboard", "view", "bookmark", "youtube"])
         withExtendedLifetime((field, paragraph)) {}
     }
 
@@ -535,6 +535,55 @@ struct InsertGridTests {
         ])
         #expect(session.pendingFocus == "p1")
         #expect(session.pendingColumnFocus == nil)
+    }
+
+    @Test func aWhiteboardCreatesItsCanvasThenReplacesTheEmptyLineAndOpens() async throws {
+        let editor = ScriptedToolbarEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        let boards = FakeBoards()
+        session.whiteboards = boards
+        session.noteTitle = { "Trip" }
+        let row = try #require(BlockCatalog.rows.first { $0.id == "whiteboard" })
+        let field = focused(block("a"), in: [block("a")], session: session)
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.chooseFromGrid(row)
+        }
+        withExtendedLifetime((field, model)) {}
+        #expect(boards.created == ["Trip whiteboard|n1"])
+        guard case let .insertBlock(kind, after, _, newId) = editor.all.first else {
+            Issue.record("expected the block insert first, got \(editor.all)")
+            return
+        }
+        #expect(kind == "whiteboard")
+        #expect(after == "a")
+        #expect(Array(editor.all.dropFirst()) == [
+            .setProp(blockId: newId, name: "canvasId", value: "c1"),
+            .delete(blockId: "a"),
+        ])
+        #expect(session.whiteboardEdit == WhiteboardEditRequest(canvasId: "c1", title: "Trip whiteboard"))
+    }
+
+    @Test func aWhiteboardWhoseCanvasFailsAddsNothingAndSaysSo() async throws {
+        let editor = ScriptedToolbarEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        let boards = FakeBoards()
+        boards.fails = true
+        session.whiteboards = boards
+        let row = try #require(BlockCatalog.rows.first { $0.id == "whiteboard" })
+        let field = focused(block("a"), in: [block("a")], session: session)
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.didChange = { done.resume() }
+            session.chooseFromGrid(row)
+        }
+        withExtendedLifetime((field, model)) {}
+        #expect(editor.all.isEmpty)
+        #expect(session.failure != nil)
+        #expect(session.whiteboardEdit == nil)
     }
 
     @Test func threeColumnsAfterTextKeepTheLine() async throws {
@@ -688,14 +737,14 @@ struct MoveBlockToNoteTests {
             "edit n1 \(BlockEdit.delete(blockId: "a"))",
         ])
         #expect(session.moveRequest == nil)
-        #expect(session.moveFailure == nil)
+        #expect(session.failure == nil)
         #expect(relinked == ["t1->n2"])
     }
 
     @Test func aFailedAppendKeepsTheBlockAndSaysWhy() async {
         let (editor, session, relinked) = await move(appends: false)
         #expect(editor.all == ["snapshot n1 a", "append n2 snap-a"])
-        #expect(session.moveFailure == ErrorMapping.unknownNote)
+        #expect(session.failure == ErrorMapping.unknownNote)
         #expect(relinked.isEmpty)
     }
 
@@ -718,4 +767,19 @@ struct MoveBlockToNoteTests {
         #expect(MoveBlockPicker.matches(notes, query: "gro").map(\.id) == ["1"])
         #expect(MoveBlockPicker.matches(notes, query: "work").map(\.id) == ["2"])
     }
+}
+
+private final class FakeBoards: WhiteboardBoards, @unchecked Sendable {
+    var created: [String] = []
+    var fails = false
+
+    func board(_ id: String) async throws -> CanvasRecord? { nil }
+
+    func create(title: String, ownerNoteId: String) async throws -> CanvasRecord {
+        if fails { throw StorageError.Failed(what: "test") }
+        created.append("\(title)|\(ownerNoteId)")
+        return CanvasRecord(id: "c1", title: title, ownerNoteId: ownerNoteId, scene: "")
+    }
+
+    func save(_ id: String, scene: String) async throws {}
 }

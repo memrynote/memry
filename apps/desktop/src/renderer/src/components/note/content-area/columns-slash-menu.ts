@@ -60,30 +60,31 @@ export function insertColumnList(editor: ColumnsEditor, count: number): void {
   if (firstParagraph) editor.setTextCursorPosition(firstParagraph, 'start')
 }
 
+type ColumnLabel = { title: string; subtext: string }
+
+const COLUMN_ITEMS = [
+  { key: 'two_columns', count: 2, label: 'two', aliases: ['2 columns', 'two columns', 'split'] },
+  { key: 'three_columns', count: 3, label: 'three', aliases: ['3 columns', 'three columns'] },
+  { key: 'four_columns', count: 4, label: 'four', aliases: ['4 columns', 'four columns'] },
+  { key: 'five_columns', count: 5, label: 'five', aliases: ['5 columns', 'five columns'] }
+] as const
+
 export function getColumnSlashMenuItems(
   editor: ColumnsEditor,
   labels: {
     group: string
-    two: { title: string; subtext: string }
-    three: { title: string; subtext: string }
+    two: ColumnLabel
+    three: ColumnLabel
+    four: ColumnLabel
+    five: ColumnLabel
   }
 ) {
-  return [
-    {
-      key: 'two_columns',
-      title: labels.two.title,
-      subtext: labels.two.subtext,
-      aliases: ['columns', 'column', '2 columns', 'two columns', 'side by side', 'split', 'layout'],
-      group: labels.group,
-      onItemClick: () => insertColumnList(editor, 2)
-    },
-    {
-      key: 'three_columns',
-      title: labels.three.title,
-      subtext: labels.three.subtext,
-      aliases: ['columns', 'column', '3 columns', 'three columns', 'side by side', 'layout'],
-      group: labels.group,
-      onItemClick: () => insertColumnList(editor, 3)
-    }
-  ]
+  return COLUMN_ITEMS.map(({ key, count, label, aliases }) => ({
+    key,
+    title: labels[label].title,
+    subtext: labels[label].subtext,
+    aliases: ['columns', 'column', ...aliases, 'side by side', 'layout'],
+    group: labels.group,
+    onItemClick: () => insertColumnList(editor, count)
+  }))
 }
