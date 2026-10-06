@@ -7,10 +7,14 @@ import { dueDateFilterLabel } from '@/data/tasks-data'
 import { priorityConfig } from '@/data/task-model'
 import { getActiveLocale } from '@/lib/active-locale'
 import { useT } from '@memry/i18n/renderer'
+import type { TaskNoteIndex } from '@/lib/task-note-index'
+import { LocationIcon } from './filter-panels/location-panel'
 
 interface ActiveFiltersBarProps {
   filters: TaskFilters
   projects: Project[]
+  /** Resolves note ids to titles for the Location pill. */
+  noteIndex?: TaskNoteIndex
   onUpdateFilters: (updates: Partial<TaskFilters>) => void
   onClearAll: () => void
   onSaveFilter?: () => void
@@ -56,6 +60,7 @@ const PillWrapper = ({
 export const ActiveFiltersBar = ({
   filters,
   projects,
+  noteIndex,
   onUpdateFilters,
   onClearAll,
   onSaveFilter,
@@ -204,6 +209,39 @@ export const ActiveFiltersBar = ({
       )
     }
 
+    const folderPaths = filters.folderPaths ?? []
+    const noteIds = filters.noteIds ?? []
+    if (folderPaths.length > 0 || noteIds.length > 0) {
+      const names = [
+        ...folderPaths.map((path) => path.split('/').pop() ?? path),
+        ...noteIds.map(
+          (id) =>
+            noteIndex?.get(id)?.title ??
+            tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.unknownNote')
+        )
+      ]
+      result.push(
+        <PillWrapper key="location">
+          <LocationIcon size={11} />
+          <span
+            className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
+          >
+            {tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.locationIs')}
+          </span>
+          <span
+            title={[...folderPaths, ...names.slice(folderPaths.length)].join(', ')}
+            className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
+          >
+            {names.join(', ')}
+          </span>
+          <RemoveButton
+            label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.location')}
+            onClick={() => onUpdateFilters({ folderPaths: [], noteIds: [] })}
+          />
+        </PillWrapper>
+      )
+    }
+
     if (filters.dueDate.type !== 'any') {
       let label = dueDateFilterLabel(filters.dueDate.type)
       if (
@@ -290,6 +328,9 @@ export const ActiveFiltersBar = ({
     filters.tags,
     filters.statusIds,
     filters.projectIds,
+    filters.folderPaths,
+    filters.noteIds,
+    noteIndex,
     filters.dueDate.type,
     filters.dueDate.customStart,
     filters.dueDate.customEnd,

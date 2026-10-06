@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Susun atur",
       "toolbar": "Bar alat",
-      "spelling": "Ejaan"
+      "spelling": "Ejaan",
+      "checklists": "Senarai semak"
     },
     "width": {
       "label": "Lebar editor",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Lebar editor",
       "toolbarMode": "Bar alat pemformatan tetap",
-      "spellCheck": "Semak ejaan"
+      "spellCheck": "Semak ejaan",
+      "convertChecklists": "Tukar item senarai semak kepada tugasan"
+    },
+    "convertChecklists": {
+      "description": "Setiap item senarai semak baharu menjadi tugasan. Apabila dimatikan, senarai kekal sebagai kotak semak biasa; klik kanan item untuk menjadikannya tugasan.",
+      "error": "Gagal mengemas kini penukaran senarai semak"
     }
   },
   "templates": {

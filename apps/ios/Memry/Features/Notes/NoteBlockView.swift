@@ -218,7 +218,10 @@ struct NoteBlockView: View {
         case "callout":
             CalloutRow(type: value("type") ?? "info", text: inline)
         case "codeBlock" where value("language") == ViewBlockFence.language:
-            ViewBlockView(text: plainText)
+            let text = plainText
+            ViewBlockView(text: text, edit: editing.flatMap { editing in
+                block.id.map { id in { editing.session.editView(blockId: id, text: text) } }
+            })
         case "codeBlock":
             CodeRow(language: value("language"), text: plainText)
         case "diagram":
@@ -229,6 +232,12 @@ struct NoteBlockView: View {
                     { editing.session.editSource(BlockSourceRequest(blockId: id, source: source, kind: .diagram)) }
                 }
             })
+        case "whiteboard":
+            WhiteboardBlockView(
+                canvasId: value("canvasId") ?? "",
+                edit: editing.map { editing in { editing.session.editWhiteboard(canvasId: $0, title: $1) } },
+                revision: editing?.session.whiteboardRevision ?? 0
+            )
         case "mathBlock":
             // `content: none`: the formula is the `latex` prop.
             let latex = value("latex") ?? ""

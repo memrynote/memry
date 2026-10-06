@@ -42,6 +42,11 @@ enum BlockCatalog {
             /// A block drawn from source (`mathBlock`), made empty, with its
             /// source sheet open.
             case source(kind: String)
+            /// Opens the query sheet; Done inserts a `memry-view` code block.
+            case view
+            /// Creates a canvas owned by the note, inserts a block naming it
+            /// and opens the board.
+            case whiteboard
             /// A column list of `count` columns, each holding an empty
             /// paragraph (desktop's `insertColumnList`).
             case columns(count: Int)
@@ -58,7 +63,7 @@ enum BlockCatalog {
         var isInline: Bool {
             switch action {
             case .linkToNote, .date: true
-            case .block, .attach, .link, .source, .columns: false
+            case .block, .attach, .link, .source, .columns, .view, .whiteboard: false
             }
         }
     }
@@ -73,9 +78,8 @@ enum BlockCatalog {
     private static let dateAliases = ["date", "remind", "reminder", "when"]
 
     /// Every row, in desktop's catalog order. Rows desktop offers that this
-    /// build cannot make yet (task, whiteboard, view, pdf, media,
-    /// html) join here one row each as they land; emoji, templates and AI
-    /// stay desktop-only.
+    /// build cannot make yet (task, pdf, media, html) join here
+    /// one row each as they land; emoji, templates and AI stay desktop-only.
     static let rows: [Row] = [
         block("paragraph", "Paragraph", "text.alignleft", ["p", "paragraph"], .basic, kind: "paragraph"),
         block("heading", "Heading 1", "textformat.size.larger", ["h", "heading1", "h1"], .basic, kind: "heading", level: 1),
@@ -134,6 +138,18 @@ enum BlockCatalog {
             id: "diagram", title: "Diagram", symbol: "point.3.connected.trianglepath.dotted",
             aliases: ["mermaid", "diagram", "flowchart", "chart", "graph"],
             section: .insert, action: .source(kind: "diagram")
+        ),
+        // Desktop's `/whiteboard` (`getWhiteboardSlashMenuItem`).
+        Row(
+            id: "whiteboard", title: "Whiteboard", symbol: "pencil.and.scribble",
+            aliases: ["whiteboard", "canvas", "excalidraw", "draw", "sketch", "board"],
+            section: .insert, action: .whiteboard
+        ),
+        // Desktop's `/view` (`getViewSlashMenuItem`).
+        Row(
+            id: "view", title: "View", symbol: "list.bullet.rectangle",
+            aliases: ["view", "query", "base", "database", "saved view", "embed view"],
+            section: .insert, action: .view
         ),
         // Mobile's own rows: desktop makes these from a pasted link instead.
         Row(id: "bookmark", title: "Bookmark", symbol: "bookmark", aliases: ["bookmark", "link", "url", "web"], section: .insert, action: .link(.bookmark)),
@@ -294,6 +310,10 @@ extension EditorSession {
             requestLink(kind)
         case let .source(kind):
             insertSource(field, kind: kind)
+        case .view:
+            requestView()
+        case .whiteboard:
+            insertWhiteboard(field)
         case let .columns(count):
             insertColumns(field, count: count)
         case .date:
@@ -317,6 +337,45 @@ extension EditorSession {
             guard let newId = await model.insert(kind, after: blockId) else { return }
             self.history.record(.insert(blockId: newId, after: blockId, kind: kind, text: ""))
             self.editSource(BlockSourceRequest(blockId: newId, source: "", kind: sourceKind))
+        }
+    }
+
+    /// Desktop's `/whiteboard`: the canvas is created first and the block
+    /// written with its id after, so a failed create adds nothing to the
+    /// note. The block replaces an empty paragraph with nothing nested under
+    /// it and goes after any other block, and the board opens ready to draw on.
+    private func insertWhiteboard(_ field: BlockField) {
+        guard let boards = whiteboards, let noteId = model?.noteId else { return }
+        let blockId = field.blockId
+        let blocks = blocks()
+        let hasChildren = blocks.firstIndex { $0.id == blockId }.map { index in
+            index + 1 < blocks.count && blocks[index + 1].depth > blocks[index].depth
+        } ?? false
+        let replaces = field.textView.text.isEmpty && field.block.kind == "paragraph" && !hasChildren
+        let title = WhiteboardCopy.name(forNote: noteTitle())
+        dismissKeyboard()
+        commit(field) { [weak self] in
+            guard let self, let model = self.model else { return }
+            let canvas: CanvasRecord
+            do {
+                canvas = try await boards.create(title: title, ownerNoteId: noteId)
+            } catch {
+                self.failure = ErrorMapping.userFacing(error)
+                return
+            }
+            guard let newId = await model.insert("whiteboard", after: blockId) else { return }
+            let prop = BlockEdit.setProp(blockId: newId, name: "canvasId", value: canvas.id)
+            await model.apply(prop)
+            var step = EditorUndoStep.insert(blockId: newId, after: blockId, kind: "whiteboard", text: "")
+            step.forwardProps = [prop]
+            self.history.record(step)
+            if replaces {
+                let snapshot = await model.snapshot(blockId)
+                await model.delete(blockId)
+                if let snapshot { self.history.record(.delete(blockId: blockId, snapshot: snapshot)) }
+            }
+            self.requestSync?()
+            self.editWhiteboard(canvasId: canvas.id, title: canvas.title ?? title)
         }
     }
 

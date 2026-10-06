@@ -111,6 +111,15 @@ describe('SyncedSettingsSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('keeps editor.convertChecklistsToTasks and parses an editor group from an older build without it', () => {
+    expect(
+      SyncedSettingsSchema.parse({ editor: { convertChecklistsToTasks: false } }).editor
+    ).toEqual({ convertChecklistsToTasks: false })
+    expect(SyncedSettingsSchema.parse({ editor: { width: 'full' } }).editor).toEqual({
+      width: 'full'
+    })
+  })
+
   it('accepts a notes group', () => {
     const result = SyncedSettingsSchema.safeParse({
       notes: {

@@ -98,6 +98,7 @@
       "openToTheSide": "Open to the Side",
       "newNote": "New Note",
       "newFolder": "New Folder",
+      "showTasks": "Show Tasks",
       "expandSubfolders": "Expand All Subfolders",
       "collapseSubfolders": "Collapse All Subfolders",
       "rename": "Rename",
@@ -269,12 +270,20 @@
     "columns": {
       "group": "Basic blocks",
       "two": {
-        "title": "Two columns",
+        "title": "2 columns",
         "subtext": "Place blocks side by side in two columns"
       },
       "three": {
-        "title": "Three columns",
+        "title": "3 columns",
         "subtext": "Place blocks side by side in three columns"
+      },
+      "four": {
+        "title": "4 columns",
+        "subtext": "Place blocks side by side in four columns"
+      },
+      "five": {
+        "title": "5 columns",
+        "subtext": "Place blocks side by side in five columns"
       }
     },
     "diagram": {

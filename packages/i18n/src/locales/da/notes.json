@@ -249,12 +249,20 @@
     "columns": {
       "group": "Grundlæggende blokke",
       "two": {
-        "title": "To kolonner",
+        "title": "2 kolonner",
         "subtext": "Placer blokke side om side i to kolonner"
       },
       "three": {
-        "title": "Tre kolonner",
+        "title": "3 kolonner",
         "subtext": "Placer blokke side om side i tre kolonner"
+      },
+      "four": {
+        "title": "4 kolonner",
+        "subtext": "Placer blokke side om side i fire kolonner"
+      },
+      "five": {
+        "title": "5 kolonner",
+        "subtext": "Placer blokke side om side i fem kolonner"
       }
     },
     "diagram": {

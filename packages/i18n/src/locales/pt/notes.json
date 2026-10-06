@@ -249,12 +249,20 @@
     "columns": {
       "group": "Blocos básicos",
       "two": {
-        "title": "Duas colunas",
+        "title": "2 colunas",
         "subtext": "Coloque blocos lado a lado em duas colunas"
       },
       "three": {
-        "title": "Três colunas",
+        "title": "3 colunas",
         "subtext": "Coloque blocos lado a lado em três colunas"
+      },
+      "four": {
+        "title": "4 colunas",
+        "subtext": "Coloque blocos lado a lado em quatro colunas"
+      },
+      "five": {
+        "title": "5 colunas",
+        "subtext": "Coloque blocos lado a lado em cinco colunas"
       }
     },
     "diagram": {

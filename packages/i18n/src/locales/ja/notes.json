@@ -255,6 +255,14 @@
       "three": {
         "title": "3列",
         "subtext": "ブロックを3列に並べて配置"
+      },
+      "four": {
+        "title": "4列",
+        "subtext": "ブロックを4列に並べて配置"
+      },
+      "five": {
+        "title": "5列",
+        "subtext": "ブロックを5列に並べて配置"
       }
     },
     "diagram": {

@@ -41,12 +41,16 @@ import {
 } from '@/lib/task-utils'
 import { getTaskTabCounts } from '@memry/domain-tasks/parsing'
 import {
+  defaultFilters,
   type Project,
   type ViewMode,
   type TaskFilters,
   type TaskSort,
   type SavedFilter
 } from '@/data/tasks-data'
+import { useTaskNoteIndex } from '@/hooks/use-task-note-index'
+import { hasLocationFilter } from '@/lib/task-note-index'
+import { SHOW_TASKS_LOCATION_KEY, parseShowTasksLocation } from '@/lib/tasks-location-tab'
 import { createDefaultTask, type Task, type Priority, type RepeatConfig } from '@/data/task-model'
 import { addDays } from '@/lib/task-utils' // used by handleBulkChangeDueDate
 import {
@@ -373,6 +377,28 @@ export const TasksPage = ({
     clearFilters()
   }, [clearFilters, setActiveSavedFilterId])
 
+  // "Show tasks" from a sidebar folder or note. The request replaces every
+  // filter, not just the location: a leftover priority or tag would hide tasks
+  // that live there. It is cleared once applied, so a restored session does not
+  // re-apply it over whatever the user changed since.
+  const showLocationRequest = parseShowTasksLocation(taskTabViewState[SHOW_TASKS_LOCATION_KEY])
+  const showLocationToken = showLocationRequest?.requestedAt ?? null
+  useEffect(() => {
+    if (!showLocationRequest || !activeTab?.id) return
+    updateFiltersAndClearSaved({
+      ...defaultFilters,
+      folderPaths: showLocationRequest.folderPaths,
+      noteIds: showLocationRequest.noteIds
+    })
+    saveTabState(activeTab.id, { viewState: { [SHOW_TASKS_LOCATION_KEY]: null } })
+    // The token is the identity of a request; the parsed object is new every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showLocationToken, activeTab?.id])
+
+  // Also loaded while the filter menu is open: its Location panel lists folders
+  // and notes from it. The query shares the sidebar tree's cache entry.
+  const noteIndex = useTaskNoteIndex(isFilterDropdownOpen || hasLocationFilter(filters))
+
   const handleTabChange = useCallback(
     (tab: TasksInternalTab) => {
       if (activeSavedFilterId) {
@@ -427,7 +453,8 @@ export const TasksPage = ({
     tasks: baseFilteredTasks,
     filters,
     sort,
-    projects
+    projects,
+    noteIndex
   })
 
   // Kanban needs completed tasks for the Done column — filteredTasks excludes them
@@ -435,8 +462,15 @@ export const TasksPage = ({
     if (effectiveView !== 'kanban') return filteredTasks
     const nonArchived = tasks.filter((t) => !t.archivedAt)
     const scoped = scopeTasksByProject(nonArchived, selectedProjectId)
-    return applyFiltersAndSort(scoped, { ...filters, completion: 'all' }, sort, projects)
-  }, [effectiveView, filteredTasks, tasks, selectedProjectId, filters, sort, projects])
+    return applyFiltersAndSort(
+      scoped,
+      { ...filters, completion: 'all' },
+      sort,
+      projects,
+      new Date(),
+      noteIndex
+    )
+  }, [effectiveView, filteredTasks, tasks, selectedProjectId, filters, sort, projects, noteIndex])
 
   // Derived: the tasks of the selected due-date window (flat, overdue first).
   // Null on the "all" tab, which has no window.
@@ -1093,6 +1127,7 @@ export const TasksPage = ({
                   onClearFilters={clearFiltersAndClearSaved}
                   tasks={baseFilteredTasks}
                   projects={projects}
+                  noteIndex={noteIndex}
                   savedFilters={savedFilters}
                   activeSavedFilterId={activeSavedFilterId}
                   hasActiveFilters={filtersActive}
@@ -1257,6 +1292,7 @@ export const TasksPage = ({
             <FilterBar
               filters={filters}
               projects={projects}
+              noteIndex={noteIndex}
               onUpdateFilters={updateFiltersAndClearSaved}
               onClearFilters={clearFiltersAndClearSaved}
               onSaveFilter={() => setIsFilterDropdownOpen(true)}

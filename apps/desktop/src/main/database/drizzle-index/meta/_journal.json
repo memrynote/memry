@@ -162,6 +162,13 @@
       "when": 1787500000000,
       "tag": "0022_graph_layouts",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1791100000000,
+      "tag": "0023_extracted_text",
+      "breakpoints": true
     }
   ]
 }

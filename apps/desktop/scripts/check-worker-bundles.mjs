@@ -30,7 +30,8 @@ const WORKER_ENTRIES = [
   'sync-worker.js',
   'image-processing-worker.js',
   'voice-transcription-worker.js',
-  'embedding-worker.js'
+  'embedding-worker.js',
+  'ocr-worker.js'
 ]
 
 const RELATIVE_REQUIRE = /require\(["'](\.[^"']+)["']\)/g

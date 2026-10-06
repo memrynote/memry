@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Indeling",
       "toolbar": "Werkbalk",
-      "spelling": "Spelling"
+      "spelling": "Spelling",
+      "checklists": "Checklists"
     },
     "width": {
       "label": "Editorbreedte",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Editorbreedte",
       "toolbarMode": "Vaste opmaakwerkbalk",
-      "spellCheck": "Spelling controleren"
+      "spellCheck": "Spelling controleren",
+      "convertChecklists": "Checklistitems omzetten in taken"
+    },
+    "convertChecklists": {
+      "description": "Elk nieuw checklistitem wordt een taak. Uit houdt checklists als gewone selectievakjes; klik met rechts op een item om er een taak van te maken.",
+      "error": "Kan de omzetting van checklists niet bijwerken"
     }
   },
   "templates": {

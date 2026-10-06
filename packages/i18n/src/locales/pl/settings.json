@@ -422,7 +422,8 @@
     "groups": {
       "layout": "Układ",
       "toolbar": "Pasek narzędzi",
-      "spelling": "Pisownia"
+      "spelling": "Pisownia",
+      "checklists": "Listy kontrolne"
     },
     "width": {
       "label": "Szerokość edytora",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "Szerokość edytora",
       "toolbarMode": "Stały pasek narzędzi formatowania",
-      "spellCheck": "Sprawdzaj pisownię"
+      "spellCheck": "Sprawdzaj pisownię",
+      "convertChecklists": "Zamieniaj elementy listy kontrolnej w zadania"
+    },
+    "convertChecklists": {
+      "description": "Każdy nowy element listy kontrolnej staje się zadaniem. Po wyłączeniu listy pozostają zwykłymi polami wyboru; kliknij element prawym przyciskiem, aby zrobić z niego zadanie.",
+      "error": "Nie udało się zaktualizować zamiany list kontrolnych"
     }
   },
   "templates": {

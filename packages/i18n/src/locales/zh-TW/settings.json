@@ -422,7 +422,8 @@
     "groups": {
       "layout": "版面配置",
       "toolbar": "工具列",
-      "spelling": "拼字"
+      "spelling": "拼字",
+      "checklists": "檢查清單"
     },
     "width": {
       "label": "編輯器寬度",
@@ -446,7 +447,12 @@
     "v2": {
       "width": "編輯器寬度",
       "toolbarMode": "固定顯示格式工具列",
-      "spellCheck": "檢查拼字"
+      "spellCheck": "檢查拼字",
+      "convertChecklists": "將檢查清單項目轉為任務"
+    },
+    "convertChecklists": {
+      "description": "每個新的檢查清單項目都會成為任務。關閉後清單維持為一般核取方塊；在項目上按右鍵即可轉為任務。",
+      "error": "無法更新檢查清單轉換設定"
     }
   },
   "templates": {

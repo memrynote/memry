@@ -53,6 +53,10 @@ final class EditorSession {
     /// Schedules a vault sync pass (`requestVaultSync`), so a write reaches
     /// other devices without waiting for the next foreground or launch.
     @ObservationIgnored var requestSync: (@MainActor () -> Void)?
+    /// The vault's canvases, for the Whiteboard row and the board editor.
+    @ObservationIgnored var whiteboards: (any WhiteboardBoards)?
+    /// The note's title, which names a new whiteboard.
+    @ObservationIgnored var noteTitle: () -> String? = { nil }
 
     // MARK: State the toolbar draws
 
@@ -75,8 +79,9 @@ final class EditorSession {
     private(set) var formatting = false
     /// A block waiting for the note picker (the `...` menu's Move to).
     private(set) var moveRequest: BlockMoveRequest?
-    /// Why the last Move to did not land, for the page's alert.
-    var moveFailure: UserFacingError?
+    /// Why the last Move to, or the last new whiteboard, did not land, for
+    /// the page's alert.
+    var failure: UserFacingError?
     /// A tapped date chip whose editor is open.
     private(set) var dateEdit: DateMentionEditRequest?
     /// The block that chip is in, which need not have the caret.
@@ -84,6 +89,12 @@ final class EditorSession {
     private(set) var linkRequest: LinkBlockRequest?
     /// A block whose source sheet is open (`BlockSourceSheet`).
     private(set) var sourceEdit: BlockSourceRequest?
+    /// A view block whose query sheet is open (`ViewQuerySheet`).
+    private(set) var viewEdit: ViewQueryRequest?
+    /// A whiteboard open in its editor (`WhiteboardEditor`).
+    private(set) var whiteboardEdit: WhiteboardEditRequest?
+    /// Bumped when a whiteboard editor closes, so the block re-reads its board.
+    private(set) var whiteboardRevision = 0
     let history = EditorUndoStack()
 
     @ObservationIgnored weak var field: BlockField?
@@ -644,7 +655,7 @@ final class EditorSession {
             let taskIds = blocks.firstIndex { $0.id == request.blockId }
                 .map { Self.taskIds(at: $0, in: blocks) } ?? []
             if let failure = await model.moveBlock(request.blockId, toNote: targetId) {
-                self.moveFailure = failure
+                self.failure = failure
             } else if let relink = self.relinkTask {
                 for taskId in taskIds { await relink(taskId, targetId) }
             }
@@ -685,6 +696,64 @@ final class EditorSession {
 
     func cancelLink() {
         linkRequest = nil
+    }
+
+    /// The View row: the query sheet for a new view block after the caret's.
+    /// Nothing is written until Done, so Cancel leaves the note as it was.
+    func requestView() {
+        viewEdit = ViewQueryRequest(blockId: nil, after: field?.blockId, text: "")
+        if let field { commit(field) }
+        dismissKeyboard()
+    }
+
+    func editView(blockId: String, text: String) {
+        dismissKeyboard()
+        viewEdit = ViewQueryRequest(blockId: blockId, after: nil, text: text)
+    }
+
+    func cancelViewEdit() {
+        viewEdit = nil
+    }
+
+    func editWhiteboard(canvasId: String, title: String) {
+        dismissKeyboard()
+        whiteboardEdit = WhiteboardEditRequest(canvasId: canvasId, title: title)
+    }
+
+    /// The editor closed: its saves are on the canvas, which the block
+    /// re-reads and the next sync pass pushes.
+    func finishWhiteboard() {
+        whiteboardEdit = nil
+        whiteboardRevision += 1
+        requestSync?()
+    }
+
+    /// Done: a new `memry-view` code block, undone as one step, or the
+    /// edited block's fence replaced in place (`ReplaceText`), so a peer's
+    /// concurrent edit survives.
+    func saveView(_ text: String) {
+        guard let request = viewEdit else { return }
+        viewEdit = nil
+        if let blockId = request.blockId {
+            guard text != request.text else { return }
+            runBlockAction { [weak self] model in
+                await model.commit(text, for: blockId, current: request.text, formatted: true)
+                self?.history.record(.replaceText(blockId: blockId, from: request.text, to: text))
+                self?.requestSync?()
+            }
+            return
+        }
+        enqueue { [weak self] in
+            guard let self, let model = self.model,
+                  let newId = await model.insert("codeBlock", after: request.after, text: text) else { return }
+            let language = BlockEdit.setProp(blockId: newId, name: "language", value: ViewBlockFence.language)
+            await model.apply(language)
+            var step = EditorUndoStep.insert(blockId: newId, after: request.after, kind: "codeBlock", text: text)
+            step.forwardProps = [language]
+            self.history.record(step)
+            await self.didChange()
+            self.requestSync?()
+        }
     }
 
     func insertLink(_ block: LinkBlock) {

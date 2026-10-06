@@ -25,6 +25,7 @@ allowBuilds:
   spawn-sync: false
   unrs-resolver: true
   react-native-libsodium: set this to true or false
+  tesseract.js: false
 
 # Moved from package.json "pnpm.overrides" (no longer read by pnpm 11)
 overrides:

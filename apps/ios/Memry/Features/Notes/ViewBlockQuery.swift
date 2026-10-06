@@ -5,8 +5,9 @@ import MemryCore
 // `memry-view` and whose text is a JSON definition
 // (`packages/shared/src/view-block.ts`). This build draws the rows for the
 // definitions it can answer from the local index and shows every other one
-// as the code it is. It never writes the fence: the bytes belong to whichever
-// build wrote them, and a newer one may carry keys this one cannot read.
+// as the code it is. Only `ViewQuerySheet` writes a fence, and only one this
+// build answers in full: any other belongs to whichever build wrote it, and a
+// newer one may carry keys this one cannot read.
 
 /// What a `memry-view` fence becomes on this device.
 enum ViewBlockFence: Equatable {
@@ -146,6 +147,8 @@ struct ViewBlockQuery: Equatable, Hashable {
 struct ViewBlockRow: Identifiable, Equatable {
     enum Kind: Equatable {
         case note
+        /// A journal day carrying the tag, titled by its `YYYY-MM-DD` date.
+        case journal
         case task(done: Bool)
     }
 
@@ -156,10 +159,16 @@ struct ViewBlockRow: Identifiable, Equatable {
     let created: Date?
     let modified: Date?
 
-    /// The note a tap opens, by id: titles repeat and can be empty. `nil` for
-    /// a task row.
+    /// The note a tap opens, by id: titles repeat and can be empty. A day
+    /// travels as its `j<date>` route, which the page sends to the Journal
+    /// tab; built from the date because an older desktop record keeps an id
+    /// of another shape. `nil` for a task row.
     var noteRoute: NoteRoute? {
-        kind == .note ? NoteRoute(id: id) : nil
+        switch kind {
+        case .note: NoteRoute(id: id)
+        case .journal: JournalLink.route(forDay: title)
+        case .task: nil
+        }
     }
 }
 
@@ -173,6 +182,11 @@ extension ViewBlockRow {
             created: note.createdAt.map { Date(timeIntervalSince1970: Double($0) / 1000) },
             modified: note.modifiedAt.map { Date(timeIntervalSince1970: Double($0) / 1000) }
         )
+    }
+
+    init(journal day: NoteSummary) {
+        let row = ViewBlockRow(note: day)
+        self.init(id: row.id, kind: .journal, title: row.title, emoji: nil, created: row.created, modified: row.modified)
     }
 
     init(task: TaskItem) {
@@ -200,10 +214,16 @@ extension ViewBlockQuery {
     /// - Parameters:
     ///   - notes: every live note for a vault or folder source; for a tag
     ///     source, the notes carrying any tag in ``tagNeedles``' families.
-    ///   - noteTags: for a tag source, the tags each of those notes carries.
+    ///   - noteTags: for a tag source, the tags each of those notes and
+    ///     journal days carries.
+    ///   - journals: for a tag source, the journal days carrying any tag in
+    ///     ``tagNeedles``' families. Desktop lists a tagged day as one more
+    ///     note row, so a tag source lists them after the notes.
     ///   - tasks: every live task. Only a tag source lists tasks, as on
     ///     desktop, where folders hold notes and tags hold notes and tasks.
-    func rows(notes: [NoteSummary], noteTags: [String: [String]], tasks: [TaskItem]) -> [ViewBlockRow] {
+    func rows(
+        notes: [NoteSummary], noteTags: [String: [String]], journals: [NoteSummary] = [], tasks: [TaskItem]
+    ) -> [ViewBlockRow] {
         var rows: [ViewBlockRow]
         switch source {
         case .vault:
@@ -214,6 +234,7 @@ extension ViewBlockQuery {
             let needles = tagNeedles
             let carries: ([String]) -> Bool = { tags in needles.allSatisfy { Self.tags(tags, match: $0) } }
             rows = notes.filter { carries(noteTags[$0.id] ?? []) }.map(ViewBlockRow.init(note:))
+                + journals.filter { carries(noteTags[$0.id] ?? []) }.map(ViewBlockRow.init(journal:))
                 + tasks.filter { carries($0.tags) }.map(ViewBlockRow.init(task:))
         }
         rows = sorted(rows)

@@ -18,6 +18,41 @@ function createTempVault(): string {
   return dir
 }
 
+describe('editor checklist conversion preference', () => {
+  let vaultPath: string
+
+  afterEach(() => {
+    if (vaultPath) fs.rmSync(vaultPath, { recursive: true, force: true })
+  })
+
+  it('#given config.json written by an older version #then conversion reads as on', () => {
+    vaultPath = createTempVault()
+    fs.writeFileSync(
+      path.join(vaultPath, MEMRY_DIR, 'config.json'),
+      JSON.stringify({
+        preferences: { theme: 'dark', editor: { width: 'full', spellCheck: true } }
+      })
+    )
+
+    expect(readPreferences(vaultPath).editor).toEqual({
+      width: 'full',
+      toolbarMode: 'floating',
+      spellCheck: true,
+      pdfAdaptToTheme: false,
+      convertChecklistsToTasks: true
+    })
+  })
+
+  it('#given conversion switched off #when another editor pref changes #then it stays off', () => {
+    vaultPath = createTempVault()
+    writePreferences(vaultPath, { editor: { convertChecklistsToTasks: false } })
+
+    writePreferences(vaultPath, { editor: { width: 'full' } })
+
+    expect(readPreferences(vaultPath).editor.convertChecklistsToTasks).toBe(false)
+  })
+})
+
 describe('editor spellCheck preference', () => {
   let vaultPath: string
 
@@ -131,7 +166,8 @@ describe('VaultPreferencesSchema', () => {
         width: 'full' as const,
         toolbarMode: 'sticky' as const,
         pdfAdaptToTheme: false,
-        spellCheck: false
+        spellCheck: false,
+        convertChecklistsToTasks: false
       }
     }
 
@@ -147,7 +183,8 @@ describe('VaultPreferencesSchema', () => {
           width: legacy,
           toolbarMode: 'floating' as const,
           spellCheck: false,
-          pdfAdaptToTheme: false
+          pdfAdaptToTheme: false,
+          convertChecklistsToTasks: true
         }
       }
       const result = VaultPreferencesSchema.parse(input)

@@ -309,6 +309,10 @@ export interface TaskFiltersConfig {
   completion: 'active' | 'completed' | 'all' | 'archived'
   repeatType: 'all' | 'repeating' | 'one-time'
   hasTime: 'all' | 'with-time' | 'without-time'
+  /** Folders (subfolders included) whose notes' tasks match; absent on older rows. */
+  folderPaths?: string[]
+  /** Notes whose tasks match; absent on older rows. */
+  noteIds?: string[]
 }
 
 export interface TaskSortConfig {
@@ -1346,6 +1350,7 @@ export interface EditorSettingsDTO {
   toolbarMode: 'floating' | 'sticky'
   spellCheck: boolean
   pdfAdaptToTheme: boolean
+  convertChecklistsToTasks: boolean
 }
 
 export interface TaskSettingsDTO {

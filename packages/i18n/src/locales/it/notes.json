@@ -249,12 +249,20 @@
     "columns": {
       "group": "Blocchi di base",
       "two": {
-        "title": "Due colonne",
+        "title": "2 colonne",
         "subtext": "Affianca i blocchi su due colonne"
       },
       "three": {
-        "title": "Tre colonne",
+        "title": "3 colonne",
         "subtext": "Affianca i blocchi su tre colonne"
+      },
+      "four": {
+        "title": "4 colonne",
+        "subtext": "Affianca i blocchi su quattro colonne"
+      },
+      "five": {
+        "title": "5 colonne",
+        "subtext": "Affianca i blocchi su cinque colonne"
       }
     },
     "diagram": {
