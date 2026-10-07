@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "Cargado",
       "loading": "Cargando",
-      "cacheHint": "~23 MB · Caché local · Todo en el dispositivo",
+      "cacheHint": "~210 MB · Caché local · Todo en el dispositivo",
       "dimensions": "Dimensiones",
       "embeddings": "Embeddings",
       "downloadLoad": "Descargar y cargar modelo",

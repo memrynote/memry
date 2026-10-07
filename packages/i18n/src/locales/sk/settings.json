@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "Načítané",
       "loading": "Načítava sa",
-      "cacheHint": "~23 MB · Uložené lokálne · Všetko v zariadení",
+      "cacheHint": "~210 MB · Uložené lokálne · Všetko v zariadení",
       "dimensions": "Dimenzie",
       "embeddings": "Vektorizácie",
       "downloadLoad": "Stiahnuť a načítať model",

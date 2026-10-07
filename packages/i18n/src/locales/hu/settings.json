@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "Betöltve",
       "loading": "Betöltés",
-      "cacheHint": "~23 MB · Helyi gyorsítótár · Minden az eszközön",
+      "cacheHint": "~210 MB · Helyi gyorsítótár · Minden az eszközön",
       "dimensions": "Dimenziók",
       "embeddings": "Beágyazások",
       "downloadLoad": "Modell letöltése és betöltése",

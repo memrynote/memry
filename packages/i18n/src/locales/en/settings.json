@@ -1345,7 +1345,7 @@
     "embedding": {
       "loaded": "Loaded",
       "loading": "Loading",
-      "cacheHint": "~23MB · Cached locally · All on-device",
+      "cacheHint": "~210MB · Cached locally · All on-device",
       "dimensions": "Dimensions",
       "embeddings": "Embeddings",
       "downloadLoad": "Download & Load Model",

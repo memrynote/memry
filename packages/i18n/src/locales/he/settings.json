@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "טעון",
       "loading": "טוען",
-      "cacheHint": "~23MB · נשמר במטמון מקומי · הכול במכשיר",
+      "cacheHint": "~210MB · נשמר במטמון מקומי · הכול במכשיר",
       "dimensions": "ממדים",
       "embeddings": "וקטורי הטמעה",
       "downloadLoad": "הורדה וטעינה של המודל",

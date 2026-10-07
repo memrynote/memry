@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "Ladattu",
       "loading": "Ladataan",
-      "cacheHint": "~23 Mt · Välimuistissa paikallisesti · Täysin laitteella",
+      "cacheHint": "~210 Mt · Välimuistissa paikallisesti · Täysin laitteella",
       "dimensions": "Ulottuvuudet",
       "embeddings": "Upotukset",
       "downloadLoad": "Lataa ja ota malli käyttöön",

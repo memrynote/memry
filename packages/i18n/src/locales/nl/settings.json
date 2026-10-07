@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "Geladen",
       "loading": "Laden",
-      "cacheHint": "~23MB · Lokaal in cache opgeslagen · Alles op het apparaat",
+      "cacheHint": "~210MB · Lokaal in cache opgeslagen · Alles op het apparaat",
       "dimensions": "Dimensies",
       "embeddings": "Embeddings",
       "downloadLoad": "Model downloaden en laden",

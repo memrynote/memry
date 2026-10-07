@@ -772,7 +772,7 @@ async function openVault(vaultPath: string): Promise<void> {
   //
   // Vault-open must NOT wait on embeddings: the renderer only needs the index
   // to render. Embedding is deferred out of the indexing pass — the embedding
-  // projector no-ops while isIndexing and records the note ids — so the ~23MB
+  // projector no-ops while isIndexing and records the note ids — so the ~210MB
   // model load + per-note CPU inference never runs on the blocking path (this
   // stranded imported vaults on the picker for minutes; #803). The background
   // index build's tail runs reconcileProjections() to embed those

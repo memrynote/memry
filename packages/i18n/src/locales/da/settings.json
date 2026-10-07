@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "Indlæst",
       "loading": "Indlæser",
-      "cacheHint": "~23 MB · Cachelagret lokalt · Alt på enheden",
+      "cacheHint": "~210 MB · Cachelagret lokalt · Alt på enheden",
       "dimensions": "Dimensioner",
       "embeddings": "Indlejringer",
       "downloadLoad": "Hent og indlæs model",

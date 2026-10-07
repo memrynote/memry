@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "Na-load",
       "loading": "Naglo-load",
-      "cacheHint": "~23MB · Lokal na naka-cache · Lahat sa device",
+      "cacheHint": "~210MB · Lokal na naka-cache · Lahat sa device",
       "dimensions": "Mga dimensyon",
       "embeddings": "Mga embedding",
       "downloadLoad": "I-download at i-load ang modelo",

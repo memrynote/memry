@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "Inläst",
       "loading": "Läser in",
-      "cacheHint": "~23 MB · Cachad lokalt · Allt på enheten",
+      "cacheHint": "~210 MB · Cachad lokalt · Allt på enheten",
       "dimensions": "Dimensioner",
       "embeddings": "Inbäddningar",
       "downloadLoad": "Ladda ner och läs in modell",

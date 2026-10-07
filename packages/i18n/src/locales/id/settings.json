@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "Dimuat",
       "loading": "Memuat",
-      "cacheHint": "~23MB · Di-cache secara lokal · Semua di perangkat",
+      "cacheHint": "~210MB · Di-cache secara lokal · Semua di perangkat",
       "dimensions": "Dimensi",
       "embeddings": "Embedding",
       "downloadLoad": "Unduh & muat model",

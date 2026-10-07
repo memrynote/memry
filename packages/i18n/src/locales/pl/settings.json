@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "Załadowano",
       "loading": "Ładowanie",
-      "cacheHint": "~23 MB · Buforowane lokalnie · Wszystko na urządzeniu",
+      "cacheHint": "~210 MB · Buforowane lokalnie · Wszystko na urządzeniu",
       "dimensions": "Wymiary",
       "embeddings": "Osadzenia",
       "downloadLoad": "Pobierz i załaduj model",

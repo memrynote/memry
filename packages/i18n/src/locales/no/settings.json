@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "Lastet inn",
       "loading": "Laster inn",
-      "cacheHint": "~23 MB · Bufret lokalt · Alt på enheten",
+      "cacheHint": "~210 MB · Bufret lokalt · Alt på enheten",
       "dimensions": "Dimensjoner",
       "embeddings": "Embeddinger",
       "downloadLoad": "Last ned og last inn modell",

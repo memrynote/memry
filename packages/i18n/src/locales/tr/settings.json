@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "Yüklendi",
       "loading": "Yükleniyor",
-      "cacheHint": "~23 MB · Yerel olarak önbelleğe alınır · Tamamen cihaz üzerinde",
+      "cacheHint": "~210 MB · Yerel olarak önbelleğe alınır · Tamamen cihaz üzerinde",
       "dimensions": "Boyutlar",
       "embeddings": "Gömmeler",
       "downloadLoad": "Modeli indir ve yükle",

@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "読み込み済み",
       "loading": "読み込み中",
-      "cacheHint": "約 23MB · ローカルにキャッシュ · すべてデバイス上で処理",
+      "cacheHint": "約 210MB · ローカルにキャッシュ · すべてデバイス上で処理",
       "dimensions": "次元数",
       "embeddings": "埋め込み",
       "downloadLoad": "モデルをダウンロードして読み込む",

@@ -1340,7 +1340,7 @@
     "embedding": {
       "loaded": "已加载",
       "loading": "正在加载",
-      "cacheHint": "约 23 MB · 缓存在本地 · 完全在设备上运行",
+      "cacheHint": "约 210 MB · 缓存在本地 · 完全在设备上运行",
       "dimensions": "维度",
       "embeddings": "向量嵌入",
       "downloadLoad": "下载并加载模型",
