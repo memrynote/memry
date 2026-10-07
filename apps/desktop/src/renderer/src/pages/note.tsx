@@ -1887,7 +1887,7 @@ export function NotePage({ noteId }: NotePageProps) {
       }
       breadcrumb={<NoteBreadcrumb notePath={note.path} noteTitle={note.title} />}
       stats={documentStats}
-      noteId={noteId ?? null}
+      noteId={noteId}
       cover={
         cover && (
           <NoteCover
