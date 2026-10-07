@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as fs from 'fs'
+import * as path from 'path'
 import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
-import { asClientDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import type { VaultConfig, VaultStatus } from '@memry/contracts/vault-api'
+import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 
 const mocks = vi.hoisted(() => ({
   setWriteGate: vi.fn(),
@@ -9,45 +13,42 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../mcp/lifecycle', () => ({ setWriteGate: mocks.setWriteGate }))
 vi.mock('../event-bus', () => ({ broadcastAgentEvent: mocks.broadcastAgentEvent }))
+vi.mock('electron', () => ({
+  // App settings fall back to their defaults: no settings file lives here.
+  app: { getPath: () => '/nonexistent-memry-test-user-data' },
+  BrowserWindow: { getAllWindows: vi.fn(() => []) },
+  shell: { openPath: vi.fn(), showItemInFolder: vi.fn() }
+}))
+// Voice capture reads the app entry's env config; nothing here records audio.
+vi.mock('../../../inbox/transcription', () => ({ getVoiceRecordingReadiness: vi.fn() }))
+// No CRDT runtime in this test: a note write lands on disk and in the index only.
+vi.mock('../../../sync/crdt-provider', () => ({ getCrdtProvider: () => null }))
+vi.mock('../../../inbox/suggestions', () => ({
+  updateNoteEmbedding: vi.fn(() => Promise.resolve())
+}))
 
-import type { VaultServiceHandles } from '../../mcp/tools/handles'
+import * as database from '../../../database'
+import * as vaultIndex from '../../../vault'
+import { createNote } from '../../../vault/notes'
+import { startProjectionRuntime, stopProjectionRuntime } from '../../../projections'
+import { createNoteDerivedStateProjector } from '../../../projections/projectors/note-derived-state-projector'
+import { getNoteCacheById, getNoteCacheByPath } from '../../../database/queries/notes'
+import { createVaultServiceHandles } from '../../mcp/tools/handles-adapter'
 import { buildWriteTools } from '../../mcp/tools/write-tools'
 import { toMcpToolErrorContent } from '../../mcp/errors'
 import type { ConversationStore } from '../../storage/conversation-store'
 import type { MessageStore } from '../../storage/message-store'
 import { AgentRuntime } from '../runtime'
 import { mintTurnWriteGrant, revokeAllTurnWriteGrants } from '../../turn-grants'
-import {
-  assertFolderWritable,
-  assertNoteWritable,
-  installVaultLockSource,
-  invalidateVaultLocks
-} from '../../../vault-locks/registry'
+import { installVaultLockSource, invalidateVaultLocks } from '../../../vault-locks/registry'
 import { writeLockRow } from '../../../vault-locks/store'
 
-/**
- * "Always allow" (FB-004) is an approval, and the lock sits below every
- * approval: an auto-approved or trusted write still reaches the lock check in
- * the vault layer and is refused there (#2606).
- */
 describe('read-only locks under Always allow (#2606)', () => {
+  let vault: TestVaultResult
   let data: TestDatabaseResult
-  const written: string[] = []
-
-  const handles = {
-    notes: {
-      update: vi.fn(async (args: { id: string }) => {
-        assertNoteWritable(args.id)
-        written.push(`update:${args.id}`)
-        return {}
-      }),
-      create: vi.fn(async (args: { folder_path?: string }) => {
-        assertFolderWritable(args.folder_path)
-        written.push(`create:${args.folder_path}`)
-        return { id: 'created' }
-      })
-    }
-  } as unknown as VaultServiceHandles
+  let index: TestDatabaseResult
+  let handles: ReturnType<typeof createVaultServiceHandles>
+  let lockedNote: { id: string; file: string; bytes: string }
 
   function installRuntime(
     toolApprovalMode: 'always_accept' | 'ask',
@@ -83,42 +84,87 @@ describe('read-only locks under Always allow (#2606)', () => {
     )
   }
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
     revokeAllTurnWriteGrants()
-    written.length = 0
+    vault = createTestVault('always-allow-locks')
     data = createTestDataDb()
+    index = createTestIndexDb()
+    vi.spyOn(vaultIndex, 'getStatus').mockReturnValue({
+      isOpen: true,
+      path: vault.path,
+      isIndexing: false,
+      indexProgress: 100,
+      error: null
+    } satisfies VaultStatus)
+    vi.spyOn(vaultIndex, 'getConfig').mockReturnValue({
+      excludePatterns: ['.git', 'node_modules', '.trash'],
+      defaultNoteFolder: 'notes',
+      journalFolder: 'journal',
+      attachmentsFolder: 'attachments'
+    } satisfies VaultConfig)
+    vi.spyOn(database, 'getDatabase').mockReturnValue(data.db)
+    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(index.db)
+    vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
+    startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
+
+    const note = await createNote({ title: 'Locked', content: 'Owner text.' })
+    const file = path.join(vault.path, note.path)
+    lockedNote = { id: note.id, file, bytes: fs.readFileSync(file, 'utf8') }
+    fs.mkdirSync(path.join(vault.path, 'archive'), { recursive: true })
+
+    // The lookups `installVaultLockFileGuard` wires in the app, on the test index.
     installVaultLockSource({
-      dataDb: () => asClientDb(data.db),
-      notePathOf: (noteId) => (noteId === 'note-locked' ? 'notes/locked.md' : null),
-      noteIdAtPath: () => null
+      dataDb: () => data.db,
+      notePathOf: (noteId) => getNoteCacheById(index.db, noteId)?.path ?? null,
+      noteIdAtPath: (relativePath) => getNoteCacheByPath(index.db, relativePath)?.id ?? null
     })
-    writeLockRow(asClientDb(data.db), 'note', 'note-locked', true)
-    writeLockRow(asClientDb(data.db), 'folder', 'archive', true)
+    writeLockRow(data.db, 'note', note.id, true)
+    writeLockRow(data.db, 'folder', 'archive', true)
     invalidateVaultLocks()
+    handles = createVaultServiceHandles({ dataDb: data.db, indexDb: index.db })
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await stopProjectionRuntime()
     installVaultLockSource({ dataDb: () => null, notePathOf: () => null, noteIdAtPath: () => null })
+    vi.restoreAllMocks()
+    index.close()
     data.close()
+    vault.cleanup()
   })
 
-  it('auto-approve for every write still refuses a locked note with PERMISSION_DENIED', async () => {
-    const tools = installRuntime('always_accept', {})
-
-    const error = await refusal(
-      tool(tools, 'vault_update_note').handler(
-        { id: 'note-locked', mode: 'append', content_markdown: 'agent text' },
-        { writeGrant: mintTurnWriteGrant('conversation-1'), windowId: null }
-      )
-    )
-
-    expect(handles.notes.update).toHaveBeenCalled()
-    expect(written).toEqual([])
+  function expectLockRefusal(error: unknown): void {
     expect(JSON.parse(toMcpToolErrorContent(error).content[0].text)).toMatchObject({
       code: 'PERMISSION_DENIED',
       message: VAULT_LOCKED_NOTE_MESSAGE
     })
+  }
+
+  it('auto-approve for every write: update, rename and delete of a locked note are refused by the real handles', async () => {
+    const tools = installRuntime('always_accept', {})
+    const ctx = () => ({ writeGrant: mintTurnWriteGrant('conversation-1'), windowId: null })
+
+    expectLockRefusal(
+      await refusal(
+        tool(tools, 'vault_update_note').handler(
+          { id: lockedNote.id, mode: 'append', content_markdown: 'agent text' },
+          ctx()
+        )
+      )
+    )
+    expectLockRefusal(
+      await refusal(
+        tool(tools, 'vault_rename_note').handler({ id: lockedNote.id, title: 'Renamed' }, ctx())
+      )
+    )
+    expectLockRefusal(
+      await refusal(tool(tools, 'vault_delete_note').handler({ id: lockedNote.id }, ctx()))
+    )
+
+    expect(fs.readFileSync(lockedNote.file, 'utf8')).toBe(lockedNote.bytes)
+    expect(getNoteCacheById(index.db, lockedNote.id)?.title).toBe('Locked')
+    expect(fs.existsSync(path.join(path.dirname(lockedNote.file), 'Renamed.md'))).toBe(false)
   })
 
   it('an "Always allow" grant for the tool, per conversation or per vault, still refuses a locked folder', async () => {
@@ -130,7 +176,7 @@ describe('read-only locks under Always allow (#2606)', () => {
 
       const error = await refusal(
         tool(tools, 'vault_create_note').handler(
-          { title: 'Into the archive', content_markdown: 'body', folder_path: 'archive/2026' },
+          { title: 'Into the archive', content_markdown: 'body', folder_path: 'archive' },
           { writeGrant: mintTurnWriteGrant('conversation-1'), windowId: null }
         )
       )
@@ -138,11 +184,21 @@ describe('read-only locks under Always allow (#2606)', () => {
       expect(mocks.broadcastAgentEvent).not.toHaveBeenCalledWith(
         expect.objectContaining({ kind: 'tool_call_pending_approval' })
       )
-      expect(JSON.parse(toMcpToolErrorContent(error).content[0].text)).toMatchObject({
-        code: 'PERMISSION_DENIED',
-        message: VAULT_LOCKED_NOTE_MESSAGE
-      })
+      expectLockRefusal(error)
     }
-    expect(written).toEqual([])
+    expect(fs.readdirSync(path.join(vault.path, 'archive'))).toEqual([])
+  })
+
+  it('the same tools still write once the lock is gone', async () => {
+    writeLockRow(data.db, 'folder', 'archive', false)
+    invalidateVaultLocks()
+    const tools = installRuntime('always_accept', {})
+
+    await tool(tools, 'vault_create_note').handler(
+      { title: 'Into the archive', content_markdown: 'body', folder_path: 'archive' },
+      { writeGrant: mintTurnWriteGrant('conversation-1'), windowId: null }
+    )
+
+    expect(fs.readdirSync(path.join(vault.path, 'archive'))).toEqual(['Into the archive.md'])
   })
 })
