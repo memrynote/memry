@@ -91,7 +91,7 @@ async function viewError(input: Parameters<typeof viewVaultFile>[1]): Promise<Ag
 
 describe('viewVaultFile', () => {
   beforeEach(() => {
-    vault = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-file-view-'))
+    vault = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-file-view-')))
     prepared = []
     rendered = []
     opened = []
@@ -107,6 +107,8 @@ describe('viewVaultFile', () => {
 
   afterEach(() => {
     fs.rmSync(vault, { recursive: true, force: true })
+    fs.rmSync(`${vault}-outside`, { recursive: true, force: true })
+    fs.rmSync(`${vault}-link`, { force: true })
   })
 
   it('returns a filed image downscaled to 1568 px with what was sent', async () => {
@@ -259,5 +261,80 @@ describe('viewVaultFile', () => {
 
     expect((error as AgentToolError).code).toBe('VALIDATION')
     expect((error as AgentToolError).message).toContain('Invalid PDF structure')
+  })
+
+  describe('symlinks', () => {
+    function outsideFile(name: string): string {
+      const file = path.join(`${vault}-outside`, name)
+      fs.mkdirSync(path.dirname(file), { recursive: true })
+      fs.writeFileSync(file, 'secret')
+      return file
+    }
+
+    function link(relative: string, target: string): void {
+      fs.rmSync(path.join(vault, relative), { force: true })
+      fs.symlinkSync(target, path.join(vault, relative))
+    }
+
+    it('refuses an attachment that links to a file outside the vault and reads nothing', async () => {
+      link('attachments/note/p.pdf', outsideFile('private.pdf'))
+
+      const error = await viewError({ id: 'note', attachment: 'p.pdf' })
+
+      expect(error.code).toBe('PERMISSION_DENIED')
+      expect(error.message).toBe(
+        'attachments/note/p.pdf points outside the vault. vault_view_file reads only files inside the vault.'
+      )
+      expect(opened).toEqual([])
+      expect(prepared).toEqual([])
+    })
+
+    it('refuses a filed file that links outside the vault', async () => {
+      link('Screens/login.png', outsideFile('id_ed25519.png'))
+
+      const error = await viewError({ id: 'shot' })
+
+      expect(error.code).toBe('PERMISSION_DENIED')
+      expect(error.message).toBe(
+        'Screens/login.png points outside the vault. vault_view_file reads only files inside the vault.'
+      )
+      expect(prepared).toEqual([])
+    })
+
+    it('refuses a dangling link with the same error', async () => {
+      link('attachments/note/gone.png', path.join(`${vault}-outside`, 'deleted.png'))
+
+      const error = await viewError({ id: 'note', attachment: 'gone.png' })
+
+      expect(error.code).toBe('PERMISSION_DENIED')
+      expect(error.message).toBe(
+        'attachments/note/gone.png points outside the vault. vault_view_file reads only files inside the vault.'
+      )
+      expect(prepared).toEqual([])
+    })
+
+    it('shows a link that stays inside the vault, read from its target', async () => {
+      link('attachments/note/alias.png', path.join(vault, 'Screens/login.png'))
+
+      const result = await viewVaultFile(deps(), { id: 'note', attachment: 'alias.png' })
+
+      expect(prepared[0]?.source).toEqual({
+        kind: 'file',
+        path: path.join(vault, 'Screens/login.png')
+      })
+      expect(result.reply).toMatchObject({ file: 'attachments/note/alias.png' })
+    })
+
+    it('shows files when the vault root itself is a link', async () => {
+      fs.symlinkSync(vault, `${vault}-link`)
+
+      const result = await viewVaultFile(deps({ vaultPath: `${vault}-link` }), { id: 'shot' })
+
+      expect(prepared[0]?.source).toEqual({
+        kind: 'file',
+        path: path.join(vault, 'Screens/login.png')
+      })
+      expect(result.reply).toMatchObject({ file: 'Screens/login.png' })
+    })
   })
 })

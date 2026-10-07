@@ -160,6 +160,26 @@ describe('FileTextRunner', () => {
     expect(jobOf(harness.db, 'img-1')?.pageCount).toBe(1)
   })
 
+  it('never reads a file that links outside the vault', async () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-file-text-outside-'))
+    fs.writeFileSync(path.join(outside, 'private.png'), 'secret')
+    seedFile(harness, 'img-1', 'photos/whiteboard.png', 'image')
+    fs.rmSync(path.join(vaultDir, 'photos/whiteboard.png'))
+    fs.symlinkSync(path.join(outside, 'private.png'), path.join(vaultDir, 'photos/whiteboard.png'))
+    const recognize = vi.fn(async () => 'secret text')
+
+    try {
+      start({ recognize })
+      await settled(harness.db, 'img-1', 'failed')
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true })
+    }
+
+    expect(recognize).not.toHaveBeenCalled()
+    expect(pagesOf(harness.db, 'img-1')).toEqual([])
+    expect(jobOf(harness.db, 'img-1')?.error).toBe('photos/whiteboard.png points outside the vault')
+  })
+
   it('leaves audio files alone', async () => {
     seedFile(harness, 'audio-1', 'memo.mp3', 'audio')
     seedFile(harness, 'img-1', 'photo.png', 'image')
