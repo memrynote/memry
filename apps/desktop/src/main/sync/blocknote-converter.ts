@@ -153,9 +153,11 @@ function getEditor(): ServerBlockNoteEditor {
 /**
  * What became of the author's bytes on one serialization. `no-record` is by
  * design: the file was already in house style, or predates the record. The
- * `house-style` outcomes with a record present are the degraded cases and
- * are logged as such, so a lookup that silently misses can be told apart
- * from a note that never had a record.
+ * `house-style` outcome with a record present is the degraded case and is
+ * logged as such, so a lookup that silently misses can be told apart from a
+ * note that never had a record. `file` and `file-merged` are the record
+ * failing and the note's file standing in for it (#2615). `restore-threw` and
+ * `file-unreadable` resolve the call to null: the caller keeps the file.
  */
 export type SourceRestoreOutcome =
   | 'no-record'
@@ -163,8 +165,11 @@ export type SourceRestoreOutcome =
   | 'writing-marks'
   | 'source'
   | 'merged'
+  | 'file'
+  | 'file-merged'
+  | 'file-unreadable'
   | 'house-style-fallback'
-  | 'house-style-threw'
+  | 'restore-threw'
 
 export interface YDocToMarkdownOptions {
   /**
@@ -173,6 +178,13 @@ export interface YDocToMarkdownOptions {
    * the proof fails, and the note keeps house style — degraded, not wrong.
    */
   notePath?: string
+  /**
+   * The body the note's file holds now. Read only when the record cannot be
+   * restored, to restore the author's spelling from the file instead. A read
+   * or parse that throws resolves the call to null, so the caller keeps the
+   * file rather than writing house style over bytes it could not read.
+   */
+  readFileBody?: () => Promise<string | null>
   /** Reported once per call, after the outcome is known. */
   onSourceRestore?: (outcome: SourceRestoreOutcome) => void
 }
@@ -205,10 +217,10 @@ export async function yDocToMarkdown(
   if (source === null) return report('no-record')
   if (readCriticMarkupMarksFromYDoc(doc).length > 0) return report('critic-marks')
 
+  const canonicalize = (markdown: string): Promise<string | null> =>
+    canonicalMarkdown(markdown, options.notePath)
   try {
-    const restored = await restoreMarkdownSource(canonical, source, (markdown) =>
-      canonicalMarkdown(markdown, options.notePath)
-    )
+    const restored = await restoreMarkdownSource(canonical, source, canonicalize)
     if (restored === source) {
       options.onSourceRestore?.('source')
       return restored
@@ -216,6 +228,23 @@ export async function yDocToMarkdown(
     if (restored !== canonical) {
       options.onSourceRestore?.('merged')
       return restored
+    }
+    const fromFile = await restoreFileSpelling(canonical, options.readFileBody, canonicalize)
+    if (fromFile?.outcome === 'file-unreadable') {
+      log.error('Source record not restorable and the file could not be read, keeping it', {
+        notePath: options.notePath,
+        error: fromFile.error
+      })
+      options.onSourceRestore?.('file-unreadable')
+      return null
+    }
+    if (fromFile) {
+      log.info('Source record not restorable, kept the spelling of the file', {
+        notePath: options.notePath,
+        outcome: fromFile.outcome
+      })
+      options.onSourceRestore?.(fromFile.outcome)
+      return fromFile.markdown
     }
     // A record was there and the merge could not be proven, or was not
     // available: the file gets house style. Expected now and then, but never
@@ -227,8 +256,43 @@ export async function yDocToMarkdown(
     })
     return report('house-style-fallback')
   } catch (err) {
-    log.error('Restoring the source spelling failed, writing house style', err)
-    return report('house-style-threw')
+    log.error('Restoring the source spelling failed, keeping the file', err)
+    options.onSourceRestore?.('restore-threw')
+    return null
+  }
+}
+
+/**
+ * The author's spelling restored from the note's file, for a doc whose record
+ * no longer describes it (#2615). The file is the copy the last write left, so
+ * an unchanged doc keeps it byte for byte and an edit lands in its spelling.
+ * Read at the layer the record holds, without writing tools markers or
+ * CriticMarkup, so markup the doc has dropped does not come back. Null when
+ * there is no file or its spelling cannot be kept either.
+ */
+async function restoreFileSpelling(
+  canonical: string,
+  readFileBody: (() => Promise<string | null>) | undefined,
+  canonicalize: (markdown: string) => Promise<string | null>
+): Promise<
+  | { outcome: 'file' | 'file-merged'; markdown: string }
+  | { outcome: 'file-unreadable'; error: unknown }
+  | null
+> {
+  if (!readFileBody) return null
+  try {
+    const body = await readFileBody()
+    if (body === null) return null
+    const decoded = decodeWritingMarkers(withLfLineEndings(body))
+    const file = withoutWritingSentinels(
+      parseCriticMarkup(decoded.text),
+      decoded.sentinels
+    ).plainText
+    const restored = await restoreMarkdownSource(canonical, file, canonicalize)
+    if (restored === canonical) return null
+    return { markdown: restored, outcome: restored === file ? 'file' : 'file-merged' }
+  } catch (error) {
+    return { outcome: 'file-unreadable', error }
   }
 }
 
@@ -485,6 +549,16 @@ export async function markdownToYFragment(
   return seedFragment(markdown, fragment, notePath, { recordSource: true, writing })
 }
 
+/**
+ * The parse reads a `\r` as a space, so a CRLF file seeded as it is puts a
+ * trailing space on every line of the doc. Every line then differs from the
+ * source, and the first edit writes the whole note in house style (#2615).
+ * The write-back puts the file's own line endings back (`serializeParsedNote`).
+ */
+function withLfLineEndings(markdown: string): string {
+  return markdown.replace(/\r\n?/g, '\n')
+}
+
 export interface PreparedFragmentSeed {
   blocks: Block[]
   marks: ReturnType<typeof parseCriticMarkup>['marks']
@@ -512,7 +586,7 @@ export async function prepareFragmentSeed(
   // Writing tools markers first, as sentinels that ride the parse into the
   // blocks (see sync/writing-markdown.ts). CriticMarkup offsets are then
   // moved off them, onto the text every CriticMarkup reader counts in.
-  const decoded = decodeWritingMarkers(markdown)
+  const decoded = decodeWritingMarkers(withLfLineEndings(markdown))
   const parsed = parseCriticMarkup(decoded.text)
   const critic = withoutWritingSentinels(parsed, decoded.sentinels)
   // Reference definitions ride beside the document in two Y.Arrays: the editor

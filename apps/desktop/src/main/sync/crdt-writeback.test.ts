@@ -154,6 +154,7 @@ import {
   recordNetworkUpdate,
   resetWritebackState,
   scheduleWriteback,
+  settleWriteback,
   wasRecentNetworkUpdate,
   writebackNow
 } from './crdt-writeback'
@@ -176,6 +177,7 @@ describe('crdt writeback', () => {
     // Module-level and keyed per note; the fixed fake clock means a second test
     // reusing a note id would otherwise land inside the first one's window.
     resetTelemetryThrottle()
+    resetWritebackState()
     mocks.sent = []
     mocks.yDocToMarkdown.mockResolvedValue('updated markdown')
     mocks.findUnrepresentableNodes.mockReturnValue([])
@@ -719,6 +721,80 @@ describe('crdt writeback', () => {
       'Write-back failed during shutdown flush',
       expect.objectContaining({ noteId: 'note-1' })
     )
+  })
+
+  it('settleWriteback runs an armed pass at once and leaves an unarmed note alone', async () => {
+    await settleWriteback('note-1')
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+
+    scheduleWriteback('note-1', makeDoc('Pending title'), 'local')
+    await settleWriteback('note-1')
+
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/Existing.md',
+      expect.stringContaining('updated markdown')
+    )
+    expect(hasPendingWriteback('note-1')).toBe(false)
+  })
+
+  it('settleWriteback reports a failed pass the way a timed pass does', async () => {
+    const failure = new Error('disk full')
+    mocks.atomicWrite.mockRejectedValueOnce(failure)
+    scheduleWriteback('note-1', makeDoc('Pending title'), 'local')
+
+    await expect(settleWriteback('note-1')).resolves.toBeUndefined()
+
+    expect(getWritebackDebugState('note-1')).toMatchObject({
+      pending: false,
+      lastError: 'disk full'
+    })
+    expect(mocks.trackMainError).toHaveBeenCalledWith('notes', 'note_writeback', failure)
+    expect(mocks.sent).toContainEqual({
+      channel: 'sync:write-back-failed',
+      payload: { noteId: 'note-1', title: 'Existing' }
+    })
+  })
+
+  it('tells the user once while passes keep failing, and again after one lands', async () => {
+    const failed = (): number =>
+      mocks.sent.filter((s) => s.channel === 'sync:write-back-failed').length
+    mocks.atomicWrite.mockRejectedValue(new Error('EBUSY: resource busy or locked'))
+
+    for (let i = 0; i < 3; i++) {
+      scheduleWriteback('note-1', makeDoc(`Typing ${i}`), 'local')
+      await settleWriteback('note-1')
+    }
+
+    expect(failed()).toBe(1)
+    expect(mocks.logger.error).toHaveBeenCalledTimes(1)
+
+    mocks.atomicWrite.mockResolvedValue(undefined)
+    scheduleWriteback('note-1', makeDoc('Typing 3'), 'local')
+    await settleWriteback('note-1')
+    expect(getWritebackDebugState('note-1')?.lastError).toBeNull()
+
+    mocks.atomicWrite.mockRejectedValue(new Error('EBUSY: resource busy or locked'))
+    scheduleWriteback('note-1', makeDoc('Typing 4'), 'local')
+    await settleWriteback('note-1')
+
+    expect(failed()).toBe(2)
+  })
+
+  it('names no title when the note row cannot be read for the failure notice', async () => {
+    mocks.atomicWrite.mockImplementationOnce(async () => {
+      mocks.getNoteCacheById.mockImplementation(() => {
+        throw new Error('index closed')
+      })
+      throw new Error('disk full')
+    })
+    scheduleWriteback('note-1', makeDoc('Pending title'), 'local')
+
+    await settleWriteback('note-1')
+
+    expect(mocks.sent).toContainEqual({
+      channel: 'sync:write-back-failed',
+      payload: { noteId: 'note-1' }
+    })
   })
 
   /**

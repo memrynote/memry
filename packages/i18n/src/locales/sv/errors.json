@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "Redigeringshistoriken sparas inte på den här enheten",
-    "persistenceDegradedBody": "Dina anteckningar är säkra – de finns i ditt valv som vanliga filer och öppnas och sparas som vanligt. Det är bara den här enhetens lokala redigeringshistorik och sammanslagningsstatus som hålls i minnet, så de börjar om från början varje gång memrynote öppnas."
+    "persistenceDegradedBody": "Dina anteckningar är säkra – de finns i ditt valv som vanliga filer och öppnas och sparas som vanligt. Det är bara den här enhetens lokala redigeringshistorik och sammanslagningsstatus som hålls i minnet, så de börjar om från början varje gång memrynote öppnas.",
+    "writebackFailedTitle": "En antecknings fil på disken kunde inte uppdateras",
+    "writebackFailedTitleNamed": "”{title}” kunde inte uppdateras på disken",
+    "writebackFailedBody": "Filen på disken lämnades oförändrad. Din ändring förblir öppen i memrynote så länge appen körs; memrynote försöker igen vid din nästa ändring."
   },
   "encryption": {
     "failed": "Det gick inte att kryptera data. Dina nycklar kan behöva genereras om.",

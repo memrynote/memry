@@ -725,6 +725,31 @@ document to its vault `.md` file and re-indexes it for search.
   without this the emptied file would be written and replicated. The pass keeps the file
   instead, and reports it the way it reports a failed conversion.
 
+- **The author's spelling outlives a stale record.** A doc seeded from a file spelled
+  differently keeps that source in `markdownSource`, and the pass restores the author's
+  spelling from it for every region the doc has not changed (#1915). The record is replaced
+  only when a markdown body is fed in, so it can describe an older body than the doc holds,
+  and then the restore cannot be proven. Before writing house style, the pass restores from
+  the note's file instead, read without CriticMarkup and writing tools markers (#2615). A doc
+  that says what the file says leaves the file as it is, and an edit lands in the file's
+  spelling. `yDocToMarkdown` reports these as `file` and `file-merged`. A restore that throws
+  (`restore-threw`) and a file that cannot be read or parsed (`file-unreadable`) resolve the
+  conversion to null. The pass keeps the file as it is and fails the way a failed read does,
+  with `sync:write-back-failed` and a `note_writeback` error, so the next update retries.
+  The renderer turns `sync:write-back-failed` into a warning toast that names the note and
+  says the file was left unchanged and the edit stays open in the app while it runs.
+  Main sends it once per run of failed passes for a note, and a pass that lands ends the
+  run, so a fault that repeats on every keystroke shows one notice, not one per pass.
+  House style is written only when the file was read and cannot be restored either.
+  The merge aligns lines on a key that erases each spelling. A rule or a setext underline
+  erases to nothing, the key of a blank line, so it keeps a key of its own. Paired with a
+  blank line, the underline of an untouched setext heading joined the heading to the region
+  of an edit in the next paragraph, and the heading came back as an ATX heading.
+  Every markdown body is given LF line endings before the parse (`prepareFragmentSeed`, and
+  the file restore), because the parse reads a `\r` as a space. Seeded as it was, a CRLF note
+  had a trailing space on every line of the doc, so its first edit wrote the whole note in
+  house style. The pass puts the file's own line endings back when it writes.
+
 - **A doc with no note row is never turned into a note** — the pass skips it. A body that
   arrives before its record may belong to a note this device has not seen yet, or to one
   whose tombstone it has not pulled, and the two look the same from the doc. The record is
