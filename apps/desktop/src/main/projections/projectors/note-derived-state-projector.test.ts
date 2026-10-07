@@ -7,9 +7,14 @@ import { noteCache, noteLinks } from '@memry/db-schema/schema/notes-cache'
 import { createTestIndexDb, sql, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const getIndexDatabase = vi.hoisted(() => vi.fn())
+const broadcastToAllWindows = vi.hoisted(() => vi.fn())
 
 vi.mock('../../database', () => ({
   getIndexDatabase
+}))
+
+vi.mock('../../lib/window-broadcast', () => ({
+  broadcastToAllWindows
 }))
 
 import { createNoteDerivedStateProjector } from './note-derived-state-projector'
@@ -339,6 +344,39 @@ describe('note derived state projector', () => {
     indexDb.db.run(sql`DELETE FROM extracted_text WHERE note_id = 'source-note'`)
     await projector.project({ type: 'note.text-extracted', noteId: 'source-note' })
     expect(outboundLinks('source-note')).toEqual([{ targetId: null, targetTitle: 'Plan' }])
+  })
+
+  it('project tells open notes their links changed when HTML block links are added or removed', async () => {
+    const relativePath = 'notes/source.md'
+    fs.mkdirSync(path.join(vaultDir, 'notes'), { recursive: true })
+    fs.writeFileSync(path.join(vaultDir, relativePath), '---\ntitle: Source\n---\nSee [[Plan]]\n')
+    seedCachedNote('source-note', relativePath)
+    seedCachedNote('harbor-note', 'notes/harbor.md')
+    indexDb.db.run(sql`UPDATE note_cache SET title = 'Harbor Log' WHERE id = 'harbor-note'`)
+    const projector = createNoteDerivedStateProjector(() => vaultDir)
+    await projector.project(upsertMarkdown('source-note', relativePath, ['Plan']))
+    broadcastToAllWindows.mockClear()
+
+    const updatedIds = () =>
+      broadcastToAllWindows.mock.calls
+        .filter(([channel]) => channel === 'notes:updated')
+        .map(([, event]) => {
+          expect(event).toEqual({ id: expect.any(String), changes: {}, source: 'internal' })
+          return (event as { id: string }).id
+        })
+        .sort()
+
+    seedExtractedText('source-note', 'chart.html', 'html', 'Tide table for [[Harbor Log]]')
+    await projector.project({ type: 'note.text-extracted', noteId: 'source-note' })
+    expect(updatedIds()).toEqual(['harbor-note', 'source-note'])
+
+    broadcastToAllWindows.mockClear()
+    await projector.project({ type: 'note.text-extracted', noteId: 'source-note' })
+    expect(updatedIds()).toEqual([])
+
+    indexDb.db.run(sql`DELETE FROM extracted_text WHERE note_id = 'source-note'`)
+    await projector.project({ type: 'note.text-extracted', noteId: 'source-note' })
+    expect(updatedIds()).toEqual(['harbor-note', 'source-note'])
   })
 
   it('project keeps outbound links when the note file cannot be read after its HTML text changes', async () => {

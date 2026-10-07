@@ -62,6 +62,13 @@ const RETRY_FAILED_AFTER_MS = 24 * 60 * 60 * 1000
 const ATTACHMENTS_DIR = 'attachments'
 /** The HTML block's file types (ALLOWED_HTML_EXTENSIONS in vault/attachments.ts). */
 const HTML_EXTENSIONS = ['html', 'htm']
+/**
+ * The largest HTML block file parsed for text. The parse runs on the main
+ * process and costs about 100x the file in memory, so a larger file is marked
+ * unreadable instead. 4x the agent tool's 512K-character cap
+ * (HTML_ARTIFACT_MAX_CHARS) so every block an agent can write fits.
+ */
+export const HTML_TEXT_MAX_BYTES = 2 * 1024 * 1024
 
 export interface FileTextDeps {
   vaultPath: string

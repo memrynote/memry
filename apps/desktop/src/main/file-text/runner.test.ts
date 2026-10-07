@@ -12,7 +12,7 @@ import {
 } from '../database/queries/extracted-text'
 import type { OcrImageSource } from './ocr-protocol'
 import type { PdfDocument } from './pdf-host'
-import { FileTextRunner, type FileTextDeps } from './runner'
+import { FileTextRunner, HTML_TEXT_MAX_BYTES, type FileTextDeps } from './runner'
 
 /** One fake PDF page: a text layer, or what OCR reads off the rendered page. */
 type FakePage = { layer: string } | { scanned: string } | { fails: true } | { hangs: true }
@@ -494,6 +494,49 @@ describe('FileTextRunner', () => {
     fs.utimesSync(path.join(attachments, 'chart.html'), new Date(), new Date(Date.now() + 5_000))
     runner.noteChanged('md-1')
     await vi.waitFor(() => expect(getExtractedText(harness.db, 'md-1')).toBe('Neap tides'))
+  })
+
+  it('never parses an HTML block file over the size cap, now or on a later retry', async () => {
+    const attachments = path.join(vaultDir, 'attachments', 'md-1')
+    fs.mkdirSync(attachments, { recursive: true })
+    const htmlPath = path.join(attachments, 'huge.html')
+    fs.writeFileSync(htmlPath, '<p>Oversized words</p>')
+    // Sparse: the size is past the cap without writing the bytes.
+    fs.truncateSync(htmlPath, HTML_TEXT_MAX_BYTES + 1)
+    const notePath = path.join(vaultDir, 'plan.md')
+    fs.writeFileSync(
+      notePath,
+      '<!-- file:{"url":"../attachments/md-1/huge.html","mimeType":"text/html"} -->\n'
+    )
+    harness.db.run(sql`
+      INSERT INTO note_cache (id, path, title, created_at, modified_at)
+      VALUES ('md-1', 'plan.md', 'Plan', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+    `)
+    const htmlJob = () => getFileTextJob(harness.db, { noteId: 'md-1', source: 'huge.html' })
+
+    const first = start()
+    await vi.waitFor(() => expect(htmlJob()?.status).toBe('failed'))
+    expect(htmlJob()?.error).toMatch(/too large/i)
+    expect(
+      harness.db.all(
+        sql`SELECT source, part, method, text FROM extracted_text WHERE note_id = 'md-1'`
+      )
+    ).toEqual([{ source: 'huge.html', part: 1, method: 'unreadable', text: '' }])
+    const failedAt = htmlJob()?.updatedAt
+    await first.stop()
+
+    // A new app version retries failed jobs; an oversized HTML file is not one of them.
+    fs.writeFileSync(path.join(attachments, 'shot.png'), 'png bytes')
+    fs.appendFileSync(notePath, '![](attachments/md-1/shot.png)\n')
+    harness.imageText = 'Pasted screenshot text'
+    start({ appVersion: '2.0.0' })
+    await vi.waitFor(() =>
+      expect(getFileTextJob(harness.db, { noteId: 'md-1', source: 'shot.png' })?.status).toBe(
+        'done'
+      )
+    )
+    expect(htmlJob()?.status).toBe('failed')
+    expect(htmlJob()?.updatedAt).toBe(failedAt)
   })
 
   it('compares the files of more changed notes than SQLite binds in one statement', async () => {
