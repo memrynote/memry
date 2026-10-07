@@ -20,6 +20,7 @@ import { LinkMention } from './link-mention'
 import { DateMention } from './date-mention'
 import { InlineImage } from './inline-image'
 import { InlineCheckbox } from './inline-checkbox'
+import { HtmlComment } from './html-comment'
 
 // Built through the shared factory so the main process gets a schema with the
 // same node types. Main converts the shared Y.Doc through y-prosemirror, which
@@ -83,7 +84,10 @@ export const editorSchema = createMemrySchema({
     // A tickable checkbox inside a table cell — `checkListItem` is a block and
     // a cell holds inline content only. Same node as main's; only the click
     // handler that flips it is added here.
-    inlineCheckbox: InlineCheckbox
+    inlineCheckbox: InlineCheckbox,
+    // An HTML comment kept in the note (AF-015). Same node as main's; only the
+    // marker shown in its place is added here.
+    htmlComment: HtmlComment
   }
 })
 

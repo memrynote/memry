@@ -115,7 +115,7 @@ Red text on a gray background.
 2. Second (2)
 3. Third (3)
 
-A paragraph in between: numbering must restart below.
+A paragraph in between: numbering must restart below. <!-- a hidden comment [[Inbox]] -->
 
 1. Restarted (1)
 2. Restarted (2)

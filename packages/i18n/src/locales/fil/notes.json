@@ -158,7 +158,8 @@
       "richTextAria": "Editor ng rich text",
       "headingPlaceholder": "Heading",
       "listPlaceholder": "Item sa listahan",
-      "todoPlaceholder": "Gagawin"
+      "todoPlaceholder": "Gagawin",
+      "htmlComment": "Nakatagong HTML comment"
     },
     "table": {
       "keyboardMenuAria": "Mga aksyon sa table para sa row {row}, column {column}",

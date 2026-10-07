@@ -31,7 +31,8 @@ const INLINE_SYNTAX: Record<string, RegExp> = {
   dateMention: /\(\(date:[A-Za-z0-9,;]+\)\)/,
   linkMention: /\(\(mention:[^)]+\)\)/,
   inlineCheckbox: /\| \[[ x]\] /,
-  inlineImage: /\| !\[[^\]]*\]\([^)]+\) \|/
+  inlineImage: /\| !\[[^\]]*\]\([^)]+\) \|/,
+  htmlComment: /<!-- [^>]*\[\[[^\]]+\]\] -->/
 }
 
 interface AnyBlock {

@@ -1,3 +1,5 @@
+import { decodeHtmlCommentTokens } from './html-comments.ts'
+
 export type MarkdownSegment =
   { type: 'content'; text: string } | { type: 'gap'; extraLines: number }
 
@@ -450,6 +452,7 @@ export function hasHardBreakToken(text: string): boolean {
  * Without this, editing one line of a note rewrites every unrelated list line
  * and sprays blank lines / backslashes through the file. Code fences are left
  * byte-for-byte untouched (a `* ` or trailing `\` inside code is real content).
+ * HTML comment tokens become their comments again (AF-015).
  */
 export function normalizeSerializedMarkdown(markdown: string): string {
   if (!markdown) return markdown
@@ -459,7 +462,9 @@ export function normalizeSerializedMarkdown(markdown: string): string {
   for (const region of regions) {
     out += region.isCode ? region.text : normalizeProseMarkdown(region.text)
   }
-  return out
+  // Last, so nothing above reads the inside of a comment: a fence, a blank
+  // line or a trailing backslash in one is the author's, not the serializer's.
+  return decodeHtmlCommentTokens(out)
 }
 
 // Every break inside a paragraph reaches the serializer as remark's backslash
@@ -683,7 +688,7 @@ function relayTable(rows: string[]): string[] {
       // The separator sets no width of its own — it is padded to whatever the
       // content columns need.
       if (index === 1) continue
-      width = Math.max(width, (row[column] ?? '').length)
+      width = Math.max(width, cellWidth(row[column] ?? ''))
     }
     // No floor beyond one dash: a one-character column is written `| d |`
     // with a `| - |` separator, which is what the old serializer wrote and
@@ -694,8 +699,21 @@ function relayTable(rows: string[]): string[] {
   return grid.map((row, index) =>
     index === 1
       ? `| ${widths.map((width, column) => separatorCell(row[column] ?? '-', width)).join(' | ')} |`
-      : `| ${widths.map((width, column) => (row[column] ?? '').padEnd(width)).join(' | ')} |`
+      : `| ${widths.map((width, column) => padCell(row[column] ?? '', width)).join(' | ')} |`
   )
+}
+
+/**
+ * A cell's width as the file will hold it. An HTML comment is still its token
+ * here and is decoded last (`normalizeSerializedMarkdown`), so the comment's
+ * own length is what lays the column out, not the token's (AF-015).
+ */
+function cellWidth(cell: string): number {
+  return decodeHtmlCommentTokens(cell).length
+}
+
+function padCell(cell: string, width: number): string {
+  return cell.padEnd(width + cell.length - cellWidth(cell))
 }
 
 /** A separator cell widened to the column, keeping whichever colons it had. */

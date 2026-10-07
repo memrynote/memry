@@ -1,4 +1,5 @@
 import { splitFrontmatterBlock } from '@memry/shared/frontmatter-split'
+import { decodeHtmlCommentTokens } from '@memry/shared/html-comments'
 import type { MarkdownExportResult, MarkdownSeedResult } from '@memry/contracts/webview-bridge'
 
 /**
@@ -54,7 +55,9 @@ export interface MarkdownEditorSurface {
 /** The mounted document, re-serialized through the schema. */
 export function exportMarkdown(editor: MarkdownEditorSurface): MarkdownExportResult {
   try {
-    return { status: 'ok', markdown: editor.blocksToMarkdownLossy() }
+    // An HTML comment serializes as its token; the bytes come back here, as
+    // they do in the desktop serializers (AF-015).
+    return { status: 'ok', markdown: decodeHtmlCommentTokens(editor.blocksToMarkdownLossy()) }
   } catch (error) {
     return { status: 'error', detail: describe(error) }
   }

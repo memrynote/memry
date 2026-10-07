@@ -158,7 +158,8 @@
       "richTextAria": "Formázottszöveg-szerkesztő",
       "headingPlaceholder": "Címsor",
       "listPlaceholder": "Listaelem",
-      "todoPlaceholder": "Teendő"
+      "todoPlaceholder": "Teendő",
+      "htmlComment": "Rejtett HTML-megjegyzés"
     },
     "table": {
       "keyboardMenuAria": "Táblázatműveletek, sor: {row}, oszlop: {column}",

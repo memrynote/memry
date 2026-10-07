@@ -158,7 +158,8 @@
       "richTextAria": "ตัวแก้ไขข้อความรูปแบบสมบูรณ์",
       "headingPlaceholder": "หัวเรื่อง",
       "listPlaceholder": "รายการ",
-      "todoPlaceholder": "รายการสิ่งที่ต้องทำ"
+      "todoPlaceholder": "รายการสิ่งที่ต้องทำ",
+      "htmlComment": "ความคิดเห็น HTML ที่ซ่อนอยู่"
     },
     "table": {
       "keyboardMenuAria": "การดำเนินการกับตารางสำหรับแถว {row} คอลัมน์ {column}",

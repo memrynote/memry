@@ -5,6 +5,8 @@ import {
   createInlineCheckboxContent,
   createInlineCheckboxDOM,
   createInlineCheckboxSpec,
+  createHtmlCommentMarkerDOM,
+  createHtmlCommentSpec,
   createInlineImageSpec,
   createLinkMentionSpec,
   toChecked,
@@ -161,6 +163,12 @@ export function createTouchInlineSpecs(): MemryInlineSpecs {
         }
       }
     }),
+
+    // An HTML comment kept in the note (AF-015). A marker only; the bytes are
+    // written by the shared `toExternalHTML`.
+    htmlComment: createHtmlCommentSpec(() => ({
+      dom: createHtmlCommentMarkerDOM('HTML comment')
+    })),
 
     linkMention: createLinkMentionSpec((inlineContent) => {
       const { url, domain, title, favicon, siteName } = inlineContent.props

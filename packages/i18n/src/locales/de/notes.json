@@ -158,7 +158,8 @@
       "richTextAria": "Rich-Text-Editor",
       "headingPlaceholder": "Überschrift",
       "listPlaceholder": "Listenelement",
-      "todoPlaceholder": "To-do"
+      "todoPlaceholder": "To-do",
+      "htmlComment": "Versteckter HTML-Kommentar"
     },
     "table": {
       "keyboardMenuAria": "Tabellenaktionen für Zeile {row}, Spalte {column}",

@@ -158,7 +158,8 @@
       "richTextAria": "עורך טקסט עשיר",
       "headingPlaceholder": "כותרת",
       "listPlaceholder": "פריט רשימה",
-      "todoPlaceholder": "פריט לביצוע"
+      "todoPlaceholder": "פריט לביצוע",
+      "htmlComment": "הערת HTML מוסתרת"
     },
     "table": {
       "keyboardMenuAria": "פעולות טבלה לשורה {row}, עמודה {column}",

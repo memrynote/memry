@@ -158,7 +158,8 @@
       "richTextAria": "Редактор форматованого тексту",
       "headingPlaceholder": "Заголовок",
       "listPlaceholder": "Елемент списку",
-      "todoPlaceholder": "Пункт списку справ"
+      "todoPlaceholder": "Пункт списку справ",
+      "htmlComment": "Прихований HTML-коментар"
     },
     "table": {
       "keyboardMenuAria": "Дії з таблицею для рядка {row}, стовпця {column}",

@@ -158,7 +158,8 @@
       "richTextAria": "富文字編輯器",
       "headingPlaceholder": "標題",
       "listPlaceholder": "清單項目",
-      "todoPlaceholder": "待辦事項"
+      "todoPlaceholder": "待辦事項",
+      "htmlComment": "隱藏的 HTML 註解"
     },
     "table": {
       "keyboardMenuAria": "第 {row} 列、第 {column} 欄的表格動作",

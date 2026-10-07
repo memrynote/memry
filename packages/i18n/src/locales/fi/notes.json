@@ -158,7 +158,8 @@
       "richTextAria": "Rikastekstieditori",
       "headingPlaceholder": "Otsikko",
       "listPlaceholder": "Luettelokohde",
-      "todoPlaceholder": "Tehtävä"
+      "todoPlaceholder": "Tehtävä",
+      "htmlComment": "Piilotettu HTML-kommentti"
     },
     "table": {
       "keyboardMenuAria": "Taulukon toiminnot: rivi {row}, sarake {column}",

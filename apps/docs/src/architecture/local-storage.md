@@ -408,6 +408,12 @@ Editor colors persist in two Obsidian-compatible forms:
 
 The pipeline is wired into both duplicated serializers: the renderer save path (`markdown-utils.ts`) and the main/CRDT path (`blocknote-converter.ts`).
 
+### HTML comments in markdown
+
+An author's `<!-- … -->` comment is kept in the document as an inline `htmlComment` node whose `source` prop holds the comment byte for byte (`packages/editor-schema/src/inline/html-comment.ts`). The editor shows a small muted marker in its place, never the text. A comment on its own line is a paragraph holding only the node; one inside or glued to a line of text stays in that paragraph, so an edit beside it changes only the edited line.
+
+Both parse paths mask each comment into one `MEMRYCMT<hex>X` token before anything splits the note into lines (`maskHtmlComments`, `packages/shared/src/html-comments.ts`), so a multi-line comment holding blank lines, a heading or a fence stays one comment. The serializer writes the node as the same token, and `normalizeSerializedMarkdown` turns it back into the comment last. Comments inside fenced code or code spans stay code. Memry's own marker comments (block colors and alignment, table layout, file and nesting markers, writing tools markers) keep their own readers. A build that predates the node finds it unrepresentable and keeps the note's file unchanged.
+
 ### Layout markers in markdown
 
 A block's text alignment has no markdown syntax either, so it travels the same way the block colour marker does: a comment line immediately above the block it describes.

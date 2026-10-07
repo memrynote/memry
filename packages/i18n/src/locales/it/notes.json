@@ -158,7 +158,8 @@
       "richTextAria": "Editor di testo formattato",
       "headingPlaceholder": "Titolo",
       "listPlaceholder": "Elemento dell'elenco",
-      "todoPlaceholder": "Cosa da fare"
+      "todoPlaceholder": "Cosa da fare",
+      "htmlComment": "Commento HTML nascosto"
     },
     "table": {
       "keyboardMenuAria": "Azioni della tabella per la riga {row}, colonna {column}",

@@ -158,7 +158,8 @@
       "richTextAria": "Trình soạn thảo văn bản có định dạng",
       "headingPlaceholder": "Tiêu đề",
       "listPlaceholder": "Mục danh sách",
-      "todoPlaceholder": "Việc cần làm"
+      "todoPlaceholder": "Việc cần làm",
+      "htmlComment": "Bình luận HTML ẩn"
     },
     "table": {
       "keyboardMenuAria": "Thao tác bảng cho hàng {row}, cột {column}",

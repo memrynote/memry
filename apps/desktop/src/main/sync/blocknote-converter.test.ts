@@ -1200,6 +1200,11 @@ const INLINE_CASES = [
     // which is what `toChecked` exists to stop, and what this case measures.
     attrs: { checked: 'true' },
     text: '[x]'
+  },
+  {
+    nodeName: 'htmlComment',
+    attrs: { source: '<!-- hidden [[Roadmap]] -->' },
+    text: '<!-- hidden [[Roadmap]] -->'
   }
 ] as const
 
@@ -1635,7 +1640,9 @@ const INLINE_TEXT_FORMS: Record<(typeof MEMRY_INLINE_CONTENT_TYPES)[number], str
   // in a table cell is not a checkbox to any markdown parser — which is exactly
   // why the node can use it: nothing else claims it, and every other tool keeps
   // it verbatim.
-  inlineCheckbox: '[ ]'
+  inlineCheckbox: '[ ]',
+  // A comment holding a wiki link, the way notes hide links (AF-015).
+  htmlComment: '<!-- hidden [[Roadmap]] -->'
 }
 
 /** The block shapes a marker's own text can be sitting inside of. */
@@ -3780,9 +3787,9 @@ describe('text alignment survives the markdown round trip (#1937)', () => {
   })
 
   it.each(['<!-- align:left -->\nText', '<!-- todo -->\nText'])(
-    'leaves %j on the unrecognised-comment path, which drops it',
+    'keeps %j as an HTML comment, not as an alignment',
     async (md) => {
-      expect(await crdtRoundTrip(md)).toBe('Text')
+      expect(await crdtRoundTrip(md)).toBe(md)
     }
   )
 })

@@ -31,6 +31,7 @@ enum BlockText {
     /// BlockNote's inline nodes, which the core carries as elements.
     static let nodeKinds: Set<String> = [
         "wikiLink", "hashTag", "dateMention", "linkMention", "inlineImage", "inlineCheckbox",
+        "htmlComment",
     ]
 
     static func isNode(_ run: InlineRun) -> Bool {

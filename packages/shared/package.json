@@ -23,6 +23,7 @@
     "./link-references": "./src/link-references.ts",
     "./markdown-fences": "./src/markdown-fences.ts",
     "./markdown-code": "./src/markdown-code.ts",
+    "./html-comments": "./src/html-comments.ts",
     "./wiki-target": "./src/wiki-target.ts",
     "./rewrite-wiki-links": "./src/rewrite-wiki-links.ts",
     "./markdown-headings": "./src/markdown-headings.ts",

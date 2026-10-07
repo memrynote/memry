@@ -54,7 +54,7 @@ describe('FR-040 registry parity', () => {
     })
   }
 
-  it('the registry totals 38 types, as FR-040 states', () => {
-    expect(actual.blocks.length + actual.inline.length + actual.styles.length).toBe(38)
+  it('the registry totals 39 types, as FR-040 states', () => {
+    expect(actual.blocks.length + actual.inline.length + actual.styles.length).toBe(39)
   })
 })

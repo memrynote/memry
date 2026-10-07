@@ -1,5 +1,6 @@
 import { type Block } from '@blocknote/core'
 import { describe, expect, it, vi } from 'vitest'
+import { encodeHtmlCommentToken } from '@memry/shared/html-comments'
 import {
   isEmptyParagraph,
   parseMarkdownPreservingBlanks,
@@ -1208,13 +1209,15 @@ describe('text alignment markers (#1937)', () => {
   })
 
   it.each(['<!-- align:left -->', '<!-- todo -->'])(
-    'hands %j to the markdown parser untouched',
+    'hands %j to the markdown parser as an HTML comment, not an alignment',
     async (comment) => {
       const editor = parseEditor()
 
       await parseMarkdownPreservingBlanks(editor, `${comment}\nText`)
 
-      expect(editor.tryParseMarkdownToBlocks).toHaveBeenCalledWith(`${comment}\nText`)
+      expect(editor.tryParseMarkdownToBlocks).toHaveBeenCalledWith(
+        `${encodeHtmlCommentToken(comment)}\nText`
+      )
     }
   )
 })

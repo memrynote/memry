@@ -37,6 +37,7 @@ import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { withPlainCheckboxMarkers } from '@memry/shared/plain-checkbox'
 import { splitMarkdownByBlockquoteRuns, serializeCalloutBlock } from './callout-block'
 import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdown'
+import { maskHtmlComments } from '@memry/shared/html-comments'
 import {
   parseWhiteboardLine,
   parseYoutubeEmbedLine,
@@ -337,7 +338,10 @@ export async function parseMarkdownPreservingBlanks(
   markdown: string,
   notePath?: string
 ): Promise<Block[]> {
-  const withEmbeds = await resolveWikiImageEmbeds(markdown, notePath)
+  // HTML comments come off first, as one token each, so no line splitter below
+  // reads the inside of a multi-line comment. Twin of main's `markdownToBlocks`
+  // (AF-015).
+  const withEmbeds = await resolveWikiImageEmbeds(maskHtmlComments(markdown), notePath)
   // Inline color spans are masked into markdown-inert tokens before parsing
   // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
   const { text: maskedMarkdown, spans } = maskInlineColorSpans(withEmbeds)

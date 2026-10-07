@@ -158,7 +158,8 @@
       "richTextAria": "Uređivač obogaćenog teksta",
       "headingPlaceholder": "Naslov",
       "listPlaceholder": "Stavka popisa",
-      "todoPlaceholder": "Stavka popisa zadataka"
+      "todoPlaceholder": "Stavka popisa zadataka",
+      "htmlComment": "Skriveni HTML komentar"
     },
     "table": {
       "keyboardMenuAria": "Radnje tablice za redak {row}, stupac {column}",

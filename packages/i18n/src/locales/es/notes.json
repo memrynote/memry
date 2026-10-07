@@ -158,7 +158,8 @@
       "richTextAria": "Editor de texto enriquecido",
       "headingPlaceholder": "Encabezado",
       "listPlaceholder": "Elemento de lista",
-      "todoPlaceholder": "Tarea pendiente"
+      "todoPlaceholder": "Tarea pendiente",
+      "htmlComment": "Comentario HTML oculto"
     },
     "table": {
       "keyboardMenuAria": "Acciones de tabla para la fila {row}, columna {column}",

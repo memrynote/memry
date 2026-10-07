@@ -158,7 +158,8 @@
       "richTextAria": "Redigerare för formaterad text",
       "headingPlaceholder": "Rubrik",
       "listPlaceholder": "Punkt i lista",
-      "todoPlaceholder": "Att göra-punkt"
+      "todoPlaceholder": "Att göra-punkt",
+      "htmlComment": "Dold HTML-kommentar"
     },
     "table": {
       "keyboardMenuAria": "Tabellåtgärder för rad {row}, kolumn {column}",

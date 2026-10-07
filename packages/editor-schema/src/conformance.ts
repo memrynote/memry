@@ -749,6 +749,31 @@ const inlineImageCases: RoundtripCase[] = [
   }
 ]
 
+/**
+ * HTML comments (AF-015): an `htmlComment` node holds each one, so the bytes
+ * come back in house style too, wherever the comment sat.
+ */
+const htmlCommentCases: RoundtripCase[] = [
+  { name: 'comment on a line of its own', markdown: '<!-- hidden [[Alpha]] -->\n\nText' },
+  {
+    name: 'comment directly above a heading',
+    markdown: '<!-- hidden [[Alpha]] -->\n# Heading',
+    canonical: '<!-- hidden [[Alpha]] -->\n\n# Heading'
+  },
+  { name: 'comment glued under a line', markdown: 'Line to edit.\n<!-- under it [[Gamma]] -->' },
+  { name: 'comment inside a line', markdown: 'Before <!-- inline [[Delta]] --> after' },
+  {
+    name: 'multi-line comment holding a blank line, a heading and a fence',
+    markdown: '<!--\nDraft [[Epsilon]]\n\n## Inside\n\n```js\nconst x = 1\n```\n-->\n\nText'
+  },
+  { name: 'comment in a list item', markdown: '- item <!-- li -->\n- two' },
+  {
+    name: 'comment in a table cell',
+    markdown: '| a             | b |\n| ------------- | - |\n| 1 <!-- td --> | 2 |'
+  },
+  { name: 'comment in a code span stays code', markdown: 'Use `<!-- x -->` here.' }
+]
+
 const columnSettings = (...lines: string[]): string =>
   ['```column-settings', ...lines, '```'].join('\n')
 
@@ -809,7 +834,8 @@ export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...viewBlockCases,
   ...foreignSpellingCases,
   ...inlineImageCases,
-  ...columnCases
+  ...columnCases,
+  ...htmlCommentCases
 ]
 
 // ---------------------------------------------------------------------------
@@ -1331,6 +1357,20 @@ export const NOTE_BLOCK_CASES: readonly NoteBlockCase[] = [
             }
           ]
         }
+      }
+    ]
+  },
+  {
+    name: 'inline: htmlComment beside text',
+    pins: 'an HTML comment is a node holding its own bytes in `source`, never text (AF-015)',
+    blocks: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'Before ', styles: {} },
+          { type: 'htmlComment', props: { source: '<!-- hidden [[Alpha]] -->' } },
+          { type: 'text', text: ' after', styles: {} }
+        ]
       }
     ]
   },
