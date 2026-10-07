@@ -93,7 +93,8 @@ describe('EmbeddedNoteEditor', () => {
     mocks.isNoteLocked = true
     render(<EmbeddedNoteEditor noteId="n1" />)
     expect(screen.getByTestId('content-area')).toHaveAttribute('data-editable', 'false')
-    expect(screen.getByTestId('note-locked-indicator')).toBeInTheDocument()
+    // Outside the scroller: a small card scrolls its body, the notice stays in view.
+    expect(screen.getByTestId('note-locked-indicator').closest('.overflow-auto')).toBeNull()
   })
 
   it('keeps an unlocked note editable with no lock notice', () => {
