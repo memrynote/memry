@@ -26,6 +26,7 @@ Everything that would change a locked note is refused:
 
 - typing in the editor, applying a template, restoring an older version,
 - turning **Set local only** or **Disable local only** on the note,
+- adding, renaming, or deleting its attachments, including setting a cover image,
 - renaming, moving, or deleting it, or the folder it sits in,
 - creating, renaming, or deleting anything inside a locked folder, including importing files
   into it or filing an inbox item into it or onto a locked note,
