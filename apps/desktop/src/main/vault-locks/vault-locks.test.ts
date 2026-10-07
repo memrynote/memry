@@ -54,6 +54,7 @@ import {
   afterLockedFileWriteSync,
   beforeVaultFileWrite,
   installVaultLockFileGuard,
+  setFileReadOnly,
   setFileReadOnlySync,
   settleRemoteNoteFileSync,
   unprotectForRemoteWriteSync
@@ -387,5 +388,53 @@ describe('vault read-only locks (#2606)', () => {
 
     expect(isWritable(moved)).toBe(true)
     expect(getBaseline(asClientDb(data.db), 'note-a')).toBeUndefined()
+  })
+})
+
+/**
+ * Windows has one read-only attribute and no permission bits. Node's chmod sets
+ * that attribute when the mode has no write bit and clears it when the owner
+ * write bit is set, and stat reports 0o444 or 0o666 back. These pin the modes
+ * the lock asks for, whatever platform runs the test.
+ */
+describe('read-only attribute modes (#2606)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  function stubFileMode(mode: number): ReturnType<typeof vi.fn> {
+    vi.spyOn(fs.promises, 'stat').mockResolvedValue({ mode } as fs.Stats)
+    vi.spyOn(fs, 'statSync').mockReturnValue({ mode } as fs.Stats)
+    const chmods = vi.fn()
+    vi.spyOn(fs.promises, 'chmod').mockImplementation(async (_file, next) => chmods(next))
+    vi.spyOn(fs, 'chmodSync').mockImplementation((_file, next) => chmods(next))
+    return chmods
+  }
+
+  it('locking drops every write bit, so Windows sets the read-only attribute', async () => {
+    const chmods = stubFileMode(0o100666)
+
+    await setFileReadOnly('/vault/a.md', true)
+    setFileReadOnlySync('/vault/a.md', true)
+
+    expect(chmods.mock.calls).toEqual([[0o444], [0o444]])
+  })
+
+  it('unlocking sets the owner write bit, so Windows clears the read-only attribute', async () => {
+    const chmods = stubFileMode(0o100444)
+
+    await setFileReadOnly('/vault/a.md', false)
+    setFileReadOnlySync('/vault/a.md', false)
+
+    expect(chmods.mock.calls).toEqual([[0o644], [0o644]])
+  })
+
+  it('leaves a file alone when it already has the wanted attribute', async () => {
+    const chmods = stubFileMode(0o100444)
+
+    await setFileReadOnly('/vault/a.md', true)
+    setFileReadOnlySync('/vault/a.md', true)
+
+    expect(chmods).not.toHaveBeenCalled()
   })
 })
