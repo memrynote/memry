@@ -110,6 +110,14 @@ The popup offers four ways to grab a page:
 Article and Selection land as text; Screenshot lands as an image attachment; PDF lands as a PDF file
 you can open in memrynote's built-in viewer and file into a folder like any other attachment.
 
+### Tags
+
+While memrynote is open with a vault, the tag field suggests the vault's existing tags as you type,
+most used first. Pick one with the arrow keys and Enter, or click it. Pressing Enter without picking a
+suggestion adds what you typed as a new tag. When memrynote or the vault is closed, the field works
+without suggestions. The tag list is held only while the popup is open and is never stored in the
+browser.
+
 ### Clipping PDFs
 
 When you open a PDF, the browser renders it with its own viewer, which extensions cannot read text
