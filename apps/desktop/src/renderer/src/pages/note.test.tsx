@@ -739,14 +739,21 @@ vi.mock('@/components/ui/picker', () => ({
         label,
         value,
         icon,
-        trailing
+        trailing,
+        disabled
       }: {
         label: string
         value: string
         icon?: React.ReactNode
         trailing?: React.ReactNode
+        disabled?: boolean
       }) => (
-        <button type="button" data-value={value} onClick={() => mocks.pickerOnValueChange?.(value)}>
+        <button
+          type="button"
+          data-value={value}
+          disabled={disabled}
+          onClick={() => mocks.pickerOnValueChange?.(value)}
+        >
           {icon}
           {label}
           {trailing}
@@ -1521,6 +1528,15 @@ describe('NotePage', () => {
 
       expect(await screen.findByTestId('info-section')).toHaveAttribute('data-disabled', 'true')
       expect(screen.getByTestId('note-suggested-tags')).toHaveAttribute('data-disabled', 'true')
+    })
+
+    it('disables the local-only toggle on a locked note', async () => {
+      mocks.isNoteLocked = true
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      expect(
+        await screen.findByRole('button', { name: 'editor.toolbar.setLocalOnly' })
+      ).toBeDisabled()
     })
 
     it('leaves both enabled on an unlocked note', async () => {

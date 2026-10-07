@@ -28,6 +28,12 @@ vi.mock('./runtime-effects', () => ({
 
 vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn() }))
 
+vi.mock('../vault-locks/registry', () => ({
+  assertNoteWritable: vi.fn((noteId: string) => {
+    if (noteId === 'locked-note') throw new Error('The owner made this note read-only.')
+  })
+}))
+
 import {
   createNoteCommand,
   updateNoteCommand,
@@ -92,6 +98,16 @@ describe('notes domain adapter', () => {
     expect(runtimeEffects.setNoteLocalOnlyState).toHaveBeenCalledWith('note-1', true)
     expect(noteVault.getNoteById).toHaveBeenCalledWith('note-1')
   })
+
+  it.each([true, false])(
+    'refuses a local-only change to a locked note (localOnly %s, #2606)',
+    async (localOnly) => {
+      await expect(setNoteLocalOnlyCommand({ id: 'locked-note', localOnly })).rejects.toThrow(
+        'The owner made this note read-only.'
+      )
+      expect(runtimeEffects.setNoteLocalOnlyState).not.toHaveBeenCalled()
+    }
+  )
 
   it('keeps note mutation sync orchestration out of IPC handlers', async () => {
     const note = {

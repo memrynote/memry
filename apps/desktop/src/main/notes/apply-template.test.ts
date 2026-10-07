@@ -13,6 +13,11 @@ vi.mock('./domain', () => ({
 vi.mock('../sync/crdt-feed', () => ({
   replaceNoteTagsInCrdt: vi.fn()
 }))
+vi.mock('../vault-locks/registry', () => ({
+  assertNoteWritable: vi.fn((noteId: string) => {
+    if (noteId === 'locked-note') throw new Error('The owner made this note read-only.')
+  })
+}))
 
 import { buildTemplateApplyUpdate, applyTemplateToNote } from './apply-template'
 import { getNoteById } from '../vault/notes'
@@ -122,6 +127,17 @@ describe('applyTemplateToNote', () => {
     ).rejects.toBeInstanceOf(NoteError)
     expect(getTemplate).not.toHaveBeenCalled()
     expect(updateNoteCommand).not.toHaveBeenCalled()
+  })
+
+  it('refuses a locked note before touching the template, the file or the editor (#2606)', async () => {
+    vi.mocked(getNoteById).mockResolvedValue({ ...note, id: 'locked-note' })
+    vi.mocked(getTemplate).mockResolvedValue(template)
+
+    await expect(
+      applyTemplateToNote({ noteId: 'locked-note', templateId: 't1', mode: 'full' })
+    ).rejects.toThrow('The owner made this note read-only.')
+    expect(updateNoteCommand).not.toHaveBeenCalled()
+    expect(replaceNoteTagsInCrdt).not.toHaveBeenCalled()
   })
 
   it('throws VaultError when the template does not exist', async () => {
