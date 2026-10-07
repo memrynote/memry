@@ -98,6 +98,15 @@ jobs:
       - name: Check editor schema parity
         run: node scripts/run-turbo.js run test --filter=@memry/editor-schema
 
+      # The Rust core reproduces packages/contracts/test-vectors byte for byte. The
+      # generator builds them from production code across contracts, sync-client,
+      # sync-core, domain-notes, domain-tasks, shared, editor-schema, and the
+      # desktop calendar mappers, so any of those, or a dependency bump, can move
+      # the output. This job runs for every change outside the docs and landing
+      # sites, which covers all of them. --check writes nothing.
+      - name: Check protocol vectors are current
+        run: pnpm --filter @memry/contracts vectors:check
+
       - name: Lint desktop
         run: pnpm --filter @memry/desktop exec eslint --cache .
 
