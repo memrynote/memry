@@ -1,12 +1,16 @@
 import fs from 'fs'
 import path from 'path'
+import { NotesChannels } from '@memry/contracts/ipc-channels'
+import type { NoteUpdatedEvent } from '@memry/contracts/notes-api'
 import { createLogger } from '../../lib/logger'
+import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import {
   backfillUnresolvedLinksByTitle,
   unresolveLinksToNote,
   deleteNoteCache,
   extractDateFromPath,
   getNoteCacheById,
+  getOutgoingLinks,
   getPropertyType,
   insertNoteCache,
   listNoteCacheFilesAfter,
@@ -75,7 +79,40 @@ async function refreshMarkdownNoteLinks(vaultPath: string | null, noteId: string
   }
   if (classifyMarkdownContent(raw).sizeClass === 'large-file') return
   if (!isCurrentIndexDatabase(db) || getNoteCacheById(db, noteId)?.path !== note.path) return
+  const before = linkKeys(db, noteId)
   setMarkdownNoteLinks(db, noteId, extractWikiLinks(parseNote(raw, note.path).content))
+  announceLinkChanges(noteId, before, linkKeys(db, noteId))
+}
+
+/** One key per outbound link: the resolved target, or the title it names. */
+function linkKeys(db: IndexDb, noteId: string): Map<string, string | null> {
+  return new Map(
+    getOutgoingLinks(db, noteId).map((link) => [
+      `${link.targetId ?? ''}\u0000${link.targetTitle}`,
+      link.targetId
+    ])
+  )
+}
+
+/**
+ * Links rewritten here land after the renderer's own refresh for the note
+ * save, so tell the source note and every target that gained or lost a
+ * backlink. An empty `changes` refreshes their links panels and nothing else.
+ */
+function announceLinkChanges(
+  noteId: string,
+  before: Map<string, string | null>,
+  after: Map<string, string | null>
+): void {
+  const unchanged = before.size === after.size && [...after.keys()].every((key) => before.has(key))
+  if (unchanged) return
+  const touched = new Set([noteId])
+  for (const [key, targetId] of before) if (!after.has(key) && targetId) touched.add(targetId)
+  for (const [key, targetId] of after) if (!before.has(key) && targetId) touched.add(targetId)
+  for (const id of touched) {
+    const event: NoteUpdatedEvent = { id, changes: {}, source: 'internal' }
+    broadcastToAllWindows(NotesChannels.events.UPDATED, event)
+  }
 }
 
 function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdown' }>): void {
