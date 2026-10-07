@@ -16,6 +16,24 @@ describe('export-utils', () => {
     expect(html).toContain('<span class="wiki-link">Display</span>')
   })
 
+  it('markdownToHtml leaves HTML and %% comments out, links inside them included', () => {
+    const markdown = [
+      '<!-- hidden [[Alpha]] -->',
+      'Visible <!-- [[Beta]] --> text %% [[Gamma]] %% here.',
+      '',
+      '%%',
+      'block [[Delta]]',
+      '%%',
+      '',
+      'Code `%% kept %%` and `<!-- kept -->`.'
+    ].join('\n')
+    const html = markdownToHtml(markdown)
+    for (const name of ['Alpha', 'Beta', 'Gamma', 'Delta']) expect(html).not.toContain(name)
+    expect(html).not.toMatch(/<!--(?! kept)/)
+    expect(html).toContain('<code>%% kept %%</code>')
+    expect(html).toContain('<code>&lt;!-- kept --&gt;</code>')
+  })
+
   it('markdownToHtml drops the heading half of a heading link (issue #1556)', () => {
     const html = markdownToHtml('see [[Sprint Notes#Retro]] and [[Sprint Notes|retro]]')
     expect(html).toContain('<span class="wiki-link">Sprint Notes</span>')

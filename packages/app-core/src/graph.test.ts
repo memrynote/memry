@@ -64,3 +64,15 @@ test('graph: fenced code in a CRLF note draws no node', async () => {
     ['Missing']
   )
 })
+
+test('graph: links in %% comments draw edges like visible links', async () => {
+  const content = ['%% [[Inline Hidden]] ` %% `[[Code]]`', '%%', '[[Block Hidden]] `', '%%'].join(
+    '\n'
+  )
+  const data = await graphOf([note('n1', 'Docs', content)]).data()
+
+  assert.deepEqual(
+    data.nodes.filter((node) => node.isUnresolved).map((node) => node.label),
+    ['Inline Hidden', 'Block Hidden']
+  )
+})
