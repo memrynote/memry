@@ -1,3 +1,3 @@
 {
-  "allowedSubs": ["anthropic", "llamacpp"]
+  "allowedSubs": ["anthropic", "anthropic-memry", "llamacpp"]
 }
