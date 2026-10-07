@@ -984,7 +984,10 @@ describe('what a write reply says about what was stored (#2615)', () => {
     }
 
     await expect(
-      run(storeDown, 'vault_desktop_write', { operation: 'notes.importFiles', args: [] })
+      run(storeDown, 'vault_desktop_write', {
+        operation: 'notes.importFiles',
+        args: [['/tmp/a.pdf']]
+      })
     ).resolves.toEqual({ result: imported, warnings: [STORE_WARNING] })
   })
 })

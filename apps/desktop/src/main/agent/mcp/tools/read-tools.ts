@@ -2,11 +2,15 @@ import type { ZodTypeAny } from 'zod'
 
 import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
+import { describeDesktopOperation } from './desktop-api-describe'
 import { assertDesktopApiArgs } from './desktop-api-params'
 import { DESKTOP_API_REPLY_MAX_BYTES } from './desktop-api-reply'
 import type { VaultServiceHandles } from './handles'
 import { TOOL_SCHEMAS, READ_TOOL_NAMES } from './schemas'
-import type { AgentMcpDesktopReadOperation } from '@memry/contracts/agent-mcp-channels'
+import type {
+  AgentMcpDesktopOperation,
+  AgentMcpDesktopReadOperation
+} from '@memry/contracts/agent-mcp-channels'
 import type { NoteFileType } from '@memry/contracts/search-api'
 
 function parse<T>(schema: ZodTypeAny, input: unknown): T {
@@ -230,6 +234,18 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
         )
         assertDesktopApiArgs(a)
         return handles.desktop.read(a, ctx.windowId)
+      }
+    },
+    vault_desktop_describe: {
+      name: 'vault_desktop_describe',
+      description: TOOL_SCHEMAS.vault_desktop_describe.description,
+      inputSchema: TOOL_SCHEMAS.vault_desktop_describe.input,
+      handler: async (input) => {
+        const a = parse<{ operation?: AgentMcpDesktopOperation }>(
+          TOOL_SCHEMAS.vault_desktop_describe.input,
+          input
+        )
+        return describeDesktopOperation(a.operation)
       }
     }
   }

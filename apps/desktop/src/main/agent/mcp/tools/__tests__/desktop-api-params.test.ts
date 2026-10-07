@@ -28,8 +28,12 @@ import { tagsApi } from '../../../../../preload/api/tags'
 import { vaultApi } from '../../../../../preload/api/vault'
 import { ipcRenderer } from 'electron'
 import { rpcDomains } from '@memry/rpc'
+import {
+  desktopOperationJsonSchema,
+  desktopOperationParamNames
+} from '@memry/contracts/agent-desktop-api-args'
 import { AgentToolError } from '../../errors'
-import { assertDesktopApiArgs, desktopOperationParams } from '../desktop-api-params'
+import { assertDesktopApiArgs } from '../desktop-api-params'
 import { desktopWriteReadback } from '../desktop-api-readback'
 
 const handWrittenApis: Record<string, Record<string, unknown>> = {
@@ -58,7 +62,7 @@ describe('desktop API parameter lists', () => {
         mismatches.push(`${operation}: preload is not a function`)
         continue
       }
-      const params = desktopOperationParams(operation)
+      const params = desktopOperationParamNames(operation)
       const source = /^(?:async\s*)?(?:function\s*\w*\s*)?\(([^)]*)\)/.exec(fn.toString())
       const names = (source?.[1] ?? '')
         .split(',')
@@ -78,18 +82,6 @@ describe('desktop API parameter lists', () => {
     expect(mismatches).toEqual([])
   })
 
-  it('cover every allowlisted operation', () => {
-    const missing = AgentMcpDesktopOperations.filter((operation) => {
-      try {
-        desktopOperationParams(operation)
-        return false
-      } catch {
-        return true
-      }
-    })
-    expect(missing).toEqual([])
-  })
-
   it('name the parameters of every generated operation as its RPC spec does', () => {
     const mismatches: string[] = []
     for (const operation of AgentMcpDesktopOperations) {
@@ -102,9 +94,9 @@ describe('desktop API parameter lists', () => {
       // The responder still takes the older (start, end) string pair.
       const expected =
         operation === 'calendar.getRange' ? ['inputOrStart', 'end'] : (spec?.params ?? [])
-      if (desktopOperationParams(operation).join(',') !== expected.join(',')) {
+      if (desktopOperationParamNames(operation).join(',') !== expected.join(',')) {
         mismatches.push(
-          `${operation}: contract (${desktopOperationParams(operation).join(', ')}), rpc (${expected.join(', ')})`
+          `${operation}: contract (${desktopOperationParamNames(operation).join(', ')}), rpc (${expected.join(', ')})`
         )
       }
     }
@@ -126,8 +118,22 @@ describe('desktop API parameter lists', () => {
   })
 
   it('read back every write with a call the read operation accepts', () => {
-    const args = [{ projectId: 'p1', itemId: 'i1', tag: 't', newName: 'n', id: 'c1' }, 'b', 'c']
+    // Each argument takes the kind its parameter declares, so the write itself
+    // would pass and only the read-back request is under test.
+    const object = { projectId: 'p1', itemId: 'i1', noteId: 'n1', tag: 't', newName: 'n', id: 'c1' }
+    const sample = (item: { type?: unknown } | undefined, index: number): unknown => {
+      if (item?.type === 'string') return `arg${index}`
+      if (item?.type === 'array') return [`arg${index}`]
+      if (item?.type === 'number' || item?.type === 'integer') return 1
+      if (item?.type === 'boolean') return true
+      return object
+    }
     for (const operation of AgentMcpDesktopWriteOperations) {
+      const names = desktopOperationParamNames(operation)
+      const items = desktopOperationJsonSchema(operation).prefixItems ?? []
+      const args = items.map((item, index) =>
+        names[index] === 'scope' ? { kind: 'folder', path: 'a' } : sample(item, index)
+      )
       const readback = desktopWriteReadback({ operation, args })
       if (readback) expect(() => assertDesktopApiArgs(readback.request), operation).not.toThrow()
     }

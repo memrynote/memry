@@ -1,10 +1,13 @@
 import path from 'node:path'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
-import { desktopOperationJsonSchema } from '@memry/contracts/agent-desktop-api-args'
+import {
+  desktopOperationJsonSchema,
+  desktopOperationParamNames
+} from '@memry/contracts/agent-desktop-api-args'
 import { AgentMcpDesktopOperations } from '@memry/contracts/agent-mcp-channels'
 
-import { assertDesktopApiArgs, desktopOperationParams } from '../desktop-api-params'
+import { assertDesktopApiArgs } from '../desktop-api-params'
 
 const desktopRoot = path.resolve(__dirname, '../../../../../..')
 
@@ -165,7 +168,7 @@ describe('desktop API object arguments', () => {
       const operation = param.operation as (typeof AgentMcpDesktopOperations)[number]
       const base = SWEEP_BASE[id] ?? SWEEP_BASE[param.operation] ?? {}
       const input = { ...base, zzSweep: 1 }
-      const args: unknown[] = desktopOperationParams(operation).map(() => 'x')
+      const args: unknown[] = desktopOperationParamNames(operation).map(() => 'x')
       args[param.index] = param.isArray ? [input] : input
       try {
         assertDesktopApiArgs({ operation, args })
@@ -249,7 +252,7 @@ describe('desktop API argument schemas', () => {
     for (const param of params) {
       const schema = desktopOperationJsonSchema(param.operation)
       const item = (schema.prefixItems?.[param.index] ?? {}) as JsonSchema
-      const id = `${param.operation}:${desktopOperationParams(param.operation)[param.index]}`
+      const id = `${param.operation}:${desktopOperationParamNames(param.operation)[param.index]}`
       const required = param.index < (schema.minItems ?? 0)
       if (required === param.optional) {
         mismatches.push(`${id}: declared ${param.optional ? 'optional' : 'required'}`)
@@ -273,7 +276,7 @@ describe('desktop API argument schemas', () => {
     // The responder still takes the older (start, end) string pair.
     counts.set('calendar.getRange', 2)
     const mismatches = AgentMcpDesktopOperations.filter(
-      (operation) => (counts.get(operation) ?? 0) !== desktopOperationParams(operation).length
+      (operation) => (counts.get(operation) ?? 0) !== desktopOperationParamNames(operation).length
     )
     expect(mismatches).toEqual([])
   })
