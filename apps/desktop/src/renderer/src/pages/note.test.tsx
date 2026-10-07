@@ -18,6 +18,7 @@ Object.defineProperty(navigator, 'platform', {
 })
 
 const mocks = vi.hoisted(() => ({
+  isNoteLocked: false,
   noteState: {
     note: null as Record<string, unknown> | null,
     isLoading: false,
@@ -609,13 +610,15 @@ vi.mock('@/components/note/info-section', () => ({
   InfoSection: ({
     onToggleExpand,
     onAddProperty,
-    onPropertyChange
+    onPropertyChange,
+    disabled
   }: {
     onToggleExpand: () => void
     onAddProperty: (property: unknown) => void
     onPropertyChange: (id: string, value: unknown) => void
+    disabled?: boolean
   }) => (
-    <div>
+    <div data-testid="info-section" data-disabled={String(!!disabled)}>
       <button type="button" onClick={onToggleExpand}>
         Toggle properties
       </button>
@@ -627,6 +630,19 @@ vi.mock('@/components/note/info-section', () => ({
       </button>
     </div>
   )
+}))
+
+vi.mock('@/components/note/similar-notes', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/components/note/similar-notes')>()),
+  NoteSuggestedTags: ({ disabled }: { disabled?: boolean }) => (
+    <div data-testid="note-suggested-tags" data-disabled={String(!!disabled)} />
+  )
+}))
+
+vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/vault-locks-store')>()),
+  useIsNoteLocked: () => mocks.isNoteLocked,
+  useHasOwnNoteLock: () => mocks.isNoteLocked
 }))
 
 vi.mock('@/components/note/ghost-affordance-row', () => ({
@@ -906,6 +922,7 @@ describe('NotePage', () => {
     mocks.pickerOnValueChange = null
     mocks.onMarkdownChange = null
     mocks.propertyOnBlocked = null
+    mocks.isNoteLocked = false
     mocks.contentAreaMounts = 0
     mocks.tabViewState = {}
     mocks.spatialCanvasEnabled = true
@@ -1495,6 +1512,36 @@ describe('NotePage', () => {
       mocks.propertyOnBlocked?.('remove')
     })
     expect(toast.error).toHaveBeenCalledWith('Cannot delete property - this note was deleted')
+  })
+
+  describe('a locked note (#2606)', () => {
+    it('disables the properties section and the suggested tags', async () => {
+      mocks.isNoteLocked = true
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      expect(await screen.findByTestId('info-section')).toHaveAttribute('data-disabled', 'true')
+      expect(screen.getByTestId('note-suggested-tags')).toHaveAttribute('data-disabled', 'true')
+    })
+
+    it('leaves both enabled on an unlocked note', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      expect(await screen.findByTestId('info-section')).toHaveAttribute('data-disabled', 'false')
+      expect(screen.getByTestId('note-suggested-tags')).toHaveAttribute('data-disabled', 'false')
+    })
+
+    it('says the note is locked, not deleted, when a property edit is refused', async () => {
+      mocks.isNoteLocked = true
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('info-section')
+
+      act(() => {
+        mocks.propertyOnBlocked?.('update')
+      })
+
+      expect(toast.error).toHaveBeenCalledWith('errors:vaultLock.noteReadOnly')
+      expect(toast.error).not.toHaveBeenCalledWith('Cannot update property - this note was deleted')
+    })
   })
 
   describe('note-view menu file actions', () => {

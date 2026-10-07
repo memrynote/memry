@@ -77,6 +77,7 @@ const mocks = vi.hoisted(() => ({
   startAgent: vi.fn(),
   agentShutdown: vi.fn(),
   trackMainLog: vi.fn(),
+  checkLockedFilesAtOpen: vi.fn(),
   embeddingProjectorWiring: [] as Array<{ getPath: () => unknown; gate: () => boolean }>
 }))
 
@@ -180,6 +181,10 @@ vi.mock('./journal-format-migration', () => ({
 vi.mock('../sync/crdt-writeback', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   flushPendingWritebacks: (...args: unknown[]) => mocks.flushPendingWritebacks(...args)
+}))
+
+vi.mock('../vault-locks/service', () => ({
+  checkLockedFilesAtOpen: (...args: unknown[]) => mocks.checkLockedFilesAtOpen(...args)
 }))
 
 vi.mock('./indexer', () => ({
@@ -385,6 +390,7 @@ describe('vault lifecycle', () => {
     mocks.initCrdtPersistence.mockResolvedValue(undefined)
     mocks.stopProjectionRuntime.mockResolvedValue(undefined)
     mocks.reconcileProjections.mockResolvedValue({})
+    mocks.checkLockedFilesAtOpen.mockResolvedValue(undefined)
     mocks.rebuildProjections.mockResolvedValue({ search: { notes: 5, tasks: 0, inbox: 0 } })
     mocks.detectCorruption.mockReturnValue([])
     mocks.applyProjectFrontmatterBackfill.mockResolvedValue(undefined)
@@ -733,6 +739,34 @@ describe('vault lifecycle', () => {
     await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
     expect(getStatus().indexProgress).toBe(100)
     expect(mocks.applyProjectFrontmatterBackfill).toHaveBeenCalled()
+    await vi.waitFor(() => expect(mocks.reconcileProjections).toHaveBeenCalled())
+  })
+
+  it('prunes missing files only after locked files deleted while closed are restored (#2606)', async () => {
+    let finishLockCheck!: () => void
+    mocks.checkLockedFilesAtOpen.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finishLockCheck = resolve
+      })
+    )
+
+    const result = await selectVault({ path: '/vault/locked' })
+
+    expect(result.success).toBe(true)
+    expect(mocks.checkLockedFilesAtOpen).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
+    expect(mocks.reconcileProjections).not.toHaveBeenCalled()
+
+    finishLockCheck()
+
+    await vi.waitFor(() => expect(mocks.reconcileProjections).toHaveBeenCalled())
+  })
+
+  it('still prunes missing files when the locked-file check fails (#2606)', async () => {
+    mocks.checkLockedFilesAtOpen.mockRejectedValue(new Error('disk gone'))
+
+    await selectVault({ path: '/vault/locked-failed' })
+
     await vi.waitFor(() => expect(mocks.reconcileProjections).toHaveBeenCalled())
   })
 

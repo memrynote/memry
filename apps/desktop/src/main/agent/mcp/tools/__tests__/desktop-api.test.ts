@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentMcpDesktopApiChannel } from '@memry/contracts/agent-mcp-channels'
+import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
 
 vi.mock('electron', () => ({
   BrowserWindow: { fromId: vi.fn() }
@@ -70,6 +71,63 @@ describe('invokeDesktopApiFromWindow', () => {
       code: 'INTERNAL',
       message: 'Desktop API operation failed.',
       details: { operation: 'templates.list', code: 'DESKTOP_API_ERROR' }
+    })
+  })
+
+  describe('read-only lock refusals (#2606)', () => {
+    beforeEach(() => {
+      vi.mocked(BrowserWindow.fromId).mockReturnValue({
+        webContents: {}
+      } as unknown as Electron.BrowserWindow)
+    })
+
+    it('maps a thrown lock refusal to PERMISSION_DENIED with the fixed text', async () => {
+      vi.mocked(mainToRendererInvoke).mockResolvedValue({
+        ok: false,
+        error: { code: 'DESKTOP_API_ERROR', message: VAULT_LOCKED_NOTE_MESSAGE }
+      })
+
+      await expect(
+        invokeDesktopApiFromWindow('123', { operation: 'notes.update', args: [] })
+      ).rejects.toMatchObject({
+        code: 'PERMISSION_DENIED',
+        message: VAULT_LOCKED_NOTE_MESSAGE
+      })
+    })
+
+    it.each([
+      ['notes.update', VAULT_LOCKED_NOTE_MESSAGE],
+      ['notes.rename', VAULT_LOCKED_NOTE_MESSAGE],
+      ['notes.delete', VAULT_LOCKED_NOTE_MESSAGE],
+      ['notes.restoreVersion', VAULT_LOCKED_NOTE_MESSAGE],
+      ['notes.applyTemplate', VAULT_LOCKED_NOTE_MESSAGE],
+      ['notes.create', VAULT_LOCKED_NOTE_MESSAGE],
+      ['notes.createFolder', VAULT_LOCKED_NOTE_MESSAGE]
+    ])(
+      'maps a %s {success:false} lock envelope to PERMISSION_DENIED',
+      async (operation, message) => {
+        vi.mocked(mainToRendererInvoke).mockResolvedValue({
+          ok: true,
+          data: { success: false, error: message }
+        })
+
+        await expect(
+          invokeDesktopApiFromWindow('123', { operation, args: [] })
+        ).rejects.toMatchObject({
+          code: 'PERMISSION_DENIED',
+          message,
+          details: { operation }
+        })
+      }
+    )
+
+    it('passes any other {success:false} envelope through as data', async () => {
+      const data = { success: false, error: 'Note not found: n1' }
+      vi.mocked(mainToRendererInvoke).mockResolvedValue({ ok: true, data })
+
+      await expect(
+        invokeDesktopApiFromWindow('123', { operation: 'notes.update', args: [] })
+      ).resolves.toEqual(data)
     })
   })
 })

@@ -2,10 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  VAULT_LOCKED_FOLDER_MESSAGE,
-  VAULT_LOCKED_NOTE_MESSAGE
-} from '@memry/contracts/vault-locks-api'
+import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
 import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
 import {
   asClientDb,
@@ -147,16 +144,16 @@ describe('vault read-only locks (#2606)', () => {
     expect(getVaultLockState()).toEqual({ notes: [], folders: ['projects/plan'] })
     expect(isNoteLocked('note-in')).toBe(true)
     expect(isNoteLocked('note-out')).toBe(false)
-    expect(() => assertFolderWritable('projects/plan/deeper')).toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
+    expect(() => assertFolderWritable('projects/plan/deeper')).toThrow(VAULT_LOCKED_NOTE_MESSAGE)
     expect(() => assertFolderWritable('projects')).not.toThrow()
-    expect(() => assertFolderTreeWritable('projects')).toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
+    expect(() => assertFolderTreeWritable('projects')).toThrow(VAULT_LOCKED_NOTE_MESSAGE)
   })
 
   it('a folder holding a locked note cannot be renamed, moved or deleted', async () => {
     addNote('note-a', 'archive/a.md', 'a\n')
     await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
 
-    expect(() => assertFolderTreeWritable('archive')).toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
+    expect(() => assertFolderTreeWritable('archive')).toThrow(VAULT_LOCKED_NOTE_MESSAGE)
     expect(() => assertFolderTreeWritable('other')).not.toThrow()
   })
 
@@ -234,6 +231,16 @@ describe('vault read-only locks (#2606)', () => {
 
     await expect(atomicWrite(file, 'agent text\n')).rejects.toThrow(VAULT_LOCKED_NOTE_MESSAGE)
     expect(fs.readFileSync(file, 'utf-8')).toBe('a\n')
+  })
+
+  it("leaves the app's own allowed write to a locked file alone when its change event is checked", async () => {
+    const file = addNote('note-a', 'notes/a.md', 'locked text\n')
+    await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+    await runWithLockedWritesAllowed(() => atomicWrite(file, 'remote text\n'))
+
+    expect(await restoreLockedNoteFile('note-a', 'remote text\n')).toBe(false)
+    expect(fs.readFileSync(file, 'utf-8')).toBe('remote text\n')
+    expect(mocks.createSnapshot).not.toHaveBeenCalled()
   })
 
   it('an unlocked note is never restored', async () => {

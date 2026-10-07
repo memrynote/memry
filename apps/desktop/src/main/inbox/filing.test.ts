@@ -171,6 +171,10 @@ vi.mock('../lib/reminders', () => ({
 
 import { getDatabase, requireDatabase, getIndexDatabase } from '../database'
 import { getStatus } from '../vault/index'
+import { deleteInboxAttachments } from './attachments'
+import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
+import { writeLockRow } from '../vault-locks/store'
 import {
   fileToFolder,
   convertToNote,
@@ -2110,6 +2114,101 @@ describe('Inbox Filing Operations', () => {
         'filed_binary_sync_enqueue',
         expect.any(Error)
       )
+    })
+  })
+
+  describe('read-only locks (#2606)', () => {
+    const notePaths: Record<string, string> = {
+      'note-locked': 'projects/locked.md',
+      'note-free': 'projects/free.md'
+    }
+
+    beforeEach(() => {
+      installVaultLockSource({
+        dataDb: () => asClientDb(testDb.db),
+        notePathOf: (noteId) => notePaths[noteId] ?? null,
+        noteIdAtPath: (relativePath) =>
+          Object.keys(notePaths).find((id) => notePaths[id] === relativePath) ?? null
+      })
+      invalidateVaultLocks()
+    })
+
+    afterEach(() => {
+      installVaultLockSource({
+        dataDb: () => null,
+        notePathOf: () => null,
+        noteIdAtPath: () => null
+      })
+    })
+
+    function seedImage(id: string): string {
+      const itemId = seedInboxItem(testDb.db, { id, type: 'image', title: 'Screenshot' })
+      updateInboxItem(itemId, { attachmentPath: `attachments/inbox/${id}/screenshot.png` })
+      return itemId
+    }
+
+    it('filing a binary into a locked folder is refused before the file moves', async () => {
+      writeLockRow(asClientDb(testDb.db), 'folder', 'projects', true)
+      const itemId = seedImage('image-locked-folder')
+
+      const result = await fileToFolder(itemId, 'projects/sub')
+
+      expect(result).toEqual({
+        success: false,
+        filedTo: null,
+        error: VAULT_LOCKED_NOTE_MESSAGE
+      })
+      expect(mockRename).not.toHaveBeenCalled()
+      expect(mockCopyFile).not.toHaveBeenCalled()
+      expect(deleteInboxAttachments).not.toHaveBeenCalled()
+      expect(mockIndexBinaryFile).not.toHaveBeenCalled()
+    })
+
+    it('linking a binary to a locked note is refused before the file moves or the inbox copy goes', async () => {
+      writeLockRow(asClientDb(testDb.db), 'note', 'note-locked', true)
+      const itemId = seedImage('image-locked-note')
+      mockGetNoteById
+        .mockResolvedValueOnce({ id: 'note-free', content: '# Free', path: 'projects/free.md' })
+        .mockResolvedValueOnce({
+          id: 'note-locked',
+          content: '# Locked',
+          path: 'projects/locked.md'
+        })
+
+      const result = await linkToNotes(itemId, [
+        { kind: 'note', noteId: 'note-free' },
+        { kind: 'note', noteId: 'note-locked' }
+      ])
+
+      expect(result).toMatchObject({ success: false, error: VAULT_LOCKED_NOTE_MESSAGE })
+      expect(mockRename).not.toHaveBeenCalled()
+      expect(mockCopyFile).not.toHaveBeenCalled()
+      expect(deleteInboxAttachments).not.toHaveBeenCalled()
+      expect(mockUpdateNote).not.toHaveBeenCalled()
+      expect(mockCreateNote).not.toHaveBeenCalled()
+      expect(mockIndexBinaryFile).not.toHaveBeenCalled()
+    })
+
+    it('linking a binary into a locked folder is refused before the file moves', async () => {
+      writeLockRow(asClientDb(testDb.db), 'folder', 'archive', true)
+      const itemId = seedImage('image-locked-dest')
+      mockGetNoteById.mockResolvedValueOnce({
+        id: 'note-free',
+        content: '# Free',
+        path: 'projects/free.md'
+      })
+
+      const result = await linkToNotes(
+        itemId,
+        [{ kind: 'note', noteId: 'note-free' }],
+        [],
+        'archive'
+      )
+
+      expect(result).toMatchObject({ success: false, error: VAULT_LOCKED_NOTE_MESSAGE })
+      expect(mockRename).not.toHaveBeenCalled()
+      expect(deleteInboxAttachments).not.toHaveBeenCalled()
+      expect(mockUpdateNote).not.toHaveBeenCalled()
     })
   })
 })
