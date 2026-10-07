@@ -14,12 +14,14 @@ another device. A note inside a locked folder is unlocked by unlocking the folde
 
 ## What a Lock Does
 
-A locked note opens read-only. A small lock line above the title says so, and the body, title,
-tags, properties, and suggested tags cannot be changed.
+A locked note opens read-only wherever it is shown: its own page, a canvas card, and a project's
+overview. A small lock line above it says so, and the body, title, tags, properties, and suggested
+tags cannot be changed.
 
 Everything that would change a locked note is refused:
 
 - typing in the editor, applying a template, restoring an older version,
+- turning **Set local only** or **Disable local only** on the note,
 - renaming, moving, or deleting it, or the folder it sits in,
 - creating, renaming, or deleting anything inside a locked folder, including importing files
   into it or filing an inbox item into it or onto a locked note,

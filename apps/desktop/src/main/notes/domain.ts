@@ -118,6 +118,8 @@ export async function setNoteLocalOnlyCommand(input: {
   id: string
   localOnly: boolean
 }): Promise<Note> {
+  // A sync-policy change of a locked note is a local edit too (#2606).
+  assertNoteWritable(input.id)
   // localOnly is sidecar-only state — never written to the file
   setNoteLocalOnlyState(input.id, input.localOnly)
   const note = await getNoteById(input.id)

@@ -19,6 +19,8 @@ import { notesService } from '@/services/notes-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { useIsNoteLocked } from '@/lib/vault-locks-store'
+import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 
 const log = createLogger('EmbeddedNoteEditor')
 
@@ -30,6 +32,7 @@ interface EmbeddedNoteEditorProps {
 
 export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.JSX.Element => {
   const { note } = useNote(noteId)
+  const isLocked = useIsNoteLocked(noteId, note?.path ?? null)
 
   const lastSavedContentRef = useRef<string | null>(null)
   const pendingContentRef = useRef<string | null>(null)
@@ -105,8 +108,10 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
 
   return (
     <div className="min-h-0 flex-1 overflow-auto">
+      {isLocked && <LockedNoteNotice className="px-3 pt-2" />}
       <ContentArea
         noteId={noteId}
+        editable={!isLocked}
         initialContent={note.content}
         contentType="markdown"
         onMarkdownChange={handleMarkdownChange}

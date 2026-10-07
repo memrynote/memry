@@ -226,10 +226,12 @@ export default defineConfig(
       // which is a refactor of its own and not one to attach to a block type.
       'apps/desktop/src/main/sync/blocknote-converter.ts',
       'apps/desktop/src/main/vault/watcher.ts',
-      // Crossed 800 with the read-only lock checks and the vault_lock sync
-      // service (#2606): a few lines each in the note and folder writers, the
-      // vault open path and the record service list. Splitting them is a
-      // refactor of its own and not one to attach to a lock feature.
+      // Sat at 798, 800 and 800 countable lines on main, so the read-only lock
+      // checks (#2606) could not land without this: one assert in each note and
+      // folder writer (notes-crud, 814), the lock check at vault open (index,
+      // 810) and the vault_lock record service (runtime, 805). The checks must
+      // sit in the writers themselves; splitting these files is a refactor of
+      // its own and not one to attach to a lock feature.
       'apps/desktop/src/main/sync/runtime.ts',
       'apps/desktop/src/main/vault/index.ts',
       'apps/desktop/src/main/vault/notes-crud.ts'

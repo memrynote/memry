@@ -10,6 +10,7 @@ import { getNoteById, type Note, type NoteUpdateInput } from '../vault/notes'
 import { updateNoteCommand } from './domain'
 import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
+import { assertNoteWritable } from '../vault-locks/registry'
 import type { Template } from '@memry/contracts/templates-api'
 
 /**
@@ -46,6 +47,7 @@ export async function applyTemplateToNote(input: {
   if (!note) {
     throw new NoteError(`Note not found: ${input.noteId}`, NoteErrorCode.NOT_FOUND, input.noteId)
   }
+  assertNoteWritable(note.id, note.path)
 
   const template = await getTemplate(input.templateId)
   if (!template) {

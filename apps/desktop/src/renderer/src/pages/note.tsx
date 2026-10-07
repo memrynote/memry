@@ -133,6 +133,7 @@ import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { setVaultLock, useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
+import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { createLogger } from '@/lib/logger'
 import { markLaunchNoteReadable } from '@/lib/launch-restore'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
@@ -1808,6 +1809,7 @@ export function NotePage({ noteId }: NotePageProps) {
                   : t('editor.toolbar.setLocalOnly')
               }
               icon={<Monitor className="size-4" />}
+              disabled={isLocked}
             />
             {(hasOwnLock || !isLocked) && (
               <Picker.Item
@@ -1927,15 +1929,7 @@ export function NotePage({ noteId }: NotePageProps) {
           data-testid="note-metadata"
           data-marquee-ignore
         >
-          {isLocked && (
-            <div
-              className="flex items-center gap-1.5 text-xs text-muted-foreground"
-              data-testid="note-locked-indicator"
-            >
-              <Lock className="size-3.5" aria-hidden />
-              <span>{t('vaultLock.readOnlyIndicator')}</span>
-            </div>
-          )}
+          {isLocked && <LockedNoteNotice />}
           <NoteTitle
             disabled={isLocked}
             emoji={note.emoji ?? null}

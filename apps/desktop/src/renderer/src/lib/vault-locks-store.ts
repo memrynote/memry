@@ -83,11 +83,6 @@ export function useHasOwnNoteLock(noteId: string | null | undefined): boolean {
   return !!noteId && locks.notes.includes(noteId)
 }
 
-export function useLockedFolderFor(path: string | null | undefined): string | null {
-  const locks = useVaultLockState()
-  return path ? lockedFolderFor(path, locks) : null
-}
-
 export async function setVaultLock(
   kind: VaultLockTargetKind,
   target: string,
