@@ -23,9 +23,9 @@ describe('agent API reference', () => {
   const examples = readExamples()
   const version = committedAppVersion()
 
-  it('matches the tool schemas and operations on this commit', () => {
+  it('matches the tool schemas and operations on this commit', async () => {
     expect(version, 'the committed schema file names its app version').toBeTruthy()
-    const { page, schema } = renderReference(version as string, examples)
+    const { page, schema } = await renderReference(version as string, examples)
     expect(readFileSync(REFERENCE_PATHS.page, 'utf8') === page, FIX).toBe(true)
     expect(readFileSync(REFERENCE_PATHS.schema, 'utf8') === schema, FIX).toBe(true)
   })
