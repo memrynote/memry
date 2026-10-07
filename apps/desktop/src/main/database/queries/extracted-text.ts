@@ -13,6 +13,9 @@ import type { IndexDb } from '../types'
 export const TEXT_BEARING_FILE_TYPES = ['pdf', 'image'] as const
 export type TextBearingFileType = (typeof TEXT_BEARING_FILE_TYPES)[number]
 
+/** What a text source is read as: a filed type, or an attachment's HTML block. */
+export type TextFileKind = TextBearingFileType | 'html'
+
 /** The `source` of a filed PDF's or image's own text. */
 export const OWN_FILE = ''
 
@@ -39,6 +42,15 @@ export interface PendingTextJob extends TextSourceRef {
 interface ExtractedPage {
   page: number
   text: string
+}
+
+/** Collapse layout whitespace; keep line and paragraph breaks. */
+export function normalizeExtractedText(text: string): string {
+  return text
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/ ?\n ?/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }
 
 /** Rows read per query when walking a long document's parts. */
@@ -352,6 +364,23 @@ export function readAttachmentText(
     else files.push({ file: row.source, text })
   }
   return { files, truncated: false }
+}
+
+/** The visible text of each HTML block a markdown note embeds, by file name. */
+export function listHtmlBlockText(db: IndexDb, noteId: string): string[] {
+  return db
+    .select({ text: extractedText.text })
+    .from(extractedText)
+    .where(
+      and(
+        eq(extractedText.noteId, noteId),
+        eq(extractedText.method, 'html'),
+        ne(extractedText.text, '')
+      )
+    )
+    .orderBy(asc(extractedText.source), asc(extractedText.part))
+    .all()
+    .map((row) => row.text)
 }
 
 /** Filed (non-markdown) notes with any extracted text to search or embed. */

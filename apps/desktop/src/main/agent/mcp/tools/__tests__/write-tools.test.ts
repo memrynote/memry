@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { buildWriteTools, type WriteToolGate } from '../write-tools'
+import { capReply } from '../../reply-cap'
 import { WRITE_TOOL_NAMES } from '../schemas'
 import type { StoredNote, VaultServiceHandles } from '../handles'
 
@@ -17,10 +18,14 @@ const handles: VaultServiceHandles = {
   notes: {
     search: async () => [],
     read: async () => null,
-    create: async () => ({ id: 'created-note' }),
+    create: async ({ content_markdown }) => ({
+      id: 'created-note',
+      body: { sent: content_markdown, stored: content_markdown }
+    }),
     rename: async ({ id }) => ({ id }),
     delete: async (id) => ({ id }),
-    update: async () => {},
+    update: async ({ content_markdown }) => ({ sent: content_markdown, stored: content_markdown }),
+    storedBody: async (_id, sent) => ({ sent, stored: sent }),
     addTag: async () => {},
     removeTag: async () => {},
     saveHtmlAttachment: async () => ({ marker: '<!-- file:{} -->', url: 'a.html' }),
@@ -109,9 +114,11 @@ const handles: VaultServiceHandles = {
   },
   desktop: {
     read: async () => ({ ok: true }),
+    prepareWrite: async (input) => input,
     write: async ({ operation, args }, windowId) => ({ operation, args, windowId })
   },
-  windows: { snapshotCurrentNote: async () => null }
+  windows: { snapshotCurrentNote: async () => null },
+  sync: { crdtStoreAvailable: async () => true }
 }
 
 describe('Write tools — P1 deny-by-default', () => {
@@ -291,7 +298,7 @@ describe('Write tools — P1 deny-by-default', () => {
         ...handles.notes,
         rename: vi.fn(async ({ id }) => ({ id })),
         delete: vi.fn(async (id) => ({ id })),
-        update: vi.fn(async () => {}),
+        update: vi.fn(async () => ({ sent: 'More', stored: 'More' })),
         addTag: vi.fn(async () => {}),
         removeTag: vi.fn(async () => {}),
         moveToFolder: vi.fn(async () => {})
@@ -602,6 +609,7 @@ describe('Write tools — P1 deny-by-default', () => {
         }),
         update: vi.fn(async () => {
           calls.push('update')
+          return { sent: 'Body', stored: 'Body' }
         })
       }
     }
@@ -655,7 +663,7 @@ describe('Write tools — P1 deny-by-default', () => {
     const readFailed = async (): Promise<never> => {
       throw new Error('index busy')
     }
-    const update = vi.fn(async () => {})
+    const update = vi.fn(async () => ({ sent: 'More', stored: 'More' }))
     const local: VaultServiceHandles = {
       ...handles,
       notes: {
@@ -702,8 +710,16 @@ describe('Write tools — P1 deny-by-default', () => {
       ...handles,
       notes: {
         ...handles.notes,
-        create: vi.fn(async () => ({ id: 'note-1', created_tasks: createdTasks })),
-        update: vi.fn(async () => ({ created_tasks: createdTasks }))
+        create: vi.fn(async () => ({
+          id: 'note-1',
+          body: { sent: '- [ ] Check the log', stored: '- [ ] Check the log' },
+          created_tasks: createdTasks
+        })),
+        update: vi.fn(async () => ({
+          sent: '- [ ] x',
+          stored: '- [ ] x',
+          created_tasks: createdTasks
+        }))
       },
       journal: {
         ...handles.journal,
@@ -751,5 +767,207 @@ describe('Write tools — P1 deny-by-default', () => {
         { writeGrant: 'turn-grant-1', windowId: 'w1' }
       )
     ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' })
+  })
+})
+
+describe('what a write reply says about what was stored (#2615)', () => {
+  const approve: WriteToolGate = async () => ({ approved: true })
+  const run = (local: VaultServiceHandles, name: string, input: unknown) =>
+    buildWriteTools(local, approve)
+      .find((tool) => tool.name === name)!
+      .handler(input, { writeGrant: 'turn-grant-1', windowId: 'w1' })
+  const reformatted = { sent: 'Hello\n\n* One', stored: 'Hello\n\n- One\n- Two ü' }
+  const BODY_WARNING =
+    'The stored body is not the body this write sent. Sent 12 bytes, stored 21 bytes. ' +
+    'Read it back to see what was stored.'
+  const STORE_WARNING =
+    'The CRDT store is unavailable on this device, so note edits sync without merge history ' +
+    'this session. Read changed notes back to check what was stored.'
+
+  const bodyWriters: Array<[string, unknown, Partial<VaultServiceHandles>, object]> = [
+    [
+      'vault_create_note',
+      { title: 'Hello', content_markdown: 'Hello\n\n* One' },
+      {
+        notes: { ...handles.notes, create: async () => ({ id: 'note-1', body: reformatted }) }
+      },
+      storedNote('note-1')
+    ],
+    [
+      'vault_update_note',
+      { id: 'note-1', mode: 'replace', content_markdown: 'Hello\n\n* One' },
+      { notes: { ...handles.notes, update: async () => reformatted } },
+      { ...storedNote('note-1'), tags_added: [], tags_removed: [] }
+    ],
+    [
+      'vault_add_html_artifact',
+      { id: 'note-1', title: 'Diagram', html: '<svg></svg>' },
+      { notes: { ...handles.notes, update: async () => reformatted } },
+      { ...storedNote('note-1'), url: 'a.html' }
+    ],
+    [
+      'vault_create_journal_entry',
+      { date: '2026-05-10', content_markdown: 'Hello\n\n* One' },
+      {
+        journal: {
+          ...handles.journal,
+          createIfMissing: async () => ({ id: 'jrnl', created: true, body: reformatted })
+        }
+      },
+      { id: 'jrnl', created: true }
+    ],
+    [
+      'vault_update_journal_entry',
+      { date: '2026-05-10', content_markdown: 'Hello\n\n* One' },
+      {
+        journal: { ...handles.journal, update: async () => ({ id: 'jrnl', body: reformatted }) }
+      },
+      { id: 'jrnl' }
+    ]
+  ]
+
+  it.each(bodyWriters)(
+    '%s gives both byte counts when the stored body is not the body it sent',
+    async (name, input, overrides, reply) => {
+      await expect(run({ ...handles, ...overrides }, name, input)).resolves.toEqual({
+        ...reply,
+        warnings: [BODY_WARNING]
+      })
+    }
+  )
+
+  it('gives both byte counts when a CRLF note stores the LF body it was sent', async () => {
+    const local: VaultServiceHandles = {
+      ...handles,
+      notes: { ...handles.notes, update: async () => ({ sent: 'A\nB', stored: 'A\r\nB\r\n' }) }
+    }
+
+    await expect(
+      run(local, 'vault_update_note', { id: 'note-1', mode: 'replace', content_markdown: 'A\nB' })
+    ).resolves.toEqual({
+      ...storedNote('note-1'),
+      tags_added: [],
+      tags_removed: [],
+      warnings: [
+        'The stored body is not the body this write sent. Sent 3 bytes, stored 6 bytes. ' +
+          'Read it back to see what was stored.'
+      ]
+    })
+  })
+
+  it.each([
+    [
+      'notes.update',
+      [{ id: 'note-1', content: 'A\nB' }],
+      { success: true, note: { id: 'note-1', title: 'A', content: 'A\nB' } },
+      { sent: 'A\nB', stored: 'A\r\nB\r\n' },
+      'Sent 3 bytes, stored 6 bytes.'
+    ],
+    [
+      'notes.create',
+      [{ title: 'New', content: '* One' }],
+      { success: true, note: { id: 'note-2', title: 'New', content: '* One' } },
+      { sent: '* One', stored: '- One\n- Two' },
+      'Sent 5 bytes, stored 11 bytes.'
+    ]
+  ])(
+    'a desktop API %s reply gives both byte counts and the stored body',
+    async (operation, args, written, body, counts) => {
+      const asked: Array<[string, string]> = []
+      const local: VaultServiceHandles = {
+        ...handles,
+        notes: {
+          ...handles.notes,
+          storedBody: async (id, sent) => {
+            asked.push([id, sent])
+            return body
+          }
+        },
+        desktop: { ...handles.desktop, write: async () => written }
+      }
+
+      await expect(run(local, 'vault_desktop_write', { operation, args })).resolves.toEqual({
+        warnings: [
+          `The stored body is not the body this write sent. ${counts} ` +
+            'Read it back to see what was stored.'
+        ],
+        success: true,
+        note: { ...written.note, content: body.stored }
+      })
+      expect(asked).toEqual([[written.note.id, body.sent]])
+    }
+  )
+
+  it('says nothing when only the final newline differs', async () => {
+    const local: VaultServiceHandles = {
+      ...handles,
+      notes: { ...handles.notes, update: async () => ({ sent: 'A\nB', stored: 'A\nB\n' }) }
+    }
+
+    await expect(
+      run(local, 'vault_update_note', { id: 'note-1', mode: 'replace', content_markdown: 'A\nB' })
+    ).resolves.toEqual({ ...storedNote('note-1'), tags_added: [], tags_removed: [] })
+  })
+
+  it('warns on every write reply while the CRDT store is unavailable', async () => {
+    const storeDown: VaultServiceHandles = {
+      ...handles,
+      notes: { ...handles.notes, update: async () => reformatted },
+      desktop: { ...handles.desktop, write: async () => true },
+      sync: { crdtStoreAvailable: async () => false }
+    }
+
+    await expect(run(storeDown, 'vault_create_task', { title: 'Task' })).resolves.toEqual({
+      id: 'created-task',
+      warnings: [STORE_WARNING]
+    })
+    await expect(
+      run(storeDown, 'vault_update_note', { id: 'note-1', mode: 'append', content_markdown: 'x' })
+    ).resolves.toEqual({
+      ...storedNote('note-1'),
+      tags_added: [],
+      tags_removed: [],
+      warnings: [BODY_WARNING, STORE_WARNING]
+    })
+    await expect(
+      run(storeDown, 'vault_desktop_write', { operation: 'notes.delete', args: ['note-1'] })
+    ).resolves.toEqual({ result: true, warnings: [STORE_WARNING] })
+    await expect(run(handles, 'vault_create_task', { title: 'Task' })).resolves.toEqual({
+      id: 'created-task'
+    })
+  })
+
+  it('keeps the store warning in a desktop write reply the size cap cuts', async () => {
+    const storeDown: VaultServiceHandles = {
+      ...handles,
+      desktop: {
+        ...handles.desktop,
+        write: async () => ({ success: true, note: { id: 'n1', content: 'x'.repeat(200_000) } })
+      },
+      sync: { crdtStoreAvailable: async () => false }
+    }
+    const tool = buildWriteTools(storeDown, approve).find((t) => t.name === 'vault_desktop_write')!
+
+    const reply = await tool.handler(
+      { operation: 'notes.update', args: [{ id: 'n1' }] },
+      { writeGrant: 'turn-grant-1', windowId: 'w1' }
+    )
+    const delivered = capReply(reply, tool.maxReplyBytes!) as { truncated: true; partial: string }
+
+    expect(delivered.truncated).toBe(true)
+    expect(delivered.partial).toContain(STORE_WARNING)
+  })
+
+  it('wraps a reply whose own warnings are not sentences instead of mixing them', async () => {
+    const imported = { imported: 1, warnings: [{ code: 'skipped', message: 'a.pdf' }] }
+    const storeDown: VaultServiceHandles = {
+      ...handles,
+      desktop: { ...handles.desktop, write: async () => imported },
+      sync: { crdtStoreAvailable: async () => false }
+    }
+
+    await expect(
+      run(storeDown, 'vault_desktop_write', { operation: 'notes.importFiles', args: [] })
+    ).resolves.toEqual({ result: imported, warnings: [STORE_WARNING] })
   })
 })

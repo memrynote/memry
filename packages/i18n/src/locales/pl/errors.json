@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "Historia edycji nie jest przechowywana na tym urządzeniu",
-    "persistenceDegradedBody": "Twoje notatki są bezpieczne – znajdują się w sejfie jako zwykłe pliki i nadal normalnie się otwierają i zapisują. Tylko lokalna historia edycji i stan scalania na tym urządzeniu są przechowywane w pamięci operacyjnej, więc zaczynają się od nowa przy każdym uruchomieniu aplikacji memrynote."
+    "persistenceDegradedBody": "Twoje notatki są bezpieczne – znajdują się w sejfie jako zwykłe pliki i nadal normalnie się otwierają i zapisują. Tylko lokalna historia edycji i stan scalania na tym urządzeniu są przechowywane w pamięci operacyjnej, więc zaczynają się od nowa przy każdym uruchomieniu aplikacji memrynote.",
+    "writebackFailedTitle": "Nie udało się zaktualizować pliku notatki na dysku",
+    "writebackFailedTitleNamed": "Nie udało się zaktualizować „{title}” na dysku",
+    "writebackFailedBody": "Plik na dysku pozostał bez zmian. Twoja zmiana pozostaje otwarta w memrynote, dopóki aplikacja działa; memrynote spróbuje ponownie przy Twojej następnej zmianie."
   },
   "encryption": {
     "failed": "Nie udało się zaszyfrować danych. Twoje klucze mogą wymagać regeneracji.",

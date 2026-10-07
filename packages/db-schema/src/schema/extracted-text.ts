@@ -6,7 +6,7 @@ import { noteCache } from './notes-cache.ts'
  * job does not retry a page that already failed twice; a retry of the whole
  * job, under a new app version or a day later, drops it and reads it again.
  */
-export const EXTRACTED_TEXT_METHODS = ['pdf-text', 'ocr', 'unreadable'] as const
+export const EXTRACTED_TEXT_METHODS = ['pdf-text', 'ocr', 'html', 'unreadable'] as const
 export type ExtractedTextMethod = (typeof EXTRACTED_TEXT_METHODS)[number]
 
 /**
@@ -14,7 +14,8 @@ export type ExtractedTextMethod = (typeof EXTRACTED_TEXT_METHODS)[number]
  * every device extracts its own and nothing here syncs. `source` names the file:
  * empty for the note's own file (a filed PDF or image), otherwise a file name in
  * the note's attachments folder. A PDF stores one row per page (`part` is the
- * 1-based page), an image one row (`part` 1). The rows go with their note.
+ * 1-based page), an image one row (`part` 1), and an HTML block's file one row
+ * (`part` 1, method `html`) with its visible text. The rows go with their note.
  */
 export const extractedText = sqliteTable(
   'extracted_text',

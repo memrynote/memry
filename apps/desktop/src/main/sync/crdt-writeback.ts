@@ -45,6 +45,7 @@ import { createRemindersService, type RemindersServiceHooks } from '@memry/app-c
 import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
 import { deleteFile } from '../vault/file-ops'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
+import { CRDT_EVENTS, type CrdtWriteBackFailedEvent } from '@memry/contracts/ipc-crdt'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import path from 'path'
 import { isDeepStrictEqual } from 'node:util'
@@ -115,6 +116,8 @@ interface WritebackCost {
 const lastWritebackCost = new Map<string, WritebackCost>()
 const pendingTimers = new Map<string, PendingWriteback>()
 const inFlightWritebacks = new Set<string>()
+/** Notes whose last pass failed and whose user has been told so. */
+const failingWritebacks = new Set<string>()
 const ignoredWrites = new Map<string, number>()
 const lastNetworkUpdateMs = new Map<string, number>()
 /** Note id to the content hash of the file bytes this module last wrote for it. */
@@ -333,6 +336,7 @@ async function runWriteback(
   const startedAt = Date.now()
   try {
     await performWriteback(noteId, resolveWritebackDoc(noteId, doc), local, remoteEditedAtMs)
+    failingWritebacks.delete(noteId)
   } finally {
     const finishedAt = Date.now()
     lastWritebackCost.set(noteId, { finishedAt, durationMs: finishedAt - startedAt })
@@ -366,25 +370,44 @@ export function scheduleWriteback(
     pendingTimers.delete(noteId)
     inFlightWritebacks.add(noteId)
     runWriteback(noteId, doc, local, pendingRemoteEditedAtMs)
-      .catch((err) => {
-        updateDebugState(noteId, {
-          pending: false,
-          lastError: err instanceof Error ? err.message : String(err)
-        })
-        log.error('Write-back failed', { noteId, error: err })
-        // A failed write-back means typed content was NOT persisted to disk.
-        // Throttled: a persistent disk fault would otherwise fire per debounce.
-        if (shouldEmitThrottled(`note_writeback_error:${noteId}`)) {
-          trackMainError('notes', 'note_writeback', err)
-        }
-        emitToRenderer('sync:write-back-failed', { noteId })
-      })
+      .catch((err) => reportWritebackFailure(noteId, err))
       .finally(() => {
         inFlightWritebacks.delete(noteId)
       })
   }, writebackDelayMs(noteId))
 
   pendingTimers.set(noteId, { timer, doc, local, remoteEditedAtMs: pendingRemoteEditedAtMs })
+}
+
+/**
+ * A failed write-back means typed content was NOT persisted to disk. The user
+ * hears of it once per run of failed passes for the note, not on every pass a
+ * deterministic fault (a restore that always throws, a file another program
+ * holds) fails again; the pass that lands ends the run.
+ */
+function reportWritebackFailure(noteId: string, err: unknown): void {
+  updateDebugState(noteId, {
+    pending: false,
+    lastError: err instanceof Error ? err.message : String(err)
+  })
+  // Throttled: a persistent disk fault would otherwise fire per debounce.
+  if (shouldEmitThrottled(`note_writeback_error:${noteId}`)) {
+    trackMainError('notes', 'note_writeback', err)
+  }
+  if (failingWritebacks.has(noteId)) {
+    log.debug('Write-back failed again', { noteId, error: err })
+    return
+  }
+  failingWritebacks.add(noteId)
+  log.error('Write-back failed', { noteId, error: err })
+  const event: CrdtWriteBackFailedEvent = { noteId }
+  try {
+    const title = getNoteCacheById(getIndexDatabase(), noteId)?.title
+    if (title) event.title = title
+  } catch (lookupErr) {
+    log.warn('Write-back failure notice: note title lookup failed', { noteId, error: lookupErr })
+  }
+  emitToRenderer(CRDT_EVENTS.WRITE_BACK_FAILED, event)
 }
 
 /**
@@ -403,6 +426,7 @@ export function cancelWriteback(noteId: string): void {
   lastWritebackCost.delete(noteId)
   lastWrittenHash.delete(noteId)
   debugState.delete(noteId)
+  failingWritebacks.delete(noteId)
 }
 
 /**
@@ -422,6 +446,18 @@ export async function writebackNow(noteId: string, doc: Y.Doc): Promise<void> {
   } finally {
     inFlightWritebacks.delete(noteId)
   }
+}
+
+/**
+ * Run this note's armed pass now, if one is armed, so a caller that reads the
+ * file back right after a write reports what the file keeps (#2615). A failed
+ * pass is reported as a timed one is, not thrown: the file then holds what the
+ * write left.
+ */
+export async function settleWriteback(noteId: string): Promise<void> {
+  const pending = pendingTimers.get(noteId)
+  if (!pending) return
+  await writebackNow(noteId, pending.doc).catch((err) => reportWritebackFailure(noteId, err))
 }
 
 export function cancelPendingWritebacks(): void {
@@ -465,6 +501,7 @@ export function resetWritebackState(): void {
   lastNetworkUpdateMs.clear()
   lastWrittenHash.clear()
   debugState.clear()
+  failingWritebacks.clear()
   ignoredWritesSweptAt = 0
   networkUpdatesSweptAt = 0
 }
@@ -560,14 +597,30 @@ async function performWriteback(
     return
   }
 
+  const restore: { outcome: SourceRestoreOutcome | null } = { outcome: null }
   const body = await serializeNoteBody(
     doc,
     {
       notePath: cached.path,
-      onSourceRestore: (sourceRestore) => updateDebugState(noteId, { sourceRestore })
+      readFileBody: async () => {
+        const raw = await safeRead(toAbsolutePath(cached.path))
+        return raw === null ? null : splitFrontmatterBlock(raw).body
+      },
+      onSourceRestore: (sourceRestore) => {
+        restore.outcome = sourceRestore
+        updateDebugState(noteId, { sourceRestore })
+      }
     },
     converter
   )
+  // The file is kept, and the pass fails the way a failed read does: the
+  // failure telemetry hears of it, the user gets one notice for the note
+  // (`reportWritebackFailure`), and the next update retries.
+  if (restore.outcome === 'restore-threw' || restore.outcome === 'file-unreadable') {
+    throw new Error(
+      `The author's spelling could not be restored (${restore.outcome}); kept the file`
+    )
+  }
   const markdown = body?.markdown ?? null
   updateDebugState(noteId, {
     pending: false,

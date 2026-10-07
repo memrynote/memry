@@ -395,8 +395,8 @@ Read tools are available to Agent Chat and external MCP clients:
 Filing a PDF, image, audio file, or video into the vault indexes it alongside your markdown notes,
 so it can turn up in `vault_search_notes`. Every search hit therefore carries a `file_type`:
 
-- `markdown` — a real note. `vault_read_note` returns its content. When the note embeds PDFs or
-  images from its attachments folder, the reply adds `attachment_text`: one `{ file, text }` entry
+- `markdown` — a real note. `vault_read_note` returns its content. When the note embeds PDFs,
+  images or HTML blocks from its attachments folder, the reply adds `attachment_text`: one `{ file, text }` entry
   per file with the text read from it, about 100 KB at most (`attachment_text_truncated` says when
   it was cut). `vault_search_notes` matches the note on that text too.
 - `pdf`, `image` — a filed file whose text Memry reads on this device: the PDF's own text layer, or
@@ -442,7 +442,9 @@ files it would delete apart from the notes.
 note. The HTML is saved as an attachment of that note and appended as a file block, which renders
 it inline in the same sandbox as an `.html` file you attach yourself: scripts run, `https:`
 resources load, but the page cannot read the vault or the app. It syncs like any other attachment.
-The HTML is capped at 512 KB and the call needs your approval.
+The HTML is capped at 512 KB and the call needs your approval. Its visible text is searchable
+under the note, and `[[wiki links]]` in it count as the note's links (see
+[Text in HTML blocks](/user-guide/search#text-in-html-blocks)).
 
 Pass `file_types` to narrow the search up front — `["markdown"]` for notes only, or
 `["pdf", "image"]` to look for filed documents. The filter runs inside the search query, so `limit`
@@ -450,6 +452,25 @@ counts only matching rows. Omit `file_types` to search every file type.
 
 Notes indexed by older memrynote versions have no recorded file type; those are always treated as
 markdown, so upgrading never hides existing notes.
+
+### Write replies
+
+A write reply can carry a `warnings` list of plain sentences:
+
+- A note or journal write whose stored body is not the body it sent says so with both byte
+  counts. That includes `notes.create` and `notes.update` through `vault_desktop_write`, whose
+  reply `note.content` is the stored body. For `vault_update_note` in `append` or `prepend` mode, and for
+  `vault_add_html_artifact`, the body sent is the whole body the call asked the note to hold:
+  the current body joined with the new text, not the new text alone. The note is read back
+  once any save it was waiting on has run. Line endings count, so an LF body saved into a CRLF
+  note is reported. Only the final newline at the end of the body does not count. The body
+  sent is measured after the checkbox step below, so a checkbox line stored with `{check}` or
+  turned into a task is not reported.
+- While this device runs without its CRDT store, every write reply says so. Note edits are
+  still saved to the vault and synced, but without merge history for that session.
+
+`warnings` is the first key of the reply, so a reply cut at the size limit still starts with
+it. A reply that is not a plain object comes back as `{ warnings, result }`.
 
 ### Checkboxes in agent writes
 

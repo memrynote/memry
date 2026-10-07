@@ -163,6 +163,16 @@ export interface TagCount {
   sort_order: number
 }
 
+/**
+ * The body a note or journal write sent, and the body a read of it returns
+ * once the write has settled (#2615). `stored` is null when no read returns
+ * one, such as a note too large to read.
+ */
+export interface WrittenBody {
+  sent: string
+  stored: string | null
+}
+
 export interface CurrentNoteSnapshot {
   id: string
   title: string
@@ -262,14 +272,14 @@ export interface VaultServiceHandles {
       content_markdown: string
       folder_path?: string
       tags?: string[]
-    }): Promise<{ id: string } & CreatedTasksReply>
+    }): Promise<{ id: string; body: WrittenBody } & CreatedTasksReply>
     rename(input: { id: string; title: string }): Promise<{ id: string }>
     delete(id: string): Promise<{ id: string }>
     update(input: {
       id: string
       mode: 'append' | 'prepend' | 'replace'
       content_markdown: string
-    }): Promise<CreatedTasksReply>
+    }): Promise<WrittenBody & CreatedTasksReply>
     addTag(input: { id: string; tag: string }): Promise<void>
     removeTag(input: { id: string; tag: string }): Promise<void>
     /**
@@ -284,6 +294,8 @@ export interface VaultServiceHandles {
     moveToFolder(input: { id: string; folder_path: string }): Promise<void>
     /** Null when no markdown note reads back under `id`. */
     stored(id: string): Promise<StoredNote | null>
+    /** What a read of note `id` returns once its armed write-back has run. */
+    storedBody(id: string, sent: string): Promise<WrittenBody>
   }
   folders: {
     list(input: { path?: string; id?: string; recursive?: boolean }): Promise<FolderEntry[]>
@@ -418,16 +430,20 @@ export interface VaultServiceHandles {
   journal: {
     getByDate(date: string): Promise<JournalEntry | null>
     listInRange(input: { from: string; to: string }): Promise<JournalSummary[]>
+    /** `body` only when the call created the entry. */
     createIfMissing(input: {
       date: string
       content_markdown: string
-    }): Promise<{ id: string; created: boolean } & CreatedTasksReply>
+    }): Promise<{ id: string; created: boolean; body?: WrittenBody } & CreatedTasksReply>
+    /** `body` only when the call sent `content_markdown`. */
     update(input: {
       date: string
       content_markdown?: string
       tags?: string[]
       properties?: Record<string, unknown>
-    }): Promise<{ id: string; frontmatter_removed?: string[] } & CreatedTasksReply>
+    }): Promise<
+      { id: string; frontmatter_removed?: string[]; body?: WrittenBody } & CreatedTasksReply
+    >
     delete(date: string): Promise<{ date: string; deleted: boolean }>
     stored(date: string): Promise<StoredJournalEntry | null>
   }
@@ -472,6 +488,15 @@ export interface VaultServiceHandles {
       input: { operation: AgentMcpDesktopReadOperation; args: unknown[] },
       windowId: string | null
     ): Promise<unknown>
+    /**
+     * The request `write` sends for `input`: an agent's added checkbox lines
+     * marked plain unless the owner turned agent checklist conversion on.
+     * `write` sends a prepared request unchanged.
+     */
+    prepareWrite(input: {
+      operation: AgentMcpDesktopWriteOperation
+      args: unknown[]
+    }): Promise<{ operation: AgentMcpDesktopWriteOperation; args: unknown[] }>
     write(
       input: { operation: AgentMcpDesktopWriteOperation; args: unknown[] },
       windowId: string | null
@@ -479,6 +504,10 @@ export interface VaultServiceHandles {
   }
   windows: {
     snapshotCurrentNote(windowId: string): Promise<CurrentNoteSnapshot | null>
+  }
+  sync: {
+    /** False while this device runs without its CRDT store (#2519). */
+    crdtStoreAvailable(): Promise<boolean>
   }
   files: {
     /** A filed image, a page of a filed PDF, or a note's image or PDF attachment. */

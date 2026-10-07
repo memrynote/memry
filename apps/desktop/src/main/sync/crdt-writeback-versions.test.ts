@@ -1,13 +1,30 @@
 import * as Y from 'yjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+
+const restoreThrows = vi.hoisted(() => ({ left: 0 }))
+vi.mock('@memry/shared/markdown-source', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@memry/shared/markdown-source')>()
+  return {
+    ...actual,
+    restoreMarkdownSource: (...args: Parameters<typeof actual.restoreMarkdownSource>) => {
+      if (restoreThrows.left > 0) {
+        restoreThrows.left -= 1
+        throw new Error('restore blew up')
+      }
+      return actual.restoreMarkdownSource(...args)
+    }
+  }
+})
 
 const h = vi.hoisted(() => ({
   files: new Map<string, string>(),
   rows: new Map<string, Record<string, unknown>>(),
   indexDb: null as unknown,
-  contentHash: (_raw: string): string => ''
+  contentHash: (_raw: string): string => '',
+  failNextRead: false
 }))
 
 vi.mock('electron', () => ({
@@ -16,6 +33,11 @@ vi.mock('electron', () => ({
 }))
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
+}))
+const broadcasts = vi.hoisted(() => [] as Array<{ channel: string; payload: unknown }>)
+vi.mock('../lib/window-broadcast', () => ({
+  broadcastToAllWindows: (channel: string, payload: unknown) =>
+    broadcasts.push({ channel, payload })
 }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
 vi.mock('../database/client', () => ({
@@ -47,7 +69,13 @@ vi.mock('../vault/notes', async () => {
   }
 })
 vi.mock('../vault/file-ops', () => ({
-  safeRead: async (absolute: string) => h.files.get(absolute) ?? null,
+  safeRead: async (absolute: string) => {
+    if (h.failNextRead) {
+      h.failNextRead = false
+      throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' })
+    }
+    return h.files.get(absolute) ?? null
+  },
   atomicWrite: async (absolute: string, content: string) => {
     h.files.set(absolute, content)
   },
@@ -80,12 +108,17 @@ vi.mock('./local-mutations', () => ({
 import {
   cancelPendingWritebacks,
   cancelWriteback,
+  getWritebackDebugState,
   getWritebackStateSizes,
   resetWritebackState,
   scheduleWriteback,
+  settleWriteback,
   writebackNow
 } from './crdt-writeback'
-import { markdownToYFragment } from './blocknote-converter'
+import { trackMainError } from '../telemetry/diagnostics'
+import { resetTelemetryThrottle } from '../telemetry/throttle'
+import type { Block } from '@blocknote/core'
+import { blocksToYFragment, markdownToYFragment, yFragmentToBlocks } from './blocknote-converter'
 import { generateContentHash } from '../vault/frontmatter'
 
 const NOTE = 'note-1'
@@ -144,22 +177,27 @@ function versionsKept(noteId: string): string[] {
   ).map((row) => row.content)
 }
 
+beforeEach(() => {
+  index = createTestIndexDb()
+  h.indexDb = index.db
+  h.contentHash = generateContentHash
+  h.files.clear()
+  h.rows.clear()
+  h.failNextRead = false
+  restoreThrows.left = 0
+  broadcasts.length = 0
+  vi.mocked(trackMainError).mockClear()
+  resetTelemetryThrottle()
+  resetWritebackState()
+})
+
+afterEach(() => {
+  cancelPendingWritebacks()
+  resetWritebackState()
+  index.close()
+})
+
 describe('the version a write-back keeps of the bytes it replaces (#2646)', () => {
-  beforeEach(() => {
-    index = createTestIndexDb()
-    h.indexDb = index.db
-    h.contentHash = generateContentHash
-    h.files.clear()
-    h.rows.clear()
-    resetWritebackState()
-  })
-
-  afterEach(() => {
-    cancelPendingWritebacks()
-    resetWritebackState()
-    index.close()
-  })
-
   it('keeps one version while a peer types into the note for 60 passes', async () => {
     const first = '---\nid: note-1\n---\nThe fox\n'
     writtenElsewhere(NOTE, first)
@@ -262,5 +300,187 @@ describe('the version a write-back keeps of the bytes it replaces (#2646)', () =
 
     resetWritebackState()
     expect(getWritebackStateSizes().lastWrittenHashes).toBe(0)
+  })
+})
+
+describe('the spelling a write-back keeps when the source record no longer restores (#2615)', () => {
+  const FOREIGN = 'Title\n=====\n\nText:\n* One\n* Two\n\n_em_ here.\n'
+
+  /** A doc that says `body` and carries the record of an older body. */
+  async function docWithStaleRecord(body: string): Promise<Y.Doc> {
+    const doc = await docWith(body)
+    writeMarkdownSourceToYDoc(doc, 'Draft\n=====\n\n* Alpha\n* Beta\n\n__old__ words.\n')
+    return doc
+  }
+
+  it.each([NOTE, JOURNAL])(
+    'leaves the file as written when it already says what the doc says (%s)',
+    async (noteId) => {
+      const head =
+        noteId === JOURNAL ? "---\nid: x\ndate: '2026-01-03'\n---\n" : '---\nid: x\n---\n'
+      const raw = `${head}${FOREIGN}`
+      writtenElsewhere(noteId, raw)
+
+      await pass(noteId, await docWithStaleRecord(FOREIGN), 'remote')
+
+      expect(h.files.get(fileOf(noteId))).toBe(raw)
+      expect(versionsKept(noteId)).toEqual([])
+    }
+  )
+
+  it('merges an edit into the spelling the file holds', async () => {
+    writtenElsewhere(NOTE, `---\nid: x\n---\n${FOREIGN}`)
+
+    await pass(NOTE, await docWithStaleRecord(FOREIGN.replace('_em_ here.', 'Edited.')), 'local')
+
+    expect(h.files.get(NOTE_FILE)).toBe(
+      '---\nid: x\n---\nTitle\n=====\n\nText:\n* One\n* Two\n\nEdited.\n'
+    )
+  })
+
+  it.each([
+    ['the file it would restore from cannot be read', () => (h.failNextRead = true)],
+    ['the spelling restore throws', () => (restoreThrows.left = 1)]
+  ])('keeps the file and reports a failed pass when %s', async (_case, fail) => {
+    const raw = `---\nid: x\n---\n${FOREIGN}`
+    writtenElsewhere(NOTE, raw)
+    fail()
+
+    scheduleWriteback(
+      NOTE,
+      await docWithStaleRecord(FOREIGN.replace('_em_ here.', 'Edited.')),
+      'local'
+    )
+    await settleWriteback(NOTE)
+
+    expect(h.files.get(NOTE_FILE)).toBe(raw)
+    expect(getWritebackDebugState(NOTE)?.lastError).toMatch(/kept the file/)
+    expect(trackMainError).toHaveBeenCalledWith('notes', 'note_writeback', expect.any(Error))
+  })
+
+  it('tells the user once while the restore keeps throwing, and lets a later pass land', async () => {
+    const raw = `---\nid: x\n---\n${FOREIGN}`
+    writtenElsewhere(NOTE, raw)
+    restoreThrows.left = 3
+    const failureNotices = (): unknown[] =>
+      broadcasts.filter((b) => b.channel === 'sync:write-back-failed').map((b) => b.payload)
+
+    for (const word of ['One.', 'Two.', 'Three.']) {
+      scheduleWriteback(
+        NOTE,
+        await docWithStaleRecord(FOREIGN.replace('_em_ here.', word)),
+        'local'
+      )
+      await settleWriteback(NOTE)
+    }
+
+    expect(h.files.get(NOTE_FILE)).toBe(raw)
+    expect(failureNotices()).toEqual([{ noteId: NOTE, title: 'Fox' }])
+
+    scheduleWriteback(
+      NOTE,
+      await docWithStaleRecord(FOREIGN.replace('_em_ here.', 'Four.')),
+      'local'
+    )
+    await settleWriteback(NOTE)
+
+    expect(h.files.get(NOTE_FILE)).toBe(
+      '---\nid: x\n---\nTitle\n=====\n\nText:\n* One\n* Two\n\nFour.\n'
+    )
+    expect(getWritebackDebugState(NOTE)?.lastError).toBeNull()
+
+    restoreThrows.left = 1
+    scheduleWriteback(
+      NOTE,
+      await docWithStaleRecord(FOREIGN.replace('_em_ here.', 'Five.')),
+      'local'
+    )
+    await settleWriteback(NOTE)
+
+    expect(failureNotices()).toHaveLength(2)
+  })
+
+  it('does not bring back CriticMarkup the doc no longer holds', async () => {
+    writtenElsewhere(NOTE, '---\nid: x\n---\nKeep {--this--} word.\n\n* One\n')
+
+    await pass(NOTE, await docWithStaleRecord('Keep this word.\n\n* One\n'), 'remote')
+
+    expect(h.files.get(NOTE_FILE)).toBe('---\nid: x\n---\nKeep this word.\n\n* One\n')
+  })
+})
+
+describe('a CRLF note edited in the editor (#2615)', () => {
+  const BROAD = [
+    'Broad Title',
+    '===========',
+    '',
+    'Intro with __bold__ and *em* text.   ',
+    'Second line after a hard break.',
+    '',
+    '',
+    '',
+    '* star one',
+    '* star two',
+    '    * nested star',
+    '',
+    '+ plus one',
+    '+ plus two',
+    '',
+    '***',
+    '',
+    'Middle paragraph to edit.',
+    '',
+    'Sub Heading',
+    '-----------',
+    '',
+    '<div align="center">',
+    '<b>html block</b>',
+    '</div>',
+    '',
+    '| a | b |',
+    '|---|---|',
+    '| 1 | 2 |',
+    '',
+    '',
+    '    indented code line 1',
+    '    indented code line 2',
+    '',
+    'Tail paragraph with a break.  ',
+    'Final line.',
+    ''
+  ].join('\n')
+
+  /** The doc an editor open seeds from the file body, with one paragraph retyped. */
+  async function editedDoc(body: string, from: string, to: string): Promise<Y.Doc> {
+    const doc = await docWith(body)
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const blocks = (await yFragmentToBlocks(fragment)) as Block[]
+    const target = blocks.find((block) => (JSON.stringify(block.content) ?? '').includes(from))
+    if (!target) throw new Error(`no block holds ${from}`)
+    ;(target as unknown as { content: unknown }).content = [{ type: 'text', text: to, styles: {} }]
+    doc.transact(() => {
+      fragment.delete(0, fragment.length)
+      blocksToYFragment(blocks, fragment)
+    })
+    return doc
+  }
+
+  it.each([
+    ['LF', '\n'],
+    ['CRLF', '\r\n']
+  ])('changes only the edited line of a %s note', async (_eol, eol) => {
+    const body = BROAD.replace(/\n/g, eol)
+    const raw = `---${eol}id: x${eol}---${eol}${body}`
+    writtenElsewhere(NOTE, raw)
+
+    await pass(
+      NOTE,
+      await editedDoc(body, 'Middle paragraph to edit.', 'Middle paragraph, edited.'),
+      'local'
+    )
+
+    expect(h.files.get(NOTE_FILE)).toBe(
+      raw.replace('Middle paragraph to edit.', 'Middle paragraph, edited.')
+    )
   })
 })

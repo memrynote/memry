@@ -5,7 +5,7 @@ import type { ToolRegistration } from '../server'
 import { assertDesktopApiArgs } from './desktop-api-params'
 import { readBackFailedWarning } from './desktop-api-readback'
 import { DESKTOP_API_REPLY_MAX_BYTES } from './desktop-api-reply'
-import type { VaultServiceHandles } from './handles'
+import type { VaultServiceHandles, WrittenBody } from './handles'
 import { TOOL_SCHEMAS, WRITE_TOOL_NAMES, type ToolName } from './schemas'
 import type { AgentMcpDesktopWriteOperation } from '@memry/contracts/agent-mcp-channels'
 import type { CanvasDrawElement, CanvasElementEdit } from '@memry/contracts/canvas-draw'
@@ -79,6 +79,76 @@ function tagChanges(before: string[], after: string[]) {
   }
 }
 
+const CRDT_STORE_UNAVAILABLE =
+  'The CRDT store is unavailable on this device, so note edits sync without merge history ' +
+  'this session. Read changed notes back to check what was stored.'
+
+function comparableBody(body: string): string {
+  return body.replace(/(\r?\n)+$/, '')
+}
+
+/**
+ * Says so when the stored body is not the one sent (#2615). Line endings count,
+ * so an LF body stored in a CRLF file is reported; only the final newline the
+ * file adds does not.
+ */
+function bodyWarnings(body: WrittenBody | undefined): string[] {
+  if (!body || body.stored === null) return []
+  if (comparableBody(body.sent) === comparableBody(body.stored)) return []
+  return [
+    'The stored body is not the body this write sent. ' +
+      `Sent ${Buffer.byteLength(body.sent)} bytes, stored ${Buffer.byteLength(body.stored)} bytes. ` +
+      'Read it back to see what was stored.'
+  ]
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+/**
+ * The note and body a desktop API note write sent, when it sent one:
+ * `notes.update` names the note in its input, `notes.create` in its reply.
+ */
+function desktopNoteWrite(
+  operation: AgentMcpDesktopWriteOperation,
+  args: unknown[],
+  result: unknown
+): { id: string; sent: string } | null {
+  const input = args[0]
+  if (!isRecord(input) || typeof input.content !== 'string') return null
+  if (operation === 'notes.update' && typeof input.id === 'string') {
+    return { id: input.id, sent: input.content }
+  }
+  const note = isRecord(result) ? result.note : undefined
+  if (operation === 'notes.create' && isRecord(note) && typeof note.id === 'string') {
+    return { id: note.id, sent: input.content }
+  }
+  return null
+}
+
+/** A desktop API note reply whose `note.content` is what was stored, not what was sent. */
+function withStoredNoteContent(result: unknown, stored: string | null): unknown {
+  if (stored === null || !isRecord(result) || !isRecord(result.note)) return result
+  return { ...result, note: { ...result.note, content: stored } }
+}
+
+/**
+ * `result` with `warnings` added as its first key, so a reply the size cap cuts
+ * still starts with them. A result that is not a plain object, or whose
+ * `warnings` is not a list of strings, is wrapped as `{ warnings, result }`.
+ */
+function withWarnings(result: unknown, warnings: string[]): unknown {
+  if (warnings.length === 0) return result
+  if (!isRecord(result)) return { warnings, result }
+  const { warnings: existing, ...rest } = result
+  if (existing === undefined) return { warnings, ...rest }
+  if (Array.isArray(existing) && existing.every((w) => typeof w === 'string')) {
+    return { warnings: [...existing, ...warnings], ...rest }
+  }
+  return { warnings, result }
+}
+
 async function approvedArgs<T>(
   gate: WriteToolGate | null,
   toolName: ToolName,
@@ -120,8 +190,11 @@ export function buildWriteTools(
           toolName: 'vault_create_note',
           parsedArgs: parsed
         })) as typeof parsed
-        const { id, ...written } = await handles.notes.create(args)
-        return { ...(await storedNoteReply(handles, id)), ...written }
+        const { id, body, ...written } = await handles.notes.create(args)
+        return withWarnings(
+          { ...(await storedNoteReply(handles, id)), ...written },
+          bodyWarnings(body)
+        )
       }
     },
     vault_rename_note: {
@@ -447,9 +520,9 @@ export function buildWriteTools(
           toolName: 'vault_create_journal_entry',
           parsedArgs: parsed
         })) as typeof parsed
-        const { id, ...written } = await handles.journal.createIfMissing(args)
+        const { id, body, ...written } = await handles.journal.createIfMissing(args)
         const stored = await afterWrite(() => handles.journal.stored(args.date), { id })
-        return { ...stored, ...written }
+        return withWarnings({ ...stored, ...written }, bodyWarnings(body))
       }
     },
     vault_update_journal_entry: {
@@ -462,9 +535,9 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_update_journal_entry', parsed, ctx)
-        const { id, ...written } = await handles.journal.update(args)
+        const { id, body, ...written } = await handles.journal.update(args)
         const stored = await afterWrite(() => handles.journal.stored(args.date), { id })
-        return { ...stored, ...written }
+        return withWarnings({ ...stored, ...written }, bodyWarnings(body))
       }
     },
     vault_delete_journal_entry: {
@@ -601,10 +674,10 @@ export function buildWriteTools(
           parsedArgs: parsed
         })) as typeof parsed
         const before = await handles.notes.stored(args.id)
-        const written = await handles.notes.update(args)
+        const { sent, stored, ...written } = await handles.notes.update(args)
         const after = await storedNoteReply(handles, args.id)
         const changes = before && 'tags' in after ? tagChanges(before.tags, after.tags) : {}
-        return { ...after, ...changes, ...written }
+        return withWarnings({ ...after, ...changes, ...written }, bodyWarnings({ sent, stored }))
       }
     },
     vault_add_html_artifact: {
@@ -621,8 +694,15 @@ export function buildWriteTools(
         // an unreferenced file, which is harmless; the reverse order would leave
         // a block pointing at nothing.
         const { marker, url } = await handles.notes.saveHtmlAttachment(args)
-        await handles.notes.update({ id: args.id, mode: 'append', content_markdown: marker })
-        return { ...(await storedNoteReply(handles, args.id)), url }
+        const body = await handles.notes.update({
+          id: args.id,
+          mode: 'append',
+          content_markdown: marker
+        })
+        return withWarnings(
+          { ...(await storedNoteReply(handles, args.id)), url },
+          bodyWarnings(body)
+        )
       }
     },
     vault_update_task: {
@@ -804,10 +884,28 @@ export function buildWriteTools(
         )
         assertDesktopApiArgs(parsed)
         const args = await approvedArgs(gate, 'vault_desktop_write', parsed, ctx)
-        return handles.desktop.write(args, ctx.windowId)
+        // The byte check compares with the body after the checkbox step (AF-005),
+        // so only a respelling by the save itself is reported.
+        const request = await handles.desktop.prepareWrite(args)
+        const result = await handles.desktop.write(request, ctx.windowId)
+        const write = desktopNoteWrite(request.operation, request.args, result)
+        if (!write) return result
+        const body = await handles.notes.storedBody(write.id, write.sent)
+        return withWarnings(withStoredNoteContent(result, body.stored), bodyWarnings(body))
       }
     }
   }
 
-  return WRITE_TOOL_NAMES.map((name) => factories[name])
+  return WRITE_TOOL_NAMES.map((name) => {
+    const tool = factories[name]
+    return {
+      ...tool,
+      handler: async (input, ctx) => {
+        const result = await tool.handler(input, ctx)
+        // The write has landed: a failed status read must not report it as failed.
+        const storeUp = await handles.sync.crdtStoreAvailable().catch(() => true)
+        return withWarnings(result, storeUp ? [] : [CRDT_STORE_UNAVAILABLE])
+      }
+    }
+  })
 }

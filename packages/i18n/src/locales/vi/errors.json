@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "Lịch sử chỉnh sửa không được lưu trên thiết bị này",
-    "persistenceDegradedBody": "Ghi chú của bạn vẫn an toàn — chúng nằm trong kho dưới dạng tệp văn bản thuần, và vẫn mở và lưu bình thường. Chỉ lịch sử chỉnh sửa cục bộ và trạng thái hợp nhất của thiết bị này đang chạy trong bộ nhớ, nên chúng bắt đầu lại từ đầu mỗi khi memrynote mở."
+    "persistenceDegradedBody": "Ghi chú của bạn vẫn an toàn — chúng nằm trong kho dưới dạng tệp văn bản thuần, và vẫn mở và lưu bình thường. Chỉ lịch sử chỉnh sửa cục bộ và trạng thái hợp nhất của thiết bị này đang chạy trong bộ nhớ, nên chúng bắt đầu lại từ đầu mỗi khi memrynote mở.",
+    "writebackFailedTitle": "Không thể cập nhật tệp của một ghi chú trên ổ đĩa",
+    "writebackFailedTitleNamed": "Không thể cập nhật “{title}” trên ổ đĩa",
+    "writebackFailedBody": "Tệp trên ổ đĩa không bị thay đổi. Chỉnh sửa của bạn vẫn mở trong memrynote khi ứng dụng đang chạy; memrynote sẽ thử lại khi bạn chỉnh sửa lần tiếp theo."
   },
   "encryption": {
     "failed": "Không thể mã hóa dữ liệu. Có thể cần tạo lại khóa.",

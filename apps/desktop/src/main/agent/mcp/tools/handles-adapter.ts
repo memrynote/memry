@@ -11,8 +11,7 @@ import {
   readExtractedPages,
   TEXT_BEARING_FILE_TYPES
 } from '../../../database/queries/extracted-text'
-import { createDesktopInboxDomain } from '../../../inbox/domain'
-import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
+import { createDesktopInboxCrudHandlers, createDesktopInboxDomain } from '../../../inbox/domain'
 import {
   createNoteCommand,
   deleteNoteCommand,
@@ -22,6 +21,7 @@ import {
   updateNoteCommand
 } from '../../../notes/domain'
 import { replaceNoteTagsInCrdt } from '../../../sync/crdt-feed'
+import { getCrdtProvider } from '../../../sync/crdt-provider'
 import { createDesktopTasksDomain } from '../../../tasks/domain'
 import { createTasksPublisher } from '../../../tasks/publisher'
 import {
@@ -53,6 +53,7 @@ import { invokeDesktopApiFromWindow } from './desktop-api'
 import { writeAndReadBack } from './desktop-api-readback'
 import { noteFileFrontmatter, noteIcon, readStoredNote, readStoredStatus } from './stored-records'
 import { withoutFileBodies } from './desktop-api-reply'
+import { storedNoteBody } from './stored-body'
 import { viewVaultFile } from './file-view'
 import { openPdfDocument } from '../../../file-text/pdf-host'
 import { prepareViewImageInImageProcess } from '../../../image-processing/bridge'
@@ -280,20 +281,27 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       async create(input) {
         // Preset so a checkbox line converted during the write can link to it.
         const id = generateNoteId()
+        let written = input.content_markdown
         const { result: note, createdTasks } = await writeAgentBody(
           id,
           input.content_markdown,
           '',
-          (content) =>
-            createNoteCommand({
+          (content) => {
+            written = content
+            return createNoteCommand({
               id,
               title: input.title,
               content,
               folder: internalFolderFromToolPath(input.folder_path),
               tags: input.tags
             })
+          }
         )
-        return { id: note.id, ...createdTasksReply(createdTasks) }
+        return {
+          id: note.id,
+          body: await storedNoteBody(note.id, written),
+          ...createdTasksReply(createdTasks)
+        }
       },
       async rename({ id, title }) {
         await renameNoteCommand(id, title)
@@ -322,15 +330,15 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           throw new Error(`Note not found: ${input.id}`)
         }
         // `updateNoteCommand` feeds the new body to the note's CRDT doc.
+        let nextContent = note.content
         const { result: updated, createdTasks } = await writeAgentBody(
           input.id,
           input.content_markdown,
           input.mode === 'replace' ? note.content : '',
-          (content) =>
-            updateNoteCommand({
-              id: input.id,
-              content: mergeContent(note.content, input.mode, content)
-            })
+          (content) => {
+            nextContent = mergeContent(note.content, input.mode, content)
+            return updateNoteCommand({ id: input.id, content: nextContent })
+          }
         )
 
         // Inline `#hashtag`s in the new body change the note's tag set, and
@@ -339,7 +347,10 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         if (!sameTagList(note.tags, updated.tags)) {
           replaceNoteTagsInCrdt(input.id, updated.tags)
         }
-        return createdTasksReply(createdTasks)
+        return {
+          ...(await storedNoteBody(input.id, nextContent)),
+          ...createdTasksReply(createdTasks)
+        }
       },
       async saveHtmlAttachment({ id, title, html }) {
         const fileType = getNoteCacheById(indexDb, id)?.fileType ?? 'markdown'
@@ -386,7 +397,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       },
       async stored(id) {
         return readStoredNote(indexDb, id, folderPathFromNotePath)
-      }
+      },
+      storedBody: storedNoteBody
     },
     folders: {
       async list({ path: folderPath, id, recursive }) {
@@ -817,6 +829,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
         return withoutFileBodies(await invokeDesktopApiFromWindow(windowId, input), fileRowOf)
       },
+      prepareWrite: withAgentChecklists,
       async write(input, windowId) {
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
         return writeAndReadBack(
@@ -834,6 +847,9 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       async snapshotCurrentNote(windowId) {
         return snapshotCurrentNoteFromWindow(windowId)
       }
+    },
+    sync: {
+      crdtStoreAvailable: async () => getCrdtProvider().isPersistent()
     },
     files: {
       async view(input) {
