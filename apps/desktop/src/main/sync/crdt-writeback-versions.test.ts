@@ -484,3 +484,87 @@ describe('a CRLF note edited in the editor (#2615)', () => {
     )
   })
 })
+
+describe('HTML comments through an editor edit (AF-015)', () => {
+  const COMMENTED = [
+    '<!-- above the heading [[Alpha]] -->',
+    'Title',
+    '=====',
+    '',
+    'Line to edit.',
+    '<!-- right under it [[Gamma]] -->',
+    '',
+    'Inline <!-- inline [[Delta]] --> text.',
+    '',
+    '<!--',
+    'multi-line [[Epsilon]]',
+    '',
+    '* a list inside',
+    '-->',
+    '',
+    '%% obsidian [[Zeta]] %%',
+    '',
+    'Ref[^1].',
+    '',
+    '[^1]: Footnote [[Eta]].',
+    ''
+  ].join('\n')
+
+  /** The doc an editor open seeds, with `from` retyped inside its own text run. */
+  async function retyped(body: string, from: string, to: string): Promise<Y.Doc> {
+    const doc = await docWith(body)
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const blocks = (await yFragmentToBlocks(fragment)) as Block[]
+    const runs = blocks.flatMap((block) =>
+      Array.isArray(block.content) ? (block.content as Array<{ type: string; text?: string }>) : []
+    )
+    const run = runs.find((item) => item.type === 'text' && item.text?.includes(from))
+    if (!run) throw new Error(`no text run holds ${from}`)
+    run.text = (run.text as string).replace(from, to)
+    doc.transact(() => {
+      fragment.delete(0, fragment.length)
+      blocksToYFragment(blocks, fragment)
+    })
+    return doc
+  }
+
+  it.each([
+    ['LF', '\n', 'Line to edit.', 'Line, edited.'],
+    ['CRLF', '\r\n', 'Line to edit.', 'Line, edited.'],
+    ['LF', '\n', 'Inline ', 'Inline, edited, '],
+    ['CRLF', '\r\n', 'Inline ', 'Inline, edited, ']
+  ])('changes only the edited text of a %s note', async (_eol, eol, from, to) => {
+    const body = COMMENTED.replace(/\n/g, eol)
+    const raw = `---${eol}id: x${eol}---${eol}${body}`
+    writtenElsewhere(NOTE, raw)
+
+    await pass(NOTE, await retyped(body, from, to), 'local')
+
+    expect(h.files.get(NOTE_FILE)).toBe(raw.replace(from, to))
+  })
+
+  it.each([
+    ['LF', '\n'],
+    ['CRLF', '\r\n']
+  ])('keeps every comment in a house-style write-back of a %s note', async (_eol, eol) => {
+    const body = COMMENTED.replace(/\n/g, eol)
+    const raw = `---${eol}id: x${eol}---${eol}${body}`
+    writtenElsewhere(NOTE, raw)
+    const doc = await retyped(body, 'Line to edit.', 'Line, edited.')
+    writeMarkdownSourceToYDoc(doc, null)
+
+    await pass(NOTE, doc, 'local')
+
+    const written = h.files.get(NOTE_FILE) as string
+    for (const comment of [
+      '<!-- above the heading [[Alpha]] -->',
+      '<!-- right under it [[Gamma]] -->',
+      '<!-- inline [[Delta]] -->',
+      '<!--\nmulti-line [[Epsilon]]\n\n* a list inside\n-->',
+      '%% obsidian [[Zeta]] %%',
+      '[^1]: Footnote [[Eta]].'
+    ]) {
+      expect(written).toContain(comment.replace(/\n/g, eol))
+    }
+  })
+})
