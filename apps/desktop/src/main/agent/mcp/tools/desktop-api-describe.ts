@@ -4,6 +4,7 @@ import {
   desktopOperationRequiredCount,
   type DesktopArgsJsonSchema
 } from '@memry/contracts/agent-desktop-api-args'
+import { desktopOperationSummary } from '@memry/contracts/agent-desktop-api-summaries'
 import {
   AgentMcpDesktopOperations,
   AgentMcpDesktopWriteOperations,
@@ -20,6 +21,8 @@ export interface DesktopOperationSummary {
 }
 
 export interface DesktopOperationDescription extends DesktopOperationSummary {
+  /** What the operation does or returns, in one sentence. */
+  summary: string
   requires_approval: boolean
   params: Array<{ name: string; required: boolean }>
   args_schema: DesktopArgsJsonSchema
@@ -47,7 +50,10 @@ export function describeDesktopOperation(
   const required = desktopOperationRequiredCount(operation)
   const base = summary(operation)
   return {
-    ...base,
+    operation: base.operation,
+    summary: desktopOperationSummary(operation),
+    tool: base.tool,
+    call: base.call,
     requires_approval: base.tool === 'vault_desktop_write',
     params: desktopOperationParamNames(operation).map((name, index) => ({
       name,

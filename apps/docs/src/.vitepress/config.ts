@@ -170,6 +170,7 @@ function unifiedSidebar() {
             { text: 'Inline AI Menu', link: '/user-guide/ai/inline-menu' },
             { text: 'Embeddings & Semantic Search', link: '/user-guide/ai/embeddings-search' },
             { text: 'Agent Chat & MCP Server', link: '/user-guide/ai/agent-mcp' },
+            { text: 'Agent API Reference', link: '/user-guide/ai/agent-api-reference' },
             { text: 'Voice Transcription', link: '/user-guide/ai/voice-transcription' },
             { text: 'Provider Setup', link: '/user-guide/ai/provider-setup' }
           ]

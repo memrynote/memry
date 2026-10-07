@@ -374,6 +374,10 @@ outlives its turn cannot write afterwards.
 
 ## Tools
 
+The [Agent API reference](./agent-api-reference.md) lists every tool and desktop
+operation with its parameters and a recorded example call and reply. The same schemas are
+published as JSON Schema at `/agent-api/memry-agent-api.schema.json`.
+
 Read tools are available to Agent Chat and external MCP clients:
 
 - `vault_search_notes`

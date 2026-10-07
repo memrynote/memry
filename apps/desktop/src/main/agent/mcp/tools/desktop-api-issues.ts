@@ -110,7 +110,11 @@ function resolveRef(ref: string, root: JsonNode): JsonNode | undefined {
   return (root.$defs as Record<string, JsonNode> | undefined)?.[name]
 }
 
-function renderType(node: JsonNode, root: JsonNode, depth: number): string {
+/**
+ * A JSON Schema node written like a TypeScript type. The refusal messages and
+ * the agent API reference both use it, so they describe a type in the same words.
+ */
+export function renderType(node: JsonNode, root: JsonNode, depth = 0): string {
   if (typeof node.$ref === 'string') {
     const target = resolveRef(node.$ref, root)
     return target && depth < RENDER_MAX_DEPTH ? renderType(target, root, depth + 1) : 'object'
