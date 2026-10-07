@@ -664,6 +664,7 @@ its `args_schema`, only `"maxItems": 0`.
     { "name": "type", "required": true }
   ],
   "args_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "array",
     "prefixItems": [
       { "type": "string", "minLength": 1 },
