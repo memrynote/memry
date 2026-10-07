@@ -2,13 +2,10 @@ import { searchAll } from '../../../database/queries/search'
 import { getNoteCacheById } from '../../../database/queries/notes'
 import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
 import {
-  countExtractedParts,
-  getFileTextJob,
-  OWN_FILE,
   readAttachmentText,
-  readExtractedPages,
   TEXT_BEARING_FILE_TYPES
 } from '../../../database/queries/extracted-text'
+import { EXTRACTED_TEXT_REPLY_CHARS, extractedTextReply } from './extracted-text-reply'
 import { createDesktopInboxCrudHandlers, createDesktopInboxDomain } from '../../../inbox/domain'
 import {
   createNoteCommand,
@@ -58,13 +55,13 @@ import { invokeDesktopApiFromWindow } from './desktop-api'
 import { writeAndReadBack } from './desktop-api-readback'
 import { noteFileFrontmatter, noteIcon, readStoredNote, readStoredStatus } from './stored-records'
 import { withoutFileBodies } from './desktop-api-reply'
+import { assertNoteWritable } from '../../../vault-locks/registry'
 import { storedNoteBody } from './stored-body'
 import { viewVaultFile } from './file-view'
 import { openPdfDocument } from '../../../file-text/pdf-host'
 import { prepareViewImageInImageProcess } from '../../../image-processing/bridge'
 import { getStatus } from '../../../vault'
 import type {
-  ExtractedTextReply,
   FolderEntry,
   InboxSummary,
   NoteSummary,
@@ -76,23 +73,6 @@ import type {
 export interface AdapterDeps {
   dataDb: DataDb
   indexDb: IndexDb
-}
-
-/** Same ceiling as an oversized desktop API reply (AF-013). */
-const EXTRACTED_TEXT_REPLY_CHARS = 100_000
-
-function extractedTextReply(indexDb: IndexDb, id: string, fromPage: number): ExtractedTextReply {
-  const ref = { noteId: id, source: OWN_FILE }
-  const job = getFileTextJob(indexDb, ref)
-  const { pages, nextPage } = readExtractedPages(indexDb, id, fromPage, EXTRACTED_TEXT_REPLY_CHARS)
-  return {
-    status: job?.status === 'done' || job?.status === 'failed' ? job.status : 'extracting',
-    page_count: job?.pageCount ?? null,
-    pages_read: countExtractedParts(indexDb, ref),
-    pages,
-    next_page: nextPage,
-    ...(job?.error ? { error: job.error } : {})
-  }
 }
 
 function isTextBearing(fileType: string): boolean {
@@ -314,6 +294,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         }
       },
       async saveHtmlAttachment({ id, title, html }) {
+        assertNoteWritable(id)
         const fileType = getNoteCacheById(indexDb, id)?.fileType ?? 'markdown'
         if (fileType !== 'markdown') {
           throw new AgentToolError(

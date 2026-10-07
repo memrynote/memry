@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import fs from 'fs'
 import { noteMetadata } from '@memry/db-schema/data-schema'
-import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  asClientDb,
+  asSyncDb,
+  createTestDataDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
+import { getBaseline, writeBaseline } from '../../vault-locks/store'
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import { journalHandler } from './journal-handler'
@@ -238,6 +244,27 @@ describe('journalHandler', () => {
       date: '2026-05-10',
       source: 'sync'
     })
+  })
+
+  it('drops the locked-text baseline of a journal deleted on a peer (#2606)', () => {
+    const testDb = createTestDataDb()
+    try {
+      const db = asSyncDb(testDb.db)
+      writeBaseline(asClientDb(testDb.db), 'journal-1', 'locked day\n', 'hash-day')
+      mockGetNoteMetadataById.mockReturnValue({
+        id: 'journal-1',
+        journalDate: '2026-05-10',
+        clock: { 'device-a': 1 }
+      })
+
+      expect(journalHandler.applyDelete(makeCtx(db), 'journal-1', { 'device-a': 2 })).toBe(
+        'applied'
+      )
+
+      expect(getBaseline(asClientDb(testDb.db), 'journal-1')).toBeUndefined()
+    } finally {
+      testDb.close()
+    }
   })
 
   it('skips stale updates and applies concurrent updates as conflicts', async () => {

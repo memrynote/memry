@@ -16,6 +16,7 @@ import { getCrdtInMemorySessions } from '../store'
 import { createLogger } from '../lib/logger'
 import { trackNoteBodyEditThrottled } from '../telemetry/diagnostics'
 import { createValidatedHandler } from './validate'
+import { isNoteLocked } from '../vault-locks/registry'
 
 const log = createLogger('CrdtIpc')
 
@@ -52,6 +53,17 @@ function hookWindowClose(win: BrowserWindow): void {
         log.error('Failed to release CRDT docs for a closed window', { windowId, error: err })
       })
   })
+}
+
+/**
+ * A renderer edit to a locked note never reaches the doc (#2606). The editor
+ * opens locked notes read-only, so this only drops what slipped through: a
+ * keystroke in flight when the lock landed, or a stale editor.
+ */
+function refuseLockedEditorUpdate(noteId: string): boolean {
+  if (!isNoteLocked(noteId)) return false
+  log.warn('Dropped an editor update to a locked note', { noteId })
+  return true
 }
 
 /**
@@ -126,6 +138,7 @@ export function registerCrdtIpcHandlers(): void {
 
   ipcMain.handle(CRDT_CHANNELS.APPLY_UPDATE, async (event, rawInput: unknown) => {
     const { noteId, update } = CrdtApplyUpdateSchema.parse(rawInput)
+    if (refuseLockedEditorUpdate(noteId)) return
     const sourceWindowId = BrowserWindow.fromWebContents(event.sender)?.id ?? -1
     getCrdtProvider().applyIpcUpdate(noteId, update, sourceWindowId)
     // Body edits arrive through this channel, not the notes UPDATE IPC —
@@ -166,6 +179,7 @@ export function registerCrdtIpcHandlers(): void {
   ipcMain.handle(
     CRDT_CHANNELS.SYNC_STEP_2,
     createValidatedHandler(CrdtSyncStep2Schema, async (input) => {
+      if (refuseLockedEditorUpdate(input.noteId)) return
       getCrdtProvider().applyIpcSyncStep2(input.noteId, input.diff)
     })
   )

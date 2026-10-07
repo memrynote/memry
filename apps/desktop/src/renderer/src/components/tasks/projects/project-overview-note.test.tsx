@@ -10,7 +10,13 @@ const mocks = vi.hoisted(() => ({
   getProject: vi.fn(),
   registerPendingSave: vi.fn(),
   unregisterPendingSave: vi.fn(),
-  onMarkdownChange: null as ((markdown: string) => void) | null
+  onMarkdownChange: null as ((markdown: string) => void) | null,
+  isNoteLocked: false
+}))
+
+vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/vault-locks-store')>()),
+  useIsNoteLocked: () => mocks.isNoteLocked
 }))
 
 vi.mock('@/lib/logger', () => ({
@@ -44,14 +50,16 @@ vi.mock('@/lib/save-registry', () => ({
 vi.mock('@/components/note', () => ({
   ContentArea: ({
     initialContent,
+    editable = true,
     onMarkdownChange
   }: {
     initialContent: string
+    editable?: boolean
     onMarkdownChange?: (markdown: string) => void
   }) => {
     mocks.onMarkdownChange = onMarkdownChange ?? null
     return (
-      <div>
+      <div data-testid="content-area" data-editable={String(editable)}>
         <div data-testid="editor-content">{initialContent}</div>
         <button type="button" onClick={() => onMarkdownChange?.('# Changed')}>
           Change markdown
@@ -83,6 +91,26 @@ describe('ProjectOverviewNote', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.onMarkdownChange = null
+    mocks.isNoteLocked = false
+  })
+
+  it('#then opens a locked home note read-only with the lock notice (#2606)', async () => {
+    mocks.notesGet.mockResolvedValue(homeNote)
+    mocks.isNoteLocked = true
+
+    render(<ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />)
+
+    expect(await screen.findByTestId('content-area')).toHaveAttribute('data-editable', 'false')
+    expect(screen.getByTestId('note-locked-indicator')).toBeInTheDocument()
+  })
+
+  it('#then keeps an unlocked home note editable with no lock notice', async () => {
+    mocks.notesGet.mockResolvedValue(homeNote)
+
+    render(<ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />)
+
+    expect(await screen.findByTestId('content-area')).toHaveAttribute('data-editable', 'true')
+    expect(screen.queryByTestId('note-locked-indicator')).not.toBeInTheDocument()
   })
 
   it('#then renders the inline editor when a home note exists', async () => {

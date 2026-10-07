@@ -103,7 +103,8 @@ import {
   PanelLeft,
   ExternalLink,
   Paperclip,
-  Trash2
+  Trash2,
+  Lock
 } from '@/lib/icons'
 import { PageGraphIcon } from '@/lib/icons/page-icons'
 import { Button } from '@/components/ui/button'
@@ -131,6 +132,8 @@ import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { setVaultLock, useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
+import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { createLogger } from '@/lib/logger'
 import { markLaunchNoteReadable } from '@/lib/launch-restore'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
@@ -218,6 +221,10 @@ export function NotePage({ noteId }: NotePageProps) {
   const fileActions = useFileActionLabels()
   // TanStack Query hooks for data fetching with caching
   const { note, isLoading, error: noteError, refetch: refetchNote } = useNote(noteId ?? null)
+  // The owner locked this note or a folder above it (#2606): read-only here
+  // and for every agent write path.
+  const isLocked = useIsNoteLocked(noteId ?? null, note?.path ?? null)
+  const hasOwnLock = useHasOwnNoteLock(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote, moveNote } = useNoteMutations()
   const {
     incoming: rawBacklinks,
@@ -355,16 +362,23 @@ export function NotePage({ noteId }: NotePageProps) {
     }
   }, [noteId, openTab, activeTab?.entityId, activeTab?.isPinned])
 
-  const handlePropertyBlocked = useCallback((action: PropertySectionAction) => {
-    const messages: Record<PropertySectionAction, string> = {
-      update: 'Cannot update property - this note was deleted',
-      add: 'Cannot add property - this note was deleted',
-      remove: 'Cannot delete property - this note was deleted',
-      rename: 'Cannot rename property - this note was deleted',
-      reorder: 'Cannot reorder properties - this note was deleted'
-    }
-    toast.error(messages[action])
-  }, [])
+  const handlePropertyBlocked = useCallback(
+    (action: PropertySectionAction) => {
+      if (isLocked) {
+        toast.error(t('errors:vaultLock.noteReadOnly'))
+        return
+      }
+      const messages: Record<PropertySectionAction, string> = {
+        update: 'Cannot update property - this note was deleted',
+        add: 'Cannot add property - this note was deleted',
+        remove: 'Cannot delete property - this note was deleted',
+        rename: 'Cannot rename property - this note was deleted',
+        reorder: 'Cannot reorder properties - this note was deleted'
+      }
+      toast.error(messages[action])
+    },
+    [isLocked, t]
+  )
 
   const {
     properties,
@@ -376,7 +390,7 @@ export function NotePage({ noteId }: NotePageProps) {
     handlePropertyOrderChange
   } = usePropertySection({
     entityId: noteId ?? null,
-    canEdit: () => !isDeleted,
+    canEdit: () => !isDeleted && !isLocked,
     onBlocked: handlePropertyBlocked,
     includeExplicitType: true
   })
@@ -1138,6 +1152,15 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, isDeleted, refetchNote, queryClient, t]
   )
 
+  const handleToggleLock = useCallback(async () => {
+    if (!noteId) return
+    try {
+      await setVaultLock('note', noteId, !hasOwnLock)
+    } catch (err) {
+      toast.error(extractErrorMessage(err, t('vaultLock.toggleFailed')))
+    }
+  }, [noteId, hasOwnLock, t])
+
   const { setCover, setCoverFraming, removeCover } = useNoteCover(
     noteId ?? null,
     note?.frontmatter ?? null,
@@ -1658,6 +1681,7 @@ export function NotePage({ noteId }: NotePageProps) {
           if (action === 'delete') setIsDeleteConfirmOpen(true)
           if (action === 'local-only')
             void handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))
+          if (action === 'lock') void handleToggleLock()
         }}
         open={moreMenuOpen}
         onOpenChange={setMoreMenuOpen}
@@ -1785,7 +1809,16 @@ export function NotePage({ noteId }: NotePageProps) {
                   : t('editor.toolbar.setLocalOnly')
               }
               icon={<Monitor className="size-4" />}
+              disabled={isLocked}
+              className="disabled:pointer-events-none disabled:opacity-50"
             />
+            {(hasOwnLock || !isLocked) && (
+              <Picker.Item
+                value="lock"
+                label={hasOwnLock ? t('vaultLock.unlockNote') : t('vaultLock.lockNote')}
+                icon={<Lock className="size-4" />}
+              />
+            )}
             <Picker.Separator />
             <Picker.Item
               value="delete"
@@ -1897,7 +1930,9 @@ export function NotePage({ noteId }: NotePageProps) {
           data-testid="note-metadata"
           data-marquee-ignore
         >
+          {isLocked && <LockedNoteNotice />}
           <NoteTitle
+            disabled={isLocked}
             emoji={note.emoji ?? null}
             title={note.title}
             onTitleChange={(...args) => void handleTitleChange(...args)}
@@ -1925,9 +1960,10 @@ export function NotePage({ noteId }: NotePageProps) {
             }
             hideWhenEmpty
             hideAddButton
+            disabled={isLocked}
           />
 
-          <NoteSuggestedTags noteId={noteId} tags={note.tags} disabled={isDeleted} />
+          <NoteSuggestedTags noteId={noteId} tags={note.tags} disabled={isDeleted || isLocked} />
 
           {properties.length > 0 && (
             <InfoSection
@@ -1940,7 +1976,7 @@ export function NotePage({ noteId }: NotePageProps) {
               onPropertyOrderChange={handlePropertyOrderChange}
               onAddProperty={handleAddPropertyWithExpand}
               onDeleteProperty={handleDeleteProperty}
-              disabled={isDeleted}
+              disabled={isDeleted || isLocked}
               variant="embedded"
               hideAddButton
             />
@@ -1959,7 +1995,7 @@ export function NotePage({ noteId }: NotePageProps) {
             onAddCover={
               cover ? undefined : (event) => setCoverPickerAnchor(coverPickerAnchorFrom(event))
             }
-            disabled={isDeleted}
+            disabled={isDeleted || isLocked}
           />
         </div>
 
@@ -2017,6 +2053,7 @@ export function NotePage({ noteId }: NotePageProps) {
                 <ContentArea
                   key={noteId}
                   noteId={noteId}
+                  editable={!isLocked}
                   notePath={note.path}
                   initialContent={review.editorInitialContent}
                   contentType="markdown"

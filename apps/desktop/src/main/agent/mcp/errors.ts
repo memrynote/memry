@@ -1,3 +1,5 @@
+import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+
 export type AgentToolErrorCode = 'NOT_FOUND' | 'PERMISSION_DENIED' | 'VALIDATION' | 'INTERNAL'
 
 export class AgentToolError extends Error {
@@ -18,15 +20,22 @@ export interface McpErrorContent {
   content: Array<{ type: 'text'; text: string }>
 }
 
+/** A refusal because the owner locked the target: the fixed lock text, as a permission error. */
+export function isVaultLockRefusalMessage(message: string): boolean {
+  return message === VAULT_LOCKED_NOTE_MESSAGE
+}
+
 export function toMcpToolErrorContent(err: unknown): McpErrorContent {
   const tool =
     err instanceof AgentToolError
       ? { code: err.code, message: err.message, details: err.details }
-      : {
-          code: 'INTERNAL' as const,
-          message: err instanceof Error ? err.message : String(err),
-          details: undefined
-        }
+      : err instanceof Error && isVaultLockRefusalMessage(err.message)
+        ? { code: 'PERMISSION_DENIED' as const, message: err.message, details: undefined }
+        : {
+            code: 'INTERNAL' as const,
+            message: err instanceof Error ? err.message : String(err),
+            details: undefined
+          }
 
   return {
     isError: true,

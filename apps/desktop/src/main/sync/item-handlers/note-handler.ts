@@ -74,6 +74,11 @@ import {
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
 import {
+  forgetBaselineOfRemotelyDeletedNote,
+  settleRemoteNoteFileSync,
+  unprotectForRemoteWriteSync
+} from '../../vault-locks/files'
+import {
   applyNoteCoverToFrontmatter,
   clearNoteCoverMarker,
   recordAppliedNoteCover
@@ -422,13 +427,16 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
               frontmatterEdited: true
             })
             const tmpPath = newAbsPath + '.tmp'
+            unprotectForRemoteWriteSync(oldAbsPath)
             fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
             fs.renameSync(tmpPath, newAbsPath)
             fs.unlinkSync(oldAbsPath)
+            settleRemoteNoteFileSync(itemId, newAbsPath, newRelPath, updatedContent)
             if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
           } else {
             // Pure rename/move — file bytes untouched
             fs.renameSync(oldAbsPath, newAbsPath)
+            settleRemoteNoteFileSync(itemId, newAbsPath, newRelPath, null)
           }
           removeEmptyParents(path.dirname(oldAbsPath), notesDir).catch(() => {})
         } catch {
@@ -478,8 +486,10 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           if (updatedContent !== raw) {
             markWritebackIgnored(absPath)
             const tmpPath = absPath + '.tmp'
+            unprotectForRemoteWriteSync(absPath)
             fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
             fs.renameSync(tmpPath, absPath)
+            settleRemoteNoteFileSync(itemId, absPath, existing.path, updatedContent)
           }
           if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
         } catch {
@@ -765,6 +775,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     const absolutePath = toAbsolutePath(existing.path)
     deleteNoteFromCache(indexDb, itemId)
     clearNoteCoverMarker(ctx.db, itemId)
+    forgetBaselineOfRemotelyDeletedNote(ctx.db, itemId)
     void flushProjectionEvents()
 
     // A remote delete must drop the note's project links + clear any project home

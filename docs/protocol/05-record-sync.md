@@ -84,12 +84,12 @@ feed pull only, and records the declaration it restarts on without it, so
 declaring bodies does not re-read the record feed (chapter 07 §7.17.4, #2304).
 A server older than #2295 ignores the unrecognised entry.
 
-**Otherwise "recognised" means a member of the twenty-five record types**, being
-the twenty-one this feature subscribes to plus the four it does not, both
+**Otherwise "recognised" means a member of the twenty-six record types**, being
+the twenty-one this feature subscribes to plus the five it does not, both
 enumerated in chapter 13 §13.1. `attachment` is in `SYNC_ITEM_TYPES` but is
 **not** a record type (§13.8) and is therefore not recognised in this header:
 declaring it is indistinguishable from declaring a typo. Anything outside those
-twenty-five is dropped from the resolved set, silently and individually — an
+twenty-six is dropped from the resolved set, silently and individually — an
 unrecognised entry never fails the request and never invalidates the entries
 beside it. This only bites a client that declares something outside the fixed
 twenty-one; a conforming client's header is recognised in full by construction.

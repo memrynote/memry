@@ -6,7 +6,7 @@ import {
 } from '@memry/contracts/agent-mcp-channels'
 
 import { mainToRendererInvoke } from '../../../lib/window-rpc'
-import { AgentToolError } from '../errors'
+import { AgentToolError, isVaultLockRefusalMessage } from '../errors'
 
 export async function invokeDesktopApiFromWindow(
   windowId: string | null,
@@ -48,11 +48,33 @@ export async function invokeDesktopApiFromWindow(
   }
 
   if (!response.ok) {
+    if (isVaultLockRefusalMessage(response.error.message)) {
+      throw new AgentToolError('PERMISSION_DENIED', response.error.message, {
+        operation: request.operation
+      })
+    }
     throw new AgentToolError('INTERNAL', response.error.message, {
       operation: request.operation,
       code: response.error.code
     })
   }
 
+  // The notes.* commands report a refused write as a `{ success: false }`
+  // envelope instead of throwing; a lock refusal is still a permission error.
+  const lockRefusal = vaultLockRefusalOf(response.data)
+  if (lockRefusal !== null) {
+    throw new AgentToolError('PERMISSION_DENIED', lockRefusal, {
+      operation: request.operation
+    })
+  }
+
   return response.data
+}
+
+function vaultLockRefusalOf(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null
+  const { success, error } = data as { success?: unknown; error?: unknown }
+  return success === false && typeof error === 'string' && isVaultLockRefusalMessage(error)
+    ? error
+    : null
 }

@@ -35,6 +35,7 @@ import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { NoteUpdatedEvent } from '@memry/contracts/notes-api'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
+import { isNoteLocked } from '../vault-locks/registry'
 
 const log = createLogger('RemoveTaskLineFromNote')
 
@@ -114,6 +115,10 @@ async function rewriteSourceNote(taskId: string, noteId: string): Promise<void> 
   const db = getIndexDatabase()
   const cached = getNoteCacheById(db, noteId)
   if (!cached) return
+  if (isNoteLocked(noteId, cached.path)) {
+    log.info('Left a locked note body alone after a task delete', { taskId, noteId })
+    return
+  }
 
   const absolutePath = toAbsolutePath(cached.path)
   const original = await safeRead(absolutePath)

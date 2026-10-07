@@ -305,18 +305,18 @@ planned from states 25 for `SYNC_ITEM_TYPES`, which is wrong.
 
 | List                                 | Members | Citation                                     | Membership                                                                                                                                     |
 | ------------------------------------ | ------: | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SYNC_ITEM_TYPES`                    |  **26** | `packages/contracts/src/sync-api.ts:7-34`    | every type the server knows                                                                                                                    |
-| `RECORD_SYNC_ITEM_TYPES`             |      25 | `packages/contracts/src/sync-api.ts:36-62`   | `SYNC_ITEM_TYPES` minus `attachment`                                                                                                           |
-| `RECORD_CLOCK_REQUIRED_ITEM_TYPES`   |      24 | `packages/contracts/src/sync-api.ts:64-89`   | `RECORD_SYNC_ITEM_TYPES` minus `settings`                                                                                                      |
-| `CRDT_SYNC_ITEM_TYPES`               |       2 | `packages/contracts/src/sync-api.ts:101`     | `['note', 'journal']` — body types on the CRDT feed, chapter 07                                                                                |
-| `LEGACY_RECORD_SYNC_ITEM_TYPES`      |      15 | `packages/contracts/src/sync-api.ts:115-131` | frozen forever; what a header-less client is served                                                                                            |
-| `ENCRYPTABLE_ITEM_TYPES`             |      25 | `packages/contracts/src/sync-api.ts:156-182` | `SYNC_ITEM_TYPES` minus `attachment`                                                                                                           |
-| `FEED_ONLY_SYNC_TYPES`               |       2 | `packages/contracts/src/sync-api.ts:149`     | `['note_body', 'purged_tombstones']`, negotiable, never a record type (#2295, #2302)                                                           |
-| `NEGOTIABLE_SYNC_TYPES`              |      27 | `packages/contracts/src/sync-api.ts:152`     | `RECORD_SYNC_ITEM_TYPES` plus `FEED_ONLY_SYNC_TYPES`                                                                                           |
-| `RECREATABLE_AFTER_PURGE_ITEM_TYPES` |      10 | `packages/contracts/src/sync-api.ts:209-220` | clock-required types whose id comes back after a delete; a `create` over their purged-tombstone marker is accepted (chapter 05 §5.12.3, #2302) |
+| `SYNC_ITEM_TYPES`                    |  **27** | `packages/contracts/src/sync-api.ts:7-35`    | every type the server knows                                                                                                                    |
+| `RECORD_SYNC_ITEM_TYPES`             |      26 | `packages/contracts/src/sync-api.ts:37-64`   | `SYNC_ITEM_TYPES` minus `attachment`                                                                                                           |
+| `RECORD_CLOCK_REQUIRED_ITEM_TYPES`   |      25 | `packages/contracts/src/sync-api.ts:66-92`   | `RECORD_SYNC_ITEM_TYPES` minus `settings`                                                                                                      |
+| `CRDT_SYNC_ITEM_TYPES`               |       2 | `packages/contracts/src/sync-api.ts:104`     | `['note', 'journal']` — body types on the CRDT feed, chapter 07                                                                                |
+| `LEGACY_RECORD_SYNC_ITEM_TYPES`      |      15 | `packages/contracts/src/sync-api.ts:118-134` | frozen forever; what a header-less client is served                                                                                            |
+| `ENCRYPTABLE_ITEM_TYPES`             |      26 | `packages/contracts/src/sync-api.ts:159-186` | `SYNC_ITEM_TYPES` minus `attachment`                                                                                                           |
+| `FEED_ONLY_SYNC_TYPES`               |       2 | `packages/contracts/src/sync-api.ts:152`     | `['note_body', 'purged_tombstones']`, negotiable, never a record type (#2295, #2302)                                                           |
+| `NEGOTIABLE_SYNC_TYPES`              |      28 | `packages/contracts/src/sync-api.ts:155`     | `RECORD_SYNC_ITEM_TYPES` plus `FEED_ONLY_SYNC_TYPES`                                                                                           |
+| `RECREATABLE_AFTER_PURGE_ITEM_TYPES` |      10 | `packages/contracts/src/sync-api.ts:213-224` | clock-required types whose id comes back after a delete; a `create` over their purged-tombstone marker is accepted (chapter 05 §5.12.3, #2302) |
 
 `SYNC_OPERATIONS` is `['create', 'update', 'delete']`
-(`packages/contracts/src/sync-api.ts:154`).
+(`packages/contracts/src/sync-api.ts:157`).
 
 `NEGOTIABLE_SYNC_TYPES` is what the server recognises in `X-Memry-Sync-Types`
 (chapter 05 §5.3). A `FEED_ONLY_SYNC_TYPES` member is a capability, not a
@@ -353,7 +353,7 @@ Four obligations bind every chapter.
    edit to this chapter — and a reviewer is then looking at the fact tables.
 
    ```
-   protocol-constants-sha256: 8f8570e709122a4eb9e1ccf624836af0ae0aad78e6d1a796ad9792e0a46de4a8
+   protocol-constants-sha256: 56466a5c4ac6000e329f820d104e9d94e9695b24ffb43b7eec8ca9f365213216
    ```
 
    To update it: change the constant, run

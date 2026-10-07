@@ -19,6 +19,8 @@ import {
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { utcNow } from '@memry/shared/utc'
 import { atomicWrite, safeRead, ensureDirectory } from '../vault/file-ops'
+import { runWithLockedWritesAllowed } from '../vault-locks/registry'
+import { restoreLockedNoteFile } from '../vault-locks/service'
 import {
   generateContentHash,
   parseNote,
@@ -820,6 +822,9 @@ async function writebackExisting(
     }
     const onDisk = cached.contentHash ? generateContentHash(existingRaw) : null
     if (onDisk !== null && onDisk !== cached.contentHash && parsed) {
+      // A locked note's outside edit is never taken in: its locked text goes
+      // back on disk and the edit is kept as a version (#2606).
+      if (await restoreLockedNoteFile(noteId, existingRaw)) return
       const ingested = await feedExternalEditToCrdt(
         noteId,
         parsed.content,
@@ -860,7 +865,9 @@ async function writebackExisting(
     keepVersionBeforeWriteback(noteId, existingRaw, fileContent, cached.title)
 
   rememberIgnoredWrite(absolutePath)
-  await atomicWrite(absolutePath, fileContent)
+  // A locked note's doc only ever takes another device's edits (local updates
+  // are refused at crdt:apply-update), so its write-back is allowed (#2606).
+  await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
   lastWrittenHash.set(noteId, generateContentHash(fileContent))
 
   // An attachment rename that arrived in this body (#1714): the file is still
@@ -945,7 +952,9 @@ async function writebackJournal(
     keepVersionBeforeWriteback(noteId, existingRaw, fileContent, cached.title)
 
   rememberIgnoredWrite(absolutePath)
-  await atomicWrite(absolutePath, fileContent)
+  // A locked note's doc only ever takes another device's edits (local updates
+  // are refused at crdt:apply-update), so its write-back is allowed (#2606).
+  await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
   lastWrittenHash.set(noteId, generateContentHash(fileContent))
 
   // Journals hold file/image blocks like any other note — see the note path.

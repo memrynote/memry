@@ -15,6 +15,9 @@ import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import * as projections from '../projections'
 import { readVaultConfig } from './init'
+import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
+import { writeLockRow } from '../vault-locks/store'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -1986,6 +1989,33 @@ describe('notes operations', () => {
 
       // #then — the absolute path the import returned finds the vault-relative row
       expect(notes.getIndexedIdByImportedPath(destPath)).toBe('imported-pdf-1')
+    })
+
+    it('refuses an import into a locked folder and copies nothing (#2606)', async () => {
+      const lockedDir = path.join(tempVault.path, 'locked', 'inner')
+      fs.mkdirSync(lockedDir, { recursive: true })
+      const sourcePath = path.join(tempVault.path, 'drop.md')
+      fs.writeFileSync(sourcePath, '# dropped\n')
+      installVaultLockSource({
+        dataDb: () => dataDb.db,
+        notePathOf: () => null,
+        noteIdAtPath: () => null
+      })
+      writeLockRow(dataDb.db, 'folder', 'locked', true)
+      invalidateVaultLocks()
+
+      try {
+        await expect(
+          notes.importFiles({ sourcePaths: [sourcePath], targetFolder: 'locked/inner' })
+        ).rejects.toThrow(VAULT_LOCKED_NOTE_MESSAGE)
+        expect(fs.readdirSync(lockedDir)).toEqual([])
+      } finally {
+        installVaultLockSource({
+          dataDb: () => null,
+          notePathOf: () => null,
+          noteIdAtPath: () => null
+        })
+      }
     })
 
     it('rejects imports when no vault is open', async () => {

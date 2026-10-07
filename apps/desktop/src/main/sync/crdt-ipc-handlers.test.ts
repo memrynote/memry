@@ -119,6 +119,9 @@ vi.mock('y-leveldb', () => ({
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { runCrdtPreflight } from './crdt-preflight'
 import { _resetCrdtIpcHandlersForTests, registerCrdtIpcHandlers } from '../ipc/crdt-handlers'
+import { asClientDb, createTestDataDb } from '@tests/utils/test-db'
+import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
+import { writeLockRow } from '../vault-locks/store'
 
 describe('CRDT IPC handlers — lifecycle resilience', () => {
   beforeEach(() => {
@@ -566,6 +569,48 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
 
       // #then — routes into new provider, no-ops safely (docs is empty)
       expect(result).toEqual({ success: true })
+    })
+  })
+
+  describe('a locked note (#2606)', () => {
+    const data = createTestDataDb()
+
+    beforeEach(() => {
+      senderWindow.current = { id: 77, once: vi.fn() }
+      mockGetNoteCacheById.mockReturnValue({ id: 'n1', path: 'n1.md', fileType: 'markdown' })
+      installVaultLockSource({
+        dataDb: () => asClientDb(data.db),
+        notePathOf: () => 'n1.md',
+        noteIdAtPath: () => null
+      })
+      writeLockRow(asClientDb(data.db), 'note', 'n1', true)
+      invalidateVaultLocks()
+    })
+
+    afterEach(() => {
+      installVaultLockSource({
+        dataDb: () => null,
+        notePathOf: () => null,
+        noteIdAtPath: () => null
+      })
+      writeLockRow(asClientDb(data.db), 'note', 'n1', false)
+    })
+
+    it('drops an editor update and a sync step 2 instead of applying them to the doc', async () => {
+      const provider = getCrdtProvider()
+      await provider.init()
+      await invokeHandler(CRDT_CHANNELS.SYNC_STEP_1, {
+        noteId: 'n1',
+        stateVector: new Uint8Array([0])
+      })
+      const typed = new Y.Doc()
+      typed.getMap('probe').set('typed', 'into a locked note')
+      const update = Y.encodeStateAsUpdate(typed)
+
+      await invokeHandler(CRDT_CHANNELS.APPLY_UPDATE, { noteId: 'n1', update })
+      await invokeHandler(CRDT_CHANNELS.SYNC_STEP_2, { noteId: 'n1', diff: update })
+
+      expect(provider.getDoc('n1')?.getMap('probe').get('typed')).toBeUndefined()
     })
   })
 })

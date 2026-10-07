@@ -54,6 +54,7 @@ import { commitLocalChange } from '../sync/sync-intents'
 import { recordTaskCreated } from '../tasks/activity-log'
 import { trackMainError } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
+import { assertFolderWritable, assertNoteWritable } from '../vault-locks/registry'
 
 const log = createLogger('Inbox:Filing')
 
@@ -643,6 +644,8 @@ async function fileBinaryToFolder(
     // Merge tags (existing inbox tags + new, deduplicated) — same shape as the
     // markdown path so binaries keep their assigned tags after filing.
     const mergedTags = [...new Set([...getItemTags(db, itemId), ...tags, 'inbox'])]
+
+    assertFolderWritable(folderPath)
 
     // Ensure destination folder exists
     await ensureFolderExists(folderPath)
@@ -1418,6 +1421,13 @@ export async function linkToNotes(
     if (item.filedAt) {
       return { success: false, error: 'Item has already been filed' }
     }
+
+    // A locked target note or folder refuses the whole filing before anything
+    // moves, is created or leaves the inbox (#2606).
+    for (const target of targets) {
+      if (target.kind === 'note') assertNoteWritable(target.noteId)
+    }
+    if (folderPath) assertFolderWritable(folderPath)
 
     // Only now, past every rejection above: a staged note must not be created
     // for a filing that was going to fail anyway.

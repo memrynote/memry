@@ -170,7 +170,8 @@ import {
   markDownloadFailed,
   resetAttachmentDownloadSession
 } from '@memry/sync-client/attachment-download-state'
-import { createTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
+import { asClientDb, createTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
+import { getBaseline, writeBaseline } from '../../vault-locks/store'
 import { parseNote, serializeParsedNote } from '../../vault/frontmatter'
 import { deleteNoteFromCache, syncFileToCache, syncNoteToCache } from '../../vault/note-sync'
 import {
@@ -694,6 +695,24 @@ describe('noteHandler.applyUpsert — path collision', () => {
 
     expect(noteHandler.applyDelete(ctx, 'note-1', { dev1: 2 })).toBe('skipped')
     expect(mockPurgeCrdtDoc).not.toHaveBeenCalled()
+  })
+
+  it('drops the locked-text baseline of a note deleted on a peer (#2606)', () => {
+    const dataDb = asClientDb(testDb.db)
+    writeBaseline(dataDb, 'note-1', 'locked text\n', 'hash-locked')
+    writeBaseline(dataDb, 'note-2', 'other\n', 'hash-other')
+    mockGetNoteMetadataById.mockReturnValueOnce({
+      id: 'note-1',
+      title: 'a1',
+      path: path.join('a1', 'a1.md'),
+      fileType: 'markdown',
+      clock: { dev1: 1 }
+    })
+
+    expect(noteHandler.applyDelete(ctx, 'note-1', { dev1: 2 })).toBe('applied')
+
+    expect(getBaseline(dataDb, 'note-1')).toBeUndefined()
+    expect(getBaseline(dataDb, 'note-2')?.content).toBe('other\n')
   })
 
   it('skips delete for missing notes and deletes without a remote clock', () => {

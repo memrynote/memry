@@ -1633,5 +1633,15 @@
       "cut": "Cut",
       "cutAll": "Cut all"
     }
+  },
+  "vaultLock": {
+    "lockNote": "Lock note",
+    "unlockNote": "Unlock note",
+    "lockFolder": "Lock folder",
+    "unlockFolder": "Unlock folder",
+    "toggleFailed": "Could not change the lock",
+    "readOnlyIndicator": "Locked. Read-only for you and for agents.",
+    "externalEditRestored": "“{title}” is locked, so its outside edit was undone",
+    "externalEditRestoredHint": "The edited text is saved in the note's version history."
   }
 }

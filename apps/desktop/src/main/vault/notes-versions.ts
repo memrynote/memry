@@ -30,6 +30,7 @@ import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import { emitNoteEvent, toAbsolutePath } from './notes-io'
 import type { Note } from './notes-crud'
+import { assertNoteWritable } from '../vault-locks/registry'
 
 // ============================================================================
 // Snapshot Configuration
@@ -187,6 +188,8 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
       snapshot.noteId
     )
   }
+
+  assertNoteWritable(cached.id, cached.path)
 
   const absolutePath = toAbsolutePath(cached.path)
   const currentFileContent = await fs.readFile(absolutePath, 'utf-8')

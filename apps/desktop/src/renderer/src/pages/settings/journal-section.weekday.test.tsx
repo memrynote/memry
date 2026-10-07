@@ -12,6 +12,13 @@ beforeAll(() => {
 })
 
 const setWeekdayTemplate = vi.fn().mockResolvedValue(true)
+const updateConfig = vi.fn().mockResolvedValue(null)
+const vaultConfig = { journalFolder: 'journal', journalDateFormat: 'YYYY-MM-DD' }
+const toastError = vi.fn()
+
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: (...args: unknown[]) => toastError(...args) }
+}))
 const journalSettings = {
   defaultTemplate: 'morning-pages' as string | null,
   weekdayTemplates: {} as Record<string, string | null>,
@@ -45,8 +52,8 @@ vi.mock('@/hooks/use-templates', () => ({
 
 vi.mock('@/hooks/use-vault', () => ({
   useVault: () => ({
-    config: { journalFolder: 'journal', journalDateFormat: 'YYYY-MM-DD' },
-    updateConfig: vi.fn()
+    config: vaultConfig,
+    updateConfig
   })
 }))
 
@@ -93,6 +100,46 @@ describe('Journal settings — date format help', () => {
     expect(tooltip.textContent).toContain('Weekday and month names are always in English.')
     expect(tooltip.textContent).toContain('Use / to file entries in subfolders')
     expect(tooltip.textContent).toContain('Changing the format renames existing journal files.')
+  })
+})
+
+describe('Journal settings — date format refused by a read-only lock (#2606)', () => {
+  const LOCK_TEXT = 'The owner made this note read-only.'
+
+  beforeEach(() => {
+    updateConfig.mockReset().mockResolvedValue(null)
+    toastError.mockReset()
+  })
+
+  it('shows the refusal and puts the saved format back', async () => {
+    updateConfig.mockResolvedValueOnce(LOCK_TEXT)
+    const user = userEvent.setup()
+    render(<JournalSettings />)
+
+    const input = screen.getByDisplayValue('YYYY-MM-DD')
+    await user.clear(input)
+    await user.type(input, 'YYYY-MM-DD dddd')
+    await user.tab()
+
+    expect(updateConfig).toHaveBeenCalledWith({ journalDateFormat: 'YYYY-MM-DD dddd' })
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(LOCK_TEXT))
+    expect(input).toHaveValue('YYYY-MM-DD')
+  })
+
+  it('keeps the new format when the change goes through', async () => {
+    const user = userEvent.setup()
+    render(<JournalSettings />)
+
+    const input = screen.getByDisplayValue('YYYY-MM-DD')
+    await user.clear(input)
+    await user.type(input, 'YYYY-MM-DD dddd')
+    await user.tab()
+
+    await waitFor(() =>
+      expect(updateConfig).toHaveBeenCalledWith({ journalDateFormat: 'YYYY-MM-DD dddd' })
+    )
+    expect(toastError).not.toHaveBeenCalled()
+    expect(input).toHaveValue('YYYY-MM-DD dddd')
   })
 })
 

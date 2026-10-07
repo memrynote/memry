@@ -20,6 +20,7 @@ import {
   incrementTemplateClockOffline,
   incrementHomePageClockOffline,
   incrementCustomIconClockOffline,
+  incrementVaultLockClockOffline,
   incrementCanvasClockOffline,
   incrementCanvasFolderClockOffline,
   incrementFilterClockOffline,
@@ -34,6 +35,7 @@ import { getBookmarkSyncService } from '@memry/sync-client/bookmark-sync'
 import { getTemplateSyncService } from '@memry/sync-client/template-sync'
 import { getHomePageSyncService } from '@memry/sync-client/home-page-sync'
 import { getCustomIconSyncService } from '@memry/sync-client/custom-icon-sync'
+import { getVaultLockSyncService } from '@memry/sync-client/vault-lock-sync'
 import { getCanvasSyncService } from '@memry/sync-client/canvas-sync'
 import { getCanvasFolderSyncService } from '@memry/sync-client/canvas-folder-sync'
 import { getFilterSyncService } from '@memry/sync-client/filter-sync'
@@ -499,6 +501,33 @@ const localSyncRegistry = createSyncAdapterRegistry([
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
         enqueueDeleteOrDefer('custom_icon', getCustomIconSyncService(), itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'vault_lock',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        const service = getVaultLockSyncService()
+        if (service) {
+          service.enqueueCreate(itemId)
+          return
+        }
+
+        incrementVaultLockClockOffline(getDatabase(), itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        const service = getVaultLockSyncService()
+        if (service) {
+          service.enqueueUpdate(itemId)
+          return
+        }
+
+        incrementVaultLockClockOffline(getDatabase(), itemId)
+      },
+      enqueueDelete(): void {
+        // Unlocking is an update (`locked: false`); a lock record is never deleted.
       }
     }
   },

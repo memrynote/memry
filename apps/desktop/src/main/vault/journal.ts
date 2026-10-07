@@ -19,7 +19,7 @@ import {
   normalizePropertiesToRoot,
   writePropertiesToRoot
 } from './frontmatter'
-import { ensureDirectory } from './file-ops'
+import { afterGuardedWrite, beforeGuardedWrite, ensureDirectory } from './file-ops'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import {
   generateJournalId,
@@ -299,11 +299,14 @@ export async function writeJournalEntryWithContent(
 ): Promise<JournalWriteResult> {
   const store = getContentStore()
   await ensureDirectory(getJournalDir())
-  const previousFile = await store.read(store.getJournalRelativePath(date))
+  const relativePath = store.getJournalRelativePath(date)
+  const previousFile = await store.read(relativePath)
   const existing =
     existingEntry ?? (previousFile ? toJournalEntry(parseJournalEntry(previousFile, date)) : null)
   const result = composeJournalEntry(date, content, tags, existing, properties, previousFile)
-  await store.write(store.getJournalRelativePath(date), result.fileContent)
+  const lockedPath = await beforeGuardedWrite(store.resolve(relativePath))
+  await store.write(relativePath, result.fileContent)
+  await afterGuardedWrite(store.resolve(relativePath), lockedPath, result.fileContent)
   return result
 }
 
@@ -425,7 +428,9 @@ export async function writeJournalEntry(
  */
 export async function deleteJournalEntryFile(date: string): Promise<boolean> {
   const store = getContentStore()
-  return store.remove(store.getJournalRelativePath(date))
+  const relativePath = store.getJournalRelativePath(date)
+  await beforeGuardedWrite(store.resolve(relativePath))
+  return store.remove(relativePath)
 }
 
 /**

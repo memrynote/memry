@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { containsJournalFolder, journalDateForPath } from './journal-path'
+import { containsJournalFolder, journalDateForPath, journalPathForDate } from './journal-path'
 
 const flat = { journalFolder: 'Daily Notes', journalDateFormat: 'YYYY-MM-DD' }
 const nested = { journalFolder: '/Daily Notes/', journalDateFormat: 'YYYY/MMMM/YYYY-MM-DD' }
@@ -26,5 +26,21 @@ describe('containsJournalFolder', () => {
     expect(containsJournalFolder('Life/Daily/2026', 'Life/Daily')).toBe(false)
     expect(containsJournalFolder('Lif', 'Life/Daily')).toBe(false)
     expect(containsJournalFolder('Life', '')).toBe(false)
+  })
+})
+
+describe('journalPathForDate', () => {
+  it('is the vault-relative path main writes the entry to', () => {
+    expect(journalPathForDate('2026-10-01', flat)).toBe('Daily Notes/2026-10-01.md')
+    expect(journalPathForDate('2026-10-01', nested)).toBe('Daily Notes/2026/October/2026-10-01.md')
+    expect(journalPathForDate('2026-10-01', { ...flat, journalDateFormat: '' })).toBe(
+      'Daily Notes/2026-10-01.md'
+    )
+    expect(journalPathForDate('2026-10-01', { ...flat, journalFolder: '' })).toBe('2026-10-01.md')
+  })
+
+  it('round-trips with journalDateForPath', () => {
+    const path = journalPathForDate('2026-02-03', nested)
+    expect(journalDateForPath(path, nested)).toBe('2026-02-03')
   })
 })

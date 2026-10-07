@@ -317,5 +317,8 @@
     "invalidUrl": "That is not a web link. Paste an http or https image address.",
     "downloadFailed": "That image could not be downloaded. Check the link and try again.",
     "unsupportedUrl": "That link is not a PNG, JPG, GIF, WEBP or SVG image."
+  },
+  "vaultLock": {
+    "noteReadOnly": "The owner made this note read-only."
   }
 }

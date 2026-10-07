@@ -51,8 +51,10 @@ import { detectCorruption } from '../database/fts-rebuild'
 import { isSqliteCorruptError } from '../database/sqlite-errors'
 import { releaseDatabaseMemory } from '../database/client'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
-import { VaultError, VaultErrorCode } from '../lib/errors'
+import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
+import { installVaultLockFileGuard } from '../vault-locks/files'
+import { checkLockedFilesAtOpen } from '../vault-locks/service'
 import { renameJournalsForFormatChange } from './journal-format-migration'
 import { flushPendingWritebacks } from '../sync/crdt-writeback'
 import { DEFAULT_JOURNAL_DATE_FORMAT } from '@memry/storage-vault'
@@ -469,6 +471,12 @@ interface BackgroundIndexBuildInput {
   forcePaths: string[]
   /** Non-null when openVault reset the index DB and a recovery event is owed. */
   recoveredReason: IndexHealth | 'migration_failed' | null
+  /**
+   * Settles once locked files changed or removed while the app was closed are
+   * restored. The missing-file reconcile drops the index row of a removed
+   * file, which would hide a locked note from that restore (#2606).
+   */
+  lockedFilesChecked: Promise<void>
 }
 
 /**
@@ -488,7 +496,7 @@ interface BackgroundIndexBuildInput {
  * paths already cached.
  */
 async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promise<void> {
-  const { vaultPath, dataDb, indexHealth, recoveredReason, forcePaths } = input
+  const { vaultPath, dataDb, indexHealth, recoveredReason, forcePaths, lockedFilesChecked } = input
   const startedAt = Date.now()
   // currentStatus.path stays vaultPath for the whole build: closeVault() nulls
   // it only after awaiting this promise, and a vault switch closes first.
@@ -558,6 +566,9 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
 
   // After the walk, so reading PDFs and images never competes with it.
   startFileTextExtraction(vaultPath)
+
+  await lockedFilesChecked
+  if (isStale()) return
 
   void reconcileProjections()
     .then((results) => reportAndRepairReconcileFailures(vaultPath, results))
@@ -764,6 +775,7 @@ async function openVault(vaultPath: string): Promise<void> {
   // vault must not be missed. Watcher, sync apply and the walker all upsert the
   // cache keyed by path (the walker skips paths already cached), so the three
   // can interleave without duplicating entries.
+  installVaultLockFileGuard()
   await startWatcher(vaultPath)
   timer.mark('watcher')
 
@@ -787,6 +799,12 @@ async function openVault(vaultPath: string): Promise<void> {
   timer.mark('statusOpen')
   logger.info('Vault open timing', timer.summary())
 
+  // Locked files edited or removed while the app was closed get their locked
+  // text back, and every lock is re-applied on disk (#2606).
+  const lockedFilesChecked = checkLockedFilesAtOpen().catch((err) =>
+    logger.warn('Checking locked files at vault open failed', err)
+  )
+
   // Kick the file walk after isOpen so its tail (backfill, reconcile) runs
   // against an open vault, exactly like the old post-open reconcile call did.
   // The handle lets closeVault() stop the walk and wait it out before it tears
@@ -797,7 +815,8 @@ async function openVault(vaultPath: string): Promise<void> {
     dataDb,
     indexHealth,
     recoveredReason,
-    forcePaths: migratedRootPropertyPaths
+    forcePaths: migratedRootPropertyPaths,
+    lockedFilesChecked
   })
 
   // Register the agent IPC handlers before the sync runtime starts: agent chat
@@ -992,6 +1011,12 @@ export async function updateConfig(rawUpdates: Partial<VaultConfig>): Promise<Va
         renameJournals.newFormat
       )
     } catch (error) {
+      // A locked entry refuses the whole change: the old format stays, so every
+      // journal file still matches the format it is read with.
+      if (error instanceof NoteError && error.code === NoteErrorCode.READ_ONLY) {
+        if (watcherPaused) await startWatcher(vaultPath)
+        throw error
+      }
       logger.error('Journal rename for new date format failed', error)
       trackMainError('vault', 'journal_format_rename', error)
     }

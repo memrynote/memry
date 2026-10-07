@@ -10,6 +10,8 @@ import type { PageApplyHandle } from './bulk-apply'
 import { recordUnknownPayloadFields } from './unknown-fields'
 import { createLogger } from '../lib/logger'
 import { trackMainEvent } from '../telemetry/track'
+import { hasAnyVaultLock, runWithLockedWritesAllowed } from '../vault-locks/registry'
+import { scheduleLockedFileReconcile } from '../vault-locks/service'
 
 export type { EmitToWindows, ApplyResult }
 
@@ -52,9 +54,17 @@ export class ItemApplier {
     const emit: EmitToWindows = page
       ? (channel, data) => itemEmits.push(() => this.emitToWindows(channel, data))
       : this.emitToWindows
-    const result = this.dispatch(input, page?.db ?? this.db, emit)
+    // Another device's edit applies to a locked note or folder (#2606): the
+    // lock only stops edits made here. Async file work the handler starts
+    // keeps the scope.
+    const result = runWithLockedWritesAllowed(() => this.dispatch(input, page?.db ?? this.db, emit))
     for (const notify of itemEmits) page?.afterCommit(notify)
-    if (result === 'applied' || result === 'conflict') this.changedCount++
+    if (result === 'applied' || result === 'conflict') {
+      this.changedCount++
+      if ((input.type === 'note' || input.type === 'journal') && hasAnyVaultLock()) {
+        scheduleLockedFileReconcile()
+      }
+    }
     return result
   }
 

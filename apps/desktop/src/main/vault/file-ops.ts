@@ -16,6 +16,57 @@ import { createLogger } from '../lib/logger'
 const logger = createLogger('FileOps')
 
 // ============================================================================
+// Lock Guard
+// ============================================================================
+
+/**
+ * Read-only locks (vault-locks/files) hook in here rather than being imported,
+ * so this module stays free of database and vault-state imports. `beforeWrite`
+ * throws for a locked file the caller may not write and returns its relative
+ * path when the write is allowed; `afterWrite` then marks it read-only again.
+ */
+export interface VaultFileWriteGuard {
+  beforeWrite(absolutePath: string): Promise<string | null>
+  afterWrite(absolutePath: string, relativePath: string, content: string | null): Promise<void>
+}
+
+let writeGuard: VaultFileWriteGuard | null = null
+
+export function setVaultFileWriteGuard(guard: VaultFileWriteGuard | null): void {
+  writeGuard = guard
+}
+
+/** For writers that do not go through `atomicWrite`: same check, then `afterGuardedWrite`. */
+export async function beforeGuardedWrite(absolutePath: string): Promise<string | null> {
+  return (await writeGuard?.beforeWrite(absolutePath)) ?? null
+}
+
+export async function afterGuardedWrite(
+  absolutePath: string,
+  lockedPath: string | null,
+  content: string | null
+): Promise<void> {
+  if (lockedPath !== null) await writeGuard?.afterWrite(absolutePath, lockedPath, content)
+}
+
+/**
+ * An allowed write to a locked file cleared its read-only attribute first. When
+ * the write fails, set it again, recording no text: the file keeps the bytes it
+ * had. Never throws, so the write's own error is the one reported.
+ */
+async function restoreReadOnlyAfterFailedWrite(
+  absolutePath: string,
+  lockedPath: string | null
+): Promise<void> {
+  if (lockedPath === null) return
+  try {
+    await writeGuard?.afterWrite(absolutePath, lockedPath, null)
+  } catch (error) {
+    logger.warn('Could not mark a locked file read-only after a failed write', { error })
+  }
+}
+
+// ============================================================================
 // Atomic Write
 // ============================================================================
 
@@ -63,6 +114,7 @@ export async function withTransientFsRetry<T>(
  */
 export async function atomicWrite(filePath: string, content: string): Promise<void> {
   const dir = path.dirname(filePath)
+  const lockedPath = (await writeGuard?.beforeWrite(filePath)) ?? null
 
   try {
     // Ensure directory exists
@@ -94,7 +146,9 @@ export async function atomicWrite(filePath: string, content: string): Promise<vo
         throw error
       }
     }, 'atomicWrite')
+    if (lockedPath !== null) await writeGuard?.afterWrite(filePath, lockedPath, content)
   } catch (error) {
+    await restoreReadOnlyAfterFailedWrite(filePath, lockedPath)
     // Preserve the originating error: its errno is the only thing that tells a
     // cloud-sync/antivirus lock (EBUSY) apart from a full disk (ENOSPC) or a
     // read-only vault (EROFS) once the report reaches us.
@@ -123,6 +177,7 @@ export async function atomicWriteBinary(
   data: Buffer | Uint8Array
 ): Promise<void> {
   const dir = path.dirname(filePath)
+  const lockedPath = (await writeGuard?.beforeWrite(filePath)) ?? null
 
   try {
     await ensureDirectory(dir)
@@ -145,7 +200,9 @@ export async function atomicWriteBinary(
         throw error
       }
     }, 'atomicWriteBinary')
+    if (lockedPath !== null) await writeGuard?.afterWrite(filePath, lockedPath, null)
   } catch (error) {
+    await restoreReadOnlyAfterFailedWrite(filePath, lockedPath)
     throw new NoteError(
       `Failed to write file: ${filePath}`,
       NoteErrorCode.WRITE_FAILED,
@@ -337,6 +394,7 @@ export async function listDirectories(dirPath: string, relativeTo?: string): Pro
  * @throws NoteError if delete fails
  */
 export async function deleteFile(filePath: string): Promise<void> {
+  await writeGuard?.beforeWrite(filePath)
   try {
     await unlink(filePath)
   } catch (error) {

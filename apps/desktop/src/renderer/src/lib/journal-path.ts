@@ -7,6 +7,7 @@
  */
 
 import {
+  formatJournalFilename,
   normalizeJournalDateFormat,
   normalizeJournalFolder,
   parseJournalDate
@@ -25,6 +26,16 @@ export function journalDateForPath(path: string, layout: JournalLayout): string 
   if (!folder || !path.startsWith(`${folder}/`) || !path.endsWith('.md')) return null
   const stem = path.slice(folder.length + 1, -'.md'.length)
   return parseJournalDate(stem, normalizeJournalDateFormat(layout.journalDateFormat ?? ''))
+}
+
+/** The vault-relative path main writes the entry for `date` to (`getJournalRelativePath`). */
+export function journalPathForDate(date: string, layout: JournalLayout): string {
+  const folder = normalizeJournalFolder(layout.journalFolder ?? '')
+  const stem = formatJournalFilename(
+    date,
+    normalizeJournalDateFormat(layout.journalDateFormat ?? '')
+  )
+  return folder ? `${folder}/${stem}.md` : `${stem}.md`
 }
 
 /** True when `folderPath` is the journal folder or one of its ancestors. */

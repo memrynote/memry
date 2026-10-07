@@ -1,6 +1,15 @@
 import { getI18n } from 'react-i18next'
+import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
 
 const I18N_KEY_PREFIX = 'errors:'
+
+/**
+ * Lock refusals carry fixed English text because agents relay it verbatim
+ * (#2606); the app shows it in the user's language.
+ */
+const FIXED_MESSAGE_KEYS = new Map<string, string>([
+  [VAULT_LOCKED_NOTE_MESSAGE, 'errors:vaultLock.noteReadOnly']
+])
 
 const IPC_PREFIX_PATTERNS = [
   /^Error occurred in handler for ['"][^'"]+['"]:\s*(?:Error:\s*)?/i,
@@ -71,12 +80,23 @@ export function unwrapIpcResult<T>(
   return result as T
 }
 
+/**
+ * The fixed English lock refusal an error carries, or null. Agent replies use
+ * this so the model reads the same text in every locale (#2606).
+ */
+export function getVaultLockRefusal(error: unknown): string | null {
+  const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
+  const message = stripKnownPrefixes(raw)
+  return FIXED_MESSAGE_KEYS.has(message) ? message : null
+}
+
 export function extractErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
   const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
   if (!raw) return fallback
 
-  const message = stripKnownPrefixes(raw)
-  if (!message) return fallback
+  const stripped = stripKnownPrefixes(raw)
+  if (!stripped) return fallback
+  const message = FIXED_MESSAGE_KEYS.get(stripped) ?? stripped
 
   if (message.startsWith(I18N_KEY_PREFIX)) {
     const translated = getI18n()?.t(message)

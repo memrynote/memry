@@ -8,7 +8,7 @@
 import { readFile } from 'fs/promises'
 import { ipcMain } from 'electron'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { eq } from 'drizzle-orm'
+import { eq, like, or } from 'drizzle-orm'
 import { TagsChannels } from '@memry/contracts/ipc-channels'
 import {
   GetNotesByTagSchema,
@@ -49,6 +49,7 @@ import {
   updateTagColor,
   updateTagIcon,
   getNoteTags,
+  setNoteTags,
   getNoteCacheById
 } from '../tags/store'
 import {
@@ -69,6 +70,7 @@ import { trackMainEvent } from '../telemetry/track'
 import { toAbsolutePath } from '../vault/notes'
 import { parseNote, serializeUpdatedNote, type NoteFrontmatter } from '../vault/frontmatter'
 import { atomicWrite } from '../vault/file-ops'
+import { assertNoteWritable, hasAnyVaultLock, isNoteLocked } from '../vault-locks/registry'
 import {
   syncMergedTagDefinitions,
   syncTaggedNote,
@@ -150,6 +152,29 @@ function getAffectedNoteIds(indexDb: ReturnType<typeof getIndexDatabase>, tag: s
     .map((r) => r.noteId)
 }
 
+/**
+ * Snapshot the index tags of every locked note that carries `tag` (or a child
+ * of it) before a vault-wide rename, merge or delete, and put them back after
+ * it. The file of a locked note is left as it is, so its index row must not
+ * change either (#2606).
+ */
+function keepLockedNoteTags(indexDb: ReturnType<typeof getIndexDatabase>, tag: string): () => void {
+  if (!hasAnyVaultLock()) return () => {}
+  const normalized = tag.toLowerCase().trim()
+  const noteIds = indexDb
+    .selectDistinct({ noteId: noteTags.noteId })
+    .from(noteTags)
+    .where(or(eq(noteTags.tag, normalized), like(noteTags.tag, `${normalized}/%`)))
+    .all()
+    .map((row) => row.noteId)
+  const kept = noteIds
+    .filter((noteId) => isNoteLocked(noteId))
+    .map((noteId) => ({ noteId, tags: getNoteTags(indexDb, noteId) }))
+  return () => {
+    for (const { noteId, tags } of kept) setNoteTags(indexDb, noteId, tags)
+  }
+}
+
 async function updateNoteFrontmatterTag(
   indexDb: ReturnType<typeof getIndexDatabase>,
   noteId: string,
@@ -157,6 +182,11 @@ async function updateNoteFrontmatterTag(
 ): Promise<void> {
   const cached = getNoteCacheById(indexDb, noteId)
   if (!cached) return
+  // A vault-wide tag rename, merge or delete leaves a locked note's file as it is.
+  if (isNoteLocked(noteId, cached.path)) {
+    log.info('Left the tags of a locked note unchanged', { noteId })
+    return
+  }
 
   const absolutePath = toAbsolutePath(cached.path)
   const raw = await readFile(absolutePath, 'utf-8')
@@ -284,7 +314,9 @@ export function registerTagsHandlers(): void {
 
         const noteIds = getAffectedNoteIds(indexDb, input.oldName)
 
+        const restoreLockedTags = keepLockedNoteTags(indexDb, input.oldName)
         const affectedNotes = renameTag(indexDb, input.oldName, input.newName)
+        restoreLockedTags()
 
         const oldTagSnapshot = dataDb
           .select()
@@ -388,7 +420,9 @@ export function registerTagsHandlers(): void {
           .where(eq(tagDefinitions.name, normalizedTag))
           .get()
 
+        const restoreLockedTags = keepLockedNoteTags(indexDb, tag)
         const affectedNotes = deleteTag(indexDb, tag)
+        restoreLockedTags()
         deleteTagDefinition(dataDb, tag)
 
         syncTagDefinitionDelete(normalizedTag, tagSnapshot)
@@ -426,6 +460,7 @@ export function registerTagsHandlers(): void {
       RemoveTagFromNoteSchema,
       withErrorHandler(async (input) => {
         const db = requireIndexDatabase()
+        assertNoteWritable(input.noteId)
         removeTagFromNote(db, input.noteId, input.tag)
 
         const normalizedTag = input.tag.toLowerCase().trim()
@@ -483,7 +518,9 @@ export function registerTagsHandlers(): void {
           return { success: false, error: getMainI18n().t('errors:tag.mergeSameTag') }
         }
 
+        const restoreLockedTags = keepLockedNoteTags(indexDb, input.source)
         const noteResult = mergeTagInNotes(indexDb, input.source, input.target)
+        restoreLockedTags()
         // Before the frontmatter writes below, which an app quit can interrupt.
         const taskResult = commitTaskRetag(dataDb, () =>
           mergeTagInTasks(dataDb, input.source, input.target)

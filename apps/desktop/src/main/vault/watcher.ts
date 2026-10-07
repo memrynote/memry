@@ -62,6 +62,8 @@ import { isWritebackIgnored } from '../sync/crdt-writeback'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { flushProjectionEvents } from '../projections'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { hasAnyVaultLock, isNoteLocked } from '../vault-locks/registry'
+import { restoreLockedNoteFile } from '../vault-locks/service'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
 import { enqueueJournalDelete } from '../journal/runtime-effects'
@@ -324,7 +326,10 @@ export class VaultWatcher {
   private async handleFileAdd(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
-    if (isWritebackIgnored(absolutePath)) return
+    if (isWritebackIgnored(absolutePath)) {
+      await this.checkLockedFileInWritebackWindow(absolutePath)
+      return
+    }
 
     try {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
@@ -635,7 +640,10 @@ export class VaultWatcher {
   private async handleFileChange(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
-    if (isWritebackIgnored(absolutePath)) return
+    if (isWritebackIgnored(absolutePath)) {
+      await this.checkLockedFileInWritebackWindow(absolutePath)
+      return
+    }
 
     try {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
@@ -666,6 +674,26 @@ export class VaultWatcher {
   }
 
   /**
+   * The app's own write-back is dropped for a few seconds after it lands, but
+   * an outside edit to a locked note inside that window still gets the locked
+   * text back (#2606). The write-back itself matches the locked baseline it
+   * just recorded, so it is left alone.
+   */
+  private async checkLockedFileInWritebackWindow(absolutePath: string): Promise<void> {
+    if (!this.vaultPath || !hasAnyVaultLock()) return
+    try {
+      const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
+      if (getFileType(getExtension(absolutePath)) !== 'markdown') return
+      const cached = getNoteCacheByPath(getIndexDatabase(), relativePath)
+      if (!cached || !isNoteLocked(cached.id, relativePath)) return
+      const content = await safeRead(absolutePath)
+      if (content !== null) await restoreLockedNoteFile(cached.id, content)
+    } catch (err) {
+      this.onError?.(err instanceof Error ? err : new Error(String(err)))
+    }
+  }
+
+  /**
    * Handle markdown file modification with full frontmatter parsing.
    */
   private async handleMarkdownFileChange(
@@ -685,6 +713,15 @@ export class VaultWatcher {
     const contentHash = generateContentHash(content)
 
     if (cached.contentHash === contentHash) {
+      return
+    }
+
+    // A locked note's outside edit is kept as a version and its locked text
+    // written back; it never reaches the index, the CRDT or the peers (#2606).
+    if (
+      isNoteLocked(cached.id, relativePath) &&
+      (await restoreLockedNoteFile(cached.id, content))
+    ) {
       return
     }
 
@@ -851,6 +888,14 @@ export class VaultWatcher {
         cached.contentHash ?? '',
         relativePath,
         async () => {
+          // A locked note removed outside the app gets its locked text back
+          // instead of a delete that would reach every device (#2606).
+          if (
+            isNoteLocked(cached.id, relativePath) &&
+            (await restoreLockedNoteFile(cached.id, null))
+          ) {
+            return
+          }
           // Enqueue sync delete BEFORE cache removal (enqueue reads cache for vector clock)
           if (isJournal && journalDate) {
             enqueueJournalDelete(cached.id, journalDate)

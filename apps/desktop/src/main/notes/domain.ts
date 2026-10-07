@@ -16,6 +16,7 @@ import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import { NoteError, NoteErrorCode } from '../lib/errors'
+import { assertNoteWritable } from '../vault-locks/registry'
 import {
   syncNoteCreate,
   syncNoteUpdate,
@@ -102,6 +103,8 @@ export async function renameFolderCommand(oldPath: string, newPath: string): Pro
 }
 
 export async function deleteNoteCommand(id: string): Promise<void> {
+  // Before the sync delete is queued: a refused delete must not reach peers.
+  assertNoteWritable(id)
   // Enqueue sync delete BEFORE cache removal — enqueue reads cache for vector clock
   syncNoteDelete(id)
   await deleteNote(id)
@@ -115,6 +118,8 @@ export async function setNoteLocalOnlyCommand(input: {
   id: string
   localOnly: boolean
 }): Promise<Note> {
+  // A sync-policy change of a locked note is a local edit too (#2606).
+  assertNoteWritable(input.id)
   // localOnly is sidecar-only state — never written to the file
   setNoteLocalOnlyState(input.id, input.localOnly)
   const note = await getNoteById(input.id)
