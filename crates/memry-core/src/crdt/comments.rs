@@ -1,7 +1,7 @@
 //! Review comments and suggestions, read only (N604).
 //!
 //! **Read only, and that is normative rather than a scope decision.** §12.5.1
-//! forbids a non-editor client writing the `criticMarkupMarks` root, and
+//! forbids a non-desktop client writing the `criticMarkupMarks` root, and
 //! §12.5.0's root table says what dropping it costs: every suggestion and
 //! comment is deleted from the file on desktop's next write-back, and source
 //! restoration flips back on, so the body is additionally re-spelled. Nothing

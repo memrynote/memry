@@ -46,9 +46,9 @@ enum NoteInlineLabel {
             ?? ""
     }
 
-    /// Desktop's pill label (`packages/editor-web/src/date-mentions.ts`
-    /// `dateMentionLabel`): a relative day or an absolute date, then the time
-    /// when the mention carries one.
+    /// Desktop's pill label (`date-mention.tsx` `formatDateMentionLabel`): a
+    /// relative day or an absolute date, then the time when the mention
+    /// carries one.
     static func dateMention(
         _ run: InlineRun,
         now: Date,

@@ -341,7 +341,7 @@ impl DocumentRegistry {
 #[cfg(test)]
 impl Document {
     /// A minimal write used only by this module's tests: the smallest thing
-    /// that produces an update without reaching for the editor bundle.
+    /// that produces an update, with no block shape around the text.
     fn write_text_for_test(&self, value: &str) -> Result<(), CrdtError> {
         use yrs::{XmlFragment as _, XmlTextPrelim};
 

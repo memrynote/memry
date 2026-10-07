@@ -14,7 +14,7 @@ struct NoteExportTests {
 
     /// **Plain text, and the filename says so.**
     ///
-    /// §12.1.2 gives a non-editor client `extract_text` and nothing else, so
+    /// §12.1.2 forbids a non-desktop client from serialising markdown, so
     /// a file labelled `.md` whose contents are flattened text would be a
     /// quiet lie about what the user is getting.
     @Test func an_export_is_named_as_the_text_it_is() {

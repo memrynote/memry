@@ -4,15 +4,14 @@ import Observation
 
 // T157, the state half. One note, read-only.
 //
-// **This is a preview, not a render, and it is the placeholder T176 replaces**
-// (spec-defect 125, Kaan's decision). `NoteBody.text` is `extract_text` output
-// — chapter 12 §12.1's *only* text operation — so a heading arrives as `# `, a
-// bullet as `- `, and bold, links and code fences arrive as nothing at all.
-// Nothing here parses or serialises markdown, because §12.1.2 forbids a
-// non-editor client from doing either: it "owns `extract_text` and nothing
-// else". A faithful render needs `Document::encode_state()` exported **and**
-// the editor bundle hosted through `EditorHost`, and per spec-defect 107 the
-// core can be handed neither today.
+// **This is a preview, not a render.** It began as T157's placeholder
+// (spec-defect 125, Kaan's decision); the render is now the core's block list,
+// drawn by `NoteBlocksView`, and this preview remains for a note whose blocks
+// are not on this phone. `NoteBody.text` is `extract_text` output (chapter 12
+// §12.1.3), so a heading arrives as `# `, a bullet as `- `, and bold, links and
+// code fences arrive as nothing at all. Nothing here parses or serialises
+// markdown: §12.1.2 forbids a non-desktop client from doing either outside two
+// core writes (§12.1.0).
 //
 // **Four outcomes, four screens, and no arm shared between them.** This is the
 // single most likely bug in this task, so the distinction is carried by types

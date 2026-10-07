@@ -6,8 +6,9 @@
 //! publish it — because a merged payload without its outbox row is a local
 //! edit no peer ever sees (FR-030, data-model §A.2, chapter 13 §13.2 rule 3).
 //!
-//! Nothing here parses or serialises markdown. `extract_text` is the core's
-//! only text operation (chapter 12 §12.1).
+//! Nothing here serialises markdown, and only `crate::crdt::markdown_seed`
+//! parses it (chapter 12 §12.1.0). `extract_text` is the core's only
+//! document-to-text operation (chapter 12 §12.1).
 
 pub mod attachments;
 pub mod body_write;

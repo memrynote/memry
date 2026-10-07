@@ -127,7 +127,7 @@ enum ErrorMapping {
         return nil
     }
 
-    /// The seven enums the shell throws back across a seam, which return to it
+    /// The six enums the shell throws back across a seam, which return to it
     /// nested inside the enums above (`shell-seams.md`).
     private static func mappedSeamError(_ error: any Error) -> UserFacingError? {
         if let error = error as? SecureStoreError { return userFacing(error) }
@@ -136,7 +136,6 @@ enum ErrorMapping {
         if let error = error as? CaptureError { return userFacing(error) }
         if let error = error as? NotificationError { return userFacing(error) }
         if let error = error as? BackgroundError { return userFacing(error) }
-        if let error = error as? EditorError { return userFacing(error) }
         return nil
     }
 
@@ -395,9 +394,10 @@ enum ErrorMapping {
 //
 // An extension rather than more of the enum body: the split is the one
 // `core-api.md` and `shell-seams.md` already draw — seven enums the core raises
-// at the shell, seven the shell raises at the core and which come back nested
-// inside the first seven — and it is also what keeps the type body under its
-// ceiling without disabling a rule.
+// at the shell, and the shell's own, which come back nested inside the first
+// seven. `shell-seams.md` lists seven of those; six remain, because
+// `EditorError` left with the WebView editor. The split is also what keeps the
+// type body under its ceiling without disabling a rule.
 extension ErrorMapping {
     static func userFacing(_ error: SecureStoreError) -> UserFacingError {
         switch error {
@@ -516,24 +516,6 @@ extension ErrorMapping {
         case .Failed:
             copy("background.failed", "A background sync did not finish.",
                  "Memry will try again the next time it runs.", .retryLater)
-        }
-    }
-
-    static func userFacing(_ error: EditorError) -> UserFacingError {
-        switch error {
-        // The core queues rather than losing the message, so this is not a loss.
-        case .NotAttached:
-            copy("editor.notAttached", "The editor is not ready yet.",
-                 "Your change is queued and will be applied when it opens.", .retryLater)
-        case .Timeout:
-            copy("editor.timeout", "The editor stopped responding.",
-                 "Close the note and open it again. Your saved text is unaffected.", .retry)
-        case .ProtocolMismatch:
-            copy("editor.protocolMismatch", "Memry's editor does not match the rest of the app.",
-                 "Reinstalling Memry from the App Store should fix it.")
-        case .Failed:
-            copy("editor.failed", "The editor could not complete that.",
-                 "Try again.", .retry)
         }
     }
 }

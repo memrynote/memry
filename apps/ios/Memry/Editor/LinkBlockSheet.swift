@@ -6,8 +6,8 @@
 //  Desktop references: `packages/shared/src/youtube.ts` (the video id rule
 //  and its fixtures in `youtube.test.ts`), `ContentArea.tsx`
 //  `handlePasteLinkSelect` (the props an embed and a bookmark start with),
-//  `url-metadata.ts` `extractDomain`, and `editor-web/src/paste-link.ts`
-//  `URL_ONLY` (what counts as a link).
+//  `url-metadata.ts` `extractDomain`, and `paste-url-link.ts`
+//  `BARE_URL_REGEX` (what counts as a link).
 //
 
 import MemryCore

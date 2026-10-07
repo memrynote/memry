@@ -1,6 +1,7 @@
-//! The eight foreign traits the shell fills in, data-model §D.7.
+//! The seven foreign traits the shell fills in. Data-model §D.7 lists eight;
+//! the eighth, `EditorHost`, left with the WebView editor.
 //!
-//! **The list is closed.** Adding a ninth requires a written justification in
+//! **The list is closed.** Adding another requires a written justification in
 //! the specification, because every seam is a place a shell can grow logic the
 //! core was supposed to own (Constitution I, FR-017).
 //!
@@ -12,7 +13,6 @@
 //! | `BackgroundExec` | background task registration and expiry warnings     |
 //! | `Reachability`   | network reachability transitions                     |
 //! | `Transport`      | HTTP and the realtime socket                         |
-//! | `EditorHost`     | the WebView bridge relay                             |
 //! | `CodeCapture`    | optical code capture                                 |
 //!
 //! Everything else — merge, clocks, crypto, retry, cursors, schema — is the
@@ -21,7 +21,6 @@
 
 pub mod background;
 pub mod capture;
-pub mod editor;
 pub mod notifications;
 pub mod reachability;
 pub mod secure_store;

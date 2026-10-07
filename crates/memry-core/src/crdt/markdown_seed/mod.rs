@@ -1,9 +1,9 @@
 //! Markdown → BlockNote document seed (spec 005-journal JP022a).
 //!
-//! **Why the core parses markdown here, against chapter 12 §12.1.2.** A day
-//! seeded from a template on the phone has only `seed_markdown` until an
-//! editor turns it into a document, and the iOS app has no editor bundle to do
-//! that (§5 fact c): the day would read "not on this phone", and the first
+//! **Why the core parses markdown here (chapter 12 §12.1.0).** A day seeded
+//! from a template on the phone has only `seed_markdown` until something turns
+//! it into a document, and the iOS app converts no markdown of its own
+//! (§5 fact c): the day would read "not on this phone", and the first
 //! keystroke would write blocks into an empty document that desktop's next
 //! write-back puts over the template text. So the core seeds the document
 //! itself, for the block types templates use, and nothing more.

@@ -8,8 +8,8 @@
 //! One transaction writes the day (created or revived), the create-time
 //! `content` (chapter 12 §12.2 carve-out A) and `note_bodies.seed_markdown`,
 //! the tags and properties, **and** the document seeded from the markdown
-//! (JP022a, [`crate::crdt::markdown_seed`]) with its update row: the phone has
-//! no editor bundle to seed it later, and a day holding only `seed_markdown`
+//! (JP022a, [`crate::crdt::markdown_seed`]) with its update row: nothing on
+//! the phone would seed it later, and a day holding only `seed_markdown`
 //! would be unwritable there.
 
 use std::sync::{Arc, Mutex, PoisonError};

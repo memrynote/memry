@@ -304,14 +304,13 @@ struct NoteReadSourceTests {
     )
     func theScreenStaysAPreview() throws {
         let source = try NoteReadSources.code(NoteReadSources.readView)
-        // §12.1.2: a non-editor client "owns `extract_text` and nothing else".
-        // Each of these is a way to stop being one.
+        // §12.1.2: a non-desktop client neither parses nor serialises markdown
+        // here, and the iOS app hosts no web editor. Each of these breaks that.
         for forbidden in [
             "AttributedString(markdown",
             "markdown:",
             "WKWebView",
             "WebView",
-            "EditorHost",
             "encodeState"
         ] {
             #expect(source.contains(forbidden) == false, "\(forbidden) in NoteReadView.swift")
