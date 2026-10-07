@@ -69,7 +69,7 @@
     "persistenceDegradedBody": "Notițele sunt în siguranță – se află în seif ca fișiere simple și se deschid și se salvează în continuare normal. Doar istoricul local al editărilor și starea de îmbinare ale acestui dispozitiv sunt păstrate în memorie, așa că pornesc de la zero de fiecare dată când se deschide memrynote.",
     "writebackFailedTitle": "Fișierul unei notițe de pe disc nu a putut fi actualizat",
     "writebackFailedTitleNamed": "„{title}” nu a putut fi actualizată pe disc",
-    "writebackFailedBody": "Modificarea ta este păstrată în memrynote. Fișierul de pe disc are încă textul anterior; memrynote va încerca din nou la următoarea ta modificare."
+    "writebackFailedBody": "Fișierul de pe disc a rămas neschimbat. Modificarea ta rămâne deschisă în memrynote cât timp aplicația rulează; memrynote va încerca din nou la următoarea ta modificare."
   },
   "encryption": {
     "failed": "Nu s-au putut cripta datele. Este posibil să fie necesară regenerarea cheilor.",

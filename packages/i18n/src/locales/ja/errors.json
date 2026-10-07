@@ -69,7 +69,7 @@
     "persistenceDegradedBody": "ノートは安全です。保管庫にプレーンファイルとして保存されており、通常どおり開いて保存できます。このデバイスのローカルの編集履歴とマージ状態だけがメモリー上で動作しているため、memrynote を開くたびにリセットされます。",
     "writebackFailedTitle": "ディスク上のノートファイルを更新できませんでした",
     "writebackFailedTitleNamed": "ディスク上の「{title}」を更新できませんでした",
-    "writebackFailedBody": "編集内容は memrynote に保持されています。ディスク上のファイルには以前のテキストが残っています。次に編集したときに memrynote が再試行します。"
+    "writebackFailedBody": "ディスク上のファイルは変更されていません。編集内容はアプリの実行中は memrynote で開いたままです。次に編集したときに memrynote が再試行します。"
   },
   "encryption": {
     "failed": "データを暗号化できませんでした。キーの再生成が必要な場合があります。",

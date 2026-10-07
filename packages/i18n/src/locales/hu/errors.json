@@ -69,7 +69,7 @@
     "persistenceDegradedBody": "A jegyzetei biztonságban vannak – egyszerű fájlokként vannak a széfben, és továbbra is a szokásos módon nyílnak meg és mentődnek. Csak az eszköz helyi szerkesztési előzményei és egyesítési állapota fut a memóriában, ezért ezek a memrynote minden megnyitásakor elölről kezdődnek.",
     "writebackFailedTitle": "Egy jegyzet fájlját nem sikerült frissíteni a lemezen",
     "writebackFailedTitleNamed": "„{title}” nem frissíthető a lemezen",
-    "writebackFailedBody": "A módosításod megmarad a memrynote-ban. A lemezen lévő fájl még a korábbi szöveget tartalmazza; a memrynote a következő módosításodnál újra próbálkozik."
+    "writebackFailedBody": "A lemezen lévő fájl változatlan maradt. A módosításod nyitva marad a memrynote-ban, amíg az alkalmazás fut; a memrynote a következő módosításodnál újra próbálkozik."
   },
   "encryption": {
     "failed": "Nem sikerült titkosítani az adatokat. Lehet, hogy a kulcsokat újra kell generálni.",

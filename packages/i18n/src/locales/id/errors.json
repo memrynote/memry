@@ -69,7 +69,7 @@
     "persistenceDegradedBody": "Catatan Anda aman — catatan tersimpan di brankas sebagai file biasa, dan tetap dapat dibuka dan disimpan seperti biasa. Hanya riwayat edit lokal dan status penggabungan di perangkat ini yang berjalan di memori, sehingga keduanya dimulai dari awal setiap kali memrynote dibuka.",
     "writebackFailedTitle": "File catatan di disk tidak dapat diperbarui",
     "writebackFailedTitleNamed": "“{title}” tidak dapat diperbarui di disk",
-    "writebackFailedBody": "Suntingan Anda tetap tersimpan di memrynote. File di disk masih berisi teks sebelumnya; memrynote akan mencoba lagi pada suntingan Anda berikutnya."
+    "writebackFailedBody": "File di disk tidak diubah. Suntingan Anda tetap terbuka di memrynote selama aplikasi berjalan; memrynote akan mencoba lagi pada suntingan Anda berikutnya."
   },
   "encryption": {
     "failed": "Gagal mengenkripsi data. Kunci Anda mungkin perlu dibuat ulang.",

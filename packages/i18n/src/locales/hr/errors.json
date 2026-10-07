@@ -69,7 +69,7 @@
     "persistenceDegradedBody": "Vaše bilješke su sigurne – nalaze se u trezoru kao obične datoteke i i dalje se normalno otvaraju i spremaju. Samo se lokalna povijest uređivanja i stanje spajanja ovog uređaja drže u memoriji pa počinju ispočetka svaki put kad se aplikacija memrynote otvori.",
     "writebackFailedTitle": "Datoteku bilješke na disku nije bilo moguće ažurirati",
     "writebackFailedTitleNamed": "„{title}” nije bilo moguće ažurirati na disku",
-    "writebackFailedBody": "Vaša je izmjena sačuvana u memrynoteu. Datoteka na disku još sadrži prethodni tekst; memrynote će pokušati ponovno pri vašoj sljedećoj izmjeni."
+    "writebackFailedBody": "Datoteka na disku ostala je nepromijenjena. Vaša izmjena ostaje otvorena u memrynoteu dok aplikacija radi; memrynote će pokušati ponovno pri vašoj sljedećoj izmjeni."
   },
   "encryption": {
     "failed": "Šifriranje podataka nije uspjelo. Vaše ključeve će možda trebati regenerirati.",

@@ -69,7 +69,7 @@
     "persistenceDegradedBody": "Notlarınız güvende — kasanızda düz dosyalar olarak duruyor ve hâlâ normal şekilde açılıp kaydediliyor. Yalnızca bu cihazın yerel düzenleme geçmişi ve birleştirme durumu bellekte tutuluyor; bu yüzden memrynote her açıldığında sıfırdan başlıyor.",
     "writebackFailedTitle": "Bir notun diskteki dosyası güncellenemedi",
     "writebackFailedTitleNamed": "“{title}” diskte güncellenemedi",
-    "writebackFailedBody": "Düzenlemeniz memrynote içinde korunuyor. Diskteki dosyada hâlâ önceki metin var; memrynote bir sonraki düzenlemenizde yeniden deneyecek."
+    "writebackFailedBody": "Diskteki dosya değiştirilmedi. Düzenlemeniz uygulama çalıştığı sürece memrynote içinde açık kalır; memrynote bir sonraki düzenlemenizde yeniden deneyecek."
   },
   "encryption": {
     "failed": "Veriler şifrelenemedi. Anahtarlarınızın yeniden oluşturulması gerekebilir.",

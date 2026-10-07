@@ -69,7 +69,7 @@
     "persistenceDegradedBody": "Dine noter er i sikkerhed – de ligger i din boks som almindelige filer og kan stadig åbnes og gemmes som normalt. Kun denne enheds lokale redigeringshistorik og flettetilstand kører i hukommelsen, så de starter forfra, hver gang memrynote åbnes.",
     "writebackFailedTitle": "En notes fil på disken kunne ikke opdateres",
     "writebackFailedTitleNamed": "»{title}« kunne ikke opdateres på disken",
-    "writebackFailedBody": "Din ændring er gemt i memrynote. Filen på disken har stadig den tidligere tekst; memrynote prøver igen ved din næste ændring."
+    "writebackFailedBody": "Filen på disken blev ikke ændret. Din ændring forbliver åben i memrynote, så længe appen kører; memrynote prøver igen ved din næste ændring."
   },
   "encryption": {
     "failed": "Kunne ikke kryptere data. Dine nøgler skal muligvis regenereres.",

@@ -69,7 +69,7 @@
     "persistenceDegradedBody": "Suas notas estão seguras — elas ficam no seu cofre como arquivos de texto simples e continuam abrindo e salvando normalmente. Só o histórico local de edições e o estado de mesclagem deste dispositivo estão sendo mantidos na memória, então recomeçam do zero sempre que o memrynote é aberto.",
     "writebackFailedTitle": "Não foi possível atualizar o arquivo de uma nota no disco",
     "writebackFailedTitleNamed": "Não foi possível atualizar “{title}” no disco",
-    "writebackFailedBody": "Sua alteração está guardada no memrynote. O arquivo no disco ainda tem o texto anterior; o memrynote tentará novamente na sua próxima alteração."
+    "writebackFailedBody": "O arquivo no disco não foi alterado. Sua alteração continua aberta no memrynote enquanto o app estiver em execução; o memrynote tentará novamente na sua próxima alteração."
   },
   "encryption": {
     "failed": "Não foi possível criptografar os dados. Talvez suas chaves precisem ser geradas novamente.",
