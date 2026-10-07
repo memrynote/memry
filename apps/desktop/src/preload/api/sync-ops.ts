@@ -62,7 +62,7 @@ export const syncAttachments = {
 
 // CRDT channels are merged into SYNC_CHANNELS (single flat namespace for the preload bridge)
 export const syncCrdt = {
-  openDoc: (input: { noteId: string }) => invoke(SYNC_CHANNELS.OPEN_DOC, input),
+  openDoc: (input: { noteId: string; vaultPath?: string }) => invoke(SYNC_CHANNELS.OPEN_DOC, input),
   closeDoc: (input: { noteId: string }) => invoke(SYNC_CHANNELS.CLOSE_DOC, input),
   applyUpdate: (input: { noteId: string; update: Uint8Array }) =>
     invoke(SYNC_CHANNELS.APPLY_UPDATE, input),

@@ -12,6 +12,7 @@ import type {
 import type { ArticleCapture } from '@memry/article-extract'
 import {
   claimToken,
+  getTags,
   getFolders,
   pollUntil,
   type FolderList,
@@ -120,6 +121,12 @@ async function waitForServer(): Promise<boolean> {
 
 async function openApp(): Promise<void> {
   await browser.tabs.create({ url: 'memry://open' }).catch(() => {})
+}
+
+async function fetchTags(): Promise<string[]> {
+  const found = await probe()
+  const token = await getToken()
+  return found && token ? getTags(found.port, token) : []
 }
 
 async function capture(body: ArticleCapture): Promise<CaptureResponse> {
@@ -361,6 +368,8 @@ export default defineBackground(() => {
         return flushForPopup()
       case 'REVOKE':
         return revoke()
+      case 'GET_TAGS':
+        return fetchTags()
       case 'GET_FOLDERS':
         return listFolders()
       default:

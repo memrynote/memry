@@ -49,6 +49,8 @@ const STATUS: Record<ConnectionState, { tone: string; label: string }> = {
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const phase = selectPhase(state)
+  // Held in memory only: vault tag names are never persisted in browser storage.
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
   // Folders come live from the desktop each time the popup opens and are never
   // persisted. Null = no picker (closed app, unpaired, no vault, older desktop).
   const [folderList, setFolderList] = useState<FolderList | null>(null)
@@ -68,6 +70,15 @@ export default function App() {
       .sendMessage({ type: 'GET_STATUS' })
       .then((r: StatusResponse) => {
         dispatch({ type: 'STATUS', connection: r.connection, port: r.port })
+        // Not gated on 'ready': GET /ping cannot see the pairing (no Origin), so
+        // a paired extension still reads needs-pairing. The background checks
+        // for a token and POST /tags checks the real pairing.
+        if (r.connection !== 'app-closed') {
+          browser.runtime
+            .sendMessage({ type: 'GET_TAGS' })
+            .then((tags: string[]) => setTagSuggestions(Array.isArray(tags) ? tags : []))
+            .catch(() => {})
+        }
         if (!r.canPickFolder) return
         browser.runtime
           .sendMessage({ type: 'GET_FOLDERS' })
@@ -318,6 +329,7 @@ export default function App() {
 
                 <TagEditor
                   tags={draft.tags ?? []}
+                  suggestions={tagSuggestions}
                   disabled={!editable}
                   onChange={(tags) => setDraft({ ...draft, tags })}
                 />

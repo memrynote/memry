@@ -27,6 +27,7 @@ export type PopupMessage =
   | { type: 'FETCH_PDF'; url: string }
   | { type: 'FLUSH_QUEUE' }
   | { type: 'REVOKE' }
+  | { type: 'GET_TAGS' }
   | { type: 'GET_FOLDERS' }
 
 export type ContentMessage =

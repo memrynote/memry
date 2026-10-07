@@ -150,6 +150,29 @@ export async function postRevoke(
   }
 }
 
+// Existing vault tags for autocomplete. Suggestions are optional, so any failure
+// (app closed, vault closed, older desktop without /tags) yields an empty list.
+export async function getTags(
+  port: number,
+  token: string,
+  fetchFn: typeof fetch = fetch
+): Promise<string[]> {
+  try {
+    // POST so Chrome attaches the Origin header the desktop allowlist checks.
+    const res = await fetchFn(`http://127.0.0.1:${port}/tags`, {
+      method: 'POST',
+      headers: captureHeaders(token)
+    })
+    if (!res.ok) return []
+    const data = (await res.json()) as { tags?: unknown }
+    return Array.isArray(data.tags)
+      ? data.tags.filter((t): t is string => typeof t === 'string')
+      : []
+  } catch {
+    return []
+  }
+}
+
 export async function postCapture(
   port: number,
   token: string,

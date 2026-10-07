@@ -583,6 +583,23 @@ is the retry: there is no timer and no polling loop, which matters because a res
 provider ever following it — the signed-out steady state — has to settle to nothing
 pending rather than to a retry that runs forever.
 
+On a vault switch the renderer keeps the workspace it left mounted, so its editors are
+stranded too, and they must not rebind to the provider that now serves the other vault.
+Note ids repeat across vaults (journal ids are dates, a copied vault keeps every id), so a
+rebind there could succeed and its handshake would push one vault's doc into the other
+vault's store. Two checks keep it out:
+
+- `crdt:provider-ready` carries `{ vaultPath }`, the vault the provider was opened for.
+  `openVault` passes that path to `initPersistence(vaultPath)` itself, because the vault
+  status does not publish the new path until later in the open; read from there, it was
+  always `null` on a switch and the renderer could not tell whose editors may rebind. An
+  editor rebinds only on a ready for its own vault.
+- `crdt:open-doc` accepts an optional `vaultPath`, which editors inside a vault workspace
+  always send. Main rejects the open with `CRDT provider serves another vault` when its
+  provider was opened for a different vault. The binding stays stale and rebinds when its
+  own vault is open again. An open that names no vault, or a provider whose vault is
+  unknown, is served as before.
+
 The reset also logs how many docs had an editor attached when it happened. That is the
 number the rebind has to bring back to zero, and it is the only signal that this class of
 failure occurred — a stale editor is otherwise indistinguishable from a quiet note.

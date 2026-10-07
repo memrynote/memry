@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import type { ToolSet } from 'ai'
+import type { JSONValue, ToolSet } from 'ai'
 
 import { createLogger } from '../../lib/logger'
 import { trackMainError } from '../../telemetry/diagnostics'
@@ -25,8 +25,18 @@ export interface AgentToolCallInput {
   args: unknown
 }
 
+/** An MCP image content part, kept so the model can be shown it. */
+export interface AgentToolImage {
+  type: 'image'
+  data: string
+  mimeType: string
+}
+
 export type AgentToolCallResult =
-  { ok: true; data: unknown } | { ok: false; error: { code: string; message: string } }
+  | { ok: true; data: unknown; images?: AgentToolImage[] }
+  | { ok: false; error: { code: string; message: string } }
+
+type ToolModelOutput = Awaited<ReturnType<NonNullable<ToolSet[string]['toModelOutput']>>>
 
 export type AgentMcpCallTool = (input: AgentToolCallInput) => Promise<AgentToolCallResult>
 
@@ -55,10 +65,31 @@ export function createAiSdkToolSet(
           windowId: ctx.windowId,
           name,
           args
-        })
+        }),
+      toModelOutput: ({ output }) => toolModelOutput(output as AgentToolCallResult)
     }
   }
   return tools
+}
+
+/**
+ * The tool result as the model gets it. Images become image-data parts after
+ * the JSON text; toolImageMiddleware then decides how they reach the provider.
+ */
+function toolModelOutput(output: AgentToolCallResult): ToolModelOutput {
+  if (!output.ok || !output.images?.length) return { type: 'json', value: output as JSONValue }
+  const { images, ...rest } = output
+  return {
+    type: 'content',
+    value: [
+      { type: 'text', text: JSON.stringify(rest) },
+      ...images.map((image) => ({
+        type: 'image-data' as const,
+        data: image.data,
+        mediaType: image.mimeType
+      }))
+    ]
+  }
 }
 
 async function callVaultMcpTool(input: AgentToolCallInput): Promise<AgentToolCallResult> {
@@ -96,9 +127,11 @@ async function callVaultMcpTool(input: AgentToolCallInput): Promise<AgentToolCal
     if (result.isError) {
       return { ok: false, error: parseMcpError(result.content) }
     }
+    const images = imageContent(result.content)
     return {
       ok: true,
-      data: extractMcpResult(result as { structuredContent?: unknown; content?: unknown })
+      data: extractMcpResult(result as { structuredContent?: unknown; content?: unknown }),
+      ...(images.length > 0 ? { images } : {})
     }
   } catch (error) {
     // Transport-level failures (server down mid-call, connect/close errors,
@@ -154,6 +187,19 @@ function parseMcpError(content: unknown): { code: string; message: string } {
     // fall through to text
   }
   return { code: 'MCP_TOOL_ERROR', message: text }
+}
+
+function imageContent(content: unknown): AgentToolImage[] {
+  if (!Array.isArray(content)) return []
+  return content.flatMap((item: unknown) => {
+    if (!item || typeof item !== 'object') return []
+    const part = item as Record<string, unknown>
+    return part.type === 'image' &&
+      typeof part.data === 'string' &&
+      typeof part.mimeType === 'string'
+      ? [{ type: 'image' as const, data: part.data, mimeType: part.mimeType }]
+      : []
+  })
 }
 
 function firstTextContent(content: unknown): string | null {

@@ -609,8 +609,10 @@ async function openVault(vaultPath: string): Promise<void> {
   // deliberately defers, so this is the call that actually opens the store.
   // Not awaited: it pays for a preflight child process, and the vault must not
   // wait on it. Editors that raced it rebind on the PROVIDER_READY broadcast.
+  // The path is passed because the vault status does not carry it yet (it is
+  // set further down), and the ready broadcast has to name this vault.
   void getCrdtProvider()
-    .initPersistence()
+    .initPersistence(vaultPath)
     .catch((error) => logger.warn('CRDT persistence init failed (non-fatal):', error))
 
   // Create FTS5 virtual tables for tasks and inbox in data.db

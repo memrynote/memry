@@ -11,8 +11,7 @@ import {
   readExtractedPages,
   TEXT_BEARING_FILE_TYPES
 } from '../../../database/queries/extracted-text'
-import { createDesktopInboxDomain } from '../../../inbox/domain'
-import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
+import { createDesktopInboxCrudHandlers, createDesktopInboxDomain } from '../../../inbox/domain'
 import {
   createNoteCommand,
   deleteNoteCommand,
@@ -53,6 +52,10 @@ import { createdTasksReply, withAgentChecklists, writeAgentBody } from './agent-
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { withoutFileBodies } from './desktop-api-reply'
 import { storedNoteBody } from './stored-body'
+import { viewVaultFile } from './file-view'
+import { openPdfDocument } from '../../../file-text/pdf-host'
+import { prepareViewImageInImageProcess } from '../../../image-processing/bridge'
+import { getStatus } from '../../../vault'
 import type {
   ExtractedTextReply,
   FolderEntry,
@@ -838,8 +841,21 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       }
     },
     sync: {
-      async crdtStoreAvailable() {
-        return getCrdtProvider().isPersistent()
+      crdtStoreAvailable: async () => getCrdtProvider().isPersistent()
+    },
+    files: {
+      async view(input) {
+        const vaultPath = getStatus().path
+        if (!vaultPath) throw new AgentToolError('NOT_FOUND', 'No vault is open')
+        return viewVaultFile(
+          {
+            vaultPath,
+            fileRow: fileRowOf,
+            prepareImage: prepareViewImageInImageProcess,
+            openPdf: openPdfDocument
+          },
+          input
+        )
       }
     }
   }

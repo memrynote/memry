@@ -72,7 +72,15 @@ export interface CrdtHealth {
 
 export const CRDT_FRAGMENT_NAME = 'prosemirror' as const
 
-export const CrdtOpenDocSchema = z.object({ noteId: z.string().min(1) })
+/**
+ * `vaultPath` names the vault workspace the editor belongs to. Main refuses the
+ * open when its provider serves a different vault, since note ids repeat across
+ * vaults. Optional: an editor outside a vault workspace sends none.
+ */
+export const CrdtOpenDocSchema = z.object({
+  noteId: z.string().min(1),
+  vaultPath: z.string().min(1).optional()
+})
 export const CrdtCloseDocSchema = z.object({ noteId: z.string().min(1) })
 
 /**

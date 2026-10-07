@@ -46,6 +46,14 @@ describe('CrdtOpenDocSchema / CrdtCloseDocSchema', () => {
     expect(CrdtCloseDocSchema.safeParse({ noteId: 'note-1' }).success).toBe(true)
   })
 
+  it('keeps the vault path an open names, and rejects an empty one', () => {
+    expect(CrdtOpenDocSchema.parse({ noteId: 'note-1', vaultPath: '/vaults/a' })).toEqual({
+      noteId: 'note-1',
+      vaultPath: '/vaults/a'
+    })
+    expect(CrdtOpenDocSchema.safeParse({ noteId: 'note-1', vaultPath: '' }).success).toBe(false)
+  })
+
   it('rejects empty noteId', () => {
     const result = CrdtOpenDocSchema.safeParse({ noteId: '' })
     expect(result.success).toBe(false)
