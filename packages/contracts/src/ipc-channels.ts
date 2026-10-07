@@ -26,6 +26,10 @@ export const AppChannels = {
   events: {
     NAVIGATION_COMMAND: 'app:navigation-command',
     MENU_COMMAND: 'app:menu-command'
+  },
+  send: {
+    /** Renderer -> main: caption-button symbol color for the Windows title bar overlay. */
+    TITLE_BAR_SYMBOL_COLOR: 'app:title-bar-symbol-color'
   }
 } as const
 

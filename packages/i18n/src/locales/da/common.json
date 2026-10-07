@@ -374,7 +374,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# afventer godkendelse} other {# afventer godkendelse}}",
       "inProgress": "Agenten er i gang med at svare",
-      "close": "Luk agent"
+      "close": "Luk agent",
+      "moreActions": "Flere agenthandlinger"
     },
     "errors": {
       "loadConversations": "Kunne ikke indlæse agentsamtaler",

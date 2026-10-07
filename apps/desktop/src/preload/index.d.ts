@@ -1834,6 +1834,8 @@ interface WindowAPI {
   windowMinimize: () => void
   windowMaximize: () => void
   windowClose: () => void
+  /** Windows only: caption-button symbol color (#rrggbb) for the title bar overlay. */
+  setTitleBarSymbolColor: (color: string) => void
   setZoomFactor: (factor: number) => void
 }
 

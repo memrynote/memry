@@ -31,7 +31,9 @@ the first click even when the sidebar opened on the Day view. The assistant back
 on first use rather than at launch, so the panel can show a brief loading state while providers and
 conversation history are detected. The Agent header includes a
 new-conversation button, a history menu for switching back to recent conversations, and a pop-out
-button for moving the current conversation into a workspace tab. Popped-out conversations keep the
+button for moving the current conversation into a workspace tab. On Windows, where the window's
+minimize, maximize, and close buttons share that row, these three actions sit in one **More agent
+actions** (**...**) menu instead. Popped-out conversations keep the
 generated conversation title as the tab name, use the same centered reading column as notes, and
 leave the right sidebar ready for a new chat. The popped-out tab keeps the scroll bar at the window
 edge while the chat content stays centered, and the tab name is the only conversation title shown in

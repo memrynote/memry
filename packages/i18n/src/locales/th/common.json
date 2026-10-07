@@ -374,7 +374,8 @@
       "agent": "เอเจนต์",
       "pendingApproval": "{count, plural, other {รอการอนุมัติ # รายการ}}",
       "inProgress": "เอเจนต์กำลังตอบ",
-      "close": "ปิดเอเจนต์"
+      "close": "ปิดเอเจนต์",
+      "moreActions": "การทำงานเพิ่มเติมของเอเจนต์"
     },
     "errors": {
       "loadConversations": "โหลดรายการบทสนทนาของเอเจนต์ไม่สำเร็จ",
