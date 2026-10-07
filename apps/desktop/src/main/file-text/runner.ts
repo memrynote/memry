@@ -11,9 +11,11 @@
  *
  *   (no job) or signature moved -> pending -> done
  *                                          -> failed (unopenable, missing, or
- *                                             MAX_CONSECUTIVE_FAILURES pages in a row)
+ *                                             MAX_CONSECUTIVE_FAILURES pages in a row,
+ *                                             or HTML over HTML_TEXT_MAX_BYTES)
  *   failed, or done with unreadable pages,
- *     under another app version or a day old -> pending again (unreadable pages only)
+ *     under another app version or a day old -> pending again (unreadable pages only;
+ *                                               never oversized HTML)
  *   attachment file gone -> job and text deleted
  *
  * This loop is the only writer of `file_text_jobs` and `extracted_text`. Search
@@ -64,7 +66,7 @@ const ATTACHMENTS_DIR = 'attachments'
 const HTML_EXTENSIONS = ['html', 'htm']
 /**
  * The largest HTML block file parsed for text. The parse runs on the main
- * process and costs about 100x the file in memory, so a larger file is marked
+ * process and costs over 100x the file in memory, so a larger file is marked
  * unreadable instead. 4x the agent tool's 512K-character cap
  * (HTML_ARTIFACT_MAX_CHARS) so every block an agent can write fits.
  */
@@ -103,6 +105,11 @@ async function fileSignature(
   } catch {
     return null
   }
+}
+
+/** Never parsed, and never retried while its bytes stay the same. */
+function isOversizedHtml(file: TextFile, size: number): boolean {
+  return file.fileType === 'html' && size > HTML_TEXT_MAX_BYTES
 }
 
 function attachmentKind(fileName: string): TextFileKind | null {
@@ -286,6 +293,7 @@ export class FileTextRunner {
       const db = this.deps.getDb()
       const job = getFileTextJob(db, file)
       if (job?.signature === current.signature) {
+        if (isOversizedHtml(file, current.size)) continue
         if (this.isDueForRetry(db, job, file)) retryFileTextJob(db, file, this.deps.appVersion)
         continue
       }
@@ -327,10 +335,24 @@ export class FileTextRunner {
     })
 
     if (file.fileType === 'html') {
-      const result = await this.readTwice(async () => ({
-        method: 'html',
-        text: await readHtmlText(await readFile(absolutePath, 'utf8'))
-      }))
+      if (isOversizedHtml(file, current.size)) {
+        setFileTextPageCount(db, file, 1)
+        saveExtractedPart(db, file, 1, 'unreadable', '')
+        finishFileTextJob(
+          db,
+          file,
+          'failed',
+          `Too large to read (${current.size} bytes, limit ${HTML_TEXT_MAX_BYTES})`
+        )
+        this.deps.textChanged(file.noteId)
+        return
+      }
+      const result = await this.readTwice(async () => {
+        const bytes = await readFile(absolutePath)
+        // Grown since the size check: never parse it.
+        if (bytes.byteLength > HTML_TEXT_MAX_BYTES) throw new Error('HTML file grew past the cap')
+        return { method: 'html', text: await readHtmlText(bytes.toString('utf8')) }
+      })
       if (!this.owns(file, signature)) return
       setFileTextPageCount(db, file, 1)
       saveExtractedPart(db, file, 1, result.method, result.text)
