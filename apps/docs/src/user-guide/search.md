@@ -105,6 +105,7 @@ An HTML block (an `.html` file attached to a note, or one an agent adds with `va
 - Only the visible text counts. Scripts, styles and the tags themselves are left out, and the block's scripts never run while it is read.
 - A `[[wiki link]]` written in the block's text links the note like one in the note's body: it shows up in the graph and in the target note's backlinks.
 - The block's file is only read, never changed, so it keeps its scripts, styles and layout.
+- A block file larger than 2 MB is not read for search. The block still shows in the note.
 - A block whose file changes is read again when the note changes, when the file arrives through sync, and every time the vault opens. Removing the block from the note removes its text and links from search, the graph and backlinks.
 
 Like the text in PDFs and images, it lives in the index on this device and does not sync.

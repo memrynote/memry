@@ -281,7 +281,10 @@ keeps its notes for the next pass. An attachment the note no longer embeds loses
 though its file stays on disk. A PDF page with a text layer is read with pdfjs-dist; a page
 without one, and every image, goes through tesseract.js. An HTML file is parsed with jsdom, which
 never runs its scripts; the text outside `script`, `style`, `noscript`, `template` and `head` is
-kept, with a paragraph break at each block element. Each page is stored as it finishes, and
+kept, with a paragraph break at each block element. The parse runs in the main process and costs
+over 100 times the file in memory, so a file over 2 MB (`HTML_TEXT_MAX_BYTES`, four times the
+agent tool's 512K-character cap) is never parsed: its job fails with one `unreadable` part and is
+not retried while its bytes stay the same. Each page is stored as it finishes, and
 a job reads only the pages it has no row for, so a restart resumes where it stopped. The runner
 publishes `note.text-extracted` at pages 1, 2, 4, 8, … and at the end. The search projector then
 writes the text into `fts_notes`: a filed file's text as its row, an attachment's text after the
@@ -289,7 +292,9 @@ owning note's body. The embedding projector embeds a filed file's opening, and a
 of a note's attachment text to the note's body when the body leaves room. The note-derived-state
 projector reads `[[wiki links]]` out of the note's `html` rows and stores them in `note_links`
 with the links of the body, on every `note.upserted` and, re-reading the note file, on every
-`note.text-extracted`. A large-file note keeps no links, as before.
+`note.text-extracted`. When that re-read changes the links, it sends `notes:updated` with empty
+`changes` for the note and for every note that gained or lost a backlink, so open links panels
+refresh. A large-file note keeps no links, as before.
 
 Two helper processes do the heavy work, both at low OS priority and closed after a minute idle:
 
