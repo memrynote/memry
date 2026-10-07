@@ -433,7 +433,8 @@ function installWindowApi() {
         used: 1536,
         limit: 4096,
         breakdown: { notes: 1024, attachments: 256, crdt: 128, other: 128 }
-      })
+      }),
+      getUnsentNotes: vi.fn().mockResolvedValue({ total: 0, notes: [] })
     } as unknown as typeof window.api.syncOps,
     account: {
       getBillingStatus: vi.fn().mockResolvedValue({

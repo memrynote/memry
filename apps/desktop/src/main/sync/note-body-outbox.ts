@@ -54,9 +54,20 @@ export type NoteBodyPushFn = (noteId: string, updates: Uint8Array[]) => Promise<
  */
 export type NoteBodyFullStateReader = (noteId: string) => Promise<Uint8Array | null>
 
+/**
+ * What happened to a note's body push (#2647): `sent` when it starts,
+ * `confirmed` when the server stored it, `failed` when it will be retried,
+ * `rejected` when its rows were dropped unsent.
+ */
+export type NoteBodyPushRecorder = (
+  noteId: string,
+  event: 'sent' | 'confirmed' | 'failed' | 'rejected'
+) => void
+
 export interface NoteBodyOutboxDeps {
   queue: SyncQueueManager
   push: NoteBodyPushFn
+  recordPush?: NoteBodyPushRecorder
 }
 
 interface NoteBodyFlush {
@@ -211,9 +222,10 @@ export class NoteBodyOutbox {
     this.flushingNotes.add(noteId)
     this.lastFlushStartedAt.set(noteId, Date.now())
     this.sendFlush(noteId, flush)
-      .then(() => {
+      .then((pushed) => {
         this.deps.queue.removeNoteBodyRows(flush.rowIds)
         this.deferredFlushes.delete(noteId)
+        if (pushed) this.deps.recordPush?.(noteId, 'confirmed')
       })
       .catch((err) => this.onFlushFailed(noteId, flush.rowIds, err))
       .finally(() => {
@@ -252,15 +264,31 @@ export class NoteBodyOutbox {
     return { rowIds: taken.map((row) => row.id), updates: mergeInOrder(noteId, raw) }
   }
 
-  private async sendFlush(noteId: string, flush: NoteBodyFlush): Promise<void> {
-    if (flush.updates) return this.deps.push(noteId, flush.updates)
+  /** True when the server stored a push; false when the rows were dropped unsent. */
+  private async sendFlush(noteId: string, flush: NoteBodyFlush): Promise<boolean> {
+    if (flush.updates) {
+      this.deps.recordPush?.(noteId, 'sent')
+      await this.deps.push(noteId, flush.updates)
+      return true
+    }
     const state = await this.readFullState!(noteId)
-    if (!state) return
+    if (!state) return false
     if (!this.running) throw new Error('NoteBodyOutbox stopped before the full state was pushed')
+    this.deps.recordPush?.(noteId, 'sent')
     await this.deps.push(noteId, [state])
+    return true
   }
 
   private onFlushFailed(noteId: string, rowIds: string[], err: unknown): void {
+    // 401 keeps its rows: the push fn pauses the outbox and a token refresh
+    // resumes it. Any other 4xx will not succeed on retry.
+    const nonRetryable =
+      err instanceof SyncServerError &&
+      err.statusCode >= 400 &&
+      err.statusCode < 500 &&
+      err.statusCode !== 429 &&
+      err.statusCode !== 401
+    this.deps.recordPush?.(noteId, nonRetryable ? 'rejected' : 'failed')
     if (err instanceof NoteBodyFlushDeferredError) {
       const deferrals = (this.deferredFlushes.get(noteId)?.deferrals ?? 0) + 1
       const backoffMs = Math.min(
@@ -285,14 +313,6 @@ export class NoteBodyOutbox {
       return
     }
     if (!this.paused) log.error('Failed to push CRDT body updates', { noteId, error: err })
-    // 401 keeps its rows: the push fn pauses the outbox and a token refresh
-    // resumes it. Any other 4xx will not succeed on retry.
-    const nonRetryable =
-      err instanceof SyncServerError &&
-      err.statusCode >= 400 &&
-      err.statusCode < 500 &&
-      err.statusCode !== 429 &&
-      err.statusCode !== 401
     if (nonRetryable) this.deps.queue.removeNoteBodyRows(rowIds)
   }
 }

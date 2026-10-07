@@ -1009,6 +1009,19 @@
       "activating": {
         "title": "Finishing your activation",
         "description": "Your plan is active. Sync starts as soon as we confirm it — refreshing usually does the trick."
+      },
+      "unsent": {
+        "title": "Notes with unsent changes",
+        "count": "{count, plural, one {# note} other {# notes}}",
+        "description": "This device has changes to these notes that the server has not stored yet.",
+        "waitingSince": "Waiting since {time}",
+        "more": "{count, plural, one {And # more note} other {And # more notes}}",
+        "reasons": {
+          "body": "Text",
+          "record": "Details",
+          "file_not_taken": "File not merged yet",
+          "rejected": "Refused by the server"
+        }
       }
     },
     "billing": {

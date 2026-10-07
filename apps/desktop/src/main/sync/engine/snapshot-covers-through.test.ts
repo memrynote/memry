@@ -147,7 +147,7 @@ function engineWith(
   return engine
 }
 
-function pushFor(engine: SyncEngine) {
+function pushFor(engine: SyncEngine, onStored: (noteId: string) => void = () => undefined) {
   return createCrdtSnapshotPush({
     getAccessToken: async () => 'token',
     getVaultKey: async () => new Uint8Array(32),
@@ -156,6 +156,7 @@ function pushFor(engine: SyncEngine) {
     hasUnmergedRemoteState: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
     onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
     onPushed: () => undefined,
+    onStored,
     onError: () => undefined
   })
 }
@@ -246,6 +247,22 @@ describe('snapshot push coverage from the change feed (#2299)', () => {
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('50')
     expect(engine.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBeUndefined()
     expect(engine.snapshotCoverage('note-clean')).toEqual({ unmerged: false })
+  })
+
+  // #2647: a stored whole-doc push carries every local change, so it confirms
+  // the note's body on either route.
+  it('reports a stored snapshot as the body reaching the server, on both routes', async () => {
+    const engine = engineWith(getDb)
+    const server = fakeServer('covers-through')
+    await wire(server, [feedPage])
+    await engine.pull()
+    const stored: string[] = []
+
+    await pushFor(engine, (noteId) => stored.push(noteId))(...snapshot(engine, 'note-clean'))
+    await pushFor(engine, (noteId) => stored.push(noteId))(...snapshot(engine, 'note-tracked'))
+
+    expect(server.calls.map((call) => call.route)).toEqual(['snapshot', 'updates'])
+    expect(stored).toEqual(['note-clean', 'note-tracked'])
   })
 
   // #2299: flagged at the encode stays flagged for that push, even if the

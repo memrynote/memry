@@ -36,6 +36,11 @@ export interface CrdtSnapshotPushDeps {
   onNotCovered: (noteId: string, refusal: SnapshotRefusal) => void
   /** Told the sequence and revision of a snapshot the server stored (#2297). */
   onPushed: (noteId: string, pushed: { sequenceNum?: number; revision?: string }) => unknown
+  /**
+   * The server stored the note's whole doc state, on either route. Everything
+   * this device had in the doc at the encode is on the server (#2647).
+   */
+  onStored?: (noteId: string) => void
   /** Every failure, before it is rethrown: the runtime pauses on 401 and surfaces 413s. */
   onError: (noteId: string, err: unknown) => void
 }
@@ -113,6 +118,7 @@ export function createCrdtSnapshotPush(deps: CrdtSnapshotPushDeps): SnapshotPush
           (pushed.value ?? {}) as { sequenceNum?: number; revision?: string }
         )
       }
+      deps.onStored?.(noteId)
       // Distinct message per endpoint on purpose: log triage greps these
       // strings, and the notes someone is grepping for are exactly the ones
       // that did not take the snapshot route.

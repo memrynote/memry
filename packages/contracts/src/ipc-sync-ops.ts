@@ -15,6 +15,8 @@ export const SYNC_OP_CHANNELS = {
   GET_SYNCED_SETTINGS: 'sync:get-synced-settings',
   GET_STORAGE_BREAKDOWN: 'sync:get-storage-breakdown',
   GET_LARGE_NOTES: 'sync:get-large-notes',
+  GET_NOTE_SYNC_STATE: 'sync:get-note-sync-state',
+  GET_UNSENT_NOTES: 'sync:get-unsent-notes',
   GET_QUARANTINED_ITEMS: 'sync:get-quarantined-items',
   CHECK_DEVICE_STATUS: 'sync:check-device-status',
   EMERGENCY_WIPE: 'sync:emergency-wipe',
@@ -186,6 +188,64 @@ export interface LargeNotesResult {
   notes: LargeNoteEntry[]
 }
 
+/**
+ * Where a note's body stands with the server (#2647).
+ *
+ * - `not_syncing`: this install does not sync (signed out, free plan, no runtime).
+ * - `local_only`: the note is marked local-only and never leaves the device.
+ * - `pending`: changes are waiting on this device.
+ * - `sent`: a body push is out and the server has not answered it yet.
+ * - `confirmed`: nothing is waiting, and the server stored the last body push
+ *   at `bodyConfirmedAt`.
+ * - `not_recorded`: nothing is waiting, but no body push of this note has been
+ *   confirmed since this device started recording them. Notes untouched since
+ *   the update read this way until their next edit.
+ * - `rejected`: the server refused the latest body push for good; those changes
+ *   were not stored.
+ *
+ * Only the server storing a body push or a whole-doc snapshot confirms a body.
+ * A record push the server calls a replay never does.
+ */
+export type NoteSyncStateValue =
+  'not_syncing' | 'local_only' | 'pending' | 'sent' | 'confirmed' | 'not_recorded' | 'rejected'
+
+/** Times are epoch milliseconds. */
+export interface NoteSyncState {
+  state: NoteSyncStateValue
+  /** Oldest change still waiting on this device. */
+  waitingSince: number | null
+  lastSentAt: number | null
+  bodyConfirmedAt: number | null
+  /** Latest body push that failed and will be retried. */
+  lastFailedAt: number | null
+  lastRejectedAt: number | null
+}
+
+/**
+ * Why a note is in the unsent list:
+ * - `body`: CRDT body updates are queued.
+ * - `record`: title, tags, properties or another record field are queued.
+ * - `file_not_taken`: the file holds text the note's synced body has not taken
+ *   yet, including notes found at the first launch after #2646.
+ * - `rejected`: the server refused the latest body push.
+ */
+export type UnsentNoteReason = 'body' | 'record' | 'file_not_taken' | 'rejected'
+
+export interface UnsentNoteEntry {
+  id: string
+  title: string
+  path: string
+  state: NoteSyncStateValue
+  waitingSince: number | null
+  reasons: UnsentNoteReason[]
+}
+
+export interface UnsentNotesResult {
+  /** Every note with unsent changes, even past the listed ones. */
+  total: number
+  notes: UnsentNoteEntry[]
+}
+
 // ============================================================================
 // Zod Schemas
 // ============================================================================
@@ -193,6 +253,10 @@ export interface LargeNotesResult {
 export const GetHistorySchema = z.object({
   limit: z.number().int().min(1).max(1000).optional(),
   offset: z.number().int().min(0).optional()
+})
+
+export const GetNoteSyncStateSchema = z.object({
+  noteId: z.string().min(1)
 })
 
 export const ResolveVaultBindingSchema = z.object({

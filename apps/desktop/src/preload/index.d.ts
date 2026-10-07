@@ -1769,6 +1769,10 @@ interface SyncOpsClientAPI {
     }
   } | null>
   getLargeNotes: () => Promise<import('@memry/contracts/ipc-sync-ops').LargeNotesResult>
+  getNoteSyncState: (
+    noteId: string
+  ) => Promise<import('@memry/contracts/ipc-sync-ops').NoteSyncState | null>
+  getUnsentNotes: () => Promise<import('@memry/contracts/ipc-sync-ops').UnsentNotesResult>
   getVaultBinding: () => Promise<VaultBindingState>
   resolveVaultBinding: (choice: VaultBindingChoice) => Promise<ResolveVaultBindingResult>
 }

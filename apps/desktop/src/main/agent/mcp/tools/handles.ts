@@ -75,6 +75,25 @@ export interface ExtractedTextReply {
   error?: string
 }
 
+/**
+ * Where a note's body stands with the server (#2647). `state` is one of
+ * `not_syncing`, `local_only`, `pending` (changes waiting on this device),
+ * `sent` (a body push has no answer yet), `confirmed` (the server stored the
+ * last body push, at `body_confirmed_at`), `not_recorded` (nothing waiting,
+ * but no confirmed body push since this device started recording them) and
+ * `rejected` (the server refused the latest body push). Times are ISO strings
+ * and appear only when known. A record sync stamp never confirms a body.
+ */
+export interface NoteSyncReply {
+  state:
+    'not_syncing' | 'local_only' | 'pending' | 'sent' | 'confirmed' | 'not_recorded' | 'rejected'
+  waiting_since?: string
+  last_sent_at?: string
+  body_confirmed_at?: string
+  last_failed_at?: string
+  last_rejected_at?: string
+}
+
 export interface NoteFull {
   id: string
   title: string
@@ -508,6 +527,8 @@ export interface VaultServiceHandles {
   sync: {
     /** False while this device runs without its CRDT store (#2519). */
     crdtStoreAvailable(): Promise<boolean>
+    /** Sync state per note id; ids with no note are left out. */
+    noteStates(ids: string[]): Promise<Record<string, NoteSyncReply>>
   }
   files: {
     /** A filed image, a page of a filed PDF, or a note's image or PDF attachment. */

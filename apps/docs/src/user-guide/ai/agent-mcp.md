@@ -449,6 +449,24 @@ not kept in the chat history.
 `kind: "note"` with `file_type: "markdown"`. The approval for `vault_delete_folder` counts the filed
 files it would delete apart from the notes.
 
+### Checking that a write reached the server
+
+`vault_read_note`, `vault_search_notes`, `vault_list_folder` (note entries),
+`vault_get_journal_entry`, and `vault_list_journal_entries` add a `sync` object to each note:
+
+```json
+{ "state": "confirmed", "body_confirmed_at": "2026-10-07T10:00:00.000Z" }
+```
+
+`state` is `pending` (changes waiting on this device, since `waiting_since`), `sent` (a push has no
+answer yet, `last_sent_at`), `confirmed` (the server stored the last text push at
+`body_confirmed_at`), `not_recorded` (nothing waiting, but no confirmed push recorded since the
+update that added this field), `rejected` (the server refused the latest push, `last_rejected_at`),
+`local_only`, or `not_syncing`. `last_failed_at` appears after a push that will be retried. Times are
+ISO strings and appear only when known. To check a write, read the note again until `state` is
+`confirmed` and `body_confirmed_at` is later than the write. A record push the server reports as
+already seen never counts as confirmed.
+
 `vault_add_html_artifact` lets an agent put a diagram, chart, or small interactive explanation in a
 note. The HTML is saved as an attachment of that note and appended as a file block, which renders
 it inline in the same sandbox as an `.html` file you attach yourself: scripts run, `https:`

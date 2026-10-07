@@ -85,6 +85,34 @@ memrynote sync history --limit 20
 
 The log is cleared when you sign out of sync; it is not aged out on a timer.
 
+## Has a Note Reached the Server?
+
+A note's text travels separately from its title, tags, and properties, so the last-synced time
+alone cannot say whether your latest edit left the device. Hover the outline rail on the right of a
+note or journal day and look at the **Sync** line under the dates:
+
+| Sync line                              | Meaning                                                                                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **On the server** _time_               | Nothing is waiting, and the server stored this note's text at that time                                                   |
+| **Waiting since** _time_               | This device has changes to the note that have not been sent yet                                                           |
+| **Sending**                            | A push is out and the server has not answered yet                                                                         |
+| **The server refused the last change** | The server turned down the latest push for good; those changes are not on the server                                      |
+| **Nothing waiting to send**            | No change is waiting, but this device has not seen the server store the note's text since the update that added this line |
+| **Local only** / **Not syncing**       | The note is marked local-only, or this device does not sync                                                               |
+
+Only the server's answer to a text push counts as **On the server**. A push the server reports as
+already seen does not.
+
+**Settings → Account → Sync → Notes with unsent changes** lists every note in the vault with
+changes the server has not stored: queued text (**Text**), queued title, tag, or property changes
+(**Details**), a file whose text the synced note has not taken in yet (**File not merged yet**,
+which includes notes the first launch after an update found out of step), and refused pushes. The
+list is hidden when nothing is waiting.
+
+Agents get the same answer as a `sync` field on `vault_read_note`, `vault_search_notes`,
+`vault_list_folder`, `vault_get_journal_entry`, and `vault_list_journal_entries`; see
+[Agent MCP](/user-guide/ai/agent-mcp#checking-that-a-write-reached-the-server).
+
 ## Health View
 
 The [Inbox → Health](/user-guide/inbox/health) tab shows:
