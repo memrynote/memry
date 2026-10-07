@@ -50,9 +50,22 @@ import {
   isNoteLocked,
   runWithLockedWritesAllowed
 } from './registry'
-import { beforeVaultFileWrite, installVaultLockFileGuard } from './files'
-import { checkLockedFilesAtOpen, restoreLockedNoteFile, setVaultLock } from './service'
-import { getBaseline } from './store'
+import {
+  afterLockedFileWriteSync,
+  beforeVaultFileWrite,
+  installVaultLockFileGuard,
+  setFileReadOnlySync,
+  settleRemoteNoteFileSync,
+  unprotectForRemoteWriteSync
+} from './files'
+import {
+  checkLockedFilesAtOpen,
+  onRemoteVaultLockApplied,
+  restoreLockedNoteFile,
+  scheduleLockedFileReconcile,
+  setVaultLock
+} from './service'
+import { getBaseline, writeLockRow } from './store'
 import { atomicWrite } from '../vault/file-ops'
 
 const isWindows = process.platform === 'win32'
@@ -247,5 +260,132 @@ describe('vault read-only locks (#2606)', () => {
     addNote('note-a', 'notes/a.md', 'text\n')
 
     expect(await restoreLockedNoteFile('note-a', 'edit\n')).toBe(false)
+  })
+
+  /** A lock row as a pull writes it: no reconcile, no baseline yet. */
+  const writeRemoteLock = (kind: 'note' | 'folder', target: string, locked: boolean): void => {
+    writeLockRow(asClientDb(data.db), kind, target, locked)
+    invalidateVaultLocks()
+  }
+
+  it('refuses to lock a note or folder that does not exist, and the vault root', async () => {
+    await expect(setVaultLock({ kind: 'note', target: 'missing', locked: true })).rejects.toThrow(
+      'Note not found: missing'
+    )
+    await expect(setVaultLock({ kind: 'folder', target: '/', locked: true })).rejects.toThrow(
+      'Folder not found: '
+    )
+    mocks.folderExists.mockReturnValueOnce(false)
+    await expect(setVaultLock({ kind: 'folder', target: 'gone', locked: true })).rejects.toThrow(
+      'Folder not found: gone'
+    )
+    expect(getVaultLockState()).toEqual({ notes: [], folders: [] })
+    expect(mocks.enqueueCreate).not.toHaveBeenCalled()
+  })
+
+  it('a folder lock makes its other files read-only, and unlocking frees only what no lock still covers', async () => {
+    const note = addNote('note-in', 'projects/in.md', 'in\n')
+    const pdf = path.join(vault, 'projects/scan.pdf')
+    fs.writeFileSync(pdf, 'pdf')
+    const innerLocked = addNote('note-own', 'projects/own.md', 'own\n')
+    const innerFolderFile = path.join(vault, 'projects/sealed/doc.pdf')
+    fs.mkdirSync(path.dirname(innerFolderFile), { recursive: true })
+    fs.writeFileSync(innerFolderFile, 'doc')
+    // A folder the lock names but that is not on disk is skipped, not an error.
+    await setVaultLock({ kind: 'folder', target: 'not-on-disk', locked: true })
+
+    await setVaultLock({ kind: 'note', target: 'note-own', locked: true })
+    await setVaultLock({ kind: 'folder', target: 'projects/sealed', locked: true })
+    await setVaultLock({ kind: 'folder', target: 'projects', locked: true })
+    if (!isWindows) expect([note, pdf].map(isWritable)).toEqual([false, false])
+
+    await setVaultLock({ kind: 'folder', target: 'projects', locked: false })
+
+    expect(isWritable(note)).toBe(true)
+    expect(isWritable(pdf)).toBe(true)
+    if (!isWindows) expect([innerLocked, innerFolderFile].map(isWritable)).toEqual([false, false])
+    expect(mocks.broadcast).toHaveBeenLastCalledWith('vault-locks:changed', {
+      notes: ['note-own'],
+      folders: ['not-on-disk', 'projects/sealed']
+    })
+  })
+
+  it('a lock pulled from another device protects the file and tells the windows', async () => {
+    const file = addNote('note-a', 'notes/a.md', 'a\n')
+    writeRemoteLock('note', 'note-a', true)
+
+    onRemoteVaultLockApplied()
+
+    await vi.waitFor(() =>
+      expect(mocks.broadcast).toHaveBeenCalledWith('vault-locks:changed', {
+        notes: ['note-a'],
+        folders: []
+      })
+    )
+    expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('a\n')
+    if (!isWindows) expect(isWritable(file)).toBe(false)
+  })
+
+  it('reconciles once, a second after the first of several remote applies', async () => {
+    const file = addNote('note-a', 'notes/a.md', 'a\n')
+    writeRemoteLock('note', 'note-a', true)
+    vi.useFakeTimers({ toFake: ['setTimeout'] })
+    try {
+      scheduleLockedFileReconcile()
+      scheduleLockedFileReconcile()
+      expect(vi.getTimerCount()).toBe(1)
+      await vi.advanceTimersByTimeAsync(1000)
+    } finally {
+      vi.useRealTimers()
+    }
+
+    await vi.waitFor(() => {
+      expect(getBaseline(asClientDb(data.db), 'note-a')).toBeDefined()
+      if (!isWindows) expect(isWritable(file)).toBe(false)
+    })
+  })
+
+  it('takes the bytes on disk as the locked text when a lock has none yet', async () => {
+    addNote('note-a', 'notes/a.md', 'current\n')
+    writeRemoteLock('note', 'note-a', true)
+
+    expect(await restoreLockedNoteFile('note-a', 'current\n')).toBe(false)
+
+    expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('current\n')
+    expect(mocks.createSnapshot).not.toHaveBeenCalled()
+  })
+
+  it('a remote write to a locked file is let through and the file is protected again after', () => {
+    const file = addNote('note-a', 'notes/a.md', 'a\n')
+    writeRemoteLock('note', 'note-a', true)
+    setFileReadOnlySync(file, true)
+
+    expect(unprotectForRemoteWriteSync(file)).toBe('notes/a.md')
+    expect(isWritable(file)).toBe(true)
+    fs.writeFileSync(file, 'remote\n')
+    afterLockedFileWriteSync(file, 'notes/a.md', 'remote\n')
+
+    if (!isWindows) expect(isWritable(file)).toBe(false)
+    expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('remote\n')
+    expect(unprotectForRemoteWriteSync(path.join(vault, 'notes/free.md'))).toBeNull()
+    expect(() => setFileReadOnlySync(path.join(vault, 'notes/missing.md'), true)).not.toThrow()
+  })
+
+  it('settles a synced note file: protected while locked, writable once moved out of the lock', () => {
+    const file = addNote('note-a', 'archive/a.md', 'a\n')
+    writeRemoteLock('folder', 'archive', true)
+
+    settleRemoteNoteFileSync('note-a', file, 'archive/a.md', 'pulled\n')
+
+    if (!isWindows) expect(isWritable(file)).toBe(false)
+    expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('pulled\n')
+
+    const moved = path.join(vault, 'notes/a.md')
+    fs.mkdirSync(path.dirname(moved), { recursive: true })
+    fs.renameSync(file, moved)
+    settleRemoteNoteFileSync('note-a', moved, 'notes/a.md', null)
+
+    expect(isWritable(moved)).toBe(true)
+    expect(getBaseline(asClientDb(data.db), 'note-a')).toBeUndefined()
   })
 })

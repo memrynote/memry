@@ -19,6 +19,10 @@ Object.defineProperty(navigator, 'platform', {
 
 const mocks = vi.hoisted(() => ({
   isNoteLocked: false,
+  /** Null: the note's own lock follows `isNoteLocked`. */
+  hasOwnNoteLock: null as boolean | null,
+  setVaultLock: vi.fn(),
+  propertyCanEdit: null as (() => boolean) | null,
   noteState: {
     note: null as Record<string, unknown> | null,
     isLoading: false,
@@ -181,11 +185,14 @@ vi.mock('@/hooks/use-notes-query', () => ({
 
 vi.mock('@/hooks/use-property-section', () => ({
   usePropertySection: ({
-    onBlocked
+    onBlocked,
+    canEdit
   }: {
     onBlocked: (action: 'update' | 'add' | 'remove' | 'rename' | 'reorder') => void
+    canEdit: () => boolean
   }) => {
     mocks.propertyOnBlocked = onBlocked
+    mocks.propertyCanEdit = canEdit
     return {
       properties: [{ id: 'p1', name: 'Status', value: 'Draft', type: 'text' }],
       newlyAddedPropertyId: null,
@@ -642,7 +649,8 @@ vi.mock('@/components/note/similar-notes', async (importOriginal) => ({
 vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/vault-locks-store')>()),
   useIsNoteLocked: () => mocks.isNoteLocked,
-  useHasOwnNoteLock: () => mocks.isNoteLocked
+  useHasOwnNoteLock: () => mocks.hasOwnNoteLock ?? mocks.isNoteLocked,
+  setVaultLock: mocks.setVaultLock
 }))
 
 vi.mock('@/components/note/ghost-affordance-row', () => ({
@@ -930,6 +938,9 @@ describe('NotePage', () => {
     mocks.onMarkdownChange = null
     mocks.propertyOnBlocked = null
     mocks.isNoteLocked = false
+    mocks.hasOwnNoteLock = null
+    mocks.setVaultLock.mockReset().mockResolvedValue(undefined)
+    mocks.propertyCanEdit = null
     mocks.contentAreaMounts = 0
     mocks.tabViewState = {}
     mocks.spatialCanvasEnabled = true
@@ -1557,6 +1568,37 @@ describe('NotePage', () => {
 
       expect(toast.error).toHaveBeenCalledWith('errors:vaultLock.noteReadOnly')
       expect(toast.error).not.toHaveBeenCalledWith('Cannot update property - this note was deleted')
+      expect(mocks.propertyCanEdit?.()).toBe(false)
+    })
+
+    it('locks an unlocked note from the note menu', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(await screen.findByRole('button', { name: 'vaultLock.lockNote' }))
+
+      await waitFor(() => expect(mocks.setVaultLock).toHaveBeenCalledWith('note', 'note-1', true))
+      expect(mocks.propertyCanEdit?.()).toBe(true)
+    })
+
+    it("unlocks the note's own lock, and says why when it fails", async () => {
+      mocks.isNoteLocked = true
+      mocks.setVaultLock.mockRejectedValueOnce(new Error('disk is read-only'))
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(await screen.findByRole('button', { name: 'vaultLock.unlockNote' }))
+
+      await waitFor(() => expect(mocks.setVaultLock).toHaveBeenCalledWith('note', 'note-1', false))
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('disk is read-only'))
+    })
+
+    it('offers no lock toggle for a note locked only by its folder', async () => {
+      mocks.isNoteLocked = true
+      mocks.hasOwnNoteLock = false
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      await screen.findByRole('button', { name: 'editor.toolbar.setLocalOnly' })
+      expect(screen.queryByRole('button', { name: 'vaultLock.lockNote' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'vaultLock.unlockNote' })).not.toBeInTheDocument()
     })
   })
 

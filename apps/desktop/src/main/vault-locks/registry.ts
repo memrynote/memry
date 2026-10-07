@@ -162,10 +162,6 @@ export function folderLockedError(): NoteError {
   return new NoteError(VAULT_LOCKED_NOTE_MESSAGE, NoteErrorCode.READ_ONLY)
 }
 
-export function isVaultLockedError(err: unknown): err is NoteError {
-  return err instanceof NoteError && err.code === NoteErrorCode.READ_ONLY
-}
-
 /** Refuse a local body, title, tag, property, rename, move or delete of a locked note. */
 export function assertNoteWritable(noteId: string, notePath?: string | null): void {
   if (isLockedWriteAllowed()) return

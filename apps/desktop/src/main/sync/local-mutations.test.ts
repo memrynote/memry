@@ -64,6 +64,10 @@ vi.mock('@memry/sync-client/folder-config-sync', () => ({
   getFolderConfigSyncService: vi.fn()
 }))
 
+vi.mock('@memry/sync-client/vault-lock-sync', () => ({
+  getVaultLockSyncService: vi.fn()
+}))
+
 vi.mock('./calendar-event-sync', () => ({
   getCalendarEventSyncService: vi.fn()
 }))
@@ -89,7 +93,8 @@ vi.mock('@memry/sync-client/offline-clock', () => ({
   incrementReminderClockOffline: vi.fn(),
   incrementTemplateClockOffline: vi.fn(),
   incrementHomePageClockOffline: vi.fn(),
-  incrementNoteClockOffline: vi.fn()
+  incrementNoteClockOffline: vi.fn(),
+  incrementVaultLockClockOffline: vi.fn()
 }))
 
 import { getDatabase } from '../database'
@@ -109,8 +114,10 @@ import {
   incrementReminderClockOffline,
   incrementTaskClocksOffline,
   incrementTemplateClockOffline,
-  incrementHomePageClockOffline
+  incrementHomePageClockOffline,
+  incrementVaultLockClockOffline
 } from '@memry/sync-client/offline-clock'
+import { getVaultLockSyncService } from '@memry/sync-client/vault-lock-sync'
 import { getBookmarkSyncService } from '@memry/sync-client/bookmark-sync'
 import { getReminderSyncService } from '@memry/sync-client/reminder-sync'
 import { getTemplateSyncService } from '@memry/sync-client/template-sync'
@@ -153,7 +160,8 @@ describe('local-mutations', () => {
       getBookmarkSyncService,
       getReminderSyncService,
       getTemplateSyncService,
-      getHomePageSyncService
+      getHomePageSyncService,
+      getVaultLockSyncService
     ]) {
       ;(getter as Mock).mockReset().mockReturnValue(null)
     }
@@ -452,5 +460,23 @@ describe('local-mutations', () => {
     syncSettingsFieldUpdate('general.sidebarWidth', 320)
 
     expect(updateField).toHaveBeenCalledWith('general.sidebarWidth', 320)
+  })
+
+  it('queues a lock change through the vault lock sync service, or bumps its clock offline', () => {
+    enqueueLocalSyncCreate('vault_lock', 'note:n1')
+    enqueueLocalSyncUpdate('vault_lock', 'note:n1')
+    expect(incrementVaultLockClockOffline).toHaveBeenCalledTimes(2)
+    expect(incrementVaultLockClockOffline).toHaveBeenCalledWith('db', 'note:n1')
+
+    const service = { enqueueCreate: vi.fn(), enqueueUpdate: vi.fn() }
+    ;(getVaultLockSyncService as Mock).mockReturnValue(service)
+    enqueueLocalSyncCreate('vault_lock', 'folder:archive')
+    enqueueLocalSyncUpdate('vault_lock', 'folder:archive')
+    // An unlock is an update; a lock record is never deleted.
+    enqueueLocalSyncDelete('vault_lock', 'folder:archive', 'snapshot')
+
+    expect(service.enqueueCreate).toHaveBeenCalledWith('folder:archive')
+    expect(service.enqueueUpdate).toHaveBeenCalledWith('folder:archive')
+    expect(incrementVaultLockClockOffline).toHaveBeenCalledTimes(2)
   })
 })
