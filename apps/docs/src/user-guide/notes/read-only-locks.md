@@ -18,6 +18,10 @@ A locked note opens read-only wherever it is shown: its own page, a canvas card,
 overview. A small lock line above it says so, and the body, title, tags, properties, and suggested
 tags cannot be changed.
 
+Journal entries follow the folder they are saved in. When you lock the journal folder (it appears in
+the sidebar when the journal setting **Show in sidebar** is on) or a folder above it, every journal day
+opens read-only with the same lock line, including days that have no entry yet.
+
 Everything that would change a locked note is refused:
 
 - typing in the editor, applying a template, restoring an older version,
