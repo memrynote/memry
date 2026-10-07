@@ -251,6 +251,12 @@ export class CrdtProvider {
    * opened since.
    */
   private boundVault: { db: DataDb; vaultUuid: string } | null = null
+  /**
+   * Path of the vault this provider was initialized for, as named by the
+   * PROVIDER_READY broadcast. Null when unknown: no vault yet, or a caller that
+   * named none while the vault status was still unset.
+   */
+  private servedVaultPath: string | null = null
   /** Runs the owed-compactions marker's read-modify-writes one at a time. */
   private owedCompactions: Promise<void> = Promise.resolve()
   /**
@@ -478,7 +484,7 @@ export class CrdtProvider {
    * store can actually be scoped. A settled init is never redone; a *deferred*
    * one (no vault) is not settled and must be retried.
    */
-  async initPersistence(): Promise<void> {
+  async initPersistence(vaultPath?: string): Promise<void> {
     // Never retry a settled init: a failed probe means the native binding is
     // broken for this process — re-probing would just re-pay the timeout.
     if (this.persistenceReady) {
@@ -486,14 +492,22 @@ export class CrdtProvider {
     }
 
     if (!this.persistenceInitPromise) {
-      this.persistenceInitPromise = this.doInitPersistence().finally(() => {
+      this.persistenceInitPromise = this.doInitPersistence(vaultPath).finally(() => {
         this.persistenceInitPromise = null
       })
     }
     return this.persistenceInitPromise
   }
 
-  private async doInitPersistence(): Promise<void> {
+  /**
+   * `vaultPath` is the vault being opened, when the caller knows it. openVault
+   * must pass it: it runs this before it publishes the new path to the vault
+   * status, so `getVaultRoot()` here throws (a switch has just cleared it) and
+   * the ready broadcast went out naming no vault. Renderers then could not tell
+   * which workspace's editors may rebind, and a doc kept for the vault the user
+   * left re-opened its note in the new vault's store.
+   */
+  private async doInitPersistence(vaultPath?: string): Promise<void> {
     // Scoped to the open vault, not to the install. One store for every vault
     // was keyed by note id alone, and journal notes use deterministic
     // date-based ids (`j2026-08-13`), so two vaults' journals for the same day
@@ -501,11 +515,13 @@ export class CrdtProvider {
     // whole store, and with it every note's merge history.
     // Captured before the awaits: the ready broadcast names the vault this
     // store was opened for, so an editor kept for another vault can ignore it.
-    let vaultPath: string | null = null
-    try {
-      vaultPath = getVaultRoot()
-    } catch {
-      vaultPath = null
+    let readyVaultPath: string | null = vaultPath ?? null
+    if (readyVaultPath === null) {
+      try {
+        readyVaultPath = getVaultRoot()
+      } catch {
+        readyVaultPath = null
+      }
     }
     const target = await prepareVaultCrdtStore()
     if (!target) {
@@ -521,6 +537,7 @@ export class CrdtProvider {
     // the store could not be trusted and this provider runs in-memory.
     this.persistence = await openCrdtPersistence(target.storagePath)
     this.boundVault = { db: getDatabase(), vaultUuid: target.vaultUuid }
+    this.servedVaultPath = readyVaultPath
     if (this.persistence) {
       // Before anything can push from this store (#2299): a store without the
       // marker withholds snapshot claims until the vault is swept again.
@@ -550,12 +567,24 @@ export class CrdtProvider {
     // over again. Whatever else main attaches to a fresh provider (init()'s
     // body outbox and snapshot push) lands in the same microtask as this
     // resolve, so a renderer's IPC round-trip can never beat it.
-    broadcastToAllWindows(CRDT_EVENTS.PROVIDER_READY, { vaultPath })
+    broadcastToAllWindows(CRDT_EVENTS.PROVIDER_READY, { vaultPath: readyVaultPath })
     log.info('CRDT provider ready, asked stranded editors to rebind')
   }
 
   isInitialized(): boolean {
     return this.persistenceReady
+  }
+
+  /**
+   * Whether a doc a renderer holds for `vaultPath` may be opened here. False
+   * only when both sides name a vault and they differ: note ids repeat across
+   * vaults (journal ids are dates, a copied vault keeps every id), so opening
+   * such a note would merge one vault's Y.Doc into the other vault's store.
+   * Unknown on either side stays permitted, as before.
+   */
+  servesVault(vaultPath: string | undefined): boolean {
+    if (vaultPath === undefined || this.servedVaultPath === null) return true
+    return this.servedVaultPath === vaultPath
   }
 
   /**
@@ -1299,6 +1328,7 @@ export class CrdtProvider {
     // to throw its copy away — see the getter.
     this.storeIdentity = null
     this.boundVault = null
+    this.servedVaultPath = null
     this.persistenceReady = false
 
     this.openLocks.clear()
