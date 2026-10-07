@@ -107,15 +107,17 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto">
-      {isLocked && <LockedNoteNotice className="px-3 pt-2" />}
-      <ContentArea
-        noteId={noteId}
-        editable={!isLocked}
-        initialContent={note.content}
-        contentType="markdown"
-        onMarkdownChange={handleMarkdownChange}
-      />
+    <div className="flex min-h-0 flex-1 flex-col">
+      {isLocked && <LockedNoteNotice className="shrink-0 pb-1" />}
+      <div className="min-h-0 flex-1 overflow-auto">
+        <ContentArea
+          noteId={noteId}
+          editable={!isLocked}
+          initialContent={note.content}
+          contentType="markdown"
+          onMarkdownChange={handleMarkdownChange}
+        />
+      </div>
     </div>
   )
 }
