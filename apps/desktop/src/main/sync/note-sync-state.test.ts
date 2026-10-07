@@ -115,6 +115,19 @@ describe('note sync state (#2647)', () => {
     })
   })
 
+  // Live lane: offline, the outbox retries right after each failure, so a
+  // fresh send always follows the failure. That is still waiting, not sent.
+  it('stays pending while a push retries after a failure', () => {
+    addNote('n1')
+    record('n1', 'confirmed', T0)
+    queueRow('n1', 'note_body', T0 + 2000)
+    record('n1', 'sent', T0 + 3000)
+    record('n1', 'failed', T0 + 4000)
+    record('n1', 'sent', T0 + 4001)
+
+    expect(state('n1')).toMatchObject({ state: 'pending', lastSentAt: T0 + 4001 })
+  })
+
   // The Ask: until AF-019 the state must not report a replayed push as confirmed.
   it('never treats a record sync stamp as a confirmed body', () => {
     addNote('n1', { syncedAt: new Date(T0 + 60_000).toISOString() })
