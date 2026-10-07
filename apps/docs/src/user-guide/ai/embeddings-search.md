@@ -25,6 +25,20 @@ A query like "setting up authentication" can surface a note titled "OAuth flow" 
 
 The first index build can take a few minutes for large vaults — progress is shown.
 
+## The Model
+
+memrynote uses Google's **EmbeddingGemma 2** (text only, 256 dimensions). It understands 100+
+languages, so notes in Turkish, German, Japanese and others are matched by meaning, including across
+languages: an English query can find a Turkish note on the same topic. Notes are embedded up to their
+first ~4000 characters, title first.
+
+When you update from a version that used the older English-only model, memrynote discards the old
+vectors and re-embeds every note in the background once. Similar notes and suggestions fill back in as
+that pass runs.
+
+Intel Macs are not supported by the local model runtime; on those machines semantic features stay off
+and search is keyword-only.
+
 ## Model Management
 
 The status line shows:
@@ -38,7 +52,7 @@ You can **Unload** the model from settings to free memory; reload as needed.
 
 ### When the Download Fails
 
-The model is fetched once (~23MB). If that download fails — you are offline, behind a proxy, or the
+The model is fetched once (~210MB). If that download fails — you are offline, behind a proxy, or the
 CDN is blocked — memrynote does **not** hammer the network. It waits before trying again, backing off
 each time (about one minute, then two, four, and eight), and after several consecutive failures it
 stops retrying for the rest of the session. Semantic search falls back to keyword-only meanwhile;
