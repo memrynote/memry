@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { JournalPage } from './journal'
 import React from 'react'
+import type { VaultLockState } from '@memry/contracts/vault-locks-api'
+import { toast } from 'sonner'
 
 const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
@@ -32,6 +34,8 @@ const mocks = vi.hoisted(() => ({
   externalUpdateCount: 0,
   contentAreaMounts: 0,
   contentAreaProps: null as any,
+  propertySectionOptions: null as any,
+  vaultConfig: { journalFolder: 'Journal', journalDateFormat: 'YYYY-MM-DD' } as any,
   heatmapYears: [] as number[],
   heatmapByYear: {
     2025: [{ date: '2025-12-21', level: 2, characterCount: 300 }],
@@ -180,19 +184,43 @@ vi.mock('@/hooks/use-properties-collapsed', () => ({
 }))
 
 vi.mock('@/hooks/use-property-section', () => ({
-  usePropertySection: () => ({
-    properties: [
-      { id: 'p-date', name: 'date', value: '2026-01-15', type: 'date' },
-      { id: 'p-mood', name: 'mood', value: 'focused', type: 'text' }
-    ],
-    newlyAddedPropertyId: null,
-    handlePropertyChange: mocks.handlePropertyChange,
-    handleAddProperty: mocks.handleAddProperty,
-    handleDeleteProperty: mocks.handleDeleteProperty,
-    handlePropertyNameChange: mocks.handlePropertyNameChange,
-    handlePropertyOrderChange: mocks.handlePropertyOrderChange
-  })
+  usePropertySection: (options: unknown) => {
+    mocks.propertySectionOptions = options
+    return {
+      properties: [
+        { id: 'p-date', name: 'date', value: '2026-01-15', type: 'date' },
+        { id: 'p-mood', name: 'mood', value: 'focused', type: 'text' }
+      ],
+      newlyAddedPropertyId: null,
+      handlePropertyChange: mocks.handlePropertyChange,
+      handleAddProperty: mocks.handleAddProperty,
+      handleDeleteProperty: mocks.handleDeleteProperty,
+      handlePropertyNameChange: mocks.handlePropertyNameChange,
+      handlePropertyOrderChange: mocks.handlePropertyOrderChange
+    }
+  }
 }))
+
+vi.mock('@/hooks/use-vault-config', () => ({
+  useVaultConfig: () => mocks.vaultConfig
+}))
+
+// The real lock store, fed the way main feeds it: `vaultLocks.list` at the
+// first subscriber, then `vault-locks:changed` broadcasts.
+const lockBroadcasts: Array<(state: VaultLockState) => void> = []
+Object.assign(window.api, {
+  vaultLocks: { list: vi.fn().mockResolvedValue({ notes: [], folders: [] }), set: vi.fn() },
+  onVaultLocksChanged: vi.fn((callback: (state: VaultLockState) => void) => {
+    lockBroadcasts.push(callback)
+    return () => {}
+  })
+})
+
+function broadcastLocks(state: VaultLockState): void {
+  act(() => {
+    for (const callback of lockBroadcasts) callback(state)
+  })
+}
 
 vi.mock('@/hooks/use-journal-settings', () => ({
   useJournalSettings: () => ({ settings: { showStatsFooter: true }, isLoading: false })
@@ -369,8 +397,8 @@ vi.mock('@/components/note/backlinks', async (importOriginal) => ({
 }))
 
 vi.mock('@/components/note/tags-row', () => ({
-  TagsRow: ({ tags, onAddTag, onCreateTag, onRemoveTag }: any) => (
-    <div data-testid="tags-row">
+  TagsRow: ({ tags, onAddTag, onCreateTag, onRemoveTag, disabled }: any) => (
+    <div data-testid="tags-row" data-disabled={String(!!disabled)}>
       {tags.map((tag: any) => tag.name).join(',')}
       <button onClick={() => onAddTag('life')}>add tag</button>
       <button onClick={() => onCreateTag('new', 'green')}>create tag</button>
@@ -380,8 +408,8 @@ vi.mock('@/components/note/tags-row', () => ({
 }))
 
 vi.mock('@/components/note/info-section', () => ({
-  InfoSection: ({ properties, onAddProperty, onToggleExpand }: any) => (
-    <div data-testid="info-section">
+  InfoSection: ({ properties, onAddProperty, onToggleExpand, disabled }: any) => (
+    <div data-testid="info-section" data-disabled={String(!!disabled)}>
       {properties.map((property: any) => property.name).join(',')}
       <button onClick={() => onAddProperty({ name: 'energy', type: 'text' })}>add property</button>
       <button onClick={onToggleExpand}>collapse props</button>
@@ -390,8 +418,8 @@ vi.mock('@/components/note/info-section', () => ({
 }))
 
 vi.mock('@/components/note/ghost-affordance-row', () => ({
-  GhostAffordanceRow: ({ onAddTag, onCreateTag, onAddProperty }: any) => (
-    <div data-testid="ghost-row">
+  GhostAffordanceRow: ({ onAddTag, onCreateTag, onAddProperty, disabled }: any) => (
+    <div data-testid="ghost-row" data-disabled={String(!!disabled)}>
       <button onClick={() => onAddTag('life')}>ghost tag</button>
       <button onClick={() => onCreateTag('ghost', 'stone')}>ghost create</button>
       <button onClick={() => onAddProperty({ name: 'focus', type: 'text' })}>ghost prop</button>
@@ -480,6 +508,7 @@ describe('JournalPage', () => {
     mocks.heatmapYears = []
     mocks.yearStats = [{ month: 1, entryCount: 1, totalCharacterCount: 7, averageLevel: 2 }]
     mocks.entry = { ...mocks.baseEntry }
+    mocks.vaultConfig = { journalFolder: 'Journal', journalDateFormat: 'YYYY-MM-DD' }
     mocks.resolveWikiLink.mockResolvedValue({ type: 'note', id: 'note-2', title: 'Linked Note' })
     vi.stubGlobal('localStorage', {
       getItem: vi.fn(() => 'false'),
@@ -855,5 +884,75 @@ describe('JournalPage', () => {
 
     await waitFor(() => expect(mocks.deleteEntry).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(mocks.contentAreaMounts).toBeGreaterThan(mountsBefore))
+  })
+
+  describe('a journal entry under a lock (#2606)', () => {
+    afterEach(() => broadcastLocks({ notes: [], folders: [] }))
+
+    function expectReadOnly(): void {
+      expect(screen.getByTestId('note-locked-indicator')).toBeInTheDocument()
+      expect(mocks.contentAreaProps.editable).toBe(false)
+      expect(screen.getByTestId('tags-row')).toHaveAttribute('data-disabled', 'true')
+      expect(screen.getByTestId('info-section')).toHaveAttribute('data-disabled', 'true')
+      expect(screen.getByTestId('ghost-row')).toHaveAttribute('data-disabled', 'true')
+    }
+
+    it('opens read-only with the lock line when the journal folder is locked', () => {
+      render(<JournalPage />)
+      broadcastLocks({ notes: [], folders: ['Journal'] })
+
+      expectReadOnly()
+    })
+
+    it('opens read-only when a folder above a nested journal folder is locked', () => {
+      mocks.vaultConfig = { journalFolder: 'Life/Daily', journalDateFormat: 'YYYY/YYYY-MM-DD' }
+      render(<JournalPage />)
+      broadcastLocks({ notes: [], folders: ['Life'] })
+
+      expectReadOnly()
+    })
+
+    it('opens read-only when the entry itself is locked', () => {
+      render(<JournalPage />)
+      broadcastLocks({ notes: ['j2026-01-15'], folders: [] })
+
+      expectReadOnly()
+    })
+
+    it('keeps an empty day read-only, since main refuses to create the entry', () => {
+      mocks.entry = null
+      render(<JournalPage />)
+      broadcastLocks({ notes: [], folders: ['Journal'] })
+
+      expect(screen.getByTestId('note-locked-indicator')).toBeInTheDocument()
+      expect(mocks.contentAreaProps.editable).toBe(false)
+    })
+
+    it('stays editable when only another folder is locked, and after unlock', () => {
+      render(<JournalPage />)
+      broadcastLocks({ notes: [], folders: ['Journal archive'] })
+
+      expect(screen.queryByTestId('note-locked-indicator')).not.toBeInTheDocument()
+      expect(mocks.contentAreaProps.editable).toBe(true)
+
+      broadcastLocks({ notes: [], folders: ['Journal'] })
+      expect(mocks.contentAreaProps.editable).toBe(false)
+
+      broadcastLocks({ notes: [], folders: [] })
+      expect(screen.queryByTestId('note-locked-indicator')).not.toBeInTheDocument()
+      expect(mocks.contentAreaProps.editable).toBe(true)
+      expect(screen.getByTestId('tags-row')).toHaveAttribute('data-disabled', 'false')
+    })
+
+    it('refuses a property edit with the lock text', () => {
+      render(<JournalPage />)
+      expect(mocks.propertySectionOptions.canEdit()).toBe(true)
+
+      broadcastLocks({ notes: [], folders: ['Journal'] })
+
+      expect(mocks.propertySectionOptions.canEdit()).toBe(false)
+      act(() => mocks.propertySectionOptions.onBlocked('update'))
+      expect(toast.error).toHaveBeenCalledWith('errors:vaultLock.noteReadOnly')
+    })
   })
 })
