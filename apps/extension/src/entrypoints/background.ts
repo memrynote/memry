@@ -12,7 +12,9 @@ import type {
 import type { ArticleCapture } from '@memry/article-extract'
 import {
   claimToken,
+  getFolders,
   pollUntil,
+  type FolderList,
   postCapture,
   postRevoke,
   PROBE_PORTS,
@@ -76,8 +78,19 @@ async function getStatus(): Promise<StatusResponse> {
   const found = await probe()
   if (!found) return { connection: 'app-closed', port: null }
   const token = await getToken()
-  if (found.ping.paired && token) return { connection: 'ready', port: found.port }
-  return { connection: 'needs-pairing', port: found.port }
+  // Not gated on ping.paired: Chrome sends no Origin on GET /ping, so it reads
+  // false even for a paired extension. POST /folders checks the real pairing.
+  const canPickFolder = !!token && found.ping.capabilities.includes('folders')
+  if (found.ping.paired && token) return { connection: 'ready', port: found.port, canPickFolder }
+  return { connection: 'needs-pairing', port: found.port, canPickFolder }
+}
+
+// Live from the desktop on every popup open; never written to extension storage.
+async function listFolders(): Promise<FolderList | null> {
+  const found = await probe()
+  const token = await getToken()
+  if (!found || !token || !found.ping.capabilities.includes('folders')) return null
+  return getFolders(found.port, token)
 }
 
 async function pair(): Promise<PairResponse> {
@@ -348,6 +361,8 @@ export default defineBackground(() => {
         return flushForPopup()
       case 'REVOKE':
         return revoke()
+      case 'GET_FOLDERS':
+        return listFolders()
       default:
         return undefined
     }
