@@ -63,7 +63,8 @@ const mocks = vi.hoisted(() => ({
       width: 'normal',
       toolbarMode: 'floating',
       spellCheck: false,
-      convertChecklistsToTasks: true
+      convertChecklistsToTasks: true,
+      convertAgentChecklistsToTasks: false
     },
     isLoading: false,
     updateSettings: vi.fn()
@@ -1040,6 +1041,13 @@ describe('settings section coverage', () => {
       })
     )
 
+    fireEvent.click(screen.getByLabelText('editor.v2.convertAgentChecklists'))
+    await waitFor(() =>
+      expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({
+        convertAgentChecklistsToTasks: true
+      })
+    )
+
     fireEvent.click(screen.getByText('Daily template'))
     await waitFor(() =>
       expect(mocks.journalSettings.setDefaultTemplate).toHaveBeenCalledWith('daily')
@@ -1053,8 +1061,8 @@ describe('settings section coverage', () => {
     expect(screen.queryByText('journal.showTasks.label')).toBeNull()
     expect(screen.queryByText('journal.showAIConnections.label')).toBeNull()
 
-    // [4] is "Show in sidebar" in the location group; the footer switch follows.
-    fireEvent.click(screen.getAllByRole('switch')[5])
+    // [5] is "Show in sidebar" in the location group; the footer switch follows.
+    fireEvent.click(screen.getAllByRole('switch')[6])
     await waitFor(() =>
       expect(mocks.journalSettings.updateSettings).toHaveBeenCalledWith({
         showStatsFooter: false

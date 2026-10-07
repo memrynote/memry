@@ -448,11 +448,16 @@
       "width": "Editor width",
       "toolbarMode": "Sticky formatting toolbar",
       "spellCheck": "Check spelling",
-      "convertChecklists": "Turn checklist items into tasks"
+      "convertChecklists": "Turn checklist items into tasks",
+      "convertAgentChecklists": "Turn checklist items in agent writes into tasks"
     },
     "convertChecklists": {
       "description": "Each new checklist item becomes a task. Off keeps checklists as plain checkboxes; right-click one to make it a task.",
       "error": "Failed to update checklist conversion"
+    },
+    "convertAgentChecklists": {
+      "description": "Off keeps every checkbox an agent writes a plain checkbox. Agents create tasks with the task tools.",
+      "error": "Failed to update agent checklist conversion"
     }
   },
   "templates": {

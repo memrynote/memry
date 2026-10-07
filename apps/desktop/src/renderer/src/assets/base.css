@@ -490,6 +490,83 @@
   display: block !important;
 }
 
+/* Corner grips (#2696, image-corner-handles.ts). A 24px hit box for a
+   trackpad, drawn as a 12px bracket. They follow the side grips: shown while
+   BlockNote shows those (hover, mid-drag; it clears their inline
+   `display: none`) and while the image is node-selected in an editable note. */
+[data-file-block] .memry-image-corner-handle {
+  position: absolute;
+  z-index: 1;
+  display: none;
+  width: 24px;
+  height: 24px;
+  touch-action: none;
+}
+[data-file-block] .memry-image-corner-handle::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--foreground);
+  border-style: solid;
+  border-width: 0;
+  filter: drop-shadow(0 0 1px var(--background));
+}
+[data-file-block] .memry-image-corner-handle[data-corner^='top'] {
+  top: -4px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner^='bottom'] {
+  bottom: -4px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner$='start'] {
+  inset-inline-start: -4px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner$='end'] {
+  inset-inline-end: -4px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner^='top']::after {
+  top: 4px;
+  border-top-width: 3px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner^='bottom']::after {
+  bottom: 4px;
+  border-bottom-width: 3px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner$='start']::after {
+  inset-inline-start: 4px;
+  border-inline-start-width: 3px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner$='end']::after {
+  inset-inline-end: 4px;
+  border-inline-end-width: 3px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner='top-start'],
+[data-file-block] .memry-image-corner-handle[data-corner='bottom-end'] {
+  cursor: nwse-resize;
+}
+[data-file-block] .memry-image-corner-handle[data-corner='top-end'],
+[data-file-block] .memry-image-corner-handle[data-corner='bottom-start'] {
+  cursor: nesw-resize;
+}
+[dir='rtl'] [data-file-block] .memry-image-corner-handle[data-corner='top-start'],
+[dir='rtl'] [data-file-block] .memry-image-corner-handle[data-corner='bottom-end'] {
+  cursor: nesw-resize;
+}
+[dir='rtl'] [data-file-block] .memry-image-corner-handle[data-corner='top-end'],
+[dir='rtl'] [data-file-block] .memry-image-corner-handle[data-corner='bottom-start'] {
+  cursor: nwse-resize;
+}
+.bn-resize-handle:not([style*='display: none']) ~ .memry-image-corner-handle,
+.bn-editor[contenteditable='true']
+  .bn-block-content.ProseMirror-selectednode[data-content-type='image']
+  .memry-image-corner-handle,
+.bn-editor[contenteditable='true']
+  .ProseMirror-selectednode
+  > .bn-block-content[data-content-type='image']
+  .memry-image-corner-handle {
+  display: block;
+}
+
 /* The stored width is an inline px width on the wrapper (600 at insert). Under
    a list item the block is narrower by the indent, and in a narrow pane the
    picture ran past the column with its end grip out of reach. The width stays

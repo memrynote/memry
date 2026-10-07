@@ -448,11 +448,16 @@
       "width": "Editorbreedte",
       "toolbarMode": "Vaste opmaakwerkbalk",
       "spellCheck": "Spelling controleren",
-      "convertChecklists": "Checklistitems omzetten in taken"
+      "convertChecklists": "Checklistitems omzetten in taken",
+      "convertAgentChecklists": "Checklistitems van agents omzetten in taken"
     },
     "convertChecklists": {
       "description": "Elk nieuw checklistitem wordt een taak. Uit houdt checklists als gewone selectievakjes; klik met rechts op een item om er een taak van te maken.",
       "error": "Kan de omzetting van checklists niet bijwerken"
+    },
+    "convertAgentChecklists": {
+      "description": "Uit houdt elk selectievakje dat een agent schrijft een gewoon selectievakje. Agents maken taken met de taaktools.",
+      "error": "Kan de omzetting van checklists van agents niet bijwerken"
     }
   },
   "templates": {

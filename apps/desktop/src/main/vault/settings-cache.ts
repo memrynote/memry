@@ -106,6 +106,9 @@ export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
       if (editor.convertChecklistsToTasks !== undefined) {
         editorSeed.convertChecklistsToTasks = editor.convertChecklistsToTasks
       }
+      if (editor.convertAgentChecklistsToTasks !== undefined) {
+        editorSeed.convertAgentChecklistsToTasks = editor.convertAgentChecklistsToTasks
+      }
       if (Object.keys(editorSeed).length > 0) {
         seedPrefs.editor = { ...EDITOR_SETTINGS_DEFAULTS, ...editorSeed }
       }
@@ -150,7 +153,8 @@ export function writeCacheFromPreferences(db: DataDb, prefs: VaultPreferences): 
     toolbarMode: prefs.editor.toolbarMode,
     spellCheck: prefs.editor.spellCheck,
     pdfAdaptToTheme: prefs.editor.pdfAdaptToTheme,
-    convertChecklistsToTasks: prefs.editor.convertChecklistsToTasks
+    convertChecklistsToTasks: prefs.editor.convertChecklistsToTasks,
+    convertAgentChecklistsToTasks: prefs.editor.convertAgentChecklistsToTasks
   }
 
   const existingGeneral = getSetting(db, 'general')

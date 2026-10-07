@@ -1361,6 +1361,7 @@ export interface EditorSettingsDTO {
   spellCheck: boolean
   pdfAdaptToTheme: boolean
   convertChecklistsToTasks: boolean
+  convertAgentChecklistsToTasks: boolean
 }
 
 export interface TaskSettingsDTO {

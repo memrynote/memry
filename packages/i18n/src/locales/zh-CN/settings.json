@@ -448,11 +448,16 @@
       "width": "编辑器宽度",
       "toolbarMode": "常驻格式工具栏",
       "spellCheck": "拼写检查",
-      "convertChecklists": "将清单项转为任务"
+      "convertChecklists": "将清单项转为任务",
+      "convertAgentChecklists": "将智能体写入的清单项转为任务"
     },
     "convertChecklists": {
       "description": "每个新的清单项都会成为任务。关闭后清单保持为普通复选框；右键单击某一项可将其转为任务。",
       "error": "无法更新清单转换设置"
+    },
+    "convertAgentChecklists": {
+      "description": "关闭时，智能体写入的每个复选框都保持为普通复选框。智能体用任务工具创建任务。",
+      "error": "无法更新智能体清单转换设置"
     }
   },
   "templates": {

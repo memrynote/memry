@@ -448,11 +448,16 @@
       "width": "Szerkesztő szélessége",
       "toolbarMode": "Állandó formázási eszköztár",
       "spellCheck": "Helyesírás-ellenőrzés",
-      "convertChecklists": "Ellenőrzőlista-elemek feladattá alakítása"
+      "convertChecklists": "Ellenőrzőlista-elemek feladattá alakítása",
+      "convertAgentChecklists": "Az ügynök által írt ellenőrzőlista-elemek feladattá alakítása"
     },
     "convertChecklists": {
       "description": "Minden új ellenőrzőlista-elem feladat lesz. Kikapcsolva a listák egyszerű jelölőnégyzetek maradnak; jobb kattintással egy elemből feladat lesz.",
       "error": "Nem sikerült frissíteni az ellenőrzőlisták átalakítását"
+    },
+    "convertAgentChecklists": {
+      "description": "Kikapcsolva minden jelölőnégyzet, amelyet egy ügynök ír, egyszerű jelölőnégyzet marad. Az ügynökök a feladateszközökkel hoznak létre feladatokat.",
+      "error": "Nem sikerült frissíteni az ügynöki ellenőrzőlisták átalakítását"
     }
   },
   "templates": {

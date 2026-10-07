@@ -429,6 +429,21 @@ counts only matching rows. Omit `file_types` to search every file type.
 Notes indexed by older memrynote versions have no recorded file type; those are always treated as
 markdown, so upgrading never hides existing notes.
 
+### Checkboxes in agent writes
+
+A checkbox line an agent writes into a note or journal entry stays a plain checkbox: memrynote
+stores it as `- [ ] Check the log {check}`, and the editor never turns it into a task. Agents create
+tasks with `vault_create_task`. This covers `vault_create_note`, `vault_update_note`,
+`vault_create_journal_entry`, `vault_update_journal_entry`, and the `notes.create`, `notes.update`,
+`journal.createEntry` and `journal.updateEntry` operations of `vault_desktop_write`. A checkbox line
+that was already in the note before the write is left exactly as it was.
+
+To let agents' checklists become tasks, turn on **Turn checklist items in agent writes into tasks**
+in [Settings → Editor](/user-guide/settings#checklists). The note and journal tools then create the
+tasks during the write and list each one in the reply as `created_tasks`, with its `id` and
+`title`. `vault_desktop_write` replies with the operation's own result, so its checkbox lines are
+left for the editor to convert when the note opens.
+
 ### Folder paths
 
 Every tool names a folder by its path from the vault root, with no leading slash: `projects/active`.
