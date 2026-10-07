@@ -105,7 +105,9 @@ describe('invokeDesktopApiFromWindow', () => {
       'notes.restoreVersion',
       'notes.applyTemplate',
       'notes.create',
-      'notes.createFolder'
+      'notes.createFolder',
+      'notes.uploadAttachment',
+      'notes.deleteAttachment'
     ]
 
     it.each(refusedOperations)(
