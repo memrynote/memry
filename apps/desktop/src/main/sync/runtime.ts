@@ -103,6 +103,7 @@ import {
   NoteBodyOutbox,
   importLegacyPendingCrdtNotes
 } from './note-body-outbox'
+import { recordNoteBodyPush } from './note-body-push-record'
 import { readMergedFullState } from './full-state-read'
 import { CrdtSnapshotScheduler } from '@memry/sync-client/crdt-snapshot-scheduler'
 import { planCrdtUpdatePush } from '@memry/sync-client/crdt-payload'
@@ -652,7 +653,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           secureCleanup(signingSecretKey)
         }
       }
-      const noteBodyOutbox = new NoteBodyOutbox({ queue, push: pushNoteBody })
+      const noteBodyOutbox = new NoteBodyOutbox({
+        queue,
+        push: pushNoteBody,
+        recordPush: (noteId, event) => recordNoteBodyPush(noteId, event, Date.now(), db)
+      })
 
       // `engine` is referenced lazily: nothing invokes these fns between
       // `crdtProvider.init` below and the `const engine` assignment.

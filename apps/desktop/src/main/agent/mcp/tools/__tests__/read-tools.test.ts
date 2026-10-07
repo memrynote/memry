@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { buildReadTools } from '../read-tools'
-import type { VaultServiceHandles } from '../handles'
+import type { NoteSyncReply, VaultServiceHandles } from '../handles'
 import { AgentToolError } from '../../errors'
 import { ImageToolResult } from '../../tool-image'
 import {
@@ -14,6 +14,13 @@ import {
 
 let lastSearchInput: Parameters<VaultServiceHandles['notes']['search']>[0] | null = null
 let lastViewInput: Parameters<VaultServiceHandles['files']['view']>[0] | null = null
+let lastSyncIds: string[] | null = null
+let syncFails = false
+
+const SYNC_STATES: Record<string, NoteSyncReply> = {
+  n1: { state: 'confirmed', body_confirmed_at: '2026-10-07T10:00:00.000Z' },
+  j1: { state: 'pending', waiting_since: '2026-10-07T09:00:00.000Z' }
+}
 
 function fake(): VaultServiceHandles {
   return {
@@ -262,6 +269,16 @@ function fake(): VaultServiceHandles {
     windows: {
       snapshotCurrentNote: async () => null
     },
+    sync: {
+      crdtStoreAvailable: async () => true,
+      noteStates: async (ids) => {
+        lastSyncIds = ids
+        if (syncFails) throw new Error('database closed')
+        return Object.fromEntries(
+          ids.filter((id) => id in SYNC_STATES).map((id) => [id, SYNC_STATES[id]])
+        )
+      }
+    },
     files: {
       view: async (input) => {
         lastViewInput = input
@@ -279,6 +296,8 @@ describe('Read tools', () => {
     handles = fake()
     tools = buildReadTools(handles)
     lastSearchInput = null
+    lastSyncIds = null
+    syncFails = false
   })
 
   it('vault_search_notes returns hits tagged with their file type', async () => {
@@ -286,9 +305,17 @@ describe('Read tools', () => {
       .find((t) => t.name === 'vault_search_notes')!
       .handler({ query: 'hit' }, { conversationId: null, windowId: null })
     expect(out).toEqual([
-      { id: 'n1', title: 'Hit', snippet: 'hit me', folder_path: '/Inbox', file_type: 'markdown' },
+      {
+        id: 'n1',
+        title: 'Hit',
+        snippet: 'hit me',
+        folder_path: '/Inbox',
+        file_type: 'markdown',
+        sync: SYNC_STATES.n1
+      },
       { id: 'f1', title: 'Scan', snippet: '', folder_path: '/Inbox', file_type: 'pdf' }
     ])
+    expect(lastSyncIds).toEqual(['n1', 'f1'])
   })
 
   it('vault_search_notes forwards file_types to the search handle', async () => {
@@ -336,6 +363,49 @@ describe('Read tools', () => {
       .find((t) => t.name === 'vault_read_note')!
       .handler({ id: 'n1' }, { conversationId: null, windowId: null })
     expect(out).toMatchObject({ id: 'n1', title: 'Hit', content_markdown: '# Hit' })
+  })
+
+  // #2647: an agent can check that a write reached the server.
+  it('vault_read_note returns the note sync state', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_read_note')!
+      .handler({ id: 'n1' }, { conversationId: null, windowId: null })
+    expect(out).toMatchObject({ id: 'n1', sync: SYNC_STATES.n1 })
+  })
+
+  it('vault_read_note still answers when the sync state cannot be read', async () => {
+    syncFails = true
+    const out = await tools
+      .find((t) => t.name === 'vault_read_note')!
+      .handler({ id: 'n1' }, { conversationId: null, windowId: null })
+    expect(out).toMatchObject({ id: 'n1', content_markdown: '# Hit' })
+    expect(out).not.toHaveProperty('sync')
+  })
+
+  it('vault_list_folder adds the sync state to notes, not folders', async () => {
+    const out = (await tools
+      .find((t) => t.name === 'vault_list_folder')!
+      .handler({ path: '/' }, { conversationId: null, windowId: null })) as Array<
+      Record<string, unknown>
+    >
+    expect(out[0]).not.toHaveProperty('sync')
+    expect(out[1]).toMatchObject({ id: 'n1', sync: SYNC_STATES.n1 })
+    expect(lastSyncIds).toEqual(['n1'])
+  })
+
+  it('vault_list_journal_entries and vault_get_journal_entry return the sync state', async () => {
+    const list = (await tools
+      .find((t) => t.name === 'vault_list_journal_entries')!
+      .handler(
+        { from: '2026-05-01', to: '2026-05-31' },
+        { conversationId: null, windowId: null }
+      )) as unknown[]
+    expect(list[0]).toMatchObject({ id: 'j1', sync: SYNC_STATES.j1 })
+
+    const entry = await tools
+      .find((t) => t.name === 'vault_get_journal_entry')!
+      .handler({ date: '2026-05-10' }, { conversationId: null, windowId: null })
+    expect(entry).toMatchObject({ id: 'j1', sync: SYNC_STATES.j1 })
   })
 
   it('vault_view_file forwards id, attachment and page and returns the image result', async () => {

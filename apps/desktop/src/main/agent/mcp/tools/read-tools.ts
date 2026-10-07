@@ -6,6 +6,7 @@ import { describeDesktopOperation } from './desktop-api-describe'
 import { assertDesktopApiArgs } from './desktop-api-params'
 import { DESKTOP_API_REPLY_MAX_BYTES } from './desktop-api-reply'
 import type { VaultServiceHandles } from './handles'
+import { withNoteSync } from './note-sync-reply'
 import { TOOL_SCHEMAS, READ_TOOL_NAMES } from './schemas'
 import type {
   AgentMcpDesktopOperation,
@@ -34,12 +35,13 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
           folder_id?: string
           file_types?: NoteFileType[]
         }>(TOOL_SCHEMAS.vault_search_notes.input, input)
-        return handles.notes.search({
+        const hits = await handles.notes.search({
           query: a.query,
           limit: a.limit,
           folderId: a.folder_id,
           fileTypes: a.file_types
         })
+        return withNoteSync(handles, hits)
       }
     },
     vault_read_note: {
@@ -65,7 +67,8 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
             { id: a.id, file_type: note.file_type }
           )
         }
-        return note
+        const [withSync] = await withNoteSync(handles, [note])
+        return withSync
       }
     },
     vault_view_file: {
@@ -89,7 +92,11 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
           TOOL_SCHEMAS.vault_list_folder.input,
           input
         )
-        return handles.folders.list(a)
+        return withNoteSync(
+          handles,
+          await handles.folders.list(a),
+          (entry) => entry.kind === 'note'
+        )
       }
     },
     vault_get_current_note: {
@@ -155,7 +162,10 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
       inputSchema: TOOL_SCHEMAS.vault_get_journal_entry.input,
       handler: async (input) => {
         const a = parse<{ date: string }>(TOOL_SCHEMAS.vault_get_journal_entry.input, input)
-        return handles.journal.getByDate(a.date)
+        const entry = await handles.journal.getByDate(a.date)
+        if (!entry) return null
+        const [withSync] = await withNoteSync(handles, [entry])
+        return withSync
       }
     },
     vault_list_journal_entries: {
@@ -167,7 +177,7 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
           TOOL_SCHEMAS.vault_list_journal_entries.input,
           input
         )
-        return handles.journal.listInRange(a)
+        return withNoteSync(handles, await handles.journal.listInRange(a))
       }
     },
     vault_list_inbox_items: {

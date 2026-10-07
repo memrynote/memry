@@ -8,12 +8,14 @@ import { SYNC_CHANNELS } from '@memry/contracts/ipc-sync'
 import { EVENT_CHANNELS, type VaultRecoveryNeededEvent } from '@memry/contracts/ipc-events'
 import {
   GetHistorySchema,
+  GetNoteSyncStateSchema,
   ResolveVaultBindingSchema,
   StorageBreakdownResult,
   UpdateSyncedSettingSchema
 } from '@memry/contracts/ipc-sync-ops'
 import { getSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import { listLargeNotes } from '../sync/large-notes'
+import { getNoteSyncState, listUnsentNotes } from '../sync/note-sync-state'
 import { getVaultBindingState } from '../sync/vault-account-binding'
 import { resolveOpenVaultBinding } from '../sync/vault-binding-resolve'
 import { syncHistory } from '@memry/db-schema/schema/sync-history'
@@ -27,7 +29,7 @@ import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { getFromServer } from '../sync/http-client'
 
 import { createLogger } from '../lib/logger'
-import { withErrorHandler } from './validate'
+import { createValidatedHandler, withErrorHandler } from './validate'
 import { registerCommand } from './lib/register-command'
 import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { getKeychainUnavailableStatus } from '../sync/keychain-retry'
@@ -339,6 +341,14 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   // Purely local: reads the note cache and stats the files, so it answers with
   // no server round-trip and works for an existing vault with no reindex.
   ipcMain.handle(SYNC_CHANNELS.GET_LARGE_NOTES, () => listLargeNotes())
+
+  // Local reads (#2647): the outbox records each body push, so a note's state
+  // and the unsent list answer with no server round-trip.
+  ipcMain.handle(
+    SYNC_CHANNELS.GET_NOTE_SYNC_STATE,
+    createValidatedHandler(GetNoteSyncStateSchema, ({ noteId }) => getNoteSyncState(noteId))
+  )
+  ipcMain.handle(SYNC_CHANNELS.GET_UNSENT_NOTES, () => listUnsentNotes())
 
   ipcMain.handle(SYNC_CHANNELS.GET_QUARANTINED_ITEMS, () => {
     const engine = resolveSyncEngine()

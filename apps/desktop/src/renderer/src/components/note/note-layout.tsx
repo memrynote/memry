@@ -29,6 +29,8 @@ interface NoteLayoutProps {
   breadcrumb?: ReactNode
   topBar?: ReactNode
   stats?: OutlineInfoPanelProps['stats']
+  /** The note the info panel reports a sync line for. */
+  noteId?: string | null
   fullWidth?: boolean
   /**
    * Full-bleed strip above the content column. It sits inside the scroll area
@@ -74,6 +76,7 @@ export function NoteLayout({
   breadcrumb,
   topBar,
   stats,
+  noteId,
   fullWidth = false,
   cover,
   sideRail,
@@ -230,6 +233,7 @@ export function NoteLayout({
         activeHeadingId={activeHeadingId ?? undefined}
         onHeadingClick={handleHeadingClick}
         stats={stats}
+        noteId={noteId}
         belowCover={Boolean(cover)}
       />
 

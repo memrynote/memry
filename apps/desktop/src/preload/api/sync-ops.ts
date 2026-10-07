@@ -16,6 +16,8 @@ export const syncOps = {
   getSyncedSettings: () => invoke(SYNC_CHANNELS.GET_SYNCED_SETTINGS),
   getStorageBreakdown: () => invoke(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN),
   getLargeNotes: () => invoke(SYNC_CHANNELS.GET_LARGE_NOTES),
+  getNoteSyncState: (noteId: string) => invoke(SYNC_CHANNELS.GET_NOTE_SYNC_STATE, { noteId }),
+  getUnsentNotes: () => invoke(SYNC_CHANNELS.GET_UNSENT_NOTES),
   getVaultBinding: () => invoke(SYNC_CHANNELS.GET_VAULT_BINDING),
   resolveVaultBinding: (choice: VaultBindingChoice) =>
     invoke(SYNC_CHANNELS.RESOLVE_VAULT_BINDING, { choice })

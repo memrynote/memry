@@ -1543,6 +1543,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               onHeadingClick={mindMapNavigation.navigateFromOutline}
               activeHeadingId={activeHeadingId ?? undefined}
               stats={documentStats}
+              noteId={entryId}
             />
           )}
         </main>

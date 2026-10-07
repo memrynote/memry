@@ -10,12 +10,8 @@ import { noteBodySync } from '@memry/db-schema/schema/note-body-sync'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import type { IndexDb } from '../database/client'
-import {
-  getNoteSyncState,
-  listUnsentNotes,
-  recordNoteBodyPush,
-  type NoteSyncStateDbs
-} from './note-sync-state'
+import { getNoteSyncState, listUnsentNotes, type NoteSyncStateDbs } from './note-sync-state'
+import { recordNoteBodyPush } from './note-body-push-record'
 
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
@@ -55,8 +51,11 @@ describe('note sync state (#2647)', () => {
       })
       .run()
   }
-  const record = (noteId: string, event: 'sent' | 'confirmed' | 'failed' | 'rejected', at: number) =>
-    recordNoteBodyPush(noteId, event, at, dbs.data)
+  const record = (
+    noteId: string,
+    event: 'sent' | 'confirmed' | 'failed' | 'rejected',
+    at: number
+  ) => recordNoteBodyPush(noteId, event, at, dbs.data)
   const state = (noteId: string, syncEligible = true) =>
     getNoteSyncState(noteId, { dbs, syncEligible })
 
@@ -143,7 +142,10 @@ describe('note sync state (#2647)', () => {
     addNote('n1')
     addNote('n2')
     queueRow('n1', 'note', T0 + 5000)
-    data.db.insert(crdtOwedFileBodies).values({ noteId: 'n2', createdAt: T0 + 7000 }).run()
+    data.db
+      .insert(crdtOwedFileBodies)
+      .values({ noteId: 'n2', createdAt: T0 + 7000 })
+      .run()
 
     expect(state('n1')).toMatchObject({ state: 'pending', waitingSince: T0 + 5000 })
     expect(state('n2')).toMatchObject({ state: 'pending', waitingSince: T0 + 7000 })
@@ -154,8 +156,8 @@ describe('note sync state (#2647)', () => {
     addNote('n2')
     queueRow('n2', 'note_body', T0)
 
-    expect(state('n1').state).toBe('local_only')
-    expect(state('n2', false).state).toBe('not_syncing')
+    expect(state('n1')?.state).toBe('local_only')
+    expect(state('n2', false)?.state).toBe('not_syncing')
   })
 
   it('returns null for an id with no note', () => {
@@ -167,7 +169,10 @@ describe('note sync state (#2647)', () => {
     addNote('local', { localOnly: true })
     queueRow('a', 'note_body', T0 + 3000)
     queueRow('b', 'journal', T0 + 1000)
-    data.db.insert(crdtOwedFileBodies).values({ noteId: 'c', createdAt: T0 + 2000 }).run()
+    data.db
+      .insert(crdtOwedFileBodies)
+      .values({ noteId: 'c', createdAt: T0 + 2000 })
+      .run()
     record('d', 'confirmed', T0)
     record('d', 'rejected', T0 + 9000)
     record('e', 'confirmed', T0)

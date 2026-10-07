@@ -65,10 +65,13 @@ import type {
   FolderEntry,
   InboxSummary,
   NoteSummary,
+  NoteSyncReply,
   ProjectSummary,
   TaskSummary,
   VaultServiceHandles
 } from './handles'
+import { toNoteSyncReply } from './note-sync-reply'
+import { getNoteSyncStates } from '../../../sync/note-sync-state'
 
 export interface AdapterDeps {
   dataDb: DataDb
@@ -791,7 +794,12 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       }
     },
     sync: {
-      crdtStoreAvailable: async () => getCrdtProvider().isPersistent()
+      crdtStoreAvailable: async () => getCrdtProvider().isPersistent(),
+      noteStates: async (ids) => {
+        const replies: Record<string, NoteSyncReply> = {}
+        for (const [id, state] of getNoteSyncStates(ids)) replies[id] = toNoteSyncReply(state)
+        return replies
+      }
     },
     files: {
       async view(input) {

@@ -661,7 +661,18 @@
     "readTime": "{count} min read",
     "words": "{count} words",
     "created": "Created",
-    "modified": "Modified"
+    "modified": "Modified",
+    "sync": {
+      "label": "Sync",
+      "confirmed": "On the server {time}",
+      "pending": "Waiting to send, since {time}",
+      "sent": "Sending",
+      "rejected": "The server refused the last change",
+      "notRecorded": "Nothing waiting to send",
+      "localOnly": "Local only",
+      "notSyncing": "Not syncing",
+      "waiting": "Waiting to send"
+    }
   },
   "backlinks": {
     "sortRecent": "Recent",

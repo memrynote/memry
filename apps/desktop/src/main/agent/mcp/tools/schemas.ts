@@ -119,7 +119,7 @@ const LOOSE_TOOL_SCHEMAS = {
       'a note. PDFs and images match on the text read out of them on this device, and a note ' +
       'matches on the visible text of the HTML blocks it embeds. Pass ' +
       'file_types to restrict the search, e.g. ["markdown"] for notes only; omitted returns ' +
-      'every file type.'
+      'every file type. Each hit carries sync, as vault_read_note describes.'
   },
   vault_read_note: {
     input: z.object({
@@ -134,7 +134,13 @@ const LOOSE_TOOL_SCHEMAS = {
       'from_page to continue. A markdown note that embeds PDFs, images or HTML blocks adds ' +
       'attachment_text, the text read from each ({ file, text }; the visible text for an ' +
       'HTML block), about 100 KB at most. Errors with VALIDATION ' +
-      'for a filed audio or video file. To look at an image or a PDF page, use vault_view_file.'
+      'for a filed audio or video file. To look at an image or a PDF page, use vault_view_file. ' +
+      'sync says whether the note\'s latest text reached the server: state "pending" (changes ' +
+      'waiting on this device, since waiting_since), "sent" (a push has no answer yet), ' +
+      '"confirmed" (the server stored the last body push, at body_confirmed_at), ' +
+      '"not_recorded" (nothing waiting, no confirmed push recorded yet), "rejected" (the ' +
+      'server refused the latest push), "local_only" or "not_syncing". After a write, read ' +
+      'again until state is "confirmed" and body_confirmed_at is later than the write.'
   },
   vault_view_file: {
     input: z.object({
@@ -165,7 +171,7 @@ const LOOSE_TOOL_SCHEMAS = {
       'folder that does not exist fails with NOT_FOUND. recursive includes every ' +
       'nested level instead of direct children only. Returns at most 1000 notes. Each note ' +
       'entry carries file_type; a filed pdf/image/audio/video file lists as kind "file", ' +
-      'not "note".'
+      'not "note". Each note entry carries sync, as vault_read_note describes.'
   },
   vault_get_current_note: {
     input: z.object({}),
@@ -203,14 +209,18 @@ const LOOSE_TOOL_SCHEMAS = {
   },
   vault_get_journal_entry: {
     input: z.object({ date: isoDateSchema }),
-    description: 'Return the journal entry for an ISO date or null.'
+    description:
+      'Return the journal entry for an ISO date or null. It carries sync, as vault_read_note ' +
+      'describes.'
   },
   vault_list_journal_entries: {
     input: z.object({
       from: isoDateSchema,
       to: isoDateSchema
     }),
-    description: 'List journal entry summaries within a date range (inclusive).'
+    description:
+      'List journal entry summaries within a date range (inclusive). Each carries sync, as ' +
+      'vault_read_note describes.'
   },
   vault_list_inbox_items: {
     input: z.object({ unread_only: z.boolean().optional() }),
