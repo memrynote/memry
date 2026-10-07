@@ -538,8 +538,7 @@ export function buildWriteTools(
           toolName: 'vault_update_note',
           parsedArgs: parsed
         })) as typeof parsed
-        await handles.notes.update(args)
-        return { id: args.id }
+        return { id: args.id, ...(await handles.notes.update(args)) }
       }
     },
     vault_add_html_artifact: {
