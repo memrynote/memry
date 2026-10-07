@@ -448,11 +448,16 @@
       "width": "Lățimea editorului",
       "toolbarMode": "Bară de formatare fixă",
       "spellCheck": "Verifică ortografia",
-      "convertChecklists": "Transformă elementele listei în sarcini"
+      "convertChecklists": "Transformă elementele listei în sarcini",
+      "convertAgentChecklists": "Transformă în sarcini elementele listei scrise de un agent"
     },
     "convertChecklists": {
       "description": "Fiecare element nou din listă devine o sarcină. Dezactivat, listele rămân casete de bifat simple; faceți clic dreapta pe unul pentru a-l transforma în sarcină.",
       "error": "Conversia listelor de verificare nu a putut fi actualizată"
+    },
+    "convertAgentChecklists": {
+      "description": "Dezactivat, fiecare casetă de bifat scrisă de un agent rămâne o casetă simplă. Agenții creează sarcini cu instrumentele pentru sarcini.",
+      "error": "Conversia listelor de verificare ale agenților nu a putut fi actualizată"
     }
   },
   "templates": {

@@ -22,6 +22,13 @@ const ingestSpy = vi.fn(async () => {
 })
 vi.mock('../inbox/ingest', () => ({ ingestArticleCapture: ingestSpy }))
 
+const FOLDER_LIST = { vaultId: 'v1', vaultName: 'Notes', folders: ['Reading'] }
+const routeSpy = vi.fn(async () => ({ filedTo: 'Reading' }))
+vi.mock('./folders', () => ({
+  listCaptureFolders: async () => (vaultOpen ? FOLDER_LIST : null),
+  routeCaptureToFolder: routeSpy
+}))
+
 const TOKEN = 'b'.repeat(64)
 let windowOpen = true
 const origins = new Set<string>()
@@ -51,6 +58,7 @@ describe('capture server', () => {
     vaultOpen = true
     origins.clear()
     ingestSpy.mockClear()
+    routeSpy.mockClear()
     openPairingWindowMock.mockClear()
     mockUnpair.mockClear()
     const { startCaptureServer } = await import('./server')
@@ -64,7 +72,73 @@ describe('capture server', () => {
   it('answers /ping unauthenticated', async () => {
     const r = await req(port, '/ping', { method: 'GET' })
     expect(r.status).toBe(200)
-    expect((await r.json()).app).toBe('memry')
+    const body = await r.json()
+    expect(body.app).toBe('memry')
+    expect(body.capabilities).toContain('folders')
+  })
+
+  const authed = {
+    Authorization: `Bearer ${TOKEN}`,
+    Origin: 'chrome-extension://abc',
+    'X-Memry-Capture': '1',
+    'Content-Type': 'application/json'
+  }
+  const article = {
+    url: 'https://example.com/p',
+    mode: 'article',
+    contentMarkdown: '# x',
+    excerpt: 'x',
+    extractionStatus: 'full',
+    properties: { title: 'x', source: 'https://example.com/p', created: '2026-06-17T00:00:00.000Z' }
+  }
+
+  it('serves /folders only to a paired origin with the token', async () => {
+    const denied = await req(port, '/folders', { method: 'POST', headers: authed })
+    expect(denied.status).toBe(401)
+    origins.add('chrome-extension://abc')
+    const badToken = await req(port, '/folders', {
+      method: 'POST',
+      headers: { ...authed, Authorization: 'Bearer nope' }
+    })
+    expect(badToken.status).toBe(401)
+    const r = await req(port, '/folders', { method: 'POST', headers: authed })
+    expect(r.status).toBe(200)
+    expect(await r.json()).toEqual(FOLDER_LIST)
+  })
+
+  it('answers /folders with 503 vault-closed when no vault is open', async () => {
+    origins.add('chrome-extension://abc')
+    vaultOpen = false
+    const r = await req(port, '/folders', { method: 'POST', headers: authed })
+    expect(r.status).toBe(503)
+    expect(await r.json()).toEqual({ error: 'vault-closed' })
+  })
+
+  it('ingests to the Inbox first, then routes a capture that names a folder', async () => {
+    origins.add('chrome-extension://abc')
+    const r = await req(port, '/capture', {
+      method: 'POST',
+      headers: authed,
+      body: JSON.stringify({ ...article, folder: 'Reading', vaultId: 'v1' })
+    })
+    expect(r.status).toBe(200)
+    expect(await r.json()).toEqual({ itemId: 'item-9', filedTo: 'Reading' })
+    expect(ingestSpy).toHaveBeenCalledWith(
+      expect.not.objectContaining({ folder: expect.anything() }),
+      'browser-extension'
+    )
+    expect(routeSpy).toHaveBeenCalledWith('item-9', 'Reading', 'v1')
+  })
+
+  it('keeps a capture without a folder in the Inbox (older extensions)', async () => {
+    origins.add('chrome-extension://abc')
+    const r = await req(port, '/capture', {
+      method: 'POST',
+      headers: authed,
+      body: JSON.stringify(article)
+    })
+    expect(await r.json()).toEqual({ itemId: 'item-9', filedTo: null })
+    expect(routeSpy).not.toHaveBeenCalled()
   })
 
   it('claims a token while the window is open, then serves /capture', async () => {

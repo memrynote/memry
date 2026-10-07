@@ -173,7 +173,10 @@ const INBOX_SYNCABLE_FIELDS: (keyof InboxSettings)[] = [
 
 // Only checklist conversion is pushed: it decides what a note's checkboxes
 // become, and two devices that disagree would convert the same note differently.
-const EDITOR_SYNCABLE_FIELDS: (keyof EditorSettings)[] = ['convertChecklistsToTasks']
+const EDITOR_SYNCABLE_FIELDS: (keyof EditorSettings)[] = [
+  'convertChecklistsToTasks',
+  'convertAgentChecklistsToTasks'
+]
 
 const SETTINGS_KEYS = {
   JOURNAL_DEFAULT_TEMPLATE: JOURNAL_DEFAULT_TEMPLATE_KEY,

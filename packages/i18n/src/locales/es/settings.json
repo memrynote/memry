@@ -448,11 +448,16 @@
       "width": "Ancho del editor",
       "toolbarMode": "Barra de herramientas de formato fija",
       "spellCheck": "Corrección ortográfica",
-      "convertChecklists": "Convertir elementos de lista en tareas"
+      "convertChecklists": "Convertir elementos de lista en tareas",
+      "convertAgentChecklists": "Convertir en tareas los elementos de lista que escribe un agente"
     },
     "convertChecklists": {
       "description": "Cada nuevo elemento de la lista se convierte en una tarea. Desactivado, las listas quedan como casillas simples; haz clic derecho en una para convertirla en tarea.",
       "error": "No se pudo actualizar la conversión de listas de verificación"
+    },
+    "convertAgentChecklists": {
+      "description": "Desactivado, cada casilla que escribe un agente queda como casilla simple. Los agentes crean tareas con las herramientas de tareas.",
+      "error": "No se pudo actualizar la conversión de listas de verificación de agentes"
     }
   },
   "templates": {

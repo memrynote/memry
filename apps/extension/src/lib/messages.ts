@@ -5,11 +5,16 @@ export type ConnectionState = 'app-closed' | 'needs-pairing' | 'ready'
 export interface StatusResponse {
   connection: ConnectionState
   port: number | null
+  // The desktop advertises POST /folders. Optional: absent = no picker.
+  canPickFolder?: boolean
 }
 
 export type PairResponse = { ok: true } | { ok: false; error: string }
 
-export type CaptureResponse = { ok: true; itemId: string } | { ok: false; error: string }
+// filedTo: the folder the desktop filed the clip into; null/absent = Inbox
+// (older desktops never send it).
+export type CaptureResponse =
+  { ok: true; itemId: string; filedTo?: string | null } | { ok: false; error: string }
 
 export type CaptureMode = 'article' | 'selection' | 'screenshot' | 'pdf'
 
@@ -23,6 +28,7 @@ export type PopupMessage =
   | { type: 'FLUSH_QUEUE' }
   | { type: 'REVOKE' }
   | { type: 'GET_TAGS' }
+  | { type: 'GET_FOLDERS' }
 
 export type ContentMessage =
   | { type: 'EXTRACT' }

@@ -448,11 +448,16 @@
       "width": "Redigeringsbredde",
       "toolbarMode": "Fast formateringsverktøylinje",
       "spellCheck": "Stavekontroll",
-      "convertChecklists": "Gjør sjekklistepunkter til oppgaver"
+      "convertChecklists": "Gjør sjekklistepunkter til oppgaver",
+      "convertAgentChecklists": "Gjør sjekklistepunkter fra agenter til oppgaver"
     },
     "convertChecklists": {
       "description": "Hvert nye sjekklistepunkt blir en oppgave. Av beholder sjekklister som vanlige avkrysningsbokser; høyreklikk på en for å gjøre den til en oppgave.",
       "error": "Kunne ikke oppdatere konvertering av sjekklister"
+    },
+    "convertAgentChecklists": {
+      "description": "Av holder hver avkrysningsboks en agent skriver som en vanlig avkrysningsboks. Agenter lager oppgaver med oppgaveverktøyene.",
+      "error": "Kunne ikke oppdatere konvertering av sjekklister fra agenter"
     }
   },
   "templates": {

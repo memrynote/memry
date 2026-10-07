@@ -12,11 +12,17 @@ import {
   unpairCapture
 } from './pairing'
 import { validateCaptureRequest, isExtensionOrigin } from './auth'
+import { listCaptureFolders, routeCaptureToFolder } from './folders'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
 
 const log = createLogger('Capture:Server')
+
+// Features this server supports beyond the original /capture contract. The
+// extension only shows the matching UI when the flag is present, so a newer
+// extension degrades cleanly against an older desktop.
+const CAPABILITIES = ['folders'] as const
 
 const DEFAULT_PORT = 7849
 const PROBE_RANGE = 8 // try 7849..7856
@@ -61,7 +67,39 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
   const origin = req.headers.origin
 
   if (req.method === 'GET' && req.url === '/ping') {
-    json(res, 200, { app: 'memry', version: app.getVersion(), paired: isOriginAllowed(origin) })
+    json(res, 200, {
+      app: 'memry',
+      version: app.getVersion(),
+      paired: isOriginAllowed(origin),
+      capabilities: CAPABILITIES
+    })
+    return
+  }
+
+  // POST, not GET: Chrome omits the Origin header on an extension's GET
+  // requests, so a GET would always fail the origin allowlist.
+  if (req.method === 'POST' && req.url === '/folders') {
+    const token = await getCaptureToken()
+    const auth = validateCaptureRequest(
+      {
+        authorization: req.headers.authorization,
+        origin,
+        'x-memry-capture': req.headers['x-memry-capture'] as string | undefined
+      },
+      token,
+      isOriginAllowed
+    )
+    req.resume()
+    if (!auth.ok) {
+      json(res, 401, { error: auth.reason })
+      return
+    }
+    const list = isDatabaseInitialized() ? await listCaptureFolders() : null
+    if (!list) {
+      json(res, 503, { error: 'vault-closed' })
+      return
+    }
+    json(res, 200, list)
     return
   }
 
@@ -156,7 +194,12 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       json(res, 422, { error: 'invalid-capture' })
       return
     }
-    const result = await ingestArticleCapture(parsed.data, 'browser-extension')
+    const { folder, vaultId, ...capture } = parsed.data
+    // Inbox first, always: the clip is safe before any routing is attempted.
+    // Extension ingest stores the final content synchronously (no background
+    // extraction job), so filing right after cannot race a later content write.
+    const result = await ingestArticleCapture(capture, 'browser-extension')
+    const routed = folder ? await routeCaptureToFolder(result.itemId, folder, vaultId) : null
     // The extension bypasses the inbox IPC handlers (where inbox_captured is
     // normally emitted), so clipper intake must be tracked here.
     trackMainEvent('inbox_captured', {
@@ -167,7 +210,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       result: 'success',
       dimensions: { capture_type: 'clipper' }
     })
-    json(res, 200, { itemId: result.itemId })
+    json(res, 200, { itemId: result.itemId, filedTo: routed?.filedTo ?? null })
     return
   }
 
