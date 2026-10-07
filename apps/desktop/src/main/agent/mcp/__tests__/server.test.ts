@@ -567,6 +567,31 @@ describe('Agent MCP server reply cap', () => {
   })
 })
 
+describe('Agent MCP server empty replies', () => {
+  it('replies null for a tool that returns nothing, as vault.reindex does', async () => {
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [buildTool('vault_desktop_write', async () => undefined)]
+    })
+
+    try {
+      const rpc = (await mcpPost(handle, {
+        method: 'tools/call',
+        params: { name: 'vault_desktop_write', arguments: {} }
+      })) as {
+        error?: unknown
+        result: { isError?: boolean; content: unknown[]; structuredContent: unknown }
+      }
+
+      expect(rpc.error).toBeUndefined()
+      expect(rpc.result.isError).toBeFalsy()
+      expect(rpc.result.content).toEqual([{ type: 'text', text: 'null' }])
+      expect(rpc.result.structuredContent).toEqual({ result: null })
+    } finally {
+      await handle.stop()
+    }
+  })
+})
+
 describe('Agent MCP server image replies', () => {
   it('sends an ImageToolResult as a text part with the reply and an image part', async () => {
     const reply = { id: 'file-1', title: 'Login screen', width: 4, height: 2 }
