@@ -79,8 +79,11 @@ export function deriveNoteSyncState(facts: NoteFacts, syncEligible: boolean): No
   if (!syncEligible) state = 'not_syncing'
   else if (facts.localOnly) state = 'local_only'
   else if (waitingSince !== null) {
-    const answered = Math.max(confirmed ?? -1, failed ?? -1, rejected ?? -1)
-    state = sent !== null && sent > answered ? 'sent' : 'pending'
+    // A failure since the last stored push means the outbox is retrying: the
+    // change is still waiting even while a retry is out.
+    const retrying = failed !== null && failed > (confirmed ?? -1)
+    const answered = Math.max(confirmed ?? -1, rejected ?? -1)
+    state = !retrying && sent !== null && sent > answered ? 'sent' : 'pending'
   } else if (rejected !== null && rejected > (confirmed ?? -1)) state = 'rejected'
   else state = confirmed === null ? 'not_recorded' : 'confirmed'
 
