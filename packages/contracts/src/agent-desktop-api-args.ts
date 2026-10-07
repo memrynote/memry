@@ -692,16 +692,19 @@ export interface DesktopArgsJsonSchema {
 /**
  * The JSON Schema (draft 2020-12) of an operation's `args` array, for what the
  * caller sends: a parameter with a default shows as optional with its default.
+ * An operation without parameters publishes no `prefixItems` (2020-12 requires at
+ * least one entry); `maxItems: 0` says it takes no arguments.
  */
 export function desktopOperationJsonSchema(
   operation: AgentMcpDesktopOperation
 ): DesktopArgsJsonSchema {
-  const schema = z.toJSONSchema(desktopOperationArgsSchema(operation), {
+  const { prefixItems, ...schema } = z.toJSONSchema(desktopOperationArgsSchema(operation), {
     io: 'input',
     unrepresentable: 'any'
   }) as Record<string, unknown>
   return {
     ...schema,
+    ...(Array.isArray(prefixItems) && prefixItems.length > 0 ? { prefixItems } : {}),
     type: 'array',
     minItems: desktopOperationRequiredCount(operation),
     maxItems: desktopOperationParamNames(operation).length
