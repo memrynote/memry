@@ -120,8 +120,8 @@ export function buildWriteTools(
           toolName: 'vault_create_note',
           parsedArgs: parsed
         })) as typeof parsed
-        const { id } = await handles.notes.create(args)
-        return storedNoteReply(handles, id)
+        const { id, ...written } = await handles.notes.create(args)
+        return { ...(await storedNoteReply(handles, id)), ...written }
       }
     },
     vault_rename_note: {
@@ -447,9 +447,9 @@ export function buildWriteTools(
           toolName: 'vault_create_journal_entry',
           parsedArgs: parsed
         })) as typeof parsed
-        const { id, created } = await handles.journal.createIfMissing(args)
+        const { id, ...written } = await handles.journal.createIfMissing(args)
         const stored = await afterWrite(() => handles.journal.stored(args.date), { id })
-        return { ...stored, created }
+        return { ...stored, ...written }
       }
     },
     vault_update_journal_entry: {
@@ -462,9 +462,9 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_update_journal_entry', parsed, ctx)
-        const { id, frontmatter_removed } = await handles.journal.update(args)
+        const { id, ...written } = await handles.journal.update(args)
         const stored = await afterWrite(() => handles.journal.stored(args.date), { id })
-        return frontmatter_removed ? { ...stored, frontmatter_removed } : stored
+        return { ...stored, ...written }
       }
     },
     vault_delete_journal_entry: {
@@ -601,10 +601,10 @@ export function buildWriteTools(
           parsedArgs: parsed
         })) as typeof parsed
         const before = await handles.notes.stored(args.id)
-        await handles.notes.update(args)
+        const written = await handles.notes.update(args)
         const after = await storedNoteReply(handles, args.id)
-        if (!before || !('tags' in after)) return after
-        return { ...after, ...tagChanges(before.tags, after.tags) }
+        const changes = before && 'tags' in after ? tagChanges(before.tags, after.tags) : {}
+        return { ...after, ...changes, ...written }
       }
     },
     vault_add_html_artifact: {

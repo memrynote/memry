@@ -39,7 +39,8 @@ describe('task-note-index', () => {
       expect(index.get('note-1')).toEqual({
         id: 'note-1',
         title: 'NDA review',
-        folderPath: 'Acme/Legal/NDA'
+        folderPath: 'Acme/Legal/NDA',
+        icon: null
       })
     })
 

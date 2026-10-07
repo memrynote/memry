@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planChecklistTasks } from './checklist-tasks'
+import { markChecklistLinesPlain, planChecklistTasks } from './checklist-tasks'
 
 const NOW = new Date('2026-03-04T09:30:00.000Z')
 
@@ -200,5 +200,25 @@ describe('planChecklistTasks', () => {
     it('keeps the carriage return out of the title', () => {
       expect(titles('- [ ] Buy milk\r')).toEqual(['Buy milk'])
     })
+  })
+})
+
+describe('markChecklistLinesPlain', () => {
+  const mark = (markdown: string) => markChecklistLinesPlain(markdown, () => false)
+
+  it('marks nested and CRLF checkbox lines and keeps the line endings', () => {
+    expect(mark('- [ ] Pack\r\n  * [x] Passport\r\n')).toBe(
+      '- [ ] Pack {check}\r\n  * [x] Passport {check}\r\n'
+    )
+  })
+
+  it('leaves a line Obsidian Tasks owns byte for byte', () => {
+    expect(mark('- [ ] Blocked 🆔 task1')).toBe('- [ ] Blocked 🆔 task1')
+  })
+
+  it('leaves a line the caller keeps', () => {
+    expect(markChecklistLinesPlain('- [ ] Mine\n- [ ] New', (index) => index === 0)).toBe(
+      '- [ ] Mine\n- [ ] New {check}'
+    )
   })
 })

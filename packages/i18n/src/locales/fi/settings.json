@@ -448,11 +448,16 @@
       "width": "Editorin leveys",
       "toolbarMode": "Kiinnitetty muotoilupalkki",
       "spellCheck": "Tarkista oikeinkirjoitus",
-      "convertChecklists": "Muuta tarkistuslistan kohdat tehtäviksi"
+      "convertChecklists": "Muuta tarkistuslistan kohdat tehtäviksi",
+      "convertAgentChecklists": "Muuta agentin kirjoittamat tarkistuslistan kohdat tehtäviksi"
     },
     "convertChecklists": {
       "description": "Jokaisesta uudesta tarkistuslistan kohdasta tulee tehtävä. Pois päältä listat pysyvät tavallisina valintaruutuina; tee kohdasta tehtävä napsauttamalla sitä hiiren oikealla.",
       "error": "Tarkistuslistojen muunnoksen päivitys epäonnistui"
+    },
+    "convertAgentChecklists": {
+      "description": "Pois päältä jokainen agentin kirjoittama valintaruutu pysyy tavallisena valintaruutuna. Agentit luovat tehtäviä tehtävätyökaluilla.",
+      "error": "Agentin tarkistuslistojen muunnoksen päivitys epäonnistui"
     }
   },
   "templates": {

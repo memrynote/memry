@@ -30,7 +30,10 @@ await esbuild.build({
   format: 'iife',
   target: 'safari17',
   legalComments: 'none',
-  define: { 'process.env.NODE_ENV': '"production"', 'import.meta.env': '{"DEV":false,"PROD":true,"MODE":"production"}' },
+  define: {
+    'process.env.NODE_ENV': '"production"',
+    'import.meta.env': '{"DEV":false,"PROD":true,"MODE":"production"}'
+  },
   conditions: ['production'],
   // The CSS names its fonts as `./fonts/...`, which is where they are copied.
   external: ['*.woff2'],
@@ -42,8 +45,19 @@ await esbuild.build({
 // Every hand-drawn and UI font but Xiaolai: its 12 MB of CJK glyphs would
 // triple the bundle, and CJK text falls back to the system font instead.
 mkdirSync(path.join(out, 'fonts'))
-for (const family of ['Assistant', 'Cascadia', 'ComicShanns', 'Excalifont', 'Liberation', 'Lilita', 'Nunito', 'Virgil']) {
-  cpSync(path.join(excalidraw, 'dist/prod/fonts', family), path.join(out, 'fonts', family), { recursive: true })
+for (const family of [
+  'Assistant',
+  'Cascadia',
+  'ComicShanns',
+  'Excalifont',
+  'Liberation',
+  'Lilita',
+  'Nunito',
+  'Virgil'
+]) {
+  cpSync(path.join(excalidraw, 'dist/prod/fonts', family), path.join(out, 'fonts', family), {
+    recursive: true
+  })
 }
 
 writeFileSync(

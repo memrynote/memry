@@ -448,11 +448,16 @@
       "width": "Šírka editora",
       "toolbarMode": "Pripevnený panel formátovania",
       "spellCheck": "Kontrola pravopisu",
-      "convertChecklists": "Meniť položky kontrolného zoznamu na úlohy"
+      "convertChecklists": "Meniť položky kontrolného zoznamu na úlohy",
+      "convertAgentChecklists": "Meniť položky kontrolného zoznamu od agenta na úlohy"
     },
     "convertChecklists": {
       "description": "Každá nová položka kontrolného zoznamu sa stane úlohou. Keď je vypnuté, zoznamy zostanú obyčajnými začiarkavacími políčkami; úlohu z položky urobíte kliknutím pravým tlačidlom.",
       "error": "Prevod kontrolných zoznamov sa nepodarilo aktualizovať"
+    },
+    "convertAgentChecklists": {
+      "description": "Vypnuté ponechá každé začiarkavacie políčko, ktoré agent zapíše, ako obyčajné políčko. Agenti vytvárajú úlohy nástrojmi pre úlohy.",
+      "error": "Prevod kontrolných zoznamov od agenta sa nepodarilo aktualizovať"
     }
   },
   "templates": {

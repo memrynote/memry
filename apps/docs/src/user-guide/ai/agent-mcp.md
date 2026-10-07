@@ -425,6 +425,21 @@ counts only matching rows. Omit `file_types` to search every file type.
 Notes indexed by older memrynote versions have no recorded file type; those are always treated as
 markdown, so upgrading never hides existing notes.
 
+### Checkboxes in agent writes
+
+A checkbox line an agent writes into a note or journal entry stays a plain checkbox: memrynote
+stores it as `- [ ] Check the log {check}`, and the editor never turns it into a task. Agents create
+tasks with `vault_create_task`. This covers `vault_create_note`, `vault_update_note`,
+`vault_create_journal_entry`, `vault_update_journal_entry`, and the `notes.create`, `notes.update`,
+`journal.createEntry` and `journal.updateEntry` operations of `vault_desktop_write`. A checkbox line
+that was already in the note before the write is left exactly as it was.
+
+To let agents' checklists become tasks, turn on **Turn checklist items in agent writes into tasks**
+in [Settings → Editor](/user-guide/settings#checklists). The note and journal tools then create the
+tasks during the write and list each one in the reply as `created_tasks`, with its `id` and
+`title`. `vault_desktop_write` replies with the operation's own result, so its checkbox lines are
+left for the editor to convert when the note opens.
+
 ### Folder paths
 
 Every tool names a folder by its path from the vault root, with no leading slash: `projects/active`.
@@ -632,8 +647,12 @@ before the approval prompt. The error names the key: `Unknown argument: colour`.
   `vault_update_journal_entry` lists what it dropped in `frontmatter_removed`.
 - `body_bytes` and `body_sha256` cover the body exactly as the file stores it after its frontmatter,
   in UTF-8. The file writer ends the body with a newline, so a body sent without a final newline is
-  stored with one. To check a write, hash what you sent with a final `\n` added when it has none and
-  compare. Any other difference means the stored body is not the one you sent.
+  stored with one. Checkbox lines the agent added are stored with the `{check}` marker, or rewritten
+  as the tasks they became when the owner turned on task conversion (see
+  [Checkboxes in agent writes](#checkboxes-in-agent-writes)). To check a write, hash what you sent
+  with those two changes applied and compare. Any other difference means the stored body is not the
+  one you sent.
+- A note or journal write that turned checkbox lines into tasks also lists them in `created_tasks`.
 - Task, project, status and inbox writes reply with the stored task, project, status or inbox item.
   Reorders (`vault_reorder_tasks`, `vault_reorder_projects`, `vault_reorder_statuses`) reply with
   the ids and the stored records in order. Deletes reply with what they deleted.

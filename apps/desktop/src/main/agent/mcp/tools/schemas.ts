@@ -27,6 +27,10 @@ export const HTML_ARTIFACT_MAX_CHARS = 512 * 1024
 const CANVAS_ID_HINT =
   'Takes the canvas id or its folder-qualified name ("Work/Plan") from vault_list_canvases; ' +
   'a bare title matching more than one canvas is refused with the candidates listed.'
+const CHECKLIST_HINT =
+  'Checkbox lines you add are stored as plain checkboxes, marked {check}, unless the owner ' +
+  'turned on task conversion for agents; then they become tasks and the reply lists them in ' +
+  'created_tasks. Create tasks with vault_create_task.'
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 const isoTimeSchema = z.string().regex(/^\d{2}:\d{2}$/)
 const colorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/)
@@ -246,7 +250,7 @@ const LOOSE_TOOL_SCHEMAS = {
       folder_path: z.string().optional(),
       tags: z.array(z.string()).optional()
     }),
-    description: 'Create a new note. Requires user approval.'
+    description: `Create a new note. ${CHECKLIST_HINT} Requires user approval.`
   },
   vault_rename_note: {
     input: z.object({ id: idSchema, title: z.string().min(1).max(200) }),
@@ -378,7 +382,7 @@ const LOOSE_TOOL_SCHEMAS = {
       date: isoDateSchema,
       content_markdown: z.string()
     }),
-    description: 'Create or return existing journal entry for date. Requires user approval.'
+    description: `Create or return existing journal entry for date. ${CHECKLIST_HINT} Requires user approval.`
   },
   vault_update_journal_entry: {
     input: z.object({
@@ -387,7 +391,7 @@ const LOOSE_TOOL_SCHEMAS = {
       tags: z.array(z.string()).optional(),
       properties: unknownRecordSchema.optional()
     }),
-    description: 'Update or create a journal entry. Requires user approval.'
+    description: `Update or create a journal entry. ${CHECKLIST_HINT} Requires user approval.`
   },
   vault_delete_journal_entry: {
     input: z.object({ date: isoDateSchema }),
@@ -444,10 +448,10 @@ const LOOSE_TOOL_SCHEMAS = {
       content_markdown: z.string()
     }),
     description:
-      'Update note body. Replies with the note as stored: title, folder_path, tags, ' +
-      'properties, body_bytes and body_sha256 (UTF-8 body as the file stores it, which ends ' +
-      'with a newline), plus tags_added and tags_removed when ' +
-      'inline #tags in the body changed the tag set. Requires user approval with diff preview.'
+      `Update note body. ${CHECKLIST_HINT} Replies with the note as stored: title, folder_path, ` +
+      'tags, properties, body_bytes and body_sha256 (UTF-8 body as the file stores it, which ends ' +
+      'with a newline), plus tags_added and tags_removed when inline #tags in the body changed ' +
+      'the tag set. Requires user approval with diff preview.'
   },
   vault_add_html_artifact: {
     input: z.object({

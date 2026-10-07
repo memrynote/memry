@@ -110,6 +110,20 @@ The popup offers four ways to grab a page:
 Article and Selection land as text; Screenshot lands as an image attachment; PDF lands as a PDF file
 you can open in memrynote's built-in viewer and file into a folder like any other attachment.
 
+### Choosing a folder
+
+Clips go to your inbox by default. When memrynote is open with a vault, the popup also shows a
+**vault / Inbox** picker under the tags. Pick a folder there to file the clip straight into it;
+leave it alone and nothing changes.
+
+- The list comes live from the app each time you open the popup. The extension doesn't store your
+  folder names.
+- The clip always reaches your inbox first, then gets filed. If the folder was deleted or you
+  switched vaults before it arrived, it stays in the inbox. Folders are never created this way.
+- The save button confirms where the clip landed, for example **Sent to Reading ✓** or **Sent to
+  Inbox ✓**.
+- While memrynote is closed the picker is hidden, and clips go to the inbox as usual.
+
 ### Clipping PDFs
 
 When you open a PDF, the browser renders it with its own viewer, which extensions cannot read text

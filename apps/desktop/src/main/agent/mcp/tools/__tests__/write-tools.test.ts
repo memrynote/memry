@@ -696,6 +696,39 @@ describe('Write tools — P1 deny-by-default', () => {
     ).resolves.toEqual({ id: 'jrnl', warnings: [warning] })
   })
 
+  it('keeps created_tasks and frontmatter_removed next to the stored record', async () => {
+    const createdTasks = [{ id: 'task-9', title: 'Check the log' }]
+    const local: VaultServiceHandles = {
+      ...handles,
+      notes: {
+        ...handles.notes,
+        create: vi.fn(async () => ({ id: 'note-1', created_tasks: createdTasks })),
+        update: vi.fn(async () => ({ created_tasks: createdTasks }))
+      },
+      journal: {
+        ...handles.journal,
+        update: vi.fn(async () => ({
+          id: 'jrnl',
+          frontmatter_removed: ['emoji'],
+          created_tasks: createdTasks
+        }))
+      }
+    }
+    const tools = buildWriteTools(local, async () => ({ approved: true }))
+    const run = (name: string, input: unknown) =>
+      tools.find((x) => x.name === name)!.handler(input, { writeGrant: 'g', windowId: 'w1' })
+
+    await expect(
+      run('vault_create_note', { title: 't', content_markdown: '- [ ] Check the log' })
+    ).resolves.toMatchObject({ ...storedNote('note-1'), created_tasks: createdTasks })
+    await expect(
+      run('vault_update_note', { id: 'note-1', mode: 'append', content_markdown: '- [ ] x' })
+    ).resolves.toMatchObject({ id: 'note-1', created_tasks: createdTasks })
+    await expect(
+      run('vault_update_journal_entry', { date: '2026-05-10', content_markdown: '- [ ] x' })
+    ).resolves.toMatchObject({ frontmatter_removed: ['emoji'], created_tasks: createdTasks })
+  })
+
   it('vault_add_html_artifact rejects oversized html before the gate', async () => {
     const gate = vi.fn<WriteToolGate>(async () => ({ approved: true }))
     const t = buildWriteTools(handles, gate).find((x) => x.name === 'vault_add_html_artifact')!
