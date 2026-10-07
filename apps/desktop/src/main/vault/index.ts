@@ -51,7 +51,7 @@ import { detectCorruption } from '../database/fts-rebuild'
 import { isSqliteCorruptError } from '../database/sqlite-errors'
 import { releaseDatabaseMemory } from '../database/client'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
-import { VaultError, VaultErrorCode } from '../lib/errors'
+import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
 import { installVaultLockFileGuard } from '../vault-locks/files'
 import { checkLockedFilesAtOpen } from '../vault-locks/service'
@@ -1011,6 +1011,12 @@ export async function updateConfig(rawUpdates: Partial<VaultConfig>): Promise<Va
         renameJournals.newFormat
       )
     } catch (error) {
+      // A locked entry refuses the whole change: the old format stays, so every
+      // journal file still matches the format it is read with.
+      if (error instanceof NoteError && error.code === NoteErrorCode.READ_ONLY) {
+        if (watcherPaused) await startWatcher(vaultPath)
+        throw error
+      }
       logger.error('Journal rename for new date format failed', error)
       trackMainError('vault', 'journal_format_rename', error)
     }

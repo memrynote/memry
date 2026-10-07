@@ -23,6 +23,10 @@
  * source untouched. A format that cannot round-trip a date (missing year, month
  * or day) renames nothing.
  *
+ * Refuses before renaming anything when an entry it would rename is locked, or
+ * a rename would move one into a locked folder: a locked journal keeps its
+ * name, and a partial pass would leave the journal split across two formats.
+ *
  * The caller must stop the watcher first: the watcher reads paths with the
  * config of the moment, so an unlink seen mid-migration would classify the old
  * name with the new format and could send the journal to sync as deleted.
@@ -41,6 +45,12 @@ import { getNoteMetadataByPath, updateNoteMetadata } from '@memry/storage-data'
 import { carryPositionToPath } from '@main/database/queries/note-positions'
 import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
+import {
+  isLockedWriteAllowed,
+  isVaultPathLocked,
+  noteLockedError,
+  vaultLockSource
+} from '../vault-locks/registry'
 
 const logger = createLogger('JournalFormatMigration')
 
@@ -187,6 +197,18 @@ export async function renameJournalsForFormatChange(
   if (plan.renames.length === 0) {
     if (plan.skipped.length > 0) logger.warn('Journal files not renamed', { skipped: plan.skipped })
     return result
+  }
+
+  if (!isLockedWriteAllowed()) {
+    const locked = plan.renames.find(
+      ({ from, to }) =>
+        isVaultPathLocked(`${folder}/${from}`) || isVaultPathLocked(`${folder}/${to}`)
+    )
+    if (locked) {
+      throw noteLockedError(
+        vaultLockSource()?.noteIdAtPath(`${folder}/${locked.from}`) ?? undefined
+      )
+    }
   }
 
   const db = getDatabase()

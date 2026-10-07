@@ -325,19 +325,26 @@ export function useVault() {
 
   /**
    * Update vault configuration.
+   *
+   * @returns the error message when the update was refused, else null
    */
-  const updateConfig = useCallback(async (updates: Partial<VaultConfig>): Promise<void> => {
-    try {
-      const newConfig = await vaultService.updateConfig(updates)
-      setConfig(newConfig)
-    } catch (err) {
-      const message = extractErrorMessage(
-        err,
-        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToUpdateConfig')
-      )
-      setError(message)
-    }
-  }, [])
+  const updateConfig = useCallback(
+    async (updates: Partial<VaultConfig>): Promise<string | null> => {
+      try {
+        const newConfig = await vaultService.updateConfig(updates)
+        setConfig(newConfig)
+        return null
+      } catch (err) {
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToUpdateConfig')
+        )
+        setError(message)
+        return message
+      }
+    },
+    []
+  )
 
   /**
    * Trigger manual reindex.
