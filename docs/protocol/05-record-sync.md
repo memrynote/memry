@@ -183,7 +183,7 @@ reached `hasMore: false` (`crates/memry-core/src/sync/feed_restart.rs`,
 
 **Acks are per item id.** Two queued rows sharing an id cannot be told apart in a
 mixed response, so **a client MUST collapse to one push item per id before
-sending** (`apps/mobile/src/sync/outbox.ts:582-597`, rationale at `:584-589`).
+sending** (`crates/memry-core/src/sync/outbox.rs:426-458`, rationale at `:295-297`).
 
 Rejection reasons a client MUST handle:
 
@@ -203,8 +203,8 @@ neither `accepted` nor `rejected`. **A client MUST treat an id it sent and got
 no verdict for as failed**, which is what retires such a row.
 
 A delete, being last, correctly wins over a preceding update when rows collapse,
-because the newest row carries the whole payload as it stood at enqueue time
-(`apps/mobile/src/sync/outbox.ts:584-589`).
+because collapse sends the newest row and the older rows ride its verdict
+(`crates/memry-core/src/sync/outbox.rs:426-427`, pinned at `:545-558`).
 
 ## 5.6 The push wave
 
