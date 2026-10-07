@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Xác nhận hành động",
-        "description": "Chọn xem lệnh gọi công cụ chạy tự động hay chờ phê duyệt trong cuộc trò chuyện.",
+        "description": "Chọn xem lệnh gọi công cụ chạy tự động hay chờ phê duyệt trong cuộc trò chuyện. Ghi chú và thư mục đã khóa vẫn chỉ đọc ở cả hai chế độ.",
         "alwaysAllow": "Luôn cho phép",
         "askBeforeChanges": "Hỏi trước khi thay đổi"
       }

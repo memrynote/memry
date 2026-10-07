@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Bekräfta åtgärder",
-        "description": "Välj om verktygsanrop körs automatiskt eller väntar på godkännande i chatten.",
+        "description": "Välj om verktygsanrop körs automatiskt eller väntar på godkännande i chatten. Låsta anteckningar och mappar förblir skrivskyddade i båda lägena.",
         "alwaysAllow": "Tillåt alltid",
         "askBeforeChanges": "Fråga före ändringar"
       }

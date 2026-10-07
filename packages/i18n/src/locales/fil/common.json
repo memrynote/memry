@@ -151,7 +151,7 @@
       "deny": "Tanggihan",
       "invalidJson": "Maglagay ng wastong JSON bago ilapat ang mga pag-edit.",
       "thisTool": "tool na ito",
-      "alwaysAllowHint": "Saklaw ng “Payagan palagi” ang {tool}. Magtatanong pa rin ang lahat ng ibang tool, at palaging nagtatanong bago magtanggal.",
+      "alwaysAllowHint": "Saklaw ng “Payagan palagi” ang {tool}. Magtatanong pa rin ang lahat ng ibang tool, at palaging nagtatanong bago magtanggal. Nananatiling read-only ang mga naka-lock na tala at folder.",
       "alwaysInChat": "Payagan palagi sa chat na ito",
       "alwaysInChatHint": "Matatapos kapag natapos ang usapan",
       "alwaysInVault": "Payagan palagi sa vault na ito",

@@ -151,7 +151,7 @@
       "deny": "Avvisa",
       "invalidJson": "Ange giltig JSON innan du tillämpar ändringar.",
       "thisTool": "det här verktyget",
-      "alwaysAllowHint": "”Tillåt alltid” gäller {tool}. Alla andra verktyg frågar fortfarande, och radering kräver alltid godkännande.",
+      "alwaysAllowHint": "”Tillåt alltid” gäller {tool}. Alla andra verktyg frågar fortfarande, och radering kräver alltid godkännande. Låsta anteckningar och mappar förblir skrivskyddade.",
       "alwaysInChat": "Tillåt alltid i den här chatten",
       "alwaysInChatHint": "Gäller tills konversationen avslutas",
       "alwaysInVault": "Tillåt alltid i det här valvet",

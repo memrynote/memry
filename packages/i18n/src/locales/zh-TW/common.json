@@ -151,7 +151,7 @@
       "deny": "拒絕",
       "invalidJson": "套用編輯前，請先輸入有效的 JSON。",
       "thisTool": "此工具",
-      "alwaysAllowHint": "「永遠允許」僅適用於 {tool}。其他工具仍會詢問，刪除動作則一律會詢問。",
+      "alwaysAllowHint": "「永遠允許」僅適用於 {tool}。其他工具仍會詢問，刪除動作則一律會詢問。鎖定的筆記和資料夾維持唯讀。",
       "alwaysInChat": "在此對話中永遠允許",
       "alwaysInChatHint": "對話結束時失效",
       "alwaysInVault": "在此儲存庫中永遠允許",

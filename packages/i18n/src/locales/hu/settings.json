@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Műveletek megerősítése",
-        "description": "Válassza ki, hogy az eszközhívások automatikusan lefussanak, vagy jóváhagyásra várjanak a csevegésben.",
+        "description": "Válassza ki, hogy az eszközhívások automatikusan lefussanak, vagy jóváhagyásra várjanak a csevegésben. A zárolt jegyzetek és mappák mindkét módban csak olvashatók maradnak.",
         "alwaysAllow": "Mindig engedélyezve",
         "askBeforeChanges": "Rákérdezés módosítás előtt"
       }

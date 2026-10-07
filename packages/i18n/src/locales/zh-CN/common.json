@@ -151,7 +151,7 @@
       "deny": "拒绝",
       "invalidJson": "请输入有效的 JSON 后再应用修改。",
       "thisTool": "此工具",
-      "alwaysAllowHint": "“始终允许”仅适用于 {tool}。其他工具仍会询问，删除操作也始终会询问。",
+      "alwaysAllowHint": "“始终允许”仅适用于 {tool}。其他工具仍会询问，删除操作也始终会询问。锁定的笔记和文件夹保持只读。",
       "alwaysInChat": "在此对话中始终允许",
       "alwaysInChatHint": "对话结束时失效",
       "alwaysInVault": "在此仓库中始终允许",

@@ -151,7 +151,7 @@
       "deny": "Refuser",
       "invalidJson": "Saisissez un JSON valide avant d'appliquer les modifications.",
       "thisTool": "cet outil",
-      "alwaysAllowHint": "« Toujours autoriser » ne concerne que {tool}. Tous les autres outils demandent encore l'autorisation, et les suppressions la demandent toujours.",
+      "alwaysAllowHint": "« Toujours autoriser » ne concerne que {tool}. Tous les autres outils demandent encore l'autorisation, et les suppressions la demandent toujours. Les notes et dossiers verrouillés restent en lecture seule.",
       "alwaysInChat": "Toujours autoriser dans ce chat",
       "alwaysInChatHint": "Prend fin avec la conversation",
       "alwaysInVault": "Toujours autoriser dans ce coffre",

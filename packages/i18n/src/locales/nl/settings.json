@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Acties bevestigen",
-        "description": "Kies of toolaanroepen automatisch worden uitgevoerd of op goedkeuring in de chat wachten.",
+        "description": "Kies of toolaanroepen automatisch worden uitgevoerd of op goedkeuring in de chat wachten. Vergrendelde notities en mappen blijven in beide modi alleen-lezen.",
         "alwaysAllow": "Altijd toestaan",
         "askBeforeChanges": "Vragen vóór wijzigingen"
       }

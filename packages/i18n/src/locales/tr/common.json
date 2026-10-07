@@ -151,7 +151,7 @@
       "deny": "Reddet",
       "invalidJson": "Düzenlemeleri uygulamadan önce geçerli JSON girin.",
       "thisTool": "bu araç",
-      "alwaysAllowHint": "“Her zaman izin ver” yalnızca {tool} için geçerlidir. Diğer araçlar yine onay ister; silme işlemleri her zaman onay ister.",
+      "alwaysAllowHint": "“Her zaman izin ver” yalnızca {tool} için geçerlidir. Diğer araçlar yine onay ister; silme işlemleri her zaman onay ister. Kilitli notlar ve klasörler salt okunur kalır.",
       "alwaysInChat": "Bu sohbette her zaman izin ver",
       "alwaysInChatHint": "Sohbet bitince sona erer",
       "alwaysInVault": "Bu kasada her zaman izin ver",

@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Confirmar ações",
-        "description": "Escolha se as chamadas de ferramentas são executadas automaticamente ou aguardam aprovação no chat.",
+        "description": "Escolha se as chamadas de ferramentas são executadas automaticamente ou aguardam aprovação no chat. Notas e pastas bloqueadas continuam somente leitura nos dois modos.",
         "alwaysAllow": "Permitir sempre",
         "askBeforeChanges": "Perguntar antes de alterar"
       }

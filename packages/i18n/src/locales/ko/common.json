@@ -151,7 +151,7 @@
       "deny": "거부",
       "invalidJson": "편집 내용을 적용하기 전에 올바른 JSON을 입력하세요.",
       "thisTool": "이 도구",
-      "alwaysAllowHint": "“항상 허용”은 {tool}에만 적용됩니다. 다른 도구는 계속 확인을 요청하며, 삭제는 항상 확인을 요청합니다.",
+      "alwaysAllowHint": "“항상 허용”은 {tool}에만 적용됩니다. 다른 도구는 계속 확인을 요청하며, 삭제는 항상 확인을 요청합니다. 잠긴 노트와 폴더는 읽기 전용으로 유지됩니다.",
       "alwaysInChat": "이 채팅에서 항상 허용",
       "alwaysInChatHint": "대화가 끝날 때까지 유지",
       "alwaysInVault": "이 볼트에서 항상 허용",

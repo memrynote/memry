@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Potwierdzaj działania",
-        "description": "Wybierz, czy wywołania narzędzi mają działać automatycznie, czy czekać na zatwierdzenie w czacie.",
+        "description": "Wybierz, czy wywołania narzędzi mają działać automatycznie, czy czekać na zatwierdzenie w czacie. Zablokowane notatki i foldery pozostają tylko do odczytu w obu trybach.",
         "alwaysAllow": "Zawsze zezwalaj",
         "askBeforeChanges": "Pytaj przed zmianami"
       }

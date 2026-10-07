@@ -160,7 +160,7 @@
       "deny": "Reject",
       "invalidJson": "Enter valid JSON before applying edits.",
       "thisTool": "this tool",
-      "alwaysAllowHint": "Always allow covers {tool}. Every other tool still asks, and deletes always ask.",
+      "alwaysAllowHint": "Always allow covers {tool}. Every other tool still asks, and deletes always ask. Locked notes and folders stay read-only.",
       "alwaysInChat": "Always allow in this chat",
       "alwaysInChatHint": "Ends when the conversation ends",
       "alwaysInVault": "Always allow in this vault",

@@ -151,7 +151,7 @@
       "deny": "Hylkää",
       "invalidJson": "Syötä kelvollinen JSON ennen muokkausten käyttämistä.",
       "thisTool": "tämä työkalu",
-      "alwaysAllowHint": "”Salli aina” koskee vain seuraavaa: {tool}. Muut työkalut kysyvät edelleen lupaa, ja poistoista kysytään aina.",
+      "alwaysAllowHint": "”Salli aina” koskee vain seuraavaa: {tool}. Muut työkalut kysyvät edelleen lupaa, ja poistoista kysytään aina. Lukitut muistiinpanot ja kansiot pysyvät vain luku -tilassa.",
       "alwaysInChat": "Salli aina tässä keskustelussa",
       "alwaysInChatHint": "Päättyy, kun keskustelu päättyy",
       "alwaysInVault": "Salli aina tässä holvissa",

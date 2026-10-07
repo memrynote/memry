@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Potvrda radnji",
-        "description": "Odaberite pokreću li se pozivi alata automatski ili čekaju odobrenje u razgovoru.",
+        "description": "Odaberite pokreću li se pozivi alata automatski ili čekaju odobrenje u razgovoru. Zaključane bilješke i mape ostaju samo za čitanje u oba načina.",
         "alwaysAllow": "Uvijek dopusti",
         "askBeforeChanges": "Pitaj prije izmjena"
       }

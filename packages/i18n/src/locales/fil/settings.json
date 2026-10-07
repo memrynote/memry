@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Kumpirmahin ang mga aksyon",
-        "description": "Piliin kung awtomatikong tatakbo ang mga tool call o maghihintay ng pag-apruba sa chat.",
+        "description": "Piliin kung awtomatikong tatakbo ang mga tool call o maghihintay ng pag-apruba sa chat. Nananatiling read-only ang mga naka-lock na tala at folder sa parehong mode.",
         "alwaysAllow": "Palaging payagan",
         "askBeforeChanges": "Magtanong bago gumawa ng pagbabago"
       }

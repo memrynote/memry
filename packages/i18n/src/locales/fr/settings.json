@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Confirmer les actions",
-        "description": "Choisissez si les appels d'outils s'exécutent automatiquement ou attendent une approbation dans le chat.",
+        "description": "Choisissez si les appels d'outils s'exécutent automatiquement ou attendent une approbation dans le chat. Les notes et dossiers verrouillés restent en lecture seule dans les deux modes.",
         "alwaysAllow": "Toujours autoriser",
         "askBeforeChanges": "Demander avant modification"
       }

@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Confirmar acciones",
-        "description": "Elige si las llamadas a herramientas se ejecutan automáticamente o esperan aprobación en el chat.",
+        "description": "Elige si las llamadas a herramientas se ejecutan automáticamente o esperan aprobación en el chat. Las notas y carpetas bloqueadas siguen siendo de solo lectura en ambos modos.",
         "alwaysAllow": "Permitir siempre",
         "askBeforeChanges": "Preguntar antes de hacer cambios"
       }

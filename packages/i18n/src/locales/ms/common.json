@@ -151,7 +151,7 @@
       "deny": "Tolak",
       "invalidJson": "Masukkan JSON yang sah sebelum menggunakan perubahan.",
       "thisTool": "alat ini",
-      "alwaysAllowHint": "“Sentiasa benarkan” hanya meliputi {tool}. Alat lain masih meminta kebenaran, dan pemadaman sentiasa meminta kebenaran.",
+      "alwaysAllowHint": "“Sentiasa benarkan” hanya meliputi {tool}. Alat lain masih meminta kebenaran, dan pemadaman sentiasa meminta kebenaran. Nota dan folder yang dikunci kekal baca sahaja.",
       "alwaysInChat": "Sentiasa benarkan dalam sembang ini",
       "alwaysInChatHint": "Tamat apabila perbualan tamat",
       "alwaysInVault": "Sentiasa benarkan dalam bilik kebal ini",

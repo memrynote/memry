@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "İşlemleri onayla",
-        "description": "Araç çağrılarının otomatik mi çalışacağını yoksa sohbette onay mı bekleyeceğini seçin.",
+        "description": "Araç çağrılarının otomatik mi çalışacağını yoksa sohbette onay mı bekleyeceğini seçin. Kilitli notlar ve klasörler her iki modda da salt okunur kalır.",
         "alwaysAllow": "Her zaman izin ver",
         "askBeforeChanges": "Değişikliklerden önce sor"
       }

@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "確認動作",
-        "description": "選擇工具呼叫要自動執行，還是在對話中等待核准。",
+        "description": "選擇工具呼叫要自動執行，還是在對話中等待核准。鎖定的筆記和資料夾在兩種模式下都維持唯讀。",
         "alwaysAllow": "一律允許",
         "askBeforeChanges": "變更前先詢問"
       }
