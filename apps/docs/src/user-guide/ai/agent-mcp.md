@@ -644,6 +644,8 @@ option, a tag color, pinning a note to a tag, saving a folder view, creating a f
   `tasks.importFilesToProject` and `notes.importFiles`.
 - `tasks.updateStatus`, which replies `{ success }`; read the project's statuses with
   `tasks.listStatuses`.
+- `inbox.file`, which replies `{ success, filedTo, noteId }`; read the filed note with
+  `notes.get`.
 - `inbox.trackSuggestion`, `search.rebuildIndex`, `search.clearReasons` and `vault.reindex`, which
   store no record.
 
@@ -657,10 +659,13 @@ keys that older notes carry in their frontmatter are the exception for agents: t
 the call leaves them out, and a call deletes one only by passing it as `null`. A legacy key the call
 does not change keeps its line in the file byte for byte, so `created: 2024-03-05` stays exactly that.
 A value passed back as a read returned it is written as the file holds it, so a date stays a date.
-The reply lists the stored `properties` and the names it `removed`.
+The reply lists the stored `properties` and the names it `removed`. The tag writers that edit a
+note's `tags` list (`tags.renameTag`, `tags.mergeTag`, `tags.deleteTag` and
+`tags.removeTagFromNote`) keep those legacy lines byte for byte too.
 
-Every named write tool answers with the record as a read returns it after the write. Every tool
-rejects an argument it does not take, at any depth (inside a list of statuses or canvas items too),
+Named note, journal, task, project and inbox writes answer with the record as a read returns it after
+the write. The other named writes answer with what the write itself returned, as listed below. Every
+tool rejects an argument it does not take, at any depth (inside a list of statuses or canvas items too),
 before the approval prompt. The error names the key: `Unknown argument: colour`.
 
 - Note writes (`vault_create_note`, `vault_rename_note`, `vault_update_note`,
@@ -680,9 +685,17 @@ before the approval prompt. The error names the key: `Unknown argument: colour`.
   with those two changes applied and compare. Any other difference means the stored body is not the
   one you sent.
 - A note or journal write that turned checkbox lines into tasks also lists them in `created_tasks`.
-- Task, project, status and inbox writes reply with the stored task, project, status or inbox item.
+- Task, project and inbox writes reply with the stored task, project or inbox item.
+  `vault_create_status` and `vault_update_status` reply with the status the task store returned from
+  the write, not a fresh read.
   Reorders (`vault_reorder_tasks`, `vault_reorder_projects`, `vault_reorder_statuses`) reply with
   the ids and the stored records in order. Deletes reply with what they deleted.
+- `vault_create_folder` and `vault_rename_folder` reply with the folder's `path`.
+- Canvas writes (`vault_add_canvas_item`, `vault_remove_canvas_item`, `vault_draw_on_canvas` and
+  `vault_edit_canvas_elements`) reply with an outcome object. Adding and removing items list the
+  items `applied` and `skipped`; drawing and editing list the element ids created, updated and
+  deleted. Read the canvas to see it whole. `vault_create_canvas` replies like the
+  `canvas.create` desktop write.
 - Tools that take no arguments (`vault_get_current_note`, `vault_get_tags`, `vault_list_projects`
   and `vault_list_canvases`) list an empty object schema with `additionalProperties: false`. A call
   may send `{}` or omit `arguments`.

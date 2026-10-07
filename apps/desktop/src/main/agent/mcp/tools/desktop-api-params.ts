@@ -118,11 +118,35 @@ function rpcParams(operation: AgentMcpDesktopOperation): readonly string[] | und
   return methods?.[method]?.params
 }
 
+type KeyPath = readonly PropertyKey[]
+
+/**
+ * A union of strict objects fails as a whole, with one issue list per option.
+ * The option the value was meant for is the one that fails only on unknown
+ * keys; those keys are the ones to name.
+ */
+function unknownKeysOnly(issues: readonly z.core.$ZodIssue[], at: KeyPath): KeyPath[] | null {
+  const paths: KeyPath[] = []
+  for (const issue of issues) {
+    const path = [...at, ...issue.path]
+    if (issue.code === 'unrecognized_keys') {
+      paths.push(...issue.keys.map((key) => [...path, key]))
+    } else if (issue.code === 'invalid_union') {
+      const option = issue.errors
+        .map((optionIssues) => unknownKeysOnly(optionIssues, path))
+        .find((found) => found !== null)
+      if (!option) return null
+      paths.push(...option)
+    } else {
+      return null
+    }
+  }
+  return paths
+}
+
 function unrecognizedKeyPaths(issues: readonly z.core.$ZodIssue[]): string[] {
   return issues.flatMap((issue) =>
-    issue.code === 'unrecognized_keys'
-      ? issue.keys.map((key) => [...issue.path, key].join('.'))
-      : []
+    (unknownKeysOnly([issue], []) ?? []).map((path) => path.map(String).join('.'))
   )
 }
 

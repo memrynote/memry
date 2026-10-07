@@ -54,13 +54,14 @@ export function registerPropertiesHandlers(): void {
       SetPropertiesSchema,
       withErrorHandler(async (input): Promise<SetPropertiesResponse> => {
         // The set replaces the whole record, so a name left out is deleted.
-        // The reply says which, and what the entity holds now.
+        // The reply says which, and what the entity holds now. note_properties
+        // is written by the projection lane, which a sync pull or reindex can
+        // hold busy; each read waits for the writes queued before it.
         const db = getIndexDatabase()
+        await flushProjectionEvents()
         const before = getNoteProperties(db, input.entityId)
         const result = await setEntityProperties(input.entityId, input.properties)
         if (!result.success) return result
-        // note_properties is written by the projection lane, which a sync pull
-        // or reindex can hold busy; read it only once the set has landed there.
         await flushProjectionEvents()
         const stored = Object.fromEntries(
           getNoteProperties(db, input.entityId).map((p) => [p.name, p.value])

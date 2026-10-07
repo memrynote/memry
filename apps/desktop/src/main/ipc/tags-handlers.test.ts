@@ -17,7 +17,6 @@ const fileMocks = vi.hoisted(() => ({
   toAbsolutePath: vi.fn(),
   parseNote: vi.fn(),
   serializeNote: vi.fn(),
-  serializeParsedNote: vi.fn(),
   serializeUpdatedNote: vi.fn(),
   atomicWrite: vi.fn(),
   syncMergedTagDefinitions: vi.fn(),
@@ -95,7 +94,6 @@ vi.mock('../vault/notes', () => ({
 vi.mock('../vault/frontmatter', () => ({
   parseNote: fileMocks.parseNote,
   serializeNote: fileMocks.serializeNote,
-  serializeParsedNote: fileMocks.serializeParsedNote,
   serializeUpdatedNote: fileMocks.serializeUpdatedNote
 }))
 
@@ -173,7 +171,7 @@ describe('tags-handlers', () => {
       content: 'Body'
     })
     fileMocks.serializeNote.mockReturnValue('serialized note')
-    fileMocks.serializeParsedNote.mockReturnValue('serialized note')
+    fileMocks.serializeUpdatedNote.mockReturnValue('serialized note')
     fileMocks.atomicWrite.mockResolvedValue(undefined)
     ;(notesQueries.getNoteCacheById as Mock).mockReturnValue(undefined)
   })
@@ -341,8 +339,9 @@ describe('tags-handlers', () => {
     expect(renameResult).toEqual({ success: true, affectedNotes: 1 })
     expect(fileMocks.toAbsolutePath).toHaveBeenCalledWith('notes/a.md')
     expect(fileMocks.readFile).toHaveBeenCalledWith('/vault/notes/a.md', 'utf-8')
-    expect(fileMocks.serializeParsedNote).toHaveBeenCalledWith(
-      expect.objectContaining({ frontmatter: { tags: ['New', 'keep'] } }),
+    expect(fileMocks.serializeUpdatedNote).toHaveBeenCalledWith(
+      expect.any(Object),
+      { tags: ['New', 'keep'] },
       'Body',
       { frontmatterEdited: true }
     )
@@ -362,8 +361,9 @@ describe('tags-handlers', () => {
     const deleteResult = await invokeHandler(TagsChannels.invoke.DELETE_TAG, ' old ')
 
     expect(deleteResult).toEqual({ success: true, affectedNotes: 1 })
-    expect(fileMocks.serializeParsedNote).toHaveBeenLastCalledWith(
-      expect.objectContaining({ frontmatter: {} }),
+    expect(fileMocks.serializeUpdatedNote).toHaveBeenLastCalledWith(
+      expect.any(Object),
+      {},
       'Body',
       { frontmatterEdited: true }
     )
@@ -411,8 +411,9 @@ describe('tags-handlers', () => {
     })
 
     expect(mergeResult).toEqual({ success: true, affectedItems: 3 })
-    expect(fileMocks.serializeParsedNote).toHaveBeenCalledWith(
-      expect.objectContaining({ frontmatter: { tags: ['target'] } }),
+    expect(fileMocks.serializeUpdatedNote).toHaveBeenCalledWith(
+      expect.any(Object),
+      { tags: ['target'] },
       'Body',
       { frontmatterEdited: true }
     )
@@ -424,7 +425,7 @@ describe('tags-handlers', () => {
     // before the note frontmatter writes an app quit could interrupt.
     expect(fileMocks.commitTaskRetag).toHaveBeenCalledTimes(1)
     expect(fileMocks.commitTaskRetag.mock.invocationCallOrder[0]).toBeLessThan(
-      fileMocks.serializeParsedNote.mock.invocationCallOrder[0]
+      fileMocks.serializeUpdatedNote.mock.invocationCallOrder[0]
     )
 
     unregisterTagsHandlers()
@@ -624,7 +625,7 @@ describe('tags-handlers failure envelopes', () => {
     fileMocks.readFile.mockResolvedValue('---\ntags: [old]\n---\nBody')
     fileMocks.toAbsolutePath.mockImplementation((notePath: string) => `/vault/${notePath}`)
     fileMocks.parseNote.mockReturnValue({ frontmatter: { tags: ['old'] }, content: 'Body' })
-    fileMocks.serializeParsedNote.mockReturnValue('serialized note')
+    fileMocks.serializeUpdatedNote.mockReturnValue('serialized note')
     fileMocks.atomicWrite.mockResolvedValue(undefined)
     registerTagsHandlers()
   })
@@ -889,7 +890,7 @@ describe('tags-handlers vault-file edge cases', () => {
     fileMocks.toAbsolutePath.mockImplementation((notePath: string) => `/vault/${notePath}`)
     fileMocks.readFile.mockResolvedValue('---\ntags: [old]\n---\nBody')
     fileMocks.parseNote.mockReturnValue({ frontmatter: { tags: ['old'] }, content: 'Body' })
-    fileMocks.serializeParsedNote.mockReturnValue('serialized note')
+    fileMocks.serializeUpdatedNote.mockReturnValue('serialized note')
     fileMocks.atomicWrite.mockResolvedValue(undefined)
     registerTagsHandlers()
   })
@@ -933,14 +934,15 @@ describe('tags-handlers vault-file edge cases', () => {
     // neither may trigger a byte-changing rewrite of the user's file.
     fileMocks.readFile.mockResolvedValue('RAW FILE')
     fileMocks.parseNote.mockReturnValue({ frontmatter: { title: 'A' }, content: 'Body' })
-    fileMocks.serializeParsedNote.mockReturnValue('RAW FILE')
+    fileMocks.serializeUpdatedNote.mockReturnValue('RAW FILE')
 
     await expect(
       invokeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, { noteId: 'note-1', tag: 'old' })
     ).resolves.toEqual({ success: true })
 
-    expect(fileMocks.serializeParsedNote).toHaveBeenCalledWith(
+    expect(fileMocks.serializeUpdatedNote).toHaveBeenCalledWith(
       { frontmatter: { title: 'A' }, content: 'Body' },
+      { title: 'A' },
       'Body',
       { frontmatterEdited: true }
     )
@@ -958,8 +960,9 @@ describe('tags-handlers vault-file edge cases', () => {
       invokeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, { noteId: 'note-1', tag: ' OLD ' })
     ).resolves.toEqual({ success: true })
 
-    expect(fileMocks.serializeParsedNote).toHaveBeenCalledWith(
-      expect.objectContaining({ frontmatter: { tags: ['keep'] } }),
+    expect(fileMocks.serializeUpdatedNote).toHaveBeenCalledWith(
+      expect.any(Object),
+      { tags: ['keep'] },
       'Body',
       { frontmatterEdited: true }
     )
@@ -979,8 +982,9 @@ describe('tags-handlers vault-file edge cases', () => {
       invokeHandler(TagsChannels.invoke.MERGE_TAG, { source: ' Source ', target: ' Target ' })
     ).resolves.toEqual({ success: true, affectedItems: 3 })
 
-    expect(fileMocks.serializeParsedNote).toHaveBeenCalledWith(
-      expect.objectContaining({ frontmatter: { tags: ['other', 'Target'] } }),
+    expect(fileMocks.serializeUpdatedNote).toHaveBeenCalledWith(
+      expect.any(Object),
+      { tags: ['other', 'Target'] },
       'Body',
       { frontmatterEdited: true }
     )
@@ -1036,7 +1040,6 @@ describe('tags-handlers keep legacy frontmatter lines', () => {
     fileMocks.toAbsolutePath.mockImplementation((notePath: string) => `/vault/${notePath}`)
     fileMocks.readFile.mockResolvedValue(legacyFile)
     fileMocks.parseNote.mockImplementation(actual.parseNote)
-    fileMocks.serializeParsedNote.mockImplementation(actual.serializeParsedNote)
     fileMocks.serializeUpdatedNote.mockImplementation(actual.serializeUpdatedNote)
     fileMocks.atomicWrite.mockResolvedValue(undefined)
     registerTagsHandlers()

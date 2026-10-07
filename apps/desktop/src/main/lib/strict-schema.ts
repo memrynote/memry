@@ -26,17 +26,28 @@ const WRAPPER_TYPES = new Set([
 
 /**
  * Every object at every depth refuses keys it does not name, unless it already
- * says what to do with them (a catchall). Wrappers, arrays and unions are
- * rebuilt around their strict inner schema, and descriptions are carried over.
+ * says what to do with them (a catchall). Wrappers, arrays, unions, record
+ * values and lazy schemas are rebuilt around their strict inner schema, and
+ * descriptions are carried over. A recursive lazy schema maps to one strict
+ * lazy schema, so the walk ends.
  */
-export function strictDeep(schema: z.ZodType): z.ZodType {
+export function strictDeep(schema: z.ZodType, seen = new Map<z.ZodType, z.ZodType>()): z.ZodType {
+  const known = seen.get(schema)
+  if (known) return known
   const def = schema._zod.def as unknown as Record<string, unknown> & { type: string }
+  const strict = (inner: z.ZodType): z.ZodType => strictDeep(inner, seen)
   let next: z.ZodType
-  if (def.type === 'object') {
+  if (def.type === 'lazy') {
+    const getter = def.getter as () => z.ZodType
+    next = z.lazy(() => strict(getter()))
+    seen.set(schema, next)
+  } else if (def.type === 'record') {
+    next = schema.clone({ ...def, valueType: strict(def.valueType as z.ZodType) } as never)
+  } else if (def.type === 'object') {
     const shape = Object.fromEntries(
       Object.entries(def.shape as Record<string, z.ZodType>).map(([key, value]) => [
         key,
-        strictDeep(value)
+        strict(value)
       ])
     )
     next = schema.clone({
@@ -45,14 +56,14 @@ export function strictDeep(schema: z.ZodType): z.ZodType {
       ...(def.catchall ? {} : { catchall: z.never(), error: unknownKeyError(def.error) })
     } as never)
   } else if (def.type === 'array') {
-    next = schema.clone({ ...def, element: strictDeep(def.element as z.ZodType) } as never)
+    next = schema.clone({ ...def, element: strict(def.element as z.ZodType) } as never)
   } else if (def.type === 'union') {
     next = schema.clone({
       ...def,
-      options: (def.options as z.ZodType[]).map(strictDeep)
+      options: (def.options as z.ZodType[]).map(strict)
     } as never)
   } else if (WRAPPER_TYPES.has(def.type)) {
-    next = schema.clone({ ...def, innerType: strictDeep(def.innerType as z.ZodType) } as never)
+    next = schema.clone({ ...def, innerType: strict(def.innerType as z.ZodType) } as never)
   } else {
     return schema
   }
