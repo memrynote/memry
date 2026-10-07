@@ -6,6 +6,7 @@ describe('Vault MCP tool schemas', () => {
     expect(ALL_TOOL_NAMES).toEqual([
       'vault_search_notes',
       'vault_read_note',
+      'vault_view_file',
       'vault_list_folder',
       'vault_get_current_note',
       'vault_list_tasks',
@@ -80,6 +81,16 @@ describe('Vault MCP tool schemas', () => {
     expect(WRITE_TOOL_NAMES).toContain('vault_create_note')
     expect(WRITE_TOOL_NAMES).toContain('vault_update_note')
     expect(WRITE_TOOL_NAMES).not.toContain('vault_read_note')
+  })
+
+  it('offers vault_view_file as a read tool that takes an id, an attachment name and a page', () => {
+    expect(READ_TOOL_NAMES).toContain('vault_view_file')
+    const input = TOOL_SCHEMAS.vault_view_file.input
+    expect(input.safeParse({ id: 'f1' }).success).toBe(true)
+    expect(input.safeParse({ id: 'n1', attachment: 'shot.png', page: 2 }).success).toBe(true)
+    expect(input.safeParse({ id: 'f1', page: 0 }).success).toBe(false)
+    expect(input.safeParse({ id: '' }).success).toBe(false)
+    expect(TOOL_SCHEMAS.vault_view_file.description).toContain('1568')
   })
 
   it('round-trips a known-good search input', () => {

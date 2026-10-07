@@ -114,7 +114,8 @@ export const TOOL_SCHEMAS = {
     description:
       'Full-text search across notes and filed files; returns id, title, snippet, folder_path, ' +
       'file_type. A file_type other than "markdown" (pdf/image/audio/video) is a filed file, not ' +
-      'a note. PDFs and images match on the text read out of them on this device. Pass ' +
+      'a note. PDFs and images match on the text read out of them on this device, and a note ' +
+      'matches on the visible text of the HTML blocks it embeds. Pass ' +
       'file_types to restrict the search, e.g. ["markdown"] for notes only; omitted returns ' +
       'every file type.'
   },
@@ -128,9 +129,26 @@ export const TOOL_SCHEMAS = {
       'or image, returns extracted_text instead: the text read on this device (the PDF text ' +
       'layer, else OCR), one entry per page, with status "extracting" | "done" | "failed", ' +
       'page_count and pages_read. Pages come in chunks of about 100 KB; pass next_page as ' +
-      'from_page to continue. A markdown note that embeds PDFs or images adds attachment_text, ' +
-      'the text read from each ({ file, text }), about 100 KB at most. Errors with VALIDATION ' +
-      'for a filed audio or video file.'
+      'from_page to continue. A markdown note that embeds PDFs, images or HTML blocks adds ' +
+      'attachment_text, the text read from each ({ file, text }; the visible text for an ' +
+      'HTML block), about 100 KB at most. Errors with VALIDATION ' +
+      'for a filed audio or video file. To look at an image or a PDF page, use vault_view_file.'
+  },
+  vault_view_file: {
+    input: z.object({
+      id: idSchema,
+      attachment: z.string().min(1).optional(),
+      page: z.number().int().positive().optional()
+    }),
+    description:
+      'Look at an image, or one page of a PDF, from the vault. Returns the picture as image ' +
+      'content (PNG, or JPEG when large) with its long edge at most 1568 px, plus JSON that ' +
+      'says what was sent: file, width and height, the source size for an image, and page and ' +
+      'page_count for a PDF. Pass the id of a filed image or PDF (file_type "image" or "pdf"); ' +
+      'page picks the PDF page, default 1, one page per call. For an image or PDF a markdown ' +
+      'note embeds, pass the note id and the file name as attachment: the name after ' +
+      'attachments/<note id>/ in the note, or attachment_text[].file from vault_read_note. ' +
+      'A model that cannot take images gets a text notice instead of the picture.'
   },
   vault_list_folder: {
     input: z.object({
@@ -571,6 +589,7 @@ export type ToolName = keyof typeof TOOL_SCHEMAS
 export const READ_TOOL_NAMES = [
   'vault_search_notes',
   'vault_read_note',
+  'vault_view_file',
   'vault_list_folder',
   'vault_get_current_note',
   'vault_list_tasks',

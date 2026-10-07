@@ -1345,7 +1345,7 @@
     "embedding": {
       "loaded": "Încărcat",
       "loading": "Se încarcă",
-      "cacheHint": "~23 MB · În cache local · Totul pe dispozitiv",
+      "cacheHint": "~210 MB · În cache local · Totul pe dispozitiv",
       "dimensions": "Dimensiuni",
       "embeddings": "Embeddinguri",
       "downloadLoad": "Descarcă și încarcă modelul",

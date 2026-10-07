@@ -83,4 +83,17 @@ describe('note push payloads and extracted text', () => {
     ])
     expect(JSON.parse(note ?? '{}').content).toBe('# Plan\n\nPlan body\n')
   })
+
+  it('never sends the text read from a note HTML block', () => {
+    const htmlText = 'Tide table for [[Harbor Log]]'
+    index.db.run(sql`
+      INSERT INTO extracted_text (note_id, source, part, method, text)
+      VALUES ('md-1', 'chart.html', 1, 'html', ${htmlText})
+    `)
+
+    const note = buildNotePushPayload('md-1', 'create')
+
+    expect(note).not.toContain(htmlText)
+    expect(JSON.parse(note ?? '{}').content).toBe('# Plan\n\nPlan body\n')
+  })
 })

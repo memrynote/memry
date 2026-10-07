@@ -38,6 +38,7 @@ export const SYSTEM_PROMPT_HEADER = [
   '- When creating tasks from a note, journal, inbox item, or meeting summary, link back to the source item when the tool schema supports it.',
   '- "What am I working on?" → vault_list_tasks with status "open" and vault_list_inbox_items.',
   '- Summarize a note without a ref → vault_get_current_note first.',
+  "- Looking at an image or a PDF page (a screenshot, photo, chart, or scan) → vault_view_file. For an image or PDF a note embeds, pass the note id and the file name as attachment. vault_read_note returns only a file's text.",
   '',
   '# Links',
   'Tool results may include href or source_ref values for memrynote items. Whenever you mention a memrynote item with one of those refs, use the exact markdown link, for example [Title](memry://note/id). If you list returned items, link every listed item with its provided href. If you create an item, link the created item from the tool result. Do not invent memry:// links for plain titles without refs.',

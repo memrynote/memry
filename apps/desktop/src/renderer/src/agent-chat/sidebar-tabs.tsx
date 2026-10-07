@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { History } from 'lucide-react'
 import { useT } from '@memry/i18n/renderer'
+import type { Conversation } from '@memry/contracts/ipc-agent'
 
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { useDayPanel } from '@/contexts/day-panel-context'
@@ -8,11 +9,16 @@ import { useTabs } from '@/contexts/tabs'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Bot, CalendarDays, Expand, PlusSignIcon, X } from '@/lib/icons'
+import { Bot, CalendarDays, Expand, MoreHorizontal, PlusSignIcon, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useWindowControlsOverlayVisible } from '@/lib/window-controls-overlay'
 import { useAgentOptional } from './agent-context'
 import { preferredConversationDefaults } from './agent-model-preference'
 import { ConversationList } from './conversation-list'
@@ -51,6 +57,10 @@ export function SidebarTabs({
   const [active, setActive] = useState<RightSidebarTab>(() => readInitialTab(defaultTab))
   const { enabled: aiEnabled } = useAISettingsContext()
   const agent = useAgentOptional()
+  // Windows caption buttons take ~138px of this header. The full agent action row
+  // no longer fits at the default panel width, so it folds into one menu; the
+  // close button goes too, since the Day switch next to it does the same.
+  const compactAgentActions = useWindowControlsOverlayVisible()
   const dayTabLabel = t('agentChat.sidebar.day')
   const agentTabLabel = t('agentChat.sidebar.agent')
   const resolvedActive = aiEnabled ? active : active === 'agent' ? 'day' : active
@@ -78,10 +88,14 @@ export function SidebarTabs({
       {/* The header sits in the window title row (main.css), so its empty space drags the
           window; the controls opt out with no-drag. */}
       <div
-        className={cn(
-          'drag-region flex h-9 shrink-0 items-center gap-3 ps-3',
-          !endAccessory && 'pe-3'
-        )}
+        className="drag-region flex h-9 shrink-0 items-center gap-3 ps-3"
+        // The panel owns the window's top-end corner, so it clears the Windows caption
+        // buttons (--caption-reserve-end, 0 elsewhere; main.css).
+        style={{
+          paddingInlineEnd: endAccessory
+            ? 'var(--caption-reserve-end)'
+            : 'calc(0.75rem + var(--caption-reserve-end))'
+        }}
       >
         <div
           role="tablist"
@@ -129,6 +143,8 @@ export function SidebarTabs({
               <span className="min-w-0 truncate text-[13px] font-medium tracking-[-0.01em] text-foreground transition-colors duration-150">
                 {activeLabel}
               </span>
+            ) : compactAgentActions ? (
+              <AgentActionsMenu />
             ) : (
               <>
                 <AgentConversationActions />
@@ -167,24 +183,18 @@ export function SidebarTabs({
   )
 }
 
-function AgentConversationActions(): React.JSX.Element | null {
-  const { t } = useT('common')
-  const agent = useAgentOptional()
+type AgentState = NonNullable<ReturnType<typeof useAgentOptional>>
+
+/** Opens the panel's active conversation as a tab and closes the panel. */
+function useOpenActiveConversationInTab(agent: AgentState | null): (() => void) | null {
   const { openTab } = useTabs()
   const { close } = useDayPanel()
+  const activeConversationId = agent?.state.activeConversationId
+  const activeConversation =
+    agent && activeConversationId ? agent.state.conversations[activeConversationId] : null
+  if (!agent || !activeConversation) return null
 
-  if (!agent || agent.state.disclosureAccepted !== true) return null
-
-  const currentAgent = agent
-  const newConversationLabel = t('agentChat.newConversation')
-  const openInTabLabel = t('agentChat.openInTab')
-  const activeConversationId = currentAgent.state.activeConversationId
-  const activeConversation = activeConversationId
-    ? currentAgent.state.conversations[activeConversationId]
-    : null
-
-  function openActiveConversationInTab(): void {
-    if (!activeConversation) return
+  return () => {
     openTab({
       type: 'agent-chat',
       title: activeConversation.title,
@@ -197,8 +207,90 @@ function AgentConversationActions(): React.JSX.Element | null {
       isDeleted: false
     })
     close()
-    currentAgent.clearActiveConversation()
+    agent.clearActiveConversation()
   }
+}
+
+function sortedConversations(agent: AgentState): Conversation[] {
+  return Object.values(agent.state.conversations).sort((left, right) => {
+    return right.updatedAt - left.updatedAt
+  })
+}
+
+/** The conversation actions folded into one menu (Windows, see SidebarTabs). */
+function AgentActionsMenu(): React.JSX.Element | null {
+  const { t } = useT('common')
+  const agent = useAgentOptional()
+  const openActiveConversationInTab = useOpenActiveConversationInTab(agent)
+
+  if (!agent || agent.state.disclosureAccepted !== true) return null
+
+  const moreLabel = t('agentChat.sidebar.moreActions')
+  const conversations = sortedConversations(agent)
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={moreLabel}
+                title={moreLabel}
+                className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground"
+              >
+                <MoreHorizontal className="size-3.5" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            {moreLabel}
+          </TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="end" className="w-56 p-1">
+          <DropdownMenuItem
+            className="text-xs"
+            onSelect={() => void agent.createConversation(preferredConversationDefaults())}
+          >
+            <PlusSignIcon className="size-3.5" aria-hidden="true" />
+            {t('agentChat.newConversation')}
+          </DropdownMenuItem>
+          {openActiveConversationInTab && (
+            <DropdownMenuItem className="text-xs" onSelect={openActiveConversationInTab}>
+              <Expand className="size-3.5" aria-hidden="true" />
+              {t('agentChat.openInTab')}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="text-xs" disabled={conversations.length === 0}>
+              <History className="size-3.5" aria-hidden="true" />
+              {t('agentChat.history')}
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-72 border-0 p-1">
+              <ConversationList
+                conversations={conversations}
+                activeConversationId={agent.state.activeConversationId}
+                onSelectConversation={(id) => void agent.loadConversation(id)}
+              />
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </TooltipProvider>
+  )
+}
+
+function AgentConversationActions(): React.JSX.Element | null {
+  const { t } = useT('common')
+  const agent = useAgentOptional()
+  const openActiveConversationInTab = useOpenActiveConversationInTab(agent)
+
+  if (!agent || agent.state.disclosureAccepted !== true) return null
+
+  const currentAgent = agent
+  const newConversationLabel = t('agentChat.newConversation')
+  const openInTabLabel = t('agentChat.openInTab')
 
   return (
     <div className="flex items-center gap-1">
@@ -220,7 +312,7 @@ function AgentConversationActions(): React.JSX.Element | null {
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      {activeConversation && (
+      {openActiveConversationInTab && (
         <TooltipProvider delayDuration={300}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -251,9 +343,7 @@ function AgentHistoryMenu(): React.JSX.Element | null {
 
   if (!agent || agent.state.disclosureAccepted !== true) return null
 
-  const conversations = Object.values(agent.state.conversations).sort((left, right) => {
-    return right.updatedAt - left.updatedAt
-  })
+  const conversations = sortedConversations(agent)
   const historyLabel = t('agentChat.history')
 
   return (

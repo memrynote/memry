@@ -394,7 +394,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# pending approval} other {# pending approvals}}",
       "inProgress": "Agent turn in progress",
-      "close": "Close agent"
+      "close": "Close agent",
+      "moreActions": "More agent actions"
     },
     "errors": {
       "loadConversations": "Could not load agent conversations",

@@ -45,6 +45,7 @@ function isUpdateTool(name: string): boolean {
 const toolLabels: Record<string, string> = {
   vault_search_notes: 'Searching notes',
   vault_read_note: 'Reading note',
+  vault_view_file: 'Viewing file',
   vault_list_folder: 'Reading folder',
   vault_get_current_note: 'Reading current note',
   vault_list_tasks: 'Reading tasks',

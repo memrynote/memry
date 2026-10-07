@@ -1,7 +1,8 @@
 import http from 'node:http'
 import { app } from 'electron'
 import { ArticleCaptureSchema } from '@memry/contracts/capture-api'
-import { isDatabaseInitialized } from '../database'
+import { getDatabase, getIndexDatabase, isDatabaseInitialized } from '../database'
+import { getAllTagsWithCounts } from '../database/queries/tags'
 import { ingestArticleCapture } from '../inbox/ingest'
 import {
   getCaptureToken,
@@ -210,6 +211,34 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       dimensions: { capture_type: 'clipper' }
     })
     json(res, 200, { itemId: result.itemId, filedTo: routed?.filedTo ?? null })
+    return
+  }
+
+  // Tag names only, for the clipper's autocomplete. Same auth as /capture: the
+  // list is vault content and must not be readable by any local page. POST for
+  // the same reason as /folders: Chrome omits Origin on an extension's GET.
+  if (req.method === 'POST' && req.url === '/tags') {
+    const auth = validateCaptureRequest(
+      {
+        authorization: req.headers.authorization,
+        origin,
+        'x-memry-capture': req.headers['x-memry-capture'] as string | undefined
+      },
+      await getCaptureToken(),
+      isOriginAllowed
+    )
+    if (!auth.ok) {
+      json(res, 401, { error: auth.reason })
+      return
+    }
+    if (!isDatabaseInitialized()) {
+      json(res, 503, { error: 'vault-closed' })
+      return
+    }
+    const tags = getAllTagsWithCounts(getIndexDatabase(), getDatabase())
+      .sort((a, b) => b.count - a.count)
+      .map((t) => t.name)
+    json(res, 200, { tags })
     return
   }
 

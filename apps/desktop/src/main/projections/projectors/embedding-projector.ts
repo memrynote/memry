@@ -310,7 +310,7 @@ export function createEmbeddingProjector(
 
       // During the initial index pass, embedding is deferred: indexVault awaits
       // this projector per file (before the vault is marked open), and loading the
-      // ~23MB model + running CPU inference here is what stranded vault-open for
+      // ~210MB model + running CPU inference here is what stranded vault-open for
       // minutes. Record the id and let the backgrounded reconcile embed it after
       // isOpen. Only fires while isIndexing; live edits still embed inline. (#803)
       if (isIndexing()) {
@@ -332,7 +332,7 @@ export function createEmbeddingProjector(
     /**
      * `signal` aborts when the runtime stops — vault close, or a superseded
      * runtime on vault switch (#993, #1024). This pass was the one projector
-     * that ignored it, and it is the expensive one: a ~23MB model load plus CPU
+     * that ignored it, and it is the expensive one: a ~210MB model load plus CPU
      * inference per note. Two consequences, both fixed by honouring it here:
      * `closeVault` awaits the aborted pass before closing the databases, so a
      * large backfill held vault close (and quit) open for minutes — the class of

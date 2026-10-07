@@ -42,6 +42,7 @@ import { GlobalDayPanel } from '@/components/day-panel'
 import { TaskDragOverlay } from '@/components/tasks/drag-drop'
 import { taskViews } from '@/data/tasks-data'
 import { ThemeProvider } from 'next-themes'
+import { useTitleBarSymbolColorSync } from '@/lib/window-controls-overlay'
 
 // Tab System imports
 import { TabProvider, useTabs } from '@/contexts/tabs'
@@ -906,6 +907,7 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
 function App(): React.JSX.Element {
   // Flush pending saves when main process requests it (Cmd+Q, window close)
   useFlushOnQuit()
+  useTitleBarSymbolColorSync()
 
   // Update state - show a dedicated "Installing update…" screen while quitting to
   // install, so vault teardown never surfaces as a broken picker / frozen window.

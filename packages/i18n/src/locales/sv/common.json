@@ -374,7 +374,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# väntar på godkännande} other {# väntar på godkännande}}",
       "inProgress": "Agenten arbetar",
-      "close": "Stäng agent"
+      "close": "Stäng agent",
+      "moreActions": "Fler agentåtgärder"
     },
     "errors": {
       "loadConversations": "Det gick inte att läsa in agentkonversationer",

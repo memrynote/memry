@@ -5,12 +5,38 @@
   /* Window-control buttons in the h-9 title row, after the native traffic lights:
      ps-1 + ms-1 + 4 icon buttons (4x28 + 3x2 gap) + pe-2. */
   --chrome-buttons-width: 136px;
+  /* Where those buttons start. macOS: after the native traffic lights (main/index.ts
+     trafficLightPosition x: 12, ~54px wide, overflowing the 52px rail). Elsewhere
+     the slot is empty, so they start near the window edge. */
+  --window-controls-start: 68px;
+  /* Native caption buttons drawn over the title row (Windows Window Controls
+     Overlay, main/title-bar-overlay.ts). The env() values exist only while the
+     overlay is visible, so both reserves are 0 on macOS, Linux and in fullscreen.
+     The buttons sit at a physical edge, so start/end swap in RTL below. */
+  --caption-reserve-left: env(titlebar-area-x, 0px);
+  --caption-reserve-right: calc(
+    100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)
+  );
+  --caption-reserve-start: var(--caption-reserve-left);
+  --caption-reserve-end: var(--caption-reserve-right);
   --direction: 1;
 
   /* Tab strip sizing — tabs share the strip evenly, growing to --tab-w-max and
      compressing to --tab-w-min (icon-only) before the strip starts scrolling. */
   --tab-w-min: 52px;
   --tab-w-max: 240px;
+}
+
+:root[data-platform='win32'],
+:root[data-platform='linux'] {
+  /* The buttons' own ps-1 + ms-1 (8px) then line the first one up with the rail
+     icons below it (app-rail.tsx, 8px from the edge). */
+  --window-controls-start: 0px;
+}
+
+[dir='rtl'] {
+  --caption-reserve-start: var(--caption-reserve-right);
+  --caption-reserve-end: var(--caption-reserve-left);
 }
 
 /* One surface below the h-9 title row: the sidebar panel (rounded top-start,
@@ -56,10 +82,16 @@
 }
 
 /* Collapsed, the top-start tab bar starts at the rail edge (52px + 1px padding);
-   its tabs follow the window-control buttons, which end at 68px + their width.
-   See window-controls.tsx. */
+   its tabs follow the window-control buttons, which end at their start offset +
+   their width. See window-controls.tsx. */
 .peer[data-state='collapsed'] ~ * [data-reserve-window-controls] {
-  padding-inline-start: calc(var(--chrome-buttons-width) + 15px);
+  padding-inline-start: max(
+    0px,
+    calc(
+      var(--window-controls-start) + var(--caption-reserve-start) + var(--chrome-buttons-width) -
+        53px
+    )
+  );
 }
 
 /* The Day Panel spans the card's full height so its h-9 header sits in the title

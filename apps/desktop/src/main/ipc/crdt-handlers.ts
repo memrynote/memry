@@ -77,7 +77,7 @@ export function registerCrdtIpcHandlers(): void {
   handlersRegistered = true
 
   ipcMain.handle(CRDT_CHANNELS.OPEN_DOC, async (event, rawInput: unknown) => {
-    const { noteId } = CrdtOpenDocSchema.parse(rawInput)
+    const { noteId, vaultPath } = CrdtOpenDocSchema.parse(rawInput)
     const win = BrowserWindow.fromWebContents(event.sender)
     const windowId = win?.id
     // Hook before the first await: a window destroyed while open() is in
@@ -106,6 +106,12 @@ export function registerCrdtIpcHandlers(): void {
     }
     if (!provider.isInitialized()) {
       return { success: false, error: 'CRDT provider not initialized' }
+    }
+    // An editor kept for a vault the user left must not bind here: the note id
+    // may exist in this vault too, and the handshake would push the left
+    // vault's doc into this vault's store. It rebinds when its vault is back.
+    if (!provider.servesVault(vaultPath)) {
+      return { success: false, error: 'CRDT provider serves another vault' }
     }
 
     const validation = provider.validateNoteForCrdt(noteId)

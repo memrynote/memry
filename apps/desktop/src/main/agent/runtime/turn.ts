@@ -19,6 +19,7 @@ import { assemblePrompt, type PromptContext } from './prompt-assembler'
 import { COMPACTION_THRESHOLD, estimateTokens } from './token-estimator'
 import { persistToolActivity } from './tool-activity'
 import { extractAgentSourceRefs } from '../source-refs'
+import { withoutImageBytes } from '../mcp/tool-image'
 import { mintTurnWriteGrant, revokeTurnWriteGrantsFor } from '../turn-grants'
 import type { AgentSourceRef, AgentToolsOffReason } from '@memry/contracts/ipc-agent'
 
@@ -726,7 +727,7 @@ async function handleBackendEvent(
         kind: 'tool_call_completed',
         conversationId: ctx.conversationId,
         toolCallId: event.toolUseId,
-        result: event.data
+        result: withoutImageBytes(event.data)
       })
     } else {
       ctx.onToolFailed(event.toolUseId, event.error)

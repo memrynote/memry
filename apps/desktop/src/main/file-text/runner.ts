@@ -1,6 +1,7 @@
 /**
  * Background text extraction for PDFs and images: filed ones, and the ones in a
- * note's attachments folder, whose text is searchable under that note.
+ * note's attachments folder, whose text is searchable under that note. An HTML
+ * block's file in that folder is read too, as one part of visible text.
  *
  * One loop, one file at a time, one page at a time. A PDF page with a text
  * layer is read from it; a page without one, and every image, goes through OCR.
@@ -10,9 +11,11 @@
  *
  *   (no job) or signature moved -> pending -> done
  *                                          -> failed (unopenable, missing, or
- *                                             MAX_CONSECUTIVE_FAILURES pages in a row)
+ *                                             MAX_CONSECUTIVE_FAILURES pages in a row,
+ *                                             or HTML over HTML_TEXT_MAX_BYTES)
  *   failed, or done with unreadable pages,
- *     under another app version or a day old -> pending again (unreadable pages only)
+ *     under another app version or a day old -> pending again (unreadable pages only;
+ *                                               never oversized HTML)
  *   attachment file gone -> job and text deleted
  *
  * This loop is the only writer of `file_text_jobs` and `extracted_text`. Search
@@ -32,17 +35,19 @@ import {
   listFiledTextFiles,
   listMarkdownNotes,
   nextPendingTextJob,
+  normalizeExtractedText,
   OWN_FILE,
   retryFileTextJob,
   saveExtractedPart,
   setFileTextPageCount,
   startFileTextJob,
   storedExtractedParts,
-  type TextBearingFileType,
+  type TextFileKind,
   type TextSourceRef
 } from '../database/queries/extracted-text'
 import type { ExtractedTextMethod, FileTextJobRow } from '@memry/db-schema/schema/extracted-text'
 import { createLogger } from '../lib/logger'
+import { readHtmlText } from './html-text'
 import type { OcrImageSource } from './ocr-protocol'
 import type { PdfDocument } from './pdf-host'
 
@@ -57,6 +62,15 @@ const FILE_SETTLE_MS = 1_000
 const RETRY_FAILED_AFTER_MS = 24 * 60 * 60 * 1000
 /** Where a note's attachments live: `attachments/<noteId>/` (vault/attachments.ts). */
 const ATTACHMENTS_DIR = 'attachments'
+/** The HTML block's file types (ALLOWED_HTML_EXTENSIONS in vault/attachments.ts). */
+const HTML_EXTENSIONS = ['html', 'htm']
+/**
+ * The largest HTML block file parsed for text. The parse runs on the main
+ * process and costs over 100x the file in memory, so a larger file is marked
+ * unreadable instead. 4x the agent tool's 512K-character cap
+ * (HTML_ARTIFACT_MAX_CHARS) so every block an agent can write fits.
+ */
+export const HTML_TEXT_MAX_BYTES = 2 * 1024 * 1024
 
 export interface FileTextDeps {
   vaultPath: string
@@ -73,7 +87,7 @@ export interface FileTextDeps {
 /** A file to read, and the note its text is searchable under. */
 interface TextFile extends TextSourceRef {
   path: string
-  fileType: TextBearingFileType
+  fileType: TextFileKind
 }
 
 interface PageText {
@@ -93,18 +107,16 @@ async function fileSignature(
   }
 }
 
-function textBearingType(fileName: string): TextBearingFileType | null {
-  const type = getFileType(getExtension(fileName))
-  return type === 'pdf' || type === 'image' ? type : null
+/** Never parsed, and never retried while its bytes stay the same. */
+function isOversizedHtml(file: TextFile, size: number): boolean {
+  return file.fileType === 'html' && size > HTML_TEXT_MAX_BYTES
 }
 
-/** Collapse layout whitespace; keep line and paragraph breaks. */
-function normalizeExtractedText(text: string): string {
-  return text
-    .replace(/[^\S\n]+/g, ' ')
-    .replace(/ ?\n ?/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+function attachmentKind(fileName: string): TextFileKind | null {
+  const extension = getExtension(fileName)
+  if (HTML_EXTENSIONS.includes(extension.toLowerCase())) return 'html'
+  const type = getFileType(extension)
+  return type === 'pdf' || type === 'image' ? type : null
 }
 
 /**
@@ -182,21 +194,21 @@ export class FileTextRunner {
     noteFileType: string
   }): TextFile {
     if (job.source === OWN_FILE) {
-      return { ...job, path: job.notePath, fileType: job.noteFileType as TextBearingFileType }
+      return { ...job, path: job.notePath, fileType: job.noteFileType as TextFileKind }
     }
     return {
       noteId: job.noteId,
       source: job.source,
       path: path.join(ATTACHMENTS_DIR, job.noteId, job.source),
-      fileType: textBearingType(job.source) ?? 'image'
+      fileType: attachmentKind(job.source) ?? 'image'
     }
   }
 
   /**
-   * PDFs and images in the attachments folders of the given notes, or of every
-   * note, that the note's body still embeds. A file the note no longer points
-   * at stays on disk (only an explicit delete removes it) but is not searchable
-   * under the note any more. `unread` lists the notes whose body could not be
+   * PDFs, images and HTML files in the attachments folders of the given notes,
+   * or of every note, that the note's body still embeds. A file the note no
+   * longer points at stays on disk (only an explicit delete removes it) but is
+   * not searchable under the note any more. `unread` lists the notes whose body could not be
    * read: their stored text is left alone.
    */
   private async attachmentFiles(
@@ -211,7 +223,7 @@ export class FileTextRunner {
         () => []
       )
       const candidates = entries.filter(
-        (entry) => entry.isFile() && !entry.name.startsWith('.') && textBearingType(entry.name)
+        (entry) => entry.isFile() && !entry.name.startsWith('.') && attachmentKind(entry.name)
       )
       if (candidates.length === 0) continue
       let body: string
@@ -229,7 +241,7 @@ export class FileTextRunner {
           noteId: note.id,
           source: entry.name,
           path: path.join(ATTACHMENTS_DIR, note.id, entry.name),
-          fileType: textBearingType(entry.name) ?? 'image'
+          fileType: attachmentKind(entry.name) ?? 'image'
         })
       }
     }
@@ -281,6 +293,7 @@ export class FileTextRunner {
       const db = this.deps.getDb()
       const job = getFileTextJob(db, file)
       if (job?.signature === current.signature) {
+        if (isOversizedHtml(file, current.size)) continue
         if (this.isDueForRetry(db, job, file)) retryFileTextJob(db, file, this.deps.appVersion)
         continue
       }
@@ -320,6 +333,33 @@ export class FileTextRunner {
       attachment: file.source !== OWN_FILE,
       fileType: file.fileType
     })
+
+    if (file.fileType === 'html') {
+      if (isOversizedHtml(file, current.size)) {
+        setFileTextPageCount(db, file, 1)
+        saveExtractedPart(db, file, 1, 'unreadable', '')
+        finishFileTextJob(
+          db,
+          file,
+          'failed',
+          `Too large to read (${current.size} bytes, limit ${HTML_TEXT_MAX_BYTES})`
+        )
+        this.deps.textChanged(file.noteId)
+        return
+      }
+      const result = await this.readTwice(async () => {
+        const bytes = await readFile(absolutePath)
+        // Grown since the size check: never parse it.
+        if (bytes.byteLength > HTML_TEXT_MAX_BYTES) throw new Error('HTML file grew past the cap')
+        return { method: 'html', text: await readHtmlText(bytes.toString('utf8')) }
+      })
+      if (!this.owns(file, signature)) return
+      setFileTextPageCount(db, file, 1)
+      saveExtractedPart(db, file, 1, result.method, result.text)
+      finishFileTextJob(db, file, result.method === 'unreadable' ? 'failed' : 'done')
+      this.deps.textChanged(file.noteId)
+      return
+    }
 
     if (file.fileType === 'image') {
       const result = await this.readTwice(() => this.ocr({ kind: 'file', path: absolutePath }))

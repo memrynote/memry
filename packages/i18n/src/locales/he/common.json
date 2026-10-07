@@ -374,7 +374,8 @@
       "agent": "סוכן",
       "pendingApproval": "{count, plural, one {אישור אחד ממתין} other {# אישורים ממתינים}}",
       "inProgress": "הסוכן באמצע תגובה",
-      "close": "סגירת הסוכן"
+      "close": "סגירת הסוכן",
+      "moreActions": "פעולות נוספות של הסוכן"
     },
     "errors": {
       "loadConversations": "לא ניתן לטעון שיחות סוכן",

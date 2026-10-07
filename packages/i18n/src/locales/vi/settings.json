@@ -1345,7 +1345,7 @@
     "embedding": {
       "loaded": "Đã tải",
       "loading": "Đang tải",
-      "cacheHint": "~23MB · Lưu đệm cục bộ · Hoàn toàn trên thiết bị",
+      "cacheHint": "~210MB · Lưu đệm cục bộ · Hoàn toàn trên thiết bị",
       "dimensions": "Số chiều",
       "embeddings": "Vector nhúng",
       "downloadLoad": "Tải xuống và tải mô hình",
