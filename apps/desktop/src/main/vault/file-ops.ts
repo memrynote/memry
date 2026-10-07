@@ -49,6 +49,23 @@ export async function afterGuardedWrite(
   if (lockedPath !== null) await writeGuard?.afterWrite(absolutePath, lockedPath, content)
 }
 
+/**
+ * An allowed write to a locked file cleared its read-only attribute first. When
+ * the write fails, set it again, recording no text: the file keeps the bytes it
+ * had. Never throws, so the write's own error is the one reported.
+ */
+async function restoreReadOnlyAfterFailedWrite(
+  absolutePath: string,
+  lockedPath: string | null
+): Promise<void> {
+  if (lockedPath === null) return
+  try {
+    await writeGuard?.afterWrite(absolutePath, lockedPath, null)
+  } catch (error) {
+    logger.warn('Could not mark a locked file read-only after a failed write', { error })
+  }
+}
+
 // ============================================================================
 // Atomic Write
 // ============================================================================
@@ -131,6 +148,7 @@ export async function atomicWrite(filePath: string, content: string): Promise<vo
     }, 'atomicWrite')
     if (lockedPath !== null) await writeGuard?.afterWrite(filePath, lockedPath, content)
   } catch (error) {
+    await restoreReadOnlyAfterFailedWrite(filePath, lockedPath)
     // Preserve the originating error: its errno is the only thing that tells a
     // cloud-sync/antivirus lock (EBUSY) apart from a full disk (ENOSPC) or a
     // read-only vault (EROFS) once the report reaches us.
@@ -184,6 +202,7 @@ export async function atomicWriteBinary(
     }, 'atomicWriteBinary')
     if (lockedPath !== null) await writeGuard?.afterWrite(filePath, lockedPath, null)
   } catch (error) {
+    await restoreReadOnlyAfterFailedWrite(filePath, lockedPath)
     throw new NoteError(
       `Failed to write file: ${filePath}`,
       NoteErrorCode.WRITE_FAILED,
