@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { AgentToolError } from '../errors'
 import { startAgentMcpServer, type AgentMcpServerHandle } from '../server'
 import { ImageToolResult } from '../tool-image'
+import { TOOL_SCHEMAS } from '../tools/schemas'
 
 describe('Agent MCP HTTP server', () => {
   let handle: AgentMcpServerHandle
@@ -89,6 +90,75 @@ describe('Agent MCP server tool round-trip', () => {
       expect(r.status).toBe(200)
       const text = await r.text()
       expect(text).toContain('"echoed":"hi"')
+    } finally {
+      await handle.stop()
+    }
+  })
+
+  it('names an unknown argument in the error an external MCP client gets', async () => {
+    const handler = vi.fn(async () => ({ ok: true }))
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        {
+          name: 'vault_update_task',
+          description: 'update a task',
+          inputSchema: TOOL_SCHEMAS.vault_update_task.input,
+          handler
+        }
+      ]
+    })
+
+    try {
+      const r = await fetch(`${handle.url}/mcp`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${handle.token}`,
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream'
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'vault_update_task', arguments: { id: 't1', colour: 'red' } }
+        })
+      })
+
+      expect(await r.text()).toContain('Unknown argument: colour.')
+      expect(handler).not.toHaveBeenCalled()
+    } finally {
+      await handle.stop()
+    }
+  })
+
+  it('advertises additionalProperties false for every tool, and runs a no-argument tool called without arguments', async () => {
+    const handler = vi.fn(async () => ({ tags: [] }))
+    const handle = await startAgentMcpServer({
+      toolRegistrations: Object.entries(TOOL_SCHEMAS).map(([name, schema]) => ({
+        name,
+        description: schema.description,
+        inputSchema: schema.input,
+        handler
+      }))
+    })
+
+    try {
+      const list = await mcpPost(handle, { method: 'tools/list', params: {} })
+      const tools = (
+        list as { result: { tools: Array<{ name: string; inputSchema: Record<string, unknown> }> } }
+      ).result.tools
+      expect(tools).toHaveLength(Object.keys(TOOL_SCHEMAS).length)
+      const open = tools
+        .filter((tool) => tool.inputSchema.additionalProperties !== false)
+        .map((tool) => tool.name)
+      expect(open).toEqual([])
+
+      const call = await mcpPost(handle, {
+        method: 'tools/call',
+        params: { name: 'vault_get_tags' }
+      })
+      expect(JSON.stringify(call)).not.toContain('isError')
+      expect(handler).toHaveBeenCalledWith({}, expect.anything())
     } finally {
       await handle.stop()
     }
@@ -556,6 +626,24 @@ function withDeadline(promise: Promise<unknown>, ms: number): Promise<'stopped'>
   return Promise.race([promise.then(() => 'stopped' as const), deadline]).finally(() =>
     clearTimeout(timer)
   )
+}
+
+async function mcpPost(
+  handle: AgentMcpServerHandle,
+  message: { method: string; params: Record<string, unknown> }
+): Promise<unknown> {
+  const r = await fetch(`${handle.url}/mcp`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${handle.token}`,
+      'content-type': 'application/json',
+      accept: 'application/json, text/event-stream'
+    },
+    body: JSON.stringify({ jsonrpc: '2.0', id: crypto.randomUUID(), ...message })
+  })
+  const text = await r.text()
+  const data = text.split('\n').find((line) => line.startsWith('data: '))
+  return JSON.parse(data ? data.slice('data: '.length) : text)
 }
 
 function callTool(

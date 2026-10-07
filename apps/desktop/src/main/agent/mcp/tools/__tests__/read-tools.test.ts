@@ -496,6 +496,20 @@ describe('Read tools', () => {
     expect(out).toEqual({ operation: 'templates.list', args: [], windowId: 'window-1' })
   })
 
+  it('vault_desktop_read rejects more arguments than the operation takes', async () => {
+    await expect(
+      tools
+        .find((t) => t.name === 'vault_desktop_read')!
+        .handler(
+          { operation: 'templates.list', args: [{ limit: 5 }] },
+          { conversationId: null, windowId: 'window-1' }
+        )
+    ).rejects.toMatchObject({
+      code: 'VALIDATION',
+      message: 'templates.list takes no arguments, but this call passed 1. Nothing was run.'
+    })
+  })
+
   it('vault_get_current_note returns null when window header missing', async () => {
     const out = await tools
       .find((t) => t.name === 'vault_get_current_note')!

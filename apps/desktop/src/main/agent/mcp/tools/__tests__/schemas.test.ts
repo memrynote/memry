@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { z } from 'zod'
 import { TOOL_SCHEMAS, ALL_TOOL_NAMES, READ_TOOL_NAMES, WRITE_TOOL_NAMES } from '../schemas'
 
 describe('Vault MCP tool schemas', () => {
@@ -203,5 +204,43 @@ describe('Vault MCP tool schemas', () => {
       TOOL_SCHEMAS.vault_update_task.input.safeParse({ id: 'task-1', due_date: '2024-02-29' })
         .success
     ).toBe(true)
+  })
+
+  it('refuses an unknown argument at any depth and names it', () => {
+    const cases: [keyof typeof TOOL_SCHEMAS, unknown, string][] = [
+      ['vault_update_task', { id: 't1', colour: 'red' }, 'colour'],
+      ['vault_list_projects', { archived: true }, 'archived'],
+      ['vault_get_current_note', { verbose: true }, 'verbose'],
+      [
+        'vault_create_project',
+        { name: 'P', statuses: [{ name: 'Todo', color: 'red', type: 'todo', order: 0, wip: 3 }] },
+        'wip'
+      ],
+      [
+        'vault_add_canvas_item',
+        { canvas_id: 'c1', items: [{ entity_type: 'note', entity_id: 'n1', x: 4 }] },
+        'x'
+      ]
+    ]
+    for (const [name, input, key] of cases) {
+      const result = TOOL_SCHEMAS[name].input.safeParse(input)
+      expect(result.success, name).toBe(false)
+      expect(
+        result.error?.issues.map((issue) => issue.message),
+        name
+      ).toContain(
+        `Unknown argument: ${key}. Remove it; this call takes only the arguments in its schema.`
+      )
+    }
+  })
+
+  it('advertises additionalProperties: false on every tool input', () => {
+    const open = ALL_TOOL_NAMES.filter((name) => {
+      const json = z.toJSONSchema(TOOL_SCHEMAS[name].input, { io: 'input' }) as {
+        additionalProperties?: unknown
+      }
+      return json.additionalProperties !== false
+    })
+    expect(open).toEqual([])
   })
 })

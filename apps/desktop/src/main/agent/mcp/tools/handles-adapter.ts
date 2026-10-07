@@ -1,5 +1,3 @@
-import path from 'node:path'
-
 import { searchAll } from '../../../database/queries/search'
 import { getNoteCacheById } from '../../../database/queries/notes'
 import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
@@ -45,8 +43,17 @@ import { snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { createCanvasHandles } from './canvas-handles'
 import { createJournalHandles } from './journal-handles'
+import {
+  folderPathFromNotePath,
+  internalFolderFromToolPath,
+  isDirectChild,
+  normalizeFolderPath,
+  toFolderEntry
+} from './folder-paths'
 import { createdTasksReply, withAgentChecklists, writeAgentBody } from './agent-checklists'
 import { invokeDesktopApiFromWindow } from './desktop-api'
+import { writeAndReadBack } from './desktop-api-readback'
+import { noteFileFrontmatter, noteIcon, readStoredNote, readStoredStatus } from './stored-records'
 import { withoutFileBodies } from './desktop-api-reply'
 import { assertNoteWritable } from '../../../vault-locks/registry'
 import { storedNoteBody } from './stored-body'
@@ -72,13 +79,6 @@ function isTextBearing(fileType: string): boolean {
   return (TEXT_BEARING_FILE_TYPES as readonly string[]).includes(fileType)
 }
 
-function folderPathFromNotePath(notePath: string): string | null {
-  // `dirname` reports '.' for a note sitting directly in the vault root, which
-  // is reachable now that folder paths are vault-relative (#1204).
-  const parent = path.posix.dirname(notePath)
-  return normalizeFolderPath(parent === '.' ? '' : parent) || null
-}
-
 function mergeContent(
   current: string,
   mode: 'append' | 'prepend' | 'replace',
@@ -92,43 +92,6 @@ function mergeContent(
 
 function sameTagList(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((tag, index) => tag === b[index])
-}
-
-// Tool paths are vault-relative with no leading slash ("projects/active"), the
-// form the renderer uses for folder links. Inputs may still carry one (#2622).
-// `defaultNoteFolder` is not part of this mapping: it names where a new note
-// goes, not where folders live, so an agent must see the same tree the sidebar
-// does (#1204).
-function normalizeFolderPath(value: string | undefined): string {
-  return (value ?? '').replace(/^\/+|\/+$/g, '')
-}
-
-function internalFolderFromToolPath(toolPath: string | undefined): string | undefined {
-  return normalizeFolderPath(toolPath ?? '') || undefined
-}
-
-function isDirectChild(basePath: string, candidatePath: string): boolean {
-  const normalizedBase = normalizeFolderPath(basePath)
-  const normalizedCandidate = normalizeFolderPath(candidatePath)
-
-  if (!normalizedBase) {
-    return !normalizedCandidate.includes('/')
-  }
-
-  if (!normalizedCandidate.startsWith(`${normalizedBase}/`)) {
-    return false
-  }
-
-  return !normalizedCandidate.slice(normalizedBase.length + 1).includes('/')
-}
-
-function toFolderEntry(folderPath: string): FolderEntry {
-  return {
-    kind: 'folder',
-    id: folderPath,
-    name: path.posix.basename(folderPath),
-    path: folderPath
-  }
 }
 
 function taskStatusLabel(task: { statusId: string | null; completedAt?: string | null }): string {
@@ -237,12 +200,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
 
         const note = await getNoteById(id)
         if (!note) return null
-        const icon =
-          typeof note.emoji === 'string'
-            ? note.emoji
-            : typeof note.frontmatter.emoji === 'string'
-              ? note.frontmatter.emoji
-              : null
+        const icon = noteIcon(note)
         const attachments = readAttachmentText(indexDb, id, EXTRACTED_TEXT_REPLY_CHARS)
         return {
           id: note.id,
@@ -378,6 +336,9 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       },
       async moveToFolder({ id, folder_path }) {
         await moveNoteCommand(id, internalFolderFromToolPath(folder_path) ?? '')
+      },
+      async stored(id) {
+        return readStoredNote(indexDb, id, folderPathFromNotePath)
       },
       storedBody: storedNoteBody
     },
@@ -675,6 +636,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       async list(projectId) {
         return createTaskDomain(dataDb).listStatuses(projectId)
       },
+      get: async (id) => readStoredStatus(dataDb, id),
       async create(input) {
         const result = await createTaskDomain(dataDb).createStatus({
           projectId: input.project_id,
@@ -683,7 +645,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           isDone: input.is_done
         })
         assertSuccess(result, 'Failed to create status')
-        return { id: result.status?.id ?? '' }
+        return { ...result.status, id: result.status?.id ?? '' }
       },
       async update(input) {
         const result = await createTaskDomain(dataDb).updateStatus({
@@ -695,7 +657,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           isDone: input.is_done
         })
         assertSuccess(result, 'Failed to update status')
-        return { id: input.id }
+        return { ...result.status, id: input.id }
       },
       async delete(id) {
         const result = await createTaskDomain(dataDb).deleteStatus(id)
@@ -812,8 +774,15 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       prepareWrite: withAgentChecklists,
       async write(input, windowId) {
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
-        const request = await withAgentChecklists(input)
-        return withoutFileBodies(await invokeDesktopApiFromWindow(windowId, request), fileRowOf)
+        return writeAndReadBack(
+          input,
+          async (request) =>
+            withoutFileBodies(
+              await invokeDesktopApiFromWindow(windowId, await withAgentChecklists(request)),
+              fileRowOf
+            ),
+          (entityId) => noteFileFrontmatter(indexDb, entityId)
+        )
       }
     },
     windows: {

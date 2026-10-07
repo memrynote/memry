@@ -16,6 +16,7 @@ import { deleteJournalEntryFile, readJournalEntry, writeJournalEntry } from '../
 import { createdTasksReply, writeAgentBody } from './agent-checklists'
 import { storedJournalBody } from './stored-body'
 import type { VaultServiceHandles } from './handles'
+import { readStoredJournalEntry, withDroppedJournalKeys } from './stored-records'
 
 export function createJournalHandles(indexDb: IndexDb): VaultServiceHandles['journal'] {
   return {
@@ -69,23 +70,30 @@ export function createJournalHandles(indexDb: IndexDb): VaultServiceHandles['jou
         )
       }
       if (content_markdown === undefined) {
-        const updated = await write(existing?.content ?? '')
-        return { id: updated.id }
+        return withDroppedJournalKeys(date, () => write(existing?.content ?? ''))
       }
-      const { result: updated, createdTasks } = await writeAgentBody(
-        generateJournalId(date),
-        content_markdown,
-        existing?.content ?? '',
-        write
-      )
+      let createdTasks: Parameters<typeof createdTasksReply>[0] = []
+      const updated = await withDroppedJournalKeys(date, async () => {
+        const body = await writeAgentBody(
+          generateJournalId(date),
+          content_markdown,
+          existing?.content ?? '',
+          write
+        )
+        createdTasks = body.createdTasks
+        return body.result
+      })
       return {
-        id: updated.id,
+        ...updated,
         body: await storedJournalBody(date, written),
         ...createdTasksReply(createdTasks)
       }
     },
     async delete(date) {
       return { date, deleted: await deleteJournalEntryFile(date) }
+    },
+    async stored(date) {
+      return readStoredJournalEntry(date)
     }
   }
 }

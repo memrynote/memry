@@ -570,6 +570,64 @@ describe('notes operations', () => {
       expect(updated.properties).toEqual({ status: 'published', priority: 5 })
     })
 
+    describe('legacy id, title, created and modified keys on a properties write', () => {
+      const legacyLines = [
+        'id: legacy-note-1',
+        'title: Legacy Title',
+        'created: 2024-03-05',
+        'modified: 2024-03-06T10:00:00.000Z'
+      ]
+
+      async function writeLegacyNote(): Promise<{ id: string; filePath: string }> {
+        const filePath = path.join(tempVault.notesDir, 'Legacy.md')
+        fs.writeFileSync(
+          filePath,
+          ['---', ...legacyLines, 'status: draft', '---', '', 'Legacy body.', ''].join('\n')
+        )
+        const note = await notes.getNoteByPath('notes/Legacy.md')
+        await projections.flushProjectionEvents()
+        return { id: note!.id, filePath }
+      }
+
+      it('keeps their lines byte for byte when the properties panel echoes the index record', async () => {
+        const { id, filePath } = await writeLegacyNote()
+        const { setEntityProperties } = await import('../notes/entity-properties')
+        const { getNotePropertiesAsRecord } = await import('@main/database/queries/notes')
+        const record = getNotePropertiesAsRecord(testDb.db, id)
+
+        await setEntityProperties(id, { ...record, status: 'done' })
+
+        const raw = fs.readFileSync(filePath, 'utf-8')
+        for (const line of legacyLines) expect(raw).toContain(`\n${line}\n`)
+        expect(raw).toContain('\nstatus: done\n')
+      })
+
+      it('keeps their lines byte for byte when an update echoes the note properties', async () => {
+        const { id, filePath } = await writeLegacyNote()
+        const before = await notes.getNoteById(id)
+
+        await notes.updateNote({ id, properties: { ...before!.properties, status: 'done' } })
+
+        const raw = fs.readFileSync(filePath, 'utf-8')
+        for (const line of legacyLines) expect(raw).toContain(`\n${line}\n`)
+        expect(raw).toContain('\nstatus: done\n')
+      })
+
+      it('writes a legacy key the call changed', async () => {
+        const { id, filePath } = await writeLegacyNote()
+        const before = await notes.getNoteById(id)
+
+        await notes.updateNote({
+          id,
+          properties: { ...before!.properties, title: 'Renamed Title' }
+        })
+
+        const raw = fs.readFileSync(filePath, 'utf-8')
+        expect(raw).toContain('\ntitle: Renamed Title\n')
+        expect(raw).toContain('\ncreated: 2024-03-05\n')
+      })
+    })
+
     it('T363: updates wordCount and modifiedAt', async () => {
       const created = await notes.createNote({
         title: 'Word Count Test',

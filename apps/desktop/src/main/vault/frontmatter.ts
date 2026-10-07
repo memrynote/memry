@@ -7,6 +7,7 @@
 
 import matter from 'gray-matter'
 import path from 'path'
+import { isDeepStrictEqual } from 'util'
 import {
   splitFrontmatterBlock,
   serializeParsedMarkdownNote,
@@ -216,6 +217,97 @@ export function serializeParsedNote(
   options: SerializeParsedNoteOptions
 ): string {
   return serializeParsedMarkdownNote(parsed, content, options)
+}
+
+/**
+ * Memry wrote these keys into notes before the frontmatter diet (#697). Older
+ * files still carry them, and a rewrite must not change them.
+ */
+const LEGACY_MEMRY_KEYS = ['id', 'title', 'created', 'modified'] as const
+
+/**
+ * serializeParsedNote for an update that may have edited the frontmatter. A
+ * re-stringified block re-spells scalars, so each legacy Memry key the update
+ * left unchanged keeps the line the file had.
+ */
+export function serializeUpdatedNote(
+  parsed: ParsedNote,
+  frontmatter: NoteFrontmatter,
+  content: string,
+  options: SerializeParsedNoteOptions
+): string {
+  const fileContent = serializeParsedNote({ ...parsed, frontmatter }, content, options)
+  if (!options.frontmatterEdited || parsed.rawFrontmatterBlock === null) return fileContent
+  const unchanged = LEGACY_MEMRY_KEYS.filter(
+    (key) =>
+      Object.hasOwn(parsed.frontmatter, key) &&
+      isDeepStrictEqual(frontmatter[key], parsed.frontmatter[key])
+  )
+  return keepRawFrontmatterLines(fileContent, parsed.rawFrontmatterBlock, unchanged)
+}
+
+/**
+ * The property record an update writes. A value echoed back as the index holds
+ * it (the properties panel sends its whole record) is written as the file holds
+ * it: the index keeps a YAML date as JSON text, and writing that text would turn
+ * the date into a quoted string.
+ */
+export function propertiesToWrite(
+  properties: Record<string, unknown> | undefined,
+  existing: { properties: Record<string, unknown>; frontmatter: NoteFrontmatter },
+  nextFrontmatter: NoteFrontmatter
+): Record<string, unknown> {
+  if (properties === undefined) return extractProperties(nextFrontmatter)
+  const fileProperties = extractProperties(existing.frontmatter)
+  return Object.fromEntries(
+    Object.entries(properties).map(([name, value]) => [
+      name,
+      Object.hasOwn(fileProperties, name) && isDeepStrictEqual(value, existing.properties[name])
+        ? fileProperties[name]
+        : value
+    ])
+  )
+}
+
+/** The line range of a top-level `key:` entry: its line and the indented lines that continue it. */
+function entryLines(lines: string[], key: string): { start: number; end: number } | null {
+  const prefix = `${key}:`
+  const start = lines.findIndex(
+    (line) => line.startsWith(prefix) && /^(\s|$)/.test(line.slice(prefix.length))
+  )
+  if (start === -1) return null
+  let end = start + 1
+  while (end < lines.length && /^[ \t]/.test(lines[end])) end += 1
+  return { start, end }
+}
+
+/**
+ * Re-emit the named keys of a re-stringified file exactly as the previous file
+ * spelled them. Stringifying re-spells scalars (`created: 2024-03-05` becomes
+ * an ISO timestamp), so a key whose value did not change keeps its old line.
+ * Only a one-line `key: value` entry in the previous file is copied; callers
+ * pass only keys whose value is unchanged.
+ */
+export function keepRawFrontmatterLines(
+  fileContent: string,
+  previousFile: string,
+  keys: readonly string[]
+): string {
+  const next = splitFrontmatterBlock(fileContent)
+  const previous = splitFrontmatterBlock(previousFile).block
+  if (next.block === null || previous === null || keys.length === 0) return fileContent
+  const lines = next.block.split('\n')
+  const previousLines = previous.split('\n').map((line) => line.replace(/\r$/, ''))
+  for (const key of keys) {
+    const old = entryLines(previousLines, key)
+    const current = entryLines(lines, key)
+    if (!old || !current || old.end - old.start !== 1) continue
+    const oldLine = previousLines[old.start]
+    if (oldLine.slice(key.length + 1).trim() === '') continue
+    const cr = lines[current.start].endsWith('\r') ? '\r' : ''
+    lines.splice(current.start, current.end - current.start, oldLine + cr)
+  }
+  return lines.join('\n') + next.body
 }
 
 // ============================================================================

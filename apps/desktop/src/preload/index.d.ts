@@ -144,6 +144,10 @@ export type UpdatePropertyDefinitionInput = NotesRpc.UpdatePropertyDefinitionInp
 export interface SetPropertiesResponse {
   success: boolean
   error?: string
+  /** On success: the record as stored. */
+  properties?: Record<string, unknown>
+  /** On success: the names the set deleted because the call left them out. */
+  removed?: string[]
 }
 
 export type CreatePropertyDefinitionResponse = NotesRpc.CreatePropertyDefinitionResponse

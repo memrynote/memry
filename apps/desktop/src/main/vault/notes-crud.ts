@@ -14,12 +14,12 @@ import { and, desc, eq } from 'drizzle-orm'
 import {
   parseNote,
   serializeNote,
-  serializeParsedNote,
+  serializeUpdatedNote,
   extractInlineTagsFromMarkdown,
   normalizePropertiesToRoot,
   replacePropertiesOnRoot,
   writePropertiesToRoot,
-  extractProperties,
+  propertiesToWrite,
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
@@ -686,7 +686,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   }
   let newFrontmatter = normalizePropertiesToRoot(mergedFrontmatter).frontmatter
 
-  const newProperties = input.properties ?? extractProperties(newFrontmatter)
+  const newProperties = propertiesToWrite(input.properties, existing, newFrontmatter)
 
   if (input.properties !== undefined) {
     newFrontmatter = replacePropertiesOnRoot(newFrontmatter, newProperties)
@@ -718,7 +718,7 @@ export async function updateNote(input: NoteUpdateInput): Promise<Note> {
   } else {
     const parsedCurrent = parseNote(currentRaw, existing.path)
     const nextBody = input.content === undefined ? parsedCurrent.content : newContent
-    fileContent = serializeParsedNote({ ...parsedCurrent, frontmatter: newFrontmatter }, nextBody, {
+    fileContent = serializeUpdatedNote(parsedCurrent, newFrontmatter, nextBody, {
       frontmatterEdited
     })
   }

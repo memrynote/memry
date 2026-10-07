@@ -2,6 +2,7 @@ import type { ZodTypeAny } from 'zod'
 
 import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
+import { assertDesktopApiArgs } from './desktop-api-params'
 import { DESKTOP_API_REPLY_MAX_BYTES } from './desktop-api-reply'
 import type { VaultServiceHandles } from './handles'
 import { TOOL_SCHEMAS, READ_TOOL_NAMES } from './schemas'
@@ -227,6 +228,7 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
           TOOL_SCHEMAS.vault_desktop_read.input,
           input
         )
+        assertDesktopApiArgs(a)
         return handles.desktop.read(a, ctx.windowId)
       }
     }
