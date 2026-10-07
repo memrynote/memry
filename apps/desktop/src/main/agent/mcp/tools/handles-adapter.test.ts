@@ -659,6 +659,36 @@ describe('createVaultServiceHandles', () => {
     expect(mocks.replaceNoteTagsInCrdt).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['append', 'Current\n', 'Next\n', 'Current\n\nNext\n'],
+    ['append', 'Current\r\n\r\n', 'Next', 'Current\n\nNext'],
+    ['prepend', 'Current\n', 'Before\n', 'Before\n\nCurrent\n']
+  ] as const)(
+    'leaves one blank line between blocks on %s to %j',
+    async (mode, current, sent, stored) => {
+      const handles = createVaultServiceHandles(deps)
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Alpha',
+        path: 'work/alpha.md',
+        fileType: 'markdown'
+      })
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Alpha',
+        content: current,
+        tags: [],
+        path: 'work/alpha.md',
+        frontmatter: {}
+      })
+      mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: [] })
+
+      await handles.notes.update({ id: 'note-1', mode, content_markdown: sent })
+
+      expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({ id: 'note-1', content: stored })
+    }
+  )
+
   it('re-points the live tag array when the new body changes the tag set', async () => {
     const handles = createVaultServiceHandles(deps)
 
