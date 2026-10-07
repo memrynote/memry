@@ -609,8 +609,10 @@ async function openVault(vaultPath: string): Promise<void> {
   // deliberately defers, so this is the call that actually opens the store.
   // Not awaited: it pays for a preflight child process, and the vault must not
   // wait on it. Editors that raced it rebind on the PROVIDER_READY broadcast.
+  // The path is passed because the vault status does not carry it yet (it is
+  // set further down), and the ready broadcast has to name this vault.
   void getCrdtProvider()
-    .initPersistence()
+    .initPersistence(vaultPath)
     .catch((error) => logger.warn('CRDT persistence init failed (non-fatal):', error))
 
   // Create FTS5 virtual tables for tasks and inbox in data.db
@@ -772,7 +774,7 @@ async function openVault(vaultPath: string): Promise<void> {
   //
   // Vault-open must NOT wait on embeddings: the renderer only needs the index
   // to render. Embedding is deferred out of the indexing pass — the embedding
-  // projector no-ops while isIndexing and records the note ids — so the ~23MB
+  // projector no-ops while isIndexing and records the note ids — so the ~210MB
   // model load + per-note CPU inference never runs on the blocking path (this
   // stranded imported vaults on the picker for minutes; #803). The background
   // index build's tail runs reconcileProjections() to embed those

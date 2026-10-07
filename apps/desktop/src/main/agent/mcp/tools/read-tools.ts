@@ -64,6 +64,18 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
         return note
       }
     },
+    vault_view_file: {
+      name: 'vault_view_file',
+      description: TOOL_SCHEMAS.vault_view_file.description,
+      inputSchema: TOOL_SCHEMAS.vault_view_file.input,
+      handler: async (input) => {
+        const a = parse<{ id: string; attachment?: string; page?: number }>(
+          TOOL_SCHEMAS.vault_view_file.input,
+          input
+        )
+        return handles.files.view(a)
+      }
+    },
     vault_list_folder: {
       name: 'vault_list_folder',
       description: TOOL_SCHEMAS.vault_list_folder.description,

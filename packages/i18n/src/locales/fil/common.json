@@ -374,7 +374,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# nakabinbing pag-apruba} other {# nakabinbing pag-apruba}}",
       "inProgress": "Gumagana pa ang agent",
-      "close": "Isara ang agent"
+      "close": "Isara ang agent",
+      "moreActions": "Higit pang aksyon ng agent"
     },
     "errors": {
       "loadConversations": "Hindi ma-load ang mga usapan ng agent",

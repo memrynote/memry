@@ -12,6 +12,7 @@ import { decorateToolResultWithAgentSources } from '../source-refs'
 import { AgentToolError, toMcpToolErrorContent } from './errors'
 import { capReply } from './reply-cap'
 import { createMcpSession } from './session'
+import { ImageToolResult } from './tool-image'
 
 const logger = createLogger('AgentMcpServer')
 
@@ -71,10 +72,20 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
           const ctx = session.contextFromHeaders(reqHeaders)
           try {
             const result = await reg.handler(input, ctx)
-            const decorated = decorateToolResultWithAgentSources(reg.name, input, result)
+            const image = result instanceof ImageToolResult ? result.image : null
+            const decorated = decorateToolResultWithAgentSources(
+              reg.name,
+              input,
+              result instanceof ImageToolResult ? result.reply : result
+            )
             const delivered = reg.maxReplyBytes ? capReply(decorated, reg.maxReplyBytes) : decorated
             return {
-              content: [{ type: 'text', text: JSON.stringify(delivered) }],
+              content: [
+                { type: 'text', text: JSON.stringify(delivered) },
+                ...(image
+                  ? [{ type: 'image' as const, data: image.data, mimeType: image.mimeType }]
+                  : [])
+              ],
               structuredContent: toStructuredContent(delivered)
             }
           } catch (err) {

@@ -1345,7 +1345,7 @@
     "embedding": {
       "loaded": "불러옴",
       "loading": "불러오는 중",
-      "cacheHint": "~23MB · 로컬에 캐시됨 · 모두 기기에서 처리",
+      "cacheHint": "~210MB · 로컬에 캐시됨 · 모두 기기에서 처리",
       "dimensions": "차원",
       "embeddings": "임베딩",
       "downloadLoad": "모델 다운로드 및 불러오기",

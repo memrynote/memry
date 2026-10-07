@@ -2,7 +2,7 @@
  * Settings IPC Handlers
  *
  * Handles IPC requests for app settings, including journal settings and AI settings.
- * AI uses local embeddings with all-MiniLM-L6-v2 model (no API key required).
+ * AI uses local embeddings with the EmbeddingGemma 2 model (no API key required).
  *
  * @module main/ipc/settings-handlers
  */

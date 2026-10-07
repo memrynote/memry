@@ -374,7 +374,8 @@
       "agent": "Agentti",
       "pendingApproval": "{count, plural, one {# odottaa hyväksyntää} other {# odottavaa hyväksyntää}}",
       "inProgress": "Agentin vuoro käynnissä",
-      "close": "Sulje agentti"
+      "close": "Sulje agentti",
+      "moreActions": "Lisää agentin toimintoja"
     },
     "errors": {
       "loadConversations": "Agenttikeskustelujen lataaminen epäonnistui",

@@ -31,7 +31,9 @@ the first click even when the sidebar opened on the Day view. The assistant back
 on first use rather than at launch, so the panel can show a brief loading state while providers and
 conversation history are detected. The Agent header includes a
 new-conversation button, a history menu for switching back to recent conversations, and a pop-out
-button for moving the current conversation into a workspace tab. Popped-out conversations keep the
+button for moving the current conversation into a workspace tab. On Windows, where the window's
+minimize, maximize, and close buttons share that row, these three actions sit in one **More agent
+actions** (**...**) menu instead. Popped-out conversations keep the
 generated conversation title as the tab name, use the same centered reading column as notes, and
 leave the right sidebar ready for a new chat. The popped-out tab keeps the scroll bar at the window
 edge while the chat content stays centered, and the tab name is the only conversation title shown in
@@ -370,6 +372,7 @@ Read tools are available to Agent Chat and external MCP clients:
 
 - `vault_search_notes`
 - `vault_read_note`
+- `vault_view_file`
 - `vault_list_folder`
 - `vault_get_current_note`
 - `vault_list_tasks`
@@ -407,6 +410,29 @@ so it can turn up in `vault_search_notes`. Every search hit therefore carries a 
 
 `vault_update_note` refuses every filed file, so an agent cannot overwrite a filed document with
 markdown.
+
+### Looking at images and PDF pages
+
+`vault_view_file` hands the model an image, or one page of a PDF, to look at. It works on files
+already in the vault and needs nothing installed:
+
+- a filed image or PDF: pass its `id`. For a PDF, `page` picks the page, page 1 by default, one page
+  per call.
+- an image or PDF that a markdown note embeds from its attachments folder: pass the note's `id` and
+  the file name as `attachment`, the name after `attachments/<note id>/` in the note or the `file`
+  of an `attachment_text` entry.
+
+The image is downscaled so its long edge is at most 1568 px and sent as image content, PNG or, for a
+large image, JPEG. A PDF page is rendered on this device by the same reader that extracts PDF text.
+The JSON part of the reply says what was sent: `file`, `file_type`, `mime_type`, `width` and
+`height`, `source_width` and `source_height` for an image, and `page` and `page_count` for a PDF. A
+page past the end fails with a `VALIDATION` error that names `page_count`.
+
+Claude Code, Codex, and Antigravity receive the image from the MCP server as it is. For a local or
+OpenAI-compatible provider, Memry checks once whether the model takes images, by sending it a
+one-pixel image, and sends the picture after the tool result. A model that does not take images
+gets a text notice instead, so the turn goes on. The chat shows the call, but the image bytes are
+not kept in the chat history.
 
 `vault_list_folder` lists a filed file as `kind: "file"` with its `file_type`, and a note as
 `kind: "note"` with `file_type: "markdown"`. The approval for `vault_delete_folder` counts the filed
@@ -584,8 +610,9 @@ A desktop API call on a filed PDF, image, audio file, or video, such as `notes.g
 `notes.rename`, returns the file's metadata in place of the note: `id`, `path`, `title`, `fileType`,
 `mimeType`, `fileSize`, `created`, `modified`, `contentOmitted: true`, and `contentAccess`, a
 sentence that says how the content can be read. For a PDF or an image it names `vault_read_note`,
-which returns the text read from the file (see [Notes and filed files](#notes-and-filed-files)).
-Viewing images is not available through the desktop API yet.
+which returns the text read from the file (see [Notes and filed files](#notes-and-filed-files)), and
+`vault_view_file`, which shows the image or a PDF page (see
+[Looking at images and PDF pages](#looking-at-images-and-pdf-pages)).
 
 A desktop API reply whose JSON is longer than 100 KB in UTF-8 bytes, counted after source links are
 added, comes back as `{ truncated: true, totalBytes, message, partial }`. `partial` holds the start

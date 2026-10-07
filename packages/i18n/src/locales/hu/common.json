@@ -374,7 +374,8 @@
       "agent": "Ügynök",
       "pendingApproval": "{count, plural, one {# függő jóváhagyás} other {# függő jóváhagyás}}",
       "inProgress": "Az ügynök dolgozik",
-      "close": "Ügynök bezárása"
+      "close": "Ügynök bezárása",
+      "moreActions": "További ügynökműveletek"
     },
     "errors": {
       "loadConversations": "Nem sikerült betölteni az ügynökbeszélgetéseket",

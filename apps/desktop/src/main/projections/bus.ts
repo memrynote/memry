@@ -4,7 +4,7 @@ import type { ProjectionEvent } from './types'
  * Per-lane queue cap (#992).
  *
  * A lane that backs up past this many *distinct* pending entities is already
- * pathological — the embedding lane awaits a ~23MB model load plus per-note CPU
+ * pathological — the embedding lane awaits a ~210MB model load plus per-note CPU
  * inference, and every queued `note.upserted` pins that note's whole body. An
  * unbounded queue turns that backlog into an OOM, so the oldest event is dropped
  * instead. Drops are counted so the runtime can log them, and every projector

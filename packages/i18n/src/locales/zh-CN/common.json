@@ -374,7 +374,8 @@
       "agent": "智能体",
       "pendingApproval": "{count, plural, other {# 项待批准}}",
       "inProgress": "智能体正在回复",
-      "close": "关闭智能体"
+      "close": "关闭智能体",
+      "moreActions": "更多智能体操作"
     },
     "errors": {
       "loadConversations": "无法加载智能体对话列表",

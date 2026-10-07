@@ -20,6 +20,7 @@ import { createMessageStore, type MessageStore } from '../../storage/message-sto
 import type { Conversation } from '../../storage/types'
 import { persistToolActivity, summarizeToolArgs } from '../tool-activity'
 import { runTurn } from '../turn'
+import { broadcastAgentEvent } from '../event-bus'
 
 // The persisted transcript is the only copy of a tool row once the renderer has
 // dropped it, so these run against the real encrypted store rather than a stub.
@@ -205,6 +206,59 @@ describe('tool activity persistence', () => {
       content_markdown: `${noteBody.slice(0, 200)}…`,
       mode: 'replace'
     })
+  })
+
+  it('sends the renderer a viewed image without its bytes', async () => {
+    const imageBytes = 'IMAGEBYTES'.repeat(1000)
+    const backend = createFakeBackend({
+      turn: [
+        { kind: 'tool_use', toolUseId: 'toolu-img', name: 'vault_view_file', args: { id: 'f1' } },
+        {
+          kind: 'tool_result',
+          toolUseId: 'toolu-img',
+          ok: true,
+          data: {
+            content: [
+              { type: 'text', text: '{"id":"f1"}' },
+              { type: 'image', data: imageBytes, mimeType: 'image/png' }
+            ]
+          }
+        },
+        { kind: 'message_stop' }
+      ]
+    })
+    vi.mocked(broadcastAgentEvent).mockClear()
+
+    await runTurn(
+      {
+        conversations: createFakeConversationStore(),
+        messages,
+        backends: createFakeRegistry(backend)
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'what is on this screenshot?',
+        attachments: [],
+        backendOptions: { backend: 'codex_cli', reasoningEffort: 'low' }
+      }
+    )
+
+    const completed = vi
+      .mocked(broadcastAgentEvent)
+      .mock.calls.map(([event]) => event)
+      .find((event) => event.kind === 'tool_call_completed')
+
+    expect(completed).toMatchObject({
+      toolCallId: 'toolu-img',
+      result: {
+        content: [
+          { type: 'text', text: '{"id":"f1"}' },
+          { type: 'image', mimeType: 'image/png', dataOmitted: true }
+        ]
+      }
+    })
+    expect(JSON.stringify(completed)).not.toContain('IMAGEBYTES')
   })
 
   it('does not replay persisted tool rows into the next prompt', async () => {

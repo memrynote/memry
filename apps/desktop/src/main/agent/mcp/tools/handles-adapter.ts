@@ -53,6 +53,10 @@ import { invokeDesktopApiFromWindow } from './desktop-api'
 import { writeAndReadBack } from './desktop-api-readback'
 import { noteFileFrontmatter, noteIcon, readStoredNote, readStoredStatus } from './stored-records'
 import { withoutFileBodies } from './desktop-api-reply'
+import { viewVaultFile } from './file-view'
+import { openPdfDocument } from '../../../file-text/pdf-host'
+import { prepareViewImageInImageProcess } from '../../../image-processing/bridge'
+import { getStatus } from '../../../vault'
 import type {
   ExtractedTextReply,
   FolderEntry,
@@ -829,6 +833,21 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
     windows: {
       async snapshotCurrentNote(windowId) {
         return snapshotCurrentNoteFromWindow(windowId)
+      }
+    },
+    files: {
+      async view(input) {
+        const vaultPath = getStatus().path
+        if (!vaultPath) throw new AgentToolError('NOT_FOUND', 'No vault is open')
+        return viewVaultFile(
+          {
+            vaultPath,
+            fileRow: fileRowOf,
+            prepareImage: prepareViewImageInImageProcess,
+            openPdf: openPdfDocument
+          },
+          input
+        )
       }
     }
   }

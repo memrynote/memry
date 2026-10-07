@@ -22,6 +22,7 @@ export function extractAgentSourceRefs(
       refs.push(...refsFromPayloadArrays(resultPayloads, noteRefFromRecord))
       break
     case 'vault_read_note':
+    case 'vault_view_file':
     case 'vault_get_current_note':
       refs.push(...maybeRefFromPayloads(resultPayloads, noteRefFromRecord))
       break

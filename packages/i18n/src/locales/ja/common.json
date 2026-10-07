@@ -374,7 +374,8 @@
       "agent": "エージェント",
       "pendingApproval": "{count, plural, other {承認待ち # 件}}",
       "inProgress": "エージェントが応答中",
-      "close": "エージェントを閉じる"
+      "close": "エージェントを閉じる",
+      "moreActions": "エージェントのその他の操作"
     },
     "errors": {
       "loadConversations": "エージェントの会話を読み込めませんでした",

@@ -257,7 +257,7 @@ describe('embeddings', () => {
   })
 
   it('truncates long text and returns an embedding', async () => {
-    const longText = 'a'.repeat(2500)
+    const longText = 'a'.repeat(4500)
     const embeddingPromise = generateEmbedding(longText)
 
     mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
@@ -271,7 +271,7 @@ describe('embeddings', () => {
       text: string
     }
     expect(requestMessage.type).toBe('embed')
-    expect(requestMessage.text.length).toBe(2000)
+    expect(requestMessage.text.length).toBe(4000)
 
     mockUtilityProcessInstance.simulateMessage({
       type: 'embed-result',

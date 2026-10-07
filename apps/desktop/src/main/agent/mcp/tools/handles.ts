@@ -13,6 +13,9 @@ import type {
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 import type { NoteFileType } from '@memry/contracts/search-api'
 
+import type { ImageToolResult } from '../tool-image'
+import type { FileViewInput } from './file-view'
+
 /**
  * `file_type` is always populated: index rows written before filed binaries
  * existed carry no file type, and those are always markdown (#800, #919). A
@@ -476,5 +479,9 @@ export interface VaultServiceHandles {
   }
   windows: {
     snapshotCurrentNote(windowId: string): Promise<CurrentNoteSnapshot | null>
+  }
+  files: {
+    /** A filed image, a page of a filed PDF, or a note's image or PDF attachment. */
+    view(input: FileViewInput): Promise<ImageToolResult>
   }
 }
