@@ -73,7 +73,11 @@ import {
 } from './note-handler-sync-helpers'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
-import { settleRemoteNoteFileSync, unprotectForRemoteWriteSync } from '../../vault-locks/files'
+import {
+  forgetBaselineOfRemotelyDeletedNote,
+  settleRemoteNoteFileSync,
+  unprotectForRemoteWriteSync
+} from '../../vault-locks/files'
 import {
   applyNoteCoverToFrontmatter,
   clearNoteCoverMarker,
@@ -771,6 +775,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     const absolutePath = toAbsolutePath(existing.path)
     deleteNoteFromCache(indexDb, itemId)
     clearNoteCoverMarker(ctx.db, itemId)
+    forgetBaselineOfRemotelyDeletedNote(ctx.db, itemId)
     void flushProjectionEvents()
 
     // A remote delete must drop the note's project links + clear any project home

@@ -15,25 +15,31 @@ another device. A note inside a locked folder is unlocked by unlocking the folde
 ## What a Lock Does
 
 A locked note opens read-only. A small lock line above the title says so, and the body, title,
-tags, and properties cannot be changed.
+tags, properties, and suggested tags cannot be changed.
 
 Everything that would change a locked note is refused:
 
 - typing in the editor, applying a template, restoring an older version,
 - renaming, moving, or deleting it, or the folder it sits in,
-- creating, renaming, or deleting anything inside a locked folder,
+- creating, renaming, or deleting anything inside a locked folder, including importing files
+  into it or filing an inbox item into it or onto a locked note,
 - every AI agent write: the note and folder tools, `vault_desktop_write`, and HTML artifacts.
-  The agent is told **"The owner made this note read-only."** "Always allow" approvals do not
-  change this.
+  The agent is told **"The owner made this note read-only."**, for a locked folder too. "Always
+  allow" approvals do not change this.
 
-Vault-wide changes such as renaming a tag or updating links after a rename skip locked notes and
-carry on with the rest.
+Vault-wide changes such as renaming, merging, or deleting a tag, or updating links after a
+rename, skip locked notes and carry on with the rest.
+
+Canvases cannot be locked. They live in a folder that does not appear in the sidebar.
 
 ## Other Devices
 
 Locks sync with your other devices. Edits made to a locked note on a device that does not know
 the lock yet, for example one running an older version of Memry, still arrive. The lock stops
 changes made on this device; it does not throw away changes that come in through sync.
+
+When your sync server does not know locks yet, the lock stays on this device and the rest of
+your changes keep syncing. Memry sends the lock again once the server is updated.
 
 ## Edits From Outside Memry
 
@@ -43,3 +49,10 @@ refuse to save over it.
 If a locked file is changed or deleted anyway, Memry keeps the changed text as a version in the
 note's [version history](./version-history), writes the locked text back, and tells you which note
 it restored. This also happens at the next start when the change was made while Memry was closed.
+
+## Going Back to an Older Version of Memry
+
+A version of Memry without locks ignores them, but locked files stay read-only on disk. To edit
+one of them there, unlock it in a current version first, or give yourself write access again: on
+macOS or Linux run `chmod u+w` on the file, on Windows uncheck **Read-only** in the file's
+**Properties**.

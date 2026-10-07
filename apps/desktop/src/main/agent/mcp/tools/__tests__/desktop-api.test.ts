@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { AgentMcpDesktopApiChannel } from '@memry/contracts/agent-mcp-channels'
+import {
+  AgentMcpDesktopApiChannel,
+  type AgentMcpDesktopApiRequest
+} from '@memry/contracts/agent-mcp-channels'
 import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
 
 vi.mock('electron', () => ({
@@ -95,27 +98,29 @@ describe('invokeDesktopApiFromWindow', () => {
       })
     })
 
-    it.each([
-      ['notes.update', VAULT_LOCKED_NOTE_MESSAGE],
-      ['notes.rename', VAULT_LOCKED_NOTE_MESSAGE],
-      ['notes.delete', VAULT_LOCKED_NOTE_MESSAGE],
-      ['notes.restoreVersion', VAULT_LOCKED_NOTE_MESSAGE],
-      ['notes.applyTemplate', VAULT_LOCKED_NOTE_MESSAGE],
-      ['notes.create', VAULT_LOCKED_NOTE_MESSAGE],
-      ['notes.createFolder', VAULT_LOCKED_NOTE_MESSAGE]
-    ])(
+    const refusedOperations: AgentMcpDesktopApiRequest['operation'][] = [
+      'notes.update',
+      'notes.rename',
+      'notes.delete',
+      'notes.restoreVersion',
+      'notes.applyTemplate',
+      'notes.create',
+      'notes.createFolder'
+    ]
+
+    it.each(refusedOperations)(
       'maps a %s {success:false} lock envelope to PERMISSION_DENIED',
-      async (operation, message) => {
+      async (operation) => {
         vi.mocked(mainToRendererInvoke).mockResolvedValue({
           ok: true,
-          data: { success: false, error: message }
+          data: { success: false, error: VAULT_LOCKED_NOTE_MESSAGE }
         })
 
         await expect(
           invokeDesktopApiFromWindow('123', { operation, args: [] })
         ).rejects.toMatchObject({
           code: 'PERMISSION_DENIED',
-          message,
+          message: VAULT_LOCKED_NOTE_MESSAGE,
           details: { operation }
         })
       }

@@ -9,7 +9,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { TagsChannels } from '@memry/contracts/ipc-channels'
-import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  asClientDb,
+  createTestDataDb,
+  createTestIndexDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { getNoteTags, insertNoteCache, setNoteTags } from '@main/database/queries/notes'
 
 const state = vi.hoisted(() => ({ data: null as unknown, index: null as unknown }))
@@ -86,13 +91,13 @@ describe('tag rename, merge and delete leave locked notes alone (#2606)', () => 
       setNoteTags(index.db, id, ['old', 'keep'])
     }
     installVaultLockSource({
-      dataDb: () => data.db,
+      dataDb: () => asClientDb(data.db),
       notePathOf: (noteId) => paths[noteId] ?? null,
       noteIdAtPath: (relativePath) =>
         Object.keys(paths).find((id) => paths[id] === relativePath) ?? null
     })
-    writeLockRow(data.db, 'folder', 'locked', true)
-    writeLockRow(data.db, 'note', 'note-own-lock', true)
+    writeLockRow(asClientDb(data.db), 'folder', 'locked', true)
+    writeLockRow(asClientDb(data.db), 'note', 'note-own-lock', true)
     invalidateVaultLocks()
     registerTagsHandlers()
   })

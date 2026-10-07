@@ -11,6 +11,7 @@ export {
   updateTagColor,
   updateTagIcon,
   getNoteTags,
+  setNoteTags,
   getNoteCacheById
 } from '@main/database/queries/notes'
 export { getAllTagsWithCounts, mergeTagInNotes, mergeTagInTasks } from '@main/database/queries/tags'

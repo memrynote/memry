@@ -62,7 +62,7 @@ import { isWritebackIgnored } from '../sync/crdt-writeback'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { flushProjectionEvents } from '../projections'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
-import { isNoteLocked } from '../vault-locks/registry'
+import { hasAnyVaultLock, isNoteLocked } from '../vault-locks/registry'
 import { restoreLockedNoteFile } from '../vault-locks/service'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
@@ -326,7 +326,10 @@ export class VaultWatcher {
   private async handleFileAdd(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
-    if (isWritebackIgnored(absolutePath)) return
+    if (isWritebackIgnored(absolutePath)) {
+      await this.checkLockedFileInWritebackWindow(absolutePath)
+      return
+    }
 
     try {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
@@ -637,7 +640,10 @@ export class VaultWatcher {
   private async handleFileChange(absolutePath: string): Promise<void> {
     if (!this.vaultPath) return
 
-    if (isWritebackIgnored(absolutePath)) return
+    if (isWritebackIgnored(absolutePath)) {
+      await this.checkLockedFileInWritebackWindow(absolutePath)
+      return
+    }
 
     try {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
@@ -664,6 +670,26 @@ export class VaultWatcher {
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
       this.onError?.(error)
+    }
+  }
+
+  /**
+   * The app's own write-back is dropped for a few seconds after it lands, but
+   * an outside edit to a locked note inside that window still gets the locked
+   * text back (#2606). The write-back itself matches the locked baseline it
+   * just recorded, so it is left alone.
+   */
+  private async checkLockedFileInWritebackWindow(absolutePath: string): Promise<void> {
+    if (!this.vaultPath || !hasAnyVaultLock()) return
+    try {
+      const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
+      if (getFileType(getExtension(absolutePath)) !== 'markdown') return
+      const cached = getNoteCacheByPath(getIndexDatabase(), relativePath)
+      if (!cached || !isNoteLocked(cached.id, relativePath)) return
+      const content = await safeRead(absolutePath)
+      if (content !== null) await restoreLockedNoteFile(cached.id, content)
+    } catch (err) {
+      this.onError?.(err instanceof Error ? err : new Error(String(err)))
     }
   }
 

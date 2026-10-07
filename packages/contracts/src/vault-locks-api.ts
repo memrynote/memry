@@ -22,10 +22,11 @@ export function vaultLockId(kind: VaultLockTargetKind, target: string): string {
   return `${kind}:${target}`
 }
 
-/** What every refused write says when its target is a locked note. Agents relay it verbatim. */
+/**
+ * What every refused write says, for a locked note and a locked folder alike
+ * (#2606 fixes this one agent text). Agents relay it verbatim.
+ */
 export const VAULT_LOCKED_NOTE_MESSAGE = 'The owner made this note read-only.'
-/** What a refused write says when its target is a locked folder (create in, rename, delete). */
-export const VAULT_LOCKED_FOLDER_MESSAGE = 'The owner made this folder read-only.'
 
 export const VaultLockSetSchema = z.object({
   kind: z.enum(VAULT_LOCK_TARGET_KINDS),

@@ -471,6 +471,12 @@ interface BackgroundIndexBuildInput {
   forcePaths: string[]
   /** Non-null when openVault reset the index DB and a recovery event is owed. */
   recoveredReason: IndexHealth | 'migration_failed' | null
+  /**
+   * Settles once locked files changed or removed while the app was closed are
+   * restored. The missing-file reconcile drops the index row of a removed
+   * file, which would hide a locked note from that restore (#2606).
+   */
+  lockedFilesChecked: Promise<void>
 }
 
 /**
@@ -490,7 +496,7 @@ interface BackgroundIndexBuildInput {
  * paths already cached.
  */
 async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promise<void> {
-  const { vaultPath, dataDb, indexHealth, recoveredReason, forcePaths } = input
+  const { vaultPath, dataDb, indexHealth, recoveredReason, forcePaths, lockedFilesChecked } = input
   const startedAt = Date.now()
   // currentStatus.path stays vaultPath for the whole build: closeVault() nulls
   // it only after awaiting this promise, and a vault switch closes first.
@@ -560,6 +566,9 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
 
   // After the walk, so reading PDFs and images never competes with it.
   startFileTextExtraction(vaultPath)
+
+  await lockedFilesChecked
+  if (isStale()) return
 
   void reconcileProjections()
     .then((results) => reportAndRepairReconcileFailures(vaultPath, results))
@@ -790,7 +799,7 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Locked files edited or removed while the app was closed get their locked
   // text back, and every lock is re-applied on disk (#2606).
-  void checkLockedFilesAtOpen().catch((err) =>
+  const lockedFilesChecked = checkLockedFilesAtOpen().catch((err) =>
     logger.warn('Checking locked files at vault open failed', err)
   )
 
@@ -804,7 +813,8 @@ async function openVault(vaultPath: string): Promise<void> {
     dataDb,
     indexHealth,
     recoveredReason,
-    forcePaths: migratedRootPropertyPaths
+    forcePaths: migratedRootPropertyPaths,
+    lockedFilesChecked
   })
 
   // Register the agent IPC handlers before the sync runtime starts: agent chat

@@ -13,6 +13,9 @@
 
 import fs from 'fs'
 import path from 'path'
+import { eq } from 'drizzle-orm'
+import { vaultLockBaselines } from '@memry/db-schema/schema/vault-locks'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { getNoteCacheById, getNoteCacheByPath } from '@main/database/queries/notes'
 import {
   getDatabase,
@@ -188,6 +191,19 @@ export function settleRemoteNoteFileSync(
     }
   } catch (err) {
     log.warn('Could not settle the lock state of a synced note file', { error: err })
+  }
+}
+
+/**
+ * A note or journal deleted on another device: the locked text kept for its
+ * restores has nothing left to restore. Never throws; a leftover row is
+ * harmless.
+ */
+export function forgetBaselineOfRemotelyDeletedNote(db: DrizzleDb, noteId: string): void {
+  try {
+    db.delete(vaultLockBaselines).where(eq(vaultLockBaselines.noteId, noteId)).run()
+  } catch (err) {
+    log.warn('Could not drop the locked text of a deleted note', { error: err })
   }
 }
 

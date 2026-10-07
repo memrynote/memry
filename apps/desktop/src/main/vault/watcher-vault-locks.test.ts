@@ -10,7 +10,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import { createTestVault } from '@tests/utils/test-vault'
-import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  asClientDb,
+  createTestDataDb,
+  createTestIndexDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { insertNoteCache } from '@main/database/queries/notes'
 
 const mocks = vi.hoisted(() => ({
@@ -85,12 +90,12 @@ describe('watcher ignore window and read-only locks (#2606)', () => {
       })
     }
     installVaultLockSource({
-      dataDb: () => data.db,
+      dataDb: () => asClientDb(data.db),
       notePathOf: (noteId) => paths[noteId] ?? null,
       noteIdAtPath: (relativePath) =>
         Object.keys(paths).find((id) => paths[id] === relativePath) ?? null
     })
-    writeLockRow(data.db, 'note', 'note-locked', true)
+    writeLockRow(asClientDb(data.db), 'note', 'note-locked', true)
     invalidateVaultLocks()
   })
 

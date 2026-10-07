@@ -1,8 +1,5 @@
 import { getI18n } from 'react-i18next'
-import {
-  VAULT_LOCKED_FOLDER_MESSAGE,
-  VAULT_LOCKED_NOTE_MESSAGE
-} from '@memry/contracts/vault-locks-api'
+import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
 
 const I18N_KEY_PREFIX = 'errors:'
 
@@ -11,8 +8,7 @@ const I18N_KEY_PREFIX = 'errors:'
  * (#2606); the app shows it in the user's language.
  */
 const FIXED_MESSAGE_KEYS = new Map<string, string>([
-  [VAULT_LOCKED_NOTE_MESSAGE, 'errors:vaultLock.noteReadOnly'],
-  [VAULT_LOCKED_FOLDER_MESSAGE, 'errors:vaultLock.folderReadOnly']
+  [VAULT_LOCKED_NOTE_MESSAGE, 'errors:vaultLock.noteReadOnly']
 ])
 
 const IPC_PREFIX_PATTERNS = [

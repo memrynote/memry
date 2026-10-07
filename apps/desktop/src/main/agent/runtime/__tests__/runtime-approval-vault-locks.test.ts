@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { asClientDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const mocks = vi.hoisted(() => ({
   setWriteGate: vi.fn(),
@@ -89,12 +89,12 @@ describe('read-only locks under Always allow (#2606)', () => {
     written.length = 0
     data = createTestDataDb()
     installVaultLockSource({
-      dataDb: () => data.db,
+      dataDb: () => asClientDb(data.db),
       notePathOf: (noteId) => (noteId === 'note-locked' ? 'notes/locked.md' : null),
       noteIdAtPath: () => null
     })
-    writeLockRow(data.db, 'note', 'note-locked', true)
-    writeLockRow(data.db, 'folder', 'archive', true)
+    writeLockRow(asClientDb(data.db), 'note', 'note-locked', true)
+    writeLockRow(asClientDb(data.db), 'folder', 'archive', true)
     invalidateVaultLocks()
   })
 

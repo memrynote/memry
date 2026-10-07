@@ -124,14 +124,16 @@ const request = (
   init: RequestInit = {},
   headers: Record<string, string> = {}
 ): Promise<Response> =>
-  app.request(
-    path,
-    { ...init, headers: { 'Content-Type': 'application/json', ...headers } },
-    env as unknown as Record<string, unknown>,
-    {
-      waitUntil: () => undefined,
-      passThroughOnException: () => undefined
-    } as unknown as ExecutionContext
+  Promise.resolve(
+    app.request(
+      path,
+      { ...init, headers: { 'Content-Type': 'application/json', ...headers } },
+      env as unknown as Record<string, unknown>,
+      {
+        waitUntil: () => undefined,
+        passThroughOnException: () => undefined
+      } as unknown as ExecutionContext
+    )
   )
 
 const push = async (

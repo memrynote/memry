@@ -361,16 +361,23 @@ export function NotePage({ noteId }: NotePageProps) {
     }
   }, [noteId, openTab, activeTab?.entityId, activeTab?.isPinned])
 
-  const handlePropertyBlocked = useCallback((action: PropertySectionAction) => {
-    const messages: Record<PropertySectionAction, string> = {
-      update: 'Cannot update property - this note was deleted',
-      add: 'Cannot add property - this note was deleted',
-      remove: 'Cannot delete property - this note was deleted',
-      rename: 'Cannot rename property - this note was deleted',
-      reorder: 'Cannot reorder properties - this note was deleted'
-    }
-    toast.error(messages[action])
-  }, [])
+  const handlePropertyBlocked = useCallback(
+    (action: PropertySectionAction) => {
+      if (isLocked) {
+        toast.error(t('errors:vaultLock.noteReadOnly'))
+        return
+      }
+      const messages: Record<PropertySectionAction, string> = {
+        update: 'Cannot update property - this note was deleted',
+        add: 'Cannot add property - this note was deleted',
+        remove: 'Cannot delete property - this note was deleted',
+        rename: 'Cannot rename property - this note was deleted',
+        reorder: 'Cannot reorder properties - this note was deleted'
+      }
+      toast.error(messages[action])
+    },
+    [isLocked, t]
+  )
 
   const {
     properties,
@@ -1961,7 +1968,7 @@ export function NotePage({ noteId }: NotePageProps) {
             disabled={isLocked}
           />
 
-          <NoteSuggestedTags noteId={noteId} tags={note.tags} disabled={isDeleted} />
+          <NoteSuggestedTags noteId={noteId} tags={note.tags} disabled={isDeleted || isLocked} />
 
           {properties.length > 0 && (
             <InfoSection
@@ -1974,7 +1981,7 @@ export function NotePage({ noteId }: NotePageProps) {
               onPropertyOrderChange={handlePropertyOrderChange}
               onAddProperty={handleAddPropertyWithExpand}
               onDeleteProperty={handleDeleteProperty}
-              disabled={isDeleted}
+              disabled={isDeleted || isLocked}
               variant="embedded"
               hideAddButton
             />

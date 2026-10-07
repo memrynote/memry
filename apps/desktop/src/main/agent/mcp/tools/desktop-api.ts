@@ -59,5 +59,22 @@ export async function invokeDesktopApiFromWindow(
     })
   }
 
+  // The notes.* commands report a refused write as a `{ success: false }`
+  // envelope instead of throwing; a lock refusal is still a permission error.
+  const lockRefusal = vaultLockRefusalOf(response.data)
+  if (lockRefusal !== null) {
+    throw new AgentToolError('PERMISSION_DENIED', lockRefusal, {
+      operation: request.operation
+    })
+  }
+
   return response.data
+}
+
+function vaultLockRefusalOf(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null
+  const { success, error } = data as { success?: unknown; error?: unknown }
+  return success === false && typeof error === 'string' && isVaultLockRefusalMessage(error)
+    ? error
+    : null
 }

@@ -980,6 +980,7 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
   // landed in a folder that did not exist, and the misplaced file's own
   // vault-relative path fed the next drop — one extra `notes/` per drop.
   const targetDir = targetFolder ? path.join(status.path, targetFolder) : getDefaultNoteDir()
+  assertFolderWritable(path.relative(status.path, targetDir))
 
   await ensureDirectory(targetDir)
 
