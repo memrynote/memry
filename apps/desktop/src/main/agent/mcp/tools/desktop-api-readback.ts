@@ -43,7 +43,7 @@ function findIn(
 
 const equals = (value: unknown) => (entryValue: unknown) => entryValue === value
 
-// The tag writers store names lower-cased and trimmed.
+// The tag writers match a name trimmed and case-insensitively; so does the read-back.
 const tagName = (value: unknown) => (typeof value === 'string' ? value.trim().toLowerCase() : value)
 
 const propertyDefinition = (args: Args) =>
