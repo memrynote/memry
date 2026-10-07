@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import type { ArticleCapture } from '@memry/article-extract'
 import type {
   CaptureResponse,
@@ -16,9 +16,15 @@ import { PropertyRows } from '@/components/PropertyRows'
 import { TagEditor } from '@/components/TagEditor'
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { FolderPicker } from '@/components/FolderPicker'
+import type { FolderList } from '@/lib/capture-client'
 
 const isMac = navigator.platform.toLowerCase().includes('mac')
 const SUBMIT_HINT = isMac ? '⌘ ↵' : 'Ctrl ↵'
+
+function leafOf(folder: string): string {
+  return folder.split('/').pop() || folder
+}
 
 function hostOf(url: string): string {
   try {
@@ -43,13 +49,31 @@ const STATUS: Record<ConnectionState, { tone: string; label: string }> = {
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const phase = selectPhase(state)
+  // Folders come live from the desktop each time the popup opens and are never
+  // persisted. Null = no picker (closed app, unpaired, no vault, older desktop).
+  const [folderList, setFolderList] = useState<FolderList | null>(null)
+  const [folder, setFolder] = useState('') // '' = Inbox
+  const [sentLabel, setSentLabel] = useState('Sent ✓')
+
+  // Name where the clip actually landed. A picked folder that the desktop could
+  // not use (vault switched, folder gone) falls back to the Inbox, so say so.
+  const noteSent = (result: CaptureResponse, picked: string | undefined) => {
+    if (!result.ok) return
+    if (result.filedTo) setSentLabel(`Sent to ${leafOf(result.filedTo)} ✓`)
+    else if (picked) setSentLabel('Sent to Inbox ✓')
+  }
 
   useEffect(() => {
     browser.runtime
       .sendMessage({ type: 'GET_STATUS' })
-      .then((r: StatusResponse) =>
+      .then((r: StatusResponse) => {
         dispatch({ type: 'STATUS', connection: r.connection, port: r.port })
-      )
+        if (r.connection !== 'ready' || !r.canPickFolder) return
+        browser.runtime
+          .sendMessage({ type: 'GET_FOLDERS' })
+          .then((list: FolderList | null) => setFolderList(list ?? null))
+          .catch(() => {})
+      })
       .catch(() => dispatch({ type: 'STATUS', connection: 'app-closed', port: null }))
 
     browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
@@ -102,6 +126,7 @@ export default function App() {
     const result: CaptureResponse = await browser.runtime
       .sendMessage({ type: 'CAPTURE', capture: draft })
       .catch(() => ({ ok: false, error: 'network' }))
+    noteSent(result, draft.folder)
     dispatch({ type: 'SAVE_DONE', result })
     // Flash a "Sent" confirmation, then close. Offline-queued / error stay open.
     if (result.ok) setTimeout(() => window.close(), 600)
@@ -116,6 +141,7 @@ export default function App() {
     const result: CaptureResponse = await browser.runtime
       .sendMessage({ type: 'LAUNCH_AND_CAPTURE', capture: draft })
       .catch(() => ({ ok: false, error: 'network' }))
+    noteSent(result, draft.folder)
     dispatch({ type: 'SAVE_DONE', result })
     if (result.ok) setTimeout(() => window.close(), 600)
   }
@@ -125,6 +151,8 @@ export default function App() {
   // the mount probe may have been blocked by the missing loopback permission.
   const onSend = async () => {
     let draft = state.draft
+    // Inbox (the default) sends exactly what older versions sent.
+    if (draft && folderList && folder) draft = { ...draft, folder, vaultId: folderList.vaultId }
     if (!(await ensureCapturePermissions(draft?.mode === 'pdf' ? draft.url : null))) {
       dispatch({ type: 'SAVE_DONE', result: { ok: false, error: 'permission-denied' } })
       return
@@ -190,7 +218,9 @@ export default function App() {
           {state.connection !== 'app-closed' && (
             <div className="flex items-center gap-1.5" title={status.label}>
               <span className={`size-1.5 rounded-full ${status.tone}`} aria-hidden />
-              <span className="text-[11px] font-medium text-text-tertiary">Inbox</span>
+              <span className="max-w-32 truncate text-[11px] font-medium text-text-tertiary">
+                {folder ? leafOf(folder) : 'Inbox'}
+              </span>
               <span className="sr-only">{status.label}</span>
             </div>
           )}
@@ -231,7 +261,7 @@ export default function App() {
             <p className="text-[14px] font-medium text-foreground">Saved offline</p>
             <p className="text-[12px] text-text-tertiary">
               {state.queuedReason === 'vault-closed'
-                ? 'Lands in your Inbox once a vault is open in Memry.'
+                ? `Lands in ${folder ? leafOf(folder) : 'your Inbox'} once a vault is open in Memry.`
                 : 'Syncs the next time Memry opens.'}
             </p>
           </div>
@@ -291,6 +321,15 @@ export default function App() {
                   disabled={!editable}
                   onChange={(tags) => setDraft({ ...draft, tags })}
                 />
+
+                {folderList && (
+                  <FolderPicker
+                    list={folderList}
+                    value={folder}
+                    disabled={!editable}
+                    onChange={setFolder}
+                  />
+                )}
 
                 {draft.contentMarkdown.trim() && (
                   <details className="group border-t border-border pt-2.5">
@@ -364,7 +403,7 @@ export default function App() {
           )}
           {phase === 'approving' && <PrimaryButton label="Approve in Memry…" disabled />}
           {phase === 'saving' && <PrimaryButton label="Saving…" disabled />}
-          {phase === 'saved' && <PrimaryButton label="Sent ✓" disabled />}
+          {phase === 'saved' && <PrimaryButton label={sentLabel} disabled />}
           {phase === 'launching' && <PrimaryButton label="Opening Memry…" disabled />}
           {phase === 'error' && (
             <PrimaryButton label="Try again" onClick={() => dispatch({ type: 'RETRY' })} />

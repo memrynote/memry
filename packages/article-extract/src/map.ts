@@ -24,6 +24,10 @@ export interface ArticleCapture {
   screenshotDataUrl?: string
   pdfDataUrl?: string
   pdfFilename?: string
+  // Destination chosen in the popup (vault-relative folder + the vault id from
+  // GET /folders). Absent = Inbox.
+  folder?: string
+  vaultId?: string
 }
 
 export interface DefuddleLikeResult {
