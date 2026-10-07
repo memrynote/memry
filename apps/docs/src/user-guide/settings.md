@@ -461,7 +461,9 @@ machine-local and are not synced between devices.
 
 - **Default Access** — starts each new Agent turn in **Vault only** or **Computer access**
 - **Confirm Actions** — **Ask before changes** is the default: every vault write pauses and shows
-  what it would change before it lands. **Always allow** accepts writes without a preview
+  what it would change before it lands. **Always allow** accepts writes without a preview.
+  [Locked](/user-guide/notes/read-only-locks) notes and folders stay read-only in both modes: the
+  agent gets a refusal it can report, and nothing is written
 - **Always allowed** — tools you granted a standing approval for in this vault, each with a
   **Revoke**. Grants are made from an approval card and never cover deletes. Note and journal
   edits always ask, so an older grant for them is listed as ignored
@@ -493,7 +495,8 @@ Local MCP server controls are also collapsed inside AI Assistant for external de
 Agent Chat backends use this same server for vault tools. Read tools do not prompt. Create, update
 and delete tools require active Agent Chat context and, by default, pause for inline approval with a
 preview of the change. Setting **Confirm Actions** to **Always allow** accepts them automatically
-and shows them as collapsed tool rows instead. Plain external clients can use read tools, but
+and shows them as collapsed tool rows instead; a write to a locked note or folder is still refused.
+Plain external clients can use read tools, but
 context-free writes are denied. See [Agent MCP Server](/user-guide/ai/agent-mcp).
 
 ---

@@ -151,7 +151,7 @@
       "deny": "Afvis",
       "invalidJson": "Indtast gyldig JSON, før du anvender redigeringer.",
       "thisTool": "dette værktøj",
-      "alwaysAllowHint": "»Tillad altid« gælder {tool}. Alle andre værktøjer spørger stadig, og sletninger kræver altid godkendelse.",
+      "alwaysAllowHint": "»Tillad altid« gælder {tool}. Alle andre værktøjer spørger stadig, og sletninger kræver altid godkendelse. Låste noter og mapper forbliver skrivebeskyttede.",
       "alwaysInChat": "Tillad altid i denne chat",
       "alwaysInChatHint": "Gælder, indtil samtalen slutter",
       "alwaysInVault": "Tillad altid i denne boks",

@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Confirmă acțiunile",
-        "description": "Alegeți dacă apelurile de instrumente rulează automat sau așteaptă aprobarea în chat.",
+        "description": "Alegeți dacă apelurile de instrumente rulează automat sau așteaptă aprobarea în chat. Notițele și folderele blocate rămân doar pentru citire în ambele moduri.",
         "alwaysAllow": "Permite întotdeauna",
         "askBeforeChanges": "Întreabă înainte de modificări"
       }

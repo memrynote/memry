@@ -151,7 +151,7 @@
       "deny": "Odrzuć",
       "invalidJson": "Przed zastosowaniem zmian wprowadź prawidłowy kod JSON.",
       "thisTool": "to narzędzie",
-      "alwaysAllowHint": "Opcja „Zawsze zezwalaj” obejmuje {tool}. Każde inne narzędzie nadal pyta o zgodę, a usuwanie zawsze jej wymaga.",
+      "alwaysAllowHint": "Opcja „Zawsze zezwalaj” obejmuje {tool}. Każde inne narzędzie nadal pyta o zgodę, a usuwanie zawsze jej wymaga. Zablokowane notatki i foldery pozostają tylko do odczytu.",
       "alwaysInChat": "Zawsze zezwalaj w tym czacie",
       "alwaysInChatHint": "Wygasa po zakończeniu rozmowy",
       "alwaysInVault": "Zawsze zezwalaj w tym sejfie",

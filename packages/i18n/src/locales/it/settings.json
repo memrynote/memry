@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Conferma le azioni",
-        "description": "Scegli se le chiamate agli strumenti vengono eseguite automaticamente o attendono l'approvazione in chat.",
+        "description": "Scegli se le chiamate agli strumenti vengono eseguite automaticamente o attendono l'approvazione in chat. Le note e le cartelle bloccate restano in sola lettura in entrambe le modalità.",
         "alwaysAllow": "Consenti sempre",
         "askBeforeChanges": "Chiedi prima delle modifiche"
       }

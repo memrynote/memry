@@ -151,7 +151,7 @@
       "deny": "Từ chối",
       "invalidJson": "Nhập JSON hợp lệ trước khi áp dụng các chỉnh sửa.",
       "thisTool": "công cụ này",
-      "alwaysAllowHint": "“Luôn cho phép” chỉ áp dụng cho {tool}. Các công cụ khác vẫn sẽ hỏi, và thao tác xóa luôn hỏi trước.",
+      "alwaysAllowHint": "“Luôn cho phép” chỉ áp dụng cho {tool}. Các công cụ khác vẫn sẽ hỏi, và thao tác xóa luôn hỏi trước. Ghi chú và thư mục đã khóa vẫn chỉ đọc.",
       "alwaysInChat": "Luôn cho phép trong cuộc trò chuyện này",
       "alwaysInChatHint": "Hết hiệu lực khi cuộc trò chuyện kết thúc",
       "alwaysInVault": "Luôn cho phép trong kho này",

@@ -151,7 +151,7 @@
       "deny": "Odbij",
       "invalidJson": "Unesite važeći JSON prije primjene izmjena.",
       "thisTool": "ovaj alat",
-      "alwaysAllowHint": "„Uvijek dopusti” odnosi se na {tool}. Svi ostali alati i dalje traže odobrenje, a brisanje ga uvijek traži.",
+      "alwaysAllowHint": "„Uvijek dopusti” odnosi se na {tool}. Svi ostali alati i dalje traže odobrenje, a brisanje ga uvijek traži. Zaključane bilješke i mape ostaju samo za čitanje.",
       "alwaysInChat": "Uvijek dopusti u ovom razgovoru",
       "alwaysInChatHint": "Vrijedi do kraja razgovora",
       "alwaysInVault": "Uvijek dopusti u ovom trezoru",

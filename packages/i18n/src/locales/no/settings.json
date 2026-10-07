@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Bekreft handlinger",
-        "description": "Velg om verktøykall kjøres automatisk eller venter på godkjenning i chatten.",
+        "description": "Velg om verktøykall kjøres automatisk eller venter på godkjenning i chatten. Låste notater og mapper forblir skrivebeskyttet i begge moduser.",
         "alwaysAllow": "Tillat alltid",
         "askBeforeChanges": "Spør før endringer"
       }

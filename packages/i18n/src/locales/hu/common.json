@@ -151,7 +151,7 @@
       "deny": "Elutasítás",
       "invalidJson": "A szerkesztések alkalmazása előtt adjon meg érvényes JSON-kódot.",
       "thisTool": "ez az eszköz",
-      "alwaysAllowHint": "Az állandó engedélyezés csak erre vonatkozik: {tool}. Minden más eszköz továbbra is rákérdez, a törlések pedig mindig.",
+      "alwaysAllowHint": "Az állandó engedélyezés csak erre vonatkozik: {tool}. Minden más eszköz továbbra is rákérdez, a törlések pedig mindig. A zárolt jegyzetek és mappák csak olvashatók maradnak.",
       "alwaysInChat": "Állandó engedélyezés ebben a csevegésben",
       "alwaysInChatHint": "A beszélgetés végéig érvényes",
       "alwaysInVault": "Állandó engedélyezés ebben a széfben",

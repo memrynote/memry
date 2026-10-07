@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Konfirmasi tindakan",
-        "description": "Pilih apakah panggilan alat berjalan otomatis atau menunggu persetujuan di obrolan.",
+        "description": "Pilih apakah panggilan alat berjalan otomatis atau menunggu persetujuan di obrolan. Catatan dan folder yang dikunci tetap hanya-baca di kedua mode.",
         "alwaysAllow": "Selalu izinkan",
         "askBeforeChanges": "Tanya sebelum mengubah"
       }

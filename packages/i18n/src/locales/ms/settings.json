@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Sahkan tindakan",
-        "description": "Pilih sama ada panggilan alat berjalan secara automatik atau menunggu kelulusan dalam sembang.",
+        "description": "Pilih sama ada panggilan alat berjalan secara automatik atau menunggu kelulusan dalam sembang. Nota dan folder yang dikunci kekal baca sahaja dalam kedua-dua mod.",
         "alwaysAllow": "Sentiasa benarkan",
         "askBeforeChanges": "Tanya sebelum membuat perubahan"
       }

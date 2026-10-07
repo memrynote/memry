@@ -151,7 +151,7 @@
       "deny": "Ablehnen",
       "invalidJson": "Gib gültiges JSON ein, bevor du Änderungen übernimmst.",
       "thisTool": "dieses Tool",
-      "alwaysAllowHint": "„Immer erlauben“ gilt für {tool}. Jedes andere Tool fragt weiterhin nach, und beim Löschen wird immer nachgefragt.",
+      "alwaysAllowHint": "„Immer erlauben“ gilt für {tool}. Jedes andere Tool fragt weiterhin nach, und beim Löschen wird immer nachgefragt. Gesperrte Notizen und Ordner bleiben schreibgeschützt.",
       "alwaysInChat": "In diesem Chat immer erlauben",
       "alwaysInChatHint": "Endet mit der Unterhaltung",
       "alwaysInVault": "In diesem Tresor immer erlauben",

@@ -151,7 +151,7 @@
       "deny": "Zamítnout",
       "invalidJson": "Před použitím úprav zadejte platný JSON.",
       "thisTool": "tento nástroj",
-      "alwaysAllowHint": "Možnost Vždy povolit platí pro {tool}. Ostatní nástroje se budou dál ptát a mazání vždy vyžaduje potvrzení.",
+      "alwaysAllowHint": "Možnost Vždy povolit platí pro {tool}. Ostatní nástroje se budou dál ptát a mazání vždy vyžaduje potvrzení. Zamčené poznámky a složky zůstávají jen pro čtení.",
       "alwaysInChat": "Vždy povolit v tomto chatu",
       "alwaysInChatHint": "Platí do konce konverzace",
       "alwaysInVault": "Vždy povolit v tomto trezoru",

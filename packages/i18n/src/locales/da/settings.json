@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Bekræft handlinger",
-        "description": "Vælg, om værktøjskald skal køre automatisk eller vente på godkendelse i chatten.",
+        "description": "Vælg, om værktøjskald skal køre automatisk eller vente på godkendelse i chatten. Låste noter og mapper forbliver skrivebeskyttede i begge tilstande.",
         "alwaysAllow": "Tillad altid",
         "askBeforeChanges": "Spørg før ændringer"
       }

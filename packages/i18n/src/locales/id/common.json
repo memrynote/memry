@@ -151,7 +151,7 @@
       "deny": "Tolak",
       "invalidJson": "Masukkan JSON yang valid sebelum menerapkan pengeditan.",
       "thisTool": "alat ini",
-      "alwaysAllowHint": "“Selalu izinkan” berlaku untuk {tool}. Alat lain tetap meminta izin, dan penghapusan selalu meminta izin.",
+      "alwaysAllowHint": "“Selalu izinkan” berlaku untuk {tool}. Alat lain tetap meminta izin, dan penghapusan selalu meminta izin. Catatan dan folder yang dikunci tetap hanya-baca.",
       "alwaysInChat": "Selalu izinkan di obrolan ini",
       "alwaysInChatHint": "Berakhir saat percakapan berakhir",
       "alwaysInVault": "Selalu izinkan di brankas ini",

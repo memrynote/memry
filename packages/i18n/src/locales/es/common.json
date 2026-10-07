@@ -151,7 +151,7 @@
       "deny": "Rechazar",
       "invalidJson": "Introduce un JSON válido antes de aplicar los cambios.",
       "thisTool": "esta herramienta",
-      "alwaysAllowHint": "«Permitir siempre» se aplica a {tool}. Las demás herramientas siguen pidiendo permiso, y las eliminaciones siempre lo piden.",
+      "alwaysAllowHint": "«Permitir siempre» se aplica a {tool}. Las demás herramientas siguen pidiendo permiso, y las eliminaciones siempre lo piden. Las notas y carpetas bloqueadas siguen siendo de solo lectura.",
       "alwaysInChat": "Permitir siempre en este chat",
       "alwaysInChatHint": "Termina cuando acaba la conversación",
       "alwaysInVault": "Permitir siempre en esta bóveda",

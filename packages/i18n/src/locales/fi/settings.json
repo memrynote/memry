@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Vahvista toiminnot",
-        "description": "Valitse, suoritetaanko työkalukutsut automaattisesti vai odottavatko ne hyväksyntää keskustelussa.",
+        "description": "Valitse, suoritetaanko työkalukutsut automaattisesti vai odottavatko ne hyväksyntää keskustelussa. Lukitut muistiinpanot ja kansiot pysyvät vain luku -tilassa molemmissa tiloissa.",
         "alwaysAllow": "Salli aina",
         "askBeforeChanges": "Kysy ennen muutoksia"
       }

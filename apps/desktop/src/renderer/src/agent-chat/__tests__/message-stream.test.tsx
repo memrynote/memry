@@ -1090,6 +1090,9 @@ describe('MessageStream', () => {
       />
     )
 
+    // Always allow covers the tool, never a locked note or folder (#2607).
+    expect(screen.getByText(/locked notes and folders stay read-only/i)).toBeInTheDocument()
+
     // Radix opens its menu on pointerdown, not on a synthetic click.
     fireEvent.pointerDown(
       screen.getByRole('button', { name: /Always allow/i }),

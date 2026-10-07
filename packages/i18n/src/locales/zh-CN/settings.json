@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "确认操作",
-        "description": "选择工具调用是自动运行，还是在对话中等待批准。",
+        "description": "选择工具调用是自动运行，还是在对话中等待批准。锁定的笔记和文件夹在两种模式下都保持只读。",
         "alwaysAllow": "始终允许",
         "askBeforeChanges": "更改前询问"
       }

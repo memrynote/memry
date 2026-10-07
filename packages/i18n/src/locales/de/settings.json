@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Aktionen bestätigen",
-        "description": "Lege fest, ob Tool-Aufrufe automatisch ausgeführt werden oder im Chat auf Freigabe warten.",
+        "description": "Lege fest, ob Tool-Aufrufe automatisch ausgeführt werden oder im Chat auf Freigabe warten. Gesperrte Notizen und Ordner bleiben in beiden Modi schreibgeschützt.",
         "alwaysAllow": "Immer erlauben",
         "askBeforeChanges": "Vor Änderungen fragen"
       }

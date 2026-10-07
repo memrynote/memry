@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Potvrzovat akce",
-        "description": "Zvolte, zda se volání nástrojů spouštějí automaticky, nebo čekají na schválení v chatu.",
+        "description": "Zvolte, zda se volání nástrojů spouštějí automaticky, nebo čekají na schválení v chatu. Zamčené poznámky a složky zůstávají v obou režimech jen pro čtení.",
         "alwaysAllow": "Vždy povolit",
         "askBeforeChanges": "Zeptat se před změnami"
       }

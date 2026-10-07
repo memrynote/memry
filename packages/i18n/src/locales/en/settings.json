@@ -2229,7 +2229,7 @@
       },
       "confirm": {
         "label": "Confirm actions",
-        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
+        "description": "Choose whether tool calls run automatically or wait for approval in chat. Locked notes and folders stay read-only in both modes.",
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
       }

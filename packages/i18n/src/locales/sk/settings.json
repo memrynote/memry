@@ -2224,7 +2224,7 @@
       },
       "confirm": {
         "label": "Potvrdzovať akcie",
-        "description": "Zvoľte, či sa volania nástrojov spustia automaticky, alebo počkajú na schválenie v chate.",
+        "description": "Zvoľte, či sa volania nástrojov spustia automaticky, alebo počkajú na schválenie v chate. Zamknuté poznámky a priečinky zostávajú v oboch režimoch len na čítanie.",
         "alwaysAllow": "Vždy povoliť",
         "askBeforeChanges": "Pýtať sa pred zmenami"
       }

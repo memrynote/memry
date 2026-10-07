@@ -151,7 +151,7 @@
       "deny": "Respinge",
       "invalidJson": "Introduceți JSON valid înainte de a aplica modificări.",
       "thisTool": "acest instrument",
-      "alwaysAllowHint": "„Permite întotdeauna” se aplică pentru {tool}. Celelalte instrumente cer în continuare aprobare, iar ștergerile cer întotdeauna aprobare.",
+      "alwaysAllowHint": "„Permite întotdeauna” se aplică pentru {tool}. Celelalte instrumente cer în continuare aprobare, iar ștergerile cer întotdeauna aprobare. Notițele și folderele blocate rămân doar pentru citire.",
       "alwaysInChat": "Permite întotdeauna în acest chat",
       "alwaysInChatHint": "Expiră la încheierea conversației",
       "alwaysInVault": "Permite întotdeauna în acest seif",

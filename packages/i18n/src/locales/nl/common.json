@@ -151,7 +151,7 @@
       "deny": "Afwijzen",
       "invalidJson": "Voer geldige JSON in voordat je bewerkingen toepast.",
       "thisTool": "deze tool",
-      "alwaysAllowHint": "“Altijd toestaan” geldt voor {tool}. Andere tools blijven om toestemming vragen, en voor verwijderen wordt altijd gevraagd.",
+      "alwaysAllowHint": "“Altijd toestaan” geldt voor {tool}. Andere tools blijven om toestemming vragen, en voor verwijderen wordt altijd gevraagd. Vergrendelde notities en mappen blijven alleen-lezen.",
       "alwaysInChat": "Altijd toestaan in deze chat",
       "alwaysInChatHint": "Stopt wanneer het gesprek eindigt",
       "alwaysInVault": "Altijd toestaan in deze kluis",
