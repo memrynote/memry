@@ -62,6 +62,7 @@ const handles: VaultServiceHandles = {
   },
   statuses: {
     list: async () => [],
+    get: async () => null,
     create: async () => ({ id: 'created-status' }),
     update: async ({ id }) => ({ id }),
     delete: async (id) => ({ id }),
@@ -441,7 +442,8 @@ describe('Write tools — P1 deny-by-default', () => {
     await expect(
       run('vault_reorder_statuses', { status_ids: ['status-1'], positions: [0] })
     ).resolves.toEqual({
-      ids: ['status-1']
+      ids: ['status-1'],
+      statuses: [{ id: 'status-1' }]
     })
     await expect(
       run('vault_update_journal_entry', { date: '2026-05-10', content_markdown: 'Updated' })
@@ -622,6 +624,76 @@ describe('Write tools — P1 deny-by-default', () => {
       mode: 'append',
       content_markdown: '<!-- file:{"url":"a.html"} -->'
     })
+  })
+
+  it('replies with the stored statuses in order after a status reorder', async () => {
+    const local: VaultServiceHandles = {
+      ...handles,
+      statuses: {
+        ...handles.statuses,
+        get: vi.fn(async (id: string) => ({ id, name: `Status ${id}`, position: 0 }))
+      }
+    }
+    const t = buildWriteTools(local, async () => ({ approved: true })).find(
+      (x) => x.name === 'vault_reorder_statuses'
+    )!
+    await expect(
+      t.handler(
+        { status_ids: ['s2', 's1'], positions: [0, 1] },
+        { writeGrant: 'g', windowId: 'w1' }
+      )
+    ).resolves.toEqual({
+      ids: ['s2', 's1'],
+      statuses: [
+        { id: 's2', name: 'Status s2', position: 0 },
+        { id: 's1', name: 'Status s1', position: 0 }
+      ]
+    })
+  })
+
+  it('returns the write reply with a warning when the read after a landed write fails', async () => {
+    const readFailed = async (): Promise<never> => {
+      throw new Error('index busy')
+    }
+    const update = vi.fn(async () => {})
+    const local: VaultServiceHandles = {
+      ...handles,
+      notes: {
+        ...handles.notes,
+        update,
+        stored: vi
+          .fn<VaultServiceHandles['notes']['stored']>()
+          .mockResolvedValueOnce(storedNote('note-1'))
+          .mockImplementation(readFailed)
+      },
+      tasks: { ...handles.tasks, get: readFailed },
+      journal: { ...handles.journal, stored: readFailed }
+    }
+    const tools = buildWriteTools(local, async () => ({ approved: true }))
+    const run = (name: string, input: unknown) =>
+      tools.find((x) => x.name === name)!.handler(input, { writeGrant: 'g', windowId: 'w1' })
+    const warning =
+      'The write landed, but reading it back failed (index busy). ' +
+      'Read the record to see what was stored.'
+
+    await expect(
+      run('vault_update_note', { id: 'note-1', mode: 'append', content_markdown: 'More' })
+    ).resolves.toEqual({ id: 'note-1', warnings: [warning] })
+    expect(update).toHaveBeenCalledTimes(1)
+    await expect(run('vault_rename_note', { id: 'note-1', title: 'Renamed' })).resolves.toEqual({
+      id: 'note-1',
+      warnings: [warning]
+    })
+    await expect(run('vault_complete_task', { id: 'task-1' })).resolves.toEqual({
+      id: 'task-1',
+      warnings: [warning]
+    })
+    await expect(
+      run('vault_create_journal_entry', { date: '2026-05-10', content_markdown: 'b' })
+    ).resolves.toEqual({ id: 'jrnl', created: true, warnings: [warning] })
+    await expect(
+      run('vault_update_journal_entry', { date: '2026-05-10', content_markdown: 'b' })
+    ).resolves.toEqual({ id: 'jrnl', warnings: [warning] })
   })
 
   it('vault_add_html_artifact rejects oversized html before the gate', async () => {

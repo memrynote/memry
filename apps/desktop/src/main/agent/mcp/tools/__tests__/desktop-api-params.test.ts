@@ -25,7 +25,7 @@ import { remindersApi } from '../../../../../preload/api/reminders'
 import { graphApi, searchApi } from '../../../../../preload/api/search'
 import { tagsApi } from '../../../../../preload/api/tags'
 import { vaultApi } from '../../../../../preload/api/vault'
-import { ipcMain } from 'electron'
+import { ipcMain, ipcRenderer } from 'electron'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import { createValidatedHandler } from '../../../../ipc/validate'
 import { installIpcChannelLabels } from '../../../../ipc/lib/ipc-channel-labels'
@@ -49,16 +49,32 @@ const handWrittenApis: Record<string, Record<string, unknown>> = {
 }
 
 describe('desktop API parameter lists', () => {
-  it('match the preload function behind every hand-written operation', () => {
+  it('name and forward every parameter of the preload function behind each hand-written operation', async () => {
     const mismatches: string[] = []
     for (const operation of AgentMcpDesktopOperations) {
       const [domain, method] = operation.split('.')
       const fn = handWrittenApis[domain]?.[method]
       if (fn === undefined) continue
-      const params = desktopOperationParams(operation)
-      if (typeof fn !== 'function' || fn.length !== params.length) {
-        mismatches.push(`${operation}: table ${params.length}, preload ${String(fn)}`)
+      if (typeof fn !== 'function') {
+        mismatches.push(`${operation}: preload is not a function`)
+        continue
       }
+      const params = desktopOperationParams(operation)
+      const source = /^(?:async\s*)?(?:function\s*\w*\s*)?\(([^)]*)\)/.exec(fn.toString())
+      const names = (source?.[1] ?? '')
+        .split(',')
+        .map((param) => param.split('=')[0].trim())
+        .filter(Boolean)
+      if (names.join(',') !== params.join(',')) {
+        mismatches.push(`${operation}: table (${params.join(', ')}), preload (${names.join(', ')})`)
+      }
+      const sentinels = params.map((name) => `sentinel-${name}`)
+      vi.mocked(ipcRenderer.invoke).mockClear()
+      vi.mocked(ipcRenderer.invoke).mockResolvedValue(undefined)
+      await (fn as (...args: unknown[]) => unknown)(...sentinels)
+      const sent = JSON.stringify(vi.mocked(ipcRenderer.invoke).mock.calls)
+      const dropped = sentinels.filter((sentinel) => !sent.includes(JSON.stringify(sentinel)))
+      if (dropped.length > 0) mismatches.push(`${operation}: preload drops ${dropped.join(', ')}`)
     }
     expect(mismatches).toEqual([])
   })

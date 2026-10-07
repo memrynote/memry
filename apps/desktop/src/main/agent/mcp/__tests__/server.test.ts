@@ -130,6 +130,39 @@ describe('Agent MCP server tool round-trip', () => {
     }
   })
 
+  it('advertises additionalProperties false for every tool, and runs a no-argument tool called without arguments', async () => {
+    const handler = vi.fn(async () => ({ tags: [] }))
+    const handle = await startAgentMcpServer({
+      toolRegistrations: Object.entries(TOOL_SCHEMAS).map(([name, schema]) => ({
+        name,
+        description: schema.description,
+        inputSchema: schema.input,
+        handler
+      }))
+    })
+
+    try {
+      const list = await mcpPost(handle, { method: 'tools/list', params: {} })
+      const tools = (
+        list as { result: { tools: Array<{ name: string; inputSchema: Record<string, unknown> }> } }
+      ).result.tools
+      expect(tools).toHaveLength(Object.keys(TOOL_SCHEMAS).length)
+      const open = tools
+        .filter((tool) => tool.inputSchema.additionalProperties !== false)
+        .map((tool) => tool.name)
+      expect(open).toEqual([])
+
+      const call = await mcpPost(handle, {
+        method: 'tools/call',
+        params: { name: 'vault_get_tags' }
+      })
+      expect(JSON.stringify(call)).not.toContain('isError')
+      expect(handler).toHaveBeenCalledWith({}, expect.anything())
+    } finally {
+      await handle.stop()
+    }
+  })
+
   it('serves overlapping MCP tool calls without sharing a connected transport', async () => {
     let releaseFirst!: () => void
     let resolveFirstStarted!: () => void
@@ -556,6 +589,24 @@ function withDeadline(promise: Promise<unknown>, ms: number): Promise<'stopped'>
   return Promise.race([promise.then(() => 'stopped' as const), deadline]).finally(() =>
     clearTimeout(timer)
   )
+}
+
+async function mcpPost(
+  handle: AgentMcpServerHandle,
+  message: { method: string; params: Record<string, unknown> }
+): Promise<unknown> {
+  const r = await fetch(`${handle.url}/mcp`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${handle.token}`,
+      'content-type': 'application/json',
+      accept: 'application/json, text/event-stream'
+    },
+    body: JSON.stringify({ jsonrpc: '2.0', id: crypto.randomUUID(), ...message })
+  })
+  const text = await r.text()
+  const data = text.split('\n').find((line) => line.startsWith('data: '))
+  return JSON.parse(data ? data.slice('data: '.length) : text)
 }
 
 function callTool(
