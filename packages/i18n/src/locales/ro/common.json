@@ -374,7 +374,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# aprobare în așteptare} few {# aprobări în așteptare} other {# de aprobări în așteptare}}",
       "inProgress": "Agentul răspunde",
-      "close": "Închide agentul"
+      "close": "Închide agentul",
+      "moreActions": "Mai multe acțiuni ale agentului"
     },
     "errors": {
       "loadConversations": "Nu s-au putut încărca conversațiile cu agentul",

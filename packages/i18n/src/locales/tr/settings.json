@@ -448,11 +448,16 @@
       "width": "Düzenleyici genişliği",
       "toolbarMode": "Sabit biçimlendirme araç çubuğu",
       "spellCheck": "Yazımı denetle",
-      "convertChecklists": "Kontrol listesi öğelerini göreve dönüştür"
+      "convertChecklists": "Kontrol listesi öğelerini göreve dönüştür",
+      "convertAgentChecklists": "Ajan yazımlarındaki kontrol listesi öğelerini göreve dönüştür"
     },
     "convertChecklists": {
       "description": "Her yeni kontrol listesi öğesi bir görev olur. Kapalıyken kontrol listeleri düz onay kutusu olarak kalır; görev yapmak için birine sağ tıklayın.",
       "error": "Kontrol listesi dönüştürme ayarı güncellenemedi"
+    },
+    "convertAgentChecklists": {
+      "description": "Kapalıyken bir ajanın yazdığı her onay kutusu düz onay kutusu olarak kalır. Ajanlar görevleri görev araçlarıyla oluşturur.",
+      "error": "Ajan kontrol listesi dönüştürme ayarı güncellenemedi"
     }
   },
   "templates": {
@@ -1340,7 +1345,7 @@
     "embedding": {
       "loaded": "Yüklendi",
       "loading": "Yükleniyor",
-      "cacheHint": "~23 MB · Yerel olarak önbelleğe alınır · Tamamen cihaz üzerinde",
+      "cacheHint": "~210 MB · Yerel olarak önbelleğe alınır · Tamamen cihaz üzerinde",
       "dimensions": "Boyutlar",
       "embeddings": "Gömmeler",
       "downloadLoad": "Modeli indir ve yükle",

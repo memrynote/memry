@@ -6,7 +6,9 @@ import { getLogShip } from '../telemetry/log-ship'
 import type {
   ImageProcessingMainToWorkerMessage,
   ImageProcessingWorkerToMainMessage,
-  InboxImageMetadataPayload
+  InboxImageMetadataPayload,
+  ViewImagePayload,
+  ViewImageSource
 } from './protocol'
 
 const logger = createLogger('ImageProcessing')
@@ -115,6 +117,27 @@ class ImageProcessingBridge {
         ? Buffer.from(response.result.thumbnailData)
         : null
     }
+  }
+
+  async prepareViewImage(source: ViewImageSource, maxEdge: number): Promise<ViewImagePayload> {
+    await this.start()
+    const requestId = this.nextRequestId()
+    const response = await this.sendRequest({
+      type: 'prepare-view-image',
+      requestId,
+      source,
+      maxEdge
+    })
+
+    if (response.type === 'error') {
+      throw new Error(response.error)
+    }
+
+    if (response.type !== 'view-image-result') {
+      throw new Error(`Unexpected response type: ${response.type}`)
+    }
+
+    return response.result
   }
 
   async stop(): Promise<void> {
@@ -417,6 +440,14 @@ export function processInboxImageAttachment(
   filePath: string
 ): Promise<InboxImageProcessingResult | null> {
   return bridge.processInboxImage(filePath)
+}
+
+/** Decode, turn upright and downscale an image for an agent to look at (FB-002). */
+export function prepareViewImageInImageProcess(
+  source: ViewImageSource,
+  maxEdge: number
+): Promise<ViewImagePayload> {
+  return bridge.prepareViewImage(source, maxEdge)
 }
 
 export function resetImageProcessingForTests(): void {

@@ -448,11 +448,16 @@
       "width": "編輯器寬度",
       "toolbarMode": "固定顯示格式工具列",
       "spellCheck": "檢查拼字",
-      "convertChecklists": "將檢查清單項目轉為任務"
+      "convertChecklists": "將檢查清單項目轉為任務",
+      "convertAgentChecklists": "將代理程式寫入的檢查清單項目轉為任務"
     },
     "convertChecklists": {
       "description": "每個新的檢查清單項目都會成為任務。關閉後清單維持為一般核取方塊；在項目上按右鍵即可轉為任務。",
       "error": "無法更新檢查清單轉換設定"
+    },
+    "convertAgentChecklists": {
+      "description": "關閉時，代理程式寫入的每個核取方塊都保持為一般核取方塊。代理程式以任務工具建立任務。",
+      "error": "無法更新代理程式檢查清單轉換設定"
     }
   },
   "templates": {
@@ -1340,7 +1345,7 @@
     "embedding": {
       "loaded": "已載入",
       "loading": "載入中",
-      "cacheHint": "~23MB · 本機快取 · 完全在裝置上執行",
+      "cacheHint": "~210MB · 本機快取 · 完全在裝置上執行",
       "dimensions": "維度",
       "embeddings": "嵌入向量",
       "downloadLoad": "下載並載入模型",

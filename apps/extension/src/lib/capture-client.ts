@@ -21,18 +21,52 @@ function captureUrl(port: number): string {
 export function revokeUrl(port: number): string {
   return `http://127.0.0.1:${port}/pair/revoke`
 }
+function foldersUrl(port: number): string {
+  return `http://127.0.0.1:${port}/folders`
+}
 
 export interface PingResponse {
   app: 'memry'
   version: string
   paired: boolean
+  // Absent on desktops older than the capability flag: treat as none.
+  capabilities: string[]
 }
 
 export function parsePing(data: unknown): PingResponse | null {
   if (!data || typeof data !== 'object') return null
   const d = data as Record<string, unknown>
   if (d.app !== 'memry' || typeof d.paired !== 'boolean') return null
-  return { app: 'memry', version: String(d.version ?? ''), paired: d.paired }
+  const capabilities = Array.isArray(d.capabilities)
+    ? d.capabilities.filter((c): c is string => typeof c === 'string')
+    : []
+  return { app: 'memry', version: String(d.version ?? ''), paired: d.paired, capabilities }
+}
+
+export interface FolderList {
+  vaultId: string
+  vaultName: string
+  folders: string[]
+}
+
+// POST /folders (POST so Chrome attaches the Origin header). Null on any failure (closed vault, old desktop, bad shape): the
+// popup then simply shows no picker and saves to the Inbox.
+export async function getFolders(
+  port: number,
+  token: string,
+  fetchFn: typeof fetch = fetch
+): Promise<FolderList | null> {
+  try {
+    const res = await fetchFn(foldersUrl(port), { method: 'POST', headers: captureHeaders(token) })
+    if (!res.ok) return null
+    const d = (await res.json()) as Record<string, unknown>
+    if (typeof d.vaultId !== 'string' || !d.vaultId) return null
+    if (typeof d.vaultName !== 'string' || !Array.isArray(d.folders)) return null
+    const folders = d.folders.filter((f): f is string => typeof f === 'string' && f.length > 0)
+    return { vaultId: d.vaultId, vaultName: d.vaultName, folders }
+  } catch {
+    return null
+  }
 }
 
 // Probe the loopback range. Returns the first live memry server, or null.
@@ -116,12 +150,35 @@ export async function postRevoke(
   }
 }
 
+// Existing vault tags for autocomplete. Suggestions are optional, so any failure
+// (app closed, vault closed, older desktop without /tags) yields an empty list.
+export async function getTags(
+  port: number,
+  token: string,
+  fetchFn: typeof fetch = fetch
+): Promise<string[]> {
+  try {
+    // POST so Chrome attaches the Origin header the desktop allowlist checks.
+    const res = await fetchFn(`http://127.0.0.1:${port}/tags`, {
+      method: 'POST',
+      headers: captureHeaders(token)
+    })
+    if (!res.ok) return []
+    const data = (await res.json()) as { tags?: unknown }
+    return Array.isArray(data.tags)
+      ? data.tags.filter((t): t is string => typeof t === 'string')
+      : []
+  } catch {
+    return []
+  }
+}
+
 export async function postCapture(
   port: number,
   token: string,
   capture: ArticleCapture,
   fetchFn: typeof fetch = fetch
-): Promise<{ ok: true; itemId: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; itemId: string; filedTo: string | null } | { ok: false; error: string }> {
   try {
     const res = await fetchFn(captureUrl(port), {
       method: 'POST',
@@ -129,8 +186,9 @@ export async function postCapture(
       body: JSON.stringify(capture)
     })
     if (res.ok) {
-      const data = (await res.json()) as { itemId?: unknown }
-      return { ok: true, itemId: String(data.itemId ?? '') }
+      const data = (await res.json()) as { itemId?: unknown; filedTo?: unknown }
+      const filedTo = typeof data.filedTo === 'string' && data.filedTo ? data.filedTo : null
+      return { ok: true, itemId: String(data.itemId ?? ''), filedTo }
     }
     const data = (await res.json().catch(() => ({}))) as { error?: unknown }
     return { ok: false, error: typeof data.error === 'string' ? data.error : `http-${res.status}` }

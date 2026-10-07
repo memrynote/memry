@@ -448,11 +448,16 @@
       "width": "Lebar editor",
       "toolbarMode": "Bar alat pemformatan tetap",
       "spellCheck": "Semak ejaan",
-      "convertChecklists": "Tukar item senarai semak kepada tugasan"
+      "convertChecklists": "Tukar item senarai semak kepada tugasan",
+      "convertAgentChecklists": "Tukar item senarai semak daripada ejen kepada tugasan"
     },
     "convertChecklists": {
       "description": "Setiap item senarai semak baharu menjadi tugasan. Apabila dimatikan, senarai kekal sebagai kotak semak biasa; klik kanan item untuk menjadikannya tugasan.",
       "error": "Gagal mengemas kini penukaran senarai semak"
+    },
+    "convertAgentChecklists": {
+      "description": "Jika dimatikan, setiap kotak semak yang ditulis ejen kekal sebagai kotak semak biasa. Ejen mencipta tugasan dengan alat tugasan.",
+      "error": "Gagal mengemas kini penukaran senarai semak ejen"
     }
   },
   "templates": {
@@ -1340,7 +1345,7 @@
     "embedding": {
       "loaded": "Dimuatkan",
       "loading": "Memuatkan",
-      "cacheHint": "~23MB · Dicache secara setempat · Semua pada peranti",
+      "cacheHint": "~210MB · Dicache secara setempat · Semua pada peranti",
       "dimensions": "Dimensi",
       "embeddings": "Embedding",
       "downloadLoad": "Muat turun & muatkan model",

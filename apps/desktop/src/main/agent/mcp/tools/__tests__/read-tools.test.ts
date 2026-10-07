@@ -2,8 +2,10 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { buildReadTools } from '../read-tools'
 import type { VaultServiceHandles } from '../handles'
 import { AgentToolError } from '../../errors'
+import { ImageToolResult } from '../../tool-image'
 
 let lastSearchInput: Parameters<VaultServiceHandles['notes']['search']>[0] | null = null
+let lastViewInput: Parameters<VaultServiceHandles['files']['view']>[0] | null = null
 
 function fake(): VaultServiceHandles {
   return {
@@ -250,6 +252,12 @@ function fake(): VaultServiceHandles {
     },
     windows: {
       snapshotCurrentNote: async () => null
+    },
+    files: {
+      view: async (input) => {
+        lastViewInput = input
+        return new ImageToolResult({ id: input.id }, { data: 'QQ==', mimeType: 'image/png' })
+      }
     }
   }
 }
@@ -319,6 +327,25 @@ describe('Read tools', () => {
       .find((t) => t.name === 'vault_read_note')!
       .handler({ id: 'n1' }, { conversationId: null, windowId: null })
     expect(out).toMatchObject({ id: 'n1', title: 'Hit', content_markdown: '# Hit' })
+  })
+
+  it('vault_view_file forwards id, attachment and page and returns the image result', async () => {
+    const view = tools.find((t) => t.name === 'vault_view_file')!
+    const out = await view.handler(
+      { id: 'n1', attachment: 'scan.pdf', page: 3 },
+      { writeGrant: null, windowId: null }
+    )
+
+    expect(lastViewInput).toEqual({ id: 'n1', attachment: 'scan.pdf', page: 3 })
+    expect(out).toBeInstanceOf(ImageToolResult)
+  })
+
+  it('vault_view_file refuses a page below 1', async () => {
+    await expect(
+      tools
+        .find((t) => t.name === 'vault_view_file')!
+        .handler({ id: 'p1', page: 0 }, { writeGrant: null, windowId: null })
+    ).rejects.toMatchObject({ code: 'VALIDATION' })
   })
 
   it('vault_list_canvases returns canvases with their folder-qualified path and item counts', async () => {

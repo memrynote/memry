@@ -362,12 +362,7 @@ export const applyFiltersAndSort = <T extends FilterTask>(
   }
 
   if (hasLocation(filters)) {
-    result = filterByLocation(
-      result,
-      filters.folderPaths ?? [],
-      filters.noteIds ?? [],
-      noteIndex
-    )
+    result = filterByLocation(result, filters.folderPaths ?? [], filters.noteIds ?? [], noteIndex)
   }
 
   result = filterByDueDateRange(result, filters.dueDate, now, weekStartsOn)

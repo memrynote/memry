@@ -4,6 +4,8 @@ import {
   PROBE_PORTS,
   captureHeaders,
   claimToken,
+  getTags,
+  getFolders,
   pairRequestUrl,
   parsePing,
   pingUrl,
@@ -41,6 +43,12 @@ describe('probe range', () => {
 describe('parsePing', () => {
   test('accepts a memry ping', () => {
     expect(parsePing({ app: 'memry', version: '1.0.0', paired: true })?.paired).toBe(true)
+  })
+  test('reads capabilities, and treats an older desktop without them as none', () => {
+    expect(
+      parsePing({ app: 'memry', paired: true, capabilities: ['folders', 3] })?.capabilities
+    ).toEqual(['folders'])
+    expect(parsePing({ app: 'memry', paired: true })?.capabilities).toEqual([])
   })
   test('rejects a foreign server', () => {
     expect(parsePing({ app: 'other', paired: true })).toBeNull()
@@ -100,11 +108,16 @@ describe('claimToken', () => {
 })
 
 describe('postCapture', () => {
-  test('maps 200 to itemId', async () => {
-    const fetchFn = vi.fn(async () => ok({ itemId: 'item-1' }))
-    expect(await postCapture(7849, 't', draft, fetchFn as unknown as typeof fetch)).toEqual({
+  test('maps 200 to itemId and the filed folder; an older desktop means Inbox', async () => {
+    const older = vi.fn(async () => ok({ itemId: 'item-1' }))
+    expect(await postCapture(7849, 't', draft, older as unknown as typeof fetch)).toEqual({
       ok: true,
-      itemId: 'item-1'
+      itemId: 'item-1',
+      filedTo: null
+    })
+    const filed = vi.fn(async () => ok({ itemId: 'item-1', filedTo: 'Reading' }))
+    expect(await postCapture(7849, 't', draft, filed as unknown as typeof fetch)).toMatchObject({
+      filedTo: 'Reading'
     })
   })
   test('maps error status to error code', async () => {
@@ -115,6 +128,30 @@ describe('postCapture', () => {
       ok: false,
       error: 'invalid-capture'
     })
+  })
+})
+
+describe('getTags', () => {
+  test('returns the string tags from /tags', async () => {
+    const fetchFn = vi.fn(async () => ok({ tags: ['reading', 3, 'ai'] }))
+    expect(await getTags(7849, 't', fetchFn as unknown as typeof fetch)).toEqual(['reading', 'ai'])
+  })
+  test('uses POST, since Chrome sends no Origin on an extension GET', async () => {
+    const fetchFn = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async () =>
+      ok({ tags: [] })
+    )
+    await getTags(7849, 't', fetchFn as unknown as typeof fetch)
+    expect(fetchFn.mock.calls[0][1]?.method).toBe('POST')
+  })
+  test('falls back to no suggestions on an older desktop, closed vault, or closed app', async () => {
+    const notFound = vi.fn(async () => new Response('{}', { status: 404 }))
+    const vaultClosed = vi.fn(async () => new Response('{}', { status: 503 }))
+    const down = vi.fn(async () => {
+      throw new TypeError('fetch failed')
+    })
+    for (const fetchFn of [notFound, vaultClosed, down]) {
+      expect(await getTags(7849, 't', fetchFn as unknown as typeof fetch)).toEqual([])
+    }
   })
 })
 
@@ -200,5 +237,31 @@ describe('postRevoke', () => {
       throw new Error('down')
     }) as unknown as typeof fetch
     expect(await postRevoke(7849, 'tok', fetchFn)).toBe(false)
+  })
+})
+
+describe('getFolders', () => {
+  test('sends the auth headers and returns the listing', async () => {
+    const body = { vaultId: 'v1', vaultName: 'Notes', folders: ['Reading', ''] }
+    const fetchFn = vi.fn(async () => ok(body))
+    expect(await getFolders(7849, 'tok', fetchFn as unknown as typeof fetch)).toEqual({
+      vaultId: 'v1',
+      vaultName: 'Notes',
+      folders: ['Reading']
+    })
+    expect(fetchFn).toHaveBeenCalledWith('http://127.0.0.1:7849/folders', {
+      method: 'POST',
+      headers: captureHeaders('tok')
+    })
+  })
+  test('returns null for a closed vault, a bad shape, or no server', async () => {
+    const closed = async () => new Response('{"error":"vault-closed"}', { status: 503 })
+    const bad = async () => ok({ folders: ['x'] })
+    const down = async () => {
+      throw new TypeError('fetch failed')
+    }
+    for (const f of [closed, bad, down]) {
+      expect(await getFolders(7849, 'tok', f as unknown as typeof fetch)).toBeNull()
+    }
   })
 })

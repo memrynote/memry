@@ -448,11 +448,16 @@
       "width": "Lapad ng editor",
       "toolbarMode": "Nakadikit na toolbar sa pag-format",
       "spellCheck": "Suriin ang pagbaybay",
-      "convertChecklists": "Gawing task ang mga item sa checklist"
+      "convertChecklists": "Gawing task ang mga item sa checklist",
+      "convertAgentChecklists": "Gawing task ang mga item sa checklist na isinulat ng agent"
     },
     "convertChecklists": {
       "description": "Nagiging task ang bawat bagong item sa checklist. Kapag naka-off, nananatiling karaniwang checkbox ang mga checklist; i-right-click ang isa para gawin itong task.",
       "error": "Hindi ma-update ang pag-convert ng checklist"
+    },
+    "convertAgentChecklists": {
+      "description": "Kapag naka-off, nananatiling simpleng checkbox ang bawat checkbox na isinusulat ng agent. Gumagawa ng task ang mga agent gamit ang mga task tool.",
+      "error": "Hindi ma-update ang pag-convert ng checklist ng agent"
     }
   },
   "templates": {
@@ -1340,7 +1345,7 @@
     "embedding": {
       "loaded": "Na-load",
       "loading": "Naglo-load",
-      "cacheHint": "~23MB · Lokal na naka-cache · Lahat sa device",
+      "cacheHint": "~210MB · Lokal na naka-cache · Lahat sa device",
       "dimensions": "Mga dimensyon",
       "embeddings": "Mga embedding",
       "downloadLoad": "I-download at i-load ang modelo",

@@ -374,7 +374,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {Oczekujące na zatwierdzenie: #} few {Oczekujące na zatwierdzenie: #} many {Oczekujące na zatwierdzenie: #} other {Oczekujące na zatwierdzenie: #}}",
       "inProgress": "Agent pracuje",
-      "close": "Zamknij agenta"
+      "close": "Zamknij agenta",
+      "moreActions": "Więcej działań agenta"
     },
     "errors": {
       "loadConversations": "Nie udało się załadować rozmów z agentem",

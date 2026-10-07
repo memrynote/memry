@@ -1351,6 +1351,7 @@ export interface EditorSettingsDTO {
   spellCheck: boolean
   pdfAdaptToTheme: boolean
   convertChecklistsToTasks: boolean
+  convertAgentChecklistsToTasks: boolean
 }
 
 export interface TaskSettingsDTO {
@@ -1833,6 +1834,8 @@ interface WindowAPI {
   windowMinimize: () => void
   windowMaximize: () => void
   windowClose: () => void
+  /** Windows only: caption-button symbol color (#rrggbb) for the title bar overlay. */
+  setTitleBarSymbolColor: (color: string) => void
   setZoomFactor: (factor: number) => void
 }
 
@@ -1947,7 +1950,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
     setAutoCheck: (enabled: boolean) => Promise<AppUpdateState>
   }
   syncCrdt: {
-    openDoc: (input: { noteId: string }) => Promise<CrdtOpenDocResult>
+    openDoc: (input: { noteId: string; vaultPath?: string }) => Promise<CrdtOpenDocResult>
     closeDoc: (input: { noteId: string }) => Promise<void>
     applyUpdate: (input: { noteId: string; update: Uint8Array }) => Promise<void>
     syncStep1: (input: {

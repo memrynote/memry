@@ -374,7 +374,8 @@
       "agent": "KI-Agent",
       "pendingApproval": "{count, plural, one {# ausstehende Freigabe} other {# ausstehende Freigaben}}",
       "inProgress": "Agent arbeitet gerade",
-      "close": "Agent schließen"
+      "close": "Agent schließen",
+      "moreActions": "Weitere Agent-Aktionen"
     },
     "errors": {
       "loadConversations": "Unterhaltungen mit dem Agenten konnten nicht geladen werden",

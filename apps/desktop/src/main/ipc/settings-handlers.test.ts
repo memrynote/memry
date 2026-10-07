@@ -866,6 +866,16 @@ describe('settings-handlers', () => {
       expect(mockUpdateField.mock.calls).toEqual([['editor.convertChecklistsToTasks', false]])
     })
 
+    it('#when agent checklist conversion is switched on #then syncs it', async () => {
+      registerSettingsHandlers()
+
+      await invokeHandler(SettingsChannels.invoke.SET_EDITOR_SETTINGS, {
+        convertAgentChecklistsToTasks: true
+      })
+
+      expect(mockUpdateField.mock.calls).toEqual([['editor.convertAgentChecklistsToTasks', true]])
+    })
+
     it('#given sync manager exists #when accentColor is set #then syncs via updateField', async () => {
       registerSettingsHandlers()
 

@@ -374,7 +374,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# akce čeká na schválení} few {# akce čekají na schválení} other {# akcí čeká na schválení}}",
       "inProgress": "Agent právě odpovídá",
-      "close": "Zavřít agenta"
+      "close": "Zavřít agenta",
+      "moreActions": "Další akce agenta"
     },
     "errors": {
       "loadConversations": "Konverzace s agentem se nepodařilo načíst",

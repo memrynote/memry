@@ -448,11 +448,16 @@
       "width": "Largura do editor",
       "toolbarMode": "Barra de ferramentas de formatação fixa",
       "spellCheck": "Verificar ortografia",
-      "convertChecklists": "Transformar itens da lista em tarefas"
+      "convertChecklists": "Transformar itens da lista em tarefas",
+      "convertAgentChecklists": "Transformar em tarefas os itens da lista escritos por um agente"
     },
     "convertChecklists": {
       "description": "Cada novo item da lista vira uma tarefa. Desativado, as listas ficam como caixas de seleção simples; clique com o botão direito em uma para torná-la tarefa.",
       "error": "Não foi possível atualizar a conversão de listas de verificação"
+    },
+    "convertAgentChecklists": {
+      "description": "Desativado, cada caixa de seleção que um agente escreve continua uma caixa simples. Os agentes criam tarefas com as ferramentas de tarefas.",
+      "error": "Não foi possível atualizar a conversão de listas de verificação dos agentes"
     }
   },
   "templates": {
@@ -1340,7 +1345,7 @@
     "embedding": {
       "loaded": "Carregado",
       "loading": "Carregando",
-      "cacheHint": "~23MB · Armazenado em cache localmente · Tudo no dispositivo",
+      "cacheHint": "~210MB · Armazenado em cache localmente · Tudo no dispositivo",
       "dimensions": "Dimensões",
       "embeddings": "Embeddings",
       "downloadLoad": "Baixar e carregar modelo",

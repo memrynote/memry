@@ -26,6 +26,10 @@ export const HTML_ARTIFACT_MAX_CHARS = 512 * 1024
 const CANVAS_ID_HINT =
   'Takes the canvas id or its folder-qualified name ("Work/Plan") from vault_list_canvases; ' +
   'a bare title matching more than one canvas is refused with the candidates listed.'
+const CHECKLIST_HINT =
+  'Checkbox lines you add are stored as plain checkboxes, marked {check}, unless the owner ' +
+  'turned on task conversion for agents; then they become tasks and the reply lists them in ' +
+  'created_tasks. Create tasks with vault_create_task.'
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 const isoTimeSchema = z.string().regex(/^\d{2}:\d{2}$/)
 const colorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/)
@@ -128,7 +132,23 @@ export const TOOL_SCHEMAS = {
       'from_page to continue. A markdown note that embeds PDFs, images or HTML blocks adds ' +
       'attachment_text, the text read from each ({ file, text }; the visible text for an ' +
       'HTML block), about 100 KB at most. Errors with VALIDATION ' +
-      'for a filed audio or video file.'
+      'for a filed audio or video file. To look at an image or a PDF page, use vault_view_file.'
+  },
+  vault_view_file: {
+    input: z.object({
+      id: idSchema,
+      attachment: z.string().min(1).optional(),
+      page: z.number().int().positive().optional()
+    }),
+    description:
+      'Look at an image, or one page of a PDF, from the vault. Returns the picture as image ' +
+      'content (PNG, or JPEG when large) with its long edge at most 1568 px, plus JSON that ' +
+      'says what was sent: file, width and height, the source size for an image, and page and ' +
+      'page_count for a PDF. Pass the id of a filed image or PDF (file_type "image" or "pdf"); ' +
+      'page picks the PDF page, default 1, one page per call. For an image or PDF a markdown ' +
+      'note embeds, pass the note id and the file name as attachment: the name after ' +
+      'attachments/<note id>/ in the note, or attachment_text[].file from vault_read_note. ' +
+      'A model that cannot take images gets a text notice instead of the picture.'
   },
   vault_list_folder: {
     input: z.object({
@@ -247,7 +267,7 @@ export const TOOL_SCHEMAS = {
       folder_path: z.string().optional(),
       tags: z.array(z.string()).optional()
     }),
-    description: 'Create a new note. Requires user approval.'
+    description: `Create a new note. ${CHECKLIST_HINT} Requires user approval.`
   },
   vault_rename_note: {
     input: z.object({ id: idSchema, title: z.string().min(1).max(200) }),
@@ -379,7 +399,7 @@ export const TOOL_SCHEMAS = {
       date: isoDateSchema,
       content_markdown: z.string()
     }),
-    description: 'Create or return existing journal entry for date. Requires user approval.'
+    description: `Create or return existing journal entry for date. ${CHECKLIST_HINT} Requires user approval.`
   },
   vault_update_journal_entry: {
     input: z.object({
@@ -388,7 +408,7 @@ export const TOOL_SCHEMAS = {
       tags: z.array(z.string()).optional(),
       properties: unknownRecordSchema.optional()
     }),
-    description: 'Update or create a journal entry. Requires user approval.'
+    description: `Update or create a journal entry. ${CHECKLIST_HINT} Requires user approval.`
   },
   vault_delete_journal_entry: {
     input: z.object({ date: isoDateSchema }),
@@ -444,7 +464,7 @@ export const TOOL_SCHEMAS = {
       mode: z.enum(['append', 'prepend', 'replace']),
       content_markdown: z.string()
     }),
-    description: 'Update note body. Requires user approval with diff preview.'
+    description: `Update note body. ${CHECKLIST_HINT} Requires user approval with diff preview.`
   },
   vault_add_html_artifact: {
     input: z.object({
@@ -569,6 +589,7 @@ export type ToolName = keyof typeof TOOL_SCHEMAS
 export const READ_TOOL_NAMES = [
   'vault_search_notes',
   'vault_read_note',
+  'vault_view_file',
   'vault_list_folder',
   'vault_get_current_note',
   'vault_list_tasks',

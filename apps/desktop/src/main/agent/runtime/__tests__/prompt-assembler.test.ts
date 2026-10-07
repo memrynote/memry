@@ -282,6 +282,12 @@ describe('Prompt assembler', () => {
     expect(SYSTEM_PROMPT_HEADER).toContain('# Ambiguity')
   })
 
+  it('routes looking at an image or a PDF page to vault_view_file', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain(
+      '- Looking at an image or a PDF page (a screenshot, photo, chart, or scan) → vault_view_file.'
+    )
+  })
+
   it('preserves write-gate and refusal guidance in the Tool Use section', () => {
     expect(SYSTEM_PROMPT_HEADER).toContain('write gate')
     expect(SYSTEM_PROMPT_HEADER).toContain('Refuse')

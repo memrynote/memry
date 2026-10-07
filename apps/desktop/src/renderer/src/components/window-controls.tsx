@@ -23,14 +23,9 @@ interface WindowControlsProps {
 }
 
 /**
- * Native macOS traffic lights (main/index.ts trafficLightPosition x: 12) span ~54px and
- * overflow the 52px rail, so the buttons start after them.
- */
-const NATIVE_LIGHTS_END_PX = 68
-
-/**
- * Viewport-fixed h-9 title row. The native traffic lights sit at its start; the
- * buttons follow them in both sidebar states. The sidebar panel and, when
+ * Viewport-fixed h-9 title row. On macOS the native traffic lights sit at its
+ * start and the buttons follow them; elsewhere the buttons take that slot. Same
+ * in both sidebar states. The sidebar panel and, when
  * collapsed, the workspace card start below this row.
  */
 export function WindowControls({ className }: WindowControlsProps): React.JSX.Element {
@@ -69,6 +64,14 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
       >
         <TrafficLights />
       </div>
+      {/* Opaque backing for the Windows caption buttons (transparent overlay, 0px
+          wide elsewhere): the right panel slides through this corner when it opens
+          or closes, and would otherwise show behind minimize/maximize/close. */}
+      <div
+        aria-hidden="true"
+        className={cn('fixed top-0 end-0 drag-region h-9 bg-sidebar-rail', className)}
+        style={{ width: 'var(--caption-reserve-end)' }}
+      />
       <div
         className={cn(
           'fixed drag-region flex items-center gap-2 shrink-0 h-9 ps-1 pe-2',
@@ -76,7 +79,9 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
         )}
         style={{
           top: 0,
-          insetInlineStart: NATIVE_LIGHTS_END_PX,
+          // main.css: after the macOS traffic lights, near the edge elsewhere, and past
+          // Windows caption buttons when those sit on the start side (RTL).
+          insetInlineStart: 'calc(var(--window-controls-start) + var(--caption-reserve-start))',
           width: 'var(--chrome-buttons-width)'
         }}
       >

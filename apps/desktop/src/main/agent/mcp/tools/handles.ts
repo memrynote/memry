@@ -13,6 +13,9 @@ import type {
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 import type { NoteFileType } from '@memry/contracts/search-api'
 
+import type { ImageToolResult } from '../tool-image'
+import type { FileViewInput } from './file-view'
+
 /**
  * `file_type` is always populated: index rows written before filed binaries
  * existed carry no file type, and those are always markdown (#800, #919). A
@@ -211,6 +214,11 @@ export interface CanvasElementsDetail {
   truncated: boolean
 }
 
+/** Present only when a body write turned checkbox lines into tasks. */
+export interface CreatedTasksReply {
+  created_tasks?: Array<{ id: string; title: string }>
+}
+
 export interface VaultServiceHandles {
   notes: {
     search(input: {
@@ -225,14 +233,14 @@ export interface VaultServiceHandles {
       content_markdown: string
       folder_path?: string
       tags?: string[]
-    }): Promise<{ id: string }>
+    }): Promise<{ id: string } & CreatedTasksReply>
     rename(input: { id: string; title: string }): Promise<{ id: string }>
     delete(id: string): Promise<{ id: string }>
     update(input: {
       id: string
       mode: 'append' | 'prepend' | 'replace'
       content_markdown: string
-    }): Promise<void>
+    }): Promise<CreatedTasksReply>
     addTag(input: { id: string; tag: string }): Promise<void>
     removeTag(input: { id: string; tag: string }): Promise<void>
     /**
@@ -381,13 +389,13 @@ export interface VaultServiceHandles {
     createIfMissing(input: {
       date: string
       content_markdown: string
-    }): Promise<{ id: string; created: boolean }>
+    }): Promise<{ id: string; created: boolean } & CreatedTasksReply>
     update(input: {
       date: string
       content_markdown?: string
       tags?: string[]
       properties?: Record<string, unknown>
-    }): Promise<{ id: string }>
+    }): Promise<{ id: string } & CreatedTasksReply>
     delete(date: string): Promise<{ date: string; deleted: boolean }>
   }
   inbox: {
@@ -438,5 +446,9 @@ export interface VaultServiceHandles {
   }
   windows: {
     snapshotCurrentNote(windowId: string): Promise<CurrentNoteSnapshot | null>
+  }
+  files: {
+    /** A filed image, a page of a filed PDF, or a note's image or PDF attachment. */
+    view(input: FileViewInput): Promise<ImageToolResult>
   }
 }
