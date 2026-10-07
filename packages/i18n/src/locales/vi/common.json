@@ -374,7 +374,8 @@
       "agent": "Tác nhân",
       "pendingApproval": "{count, plural, other {# yêu cầu chờ phê duyệt}}",
       "inProgress": "Tác nhân đang xử lý lượt trò chuyện",
-      "close": "Đóng tác nhân"
+      "close": "Đóng tác nhân",
+      "moreActions": "Thêm thao tác của tác tử"
     },
     "errors": {
       "loadConversations": "Không thể tải các cuộc trò chuyện với tác nhân",

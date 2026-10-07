@@ -374,7 +374,8 @@
       "agent": "代理程式",
       "pendingApproval": "{count, plural, other {# 項待核准}}",
       "inProgress": "代理程式正在回應",
-      "close": "關閉代理程式"
+      "close": "關閉代理程式",
+      "moreActions": "更多代理程式動作"
     },
     "errors": {
       "loadConversations": "無法載入代理程式對話",

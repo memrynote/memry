@@ -374,7 +374,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# odobrenje na čekanju} few {# odobrenja na čekanju} other {# odobrenja na čekanju}}",
       "inProgress": "Agent upravo odgovara",
-      "close": "Zatvori agenta"
+      "close": "Zatvori agenta",
+      "moreActions": "Više radnji agenta"
     },
     "errors": {
       "loadConversations": "Nije moguće učitati razgovore s agentom",
