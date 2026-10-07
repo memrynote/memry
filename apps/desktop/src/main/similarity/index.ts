@@ -23,6 +23,7 @@ import { getDatabase, getIndexDatabase, getRawIndexDatabase } from '../database'
 import { getSetting } from '@main/database/queries/settings'
 import { getIncomingReferences, getOutgoingLinks } from '@main/database/queries/notes'
 import { getPropertyRefsForNote } from '@main/database/queries/notes/property-ref-queries'
+import { calibrateSimilarity } from '../lib/embeddings-constants'
 import { createLogger } from '../lib/logger'
 import { clusterBySimilarity, scoreNeighbourTags, suggestGroupName } from './scoring'
 
@@ -32,16 +33,23 @@ const AI_SETTINGS_KEY = 'ai.enabled'
 
 const DEFAULT_SIMILAR_LIMIT = 5
 /**
- * Neighbours below this cosine similarity are not shown as "similar". For
- * all-MiniLM-L6-v2, unrelated notes land around 0–0.2 and notes on one topic
- * well above 0.4; the floor keeps a sparse vault from padding the list with
- * whatever happens to be least unrelated.
+ * Neighbours below this similarity are not shown as "similar". Similarities
+ * here are calibrated (calibrateSimilarity): EmbeddingGemma 2's raw cosine puts
+ * unrelated notes at 0.65-0.79, which calibrates to ~0.1-0.47. 0.5 (raw 0.80)
+ * clears the strongest unrelated pair measured on Turkish and English notes;
+ * cross-language duplicates and same-topic notes (raw 0.81-0.95) stay. The
+ * floor keeps a sparse vault from padding the list with whatever happens to be
+ * least unrelated.
  */
-const MIN_SIMILAR = 0.35
+const MIN_SIMILAR = 0.5
 
 /** Neighbours read for tag suggestions. */
 const TAG_NEIGHBOURS = 20
-const TAG_MIN_SIMILARITY = 0.3
+/**
+ * Calibrated, raw cosine 0.76. Looser than {@link MIN_SIMILAR}: a tag also
+ * needs {@link TAG_MIN_SUPPORT} neighbours agreeing, which filters the strays.
+ */
+const TAG_MIN_SIMILARITY = 0.4
 /** A tag on one note is a coincidence; two notes agreeing is a pattern. */
 const TAG_MIN_SUPPORT = 2
 const TAG_MIN_CONFIDENCE = 0.3
@@ -51,8 +59,12 @@ const TAG_LIMIT = 3
  * Average-linkage floor for grouping. Looser than {@link MIN_SIMILAR}: a
  * group's members are compared with each other on average, and a proposal the
  * user can rename or discard costs less than a note shown as "similar".
+ * Raw cosine (clustering compares stored vectors directly, uncalibrated): 0.77
+ * sits between the weakest related pair (0.75) and the strongest unrelated one
+ * (0.79) measured for EmbeddingGemma 2; average linkage over a group pulls a
+ * single stray below it.
  */
-const CLUSTER_THRESHOLD = 0.3
+const CLUSTER_THRESHOLD = 0.77
 
 function isEmbeddingEnabled(): boolean {
   try {
@@ -102,7 +114,10 @@ function nearest(vector: Float32Array, k: number): Array<{ noteId: string; simil
        ORDER BY distance`
     )
     .all(vector, k) as Array<{ note_id: string; distance: number }>
-  return rows.map((row) => ({ noteId: row.note_id, similarity: 1 - row.distance }))
+  return rows.map((row) => ({
+    noteId: row.note_id,
+    similarity: calibrateSimilarity(1 - row.distance)
+  }))
 }
 
 /** Notes already connected to `noteId` either way, which a "similar" list must not repeat. */

@@ -1345,7 +1345,7 @@
     "embedding": {
       "loaded": "Učitano",
       "loading": "Učitavanje",
-      "cacheHint": "~23 MB · Lokalno u predmemoriji · Sve na uređaju",
+      "cacheHint": "~210 MB · Lokalno u predmemoriji · Sve na uređaju",
       "dimensions": "Dimenzije",
       "embeddings": "Vektorski prikazi",
       "downloadLoad": "Preuzmi i učitaj model",

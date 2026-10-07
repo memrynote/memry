@@ -1345,7 +1345,7 @@
     "embedding": {
       "loaded": "已載入",
       "loading": "載入中",
-      "cacheHint": "~23MB · 本機快取 · 完全在裝置上執行",
+      "cacheHint": "~210MB · 本機快取 · 完全在裝置上執行",
       "dimensions": "維度",
       "embeddings": "嵌入向量",
       "downloadLoad": "下載並載入模型",

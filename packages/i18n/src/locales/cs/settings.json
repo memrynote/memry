@@ -1345,7 +1345,7 @@
     "embedding": {
       "loaded": "Načteno",
       "loading": "Načítání",
-      "cacheHint": "~23 MB · Uloženo v místní mezipaměti · Vše v zařízení",
+      "cacheHint": "~210 MB · Uloženo v místní mezipaměti · Vše v zařízení",
       "dimensions": "Dimenze",
       "embeddings": "Embeddingy",
       "downloadLoad": "Stáhnout a načíst model",
