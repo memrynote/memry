@@ -647,7 +647,8 @@ it. With `operation`, the reply names the tool that runs it (`vault_desktop_read
 `vault_desktop_write`), whether it needs approval, its parameters in call order and `args_schema`,
 the JSON Schema (draft 2020-12) of the `args` array with every type, required key, allowed value and
 default. Without `operation`, the reply lists every operation with its tool and call shape, such as
-`notes.list(options?)`, where `?` marks an argument the call may leave out.
+`notes.list(options?)`, where `?` marks an argument the call may leave out. An operation that takes
+no arguments has no `prefixItems` in its `args_schema`, only `"maxItems": 0`.
 
 ```json
 {
