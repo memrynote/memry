@@ -29,8 +29,8 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
   const { t: tPhaseF } = useT('common')
   const [isHovered, setIsHovered] = React.useState(false)
 
-  // Only macOS hides its native frame (titleBarStyle: 'hidden'). On Windows/Linux the
-  // native window buttons remain, so these mac-style controls would just duplicate them.
+  // Windows draws its native caption buttons over the title row and Linux keeps its
+  // native frame, so these mac-style controls would just duplicate them there.
   if (USE_NATIVE_TRAFFIC_LIGHTS) return null
   if (navigator.platform.toUpperCase().indexOf('MAC') < 0) return null
 

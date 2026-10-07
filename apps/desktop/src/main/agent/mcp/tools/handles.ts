@@ -221,6 +221,11 @@ export interface CanvasElementsDetail {
   truncated: boolean
 }
 
+/** Present only when a body write turned checkbox lines into tasks. */
+export interface CreatedTasksReply {
+  created_tasks?: Array<{ id: string; title: string }>
+}
+
 export interface VaultServiceHandles {
   notes: {
     search(input: {
@@ -235,14 +240,14 @@ export interface VaultServiceHandles {
       content_markdown: string
       folder_path?: string
       tags?: string[]
-    }): Promise<{ id: string; body: WrittenBody }>
+    }): Promise<{ id: string; body: WrittenBody } & CreatedTasksReply>
     rename(input: { id: string; title: string }): Promise<{ id: string }>
     delete(id: string): Promise<{ id: string }>
     update(input: {
       id: string
       mode: 'append' | 'prepend' | 'replace'
       content_markdown: string
-    }): Promise<WrittenBody>
+    }): Promise<WrittenBody & CreatedTasksReply>
     addTag(input: { id: string; tag: string }): Promise<void>
     removeTag(input: { id: string; tag: string }): Promise<void>
     /**
@@ -394,14 +399,14 @@ export interface VaultServiceHandles {
     createIfMissing(input: {
       date: string
       content_markdown: string
-    }): Promise<{ id: string; created: boolean; body?: WrittenBody }>
+    }): Promise<{ id: string; created: boolean; body?: WrittenBody } & CreatedTasksReply>
     /** `body` only when the call sent `content_markdown`. */
     update(input: {
       date: string
       content_markdown?: string
       tags?: string[]
       properties?: Record<string, unknown>
-    }): Promise<{ id: string; body?: WrittenBody }>
+    }): Promise<{ id: string; body?: WrittenBody } & CreatedTasksReply>
     delete(date: string): Promise<{ date: string; deleted: boolean }>
   }
   inbox: {
@@ -445,6 +450,15 @@ export interface VaultServiceHandles {
       input: { operation: AgentMcpDesktopReadOperation; args: unknown[] },
       windowId: string | null
     ): Promise<unknown>
+    /**
+     * The request `write` sends for `input`: an agent's added checkbox lines
+     * marked plain unless the owner turned agent checklist conversion on.
+     * `write` sends a prepared request unchanged.
+     */
+    prepareWrite(input: {
+      operation: AgentMcpDesktopWriteOperation
+      args: unknown[]
+    }): Promise<{ operation: AgentMcpDesktopWriteOperation; args: unknown[] }>
     write(
       input: { operation: AgentMcpDesktopWriteOperation; args: unknown[] },
       windowId: string | null

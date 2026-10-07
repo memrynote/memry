@@ -1356,6 +1356,7 @@ export interface EditorSettingsDTO {
   spellCheck: boolean
   pdfAdaptToTheme: boolean
   convertChecklistsToTasks: boolean
+  convertAgentChecklistsToTasks: boolean
 }
 
 export interface TaskSettingsDTO {
@@ -1838,6 +1839,8 @@ interface WindowAPI {
   windowMinimize: () => void
   windowMaximize: () => void
   windowClose: () => void
+  /** Windows only: caption-button symbol color (#rrggbb) for the title bar overlay. */
+  setTitleBarSymbolColor: (color: string) => void
   setZoomFactor: (factor: number) => void
 }
 

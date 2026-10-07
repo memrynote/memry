@@ -107,17 +107,42 @@ export function initIndexDatabase(dbPath: string): IndexDb {
   // Load sqlite-vec extension for vector search
   sqliteVec.load(sqliteIndexDb)
 
-  // Create vec0 virtual table for note embeddings (not managed by Drizzle)
-  // Uses cosine distance metric for similarity search
-  sqliteIndexDb.exec(`
+  ensureVecNotesTable(sqliteIndexDb)
+
+  indexDb = drizzle(sqliteIndexDb, { schema: indexSchema })
+  return indexDb
+}
+
+/**
+ * Create the vec0 table for note embeddings (not managed by Drizzle), cosine
+ * distance, sized to the current model.
+ *
+ * `IF NOT EXISTS` alone would keep a table built for an older model: installs
+ * from before EmbeddingGemma 2 carry `float[384]`, and every 256d insert into
+ * it fails. vec0 cannot change a column's width, so a table of the wrong width
+ * is dropped and recreated. Safe: vectors are derived from the notes, live only
+ * in this index DB and are never synced. The empty table is refilled by the
+ * embedding projector's reconcile, which embeds every note without a vector.
+ */
+export function ensureVecNotesTable(db: Database.Database): void {
+  const existing = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'vec_notes'")
+    .get() as { sql: string | null } | undefined
+  const width = existing?.sql?.match(/float\[(\d+)\]/)?.[1]
+  if (existing && width !== String(EMBEDDING_DIMENSION)) {
+    logger.info('Recreating vec_notes for a new embedding dimension', {
+      from: width ?? 'unknown',
+      to: EMBEDDING_DIMENSION
+    })
+    db.exec('DROP TABLE vec_notes')
+  }
+
+  db.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS vec_notes USING vec0(
       note_id TEXT PRIMARY KEY,
       embedding float[${EMBEDDING_DIMENSION}] distance_metric=cosine
     )
   `)
-
-  indexDb = drizzle(sqliteIndexDb, { schema: indexSchema })
-  return indexDb
 }
 
 export function getDatabase(): DataDb {

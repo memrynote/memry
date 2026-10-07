@@ -157,7 +157,14 @@ export const EditorSettingsSchema = z.object({
    * subtask. Settings written before this key existed lack it and read as the
    * default.
    */
-  convertChecklistsToTasks: z.boolean()
+  convertChecklistsToTasks: z.boolean(),
+  /**
+   * Whether a checklist item in an agent's note or journal write becomes a
+   * task. Off stores each checkbox line the agent adds as a plain checkbox
+   * (`{check}`); agents create tasks with the task tools. Absent in settings
+   * written before this key existed, which read as the default.
+   */
+  convertAgentChecklistsToTasks: z.boolean()
 })
 
 export type EditorSettings = z.infer<typeof EditorSettingsSchema>
@@ -173,7 +180,10 @@ export const EDITOR_SETTINGS_DEFAULTS: EditorSettings = {
   pdfAdaptToTheme: false,
   // On by default: every checklist item became a task before this setting
   // existed, and existing installs keep that.
-  convertChecklistsToTasks: true
+  convertChecklistsToTasks: true,
+  // Off by default: an agent that wrote a checklist got Inbox tasks it never
+  // asked for and was not told about.
+  convertAgentChecklistsToTasks: false
 }
 
 // ============================================================================

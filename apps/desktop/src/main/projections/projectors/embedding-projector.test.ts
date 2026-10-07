@@ -66,7 +66,7 @@ vi.mock('electron', () => ({
 }))
 
 import { createEmbeddingProjector } from './embedding-projector'
-import { EMBEDDING_INPUT_VERSION } from '../../lib/embedding-input'
+import { EMBEDDING_INPUT_VERSION, EMBEDDING_TASK_PREFIX } from '../../lib/embedding-input'
 import { createProjectionRuntime } from '../runtime'
 
 describe('embedding projector', () => {
@@ -242,7 +242,9 @@ describe('embedding projector', () => {
       }
     } as never)
 
-    expect(generateEmbedding).toHaveBeenCalledWith('long enough markdown body')
+    expect(generateEmbedding).toHaveBeenCalledWith(
+      `${EMBEDDING_TASK_PREFIX}long enough markdown body`
+    )
     expect(prepare).toHaveBeenCalledWith('DELETE FROM vec_notes WHERE note_id = ?')
     expect(prepare).toHaveBeenCalledWith('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)')
     expect(run).toHaveBeenCalledWith('note-1', new Float32Array([0.1, 0.2]))
@@ -271,7 +273,9 @@ describe('embedding projector', () => {
     const projector = createEmbeddingProjector(() => '/vault')
     await projector.project({ type: 'note.text-extracted', noteId: 'pdf-1' })
 
-    expect(generateEmbedding).toHaveBeenCalledWith('Logbook\n\nThe heron left the marsh at dawn')
+    expect(generateEmbedding).toHaveBeenCalledWith(
+      `${EMBEDDING_TASK_PREFIX}Logbook\n\nThe heron left the marsh at dawn`
+    )
     expect(run).toHaveBeenCalledWith('pdf-1', new Float32Array([0.1, 0.2]))
 
     readExtractedOpening.mockReturnValue('')
@@ -299,7 +303,7 @@ describe('embedding projector', () => {
     await projector.project({ type: 'note.text-extracted', noteId: 'note-1' })
 
     expect(generateEmbedding).toHaveBeenCalledWith(
-      'Trip\n\nPacking list for the coast\n\nFerry ticket 7:40 to the estuary'
+      `${EMBEDDING_TASK_PREFIX}Trip\n\nPacking list for the coast\n\nFerry ticket 7:40 to the estuary`
     )
     expect(run).toHaveBeenCalledWith('note-1', new Float32Array([0.1, 0.2]))
   })
@@ -327,7 +331,9 @@ describe('embedding projector', () => {
 
     indexing = false
     await expect(projector.rebuild()).resolves.toEqual({ success: true, computed: 1, skipped: 0 })
-    expect(generateEmbedding).toHaveBeenCalledWith('Logbook\n\nThe heron left the marsh at dawn')
+    expect(generateEmbedding).toHaveBeenCalledWith(
+      `${EMBEDDING_TASK_PREFIX}Logbook\n\nThe heron left the marsh at dawn`
+    )
     expect(readFile).not.toHaveBeenCalled()
   })
 

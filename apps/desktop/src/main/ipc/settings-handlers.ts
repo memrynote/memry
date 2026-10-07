@@ -2,7 +2,7 @@
  * Settings IPC Handlers
  *
  * Handles IPC requests for app settings, including journal settings and AI settings.
- * AI uses local embeddings with all-MiniLM-L6-v2 model (no API key required).
+ * AI uses local embeddings with the EmbeddingGemma 2 model (no API key required).
  *
  * @module main/ipc/settings-handlers
  */
@@ -173,7 +173,10 @@ const INBOX_SYNCABLE_FIELDS: (keyof InboxSettings)[] = [
 
 // Only checklist conversion is pushed: it decides what a note's checkboxes
 // become, and two devices that disagree would convert the same note differently.
-const EDITOR_SYNCABLE_FIELDS: (keyof EditorSettings)[] = ['convertChecklistsToTasks']
+const EDITOR_SYNCABLE_FIELDS: (keyof EditorSettings)[] = [
+  'convertChecklistsToTasks',
+  'convertAgentChecklistsToTasks'
+]
 
 const SETTINGS_KEYS = {
   JOURNAL_DEFAULT_TEMPLATE: JOURNAL_DEFAULT_TEMPLATE_KEY,

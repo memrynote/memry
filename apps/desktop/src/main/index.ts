@@ -184,6 +184,7 @@ import {
   shouldRecordGpuCrash
 } from './gpu-crash-guard'
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
+import { getMainWindowFrameOptions, registerTitleBarOverlayIpc } from './title-bar-overlay'
 import { takeEditorContextMenuClaim } from './editor-context-menu'
 import { getMainI18n, setMainI18n } from './lib/main-i18n'
 import {
@@ -814,13 +815,7 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     icon: join(__dirname, '../../build/icon.png'),
-    ...(process.platform === 'darwin'
-      ? {
-          titleBarStyle: 'hidden',
-          // Native traffic lights, vertically centered in the 36px (h-9) chrome row.
-          trafficLightPosition: { x: 12, y: 12 }
-        }
-      : {}),
+    ...getMainWindowFrameOptions(process.platform),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -1702,6 +1697,7 @@ const appReady = app.whenReady().then(async () => {
   ipcMain.on('ping', () => mainLog.debug('pong'))
 
   // Window control IPC handlers
+  registerTitleBarOverlayIpc()
   ipcMain.on('window-minimize', () => {
     const win = BrowserWindow.getFocusedWindow()
     win?.minimize()

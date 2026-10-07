@@ -374,7 +374,8 @@
       "agent": "Ejen",
       "pendingApproval": "{count, plural, other {# menunggu kelulusan}}",
       "inProgress": "Giliran ejen sedang berlangsung",
-      "close": "Tutup ejen"
+      "close": "Tutup ejen",
+      "moreActions": "Lagi tindakan ejen"
     },
     "errors": {
       "loadConversations": "Tidak dapat memuatkan perbualan ejen",

@@ -101,6 +101,7 @@ const handles: VaultServiceHandles = {
   },
   desktop: {
     read: async () => ({ ok: true }),
+    prepareWrite: async (input) => input,
     write: async ({ operation, args }, windowId) => ({ operation, args, windowId })
   },
   windows: { snapshotCurrentNote: async () => null },

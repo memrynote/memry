@@ -18,6 +18,7 @@ import {
 } from './lib/startup-locale'
 import { applyZoomFactor, getStartupZoomFactor } from './lib/startup-zoom'
 import { applyStartupColorTheme } from './lib/startup-color-theme'
+import { applyStartupPlatform } from './lib/startup-platform'
 import { suppressFirstRunOnboardingInE2E } from './lib/e2e-onboarding'
 import { createGeneratedRpcApi } from './generated-rpc'
 import { windowApi, getFileDropPaths, contextMenuApi, quickCaptureApi, flushApi } from './api/core'
@@ -72,6 +73,7 @@ if (typeof globalThis.window !== 'undefined') {
   }
   applyStartupTheme(startupTheme)
   applyStartupColorTheme()
+  applyStartupPlatform(process.platform)
 
   // Applied here rather than from the renderer's settings load: without it
   // every launch paints at 100% and then visibly jumps to the user's zoom.

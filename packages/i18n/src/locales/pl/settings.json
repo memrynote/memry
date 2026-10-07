@@ -448,11 +448,16 @@
       "width": "Szerokość edytora",
       "toolbarMode": "Stały pasek narzędzi formatowania",
       "spellCheck": "Sprawdzaj pisownię",
-      "convertChecklists": "Zamieniaj elementy listy kontrolnej w zadania"
+      "convertChecklists": "Zamieniaj elementy listy kontrolnej w zadania",
+      "convertAgentChecklists": "Zamieniaj elementy listy kontrolnej od agenta w zadania"
     },
     "convertChecklists": {
       "description": "Każdy nowy element listy kontrolnej staje się zadaniem. Po wyłączeniu listy pozostają zwykłymi polami wyboru; kliknij element prawym przyciskiem, aby zrobić z niego zadanie.",
       "error": "Nie udało się zaktualizować zamiany list kontrolnych"
+    },
+    "convertAgentChecklists": {
+      "description": "Wyłączone zostawia każde pole wyboru zapisane przez agenta jako zwykłe pole. Agenci tworzą zadania narzędziami do zadań.",
+      "error": "Nie udało się zaktualizować zamiany list kontrolnych agenta"
     }
   },
   "templates": {
@@ -1340,7 +1345,7 @@
     "embedding": {
       "loaded": "Załadowano",
       "loading": "Ładowanie",
-      "cacheHint": "~23 MB · Buforowane lokalnie · Wszystko na urządzeniu",
+      "cacheHint": "~210 MB · Buforowane lokalnie · Wszystko na urządzeniu",
       "dimensions": "Wymiary",
       "embeddings": "Osadzenia",
       "downloadLoad": "Pobierz i załaduj model",

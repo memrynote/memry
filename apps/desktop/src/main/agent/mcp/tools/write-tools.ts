@@ -156,8 +156,8 @@ export function buildWriteTools(
           toolName: 'vault_create_note',
           parsedArgs: parsed
         })) as typeof parsed
-        const { id, body } = await handles.notes.create(args)
-        return withWarnings({ id }, bodyWarnings(body))
+        const { body, ...created } = await handles.notes.create(args)
+        return withWarnings(created, bodyWarnings(body))
       }
     },
     vault_rename_note: {
@@ -611,8 +611,8 @@ export function buildWriteTools(
           toolName: 'vault_update_note',
           parsedArgs: parsed
         })) as typeof parsed
-        const body = await handles.notes.update(args)
-        return withWarnings({ id: args.id }, bodyWarnings(body))
+        const { sent, stored, ...created } = await handles.notes.update(args)
+        return withWarnings({ id: args.id, ...created }, bodyWarnings({ sent, stored }))
       }
     },
     vault_add_html_artifact: {
@@ -809,8 +809,11 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_desktop_write', parsed, ctx)
-        const result = await handles.desktop.write(args, ctx.windowId)
-        const write = desktopNoteWrite(args.operation, args.args, result)
+        // The byte check compares with the body after the checkbox step (AF-005),
+        // so only a respelling by the save itself is reported.
+        const request = await handles.desktop.prepareWrite(args)
+        const result = await handles.desktop.write(request, ctx.windowId)
+        const write = desktopNoteWrite(request.operation, request.args, result)
         if (!write) return result
         const body = await handles.notes.storedBody(write.id, write.sent)
         return withWarnings(withStoredNoteContent(result, body.stored), bodyWarnings(body))

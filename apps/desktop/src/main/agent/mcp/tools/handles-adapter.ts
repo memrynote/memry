@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 import { searchAll } from '../../../database/queries/search'
-import { getNoteCacheById, listJournalEntriesInRange } from '../../../database/queries/notes'
+import { getNoteCacheById } from '../../../database/queries/notes'
 import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
 import {
   countExtractedParts,
@@ -13,7 +13,6 @@ import {
 } from '../../../database/queries/extracted-text'
 import { createDesktopInboxDomain } from '../../../inbox/domain'
 import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
-import { deleteJournalEntryFile, readJournalEntry, writeJournalEntry } from '../../../vault/journal'
 import {
   createNoteCommand,
   deleteNoteCommand,
@@ -34,7 +33,7 @@ import {
   listNotes
 } from '../../../vault/notes'
 import { getAllTagsWithCounts, listTagCategories } from '../../../tags/store'
-import { generateId } from '../../../lib/id'
+import { generateId, generateNoteId } from '../../../lib/id'
 import {
   syncFolderConfigCreate,
   syncFolderConfigDelete,
@@ -49,9 +48,11 @@ import { serializeFileBlockMarker } from '../../../import/_shared/attachment-mar
 import { snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { createCanvasHandles } from './canvas-handles'
+import { createJournalHandles } from './journal-handles'
+import { createdTasksReply, withAgentChecklists, writeAgentBody } from './agent-checklists'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { withoutFileBodies } from './desktop-api-reply'
-import { storedJournalBody, storedNoteBody } from './stored-body'
+import { storedNoteBody } from './stored-body'
 import type {
   ExtractedTextReply,
   FolderEntry,
@@ -278,13 +279,29 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         }
       },
       async create(input) {
-        const note = await createNoteCommand({
-          title: input.title,
-          content: input.content_markdown,
-          folder: internalFolderFromToolPath(input.folder_path),
-          tags: input.tags
-        })
-        return { id: note.id, body: await storedNoteBody(note.id, input.content_markdown) }
+        // Preset so a checkbox line converted during the write can link to it.
+        const id = generateNoteId()
+        let written = input.content_markdown
+        const { result: note, createdTasks } = await writeAgentBody(
+          id,
+          input.content_markdown,
+          '',
+          (content) => {
+            written = content
+            return createNoteCommand({
+              id,
+              title: input.title,
+              content,
+              folder: internalFolderFromToolPath(input.folder_path),
+              tags: input.tags
+            })
+          }
+        )
+        return {
+          id: note.id,
+          body: await storedNoteBody(note.id, written),
+          ...createdTasksReply(createdTasks)
+        }
       },
       async rename({ id, title }) {
         await renameNoteCommand(id, title)
@@ -312,9 +329,17 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         if (!note) {
           throw new Error(`Note not found: ${input.id}`)
         }
-        const nextContent = mergeContent(note.content, input.mode, input.content_markdown)
         // `updateNoteCommand` feeds the new body to the note's CRDT doc.
-        const updated = await updateNoteCommand({ id: input.id, content: nextContent })
+        let nextContent = note.content
+        const { result: updated, createdTasks } = await writeAgentBody(
+          input.id,
+          input.content_markdown,
+          input.mode === 'replace' ? note.content : '',
+          (content) => {
+            nextContent = mergeContent(note.content, input.mode, content)
+            return updateNoteCommand({ id: input.id, content: nextContent })
+          }
+        )
 
         // Inline `#hashtag`s in the new body change the note's tag set, and
         // write-back treats the Y.Doc tag array as authoritative — without this
@@ -322,7 +347,10 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         if (!sameTagList(note.tags, updated.tags)) {
           replaceNoteTagsInCrdt(input.id, updated.tags)
         }
-        return storedNoteBody(input.id, nextContent)
+        return {
+          ...(await storedNoteBody(input.id, nextContent)),
+          ...createdTasksReply(createdTasks)
+        }
       },
       async saveHtmlAttachment({ id, title, html }) {
         const fileType = getNoteCacheById(indexDb, id)?.fileType ?? 'markdown'
@@ -696,49 +724,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         return { ids: status_ids }
       }
     },
-    journal: {
-      async getByDate(date) {
-        const entry = await readJournalEntry(date)
-        if (!entry) return null
-        return {
-          id: entry.id,
-          date: entry.date,
-          content_markdown: entry.content
-        }
-      },
-      async listInRange({ from, to }) {
-        return listJournalEntriesInRange(indexDb, from, to).map((entry) => ({
-          id: entry.id,
-          date: entry.date ?? '',
-          title: entry.title
-        }))
-      },
-      async createIfMissing({ date, content_markdown }) {
-        const existing = await readJournalEntry(date)
-        if (existing) return { id: existing.id, created: false }
-
-        const created = await writeJournalEntry(date, content_markdown)
-        return {
-          id: created.id,
-          created: true,
-          body: await storedJournalBody(date, content_markdown)
-        }
-      },
-      async update({ date, content_markdown, tags, properties }) {
-        const existing = await readJournalEntry(date)
-        const updated = await writeJournalEntry(
-          date,
-          content_markdown ?? existing?.content ?? '',
-          tags ?? existing?.tags,
-          properties ?? existing?.properties
-        )
-        if (content_markdown === undefined) return { id: updated.id }
-        return { id: updated.id, body: await storedJournalBody(date, content_markdown) }
-      },
-      async delete(date) {
-        return { date, deleted: await deleteJournalEntryFile(date) }
-      }
-    },
+    journal: createJournalHandles(indexDb),
     inbox: {
       async list({ unread_only }) {
         const result = await createDesktopInboxDomain().list({
@@ -839,9 +825,11 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
         return withoutFileBodies(await invokeDesktopApiFromWindow(windowId, input), fileRowOf)
       },
+      prepareWrite: withAgentChecklists,
       async write(input, windowId) {
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
-        return withoutFileBodies(await invokeDesktopApiFromWindow(windowId, input), fileRowOf)
+        const request = await withAgentChecklists(input)
+        return withoutFileBodies(await invokeDesktopApiFromWindow(windowId, request), fileRowOf)
       }
     },
     windows: {

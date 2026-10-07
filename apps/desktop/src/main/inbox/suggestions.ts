@@ -1,7 +1,7 @@
 /**
  * AI-Powered Filing Suggestions
  *
- * Provides smart filing suggestions using local embeddings (all-MiniLM-L6-v2)
+ * Provides smart filing suggestions using local embeddings (EmbeddingGemma 2)
  * and sqlite-vec for efficient vector similarity search.
  * Learns from filing history to improve suggestions over time.
  *
@@ -32,6 +32,7 @@ import {
 import type { FilingSuggestion, SuggestedNote } from '@memry/contracts/inbox-api'
 import { scoreFolders, type FolderScore } from './folder-scoring'
 import { buildEmbeddingInput } from '../lib/embedding-input'
+import { calibrateSimilarity } from '../lib/embeddings-constants'
 
 const log = createLogger('Inbox:Suggestions')
 
@@ -66,8 +67,14 @@ interface VecSearchResult {
 
 const AI_SETTINGS_KEY = 'ai.enabled'
 
-/** Maximum cosine distance to include in suggestions (lower = more similar) */
-const MAX_DISTANCE_THRESHOLD = 1.0
+/**
+ * Maximum cosine distance to include in suggestions (lower = more similar).
+ * 0.25 = raw cosine similarity >= 0.75. EmbeddingGemma 2 puts unrelated notes
+ * at 0.65-0.79 (median 0.71), so this drops the bulk of them while keeping
+ * every related pair measured (0.75+). MiniLM used 1.0 (cosine >= 0), which
+ * meant "anything not opposite".
+ */
+const MAX_DISTANCE_THRESHOLD = 0.25
 
 /** Maximum number of folder suggestions to return */
 const MAX_SUGGESTIONS = 3
@@ -212,8 +219,10 @@ export async function updateNoteEmbedding(noteId: string): Promise<boolean> {
       return false
     }
 
-    // Generate embedding using local model
-    const embedding = await generateLocalEmbedding(note.content)
+    // Same input shape as the embedding projector, so the vectors compare.
+    const embedding = await generateLocalEmbedding(
+      buildEmbeddingInput({ title: note.title, content: note.content })
+    )
     if (!embedding) {
       log.debug(`Failed to generate embedding for: ${noteId}`)
       return false
@@ -278,7 +287,9 @@ export async function reindexAllEmbeddings(): Promise<{
       }
 
       // Generate embedding
-      const embedding = await generateLocalEmbedding(note.content)
+      const embedding = await generateLocalEmbedding(
+        buildEmbeddingInput({ title: note.title, content: note.content })
+      )
       if (!embedding) {
         skipped++
         continue
@@ -378,8 +389,9 @@ async function findSimilarNotes(content: string, limit: number = 5): Promise<Sim
         noteId: row.note_id,
         notePath: info.path,
         noteTitle: info.title,
-        // Cosine distance ranges 0 (identical)..2 (opposite) → similarity 0..1.
-        score: 1 - row.distance / 2,
+        // Raw cosine is compressed toward 1 for this model; spread it over
+        // 0..1 so "% match" and the folder blend mean what they did.
+        score: calibrateSimilarity(1 - row.distance),
         snippet: info.snippet || '',
         emoji: info.emoji ?? null
       })
@@ -549,6 +561,9 @@ const SIMILAR_NOTE_LIMIT = 20
  * stricter floor than the note-link feature (Codex #4/#18).
  */
 const FOLDER_MIN_CONFIDENCE = 0.45
+// Kept at 0.45 with calibrated scores (calibrateSimilarity): a folder backed by
+// one note needs raw cosine >= ~0.86, one backed by three >= ~0.80, both above
+// the strongest unrelated pair measured for EmbeddingGemma 2 (0.79).
 
 /**
  * Split text into a set of lowercase word tokens for lexical matching.

@@ -374,7 +374,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# approbation en attente} other {# approbations en attente}}",
       "inProgress": "Réponse de l'agent en cours",
-      "close": "Fermer l'agent"
+      "close": "Fermer l'agent",
+      "moreActions": "Plus d'actions de l'agent"
     },
     "errors": {
       "loadConversations": "Impossible de charger les conversations avec l'agent",

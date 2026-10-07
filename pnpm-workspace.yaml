@@ -109,3 +109,4 @@ minimumReleaseAgeExclude:
   - '@electron/rebuild@4.2.0'
   - node-abi@4.33.0
   - expo-image-picker@57.0.14
+  - '@huggingface/transformers@4.3.1'

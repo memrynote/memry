@@ -448,11 +448,16 @@
       "width": "Editorbreite",
       "toolbarMode": "Fixierte Formatierungsleiste",
       "spellCheck": "Rechtschreibung prüfen",
-      "convertChecklists": "Checklistenpunkte in Aufgaben umwandeln"
+      "convertChecklists": "Checklistenpunkte in Aufgaben umwandeln",
+      "convertAgentChecklists": "Checklistenpunkte von Agenten in Aufgaben umwandeln"
     },
     "convertChecklists": {
       "description": "Jeder neue Checklistenpunkt wird zu einer Aufgabe. Aus lässt Checklisten als einfache Kontrollkästchen; per Rechtsklick wird ein Punkt zur Aufgabe.",
       "error": "Die Checklisten-Umwandlung konnte nicht aktualisiert werden"
+    },
+    "convertAgentChecklists": {
+      "description": "Aus lässt jedes Kontrollkästchen, das ein Agent schreibt, ein einfaches Kontrollkästchen. Agenten erstellen Aufgaben mit den Aufgaben-Tools.",
+      "error": "Die Checklisten-Umwandlung für Agenten konnte nicht aktualisiert werden"
     }
   },
   "templates": {
@@ -1340,7 +1345,7 @@
     "embedding": {
       "loaded": "Geladen",
       "loading": "Wird geladen",
-      "cacheHint": "~23 MB · Lokal zwischengespeichert · Alles auf dem Gerät",
+      "cacheHint": "~210 MB · Lokal zwischengespeichert · Alles auf dem Gerät",
       "dimensions": "Dimensionen",
       "embeddings": "Embeddings",
       "downloadLoad": "Modell herunterladen und laden",

@@ -374,7 +374,8 @@
       "agent": "Ajan",
       "pendingApproval": "{count, plural, one {# bekleyen onay} other {# bekleyen onay}}",
       "inProgress": "Ajan yanıt veriyor",
-      "close": "Ajanı kapat"
+      "close": "Ajanı kapat",
+      "moreActions": "Diğer ajan işlemleri"
     },
     "errors": {
       "loadConversations": "Ajan sohbetleri yüklenemedi",

@@ -31,7 +31,9 @@ the first click even when the sidebar opened on the Day view. The assistant back
 on first use rather than at launch, so the panel can show a brief loading state while providers and
 conversation history are detected. The Agent header includes a
 new-conversation button, a history menu for switching back to recent conversations, and a pop-out
-button for moving the current conversation into a workspace tab. Popped-out conversations keep the
+button for moving the current conversation into a workspace tab. On Windows, where the window's
+minimize, maximize, and close buttons share that row, these three actions sit in one **More agent
+actions** (**...**) menu instead. Popped-out conversations keep the
 generated conversation title as the tab name, use the same centered reading column as notes, and
 leave the right sidebar ready for a new chat. The popped-out tab keeps the scroll bar at the window
 edge while the chat content stays centered, and the tab name is the only conversation title shown in
@@ -435,12 +437,29 @@ A write reply can carry a `warnings` list of plain sentences:
   `vault_add_html_artifact`, the body sent is the whole body the call asked the note to hold:
   the current body joined with the new text, not the new text alone. The note is read back
   once any save it was waiting on has run. Line endings count, so an LF body saved into a CRLF
-  note is reported. Only the final newline at the end of the body does not count.
+  note is reported. Only the final newline at the end of the body does not count. The body
+  sent is measured after the checkbox step below, so a checkbox line stored with `{check}` or
+  turned into a task is not reported.
 - While this device runs without its CRDT store, every write reply says so. Note edits are
   still saved to the vault and synced, but without merge history for that session.
 
 `warnings` is the first key of the reply, so a reply cut at the size limit still starts with
 it. A reply that is not a plain object comes back as `{ warnings, result }`.
+
+### Checkboxes in agent writes
+
+A checkbox line an agent writes into a note or journal entry stays a plain checkbox: memrynote
+stores it as `- [ ] Check the log {check}`, and the editor never turns it into a task. Agents create
+tasks with `vault_create_task`. This covers `vault_create_note`, `vault_update_note`,
+`vault_create_journal_entry`, `vault_update_journal_entry`, and the `notes.create`, `notes.update`,
+`journal.createEntry` and `journal.updateEntry` operations of `vault_desktop_write`. A checkbox line
+that was already in the note before the write is left exactly as it was.
+
+To let agents' checklists become tasks, turn on **Turn checklist items in agent writes into tasks**
+in [Settings → Editor](/user-guide/settings#checklists). The note and journal tools then create the
+tasks during the write and list each one in the reply as `created_tasks`, with its `id` and
+`title`. `vault_desktop_write` replies with the operation's own result, so its checkbox lines are
+left for the editor to convert when the note opens.
 
 ### Folder paths
 

@@ -45,9 +45,19 @@ function getResourcesDir(context) {
   return join(context.appOutDir, 'resources')
 }
 
+// onnxruntime-node ships its prebuilds under bin/napi-v<N>/<platform>/<arch>;
+// N moved from 3 to 6 in 1.22, so every napi dir present is pruned.
 function pruneOnnxRuntime(nodeModulesDir, platformName, archName) {
-  const napiRoot = join(nodeModulesDir, 'onnxruntime-node', 'bin', 'napi-v3')
+  const binRoot = join(nodeModulesDir, 'onnxruntime-node', 'bin')
+  if (!existsSync(binRoot)) return
+  for (const entry of readdirSync(binRoot)) {
+    if (entry.startsWith('napi-v')) {
+      pruneOnnxNapiDir(join(binRoot, entry), platformName, archName)
+    }
+  }
+}
 
+function pruneOnnxNapiDir(napiRoot, platformName, archName) {
   for (const platform of ['darwin', 'linux', 'win32']) {
     if (platform !== platformName) {
       removePath(join(napiRoot, platform))

@@ -448,11 +448,16 @@
       "width": "Šířka editoru",
       "toolbarMode": "Připnutý panel formátování",
       "spellCheck": "Kontrolovat pravopis",
-      "convertChecklists": "Měnit položky kontrolního seznamu na úkoly"
+      "convertChecklists": "Měnit položky kontrolního seznamu na úkoly",
+      "convertAgentChecklists": "Měnit položky kontrolního seznamu od agenta na úkoly"
     },
     "convertChecklists": {
       "description": "Každá nová položka kontrolního seznamu se stane úkolem. Když je vypnuto, seznamy zůstanou obyčejnými zaškrtávacími políčky; úkol z položky uděláte kliknutím pravým tlačítkem.",
       "error": "Převod kontrolních seznamů se nepodařilo aktualizovat"
+    },
+    "convertAgentChecklists": {
+      "description": "Vypnuto ponechá každé zaškrtávací políčko, které agent zapíše, jako obyčejné políčko. Agenti vytvářejí úkoly nástroji pro úkoly.",
+      "error": "Převod kontrolních seznamů od agenta se nepodařilo aktualizovat"
     }
   },
   "templates": {
@@ -1340,7 +1345,7 @@
     "embedding": {
       "loaded": "Načteno",
       "loading": "Načítání",
-      "cacheHint": "~23 MB · Uloženo v místní mezipaměti · Vše v zařízení",
+      "cacheHint": "~210 MB · Uloženo v místní mezipaměti · Vše v zařízení",
       "dimensions": "Dimenze",
       "embeddings": "Embeddingy",
       "downloadLoad": "Stáhnout a načíst model",

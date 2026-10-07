@@ -246,6 +246,7 @@ function fake(): VaultServiceHandles {
     },
     desktop: {
       read: async ({ operation, args }, windowId) => ({ operation, args, windowId }),
+      prepareWrite: async (input) => input,
       write: async () => ({ ok: true })
     },
     windows: {

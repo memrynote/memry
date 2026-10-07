@@ -374,7 +374,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# wacht op goedkeuring} other {# wachten op goedkeuring}}",
       "inProgress": "Agent is bezig",
-      "close": "Agent sluiten"
+      "close": "Agent sluiten",
+      "moreActions": "Meer agentacties"
     },
     "errors": {
       "loadConversations": "Kan agentgesprekken niet laden",

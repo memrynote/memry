@@ -374,7 +374,8 @@
       "agent": "Agen",
       "pendingApproval": "{count, plural, one {# menunggu persetujuan} other {# menunggu persetujuan}}",
       "inProgress": "Giliran agen sedang berlangsung",
-      "close": "Tutup agen"
+      "close": "Tutup agen",
+      "moreActions": "Tindakan agen lainnya"
     },
     "errors": {
       "loadConversations": "Tidak dapat memuat percakapan agen",

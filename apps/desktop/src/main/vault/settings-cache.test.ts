@@ -335,6 +335,20 @@ describe('writeCacheFromPreferences', () => {
     expect(editor.convertChecklistsToTasks).toBe(false)
   })
 
+  it('#given agent checklist conversion switched on in config #then the cache keeps it on', () => {
+    const prefs = {
+      ...VAULT_PREFERENCES_DEFAULTS,
+      editor: { ...VAULT_PREFERENCES_DEFAULTS.editor, convertAgentChecklistsToTasks: true }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    writeCacheFromPreferences(testDb.db as any, prefs)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const editor = JSON.parse(getSetting(testDb.db as any, 'editor')!)
+    expect(editor.convertAgentChecklistsToTasks).toBe(true)
+  })
+
   it('#given no spellCheck in config #then the cache writes it off', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     writeCacheFromPreferences(testDb.db as any, { ...VAULT_PREFERENCES_DEFAULTS })
