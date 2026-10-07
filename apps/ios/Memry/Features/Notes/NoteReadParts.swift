@@ -138,7 +138,8 @@ extension NoteReadViewModel {
 
     /// The note's text for an export (N802).
     ///
-    /// `extract_text` output, which is all §12.1.2 gives a non-editor client.
+    /// `extract_text` output, the one way §12.1.2 gives a non-desktop client to
+    /// read text out of a body.
     var exportText: String {
         guard case let .ready(detail) = phase else { return "" }
         return detail.body.text

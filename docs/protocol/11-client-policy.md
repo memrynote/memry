@@ -191,8 +191,8 @@ the server pushes.**
 ## 11.9 Client obligations on either code
 
 **Normative** (`specs/001-mobile-app/contracts/sync-protocol-additions.md:56-59`;
-reference implementation `apps/mobile/src/sync/outbox.ts:259`, `:364-369`,
-`:706-733`). On `CLIENT_UPGRADE_REQUIRED` or `PLATFORM_WRITES_DISABLED` a client
+reference implementation `crates/memry-core/src/sync/engine.rs:21-29`, `:320-327`).
+On `CLIENT_UPGRADE_REQUIRED` or `PLATFORM_WRITES_DISABLED` a client
 MUST:
 
 1. enter an **explicit read-only mode**, with a plain explanation and an update

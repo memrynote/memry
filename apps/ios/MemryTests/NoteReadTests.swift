@@ -230,7 +230,8 @@ struct NoteReadTests {
 private enum NoteReadSources {
     static var readable: Bool {
         FileManager.default.fileExists(atPath: readView) &&
-            FileManager.default.fileExists(atPath: notesList)
+            FileManager.default.fileExists(atPath: notesList) &&
+            FileManager.default.fileExists(atPath: notesRows)
     }
 
     private static var featureRoot: URL {
@@ -246,6 +247,11 @@ private enum NoteReadSources {
 
     static var notesList: String {
         featureRoot.appendingPathComponent("NotesListView.swift").path
+    }
+
+    /// The rows moved out of `NotesListView.swift` in the line-ceiling split.
+    static var notesRows: String {
+        featureRoot.appendingPathComponent("NotesListRows.swift").path
     }
 
     static func source(_ path: String) throws -> String {
@@ -275,7 +281,8 @@ struct NoteReadSourceTests {
     )
     func theRowsPushAValueRoute() throws {
         let notesList = try NoteReadSources.source(NoteReadSources.notesList)
-        #expect(notesList.contains("NavigationLink(value: NoteRoute(id: note.id))"))
+        let rows = try NoteReadSources.source(NoteReadSources.notesRows)
+        #expect(rows.contains("NavigationLink(value: NoteRoute(id: note.id))"))
         // The destination is built from the browse model's own reader, which
         // on the production graph is `CoreNotesReader`. A second reader minted
         // here would be a second path into the core with its own lifetime.
@@ -297,14 +304,13 @@ struct NoteReadSourceTests {
     )
     func theScreenStaysAPreview() throws {
         let source = try NoteReadSources.code(NoteReadSources.readView)
-        // §12.1.2: a non-editor client "owns `extract_text` and nothing else".
-        // Each of these is a way to stop being one.
+        // §12.1.2: a non-desktop client neither parses nor serialises markdown
+        // here, and the iOS app hosts no web editor. Each of these breaks that.
         for forbidden in [
             "AttributedString(markdown",
             "markdown:",
             "WKWebView",
             "WebView",
-            "EditorHost",
             "encodeState"
         ] {
             #expect(source.contains(forbidden) == false, "\(forbidden) in NoteReadView.swift")

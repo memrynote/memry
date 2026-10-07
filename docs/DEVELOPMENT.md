@@ -38,17 +38,23 @@ pnpm test:e2e     # Playwright (Electron)
 
 ## Monorepo layout
 
-| Package              | Description                    |
-| -------------------- | ------------------------------ |
-| `apps/desktop`       | Electron 39 + React 19 + Vite  |
-| `apps/sync-server`   | Cloudflare Workers sync server |
-| `apps/landing`       | Landing site                   |
-| `apps/docs`          | VitePress docs                 |
-| `packages/contracts` | IPC + API contracts (Zod)      |
-| `packages/db-schema` | Drizzle ORM schema             |
-| `packages/shared`    | Shared utilities               |
+| Package                | Description                                   |
+| ---------------------- | --------------------------------------------- |
+| `apps/desktop`         | Electron 43 + React 19 + Vite                 |
+| `apps/cli`             | `memrynote` CLI, bundled into the desktop app |
+| `apps/ios`             | SwiftUI app over the Rust core                |
+| `apps/sync-server`     | Cloudflare Workers sync server                |
+| `apps/extension`       | Browser extension (WXT)                       |
+| `apps/landing`         | Landing site                                  |
+| `apps/docs`            | VitePress docs                                |
+| `crates/memry-core`    | Rust core: sync, crypto, CRDT, storage        |
+| `packages/contracts`   | IPC + API contracts (Zod)                     |
+| `packages/db-schema`   | Drizzle ORM schema                            |
+| `packages/sync-client` | Desktop sync client                           |
+| `packages/shared`      | Shared utilities                              |
 
 ## Contributing
 
 Workflow, commit conventions, and PR expectations live in [CONTRIBUTING.md](./CONTRIBUTING.md).
-Deeper architecture notes are in [ARCHITECTURE.md](./ARCHITECTURE.md) and [CLAUDE.md](../CLAUDE.md).
+Deeper architecture notes are in [ARCHITECTURE.md](./ARCHITECTURE.md) and the docs site's
+`apps/docs/src/architecture/`. Coding agents follow [AGENTS.md](../AGENTS.md).

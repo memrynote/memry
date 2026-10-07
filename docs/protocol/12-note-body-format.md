@@ -8,99 +8,98 @@ read by another must be byte-identical where this chapter says it is.
 
 ## 12.1 Who converts markdown — Q12.2
 
-**Normative. Markdown-to-document and document-to-markdown both run inside the
-editor bundle. A non-editor client never parses and never serialises BlockNote
-markdown.**
+**Normative. Desktop converts markdown in both directions, in its main process.
+The core never serialises a document to markdown, and it parses markdown in one
+module, `markdown_seed`, for the two writes of §12.1.0. Every other path carries
+markdown verbatim.**
 
-"The editor bundle" means **a WebView on mobile and a headless editor in the
-Electron main process on desktop**
-(`apps/desktop/src/main/sync/blocknote-converter.ts:1` (`ServerBlockNoteEditor`), `:99-106`). It is
-**not** "the WebView" in general.
+Desktop's converter is a headless BlockNote editor in the Electron main process
+(`apps/desktop/src/main/sync/blocknote-converter.ts:1` (`ServerBlockNoteEditor`), `:133-141`),
+built from the schema factory the renderer uses (`createMemrySchema`,
+`packages/editor-schema/src/schema.ts:126`;
+`apps/desktop/src/renderer/src/components/note/content-area/editor-schema.ts:31`). The iOS app
+converts no markdown. It changes a body through the core's block operations (`BlockEdit`,
+`crates/memry-core/src/crdt/body_edit/mod.rs:50`), which write the Y.Doc directly.
 
-The two directions:
+The directions:
 
-| Direction                                  | Mechanism                                                                                                                                                                                                          |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| markdown → document, **verbatim**          | the optional `seedMarkdown` field on the `doc-load` message, applied by the guest **only when the document is genuinely empty**                                                                                    |
-| markdown → document, **frontmatter split** | the `seed-from-markdown` message, answered by `markdown-seed`                                                                                                                                                      |
-| document → markdown                        | the `export-markdown` message, answered by `markdown-export`                                                                                                                                                       |
-| document → plain text                      | `extract_text`, the **only** text operation a non-editor client owns: a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity |
+| Direction              | Mechanism                                                                                                                                                                                       |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| markdown to document   | desktop's `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`) with the repairs of §12.1.1; in the core, `markdown_seed` for the two writes of §12.1.0 and no others |
+| document to markdown   | desktop only, in the vault write-back (`apps/desktop/src/main/sync/crdt-writeback.ts:603`)                                                                                                      |
+| document to plain text | `extract_text`, a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity (§12.1.3)                          |
 
-#### 12.1.0 There are two markdown → document paths, and they differ deliberately
+### 12.1.0 The core's markdown seed
 
-An earlier revision of this chapter said "**there is no `seed-from-markdown`
-message** … that name is a proposed rename". That was true when it was written
-and is **no longer true**: the message exists, and it is not a rename of
-`doc-load.seedMarkdown` — both paths are live and they behave differently on
-purpose.
+`markdown_seed` (`crates/memry-core/src/crdt/markdown_seed/mod.rs`) builds blocks from markdown
+for two writes and no others:
 
-|             | `doc-load.seedMarkdown`                      | `seed-from-markdown`                   |
-| ----------- | -------------------------------------------- | -------------------------------------- |
-| frontmatter | **not split** — the input is parsed verbatim | **split off and discarded**            |
-| when        | a document is opened and is genuinely empty  | note creation and template application |
-| answered by | nothing; it rides on `doc-load`              | `markdown-seed`                        |
+| Write                                | Entry point                                                                                                                                                         | Rule                                                                                                                                                                     |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| a journal day opened from a template | `seed_document` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:188`), called by `open_day_from_template` (`crates/memry-core/src/domain/journal_ops/seed.rs:88`) | seeds an **empty** body only. A body that holds anything is refused, because a second tree beside the first is the whole-fragment replace §12.5.0.1 forbids (`:182-187`) |
+| a filed inbox article                | `append_markdown_in` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:210`), through `append_markdown` (`crates/memry-core/src/domain/body_write.rs:116`)          | appends after whatever the body holds, under the article's link mention, as desktop's `generateNoteContent` does (`apps/desktop/src/main/inbox/filing.ts:427-431`)       |
 
-**Why the new path discards frontmatter rather than reading it.** A new note's
-`tags` and `properties` come from the note record, which the core has already
-written (chapter 13 §13.7.1, §13.7.6). A guest that re-derived them from the
-frontmatter block would be a second source of truth for the same two fields,
-disagreeing with the record the moment the two were written from different
-inputs. The core still does no markdown handling at all — **frontmatter
-included** — because the split happens in the bundle.
+**The seeded document MUST be the one desktop builds from the same bytes.** Each stage of
+desktop's conversion is ported with its quirks, and
+`packages/contracts/test-vectors/markdown-seed.json` pins the result, generated through the
+production parse path (`crates/memry-core/src/crdt/markdown_seed/mod.rs:11-18`). The supported
+set is the block types templates use: paragraphs, headings, bullet, numbered and check lists,
+quotes, code blocks, dividers, and inline bold, italic, strike, code and links. A construct
+outside it keeps its source lines as literal text, one paragraph per non-blank line. A construct
+that changes how desktop reads the whole text, such as a toggle, CriticMarkup, a link reference
+definition or a carriage return, sends every line there. No text is dropped (`:20-33`). An
+append also reads a line that is only an image as an image block, as desktop's editor does
+(`:206-209`).
 
-**Both messages are additive at `BRIDGE_PROTOCOL_VERSION` 1.** Adding a member
-to a discriminated union cannot change how an existing message parses, so a host
-that never sends `seed-from-markdown` behaves exactly as it did.
+**Why the core parses here at all.** A day seeded from a template on the phone would otherwise
+hold only `seed_markdown` until desktop built its document, and the first keystroke on the phone
+would write blocks into an empty body that desktop's next write-back puts over the template text
+(`crates/memry-core/src/crdt/markdown_seed/mod.rs:3-9`; JP022a in
+`specs/005-ios-journal-parity/tasks.md:390-396`).
 
-**A parse failure MUST NOT be reported as an empty document.** `markdown-seed`
-carries a three-way result — `seeded`, `skipped` with a reason, or `error` with a
-non-empty detail — and the document is left untouched on either throw. The
-distinction is load-bearing rather than cosmetic: the host clears
-`note_bodies.seed_markdown` on `seeded` and `skipped` and **keeps** it on
-`error`, and until a seed lands that column is the only copy of what the user
-asked for (data-model §A.3). A request naming a document that is not mounted is
-**answered** with an error rather than met with silence, because silence strands
-that lifecycle with no way to tell "not yet" from "never".
+A note created from a template takes the verbatim path instead. The core copies the template's
+`content` into the payload and into `note_bodies.seed_markdown` and parses none of it
+(`crates/memry-core/src/domain/templates.rs:4-15`). Desktop writes that `content` as the new
+note's file (§12.2 carve-out A).
 
-### 12.1.1 The guest does not run desktop's pipeline
+### 12.1.1 Desktop's pipeline
 
-**Normative, and a client MUST NOT assume otherwise.** The guest calls
-BlockNote's `tryParseMarkdownToBlocks` and `blocksToMarkdownLossy`
-(`packages/editor-web/src/markdown-bridge.ts`) and **nothing else**: no
-critic-markup strip, no link-reference strip, no inline-colour masking, no
-source record.
+**Normative, and a client MUST NOT assume otherwise.** Desktop does more than BlockNote's
+markdown parse and export.
 
-**The one exception is the frontmatter split, and only on `seed-from-markdown`.**
-That path calls the shared splitter (`packages/shared/src/frontmatter-split.ts`)
-before handing the body to BlockNote. `doc-load.seedMarkdown` still splits
-nothing — it parses its input verbatim — and §12.1.0 tabulates the difference.
-The splitter is shared rather than reimplemented: it moved to `@memry/shared`
-unchanged so the bundle can import it without pulling in gray-matter, and
-`@memry/app-core` re-exports it, so there is exactly one implementation in the
-tree.
+- **Inbound**, `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`)
+  runs `prepareFragmentSeed` (`:586`), which takes writing tools markers, CriticMarkup and link
+  reference definitions out of the text before the parse, then `applyFragmentSeed` (`:636`),
+  which writes the blocks and those side channels, then `recordMarkdownSourceInYDoc` (`:690`).
+- **Outbound**, the vault write-back calls `serializeNoteBody`
+  (`apps/desktop/src/main/sync/crdt-writeback.ts:603`,
+  `apps/desktop/src/main/sync/writing-markdown.ts:430`). It runs `yDocToMarkdown`
+  (`apps/desktop/src/main/sync/blocknote-converter.ts:204`), which serialises with
+  `blocksToMarkdownPreserving` and `restoreLinkReferences` (`:387-389`) and then runs
+  `restoreMarkdownSource` (`:224`), and it applies `serializeCriticMarkup` last
+  (`apps/desktop/src/main/sync/writing-markdown.ts:455`).
 
-Desktop additionally runs, inbound, `prepareFragmentSeed` → `applyFragmentSeed`
-(`apps/desktop/src/main/sync/blocknote-converter.ts:462-475`) and
-`recordMarkdownSourceInYDoc` (`:477-491`, `:517-541`); and outbound,
-`blocksToMarkdownPreserving` + `restoreLinkReferences` (`:236-238`) +
-`restoreMarkdownSource` (`:161`) + `serializeCriticMarkup`
-(`apps/desktop/src/main/sync/crdt-writeback.ts:459-466`).
+The renderer and main build their block and inline specs from one factory (§12.1), so the block
+grammar of §12.6 and §12.7 is the same in both. **The out-of-band layer of §12.8 runs only on
+desktop.** `markdown_seed` does not encode it: CriticMarkup and link reference definitions send
+the whole text to literal paragraphs (§12.1.0).
 
-Block and inline **specs** are shared
-(`packages/editor-web/src/blocks.ts:20-27`), so the block grammar of §12.6 and
-§12.7 matches. **The out-of-band layer of §12.8 does not.**
+### 12.1.2 What this means for a non-desktop client
 
-### 12.1.2 What this means for a non-editor client
+**Normative.** A non-desktop client is any client without desktop's converter: the core and
+every shell over it. Such a client:
 
-**Normative.** Such a client:
-
-- MUST NOT parse or serialise BlockNote markdown;
-- MUST route note creation, duplication and template application through the
-  editor bundle;
-- owns `extract_text` and nothing else;
-- needs **no markdown grammar and no BlockNote block model**;
-- MUST preserve the Y.Doc roots of §12.5 exactly across an apply-then-encode
-  cycle. That, not a markdown grammar, is its whole obligation here.
+- MUST NOT parse or serialise BlockNote markdown, except through `markdown_seed` for the two
+  writes of §12.1.0;
+- carries a create's `content` and a template's body verbatim (§12.2 carve-out A);
+- duplicates a note by copying its document, never by serialising it. The core snapshots each
+  top-level block into the copy and sends `content: ''`
+  (`crates/memry-core/src/domain/notes/duplicate.rs:58-59`, `:68`);
+- changes a body only through block operations that author the change in one transaction
+  (§12.5.1, `crates/memry-core/src/crdt/body_edit/mod.rs:6-9`);
+- reads text out of a body through `extract_text` (§12.1.3);
+- MUST preserve the Y.Doc roots of §12.5 exactly across an apply-then-encode cycle. That, not a
+  markdown grammar, is its whole obligation here.
 
 **Disposition of Q12.2: answered** (this section).
 
@@ -177,19 +176,18 @@ verbatim when unedited (`packages/app-core/src/markdown.ts:62-68`), and
 
 **Three carve-outs a client MUST know:**
 
-- **Carve-out A — a non-desktop client's markdown does reach disk on create and
-  duplicate.** A note record push carries `content` only on `create`
-  (`apps/desktop/src/main/sync/item-handlers/note-handler-sync-helpers.ts:50-56`),
-  and the reference phone's `createNote` is "the ONE operation that carries the
-  body in the record payload"
-  (`apps/mobile/src/features/notes/note-ops.ts:221-223`). `duplicateNote` sets
-  `content` from the guest's `blocksToMarkdownLossy` output
-  (`apps/mobile/src/features/notes/note-ops.ts:361`), and desktop writes a new
-  remote note's file as `serializeNote(frontmatter, data.content)`
-  (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:598-609`).
-  **So "a client that cannot serialise markdown cannot write a vault file" is
-  false as stated: the invariant is scoped to _existing_ notes, and the
-  create-time `content` path is the exception.**
+- **Carve-out A — a non-desktop client's markdown does reach disk on create.** A note record
+  push carries `content` only on `create`
+  (`apps/desktop/src/main/sync/item-handlers/note-handler-sync-helpers.ts:63`). The core puts
+  the caller's `content` into the create payload unchanged
+  (`crates/memry-core/src/domain/notes/mod.rs:176`), and a note made from a template carries the
+  template's `content` the same way (`crates/memry-core/src/domain/templates.rs:126`).
+  Desktop writes a new remote note's file as `serializeNote(frontmatter, data.content)`
+  (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:661-675`). **So "a client that
+  cannot serialise markdown cannot write a vault file" is false as stated: the invariant is
+  scoped to _existing_ notes, and the create-time `content` path is the exception.** A duplicate
+  is not part of it. The core sends `content: ''` and copies the document
+  (`crates/memry-core/src/domain/notes/duplicate.rs:58-59`, `:68`).
 - **Carve-out B — a tag or property edit regenerates frontmatter**
   (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:353-371`,
   `:400-420`). See §12.4.
@@ -197,40 +195,30 @@ verbatim when unedited (`packages/app-core/src/markdown.ts:62-68`), and
   (`apps/desktop/src/main/sync/blocknote-converter.ts:158`), so a note carrying
   suggestions is **never** byte-identical after any write-back, on any client.
 
-**Core obligation.** The `content` a client puts in a create record becomes vault
-bytes verbatim on desktop. Prefer sending `content: ''` on create unless seeding
-from a template, and prefer copying the Y.Doc on duplicate
-(`apps/mobile/src/editor/clone-y-subtree.ts:12-18` establishes "the host copies,
-it never builds"), using `content` only as a fallback.
+**Core obligation.** The `content` a client puts in a create record becomes vault bytes
+verbatim on desktop. Prefer sending `content: ''` on create unless seeding from a template, and
+prefer copying the document on duplicate, as the core does
+(`crates/memry-core/src/domain/notes/duplicate.rs:58-59`).
 
-**Open, and recorded as such: whether the guest's `blocksToMarkdownLossy` output
-is acceptable as create-time `content` is undefined.** The guest serialiser does
-no colour masking, no link-reference restore and no critic serialisation
-(§12.1.1), and **no test pins it against
-`packages/editor-schema/src/conformance.ts`** — the corpus is asserted only by
-the two desktop suites. Until either the corpus is added to the editor-web suite
-or a normative rule is written, **create-time `content` is best-effort and the
-Y.Doc pushed alongside is authoritative. Do not rely on create-time `content`
-being canonical.**
+**Create-time `content` is not canonical.** When a client pushes a Y.Doc alongside the create,
+the Y.Doc is authoritative. Do not rely on create-time `content` matching it.
 
 ## 12.3 The body fragment and document ids
 
-**Normative.** The body is an `XmlFragment` named **`prosemirror`**, declared
-twice with the same value: `CRDT_FRAGMENT_NAME`
-(`packages/contracts/src/ipc-crdt.ts:57`, pinned by
-`packages/contracts/src/ipc-crdt.test.ts:38`) and `BRIDGE_FRAGMENT_NAME`
-(`packages/contracts/src/webview-bridge.ts:35`). Its layout is what
-y-prosemirror gives a BlockNote document.
+**Normative.** The body is an `XmlFragment` named **`prosemirror`**, declared once in
+TypeScript as `CRDT_FRAGMENT_NAME` (`packages/contracts/src/ipc-crdt.ts:73`, pinned by
+`packages/contracts/src/ipc-crdt.test.ts:39`) and once in the core as `BODY_FRAGMENT`
+(`crates/memry-core/src/crdt/text_extract.rs:38`). Its layout is what y-prosemirror gives a
+BlockNote document.
 
 **Document ids are bare.** Desktop keys every Y.Doc by the bare note id, with no
-namespace prefix (`apps/desktop/src/main/sync/crdt-provider.ts:1106`, `:1347`).
+namespace prefix (`apps/desktop/src/main/sync/crdt-provider.ts:840`, `:847`).
 Journal documents are keyed by the journal record's id (chapter 07 §7.1).
 
-**The two-namespace local update log** — `<docId>` for server sequence numbers,
-`local.<docId>` for local ones
-(`apps/mobile/src/editor/session.ts:27`, `:35-40`) — **is a storage convention
-invented by one client, not a protocol fact.** A conforming client MAY choose any
-local storage layout.
+**The two-namespace local update log**, `<docId>` for server sequence numbers and
+`local.<docId>` for local ones (`crates/memry-core/src/crdt/update_log.rs:1-14`, `:38`), **is
+the core's storage convention, not a protocol fact.** A conforming client MAY choose any local
+storage layout.
 
 ## 12.4 Frontmatter — Q12.1
 
@@ -437,15 +425,15 @@ on a throwaway `Y.Doc` under `PERSISTENCE_PROBE_KEY`
 (`apps/desktop/src/main/sync/crdt-persistence.ts:229-231`) and cleared
 (`:256-259`).
 
-| Root                       | Type                     | Writer                                                                                                                                                                                                  | Reader                                                                                                      | Consequence of dropping it                                                                                                                                                |
-| -------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prosemirror`              | XmlFragment              | the editor bundle via y-prosemirror; desktop seed at `apps/desktop/src/main/sync/blocknote-converter.ts:193`, `apps/desktop/src/main/sync/crdt-feed.ts:69`                                              | everything                                                                                                  | **the body is lost**                                                                                                                                                      |
-| `meta`                     | Map (`title`, `date`)    | `apps/desktop/src/main/sync/crdt-provider.ts:1163-1165`, `:1184-1186`                                                                                                                                   | `apps/desktop/src/main/sync/crdt-writeback.ts:684-685`, `:706`                                              | a remotely created note materialises as `Untitled` with the wrong `createdAt`                                                                                             |
-| `tags`                     | Array\<string\>          | `apps/desktop/src/main/sync/crdt-provider.ts:1167-1171`, `apps/desktop/src/main/sync/crdt-feed.ts:93-99`                                                                                                | `apps/desktop/src/main/sync/crdt-writeback.ts:993-1001` → `:950-955`                                        | desktop keeps the file's tags while the array is empty (the `yjsTags.length > 0` guard at `:952`), so a drop is **silent divergence** until a later record push overrides |
-| `markdownSource`           | Map (`record: {source}`) | `packages/shared/src/markdown-source.ts:159-167` via `apps/desktop/src/main/sync/blocknote-converter.ts:517-541`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                          | `apps/desktop/src/main/sync/blocknote-converter.ts:156`, `:161`                                             | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region"         |
-| `linkReferenceDefinitions` | Array                    | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:470-471`                                                                                            | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:237-238`   | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                         |
-| `linkReferenceUsages`      | Array                    | same (`packages/shared/src/link-references.ts:179`)                                                                                                                                                     | same (`:191`)                                                                                               | same                                                                                                                                                                      |
-| `criticMarkupMarks`        | Array                    | `packages/shared/src/critic-markup/yjs.ts:34-45` via `apps/desktop/src/main/sync/blocknote-converter.ts:469`; renderer `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:602` | `apps/desktop/src/main/sync/crdt-writeback.ts:466`, `apps/desktop/src/main/sync/blocknote-converter.ts:158` | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**            |
+| Root                       | Type                     | Writer                                                                                                                                                                                                                                                                                        | Reader                                                                                                      | Consequence of dropping it                                                                                                                                                |
+| -------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prosemirror`              | XmlFragment              | desktop's editors via y-prosemirror; desktop's seed (`apps/desktop/src/main/sync/crdt-provider.ts:1681`) and external-edit replace (`apps/desktop/src/main/sync/crdt-feed.ts:51`); the core's block operations (`crates/memry-core/src/crdt/body_edit/mod.rs:50`) and markdown seed (§12.1.0) | everything                                                                                                  | **the body is lost**                                                                                                                                                      |
+| `meta`                     | Map (`title`, `date`)    | `apps/desktop/src/main/sync/crdt-provider.ts:1163-1165`, `:1184-1186`                                                                                                                                                                                                                         | `apps/desktop/src/main/sync/crdt-writeback.ts:684-685`, `:706`                                              | a remotely created note materialises as `Untitled` with the wrong `createdAt`                                                                                             |
+| `tags`                     | Array\<string\>          | `apps/desktop/src/main/sync/crdt-provider.ts:1167-1171`, `apps/desktop/src/main/sync/crdt-feed.ts:93-99`                                                                                                                                                                                      | `apps/desktop/src/main/sync/crdt-writeback.ts:993-1001` → `:950-955`                                        | desktop keeps the file's tags while the array is empty (the `yjsTags.length > 0` guard at `:952`), so a drop is **silent divergence** until a later record push overrides |
+| `markdownSource`           | Map (`record: {source}`) | `packages/shared/src/markdown-source.ts:159-167` via `apps/desktop/src/main/sync/blocknote-converter.ts:517-541`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                | `apps/desktop/src/main/sync/blocknote-converter.ts:156`, `:161`                                             | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region"         |
+| `linkReferenceDefinitions` | Array                    | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:470-471`                                                                                                                                                                                  | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:237-238`   | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                         |
+| `linkReferenceUsages`      | Array                    | same (`packages/shared/src/link-references.ts:179`)                                                                                                                                                                                                                                           | same (`:191`)                                                                                               | same                                                                                                                                                                      |
+| `criticMarkupMarks`        | Array                    | `packages/shared/src/critic-markup/yjs.ts:34-45` via `apps/desktop/src/main/sync/blocknote-converter.ts:469`; renderer `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:602`                                                                                       | `apps/desktop/src/main/sync/crdt-writeback.ts:466`, `apps/desktop/src/main/sync/blocknote-converter.ts:158` | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**            |
 
 Root name constants:
 `CRITIC_MARKUP_MARKS_ARRAY = 'criticMarkupMarks'`
@@ -497,13 +485,13 @@ roots is never to rebuild state through typed accessors: snapshot with a
 full-state encode (`Y.encodeStateAsUpdate`, or `encode_state_as_update_v1` in a
 Rust binding) and never assemble a document by copying named roots.**
 
-The reference clients already do this
-(`apps/mobile/src/editor/doc-manager.ts:410`, `:427`;
+The core and desktop already do this
+(`crates/memry-core/src/crdt/registry.rs:200`, `crates/memry-core/src/crdt/snapshots.rs:10`;
 `apps/desktop/src/main/sync/crdt-provider.ts:433`, `:444`, `:560`, `:712`,
 `:820`, `:876`, `:1127`).
 
-**A non-editor client** reads `prosemirror` for `extract_text` and **MUST NOT
-delete or normalise other roots as a side effect**. It **MUST NOT** write
+**A non-desktop client** reads `prosemirror` for `extract_text` and its block operations,
+and **MUST NOT delete or normalise other roots as a side effect**. It **MUST NOT** write
 `criticMarkupMarks`, `linkReference*` or `markdownSource` — byte-offset marks and
 source records are desktop-derived and a client that touches them corrupts them.
 It **MAY** write `meta` and `tags` with
@@ -635,10 +623,12 @@ The fence body is the block's definition as JSON
 The consequences are the reason for the shape:
 
 - **No schema change.** The registry in §12.9 is unchanged, so no client can
-  meet a node name it would delete (§12.1). Main, the mobile WebView and every
-  older build hold the block as a code block and write the same bytes back;
-  Obsidian and GitHub show it as code. Only the desktop renderer draws it
-  (`createMemrySchema`'s `codeBlockViews`, presentation only).
+  meet a node name it would delete (§12.1). Main and every older build
+  hold the block as a code block and write the same bytes back; Obsidian and
+  GitHub show it as code. The desktop renderer draws it (`createMemrySchema`'s
+  `codeBlockViews`, presentation only), and so does the iOS app, which keeps the
+  fence out of its text editor so it is never rewritten there
+  (`apps/ios/Memry/Features/Notes/NoteBlockView.swift:345-351`).
 - **Round-trip is the code block's.** The body is literal text
   (`LITERAL_TEXT_BLOCK_TYPES`), and the conformance corpus pins it
   (`packages/editor-schema/src/conformance.ts`, `viewBlockCases`).
@@ -758,9 +748,9 @@ for that line rather than keep the marker as text.
 `diagram` is a Mermaid diagram, and it is the one type whose renderer spec comes
 from a third-party package (`@blocknote/diagram-block`) rather than from
 `@memry/editor-schema`. Its config is restated in
-`packages/editor-schema/src/blocks/configs.ts` for the main process and the
-mobile WebView, neither of which can carry the package's React and ~3 MB of
-mermaid; the two are held equal by the renderer↔main parity gate
+`packages/editor-schema/src/blocks/configs.ts` for the main process, which
+cannot carry the package's React and ~3 MB of mermaid; the two are held equal
+by the renderer↔main parity gate
 (`apps/desktop/src/renderer/src/components/note/content-area/editor-schema.test.ts`),
 which compares every block's config field by field.
 
@@ -782,16 +772,14 @@ the ink lives in the canvas's own `canvases/<Title>.excalidraw` file, synced as 
 canvas item. One canvas may be embedded by any number of notes. A client that
 does not draw canvases MUST still build the node (y-prosemirror deletes a node
 its schema cannot build, and the delete replicates) and MUST write back the
-§12.6 marker unchanged; the
-mobile WebView draws a labelled card and nothing else
-(`packages/editor-web/src/blocks.ts`).
+§12.6 marker unchanged.
 
 `columnList` and `column` lay blocks out side by side. A `columnList` holds two
 or more `column`s and nothing else; a `column` holds blocks and carries `width`
 (number, default `1`, a flex-grow weight). The node names, groups, content
 expressions and `width` are `@blocknote/xl-multi-column`'s, restated headless in
-`packages/editor-schema/src/blocks/column-specs.ts` so the main process and the
-mobile WebView build them without React; the desktop renderer swaps in the
+`packages/editor-schema/src/blocks/column-specs.ts` so the main process builds
+them without React; the desktop renderer swaps in the
 package's `column` spec for resize and drag-to-column. `columnList` adds
 `regionId` and `settings` (strings, default `''`).
 
@@ -840,8 +828,7 @@ introduction is paired with a write-version floor (chapter 11).
 
 **These are desktop write-back behaviour. A non-desktop client relies on them but
 MUST NOT reproduce them**: `restoreMarkdownSource` and `mergeMarkdownSource` run
-only inside desktop main's `yDocToMarkdown`. The guest and a non-editor core
-never call them.
+only inside desktop main's `yDocToMarkdown`. The core never calls them.
 
 **Normative, as desktop behaviour:**
 

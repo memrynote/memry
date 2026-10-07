@@ -11,8 +11,9 @@
  * `--check` regenerates every class into a temporary directory and diffs
  * against the committed files WITHOUT writing. That is the FR-008 gate: a
  * constant change, a `pako` upgrade, a `cborg` upgrade or a field-order edit
- * becomes a red build rather than a code-review note. CI runs `--check`; it
- * never runs the writing form.
+ * becomes a red build rather than a code-review note. Desktop CI's static job
+ * runs `--check` (`pnpm --filter @memry/contracts vectors:check`); CI never runs
+ * the writing form.
  *
  * A bare class name regenerates that class alone, which is what makes a
  * one-class change reviewable.

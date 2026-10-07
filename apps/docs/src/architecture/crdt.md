@@ -1591,11 +1591,11 @@ dropping size, MIME type and any width/height/alignment.
 
 `diagram` is the one block whose renderer spec is a third party's. Desktop registers
 `createReactDiagramBlockSpec()` from `@blocknote/diagram-block`, which brings the source
-popup, the live Mermaid preview and the fence parse rule. Main and the mobile WebView cannot
-register the same thing — the package's entry point pulls React and ~3 MB of mermaid, and
-both of those surfaces exist to avoid exactly that weight — so they build the node from
-`diagramConfig` in `@memry/editor-schema` instead, and the renderer↔main parity gate compares
-every block's config field by field so the restatement cannot drift from the package's.
+popup, the live Mermaid preview and the fence parse rule. The main process cannot register the
+same thing, because the package's entry point pulls React and ~3 MB of mermaid. It builds the
+node from `diagramConfig` in `@memry/editor-schema` instead, and the renderer and main parity
+gate compares every block's config field by field so the restatement cannot drift from the
+package's.
 
 Its markdown form is a plain ` ```mermaid ` fence, so there is no marker to recognise: a
 Memry build without the block reads a diagram back as a code block tagged `mermaid` and
@@ -1608,7 +1608,7 @@ all. It is a `codeBlock` whose `language` is `memry-view`, holding its definitio
 (`@memry/shared/view-block`). The renderer passes `codeBlockViews` to `createMemrySchema`, which
 routes that one language to a React render and leaves the node, its parse rule and its fence to
 the code block. So there is nothing for y-prosemirror to delete on a client that predates it,
-nothing for main or the mobile WebView to register, and the round trip is the code block's.
+nothing for main to register, and the round trip is the code block's.
 
 `whiteboard` is a pointer, not a drawing: its one prop is `canvasId`, the drawing stays in
 the canvas's own `.excalidraw` file, and the note holds one

@@ -85,11 +85,7 @@ private let ownCopy: [any Error] = [
     NotificationError.LimitReached,
     NotificationError.Failed(what: payload),
     BackgroundError.Unavailable,
-    BackgroundError.Failed(what: payload),
-    EditorError.NotAttached,
-    EditorError.Timeout(elapsedMs: 4_000),
-    EditorError.ProtocolMismatch(expected: 2, found: 1),
-    EditorError.Failed(what: payload)
+    BackgroundError.Failed(what: payload)
 ]
 
 @Suite("ErrorMapping")

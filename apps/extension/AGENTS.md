@@ -1,46 +1,35 @@
-# Extension Rules
+# Extension guide
 
-Browser extension (`@memry/extension`), built with WXT. Chrome, Firefox, Edge. Root `AGENTS.md` applies; this file adds extension rules.
+This directory owns the browser extension (`@memry/extension`), built with WXT for Chrome, Firefox, and Edge. It captures pages and PDFs into the desktop app running on the same machine.
 
 ## Layout
 
-- `src/entrypoints` — WXT entrypoints (background, content scripts, popup). File name determines the manifest entry; renaming one changes the shipped manifest.
-- `src/components` — popup/UI.
-- `src/lib` — shared logic.
-- `wxt.config.ts` — manifest, permissions, browser targets.
+- `src/entrypoints` holds the WXT entrypoints: `background.ts`, `content.ts`, `popup/`, and `options/`. A file's name decides its manifest entry, so renaming one changes the shipped manifest.
+- `src/lib` holds the capture logic. `capture-client.ts` talks to desktop, `capture-queue.ts` retries a capture while desktop is unreachable or has no vault open, and `capture-permissions.ts` requests optional host access. Page extraction comes from `@memry/article-extract`.
+- `wxt.config.ts` owns the manifest, permissions, and browser targets. `store/` holds the Chrome listing assets.
 
-## Commands
+## Desktop contract
 
-```bash
-pnpm --filter @memry/extension dev          # also dev:firefox, dev:edge
-pnpm --filter @memry/extension typecheck
-pnpm --filter @memry/extension lint
-pnpm --filter @memry/extension test
-pnpm --filter @memry/extension build        # also build:firefox, build:edge
-pnpm --filter @memry/extension zip
-```
-
-- Never run `submit`, `submit:firefox`, or `release` unless the user explicitly asks. Those push to store review.
-- A change that touches `wxt.config.ts` or an entrypoint must be built for all three targets before it is done: Firefox MV2/MV3 differences surface only at build time.
+- The extension talks only to desktop's [capture server](../desktop/AGENTS.md#capture-server) over HTTP on `127.0.0.1`, ports 7849 to 7856, and never to the sync server or any remote Memry service. Desktop ingests a capture into the vault and syncs it encrypted.
+- Users update the extension and desktop on separate schedules, so a change to a route, header, or capture field keeps working against older and newer desktops. Change desktop's capture server in the same change.
+- Stored extension state accepts data written by older extension versions.
+- Logs carry no page content, URLs with query strings, or tokens.
 
 ## Permissions
 
-- Every permission in `wxt.config.ts` is a store review risk and a user trust cost. Do not add one speculatively.
-- If a feature needs a new permission, say so explicitly and name the narrowest permission that works (`activeTab` over `<all_urls>`, a specific host over a wildcard).
-- Store reviewers reject permission growth without visible justification. Removing one later means another review cycle.
+- The manifest asks for `storage`, `activeTab`, `alarms`, and host access to `http://127.0.0.1/*`. PDF capture requests the page's origin at runtime through the optional `*://*/*` host permission.
+- Every permission is a store review risk and a cost to user trust. Name the narrowest one that works, such as `activeTab` over all URLs or one host over a wildcard, and say so explicitly before adding it.
+- Store reviewers reject permission growth without visible justification, and removing a permission later costs another review cycle.
 
-## Content Scripts
+## Content scripts
 
-- Content scripts run in someone else's page. Never assume a global, a framework, or a CSS reset exists.
-- Scope all injected styles. An unscoped selector breaks the host page and looks like the site's bug, not ours.
-- Fail quietly on hostile pages. A thrown error in a content script is invisible to the user and useless to us.
+- `content.ts` is declared on every page and stays inert until the extension messages it. Keep it that way.
+- A content script runs in someone else's page. Assume no global, framework, or CSS reset exists there.
+- Scope every injected style. An unscoped selector breaks the host page and looks like the site's bug.
+- Catch failures on hostile pages and return them as `{ ok: false, error }` responses, so the popup can show them. A thrown error in a content script reaches no one.
 
-## Data
+## Commands
 
-- The extension talks to the user's vault through the same encrypted path as everything else. No plaintext leaves the client.
-- Never log page content, URLs with query strings, or auth tokens.
-- Stored extension state must tolerate data written by an older extension version. Users update browsers on their own schedule.
-
-## Tests
-
-Vitest via `vitest.config.ts`. If you create or modify a test, run it and iterate until it passes.
+- `pnpm --filter @memry/extension typecheck`, `lint`, and `test` are the gates. The root `pnpm lint` and `pnpm typecheck` skip this app.
+- A change to `wxt.config.ts` or an entrypoint builds for all three targets (`build`, `build:firefox`, `build:edge`) before it is done. Firefox builds use `--mv3`, and manifest differences show up only at build time.
+- Run `release`, `submit`, or `submit:firefox` only when Kaan asks. `release` bumps the version and pushes an `extension-v*` tag, and that tag submits the build to the Chrome Web Store and Firefox Add-ons.

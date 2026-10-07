@@ -58,11 +58,13 @@ The platform-free engine establishes rules 1 and 2: it decrypts to
 `payloadJson: new TextDecoder().decode(content)`
 (`packages/sync-client/src/pull/engine.ts:281`) and parses only a throwaway
 copy for `fileType` (`:307-308`), with the contract stated at
-`packages/sync-client/src/pull/store.ts:5-9`, `:17`. The reference phone obeys
-it: the raw string goes into `sync_items.payload`
-(`apps/mobile/src/db/pull-store.ts:128-136`, `:163`), projections come from a
-parsed copy (`:207`), and a push sends the whole stored object with only the
-changed keys mutated (`apps/mobile/src/sync/outbox.ts:66-71`).
+`packages/sync-client/src/pull/store.ts:5-9`, `:17`. The Rust core obeys it:
+the received string goes into `sync_items.payload` unchanged
+(`crates/memry-core/src/storage/repositories/sync_items.rs:399`, `:428`),
+projections come from a parsed copy (`:147-148`), a local edit merges the
+changed keys into that copy and stores the result
+(`crates/memry-core/src/storage/repositories/payload.rs:64-72`), and a push
+sends the stored string (`crates/memry-core/src/storage/repositories/sync_items.rs:285-287`).
 
 ### 13.2.1 Desktop meets the obligation by a different mechanism (#2183)
 

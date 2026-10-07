@@ -2035,31 +2035,29 @@ replaces it installs its own hook.
 ### The message contract, and the mobile client
 
 The socket's message names, the keepalive string, the close codes and a parser live in
-`packages/contracts/src/sync-socket.ts`. Desktop parses every frame with its `parseSyncSocketFrame`;
-mobile parses against the same module. An unrecognised `type` parses successfully and is then
-ignored rather than failing the frame, so a server that starts sending a new message cannot break a
-client that shipped before it. Desktop drops an ignored frame with a debug log; only a frame that is
-not a `{ type, payload? }` envelope at all raises the socket's `error` event.
+`packages/contracts/src/sync-socket.ts`. Desktop parses every frame with its `parseSyncSocketFrame`.
+An unrecognised `type` parses successfully and is then ignored rather than failing the frame, so a
+server that starts sending a new message cannot break a client that shipped before it. Desktop drops
+an ignored frame with a debug log; only a frame that is not a `{ type, payload? }` envelope at all
+raises the socket's `error` event.
 
 The parser narrows `calendar_changes_available` (`sourceId`), `linking_request` (`sessionId`,
 `newDeviceName`, `newDevicePlatform`) and `linking_approved` (`sessionId`) alongside the older
 types. Unknown payload keys are stripped, and a frame missing a required field is ignored rather than
 forwarded, so a malformed linking frame no longer reaches the renderer.
 
-Mobile is a second implementation rather than a port, because React Native's WebSocket is not the
-same object as `ws`. It has no `terminate()`, no ping/pong events and no `unexpected-response`, so a
-rejected handshake surfaces as a bare error and a synthetic 1006 close with the HTTP status nowhere
-in reach. The mobile client therefore probes the same URL over plain HTTP after a connect that never
-opened, and reads the real status and error code from there. Headers are the only auth channel; RN's
-third constructor argument carries them, and `X-App-Version` goes on the wire without its `+build`
-suffix, because the server's version comparison parses `2+318` as `NaN` and would pass the gate by
-accident. `X-Memry-Vault-Id` is equally required in practice: the Durable Object filters every
-broadcast by the socket's attached vault, so a socket without it connects and then hears nothing.
+A socket client needs `X-Memry-Vault-Id` on the handshake. The Durable Object files a socket without
+it under `default` (`apps/sync-server/src/durable-objects/user-sync-state.ts:182`) and skips that
+socket for every broadcast that names a vault (`:234`), so it connects and then hears nothing.
 
-Mobile does not pin certificates (see below) and relies on the OS trust store. It connects on the
-foreground and online edges and closes the socket **deliberately** when the app backgrounds, so a
-close the OS delivers while suspending the process cannot arm the reconnect backoff and spend the
-handshake budget, which is 15 per 60 seconds keyed by user and shared across all their devices.
+The iOS app opens no socket yet. The Rust core carries a client written to
+`docs/protocol/09-realtime.md` (`crates/memry-core/src/sync/socket.rs`), and its parser ignores an
+unknown `type` the same way (`crates/memry-core/src/sync/socket_frame.rs:63`). No shell drives that
+client (`apps/ios/Memry/App/ShellState.swift:173-179`), so the phone picks up another device's
+changes on its next sync pass. A mobile client that opens the socket MUST close it when the app
+backgrounds (chapter 09 §9.1). Otherwise a close the OS delivers while suspending the process arms
+the reconnect backoff and spends the handshake budget, which is 15 per 60 seconds keyed by user and
+shared across all their devices (`apps/sync-server/src/routes/sync.ts:305-309`).
 
 ### Certificate pinning on the socket
 

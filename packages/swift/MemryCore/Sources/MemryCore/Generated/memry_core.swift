@@ -2940,323 +2940,6 @@ public func FfiConverterTypeDeviceLink_lower(_ value: DeviceLink) -> UInt64 {
 
 
 
-public protocol EditorHost: AnyObject, Sendable {
-    
-    /**
-     * Relays a message to the guest and waits for its reply.
-     */
-    func request(message: BridgeMessage) async throws  -> BridgeMessage
-    
-    /**
-     * Relays a message with no reply expected.
-     */
-    func post(message: BridgeMessage) throws 
-    
-    /**
-     * The bundle's protocol version, read once at load. A mismatch with the
-     * core's expected version is a hard failure rather than a degraded mode:
-     * the bundle and the core ship together, so a mismatch means the build
-     * pairing broke.
-     */
-    func bridgeProtocolVersion()  -> UInt32
-    
-}
-open class EditorHostImpl: EditorHost, @unchecked Sendable {
-    fileprivate let handle: UInt64
-
-    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
-#if swift(>=5.8)
-    @_documentation(visibility: private)
-#endif
-    public struct NoHandle {
-        public init() {}
-    }
-
-    // TODO: We'd like this to be `private` but for Swifty reasons,
-    // we can't implement `FfiConverter` without making this `required` and we can't
-    // make it `required` without making it `public`.
-#if swift(>=5.8)
-    @_documentation(visibility: private)
-#endif
-    required public init(unsafeFromHandle handle: UInt64) {
-        self.handle = handle
-    }
-
-    // This constructor can be used to instantiate a fake object.
-    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    //
-    // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
-#if swift(>=5.8)
-    @_documentation(visibility: private)
-#endif
-    public init(noHandle: NoHandle) {
-        self.handle = 0
-    }
-
-#if swift(>=5.8)
-    @_documentation(visibility: private)
-#endif
-    public func uniffiCloneHandle() -> UInt64 {
-        return try! rustCall { uniffi_memry_core_fn_clone_editorhost(self.handle, $0) }
-    }
-    // No primary constructor declared for this class.
-
-    deinit {
-        if handle == 0 {
-            // Mock objects have handle=0 don't try to free them
-            return
-        }
-
-        try! rustCall { uniffi_memry_core_fn_free_editorhost(handle, $0) }
-    }
-
-    
-
-    
-    /**
-     * Relays a message to the guest and waits for its reply.
-     */
-open func request(message: BridgeMessage)async throws  -> BridgeMessage  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_memry_core_fn_method_editorhost_request(
-                        self.uniffiCloneHandle(),FfiConverterTypeBridgeMessage_lower(message)
-                )
-            },
-            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
-            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
-            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeBridgeMessage_lift,
-            errorHandler: FfiConverterTypeEditorError_lift
-        )
-}
-    
-    /**
-     * Relays a message with no reply expected.
-     */
-open func post(message: BridgeMessage)throws   {try rustCallWithError(FfiConverterTypeEditorError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_editorhost_post(
-            self.uniffiCloneHandle(),
-        FfiConverterTypeBridgeMessage_lower(message),uniffiCallStatus
-    )
-}
-}
-    
-    /**
-     * The bundle's protocol version, read once at load. A mismatch with the
-     * core's expected version is a hard failure rather than a degraded mode:
-     * the bundle and the core ship together, so a mismatch means the build
-     * pairing broke.
-     */
-open func bridgeProtocolVersion() -> UInt32  {
-    return try!  FfiConverterUInt32.lift(try! rustCall() {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_editorhost_bridge_protocol_version(
-            self.uniffiCloneHandle(),uniffiCallStatus
-    )
-})
-}
-    
-
-    
-}
-
-
-
-// Put the implementation in a struct so we don't pollute the top-level namespace
-fileprivate struct UniffiCallbackInterfaceEditorHost {
-
-    // Create the VTable using a series of closures.
-    // Swift automatically converts these into C callback functions.
-    //
-    // Store the vtable directly.
-    static let vtable: UniffiVTableCallbackInterfaceEditorHost = UniffiVTableCallbackInterfaceEditorHost(
-        uniffiFree: { (uniffiHandle: UInt64) -> () in
-            do {
-                try FfiConverterTypeEditorHost.handleMap.remove(handle: uniffiHandle)
-            } catch {
-                print("Uniffi callback interface EditorHost: handle missing in uniffiFree")
-            }
-        },
-        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
-            do {
-                return try FfiConverterTypeEditorHost.handleMap.clone(handle: uniffiHandle)
-            } catch {
-                fatalError("Uniffi callback interface EditorHost: handle missing in uniffiClone")
-            }
-        },
-        request: { (
-            uniffiHandle: UInt64,
-            message: RustBuffer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
-            uniffiCallbackData: UInt64,
-            uniffiOutDroppedCallback: UnsafeMutablePointer<UniffiForeignFutureDroppedCallbackStruct>
-        ) in
-            let makeCall = {
-                () async throws -> BridgeMessage in
-                guard let uniffiObj = try? FfiConverterTypeEditorHost.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.request(
-                     message: try FfiConverterTypeBridgeMessage_lift(message)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: BridgeMessage) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureResultRustBuffer(
-                        returnValue: FfiConverterTypeBridgeMessage_lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureResultRustBuffer(
-                        returnValue: RustBuffer.empty(),
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeEditorError_lower,
-                droppedCallback: uniffiOutDroppedCallback
-            )
-        },
-        post: { (
-            uniffiHandle: UInt64,
-            message: RustBuffer,
-            uniffiOutReturn: UnsafeMutableRawPointer,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> () in
-                guard let uniffiObj = try? FfiConverterTypeEditorHost.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.post(
-                     message: try FfiConverterTypeBridgeMessage_lift(message)
-                )
-            }
-
-            
-            let writeReturn = { () }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeEditorError_lower
-            )
-        },
-        bridgeProtocolVersion: { (
-            uniffiHandle: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UInt32>,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> UInt32 in
-                guard let uniffiObj = try? FfiConverterTypeEditorHost.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return uniffiObj.bridgeProtocolVersion(
-                )
-            }
-
-            
-            let writeReturn = { uniffiOutReturn.pointee = FfiConverterUInt32.lower($0) }
-            uniffiTraitInterfaceCall(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn
-            )
-        }
-    )
-
-    // Rust stores this pointer for future callback invocations, so it must live
-    // for the process lifetime (not just for the init function call).
-    //
-    // `nonisolated(unsafe)` is needed under Swift 6 strict concurrency.
-    // This is safe because the pointee is initialized once during static init
-    // and never mutated by either side of the FFI.  Its fields are C function pointers.
-    nonisolated(unsafe) static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceEditorHost> = {
-        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceEditorHost>.allocate(capacity: 1)
-        ptr.initialize(to: vtable)
-        return UnsafePointer(ptr)
-    }()
-}
-
-private func uniffiCallbackInitEditorHost() {
-    uniffi_memry_core_fn_init_callback_vtable_editorhost(UniffiCallbackInterfaceEditorHost.vtablePtr)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeEditorHost: FfiConverter {
-    fileprivate static let handleMap = UniffiHandleMap<EditorHost>()
-
-    typealias FfiType = UInt64
-    typealias SwiftType = EditorHost
-
-    public static func lift(_ handle: UInt64) throws -> EditorHost {
-        if ((handle & 1) == 0) {
-            // Rust-generated handle, construct a new class that uses the handle to implement the
-            // interface
-            return EditorHostImpl(unsafeFromHandle: handle)
-        } else {
-            // Swift-generated handle, get the object from the handle map
-            return try handleMap.remove(handle: handle)
-        }
-    }
-
-    public static func lower(_ value: EditorHost) -> UInt64 {
-         if let rustImpl = value as? EditorHostImpl {
-             // Rust-implemented object.  Clone the handle and return it
-            return rustImpl.uniffiCloneHandle()
-         } else {
-            // Swift object, generate a new vtable handle and return that.
-            return handleMap.insert(obj: value)
-         }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EditorHost {
-        let handle: UInt64 = try readInt(&buf)
-        return try lift(handle)
-    }
-
-    public static func write(_ value: EditorHost, into buf: inout [UInt8]) {
-        writeInt(&buf, lower(value))
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeEditorHost_lift(_ handle: UInt64) throws -> EditorHost {
-    return try FfiConverterTypeEditorHost.lift(handle)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeEditorHost_lower(_ value: EditorHost) -> UInt64 {
-    return FfiConverterTypeEditorHost.lower(value)
-}
-
-
-
-
-
-
 /**
  * Platform file attributes the core cannot set itself.
  */
@@ -5463,7 +5146,7 @@ public protocol NotesProtocol: AnyObject, Sendable {
     /**
      * Every review comment and suggestion on one note (N604).
      *
-     * **Read only, and normatively so.** §12.5.1 forbids a non-editor client
+     * **Read only, and normatively so.** §12.5.1 forbids a non-desktop client
      * writing the `criticMarkupMarks` root; §12.5.0's root table says a drop
      * deletes every suggestion from the file on desktop's next write-back.
      * There is no matching write on this API on purpose.
@@ -5758,7 +5441,7 @@ open func bookmarks()throws  -> [BookmarkEntry]  {
     /**
      * Every review comment and suggestion on one note (N604).
      *
-     * **Read only, and normatively so.** §12.5.1 forbids a non-editor client
+     * **Read only, and normatively so.** §12.5.1 forbids a non-desktop client
      * writing the `criticMarkupMarks` root; §12.5.0's root table says a drop
      * deletes every suggestion from the file on desktop's next write-back.
      * There is no matching write on this API on purpose.
@@ -14329,67 +14012,6 @@ public func FfiConverterTypeBookmarkEntry_lift(_ buf: RustBuffer) throws -> Book
 #endif
 public func FfiConverterTypeBookmarkEntry_lower(_ value: BookmarkEntry) -> RustBuffer {
     return FfiConverterTypeBookmarkEntry.lower(value)
-}
-
-
-/**
- * A message crossing the host-to-guest bridge.
- *
- * `payload` is the JSON body as bytes. It is opaque to the shell: the shell
- * relays it and does not read it, because a shell that reads it grows an
- * opinion about `BRIDGE_PROTOCOL_VERSION`.
- */
-public struct BridgeMessage: Equatable, Hashable {
-    public var kind: String
-    public var payload: Data
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(kind: String, payload: Data) {
-        self.kind = kind
-        self.payload = payload
-    }
-
-    
-
-    
-}
-
-#if compiler(>=6)
-extension BridgeMessage: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeBridgeMessage: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BridgeMessage {
-        return
-            try BridgeMessage(
-                kind: FfiConverterString.read(from: &buf), 
-                payload: FfiConverterData.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: BridgeMessage, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.kind, into: &buf)
-        FfiConverterData.write(value.payload, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeBridgeMessage_lift(_ buf: RustBuffer) throws -> BridgeMessage {
-    return try FfiConverterTypeBridgeMessage.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeBridgeMessage_lower(_ value: BridgeMessage) -> RustBuffer {
-    return FfiConverterTypeBridgeMessage.lower(value)
 }
 
 
@@ -26889,123 +26511,6 @@ public func FfiConverterTypeDevicePlatform_lower(_ value: DevicePlatform) -> Rus
 
 
 /**
- * Failures of the `EditorHost` seam (chapter 12).
- */
-public 
-enum EditorError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
-
-    
-    
-    /**
-     * No WebView is attached. The core queues rather than losing the message.
-     */
-    case NotAttached
-    /**
-     * The guest did not answer in time.
-     */
-    case Timeout(elapsedMs: UInt64
-    )
-    /**
-     * The bundle's `BRIDGE_PROTOCOL_VERSION` is not the one this core speaks.
-     * A hard failure, not a degraded mode: the bundle and the core ship
-     * together, so a mismatch means the build pairing broke.
-     */
-    case ProtocolMismatch(expected: UInt32, found: UInt32
-    )
-    case Failed(what: String
-    )
-
-    
-
-    
-
-    
-    public var errorDescription: String? {
-        String(reflecting: self)
-    }
-    
-}
-
-#if compiler(>=6)
-extension EditorError: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeEditorError: FfiConverterRustBuffer {
-    typealias SwiftType = EditorError
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EditorError {
-        let variant: Int32 = try readInt(&buf)
-        switch variant {
-
-        
-
-        
-        case 1: return .NotAttached
-        case 2: return .Timeout(
-            elapsedMs: try FfiConverterUInt64.read(from: &buf)
-            )
-        case 3: return .ProtocolMismatch(
-            expected: try FfiConverterUInt32.read(from: &buf), 
-            found: try FfiConverterUInt32.read(from: &buf)
-            )
-        case 4: return .Failed(
-            what: try FfiConverterString.read(from: &buf)
-            )
-
-         default: throw UniffiInternalError.unexpectedEnumCase
-        }
-    }
-
-    public static func write(_ value: EditorError, into buf: inout [UInt8]) {
-        switch value {
-
-        
-
-        
-        
-        case .NotAttached:
-            writeInt(&buf, Int32(1))
-        
-        
-        case let .Timeout(elapsedMs):
-            writeInt(&buf, Int32(2))
-            FfiConverterUInt64.write(elapsedMs, into: &buf)
-            
-        
-        case let .ProtocolMismatch(expected,found):
-            writeInt(&buf, Int32(3))
-            FfiConverterUInt32.write(expected, into: &buf)
-            FfiConverterUInt32.write(found, into: &buf)
-            
-        
-        case let .Failed(what):
-            writeInt(&buf, Int32(4))
-            FfiConverterString.write(what, into: &buf)
-            
-        }
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeEditorError_lift(_ buf: RustBuffer) throws -> EditorError {
-    return try FfiConverterTypeEditorError.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeEditorError_lower(_ value: EditorError) -> RustBuffer {
-    return FfiConverterTypeEditorError.lower(value)
-}
-
-
-/**
  * What this device holds of a day's body.
  */
 
@@ -32746,7 +32251,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_bookmarks() != 18357) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_notes_comments() != 23328) {
+    if (uniffi_memry_core_checksum_method_notes_comments() != 52547) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_folders() != 56251) {
@@ -33301,15 +32806,6 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_codecapture_cancel() != 52096) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_editorhost_request() != 48182) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_memry_core_checksum_method_editorhost_post() != 3063) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_memry_core_checksum_method_editorhost_bridge_protocol_version() != 58807) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_memry_core_checksum_method_notifications_permission() != 20630) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -33397,7 +32893,6 @@ private let initializationResult: InitializationResult = {
 
     uniffiCallbackInitBackgroundExec()
     uniffiCallbackInitCodeCapture()
-    uniffiCallbackInitEditorHost()
     uniffiCallbackInitFileProtection()
     uniffiCallbackInitLifecycleObserver()
     uniffiCallbackInitNotifications()

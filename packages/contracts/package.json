@@ -81,7 +81,6 @@
     "./vault-api": "./src/vault-api.ts",
     "./vault-locks-api": "./src/vault-locks-api.ts",
     "./capture-api": "./src/capture-api.ts",
-    "./webview-bridge": "./src/webview-bridge.ts",
     "./test-vectors/crypto-vectors.json": "./test-vectors/crypto-vectors.json",
     "./test-vectors/bip39-unlock.json": "./test-vectors/bip39-unlock.json",
     "./test-vectors/record-envelope.json": "./test-vectors/record-envelope.json",

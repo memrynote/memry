@@ -25,7 +25,7 @@
 //!   there is no `#[derive(Deserialize)]` payload struct here for the reason
 //!   [`crate::storage::repositories`] gives at length (#2183).
 //! - **No markdown.** `content` on a create is carried **verbatim** into the
-//!   payload and into `note_bodies.seed_markdown`; the editor bundle is the
+//!   payload and into `note_bodies.seed_markdown`; desktop's converter is the
 //!   only thing that turns it into a document (chapter 12 §12.1.2, §12.2
 //!   carve-out A, data-model §A.3). The core parses none of it.
 //!

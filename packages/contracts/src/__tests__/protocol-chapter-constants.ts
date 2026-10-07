@@ -70,7 +70,7 @@ import {
 } from '../sync-api'
 import { BOOTSTRAP_TOKEN_HEADER } from '../bootstrap-api'
 import { SYNC_SOCKET_CLOSE, SYNC_SOCKET_MESSAGE_TYPES, SYNC_SOCKET_PING } from '../sync-socket'
-import { BRIDGE_FRAGMENT_NAME, BRIDGE_PROTOCOL_VERSION } from '../webview-bridge'
+import { CRDT_FRAGMENT_NAME } from '../ipc-crdt'
 
 export const CHAPTER_DIR = new URL('../../../../docs/protocol/', import.meta.url)
 
@@ -123,12 +123,6 @@ export const COVERED: readonly Covered[] = [
     spelledAs: ['`CRYPTO_VERSION` | `1`']
   },
   { slug: C00, label: 'PACK_VERSION', value: PACK_VERSION, spelledAs: ['`PACK_VERSION` | `1`'] },
-  {
-    slug: C00,
-    label: 'BRIDGE_PROTOCOL_VERSION',
-    value: BRIDGE_PROTOCOL_VERSION,
-    spelledAs: ['`BRIDGE_PROTOCOL_VERSION` | `1`']
-  },
   {
     slug: C00,
     label: 'SYNC_ITEM_TYPES size',
@@ -375,8 +369,8 @@ export const COVERED: readonly Covered[] = [
   // --- chapter 12 -----------------------------------------------------------
   {
     slug: C12,
-    label: 'BRIDGE_FRAGMENT_NAME',
-    value: BRIDGE_FRAGMENT_NAME,
+    label: 'CRDT_FRAGMENT_NAME',
+    value: CRDT_FRAGMENT_NAME,
     spelledAs: ['an `XmlFragment` named **`prosemirror`**']
   },
 

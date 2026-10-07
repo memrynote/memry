@@ -209,7 +209,7 @@ impl Notes {
 
     /// Every review comment and suggestion on one note (N604).
     ///
-    /// **Read only, and normatively so.** §12.5.1 forbids a non-editor client
+    /// **Read only, and normatively so.** §12.5.1 forbids a non-desktop client
     /// writing the `criticMarkupMarks` root; §12.5.0's root table says a drop
     /// deletes every suggestion from the file on desktop's next write-back.
     /// There is no matching write on this API on purpose.

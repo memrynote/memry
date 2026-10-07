@@ -347,11 +347,13 @@ so `x64`, `arm64`, and `amd64` builds stay distinguishable in GitHub releases.
 
 ## Coverage Targets
 
-memrynote is pre-production, but desktop and sync-server coverage are now ratcheted.
-Keep new coverage feature-scoped and avoid catch-all test files.
+Desktop and sync-server enforce coverage floors, and the floors only move up. Keep new coverage
+feature-scoped and avoid catch-all test files.
 
-- **Desktop** — configured in `apps/desktop/config/vitest.config.ts`; current Vitest 4.1/V8
-  coverage floor is 84.8% statements, 72.4% branches, 85.7% functions, and 86.6% lines.
+- **Desktop** — configured in `apps/desktop/config/vitest.config.ts`, with the floor in
+  `apps/desktop/config/coverage-thresholds.json`. Vitest and the CI "Coverage thresholds" job
+  (`apps/desktop/scripts/check-coverage-thresholds.mjs`) both read that file, so raise the
+  numbers there.
 - **Sync-server** — configured in `apps/sync-server/vitest.config.ts`; current floor is
   90% for statements, branches, functions, and lines.
 - **Sync harness** — `tests/sync-harness` uses the same Vitest major as the sync server so

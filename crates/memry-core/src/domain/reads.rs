@@ -8,10 +8,10 @@
 //! to.
 //!
 //! **No markdown.** A body crosses as `extract_text` output, which chapter 12
-//! §12.1's table names the **only** text operation a non-editor client owns: a
-//! plain-text walk that keeps headings and list markers, drops everything else
-//! and claims no markdown fidelity. The core neither parses nor serialises
-//! BlockNote markdown here or anywhere.
+//! §12.1's table names the document-to-text operation of a non-desktop client:
+//! a plain-text walk that keeps headings and list markers, drops everything
+//! else and claims no markdown fidelity. The core never serialises markdown,
+//! and parses it only in `markdown_seed` (§12.1.0), never on a read.
 //!
 //! ## The one rule that shapes every function below
 //!
@@ -513,7 +513,7 @@ pub fn note_table(
 
 /// Every review comment and suggestion on one note (N604).
 ///
-/// Read only: §12.5.1 forbids a non-editor client writing the
+/// Read only: §12.5.1 forbids a non-desktop client writing the
 /// `criticMarkupMarks` root, and §12.5.0 says what dropping it costs.
 pub fn note_comments(conn: &Connection, id: &str) -> Result<Vec<ReviewComment>, CrdtError> {
     if !document_exists(conn, id) {

@@ -1,8 +1,3 @@
-# The built editor document is a checked-in artifact, ~1.19 MB of inlined
-# bundle. Marking it generated keeps it out of review diffs and out of merge
-# resolution; it is always rebuilt, never hand-merged.
-packages/editor-web/dist/** -diff -merge linguist-generated
-apps/mobile/src/editor/generated/** -diff -merge linguist-generated
 packages/swift/MemryCore/Sources/MemryCore/Generated/** -diff linguist-generated
 # The iOS article extractor, ~1.2 MB of minified bundle
 # (scripts/generate-ios-article-extract.mjs). Its template literals carry

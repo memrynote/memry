@@ -15,10 +15,10 @@ import UniformTypeIdentifiers
 /// What a note can be exported as.
 ///
 /// **Plain text, not markdown, and that is a protocol constraint rather than
-/// a shortcut.** §12.1.2 says a non-editor client "owns `extract_text` and
-/// nothing else": producing markdown would mean re-spelling the body from the
-/// CRDT, and a client that guessed at the spelling would hand the user a file
-/// that differs from the one desktop writes for the same note.
+/// a shortcut.** §12.1.2 forbids a non-desktop client from serialising
+/// markdown: producing it would mean re-spelling the body from the CRDT, and a
+/// client that guessed at the spelling would hand the user a file that differs
+/// from the one desktop writes for the same note.
 ///
 /// So the export says what it is. A file labelled `.md` whose contents are
 /// flattened text would be a quiet lie.

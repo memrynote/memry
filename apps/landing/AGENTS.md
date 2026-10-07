@@ -1,41 +1,36 @@
-# Landing Rules
+# Landing guide
 
-Marketing site (`@memry/landing`). Vite + React, deployed on Vercel. Root `AGENTS.md` applies; this file adds landing rules.
+This directory owns the marketing site (`@memry/landing`), a Vite and React app on Vercel, plus its account, checkout, and download pages. A push to `main` that touches `apps/landing/` deploys it to production.
 
-## Brand Surface, Not Product
+## Brand register
 
 Landing is a separate design register from the product apps.
 
-- Visual system lives in `src/index.css`: terracotta `#ff671a`, paper, ink.
-- Do not copy landing typography, mascots, or CTA treatment into desktop, iOS, or extension.
-- Do not copy product tokens into landing either. The two registers stay apart on purpose.
-- Mascot icons: `public/mascots`. To add one in-style, follow `scripts/mascots/README.md`.
-
-## Commands
-
-```bash
-pnpm dev:landing                      # from repo root
-pnpm --filter @memry/landing typecheck
-pnpm --filter @memry/landing lint
-pnpm --filter @memry/landing test
-pnpm --filter @memry/landing build
-pnpm --filter @memry/landing preview   # verify the built output before shipping copy changes
-```
+- `src/index.css` holds the visual system: terracotta `#ff671a`, paper, and ink.
+- Landing typography, mascots, and CTA treatment stay out of desktop, iOS, and the extension, and product tokens stay out of landing.
+- Mascot icons live in `public/mascots`. To add one in style, follow `scripts/mascots/README.md`.
 
 ## Content
 
-- Marketing copy is a claim. Do not state a feature, price, or guarantee the product does not ship today.
-- Privacy and encryption claims must match what `apps/sync-server` and `apps/desktop` actually do. If a claim drifts, fix the copy, not the reader's expectation.
-- No emojis in copy unless the existing page already uses them in that spot.
+- Marketing copy is a claim. State only features, prices, and guarantees the product ships today.
+- Privacy and encryption claims match what desktop and the sync server actually do. When a claim drifts, fix the copy.
+- Copy carries no emojis unless the page already uses one in that spot.
 
-## SEO and Static Assets
+## Account and checkout
 
-- `api/` holds Vercel serverless functions; `vercel.json` owns routing, headers, and redirects. Changing a URL means adding a redirect, never breaking an indexed path.
-- After adding or renaming a public page, run `pnpm --filter @memry/landing indexnow`.
+- `src/pages/account` and `src/lib/account` are a sync-server client. They register a web device with its own Ed25519 key and call the auth and account routes. Landing deploys on every push to `main`, while production sync-server deploys by hand, so these pages must work against the sync server running in production.
+- Checkout runs through Paddle (`api/paddle-checkout.ts`, `src/lib/paddle-checkout.ts`). Prices and plan names are product claims too.
+- Keys and tokens stay in the browser and out of logs.
+
+## SEO and static assets
+
+- `api/` holds Vercel serverless functions, and `vercel.json` owns routing, headers, and redirects. A URL change adds a redirect, so indexed paths keep working.
+- Give a new public page a `PAGE_META` entry in `src/lib/seo.ts`. The build derives `sitemap.xml` from those entries, and `deploy-landing.yml` pings IndexNow with the live sitemap after each production deploy, so skip the manual `indexnow` script.
 - Optimize images before committing them. `public/` ships as-is to every visitor.
+- Public pages show visible focus states and give every meaningful image alt text.
 
-## Style
+## Commands
 
-- `.env.local` is gitignored and linked across worktrees by `scripts/link-env.mjs`. Run `pnpm env:link` if a tree predates it.
-- Logical CSS properties for RTL safety, same rule as the product apps.
-- Accessibility is not optional on a public page: WCAG AA contrast, real focus states, reduced-motion respected, alt text on every meaningful image.
+- `pnpm --filter @memry/landing typecheck`, `lint`, `test`, and `build` are the gates. The root `pnpm lint` and `pnpm typecheck` skip this app. `build` runs the typecheck, the Vite build, and prerendering (`scripts/prerender.ts`). Tests use `node:test`, not Vitest.
+- Check copy changes in the built output with `pnpm --filter @memry/landing preview`.
+- `.env.local` is gitignored and linked across worktrees by `pnpm env:link`.
