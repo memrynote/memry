@@ -110,7 +110,8 @@ export const TOOL_SCHEMAS = {
     description:
       'Full-text search across notes and filed files; returns id, title, snippet, folder_path, ' +
       'file_type. A file_type other than "markdown" (pdf/image/audio/video) is a filed file, not ' +
-      'a note. PDFs and images match on the text read out of them on this device. Pass ' +
+      'a note. PDFs and images match on the text read out of them on this device, and a note ' +
+      'matches on the visible text of the HTML blocks it embeds. Pass ' +
       'file_types to restrict the search, e.g. ["markdown"] for notes only; omitted returns ' +
       'every file type.'
   },
@@ -124,8 +125,9 @@ export const TOOL_SCHEMAS = {
       'or image, returns extracted_text instead: the text read on this device (the PDF text ' +
       'layer, else OCR), one entry per page, with status "extracting" | "done" | "failed", ' +
       'page_count and pages_read. Pages come in chunks of about 100 KB; pass next_page as ' +
-      'from_page to continue. A markdown note that embeds PDFs or images adds attachment_text, ' +
-      'the text read from each ({ file, text }), about 100 KB at most. Errors with VALIDATION ' +
+      'from_page to continue. A markdown note that embeds PDFs, images or HTML blocks adds ' +
+      'attachment_text, the text read from each ({ file, text }; the visible text for an ' +
+      'HTML block), about 100 KB at most. Errors with VALIDATION ' +
       'for a filed audio or video file.'
   },
   vault_list_folder: {
