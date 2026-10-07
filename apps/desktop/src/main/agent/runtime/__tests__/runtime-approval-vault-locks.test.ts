@@ -3,7 +3,12 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
 import type { VaultConfig, VaultStatus } from '@memry/contracts/vault-api'
-import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  asClientDb,
+  createTestDataDb,
+  createTestIndexDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 
 const mocks = vi.hoisted(() => ({
@@ -101,9 +106,10 @@ describe('read-only locks under Always allow (#2606)', () => {
       excludePatterns: ['.git', 'node_modules', '.trash'],
       defaultNoteFolder: 'notes',
       journalFolder: 'journal',
+      journalDateFormat: 'YYYY-MM-DD',
       attachmentsFolder: 'attachments'
     } satisfies VaultConfig)
-    vi.spyOn(database, 'getDatabase').mockReturnValue(data.db)
+    vi.spyOn(database, 'getDatabase').mockReturnValue(asClientDb(data.db))
     vi.spyOn(database, 'getIndexDatabase').mockReturnValue(index.db)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
@@ -115,14 +121,14 @@ describe('read-only locks under Always allow (#2606)', () => {
 
     // The lookups `installVaultLockFileGuard` wires in the app, on the test index.
     installVaultLockSource({
-      dataDb: () => data.db,
+      dataDb: () => asClientDb(data.db),
       notePathOf: (noteId) => getNoteCacheById(index.db, noteId)?.path ?? null,
       noteIdAtPath: (relativePath) => getNoteCacheByPath(index.db, relativePath)?.id ?? null
     })
-    writeLockRow(data.db, 'note', note.id, true)
-    writeLockRow(data.db, 'folder', 'archive', true)
+    writeLockRow(asClientDb(data.db), 'note', note.id, true)
+    writeLockRow(asClientDb(data.db), 'folder', 'archive', true)
     invalidateVaultLocks()
-    handles = createVaultServiceHandles({ dataDb: data.db, indexDb: index.db })
+    handles = createVaultServiceHandles({ dataDb: asClientDb(data.db), indexDb: index.db })
   })
 
   afterEach(async () => {
@@ -190,7 +196,7 @@ describe('read-only locks under Always allow (#2606)', () => {
   })
 
   it('the same tools still write once the lock is gone', async () => {
-    writeLockRow(data.db, 'folder', 'archive', false)
+    writeLockRow(asClientDb(data.db), 'folder', 'archive', false)
     invalidateVaultLocks()
     const tools = installRuntime('always_accept', {})
 
