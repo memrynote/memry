@@ -47,8 +47,10 @@ const mocks = vi.hoisted(() => ({
     error: null as string | null,
     folderNotFound: false,
     activeView: null as unknown,
-    notes: [] as unknown[]
-  }
+    notes: [] as unknown[],
+    hasMore: false
+  },
+  loadMore: vi.fn(async () => {})
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -171,7 +173,9 @@ vi.mock('@/hooks/use-folder-view', () => ({
     removeNotesOptimistically: mocks.removeNotesOptimistically,
     updateNoteProperty: mocks.updateNoteProperty,
     updateNoteTags: mocks.updateNoteTags,
-    updateNoteIcons: mocks.updateNoteIcons
+    updateNoteIcons: mocks.updateNoteIcons,
+    hasMore: mocks.folderState.hasMore,
+    loadMore: mocks.loadMore
   })
 }))
 
@@ -574,6 +578,7 @@ describe('FolderViewPage', () => {
     mocks.folderState.folderNotFound = false
     mocks.folderState.activeView = null
     mocks.folderState.notes = [note]
+    mocks.folderState.hasMore = false
     mocks.getActiveTab.mockReturnValue({ id: 'folder-tab' })
     mocks.activeTab = { id: 'tab-1' }
     mocks.renamedHandler = null
@@ -584,6 +589,17 @@ describe('FolderViewPage', () => {
     })
     mocks.moveNote.mockResolvedValue({ success: true })
     mocks.deleteNote.mockResolvedValue({ success: true })
+  })
+
+  it('loads every page of a folder larger than one page', () => {
+    mocks.folderState.hasMore = true
+    renderWithProviders(<FolderViewPage scope={{ kind: 'folder', path: 'Work/Plans' }} />)
+    expect(mocks.loadMore).toHaveBeenCalled()
+  })
+
+  it('does not load more once every page is in', () => {
+    renderWithProviders(<FolderViewPage scope={{ kind: 'folder', path: 'Work/Plans' }} />)
+    expect(mocks.loadMore).not.toHaveBeenCalled()
   })
 
   it('drives the standard folder table workflows', async () => {
