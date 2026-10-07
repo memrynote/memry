@@ -22,6 +22,8 @@ Journal entries follow the folder they are saved in. When you lock the journal f
 the sidebar when the journal setting **Show in sidebar** is on) or a folder above it, every journal day
 opens read-only with the same lock line, including days that have no entry yet.
 
+A single journal entry cannot be locked from the menu. To lock an entry, lock its folder.
+
 Everything that would change a locked note is refused:
 
 - typing in the editor, applying a template, restoring an older version,
@@ -40,7 +42,7 @@ rename, skip locked notes and carry on with the rest.
 Changing the journal **Date format** renames every journal file, so it is refused as a whole
 when any journal entry it would rename is locked, or a rename would move one into a locked
 folder. Settings shows **"The owner made this note read-only."**, the old format stays, and no
-file is renamed. Unlock the entry or folder, then change the format again.
+file is renamed. Unlock the folder, then change the format again.
 
 Canvases cannot be locked. They live in a folder that does not appear in the sidebar.
 
@@ -53,14 +55,28 @@ changes made on this device; it does not throw away changes that come in through
 When your sync server does not know locks yet, the lock stays on this device and the rest of
 your changes keep syncing. Memry sends the lock again once the server is updated.
 
+A folder lock is stored by the folder's path. Renaming a locked folder is refused here, but a
+device running an older version of Memry can still rename it. The lock then stays on the old
+path and no longer covers the renamed folder. Lock the folder again under its new name.
+
 ## Edits From Outside Memry
 
-Memry also marks every locked file read-only on disk, so most editors and command-line tools
-refuse to save over it.
+Memry also marks the file of every locked note read-only on disk, so most editors and
+command-line tools refuse to save over it.
 
-If a locked file is changed or deleted anyway, Memry keeps the changed text as a version in the
-note's [version history](./version-history), writes the locked text back, and tells you which note
-it restored. This also happens at the next start when the change was made while Memry was closed.
+If a locked markdown note is changed or deleted anyway, Memry keeps the changed text as a version
+in the note's [version history](./version-history), writes the locked text back, and tells you which
+note it restored. This also happens at the next start when the change was made while Memry was
+closed.
+
+A lock does not cover everything outside the app:
+
+- Renaming or moving a locked note's file outside Memry, for example in Finder or with `mv`, is
+  not reverted. The rename or move syncs to your other devices.
+- Only markdown notes are written back. A locked PDF, image, or other file that is deleted
+  outside Memry is not restored, and the delete syncs.
+- A locked note's attachments are protected only inside Memry. Their files are not read-only on
+  disk, so other programs can change or delete them.
 
 ## Going Back to an Older Version of Memry
 
