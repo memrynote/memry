@@ -158,7 +158,8 @@
       "richTextAria": "Επεξεργαστής εμπλουτισμένου κειμένου",
       "headingPlaceholder": "Επικεφαλίδα",
       "listPlaceholder": "Στοιχείο λίστας",
-      "todoPlaceholder": "Εκκρεμότητα"
+      "todoPlaceholder": "Εκκρεμότητα",
+      "htmlComment": "Κρυφό σχόλιο HTML"
     },
     "table": {
       "keyboardMenuAria": "Ενέργειες πίνακα για τη γραμμή {row}, στήλη {column}",

@@ -11,11 +11,11 @@
     "authoredBy": "@blocknote/server-util blocksToYXmlFragment, the path desktop main calls",
     "registry": {
       "blocks": 23,
-      "inline": 8,
+      "inline": 9,
       "styles": 7
     },
     "notClaimed": "this is not markdown and not a rendering; it is the block list a shell draws from",
-    "caseCount": 34
+    "caseCount": 35
   },
   "cases": [
     {
@@ -1790,6 +1790,57 @@
         }
       ],
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"inline-inlineimage-and-inlinecheckbox-in-a-table-cell-0\"\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 element inlineCheckbox checked=true\n6 text \" \"\n6 element inlineImage alt=\"i\" src=\"attachment://i.png\" width=0"
+    },
+    {
+      "name": "inline: htmlComment beside text",
+      "pins": "an HTML comment is a node holding its own bytes in `source`, never text (AF-015)",
+      "updateHex": "010df2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb0603074265666f72652087f2da95eb0603030b68746d6c436f6d6d656e742800f2da95eb060b06736f757263650177193c212d2d2068696464656e205b5b416c7068615d5d202d2d3e87f2da95eb060b060400f2da95eb060d062061667465722800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0601026964017720696e6c696e652d68746d6c636f6d6d656e742d6265736964652d746578742d3000",
+      "expectedBlocks": [
+        {
+          "id": "inline-htmlcomment-beside-text-0",
+          "kind": "paragraph",
+          "depth": 0,
+          "props": [
+            {
+              "name": "backgroundColor",
+              "value": "default"
+            },
+            {
+              "name": "textAlignment",
+              "value": "left"
+            },
+            {
+              "name": "textColor",
+              "value": "default"
+            }
+          ],
+          "inline": [
+            {
+              "text": "Before ",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            },
+            {
+              "text": "",
+              "marks": [
+                "htmlComment"
+              ],
+              "markAttrs": {
+                "htmlComment.source": "<!-- hidden [[Alpha]] -->"
+              },
+              "target": null
+            },
+            {
+              "text": " after",
+              "marks": [],
+              "markAttrs": {},
+              "target": null
+            }
+          ]
+        }
+      ],
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"inline-htmlcomment-beside-text-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Before \"\n3 element htmlComment source=\"<!-- hidden [[Alpha]] -->\"\n3 text \" after\""
     },
     {
       "name": "styles: the five boolean marks",

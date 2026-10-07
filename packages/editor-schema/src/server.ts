@@ -26,6 +26,8 @@ import {
   createDateMentionSpec,
   createInlineImageSpec,
   createInlineCheckboxSpec,
+  createHtmlCommentSpec,
+  htmlCommentSerialization,
   inlineCheckboxSerialization,
   inlineImageSerialization,
   dateMentionSerialization,
@@ -52,6 +54,9 @@ export function createServerInlineSpecs(): MemryInlineSpecs {
     ),
     inlineCheckbox: createInlineCheckboxSpec((inlineContent) =>
       inlineCheckboxSerialization.toExternalHTML(inlineContent)
+    ),
+    htmlComment: createHtmlCommentSpec((inlineContent) =>
+      htmlCommentSerialization.toExternalHTML(inlineContent)
     )
   }
 }

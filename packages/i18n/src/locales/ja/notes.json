@@ -158,7 +158,8 @@
       "richTextAria": "リッチテキストエディター",
       "headingPlaceholder": "見出し",
       "listPlaceholder": "リスト項目",
-      "todoPlaceholder": "ToDo"
+      "todoPlaceholder": "ToDo",
+      "htmlComment": "非表示の HTML コメント"
     },
     "table": {
       "keyboardMenuAria": "{row} 行目、{column} 列目の表の操作",

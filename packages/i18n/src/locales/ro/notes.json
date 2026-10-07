@@ -158,7 +158,8 @@
       "richTextAria": "Editor de text formatat",
       "headingPlaceholder": "Titlu",
       "listPlaceholder": "Element din listă",
-      "todoPlaceholder": "Element de făcut"
+      "todoPlaceholder": "Element de făcut",
+      "htmlComment": "Comentariu HTML ascuns"
     },
     "table": {
       "keyboardMenuAria": "Acțiuni de tabel pentru rândul {row}, coloana {column}",

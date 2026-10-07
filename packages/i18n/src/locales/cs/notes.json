@@ -158,7 +158,8 @@
       "richTextAria": "Editor formátovaného textu",
       "headingPlaceholder": "Nadpis",
       "listPlaceholder": "Položka seznamu",
-      "todoPlaceholder": "Úkol"
+      "todoPlaceholder": "Úkol",
+      "htmlComment": "Skrytý komentář HTML"
     },
     "table": {
       "keyboardMenuAria": "Akce tabulky pro řádek {row}, sloupec {column}",

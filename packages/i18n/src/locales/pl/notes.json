@@ -158,7 +158,8 @@
       "richTextAria": "Edytor tekstu sformatowanego",
       "headingPlaceholder": "Nagłówek",
       "listPlaceholder": "Element listy",
-      "todoPlaceholder": "Zadanie do zrobienia"
+      "todoPlaceholder": "Zadanie do zrobienia",
+      "htmlComment": "Ukryty komentarz HTML"
     },
     "table": {
       "keyboardMenuAria": "Akcje tabeli dla wiersza {row}, kolumny {column}",

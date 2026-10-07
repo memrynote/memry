@@ -158,7 +158,8 @@
       "richTextAria": "Editor formátovaného textu",
       "headingPlaceholder": "Nadpis",
       "listPlaceholder": "Položka zoznamu",
-      "todoPlaceholder": "Úloha"
+      "todoPlaceholder": "Úloha",
+      "htmlComment": "Skrytý komentár HTML"
     },
     "table": {
       "keyboardMenuAria": "Akcie tabuľky pre riadok {row}, stĺpec {column}",

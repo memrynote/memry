@@ -28,6 +28,7 @@
   "inline": [
     "dateMention",
     "hashTag",
+    "htmlComment",
     "inlineCheckbox",
     "inlineImage",
     "link",

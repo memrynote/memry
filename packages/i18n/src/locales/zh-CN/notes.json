@@ -158,7 +158,8 @@
       "richTextAria": "富文本编辑器",
       "headingPlaceholder": "标题",
       "listPlaceholder": "列表项",
-      "todoPlaceholder": "待办事项"
+      "todoPlaceholder": "待办事项",
+      "htmlComment": "隐藏的 HTML 注释"
     },
     "table": {
       "keyboardMenuAria": "第 {row} 行第 {column} 列的表格操作",

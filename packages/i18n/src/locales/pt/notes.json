@@ -158,7 +158,8 @@
       "richTextAria": "Editor de texto rico",
       "headingPlaceholder": "Título",
       "listPlaceholder": "Item da lista",
-      "todoPlaceholder": "Tarefa"
+      "todoPlaceholder": "Tarefa",
+      "htmlComment": "Comentário HTML oculto"
     },
     "table": {
       "keyboardMenuAria": "Ações da tabela para a linha {row}, coluna {column}",

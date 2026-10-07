@@ -92,6 +92,7 @@ import {
   restoreMarkdownSource,
   writeMarkdownSourceToYDoc
 } from '@memry/shared/markdown-source'
+import { maskHtmlComments } from '@memry/shared/html-comments'
 import { NOTE_SYNC_MAX_BYTES } from '@memry/sync-client/note-size'
 import { createLogger } from '../lib/logger'
 import { resolveVaultEmbeds } from '../vault/resolve-embed'
@@ -469,8 +470,12 @@ export async function markdownToBlocks(
 ): Promise<Block[] | null> {
   try {
     const editor = getEditor()
-    const blocks = await markdownToBlocksPreserving(editor, markdown, notePath)
-    restoreUntaggedFenceLanguages(markdown, blocks)
+    // HTML comments come off before anything splits the note into lines, so a
+    // multi-line comment holding blank lines or a fence stays one comment
+    // (AF-015). The fences counted below are then the ones the parse sees.
+    const masked = maskHtmlComments(markdown)
+    const blocks = await markdownToBlocksPreserving(editor, masked, notePath)
+    restoreUntaggedFenceLanguages(masked, blocks)
     return blocks
   } catch (err) {
     log.error('Markdown-to-blocks conversion failed', err)

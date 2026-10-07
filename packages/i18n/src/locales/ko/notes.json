@@ -158,7 +158,8 @@
       "richTextAria": "리치 텍스트 편집기",
       "headingPlaceholder": "제목",
       "listPlaceholder": "목록 항목",
-      "todoPlaceholder": "할 일 항목"
+      "todoPlaceholder": "할 일 항목",
+      "htmlComment": "숨겨진 HTML 주석"
     },
     "table": {
       "keyboardMenuAria": "{row}행 {column}열 표 메뉴",

@@ -663,6 +663,7 @@ The consequences are the reason for the shape:
 | `linkMention`    | `((mention:<encoded url>))`                                                      | `packages/editor-schema/src/inline/link-mention.ts:25`, `:50`     |
 | `inlineImage`    | `![alt](src)`, width carried in the alt as `alt\|300` with a purely numeric tail | `packages/editor-schema/src/inline/inline-image.ts:85-92`         |
 | `inlineCheckbox` | `<input type=checkbox>`-shaped DOM                                               | `packages/editor-schema/src/inline/inline-checkbox.ts:79`, `:112` |
+| `htmlComment`    | the comment's own bytes, `<!--` to `-->`, held in its `source` prop              | `packages/editor-schema/src/inline/html-comment.ts`               |
 
 `linkMention` encodes **seven characters beyond `encodeURIComponent`** —
 `! ' ( ) * ~ _` — so the token alphabet closes to `[A-Za-z0-9.%-]`
@@ -673,6 +674,17 @@ acceptance union at `:66`.
 `bold, italic, underline, strike, code`
 (`packages/editor-schema/src/inline/wiki-link.ts:148-154`); `underline` is
 chip-only and reaches disk through inline-colour span masking instead (§12.8).
+
+`htmlComment` (AF-015) holds an HTML comment, `<!--` and `-->` included, byte
+for byte. A comment on a line of its own is a paragraph holding only this node;
+one inside a line of text, or glued to the line above or below, is a node in
+that paragraph, so it is written back where it was. The serializer sees it as a
+token of hex (`MEMRYCMT<hex>X`, `packages/shared/src/html-comments.ts`) that
+`normalizeSerializedMarkdown` turns back into `source`, so nothing the
+serializer escapes or re-breaks reaches the comment. Comments in fenced code and
+code spans stay code, and Memry's own marker comments (§12.8, file markers,
+nesting markers, writing tools markers) keep their own readers. A client built
+before the type finds it unrepresentable and keeps the file (§12.1).
 
 ### 12.7.1 `inlineImage` and `inlineCheckbox` outside a table — Q12.6
 
@@ -716,7 +728,7 @@ in-fragment, not a root.
 
 ## 12.9 The type registry FR-040 enumerates
 
-**Normative.** `createMemrySchema` produces exactly **38** types
+**Normative.** `createMemrySchema` produces exactly **39** types
 (`packages/editor-schema/src/schema.ts:52-77`), checked in as
 `packages/editor-schema/src/registry-manifest.json` and asserted in both
 directions by `packages/editor-schema/src/__tests__/registry-parity.test.ts`.
@@ -724,7 +736,7 @@ directions by `packages/editor-schema/src/__tests__/registry-parity.test.ts`.
 | Group          | Count | Types                                                                                                                                                                                                                                                                                          |
 | -------------- | ----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | blocks         |    23 | `audio`, `bookmark`, `bulletListItem`, `callout`, `checkListItem`, `codeBlock`, `column`, `columnList`, `diagram`, `divider`, `file`, `heading`, `image`, `mathBlock`, `numberedListItem`, `paragraph`, `quote`, `table`, `taskBlock`, `toggleListItem`, `video`, `whiteboard`, `youtubeEmbed` |
-| inline content |     8 | `dateMention`, `hashTag`, `inlineCheckbox`, `inlineImage`, `link`, `linkMention`, `text`, `wikiLink`                                                                                                                                                                                           |
+| inline content |     9 | `dateMention`, `hashTag`, `htmlComment`, `inlineCheckbox`, `inlineImage`, `link`, `linkMention`, `text`, `wikiLink`                                                                                                                                                                            |
 | styles         |     7 | `backgroundColor`, `bold`, `code`, `italic`, `strike`, `textColor`, `underline`                                                                                                                                                                                                                |
 
 `file` and `toggleListItem` are Memry specifications overriding BlockNote

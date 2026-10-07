@@ -158,7 +158,8 @@
       "richTextAria": "Zengin metin düzenleyici",
       "headingPlaceholder": "Başlık",
       "listPlaceholder": "Liste öğesi",
-      "todoPlaceholder": "Yapılacak öğe"
+      "todoPlaceholder": "Yapılacak öğe",
+      "htmlComment": "Gizli HTML yorumu"
     },
     "table": {
       "keyboardMenuAria": "Satır {row}, sütun {column} için tablo işlemleri",

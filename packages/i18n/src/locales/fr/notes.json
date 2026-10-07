@@ -158,7 +158,8 @@
       "richTextAria": "Éditeur de texte enrichi",
       "headingPlaceholder": "Titre",
       "listPlaceholder": "Élément de liste",
-      "todoPlaceholder": "Tâche"
+      "todoPlaceholder": "Tâche",
+      "htmlComment": "Commentaire HTML masqué"
     },
     "table": {
       "keyboardMenuAria": "Actions du tableau pour la ligne {row}, colonne {column}",

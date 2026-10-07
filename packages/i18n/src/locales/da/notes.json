@@ -158,7 +158,8 @@
       "richTextAria": "Editor til formateret tekst",
       "headingPlaceholder": "Overskrift",
       "listPlaceholder": "Listeelement",
-      "todoPlaceholder": "Gøremål"
+      "todoPlaceholder": "Gøremål",
+      "htmlComment": "Skjult HTML-kommentar"
     },
     "table": {
       "keyboardMenuAria": "Tabelhandlinger for række {row}, kolonne {column}",

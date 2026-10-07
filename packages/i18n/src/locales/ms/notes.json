@@ -158,7 +158,8 @@
       "richTextAria": "Editor teks kaya",
       "headingPlaceholder": "Tajuk",
       "listPlaceholder": "Item senarai",
-      "todoPlaceholder": "Item tugas"
+      "todoPlaceholder": "Item tugas",
+      "htmlComment": "Ulasan HTML tersembunyi"
     },
     "table": {
       "keyboardMenuAria": "Tindakan jadual untuk baris {row}, lajur {column}",

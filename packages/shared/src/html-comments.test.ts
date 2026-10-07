@@ -45,7 +45,7 @@ describe('maskHtmlComments (AF-015)', () => {
     ].join('\n')
     const out = masked(markdown)
     expect(out).not.toContain('<!--')
-    expect(out.split('\n')).toHaveLength(4)
+    expect(out.split('\n')).toHaveLength(5)
     expect(roundTrip(markdown)).toBe(markdown)
   })
 

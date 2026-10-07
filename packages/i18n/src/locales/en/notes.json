@@ -167,7 +167,8 @@
       "richTextAria": "Rich text editor",
       "headingPlaceholder": "Heading",
       "listPlaceholder": "List item",
-      "todoPlaceholder": "To-do item"
+      "todoPlaceholder": "To-do item",
+      "htmlComment": "Hidden HTML comment"
     },
     "table": {
       "keyboardMenuAria": "Table actions for row {row}, column {column}",

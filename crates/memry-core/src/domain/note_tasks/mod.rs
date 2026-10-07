@@ -50,14 +50,15 @@ const SUFFIX_OPEN: &str = "{task:";
 ///
 /// BlockNote builds each of these with `content: 'none'`, so desktop's
 /// `checkboxLineText` / `extractInlineText` read no text from them. The same
-/// six names [`crate::crdt::blocks`] treats as inline nodes.
-const INLINE_NODES: [&str; 6] = [
+/// seven names [`crate::crdt::blocks`] treats as inline nodes.
+const INLINE_NODES: [&str; 7] = [
     "wikiLink",
     "hashTag",
     "dateMention",
     "linkMention",
     "inlineImage",
     "inlineCheckbox",
+    "htmlComment",
 ];
 
 /// Which of the two stored shapes a task line has.

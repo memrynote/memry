@@ -158,7 +158,8 @@
       "richTextAria": "محرر النص المنسق",
       "headingPlaceholder": "العنوان",
       "listPlaceholder": "عنصر القائمة",
-      "todoPlaceholder": "بند مهمة"
+      "todoPlaceholder": "بند مهمة",
+      "htmlComment": "تعليق HTML مخفي"
     },
     "table": {
       "keyboardMenuAria": "إجراءات الجدول للصف {row}، العمود {column}",

@@ -3958,6 +3958,23 @@ del.bn-inline-content {
   cursor: default;
 }
 
+/* HTML comment (AF-015) — a marker where the comment sits, never its text. */
+.html-comment-marker {
+  display: inline-block;
+  margin-inline: 0.15em;
+  padding-inline: 0.3em;
+  border-radius: 0.3em;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.7em;
+  line-height: 1.4;
+  vertical-align: 0.1em;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  opacity: 0.7;
+  user-select: none;
+  cursor: default;
+}
+
 /* Inline hash tag styles — needs .dark .bn-editor prefix to beat the wildcard rule */
 .dark .bn-editor .inline-hash-tag,
 .dark .bn-container .inline-hash-tag,

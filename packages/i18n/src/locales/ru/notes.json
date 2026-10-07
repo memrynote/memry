@@ -158,7 +158,8 @@
       "richTextAria": "Редактор форматированного текста",
       "headingPlaceholder": "Заголовок",
       "listPlaceholder": "Пункт списка",
-      "todoPlaceholder": "Пункт списка задач"
+      "todoPlaceholder": "Пункт списка задач",
+      "htmlComment": "Скрытый HTML-комментарий"
     },
     "table": {
       "keyboardMenuAria": "Действия с таблицей: строка {row}, столбец {column}",

@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 135,
+    "exportedCaseCount": 143,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 145,
+    "caseCount": 153,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -974,6 +974,62 @@
       "canonical": null,
       "pending": null,
       "sha256": "ad357b9522b8ceadc7bdcd42839c32f3ed5c1def37bbccf54620d27032acc690"
+    },
+    {
+      "name": "comment on a line of its own",
+      "markdown": "<!-- hidden [[Alpha]] -->\n\nText",
+      "canonical": null,
+      "pending": null,
+      "sha256": "dff38bc70d3105f0739bcad8fc200b702982fbecb841f52b5076c76a94d73c8d"
+    },
+    {
+      "name": "comment directly above a heading",
+      "markdown": "<!-- hidden [[Alpha]] -->\n# Heading",
+      "canonical": "<!-- hidden [[Alpha]] -->\n\n# Heading",
+      "pending": null,
+      "sha256": "324cec8e9146baf6a432d08cd75bd838f6f1bae652293c44a8b166f92bd32972"
+    },
+    {
+      "name": "comment glued under a line",
+      "markdown": "Line to edit.\n<!-- under it [[Gamma]] -->",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b3f5a88c57e6a87025205ee3b429e026b3e29e9bccb22be1c486888e6607cc15"
+    },
+    {
+      "name": "comment inside a line",
+      "markdown": "Before <!-- inline [[Delta]] --> after",
+      "canonical": null,
+      "pending": null,
+      "sha256": "efca1698bb9bd1c7bfedb88ca45912f3f93f8a61d72555dbff797fb818b5447d"
+    },
+    {
+      "name": "multi-line comment holding a blank line, a heading and a fence",
+      "markdown": "<!--\nDraft [[Epsilon]]\n\n## Inside\n\n```js\nconst x = 1\n```\n-->\n\nText",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9f53c9bcbf583e70d4aaa15421bdf960bd798674bec547b16ff971cea4d02a39"
+    },
+    {
+      "name": "comment in a list item",
+      "markdown": "- item <!-- li -->\n- two",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d765701a0da6111dbfefdf9aaddd031abeb7a8a3260e5ac9721ca455a377bc4a"
+    },
+    {
+      "name": "comment in a table cell",
+      "markdown": "| a             | b |\n| ------------- | - |\n| 1 <!-- td --> | 2 |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "3ba8af7b9f5dc534e4ecda093fdd146053055c8400075e6c2579505cabf137bb"
+    },
+    {
+      "name": "comment in a code span stays code",
+      "markdown": "Use `<!-- x -->` here.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1984b2970036d2f7876e8d10310faa37fe7b9c82f9b02ea8b90e818cee7bddb7"
     }
   ],
   "storageCases": [

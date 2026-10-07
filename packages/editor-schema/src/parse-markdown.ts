@@ -6,6 +6,12 @@ import {
   restoreHardBreakSpelling,
   unmaskHardBreaks
 } from '@memry/shared/empty-lines'
+import {
+  decodeHtmlCommentTokens,
+  hasHtmlCommentToken,
+  maskHtmlComments,
+  splitHtmlCommentTokens
+} from '@memry/shared/html-comments'
 import { restoreDetailsMarkup } from './blocks/markdown'
 import { maskInlineTokens, restoreInlineTokens } from './inline/token-masking'
 import { liftImagesOutOfTextBlocks } from './lift-images'
@@ -129,6 +135,48 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks): void {
   }
 }
 
+interface StyledRun extends InlineRun {
+  styles?: unknown
+  content?: unknown
+}
+
+/**
+ * Each HTML comment token turned into an `htmlComment` node (AF-015).
+ *
+ * Literal text cannot hold a node, and neither can a link's label, so a token
+ * there becomes the comment's own text again: the bytes the author wrote, kept
+ * as code or as part of the label. No token is ever left in the document.
+ */
+function withHtmlCommentNodes(runs: InlineRun[], code: boolean): InlineRun[] {
+  if (!runs.some((run) => hasHtmlCommentToken(JSON.stringify(run) ?? ''))) return runs
+  const out: InlineRun[] = []
+  for (const run of runs as StyledRun[]) {
+    if (run?.type === 'link' && Array.isArray(run.content)) {
+      for (const inner of run.content as StyledRun[]) {
+        if (typeof inner.text === 'string') inner.text = decodeHtmlCommentTokens(inner.text)
+      }
+      out.push(run)
+      continue
+    }
+    if (run?.type !== 'text' || typeof run.text !== 'string' || !hasHtmlCommentToken(run.text)) {
+      out.push(run)
+      continue
+    }
+    if (code) {
+      out.push({ ...run, text: decodeHtmlCommentTokens(run.text) })
+      continue
+    }
+    for (const part of splitHtmlCommentTokens(run.text)) {
+      out.push(
+        part.kind === 'text'
+          ? { ...run, text: part.text }
+          : ({ type: 'htmlComment', props: { source: part.source } } as InlineRun)
+      )
+    }
+  }
+  return out
+}
+
 /**
  * Every block whose text is LITERAL — BlockNote's `content: 'plain'` kinds.
  *
@@ -160,12 +208,18 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
     const code = LITERAL_TEXT_BLOCK_TYPES.has(block.type ?? '')
     if (Array.isArray(block.content)) {
       repairRuns(block.content as InlineRun[], code, masks)
+      block.content = withHtmlCommentNodes(block.content as InlineRun[], code)
     } else if (block.content && typeof block.content === 'object') {
       // A table: its runs live two levels down, in the cells.
       for (const row of (block.content as TableContent).rows ?? []) {
-        for (const cell of row?.cells ?? []) {
+        const cells = row?.cells ?? []
+        for (const [index, cell] of cells.entries()) {
           const runs = cellRuns(cell)
-          if (runs) repairRuns(runs, false, masks)
+          if (!runs) continue
+          repairRuns(runs, false, masks)
+          const expanded = withHtmlCommentNodes(runs, false)
+          if (Array.isArray(cell)) cells[index] = expanded
+          else (cell as { content: unknown }).content = expanded
         }
       }
     }
@@ -186,7 +240,11 @@ export async function parseMarkdownToBlocksRepaired<T>(
 ): Promise<T[]> {
   // A `[[target|alias]]` already in a vault table has to be escaped before the
   // parse or 0.51's table parser splits the row on it and drops the alias.
-  const source = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(markdown))
+  //
+  // HTML comments come off first, as one token each (AF-015). The callers that
+  // split a note into blocks before this mask them already; a caller that
+  // hands in raw markdown (paste, a template) gets the same treatment here.
+  const source = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(maskHtmlComments(markdown)))
   // A hard break and a soft break now parse to the same single newline, so the
   // hard one is marked to keep them apart.
   const { markdown: masked, breaks } = maskHardBreaks(source)

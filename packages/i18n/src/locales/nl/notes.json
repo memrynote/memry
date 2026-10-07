@@ -158,7 +158,8 @@
       "richTextAria": "Rich-text-editor",
       "headingPlaceholder": "Kop",
       "listPlaceholder": "Lijstitem",
-      "todoPlaceholder": "To-do-item"
+      "todoPlaceholder": "To-do-item",
+      "htmlComment": "Verborgen HTML-opmerking"
     },
     "table": {
       "keyboardMenuAria": "Tabelacties voor rij {row}, kolom {column}",
