@@ -3,8 +3,9 @@ import type { ZodTypeAny } from 'zod'
 import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
 import { assertDesktopApiArgs } from './desktop-api-params'
+import { readBackFailedWarning } from './desktop-api-readback'
 import { DESKTOP_API_REPLY_MAX_BYTES } from './desktop-api-reply'
-import type { StoredNote, VaultServiceHandles } from './handles'
+import type { VaultServiceHandles } from './handles'
 import { TOOL_SCHEMAS, WRITE_TOOL_NAMES, type ToolName } from './schemas'
 import type { AgentMcpDesktopWriteOperation } from '@memry/contracts/agent-mcp-channels'
 import type { CanvasDrawElement, CanvasElementEdit } from '@memry/contracts/canvas-draw'
@@ -51,16 +52,24 @@ async function gateOrDeny(gate: WriteToolGate | null, ctx: GateContext): Promise
   return decision.args ?? ctx.parsedArgs
 }
 
-async function storedNoteReply(
-  handles: VaultServiceHandles,
-  id: string
-): Promise<StoredNote | { id: string }> {
-  return (await handles.notes.stored(id)) ?? { id }
+/**
+ * The record a read returns after the write, or only the id when none reads
+ * back. The write has landed by then, so a failed read adds a warning instead
+ * of failing the call; a retry would write twice.
+ */
+async function afterWrite<R, T extends object>(
+  read: () => Promise<R | null | undefined>,
+  reply: T
+): Promise<R | T | (T & { warnings: string[] })> {
+  try {
+    return (await read()) ?? reply
+  } catch (error) {
+    return { ...reply, warnings: [readBackFailedWarning(error)] }
+  }
 }
 
-/** The record a read returns after the write, or only the id when none reads back. */
-async function storedOrId(read: Promise<unknown>, id: string): Promise<unknown> {
-  return (await read) ?? { id }
+function storedNoteReply(handles: VaultServiceHandles, id: string) {
+  return afterWrite(() => handles.notes.stored(id), { id })
 }
 
 function tagChanges(before: string[], after: string[]) {
@@ -88,9 +97,10 @@ export function buildWriteTools(
   handles: VaultServiceHandles,
   gate: WriteToolGate | null
 ): ToolRegistration[] {
-  const storedTask = (id: string) => storedOrId(handles.tasks.get(id), id)
-  const storedProject = (id: string) => storedOrId(handles.projects.get(id), id)
-  const storedInboxItem = (id: string) => storedOrId(handles.inbox.get(id), id)
+  const storedTask = (id: string) => afterWrite(() => handles.tasks.get(id), { id })
+  const storedProject = (id: string) => afterWrite(() => handles.projects.get(id), { id })
+  const storedInboxItem = (id: string) => afterWrite(() => handles.inbox.get(id), { id })
+  const storedStatus = (id: string) => afterWrite(() => handles.statuses.get(id), { id })
 
   const factories: Record<(typeof WRITE_TOOL_NAMES)[number], ToolRegistration> = {
     vault_create_note: {
@@ -418,7 +428,8 @@ export function buildWriteTools(
           input
         )
         const args = await approvedArgs(gate, 'vault_reorder_statuses', parsed, ctx)
-        return handles.statuses.reorder(args)
+        const { ids } = await handles.statuses.reorder(args)
+        return { ids, statuses: await Promise.all(ids.map(storedStatus)) }
       }
     },
     vault_create_journal_entry: {
@@ -437,8 +448,8 @@ export function buildWriteTools(
           parsedArgs: parsed
         })) as typeof parsed
         const { id, created } = await handles.journal.createIfMissing(args)
-        const stored = await handles.journal.stored(args.date)
-        return stored ? { ...stored, created } : { id, created }
+        const stored = await afterWrite(() => handles.journal.stored(args.date), { id })
+        return { ...stored, created }
       }
     },
     vault_update_journal_entry: {
@@ -452,7 +463,7 @@ export function buildWriteTools(
         )
         const args = await approvedArgs(gate, 'vault_update_journal_entry', parsed, ctx)
         const { id, frontmatter_removed } = await handles.journal.update(args)
-        const stored = (await handles.journal.stored(args.date)) ?? { id }
+        const stored = await afterWrite(() => handles.journal.stored(args.date), { id })
         return frontmatter_removed ? { ...stored, frontmatter_removed } : stored
       }
     },
@@ -591,9 +602,9 @@ export function buildWriteTools(
         })) as typeof parsed
         const before = await handles.notes.stored(args.id)
         await handles.notes.update(args)
-        const after = await handles.notes.stored(args.id)
-        if (!after) return { id: args.id }
-        return before ? { ...after, ...tagChanges(before.tags, after.tags) } : after
+        const after = await storedNoteReply(handles, args.id)
+        if (!before || !('tags' in after)) return after
+        return { ...after, ...tagChanges(before.tags, after.tags) }
       }
     },
     vault_add_html_artifact: {

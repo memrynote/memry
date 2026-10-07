@@ -17,30 +17,61 @@ function field(value: unknown, key: string): unknown {
   return value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined
 }
 
+function call(operation: AgentMcpDesktopReadOperation, args: unknown[] = []): Readback['request'] {
+  return { operation, args }
+}
+
 function read(operation: AgentMcpDesktopReadOperation, args: unknown[] = []): Readback {
-  return { request: { operation, args }, select: whole }
+  return { request: call(operation, args), select: whole }
 }
 
 /** Read a list and pick one entry; `listKey` names the field holding the list, if any. */
 function findIn(
-  operation: AgentMcpDesktopReadOperation,
+  request: Readback['request'],
   listKey: string | null,
   key: string,
-  value: unknown
+  matches: (entryValue: unknown) => boolean
 ): Readback {
   return {
-    request: { operation, args: [] },
+    request,
     select: (data) => {
       const list = listKey === null ? data : field(data, listKey)
-      return (Array.isArray(list) ? list : []).find((entry) => field(entry, key) === value) ?? null
+      return (Array.isArray(list) ? list : []).find((entry) => matches(field(entry, key))) ?? null
     }
   }
 }
 
+const equals = (value: unknown) => (entryValue: unknown) => entryValue === value
+
+// The tag writers store names lower-cased and trimmed.
+const tagName = (value: unknown) => (typeof value === 'string' ? value.trim().toLowerCase() : value)
+
 const propertyDefinition = (args: Args) =>
-  findIn('notes.getPropertyDefinitions', null, 'name', args[0])
-const tag = (name: unknown) => findIn('tags.getAllWithCounts', 'tags', 'name', name)
+  findIn(call('notes.getPropertyDefinitions'), null, 'name', equals(args[0]))
+const tag = (name: unknown) =>
+  findIn(call('tags.getAllWithCounts'), 'tags', 'name', (entry) => tagName(entry) === tagName(name))
+// Folder paths are vault-relative; a call may add a leading or trailing slash.
+const folderPath = (value: unknown) =>
+  typeof value === 'string' ? value.replace(/^\/+|\/+$/g, '') : value
+const folder = (path: unknown) =>
+  findIn(call('notes.getFolders'), null, 'path', (entry) => folderPath(entry) === folderPath(path))
 const inboxItem = (args: Args) => read('inbox.get', [args[0]])
+
+/** The note's entry in the tag's pinned or unpinned list. */
+function tagNote(input: unknown): Readback {
+  const noteId = field(input, 'noteId')
+  return {
+    request: call('tags.getNotesByTag', [{ tag: field(input, 'tag') }]),
+    select: (data) => {
+      const notes = ['pinnedNotes', 'unpinnedNotes'].flatMap((key) => {
+        const list = field(data, key)
+        return Array.isArray(list) ? list : []
+      })
+      return notes.find((note) => field(note, 'id') === noteId) ?? null
+    }
+  }
+}
+
 const settings = (operation: AgentMcpDesktopReadOperation) => () => read(operation)
 
 /**
@@ -48,7 +79,8 @@ const settings = (operation: AgentMcpDesktopReadOperation) => () => read(operati
  * the agent sees what was stored. Writes that already return their record
  * (create/update of notes, tasks, templates, reminders, events...), deletes,
  * reorders and bulk calls are not listed: a delete leaves nothing to read, and
- * the others report counts or positions the agent sent.
+ * the others report counts or positions the agent sent. agent-mcp.md names the
+ * few others that reply without `stored`.
  */
 const READBACKS: Partial<Record<AgentMcpDesktopWriteOperation, (args: Args) => Readback>> = {
   'notes.ensurePropertyDefinition': propertyDefinition,
@@ -82,7 +114,25 @@ const READBACKS: Partial<Record<AgentMcpDesktopWriteOperation, (args: Args) => R
   'tags.updateTagIcon': (args) => tag(field(args[0], 'tag')),
   'tags.renameTag': (args) => tag(field(args[0], 'newName')),
   'tags.renameCategory': (args) =>
-    findIn('tags.listCategories', 'categories', 'id', field(args[0], 'id')),
+    findIn(call('tags.listCategories'), 'categories', 'id', equals(field(args[0], 'id'))),
+  'tags.mergeTag': (args) => tag(field(args[0], 'target')),
+  'tags.pinNoteToTag': (args) => tagNote(args[0]),
+  'tags.unpinNoteFromTag': (args) => tagNote(args[0]),
+  'tags.removeTagFromNote': (args) => {
+    const noteId = field(args[0], 'noteId')
+    return {
+      request: call('notes.get', [noteId]),
+      select: (note) => (note ? { id: field(note, 'id'), tags: field(note, 'tags') } : null)
+    }
+  },
+  'folderView.setConfig': (args) => read('folderView.getConfig', [args[0]]),
+  'folderView.setView': (args) =>
+    findIn(call('folderView.getViews', [args[0]]), 'views', 'name', equals(field(args[1], 'name'))),
+  'notes.createFolder': (args) => folder(args[0]),
+  'notes.renameFolder': (args) => folder(args[1]),
+  'inbox.undoFile': inboxItem,
+  'inbox.undoArchive': inboxItem,
+  'properties.rename': (args) => read('properties.get', [args[0]]),
   'settings.set': (args) => read('settings.get', [args[0]]),
   'settings.setJournalSettings': settings('settings.getJournalSettings'),
   'settings.setAISettings': settings('settings.getAISettings'),
@@ -137,6 +187,18 @@ export async function keepLegacyPropertyKeys(
   return [entityId, merged, ...rest]
 }
 
+/**
+ * The write has landed when its read-back fails; reporting it as failed would
+ * invite a retry that writes it twice.
+ */
+export function readBackFailedWarning(error: unknown): string {
+  const reason = error instanceof Error ? error.message : String(error)
+  return (
+    `The write landed, but reading it back failed (${reason}). ` +
+    'Read the record to see what was stored.'
+  )
+}
+
 function isFailedReply(data: unknown): boolean {
   return Boolean(data && typeof data === 'object' && 'success' in data && data.success === false)
 }
@@ -158,14 +220,6 @@ export async function writeAndReadBack(
   try {
     return { ...reply, stored: readback.select(await invoke(readback.request)) }
   } catch (error) {
-    // The write has landed; reporting it as failed would invite a retry.
-    const reason = error instanceof Error ? error.message : String(error)
-    return {
-      ...reply,
-      warnings: [
-        `The write landed, but reading it back failed (${reason}). ` +
-          'Read the record to see what was stored.'
-      ]
-    }
+    return { ...reply, warnings: [readBackFailedWarning(error)] }
   }
 }

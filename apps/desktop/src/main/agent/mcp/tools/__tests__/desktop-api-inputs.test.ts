@@ -3,6 +3,7 @@ import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { AgentMcpDesktopOperations } from '@memry/contracts/agent-mcp-channels'
 
+import { DESKTOP_INPUT_SCHEMAS } from '../desktop-api-inputs'
 import { assertDesktopApiArgs, desktopOperationParams } from '../desktop-api-params'
 
 const desktopRoot = path.resolve(__dirname, '../../../../../..')
@@ -115,5 +116,20 @@ describe('desktop API object arguments', () => {
       }
     }
     expect(accepted).toEqual([])
+  })
+
+  it('key every input schema by the name of an object parameter', () => {
+    const objectParams = new Set(
+      params.map((param) => {
+        const operation = param.operation as (typeof AgentMcpDesktopOperations)[number]
+        return `${operation}:${desktopOperationParams(operation)[param.index]}`
+      })
+    )
+    const stray = Object.entries(DESKTOP_INPUT_SCHEMAS).flatMap(([operation, inputs]) =>
+      Object.keys(inputs ?? {})
+        .map((name) => `${operation}:${name}`)
+        .filter((id) => !objectParams.has(id))
+    )
+    expect(stray).toEqual([])
   })
 })

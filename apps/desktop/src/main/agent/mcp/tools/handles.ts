@@ -389,6 +389,7 @@ export interface VaultServiceHandles {
   }
   statuses: {
     list(projectId: string): Promise<unknown[]>
+    get(id: string): Promise<StoredStatus | null>
     create(input: {
       project_id: string
       name: string

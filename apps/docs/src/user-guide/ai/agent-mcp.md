@@ -581,8 +581,33 @@ valid JSON on its own.
 operation takes fails with a `VALIDATION` error that names the parameters, before the approval
 prompt, and nothing runs. Options go inside the operation's input object, never in an extra
 argument. A key inside an input object that the operation does not take fails the same way and is
-named in the error, for example `notes.createPropertyDefinition does not take optionz`. A desktop write whose reply carries no record (adding an inbox tag, changing a setting, a
-property option, a tag color) gets a `stored` field with the record read back after the write.
+named in the error, for example `notes.createPropertyDefinition does not take optionz`. When the
+operation takes more than one object, the error names the argument too: `folderView.setView does not
+take view.colour`. Every key the operation's handler reads is accepted; the open record of
+`properties.set` accepts any property name.
+
+A desktop write whose reply carries no record (adding an inbox tag, changing a setting, a property
+option, a tag color, pinning a note to a tag, saving a folder view, creating a folder) gets a
+`stored` field with the record read back after the write. Writes whose reply is already the record
+(create and update calls) do not need one. These writes reply without `stored`:
+
+- Deletes, which leave nothing to read: every `delete*` operation, `bookmarks.bulkDelete`,
+  `inbox.deletePermanent`, `notes.deleteFolder`, `notes.deleteVersion`, `tags.deleteCategory` and
+  `folderView.deleteView`.
+- Reorders, which reply `{ success }`: `notes.reorder`, `tasks.reorder`, `tasks.reorderProjects`,
+  `tasks.reorderStatuses`, `savedFilters.reorder`, `bookmarks.reorder`, `homePages.reorder` and
+  `tags.reorder`. Read the list again to see the new order.
+- Bulk calls and conversions, which reply with counts or the new item's id: the `bulk*` operations,
+  `inbox.fileAllStale`, `inbox.convertTo*`, `tasks.captureUrlToProject`,
+  `tasks.importFilesToProject` and `notes.importFiles`.
+- `tasks.updateStatus`, which replies `{ success }`; read the project's statuses with
+  `tasks.listStatuses`.
+- `inbox.trackSuggestion`, `search.rebuildIndex`, `search.clearReasons` and `vault.reindex`, which
+  store no record.
+
+If the write lands but the read after it fails, the reply is the write's own reply with a
+`warnings` entry that says so. The write is not reported as failed, so do not repeat it; read the
+record instead. Named write tools do the same.
 
 `properties.set(entityId, properties)` replaces the entity's whole property record. It does not
 merge: a property the call leaves out is deleted. The legacy `id`, `title`, `created` and `modified`
@@ -610,7 +635,11 @@ before the approval prompt. The error names the key: `Unknown argument: colour`.
   stored with one. To check a write, hash what you sent with a final `\n` added when it has none and
   compare. Any other difference means the stored body is not the one you sent.
 - Task, project, status and inbox writes reply with the stored task, project, status or inbox item.
-  Reorders reply with the ids and the stored records in order. Deletes reply with what they deleted.
+  Reorders (`vault_reorder_tasks`, `vault_reorder_projects`, `vault_reorder_statuses`) reply with
+  the ids and the stored records in order. Deletes reply with what they deleted.
+- Tools that take no arguments (`vault_get_current_note`, `vault_get_tags`, `vault_list_projects`
+  and `vault_list_canvases`) list an empty object schema with `additionalProperties: false`. A call
+  may send `{}` or omit `arguments`.
 
 `notes.resolveWikiTarget` follows a wiki link the way the editor does: `Meeting#Decisions` resolves
 to the note `Meeting` and reports `heading: "Decisions"`, while a note genuinely titled `Sprint #4`

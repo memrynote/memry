@@ -189,7 +189,6 @@ const LEGACY_JOURNAL_KEYS = ['id', 'created', 'modified'] as const
 /**
  * Reserved frontmatter keys that are NOT custom properties.
  */
-
 const RESERVED_JOURNAL_KEYS = new Set([
   'id',
   'date',

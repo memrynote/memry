@@ -55,6 +55,7 @@ import {
   noteIcon,
   readStoredJournalEntry,
   readStoredNote,
+  readStoredStatus,
   withDroppedJournalKeys
 } from './stored-records'
 import { withoutFileBodies } from './desktop-api-reply'
@@ -665,6 +666,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       async list(projectId) {
         return createTaskDomain(dataDb).listStatuses(projectId)
       },
+      get: async (id) => readStoredStatus(dataDb, id),
       async create(input) {
         const result = await createTaskDomain(dataDb).createStatus({
           projectId: input.project_id,

@@ -24,6 +24,17 @@ describe('desktop write read-backs', () => {
     ).toEqual(tags.tags[0])
   })
 
+  it('read back the merge target tag and the renamed property record', () => {
+    expect(readBack('tags.mergeTag', [{ source: 'job', target: 'Work' }], tags).stored).toEqual(
+      tags.tags[0]
+    )
+    const properties = { status: 'done' }
+    expect(readBack('properties.rename', ['n1', 'state', 'status'], properties)).toEqual({
+      request: { operation: 'properties.get', args: ['n1'] },
+      stored: properties
+    })
+  })
+
   it('read back the folder view config and the saved view', () => {
     const config = { config: { path: 'work', views: [] }, isDefault: false }
     expect(readBack('folderView.setConfig', ['work', { views: [] }], config)).toEqual({
@@ -68,7 +79,7 @@ describe('desktop write read-backs', () => {
 
   it('read back a created or renamed folder', () => {
     const folders = [{ path: 'work' }, { path: 'work/plans', icon: null }]
-    expect(readBack('notes.createFolder', ['work/plans'], folders)).toEqual({
+    expect(readBack('notes.createFolder', ['/work/plans/'], folders)).toEqual({
       request: { operation: 'notes.getFolders', args: [] },
       stored: folders[1]
     })

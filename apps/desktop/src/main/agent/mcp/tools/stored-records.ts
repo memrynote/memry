@@ -1,10 +1,15 @@
 import { createHash } from 'node:crypto'
 
 import { getNoteCacheById } from '../../../database/queries/notes'
-import type { IndexDb } from '../../../database'
+import { getStatusById } from '../../../database/queries/projects'
+import type { DataDb, IndexDb } from '../../../database'
 import { readJournalEntry, readJournalFile } from '../../../vault/journal'
 import { getNoteById } from '../../../vault/notes'
-import type { StoredJournalEntry, StoredNote } from './handles'
+import type { StoredJournalEntry, StoredNote, StoredStatus } from './handles'
+
+export function readStoredStatus(dataDb: DataDb, id: string): StoredStatus | null {
+  return getStatusById(dataDb, id) ?? null
+}
 
 export function bodyDigest(content: string): { body_bytes: number; body_sha256: string } {
   const bytes = Buffer.from(content, 'utf8')

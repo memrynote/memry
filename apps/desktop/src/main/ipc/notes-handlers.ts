@@ -51,7 +51,6 @@ import {
   closeLargeFileSession,
   closeAllLargeFileSessions
 } from '../vault/large-file-session'
-import { PropertyTypes } from '@memry/contracts/property-types'
 import { RenameFolderSchema } from '@memry/contracts/tasks-api'
 import {
   createValidatedHandler,
@@ -60,6 +59,14 @@ import {
   withErrorHandler
 } from './validate'
 import { registerCommand } from './lib/register-command'
+import {
+  CreatePropertyDefinitionSchema,
+  DeleteAttachmentSchema,
+  ExportNoteSchema,
+  PropertyOptionInputSchema,
+  UpdatePropertyDefinitionSchema,
+  UploadAttachmentSchema
+} from './notes-schemas'
 import type { Note } from '../vault/notes'
 import { cleanCachedSnippet } from '../vault/frontmatter'
 import {
@@ -134,30 +141,6 @@ import { createLogger } from '../lib/logger'
 
 const logger = createLogger('NotesHandlers')
 
-// ============================================================================
-// Zod Schemas for Property Definitions (T017-T018)
-// Note: T015-T016 (get/set properties) moved to properties-handlers.ts
-// ============================================================================
-
-const CreatePropertyDefinitionSchema = z.object({
-  name: z.string().min(1),
-  type: z.enum([
-    PropertyTypes.TEXT,
-    PropertyTypes.NUMBER,
-    PropertyTypes.CHECKBOX,
-    PropertyTypes.DATE,
-    PropertyTypes.URL,
-    PropertyTypes.STATUS,
-    PropertyTypes.SELECT,
-    PropertyTypes.MULTISELECT
-  ]),
-  options: z
-    .array(z.object({ value: z.string(), color: z.string(), default: z.boolean().optional() }))
-    .optional(),
-  defaultValue: z.unknown().optional(),
-  color: z.string().optional()
-})
-
 function stringifyDefaultValue(value: unknown): string {
   if (typeof value === 'string') return value
   if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
@@ -167,55 +150,6 @@ function stringifyDefaultValue(value: unknown): string {
   if (value instanceof Date) return value.toISOString()
   return JSON.stringify(value) ?? ''
 }
-
-// ============================================================================
-// Zod Schemas for Attachments (T070)
-// ============================================================================
-
-const UploadAttachmentSchema = z.object({
-  noteId: z.string().min(1),
-  filename: z.string().min(1),
-  data: z.instanceof(ArrayBuffer).or(z.array(z.number()))
-})
-
-const DeleteAttachmentSchema = z.object({
-  noteId: z.string().min(1),
-  filename: z.string().min(1)
-})
-
-const UpdatePropertyDefinitionSchema = z.object({
-  name: z.string().min(1),
-  type: z
-    .enum([
-      PropertyTypes.TEXT,
-      PropertyTypes.NUMBER,
-      PropertyTypes.CHECKBOX,
-      PropertyTypes.DATE,
-      PropertyTypes.URL,
-      PropertyTypes.STATUS,
-      PropertyTypes.SELECT,
-      PropertyTypes.MULTISELECT
-    ])
-    .optional(),
-  options: z
-    .array(z.object({ value: z.string(), color: z.string(), default: z.boolean().optional() }))
-    .optional(),
-  defaultValue: z.unknown().optional(),
-  color: z.string().optional()
-})
-
-// ============================================================================
-// Zod Schemas for Export (T106, T108)
-// ============================================================================
-
-const ExportNoteSchema = z.object({
-  noteId: z.string().min(1),
-  includeMetadata: z.boolean().default(true),
-  pageSize: z.enum(['A4', 'Letter', 'Legal']).default('A4'),
-  includeTaskMarkers: z.boolean().default(false),
-  // Headless export target — when provided, skip the save dialog (Agent MCP).
-  outputPath: z.string().min(1).optional()
-})
 
 /**
  * Render a note for export with its images carried inside the document.
@@ -755,7 +689,7 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(
       z.object({
         propertyName: z.string().min(1),
-        option: z.object({ value: z.string().min(1), color: z.string().min(1) })
+        option: PropertyOptionInputSchema
       }),
       async (input) => {
         const { PropertyDefinitionsService } = await import('../vault/property-definitions')
@@ -781,7 +715,7 @@ export function registerNotesHandlers(): void {
       z.object({
         propertyName: z.string().min(1),
         categoryKey: z.enum(['todo', 'in_progress', 'done']),
-        option: z.object({ value: z.string().min(1), color: z.string().min(1) })
+        option: PropertyOptionInputSchema
       }),
       async (input) => {
         const { PropertyDefinitionsService } = await import('../vault/property-definitions')

@@ -145,7 +145,7 @@ const LOOSE_TOOL_SCHEMAS = {
       'not "note".'
   },
   vault_get_current_note: {
-    input: z.object({}).default({}),
+    input: z.object({}),
     description: 'Return the note currently open in the originating renderer window, or null.'
   },
   vault_list_tasks: {
@@ -167,7 +167,7 @@ const LOOSE_TOOL_SCHEMAS = {
     description: 'Read a task by id.'
   },
   vault_list_projects: {
-    input: z.object({}).default({}),
+    input: z.object({}),
     description: 'List all projects with task counts and linked note/file/event counts.'
   },
   vault_get_project: {
@@ -198,13 +198,13 @@ const LOOSE_TOOL_SCHEMAS = {
     description: 'Read an inbox item by id.'
   },
   vault_get_tags: {
-    input: z.object({}).default({}),
+    input: z.object({}),
     description:
       'List all tags with usage counts, color, icon, sort order, and the tag category they ' +
       'belong to (category_id and category_name, both null when uncategorized).'
   },
   vault_list_canvases: {
-    input: z.object({}).default({}),
+    input: z.object({}),
     description:
       'List spatial canvases with how many notes/tasks/events sit on each. ' +
       'Canvases live in folders, so two can share a title — each entry carries its folder and ' +
