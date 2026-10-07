@@ -13,7 +13,8 @@ vi.mock('../database', () => ({ getDatabase: mocks.getDatabase }))
 import {
   isCompleteJournalFormat,
   planJournalRenames,
-  renameJournalsForFormatChange
+  renameJournalsForFormatChange,
+  revertJournalRenames
 } from './journal-format-migration'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
 import { writeLockRow } from '../vault-locks/store'
@@ -111,7 +112,11 @@ describe('renameJournalsForFormatChange', () => {
 
     const result = await renameJournalsForFormatChange(vaultPath, 'journal', DAILY, WEEKDAY)
 
-    expect(result).toEqual({ renamed: 1, skipped: 0, failed: 0 })
+    expect(result).toEqual({
+      moved: [{ from: '2026-09-25.md', to: '2026-09-25 Friday.md', date: '2026-09-25' }],
+      skipped: 0,
+      failed: 0
+    })
     expect(fs.existsSync(journalFile('2026-09-25.md'))).toBe(false)
     expect(fs.readFileSync(journalFile('2026-09-25 Friday.md'), 'utf-8')).toBe(
       'entry for 2026-09-25\n'
@@ -128,7 +133,7 @@ describe('renameJournalsForFormatChange', () => {
 
     const result = await renameJournalsForFormatChange(vaultPath, 'journal', DAILY, WEEKDAY)
 
-    expect(result).toEqual({ renamed: 0, skipped: 1, failed: 0 })
+    expect(result).toEqual({ moved: [], skipped: 1, failed: 0 })
     expect(fs.readFileSync(journalFile('2026-09-26.md'), 'utf-8')).toBe('entry for 2026-09-26\n')
     expect(fs.readFileSync(journalFile('2026-09-26 Saturday.md'), 'utf-8')).toBe('obsidian note\n')
     expect(getNoteMetadataById(asClientDb(testDb.db), 'j2026-09-26')?.path).toBe(
@@ -148,7 +153,7 @@ describe('renameJournalsForFormatChange', () => {
 
     const result = await renameJournalsForFormatChange(vaultPath, 'journal', DAILY, WEEKDAY)
 
-    expect(result).toEqual({ renamed: 0, skipped: 1, failed: 0 })
+    expect(result).toEqual({ moved: [], skipped: 1, failed: 0 })
     expect(fs.existsSync(journalFile('2026-09-26.md'))).toBe(true)
   })
 
@@ -157,7 +162,7 @@ describe('renameJournalsForFormatChange', () => {
 
     const result = await renameJournalsForFormatChange(vaultPath, 'journal', DAILY, 'YYYY-MM')
 
-    expect(result).toEqual({ renamed: 0, skipped: 0, failed: 0 })
+    expect(result).toEqual({ moved: [], skipped: 0, failed: 0 })
     expect(fs.existsSync(journalFile('2026-09-25.md'))).toBe(true)
   })
 
@@ -166,7 +171,9 @@ describe('renameJournalsForFormatChange', () => {
 
     const result = await renameJournalsForFormatChange(vaultPath, 'journal/', DAILY, WEEKDAY)
 
-    expect(result.renamed).toBe(1)
+    expect(result.moved).toEqual([
+      { from: '2026-09-27.md', to: '2026-09-27 Sunday.md', date: '2026-09-27' }
+    ])
     expect(fs.existsSync(journalFile('2026-09-27 Sunday.md'))).toBe(true)
   })
 
@@ -177,7 +184,11 @@ describe('renameJournalsForFormatChange', () => {
 
     const toNested = await renameJournalsForFormatChange(vaultPath, 'journal', DAILY, nested)
 
-    expect(toNested).toEqual({ renamed: 1, skipped: 0, failed: 0 })
+    expect(toNested).toEqual({
+      moved: [{ from: '2025-01-14.md', to: '2025/January/2025-01-14.md', date: '2025-01-14' }],
+      skipped: 0,
+      failed: 0
+    })
     expect(fs.existsSync(journalFile('2025/January/2025-01-14.md'))).toBe(true)
     expect(fs.existsSync(journalFile('ideas.md'))).toBe(true)
     expect(getNoteMetadataById(asClientDb(testDb.db), 'j2025-01-14')?.path).toBe(
@@ -187,7 +198,11 @@ describe('renameJournalsForFormatChange', () => {
     fs.writeFileSync(journalFile('2025/notes.md'), 'kept\n')
     const toFlat = await renameJournalsForFormatChange(vaultPath, 'journal', nested, DAILY)
 
-    expect(toFlat).toEqual({ renamed: 1, skipped: 0, failed: 0 })
+    expect(toFlat).toEqual({
+      moved: [{ from: '2025/January/2025-01-14.md', to: '2025-01-14.md', date: '2025-01-14' }],
+      skipped: 0,
+      failed: 0
+    })
     expect(fs.existsSync(journalFile('2025-01-14.md'))).toBe(true)
     // `January` was emptied and removed; `2025` still holds a file and stays.
     expect(fs.existsSync(journalFile('2025/January'))).toBe(false)
@@ -195,9 +210,31 @@ describe('renameJournalsForFormatChange', () => {
     expect(fs.existsSync(path.join(vaultPath, 'journal'))).toBe(true)
   })
 
+  it('puts files, rows and positions back when the new format is not kept', async () => {
+    seedJournal('2025-01-14.md', 'j2025-01-14', '2025-01-14')
+    seedJournal('2025-01-15.md', 'j2025-01-15', '2025-01-15')
+    setNotePosition(asClientDb(testDb.db), 'journal/2025-01-14.md', 'journal', 2)
+    const nested = 'YYYY/MMMM/YYYY-MM-DD'
+    const { moved } = await renameJournalsForFormatChange(vaultPath, 'journal', DAILY, nested)
+
+    await revertJournalRenames(vaultPath, 'journal', moved)
+
+    expect(fs.readdirSync(path.join(vaultPath, 'journal')).sort()).toEqual([
+      '2025-01-14.md',
+      '2025-01-15.md'
+    ])
+    expect(getNoteMetadataById(asClientDb(testDb.db), 'j2025-01-14')?.path).toBe(
+      'journal/2025-01-14.md'
+    )
+    expect(getNoteMetadataById(asClientDb(testDb.db), 'j2025-01-15')?.path).toBe(
+      'journal/2025-01-15.md'
+    )
+    expect(getNotePosition(asClientDb(testDb.db), 'journal/2025-01-14.md')?.position).toBe(2)
+  })
+
   it('is a no-op when the journal folder does not exist', async () => {
     const result = await renameJournalsForFormatChange(vaultPath, 'daily', DAILY, WEEKDAY)
-    expect(result).toEqual({ renamed: 0, skipped: 0, failed: 0 })
+    expect(result).toEqual({ moved: [], skipped: 0, failed: 0 })
   })
 })
 
@@ -288,7 +325,14 @@ describe('renameJournalsForFormatChange under a read-only lock (#2606)', () => {
 
     const result = await renameJournalsForFormatChange(vaultPath, 'journal', DAILY, WEEKDAY)
 
-    expect(result).toEqual({ renamed: 2, skipped: 0, failed: 0 })
+    expect(result).toEqual({
+      moved: [
+        { from: '2026-09-25.md', to: '2026-09-25 Friday.md', date: '2026-09-25' },
+        { from: '2026-09-26.md', to: '2026-09-26 Saturday.md', date: '2026-09-26' }
+      ],
+      skipped: 0,
+      failed: 0
+    })
     expect(journalFiles()).toEqual(['2026-09-25 Friday.md', '2026-09-26 Saturday.md'])
   })
 })

@@ -67,7 +67,7 @@ import {
   setVaultLock
 } from './service'
 import { getBaseline, writeLockRow } from './store'
-import { atomicWrite } from '../vault/file-ops'
+import { atomicWrite, deleteFile } from '../vault/file-ops'
 
 const isWindows = process.platform === 'win32'
 
@@ -370,6 +370,80 @@ describe('vault read-only locks (#2606)', () => {
     expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('remote\n')
     expect(unprotectForRemoteWriteSync(path.join(vault, 'notes/free.md'))).toBeNull()
     expect(() => setFileReadOnlySync(path.join(vault, 'notes/missing.md'), true)).not.toThrow()
+  })
+
+  const modeOf = (absolutePath: string): number => fs.statSync(absolutePath).mode & 0o777
+
+  it.skipIf(isWindows)(
+    'unlocking gives every file the exact mode it had before the lock, after app writes too',
+    async () => {
+      const note = addNote('note-a', 'notes/a.md', 'a\n')
+      const pdfNote = addNote('note-pdf', 'notes/scan.pdf', 'pdf')
+      const folderFile = path.join(vault, 'shared/doc.pdf')
+      fs.mkdirSync(path.dirname(folderFile), { recursive: true })
+      fs.writeFileSync(folderFile, 'doc')
+      for (const file of [note, pdfNote, folderFile]) fs.chmodSync(file, 0o664)
+
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+      await setVaultLock({ kind: 'note', target: 'note-pdf', locked: true })
+      await setVaultLock({ kind: 'folder', target: 'shared', locked: true })
+      expect([note, pdfNote, folderFile].map(modeOf)).toEqual([0o444, 0o444, 0o444])
+
+      await runWithLockedWritesAllowed(() => atomicWrite(note, 'remote\n'))
+      expect(modeOf(note)).toBe(0o444)
+
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: false })
+      await setVaultLock({ kind: 'note', target: 'note-pdf', locked: false })
+      await setVaultLock({ kind: 'folder', target: 'shared', locked: false })
+
+      expect([note, pdfNote, folderFile].map(modeOf)).toEqual([0o664, 0o664, 0o664])
+    }
+  )
+
+  it.skipIf(isWindows || process.getuid?.() === 0)(
+    'an allowed delete that fails leaves the locked file read-only',
+    async () => {
+      const file = addNote('note-a', 'notes/a.md', 'a\n')
+      await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+      fs.chmodSync(path.dirname(file), 0o555)
+      try {
+        await expect(runWithLockedWritesAllowed(() => deleteFile(file))).rejects.toThrow(
+          'Failed to delete file'
+        )
+      } finally {
+        fs.chmodSync(path.dirname(file), 0o755)
+      }
+
+      expect(fs.readFileSync(file, 'utf-8')).toBe('a\n')
+      expect(isWritable(file)).toBe(false)
+    }
+  )
+
+  it("a locked note's attachments are read-only on disk, refused to local writes, and freed on unlock", async () => {
+    addNote('note-a', 'notes/a.md', 'a\n')
+    addNote('note-in', 'archive/in.md', 'in\n')
+    const own = path.join(vault, 'attachments/note-a/photo.png')
+    const viaFolder = path.join(vault, 'attachments/note-in/scan.pdf')
+    const other = path.join(vault, 'attachments/note-free/x.png')
+    for (const file of [own, viaFolder, other]) {
+      fs.mkdirSync(path.dirname(file), { recursive: true })
+      fs.writeFileSync(file, 'bytes')
+      fs.chmodSync(file, 0o644)
+    }
+
+    await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
+    await setVaultLock({ kind: 'folder', target: 'archive', locked: true })
+
+    if (!isWindows) expect([own, viaFolder, other].map(isWritable)).toEqual([false, false, true])
+    await expect(beforeVaultFileWrite(own)).rejects.toThrow(VAULT_LOCKED_NOTE_MESSAGE)
+    await expect(beforeVaultFileWrite(viaFolder)).rejects.toThrow(VAULT_LOCKED_NOTE_MESSAGE)
+    await expect(beforeVaultFileWrite(other)).resolves.toBeNull()
+
+    await setVaultLock({ kind: 'note', target: 'note-a', locked: false })
+    await setVaultLock({ kind: 'folder', target: 'archive', locked: false })
+
+    expect([own, viaFolder].map(isWritable)).toEqual([true, true])
+    if (!isWindows) expect([own, viaFolder].map(modeOf)).toEqual([0o644, 0o644])
   })
 
   it('settles a synced note file: protected while locked, writable once moved out of the lock', () => {
