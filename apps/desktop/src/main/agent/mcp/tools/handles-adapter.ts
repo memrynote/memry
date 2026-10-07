@@ -1,5 +1,3 @@
-import path from 'node:path'
-
 import { searchAll } from '../../../database/queries/search'
 import { getNoteCacheById } from '../../../database/queries/notes'
 import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
@@ -48,6 +46,13 @@ import { snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { createCanvasHandles } from './canvas-handles'
 import { createJournalHandles } from './journal-handles'
+import {
+  folderPathFromNotePath,
+  internalFolderFromToolPath,
+  isDirectChild,
+  normalizeFolderPath,
+  toFolderEntry
+} from './folder-paths'
 import { createdTasksReply, withAgentChecklists, writeAgentBody } from './agent-checklists'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { writeAndReadBack } from './desktop-api-readback'
@@ -94,13 +99,6 @@ function isTextBearing(fileType: string): boolean {
   return (TEXT_BEARING_FILE_TYPES as readonly string[]).includes(fileType)
 }
 
-function folderPathFromNotePath(notePath: string): string | null {
-  // `dirname` reports '.' for a note sitting directly in the vault root, which
-  // is reachable now that folder paths are vault-relative (#1204).
-  const parent = path.posix.dirname(notePath)
-  return normalizeFolderPath(parent === '.' ? '' : parent) || null
-}
-
 function mergeContent(
   current: string,
   mode: 'append' | 'prepend' | 'replace',
@@ -114,43 +112,6 @@ function mergeContent(
 
 function sameTagList(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((tag, index) => tag === b[index])
-}
-
-// Tool paths are vault-relative with no leading slash ("projects/active"), the
-// form the renderer uses for folder links. Inputs may still carry one (#2622).
-// `defaultNoteFolder` is not part of this mapping: it names where a new note
-// goes, not where folders live, so an agent must see the same tree the sidebar
-// does (#1204).
-function normalizeFolderPath(value: string | undefined): string {
-  return (value ?? '').replace(/^\/+|\/+$/g, '')
-}
-
-function internalFolderFromToolPath(toolPath: string | undefined): string | undefined {
-  return normalizeFolderPath(toolPath ?? '') || undefined
-}
-
-function isDirectChild(basePath: string, candidatePath: string): boolean {
-  const normalizedBase = normalizeFolderPath(basePath)
-  const normalizedCandidate = normalizeFolderPath(candidatePath)
-
-  if (!normalizedBase) {
-    return !normalizedCandidate.includes('/')
-  }
-
-  if (!normalizedCandidate.startsWith(`${normalizedBase}/`)) {
-    return false
-  }
-
-  return !normalizedCandidate.slice(normalizedBase.length + 1).includes('/')
-}
-
-function toFolderEntry(folderPath: string): FolderEntry {
-  return {
-    kind: 'folder',
-    id: folderPath,
-    name: path.posix.basename(folderPath),
-    path: folderPath
-  }
 }
 
 function taskStatusLabel(task: { statusId: string | null; completedAt?: string | null }): string {
