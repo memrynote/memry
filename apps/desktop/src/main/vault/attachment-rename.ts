@@ -34,6 +34,7 @@ import { reconcileDownloadedAttachmentName } from './attachment-rename-reconcile
 import { getAttachmentRef, getNoteAttachmentsDir } from './attachments'
 import { getVaultRoot } from './notes-io'
 import { STORED_PREFIX_RE } from './attachment-heal'
+import { assertNoteWritable } from '../vault-locks/registry'
 
 const logger = createLogger('AttachmentRename')
 
@@ -109,6 +110,7 @@ export async function renameAttachment(
   url: string,
   newName: string
 ): Promise<AttachmentRenameResult> {
+  assertNoteWritable(noteId)
   const trimmed = newName.trim()
   if (!trimmed) {
     throw new NoteError('New attachment name is empty', NoteErrorCode.INVALID_PATH, noteId)
