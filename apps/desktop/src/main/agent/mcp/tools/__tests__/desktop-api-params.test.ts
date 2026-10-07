@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util'
 import { describe, expect, it, vi } from 'vitest'
 import {
   AgentMcpDesktopOperations,
@@ -26,11 +27,14 @@ import { remindersApi } from '../../../../../preload/api/reminders'
 import { graphApi, searchApi } from '../../../../../preload/api/search'
 import { tagsApi } from '../../../../../preload/api/tags'
 import { vaultApi } from '../../../../../preload/api/vault'
+import { createGeneratedRpcApi } from '../../../../../preload/generated-rpc'
 import { ipcRenderer } from 'electron'
 import { rpcDomains } from '@memry/rpc'
 import {
+  AGENT_DESKTOP_OPERATION_PARAMS,
   desktopOperationJsonSchema,
-  desktopOperationParamNames
+  desktopOperationParamNames,
+  desktopOperationRequiredCount
 } from '@memry/contracts/agent-desktop-api-args'
 import { AgentToolError } from '../../errors'
 import { assertDesktopApiArgs } from '../desktop-api-params'
@@ -137,6 +141,87 @@ describe('desktop API parameter lists', () => {
       const readback = desktopWriteReadback({ operation, args })
       if (readback) expect(() => assertDesktopApiArgs(readback.request), operation).not.toThrow()
     }
+  })
+
+  it('accept null for exactly the optional arguments the preload, responder or handler reads as left out', async () => {
+    const generatedInvoke = vi.fn(async () => undefined)
+    const generatedApis = createGeneratedRpcApi({
+      invoke: generatedInvoke as never,
+      invokeSync: vi.fn() as never,
+      subscribe: vi.fn() as never
+    }) as unknown as Record<string, Record<string, unknown>>
+    const sentToMain = async (
+      fn: (...args: unknown[]) => unknown,
+      args: unknown[]
+    ): Promise<unknown[]> => {
+      vi.mocked(ipcRenderer.invoke).mockClear()
+      vi.mocked(ipcRenderer.invoke).mockResolvedValue(undefined)
+      generatedInvoke.mockClear()
+      await fn(...args)
+      return [...vi.mocked(ipcRenderer.invoke).mock.calls, ...generatedInvoke.mock.calls]
+    }
+    // Null passes the preload unchanged here; the code after it reads it as left out.
+    const pastPreload = new Set([
+      // inbox-handlers passes input to filing.convertToTask, which reads input?.projectId etc.
+      'inbox.convertToTask:input',
+      // The responder builds the range from args[0] alone unless both are strings.
+      'calendar.getRange:end'
+    ])
+
+    const mismatches: string[] = []
+    const acceptsNull: string[] = []
+    for (const operation of AgentMcpDesktopOperations) {
+      const [domain, method] = operation.split('.')
+      const fn = (handWrittenApis[domain]?.[method] ?? generatedApis[domain]?.[method]) as (
+        ...args: unknown[]
+      ) => unknown
+      const params = Object.entries(AGENT_DESKTOP_OPERATION_PARAMS[operation])
+      for (let index = desktopOperationRequiredCount(operation); index < params.length; index++) {
+        const [name, schema] = params[index]
+        const id = `${operation}:${name}`
+        const leading = params.slice(0, index).map(([param]) => `sentinel-${param}`)
+        const readsNullAsAbsent =
+          pastPreload.has(id) ||
+          isDeepStrictEqual(await sentToMain(fn, [...leading, null]), await sentToMain(fn, leading))
+        const accepts = schema.safeParse(null).success
+        if (accepts) acceptsNull.push(id)
+        if (readsNullAsAbsent !== accepts) {
+          mismatches.push(
+            `${id}: ${readsNullAsAbsent ? 'read as left out' : 'passed on as null'}, ` +
+              `schema ${accepts ? 'accepts' : 'refuses'} null`
+          )
+        }
+      }
+    }
+    expect(mismatches).toEqual([])
+    expect(acceptsNull.sort()).toEqual([
+      'bookmarks.list:options',
+      'calendar.getRange:end',
+      'calendar.listEvents:options',
+      'canvas.create:input',
+      'inbox.convertToTask:input',
+      'inbox.getFilingHistory:options',
+      'inbox.getJobs:options',
+      'inbox.linkToNote:tags',
+      'inbox.list:options',
+      'inbox.listArchived:options',
+      'notes.list:options',
+      'reminders.list:options',
+      'tasks.getUpcoming:days',
+      'tasks.list:options'
+    ])
+  })
+
+  it('publish null as allowed for an optional argument that accepts it', () => {
+    expect(desktopOperationJsonSchema('notes.list').prefixItems?.[0]).toMatchObject({
+      anyOf: expect.arrayContaining([{ type: 'null' }])
+    })
+    expect(desktopOperationJsonSchema('inbox.linkToNote').prefixItems?.[2]).toMatchObject({
+      anyOf: expect.arrayContaining([{ type: 'null' }])
+    })
+    expect(() =>
+      assertDesktopApiArgs({ operation: 'reminders.getUpcoming', args: [null] })
+    ).toThrow('days: expected number, got null')
   })
 
   it('refuse a key inside an input object that the IPC handler would drop', () => {

@@ -67,6 +67,21 @@ describe('agent desktop API argument schemas', () => {
     expect(desktopOperationArgsSchema('notes.get').safeParse([]).success).toBe(false)
   })
 
+  it('accept null for an optional argument the preload reads as left out, and publish it', () => {
+    expect(desktopOperationArgsSchema('notes.list').safeParse([null]).success).toBe(true)
+    expect(desktopOperationArgsSchema('tasks.getUpcoming').safeParse([null]).success).toBe(true)
+    expect(desktopOperationArgsSchema('canvas.create').safeParse([null]).success).toBe(true)
+    expect(
+      desktopOperationArgsSchema('inbox.linkToNote').safeParse(['i1', 'n1', null]).success
+    ).toBe(true)
+    expect(desktopOperationArgsSchema('reminders.getUpcoming').safeParse([null]).success).toBe(
+      false
+    )
+    expect(desktopOperationJsonSchema('tasks.getUpcoming').prefixItems?.[0]).toMatchObject({
+      anyOf: expect.arrayContaining([{ type: 'null' }])
+    })
+  })
+
   it('say which property types each property definition call accepts', () => {
     const ensure = desktopOperationJsonSchema('notes.ensurePropertyDefinition')
     expect(ensure.prefixItems?.[1]).toMatchObject({ enum: ['status', 'select', 'multiselect'] })

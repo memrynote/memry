@@ -3,6 +3,11 @@ import { buildWriteTools, type WriteToolGate } from '../write-tools'
 import { capReply } from '../../reply-cap'
 import { WRITE_TOOL_NAMES } from '../schemas'
 import type { StoredNote, VaultServiceHandles } from '../handles'
+import { AgentMcpDesktopWriteOperations } from '@memry/contracts/agent-mcp-channels'
+import {
+  AGENT_DESKTOP_OPERATION_PARAMS,
+  desktopOperationRequiredCount
+} from '@memry/contracts/agent-desktop-api-args'
 
 const storedNote = (id: string): StoredNote => ({
   id,
@@ -253,6 +258,30 @@ describe('Write tools — P1 deny-by-default', () => {
       )
     })
     expect(gate).not.toHaveBeenCalled()
+  })
+
+  it('forwards null for an optional desktop argument read as left out, unchanged', async () => {
+    const calls = AgentMcpDesktopWriteOperations.flatMap((operation) => {
+      const params = Object.entries(AGENT_DESKTOP_OPERATION_PARAMS[operation])
+      return params.flatMap(([, schema], index) =>
+        index >= desktopOperationRequiredCount(operation) && schema.safeParse(null).success
+          ? [{ operation, args: [...params.slice(0, index).map(() => 'x'), null] }]
+          : []
+      )
+    })
+    expect(calls).toEqual([
+      { operation: 'inbox.convertToTask', args: ['x', null] },
+      { operation: 'inbox.linkToNote', args: ['x', 'x', null] },
+      { operation: 'canvas.create', args: [null] }
+    ])
+    const write = vi.fn(async () => ({ ok: true }))
+    const t = buildWriteTools({ ...handles, desktop: { ...handles.desktop, write } }, async () => ({
+      approved: true
+    })).find((x) => x.name === 'vault_desktop_write')!
+    for (const call of calls) {
+      await t.handler(call, { writeGrant: 'turn-grant-1', windowId: 'w1' })
+      expect(write).toHaveBeenLastCalledWith(call, 'w1')
+    }
   })
 
   it('rejects an argument the tool does not take, before the gate', async () => {
