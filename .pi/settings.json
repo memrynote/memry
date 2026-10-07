@@ -1,7 +1,4 @@
 {
-  "compaction": {
-    "reserveTokens": 700000
-  },
   "subagents": {
     "modelScope": {
       "enforce": true,
