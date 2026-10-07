@@ -24,6 +24,7 @@ describe('Vault MCP tool schemas', () => {
       'vault_read_canvas',
       'vault_read_canvas_elements',
       'vault_desktop_read',
+      'vault_desktop_describe',
       'vault_create_note',
       'vault_rename_note',
       'vault_delete_note',
@@ -92,6 +93,16 @@ describe('Vault MCP tool schemas', () => {
     expect(input.safeParse({ id: 'f1', page: 0 }).success).toBe(false)
     expect(input.safeParse({ id: '' }).success).toBe(false)
     expect(TOOL_SCHEMAS.vault_view_file.description).toContain('1568')
+  })
+
+  it('offers vault_desktop_describe as a read tool that takes an optional operation', () => {
+    expect(READ_TOOL_NAMES).toContain('vault_desktop_describe')
+    const input = TOOL_SCHEMAS.vault_desktop_describe.input
+    expect(input.safeParse({}).success).toBe(true)
+    expect(input.safeParse({ operation: 'folderView.getViews' }).success).toBe(true)
+    expect(input.safeParse({ operation: 'notes.showImportDialog' }).success).toBe(false)
+    expect(TOOL_SCHEMAS.vault_desktop_read.description).toContain('vault_desktop_describe')
+    expect(TOOL_SCHEMAS.vault_desktop_write.description).toContain('vault_desktop_describe')
   })
 
   it('round-trips a known-good search input', () => {
