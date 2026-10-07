@@ -3,6 +3,7 @@ import { buildReadTools } from '../read-tools'
 import type { VaultServiceHandles } from '../handles'
 import { AgentToolError } from '../../errors'
 import { ImageToolResult } from '../../tool-image'
+import { AgentMcpDesktopOperations } from '@memry/contracts/agent-mcp-channels'
 
 let lastSearchInput: Parameters<VaultServiceHandles['notes']['search']>[0] | null = null
 let lastViewInput: Parameters<VaultServiceHandles['files']['view']>[0] | null = null
@@ -507,6 +508,80 @@ describe('Read tools', () => {
     ).rejects.toMatchObject({
       code: 'VALIDATION',
       message: 'templates.list takes no arguments, but this call passed 1. Nothing was run.'
+    })
+  })
+
+  it('vault_desktop_read names the field, the allowed values and what was sent', async () => {
+    await expect(
+      tools
+        .find((t) => t.name === 'vault_desktop_read')!
+        .handler(
+          { operation: 'folderView.getViews', args: ['Projects'] },
+          { conversationId: null, windowId: 'window-1' }
+        )
+    ).rejects.toMatchObject({
+      code: 'VALIDATION',
+      message: expect.stringContaining(
+        'scope: expected { kind: "folder", path: string } | ' +
+          '{ kind: "tag", tag: string, andTags?: string[] }, got "Projects"'
+      )
+    })
+  })
+
+  it("vault_desktop_describe returns the JSON Schema of an operation's arguments", async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_desktop_describe')!
+      .handler(
+        { operation: 'notes.ensurePropertyDefinition' },
+        { conversationId: null, windowId: null }
+      )
+    expect(out).toMatchObject({
+      operation: 'notes.ensurePropertyDefinition',
+      tool: 'vault_desktop_write',
+      requires_approval: true,
+      call: 'notes.ensurePropertyDefinition(name, type)',
+      params: [
+        { name: 'name', required: true },
+        { name: 'type', required: true }
+      ],
+      args_schema: {
+        type: 'array',
+        minItems: 2,
+        maxItems: 2,
+        prefixItems: [{ type: 'string' }, { enum: ['status', 'select', 'multiselect'] }]
+      }
+    })
+  })
+
+  it('vault_desktop_describe marks optional arguments and read operations', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_desktop_describe')!
+      .handler({ operation: 'notes.list' }, { conversationId: null, windowId: null })
+    expect(out).toMatchObject({
+      tool: 'vault_desktop_read',
+      requires_approval: false,
+      call: 'notes.list(options?)',
+      params: [{ name: 'options', required: false }],
+      args_schema: { minItems: 0, maxItems: 1 }
+    })
+  })
+
+  it('vault_desktop_describe without an operation lists every operation and how to call it', async () => {
+    const out = (await tools
+      .find((t) => t.name === 'vault_desktop_describe')!
+      .handler({}, { conversationId: null, windowId: null })) as {
+      operations: Array<{ operation: string; tool: string; call: string }>
+    }
+    expect(out.operations).toHaveLength(AgentMcpDesktopOperations.length)
+    expect(out.operations).toContainEqual({
+      operation: 'folderView.setView',
+      tool: 'vault_desktop_write',
+      call: 'folderView.setView(scope, view, previousName?)'
+    })
+    expect(out.operations).toContainEqual({
+      operation: 'notes.get',
+      tool: 'vault_desktop_read',
+      call: 'notes.get(id)'
     })
   })
 

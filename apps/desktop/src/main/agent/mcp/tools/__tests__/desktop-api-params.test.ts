@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   AgentMcpDesktopOperations,
-  AgentMcpDesktopWriteOperations
+  AgentMcpDesktopWriteOperations,
+  type AgentMcpDesktopOperation
 } from '@memry/contracts/agent-mcp-channels'
 
 vi.mock('electron', () => ({
@@ -26,6 +27,8 @@ import { graphApi, searchApi } from '../../../../../preload/api/search'
 import { tagsApi } from '../../../../../preload/api/tags'
 import { vaultApi } from '../../../../../preload/api/vault'
 import { ipcRenderer } from 'electron'
+import { rpcDomains } from '@memry/rpc'
+import { AgentToolError } from '../../errors'
 import { assertDesktopApiArgs, desktopOperationParams } from '../desktop-api-params'
 import { desktopWriteReadback } from '../desktop-api-readback'
 
@@ -87,6 +90,27 @@ describe('desktop API parameter lists', () => {
     expect(missing).toEqual([])
   })
 
+  it('name the parameters of every generated operation as its RPC spec does', () => {
+    const mismatches: string[] = []
+    for (const operation of AgentMcpDesktopOperations) {
+      const [domain, method] = operation.split('.')
+      if (handWrittenApis[domain]?.[method] !== undefined) continue
+      const spec = (
+        rpcDomains.find((candidate) => candidate.name === domain)?.methods as
+          Record<string, { params: readonly string[] }> | undefined
+      )?.[method]
+      // The responder still takes the older (start, end) string pair.
+      const expected =
+        operation === 'calendar.getRange' ? ['inputOrStart', 'end'] : (spec?.params ?? [])
+      if (desktopOperationParams(operation).join(',') !== expected.join(',')) {
+        mismatches.push(
+          `${operation}: contract (${desktopOperationParams(operation).join(', ')}), rpc (${expected.join(', ')})`
+        )
+      }
+    }
+    expect(mismatches).toEqual([])
+  })
+
   it('accept a call up to the last parameter, including the two-string calendar range', () => {
     expect(() =>
       assertDesktopApiArgs({ operation: 'properties.set', args: ['note-1', { Status: 'Done' }] })
@@ -114,13 +138,99 @@ describe('desktop API parameter lists', () => {
       assertDesktopApiArgs({ operation: 'notes.createPropertyDefinition', args: [input] })
 
     expect(() => define({ name: 'mood', type: 'select', optionz: [] })).toThrow(
-      'notes.createPropertyDefinition does not take optionz. Nothing was run.'
+      'notes.createPropertyDefinition does not take input.optionz. Nothing was run.'
     )
     expect(() =>
       define({ name: 'mood', type: 'select', options: [{ value: 'Calm', color: 'sky', tint: 1 }] })
-    ).toThrow('notes.createPropertyDefinition does not take options.0.tint. Nothing was run.')
+    ).toThrow('notes.createPropertyDefinition does not take input.options.0.tint. Nothing was run.')
     expect(() =>
       define({ name: 'mood', type: 'select', options: [{ value: 'Calm', color: 'sky' }] })
     ).not.toThrow()
+  })
+})
+
+function validationError(operation: AgentMcpDesktopOperation, args: unknown[]): AgentToolError {
+  try {
+    assertDesktopApiArgs({ operation, args })
+  } catch (error) {
+    if (error instanceof AgentToolError) return error
+    throw error
+  }
+  throw new Error(`${operation} accepted ${JSON.stringify(args)}`)
+}
+
+describe('desktop API argument validation', () => {
+  it('names the field, the allowed values and what was sent for an enum', () => {
+    const error = validationError('notes.ensurePropertyDefinition', ['mood', 'text'])
+    expect(error.code).toBe('VALIDATION')
+    expect(error.message).toBe(
+      'notes.ensurePropertyDefinition arguments do not match its schema: ' +
+        'type: expected one of "status", "select", "multiselect", got "text". Nothing was run. ' +
+        'vault_desktop_describe with operation "notes.ensurePropertyDefinition" returns the ' +
+        'full argument schema.'
+    )
+    expect(error.details).toMatchObject({
+      operation: 'notes.ensurePropertyDefinition',
+      issues: [
+        {
+          field: 'type',
+          expected: 'one of "status", "select", "multiselect"',
+          allowed: ['status', 'select', 'multiselect'],
+          received: '"text"'
+        }
+      ]
+    })
+  })
+
+  it('names a nested field by its path from the parameter', () => {
+    expect(
+      validationError('notes.createPropertyDefinition', [{ name: 'mood', type: 'txt' }]).message
+    ).toContain(
+      'input.type: expected one of "text", "number", "checkbox", "date", "url", "status", ' +
+        '"select", "multiselect", got "txt"'
+    )
+  })
+
+  it('spells out each shape a union argument takes', () => {
+    expect(validationError('folderView.getViews', ['Projects']).message).toContain(
+      'scope: expected { kind: "folder", path: string } | ' +
+        '{ kind: "tag", tag: string, andTags?: string[] }, got "Projects"'
+    )
+    expect(
+      validationError('folderView.getViews', [{ type: 'folder', path: 'a' }]).message
+    ).toContain('scope.kind: expected one of "folder", "tag", got nothing')
+    expect(validationError('folderView.getViews', [{ kind: 'folder' }]).message).toContain(
+      'scope.path: expected string, got nothing'
+    )
+  })
+
+  it('names the expected type of a positional argument', () => {
+    expect(validationError('notes.get', [5]).message).toContain('id: expected string, got 5')
+    expect(validationError('journal.getHeatmap', ['2026']).message).toContain(
+      'year: expected integer, got "2026"'
+    )
+    expect(validationError('notes.get', []).message).toContain('id: expected string, got nothing')
+  })
+
+  it('lists every failing field in one reply', () => {
+    const error = validationError('notes.rename', [1, null])
+    expect(error.message).toContain('id: expected string, got 1')
+    expect(error.message).toContain('newTitle: expected string, got null')
+    expect(error.details?.issues).toHaveLength(2)
+  })
+
+  it('accepts what the IPC handler accepts', () => {
+    const valid: Array<[AgentMcpDesktopOperation, unknown[]]> = [
+      ['notes.ensurePropertyDefinition', ['mood', 'select']],
+      ['folderView.getViews', [{ kind: 'tag', tag: 'work' }]],
+      ['notes.list', []],
+      ['notes.list', [{ folder: 'a', limit: 5 }]],
+      ['tasks.getUpcoming', []],
+      ['inbox.convertToTask', ['i1']],
+      ['settings.setGeneralSettings', [{ startOnBoot: true }]]
+    ]
+    for (const [operation, args] of valid) {
+      expect(() => assertDesktopApiArgs({ operation, args }), operation).not.toThrow()
+    }
   })
 })

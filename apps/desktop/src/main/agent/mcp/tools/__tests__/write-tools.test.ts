@@ -238,6 +238,23 @@ describe('Write tools — P1 deny-by-default', () => {
     expect(gate).not.toHaveBeenCalled()
   })
 
+  it('refuses a desktop call whose argument has the wrong type, before the gate', async () => {
+    const gate = vi.fn<WriteToolGate>(async () => ({ approved: true }))
+    const t = buildWriteTools(handles, gate).find((x) => x.name === 'vault_desktop_write')!
+    await expect(
+      t.handler(
+        { operation: 'notes.ensurePropertyDefinition', args: ['mood', 'text'] },
+        { writeGrant: 'turn-grant-1', windowId: 'w1' }
+      )
+    ).rejects.toMatchObject({
+      code: 'VALIDATION',
+      message: expect.stringContaining(
+        'type: expected one of "status", "select", "multiselect", got "text"'
+      )
+    })
+    expect(gate).not.toHaveBeenCalled()
+  })
+
   it('rejects an argument the tool does not take, before the gate', async () => {
     const gate = vi.fn<WriteToolGate>(async () => ({ approved: true }))
     const t = buildWriteTools(handles, gate).find((x) => x.name === 'vault_update_task')!

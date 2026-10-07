@@ -1,23 +1,29 @@
 import path from 'node:path'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
+import { desktopOperationJsonSchema } from '@memry/contracts/agent-desktop-api-args'
 import { AgentMcpDesktopOperations } from '@memry/contracts/agent-mcp-channels'
 
-import { DESKTOP_INPUT_SCHEMAS } from '../desktop-api-inputs'
 import { assertDesktopApiArgs, desktopOperationParams } from '../desktop-api-params'
 
 const desktopRoot = path.resolve(__dirname, '../../../../../..')
 
-interface ObjectParam {
-  operation: string
+interface PreloadParam {
+  operation: (typeof AgentMcpDesktopOperations)[number]
   name: string
   index: number
+  optional: boolean
+  isObject: boolean
   isArray: boolean
+  /** JSON Schema kinds the declared type allows; empty for any/unknown. */
+  kinds: string[]
+  /** The values of a declared union of string literals. */
+  literals: string[] | null
 }
 
-// Every argument of an allowlisted operation whose preload type is an object
-// (or an array of objects), read from the `window.api` declaration.
-function preloadObjectParams(): ObjectParam[] {
+// Every argument of every allowlisted operation, read from the `window.api`
+// declaration.
+function preloadParams(): PreloadParam[] {
   const config = ts.getParsedCommandLineOfConfigFile(
     path.join(desktopRoot, 'tsconfig.web.json'),
     {},
@@ -51,8 +57,29 @@ function preloadObjectParams(): ObjectParam[] {
     if (value.flags & primitive) return false
     return (value.flags & ts.TypeFlags.Object) !== 0
   }
+  const kindsOf = (type: ts.Type): string[] => {
+    if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return []
+    const members = type.isUnion() ? type.types : [type]
+    const kinds = new Set<string>()
+    for (const member of members) {
+      if (member.flags & ts.TypeFlags.Undefined) continue
+      if (member.flags & ts.TypeFlags.Null) kinds.add('null')
+      else if (member.flags & ts.TypeFlags.StringLike) kinds.add('string')
+      else if (member.flags & ts.TypeFlags.NumberLike) kinds.add('number')
+      else if (member.flags & ts.TypeFlags.BooleanLike) kinds.add('boolean')
+      else if (checker.isArrayType(member)) kinds.add('array')
+      else kinds.add('object')
+    }
+    return [...kinds].sort()
+  }
+  const literalsOf = (type: ts.Type): string[] | null => {
+    const members = checker.getNonNullableType(type)
+    const options = members.isUnion() ? members.types : [members]
+    if (!options.every((option) => option.isStringLiteral())) return null
+    return options.map((option) => (option as ts.StringLiteralType).value).sort()
+  }
 
-  const params: ObjectParam[] = []
+  const params: PreloadParam[] = []
   for (const operation of AgentMcpDesktopOperations) {
     const [domain, method] = operation.split('.')
     const domainSymbol = apiType.getProperty(domain)
@@ -65,16 +92,50 @@ function preloadObjectParams(): ObjectParam[] {
       .getCallSignatures()[0]
     signature.getParameters().forEach((symbol, index) => {
       const type = checker.getTypeOfSymbolAtLocation(symbol, apiNode)
-      if (!isObject(type)) return
+      const declared = symbol.valueDeclaration
       params.push({
         operation,
         name: symbol.name,
         index,
-        isArray: checker.isArrayType(checker.getNonNullableType(type))
+        optional: Boolean(
+          declared && ts.isParameter(declared) && (declared.questionToken || declared.initializer)
+        ),
+        isObject: isObject(type),
+        isArray: checker.isArrayType(checker.getNonNullableType(type)),
+        kinds: kindsOf(type),
+        literals: literalsOf(type)
       })
     })
   }
   return params
+}
+
+type JsonSchema = {
+  type?: string | string[]
+  enum?: unknown[]
+  const?: unknown
+  anyOf?: JsonSchema[]
+  oneOf?: JsonSchema[]
+}
+
+function jsonKinds(schema: JsonSchema): string[] {
+  const kinds = new Set<string>()
+  const visit = (node: JsonSchema): void => {
+    for (const option of [...(node.anyOf ?? []), ...(node.oneOf ?? [])]) visit(option)
+    const types = node.type === undefined ? [] : [node.type].flat()
+    for (const type of types) kinds.add(type === 'integer' ? 'number' : type)
+    for (const value of node.enum ?? (node.const === undefined ? [] : [node.const])) {
+      kinds.add(value === null ? 'null' : typeof value)
+    }
+  }
+  visit(schema)
+  return [...kinds].sort()
+}
+
+function jsonLiterals(schema: JsonSchema): string[] | null {
+  if (schema.enum) return schema.enum.map(String).sort()
+  if (schema.const !== undefined) return [String(schema.const)]
+  return null
 }
 
 // A union input needs its discriminator before its own keys are checked.
@@ -90,7 +151,7 @@ const SWEEP_BASE: Record<string, Record<string, unknown>> = {
 const OPEN_RECORDS = new Set(['properties.set:properties'])
 
 describe('desktop API object arguments', () => {
-  const params = preloadObjectParams()
+  const params = preloadParams().filter((param) => param.isObject)
 
   it('are found in the preload declaration', () => {
     expect(params.length).toBeGreaterThan(100)
@@ -171,19 +232,49 @@ describe('desktop API object arguments', () => {
       ).toThrow(unknown)
     }
   )
+})
 
-  it('key every input schema by the name of an object parameter', () => {
-    const objectParams = new Set(
-      params.map((param) => {
-        const operation = param.operation as (typeof AgentMcpDesktopOperations)[number]
-        return `${operation}:${desktopOperationParams(operation)[param.index]}`
-      })
+// The responder still reads these older call shapes, which the declaration
+// does not list.
+const LEGACY_KINDS: Record<string, string[]> = {
+  'calendar.getRange:inputOrStart': ['object', 'string'],
+  'calendar.listEvents:options': ['object', 'string']
+}
+
+describe('desktop API argument schemas', () => {
+  const params = preloadParams()
+
+  it('publish, for every parameter, the kind, optionality and literal values the preload declares', () => {
+    const mismatches: string[] = []
+    for (const param of params) {
+      const schema = desktopOperationJsonSchema(param.operation)
+      const item = (schema.prefixItems?.[param.index] ?? {}) as JsonSchema
+      const id = `${param.operation}:${desktopOperationParams(param.operation)[param.index]}`
+      const required = param.index < (schema.minItems ?? 0)
+      if (required === param.optional) {
+        mismatches.push(`${id}: declared ${param.optional ? 'optional' : 'required'}`)
+      }
+      const declared = LEGACY_KINDS[id] ?? param.kinds
+      if (declared.length > 0 && jsonKinds(item).join() !== declared.join()) {
+        mismatches.push(
+          `${id}: declared ${declared.join('|')}, schema ${jsonKinds(item).join('|')}`
+        )
+      }
+      if (param.literals && jsonLiterals(item)?.join() !== param.literals.join()) {
+        mismatches.push(`${id}: declared ${param.literals.join('|')}, schema ${jsonLiterals(item)}`)
+      }
+    }
+    expect(mismatches).toEqual([])
+  })
+
+  it('cover every parameter of every allowlisted operation', () => {
+    const counts = new Map<string, number>()
+    for (const param of params) counts.set(param.operation, (counts.get(param.operation) ?? 0) + 1)
+    // The responder still takes the older (start, end) string pair.
+    counts.set('calendar.getRange', 2)
+    const mismatches = AgentMcpDesktopOperations.filter(
+      (operation) => (counts.get(operation) ?? 0) !== desktopOperationParams(operation).length
     )
-    const stray = Object.entries(DESKTOP_INPUT_SCHEMAS).flatMap(([operation, inputs]) =>
-      Object.keys(inputs ?? {})
-        .map((name) => `${operation}:${name}`)
-        .filter((id) => !objectParams.has(id))
-    )
-    expect(stray).toEqual([])
+    expect(mismatches).toEqual([])
   })
 })
