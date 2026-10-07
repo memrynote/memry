@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "此设备未保留编辑历史",
-    "persistenceDegradedBody": "笔记是安全的——它们以纯文本文件形式保存在仓库中，仍可正常打开和保存。只有此设备的本地编辑历史和合并状态在内存中运行，因此每次打开 memrynote 时都会重新开始。"
+    "persistenceDegradedBody": "笔记是安全的——它们以纯文本文件形式保存在仓库中，仍可正常打开和保存。只有此设备的本地编辑历史和合并状态在内存中运行，因此每次打开 memrynote 时都会重新开始。",
+    "writebackFailedTitle": "无法更新磁盘上的笔记文件",
+    "writebackFailedTitleNamed": "无法更新磁盘上的“{title}”",
+    "writebackFailedBody": "你的编辑已保留在 memrynote 中。磁盘上的文件仍是之前的内容；memrynote 会在你下次编辑时重试。"
   },
   "encryption": {
     "failed": "无法加密数据。你的密钥可能需要重新生成。",

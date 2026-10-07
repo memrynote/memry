@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "Redigeringsloggen lagres ikke på denne enheten",
-    "persistenceDegradedBody": "Notatene dine er trygge – de ligger i hvelvet ditt som vanlige filer, og de åpnes og lagres fortsatt som normalt. Bare den lokale redigeringsloggen og flettetilstanden på denne enheten ligger i minnet, så de starter på nytt hver gang memrynote åpnes."
+    "persistenceDegradedBody": "Notatene dine er trygge – de ligger i hvelvet ditt som vanlige filer, og de åpnes og lagres fortsatt som normalt. Bare den lokale redigeringsloggen og flettetilstanden på denne enheten ligger i minnet, så de starter på nytt hver gang memrynote åpnes.",
+    "writebackFailedTitle": "Filen til et notat på disken kunne ikke oppdateres",
+    "writebackFailedTitleNamed": "«{title}» kunne ikke oppdateres på disken",
+    "writebackFailedBody": "Endringen din er tatt vare på i memrynote. Filen på disken har fortsatt den tidligere teksten; memrynote prøver igjen ved neste endring."
   },
   "encryption": {
     "failed": "Kunne ikke kryptere data. Det kan hende at nøklene dine må regenereres.",

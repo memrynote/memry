@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "Hindi itinatabi sa device na ito ang kasaysayan ng pag-edit",
-    "persistenceDegradedBody": "Ligtas ang mga tala mo — nasa vault mo ang mga ito bilang mga simpleng file, at nabubuksan at nase-save pa rin ang mga ito gaya ng dati. Ang lokal na kasaysayan ng pag-edit at merge state lang ng device na ito ang tumatakbo sa memory, kaya nagsisimula ulit ang mga ito tuwing binubuksan ang memrynote."
+    "persistenceDegradedBody": "Ligtas ang mga tala mo — nasa vault mo ang mga ito bilang mga simpleng file, at nabubuksan at nase-save pa rin ang mga ito gaya ng dati. Ang lokal na kasaysayan ng pag-edit at merge state lang ng device na ito ang tumatakbo sa memory, kaya nagsisimula ulit ang mga ito tuwing binubuksan ang memrynote.",
+    "writebackFailedTitle": "Hindi ma-update ang file ng isang tala sa disk",
+    "writebackFailedTitleNamed": "Hindi ma-update ang “{title}” sa disk",
+    "writebackFailedBody": "Nakatago sa memrynote ang iyong pagbabago. Nasa file sa disk pa rin ang naunang teksto; susubukang muli ng memrynote sa susunod mong pagbabago."
   },
   "encryption": {
     "failed": "Hindi ma-encrypt ang data. Baka kailangang buuin ulit ang mga key mo.",

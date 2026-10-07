@@ -719,6 +719,10 @@ document to its vault `.md` file and re-indexes it for search.
   (`restore-threw`) and a file that cannot be read or parsed (`file-unreadable`) resolve the
   conversion to null. The pass keeps the file as it is and fails the way a failed read does,
   with `sync:write-back-failed` and a `note_writeback` error, so the next update retries.
+  The renderer turns `sync:write-back-failed` into a warning toast that names the note and
+  says the edit is kept in the app while the file has the earlier text. Main sends it once
+  per run of failed passes for a note, and a pass that lands ends the run, so a fault that
+  repeats on every keystroke shows one notice, not one per pass.
   House style is written only when the file was read and cannot be restored either.
   The merge aligns lines on a key that erases each spelling. A rule or a setext underline
   erases to nothing, the key of a blank line, so it keeps a key of its own. Paired with a

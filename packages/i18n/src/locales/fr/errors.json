@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "L'historique des modifications n'est pas conservé sur cet appareil",
-    "persistenceDegradedBody": "Vos notes ne risquent rien : elles sont stockées dans votre coffre sous forme de fichiers texte, et s'ouvrent et s'enregistrent toujours normalement. Seuls l'historique local des modifications et l'état de fusion de cet appareil sont conservés en mémoire : ils repartent de zéro à chaque ouverture de memrynote."
+    "persistenceDegradedBody": "Vos notes ne risquent rien : elles sont stockées dans votre coffre sous forme de fichiers texte, et s'ouvrent et s'enregistrent toujours normalement. Seuls l'historique local des modifications et l'état de fusion de cet appareil sont conservés en mémoire : ils repartent de zéro à chaque ouverture de memrynote.",
+    "writebackFailedTitle": "Le fichier d’une note sur le disque n’a pas pu être mis à jour",
+    "writebackFailedTitleNamed": "La note « {title} » n’a pas pu être mise à jour sur le disque",
+    "writebackFailedBody": "Votre modification est conservée dans memrynote. Le fichier sur le disque contient encore le texte précédent ; memrynote réessaiera lors de votre prochaine modification."
   },
   "encryption": {
     "failed": "Impossible de chiffrer les données. Vos clés devront peut-être être régénérées.",

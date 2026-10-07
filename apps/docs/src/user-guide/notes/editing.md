@@ -910,7 +910,9 @@ memrynote keeps a copy of the author's spelling beside the note for this. When t
 longer matches the note, for example after another device changed it, the note's file stands in
 for it. A save that changes nothing leaves the file exactly as it is, and an edit is written into
 the file's own spelling. A note saved with Windows line endings (CRLF) keeps them, and is
-treated the same way. A file that cannot be read at that moment is left as it is. Only
+treated the same way. A file that cannot be read at that moment is left as it is, and a notice
+names the note: your edit is kept in memrynote, and the file gets it with your next edit that
+saves. Only
 when the file was read and neither copy can be kept is the whole note written in memrynote's
 own style.
 

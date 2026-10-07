@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "Edit history isn't being kept on this device",
-    "persistenceDegradedBody": "Your notes are safe — they live in your vault as plain files, and they still open and save normally. Only this device's local edit history and merge state are running in memory, so they start fresh each time memrynote opens."
+    "persistenceDegradedBody": "Your notes are safe — they live in your vault as plain files, and they still open and save normally. Only this device's local edit history and merge state are running in memory, so they start fresh each time memrynote opens.",
+    "writebackFailedTitle": "A note's file on disk couldn't be updated",
+    "writebackFailedTitleNamed": "\"{title}\" couldn't be updated on disk",
+    "writebackFailedBody": "Your edit is kept in memrynote. The file on disk still has the earlier text; memrynote tries again with your next edit."
   },
   "encryption": {
     "failed": "Failed to encrypt data. Your keys may need to be regenerated.",

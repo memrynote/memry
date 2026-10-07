@@ -177,6 +177,7 @@ describe('crdt writeback', () => {
     // Module-level and keyed per note; the fixed fake clock means a second test
     // reusing a note id would otherwise land inside the first one's window.
     resetTelemetryThrottle()
+    resetWritebackState()
     mocks.sent = []
     mocks.yDocToMarkdown.mockResolvedValue('updated markdown')
     mocks.findUnrepresentableNodes.mockReturnValue([])

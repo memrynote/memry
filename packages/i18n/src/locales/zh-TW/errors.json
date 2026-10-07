@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "這部裝置目前未保留編輯記錄",
-    "persistenceDegradedBody": "筆記很安全——它們以純文字檔案存放在儲存庫中，仍可正常開啟與儲存。只有這部裝置的本機編輯記錄與合併狀態暫存在記憶體中，因此每次開啟 memrynote 時都會重新開始。"
+    "persistenceDegradedBody": "筆記很安全——它們以純文字檔案存放在儲存庫中，仍可正常開啟與儲存。只有這部裝置的本機編輯記錄與合併狀態暫存在記憶體中，因此每次開啟 memrynote 時都會重新開始。",
+    "writebackFailedTitle": "無法更新磁碟上的筆記檔案",
+    "writebackFailedTitleNamed": "無法更新磁碟上的「{title}」",
+    "writebackFailedBody": "你的編輯已保留在 memrynote 中。磁碟上的檔案仍是先前的內容；memrynote 會在你下次編輯時重試。"
   },
   "encryption": {
     "failed": "無法加密資料。你的金鑰可能需要重新產生。",

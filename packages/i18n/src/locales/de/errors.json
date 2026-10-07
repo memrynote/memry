@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "Der Bearbeitungsverlauf wird auf diesem Gerät nicht gespeichert",
-    "persistenceDegradedBody": "Deine Notizen sind sicher – sie liegen als einfache Dateien in deinem Tresor und lassen sich weiterhin normal öffnen und speichern. Nur der lokale Bearbeitungsverlauf und der Zusammenführungsstatus dieses Geräts werden im Arbeitsspeicher gehalten und beginnen daher bei jedem Start von memrynote von vorn."
+    "persistenceDegradedBody": "Deine Notizen sind sicher – sie liegen als einfache Dateien in deinem Tresor und lassen sich weiterhin normal öffnen und speichern. Nur der lokale Bearbeitungsverlauf und der Zusammenführungsstatus dieses Geräts werden im Arbeitsspeicher gehalten und beginnen daher bei jedem Start von memrynote von vorn.",
+    "writebackFailedTitle": "Die Datei einer Notiz auf dem Datenträger konnte nicht aktualisiert werden",
+    "writebackFailedTitleNamed": "„{title}“ konnte auf dem Datenträger nicht aktualisiert werden",
+    "writebackFailedBody": "Deine Änderung bleibt in memrynote erhalten. Die Datei auf dem Datenträger enthält noch den früheren Text; memrynote versucht es bei deiner nächsten Änderung erneut."
   },
   "encryption": {
     "failed": "Daten konnten nicht verschlüsselt werden. Möglicherweise müssen deine Schlüssel neu generiert werden.",

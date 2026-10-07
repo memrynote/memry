@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "De bewerkingsgeschiedenis wordt niet bewaard op dit apparaat",
-    "persistenceDegradedBody": "Je notities zijn veilig – ze staan als gewone bestanden in je kluis, en openen en opslaan werkt gewoon. Alleen de lokale bewerkingsgeschiedenis en samenvoegstatus van dit apparaat worden in het geheugen bijgehouden, dus die beginnen elke keer dat memrynote opent opnieuw."
+    "persistenceDegradedBody": "Je notities zijn veilig – ze staan als gewone bestanden in je kluis, en openen en opslaan werkt gewoon. Alleen de lokale bewerkingsgeschiedenis en samenvoegstatus van dit apparaat worden in het geheugen bijgehouden, dus die beginnen elke keer dat memrynote opent opnieuw.",
+    "writebackFailedTitle": "Het bestand van een notitie op de schijf kon niet worden bijgewerkt",
+    "writebackFailedTitleNamed": "“{title}” kon niet worden bijgewerkt op de schijf",
+    "writebackFailedBody": "Je wijziging blijft bewaard in memrynote. Het bestand op de schijf bevat nog de eerdere tekst; memrynote probeert het opnieuw bij je volgende wijziging."
   },
   "encryption": {
     "failed": "Kan gegevens niet versleutelen. Mogelijk moeten je sleutels opnieuw worden gegenereerd.",

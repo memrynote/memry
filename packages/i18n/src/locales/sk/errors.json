@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "História úprav sa na tomto zariadení neukladá",
-    "persistenceDegradedBody": "Vaše poznámky sú v bezpečí – sú uložené v trezore ako obyčajné súbory a naďalej sa normálne otvárajú aj ukladajú. Týka sa to len lokálnej histórie úprav a stavu zlučovania na tomto zariadení: uchovávajú sa iba v pamäti, takže pri každom otvorení aplikácie memrynote začínajú odznova."
+    "persistenceDegradedBody": "Vaše poznámky sú v bezpečí – sú uložené v trezore ako obyčajné súbory a naďalej sa normálne otvárajú aj ukladajú. Týka sa to len lokálnej histórie úprav a stavu zlučovania na tomto zariadení: uchovávajú sa iba v pamäti, takže pri každom otvorení aplikácie memrynote začínajú odznova.",
+    "writebackFailedTitle": "Súbor poznámky na disku sa nepodarilo aktualizovať",
+    "writebackFailedTitleNamed": "„{title}“ sa na disku nepodarilo aktualizovať",
+    "writebackFailedBody": "Vaša úprava zostáva v memrynote. Súbor na disku má stále predchádzajúci text; memrynote to skúsi znova pri vašej ďalšej úprave."
   },
   "encryption": {
     "failed": "Nepodarilo sa zašifrovať údaje. Možno bude potrebné znova vygenerovať vaše kľúče.",

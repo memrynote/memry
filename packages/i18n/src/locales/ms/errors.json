@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "Sejarah edit tidak disimpan pada peranti ini",
-    "persistenceDegradedBody": "Nota anda selamat — nota disimpan dalam bilik kebal anda sebagai fail biasa, dan masih dibuka serta disimpan seperti biasa. Hanya sejarah edit setempat dan keadaan gabungan peranti ini yang dijalankan dalam memori, jadi kedua-duanya bermula semula setiap kali memrynote dibuka."
+    "persistenceDegradedBody": "Nota anda selamat — nota disimpan dalam bilik kebal anda sebagai fail biasa, dan masih dibuka serta disimpan seperti biasa. Hanya sejarah edit setempat dan keadaan gabungan peranti ini yang dijalankan dalam memori, jadi kedua-duanya bermula semula setiap kali memrynote dibuka.",
+    "writebackFailedTitle": "Fail nota pada cakera tidak dapat dikemas kini",
+    "writebackFailedTitleNamed": "“{title}” tidak dapat dikemas kini pada cakera",
+    "writebackFailedBody": "Suntingan anda disimpan dalam memrynote. Fail pada cakera masih mengandungi teks sebelumnya; memrynote akan mencuba lagi pada suntingan anda yang seterusnya."
   },
   "encryption": {
     "failed": "Gagal menyulitkan data. Kunci anda mungkin perlu dijana semula.",
