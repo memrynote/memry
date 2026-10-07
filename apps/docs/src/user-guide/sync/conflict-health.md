@@ -94,7 +94,7 @@ note or journal day and look at the **Sync** line under the dates:
 | Sync line                              | Meaning                                                                                                                   |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | **On the server** _time_               | Nothing is waiting, and the server stored this note's text at that time                                                   |
-| **Waiting to send, since** _time_      | This device has changes to the note that have not been sent yet                                                           |
+| **Waiting since** _time_               | This device has changes to the note that have not been sent yet                                                           |
 | **Sending**                            | A push is out and the server has not answered yet                                                                         |
 | **The server refused the last change** | The server turned down the latest push for good; those changes are not on the server                                      |
 | **Nothing waiting to send**            | No change is waiting, but this device has not seen the server store the note's text since the update that added this line |

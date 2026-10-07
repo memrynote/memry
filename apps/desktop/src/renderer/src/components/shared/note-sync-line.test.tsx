@@ -44,7 +44,7 @@ describe('NoteSyncLine (#2647)', () => {
 
     renderWithProviders(<NoteSyncLine noteId="n1" />)
 
-    expect(await screen.findByText('Waiting to send, since 1 minute ago')).toBeInTheDocument()
+    expect(await screen.findByText('Waiting since 1 minute ago')).toBeInTheDocument()
   })
 
   it('#given a refused push #then it names the refusal', async () => {
