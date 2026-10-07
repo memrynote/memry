@@ -68,13 +68,18 @@ export function useVaultLockState(): VaultLockState {
   return useSyncExternalStore(subscribe, () => state)
 }
 
-/** Locked by its own lock or by a lock on a folder above it. */
+/**
+ * Locked by its own lock or by a lock on a folder above it. With no id yet
+ * (a journal day with no file), only a folder lock covering the path counts:
+ * main refuses to create a file there.
+ */
 export function useIsNoteLocked(
   noteId: string | null | undefined,
   notePath?: string | null
 ): boolean {
   const locks = useVaultLockState()
-  return !!noteId && isNoteLockedIn(locks, noteIds, noteId, notePath)
+  if (!noteId) return !!notePath && lockedFolderFor(notePath, locks) !== null
+  return isNoteLockedIn(locks, noteIds, noteId, notePath)
 }
 
 /** True for a note's own lock only (what the unlock toggle can undo). */
