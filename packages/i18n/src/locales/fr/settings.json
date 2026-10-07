@@ -448,11 +448,16 @@
       "width": "Largeur de l'éditeur",
       "toolbarMode": "Barre de mise en forme fixe",
       "spellCheck": "Vérifier l'orthographe",
-      "convertChecklists": "Transformer les éléments de liste en tâches"
+      "convertChecklists": "Transformer les éléments de liste en tâches",
+      "convertAgentChecklists": "Transformer en tâches les éléments de liste écrits par un agent"
     },
     "convertChecklists": {
       "description": "Chaque nouvel élément de liste de contrôle devient une tâche. Désactivé, les listes restent de simples cases à cocher ; faites un clic droit sur l’une pour en faire une tâche.",
       "error": "Impossible de mettre à jour la conversion des listes de contrôle"
+    },
+    "convertAgentChecklists": {
+      "description": "Désactivé, chaque case qu'un agent écrit reste une simple case à cocher. Les agents créent des tâches avec les outils de tâches.",
+      "error": "Impossible de mettre à jour la conversion des listes de contrôle des agents"
     }
   },
   "templates": {

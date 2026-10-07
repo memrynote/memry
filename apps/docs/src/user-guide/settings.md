@@ -227,6 +227,8 @@ Clicking a row — built-in or custom — opens it in the [template editor](/use
 
 **Turn checklist items into tasks** is **on by default**: a checklist item you type, or one a note opens with, becomes a task. Turn it off to keep every checklist item a plain checkbox. You can still make one a task by right-clicking its checkbox or with **Turn into > Task** from the block menu, and a checkbox indented under a task still becomes its subtask. Turning it off changes no task you already have. The setting syncs to your other devices; a device on an older version of memrynote keeps turning checkboxes into tasks. See [Keeping a Checkbox a Checkbox](/user-guide/tasks/capturing#keeping-a-checkbox-a-checkbox).
 
+**Turn checklist items in agent writes into tasks** is **off by default**: a checkbox line an AI agent writes into a note or journal entry stays a plain checkbox, and agents create tasks with their task tools. Turn it on and the agent's checklist items become tasks as it writes them, and the agent's reply lists each task it created. Checkbox lines that were in the note before the agent's edit are left as they were. The setting syncs to your other devices. See [Checkboxes in agent writes](/user-guide/ai/agent-mcp#checkboxes-in-agent-writes).
+
 ---
 
 ## Journal
@@ -552,7 +554,7 @@ Create, rename, recolor, and reorder property options.
 Settings persist via Zod schemas in `packages/contracts/settings-schemas.ts`. Notable keys:
 
 - General: `theme`, `fontSize`, `fontFamily`, `accentColor`, `colorTheme`, `useThemeAccent`, `backgroundLight`, `foregroundLight`, `backgroundDark`, `foregroundDark`, `reduceMotion`, `pointerCursors`, `fontSmoothing`, `startOnBoot`, `language`, `clockFormat`, `dateFormat`, `createInSelectedFolder`, `openPagesInNewTab`
-- Editor: `width`, `toolbarMode`, `spellCheck`, `convertChecklistsToTasks`
+- Editor: `width`, `toolbarMode`, `spellCheck`, `convertChecklistsToTasks`, `convertAgentChecklistsToTasks`
 - Tasks: `defaultProjectId`, `defaultSortOrder`, `staleInboxDays`
 - Calendar: `dayCellClickBehavior`, `calendarPageClickOverride`, `weekStartDay`
 - AI: `enabled`, `provider`, `model`

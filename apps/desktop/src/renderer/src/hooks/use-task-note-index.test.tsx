@@ -83,7 +83,8 @@ describe('useTaskNoteIndex', () => {
     expect(result.current?.get('note-msa')).toEqual({
       id: 'note-msa',
       title: 'MSA',
-      folderPath: 'Acme/Legal'
+      folderPath: 'Acme/Legal',
+      icon: null
     })
     expect(result.current?.get('note-scratch')?.folderPath).toBe('')
   })

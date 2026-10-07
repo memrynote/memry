@@ -448,11 +448,16 @@
       "width": "Chiều rộng trình soạn thảo",
       "toolbarMode": "Thanh công cụ định dạng cố định",
       "spellCheck": "Kiểm tra chính tả",
-      "convertChecklists": "Chuyển mục danh sách kiểm tra thành công việc"
+      "convertChecklists": "Chuyển mục danh sách kiểm tra thành công việc",
+      "convertAgentChecklists": "Chuyển mục danh sách kiểm tra do tác nhân viết thành công việc"
     },
     "convertChecklists": {
       "description": "Mỗi mục danh sách kiểm tra mới sẽ thành một công việc. Khi tắt, danh sách giữ nguyên là ô đánh dấu thường; nhấp chuột phải vào một mục để biến nó thành công việc.",
       "error": "Không thể cập nhật việc chuyển đổi danh sách kiểm tra"
+    },
+    "convertAgentChecklists": {
+      "description": "Khi tắt, mọi ô đánh dấu mà tác nhân viết vẫn là ô đánh dấu thường. Tác nhân tạo công việc bằng công cụ công việc.",
+      "error": "Không thể cập nhật việc chuyển đổi danh sách kiểm tra của tác nhân"
     }
   },
   "templates": {
