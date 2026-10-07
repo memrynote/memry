@@ -268,8 +268,8 @@ const LOOSE_TOOL_SCHEMAS = {
     input: z.object({ operation: z.enum(AgentMcpDesktopOperations).optional() }),
     description:
       'Look up how to call a desktop API operation before calling it through ' +
-      'vault_desktop_read or vault_desktop_write. With operation, returns its tool, whether it ' +
-      'needs approval, its parameters in call order and args_schema: the JSON Schema (draft ' +
+      'vault_desktop_read or vault_desktop_write. With operation, returns a summary of what it ' +
+      'does, its tool, whether it needs approval, its parameters in call order and args_schema: the JSON Schema (draft ' +
       '2020-12) of the args array, with every type, required key, allowed value and default. ' +
       'Without operation, lists every operation with its tool and call shape; a trailing ? ' +
       'marks an optional argument.'

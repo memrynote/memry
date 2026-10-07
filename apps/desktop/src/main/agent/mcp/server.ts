@@ -78,7 +78,10 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
               input,
               result instanceof ImageToolResult ? result.reply : result
             )
-            const delivered = reg.maxReplyBytes ? capReply(decorated, reg.maxReplyBytes) : decorated
+            // A handler that returns nothing (vault.reindex) still owes the client a
+            // text part; JSON.stringify(undefined) has none and the SDK refuses it.
+            const capped = reg.maxReplyBytes ? capReply(decorated, reg.maxReplyBytes) : decorated
+            const delivered = capped === undefined ? null : capped
             return {
               content: [
                 { type: 'text', text: JSON.stringify(delivered) },

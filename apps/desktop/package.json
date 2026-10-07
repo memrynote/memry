@@ -62,6 +62,7 @@
     "prebuild": "pnpm repair:links && bash scripts/check-cert-hashes.sh && bash scripts/ensure-native.sh electron",
     "cert:check": "bash scripts/check-cert-hashes.sh",
     "cert:extract": "npx tsx scripts/extract-cert-hashes.ts",
+    "agent-api:generate": "tsx scripts/agent-api-reference.ts",
     "db:generate": "drizzle-kit generate --config config/drizzle-data.config.ts && drizzle-kit generate --config config/drizzle-index.config.ts",
     "db:generate:data": "drizzle-kit generate --config config/drizzle-data.config.ts",
     "db:generate:index": "drizzle-kit generate --config config/drizzle-index.config.ts",

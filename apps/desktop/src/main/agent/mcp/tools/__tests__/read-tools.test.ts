@@ -566,6 +566,7 @@ describe('Read tools', () => {
       )
     expect(out).toMatchObject({
       operation: 'notes.ensurePropertyDefinition',
+      summary: 'Define a status, select or multiselect property if it does not exist yet.',
       tool: 'vault_desktop_write',
       requires_approval: true,
       call: 'notes.ensurePropertyDefinition(name, type)',
