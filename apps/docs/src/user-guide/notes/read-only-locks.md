@@ -37,6 +37,11 @@ Everything that would change a locked note is refused:
 Vault-wide changes such as renaming, merging, or deleting a tag, or updating links after a
 rename, skip locked notes and carry on with the rest.
 
+Changing the journal **Date format** renames every journal file, so it is refused as a whole
+when any journal entry it would rename is locked, or a rename would move one into a locked
+folder. Settings shows **"The owner made this note read-only."**, the old format stays, and no
+file is renamed. Unlock the entry or folder, then change the format again.
+
 Canvases cannot be locked. They live in a folder that does not appear in the sidebar.
 
 ## Other Devices
