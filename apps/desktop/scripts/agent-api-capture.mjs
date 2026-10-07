@@ -1392,6 +1392,7 @@ async function rpc(method, params, withGrant) {
     body: JSON.stringify({ jsonrpc: '2.0', id: rid++, method, params })
   })
   const text = await res.text()
+  if (!res.ok) throw new Error(`${method} failed with HTTP ${res.status}: ${text.slice(0, 300)}`)
   const line = text.split('\n').find((l) => l.startsWith('data: '))
   return JSON.parse(line ? line.slice(6) : text)
 }
