@@ -593,6 +593,7 @@ const createMockApi = () => ({
   onReminderClicked: vi.fn().mockReturnValue(() => {}),
   onInboxOpenItem: vi.fn().mockReturnValue(() => {}),
   onUpdaterStateChanged: vi.fn().mockReturnValue(() => {}),
+  onCrdtWriteBackFailed: vi.fn().mockReturnValue(() => {}),
 
   // CRDT bridge. Only the health query is mocked here: it is the one call the
   // app makes on mount without an editor, and a healthy answer keeps the

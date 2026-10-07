@@ -63,9 +63,9 @@ const DESKTOP_BODY_WRITES: Partial<
  * renderer and reply with the operation's own result, so with the setting on
  * the lines are left for the editor to convert.
  */
-export async function withAgentChecklists(
-  request: AgentMcpDesktopApiRequest
-): Promise<AgentMcpDesktopApiRequest> {
+export async function withAgentChecklists<R extends AgentMcpDesktopApiRequest>(
+  request: R
+): Promise<R> {
   const previousBody = DESKTOP_BODY_WRITES[request.operation]
   const [input, ...rest] = request.args
   if (!previousBody || !input || typeof input !== 'object') return request

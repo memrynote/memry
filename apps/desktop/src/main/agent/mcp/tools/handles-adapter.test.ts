@@ -36,6 +36,8 @@ const mocks = vi.hoisted(() => ({
   snapshotCurrentNoteFromWindow: vi.fn(),
   invokeDesktopApiFromWindow: vi.fn(),
   replaceNoteTagsInCrdt: vi.fn(),
+  settleWriteback: vi.fn(),
+  isPersistent: vi.fn(),
   getEditorSettings: vi.fn(),
   listProjects: vi.fn(),
   saveAttachment: vi.fn(),
@@ -137,6 +139,14 @@ vi.mock('../../../sync/crdt-feed', () => ({
   replaceNoteTagsInCrdt: mocks.replaceNoteTagsInCrdt
 }))
 
+vi.mock('../../../sync/crdt-writeback', () => ({
+  settleWriteback: mocks.settleWriteback
+}))
+
+vi.mock('../../../sync/crdt-provider', () => ({
+  getCrdtProvider: () => ({ isPersistent: mocks.isPersistent })
+}))
+
 vi.mock('../../../vault/attachments', () => ({
   saveAttachment: mocks.saveAttachment
 }))
@@ -145,6 +155,7 @@ vi.mock('../../../notes/runtime-effects', () => ({
 }))
 
 import { createVaultServiceHandles } from './handles-adapter'
+import { buildWriteTools } from './write-tools'
 
 const deps = {
   dataDb: {} as never,
@@ -186,6 +197,7 @@ describe('createVaultServiceHandles', () => {
     vi.clearAllMocks()
 
     mocks.getConfig.mockReturnValue({ defaultNoteFolder: 'notes' })
+    mocks.isPersistent.mockResolvedValue(true)
     mocks.getEditorSettings.mockReturnValue({ convertAgentChecklistsToTasks: false })
     mocks.listProjects.mockReturnValue([{ id: 'inbox-project', isInbox: true }])
     // Every note write returns the note the command produced; the adapter reads
@@ -364,7 +376,7 @@ describe('createVaultServiceHandles', () => {
         folder_path: '/work',
         tags: ['focus']
       })
-    ).resolves.toEqual({ id: 'note-created' })
+    ).resolves.toMatchObject({ id: 'note-created' })
     expect(mocks.createNoteCommand).toHaveBeenCalledWith({
       id: 'note-1',
       title: 'New',
@@ -688,6 +700,218 @@ describe('createVaultServiceHandles', () => {
 
     await handles.notes.removeTag({ id: 'note-1', tag: 'TEAM' })
     expect(mocks.replaceNoteTagsInCrdt).toHaveBeenLastCalledWith('note-1', [])
+  })
+
+  describe('the body a write reports (#2615)', () => {
+    let file: string
+
+    beforeEach(() => {
+      file = 'Current'
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        title: 'Alpha',
+        path: 'work/alpha.md',
+        fileType: 'markdown'
+      })
+      mocks.getNoteById.mockImplementation(async (id: string) => ({
+        id,
+        title: 'Alpha',
+        content: file,
+        tags: [],
+        path: 'work/alpha.md',
+        frontmatter: {}
+      }))
+      mocks.updateNoteCommand.mockImplementation(async (input: { id: string; content: string }) => {
+        file = input.content
+        return { id: input.id, tags: [] }
+      })
+      mocks.createNoteCommand.mockImplementation(async (input: { content: string }) => {
+        file = input.content
+        return { id: 'note-2' }
+      })
+      mocks.settleWriteback.mockImplementation(async () => {
+        file = file.replace('* One', '- One')
+      })
+    })
+
+    it('reads an updated note back once the write-back it armed has run', async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      await expect(
+        handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: '* One' })
+      ).resolves.toEqual({ sent: 'Current\n\n* One', stored: 'Current\n\n- One' })
+    })
+
+    it('reads a created note back the same way', async () => {
+      const handles = createVaultServiceHandles(deps)
+
+      await expect(
+        handles.notes.create({ title: 'New', content_markdown: '* One' })
+      ).resolves.toEqual({ id: 'note-2', body: { sent: '* One', stored: '- One' } })
+    })
+
+    it('reads a note back for a write the desktop API made', async () => {
+      const handles = createVaultServiceHandles(deps)
+      file = '* One'
+
+      await expect(handles.notes.storedBody('note-1', '* One')).resolves.toEqual({
+        sent: '* One',
+        stored: '- One'
+      })
+    })
+
+    it('reports no stored body instead of failing a landed write whose read-back throws', async () => {
+      const handles = createVaultServiceHandles(deps)
+      const note = { id: 'note-1', tags: [], path: 'work/alpha.md', frontmatter: {} }
+      mocks.getNoteById
+        .mockResolvedValueOnce({ ...note, content: 'Current' })
+        .mockRejectedValueOnce(new Error('EBUSY: resource busy or locked'))
+
+      await expect(
+        handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: 'Next' })
+      ).resolves.toEqual({ sent: 'Current\n\nNext', stored: null })
+      expect(mocks.updateNoteCommand).toHaveBeenCalledTimes(1)
+    })
+
+    describe('measured after the checkbox step (#2619)', () => {
+      const writeTool = (name: string) =>
+        buildWriteTools(createVaultServiceHandles(deps), async () => ({ approved: true })).find(
+          (tool) => tool.name === name
+        )!
+      const ctx = { writeGrant: 'turn-grant-1', windowId: 'w1' }
+      const sentBody = '- [ ] Check the log {check}\nDone'
+
+      it('reports a CRLF respelling with the bytes of the body after the checkbox step', async () => {
+        mocks.settleWriteback.mockImplementation(async () => {
+          file = file.replace(/\n/g, '\r\n')
+        })
+
+        const reply = await writeTool('vault_update_note').handler(
+          { id: 'note-1', mode: 'replace', content_markdown: '- [ ] Check the log\nDone' },
+          ctx
+        )
+
+        expect(file).toBe('- [ ] Check the log {check}\r\nDone')
+        expect(reply).toEqual({
+          warnings: [
+            'The stored body is not the body this write sent. ' +
+              `Sent ${Buffer.byteLength(sentBody)} bytes, stored ${Buffer.byteLength(file)} bytes. ` +
+              'Read it back to see what was stored.'
+          ],
+          id: 'note-1'
+        })
+      })
+
+      it('says nothing when the checkbox marker is the only change', async () => {
+        mocks.settleWriteback.mockImplementation(async () => {})
+
+        await expect(
+          writeTool('vault_update_note').handler(
+            { id: 'note-1', mode: 'replace', content_markdown: '- [ ] Check the log\nDone' },
+            ctx
+          )
+        ).resolves.toEqual({ id: 'note-1' })
+      })
+
+      it('says nothing for a desktop API note write whose only change is the marker', async () => {
+        mocks.settleWriteback.mockImplementation(async () => {})
+        mocks.invokeDesktopApiFromWindow.mockImplementation(
+          async (_window: string, request: { args: Array<{ id: string; content: string }> }) => {
+            file = request.args[0].content
+            return { note: { id: 'note-1', content: file } }
+          }
+        )
+
+        await expect(
+          writeTool('vault_desktop_write').handler(
+            {
+              operation: 'notes.update',
+              args: [{ id: 'note-1', content: '- [ ] Check the log\nDone' }]
+            },
+            ctx
+          )
+        ).resolves.toEqual({ note: { id: 'note-1', content: sentBody } })
+      })
+    })
+
+    it('reads a journal entry back once its armed write-back has run', async () => {
+      const handles = createVaultServiceHandles(deps)
+      let journal: string | null = null
+      mocks.readJournalEntry.mockImplementation(async (date: string) =>
+        journal === null ? null : { id: `j${date}`, date, content: journal, tags: [] }
+      )
+      mocks.writeJournalEntry.mockImplementation(async (date: string, content: string) => {
+        journal = content
+        return { id: `j${date}` }
+      })
+      mocks.settleWriteback.mockImplementation(async (id: string) => {
+        if (id === 'j2026-05-11' && journal !== null) journal = journal.replace('* One', '- One')
+      })
+
+      await expect(
+        handles.journal.createIfMissing({ date: '2026-05-11', content_markdown: '* One' })
+      ).resolves.toEqual({
+        id: 'j2026-05-11',
+        created: true,
+        body: { sent: '* One', stored: '- One' }
+      })
+    })
+
+    it('reports no stored body for a note too large to read back', async () => {
+      const handles = createVaultServiceHandles(deps)
+      const note = { id: 'note-1', tags: [], path: 'work/alpha.md', frontmatter: {} }
+      mocks.getNoteById
+        .mockResolvedValueOnce({ ...note, content: 'Current' })
+        .mockResolvedValueOnce({ ...note, content: '', contentOmitted: true })
+
+      await expect(
+        handles.notes.update({ id: 'note-1', mode: 'replace', content_markdown: 'Big' })
+      ).resolves.toEqual({ sent: 'Big', stored: null })
+    })
+
+    it('reads a written journal entry back', async () => {
+      const handles = createVaultServiceHandles(deps)
+      let journal: string | null = null
+      mocks.readJournalEntry.mockImplementation(async (date: string) =>
+        journal === null ? null : { id: `j${date}`, date, content: journal, tags: [] }
+      )
+      mocks.writeJournalEntry.mockImplementation(async (date: string, content: string) => {
+        journal = `${content.trimEnd()}\n`
+        return { id: `j${date}` }
+      })
+
+      await expect(
+        handles.journal.createIfMissing({ date: '2026-05-10', content_markdown: 'Hello' })
+      ).resolves.toEqual({
+        id: 'j2026-05-10',
+        created: true,
+        body: { sent: 'Hello', stored: 'Hello\n' }
+      })
+      await expect(
+        handles.journal.update({ date: '2026-05-10', content_markdown: 'Again  ' })
+      ).resolves.toEqual({ id: 'j2026-05-10', body: { sent: 'Again  ', stored: 'Again\n' } })
+      await expect(
+        handles.journal.update({ date: '2026-05-10', tags: ['daily'] })
+      ).resolves.toEqual({ id: 'j2026-05-10' })
+    })
+  })
+
+  it('says on a write reply that this launch runs without its CRDT store', async () => {
+    const createTask = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+      approved: true
+    })).find((tool) => tool.name === 'vault_create_task')!
+    const run = () =>
+      createTask.handler({ title: 'Task' }, { writeGrant: 'turn-grant-1', windowId: 'w1' })
+
+    await expect(run()).resolves.toEqual({ id: 'task-created' })
+    mocks.isPersistent.mockResolvedValue(false)
+    await expect(run()).resolves.toEqual({
+      id: 'task-created',
+      warnings: [
+        'The CRDT store is unavailable on this device, so note edits sync without merge ' +
+          'history this session. Read changed notes back to check what was stored.'
+      ]
+    })
   })
 
   it('returns null when the note cache has no row for the id', async () => {
@@ -1091,7 +1315,7 @@ describe('createVaultServiceHandles', () => {
     mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-created' })
     await expect(
       handles.journal.createIfMissing({ date: '2026-05-13', content_markdown: 'Tomorrow' })
-    ).resolves.toEqual({ id: 'journal-created', created: true })
+    ).resolves.toMatchObject({ id: 'journal-created', created: true })
 
     mocks.readJournalEntry.mockResolvedValueOnce({ id: 'journal-existing' })
     await expect(
@@ -1572,8 +1796,9 @@ describe('createVaultServiceHandles', () => {
 
       await expect(
         handles.notes.create({ title: 'Review', content_markdown: '- [ ] Check the log' })
-      ).resolves.toEqual({
+      ).resolves.toMatchObject({
         id: 'note-1',
+        body: { sent: '- [ ] Check the log {task:task-created}' },
         created_tasks: [{ id: 'task-created', title: 'Check the log' }]
       })
       expect(taskDomain.createTask).toHaveBeenCalledWith(
@@ -1597,7 +1822,10 @@ describe('createVaultServiceHandles', () => {
           mode: 'replace',
           content_markdown: '- [ ] Owner item\n- [ ] Agent item'
         })
-      ).resolves.toEqual({ created_tasks: [{ id: 'task-created', title: 'Agent item' }] })
+      ).resolves.toMatchObject({
+        sent: '- [ ] Owner item\n- [ ] Agent item {task:task-created}',
+        created_tasks: [{ id: 'task-created', title: 'Agent item' }]
+      })
       expect(taskDomain.createTask).toHaveBeenCalledTimes(1)
       expect(mocks.updateNoteCommand.mock.calls).toEqual([
         [{ id: 'note-1', content: '- [ ] Owner item\n- [ ] Agent item {task:task-created}' }]

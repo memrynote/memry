@@ -14,6 +14,7 @@ import type { IndexDb } from '../../../database'
 import { listJournalEntriesInRange } from '../../../database/queries/notes'
 import { deleteJournalEntryFile, readJournalEntry, writeJournalEntry } from '../../../vault/journal'
 import { createdTasksReply, writeAgentBody } from './agent-checklists'
+import { storedJournalBody } from './stored-body'
 import type { VaultServiceHandles } from './handles'
 
 export function createJournalHandles(indexDb: IndexDb): VaultServiceHandles['journal'] {
@@ -38,18 +39,35 @@ export function createJournalHandles(indexDb: IndexDb): VaultServiceHandles['jou
       const existing = await readJournalEntry(date)
       if (existing) return { id: existing.id, created: false }
 
+      let written = content_markdown
       const { result: created, createdTasks } = await writeAgentBody(
         generateJournalId(date),
         content_markdown,
         '',
-        (content) => writeJournalEntry(date, content)
+        (content) => {
+          written = content
+          return writeJournalEntry(date, content)
+        }
       )
-      return { id: created.id, created: true, ...createdTasksReply(createdTasks) }
+      return {
+        id: created.id,
+        created: true,
+        body: await storedJournalBody(date, written),
+        ...createdTasksReply(createdTasks)
+      }
     },
     async update({ date, content_markdown, tags, properties }) {
       const existing = await readJournalEntry(date)
-      const write = (content: string): ReturnType<typeof writeJournalEntry> =>
-        writeJournalEntry(date, content, tags ?? existing?.tags, properties ?? existing?.properties)
+      let written = existing?.content ?? ''
+      const write = (content: string): ReturnType<typeof writeJournalEntry> => {
+        written = content
+        return writeJournalEntry(
+          date,
+          content,
+          tags ?? existing?.tags,
+          properties ?? existing?.properties
+        )
+      }
       if (content_markdown === undefined) {
         const updated = await write(existing?.content ?? '')
         return { id: updated.id }
@@ -60,7 +78,11 @@ export function createJournalHandles(indexDb: IndexDb): VaultServiceHandles['jou
         existing?.content ?? '',
         write
       )
-      return { id: updated.id, ...createdTasksReply(createdTasks) }
+      return {
+        id: updated.id,
+        body: await storedJournalBody(date, written),
+        ...createdTasksReply(createdTasks)
+      }
     },
     async delete(date) {
       return { date, deleted: await deleteJournalEntryFile(date) }

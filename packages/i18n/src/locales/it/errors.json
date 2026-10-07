@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "La cronologia delle modifiche non viene conservata su questo dispositivo",
-    "persistenceDegradedBody": "Le tue note sono al sicuro: si trovano nel tuo vault come semplici file e si aprono e si salvano normalmente. Solo la cronologia locale delle modifiche e lo stato di unione di questo dispositivo vengono tenuti in memoria temporanea, quindi ripartono da zero a ogni apertura di memrynote."
+    "persistenceDegradedBody": "Le tue note sono al sicuro: si trovano nel tuo vault come semplici file e si aprono e si salvano normalmente. Solo la cronologia locale delle modifiche e lo stato di unione di questo dispositivo vengono tenuti in memoria temporanea, quindi ripartono da zero a ogni apertura di memrynote.",
+    "writebackFailedTitle": "Non è stato possibile aggiornare il file di una nota sul disco",
+    "writebackFailedTitleNamed": "Non è stato possibile aggiornare “{title}” sul disco",
+    "writebackFailedBody": "Il file sul disco non è stato modificato. La tua modifica resta aperta in memrynote finché l'app è in esecuzione; memrynote riproverà alla tua prossima modifica."
   },
   "encryption": {
     "failed": "Impossibile crittografare i dati. Potrebbe essere necessario rigenerare le chiavi.",
