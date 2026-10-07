@@ -1810,6 +1810,7 @@ export function NotePage({ noteId }: NotePageProps) {
               }
               icon={<Monitor className="size-4" />}
               disabled={isLocked}
+              className="disabled:pointer-events-none disabled:opacity-50"
             />
             {(hasOwnLock || !isLocked) && (
               <Picker.Item
