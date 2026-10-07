@@ -1,6 +1,34 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 2.2.0 to 2.3.0 (2026-10-07)
+Bump rationale: MINOR. The storage-of-record constraint gains one written
+exception. The core parses markdown in `markdown_seed` for two writes, an
+empty journal day seeded from a template and a filed inbox article
+(specs/005-ios-journal-parity JP022a, docs/protocol/12-note-body-format.md
+section 12.1.0). The other edits catch the text up with the code. apps/mobile
+was deleted on 2026-09-18, and packages/editor-web and its WebView bridge
+contract followed. iOS edits notes natively through the core's block
+operations, so no shell embeds an editor bundle and the EditorHost seam is
+gone.
+
+Modified sections:
+  - I. One Core, Native Shells (WebView hosting leaves the adapter list)
+  - II. Code Quality Is A Gate, Not A Preference (the WebView bridge contract
+    leaves the boundary list)
+  - V. Performance Is A Budget With Numbers (bridge wording made general)
+  - Mobile Platform Constraints: Storage of record, Durability across process
+    death, CRDT ownership, Editor bundle lockstep
+  - Development Workflow & Quality Gates (editor keyboard risk)
+  - Governance (AGENTS.md replaces CLAUDE.md)
+
+Removed sections:
+  - Frozen React Native Shell (apps/mobile no longer exists)
+
+The 2.0.0 migration note's reachability gate in
+scripts/check-architecture-boundaries.js now walks apps/extension/src and
+apps/landing/src, the clients that run without Node, instead of apps/mobile.
+
 Version change: 1.0.0 → 2.0.0 → 2.1.0 → 2.2.0 (2026-09-12, same day)
 Bump rationale: MAJOR. Principle I is redefined: the shared core moves from
 TypeScript packages consumed by a React Native shell to a Rust crate consumed
@@ -67,11 +95,10 @@ Rules:
   contain merge, conflict, or clock logic. If a shell needs a decision the
   core does not expose, the core gains an API; the shell does not gain logic.
 - Platform-specific capability (secure store, file protection, notifications,
-  background execution, network reachability, network transport, WebView
-  hosting, camera) sits behind
-  an adapter trait defined by the core and implemented by each shell. The set
-  of adapters is enumerated in the feature spec; adding one requires written
-  justification.
+  background execution, network reachability, network transport, camera) sits
+  behind an adapter trait defined by the core and implemented by each shell.
+  The set of adapters is enumerated in the feature spec; adding one requires
+  written justification.
 - The desktop app stays TypeScript. The protocol therefore has two
   implementations, TypeScript and Rust. Their agreement is proven by shared
   conformance vectors, never by reading the other implementation.
@@ -102,10 +129,9 @@ Rules:
   platform. No user-facing raw error objects; errors cross the FFI as typed
   variants and are rendered by the shell.
 - Cross-boundary calls MUST be typed through a generated contract:
-  renderer↔main on desktop via `packages/contracts`, shell↔core via UniFFI
-  definitions, shell↔WebView via `packages/contracts/src/webview-bridge.ts`.
-  Hand-written `Any`, `Dictionary<String, Any>`, or stringly-typed messages
-  at a boundary are defects.
+  renderer↔main on desktop via `packages/contracts` and shell↔core via
+  UniFFI definitions. Hand-written `Any`, `Dictionary<String, Any>`, or
+  stringly-typed messages at a boundary are defects.
 - New UI code MUST use logical layout properties (leading/trailing,
   start/end) so RTL works without a second layout pass.
 - Changes MUST be surgical: every changed line traces to the stated intent.
@@ -199,7 +225,7 @@ Rules:
 - A write on one device MUST become visible on another in under 5 seconds
   on a healthy network.
 - Cross-boundary traffic MUST be batched on both ends. Per-keystroke or
-  per-update message passing across the shell↔WebView bridge, the
+  per-update message passing across a shell↔WebView bridge, the
   shell↔core FFI, or the desktop renderer↔main boundary is a defect
   regardless of measured comfort on a fast device.
 - Any operation that can exceed 1 second MUST be incremental, cancellable,
@@ -225,23 +251,28 @@ and any shared code they reach.
 - **Storage of record**: SQLite owned by the core, not files. A note body
   is its collaborative document: the core stores the update log and
   snapshots, plus derived plain text for search and previews. The core never
-  serialises or parses the body's markdown; markdown⇄block conversion runs
-  only inside the editor surface, for seeding a new note and for export. The
-  phone never writes vault files; desktop materialises them from the shared
-  document. Attachment bytes are sandbox files with platform file
+  serialises the body to markdown. It parses markdown in one module,
+  `markdown_seed`, for two writes: an empty journal day seeded from a template
+  and a filed inbox article (spec 005 JP022a,
+  `docs/protocol/12-note-body-format.md` section 12.1.0). Every other path
+  carries markdown verbatim, and desktop converts between markdown and the
+  document for seeding a new note and for export. The phone never writes vault
+  files; desktop materialises them from the shared document. Attachment bytes are sandbox files with platform file
   protection, never database blobs.
 - **Durability across process death**: the sync outbox and CRDT state MUST
   be persisted to SQLite by the core before any acknowledgement reaches the
-  shell or the WebView. Any state that only exists in memory is assumed
+  shell. Any state that only exists in memory is assumed
   lost, because the OS may kill a backgrounded app at any moment.
 - **CRDT ownership**: the Rust core owns every Y.Doc through yrs, mirroring
-  desktop's main-process ownership. The note editor is a WebView hosting the
-  BlockNote bundle; it holds a replica and persists nothing. WebView-owned
-  document state backed by web storage is rejected.
-- **Editor bundle lockstep**: the shell embeds the editor bundle built from
-  the shared editor schema. A schema change MUST ship in the same release as
-  the bundle that can build it, gated by a build-time hash check and a
-  load-time handshake that refuses to initialise a mismatched bundle. A bundle
+  desktop's main-process ownership. The iOS note editor is native and changes
+  a body only through the core's block operations (`BlockEdit`). A shell's
+  editor persists nothing, and WebView-owned document state backed by web
+  storage is rejected.
+- **Editor bundle lockstep**: a shell that embeds an editor bundle builds it
+  from the shared editor schema. A schema change MUST ship in the same release
+  as the bundle that can build it, gated by a build-time hash check and a
+  load-time handshake that refuses to initialise a mismatched bundle. No shell
+  embeds one today, because iOS edits natively through the core. A bundle
   that cannot build a node type deletes that node from the shared document
   and replicates the deletion; shipping such a bundle is data loss, not a
   rendering gap.
@@ -273,9 +304,6 @@ and any shared code they reach.
   user-visible behaviour before the dependent work starts. Agent Chat,
   importers, semantic search, canvas editing, and certificate pinning are
   recorded as out of scope in the decision record.
-- **Frozen React Native shell**: `apps/mobile` accepts no new commits except
-  deletions. It is reference material for adapter shapes, the WebView bridge
-  host, and the editor bundle build. Nothing new depends on it.
 
 ## Development Workflow & Quality Gates
 
@@ -284,7 +312,7 @@ and any shared code they reach.
   specification, conformance vectors, Rust core parity, headless round trip —
   are never skipped or run in parallel with shell UI work.
 - **Risk is retired first.** Unverified native dependencies, FFI
-  throughput, WebView keyboard and toolbar behaviour, build-system unknowns,
+  throughput, editor keyboard and toolbar behaviour, build-system unknowns,
   and boundary-throughput questions are proven in a spike before any product
   code depends on them.
 - **Definition of done** for a change: lint, typecheck or clippy, unit and
@@ -306,7 +334,7 @@ and any shared code they reach.
 
 This constitution supersedes ad-hoc practice, habit, and prior convention.
 Where it conflicts with a project guide or a tooling default, this document
-wins; where it is silent, `CLAUDE.md` and the per-context docs provide
+wins; where it is silent, `AGENTS.md` and the per-context docs provide
 runtime guidance.
 
 **Amendment procedure.** Amendments are proposed as a change to this file,
@@ -328,4 +356,4 @@ and re-examined at each phase gate. Repeated exceptions to the same principle
 are treated as a defect in this document and MUST be resolved by amendment
 rather than by accumulating unwritten exceptions.
 
-**Version**: 2.2.0 | **Ratified**: 2026-08-22 | **Last Amended**: 2026-09-12
+**Version**: 2.3.0 | **Ratified**: 2026-08-22 | **Last Amended**: 2026-10-07
