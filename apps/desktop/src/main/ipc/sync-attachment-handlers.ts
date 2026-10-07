@@ -385,6 +385,7 @@ export function registerAttachmentHandlers(): void {
         if (!targetPath) return { success: false, error: 'Target path is required' }
 
         const vaultStatus = getVaultStatus()
+        let noteId: string | null = null
         if (vaultStatus.path) {
           const resolved = path.resolve(targetPath)
           const vaultAttachments = path.resolve(vaultStatus.path, 'attachments')
@@ -394,6 +395,8 @@ export function registerAttachmentHandlers(): void {
               error: 'Target path must be within the vault attachments directory'
             }
           }
+          const [folder, ...rest] = path.relative(vaultAttachments, resolved).split(path.sep)
+          if (rest.length > 0) noteId = folder
         }
 
         // 'interactive': the renderer is waiting on this file, so it goes ahead
@@ -407,6 +410,9 @@ export function registerAttachmentHandlers(): void {
           source: 'interactive',
           onProgress: createDownloadProgressBroadcaster()
         })
+        // A file in attachments/<noteId>/ is that note's: without the record
+        // the backfill reads it as new and uploads a second copy.
+        if (noteId) recordFile(noteId, result.filePath, input.attachmentId)
         return { success: true, filePath: result.filePath }
       } catch (err) {
         logger.error('Attachment download failed', err)
