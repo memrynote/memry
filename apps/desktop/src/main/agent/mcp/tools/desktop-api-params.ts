@@ -1,206 +1,51 @@
-import type { z } from 'zod'
-import { rpcDomains } from '@memry/rpc'
-import type {
-  AgentMcpDesktopApiRequest,
-  AgentMcpDesktopOperation
-} from '@memry/contracts/agent-mcp-channels'
+import {
+  desktopOperationArgsSchema,
+  desktopOperationParamNames
+} from '@memry/contracts/agent-desktop-api-args'
+import type { AgentMcpDesktopApiRequest } from '@memry/contracts/agent-mcp-channels'
 
-import { strictDeep } from '../../../lib/strict-schema'
 import { AgentToolError } from '../errors'
-import { DESKTOP_INPUT_SCHEMAS } from './desktop-api-inputs'
-
-// Preload methods written by hand have no RPC spec to read their parameters
-// from. `desktop-api-params.test.ts` pins each entry to the preload function.
-const HAND_WRITTEN_PARAMS: Partial<Record<AgentMcpDesktopOperation, readonly string[]>> = {
-  'journal.getEntry': ['date'],
-  'journal.getHeatmap': ['year'],
-  'journal.getMonthEntries': ['year', 'month'],
-  'journal.getYearStats': ['year'],
-  'journal.getDayContext': ['date'],
-  'journal.getAllTags': [],
-  'journal.getStreak': [],
-  'journal.createEntry': ['input'],
-  'journal.updateEntry': ['input'],
-  'journal.deleteEntry': ['date'],
-  'properties.get': ['entityId'],
-  'properties.set': ['entityId', 'properties'],
-  'properties.rename': ['entityId', 'oldName', 'newName'],
-  'templates.list': [],
-  'templates.get': ['id'],
-  'templates.create': ['input'],
-  'templates.update': ['input'],
-  'templates.delete': ['id'],
-  'templates.duplicate': ['id', 'newName'],
-  'savedFilters.list': [],
-  'savedFilters.create': ['input'],
-  'savedFilters.update': ['input'],
-  'savedFilters.delete': ['id'],
-  'savedFilters.reorder': ['ids', 'positions'],
-  'bookmarks.get': ['id'],
-  'bookmarks.list': ['options'],
-  'bookmarks.isBookmarked': ['input'],
-  'bookmarks.listByType': ['itemType'],
-  'bookmarks.getByItem': ['input'],
-  'bookmarks.create': ['input'],
-  'bookmarks.delete': ['id'],
-  'bookmarks.toggle': ['input'],
-  'bookmarks.reorder': ['bookmarkIds'],
-  'bookmarks.bulkDelete': ['bookmarkIds'],
-  'bookmarks.bulkCreate': ['items'],
-  'tags.getNotesByTag': ['input'],
-  'tags.getAllWithCounts': [],
-  'tags.listCategories': [],
-  'tags.pinNoteToTag': ['input'],
-  'tags.unpinNoteFromTag': ['input'],
-  'tags.renameTag': ['input'],
-  'tags.updateTagColor': ['input'],
-  'tags.deleteTag': ['tag'],
-  'tags.removeTagFromNote': ['input'],
-  'tags.mergeTag': ['input'],
-  'tags.updateTagIcon': ['input'],
-  'tags.createCategory': ['input'],
-  'tags.renameCategory': ['input'],
-  'tags.deleteCategory': ['input'],
-  'tags.reorder': ['input'],
-  'folderView.getConfig': ['folderPath'],
-  'folderView.getViews': ['scope'],
-  'folderView.listWithProperties': ['options'],
-  'folderView.getAvailableProperties': ['scope'],
-  'folderView.getFolderSuggestions': ['noteId'],
-  'folderView.folderExists': ['folderPath'],
-  'folderView.setConfig': ['folderPath', 'config'],
-  'folderView.setView': ['scope', 'view', 'previousName'],
-  'folderView.deleteView': ['scope', 'viewName'],
-  'reminders.get': ['id'],
-  'reminders.list': ['options'],
-  'reminders.getUpcoming': ['days'],
-  'reminders.getDue': [],
-  'reminders.getForTarget': ['input'],
-  'reminders.countPending': [],
-  'reminders.create': ['input'],
-  'reminders.update': ['input'],
-  'reminders.delete': ['id'],
-  'reminders.dismiss': ['id'],
-  'reminders.snooze': ['input'],
-  'reminders.bulkDismiss': ['input'],
-  'search.query': ['params'],
-  'search.quick': ['text', 'noteFileTypes'],
-  'search.getStats': [],
-  'search.getReasons': [],
-  'search.getAllTags': [],
-  'search.rebuildIndex': [],
-  'search.addReason': ['params'],
-  'search.clearReasons': [],
-  'graph.getData': [],
-  'graph.getLocal': ['params'],
-  'homePages.list': [],
-  'homePages.get': ['id'],
-  'homePages.create': ['input'],
-  'homePages.update': ['input'],
-  'homePages.delete': ['id'],
-  'homePages.reorder': ['ids'],
-  'vault.getAll': [],
-  'vault.getStatus': [],
-  'vault.getConfig': [],
-  'vault.listAccount': [],
-  'vault.switch': ['vaultPath'],
-  'vault.reindex': [],
-  'vault.updateConfig': ['config'],
-  'vault.downloadRemote': ['vaultUuid', 'parentPath'],
-  // The responder still accepts the older (start, end) string pair.
-  'calendar.getRange': ['inputOrStart', 'end']
-}
-
-function rpcParams(operation: AgentMcpDesktopOperation): readonly string[] | undefined {
-  const [domain, method] = operation.split('.')
-  const methods = rpcDomains.find((spec) => spec.name === domain)?.methods as
-    Record<string, { params: readonly string[] }> | undefined
-  return methods?.[method]?.params
-}
-
-type KeyPath = readonly PropertyKey[]
+import { desktopArgIssues, formatDesktopArgIssue } from './desktop-api-issues'
 
 /**
- * A union of strict objects fails as a whole, with one issue list per option.
- * The option the value was meant for is the one that fails only on unknown
- * keys; those keys are the ones to name.
- */
-function unknownKeysOnly(issues: readonly z.core.$ZodIssue[], at: KeyPath): KeyPath[] | null {
-  const paths: KeyPath[] = []
-  for (const issue of issues) {
-    const path = [...at, ...issue.path]
-    if (issue.code === 'unrecognized_keys') {
-      paths.push(...issue.keys.map((key) => [...path, key]))
-    } else if (issue.code === 'invalid_union') {
-      const option = issue.errors
-        .map((optionIssues) => unknownKeysOnly(optionIssues, path))
-        .find((found) => found !== null)
-      if (!option) return null
-      paths.push(...option)
-    } else {
-      return null
-    }
-  }
-  return paths
-}
-
-function unrecognizedKeyPaths(issues: readonly z.core.$ZodIssue[]): string[] {
-  return issues.flatMap((issue) =>
-    (unknownKeysOnly([issue], []) ?? []).map((path) => path.map(String).join('.'))
-  )
-}
-
-/** Key paths in the agent's object arguments that the operation's handler would not read. */
-function unknownInputKeys({ operation, args }: AgentMcpDesktopApiRequest): string[] {
-  const inputs = DESKTOP_INPUT_SCHEMAS[operation]
-  if (!inputs) return []
-  const params = desktopOperationParams(operation)
-  return params.flatMap((name, index) => {
-    const schema = inputs[name]
-    const value = args[index]
-    if (!schema || value === null || typeof value !== 'object') return []
-    const result = strictDeep(schema).safeParse(value)
-    if (result.success) return []
-    const paths = unrecognizedKeyPaths(result.error.issues)
-    return params.length > 1 ? paths.map((path) => `${name}.${path}`) : paths
-  })
-}
-
-export function desktopOperationParams(operation: AgentMcpDesktopOperation): readonly string[] {
-  const handWritten = HAND_WRITTEN_PARAMS[operation]
-  if (handWritten) return handWritten
-  const params = rpcParams(operation)
-  if (!params) {
-    throw new AgentToolError(
-      'INTERNAL',
-      `Desktop API operation has no parameter list: ${operation}`
-    )
-  }
-  return params
-}
-
-/**
- * The responder spreads `args` into the preload call, which drops any argument
- * past the last parameter without an error. Refuse the call instead.
+ * Refuses a desktop API call whose arguments do not match the operation's
+ * schema in `@memry/contracts/agent-desktop-api-args`, naming each field, the
+ * type it takes, the allowed values and what was sent. The args are forwarded
+ * unchanged when they match, so the IPC handler sees exactly what it did
+ * before. The responder spreads `args` into the preload call, which would drop
+ * an argument past the last parameter without an error, so that is refused
+ * too.
  */
 export function assertDesktopApiArgs({ operation, args }: AgentMcpDesktopApiRequest): void {
-  const params = desktopOperationParams(operation)
-  if (args.length <= params.length) {
-    const unknown = unknownInputKeys({ operation, args })
-    if (unknown.length === 0) return
+  const params = desktopOperationParamNames(operation)
+  const describe = `vault_desktop_describe with operation "${operation}" returns the full argument schema.`
+  if (args.length > params.length) {
+    const takes =
+      params.length === 0
+        ? 'takes no arguments'
+        : `takes ${params.length} argument${params.length === 1 ? '' : 's'} (${params.join(', ')})`
     throw new AgentToolError(
       'VALIDATION',
-      `${operation} does not take ${unknown.join(', ')}. Nothing was run.`,
-      { operation, unknown }
+      `${operation} ${takes}, but this call passed ${args.length}. Nothing was run.`,
+      { operation, params, received: args.length }
     )
   }
-  const takes =
-    params.length === 0
-      ? 'takes no arguments'
-      : `takes ${params.length} argument${params.length === 1 ? '' : 's'} (${params.join(', ')})`
+
+  const result = desktopOperationArgsSchema(operation).safeParse(args)
+  if (result.success) return
+  const issues = desktopArgIssues(operation, args, result.error.issues)
+  const unknown = issues.filter((issue) => issue.unknown).map((issue) => issue.field)
+  if (unknown.length === issues.length) {
+    throw new AgentToolError(
+      'VALIDATION',
+      `${operation} does not take ${unknown.join(', ')}. Nothing was run. ${describe}`,
+      { operation, unknown, issues }
+    )
+  }
   throw new AgentToolError(
     'VALIDATION',
-    `${operation} ${takes}, but this call passed ${args.length}. Nothing was run.`,
-    { operation, params, received: args.length }
+    `${operation} arguments do not match its schema: ` +
+      `${issues.map(formatDesktopArgIssue).join('; ')}. Nothing was run. ${describe}`,
+    { operation, params, issues }
   )
 }

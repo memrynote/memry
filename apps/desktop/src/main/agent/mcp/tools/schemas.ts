@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { strictDeep } from '../../../lib/strict-schema'
 import {
+  AgentMcpDesktopOperations,
   AgentMcpDesktopReadOperations,
   AgentMcpDesktopWriteOperations
 } from '@memry/contracts/agent-mcp-channels'
@@ -13,6 +13,7 @@ import {
 import { CalendarDateSchema } from '@memry/contracts/calendar-date'
 import type { ChangePreviewKind } from '@memry/contracts/ipc-agent'
 import { NoteFileTypeEnum } from '@memry/contracts/search-api'
+import { strictDeep } from '@memry/contracts/strict-schema'
 
 const idSchema = z.string().min(1)
 
@@ -257,9 +258,21 @@ const LOOSE_TOOL_SCHEMAS = {
       'A note in the reply that is a filed pdf/image/audio/video file comes back as its ' +
       'metadata with contentOmitted: true and contentAccess naming how to read it. A reply ' +
       'whose JSON is over 100 KB in UTF-8 bytes comes back as ' +
-      '{ truncated, totalBytes, message, partial }. ' +
+      '{ truncated, totalBytes, message, partial }. `args` are the positional arguments; ' +
+      "vault_desktop_describe returns each operation's argument schema, and a call that does " +
+      'not match it is refused with the field, the expected type and the allowed values. ' +
       'Calendar examples: calendar.listEvents with args [{}], calendar.getRange with args ' +
       '[{"startAt":"2026-05-14T00:00:00.000Z","endAt":"2026-06-15T00:00:00.000Z"}].'
+  },
+  vault_desktop_describe: {
+    input: z.object({ operation: z.enum(AgentMcpDesktopOperations).optional() }),
+    description:
+      'Look up how to call a desktop API operation before calling it through ' +
+      'vault_desktop_read or vault_desktop_write. With operation, returns its tool, whether it ' +
+      'needs approval, its parameters in call order and args_schema: the JSON Schema (draft ' +
+      '2020-12) of the args array, with every type, required key, allowed value and default. ' +
+      'Without operation, lists every operation with its tool and call shape; a trailing ? ' +
+      'marks an optional argument.'
   },
   vault_create_note: {
     input: z.object({
@@ -592,7 +605,8 @@ const LOOSE_TOOL_SCHEMAS = {
       'the legacy id, title, created and modified keys, which are kept unless the call names ' +
       'them (null deletes one). The reply lists the stored `properties` and the names it ' +
       '`removed`. Requires user approval. Replies follow the vault_desktop_read rules for ' +
-      'filed files and replies over 100 KB.'
+      "filed files and replies over 100 KB. vault_desktop_describe returns each operation's " +
+      'argument schema; a call that does not match it is refused before approval.'
   }
 } as const
 
@@ -630,7 +644,8 @@ export const READ_TOOL_NAMES = [
   'vault_list_canvases',
   'vault_read_canvas',
   'vault_read_canvas_elements',
-  'vault_desktop_read'
+  'vault_desktop_read',
+  'vault_desktop_describe'
 ] as const satisfies readonly ToolName[]
 
 export const WRITE_TOOL_NAMES = [

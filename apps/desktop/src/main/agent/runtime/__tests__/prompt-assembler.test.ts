@@ -288,6 +288,12 @@ describe('Prompt assembler', () => {
     )
   })
 
+  it('points desktop API calls at vault_desktop_describe for their argument schema', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain(
+      "- Desktop API call → vault_desktop_describe with the operation first when you do not know its arguments; it returns the operation's argument schema."
+    )
+  })
+
   it('preserves write-gate and refusal guidance in the Tool Use section', () => {
     expect(SYSTEM_PROMPT_HEADER).toContain('write gate')
     expect(SYSTEM_PROMPT_HEADER).toContain('Refuse')

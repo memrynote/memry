@@ -59,6 +59,7 @@ const toolLabels: Record<string, string> = {
   vault_get_inbox_item: 'Reading inbox item',
   vault_get_tags: 'Reading tags',
   vault_desktop_read: 'Reading app data',
+  vault_desktop_describe: 'Looking up app operation',
   vault_create_note: 'Creating note',
   vault_rename_note: 'Renaming note',
   vault_delete_note: 'Deleting note',

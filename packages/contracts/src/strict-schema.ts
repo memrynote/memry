@@ -27,7 +27,7 @@ const WRAPPER_TYPES = new Set([
 /**
  * Every object at every depth refuses keys it does not name, unless it already
  * says what to do with them (a catchall). Wrappers, arrays, unions, record
- * values and lazy schemas are rebuilt around their strict inner schema, and
+ * values, tuple items and lazy schemas are rebuilt around their strict inner schema, and
  * descriptions are carried over. A recursive lazy schema maps to one strict
  * lazy schema, so the walk ends.
  */
@@ -57,6 +57,12 @@ export function strictDeep(schema: z.ZodType, seen = new Map<z.ZodType, z.ZodTyp
     } as never)
   } else if (def.type === 'array') {
     next = schema.clone({ ...def, element: strict(def.element as z.ZodType) } as never)
+  } else if (def.type === 'tuple') {
+    next = schema.clone({
+      ...def,
+      items: (def.items as z.ZodType[]).map(strict),
+      rest: def.rest ? strict(def.rest as z.ZodType) : def.rest
+    } as never)
   } else if (def.type === 'union') {
     next = schema.clone({
       ...def,

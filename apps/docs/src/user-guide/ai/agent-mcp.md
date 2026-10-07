@@ -389,6 +389,7 @@ Read tools are available to Agent Chat and external MCP clients:
 - `vault_read_canvas`
 - `vault_read_canvas_elements`
 - `vault_desktop_read`
+- `vault_desktop_describe`
 
 ### Notes and filed files
 
@@ -640,14 +641,55 @@ added, comes back as `{ truncated: true, totalBytes, message, partial }`. `parti
 of the JSON reply, cut on a character boundary so the whole reply stays within 100 KB. It is not
 valid JSON on its own.
 
-`args` are the operation's positional arguments. A call that passes more arguments than the
-operation takes fails with a `VALIDATION` error that names the parameters, before the approval
-prompt, and nothing runs. Options go inside the operation's input object, never in an extra
+`args` are the operation's positional arguments. Every allowlisted operation has a schema for its
+arguments, and `vault_desktop_describe` returns it, so an agent can look a call up before making
+it. With `operation`, the reply names the tool that runs it (`vault_desktop_read` or
+`vault_desktop_write`), whether it needs approval, its parameters in call order and `args_schema`,
+the JSON Schema (draft 2020-12) of the `args` array with every type, required key, allowed value and
+default. Without `operation`, the reply lists every operation with its tool and call shape, such as
+`notes.list(options?)`, where `?` marks an argument the call may leave out. Where the app reads a
+`null` optional argument as left out, such as the options of `notes.list`, the tags of
+`inbox.linkToNote` or the days of `tasks.getUpcoming`, the argument also takes `null`, and its
+schema lists `null` as an allowed type. An operation that takes no arguments has no `prefixItems` in
+its `args_schema`, only `"maxItems": 0`.
+
+```json
+{
+  "operation": "notes.ensurePropertyDefinition",
+  "tool": "vault_desktop_write",
+  "call": "notes.ensurePropertyDefinition(name, type)",
+  "requires_approval": true,
+  "params": [
+    { "name": "name", "required": true },
+    { "name": "type", "required": true }
+  ],
+  "args_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "array",
+    "prefixItems": [
+      { "type": "string", "minLength": 1 },
+      { "type": "string", "enum": ["status", "select", "multiselect"] }
+    ],
+    "minItems": 2,
+    "maxItems": 2
+  }
+}
+```
+
+Every call is checked against that schema before it reaches the app, and before the approval
+prompt for a write. A call that does not match fails with a `VALIDATION` error and nothing runs.
+The error names each field (the parameter name, then the key path inside it), the type it takes,
+the allowed values and what was sent, for example `type: expected one of "status", "select",
+"multiselect", got "text"` or `scope: expected { kind: "folder", path: string } | { kind: "tag",
+tag: string, andTags?: string[] }, got "Projects"`. Its `details.issues` list the same as
+`{ field, expected, allowed, received }`. A call that passes more arguments than the operation takes
+names the parameters instead. Options go inside the operation's input object, never in an extra
 argument. A key inside an input object that the operation does not take fails the same way and is
-named in the error, for example `notes.createPropertyDefinition does not take optionz`. When the
-operation takes more than one object, the error names the argument too: `folderView.setView does not
-take view.colour`. Every key the operation's handler reads is accepted; the open record of
-`properties.set` accepts any property name.
+named with its argument, for example `notes.createPropertyDefinition does not take input.optionz` or
+`folderView.setView does not take view.colour`. Every key the operation's handler reads is accepted;
+the open record of `properties.set` accepts any property name. A settings write takes any subset of
+that group's settings. `calendar.getRange` still takes the older `(start, end)` pair of strings, and
+`calendar.listEvents` its options as a JSON string.
 
 A desktop write whose reply carries no record (adding an inbox tag, changing a setting, a property
 option, a tag color, pinning a note to a tag, saving a folder view, creating a folder) gets a
