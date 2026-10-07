@@ -345,6 +345,8 @@ import {
   updateConfig
 } from './index'
 import { getJournalConfig } from './journal-config'
+import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import { NoteError, NoteErrorCode } from '../lib/errors'
 
 describe('vault lifecycle', () => {
   beforeEach(async () => {
@@ -1093,6 +1095,24 @@ describe('vault lifecycle', () => {
         'journal_format_rename',
         expect.any(Error)
       )
+    })
+
+    it('refuses the new format and keeps the old one when a journal entry is locked (#2606)', async () => {
+      await selectVault({ path: '/vault/config' })
+      vi.clearAllMocks()
+      mocks.watcherRunning = true
+      mocks.renameJournalsForFormatChange.mockRejectedValueOnce(
+        new NoteError(VAULT_LOCKED_NOTE_MESSAGE, NoteErrorCode.READ_ONLY)
+      )
+
+      await expect(updateConfig({ journalDateFormat: 'YYYY-MM-DD dddd' })).rejects.toThrow(
+        VAULT_LOCKED_NOTE_MESSAGE
+      )
+
+      expect(mocks.writeVaultConfig).not.toHaveBeenCalled()
+      expect(mocks.rebuildIndex).not.toHaveBeenCalled()
+      expect(mocks.startWatcher).toHaveBeenCalledWith('/vault/config')
+      expect(mocks.trackMainError).not.toHaveBeenCalled()
     })
   })
 

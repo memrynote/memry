@@ -23,7 +23,8 @@ import {
   sanitizeFilename,
   generateNotePath,
   generateUniquePath,
-  generateUniquePathSync
+  generateUniquePathSync,
+  setVaultFileWriteGuard
 } from './file-ops'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 
@@ -322,6 +323,73 @@ describe('atomicWrite transient lock retry', () => {
 // ============================================================================
 // safeRead and readRequired Tests (T345)
 // ============================================================================
+
+describe('write guard for read-only locked files (#2606)', () => {
+  let tempDir: TestDir
+  const renameMock = vi.mocked(rename)
+  const beforeWrite = vi.fn(async (_path: string): Promise<string | null> => 'notes/locked.md')
+  const afterWrite = vi.fn(
+    async (_path: string, _relative: string, _content: string | null): Promise<void> => {}
+  )
+
+  function errnoError(code: string): NodeJS.ErrnoException {
+    const error = new Error(`${code}: write failed`) as NodeJS.ErrnoException
+    error.code = code
+    return error
+  }
+
+  beforeEach(() => {
+    tempDir = createTempDir()
+    renameMock.mockClear()
+    beforeWrite.mockClear()
+    afterWrite.mockClear()
+    setVaultFileWriteGuard({ beforeWrite, afterWrite })
+  })
+
+  afterEach(() => {
+    setVaultFileWriteGuard(null)
+    tempDir.cleanup()
+  })
+
+  it('marks the file read-only again with the written text after an allowed write', async () => {
+    const filePath = path.join(tempDir.path, 'locked.md')
+
+    await atomicWrite(filePath, 'remote text')
+
+    expect(afterWrite).toHaveBeenCalledWith(filePath, 'notes/locked.md', 'remote text')
+  })
+
+  it('marks the file read-only again, recording no text, when an allowed write fails', async () => {
+    const filePath = path.join(tempDir.path, 'locked.md')
+    fs.writeFileSync(filePath, 'locked text')
+    renameMock.mockRejectedValueOnce(errnoError('ENOSPC'))
+
+    await expect(atomicWrite(filePath, 'remote text')).rejects.toThrow(NoteError)
+
+    expect(afterWrite).toHaveBeenCalledTimes(1)
+    expect(afterWrite).toHaveBeenCalledWith(filePath, 'notes/locked.md', null)
+    expect(fs.readFileSync(filePath, 'utf-8')).toBe('locked text')
+  })
+
+  it('marks a binary file read-only again when an allowed write fails', async () => {
+    const filePath = path.join(tempDir.path, 'locked.png')
+    renameMock.mockRejectedValueOnce(errnoError('ENOSPC'))
+
+    await expect(atomicWriteBinary(filePath, Buffer.from([1, 2, 3]))).rejects.toThrow(NoteError)
+
+    expect(afterWrite).toHaveBeenCalledTimes(1)
+    expect(afterWrite).toHaveBeenCalledWith(filePath, 'notes/locked.md', null)
+  })
+
+  it('leaves an unlocked file alone when its write fails', async () => {
+    beforeWrite.mockResolvedValueOnce(null)
+    renameMock.mockRejectedValueOnce(errnoError('ENOSPC'))
+
+    await expect(atomicWrite(path.join(tempDir.path, 'free.md'), 'x')).rejects.toThrow(NoteError)
+
+    expect(afterWrite).not.toHaveBeenCalled()
+  })
+})
 
 describe('safeRead', () => {
   let tempDir: TestDir
