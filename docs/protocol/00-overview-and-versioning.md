@@ -46,22 +46,17 @@ Chapters:
 | 13  | `13-payload-schemas.md`               | per-type payloads and verbatim preservation   |
 | 14  | `14-attachments.md`                   | blobs, chunking, manifests                    |
 
-## 0.2 The five independent version numbers
+## 0.2 The four independent version numbers
 
-There are five version numbers in this protocol and **they do not move
+There are four version numbers in this protocol and **they do not move
 together**. A client MUST treat each independently.
 
-| Version                                        | Value               | Scope                                            | Citation                                                                |
-| ---------------------------------------------- | ------------------- | ------------------------------------------------ | ----------------------------------------------------------------------- |
-| `CRYPTO_VERSION`                               | `1`                 | the record envelope's declared crypto version    | `packages/contracts/src/crypto.ts:14`                                   |
-| `PACK_VERSION`                                 | `1`                 | the MPAK container header and footer             | `packages/contracts/src/pack-format.ts:60`                              |
-| `BRIDGE_PROTOCOL_VERSION`                      | `1`                 | the host↔editor-bundle bridge, not a wire format | `packages/contracts/src/webview-bridge.ts:22`                           |
-| `providerAuthVersion` / `vaultTransferVersion` | literal `1`         | the two optional linking blocks                  | `packages/contracts/src/linking-api.ts:3`, `:36`, `:40`                 |
-| signature payload "v1"                         | shape, not a number | the signed CBOR field set                        | `packages/contracts/src/crypto.ts:179-196` (`SignaturePayloadV1Schema`) |
-
-`BRIDGE_PROTOCOL_VERSION` is listed for completeness and is **not** a wire
-version: it versions the JSON bridge between a host application and its editor
-bundle (chapter 12), which never crosses the network.
+| Version                                        | Value               | Scope                                         | Citation                                                                |
+| ---------------------------------------------- | ------------------- | --------------------------------------------- | ----------------------------------------------------------------------- |
+| `CRYPTO_VERSION`                               | `1`                 | the record envelope's declared crypto version | `packages/contracts/src/crypto.ts:14`                                   |
+| `PACK_VERSION`                                 | `1`                 | the MPAK container header and footer          | `packages/contracts/src/pack-format.ts:60`                              |
+| `providerAuthVersion` / `vaultTransferVersion` | literal `1`         | the two optional linking blocks               | `packages/contracts/src/linking-api.ts:3`, `:41`, `:45`                 |
+| signature payload "v1"                         | shape, not a number | the signed CBOR field set                     | `packages/contracts/src/crypto.ts:179-196` (`SignaturePayloadV1Schema`) |
 
 ### 0.2.1 `CryptoVersion` is `1 | 2` and no `2` exists — Q00.1
 
@@ -353,7 +348,7 @@ Four obligations bind every chapter.
    edit to this chapter — and a reviewer is then looking at the fact tables.
 
    ```
-   protocol-constants-sha256: 56466a5c4ac6000e329f820d104e9d94e9695b24ffb43b7eec8ca9f365213216
+   protocol-constants-sha256: e44302bbab1dc503d69f3c0b010d5a3ffe4ef417f3984685205a374f91980bb8
    ```
 
    To update it: change the constant, run
