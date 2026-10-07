@@ -136,6 +136,13 @@ describe('getTags', () => {
     const fetchFn = vi.fn(async () => ok({ tags: ['reading', 3, 'ai'] }))
     expect(await getTags(7849, 't', fetchFn as unknown as typeof fetch)).toEqual(['reading', 'ai'])
   })
+  test('uses POST, since Chrome sends no Origin on an extension GET', async () => {
+    const fetchFn = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async () =>
+      ok({ tags: [] })
+    )
+    await getTags(7849, 't', fetchFn as unknown as typeof fetch)
+    expect(fetchFn.mock.calls[0][1]?.method).toBe('POST')
+  })
   test('falls back to no suggestions on an older desktop, closed vault, or closed app', async () => {
     const notFound = vi.fn(async () => new Response('{}', { status: 404 }))
     const vaultClosed = vi.fn(async () => new Response('{}', { status: 503 }))

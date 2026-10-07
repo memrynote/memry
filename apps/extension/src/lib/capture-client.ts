@@ -158,8 +158,9 @@ export async function getTags(
   fetchFn: typeof fetch = fetch
 ): Promise<string[]> {
   try {
+    // POST so Chrome attaches the Origin header the desktop allowlist checks.
     const res = await fetchFn(`http://127.0.0.1:${port}/tags`, {
-      method: 'GET',
+      method: 'POST',
       headers: captureHeaders(token)
     })
     if (!res.ok) return []

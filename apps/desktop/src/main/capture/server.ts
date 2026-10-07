@@ -215,8 +215,9 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
   }
 
   // Tag names only, for the clipper's autocomplete. Same auth as /capture: the
-  // list is vault content and must not be readable by any local page.
-  if (req.method === 'GET' && req.url === '/tags') {
+  // list is vault content and must not be readable by any local page. POST for
+  // the same reason as /folders: Chrome omits Origin on an extension's GET.
+  if (req.method === 'POST' && req.url === '/tags') {
     const auth = validateCaptureRequest(
       {
         authorization: req.headers.authorization,

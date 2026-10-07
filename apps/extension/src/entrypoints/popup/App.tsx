@@ -70,7 +70,10 @@ export default function App() {
       .sendMessage({ type: 'GET_STATUS' })
       .then((r: StatusResponse) => {
         dispatch({ type: 'STATUS', connection: r.connection, port: r.port })
-        if (r.connection === 'ready') {
+        // Not gated on 'ready': GET /ping cannot see the pairing (no Origin), so
+        // a paired extension still reads needs-pairing. The background checks
+        // for a token and POST /tags checks the real pairing.
+        if (r.connection !== 'app-closed') {
           browser.runtime
             .sendMessage({ type: 'GET_TAGS' })
             .then((tags: string[]) => setTagSuggestions(Array.isArray(tags) ? tags : []))

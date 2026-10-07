@@ -246,7 +246,7 @@ describe('capture server', () => {
     expect(await cap.json()).toEqual({ error: 'vault-closed' })
   })
 
-  describe('GET /tags', () => {
+  describe('POST /tags', () => {
     const authed = {
       Authorization: `Bearer ${TOKEN}`,
       Origin: 'chrome-extension://abc',
@@ -255,20 +255,20 @@ describe('capture server', () => {
 
     it('returns tag names, most used first, to a paired extension', async () => {
       origins.add('chrome-extension://abc')
-      const r = await req(port, '/tags', { method: 'GET', headers: authed })
+      const r = await req(port, '/tags', { method: 'POST', headers: authed })
       expect(r.status).toBe(200)
       expect(await r.json()).toEqual({ tags: ['reading', 'rare'] })
     })
 
     it('rejects an unpaired origin', async () => {
-      const r = await req(port, '/tags', { method: 'GET', headers: authed })
+      const r = await req(port, '/tags', { method: 'POST', headers: authed })
       expect(r.status).toBe(401)
     })
 
     it('answers 503 vault-closed with no vault open', async () => {
       origins.add('chrome-extension://abc')
       vaultOpen = false
-      const r = await req(port, '/tags', { method: 'GET', headers: authed })
+      const r = await req(port, '/tags', { method: 'POST', headers: authed })
       expect(r.status).toBe(503)
     })
   })
