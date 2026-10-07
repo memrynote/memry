@@ -13,6 +13,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { format, resolveConfig } from 'prettier'
 import { z } from 'zod'
 
 import { AgentMcpDesktopOperations } from '@memry/contracts/agent-mcp-channels'
@@ -452,21 +453,30 @@ export function nextAppVersion(explicit: string | undefined, committed: string |
   return committed.endsWith('+main') ? committed : `${committed}+main`
 }
 
-export function renderReference(appVersion: string, examples = readExamples()) {
+/** lint-staged runs prettier on both files, so the generator writes what prettier would. */
+async function formatLikeCommit(file: string, content: string): Promise<string> {
+  const options = await resolveConfig(file)
+  return format(content, { ...options, filepath: file })
+}
+
+export async function renderReference(appVersion: string, examples = readExamples()) {
   return {
-    page: buildPage(appVersion, examples),
-    schema: `${JSON.stringify(buildSchemaFile(appVersion, examples), null, 2)}\n`
+    page: await formatLikeCommit(REFERENCE_PATHS.page, buildPage(appVersion, examples)),
+    schema: await formatLikeCommit(
+      REFERENCE_PATHS.schema,
+      JSON.stringify(buildSchemaFile(appVersion, examples), null, 2)
+    )
   }
 }
 
-function main(argv: string[]): void {
+async function main(argv: string[]): Promise<void> {
   const check = argv.includes('--check')
   const flag = argv.indexOf('--app-version')
   const explicit = flag >= 0 ? argv[flag + 1] : undefined
   if (flag >= 0 && !explicit) throw new Error('--app-version needs a value')
   const committed = committedAppVersion()
   const version = check ? (committed ?? '') : nextAppVersion(explicit, committed)
-  const { page, schema } = renderReference(version)
+  const { page, schema } = await renderReference(version)
   if (check) {
     const stale = [
       [REFERENCE_PATHS.page, page],
@@ -492,5 +502,8 @@ function main(argv: string[]): void {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main(process.argv.slice(2))
+  main(process.argv.slice(2)).catch((error: unknown) => {
+    console.error(error)
+    process.exitCode = 1
+  })
 }
