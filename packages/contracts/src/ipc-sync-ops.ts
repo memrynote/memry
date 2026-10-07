@@ -203,17 +203,11 @@ export interface LargeNotesResult {
  * - `rejected`: the server refused the latest body push for good; those changes
  *   were not stored.
  *
- * Only an answer from a CRDT body route confirms a body. A record push the
- * server calls a replay never does.
+ * Only the server storing a body push or a whole-doc snapshot confirms a body.
+ * A record push the server calls a replay never does.
  */
 export type NoteSyncStateValue =
-  | 'not_syncing'
-  | 'local_only'
-  | 'pending'
-  | 'sent'
-  | 'confirmed'
-  | 'not_recorded'
-  | 'rejected'
+  'not_syncing' | 'local_only' | 'pending' | 'sent' | 'confirmed' | 'not_recorded' | 'rejected'
 
 /** Times are epoch milliseconds. */
 export interface NoteSyncState {

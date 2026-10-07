@@ -12,7 +12,8 @@
  *   body push starts and ends;
  * - whether this install syncs at all, and whether the note is local-only.
  *
- * Only a 2xx from a CRDT body route sets the confirmed time. A record push the
+ * Only a 2xx from a CRDT body route (an update push, or a snapshot of the whole
+ * doc) sets the confirmed time. A record push the
  * server answers with `SYNC_REPLAY_DETECTED` touches none of this.
  *
  * Reads and writes never throw: a database that cannot be used reads as "no

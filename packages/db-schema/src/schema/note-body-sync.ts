@@ -7,9 +7,10 @@
  * results for the note's body. Waiting changes are read from `sync_queue` and
  * `crdt_owed_file_bodies`; this table only holds what happened to them.
  *
- * A row is written when a body push starts and when it ends. Only a 2xx answer
- * from a CRDT body route sets `last_confirmed_at`; a record push the server
- * calls a replay never does. Deleted on a purge of the note.
+ * A row is written when a body push starts and when it ends, and when the server
+ * stores a snapshot of the whole doc. Only a 2xx answer from a CRDT body route
+ * (updates or snapshot) sets `last_confirmed_at`; a record push the server
+ * calls a replay never does. A row whose note is gone is never read.
  *
  * @module db/schema/note-body-sync
  */

@@ -669,6 +669,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         hasUnmergedRemoteState: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
         onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
         onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
+        onStored: (noteId) => recordNoteBodyPush(noteId, 'confirmed', Date.now(), db),
         onError: (noteId, err) => {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             // withAuthRetry already attempted a refresh — see the update-batch
@@ -701,7 +702,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         getVaultKey: () => getOptionalRuntimeVaultKey(db, 'crdt snapshot batch push'),
         getSigningKey: () => retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY),
         authRetryDeps: crdtAuthRetryDeps,
-        onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
+        onPushed: (noteId, pushed) => {
+          recordNoteBodyPush(noteId, 'confirmed', Date.now(), db)
+          return getCrdtProvider().recordPushedSnapshot(noteId, pushed)
+        },
         onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
         onBatchError: (err) => {
           // Same two conditions the single push handles, and for the same
