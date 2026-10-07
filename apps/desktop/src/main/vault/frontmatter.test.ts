@@ -244,6 +244,17 @@ describe('frontmatter utilities', () => {
     ])
   })
 
+  it('extractWikiLinks keeps links hidden in %% comments', () => {
+    const content = [
+      'Text %% [[Inline Hidden]] ` %% more `[[Code]]`',
+      '%%',
+      '[[Block Hidden]] uses a ` backtick',
+      '%%',
+      'Then [[Visible]] and a ` stray tick'
+    ].join('\n')
+    expect(extractWikiLinks(content)).toEqual(['Inline Hidden', 'Block Hidden', 'Visible'])
+  })
+
   it('extractWikiLinks reads a link after an unclosed backtick', () => {
     expect(extractWikiLinks('A lone ` tick then [[Linked]]')).toEqual(['Linked'])
   })
