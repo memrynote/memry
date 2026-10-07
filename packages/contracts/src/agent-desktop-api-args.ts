@@ -169,6 +169,15 @@ export type DesktopOperationParams = Readonly<Record<string, z.ZodType>>
 const text = z.string()
 const none = {} as const satisfies DesktopOperationParams
 
+/**
+ * An optional argument that the preload (`options ?? {}`), the responder or the
+ * handler reads as left out when it is null. Calls sent null there before these
+ * schemas existed, so null stays accepted and still reaches the preload as is.
+ */
+function nullAsAbsent<T extends z.ZodType>(schema: T) {
+  return schema.nullish()
+}
+
 const calendarRangeInput = z.object({
   startAt: z.string().optional(),
   endAt: z.string().optional(),
@@ -183,7 +192,7 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
   'notes.resolveByTitle': { title: text },
   'notes.resolveWikiTarget': { target: text },
   'notes.previewByTitle': { title: text },
-  'notes.list': { options: NoteListSchema.optional() },
+  'notes.list': { options: nullAsAbsent(NoteListSchema) },
   'notes.getTags': none,
   'notes.getLinks': { id: text },
   'notes.getFolders': none,
@@ -200,7 +209,7 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
   'notes.getCalendarPropertyNames': none,
 
   'tasks.get': { id: text },
-  'tasks.list': { options: TaskListSchema.optional() },
+  'tasks.list': { options: nullAsAbsent(TaskListSchema) },
   'tasks.getSubtasks': { parentId: text },
   'tasks.getProject': { id: text },
   'tasks.listProjects': none,
@@ -208,7 +217,7 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
   'tasks.getTags': none,
   'tasks.getStats': none,
   'tasks.getToday': none,
-  'tasks.getUpcoming': { days: GetUpcomingSchema.shape.days },
+  'tasks.getUpcoming': { days: nullAsAbsent(GetUpcomingSchema.shape.days) },
   'tasks.getOverdue': none,
   'tasks.getLinkedTasks': { noteId: text },
   'tasks.listProjectLinks': { projectId: text },
@@ -219,17 +228,17 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
   },
 
   'inbox.get': { id: text },
-  'inbox.list': { options: InboxListSchema.optional() },
+  'inbox.list': { options: nullAsAbsent(InboxListSchema) },
   'inbox.previewLink': { url: text },
   'inbox.getSuggestions': { itemId: text },
   'inbox.getTags': none,
   'inbox.getSnoozed': none,
   'inbox.getStats': none,
-  'inbox.getJobs': { options: InboxJobListSchema.optional() },
+  'inbox.getJobs': { options: nullAsAbsent(InboxJobListSchema) },
   'inbox.getPatterns': none,
   'inbox.getStaleThreshold': none,
-  'inbox.listArchived': { options: ListArchivedSchema.optional() },
-  'inbox.getFilingHistory': { options: GetFilingHistorySchema.optional() },
+  'inbox.listArchived': { options: nullAsAbsent(ListArchivedSchema) },
+  'inbox.getFilingHistory': { options: nullAsAbsent(GetFilingHistorySchema) },
 
   'journal.getEntry': { date: GetEntryInputSchema.shape.date },
   'journal.getHeatmap': { year: GetHeatmapInputSchema.shape.year },
@@ -246,7 +255,7 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
   'templates.get': { id: text },
   'savedFilters.list': none,
   'bookmarks.get': { id: text },
-  'bookmarks.list': { options: BookmarkListSchema.optional() },
+  'bookmarks.list': { options: nullAsAbsent(BookmarkListSchema) },
   'bookmarks.isBookmarked': { input: BookmarkCheckSchema },
   'bookmarks.listByType': { itemType: text },
   'bookmarks.getByItem': { input: BookmarkCheckSchema },
@@ -260,7 +269,7 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
   'folderView.getFolderSuggestions': { noteId: GetFolderSuggestionsRequestSchema.shape.noteId },
   'folderView.folderExists': { folderPath: text },
   'reminders.get': { id: text },
-  'reminders.list': { options: ListRemindersSchema.optional() },
+  'reminders.list': { options: nullAsAbsent(ListRemindersSchema) },
   'reminders.getUpcoming': { days: z.number().optional() },
   'reminders.getDue': none,
   'reminders.getForTarget': { input: GetForTargetSchema },
@@ -268,12 +277,14 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
 
   'calendar.getEvent': { id: text },
   // The responder also reads options sent as a JSON string.
-  'calendar.listEvents': { options: z.union([ListCalendarEventsSchema, z.string()]).optional() },
+  'calendar.listEvents': {
+    options: nullAsAbsent(z.union([ListCalendarEventsSchema, z.string()]))
+  },
   // The responder takes { startAt, endAt } (or { start, end }), a YYYY-MM-DD
   // date meaning that whole local day, and still the older (start, end) pair.
   'calendar.getRange': {
     inputOrStart: z.union([calendarRangeInput, z.string()]),
-    end: z.string().optional()
+    end: nullAsAbsent(z.string())
   },
 
   'settings.get': { key: text },
@@ -466,14 +477,14 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
   'inbox.convertToNote': { itemId: text },
   'inbox.convertToTask': {
     itemId: text,
-    input: z
-      .object({
+    input: nullAsAbsent(
+      z.object({
         projectId: z.string().optional(),
         dueDate: z.string().nullable().optional(),
         dueTime: z.string().nullable().optional(),
         priority: z.number().optional()
       })
-      .optional()
+    )
   },
   'inbox.convertToEvent': {
     itemId: text,
@@ -485,7 +496,7 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
     })
   },
   'inbox.convertToReminder': { itemId: text, input: z.object({ remindAt: z.string() }) },
-  'inbox.linkToNote': { itemId: text, noteId: text, tags: z.array(z.string()).optional() },
+  'inbox.linkToNote': { itemId: text, noteId: text, tags: nullAsAbsent(z.array(z.string())) },
   'inbox.addTag': { itemId: text, tag: text },
   'inbox.removeTag': { itemId: text, tag: text },
   'inbox.snooze': { input: SnoozeSchema },
@@ -640,7 +651,7 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
     vaultUuid: DownloadRemoteVaultSchema.shape.vaultUuid,
     parentPath: DownloadRemoteVaultSchema.shape.parentPath
   },
-  'canvas.create': { input: CanvasCreateSchema.optional() },
+  'canvas.create': { input: nullAsAbsent(CanvasCreateSchema) },
   'canvas.delete': { id: text }
 } as const satisfies Record<AgentMcpDesktopOperation, DesktopOperationParams>
 

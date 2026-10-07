@@ -647,8 +647,11 @@ it. With `operation`, the reply names the tool that runs it (`vault_desktop_read
 `vault_desktop_write`), whether it needs approval, its parameters in call order and `args_schema`,
 the JSON Schema (draft 2020-12) of the `args` array with every type, required key, allowed value and
 default. Without `operation`, the reply lists every operation with its tool and call shape, such as
-`notes.list(options?)`, where `?` marks an argument the call may leave out. An operation that takes
-no arguments has no `prefixItems` in its `args_schema`, only `"maxItems": 0`.
+`notes.list(options?)`, where `?` marks an argument the call may leave out. Where the app reads a
+`null` optional argument as left out, such as the options of `notes.list`, the tags of
+`inbox.linkToNote` or the days of `tasks.getUpcoming`, the argument also takes `null`, and its
+schema lists `null` as an allowed type. An operation that takes no arguments has no `prefixItems` in
+its `args_schema`, only `"maxItems": 0`.
 
 ```json
 {

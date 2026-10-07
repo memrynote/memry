@@ -2,6 +2,7 @@ import path from 'node:path'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import {
+  AGENT_DESKTOP_OPERATION_PARAMS,
   desktopOperationJsonSchema,
   desktopOperationParamNames
 } from '@memry/contracts/agent-desktop-api-args'
@@ -237,6 +238,13 @@ describe('desktop API object arguments', () => {
   )
 })
 
+function paramSchema(
+  operation: (typeof AgentMcpDesktopOperations)[number],
+  index: number
+): { safeParse(value: unknown): { success: boolean } } {
+  return Object.values(AGENT_DESKTOP_OPERATION_PARAMS[operation])[index]
+}
+
 // The responder still reads these older call shapes, which the declaration
 // does not list.
 const LEGACY_KINDS: Record<string, string[]> = {
@@ -257,7 +265,14 @@ describe('desktop API argument schemas', () => {
       if (required === param.optional) {
         mismatches.push(`${id}: declared ${param.optional ? 'optional' : 'required'}`)
       }
-      const declared = LEGACY_KINDS[id] ?? param.kinds
+      // An optional argument read as left out when null also takes null; which ones is
+      // pinned to the preload in desktop-api-params.test.ts.
+      const nullAsAbsent =
+        param.optional && paramSchema(param.operation, param.index).safeParse(null).success
+      const declared = [
+        ...(LEGACY_KINDS[id] ?? param.kinds),
+        ...(nullAsAbsent ? ['null'] : [])
+      ].sort()
       if (declared.length > 0 && jsonKinds(item).join() !== declared.join()) {
         mismatches.push(
           `${id}: declared ${declared.join('|')}, schema ${jsonKinds(item).join('|')}`
