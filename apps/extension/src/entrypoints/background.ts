@@ -78,11 +78,11 @@ async function getStatus(): Promise<StatusResponse> {
   const found = await probe()
   if (!found) return { connection: 'app-closed', port: null }
   const token = await getToken()
-  if (found.ping.paired && token) {
-    const canPickFolder = found.ping.capabilities.includes('folders')
-    return { connection: 'ready', port: found.port, canPickFolder }
-  }
-  return { connection: 'needs-pairing', port: found.port }
+  // Not gated on ping.paired: Chrome sends no Origin on GET /ping, so it reads
+  // false even for a paired extension. POST /folders checks the real pairing.
+  const canPickFolder = !!token && found.ping.capabilities.includes('folders')
+  if (found.ping.paired && token) return { connection: 'ready', port: found.port, canPickFolder }
+  return { connection: 'needs-pairing', port: found.port, canPickFolder }
 }
 
 // Live from the desktop on every popup open; never written to extension storage.

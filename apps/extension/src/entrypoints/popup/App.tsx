@@ -68,7 +68,7 @@ export default function App() {
       .sendMessage({ type: 'GET_STATUS' })
       .then((r: StatusResponse) => {
         dispatch({ type: 'STATUS', connection: r.connection, port: r.port })
-        if (r.connection !== 'ready' || !r.canPickFolder) return
+        if (!r.canPickFolder) return
         browser.runtime
           .sendMessage({ type: 'GET_FOLDERS' })
           .then((list: FolderList | null) => setFolderList(list ?? null))

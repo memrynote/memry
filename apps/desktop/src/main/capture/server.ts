@@ -75,7 +75,9 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
     return
   }
 
-  if (req.method === 'GET' && req.url === '/folders') {
+  // POST, not GET: Chrome omits the Origin header on an extension's GET
+  // requests, so a GET would always fail the origin allowlist.
+  if (req.method === 'POST' && req.url === '/folders') {
     const token = await getCaptureToken()
     const auth = validateCaptureRequest(
       {
@@ -86,6 +88,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       token,
       isOriginAllowed
     )
+    req.resume()
     if (!auth.ok) {
       json(res, 401, { error: auth.reason })
       return

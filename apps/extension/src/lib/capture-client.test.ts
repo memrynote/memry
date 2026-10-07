@@ -225,7 +225,7 @@ describe('getFolders', () => {
       folders: ['Reading']
     })
     expect(fetchFn).toHaveBeenCalledWith('http://127.0.0.1:7849/folders', {
-      method: 'GET',
+      method: 'POST',
       headers: captureHeaders('tok')
     })
   })

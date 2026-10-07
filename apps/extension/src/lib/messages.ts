@@ -5,7 +5,7 @@ export type ConnectionState = 'app-closed' | 'needs-pairing' | 'ready'
 export interface StatusResponse {
   connection: ConnectionState
   port: number | null
-  // The desktop advertises GET /folders. Optional: absent = no picker.
+  // The desktop advertises POST /folders. Optional: absent = no picker.
   canPickFolder?: boolean
 }
 

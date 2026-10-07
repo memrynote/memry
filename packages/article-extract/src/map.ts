@@ -25,7 +25,7 @@ export interface ArticleCapture {
   pdfDataUrl?: string
   pdfFilename?: string
   // Destination chosen in the popup (vault-relative folder + the vault id from
-  // GET /folders). Absent = Inbox.
+  // POST /folders). Absent = Inbox.
   folder?: string
   vaultId?: string
 }

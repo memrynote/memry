@@ -49,7 +49,7 @@ export interface FolderList {
   folders: string[]
 }
 
-// GET /folders. Null on any failure (closed vault, old desktop, bad shape): the
+// POST /folders (POST so Chrome attaches the Origin header). Null on any failure (closed vault, old desktop, bad shape): the
 // popup then simply shows no picker and saves to the Inbox.
 export async function getFolders(
   port: number,
@@ -57,7 +57,7 @@ export async function getFolders(
   fetchFn: typeof fetch = fetch
 ): Promise<FolderList | null> {
   try {
-    const res = await fetchFn(foldersUrl(port), { method: 'GET', headers: captureHeaders(token) })
+    const res = await fetchFn(foldersUrl(port), { method: 'POST', headers: captureHeaders(token) })
     if (!res.ok) return null
     const d = (await res.json()) as Record<string, unknown>
     if (typeof d.vaultId !== 'string' || !d.vaultId) return null

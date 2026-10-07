@@ -83,15 +83,15 @@ describe('capture server', () => {
   }
 
   it('serves /folders only to a paired origin with the token', async () => {
-    const denied = await req(port, '/folders', { method: 'GET', headers: authed })
+    const denied = await req(port, '/folders', { method: 'POST', headers: authed })
     expect(denied.status).toBe(401)
     origins.add('chrome-extension://abc')
     const badToken = await req(port, '/folders', {
-      method: 'GET',
+      method: 'POST',
       headers: { ...authed, Authorization: 'Bearer nope' }
     })
     expect(badToken.status).toBe(401)
-    const r = await req(port, '/folders', { method: 'GET', headers: authed })
+    const r = await req(port, '/folders', { method: 'POST', headers: authed })
     expect(r.status).toBe(200)
     expect(await r.json()).toEqual(FOLDER_LIST)
   })
@@ -99,7 +99,7 @@ describe('capture server', () => {
   it('answers /folders with 503 vault-closed when no vault is open', async () => {
     origins.add('chrome-extension://abc')
     vaultOpen = false
-    const r = await req(port, '/folders', { method: 'GET', headers: authed })
+    const r = await req(port, '/folders', { method: 'POST', headers: authed })
     expect(r.status).toBe(503)
     expect(await r.json()).toEqual({ error: 'vault-closed' })
   })
