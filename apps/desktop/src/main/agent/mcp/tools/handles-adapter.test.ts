@@ -6,12 +6,14 @@ const mocks = vi.hoisted(() => ({
   searchAll: vi.fn(),
   listJournalEntriesInRange: vi.fn(),
   getNoteCacheById: vi.fn(),
+  getNotePropertiesAsRecord: vi.fn(),
   getInboxProject: vi.fn(),
   getProjectLinkCounts: vi.fn(),
   createDesktopInboxDomain: vi.fn(),
   createDesktopInboxCrudHandlers: vi.fn(),
   deleteJournalEntryFile: vi.fn(),
   readJournalEntry: vi.fn(),
+  readJournalFile: vi.fn(),
   writeJournalEntry: vi.fn(),
   createNoteCommand: vi.fn(),
   deleteNoteCommand: vi.fn(),
@@ -50,7 +52,8 @@ vi.mock('../../../database/queries/search', () => ({
 
 vi.mock('../../../database/queries/notes', () => ({
   listJournalEntriesInRange: mocks.listJournalEntriesInRange,
-  getNoteCacheById: mocks.getNoteCacheById
+  getNoteCacheById: mocks.getNoteCacheById,
+  getNotePropertiesAsRecord: mocks.getNotePropertiesAsRecord
 }))
 
 vi.mock('../../../database/queries/projects', () => ({
@@ -79,6 +82,7 @@ vi.mock('../../../inbox/domain', () => ({
 vi.mock('../../../vault/journal', () => ({
   deleteJournalEntryFile: mocks.deleteJournalEntryFile,
   readJournalEntry: mocks.readJournalEntry,
+  readJournalFile: mocks.readJournalFile,
   writeJournalEntry: mocks.writeJournalEntry
 }))
 
@@ -702,6 +706,330 @@ describe('createVaultServiceHandles', () => {
     expect(mocks.replaceNoteTagsInCrdt).toHaveBeenLastCalledWith('note-1', [])
   })
 
+  it('answers every note write with the note as stored', async () => {
+    const tools = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+      approved: true
+    }))
+    const call = (name: string, input: unknown) =>
+      tools.find((tool) => tool.name === name)!.handler(input, { writeGrant: 'g', windowId: null })
+
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      title: 'Alpha',
+      path: 'work/alpha.md',
+      fileType: 'markdown'
+    })
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-1',
+      title: 'Alpha',
+      content: 'Stored café',
+      tags: ['team'],
+      path: 'work/alpha.md',
+      frontmatter: { status: 'draft' },
+      properties: { status: 'draft' }
+    })
+    mocks.createNoteCommand.mockResolvedValue({ id: 'note-1' })
+    mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: ['team'] })
+
+    const stored = {
+      id: 'note-1',
+      title: 'Alpha',
+      folder_path: 'work',
+      tags: ['team'],
+      properties: { status: 'draft' },
+      body_bytes: 12,
+      body_sha256: '58edf4ff6da83112bfbc527a1cd7eac61548c7a68670feffb2463e9f94f64b40'
+    }
+    const writes: [string, unknown][] = [
+      ['vault_create_note', { title: 'Alpha', content_markdown: 'Sent café' }],
+      ['vault_rename_note', { id: 'note-1', title: 'Alpha' }],
+      ['vault_update_note', { id: 'note-1', mode: 'replace', content_markdown: 'Sent café' }],
+      ['vault_add_tag', { id: 'note-1', kind: 'note', tag: 'team' }],
+      ['vault_remove_tag', { id: 'note-1', kind: 'note', tag: 'other' }],
+      ['vault_move_to_folder', { id: 'note-1', folder_path: 'work' }]
+    ]
+    // 'Sent café' reads back as 'Stored café', so the body writes also say so (#2615).
+    const bodyWarning =
+      'The stored body is not the body this write sent. Sent 10 bytes, stored 12 bytes. ' +
+      'Read it back to see what was stored.'
+    for (const [name, input] of writes) {
+      const expected =
+        name === 'vault_update_note'
+          ? { ...stored, tags_added: [], tags_removed: [], warnings: [bodyWarning] }
+          : name === 'vault_create_note'
+            ? { ...stored, warnings: [bodyWarning] }
+            : stored
+      await expect(call(name, input), name).resolves.toEqual(expected)
+    }
+
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'file-1',
+      title: 'Scan',
+      path: 'work/scan.pdf',
+      fileType: 'pdf'
+    })
+    mocks.getNoteById.mockClear()
+    await expect(call('vault_rename_note', { id: 'file-1', title: 'Scan 2' })).resolves.toEqual({
+      id: 'file-1'
+    })
+    expect(mocks.getNoteById).not.toHaveBeenCalled()
+  })
+
+  it('answers task, project, status, inbox and journal writes with the record as stored', async () => {
+    const tools = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+      approved: true
+    }))
+    const call = (name: string, input: unknown) =>
+      tools.find((tool) => tool.name === name)!.handler(input, { writeGrant: 'g', windowId: null })
+
+    const storedTask = { id: 'task-1', title: 'Stored task', tags: ['work'], projectId: 'p1' }
+    taskDomain.getTask.mockReturnValue(storedTask)
+    taskDomain.createTask.mockResolvedValue({ success: true, task: { id: 'task-1' } })
+    const storedProject = { id: 'project-1', name: 'Stored project', statuses: [] }
+    taskDomain.getProject.mockReturnValue(storedProject)
+    taskDomain.createProject.mockResolvedValue({ success: true, project: { id: 'project-1' } })
+    const storedStatus = { id: 'status-1', projectId: 'project-1', name: 'Blocked', isDone: false }
+    taskDomain.createStatus.mockResolvedValue({ success: true, status: storedStatus })
+    taskDomain.updateStatus.mockResolvedValue({ success: true, status: storedStatus })
+    const storedItem = { id: 'inbox-1', title: 'Stored item', tags: ['later'] }
+    mocks.createDesktopInboxCrudHandlers.mockReturnValue({
+      handleGet: vi.fn().mockResolvedValue(storedItem),
+      handleUpdate: vi.fn().mockResolvedValue({ success: true }),
+      handleArchive: vi.fn().mockResolvedValue({ success: true }),
+      handleUnarchive: vi.fn().mockResolvedValue({ success: true }),
+      handleAddTag: vi.fn().mockResolvedValue({ success: true }),
+      handleRemoveTag: vi.fn().mockResolvedValue({ success: true })
+    })
+    mocks.createDesktopInboxDomain.mockReturnValue({
+      captureText: vi.fn().mockResolvedValue({ success: true, item: { id: 'inbox-1' } }),
+      snooze: vi.fn().mockResolvedValue({ success: true })
+    })
+
+    const taskWrites: [string, unknown][] = [
+      ['vault_create_task', { title: 'Stored task' }],
+      ['vault_update_task', { id: 'task-1', title: 'Stored task' }],
+      ['vault_complete_task', { id: 'task-1' }],
+      ['vault_uncomplete_task', { id: 'task-1' }],
+      ['vault_archive_task', { id: 'task-1' }],
+      ['vault_unarchive_task', { id: 'task-1' }],
+      ['vault_move_task', { task_id: 'task-1', target_project_id: 'p1', position: 0 }],
+      ['vault_convert_task_to_subtask', { task_id: 'task-1', parent_id: 'task-0' }],
+      ['vault_convert_subtask_to_task', { id: 'task-1' }],
+      ['vault_add_tag', { id: 'task-1', kind: 'task', tag: 'work' }],
+      ['vault_remove_tag', { id: 'task-1', kind: 'task', tag: 'old' }]
+    ]
+    for (const [name, input] of taskWrites) {
+      await expect(call(name, input), name).resolves.toEqual(storedTask)
+    }
+    for (const [name, input] of [
+      ['vault_create_project', { name: 'Stored project' }],
+      ['vault_update_project', { id: 'project-1', name: 'Stored project' }],
+      ['vault_archive_project', { id: 'project-1' }]
+    ] as [string, unknown][]) {
+      await expect(call(name, input), name).resolves.toEqual(storedProject)
+    }
+    await expect(
+      call('vault_create_status', { project_id: 'project-1', name: 'Blocked' })
+    ).resolves.toEqual(storedStatus)
+    await expect(call('vault_update_status', { id: 'status-1', name: 'Blocked' })).resolves.toEqual(
+      storedStatus
+    )
+    for (const [name, input] of [
+      ['vault_add_to_inbox', { source: 'agent', title: 'Stored item', content: 'Body' }],
+      ['vault_update_inbox_item', { id: 'inbox-1', title: 'Stored item' }],
+      ['vault_snooze_inbox_item', { id: 'inbox-1', snooze_until: '2026-10-05T00:00:00.000Z' }],
+      ['vault_archive_inbox_item', { id: 'inbox-1' }],
+      ['vault_unarchive_inbox_item', { id: 'inbox-1' }],
+      ['vault_add_inbox_tag', { id: 'inbox-1', tag: 'later' }],
+      ['vault_remove_inbox_tag', { id: 'inbox-1', tag: 'old' }]
+    ] as [string, unknown][]) {
+      await expect(call(name, input), name).resolves.toEqual(storedItem)
+    }
+
+    const entry = {
+      id: 'journal-1',
+      date: '2026-10-04',
+      content: 'Stored caf\u00e9',
+      tags: ['daily'],
+      properties: { mood: 'calm' }
+    }
+    mocks.readJournalEntry.mockResolvedValue(entry)
+    mocks.readJournalFile
+      .mockResolvedValueOnce({
+        frontmatter: { date: '2026-10-04', emoji: 'sun', mood: 'calm' },
+        body: 'Old\n'
+      })
+      .mockResolvedValue({
+        frontmatter: { date: '2026-10-04', mood: 'calm' },
+        body: 'Stored caf\u00e9\n'
+      })
+    mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-1' })
+    const storedEntry = {
+      id: 'journal-1',
+      date: '2026-10-04',
+      tags: ['daily'],
+      properties: { mood: 'calm' },
+      body_bytes: 13,
+      body_sha256: 'be59dd033a2ec17b8ab0bc7731223ff5b08d386f55aa34bd906fbbf0cbcafb75'
+    }
+    await expect(
+      call('vault_update_journal_entry', { date: '2026-10-04', content_markdown: 'Sent' })
+    ).resolves.toEqual({
+      ...storedEntry,
+      frontmatter_removed: ['emoji'],
+      warnings: [
+        'The stored body is not the body this write sent. Sent 4 bytes, stored 12 bytes. ' +
+          'Read it back to see what was stored.'
+      ]
+    })
+    await expect(
+      call('vault_create_journal_entry', { date: '2026-10-04', content_markdown: 'Sent' })
+    ).resolves.toEqual({ ...storedEntry, created: false })
+  })
+
+  it('says which tags an update body added or removed', async () => {
+    const tools = buildWriteTools(createVaultServiceHandles(deps), async () => ({
+      approved: true
+    }))
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      title: 'Alpha',
+      path: 'work/alpha.md',
+      fileType: 'markdown'
+    })
+    const note = (tags: string[]) => ({
+      id: 'note-1',
+      title: 'Alpha',
+      content: 'Body',
+      tags,
+      path: 'work/alpha.md',
+      frontmatter: {},
+      properties: {}
+    })
+    mocks.getNoteById
+      .mockResolvedValueOnce(note(['team', 'old']))
+      .mockResolvedValueOnce(note(['team', 'old']))
+      .mockResolvedValueOnce(note(['team', 'planning']))
+      .mockResolvedValueOnce(note(['team', 'planning']))
+    mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: ['team', 'planning'] })
+
+    await expect(
+      tools
+        .find((tool) => tool.name === 'vault_update_note')!
+        .handler(
+          { id: 'note-1', mode: 'replace', content_markdown: '#team #planning' },
+          { writeGrant: 'g', windowId: null }
+        )
+    ).resolves.toMatchObject({
+      tags: ['team', 'planning'],
+      tags_added: ['planning'],
+      tags_removed: ['old']
+    })
+  })
+
+  it('keeps legacy id, title, created and modified keys an agent leaves out, and drops one it nulls', async () => {
+    const handles = createVaultServiceHandles(deps)
+    mocks.getNoteCacheById.mockReturnValue({ id: 'note-1', date: null, fileType: 'markdown' })
+    mocks.getNotePropertiesAsRecord.mockReturnValue({
+      id: 'legacy-id',
+      title: 'Legacy',
+      created: '"2025-01-01T00:00:00.000Z"',
+      status: 'draft'
+    })
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-1',
+      frontmatter: {
+        id: 'legacy-id',
+        title: 'Legacy',
+        created: new Date('2025-01-01T00:00:00.000Z'),
+        modified: new Date('2025-01-02T00:00:00.000Z'),
+        status: 'draft',
+        owner: 'kaan'
+      }
+    })
+    mocks.invokeDesktopApiFromWindow.mockResolvedValue({
+      success: true,
+      properties: {},
+      removed: ['owner']
+    })
+
+    await handles.desktop.write(
+      { operation: 'properties.set', args: ['note-1', { status: 'done', modified: null }] },
+      'w1'
+    )
+
+    expect(mocks.invokeDesktopApiFromWindow).toHaveBeenCalledWith('w1', {
+      operation: 'properties.set',
+      args: [
+        'note-1',
+        {
+          status: 'done',
+          id: 'legacy-id',
+          title: 'Legacy',
+          created: new Date('2025-01-01T00:00:00.000Z')
+        }
+      ]
+    })
+  })
+
+  it('adds the stored record to a desktop write whose reply carries none', async () => {
+    const handles = createVaultServiceHandles(deps)
+    const item = { id: 'inbox-1', title: 'Stored item', tags: ['later'] }
+    mocks.invokeDesktopApiFromWindow
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce(item)
+
+    await expect(
+      handles.desktop.write({ operation: 'inbox.addTag', args: ['inbox-1', 'later'] }, 'w1')
+    ).resolves.toEqual({ success: true, stored: item })
+    expect(mocks.invokeDesktopApiFromWindow).toHaveBeenLastCalledWith('w1', {
+      operation: 'inbox.get',
+      args: ['inbox-1']
+    })
+  })
+
+  it('reads a tag or category back from the shapes the tag handlers return', async () => {
+    const handles = createVaultServiceHandles(deps)
+    const tag = { name: 'work', color: 'red', icon: null, count: 2 }
+    mocks.invokeDesktopApiFromWindow
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ tags: [{ name: 'home', color: 'blue', count: 1 }, tag] })
+    await expect(
+      handles.desktop.write(
+        { operation: 'tags.updateTagColor', args: [{ tag: 'work', color: 'red' }] },
+        'w1'
+      )
+    ).resolves.toEqual({ success: true, stored: tag })
+
+    const category = { id: 'c1', name: 'Areas' }
+    mocks.invokeDesktopApiFromWindow
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ success: true, categories: [category] })
+    await expect(
+      handles.desktop.write(
+        { operation: 'tags.renameCategory', args: [{ id: 'c1', name: 'Areas' }] },
+        'w1'
+      )
+    ).resolves.toEqual({ success: true, stored: category })
+  })
+
+  it('keeps the reply of a landed desktop write when the read-back fails', async () => {
+    const handles = createVaultServiceHandles(deps)
+    mocks.invokeDesktopApiFromWindow
+      .mockResolvedValueOnce({ success: true })
+      .mockRejectedValueOnce(new Error('Desktop API operation timed out or returned no result.'))
+
+    await expect(
+      handles.desktop.write({ operation: 'inbox.addTag', args: ['inbox-1', 'later'] }, 'w1')
+    ).resolves.toEqual({
+      success: true,
+      warnings: [
+        'The write landed, but reading it back failed (Desktop API operation timed out or ' +
+          'returned no result.). Read the record to see what was stored.'
+      ]
+    })
+  })
+
   describe('the body a write reports (#2615)', () => {
     let file: string
 
@@ -792,25 +1120,27 @@ describe('createVaultServiceHandles', () => {
         )
 
         expect(file).toBe('- [ ] Check the log {check}\r\nDone')
-        expect(reply).toEqual({
+        expect(reply).toMatchObject({
           warnings: [
             'The stored body is not the body this write sent. ' +
               `Sent ${Buffer.byteLength(sentBody)} bytes, stored ${Buffer.byteLength(file)} bytes. ` +
               'Read it back to see what was stored.'
           ],
-          id: 'note-1'
+          id: 'note-1',
+          body_bytes: Buffer.byteLength(file)
         })
       })
 
       it('says nothing when the checkbox marker is the only change', async () => {
         mocks.settleWriteback.mockImplementation(async () => {})
 
-        await expect(
-          writeTool('vault_update_note').handler(
-            { id: 'note-1', mode: 'replace', content_markdown: '- [ ] Check the log\nDone' },
-            ctx
-          )
-        ).resolves.toEqual({ id: 'note-1' })
+        const reply = await writeTool('vault_update_note').handler(
+          { id: 'note-1', mode: 'replace', content_markdown: '- [ ] Check the log\nDone' },
+          ctx
+        )
+
+        expect(reply).toMatchObject({ id: 'note-1', body_bytes: Buffer.byteLength(sentBody) })
+        expect(reply).not.toHaveProperty('warnings')
       })
 
       it('says nothing for a desktop API note write whose only change is the marker', async () => {

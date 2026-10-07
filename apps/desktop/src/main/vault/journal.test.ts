@@ -511,6 +511,62 @@ Today I worked on tests.`
     })
   })
 
+  describe('legacy id, created and modified keys an older file carries', () => {
+    const legacyLines = [
+      'id: j2025-02-02',
+      'created: 2025-02-02',
+      'modified: 2025-02-02T09:30:00.000Z'
+    ]
+    const journalFile = () => path.join(tempVault.path, 'journal', '2025-02-02.md')
+
+    function writeLegacyFile(): void {
+      fs.writeFileSync(
+        journalFile(),
+        ['---', ...legacyLines, 'date: 2025-02-02', 'mood: calm', '---', '', 'Old body.'].join('\n')
+      )
+    }
+
+    function expectLegacyLinesKept(): void {
+      const raw = fs.readFileSync(journalFile(), 'utf8')
+      for (const line of legacyLines) expect(raw).toContain(`\n${line}\n`)
+    }
+
+    it('keeps them on an editor save with the entry it read', async () => {
+      writeLegacyFile()
+      const existing = await readJournalEntry('2025-02-02')
+
+      await writeJournalEntryWithContent('2025-02-02', 'Edited body.', ['daily'], existing)
+
+      expectLegacyLinesKept()
+    })
+
+    it('keeps them on a properties write and an agent update', async () => {
+      writeLegacyFile()
+
+      await writeJournalEntry('2025-02-02', 'Agent body.', undefined, { mood: 'tired' })
+
+      expectLegacyLinesKept()
+      expect(fs.readFileSync(journalFile(), 'utf8')).toContain('\nmood: tired\n')
+    })
+
+    it('keeps them in the bytes a sync apply writes', () => {
+      writeLegacyFile()
+
+      const { fileContent } = buildJournalEntryWrite('2025-02-02', null, ['synced'])
+
+      for (const line of legacyLines) expect(fileContent).toContain(`\n${line}\n`)
+    })
+
+    it('adds none of them to a file that has none', async () => {
+      fs.writeFileSync(journalFile(), '---\ndate: 2025-02-02\n---\n\nPlain body.')
+
+      await writeJournalEntry('2025-02-02', 'Edited.', ['daily'])
+
+      const raw = fs.readFileSync(journalFile(), 'utf8')
+      expect(raw).not.toMatch(/^(id|created|modified):/m)
+    })
+  })
+
   describe('buildJournalEntryWrite keeps the body a record does not carry (spec 005-journal G0)', () => {
     const onDisk = `---
 id: j2099-06-01

@@ -640,6 +640,87 @@ added, comes back as `{ truncated: true, totalBytes, message, partial }`. `parti
 of the JSON reply, cut on a character boundary so the whole reply stays within 100 KB. It is not
 valid JSON on its own.
 
+`args` are the operation's positional arguments. A call that passes more arguments than the
+operation takes fails with a `VALIDATION` error that names the parameters, before the approval
+prompt, and nothing runs. Options go inside the operation's input object, never in an extra
+argument. A key inside an input object that the operation does not take fails the same way and is
+named in the error, for example `notes.createPropertyDefinition does not take optionz`. When the
+operation takes more than one object, the error names the argument too: `folderView.setView does not
+take view.colour`. Every key the operation's handler reads is accepted; the open record of
+`properties.set` accepts any property name.
+
+A desktop write whose reply carries no record (adding an inbox tag, changing a setting, a property
+option, a tag color, pinning a note to a tag, saving a folder view, creating a folder) gets a
+`stored` field with the record read back after the write. Writes whose reply is already the record
+(create and update calls) do not need one. These writes reply without `stored`:
+
+- Deletes, which leave nothing to read: every `delete*` operation, `bookmarks.bulkDelete`,
+  `inbox.deletePermanent`, `notes.deleteFolder`, `notes.deleteVersion`, `tags.deleteCategory` and
+  `folderView.deleteView`.
+- Reorders, which reply `{ success }`: `notes.reorder`, `tasks.reorder`, `tasks.reorderProjects`,
+  `tasks.reorderStatuses`, `savedFilters.reorder`, `bookmarks.reorder`, `homePages.reorder` and
+  `tags.reorder`. Read the list again to see the new order.
+- Bulk calls and conversions, which reply with counts or the new item's id: the `bulk*` operations,
+  `inbox.fileAllStale`, `inbox.convertTo*`, `tasks.captureUrlToProject`,
+  `tasks.importFilesToProject` and `notes.importFiles`.
+- `tasks.updateStatus`, which replies `{ success }`; read the project's statuses with
+  `tasks.listStatuses`.
+- `inbox.file`, which replies `{ success, filedTo, noteId }`; read the filed note with
+  `notes.get`.
+- `inbox.trackSuggestion`, `search.rebuildIndex`, `search.clearReasons` and `vault.reindex`, which
+  store no record.
+
+If the write lands but the read after it fails, the reply is the write's own reply with a
+`warnings` entry that says so. The write is not reported as failed, so do not repeat it; read the
+record instead. Named write tools do the same.
+
+`properties.set(entityId, properties)` replaces the entity's whole property record. It does not
+merge: a property the call leaves out is deleted. The legacy `id`, `title`, `created` and `modified`
+keys that older notes carry in their frontmatter are the exception for agents: they are kept when
+the call leaves them out, and a call deletes one only by passing it as `null`. A legacy key the call
+does not change keeps its line in the file byte for byte, so `created: 2024-03-05` stays exactly that.
+A value passed back as a read returned it is written as the file holds it, so a date stays a date.
+The reply lists the stored `properties` and the names it `removed`. The tag writers that edit a
+note's `tags` list (`tags.renameTag`, `tags.mergeTag`, `tags.deleteTag` and
+`tags.removeTagFromNote`) keep those legacy lines byte for byte too.
+
+Named note, journal, task, project and inbox writes answer with the record as a read returns it after
+the write. The other named writes answer with what the write itself returned, as listed below. Every
+tool rejects an argument it does not take, at any depth (inside a list of statuses or canvas items too),
+before the approval prompt. The error names the key: `Unknown argument: colour`.
+
+- Note writes (`vault_create_note`, `vault_rename_note`, `vault_update_note`,
+  `vault_add_html_artifact`, `vault_move_to_folder`, and `vault_add_tag` / `vault_remove_tag` on a
+  note) reply with `id`, `title`, `folder_path`, `tags`, `properties`, `body_bytes` and
+  `body_sha256`. Both are `null` for a note too large to read. `vault_update_note` also reports
+  `tags_added` and `tags_removed`, because inline `#tags` in the new body change the note's tag set.
+- Journal writes reply with `id`, `date`, `tags`, `properties`, `body_bytes` and `body_sha256`. The
+  journal writer keeps the user's keys and the legacy `id`, `created` and `modified` an older entry
+  carries, byte for byte. It drops any other key Memry reserves, such as a legacy `emoji`, and
+  `vault_update_journal_entry` lists what it dropped in `frontmatter_removed`.
+- `body_bytes` and `body_sha256` cover the body exactly as the file stores it after its frontmatter,
+  in UTF-8. The file writer ends the body with a newline, so a body sent without a final newline is
+  stored with one. Checkbox lines the agent added are stored with the `{check}` marker, or rewritten
+  as the tasks they became when the owner turned on task conversion (see
+  [Checkboxes in agent writes](#checkboxes-in-agent-writes)). To check a write, hash what you sent
+  with those two changes applied and compare. Any other difference means the stored body is not the
+  one you sent.
+- A note or journal write that turned checkbox lines into tasks also lists them in `created_tasks`.
+- Task, project and inbox writes reply with the stored task, project or inbox item.
+  `vault_create_status` and `vault_update_status` reply with the status the task store returned from
+  the write, not a fresh read.
+  Reorders (`vault_reorder_tasks`, `vault_reorder_projects`, `vault_reorder_statuses`) reply with
+  the ids and the stored records in order. Deletes reply with what they deleted.
+- `vault_create_folder` and `vault_rename_folder` reply with the folder's `path`.
+- Canvas writes (`vault_add_canvas_item`, `vault_remove_canvas_item`, `vault_draw_on_canvas` and
+  `vault_edit_canvas_elements`) reply with an outcome object. Adding and removing items list the
+  items `applied` and `skipped`; drawing and editing list the element ids created, updated and
+  deleted. Read the canvas to see it whole. `vault_create_canvas` replies like the
+  `canvas.create` desktop write.
+- Tools that take no arguments (`vault_get_current_note`, `vault_get_tags`, `vault_list_projects`
+  and `vault_list_canvases`) list an empty object schema with `additionalProperties: false`. A call
+  may send `{}` or omit `arguments`.
+
 `notes.resolveWikiTarget` follows a wiki link the way the editor does: `Meeting#Decisions` resolves
 to the note `Meeting` and reports `heading: "Decisions"`, while a note genuinely titled `Sprint #4`
 still resolves to itself. `notes.resolveByTitle` stays a plain title lookup and returns nothing for a

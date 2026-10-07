@@ -23,6 +23,7 @@ import { getNoteCacheById, getNoteProperties } from '../notes/store'
 import { getIndexDatabase } from '../database'
 import { setEntityProperties } from '../notes/entity-properties'
 import { getMainI18n } from '../lib/main-i18n'
+import { flushProjectionEvents } from '../projections'
 
 // ============================================================================
 // Handler Registration
@@ -52,7 +53,24 @@ export function registerPropertiesHandlers(): void {
     createValidatedHandler(
       SetPropertiesSchema,
       withErrorHandler(async (input): Promise<SetPropertiesResponse> => {
-        return setEntityProperties(input.entityId, input.properties)
+        // The set replaces the whole record, so a name left out is deleted.
+        // The reply says which, and what the entity holds now. note_properties
+        // is written by the projection lane, which a sync pull or reindex can
+        // hold busy; each read waits for the writes queued before it.
+        const db = getIndexDatabase()
+        await flushProjectionEvents()
+        const before = getNoteProperties(db, input.entityId)
+        const result = await setEntityProperties(input.entityId, input.properties)
+        if (!result.success) return result
+        await flushProjectionEvents()
+        const stored = Object.fromEntries(
+          getNoteProperties(db, input.entityId).map((p) => [p.name, p.value])
+        )
+        return {
+          success: true,
+          properties: stored,
+          removed: before.map((p) => p.name).filter((name) => !Object.hasOwn(stored, name))
+        }
       }, 'errors:property.setFailed')
     )
   )

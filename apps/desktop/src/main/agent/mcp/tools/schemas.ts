@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { strictDeep } from '../../../lib/strict-schema'
 import {
   AgentMcpDesktopReadOperations,
   AgentMcpDesktopWriteOperations
@@ -103,7 +104,7 @@ const desktopWriteSchema = z.object({
   args: z.array(z.unknown()).default([])
 })
 
-export const TOOL_SCHEMAS = {
+const LOOSE_TOOL_SCHEMAS = {
   vault_search_notes: {
     input: z.object({
       query: z.string().min(1),
@@ -166,7 +167,7 @@ export const TOOL_SCHEMAS = {
       'not "note".'
   },
   vault_get_current_note: {
-    input: z.object({}).default({}),
+    input: z.object({}),
     description: 'Return the note currently open in the originating renderer window, or null.'
   },
   vault_list_tasks: {
@@ -188,7 +189,7 @@ export const TOOL_SCHEMAS = {
     description: 'Read a task by id.'
   },
   vault_list_projects: {
-    input: z.object({}).default({}),
+    input: z.object({}),
     description: 'List all projects with task counts and linked note/file/event counts.'
   },
   vault_get_project: {
@@ -219,13 +220,13 @@ export const TOOL_SCHEMAS = {
     description: 'Read an inbox item by id.'
   },
   vault_get_tags: {
-    input: z.object({}).default({}),
+    input: z.object({}),
     description:
       'List all tags with usage counts, color, icon, sort order, and the tag category they ' +
       'belong to (category_id and category_name, both null when uncategorized).'
   },
   vault_list_canvases: {
-    input: z.object({}).default({}),
+    input: z.object({}),
     description:
       'List spatial canvases with how many notes/tasks/events sit on each. ' +
       'Canvases live in folders, so two can share a title — each entry carries its folder and ' +
@@ -464,7 +465,11 @@ export const TOOL_SCHEMAS = {
       mode: z.enum(['append', 'prepend', 'replace']),
       content_markdown: z.string()
     }),
-    description: `Update note body. ${CHECKLIST_HINT} Requires user approval with diff preview.`
+    description:
+      `Update note body. ${CHECKLIST_HINT} Replies with the note as stored: title, folder_path, ` +
+      'tags, properties, body_bytes and body_sha256 (UTF-8 body as the file stores it, which ends ' +
+      'with a newline), plus tags_added and tags_removed when inline #tags in the body changed ' +
+      'the tag set. Requires user approval with diff preview.'
   },
   vault_add_html_artifact: {
     input: z.object({
@@ -579,10 +584,30 @@ export const TOOL_SCHEMAS = {
   vault_desktop_write: {
     input: desktopWriteSchema,
     description:
-      'Run an allowlisted desktop CRUD mutation. Requires user approval. Replies follow ' +
-      'the vault_desktop_read rules for filed files and replies over 100 KB.'
+      'Run an allowlisted desktop CRUD mutation. `args` are the positional arguments of the ' +
+      'operation; a call with more arguments than the operation takes is refused, so put ' +
+      'options inside its input object. A write whose reply carries no record gets a ' +
+      '`stored` field read back after the write. properties.set(entityId, properties) ' +
+      "replaces the entity's whole property record: a property left out is deleted, except " +
+      'the legacy id, title, created and modified keys, which are kept unless the call names ' +
+      'them (null deletes one). The reply lists the stored `properties` and the names it ' +
+      '`removed`. Requires user approval. Replies follow the vault_desktop_read rules for ' +
+      'filed files and replies over 100 KB.'
   }
 } as const
+
+/**
+ * Zod drops keys an object schema does not name, so an invented or misspelled
+ * argument would vanish and the call would succeed without it. The MCP server
+ * and the AI SDK both validate against these inputs, so strict objects make
+ * either refuse the call and name the key.
+ */
+export const TOOL_SCHEMAS = Object.fromEntries(
+  Object.entries(LOOSE_TOOL_SCHEMAS).map(([name, schema]) => [
+    name,
+    { ...schema, input: strictDeep(schema.input) }
+  ])
+) as unknown as typeof LOOSE_TOOL_SCHEMAS
 
 export type ToolName = keyof typeof TOOL_SCHEMAS
 

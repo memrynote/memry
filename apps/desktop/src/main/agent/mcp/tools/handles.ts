@@ -33,6 +33,35 @@ export interface NoteSummary {
 }
 
 /**
+ * A note as a read returns it right after a write. The body is not echoed:
+ * `body_bytes` and `body_sha256` cover its UTF-8 bytes, and both are null for
+ * a note too large to read.
+ */
+export interface StoredNote {
+  id: string
+  title: string
+  folder_path: string | null
+  tags: string[]
+  properties: Record<string, unknown>
+  body_bytes: number | null
+  body_sha256: string | null
+  icon?: string
+}
+
+/** A journal entry right after a write; the body is the file's bytes after its frontmatter. */
+export interface StoredJournalEntry {
+  id: string
+  date: string
+  tags: string[]
+  properties: Record<string, unknown>
+  body_bytes: number
+  body_sha256: string
+}
+
+/** A status record as the task domain stored it. */
+export type StoredStatus = { id: string } & Record<string, unknown>
+
+/**
  * Text read on this device out of a filed PDF (text layer, else OCR) or an
  * image (OCR), one entry per page. `extracting` covers a file still waiting in
  * the queue. Pages are cut to about 100 KB per reply; `next_page` continues.
@@ -263,6 +292,8 @@ export interface VaultServiceHandles {
       html: string
     }): Promise<{ marker: string; url: string }>
     moveToFolder(input: { id: string; folder_path: string }): Promise<void>
+    /** Null when no markdown note reads back under `id`. */
+    stored(id: string): Promise<StoredNote | null>
     /** What a read of note `id` returns once its armed write-back has run. */
     storedBody(id: string, sent: string): Promise<WrittenBody>
   }
@@ -378,12 +409,13 @@ export interface VaultServiceHandles {
   }
   statuses: {
     list(projectId: string): Promise<unknown[]>
+    get(id: string): Promise<StoredStatus | null>
     create(input: {
       project_id: string
       name: string
       color?: string
       is_done?: boolean
-    }): Promise<{ id: string }>
+    }): Promise<StoredStatus>
     update(input: {
       id: string
       name?: string
@@ -391,7 +423,7 @@ export interface VaultServiceHandles {
       position?: number
       is_default?: boolean
       is_done?: boolean
-    }): Promise<{ id: string }>
+    }): Promise<StoredStatus>
     delete(id: string): Promise<{ id: string }>
     reorder(input: { status_ids: string[]; positions: number[] }): Promise<{ ids: string[] }>
   }
@@ -409,8 +441,11 @@ export interface VaultServiceHandles {
       content_markdown?: string
       tags?: string[]
       properties?: Record<string, unknown>
-    }): Promise<{ id: string; body?: WrittenBody } & CreatedTasksReply>
+    }): Promise<
+      { id: string; frontmatter_removed?: string[]; body?: WrittenBody } & CreatedTasksReply
+    >
     delete(date: string): Promise<{ date: string; deleted: boolean }>
+    stored(date: string): Promise<StoredJournalEntry | null>
   }
   inbox: {
     list(input: { unread_only?: boolean }): Promise<InboxSummary[]>

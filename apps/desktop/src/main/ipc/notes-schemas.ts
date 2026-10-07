@@ -48,7 +48,16 @@ export const DeleteAttachmentSchema = z.object({
 export const ExportNoteSchema = z.object({
   noteId: z.string().min(1),
   includeMetadata: z.boolean().default(true),
-  pageSize: z.enum(['A4', 'Letter', 'Legal']).default('A4')
+  pageSize: z.enum(['A4', 'Letter', 'Legal']).default('A4'),
+  includeTaskMarkers: z.boolean().default(false),
+  // Headless export target — when provided, skip the save dialog (Agent MCP).
+  outputPath: z.string().min(1).optional()
+})
+
+/** The option `notes:add-property-option` and `notes:add-status-option` add. */
+export const PropertyOptionInputSchema = z.object({
+  value: z.string().min(1),
+  color: z.string().min(1)
 })
 
 export const ImportFilesSchema = z.object({

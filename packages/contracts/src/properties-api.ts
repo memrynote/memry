@@ -75,9 +75,13 @@ export const ResolveRefsSchema = z.object({
 // ============================================================================
 
 /**
- * Response from set properties operation.
+ * Response from set properties operation. A set replaces the entity's whole
+ * property record: `properties` is the record as stored, `removed` names the
+ * properties the set deleted because the call left them out.
  */
-export type SetPropertiesResponse = { success: true } | { success: false; error: string }
+export type SetPropertiesResponse =
+  | { success: true; properties: Record<string, unknown>; removed: string[] }
+  | { success: false; error: string }
 
 /**
  * Response from rename property operation.

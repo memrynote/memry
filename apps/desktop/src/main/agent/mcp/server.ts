@@ -167,7 +167,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
       const { mcp, release } = acquireMcpServer()
       try {
         await mcp.connect(transport)
-        const body = await readJson(req)
+        const body = withToolArguments(await readJson(req))
         await transport.handleRequest(req, res, body)
       } catch (err) {
         logger.error('MCP request failed', err)
@@ -253,6 +253,26 @@ async function readJson(req: http.IncomingMessage): Promise<unknown> {
   for await (const chunk of req) chunks.push(chunk as Buffer)
   if (chunks.length === 0) return undefined
   return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+}
+
+/**
+ * MCP lets a client omit `arguments` on a tools/call. The tool input schemas
+ * are plain strict objects, so that `tools/list` advertises
+ * `additionalProperties: false`; an omitted value becomes `{}` before the SDK
+ * validates it, the way the AI SDK treats an empty tool input.
+ */
+function withToolArguments(body: unknown): unknown {
+  if (Array.isArray(body)) return body.map(withToolArguments)
+  if (!body || typeof body !== 'object') return body
+  const message = body as { method?: unknown; params?: Record<string, unknown> }
+  if (
+    message.method !== 'tools/call' ||
+    !message.params ||
+    message.params.arguments !== undefined
+  ) {
+    return body
+  }
+  return { ...message, params: { ...message.params, arguments: {} } }
 }
 
 function toStructuredContent(result: unknown): Record<string, unknown> {

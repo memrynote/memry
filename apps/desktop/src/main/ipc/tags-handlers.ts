@@ -67,7 +67,7 @@ import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
 import { toAbsolutePath } from '../vault/notes'
-import { parseNote, serializeParsedNote } from '../vault/frontmatter'
+import { parseNote, serializeUpdatedNote, type NoteFrontmatter } from '../vault/frontmatter'
 import { atomicWrite } from '../vault/file-ops'
 import {
   syncMergedTagDefinitions,
@@ -167,13 +167,12 @@ async function updateNoteFrontmatterTag(
     : []
   const updatedTags = mutate(currentTags)
 
-  if (updatedTags.length === 0) {
-    delete parsed.frontmatter.tags
-  } else {
-    parsed.frontmatter.tags = updatedTags
-  }
+  const nextFrontmatter: NoteFrontmatter = { ...parsed.frontmatter, tags: updatedTags }
+  if (updatedTags.length === 0) delete nextFrontmatter.tags
 
-  const serialized = serializeParsedNote(parsed, parsed.content, { frontmatterEdited: true })
+  const serialized = serializeUpdatedNote(parsed, nextFrontmatter, parsed.content, {
+    frontmatterEdited: true
+  })
   if (serialized !== raw) {
     await atomicWrite(absolutePath, serialized)
   }
