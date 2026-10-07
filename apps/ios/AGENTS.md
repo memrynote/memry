@@ -30,6 +30,7 @@ If you create or modify a test, run it and iterate until it passes. There is no 
 - Agents build, test, and install only on `-destination 'platform=iOS Simulator,name=iPhone 17'`. `iPhone 17 Pro` belongs to Kaan's `pnpm dev:mobile` hot-reload session; any `xcodebuild test` or `simctl install` there kills his running app. Never touch it.
 
 - The Unit plan runs inside the app on the shared simulator, and its sign-out tests wipe the app's keychain. Anything that needs a signed-in app (the UI plan, manual simulator checks) comes after a fresh sign-in, never straight after a Unit run.
+- Signing in to the staging test account (iOS sign-in, OTP, recovery phrase, or launching desktop on staging to pair or sync): read `.pi/skills/staging-test-account/SKILL.md` first.
 - `TasksUITests` needs the simulator signed in to the staging test account; it fails, rather than skips, when it lands on sign-in.
 - `JournalUITests` needs the same sign-in plus the synced journal settings its header names (a Wednesday template); it pins today with `-MEMRY_JOURNAL_TODAY <date>`, always a 2099 day.
 - An editable block is a text view: its text is the accessibility **value**, not the label. Match `label CONTAINS x OR value CONTAINS x`.
