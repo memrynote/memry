@@ -1,3 +1,5 @@
+import Ajv2020 from 'ajv/dist/2020'
+import addFormats from 'ajv-formats'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -25,6 +27,33 @@ describe('agent desktop API argument schemas', () => {
       expect(schema.minItems, operation).toBeLessThanOrEqual(params.length)
       expect(JSON.stringify(schema).length, operation).toBeLessThan(64 * 1024)
     }
+  })
+
+  it('publish a schema that compiles under a strict draft 2020-12 validator for every operation', () => {
+    // strictTuples flags any tuple whose trailing items are optional (minItems below the
+    // prefixItems length); that is valid 2020-12 and how optional arguments are published.
+    const ajv = new Ajv2020({ strict: true, strictTuples: false, allErrors: true })
+    addFormats(ajv)
+    const invalid: string[] = []
+    for (const operation of AgentMcpDesktopOperations) {
+      const schema = desktopOperationJsonSchema(operation)
+      if (!ajv.validateSchema(schema)) {
+        invalid.push(`${operation}: ${ajv.errorsText(ajv.errors)}`)
+        continue
+      }
+      try {
+        ajv.compile(schema)
+      } catch (error) {
+        invalid.push(`${operation}: ${(error as Error).message}`)
+      }
+    }
+    expect(invalid).toEqual([])
+  })
+
+  it('say an operation without parameters takes no arguments', () => {
+    const schema = desktopOperationJsonSchema('notes.getTags')
+    expect(schema).not.toHaveProperty('prefixItems')
+    expect(schema).toMatchObject({ type: 'array', minItems: 0, maxItems: 0 })
   })
 
   it('count only the leading required arguments as required', () => {
