@@ -11,7 +11,8 @@ import {
   NoteBodyFlushDeferredError,
   NoteBodyOutbox,
   importLegacyPendingCrdtNotes,
-  type NoteBodyPushFn
+  type NoteBodyPushFn,
+  type NoteBodyPushRecorder
 } from './note-body-outbox'
 import { RateLimitError, SyncServerError } from './http-client'
 
@@ -472,5 +473,83 @@ describe('importLegacyPendingCrdtNotes', () => {
   it('does nothing when there is no file', () => {
     expect(importLegacyPendingCrdtNotes(queue, dir)).toBe(0)
     expect(queue.countNoteBodyRows()).toBe(0)
+  })
+})
+
+// #2647: the outbox records what happened to each note's body push.
+describe('NoteBodyOutbox push record', () => {
+  let testDb: TestDatabaseResult
+  let queue: SyncQueueManager
+  let push: ReturnType<typeof vi.fn<NoteBodyPushFn>>
+  let recordPush: ReturnType<typeof vi.fn<NoteBodyPushRecorder>>
+  let outbox: NoteBodyOutbox
+
+  const start = (readFullState: (noteId: string) => Promise<Uint8Array | null> = async () => null) => {
+    outbox = new NoteBodyOutbox({ queue, push, recordPush })
+    outbox.enableFullStateFlush(readFullState)
+    outbox.start()
+  }
+  const events = (): string[] => recordPush.mock.calls.map(([noteId, event]) => `${noteId}:${event}`)
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-24T09:00:00.000Z'))
+    testDb = createTestDataDb()
+    queue = new SyncQueueManager(testDb.db as unknown as DrizzleDb)
+    push = vi.fn<NoteBodyPushFn>(async () => undefined)
+    recordPush = vi.fn<NoteBodyPushRecorder>()
+  })
+
+  afterEach(() => {
+    outbox.stop()
+    testDb.close()
+    vi.useRealTimers()
+  })
+
+  it('records sent then confirmed when the server stores the push', async () => {
+    const { updates } = recordEdits(['a'])
+    start()
+    outbox.enqueue('note-a', updates[0])
+    await flushPromises()
+
+    expect(events()).toEqual(['note-a:sent', 'note-a:confirmed'])
+  })
+
+  it('records a retryable failure as failed, never confirmed', async () => {
+    const { updates } = recordEdits(['a'])
+    push.mockRejectedValueOnce(new SyncServerError('unavailable', 503))
+    start()
+    outbox.enqueue('note-a', updates[0])
+    await flushPromises()
+
+    expect(events()).toEqual(['note-a:sent', 'note-a:failed'])
+  })
+
+  it('records a dropped client rejection as rejected', async () => {
+    const { updates } = recordEdits(['a'])
+    push.mockRejectedValueOnce(new SyncServerError('bad update', 400))
+    start()
+    outbox.enqueue('note-a', updates[0])
+    await flushPromises()
+
+    expect(events()).toEqual(['note-a:sent', 'note-a:rejected'])
+  })
+
+  it('does not confirm a full-state row dropped because the note no longer syncs', async () => {
+    queue.enqueueNoteBody('note-a', NOTE_BODY_FULL_STATE_PAYLOAD)
+    start(async () => null)
+    await flushPromises()
+
+    expect(push).not.toHaveBeenCalled()
+    expect(events()).not.toContain('note-a:confirmed')
+  })
+
+  it('confirms a full-state row once its state is pushed', async () => {
+    queue.enqueueNoteBody('note-a', NOTE_BODY_FULL_STATE_PAYLOAD)
+    start(async () => new Uint8Array([0, 0]))
+    await flushPromises()
+
+    expect(push).toHaveBeenCalledTimes(1)
+    expect(events()).toEqual(['note-a:sent', 'note-a:confirmed'])
   })
 })
