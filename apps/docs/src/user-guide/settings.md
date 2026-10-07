@@ -38,6 +38,11 @@ On the free plan sync stays local-only, so the status shows **Local only** and t
 toggle for an upgrade card with an **Unlock Sync** button that opens the plan picker in your
 browser.
 
+When some notes have changes the server has not stored yet, the group adds **Notes with unsent
+changes**. Expand it to see each note, why it is listed (**Text**, **Details**, **File not merged
+yet**, or **Refused by the server**) and how long its changes have waited. See
+[Has a note reached the server?](/user-guide/sync/conflict-health#has-a-note-reached-the-server).
+
 ### Billing
 
 Shows the current sync plan, activation state, storage limit, max file size, synced vault limit, and

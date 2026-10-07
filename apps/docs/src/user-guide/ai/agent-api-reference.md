@@ -53,7 +53,7 @@ argument it does not take.
 
 #### vault_search_notes
 
-Full-text search across notes and filed files; returns id, title, snippet, folder_path, file_type. A file_type other than "markdown" (pdf/image/audio/video) is a filed file, not a note. PDFs and images match on the text read out of them on this device, and a note matches on the visible text of the HTML blocks it embeds. Pass file_types to restrict the search, e.g. ["markdown"] for notes only; omitted returns every file type.
+Full-text search across notes and filed files; returns id, title, snippet, folder_path, file_type. A file_type other than "markdown" (pdf/image/audio/video) is a filed file, not a note. PDFs and images match on the text read out of them on this device, and a note matches on the visible text of the HTML blocks it embeds. Pass file_types to restrict the search, e.g. ["markdown"] for notes only; omitted returns every file type. Each hit carries sync, as vault_read_note describes.
 
 Read tool.
 
@@ -96,7 +96,7 @@ Reply:
 
 #### vault_read_note
 
-Read a markdown note by id; returns full markdown content + metadata. For a filed pdf or image, returns extracted_text instead: the text read on this device (the PDF text layer, else OCR), one entry per page, with status "extracting" \| "done" \| "failed", page_count and pages_read. Pages come in chunks of about 100 KB; pass next_page as from_page to continue. A markdown note that embeds PDFs, images or HTML blocks adds attachment_text, the text read from each ({ file, text }; the visible text for an HTML block), about 100 KB at most. Errors with VALIDATION for a filed audio or video file. To look at an image or a PDF page, use vault_view_file.
+Read a markdown note by id; returns full markdown content + metadata. For a filed pdf or image, returns extracted_text instead: the text read on this device (the PDF text layer, else OCR), one entry per page, with status "extracting" \| "done" \| "failed", page_count and pages_read. Pages come in chunks of about 100 KB; pass next_page as from_page to continue. A markdown note that embeds PDFs, images or HTML blocks adds attachment_text, the text read from each ({ file, text }; the visible text for an HTML block), about 100 KB at most. Errors with VALIDATION for a filed audio or video file. To look at an image or a PDF page, use vault_view_file. sync says whether the note's latest text reached the server: state "pending" (changes waiting on this device, since waiting_since), "sent" (a push has no answer yet), "confirmed" (the server stored the last body push, at body_confirmed_at), "not_recorded" (nothing waiting, no confirmed push recorded yet), "rejected" (the server refused the latest push), "local_only" or "not_syncing". After a write, read again until state is "confirmed" and body_confirmed_at is later than the write.
 
 Read tool.
 
@@ -209,7 +209,7 @@ Reply:
 
 #### vault_list_folder
 
-List the sub-folders and notes in a folder, addressed by path (as returned in folder_path/path fields); omit path for the vault root. Paths are vault-relative with no leading slash ("projects/active"); a leading slash is also accepted. A folder that does not exist fails with NOT_FOUND. recursive includes every nested level instead of direct children only. Returns at most 1000 notes. Each note entry carries file_type; a filed pdf/image/audio/video file lists as kind "file", not "note".
+List the sub-folders and notes in a folder, addressed by path (as returned in folder_path/path fields); omit path for the vault root. Paths are vault-relative with no leading slash ("projects/active"); a leading slash is also accepted. A folder that does not exist fails with NOT_FOUND. recursive includes every nested level instead of direct children only. Returns at most 1000 notes. Each note entry carries file_type; a filed pdf/image/audio/video file lists as kind "file", not "note". Each note entry carries sync, as vault_read_note describes.
 
 Read tool.
 
@@ -713,7 +713,7 @@ Reply:
 
 #### vault_get_journal_entry
 
-Return the journal entry for an ISO date or null.
+Return the journal entry for an ISO date or null. It carries sync, as vault_read_note describes.
 
 Read tool.
 
@@ -749,7 +749,7 @@ Reply:
 
 #### vault_list_journal_entries
 
-List journal entry summaries within a date range (inclusive).
+List journal entry summaries within a date range (inclusive). Each carries sync, as vault_read_note describes.
 
 Read tool.
 
