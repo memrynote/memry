@@ -119,6 +119,8 @@
     "@memry/typescript-config": "workspace:*",
     "@types/libsodium-wrappers-sumo": "^0.8.2",
     "@types/pako": "^2.0.4",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
     "bip39": "^3.1.0",
     "cborg": "^4.5.8",
     "libsodium-wrappers-sumo": "^0.8.2",
