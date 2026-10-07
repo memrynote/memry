@@ -4,14 +4,14 @@ import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
-const restoreThrows = vi.hoisted(() => ({ next: false }))
+const restoreThrows = vi.hoisted(() => ({ left: 0 }))
 vi.mock('@memry/shared/markdown-source', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@memry/shared/markdown-source')>()
   return {
     ...actual,
     restoreMarkdownSource: (...args: Parameters<typeof actual.restoreMarkdownSource>) => {
-      if (restoreThrows.next) {
-        restoreThrows.next = false
+      if (restoreThrows.left > 0) {
+        restoreThrows.left -= 1
         throw new Error('restore blew up')
       }
       return actual.restoreMarkdownSource(...args)
@@ -33,6 +33,11 @@ vi.mock('electron', () => ({
 }))
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
+}))
+const broadcasts = vi.hoisted(() => [] as Array<{ channel: string; payload: unknown }>)
+vi.mock('../lib/window-broadcast', () => ({
+  broadcastToAllWindows: (channel: string, payload: unknown) =>
+    broadcasts.push({ channel, payload })
 }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
 vi.mock('../database/client', () => ({
@@ -179,7 +184,8 @@ beforeEach(() => {
   h.files.clear()
   h.rows.clear()
   h.failNextRead = false
-  restoreThrows.next = false
+  restoreThrows.left = 0
+  broadcasts.length = 0
   vi.mocked(trackMainError).mockClear()
   resetTelemetryThrottle()
   resetWritebackState()
@@ -334,7 +340,7 @@ describe('the spelling a write-back keeps when the source record no longer resto
 
   it.each([
     ['the file it would restore from cannot be read', () => (h.failNextRead = true)],
-    ['the spelling restore throws', () => (restoreThrows.next = true)]
+    ['the spelling restore throws', () => (restoreThrows.left = 1)]
   ])('keeps the file and reports a failed pass when %s', async (_case, fail) => {
     const raw = `---\nid: x\n---\n${FOREIGN}`
     writtenElsewhere(NOTE, raw)
@@ -350,6 +356,48 @@ describe('the spelling a write-back keeps when the source record no longer resto
     expect(h.files.get(NOTE_FILE)).toBe(raw)
     expect(getWritebackDebugState(NOTE)?.lastError).toMatch(/kept the file/)
     expect(trackMainError).toHaveBeenCalledWith('notes', 'note_writeback', expect.any(Error))
+  })
+
+  it('tells the user once while the restore keeps throwing, and lets a later pass land', async () => {
+    const raw = `---\nid: x\n---\n${FOREIGN}`
+    writtenElsewhere(NOTE, raw)
+    restoreThrows.left = 3
+    const failureNotices = (): unknown[] =>
+      broadcasts.filter((b) => b.channel === 'sync:write-back-failed').map((b) => b.payload)
+
+    for (const word of ['One.', 'Two.', 'Three.']) {
+      scheduleWriteback(
+        NOTE,
+        await docWithStaleRecord(FOREIGN.replace('_em_ here.', word)),
+        'local'
+      )
+      await settleWriteback(NOTE)
+    }
+
+    expect(h.files.get(NOTE_FILE)).toBe(raw)
+    expect(failureNotices()).toEqual([{ noteId: NOTE, title: 'Fox' }])
+
+    scheduleWriteback(
+      NOTE,
+      await docWithStaleRecord(FOREIGN.replace('_em_ here.', 'Four.')),
+      'local'
+    )
+    await settleWriteback(NOTE)
+
+    expect(h.files.get(NOTE_FILE)).toBe(
+      '---\nid: x\n---\nTitle\n=====\n\nText:\n* One\n* Two\n\nFour.\n'
+    )
+    expect(getWritebackDebugState(NOTE)?.lastError).toBeNull()
+
+    restoreThrows.left = 1
+    scheduleWriteback(
+      NOTE,
+      await docWithStaleRecord(FOREIGN.replace('_em_ here.', 'Five.')),
+      'local'
+    )
+    await settleWriteback(NOTE)
+
+    expect(failureNotices()).toHaveLength(2)
   })
 
   it('does not bring back CriticMarkup the doc no longer holds', async () => {

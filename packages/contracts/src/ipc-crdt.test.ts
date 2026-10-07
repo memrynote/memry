@@ -32,6 +32,7 @@ describe('CRDT channel constants', () => {
     expect(CRDT_EVENTS.STATE_CHANGED).toBe('crdt:state-changed')
     expect(CRDT_EVENTS.DOC_LOADED).toBe('crdt:doc-loaded')
     expect(CRDT_EVENTS.DOC_ERROR).toBe('crdt:doc-error')
+    expect(CRDT_EVENTS.WRITE_BACK_FAILED).toBe('sync:write-back-failed')
   })
 
   it('pins the Y.Doc fragment name', () => {
