@@ -118,6 +118,60 @@ describe('desktop API object arguments', () => {
     expect(accepted).toEqual([])
   })
 
+  it.each([
+    {
+      operation: 'folderView.setView',
+      args: [
+        { kind: 'folder', path: 'a' },
+        { name: 'v', filters: { and: ['x'], zzAnd: 1 } }
+      ],
+      unknown: 'view.filters.zzAnd'
+    },
+    {
+      operation: 'folderView.setView',
+      args: [
+        { kind: 'folder', path: 'a' },
+        { name: 'v', filters: { or: [{ not: 'x', zzNot: 1 }] } }
+      ],
+      unknown: 'view.filters.or.0.zzNot'
+    },
+    {
+      operation: 'folderView.setConfig',
+      args: ['a', { views: [{ name: 'v', filters: { not: { and: ['x'], zzDeep: 1 } } }] }],
+      unknown: 'views.0.filters.not.zzDeep'
+    },
+    {
+      operation: 'folderView.setConfig',
+      args: ['a', { properties: { status: { hidden: true, zzProp: 1 } } }],
+      unknown: 'properties.status.zzProp'
+    },
+    {
+      operation: 'folderView.setConfig',
+      args: ['a', { summaries: { count: { type: 'count', zzSum: 1 } } }],
+      unknown: 'summaries.count.zzSum'
+    },
+    {
+      operation: 'settings.setKeyboardSettings',
+      args: [
+        {
+          overrides: { 'nav.next': { key: 'k', modifiers: { meta: true, zzMod: 1 }, zzBind: 1 } },
+          globalCapture: null
+        }
+      ],
+      unknown: 'overrides.nav.next.zzBind'
+    }
+  ])(
+    'refuses $unknown nested in a record value or a recursive filter',
+    ({ operation, args, unknown }) => {
+      expect(() =>
+        assertDesktopApiArgs({
+          operation: operation as (typeof AgentMcpDesktopOperations)[number],
+          args
+        })
+      ).toThrow(unknown)
+    }
+  )
+
   it('key every input schema by the name of an object parameter', () => {
     const objectParams = new Set(
       params.map((param) => {

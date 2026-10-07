@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { TagsChannels } from '@memry/contracts/ipc-channels'
+import type * as Frontmatter from '../vault/frontmatter'
 
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
@@ -17,6 +18,7 @@ const fileMocks = vi.hoisted(() => ({
   parseNote: vi.fn(),
   serializeNote: vi.fn(),
   serializeParsedNote: vi.fn(),
+  serializeUpdatedNote: vi.fn(),
   atomicWrite: vi.fn(),
   syncMergedTagDefinitions: vi.fn(),
   syncTaggedNote: vi.fn(),
@@ -93,7 +95,8 @@ vi.mock('../vault/notes', () => ({
 vi.mock('../vault/frontmatter', () => ({
   parseNote: fileMocks.parseNote,
   serializeNote: fileMocks.serializeNote,
-  serializeParsedNote: fileMocks.serializeParsedNote
+  serializeParsedNote: fileMocks.serializeParsedNote,
+  serializeUpdatedNote: fileMocks.serializeUpdatedNote
 }))
 
 vi.mock('../vault/file-ops', () => ({
@@ -1010,5 +1013,72 @@ describe('tags-handlers vault-file edge cases', () => {
     expect(result.unpinnedNotes).toEqual([
       expect.objectContaining({ id: 'note-1', wordCount: 0, emoji: '📌', pinnedAt: null })
     ])
+  })
+})
+
+describe('tags-handlers keep legacy frontmatter lines', () => {
+  const LEGACY_LINES = [
+    'id: legacy123',
+    'title: Legacy note',
+    'created: 2024-03-05',
+    'modified: 2024-03-06T10:00:00Z'
+  ]
+  const legacyFile = ['---', ...LEGACY_LINES, 'tags: [old, keep]', '---', 'Body', ''].join('\n')
+
+  beforeEach(async () => {
+    const actual = await vi.importActual<typeof Frontmatter>('../vault/frontmatter')
+    resetIpcMocks()
+    vi.clearAllMocks()
+    resettableStoreMocks().forEach((mock) => mock.mockReset())
+    ;(getIndexDatabase as Mock).mockReturnValue(createDbMock({ allResult: [{ noteId: 'note-1' }] }))
+    ;(requireDatabase as Mock).mockReturnValue(createDbMock())
+    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({ path: 'notes/a.md' })
+    fileMocks.toAbsolutePath.mockImplementation((notePath: string) => `/vault/${notePath}`)
+    fileMocks.readFile.mockResolvedValue(legacyFile)
+    fileMocks.parseNote.mockImplementation(actual.parseNote)
+    fileMocks.serializeParsedNote.mockImplementation(actual.serializeParsedNote)
+    fileMocks.serializeUpdatedNote.mockImplementation(actual.serializeUpdatedNote)
+    fileMocks.atomicWrite.mockResolvedValue(undefined)
+    registerTagsHandlers()
+  })
+
+  function writtenFile(): string {
+    expect(fileMocks.atomicWrite).toHaveBeenCalledTimes(1)
+    return fileMocks.atomicWrite.mock.calls[0][1] as string
+  }
+
+  function expectLegacyLinesKept(file: string, tags: string[] | undefined): void {
+    for (const line of LEGACY_LINES) expect(file.split('\n')).toContain(line)
+    expect(fileMocks.parseNote.getMockImplementation()?.(file, 'a.md').frontmatter.tags).toEqual(
+      tags
+    )
+    expect(file.endsWith('\nBody\n')).toBe(true)
+  }
+
+  it('removeTagFromNote', async () => {
+    await invokeHandler(TagsChannels.invoke.REMOVE_TAG_FROM_NOTE, { noteId: 'note-1', tag: 'old' })
+    expectLegacyLinesKept(writtenFile(), ['keep'])
+  })
+
+  it('renameTag', async () => {
+    ;(notesQueries.renameTag as Mock).mockReturnValue(1)
+    await invokeHandler(TagsChannels.invoke.RENAME_TAG, { oldName: 'old', newName: 'new' })
+    expectLegacyLinesKept(writtenFile(), ['new', 'keep'])
+  })
+
+  it('deleteTag, down to no tags', async () => {
+    fileMocks.readFile.mockResolvedValue(legacyFile.replace('tags: [old, keep]', 'tags: [old]'))
+    ;(notesQueries.deleteTag as Mock).mockReturnValue(1)
+    await invokeHandler(TagsChannels.invoke.DELETE_TAG, 'old')
+    const file = writtenFile()
+    expectLegacyLinesKept(file, undefined)
+    expect(file).not.toContain('tags')
+  })
+
+  it('mergeTag', async () => {
+    ;(tagQueries.mergeTagInNotes as Mock).mockReturnValue({ affected: 1, noteIds: ['note-1'] })
+    ;(tagQueries.mergeTagInTasks as Mock).mockReturnValue({ affected: 0, taskIds: [] })
+    await invokeHandler(TagsChannels.invoke.MERGE_TAG, { source: 'old', target: 'target' })
+    expectLegacyLinesKept(writtenFile(), ['keep', 'target'])
   })
 })

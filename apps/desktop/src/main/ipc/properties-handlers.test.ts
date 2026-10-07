@@ -302,4 +302,53 @@ describe('properties IPC handlers', () => {
       await stopProjectionRuntime({ drain: false })
     }
   })
+
+  it('names a removed property that an earlier write had only queued for the projection', async () => {
+    registerPropertiesHandlers()
+    let indexed: { name: string; value: unknown; type: string }[] = [
+      { name: 'Status', value: 'Draft', type: 'text' }
+    ]
+    mocks.getNoteProperties.mockImplementation(() => indexed)
+    startProjectionRuntime([
+      {
+        name: 'note-properties',
+        handles: () => true,
+        project: async (event) => {
+          await new Promise((resolve) => setTimeout(resolve, 5))
+          const properties = (event as { note: { properties: Record<string, unknown> } }).note
+            .properties
+          indexed = Object.entries(properties).map(([name, value]) => ({
+            name,
+            value,
+            type: 'text'
+          }))
+        },
+        rebuild: () => undefined,
+        reconcile: () => undefined
+      }
+    ])
+    mocks.updateNote.mockImplementation(
+      async (input: { id: string; properties: Record<string, unknown> }) => {
+        publishProjectionEvent({
+          type: 'note.upserted',
+          note: { noteId: input.id, properties: input.properties }
+        } as unknown as ProjectionEvent)
+      }
+    )
+    publishProjectionEvent({
+      type: 'note.upserted',
+      note: { noteId: 'note-1', properties: { Status: 'Draft', Owner: 'Kaan' } }
+    } as unknown as ProjectionEvent)
+
+    try {
+      await expect(
+        invoke(PropertiesChannels.invoke.SET, {
+          entityId: 'note-1',
+          properties: { Status: 'Done' }
+        })
+      ).resolves.toEqual({ success: true, properties: { Status: 'Done' }, removed: ['Owner'] })
+    } finally {
+      await stopProjectionRuntime({ drain: false })
+    }
+  })
 })
