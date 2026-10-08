@@ -409,7 +409,8 @@
       "saveDisclosure": "Could not save disclosure state",
       "resolveWindow": "Could not resolve agent source window",
       "detectCli": "Could not detect agent backends",
-      "loadDisclosure": "Could not load disclosure state"
+      "loadDisclosure": "Could not load disclosure state",
+      "turnFailed": "The reply stopped with an error. Your message is kept, so you can send it again."
     },
     "actions": {
       "copy": "Copy",

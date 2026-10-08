@@ -344,6 +344,9 @@ function partToBackendEvent(part: unknown): BackendEvent | null {
     }
   }
 
+  // streamText reports a failed provider call as a stream part, not a throw.
+  if (typed.type === 'error') return { kind: 'error', message: errorMessage(typed.error) }
+
   if (typed.type === 'finish') return { kind: 'message_stop' }
   return null
 }

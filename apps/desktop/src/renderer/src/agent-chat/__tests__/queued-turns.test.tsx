@@ -475,6 +475,6 @@ describe('queued agent messages', () => {
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
     )
-    expect(document.activeElement).toBe(prompt)
+    await waitFor(() => expect(document.activeElement).toBe(prompt))
   })
 })

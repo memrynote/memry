@@ -79,6 +79,7 @@ export type AgentAction =
   | { type: 'edit_queued_turn'; conversationId: string; id: string; text: string }
   | { type: 'set_queued_turn_editing'; conversationId: string; id: string; editing: boolean }
   | { type: 'remove_queued_turn'; conversationId: string; id: string }
+  | { type: 'hold_queued_turns' }
   | { type: 'start_queued_turn'; conversationId: string; id: string }
   | {
       type: 'settle_queued_turn'
@@ -459,6 +460,24 @@ function retainHydratedTranscripts(
   }
 }
 
+/**
+ * Main stores a failed reply with its error text before it reports
+ * `turn_error`, so that error is already on screen in the transcript.
+ */
+function transcriptShowsError(
+  state: AgentState,
+  event: { conversationId: string; message: string }
+): boolean {
+  const reply = state.messagesByConversation[event.conversationId]?.findLast(
+    (message) => message.content.role === 'assistant'
+  )
+  return (
+    reply?.status === 'error' &&
+    reply.content.role === 'assistant' &&
+    reply.content.data.text === event.message
+  )
+}
+
 function withoutInFlight(state: AgentState, conversationId: string): Record<string, boolean> {
   const { [conversationId]: _removed, ...rest } = state.inFlight
   return rest
@@ -599,6 +618,16 @@ function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
         ...state,
         queuedTurns: updateQueue(state, action.conversationId, (queue) =>
           patchQueuedTurn(queue, action.id, (turn) => (turn.status === 'sending' ? turn : null))
+        )
+      }
+    case 'hold_queued_turns':
+      return {
+        ...state,
+        queuedTurns: Object.fromEntries(
+          Object.entries(state.queuedTurns).map(([conversationId, queue]) => [
+            conversationId,
+            queue.map((turn) => (turn.status === 'failed' ? turn : { ...turn, status: 'failed' }))
+          ])
         )
       }
     case 'start_queued_turn':
@@ -754,7 +783,10 @@ function reduceAgentState(state: AgentState, action: AgentAction): AgentState {
         return {
           ...state,
           inFlight: withoutInFlight(state, event.conversationId),
-          error: event.kind === 'turn_error' ? event.message : state.error,
+          error:
+            event.kind === 'turn_error' && !transcriptShowsError(state, event)
+              ? event.message
+              : state.error,
           queuedTurns: updateQueue(state, event.conversationId, (queue) =>
             queue[0]?.status === 'sending'
               ? [
