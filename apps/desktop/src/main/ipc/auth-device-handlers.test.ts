@@ -880,6 +880,54 @@ describe('auth-device handlers', () => {
       })
     })
 
+    it('keeps the local devices while the keychain read throws, then recovers', async () => {
+      registerAuthDeviceHandlers()
+      mockStoreGet.mockReturnValue({ email: 'user@example.com' })
+      mockSelectRows = [
+        {
+          id: 'dev-1',
+          name: 'Kaan MBP',
+          platform: 'macos',
+          linkedAt: new Date('2026-05-01T10:00:00.000Z'),
+          lastSyncAt: null,
+          isCurrentDevice: true
+        }
+      ]
+      mockGetValidAccessToken.mockRejectedValueOnce(
+        new Error('Failed to retrieve key from keychain (access-token): could not be read')
+      )
+
+      await expect(invokeHandler(SYNC_CHANNELS.GET_DEVICES)).resolves.toEqual({
+        email: 'user@example.com',
+        needsRecoveryConfirmation: false,
+        devices: [
+          {
+            id: 'dev-1',
+            name: 'Kaan MBP',
+            platform: 'macos',
+            linkedAt: new Date('2026-05-01T10:00:00.000Z').getTime(),
+            lastSyncAt: undefined,
+            isCurrentDevice: true
+          }
+        ]
+      })
+
+      mockGetFromServer.mockResolvedValueOnce({
+        devices: [
+          { id: 'dev-1', name: 'Kaan MBP', platform: 'macos', createdAt: 1777629600 },
+          { id: 'dev-2', name: 'Linux box', platform: 'linux', createdAt: 1777802400 }
+        ]
+      })
+
+      const recovered = (await invokeHandler(SYNC_CHANNELS.GET_DEVICES)) as {
+        devices: Array<{ id: string; isCurrentDevice: boolean }>
+      }
+      expect(recovered.devices.map((d) => [d.id, d.isCurrentDevice])).toEqual([
+        ['dev-1', true],
+        ['dev-2', false]
+      ])
+    })
+
     it('refreshes active devices from the sync server when authenticated', async () => {
       registerAuthDeviceHandlers()
       mockStoreGet.mockReturnValueOnce({ email: 'user@example.com' })

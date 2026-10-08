@@ -526,10 +526,11 @@ export function registerAuthDeviceHandlers(): void {
     const currentDeviceId = hasVaultDb
       ? rows.find((device) => device.isCurrentDevice)?.id
       : storedDeviceId
-    const accessToken = await getValidAccessToken()
-
-    if (accessToken) {
-      try {
+    // A keychain read that throws (locked keychain) falls back to the local
+    // cache like an unreachable server; rejecting would show a signed-out user.
+    try {
+      const accessToken = await getValidAccessToken()
+      if (accessToken) {
         const remoteResponse = await getFromServer<unknown>('/devices', accessToken)
         const remoteDevices = parseRemoteDevices(remoteResponse)
         if (remoteDevices) {
@@ -548,9 +549,9 @@ export function registerAuthDeviceHandlers(): void {
         }
 
         logger.warn('Invalid remote device list response; using local device cache')
-      } catch (err) {
-        logger.warn('Failed to refresh remote device list; using local device cache', err)
       }
+    } catch (err) {
+      logger.warn('Failed to refresh remote device list; using local device cache', err)
     }
 
     const devices = rows.map(mapLocalDevice)
