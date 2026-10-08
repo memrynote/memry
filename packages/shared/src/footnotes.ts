@@ -29,8 +29,8 @@ export interface Footnotes {
   definitions: FootnoteDefinition[]
 }
 
-const DEFINITION_LINE = /^( {0,3})\[\^([^\s\]]+)\]:[ \t]*/
-const REFERENCE = /\[\^([^\s\]]+)\]/g
+const DEFINITION_LINE = /^( {0,3})\[\^([^\s[\]]+)\]:[ \t]*/
+const REFERENCE = /\[\^([^\s[\]]+)\]/g
 const CONTINUATION_INDENT = /^(?: {1,4}|\t)/
 const BLOCK_INDENT = /^(?: {4}|\t)/
 

@@ -32,7 +32,7 @@ export interface FootnoteHover {
 export const FOOTNOTE_PLUGIN_KEY = new PluginKey<DocFootnotes>('footnotes')
 
 const OBJECT_REPLACEMENT = '\uFFFC'
-const DEFINITION_MARKER = /^\[\^[^\s\]]+\]:[ \t]*/
+const DEFINITION_MARKER = /^\[\^[^\s[\]]+\]:[ \t]*/
 
 /** What an inline node reads as in the hover card: a wiki link as its label. */
 function leafText(node: ProseMirrorNode): string {
