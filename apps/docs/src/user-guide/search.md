@@ -103,7 +103,9 @@ Agents read the same text through `vault_read_note` (see [Agent MCP](/user-guide
 An HTML block (an `.html` file attached to a note, or one an agent adds with `vault_add_html_artifact`) is searchable by the text it shows. A match brings up the note that embeds the block.
 
 - Only the visible text counts. Scripts, styles and the tags themselves are left out, and the block's scripts never run while it is read.
-- A `[[wiki link]]` written in the block's text links the note like one in the note's body: it shows up in the graph and in the target note's backlinks.
+- A `[[wiki link]]` written in the block's text links the note like one in the note's body: it shows up in the graph, in the target note's backlinks and in `memrynote graph`. Link syntax inside code (`<code>`, `<pre>`, `<kbd>` or `<samp>`) is not a link, the same as inside code in a note's markdown. Its text is still searchable.
+- Renaming a note does not update links to it inside HTML blocks. The block's file keeps the old title, so the link stops reaching the renamed note once the note that embeds the block is read again. Links to it in note bodies are updated as usual.
+- `memrynote graph` reads the block text the desktop app stored for the vault, so it sees these links only after the app has opened the vault and read the block.
 - The block's file is only read, never changed, so it keeps its scripts, styles and layout.
 - A block file larger than 2 MB is not read for search. The block still shows in the note.
 - A block whose file changes is read again when the note changes, when the file arrives through sync, and every time the vault opens. Removing the block from the note removes its text and links from search, the graph and backlinks.

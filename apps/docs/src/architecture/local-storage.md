@@ -281,7 +281,9 @@ keeps its notes for the next pass. An attachment the note no longer embeds loses
 though its file stays on disk. A PDF page with a text layer is read with pdfjs-dist; a page
 without one, and every image, goes through tesseract.js. An HTML file is parsed with jsdom, which
 never runs its scripts; the text outside `script`, `style`, `noscript`, `template` and `head` is
-kept, with a paragraph break at each block element. The parse runs in the main process and costs
+kept, with a paragraph break at each block element. `code`, `kbd` and `samp` are written as
+markdown code spans and `pre` as a fenced block, so the link scan skips link syntax in them as it
+skips code in a note's markdown. The parse runs in the main process and costs
 over 100 times the file in memory, so a file over 2 MB (`HTML_TEXT_MAX_BYTES`, four times the
 agent tool's 512K-character cap) is never parsed: its job fails with one `unreadable` part and is
 not retried while its bytes stay the same. Each page is stored as it finishes, and
@@ -294,7 +296,11 @@ projector reads `[[wiki links]]` out of the note's `html` rows and stores them i
 with the links of the body, on every `note.upserted` and, re-reading the note file, on every
 `note.text-extracted`. When that re-read changes the links, it sends `notes:updated` with empty
 `changes` for the note and for every note that gained or lost a backlink, so open links panels
-refresh. A large-file note keeps no links, as before.
+refresh. A large-file note keeps no links, as before. The AF-006 code-link reindex writes a note's
+links through the same `setMarkdownNoteLinks`, so it keeps the HTML block links too. The CLI graph
+reads the same `html` rows (`listHtmlBlockText` in `@memry/app-core`) and the same
+`extractWikiLinks` (`@memry/shared/wiki-target`). A rename never rewrites a block's file: the file
+is a synced attachment that Memry only reads.
 
 Two helper processes do the heavy work, both at low OS priority and closed after a minute idle:
 
