@@ -52,6 +52,7 @@ impl VaultSync {
 
         let session = attachment_upload::initiate(
             &self.session.http(),
+            &self.vault_id,
             &attachment_id,
             &filename,
             bytes.len() as u64,
@@ -65,14 +66,24 @@ impl VaultSync {
         let direct = match self.put_all(&session, &chunks).await {
             Ok(direct) => direct,
             Err(error) => {
-                let _ = attachment_upload::cancel(&self.session.http(), &session.session_id).await;
+                let _ = attachment_upload::cancel(
+                    &self.session.http(),
+                    &self.vault_id,
+                    &session.session_id,
+                )
+                .await;
                 return Err(error);
             }
         };
 
-        attachment_upload::complete(&self.session.http(), &session.session_id, &direct)
-            .await
-            .map_err(attachment_error)?;
+        attachment_upload::complete(
+            &self.session.http(),
+            &self.vault_id,
+            &session.session_id,
+            &direct,
+        )
+        .await
+        .map_err(attachment_error)?;
 
         let manifest = attachment_upload::build_manifest(
             &attachment_id,
@@ -97,9 +108,14 @@ impl VaultSync {
         .map_err(|error| SyncError::AttachmentCorrupt {
             what: error.to_string(),
         })?;
-        attachment_upload::put_manifest(&self.session.http(), &attachment_id, &envelope)
-            .await
-            .map_err(attachment_error)?;
+        attachment_upload::put_manifest(
+            &self.session.http(),
+            &self.vault_id,
+            &attachment_id,
+            &envelope,
+        )
+        .await
+        .map_err(attachment_error)?;
 
         // Local cache first, then the reference: the row is what a placeholder
         // reads, and the push is what tells every other device.
@@ -183,7 +199,7 @@ impl VaultSync {
                 .iter()
                 .map(|chunk| chunk.encrypted_hash.clone())
                 .collect();
-            attachment_upload::dereference(&self.session.http(), &hashes)
+            attachment_upload::dereference(&self.session.http(), &self.vault_id, &hashes)
                 .await
                 .map_err(attachment_error)?;
         }
@@ -210,9 +226,14 @@ impl VaultSync {
                 direct.push(attachment_upload::DirectChunk::of(chunk));
                 continue;
             }
-            attachment_upload::put_chunk(&self.session.http(), &session.session_id, chunk)
-                .await
-                .map_err(attachment_error)?;
+            attachment_upload::put_chunk(
+                &self.session.http(),
+                &self.vault_id,
+                &session.session_id,
+                chunk,
+            )
+            .await
+            .map_err(attachment_error)?;
         }
         Ok(direct)
     }
@@ -232,9 +253,10 @@ impl VaultSync {
             .iter()
             .map(|chunk| chunk.encrypted_hash.clone())
             .collect();
-        let presigned = protocol_attachments::presign_all(&self.session.http(), &hashes)
-            .await
-            .map_err(attachment_error)?;
+        let presigned =
+            protocol_attachments::presign_all(&self.session.http(), &self.vault_id, &hashes)
+                .await
+                .map_err(attachment_error)?;
 
         let mut decoded: Vec<(u32, Vec<u8>)> = Vec::with_capacity(manifest.chunks.len());
         for chunk in &manifest.chunks {
@@ -249,6 +271,7 @@ impl VaultSync {
                     .map_err(attachment_error)?,
                 None => protocol_attachments::fetch_chunk_proxied(
                     &self.session.http(),
+                    &self.vault_id,
                     &chunk.encrypted_hash,
                 )
                 .await

@@ -29,6 +29,8 @@ use support::{hex_field, str_field, vector_file};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 
+const VAULT: &str = "vault-a";
+
 fn client(transport: Arc<FakeTransport>) -> HttpClient {
     HttpClient::new(
         transport,
@@ -82,7 +84,7 @@ async fn presign_unavailable_is_permanent_and_is_not_retried() {
     )]);
     let http = client(transport.clone());
 
-    let answer = presign_batch(&http, &["aa".repeat(32)])
+    let answer = presign_batch(&http, VAULT, &["aa".repeat(32)])
         .await
         .expect("a typed refusal is not an error");
 
@@ -117,7 +119,7 @@ async fn any_other_presign_failure_is_still_an_error() {
     ]);
     let http = client(transport.clone());
 
-    let error = presign_batch(&http, &["aa".repeat(32)])
+    let error = presign_batch(&http, VAULT, &["aa".repeat(32)])
         .await
         .expect_err("a generic failure is an error");
     assert!(matches!(error, AttachmentError::Api(_)), "got {error:?}");
@@ -142,7 +144,7 @@ async fn a_long_hash_list_is_split_at_the_contract_cap() {
     ]);
     let http = client(transport.clone());
 
-    let batch = presign_all(&http, &hashes)
+    let batch = presign_all(&http, VAULT, &hashes)
         .await
         .expect("presign")
         .expect("this deployment presigns");
@@ -163,7 +165,7 @@ async fn an_unresolvable_signer_is_a_hard_failure() {
     let file = vector_file("attachment-manifest");
     let vault_key = hex_field(&file["meta"], "vaultKeyHex");
 
-    let error = fetch_manifest(&http, "att-single", &vault_key, &KnowsNobody)
+    let error = fetch_manifest(&http, VAULT, "att-single", &vault_key, &KnowsNobody)
         .await
         .expect_err("an unknown signer must fail");
 
@@ -189,7 +191,7 @@ async fn a_resolvable_signer_opens_the_manifest() {
     let transport = FakeTransport::new(vec![response(200, &manifest_body())]);
     let http = client(transport);
 
-    let (manifest, file_key) = fetch_manifest(&http, "att-single", &vault_key, &signers)
+    let (manifest, file_key) = fetch_manifest(&http, VAULT, "att-single", &vault_key, &signers)
         .await
         .expect("the manifest opens");
 
@@ -218,7 +220,7 @@ async fn a_manifest_signed_by_a_device_whose_key_does_not_match_is_refused() {
     let transport = FakeTransport::new(vec![response(200, &manifest_body())]);
     let http = client(transport);
 
-    let error = fetch_manifest(&http, "att-single", &vault_key, &signers)
+    let error = fetch_manifest(&http, VAULT, "att-single", &vault_key, &signers)
         .await
         .expect_err("a wrong key must fail");
     assert!(
@@ -238,7 +240,7 @@ async fn a_missing_attachment_is_an_ordinary_api_error() {
     let file = vector_file("attachment-manifest");
     let vault_key = hex_field(&file["meta"], "vaultKeyHex");
 
-    let error = fetch_manifest(&http, "nope", &vault_key, &KnowsNobody)
+    let error = fetch_manifest(&http, VAULT, "nope", &vault_key, &KnowsNobody)
         .await
         .expect_err("a missing manifest fails");
     assert!(matches!(

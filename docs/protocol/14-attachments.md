@@ -56,6 +56,15 @@ so a client never submits key material** (`packages/contracts/src/blob-api.ts:5-
 The strict charset also keeps a hash from ever becoming a path fragment in a
 signed URL.
 
+**Every §14.5 route is vault-scoped, so a client MUST send `X-Memry-Vault-Id`
+on each of them** (chapter 05 §5.2). The server keys chunks and manifests under
+the vault it resolves (`apps/sync-server/src/services/blob.ts:48-52`), and
+without the header it falls back to the device's registration vault
+(`apps/sync-server/src/middleware/auth.ts:53`), which is `default` for a client
+that registered without one. A writer that omits the header stores bytes that
+readers on the selected vault never find (#2634). A presigned R2 URL is not a
+§14.5 route and carries no vault header.
+
 **The plaintext chunk hash is a separate value** used for the integrity check
 after decrypt (`apps/desktop/src/main/sync/attachments.ts:461`, checked at
 `:812`; declared at
