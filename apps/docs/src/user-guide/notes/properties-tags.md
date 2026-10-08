@@ -47,6 +47,9 @@ Manage tags globally from [Settings → Tags](/user-guide/settings#tags), or ope
 page and use its header menu to rename, recolor, or delete it directly. Renames apply across
 every note instantly.
 
+A rename or delete changes the `tags:` list of each note. A `#tag` written in a note's text
+stays as you wrote it, so that note keeps appearing under the old tag until you edit the text.
+
 Renaming or deleting a tag currently updates your **notes** only — tasks keep the original
 tag, so a task tagged `MIT` stays `MIT` even after you rename that tag. **Merging** two tags
 does carry across tasks. To retag a task directly, edit it in the task detail drawer.
