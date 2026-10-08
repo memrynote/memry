@@ -19,15 +19,18 @@ const port = vi.hoisted(() => {
     rejectionListeners: process.listeners('unhandledRejection')
   }
   Object.assign(process, { parentPort: fake })
-  process.env.MEMRY_OCR_LANG_PATH = '/app/tessdata'
+  process.env.MEMRY_OCR_LANGUAGES = JSON.stringify([
+    { code: 'eng', path: '/app/tessdata/eng.traineddata.gz' },
+    { code: 'deu', path: '/data/ocr-languages/deu.abc.traineddata.gz' }
+  ])
   return fake
 })
 
-const reads = vi.hoisted(() => ({ langPath: undefined as string | undefined }))
+const reads = vi.hoisted(() => ({ languages: undefined as unknown }))
 
 vi.mock('./ocr-reader', () => ({
-  createOcrReader: (langPath: string | undefined) => {
-    reads.langPath = langPath
+  createOcrReader: (languages: unknown) => {
+    reads.languages = languages
     return {
       read: async (source: OcrImageSource) => {
         if (source.kind === 'file' && source.path.endsWith('.txt')) {
@@ -67,9 +70,12 @@ describe('OCR worker', () => {
     Reflect.deleteProperty(process, 'parentPort')
   })
 
-  it('says it is ready, with the language data path it was started with', () => {
+  it('says it is ready, with the language files it was started with', () => {
     expect(port.posted[0]).toEqual({ type: 'ready' })
-    expect(reads.langPath).toBe('/app/tessdata')
+    expect(reads.languages).toEqual([
+      { code: 'eng', path: '/app/tessdata/eng.traineddata.gz' },
+      { code: 'deu', path: '/data/ocr-languages/deu.abc.traineddata.gz' }
+    ])
   })
 
   it('answers a request with the text read, or with the reason it failed', async () => {

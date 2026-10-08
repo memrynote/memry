@@ -453,6 +453,85 @@ describe('FileTextRunner', () => {
     expect(jobOf(harness.db, 'pdf-1')?.status).toBe('done')
   })
 
+  it('reads OCR text again when a language is added, and keeps the old text until then', async () => {
+    seedFile(harness, 'pdf-1', 'scan.pdf', 'pdf')
+    seedFile(harness, 'pdf-2', 'typed.pdf', 'pdf')
+    seedFile(harness, 'img-1', 'sign.png', 'image')
+    harness.pages = [{ layer: 'cover' }, { scanned: 'Strabenbahn' }]
+    harness.imageText = 'GroBe'
+    let languages = ['eng']
+    const opened: string[] = []
+    let ocrGate: Promise<void> = Promise.resolve()
+    let ocrCalls = 0
+    const runner = start({
+      ocrLanguages: () => languages,
+      openPdf: async (absolutePath) => {
+        opened.push(path.basename(absolutePath))
+        return openFakePdf(harness)
+      },
+      recognize: async (source) => {
+        ocrCalls++
+        await ocrGate
+        if (source.kind === 'file') return harness.imageText
+        return (harness.pages[source.data[0] - 1] as { scanned: string }).scanned
+      }
+    })
+    await settled(harness.db, 'pdf-1', 'done')
+    await settled(harness.db, 'pdf-2', 'done')
+    await settled(harness.db, 'img-1', 'done')
+    opened.length = 0
+    const callsBefore = ocrCalls
+
+    let openGate!: () => void
+    ocrGate = new Promise((resolve) => (openGate = resolve))
+    harness.pages = [{ layer: 'cover' }, { scanned: 'Straßenbahn' }]
+    harness.imageText = 'Größe'
+    languages = ['eng', 'deu']
+    runner.languagesChanged()
+    await vi.waitFor(() => expect(ocrCalls).toBeGreaterThan(callsBefore))
+    expect(getExtractedText(harness.db, 'pdf-1')).toBe('cover\n\nStrabenbahn')
+    expect(getExtractedText(harness.db, 'img-1')).toBe('GroBe')
+    openGate()
+
+    await vi.waitFor(() =>
+      expect(getExtractedText(harness.db, 'pdf-1')).toBe('cover\n\nStraßenbahn')
+    )
+    await vi.waitFor(() => expect(getExtractedText(harness.db, 'img-1')).toBe('Größe'))
+    await settled(harness.db, 'pdf-1', 'done')
+    expect(opened).not.toContain('typed.pdf')
+    expect(jobOf(harness.db, 'pdf-1')?.ocrLanguages).toBe('eng+deu')
+
+    opened.length = 0
+    languages = ['eng']
+    runner.languagesChanged()
+    seedFile(harness, 'img-2', 'later.png', 'image')
+    runner.noteChanged('img-2')
+    await settled(harness.db, 'img-2', 'done')
+    expect(opened).toEqual([])
+    expect(jobOf(harness.db, 'pdf-1')?.status).toBe('done')
+  })
+
+  it('reads OCR text an older build stored again once a language beyond English is chosen', async () => {
+    seedFile(harness, 'img-1', 'sign.png', 'image')
+    harness.imageText = 'GroBe'
+    const first = start()
+    await settled(harness.db, 'img-1', 'done')
+    await first.stop()
+    harness.db.run(sql`UPDATE file_text_jobs SET ocr_languages = NULL`)
+
+    harness.imageText = 'still English'
+    const english = start()
+    seedFile(harness, 'img-2', 'later.png', 'image')
+    english.noteChanged('img-2')
+    await settled(harness.db, 'img-2', 'done')
+    expect(getExtractedText(harness.db, 'img-1')).toBe('GroBe')
+    await english.stop()
+
+    harness.imageText = 'Größe'
+    start({ ocrLanguages: () => ['eng', 'deu'] })
+    await vi.waitFor(() => expect(getExtractedText(harness.db, 'img-1')).toBe('Größe'))
+  })
+
   it('re-reads every unreadable page of a retried PDF, including one before a good page', async () => {
     seedFile(harness, 'pdf-1', 'scan.pdf', 'pdf')
     harness.pages = [
