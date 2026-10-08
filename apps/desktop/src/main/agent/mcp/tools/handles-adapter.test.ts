@@ -708,7 +708,8 @@ describe('createVaultServiceHandles', () => {
         content: 'Current',
         tags: [],
         path: 'work/alpha.md',
-        frontmatter: {}
+        frontmatter: {},
+        properties: {}
       })
       mocks.updateNoteCommand.mockResolvedValue({ id: 'note-1', tags: [] })
     })
@@ -729,7 +730,7 @@ describe('createVaultServiceHandles', () => {
 
       const failure = updateNote('x')
 
-      await expect(failure).rejects.toThrow(/could not be read before the update \(EBUSY\)/)
+      await expect(failure).rejects.toThrow(/Note note-1 could not be read \(EBUSY\)/)
       await expect(failure).rejects.not.toThrow(/\/vault\//)
       expect(mocks.updateNoteCommand).not.toHaveBeenCalled()
     })

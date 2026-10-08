@@ -46,7 +46,7 @@ import { createdTasksReply, withAgentChecklists, writeAgentBody } from './agent-
 import { createdFoldersReply, foldersToCreate } from './created-folders'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { writeAndReadBack } from './desktop-api-readback'
-import { readNoteBeforeUpdate } from './note-pre-read'
+import { readNoteRetried } from './note-read'
 import { noteFileFrontmatter, noteIcon, readStoredNote, readStoredStatus } from './stored-records'
 import { agentDesktopReply } from './desktop-api-reply'
 import { assertNoteWritable } from '../../../vault-locks/registry'
@@ -267,7 +267,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           )
         }
 
-        const note = await readNoteBeforeUpdate(input.id)
+        const note = await readNoteRetried(input.id)
         if (!note) {
           throw new Error(`Note not found: ${input.id}`)
         }

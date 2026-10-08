@@ -7,6 +7,7 @@ import { readJournalEntry, readJournalFile } from '../../../vault/journal'
 import { getNoteById } from '../../../vault/notes'
 import { fileSpelledProperties } from '../../../vault/yaml-dates'
 import type { StoredJournalEntry, StoredNote, StoredStatus } from './handles'
+import { readNoteRetried } from './note-read'
 
 export function readStoredStatus(dataDb: DataDb, id: string): StoredStatus | null {
   return getStatusById(dataDb, id) ?? null
@@ -35,7 +36,7 @@ export async function readStoredNote(
   folderPathOf: (notePath: string) => string | null
 ): Promise<StoredNote | null> {
   const fileType = getNoteCacheById(indexDb, id)?.fileType ?? 'markdown'
-  const note = fileType === 'markdown' ? await getNoteById(id) : null
+  const note = fileType === 'markdown' ? await readNoteRetried(id) : null
   if (!note) return null
   const icon = noteIcon(note)
   return {
