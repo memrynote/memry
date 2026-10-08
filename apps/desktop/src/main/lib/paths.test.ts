@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import fs from 'fs'
+import os from 'os'
 import path from 'path'
 import {
   sanitizePath,
@@ -12,7 +14,8 @@ import {
   ensureMarkdownExtension,
   noteRelativeRef,
   toMemryFileUrl,
-  fromMemryFileUrl
+  fromMemryFileUrl,
+  resolveVaultFile
 } from './paths'
 
 describe('paths utils', () => {
@@ -138,5 +141,23 @@ describe('noteRelativeRef', () => {
     expect(noteRelativeRef('notes\\work\\Trip.md', 'attachments\\n\\x.png')).toBe(
       '../../attachments/n/x.png'
     )
+  })
+})
+
+describe('resolveVaultFile', () => {
+  it('keeps a file whose name starts with two dots inside the vault', async () => {
+    const vault = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-paths-')))
+    try {
+      fs.writeFileSync(path.join(vault, '..draft.png'), 'x')
+
+      expect(await resolveVaultFile(vault, '..draft.png')).toEqual({
+        kind: 'inside',
+        path: path.join(vault, '..draft.png')
+      })
+      expect(await resolveVaultFile(vault, '../escape.png')).toEqual({ kind: 'outside' })
+      expect(await resolveVaultFile(vault, 'gone.png')).toEqual({ kind: 'missing' })
+    } finally {
+      fs.rmSync(vault, { recursive: true, force: true })
+    }
   })
 })

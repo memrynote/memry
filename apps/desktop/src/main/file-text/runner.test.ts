@@ -160,6 +160,75 @@ describe('FileTextRunner', () => {
     expect(jobOf(harness.db, 'img-1')?.pageCount).toBe(1)
   })
 
+  it('never reads a file that links outside the vault', async () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-file-text-outside-'))
+    fs.writeFileSync(path.join(outside, 'private.png'), 'secret')
+    seedFile(harness, 'img-1', 'photos/whiteboard.png', 'image')
+    fs.rmSync(path.join(vaultDir, 'photos/whiteboard.png'))
+    fs.symlinkSync(path.join(outside, 'private.png'), path.join(vaultDir, 'photos/whiteboard.png'))
+    const recognize = vi.fn(async () => 'secret text')
+
+    try {
+      start({ recognize })
+      await settled(harness.db, 'img-1', 'failed')
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true })
+    }
+
+    expect(recognize).not.toHaveBeenCalled()
+    expect(pagesOf(harness.db, 'img-1')).toEqual([])
+    expect(jobOf(harness.db, 'img-1')?.error).toBe('photos/whiteboard.png points outside the vault')
+  })
+
+  it('drops text read before a file was swapped for a link outside the vault', async () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-file-text-outside-'))
+    seedFile(harness, 'img-1', 'photos/whiteboard.png', 'image')
+    const file = path.join(vaultDir, 'photos/whiteboard.png')
+    const target = path.join(outside, 'private.png')
+    fs.copyFileSync(file, target)
+    fs.utimesSync(file, 1_700_000_000, 1_700_000_000)
+    fs.utimesSync(target, 1_700_000_000, 1_700_000_000)
+    harness.imageText = 'OUTSIDE SECRET'
+
+    try {
+      const first = start()
+      await settled(harness.db, 'img-1', 'done')
+      await first.stop()
+      fs.rmSync(file)
+      fs.symlinkSync(target, file)
+
+      start()
+      await settled(harness.db, 'img-1', 'failed')
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true })
+    }
+
+    expect(pagesOf(harness.db, 'img-1')).toEqual([])
+  })
+
+  it('opens a file through the vault path it was given when the vault root is a link', async () => {
+    const vaultLink = `${vaultDir}-link`
+    fs.symlinkSync(vaultDir, vaultLink)
+    seedFile(harness, 'pdf-1', 'scans/logbook.pdf', 'pdf')
+    harness.pages = [{ layer: 'page one' }]
+    const opened: string[] = []
+
+    try {
+      start({
+        vaultPath: vaultLink,
+        openPdf: async (absolutePath) => {
+          opened.push(absolutePath)
+          return openFakePdf(harness)
+        }
+      })
+      await settled(harness.db, 'pdf-1', 'done')
+    } finally {
+      fs.rmSync(vaultLink, { force: true })
+    }
+
+    expect(opened).toEqual([path.join(vaultLink, 'scans/logbook.pdf')])
+  })
+
   it('leaves audio files alone', async () => {
     seedFile(harness, 'audio-1', 'memo.mp3', 'audio')
     seedFile(harness, 'img-1', 'photo.png', 'image')

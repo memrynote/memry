@@ -1,3 +1,4 @@
+import { lstat, realpath } from 'fs/promises'
 import path from 'path'
 
 const CONTROL_FILENAME_CHARS = `${String.fromCharCode(0)}-${String.fromCharCode(31)}`
@@ -116,6 +117,38 @@ export function safeJoin(basePath: string, ...segments: string[]): string | null
   }
 
   return resolved
+}
+
+export type VaultFileResolution =
+  { kind: 'inside'; path: string } | { kind: 'outside' } | { kind: 'missing' }
+
+/**
+ * Where a vault-relative path really points once symlinks are followed. A link
+ * whose target leaves the real vault root, or whose target is gone, is
+ * `outside`: a reader refuses it rather than follow it. `path` is the real
+ * target re-rooted at `vaultPath`, so the file checked is the file read and
+ * the path still sits under the vault path the memry-file protocol allows.
+ */
+export async function resolveVaultFile(
+  vaultPath: string,
+  relativePath: string
+): Promise<VaultFileResolution> {
+  const joined = safeJoin(vaultPath, relativePath)
+  if (joined === null) return { kind: 'outside' }
+  let real: string
+  try {
+    real = await realpath(joined)
+  } catch {
+    const dangling = await lstat(joined).then(
+      (stats) => stats.isSymbolicLink(),
+      () => false
+    )
+    return dangling ? { kind: 'outside' } : { kind: 'missing' }
+  }
+  const relative = path.relative(await realpath(vaultPath), real)
+  return relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)
+    ? { kind: 'outside' }
+    : { kind: 'inside', path: path.join(path.resolve(vaultPath), relative) }
 }
 
 /**
