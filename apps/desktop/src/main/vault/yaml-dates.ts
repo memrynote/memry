@@ -23,6 +23,9 @@ export function spellYamlDate(date: Date): string {
 export function parseYamlDate(value: string): Date | null {
   const text = INDEX_DATE.test(value) ? value.slice(1, -1) : value
   if (!YAML_DATE.test(text)) return null
+  const [year, month, day] = text.slice(0, 10).split('-').map(Number)
+  const calendarDay = new Date(Date.UTC(year, month - 1, day))
+  if (calendarDay.getUTCMonth() !== month - 1 || calendarDay.getUTCDate() !== day) return null
   const date = new Date(text)
   return Number.isNaN(date.getTime()) ? null : date
 }
