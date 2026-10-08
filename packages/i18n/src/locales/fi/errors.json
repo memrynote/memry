@@ -316,5 +316,9 @@
     "invalidUrl": "Tämä ei ole verkkolinkki. Liitä kuvan http- tai https-osoite.",
     "downloadFailed": "Kuvan lataaminen epäonnistui. Tarkista linkki ja yritä uudelleen.",
     "unsupportedUrl": "Linkki ei osoita PNG-, JPG-, GIF-, WEBP- tai SVG-kuvaan."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Omistaja on asettanut tämän muistiinpanon vain luku -tilaan.",
+    "folderReadOnly": "Omistaja on asettanut tämän kansion vain luku -tilaan."
   }
 }

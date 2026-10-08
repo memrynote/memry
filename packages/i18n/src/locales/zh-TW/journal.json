@@ -30,7 +30,9 @@
     "copyUnsavedContent": "將尚未儲存的內容複製到剪貼簿",
     "addBookmark": "加入書籤",
     "removeBookmark": "移除書籤",
-    "deleteEntry": "刪除日誌"
+    "deleteEntry": "刪除日誌",
+    "lockEntry": "鎖定日誌",
+    "unlockEntry": "解除鎖定日誌"
   },
   "editor": {
     "placeholder": {

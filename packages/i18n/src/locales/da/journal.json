@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Kopiér ikke-gemt indhold til udklipsholderen",
     "addBookmark": "Tilføj bogmærke",
     "removeBookmark": "Fjern bogmærke",
-    "deleteEntry": "Slet indlæg"
+    "deleteEntry": "Slet indlæg",
+    "lockEntry": "Lås indlæg",
+    "unlockEntry": "Lås indlæg op"
   },
   "editor": {
     "placeholder": {

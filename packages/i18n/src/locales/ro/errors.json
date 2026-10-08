@@ -316,5 +316,9 @@
     "invalidUrl": "Acesta nu este un link web. Lipiți o adresă de imagine http sau https.",
     "downloadFailed": "Nu s-a putut descărca imaginea. Verificați linkul și încercați din nou.",
     "unsupportedUrl": "Linkul nu duce la o imagine PNG, JPG, GIF, WEBP sau SVG."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Proprietarul a făcut această notă doar pentru citire.",
+    "folderReadOnly": "Proprietarul a făcut acest dosar doar pentru citire."
   }
 }

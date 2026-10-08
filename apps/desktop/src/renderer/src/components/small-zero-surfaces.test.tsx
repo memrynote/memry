@@ -310,4 +310,41 @@ describe('small zero-line renderer surfaces', () => {
     expect(screen.queryByRole('button', { name: /versionHistory/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /deleteEntry/ })).toBeNull()
   })
+
+  it('offers Lock or Unlock for the entry as the page asks, and neither when it is locked above', () => {
+    const handlers = {
+      onPrevious: vi.fn(),
+      onNext: vi.fn(),
+      onToggleFullWidth: vi.fn(),
+      onBookmarkToggle: vi.fn(),
+      onVersionHistory: vi.fn(),
+      onExport: vi.fn(),
+      onOpenSettings: vi.fn(),
+      onMenuAction: vi.fn()
+    }
+    const header = (lockAction?: 'lock' | 'unlock'): React.JSX.Element => (
+      <JournalHeaderActions
+        viewState={{ type: 'day', date: '2026-05-10' }}
+        isBookmarked={false}
+        isFullWidth={false}
+        hasEntry={true}
+        journalDate="2026-05-10"
+        lockAction={lockAction}
+        {...handlers}
+      />
+    )
+
+    const { rerender } = render(header('lock'))
+    fireEvent.click(screen.getByRole('button', { name: 'lockEntry' }))
+    expect(screen.queryByRole('button', { name: 'unlockEntry' })).toBeNull()
+
+    rerender(header('unlock'))
+    fireEvent.click(screen.getByRole('button', { name: 'unlockEntry' }))
+    expect(screen.queryByRole('button', { name: 'lockEntry' })).toBeNull()
+    expect(handlers.onMenuAction.mock.calls).toEqual([['lock'], ['lock']])
+
+    rerender(header())
+    expect(screen.queryByRole('button', { name: 'lockEntry' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'unlockEntry' })).toBeNull()
+  })
 })

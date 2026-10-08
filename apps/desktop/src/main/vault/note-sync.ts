@@ -10,13 +10,13 @@ import {
   extractTags,
   extractInlineTagsFromMarkdown,
   extractProperties,
-  extractWikiLinks,
   calculateWordCount,
   generateContentHash,
   createSnippet,
   inferPropertyType,
   resolvePropertyType
 } from './frontmatter'
+import { extractWikiLinks } from '@memry/shared/wiki-target'
 import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, type IndexDb } from '../database'
 import type { FileType } from '@memry/shared/file-types'

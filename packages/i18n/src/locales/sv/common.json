@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Det gick inte att förhandsgranska ändringen",
       "description": "Agenten vill uppdatera {title}. Granska ändringen innan du tillämpar den.",
+      "descriptionCreate": "Agenten vill skapa {title}. Granska ändringen innan du tillämpar den.",
+      "descriptionDelete": "Agenten vill radera {title}. Granska ändringen innan du tillämpar den.",
       "fallbackTitle": "det här objektet",
       "current": "Nuvarande",
       "candidate": "Förslag",

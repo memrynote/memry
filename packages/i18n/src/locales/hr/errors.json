@@ -316,5 +316,9 @@
     "invalidUrl": "To nije web-poveznica. Zalijepite adresu slike koja počinje s http ili https.",
     "downloadFailed": "Tu sliku nije moguće preuzeti. Provjerite poveznicu i pokušajte ponovno.",
     "unsupportedUrl": "Ta poveznica ne vodi na PNG, JPG, GIF, WEBP ili SVG sliku."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Vlasnik je ovu bilješku postavio samo za čitanje.",
+    "folderReadOnly": "Vlasnik je ovu mapu postavio samo za čitanje."
   }
 }

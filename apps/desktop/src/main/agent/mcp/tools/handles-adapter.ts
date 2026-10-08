@@ -51,6 +51,7 @@ import {
   toFolderEntry
 } from './folder-paths'
 import { createdTasksReply, withAgentChecklists, writeAgentBody } from './agent-checklists'
+import { createdFoldersReply, foldersToCreate } from './created-folders'
 import { invokeDesktopApiFromWindow } from './desktop-api'
 import { writeAndReadBack } from './desktop-api-readback'
 import { noteFileFrontmatter, noteIcon, readStoredNote, readStoredStatus } from './stored-records'
@@ -60,7 +61,7 @@ import { storedNoteBody } from './stored-body'
 import { viewVaultFile } from './file-view'
 import { openPdfDocument } from '../../../file-text/pdf-host'
 import { prepareViewImageInImageProcess } from '../../../image-processing/bridge'
-import { getStatus } from '../../../vault'
+import { getConfig, getStatus } from '../../../vault'
 import type {
   FolderEntry,
   InboxSummary,
@@ -226,6 +227,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       async create(input) {
         // Preset so a checkbox line converted during the write can link to it.
         const id = generateNoteId()
+        const folder = internalFolderFromToolPath(input.folder_path)
+        const createdFolders = await foldersToCreate(folder ?? getConfig().defaultNoteFolder)
         let written = input.content_markdown
         const { result: note, createdTasks } = await writeAgentBody(
           id,
@@ -237,7 +240,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
               id,
               title: input.title,
               content,
-              folder: internalFolderFromToolPath(input.folder_path),
+              folder,
               tags: input.tags
             })
           }
@@ -245,7 +248,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         return {
           id: note.id,
           body: await storedNoteBody(note.id, written),
-          ...createdTasksReply(createdTasks)
+          ...createdTasksReply(createdTasks),
+          ...createdFoldersReply(createdFolders)
         }
       },
       async rename({ id, title }) {
@@ -339,7 +343,10 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         replaceNoteTagsInCrdt(id, updated.tags)
       },
       async moveToFolder({ id, folder_path }) {
-        await moveNoteCommand(id, internalFolderFromToolPath(folder_path) ?? '')
+        const folder = internalFolderFromToolPath(folder_path) ?? ''
+        const createdFolders = await foldersToCreate(folder)
+        await moveNoteCommand(id, folder)
+        return createdFoldersReply(createdFolders)
       },
       async stored(id) {
         return readStoredNote(indexDb, id, folderPathFromNotePath)

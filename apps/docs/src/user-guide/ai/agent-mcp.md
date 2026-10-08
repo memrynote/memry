@@ -364,8 +364,9 @@ with `PERMISSION_DENIED` and the reason that writes need a running memrynote Age
 id is not a credential: knowing one, even a real one, does not let a client write.
 
 A note or folder the owner [locked](../notes/read-only-locks) refuses every write tool, approved or
-not, with `PERMISSION_DENIED` and the message "The owner made this note read-only.", for a folder
-too. This includes `vault_desktop_write` operations that report a refused write as
+not, with `PERMISSION_DENIED` and the message "The owner made this note read-only.", or "The owner
+made this folder read-only." when it adds something to a locked folder or renames, moves, or deletes
+the folder. This includes `vault_desktop_write` operations that report a refused write as
 `{ success: false }`. The agent can still read it. Canvases are not lockable: the canvas tools never
 write a note's file, and the canvases folder does not appear in the folder tree.
 
@@ -528,8 +529,11 @@ A checkbox line an agent writes into a note or journal entry stays a plain check
 stores it as `- [ ] Check the log {check}`, and the editor never turns it into a task. Agents create
 tasks with `vault_create_task`. This covers `vault_create_note`, `vault_update_note`,
 `vault_create_journal_entry`, `vault_update_journal_entry`, and the `notes.create`, `notes.update`,
-`journal.createEntry` and `journal.updateEntry` operations of `vault_desktop_write`. A checkbox line
-that was already in the note before the write is left exactly as it was.
+`journal.createEntry`, `journal.updateEntry`, `templates.create` and `templates.update` operations of
+`vault_desktop_write`. It also covers the checkbox lines that `notes.applyTemplate`,
+`inbox.convertToNote` and `notes.importFiles` write when an agent calls them, whoever wrote the
+template, the inbox item or the imported file. A checkbox line that was already in the note before
+the write is left exactly as it was.
 
 To let agents' checklists become tasks, turn on **Turn checklist items in agent writes into tasks**
 in [Settings → Editor](/user-guide/settings#checklists). The note and journal tools then create the
@@ -688,7 +692,9 @@ which returns the text read from the file (see [Notes and filed files](#notes-an
 A desktop API reply whose JSON is longer than 100 KB in UTF-8 bytes, counted after source links are
 added, comes back as `{ truncated: true, totalBytes, message, partial }`. `partial` holds the start
 of the JSON reply, cut on a character boundary so the whole reply stays within 100 KB. It is not
-valid JSON on its own.
+valid JSON on its own. `message` says what to call instead: a shorter date range for
+`calendar.getRange`, `calendar.getRange` with a date range for `calendar.listEvents`, and a list
+with a smaller limit or `vault_read_note` for anything else.
 
 `args` are the operation's positional arguments. Every allowlisted operation has a schema for its
 arguments, and `vault_desktop_describe` returns it, so an agent can look a call up before making
@@ -700,7 +706,10 @@ default. Without `operation`, the reply lists every operation with its tool and 
 `null` optional argument as left out, such as the options of `notes.list`, the tags of
 `inbox.linkToNote` or the days of `tasks.getUpcoming`, the argument also takes `null`, and its
 schema lists `null` as an allowed type. An operation that takes no arguments has no `prefixItems` in
-its `args_schema`, only `"maxItems": 0`.
+its `args_schema`, only `"maxItems": 0`. An operation whose last arguments are optional lists each
+call length it accepts as its own tuple under `anyOf`, so `notes.list` has one entry for `[]` and
+one for `[options]`. Strict validators such as Ajv refuse a `prefixItems` tuple that may stop early,
+and this form compiles under them.
 
 ```json
 {
@@ -802,6 +811,8 @@ before the approval prompt. The error names the key: `Unknown argument: colour`.
   with those two changes applied and compare. Any other difference means the stored body is not the
   one you sent.
 - A note or journal write that turned checkbox lines into tasks also lists them in `created_tasks`.
+- `vault_create_note` and `vault_move_to_folder` list the folders the call created in
+  `created_folders`, shallowest first, when the folder they wrote into did not exist yet.
 - Task, project and inbox writes reply with the stored task, project or inbox item.
   `vault_create_status` and `vault_update_status` reply with the status the task store returned from
   the write, not a fresh read.
