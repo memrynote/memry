@@ -325,16 +325,13 @@ describe('viewVaultFile', () => {
       expect(result.reply).toMatchObject({ file: 'attachments/note/alias.png' })
     })
 
-    it('shows files when the vault root itself is a link', async () => {
+    it('opens files through the vault path when the vault root itself is a link', async () => {
       fs.symlinkSync(vault, `${vault}-link`)
 
-      const result = await viewVaultFile(deps({ vaultPath: `${vault}-link` }), { id: 'shot' })
+      const result = await viewVaultFile(deps({ vaultPath: `${vault}-link` }), { id: 'scan' })
 
-      expect(prepared[0]?.source).toEqual({
-        kind: 'file',
-        path: path.join(vault, 'Screens/login.png')
-      })
-      expect(result.reply).toMatchObject({ file: 'Screens/login.png' })
+      expect(opened[0]?.path).toBe(path.join(`${vault}-link`, 'Scans/contract.pdf'))
+      expect(result.reply).toMatchObject({ file: 'Scans/contract.pdf' })
     })
   })
 })
