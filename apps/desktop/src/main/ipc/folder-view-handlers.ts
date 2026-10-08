@@ -165,7 +165,9 @@ async function readScopedViews(scope: ViewScope): Promise<ViewConfig[] | null> {
 
 async function writeScopedViews(scope: ViewScope, views: ViewConfig[] | null): Promise<void> {
   if (scope.kind === 'tag') {
-    writeTagViews(getDatabase(), scope.tag, views)
+    // Deleting the last view is an explicit "no views": stored as [] so the tag
+    // push carries it, where a NULL column would be left out.
+    writeTagViews(getDatabase(), scope.tag, views ?? [])
     return
   }
   const currentConfig = (await readFolderConfig(scope.path)) || {}

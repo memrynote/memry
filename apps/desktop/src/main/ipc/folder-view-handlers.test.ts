@@ -50,6 +50,8 @@ vi.mock('../inbox/suggestions', () => ({
 }))
 
 import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
+import { tagDefinitionHandler } from '../sync/item-handlers/tag-definition-handler'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { getIndexDatabase, getDatabase } from '../database'
 import * as folderFiles from '../vault/folders'
 import * as suggestions from '../inbox/suggestions'
@@ -600,6 +602,14 @@ describe('folder-view-handlers', () => {
       })
 
       expect(result.views).toEqual([DEFAULT_VIEW])
+      // An explicit "no views" travels on the next tag push, so peers clear theirs.
+      const pushed = tagDefinitionHandler.buildPushPayload(
+        dataDb.db as unknown as DrizzleDb,
+        'araba',
+        'device-a',
+        'update'
+      )
+      expect(JSON.parse(pushed!)).toMatchObject({ views: [] })
     })
 
     it('keeps folder and tag views in separate stores', async () => {
