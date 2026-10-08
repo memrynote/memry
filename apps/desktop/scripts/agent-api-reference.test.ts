@@ -25,7 +25,13 @@ const FIX = 'Run: pnpm --filter @memry/desktop agent-api:generate'
 const fromContracts = createRequire(
   new URL('../../../packages/contracts/package.json', import.meta.url)
 )
-type Validator = { addVocabulary(keywords: string[]): unknown; compile(schema: object): unknown }
+type ValidateFunction = ((data: unknown) => boolean) & { errors?: unknown }
+type Validator = {
+  addVocabulary(keywords: string[]): unknown
+  addSchema(schema: object): unknown
+  compile(schema: object): unknown
+  getSchema(ref: string): ValidateFunction | undefined
+}
 const { default: Ajv2020 } = fromContracts('ajv/dist/2020') as {
   default: new (options: { strict: boolean; allErrors: boolean }) => Validator
 }
@@ -33,7 +39,23 @@ const { default: addFormats } = fromContracts('ajv-formats') as {
   default: (ajv: Validator) => unknown
 }
 
-type SchemaFile = { $defs: Record<string, Record<string, unknown>> }
+type SchemaEntry = Record<string, unknown> & {
+  'x-memry-kind': 'tool' | 'desktop-operation'
+  'x-memry-example'?: { arguments?: unknown; args?: unknown; is_error?: boolean }
+}
+type SchemaFile = { $id: string; $defs: Record<string, SchemaEntry> }
+
+function strictValidator(file: SchemaFile): Validator {
+  const ajv = new Ajv2020({ strict: true, allErrors: true })
+  addFormats(ajv)
+  const memryKeywords = new Set(
+    [file, ...Object.values(file.$defs)].flatMap((entry) =>
+      Object.keys(entry).filter((key) => key.startsWith('x-memry-'))
+    )
+  )
+  ajv.addVocabulary([...memryKeywords])
+  return ajv
+}
 
 describe('agent API reference', () => {
   const examples = readExamples()
@@ -73,22 +95,30 @@ describe('agent API reference', () => {
     expect(rejected).toEqual([])
   })
 
-  it('publishes every tool and operation schema so a strict draft 2020-12 validator compiles it', () => {
+  it('publishes every schema so a strict draft 2020-12 validator compiles it alone and inside the file, and accepts its example', () => {
     const file = JSON.parse(readFileSync(REFERENCE_PATHS.schema, 'utf8')) as SchemaFile
-    const ajv = new Ajv2020({ strict: true, allErrors: true })
-    addFormats(ajv)
-    const memryKeywords = new Set(
-      Object.values(file.$defs).flatMap((entry) =>
-        Object.keys(entry).filter((key) => key.startsWith('x-memry-'))
-      )
-    )
-    ajv.addVocabulary([...memryKeywords])
+    const standalone = strictValidator(file)
+    const published = strictValidator(file)
+    published.addSchema(file)
     const invalid: string[] = []
     for (const [name, entry] of Object.entries(file.$defs)) {
       try {
-        ajv.compile(entry)
+        standalone.compile(entry)
       } catch (error) {
-        invalid.push(`${name}: ${(error as Error).message}`)
+        invalid.push(`${name} alone: ${(error as Error).message}`)
+      }
+      let validate: ValidateFunction | undefined
+      try {
+        validate = published.getSchema(`${file.$id}#/$defs/${name}`)
+      } catch (error) {
+        invalid.push(`${name} in the file: ${(error as Error).message}`)
+        continue
+      }
+      const example = entry['x-memry-example']
+      if (!validate) invalid.push(`${name} in the file: not found`)
+      else if (example && !example.is_error) {
+        const call = entry['x-memry-kind'] === 'tool' ? example.arguments : example.args
+        if (!validate(call)) invalid.push(`${name} example: ${JSON.stringify(validate.errors)}`)
       }
     }
     expect(Object.keys(file.$defs).length).toBeGreaterThan(300)
