@@ -291,3 +291,27 @@ struct NoteAttachmentTests {
         #expect(NoteReadViewModel.attachmentUrls(in: blocks) == ["a.png"])
     }
 }
+
+// Every vault open writes `AttachmentPaths.imagesDirectory`, and parallel
+// suites open vaults at once. An unsynchronized `URL?` write releases the old
+// value twice under that race and crashes the test host with SIGSEGV (#2677).
+@Suite("attachment paths")
+struct AttachmentPathsTests {
+    @Test("concurrent writes and reads of the images directory do not race")
+    func concurrentWritesAndReadsAreSafe() async {
+        // Each write is a fresh copy of the value just read: the race needs new
+        // objects to release, and copying keeps this test from moving the
+        // directory under a parallel suite that opens a vault and reads it.
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0 ..< 8 {
+                group.addTask {
+                    for _ in 0 ..< 20000 {
+                        // Unset reads as the temporary directory, so writing that is no change.
+                        let current = AttachmentPaths.imagesDirectory ?? URL.temporaryDirectory
+                        AttachmentPaths.imagesDirectory = URL(fileURLWithPath: current.path, isDirectory: true)
+                    }
+                }
+            }
+        }
+    }
+}

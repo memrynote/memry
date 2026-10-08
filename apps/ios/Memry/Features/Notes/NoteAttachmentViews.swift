@@ -1,5 +1,6 @@
 import AVKit
 import MemryCore
+import os
 import PDFKit
 import QuickLook
 import SwiftUI
@@ -296,8 +297,14 @@ enum NoteAttachmentBinding: Equatable {
 /// path stored today is a dangling path tomorrow. The absolute form is
 /// rebuilt here, every time, from the container as it is now.
 enum AttachmentPaths {
-    /// Set once by the composition root, when a vault is opened.
-    nonisolated(unsafe) static var imagesDirectory: URL?
+    /// Set by every vault open, from whichever thread runs it. Locked because
+    /// two opens racing on a bare `URL?` release the old value twice (#2677).
+    static var imagesDirectory: URL? {
+        get { images.withLock { $0 } }
+        set { images.withLock { $0 = newValue } }
+    }
+
+    private static let images = OSAllocatedUnfairLock<URL?>(initialState: nil)
 
     static func url(for relativePath: String) -> URL {
         let base = imagesDirectory ?? URL.temporaryDirectory
