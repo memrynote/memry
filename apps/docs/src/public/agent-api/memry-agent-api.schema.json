@@ -2,11 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://docs.memrynote.com/agent-api/memry-agent-api.schema.json",
   "title": "Memry agent API",
-  "description": "The arguments of every Memry MCP tool and every desktop API operation, for agents. Each $defs entry named vault_* is the `arguments` object of that tools/call. Each other entry is the `args` array that vault_desktop_read or vault_desktop_write (x-memry-tool) takes for that operation. Human-readable page: https://docs.memrynote.com/user-guide/ai/agent-api-reference",
+  "description": "The arguments of every Memry MCP tool and every desktop API operation, for agents. Each $defs entry named vault_* is the `arguments` object of that tools/call. Each other entry is the `args` array that vault_desktop_read or vault_desktop_write (x-memry-tool) takes for that operation. Each entry is its own schema resource whose $id is its name, so its internal $refs resolve the same inside this file and on their own. Human-readable page: https://docs.memrynote.com/user-guide/ai/agent-api-reference",
   "x-memry-app-version": "2026.928.1+main",
   "x-memry-endpoint": "http://127.0.0.1:<port>/mcp",
   "$defs": {
     "vault_search_notes": {
+      "$id": "vault_search_notes",
       "type": "object",
       "properties": {
         "query": {
@@ -60,6 +61,7 @@
       }
     },
     "vault_read_note": {
+      "$id": "vault_read_note",
       "type": "object",
       "properties": {
         "id": {
@@ -112,6 +114,7 @@
       }
     },
     "vault_view_file": {
+      "$id": "vault_view_file",
       "type": "object",
       "properties": {
         "id": {
@@ -176,6 +179,7 @@
       }
     },
     "vault_list_folder": {
+      "$id": "vault_list_folder",
       "type": "object",
       "properties": {
         "path": {
@@ -244,6 +248,7 @@
       }
     },
     "vault_get_current_note": {
+      "$id": "vault_get_current_note",
       "type": "object",
       "properties": {},
       "additionalProperties": false,
@@ -256,6 +261,7 @@
       }
     },
     "vault_list_tasks": {
+      "$id": "vault_list_tasks",
       "type": "object",
       "properties": {
         "status": {
@@ -337,6 +343,7 @@
       }
     },
     "vault_get_task": {
+      "$id": "vault_get_task",
       "type": "object",
       "properties": {
         "id": {
@@ -419,6 +426,7 @@
       }
     },
     "vault_list_projects": {
+      "$id": "vault_list_projects",
       "type": "object",
       "properties": {},
       "additionalProperties": false,
@@ -493,6 +501,7 @@
       }
     },
     "vault_get_project": {
+      "$id": "vault_get_project",
       "type": "object",
       "properties": {
         "id": {
@@ -605,6 +614,7 @@
       }
     },
     "vault_list_statuses": {
+      "$id": "vault_list_statuses",
       "type": "object",
       "properties": {
         "project_id": {
@@ -656,6 +666,7 @@
       }
     },
     "vault_get_journal_entry": {
+      "$id": "vault_get_journal_entry",
       "type": "object",
       "properties": {
         "date": {
@@ -688,6 +699,7 @@
       }
     },
     "vault_list_journal_entries": {
+      "$id": "vault_list_journal_entries",
       "type": "object",
       "properties": {
         "from": {
@@ -724,6 +736,7 @@
       }
     },
     "vault_list_inbox_items": {
+      "$id": "vault_list_inbox_items",
       "type": "object",
       "properties": {
         "unread_only": {
@@ -791,6 +804,7 @@
       }
     },
     "vault_get_inbox_item": {
+      "$id": "vault_get_inbox_item",
       "type": "object",
       "properties": {
         "id": {
@@ -856,6 +870,7 @@
       }
     },
     "vault_get_tags": {
+      "$id": "vault_get_tags",
       "type": "object",
       "properties": {},
       "additionalProperties": false,
@@ -896,6 +911,7 @@
       }
     },
     "vault_list_canvases": {
+      "$id": "vault_list_canvases",
       "type": "object",
       "properties": {},
       "additionalProperties": false,
@@ -925,6 +941,7 @@
       }
     },
     "vault_read_canvas": {
+      "$id": "vault_read_canvas",
       "type": "object",
       "properties": {
         "id": {
@@ -954,6 +971,7 @@
       }
     },
     "vault_read_canvas_elements": {
+      "$id": "vault_read_canvas_elements",
       "type": "object",
       "properties": {
         "id": {
@@ -979,6 +997,7 @@
       }
     },
     "vault_desktop_read": {
+      "$id": "vault_desktop_read",
       "type": "object",
       "properties": {
         "operation": {
@@ -1164,6 +1183,7 @@
       }
     },
     "vault_desktop_describe": {
+      "$id": "vault_desktop_describe",
       "type": "object",
       "properties": {
         "operation": {
@@ -1500,6 +1520,7 @@
       }
     },
     "vault_create_note": {
+      "$id": "vault_create_note",
       "type": "object",
       "properties": {
         "title": {
@@ -1558,6 +1579,7 @@
       }
     },
     "vault_rename_note": {
+      "$id": "vault_rename_note",
       "type": "object",
       "properties": {
         "id": {
@@ -1607,6 +1629,7 @@
       }
     },
     "vault_delete_note": {
+      "$id": "vault_delete_note",
       "type": "object",
       "properties": {
         "id": {
@@ -1629,6 +1652,7 @@
       }
     },
     "vault_create_folder": {
+      "$id": "vault_create_folder",
       "type": "object",
       "properties": {
         "path": {
@@ -1666,6 +1690,7 @@
       }
     },
     "vault_rename_folder": {
+      "$id": "vault_rename_folder",
       "type": "object",
       "properties": {
         "old_path": {
@@ -1708,6 +1733,7 @@
       }
     },
     "vault_delete_folder": {
+      "$id": "vault_delete_folder",
       "type": "object",
       "properties": {
         "path": {
@@ -1730,6 +1756,7 @@
       }
     },
     "vault_create_task": {
+      "$id": "vault_create_task",
       "type": "object",
       "properties": {
         "title": {
@@ -1977,6 +2004,7 @@
       }
     },
     "vault_delete_task": {
+      "$id": "vault_delete_task",
       "type": "object",
       "properties": {
         "id": {
@@ -1999,6 +2027,7 @@
       }
     },
     "vault_complete_task": {
+      "$id": "vault_complete_task",
       "type": "object",
       "properties": {
         "id": {
@@ -2088,6 +2117,7 @@
       }
     },
     "vault_uncomplete_task": {
+      "$id": "vault_uncomplete_task",
       "type": "object",
       "properties": {
         "id": {
@@ -2172,6 +2202,7 @@
       }
     },
     "vault_archive_task": {
+      "$id": "vault_archive_task",
       "type": "object",
       "properties": {
         "id": {
@@ -2256,6 +2287,7 @@
       }
     },
     "vault_unarchive_task": {
+      "$id": "vault_unarchive_task",
       "type": "object",
       "properties": {
         "id": {
@@ -2340,6 +2372,7 @@
       }
     },
     "vault_move_task": {
+      "$id": "vault_move_task",
       "type": "object",
       "properties": {
         "task_id": {
@@ -2461,6 +2494,7 @@
       }
     },
     "vault_reorder_tasks": {
+      "$id": "vault_reorder_tasks",
       "type": "object",
       "properties": {
         "task_ids": {
@@ -2603,6 +2637,7 @@
       }
     },
     "vault_duplicate_task": {
+      "$id": "vault_duplicate_task",
       "type": "object",
       "properties": {
         "id": {
@@ -2685,6 +2720,7 @@
       }
     },
     "vault_convert_task_to_subtask": {
+      "$id": "vault_convert_task_to_subtask",
       "type": "object",
       "properties": {
         "task_id": {
@@ -2774,6 +2810,7 @@
       }
     },
     "vault_convert_subtask_to_task": {
+      "$id": "vault_convert_subtask_to_task",
       "type": "object",
       "properties": {
         "id": {
@@ -2858,6 +2895,7 @@
       }
     },
     "vault_create_project": {
+      "$id": "vault_create_project",
       "type": "object",
       "properties": {
         "name": {
@@ -3032,6 +3070,7 @@
       }
     },
     "vault_update_project": {
+      "$id": "vault_update_project",
       "type": "object",
       "properties": {
         "id": {
@@ -3209,6 +3248,7 @@
       }
     },
     "vault_delete_project": {
+      "$id": "vault_delete_project",
       "type": "object",
       "properties": {
         "id": {
@@ -3231,6 +3271,7 @@
       }
     },
     "vault_archive_project": {
+      "$id": "vault_archive_project",
       "type": "object",
       "properties": {
         "id": {
@@ -3343,6 +3384,7 @@
       }
     },
     "vault_reorder_projects": {
+      "$id": "vault_reorder_projects",
       "type": "object",
       "properties": {
         "project_ids": {
@@ -3535,6 +3577,7 @@
       }
     },
     "vault_create_status": {
+      "$id": "vault_create_status",
       "type": "object",
       "properties": {
         "project_id": {
@@ -3580,6 +3623,7 @@
       }
     },
     "vault_update_status": {
+      "$id": "vault_update_status",
       "type": "object",
       "properties": {
         "id": {
@@ -3630,6 +3674,7 @@
       }
     },
     "vault_delete_status": {
+      "$id": "vault_delete_status",
       "type": "object",
       "properties": {
         "id": {
@@ -3652,6 +3697,7 @@
       }
     },
     "vault_reorder_statuses": {
+      "$id": "vault_reorder_statuses",
       "type": "object",
       "properties": {
         "status_ids": {
@@ -3708,6 +3754,7 @@
       }
     },
     "vault_create_journal_entry": {
+      "$id": "vault_create_journal_entry",
       "type": "object",
       "properties": {
         "date": {
@@ -3748,6 +3795,7 @@
       }
     },
     "vault_update_journal_entry": {
+      "$id": "vault_update_journal_entry",
       "type": "object",
       "properties": {
         "date": {
@@ -3801,6 +3849,7 @@
       }
     },
     "vault_delete_journal_entry": {
+      "$id": "vault_delete_journal_entry",
       "type": "object",
       "properties": {
         "date": {
@@ -3824,6 +3873,7 @@
       }
     },
     "vault_add_to_inbox": {
+      "$id": "vault_add_to_inbox",
       "type": "object",
       "properties": {
         "source": {
@@ -3896,6 +3946,7 @@
       }
     },
     "vault_update_inbox_item": {
+      "$id": "vault_update_inbox_item",
       "type": "object",
       "properties": {
         "id": {
@@ -3969,6 +4020,7 @@
       }
     },
     "vault_snooze_inbox_item": {
+      "$id": "vault_snooze_inbox_item",
       "type": "object",
       "properties": {
         "id": {
@@ -4043,6 +4095,7 @@
       }
     },
     "vault_archive_inbox_item": {
+      "$id": "vault_archive_inbox_item",
       "type": "object",
       "properties": {
         "id": {
@@ -4106,6 +4159,7 @@
       }
     },
     "vault_unarchive_inbox_item": {
+      "$id": "vault_unarchive_inbox_item",
       "type": "object",
       "properties": {
         "id": {
@@ -4169,6 +4223,7 @@
       }
     },
     "vault_delete_inbox_item": {
+      "$id": "vault_delete_inbox_item",
       "type": "object",
       "properties": {
         "id": {
@@ -4191,6 +4246,7 @@
       }
     },
     "vault_add_inbox_tag": {
+      "$id": "vault_add_inbox_tag",
       "type": "object",
       "properties": {
         "id": {
@@ -4259,6 +4315,7 @@
       }
     },
     "vault_remove_inbox_tag": {
+      "$id": "vault_remove_inbox_tag",
       "type": "object",
       "properties": {
         "id": {
@@ -4327,6 +4384,7 @@
       }
     },
     "vault_update_note": {
+      "$id": "vault_update_note",
       "type": "object",
       "properties": {
         "id": {
@@ -4384,6 +4442,7 @@
       }
     },
     "vault_add_html_artifact": {
+      "$id": "vault_add_html_artifact",
       "type": "object",
       "properties": {
         "id": {
@@ -4445,6 +4504,7 @@
       }
     },
     "vault_update_task": {
+      "$id": "vault_update_task",
       "type": "object",
       "properties": {
         "title": {
@@ -4685,6 +4745,7 @@
       }
     },
     "vault_add_tag": {
+      "$id": "vault_add_tag",
       "type": "object",
       "properties": {
         "id": {
@@ -4726,6 +4787,7 @@
       }
     },
     "vault_remove_tag": {
+      "$id": "vault_remove_tag",
       "type": "object",
       "properties": {
         "id": {
@@ -4767,6 +4829,7 @@
       }
     },
     "vault_move_to_folder": {
+      "$id": "vault_move_to_folder",
       "type": "object",
       "properties": {
         "id": {
@@ -4815,6 +4878,7 @@
       }
     },
     "vault_add_canvas_item": {
+      "$id": "vault_add_canvas_item",
       "type": "object",
       "properties": {
         "canvas_id": {
@@ -4880,6 +4944,7 @@
       }
     },
     "vault_remove_canvas_item": {
+      "$id": "vault_remove_canvas_item",
       "type": "object",
       "properties": {
         "canvas_id": {
@@ -4921,6 +4986,7 @@
       }
     },
     "vault_create_canvas": {
+      "$id": "vault_create_canvas",
       "type": "object",
       "properties": {
         "title": {
@@ -4950,6 +5016,7 @@
       }
     },
     "vault_draw_on_canvas": {
+      "$id": "vault_draw_on_canvas",
       "type": "object",
       "properties": {
         "canvas_id": {
@@ -5288,6 +5355,7 @@
       }
     },
     "vault_edit_canvas_elements": {
+      "$id": "vault_edit_canvas_elements",
       "type": "object",
       "properties": {
         "canvas_id": {
@@ -5473,6 +5541,7 @@
       }
     },
     "vault_desktop_write": {
+      "$id": "vault_desktop_write",
       "type": "object",
       "properties": {
         "operation": {
@@ -5677,6 +5746,7 @@
       }
     },
     "notes.get": {
+      "$id": "notes.get",
       "type": "array",
       "prefixItems": [
         {
@@ -5722,6 +5792,7 @@
       }
     },
     "notes.getByPath": {
+      "$id": "notes.getByPath",
       "type": "array",
       "prefixItems": [
         {
@@ -5767,6 +5838,7 @@
       }
     },
     "notes.getFile": {
+      "$id": "notes.getFile",
       "type": "array",
       "prefixItems": [
         {
@@ -5804,6 +5876,7 @@
       }
     },
     "notes.resolveByTitle": {
+      "$id": "notes.resolveByTitle",
       "type": "array",
       "prefixItems": [
         {
@@ -5834,6 +5907,7 @@
       }
     },
     "notes.resolveWikiTarget": {
+      "$id": "notes.resolveWikiTarget",
       "type": "array",
       "prefixItems": [
         {
@@ -5865,6 +5939,7 @@
       }
     },
     "notes.previewByTitle": {
+      "$id": "notes.previewByTitle",
       "type": "array",
       "prefixItems": [
         {
@@ -5906,6 +5981,7 @@
       }
     },
     "notes.list": {
+      "$id": "notes.list",
       "type": "array",
       "minItems": 0,
       "maxItems": 1,
@@ -6044,6 +6120,7 @@
       }
     },
     "notes.getTags": {
+      "$id": "notes.getTags",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -6075,6 +6152,7 @@
       }
     },
     "notes.getLinks": {
+      "$id": "notes.getLinks",
       "type": "array",
       "prefixItems": [
         {
@@ -6109,6 +6187,7 @@
       }
     },
     "notes.getFolders": {
+      "$id": "notes.getFolders",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -6137,6 +6216,7 @@
       }
     },
     "notes.exists": {
+      "$id": "notes.exists",
       "type": "array",
       "prefixItems": [
         {
@@ -6162,6 +6242,7 @@
       }
     },
     "notes.getPropertyDefinitions": {
+      "$id": "notes.getPropertyDefinitions",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -6208,6 +6289,7 @@
       }
     },
     "notes.listAttachments": {
+      "$id": "notes.listAttachments",
       "type": "array",
       "prefixItems": [
         {
@@ -6241,6 +6323,7 @@
       }
     },
     "notes.getFolderConfig": {
+      "$id": "notes.getFolderConfig",
       "type": "array",
       "prefixItems": [
         {
@@ -6269,6 +6352,7 @@
       }
     },
     "notes.getFolderTemplate": {
+      "$id": "notes.getFolderTemplate",
       "type": "array",
       "prefixItems": [
         {
@@ -6294,6 +6378,7 @@
       }
     },
     "notes.getVersions": {
+      "$id": "notes.getVersions",
       "type": "array",
       "prefixItems": [
         {
@@ -6336,6 +6421,7 @@
       }
     },
     "notes.getVersion": {
+      "$id": "notes.getVersion",
       "type": "array",
       "prefixItems": [
         {
@@ -6369,6 +6455,7 @@
       }
     },
     "notes.getPositions": {
+      "$id": "notes.getPositions",
       "type": "array",
       "prefixItems": [
         {
@@ -6397,6 +6484,7 @@
       }
     },
     "notes.getAllPositions": {
+      "$id": "notes.getAllPositions",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -6415,6 +6503,7 @@
       }
     },
     "notes.getLocalOnlyCount": {
+      "$id": "notes.getLocalOnlyCount",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -6432,6 +6521,7 @@
       }
     },
     "notes.getCalendarPropertyNames": {
+      "$id": "notes.getCalendarPropertyNames",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -6447,6 +6537,7 @@
       }
     },
     "tasks.get": {
+      "$id": "tasks.get",
       "type": "array",
       "prefixItems": [
         {
@@ -6519,6 +6610,7 @@
       }
     },
     "tasks.list": {
+      "$id": "tasks.list",
       "type": "array",
       "minItems": 0,
       "maxItems": 1,
@@ -6724,6 +6816,7 @@
       }
     },
     "tasks.getSubtasks": {
+      "$id": "tasks.getSubtasks",
       "type": "array",
       "prefixItems": [
         {
@@ -6798,6 +6891,7 @@
       }
     },
     "tasks.getProject": {
+      "$id": "tasks.getProject",
       "type": "array",
       "prefixItems": [
         {
@@ -6900,6 +6994,7 @@
       }
     },
     "tasks.listProjects": {
+      "$id": "tasks.listProjects",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -7035,6 +7130,7 @@
       }
     },
     "tasks.listStatuses": {
+      "$id": "tasks.listStatuses",
       "type": "array",
       "prefixItems": [
         {
@@ -7091,6 +7187,7 @@
       }
     },
     "tasks.getTags": {
+      "$id": "tasks.getTags",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -7111,6 +7208,7 @@
       }
     },
     "tasks.getStats": {
+      "$id": "tasks.getStats",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -7132,6 +7230,7 @@
       }
     },
     "tasks.getToday": {
+      "$id": "tasks.getToday",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -7200,6 +7299,7 @@
       }
     },
     "tasks.getUpcoming": {
+      "$id": "tasks.getUpcoming",
       "type": "array",
       "minItems": 0,
       "maxItems": 1,
@@ -7346,6 +7446,7 @@
       }
     },
     "tasks.getOverdue": {
+      "$id": "tasks.getOverdue",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -7365,6 +7466,7 @@
       }
     },
     "tasks.getLinkedTasks": {
+      "$id": "tasks.getLinkedTasks",
       "type": "array",
       "prefixItems": [
         {
@@ -7390,6 +7492,7 @@
       }
     },
     "tasks.listProjectLinks": {
+      "$id": "tasks.listProjectLinks",
       "type": "array",
       "prefixItems": [
         {
@@ -7425,6 +7528,7 @@
       }
     },
     "tasks.listProjectContents": {
+      "$id": "tasks.listProjectContents",
       "type": "array",
       "prefixItems": [
         {
@@ -7467,6 +7571,7 @@
       }
     },
     "tasks.listForItem": {
+      "$id": "tasks.listForItem",
       "type": "array",
       "prefixItems": [
         {
@@ -7507,6 +7612,7 @@
       }
     },
     "inbox.get": {
+      "$id": "inbox.get",
       "type": "array",
       "prefixItems": [
         {
@@ -7560,6 +7666,7 @@
       }
     },
     "inbox.list": {
+      "$id": "inbox.list",
       "type": "array",
       "minItems": 0,
       "maxItems": 1,
@@ -7699,6 +7806,7 @@
       }
     },
     "inbox.previewLink": {
+      "$id": "inbox.previewLink",
       "type": "array",
       "prefixItems": [
         {
@@ -7727,6 +7835,7 @@
       }
     },
     "inbox.getSuggestions": {
+      "$id": "inbox.getSuggestions",
       "type": "array",
       "prefixItems": [
         {
@@ -7787,6 +7896,7 @@
       }
     },
     "inbox.getTags": {
+      "$id": "inbox.getTags",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -7802,6 +7912,7 @@
       }
     },
     "inbox.getSnoozed": {
+      "$id": "inbox.getSnoozed",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -7817,6 +7928,7 @@
       }
     },
     "inbox.getStats": {
+      "$id": "inbox.getStats",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -7858,6 +7970,7 @@
       }
     },
     "inbox.getJobs": {
+      "$id": "inbox.getJobs",
       "type": "array",
       "minItems": 0,
       "maxItems": 1,
@@ -7943,6 +8056,7 @@
       }
     },
     "inbox.getPatterns": {
+      "$id": "inbox.getPatterns",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -7991,6 +8105,7 @@
       }
     },
     "inbox.getStaleThreshold": {
+      "$id": "inbox.getStaleThreshold",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -8006,6 +8121,7 @@
       }
     },
     "inbox.listArchived": {
+      "$id": "inbox.listArchived",
       "type": "array",
       "minItems": 0,
       "maxItems": 1,
@@ -8090,6 +8206,7 @@
       }
     },
     "inbox.getFilingHistory": {
+      "$id": "inbox.getFilingHistory",
       "type": "array",
       "minItems": 0,
       "maxItems": 1,
@@ -8147,6 +8264,7 @@
       }
     },
     "journal.getEntry": {
+      "$id": "journal.getEntry",
       "type": "array",
       "prefixItems": [
         {
@@ -8182,6 +8300,7 @@
       }
     },
     "journal.getHeatmap": {
+      "$id": "journal.getHeatmap",
       "type": "array",
       "prefixItems": [
         {
@@ -8220,6 +8339,7 @@
       }
     },
     "journal.getMonthEntries": {
+      "$id": "journal.getMonthEntries",
       "type": "array",
       "prefixItems": [
         {
@@ -8273,6 +8393,7 @@
       }
     },
     "journal.getYearStats": {
+      "$id": "journal.getYearStats",
       "type": "array",
       "prefixItems": [
         {
@@ -8309,6 +8430,7 @@
       }
     },
     "journal.getDayContext": {
+      "$id": "journal.getDayContext",
       "type": "array",
       "prefixItems": [
         {
@@ -8340,6 +8462,7 @@
       }
     },
     "journal.getAllTags": {
+      "$id": "journal.getAllTags",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -8368,6 +8491,7 @@
       }
     },
     "journal.getStreak": {
+      "$id": "journal.getStreak",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -8387,6 +8511,7 @@
       }
     },
     "properties.get": {
+      "$id": "properties.get",
       "type": "array",
       "prefixItems": [
         {
@@ -8424,6 +8549,7 @@
       }
     },
     "templates.list": {
+      "$id": "templates.list",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -8463,6 +8589,7 @@
       }
     },
     "templates.get": {
+      "$id": "templates.get",
       "type": "array",
       "prefixItems": [
         {
@@ -8498,6 +8625,7 @@
       }
     },
     "savedFilters.list": {
+      "$id": "savedFilters.list",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -8539,6 +8667,7 @@
       }
     },
     "bookmarks.get": {
+      "$id": "bookmarks.get",
       "type": "array",
       "prefixItems": [
         {
@@ -8574,6 +8703,7 @@
       }
     },
     "bookmarks.list": {
+      "$id": "bookmarks.list",
       "type": "array",
       "minItems": 0,
       "maxItems": 1,
@@ -8671,6 +8801,7 @@
       }
     },
     "bookmarks.isBookmarked": {
+      "$id": "bookmarks.isBookmarked",
       "type": "array",
       "prefixItems": [
         {
@@ -8712,6 +8843,7 @@
       }
     },
     "bookmarks.listByType": {
+      "$id": "bookmarks.listByType",
       "type": "array",
       "prefixItems": [
         {
@@ -8759,6 +8891,7 @@
       }
     },
     "bookmarks.getByItem": {
+      "$id": "bookmarks.getByItem",
       "type": "array",
       "prefixItems": [
         {
@@ -8810,6 +8943,7 @@
       }
     },
     "tags.getNotesByTag": {
+      "$id": "tags.getNotesByTag",
       "type": "array",
       "prefixItems": [
         {
@@ -8893,6 +9027,7 @@
       }
     },
     "tags.getAllWithCounts": {
+      "$id": "tags.getAllWithCounts",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -8935,6 +9070,7 @@
       }
     },
     "tags.listCategories": {
+      "$id": "tags.listCategories",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -8960,6 +9096,7 @@
       }
     },
     "folderView.getConfig": {
+      "$id": "folderView.getConfig",
       "type": "array",
       "prefixItems": [
         {
@@ -9018,6 +9155,7 @@
       }
     },
     "folderView.getViews": {
+      "$id": "folderView.getViews",
       "type": "array",
       "prefixItems": [
         {
@@ -9115,6 +9253,7 @@
       }
     },
     "folderView.listWithProperties": {
+      "$id": "folderView.listWithProperties",
       "type": "array",
       "prefixItems": [
         {
@@ -9255,6 +9394,7 @@
       }
     },
     "folderView.getAvailableProperties": {
+      "$id": "folderView.getAvailableProperties",
       "type": "array",
       "prefixItems": [
         {
@@ -9353,6 +9493,7 @@
       }
     },
     "folderView.getFolderSuggestions": {
+      "$id": "folderView.getFolderSuggestions",
       "type": "array",
       "prefixItems": [
         {
@@ -9380,6 +9521,7 @@
       }
     },
     "folderView.folderExists": {
+      "$id": "folderView.folderExists",
       "type": "array",
       "prefixItems": [
         {
@@ -9405,6 +9547,7 @@
       }
     },
     "reminders.get": {
+      "$id": "reminders.get",
       "type": "array",
       "prefixItems": [
         {
@@ -9449,6 +9592,7 @@
       }
     },
     "reminders.list": {
+      "$id": "reminders.list",
       "type": "array",
       "minItems": 0,
       "maxItems": 1,
@@ -9609,6 +9753,7 @@
       }
     },
     "reminders.getUpcoming": {
+      "$id": "reminders.getUpcoming",
       "type": "array",
       "minItems": 0,
       "maxItems": 1,
@@ -9709,6 +9854,7 @@
       }
     },
     "reminders.getDue": {
+      "$id": "reminders.getDue",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -9724,6 +9870,7 @@
       }
     },
     "reminders.getForTarget": {
+      "$id": "reminders.getForTarget",
       "type": "array",
       "prefixItems": [
         {
@@ -9821,6 +9968,7 @@
       }
     },
     "reminders.countPending": {
+      "$id": "reminders.countPending",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -9836,6 +9984,7 @@
       }
     },
     "calendar.getEvent": {
+      "$id": "calendar.getEvent",
       "type": "array",
       "prefixItems": [
         {
@@ -9900,6 +10049,7 @@
       }
     },
     "calendar.listEvents": {
+      "$id": "calendar.listEvents",
       "type": "array",
       "minItems": 0,
       "maxItems": 1,
@@ -10041,6 +10191,7 @@
       }
     },
     "calendar.getRange": {
+      "$id": "calendar.getRange",
       "type": "array",
       "minItems": 1,
       "maxItems": 2,
@@ -10280,6 +10431,7 @@
       }
     },
     "settings.get": {
+      "$id": "settings.get",
       "type": "array",
       "prefixItems": [
         {
@@ -10305,6 +10457,7 @@
       }
     },
     "settings.getJournalSettings": {
+      "$id": "settings.getJournalSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10327,6 +10480,7 @@
       }
     },
     "settings.getAISettings": {
+      "$id": "settings.getAISettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10344,6 +10498,7 @@
       }
     },
     "settings.getVoiceTranscriptionSettings": {
+      "$id": "settings.getVoiceTranscriptionSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10362,6 +10517,7 @@
       }
     },
     "settings.getVoiceModelStatus": {
+      "$id": "settings.getVoiceModelStatus",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10383,6 +10539,7 @@
       }
     },
     "settings.getVoiceRecordingReadiness": {
+      "$id": "settings.getVoiceRecordingReadiness",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10403,6 +10560,7 @@
       }
     },
     "settings.getVoiceTranscriptionOpenAIKeyStatus": {
+      "$id": "settings.getVoiceTranscriptionOpenAIKeyStatus",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10420,6 +10578,7 @@
       }
     },
     "settings.getAIModelStatus": {
+      "$id": "settings.getAIModelStatus",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10442,6 +10601,7 @@
       }
     },
     "settings.getTabSettings": {
+      "$id": "settings.getTabSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10460,6 +10620,7 @@
       }
     },
     "settings.getNoteEditorSettings": {
+      "$id": "settings.getNoteEditorSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10477,6 +10638,7 @@
       }
     },
     "settings.getGeneralSettings": {
+      "$id": "settings.getGeneralSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10517,6 +10679,7 @@
       }
     },
     "settings.getEditorSettings": {
+      "$id": "settings.getEditorSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10539,6 +10702,7 @@
       }
     },
     "settings.getTaskSettings": {
+      "$id": "settings.getTaskSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10559,6 +10723,7 @@
       }
     },
     "settings.getKeyboardSettings": {
+      "$id": "settings.getKeyboardSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10577,6 +10742,7 @@
       }
     },
     "settings.getSyncSettings": {
+      "$id": "settings.getSyncSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10596,6 +10762,7 @@
       }
     },
     "settings.getBackupSettings": {
+      "$id": "settings.getBackupSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10616,6 +10783,7 @@
       }
     },
     "settings.getGraphSettings": {
+      "$id": "settings.getGraphSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10637,6 +10805,7 @@
       }
     },
     "settings.getCalendarSettings": {
+      "$id": "settings.getCalendarSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10657,6 +10826,7 @@
       }
     },
     "settings.getFeaturesSettings": {
+      "$id": "settings.getFeaturesSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10680,6 +10850,7 @@
       }
     },
     "settings.getInboxSettings": {
+      "$id": "settings.getInboxSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10700,6 +10871,7 @@
       }
     },
     "search.query": {
+      "$id": "search.query",
       "type": "array",
       "prefixItems": [
         {
@@ -10846,6 +11018,7 @@
       }
     },
     "search.quick": {
+      "$id": "search.quick",
       "type": "array",
       "minItems": 1,
       "maxItems": 2,
@@ -10955,6 +11128,7 @@
       }
     },
     "search.getStats": {
+      "$id": "search.getStats",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10977,6 +11151,7 @@
       }
     },
     "search.getReasons": {
+      "$id": "search.getReasons",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -10992,6 +11167,7 @@
       }
     },
     "search.getAllTags": {
+      "$id": "search.getAllTags",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -11007,6 +11183,7 @@
       }
     },
     "graph.getData": {
+      "$id": "graph.getData",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -11084,6 +11261,7 @@
       }
     },
     "graph.getLocal": {
+      "$id": "graph.getLocal",
       "type": "array",
       "prefixItems": [
         {
@@ -11164,6 +11342,7 @@
       }
     },
     "homePages.list": {
+      "$id": "homePages.list",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -11217,6 +11396,7 @@
       }
     },
     "homePages.get": {
+      "$id": "homePages.get",
       "type": "array",
       "prefixItems": [
         {
@@ -11247,6 +11427,7 @@
       }
     },
     "vault.getAll": {
+      "$id": "vault.getAll",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -11276,6 +11457,7 @@
       }
     },
     "vault.getStatus": {
+      "$id": "vault.getStatus",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -11297,6 +11479,7 @@
       }
     },
     "vault.getConfig": {
+      "$id": "vault.getConfig",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -11319,6 +11502,7 @@
       }
     },
     "vault.listAccount": {
+      "$id": "vault.listAccount",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -11334,6 +11518,7 @@
       }
     },
     "canvas.list": {
+      "$id": "canvas.list",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -11370,6 +11555,7 @@
       }
     },
     "canvas.getAsset": {
+      "$id": "canvas.getAsset",
       "type": "array",
       "prefixItems": [
         {
@@ -11406,6 +11592,7 @@
       }
     },
     "canvas.listAssets": {
+      "$id": "canvas.listAssets",
       "type": "array",
       "prefixItems": [
         {
@@ -11434,6 +11621,7 @@
       }
     },
     "canvas.libraryList": {
+      "$id": "canvas.libraryList",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -11451,6 +11639,7 @@
       }
     },
     "notes.create": {
+      "$id": "notes.create",
       "type": "array",
       "prefixItems": [
         {
@@ -11545,6 +11734,7 @@
       }
     },
     "notes.update": {
+      "$id": "notes.update",
       "type": "array",
       "prefixItems": [
         {
@@ -11633,6 +11823,7 @@
       }
     },
     "notes.rename": {
+      "$id": "notes.rename",
       "type": "array",
       "prefixItems": [
         {
@@ -11685,6 +11876,7 @@
       }
     },
     "notes.move": {
+      "$id": "notes.move",
       "type": "array",
       "prefixItems": [
         {
@@ -11733,6 +11925,7 @@
       }
     },
     "notes.delete": {
+      "$id": "notes.delete",
       "type": "array",
       "prefixItems": [
         {
@@ -11760,6 +11953,7 @@
       }
     },
     "notes.createFolder": {
+      "$id": "notes.createFolder",
       "type": "array",
       "prefixItems": [
         {
@@ -11791,6 +11985,7 @@
       }
     },
     "notes.renameFolder": {
+      "$id": "notes.renameFolder",
       "type": "array",
       "prefixItems": [
         {
@@ -11829,6 +12024,7 @@
       }
     },
     "notes.deleteFolder": {
+      "$id": "notes.deleteFolder",
       "type": "array",
       "prefixItems": [
         {
@@ -11856,6 +12052,7 @@
       }
     },
     "notes.createPropertyDefinition": {
+      "$id": "notes.createPropertyDefinition",
       "type": "array",
       "prefixItems": [
         {
@@ -11952,6 +12149,7 @@
       }
     },
     "notes.updatePropertyDefinition": {
+      "$id": "notes.updatePropertyDefinition",
       "type": "array",
       "prefixItems": [
         {
@@ -12038,6 +12236,7 @@
       }
     },
     "notes.ensurePropertyDefinition": {
+      "$id": "notes.ensurePropertyDefinition",
       "type": "array",
       "prefixItems": [
         {
@@ -12084,6 +12283,7 @@
       }
     },
     "notes.addPropertyOption": {
+      "$id": "notes.addPropertyOption",
       "type": "array",
       "prefixItems": [
         {
@@ -12147,6 +12347,7 @@
       }
     },
     "notes.addStatusOption": {
+      "$id": "notes.addStatusOption",
       "type": "array",
       "prefixItems": [
         {
@@ -12219,6 +12420,7 @@
       }
     },
     "notes.removePropertyOption": {
+      "$id": "notes.removePropertyOption",
       "type": "array",
       "prefixItems": [
         {
@@ -12265,6 +12467,7 @@
       }
     },
     "notes.renamePropertyOption": {
+      "$id": "notes.renamePropertyOption",
       "type": "array",
       "prefixItems": [
         {
@@ -12319,6 +12522,7 @@
       }
     },
     "notes.updateOptionColor": {
+      "$id": "notes.updateOptionColor",
       "type": "array",
       "prefixItems": [
         {
@@ -12373,6 +12577,7 @@
       }
     },
     "notes.deletePropertyDefinition": {
+      "$id": "notes.deletePropertyDefinition",
       "type": "array",
       "prefixItems": [
         {
@@ -12401,6 +12606,7 @@
       }
     },
     "notes.uploadAttachment": {
+      "$id": "notes.uploadAttachment",
       "type": "array",
       "prefixItems": [
         {
@@ -12456,6 +12662,7 @@
       }
     },
     "notes.deleteAttachment": {
+      "$id": "notes.deleteAttachment",
       "type": "array",
       "prefixItems": [
         {
@@ -12492,6 +12699,7 @@
       }
     },
     "notes.setFolderConfig": {
+      "$id": "notes.setFolderConfig",
       "type": "array",
       "prefixItems": [
         {
@@ -12555,6 +12763,7 @@
       }
     },
     "notes.restoreVersion": {
+      "$id": "notes.restoreVersion",
       "type": "array",
       "prefixItems": [
         {
@@ -12598,6 +12807,7 @@
       }
     },
     "notes.deleteVersion": {
+      "$id": "notes.deleteVersion",
       "type": "array",
       "prefixItems": [
         {
@@ -12625,6 +12835,7 @@
       }
     },
     "notes.reorder": {
+      "$id": "notes.reorder",
       "type": "array",
       "prefixItems": [
         {
@@ -12662,6 +12873,7 @@
       }
     },
     "notes.importFiles": {
+      "$id": "notes.importFiles",
       "type": "array",
       "minItems": 1,
       "maxItems": 3,
@@ -12756,6 +12968,7 @@
       }
     },
     "notes.setLocalOnly": {
+      "$id": "notes.setLocalOnly",
       "type": "array",
       "prefixItems": [
         {
@@ -12806,6 +13019,7 @@
       }
     },
     "notes.setCalendarPropertyVisibility": {
+      "$id": "notes.setCalendarPropertyVisibility",
       "type": "array",
       "prefixItems": [
         {
@@ -12842,6 +13056,7 @@
       }
     },
     "notes.applyTemplate": {
+      "$id": "notes.applyTemplate",
       "type": "array",
       "prefixItems": [
         {
@@ -12909,6 +13124,7 @@
       }
     },
     "notes.exportPdf": {
+      "$id": "notes.exportPdf",
       "type": "array",
       "prefixItems": [
         {
@@ -12968,6 +13184,7 @@
       }
     },
     "notes.exportHtml": {
+      "$id": "notes.exportHtml",
       "type": "array",
       "prefixItems": [
         {
@@ -13026,6 +13243,7 @@
       }
     },
     "tasks.create": {
+      "$id": "tasks.create",
       "type": "array",
       "prefixItems": [
         {
@@ -13299,6 +13517,7 @@
       }
     },
     "tasks.update": {
+      "$id": "tasks.update",
       "type": "array",
       "prefixItems": [
         {
@@ -13581,6 +13800,7 @@
       }
     },
     "tasks.delete": {
+      "$id": "tasks.delete",
       "type": "array",
       "prefixItems": [
         {
@@ -13608,6 +13828,7 @@
       }
     },
     "tasks.complete": {
+      "$id": "tasks.complete",
       "type": "array",
       "prefixItems": [
         {
@@ -13703,6 +13924,7 @@
       }
     },
     "tasks.uncomplete": {
+      "$id": "tasks.uncomplete",
       "type": "array",
       "prefixItems": [
         {
@@ -13782,6 +14004,7 @@
       }
     },
     "tasks.archive": {
+      "$id": "tasks.archive",
       "type": "array",
       "prefixItems": [
         {
@@ -13863,6 +14086,7 @@
       }
     },
     "tasks.unarchive": {
+      "$id": "tasks.unarchive",
       "type": "array",
       "prefixItems": [
         {
@@ -13944,6 +14168,7 @@
       }
     },
     "tasks.move": {
+      "$id": "tasks.move",
       "type": "array",
       "prefixItems": [
         {
@@ -14066,6 +14291,7 @@
       }
     },
     "tasks.reorder": {
+      "$id": "tasks.reorder",
       "type": "array",
       "prefixItems": [
         {
@@ -14111,6 +14337,7 @@
       }
     },
     "tasks.duplicate": {
+      "$id": "tasks.duplicate",
       "type": "array",
       "prefixItems": [
         {
@@ -14168,6 +14395,7 @@
       }
     },
     "tasks.convertToSubtask": {
+      "$id": "tasks.convertToSubtask",
       "type": "array",
       "prefixItems": [
         {
@@ -14252,6 +14480,7 @@
       }
     },
     "tasks.convertToTask": {
+      "$id": "tasks.convertToTask",
       "type": "array",
       "prefixItems": [
         {
@@ -14329,6 +14558,7 @@
       }
     },
     "tasks.createProject": {
+      "$id": "tasks.createProject",
       "type": "array",
       "prefixItems": [
         {
@@ -14474,6 +14704,7 @@
       }
     },
     "tasks.updateProject": {
+      "$id": "tasks.updateProject",
       "type": "array",
       "prefixItems": [
         {
@@ -14654,6 +14885,7 @@
       }
     },
     "tasks.deleteProject": {
+      "$id": "tasks.deleteProject",
       "type": "array",
       "prefixItems": [
         {
@@ -14681,6 +14913,7 @@
       }
     },
     "tasks.archiveProject": {
+      "$id": "tasks.archiveProject",
       "type": "array",
       "prefixItems": [
         {
@@ -14786,6 +15019,7 @@
       }
     },
     "tasks.reorderProjects": {
+      "$id": "tasks.reorderProjects",
       "type": "array",
       "prefixItems": [
         {
@@ -14831,6 +15065,7 @@
       }
     },
     "tasks.linkProjectItem": {
+      "$id": "tasks.linkProjectItem",
       "type": "array",
       "prefixItems": [
         {
@@ -14889,6 +15124,7 @@
       }
     },
     "tasks.unlinkProjectItem": {
+      "$id": "tasks.unlinkProjectItem",
       "type": "array",
       "prefixItems": [
         {
@@ -14937,6 +15173,7 @@
       }
     },
     "tasks.setProjectLinkPinned": {
+      "$id": "tasks.setProjectLinkPinned",
       "type": "array",
       "prefixItems": [
         {
@@ -14994,6 +15231,7 @@
       }
     },
     "tasks.setProjectHomeNote": {
+      "$id": "tasks.setProjectHomeNote",
       "type": "array",
       "prefixItems": [
         {
@@ -15121,6 +15359,7 @@
       }
     },
     "tasks.captureUrlToProject": {
+      "$id": "tasks.captureUrlToProject",
       "type": "array",
       "prefixItems": [
         {
@@ -15164,6 +15403,7 @@
       }
     },
     "tasks.importFilesToProject": {
+      "$id": "tasks.importFilesToProject",
       "type": "array",
       "prefixItems": [
         {
@@ -15211,6 +15451,7 @@
       }
     },
     "tasks.createStatus": {
+      "$id": "tasks.createStatus",
       "type": "array",
       "prefixItems": [
         {
@@ -15275,6 +15516,7 @@
       }
     },
     "tasks.updateStatus": {
+      "$id": "tasks.updateStatus",
       "type": "array",
       "prefixItems": [
         {
@@ -15347,6 +15589,7 @@
       }
     },
     "tasks.deleteStatus": {
+      "$id": "tasks.deleteStatus",
       "type": "array",
       "prefixItems": [
         {
@@ -15374,6 +15617,7 @@
       }
     },
     "tasks.reorderStatuses": {
+      "$id": "tasks.reorderStatuses",
       "type": "array",
       "prefixItems": [
         {
@@ -15419,6 +15663,7 @@
       }
     },
     "tasks.bulkComplete": {
+      "$id": "tasks.bulkComplete",
       "type": "array",
       "prefixItems": [
         {
@@ -15450,6 +15695,7 @@
       }
     },
     "tasks.bulkDelete": {
+      "$id": "tasks.bulkDelete",
       "type": "array",
       "prefixItems": [
         {
@@ -15481,6 +15727,7 @@
       }
     },
     "tasks.bulkMove": {
+      "$id": "tasks.bulkMove",
       "type": "array",
       "prefixItems": [
         {
@@ -15519,6 +15766,7 @@
       }
     },
     "tasks.bulkArchive": {
+      "$id": "tasks.bulkArchive",
       "type": "array",
       "prefixItems": [
         {
@@ -15550,6 +15798,7 @@
       }
     },
     "inbox.captureText": {
+      "$id": "inbox.captureText",
       "type": "array",
       "prefixItems": [
         {
@@ -15641,6 +15890,7 @@
       }
     },
     "inbox.captureLink": {
+      "$id": "inbox.captureLink",
       "type": "array",
       "prefixItems": [
         {
@@ -15728,6 +15978,7 @@
       }
     },
     "inbox.captureImage": {
+      "$id": "inbox.captureImage",
       "type": "array",
       "prefixItems": [
         {
@@ -15914,6 +16165,7 @@
       }
     },
     "inbox.captureVoice": {
+      "$id": "inbox.captureVoice",
       "type": "array",
       "prefixItems": [
         {
@@ -16057,6 +16309,7 @@
       }
     },
     "inbox.captureClip": {
+      "$id": "inbox.captureClip",
       "type": "array",
       "prefixItems": [
         {
@@ -16125,6 +16378,7 @@
       }
     },
     "inbox.capturePdf": {
+      "$id": "inbox.capturePdf",
       "type": "array",
       "prefixItems": [
         {
@@ -16193,6 +16447,7 @@
       }
     },
     "inbox.update": {
+      "$id": "inbox.update",
       "type": "array",
       "prefixItems": [
         {
@@ -16270,6 +16525,7 @@
       }
     },
     "inbox.archive": {
+      "$id": "inbox.archive",
       "type": "array",
       "prefixItems": [
         {
@@ -16326,6 +16582,7 @@
       }
     },
     "inbox.file": {
+      "$id": "inbox.file",
       "type": "array",
       "prefixItems": [
         {
@@ -16447,6 +16704,7 @@
       }
     },
     "inbox.trackSuggestion": {
+      "$id": "inbox.trackSuggestion",
       "type": "array",
       "prefixItems": [
         {
@@ -16513,6 +16771,7 @@
       }
     },
     "inbox.convertToNote": {
+      "$id": "inbox.convertToNote",
       "type": "array",
       "minItems": 1,
       "maxItems": 2,
@@ -16571,6 +16830,7 @@
       }
     },
     "inbox.convertToTask": {
+      "$id": "inbox.convertToTask",
       "type": "array",
       "minItems": 1,
       "maxItems": 2,
@@ -16664,6 +16924,7 @@
       }
     },
     "inbox.convertToEvent": {
+      "$id": "inbox.convertToEvent",
       "type": "array",
       "prefixItems": [
         {
@@ -16736,6 +16997,7 @@
       }
     },
     "inbox.convertToReminder": {
+      "$id": "inbox.convertToReminder",
       "type": "array",
       "prefixItems": [
         {
@@ -16783,6 +17045,7 @@
       }
     },
     "inbox.linkToNote": {
+      "$id": "inbox.linkToNote",
       "type": "array",
       "minItems": 2,
       "maxItems": 3,
@@ -16883,6 +17146,7 @@
       }
     },
     "inbox.addTag": {
+      "$id": "inbox.addTag",
       "type": "array",
       "prefixItems": [
         {
@@ -16946,6 +17210,7 @@
       }
     },
     "inbox.removeTag": {
+      "$id": "inbox.removeTag",
       "type": "array",
       "prefixItems": [
         {
@@ -17009,6 +17274,7 @@
       }
     },
     "inbox.snooze": {
+      "$id": "inbox.snooze",
       "type": "array",
       "prefixItems": [
         {
@@ -17113,6 +17379,7 @@
       }
     },
     "inbox.unsnooze": {
+      "$id": "inbox.unsnooze",
       "type": "array",
       "prefixItems": [
         {
@@ -17198,6 +17465,7 @@
       }
     },
     "inbox.markViewed": {
+      "$id": "inbox.markViewed",
       "type": "array",
       "prefixItems": [
         {
@@ -17254,6 +17522,7 @@
       }
     },
     "inbox.bulkFile": {
+      "$id": "inbox.bulkFile",
       "type": "array",
       "prefixItems": [
         {
@@ -17328,6 +17597,7 @@
       }
     },
     "inbox.bulkArchive": {
+      "$id": "inbox.bulkArchive",
       "type": "array",
       "prefixItems": [
         {
@@ -17373,6 +17643,7 @@
       }
     },
     "inbox.bulkTag": {
+      "$id": "inbox.bulkTag",
       "type": "array",
       "prefixItems": [
         {
@@ -17428,6 +17699,7 @@
       }
     },
     "inbox.bulkSnooze": {
+      "$id": "inbox.bulkSnooze",
       "type": "array",
       "prefixItems": [
         {
@@ -17478,6 +17750,7 @@
       }
     },
     "inbox.fileAllStale": {
+      "$id": "inbox.fileAllStale",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -17497,6 +17770,7 @@
       }
     },
     "inbox.retryTranscription": {
+      "$id": "inbox.retryTranscription",
       "type": "array",
       "prefixItems": [
         {
@@ -17557,6 +17831,7 @@
       }
     },
     "inbox.retryMetadata": {
+      "$id": "inbox.retryMetadata",
       "type": "array",
       "prefixItems": [
         {
@@ -17617,6 +17892,7 @@
       }
     },
     "inbox.setStaleThreshold": {
+      "$id": "inbox.setStaleThreshold",
       "type": "array",
       "prefixItems": [
         {
@@ -17645,6 +17921,7 @@
       }
     },
     "inbox.unarchive": {
+      "$id": "inbox.unarchive",
       "type": "array",
       "prefixItems": [
         {
@@ -17701,6 +17978,7 @@
       }
     },
     "inbox.deletePermanent": {
+      "$id": "inbox.deletePermanent",
       "type": "array",
       "prefixItems": [
         {
@@ -17728,6 +18006,7 @@
       }
     },
     "inbox.undoFile": {
+      "$id": "inbox.undoFile",
       "type": "array",
       "prefixItems": [
         {
@@ -17784,6 +18063,7 @@
       }
     },
     "inbox.undoArchive": {
+      "$id": "inbox.undoArchive",
       "type": "array",
       "prefixItems": [
         {
@@ -17840,6 +18120,7 @@
       }
     },
     "journal.createEntry": {
+      "$id": "journal.createEntry",
       "type": "array",
       "prefixItems": [
         {
@@ -17906,6 +18187,7 @@
       }
     },
     "journal.updateEntry": {
+      "$id": "journal.updateEntry",
       "type": "array",
       "prefixItems": [
         {
@@ -17969,6 +18251,7 @@
       }
     },
     "journal.deleteEntry": {
+      "$id": "journal.deleteEntry",
       "type": "array",
       "prefixItems": [
         {
@@ -17997,6 +18280,7 @@
       }
     },
     "properties.set": {
+      "$id": "properties.set",
       "type": "array",
       "prefixItems": [
         {
@@ -18047,6 +18331,7 @@
       }
     },
     "properties.rename": {
+      "$id": "properties.rename",
       "type": "array",
       "prefixItems": [
         {
@@ -18103,6 +18388,7 @@
       }
     },
     "templates.create": {
+      "$id": "templates.create",
       "type": "array",
       "prefixItems": [
         {
@@ -18216,6 +18502,7 @@
       }
     },
     "templates.update": {
+      "$id": "templates.update",
       "type": "array",
       "prefixItems": [
         {
@@ -18330,6 +18617,7 @@
       }
     },
     "templates.delete": {
+      "$id": "templates.delete",
       "type": "array",
       "prefixItems": [
         {
@@ -18357,6 +18645,7 @@
       }
     },
     "templates.duplicate": {
+      "$id": "templates.duplicate",
       "type": "array",
       "prefixItems": [
         {
@@ -18406,6 +18695,7 @@
       }
     },
     "savedFilters.create": {
+      "$id": "savedFilters.create",
       "type": "array",
       "prefixItems": [
         {
@@ -18622,6 +18912,7 @@
       }
     },
     "savedFilters.update": {
+      "$id": "savedFilters.update",
       "type": "array",
       "prefixItems": [
         {
@@ -18841,6 +19132,7 @@
       }
     },
     "savedFilters.delete": {
+      "$id": "savedFilters.delete",
       "type": "array",
       "prefixItems": [
         {
@@ -18868,6 +19160,7 @@
       }
     },
     "savedFilters.reorder": {
+      "$id": "savedFilters.reorder",
       "type": "array",
       "prefixItems": [
         {
@@ -18910,6 +19203,7 @@
       }
     },
     "bookmarks.create": {
+      "$id": "bookmarks.create",
       "type": "array",
       "prefixItems": [
         {
@@ -18962,6 +19256,7 @@
       }
     },
     "bookmarks.delete": {
+      "$id": "bookmarks.delete",
       "type": "array",
       "prefixItems": [
         {
@@ -18989,6 +19284,7 @@
       }
     },
     "bookmarks.toggle": {
+      "$id": "bookmarks.toggle",
       "type": "array",
       "prefixItems": [
         {
@@ -19042,6 +19338,7 @@
       }
     },
     "bookmarks.reorder": {
+      "$id": "bookmarks.reorder",
       "type": "array",
       "prefixItems": [
         {
@@ -19073,6 +19370,7 @@
       }
     },
     "bookmarks.bulkDelete": {
+      "$id": "bookmarks.bulkDelete",
       "type": "array",
       "prefixItems": [
         {
@@ -19106,6 +19404,7 @@
       }
     },
     "bookmarks.bulkCreate": {
+      "$id": "bookmarks.bulkCreate",
       "type": "array",
       "prefixItems": [
         {
@@ -19155,6 +19454,7 @@
       }
     },
     "tags.pinNoteToTag": {
+      "$id": "tags.pinNoteToTag",
       "type": "array",
       "prefixItems": [
         {
@@ -19211,6 +19511,7 @@
       }
     },
     "tags.unpinNoteFromTag": {
+      "$id": "tags.unpinNoteFromTag",
       "type": "array",
       "prefixItems": [
         {
@@ -19267,6 +19568,7 @@
       }
     },
     "tags.renameTag": {
+      "$id": "tags.renameTag",
       "type": "array",
       "prefixItems": [
         {
@@ -19321,6 +19623,7 @@
       }
     },
     "tags.updateTagColor": {
+      "$id": "tags.updateTagColor",
       "type": "array",
       "prefixItems": [
         {
@@ -19373,6 +19676,7 @@
       }
     },
     "tags.deleteTag": {
+      "$id": "tags.deleteTag",
       "type": "array",
       "prefixItems": [
         {
@@ -19401,6 +19705,7 @@
       }
     },
     "tags.removeTagFromNote": {
+      "$id": "tags.removeTagFromNote",
       "type": "array",
       "prefixItems": [
         {
@@ -19449,6 +19754,7 @@
       }
     },
     "tags.mergeTag": {
+      "$id": "tags.mergeTag",
       "type": "array",
       "prefixItems": [
         {
@@ -19502,6 +19808,7 @@
       }
     },
     "tags.updateTagIcon": {
+      "$id": "tags.updateTagIcon",
       "type": "array",
       "prefixItems": [
         {
@@ -19561,6 +19868,7 @@
       }
     },
     "tags.createCategory": {
+      "$id": "tags.createCategory",
       "type": "array",
       "prefixItems": [
         {
@@ -19605,6 +19913,7 @@
       }
     },
     "tags.renameCategory": {
+      "$id": "tags.renameCategory",
       "type": "array",
       "prefixItems": [
         {
@@ -19653,6 +19962,7 @@
       }
     },
     "tags.deleteCategory": {
+      "$id": "tags.deleteCategory",
       "type": "array",
       "prefixItems": [
         {
@@ -19691,6 +20001,7 @@
       }
     },
     "tags.reorder": {
+      "$id": "tags.reorder",
       "type": "array",
       "prefixItems": [
         {
@@ -19773,6 +20084,7 @@
       }
     },
     "folderView.setConfig": {
+      "$id": "folderView.setConfig",
       "type": "array",
       "$defs": {
         "__schema0": {
@@ -20075,6 +20387,7 @@
       }
     },
     "folderView.setView": {
+      "$id": "folderView.setView",
       "type": "array",
       "$defs": {
         "__schema0": {
@@ -20470,6 +20783,7 @@
       }
     },
     "folderView.deleteView": {
+      "$id": "folderView.deleteView",
       "type": "array",
       "prefixItems": [
         {
@@ -20547,6 +20861,7 @@
       }
     },
     "reminders.create": {
+      "$id": "reminders.create",
       "type": "array",
       "prefixItems": [
         {
@@ -20766,6 +21081,7 @@
       }
     },
     "reminders.update": {
+      "$id": "reminders.update",
       "type": "array",
       "prefixItems": [
         {
@@ -20851,6 +21167,7 @@
       }
     },
     "reminders.delete": {
+      "$id": "reminders.delete",
       "type": "array",
       "prefixItems": [
         {
@@ -20878,6 +21195,7 @@
       }
     },
     "reminders.dismiss": {
+      "$id": "reminders.dismiss",
       "type": "array",
       "prefixItems": [
         {
@@ -20923,6 +21241,7 @@
       }
     },
     "reminders.snooze": {
+      "$id": "reminders.snooze",
       "type": "array",
       "prefixItems": [
         {
@@ -20986,6 +21305,7 @@
       }
     },
     "reminders.bulkDismiss": {
+      "$id": "reminders.bulkDismiss",
       "type": "array",
       "prefixItems": [
         {
@@ -21030,6 +21350,7 @@
       }
     },
     "calendar.createEvent": {
+      "$id": "calendar.createEvent",
       "type": "array",
       "prefixItems": [
         {
@@ -21221,6 +21542,7 @@
       }
     },
     "calendar.updateEvent": {
+      "$id": "calendar.updateEvent",
       "type": "array",
       "prefixItems": [
         {
@@ -21412,6 +21734,7 @@
       }
     },
     "calendar.deleteEvent": {
+      "$id": "calendar.deleteEvent",
       "type": "array",
       "prefixItems": [
         {
@@ -21439,6 +21762,7 @@
       }
     },
     "settings.set": {
+      "$id": "settings.set",
       "type": "array",
       "prefixItems": [
         {
@@ -21474,6 +21798,7 @@
       }
     },
     "settings.setJournalSettings": {
+      "$id": "settings.setJournalSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -21554,6 +21879,7 @@
       }
     },
     "settings.setAISettings": {
+      "$id": "settings.setAISettings",
       "type": "array",
       "prefixItems": [
         {
@@ -21594,6 +21920,7 @@
       }
     },
     "settings.setVoiceTranscriptionSettings": {
+      "$id": "settings.setVoiceTranscriptionSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -21640,6 +21967,7 @@
       }
     },
     "settings.setTabSettings": {
+      "$id": "settings.setTabSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -21685,6 +22013,7 @@
       }
     },
     "settings.setNoteEditorSettings": {
+      "$id": "settings.setNoteEditorSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -21726,6 +22055,7 @@
       }
     },
     "settings.setGeneralSettings": {
+      "$id": "settings.setGeneralSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -21941,6 +22271,7 @@
       }
     },
     "settings.setEditorSettings": {
+      "$id": "settings.setEditorSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -22003,6 +22334,7 @@
       }
     },
     "settings.setTaskSettings": {
+      "$id": "settings.setTaskSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -22066,6 +22398,7 @@
       }
     },
     "settings.setKeyboardSettings": {
+      "$id": "settings.setKeyboardSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -22175,6 +22508,7 @@
       }
     },
     "settings.resetKeyboardSettings": {
+      "$id": "settings.resetKeyboardSettings",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -22196,6 +22530,7 @@
       }
     },
     "settings.setSyncSettings": {
+      "$id": "settings.setSyncSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -22244,6 +22579,7 @@
       }
     },
     "settings.setBackupSettings": {
+      "$id": "settings.setBackupSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -22322,6 +22658,7 @@
       }
     },
     "settings.setGraphSettings": {
+      "$id": "settings.setGraphSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -22379,6 +22716,7 @@
       }
     },
     "settings.setCalendarSettings": {
+      "$id": "settings.setCalendarSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -22434,6 +22772,7 @@
       }
     },
     "settings.setFeaturesSettings": {
+      "$id": "settings.setFeaturesSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -22498,6 +22837,7 @@
       }
     },
     "settings.setInboxSettings": {
+      "$id": "settings.setInboxSettings",
       "type": "array",
       "prefixItems": [
         {
@@ -22554,6 +22894,7 @@
       }
     },
     "search.rebuildIndex": {
+      "$id": "search.rebuildIndex",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -22575,6 +22916,7 @@
       }
     },
     "search.addReason": {
+      "$id": "search.addReason",
       "type": "array",
       "prefixItems": [
         {
@@ -22646,6 +22988,7 @@
       }
     },
     "search.clearReasons": {
+      "$id": "search.clearReasons",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -22663,6 +23006,7 @@
       }
     },
     "homePages.create": {
+      "$id": "homePages.create",
       "type": "array",
       "prefixItems": [
         {
@@ -22763,6 +23107,7 @@
       }
     },
     "homePages.update": {
+      "$id": "homePages.update",
       "type": "array",
       "prefixItems": [
         {
@@ -22864,6 +23209,7 @@
       }
     },
     "homePages.delete": {
+      "$id": "homePages.delete",
       "type": "array",
       "prefixItems": [
         {
@@ -22891,6 +23237,7 @@
       }
     },
     "homePages.reorder": {
+      "$id": "homePages.reorder",
       "type": "array",
       "prefixItems": [
         {
@@ -22922,6 +23269,7 @@
       }
     },
     "vault.switch": {
+      "$id": "vault.switch",
       "type": "array",
       "prefixItems": [
         {
@@ -22947,6 +23295,7 @@
       }
     },
     "vault.reindex": {
+      "$id": "vault.reindex",
       "type": "array",
       "minItems": 0,
       "maxItems": 0,
@@ -22962,6 +23311,7 @@
       }
     },
     "vault.updateConfig": {
+      "$id": "vault.updateConfig",
       "type": "array",
       "prefixItems": [
         {
@@ -23022,6 +23372,7 @@
       }
     },
     "vault.downloadRemote": {
+      "$id": "vault.downloadRemote",
       "type": "array",
       "minItems": 1,
       "maxItems": 2,
@@ -23071,6 +23422,7 @@
       }
     },
     "canvas.create": {
+      "$id": "canvas.create",
       "type": "array",
       "minItems": 0,
       "maxItems": 1,
@@ -23173,6 +23525,7 @@
       }
     },
     "canvas.delete": {
+      "$id": "canvas.delete",
       "type": "array",
       "prefixItems": [
         {
