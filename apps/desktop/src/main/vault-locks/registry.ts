@@ -123,7 +123,11 @@ export function isNoteLocked(noteId: string, notePath?: string | null): boolean 
   return path !== null && lockedFolderCovering(path) !== null
 }
 
-/** The note that owns a file in its attachments folder (`attachments/<noteId>/<file>`), or null. */
+/**
+ * The note that owns a file in its attachments folder (`attachments/<noteId>/<file>`), or null.
+ * Fixed like `getAttachmentsRoot`: the app saves attachments there whatever the
+ * vault config's `attachmentsFolder` says.
+ */
 function attachmentOwnerOf(relativePath: string): string | null {
   const segments = relativePath.split('/')
   return segments.length === 3 && segments[0] === 'attachments' ? segments[1] : null

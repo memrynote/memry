@@ -55,6 +55,7 @@ import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/err
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
 import { installVaultLockFileGuard } from '../vault-locks/files'
 import { checkLockedFilesAtOpen } from '../vault-locks/service'
+import { watchLockedAttachments } from '../vault-locks/attachment-watch'
 import {
   renameJournalsForFormatChange,
   revertJournalRenames,
@@ -1125,6 +1126,7 @@ async function closeOpenVault(): Promise<void> {
 
   // Stop file watcher
   await stopWatcher()
+  await watchLockedAttachments(null)
   timer.mark('watcher')
 
   await stopProjectionRuntime({ drain: true })
