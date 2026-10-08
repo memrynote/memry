@@ -12,6 +12,7 @@ import type { FolderViewService } from './folder-view.ts'
 import { createFolderViewService } from './folder-view.ts'
 import type { GraphService } from '@memry/app-core/graph'
 import { createGraphService } from '@memry/app-core/graph'
+import { listHtmlBlockText } from '@memry/app-core/html-block-text'
 import type { InboxService } from './inbox.ts'
 import { createInboxService } from './inbox.ts'
 import type { LocaleService } from './locale.ts'
@@ -200,7 +201,11 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
   const exportHtml = createExportHtmlService({ notes })
   const exportPdf = createExportPdfService({ notes })
   const exportMarkdown = createExportMarkdownService({ vaultPath, notes })
-  const graph = createGraphService({ notes, tasks })
+  const graph = createGraphService({
+    notes,
+    tasks,
+    htmlBlockText: (noteId) => listHtmlBlockText(databases.indexDb, noteId)
+  })
   const searchStats = createSearchStatsService({ notes, tasks, inbox })
   const searchReasons = createSearchReasonsService(databases.dataDb)
   const searchTags = createSearchTagsService({ tags, templates })

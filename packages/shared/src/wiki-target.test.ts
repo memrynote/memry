@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  extractWikiLinks,
   splitWikiTarget,
   isBlockReference,
   normalizeHeading,
@@ -201,5 +202,96 @@ describe('resolveWikiTarget', () => {
         title === 'Meeting' ? meeting : undefined
       )
     ).toEqual({ match: meeting, heading: 'Decisions' })
+  })
+})
+
+describe('extractWikiLinks', () => {
+  it('extractWikiLinks pulls link targets from content', () => {
+    const links = extractWikiLinks('See [[First Link]] and [[Second|Alias]]')
+    expect(links).toEqual(['First Link', 'Second'])
+  })
+
+  it('extractWikiLinks deduplicates repeated links', () => {
+    const links = extractWikiLinks('[[Same Note]] and [[Other]] then [[Same Note]] again')
+    expect(links).toEqual(['Same Note', 'Other'])
+  })
+
+  // A15: the whole `Note#Heading` string used to go in as a title, resolved to
+  // nothing, and the note it named never listed the link as a backlink.
+  it('extractWikiLinks indexes a heading link under its note', () => {
+    const links = extractWikiLinks('See [[Meeting#Decisions]]')
+    expect(links).toEqual(['Meeting'])
+  })
+
+  it('extractWikiLinks collapses heading links onto the note they share', () => {
+    const links = extractWikiLinks('[[Meeting#Decisions]] and [[Meeting#Actions]] and [[Meeting]]')
+    expect(links).toEqual(['Meeting'])
+  })
+
+  it('extractWikiLinks ignores a same-note heading link', () => {
+    const links = extractWikiLinks('Jump to [[#Decisions]] and see [[Other]]')
+    expect(links).toEqual(['Other'])
+  })
+
+  it('extractWikiLinks skips link syntax inside inline code', () => {
+    const links = extractWikiLinks(
+      'Write `[[Example]]` or ``[[Other `x` one]]`` to link, see [[Real]]'
+    )
+    expect(links).toEqual(['Real'])
+  })
+
+  it('extractWikiLinks skips link syntax inside fenced code blocks', () => {
+    const content = [
+      '[[Before]]',
+      '```md',
+      '[[In Backtick Fence]]',
+      '```',
+      '~~~',
+      '[[In Tilde Fence]]',
+      '~~~',
+      '````',
+      '```',
+      '[[In Nested Fence]]',
+      '```',
+      '````',
+      '[[After]]'
+    ].join('\n')
+    expect(extractWikiLinks(content)).toEqual(['Before', 'After'])
+  })
+
+  it('extractWikiLinks skips fenced code in a note with CRLF line endings', () => {
+    const content = ['[[Before]]', '```', '[[In Fence]]', '```', '[[After]]'].join('\r\n')
+    expect(extractWikiLinks(content)).toEqual(['Before', 'After'])
+  })
+
+  it('extractWikiLinks keeps links hidden in HTML comments', () => {
+    const content = [
+      'Text <!-- [[Inline Hidden]] --> more',
+      '<!--',
+      '[[Block Hidden]] uses a ` backtick',
+      '-->',
+      'A <!-- [[Ticked]] ` --> then [[Visible]] and a ` stray tick'
+    ].join('\n')
+    expect(extractWikiLinks(content)).toEqual([
+      'Inline Hidden',
+      'Block Hidden',
+      'Ticked',
+      'Visible'
+    ])
+  })
+
+  it('extractWikiLinks keeps links hidden in %% comments', () => {
+    const content = [
+      'Text %% [[Inline Hidden]] ` %% more `[[Code]]`',
+      '%%',
+      '[[Block Hidden]] uses a ` backtick',
+      '%%',
+      'Then [[Visible]] and a ` stray tick'
+    ].join('\n')
+    expect(extractWikiLinks(content)).toEqual(['Inline Hidden', 'Block Hidden', 'Visible'])
+  })
+
+  it('extractWikiLinks reads a link after an unclosed backtick', () => {
+    expect(extractWikiLinks('A lone ` tick then [[Linked]]')).toEqual(['Linked'])
   })
 })

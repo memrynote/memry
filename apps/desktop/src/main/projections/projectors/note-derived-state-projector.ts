@@ -14,7 +14,7 @@ import {
   getPropertyType,
   insertNoteCache,
   listNoteCacheFilesAfter,
-  resolveNotesByTitles,
+  setMarkdownNoteLinks,
   setNoteLinks,
   setNoteProperties,
   setNoteTags,
@@ -23,8 +23,8 @@ import {
 } from '@main/database/queries/notes'
 import { classifyMarkdownContent, classifyMarkdownStat } from '@memry/shared/markdown-class'
 import { getIndexDatabase, type IndexDb } from '../../database'
-import { listHtmlBlockText } from '../../database/queries/extracted-text'
-import { extractWikiLinks, inferPropertyType, parseNote } from '../../vault/frontmatter'
+import { extractWikiLinks } from '@memry/shared/wiki-target'
+import { inferPropertyType, parseNote } from '../../vault/frontmatter'
 import type { NoteProjectionRecord, ProjectionEvent, ProjectionProjector } from '../types'
 
 const logger = createLogger('Projections:NoteState')
@@ -35,24 +35,6 @@ const logger = createLogger('Projections:NoteState')
 // every vault open.
 const RECONCILE_PAGE_SIZE = 500
 const RECONCILE_STAT_CONCURRENCY = 8
-
-/**
- * A note's outbound links: the ones in its markdown, then the ones in the
- * visible text of the HTML blocks it embeds, which the file-text runner keeps
- * in `extracted_text`.
- */
-function setMarkdownNoteLinks(db: IndexDb, noteId: string, markdownLinks: string[]): void {
-  const titles = new Set(markdownLinks)
-  for (const text of listHtmlBlockText(db, noteId)) {
-    for (const title of extractWikiLinks(text)) titles.add(title)
-  }
-  const resolvedTitles = resolveNotesByTitles(db, [...titles])
-  setNoteLinks(
-    db,
-    noteId,
-    [...titles].map((title) => ({ targetTitle: title, targetId: resolvedTitles.get(title)?.id }))
-  )
-}
 
 /**
  * The text of the note's HTML blocks changed: rebuild its links from the file

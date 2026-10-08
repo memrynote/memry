@@ -22,6 +22,8 @@
  * not a rewrite of it.
  */
 
+import { blankMarkdownCode } from './markdown-code.ts'
+
 export interface WikiTargetParts {
   /** The note half. Empty when the link addresses the note it sits in. */
   note: string
@@ -167,4 +169,36 @@ export async function resolveWikiTarget<T>(
 function headingAnchor(heading: string): string | null {
   if (!heading || isBlockReference(heading)) return null
   return heading
+}
+
+/**
+ * The notes a piece of markdown links to, each title once, in order.
+ * Matches [[Link Title]] and [[Link Title|Display Text]] patterns.
+ *
+ * `[[Note#Heading]]` yields `Note`: a heading link points at the note. Before
+ * that, the whole string went in as a title, resolved to nothing, and the note
+ * it named never listed the link as a backlink. The desktop index, the CLI
+ * graph and the text of HTML blocks all read links through this one function.
+ *
+ * The cost is the `Sprint #4` case: a note really called that is indexed here
+ * under `Sprint`. Navigation and hover still reach it — they fall back to the
+ * raw title against the database, which this function has no access to.
+ *
+ * Link syntax inside inline code or a fenced code block is not a link, so code
+ * is blanked before the scan. Links inside HTML comments still count.
+ */
+export function extractWikiLinks(content: string): string[] {
+  const linkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g
+  const text = blankMarkdownCode(content)
+  const links = new Set<string>()
+  let match
+
+  while ((match = linkPattern.exec(text)) !== null) {
+    const { note, heading } = splitWikiTarget(match[1])
+    // `[[#Heading]]` addresses the note it sits in — a self-link, not an edge.
+    if (heading !== null && !note) continue
+    links.add(heading !== null ? note : match[1].trim())
+  }
+
+  return Array.from(links)
 }

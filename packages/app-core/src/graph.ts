@@ -1,4 +1,4 @@
-import { blankMarkdownCode } from '@memry/shared/markdown-code'
+import { extractWikiLinks } from '@memry/shared/wiki-target'
 import type { NotesService } from './service-types.ts'
 import type { TasksService } from './tasks.ts'
 
@@ -40,11 +40,6 @@ const COLORS: Record<GraphNode['type'], string> = {
   project: 'var(--graph-node-project)'
 }
 
-function wikilinks(content: string): string[] {
-  const matches = blankMarkdownCode(content).matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g)
-  return [...matches].map((match) => match[1]?.trim()).filter((title): title is string => !!title)
-}
-
 function withConnectionCounts(graph: GraphData): GraphData {
   const counts = new Map<string, number>()
   for (const edge of graph.edges) {
@@ -63,10 +58,13 @@ function withConnectionCounts(graph: GraphData): GraphData {
 
 export function createGraphService({
   notes,
-  tasks
+  tasks,
+  htmlBlockText
 }: {
   notes: NotesService
   tasks: TasksService
+  /** The visible text of each HTML block a note embeds (`listHtmlBlockText`). */
+  htmlBlockText: (noteId: string) => string[]
 }): GraphService {
   return {
     async data() {
@@ -139,7 +137,11 @@ export function createGraphService({
       }
 
       for (const note of noteRows) {
-        for (const title of wikilinks(note.content)) {
+        const titles = new Set(extractWikiLinks(note.content))
+        for (const text of htmlBlockText(note.id)) {
+          for (const title of extractWikiLinks(text)) titles.add(title)
+        }
+        for (const title of titles) {
           const targetId = notesByTitle.get(title)
           if (targetId) {
             edges.push({

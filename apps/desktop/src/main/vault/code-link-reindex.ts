@@ -16,16 +16,16 @@
 import { readFile } from 'fs/promises'
 import path from 'path'
 import { blankMarkdownCode } from '@memry/shared/markdown-code'
+import { extractWikiLinks } from '@memry/shared/wiki-target'
 import {
   getNoteCacheById,
   listLinkSourceIds,
-  resolveNotesByTitles,
-  setNoteLinks
+  setMarkdownNoteLinks
 } from '@main/database/queries/notes'
 import { getSetting, setSetting } from '@main/database/queries/settings'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
-import { extractWikiLinks, parseNote } from './frontmatter'
+import { parseNote } from './frontmatter'
 import type { DataDb, IndexDb } from '../database'
 
 const logger = createLogger('CodeLinkReindex')
@@ -86,13 +86,7 @@ async function rewriteCodeLinks(input: CodeLinkReindexInput): Promise<number | n
     const after = getNoteCacheById(indexDb, noteId)
     if (!after || after.path !== before.path || after.indexedAt !== before.indexedAt) continue
 
-    const titles = extractWikiLinks(body)
-    const resolved = resolveNotesByTitles(indexDb, titles)
-    setNoteLinks(
-      indexDb,
-      noteId,
-      titles.map((title) => ({ targetTitle: title, targetId: resolved.get(title)?.id }))
-    )
+    setMarkdownNoteLinks(indexDb, noteId, extractWikiLinks(body))
     rewritten++
   }
   return rewritten

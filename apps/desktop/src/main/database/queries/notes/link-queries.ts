@@ -6,6 +6,8 @@ import {
   type NoteLink,
   type NewNoteLink
 } from '@memry/db-schema/schema/notes-cache'
+import { listHtmlBlockText } from '@memry/app-core/html-block-text'
+import { extractWikiLinks } from '@memry/shared/wiki-target'
 import type { IndexDb } from '../../types'
 import { noteCacheExists } from './note-crud'
 import { getIncomingPropertyRefs } from './property-ref-queries'
@@ -25,6 +27,24 @@ export function setNoteLinks(
     }))
     db.insert(noteLinks).values(linkRecords).run()
   }
+}
+
+/**
+ * A markdown note's outbound links: the ones in its body, then the ones in the
+ * visible text of the HTML blocks it embeds, which the file-text runner keeps
+ * in `extracted_text`.
+ */
+export function setMarkdownNoteLinks(db: IndexDb, noteId: string, markdownLinks: string[]): void {
+  const titles = new Set(markdownLinks)
+  for (const text of listHtmlBlockText(db, noteId)) {
+    for (const title of extractWikiLinks(text)) titles.add(title)
+  }
+  const resolvedTitles = resolveNotesByTitles(db, [...titles])
+  setNoteLinks(
+    db,
+    noteId,
+    [...titles].map((title) => ({ targetTitle: title, targetId: resolvedTitles.get(title)?.id }))
+  )
 }
 
 export function getOutgoingLinks(db: IndexDb, noteId: string): NoteLink[] {
