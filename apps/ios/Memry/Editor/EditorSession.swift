@@ -27,7 +27,8 @@ final class EditorSession {
     // MARK: Wiring
 
     @ObservationIgnored weak var model: NoteEditorViewModel?
-    @ObservationIgnored var didChange: () async -> Void = {}
+    /// Re-reads the page after a write (`didChange`).
+    @ObservationIgnored var reload: () async -> Void = {}
     /// Titles for the `[[` and `@` menus, most recently modified first.
     @ObservationIgnored var titles: [String] = []
     /// Each note's emoji by lowercased title, for the `[[` / `@` rows.
@@ -50,8 +51,9 @@ final class EditorSession {
     /// Opens a tag's notes, for a tap on a `#tag` in a block. `nil` leaves the
     /// tap to place the caret, as on a page with no stack to push onto.
     @ObservationIgnored var openTag: ((String) -> Void)?
-    /// Schedules a vault sync pass (`requestVaultSync`), so a write reaches
-    /// other devices without waiting for the next foreground or launch.
+    /// Schedules a vault sync pass (`requestVaultSync`, debounced), so a
+    /// write reaches other devices without waiting for the next foreground
+    /// or launch. `didChange` calls it after every committed write.
     @ObservationIgnored var requestSync: (@MainActor () -> Void)?
     /// The vault's canvases, for the Whiteboard row and the board editor.
     @ObservationIgnored var whiteboards: (any WhiteboardBoards)?
@@ -248,6 +250,13 @@ final class EditorSession {
     }
 
     // MARK: Ordered writes
+
+    /// Every committed write ends here: a sync pass is scheduled, then the
+    /// page re-reads the document.
+    func didChange() async {
+        requestSync?()
+        await reload()
+    }
 
     /// Runs `work` after every write queued before it: a mark must land after
     /// the commit of the text it marks.
@@ -640,7 +649,6 @@ final class EditorSession {
                 await model.commit(text, for: request.blockId, current: request.source, formatted: true)
                 self?.history.record(.replaceText(blockId: request.blockId, from: request.source, to: text))
             }
-            self?.requestSync?()
         }
     }
 
@@ -739,7 +747,6 @@ final class EditorSession {
             runBlockAction { [weak self] model in
                 await model.commit(text, for: blockId, current: request.text, formatted: true)
                 self?.history.record(.replaceText(blockId: blockId, from: request.text, to: text))
-                self?.requestSync?()
             }
             return
         }
@@ -752,7 +759,6 @@ final class EditorSession {
             step.forwardProps = [language]
             self.history.record(step)
             await self.didChange()
-            self.requestSync?()
         }
     }
 

@@ -199,7 +199,7 @@ struct EditorCommitBaseTests {
         field.block = paragraph("hello world!")
 
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.commit(field)
         }
 
@@ -207,9 +207,29 @@ struct EditorCommitBaseTests {
         #expect(field.base == "hello brave world", "the next commit starts from what this one sent")
     }
 
+    /// #2669: typing in a block reaches other devices without waiting for
+    /// the next foreground: its commit schedules a sync pass after the write.
+    @Test func a_typed_commit_schedules_a_sync_pass_after_the_write() async {
+        let editor = RecordingEditor()
+        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        let session = model.session
+        session.model = model
+        var editsAtSync: [[BlockEdit]] = []
+        session.requestSync = { editsAtSync.append(editor.all) }
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
+        field.render()
+        field.textView.text = "hello world"
+        field.dirty = true
+
+        await commit(session, field)
+
+        #expect(editsAtSync == [[.setText(blockId: "a", text: "hello world")]])
+    }
+
     private func commit(_ session: EditorSession, _ field: BlockField) async {
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.commit(field)
         }
     }
@@ -303,7 +323,7 @@ struct DateMentionEditTests {
         }
         session.requestDateEdit(chip, in: field)
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.applyDateEdit(edit)
         }
         #expect(session.dateEdit == nil)

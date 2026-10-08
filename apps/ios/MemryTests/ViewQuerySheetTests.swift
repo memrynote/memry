@@ -21,7 +21,7 @@ private final class RecordingViewEditor: BlockEditing, @unchecked Sendable {
 struct ViewQuerySheetTests {
     private func done(_ session: EditorSession, _ text: String) async {
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.saveView(text)
         }
     }
@@ -48,7 +48,7 @@ struct ViewQuerySheetTests {
         #expect(session.viewEdit == nil)
 
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.didChange = { done.resume() }
+            session.reload = { done.resume() }
             session.undo()
         }
         #expect(editor.all.last == .delete(blockId: newId))

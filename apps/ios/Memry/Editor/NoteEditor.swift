@@ -550,7 +550,7 @@ struct NoteEditingBridge {
     ) {
         session = model.session
         session.model = model
-        session.didChange = didChange
+        session.reload = didChange
         session.titles = titles
         session.icons = icons
         session.titleExists = titleExists

@@ -374,7 +374,6 @@ extension EditorSession {
                 await model.delete(blockId)
                 if let snapshot { self.history.record(.delete(blockId: blockId, snapshot: snapshot)) }
             }
-            self.requestSync?()
             self.editWhiteboard(canvasId: canvas.id, title: canvas.title ?? title)
         }
     }
