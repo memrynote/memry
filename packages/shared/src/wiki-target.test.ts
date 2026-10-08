@@ -294,4 +294,26 @@ describe('extractWikiLinks', () => {
   it('extractWikiLinks reads a link after an unclosed backtick', () => {
     expect(extractWikiLinks('A lone ` tick then [[Linked]]')).toEqual(['Linked'])
   })
+
+  it('reads the same links as the link pattern on any mix of brackets, bars and words', () => {
+    const pattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g
+    let seed = 7
+    const random = (n: number): number => {
+      seed = (seed * 1103515245 + 12345) % 2147483648
+      return seed % n
+    }
+    for (let round = 0; round < 3000; round++) {
+      let text = ''
+      for (let i = random(24); i > 0; i--) text += '[]|ab '[random(6)]
+      const expected = [...new Set(Array.from(text.matchAll(pattern), (match) => match[1].trim()))]
+      expect(extractWikiLinks(text), text).toEqual(expected)
+    }
+  })
+
+  it('reads a long run of link openers that never close in linear time', () => {
+    const started = performance.now()
+    expect(extractWikiLinks('[['.repeat(50_000))).toEqual([])
+    expect(extractWikiLinks('[[a|'.repeat(25_000) + ']')).toEqual([])
+    expect(performance.now() - started).toBeLessThan(1000)
+  })
 })
