@@ -112,3 +112,63 @@ fn turning_a_formatted_paragraph_into_a_diagram_carries_plain_text_only() {
          3 text \"Before.\""
     );
 }
+
+/// Desktop's `/table` default, rendered from `blocksToDoc` with
+/// `buildTableContent({ rows: 3, columns: 3 })`.
+#[test]
+fn inserted_and_turned_tables_are_the_empty_grid_desktop_writes() {
+    const HEADER: &str = "4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n\
+        5 element tableParagraph\n";
+    const CELL: &str = "4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n\
+        5 element tableParagraph\n";
+    let row = |cell: &str| format!("3 element tableRow\n{}", cell.repeat(3));
+    let expected = format!(
+        "{PARAGRAPH}1 element blockContainer id=\"n1\"\n2 element table textColor=\"default\"\n{}{}{}",
+        row(HEADER),
+        row(CELL),
+        row(CELL)
+    );
+
+    let document = note_with_a_paragraph();
+    insert(&document, "table", Some("p1"), "");
+    assert_eq!(
+        format!("{}\n", canonical_fragment(&document).expect("canonical")),
+        expected
+    );
+
+    let turned = empty_note();
+    insert(&turned, "paragraph", None, "");
+    apply(
+        &turned,
+        &BlockEdit::TurnInto {
+            block_id: "n1".to_owned(),
+            kind: "table".to_owned(),
+        },
+    )
+    .expect("turn into table");
+    assert_eq!(
+        format!("{}\n", canonical_fragment(&turned).expect("canonical")),
+        expected.replacen(PARAGRAPH, "0 element blockGroup\n", 1)
+    );
+}
+
+#[test]
+fn inserted_tables_take_cell_text_at_row_and_column() {
+    let document = empty_note();
+    insert(&document, "table", None, "");
+    apply(
+        &document,
+        &BlockEdit::SetCellText {
+            table_id: "n1".to_owned(),
+            row: 0,
+            column: 0,
+            text: "Name".to_owned(),
+        },
+    )
+    .expect("cell 0,0");
+    let canonical = canonical_fragment(&document).expect("canonical");
+    assert!(
+        canonical.contains("4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"Name\"\n"),
+        "{canonical}"
+    );
+}

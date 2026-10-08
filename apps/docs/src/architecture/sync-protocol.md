@@ -230,7 +230,9 @@ cursor write. A crash before the cursor commits pulls the whole page again; the 
 committed come back with an equal clock and an identical payload and are skipped without a row write
 or a renderer event (a still-dirty `syncedAt` is stamped, and missing canvas assets and note
 attachments are requested again). An equal clock with a different payload still applies, because
-that is how two devices whose merge re-pushes collided converge (protocol 06 §6.5.2 P4). Renderer
+that is how two devices whose merge re-pushes collided converge (protocol 06 §6.5.2 P4). A note
+record apply, at any clock outcome, keeps the later of the local and incoming `modifiedAt`, compared
+as instants, because a body edit moves `modifiedAt` without advancing the note's clock (#2616). Renderer
 events raised while a slice applies are held until its transaction commits and dropped if the slice
 or the item rolls back, so no window is told about rows that never landed.
 
@@ -705,6 +707,20 @@ from 0 anyway and records `done` without a reset.
 The server fix has to be live before a desktop build runs the repair: a repair pull that races a
 peer push on an old Worker can skip the range again and still record `done`.
 
+Each pulled page logs one `Pull page processed` line on the desktop. Every row in the page lands in
+exactly one count (#2616):
+
+| Count       | Rows                                                                               |
+| ----------- | ---------------------------------------------------------------------------------- |
+| `applied`   | The handler wrote the remote version                                               |
+| `skipped`   | Already applied this run, quarantined, or the handler kept the newer local version |
+| `conflicts` | The handler merged a concurrent edit and queued the merge for push                 |
+| `failed`    | Decrypt, signature, parse, schema or apply failure                                 |
+
+Before #2616 a row the handler skipped counted as `applied`, so a page could log `skipped 0` beside a
+`local is newer` line for each row it kept. The sync history entry and the first-sync progress still
+count every row the handler took, skipped and conflicting rows included.
+
 ### Note bodies on the same cursor
 
 `crdt_updates` and `crdt_snapshots` rows also take a `server_cursor` from the same per-user sequence,
@@ -973,16 +989,73 @@ across devices:
   its disposer through `attachment-outbox`, which is already the seam between
   the sync runtime and this singleton, so no import cycle is introduced.
   Uploads pending at dispose are rejected rather than carried over — the outbox
-  below is what makes that safe.
+  below is what makes that safe. The queue starts no upload while the monitor
+  reports offline: an upload reads and encrypts the file before its first
+  request and holds those bytes through the offline wait, so a file deleted
+  before reconnect would still go out. A save-time upload or a drained row that
+  fails because its file was deleted drops its outbox row and reports no
+  failure.
 - **Durable upload outbox** — the upload intent is persisted in the data DB
   (`attachment_upload_queue`, migration 0039) before the transfer starts and
   cleared only after the server accepts the file. Failed or quit-interrupted
-  uploads are retried on every sync runtime start instead of being lost with
-  the in-memory queue. Recording the reference enqueues a note push so peers
-  learn the blob exists; if that lands while the runtime is down — an upload
-  finishing during quit, a vault switch, re-auth — the note is marked for
+  uploads are retried instead of being lost with the in-memory queue.
+  Recording the reference enqueues a note push so peers learn the blob exists;
+  if that lands while the runtime is down — an upload finishing during quit, a
+  vault switch, re-auth — the note is marked for
   [recovery](#recovering-pushes-that-never-landed) instead, so the push happens
-  at the next runtime start rather than waiting for an unrelated later edit.
+  at the next runtime start rather than waiting for an unrelated later edit. The
+  runtime re-drives the outbox (`attachment-upload-redriver`) when it starts,
+  every five minutes and whenever the connection comes back, and skips a pass
+  while offline or without an access token. Each pass runs the attachment
+  backfill first, which queues files on disk that no save event ever offered
+  (a file copied into `attachments/<noteId>/`, or a vault file a body embeds),
+  then drains the outbox: rows upload once, rows whose file was deleted are
+  dropped, failures keep their row. A failed row waits one minute before its
+  next try, doubling with each failure up to six hours, as failed downloads
+  do, and a re-queue by the backfill leaves that window alone. The backfill
+  counts and logs only files it newly queues, so a failed row waiting out its
+  window is not logged again on every pass. Each row is re-read just
+  before its upload, so a row a save-time upload finished meanwhile is
+  skipped. A drain that reaches a file the save path is still uploading joins
+  that upload and leaves its outcome to the save path, rather than sending the
+  file twice under two attachment ids. The backfill skips a note with no
+  embeds whose mtime and size are unchanged since it last read the body. The
+  same embed rule also runs when a body is written through the notes domain,
+  when the watcher indexes an external edit and when ingest reads a new file:
+  each embedded vault file without an outbox row, the note's own folder
+  included, gets one and uploads at once. Rows whose file was deleted are
+  dropped before the online and token gate, so that happens offline too.
+- **Unreachable vault** — a missing file counts as deleted only while its
+  vault is reachable: `<vault>/.memry/data.db` is a file and the folder of the
+  row's note exists. A vault on a removable or network drive that is away for a
+  moment hides every file at once, so while it is unreachable the re-drive
+  skips its whole pass (no drop, no backfill, no drain), the drain leaves such
+  a row untouched, and a save-time upload that fails keeps its row as a
+  failure. The `.memry` folder alone is not the test: a writer can recreate
+  it at the path of a vault that is away. The file watcher uses the same test
+  before it turns a removed file into a delete (see
+  [Local Storage](/architecture/local-storage)).
+- **Attachment file record** — attachment ids are random per upload, so a note
+  that holds references cannot say by itself whether a file on disk is one of
+  them. Uploads and downloads record each file by vault-relative path
+  (`attachment_files`, migration 0066), and the backfill and the write-time
+  hook queue only a file no record knows. A note seen with references and no
+  record yet is from before the table: its files are counted as known instead
+  of uploaded again, and a note with no file on disk gets a marker row so a
+  later file still reads as new. A file renamed inside the note's own folder
+  keeps its row through its stored prefix. A file in another note's
+  attachments folder is that note's attachment and is never queued for the
+  note that embeds it. A download of an attachment whose recorded file is
+  still on disk is skipped, so an embed uploaded from outside the note's folder
+  does not come back as a second copy in it. The on-demand download IPC
+  (`sync:download-attachment`) records a file it puts in
+  `attachments/<noteId>/` the same way. Older builds ignore the table; a file such a build
+  transferred has no row, so after a re-upgrade it uploads once more.
+- **Held vaults** — a save event uploads only while the sync runtime runs for
+  the open vault. A vault the account binding holds (kept local, or another
+  account's) never starts one, so its rows stay queued on the device.
+  A local-only note's rows stay queued the same way: neither the save path nor
+  the drain uploads them, and they go out only if the flag is cleared.
 - **Durable download verdicts** — a download that does not succeed is recorded
   in the data DB (`attachment_download_failures`, migration 0051), keyed by
   (note, attachment). Only the outcome writes here: the request itself no longer
@@ -1975,31 +2048,29 @@ replaces it installs its own hook.
 ### The message contract, and the mobile client
 
 The socket's message names, the keepalive string, the close codes and a parser live in
-`packages/contracts/src/sync-socket.ts`. Desktop parses every frame with its `parseSyncSocketFrame`;
-mobile parses against the same module. An unrecognised `type` parses successfully and is then
-ignored rather than failing the frame, so a server that starts sending a new message cannot break a
-client that shipped before it. Desktop drops an ignored frame with a debug log; only a frame that is
-not a `{ type, payload? }` envelope at all raises the socket's `error` event.
+`packages/contracts/src/sync-socket.ts`. Desktop parses every frame with its `parseSyncSocketFrame`.
+An unrecognised `type` parses successfully and is then ignored rather than failing the frame, so a
+server that starts sending a new message cannot break a client that shipped before it. Desktop drops
+an ignored frame with a debug log; only a frame that is not a `{ type, payload? }` envelope at all
+raises the socket's `error` event.
 
 The parser narrows `calendar_changes_available` (`sourceId`), `linking_request` (`sessionId`,
 `newDeviceName`, `newDevicePlatform`) and `linking_approved` (`sessionId`) alongside the older
 types. Unknown payload keys are stripped, and a frame missing a required field is ignored rather than
 forwarded, so a malformed linking frame no longer reaches the renderer.
 
-Mobile is a second implementation rather than a port, because React Native's WebSocket is not the
-same object as `ws`. It has no `terminate()`, no ping/pong events and no `unexpected-response`, so a
-rejected handshake surfaces as a bare error and a synthetic 1006 close with the HTTP status nowhere
-in reach. The mobile client therefore probes the same URL over plain HTTP after a connect that never
-opened, and reads the real status and error code from there. Headers are the only auth channel; RN's
-third constructor argument carries them, and `X-App-Version` goes on the wire without its `+build`
-suffix, because the server's version comparison parses `2+318` as `NaN` and would pass the gate by
-accident. `X-Memry-Vault-Id` is equally required in practice: the Durable Object filters every
-broadcast by the socket's attached vault, so a socket without it connects and then hears nothing.
+A socket client needs `X-Memry-Vault-Id` on the handshake. The Durable Object files a socket without
+it under `default` (`apps/sync-server/src/durable-objects/user-sync-state.ts:182`) and skips that
+socket for every broadcast that names a vault (`:234`), so it connects and then hears nothing.
 
-Mobile does not pin certificates (see below) and relies on the OS trust store. It connects on the
-foreground and online edges and closes the socket **deliberately** when the app backgrounds, so a
-close the OS delivers while suspending the process cannot arm the reconnect backoff and spend the
-handshake budget, which is 15 per 60 seconds keyed by user and shared across all their devices.
+The iOS app opens no socket yet. The Rust core carries a client written to
+`docs/protocol/09-realtime.md` (`crates/memry-core/src/sync/socket.rs`), and its parser ignores an
+unknown `type` the same way (`crates/memry-core/src/sync/socket_frame.rs:63`). No shell drives that
+client (`apps/ios/Memry/App/ShellState.swift:173-179`), so the phone picks up another device's
+changes on its next sync pass. A mobile client that opens the socket MUST close it when the app
+backgrounds (chapter 09 §9.1). Otherwise a close the OS delivers while suspending the process arms
+the reconnect backoff and spends the handshake budget, which is 15 per 60 seconds keyed by user and
+shared across all their devices (`apps/sync-server/src/routes/sync.ts:305-309`).
 
 ### Certificate pinning on the socket
 

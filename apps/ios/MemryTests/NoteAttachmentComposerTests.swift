@@ -73,6 +73,25 @@ struct NoteAttachmentComposerTests {
         #expect(!composer.isBusy)
     }
 
+    @Test("a long read shows as busy until it ends, and ending it keeps a failure")
+    func readingIsBusyUntilItEnds() async {
+        let composer = NoteAttachmentComposer(noteId: "note-1", filler: ScriptedUploader(result: .failure(SyncError.Locked)))
+
+        composer.beginReading()
+        #expect(composer.state == .reading)
+        #expect(composer.isBusy)
+        composer.endReading()
+        #expect(composer.state == .idle)
+
+        await composer.upload(filename: "a.png", mimeType: "image/png", bytes: Data())
+        composer.endReading()
+        guard case let .failed(error) = composer.state else {
+            Issue.record("ending a read must not clear a failure")
+            return
+        }
+        #expect(error.code == ErrorMapping.locked.code)
+    }
+
     /// A raw Rust error string must never reach an alert.
     @Test("a failed upload carries mapped copy, not a raw error")
     func failureIsMapped() async {

@@ -11,7 +11,7 @@
  * `<video>`, `<hr>`, `<a href>` and `<table>` now come back as their markdown
  * equivalents instead of as nothing, and a `<div>` keeps its inner text rather
  * than taking the note's whole body with it. What is left below is the
- * genuinely unmappable remainder — `<iframe>`, `<script>`, a bare comment.
+ * genuinely unmappable remainder — `<iframe>`, `<script>`.
  * The values here were re-measured against 0.54, not adjusted by hand.
  *
  * Nothing in this file is a promise: it is still a record of what the pipeline
@@ -102,7 +102,6 @@ const HTML_ONLY_BODY: Probe[] = [
   { name: 'raw <img>', markdown: '<img src="a.png" alt="A">', pass1: '![A](a.png)' },
   { name: '<hr /> self-closing', markdown: '<hr />', pass1: '***' },
   { name: '<br> alone on a line', markdown: '<br>', pass1: '' },
-  { name: 'a plain HTML comment', markdown: '<!-- a note to self -->', pass1: '\n\n\n', pass2: '' },
   { name: '<script> block', markdown: '<script>alert(1)</script>', pass1: '\n\n\n', pass2: '' }
 ]
 
@@ -168,6 +167,8 @@ const SURVIVORS: Probe[] = [
     pass1: null
   },
   { name: 'raw HTML inside inline code', markdown: 'Use `<div>` here.', pass1: null },
+  // An `htmlComment` node holds it now (AF-015).
+  { name: 'a plain HTML comment', markdown: '<!-- a note to self -->', pass1: null },
   {
     name: "Memry's own toggle, terminated",
     markdown: serializeToggleBlock('Summary', 'Body'),

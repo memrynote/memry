@@ -215,6 +215,41 @@ function isMacTarget(args) {
   return process.platform === 'darwin' && !otherPlatform
 }
 
+function isWindowsTarget(args) {
+  if (args.some((arg) => ['--win', '-w', '--windows'].includes(arg))) return true
+  const otherPlatform = args.some((arg) =>
+    ['--mac', '-m', '--macos', '--linux', '-l'].includes(arg)
+  )
+  return process.platform === 'win32' && !otherPlatform
+}
+
+/**
+ * Windows installers cannot carry pnpm's symlinked layout (#2519). NSIS, the
+ * zip and Velopack all turn each top-level junction in resources/node_modules
+ * into a plain copy, so a package's own dependencies stop resolving through its
+ * `.pnpm/<pkg>@<v>/node_modules` siblings and fall through to whatever version
+ * shamefully-hoist put at the top level. classic-level 1.4.1 (needs
+ * abstract-level 1) then loaded abstract-level 3, which calls the native
+ * binding without callbacks: every CRDT store write access-violated. win-unpacked
+ * keeps the junctions, so the packaged smoke check passed in CI.
+ *
+ * A hoisted (npm-style) tree has no links at all: conflicting versions are
+ * nested under the package that needs them, so copying it is lossless.
+ */
+function getNodeLinkerArgs(args) {
+  return isWindowsTarget(args) ? ['--config.node-linker=hoisted'] : []
+}
+
+/** `.bin` shims are the only links a hoisted tree keeps; nothing runs them at runtime. */
+function removeBinShims(rootPath) {
+  for (const entry of fs.readdirSync(rootPath, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    const entryPath = path.join(rootPath, entry.name)
+    if (entry.name === '.bin') removePath(entryPath)
+    else removeBinShims(entryPath)
+  }
+}
+
 function stageEventKitHelper() {
   execFileSync(process.execPath, [eventKitHelperScript, '--force'], {
     stdio: 'inherit',
@@ -266,6 +301,28 @@ function runElectronRebuild(args) {
 }
 
 /**
+ * Every real (non-symlink) classic-level package directory in the staged tree:
+ * `.pnpm/classic-level@<v>/node_modules/classic-level` under pnpm's isolated
+ * layout, `node_modules/[<pkg>/node_modules/]classic-level` under hoisted.
+ */
+function findStagedClassicLevelDirs(rootPath) {
+  const found = []
+  for (const entry of fs.readdirSync(rootPath, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    const entryPath = path.join(rootPath, entry.name)
+    if (
+      entry.name === 'classic-level' &&
+      path.basename(rootPath) === 'node_modules' &&
+      fs.existsSync(path.join(entryPath, 'package.json'))
+    ) {
+      found.push(entryPath)
+    }
+    found.push(...findStagedClassicLevelDirs(entryPath))
+  }
+  return found
+}
+
+/**
  * The staged `--only ...,classic-level --module-dir <stage>` rebuild above does
  * not touch the classic-level the CRDT store actually loads, for the two reasons
  * documented in scripts/ensure-native.sh: @electron/rebuild's walker never
@@ -283,14 +340,11 @@ function runElectronRebuild(args) {
  * regardless of the walk.
  */
 function forceBuildStagedClassicLevel(targetArch) {
-  const storeDir = path.join(stageDir, 'node_modules', '.pnpm')
-  const packageDirs = (fs.existsSync(storeDir) ? fs.readdirSync(storeDir) : [])
-    .filter((entry) => entry.startsWith('classic-level@'))
-    .map((entry) => path.join(storeDir, entry, 'node_modules', 'classic-level'))
-    .filter((moduleDir) => fs.existsSync(moduleDir))
+  const nodeModulesDir = path.join(stageDir, 'node_modules')
+  const packageDirs = findStagedClassicLevelDirs(nodeModulesDir)
 
   if (packageDirs.length === 0) {
-    throw new Error(`No staged classic-level copy to rebuild for Electron under ${storeDir}`)
+    throw new Error(`No staged classic-level copy to rebuild for Electron under ${nodeModulesDir}`)
   }
 
   for (const moduleDir of packageDirs) {
@@ -322,7 +376,8 @@ function main() {
   const runtimeEnv = readRuntimeEnv()
   const targetArch = resolveTargetArch(args)
 
-  runPnpm(['--filter', '@memry/desktop', 'deploy', '--legacy', '--prod', getPnpmDeployTarget()], {
+  const deployArgs = ['--filter', '@memry/desktop', 'deploy', '--legacy', '--prod']
+  runPnpm([...deployArgs, ...getNodeLinkerArgs(args), getPnpmDeployTarget()], {
     cwd: repoRoot,
     env: {
       ...process.env,
@@ -357,6 +412,9 @@ function main() {
   ])
   forceBuildStagedClassicLevel(targetArch)
   relativizeInternalSymlinks(path.join(stageDir, 'node_modules'))
+  if (isWindowsTarget(args)) {
+    removeBinShims(path.join(stageDir, 'node_modules'))
+  }
 
   // The slim staged node_modules no longer contains electron, so electron-builder
   // cannot infer the Electron version from installed modules — pass it explicitly.

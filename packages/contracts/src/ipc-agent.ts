@@ -20,6 +20,7 @@ export const AgentChannels = {
     PREVIEW_DIFF: 'agent:previewDiff',
     EDIT_TRUST_LIST: 'agent:editTrustList',
     GET_TOOL_GRANTS: 'agent:getToolGrants',
+    CLEAR_MEMORY: 'agent:clearMemory',
     GET_BACKEND_STATUSES: 'agent:getBackendStatuses',
     LIST_BACKEND_MODELS: 'agent:listBackendModels',
     GET_LOCAL_PROVIDER_SETTINGS: 'agent:getLocalProviderSettings',
@@ -298,6 +299,15 @@ export const AgentSourceRefSchema = z
   .strict()
 export type AgentSourceRef = z.infer<typeof AgentSourceRefSchema>
 
+/** Why the local tool probe turned vault tools off, in terms the chat can explain. */
+export const AgentToolsOffReasonSchema = z.enum([
+  'tools_rejected',
+  'no_tool_call',
+  'tool_result_rejected',
+  'streaming_unsupported'
+])
+export type AgentToolsOffReason = z.infer<typeof AgentToolsOffReasonSchema>
+
 export const AssistantContentSchema = z.object({
   text: z.string(),
   sources: z.array(AgentSourceRefSchema).optional(),
@@ -308,7 +318,20 @@ export const AssistantContentSchema = z.object({
    */
   reasoning: z.string().optional(),
   /** Turn start to the last reasoning token, for the "Thought for Ns" summary. */
-  reasoningDurationMs: z.number().int().nonnegative().optional()
+  reasoningDurationMs: z.number().int().nonnegative().optional(),
+  /**
+   * Set when the local provider failed the tool probe and the turn ran without tools.
+   * `detail` is the provider's own error text, if any. `reason` is absent on messages
+   * written before it existed, and a value this app does not know reads as absent.
+   * Optional so older messages parse, and older apps strip it. Display only; never fed
+   * back into a prompt.
+   */
+  toolsUnavailable: z
+    .object({
+      detail: z.string().nullable(),
+      reason: AgentToolsOffReasonSchema.optional().catch(undefined)
+    })
+    .optional()
 })
 export const ToolCallStatusSchema = z.enum([
   'pending',
@@ -483,7 +506,11 @@ export type AgentStreamTargetRequest = z.infer<typeof AgentStreamTargetRequestSc
 
 export const SendTurnResponseSchema = z.object({
   ok: z.boolean(),
-  error: z.string().optional()
+  error: z.string().optional(),
+  /** The id the started turn's events carry. Absent from older main builds. */
+  turnId: z.string().optional(),
+  /** Set when the refusal is another turn still holding the conversation. */
+  reason: z.literal('turn_in_flight').optional()
 })
 export type SendTurnResponse = z.infer<typeof SendTurnResponseSchema>
 

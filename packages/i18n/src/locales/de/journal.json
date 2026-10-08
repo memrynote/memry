@@ -30,7 +30,9 @@
     "copyUnsavedContent": "Nicht gespeicherten Inhalt in die Zwischenablage kopieren",
     "addBookmark": "Lesezeichen hinzufügen",
     "removeBookmark": "Lesezeichen entfernen",
-    "deleteEntry": "Eintrag löschen"
+    "deleteEntry": "Eintrag löschen",
+    "lockEntry": "Eintrag sperren",
+    "unlockEntry": "Eintrag entsperren"
   },
   "editor": {
     "placeholder": {

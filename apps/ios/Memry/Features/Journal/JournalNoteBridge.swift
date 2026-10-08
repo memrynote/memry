@@ -145,6 +145,10 @@ struct JournalNoteBridge: NotesReading, BlockEditing {
         try await reader?.notesTagged(tag) ?? []
     }
 
+    func journalsTagged(_ tag: String) async throws -> [NoteSummary] {
+        try await reader?.journalsTagged(tag) ?? []
+    }
+
     func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment {
         guard let reader else { return .unknown }
         return try await reader.attachmentForBlock(id: await dayId(id), url: url)

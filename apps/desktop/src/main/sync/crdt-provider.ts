@@ -34,9 +34,11 @@ import {
   SNAPSHOT_WATERMARK_META_KEY,
   type CrdtSnapshotWatermark
 } from '@memry/sync-client/crdt-snapshot-watermark'
-import { recordCrdtPersistenceOutcome } from '../store'
+import { getCrdtInMemorySessions, recordCrdtPersistenceOutcome } from '../store'
 import { prepareVaultCrdtStore } from './crdt-store-path'
 import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
+import { clearOwedFileBody, owesFileBody } from './crdt-owed-file-body'
+import { takeOwedFile } from './crdt-external-feed'
 import { getVaultRoot, toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
@@ -211,10 +213,18 @@ interface ActiveDoc {
    */
   localOnly: boolean
   closing?: boolean
+  /**
+   * Opened unseeded with no store, and neither a remote update, a seed nor
+   * `takeFileAfterMerge` has reached it yet. A body fed into such a doc shares
+   * no Yjs items with the server body (#2536, #2646).
+   */
+  awaitingMerge: boolean
 }
 
 export class CrdtProvider {
   private docs = new Map<string, ActiveDoc>()
+  /** See `holdDoc`. Keyed by note, so a hold taken before `open` covers the doc it opens. */
+  private holds = new Map<string, number>()
   /**
    * Server time (ms) of the remote update `applyRemoteUpdate` is merging, for
    * the write-back its synchronous `update` event arms (#2515).
@@ -241,6 +251,12 @@ export class CrdtProvider {
    * opened since.
    */
   private boundVault: { db: DataDb; vaultUuid: string } | null = null
+  /**
+   * Path of the vault this provider was initialized for, as named by the
+   * PROVIDER_READY broadcast. Null when unknown: no vault yet, or a caller that
+   * named none while the vault status was still unset.
+   */
+  private servedVaultPath: string | null = null
   /** Runs the owed-compactions marker's read-modify-writes one at a time. */
   private owedCompactions: Promise<void> = Promise.resolve()
   /**
@@ -468,7 +484,7 @@ export class CrdtProvider {
    * store can actually be scoped. A settled init is never redone; a *deferred*
    * one (no vault) is not settled and must be retried.
    */
-  async initPersistence(): Promise<void> {
+  async initPersistence(vaultPath?: string): Promise<void> {
     // Never retry a settled init: a failed probe means the native binding is
     // broken for this process — re-probing would just re-pay the timeout.
     if (this.persistenceReady) {
@@ -476,14 +492,22 @@ export class CrdtProvider {
     }
 
     if (!this.persistenceInitPromise) {
-      this.persistenceInitPromise = this.doInitPersistence().finally(() => {
+      this.persistenceInitPromise = this.doInitPersistence(vaultPath).finally(() => {
         this.persistenceInitPromise = null
       })
     }
     return this.persistenceInitPromise
   }
 
-  private async doInitPersistence(): Promise<void> {
+  /**
+   * `vaultPath` is the vault being opened, when the caller knows it. openVault
+   * must pass it: it runs this before it publishes the new path to the vault
+   * status, so `getVaultRoot()` here throws (a switch has just cleared it) and
+   * the ready broadcast went out naming no vault. Renderers then could not tell
+   * which workspace's editors may rebind, and a doc kept for the vault the user
+   * left re-opened its note in the new vault's store.
+   */
+  private async doInitPersistence(vaultPath?: string): Promise<void> {
     // Scoped to the open vault, not to the install. One store for every vault
     // was keyed by note id alone, and journal notes use deterministic
     // date-based ids (`j2026-08-13`), so two vaults' journals for the same day
@@ -491,11 +515,13 @@ export class CrdtProvider {
     // whole store, and with it every note's merge history.
     // Captured before the awaits: the ready broadcast names the vault this
     // store was opened for, so an editor kept for another vault can ignore it.
-    let vaultPath: string | null = null
-    try {
-      vaultPath = getVaultRoot()
-    } catch {
-      vaultPath = null
+    let readyVaultPath: string | null = vaultPath ?? null
+    if (readyVaultPath === null) {
+      try {
+        readyVaultPath = getVaultRoot()
+      } catch {
+        readyVaultPath = null
+      }
     }
     const target = await prepareVaultCrdtStore()
     if (!target) {
@@ -511,6 +537,7 @@ export class CrdtProvider {
     // the store could not be trusted and this provider runs in-memory.
     this.persistence = await openCrdtPersistence(target.storagePath)
     this.boundVault = { db: getDatabase(), vaultUuid: target.vaultUuid }
+    this.servedVaultPath = readyVaultPath
     if (this.persistence) {
       // Before anything can push from this store (#2299): a store without the
       // marker withholds snapshot claims until the vault is swept again.
@@ -540,12 +567,24 @@ export class CrdtProvider {
     // over again. Whatever else main attaches to a fresh provider (init()'s
     // body outbox and snapshot push) lands in the same microtask as this
     // resolve, so a renderer's IPC round-trip can never beat it.
-    broadcastToAllWindows(CRDT_EVENTS.PROVIDER_READY, { vaultPath })
+    broadcastToAllWindows(CRDT_EVENTS.PROVIDER_READY, { vaultPath: readyVaultPath })
     log.info('CRDT provider ready, asked stranded editors to rebind')
   }
 
   isInitialized(): boolean {
     return this.persistenceReady
+  }
+
+  /**
+   * Whether a doc a renderer holds for `vaultPath` may be opened here. False
+   * only when both sides name a vault and they differ: note ids repeat across
+   * vaults (journal ids are dates, a copied vault keeps every id), so opening
+   * such a note would merge one vault's Y.Doc into the other vault's store.
+   * Unknown on either side stays permitted, as before.
+   */
+  servesVault(vaultPath: string | undefined): boolean {
+    if (vaultPath === undefined || this.servedVaultPath === null) return true
+    return this.servedVaultPath === vaultPath
   }
 
   /**
@@ -556,6 +595,17 @@ export class CrdtProvider {
    */
   hasPersistence(): boolean {
     return this.persistence !== null
+  }
+
+  /**
+   * `hasPersistence` for a caller that may ask before init settles. Joins an
+   * init in flight, never starts one, so the caller is not what decides which
+   * vault the store belongs to. Before this launch's verdict exists, the
+   * persisted streak answers: it is what the previous launches decided.
+   */
+  async isPersistent(): Promise<boolean> {
+    if (!this.persistenceReady) await this.awaitPendingInit()
+    return this.persistenceReady ? this.persistence !== null : getCrdtInMemorySessions() === 0
   }
 
   /**
@@ -702,6 +752,11 @@ export class CrdtProvider {
    * a doc that is still empty. The pull seeds on its own when the server holds
    * nothing. A merge that fails or outlasts the timeout (offline) falls back to
    * the seed, which is the behavior before this change.
+   *
+   * A note that owes its file body (#2646) takes the file on top of the
+   * merged server body (`takeFileAfterMerge`), and only after a merge that
+   * completed. A failed or late merge leaves the file and the marker to the
+   * note's full-state flush.
    */
   async openForEditor(
     noteId: string,
@@ -715,11 +770,12 @@ export class CrdtProvider {
     if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return doc
 
     let timer: ReturnType<typeof setTimeout> | undefined
+    let merged = false
     try {
-      await Promise.race([
+      merged = await Promise.race([
         mergeRemote(noteId),
-        new Promise<void>((resolve) => {
-          timer = setTimeout(resolve, timeoutMs)
+        new Promise<boolean>((resolve) => {
+          timer = setTimeout(() => resolve(false), timeoutMs)
         })
       ])
     } catch (err) {
@@ -732,8 +788,48 @@ export class CrdtProvider {
     }
 
     // The window may have closed the doc while the merge ran.
-    if (this.docs.get(noteId)?.doc === doc) await this.seedFromMarkdown(noteId, doc)
+    if (this.docs.get(noteId)?.doc !== doc) return doc
+    if (merged) await this.takeFileAfterMerge(noteId, doc)
+    else if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
+      await this.seedFromMarkdown(noteId, doc)
+    }
     return doc
+  }
+
+  /**
+   * Finish a doc the server body was just completely merged into: a doc still
+   * empty seeds from the vault file, and a note that owes its file body
+   * (#2646) takes the file on top of the merged body. The only place the file
+   * is taken. Every other pass leaves it alone while the marker stands. A
+   * file that no longer exists leaves nothing to owe, so its marker is cleared.
+   *
+   * Resolves false, touching neither the doc nor the marker, when `doc` is no
+   * longer the note's live doc: the merge landed in a doc that was closed
+   * under it, and a seed there would clear the marker with nothing pushed.
+   */
+  async takeFileAfterMerge(noteId: string, doc: Y.Doc): Promise<boolean> {
+    const live = this.docs.get(noteId)
+    if (live?.doc !== doc || live.closing) return false
+    try {
+      if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
+        await this.seedFromMarkdown(noteId, doc)
+        return true
+      }
+      if (!owesFileBody(noteId)) return true
+      const cached = getNoteCacheById(getIndexDatabase(), noteId)
+      if (!cached) return true
+      const raw = await safeRead(toAbsolutePath(cached.path))
+      if (raw === null) {
+        clearOwedFileBody(noteId)
+        log.warn('The vault file a note owes does not exist; nothing is left to take', { noteId })
+        return true
+      }
+      await takeOwedFile(noteId, doc, { path: cached.path, raw, title: cached.title })
+      return true
+    } finally {
+      const entry = this.docs.get(noteId)
+      if (entry?.doc === doc) entry.awaitingMerge = false
+    }
   }
 
   private async doOpen(
@@ -790,7 +886,8 @@ export class CrdtProvider {
       lastEncodedSize: 0,
       lastSizeCheckAt: 0,
       lastTouchedAt: this.now(),
-      localOnly: this.isNoteLocalOnly(noteId)
+      localOnly: this.isNoteLocalOnly(noteId),
+      awaitingMerge: !this.persistence && options?.skipSeed === true
     }
     this.docs.set(noteId, entry)
 
@@ -935,16 +1032,38 @@ export class CrdtProvider {
 
   /**
    * Close a doc this code opened for itself, unless a window has bound to it
-   * since. Paths that open a doc only to read or push it must close through
-   * here, never `close(noteId)`: an editor that opened the note in between
-   * would lose its doc, and every edit after it (#2448).
+   * since or a `holdDoc` holds it. Paths that open a doc only to read or push
+   * it must close through here, never `close(noteId)`: an editor that opened
+   * the note in between would lose its doc, and every edit after it (#2448).
    */
   async closeIfInactive(noteId: string, options: { evicting?: boolean } = {}): Promise<boolean> {
     const entry = this.docs.get(noteId)
-    if (!entry || entry.closing || entry.windowIds.size > 0) return false
+    if (!entry || entry.closing || entry.windowIds.size > 0 || this.holds.has(noteId)) return false
 
     await this.close(noteId, undefined, options)
     return !this.docs.has(noteId)
+  }
+
+  /**
+   * Keep the note's doc open across a merge, a take and a read that must all
+   * reach the same doc. Take the hold before `open`: neither `closeIfInactive`
+   * nor the LRU closes a held doc. The returned release drops the hold, and the
+   * last release closes the doc unless a window holds it.
+   */
+  holdDoc(noteId: string): () => Promise<void> {
+    this.holds.set(noteId, (this.holds.get(noteId) ?? 0) + 1)
+    let released = false
+    return async () => {
+      if (released) return
+      released = true
+      const left = (this.holds.get(noteId) ?? 1) - 1
+      if (left > 0) {
+        this.holds.set(noteId, left)
+        return
+      }
+      this.holds.delete(noteId)
+      await this.closeIfInactive(noteId)
+    }
   }
 
   /**
@@ -1019,6 +1138,7 @@ export class CrdtProvider {
   async purge(noteId: string): Promise<void> {
     cancelWriteback(noteId)
     this.dropOwedBody(noteId)
+    clearOwedFileBody(noteId)
 
     const entry = this.docs.get(noteId)
     if (entry) entry.pendingSnapshotBytes = 0
@@ -1031,6 +1151,11 @@ export class CrdtProvider {
 
   getDoc(noteId: string): Y.Doc | undefined {
     return this.docs.get(noteId)?.doc
+  }
+
+  /** See `ActiveDoc.awaitingMerge`. False for a note with no open doc. */
+  isAwaitingMerge(noteId: string): boolean {
+    return this.docs.get(noteId)?.awaitingMerge === true
   }
 
   /**
@@ -1080,6 +1205,7 @@ export class CrdtProvider {
     } finally {
       this.applyingRemoteEditedAtMs = undefined
     }
+    entry.awaitingMerge = false
     return true
   }
 
@@ -1213,6 +1339,7 @@ export class CrdtProvider {
     // to throw its copy away — see the getter.
     this.storeIdentity = null
     this.boundVault = null
+    this.servedVaultPath = null
     this.persistenceReady = false
 
     this.openLocks.clear()
@@ -1584,7 +1711,7 @@ export class CrdtProvider {
       // first keystroke into an empty foreign note reach the file — without it
       // the write-back's never-read guard would refuse that save forever,
       // since nothing else fills the column in (#1909).
-      if (raw === '') this.recordSeedContentHash(indexDb, noteId, cached.contentHash, raw)
+      if (raw === '') this.recordSeedRead(indexDb, noteId, cached.contentHash, raw)
       return
     }
 
@@ -1609,7 +1736,7 @@ export class CrdtProvider {
       // Frontmatter-only or whitespace-only: nothing to seed, but the bytes
       // WERE read and the empty doc represents the empty body faithfully, so
       // the same recording applies as for an empty file above.
-      this.recordSeedContentHash(indexDb, noteId, cached.contentHash, raw)
+      this.recordSeedRead(indexDb, noteId, cached.contentHash, raw)
       return
     }
 
@@ -1634,7 +1761,7 @@ export class CrdtProvider {
     // row. The bytes ARE read here, and the doc is built from them, so this is
     // the honest place to say so.
     if (ok) {
-      this.recordSeedContentHash(indexDb, noteId, cached.contentHash, raw)
+      this.recordSeedRead(indexDb, noteId, cached.contentHash, raw)
     }
 
     if (ok && this.persistence) {
@@ -1644,14 +1771,18 @@ export class CrdtProvider {
     }
   }
 
-  // A hash the indexer already measured is left alone; this only ever fills a
-  // hole, and only with the hash of bytes the seed genuinely read.
-  private recordSeedContentHash(
+  // The doc now represents the file: a note that owed its file body owes it no
+  // longer (#2646). A hash the indexer already measured is left alone; this
+  // only ever fills a hole, and only with the hash of bytes the seed read.
+  private recordSeedRead(
     indexDb: ReturnType<typeof getIndexDatabase>,
     noteId: string,
     existingHash: string | null | undefined,
     raw: string
   ): void {
+    clearOwedFileBody(noteId)
+    const entry = this.docs.get(noteId)
+    if (entry) entry.awaitingMerge = false
     if (existingHash) return
     try {
       updateNoteCache(indexDb, noteId, { contentHash: generateContentHash(raw) })
@@ -1829,7 +1960,8 @@ export class CrdtProvider {
     log.debug('Recorded a local CRDT edit made with no outbox', { noteId })
   }
 
-  private recordOwedFullState(noteId: string): void {
+  /** Owe the server this note's whole doc state: one full-state outbox row, pushed after a merge. */
+  recordOwedFullState(noteId: string): void {
     if (this.updateQueue) return this.updateQueue.enqueueFullState(noteId)
     this.writeWithoutRuntime(noteId, (queue) =>
       queue.enqueueNoteBody(noteId, NOTE_BODY_FULL_STATE_PAYLOAD)
@@ -1968,7 +2100,7 @@ export class CrdtProvider {
 
   private async evictInactiveDocsIfNeeded(): Promise<void> {
     const inactiveDocs = Array.from(this.docs.entries()).filter(
-      ([, entry]) => entry.windowIds.size === 0 && !entry.closing
+      ([noteId, entry]) => entry.windowIds.size === 0 && !entry.closing && !this.holds.has(noteId)
     )
     const overflow = inactiveDocs.length - this.inactiveDocCapacity
     if (overflow <= 0) return

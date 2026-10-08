@@ -26,6 +26,7 @@ import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import { belongsToOtherType } from './note-row-type'
 import { seedSkipsDeletedNote } from '../pending-deletes'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { forgetBaselineOfRemotelyDeletedNote } from '../../vault-locks/files'
 
 const log = createLogger('JournalHandler')
 
@@ -146,6 +147,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       })
 
     deleteNoteFromCache(indexDb, itemId)
+    forgetBaselineOfRemotelyDeletedNote(ctx.db, itemId)
     // After the row delete, and journaled with the page (#2385): see
     // `noteHandler.applyDelete`.
     if (existing.journalDate) deleteSyncedVaultFile(getJournalPath(existing.journalDate))

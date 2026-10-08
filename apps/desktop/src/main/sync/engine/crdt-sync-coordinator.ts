@@ -518,6 +518,13 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         this.owePendingPull(noteId)
         return false
       }
+      // The baseline's `since` is the larger of the snapshot and the watermark.
+      // A doc reopened empty (no store) holds none of what the watermark
+      // counts, so it walks the full state, as the batch path does.
+      const vector = crdtProvider.getStateVector(noteId)
+      if (vector && isEmptyStateVector(vector) && this.lastAppliedSequence.has(noteId)) {
+        this.forgetWatermark(noteId)
+      }
 
       // This pass IS the pull the note may already have been owed, so the debt
       // is settled here rather than at the end. That is what lets

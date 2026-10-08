@@ -31,12 +31,14 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::node_shapes;
 use crate::crdt::{BODY_FRAGMENT, Document};
 
+mod columns;
 mod inline;
 mod snapshot;
 mod structure;
 mod tables;
 mod text;
 
+use columns::*;
 use inline::*;
 use snapshot::*;
 use structure::*;
@@ -199,6 +201,10 @@ pub enum BlockEdit {
         block_id: String,
     },
     /// Lifts a block out to its parent's level (N406).
+    ///
+    /// A block directly in a column is refused as a column layout edit:
+    /// there is no level inside the column to lift it to, and desktop leaves
+    /// it where it is.
     Outdent {
         block_id: String,
     },
@@ -264,12 +270,32 @@ pub enum BlockEdit {
     /// props, marks and inline nodes it had; the blocks nested under it are
     /// left as they are. When it is gone, the whole container returns after
     /// the sibling it followed, else first in the block it was nested in, else
-    /// first in the body.
+    /// first in the column it sat in, else where that column's list stood
+    /// (its column rebuilt when the list is still there), else first in the
+    /// body.
     ///
     /// `snapshot` is opaque and belongs to the shell's undo stack only: it is
     /// never stored or synced.
     RestoreBlock {
         snapshot: String,
+    },
+    /// Inserts a side-by-side column layout (chapter 12 §12.9):
+    /// `columnList > column(width 1) > blockContainer > paragraph`, one empty
+    /// paragraph per column.
+    ///
+    /// Lands after `after_block_id`, or at the start of the body when it is
+    /// `None`. An anchor inside a column (or nested under another block) lands
+    /// the list after the top-level row that holds it, because a column list
+    /// never nests. `columns` outside 2..=3 is refused.
+    ///
+    /// `new_block_id` becomes the `columnList`'s own `id`; the core mints the
+    /// ids of each column and of each column's paragraph container.
+    ///
+    /// Last in the enum so the variants before it keep their FFI indices.
+    InsertColumnList {
+        after_block_id: Option<String>,
+        columns: u32,
+        new_block_id: String,
     },
 }
 
@@ -278,7 +304,14 @@ pub enum BlockEdit {
 /// The update the write authored reaches the registry's sink, which is what the
 /// caller commits alongside its outbox row.
 pub fn apply(document: &Document, edit: &BlockEdit) -> Result<(), CrdtError> {
-    document.write(|txn| match edit {
+    document.write(|txn| {
+        guard_column_layout(txn, edit)?;
+        apply_in(txn, edit)
+    })?
+}
+
+fn apply_in(txn: &mut TransactionMut, edit: &BlockEdit) -> Result<(), CrdtError> {
+    match edit {
         BlockEdit::SetText { block_id, text } => set_text(txn, block_id, text),
         BlockEdit::ReplaceText {
             block_id,
@@ -307,6 +340,11 @@ pub fn apply(document: &Document, edit: &BlockEdit) -> Result<(), CrdtError> {
             text,
             new_block_id,
         } => insert_block(txn, kind, after_block_id.as_deref(), text, new_block_id),
+        BlockEdit::InsertColumnList {
+            after_block_id,
+            columns,
+            new_block_id,
+        } => insert_column_list(txn, after_block_id.as_deref(), *columns, new_block_id),
         BlockEdit::TurnInto { block_id, kind } => turn_into(txn, block_id, kind),
         BlockEdit::SetCellText {
             table_id,
@@ -365,7 +403,7 @@ pub fn apply(document: &Document, edit: &BlockEdit) -> Result<(), CrdtError> {
         } => set_mark(txn, block_id, *start, *end, mark, None, false),
         BlockEdit::Delete { block_id } => delete(txn, block_id),
         BlockEdit::RestoreBlock { snapshot } => restore_block(txn, snapshot),
-    })?
+    }
 }
 
 /// Reads one block's container and everything under it, for
@@ -405,8 +443,9 @@ pub(crate) fn top_block_group(txn: &mut TransactionMut) -> Result<XmlElementRef,
 }
 
 /// The ids of the body's top-level blocks, in order: what a whole-body copy
-/// snapshots one by one (note "Duplicate"). Authors no update; an empty body
-/// answers an empty list.
+/// snapshots one by one (note "Duplicate"). A `columnList` is a top-level row
+/// like a block, and is listed so a copy keeps its columns. Authors no update;
+/// an empty body answers an empty list.
 pub fn top_level_block_ids(document: &Document) -> Result<Vec<String>, CrdtError> {
     document.write(|txn| {
         let mut ids = Vec::new();
@@ -422,7 +461,7 @@ pub fn top_level_block_ids(document: &Document) -> Result<Vec<String>, CrdtError
             }
             for inner in group.children(txn) {
                 if let XmlOut::Element(container) = inner
-                    && container.tag().as_ref() == "blockContainer"
+                    && matches!(container.tag().as_ref(), "blockContainer" | COLUMN_LIST)
                     && let Some(id) = attribute(txn, &container, "id")
                 {
                     ids.push(id);
@@ -499,8 +538,10 @@ fn missing(id: &str) -> CrdtError {
     }
 }
 
+/// Removes a block, or a whole `columnList`, by id. A column its last block
+/// left is settled ([`settle_after_removal`]).
 fn delete(txn: &mut TransactionMut, block_id: &str) -> Result<(), CrdtError> {
-    let (container, _) = locate(txn, block_id).ok_or_else(|| missing(block_id))?;
+    let container = locate_row(txn, block_id).ok_or_else(|| missing(block_id))?;
     let parent = container.parent();
     match parent {
         Some(XmlOut::Element(element)) => {
@@ -514,9 +555,10 @@ fn delete(txn: &mut TransactionMut, block_id: &str) -> Result<(), CrdtError> {
                 })
                 .ok_or_else(|| missing(block_id))? as u32;
             element.remove_range(txn, index, 1);
-            // The last child of a nested group leaves no empty group behind:
-            // BlockNote's schema requires a group to hold a block.
-            drop_if_empty(txn, &element);
+            // The last child of a nested group leaves no empty group behind,
+            // and the last block of a column no empty column: BlockNote's
+            // schema requires both to hold a block.
+            settle_after_removal(txn, &element);
         }
         _ => {
             let fragment = txn

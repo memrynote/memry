@@ -151,7 +151,7 @@
       "deny": "Afwijzen",
       "invalidJson": "Voer geldige JSON in voordat je bewerkingen toepast.",
       "thisTool": "deze tool",
-      "alwaysAllowHint": "“Altijd toestaan” geldt voor {tool}. Andere tools blijven om toestemming vragen, en voor verwijderen wordt altijd gevraagd.",
+      "alwaysAllowHint": "“Altijd toestaan” geldt voor {tool}. Andere tools blijven om toestemming vragen, en voor verwijderen wordt altijd gevraagd. Vergrendelde notities en mappen blijven alleen-lezen.",
       "alwaysInChat": "Altijd toestaan in deze chat",
       "alwaysInChatHint": "Stopt wanneer het gesprek eindigt",
       "alwaysInVault": "Altijd toestaan in deze kluis",
@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Kan geen voorbeeld van deze wijziging tonen",
       "description": "De agent wil {title} bijwerken. Bekijk de wijziging voordat je die toepast.",
+      "descriptionCreate": "De agent wil {title} maken. Bekijk de wijziging voordat je die toepast.",
+      "descriptionDelete": "De agent wil {title} verwijderen. Bekijk de wijziging voordat je die toepast.",
       "fallbackTitle": "dit item",
       "current": "Huidig",
       "candidate": "Voorstel",
@@ -374,7 +376,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# wacht op goedkeuring} other {# wachten op goedkeuring}}",
       "inProgress": "Agent is bezig",
-      "close": "Agent sluiten"
+      "close": "Agent sluiten",
+      "moreActions": "Meer agentacties"
     },
     "errors": {
       "loadConversations": "Kan agentgesprekken niet laden",

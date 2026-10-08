@@ -1,44 +1,43 @@
-# Marketing Emails Rules
+# Marketing emails guide
 
-Transactional and campaign email templates (`@memry/marketing-emails`), React Email. Root `AGENTS.md` applies; this file adds email rules.
+This directory owns the campaign email templates (`@memry/marketing-emails`), built with React Email. Kaan sends them by hand from the Resend dashboard. Read `PLAYBOOK.md` before writing a new campaign.
 
 ## Layout
 
-- `emails/` — campaign templates, numbered by send order. The number is send history; do not renumber a sent campaign.
-- `src/` — shared campaign content (`campaign-content.ts`), tracking links (`tracking-links.ts`), and reusable email components.
-- `posts/` — long-form source.
-- `scripts/check-campaign-copy.mjs` — copy gate.
-- `PLAYBOOK.md` — how campaigns are planned and sent. Read it before writing a new one.
+- `emails/` holds one file per campaign. In a numbered series, the number is send order and send history, so a sent campaign keeps its number.
+- `src/` holds shared campaign content (`campaign-content.ts`, `waitlist-program-content.ts`), tracking links (`tracking-links.ts`), and the reusable email components.
+- `posts/` holds long-form companion posts, such as Reddit drafts.
+- `scripts/check-campaign-copy.mjs` is the copy gate behind `test:copy`.
 
 ## Commands
 
 ```bash
-pnpm --filter @memry/marketing-emails dev        # preview in browser
+pnpm --filter @memry/marketing-emails dev        # preview in the browser
 pnpm --filter @memry/marketing-emails test:copy  # copy gate
 pnpm --filter @memry/marketing-emails typecheck
-pnpm --filter @memry/marketing-emails build
+pnpm --filter @memry/marketing-emails build      # exports HTML to out/
 ```
 
-`test:copy` and `typecheck` must pass before an email is done. Preview every template in `dev` before calling it finished: a template that compiles can still render broken.
+An email is done when `test:copy` and `typecheck` pass and you have previewed it in `dev`. A template that compiles can still render broken.
 
-## Sent Is Permanent
+## Sent is permanent
 
 An email cannot be recalled, edited, or unsent.
 
-- Never modify a template that has already been sent. Create the next one.
-- Verify every claim against what the product ships today. A wrong feature claim reaches thousands of inboxes at once.
-- Verify every link, including tracking links in `tracking-links.ts`. A dead CTA is the whole campaign wasted.
-- Never send or trigger a send unless the user explicitly asks.
+- A sent template stays as it is. Write the next one instead.
+- Check every claim against what the product ships today. A wrong feature claim reaches every inbox at once.
+- Check every link, including the tracking links in `tracking-links.ts`. A dead CTA wastes the whole campaign.
+- Send, schedule, or change a Resend audience only when Kaan asks.
 
 ## Copy
 
-- Brand voice is landing's, not the docs': warm, direct, plain. Still calm, private, crafted; never hype, never urgency theater.
-- No emojis unless an existing sent template in the same series already uses them.
-- Second person, short sentences, one clear CTA per email.
-- Unsubscribe and sender identity stay intact in every template. That is a legal requirement, not a design choice.
+- Use landing's brand voice, not the docs' voice: warm, direct, and plain, and still calm, private, and crafted. Skip hype and urgency theater.
+- No emojis unless an earlier sent template in the same series already uses them.
+- Write in the second person, in short sentences, with one clear CTA per email.
+- Every template keeps the unsubscribe link (`{{{RESEND_UNSUBSCRIBE_URL}}}`) and the sender identity. The law requires both.
 
-## HTML Email
+## HTML email
 
-- Email clients are not browsers. Tables and inline styles; no flexbox, grid, or modern CSS you have not confirmed renders in Outlook.
-- Every image needs alt text and a design that still reads with images blocked.
-- Dark mode inverts unpredictably. Do not rely on a background color carrying meaning.
+- Email clients are not browsers. Use tables and inline styles. Flexbox, grid, and any CSS you have not confirmed in Outlook stay out.
+- Every image has alt text, and the design still reads with images blocked.
+- Dark mode inverts colors unpredictably, so a background color never carries meaning on its own.

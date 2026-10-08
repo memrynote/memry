@@ -158,7 +158,8 @@
       "richTextAria": "Rich-text-editor",
       "headingPlaceholder": "Kop",
       "listPlaceholder": "Lijstitem",
-      "todoPlaceholder": "To-do-item"
+      "todoPlaceholder": "To-do-item",
+      "htmlComment": "Verborgen HTML-opmerking"
     },
     "table": {
       "keyboardMenuAria": "Tabelacties voor rij {row}, kolom {column}",
@@ -245,6 +246,25 @@
       "warning": "Waarschuwing",
       "error": "Fout",
       "success": "Succes"
+    },
+    "columns": {
+      "group": "Basisblokken",
+      "two": {
+        "title": "2 kolommen",
+        "subtext": "Zet blokken naast elkaar in twee kolommen"
+      },
+      "three": {
+        "title": "3 kolommen",
+        "subtext": "Zet blokken naast elkaar in drie kolommen"
+      },
+      "four": {
+        "title": "4 kolommen",
+        "subtext": "Zet blokken naast elkaar in vier kolommen"
+      },
+      "five": {
+        "title": "5 kolommen",
+        "subtext": "Zet blokken naast elkaar in vijf kolommen"
+      }
     },
     "diagram": {
       "title": "Diagram",

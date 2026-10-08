@@ -151,7 +151,7 @@
       "deny": "Hylkää",
       "invalidJson": "Syötä kelvollinen JSON ennen muokkausten käyttämistä.",
       "thisTool": "tämä työkalu",
-      "alwaysAllowHint": "”Salli aina” koskee vain seuraavaa: {tool}. Muut työkalut kysyvät edelleen lupaa, ja poistoista kysytään aina.",
+      "alwaysAllowHint": "”Salli aina” koskee vain seuraavaa: {tool}. Muut työkalut kysyvät edelleen lupaa, ja poistoista kysytään aina. Lukitut muistiinpanot ja kansiot pysyvät vain luku -tilassa.",
       "alwaysInChat": "Salli aina tässä keskustelussa",
       "alwaysInChatHint": "Päättyy, kun keskustelu päättyy",
       "alwaysInVault": "Salli aina tässä holvissa",
@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Muutoksen esikatseleminen epäonnistui",
       "description": "Agentti haluaa päivittää: {title}. Tarkista muutos ennen kuin otat sen käyttöön.",
+      "descriptionCreate": "Agentti haluaa luoda: {title}. Tarkista muutos ennen kuin otat sen käyttöön.",
+      "descriptionDelete": "Agentti haluaa poistaa: {title}. Tarkista muutos ennen kuin otat sen käyttöön.",
       "fallbackTitle": "tämä kohde",
       "current": "Nykyinen",
       "candidate": "Ehdotettu versio",
@@ -374,7 +376,8 @@
       "agent": "Agentti",
       "pendingApproval": "{count, plural, one {# odottaa hyväksyntää} other {# odottavaa hyväksyntää}}",
       "inProgress": "Agentin vuoro käynnissä",
-      "close": "Sulje agentti"
+      "close": "Sulje agentti",
+      "moreActions": "Lisää agentin toimintoja"
     },
     "errors": {
       "loadConversations": "Agenttikeskustelujen lataaminen epäonnistui",

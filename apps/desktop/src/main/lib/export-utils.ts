@@ -7,7 +7,9 @@
  */
 
 import { marked } from 'marked'
+import { stripTaskBlockSuffixes } from '@memry/shared/task-block'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
+import { stripMarkdownComments } from '@memry/shared/markdown-code'
 import type { CustomIconRow } from '@memry/db-schema/schema/custom-icons'
 import { sanitizeSvgBytes } from '../icons/sanitize-svg'
 
@@ -36,6 +38,8 @@ export interface RenderOptions {
    * Without it, or when the icon is gone, the header shows no icon.
    */
   findCustomIcon?: (id: string) => ExportCustomIcon | undefined
+  /** Keep each task's `{task:<id>}` suffix. Off by default: a reader has no use for it. */
+  includeTaskMarkers?: boolean
 }
 
 /** The parts of a stored custom icon an export needs. */
@@ -56,15 +60,15 @@ marked.setOptions({
 /**
  * Convert markdown content to HTML.
  * Handles wiki-links by converting them to plain text spans.
+ *
+ * HTML and `%% … %%` comments are left out first, Memry's own markers and the
+ * links hidden in them included (FB-011): a reader of the export sees neither.
  */
 export function markdownToHtml(markdown: string): string {
-  // Pre-process: wiki-links become plain spans labelled the way a chip would be
   const processedMarkdown = replaceWikiLinks(
-    markdown,
+    stripMarkdownComments(markdown),
     (label) => `<span class="wiki-link">${label}</span>`
   )
-    // Strip file block comments <!-- file:{...} -->
-    .replace(/<!--\s*file:\{[^}]+\}\s*-->/g, '')
 
   return marked.parse(processedMarkdown) as string
 }
@@ -410,9 +414,11 @@ export function getEmbeddedStyles(): string {
  * Used for both HTML export and PDF generation (via print-to-PDF).
  */
 export function renderNoteAsHtml(note: NoteExportData, options: RenderOptions = {}): string {
-  const { includeMetadata = true } = options
+  const { includeMetadata = true, includeTaskMarkers = false } = options
 
-  const contentHtml = markdownToHtml(note.content)
+  const contentHtml = markdownToHtml(
+    includeTaskMarkers ? note.content : stripTaskBlockSuffixes(note.content)
+  )
 
   const metadataSection = includeMetadata
     ? `

@@ -41,6 +41,9 @@ file along with the report:
 - **macOS** — `~/Library/Logs/memrynote/main.log`
 - **Linux** — `~/.config/memrynote/logs/main.log`
 
+If the folder also holds `main.1.log` to `main.4.log`, those are the older parts of the same
+log, newest first. Send the ones that cover the day the problem happened.
+
 On macOS, updates cannot install at all while the app runs from a read-only location —
 the mounted `.dmg` you downloaded, or a copy still sitting in `~/Downloads`, which macOS
 runs from a temporary read-only mount of its own. There is nothing to report here: drag

@@ -26,7 +26,7 @@ final class NoteEditorViewModel {
         case failed(UserFacingError)
     }
 
-    private let noteId: String
+    let noteId: String
     private let editor: (any BlockEditing)?
 
     private(set) var status: Status = .idle
@@ -306,6 +306,29 @@ final class NoteEditorViewModel {
         }
     }
 
+    /// A column list of `columns` columns after `blockId`, each column
+    /// holding one empty paragraph (desktop's `insertColumnList`). Returns
+    /// the list's own id.
+    ///
+    /// Only the list's id is minted here: the core shapes the columns and
+    /// their paragraphs and mints their ids, so the caller reads them back.
+    func insertColumnList(after blockId: String?, columns: Int) async -> String? {
+        guard let editor else { return nil }
+        let newId = UUID().uuidString.lowercased()
+        status = .saving
+        do {
+            _ = try await editor.edit(
+                noteId: noteId,
+                .insertColumnList(afterBlockId: blockId, columns: UInt32(max(0, columns)), newBlockId: newId)
+            )
+            status = .idle
+            return newId
+        } catch {
+            status = .failed(ErrorMapping.userFacing(error))
+            return nil
+        }
+    }
+
     func duplicate(_ blockId: String) async -> String? {
         guard let editor else { return nil }
         let newId = UUID().uuidString.lowercased()
@@ -513,7 +536,7 @@ final class NoteEditorViewModel {
 /// What a block view needs to become editable.
 ///
 /// Built by the page (`NotePageContent`) each render, so the session always
-/// has the page's current reload, note titles and picture picker.
+/// has the page's current reload and note titles.
 struct NoteEditingBridge {
     let session: EditorSession
 
@@ -523,7 +546,6 @@ struct NoteEditingBridge {
         titles: [String] = [],
         icons: [String: String] = [:],
         titleExists: ((String) -> Bool)? = nil,
-        pickImage: (() -> Void)? = nil,
         didChange: @escaping () async -> Void
     ) {
         session = model.session
@@ -532,6 +554,5 @@ struct NoteEditingBridge {
         session.titles = titles
         session.icons = icons
         session.titleExists = titleExists
-        if (session.pickImage == nil) != (pickImage == nil) { session.pickImage = pickImage }
     }
 }

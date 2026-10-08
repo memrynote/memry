@@ -151,7 +151,7 @@
       "deny": "拒絕",
       "invalidJson": "套用編輯前，請先輸入有效的 JSON。",
       "thisTool": "此工具",
-      "alwaysAllowHint": "「永遠允許」僅適用於 {tool}。其他工具仍會詢問，刪除動作則一律會詢問。",
+      "alwaysAllowHint": "「永遠允許」僅適用於 {tool}。其他工具仍會詢問，刪除動作則一律會詢問。鎖定的筆記和資料夾維持唯讀。",
       "alwaysInChat": "在此對話中永遠允許",
       "alwaysInChatHint": "對話結束時失效",
       "alwaysInVault": "在此儲存庫中永遠允許",
@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "無法預覽這項變更",
       "description": "代理程式想要更新 {title}。套用前請先檢查變更。",
+      "descriptionCreate": "代理程式想要建立 {title}。套用前請先檢查變更。",
+      "descriptionDelete": "代理程式想要刪除 {title}。套用前請先檢查變更。",
       "fallbackTitle": "這個項目",
       "current": "目前",
       "candidate": "建議內容",
@@ -374,7 +376,8 @@
       "agent": "代理程式",
       "pendingApproval": "{count, plural, other {# 項待核准}}",
       "inProgress": "代理程式正在回應",
-      "close": "關閉代理程式"
+      "close": "關閉代理程式",
+      "moreActions": "更多代理程式動作"
     },
     "errors": {
       "loadConversations": "無法載入代理程式對話",

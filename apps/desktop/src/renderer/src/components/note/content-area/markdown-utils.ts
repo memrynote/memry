@@ -37,6 +37,7 @@ import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { withPlainCheckboxMarkers } from '@memry/shared/plain-checkbox'
 import { splitMarkdownByBlockquoteRuns, serializeCalloutBlock } from './callout-block'
 import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdown'
+import { maskHtmlComments } from '@memry/shared/html-comments'
 import {
   parseWhiteboardLine,
   parseYoutubeEmbedLine,
@@ -49,6 +50,9 @@ import {
   serializeWhiteboard,
   restoreDetailsMarkup,
   splitMarkdownByToggles,
+  splitMarkdownByColumnRegions,
+  buildColumnListBlock,
+  serializeColumnListBlock,
   type ToggleBlockSegment
 } from '@memry/editor-schema/blocks'
 import { serializeYoutubeEmbed } from './youtube-embed-block'
@@ -334,7 +338,10 @@ export async function parseMarkdownPreservingBlanks(
   markdown: string,
   notePath?: string
 ): Promise<Block[]> {
-  const withEmbeds = await resolveWikiImageEmbeds(markdown, notePath)
+  // HTML comments come off first, as one token each, so no line splitter below
+  // reads the inside of a multi-line comment. Twin of main's `markdownToBlocks`
+  // (AF-015).
+  const withEmbeds = await resolveWikiImageEmbeds(maskHtmlComments(markdown), notePath)
   // Inline color spans are masked into markdown-inert tokens before parsing
   // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
   const { text: maskedMarkdown, spans } = maskInlineColorSpans(withEmbeds)
@@ -370,7 +377,37 @@ function restoreDetailsMarkupInBlocks(blocks: Block[]): void {
  * through the block-nesting markers and still flattens to a bullet, exactly as
  * it did before (#1643 is about toggles on a page).
  */
-async function parseMaskedMarkdown(editor: any, markdown: string): Promise<Block[]> {
+async function parseMaskedMarkdown(
+  editor: any,
+  markdown: string,
+  insideColumn = false
+): Promise<Block[]> {
+  // Column regions come off before toggles: a column holds toggles, blank
+  // lines and fences of its own. A column cannot hold another column list,
+  // and MCM does not nest regions either, so a column body is read without
+  // this step. Twin of main's `parseMaskedMarkdown`.
+  if (insideColumn) return parseMarkdownWithToggles(editor, markdown)
+
+  const blocks: Block[] = []
+  for (const segment of splitMarkdownByColumnRegions(markdown)) {
+    if (segment.kind === 'columns') {
+      blocks.push(
+        await buildColumnListBlock<Block>(
+          segment,
+          (body) => parseMaskedMarkdown(editor, body, true),
+          emptyParagraph
+        )
+      )
+    } else if (segment.kind === 'gap') {
+      pushEmptyParagraphs(blocks, segment.extraLines)
+    } else {
+      blocks.push(...(await parseMarkdownWithToggles(editor, segment.text)))
+    }
+  }
+  return blocks
+}
+
+async function parseMarkdownWithToggles(editor: any, markdown: string): Promise<Block[]> {
   const blocks: Block[] = []
 
   for (const segment of splitMarkdownByToggles(markdown)) {
@@ -403,11 +440,13 @@ async function parseToggleSegment(editor: any, segment: ToggleBlockSegment): Pro
   } as unknown as Block
 }
 
+function emptyParagraph(): Block {
+  // SAFETY: an empty paragraph, the schema's own default block.
+  return { type: 'paragraph', content: [], children: [], props: {} } as unknown as Block
+}
+
 function pushEmptyParagraphs(blocks: Block[], count: number): void {
-  for (let i = 0; i < count; i++) {
-    // SAFETY: an empty paragraph, the schema's own default block.
-    blocks.push({ type: 'paragraph', content: [], children: [], props: {} } as unknown as Block)
-  }
+  for (let i = 0; i < count; i++) blocks.push(emptyParagraph())
 }
 
 async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promise<Block[]> {
@@ -646,6 +685,15 @@ export async function serializeBlocksPreservingBlanks(
       await flushContent()
       flushGap()
       segments.push({ type: 'content', text: await serializeToggle(editor, block) })
+    } else if ((block.type as string) === 'columnList') {
+      await flushContent()
+      flushGap()
+      segments.push({
+        type: 'content',
+        text: await serializeColumnListBlock<Block>(block, (children) =>
+          serializeBlocksPreservingBlanks(editor, children)
+        )
+      })
     } else if (isStructuredQuote(block)) {
       await flushContent()
       flushGap()

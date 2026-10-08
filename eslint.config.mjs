@@ -225,7 +225,16 @@ export default defineConfig(
       // parse and serialize into their own modules beside their renderer twins,
       // which is a refactor of its own and not one to attach to a block type.
       'apps/desktop/src/main/sync/blocknote-converter.ts',
-      'apps/desktop/src/main/vault/watcher.ts'
+      'apps/desktop/src/main/vault/watcher.ts',
+      // Sat at 798, 800 and 800 countable lines on main, so the read-only lock
+      // checks (#2606) could not land without this: one assert in each note and
+      // folder writer (notes-crud, 814), the lock check at vault open (index,
+      // 810) and the vault_lock record service (runtime, 805). The checks must
+      // sit in the writers themselves; splitting these files is a refactor of
+      // its own and not one to attach to a lock feature.
+      'apps/desktop/src/main/sync/runtime.ts',
+      'apps/desktop/src/main/vault/index.ts',
+      'apps/desktop/src/main/vault/notes-crud.ts'
     ],
     rules: {
       // TODO(phase-tbd): drop these overrides once large main-process modules are split

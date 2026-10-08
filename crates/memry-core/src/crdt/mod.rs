@@ -12,11 +12,12 @@
 //! - [`snapshots`] owns chapter 07 §7.13's client obligation: when a snapshot
 //!   may be pushed at all, and the local prune that follows one.
 //!
-//! **The core never parses or serialises markdown** (chapter 12 §12.1.2). Both
-//! directions live in the editor bundle. The only text operation this tier will
-//! ever own is [`text_extract::extract_text`], a plain-text walk of the
-//! `prosemirror` fragment that keeps heading and list markers and claims no
-//! markdown fidelity.
+//! **The core never serialises markdown, and parses it only in
+//! [`markdown_seed`]**, for the two writes of chapter 12 §12.1.0. Desktop owns
+//! every other conversion. The one document-to-text operation this tier owns
+//! is [`text_extract::extract_text`], a plain-text walk of the `prosemirror`
+//! fragment that keeps heading and list markers and claims no markdown
+//! fidelity.
 //!
 //! **The wire carries no item type** (chapter 07 §7.1): a journal body is a
 //! document in the same feed as a note, keyed by the journal record's own id,

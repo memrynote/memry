@@ -151,7 +151,7 @@
       "deny": "Odrzuć",
       "invalidJson": "Przed zastosowaniem zmian wprowadź prawidłowy kod JSON.",
       "thisTool": "to narzędzie",
-      "alwaysAllowHint": "Opcja „Zawsze zezwalaj” obejmuje {tool}. Każde inne narzędzie nadal pyta o zgodę, a usuwanie zawsze jej wymaga.",
+      "alwaysAllowHint": "Opcja „Zawsze zezwalaj” obejmuje {tool}. Każde inne narzędzie nadal pyta o zgodę, a usuwanie zawsze jej wymaga. Zablokowane notatki i foldery pozostają tylko do odczytu.",
       "alwaysInChat": "Zawsze zezwalaj w tym czacie",
       "alwaysInChatHint": "Wygasa po zakończeniu rozmowy",
       "alwaysInVault": "Zawsze zezwalaj w tym sejfie",
@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Nie udało się wyświetlić podglądu tej zmiany",
       "description": "Agent chce zaktualizować {title}. Przejrzyj zmianę przed jej zastosowaniem.",
+      "descriptionCreate": "Agent chce utworzyć {title}. Przejrzyj zmianę przed jej zastosowaniem.",
+      "descriptionDelete": "Agent chce usunąć {title}. Przejrzyj zmianę przed jej zastosowaniem.",
       "fallbackTitle": "ten element",
       "current": "Obecna treść",
       "candidate": "Proponowana treść",
@@ -374,7 +376,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {Oczekujące na zatwierdzenie: #} few {Oczekujące na zatwierdzenie: #} many {Oczekujące na zatwierdzenie: #} other {Oczekujące na zatwierdzenie: #}}",
       "inProgress": "Agent pracuje",
-      "close": "Zamknij agenta"
+      "close": "Zamknij agenta",
+      "moreActions": "Więcej działań agenta"
     },
     "errors": {
       "loadConversations": "Nie udało się załadować rozmów z agentem",

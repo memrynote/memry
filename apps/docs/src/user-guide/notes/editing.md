@@ -55,6 +55,7 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Quote, callout
 - Equation (a LaTeX formula on its own line)
 - Toggle list (collapsible section — nest text, images, even other toggles inside it)
+- Two, three, four or five columns (blocks side by side)
 - Code block (language picker: 50 languages, alphabetical)
 - Diagram (Mermaid)
 - Whiteboard (an inline canvas you draw on)
@@ -435,6 +436,44 @@ Two shapes are deliberately left alone rather than adopted:
   literal text, so nothing is lost; close the block by hand and it becomes a real toggle
   on the next open.
 
+## Columns
+
+`/2 columns` through `/5 columns` puts blocks side by side. You can also drag a block by
+its handle onto the left or right edge of another block: the two become columns. Drag the
+line between two columns to resize them. Removing the last block from a column removes
+that column; when only one column is left, its blocks go back to being ordinary page
+blocks.
+
+On disk a column layout uses the syntax of Obsidian's Multi-Column Markdown plugin, so a
+vault shared with Obsidian shows the same columns there:
+
+<!-- prettier-ignore -->
+````md
+--- start-multi-column: a1b2c3
+```column-settings
+Number of Columns: 2
+Column Size: [30%, 70%]
+```
+
+Left column
+
+---
+
+```
+end-column ---
+```
+
+Right column
+
+--- end-multi-column
+````
+
+Every spelling the plugin accepts opens as columns, including its older `===` markers and
+Pandoc's `::: columns` fenced divs. Settings Memry does not draw, such as `Border` or
+`Alignment`, are kept as written; only the column count and sizes are rewritten after
+you add, remove or resize a column. A region that is never closed, or has only one
+column, stays plain text. On iPhone columns are shown one under another.
+
 ## Equations
 
 `/math` — or `/equation`, `/latex`, `/formula` — inserts an equation block. Click it to open the source box, type LaTeX, and
@@ -494,7 +533,7 @@ The **⋯ button** in the top-right of a note (the _More actions_ menu) collects
 - **Local graph** — show or hide the note's local link graph
 - **Find…** — open in-note search (also <kbd>⌘</kbd>+<kbd>F</kbd>)
 - **Version history** — browse and restore past versions
-- **Export** — export the note to PDF or HTML. Both formats embed the note's images in the exported file itself, so the PDF prints them and an exported `.html` keeps them after you move or send it
+- **Export** — export the note to PDF or HTML. Both formats embed the note's images in the exported file itself, so the PDF prints them and an exported `.html` keeps them after you move or send it. A task prints as its checkbox and title, without the `{task:<id>}` that ties the line to the task in the note file
 - **Insert template…** — insert a template's body at the cursor, leaving the rest of the note untouched
 - **Save as template** — create a new custom template from this note's body, tags, and properties (see [Templates](/user-guide/templates#saving-a-note-as-a-template))
 - **New note from this note** — create a note in the same folder with this note's icon, tags, and properties (see [New note from this note](#new-note-from-this-note))
@@ -534,16 +573,16 @@ selected text block at once, and **Copy** copies every selected block in documen
 order. Tables, files, tasks and other blocks without text of their own keep their
 type under **Turn into**.
 
-| Action                          | What it does                                                                                                                                                                  |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Turn into**                   | Converts the block to another text type — text, heading 1–3, bulleted or numbered list, checkbox, task, toggle list, quote, code, callout. Indented children come along.      |
-| **Turn into checkbox**          | On a task: puts its line back as a plain checkbox, then asks whether the task stays in Tasks. Not offered on a task with subtasks.                                            |
-| **Colors**                      | Sets the block's text and background colour.                                                                                                                                  |
-| **Copy**                        | Copies the block and its indented children. Pasting into a note brings back the same blocks, colours included; other apps get the Markdown the note file holds, or rich text. |
-| **Duplicate** (`⌘D` / `Ctrl+D`) | Copies the block and its indented children directly below.                                                                                                                    |
-| **Move to…**                    | Search for another note and move the block to the end of it.                                                                                                                  |
-| **Delete**                      | Removes the block.                                                                                                                                                            |
-| **Comment**                     | Opens a comment on the block, in the same review sidebar as a comment on selected text.                                                                                       |
+| Action                          | What it does                                                                                                                                                                                             |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Turn into**                   | Converts the block to another text type — text, heading 1–3, bulleted or numbered list, checkbox, task, toggle list, quote, code, callout. Indented children come along.                                 |
+| **Turn into checkbox**          | On a task: puts its line back as a plain checkbox, then asks whether the task stays in Tasks. Not offered on a task with subtasks.                                                                       |
+| **Colors**                      | Sets the block's text and background colour.                                                                                                                                                             |
+| **Copy**                        | Copies the block and its indented children. Pasting into a note brings back the same blocks, colours and tasks included; other apps get the Markdown the note file holds without task ids, or rich text. |
+| **Duplicate** (`⌘D` / `Ctrl+D`) | Copies the block and its indented children directly below.                                                                                                                                               |
+| **Move to…**                    | Search for another note and move the block to the end of it.                                                                                                                                             |
+| **Delete**                      | Removes the block.                                                                                                                                                                                       |
+| **Comment**                     | Opens a comment on the block, in the same review sidebar as a comment on selected text.                                                                                                                  |
 
 Some entries are hidden when they do not apply. **Turn into** and **Comment** do not
 appear on blocks with no text of their own — files, images, embeds, bookmarks, tasks,
@@ -866,6 +905,15 @@ nested list keeps its indent. Only the parts you edited are written in memrynote
 only when the result still says exactly what the editor shows. Opening a note and closing it
 again writes nothing at all. Very large notes, roughly half a megabyte of markdown and up, are
 written in memrynote's own style throughout so that they keep syncing between your devices.
+
+memrynote keeps a copy of the author's spelling beside the note for this. When that copy no
+longer matches the note, for example after another device changed it, the note's file stands in
+for it. A save that changes nothing leaves the file exactly as it is, and an edit is written into
+the file's own spelling. A note saved with Windows line endings (CRLF) keeps them, and is
+treated the same way. A file that cannot be read at that moment is left unchanged, and a notice
+names the note: your edit stays open in memrynote while the app is running, and the file gets it
+with your next edit that saves. Only when the file was read and neither copy can be kept is the
+whole note written in memrynote's own style.
 
 Inside an edited region the two are not always byte-for-byte the same. What is guaranteed there
 is that nothing is _lost_ on the way through:

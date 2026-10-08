@@ -199,6 +199,24 @@ describe('UploadQueue', () => {
       expect(fn).toHaveBeenCalled()
     })
 
+    // An upload started offline read the file and held its bytes through the
+    // offline wait, so a file deleted before reconnect still went out (#2651).
+    it('starts no upload while offline and starts it on reconnect', async () => {
+      const monitor = createMockNetworkMonitor(false)
+      const fn = makeUploadFn(5)
+      const q = new UploadQueue(fn, monitor)
+
+      const pending = q.enqueue('n1', '/p1')
+      await new Promise((r) => setTimeout(r, 20))
+      expect(fn).not.toHaveBeenCalled()
+      expect(q.pending).toBe(1)
+
+      ;(monitor as unknown as { setOnline: (v: boolean) => void }).setOnline(true)
+
+      await expect(pending).resolves.toMatchObject({ attachmentId: 'att-n1' })
+      expect(fn).toHaveBeenCalledTimes(1)
+    })
+
     it('does not trigger drain on offline event', async () => {
       // #given
       const monitor = createMockNetworkMonitor(true)
@@ -254,7 +272,7 @@ describe('UploadQueue', () => {
     })
 
     it('resumes immediately on reconnect and resets the escalated backoff', async () => {
-      // #given — offline, escalated all the way to the 60s ceiling
+      // #given — server unreachable, escalated all the way to the 60s ceiling
       vi.useFakeTimers()
       let calls = 0
       const fn: UploadFn = vi.fn(async (noteId: string) => {
@@ -262,7 +280,7 @@ describe('UploadQueue', () => {
         if (calls <= 12) throw new NetworkError('offline')
         return { attachmentId: `att-${noteId}`, sessionId: `sess-${noteId}`, manifest: {} as never }
       })
-      const monitor = createMockNetworkMonitor(false)
+      const monitor = createMockNetworkMonitor(true)
       const q = new UploadQueue(fn, monitor)
 
       const pending = q.enqueue('n1', '/p1')
@@ -274,7 +292,8 @@ describe('UploadQueue', () => {
       await vi.advanceTimersByTimeAsync(30_000)
       expect(calls).toBe(7)
 
-      // #when — network comes back halfway through the 60s ceiling wait
+      // #when — the link drops and comes back halfway through the 60s ceiling wait
+      ;(monitor as unknown as { setOnline: (v: boolean) => void }).setOnline(false)
       ;(monitor as unknown as { setOnline: (v: boolean) => void }).setOnline(true)
       await vi.advanceTimersByTimeAsync(0)
 

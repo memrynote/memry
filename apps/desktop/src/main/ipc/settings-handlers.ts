@@ -2,7 +2,7 @@
  * Settings IPC Handlers
  *
  * Handles IPC requests for app settings, including journal settings and AI settings.
- * AI uses local embeddings with all-MiniLM-L6-v2 model (no API key required).
+ * AI uses local embeddings with the EmbeddingGemma 2 model (no API key required).
  *
  * @module main/ipc/settings-handlers
  */
@@ -169,6 +169,13 @@ const GENERAL_SYNCABLE_FIELDS: (keyof GeneralSettings)[] = [
 const INBOX_SYNCABLE_FIELDS: (keyof InboxSettings)[] = [
   'reviewReminderEnabled',
   'reviewReminderTime'
+]
+
+// Only checklist conversion is pushed: it decides what a note's checkboxes
+// become, and two devices that disagree would convert the same note differently.
+const EDITOR_SYNCABLE_FIELDS: (keyof EditorSettings)[] = [
+  'convertChecklistsToTasks',
+  'convertAgentChecklistsToTasks'
 ]
 
 const SETTINGS_KEYS = {
@@ -1228,7 +1235,9 @@ export function registerSettingsHandlers(): void {
     SettingsChannels.invoke.SET_EDITOR_SETTINGS,
     (_event, updates: Partial<EditorSettings>) => {
       writeEditorToConfig(updates)
-      return writeGroupSettings('editor', EDITOR_SETTINGS_DEFAULTS, updates)
+      const result = writeGroupSettings('editor', EDITOR_SETTINGS_DEFAULTS, updates)
+      if (result.success) syncSettingsUpdates('editor', updates, EDITOR_SYNCABLE_FIELDS)
+      return result
     }
   )
 

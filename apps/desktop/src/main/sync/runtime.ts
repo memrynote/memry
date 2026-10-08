@@ -43,6 +43,10 @@ import {
   initCustomIconSyncService,
   resetCustomIconSyncService
 } from '@memry/sync-client/custom-icon-sync'
+import {
+  initVaultLockSyncService,
+  resetVaultLockSyncService
+} from '@memry/sync-client/vault-lock-sync'
 import { initReminderSyncService, resetReminderSyncService } from '@memry/sync-client/reminder-sync'
 import { initCanvasSyncService, resetCanvasSyncService } from '@memry/sync-client/canvas-sync'
 import {
@@ -55,6 +59,7 @@ import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-download-state'
 import { resetAttachmentQueue } from './attachment-outbox'
 import { stopAttachmentDownloadRedriver } from './attachment-download-redriver'
+import { attachmentUploadRedriver } from './attachment-upload-redriver'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import {
   initTagDefinitionSyncService,
@@ -93,10 +98,13 @@ import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { pushFinalSnapshots, type StopSyncRuntimeOptions } from './final-snapshot-push'
 import {
+  NoteBodyCredentialsMissingError,
   NoteBodyFlushDeferredError,
   NoteBodyOutbox,
   importLegacyPendingCrdtNotes
 } from './note-body-outbox'
+import { recordNoteBodyPush } from './note-body-push-record'
+import { readMergedFullState } from './full-state-read'
 import { CrdtSnapshotScheduler } from '@memry/sync-client/crdt-snapshot-scheduler'
 import { planCrdtUpdatePush } from '@memry/sync-client/crdt-payload'
 import { recoverDirtyItems } from './dirty-recovery'
@@ -263,6 +271,7 @@ function resetSyncServiceSingletons(): void {
   resetTemplateSyncService()
   resetHomePageSyncService()
   resetCustomIconSyncService()
+  resetVaultLockSyncService()
   resetReminderSyncService()
   resetCanvasSyncService()
   resetCanvasFolderSyncService()
@@ -289,8 +298,9 @@ function resetSyncServiceSingletons(): void {
   // `online` flag frozen) and would upload vault A's leftovers under vault B.
   // The DownloadQueue is disposed by the same registered reset.
   resetAttachmentQueue()
-  // The failure re-driver only makes sense while a runtime is up to serve it.
+  // The re-drivers only make sense while a runtime is up to serve them.
   stopAttachmentDownloadRedriver()
+  attachmentUploadRedriver.stop()
 }
 
 async function getOptionalRuntimeVaultKey(db: DataDb, context: string): Promise<Uint8Array | null> {
@@ -479,6 +489,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const templateSync = initTemplateSyncService(recordSyncDeps)
       const homePageSync = initHomePageSyncService(recordSyncDeps)
       const customIconSync = initCustomIconSyncService(recordSyncDeps)
+      const vaultLockSync = initVaultLockSyncService(recordSyncDeps)
       const reminderSync = initReminderSyncService(recordSyncDeps)
       const canvasSync = initCanvasSyncService(recordSyncDeps)
       const canvasFolderSync = initCanvasFolderSyncService(recordSyncDeps)
@@ -517,6 +528,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         recordAdapter('template', templateSync),
         recordAdapter('home_page', homePageSync),
         recordAdapter('custom_icon', customIconSync),
+        recordAdapter('vault_lock', vaultLockSync),
         recordAdapter('reminder', reminderSync),
         recordAdapter('project', projectSync),
         recordAdapter('settings', settingsSync),
@@ -560,9 +572,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           if (vaultKey) secureCleanup(vaultKey)
           if (signingSecretKey) secureCleanup(signingSecretKey)
           // Throwing keeps the rows queued; returning would ack them. The
-          // condition is transient: ~14 minutes into an outage the access
-          // token cannot be refreshed and getValidAccessToken returns null.
-          throw new Error('Missing credentials for CRDT update push')
+          // outbox pauses on this error until a token refresh or sign-in:
+          // ~14 minutes into an outage, or once the session is dead, the
+          // access token cannot be refreshed and getValidAccessToken returns null.
+          throw new NoteBodyCredentialsMissingError('Missing credentials for CRDT update push')
         }
 
         try {
@@ -640,7 +653,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           secureCleanup(signingSecretKey)
         }
       }
-      const noteBodyOutbox = new NoteBodyOutbox({ queue, push: pushNoteBody })
+      const noteBodyOutbox = new NoteBodyOutbox({
+        queue,
+        push: pushNoteBody,
+        recordPush: (noteId, event) => recordNoteBodyPush(noteId, event, Date.now(), db)
+      })
 
       // `engine` is referenced lazily: nothing invokes these fns between
       // `crdtProvider.init` below and the `const engine` assignment.
@@ -652,6 +669,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         hasUnmergedRemoteState: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
         onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
         onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
+        onStored: (noteId) => recordNoteBodyPush(noteId, 'confirmed', Date.now(), db),
         onError: (noteId, err) => {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             // withAuthRetry already attempted a refresh — see the update-batch
@@ -684,7 +702,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         getVaultKey: () => getOptionalRuntimeVaultKey(db, 'crdt snapshot batch push'),
         getSigningKey: () => retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY),
         authRetryDeps: crdtAuthRetryDeps,
-        onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
+        onPushed: (noteId, pushed) => {
+          recordNoteBodyPush(noteId, 'confirmed', Date.now(), db)
+          return getCrdtProvider().recordPushedSnapshot(noteId, pushed)
+        },
         onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
         onBatchError: (err) => {
           // Same two conditions the single push handles, and for the same
@@ -741,6 +762,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const onNetworkStatusChanged = ({ online }: { online: boolean }): void => {
         if (online) {
           noteBodyOutbox.resume()
+          void attachmentUploadRedriver.redrive()
           // Reconnect is the moment transiently-failed attachment downloads
           // become worth retrying; the re-driver is re-entrant-safe and gated
           // by each row's own backoff window.
@@ -885,6 +907,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       await engine.start()
       log.info('Sync runtime started')
+      attachmentUploadRedriver.start(() => network.online)
 
       void import('./vault-directory')
         .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))
@@ -900,18 +923,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         .catch((error: unknown) => log.warn('Folder config backfill skipped', { error }))
 
       // Retry attachment uploads that failed or were interrupted in earlier
-      // sessions — the durable outbox holds them across restarts. The backfill
-      // runs first and in the same chain: it puts rows in that outbox for files
-      // whose save-time emit never fired, and those rows are only picked up by
-      // the drain that follows them.
+      // sessions — the durable outbox holds them across restarts. The interval
+      // started above and every reconnect repeat this while the runtime is up.
       void (async () => {
-        await import('./attachment-backfill')
-          .then(({ backfillUnsyncedAttachments }) => backfillUnsyncedAttachments())
-          // A backfill that cannot run must never keep the drain from retrying
-          // the rows already pending — those are the older problem.
-          .catch((error: unknown) => log.warn('Attachment backfill skipped', { error }))
-        const { drainAttachmentOutbox } = await import('./attachment-outbox')
-        await drainAttachmentOutbox()
+        await attachmentUploadRedriver.redrive()
         // Download side of the same promise: failed attachment downloads are
         // persisted in attachment_download_failures, and this is what retries
         // them without waiting for the note to be re-applied from a pull. The
@@ -937,11 +952,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           engine.clearCrdtUnmergedForDroppedNote(noteId)
           return null
         }
-        if (!(await engine.mergeRemoteCrdtForNote(noteId))) {
-          throw new Error('Server CRDT state did not merge')
-        }
-        if (runtimeAbort.signal.aborted) throw new Error('Sync runtime stopped')
-        return crdtProvider.readSyncableState(noteId)
+        return readMergedFullState(
+          crdtProvider,
+          noteId,
+          (id) => engine.mergeRemoteCrdtForNote(id),
+          () => runtimeAbort.signal.aborted
+        )
       })
 
       trackMainEvent('sync_enabled', { surface: 'sync', action: 'enabled', result: 'success' })

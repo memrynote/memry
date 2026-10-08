@@ -343,4 +343,20 @@ describe('createCrdtSnapshotBatchPush', () => {
     expect(pushSingle).not.toHaveBeenCalled()
     expect(results.get('note-a')).toBe(false)
   })
+
+  // #2647: an accepted snapshot is the body reaching the server; a refused one is not.
+  it('tells onPushed only about the notes the server accepted', async () => {
+    pushCrdtSnapshotBatchMock.mockResolvedValue({
+      results: [
+        { noteId: 'note-a', accepted: true, sequenceNum: 3 },
+        { noteId: 'note-b', accepted: false, reason: 'SOMETHING' }
+      ]
+    })
+    const onPushed = vi.fn()
+    const { deps } = createDeps({ onPushed })
+
+    await createCrdtSnapshotBatchPush(deps)([entry('note-a'), entry('note-b')])
+
+    expect(onPushed.mock.calls.map(([noteId]) => noteId)).toEqual(['note-a'])
+  })
 })

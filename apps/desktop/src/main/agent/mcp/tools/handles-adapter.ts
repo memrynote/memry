@@ -1,11 +1,12 @@
-import path from 'node:path'
-
 import { searchAll } from '../../../database/queries/search'
-import { getNoteCacheById, listJournalEntriesInRange } from '../../../database/queries/notes'
+import { getNoteCacheById } from '../../../database/queries/notes'
 import { getInboxProject, getProjectLinkCounts } from '../../../database/queries/projects'
-import { createDesktopInboxDomain } from '../../../inbox/domain'
-import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
-import { deleteJournalEntryFile, readJournalEntry, writeJournalEntry } from '../../../vault/journal'
+import {
+  readAttachmentText,
+  TEXT_BEARING_FILE_TYPES
+} from '../../../database/queries/extracted-text'
+import { EXTRACTED_TEXT_REPLY_CHARS, extractedTextReply } from './extracted-text-reply'
+import { createDesktopInboxCrudHandlers, createDesktopInboxDomain } from '../../../inbox/domain'
 import {
   createNoteCommand,
   deleteNoteCommand,
@@ -15,7 +16,7 @@ import {
   updateNoteCommand
 } from '../../../notes/domain'
 import { replaceNoteTagsInCrdt } from '../../../sync/crdt-feed'
-import { feedExternalEditToCrdt } from '../../../sync/crdt-external-feed'
+import { getCrdtProvider } from '../../../sync/crdt-provider'
 import { createDesktopTasksDomain } from '../../../tasks/domain'
 import { createTasksPublisher } from '../../../tasks/publisher'
 import {
@@ -26,7 +27,7 @@ import {
   listNotes
 } from '../../../vault/notes'
 import { getAllTagsWithCounts, listTagCategories } from '../../../tags/store'
-import { generateId } from '../../../lib/id'
+import { generateId, generateNoteId } from '../../../lib/id'
 import {
   syncFolderConfigCreate,
   syncFolderConfigDelete,
@@ -36,31 +37,50 @@ import type { RepeatConfig } from '@memry/domain-tasks'
 import type { DataDb, IndexDb } from '../../../database'
 import { AgentToolError } from '../errors'
 import { saveAttachment } from '../../../vault/attachments'
+import { emitNoteAttachmentSaved } from '../../../notes/runtime-effects'
 import { serializeFileBlockMarker } from '../../../import/_shared/attachment-markdown'
 import { snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { createCanvasHandles } from './canvas-handles'
+import { createJournalHandles } from './journal-handles'
+import {
+  folderPathFromNotePath,
+  internalFolderFromToolPath,
+  isDirectChild,
+  normalizeFolderPath,
+  toFolderEntry
+} from './folder-paths'
+import { createdTasksReply, withAgentChecklists, writeAgentBody } from './agent-checklists'
+import { createdFoldersReply, foldersToCreate } from './created-folders'
 import { invokeDesktopApiFromWindow } from './desktop-api'
+import { writeAndReadBack } from './desktop-api-readback'
+import { noteFileFrontmatter, noteIcon, readStoredNote, readStoredStatus } from './stored-records'
+import { withoutFileBodies } from './desktop-api-reply'
+import { assertNoteWritable } from '../../../vault-locks/registry'
+import { storedNoteBody } from './stored-body'
+import { viewVaultFile } from './file-view'
+import { openPdfDocument } from '../../../file-text/pdf-host'
+import { prepareViewImageInImageProcess } from '../../../image-processing/bridge'
+import { getConfig, getStatus } from '../../../vault'
 import type {
   FolderEntry,
   InboxSummary,
   NoteSummary,
+  NoteSyncReply,
   ProjectSummary,
   TaskSummary,
   VaultServiceHandles
 } from './handles'
+import { toNoteSyncReply } from './note-sync-reply'
+import { getNoteSyncStates } from '../../../sync/note-sync-state'
 
 export interface AdapterDeps {
   dataDb: DataDb
   indexDb: IndexDb
 }
 
-function folderPathFromNotePath(notePath: string): string | null {
-  // `dirname` reports '.' for a note sitting directly in the vault root, which
-  // is reachable now that folder paths are vault-relative (#1204).
-  const parent = path.posix.dirname(notePath)
-  const dir = toolPathFromVaultRelativePath(parent === '.' ? '' : parent)
-  return dir === '/' ? null : dir
+function isTextBearing(fileType: string): boolean {
+  return (TEXT_BEARING_FILE_TYPES as readonly string[]).includes(fileType)
 }
 
 function mergeContent(
@@ -71,53 +91,12 @@ function mergeContent(
   if (mode === 'replace') return next
   if (!current) return next
   if (!next) return current
-  return mode === 'append' ? `${current}\n\n${next}` : `${next}\n\n${current}`
+  const [first, second] = mode === 'append' ? [current, next] : [next, current]
+  return `${first.replace(/(\r?\n)+$/, '')}\n\n${second}`
 }
 
 function sameTagList(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((tag, index) => tag === b[index])
-}
-
-function normalizeFolderPath(value: string | undefined): string {
-  return (value ?? '').replace(/^\/+|\/+$/g, '')
-}
-
-// Tool paths are vault-relative with a leading slash ("/projects/active").
-// `defaultNoteFolder` is not part of this mapping: it names where a new note
-// goes, not where folders live, so an agent must see the same tree the sidebar
-// does (#1204).
-function toolPathFromVaultRelativePath(vaultRelativePath: string): string {
-  const stripped = normalizeFolderPath(vaultRelativePath)
-  return stripped ? `/${stripped}` : '/'
-}
-
-function internalFolderFromToolPath(toolPath: string | undefined): string | undefined {
-  return normalizeFolderPath(toolPath ?? '') || undefined
-}
-
-function isDirectChild(basePath: string, candidatePath: string): boolean {
-  const normalizedBase = normalizeFolderPath(basePath)
-  const normalizedCandidate = normalizeFolderPath(candidatePath)
-
-  if (!normalizedBase) {
-    return !normalizedCandidate.includes('/')
-  }
-
-  if (!normalizedCandidate.startsWith(`${normalizedBase}/`)) {
-    return false
-  }
-
-  return !normalizedCandidate.slice(normalizedBase.length + 1).includes('/')
-}
-
-function toFolderEntry(folderPath: string): FolderEntry {
-  const toolPath = `/${normalizeFolderPath(folderPath)}`
-  return {
-    kind: 'folder',
-    id: toolPath,
-    name: path.posix.basename(folderPath),
-    path: toolPath
-  }
 }
 
 function taskStatusLabel(task: { statusId: string | null; completedAt?: string | null }): string {
@@ -169,6 +148,7 @@ function inboxVisualType(item: {
 }
 
 export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): VaultServiceHandles {
+  const fileRowOf = (id: string) => getNoteCacheById(indexDb, id)
   return {
     notes: {
       async search({ query, limit = 10, folderId, fileTypes }) {
@@ -198,15 +178,16 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           }
         })
       },
-      async read(id) {
+      async read(id, options) {
         const cached = getNoteCacheById(indexDb, id)
         if (!cached) return null
 
         const fileType = cached.fileType ?? 'markdown'
         if (fileType !== 'markdown') {
           // Filed binary (#800): reading it off disk would only hand `parseNote`
-          // bytes to mangle. Return identity + file type so the tool layer can
-          // refuse it — the empty body never reaches an agent (#919).
+          // bytes to mangle. A PDF or image carries the text extracted from it;
+          // audio and video carry identity + file type only, so the tool layer
+          // can refuse them — the empty body never reaches an agent (#919).
           return {
             id: cached.id,
             title: cached.title,
@@ -215,18 +196,17 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
             folder_path: folderPathFromNotePath(cached.path),
             frontmatter: {},
             file_type: fileType,
-            ...(cached.emoji ? { icon: cached.emoji } : {})
+            ...(cached.emoji ? { icon: cached.emoji } : {}),
+            ...(isTextBearing(fileType)
+              ? { extracted_text: extractedTextReply(indexDb, id, options?.fromPage ?? 1) }
+              : {})
           }
         }
 
         const note = await getNoteById(id)
         if (!note) return null
-        const icon =
-          typeof note.emoji === 'string'
-            ? note.emoji
-            : typeof note.frontmatter.emoji === 'string'
-              ? note.frontmatter.emoji
-              : null
+        const icon = noteIcon(note)
+        const attachments = readAttachmentText(indexDb, id, EXTRACTED_TEXT_REPLY_CHARS)
         return {
           id: note.id,
           title: note.title,
@@ -235,17 +215,42 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           folder_path: folderPathFromNotePath(note.path),
           frontmatter: note.frontmatter,
           file_type: 'markdown',
-          ...(icon ? { icon } : {})
+          ...(icon ? { icon } : {}),
+          ...(attachments.files.length > 0
+            ? {
+                attachment_text: attachments.files,
+                ...(attachments.truncated ? { attachment_text_truncated: true } : {})
+              }
+            : {})
         }
       },
       async create(input) {
-        const note = await createNoteCommand({
-          title: input.title,
-          content: input.content_markdown,
-          folder: internalFolderFromToolPath(input.folder_path),
-          tags: input.tags
-        })
-        return { id: note.id }
+        // Preset so a checkbox line converted during the write can link to it.
+        const id = generateNoteId()
+        const folder = internalFolderFromToolPath(input.folder_path)
+        const createdFolders = await foldersToCreate(folder ?? getConfig().defaultNoteFolder)
+        let written = input.content_markdown
+        const { result: note, createdTasks } = await writeAgentBody(
+          id,
+          input.content_markdown,
+          '',
+          (content) => {
+            written = content
+            return createNoteCommand({
+              id,
+              title: input.title,
+              content,
+              folder,
+              tags: input.tags
+            })
+          }
+        )
+        return {
+          id: note.id,
+          body: await storedNoteBody(note.id, written),
+          ...createdTasksReply(createdTasks),
+          ...createdFoldersReply(createdFolders)
+        }
       },
       async rename({ id, title }) {
         await renameNoteCommand(id, title)
@@ -273,19 +278,17 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         if (!note) {
           throw new Error(`Note not found: ${input.id}`)
         }
-        const nextContent = mergeContent(note.content, input.mode, input.content_markdown)
-        const updated = await updateNoteCommand({ id: input.id, content: nextContent })
-
-        // Step 5 of the main-originated write order `vault/append-blocks.ts`
-        // documents, and it is not optional here either. `updateNote` refreshes
-        // the index row's content hash before the watcher reaches the file, so
-        // the watcher's dedupe returns early and never feeds the CRDT itself —
-        // leaving the note's Y.Doc on the pre-edit body. An open editor then
-        // shows nothing (the editor ignores `initialContent` while
-        // collaboration owns the document) and the next write-back rewrites the
-        // file from that stale doc, so an approved agent edit reports success
-        // and then silently disappears.
-        await feedExternalEditToCrdt(input.id, nextContent)
+        // `updateNoteCommand` feeds the new body to the note's CRDT doc.
+        let nextContent = note.content
+        const { result: updated, createdTasks } = await writeAgentBody(
+          input.id,
+          input.content_markdown,
+          input.mode === 'replace' ? note.content : '',
+          (content) => {
+            nextContent = mergeContent(note.content, input.mode, content)
+            return updateNoteCommand({ id: input.id, content: nextContent })
+          }
+        )
 
         // Inline `#hashtag`s in the new body change the note's tag set, and
         // write-back treats the Y.Doc tag array as authoritative — without this
@@ -293,8 +296,13 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         if (!sameTagList(note.tags, updated.tags)) {
           replaceNoteTagsInCrdt(input.id, updated.tags)
         }
+        return {
+          ...(await storedNoteBody(input.id, nextContent)),
+          ...createdTasksReply(createdTasks)
+        }
       },
       async saveHtmlAttachment({ id, title, html }) {
+        assertNoteWritable(id)
         const fileType = getNoteCacheById(indexDb, id)?.fileType ?? 'markdown'
         if (fileType !== 'markdown') {
           throw new AgentToolError(
@@ -307,6 +315,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         if (!result.success || !result.path) {
           throw new Error(result.error ?? 'Failed to save HTML artifact')
         }
+        if (result.diskPath) emitNoteAttachmentSaved(id, result.diskPath)
         return { marker: serializeFileBlockMarker(result), url: result.path }
       },
       async addTag({ id, tag }) {
@@ -334,24 +343,38 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         replaceNoteTagsInCrdt(id, updated.tags)
       },
       async moveToFolder({ id, folder_path }) {
-        await moveNoteCommand(id, internalFolderFromToolPath(folder_path) ?? '')
-      }
+        const folder = internalFolderFromToolPath(folder_path) ?? ''
+        const createdFolders = await foldersToCreate(folder)
+        await moveNoteCommand(id, folder)
+        return createdFoldersReply(createdFolders)
+      },
+      async stored(id) {
+        return readStoredNote(indexDb, id, folderPathFromNotePath)
+      },
+      storedBody: storedNoteBody
     },
     folders: {
-      async list({ path: folderPath, recursive }) {
-        const basePath = internalFolderFromToolPath(folderPath) ?? ''
-        const folders = await getFolders()
-        const folderEntries = folders
+      async list({ path: folderPath, id, recursive }) {
+        const basePath = normalizeFolderPath(folderPath ?? id)
+        const folders = (await getFolders())
           .map((folder) => normalizeFolderPath(folder.path))
+          .filter(Boolean)
+        if (basePath && !folders.includes(basePath)) {
+          throw new AgentToolError(
+            'NOT_FOUND',
+            `Folder not found: ${basePath}. List the vault root (omit path) to see the folders that exist.`,
+            { path: basePath }
+          )
+        }
+        const folderEntries = folders
           .filter((folder) => {
-            if (!folder) return false
             if (!basePath) return recursive ? true : isDirectChild('', folder)
             return recursive ? folder.startsWith(`${basePath}/`) : isDirectChild(basePath, folder)
           })
           .map(toFolderEntry)
 
         const notes = listNotes({
-          folder: internalFolderFromToolPath(folderPath),
+          folder: basePath || undefined,
           limit: 1000,
           offset: 0
         }).notes.filter((note) => {
@@ -359,13 +382,17 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           return recursive || isDirectChild(basePath, toolPath)
         })
 
-        const noteEntries: FolderEntry[] = notes.map((note) => ({
-          kind: 'note',
-          id: note.id,
-          name: note.title,
-          path: toolPathFromVaultRelativePath(note.path),
-          ...(note.emoji ? { icon: note.emoji } : {})
-        }))
+        const noteEntries: FolderEntry[] = notes.map((note) => {
+          const fileType = note.fileType ?? 'markdown'
+          return {
+            kind: fileType === 'markdown' ? 'note' : 'file',
+            id: note.id,
+            name: note.title,
+            path: normalizeFolderPath(note.path),
+            file_type: fileType,
+            ...(note.emoji ? { icon: note.emoji } : {})
+          }
+        })
 
         return [...folderEntries, ...noteEntries]
       },
@@ -373,20 +400,20 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         const internal = internalFolderFromToolPath(folderPath) ?? ''
         await createFolder(internal)
         syncFolderConfigCreate(internal)
-        return { path: folderPath }
+        return { path: internal }
       },
       async rename({ old_path, new_path }) {
         const oldInternal = internalFolderFromToolPath(old_path) ?? ''
         const newInternal = internalFolderFromToolPath(new_path) ?? ''
         await renameFolderCommand(oldInternal, newInternal)
         syncFolderConfigRename(oldInternal, newInternal)
-        return { path: new_path }
+        return { path: newInternal }
       },
       async delete(folderPath) {
         const internal = internalFolderFromToolPath(folderPath) ?? ''
         await deleteFolder(internal)
         syncFolderConfigDelete(internal)
-        return { path: folderPath }
+        return { path: internal }
       }
     },
     tasks: {
@@ -620,6 +647,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       async list(projectId) {
         return createTaskDomain(dataDb).listStatuses(projectId)
       },
+      get: async (id) => readStoredStatus(dataDb, id),
       async create(input) {
         const result = await createTaskDomain(dataDb).createStatus({
           projectId: input.project_id,
@@ -628,7 +656,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           isDone: input.is_done
         })
         assertSuccess(result, 'Failed to create status')
-        return { id: result.status?.id ?? '' }
+        return { ...result.status, id: result.status?.id ?? '' }
       },
       async update(input) {
         const result = await createTaskDomain(dataDb).updateStatus({
@@ -640,7 +668,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           isDone: input.is_done
         })
         assertSuccess(result, 'Failed to update status')
-        return { id: input.id }
+        return { ...result.status, id: input.id }
       },
       async delete(id) {
         const result = await createTaskDomain(dataDb).deleteStatus(id)
@@ -653,44 +681,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         return { ids: status_ids }
       }
     },
-    journal: {
-      async getByDate(date) {
-        const entry = await readJournalEntry(date)
-        if (!entry) return null
-        return {
-          id: entry.id,
-          date: entry.date,
-          content_markdown: entry.content
-        }
-      },
-      async listInRange({ from, to }) {
-        return listJournalEntriesInRange(indexDb, from, to).map((entry) => ({
-          id: entry.id,
-          date: entry.date ?? '',
-          title: entry.title
-        }))
-      },
-      async createIfMissing({ date, content_markdown }) {
-        const existing = await readJournalEntry(date)
-        if (existing) return { id: existing.id, created: false }
-
-        const created = await writeJournalEntry(date, content_markdown)
-        return { id: created.id, created: true }
-      },
-      async update({ date, content_markdown, tags, properties }) {
-        const existing = await readJournalEntry(date)
-        const updated = await writeJournalEntry(
-          date,
-          content_markdown ?? existing?.content ?? '',
-          tags ?? existing?.tags,
-          properties ?? existing?.properties
-        )
-        return { id: updated.id }
-      },
-      async delete(date) {
-        return { date, deleted: await deleteJournalEntryFile(date) }
-      }
-    },
+    journal: createJournalHandles(indexDb),
     inbox: {
       async list({ unread_only }) {
         const result = await createDesktopInboxDomain().list({
@@ -789,16 +780,48 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         // The escape hatch must honour the same flag as the dedicated canvas
         // tools, or an agent could reach canvas.* with the feature off.
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
-        return invokeDesktopApiFromWindow(windowId, input)
+        return withoutFileBodies(await invokeDesktopApiFromWindow(windowId, input), fileRowOf)
       },
+      prepareWrite: withAgentChecklists,
       async write(input, windowId) {
         if (isCanvasOperation(input.operation)) assertSpatialCanvasEnabled()
-        return invokeDesktopApiFromWindow(windowId, input)
+        return writeAndReadBack(
+          input,
+          async (request) =>
+            withoutFileBodies(
+              await invokeDesktopApiFromWindow(windowId, await withAgentChecklists(request)),
+              fileRowOf
+            ),
+          (entityId) => noteFileFrontmatter(indexDb, entityId)
+        )
       }
     },
     windows: {
       async snapshotCurrentNote(windowId) {
         return snapshotCurrentNoteFromWindow(windowId)
+      }
+    },
+    sync: {
+      crdtStoreAvailable: async () => getCrdtProvider().isPersistent(),
+      noteStates: async (ids) => {
+        const replies: Record<string, NoteSyncReply> = {}
+        for (const [id, state] of getNoteSyncStates(ids)) replies[id] = toNoteSyncReply(state)
+        return replies
+      }
+    },
+    files: {
+      async view(input) {
+        const vaultPath = getStatus().path
+        if (!vaultPath) throw new AgentToolError('NOT_FOUND', 'No vault is open')
+        return viewVaultFile(
+          {
+            vaultPath,
+            fileRow: fileRowOf,
+            prepareImage: prepareViewImageInImageProcess,
+            openPdf: openPdfDocument
+          },
+          input
+        )
       }
     }
   }

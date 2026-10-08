@@ -6,6 +6,7 @@ const test = require('node:test')
 
 const {
   findPackagedMacApps,
+  findSymlinks,
   inferExpectedMacArch,
   normalizeMachOArch,
   archListIncludes
@@ -38,4 +39,21 @@ test('archListIncludes normalizes x86_64 to x64 before matching', () => {
   assert.equal(normalizeMachOArch('x86_64'), 'x64')
   assert.equal(archListIncludes(['x86_64'], 'x64'), true)
   assert.equal(archListIncludes(['x86_64'], 'arm64'), false)
+})
+
+test('findSymlinks reports nested links without following them', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-packaged-links-'))
+  try {
+    const target = path.join(tempDir, '.pnpm', 'a@1.0.0', 'node_modules', 'a')
+    fs.mkdirSync(path.join(target, 'node_modules'), { recursive: true })
+    fs.symlinkSync(target, path.join(tempDir, 'a'), 'junction')
+    fs.symlinkSync(tempDir, path.join(target, 'node_modules', 'loop'), 'junction')
+
+    assert.deepEqual(findSymlinks(tempDir).sort(), [
+      path.join(target, 'node_modules', 'loop'),
+      path.join(tempDir, 'a')
+    ])
+  } finally {
+    fs.rmSync(tempDir, { force: true, recursive: true })
+  }
 })

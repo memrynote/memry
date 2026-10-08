@@ -18,6 +18,7 @@ import {
   FolderOpen,
   ExternalLink,
   Paperclip,
+  Lock,
   Trash2
 } from '@/lib/icons'
 import { PageGraphIcon } from '@/lib/icons/page-icons'
@@ -41,6 +42,7 @@ export type JournalMenuAction =
   | 'reveal-in-finder'
   | 'open-external'
   | 'attachments'
+  | 'lock'
   | 'settings'
   | 'delete'
 
@@ -55,6 +57,8 @@ interface JournalHeaderActionsProps {
   isMindMapAvailable?: boolean
   isMindMapOpen?: boolean
   isLocalGraphOpen?: boolean
+  /** What the entry's lock item does; absent while there is no entry or a folder lock covers it. */
+  lockAction?: 'lock' | 'unlock'
   reviewPill?: ReactNode
   onPrevious: () => void
   onNext: () => void
@@ -79,6 +83,7 @@ export function JournalHeaderActions({
   isMindMapAvailable = false,
   isMindMapOpen = false,
   isLocalGraphOpen = false,
+  lockAction,
   reviewPill,
   onPrevious,
   onNext,
@@ -282,6 +287,13 @@ export function JournalHeaderActions({
                   icon={<Paperclip className="size-4" />}
                 />
               </>
+            )}
+            {lockAction && (
+              <Picker.Item
+                value="lock"
+                label={lockAction === 'unlock' ? t('action.unlockEntry') : t('action.lockEntry')}
+                icon={<Lock className="size-4" />}
+              />
             )}
             <Picker.Separator />
             <Picker.Item

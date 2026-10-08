@@ -2,9 +2,11 @@ import { createLogger } from './logger'
 import { installWorkerLogForwarding } from './log-forward'
 import {
   EMBEDDING_DIMENSION,
+  EMBEDDING_MODEL_DTYPE,
   EMBEDDING_MODEL_REPO,
   transformersCacheDir
 } from './embeddings-constants'
+import { MAX_EMBEDDING_INPUT_LENGTH } from './embedding-input'
 import type {
   EmbeddingMainToWorkerMessage,
   EmbeddingProgressPhase,
@@ -12,8 +14,6 @@ import type {
 } from './embedding-model-protocol'
 
 const logger = createLogger('Embeddings:Worker')
-
-const MAX_CONTENT_LENGTH = 2000
 
 /**
  * Ceiling on the orderly teardown below. Comfortably under the main process's
@@ -24,7 +24,14 @@ const SHUTDOWN_TIMEOUT_MS = 1_500
 
 interface ModelProgress {
   status: string
-  progress?: number
+  file?: string
+  loaded?: number
+  total?: number
+}
+
+interface TextEmbedder {
+  embed(text: string): Promise<Float32Array>
+  dispose(): Promise<void>
 }
 
 const parentPort = process.parentPort
@@ -35,10 +42,8 @@ if (!parentPort) {
 
 installWorkerLogForwarding('Embeddings')
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let extractor: any = null
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let loadPromise: Promise<any> | null = null
+let extractor: TextEmbedder | null = null
+let loadPromise: Promise<TextEmbedder> | null = null
 
 function getUserDataPath(): string {
   const userDataPath = process.env.MEMRY_USER_DATA_PATH
@@ -75,27 +80,69 @@ async function loadEmbeddingPipeline() {
   emitProgress('loading', 0, 'Initializing embedding model...')
 
   loadPromise = (async () => {
-    const { pipeline, env } = await import('@huggingface/transformers')
+    const { AutoConfig, AutoModel, AutoTokenizer, env } = await import('@huggingface/transformers')
     env.cacheDir = getTransformersCacheDir()
 
-    extractor = await pipeline('feature-extraction', EMBEDDING_MODEL_REPO, {
-      dtype: 'fp32',
-      progress_callback: (progress: ModelProgress) => {
-        if (progress.status === 'progress') {
-          const pct = Math.round(progress.progress ?? 0)
-          emitProgress('downloading', pct, `Downloading model: ${pct}%`)
-          return
+    // Download progress across every file, weighted by size: the tokenizer
+    // (~32MB) and the weights (~175MB) download in parallel.
+    const files = new Map<string, { loaded: number; total: number }>()
+    const progress_callback = (progress: ModelProgress): void => {
+      if (progress.status === 'progress' && progress.file) {
+        files.set(progress.file, { loaded: progress.loaded ?? 0, total: progress.total ?? 0 })
+        let loaded = 0
+        let total = 0
+        for (const file of files.values()) {
+          loaded += file.loaded
+          total += file.total
         }
-
-        if (progress.status === 'done') {
-          emitProgress('loading', 95, 'Finalizing model...')
-        }
+        const pct = total > 0 ? Math.round((loaded / total) * 100) : 0
+        emitProgress('downloading', pct, `Downloading model: ${pct}%`)
+        return
       }
-    })
 
+      if (progress.status === 'done') {
+        emitProgress('loading', 95, 'Finalizing model...')
+      }
+    }
+
+    // Text only. EmbeddingGemma 2 is multimodal and transformers.js builds a
+    // vision and an audio session whenever the config carries their sections;
+    // clearing them loads just the text graph (model_q4.onnx + data) and never
+    // downloads the ~300MB of encoders. Loading through AutoModel rather than
+    // pipeline() also matters: pipeline() probes the encoder files for its
+    // progress totals even when they are never used.
+    const config = await AutoConfig.from_pretrained(EMBEDDING_MODEL_REPO, { progress_callback })
+    const configSections = config as unknown as Record<string, unknown>
+    configSections.vision_config = null
+    configSections.audio_config = null
+
+    const [tokenizer, model] = await Promise.all([
+      AutoTokenizer.from_pretrained(EMBEDDING_MODEL_REPO, { progress_callback }),
+      AutoModel.from_pretrained(EMBEDDING_MODEL_REPO, {
+        config,
+        dtype: EMBEDDING_MODEL_DTYPE,
+        device: 'cpu',
+        progress_callback
+      })
+    ])
+
+    const embedder: TextEmbedder = {
+      async embed(text: string): Promise<Float32Array> {
+        const inputs = tokenizer([text], { padding: true, truncation: true })
+        // `sentence_embedding` is the model's own mean-pooled, projected and
+        // L2-normalized 768d output.
+        const output = (await model(inputs)) as { sentence_embedding: { data: ArrayLike<number> } }
+        return truncateEmbedding(output.sentence_embedding.data)
+      },
+      async dispose(): Promise<void> {
+        await model.dispose()
+      }
+    }
+
+    extractor = embedder
     emitProgress('ready', 100, 'Model ready')
     logger.info('Embedding model ready')
-    return extractor
+    return embedder
   })()
     .catch((error) => {
       const message = error instanceof Error ? error.message : String(error)
@@ -109,6 +156,28 @@ async function loadEmbeddingPipeline() {
     })
 
   return loadPromise
+}
+
+/**
+ * Matryoshka truncation: keep the first {@link EMBEDDING_DIMENSION} dims of the
+ * normalized 768d vector and L2 re-normalize them, as the model card specifies.
+ */
+export function truncateEmbedding(full: ArrayLike<number>): Float32Array {
+  if (full.length < EMBEDDING_DIMENSION) {
+    throw new Error(`Unexpected dimension: ${full.length} (expected >= ${EMBEDDING_DIMENSION})`)
+  }
+  const out = new Float32Array(EMBEDDING_DIMENSION)
+  let norm = 0
+  for (let i = 0; i < EMBEDDING_DIMENSION; i++) {
+    out[i] = full[i]
+    norm += full[i] * full[i]
+  }
+  norm = Math.sqrt(norm)
+  if (!Number.isFinite(norm) || norm === 0) {
+    throw new Error('Embedding is not finite')
+  }
+  for (let i = 0; i < EMBEDDING_DIMENSION; i++) out[i] /= norm
+  return out
 }
 
 async function handleLoadModel(
@@ -134,12 +203,10 @@ async function handleEmbed(
   message: Extract<EmbeddingMainToWorkerMessage, { type: 'embed' }>
 ): Promise<void> {
   try {
-    const pipeline = await loadEmbeddingPipeline()
-    const output = (await pipeline(message.text.substring(0, MAX_CONTENT_LENGTH), {
-      pooling: 'mean',
-      normalize: true
-    })) as { data: ArrayLike<number> }
-    const embedding = Array.from(output.data)
+    const embedder = await loadEmbeddingPipeline()
+    const embedding = Array.from(
+      await embedder.embed(message.text.substring(0, MAX_EMBEDDING_INPUT_LENGTH))
+    )
 
     if (embedding.length !== EMBEDDING_DIMENSION) {
       throw new Error(`Unexpected dimension: ${embedding.length} (expected ${EMBEDDING_DIMENSION})`)
@@ -195,7 +262,7 @@ async function handleShutdown(): Promise<void> {
   extractor = null
 
   try {
-    await disposable?.dispose?.()
+    await disposable?.dispose()
   } catch (error) {
     logger.error('Failed to dispose embedding pipeline', {
       message: error instanceof Error ? error.message : String(error)

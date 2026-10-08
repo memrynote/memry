@@ -496,9 +496,9 @@ export function AISettings({
               <div data-testid="embedding-model-row">
                 <LocalModelRow
                   label={t('ai.v2.embedding.label')}
-                  modelName={modelStatus?.name || 'all-MiniLM-L6-v2'}
+                  modelName={modelStatus?.name || 'EmbeddingGemma 2'}
                   hint={t('ai.v2.embedding.hint', {
-                    dimension: modelStatus?.dimension || 384,
+                    dimension: modelStatus?.dimension || 256,
                     count: modelStatus?.embeddingCount ?? 0
                   })}
                   status={

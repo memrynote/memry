@@ -46,14 +46,16 @@
 //! different axis from null tolerance, and widening one of those is a protocol
 //! question rather than a projector's call.
 //!
-//! `custom_icon` is the one subscribed type with a reader and no table. §A.4
-//! lists no projection for it and `0002` creates none: the icon bytes ride in
-//! the payload (§13.7.11) and the device's icon directory is re-derived from
-//! `sync_items.payload`, which is what keeps it self-healing. Its reader still
-//! runs, so a malformed icon payload is recorded corrupt like any other.
+//! `custom_icon` and `canvas` are the two subscribed types with a reader and
+//! no table. §A.4 lists no projection for `custom_icon` and `0002` creates
+//! none: the icon bytes ride in the payload (§13.7.11) and the device's icon
+//! directory is re-derived from `sync_items.payload`, which is what keeps it
+//! self-healing. A canvas scene is its payload in the same way. Both readers
+//! still run, so a malformed payload is recorded corrupt like any other.
 
 pub mod bookmarks;
 pub mod calendar;
+pub mod canvas;
 pub mod filters;
 pub mod inbox;
 pub mod notes;
@@ -112,6 +114,7 @@ pub fn read(item_type: &str, parsed: &Object) -> Result<Object, ProjectionError>
         "calendar_external_event" => calendar::read_external_event(parsed),
         "calendar_binding" => calendar::read_binding(parsed),
         "bookmark" => bookmarks::read_bookmark(parsed),
+        "canvas" => canvas::read_canvas(parsed),
         other => Err(ProjectionError::UnknownType {
             item_type: other.to_owned(),
         }),
@@ -147,6 +150,8 @@ pub fn project(
         "calendar_external_event" => calendar::project_external_event(conn, item, view),
         "calendar_binding" => calendar::project_binding(conn, item, view),
         "bookmark" => bookmarks::project_bookmark(conn, item, view),
+        // No table by design; see `canvas`'s module comment.
+        "canvas" => Ok(()),
         // Unreachable: `read` refused the type before the caller got here.
         other => Err(StorageError::Failed {
             what: format!("no projector for item type `{other}`"),

@@ -1,6 +1,8 @@
 import fs from 'fs'
 import path from 'path'
+import { VaultError, VaultErrorCode } from '../lib/errors'
 import { createLogger } from '../lib/logger'
+import { getMainI18n } from '../lib/main-i18n'
 import { trackMainLog } from '../telemetry/diagnostics'
 
 const logger = createLogger('VaultInit')
@@ -61,6 +63,20 @@ export function getConfigPath(vaultPath: string): string {
 export function isVaultInitialized(vaultPath: string): boolean {
   const memryDir = getMemryDir(vaultPath)
   return fs.existsSync(memryDir)
+}
+
+/**
+ * The vault is mounted: the database file it holds is there. A removable or
+ * network vault that is away for a moment, or a vault folder renamed away,
+ * hides every file at once. The `.memry` folder alone proves nothing, since a
+ * writer can recreate it at the path of a vault that is away.
+ */
+export function isVaultReachable(vaultPath: string): boolean {
+  try {
+    return fs.statSync(getDataDbPath(vaultPath)).isFile()
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -222,7 +238,17 @@ export function writeVaultConfig(
   const newConfig = { ...currentConfig, ...config }
 
   const configPath = getConfigPath(vaultPath)
-  fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf-8')
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf-8')
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code !== 'EACCES' && code !== 'EPERM') throw error
+    logger.warn('Vault config is not writable', error)
+    throw new VaultError(
+      getMainI18n().t('errors:vault.permissionDenied'),
+      VaultErrorCode.PERMISSION_DENIED
+    )
+  }
   // In-place write: same inode, and same size whenever only a value's contents
   // change. Drop the entry rather than lean on mtime granularity.
   configCache.delete(configPath)

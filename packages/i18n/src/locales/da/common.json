@@ -151,7 +151,7 @@
       "deny": "Afvis",
       "invalidJson": "Indtast gyldig JSON, før du anvender redigeringer.",
       "thisTool": "dette værktøj",
-      "alwaysAllowHint": "»Tillad altid« gælder {tool}. Alle andre værktøjer spørger stadig, og sletninger kræver altid godkendelse.",
+      "alwaysAllowHint": "»Tillad altid« gælder {tool}. Alle andre værktøjer spørger stadig, og sletninger kræver altid godkendelse. Låste noter og mapper forbliver skrivebeskyttede.",
       "alwaysInChat": "Tillad altid i denne chat",
       "alwaysInChatHint": "Gælder, indtil samtalen slutter",
       "alwaysInVault": "Tillad altid i denne boks",
@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Kunne ikke forhåndsvise ændringen",
       "description": "Agenten vil opdatere {title}. Gennemgå ændringen, før du anvender den.",
+      "descriptionCreate": "Agenten vil oprette {title}. Gennemgå ændringen, før du anvender den.",
+      "descriptionDelete": "Agenten vil slette {title}. Gennemgå ændringen, før du anvender den.",
       "fallbackTitle": "dette element",
       "current": "Aktuel",
       "candidate": "Forslag",
@@ -374,7 +376,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# afventer godkendelse} other {# afventer godkendelse}}",
       "inProgress": "Agenten er i gang med at svare",
-      "close": "Luk agent"
+      "close": "Luk agent",
+      "moreActions": "Flere agenthandlinger"
     },
     "errors": {
       "loadConversations": "Kunne ikke indlæse agentsamtaler",

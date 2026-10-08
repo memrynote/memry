@@ -1,5 +1,6 @@
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import type { VaultBindingChoice } from '@memry/contracts/ipc-sync-ops'
+import type { CrdtWriteBackFailedEvent } from '@memry/contracts/ipc-crdt'
 import { invoke, logListenerError, subscribe } from '../lib/ipc'
 
 export const syncOps = {
@@ -15,6 +16,8 @@ export const syncOps = {
   getSyncedSettings: () => invoke(SYNC_CHANNELS.GET_SYNCED_SETTINGS),
   getStorageBreakdown: () => invoke(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN),
   getLargeNotes: () => invoke(SYNC_CHANNELS.GET_LARGE_NOTES),
+  getNoteSyncState: (noteId: string) => invoke(SYNC_CHANNELS.GET_NOTE_SYNC_STATE, { noteId }),
+  getUnsentNotes: () => invoke(SYNC_CHANNELS.GET_UNSENT_NOTES),
   getVaultBinding: () => invoke(SYNC_CHANNELS.GET_VAULT_BINDING),
   resolveVaultBinding: (choice: VaultBindingChoice) =>
     invoke(SYNC_CHANNELS.RESOLVE_VAULT_BINDING, { choice })
@@ -61,7 +64,7 @@ export const syncAttachments = {
 
 // CRDT channels are merged into SYNC_CHANNELS (single flat namespace for the preload bridge)
 export const syncCrdt = {
-  openDoc: (input: { noteId: string }) => invoke(SYNC_CHANNELS.OPEN_DOC, input),
+  openDoc: (input: { noteId: string; vaultPath?: string }) => invoke(SYNC_CHANNELS.OPEN_DOC, input),
   closeDoc: (input: { noteId: string }) => invoke(SYNC_CHANNELS.CLOSE_DOC, input),
   applyUpdate: (input: { noteId: string; update: Uint8Array }) =>
     invoke(SYNC_CHANNELS.APPLY_UPDATE, input),
@@ -117,6 +120,11 @@ export const onCrdtProviderReady = (
   callback: (data: { vaultPath: string | null } | undefined) => void
 ): (() => void) =>
   subscribe<{ vaultPath: string | null } | undefined>(SYNC_EVENTS.PROVIDER_READY, callback)
+
+/** A note's file could not be updated from its doc; once per run of failed passes. */
+export const onCrdtWriteBackFailed = (
+  callback: (event: CrdtWriteBackFailedEvent) => void
+): (() => void) => subscribe<CrdtWriteBackFailedEvent>(SYNC_EVENTS.WRITE_BACK_FAILED, callback)
 
 export const onCrdtStateChanged = (
   noteId: string,

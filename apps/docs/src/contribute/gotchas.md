@@ -8,10 +8,10 @@ Symptom: `ERR_DLOPEN_FAILED`, `NODE_MODULE_VERSION X but expecting Y`.
 
 Two fix paths depending on the target:
 
-| Target                 | Fix                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------ |
-| **Node tests**         | `pnpm rebuild better-sqlite3` (or `bash apps/desktop/scripts/ensure-native.sh node`) |
-| **Electron app / E2E** | `bash apps/desktop/scripts/ensure-native.sh electron` (or `pnpm rebuild:electron`)   |
+| Target                 | Fix                                                                                                        |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Node tests**         | `pnpm rebuild better-sqlite3` (or `bash apps/desktop/scripts/ensure-native.sh node`)                       |
+| **Electron app / E2E** | `bash apps/desktop/scripts/ensure-native.sh electron` (or `pnpm --filter @memry/desktop rebuild:electron`) |
 
 > Using the Node fix for Electron leaves `autoOpenLastVault` silently failing with `ERR_DLOPEN_FAILED`. The app never opens the test vault, and E2E waits for workspace surfaces time out.
 
@@ -34,7 +34,7 @@ Symptom: `pnpm dev` sits for minutes on `[native] rebuilding better-sqlite3,keyt
 
 The desktop `postinstall` used to call `electron-rebuild` directly. That did the work but never wrote `apps/desktop/node_modules/.native-build-target`, the stamp `ensure-native.sh` keys off, so `predev` redid the whole rebuild.
 
-`postinstall` now runs `node scripts/warm-native.mjs --background --target electron`: a detached warm-up that drives `ensure-native.sh` (and therefore writes the stamp) while `pnpm install` returns immediately.
+The desktop `postinstall` now runs the root `scripts/warm-native.mjs --background --target electron`: a detached warm-up that drives `ensure-native.sh` (and therefore writes the stamp) while `pnpm install` returns immediately.
 
 | Command         | What it does                                        |
 | --------------- | --------------------------------------------------- |
@@ -114,16 +114,20 @@ db.insert(tasks).values({
 
 Passing `undefined` produces an `INSERT` that omits the column, then SQLite errors on `NOT NULL` columns or returns wrong rows.
 
-## Migrations Are Hand-Written Since 0020
+## Migrations Are Hand-Written
 
-`pnpm db:generate` proposes unrelated renames because Drizzle's meta snapshots stop at `0020`. **Hand-write the SQL and journal entry** instead of running the generator.
+Drizzle's meta snapshots stop at `0021` for the data DB and `0020` for the index DB, so `pnpm --filter @memry/desktop db:generate` proposes unrelated renames. **Hand-write the SQL and the journal entry** instead of running the generator.
 
 Workflow:
 
-1. Update the schema in `packages/db-schema`.
-2. Add a new migration file (`migrations/00xx_description.sql`).
-3. Append a journal entry in `migrations/meta/_journal.json`.
-4. Run `pnpm db:push` to apply.
+1. Update the schema in `packages/db-schema/src` (`data-schema.ts` or `index-schema.ts`).
+2. Add the next migration file, `apps/desktop/src/main/database/drizzle-data/NNNN_description.sql`, or its `drizzle-index/` equivalent.
+3. Append its entry to that folder's `meta/_journal.json`. The entry's `when` must be greater than every earlier `when`, or existing installs skip the migration without an error. `migrate-journal.test.ts` checks this.
+4. Open a vault. `runMigrations` and `runIndexMigrations` (`src/main/database/migrate.ts`) apply pending migrations when the vault's databases open.
+
+Real users run memrynote on real data, so data DB migrations only add. A migration keeps existing rows valid and never drops, renames, or rewrites a table or column that holds user data. Deleting a vault or its data DB is never a recovery path. The index DB is a cache that rebuilds from the vault.
+
+`pnpm --filter @memry/desktop db:push` is not part of this workflow. It runs `drizzle-kit push` against the scratch databases named in `config/drizzle-data.config.ts` and `config/drizzle-index.config.ts`, which bypasses the migrations entirely.
 
 ## Submit Buttons That Disable Mid-Click
 
@@ -277,16 +281,6 @@ The macOS and Linux release builds run scripts via `sh`, so the bug only surface
 
 The HTTP client resolves URLs **per-call**, not at module-import time. This avoids tests crashing on import when env vars are absent. If you add a new client, follow the same pattern: read env inside the function, not in module scope.
 
-## Pre-Existing Type Errors
-
-These files have known type errors unrelated to runtime behavior. Ignore them when running `pnpm typecheck`:
-
-- `apps/desktop/src/main/sync/websocket.test.ts`
-- `apps/desktop/src/main/folders/folders.test.ts`
-- `apps/desktop/src/main/sync/sync-telemetry.ts`
-
-For non-contract changes, use `pnpm typecheck:node && pnpm typecheck:web` to skip the flaky `ipc:check` pre-hook and the pre-existing `sync-telemetry.ts` error.
-
 ## Virtualized UI Tests
 
 `@tanstack/react-virtual` + jsdom = zero items rendered (because jsdom doesn't compute scroll heights). Cover virtualized calendar, week-view, and long-list UIs at the **Playwright E2E layer only**.
@@ -304,7 +298,7 @@ Reversing the order causes split brain. See [CRDT & Notes Sync](/architecture/cr
 
 ## Logging
 
-Always use `createLogger('Scope')` from electron-log — never `console.*`. A pre-commit hook flags raw `console.*` calls.
+Log through `createLogger('Scope')`, from `src/main/lib/logger.ts` in main and `@/lib/logger` in the renderer. Both wrap electron-log. Never call `console.*`; the pre-commit renderer guard rejects it in renderer files.
 
 ## DevTools Startup
 
@@ -322,9 +316,9 @@ toast.error(extractErrorMessage(err, 'Could not save note'))
 
 ## RTL-Safe Tailwind
 
-New code must use logical properties (`ms-*`, `pe-*`, `start-*`, `text-start`, `border-s`, `rounded-s-*`) instead of physical ones (`ml-*`, `pr-*`, `left-*`, `text-left`, `border-l`, `rounded-l-*`). The lint config allows physical classes only in pre-existing files.
+New code must use logical properties (`ms-*`, `pe-*`, `start-*`, `text-start`, `border-s`, `rounded-s-*`) instead of physical ones (`ml-*`, `pr-*`, `left-*`, `text-left`, `border-l`, `rounded-l-*`).
 
-The staged renderer guard scans whole staged renderer files, not just new hunks. If you touch a file that still has physical direction classes, convert those nearby classes to logical equivalents before committing.
+ESLint does not check this. The pre-commit renderer guard (`scripts/check-staged-renderer-guards.mjs`) rejects physical direction classes in staged renderer source files, and it scans each whole staged file, not just new hunks. If you touch a file that still has physical direction classes, convert them to logical equivalents before committing.
 
 ## Security Scan Patterns
 
@@ -339,7 +333,3 @@ GitHub code scanning and the local staged-secret hook are intentionally conserva
 - In fixtures, avoid object fields named `token`, `secret`, or `apiKey` when the value is runtime data. Use a neutral field name and keep the real header name only at the request boundary.
 
 `scripts/check-staged-secrets.mjs` treats an assignment as credential-shaped only when a sensitive keyword (`SECRET`, `TOKEN`, `PASSWORD`, `API_KEY`, …) is a whole word in the key: `ACCESS_TOKEN`, `refreshToken`, and `APIToken` are scanned, while identifiers that merely contain one inside a longer word — fts5's `tokenize='porter unicode61'`, `tokenizer`, `passwordless` — are not. `scripts/check-staged-secrets.test.mjs` covers both directions and runs in the Secret scan CI job; extend it when you change the rules rather than reformatting the code that trips them.
-
-## Pre-Production Database
-
-memrynote is pre-production and the DB schema is **resettable**. There are no backward-compat constraints on schema changes within the desktop app. If a migration is messy, deleting the local vault is a valid recovery.

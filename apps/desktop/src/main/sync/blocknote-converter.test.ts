@@ -1200,6 +1200,11 @@ const INLINE_CASES = [
     // which is what `toChecked` exists to stop, and what this case measures.
     attrs: { checked: 'true' },
     text: '[x]'
+  },
+  {
+    nodeName: 'htmlComment',
+    attrs: { source: '<!-- hidden [[Roadmap]] -->' },
+    text: '<!-- hidden [[Roadmap]] -->'
   }
 ] as const
 
@@ -1635,7 +1640,9 @@ const INLINE_TEXT_FORMS: Record<(typeof MEMRY_INLINE_CONTENT_TYPES)[number], str
   // in a table cell is not a checkbox to any markdown parser — which is exactly
   // why the node can use it: nothing else claims it, and every other tool keeps
   // it verbatim.
-  inlineCheckbox: '[ ]'
+  inlineCheckbox: '[ ]',
+  // A comment holding a wiki link, the way notes hide links (AF-015).
+  htmlComment: '<!-- hidden [[Roadmap]] -->'
 }
 
 /** The block shapes a marker's own text can be sitting inside of. */
@@ -3780,9 +3787,9 @@ describe('text alignment survives the markdown round trip (#1937)', () => {
   })
 
   it.each(['<!-- align:left -->\nText', '<!-- todo -->\nText'])(
-    'leaves %j on the unrecognised-comment path, which drops it',
+    'keeps %j as an HTML comment, not as an alignment',
     async (md) => {
-      expect(await crdtRoundTrip(md)).toBe('Text')
+      expect(await crdtRoundTrip(md)).toBe(md)
     }
   )
 })
@@ -4025,5 +4032,51 @@ describe('image width through the vault file', () => {
     expect(props.name).toBe('shot|300x200')
     expect(props.previewWidth).toBeUndefined()
     expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+})
+
+describe('blocknote-converter multi-column regions', () => {
+  const region = [
+    '--- start-multi-column: r1',
+    '```column-settings',
+    'Number of Columns: 2',
+    'Column Size: [25%, 75%]',
+    'Border: off',
+    '```',
+    '',
+    '## Pros',
+    '',
+    '--- end-column ---',
+    '',
+    '- fast',
+    '',
+    '--- end-multi-column'
+  ].join('\n')
+
+  it('reads an Obsidian MCM region as a column list with sized columns', async () => {
+    const [list] = (await markdownToBlocks(region)) as unknown as {
+      type: string
+      props: { regionId: string; settings: string }
+      children: { type: string; props: { width: number }; children: { type: string }[] }[]
+    }[]
+
+    expect(list.type).toBe('columnList')
+    expect(list.props.regionId).toBe('r1')
+    expect(list.props.settings).toContain('Border: off')
+    expect(list.children.map((column) => column.type)).toEqual(['column', 'column'])
+    expect(list.children.map((column) => column.props.width)).toEqual([0.5, 1.5])
+    expect(list.children.map((column) => column.children[0].type)).toEqual([
+      'heading',
+      'bulletListItem'
+    ])
+  })
+
+  it('keeps the columns through the Y.Doc and writes the region back unchanged', async () => {
+    const doc = new Y.Doc()
+    await markdownToYFragment(region, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    expect(findUnrepresentableNodes(doc)).toEqual([])
+    writeMarkdownSourceToYDoc(doc, null)
+    expect(await yDocToMarkdown(doc)).toBe(region)
   })
 })

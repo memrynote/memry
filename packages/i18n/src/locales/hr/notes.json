@@ -158,7 +158,8 @@
       "richTextAria": "Uređivač obogaćenog teksta",
       "headingPlaceholder": "Naslov",
       "listPlaceholder": "Stavka popisa",
-      "todoPlaceholder": "Stavka popisa zadataka"
+      "todoPlaceholder": "Stavka popisa zadataka",
+      "htmlComment": "Skriveni HTML komentar"
     },
     "table": {
       "keyboardMenuAria": "Radnje tablice za redak {row}, stupac {column}",
@@ -245,6 +246,25 @@
       "warning": "Upozorenje",
       "error": "Greška",
       "success": "Uspjeh"
+    },
+    "columns": {
+      "group": "Osnovni blokovi",
+      "two": {
+        "title": "2 stupca",
+        "subtext": "Postavi blokove jedan uz drugi u dva stupca"
+      },
+      "three": {
+        "title": "3 stupca",
+        "subtext": "Postavi blokove jedan uz drugi u tri stupca"
+      },
+      "four": {
+        "title": "4 stupca",
+        "subtext": "Postavi blokove jedan uz drugi u četiri stupca"
+      },
+      "five": {
+        "title": "5 stupaca",
+        "subtext": "Postavi blokove jedan uz drugi u pet stupaca"
+      }
     },
     "diagram": {
       "title": "Dijagram",

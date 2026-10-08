@@ -158,7 +158,8 @@
       "richTextAria": "Editor de texto rico",
       "headingPlaceholder": "Título",
       "listPlaceholder": "Item da lista",
-      "todoPlaceholder": "Tarefa"
+      "todoPlaceholder": "Tarefa",
+      "htmlComment": "Comentário HTML oculto"
     },
     "table": {
       "keyboardMenuAria": "Ações da tabela para a linha {row}, coluna {column}",
@@ -245,6 +246,25 @@
       "warning": "Aviso",
       "error": "Erro",
       "success": "Sucesso"
+    },
+    "columns": {
+      "group": "Blocos básicos",
+      "two": {
+        "title": "2 colunas",
+        "subtext": "Coloque blocos lado a lado em duas colunas"
+      },
+      "three": {
+        "title": "3 colunas",
+        "subtext": "Coloque blocos lado a lado em três colunas"
+      },
+      "four": {
+        "title": "4 colunas",
+        "subtext": "Coloque blocos lado a lado em quatro colunas"
+      },
+      "five": {
+        "title": "5 colunas",
+        "subtext": "Coloque blocos lado a lado em cinco colunas"
+      }
     },
     "diagram": {
       "title": "Diagrama",

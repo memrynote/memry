@@ -24,6 +24,7 @@ import { SetupWizard } from './setup-wizard'
 import { QrLinking } from '@/components/sync/qr-linking'
 import { LinkingApprovalDialog } from '@/components/sync/linking-approval-dialog'
 import { DeviceList } from '@/components/sync/device-list'
+import { UnsentNotesList } from '@/components/settings/unsent-notes-list'
 import type { StorageBreakdownResult } from '@memry/contracts/ipc-sync-ops'
 import {
   SettingsHeader,
@@ -653,6 +654,7 @@ export function AccountSettings() {
             />
           </SettingRow>
         )}
+        {!isSyncLocked && <UnsentNotesList />}
       </SettingsGroup>
 
       <SettingsGroup label={t('account.groups.billing')}>

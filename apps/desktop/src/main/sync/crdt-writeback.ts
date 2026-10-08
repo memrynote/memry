@@ -4,6 +4,7 @@ import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
 import { feedExternalEditToCrdt } from './crdt-external-feed'
+import { owesFileBody } from './crdt-owed-file-body'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import { serializeNoteBody, type NoteBody } from './writing-markdown'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
@@ -18,6 +19,8 @@ import {
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { utcNow } from '@memry/shared/utc'
 import { atomicWrite, safeRead, ensureDirectory } from '../vault/file-ops'
+import { runWithLockedWritesAllowed } from '../vault-locks/registry'
+import { restoreLockedNoteFile } from '../vault-locks/service'
 import {
   generateContentHash,
   parseNote,
@@ -25,7 +28,14 @@ import {
   serializeParsedNote,
   type NoteFrontmatter
 } from '../vault/frontmatter'
-import { getVaultRoot, toAbsolutePath, maybeCreateSignificantSnapshot } from '../vault/notes'
+import { splitFrontmatterBlock } from '@memry/shared/frontmatter-split'
+import {
+  getVaultRoot,
+  toAbsolutePath,
+  createSnapshot,
+  maybeCreateSignificantSnapshot
+} from '../vault/notes'
+import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { getJournalPath } from '../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
 import { reconcileRenamedAttachments } from '../vault/attachment-rename-reconcile'
@@ -37,6 +47,7 @@ import { createRemindersService, type RemindersServiceHooks } from '@memry/app-c
 import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
 import { deleteFile } from '../vault/file-ops'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
+import { CRDT_EVENTS, type CrdtWriteBackFailedEvent } from '@memry/contracts/ipc-crdt'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import path from 'path'
 import { isDeepStrictEqual } from 'node:util'
@@ -107,8 +118,12 @@ interface WritebackCost {
 const lastWritebackCost = new Map<string, WritebackCost>()
 const pendingTimers = new Map<string, PendingWriteback>()
 const inFlightWritebacks = new Set<string>()
+/** Notes whose last pass failed and whose user has been told so. */
+const failingWritebacks = new Set<string>()
 const ignoredWrites = new Map<string, number>()
 const lastNetworkUpdateMs = new Map<string, number>()
+/** Note id to the content hash of the file bytes this module last wrote for it. */
+const lastWrittenHash = new Map<string, string>()
 
 /**
  * True while this note's on-disk markdown is known to be behind the live doc —
@@ -323,6 +338,7 @@ async function runWriteback(
   const startedAt = Date.now()
   try {
     await performWriteback(noteId, resolveWritebackDoc(noteId, doc), local, remoteEditedAtMs)
+    failingWritebacks.delete(noteId)
   } finally {
     const finishedAt = Date.now()
     lastWritebackCost.set(noteId, { finishedAt, durationMs: finishedAt - startedAt })
@@ -356,25 +372,44 @@ export function scheduleWriteback(
     pendingTimers.delete(noteId)
     inFlightWritebacks.add(noteId)
     runWriteback(noteId, doc, local, pendingRemoteEditedAtMs)
-      .catch((err) => {
-        updateDebugState(noteId, {
-          pending: false,
-          lastError: err instanceof Error ? err.message : String(err)
-        })
-        log.error('Write-back failed', { noteId, error: err })
-        // A failed write-back means typed content was NOT persisted to disk.
-        // Throttled: a persistent disk fault would otherwise fire per debounce.
-        if (shouldEmitThrottled(`note_writeback_error:${noteId}`)) {
-          trackMainError('notes', 'note_writeback', err)
-        }
-        emitToRenderer('sync:write-back-failed', { noteId })
-      })
+      .catch((err) => reportWritebackFailure(noteId, err))
       .finally(() => {
         inFlightWritebacks.delete(noteId)
       })
   }, writebackDelayMs(noteId))
 
   pendingTimers.set(noteId, { timer, doc, local, remoteEditedAtMs: pendingRemoteEditedAtMs })
+}
+
+/**
+ * A failed write-back means typed content was NOT persisted to disk. The user
+ * hears of it once per run of failed passes for the note, not on every pass a
+ * deterministic fault (a restore that always throws, a file another program
+ * holds) fails again; the pass that lands ends the run.
+ */
+function reportWritebackFailure(noteId: string, err: unknown): void {
+  updateDebugState(noteId, {
+    pending: false,
+    lastError: err instanceof Error ? err.message : String(err)
+  })
+  // Throttled: a persistent disk fault would otherwise fire per debounce.
+  if (shouldEmitThrottled(`note_writeback_error:${noteId}`)) {
+    trackMainError('notes', 'note_writeback', err)
+  }
+  if (failingWritebacks.has(noteId)) {
+    log.debug('Write-back failed again', { noteId, error: err })
+    return
+  }
+  failingWritebacks.add(noteId)
+  log.error('Write-back failed', { noteId, error: err })
+  const event: CrdtWriteBackFailedEvent = { noteId }
+  try {
+    const title = getNoteCacheById(getIndexDatabase(), noteId)?.title
+    if (title) event.title = title
+  } catch (lookupErr) {
+    log.warn('Write-back failure notice: note title lookup failed', { noteId, error: lookupErr })
+  }
+  emitToRenderer(CRDT_EVENTS.WRITE_BACK_FAILED, event)
 }
 
 /**
@@ -391,7 +426,9 @@ export function cancelWriteback(noteId: string): void {
     pendingTimers.delete(noteId)
   }
   lastWritebackCost.delete(noteId)
+  lastWrittenHash.delete(noteId)
   debugState.delete(noteId)
+  failingWritebacks.delete(noteId)
 }
 
 /**
@@ -413,6 +450,18 @@ export async function writebackNow(noteId: string, doc: Y.Doc): Promise<void> {
   }
 }
 
+/**
+ * Run this note's armed pass now, if one is armed, so a caller that reads the
+ * file back right after a write reports what the file keeps (#2615). A failed
+ * pass is reported as a timed one is, not thrown: the file then holds what the
+ * write left.
+ */
+export async function settleWriteback(noteId: string): Promise<void> {
+  const pending = pendingTimers.get(noteId)
+  if (!pending) return
+  await writebackNow(noteId, pending.doc).catch((err) => reportWritebackFailure(noteId, err))
+}
+
 export function cancelPendingWritebacks(): void {
   for (const { timer } of pendingTimers.values()) {
     clearTimeout(timer)
@@ -430,11 +479,13 @@ export function cancelPendingWritebacks(): void {
 export function getWritebackStateSizes(): {
   ignoredWrites: number
   networkUpdates: number
+  lastWrittenHashes: number
   debugState: number
 } {
   return {
     ignoredWrites: ignoredWrites.size,
     networkUpdates: lastNetworkUpdateMs.size,
+    lastWrittenHashes: lastWrittenHash.size,
     debugState: debugState.size
   }
 }
@@ -450,7 +501,9 @@ export function resetWritebackState(): void {
   lastWritebackCost.clear()
   ignoredWrites.clear()
   lastNetworkUpdateMs.clear()
+  lastWrittenHash.clear()
   debugState.clear()
+  failingWritebacks.clear()
   ignoredWritesSweptAt = 0
   networkUpdatesSweptAt = 0
 }
@@ -512,7 +565,8 @@ async function performWriteback(
   // writes this body over it (`CrdtProvider.materialize`, or the walk the
   // record's body debt runs).
   const indexDb = getIndexDatabase()
-  const cached = getNoteCacheById(indexDb, noteId) ?? resolveFromCanonicalMetadata(noteId)
+  const indexed = getNoteCacheById(indexDb, noteId)
+  const cached = indexed ?? resolveFromCanonicalMetadata(noteId)
   if (!cached) {
     updateDebugState(noteId, { pending: false })
     log.debug('Write-back skipped: no note row', { noteId })
@@ -545,14 +599,30 @@ async function performWriteback(
     return
   }
 
+  const restore: { outcome: SourceRestoreOutcome | null } = { outcome: null }
   const body = await serializeNoteBody(
     doc,
     {
       notePath: cached.path,
-      onSourceRestore: (sourceRestore) => updateDebugState(noteId, { sourceRestore })
+      readFileBody: async () => {
+        const raw = await safeRead(toAbsolutePath(cached.path))
+        return raw === null ? null : splitFrontmatterBlock(raw).body
+      },
+      onSourceRestore: (sourceRestore) => {
+        restore.outcome = sourceRestore
+        updateDebugState(noteId, { sourceRestore })
+      }
     },
     converter
   )
+  // The file is kept, and the pass fails the way a failed read does: the
+  // failure telemetry hears of it, the user gets one notice for the note
+  // (`reportWritebackFailure`), and the next update retries.
+  if (restore.outcome === 'restore-threw' || restore.outcome === 'file-unreadable') {
+    throw new Error(
+      `The author's spelling could not be restored (${restore.outcome}); kept the file`
+    )
+  }
   const markdown = body?.markdown ?? null
   updateDebugState(noteId, {
     pending: false,
@@ -567,6 +637,20 @@ async function performWriteback(
     if (shouldEmitThrottled(`writeback_conversion_null:${noteId}`)) {
       trackMainLog('error', { scope: 'CrdtWriteback', action: 'conversion_null' })
     }
+    return
+  }
+
+  // A note that owes its file body (#2646) holds bytes the app wrote and the
+  // doc has not taken; the index hash moved with them, so only the marker
+  // tells. The file is taken only after a complete server merge into the live
+  // doc (`CrdtProvider.takeFileAfterMerge`), never by a pass that may run in
+  // the middle of one. The full-state row is owed again so the marker has a
+  // flush to resolve it. Not for a doc the take refuses (the two fail-closed
+  // returns above) or a note with no index row the take can read: each flush
+  // would queue the next one.
+  if (owesFileBody(noteId)) {
+    if (indexed) getCrdtProvider().recordOwedFullState(noteId)
+    log.debug('Write-back skipped: the note owes its file body', { noteId })
     return
   }
 
@@ -625,6 +709,40 @@ function applyAttachmentRenames(
     reconcileRenamedAttachments(noteId, previousContent, nextContent, getVaultRoot())
   } catch (err) {
     log.warn('Attachment rename reconcile failed during write-back', { noteId, err })
+  }
+}
+
+/**
+ * Keep a version of the file a pass is about to replace, when the pass changes
+ * its body.
+ *
+ * Bytes this module wrote on its last pass came from this doc, so replacing
+ * them loses nothing the doc lacks, and typing on any device keeps the 10-word
+ * rule instead of adding a version per pass. Any other bytes (an agent edit
+ * through `updateNote`, a file from an earlier session) may hold text the doc
+ * never took in, so they keep a version whatever the word count (#2646).
+ *
+ * The bodies compared are the ones in the files, so a frontmatter-only change
+ * or the serializer's EOL and final-newline handling keeps none. Never throws:
+ * a version that cannot be saved must not block the write.
+ */
+function keepVersionBeforeWriteback(
+  noteId: string,
+  existingRaw: string,
+  fileContent: string,
+  title: string
+): void {
+  const oldBody = splitFrontmatterBlock(existingRaw).body
+  const newBody = splitFrontmatterBlock(fileContent).body
+  if (oldBody === newBody) return
+  try {
+    const snap =
+      lastWrittenHash.get(noteId) === generateContentHash(existingRaw)
+        ? maybeCreateSignificantSnapshot(noteId, existingRaw, oldBody, newBody, title)
+        : createSnapshot(noteId, existingRaw, title, SnapshotReasons.SIGNIFICANT)
+    if (snap) log.info('Version kept before write-back', { noteId, snapshotId: snap.id })
+  } catch (err) {
+    log.error('Keeping a version before write-back failed', { noteId, error: err })
   }
 }
 
@@ -704,6 +822,9 @@ async function writebackExisting(
     }
     const onDisk = cached.contentHash ? generateContentHash(existingRaw) : null
     if (onDisk !== null && onDisk !== cached.contentHash && parsed) {
+      // A locked note's outside edit is never taken in: its locked text goes
+      // back on disk and the edit is kept as a version (#2606).
+      if (await restoreLockedNoteFile(noteId, existingRaw)) return
       const ingested = await feedExternalEditToCrdt(
         noteId,
         parsed.content,
@@ -740,23 +861,14 @@ async function writebackExisting(
     }
   }
 
-  if (existingRaw !== null && parsed) {
-    try {
-      const snap = maybeCreateSignificantSnapshot(
-        noteId,
-        existingRaw,
-        parsed.content,
-        markdown,
-        cached.title
-      )
-      if (snap) log.info('Snapshot created during writeback', { noteId, snapshotId: snap.id })
-    } catch (err) {
-      log.error('Snapshot creation failed during writeback', { noteId, error: err })
-    }
-  }
+  if (existingRaw !== null)
+    keepVersionBeforeWriteback(noteId, existingRaw, fileContent, cached.title)
 
   rememberIgnoredWrite(absolutePath)
-  await atomicWrite(absolutePath, fileContent)
+  // A locked note's doc only ever takes another device's edits (local updates
+  // are refused at crdt:apply-update), so its write-back is allowed (#2606).
+  await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+  lastWrittenHash.set(noteId, generateContentHash(fileContent))
 
   // An attachment rename that arrived in this body (#1714): the file is still
   // on this device under its old name — the blob is never re-uploaded, so the
@@ -836,24 +948,14 @@ async function writebackJournal(
     return
   }
 
-  if (existingRaw !== null && parsed) {
-    try {
-      const snap = maybeCreateSignificantSnapshot(
-        noteId,
-        existingRaw,
-        parsed.content,
-        markdown,
-        cached.title
-      )
-      if (snap)
-        log.info('Journal snapshot created during writeback', { noteId, snapshotId: snap.id })
-    } catch (err) {
-      log.error('Journal snapshot creation failed during writeback', { noteId, error: err })
-    }
-  }
+  if (existingRaw !== null)
+    keepVersionBeforeWriteback(noteId, existingRaw, fileContent, cached.title)
 
   rememberIgnoredWrite(absolutePath)
-  await atomicWrite(absolutePath, fileContent)
+  // A locked note's doc only ever takes another device's edits (local updates
+  // are refused at crdt:apply-update), so its write-back is allowed (#2606).
+  await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+  lastWrittenHash.set(noteId, generateContentHash(fileContent))
 
   // Journals hold file/image blocks like any other note — see the note path.
   applyAttachmentRenames(noteId, existingRaw, fileContent)

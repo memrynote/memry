@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "A szerkesztési előzmények nem maradnak meg ezen az eszközön",
-    "persistenceDegradedBody": "A jegyzetei biztonságban vannak – egyszerű fájlokként vannak a széfben, és továbbra is a szokásos módon nyílnak meg és mentődnek. Csak az eszköz helyi szerkesztési előzményei és egyesítési állapota fut a memóriában, ezért ezek a memrynote minden megnyitásakor elölről kezdődnek."
+    "persistenceDegradedBody": "A jegyzetei biztonságban vannak – egyszerű fájlokként vannak a széfben, és továbbra is a szokásos módon nyílnak meg és mentődnek. Csak az eszköz helyi szerkesztési előzményei és egyesítési állapota fut a memóriában, ezért ezek a memrynote minden megnyitásakor elölről kezdődnek.",
+    "writebackFailedTitle": "Egy jegyzet fájlját nem sikerült frissíteni a lemezen",
+    "writebackFailedTitleNamed": "„{title}” nem frissíthető a lemezen",
+    "writebackFailedBody": "A lemezen lévő fájl változatlan maradt. A módosításod nyitva marad a memrynote-ban, amíg az alkalmazás fut; a memrynote a következő módosításodnál újra próbálkozik."
   },
   "encryption": {
     "failed": "Nem sikerült titkosítani az adatokat. Lehet, hogy a kulcsokat újra kell generálni.",
@@ -313,5 +316,9 @@
     "invalidUrl": "Ez nem webes hivatkozás. Illesszen be egy http vagy https kezdetű képcímet.",
     "downloadFailed": "Nem sikerült letölteni a képet. Ellenőrizze a hivatkozást, és próbálja újra.",
     "unsupportedUrl": "Ez a hivatkozás nem PNG, JPG, GIF, WEBP vagy SVG formátumú képre mutat."
+  },
+  "vaultLock": {
+    "noteReadOnly": "A tulajdonos írásvédetté tette ezt a jegyzetet.",
+    "folderReadOnly": "A tulajdonos írásvédetté tette ezt a mappát."
   }
 }

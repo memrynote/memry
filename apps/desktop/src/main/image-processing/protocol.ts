@@ -17,6 +17,19 @@ export interface InboxImageProcessingPayload {
   thumbnailData: Uint8Array | null
 }
 
+/** A file on disk, or PNG bytes such as a rendered PDF page. */
+export type ViewImageSource = { kind: 'file'; path: string } | { kind: 'png'; data: Uint8Array }
+
+/** An image an agent can look at, and the size of the image it came from. */
+export interface ViewImagePayload {
+  data: Uint8Array
+  mimeType: 'image/png' | 'image/jpeg'
+  width: number
+  height: number
+  sourceWidth: number
+  sourceHeight: number
+}
+
 export type ImageProcessingMainToWorkerMessage =
   | {
       type: 'generate-thumbnail'
@@ -28,6 +41,12 @@ export type ImageProcessingMainToWorkerMessage =
       type: 'process-inbox-image'
       requestId: string
       filePath: string
+    }
+  | {
+      type: 'prepare-view-image'
+      requestId: string
+      source: ViewImageSource
+      maxEdge: number
     }
   | {
       type: 'shutdown'
@@ -55,6 +74,11 @@ export type ImageProcessingWorkerToMainMessage =
       type: 'inbox-image-result'
       requestId: string
       result: InboxImageProcessingPayload | null
+    }
+  | {
+      type: 'view-image-result'
+      requestId: string
+      result: ViewImagePayload
     }
   | {
       type: 'error'

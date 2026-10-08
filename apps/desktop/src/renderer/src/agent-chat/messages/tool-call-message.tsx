@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import type {
   AlwaysAllowScope,
   ApproveToolDecision,
+  ChangePreviewIntent,
   Message,
   PreviewDiffRequest,
   PreviewDiffResponse
@@ -36,6 +37,15 @@ function canBeAlwaysAllowed(previewKind: PendingToolApproval['previewKind']): bo
   return previewKind !== 'loss'
 }
 
+const descriptionKeys: Partial<Record<ChangePreviewIntent, string>> = {
+  create: 'agentChat.diff.descriptionCreate',
+  delete: 'agentChat.diff.descriptionDelete'
+}
+
+function descriptionKey(intent: ChangePreviewIntent | undefined): string {
+  return (intent && descriptionKeys[intent]) ?? 'agentChat.diff.description'
+}
+
 const updateToolNames = new Set(['vault_move_to_folder', 'vault_add_tag', 'vault_remove_tag'])
 
 function isUpdateTool(name: string): boolean {
@@ -45,6 +55,7 @@ function isUpdateTool(name: string): boolean {
 const toolLabels: Record<string, string> = {
   vault_search_notes: 'Searching notes',
   vault_read_note: 'Reading note',
+  vault_view_file: 'Viewing file',
   vault_list_folder: 'Reading folder',
   vault_get_current_note: 'Reading current note',
   vault_list_tasks: 'Reading tasks',
@@ -58,6 +69,7 @@ const toolLabels: Record<string, string> = {
   vault_get_inbox_item: 'Reading inbox item',
   vault_get_tags: 'Reading tags',
   vault_desktop_read: 'Reading app data',
+  vault_desktop_describe: 'Looking up app operation',
   vault_create_note: 'Creating note',
   vault_rename_note: 'Renaming note',
   vault_delete_note: 'Deleting note',
@@ -235,7 +247,7 @@ function InlineDiffApproval({
   return (
     <Confirmation state="pending">
       <ConfirmationTitle>
-        {t('agentChat.diff.description', {
+        {t(descriptionKey(preview?.preview.intent), {
           title: preview?.title ?? t('agentChat.diff.fallbackTitle')
         })}
       </ConfirmationTitle>

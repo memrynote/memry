@@ -284,6 +284,10 @@ A **`{task:…}` suffix naming a task that is not in this vault** — usually a 
 Not every checkbox is a task. A packing list or a checklist inside meeting notes can stay a
 **plain checkbox**: it ticks like any other, never becomes a task, and never shows up in Tasks.
 
+If you rarely want checklists as tasks, turn off **Turn checklist items into tasks** in
+[Settings → Editor](/user-guide/settings#checklists). Checklist items then stay checkboxes unless
+you right-click one or indent it under a task. For a single list, use one of these:
+
 - **Undo right after it becomes a task.** The line goes back to a checkbox, now a plain one, and
   the task it had just become is deleted. The first time a checkbox becomes a task, a note in the
   corner says so and offers **Keep as checkbox**, which does the same.

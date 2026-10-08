@@ -595,7 +595,7 @@ export function PropertyRow({
       )}
 
       {/* Delete button */}
-      {property.isCustom && onDelete && (
+      {property.isCustom && onDelete && !disabled && (
         <button
           type="button"
           onClick={onDelete}

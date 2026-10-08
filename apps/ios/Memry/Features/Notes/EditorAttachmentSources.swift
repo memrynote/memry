@@ -2,10 +2,10 @@ import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The keyboard toolbar's paperclip sources: photos, camera, files and the
-/// document scanner. Each ends in the composer's one upload call (N214), then
-/// the attachment's block goes into the body after the caret's block, in the
-/// shape desktop writes (`AttachmentBlock`).
+/// The paperclip's and the catalog's sources: photos, videos, camera, files,
+/// audio and the document scanner. Each ends in the composer's one upload
+/// call (N214), then the attachment's block goes into the body after the
+/// caret's block, in the shape desktop writes (`AttachmentBlock`).
 struct EditorAttachmentSources: ViewModifier {
     @Binding var source: EditorAttachmentSource?
     let composer: NoteAttachmentComposer
@@ -15,16 +15,34 @@ struct EditorAttachmentSources: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .photosPicker(isPresented: showing(.photos), selection: $photo, matching: .images)
+            // One picker of each kind, narrowed by the source: a second
+            // `photosPicker` or `fileImporter` on the same view never presents.
+            .photosPicker(
+                isPresented: showing(.photos, .videos),
+                selection: $photo,
+                matching: source == .videos ? .videos : .images,
+                // H.264 rather than HEVC, which desktop's player may not decode.
+                preferredItemEncoding: source == .videos ? .compatible : .automatic
+            )
             .onChange(of: photo) { _, picked in
                 guard let picked else { return }
                 photo = nil
+                composer.beginReading()
                 Task {
-                    guard let data = try? await picked.loadTransferable(type: Data.self) else { return }
-                    await upload(AttachmentPayload.picture(data, type: picked.supportedContentTypes.first))
+                    guard let data = try? await picked.loadTransferable(type: Data.self) else {
+                        composer.endReading()
+                        return
+                    }
+                    let type = picked.supportedContentTypes.first
+                    await upload(type?.conforms(to: .movie) == true
+                        ? AttachmentPayload.video(data, type: type)
+                        : AttachmentPayload.picture(data, type: type))
                 }
             }
-            .fileImporter(isPresented: showing(.files), allowedContentTypes: [.item]) { result in
+            .fileImporter(
+                isPresented: showing(.files, .audio),
+                allowedContentTypes: source == .audio ? [.audio] : [.item]
+            ) { result in
                 guard case let .success(url) = result else { return }
                 Task { await upload(contentsOf: url) }
             }
@@ -45,10 +63,53 @@ struct EditorAttachmentSources: ViewModifier {
                 }
                 .ignoresSafeArea()
             }
+            .safeAreaInset(edge: .top) { progress }
+            .alert(
+                failureTitle,
+                isPresented: Binding(
+                    get: { if case .failed = composer.state { true } else { false } },
+                    set: { if !$0 { composer.dismissFailure() } }
+                )
+            ) {
+                Button("OK", role: .cancel) { composer.dismissFailure() }
+            } message: {
+                if case let .failed(error) = composer.state { Text(error.guidance ?? "") }
+            }
     }
 
-    private func showing(_ which: EditorAttachmentSource) -> Binding<Bool> {
-        Binding(get: { source == which }, set: { if !$0, source == which { source = nil } })
+    /// Indeterminate on purpose: the core's upload reports no per-chunk
+    /// progress, and a bar that moved on a timer would be a claim about where
+    /// the bytes are.
+    @ViewBuilder
+    private var progress: some View {
+        let text: String? = switch composer.state {
+        case .reading: "Reading the file"
+        case let .uploading(name): "Adding \(name)"
+        default: nil
+        }
+        if let text {
+            HStack(spacing: Tokens.Space.small) {
+                ProgressView().controlSize(.small)
+                Text(text)
+                    .font(Tokens.Typography.caption.font)
+                    .foregroundStyle(Tokens.Text.secondary.color)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private var failureTitle: String {
+        if case let .failed(error) = composer.state { return error.title }
+        return ""
+    }
+
+    private func showing(_ which: EditorAttachmentSource...) -> Binding<Bool> {
+        Binding(
+            get: { source.map(which.contains) ?? false },
+            set: { if !$0, let source, which.contains(source) { self.source = nil } }
+        )
     }
 
     /// Uploads under a prefixed name, as desktop saves every attachment, so a
@@ -64,10 +125,12 @@ struct EditorAttachmentSources: ViewModifier {
     }
 
     private func upload(contentsOf url: URL) async {
+        composer.beginReading()
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         guard let data = await Task.detached(operation: { try? Data(contentsOf: url) }).value else {
             Log.sync.error("a picked file could not be read")
+            composer.endReading()
             return
         }
         await upload(AttachmentPayload(

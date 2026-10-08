@@ -1,4 +1,4 @@
-//! `extract_text`: the core's only text operation (chapter 12 §12.1).
+//! `extract_text`: the core's only document-to-text operation (chapter 12 §12.1).
 //!
 //! A plain-text walk of a note document's `prosemirror` `XmlFragment` that
 //! keeps heading and list markers, drops everything else, and claims **no**
@@ -30,8 +30,8 @@ use yrs::{GetString as _, ReadTxn, Xml as _, XmlElementRef, XmlFragment, XmlOut}
 use super::errors::CrdtError;
 use super::registry::Document;
 
-/// The body fragment's name (chapter 12 §12.3), `CRDT_FRAGMENT_NAME` and
-/// `BRIDGE_FRAGMENT_NAME` on the TypeScript side.
+/// The body fragment's name (chapter 12 §12.3), `CRDT_FRAGMENT_NAME` on the
+/// TypeScript side.
 ///
 /// The same string the registry types as a root; the unit tests below pin the
 /// two together so they cannot drift apart silently.

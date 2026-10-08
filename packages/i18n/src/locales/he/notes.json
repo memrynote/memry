@@ -158,7 +158,8 @@
       "richTextAria": "עורך טקסט עשיר",
       "headingPlaceholder": "כותרת",
       "listPlaceholder": "פריט רשימה",
-      "todoPlaceholder": "פריט לביצוע"
+      "todoPlaceholder": "פריט לביצוע",
+      "htmlComment": "הערת HTML מוסתרת"
     },
     "table": {
       "keyboardMenuAria": "פעולות טבלה לשורה {row}, עמודה {column}",
@@ -245,6 +246,25 @@
       "warning": "אזהרה",
       "error": "שגיאה",
       "success": "הצלחה"
+    },
+    "columns": {
+      "group": "בלוקים בסיסיים",
+      "two": {
+        "title": "2 עמודות",
+        "subtext": "הצבת בלוקים זה לצד זה בשתי עמודות"
+      },
+      "three": {
+        "title": "3 עמודות",
+        "subtext": "הצבת בלוקים זה לצד זה בשלוש עמודות"
+      },
+      "four": {
+        "title": "4 עמודות",
+        "subtext": "הצבת בלוקים זה לצד זה בארבע עמודות"
+      },
+      "five": {
+        "title": "5 עמודות",
+        "subtext": "הצבת בלוקים זה לצד זה בחמש עמודות"
+      }
     },
     "diagram": {
       "title": "תרשים",

@@ -42,6 +42,7 @@ vi.mock('../agent/storage/vault-id', () => ({
   getOrCreateVaultUuid: () => 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
 }))
 
+const storeState = vi.hoisted(() => ({ inMemorySessions: 0 }))
 vi.mock('../store', () => ({
   getLegacyCrdtStoreClaim: () => 'someone-else',
   recordLegacyCrdtStoreClaim: vi.fn(),
@@ -50,7 +51,7 @@ vi.mock('../store', () => ({
   clearLegacyCrdtStorePartitionPending: vi.fn(),
   getPendingCrdtStoreRename: () => undefined,
   clearPendingCrdtStoreRename: vi.fn(),
-  getCrdtInMemorySessions: () => 0,
+  getCrdtInMemorySessions: () => storeState.inMemorySessions,
   recordCrdtPersistenceOutcome: vi.fn(() => 0)
 }))
 
@@ -118,10 +119,14 @@ vi.mock('y-leveldb', () => ({
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { runCrdtPreflight } from './crdt-preflight'
 import { _resetCrdtIpcHandlersForTests, registerCrdtIpcHandlers } from '../ipc/crdt-handlers'
+import { asClientDb, createTestDataDb } from '@tests/utils/test-db'
+import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
+import { writeLockRow } from '../vault-locks/store'
 
 describe('CRDT IPC handlers — lifecycle resilience', () => {
   beforeEach(() => {
     preflight.gate = null
+    storeState.inMemorySessions = 0
     syncEngine.current = null
     resetIpcMocks()
     mockIpcMain._clearHandlers()
@@ -294,6 +299,75 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       // #then
       expect(result.success).toBe(false)
       expect(vi.mocked(runCrdtPreflight)).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('crdt:get-health', () => {
+    it('answers from the previous launches before this launch has a verdict', async () => {
+      storeState.inMemorySessions = 3
+
+      await expect(invokeHandler(CRDT_CHANNELS.GET_HEALTH)).resolves.toEqual({
+        persistent: false,
+        inMemorySessions: 3
+      })
+    })
+
+    it('waits for a store init in flight and answers with its verdict', async () => {
+      storeState.inMemorySessions = 3
+      let releasePreflight = (): void => {}
+      preflight.gate = new Promise<void>((resolve) => {
+        releasePreflight = () => resolve()
+      })
+      const init = getCrdtProvider().initPersistence()
+
+      const health = invokeHandler(CRDT_CHANNELS.GET_HEALTH)
+      releasePreflight()
+      await init
+
+      await expect(health).resolves.toEqual({ persistent: true, inMemorySessions: 3 })
+    })
+
+    it('reports no store for a launch whose preflight failed', async () => {
+      vi.mocked(runCrdtPreflight).mockResolvedValueOnce({
+        ok: false,
+        reason: 'binding aborted',
+        stage: 'binding'
+      })
+      await getCrdtProvider().initPersistence()
+
+      await expect(invokeHandler(CRDT_CHANNELS.GET_HEALTH)).resolves.toEqual({
+        persistent: false,
+        inMemorySessions: 0
+      })
+    })
+  })
+
+  describe('an editor kept for another vault', () => {
+    it('crdt:open-doc refuses a note from a vault this provider does not serve', async () => {
+      // #given — the provider was opened for vault B, and note ids repeat across
+      // vaults (journal dates, copied vaults), so the id alone resolves here too
+      mockGetNoteCacheById.mockReturnValue({ id: 'n1', path: 'n1.md', fileType: 'markdown' })
+      const provider = getCrdtProvider()
+      await provider.initPersistence('/vaults/b')
+
+      // #when — vault A's hidden editor tries to rebind after the switch
+      const foreign = await invokeHandler<{ success: boolean; error?: string }>(
+        CRDT_CHANNELS.OPEN_DOC,
+        { noteId: 'n1', vaultPath: '/vaults/a' }
+      )
+
+      // #then — nothing binds, so its handshake cannot push A's doc into B's store
+      expect(foreign.success).toBe(false)
+      expect(foreign.error).toMatch(/another vault/i)
+      expect(provider.getOpenNoteIds()).toEqual([])
+
+      // #and B's own editors, and editors that name no vault, still open
+      await expect(
+        invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1', vaultPath: '/vaults/b' })
+      ).resolves.toEqual({ success: true })
+      await expect(invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n2' })).resolves.toEqual({
+        success: true
+      })
     })
   })
 
@@ -495,6 +569,48 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
 
       // #then — routes into new provider, no-ops safely (docs is empty)
       expect(result).toEqual({ success: true })
+    })
+  })
+
+  describe('a locked note (#2606)', () => {
+    const data = createTestDataDb()
+
+    beforeEach(() => {
+      senderWindow.current = { id: 77, once: vi.fn() }
+      mockGetNoteCacheById.mockReturnValue({ id: 'n1', path: 'n1.md', fileType: 'markdown' })
+      installVaultLockSource({
+        dataDb: () => asClientDb(data.db),
+        notePathOf: () => 'n1.md',
+        noteIdAtPath: () => null
+      })
+      writeLockRow(asClientDb(data.db), 'note', 'n1', true)
+      invalidateVaultLocks()
+    })
+
+    afterEach(() => {
+      installVaultLockSource({
+        dataDb: () => null,
+        notePathOf: () => null,
+        noteIdAtPath: () => null
+      })
+      writeLockRow(asClientDb(data.db), 'note', 'n1', false)
+    })
+
+    it('drops an editor update and a sync step 2 instead of applying them to the doc', async () => {
+      const provider = getCrdtProvider()
+      await provider.init()
+      await invokeHandler(CRDT_CHANNELS.SYNC_STEP_1, {
+        noteId: 'n1',
+        stateVector: new Uint8Array([0])
+      })
+      const typed = new Y.Doc()
+      typed.getMap('probe').set('typed', 'into a locked note')
+      const update = Y.encodeStateAsUpdate(typed)
+
+      await invokeHandler(CRDT_CHANNELS.APPLY_UPDATE, { noteId: 'n1', update })
+      await invokeHandler(CRDT_CHANNELS.SYNC_STEP_2, { noteId: 'n1', diff: update })
+
+      expect(provider.getDoc('n1')?.getMap('probe').get('typed')).toBeUndefined()
     })
   })
 })

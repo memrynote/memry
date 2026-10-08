@@ -87,7 +87,9 @@ function registrySlotKey(scope: string | null, noteId: string): string {
  */
 const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
   // The doc guid and every IPC call use the plain noteId; main keys by it.
-  const noteId = slotKey.slice(slotKey.indexOf('\0') + 1)
+  const separator = slotKey.indexOf('\0')
+  const noteId = slotKey.slice(separator + 1)
+  const vaultPath = separator === -1 ? null : slotKey.slice(0, separator)
   const doc = new Y.Doc({ guid: noteId })
   const isRemoteUpdateRef: RefObject<boolean> = { current: false }
 
@@ -104,6 +106,7 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
   const provider = new YjsIpcProvider({
     noteId,
     doc,
+    vaultPath,
     canRebind: (readyVaultPath) => rebindGate(readyVaultPath)
   })
 

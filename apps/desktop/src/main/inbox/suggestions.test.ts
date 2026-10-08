@@ -266,7 +266,9 @@ describe('inbox suggestions', () => {
     })
 
     expect(await updateNoteEmbedding('note-1')).toBe(true)
-    expect(mockGenerateEmbedding).toHaveBeenCalledWith('long enough note content')
+    expect(mockGenerateEmbedding).toHaveBeenCalledWith(
+      'task: sentence similarity | query: note-1\n\nlong enough note content'
+    )
     expect(statement.run).toHaveBeenCalledWith('note-1', new Float32Array([0.1, 0.2]))
 
     indexDb.db
@@ -300,7 +302,7 @@ describe('inbox suggestions', () => {
     const now = new Date().toISOString()
     const { rawDb, statement } = createRawDbMock()
     statement.all.mockReturnValue([
-      { note_id: 'note-match', distance: 0.2 },
+      { note_id: 'note-match', distance: 0.04 },
       { note_id: 'note-too-far', distance: 1.5 }
     ])
     vi.mocked(getRawIndexDatabase).mockReturnValue(rawDb as never)
@@ -334,7 +336,7 @@ describe('inbox suggestions', () => {
     const suggestions = await getSuggestions('item-similar')
 
     expect(mockGenerateEmbedding).toHaveBeenCalledWith(
-      'Research memo\n\nlong enough content for matching'
+      'task: sentence similarity | query: Research memo\n\nlong enough content for matching'
     )
     expect(suggestions).toEqual(
       expect.arrayContaining([
@@ -439,9 +441,9 @@ describe('inbox suggestions', () => {
     const now = new Date().toISOString()
     const { rawDb, statement } = createRawDbMock()
     statement.all.mockReturnValue([
-      { note_id: 'same-folder', distance: 0.1 },
-      { note_id: 'root-note', distance: 0.2 },
-      { note_id: 'other-folder', distance: 0.4 }
+      { note_id: 'same-folder', distance: 0.02 },
+      { note_id: 'root-note', distance: 0.04 },
+      { note_id: 'other-folder', distance: 0.08 }
     ])
     vi.mocked(getRawIndexDatabase).mockReturnValue(rawDb as never)
     mockIsModelLoaded.mockReturnValue(true)
@@ -505,10 +507,10 @@ describe('inbox suggestions', () => {
     const { rawDb, statement } = createRawDbMock()
     // 'misc' is the single closest hit; 'recipes' has three solid hits.
     statement.all.mockReturnValue([
-      { note_id: 'misc-x', distance: 0.2 },
-      { note_id: 'rec-a', distance: 0.3 },
-      { note_id: 'rec-b', distance: 0.3 },
-      { note_id: 'rec-c', distance: 0.3 }
+      { note_id: 'misc-x', distance: 0.04 },
+      { note_id: 'rec-a', distance: 0.06 },
+      { note_id: 'rec-b', distance: 0.06 },
+      { note_id: 'rec-c', distance: 0.06 }
     ])
     vi.mocked(getRawIndexDatabase).mockReturnValue(rawDb as never)
     mockIsModelLoaded.mockReturnValue(true)
@@ -583,8 +585,8 @@ describe('inbox suggestions', () => {
   it('suppresses a folder whose only hit is below the confidence floor', async () => {
     const now = new Date().toISOString()
     const { rawDb, statement } = createRawDbMock()
-    // distance 0.9 → similarity 0.55 → lone-hit 0.55*0.7 = 0.385 < 0.45 floor.
-    statement.all.mockReturnValue([{ note_id: 'w1', distance: 0.9 }])
+    // distance 0.18 → cosine 0.82 → calibrated 0.55 → lone-hit 0.55*0.7 = 0.385 < 0.45 floor.
+    statement.all.mockReturnValue([{ note_id: 'w1', distance: 0.18 }])
     vi.mocked(getRawIndexDatabase).mockReturnValue(rawDb as never)
     mockIsModelLoaded.mockReturnValue(true)
     mockGenerateEmbedding.mockResolvedValue(new Float32Array([0.1, 0.2]))

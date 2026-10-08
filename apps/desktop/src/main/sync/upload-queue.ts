@@ -99,6 +99,10 @@ export class UploadQueue {
 
     try {
       while (this.queue.length > 0 && this.running < MAX_CONCURRENT_UPLOADS) {
+        // An upload reads the file before its first request and holds the bytes
+        // through the offline wait, so starting one offline sends a file the
+        // user deleted before reconnect. The reconnect handler drains again.
+        if (this.network && !this.network.online) break
         const now = Date.now()
         const resumeAt = Math.max(this.backoffUntil, this.networkBackoffUntil)
         if (resumeAt > now) {

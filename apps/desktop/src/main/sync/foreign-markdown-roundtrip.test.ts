@@ -332,6 +332,39 @@ interface HalfEditCase {
   expected: string
 }
 
+/**
+ * A note written elsewhere with a re-spelled construct in every block: setext
+ * headings, `__bold__`, a three-space hard break, `*` bullets with a
+ * four-space nested item, an HTML block and an unpadded table.
+ */
+const FOREIGN_NOTE = [
+  'Setext Title',
+  '============',
+  '',
+  'Intro with __bold__ and *em* text.   ',
+  'Second line after a hard break.',
+  '',
+  '',
+  '',
+  '* one',
+  '* two',
+  '    * nested',
+  '',
+  '<div align="center">',
+  '<b>html block</b>',
+  '</div>',
+  '',
+  '| a | b |',
+  '|---|---|',
+  '| 1 | 2 |',
+  '',
+  'Subhead',
+  '-------',
+  '',
+  'Plain paragraph line to edit.',
+  ''
+].join('\n')
+
 const HALF_EDIT_CASES: HalfEditCase[] = [
   {
     name: 'editing the last paragraph keeps the setext heading, the * list and the glued list',
@@ -360,6 +393,23 @@ const HALF_EDIT_CASES: HalfEditCase[] = [
     paragraph: 1,
     text: 'After, edited',
     expected: '- a\n    - b\n\nAfter, edited'
+  },
+  {
+    name: 'editing the last paragraph keeps the setext subheading above it (#2615)',
+    markdown: FOREIGN_NOTE,
+    paragraph: 9,
+    text: 'Plain paragraph line to edit. EDITED',
+    expected: FOREIGN_NOTE.replace('to edit.\n', 'to edit. EDITED')
+  },
+  {
+    name: 'editing the first paragraph keeps every block around it (#2615)',
+    markdown: FOREIGN_NOTE,
+    paragraph: 1,
+    text: 'Intro, edited.',
+    expected: FOREIGN_NOTE.replace(
+      'Intro with __bold__ and *em* text.   \nSecond line after a hard break.',
+      'Intro, edited.'
+    )
   }
 ]
 

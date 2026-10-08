@@ -41,6 +41,7 @@ import {
   dateMentionConfig,
   hashTagConfig,
   inlineCheckboxConfig,
+  htmlCommentConfig,
   inlineImageConfig,
   linkMentionConfig,
   wikiLinkConfig,
@@ -86,7 +87,8 @@ const INLINE_CONFIGS: Record<MemryInlineType, { type: string; propSchema: object
   hashTag: hashTagConfig,
   dateMention: dateMentionConfig,
   inlineImage: inlineImageConfig,
-  inlineCheckbox: inlineCheckboxConfig
+  inlineCheckbox: inlineCheckboxConfig,
+  htmlComment: htmlCommentConfig
 }
 
 /** One block per custom type, as the renderer authors it. */
@@ -215,7 +217,8 @@ const INLINE_FIXTURES: Record<MemryInlineType, unknown> = {
   },
   // Ticked, not defaulted: an unticked box and a ticked one differ by exactly
   // one attribute, and that attribute is the whole point of the node.
-  inlineCheckbox: { type: 'inlineCheckbox', props: { checked: true } }
+  inlineCheckbox: { type: 'inlineCheckbox', props: { checked: true } },
+  htmlComment: { type: 'htmlComment', props: { source: '<!-- hidden [[Link]] -->' } }
 }
 
 /** The shape `createBlockSpec` / `createInlineContentSpec` return. */

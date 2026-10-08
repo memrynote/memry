@@ -15,6 +15,7 @@ A version is a point-in-time snapshot of the note. memrynote creates a version:
 - On significant pauses in editing (debounced)
 - Before major automated actions (e.g. template apply)
 - On a regular cadence during long writing sessions
+- Before the editor or sync replaces text that the agent or another app wrote into the note, however small the change
 
 Versions store the full note content; they aren't diffs.
 

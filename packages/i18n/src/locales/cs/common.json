@@ -151,7 +151,7 @@
       "deny": "Zamítnout",
       "invalidJson": "Před použitím úprav zadejte platný JSON.",
       "thisTool": "tento nástroj",
-      "alwaysAllowHint": "Možnost Vždy povolit platí pro {tool}. Ostatní nástroje se budou dál ptát a mazání vždy vyžaduje potvrzení.",
+      "alwaysAllowHint": "Možnost Vždy povolit platí pro {tool}. Ostatní nástroje se budou dál ptát a mazání vždy vyžaduje potvrzení. Zamčené poznámky a složky zůstávají jen pro čtení.",
       "alwaysInChat": "Vždy povolit v tomto chatu",
       "alwaysInChatHint": "Platí do konce konverzace",
       "alwaysInVault": "Vždy povolit v tomto trezoru",
@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Náhled této změny se nepodařilo zobrazit",
       "description": "Agent chce aktualizovat {title}. Před použitím změnu zkontrolujte.",
+      "descriptionCreate": "Agent chce vytvořit {title}. Před použitím změnu zkontrolujte.",
+      "descriptionDelete": "Agent chce smazat {title}. Před použitím změnu zkontrolujte.",
       "fallbackTitle": "tuto položku",
       "current": "Aktuální",
       "candidate": "Návrh",
@@ -374,7 +376,8 @@
       "agent": "Agent",
       "pendingApproval": "{count, plural, one {# akce čeká na schválení} few {# akce čekají na schválení} other {# akcí čeká na schválení}}",
       "inProgress": "Agent právě odpovídá",
-      "close": "Zavřít agenta"
+      "close": "Zavřít agenta",
+      "moreActions": "Další akce agenta"
     },
     "errors": {
       "loadConversations": "Konverzace s agentem se nepodařilo načíst",

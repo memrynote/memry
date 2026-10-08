@@ -51,8 +51,10 @@ vi.mock('../store', () => ({
 }))
 
 const mockPersistKeysAndRegisterDevice = vi.fn()
+const mockSignInKnownDevice = vi.fn()
 vi.mock('../sync/device-registration', () => ({
-  persistKeysAndRegisterDevice: (...args: unknown[]) => mockPersistKeysAndRegisterDevice(...args)
+  persistKeysAndRegisterDevice: (...args: unknown[]) => mockPersistKeysAndRegisterDevice(...args),
+  signInKnownDevice: (...args: unknown[]) => mockSignInKnownDevice(...args)
 }))
 
 const mockGetSyncEngine = vi.fn().mockReturnValue(null)
@@ -69,10 +71,12 @@ vi.mock('../sync/session-teardown', () => ({
 
 const mockStoreToken = vi.fn()
 const mockRefreshAccessToken = vi.fn()
+const mockHasSessionEnded = vi.fn(() => false)
 vi.mock('../sync/token-manager', () => ({
   storeToken: (...args: unknown[]) => mockStoreToken(...args),
   retrieveToken: vi.fn(),
-  refreshAccessToken: (...args: unknown[]) => mockRefreshAccessToken(...args)
+  refreshAccessToken: (...args: unknown[]) => mockRefreshAccessToken(...args),
+  hasSessionEnded: () => mockHasSessionEnded()
 }))
 
 const mockStartGoogleRunner = vi.fn()
@@ -396,6 +400,33 @@ describe('auth-oauth handlers', () => {
       expect(result).toEqual({ success: true, needsRecoverySetup: true, needsRecoveryInput: true })
     })
 
+    it('signs a known device back in without the recovery phrase (#2612)', async () => {
+      registerAuthOAuthHandlers()
+      seedOAuthSession('test-state-known', 'http://127.0.0.1:9999/callback')
+      mockPostToServer.mockResolvedValue({
+        success: true,
+        isNewUser: false,
+        needsSetup: false,
+        knownDevice: true,
+        setupToken: 'token'
+      })
+      mockSignInKnownDevice.mockResolvedValue('device-1')
+
+      const result = await invokeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE, {
+        oauthToken: 'google-code',
+        provider: 'google',
+        state: 'test-state-known'
+      })
+
+      expect(mockSignInKnownDevice).toHaveBeenCalledWith('token')
+      expect(result).toEqual({
+        success: true,
+        needsRecoverySetup: false,
+        needsRecoveryInput: false,
+        deviceId: 'device-1'
+      })
+    })
+
     it('does not activate sync engine during first device setup', async () => {
       // #given
       const mockActivate = vi.fn().mockResolvedValue(undefined)
@@ -654,6 +685,15 @@ describe('auth-oauth handlers', () => {
 
       await expect(invokeHandler(SYNC_CHANNELS.AUTH_REFRESH_TOKEN)).resolves.toEqual({
         success: false,
+        sessionEnded: false,
+        error: 'Token refresh failed'
+      })
+
+      mockRefreshAccessToken.mockResolvedValueOnce(false)
+      mockHasSessionEnded.mockReturnValueOnce(true)
+      await expect(invokeHandler(SYNC_CHANNELS.AUTH_REFRESH_TOKEN)).resolves.toEqual({
+        success: false,
+        sessionEnded: true,
         error: 'Token refresh failed'
       })
 

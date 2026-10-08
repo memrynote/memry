@@ -73,7 +73,12 @@ import type {
   CertificatePinFailedEvent,
   VaultRecoveryNeededEvent
 } from '../shared/contracts/ipc-sync'
-import type { CrdtHealth, CrdtOpenDocResult, CrdtSyncStep1Result } from '@memry/contracts/ipc-crdt'
+import type {
+  CrdtHealth,
+  CrdtOpenDocResult,
+  CrdtSyncStep1Result,
+  CrdtWriteBackFailedEvent
+} from '@memry/contracts/ipc-crdt'
 import type {
   ResolveVaultBindingResult,
   VaultBindingChoice,
@@ -91,6 +96,11 @@ import type {
   CustomIconAddFromUrlInput,
   CustomIconRenameInput
 } from '@memry/contracts/custom-icons-api'
+import type {
+  VaultLockExternalEditRestoredEvent,
+  VaultLockSetInput,
+  VaultLockState
+} from '@memry/contracts/vault-locks-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -134,6 +144,10 @@ export type UpdatePropertyDefinitionInput = NotesRpc.UpdatePropertyDefinitionInp
 export interface SetPropertiesResponse {
   success: boolean
   error?: string
+  /** On success: the record as stored. */
+  properties?: Record<string, unknown>
+  /** On success: the names the set deleted because the call left them out. */
+  removed?: string[]
 }
 
 export type CreatePropertyDefinitionResponse = NotesRpc.CreatePropertyDefinitionResponse
@@ -309,6 +323,10 @@ export interface TaskFiltersConfig {
   completion: 'active' | 'completed' | 'all' | 'archived'
   repeatType: 'all' | 'repeating' | 'one-time'
   hasTime: 'all' | 'with-time' | 'without-time'
+  /** Folders (subfolders included) whose notes' tasks match; absent on older rows. */
+  folderPaths?: string[]
+  /** Notes whose tasks match; absent on older rows. */
+  noteIds?: string[]
 }
 
 export interface TaskSortConfig {
@@ -632,6 +650,11 @@ export interface HomePage {
   icon?: string
   position: number
   widgets: WidgetInstance[]
+}
+
+export interface VaultLocksClientAPI {
+  list(): Promise<VaultLockState>
+  set(input: VaultLockSetInput): Promise<VaultLockState>
 }
 
 export interface CustomIconsClientAPI {
@@ -1346,6 +1369,8 @@ export interface EditorSettingsDTO {
   toolbarMode: 'floating' | 'sticky'
   spellCheck: boolean
   pdfAdaptToTheme: boolean
+  convertChecklistsToTasks: boolean
+  convertAgentChecklistsToTasks: boolean
 }
 
 export interface TaskSettingsDTO {
@@ -1528,6 +1553,8 @@ interface SyncAuthClientAPI {
   }>
   refreshToken /* auth action */: () => Promise<{
     success: boolean
+    /** True only when the session can no longer refresh and needs a new sign-in. */
+    sessionEnded?: boolean
     error?: string
   }>
   logout: () => Promise<{
@@ -1742,6 +1769,10 @@ interface SyncOpsClientAPI {
     }
   } | null>
   getLargeNotes: () => Promise<import('@memry/contracts/ipc-sync-ops').LargeNotesResult>
+  getNoteSyncState: (
+    noteId: string
+  ) => Promise<import('@memry/contracts/ipc-sync-ops').NoteSyncState | null>
+  getUnsentNotes: () => Promise<import('@memry/contracts/ipc-sync-ops').UnsentNotesResult>
   getVaultBinding: () => Promise<VaultBindingState>
   resolveVaultBinding: (choice: VaultBindingChoice) => Promise<ResolveVaultBindingResult>
 }
@@ -1826,6 +1857,8 @@ interface WindowAPI {
   windowMinimize: () => void
   windowMaximize: () => void
   windowClose: () => void
+  /** Windows only: caption-button symbol color (#rrggbb) for the title bar overlay. */
+  setTitleBarSymbolColor: (color: string) => void
   setZoomFactor: (factor: number) => void
 }
 
@@ -1856,6 +1889,7 @@ interface AgentClientAPI {
     scope?: AlwaysAllowScope
   }) => Promise<Conversation | null>
   getToolGrants: () => Promise<AgentToolGrants>
+  clearMemory: () => Promise<{ ok: boolean }>
   getBackendStatuses: () => Promise<BackendStatusesResponse>
   listBackendModels: (input: AgentBackendModelListRequest) => Promise<AgentBackendModelList>
   getLocalProviderSettings: () => Promise<AgentLocalProviderSettings>
@@ -1911,6 +1945,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   syncAttachments: SyncAttachmentsClientAPI
   homePages: HomePagesClientAPI
   customIcons: CustomIconsClientAPI
+  vaultLocks: VaultLocksClientAPI
   agentMcp: AgentMcpClientAPI
   agent: AgentClientAPI
   import: {
@@ -1939,7 +1974,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
     setAutoCheck: (enabled: boolean) => Promise<AppUpdateState>
   }
   syncCrdt: {
-    openDoc: (input: { noteId: string }) => Promise<CrdtOpenDocResult>
+    openDoc: (input: { noteId: string; vaultPath?: string }) => Promise<CrdtOpenDocResult>
     closeDoc: (input: { noteId: string }) => Promise<void>
     applyUpdate: (input: { noteId: string; update: Uint8Array }) => Promise<void>
     syncStep1: (input: {
@@ -1972,6 +2007,10 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onHomePageCreated: (callback: (event: { id: string }) => void) => () => void
   onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void
   onCustomIconsUpdated: (callback: (event: { id: string }) => void) => () => void
+  onVaultLocksChanged: (callback: (state: VaultLockState) => void) => () => void
+  onVaultLockExternalEditRestored: (
+    callback: (event: VaultLockExternalEditRestoredEvent) => void
+  ) => () => void
   onHomePageDeleted: (callback: (event: { id: string }) => void) => () => void
   // Journal event subscriptions
   onJournalEntryCreated: (callback: (event: JournalEntryCreatedEvent) => void) => () => void
@@ -2023,6 +2062,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onSyncPaused: (callback: (event: SyncPausedEvent) => void) => () => void
   onSyncResumed: (callback: (event: SyncResumedEvent) => void) => () => void
   onSessionExpired: (callback: (event: SessionExpiredEvent) => void) => () => void
+  onTokenRefreshed: (callback: () => void) => () => void
   onDeviceRevoked: (callback: (event: DeviceRevokedEvent) => void) => () => void
   onOtpDetected: (callback: (event: OtpDetectedEvent) => void) => () => void
   onOAuthCallback: (callback: (event: OAuthCallbackEvent) => void) => () => void
@@ -2047,6 +2087,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onCrdtProviderReady: (
     callback: (data: { vaultPath: string | null } | undefined) => void
   ) => () => void
+  onCrdtWriteBackFailed: (callback: (event: CrdtWriteBackFailedEvent) => void) => () => void
   onFlushRequested: (callback: (requestId?: string) => void) => () => void
   notifyFlushDone: (requestId?: string) => void
 }

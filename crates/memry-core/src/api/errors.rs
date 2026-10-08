@@ -266,27 +266,6 @@ pub enum BackgroundError {
     Failed { what: String },
 }
 
-/// Failures of the `EditorHost` seam (chapter 12).
-#[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
-pub enum EditorError {
-    /// No WebView is attached. The core queues rather than losing the message.
-    #[error("no editor host is attached")]
-    NotAttached,
-
-    /// The guest did not answer in time.
-    #[error("editor bridge timed out after {elapsed_ms} ms")]
-    Timeout { elapsed_ms: u64 },
-
-    /// The bundle's `BRIDGE_PROTOCOL_VERSION` is not the one this core speaks.
-    /// A hard failure, not a degraded mode: the bundle and the core ship
-    /// together, so a mismatch means the build pairing broke.
-    #[error("editor bridge speaks version {found}, core speaks {expected}")]
-    ProtocolMismatch { expected: u32, found: u32 },
-
-    #[error("editor bridge failure: {what}")]
-    Failed { what: String },
-}
-
 /// Failures of the `CodeCapture` seam (chapter 03).
 #[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
 pub enum CaptureError {

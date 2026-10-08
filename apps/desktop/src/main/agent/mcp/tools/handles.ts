@@ -13,11 +13,15 @@ import type {
 import type { CanvasEntityType } from '@memry/contracts/canvas-api'
 import type { NoteFileType } from '@memry/contracts/search-api'
 
+import type { ImageToolResult } from '../tool-image'
+import type { FileViewInput } from './file-view'
+
 /**
  * `file_type` is always populated: index rows written before filed binaries
  * existed carry no file type, and those are always markdown (#800, #919). A
  * binary value means the row is a filed file, not a note — `vault_read_note`
- * rejects it rather than handing an agent bytes to read as markdown.
+ * returns a PDF's or image's extracted text instead of its bytes, and rejects
+ * audio and video.
  */
 export interface NoteSummary {
   id: string
@@ -26,6 +30,68 @@ export interface NoteSummary {
   folder_path: string | null
   file_type: NoteFileType
   icon?: string | null
+}
+
+/**
+ * A note as a read returns it right after a write. The body is not echoed:
+ * `body_bytes` and `body_sha256` cover its UTF-8 bytes, and both are null for
+ * a note too large to read.
+ */
+export interface StoredNote {
+  id: string
+  title: string
+  folder_path: string | null
+  tags: string[]
+  properties: Record<string, unknown>
+  body_bytes: number | null
+  body_sha256: string | null
+  icon?: string
+}
+
+/** A journal entry right after a write; the body is the file's bytes after its frontmatter. */
+export interface StoredJournalEntry {
+  id: string
+  date: string
+  tags: string[]
+  properties: Record<string, unknown>
+  body_bytes: number
+  body_sha256: string
+}
+
+/** A status record as the task domain stored it. */
+export type StoredStatus = { id: string } & Record<string, unknown>
+
+/**
+ * Text read on this device out of a filed PDF (text layer, else OCR) or an
+ * image (OCR), one entry per page. `extracting` covers a file still waiting in
+ * the queue. Pages are cut to about 100 KB per reply; `next_page` continues.
+ */
+export interface ExtractedTextReply {
+  status: 'extracting' | 'done' | 'failed'
+  page_count: number | null
+  pages_read: number
+  pages: Array<{ page: number; text: string }>
+  next_page: number | null
+  error?: string
+}
+
+/**
+ * Where a note's body stands with the server (#2647). `state` is one of
+ * `not_syncing`, `local_only`, `pending` (changes waiting on this device),
+ * `sent` (a body push has no answer yet), `confirmed` (the server stored the
+ * last body push, at `body_confirmed_at`), `not_recorded` (nothing waiting,
+ * but no confirmed body push since this device started recording them) and
+ * `rejected` (the server refused the latest body push). Times are ISO strings
+ * and appear only when known. A record sync stamp never confirms a body.
+ */
+export interface NoteSyncReply {
+  state:
+    'not_syncing' | 'local_only' | 'pending' | 'sent' | 'confirmed' | 'not_recorded' | 'rejected'
+  waiting_since?: string
+  last_sent_at?: string
+  body_confirmed_at?: string
+  last_failed_at?: string
+  last_rejected_at?: string
 }
 
 export interface NoteFull {
@@ -37,15 +103,27 @@ export interface NoteFull {
   frontmatter: Record<string, unknown>
   file_type: NoteFileType
   icon?: string | null
+  /** Set for a filed PDF or image instead of `content_markdown`. */
+  extracted_text?: ExtractedTextReply
+  /**
+   * Text read on this device from the PDFs and images in a markdown note's
+   * attachments folder that the note embeds, one entry per file, about 100 KB
+   * at most.
+   */
+  attachment_text?: Array<{ file: string; text: string }>
+  attachment_text_truncated?: true
 }
 
-export interface FolderEntry {
-  kind: 'folder' | 'note'
-  id: string
-  name: string
-  path: string
-  icon?: string | null
-}
+export type FolderEntry =
+  | { kind: 'folder'; id: string; name: string; path: string }
+  | {
+      kind: 'note' | 'file'
+      id: string
+      name: string
+      path: string
+      file_type: NoteFileType
+      icon?: string | null
+    }
 
 export interface TaskSummary {
   id: string
@@ -102,6 +180,16 @@ export interface TagCount {
   category_id: string | null
   category_name: string | null
   sort_order: number
+}
+
+/**
+ * The body a note or journal write sent, and the body a read of it returns
+ * once the write has settled (#2615). `stored` is null when no read returns
+ * one, such as a note too large to read.
+ */
+export interface WrittenBody {
+  sent: string
+  stored: string | null
 }
 
 export interface CurrentNoteSnapshot {
@@ -184,6 +272,16 @@ export interface CanvasElementsDetail {
   truncated: boolean
 }
 
+/** Present only when a body write turned checkbox lines into tasks. */
+export interface CreatedTasksReply {
+  created_tasks?: Array<{ id: string; title: string }>
+}
+
+/** Present only when the call created folders: tool paths, shallowest first. */
+export interface CreatedFoldersReply {
+  created_folders?: string[]
+}
+
 export interface VaultServiceHandles {
   notes: {
     search(input: {
@@ -192,20 +290,20 @@ export interface VaultServiceHandles {
       folderId?: string
       fileTypes?: NoteFileType[]
     }): Promise<NoteSummary[]>
-    read(id: string): Promise<NoteFull | null>
+    read(id: string, options?: { fromPage?: number }): Promise<NoteFull | null>
     create(input: {
       title: string
       content_markdown: string
       folder_path?: string
       tags?: string[]
-    }): Promise<{ id: string }>
+    }): Promise<{ id: string; body: WrittenBody } & CreatedTasksReply & CreatedFoldersReply>
     rename(input: { id: string; title: string }): Promise<{ id: string }>
     delete(id: string): Promise<{ id: string }>
     update(input: {
       id: string
       mode: 'append' | 'prepend' | 'replace'
       content_markdown: string
-    }): Promise<void>
+    }): Promise<WrittenBody & CreatedTasksReply>
     addTag(input: { id: string; tag: string }): Promise<void>
     removeTag(input: { id: string; tag: string }): Promise<void>
     /**
@@ -217,7 +315,11 @@ export interface VaultServiceHandles {
       title: string
       html: string
     }): Promise<{ marker: string; url: string }>
-    moveToFolder(input: { id: string; folder_path: string }): Promise<void>
+    moveToFolder(input: { id: string; folder_path: string }): Promise<CreatedFoldersReply>
+    /** Null when no markdown note reads back under `id`. */
+    stored(id: string): Promise<StoredNote | null>
+    /** What a read of note `id` returns once its armed write-back has run. */
+    storedBody(id: string, sent: string): Promise<WrittenBody>
   }
   folders: {
     list(input: { path?: string; id?: string; recursive?: boolean }): Promise<FolderEntry[]>
@@ -331,12 +433,13 @@ export interface VaultServiceHandles {
   }
   statuses: {
     list(projectId: string): Promise<unknown[]>
+    get(id: string): Promise<StoredStatus | null>
     create(input: {
       project_id: string
       name: string
       color?: string
       is_done?: boolean
-    }): Promise<{ id: string }>
+    }): Promise<StoredStatus>
     update(input: {
       id: string
       name?: string
@@ -344,24 +447,29 @@ export interface VaultServiceHandles {
       position?: number
       is_default?: boolean
       is_done?: boolean
-    }): Promise<{ id: string }>
+    }): Promise<StoredStatus>
     delete(id: string): Promise<{ id: string }>
     reorder(input: { status_ids: string[]; positions: number[] }): Promise<{ ids: string[] }>
   }
   journal: {
     getByDate(date: string): Promise<JournalEntry | null>
     listInRange(input: { from: string; to: string }): Promise<JournalSummary[]>
+    /** `body` only when the call created the entry. */
     createIfMissing(input: {
       date: string
       content_markdown: string
-    }): Promise<{ id: string; created: boolean }>
+    }): Promise<{ id: string; created: boolean; body?: WrittenBody } & CreatedTasksReply>
+    /** `body` only when the call sent `content_markdown`. */
     update(input: {
       date: string
       content_markdown?: string
       tags?: string[]
       properties?: Record<string, unknown>
-    }): Promise<{ id: string }>
+    }): Promise<
+      { id: string; frontmatter_removed?: string[]; body?: WrittenBody } & CreatedTasksReply
+    >
     delete(date: string): Promise<{ date: string; deleted: boolean }>
+    stored(date: string): Promise<StoredJournalEntry | null>
   }
   inbox: {
     list(input: { unread_only?: boolean }): Promise<InboxSummary[]>
@@ -404,6 +512,15 @@ export interface VaultServiceHandles {
       input: { operation: AgentMcpDesktopReadOperation; args: unknown[] },
       windowId: string | null
     ): Promise<unknown>
+    /**
+     * The request `write` sends for `input`: an agent's added checkbox lines
+     * marked plain unless the owner turned agent checklist conversion on.
+     * `write` sends a prepared request unchanged.
+     */
+    prepareWrite(input: {
+      operation: AgentMcpDesktopWriteOperation
+      args: unknown[]
+    }): Promise<{ operation: AgentMcpDesktopWriteOperation; args: unknown[] }>
     write(
       input: { operation: AgentMcpDesktopWriteOperation; args: unknown[] },
       windowId: string | null
@@ -411,5 +528,15 @@ export interface VaultServiceHandles {
   }
   windows: {
     snapshotCurrentNote(windowId: string): Promise<CurrentNoteSnapshot | null>
+  }
+  sync: {
+    /** False while this device runs without its CRDT store (#2519). */
+    crdtStoreAvailable(): Promise<boolean>
+    /** Sync state per note id; ids with no note are left out. */
+    noteStates(ids: string[]): Promise<Record<string, NoteSyncReply>>
+  }
+  files: {
+    /** A filed image, a page of a filed PDF, or a note's image or PDF attachment. */
+    view(input: FileViewInput): Promise<ImageToolResult>
   }
 }

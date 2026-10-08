@@ -30,7 +30,8 @@ export const SYNC_ITEM_TYPES = [
   'reminder',
   'template',
   'task_activity',
-  'home_page'
+  'home_page',
+  'vault_lock'
 ] as const
 
 export const RECORD_SYNC_ITEM_TYPES = [
@@ -58,7 +59,8 @@ export const RECORD_SYNC_ITEM_TYPES = [
   'reminder',
   'template',
   'task_activity',
-  'home_page'
+  'home_page',
+  'vault_lock'
 ] as const
 
 export const RECORD_CLOCK_REQUIRED_ITEM_TYPES = [
@@ -85,7 +87,8 @@ export const RECORD_CLOCK_REQUIRED_ITEM_TYPES = [
   'reminder',
   'template',
   'task_activity',
-  'home_page'
+  'home_page',
+  'vault_lock'
 ] as const
 
 /**
@@ -178,7 +181,8 @@ export const ENCRYPTABLE_ITEM_TYPES = [
   'reminder',
   'template',
   'task_activity',
-  'home_page'
+  'home_page',
+  'vault_lock'
 ] as const
 export type EncryptableItemType = (typeof ENCRYPTABLE_ITEM_TYPES)[number]
 

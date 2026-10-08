@@ -52,10 +52,19 @@ Request: `email` (string), `code` (string, exactly six digits, `/^\d{6}$/`),
 128 characters — §2.5).
 
 Response: `success` (bool), then all optional: `accessToken`, `refreshToken`,
-`setupToken`, `userId` (strings), `isNewUser`, `needsSetup` (bools). The token
+`setupToken`, `userId` (strings), `isNewUser`, `needsSetup`, `knownDevice` (bools). The token
 fields are optional **on the same response** because which ones arrive depends
 on whether the account exists and whether it still needs setup; a reader must
 branch on their presence rather than assume a shape.
+
+`knownDevice` is true when the account has keys and still lists an unrevoked
+device whose signing key equals the request's `devicePublicKey`. The OAuth
+callback (`POST /auth/oauth/:provider/callback`) answers the same field. A
+client that also holds the account's vault key (checked against
+`GET /auth/recovery-info`) MAY then call `POST /auth/devices` with that same
+signing key and skip the recovery phrase; the registration lands on the existing
+device row and returns its id. Servers before this field omit it, which a client
+MUST read as false.
 
 **`POST /auth/devices`** — request in §2.3.
 
@@ -365,6 +374,12 @@ client side treats a 401 on refresh as terminal after three attempts (§2.10).
 | `FALLBACK_RETRY_THRESHOLD_S`       | 60                                        | one late retry if this much life remains        | `:17` |
 | `REFRESH_REJECT_TERMINAL_ATTEMPTS` | 3                                         | after three 401s refresh is permanently blocked | `:34` |
 | `REFRESH_REJECT_BACKOFF_MS`        | `[60_000, 300_000]`                       | backoff after the first and second 401          | `:35` |
+
+**Only a 401 on refresh can end the session.** A refresh that fails for any
+other reason (no network, DNS still down after a wake, a timeout, a 5xx) after
+its retries leaves the tokens in place and tells no one the session expired; the
+next caller that needs a token tries again. Signing a user out on a network
+failure forces a new sign-in that the session never needed.
 
 **A 401 on refresh is never retried inline** and the rejection latches: the
 window blocks all refresh traffic without touching the network, and after three

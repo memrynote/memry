@@ -8,10 +8,10 @@
 //! to.
 //!
 //! **No markdown.** A body crosses as `extract_text` output, which chapter 12
-//! §12.1's table names the **only** text operation a non-editor client owns: a
-//! plain-text walk that keeps headings and list markers, drops everything else
-//! and claims no markdown fidelity. The core neither parses nor serialises
-//! BlockNote markdown here or anywhere.
+//! §12.1's table names the document-to-text operation of a non-desktop client:
+//! a plain-text walk that keeps headings and list markers, drops everything
+//! else and claims no markdown fidelity. The core never serialises markdown,
+//! and parses it only in `markdown_seed` (§12.1.0), never on a read.
 //!
 //! ## The one rule that shapes every function below
 //!
@@ -210,6 +210,25 @@ pub fn notes_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, St
     let mut statement = conn
         .prepare(
             "SELECT n.id, n.title, n.folder_path, n.emoji, n.created_at, n.modified_at              FROM notes n JOIN note_tags t ON t.note_id = n.id              WHERE n.deleted_at IS NULL AND t.deleted_at IS NULL AND t.tag = ?1              ORDER BY COALESCE(n.modified_at, n.created_at, 0) DESC, n.id",
+        )
+        .map_err(failed)?;
+    let rows = statement.query_map([tag], read_summary).map_err(failed)?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(failed)
+}
+
+/// The live journal days carrying one tag, as summaries titled by their date.
+///
+/// A day's tags sit in `note_tags` under the day's record id, beside the
+/// notes' own, so [`notes_tagged`] never sees them: it joins `notes`. Desktop
+/// lists a tagged day in a tag view as one more row titled `YYYY-MM-DD`,
+/// which is what this gives a view block. Matched with the same collation.
+pub fn journals_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT j.id, j.date, NULL, NULL, j.created_at, j.modified_at \
+             FROM journal_entries j JOIN note_tags t ON t.note_id = j.id \
+             WHERE j.deleted_at IS NULL AND t.deleted_at IS NULL AND t.tag = ?1 \
+             ORDER BY COALESCE(j.modified_at, j.created_at, 0) DESC, j.id",
         )
         .map_err(failed)?;
     let rows = statement.query_map([tag], read_summary).map_err(failed)?;
@@ -494,7 +513,7 @@ pub fn note_table(
 
 /// Every review comment and suggestion on one note (N604).
 ///
-/// Read only: §12.5.1 forbids a non-editor client writing the
+/// Read only: §12.5.1 forbids a non-desktop client writing the
 /// `criticMarkupMarks` root, and §12.5.0 says what dropping it costs.
 pub fn note_comments(conn: &Connection, id: &str) -> Result<Vec<ReviewComment>, CrdtError> {
     if !document_exists(conn, id) {

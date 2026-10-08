@@ -2,6 +2,7 @@ import type { NoteListItem } from '@memry/rpc/notes'
 
 import { extractFolderFromPath, getDisplayName } from '@/components/notes-tree-utils'
 import type { Task } from '@/data/task-model'
+import type { TaskFilters } from '@/data/tasks-data'
 
 /**
  * What grouping by folder or note needs to know about one note.
@@ -15,12 +16,14 @@ export interface TaskNoteInfo {
   title: string
   /** Vault-relative folder of the note. `''` is the vault root. */
   folderPath: string
+  /** The note's icon (emoji, library icon or custom image), if set. */
+  icon: string | null
 }
 
 export type TaskNoteIndex = Map<string, TaskNoteInfo>
 
 export const buildTaskNoteIndex = (
-  notes: Pick<NoteListItem, 'id' | 'path' | 'title'>[]
+  notes: Pick<NoteListItem, 'id' | 'path' | 'title' | 'emoji'>[]
 ): TaskNoteIndex =>
   new Map(
     notes.map((note) => [
@@ -28,7 +31,8 @@ export const buildTaskNoteIndex = (
       {
         id: note.id,
         title: note.title?.trim() || getDisplayName(note.path),
-        folderPath: extractFolderFromPath(note.path)
+        folderPath: extractFolderFromPath(note.path),
+        icon: note.emoji ?? null
       }
     ])
   )
@@ -43,3 +47,7 @@ export const buildTaskNoteIndex = (
  */
 export const getTaskNoteId = (task: Task): string | null =>
   task.sourceNoteId ?? task.linkedNoteIds[0] ?? null
+
+/** Whether a filter narrows by folder or note, and so needs the note index. */
+export const hasLocationFilter = (filters: Pick<TaskFilters, 'folderPaths' | 'noteIds'>): boolean =>
+  (filters.folderPaths?.length ?? 0) > 0 || (filters.noteIds?.length ?? 0) > 0

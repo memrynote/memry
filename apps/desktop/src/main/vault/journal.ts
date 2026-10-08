@@ -12,10 +12,12 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 import { createNoteContentStore } from '@memry/storage-vault'
+import { splitFrontmatterBlock } from '@memry/app-core/markdown'
 import { extractJournalPreview } from '@memry/domain-notes/journal'
 import { getStatus, getConfig } from './index'
-import { normalizePropertiesToRoot, writePropertiesToRoot } from './frontmatter'
-import { ensureDirectory } from './file-ops'
+import { normalizePropertiesToRoot, parseNote, writePropertiesToRoot } from './frontmatter'
+import { editFrontmatterBlock } from './frontmatter-edit'
+import { afterGuardedWrite, beforeGuardedWrite, ensureDirectory } from './file-ops'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import {
   generateJournalId,
@@ -176,6 +178,13 @@ export function createJournalFrontmatter(date: string, tags?: string[]): Journal
 // ============================================================================
 
 /**
+ * Memry keys an entry written before the frontmatter diet (#697) carries. They
+ * are reserved, so the writer would drop them; it keeps them instead. A legacy
+ * `title` is a plain property here and survives as one.
+ */
+const LEGACY_JOURNAL_KEYS = ['id', 'created', 'modified'] as const
+
+/**
  * Reserved frontmatter keys that are NOT custom properties.
  */
 const RESERVED_JOURNAL_KEYS = new Set([
@@ -229,6 +238,21 @@ export function extractJournalProperties(
 // ============================================================================
 
 /**
+ * The entry file's frontmatter as parsed and its body after the frontmatter,
+ * byte for byte, or null if there is no file.
+ */
+export async function readJournalFile(
+  date: string
+): Promise<{ frontmatter: Record<string, unknown>; body: string } | null> {
+  const store = getContentStore()
+  const rawContent = await store.read(store.getJournalRelativePath(date))
+  if (rawContent === null) return null
+  // `{}` bypasses gray-matter's content-keyed cache, as parseNote does.
+  const { data, content } = matter(rawContent, {})
+  return { frontmatter: data, body: content }
+}
+
+/**
  * Read a journal entry from the file system.
  * @param date - Date in YYYY-MM-DD format
  * @returns Journal entry or null if not found
@@ -273,9 +297,20 @@ export async function writeJournalEntryWithContent(
 ): Promise<JournalWriteResult> {
   const store = getContentStore()
   await ensureDirectory(getJournalDir())
-  const existing = existingEntry ?? (await readJournalEntry(date))
-  const result = composeJournalEntry(date, content, tags, existing, properties)
-  await store.write(store.getJournalRelativePath(date), result.fileContent)
+  const relativePath = store.getJournalRelativePath(date)
+  const previousFile = await store.read(relativePath)
+  const existing =
+    existingEntry ?? (previousFile ? toJournalEntry(parseJournalEntry(previousFile, date)) : null)
+  const result = composeJournalEntry(date, content, tags, existing, properties, previousFile)
+  const absolutePath = store.resolve(relativePath)
+  const lockedPath = await beforeGuardedWrite(absolutePath)
+  let written: string | null = null
+  try {
+    await store.write(relativePath, result.fileContent)
+    written = result.fileContent
+  } finally {
+    await afterGuardedWrite(absolutePath, lockedPath, written)
+  }
   return result
 }
 
@@ -296,14 +331,19 @@ export function buildJournalEntryWrite(
   properties?: Record<string, unknown>
 ): JournalWriteResult & { absolutePath: string } {
   const absolutePath = getJournalPath(date)
-  let existing: JournalEntry | null = null
+  let previousFile: string | null = null
   try {
-    existing = toJournalEntry(parseJournalEntry(fs.readFileSync(absolutePath, 'utf-8'), date))
+    previousFile = fs.readFileSync(absolutePath, 'utf-8')
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
+  const existing =
+    previousFile === null ? null : toJournalEntry(parseJournalEntry(previousFile, date))
   const body = content ? content : (existing?.content ?? '')
-  return { absolutePath, ...composeJournalEntry(date, body, tags, existing, properties) }
+  return {
+    absolutePath,
+    ...composeJournalEntry(date, body, tags, existing, properties, previousFile)
+  }
 }
 
 function composeJournalEntry(
@@ -311,13 +351,22 @@ function composeJournalEntry(
   content: string,
   tags: string[] | undefined,
   existing: JournalEntry | null,
-  properties: Record<string, unknown> | undefined
+  properties: Record<string, unknown> | undefined,
+  previousFile: string | null
 ): JournalWriteResult {
   let frontmatter: JournalFrontmatter
 
   if (existing) {
-    // Update existing entry — user keys only
+    // Update existing entry — user keys, plus the legacy Memry keys an older
+    // file already carries: they are the user's bytes, so a rewrite keeps them.
+    const previousFrontmatter = previousFile
+      ? (matter(previousFile, {}).data as Record<string, unknown>)
+      : {}
+    const keptLegacyKeys = LEGACY_JOURNAL_KEYS.filter((key) =>
+      Object.hasOwn(previousFrontmatter, key)
+    )
     frontmatter = { date }
+    for (const key of keptLegacyKeys) frontmatter[key] = previousFrontmatter[key]
     const mergedTags = tags ?? existing.tags
     if (mergedTags.length > 0) {
       frontmatter.tags = mergedTags
@@ -344,7 +393,10 @@ function composeJournalEntry(
     }
   }
 
-  const fileContent = serializeJournalEntry(frontmatter, content)
+  const serialized = serializeJournalEntry(frontmatter, content)
+  const fileContent = previousFile
+    ? (editJournalFile(previousFile, frontmatter, serialized) ?? serialized)
+    : serialized
   const parsed = parseJournalEntry(fileContent, date)
   const written = toJournalEntry(parsed)
   return {
@@ -352,6 +404,26 @@ function composeJournalEntry(
     fileContent,
     frontmatter: parsed.frontmatter
   }
+}
+
+/**
+ * The rewrite of an existing entry with its frontmatter edited in place and,
+ * when the trimmed body did not change, its body bytes kept, so an entry keeps
+ * its line endings. Null when the old file has no block the edit can read.
+ */
+function editJournalFile(
+  previousFile: string,
+  frontmatter: JournalFrontmatter,
+  serialized: string
+): string | null {
+  const previous = parseNote(previousFile)
+  if (previous.rawFrontmatterBlock === null || previous.frontmatterError) return null
+  const next = normalizePropertiesToRoot(frontmatter).frontmatter
+  const block = editFrontmatterBlock(previous.rawFrontmatterBlock, previous.frontmatter, next)
+  if (!block) return null
+  const body = splitFrontmatterBlock(serialized).body
+  if (body.trim() === previous.content.trim()) return block + previous.content
+  return block + body.replace(/\r?\n/g, previous.eol)
 }
 
 /**
@@ -381,7 +453,14 @@ export async function writeJournalEntry(
  */
 export async function deleteJournalEntryFile(date: string): Promise<boolean> {
   const store = getContentStore()
-  return store.remove(store.getJournalRelativePath(date))
+  const relativePath = store.getJournalRelativePath(date)
+  const absolutePath = store.resolve(relativePath)
+  const lockedPath = await beforeGuardedWrite(absolutePath)
+  try {
+    return await store.remove(relativePath)
+  } finally {
+    await afterGuardedWrite(absolutePath, lockedPath, null)
+  }
 }
 
 /**

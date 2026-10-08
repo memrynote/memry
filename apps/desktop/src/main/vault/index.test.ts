@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => ({
   watcherRunning: true,
   flushPendingWritebacks: vi.fn(),
   renameJournalsForFormatChange: vi.fn(),
+  revertJournalRenames: vi.fn(),
   runMigrations: vi.fn(),
   runIndexMigrations: vi.fn(),
   initDatabase: vi.fn(),
@@ -77,6 +78,7 @@ const mocks = vi.hoisted(() => ({
   startAgent: vi.fn(),
   agentShutdown: vi.fn(),
   trackMainLog: vi.fn(),
+  checkLockedFilesAtOpen: vi.fn(),
   embeddingProjectorWiring: [] as Array<{ getPath: () => unknown; gate: () => boolean }>
 }))
 
@@ -174,12 +176,17 @@ vi.mock('./watcher', () => ({
 
 vi.mock('./journal-format-migration', () => ({
   renameJournalsForFormatChange: (...args: unknown[]) =>
-    mocks.renameJournalsForFormatChange(...args)
+    mocks.renameJournalsForFormatChange(...args),
+  revertJournalRenames: (...args: unknown[]) => mocks.revertJournalRenames(...args)
 }))
 
 vi.mock('../sync/crdt-writeback', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   flushPendingWritebacks: (...args: unknown[]) => mocks.flushPendingWritebacks(...args)
+}))
+
+vi.mock('../vault-locks/service', () => ({
+  checkLockedFilesAtOpen: (...args: unknown[]) => mocks.checkLockedFilesAtOpen(...args)
 }))
 
 vi.mock('./indexer', () => ({
@@ -264,7 +271,7 @@ vi.mock('../projections/projectors/inbox-stats-projector', () => ({
 vi.mock('./property-definitions', () => ({
   PropertyDefinitionsService: {
     init: vi.fn(() => ({
-      reload: (...args: unknown[]) => mocks.reloadPropertyDefinitions(...args)
+      reloadOnOpen: (...args: unknown[]) => mocks.reloadPropertyDefinitions(...args)
     })),
     destroy: (...args: unknown[]) => mocks.destroyPropertyDefinitions(...args)
   }
@@ -296,6 +303,12 @@ vi.mock('./root-properties-migration', () => ({
 
 vi.mock('./templates-migration', () => ({
   migrateTemplateFilesToDb: (...args: unknown[]) => mocks.migrateTemplateFilesToDb(...args)
+}))
+
+vi.mock('../file-text', () => ({
+  startFileTextExtraction: vi.fn(),
+  stopFileTextExtraction: vi.fn(async () => {}),
+  fileTextNoteChanged: vi.fn()
 }))
 
 vi.mock('../agent/mcp/lifecycle', () => ({
@@ -334,6 +347,8 @@ import {
   updateConfig
 } from './index'
 import { getJournalConfig } from './journal-config'
+import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import { NoteError, NoteErrorCode } from '../lib/errors'
 
 describe('vault lifecycle', () => {
   beforeEach(async () => {
@@ -379,6 +394,7 @@ describe('vault lifecycle', () => {
     mocks.initCrdtPersistence.mockResolvedValue(undefined)
     mocks.stopProjectionRuntime.mockResolvedValue(undefined)
     mocks.reconcileProjections.mockResolvedValue({})
+    mocks.checkLockedFilesAtOpen.mockResolvedValue(undefined)
     mocks.rebuildProjections.mockResolvedValue({ search: { notes: 5, tasks: 0, inbox: 0 } })
     mocks.detectCorruption.mockReturnValue([])
     mocks.applyProjectFrontmatterBackfill.mockResolvedValue(undefined)
@@ -730,6 +746,34 @@ describe('vault lifecycle', () => {
     await vi.waitFor(() => expect(mocks.reconcileProjections).toHaveBeenCalled())
   })
 
+  it('prunes missing files only after locked files deleted while closed are restored (#2606)', async () => {
+    let finishLockCheck!: () => void
+    mocks.checkLockedFilesAtOpen.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finishLockCheck = resolve
+      })
+    )
+
+    const result = await selectVault({ path: '/vault/locked' })
+
+    expect(result.success).toBe(true)
+    expect(mocks.checkLockedFilesAtOpen).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
+    expect(mocks.reconcileProjections).not.toHaveBeenCalled()
+
+    finishLockCheck()
+
+    await vi.waitFor(() => expect(mocks.reconcileProjections).toHaveBeenCalled())
+  })
+
+  it('still prunes missing files when the locked-file check fails (#2606)', async () => {
+    mocks.checkLockedFilesAtOpen.mockRejectedValue(new Error('disk gone'))
+
+    await selectVault({ path: '/vault/locked-failed' })
+
+    await vi.waitFor(() => expect(mocks.reconcileProjections).toHaveBeenCalled())
+  })
+
   it('does not reset a current index and reports no recovery on a fast open', async () => {
     const result = await selectVault({ path: '/vault/fast' })
 
@@ -1053,6 +1097,46 @@ describe('vault lifecycle', () => {
         'journal_format_rename',
         expect.any(Error)
       )
+    })
+
+    it('moves the journal files back and reports the error when the config write fails', async () => {
+      await selectVault({ path: '/vault/config' })
+      vi.clearAllMocks()
+      mocks.watcherRunning = true
+      const moved = [{ from: '2026-09-25.md', to: '2026-09-25 Friday.md', date: '2026-09-25' }]
+      const order: string[] = []
+      mocks.renameJournalsForFormatChange.mockResolvedValueOnce({ moved, skipped: 0, failed: 0 })
+      mocks.writeVaultConfig.mockImplementationOnce(() => {
+        throw new Error('EACCES: permission denied')
+      })
+      mocks.revertJournalRenames.mockImplementation(async () => order.push('revert'))
+      mocks.startWatcher.mockImplementation(async () => order.push('start'))
+
+      await expect(updateConfig({ journalDateFormat: 'YYYY-MM-DD dddd' })).rejects.toThrow(
+        'EACCES: permission denied'
+      )
+
+      expect(mocks.revertJournalRenames).toHaveBeenCalledWith('/vault/config', 'journal', moved)
+      expect(order).toEqual(['revert', 'start'])
+      expect(mocks.rebuildIndex).not.toHaveBeenCalled()
+    })
+
+    it('refuses the new format and keeps the old one when a journal entry is locked (#2606)', async () => {
+      await selectVault({ path: '/vault/config' })
+      vi.clearAllMocks()
+      mocks.watcherRunning = true
+      mocks.renameJournalsForFormatChange.mockRejectedValueOnce(
+        new NoteError(VAULT_LOCKED_NOTE_MESSAGE, NoteErrorCode.READ_ONLY)
+      )
+
+      await expect(updateConfig({ journalDateFormat: 'YYYY-MM-DD dddd' })).rejects.toThrow(
+        VAULT_LOCKED_NOTE_MESSAGE
+      )
+
+      expect(mocks.writeVaultConfig).not.toHaveBeenCalled()
+      expect(mocks.rebuildIndex).not.toHaveBeenCalled()
+      expect(mocks.startWatcher).toHaveBeenCalledWith('/vault/config')
+      expect(mocks.trackMainError).not.toHaveBeenCalled()
     })
   })
 

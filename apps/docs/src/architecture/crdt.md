@@ -309,6 +309,70 @@ the oversized-update fallback still seed, because for a note the server has
 never seen, the vault file is the only copy of the body. An editor open still
 seeds too, which is the open fork in #2544.
 
+A main-process body edit (the agent note tool, `notes.update`, inbox filing, a
+version restore, appended blocks, a template, a rename's link and embed
+rewrites) reaches the note's document through `feedExternalEditToCrdt`. In
+in-memory mode a closed note's document opens empty, so it does not take the
+edit: a body fed into it would share no Yjs items with the server body. An open
+document opened without a seed waits for its merge the same way, until a remote
+update, a seed, or the editor open's merge step reaches it. An open document
+that has merged takes the edit live, even when its body is empty. A note whose
+document cannot take the edit is marked in the `crdt_owed_file_bodies` table
+and given a full-state outbox row (#2646). The marker means the vault file is
+ahead of the document. It is never written with a store, and never for a
+large-file-class body.
+
+The file is taken only after a complete server merge into the live document,
+and every other pass leaves the file alone while the marker stands. The
+full-state flush and an editor open merge the server body first and then
+apply the file over it (`CrdtProvider.takeFileAfterMerge`). Only the provider's
+live document of the note takes the file, because only its updates reach the
+outbox. A take into a document that was closed during the merge does nothing,
+not even a seed, so the marker stays. The flush then fails and keeps its row.
+So the flush holds the document from before the merge to after the read
+(`CrdtProvider.holdDoc`). Neither another pass's `closeIfInactive` nor the LRU
+closes a held document, and the last release closes it. The feed queues the
+row only after it closes the document it opened, so a flush that starts at once
+opens its own document. An editor open whose merge fails or outlasts its timeout keeps what the
+document holds, or seeds it when it is empty, and leaves the take to the flush.
+The write-back of a marked note or journal writes nothing, even while a merge
+holds the document, and owes the note a full-state row again so the marker
+has a flush to resolve it. It does not owe the row when the take would refuse
+the document (see below) or when the note has no index row yet, because each
+flush would then queue the next one. A later edit queues the row again, and
+so does the next pull once the note has its index row and a document the take
+accepts.
+
+A complete merge walks the whole server state. In in-memory mode a document
+reopened empty holds none of what an earlier pull's watermark counts, so the
+single-note pull drops that watermark and downloads from the snapshot, as the
+batch pull does. Without that, the merge before the take would miss peer
+updates below the watermark, and the take would delete them with no version.
+
+There is no base to merge from, so the file wins whole, tags included, and the
+loser is kept as a version:
+
+- The merged server body is saved as a version with the file's frontmatter
+  whenever it differs from the file. With no base, that is every take of an
+  edited note, not only one that lost a peer edit. The take is logged at info.
+- The version is written before the replace. When it cannot be written, the
+  document and the marker stay, an error is logged, and the next flush tries
+  again.
+- When the merged server body holds a node type this build cannot serialize,
+  or its conversion returns nothing, the take refuses it. The document and the
+  marker stay, and a warning names the reason. The write-back fails closed on
+  the same document and keeps the file, so the file keeps the edit and the
+  server keeps the unknown block. The take runs again once a pull brings a body
+  this build can serialize, or on a build that knows the type.
+- When the document refuses the file (large-file class, unparseable), the server
+  body stays, so the note converges on it. The write-back that then replaces the
+  file keeps the file as a version, as it does for any bytes it did not write.
+- When the note has an index row but its file no longer exists, there is no
+  file body to owe. The marker is cleared and a warning is logged.
+
+A feed or a seed the document takes clears the marker, as do a take, a file
+the document refuses, a missing file, and a purge.
+
 Losing a watermark costs one extra request. Keeping a stale one costs a note
 body, so every unknown — no record, an unreadable record, a store written by a
 build that predates the key — resolves to "download the baseline".
@@ -519,6 +583,23 @@ is the retry: there is no timer and no polling loop, which matters because a res
 provider ever following it — the signed-out steady state — has to settle to nothing
 pending rather than to a retry that runs forever.
 
+On a vault switch the renderer keeps the workspace it left mounted, so its editors are
+stranded too, and they must not rebind to the provider that now serves the other vault.
+Note ids repeat across vaults (journal ids are dates, a copied vault keeps every id), so a
+rebind there could succeed and its handshake would push one vault's doc into the other
+vault's store. Two checks keep it out:
+
+- `crdt:provider-ready` carries `{ vaultPath }`, the vault the provider was opened for.
+  `openVault` passes that path to `initPersistence(vaultPath)` itself, because the vault
+  status does not publish the new path until later in the open; read from there, it was
+  always `null` on a switch and the renderer could not tell whose editors may rebind. An
+  editor rebinds only on a ready for its own vault.
+- `crdt:open-doc` accepts an optional `vaultPath`, which editors inside a vault workspace
+  always send. Main rejects the open with `CRDT provider serves another vault` when its
+  provider was opened for a different vault. The binding stays stale and rebinds when its
+  own vault is open again. An open that names no vault, or a provider whose vault is
+  unknown, is served as before.
+
 The reset also logs how many docs had an editor attached when it happened. That is the
 number the rebind has to bring back to zero, and it is the only signal that this class of
 failure occurred — a stale editor is otherwise indistinguishable from a quiet note.
@@ -644,6 +725,31 @@ document to its vault `.md` file and re-indexes it for search.
   without this the emptied file would be written and replicated. The pass keeps the file
   instead, and reports it the way it reports a failed conversion.
 
+- **The author's spelling outlives a stale record.** A doc seeded from a file spelled
+  differently keeps that source in `markdownSource`, and the pass restores the author's
+  spelling from it for every region the doc has not changed (#1915). The record is replaced
+  only when a markdown body is fed in, so it can describe an older body than the doc holds,
+  and then the restore cannot be proven. Before writing house style, the pass restores from
+  the note's file instead, read without CriticMarkup and writing tools markers (#2615). A doc
+  that says what the file says leaves the file as it is, and an edit lands in the file's
+  spelling. `yDocToMarkdown` reports these as `file` and `file-merged`. A restore that throws
+  (`restore-threw`) and a file that cannot be read or parsed (`file-unreadable`) resolve the
+  conversion to null. The pass keeps the file as it is and fails the way a failed read does,
+  with `sync:write-back-failed` and a `note_writeback` error, so the next update retries.
+  The renderer turns `sync:write-back-failed` into a warning toast that names the note and
+  says the file was left unchanged and the edit stays open in the app while it runs.
+  Main sends it once per run of failed passes for a note, and a pass that lands ends the
+  run, so a fault that repeats on every keystroke shows one notice, not one per pass.
+  House style is written only when the file was read and cannot be restored either.
+  The merge aligns lines on a key that erases each spelling. A rule or a setext underline
+  erases to nothing, the key of a blank line, so it keeps a key of its own. Paired with a
+  blank line, the underline of an untouched setext heading joined the heading to the region
+  of an edit in the next paragraph, and the heading came back as an ATX heading.
+  Every markdown body is given LF line endings before the parse (`prepareFragmentSeed`, and
+  the file restore), because the parse reads a `\r` as a space. Seeded as it was, a CRLF note
+  had a trailing space on every line of the doc, so its first edit wrote the whole note in
+  house style. The pass puts the file's own line endings back when it writes.
+
 - **A doc with no note row is never turned into a note** — the pass skips it. A body that
   arrives before its record may belong to a note this device has not seen yet, or to one
   whose tombstone it has not pulled, and the two look the same from the doc. The record is
@@ -669,6 +775,18 @@ document to its vault `.md` file and re-indexes it for search.
   doc holds them. Later passes then write as usual. If the feed cannot land (a large-file
   body, or a doc that opens empty with no store) the pass keeps skipping and the file stays
   as it is.
+- **A pass keeps a version of bytes it did not write** — the module records, per note, the
+  content hash of the file bytes its last successful pass wrote this session. Before a pass
+  writes a body that differs from the file's body, it compares the file's hash with that
+  record. When they differ, the bytes came from another writer (`updateNote`, an agent
+  edit, an earlier session), so the pass saves them as a version whatever the word count
+  (#2646). When they match, the bytes came from this doc, and the pass keeps the 10-word
+  rule, so typing on this device or on a peer does not add a version per pass. Whether the
+  pass was armed by a local or a remote update does not matter. The bodies compared are
+  the ones in the two files, so a frontmatter-only change or the serializer's EOL and
+  final-newline handling saves none. The record is dropped when the note is purged or the
+  vault closes. A failed save never blocks the write. Versions are pruned to the newest 50
+  per note.
 
 While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search
@@ -1388,8 +1506,10 @@ record push never sees them.
   server's `crdt_push` bucket is per device.
 - **Failures.** A 401 or a storage-quota 413 pauses the outbox until a token refresh or reconnect
   resumes it; network errors and 5xx keep the rows for the next window; any other 4xx drops the
-  rows it sent. The push function rejects rather than returns when a credential is momentarily
-  missing, because returning would ack the rows.
+  rows it sent. A missing access token, vault key or signing key also pauses it, with one warning:
+  the push function rejects with `NoteBodyCredentialsMissingError` rather than returns, because
+  returning would ack the rows. A token refresh, a reconnect, or a sign-in that reuses the running
+  runtime resumes it.
 
 ## BlockNote Compatibility
 
@@ -1471,11 +1591,11 @@ dropping size, MIME type and any width/height/alignment.
 
 `diagram` is the one block whose renderer spec is a third party's. Desktop registers
 `createReactDiagramBlockSpec()` from `@blocknote/diagram-block`, which brings the source
-popup, the live Mermaid preview and the fence parse rule. Main and the mobile WebView cannot
-register the same thing — the package's entry point pulls React and ~3 MB of mermaid, and
-both of those surfaces exist to avoid exactly that weight — so they build the node from
-`diagramConfig` in `@memry/editor-schema` instead, and the renderer↔main parity gate compares
-every block's config field by field so the restatement cannot drift from the package's.
+popup, the live Mermaid preview and the fence parse rule. The main process cannot register the
+same thing, because the package's entry point pulls React and ~3 MB of mermaid. It builds the
+node from `diagramConfig` in `@memry/editor-schema` instead, and the renderer and main parity
+gate compares every block's config field by field so the restatement cannot drift from the
+package's.
 
 Its markdown form is a plain ` ```mermaid ` fence, so there is no marker to recognise: a
 Memry build without the block reads a diagram back as a code block tagged `mermaid` and
@@ -1488,7 +1608,7 @@ all. It is a `codeBlock` whose `language` is `memry-view`, holding its definitio
 (`@memry/shared/view-block`). The renderer passes `codeBlockViews` to `createMemrySchema`, which
 routes that one language to a React render and leaves the node, its parse rule and its fence to
 the code block. So there is nothing for y-prosemirror to delete on a client that predates it,
-nothing for main or the mobile WebView to register, and the round trip is the code block's.
+nothing for main to register, and the round trip is the code block's.
 
 `whiteboard` is a pointer, not a drawing: its one prop is `canvasId`, the drawing stays in
 the canvas's own `.excalidraw` file, and the note holds one

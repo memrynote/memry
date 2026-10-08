@@ -66,7 +66,10 @@
   },
   "crdt": {
     "persistenceDegradedTitle": "Edit history isn't being kept on this device",
-    "persistenceDegradedBody": "Your notes are safe — they live in your vault as plain files, and they still open and save normally. Only this device's local edit history and merge state are running in memory, so they start fresh each time memrynote opens."
+    "persistenceDegradedBody": "Your notes are safe — they live in your vault as plain files, and they still open and save normally. Only this device's local edit history and merge state are running in memory, so they start fresh each time memrynote opens.",
+    "writebackFailedTitle": "A note's file on disk couldn't be updated",
+    "writebackFailedTitleNamed": "\"{title}\" couldn't be updated on disk",
+    "writebackFailedBody": "The file on disk was left unchanged. Your edit stays open in memrynote while the app is running, and memrynote tries again with your next edit."
   },
   "encryption": {
     "failed": "Failed to encrypt data. Your keys may need to be regenerated.",
@@ -314,5 +317,9 @@
     "invalidUrl": "That is not a web link. Paste an http or https image address.",
     "downloadFailed": "That image could not be downloaded. Check the link and try again.",
     "unsupportedUrl": "That link is not a PNG, JPG, GIF, WEBP or SVG image."
+  },
+  "vaultLock": {
+    "noteReadOnly": "The owner made this note read-only.",
+    "folderReadOnly": "The owner made this folder read-only."
   }
 }

@@ -21,6 +21,7 @@ import {
   CalendarEventSyncPayloadSchema,
   CalendarExternalEventSyncPayloadSchema,
   CalendarSourceSyncPayloadSchema,
+  CanvasSyncPayloadSchema,
   CustomIconSyncPayloadSchema,
   FilterSyncPayloadSchema,
   FolderConfigSyncPayloadSchema,
@@ -507,6 +508,28 @@ const SPECS: TypeSpec[] = [
     boundary: { itemType: '', itemId: '', position: 0, clock: {} },
     unknownKey: 'syncedAt',
     unknownValue: '2026-04-16T00:00:01.000Z'
+  },
+  {
+    // Whiteboards, merged on the phone by desktop's canvas rule. Desktop's push
+    // states every key, `ownerNoteId: null` included; `scene` is Excalidraw
+    // JSON text in desktop's canonical form.
+    type: 'canvas',
+    schema: CanvasSyncPayloadSchema,
+    valid: {
+      id: 'cnv-1',
+      vaultId: 'vault-1',
+      title: 'A board',
+      scene:
+        '{"type":"excalidraw","version":2,"source":"memry","elements":[],"appState":{},"files":{}}',
+      folder: 'Work',
+      icon: null,
+      ownerNoteId: 'note-1',
+      clock: CLOCK,
+      deletedAt: null
+    },
+    boundary: { title: null, scene: '', ownerNoteId: null, clock: {} },
+    unknownKey: 'thumbnail',
+    unknownValue: { hash: 'h1', width: 320 }
   }
 ]
 
