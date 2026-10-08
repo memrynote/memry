@@ -11,7 +11,11 @@
  */
 
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { VAULT_LOCKED_NOTE_MESSAGE, type VaultLockState } from '@memry/contracts/vault-locks-api'
+import {
+  VAULT_LOCKED_FOLDER_MESSAGE,
+  VAULT_LOCKED_NOTE_MESSAGE,
+  type VaultLockState
+} from '@memry/contracts/vault-locks-api'
 import type { DataDb } from '../database/types'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { listLockedRows } from './store'
@@ -170,7 +174,7 @@ export function noteLockedError(noteId?: string): NoteError {
 }
 
 export function folderLockedError(): NoteError {
-  return new NoteError(VAULT_LOCKED_NOTE_MESSAGE, NoteErrorCode.READ_ONLY)
+  return new NoteError(VAULT_LOCKED_FOLDER_MESSAGE, NoteErrorCode.READ_ONLY)
 }
 
 /** Refuse a local body, title, tag, property, rename, move or delete of a locked note. */

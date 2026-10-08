@@ -161,6 +161,8 @@
     "diff": {
       "previewError": "Kunne ikke forhåndsvise ændringen",
       "description": "Agenten vil opdatere {title}. Gennemgå ændringen, før du anvender den.",
+      "descriptionCreate": "Agenten vil oprette {title}. Gennemgå ændringen, før du anvender den.",
+      "descriptionDelete": "Agenten vil slette {title}. Gennemgå ændringen, før du anvender den.",
       "fallbackTitle": "dette element",
       "current": "Aktuel",
       "candidate": "Forslag",

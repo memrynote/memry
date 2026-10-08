@@ -316,5 +316,9 @@
     "invalidUrl": "Dat is geen weblink. Plak een http- of https-adres van een afbeelding.",
     "downloadFailed": "Die afbeelding kan niet worden gedownload. Controleer de link en probeer het opnieuw.",
     "unsupportedUrl": "Die link is geen PNG-, JPG-, GIF-, WEBP- of SVG-afbeelding."
+  },
+  "vaultLock": {
+    "noteReadOnly": "De eigenaar heeft deze notitie alleen-lezen gemaakt.",
+    "folderReadOnly": "De eigenaar heeft deze map alleen-lezen gemaakt."
   }
 }

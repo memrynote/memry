@@ -172,7 +172,10 @@ vi.mock('../lib/reminders', () => ({
 import { getDatabase, requireDatabase, getIndexDatabase } from '../database'
 import { getStatus } from '../vault/index'
 import { deleteInboxAttachments } from './attachments'
-import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import {
+  VAULT_LOCKED_FOLDER_MESSAGE,
+  VAULT_LOCKED_NOTE_MESSAGE
+} from '@memry/contracts/vault-locks-api'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
 import { writeLockRow } from '../vault-locks/store'
 import {
@@ -2184,7 +2187,7 @@ describe('Inbox Filing Operations', () => {
       expect(result).toEqual({
         success: false,
         filedTo: null,
-        error: VAULT_LOCKED_NOTE_MESSAGE
+        error: VAULT_LOCKED_FOLDER_MESSAGE
       })
       expect(mockRename).not.toHaveBeenCalled()
       expect(mockCopyFile).not.toHaveBeenCalled()
@@ -2233,7 +2236,7 @@ describe('Inbox Filing Operations', () => {
         'archive'
       )
 
-      expect(result).toMatchObject({ success: false, error: VAULT_LOCKED_NOTE_MESSAGE })
+      expect(result).toMatchObject({ success: false, error: VAULT_LOCKED_FOLDER_MESSAGE })
       expect(mockRename).not.toHaveBeenCalled()
       expect(deleteInboxAttachments).not.toHaveBeenCalled()
       expect(mockUpdateNote).not.toHaveBeenCalled()

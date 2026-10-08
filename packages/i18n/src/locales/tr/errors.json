@@ -316,5 +316,9 @@
     "invalidUrl": "Bu bir web bağlantısı değil. http veya https ile başlayan bir görsel adresi yapıştırın.",
     "downloadFailed": "Bu görsel indirilemedi. Bağlantıyı kontrol edip tekrar deneyin.",
     "unsupportedUrl": "Bu bağlantı bir PNG, JPG, GIF, WEBP veya SVG görseli değil."
+  },
+  "vaultLock": {
+    "noteReadOnly": "Sahibi bu notu salt okunur yaptı.",
+    "folderReadOnly": "Sahibi bu klasörü salt okunur yaptı."
   }
 }
