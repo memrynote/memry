@@ -9,7 +9,7 @@
 
 import path from 'path'
 import fs from 'fs/promises'
-import type { Stats } from 'fs'
+import { existsSync, type Stats } from 'fs'
 import chokidar from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
@@ -76,7 +76,11 @@ import {
   queueEmbeddedVaultFiles,
   unlinkTasksFromDeletedNote
 } from '../notes/runtime-effects'
-import { syncFolderConfigDiscovered } from '../notes/folder-config-effects'
+import {
+  isAppFolderChange,
+  syncFolderConfigDelete,
+  syncFolderConfigDiscovered
+} from '../notes/folder-config-effects'
 import { normalizeRelativePath } from '../lib/paths'
 import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
@@ -86,6 +90,12 @@ import { findVaultFiles } from './indexer'
 const logger = createLogger('Watcher')
 
 const VAULT_RETURN_POLL_MS = 2000
+/**
+ * How long a folder removed outside the app waits before its folder_config
+ * rows are deleted, so a remove-and-recreate (an editor's atomic swap) keeps
+ * them. The app's own rename and delete are skipped by isAppFolderChange.
+ */
+const DIR_UNLINK_SETTLE_MS = 1000
 
 // ============================================================================
 // Types
@@ -203,6 +213,7 @@ export class VaultWatcher {
   private options: WatcherOptions | null = null
   private generation = 0
   private vaultReturnPoll: NodeJS.Timeout | null = null
+  private dirUnlinkTimers = new Set<NodeJS.Timeout>()
 
   // Debounced handlers
   private debouncedChange: ((path: string) => void) | null = null
@@ -298,6 +309,7 @@ export class VaultWatcher {
       .on('change', (filePath) => this.debouncedChange?.(filePath))
       .on('unlink', (filePath) => void this.handleFileDelete(filePath))
       .on('addDir', (dirPath) => this.handleDirAdd(dirPath))
+      .on('unlinkDir', (dirPath) => this.handleDirUnlink(dirPath))
       .on('ready', () => {
         this.isReady = true
       })
@@ -326,6 +338,8 @@ export class VaultWatcher {
       clearTimeout(this.vaultReturnPoll)
       this.vaultReturnPoll = null
     }
+    for (const timer of this.dirUnlinkTimers) clearTimeout(timer)
+    this.dirUnlinkTimers.clear()
     // Clear any pending rename detections
     clearAllPendingDeletes()
     // Drop queued backfills: they belong to the vault being closed.
@@ -506,6 +520,38 @@ export class VaultWatcher {
       logger.error('Failed to record folder', { path: relativePath, error })
       this.onError?.(error)
     }
+  }
+
+  /**
+   * A folder renamed or deleted outside the app keeps its folder_config row
+   * otherwise, and another device that applies the row recreates it (#2850).
+   * The app's own rename and delete own their rows (isAppFolderChange), and a
+   * remote delete removes its row before it removes the directory, so only
+   * outside removals reach the delete, once the folder stays gone.
+   */
+  private handleDirUnlink(absolutePath: string): void {
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return
+    if (!isVaultReachable(vaultPath)) {
+      this.waitForVaultReturn()
+      return
+    }
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, absolutePath))
+    if (!relativePath || !createTreeFolderFilter(getConfig())(relativePath)) return
+    if (isAppFolderChange(relativePath)) return
+    const timer = setTimeout(() => {
+      this.dirUnlinkTimers.delete(timer)
+      if (!isVaultReachable(vaultPath) || existsSync(absolutePath)) return
+      if (isAppFolderChange(relativePath)) return
+      try {
+        syncFolderConfigDelete(relativePath)
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err))
+        logger.error('Failed to delete removed folder record', { path: relativePath, error })
+        this.onError?.(error)
+      }
+    }, DIR_UNLINK_SETTLE_MS)
+    this.dirUnlinkTimers.add(timer)
   }
 
   /**

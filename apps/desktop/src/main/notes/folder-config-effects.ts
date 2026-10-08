@@ -63,6 +63,38 @@ export function syncFolderConfigSet(folderPath: string, icon: string | null | un
 }
 
 /**
+ * Folders the app itself is renaming or deleting. The watcher's unlinkDir for
+ * such a folder arrives while the app is still moving notes, before it re-keys
+ * or deletes the rows, so the watcher must leave these paths to the app
+ * instead of tombstoning their rows as an outside delete (#2850).
+ */
+const appFolderChanges = new Map<string, number>()
+
+export function isAppFolderChange(folderPath: string): boolean {
+  for (const owned of appFolderChanges.keys()) {
+    if (folderPath === owned || folderPath.startsWith(`${owned}/`)) return true
+  }
+  return false
+}
+
+/** Marks `folderPaths` as app-owned until `change` settles. */
+export async function withAppFolderChange<T>(
+  folderPaths: string[],
+  change: () => Promise<T>
+): Promise<T> {
+  for (const p of folderPaths) appFolderChanges.set(p, (appFolderChanges.get(p) ?? 0) + 1)
+  try {
+    return await change()
+  } finally {
+    for (const p of folderPaths) {
+      const count = (appFolderChanges.get(p) ?? 1) - 1
+      if (count > 0) appFolderChanges.set(p, count)
+      else appFolderChanges.delete(p)
+    }
+  }
+}
+
+/**
  * Renaming a folder moves its whole subtree on disk, so every descendant row is
  * re-keyed too. Re-keying only the folder itself left the descendants pointing
  * at the old path, and another device re-created the old tree from them.

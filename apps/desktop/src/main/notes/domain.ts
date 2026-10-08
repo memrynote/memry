@@ -4,6 +4,7 @@ import {
   renameNote,
   moveNote,
   renameFolder,
+  deleteFolder,
   deleteNote,
   getNoteById,
   type Note,
@@ -26,6 +27,11 @@ import {
   unlinkTasksFromDeletedNote,
   queueEmbeddedVaultFiles
 } from './runtime-effects'
+import {
+  syncFolderConfigDelete,
+  syncFolderConfigRename,
+  withAppFolderChange
+} from './folder-config-effects'
 
 const log = createLogger('NotesDomain')
 
@@ -94,12 +100,23 @@ export async function moveNoteCommand(id: string, newFolder: string): Promise<No
  * A folder rename or move carries the index rows of everything inside it, so
  * each moved note's new path is pushed the way `moveNoteCommand` pushes one.
  * Journals are skipped: their path is derived from the date on every device.
+ * The folder's rows are re-keyed last, so both paths stay app-owned until then.
  */
 export async function renameFolderCommand(oldPath: string, newPath: string): Promise<void> {
-  const movedNotes = await renameFolder(oldPath, newPath)
-  for (const note of movedNotes) {
-    if (note.date === null) syncNoteUpdate(note.id)
-  }
+  await withAppFolderChange([oldPath, newPath], async () => {
+    const movedNotes = await renameFolder(oldPath, newPath)
+    for (const note of movedNotes) {
+      if (note.date === null) syncNoteUpdate(note.id)
+    }
+    syncFolderConfigRename(oldPath, newPath)
+  })
+}
+
+export async function deleteFolderCommand(folderPath: string): Promise<void> {
+  await withAppFolderChange([folderPath], async () => {
+    await deleteFolder(folderPath)
+    syncFolderConfigDelete(folderPath)
+  })
 }
 
 export async function deleteNoteCommand(id: string): Promise<void> {

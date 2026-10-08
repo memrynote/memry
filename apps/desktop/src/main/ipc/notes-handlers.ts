@@ -83,7 +83,6 @@ import {
   getNoteLinks,
   getFolders,
   createFolder,
-  deleteFolder,
   noteExists,
   openExternal,
   revealInFinder,
@@ -100,6 +99,7 @@ import {
   renameNoteCommand,
   moveNoteCommand,
   renameFolderCommand,
+  deleteFolderCommand,
   deleteNoteCommand,
   setNoteLocalOnlyCommand
 } from '../notes/domain'
@@ -112,12 +112,7 @@ import { downloadAttachmentFromUrl } from '../vault/remote-attachment'
 import { getStatus as getVaultStatus } from '../vault/index'
 import { inlineExportImages } from '../lib/export-image-inliner'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
-import {
-  syncFolderConfigCreate,
-  syncFolderConfigSet,
-  syncFolderConfigRename,
-  syncFolderConfigDelete
-} from '../notes/folder-config-effects'
+import { syncFolderConfigCreate, syncFolderConfigSet } from '../notes/folder-config-effects'
 import { renderNoteAsHtml, sanitizeFilename } from '../lib/export-utils'
 import { getCustomIcon } from '../icons/store'
 import { getMainI18n } from '../lib/main-i18n'
@@ -490,7 +485,6 @@ export function registerNotesHandlers(): void {
     RenameFolderSchema,
     async (input) => {
       await renameFolderCommand(input.oldPath, input.newPath)
-      syncFolderConfigRename(input.oldPath, input.newPath)
       return { success: true as const }
     },
     'errors:folder.renameFailed'
@@ -501,8 +495,7 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.DELETE_FOLDER,
     createStringHandler(
       withErrorHandler(async (folderPath) => {
-        await deleteFolder(folderPath)
-        syncFolderConfigDelete(folderPath)
+        await deleteFolderCommand(folderPath)
         return { success: true }
       }, 'errors:folder.deleteFailed')
     )
