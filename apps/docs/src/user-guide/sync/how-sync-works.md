@@ -237,6 +237,11 @@ on an external drive or network share that is not connected. memrynote never for
 own, so a vault on an unplugged drive can be opened again once the drive is back. Use **Remove from
 list** to forget a folder you deleted on purpose.
 
+The same holds while a vault is open. If its drive is unplugged or its folder is renamed for a
+moment, every note looks removed to memrynote, but none of them is deleted, here or on your other
+devices. Once the folder is back, memrynote checks it again and picks up what changed while it was
+away: notes you edited elsewhere update, and notes you really deleted are deleted.
+
 ## See Also
 
 - [Linking Another Device](/user-guide/sync/linking-devices)
