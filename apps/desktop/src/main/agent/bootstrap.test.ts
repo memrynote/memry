@@ -166,9 +166,11 @@ vi.mock('./backends/local-provider-settings', () => ({
 vi.mock('./backends/local-provider-keychain', () => ({
   getLocalProviderApiKey: mocks.getLocalProviderApiKey
 }))
-vi.mock('./backends/local-openai-compatible-backend', () => ({
+vi.mock('./backends/local-provider-probe', () => ({
   listOpenAiCompatibleModels: mocks.listOpenAiCompatibleModels,
-  testOpenAiCompatibleConnection: mocks.testOpenAiCompatibleConnection,
+  testOpenAiCompatibleConnection: mocks.testOpenAiCompatibleConnection
+}))
+vi.mock('./backends/local-openai-compatible-backend', () => ({
   LocalOpenAICompatibleBackend: vi.fn().mockImplementation(function LocalOpenAICompatibleBackend() {
     return {
       probeCapabilities: mocks.localProbeCapabilities
