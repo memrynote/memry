@@ -3,7 +3,7 @@ import SwiftUI
 
 // TP040 / TP050, redesigned (RD01, RD20). The list (Paper artboard 01): one
 // section per core group (or the flat list, split under an Overdue header on
-// Today and Next 7), subtasks one level in under their parents, and the
+// Today and Next 7), subtasks up to two levels in under their parents, and the
 // Completed section last, collapsed by default. Headers are quiet text with a
 // count; the Overdue header takes the overdue colour.
 //

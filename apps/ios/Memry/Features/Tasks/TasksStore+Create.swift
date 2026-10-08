@@ -117,9 +117,10 @@ extension TasksStore {
         return draft
     }
 
-    /// Top-level, open, unarchived tasks a new task can be filed under.
+    /// Open, unarchived tasks a new task can be filed under, at any depth the
+    /// core's tree allows (`canAddSubtask`).
     func parentCandidates() -> [TaskItem] {
-        ordered.filter { $0.parentId == nil && $0.archivedAt == nil && !$0.isDone }
+        ordered.filter { $0.archivedAt == nil && !$0.isDone && canAddSubtask($0.id) }
     }
 
     // MARK: Creating

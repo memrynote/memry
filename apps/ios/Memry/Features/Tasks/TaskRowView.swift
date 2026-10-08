@@ -46,6 +46,7 @@ struct TaskRowView: View {
             } else {
                 NavigationLink(value: TasksRoute.task(task.id)) { content }
                     .navigationLinkIndicatorVisibility(.hidden)
+                if pushesBranch { TaskBranchChip(task: task, store: store) }
             }
         }
         .padding(.leading, CGFloat(depth) * Tokens.Space.section)
@@ -75,7 +76,19 @@ struct TaskRowView: View {
             let task = task
             Task { await store.requestDelete(task) }
         }
+        .modifier(TaskBranchAccessibility(enabled: pushesBranch && selection == nil) {
+            router?.open(.branch(task.id))
+        })
         .accessibilityIdentifier("tasks.row.\(task.id)")
+    }
+
+    /// Children the list does not draw: the chip pushes them instead.
+    private var pushesBranch: Bool { store.pushesBranch(task.id, depth: depth) }
+
+    private var rowContext: TaskMeta.Context {
+        var rowContext = context
+        rowContext.omitsSubtasks = pushesBranch
+        return rowContext
     }
 
     @ViewBuilder private var lane: some View {
@@ -107,7 +120,7 @@ struct TaskRowView: View {
                     .foregroundStyle(task.isDone ? Tokens.Text.tertiary.color : Tokens.Text.primary.color)
                     .multilineTextAlignment(.leading)
                     .lineLimit(typeSize.isAccessibilitySize ? 6 : 3)
-                TaskMetaLine(meta: store.meta(task, context: context))
+                TaskMetaLine(meta: store.meta(task, context: rowContext))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             TaskPriorityIcon(priority: task.priority)

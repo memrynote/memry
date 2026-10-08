@@ -14,6 +14,8 @@ import SwiftUI
 /// A place inside the Tasks tab.
 enum TasksRoute: Hashable, Codable, Sendable {
     case task(String)
+    /// A task's subtasks as their own screen (#2868).
+    case branch(String)
     case project(String)
     case projects
     case settings
@@ -101,6 +103,8 @@ struct TasksRootView: View {
                     switch route {
                     case let .task(id):
                         TaskDetailView(taskId: id, store: store)
+                    case let .branch(id):
+                        TaskBranchView(parentId: id, store: store)
                     case let .project(id):
                         ProjectHubView(projectId: id, store: store)
                     case .projects:

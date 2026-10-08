@@ -61,6 +61,11 @@ extension TasksStore {
         await writeTaskSettings { try $0.setDefaultView(view: value) }
     }
 
+    /// Local to this device, as on desktop; never synced.
+    func setNestedSubtasks(_ on: Bool) async {
+        await writeTaskSettings { try $0.setNestedSubtasks(on: on) }
+    }
+
     func setStaleInboxDays(_ days: Int) async {
         let value = Int64(days)
         await writeTaskSettings { try $0.setStaleInboxDays(days: value) }

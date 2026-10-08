@@ -39,6 +39,12 @@ Select a row and press <kbd>Shift</kbd>+<kbd>M</kbd> for **Move under…**. It l
 
 In a list of subtasks you can also drag a row sideways: a step to the right nests it under the row above, a step to the left moves it out one level. A label on the row says where it will land. <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the move.
 
+### On iPhone
+
+The task list indents subtasks up to two levels under each task. A subtask deeper than that is not drawn in the list: its parent shows a count such as `1/3` with a chevron, and tapping it opens that branch as its own screen, with the parent as the title. The back button returns to where you came from, one level at a time.
+
+Touch and hold a row for **Move under _the task above_**, **Move out one level**, **Move under…**, and **Make top-level task**. **Move under…** lists the project as the same tree as on desktop, with the task's own branch greyed out. **Settings → Tasks → Subtasks inside subtasks** applies to the iPhone on its own, the same as on desktop.
+
 ### Independence
 
 Subtasks have their own:
