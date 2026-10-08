@@ -168,6 +168,8 @@ vi.mock('../../../notes/runtime-effects', () => ({
   emitNoteAttachmentSaved: mocks.emitNoteAttachmentSaved
 }))
 
+import { deserializeValue, serializeValue } from '../../../database/queries/notes/query-helpers'
+import { inferPropertyType, parseNote } from '../../../vault/frontmatter'
 import { createVaultServiceHandles } from './handles-adapter'
 import { buildWriteTools } from './write-tools'
 
@@ -1967,6 +1969,70 @@ describe('createVaultServiceHandles', () => {
       await expect(
         handles.desktop.read({ operation: 'notes.get', args: ['note-1'] }, 'window-1')
       ).resolves.toEqual(note)
+    })
+  })
+
+  describe('dates an agent reads (#2787)', () => {
+    const { frontmatter } = parseNote(
+      '---\ndue: 2026-10-07\nat: 2026-09-01T08:30:00.000Z\nowner: Kaan\n---\nBody\n',
+      'notes/Plan.md'
+    )
+    const indexedProperties = Object.entries(frontmatter).map(([name, value]) => {
+      const type = inferPropertyType(name, value)
+      return { name, value: deserializeValue(serializeValue(value), type), type }
+    })
+    const fileValues: Record<string, string> = {
+      due: '2026-10-07',
+      at: '2026-09-01T08:30:00.000Z',
+      owner: 'Kaan'
+    }
+    const spelledProperties = indexedProperties.map((property) => ({
+      ...property,
+      value: fileValues[property.name]
+    }))
+
+    it('vault_read_note returns frontmatter dates as the file spells them', async () => {
+      mocks.getNoteCacheById.mockReturnValue({
+        id: 'note-1',
+        path: 'notes/Plan.md',
+        fileType: 'markdown'
+      })
+      mocks.getNoteById.mockResolvedValue({
+        id: 'note-1',
+        title: 'Plan',
+        content: 'Body\n',
+        tags: [],
+        path: 'notes/Plan.md',
+        frontmatter
+      })
+
+      const note = await createVaultServiceHandles(deps).notes.read('note-1')
+
+      expect(JSON.parse(JSON.stringify(note)).frontmatter).toEqual(fileValues)
+    })
+
+    it('properties.get returns dates as the file spells them, not as the index stores them', async () => {
+      mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce(indexedProperties)
+
+      await expect(
+        createVaultServiceHandles(deps).desktop.read(
+          { operation: 'properties.get', args: ['note-1'] },
+          'window-1'
+        )
+      ).resolves.toEqual(spelledProperties)
+    })
+
+    it('the properties.rename read-back spells dates the same way', async () => {
+      mocks.invokeDesktopApiFromWindow
+        .mockResolvedValueOnce({ success: true })
+        .mockResolvedValueOnce(indexedProperties)
+
+      await expect(
+        createVaultServiceHandles(deps).desktop.write(
+          { operation: 'properties.rename', args: ['note-1', 'deadline', 'due'] },
+          'window-1'
+        )
+      ).resolves.toEqual({ success: true, stored: spelledProperties })
     })
   })
 
