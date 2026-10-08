@@ -8,7 +8,6 @@
 import type { NoteFrontmatter } from './frontmatter'
 import {
   extractTags,
-  extractInlineTagsFromMarkdown,
   mergeTagLists,
   extractProperties,
   calculateWordCount,
@@ -18,6 +17,7 @@ import {
   resolvePropertyType
 } from './frontmatter'
 import { extractWikiLinks } from '@memry/shared/wiki-target'
+import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
 import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, type IndexDb } from '../database'
 import type { FileType } from '@memry/shared/file-types'

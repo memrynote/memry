@@ -97,6 +97,7 @@ import {
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { scrollToHeadingBlock } from '@/lib/scroll-to-heading'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
+import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
 import {
   createJournalDateLabels,
   formatDateToISO,
@@ -317,6 +318,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   }, [entryId, toggleBookmark, selectedDate, t])
 
   const entryTags = useMemo(() => entry?.tags ?? [], [entry?.tags])
+  // The editor turns `#tag` text into a chip only for tags in this list, so it
+  // holds the body's inline tags as well as the header's, like the index list
+  // the note page passes.
+  const chipTags = useMemo(
+    () => [...entryTags, ...extractInlineTagsFromMarkdown(entry?.content ?? '')],
+    [entryTags, entry?.content]
+  )
 
   const [editorRevision, setEditorRevision] = useState(0)
 
@@ -1391,7 +1399,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                   onInternalLinkClick={(...args) =>
                                     void handleInternalLinkClick(...args)
                                   }
-                                  noteTags={entryTags}
+                                  noteTags={chipTags}
                                   tagColorMap={tagColorMap}
                                   tagIconMap={tagIconMap}
                                   focusAtEndRef={focusAtEndRef}

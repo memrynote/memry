@@ -594,12 +594,14 @@ describe('JournalPage', () => {
   })
 
   it('hands the editor the tag props the note page does, so inline #tags render as chips', () => {
+    mocks.entry = { ...mocks.entry, content: 'A day with #life in it' }
     render(<JournalPage />)
 
     // Without these the editor has nothing to promote `#work` against, and a
-    // body tag reopened from the vault file renders as plain text.
+    // body tag reopened from the vault file renders as plain text. A body tag
+    // never reaches the header, so the body is read for it too.
     const props = mocks.contentAreaProps
-    expect(props.noteTags).toEqual(['work'])
+    expect(props.noteTags).toEqual(['work', 'life'])
     expect(props.tagColorMap.get('work')).toBe('blue')
     expect(props.tagIconMap).toBeInstanceOf(Map)
   })

@@ -36,7 +36,6 @@ import {
   parseNote,
   serializeNote,
   serializeParsedNote,
-  extractInlineTagsFromMarkdown,
   mergeTagLists,
   inferPropertyType,
   resolvePropertyType,
@@ -44,6 +43,7 @@ import {
   type NoteFrontmatter
 } from '../../vault/frontmatter'
 import { isPersistableDefinitionType, type PropertyType } from '@memry/contracts/property-types'
+import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
 import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { cleanupProjectLinksForDeletedNote } from '../../notes/runtime-effects'
 import { flushProjectionEvents } from '../../projections'
