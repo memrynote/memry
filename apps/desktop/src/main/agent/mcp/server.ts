@@ -9,7 +9,7 @@ import { createLogger } from '../../lib/logger'
 import { trackMainError, trackMainLog } from '../../telemetry/diagnostics'
 import { getMainRedactOptions } from '../../telemetry/redact-options'
 import { decorateToolResultWithAgentSources } from '../source-refs'
-import { AgentToolError, toMcpToolErrorContent } from './errors'
+import { toAgentToolError, toMcpToolErrorContent } from './errors'
 import { capReply, type ReplyCap } from './reply-cap'
 import { createMcpSession } from './session'
 import { ImageToolResult } from './tool-image'
@@ -96,7 +96,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
             // Single choke point for all vault-tool execution failures (every
             // backend and external MCP client routes through this server). A
             // user tapping Deny is a normal state, not a fault worth counting.
-            const code = err instanceof AgentToolError ? err.code : 'INTERNAL'
+            const code = toAgentToolError(err).code
             // NOT_FOUND and VALIDATION are the model asking for a missing item
             // or sending bad input: the model reads the error and recovers, so
             // they stay queryable as warnings instead of filing as exceptions.

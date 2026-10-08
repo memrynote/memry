@@ -40,6 +40,13 @@ vi.mock('./notes-io', () => ({
   toRelativePath: (absolute: string) => absolute.replace('/vault/', '')
 }))
 
+vi.mock('../lib/paths', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/paths')>()),
+  resolveVaultFile: async (_vault: string, relative: string) => ({
+    kind: 'inside',
+    path: `/vault/${relative}`
+  })
+}))
 vi.mock('../database', () => ({ getDatabase: vi.fn(), getIndexDatabase: vi.fn(() => ({})) }))
 vi.mock('../sync/crdt-writeback', () => ({ hasPendingWriteback: vi.fn(() => false) }))
 vi.mock('../tasks/reconcile-markdown-tasks', () => ({

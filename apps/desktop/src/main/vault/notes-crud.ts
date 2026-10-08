@@ -56,7 +56,8 @@ import {
   placeNewItemAtTop
 } from '@main/database/queries/note-positions'
 import { getDatabase, getIndexDatabase } from '../database'
-import { NoteError, NoteErrorCode } from '../lib/errors'
+import { NoteError, NoteErrorCode, OutsideVaultError } from '../lib/errors'
+import { resolveVaultFile } from '../lib/paths'
 import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
@@ -404,7 +405,9 @@ export async function getNoteById(id: string): Promise<Note | null> {
     return null
   }
 
-  const absolutePath = toAbsolutePath(cached.path)
+  const resolved = await resolveVaultFile(getVaultRoot(), cached.path)
+  if (resolved.kind === 'outside') throw new OutsideVaultError(cached.path)
+  const absolutePath = resolved.kind === 'inside' ? resolved.path : toAbsolutePath(cached.path)
 
   // Classify before reading. A file over the byte ceiling must never become a
   // JS string: V8 caps one at ~512 MB, and well below that a 250 MB read is a

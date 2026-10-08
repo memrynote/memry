@@ -41,6 +41,7 @@ import type {
 import type { DataDb } from '../database'
 import { generateId } from '../lib/id'
 import { createLogger } from '../lib/logger'
+import { resolveVaultFileSync } from '../lib/paths'
 import { clearCanvasEdges, rewriteCanvasEdges } from './edge-index'
 import { storedFolderPath } from './folder-lookup'
 import { normalizeFolder, normalizeStoredFolder } from './folder-paths'
@@ -125,7 +126,12 @@ export function writeCanvasScene(
 /** The scene as everything outside this module sees it (no memry sidecar). */
 export function readCanvasScene(vaultPath: string, relativePath: string | null): string | null {
   if (!relativePath) return null
-  const content = readCanvasFileSync(resolveCanvasFile(vaultPath, relativePath))
+  const resolved = resolveVaultFileSync(vaultPath, relativePath)
+  if (resolved.kind === 'outside') {
+    log.warn('Refusing a canvas document that links outside the vault')
+    return null
+  }
+  const content = resolved.kind === 'inside' ? readCanvasFileSync(resolved.path) : null
   if (content === null) return null
   return stripCanvasMeta(content)
 }

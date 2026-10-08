@@ -18,7 +18,8 @@ import { getStatus, getConfig } from './index'
 import { normalizePropertiesToRoot, parseNote, writePropertiesToRoot } from './frontmatter'
 import { editFrontmatterBlock } from './frontmatter-edit'
 import { afterGuardedWrite, beforeGuardedWrite, ensureDirectory } from './file-ops'
-import { VaultError, VaultErrorCode } from '../lib/errors'
+import { OutsideVaultError, VaultError, VaultErrorCode } from '../lib/errors'
+import { resolveVaultFile } from '../lib/paths'
 import {
   generateJournalId,
   calculateActivityLevel,
@@ -237,6 +238,15 @@ export function extractJournalProperties(
 // File Operations
 // ============================================================================
 
+async function readJournalText(date: string): Promise<string | null> {
+  const vaultPath = getVaultPath()
+  const store = getContentStore()
+  const relativePath = store.getJournalRelativePath(date)
+  const resolved = await resolveVaultFile(vaultPath, relativePath)
+  if (resolved.kind === 'outside') throw new OutsideVaultError(relativePath)
+  return resolved.kind === 'inside' ? store.read(path.relative(vaultPath, resolved.path)) : null
+}
+
 /**
  * The entry file's frontmatter as parsed and its body after the frontmatter,
  * byte for byte, or null if there is no file.
@@ -244,8 +254,7 @@ export function extractJournalProperties(
 export async function readJournalFile(
   date: string
 ): Promise<{ frontmatter: Record<string, unknown>; body: string } | null> {
-  const store = getContentStore()
-  const rawContent = await store.read(store.getJournalRelativePath(date))
+  const rawContent = await readJournalText(date)
   if (rawContent === null) return null
   // `{}` bypasses gray-matter's content-keyed cache, as parseNote does.
   const { data, content } = matter(rawContent, {})
@@ -258,8 +267,7 @@ export async function readJournalFile(
  * @returns Journal entry or null if not found
  */
 export async function readJournalEntry(date: string): Promise<JournalEntry | null> {
-  const store = getContentStore()
-  const rawContent = await store.read(store.getJournalRelativePath(date))
+  const rawContent = await readJournalText(date)
   return rawContent ? toJournalEntry(parseJournalEntry(rawContent, date)) : null
 }
 
@@ -298,7 +306,7 @@ export async function writeJournalEntryWithContent(
   const store = getContentStore()
   await ensureDirectory(getJournalDir())
   const relativePath = store.getJournalRelativePath(date)
-  const previousFile = await store.read(relativePath)
+  const previousFile = await readJournalText(date)
   const existing =
     existingEntry ?? (previousFile ? toJournalEntry(parseJournalEntry(previousFile, date)) : null)
   const result = composeJournalEntry(date, content, tags, existing, properties, previousFile)

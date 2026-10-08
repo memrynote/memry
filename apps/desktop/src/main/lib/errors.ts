@@ -85,6 +85,13 @@ export class NoteError extends Error {
   }
 }
 
+export class OutsideVaultError extends Error {
+  constructor(relativePath: string) {
+    super(`${relativePath} points outside the vault. Memry reads only files inside the vault.`)
+    this.name = 'OutsideVaultError'
+  }
+}
+
 /**
  * Error codes for database operations
  */

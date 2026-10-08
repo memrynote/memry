@@ -313,6 +313,22 @@ describe('viewVaultFile', () => {
       expect(prepared).toEqual([])
     })
 
+    it('refuses a missing file under an attachments folder linked outside the vault', async () => {
+      const outsideDir = path.dirname(outsideFile('folder/kept.png'))
+      fs.rmSync(path.join(vault, 'attachments/note'), { recursive: true, force: true })
+      fs.symlinkSync(outsideDir, path.join(vault, 'attachments/note'))
+
+      const missing = await viewError({ id: 'note', attachment: 'gone.png' })
+      const present = await viewError({ id: 'note', attachment: 'kept.png' })
+
+      expect(missing.code).toBe('PERMISSION_DENIED')
+      expect(missing.message).toBe(
+        'attachments/note/gone.png points outside the vault. vault_view_file reads only files inside the vault.'
+      )
+      expect(present.code).toBe('PERMISSION_DENIED')
+      expect(prepared).toEqual([])
+    })
+
     it('shows a link that stays inside the vault, read from its target', async () => {
       link('attachments/note/alias.png', path.join(vault, 'Screens/login.png'))
 

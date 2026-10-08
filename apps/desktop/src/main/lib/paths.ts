@@ -1,3 +1,4 @@
+import { lstatSync, realpathSync } from 'fs'
 import { lstat, realpath } from 'fs/promises'
 import path from 'path'
 
@@ -122,12 +123,30 @@ export function safeJoin(basePath: string, ...segments: string[]): string | null
 export type VaultFileResolution =
   { kind: 'inside'; path: string } | { kind: 'outside' } | { kind: 'missing' }
 
+function placeInVault(
+  vaultPath: string,
+  realVault: string,
+  real: string,
+  isTarget: boolean
+): VaultFileResolution {
+  const relative = path.relative(realVault, real)
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    return { kind: 'outside' }
+  }
+  return isTarget
+    ? { kind: 'inside', path: path.join(path.resolve(vaultPath), relative) }
+    : { kind: 'missing' }
+}
+
 /**
  * Where a vault-relative path really points once symlinks are followed. A link
  * whose target leaves the real vault root, or whose target is gone, is
- * `outside`: a reader refuses it rather than follow it. `path` is the real
- * target re-rooted at `vaultPath`, so the file checked is the file read and
- * the path still sits under the vault path the memry-file protocol allows.
+ * `outside`: a reader refuses it rather than follow it. A missing path is
+ * placed by its nearest existing parent, so a missing file under a folder
+ * linked outside is `outside` too and a reader cannot tell whether a file
+ * exists out there. `path` is the real target re-rooted at `vaultPath`, so the
+ * file checked is the file read and the path still sits under the vault path
+ * the memry-file protocol allows.
  */
 export async function resolveVaultFile(
   vaultPath: string,
@@ -135,20 +154,36 @@ export async function resolveVaultFile(
 ): Promise<VaultFileResolution> {
   const joined = safeJoin(vaultPath, relativePath)
   if (joined === null) return { kind: 'outside' }
-  let real: string
-  try {
-    real = await realpath(joined)
-  } catch {
-    const dangling = await lstat(joined).then(
+  const realVault = await realpath(vaultPath)
+  for (let probe = joined; ; probe = path.dirname(probe)) {
+    const real = await realpath(probe).catch(() => null)
+    if (real !== null) return placeInVault(vaultPath, realVault, real, probe === joined)
+    const isLink = await lstat(probe).then(
       (stats) => stats.isSymbolicLink(),
       () => false
     )
-    return dangling ? { kind: 'outside' } : { kind: 'missing' }
+    if (isLink) return { kind: 'outside' }
   }
-  const relative = path.relative(await realpath(vaultPath), real)
-  return relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)
-    ? { kind: 'outside' }
-    : { kind: 'inside', path: path.join(path.resolve(vaultPath), relative) }
+}
+
+/** `resolveVaultFile` for readers that cannot await, such as the canvas store. */
+export function resolveVaultFileSync(vaultPath: string, relativePath: string): VaultFileResolution {
+  const joined = safeJoin(vaultPath, relativePath)
+  if (joined === null) return { kind: 'outside' }
+  const realVault = realpathSync.native(vaultPath)
+  for (let probe = joined; ; probe = path.dirname(probe)) {
+    const real = attempt(() => realpathSync.native(probe))
+    if (real !== null) return placeInVault(vaultPath, realVault, real, probe === joined)
+    if (attempt(() => lstatSync(probe).isSymbolicLink())) return { kind: 'outside' }
+  }
+}
+
+function attempt<T>(read: () => T): T | null {
+  try {
+    return read()
+  } catch {
+    return null
+  }
 }
 
 /**

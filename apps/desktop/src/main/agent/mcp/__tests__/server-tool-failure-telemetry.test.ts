@@ -19,6 +19,7 @@ vi.mock('../../../telemetry/redact-options', () => ({
   getMainRedactOptions: () => ({})
 }))
 
+import { OutsideVaultError } from '../../../lib/errors'
 import { AgentToolError, type AgentToolErrorCode } from '../errors'
 import { startAgentMcpServer, type AgentMcpServerHandle } from '../server'
 
@@ -105,6 +106,22 @@ describe('Agent MCP server tool failure telemetry', () => {
 
     await callFailingTool()
 
+    expect(mocks.trackMainLog).not.toHaveBeenCalled()
+  })
+
+  it('reports a read refused through a link outside the vault as PERMISSION_DENIED', async () => {
+    failure = new OutsideVaultError('notes/a.md')
+
+    const body = await callFailingTool()
+
+    expect(body).toContain(
+      JSON.stringify(
+        JSON.stringify({
+          code: 'PERMISSION_DENIED',
+          message: 'notes/a.md points outside the vault. Memry reads only files inside the vault.'
+        })
+      ).slice(1, -1)
+    )
     expect(mocks.trackMainLog).not.toHaveBeenCalled()
   })
 })
