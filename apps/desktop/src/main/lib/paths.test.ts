@@ -152,7 +152,7 @@ describe('resolveVaultFile', () => {
 
       expect(await resolveVaultFile(vault, '..draft.png')).toEqual({
         kind: 'inside',
-        realPath: path.join(vault, '..draft.png')
+        path: path.join(vault, '..draft.png')
       })
       expect(await resolveVaultFile(vault, '../escape.png')).toEqual({ kind: 'outside' })
       expect(await resolveVaultFile(vault, 'gone.png')).toEqual({ kind: 'missing' })

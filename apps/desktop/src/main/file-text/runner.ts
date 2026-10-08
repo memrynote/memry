@@ -109,6 +109,8 @@ async function fileSignature(
   }
 }
 
+const OUTSIDE_VAULT = { signature: 'outside-vault', size: 0 }
+
 /** Never parsed, and never retried while its bytes stay the same. */
 function isOversizedHtml(file: TextFile, size: number): boolean {
   return file.fileType === 'html' && size > HTML_TEXT_MAX_BYTES
@@ -290,7 +292,7 @@ export class FileTextRunner {
 
     for (const file of [...filed, ...attachments.files]) {
       if (this.stopped) return
-      const current = await fileSignature(path.join(this.deps.vaultPath, file.path))
+      const current = await this.currentSignature(file)
       if (!current) continue
       const db = this.deps.getDb()
       const job = getFileTextJob(db, file)
@@ -302,6 +304,18 @@ export class FileTextRunner {
       startFileTextJob(db, file, current.signature, this.deps.appVersion)
       if (job) this.deps.textChanged(file.noteId)
     }
+  }
+
+  /**
+   * A link outside the vault gets a signature of its own, so text an older
+   * build read from it is dropped and `extract` fails the job.
+   */
+  private async currentSignature(
+    file: TextFile
+  ): Promise<{ signature: string; size: number } | null> {
+    const resolved = await resolveVaultFile(this.deps.vaultPath, file.path)
+    if (resolved.kind === 'outside') return OUTSIDE_VAULT
+    return resolved.kind === 'inside' ? fileSignature(resolved.path) : null
   }
 
   /**
@@ -328,12 +342,12 @@ export class FileTextRunner {
       )
       return
     }
-    const current = resolved.kind === 'inside' ? await fileSignature(resolved.realPath) : null
+    const current = resolved.kind === 'inside' ? await fileSignature(resolved.path) : null
     if (resolved.kind === 'missing' || !current) {
       finishFileTextJob(db, file, 'failed', 'File not found')
       return
     }
-    const absolutePath = resolved.realPath
+    const absolutePath = resolved.path
     if (current.signature !== signature) {
       this.changed.add(file.noteId)
       // Still being written, most likely: let the copy settle before reading.

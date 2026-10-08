@@ -128,8 +128,8 @@ async function locate(
     )
   }
   if (resolved.kind === 'inside') {
-    const stats = await stat(resolved.realPath).catch(() => null)
-    if (stats?.isFile()) return { absolutePath: resolved.realPath, size: stats.size }
+    const stats = await stat(resolved.path).catch(() => null)
+    if (stats?.isFile()) return { absolutePath: resolved.path, size: stats.size }
   }
   throw new AgentToolError('NOT_FOUND', `${target.file} is not in the vault.`, details)
 }
